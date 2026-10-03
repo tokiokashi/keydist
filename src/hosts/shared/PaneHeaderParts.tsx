@@ -12,6 +12,8 @@ export interface PaneMenuItem {
   readonly description?: string;
   /** 択一のメニューで、今選ばれている項目（`menuitemradio`として読み上げる）。 */
   readonly selected?: boolean;
+  /** 入り・切りの項目で、今入っているか（`menuitemcheckbox`として読み上げる）。 */
+  readonly checked?: boolean;
   /** 項目の先頭に出す絵（対象の持ち方）。あれば1行で出す。 */
   readonly glyph?: { readonly kind: BindingGlyphKind; readonly number?: number };
   /** 読み上げ名。省略時は`label`。 */
@@ -142,13 +144,14 @@ export function PaneMenu({
           {items.map((item) => (
             <button
               type="button"
-              role={item.selected === undefined ? 'menuitem' : 'menuitemradio'}
+              role={item.checked !== undefined ? 'menuitemcheckbox' : item.selected === undefined ? 'menuitem' : 'menuitemradio'}
               aria-label={item.ariaLabel}
               data-glyph={item.glyph === undefined ? undefined : ''}
-              aria-checked={item.selected}
+              aria-checked={item.checked ?? item.selected}
               key={item.id}
               className="pane-menu-item"
               data-selected={item.selected || undefined}
+              data-checked={item.checked === undefined ? undefined : item.checked}
               onClick={() => {
                 item.onSelect();
                 close();

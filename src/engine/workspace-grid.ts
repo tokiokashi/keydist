@@ -12,7 +12,8 @@
  * - 資産に載っているペインは、どれもちょうど1つの枠を持つ。載っていないペインの枠は持たない
  * - 枠は整数で、列の範囲（0 <= x, x + w <= GRID_COLS）に収まり、y >= 0、w >= 1、h >= 1
  * - 枠どうしは重ならない
- * - 上に空きが無い（縦に詰めてある）。ペインを閉じたら下のペインが上がる
+ * - 「空いた所に詰める」設定（`compact`）の時だけ、上に空きが無い（縦に詰めてある）。ペインを閉じたら下のペインが上がる。
+ *   詰めない設定（既定）では、縮めた・閉じた所は空いたまま残し、衝突した時に下へ押すだけにする
  */
 /**
  * 列数。12列では荒く、ペインの幅を細かく選べない（Analyzerによって欲しい幅が割れる）ので24列にする。
@@ -111,6 +112,7 @@ function clampSize(size: GridSize): GridSize {
 export function normalizeGrid(
   grid: WorkspaceGrid | undefined,
   paneIds: readonly string[],
+  compact: boolean,
   sizeOf: (paneId: string) => GridSize = () => FALLBACK_GRID_SIZE,
 ): WorkspaceGrid {
   const known = new Set(paneIds);
@@ -136,14 +138,19 @@ export function normalizeGrid(
     const size = clampSize(sizeOf(id));
     result = [...result, { id, ...firstFreeSlot(result, size, 0), ...size }];
   }
-  return compactGrid(result);
+  return compact ? compactGrid(result) : result;
 }
 
-/** ペインを足した枠。空いている最初の場所に`size`で置く。 */
-export function gridWithPane(grid: WorkspaceGrid, paneId: string, size: GridSize): WorkspaceGrid {
+/** 詰める設定の時だけ詰める。詰めない設定では、並びをそのまま返す。 */
+function compactIf(compact: boolean, grid: WorkspaceGrid): WorkspaceGrid {
+  return compact ? compactGrid(grid) : grid;
+}
+
+/** ペインを足した枠。空いている最初の場所に`size`で置く。詰めない設定なら、他の枠は動かさない。 */
+export function gridWithPane(grid: WorkspaceGrid, paneId: string, size: GridSize, compact: boolean): WorkspaceGrid {
   if (grid.some((item) => item.id === paneId)) return grid;
   const fitted = clampSize(size);
-  return compactGrid([...grid, { id: paneId, ...firstFreeSlot(grid, fitted, 0), ...fitted }]);
+  return compactIf(compact, [...grid, { id: paneId, ...firstFreeSlot(grid, fitted, 0), ...fitted }]);
 }
 
 /**
@@ -155,11 +162,12 @@ export function gridWithPaneNextTo(
   grid: WorkspaceGrid,
   referencePaneId: string,
   paneId: string,
+  compact: boolean,
   fallbackSize: GridSize = FALLBACK_GRID_SIZE,
 ): WorkspaceGrid {
   if (grid.some((item) => item.id === paneId)) return grid;
   const source = grid.find((item) => item.id === referencePaneId);
-  if (source === undefined) return gridWithPane(grid, paneId, fallbackSize);
+  if (source === undefined) return gridWithPane(grid, paneId, fallbackSize, compact);
   const size: GridSize = { w: source.w, h: source.h };
   const right: GridItem = { id: paneId, x: source.x + source.w, y: source.y, ...size };
   const below: GridItem = { id: paneId, x: source.x, y: source.y + source.h, ...size };
@@ -167,13 +175,16 @@ export function gridWithPaneNextTo(
   if (right.x + right.w <= GRID_COLS && !collidesWithAny(right, grid)) placed = right;
   else if (!collidesWithAny(below, grid)) placed = below;
   else placed = { id: paneId, ...firstFreeSlot(grid, size, source.y + source.h), ...size };
-  return compactGrid([...grid, placed]);
+  return compactIf(compact, [...grid, placed]);
 }
 
-/** ペインを取り除いた枠。下のペインは上へ詰まるが、他のペインの大きさは変わらない。 */
-export function gridWithoutPane(grid: WorkspaceGrid, paneId: string): WorkspaceGrid {
+/**
+ * ペインを取り除いた枠。他のペインの大きさは変わらない。詰める設定なら下のペインが上へ詰まり、
+ * 詰めない設定なら閉じた所は空いたまま残る。
+ */
+export function gridWithoutPane(grid: WorkspaceGrid, paneId: string, compact: boolean): WorkspaceGrid {
   if (!grid.some((item) => item.id === paneId)) return grid;
-  return compactGrid(grid.filter((item) => item.id !== paneId));
+  return compactIf(compact, grid.filter((item) => item.id !== paneId));
 }
 
 /** ペインのidを画面の読み順（上→下・左→右）で返す。縦積みの並びにも使う。 */

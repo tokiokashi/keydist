@@ -73,6 +73,8 @@ test('サンプルの並び: 上に比較表とN感度の横並び（18 + 6列�
     assert.deepEqual(pane.options, { source: 'within-hand' });
   }
   assert.deepEqual(created.conditions, { defaultShapeId: 'split-ortholinear' });
+  // サンプルも既定どおり詰めない
+  assert.equal(created.compactPanes, undefined);
 
   // 24列。上の段は比較表とN感度が横に並んで24列を使い切り（高さは揃う）、下の段は同じ幅の4つが左から並ぶ
   const [comparison, nSensitivity, ...lower] = created.grid;
@@ -84,7 +86,7 @@ test('サンプルの並び: 上に比較表とN感度の横並び（18 + 6列�
   assert.ok(lower.every((item) => item.y === comparison!.h && item.w === GRID_COLS / 4));
   assert.deepEqual(lower.map((item) => item.x), [0, 6, 12, 18]);
   // 不変条件を満たした形（正規化しても変わらない）
-  assert.deepEqual(normalizeGrid(created.grid, created.panes.map((pane) => pane.id)), created.grid);
+  assert.deepEqual(normalizeGrid(created.grid, created.panes.map((pane) => pane.id), false), created.grid);
 });
 
 test('同名があれば連番になり、既存のWorkspaceは変わらない', () => {

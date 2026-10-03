@@ -9,6 +9,7 @@ import {
   duplicateWorkspacePaneCommand,
   renameWorkspaceCommand,
   setWorkspaceGridCommand,
+  setWorkspaceCompactPanesCommand,
   linkWorkspacePaneToNewGroupCommand,
   setWorkspacePaneBindingCommand,
   setWorkspaceTargetCommand,
@@ -318,6 +319,13 @@ export function WorkspacePage({
           label="Workspaceの操作"
           className="workspace-menu"
           items={[
+            {
+              id: 'compact',
+              label: '空いた所に詰める',
+              description: 'ペインを縮める・動かす・閉じた時に、下のペインが上の空きへ移る',
+              checked: workspace.compactPanes === true,
+              onSelect: () => dispatch(setWorkspaceCompactPanesCommand(workspaceId, workspace.compactPanes !== true)),
+            },
             { id: 'duplicate', label: '複製', onSelect: () => { flushPending(); onDuplicate(); } },
             { id: 'delete', label: '削除', onSelect: () => { flushPending(); onDelete(); } },
           ]}
@@ -369,6 +377,7 @@ export function WorkspacePage({
                   titleOf={titleOf}
                   descriptionOf={descriptionOf}
                   renderPane={renderPane}
+                  compact={workspace.compactPanes === true}
                   maximizedId={maximizedId !== undefined && panesById.has(maximizedId) ? maximizedId : undefined}
                   onGridChange={(grid) => dispatch(setWorkspaceGridCommand(workspaceId, grid))}
                 />

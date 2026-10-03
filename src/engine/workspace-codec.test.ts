@@ -12,6 +12,7 @@ import {
   withPaneInNewLinkGroup,
   initialWorkspaceLibrary,
   withWorkspaceGrid,
+  withWorkspaceCompactPanes,
   withWorkspacePaneOptions,
   withWorkspaceTarget,
   withWorkspaceText,
@@ -283,6 +284,38 @@ test('配置を書き換えた値も往復する', () => {
   const decoded = WORKSPACE_LIBRARY_CODEC.decode(JSON.parse(JSON.stringify(WORKSPACE_LIBRARY_CODEC.encode(library))));
   assert.ok(decoded.ok);
   assert.deepEqual(decoded.value, library);
+});
+
+test('詰める設定は往復する。詰めない（既定）は値を持たず、読み込みでも空きを詰めない', () => {
+  const library = withWorkspaceCompactPanes(sample(), 'w1', true);
+  const encoded = WORKSPACE_LIBRARY_CODEC.encode(library);
+  assert.equal(JSON.stringify(encoded).includes('compactPanes'), true);
+  const decoded = WORKSPACE_LIBRARY_CODEC.decode(JSON.parse(JSON.stringify(encoded)));
+  assert.ok(decoded.ok);
+  assert.deepEqual(decoded.value, library);
+  assert.equal(JSON.stringify(WORKSPACE_LIBRARY_CODEC.encode(sample())).includes('compactPanes'), false);
+
+  const raw = (compactPanes: unknown) => WORKSPACE_LIBRARY_CODEC.decode({
+    version: 3,
+    workspaces: [{
+      id: 'w',
+      name: 'n',
+      panes: ['a', 'b'].map((id) => ({ id, analyzerId: 'x', binding: { mode: 'follow' } })),
+      grid: [{ id: 'a', x: 0, y: 4, w: 6, h: 4 }, { id: 'b', x: 12, y: 9, w: 6, h: 4 }],
+      compactPanes,
+    }],
+  });
+  const off = raw(undefined);
+  assert.ok(off.ok);
+  assert.deepEqual(off.value[0]!.grid.map((i) => i.y), [4, 9]);
+  assert.equal(off.value[0]!.compactPanes, undefined);
+  // 真以外（壊れた値）は既定の詰めない
+  const broken = raw('yes');
+  assert.ok(broken.ok);
+  assert.equal(broken.value[0]!.compactPanes, undefined);
+  const on = raw(true);
+  assert.ok(on.ok);
+  assert.deepEqual(on.value[0]!.grid.map((i) => i.y), [0, 0]);
 });
 
 test('gridが配列でなければ診断を1件積み、ペインは失わない。undefinedは診断なし', () => {

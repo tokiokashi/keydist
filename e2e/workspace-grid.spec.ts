@@ -1,75 +1,14 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { waitForHydration } from './hydration-helper.ts';
+import { cell, colStep, dragHandle, itemOf, open, ROW_STEP, stored } from './workspace-grid-helper.ts';
 
 /**
  * Workspaceの格子（ペインごとに位置と大きさを持つ。列は24、1升の高さ28px、升の間8px）。
  * 大きさを変えるつかみは、下の辺（高さだけ）・右の辺と左の辺（幅だけ。左の辺は左端が動く）・右下の角（幅と高さを別々に）の4つ。
- * 1つのペインを変えても、他のペインの大きさは変わらない。複製は元と同じ大きさで隣に置き、閉じると下のペインが詰まる。
+ * 1つのペインを変えても、他のペインの大きさは変わらない。複製は元と同じ大きさで隣に置く。
+ * 閉じた後に詰めるかは「空いた所に詰める」の設定で決まる（詰めない時は`workspace-no-compaction.spec.ts`）。
  * ペインは中身が軽い余白のペインで足りる（格子の動きは中身に依らない）。
  */
-
-const WORKSPACES_KEY = 'keydist:workspaces';
-const ROW_STEP = 28 + 8;
-const blank = (id: string) => ({ id, analyzerId: 'blank', binding: { mode: 'none' } });
-
-interface Cell { readonly id: string; readonly x: number; readonly y: number; readonly w: number; readonly h: number }
-const cell = (id: string, x: number, y: number, w: number, h: number): Cell => ({ id, x, y, w, h });
-
-async function open(page: Page, ids: readonly string[], grid: readonly Cell[], size = { width: 1440, height: 1200 }): Promise<void> {
-  await page.setViewportSize(size);
-  await page.addInitScript((value) => {
-    if (localStorage.getItem('keydist:workspaces') === null) {
-      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [value] }));
-    }
-  }, { id: 'g', name: '格子', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes: ids.map(blank), grid });
-  await page.goto('/workspace/g');
-  await waitForHydration(page);
-  await expect(page.locator('.workspace-grid-item')).toHaveCount(ids.length);
-  await settle(page);
-}
-
-/**
- * ペインの位置・大きさが落ち着くまで待つ。ライブラリは配置が変わると短い動き（200ms）を付けるので、
- * 動いている最中の位置でつかみを探すと外れる（読み込み直後と、離した直後）。
- */
-async function settle(page: Page): Promise<void> {
-  const signature = () => page.locator('.workspace-grid-item').evaluateAll((els) => els.map((el) => {
-    const r = el.getBoundingClientRect();
-    return `${Math.round(r.x)},${Math.round(r.y)},${Math.round(r.width)},${Math.round(r.height)}`;
-  }).join('|'));
-  let last = await signature();
-  let stable = 0;
-  while (stable < 4) {
-    await page.waitForTimeout(100);
-    const now = await signature();
-    stable = now === last ? stable + 1 : 0;
-    last = now;
-  }
-}
-
-async function stored(page: Page): Promise<Cell[]> {
-  const raw = await page.evaluate((key) => localStorage.getItem(key), WORKSPACES_KEY);
-  return JSON.parse(raw!).workspaces[0].grid;
-}
-
-const itemOf = async (page: Page, id: string) => (await stored(page)).find((item) => item.id === id)!;
-
-/** 1列ぶんの横の幅（列の幅 + 升の間）。格子の面の実寸から求める。 */
-async function colStep(page: Page): Promise<number> {
-  const width = (await page.locator('.workspace-grid-area').boundingBox())!.width;
-  return (width - 16 - 23 * 8) / 24 + 8;
-}
-
-async function dragHandle(page: Page, id: string, axis: 's' | 'e' | 'w' | 'se', dx: number, dy: number): Promise<void> {
-  const box = (await page.locator(`.workspace-grid-item[data-pane-id="${id}"] .react-resizable-handle-${axis}`).boundingBox())!;
-  const x = box.x + box.width / 2;
-  const y = box.y + box.height / 2;
-  await page.mouse.move(x, y);
-  await page.mouse.down();
-  await page.mouse.move(x + dx, y + dy, { steps: 10 });
-  await page.mouse.up();
-  await settle(page);
-}
 
 test('つかみは下の辺・右の辺・左の辺・右下の角の4つだけで、上の辺と他の角には無い', async ({ page }) => {
   await open(page, ['a'], [cell('a', 4, 0, 12, 10)]);
@@ -172,8 +111,8 @@ test('複製は元と同じ大きさで右隣に置く。右が塞がってい�
   expect(await itemOf(page, 'b')).toEqual(cell('b', 8, 0, 8, 8));
 });
 
-test('ペインを閉じると、下のペインが上へ詰まる。どのペインの大きさも変わらない', async ({ page }) => {
-  await open(page, ['a', 'b', 'c'], [cell('a', 0, 0, 12, 8), cell('b', 0, 8, 12, 10), cell('c', 0, 18, 12, 6)]);
+test('詰める設定: ペインを閉じると、下のペインが上へ詰まる。どのペインの大きさも変わらない', async ({ page }) => {
+  await open(page, ['a', 'b', 'c'], [cell('a', 0, 0, 12, 8), cell('b', 0, 8, 12, 10), cell('c', 0, 18, 12, 6)], undefined, true);
   await page.locator('.workspace-grid-item[data-pane-id="b"]').getByRole('button', { name: /の操作$/ }).click();
   await page.getByRole('menuitem', { name: /閉じる/ }).click();
   await expect(page.locator('.workspace-grid-item')).toHaveCount(2);

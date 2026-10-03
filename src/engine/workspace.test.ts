@@ -18,6 +18,8 @@ import {
   renameWorkspace,
   uniqueWorkspaceName,
   withWorkspaceGrid,
+  withWorkspaceCompactPanes,
+  duplicateWorkspace,
   withWorkspacePaneOptions,
   withWorkspacePaneBinding,
   withPaneInNewLinkGroup,
@@ -269,4 +271,52 @@ test('余白のペイン: 対象を持たず、組を残す理由にならない
   assert.deepEqual(findWorkspace(library, 'w1')!.groups.map((g) => g.id), [G]);
   library = closeWorkspacePane(library, 'w1', 'b');
   assert.deepEqual(findWorkspace(library, 'w1')!.panes.map((p) => p.id), ['a']);
+});
+
+test('詰めない設定（既定）: ペインを閉じても下のペインは動かず、閉じた所は空いたまま', () => {
+  // 幅12のペインを2段に並べる（上の段が a・b、下の段が c・d）
+  let library = libraryWith();
+  for (const id of ['a', 'b', 'c', 'd']) library = addWorkspacePane(library, 'w1', pane(id), { w: 12, h: 10 });
+  const grid = findWorkspace(library, 'w1')!.grid;
+  const closed = closeWorkspacePane(library, 'w1', 'a');
+  const after = findWorkspace(closed, 'w1')!.grid;
+  assert.deepEqual(after, grid.filter((item) => item.id !== 'a'));
+  // 詰める設定なら、下のペインが上へ詰まる
+  const compact = withWorkspaceCompactPanes(library, 'w1', true);
+  const compactAfter = findWorkspace(closeWorkspacePane(compact, 'w1', 'a'), 'w1')!.grid;
+  assert.notDeepEqual(compactAfter, after);
+  assert.ok(compactAfter.some((item) => item.y < grid.find((g) => g.id === item.id)!.y));
+});
+
+test('withWorkspaceCompactPanes: 並びを書き換えない。同じ値なら何もせず、詰めないへ戻すと値ごと消える', () => {
+  const library = libraryWith('a', 'b');
+  assert.equal(withWorkspaceCompactPanes(library, 'w1', false), library);
+  assert.equal(withWorkspaceCompactPanes(library, 'none', true), library);
+  const gapped = withWorkspaceGrid(library, 'w1', [
+    { id: 'a', x: 0, y: 0, w: 6, h: 4 },
+    { id: 'b', x: 12, y: 9, w: 6, h: 4 },
+  ]);
+  const on = withWorkspaceCompactPanes(gapped, 'w1', true);
+  const workspace = findWorkspace(on, 'w1')!;
+  assert.equal(workspace.compactPanes, true);
+  // 切り替えただけでは、空きの残った並びのまま
+  assert.equal(workspace.grid, findWorkspace(gapped, 'w1')!.grid);
+  assert.equal(withWorkspaceCompactPanes(on, 'w1', true), on);
+  const off = withWorkspaceCompactPanes(on, 'w1', false);
+  assert.deepEqual(off, gapped);
+  assert.equal('compactPanes' in findWorkspace(off, 'w1')!, false);
+});
+
+test('withWorkspaceGrid: 詰めない設定は空きを残し、詰める設定は詰める', () => {
+  const library = libraryWith('a', 'b');
+  const gapped = [{ id: 'a', x: 0, y: 3, w: 6, h: 4 }, { id: 'b', x: 12, y: 9, w: 6, h: 4 }];
+  assert.deepEqual(findWorkspace(withWorkspaceGrid(library, 'w1', gapped), 'w1')!.grid, gapped);
+  const compact = withWorkspaceCompactPanes(library, 'w1', true);
+  assert.deepEqual(findWorkspace(withWorkspaceGrid(compact, 'w1', gapped), 'w1')!.grid.map((i) => i.y), [0, 0]);
+});
+
+test('duplicateWorkspace: 詰める設定も写る', () => {
+  const library = withWorkspaceCompactPanes(libraryWith('a'), 'w1', true);
+  const copied = duplicateWorkspace(library, 'w1', 'w2');
+  assert.equal(findWorkspace(copied, 'w2')!.compactPanes, true);
 });
