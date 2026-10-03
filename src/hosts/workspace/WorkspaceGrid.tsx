@@ -1,5 +1,5 @@
-import { useLayoutEffect, useMemo, type ReactNode } from 'react';
-import ReactGridLayout, { useContainerWidth, verticalCompactor, type Layout, type LayoutItem } from 'react-grid-layout';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import ReactGridLayout, { verticalCompactor, type Layout, type LayoutItem } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import { GRID_COLS, gridPaneIds, type GridItem, type WorkspaceGrid } from '#engine/workspace-grid.ts';
@@ -25,6 +25,58 @@ export interface WorkspaceGridProps {
   readonly onGridChange: (grid: WorkspaceGrid) => void;
 }
 
+/**
+ * 格子を置く面の幅。測るまで`null`で、その間は格子を描かない（ライブラリの既定は幅1280で最初の1コマを描き、
+ * 測った後に幅が変わるので、開いた直後にペインが縮んで見える）。
+ *
+ * 描くたびに、描画の前（layout effect）にも測り直す。縦のスクロールバーが幅を取る環境では、格子を描いて
+ * ページが伸びるとスクロールバーが出て面が狭くなる。この測り直しなら、その幅を最初の描画の前に取り込める
+ * （`scrollbar-gutter`で右を空けておく方法は、スクロールバーが出ない時にも右が空き、他の配置の幅も変えるので採らない）。
+ * 幅が同じなら状態は変わらず、再描画は起きない。
+ */
+function useGridAreaWidth(): { readonly width: number | null; readonly containerRef: RefObject<HTMLDivElement | null> } {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [width, setWidth] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const node = containerRef.current;
+    if (node === null) return;
+    const next = Math.round(node.clientWidth);
+    setWidth((prev) => (prev === next ? prev : next));
+  });
+  useLayoutEffect(() => {
+    const node = containerRef.current;
+    if (node === null) return undefined;
+    const observer = new ResizeObserver(() => {
+      const next = Math.round(node.clientWidth);
+      setWidth((prev) => (prev === next ? prev : next));
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+  return { width, containerRef };
+}
+
+/**
+ * 格子を描いて最初の1コマが出た後に`true`。それまでは配置の動き（200ms）を止める（`workspace-grid.css`）。
+ * 幅を測り直すために描画の前に配置を測ると、ライブラリの動きがその時点の幅から始まってしまい、
+ * 測り直した後の幅へ縮む動きが見える。最初の1コマを出すまでは動かさず、実際の幅のまま現れさせる。
+ */
+function useAfterFirstPaint(ready: boolean): boolean {
+  const [done, setDone] = useState(false);
+  useEffect(() => {
+    if (!ready) return undefined;
+    let second = 0;
+    const first = requestAnimationFrame(() => {
+      second = requestAnimationFrame(() => setDone(true));
+    });
+    return () => {
+      cancelAnimationFrame(first);
+      cancelAnimationFrame(second);
+    };
+  }, [ready]);
+  return done;
+}
+
 function toLayoutItem(item: GridItem, analyzerId: string, containerWidth: number): LayoutItem {
   const min = minGridSize(analyzerId, containerWidth);
   // 保存済みの幅・高さが下限より小さくても、他の辺を引いた時に広がらないよう、下限は今の幅・高さまでに留める
@@ -43,14 +95,14 @@ function fromLayout(layout: Layout): WorkspaceGrid {
  * 1回だけ資産へ書く。途中の位置は書かないので、Undoは1操作につき1回で戻る。
  */
 export function WorkspaceGrid({ grid, analyzerIdOf, titleOf, descriptionOf, renderPane, maximizedId, onGridChange }: WorkspaceGridProps) {
-  // 既定は幅1280で最初の1コマを描き、測り終えてから幅が変わる（開いた直後にペインが縮んで見える）。
-  // 測るまで格子を描かず、最初のコマから実際の幅で描く
-  const { width, containerRef, mounted } = useContainerWidth({ measureBeforeMount: true });
+  const { width, containerRef } = useGridAreaWidth();
+  const mounted = width !== null;
+  const animated = useAfterFirstPaint(mounted);
   const maximized = maximizedId !== undefined;
   useMaximizedBounds(containerRef, maximized);
   useCloseFloatingOfOthers(containerRef, maximizedId);
   const layout = useMemo(
-    () => grid.map((item) => toLayoutItem(item, analyzerIdOf(item.id), width)),
+    () => grid.map((item) => toLayoutItem(item, analyzerIdOf(item.id), width ?? 0)),
     [grid, analyzerIdOf, width],
   );
   // 拡大中は、有効・無効だけを切り替える（部品の木が変わらず、ペインが作り直されない）
@@ -60,10 +112,10 @@ export function WorkspaceGrid({ grid, analyzerIdOf, titleOf, descriptionOf, rend
   );
   const resizeConfig = useMemo(() => ({ enabled: !maximized, handles: ['s', 'e', 'w', 'se'] as const }), [maximized]);
   return (
-    <div ref={containerRef} className="workspace-grid-area" data-maximized={maximized || undefined}>
+    <div ref={containerRef} className="workspace-grid-area" data-maximized={maximized || undefined} data-animated={animated || undefined}>
       {mounted ? (
         <ReactGridLayout
-          width={width}
+          width={width ?? 0}
           layout={layout}
           gridConfig={{
             cols: GRID_COLS,
