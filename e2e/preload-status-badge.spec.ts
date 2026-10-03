@@ -3,9 +3,10 @@ import { waitForHydration } from './hydration-helper.ts';
 import { targetButton } from './pane-helper.ts';
 
 /**
- * プリレンダーの見出しに状態のバッジ（「未計算」）を出さない（#915）。
- * 読み込み前は保存済みの結果が無いだけなので「未計算」は誤解を招き、読み込み後にバッジが消えると
- * 見出しの並びが動いて対象ボタンが約59px動いていた。
+ * 読み込みの前後で、見出しの対象ボタンが動かない（#915）。
+ * プリレンダー（読み込み前）に状態のバッジ（「未計算」）を出さず、読み込み後の「計算中…」も、
+ * 本文が「計算している…」を出している間は見出しに出さない。出すとバッジの幅の分だけ対象ボタンが動いて、
+ * 計算が済むと戻る。
  */
 const pages = [
   { name: 'Bigram Flow', path: '/standalone/bigram-flow' },
@@ -15,7 +16,7 @@ const pages = [
 
 for (const width of [390, 1440]) {
   for (const { name, path } of pages) {
-    test(`${name}: 読み込み前のプリレンダーに状態のバッジが無く、読み込みの前後で対象ボタンが動かない（${width}px）`, async ({ page }) => {
+    test(`${name}: 読み込みから計算が済むまでの全ての描画で、対象ボタンが読み込み前の位置から動かない（${width}px）`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
       let release: () => void = () => {};
       const gate = new Promise<void>((resolve) => {
@@ -32,18 +33,33 @@ for (const width of [390, 1440]) {
       const before = await targetButton(page).boundingBox();
       expect(before).not.toBeNull();
 
+      // 読み込みを再開する前に、描画ごと（rAF）に対象ボタンの左端・上端を記録し始める
+      await page.evaluate(() => {
+        const samples: { x: number; y: number; status: string | null }[] = [];
+        (window as unknown as { __targetSamples: typeof samples }).__targetSamples = samples;
+        const tick = () => {
+          const button = [...document.querySelectorAll('button')].find((b) => /^対象: /.test(b.getAttribute('aria-label') ?? ''));
+          if (button) {
+            const rect = button.getBoundingClientRect();
+            samples.push({ x: rect.x, y: rect.y, status: document.querySelector('section.pane-frame')?.getAttribute('data-pane-status') ?? null });
+          }
+          requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      });
+
       release();
       await waitForHydration(page);
-      // 資産の読み込みが済むと、画面の囲い（fieldset disabled）が外れる
-      await expect(page.locator('fieldset:disabled')).toHaveCount(0, { timeout: 20_000 });
-      // 計算が済んでから測る（計算中のバッジは今までどおり出るので、その間は並びが動く）
       await expect(page.locator('[data-pane-status="ready"]')).toBeVisible({ timeout: 20_000 });
-      const after = await targetButton(page).boundingBox();
-      expect(after).not.toBeNull();
-      expect(Math.abs(after!.x - before!.x)).toBeLessThanOrEqual(1);
-      expect(Math.abs(after!.y - before!.y)).toBeLessThanOrEqual(1);
-      // 幅は比べない。読み込み後は対象の名前が入るので、ボタン自体は名前の分だけ広がる（#709）。左端と高さが動かなければよい
-      expect(Math.abs(after!.height - before!.height)).toBeLessThanOrEqual(1);
+      // ready の後の数フレームも見る
+      await page.waitForTimeout(200);
+      const samples = await page.evaluate(() => (window as unknown as { __targetSamples: { x: number; y: number; status: string | null }[] }).__targetSamples);
+      expect(samples.length).toBeGreaterThan(5);
+      expect(samples.some((s) => s.status === 'ready')).toBe(true);
+      for (const s of samples) {
+        expect(Math.abs(s.x - before!.x), `x（status=${s.status}）`).toBeLessThanOrEqual(1);
+        expect(Math.abs(s.y - before!.y), `y（status=${s.status}）`).toBeLessThanOrEqual(1);
+      }
     });
   }
 }
