@@ -283,7 +283,7 @@ h2.pane-frame-title {
 
 /*
  * 状態のバッジ（Workspaceのペイン）。既定は文字の無い点で、状態の文は読み上げ（隠した文字）とtitleに残す。
- * 全文が入る幅（状態ごとの文字数に合わせた下の@container）では、今までどおり文字で出す。
+ * 全文が入る時（下のdata-text）は、今までどおり文字で出す。
  * 点は、対象の欄の下限に0.5remの場所を確保してある。入らない文字でボタンの下に隠れたり、
  * 字の途中で切れたりしないようにするため。
  */
@@ -309,57 +309,25 @@ h2.pane-frame-title {
 }
 
 /*
- * 文字で出す幅。名前・対象の選択が最小幅の時に、文字が入る分を足した幅に余裕を見た値。
- * ペインが34remを超えると、条件が「条件: 既定値」のchip（絵だけの時より約85px広い）になるので、その分も足して決める。
- * 失敗（23rem）と計算中…（25rem）は、chipがある幅（34rem超）でも合計に収まる（約28rem・29rem）ので、chipの有無で変えない。
- * 「直前の結果を表示」は、chipがある時の合計が約36.5remなので、「N件変更」の少し広いchipの余裕を見て38remにする。
+ * 文字で出す時（data-text）。文字が入るかは、見出しの実際の幅と中身から測って決める（use-status-badge-fit.ts）。
+ * 条件のchipの幅が中身で変わる（既定値・N件変更・対象ごとに差あり）ので、固定の幅では決めない。
  */
-@container pane (width >= 23rem) {
-  .pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-status-badge[data-status="failed"] {
-    width: auto;
-    height: auto;
-    padding: 0.15rem 0.55rem;
-    background: color-mix(in srgb, #d6333f 15%, transparent);
-  }
-
-  .pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-status-badge[data-status="failed"] .pane-status-badge-text {
-    position: static;
-    width: auto;
-    height: auto;
-    clip-path: none;
-  }
+.pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-status-badge[data-text] {
+  width: auto;
+  height: auto;
+  padding: 0.15rem 0.55rem;
+  background: color-mix(in srgb, currentColor 15%, transparent);
 }
 
-@container pane (width >= 25rem) {
-  .pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-status-badge[data-status="computing"] {
-    width: auto;
-    height: auto;
-    padding: 0.15rem 0.55rem;
-    background: color-mix(in srgb, currentColor 15%, transparent);
-  }
-
-  .pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-status-badge[data-status="computing"] .pane-status-badge-text {
-    position: static;
-    width: auto;
-    height: auto;
-    clip-path: none;
-  }
+.pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-status-badge[data-text][data-status="failed"] {
+  background: color-mix(in srgb, #d6333f 15%, transparent);
 }
 
-@container pane (width >= 38rem) {
-  .pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-status-badge[data-status="stale"] {
-    width: auto;
-    height: auto;
-    padding: 0.15rem 0.55rem;
-    background: color-mix(in srgb, currentColor 15%, transparent);
-  }
-
-  .pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-status-badge[data-status="stale"] .pane-status-badge-text {
-    position: static;
-    width: auto;
-    height: auto;
-    clip-path: none;
-  }
+.pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-status-badge[data-text] .pane-status-badge-text {
+  position: static;
+  width: auto;
+  height: auto;
+  clip-path: none;
 }
 
 /*

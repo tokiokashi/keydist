@@ -8,6 +8,7 @@ import type { ConditionEditorContext } from './ConditionEditor.tsx';
 import { ErrorDetails } from './ErrorDetails.tsx';
 import { PaneErrorBoundary } from './PaneErrorBoundary.tsx';
 import { PaneHeaderLeadContext, PaneNameInLeadContext } from './pane-name-in-lead.ts';
+import { useStatusBadgeFit } from './use-status-badge-fit.ts';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
 import type { PaneTargetBindingControl } from './panes/pane-environment.ts';
 import { BindingGlyph, PaneMenu, SettingsIcon, type PaneMenuItem } from './PaneHeaderParts.tsx';
@@ -106,12 +107,13 @@ export interface PaneFrameProps {
 }
 
 /**
- * 状態のバッジ。Workspaceのペインの狭い見出しでは、文字が入らないので点で出す（`pane-frame.css`）。
+ * 状態のバッジ。Workspaceのペインの見出しでは、文字が入る時だけ文字（`asText`）、入らない時は点で出す
+ * （`use-status-badge-fit.ts`が測る。`pane-frame.css`）。
  * 状態の文は文字の要素とtitleに残すので、点でも読み上げとホバーで分かる。
  */
-function StatusBadge({ status, label }: { readonly status: EngineRequestState<unknown>['status']; readonly label: string }) {
+function StatusBadge({ status, label, asText = false }: { readonly status: EngineRequestState<unknown>['status']; readonly label: string; readonly asText?: boolean }) {
   return (
-    <span className="pane-status-badge" data-status={status} title={label}>
+    <span className="pane-status-badge" data-status={status} data-text={asText || undefined} title={label}>
       <span className="pane-status-badge-text">{label}</span>
     </span>
   );
@@ -145,6 +147,7 @@ export function PaneFrame({
 }: PaneFrameProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
   // 前の結果が無い計算中は、本文が「計算中…」を出している。見出しにも出すと重複し、
   // バッジの幅の分だけ対象ボタンが動いて、計算が済むと戻る（#915）。前の結果を表示している間と失敗は見出しで伝える
   const bodyShowsBusy = engineState.status === 'computing' && children === undefined;
@@ -156,6 +159,8 @@ export function PaneFrame({
   const Heading = headingLevel === 1 ? 'h1' : 'h2';
   const nameInLead = useContext(PaneNameInLeadContext);
   const headerLead = useContext(PaneHeaderLeadContext);
+  // 先頭を持つ見出し（Workspaceのペイン）だけ、バッジを文字で出せるかを測る
+  const badgeAsText = useStatusBadgeFit(headerRef, nameInLead && headerLead !== null && statusLabel !== '');
 
   const closeSettings = () => {
     setSettingsOpen(false);
@@ -181,7 +186,7 @@ export function PaneFrame({
       data-name-in-lead={nameInLead || undefined}
       style={{ '--pane-recommended-width': `${recommendedWidthRem}rem` } as CSSProperties}
     >
-      <header className="pane-frame-header" data-sticky={stickyHeader || undefined} data-menu={menuItems.length > 0 || undefined}
+      <header ref={headerRef} className="pane-frame-header" data-sticky={stickyHeader || undefined} data-menu={menuItems.length > 0 || undefined}
         data-action={headerAction !== undefined || undefined} data-lead={(nameInLead && headerLead !== null) || undefined}>
         {nameInLead && headerLead !== null ? <div className="pane-frame-lead">{headerLead}</div> : null}
         {nameInLead ? (
@@ -212,7 +217,7 @@ export function PaneFrame({
           )}
           {nameInLead ? conditionSummary : null}
           {nameInLead && statusLabel ? (
-            <StatusBadge status={engineState.status} label={statusLabel} />
+            <StatusBadge status={engineState.status} label={statusLabel} asText={badgeAsText} />
           ) : null}
         </div>
         <button
