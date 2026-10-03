@@ -308,7 +308,12 @@ h2.pane-frame-title {
   clip-path: inset(50%);
 }
 
-/* 文字で出す幅。名前・対象の選択が最小幅の時に、文字が入る分を足した幅に余裕を見た値 */
+/*
+ * 文字で出す幅。名前・対象の選択が最小幅の時に、文字が入る分を足した幅に余裕を見た値。
+ * ペインが34remを超えると、条件が「条件: 既定値」のchip（絵だけの時より約85px広い）になるので、その分も足して決める。
+ * 失敗（23rem）と計算中…（25rem）は、chipがある幅（34rem超）でも合計に収まる（約28rem・29rem）ので、chipの有無で変えない。
+ * 「直前の結果を表示」は、chipがある時の合計が約36.5remなので、「N件変更」の少し広いchipの余裕を見て38remにする。
+ */
 @container pane (width >= 23rem) {
   .pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-status-badge[data-status="failed"] {
     width: auto;
@@ -341,7 +346,7 @@ h2.pane-frame-title {
   }
 }
 
-@container pane (width >= 32.5rem) {
+@container pane (width >= 38rem) {
   .pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-status-badge[data-status="stale"] {
     width: auto;
     height: auto;

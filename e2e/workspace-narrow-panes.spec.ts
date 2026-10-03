@@ -469,8 +469,9 @@ for (const analyzerId of ['bigram-flow', 'comparison'] as const) {
         } else {
           expect(report.badgeWidth, '点の幅').toBeLessThanOrEqual(12);
         }
-        // 5列・6列では文字が入らない状態もあるが、8列は全部の状態の全文が入る
-        if (cols === 8) expect(asText, '8列では文字で出す').toBe(true);
+        // 5列・6列では文字が入らない状態もある。8列（523px）は、失敗と計算中…の全文が入る。
+        // 「直前の結果を表示」は、条件のchipが出る幅（34rem超）の合計に合わせて38remから文字にするので、8列は点
+        if (cols === 8) expect(asText, '8列では文字で出す').toBe(status !== 'stale');
         await expectHeaderUsable(page, 'a', 44);
       });
     }
@@ -506,3 +507,49 @@ test('Bigram Flow: 見出しが狭まると、先に名前が最小幅まで縮�
   expect(narrower.target, '名前が最小幅になった後で、対象の選択が縮む').toBeLessThan(full.target - 10);
   expect(narrower.target, '5列（枠 314px）の対象の選択は押せる幅').toBeGreaterThanOrEqual(60);
 });
+
+// 枠の幅を掃引して、状態のバッジが全幅でボタンと重ならず、枠からはみ出さないことを確かめる。
+// 条件が「条件: 既定値」のchipになる境目（34rem = 544px）と、バッジが文字と点で切り替わる各幅
+// （23rem = 368px・25rem = 400px・38rem = 608px）の前後は1px刻みで、その間の広い範囲は10px刻みで測る
+const SWEEP_WIDTHS = (() => {
+  const widths = new Set<number>();
+  for (let w = 250; w <= 900; w += 10) widths.add(w);
+  for (const edge of [368, 400, 544, 608]) for (let w = edge - 4; w <= edge + 4; w += 1) widths.add(w);
+  // 文字のバッジがchipと重なっていた幅（545〜565px）と、その上の切り替えまでを1px刻みで
+  for (let w = 540; w <= 620; w += 1) widths.add(w);
+  return [...widths].sort((a, b) => a - b);
+})();
+
+for (const analyzerId of ANALYZERS) {
+  for (const status of Object.keys(BADGES) as (keyof typeof BADGES)[]) {
+    test(`${analyzerId}: 枠の幅を250〜900pxで掃引しても、状態「${BADGES[status]}」のバッジがボタンと重ならず、枠からはみ出さない`, async ({ page }) => {
+      await open(page, analyzerId, FHD, { cols: 8 });
+      const item = itemOf(page, 'a');
+      await insertBadge(item, status);
+      const bad = await item.evaluate((root, widths) => {
+        const frame = root.querySelector<HTMLElement>('.pane-frame')!;
+        const badge = root.querySelector('.pane-status-badge')!;
+        const found: string[] = [];
+        for (const w of widths) {
+          frame.style.width = `${w}px`;
+          frame.style.maxWidth = `${w}px`;
+          const f = frame.getBoundingClientRect();
+          const b = badge.getBoundingClientRect();
+          const others = [...root.querySelectorAll('.pane-frame-header button, .pane-frame-header .workspace-drag-handle')]
+            .filter((el) => el.getBoundingClientRect().width > 0)
+            .map((el) => el.getBoundingClientRect());
+          let worst = 0;
+          for (const r of others) {
+            const ww = Math.min(r.right, b.right) - Math.max(r.left, b.left);
+            const hh = Math.min(r.bottom, b.bottom) - Math.max(r.top, b.top);
+            if (ww > 1 && hh > 1) worst = Math.max(worst, ww);
+          }
+          const out = Math.max(b.right, ...others.map((r) => r.right)) - f.right;
+          if (worst > 0 || out > 0.5) found.push(`${w}px: 重なり ${worst.toFixed(1)}px・はみ出し ${out.toFixed(1)}px`);
+        }
+        return found;
+      }, SWEEP_WIDTHS);
+      expect(bad, 'バッジがボタンと重なる・枠からはみ出す幅').toEqual([]);
+    });
+  }
+}
