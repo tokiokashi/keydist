@@ -32,7 +32,3 @@
   height: auto;
   min-height: 100dvh;
 }
-
-.workspace-page[data-stacked] .workspace-toolbar {
-  padding: 0.5rem 0.75rem 0;
-}

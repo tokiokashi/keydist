@@ -459,7 +459,8 @@ button.context-chip:hover:not(:disabled),
 
   .context-bar-items:has(.workspace-name) .workspace-name {
     flex: 0 1 auto;
-    max-width: min(16rem, calc(100% - 2.5rem));
+    /* ⋯と「ペインを追加」（＋だけ）の分（2.5rem×2と間隔）を残して省略する。 */
+    max-width: min(16rem, calc(100% - 5.5rem));
   }
 
   .context-bar-items:has(.workspace-name) .text-chip-root {
@@ -470,6 +471,43 @@ button.context-chip:hover:not(:disabled),
   .context-bar:has(.workspace-name) > .shell-sidebar-toggle,
   .context-bar:has(.workspace-name) .context-bar-actions {
     align-self: flex-start;
+  }
+}
+
+/*
+ * Workspaceの「ペインを追加」（`.workspace-add-pane`。名前・⋯の右、テキストのチップの左）。
+ * どの幅でも＋だけを見せる（文字は見た目から省き、読み上げ・titleには「ペインを追加」を残す）。
+ * 幅によって文字が出入りすると、その分だけ名前の幅が増減して、画面幅を狭めている間に名前が広がり直すため。
+ * 狭くなる時の動きは次の2つ:
+ *   1. 1行の範囲: 名前を先に縮める（`workspace.css`の`.workspace-name`）。
+ *   2. 53.5rem未満（2段）: ＋は1段目に残す（名前を省略して場所を空ける）。一覧は、ボタンでなくバーの全幅に開く
+ *      （ボタンは左寄りにあり、文字の長い項目の一覧が画面の右へはみ出すため）。
+ */
+/*
+ * Workspaceのバーが1行の幅（53.5rem超）では、テキストのチップの枠を中身（8文字が読める幅）より縮めない。
+ * 縮めると、中身のボタンが枠からはみ出して右隣のチップに重なる（足りない分は名前が先に縮む）。
+ * 2段の幅ではチップが段の幅いっぱいに伸びるので、この指定は1行の時だけにする。
+ */
+@container context-bar (width > 53.5rem) {
+  .context-bar-items:has(.workspace-name) .text-chip-root {
+    min-width: min-content;
+  }
+}
+
+@container context-bar (max-width: 53.5rem) {
+  .context-bar .workspace-add-pane {
+    position: static;
+    flex: none;
+  }
+
+  .context-bar .workspace-add-pane .pane-menu-list {
+    top: 100%;
+    right: 0.5rem;
+    left: 0.5rem;
+    width: auto;
+    max-width: none;
+    max-height: 70vh;
+    overflow-y: auto;
   }
 }
 
