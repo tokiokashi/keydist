@@ -25,9 +25,10 @@ export interface WorkspaceGridProps {
   readonly onGridChange: (grid: WorkspaceGrid) => void;
 }
 
-function toLayoutItem(item: GridItem, analyzerId: string): LayoutItem {
-  const min = minGridSize(analyzerId);
-  return { i: item.id, x: item.x, y: item.y, w: item.w, h: item.h, minW: min.w, minH: min.h };
+function toLayoutItem(item: GridItem, analyzerId: string, containerWidth: number): LayoutItem {
+  const min = minGridSize(analyzerId, containerWidth);
+  // 保存済みの幅が下限より狭くても、他の辺を引いた時に幅が広がらないよう、下限は今の幅までに留める
+  return { i: item.id, x: item.x, y: item.y, w: item.w, h: item.h, minW: Math.min(min.w, item.w), minH: min.h };
 }
 
 function fromLayout(layout: Layout): WorkspaceGrid {
@@ -47,8 +48,8 @@ export function WorkspaceGrid({ grid, analyzerIdOf, titleOf, descriptionOf, rend
   useMaximizedBounds(containerRef, maximized);
   useCloseFloatingOfOthers(containerRef, maximizedId);
   const layout = useMemo(
-    () => grid.map((item) => toLayoutItem(item, analyzerIdOf(item.id))),
-    [grid, analyzerIdOf],
+    () => grid.map((item) => toLayoutItem(item, analyzerIdOf(item.id), width)),
+    [grid, analyzerIdOf, width],
   );
   // 拡大中は、有効・無効だけを切り替える（部品の木が変わらず、ペインが作り直されない）
   const dragConfig = useMemo(
@@ -123,7 +124,7 @@ function useMaximizedBounds(areaRef: { readonly current: HTMLElement | null }, m
 }
 
 /**
- * 拡大した時に、他のペインが開いている浮いた部品（解析設定の小窓・対象の選択・ⓘ・メニュー・図の表示など）を閉じる。
+ * 拡大した時に、他のペインが開いている浮いた部品（解析設定の小窓・対象の選択・ⓘ・メニューなど）を閉じる。
  * 小窓などはbodyへportalで出るので、背面のペインの`inert`が届かず、拡大したペインの上に残って操作できてしまう。
  * 各部品の持ち主は自分の開閉ボタンなので、そのボタンを押して持ち主自身に閉じさせる。
  * 押すのは、押すと閉じることが確かなものだけ。`aria-expanded`の全部を押すと、ⓘのマウスを乗せて出ているだけの説明

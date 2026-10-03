@@ -19,7 +19,7 @@ async function openWorkspace(page: Page, theme: 'light' | 'dark'): Promise<void>
     workspace: {
       id: 'header', name: '見出しの余白', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
       panes: [pane('a'), pane('b')],
-      grid: [{ id: 'a', x: 0, y: 0, w: 6, h: 16 }, { id: 'b', x: 6, y: 0, w: 6, h: 16 }],
+      grid: [{ id: 'a', x: 0, y: 0, w: 12, h: 16 }, { id: 'b', x: 12, y: 0, w: 12, h: 16 }],
     },
   });
   await page.goto('/workspace/header');

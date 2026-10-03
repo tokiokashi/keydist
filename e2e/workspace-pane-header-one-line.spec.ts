@@ -42,9 +42,9 @@ async function openWorkspace(page: Page, panes: readonly unknown[], grid: unknow
   await expect(page.locator('.pane-frame').first()).toHaveAttribute('data-pane-status', 'ready', { timeout: 15_000 });
 }
 
-/** 画面幅1440では、12列のうち1升はおよそ91px。3つ並べる（各4升 = 約390px）と狭く、2つ並べる（各6升 = 約590px）と広い。 */
+/** 画面幅1440では、24列のうち1升はおよそ45px。3つ並べる（各8升 = 約390px）と狭く、2つ並べる（各12升 = 約590px）と広い。 */
 const THREE = [flow('f'), comparison('c'), nSens('n')];
-const THREE_GRID = rowGrid(['f', 4], ['c', 4], ['n', 4]);
+const THREE_GRID = rowGrid(['f', 8], ['c', 8], ['n', 8]);
 
 /** 見出しの行の箱と、その中の操作（先頭・対象・条件・解析設定・⋯）の縦の位置。 */
 async function headerGeometry(pane: Locator) {
@@ -74,7 +74,7 @@ test('広いペインの見出しは1行、狭いペイン（30rem以下）は�
   expect(Math.abs(narrow.menuTop - narrow.targetTop)).toBeLessThan(10);
   expect(narrow.targetSelect).toBeGreaterThan(80);
 
-  await page.evaluate((value) => localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [value] })), workspaceOf(THREE.slice(0, 2), rowGrid(['f', 6], ['c', 6])));
+  await page.evaluate((value) => localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [value] })), workspaceOf(THREE.slice(0, 2), rowGrid(['f', 12], ['c', 12])));
   await page.reload();
   await waitForHydration(page);
   await expect(page.locator('.workspace-grid-item')).toHaveCount(2);
@@ -88,7 +88,7 @@ test('広いペインの見出しは1行、狭いペイン（30rem以下）は�
 });
 
 test('名前とⓘは見出しの先頭にあり、ペインの中に名前の行は無い。読み上げ用のh2は残る', async ({ page }) => {
-  await openWorkspace(page, THREE, rowGrid(['f', 6], ['c', 6], ['n', 6]).map((item, i) => ({ ...item, x: (i % 2) * 6, y: Math.floor(i / 2) * 16 })), { width: 1440, height: 900 });
+  await openWorkspace(page, THREE, rowGrid(['f', 12], ['c', 12], ['n', 12]).map((item, i) => ({ ...item, x: (i % 2) * 12, y: Math.floor(i / 2) * 16 })), { width: 1440, height: 900 });
   const flowPane = page.locator('.pane-frame').filter({ has: page.locator('[data-react-feature="bigram-flow"]') });
   const lead = flowPane.locator('.pane-frame-lead');
   await expect(lead).toContainText('Bigram Flow');
@@ -137,7 +137,7 @@ test('条件: 広い時は文字のchip、狭い時は絵と変更の点。ど�
   // 広い（約590px、34remより広い）: 文字のchip
   await page.evaluate((value) => localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [value] })), workspaceOf(
     THREE.slice(0, 2),
-    rowGrid(['f', 6], ['c', 6]),
+    rowGrid(['f', 12], ['c', 12]),
     // 条件のモーダルで変えた値はWorkspaceの条件に入る。保存先を書き直すので、同じ値を持たせる
     { conditions: { windowSize: 4 } },
   ));
@@ -228,7 +228,7 @@ test('個別画面の見出しは今のまま（名前の行・条件の行が�
 test('狭いペインでも、連動のメニューはペインの枠からはみ出して切れない', async ({ page }) => {
   // 4列（1ペインが約290px）。連動のボタンが枠の左寄りに来るので、右端揃えのままだと左へはみ出して切れる
   const four = ['a', 'b', 'c', 'd'].map(flow);
-  await openWorkspace(page, four, rowGrid(['a', 3], ['b', 3], ['c', 3], ['d', 3]), { width: 1440, height: 900 });
+  await openWorkspace(page, four, rowGrid(['a', 6], ['b', 6], ['c', 6], ['d', 6]), { width: 1440, height: 900 });
   const frame = page.locator('.pane-frame').nth(2);
   await frame.locator('.pane-target-binding .pane-menu-button').click();
   const list = page.getByRole('menu').first();

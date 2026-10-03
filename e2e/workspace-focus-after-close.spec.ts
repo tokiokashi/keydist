@@ -16,9 +16,9 @@ const PANES = [
 ];
 /** 読み順は左上のBigram Flow、右上の比較表、その下のN感度。 */
 const GRID = [
-  { id: 'f', x: 0, y: 0, w: 6, h: 16 },
-  { id: 'c', x: 6, y: 0, w: 6, h: 16 },
-  { id: 'n', x: 0, y: 16, w: 6, h: 14 },
+  { id: 'f', x: 0, y: 0, w: 12, h: 16 },
+  { id: 'c', x: 12, y: 0, w: 12, h: 16 },
+  { id: 'n', x: 0, y: 16, w: 12, h: 14 },
 ];
 
 async function openWorkspace(page: Page): Promise<void> {
