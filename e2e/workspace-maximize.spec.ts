@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { waitForHydration } from './hydration-helper.ts';
 
 /**
- * Workspaceのペインの拡大表示（#903）。⋯の「拡大表示」で、そのペインをWorkspaceの面いっぱいに広げる。
+ * Workspaceのペインの拡大表示（#903）。⋯の「拡大表示」で、そのペインをWorkspaceいっぱいに広げる。
  * 拡大は見た目だけで、格子の並び（x・y・w・h）・Undoの履歴・保存には触れず、ペインの部品も作り直さない
  * （計算の依頼が出し直されない）。上の帯（文脈バー）と左のメニュー（サイドバー）は見えたまま。
  */
@@ -97,7 +97,7 @@ async function maximize(page: Page, id: string): Promise<void> {
   await settle(page);
 }
 
-test('拡大すると面いっぱいになり、上の帯と左のメニューは見えたまま。他のペインは操作できない', async ({ page }) => {
+test('拡大するとWorkspaceいっぱいになり、上の帯と左のメニューは見えたまま。他のペインは操作できない', async ({ page }) => {
   await openReady(page);
   await maximize(page, 'a');
 
@@ -345,6 +345,20 @@ test('拡大中に元に戻す・やり直すを押すと、拡大が解ける',
   await redo.click();
   await expect(page.locator('.workspace-grid-item')).toHaveCount(2);
   await expect.poll(() => page.locator('.workspace-grid-item[data-maximized]').count()).toBe(0);
+});
+
+test('背面のⓘにマウスを乗せて説明を出したまま、キーボードで拡大しても、説明は拡大したペインの上に残らない', async ({ page }) => {
+  await openReady(page);
+  await menuButton(page, 'a').focus();
+  const info = page.locator('.workspace-grid-item[data-pane-id="b"] .info-button').first();
+  await info.hover();
+  await expect(page.locator('.info-popover')).toBeVisible();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => isMaximized(page, 'a')).toBe(true);
+  await expect(page.locator('.info-popover')).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect.poll(() => isMaximized(page, 'a')).toBe(false);
 });
 
 test('縦積み（スマホ幅）の⋯には「拡大表示」が出ない', async ({ page }) => {

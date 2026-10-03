@@ -125,15 +125,18 @@ function useMaximizedBounds(areaRef: { readonly current: HTMLElement | null }, m
 /**
  * 拡大した時に、他のペインが開いている浮いた部品（解析設定の小窓・対象の選択・ⓘ・メニュー・図の表示など）を閉じる。
  * 小窓などはbodyへportalで出るので、背面のペインの`inert`が届かず、拡大したペインの上に残って操作できてしまう。
- * 各部品の持ち主は自分の開閉ボタン（`aria-expanded="true"`）なので、そのボタンを押して持ち主自身に閉じさせる。
+ * 各部品の持ち主は自分の開閉ボタンなので、そのボタンを押して持ち主自身に閉じさせる。
+ * 押すのは、押すと閉じることが確かなものだけ。`aria-expanded`の全部を押すと、ⓘのマウスを乗せて出ているだけの説明
+ * （`aria-expanded`は真だが、押すと「出したまま」になる）が逆に残る。図の表示などペインの中に開く部品は、`inert`が届くので押さない。
  */
+const CLOSABLE_BY_CLICK = '[aria-haspopup][aria-expanded="true"], .pane-settings-button[aria-expanded="true"], .info-button[data-pinned]';
 function useCloseFloatingOfOthers(areaRef: { readonly current: HTMLElement | null }, maximizedId: string | undefined): void {
   useLayoutEffect(() => {
     const area = areaRef.current;
     if (maximizedId === undefined || area === null) return;
     for (const item of area.querySelectorAll<HTMLElement>('.workspace-grid-item')) {
       if (item.getAttribute('data-pane-id') === maximizedId) continue;
-      for (const button of item.querySelectorAll<HTMLElement>('[aria-expanded="true"]')) button.click();
+      for (const button of item.querySelectorAll<HTMLElement>(CLOSABLE_BY_CLICK)) button.click();
     }
   }, [areaRef, maximizedId]);
 }
