@@ -42,7 +42,7 @@ function paneOf(id: string, analyzerId: AnalyzerId, longNames: boolean) {
 }
 
 /** 対象のペイン（x=0）と、その右の隣のペイン（はみ出しの検査用）を置く。 */
-async function open(page: Page, analyzerId: AnalyzerId, size: { width: number; height: number }, options: { longNames?: boolean; theme?: 'light' | 'dark' } = {}): Promise<void> {
+async function open(page: Page, analyzerId: AnalyzerId, size: { width: number; height: number }, options: { longNames?: boolean; theme?: 'light' | 'dark'; cols?: number } = {}): Promise<void> {
   const longNames = options.longNames === true;
   await page.setViewportSize(size);
   await page.addInitScript(({ key, setupKey, setups, theme, value }) => {
@@ -62,7 +62,7 @@ async function open(page: Page, analyzerId: AnalyzerId, size: { width: number; h
       text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
       panes: [paneOf('a', analyzerId, longNames), paneOf('b', 'comparison', false)],
       grid: [
-        { id: 'a', x: 0, y: 0, w: 8, h: 20 },
+        { id: 'a', x: 0, y: 0, w: options.cols ?? 8, h: 20 },
         { id: 'b', x: 8, y: 0, w: 8, h: 20 },
       ],
     },
@@ -172,7 +172,7 @@ async function spillingOutOf(root: Locator, scope: 'x' | 'both' = 'x'): Promise<
   });
 }
 
-async function expectHeaderUsable(page: Page, id: string): Promise<void> {
+async function expectHeaderUsable(page: Page, id: string, minTargetWidth = 60): Promise<void> {
   const item = itemOf(page, id);
   const report = await headerReport(item);
   expect(report.controls.length, '見出しの部品が見つかる').toBeGreaterThanOrEqual(5);
@@ -186,7 +186,7 @@ async function expectHeaderUsable(page: Page, id: string): Promise<void> {
   // ⋯と対象の選択には必ず届く。押してメニュー・選択が開く
   const menu = item.getByRole('button', { name: /の操作$/ });
   const target = item.locator('.target-selection-button');
-  expect(((await target.boundingBox())!).width, '対象の選択が潰れない').toBeGreaterThanOrEqual(60);
+  expect(((await target.boundingBox())!).width, '対象の選択が潰れない').toBeGreaterThanOrEqual(minTargetWidth);
   await menu.click();
   const close = page.getByRole('menuitem', { name: /閉じる/ });
   await expect(close).toBeVisible();
@@ -322,4 +322,88 @@ for (const c of cases) {
       await expectHeaderUsable(page, 'a');
     });
   }
+}
+
+/**
+ * 見出しの段。つかみ所・ⓘ・対象の選択・連動・条件・解析設定・⋯の中心の縦位置を、近いものどうしでまとめた数。
+ * 1段なら1、先頭を1段目に分けたら2以上。
+ */
+async function headerRowCount(item: Locator): Promise<number> {
+  return item.evaluate((root) => {
+    const els = [...root.querySelectorAll<HTMLElement>('.pane-frame-header button, .pane-frame-header .workspace-drag-handle')]
+      .filter((el) => el.getBoundingClientRect().width > 0);
+    const centers = els.map((el) => {
+      const r = el.getBoundingClientRect();
+      return r.top + r.height / 2;
+    }).sort((a, b) => a - b);
+    let rows = 0;
+    let last = Number.NEGATIVE_INFINITY;
+    for (const c of centers) {
+      if (c - last > 12) rows += 1;
+      last = c;
+    }
+    return rows;
+  });
+}
+
+/** 見出しの名前（つかみ所の名前）が省略記号で縮んでいるか。 */
+async function nameIsClipped(item: Locator): Promise<boolean> {
+  return item.locator('.workspace-pane-lead-name').evaluate((el) => el.scrollWidth > el.clientWidth + 1);
+}
+
+// 見出しが狭い時の詰め方は、名前を省略（つかみ所とⓘは残す）→ それでも入らない時に段を分ける。
+// 名前を省略する幅（FHD・左のメニューを開いた状態で24列のうち5列 = 約314px）でも、ボタンは1段目に残る
+for (const analyzerId of ANALYZERS) {
+  test(`${analyzerId}: 5列のペインでは見出しが1段のまま、⋯と対象の選択に届く`, async ({ page }) => {
+    await open(page, analyzerId, FHD, { cols: 5 });
+    const item = itemOf(page, 'a');
+    expect(((await item.locator('.pane-frame').boundingBox())!).width, '5列の幅').toBeLessThan(330);
+    expect(await headerRowCount(item), '見出しが1段').toBe(1);
+    // 1段に収める幅では、対象の選択は押せる最小の幅まで縮む（絵と開閉の印が入る幅）
+    await expectHeaderUsable(page, 'a', 44);
+    // つかみ所とⓘは残る。名前を省略しても、読み上げでAnalyzerの名前が分かる
+    await expect(item.locator('.workspace-pane-grab .workspace-grip-icon')).toBeVisible();
+    await expect(item.locator('.workspace-pane-lead .info-button')).toBeVisible();
+    await expect(item.locator('.workspace-pane-lead .info-button')).toHaveAttribute('aria-label', /.+の説明/);
+    const name = ((await item.locator('h2.pane-frame-title').textContent()) ?? '').trim();
+    expect(name, '読み上げ用の見出しにAnalyzerの名前がある').not.toBe('');
+    await expect(item.locator('.pane-frame')).toHaveAttribute('aria-label', new RegExp(`^${name}`));
+    await expect(item.locator('.workspace-pane-lead .info-button')).toHaveAttribute('aria-label', `${name}の説明`);
+  });
+}
+
+test('Bigram Flow: 5列では名前を省略して1段に収める。名前の全文は見出し（読み上げ）・title・枠の名前に残る', async ({ page }) => {
+  await open(page, 'bigram-flow', FHD, { cols: 5 });
+  const item = itemOf(page, 'a');
+  expect(await nameIsClipped(item), '5列では名前を省略する').toBe(true);
+  const visible = (await item.locator('.workspace-pane-lead-name').boundingBox())!;
+  expect(visible.width, '名前は全部を消さず、手がかりの幅を残す').toBeGreaterThanOrEqual(30);
+  await expect(item.locator('.workspace-pane-lead-name')).toHaveText('Bigram Flow');
+  await expect(item.locator('.workspace-pane-grab')).toHaveAttribute('title', /^Bigram Flow/);
+  await expect(item.locator('h2.pane-frame-title')).toHaveText('Bigram Flow');
+  await expect(item.locator('.pane-frame')).toHaveAttribute('aria-label', /^Bigram Flow — /);
+});
+
+for (const cols of [6, 8]) {
+  test(`Bigram Flow: ${cols}列のペインでも見出しが1段のまま、⋯と対象の選択に届く`, async ({ page }) => {
+    await open(page, 'bigram-flow', FHD, { cols });
+    const item = itemOf(page, 'a');
+    expect(await headerRowCount(item), '見出しが1段').toBe(1);
+    await expectHeaderUsable(page, 'a', 44);
+  });
+}
+
+test('Bigram Flow: 8列まで広げれば名前は省略しない', async ({ page }) => {
+  await open(page, 'bigram-flow', FHD, { cols: 8 });
+  expect(await nameIsClipped(itemOf(page, 'a'))).toBe(false);
+});
+
+for (const analyzerId of ANALYZERS) {
+  test(`${analyzerId}: 3列より狭いペインでは、名前を省略しても入らないので先頭を1段目に分ける。ボタンは重ならない`, async ({ page }) => {
+    await open(page, analyzerId, FHD, { cols: 3 });
+    const item = itemOf(page, 'a');
+    expect(await headerRowCount(item), '先頭と操作で段が分かれる').toBeGreaterThanOrEqual(2);
+    await expectHeaderUsable(page, 'a');
+    await expectNoSpillOutsidePane(page, 'a');
+  });
 }

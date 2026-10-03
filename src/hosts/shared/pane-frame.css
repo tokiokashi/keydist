@@ -215,12 +215,37 @@ h2.pane-frame-title {
 
 /*
  * ホストが見出しの先頭に置くもの（Workspaceのペインのつかみ所・名前・ⓘ）の列。
- * 狭いペイン（30rem以下。スマホ幅の縦積みを含む）では、先頭のものを1段目に置き、操作を2段目へ送る。
- * 対象の選択を名前に食わせず、狭い幅でも対象を選べるようにする。
+ * 狭くなった時は、まず名前を省略記号で縮め（つかみ所とⓘは残す。何のAnalyzerかは図で分かり、
+ * 全文はⓘ・読み上げ・title・見出し（h2）に残る）、見出しは1段のままボタンを動かさない。
+ * 名前が最小幅まで縮んでも入らない幅になって初めて、先頭を1段目、操作を2段目へ送る（次の@container）。
+ * 名前の最小幅は、全部を消さずに「Big…」ほどを残す（何の見出しか分かる手がかり）。
+ * 縮める順は、名前 → 対象の選択（最小幅まで）。連動・条件・解析設定・⋯の絵のボタンは縮めない。
  */
+.pane-frame[data-name-in-lead] {
+  /* つかみ所の絵(10px)・ⓘ(1.6rem)・間隔・右の余白。名前以外で先頭の列が取る幅 */
+  --pane-lead-chrome: 3.1rem;
+  --pane-lead-name-min: 2.4rem;
+  --pane-target-select-min: 3.2rem;
+}
+
 .pane-frame[data-name-in-lead] .pane-frame-header[data-lead] {
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  /* 対象の欄の下限は、対象の選択の最小幅 + 連動・条件の絵のボタン（各2rem）+ 間隔 */
+  grid-template-columns:
+    minmax(calc(var(--pane-lead-chrome) + var(--pane-lead-name-min)), auto)
+    minmax(calc(var(--pane-target-select-min) + 5rem), 1fr) auto auto;
   grid-template-areas: "lead target settings menu";
+  gap: 0.35rem;
+}
+
+.pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .target-selection {
+  min-width: var(--pane-target-select-min);
+}
+
+/* 状態のバッジは、入らない時に対象の欄からはみ出してボタンに重ならないよう、先に縮む（切れる） */
+.pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-status-badge {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .pane-frame-lead {
@@ -230,12 +255,19 @@ h2.pane-frame-title {
   min-width: 0;
 }
 
-@container pane (max-width: 30rem) {
+/*
+ * 見出しが1段に入らない幅。先頭を1段目、対象・連動・条件・解析設定・⋯を2段目に送る。
+ * 対象の選択を名前に食わせず、狭い幅でも対象を選べるようにする。
+ * 幅は1段の下限の合計: 先頭の列（3.1rem + 2.4rem）+ 対象の欄（3.2rem + 5rem）+ 解析設定・⋯の絵（各2rem）
+ * + 間隔3つ（各0.35rem）= 18.75remに、ペインの枠の余白を足して19rem。
+ */
+@container pane (max-width: 19rem) {
   .pane-frame[data-name-in-lead] .pane-frame-header[data-lead] {
     grid-template-columns: minmax(0, 1fr) auto auto;
     grid-template-areas:
       "lead lead lead"
       "target settings menu";
+    gap: 0.5rem;
   }
 }
 

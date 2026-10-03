@@ -3,8 +3,9 @@ import { waitForHydration } from './hydration-helper.ts';
 
 /**
  * Workspaceのペインの見出し。見出しの先頭につかみ所・名前・ⓘがあり、対象・連動・条件・状態・解析設定・⋯が並ぶ。
- * ペインが広い時は全部が1行、狭い時（ペインの幅30rem以下）は先頭のものを1段目、操作を2段目に置く
- * （名前が対象の選択の幅を食って、対象を選べなくなるのを避ける）。
+ * ペインが広い時は全部が1行。狭くなったら、まず名前を省略して1行のまま保ち、
+ * 名前を最小幅まで縮めても入らない幅（ペインの幅19rem以下）で、先頭のものを1段目、操作を2段目に置く
+ * （対象を選べなくなるのを避ける）。
  * 条件は広い時にchip、狭い時（ペインの幅34rem以下）は絵と変更の点。
  * 縦積み（スマホ幅）は格子を使わず、同じ見出しで積む。
  */
@@ -64,11 +65,24 @@ async function headerGeometry(pane: Locator) {
   });
 }
 
-test('広いペインの見出しは1行、狭いペイン（30rem以下）は先頭が1段目で操作が2段目。どちらも対象を選べる幅がある', async ({ page }) => {
+test('見出しは、広いペインでは1行、30rem以下でも名前を省略して1行のまま、19rem以下で先頭が1段目・操作が2段目', async ({ page }) => {
   await openWorkspace(page, THREE, THREE_GRID, { width: 1440, height: 900 });
+  const middle = await headerGeometry(page.locator('.pane-frame').first());
+  expect(middle.width).toBeLessThan(30 * 16);
+  expect(middle.width).toBeGreaterThan(19 * 16);
+  // 名前を省略して、全部が同じ行（ボタンを2段目へ動かさない）
+  for (const top of [middle.targetTop, middle.settingsTop, middle.menuTop]) expect(Math.abs(top - middle.leadTop)).toBeLessThan(10);
+  expect(middle.targetSelect).toBeGreaterThan(44);
+
+  // 4つ並べる（各6升 = 約290px）と、名前を省略しても1行に入らない。先頭が上、対象・解析設定・⋯が同じ下の段
+  const four = ['a', 'b', 'c', 'd'].map(flow);
+  await page.evaluate((value) => localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [value] })), workspaceOf(four, rowGrid(['a', 6], ['b', 6], ['c', 6], ['d', 6])));
+  await page.reload();
+  await waitForHydration(page);
+  await expect(page.locator('.workspace-grid-item')).toHaveCount(4);
+  await expect(page.locator('.pane-frame').first()).toHaveAttribute('data-pane-status', 'ready', { timeout: 15_000 });
   const narrow = await headerGeometry(page.locator('.pane-frame').first());
-  expect(narrow.width).toBeLessThan(30 * 16);
-  // 先頭（つかみ所・名前・ⓘ）が上、対象・解析設定・⋯が同じ下の段
+  expect(narrow.width).toBeLessThan(19 * 16);
   expect(narrow.targetTop).toBeGreaterThan(narrow.leadTop + 10);
   expect(Math.abs(narrow.settingsTop - narrow.targetTop)).toBeLessThan(10);
   expect(Math.abs(narrow.menuTop - narrow.targetTop)).toBeLessThan(10);
@@ -198,7 +212,7 @@ test('見出しの先頭のつかみ所は、ⓘと操作のボタンを含ま�
   expect(Math.abs(after!.y - before!.y)).toBeLessThan(2);
 });
 
-test('縦積み（390px）: 見出しの先頭に名前があり、条件は絵になる。つかみ所の絵は無い', async ({ page }) => {
+test('縦積み（390px）: 見出しの先頭に名前があり、条件は絵になる。つかみ所の絵は無い。名前を省略して1行に収まる', async ({ page }) => {
   await openWorkspace(page, THREE, THREE_GRID, { width: 390, height: 844 });
   const pane = page.locator('.pane-frame').first();
   await expect(pane.locator('.pane-frame-lead')).toContainText('Bigram Flow');
@@ -206,8 +220,17 @@ test('縦積み（390px）: 見出しの先頭に名前があり、条件は絵�
   await expect(pane.locator('.pane-condition-summary[data-compact]')).toBeVisible();
   await expect(pane.locator('.workspace-grip-icon')).toHaveCount(0);
   await expect(page.locator('.workspace-grid-item')).toHaveCount(0);
-  // 対象を選べる（見出しの2段目に、押せる幅の対象の選択がある）
+  // 対象を選べる（押せる幅の対象の選択が、名前と同じ1行にある）
   const geometry = await headerGeometry(pane);
+  expect(geometry.targetSelect).toBeGreaterThan(44);
+  expect(Math.abs(geometry.targetTop - geometry.leadTop)).toBeLessThan(10);
+});
+
+test('縦積み（320px）: 名前を省略しても1行に入らないので、先頭が1段目・操作が2段目', async ({ page }) => {
+  await openWorkspace(page, THREE, THREE_GRID, { width: 320, height: 740 });
+  const pane = page.locator('.pane-frame').first();
+  const geometry = await headerGeometry(pane);
+  expect(geometry.width).toBeLessThan(19 * 16);
   expect(geometry.targetSelect).toBeGreaterThan(80);
   expect(geometry.targetTop).toBeGreaterThan(geometry.leadTop + 10);
 });
