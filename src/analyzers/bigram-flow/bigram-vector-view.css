@@ -422,7 +422,7 @@
   filter: drop-shadow(0 0 4px color-mix(in srgb, var(--viz-resultant) 34%, transparent));
 }
 
-/* 内向き・外向きの凡例と目盛りの要約。左右の図で共通なので、図の上に1つだけ置く。 */
+/* 内向き・外向きの凡例と目盛りの要約。左右の図で共通なので、図の下に1つだけ置く（Keyboard Flowの凡例も図の下にあり、2つの図の上端が揃う）。 */
 .flow-roll-legend {
   display: flex;
   flex-wrap: wrap;

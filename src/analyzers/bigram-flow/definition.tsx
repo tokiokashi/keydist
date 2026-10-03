@@ -819,13 +819,6 @@ export function BigramFlowBody({
           {onOptionsChange !== undefined && relativeVectorsOpen ? (
             <RelativeVectorsFigureSettings options={options} onOptionsChange={onOptionsChange} />
           ) : null}
-          <div className="flow-roll-legend" aria-hidden="true">
-            <span><i className="flow-dot flow-dot-inward" /> 内向き</span>
-            <span><i className="flow-dot flow-dot-outward" /> 外向き</span>
-            <span className="flow-profile-scale-summary">
-              最大{movementPlotScale(extracted.relativeMaxDistance).scaleMax}u · ±{polarBandwidth}°
-            </span>
-          </div>
           <div className="flow-two-up">
             <MovementProfilePlot
               hand="left"
@@ -841,6 +834,13 @@ export function BigramFlowBody({
               maxVectorWeight={extracted.relativeMaxWeight}
               polarGain={polarGain}
             />
+          </div>
+          <div className="flow-roll-legend" aria-hidden="true">
+            <span><i className="flow-dot flow-dot-inward" /> 内向き</span>
+            <span><i className="flow-dot flow-dot-outward" /> 外向き</span>
+            <span className="flow-profile-scale-summary">
+              最大{movementPlotScale(extracted.relativeMaxDistance).scaleMax}u · ±{polarBandwidth}°
+            </span>
           </div>
         </motion.section>
       </AnimatePresence>
