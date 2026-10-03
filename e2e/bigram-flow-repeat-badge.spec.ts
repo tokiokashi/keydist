@@ -78,6 +78,20 @@ test('個別画面: 消した設定は再読み込みで保たれ、項目の既
   await expect(flow.locator('.flow-repeat-badge').first()).toBeAttached();
 });
 
+test('個別画面: 消した操作は文脈バーの元に戻すで戻る', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  const flow = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flow).toBeVisible({ timeout: 10_000 });
+  await (await openFigureSettings(page, 'Keyboard Flow')).getByRole('checkbox', { name: LABEL }).uncheck();
+  await expect(flow).toHaveAttribute('data-repeat-badge', 'false');
+  await expect
+    .poll(async () => page.evaluate((key) => localStorage.getItem(key), OPTIONS_KEY))
+    .toContain('"repeatBadge":false');
+  await page.getByRole('button', { name: '元に戻す' }).click();
+  await expect(flow).toHaveAttribute('data-repeat-badge', 'true');
+  await expect(flow.locator('.flow-repeat-badge').first()).toBeAttached();
+});
+
 test('Workspace のペイン: 連打の回数バッジを消せて、戻せる。線と凡例は変わらない', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.addInitScript(() => {
