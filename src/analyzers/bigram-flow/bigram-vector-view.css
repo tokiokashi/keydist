@@ -86,6 +86,8 @@
 }
 
 .flow-block-subject {
+  /* 指の表示（全指・人 + 中など）が単位の途中で折り返さないようにする。 */
+  white-space: nowrap;
   margin-left: 0.4rem;
   color: var(--text-muted);
   font-weight: 600;
@@ -422,7 +424,7 @@
   filter: drop-shadow(0 0 4px color-mix(in srgb, var(--viz-resultant) 34%, transparent));
 }
 
-/* 内向き・外向きの凡例と目盛りの要約。左右の図で共通なので、図の上に1つだけ置く。 */
+/* 内向き・外向きの凡例と目盛りの要約。左右の図で共通なので、図の下に1つだけ置く（Keyboard Flowの凡例も図の下にあり、2つの図の上端が揃う）。 */
 .flow-roll-legend {
   display: flex;
   flex-wrap: wrap;
@@ -668,13 +670,71 @@
   .flow-feature {
     display: grid;
     grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr);
+    /*
+     * 行は「状態 / 見出し / 図のそばの設定 / 図 / 凡例」。2つのブロックが行を共有（subgrid）するので、
+     * 見出しや凡例が折り返しても、片方だけ設定を開いても、2つの図の上端・下端が同じ高さで揃う。
+     * 図の行は中身の高さまで（余った高さは下に置く）で、足りない時だけ縮む。
+     */
+    grid-template-rows: auto auto auto minmax(0, max-content) auto;
+    align-content: start;
     column-gap: 0.8rem;
+    row-gap: 0;
     min-height: 16rem;
   }
 
   .flow-status {
     grid-column: 1 / -1;
+    margin-bottom: 0.6rem;
+  }
+
+  /*
+   * 図のそばの設定を開いている間は、図の行を縮めない（本体の領域の中でスクロールする）。
+   * 縮めると設定の行が先に高さを取り、共有している図の行が0まで縮んで、反対側の図まで消える。
+   */
+  .flow-feature:has(.flow-figure-settings) {
+    grid-template-rows: auto auto auto max-content auto;
+  }
+
+  .flow-block {
+    display: grid;
+    grid-row: 2 / span 4;
+    grid-template-rows: subgrid;
+    row-gap: 0;
+    min-height: 0;
+  }
+
+  .flow-keyboard-block {
+    grid-column: 1;
+  }
+
+  .flow-analysis {
+    grid-column: 2;
+  }
+
+  .flow-block-heading {
+    grid-row: 1;
+    padding-bottom: 0.6rem;
+  }
+
+  .flow-figure-settings {
+    grid-row: 2;
+    margin-bottom: 0.6rem;
+  }
+
+  /* 図の枠は行の高さまで伸ばす。キーボードの絵は縦横比を保ったまま枠の中央に置く（凡例は枠の下端に付いたまま）。 */
+  .flow-stage,
+  .flow-two-up {
+    grid-row: 3;
+    min-height: 0;
+  }
+
+  .flow-keyboard-svg {
+    margin-block: auto;
+  }
+
+  .flow-roll-legend {
+    grid-row: 4;
+    padding-top: 0.35rem;
   }
 }
 
