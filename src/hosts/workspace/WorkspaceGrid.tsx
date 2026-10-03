@@ -27,8 +27,8 @@ export interface WorkspaceGridProps {
 
 function toLayoutItem(item: GridItem, analyzerId: string, containerWidth: number): LayoutItem {
   const min = minGridSize(analyzerId, containerWidth);
-  // 保存済みの幅が下限より狭くても、他の辺を引いた時に幅が広がらないよう、下限は今の幅までに留める
-  return { i: item.id, x: item.x, y: item.y, w: item.w, h: item.h, minW: Math.min(min.w, item.w), minH: min.h };
+  // 保存済みの幅・高さが下限より小さくても、他の辺を引いた時に広がらないよう、下限は今の幅・高さまでに留める
+  return { i: item.id, x: item.x, y: item.y, w: item.w, h: item.h, minW: Math.min(min.w, item.w), minH: Math.min(min.h, item.h) };
 }
 
 function fromLayout(layout: Layout): WorkspaceGrid {
@@ -43,7 +43,9 @@ function fromLayout(layout: Layout): WorkspaceGrid {
  * 1回だけ資産へ書く。途中の位置は書かないので、Undoは1操作につき1回で戻る。
  */
 export function WorkspaceGrid({ grid, analyzerIdOf, titleOf, descriptionOf, renderPane, maximizedId, onGridChange }: WorkspaceGridProps) {
-  const { width, containerRef, mounted } = useContainerWidth();
+  // 既定は幅1280で最初の1コマを描き、測り終えてから幅が変わる（開いた直後にペインが縮んで見える）。
+  // 測るまで格子を描かず、最初のコマから実際の幅で描く
+  const { width, containerRef, mounted } = useContainerWidth({ measureBeforeMount: true });
   const maximized = maximizedId !== undefined;
   useMaximizedBounds(containerRef, maximized);
   useCloseFloatingOfOthers(containerRef, maximizedId);
