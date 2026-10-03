@@ -19,6 +19,7 @@ export function NSensitivityWorkspacePane({
   const { options, onOptionsChange, diagnostics } = usePaneOptions<NSensitivityOptions>(
     nSensitivityAnalyzer.definition,
     pane.options,
+    pane.id,
     (next) => runtime.commitPaneOptions(pane.id, next),
   );
   const chrome: PaneChrome = useMemo(
