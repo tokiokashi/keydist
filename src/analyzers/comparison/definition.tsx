@@ -114,7 +114,7 @@ export function ComparisonBody({
                 return (
                   <tr key={targetKey} data-comparison-row="pending">
                     <th scope="row" title={fullName}>{label}</th>
-                    <td colSpan={visibleColumns.length} aria-busy="true">計算している…</td>
+                    <td colSpan={visibleColumns.length} aria-busy="true">計算中…</td>
                   </tr>
                 );
               }

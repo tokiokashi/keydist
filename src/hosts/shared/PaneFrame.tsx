@@ -133,7 +133,7 @@ export function PaneFrame({
 }: PaneFrameProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
-  // 前の結果が無い計算中は、本文が「計算している…」を出している。見出しにも出すと重複し、
+  // 前の結果が無い計算中は、本文が「計算中…」を出している。見出しにも出すと重複し、
   // バッジの幅の分だけ対象ボタンが動いて、計算が済むと戻る（#915）。前の結果を表示している間と失敗は見出しで伝える
   const bodyShowsBusy = engineState.status === 'computing' && children === undefined;
   const statusLabel = emptyContent === undefined && assetsReady && !bodyShowsBusy ? paneStatusLabel(engineState.status) : '';
@@ -263,7 +263,7 @@ export function PaneFrame({
           {engineState.status === 'failed' ? <ErrorDetails lines={engineRequestErrorDetail(engineState.error)} /> : null}
         </div>
       ) : children === undefined ? (
-        <p className="pane-busy" aria-busy="true" data-pane-busy="true">計算している…</p>
+        <p className="pane-busy" aria-busy="true" data-pane-busy="true">計算中…</p>
       ) : (
         <PaneErrorBoundary>
           <div className="pane-body" data-pane-stale={engineState.status === 'stale' || undefined}>

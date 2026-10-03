@@ -5,7 +5,7 @@ import { targetButton } from './pane-helper.ts';
 /**
  * 読み込みの前後で、見出しの対象ボタンが動かない（#915）。
  * プリレンダー（読み込み前）に状態のバッジ（「未計算」）を出さず、読み込み後の「計算中…」も、
- * 本文が「計算している…」を出している間は見出しに出さない。出すとバッジの幅の分だけ対象ボタンが動いて、
+ * 本文が「計算中…」を出している間は見出しに出さない。出すとバッジの幅の分だけ対象ボタンが動いて、
  * 計算が済むと戻る。
  */
 const pages = [
@@ -35,13 +35,14 @@ for (const width of [390, 1440]) {
 
       // 読み込みを再開する前に、描画ごと（rAF）に対象ボタンの左端・上端を記録し始める
       await page.evaluate(() => {
-        const samples: { x: number; y: number; status: string | null }[] = [];
+        const samples: { x: number; y: number; status: string | null; busyText: string | null; badge: boolean }[] = [];
         (window as unknown as { __targetSamples: typeof samples }).__targetSamples = samples;
         const tick = () => {
           const button = [...document.querySelectorAll('button')].find((b) => /^対象: /.test(b.getAttribute('aria-label') ?? ''));
           if (button) {
             const rect = button.getBoundingClientRect();
-            samples.push({ x: rect.x, y: rect.y, status: document.querySelector('section.pane-frame')?.getAttribute('data-pane-status') ?? null });
+            samples.push({ x: rect.x, y: rect.y, status: document.querySelector('section.pane-frame')?.getAttribute('data-pane-status') ?? null,
+              busyText: document.querySelector('[data-pane-busy]')?.textContent ?? null, badge: document.querySelector('.pane-status-badge') !== null });
           }
           requestAnimationFrame(tick);
         };
@@ -53,10 +54,16 @@ for (const width of [390, 1440]) {
       await expect(page.locator('[data-pane-status="ready"]')).toBeVisible({ timeout: 20_000 });
       // ready の後の数フレームも見る
       await page.waitForTimeout(200);
-      const samples = await page.evaluate(() => (window as unknown as { __targetSamples: { x: number; y: number; status: string | null }[] }).__targetSamples);
+      const samples = await page.evaluate(() => (window as unknown as { __targetSamples: { x: number; y: number; status: string | null; busyText: string | null; badge: boolean }[] }).__targetSamples);
       expect(samples.length).toBeGreaterThan(5);
       expect(samples.some((s) => s.status === 'ready')).toBe(true);
+      // 本文が「計算中…」を出している間は、見出しにバッジを出さない（同じ文字が2つ並ばない）
+      if (name === 'Bigram Flow') expect(samples.some((s) => s.busyText !== null)).toBe(true);
       for (const s of samples) {
+        if (s.busyText !== null) {
+          expect(s.busyText).toBe('計算中…');
+          expect(s.badge).toBe(false);
+        }
         expect(Math.abs(s.x - before!.x), `x（status=${s.status}）`).toBeLessThanOrEqual(1);
         expect(Math.abs(s.y - before!.y), `y（status=${s.status}）`).toBeLessThanOrEqual(1);
       }
