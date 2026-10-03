@@ -239,6 +239,42 @@ h2.pane-frame-title {
   }
 }
 
+/*
+ * 極端に狭いペイン（15rem以下。Workspaceで格子の下限の2列まで縮めた幅）。
+ * 2段目に対象の選択・連動・条件・状態・解析設定・⋯を並べると、ボタンだけで幅を超え、対象の選択が0幅に潰れて
+ * ボタンどうしが重なる。そこで見出しを折り返す並びにする。先頭の行（つかみ所・名前・ⓘ）、対象の選択だけの行、
+ * 残りのボタンを入るだけ並べて次の行へ送る行、の順。対象を包む箱は外して、中身を見出しの直下に並べる。
+ * ⋯は並びの最後に置き、行の右端へ寄せる。
+ */
+@container pane (max-width: 15rem) {
+  .pane-frame[data-name-in-lead] .pane-frame-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .pane-frame[data-name-in-lead] .pane-frame-lead {
+    flex: 1 1 100%;
+  }
+
+  .pane-frame[data-name-in-lead] .pane-frame-target {
+    display: contents;
+  }
+
+  .pane-frame[data-name-in-lead] .target-selection {
+    flex: 1 1 100%;
+  }
+
+  .pane-frame[data-name-in-lead] .pane-condition-summary[data-compact] {
+    margin-left: 0;
+  }
+
+  .pane-frame[data-name-in-lead] .pane-frame-menu {
+    margin-left: auto;
+  }
+}
+
 /* 視覚的には隠し、読み上げには残す（見出しの階層・ペインの名前を保つ） */
 .pane-visually-hidden {
   position: absolute;

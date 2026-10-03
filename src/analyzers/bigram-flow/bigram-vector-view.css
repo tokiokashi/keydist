@@ -30,8 +30,10 @@
 .flow-block-heading {
   position: relative;
   display: flex;
+  /* 狭い本体では、ⓘと表示調整のボタンを見出しの次の行へ送る（本体の右端からはみ出して届かなくなるのを避ける）。 */
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.1rem 0.25rem;
   min-width: 0;
 }
 
@@ -322,6 +324,8 @@
 
 .flow-profile-panel {
   display: grid;
+  /* 列を明示しないと、中身（枠・図）の幅まで列が広がり、狭いカードから図がはみ出す。 */
+  grid-template-columns: minmax(0, 1fr);
 }
 
 /*
@@ -606,6 +610,7 @@
 
   .flow-mini-panel {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr) auto;
     min-height: 0;
   }
@@ -742,5 +747,53 @@
 @container pane-body (min-height: 1px) and (max-width: 280px) {
   .flow-two-up {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    /*
+     * カードの行（見出し・図・割合）を2枚で共有する。狭いと片方の見出しだけが折り返すことがあり、
+     * 共有しないと左右の図の上端・下端がずれる（広い並びの揃えと同じ考え方）。
+     */
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    row-gap: 0;
+  }
+
+  .flow-two-up > .flow-mini-panel {
+    grid-row: span 3;
+    grid-template-rows: subgrid;
+  }
+}
+
+/*
+ * 左右のカードが1つ約100px以下になる狭さでは、件数・平均移動・まとまりを隠し、見出しの余白と字を詰める。
+ * 残すLEFT / RIGHTと図はカードの幅に収まる。数字が要る時は領域を広げるか個別画面で見る
+ * （縦が足りない時に隠す規則と同じ扱い）。
+ */
+@container (max-width: 280px) {
+  .flow-mini-panel header {
+    min-width: 0;
+    padding-inline: 0.2rem;
+    overflow-wrap: anywhere;
+  }
+
+  .flow-mini-panel header strong {
+    font-size: 0.62rem;
+    letter-spacing: 0;
+  }
+
+  .flow-profile-stats {
+    display: none;
+  }
+
+  /* 内向き・外向きの割合の2つが横に並ばない時は、2行に折り返す（カードの枠で切れないように）。 */
+  .roll-summary {
+    padding-inline: 0.1rem;
+  }
+
+  .roll-summary > div:last-child {
+    flex-wrap: wrap;
+    gap: 0.1rem 0.4rem;
+    font-size: 0.56rem;
+  }
+
+  .roll-summary > div:last-child span {
+    gap: 0.15rem;
   }
 }
