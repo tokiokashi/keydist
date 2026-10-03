@@ -11,6 +11,8 @@ import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
 import { useTextContentCommit } from '../standalone/use-text-content-commit.ts';
 import { setDeletedWorkspace } from './deleted-workspace-notice.ts';
 import { generatePaneId, generateWorkspaceId } from './id-generator.ts';
+import { OptionsWriteLogsProvider } from '#hosts/shared/OptionsWriteLogsContext.tsx';
+import { createOptionsWriteLogs } from '#hosts/shared/options-write-log.ts';
 import { usePaneOptionsCommit } from './use-pane-options-commit.ts';
 
 /**
@@ -29,7 +31,8 @@ export function WorkspaceApp({ workspaceId }: { readonly workspaceId: string }) 
   const holder = useMemo(() => ({ workspaceId }), [workspaceId]);
 
   const commitTextContent = useTextContentCommit(dispatch, getAssets, generateTextId, holder);
-  const commitPaneOptions = usePaneOptionsCommit(dispatch, workspaceId);
+  const writeLogs = useMemo(createOptionsWriteLogs, []);
+  const commitPaneOptions = usePaneOptionsCommit(dispatch, workspaceId, writeLogs);
 
   // 間引き待ちの変更を先に書いてから戻す。待ち中の値を残したまま戻すと、戻した後にその値が
   // 書かれて、戻したはずの変更がまた入るため（並びの間引きは`WorkspacePage`が先に書く）。
@@ -75,21 +78,23 @@ export function WorkspaceApp({ workspaceId }: { readonly workspaceId: string }) 
   };
 
   return (
-    <WorkspacePage
-      workspaceId={workspaceId}
-      assets={assets}
-      assetsReady={ready}
-      dispatch={dispatch}
-      cache={sharedEngineComputer}
-      catalog={catalog}
-      generateTextId={generateTextId}
-      generateId={generatePaneId}
-      generatePresetId={generatePresetId}
-      history={history}
-      onTextContentCommit={commitTextContent}
-      onPaneOptionsCommit={commitPaneOptions}
-      onDuplicate={duplicate}
-      onDelete={remove}
-    />
+    <OptionsWriteLogsProvider logs={writeLogs}>
+      <WorkspacePage
+        workspaceId={workspaceId}
+        assets={assets}
+        assetsReady={ready}
+        dispatch={dispatch}
+        cache={sharedEngineComputer}
+        catalog={catalog}
+        generateTextId={generateTextId}
+        generateId={generatePaneId}
+        generatePresetId={generatePresetId}
+        history={history}
+        onTextContentCommit={commitTextContent}
+        onPaneOptionsCommit={commitPaneOptions}
+        onDuplicate={duplicate}
+        onDelete={remove}
+      />
+    </OptionsWriteLogsProvider>
   );
 }

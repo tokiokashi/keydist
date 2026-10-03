@@ -18,6 +18,7 @@ export function BigramFlowWorkspacePane({
   const { options, onOptionsChange, diagnostics } = usePaneOptions<BigramFlowOptions>(
     bigramFlowAnalyzer.definition,
     pane.options,
+    pane.id,
     (next) => runtime.commitPaneOptions(pane.id, next),
   );
   const chrome: PaneChrome = useMemo(

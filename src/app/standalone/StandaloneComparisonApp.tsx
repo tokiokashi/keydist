@@ -9,6 +9,8 @@ import { sharedEngineComputer } from './engine-computer.ts';
 import { generatePresetId, generateTextId } from './id-generator.ts';
 import { useKeydistAssets } from './use-keydist-assets.ts';
 import { useAddToWorkspace } from './use-add-to-workspace.ts';
+import { OptionsWriteLogsProvider } from '#hosts/shared/OptionsWriteLogsContext.tsx';
+import { createOptionsWriteLogs, STANDALONE_WRITE_LOG_KEY } from '#hosts/shared/options-write-log.ts';
 import { useDebouncedCommit } from './use-debounced-commit.ts';
 import { useTextContentCommit } from './use-text-content-commit.ts';
 
@@ -21,7 +23,10 @@ export function StandaloneComparisonApp() {
   const { assets, ready, dispatch, getAssets, canUndo, canRedo, undo, redo } = useKeydistAssets();
   const catalog = useMemo(() => builtinPaneCatalog(), []);
 
+  // 保存先へ書いた値を記録し、解析設定の下書きが自分の保存の反響を見分けるのに使う
+  const writeLogs = useMemo(createOptionsWriteLogs, []);
   const commitComparisonOptions = useDebouncedCommit<ComparisonOptions>(dispatch, {
+    onWrite: (options) => writeLogs.forKey(STANDALONE_WRITE_LOG_KEY).record(options),
     commandFor: (options) => setStandaloneAnalyzerOptionsCommand(comparisonAnalyzer.definition.id, options),
   });
 
@@ -50,18 +55,20 @@ export function StandaloneComparisonApp() {
   };
 
   return (
-    <ComparisonStandalonePage
-      assets={assets}
-      assetsReady={ready}
-      dispatch={dispatch}
-      cache={sharedEngineComputer}
-      catalog={catalog}
-      generateTextId={generateTextId}
-      generatePresetId={generatePresetId}
-      history={history}
-      onTextContentCommit={commitTextContent}
-      onAddToWorkspace={addToWorkspace}
-      onComparisonOptionsCommit={commitComparisonOptions}
-    />
+    <OptionsWriteLogsProvider logs={writeLogs}>
+      <ComparisonStandalonePage
+        assets={assets}
+        assetsReady={ready}
+        dispatch={dispatch}
+        cache={sharedEngineComputer}
+        catalog={catalog}
+        generateTextId={generateTextId}
+        generatePresetId={generatePresetId}
+        history={history}
+        onTextContentCommit={commitTextContent}
+        onAddToWorkspace={addToWorkspace}
+        onComparisonOptionsCommit={commitComparisonOptions}
+      />
+    </OptionsWriteLogsProvider>
   );
 }

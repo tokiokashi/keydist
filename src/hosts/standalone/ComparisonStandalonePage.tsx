@@ -19,6 +19,7 @@ import type { PaneCatalog } from '#hosts/shared/resolve-pane-input.ts';
 import { useMultiColorSlots } from '#hosts/shared/use-set-target-selection.ts';
 import { useLatestCallback } from '#hosts/shared/use-latest-callback.ts';
 import { useOptionsDraft } from '#hosts/shared/use-options-draft.ts';
+import { STANDALONE_WRITE_LOG_KEY } from '#hosts/shared/options-write-log.ts';
 import { effectiveMultiBaseline } from '#engine/multi-target-selection.ts';
 import { AddToWorkspaceMenu, type AddToWorkspaceDestination } from '#hosts/shared/AddToWorkspaceMenu.tsx';
 import { urlOptionsNotices, useUrlOptions } from './use-url-options.ts';
@@ -93,7 +94,7 @@ export function ComparisonStandalonePage({
   );
   // `BigramFlowStandalonePage`と同じ形: 見た目は即座に反映しつつ（controlled）、
   // 資産への書き込みは呼び出し側がdebounceする（`onComparisonOptionsCommit`）。
-  const [optionsDraft, setOptionsDraft] = useOptionsDraft<ComparisonOptions>(decoded.options);
+  const [optionsDraft, setOptionsDraft] = useOptionsDraft<ComparisonOptions>(decoded.options, STANDALONE_WRITE_LOG_KEY);
   // URL経由で解析設定を受け取る（共有リンク。`use-url-options.ts`）。対象は載らない。
   const urlDiagnostics = useUrlOptions({
     analyzerId: ANALYZER_ID,

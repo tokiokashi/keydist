@@ -19,6 +19,7 @@ import type { PaneChrome, PaneEnvironment } from '#hosts/shared/panes/pane-envir
 import type { PaneCatalog } from '#hosts/shared/resolve-pane-input.ts';
 import { useLatestCallback } from '#hosts/shared/use-latest-callback.ts';
 import { useOptionsDraft } from '#hosts/shared/use-options-draft.ts';
+import { STANDALONE_WRITE_LOG_KEY } from '#hosts/shared/options-write-log.ts';
 import { AddToWorkspaceMenu, type AddToWorkspaceDestination } from '#hosts/shared/AddToWorkspaceMenu.tsx';
 import { urlOptionsNotices, useUrlOptions } from './use-url-options.ts';
 import { useTargetShareSource, useUrlTargets } from './use-url-targets.ts';
@@ -105,7 +106,7 @@ export function BigramFlowStandalonePage({
     () => decodeStoredAnalyzerOptions(bigramFlowAnalyzer.definition, storedOptionsRaw),
     [storedOptionsRaw],
   );
-  const [optionsDraft, setOptionsDraft] = useOptionsDraft<BigramFlowOptions>(decoded.options);
+  const [optionsDraft, setOptionsDraft] = useOptionsDraft<BigramFlowOptions>(decoded.options, STANDALONE_WRITE_LOG_KEY);
 
   // URL経由で解析設定を受け取る（3つの単体ページ共通。`use-url-options.ts`）。
   const urlDiagnostics = useUrlOptions({

@@ -3,6 +3,7 @@ import type { Command } from '#input/commands/index.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
 import { setWorkspacePaneOptionsCommand } from '#engine/workspace-commands.ts';
 import type { PaneOptionsCommit } from '#hosts/workspace/index.ts';
+import type { OptionsWriteLogs } from '#hosts/shared/options-write-log.ts';
 import {
   createDebouncedPersistenceScheduler,
   type DebouncedPersistenceScheduler,
@@ -23,6 +24,7 @@ import {
 export function usePaneOptionsCommit(
   dispatch: (command: Command<KeydistAssets>) => void,
   workspaceId: string,
+  writeLogs: OptionsWriteLogs,
 ): PaneOptionsCommit {
   const dispatchRef = useRef(dispatch);
   dispatchRef.current = dispatch;
@@ -37,7 +39,11 @@ export function usePaneOptionsCommit(
       if (scheduler === undefined) {
         scheduler = createDebouncedPersistenceScheduler<unknown>({
           // 重複排除はしない。同じ値かどうかは、適用時点の資産と比べるコマンド側のno-op判定に任せる
-          write: (options) => dispatchRef.current(setWorkspacePaneOptionsCommand(workspaceIdRef.current, paneId, options)),
+          write: (options) => {
+            // 書いた値を記録し、ペインの下書きが自分の保存の反響を見分けるのに使う
+            writeLogs.forKey(paneId).record(options);
+            dispatchRef.current(setWorkspacePaneOptionsCommand(workspaceIdRef.current, paneId, options));
+          },
         });
         schedulersRef.current.set(paneId, scheduler);
       }

@@ -1,10 +1,11 @@
-import { useState } from 'react';
-import { stableStringify } from '#engine/cache-key.ts';
+import { useCallback, useState } from 'react';
+import { useOptionsWriteLog } from './OptionsWriteLogsContext.tsx';
+import { applyDraftInput, initialDraftSync, syncDraftWithStored } from './options-draft-sync.ts';
 
 /**
  * 解析設定の下書き（UI用の一時状態）。見た目は即座に変えつつ、資産への書き込みは
  * 呼び出し側がdebounceする。資産側の値（`stored`）が変わった時（初回読み込み・他タブからの
- * 反映・自分のcommitの反響）は下書きをそれに揃え直す。
+ * 反映・元に戻す等）は下書きをそれに揃え直す。
  *
  * 揃え直しはeffectでなく描画中に行う。effectだと「資産は読み込み済みで操作可能だが、
  * 下書きはまだ読み込み前の既定値」の画面が1フレーム確定し、その間の操作が
@@ -16,14 +17,16 @@ import { stableStringify } from '#engine/cache-key.ts';
  * 入っているので、他タブが別のAnalyzerの設定を書くと記録全体が読み直され、自分のAnalyzerの
  * 設定も中身は同じまま新しい参照になる。参照で比べると、debounce待ちの下書きが保存値へ戻され、
  * 戻っている間の別の変更が先の変更を上書きして失われる（#606）。
+ *
+ * 自分が書いた値の反響は揃え直さない。反響は次の入力より後に届くことがあり、その時に揃え直すと
+ * 新しい下書きが1つ前の値へ戻る（#935）。書いた値は`app`が書く時に残す記録（`options-write-log.ts`）で
+ * 知る。`writeLogKey`は記録の引き先（個別画面は固定の名前、Workspaceはペインのid）。判断は`options-draft-sync.ts`にある。
  */
-export function useOptionsDraft<T>(stored: T): readonly [T, (next: T) => void] {
-  const [draft, setDraft] = useState(stored);
-  const [source, setSource] = useState(stored);
-  if (source !== stored) {
-    setSource(stored);
-    // 中身が同じなら下書きは触らない（参照だけが変わった読み直し）
-    if (stableStringify(source) !== stableStringify(stored)) setDraft(stored);
-  }
-  return [draft, setDraft] as const;
+export function useOptionsDraft<T>(stored: T, writeLogKey: string): readonly [T, (next: T) => void] {
+  const log = useOptionsWriteLog(writeLogKey);
+  const [state, setState] = useState(() => initialDraftSync(stored, log?.latestSeq() ?? 0));
+  const synced = syncDraftWithStored(state, stored, log?.entries() ?? [], log?.latestSeq() ?? 0);
+  if (synced !== state) setState(synced);
+  const setDraft = useCallback((next: T) => setState((current) => applyDraftInput(current, next)), []);
+  return [synced.draft, setDraft] as const;
 }

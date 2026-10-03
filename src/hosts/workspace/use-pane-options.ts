@@ -11,6 +11,7 @@ import { useOptionsDraft } from '#hosts/shared/use-options-draft.ts';
 export function usePaneOptions<Options>(
   definition: DecodableAnalyzerDefinition<Options>,
   stored: unknown,
+  paneId: string,
   commit: (options: Options) => void,
 ): {
   readonly options: Options;
@@ -18,7 +19,7 @@ export function usePaneOptions<Options>(
   readonly diagnostics: readonly CodecDiagnostic[];
 } {
   const decoded = useMemo(() => decodeStoredAnalyzerOptions(definition, stored), [definition, stored]);
-  const [draft, setDraft] = useOptionsDraft<Options>(decoded.options);
+  const [draft, setDraft] = useOptionsDraft<Options>(decoded.options, paneId);
   return {
     options: draft,
     onOptionsChange: (next) => {

@@ -17,6 +17,8 @@ export interface UseDebouncedCommitOptions<T> {
   /** 値からコマンドを組み立てる。 */
   readonly commandFor: (value: T) => Command<KeydistAssets>;
   readonly debounceMs?: number;
+  /** 保存先へ書く直前の通知。下書き側が自分の保存の反響を見分けるための記録に使う。 */
+  readonly onWrite?: (value: T) => void;
 }
 
 /**
@@ -46,7 +48,10 @@ export function useDebouncedCommit<T>(
   const schedulerRef = useRef<DebouncedPersistenceScheduler<T> | undefined>(undefined);
   if (schedulerRef.current === undefined) {
     schedulerRef.current = createDebouncedPersistenceScheduler<T>({
-      write: (value) => dispatchRef.current(optionsRef.current.commandFor(value)),
+      write: (value) => {
+        optionsRef.current.onWrite?.(value);
+        dispatchRef.current(optionsRef.current.commandFor(value));
+      },
       // 重複排除はしない。同じ値かどうかは、適用時点の資産と比べるコマンド側の no-op 判定に
       // 任せる。スケジューラの「前回自分が書いた値」との比較は、他タブやUndoで資産が変わった後に
       // 同じ値へ戻す書き込みを捨ててしまう（#544 レビュー）
