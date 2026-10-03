@@ -322,6 +322,13 @@ export function WorkspacePage({
             { id: 'delete', label: '削除', onSelect: () => { flushPending(); onDelete(); } },
           ]}
         />
+        {/* 空の間は、中央の大きい「ペインを追加」を使う（同じ操作を2つ出さない）。
+            拡大中は、隠れた格子へ足しても見えないので、フォーカスも操作も届かせない */}
+        {workspace.panes.length === 0 ? null : (
+          <span className="workspace-add-pane-slot" inert={maximizedId !== undefined}>
+            <AddPaneMenu onAdd={addPane} onAddBlank={addBlankPane} />
+          </span>
+        )}
         <TextChip
           holder={{ workspaceId }}
           textLibrary={assets.textLibrary}
@@ -352,10 +359,6 @@ export function WorkspacePage({
           </div>
         ) : (
           <>
-            {/* 拡大中は、隠れた「ペインを追加」へフォーカスも操作も届かせない */}
-            <div className="workspace-toolbar" inert={maximizedId !== undefined}>
-              <AddPaneMenu onAdd={addPane} onAddBlank={addBlankPane} />
-            </div>
             {stacked ? (
               <WorkspaceStack paneIds={paneIds} titleOf={titleOf} descriptionOf={descriptionOf} renderPane={renderPane} />
             ) : (

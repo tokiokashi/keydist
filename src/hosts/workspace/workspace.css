@@ -1,5 +1,5 @@
 /*
- * Workspaceの画面。文脈バーの下に、ペインの追加の帯と、ペインを並べる面を縦に積む。
+ * Workspaceの画面。文脈バーの下に、ペインを並べる面を置く（「ペインを追加」は文脈バーの中）。
  * 面の高さはペインの並び（格子の行数）で決まり、画面より長ければページが縦にスクロールする
  * （文脈バーは上に貼り付いたまま）。
  */
@@ -10,10 +10,8 @@
   min-height: 100dvh;
 }
 
-.workspace-toolbar {
-  display: flex;
-  align-items: center;
-  padding: 0.5rem 1.25rem 0;
+.workspace-add-pane-slot {
+  display: contents;
 }
 
 .workspace-stage {
@@ -51,6 +49,10 @@
 }
 
 .workspace-add-pane-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
   min-height: 2rem;
   padding: 0 0.85rem;
   border: 1px solid var(--border-strong);
@@ -59,6 +61,7 @@
   color: var(--text);
   font: inherit;
   font-size: 0.88rem;
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -100,9 +103,10 @@
 
 /* ---- 文脈バーの左端のWorkspace名（h1） ---- */
 /* 全体のh1（トップの大見出し）の大きさ・余白を打ち消し、バーに収まる大きさにする。 */
+/* 1行に並べる幅が足りない時は、名前を先に省略して縮める（テキストのチップは8文字が読める幅より縮められない）。 */
 .workspace-name {
-  flex: none;
-  min-width: 0;
+  flex: 0 1 auto;
+  min-width: 3.5rem;
   max-width: 16rem;
   margin: 0;
   font-size: 1rem;

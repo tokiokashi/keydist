@@ -4,6 +4,7 @@ import { BLANK_PANE_META, WORKSPACE_ANALYZERS, type WorkspaceAnalyzerEntry } fro
 /**
  * ペインの追加。押すとAnalyzerと余白のペインの一覧が開き、選んだペインを足す。
  * 見た目はペインの⋯のメニューと同じ部品のCSS（`pane-frame.css`）を使う。
+ * `toolbar`は文脈バーの中に置く（バーが狭い時は文字を見た目から省き、＋だけにする。`context-bar.css`）。
  */
 export function AddPaneMenu({
   onAdd,
@@ -55,9 +56,11 @@ export function AddPaneMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
+        title="ペインを追加"
         onClick={() => setOpen((current) => !current)}
       >
-        <span aria-hidden="true">＋</span> ペインを追加
+        <span className="workspace-add-pane-plus" aria-hidden="true">＋</span>
+        <span className="workspace-add-pane-label">ペインを追加</span>
       </button>
       {open ? (
         <div className="pane-menu-list" role="menu" id={menuId} aria-label="追加するペイン">
