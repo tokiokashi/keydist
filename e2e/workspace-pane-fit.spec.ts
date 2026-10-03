@@ -4,6 +4,7 @@ import { waitForHydration } from './hydration-helper.ts';
 /**
  * Workspaceのペインの本体が「ペインの残りの高さ」を持ち、Bigram Flowの図がそこに収まる（#808）。
  * 収まる・並び方が領域の縦横比で変わる・下限より低いペインは本体の領域の中でスクロールに戻る、を確かめる。
+ * ペインの大きさは格子（1升 = 28px、升の間 8px、列は12）で決まる。画面の幅1440pxでは1列がおよそ91px。
  * 個別画面（高さが中身で決まる）には効かないことも確かめる。
  */
 
@@ -19,14 +20,14 @@ const comparison = {
   analyzerId: 'comparison',
   binding: { mode: 'fixed', target: { kind: 'set', selection: { targets: [QWERTY, { kind: 'layout', layoutId: 'dvorak' }], colorSlots: [0, 1] } } },
 };
-const group = (id: string) => ({ kind: 'group', paneIds: [id], weight: 1 });
+const cell = (id: string, x: number, y: number, w: number, h: number) => ({ id, x, y, w, h });
 
 /** 保存先へWorkspaceを直接書いて開く。 */
-async function openWorkspace(page: Page, panes: readonly unknown[], layout: unknown, size: { width: number; height: number }) {
+async function openWorkspace(page: Page, panes: readonly unknown[], grid: unknown, size: { width: number; height: number }) {
   await page.setViewportSize(size);
   await page.addInitScript((value) => {
     localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [value] }));
-  }, { id: 'fit', name: '収まりの確認', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes, layout });
+  }, { id: 'fit', name: '収まりの確認', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes, grid });
   await page.goto('/workspace/fit');
   await waitForHydration(page);
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 15_000 });
@@ -59,8 +60,8 @@ function measure(page: Page) {
   });
 }
 
-test('2ペイン横並び（Bigram Flow＋比較表）の1440×900で、Bigram Flowの本体はスクロールせず図が収まる', async ({ page }) => {
-  await openWorkspace(page, [flow, comparison], { kind: 'split', direction: 'row', weight: 1, children: [group('f'), group('c')] }, { width: 1440, height: 900 });
+test('2ペイン横並び（Bigram Flow＋比較表、各6列 x 21行）で、Bigram Flowの本体はスクロールせず図が収まる', async ({ page }) => {
+  await openWorkspace(page, [flow, comparison], [cell('f', 0, 0, 6, 21), cell('c', 6, 0, 6, 21)], { width: 1440, height: 900 });
   const m = await measure(page);
   // 本体の領域の中でも、ペイン全体でもスクロールしない（図の下端がペインの枠の中にある）
   expect(m.bodyScrollHeight).toBeLessThanOrEqual(m.bodyClientHeight + 1);
@@ -71,15 +72,29 @@ test('2ペイン横並び（Bigram Flow＋比較表）の1440×900で、Bigram F
   expect(m.body.bottom - m.relative.bottom).toBeLessThan(40);
 });
 
+/** ペインの右下の角をつかんで、`dx`・`dy`（画素）だけ動かす。 */
+async function dragCorner(page: Page, id: string, dx: number, dy: number): Promise<void> {
+  // ライブラリの配置の動き（200ms）が済んでから、つかみを探す
+  await page.waitForTimeout(400);
+  const corner = (await page.locator(`.workspace-grid-item[data-pane-id="${id}"] .react-resizable-handle-se`).boundingBox())!;
+  const x = corner.x + corner.width / 2;
+  const y = corner.y + corner.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + dx, y + dy, { steps: 10 });
+  await page.mouse.up();
+}
+
 test('領域が横長なら図は左右に並び、縦長なら縦に積む。切り替えは画面の幅ではなく領域の縦横比', async ({ page }) => {
-  await openWorkspace(page, [flow], group('f'), { width: 1440, height: 860 });
+  // 幅12列 x 20行（本体は約1020 x 650）
+  await openWorkspace(page, [flow], [cell('f', 0, 0, 12, 20)], { width: 1440, height: 1300 });
   let m = await measure(page);
   expect(m.body.width / m.body.height).toBeGreaterThanOrEqual(1.5);
   expect(m.keyboard.right).toBeLessThanOrEqual(m.relative.left + 1);
   expect(Math.abs(m.keyboard.top - m.relative.top)).toBeLessThan(40);
 
-  // 画面の幅は十分に広いまま、高さを伸ばして領域を縦長に近づける（幅 / 高さ < 1.5）と、縦に積む。
-  await page.setViewportSize({ width: 1440, height: 1500 });
+  // 画面の幅はそのまま、ペインの下の辺を伸ばして領域を縦長に近づける（幅 / 高さ < 1.5）と、縦に積む。
+  await dragCorner(page, 'f', 0, 144);
   await expect.poll(async () => {
     const next = await measure(page);
     return next.body.width / next.body.height < 1.5;
@@ -87,8 +102,8 @@ test('領域が横長なら図は左右に並び、縦長なら縦に積む。�
   m = await measure(page);
   expect(m.relative.top).toBeGreaterThanOrEqual(m.keyboard.bottom - 1);
 
-  // 高さを戻して領域が再び横長になると、また左右に並ぶ。
-  await page.setViewportSize({ width: 1440, height: 860 });
+  // 縮めて領域が再び横長になると、また左右に並ぶ。
+  await dragCorner(page, 'f', 0, -144);
   await expect.poll(async () => {
     const next = await measure(page);
     return next.keyboard.right <= next.relative.left + 1;
@@ -96,21 +111,14 @@ test('領域が横長なら図は左右に並び、縦長なら縦に積む。�
 });
 
 test('下限より低いペインでは本体の領域の中でスクロールに戻り、図は下限より小さくならない', async ({ page }) => {
-  // 横に並ぶ形: 領域が下限（16rem）より低くなる高さ
-  await openWorkspace(page, [flow], group('f'), { width: 1440, height: 450 });
-  let m = await measure(page);
+  // 横に並ぶ形: 領域が下限（16rem）より低くなる高さ（幅12列 x 8行 = 280px）
+  await openWorkspace(page, [flow], [cell('f', 0, 0, 12, 8)], { width: 1440, height: 900 });
+  const m = await measure(page);
   expect(m.body.width / m.body.height).toBeGreaterThanOrEqual(1.5);
   expect(m.bodyClientHeight).toBeLessThan(SIDE_BY_SIDE_FLOOR);
+  // 図は下限のまま縮まず、領域の中でスクロールする
   expect(m.feature.height).toBeGreaterThanOrEqual(SIDE_BY_SIDE_FLOOR - 1);
   expect(m.bodyScrollHeight).toBeGreaterThan(m.bodyClientHeight + 4);
-  const keyboardHeightAtFloor = m.keyboardSvg.height;
-
-  // もっと低くしても、図は下限のまま縮まない（領域の中でスクロールする）
-  await page.setViewportSize({ width: 1440, height: 400 });
-  await expect.poll(async () => (await measure(page)).bodyClientHeight).toBeLessThan(m.bodyClientHeight);
-  m = await measure(page);
-  expect(m.keyboardSvg.height).toBeGreaterThanOrEqual(keyboardHeightAtFloor - 1);
-  expect(m.feature.height).toBeGreaterThanOrEqual(SIDE_BY_SIDE_FLOOR - 1);
   // 領域の中でスクロールして、下の端まで届く
   await page.locator('.workspace-pane .pane-body').evaluate((el) => el.scrollTo(0, el.scrollHeight));
   const scrolled = await measure(page);
@@ -118,8 +126,8 @@ test('下限より低いペインでは本体の領域の中でスクロール�
 });
 
 test('縦に積む形にも下限があり、それより低いペインでは領域の中でスクロールする', async ({ page }) => {
-  // 領域が幅472・高さ390ほどで、横長にならない（見出しが1行（#827）なので、見出しが2段だった時より窓を低くする）
-  await openWorkspace(page, [flow], group('f'), { width: 770, height: 650 });
+  // 領域が幅460・高さ320ほどで、横長にならない（5列 x 12行）
+  await openWorkspace(page, [flow], [cell('f', 0, 0, 5, 12)], { width: 1440, height: 900 });
   const m = await measure(page);
   expect(m.body.width / m.body.height).toBeLessThan(1.5);
   expect(m.relative.top).toBeGreaterThanOrEqual(m.keyboard.bottom - 1);
@@ -129,13 +137,14 @@ test('縦に積む形にも下限があり、それより低いペインでは�
 });
 
 test('縦が足りない領域では件数の文と手ごとの要約を隠し、足りる領域では出す', async ({ page }) => {
-  await openWorkspace(page, [flow], group('f'), { width: 1440, height: 900 });
+  await openWorkspace(page, [flow], [cell('f', 0, 0, 12, 19)], { width: 1440, height: 1300 });
   const stats = page.locator('.workspace-pane .flow-profile-stats').first();
   const coverage = page.locator('.workspace-pane .flow-coverage');
   await expect(stats).toBeVisible();
   await expect(coverage).toBeVisible();
 
-  await page.setViewportSize({ width: 1440, height: 700 });
+  // ペインの下の辺を3行ぶん縮める
+  await dragCorner(page, 'f', 0, -108);
   await expect(stats).toBeHidden();
   await expect(coverage).toBeHidden();
 });
@@ -198,8 +207,8 @@ test('個別画面の外側に高さを測れるcontainerがあっても、Works
 });
 
 test('高さに合わせて縮んだ図の線は、枠の幅ではなく実際に描かれる幅を倍率にして太さを保つ', async ({ page }) => {
-  // 見出しが1行（#827）になった分、窓を低くして、図が高さで決まる形を保つ
-  await openWorkspace(page, [flow], group('f'), { width: 1440, height: 470 });
+  // 図が高さで決まる形（12列 x 8行）
+  await openWorkspace(page, [flow], [cell('f', 0, 0, 12, 8)], { width: 1440, height: 900 });
   const info = await page.evaluate(() => {
     const svg = document.querySelector('[data-react-feature="bigram-flow"] .flow-keyboard-svg') as SVGSVGElement;
     const rect = svg.getBoundingClientRect();
@@ -216,16 +225,8 @@ test('高さに合わせて縮んだ図の線は、枠の幅ではなく実際�
   expect(info.minStroke * info.zoom).toBeGreaterThanOrEqual(1.25 - 0.01);
 });
 
-/** Bigram Flowを細い列に置く配置（768×1024で本体が幅200px前後・高さ670px前後の細長いペインになる）。 */
-const narrowColumnLayout = {
-  kind: 'split',
-  direction: 'row',
-  weight: 1,
-  children: [
-    group('f'),
-    { kind: 'split', direction: 'column', weight: 1, children: [group('c'), group('d')] },
-  ],
-};
+/** Bigram Flowを細い列（2列）に置く配置（本体が幅165px前後・高さ590px前後の細長いペインになる）。 */
+const narrowColumnGrid = [cell('f', 0, 0, 2, 20), cell('c', 2, 0, 10, 10), cell('d', 2, 10, 10, 10)];
 const comparison2 = { ...comparison, id: 'd' };
 
 /** 図の枠と、実際に描かれる大きさ。 */
@@ -260,7 +261,7 @@ function measureFit(page: Page) {
 }
 
 test('細長いペインでは枠が図の縦横比より縦に伸びず、余った高さは枠の外に置かれる', async ({ page }) => {
-  await openWorkspace(page, [flow, comparison, comparison2], narrowColumnLayout, { width: 768, height: 1024 });
+  await openWorkspace(page, [flow, comparison, comparison2], narrowColumnGrid, { width: 1440, height: 900 });
   const m = await measureFit(page);
   const body = (await measure(page)).body;
   // 幅で大きさが決まる細長いペイン（領域は縦に十分長い）
@@ -283,20 +284,23 @@ async function arrangement(page: Page) {
   return m.keyboard.right <= m.relative.left + 1 ? 'side' : 'stack';
 }
 
-/** 2ペイン（Bigram Flow＋比較表）の横並び。画面の幅で本体の幅を、高さで本体の高さを決める。 */
-const twoPaneRow = { kind: 'split', direction: 'row', weight: 1, children: [group('f'), group('c')] };
+/**
+ * 2ペイン（Bigram Flow＋比較表）の横並び（各6列 x 10行）。本体の幅は画面の幅で決まる
+ * （1300pxで約494px、1440pxで約564px）。高さは10行（約286px）。
+ */
+const twoPaneRow = [cell('f', 0, 0, 6, 10), cell('c', 6, 0, 6, 10)];
 
 test('幅が狭い横長のペインでは、縦横比が横長でも左右に並べず縦に積む。境目は本体の幅520px', async ({ page }) => {
   // 本体の幅が520pxに届かない横長（縦横比は1.5を超える）
-  await openWorkspace(page, [flow, comparison], twoPaneRow, { width: 1300, height: 508 });
-  await expect.poll(async () => (await measure(page)).body.height).toBeLessThan(330);
+  await openWorkspace(page, [flow, comparison], twoPaneRow, { width: 1300, height: 900 });
   let m = await measure(page);
+  expect(m.body.height).toBeLessThan(330);
   expect(m.body.width / m.body.height).toBeGreaterThanOrEqual(1.5);
   expect(m.body.width).toBeLessThan(520);
   expect(await arrangement(page)).toBe('stack');
 
   // 幅だけを広げて520pxを超えると、同じ縦横比のまま左右に並ぶ
-  await page.setViewportSize({ width: 1440, height: 508 });
+  await page.setViewportSize({ width: 1440, height: 900 });
   await expect.poll(async () => (await measure(page)).body.width).toBeGreaterThanOrEqual(530);
   m = await measure(page);
   expect(m.body.width / m.body.height).toBeGreaterThanOrEqual(1.5);
@@ -305,10 +309,10 @@ test('幅が狭い横長のペインでは、縦横比が横長でも左右に�
 
 test('境目の前後で並びが行き来しても振動せず、同じ幅なら往復しても同じ並びになる', async ({ page }) => {
   // 縦が低く、縦に積むと領域の中でスクロールが出る高さ（スクロールバーが幅を狭めて境目を行き来しないことの確認）
-  await openWorkspace(page, [flow, comparison], twoPaneRow, { width: 1300, height: 508 });
+  await openWorkspace(page, [flow, comparison], twoPaneRow, { width: 1300, height: 900 });
   const widths = [1300, 1320, 1340, 1360, 1380, 1400, 1420, 1440];
   const record = async (width: number) => {
-    await page.setViewportSize({ width, height: 508 });
+    await page.setViewportSize({ width, height: 900 });
     await expect.poll(async () => (await measure(page)).body.height).toBeLessThan(330);
     // 設定した幅に落ち着くまで待ち、並びが2回続けて変わらないことを確かめる
     await page.waitForTimeout(250);
@@ -328,9 +332,9 @@ test('境目の前後で並びが行き来しても振動せず、同じ幅な�
 
 test('Relative vectorsの図は、枠が図より広くてもカードの中央に置かれ、外形の線が左端に触れない', async ({ page }) => {
   const cases: Array<[string, readonly unknown[], unknown, { width: number; height: number }]> = [
-    ['2ペイン1440×900', [flow, comparison], twoPaneRow, { width: 1440, height: 900 }],
-    ['1ペイン1920×1080', [flow], group('f'), { width: 1920, height: 1080 }],
-    ['縦2分割の上（横並び）', [flow, comparison], { kind: 'split', direction: 'column', weight: 1, children: [group('f'), group('c')] }, { width: 1440, height: 900 }],
+    ['2ペイン1440×900', [flow, comparison], [cell('f', 0, 0, 6, 21), cell('c', 6, 0, 6, 21)], { width: 1440, height: 900 }],
+    ['1ペイン1920×1080', [flow], [cell('f', 0, 0, 12, 25)], { width: 1920, height: 1080 }],
+    ['縦2分割の上（横並び）', [flow, comparison], [cell('f', 0, 0, 12, 16), cell('c', 0, 16, 12, 16)], { width: 1440, height: 900 }],
   ];
   for (const [name, panes, layout, size] of cases) {
     await openWorkspace(page, panes, layout, size);
@@ -352,7 +356,7 @@ test('Relative vectorsの図は、枠が図より広くてもカードの中央�
 });
 
 test('連打ラベルは図の倍率に合わせて縮み、図が小さくてもキーより大きくならない', async ({ page }) => {
-  await openWorkspace(page, [flow, comparison, comparison2], narrowColumnLayout, { width: 768, height: 1024 });
+  await openWorkspace(page, [flow, comparison, comparison2], narrowColumnGrid, { width: 1440, height: 900 });
   const small = await measureFit(page);
   // 図は幅200px未満に縮んでいる。ラベルの拡大率は上限（1.4）を超えず、画面上のラベルの高さはキーの幅の約半分
   expect(small.zoom).toBeLessThan(0.3);
@@ -361,7 +365,7 @@ test('連打ラベルは図の倍率に合わせて縮み、図が小さくて�
   expect(small.badgeHeight / small.keyWidth).toBeLessThan(0.55);
 
   // 図が広いペインでは、ラベルも倍率に応じて大きい
-  await openWorkspace(page, [flow], group('f'), { width: 1440, height: 900 });
+  await openWorkspace(page, [flow], [cell('f', 0, 0, 12, 22)], { width: 1440, height: 900 });
   const large = await measureFit(page);
   expect(large.zoom).toBeGreaterThan(small.zoom * 2);
   expect(large.badgeHeight).toBeGreaterThan(small.badgeHeight * 1.5);

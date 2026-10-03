@@ -17,7 +17,7 @@ import {
   workspaceLayoutIds,
   renameWorkspace,
   uniqueWorkspaceName,
-  withWorkspaceLayout,
+  withWorkspaceGrid,
   withWorkspacePaneOptions,
   withWorkspacePaneBinding,
   withPaneInNewLinkGroup,
@@ -27,9 +27,10 @@ import {
   type WorkspacePane,
   type WorkspaceTarget,
 } from './workspace.ts';
-import { layoutPaneIds } from './workspace-layout.ts';
+import { gridPaneIds, type GridSize } from './workspace-grid.ts';
 
 const G = INITIAL_LINK_GROUP_ID;
+const SIZE: GridSize = { w: 6, h: 10 };
 const QWERTY: AnalysisTarget = { kind: 'layout', layoutId: 'qwerty' };
 const COLEMAK: AnalysisTarget = { kind: 'layout', layoutId: 'colemak-dh' };
 
@@ -39,7 +40,7 @@ function pane(id: string, analyzerId = 'bigram-flow'): WorkspacePane {
 
 function libraryWith(...paneIds: string[]): WorkspaceLibrary {
   let library = createWorkspace(initialWorkspaceLibrary(), () => 'w1').library;
-  for (const id of paneIds) library = addWorkspacePane(library, 'w1', pane(id));
+  for (const id of paneIds) library = addWorkspacePane(library, 'w1', pane(id), SIZE);
   return library;
 }
 
@@ -47,7 +48,7 @@ test('createWorkspace: 空のWorkspaceを作り、名前が重なれば連番を
   const first = createWorkspace(initialWorkspaceLibrary(), () => 'w1');
   assert.equal(first.created.name, '新しいWorkspace');
   assert.deepEqual(first.created.panes, []);
-  assert.equal(first.created.layout, undefined);
+  assert.deepEqual(first.created.grid, []);
   const second = createWorkspace(first.library, () => 'w2');
   assert.equal(second.created.name, '新しいWorkspace 2');
   const third = createWorkspace(second.library, () => 'w3', '  自分用  ');
@@ -70,13 +71,14 @@ test('deleteWorkspace: 無いidは何もしない', () => {
   assert.deepEqual(deleteWorkspace(library, 'w1'), []);
 });
 
-test('addWorkspacePane: ペインと配置が一緒に増える。同じidは無視する', () => {
+test('addWorkspacePane: ペインと枠が一緒に増える。同じidは無視する', () => {
   const library = libraryWith('a', 'b');
   const workspace = findWorkspace(library, 'w1')!;
   assert.deepEqual(workspace.panes.map((p) => p.id), ['a', 'b']);
-  assert.deepEqual(layoutPaneIds(workspace.layout), ['a', 'b']);
-  assert.equal(addWorkspacePane(library, 'w1', pane('a')), library);
-  assert.equal(addWorkspacePane(library, 'none', pane('c')), library);
+  assert.deepEqual(workspace.grid.map((item) => [item.id, item.w, item.h]), [['a', 6, 10], ['b', 6, 10]]);
+  assert.deepEqual(gridPaneIds(workspace.grid), ['a', 'b']);
+  assert.equal(addWorkspacePane(library, 'w1', pane('a'), SIZE), library);
+  assert.equal(addWorkspacePane(library, 'none', pane('c'), SIZE), library);
 });
 
 test('closeWorkspacePane: ペインと配置から一緒に消える。無いidは何もしない', () => {
@@ -84,18 +86,21 @@ test('closeWorkspacePane: ペインと配置から一緒に消える。無いid�
   const closed = closeWorkspacePane(library, 'w1', 'a');
   const workspace = findWorkspace(closed, 'w1')!;
   assert.deepEqual(workspace.panes.map((p) => p.id), ['b']);
-  assert.deepEqual(layoutPaneIds(workspace.layout), ['b']);
+  assert.deepEqual(gridPaneIds(workspace.grid), ['b']);
   assert.equal(closeWorkspacePane(library, 'w1', 'none'), library);
-  assert.equal(findWorkspace(closeWorkspacePane(closed, 'w1', 'b'), 'w1')!.layout, undefined);
+  assert.deepEqual(findWorkspace(closeWorkspacePane(closed, 'w1', 'b'), 'w1')!.grid, []);
 });
 
-test('duplicateWorkspacePane: 解析設定と対象の持ち方（従う / 固定）を写して右隣に置く', () => {
+test('duplicateWorkspacePane: 解析設定と対象の持ち方（従う / 固定）を写して、同じ大きさで右隣に置く', () => {
   let library = libraryWith('a', 'b');
   library = withWorkspacePaneOptions(library, 'w1', 'a', { foo: 1 });
   library = withWorkspacePaneBinding(library, 'w1', 'a', { mode: 'fixed', target: { kind: 'single', target: COLEMAK } });
   const next = duplicateWorkspacePane(library, 'w1', 'a', 'a2');
   const workspace = findWorkspace(next, 'w1')!;
-  assert.deepEqual(layoutPaneIds(workspace.layout), ['a', 'a2', 'b']);
+  // aの右隣はbで塞がっているので、真下に置く（読み順ではbの後）
+  assert.deepEqual(gridPaneIds(workspace.grid), ['a', 'b', 'a2']);
+  const [source, copyItem] = [workspace.grid.find((i) => i.id === 'a')!, workspace.grid.find((i) => i.id === 'a2')!];
+  assert.deepEqual([copyItem.w, copyItem.h], [source.w, source.h]);
   const copy = workspace.panes.find((p) => p.id === 'a2')!;
   assert.deepEqual(copy.options, { foo: 1 });
   assert.deepEqual(copy.binding, { mode: 'fixed', target: { kind: 'single', target: COLEMAK } });
@@ -218,20 +223,18 @@ test('組は1つ以上残る。全ペインを閉じても先頭の組と対象�
   assert.deepEqual(findWorkspace(allFixed, 'w1')!.groups.map((g) => g.id), [G]);
 });
 
-test('withWorkspaceLayout: 重みまで同じなら何もしない。ペインと食い違う配置は直して書く', () => {
+test('withWorkspaceGrid: 位置と大きさが同じなら何もしない。ペインと食い違う配置は直して書く', () => {
   const library = libraryWith('a', 'b');
-  const layout = findWorkspace(library, 'w1')!.layout;
-  assert.equal(withWorkspaceLayout(library, 'w1', layout), library);
-  // ペインbを落とした配置を渡しても、bは失われず右端へ戻る
-  const next = withWorkspaceLayout(library, 'w1', { kind: 'group', paneIds: ['a'], weight: 1 });
-  assert.deepEqual(layoutPaneIds(findWorkspace(next, 'w1')!.layout), ['a', 'b']);
-  const resized = withWorkspaceLayout(library, 'w1', {
-    kind: 'split',
-    direction: 'row',
-    weight: 1,
-    children: [{ kind: 'group', paneIds: ['a'], weight: 3 }, { kind: 'group', paneIds: ['b'], weight: 1 }],
-  });
+  const grid = findWorkspace(library, 'w1')!.grid;
+  assert.equal(withWorkspaceGrid(library, 'w1', grid), library);
+  // ペインbの枠を落とした配置を渡しても、bは失われず空いている場所へ戻る
+  const next = withWorkspaceGrid(library, 'w1', [grid[0]!]);
+  assert.deepEqual([...gridPaneIds(findWorkspace(next, 'w1')!.grid)].sort(), ['a', 'b']);
+  // aだけの大きさを変えても、bの大きさは変わらない
+  const resized = withWorkspaceGrid(library, 'w1', [{ ...grid[0]!, w: 4, h: 14 }, grid[1]!]);
   assert.notEqual(resized, library);
+  const after = findWorkspace(resized, 'w1')!.grid;
+  assert.deepEqual(after.find((i) => i.id === 'b'), grid[1]);
 });
 
 test('withWorkspaceText: 選択を書き換える。同じ参照なら何もしない', () => {
@@ -259,8 +262,8 @@ test('workspaceLayoutIds: 従う組の対象（単体・集合）と固定のペ
 test('余白のペイン: 対象を持たず、組を残す理由にならない。閉じても組と他のペインに影響しない', () => {
   const blank: WorkspacePane = { id: 'b', analyzerId: BLANK_PANE_ID, options: undefined, binding: NO_BINDING };
   assert.equal(resolveWorkspacePaneTarget(NO_BINDING, [], 'single'), undefined);
-  let library = addWorkspacePane(libraryWith('a'), 'w1', blank);
-  assert.deepEqual([...layoutPaneIds(findWorkspace(library, 'w1')!.layout!)].sort(), ['a', 'b']);
+  let library = addWorkspacePane(libraryWith('a'), 'w1', blank, SIZE);
+  assert.deepEqual([...gridPaneIds(findWorkspace(library, 'w1')!.grid)].sort(), ['a', 'b']);
   // 従うペインが固定になると組は先頭の1つへ畳まれるが、余白が組を保つことはない
   library = withWorkspacePaneBinding(library, 'w1', 'a', { mode: 'fixed', target: { kind: 'single', target: QWERTY } });
   assert.deepEqual(findWorkspace(library, 'w1')!.groups.map((g) => g.id), [G]);

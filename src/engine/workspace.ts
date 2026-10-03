@@ -12,20 +12,21 @@ import {
 } from './single-target-selection.ts';
 import { initialWorkspaceColorSlots, withWorkspaceColors, type WorkspaceColorSlots } from './workspace-colors.ts';
 import {
-  layoutWithPane,
-  layoutWithPaneNextTo,
-  layoutWithoutPane,
-  normalizeLayout,
-  sameLayoutExactly,
-  type WorkspaceLayout,
-} from './workspace-layout.ts';
+  gridWithPane,
+  gridWithPaneNextTo,
+  gridWithoutPane,
+  normalizeGrid,
+  sameGrid,
+  type GridSize,
+  type WorkspaceGrid,
+} from './workspace-grid.ts';
 
 /**
  * Workspace（Analyzerをペインとして並べる器。docs/architecture.md「画面の構成」）。
  * 名前・自分のテキストの選択・連動の組・ペイン・ペインの並びを持つ資産で、書き込みはすべてコマンドを通す
  * （`engine/workspace-commands.ts`）。
  *
- * 資産の形はペインを載せるライブラリの保存形式とは独立に持つ（`workspace-layout.ts`冒頭）。
+ * 資産の形はペインを載せるライブラリの保存形式とは独立に持つ（`workspace-grid.ts`冒頭）。
  *
  * ペインの対象は2種類（#544 §6）。連動の組（`Workspace.groups`）の対象を読む「従う」と、ペイン自身が
  * 持つ「固定」。全ペインがどちらかを明示して持つので、比較中のペインが黙って別の対象を映すことは無い。
@@ -156,19 +157,14 @@ export interface Workspace {
   /** 連動の組。「従う」ペインは、このうち1つの対象を読む。1つ以上を常に持つ。 */
   readonly groups: readonly LinkGroup[];
   readonly panes: readonly WorkspacePane[];
-  readonly layout: WorkspaceLayout;
+  /** ペインごとの位置と大きさ（格子の升目。`workspace-grid.ts`）。ペインの集まりと同じ集まりのidを持つ。 */
+  readonly grid: WorkspaceGrid;
   /**
    * 集合の対象に配った色の番号。全ペインの対象の和を1つの集合として配るので、同じ対象はどのペインでも
    * 同じ色になる（`workspace-colors.ts`。#630）。ペインを閉じる・対象を外すなどで和から消えた対象の番号は空く。
    * 書き込みの後に`updateWorkspace`が配り直すので、コマンドの側は意識しない。
    */
   readonly colorSlots: WorkspaceColorSlots;
-  /**
-   * 板（ペインを並べる面）の高さ [rem]。無ければ1画面。板は「画面の高さ」と「この値」の大きい方になる。
-   * 配置の形が変わって、どれかのペインが下限を割る時にだけ、`workspace-board.ts` が伸ばして書く（縮めるのは人の操作だけ）。
-   * 画素でなくremなのは、ペインの下限をremで持つので、文字の大きさを変えても下限との関係が崩れないため。
-   */
-  readonly boardHeightRem?: number;
   /**
    * このWorkspaceの条件（カスケードのWorkspaceのレベル。docs/architecture.md「カスケード」）。既定から変えた項目だけを持つ
    * （疎）。このWorkspaceのペインの解決にだけ入り、単体ページ・他のWorkspaceには入らない。
@@ -177,9 +173,6 @@ export interface Workspace {
    */
   readonly conditions?: LevelOverrides<SettingsValueMap>;
 }
-
-/** 板の高さの上限 [rem]。壊れた保存データで板が際限なく伸びないための安全弁（ペインを数十個積んでも届かない）。 */
-export const MAX_BOARD_HEIGHT_REM = 1000;
 
 /** Workspaceの手持ち（資産）。作った順。 */
 export type WorkspaceLibrary = readonly Workspace[];
@@ -221,7 +214,7 @@ export function createWorkspace(
     text: initialTextSelection(),
     groups: [{ id: INITIAL_LINK_GROUP_ID, target }],
     panes: [],
-    layout: undefined,
+    grid: [],
     colorSlots: initialWorkspaceColorSlots(),
   }, knownColors);
   return { library: [...library, created], created };
@@ -328,14 +321,14 @@ function pruneLinkGroups(workspace: Workspace): Workspace {
   return kept.length === workspace.groups.length ? workspace : { ...workspace, groups: kept };
 }
 
-/** ペインを右端に足す。同じidのペインが既にあれば何もしない。 */
-export function addWorkspacePane(library: WorkspaceLibrary, workspaceId: string, pane: WorkspacePane): WorkspaceLibrary {
+/** ペインを足す。`size`の大きさで、格子の空いている最初の場所に置く。同じidのペインが既にあれば何もしない。 */
+export function addWorkspacePane(library: WorkspaceLibrary, workspaceId: string, pane: WorkspacePane, size: GridSize): WorkspaceLibrary {
   return updateWorkspace(library, workspaceId, (workspace) => {
     if (workspace.panes.some((existing) => existing.id === pane.id)) return workspace;
     return {
       ...workspace,
       panes: [...workspace.panes, pane],
-      layout: layoutWithPane(workspace.layout, pane.id),
+      grid: gridWithPane(workspace.grid, pane.id, size),
     };
   });
 }
@@ -347,13 +340,13 @@ export function closeWorkspacePane(library: WorkspaceLibrary, workspaceId: strin
     return pruneLinkGroups({
       ...workspace,
       panes: workspace.panes.filter((pane) => pane.id !== paneId),
-      layout: layoutWithoutPane(workspace.layout, paneId),
+      grid: gridWithoutPane(workspace.grid, paneId),
     });
   });
 }
 
 /**
- * ペインを複製する。解析設定と対象の持ち方（従う / 固定）を写し、元のペインの右隣の新しい枠に置く。
+ * ペインを複製する。解析設定と対象の持ち方（従う / 固定）を写し、元のペインと同じ大きさの枠を、右隣（無ければ真下）に置く。
  * 元のペインが無い、または新しいidが既に使われていれば何もしない。
  */
 export function duplicateWorkspacePane(
@@ -368,7 +361,7 @@ export function duplicateWorkspacePane(
     return {
       ...workspace,
       panes: [...workspace.panes, { ...source, id: newPaneId }],
-      layout: layoutWithPaneNextTo(workspace.layout, paneId, newPaneId),
+      grid: gridWithPaneNextTo(workspace.grid, paneId, newPaneId),
     };
   });
 }
@@ -479,23 +472,14 @@ export function withWorkspaceConditionOverrides(
   });
 }
 
-/** 板の高さ（rem）を書く。`undefined`は消す（1画面に戻す）。 */
-export function withWorkspaceBoardHeight(library: WorkspaceLibrary, workspaceId: string, boardHeightRem: number | undefined): WorkspaceLibrary {
-  return updateWorkspace(library, workspaceId, (workspace) => {
-    if (workspace.boardHeightRem === boardHeightRem) return workspace;
-    const { boardHeightRem: _removed, ...rest } = workspace;
-    return boardHeightRem === undefined ? rest : { ...rest, boardHeightRem: Math.min(boardHeightRem, MAX_BOARD_HEIGHT_REM) };
-  });
-}
-
 /**
- * ペインの並びを書き換える。ペインの集まりと食い違う部分（載っていないペイン・未知のペイン）は
- * `normalizeLayout` が直すので、呼び出し側は載せる側から受け取った形をそのまま渡してよい。
- * 重みまで含めて同じなら何もしない。
+ * ペインの並び（ドラッグ・大きさの変更の結果）を書き換える。ペインの集まりと食い違う部分（枠の無いペイン・未知のペイン）は
+ * `normalizeGrid`が直し、重なりと上の空きも詰めるので、呼び出し側は載せる側から受け取った形をそのまま渡してよい。
+ * 位置と大きさが同じなら何もしない。
  */
-export function withWorkspaceLayout(library: WorkspaceLibrary, workspaceId: string, layout: WorkspaceLayout): WorkspaceLibrary {
+export function withWorkspaceGrid(library: WorkspaceLibrary, workspaceId: string, grid: WorkspaceGrid): WorkspaceLibrary {
   return updateWorkspace(library, workspaceId, (workspace) => {
-    const normalized = normalizeLayout(layout, workspace.panes.map((pane) => pane.id));
-    return sameLayoutExactly(normalized, workspace.layout) ? workspace : { ...workspace, layout: normalized };
+    const normalized = normalizeGrid(grid, workspace.panes.map((pane) => pane.id));
+    return sameGrid(normalized, workspace.grid) ? workspace : { ...workspace, grid: normalized };
   });
 }

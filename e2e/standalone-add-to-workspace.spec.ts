@@ -31,7 +31,7 @@ function seedWorkspace(page: Page, id = 'w1', name = '比較用'): Promise<void>
       name,
       text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
       panes: [{ id: 'existing', analyzerId: 'bigram-flow', binding: { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } } } }],
-      layout: { kind: 'group', paneIds: ['existing'], weight: 1 },
+      grid: [{ id: 'existing', x: 0, y: 0, w: 6, h: 15 }],
     },
   });
 }
@@ -43,7 +43,7 @@ function seedTwoWorkspaces(page: Page): Promise<void> {
     name,
     text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
     panes: [{ id: `${id}-pane`, analyzerId: 'bigram-flow', binding: { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } } } }],
-    layout: { kind: 'group', paneIds: [`${id}-pane`], weight: 1 },
+    grid: [{ id: `${id}-pane`, x: 0, y: 0, w: 6, h: 15 }],
   });
   return page.addInitScript(({ key, value }) => {
     if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 3, workspaces: value }));

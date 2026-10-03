@@ -35,7 +35,7 @@ function fixedSetPane(id: string, targets: readonly AnalysisTarget[]): Workspace
 
 function withPanes(...panes: WorkspacePane[]): WorkspaceLibrary {
   let library = createWorkspace(initialWorkspaceLibrary(), () => 'w1').library;
-  for (const pane of panes) library = addWorkspacePane(library, 'w1', pane);
+  for (const pane of panes) library = addWorkspacePane(library, 'w1', pane, { w: 6, h: 10 });
   return library;
 }
 
@@ -54,7 +54,7 @@ test('同じ対象は、別のペインに違う順で入れても同じ色に�
 test('従う組の集合と、固定のペインの集合も同じ1つの集合として配る', () => {
   let library = withPanes({ id: 'p1', analyzerId: 'comparison', options: undefined, binding: followBinding(INITIAL_LINK_GROUP_ID) });
   library = withWorkspaceTarget(library, 'w1', INITIAL_LINK_GROUP_ID, { kind: 'set', selection: { targets: [A, B], baseline: undefined } });
-  library = addWorkspacePane(library, 'w1', fixedSetPane('p2', [B, C]));
+  library = addWorkspacePane(library, 'w1', fixedSetPane('p2', [B, C]), { w: 6, h: 10 });
   assert.deepEqual([A, B, C].map((t) => slotOf(library, t)), [0, 1, 2]);
 });
 
@@ -90,7 +90,7 @@ test('ペインを閉じると、そのペインだけに居た対象の色は�
   assert.equal(slotOf(library, A), undefined);
   assert.deepEqual([B, C].map((t) => slotOf(library, t)), [1, 2]);
   // 空いた0番は、次に加えた対象が使う
-  library = addWorkspacePane(library, 'w1', fixedSetPane('p3', [D]));
+  library = addWorkspacePane(library, 'w1', fixedSetPane('p3', [D]), { w: 6, h: 10 });
   assert.equal(slotOf(library, D), 0);
 });
 

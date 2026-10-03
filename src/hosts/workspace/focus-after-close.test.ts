@@ -1,25 +1,24 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { pickGroupAfterClose, type TabSlot } from './focus-after-close.ts';
+import { pickAfterClose } from './focus-after-close.ts';
 
-const slot = (paneId: string, groupId: string): TabSlot => ({ paneId, groupId });
-const order = [slot('a', 'g1'), slot('b', 'g1'), slot('c', 'g2'), slot('d', 'g3')];
+const order = ['a', 'b', 'c', 'd'];
 
-test('pickGroupAfterClose: 同じ組に残るタブがあれば、その組', () => {
-  assert.equal(pickGroupAfterClose(order, 'a', ['b', 'c', 'd']), 'g1');
-  assert.equal(pickGroupAfterClose(order, 'b', ['a', 'c', 'd']), 'g1');
+test('pickAfterClose: 読み順で閉じたペインの次の、残るペイン', () => {
+  assert.equal(pickAfterClose(order, 'a', ['b', 'c', 'd']), 'b');
+  assert.equal(pickAfterClose(order, 'b', ['a', 'c', 'd']), 'c');
 });
 
-test('pickGroupAfterClose: 組ごと消えたら、読み順で次のタブの組。次が無ければ前', () => {
-  assert.equal(pickGroupAfterClose(order, 'c', ['a', 'b', 'd']), 'g3');
-  assert.equal(pickGroupAfterClose(order, 'd', ['a', 'b', 'c']), 'g2');
+test('pickAfterClose: 次が無ければ前の、残るペイン', () => {
+  assert.equal(pickAfterClose(order, 'd', ['a', 'b', 'c']), 'c');
 });
 
-test('pickGroupAfterClose: 同時に消えるペインは候補にしない', () => {
-  assert.equal(pickGroupAfterClose(order, 'c', ['a', 'b']), 'g1');
+test('pickAfterClose: 同時に消えるペインは候補にしない', () => {
+  assert.equal(pickAfterClose(order, 'b', ['a', 'd']), 'd');
+  assert.equal(pickAfterClose(order, 'c', ['a']), 'a');
 });
 
-test('pickGroupAfterClose: 残るタブが無い・並びに無いペインは undefined', () => {
-  assert.equal(pickGroupAfterClose([slot('a', 'g1')], 'a', []), undefined);
-  assert.equal(pickGroupAfterClose(order, 'x', ['a']), undefined);
+test('pickAfterClose: 残るペインが無い・並びに無いペインは undefined', () => {
+  assert.equal(pickAfterClose(['a'], 'a', []), undefined);
+  assert.equal(pickAfterClose(order, 'x', ['a']), undefined);
 });

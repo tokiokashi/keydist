@@ -1,31 +1,31 @@
 import type { ReactNode } from 'react';
-import { layoutPaneIds, type WorkspaceLayoutNode } from '#engine/workspace-layout.ts';
+import { PaneShell } from './WorkspaceGrid.tsx';
 import './workspace-stack.css';
 
 /**
- * スマホ幅でペインを縦に積む面。Dockviewは使わない（Dockviewの領域は親の高さで決まり、
- * ペインを積んでページをスクロールする形に向かない）。
+ * スマホ幅でペインを縦に積む面。格子は使わない（1列に並べるだけで、動かす・大きさを変える操作は無い）。
  *
- * 並びは資産の配置（`layout`）を左→右・上→下に読んだ順で、Dockviewの並びと同じ読み順になる。
- * タブでまとめたペインは、タブの順に全部を積む（スマホ幅ではタブを使わず、どのペインも見える）。
- * 配置は読むだけで書かない。境目をまたいでも、Dockviewの並び・大きさは資産に残ったまま戻る。
- *
- * ペインの本体は、ここでは高さが中身で決まる。`workspace-dock.css` の「ペインの残りの高さ」を持たせる
- * 規則は `.workspace-pane` の中にだけ効くので、ここの本体は個別画面と同じ幅だけのcontainerのままになる
- * （本体を高さも測るcontainerにすると、高さが中身で決まる面では0に潰れる）。
+ * 並びは資産の格子を読み順（上→下・左→右）に読んだ順。格子は読むだけで書かないので、幅を戻すと元の並びで描き直される。
+ * ペインの高さは、中身で決まる。
  */
 export function WorkspaceStack({
-  layout,
+  paneIds,
+  titleOf,
+  descriptionOf,
   renderPane,
 }: {
-  readonly layout: WorkspaceLayoutNode;
+  readonly paneIds: readonly string[];
+  readonly titleOf: (paneId: string) => string;
+  readonly descriptionOf: (paneId: string) => string;
   readonly renderPane: (paneId: string) => ReactNode;
 }) {
   return (
     <div className="workspace-stack" data-workspace-stack="true">
-      {layoutPaneIds(layout).map((paneId) => (
+      {paneIds.map((paneId) => (
         <section key={paneId} className="workspace-stack-pane" data-pane-id={paneId}>
-          {renderPane(paneId)}
+          <PaneShell paneId={paneId} title={titleOf(paneId)} description={descriptionOf(paneId)} draggable={false}>
+            {renderPane(paneId)}
+          </PaneShell>
         </section>
       ))}
     </div>

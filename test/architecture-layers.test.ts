@@ -112,8 +112,8 @@ const UNPLACED_BASELINE: readonly string[] = [];
 /** 使ってよい場所が決まっている外部ライブラリ。ここに無いライブラリは純粋な層以外で自由に使える。 */
 const RESTRICTED_PACKAGES: readonly { pattern: RegExp; name: string; allowed: ReadonlySet<Layer> }[] = [
   {
-    pattern: /^dockview(?:-react|-core)?(?:\/|$)/,
-    name: 'Dockview',
+    pattern: /^react-grid-layout(?:\/|$)/,
+    name: 'react-grid-layout',
     allowed: new Set<Layer>(['hosts', 'legacy', 'transitional']),
   },
   {
@@ -123,9 +123,9 @@ const RESTRICTED_PACKAGES: readonly { pattern: RegExp; name: string; allowed: Re
   },
 ];
 
-/** Dockview は hosts の中でも workspace だけ、Router は standalone だけに限る。 */
+/** react-grid-layout は hosts の中でも workspace だけ、Router は standalone だけに限る。 */
 const RESTRICTED_HOST_UNITS: Readonly<Record<string, string>> = {
-  Dockview: 'workspace',
+  'react-grid-layout': 'workspace',
   'TanStack Router / Start': 'standalone',
 };
 
@@ -134,7 +134,7 @@ const FRAMEWORK_MODULE_PATTERNS = [
   /^react-dom(?:\/|$)/,
   /^motion(?:\/|$)/,
   /^@tanstack\//,
-  /^dockview/,
+  /^react-grid-layout/,
 ] as const;
 
 /** コメントを除いた本文に当てる。 */
@@ -324,7 +324,7 @@ function packageViolation(importer: string, specifier: string): Violation | unde
   if (!from) return undefined;
   const key = `${importer} -> ${specifier}`;
   if (isPureFile(importer) && FRAMEWORK_MODULE_PATTERNS.some((pattern) => pattern.test(specifier))) {
-    return { key, message: `${key}: 純粋な層は React / Router / Dockview / 描画ライブラリを使わない` };
+    return { key, message: `${key}: 純粋な層は React / Router / react-grid-layout / 描画ライブラリを使わない` };
   }
   for (const restricted of RESTRICTED_PACKAGES) {
     if (!restricted.pattern.test(specifier)) continue;
@@ -478,47 +478,47 @@ test('AnalyzerのCSSの判定そのもの', () => {
 });
 
 /**
- * Dockviewを実行時に読んでよいファイル（hosts/workspaceの中でも1つだけ）。
- * 資産の型・変換（`layout-adapter.ts`）・ペインの中身は、Dockviewを読まないか、型だけを読む。
- * Dockviewの保存形式がペインや資産へ漏れると、資産のschemaがDockviewの形に縛られる
+ * react-grid-layoutを実行時に読んでよいファイル（hosts/workspaceの中でも1つだけ）。
+ * 資産の型・ペインの中身は、ライブラリを読まないか、型だけを読む。
+ * ライブラリの保存形式（`{i, x, y, w, h, minW...}`）がペインや資産へ漏れると、資産のschemaがライブラリの形に縛られる
  * （#544 レビューゲート5）。
  */
-const DOCKVIEW_RUNTIME_FILES: ReadonlySet<string> = new Set(['hosts/workspace/WorkspaceDock.tsx']);
+const GRID_LIBRARY_RUNTIME_FILES: ReadonlySet<string> = new Set(['hosts/workspace/WorkspaceGrid.tsx']);
 
-/** Dockviewを実行時に読むimport（`import type` と型だけの名前は除く）。 */
-export function dockviewRuntimeImports(source: string): readonly string[] {
+/** react-grid-layoutを実行時に読むimport（`import type` と型だけの名前は除く）。 */
+export function gridLibraryRuntimeImports(source: string): readonly string[] {
   const stripped = stripComments(source);
   const found: string[] = [];
-  for (const match of stripped.matchAll(/import\s+(type\s+)?([^'";]*?)\s*from\s*['"](dockview[^'"]*)['"]/g)) {
+  for (const match of stripped.matchAll(/import\s+(type\s+)?([^'";]*?)\s*from\s*['"](react-grid-layout[^'"]*)['"]/g)) {
     if (match[1] !== undefined) continue;
     const names = match[2]!.replace(/[{}]/g, ' ').split(',').map((name) => name.trim()).filter((name) => name !== '');
     // `{ type A, type B }` のように全部が型なら実行時には消える
     if (names.length > 0 && names.every((name) => name.startsWith('type '))) continue;
     found.push(match[3]!);
   }
-  for (const match of stripped.matchAll(/import\s*['"](dockview[^'"]*)['"]/g)) found.push(match[1]!);
+  for (const match of stripped.matchAll(/import\s*['"](react-grid-layout[^'"]*)['"]/g)) found.push(match[1]!);
   return found;
 }
 
-test('Dockviewを実行時に読むのは WorkspaceDock.tsx だけ（変換・資産・ペインは型だけ）', async () => {
+test('react-grid-layoutを実行時に読むのは WorkspaceGrid.tsx だけ（資産・ペインは型だけ）', async () => {
   const problems: string[] = [];
   for (const path of (await sourceFiles(SRC)).filter(isCode)) {
     const file = srcRelative(path);
-    if (!file.startsWith('hosts/') || DOCKVIEW_RUNTIME_FILES.has(file)) continue;
-    for (const specifier of dockviewRuntimeImports(await readFile(path, 'utf8'))) {
-      problems.push(`${file}: ${specifier}を実行時に読まない（読むのは WorkspaceDock.tsx だけ。型は import type で）`);
+    if (!file.startsWith('hosts/') || GRID_LIBRARY_RUNTIME_FILES.has(file)) continue;
+    for (const specifier of gridLibraryRuntimeImports(await readFile(path, 'utf8'))) {
+      problems.push(`${file}: ${specifier}を実行時に読まない（読むのは WorkspaceGrid.tsx だけ。型は import type で）`);
     }
   }
   assert.deepEqual(problems, []);
 });
 
-test('Dockviewの実行時importの判定そのもの', () => {
-  assert.deepEqual(dockviewRuntimeImports("import type { SerializedDockview } from 'dockview-react';"), []);
-  assert.deepEqual(dockviewRuntimeImports("import { type SerializedDockview } from 'dockview-react';"), []);
-  assert.deepEqual(dockviewRuntimeImports("import { DockviewReact } from 'dockview-react';"), ['dockview-react']);
-  assert.deepEqual(dockviewRuntimeImports("import { DockviewReact, type DockviewApi } from 'dockview-react';"), ['dockview-react']);
-  assert.deepEqual(dockviewRuntimeImports("import 'dockview-react/dist/styles/dockview.css';"), ['dockview-react/dist/styles/dockview.css']);
-  assert.deepEqual(dockviewRuntimeImports("// import { DockviewReact } from 'dockview-react';"), []);
+test('react-grid-layoutの実行時importの判定そのもの', () => {
+  assert.deepEqual(gridLibraryRuntimeImports("import type { Layout } from 'react-grid-layout';"), []);
+  assert.deepEqual(gridLibraryRuntimeImports("import { type Layout } from 'react-grid-layout';"), []);
+  assert.deepEqual(gridLibraryRuntimeImports("import ReactGridLayout from 'react-grid-layout';"), ['react-grid-layout']);
+  assert.deepEqual(gridLibraryRuntimeImports("import { useContainerWidth, type Layout } from 'react-grid-layout';"), ['react-grid-layout']);
+  assert.deepEqual(gridLibraryRuntimeImports("import 'react-grid-layout/css/styles.css';"), ['react-grid-layout/css/styles.css']);
+  assert.deepEqual(gridLibraryRuntimeImports("// import ReactGridLayout from 'react-grid-layout';"), []);
 });
 
 test('新しいファイルは新しい構造の中に置く（src直下などへ増やさない）', async () => {
@@ -575,9 +575,9 @@ test('依存規則の判定そのもの', () => {
   assert.ok(packageViolation('trace/generate.ts', 'react'));
   assert.ok(packageViolation('analyzers/bigram-flow/extract.ts', 'react'));
   assert.equal(packageViolation('analyzers/bigram-flow/bigram-flow-view.tsx', 'react'), undefined);
-  assert.ok(packageViolation('analyzers/bigram-flow/bigram-flow-view.tsx', 'dockview-react'));
-  assert.ok(packageViolation('hosts/standalone/page.tsx', 'dockview-react'));
-  assert.equal(packageViolation('hosts/workspace/renderer.tsx', 'dockview-react'), undefined);
+  assert.ok(packageViolation('analyzers/bigram-flow/bigram-flow-view.tsx', 'react-grid-layout'));
+  assert.ok(packageViolation('hosts/standalone/page.tsx', 'react-grid-layout'));
+  assert.equal(packageViolation('hosts/workspace/renderer.tsx', 'react-grid-layout'), undefined);
   assert.ok(packageViolation('hosts/workspace/renderer.tsx', '@tanstack/react-router'));
   assert.equal(packageViolation('hosts/standalone/page.tsx', '@tanstack/react-router'), undefined);
 });

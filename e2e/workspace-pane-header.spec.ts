@@ -2,10 +2,9 @@ import { expect, test, type Page } from '@playwright/test';
 import { waitForHydration } from './hydration-helper.ts';
 
 /**
- * Workspaceのペインの見出し（Dockviewのタブの帯）の余白。
- * 見出しの文字の左端が、帯の左端から本文の文字と同じ距離にあること（±1px）を確かめる。
- * 背景に文字が埋まって見えないように、明暗・幅・タブの数（1つだけ／複数）の全部で見る。
- * スマホ幅（760px以下）はDockviewを使わずペインを縦に積むので、ここでは見ない（狭い側は800pxで見る）。
+ * Workspaceのペインの見出しの余白。見出しの先頭（つかみ所の絵）の左端が、本文（図）の左端と揃うこと（±1px）を確かめる。
+ * 明暗・幅・文字サイズ（rem基準の余白が動く）の全部で見る。
+ * スマホ幅（760px以下）は格子を使わずペインを縦に積むので、ここでは見ない（狭い側は800pxで見る）。
  */
 
 const QWERTY = { kind: 'layout', layoutId: 'qwerty' };
@@ -19,42 +18,25 @@ async function openWorkspace(page: Page, theme: 'light' | 'dark'): Promise<void>
     theme,
     workspace: {
       id: 'header', name: '見出しの余白', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
-      panes: [pane('a'), pane('b'), pane('c')],
-      // 左はタブが1つだけ（帯いっぱいの表示）、右はタブが2つ
-      layout: {
-        kind: 'split', direction: 'row', weight: 1,
-        children: [
-          { kind: 'group', paneIds: ['a'], weight: 1 },
-          { kind: 'group', paneIds: ['b', 'c'], weight: 1 },
-        ],
-      },
+      panes: [pane('a'), pane('b')],
+      grid: [{ id: 'a', x: 0, y: 0, w: 6, h: 16 }, { id: 'b', x: 6, y: 0, w: 6, h: 16 }],
     },
   });
   await page.goto('/workspace/header');
   await waitForHydration(page);
   await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
-  await expect(page.locator('.dv-groupview')).toHaveCount(2);
-  await expect(page.locator('.workspace-pane').first()).toBeVisible();
+  await expect(page.locator('.workspace-pane')).toHaveCount(2);
+  await expect(page.locator('.workspace-pane .pane-body').first()).toBeVisible({ timeout: 15_000 });
 }
 
-/** グループごとに、帯の左端から見た距離を測る。 */
+/** ペインごとに、見出しの先頭の左端と、本文の左端を測る。 */
 async function measure(page: Page) {
-  return page.evaluate(() => [...document.querySelectorAll('.dv-groupview')].map((group) => {
-    const band = group.querySelector('.dv-tabs-and-actions-container')!.getBoundingClientRect();
-    const body = group.querySelector('.workspace-pane')!;
-    const bodyRect = body.getBoundingClientRect();
-    const bodyStyle = getComputedStyle(body);
-    const active = group.querySelector('.dv-tab.dv-active-tab') ?? group.querySelector('.dv-tab')!;
-    const text = active.querySelector('.dv-default-tab-content')!.getBoundingClientRect();
-    const icon = active.querySelector('.dv-default-tab-action svg')!.getBoundingClientRect();
-    return {
-      tabCount: group.querySelectorAll('.dv-tab').length,
-      // 本文の文字の左端・右端（本文の左右の余白の内側）を、帯の端から測る
-      bodyLeft: bodyRect.left + parseFloat(bodyStyle.paddingLeft) - band.left,
-      bodyRight: band.right - (bodyRect.right - parseFloat(bodyStyle.paddingRight)),
-      textLeft: text.left - band.left,
-      iconRight: band.right - icon.right,
-    };
+  return page.evaluate(() => [...document.querySelectorAll('.workspace-pane')].map((paneElement) => {
+    const grip = paneElement.querySelector('.workspace-grip-icon')!.getBoundingClientRect();
+    const body = paneElement.querySelector('.pane-body')!.getBoundingClientRect();
+    const frame = paneElement.querySelector('.pane-frame')!.getBoundingClientRect();
+    const target = paneElement.querySelector('.pane-frame-target')!.getBoundingClientRect();
+    return { gripLeft: grip.left, bodyLeft: body.left, frameLeft: frame.left, targetLeft: target.left, gripRight: grip.right };
   }));
 }
 
@@ -68,37 +50,27 @@ const CASES = [
   { name: 'ルートの文字サイズ24px', theme: 'light', width: 1440, rootFontSize: 24 },
 ] as const;
 
-async function expectAligned(page: Page, iconTolerance: number): Promise<void> {
-  const groups = await measure(page);
-  expect(groups.map((group) => group.tabCount)).toEqual([1, 2]);
-  for (const group of groups) {
-    expect(group.bodyLeft).toBeGreaterThan(8);
-    expect(Math.abs(group.textLeft - group.bodyLeft)).toBeLessThanOrEqual(1);
-  }
-  // タブが1つだけの見出しは、×の右端も本文の右の余白と揃う
-  expect(Math.abs(groups[0].iconRight - groups[0].bodyRight)).toBeLessThanOrEqual(iconTolerance);
-}
-
 for (const { name, theme, width, rootFontSize } of CASES) {
-  test(`ペインの見出し: 文字の左端が本文の余白と揃う（${name}）`, async ({ page }) => {
+  test(`ペインの見出し: つかみ所の左端が本文の左端と揃う（${name}）`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await openWorkspace(page, theme);
     if (rootFontSize) {
       await page.addStyleTag({ content: `html { font-size: ${rootFontSize}px; }` });
       await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).fontSize)).toBe(`${rootFontSize}px`);
     }
-    await expectAligned(page, 1);
+    for (const m of await measure(page)) {
+      expect(Math.abs(m.gripLeft - m.bodyLeft)).toBeLessThanOrEqual(1);
+      expect(m.gripLeft - m.frameLeft).toBeGreaterThanOrEqual(0);
+    }
   });
 }
 
 test.describe('指で押す端末', () => {
   test.use({ hasTouch: true, isMobile: true });
 
-  test('ペインの見出し: 文字と×の位置が本文の余白と揃う（pointer: coarse）', async ({ page }) => {
+  test('ペインの見出し: つかみ所の左端が本文の左端と揃う（pointer: coarse）', async ({ page }) => {
     await openWorkspace(page, 'light');
     expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches)).toBe(true);
-    // ×のボタンの内側の余白（8px）が、本文の余白から背景までの差（4px）より大きく、タブの右の余白は負になる。
-    // 0で止めたうえで、足りない分を×の負のmarginで出すので、×の右端は本文の右端に揃う
-    await expectAligned(page, 1);
+    for (const m of await measure(page)) expect(Math.abs(m.gripLeft - m.bodyLeft)).toBeLessThanOrEqual(1);
   });
 });

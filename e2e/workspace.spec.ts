@@ -32,7 +32,7 @@ function pane(page: Page, name: string): Locator {
 }
 
 /** 保存したWorkspaceの手持ち（decodeせず生のJSON）。 */
-async function storedWorkspaces(page: Page): Promise<{ workspaces: { id: string; name: string; panes: { id: string; analyzerId: string; options?: unknown }[]; layout?: unknown; text: { ref: { kind: string; id: string } } }[] }> {
+async function storedWorkspaces(page: Page): Promise<{ workspaces: { id: string; name: string; panes: { id: string; analyzerId: string; options?: unknown }[]; grid?: { id: string; x: number; y: number; w: number; h: number }[]; text: { ref: { kind: string; id: string } } }[] }> {
   return JSON.parse((await page.evaluate((key) => localStorage.getItem(key), WORKSPACES_KEY)) ?? '{"workspaces":[]}');
 }
 
@@ -135,19 +135,27 @@ test('ペインを追加して並べる。個別画面と同じcomponentが載�
   await expect(pane(page, 'Bigram Flow').locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   // ペインはh2（ページのh1は文脈バーのWorkspace名だけ）
   await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
-  // 3つが同じ高さで横に並ぶ
+  // 格子の空いている最初の場所へ並ぶ: Bigram Flowは左上、比較表はその右、N感度は比較表の下
   const boxes = await Promise.all(['Bigram Flow', '比較表', 'N感度'].map((name) => pane(page, name).boundingBox()));
   expect(boxes.every((box) => box !== null)).toBe(true);
   expect(boxes[0]!.x).toBeLessThan(boxes[1]!.x);
-  expect(boxes[1]!.x).toBeLessThan(boxes[2]!.x);
-  expect(Math.abs(boxes[0]!.y - boxes[2]!.y)).toBeLessThan(2);
+  expect(Math.abs(boxes[0]!.y - boxes[1]!.y)).toBeLessThan(2);
+  expect(Math.abs(boxes[1]!.x - boxes[2]!.x)).toBeLessThan(2);
+  expect(boxes[2]!.y).toBeGreaterThan(boxes[1]!.y + boxes[1]!.height - 2);
+  // どのペインも重ならない
+  await expect.poll(async () => {
+    const grid = (await storedWorkspaces(page)).workspaces[0]?.grid ?? [];
+    return grid.every((a, i) => grid.slice(i + 1).every((b) => !(a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h)));
+  }).toBe(true);
 
   await expect.poll(async () => (await storedWorkspaces(page)).workspaces[0]?.panes.map((p) => p.analyzerId))
     .toEqual(['bigram-flow', 'comparison', 'n-sensitivity']);
+  const gridBefore = JSON.stringify((await storedWorkspaces(page)).workspaces[0]!.grid);
 
   await page.reload();
   await waitForHydration(page);
   await expect(page.locator('.pane-frame h2.pane-frame-title')).toHaveText(['Bigram Flow', '比較表', 'N感度']);
+  expect(JSON.stringify((await storedWorkspaces(page)).workspaces[0]!.grid)).toBe(gridBefore);
   expect(new URL(page.url()).pathname.endsWith(id)).toBe(true);
 });
 
@@ -165,11 +173,16 @@ test('ペインの⋯: 複製・閉じる。解析設定と対象を写して右
   await settings.getByRole('button', { name: '解析設定を閉じる' }).click();
 
   await first.getByRole('button', { name: /の操作$/ }).click();
-  await expect(page.getByRole('menuitem')).toHaveText([/拡大表示/, /複製/, /解析設定を初期値に戻す/, /閉じる/]);
+  await expect(page.getByRole('menuitem')).toHaveText([/複製/, /解析設定を初期値に戻す/, /閉じる/]);
   await page.getByRole('menuitem', { name: /複製/ }).click();
 
-  await expect(page.locator('.pane-frame h2.pane-frame-title')).toHaveText(['Bigram Flow', 'Bigram Flow', 'N感度']);
-  const copy = page.locator('.pane-frame').nth(1);
+  // 画面の読み順（上→下・左→右）: 左上のBigram Flow、右上のN感度、その下（元と同じ大きさ）に複製
+  await expect(page.locator('.pane-frame h2.pane-frame-title')).toHaveText(['Bigram Flow', 'N感度', 'Bigram Flow']);
+  const copy = page.locator('.pane-frame').nth(2);
+  const [sourceBox, copyBox] = [(await page.locator('.pane-frame').nth(0).boundingBox())!, (await copy.boundingBox())!];
+  expect(Math.abs(copyBox.width - sourceBox.width)).toBeLessThan(2);
+  expect(Math.abs(copyBox.height - sourceBox.height)).toBeLessThan(2);
+  expect(copyBox.y).toBeGreaterThan(sourceBox.y + sourceBox.height - 2);
   await copy.getByRole('button', { name: '解析設定', exact: true }).click();
   await expect(page.locator('[data-settings-window="true"]').getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'true');
   await page.locator('[data-settings-window="true"]').getByRole('button', { name: '解析設定を閉じる' }).click();
@@ -182,24 +195,26 @@ test('ペインの⋯: 複製・閉じる。解析設定と対象を写して右
   // Undoで閉じたペインが元の位置に戻り、もう一度Undoで複製が消える。Redoで進む
   const bar = page.locator('.context-bar');
   await bar.getByRole('button', { name: '元に戻す' }).click();
-  await expect(page.locator('.pane-frame h2.pane-frame-title')).toHaveText(['Bigram Flow', 'Bigram Flow', 'N感度']);
+  await expect(page.locator('.pane-frame h2.pane-frame-title')).toHaveText(['Bigram Flow', 'N感度', 'Bigram Flow']);
   await bar.getByRole('button', { name: '元に戻す' }).click();
   await expect(page.locator('.pane-frame h2.pane-frame-title')).toHaveText(['Bigram Flow', 'N感度']);
   await bar.getByRole('button', { name: 'やり直す' }).click();
-  await expect(page.locator('.pane-frame h2.pane-frame-title')).toHaveText(['Bigram Flow', 'Bigram Flow', 'N感度']);
+  await expect(page.locator('.pane-frame h2.pane-frame-title')).toHaveText(['Bigram Flow', 'N感度', 'Bigram Flow']);
 });
 
-test('タブの×で閉じたペインも資産から消え、最後の1つを閉じると空の表示に戻る', async ({ page }) => {
+test('⋯で閉じたペインも資産から消え、最後の1つを閉じると空の表示に戻る', async ({ page }) => {
   await createWorkspace(page);
   await addAnalyzer(page, 'Bigram Flow');
   await addAnalyzer(page, '比較表');
-  await expect(page.locator('.dv-default-tab')).toHaveCount(2);
+  await expect(page.locator('.pane-frame')).toHaveCount(2);
 
-  await page.locator('.dv-default-tab').filter({ hasText: '比較表' }).getByRole('button', { name: '閉じる' }).click();
+  await pane(page, '比較表').getByRole('button', { name: /の操作$/ }).click();
+  await page.getByRole('menuitem', { name: /閉じる/ }).click();
   await expect(page.locator('.pane-frame h2.pane-frame-title')).toHaveText(['Bigram Flow']);
   await expect.poll(async () => (await storedWorkspaces(page)).workspaces[0]?.panes.length).toBe(1);
 
-  await page.locator('.dv-default-tab').getByRole('button', { name: '閉じる' }).click();
+  await pane(page, 'Bigram Flow').getByRole('button', { name: /の操作$/ }).click();
+  await page.getByRole('menuitem', { name: /閉じる/ }).click();
   await expect(page.locator('[data-workspace-empty]')).toBeVisible();
   await expect.poll(async () => (await storedWorkspaces(page)).workspaces[0]?.panes.length).toBe(0);
   // Undoで戻る
@@ -638,14 +653,11 @@ test('使えないAnalyzerのペインは使えないと出て、閉じられる
       { id: 'p-unknown', analyzerId: 'future-analyzer', options: { z: 1 }, binding: { mode: 'fixed', target: { kind: 'set', selection: { targets: [] } } } },
       { id: 'p-mismatch', analyzerId: 'comparison', binding: { mode: 'fixed', target: { kind: 'single', target: QWERTY } } },
     ],
-    layout: {
-      kind: 'split', direction: 'row', weight: 1,
-      children: [
-        { kind: 'group', paneIds: ['p-good'], weight: 1 },
-        { kind: 'group', paneIds: ['p-unknown'], weight: 1 },
-        { kind: 'group', paneIds: ['p-mismatch'], weight: 1 },
-      ],
-    },
+    grid: [
+      { id: 'p-good', x: 0, y: 0, w: 4, h: 14 },
+      { id: 'p-unknown', x: 4, y: 0, w: 4, h: 14 },
+      { id: 'p-mismatch', x: 8, y: 0, w: 4, h: 14 },
+    ],
   });
   await page.goto('/workspace/seeded');
   await waitForHydration(page);
@@ -673,7 +685,7 @@ test('壊れた保存データでも画面は開き、壊れた部分だけが�
         { id: 'w', name: '一部が壊れている', panes: [
           { id: 'ok', analyzerId: 'bigram-flow', binding: { mode: 'follow' } },
           { id: 'broken', analyzerId: 'bigram-flow', binding: { mode: 'fixed', target: { kind: 'nonsense' } } },
-        ], layout: { kind: 'split', direction: 'sideways', children: 3 } },
+        ], grid: 'broken' },
       ],
     }));
   }, { key: WORKSPACES_KEY });
@@ -683,42 +695,51 @@ test('壊れた保存データでも画面は開き、壊れた部分だけが�
   await expect(page.locator('.pane-frame h2.pane-frame-title')).toHaveText(['Bigram Flow']);
 });
 
-test('並びの変更（境界のドラッグ）は保存され、Undo / Redoで戻り、再読み込みしても残る', async ({ page }) => {
+/** 格子の保存値（ペインのidをanalyzerIdで引く）。 */
+async function storedGridOf(page: Page, analyzerId: string, nth = 0): Promise<{ x: number; y: number; w: number; h: number }> {
+  const { workspaces } = await storedWorkspaces(page);
+  const ids = workspaces[0]!.panes.filter((p) => p.analyzerId === analyzerId).map((p) => p.id);
+  return workspaces[0]!.grid!.find((item) => item.id === ids[nth])!;
+}
+
+/** ペインの見出しの先頭のつかみ所（絵と名前）の中央。 */
+async function grabPoint(page: Page, name: string): Promise<{ x: number; y: number }> {
+  // ライブラリの配置の動き（200ms）が済んでから、つかみを探す
+  await page.waitForTimeout(400);
+  const box = (await pane(page, name).locator('.workspace-drag-handle').boundingBox())!;
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}
+
+test('ペインの移動（つかみ所のドラッグ）は保存され、Undo / Redoで戻り、再読み込みしても残る', async ({ page }) => {
   await page.setViewportSize({ width: 1500, height: 900 });
   await createWorkspace(page);
   await addAnalyzer(page, 'N感度');
   await addAnalyzer(page, '比較表');
-  await expect(page.locator('.pane-frame').nth(1)).toBeVisible();
-  const ratio = async () => (await page.locator('.pane-frame').nth(0).boundingBox())!.width / (await page.locator('.pane-frame').nth(1).boundingBox())!.width;
-  const storedRatio = async () => {
-    const layout = (await storedWorkspaces(page)).workspaces[0]!.layout as { children?: { weight: number }[] };
-    const [a, b] = layout.children?.map((child) => child.weight) ?? [1, 1];
-    return a! / b!;
-  };
-  expect(await ratio()).toBeGreaterThan(0.9);
-  expect(await ratio()).toBeLessThan(1.1);
+  await expect(pane(page, '比較表')).toBeVisible();
+  const before = await storedGridOf(page, 'n-sensitivity');
+  expect(before.x).toBe(0);
 
-  const sash = page.locator('.dv-sash').first();
-  const box = (await sash.boundingBox())!;
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  // N感度のつかみ所を右の比較表の上まで運ぶ。N感度は右へ動き、ぶつかった比較表は下へ押される
+  const from = await grabPoint(page, 'N感度');
+  await page.mouse.move(from.x, from.y);
   await page.mouse.down();
-  await page.mouse.move(box.x + box.width / 2 - 250, box.y + box.height / 2, { steps: 8 });
+  await page.mouse.move(from.x + 500, from.y + 20, { steps: 10 });
   await page.mouse.up();
-  await expect.poll(ratio).toBeLessThan(0.7);
-  await expect.poll(storedRatio).toBeLessThan(0.7);
+  await expect.poll(async () => (await storedGridOf(page, 'n-sensitivity')).x).toBeGreaterThan(0);
+  const moved = await storedGridOf(page, 'n-sensitivity');
+  expect(moved.w).toBe(before.w);
+  expect(moved.h).toBe(before.h);
 
-  // Undoで並びが戻り、Redoで進む
   const bar = page.locator('.context-bar');
   await bar.getByRole('button', { name: '元に戻す' }).click();
-  await expect.poll(ratio).toBeGreaterThan(0.9);
-  await expect.poll(storedRatio).toBeGreaterThan(0.9);
+  await expect.poll(() => storedGridOf(page, 'n-sensitivity')).toEqual(before);
   await bar.getByRole('button', { name: 'やり直す' }).click();
-  await expect.poll(ratio).toBeLessThan(0.7);
-  await expect.poll(storedRatio).toBeLessThan(0.7);
+  await expect.poll(() => storedGridOf(page, 'n-sensitivity')).toEqual(moved);
 
   await page.reload();
   await waitForHydration(page);
-  await expect.poll(ratio).toBeLessThan(0.7);
+  await expect(pane(page, 'N感度')).toBeVisible();
+  expect(await storedGridOf(page, 'n-sensitivity')).toEqual(moved);
 });
 
 test('ペインを足しても、既にあるペインは作り直されない（開いている解析設定の小窓が残る）', async ({ page }) => {
@@ -729,112 +750,87 @@ test('ペインを足しても、既にあるペインは作り直されない�
   await first.getByRole('button', { name: '解析設定', exact: true }).click();
   await expect(page.locator('[data-settings-window="true"]')).toBeVisible();
 
-  await addAnalyzer(page, 'N感度');
+  // 開いたままの解析設定の小窓が追加のメニューに重なることがあるので、押さずにキーボードで選ぶ
+  await page.getByRole('button', { name: /ペインを追加/ }).click();
+  const item = page.getByRole('menuitem', { name: /N感度/ });
+  await item.focus();
+  await item.press('Enter');
   await expect(pane(page, 'N感度')).toBeVisible();
   await expect(page.locator('[data-settings-window="true"]')).toBeVisible();
   await expect(first.getByRole('button', { name: '解析設定', exact: true })).toHaveAttribute('aria-expanded', 'true');
 });
 
-test('境界のドラッグの途中で止まっても1回の操作として書き、Undo 1回で元へ戻る', async ({ page }) => {
+test('ドラッグの途中で止まっても1回の操作として書き、Undo 1回で元へ戻る', async ({ page }) => {
   await page.setViewportSize({ width: 1500, height: 900 });
   await createWorkspace(page);
   await addAnalyzer(page, 'N感度');
   await addAnalyzer(page, '比較表');
-  const ratio = async () => (await page.locator('.pane-frame').nth(0).boundingBox())!.width / (await page.locator('.pane-frame').nth(1).boundingBox())!.width;
-  await expect(page.locator('.pane-frame').nth(1)).toBeVisible();
-  expect(await ratio()).toBeGreaterThan(0.9);
+  await expect(pane(page, '比較表')).toBeVisible();
+  const before = await storedGridOf(page, 'n-sensitivity');
 
-  const box = (await page.locator('.dv-sash').first().boundingBox())!;
-  const y = box.y + box.height / 2;
-  await page.mouse.move(box.x + box.width / 2, y);
+  const from = await grabPoint(page, 'N感度');
+  await page.mouse.move(from.x, from.y);
   await page.mouse.down();
-  await page.mouse.move(box.x + box.width / 2 - 120, y, { steps: 4 });
-  // 押したまま間引きの待ち時間より長く止まる
+  await page.mouse.move(from.x + 200, from.y + 20, { steps: 4 });
+  // 押したまま止まっている間は、資産へ書かない
   await page.waitForTimeout(700);
-  await page.mouse.move(box.x + box.width / 2 - 260, y, { steps: 4 });
+  expect(await storedGridOf(page, 'n-sensitivity')).toEqual(before);
+  await page.mouse.move(from.x + 500, from.y + 20, { steps: 4 });
   await page.mouse.up();
-  await expect.poll(ratio).toBeLessThan(0.65);
-  await expect.poll(async () => {
-    const layout = (await storedWorkspaces(page)).workspaces[0]!.layout as { children: { weight: number }[] };
-    return layout.children[0]!.weight / layout.children[1]!.weight;
-  }).toBeLessThan(0.65);
+  await expect.poll(async () => (await storedGridOf(page, 'n-sensitivity')).x).toBeGreaterThan(0);
 
   await page.locator('.context-bar').getByRole('button', { name: '元に戻す' }).click();
-  await expect.poll(ratio).toBeGreaterThan(0.9);
+  await expect.poll(() => storedGridOf(page, 'n-sensitivity')).toEqual(before);
 });
 
-test('ドラッグの直後（書く前）にUndoしても、そのドラッグが先に書かれて戻る（直前のペインの追加は残る）', async ({ page }) => {
-  await page.setViewportSize({ width: 1500, height: 900 });
-  await createWorkspace(page);
-  await addAnalyzer(page, 'N感度');
-  await addAnalyzer(page, '比較表');
-  const ratio = async () => (await page.locator('.pane-frame').nth(0).boundingBox())!.width / (await page.locator('.pane-frame').nth(1).boundingBox())!.width;
-  await expect(page.locator('.pane-frame').nth(1)).toBeVisible();
-  expect(await ratio()).toBeGreaterThan(0.9);
-
-  const box = (await page.locator('.dv-sash').first().boundingBox())!;
-  const y = box.y + box.height / 2;
-  await page.mouse.move(box.x + box.width / 2, y);
-  await page.mouse.down();
-  await page.mouse.move(box.x + box.width / 2 - 250, y, { steps: 4 });
-  await page.mouse.up();
-  // 間引きの待ち（250ms）が終わる前に押す
-  await page.locator('.context-bar').getByRole('button', { name: '元に戻す' }).click();
-
-  await expect.poll(ratio).toBeGreaterThan(0.9);
-  await expect(page.locator('.pane-frame')).toHaveCount(2);
-  await page.waitForTimeout(600);
-  expect(await ratio()).toBeGreaterThan(0.9);
-  await expect(page.locator('.pane-frame')).toHaveCount(2);
-});
-
-test('窓の大きさを変えても、並びは書き換わらない（狭い窓でペインの最小幅に押された比を保存しない）', async ({ page }) => {
+test('窓の大きさを変えても、並びは書き換わらない（格子は升目で持ち、窓の幅に合わせて描き直すだけ）', async ({ page }) => {
   const set = (id: string) => ({ id, analyzerId: 'n-sensitivity', binding: { mode: 'follow' } });
   await seedWorkspace(page, {
     id: 'resize',
     name: '大きさの確認',
     panes: [set('a'), set('b'), set('c')],
-    // 両端が細い並び。窓を狭めると両端が最小幅で止まり、真ん中が縮んで比が変わる
-    layout: {
-      kind: 'split', direction: 'row', weight: 1,
-      children: [
-        { kind: 'group', paneIds: ['a'], weight: 1 },
-        { kind: 'group', paneIds: ['b'], weight: 8 },
-        { kind: 'group', paneIds: ['c'], weight: 1 },
-      ],
-    },
+    grid: [
+      { id: 'a', x: 0, y: 0, w: 3, h: 12 },
+      { id: 'b', x: 3, y: 0, w: 6, h: 12 },
+      { id: 'c', x: 9, y: 0, w: 3, h: 12 },
+    ],
   });
   await page.setViewportSize({ width: 1500, height: 900 });
   await page.goto('/workspace/resize');
   await waitForHydration(page);
   await expect(page.locator('.pane-frame')).toHaveCount(3);
-  const widths = () => page.$$eval('.pane-frame', (elements) => elements.map((element) => Math.round(element.getBoundingClientRect().width)));
-  const wide = await widths();
-  const layoutBefore = JSON.stringify((await storedWorkspaces(page)).workspaces[0]!.layout);
+  const widths = () => page.$$eval('.workspace-grid-item', (elements) => elements.map((element) => Math.round(element.getBoundingClientRect().width)));
+  // ライブラリの配置の動き（200ms）が済み、幅が落ち着いてから基準を測る
+  let wide = await widths();
+  for (let stable = 0; stable < 4;) {
+    await page.waitForTimeout(100);
+    const now = await widths();
+    stable = JSON.stringify(now) === JSON.stringify(wide) ? stable + 1 : 0;
+    wide = now;
+  }
+  const gridBefore = JSON.stringify((await storedWorkspaces(page)).workspaces[0]!.grid);
 
-  await page.setViewportSize({ width: 900, height: 900 });
-  // 狭い窓では両端が最小幅で止まり、比が変わる（変わらなければこの確認は意味を持たない）
-  await expect.poll(async () => {
-    const [first, middle] = await widths();
-    return first! / (first! + middle!);
-  }).toBeGreaterThan(0.12);
+  await page.setViewportSize({ width: 1000, height: 900 });
+  // 幅が狭まれば、升目の幅も狭まる（同じ比で並ぶ）
+  await expect.poll(async () => (await widths())[1]!).toBeLessThan(wide[1]! - 100);
   await page.waitForTimeout(900);
-  expect(JSON.stringify((await storedWorkspaces(page)).workspaces[0]!.layout)).toBe(layoutBefore);
+  expect(JSON.stringify((await storedWorkspaces(page)).workspaces[0]!.grid)).toBe(gridBefore);
 
-  // 広い窓へ戻れば、保存した比のまま並ぶ
   await page.setViewportSize({ width: 1500, height: 900 });
   await expect.poll(async () => (await widths()).every((width, index) => Math.abs(width - wide[index]!) < 6)).toBe(true);
-  expect(JSON.stringify((await storedWorkspaces(page)).workspaces[0]!.layout)).toBe(layoutBefore);
+  expect(JSON.stringify((await storedWorkspaces(page)).workspaces[0]!.grid)).toBe(gridBefore);
 });
 
-test('タブの表現は見比べられる: 既定はタブを出し、?tabs=hideでタブの帯を出さない', async ({ page }) => {
-  const id = await createWorkspace(page);
+test('ペインに題の帯（タブ）は無く、見出しの先頭に、つかみ所・名前・ⓘがある', async ({ page }) => {
+  await createWorkspace(page);
   await addAnalyzer(page, 'Bigram Flow');
-  await expect(page.locator('.dv-tabs-and-actions-container').first()).toBeVisible();
-  await page.goto(`/workspace/${id}?tabs=hide`);
-  await waitForHydration(page);
-  await expect(pane(page, 'Bigram Flow')).toBeVisible();
-  await expect(page.locator('.dv-tabs-and-actions-container').first()).toBeHidden();
+  const target = pane(page, 'Bigram Flow');
+  await expect(target).toBeVisible();
+  const grab = target.locator('.workspace-drag-handle');
+  await expect(grab).toContainText('Bigram Flow');
+  await expect(target.locator('.pane-frame-lead').getByRole('button', { name: /Bigram Flow/ })).toBeVisible();
+  // 名前の行は、ペインの中に重ねて置かない（h2は読み上げ用に視覚的に隠してある）
+  await expect(target.locator('h2.pane-frame-title')).toHaveClass(/pane-visually-hidden/);
 });
 
 test('Workspaceの画面の文言に開発の内部が出ない', async ({ page }) => {

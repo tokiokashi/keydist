@@ -11,14 +11,16 @@ import {
   INITIAL_LINK_GROUP_ID as G,
   withPaneInNewLinkGroup,
   initialWorkspaceLibrary,
-  withWorkspaceLayout,
+  withWorkspaceGrid,
   withWorkspacePaneOptions,
   withWorkspaceTarget,
   withWorkspaceText,
   type WorkspaceLibrary,
   type WorkspacePane,
 } from './workspace.ts';
-import { layoutPaneIds } from './workspace-layout.ts';
+import { gridPaneIds, type GridSize } from './workspace-grid.ts';
+
+const SIZE: GridSize = { w: 6, h: 10 };
 
 const singlePane = (id: string): WorkspacePane => ({
   id,
@@ -44,9 +46,9 @@ const setPane = (id: string): WorkspacePane => ({
 
 function sample(): WorkspaceLibrary {
   let library = createWorkspace(initialWorkspaceLibrary(), () => 'w1', '比べる').library;
-  library = addWorkspacePane(library, 'w1', singlePane('p1'));
-  library = addWorkspacePane(library, 'w1', setPane('p2'));
-  library = addWorkspacePane(library, 'w1', singlePane('p3'));
+  library = addWorkspacePane(library, 'w1', singlePane('p1'), SIZE);
+  library = addWorkspacePane(library, 'w1', setPane('p2'), SIZE);
+  library = addWorkspacePane(library, 'w1', singlePane('p3'), SIZE);
   library = withWorkspacePaneOptions(library, 'w1', 'p1', { showLabels: true });
   library = withWorkspaceText(library, 'w1', { ref: { kind: 'user', id: 'text-1' } });
   library = withWorkspaceTarget(library, 'w1', G, { kind: 'single', target: { kind: 'layout', layoutId: 'colemak-dh' } });
@@ -55,7 +57,7 @@ function sample(): WorkspaceLibrary {
     selection: { targets: [{ kind: 'layout', layoutId: 'qwerty' }], baseline: undefined },
   });
   library = withPaneInNewLinkGroup(library, 'w1', 'p1', 'link-2', { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } });
-  library = addWorkspacePane(library, 'w1', { id: 'p4', analyzerId: BLANK_PANE_ID, options: undefined, binding: NO_BINDING });
+  library = addWorkspacePane(library, 'w1', { id: 'p4', analyzerId: BLANK_PANE_ID, options: undefined, binding: NO_BINDING }, SIZE);
   library = createWorkspace(library, () => 'w2').library;
   return library;
 }
@@ -69,9 +71,10 @@ test('往復: encodeしてJSONを通し、decodeすると同じ値に戻る', ()
   assert.deepEqual(decoded.value, library);
 });
 
-test('保存形式は自前の木で、載せるライブラリの形（grid・panels）を含まない', () => {
+test('保存形式は自前の格子で、載せるライブラリの形（`i`・panels）を含まない', () => {
   const encoded = JSON.stringify(WORKSPACE_LIBRARY_CODEC.encode(sample()));
-  assert.equal(encoded.includes('"grid"'), false);
+  assert.equal(encoded.includes('"i"'), false);
+  assert.equal(encoded.includes('"minW"'), false);
   assert.equal(encoded.includes('"panels"'), false);
   assert.equal(encoded.includes('"views"'), false);
   assert.equal(WORKSPACE_LIBRARY_CODEC.encode(sample()).version, 3);
@@ -222,24 +225,32 @@ test('配置がペインと食い違っていてもペインを失わず、並�
         analyzerId: p.analyzerId,
         binding: { mode: 'follow' },
       })),
-      layout: {
-        kind: 'split',
-        direction: 'row',
-        children: [
-          { kind: 'group', paneIds: ['a', 'ghost'] },
-          { kind: 'split', direction: 'sideways', children: [] },
-          { kind: 'group', paneIds: ['c'], weight: -1 },
-        ],
-      },
+      grid: [
+        // 列からはみ出す・負の位置・重なり・知らないペイン・数でない値は、範囲に収めるか捨てる
+        { id: 'a', x: 10, y: 0, w: 6, h: 8 },
+        { id: 'a', x: 0, y: 0, w: 6, h: 8 },
+        { id: 'ghost', x: 0, y: 0, w: 2, h: 2 },
+        { id: 'c', x: -3, y: 0, w: 'wide', h: 8 },
+        'broken',
+      ],
     }],
   });
   assert.ok(result.ok);
   const workspace = findWorkspace(result.value, 'w')!;
-  assert.deepEqual([...layoutPaneIds(workspace.layout)].sort(), ['a', 'b', 'c']);
-  assert.ok(result.diagnostics.some((d) => d.path.includes('layout')));
+  assert.deepEqual([...gridPaneIds(workspace.grid)].sort(), ['a', 'b', 'c']);
+  for (const item of workspace.grid) {
+    assert.ok(item.x >= 0 && item.x + item.w <= 12 && item.y >= 0 && item.w >= 1 && item.h >= 1, JSON.stringify(item));
+  }
+  for (const [i, a] of workspace.grid.entries()) {
+    for (const b of workspace.grid.slice(i + 1)) {
+      const overlap = a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+      assert.equal(overlap, false, `${a.id}と${b.id}が重なっている`);
+    }
+  }
+  assert.ok(result.diagnostics.some((d) => d.path.includes('grid')));
 });
 
-test('配置が無くてもペインは横に並ぶ。ペインが無ければ配置も無い', () => {
+test('配置が無くてもペインは並ぶ。ペインが無ければ配置も無い', () => {
   const result = WORKSPACE_LIBRARY_CODEC.decode({
     version: 3,
     workspaces: [
@@ -248,8 +259,8 @@ test('配置が無くてもペインは横に並ぶ。ペインが無ければ�
     ],
   });
   assert.ok(result.ok);
-  assert.deepEqual(layoutPaneIds(findWorkspace(result.value, 'w')!.layout), ['a', 'b']);
-  assert.equal(findWorkspace(result.value, 'empty')!.layout, undefined);
+  assert.deepEqual(gridPaneIds(findWorkspace(result.value, 'w')!.grid), ['a', 'b']);
+  assert.deepEqual(findWorkspace(result.value, 'empty')!.grid, []);
 });
 
 test('知らないAnalyzerのペインは捨てずに残す', () => {
@@ -263,48 +274,34 @@ test('知らないAnalyzerのペインは捨てずに残す', () => {
   assert.deepEqual(pane.options, { z: 1 });
 });
 
-test('配置の入れ子が深すぎる値は、その部分を捨てても落ちない', () => {
-  let node: Record<string, unknown> = { kind: 'group', paneIds: ['a'] };
-  for (let i = 0; i < 200; i += 1) node = { kind: 'split', direction: i % 2 === 0 ? 'row' : 'column', children: [node, { kind: 'group', paneIds: [] }] };
-  const result = WORKSPACE_LIBRARY_CODEC.decode({
-    version: 3,
-    workspaces: [{ id: 'w', name: 'n', panes: [{ id: 'a', analyzerId: 'x', binding: { mode: 'follow' } }], layout: node }],
-  });
-  assert.ok(result.ok);
-  assert.deepEqual(layoutPaneIds(result.value[0]!.layout), ['a']);
-  assert.ok(result.diagnostics.some((d) => d.message.includes('深すぎる')));
-});
-
 test('配置を書き換えた値も往復する', () => {
   let library = sample();
-  library = withWorkspaceLayout(library, 'w1', {
-    kind: 'split',
-    direction: 'column',
-    weight: 1,
-    children: [{ kind: 'group', paneIds: ['p1'], weight: 2 }, { kind: 'group', paneIds: ['p2'], weight: 1 }],
-  });
+  library = withWorkspaceGrid(library, 'w1', [
+    { id: 'p1', x: 0, y: 0, w: 8, h: 6 },
+    { id: 'p2', x: 8, y: 0, w: 4, h: 12 },
+  ]);
   const decoded = WORKSPACE_LIBRARY_CODEC.decode(JSON.parse(JSON.stringify(WORKSPACE_LIBRARY_CODEC.encode(library))));
   assert.ok(decoded.ok);
   assert.deepEqual(decoded.value, library);
 });
 
-test('splitのchildrenが配列でなければ診断を1件積み、ペインは失わない。undefinedは診断なし', () => {
-  const decode = (children: unknown) => WORKSPACE_LIBRARY_CODEC.decode({
+test('gridが配列でなければ診断を1件積み、ペインは失わない。undefinedは診断なし', () => {
+  const decode = (grid: unknown) => WORKSPACE_LIBRARY_CODEC.decode({
     version: 3,
     workspaces: [{
       id: 'w',
       name: 'n',
       panes: ['a', 'b'].map((id) => ({ id, analyzerId: 'x', binding: { mode: 'follow' } })),
-      layout: { kind: 'split', direction: 'row', children },
+      grid,
     }],
   });
   for (const broken of ['abc', { 0: 1 }, 3, null]) {
     const result = decode(broken);
     assert.ok(result.ok);
-    assert.deepEqual(result.diagnostics.map((d) => d.path).filter((path) => path.includes('layout')), ['payload.workspaces[0].layout.children'], `値: ${JSON.stringify(broken)}`);
-    assert.deepEqual([...layoutPaneIds(result.value[0]!.layout)].sort(), ['a', 'b'], '空のsplitはnormalizeLayoutが直し、ペインは残る');
+    assert.deepEqual(result.diagnostics.map((d) => d.path).filter((path) => path.includes('grid')), ['payload.workspaces[0].grid'], `値: ${JSON.stringify(broken)}`);
+    assert.deepEqual([...gridPaneIds(result.value[0]!.grid)].sort(), ['a', 'b'], '枠が無いペインは空いている場所へ置く');
   }
   const absent = decode(undefined);
   assert.ok(absent.ok);
-  assert.deepEqual(absent.diagnostics.filter((d) => d.path.includes('layout')), []);
+  assert.deepEqual(absent.diagnostics.filter((d) => d.path.includes('grid')), []);
 });

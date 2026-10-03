@@ -7,7 +7,7 @@ import './info-button.css';
  * hoverとフォーカスで出し、タップ（クリック）で出したままにする。
  * タップで開けるのは、タッチの端末にhoverが無いため。
  *
- * `floating`は、帯などはみ出しを切る入れ物（Workspaceのタブの帯）の中に置く時に使う。説明を`body`直下へ出し、
+ * `floating`は、帯などはみ出しを切る入れ物（Workspaceのペインの本体の領域）の中に置く時に使う。説明を`body`直下へ出し、
  * ⓘの真下に画面基準で置くので、入れ物に隠れない。
  */
 export function InfoButton({

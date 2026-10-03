@@ -7,7 +7,7 @@ import { waitForHydration } from './hydration-helper.ts';
  *
  * 依頼はWorkerへ送るメッセージの数で、「計算中」は`data-pane-status="stale"`になった回数で数える。
  * 配列を1つ選び直すと、連動していない固定のペインまで全ペインが依頼を出し直して「計算中」になっていた。
- * タブを切り替える時も、アクティブなタブの保存のたびに同じことが起きていた。
+ * ペインを動かす・大きさを変える時も、並びの保存で他のペインが依頼を出し直さないこと。
  */
 
 const WORKSPACES_KEY = 'keydist:workspaces';
@@ -90,10 +90,7 @@ test('配列を選び直すと、変わったペインだけが依頼を出し�
     groups: [groupOf('g1', 'qwerty'), groupOf('g2', 'dvorak')],
     // 連動2（別々の組）と固定1
     panes: [follow('a', 'g1'), follow('b', 'g2'), fixed('c', 'colemak')],
-    layout: {
-      kind: 'split', direction: 'row', weight: 1,
-      children: ['a', 'b', 'c'].map((paneId) => ({ kind: 'group', paneIds: [paneId], weight: 1 })),
-    },
+    grid: ['a', 'b', 'c'].map((id, i) => ({ id, x: i * 4, y: 0, w: 4, h: 16 })),
   });
   const panes = page.locator('.pane-frame');
   await expect(panes).toHaveCount(3);
@@ -117,68 +114,98 @@ test('配列を選び直すと、変わったペインだけが依頼を出し�
   expect(back.stale).toEqual([]);
 });
 
-test('同じ枠のタブを切り替えても、依頼は出ず、計算中にもならない', async ({ page }) => {
+test('ペインを動かす・大きさを変えても、依頼は出ず、計算中にもならない', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await openSeeded(page, {
     ...WORKSPACE_BASE,
     groups: [groupOf('g1', 'qwerty')],
     panes: [follow('a', 'g1'), follow('b', 'g1'), fixed('c', 'colemak')],
-    layout: { kind: 'group', paneIds: ['a', 'b', 'c'], weight: 1 },
+    grid: [
+      { id: 'a', x: 0, y: 0, w: 6, h: 16 },
+      { id: 'b', x: 6, y: 0, w: 6, h: 16 },
+      { id: 'c', x: 0, y: 16, w: 6, h: 16 },
+    ],
   });
-  const tabs = page.locator('.dv-default-tab');
-  await expect(tabs).toHaveCount(3);
-  await expect(page.locator('.pane-frame[data-pane-status="ready"]')).toHaveCount(1, { timeout: 15_000 });
+  await expect(page.locator('.pane-frame[data-pane-status="ready"]')).toHaveCount(3, { timeout: 15_000 });
   await waitForInitialCompute(page);
 
-  for (const index of [1, 2, 0]) {
-    await resetLog(page);
-    await tabs.nth(index).click();
-    await expect(page.locator('.pane-frame[data-pane-status="ready"]')).toHaveCount(1);
-    const log = await readLog(page);
-    expect(log, `タブ${index + 1}へ切り替え`).toEqual({ requests: 0, stale: [] });
-  }
+  // 移動: cのつかみ所を右の列の下へ運ぶ
+  await resetLog(page);
+  await page.waitForTimeout(400);
+  const grab = (await page.locator('.workspace-grid-item[data-pane-id="c"] .workspace-drag-handle').boundingBox())!;
+  await page.mouse.move(grab.x + grab.width / 2, grab.y + grab.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(grab.x + 600, grab.y + grab.height / 2 + 20, { steps: 10 });
+  await page.mouse.up();
+  await expect.poll(async () => (await storedGridItem(page, 'c')).x).toBeGreaterThan(0);
+
+  // 大きさの変更: aの右下の角をつかんで縮める
+  await page.waitForTimeout(600);
+  const corner = (await page.locator('.workspace-grid-item[data-pane-id="a"] .react-resizable-handle-se').boundingBox())!;
+  await page.mouse.move(corner.x + corner.width / 2, corner.y + corner.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(corner.x - 150, corner.y - 60, { steps: 8 });
+  await page.mouse.up();
+  await expect.poll(async () => (await storedGridItem(page, 'a')).w).toBeLessThan(6);
+
+  await expect(page.locator('.pane-frame[data-pane-status="ready"]')).toHaveCount(3);
+  const log = await readLog(page);
+  expect(log, '移動と大きさの変更').toEqual({ requests: 0, stale: [] });
 
   // 数え方が効いていることの確認: 依頼が増える操作（まだ計算していない配列への選び直し）では数字が動く。
   // 数え方が壊れていれば上の「0のまま」は空振りで通ってしまう
   await resetLog(page);
   await selectTarget(page, 0, 'workman');
   const changed = await readLog(page);
-  // aとbは同じ組に連動しているので、見えていないbのぶんも依頼が出る（2ペイン × Traceと抽出）
+  // aとbは同じ組に連動しているので、bのぶんも依頼が出る（2ペイン × Traceと抽出）
   expect(changed.requests).toBe(4);
-  expect(changed.stale).toEqual([0]);
+  // 変わったのはaの組（aとb）。cは固定なので計算中にならない。数える位置は画面の読み順
+  expect(changed.stale).toEqual([0, 1]);
 });
+
+/** 保存した格子のうち、指定のペインの枠。 */
+async function storedGridItem(page: Page, id: string): Promise<{ x: number; y: number; w: number; h: number }> {
+  const raw = await page.evaluate((key) => localStorage.getItem(key), WORKSPACES_KEY);
+  return (JSON.parse(raw!).workspaces[0].grid as { id: string; x: number; y: number; w: number; h: number }[]).find((item) => item.id === id)!;
+}
 
 const SENTENCE = 'The quick brown fox jumps over the lazy dog while the five boxing wizards jump quickly. ';
 
-test('計算中に別のタブを開いて戻っても、計算中だったペインの依頼は打ち切られず出し直されない', async ({ page }) => {
-  // 長いテキスト（英文1万字）で、計算が数秒かかるようにする。計算中の依頼が、タブの切り替えに
-  // 伴う保存で打ち切られて出し直されると、依頼の数が倍になる
+test('計算中に別のペインの大きさを変える（資産の保存）と、計算中だったペインの依頼は打ち切られず出し直されない', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  // 長いテキスト（英文1万字）で、計算が数秒かかるようにする。計算中の依頼が、並びの保存に
+  // 伴って打ち切られて出し直されると、依頼の数が倍になる
   await openSeeded(page, {
     ...WORKSPACE_BASE,
     groups: [groupOf('g1', 'qwerty')],
     panes: [follow('a', 'g1'), fixed('b', 'dvorak')],
-    layout: { kind: 'group', paneIds: ['a', 'b'], weight: 1 },
+    grid: [{ id: 'a', x: 0, y: 0, w: 6, h: 16 }, { id: 'b', x: 6, y: 0, w: 6, h: 16 }],
   });
-  const tabs = page.locator('.dv-default-tab');
-  await expect(tabs).toHaveCount(2);
-  await expect(page.locator('.pane-frame[data-pane-status="ready"]')).toHaveCount(1, { timeout: 15_000 });
+  await expect(page.locator('.pane-frame[data-pane-status="ready"]')).toHaveCount(2, { timeout: 15_000 });
 
   const body = (await openTextChip(page)).getByLabel('テキスト', { exact: true });
   await body.fill(SENTENCE.repeat(120));
   await page.keyboard.press('Escape');
-  // テキストの変更で始まる計算（見えていないタブのぶんも含む）が済むまで待つ
-  await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'stale', { timeout: 10_000 });
-  await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 30_000 });
+  await expect(page.locator('.pane-frame').first()).toHaveAttribute('data-pane-status', 'stale', { timeout: 10_000 });
+  await expect(page.locator('.pane-frame[data-pane-status="ready"]')).toHaveCount(2, { timeout: 30_000 });
   await waitForInitialCompute(page);
 
-  // aを、まだ計算していない配列に選び直す。計算中（stale）のうちに、bのタブを開いてaへ戻る
+  // aを、まだ計算していない配列に選び直す。計算中（stale）のうちに、bの下の辺で大きさを変える
   await resetLog(page);
-  const pane = page.locator('.pane-frame');
+  const pane = page.locator('.pane-frame').first();
   await pane.getByRole('button', { name: /^対象: / }).click();
   await page.getByRole('dialog', { name: '対象の選択' }).locator('input[value="layout:workman"]').click();
   await page.keyboard.press('Escape');
   await expect(pane).toHaveAttribute('data-pane-status', 'stale');
-  await tabs.nth(1).click();
-  await tabs.nth(0).click();
+  const before = await storedGridItem(page, 'b');
+  const edge = (await page.locator('.workspace-grid-item[data-pane-id="b"] .react-resizable-handle-s').boundingBox())!;
+  await page.mouse.move(edge.x + edge.width / 2, edge.y + edge.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(edge.x + edge.width / 2, edge.y + edge.height / 2 + 100, { steps: 8 });
+  await page.mouse.up();
+  await expect.poll(async () => (await storedGridItem(page, 'b')).h).toBeGreaterThan(before.h);
+  // 保存が起きた時点でaは計算中のまま（保存が計算の終わりの後ろに回っていない）
+  await expect(pane).toHaveAttribute('data-pane-status', 'stale');
   await expect(pane).toHaveAttribute('data-pane-status', 'ready', { timeout: 30_000 });
 
   const log = await readLog(page);

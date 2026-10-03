@@ -7,7 +7,7 @@ import {
 } from '#engine/workspace-commands.ts';
 import { findWorkspace } from '#engine/workspace.ts';
 import type { AddToWorkspaceDestination } from '#hosts/shared/AddToWorkspaceMenu.tsx';
-import { workspaceBoardPolicy } from '#hosts/workspace/board-policy.ts';
+import { defaultGridSize } from '#hosts/workspace/grid-metrics.ts';
 import { setAddedToWorkspace } from '../workspace/added-to-workspace-notice.ts';
 import { generatePaneId, generateWorkspaceId } from '../workspace/id-generator.ts';
 
@@ -16,7 +16,7 @@ import { generatePaneId, generateWorkspaceId } from '../workspace/id-generator.t
  *
  * 書き込みはコマンド1回（新しいWorkspaceは作成と追加が1回）で、個別画面のUndoで戻る。追加先へは移らず、
  * 追加した事実と追加先へのリンクを知らせる（個別画面で見ていたものを手放さないため）。
- * 板の高さは、Workspaceの「ペインを追加」と同じ方針（タブを出す表示）で合わせる。
+ * ペインの大きさは、Workspaceの「ペインを追加」と同じ既定の大きさにする。
  */
 export function useAddToWorkspace(
   analyzerId: string,
@@ -31,11 +31,11 @@ export function useAddToWorkspace(
   return useCallback((destination: AddToWorkspaceDestination, options: unknown) => {
     flushPending();
     const source = { paneId: generatePaneId(), analyzerId, options };
-    const board = workspaceBoardPolicy(false);
+    const size = defaultGridSize(analyzerId);
     if (destination.kind === 'existing') {
-      dispatch(addStandalonePaneToWorkspaceCommand(destination.workspaceId, source, board));
+      dispatch(addStandalonePaneToWorkspaceCommand(destination.workspaceId, source, size));
     } else {
-      dispatch(addStandalonePaneToNewWorkspaceCommand(generateWorkspaceId(), source, board));
+      dispatch(addStandalonePaneToNewWorkspaceCommand(generateWorkspaceId(), source, size));
     }
     // 追加できたかは、書き込み後の手持ちにそのペインがあるかで確かめる（無いWorkspaceへの追加は何もしない）
     const workspaces = getAssets().workspaces;

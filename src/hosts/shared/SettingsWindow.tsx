@@ -9,8 +9,8 @@ import { MOBILE_QUERY } from '#ui/theme/breakpoints.ts';
  * - 見出しをドラッグして動かせる（図を見ながら値を変えられるように）
  * - Workspaceでは、どのペインの設定か分かるよう`paneName`を見出しに出す
  *
- * 個別画面とWorkspaceの両方で使うので`hosts/shared`に置き、Dockviewのフローティング
- * グループでは作らない（Dockviewは`hosts/workspace`だけが使う。依存の規則）。
+ * 個別画面とWorkspaceの両方で使うので`hosts/shared`に置き、ペインを並べる面のライブラリの
+ * 部品では作らない（ライブラリは`hosts/workspace`だけが使う。依存の規則）。
  *
  * スマホ幅（`SHEET_QUERY`）では、画面の下から出るシートにする（`pane-frame.css`）。高さは画面の半分まで。
  * 上端の掴みとヘッダー行を下へドラッグすると閉じる（×とEscapeでも閉じる。掴みはタッチ専用の見た目で、Tabや読み上げの対象にしない）。ドラッグを掴みとヘッダー行に
