@@ -22,7 +22,7 @@ import { applyDraftInput, initialDraftSync, syncDraftWithStored } from './option
  */
 export function useOptionsDraft<T>(stored: T): readonly [T, (next: T) => void] {
   const [state, setState] = useState(() => initialDraftSync(stored));
-  const synced = syncDraftWithStored(state, stored, Date.now());
+  const synced = syncDraftWithStored(state, stored);
   if (synced !== state) setState(synced);
   const setDraft = useCallback((next: T) => setState((current) => applyDraftInput(current, next, Date.now())), []);
   return [synced.draft, setDraft] as const;

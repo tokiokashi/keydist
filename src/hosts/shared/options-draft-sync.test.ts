@@ -1,91 +1,86 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import {
-  applyDraftInput,
-  ECHO_WINDOW_MS,
-  initialDraftSync,
-  syncDraftWithStored,
-} from './options-draft-sync.ts';
+import { applyDraftInput, initialDraftSync, syncDraftWithStored } from './options-draft-sync.ts';
 
 interface Opts { readonly on: boolean; readonly n: number }
 const X: Opts = { on: true, n: 1 };
 const A: Opts = { on: false, n: 1 };
-const B: Opts = { on: true, n: 1 };
+const B: Opts = { on: true, n: 2 };
 
-test('自分の保存の反響が次の入力の後に届いても、下書きは新しい値のまま（#935）', () => {
-  let s = initialDraftSync(X);
-  s = applyDraftInput(s, A, 0); // 消す
-  s = applyDraftInput(s, { on: true, n: 2 }, 300); // すぐ別の項目を触る
-  // 400ms: Aの保存の反響が届く
-  s = syncDraftWithStored(s, { ...A }, 400);
-  assert.deepEqual(s.draft, { on: true, n: 2 });
-});
-
-test('Aを消して戻す間に反響が届いても、戻した値が残る（チェックが外れた状態に戻らない）', () => {
+test('Aを書いた後、400ms以上あけて入力した新しい値は、Aの反響で巻き戻らない（#935）', () => {
   let s = initialDraftSync(X);
   s = applyDraftInput(s, A, 0);
-  s = applyDraftInput(s, B, 350); // 戻す
-  s = syncDraftWithStored(s, { ...A }, 400); // Aの反響
+  s = applyDraftInput(s, B, 400); // Aはちょうど400msで書かれ、その反響はこの後に届く
+  s = syncDraftWithStored(s, { ...A });
   assert.deepEqual(s.draft, B);
-  s = syncDraftWithStored(s, { ...B }, 800); // Bの反響
+  s = syncDraftWithStored(s, { ...B });
   assert.deepEqual(s.draft, B);
 });
 
-test('外からの変更（元に戻す・別タブ・既定値へ戻す）では下書きが保存先に揃う', () => {
+test('外からの変更（別タブ・既定値へ戻す）では下書きが保存先に揃う', () => {
   let s = initialDraftSync(X);
   s = applyDraftInput(s, A, 0);
-  s = syncDraftWithStored(s, { ...A }, 400); // 反響
-  const external: Opts = { on: true, n: 9 };
-  s = syncDraftWithStored(s, external, 1000);
-  assert.deepEqual(s.draft, external);
+  s = syncDraftWithStored(s, { ...A });
+  s = syncDraftWithStored(s, B);
+  assert.deepEqual(s.draft, B);
   assert.deepEqual(s.own, []);
 });
 
-test('反響の記録が済んだ後は、同じ値への外からの変更でも揃う（元に戻す）', () => {
+test('反響の記録が済んだ後の元に戻す・やり直すで揃う', () => {
   let s = initialDraftSync(X);
   s = applyDraftInput(s, A, 0);
-  s = syncDraftWithStored(s, { ...A }, 400); // Aの反響で記録が空になる
-  s = applyDraftInput(s, { on: true, n: 2 }, 500);
-  s = syncDraftWithStored(s, { on: true, n: 2 }, 900);
-  s = syncDraftWithStored(s, { ...A }, 1000); // 元に戻すでAへ戻った
+  s = syncDraftWithStored(s, { ...A });
+  s = syncDraftWithStored(s, { ...X }); // 元に戻す
+  assert.deepEqual(s.draft, X);
+  s = syncDraftWithStored(s, { ...A }); // やり直す
   assert.deepEqual(s.draft, A);
 });
 
-test('反響を待つ期間を過ぎた値は、外からの変更として揃える', () => {
+test('debounceの中で上書きされた値は記録から捨てる', () => {
   let s = initialDraftSync(X);
   s = applyDraftInput(s, A, 0);
-  s = syncDraftWithStored(s, { ...A }, ECHO_WINDOW_MS + 1);
-  assert.deepEqual(s.draft, A);
+  s = applyDraftInput(s, X, 100); // Aは捨てられる。Xは保存先と同じで書き込みは起きない
+  s = applyDraftInput(s, A, 600); // Xは間隔を過ぎたので残る
+  assert.deepEqual(s.own.map((w) => w.at), [100, 600]); // 0のAは捨てられている
+});
+
+test('ケース1: 入れ直した後の反響は最も新しい記録に当たり、続く元に戻すで揃う', () => {
+  let s = initialDraftSync(X);
+  s = applyDraftInput(s, A, 0);
+  s = applyDraftInput(s, X, 100);
+  s = applyDraftInput(s, A, 600);
+  s = syncDraftWithStored(s, { ...A });
   assert.deepEqual(s.own, []);
+  s = syncDraftWithStored(s, { ...X }); // 元に戻す
+  assert.deepEqual(s.draft, X);
+});
+
+test('ケース2: X→A の反響の後に X→A→X と入力しても、元に戻すで揃う', () => {
+  let s = initialDraftSync(X);
+  s = applyDraftInput(s, A, 0);
+  s = syncDraftWithStored(s, { ...A });
+  s = applyDraftInput(s, X, 500);
+  s = applyDraftInput(s, A, 600);
+  s = applyDraftInput(s, X, 700);
+  s = syncDraftWithStored(s, { ...X }); // Xの反響
+  assert.deepEqual(s.own, []);
+  s = syncDraftWithStored(s, { ...A }); // 元に戻すでAへ
+  assert.deepEqual(s.draft, A);
+});
+
+test('書かれなかった入れ直しの後の元に戻すで揃う（uncheck→600ms→check→すぐuncheck→元に戻す）', () => {
+  let s = initialDraftSync(X);
+  s = applyDraftInput(s, A, 0);
+  s = syncDraftWithStored(s, { ...A }); // 400msでAが書かれる
+  s = applyDraftInput(s, X, 600); // check
+  s = applyDraftInput(s, A, 650); // すぐuncheck。Xは書かれず、Aは保存先と同じなので書き込みも起きない
+  s = syncDraftWithStored(s, { ...X }); // 元に戻す。保存先はAからXへ
+  assert.deepEqual(s.draft, X);
 });
 
 test('中身が同じ読み直しは下書きを触らない（#606）', () => {
   let s = initialDraftSync(X);
   s = applyDraftInput(s, A, 0);
-  s = syncDraftWithStored(s, { ...X }, 100);
-  assert.deepEqual(s.draft, A);
-});
-
-test('同じ値を入れ直した後の反響は最も新しい記録に当たり、続く元に戻すで揃う（ケース1）', () => {
-  let s = initialDraftSync(X);
-  s = applyDraftInput(s, A, 0);
-  s = applyDraftInput(s, X, 100); // debounceの中で戻した（保存は起きない）
-  s = applyDraftInput(s, A, 600);
-  s = syncDraftWithStored(s, { ...A }, 1000); // Aの反響
-  assert.deepEqual(s.own, []);
-  s = syncDraftWithStored(s, { ...X }, 1100); // 元に戻す
-  assert.deepEqual(s.draft, X);
-});
-
-test('X→A の反響の後に X→A→X と入力しても、元に戻すで揃う（ケース2）', () => {
-  let s = initialDraftSync(X);
-  s = applyDraftInput(s, A, 0);
-  s = syncDraftWithStored(s, { ...A }, 400);
-  s = applyDraftInput(s, X, 500);
-  s = applyDraftInput(s, A, 600);
-  s = applyDraftInput(s, X, 700);
-  s = syncDraftWithStored(s, { ...X }, 1100); // Xの反響
-  assert.deepEqual(s.own, []);
-  s = syncDraftWithStored(s, { ...A }, 1200); // 元に戻すでAへ
+  s = syncDraftWithStored(s, { ...X });
   assert.deepEqual(s.draft, A);
 });
