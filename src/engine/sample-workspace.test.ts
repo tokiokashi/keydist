@@ -50,7 +50,7 @@ test('サンプルの並び: 上に比較表（幅いっぱい）、下に同じ
   const { created } = createSampleWorkspace(initialWorkspaceLibrary(), () => 'w', sequence('p'));
   assert.equal(created.name, SAMPLE_WORKSPACE_NAME);
   assert.deepEqual(created.panes.map((pane) => pane.analyzerId), [
-    'comparison', 'n-sensitivity', 'bigram-flow', 'bigram-flow', 'bigram-flow',
+    'comparison', 'n-sensitivity', 'bigram-flow', 'bigram-flow', 'bigram-flow', 'bigram-flow',
   ]);
   assert.deepEqual(created.panes.map((pane) => pane.binding), [
     { mode: 'follow', group: 'link-1' },
@@ -58,8 +58,9 @@ test('サンプルの並び: 上に比較表（幅いっぱい）、下に同じ
     { mode: 'follow', group: 'link-1' },
     { mode: 'follow', group: 'link-2' },
     { mode: 'follow', group: 'link-3' },
+    { mode: 'follow', group: 'link-4' },
   ]);
-  assert.deepEqual(created.groups.map((group) => group.id), ['link-1', 'link-2', 'link-3']);
+  assert.deepEqual(created.groups.map((group) => group.id), ['link-1', 'link-2', 'link-3', 'link-4']);
   assert.deepEqual(
     created.groups[0]!.target.set.targets,
     SAMPLE_COMPARISON_LAYOUT_IDS.map((layoutId) => ({ kind: 'layout', layoutId })),
@@ -73,11 +74,14 @@ test('サンプルの並び: 上に比較表（幅いっぱい）、下に同じ
   }
   assert.deepEqual(created.conditions, { defaultShapeId: 'split-ortholinear' });
 
-  // 24列。上の段は幅いっぱい、下の段は4つが同じ幅で横に並ぶ
-  const [top, ...lower] = created.grid;
-  assert.deepEqual([top!.x, top!.y, top!.w], [0, 0, GRID_COLS]);
+  // 24列。上の段は比較表とN感度が横に並んで24列を使い切り（高さは揃う）、下の段は同じ幅の4つが左から並ぶ
+  const [comparison, nSensitivity, ...lower] = created.grid;
+  assert.deepEqual([comparison!.x, comparison!.y], [0, 0]);
+  assert.deepEqual([nSensitivity!.x, nSensitivity!.y], [comparison!.w, 0]);
+  assert.equal(comparison!.w + nSensitivity!.w, GRID_COLS);
+  assert.equal(comparison!.h, nSensitivity!.h);
   assert.equal(lower.length, 4);
-  assert.ok(lower.every((item) => item.y === top!.h && item.w === GRID_COLS / 4));
+  assert.ok(lower.every((item) => item.y === comparison!.h && item.w === GRID_COLS / 4));
   assert.deepEqual(lower.map((item) => item.x), [0, 6, 12, 18]);
   // 不変条件を満たした形（正規化しても変わらない）
   assert.deepEqual(normalizeGrid(created.grid, created.panes.map((pane) => pane.id)), created.grid);

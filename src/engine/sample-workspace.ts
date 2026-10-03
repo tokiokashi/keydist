@@ -36,8 +36,8 @@ export const SAMPLE_COMPARISON_LAYOUT_IDS: readonly string[] = [
   'tsuki-2-263',
 ];
 
-/** Bigram Flowの3つが見る配列。並びの順に連動1・2・3。 */
-export const SAMPLE_BIGRAM_FLOW_LAYOUT_IDS: readonly string[] = ['qwerty', 'oonishi', 'tsuki-2-263'];
+/** Bigram Flowの4つが見る配列。並びの順に連動1〜4。 */
+export const SAMPLE_BIGRAM_FLOW_LAYOUT_IDS: readonly string[] = ['qwerty', 'oonishi', 'tsuki-2-263', 'naginata-v18'];
 
 /** サンプルのWorkspaceの条件（Workspaceのレベル）の既定の物理配列。全体の条件は書き換えない。 */
 export const SAMPLE_DEFAULT_SHAPE_ID = 'split-ortholinear';
@@ -46,11 +46,13 @@ export const SAMPLE_DEFAULT_SHAPE_ID = 'split-ortholinear';
 export const SAMPLE_BIGRAM_FLOW_OPTIONS = { source: 'within-hand' } as const;
 
 /**
- * 並びの大きさ（24列）。上の段は幅いっぱいの比較表、下の段は同じ幅（6列）の4つ。
- * 高さは升目（36px）単位で、画面で見て中身が収まる高さにした。
+ * 並びの大きさ（24列）。上の段は比較表とN感度が横に並び（18 + 6列）、下の段は同じ幅（6列）のBigram Flow 4つ。
+ * 比較表は列が多く広いほど表が収まり、N感度は6列（下の段の1つと同じ幅）で図・凡例・表が縦に収まる。比較表は1440pxでは右の数列が横スクロールになるが、狭い画面でも対象名の列は固定される。
+ * 高さは升目（36px）単位で、上の段は2つで揃え、画面で見て中身が収まる高さにした。
  */
-export const SAMPLE_COMPARISON_SIZE: GridSize = { w: 24, h: 10 };
-export const SAMPLE_LOWER_SIZE: GridSize = { w: 6, h: 20 };
+export const SAMPLE_COMPARISON_SIZE: GridSize = { w: 18, h: 15 };
+export const SAMPLE_N_SENSITIVITY_SIZE: GridSize = { w: 6, h: 15 };
+export const SAMPLE_LOWER_SIZE: GridSize = { w: 6, h: 18 };
 
 const layoutTarget = (layoutId: string): AnalysisTarget => ({ kind: 'layout', layoutId });
 
@@ -93,7 +95,7 @@ export function applySampleLayout(
     },
     {
       pane: { id: generatePaneId(), analyzerId: SAMPLE_N_SENSITIVITY_ANALYZER_ID, options: undefined, binding: followBinding(groupId(1)) },
-      size: SAMPLE_LOWER_SIZE,
+      size: SAMPLE_N_SENSITIVITY_SIZE,
     },
     ...SAMPLE_BIGRAM_FLOW_LAYOUT_IDS.map((_, i) => ({
       pane: {

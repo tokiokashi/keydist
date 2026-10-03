@@ -38,23 +38,24 @@ async function expectSampleWorkspace(page: Page, name: string): Promise<void> {
 async function expectSampleLayout(page: Page, id: string): Promise<void> {
   const workspace = (await storedWorkspaces(page)).find((candidate) => candidate.id === id)!;
 
-  // 並び: 上に比較表、下にN感度とBigram Flow 3つ
+  // 並び: 上に比較表、上の段は比較表とN感度、下の段はBigram Flow 4つ
   expect(workspace.panes.map((pane) => pane.analyzerId)).toEqual([
-    'comparison', 'n-sensitivity', 'bigram-flow', 'bigram-flow', 'bigram-flow',
+    'comparison', 'n-sensitivity', 'bigram-flow', 'bigram-flow', 'bigram-flow', 'bigram-flow',
   ]);
-  // 連動: 比較表・N感度・1つ目のBigram Flowが連動1、残りが連動2・3
+  // 連動: 比較表・N感度・1つ目のBigram Flowが連動1、残りが連動2〜4
   expect(workspace.panes.map((pane) => pane.binding)).toEqual([
     { mode: 'follow', group: 'link-1' },
     { mode: 'follow', group: 'link-1' },
     { mode: 'follow', group: 'link-1' },
     { mode: 'follow', group: 'link-2' },
     { mode: 'follow', group: 'link-3' },
+    { mode: 'follow', group: 'link-4' },
   ]);
   // 対象
   expect(workspace.groups[0]!.target.set!.targets.map((target) => target.layoutId)).toEqual([
     'qwerty', 'dvorak', 'oonishi', 'naginata-v18', 'shin-jis-prefix', 'shingeta', 'tsuki-2-263',
   ]);
-  expect(workspace.groups.map((group) => group.target.single?.layoutId)).toEqual(['qwerty', 'oonishi', 'tsuki-2-263']);
+  expect(workspace.groups.map((group) => group.target.single?.layoutId)).toEqual(['qwerty', 'oonishi', 'tsuki-2-263', 'naginata-v18']);
   // 解析設定: Bigram Flowは2打鍵の取り方を Within-hand
   for (const pane of workspace.panes.filter((candidate) => candidate.analyzerId === 'bigram-flow')) {
     expect(pane.options).toEqual({ source: 'within-hand' });
@@ -62,12 +63,15 @@ async function expectSampleLayout(page: Page, id: string): Promise<void> {
   // Workspaceの条件
   expect(workspace.conditions).toEqual({ defaultShapeId: 'split-ortholinear' });
   // 格子: 上の段は幅いっぱい、下の段は同じ幅の4つが横に並ぶ
-  const [top, ...lower] = workspace.grid;
-  expect([top!.x, top!.y, top!.w]).toEqual([0, 0, 24]);
-  expect(lower.map((item) => [item.x, item.y, item.w])).toEqual([0, 6, 12, 18].map((x) => [x, top!.h, 6]));
+  const [comparison, nSensitivity, ...lower] = workspace.grid;
+  expect([comparison!.x, comparison!.y]).toEqual([0, 0]);
+  expect([nSensitivity!.x, nSensitivity!.y]).toEqual([comparison!.w, 0]);
+  expect(comparison!.w + nSensitivity!.w).toBe(24);
+  expect(nSensitivity!.h).toBe(comparison!.h);
+  expect(lower.map((item) => [item.x, item.y, item.w])).toEqual([0, 6, 12, 18].map((x) => [x, comparison!.h, 6]));
 
   // 画面にも出る
-  await expect(page.locator('.pane-frame')).toHaveCount(5);
+  await expect(page.locator('.pane-frame')).toHaveCount(6);
   await expect(page.locator('.pane-frame').first().getByRole('heading', { level: 2, name: '比較表', exact: true })).toBeVisible();
 }
 
@@ -85,7 +89,7 @@ test('トップの「サンプルのWorkspaceを作る」で、サンプルのWo
   await page.reload();
   await waitForHydration(page);
   await expect(page.locator('#app-sidebar').getByRole('link', { name: 'サンプル', exact: true })).toBeVisible();
-  await expect(page.locator('.pane-frame')).toHaveCount(5);
+  await expect(page.locator('.pane-frame')).toHaveCount(6);
 });
 
 test('空のWorkspaceの「サンプルの並びで始める」で、今のWorkspaceにサンプルの並びが入る。一覧は増えず、元に戻すで空に戻る', async ({ page }) => {
@@ -99,7 +103,7 @@ test('空のWorkspaceの「サンプルの並びで始める」で、今のWorks
 
   await page.locator('[data-workspace-empty="true"]').getByRole('button', { name: 'サンプルの並びで始める' }).click();
   // 同じ画面のまま、名前も変わらずに並びが入る
-  await expect(page.locator('.pane-frame')).toHaveCount(5);
+  await expect(page.locator('.pane-frame')).toHaveCount(6);
   expect(page.url()).toBe(url);
   await expectSampleLayout(page, emptyId);
   expect(await globalSnapshot(page)).toEqual(before);
@@ -115,7 +119,7 @@ test('空のWorkspaceの「サンプルの並びで始める」で、今のWorks
   expect(emptied.conditions).toBeUndefined();
   expect(await globalSnapshot(page)).toEqual(before);
   await bar.getByRole('button', { name: 'やり直す' }).click();
-  await expect(page.locator('.pane-frame')).toHaveCount(5);
+  await expect(page.locator('.pane-frame')).toHaveCount(6);
 });
 
 test('トップから2回作ると、名前は既存のWorkspaceと同じく連番になる', async ({ page }) => {
@@ -146,7 +150,7 @@ test('サンプルのWorkspaceは普通のWorkspaceと同じに扱える。Bigra
   await expect(bar.getByRole('button', { name: '元に戻す' })).toBeDisabled();
   await bigramFlow.getByRole('button', { name: /の操作$/ }).click();
   await page.getByRole('menuitem', { name: /閉じる/ }).click();
-  await expect(page.locator('.pane-frame')).toHaveCount(4);
-  await bar.getByRole('button', { name: '元に戻す' }).click();
   await expect(page.locator('.pane-frame')).toHaveCount(5);
+  await bar.getByRole('button', { name: '元に戻す' }).click();
+  await expect(page.locator('.pane-frame')).toHaveCount(6);
 });
