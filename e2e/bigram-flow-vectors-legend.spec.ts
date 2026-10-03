@@ -109,22 +109,22 @@ async function openWorkspace(page: Page, c: SideCase): Promise<void> {
 
 /** 横に並ぶ範囲の狭い側から広い側、行が低い・高いペイン、見出し・文字・設定の違いで、2つの図の上端・下端が揃う。 */
 const sideBySide: SideCase[] = [
-  { name: '広い（12列 x 19行）', w: 12, h: 19 },
-  { name: '広くて低い（12列 x 12行）', w: 12, h: 12 },
-  { name: '中ぐらい（8列 x 14行）', w: 8, h: 14 },
-  { name: '狭い側（6列 x 10行）', w: 6, h: 10 },
-  { name: '下限付近（本体520〜560px）', w: 12, h: 10, viewport: 840, bodyWidth: [520, 560] },
-  { name: '下限付近で指を2つ選ぶ', w: 12, h: 10, viewport: 840, bodyWidth: [520, 560], fingers: ['ring', 'pinky'] },
-  { name: '6列で指を2つ選ぶ', w: 6, h: 10, fingers: ['ring', 'pinky'] },
-  { name: '文字サイズ24px・下限付近', w: 12, h: 10, viewport: 940, bodyWidth: [520, 560], rootFontSize: '24px' },
-  { name: '文字サイズ24px・やや広い', w: 12, h: 10, viewport: 960, bodyWidth: [520, 600], rootFontSize: '24px', fingers: ['ring', 'pinky'] },
-  { name: 'Relative vectorsの設定だけ開く', w: 12, h: 19, openSettings: 'Relative vectors' },
-  { name: 'Keyboard Flowの設定だけ開く', w: 12, h: 19, openSettings: 'Keyboard Flow' },
+  { name: '広い（24列 x 19行）', w: 24, h: 19 },
+  { name: '広くて低い（24列 x 12行）', w: 24, h: 12 },
+  { name: '中ぐらい（16列 x 14行）', w: 16, h: 14 },
+  { name: '狭い側（12列 x 10行）', w: 12, h: 10 },
+  { name: '下限付近（本体520〜560px）', w: 24, h: 10, viewport: 840, bodyWidth: [520, 560] },
+  { name: '下限付近で指を2つ選ぶ', w: 24, h: 10, viewport: 840, bodyWidth: [520, 560], fingers: ['ring', 'pinky'] },
+  { name: '12列で指を2つ選ぶ', w: 12, h: 10, fingers: ['ring', 'pinky'] },
+  { name: '文字サイズ24px・下限付近', w: 24, h: 10, viewport: 940, bodyWidth: [520, 560], rootFontSize: '24px' },
+  { name: '文字サイズ24px・やや広い', w: 24, h: 10, viewport: 960, bodyWidth: [520, 600], rootFontSize: '24px', fingers: ['ring', 'pinky'] },
+  { name: 'Relative vectorsの設定だけ開く', w: 24, h: 19, openSettings: 'Relative vectors' },
+  { name: 'Keyboard Flowの設定だけ開く', w: 24, h: 19, openSettings: 'Keyboard Flow' },
 ];
 
 // 文字サイズ24pxで、横に並ぶ下限付近の幅を細かく動かしても、横スクロールが出ず、上端・下端が揃う。
 for (let viewport = 940; viewport <= 990; viewport += 10) {
-  sideBySide.push({ name: `文字サイズ24px・画面${viewport}px`, w: 12, h: 10, viewport, rootFontSize: '24px', fingers: ['ring', 'pinky'] });
+  sideBySide.push({ name: `文字サイズ24px・画面${viewport}px`, w: 24, h: 10, viewport, rootFontSize: '24px', fingers: ['ring', 'pinky'] });
 }
 
 for (const c of sideBySide) {
@@ -152,10 +152,10 @@ for (const c of sideBySide) {
 
 // 低いペインで片方の図のそばの設定を開いても、反対側の図は縮まず、開いた側の図も消えない。
 const lowPanes: readonly SideCase[] = [
-  { name: '12列 x 12行', w: 12, h: 12, fingers: ['ring', 'pinky'] },
-  { name: '12列 x 10行（本体520〜560px）', w: 12, h: 10, viewport: 840, bodyWidth: [520, 560], fingers: ['ring', 'pinky'] },
-  { name: '6列 x 10行', w: 6, h: 10, fingers: ['ring', 'pinky'] },
-  { name: '8列 x 14行・文字サイズ24px', w: 8, h: 14, rootFontSize: '24px', fingers: ['ring', 'pinky'] },
+  { name: '24列 x 12行', w: 24, h: 12, fingers: ['ring', 'pinky'] },
+  { name: '24列 x 10行（本体520〜560px）', w: 24, h: 10, viewport: 840, bodyWidth: [520, 560], fingers: ['ring', 'pinky'] },
+  { name: '12列 x 10行', w: 12, h: 10, fingers: ['ring', 'pinky'] },
+  { name: '16列 x 14行・文字サイズ24px', w: 16, h: 14, rootFontSize: '24px', fingers: ['ring', 'pinky'] },
 ];
 
 for (const c of lowPanes) {
