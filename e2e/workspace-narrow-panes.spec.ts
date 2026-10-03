@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { openTextChip } from './context-bar-helper.ts';
 import { waitForHydration } from './hydration-helper.ts';
 
 /**
@@ -28,7 +29,7 @@ const LONG_SETUPS = [
 type AnalyzerId = 'bigram-flow' | 'comparison' | 'n-sensitivity';
 const ANALYZERS: readonly AnalyzerId[] = ['bigram-flow', 'comparison', 'n-sensitivity'];
 
-function paneOf(id: string, analyzerId: AnalyzerId, longNames: boolean) {
+function paneOf(id: string, analyzerId: AnalyzerId, longNames: boolean, missingTarget = false) {
   const set = longNames
     ? { kind: 'set', selection: { targets: LONG_SETUPS.map((s) => ({ kind: 'setup', setupId: s.id })), colorSlots: LONG_SETUPS.map((_, i) => i) } }
     : { kind: 'set', selection: { targets: [QWERTY, DVORAK], colorSlots: [0, 1] } };
@@ -36,33 +37,35 @@ function paneOf(id: string, analyzerId: AnalyzerId, longNames: boolean) {
     id,
     analyzerId,
     binding: analyzerId === 'bigram-flow'
-      ? { mode: 'fixed', target: { kind: 'single', target: QWERTY } }
+      ? { mode: 'fixed', target: { kind: 'single', target: missingTarget ? { kind: 'setup', setupId: 'no-such-setup' } : QWERTY } }
       : { mode: 'fixed', target: set },
   };
 }
 
 /** 対象のペイン（x=0）と、その右の隣のペイン（はみ出しの検査用）を置く。 */
-async function open(page: Page, analyzerId: AnalyzerId, size: { width: number; height: number }, options: { longNames?: boolean; theme?: 'light' | 'dark' } = {}): Promise<void> {
+async function open(page: Page, analyzerId: AnalyzerId, size: { width: number; height: number }, options: { longNames?: boolean; theme?: 'light' | 'dark'; cols?: number; status?: 'ready' | 'failed'; conditions?: Record<string, unknown>; overrides?: Record<string, unknown> } = {}): Promise<void> {
   const longNames = options.longNames === true;
   await page.setViewportSize(size);
-  await page.addInitScript(({ key, setupKey, setups, theme, value }) => {
+  await page.addInitScript(({ key, setupKey, setups, overrides, theme, value }) => {
     if (localStorage.getItem(key) === null) {
       localStorage.setItem(key, JSON.stringify({ version: 3, workspaces: [value] }));
-      localStorage.setItem(setupKey, JSON.stringify({ version: 1, setups, overrides: {} }));
+      localStorage.setItem(setupKey, JSON.stringify({ version: 1, setups, overrides }));
       localStorage.setItem('keydist:app-state', JSON.stringify({ version: 2, appearance: { theme } }));
     }
   }, {
     key: WORKSPACES_KEY,
     setupKey: SETUP_LIBRARY_KEY,
     setups: LONG_SETUPS,
+    overrides: options.overrides ?? {},
     theme: options.theme ?? 'light',
     value: {
       id: 'narrow',
       name: '細いペイン',
       text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
-      panes: [paneOf('a', analyzerId, longNames), paneOf('b', 'comparison', false)],
+      ...(options.conditions === undefined ? {} : { conditions: options.conditions }),
+      panes: [paneOf('a', analyzerId, longNames, options.status === 'failed'), paneOf('b', 'comparison', false)],
       grid: [
-        { id: 'a', x: 0, y: 0, w: 8, h: 20 },
+        { id: 'a', x: 0, y: 0, w: options.cols ?? 8, h: 20 },
         { id: 'b', x: 8, y: 0, w: 8, h: 20 },
       ],
     },
@@ -70,7 +73,7 @@ async function open(page: Page, analyzerId: AnalyzerId, size: { width: number; h
   await page.goto('/workspace/narrow');
   await waitForHydration(page);
   await expect(page.locator('.workspace-grid-item')).toHaveCount(2);
-  await expect(itemOf(page, 'a').locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 20_000 });
+  await expect(itemOf(page, 'a').locator('.pane-frame')).toHaveAttribute('data-pane-status', options.status ?? 'ready', { timeout: 20_000 });
   await settle(page);
 }
 
@@ -172,7 +175,7 @@ async function spillingOutOf(root: Locator, scope: 'x' | 'both' = 'x'): Promise<
   });
 }
 
-async function expectHeaderUsable(page: Page, id: string): Promise<void> {
+async function expectHeaderUsable(page: Page, id: string, minTargetWidth = 60): Promise<void> {
   const item = itemOf(page, id);
   const report = await headerReport(item);
   expect(report.controls.length, '見出しの部品が見つかる').toBeGreaterThanOrEqual(5);
@@ -186,7 +189,7 @@ async function expectHeaderUsable(page: Page, id: string): Promise<void> {
   // ⋯と対象の選択には必ず届く。押してメニュー・選択が開く
   const menu = item.getByRole('button', { name: /の操作$/ });
   const target = item.locator('.target-selection-button');
-  expect(((await target.boundingBox())!).width, '対象の選択が潰れない').toBeGreaterThanOrEqual(60);
+  expect(((await target.boundingBox())!).width, '対象の選択が潰れない').toBeGreaterThanOrEqual(minTargetWidth);
   await menu.click();
   const close = page.getByRole('menuitem', { name: /閉じる/ });
   await expect(close).toBeVisible();
@@ -322,4 +325,302 @@ for (const c of cases) {
       await expectHeaderUsable(page, 'a');
     });
   }
+}
+
+/**
+ * 見出しの段。つかみ所・ⓘ・対象の選択・連動・条件・解析設定・⋯の中心の縦位置を、近いものどうしでまとめた数。
+ * 1段なら1、先頭を1段目に分けたら2以上。
+ */
+async function headerRowCount(item: Locator): Promise<number> {
+  return item.evaluate((root) => {
+    const els = [...root.querySelectorAll<HTMLElement>('.pane-frame-header button, .pane-frame-header .workspace-drag-handle')]
+      .filter((el) => el.getBoundingClientRect().width > 0);
+    const centers = els.map((el) => {
+      const r = el.getBoundingClientRect();
+      return r.top + r.height / 2;
+    }).sort((a, b) => a - b);
+    let rows = 0;
+    let last = Number.NEGATIVE_INFINITY;
+    for (const c of centers) {
+      if (c - last > 12) rows += 1;
+      last = c;
+    }
+    return rows;
+  });
+}
+
+/** 見出しの名前（つかみ所の名前）が省略記号で縮んでいるか。 */
+async function nameIsClipped(item: Locator): Promise<boolean> {
+  return item.locator('.workspace-pane-lead-name').evaluate((el) => el.scrollWidth > el.clientWidth + 1);
+}
+
+// 見出しが狭い時の詰め方は、名前を省略（つかみ所とⓘは残す）→ それでも入らない時に段を分ける。
+// 名前を省略する幅（FHD・左のメニューを開いた状態で24列のうち5列 = 約314px）でも、ボタンは1段目に残る
+for (const analyzerId of ANALYZERS) {
+  test(`${analyzerId}: 5列のペインでは見出しが1段のまま、⋯と対象の選択に届く`, async ({ page }) => {
+    await open(page, analyzerId, FHD, { cols: 5 });
+    const item = itemOf(page, 'a');
+    expect(((await item.locator('.pane-frame').boundingBox())!).width, '5列の幅').toBeLessThan(330);
+    expect(await headerRowCount(item), '見出しが1段').toBe(1);
+    // 1段に収める幅では、対象の選択は押せる最小の幅まで縮む（絵と開閉の印が入る幅）
+    await expectHeaderUsable(page, 'a', 44);
+    // つかみ所とⓘは残る。名前を省略しても、読み上げでAnalyzerの名前が分かる
+    await expect(item.locator('.workspace-pane-grab .workspace-grip-icon')).toBeVisible();
+    await expect(item.locator('.workspace-pane-lead .info-button')).toBeVisible();
+    await expect(item.locator('.workspace-pane-lead .info-button')).toHaveAttribute('aria-label', /.+の説明/);
+    const name = ((await item.locator('h2.pane-frame-title').textContent()) ?? '').trim();
+    expect(name, '読み上げ用の見出しにAnalyzerの名前がある').not.toBe('');
+    await expect(item.locator('.pane-frame')).toHaveAttribute('aria-label', new RegExp(`^${name}`));
+    await expect(item.locator('.workspace-pane-lead .info-button')).toHaveAttribute('aria-label', `${name}の説明`);
+  });
+}
+
+test('Bigram Flow: 5列では名前を省略して1段に収める。名前の全文は見出し（読み上げ）・title・枠の名前に残る', async ({ page }) => {
+  await open(page, 'bigram-flow', FHD, { cols: 5 });
+  const item = itemOf(page, 'a');
+  expect(await nameIsClipped(item), '5列では名前を省略する').toBe(true);
+  const visible = (await item.locator('.workspace-pane-lead-name').boundingBox())!;
+  expect(visible.width, '名前は全部を消さず、手がかりの幅を残す').toBeGreaterThanOrEqual(30);
+  await expect(item.locator('.workspace-pane-lead-name')).toHaveText('Bigram Flow');
+  await expect(item.locator('.workspace-pane-grab')).toHaveAttribute('title', /^Bigram Flow/);
+  await expect(item.locator('h2.pane-frame-title')).toHaveText('Bigram Flow');
+  await expect(item.locator('.pane-frame')).toHaveAttribute('aria-label', /^Bigram Flow — /);
+});
+
+for (const cols of [6, 8]) {
+  test(`Bigram Flow: ${cols}列のペインでも見出しが1段のまま、⋯と対象の選択に届く`, async ({ page }) => {
+    await open(page, 'bigram-flow', FHD, { cols });
+    const item = itemOf(page, 'a');
+    expect(await headerRowCount(item), '見出しが1段').toBe(1);
+    await expectHeaderUsable(page, 'a', 44);
+  });
+}
+
+test('Bigram Flow: 8列まで広げれば名前は省略しない', async ({ page }) => {
+  await open(page, 'bigram-flow', FHD, { cols: 8 });
+  expect(await nameIsClipped(itemOf(page, 'a'))).toBe(false);
+});
+
+for (const analyzerId of ANALYZERS) {
+  test(`${analyzerId}: 3列より狭いペインでは、名前を省略しても入らないので先頭を1段目に分ける。ボタンは重ならない`, async ({ page }) => {
+    await open(page, analyzerId, FHD, { cols: 3 });
+    const item = itemOf(page, 'a');
+    expect(await headerRowCount(item), '先頭と操作で段が分かれる').toBeGreaterThanOrEqual(2);
+    await expectHeaderUsable(page, 'a');
+    await expectNoSpillOutsidePane(page, 'a');
+  });
+}
+
+// 縮める順は、先に名前を最小幅まで、その後で対象の選択。名前が縮んでいる間、対象の選択の幅は変わらない
+test('Bigram Flow: 見出しが狭まると、先に名前が最小幅まで縮み、その間は対象の選択の幅が変わらない。その後で対象の選択が縮む', async ({ page }) => {
+  await open(page, 'bigram-flow', FHD, { cols: 8 });
+  const item = itemOf(page, 'a');
+  const measure = async (width: number) => item.evaluate((root, w) => {
+    const frame = root.querySelector<HTMLElement>('.pane-frame')!;
+    frame.style.width = `${w}px`;
+    frame.style.maxWidth = `${w}px`;
+    return {
+      name: root.querySelector('.workspace-pane-lead-name')!.getBoundingClientRect().width,
+      target: root.querySelector('.target-selection-button')!.getBoundingClientRect().width,
+    };
+  }, width);
+  const full = await measure(480);
+  expect(full.name, '広い時は名前の全文').toBeGreaterThan(80);
+  const shrinkingName = [];
+  for (const width of [380, 360]) shrinkingName.push(await measure(width));
+  for (const m of shrinkingName) {
+    expect(m.name, '名前が縮んでいる').toBeLessThan(full.name - 2);
+    expect(m.name, 'まだ最小幅には着いていない').toBeGreaterThan(48);
+    expect(Math.abs(m.target - full.target), `名前が縮んでいる間、対象の選択は変わらない（${m.target} / ${full.target}）`).toBeLessThanOrEqual(2);
+  }
+  const atMin = await measure(340);
+  expect(atMin.name, '名前は最小幅（2.4rem = 約38px）まで').toBeLessThanOrEqual(42);
+  const narrower = await measure(314);
+  expect(narrower.name, '最小幅の名前はそれ以上縮まない').toBeGreaterThanOrEqual(atMin.name - 1);
+  expect(narrower.target, '名前が最小幅になった後で、対象の選択が縮む').toBeLessThan(full.target - 10);
+  expect(narrower.target, '5列（枠 314px）の対象の選択は押せる幅').toBeGreaterThanOrEqual(60);
+});
+
+// ---- 状態のバッジ（実際の状態で検査する）----
+// 失敗: Bigram Flowの対象に、存在しないSetupを置く。計算中（直前の結果を表示）: 長いテキストへ変えて、計算の間を保つ。
+// 状態のバッジを文字で出すか点で出すかは、見出しの実際の幅と中身から測って決める。条件のchipは中身で幅が変わる
+// （「既定値」・「N件変更」・「対象ごとに差あり」）ので、3種類をそれぞれ作る。
+
+const LONG_TEXT = 'The quick brown fox jumps over the lazy dog while the five boxing wizards jump quickly. '.repeat(1500);
+const BADGE_TEXT = { failed: '失敗', stale: '計算中…（直前の結果を表示）' } as const;
+type BadgeStatus = keyof typeof BADGE_TEXT;
+
+interface Chip {
+  readonly name: string;
+  readonly expected: string;
+  readonly conditions?: Record<string, unknown>;
+  readonly overrides?: Record<string, unknown>;
+}
+const CHIPS: readonly Chip[] = [
+  { name: '既定値', expected: '条件: 既定値' },
+  { name: 'N件変更', expected: '条件: 1件変更', conditions: { windowSize: 4 } },
+  // 比較表の2つの配列で、先読みNの上書きが違う
+  { name: '対象ごとに差あり', expected: '条件: 対象ごとに差あり', overrides: { layout: { dvorak: { windowSize: 2 } } } },
+];
+
+/** 実際の状態のバッジを作る。`stale`は長いテキストへ変えた直後（計算の間は保たれる）。 */
+async function openWithBadge(page: Page, analyzerId: AnalyzerId, status: BadgeStatus, cols: number, chip: Chip): Promise<void> {
+  await open(page, analyzerId, FHD, { cols, status: status === 'failed' ? 'failed' : 'ready', ...(chip.conditions === undefined ? {} : { conditions: chip.conditions }), ...(chip.overrides === undefined ? {} : { overrides: chip.overrides }) });
+  if (status === 'stale') {
+    const panel = await openTextChip(page);
+    await panel.getByLabel('テキスト', { exact: true }).fill(LONG_TEXT);
+    await page.keyboard.press('Escape');
+    await expect(itemOf(page, 'a').locator('.pane-frame')).toHaveAttribute('data-pane-status', 'stale', { timeout: 10_000 });
+  }
+  await expect(itemOf(page, 'a').locator('.pane-status-badge')).toHaveText(BADGE_TEXT[status]);
+}
+
+/** 描画と見出しの測り直し（ResizeObserverの通知の次のフレーム）が済むまで待つ。 */
+const afterFrames = (page: Page) => page.evaluate(() => new Promise<void>((resolve) => {
+  requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+}));
+
+interface BadgeReport {
+  readonly asText: boolean;
+  readonly badgeWidth: number;
+  readonly badgeInsideFrame: boolean;
+  readonly overlaps: number;
+  readonly textInsideBadge: boolean;
+  readonly textClipped: boolean;
+  readonly nameWidth: number;
+  readonly title: string | null;
+  readonly textContent: string | null;
+}
+
+async function badgeReport(item: Locator): Promise<BadgeReport> {
+  return item.evaluate((root) => {
+    const frame = root.querySelector('.pane-frame')!.getBoundingClientRect();
+    const b = root.querySelector('.pane-status-badge')!;
+    const text = b.querySelector('.pane-status-badge-text')!;
+    const br = b.getBoundingClientRect();
+    const tr = text.getBoundingClientRect();
+    const others = [...root.querySelectorAll('.pane-frame-header button, .pane-frame-header .workspace-drag-handle')]
+      .filter((el) => el.getBoundingClientRect().width > 0)
+      .map((el) => el.getBoundingClientRect());
+    const overlaps = others.filter((r) => Math.min(r.right, br.right) - Math.max(r.left, br.left) > 1 && Math.min(r.bottom, br.bottom) - Math.max(r.top, br.top) > 1).length;
+    // 文字で出ているかは見た目（文字の要素の幅）で決める。点の時は文字が1px四方に隠れる
+    const asText = tr.width > 4;
+    return {
+      asText,
+      badgeWidth: br.width,
+      badgeInsideFrame: br.left >= frame.left - 0.5 && br.right <= frame.right + 0.5,
+      overlaps,
+      textInsideBadge: tr.left >= br.left - 0.5 && tr.right <= br.right + 0.5,
+      textClipped: text.scrollWidth > text.clientWidth + 1 || b.scrollWidth > b.clientWidth + 1,
+      nameWidth: root.querySelector('.workspace-pane-lead-name')!.getBoundingClientRect().width,
+      title: b.getAttribute('title'),
+      textContent: text.textContent,
+    };
+  });
+}
+
+const BADGE_CASES: readonly { readonly analyzerId: AnalyzerId; readonly status: BadgeStatus }[] = [
+  { analyzerId: 'bigram-flow', status: 'failed' },
+  { analyzerId: 'bigram-flow', status: 'stale' },
+  { analyzerId: 'comparison', status: 'stale' },
+  { analyzerId: 'n-sensitivity', status: 'stale' },
+];
+
+for (const { analyzerId, status } of BADGE_CASES) {
+  for (const cols of [5, 6, 8]) {
+    test(`${analyzerId}: ${cols}列で、実際の状態「${BADGE_TEXT[status]}」のバッジが見え、ボタンと重ならず、字の途中で切れない`, async ({ page }) => {
+      await openWithBadge(page, analyzerId, status, cols, CHIPS[0]!);
+      const item = itemOf(page, 'a');
+      await afterFrames(page);
+      const report = await badgeReport(item);
+      expect(report.badgeInsideFrame, 'バッジが枠の中にある').toBe(true);
+      expect(report.overlaps, 'バッジがボタンの下に隠れない').toBe(0);
+      expect(report.title, '状態の文がtitleに残る').toBe(BADGE_TEXT[status]);
+      expect(report.textContent, '状態の文が読み上げ用の文字に残る').toBe(BADGE_TEXT[status]);
+      if (report.asText) {
+        expect(report.textInsideBadge, '文字がバッジの中に収まる').toBe(true);
+        expect(report.textClipped, '字の途中で切れない').toBe(false);
+      } else {
+        expect(report.badgeWidth, '点の幅').toBeLessThanOrEqual(12);
+      }
+      // 8列（523px）は、名前を縮めれば全文が入る。名前を先に省略して、バッジは文字で出る
+      if (cols === 8) {
+        expect(report.asText, '8列ではバッジを文字で出す').toBe(true);
+        if (status === 'stale') expect(report.nameWidth, '名前が縮んで空きを作る').toBeLessThan(80);
+      }
+      await expectHeaderUsable(page, 'a', 44);
+    });
+  }
+}
+
+// 枠の幅を掃引して、全幅で: バッジがボタンと重ならず枠から出ない、点にするのは名前が最小幅の時だけ、判定が往復しない
+// （幅を変えて数フレーム待った後、さらに待っても文字/点が変わらない）、ResizeObserverの警告が出ない。
+// 幅は250〜900pxを10px刻みで、条件のchipが変わる34rem（544px）の周りと、バッジの切り替えが起きる600〜720pxは1px刻み。
+const SWEEP_WIDTHS = (() => {
+  const widths = new Set<number>();
+  for (let w = 250; w <= 900; w += 10) widths.add(w);
+  for (let w = 538; w <= 550; w += 1) widths.add(w);
+  for (let w = 596; w <= 720; w += 2) widths.add(w);
+  return [...widths].sort((a, b) => a - b);
+})();
+
+const [CHIP_DEFAULT, CHIP_CHANGED, CHIP_DIFF] = CHIPS as readonly [Chip, Chip, Chip];
+const SWEEP_CASES: readonly { readonly analyzerId: AnalyzerId; readonly status: BadgeStatus; readonly chip: Chip }[] = [
+  { analyzerId: 'bigram-flow', status: 'stale', chip: CHIP_DEFAULT },
+  { analyzerId: 'bigram-flow', status: 'stale', chip: CHIP_CHANGED },
+  { analyzerId: 'bigram-flow', status: 'failed', chip: CHIP_DEFAULT },
+  { analyzerId: 'comparison', status: 'stale', chip: CHIP_DEFAULT },
+  { analyzerId: 'comparison', status: 'stale', chip: CHIP_CHANGED },
+  { analyzerId: 'comparison', status: 'stale', chip: CHIP_DIFF },
+  { analyzerId: 'n-sensitivity', status: 'stale', chip: CHIP_DEFAULT },
+];
+
+for (const { analyzerId, status, chip } of SWEEP_CASES) {
+  test(`${analyzerId}: 条件が「${chip.name}」で、枠の幅を掃引しても、実際の状態「${BADGE_TEXT[status]}」のバッジがボタンと重ならず、判定が往復しない`, async ({ page }) => {
+    test.setTimeout(180_000);
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    page.on('console', (message) => { if (message.type() === 'error' || message.type() === 'warning') errors.push(message.text()); });
+    await openWithBadge(page, analyzerId, status, 8, chip);
+    const item = itemOf(page, 'a');
+    // 条件のchipの文言を確かめる（既定値・N件変更・対象ごとに差あり）
+    if (status === 'stale') await expect(item.getByRole('button', { name: chip.expected })).toHaveCount(1);
+    const bad: string[] = [];
+    for (const width of SWEEP_WIDTHS) {
+      await item.locator('.pane-frame').evaluate((el, w) => {
+        el.style.width = `${w}px`;
+        el.style.maxWidth = `${w}px`;
+      }, width);
+      await afterFrames(page);
+      const first = await badgeReport(item);
+      await afterFrames(page);
+      const second = await badgeReport(item);
+      if (first.asText !== second.asText) bad.push(`${width}px: 判定が往復する`);
+      if (second.overlaps > 0) bad.push(`${width}px: 重なり ${second.overlaps}件（${second.asText ? '文字' : '点'}）`);
+      if (!second.badgeInsideFrame) bad.push(`${width}px: 枠からはみ出す`);
+      if (second.asText && (second.textClipped || !second.textInsideBadge)) bad.push(`${width}px: 字の途中で切れる`);
+      if (!second.asText && width > 311) {
+        // 点にしたのは、名前を最小幅まで縮めても全文が入らないから。文字にして確かめる（入るなら、点にする理由が無い）
+        // 文字にした時にボタンとの間隔（約5.6px）が残るかで見る。間隔が8px未満になる時（必要な間隔 5.6px に測り誤差を足した値）は、点にしてよい
+        const textFits = await item.evaluate((root) => {
+          const b = root.querySelector('.pane-status-badge')!;
+          b.setAttribute('data-text', '');
+          const br = b.getBoundingClientRect();
+          const hit = [...root.querySelectorAll('.pane-frame-header button, .pane-frame-header .workspace-drag-handle')]
+            .filter((el) => el.getBoundingClientRect().width > 0)
+            .some((el) => {
+              const r = el.getBoundingClientRect();
+              return Math.min(r.right, br.right + 8) - Math.max(r.left, br.left) > 0.5 && Math.min(r.bottom, br.bottom) - Math.max(r.top, br.top) > 1;
+            });
+          const header = root.querySelector('.pane-frame-header')!;
+          const overflow = header.scrollWidth > header.clientWidth + 1;
+          b.removeAttribute('data-text');
+          return !hit && !overflow;
+        });
+        if (textFits) bad.push(`${width}px: 文字でも入るのに点（名前 ${Math.round(second.nameWidth)}px）`);
+      }
+    }
+    expect(bad, 'バッジの不具合がある幅').toEqual([]);
+    expect(errors.filter((line) => /ResizeObserver/.test(line)), 'ResizeObserverの警告が出ない').toEqual([]);
+  });
 }
