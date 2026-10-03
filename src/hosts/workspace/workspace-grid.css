@@ -220,3 +220,34 @@
 .pane-blank-header .pane-menu {
   margin-left: auto;
 }
+
+/*
+ * ---- 拡大表示 ----
+ * 拡大したペインは格子に置いたまま（部品を作り直さず、計算の依頼も出し直さない）、見た目の大きさだけを
+ * Workspaceの面いっぱいにする。ライブラリは位置・大きさをインラインのstyle（transform・width・height）で決めるので、
+ * 拡大中だけ!importantで上書きして外し、`position: fixed`で文脈バーの下・面の左端から画面の右下までへ重ねる
+ * （範囲はWorkspaceGrid.tsxが測る）。格子の並びは書き換えないので、他のペインは動かず背面に残り、
+ * 戻すと元の位置と大きさに戻る。
+ */
+.workspace-grid-area[data-maximized]::before {
+  content: '';
+  position: fixed;
+  inset: var(--maximize-top, 0) 0 0 var(--maximize-left, 0);
+  z-index: 7;
+  background: var(--bg);
+}
+
+.workspace-grid-area .react-grid-item.workspace-grid-item[data-maximized] {
+  position: fixed !important;
+  inset: calc(var(--maximize-top, 0px) + var(--workspace-board-padding)) var(--workspace-board-padding) var(--workspace-board-padding) calc(var(--maximize-left, 0px) + var(--workspace-board-padding)) !important;
+  width: auto !important;
+  height: auto !important;
+  transform: none !important;
+  transition: none !important;
+  z-index: 9;
+}
+
+/* 拡大中は動かせない・大きさを変えられない（並びが変わらないように） */
+.workspace-grid-area[data-maximized] .workspace-drag-handle {
+  cursor: default;
+}

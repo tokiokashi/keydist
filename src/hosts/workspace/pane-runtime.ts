@@ -36,6 +36,10 @@ export interface WorkspacePaneRuntime {
   readonly bindPane: (paneId: string, choice: PaneBindingChoice) => void;
   readonly duplicatePane: (paneId: string) => void;
   readonly closePane: (paneId: string) => void;
+  /** 今拡大表示しているペイン。 */
+  readonly maximizedPaneId?: string | undefined;
+  /** ペインを拡大する。`undefined`で元の並びへ戻す。縦積み（格子を使わない面）では渡さず、⋯に項目を出さない。 */
+  readonly maximizePane?: (paneId: string | undefined) => void;
 }
 
 export type PaneBindingChoice =
@@ -55,14 +59,21 @@ export function blankPaneMenuItems(
 }
 
 /**
- * ペインの⋯の中身（docs/architecture.md「ペイン」）。
+ * ペインの⋯の中身（docs/architecture.md「ペイン」）。「拡大表示」は、拡大できる面（格子）でだけ出す。
  */
 export function paneMenuItems(
-  runtime: Pick<WorkspacePaneRuntime, 'duplicatePane' | 'closePane'>,
+  runtime: Pick<WorkspacePaneRuntime, 'duplicatePane' | 'closePane' | 'maximizePane' | 'maximizedPaneId'>,
   paneId: string,
   resetOptions: () => void,
 ): readonly PaneMenuItem[] {
+  const maximized = runtime.maximizedPaneId === paneId;
   return [
+    ...(runtime.maximizePane === undefined ? [] : [{
+      id: 'maximize',
+      label: maximized ? '元の大きさに戻す' : '拡大表示',
+      description: maximized ? '並びは変えずに、元の大きさへ戻る' : 'このペインをWorkspaceいっぱいに広げる',
+      onSelect: () => runtime.maximizePane?.(maximized ? undefined : paneId),
+    }]),
     { id: 'duplicate', label: '複製', description: '解析設定と対象を写して、同じ大きさで隣に並べる', onSelect: () => runtime.duplicatePane(paneId) },
     { id: 'reset-options', label: '解析設定を初期値に戻す', description: '対象と条件は変わらない', onSelect: resetOptions },
     { id: 'close', label: '閉じる', onSelect: () => runtime.closePane(paneId) },
