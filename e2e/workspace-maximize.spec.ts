@@ -306,14 +306,14 @@ test('図の表示（Escapeで閉じない開閉）を開いていても、Escap
 test('拡大中にTabを回しても、フォーカスは拡大したペイン・上の帯・左のメニューの外へ行かず、「ペインを追加」には入らない', async ({ page }) => {
   await openReady(page);
   await maximize(page, 'a');
-  await expect(page.locator('.workspace-toolbar')).toHaveAttribute('inert', '');
+  await expect(page.locator('.workspace-add-pane-slot')).toHaveAttribute('inert', '');
   await menuButton(page, 'a').focus();
   for (let i = 0; i < 60; i += 1) {
     await page.keyboard.press('Tab');
     const where = await page.evaluate(() => {
       const el = document.activeElement;
       if (el === null || el === document.body) return 'body';
-      if (el.closest('.workspace-toolbar') !== null) return 'toolbar';
+      if (el.closest('.workspace-add-pane-slot') !== null) return 'toolbar';
       const item = el.closest('.workspace-grid-item');
       if (item !== null) return item.hasAttribute('data-maximized') ? 'maximized' : 'other-pane';
       if (el.closest('.context-bar') !== null) return 'bar';
