@@ -175,7 +175,24 @@
 .workspace-menu .pane-menu-list {
   right: auto;
   left: 0;
-  min-width: 9rem;
+  min-width: 15rem;
+}
+
+/* 入り・切りの項目（空いた所に詰める）。入っている間だけ先頭にチェックを出す。切りでも先頭の幅は空けて、ラベルの位置を揃える */
+.workspace-menu .pane-menu-item[role="menuitemcheckbox"] .pane-menu-item-label::before {
+  content: "";
+  display: inline-block;
+  width: 1.1em;
+}
+
+.workspace-menu .pane-menu-item[role="menuitemcheckbox"][aria-checked="true"] .pane-menu-item-label::before {
+  content: "\2713";
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.workspace-menu .pane-menu-item[role="menuitemcheckbox"] .pane-menu-item-description {
+  padding-left: 1.1em;
 }
 
 /* ---- 使えないペイン・表示できなかったペイン ---- */

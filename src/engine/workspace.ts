@@ -160,6 +160,12 @@ export interface Workspace {
   /** ペインごとの位置と大きさ（格子の升目。`workspace-grid.ts`）。ペインの集まりと同じ集まりのidを持つ。 */
   readonly grid: WorkspaceGrid;
   /**
+   * 空いた所へペインを上へ詰めるか。表示だけが変わる設定（`ui`。出力の数値は動かない）で、Workspaceごとに持つ。
+   * 無ければ（既定）詰めない。ペインを縮める・動かす・閉じて空いた所は空いたまま残り、衝突した時に下へ押すだけになる。
+   * 詰めない値は持たない（疎）。切り替えても`grid`は書き換えない（`withWorkspaceCompactPanes`）。
+   */
+  readonly compactPanes?: true;
+  /**
    * 集合の対象に配った色の番号。全ペインの対象の和を1つの集合として配るので、同じ対象はどのペインでも
    * 同じ色になる（`workspace-colors.ts`。#630）。ペインを閉じる・対象を外すなどで和から消えた対象の番号は空く。
    * 書き込みの後に`updateWorkspace`が配り直すので、コマンドの側は意識しない。
@@ -328,7 +334,7 @@ export function addWorkspacePane(library: WorkspaceLibrary, workspaceId: string,
     return {
       ...workspace,
       panes: [...workspace.panes, pane],
-      grid: gridWithPane(workspace.grid, pane.id, size),
+      grid: gridWithPane(workspace.grid, pane.id, size, workspace.compactPanes === true),
     };
   });
 }
@@ -340,7 +346,7 @@ export function closeWorkspacePane(library: WorkspaceLibrary, workspaceId: strin
     return pruneLinkGroups({
       ...workspace,
       panes: workspace.panes.filter((pane) => pane.id !== paneId),
-      grid: gridWithoutPane(workspace.grid, paneId),
+      grid: gridWithoutPane(workspace.grid, paneId, workspace.compactPanes === true),
     });
   });
 }
@@ -361,7 +367,7 @@ export function duplicateWorkspacePane(
     return {
       ...workspace,
       panes: [...workspace.panes, { ...source, id: newPaneId }],
-      grid: gridWithPaneNextTo(workspace.grid, paneId, newPaneId),
+      grid: gridWithPaneNextTo(workspace.grid, paneId, newPaneId, workspace.compactPanes === true),
     };
   });
 }
@@ -474,12 +480,26 @@ export function withWorkspaceConditionOverrides(
 
 /**
  * ペインの並び（ドラッグ・大きさの変更の結果）を書き換える。ペインの集まりと食い違う部分（枠の無いペイン・未知のペイン）は
- * `normalizeGrid`が直し、重なりと上の空きも詰めるので、呼び出し側は載せる側から受け取った形をそのまま渡してよい。
+ * `normalizeGrid`が直し、重なりを解く（詰める設定の時は上の空きも詰める）ので、呼び出し側は載せる側から受け取った形をそのまま渡してよい。
  * 位置と大きさが同じなら何もしない。
  */
 export function withWorkspaceGrid(library: WorkspaceLibrary, workspaceId: string, grid: WorkspaceGrid): WorkspaceLibrary {
   return updateWorkspace(library, workspaceId, (workspace) => {
-    const normalized = normalizeGrid(grid, workspace.panes.map((pane) => pane.id));
+    const normalized = normalizeGrid(grid, workspace.panes.map((pane) => pane.id), workspace.compactPanes === true);
     return sameGrid(normalized, workspace.grid) ? workspace : { ...workspace, grid: normalized };
+  });
+}
+
+/**
+ * 「空いた所に詰める」を切り替える。並び（`grid`）は書き換えない。詰めない→詰めるに切り替えた直後は、
+ * 保存した並びに空きが残ったままで、表示だけが詰めた形になる（載せる側が詰めて描く）。
+ * 並びへ詰めた結果が書かれるのは、次にペインを動かす・足す・閉じた時。切り替えを戻せば、保存した並びがそのまま見える。
+ * 同じ値なら何もしない。
+ */
+export function withWorkspaceCompactPanes(library: WorkspaceLibrary, workspaceId: string, compact: boolean): WorkspaceLibrary {
+  return updateWorkspace(library, workspaceId, (workspace) => {
+    if ((workspace.compactPanes === true) === compact) return workspace;
+    const { compactPanes: _removed, ...rest } = workspace;
+    return compact ? { ...rest, compactPanes: true } : rest;
   });
 }
