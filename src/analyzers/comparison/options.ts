@@ -43,8 +43,8 @@ export type ComparisonColumnId = (typeof COMPARISON_COLUMN_IDS)[number];
  */
 export interface ComparisonColumnDef {
   /**
-   * 見出しの短い名前。単位の付け方は全列で同じ規則: 値が距離そのもの（u）で、名前に単位が入っていない列にだけ
-   * 末尾へ ` [u]` を付ける（`u/打鍵`・`u/文字` は名前が単位を含む）。率の列は値の側に `%` が付き、回数の列は単位が無い。
+   * 見出しの短い名前。見出しには単位を付けない（単位は表の「列の説明」に書く）。
+   * 率の列は値の側に `%` が付き、`u/打鍵`・`u/文字` は名前が単位を含む。
    */
   readonly label: string;
   /** 見出しのⓘに出す説明。指標の定義は spec §11 と README「出力」の言い方に合わせる。 */
@@ -57,6 +57,9 @@ const fixed = (digits: number) => (value: number): string => value.toFixed(digit
 const percent = (value: number): string => `${value.toFixed(1)}%`;
 const count = (value: number): string => `${value}`;
 
+/** 「列の説明」の先頭に出す、距離の単位の説明。 */
+export const COMPARISON_UNIT_NOTE = '距離の単位 u は、キーの幅を1とした距離。';
+
 export const COMPARISON_COLUMNS: Readonly<Record<ComparisonColumnId, ComparisonColumnDef>> = {
   actions: {
     label: '動作数',
@@ -64,18 +67,18 @@ export const COMPARISON_COLUMNS: Readonly<Record<ComparisonColumnId, ComparisonC
     format: count,
   },
   totalUnits: {
-    label: '距離 [u]',
-    description: '全指の総移動距離。',
+    label: '距離',
+    description: '全指の総移動距離（u）。',
     format: fixed(0),
   },
   meanPerStroke: {
     label: 'u/打鍵',
-    description: '1打鍵あたりの平均移動距離。',
+    description: '1打鍵あたりの平均移動距離（u/打鍵）。',
     format: fixed(3),
   },
   perCharUnits: {
     label: 'u/文字',
-    description: '入力1文字あたりの総移動距離。文字数はローマ字展開やコンボ結合の前の原文で数えるので、打鍵数を減らした効果がこの値に残る。',
+    description: '入力1文字あたりの総移動距離（u/文字）。文字数はローマ字展開やコンボ結合の前の原文で数えるので、打鍵数を減らした効果がこの値に残る。',
     format: fixed(3),
   },
   perCharSteps: {
@@ -114,13 +117,13 @@ export const COMPARISON_COLUMNS: Readonly<Record<ComparisonColumnId, ComparisonC
     format: percent,
   },
   adjacentMean: {
-    label: '指間平均 [u]',
-    description: '同じ手で隣り合う2本の指の距離が、ホームに置いた時の間隔よりどれだけ開いたかの平均。6組の平均で、ホームより近いと負になる。',
+    label: '指間平均',
+    description: '同じ手で隣り合う2本の指の距離が、ホームに置いた時の間隔よりどれだけ開いたかの平均。6組の平均で、ホームより近いと負になる（u）。',
     format: fixed(3),
   },
   adjacentStdDev: {
-    label: '指間σ [u]',
-    description: '隣り合う2本の指の距離のばらつき（標準偏差）。6組の平均。',
+    label: '指間σ',
+    description: '隣り合う2本の指の距離のばらつき（標準偏差）。6組の平均（u）。',
     format: fixed(3),
   },
 } as const;

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { COMPARISON_COLUMNS, comparisonOptions } from './options.ts';
+import { COMPARISON_COLUMNS, COMPARISON_UNIT_NOTE, comparisonOptions } from './options.ts';
 
 /**
  * 列ごとの表示形式（コーディネーターレビュー対応: 一律ルールではなく列の宣言に持たせる）。
@@ -14,7 +14,7 @@ test('COMPARISON_COLUMNS: 個数の列は整数のまま（桁を丸めない）
   assert.equal(COMPARISON_COLUMNS.sameFinger.format(7), '7');
 });
 
-test('COMPARISON_COLUMNS: 距離[u]は整数（小数第0位）', () => {
+test('COMPARISON_COLUMNS: 距離は整数（小数第0位）', () => {
   assert.equal(COMPARISON_COLUMNS.totalUnits.format(1234.567), '1235');
 });
 
@@ -67,14 +67,15 @@ test('URL: 未知の列や真偽値は診断を積んで捨てる', () => {
   assert.equal(diagnostics.length, 2);
 });
 
-test('見出し: 単位 [u] は、値が距離そのもので名前に単位が入っていない列にだけ付く', () => {
-  const withUnit = Object.entries(COMPARISON_COLUMNS).filter(([, def]) => def.label.endsWith(' [u]')).map(([id]) => id);
-  assert.deepEqual(withUnit, ['totalUnits', 'adjacentMean', 'adjacentStdDev']);
-  // 名前に単位を含む列（u/打鍵・u/文字）には重ねて付けない。
-  assert.equal(COMPARISON_COLUMNS.meanPerStroke.label, 'u/打鍵');
-  assert.equal(COMPARISON_COLUMNS.perCharUnits.label, 'u/文字');
-  assert.equal(COMPARISON_COLUMNS.adjacentMean.label, '指間平均 [u]');
-  assert.equal(COMPARISON_COLUMNS.adjacentStdDev.label, '指間σ [u]');
+test('見出し: 単位は付けず、距離の列の説明に単位 u を書く', () => {
+  for (const def of Object.values(COMPARISON_COLUMNS)) assert.ok(!def.label.includes('['), def.label);
+  assert.equal(COMPARISON_COLUMNS.totalUnits.label, '距離');
+  assert.equal(COMPARISON_COLUMNS.adjacentMean.label, '指間平均');
+  assert.equal(COMPARISON_COLUMNS.adjacentStdDev.label, '指間σ');
+  for (const id of ['totalUnits', 'meanPerStroke', 'perCharUnits', 'adjacentMean', 'adjacentStdDev'] as const) {
+    assert.match(COMPARISON_COLUMNS[id].description, /（u(\/打鍵|\/文字)?）/, id);
+  }
+  assert.match(COMPARISON_UNIT_NOTE, /キーの幅を1とした距離/);
 });
 
 test('見出し: 全列に説明があり、内部の語や英語のmeanを使わない', () => {

@@ -52,4 +52,7 @@
 .info-popover-floating {
   position: fixed;
   max-width: min(22rem, calc(100vw - 1rem));
+  /* 項目の多い説明（比較表の列の説明）が画面に収まらない時は、説明の中でスクロールする */
+  max-height: calc(100vh - 1rem);
+  overflow-y: auto;
 }

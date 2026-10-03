@@ -3,6 +3,7 @@ import { comparisonDefinition, type ComparisonExtracted, type ComparisonFailedRo
 import {
   COMPARISON_COLUMN_IDS,
   COMPARISON_COLUMNS,
+  COMPARISON_UNIT_NOTE,
   DEFAULT_COMPARISON_OPTIONS,
   type ComparisonColumnId,
   type ComparisonOptions,
@@ -88,33 +89,53 @@ const SORT_ARIA: Readonly<Record<'asc' | 'desc', 'ascending' | 'descending'>> = 
 
 /**
  * 列の見出し。名前のボタンを押す（Enter・Spaceも同じ）たびに 昇順 → 降順 → 解除 と切り替わり、
- * 並べている列には向きの印と`aria-sort`が付く。ⓘ（列の説明）は並び替えのボタンとは別のボタンにする
- * （ボタンの中にボタンは置けない）。説明は表の横スクロールの入れ物に切られないよう`floating`で出す。
+ * 並べている列には向きの印と`aria-sort`が付く。見出しは名前と印だけにする（列の説明は表の下の
+ * ⓘにまとめる。見出しごとに置くと、ペインを狭めた時に見出しの並びの幅を食うため）。
+ * 印は列の幅に入れず、セルの右の余白へ絶対配置する。印の出し入れで列の幅が動かず、
+ * 幅を確保するための余分な幅も要らない。
  */
 function ColumnHeader({ column, sort, onSortChange }: {
   readonly column: ComparisonColumnId;
   readonly sort: ComparisonSort;
   readonly onSortChange: (next: ComparisonSort) => void;
 }) {
-  const def = COMPARISON_COLUMNS[column];
   const active = sort !== null && sort.column === column ? sort : undefined;
   return (
     <th scope="col" aria-sort={active === undefined ? undefined : SORT_ARIA[active.direction]}>
-      <span className="comparison-column-head">
-        <button
-          type="button"
-          className="comparison-sort-button"
-          title="押すたびに昇順・降順・並び替えなしへ切り替える"
-          onClick={() => onSortChange(nextComparisonSort(sort, column))}
-        >
-          {def.label}
-          <span className="comparison-sort-mark" aria-hidden="true">
-            {active === undefined ? '' : active.direction === 'asc' ? '↑' : '↓'}
-          </span>
-        </button>
-        <InfoButton name={def.label} description={def.description} floating />
-      </span>
+      <button
+        type="button"
+        className="comparison-sort-button"
+        title="押すたびに昇順・降順・並び替えなしへ切り替える"
+        onClick={() => onSortChange(nextComparisonSort(sort, column))}
+      >
+        {COMPARISON_COLUMNS[column].label}
+        <span className="comparison-sort-mark" aria-hidden="true">
+          {active === undefined ? '' : active.direction === 'asc' ? '↑' : '↓'}
+        </span>
+      </button>
     </th>
+  );
+}
+
+/** 表示している列の説明を、列名と組にしてまとめて出す。距離の単位もここに書く。 */
+function ColumnDescriptions({ columns }: { readonly columns: readonly ComparisonColumnId[] }) {
+  if (columns.length === 0) return null;
+  const description = (
+    <span className="comparison-column-descriptions">
+      <span className="comparison-column-unit">{COMPARISON_UNIT_NOTE}</span>
+      {columns.map((column) => (
+        <span key={column} className="comparison-column-description">
+          <strong>{COMPARISON_COLUMNS[column].label}</strong>
+          {COMPARISON_COLUMNS[column].description}
+        </span>
+      ))}
+    </span>
+  );
+  return (
+    <p className="comparison-column-help">
+      <span>列の説明</span>
+      <InfoButton name="列" description={description} floating />
+    </p>
   );
 }
 
@@ -211,6 +232,7 @@ export function ComparisonBody({
           </tbody>
         </table>
       </div>
+      <ColumnDescriptions columns={visibleColumns} />
     </section>
   );
 }

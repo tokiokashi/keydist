@@ -754,7 +754,7 @@ test('「共有」でコピーしたURLを新しいページで開くと、解�
     // 対象もURLで届くので、選び直さなくても表が出る。
     const openedTable = opened.locator('.comparison-table');
     await expect(openedTable).toBeVisible({ timeout: 10_000 });
-    await expect(openedTable.locator('thead')).toContainText('距離 [u]');
+    await expect(openedTable.locator('thead')).toContainText('距離');
     await expect(openedTable.locator('thead th', { hasText: /^動作数$/ })).toHaveCount(0);
     await expect((await openSettings(opened)).getByRole('checkbox', { name: '動作数', exact: true })).not.toBeChecked();
     await expect(opened).toHaveURL(/\/standalone\/comparison$/);
