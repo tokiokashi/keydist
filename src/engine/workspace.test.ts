@@ -274,7 +274,7 @@ test('余白のペイン: 対象を持たず、組を残す理由にならない
 });
 
 test('詰めない設定（既定）: ペインを閉じても下のペインは動かず、閉じた所は空いたまま', () => {
-  // 幅12のペインを2段に並べる（上の段が a・b、下の段が c・d）
+  // 幅12のペインを2段に並べる（上の段はa・b、下の段はc・d）
   let library = libraryWith();
   for (const id of ['a', 'b', 'c', 'd']) library = addWorkspacePane(library, 'w1', pane(id), { w: 12, h: 10 });
   const grid = findWorkspace(library, 'w1')!.grid;

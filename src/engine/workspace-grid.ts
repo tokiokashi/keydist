@@ -74,8 +74,11 @@ export function compactGrid(grid: WorkspaceGrid): WorkspaceGrid {
   return grid.map((item) => byId.get(item.id)!);
 }
 
-/** 重なりを解く。重なった枠は、読み順で先に置いた枠の下へ押し下げる（壊れた保存データ・外から来た値の用心）。 */
-function resolveOverlaps(grid: WorkspaceGrid): WorkspaceGrid {
+/**
+ * 重なりを解く。重なった枠は、読み順で先に置いた枠の下へ押し下げる（壊れた保存データ・外から来た値の用心）。
+ * 詰めない設定の操作の途中にも、載せる側が同じ規則で重なりを解く（指を離した時に位置が飛ばないように）ので公開する。
+ */
+export function resolveOverlaps(grid: WorkspaceGrid): WorkspaceGrid {
   const placed: GridItem[] = [];
   for (const item of inReadingOrder(grid)) {
     let next = item;

@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
-import ReactGridLayout, { noCompactor, verticalCompactor, type Layout, type LayoutItem } from 'react-grid-layout';
+import ReactGridLayout, { verticalCompactor, type Compactor, type Layout, type LayoutItem } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
-import { compactGrid, GRID_COLS, gridPaneIds, type GridItem, type WorkspaceGrid } from '#engine/workspace-grid.ts';
+import { compactGrid, GRID_COLS, gridPaneIds, resolveOverlaps, type GridItem, type WorkspaceGrid } from '#engine/workspace-grid.ts';
 import { PaneHeaderLeadContext, PaneNameInLeadContext } from '#hosts/shared/pane-name-in-lead.ts';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
 import { GRID_MARGIN_PX, GRID_PADDING_PX, GRID_ROW_HEIGHT_PX, minGridSize } from './grid-metrics.ts';
@@ -89,6 +89,20 @@ function toLayoutItem(item: GridItem, analyzerId: string, containerWidth: number
   return { i: item.id, x: item.x, y: item.y, w: item.w, h: item.h, minW: Math.min(min.w, item.w), minH: Math.min(min.h, item.h) };
 }
 
+/**
+ * 詰めない時の整え方。上へは動かさず、重なりだけを下へ解く。ライブラリの`noCompactor`は何も整えないので、
+ * 大きさを変える・動かす操作の途中でペインが重なって描かれる（押しのけの検査は、動かした向きによって抜ける）。
+ * 規則は指を離した後に資産へ書く時の重なりの解き方（`resolveOverlaps`）と同じにして、離した瞬間に位置が飛ばないようにする。
+ */
+const resolveOverlapsCompactor: Compactor = {
+  type: null,
+  allowOverlap: false,
+  compact(layout) {
+    const resolved = new Map(resolveOverlaps(fromLayout(layout)).map((item) => [item.id, item.y] as const));
+    return layout.map((item) => ({ ...item, y: resolved.get(item.i) ?? item.y }));
+  },
+};
+
 function fromLayout(layout: Layout): WorkspaceGrid {
   return layout.map((item) => ({ id: item.i, x: item.x, y: item.y, w: item.w, h: item.h }));
 }
@@ -135,7 +149,7 @@ export function WorkspaceGrid({ grid, analyzerIdOf, titleOf, descriptionOf, rend
           dragConfig={dragConfig}
           // 大きさを変えるつかみは下の辺（高さだけ）・右の辺と左の辺（幅だけ）・右下の角（幅と高さ）の4つ
           resizeConfig={resizeConfig}
-          compactor={compact ? verticalCompactor : noCompactor}
+          compactor={compact ? verticalCompactor : resolveOverlapsCompactor}
           onDragStop={(next) => onGridChange(fromLayout(next))}
           onResizeStop={(next) => onGridChange(fromLayout(next))}
         >

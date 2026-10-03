@@ -190,3 +190,64 @@ test('拡大表示: 拡大しても戻しても、保存した並びも空きも
   expect(await stored(page)).toEqual(gapped);
   expect(await drawnTop(page, 'c') - await drawnTop(page, 'a')).toBe(gap);
 });
+
+interface Rect { readonly id: string; readonly x: number; readonly y: number; readonly w: number; readonly h: number }
+
+async function drawnRects(page: Page): Promise<Rect[]> {
+  return page.locator('.workspace-grid-item').evaluateAll((els) => els.map((el) => {
+    const r = el.getBoundingClientRect();
+    return { id: el.getAttribute('data-pane-id')!, x: Math.round(r.x), y: Math.round(r.y + scrollY), w: Math.round(r.width), h: Math.round(r.height) };
+  }));
+}
+
+function overlapping(rects: readonly Rect[]): string[] {
+  const found: string[] = [];
+  rects.forEach((a, i) => rects.slice(i + 1).forEach((b) => {
+    // 1pxの丸めは重なりとみなさない
+    if (a.x + 1 < b.x + b.w && b.x + 1 < a.x + a.w && a.y + 1 < b.y + b.h && b.y + 1 < a.y + a.h) found.push(`${a.id}/${b.id}`);
+  }));
+  return found;
+}
+
+/**
+ * つかんだ点から`dx`・`dy`だけ数回に分けて動かし、動かすたびに落ち着いてから描かれた矩形が重ならないことを確かめる。
+ * 離す直前と直後で、動かしていないペインの位置が飛ばないことも確かめる。
+ */
+async function dragWhileChecking(page: Page, grab: { x: number; y: number }, dx: number, dy: number, moving: string): Promise<void> {
+  await page.mouse.move(grab.x, grab.y);
+  await page.mouse.down();
+  const steps = 6;
+  for (let i = 1; i <= steps; i += 1) {
+    await page.mouse.move(grab.x + (dx * i) / steps, grab.y + (dy * i) / steps);
+    await page.waitForTimeout(350);
+    expect(overlapping(await drawnRects(page)), `途中${i}/${steps}で重なる`).toEqual([]);
+  }
+  const before = await drawnRects(page);
+  await page.mouse.up();
+  await settle(page);
+  const after = await drawnRects(page);
+  expect(overlapping(after)).toEqual([]);
+  for (const rect of before.filter((r) => r.id !== moving)) {
+    expect(after.find((r) => r.id === rect.id), `${rect.id}が離した瞬間に飛ぶ`).toEqual(rect);
+  }
+}
+
+test('詰めない（既定）: 大きさを変える途中でペインが重ならず、離しても位置が飛ばない', async ({ page }) => {
+  await open(page, ['a', 'c'], [cell('a', 0, 0, 12, 6), cell('c', 0, 8, 12, 6)]);
+  const box = (await page.locator('.workspace-grid-item[data-pane-id="a"] .react-resizable-handle-s').boundingBox())!;
+  await dragWhileChecking(page, { x: box.x + box.width / 2, y: box.y + box.height / 2 }, 0, 5 * ROW_STEP, 'a');
+});
+
+test('詰めない（既定）: 動かす途中でペインが重ならず、離しても位置が飛ばない', async ({ page }) => {
+  await open(page, ['a', 'b', 'd'], [cell('a', 0, 0, 8, 12), cell('b', 12, 0, 8, 3), cell('d', 12, 3, 8, 3)]);
+  const grab = (await page.locator('.workspace-grid-item[data-pane-id="a"] .workspace-drag-handle').boundingBox())!;
+  const step = await colStep(page);
+  await dragWhileChecking(page, { x: grab.x + grab.width / 2, y: grab.y + grab.height / 2 }, Math.round(12 * step), 0, 'a');
+});
+
+test('⋯をキーボードで開くと、先頭の「空いた所に詰める」へフォーカスが行く', async ({ page }) => {
+  await open(page, ['a'], [cell('a', 0, 0, 12, 8)]);
+  await menuButton(page).focus();
+  await page.keyboard.press('Enter');
+  await expect(compactItem(page)).toBeFocused();
+});
