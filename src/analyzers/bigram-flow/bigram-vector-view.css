@@ -95,6 +95,12 @@
   font-weight: 600;
 }
 
+/* 組の数は見出しの名前より一段小さくする（狭いペインでも、ⓘと表示調整のボタンが次の行へ送られずに済む幅に収める）。 */
+.flow-block-count {
+  margin-left: 0.25rem;
+  font-size: 0.7rem;
+}
+
 .flow-stage,
 .flow-mini-panel {
   position: relative;

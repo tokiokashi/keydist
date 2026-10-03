@@ -60,8 +60,9 @@ function measure(page: Page) {
   });
 }
 
-test('2ペイン横並び（Bigram Flow＋比較表、各12列 x 21行）で、Bigram Flowの本体はスクロールせず図が収まる', async ({ page }) => {
-  await openWorkspace(page, [flow, comparison], [cell('f', 0, 0, 12, 21), cell('c', 12, 0, 12, 21)], { width: 1440, height: 900 });
+test('2ペイン横並び（Bigram Flow＋比較表、各12列 x 19行）で、Bigram Flowの本体はスクロールせず図が収まる', async ({ page }) => {
+  // 組の数のラベルが行を使わなくなった（#928）分だけ図に使える高さが増えたので、21行から2行減らして、高さに合わせて縮む状態を保つ
+  await openWorkspace(page, [flow, comparison], [cell('f', 0, 0, 12, 19), cell('c', 12, 0, 12, 19)], { width: 1440, height: 900 });
   const m = await measure(page);
   // 本体の領域の中でも、ペイン全体でもスクロールしない（図の下端がペインの枠の中にある）
   expect(m.bodyScrollHeight).toBeLessThanOrEqual(m.bodyClientHeight + 1);
@@ -207,8 +208,9 @@ test('個別画面の外側に高さを測れるcontainerがあっても、Works
 });
 
 test('高さに合わせて縮んだ図の線は、枠の幅ではなく実際に描かれる幅を倍率にして太さを保つ', async ({ page }) => {
-  // 図が高さで決まる形（24列 x 8行）
-  await openWorkspace(page, [flow], [cell('f', 0, 0, 24, 8)], { width: 1440, height: 900 });
+  // 図が高さで決まる形（24列 x 24行、図を縦に積む縦長の本体）。組の数のラベルが行を使わなくなった（#928）ので、
+  // 横に並べる形（24列 x 8行）は本体の高さの下限で図が枠の幅いっぱいに収まり、高さで決まる形にならない
+  await openWorkspace(page, [flow], [cell('f', 0, 0, 24, 24)], { width: 1440, height: 1300 });
   const info = await page.evaluate(() => {
     const svg = document.querySelector('[data-react-feature="bigram-flow"] .flow-keyboard-svg') as SVGSVGElement;
     const rect = svg.getBoundingClientRect();
