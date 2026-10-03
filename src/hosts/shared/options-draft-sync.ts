@@ -35,7 +35,8 @@ export function applyDraftInput<T>(state: DraftSyncState<T>, next: T): DraftSync
 /**
  * 保存先の値が変わった時の下書きの扱い。`writes`は書き込みの記録、`latest`はその最後の番号。
  * - 参照が同じ: 何もしない
- * - 中身が同じ（他タブが別のAnalyzerの設定を書いて記録全体が読み直された等）: 下書きを触らない（#606）
+ * - 中身が同じ（他タブが別のAnalyzerの設定を書いて記録全体が読み直された等）: 下書きを触らない（#606）。
+ *   ただし、まだ見ていない書き込みがあり、保存先がそのどれとも違う時は外からの変更として揃える（下を参照）
  * - まだ見ていない書き込みと同じ値になった（反響）: 下書きを触らない。最も新しい同じ値の書き込みまでを見たことにする
  * - それ以外（元に戻す・やり直す・別タブ・共有URL・既定値へ戻す等）: 下書きを保存先に揃え、
  *   今ある書き込みはすべて見たことにする。保存先が動かなかった書き込み（同じ値の書き込み）が残って、
@@ -47,12 +48,30 @@ export function syncDraftWithStored<T>(
   writes: readonly OptionsWrite[],
   latest: number,
 ): DraftSyncState<T> {
-  if (state.source === stored) return state;
-  if (stableStringify(state.source) === stableStringify(stored)) return { ...state, source: stored };
+  const unseen = writes.filter((write) => write.seq > state.seen);
+  // 見ていない書き込みが無く、保存先が動いていなければ何もしない（描画のたびに通る道なので軽くする）
+  if (state.source === stored && unseen.length === 0) return state;
   const key = stableStringify(stored);
-  for (let i = writes.length - 1; i >= 0; i--) {
-    const write = writes[i]!;
-    if (write.seq > state.seen && write.key === key) return { ...state, source: stored, seen: write.seq };
+  const echo = lastWithKey(unseen, key);
+  if (state.source === stored || stableStringify(state.source) === key) {
+    // 保存先の中身が最後に見た値と同じ。見ていない書き込みが無いか、そのどれかと同じなら、
+    // 参照だけが変わった読み直し（#606）か、保存先が動かなかった書き込みなので、下書きは触らない。
+    // どれとも違うなら、書き込みが適用された後に元へ戻された。元に戻す前のflushと元に戻すは
+    // 1つのクリックの処理で続けて走り、描画は戻した後の1回だけで、元に戻すは以前の資産の値
+    // （参照も同じ）へ戻すので、見た目には保存先が動いていない（#944）。外からの変更として揃える
+    if (unseen.length === 0 || echo !== undefined) {
+      return state.source === stored ? state : { ...state, source: stored };
+    }
+    return { draft: stored, source: stored, seen: latest };
   }
+  if (echo !== undefined) return { ...state, source: stored, seen: echo.seq };
   return { draft: stored, source: stored, seen: latest };
+}
+
+/** ES2022のlibには`findLast`が無いので、後ろから探す。最も新しい同じ値の書き込みに当てる。 */
+function lastWithKey(writes: readonly OptionsWrite[], key: string): OptionsWrite | undefined {
+  for (let i = writes.length - 1; i >= 0; i--) {
+    if (writes[i]!.key === key) return writes[i];
+  }
+  return undefined;
 }
