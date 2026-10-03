@@ -4,7 +4,7 @@ import { waitForHydration } from './hydration-helper.ts';
 /**
  * N感度の「各Nの実測値」の表は、Workspaceのペインで図の下の余りに収まる時は開いて始まり、
  * 収まらない時だけ畳んで始まる（#837）。判定は表が初めて大きさを持った時に一度だけで、以後は利用者の開閉に従う。
- * ペインの大きさは格子（1升 = 28px、升の間 8px、列は12）で決まる。
+ * ペインの大きさは格子（1升 = 28px、升の間 8px、列は24）で決まる。
  */
 
 const QWERTY = { kind: 'layout', layoutId: 'qwerty' };
@@ -25,7 +25,7 @@ const cell = (id: string, x: number, y: number, w: number, h: number) => ({ id, 
 /** N感度＋Bigram Flow×2 を横に3つ並べる（N感度の下に、頭打ちの図の余りができる）。高さは行数（既定の22行は784px）。 */
 const threePanes = (nsensPane: unknown, rows = 22) => ({
   panes: [nsensPane, { ...flow, id: 'f1' }, { ...flow, id: 'f2' }],
-  grid: [cell('n', 0, 0, 4, rows), cell('f1', 4, 0, 4, rows), cell('f2', 8, 0, 4, rows)],
+  grid: [cell('n', 0, 0, 8, rows), cell('f1', 8, 0, 8, rows), cell('f2', 16, 0, 8, rows)],
 });
 
 async function seed(page: Page, panes: readonly unknown[], grid: unknown) {
@@ -80,7 +80,7 @@ function measure(page: Page) {
   });
 }
 
-test('余りに表が収まる時（2件・3ペイン 各4列 x 22行）は開いて始まり、図の大きさは頭打ちのまま', async ({ page }) => {
+test('余りに表が収まる時（2件・3ペイン 各8列 x 22行）は開いて始まり、図の大きさは頭打ちのまま', async ({ page }) => {
   const { panes, grid } = threePanes(nsens2);
   await openWorkspace(page, panes, grid, { width: 1440, height: 900 });
   expect(await isOpen(page)).toBe(true);
@@ -91,7 +91,7 @@ test('余りに表が収まる時（2件・3ペイン 各4列 x 22行）は開�
   expect(m.detailsBottom).toBeLessThanOrEqual(m.bodyBottom + 1);
 });
 
-test('余りに表が収まらない時（17件・3ペイン 各4列 x 22行）は畳んで始まる', async ({ page }) => {
+test('余りに表が収まらない時（17件・3ペイン 各8列 x 22行）は畳んで始まる', async ({ page }) => {
   const { panes, grid } = threePanes(nsens17);
   await openWorkspace(page, panes, grid, { width: 1440, height: 900 }, 17);
   expect(await isOpen(page)).toBe(false);

@@ -90,7 +90,7 @@ test('配列を選び直すと、変わったペインだけが依頼を出し�
     groups: [groupOf('g1', 'qwerty'), groupOf('g2', 'dvorak')],
     // 連動2（別々の組）と固定1
     panes: [follow('a', 'g1'), follow('b', 'g2'), fixed('c', 'colemak')],
-    grid: ['a', 'b', 'c'].map((id, i) => ({ id, x: i * 4, y: 0, w: 4, h: 16 })),
+    grid: ['a', 'b', 'c'].map((id, i) => ({ id, x: i * 8, y: 0, w: 8, h: 16 })),
   });
   const panes = page.locator('.pane-frame');
   await expect(panes).toHaveCount(3);
@@ -121,9 +121,9 @@ test('ペインを動かす・大きさを変えても、依頼は出ず、計�
     groups: [groupOf('g1', 'qwerty')],
     panes: [follow('a', 'g1'), follow('b', 'g1'), fixed('c', 'colemak')],
     grid: [
-      { id: 'a', x: 0, y: 0, w: 6, h: 16 },
-      { id: 'b', x: 6, y: 0, w: 6, h: 16 },
-      { id: 'c', x: 0, y: 16, w: 6, h: 16 },
+      { id: 'a', x: 0, y: 0, w: 12, h: 16 },
+      { id: 'b', x: 12, y: 0, w: 12, h: 16 },
+      { id: 'c', x: 0, y: 16, w: 12, h: 16 },
     ],
   });
   await expect(page.locator('.pane-frame[data-pane-status="ready"]')).toHaveCount(3, { timeout: 15_000 });
@@ -146,7 +146,7 @@ test('ペインを動かす・大きさを変えても、依頼は出ず、計�
   await page.mouse.down();
   await page.mouse.move(corner.x - 150, corner.y - 60, { steps: 8 });
   await page.mouse.up();
-  await expect.poll(async () => (await storedGridItem(page, 'a')).w).toBeLessThan(6);
+  await expect.poll(async () => (await storedGridItem(page, 'a')).w).toBeLessThan(12);
 
   await expect(page.locator('.pane-frame[data-pane-status="ready"]')).toHaveCount(3);
   const log = await readLog(page);
@@ -179,7 +179,7 @@ test('計算中に別のペインの大きさを変える（資産の保存）�
     ...WORKSPACE_BASE,
     groups: [groupOf('g1', 'qwerty')],
     panes: [follow('a', 'g1'), fixed('b', 'dvorak')],
-    grid: [{ id: 'a', x: 0, y: 0, w: 6, h: 16 }, { id: 'b', x: 6, y: 0, w: 6, h: 16 }],
+    grid: [{ id: 'a', x: 0, y: 0, w: 12, h: 16 }, { id: 'b', x: 12, y: 0, w: 12, h: 16 }],
   });
   await expect(page.locator('.pane-frame[data-pane-status="ready"]')).toHaveCount(2, { timeout: 15_000 });
 

@@ -14,7 +14,11 @@
  * - 枠どうしは重ならない
  * - 上に空きが無い（縦に詰めてある）。ペインを閉じたら下のペインが上がる
  */
-export const GRID_COLS = 12;
+/**
+ * 列数。12列では荒く、ペインの幅を細かく選べない（Analyzerによって欲しい幅が割れる）ので24列にする。
+ * 既定の幅は面の半分（GRID_COLS / 2）で、列数を前提にした値はここから導く。
+ */
+export const GRID_COLS = 24;
 
 export interface GridItem {
   readonly id: string;
@@ -33,7 +37,7 @@ export interface GridSize {
 export type WorkspaceGrid = readonly GridItem[];
 
 /** 大きさを知らないペイン（保存データにだけあって枠が無い等）に使う大きさ。 */
-export const FALLBACK_GRID_SIZE: GridSize = { w: 6, h: 12 };
+export const FALLBACK_GRID_SIZE: GridSize = { w: GRID_COLS / 2, h: 12 };
 
 function overlaps(a: GridItem, b: GridItem): boolean {
   return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;

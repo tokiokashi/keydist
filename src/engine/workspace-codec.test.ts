@@ -227,7 +227,7 @@ test('配置がペインと食い違っていてもペインを失わず、並�
       })),
       grid: [
         // 列からはみ出す・負の位置・重なり・知らないペイン・数でない値は、範囲に収めるか捨てる
-        { id: 'a', x: 10, y: 0, w: 6, h: 8 },
+        { id: 'a', x: 20, y: 0, w: 8, h: 8 },
         { id: 'a', x: 0, y: 0, w: 6, h: 8 },
         { id: 'ghost', x: 0, y: 0, w: 2, h: 2 },
         { id: 'c', x: -3, y: 0, w: 'wide', h: 8 },
@@ -239,7 +239,7 @@ test('配置がペインと食い違っていてもペインを失わず、並�
   const workspace = findWorkspace(result.value, 'w')!;
   assert.deepEqual([...gridPaneIds(workspace.grid)].sort(), ['a', 'b', 'c']);
   for (const item of workspace.grid) {
-    assert.ok(item.x >= 0 && item.x + item.w <= 12 && item.y >= 0 && item.w >= 1 && item.h >= 1, JSON.stringify(item));
+    assert.ok(item.x >= 0 && item.x + item.w <= 24 && item.y >= 0 && item.w >= 1 && item.h >= 1, JSON.stringify(item));
   }
   for (const [i, a] of workspace.grid.entries()) {
     for (const b of workspace.grid.slice(i + 1)) {

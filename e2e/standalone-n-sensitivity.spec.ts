@@ -494,7 +494,7 @@ test('Workspaceの狭いペイン（約500px）に3つ並べても、凡例は�
     const set = (id: string) => ({ id, analyzerId: 'n-sensitivity', binding: { mode: 'fixed', target: { kind: 'set', selection: { targets } } } });
     localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [{
       id: 'legend-panes', name: '凡例の確認', panes: [set('a'), set('b'), set('c')],
-      grid: [{ id: 'a', x: 0, y: 0, w: 4, h: 22 }, { id: 'b', x: 4, y: 0, w: 4, h: 22 }, { id: 'c', x: 8, y: 0, w: 4, h: 22 }],
+      grid: [{ id: 'a', x: 0, y: 0, w: 8, h: 22 }, { id: 'b', x: 8, y: 0, w: 8, h: 22 }, { id: 'c', x: 16, y: 0, w: 8, h: 22 }],
     }] }));
   }, layouts);
   await page.setViewportSize({ width: 1800, height: 900 });
@@ -682,7 +682,7 @@ test('Workspaceの狭い4ペイン（約340px）でも、凡例は図の中に�
     const set = (id: string) => ({ id, analyzerId: 'n-sensitivity', binding: { mode: 'fixed', target: { kind: 'set', selection: { targets } } } });
     localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [{
       id: 'four-panes', name: '4ペイン', panes: [set('a'), set('b'), set('c'), set('d')],
-      grid: ['a', 'b', 'c', 'd'].map((id, i) => ({ id, x: i * 3, y: 0, w: 3, h: 22 })),
+      grid: ['a', 'b', 'c', 'd'].map((id, i) => ({ id, x: i * 6, y: 0, w: 6, h: 22 })),
     }] }));
   }, layouts);
   await page.setViewportSize({ width: 1700, height: 900 });
