@@ -49,6 +49,8 @@ export function useDebouncedCommit<T>(
   if (schedulerRef.current === undefined) {
     schedulerRef.current = createDebouncedPersistenceScheduler<T>({
       write: (value) => {
+        // 書き込みの記録は、この直後の資産の更新（dispatch）と同じ同期の処理で続ける。間に非同期を挟むと、
+        // 下書きが資産の更新より先に古い保存先で描画され、入力が巻き戻る。
         optionsRef.current.onWrite?.(value);
         dispatchRef.current(optionsRef.current.commandFor(value));
       },

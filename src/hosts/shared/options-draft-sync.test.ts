@@ -19,6 +19,8 @@ function harness(initial: Opts, log: OptionsWriteLog = createOptionsWriteLog()) 
     write: (value: Opts) => { log.record(value); },
     /** 保存先の値の変化が描画に届いた */
     stored: (value: Opts) => { state = syncDraftWithStored(state, { ...value }, log.entries(), log.latestSeq()); },
+    /** 保存先が最後に見た値と同じ参照のまま描画された（元に戻すは以前の資産の値へ戻すので、参照も同じになる） */
+    storedAgain: () => { state = syncDraftWithStored(state, state.source, log.entries(), log.latestSeq()); },
     draft: () => state.draft,
   };
 }
@@ -137,6 +139,42 @@ test('反響の描画を挟んだ後の元に戻す: 書いた値は反響とし
   h.write(A);
   h.stored(A); // 反響の描画
   h.stored(X); // 元に戻す
+  assert.deepEqual(h.draft(), X);
+});
+
+test('反響の描画を挟まない、書いた直後の元に戻す（flushと元に戻すが1つのクリックで続く）で揃う（#944）', () => {
+  const h = harness(X);
+  h.input(A);
+  h.write(A);
+  h.stored(A); // 消した設定が保存され、履歴ができる
+  h.input(X); // 戻す。まだ書かれていない
+  h.write(X); // 元に戻す前のflush
+  h.storedAgain(); // 元に戻すで保存先はAへ戻る。描画は1回で、保存先は直前の描画と同じ参照
+  assert.deepEqual(h.draft(), A);
+  h.stored(X); // やり直す
+  assert.deepEqual(h.draft(), X);
+});
+
+test('保存を待つ間の元に戻すで、元に戻すが中身だけ同じ別の参照を返しても揃う（#944）', () => {
+  const h = harness(X);
+  h.input(A);
+  h.write(A);
+  h.stored(A);
+  h.input(X);
+  h.write(X);
+  h.stored(A);
+  assert.deepEqual(h.draft(), A);
+});
+
+test('書き込みが無い間の中身が同じ読み直しは、書き込みを待つ下書きを触らない（#606）', () => {
+  const h = harness(X);
+  h.input(A);
+  h.write(A);
+  h.stored(A); // 反響
+  h.input(X); // まだ書かれていない入力
+  h.stored(A); // 他タブが別のAnalyzerを書いて、中身が同じまま読み直された
+  assert.deepEqual(h.draft(), X);
+  h.storedAgain(); // 同じ参照の描画（入力のたびの描画）も下書きを触らない
   assert.deepEqual(h.draft(), X);
 });
 

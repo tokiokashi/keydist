@@ -144,6 +144,24 @@ test('個別画面: 保存のtimerが遅れても、書かれなかった入力�
     .not.toContain('"repeatBadge":false');
 });
 
+test('個別画面: 保存を待っている間の元に戻すで、表示と保存値が一致する', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  const flow = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flow).toBeVisible({ timeout: 10_000 });
+  await waitForHydration(page);
+  const toggle = (await openFigureSettings(page, 'Keyboard Flow')).getByRole('checkbox', { name: LABEL });
+  await toggle.uncheck();
+  await page.waitForTimeout(800); // 消した設定が保存され、履歴ができる
+  await toggle.check();
+  await page.waitForTimeout(130); // 戻した値の保存はまだ待っている
+  await page.getByRole('button', { name: '元に戻す' }).click();
+  await expect(toggle).not.toBeChecked();
+  await expect(flow).toHaveAttribute('data-repeat-badge', 'false');
+  await expect
+    .poll(async () => page.evaluate(() => localStorage.getItem('keydist:standalone-analyzer-options') ?? ''))
+    .toContain('"repeatBadge":false');
+});
+
 test('Workspace のペイン: 保存の反響が次の入力の後に届いても、下書きは新しい値のまま', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await hookSaveTimer(page);

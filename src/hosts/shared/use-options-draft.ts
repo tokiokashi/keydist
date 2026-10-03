@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { useOptionsWriteLog } from './OptionsWriteLogsContext.tsx';
+import { useOptionsWriteLog } from './OptionsWriteLogsContext.ts';
 import { applyDraftInput, initialDraftSync, syncDraftWithStored } from './options-draft-sync.ts';
 
 /**
@@ -24,8 +24,8 @@ import { applyDraftInput, initialDraftSync, syncDraftWithStored } from './option
  */
 export function useOptionsDraft<T>(stored: T, writeLogKey: string): readonly [T, (next: T) => void] {
   const log = useOptionsWriteLog(writeLogKey);
-  const [state, setState] = useState(() => initialDraftSync(stored, log?.latestSeq() ?? 0));
-  const synced = syncDraftWithStored(state, stored, log?.entries() ?? [], log?.latestSeq() ?? 0);
+  const [state, setState] = useState(() => initialDraftSync(stored, log.latestSeq()));
+  const synced = syncDraftWithStored(state, stored, log.entries(), log.latestSeq());
   if (synced !== state) setState(synced);
   const setDraft = useCallback((next: T) => setState((current) => applyDraftInput(current, next)), []);
   return [synced.draft, setDraft] as const;
