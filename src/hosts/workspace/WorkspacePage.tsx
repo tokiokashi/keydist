@@ -4,6 +4,7 @@ import type { KeydistAssets } from '#engine/commands.ts';
 import type { EngineComputer } from '#engine/computer.ts';
 import {
   addWorkspacePaneCommand,
+  startWorkspaceFromSampleCommand,
   closeWorkspacePaneCommand,
   duplicateWorkspacePaneCommand,
   renameWorkspaceCommand,
@@ -280,6 +281,13 @@ export function WorkspacePage({
     dispatch(addWorkspacePaneCommand(workspaceId, { id: generateId(), analyzerId: BLANK_PANE_ID, options: undefined, binding: NO_BINDING }, defaultGridSize(BLANK_PANE_ID)));
   };
 
+  // 今開いている空のWorkspaceへサンプルの並びを入れる（新しいWorkspaceは作らない）。元に戻すで空へ戻る
+  const startFromSample = () => {
+    flushPending();
+    setMaximizedId(undefined);
+    dispatch(startWorkspaceFromSampleCommand(workspaceId, generateId));
+  };
+
   if (workspace === undefined) {
     return (
       <div className="workspace-page">
@@ -340,6 +348,7 @@ export function WorkspacePage({
           <div className="workspace-empty" data-workspace-empty="true">
             <p>ペインを追加して、並べて見る。</p>
             <AddPaneMenu onAdd={addPane} onAddBlank={addBlankPane} variant="empty" />
+            <button type="button" className="workspace-sample-button" onClick={startFromSample}>サンプルの並びで始める</button>
           </div>
         ) : (
           <>

@@ -19,7 +19,12 @@ async function snapshot(flow: Locator) {
   };
 }
 
-async function expectToggleCycle(flow: Locator, settings: () => Promise<Locator>): Promise<void> {
+async function expectToggleCycle(
+  flow: Locator,
+  settings: () => Promise<Locator>,
+  /** 消した設定が保存先へ届くまで待つ（個別画面）。届く前に戻すと、先の保存の反響が戻した操作を上書きしうるため。 */
+  settled: () => Promise<void> = async () => {},
+): Promise<void> {
   const repeatBadges = flow.locator('.flow-repeat-badge');
   await expect(repeatBadges.first()).toBeAttached();
   const shown = await repeatBadges.count();
@@ -32,6 +37,7 @@ async function expectToggleCycle(flow: Locator, settings: () => Promise<Locator>
   const before = await snapshot(flow);
   await toggle.uncheck();
   await expect(flow).toHaveAttribute('data-repeat-badge', 'false');
+  await settled();
   await expect(repeatBadges).toHaveCount(0);
   await expect(flow.locator('.flow-key-badge')).toHaveCount(0);
   expect(await snapshot(flow)).toEqual(before);
@@ -51,7 +57,13 @@ test('個別画面: 連打の回数バッジを消せて、戻せる。線と凡
   await page.goto('/standalone/bigram-flow');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
-  await expectToggleCycle(flow, () => openFigureSettings(page, 'Keyboard Flow'));
+  // 表示は読み込み前のHTMLにも出るので、操作の前にハイドレーションと資産の読み込みを待つ
+  await waitForHydration(page);
+  await expectToggleCycle(flow, () => openFigureSettings(page, 'Keyboard Flow'), async () => {
+    await expect
+      .poll(async () => page.evaluate((key) => localStorage.getItem(key), OPTIONS_KEY))
+      .toContain('"repeatBadge":false');
+  });
 });
 
 test('個別画面: 消した設定は再読み込みで保たれ、項目の既定値へ戻すで出る', async ({ page }) => {

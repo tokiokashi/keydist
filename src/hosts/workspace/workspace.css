@@ -74,6 +74,22 @@
   font-size: 1rem;
 }
 
+/* 空のWorkspaceの「サンプルの並びで始める」。主の操作（ペインを追加）より控えめな文字のボタン。 */
+.workspace-sample-button {
+  padding: 0.25rem 0.5rem;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.9rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.workspace-sample-button:hover {
+  color: var(--accent-strong);
+}
+
 /* 一覧はボタンの下に、ペインの⋯のメニューと同じ部品で出す（左端をボタンに揃える）。 */
 .workspace-add-pane .pane-menu-list {
   right: auto;

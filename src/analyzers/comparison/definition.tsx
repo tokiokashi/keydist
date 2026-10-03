@@ -1,12 +1,16 @@
+import { useId, useMemo, useState } from 'react';
 import { comparisonDefinition, type ComparisonExtracted, type ComparisonFailedRow, type ComparisonRow } from './extract.ts';
 import {
   COMPARISON_COLUMN_IDS,
   COMPARISON_COLUMNS,
+  COMPARISON_UNIT_NOTE,
   DEFAULT_COMPARISON_OPTIONS,
   type ComparisonColumnId,
   type ComparisonOptions,
+  type ComparisonSort,
 } from './options.ts';
-import { bindOption, CheckboxGroupOptionField, CheckboxOptionField } from '#ui/primitives/option-fields.tsx';
+import { bindOption, CheckboxGroupOptionField, CheckboxOptionField, OptionField } from '#ui/primitives/option-fields.tsx';
+import { nextComparisonSort, sortComparisonOrder } from './sort.ts';
 import { COMPARISON_PANE_META } from './pane-meta.ts';
 import type { AnalyzerPaneParts, AnalyzerSettingsProps, AnalyzerTargetItemProps } from '../pane-parts.tsx';
 import './comparison-view.css';
@@ -19,9 +23,11 @@ import './comparison-view.css';
  * （%）はこのcomponentが行うが、これは表示用の軽い割り算であって新しい指標の算出では
  * ない（`options.ts`のコメントの通り、baselineの選択自体が`affects: 'view'`）。
  *
- * **優劣を示す色・強調・並び替えによる順位表示はしない**（AGENTS.md「優劣の判定・
- * 順位付け・合成スコアを作らない」）。行の並びは呼び出し側（ホスト）が渡す`order`の
- * 順のまま描き、列の値で自動ソートするUIも持たない。
+ * **優劣を示す色・強調・順位の表示はしない**（AGENTS.md「優劣の判定・順位付け・合成スコアを
+ * 作らない」）。行の並びの既定は呼び出し側（ホスト）が渡す`order`の順のまま。列の値で並べるのは、
+ * 利用者が見出しを押して選ぶ表示の操作（解析設定`sort`）であり、ツールが順位を決めるものではない。
+ * 並べ替えるのはこの表の表示だけで、`order`（N感度と共有している対象の集合の順）は変えない。
+ * 最小の行を太字にするなどの強調もしない。
  */
 
 /** 1 対象ぶんの、行の名前。条件は行に併記せず、ペインの条件の要約が出す。 */
@@ -43,6 +49,8 @@ export interface ComparisonBodyProps {
    */
   readonly baselineTargetKey: string | undefined;
   readonly options: ComparisonOptions;
+  /** 見出しを押した時の並び替えの切り替えに使う。 */
+  readonly onOptionsChange: (next: ComparisonOptions) => void;
 }
 
 /**
@@ -73,6 +81,82 @@ function failureLabel(kind: ComparisonFailedRow['failureKind']): string {
   }
 }
 
+const SORT_ARIA: Readonly<Record<'asc' | 'desc', 'ascending' | 'descending'>> = {
+  asc: 'ascending',
+  desc: 'descending',
+};
+
+/**
+ * 列の見出し。名前のボタンを押す（Enter・Spaceも同じ）たびに 昇順 → 降順 → 解除 と切り替わり、
+ * 並べている列には向きの印と`aria-sort`が付く。見出しは名前と印だけにする（列の説明は表の下の
+ * 「列の説明」の開閉ブロックにまとめる。見出しごとに置くと、ペインを狭めた時に見出しの並びの幅を食うため）。
+ * 印は列の幅に入れず、セルの右の余白へ絶対配置する。印の出し入れで列の幅が動かず、
+ * 幅を確保するための余分な幅も要らない。
+ */
+function ColumnHeader({ column, sort, onSortChange }: {
+  readonly column: ComparisonColumnId;
+  readonly sort: ComparisonSort;
+  readonly onSortChange: (next: ComparisonSort) => void;
+}) {
+  const active = sort !== null && sort.column === column ? sort : undefined;
+  return (
+    <th scope="col" aria-sort={active === undefined ? undefined : SORT_ARIA[active.direction]}>
+      <button
+        type="button"
+        className="comparison-sort-button"
+        title="押すたびに昇順・降順・並び替えなしへ切り替える"
+        onClick={() => onSortChange(nextComparisonSort(sort, column))}
+      >
+        {COMPARISON_COLUMNS[column].label}
+        <span className="comparison-sort-mark" aria-hidden="true">
+          {active === undefined ? '' : active.direction === 'asc' ? '↑' : '↓'}
+        </span>
+      </button>
+    </th>
+  );
+}
+
+/**
+ * 表示している列の説明を、列名と組にしてまとめて出す。距離の単位もここに書く。
+ * 浮かせる説明にはしない。長い説明が画面の外へ出たり、キーボードだけでは後半を読めなかったりするため、
+ * 表の下に開閉するブロックとして置く（入れ物の幅に収まり、読むのはページのスクロール）。
+ * 開閉は表示の一時的な状態で、保存しない。
+ */
+function ColumnDescriptions({ columns }: { readonly columns: readonly ComparisonColumnId[] }) {
+  const [open, setOpen] = useState(false);
+  const panelId = useId();
+  if (columns.length === 0) return null;
+  return (
+    <div className="comparison-column-help">
+      <button
+        type="button"
+        className="comparison-column-help-button"
+        aria-expanded={open}
+        aria-controls={panelId}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
+          <circle cx="8" cy="8" r="6.4" fill="none" stroke="currentColor" strokeWidth="1.3" />
+          <path d="M8 7.2v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          <circle cx="8" cy="4.9" r="0.95" fill="currentColor" />
+        </svg>
+        列の説明
+      </button>
+      {open ? (
+        <dl id={panelId} className="comparison-column-descriptions">
+          <p className="comparison-column-unit">{COMPARISON_UNIT_NOTE}</p>
+          {columns.map((column) => (
+            <div key={column} className="comparison-column-description">
+              <dt>{COMPARISON_COLUMNS[column].label}</dt>
+              <dd>{COMPARISON_COLUMNS[column].description}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+    </div>
+  );
+}
+
 /**
  * 比較表の本体（表）。行ごとの失敗・計算中（抽出の値として届くメンバー単位の状態）は行に出す。
  * ペイン全体の計算中・失敗・対象が空の時はホストが出し、本体は呼ばれない。
@@ -83,8 +167,11 @@ export function ComparisonBody({
   rowContext,
   baselineTargetKey,
   options,
+  onOptionsChange,
 }: ComparisonBodyProps) {
-  const { visibleColumns, showBaselineRatio } = options;
+  const { visibleColumns, showBaselineRatio, sort } = options;
+  // 並び替えは表の表示だけ。集合の順（order）はそのまま、描く順だけを並べ直す。
+  const displayOrder = useMemo(() => sortComparisonOrder(order, extracted.rows, sort), [order, extracted.rows, sort]);
   // 基準に選んだ対象が集合から外れていたら（削除・選択解除）「基準なし」として扱う。
   // 存在しないidを指したままの表示にしない。
   const baselineRow = baselineTargetKey === undefined ? undefined : rowFor(extracted.rows, baselineTargetKey);
@@ -98,12 +185,17 @@ export function ComparisonBody({
             <tr>
               <th scope="col">対象</th>
               {visibleColumns.map((column) => (
-                <th scope="col" key={column}>{COMPARISON_COLUMNS[column].label}</th>
+                <ColumnHeader
+                  key={column}
+                  column={column}
+                  sort={sort}
+                  onSortChange={(next) => onOptionsChange({ ...options, sort: next })}
+                />
               ))}
             </tr>
           </thead>
           <tbody>
-            {order.map((targetKey) => {
+            {displayOrder.map((targetKey) => {
               const context = rowContext.get(targetKey);
               const row = rowFor(extracted.rows, targetKey);
               const label = context?.label ?? '—';
@@ -158,13 +250,16 @@ export function ComparisonBody({
           </tbody>
         </table>
       </div>
+      <ColumnDescriptions columns={visibleColumns} />
     </section>
   );
 }
 
 const COLUMN_CHOICES = COMPARISON_COLUMN_IDS.map((column) => ({ value: column, label: COMPARISON_COLUMNS[column].label }));
 
-/** 比較表の解析設定（列の表示・基準比の表示）。 */
+const SORT_DIRECTION_TEXT = { asc: '昇順', desc: '降順' } as const;
+
+/** 比較表の解析設定（列の表示・基準比の表示・並び替え）。 */
 export function ComparisonSettings({ options, onOptionsChange }: AnalyzerSettingsProps<ComparisonOptions>) {
   const bind = <K extends keyof ComparisonOptions>(key: K) =>
     bindOption(options, DEFAULT_COMPARISON_OPTIONS, onOptionsChange, key);
@@ -180,6 +275,19 @@ export function ComparisonSettings({ options, onOptionsChange }: AnalyzerSetting
         binding={bind('showBaselineRatio')}
         hint="対象の選択で基準を選んだ時に、各値の横に基準に対する割合を出す。"
       />
+      <OptionField
+        label="並び替え"
+        binding={bind('sort')}
+        hint="列の見出しを押すと切り替わる。"
+      >
+        {(id) => (
+          <span id={id}>
+            {options.sort === null
+              ? 'なし'
+              : `${COMPARISON_COLUMNS[options.sort.column].label}（${SORT_DIRECTION_TEXT[options.sort.direction]}）`}
+          </span>
+        )}
+      </OptionField>
     </div>
   );
 }
