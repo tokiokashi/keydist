@@ -69,6 +69,12 @@ export interface PaneFrameProps {
    * 戻す先は個別画面でもWorkspaceでも既定値で、URLで開いた時の値や保存した値へは戻さない（#637）。
    */
   readonly onResetOptions?: () => void;
+  /**
+   * 資産（保存済みの配列・Setup）の読み込みが済んでいるか。省略はtrue。falseの間は状態のバッジを出さない。
+   * 読み込み前の状態は保存済みの結果が無いだけなので、「未計算」と出すと誤解を招く。
+   * 読み込み後にバッジが消えて見出しの並びが動くこともなくなる（#664・#709と同じく、済むまで出さない）。
+   */
+  readonly assetsReady?: boolean;
   /** 対象の実体（配列・物理配列・指の割当）の名前。解決前（読み込み中）は省略する。 */
   readonly header?: ConditionHeaderInfo;
   /** Traceに効く条件の一覧（#544 §3「実効値の出どころを表示する」）。 */
@@ -109,6 +115,7 @@ export function PaneFrame({
   target,
   targetBinding,
   settings,
+  assetsReady = true,
   showPaneNameInSettings = false,
   menuItems = [],
   headerAction,
@@ -126,7 +133,10 @@ export function PaneFrame({
 }: PaneFrameProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
-  const statusLabel = emptyContent === undefined ? paneStatusLabel(engineState.status) : '';
+  // 前の結果が無い計算中は、本文が「計算中…」を出している。見出しにも出すと重複し、
+  // バッジの幅の分だけ対象ボタンが動いて、計算が済むと戻る（#915）。前の結果を表示している間と失敗は見出しで伝える
+  const bodyShowsBusy = engineState.status === 'computing' && children === undefined;
+  const statusLabel = emptyContent === undefined && assetsReady && !bodyShowsBusy ? paneStatusLabel(engineState.status) : '';
   const errorMessage = emptyContent === undefined && engineState.status === 'failed'
     ? describeEngineRequestError(engineState.error)
     : undefined;
@@ -253,7 +263,7 @@ export function PaneFrame({
           {engineState.status === 'failed' ? <ErrorDetails lines={engineRequestErrorDetail(engineState.error)} /> : null}
         </div>
       ) : children === undefined ? (
-        <p className="pane-busy" aria-busy="true" data-pane-busy="true">計算している…</p>
+        <p className="pane-busy" aria-busy="true" data-pane-busy="true">計算中…</p>
       ) : (
         <PaneErrorBoundary>
           <div className="pane-body" data-pane-stale={engineState.status === 'stale' || undefined}>

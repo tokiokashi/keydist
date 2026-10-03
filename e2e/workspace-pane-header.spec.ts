@@ -26,7 +26,8 @@ async function openWorkspace(page: Page, theme: 'light' | 'dark'): Promise<void>
   await waitForHydration(page);
   await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
   await expect(page.locator('.workspace-pane')).toHaveCount(2);
-  await expect(page.locator('.workspace-pane .pane-body').first()).toBeVisible({ timeout: 15_000 });
+  // 測る前に全ペインの本文が出ているのを待つ（先頭だけ待つと、後のペインの本文がまだ無く測れないことがある）
+  await expect(page.locator('.workspace-pane .pane-body')).toHaveCount(2, { timeout: 15_000 });
 }
 
 /** ペインごとに、見出しの先頭の左端と、本文の左端を測る。 */

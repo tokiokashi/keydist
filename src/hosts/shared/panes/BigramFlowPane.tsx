@@ -87,6 +87,7 @@ export function BigramFlowPane({
 
   return (
     <PaneFrame
+      assetsReady={assetsReady}
       name={bigramFlowAnalyzer.name}
       description={bigramFlowAnalyzer.description}
       recommendedWidthRem={recommendedWidthRemOf(bigramFlowAnalyzer)}
