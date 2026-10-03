@@ -23,7 +23,7 @@ import {
   type WorkspacePane,
   type WorkspacePaneTarget,
 } from './workspace.ts';
-import { createSampleWorkspace } from './sample-workspace.ts';
+import { applySampleLayout, createSampleWorkspace } from './sample-workspace.ts';
 import type { GridSize, WorkspaceGrid } from './workspace-grid.ts';
 
 /**
@@ -89,6 +89,14 @@ export function createSampleWorkspaceCommand(id: string, generatePaneId: () => s
     const created = createSampleWorkspace(current.workspaces, () => id, generatePaneId);
     return { kind: 'applied', label: 'サンプルのWorkspaceを作成する', changes: { workspaces: created.library } };
   };
+}
+
+/**
+ * 空のWorkspaceにサンプルの並びを入れる（「サンプルの並びで始める」）。新しいWorkspaceは作らず、今のWorkspaceを書き換える。
+ * 1回の操作で、元に戻すも1回で空に戻る。ペインがある・存在しないWorkspaceは何もしない。
+ */
+export function startWorkspaceFromSampleCommand(workspaceId: string, generatePaneId: () => string): Command<KeydistAssets> {
+  return workspacesCommand('サンプルの並びで始める', (library) => applySampleLayout(library, workspaceId, generatePaneId));
 }
 
 /** 個別画面から送るAnalyzer（ペインの素）。idと、個別画面で使っていた解析設定。 */

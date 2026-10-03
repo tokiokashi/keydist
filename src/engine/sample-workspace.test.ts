@@ -16,7 +16,7 @@ import {
   createSampleWorkspace,
 } from './sample-workspace.ts';
 import { initialSingleTargetSelection } from './single-target-selection.ts';
-import { createWorkspaceCommand, createSampleWorkspaceCommand } from './workspace-commands.ts';
+import { createWorkspaceCommand, createSampleWorkspaceCommand, startWorkspaceFromSampleCommand } from './workspace-commands.ts';
 import { initialWorkspaceLibrary } from './workspace.ts';
 import { GRID_COLS, normalizeGrid } from './workspace-grid.ts';
 
@@ -113,4 +113,29 @@ test('個別画面の選択は写さない（空のWorkspaceの作成と違い�
   const step = applyCommand(withSelection, emptyCommandHistory<KeydistAssets>(), createSampleWorkspaceCommand('w', sequence('p')));
   const sample = step.assets.workspaces.find((workspace) => workspace.id === 'w')!;
   assert.equal(sample.groups[0]!.target.set.targets.length, SAMPLE_COMPARISON_LAYOUT_IDS.length);
+});
+
+test('空のWorkspaceにサンプルの並びを入れる: 同じidのまま、名前・テキストは変えず、元に戻すで空に戻る', () => {
+  const empty = applyCommand(assets(), emptyCommandHistory<KeydistAssets>(), createWorkspaceCommand('x', 'マイ'));
+  const step = applyCommand(empty.assets, empty.history, startWorkspaceFromSampleCommand('x', sequence('p')));
+  assert.equal(step.assets.workspaces.length, 1);
+  const filled = step.assets.workspaces[0]!;
+  const reference = createSampleWorkspace(initialWorkspaceLibrary(), () => 'r', sequence('p')).created;
+  assert.equal(filled.id, 'x');
+  assert.equal(filled.name, 'マイ');
+  assert.deepEqual(filled.text, empty.assets.workspaces[0]!.text);
+  assert.deepEqual(filled.groups, reference.groups);
+  assert.deepEqual(filled.conditions, reference.conditions);
+  assert.deepEqual(filled.panes.map((pane) => [pane.analyzerId, pane.options, pane.binding]), reference.panes.map((pane) => [pane.analyzerId, pane.options, pane.binding]));
+  assert.deepEqual(filled.grid.map(({ x, y, w, h }) => [x, y, w, h]), reference.grid.map(({ x, y, w, h }) => [x, y, w, h]));
+  assert.equal(step.assets.setupLibrary, empty.assets.setupLibrary);
+
+  const undone = undo(step.assets, step.history);
+  assert.deepEqual(undone.assets.workspaces, empty.assets.workspaces);
+});
+
+test('ペインがあるWorkspace・存在しないidにサンプルの並びは入れない', () => {
+  const filled = applyCommand(assets(), emptyCommandHistory<KeydistAssets>(), createSampleWorkspaceCommand('w', sequence('p')));
+  assert.equal(startWorkspaceFromSampleCommand('w', sequence('q'))(filled.assets).kind, 'no-op');
+  assert.equal(startWorkspaceFromSampleCommand('none', sequence('q'))(filled.assets).kind, 'no-op');
 });

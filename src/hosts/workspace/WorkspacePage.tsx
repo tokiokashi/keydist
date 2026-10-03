@@ -4,6 +4,7 @@ import type { KeydistAssets } from '#engine/commands.ts';
 import type { EngineComputer } from '#engine/computer.ts';
 import {
   addWorkspacePaneCommand,
+  startWorkspaceFromSampleCommand,
   closeWorkspacePaneCommand,
   duplicateWorkspacePaneCommand,
   renameWorkspaceCommand,
@@ -80,8 +81,6 @@ export interface WorkspacePageProps {
    */
   readonly onDuplicate: () => void;
   readonly onDelete: () => void;
-  /** 空のWorkspaceの中の「サンプルのWorkspaceを作る」。作成と、作ったWorkspaceを開くのは組み立て側（`app`）が行う。 */
-  readonly onCreateSample: () => void;
 }
 
 /**
@@ -107,7 +106,6 @@ export function WorkspacePage({
   onPaneOptionsCommit,
   onDuplicate,
   onDelete,
-  onCreateSample,
 }: WorkspacePageProps) {
   const workspace = findWorkspace(assets.workspaces, workspaceId);
   // スマホ幅では格子を外し、ペインを縦に積む。資産の格子は読むだけなので、戻ると元の並びで描き直される
@@ -283,6 +281,13 @@ export function WorkspacePage({
     dispatch(addWorkspacePaneCommand(workspaceId, { id: generateId(), analyzerId: BLANK_PANE_ID, options: undefined, binding: NO_BINDING }, defaultGridSize(BLANK_PANE_ID)));
   };
 
+  // 今開いている空のWorkspaceへサンプルの並びを入れる（新しいWorkspaceは作らない）。元に戻すで空へ戻る
+  const startFromSample = () => {
+    flushPending();
+    setMaximizedId(undefined);
+    dispatch(startWorkspaceFromSampleCommand(workspaceId, generateId));
+  };
+
   if (workspace === undefined) {
     return (
       <div className="workspace-page">
@@ -343,7 +348,7 @@ export function WorkspacePage({
           <div className="workspace-empty" data-workspace-empty="true">
             <p>ペインを追加して、並べて見る。</p>
             <AddPaneMenu onAdd={addPane} onAddBlank={addBlankPane} variant="empty" />
-            <button type="button" className="workspace-sample-button" onClick={onCreateSample}>サンプルのWorkspaceを作る</button>
+            <button type="button" className="workspace-sample-button" onClick={startFromSample}>サンプルの並びで始める</button>
           </div>
         ) : (
           <>

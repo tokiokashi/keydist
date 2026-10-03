@@ -58,30 +58,33 @@ function groupId(n: number): string {
   return `link-${n}`;
 }
 
-/** サンプルのWorkspaceを手持ちの末尾に作る。名前が使われていれば連番（`createWorkspace`と同じ）。 */
-export function createSampleWorkspace(
+/**
+ * 空のWorkspace（ペインが1つも無い）にサンプルの並びを入れる。連動の組・対象・ペイン・解析設定・Workspaceの条件を
+ * サンプルの定義に置き換える（空なので失うペインは無い。他の条件の項目は残す）。名前・テキストは変えない。
+ * ペインがあるWorkspace・存在しないidは何もしない。
+ */
+export function applySampleLayout(
   library: WorkspaceLibrary,
-  generateId: WorkspaceIdGenerator,
+  workspaceId: string,
   generatePaneId: WorkspaceIdGenerator,
-): { readonly library: WorkspaceLibrary; readonly created: Workspace } {
-  const base = createWorkspace(library, generateId, SAMPLE_WORKSPACE_NAME, {
-    single: { target: layoutTarget(SAMPLE_BIGRAM_FLOW_LAYOUT_IDS[0]!) },
-    set: { targets: SAMPLE_COMPARISON_LAYOUT_IDS.map(layoutTarget), baseline: undefined },
-  });
-  // 連動の組は、Bigram Flowの2つ目・3つ目のぶんを足す（連動1は`createWorkspace`が作った組）
-  const extraGroups: LinkGroup[] = SAMPLE_BIGRAM_FLOW_LAYOUT_IDS.slice(1).map((layoutId, i) => ({
-    id: groupId(i + 2),
+): WorkspaceLibrary {
+  const target = library.find((workspace) => workspace.id === workspaceId);
+  if (target === undefined || target.panes.length > 0) return library;
+  const groups: LinkGroup[] = SAMPLE_BIGRAM_FLOW_LAYOUT_IDS.map((layoutId, i) => ({
+    id: groupId(i + 1),
     target: {
       single: { target: layoutTarget(layoutId) },
-      set: { targets: [], baseline: undefined },
+      set: i === 0
+        ? { targets: SAMPLE_COMPARISON_LAYOUT_IDS.map(layoutTarget), baseline: undefined }
+        : { targets: [], baseline: undefined },
     },
   }));
   const seeded: Workspace = {
-    ...base.created,
-    groups: [...base.created.groups, ...extraGroups],
-    conditions: { defaultShapeId: SAMPLE_DEFAULT_SHAPE_ID },
+    ...target,
+    groups,
+    conditions: { ...target.conditions, defaultShapeId: SAMPLE_DEFAULT_SHAPE_ID },
   };
-  let next: WorkspaceLibrary = base.library.map((workspace) => (workspace.id === seeded.id ? seeded : workspace));
+  let next: WorkspaceLibrary = library.map((workspace) => (workspace.id === workspaceId ? seeded : workspace));
 
   const panes: { readonly pane: WorkspacePane; readonly size: GridSize }[] = [
     {
@@ -103,7 +106,17 @@ export function createSampleWorkspace(
     })),
   ];
   // 既存のペイン追加と同じ経路で置く。空いている最初の場所に入るので、上の段が1つ、下の段が4つ左から並ぶ
-  for (const { pane, size } of panes) next = addWorkspacePane(next, seeded.id, pane, size);
-  const created = next.find((workspace) => workspace.id === seeded.id)!;
-  return { library: next, created };
+  for (const { pane, size } of panes) next = addWorkspacePane(next, workspaceId, pane, size);
+  return next;
+}
+
+/** サンプルのWorkspaceを手持ちの末尾に作る。名前が使われていれば連番（`createWorkspace`と同じ）。 */
+export function createSampleWorkspace(
+  library: WorkspaceLibrary,
+  generateId: WorkspaceIdGenerator,
+  generatePaneId: WorkspaceIdGenerator,
+): { readonly library: WorkspaceLibrary; readonly created: Workspace } {
+  const base = createWorkspace(library, generateId, SAMPLE_WORKSPACE_NAME);
+  const next = applySampleLayout(base.library, base.created.id, generatePaneId);
+  return { library: next, created: next.find((workspace) => workspace.id === base.created.id)! };
 }

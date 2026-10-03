@@ -31,7 +31,11 @@ async function globalSnapshot(page: Page): Promise<(string | null)[]> {
 async function expectSampleWorkspace(page: Page, name: string): Promise<void> {
   await expect(page).toHaveURL(/\/workspace\/[^/?]+$/);
   await expect(page.locator('.context-bar').getByRole('heading', { level: 1, name, exact: true })).toBeVisible();
-  const id = new URL(page.url()).pathname.split('/').pop()!;
+  await expectSampleLayout(page, new URL(page.url()).pathname.split('/').pop()!);
+}
+
+/** 保存したWorkspaceが、サンプルの並び・対象・連動・解析設定・Workspaceの条件になっていることを確かめる。 */
+async function expectSampleLayout(page: Page, id: string): Promise<void> {
   const workspace = (await storedWorkspaces(page)).find((candidate) => candidate.id === id)!;
 
   // 並び: 上に比較表、下にN感度とBigram Flow 3つ
@@ -84,25 +88,44 @@ test('トップの「サンプルのWorkspaceを作る」で、サンプルのWo
   await expect(page.locator('.pane-frame')).toHaveCount(5);
 });
 
-test('空のWorkspaceの「サンプルのWorkspaceを作る」で、別のサンプルのWorkspaceができて開く。空のWorkspaceは残る', async ({ page }) => {
+test('空のWorkspaceの「サンプルの並びで始める」で、今のWorkspaceにサンプルの並びが入る。一覧は増えず、元に戻すで空に戻る', async ({ page }) => {
   await page.goto('/');
   await waitForHydration(page);
   await page.locator('#app-sidebar').getByRole('button', { name: '＋ 新しいWorkspace' }).click();
   await expect(page.locator('[data-workspace-empty="true"]')).toBeVisible();
-  const emptyId = new URL(page.url()).pathname.split('/').pop()!;
+  const url = page.url();
+  const emptyId = new URL(url).pathname.split('/').pop()!;
   const before = await globalSnapshot(page);
 
-  await page.locator('[data-workspace-empty="true"]').getByRole('button', { name: 'サンプルのWorkspaceを作る' }).click();
-  await expect(page).not.toHaveURL(new RegExp(`/workspace/${emptyId}$`));
-  await expectSampleWorkspace(page, 'サンプル');
-
+  await page.locator('[data-workspace-empty="true"]').getByRole('button', { name: 'サンプルの並びで始める' }).click();
+  // 同じ画面のまま、名前も変わらずに並びが入る
+  await expect(page.locator('.pane-frame')).toHaveCount(5);
+  expect(page.url()).toBe(url);
+  await expectSampleLayout(page, emptyId);
   expect(await globalSnapshot(page)).toEqual(before);
-  const names = (await storedWorkspaces(page)).map((workspace) => workspace.name);
-  expect(names).toEqual(['新しいWorkspace', 'サンプル']);
+  expect((await storedWorkspaces(page)).map((workspace) => workspace.name)).toEqual(['新しいWorkspace']);
+  await expect(page.locator('#app-sidebar').getByRole('link', { name: /Workspace/ })).toHaveCount(1);
 
-  // もう一度作ると、名前は既存のWorkspaceと同じく連番になる
-  await page.locator('#app-sidebar').getByRole('button', { name: '＋ 新しいWorkspace' }).click();
-  await page.locator('[data-workspace-empty="true"]').getByRole('button', { name: 'サンプルのWorkspaceを作る' }).click();
+  // 元に戻す1回で空に戻る。やり直すで並びが戻る
+  const bar = page.locator('.context-bar');
+  await bar.getByRole('button', { name: '元に戻す' }).click();
+  await expect(page.locator('[data-workspace-empty="true"]')).toBeVisible();
+  const emptied = (await storedWorkspaces(page))[0]!;
+  expect(emptied.panes).toHaveLength(0);
+  expect(emptied.conditions).toBeUndefined();
+  expect(await globalSnapshot(page)).toEqual(before);
+  await bar.getByRole('button', { name: 'やり直す' }).click();
+  await expect(page.locator('.pane-frame')).toHaveCount(5);
+});
+
+test('トップから2回作ると、名前は既存のWorkspaceと同じく連番になる', async ({ page }) => {
+  await page.goto('/');
+  await waitForHydration(page);
+  await page.locator('.hero').getByRole('button', { name: 'サンプルのWorkspaceを作る' }).click();
+  await expectSampleWorkspace(page, 'サンプル');
+  await page.goto('/');
+  await waitForHydration(page);
+  await page.locator('.hero').getByRole('button', { name: 'サンプルのWorkspaceを作る' }).click();
   await expectSampleWorkspace(page, 'サンプル 2');
 });
 
