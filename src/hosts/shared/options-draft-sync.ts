@@ -6,7 +6,7 @@ import { stableStringify } from '#engine/cache-key.ts';
  *
  * 下書きを保存先へ揃え直すのは「外からの変更」のときだけにする。自分が書いた値の反響まで
  * 揃え直すと、反響が利用者の次の入力より後に届いた時に、下書きが1つ前の値へ戻る
- * （debounce約400ms のあいだ、チェックが外れた状態に戻る等。#935）。
+ * （debounce約400msのあいだ、チェックが外れた状態に戻る等。#935）。
  * そこで、自分が下書きにした値を覚えておき、保存先がその値になった時は反響として扱う。
  */
 
@@ -47,7 +47,18 @@ export function syncDraftWithStored<T>(state: DraftSyncState<T>, stored: T, now:
   if (state.source === stored) return state;
   if (stableStringify(state.source) === stableStringify(stored)) return { ...state, source: stored };
   const key = stableStringify(stored);
-  const index = state.own.findIndex((write) => write.key === key && now - write.at < ECHO_WINDOW_MS);
+  const index = lastEchoIndex(state.own, key, now);
   if (index >= 0) return { ...state, source: stored, own: state.own.slice(index + 1) };
   return { draft: stored, source: stored, own: [] };
+}
+
+/**
+ * 反響に当たる記録のうち、最も新しいものの位置。古いものに当てると、同じ値を入れ直した時に
+ * その後ろの記録が残り、後の「元に戻す」が反響として無視される。
+ */
+function lastEchoIndex(own: readonly OwnWrite[], key: string, now: number): number {
+  for (let i = own.length - 1; i >= 0; i--) {
+    if (own[i]!.key === key && now - own[i]!.at < ECHO_WINDOW_MS) return i;
+  }
+  return -1;
 }

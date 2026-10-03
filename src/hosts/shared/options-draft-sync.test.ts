@@ -65,3 +65,27 @@ test('中身が同じ読み直しは下書きを触らない（#606）', () => {
   s = syncDraftWithStored(s, { ...X }, 100);
   assert.deepEqual(s.draft, A);
 });
+
+test('同じ値を入れ直した後の反響は最も新しい記録に当たり、続く元に戻すで揃う（ケース1）', () => {
+  let s = initialDraftSync(X);
+  s = applyDraftInput(s, A, 0);
+  s = applyDraftInput(s, X, 100); // debounceの中で戻した（保存は起きない）
+  s = applyDraftInput(s, A, 600);
+  s = syncDraftWithStored(s, { ...A }, 1000); // Aの反響
+  assert.deepEqual(s.own, []);
+  s = syncDraftWithStored(s, { ...X }, 1100); // 元に戻す
+  assert.deepEqual(s.draft, X);
+});
+
+test('X→A の反響の後に X→A→X と入力しても、元に戻すで揃う（ケース2）', () => {
+  let s = initialDraftSync(X);
+  s = applyDraftInput(s, A, 0);
+  s = syncDraftWithStored(s, { ...A }, 400);
+  s = applyDraftInput(s, X, 500);
+  s = applyDraftInput(s, A, 600);
+  s = applyDraftInput(s, X, 700);
+  s = syncDraftWithStored(s, { ...X }, 1100); // Xの反響
+  assert.deepEqual(s.own, []);
+  s = syncDraftWithStored(s, { ...A }, 1200); // 元に戻すでAへ
+  assert.deepEqual(s.draft, A);
+});
