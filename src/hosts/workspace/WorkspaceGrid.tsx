@@ -27,7 +27,8 @@ export interface WorkspaceGridProps {
 
 function toLayoutItem(item: GridItem, analyzerId: string, containerWidth: number): LayoutItem {
   const min = minGridSize(analyzerId, containerWidth);
-  return { i: item.id, x: item.x, y: item.y, w: item.w, h: item.h, minW: min.w, minH: min.h };
+  // 保存済みの幅が下限より狭くても、他の辺を引いた時に幅が広がらないよう、下限は今の幅までに留める
+  return { i: item.id, x: item.x, y: item.y, w: item.w, h: item.h, minW: Math.min(min.w, item.w), minH: min.h };
 }
 
 function fromLayout(layout: Layout): WorkspaceGrid {

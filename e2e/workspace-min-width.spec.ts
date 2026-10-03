@@ -16,7 +16,7 @@ const pane = (id: string, analyzerId = 'bigram-flow') => ({
   binding: { mode: 'fixed', target: { kind: 'single', target: QWERTY } },
 });
 
-async function open(page: Page, theme: 'light' | 'dark' = 'light', size = FHD): Promise<void> {
+async function open(page: Page, theme: 'light' | 'dark' = 'light', size = FHD, grid?: readonly object[]): Promise<void> {
   await page.setViewportSize(size);
   await page.addInitScript(({ key, value, theme }) => {
     if (localStorage.getItem(key) === null) {
@@ -31,7 +31,7 @@ async function open(page: Page, theme: 'light' | 'dark' = 'light', size = FHD): 
       name: '細いペイン',
       text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
       panes: [pane('a'), pane('b'), pane('c')],
-      grid: [
+      grid: grid ?? [
         { id: 'a', x: 0, y: 0, w: 8, h: 16 },
         { id: 'b', x: 8, y: 0, w: 8, h: 16 },
         { id: 'c', x: 16, y: 0, w: 8, h: 16 },
@@ -175,4 +175,35 @@ test('面が狭い時（縦積みに切り替わる760pxの直上）は、2列�
   // つかみの絵は一番手前にある
   const grip = item.locator('.workspace-grip-icon');
   expect(await topmostIsWithin(item.locator('.workspace-drag-handle'), center((await grip.boundingBox())!))).toBe(true);
+});
+
+test('保存した幅が今の下限より狭くても、下の辺を引くと高さだけが変わる（幅は広がらない）', async ({ page }) => {
+  await open(page, 'light', { width: 761, height: 900 }, [
+    { id: 'a', x: 0, y: 0, w: 2, h: 16 },
+    { id: 'b', x: 8, y: 0, w: 8, h: 16 },
+    { id: 'c', x: 16, y: 0, w: 8, h: 16 },
+  ]);
+  const south = (await itemLocator(page, 'a').locator('.react-resizable-handle-s').boundingBox())!;
+  await dragBy(page, center(south), 0, 80);
+  await expect.poll(async () => (await itemOf(page, 'a')).h).toBeGreaterThan(16);
+  expect(await itemOf(page, 'a')).toMatchObject({ x: 0, w: 2 });
+});
+
+test('下限の列数は、面の幅が変わると計算し直される（左のメニューの固定・固定を外す）', async ({ page }) => {
+  await open(page, 'light', { width: 1500, height: 900 });
+  const pin = page.getByRole('button', { name: 'サイドバーを固定' });
+  const shrink = async () => {
+    const handle = (await itemLocator(page, 'a').locator('.react-resizable-handle-e').boundingBox())!;
+    await dragBy(page, center(handle), -1000, 0);
+  };
+  // 左のメニューを固定している間は面が1260px。2列は96pxで足りないので3列で止まる
+  await expect(pin).toHaveAttribute('aria-pressed', 'true');
+  await shrink();
+  await expect.poll(async () => (await itemOf(page, 'a')).w).toBe(3);
+  // 固定を外すと面が広がり、2列で足りる
+  await pin.click();
+  await expect(pin).toHaveAttribute('aria-pressed', 'false');
+  await settle(page);
+  await shrink();
+  await expect.poll(async () => (await itemOf(page, 'a')).w).toBe(2);
 });
