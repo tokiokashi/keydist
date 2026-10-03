@@ -200,17 +200,29 @@ async function drawnRects(page: Page): Promise<Rect[]> {
   }));
 }
 
-function overlapping(rects: readonly Rect[]): string[] {
+function overlapping(rects: readonly Rect[], moving?: string): string[] {
   const found: string[] = [];
   rects.forEach((a, i) => rects.slice(i + 1).forEach((b) => {
-    // つかんで動かしている・大きさを変えているペインは、ライブラリが指の位置の画素で描き、他のペインは升目で動く。
-    // その差（1升未満）は重なりとみなさず、1升以上の重なりを見つける
     const width = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
     const height = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
-    if (width >= ROW_STEP && height >= ROW_STEP) found.push(`${a.id}/${b.id}`);
+    // つかんで動かしている・大きさを変えているペインは、ライブラリが指の位置の画素で描き、他のペインは升目で動く。
+    // その差（1升未満）は、動かしているペインを含む組にだけ許す。動かしていないペインどうしは、重なりを一切許さない
+    const limit = a.id === moving || b.id === moving ? ROW_STEP : 1;
+    if (width >= limit && height >= limit) found.push(`${a.id}/${b.id}`);
   }));
   return found;
 }
+
+test('重なりの判定: 動かしていないペインどうしの1行の重なりは見つけ、動かしているペインとの1升未満の差は許す', () => {
+  const rect = (id: string, y: number): Rect => ({ id, x: 0, y, w: 100, h: 100 });
+  // bはaの下へ28px（1行）食い込んでいる
+  expect(overlapping([rect('a', 0), rect('b', 72)])).toEqual(['a/b']);
+  expect(overlapping([rect('a', 0), rect('b', 72)], 'c')).toEqual(['a/b']);
+  // 動かしているaとの28pxは許し、36px以上は見つける
+  expect(overlapping([rect('a', 0), rect('b', 72)], 'a')).toEqual([]);
+  expect(overlapping([rect('a', 0), rect('b', 60)], 'a')).toEqual(['a/b']);
+  expect(overlapping([rect('a', 0), rect('b', 108)])).toEqual([]);
+});
 
 /**
  * つかんだ点から`dx`・`dy`だけ数回に分けて動かし、動かすたびに落ち着いてから描かれた矩形が重ならないことを確かめる。
@@ -223,7 +235,7 @@ async function dragWhileChecking(page: Page, grab: { x: number; y: number }, dx:
   for (let i = 1; i <= steps; i += 1) {
     await page.mouse.move(grab.x + (dx * i) / steps, grab.y + (dy * i) / steps);
     await page.waitForTimeout(350);
-    expect(overlapping(await drawnRects(page)), `途中${i}/${steps}で重なる`).toEqual([]);
+    expect(overlapping(await drawnRects(page), moving), `途中${i}/${steps}で重なる`).toEqual([]);
   }
   const before = await drawnRects(page);
   await page.mouse.up();
