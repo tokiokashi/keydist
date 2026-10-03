@@ -30,7 +30,7 @@ async function open(page: Page, size: { width: number; height: number }, panes: 
 
 const addButton = (page: Page) => page.locator('.workspace-add-pane-button');
 
-test('パソコン幅: 文脈バーの中にあり、格子の上に専用の行が無い。文字つきで、文脈バーは1行', async ({ page }) => {
+test('パソコン幅: 文脈バーの中にあり、格子の上に専用の行が無い。＋だけで、文脈バーは1行', async ({ page }) => {
   await open(page, { width: 1440, height: 900 });
   await expect(page.locator('.context-bar .workspace-add-pane-button')).toBeVisible();
   await expect(page.locator('.workspace-toolbar')).toHaveCount(0);
@@ -41,7 +41,7 @@ test('パソコン幅: 文脈バーの中にあり、格子の上に専用の行
     return { barHeight: bar.height, barBottom: bar.bottom, buttonWidth: button.width, stageTop: stage.top };
   });
   expect(layout.barHeight).toBeLessThan(60);
-  expect(layout.buttonWidth).toBeGreaterThan(90);
+  expect(layout.buttonWidth).toBeLessThanOrEqual(40);
   // バーの直下から格子の面が始まる
   expect(layout.stageTop).toBeLessThanOrEqual(layout.barBottom + 1);
 });
@@ -51,7 +51,6 @@ test('サイドバーを固定しない広い幅を動かしても、バーは1�
   await page.locator('#app-sidebar').getByRole('button', { name: 'サイドバーを固定' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-sidebar', 'unpinned');
   // バー自身の内幅が53.5rem（856px）以上の範囲（画面幅は余白と☰の分だけ上乗せ）。64remを境に文字が出る
-  const withLabel: Record<number, boolean> = {};
   for (const width of [1440, 1280, 1160, 1100, 1000, 936, 912, 900, 897]) {
     await page.setViewportSize({ width, height: 900 });
     const layout = await page.evaluate(() => {
@@ -74,11 +73,9 @@ test('サイドバーを固定しない広い幅を動かしても、バーは1�
     expect(layout.overlap, `幅${width}`).toBe(false);
     expect(layout.overflow, `幅${width}`).toBeLessThanOrEqual(0);
     expect(layout.textWidth, `幅${width}`).toBeGreaterThanOrEqual(150);
-    withLabel[width] = layout.addWidth > 40;
+    // どの幅でも＋だけ（文字が出入りすると名前の幅が増減する）
+    expect(layout.addWidth, `幅${width}`).toBeLessThanOrEqual(40);
   }
-  expect(withLabel[1440]).toBe(true);
-  expect(withLabel[1000]).toBe(false);
-  expect(withLabel[897]).toBe(false);
 });
 
 const LONG_NAME = 'とても長いWorkspaceの名前をつけてバーの幅を使い切る場合の確認用';
@@ -106,14 +103,31 @@ test('1行の幅で足りない時は、長い名前が先に最小幅まで縮�
   expect(shrunk).toBeGreaterThan(3);
 });
 
-test('1〜2文字の短い名前では、名前と⋯の間が空かない', async ({ page }) => {
+for (const [label, name] of [['5文字', '並べて見る'], [`${LONG_NAME.length}文字`, LONG_NAME]] as const) {
+  test(`${label}の名前は、画面幅を狭めていく間に単調に縮み、広がり直さない（サイドバー非固定）`, async ({ page }) => {
+    await open(page, { width: 1600, height: 900 }, [flow], name);
+    await page.locator('#app-sidebar').getByRole('button', { name: 'サイドバーを固定' }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-sidebar', 'unpinned');
+    let previous = Infinity;
+    for (let width = 1600; width >= 897; width -= 8) {
+      await page.setViewportSize({ width, height: 900 });
+      const now = await page.evaluate(() => document.querySelector('.workspace-name')!.getBoundingClientRect().width);
+      expect(now, `幅${width}`).toBeLessThanOrEqual(previous + 0.5);
+      previous = now;
+    }
+  });
+}
+
+test('1文字の短い名前では、名前のボタンと⋯の間が空かない', async ({ page }) => {
   await open(page, { width: 1440, height: 900 }, [flow], 'A');
   const gap = await page.evaluate(() => {
-    const name = document.querySelector('.workspace-name')!.getBoundingClientRect();
+    // 見えている名前のボタンの右端から測る（h1の右端は、中身より広くても⋯との間隔だけになる）
+    const name = document.querySelector('.workspace-name-button')!.getBoundingClientRect();
     const menu = document.querySelector('.workspace-menu')!.getBoundingClientRect();
     return menu.left - name.right;
   });
-  expect(gap).toBeLessThan(12);
+  // 間隔（8px）に、文字数からの見積もりの余り（半角1文字で数px）が載る。直す前は約34pxの余りが出ていた
+  expect(gap).toBeLessThan(16);
 });
 
 test('サイドバーを固定した画面幅1100でバーが2段になっても、＋は名前と同じ1段目に残る', async ({ page }) => {

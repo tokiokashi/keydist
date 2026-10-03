@@ -65,6 +65,21 @@
   cursor: pointer;
 }
 
+/* 文字は見た目から省く（読み上げには残す）。文脈バーの中では＋だけを見せる。 */
+.workspace-add-pane[data-variant="toolbar"] .workspace-add-pane-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.workspace-add-pane[data-variant="toolbar"] .workspace-add-pane-button {
+  width: 2rem;
+  padding: 0;
+}
+
 .workspace-add-pane-button:hover,
 .workspace-add-pane-button[aria-expanded="true"] {
   border-color: var(--accent);
