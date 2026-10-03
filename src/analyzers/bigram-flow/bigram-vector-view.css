@@ -668,9 +668,41 @@
   .flow-feature {
     display: grid;
     grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr);
+    /* 行の高さは中身の高さまで（余った高さは下に置く）。足りない時だけ縮む。 */
+    grid-template-rows: auto minmax(0, max-content);
+    align-content: start;
     column-gap: 0.8rem;
     min-height: 16rem;
+  }
+
+  /*
+   * 横に並べた時は、背の低い方の図の枠を行の高さまで伸ばして、2つの図の上端・下端を揃える。
+   * Keyboard Flowの枠は伸び、絵は縦横比を保ったまま枠の中央に置く（凡例は枠の下端に付いたまま）。
+   * Relative vectorsは図の下に凡例の行があるので、同じ高さの空きをKeyboard Flowの下に取る
+   * （凡例が折り返すと高さが変わるので、この幅では折り返さない）。
+   */
+  .flow-keyboard-block::after {
+    flex: none;
+    height: calc(0.61rem * 1.2);
+    content: "";
+  }
+
+  .flow-stage {
+    flex: 1 1 auto;
+  }
+
+  .flow-keyboard-svg {
+    margin-block: auto;
+  }
+
+  .flow-roll-legend {
+    flex-wrap: nowrap;
+    white-space: nowrap;
+  }
+
+  /* 行が高い時は、左右の図の枠も行の高さまで伸ばす（図は枠の中央に収まる）。 */
+  .flow-two-up {
+    flex: 1 1 auto;
   }
 
   .flow-status {
