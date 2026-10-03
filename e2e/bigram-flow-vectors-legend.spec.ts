@@ -54,6 +54,8 @@ function measure(page: Page) {
         const vb = feature.querySelector('.flow-keyboard-svg')!.getAttribute('viewBox')!.split(/\s+/).map(Number);
         return vb[2]! / vb[3]!;
       })(),
+      bodyWidth: feature.closest('.pane-body')?.clientWidth ?? 0,
+      bodyOverflowX: (feature.closest('.pane-body')?.scrollWidth ?? 0) - (feature.closest('.pane-body')?.clientWidth ?? 0),
       legendOneLine: new Set(tops).size === 1,
     };
   });
@@ -65,37 +67,83 @@ async function ready(page: Page): Promise<void> {
   await settle(page);
 }
 
-/** 横に並ぶ範囲の狭い側から広い側、行が低い・高いペインで、2つの図の上端・下端が揃う。 */
-const sideBySide = [
+interface SideCase {
+  readonly name: string;
+  readonly w: number;
+  readonly h: number;
+  /** 画面の幅。ペインの本体の幅を狭い側へ寄せる（本体の幅は検査の中で確かめる）。 */
+  readonly viewport?: number;
+  readonly fingers?: readonly string[];
+  readonly rootFontSize?: string;
+  readonly openSettings?: 'Keyboard Flow' | 'Relative vectors';
+  /** 本体の幅の範囲。 */
+  readonly bodyWidth?: readonly [number, number];
+}
+
+/** 保存先へWorkspaceを直接書いて開く。 */
+async function openWorkspace(page: Page, c: SideCase): Promise<void> {
+  await page.setViewportSize({ width: c.viewport ?? 1440, height: 1100 });
+  await page.addInitScript((value) => {
+    localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [value] }));
+  }, {
+    id: 'legend',
+    name: '凡例の確認',
+    text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+    panes: [c.fingers === undefined ? flow : { ...flow, options: { selectedFingers: c.fingers } }],
+    grid: [{ id: 'f', x: 0, y: 0, w: c.w, h: c.h }],
+  });
+  await page.goto('/workspace/legend');
+  await waitForHydration(page);
+  await ready(page);
+  if (c.rootFontSize !== undefined) {
+    // 利用者のブラウザの文字サイズ設定（rem の基準）を大きくした状態。読み込み後に変えて、組み直しを待つ。
+    await page.evaluate((size) => { document.documentElement.style.fontSize = size; }, c.rootFontSize);
+    await settle(page);
+  }
+  if (c.openSettings !== undefined) {
+    await page.getByRole('button', { name: `${c.openSettings}の表示`, exact: true }).click();
+    await expect(page.getByRole('group', { name: `${c.openSettings}の表示` })).toBeVisible();
+    await settle(page);
+  }
+}
+
+/** 横に並ぶ範囲の狭い側から広い側、行が低い・高いペイン、見出し・文字・設定の違いで、2つの図の上端・下端が揃う。 */
+const sideBySide: SideCase[] = [
   { name: '広い（12列 x 19行）', w: 12, h: 19 },
   { name: '広くて低い（12列 x 12行）', w: 12, h: 12 },
   { name: '中ぐらい（8列 x 14行）', w: 8, h: 14 },
   { name: '狭い側（6列 x 10行）', w: 6, h: 10 },
+  { name: '下限付近（本体520〜560px）', w: 12, h: 10, viewport: 840, bodyWidth: [520, 560] },
+  { name: '下限付近で指を2つ選ぶ', w: 12, h: 10, viewport: 840, bodyWidth: [520, 560], fingers: ['ring', 'pinky'] },
+  { name: '6列で指を2つ選ぶ', w: 6, h: 10, fingers: ['ring', 'pinky'] },
+  { name: '文字サイズ24px・下限付近', w: 12, h: 10, viewport: 940, bodyWidth: [520, 560], rootFontSize: '24px' },
+  { name: '文字サイズ24px・やや広い', w: 12, h: 10, viewport: 960, bodyWidth: [520, 600], rootFontSize: '24px', fingers: ['ring', 'pinky'] },
+  { name: 'Relative vectorsの設定だけ開く', w: 12, h: 19, openSettings: 'Relative vectors' },
+  { name: 'Keyboard Flowの設定だけ開く', w: 12, h: 19, openSettings: 'Keyboard Flow' },
 ];
+
+// 文字サイズ24pxで、横に並ぶ下限付近の幅を細かく動かしても、横スクロールが出ず、上端・下端が揃う。
+for (let viewport = 940; viewport <= 990; viewport += 10) {
+  sideBySide.push({ name: `文字サイズ24px・画面${viewport}px`, w: 12, h: 10, viewport, rootFontSize: '24px', fingers: ['ring', 'pinky'] });
+}
 
 for (const c of sideBySide) {
   test(`Workspaceで2つの図が横に並ぶ時（${c.name}）、Keyboard Flowと左右の図の上端・下端が揃い、凡例は図の下にある`, async ({ page }) => {
-    await page.setViewportSize({ width: 1440, height: 1100 });
-    await page.addInitScript((value) => {
-      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [value] }));
-    }, {
-      id: 'legend',
-      name: '凡例の確認',
-      text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
-      panes: [flow],
-      grid: [{ id: 'f', x: 0, y: 0, w: c.w, h: c.h }],
-    });
-    await page.goto('/workspace/legend');
-    await waitForHydration(page);
-    await ready(page);
+    await openWorkspace(page, c);
     const m = await measure(page);
+    if (c.bodyWidth !== undefined) {
+      expect(m.bodyWidth).toBeGreaterThanOrEqual(c.bodyWidth[0]);
+      expect(m.bodyWidth).toBeLessThanOrEqual(c.bodyWidth[1]);
+    }
     // 横に並んでいる（左右の図がKeyboard Flowの右にある）
     expect(m.vectorsFigure.left).toBeGreaterThan(m.keyboardFigure.right - 1);
-    // 同じ行の見出しは同じ高さ、枠は同じ行の高さまで伸ばすので、差は端数の丸めの1pxだけ許す
+    // 行を共有するので、差は端数の丸めの1pxだけ許す
     expect(Math.abs(m.vectorsFigure.top - m.keyboardFigure.top)).toBeLessThanOrEqual(1);
     expect(Math.abs(m.vectorsFigure.bottom - m.keyboardFigure.bottom)).toBeLessThanOrEqual(1);
     expect(m.legend.top).toBeGreaterThanOrEqual(m.vectorsFigure.bottom - 1);
-    expect(m.legendOneLine).toBe(true);
+    if (c.rootFontSize === undefined) expect(m.legendOneLine).toBe(true);
+    // 本体に横スクロールが出ない
+    expect(m.bodyOverflowX).toBeLessThanOrEqual(0);
     // 絵は縦横比を保つ（枠だけが伸び、絵は枠の中に収まる）
     expect(m.keyboardSvgBox.height).toBeLessThanOrEqual(m.keyboardFigure.height + 1);
     expect(m.keyboardSvgBox.width / m.keyboardSvgBox.height).toBeCloseTo(m.keyboardSvgRatio, 1);
