@@ -7,10 +7,11 @@ import { N_SENSITIVITY_PANE_META } from './pane-meta.ts';
 import { computeYRange, formatYTicks } from './y-range.ts';
 import {
   estimateTextWidth,
-  fitLabels,
+  fitLegendLabels,
   legendItemOffset,
   placeLegend,
   LEGEND_FONT_SIZE,
+  LEGEND_MEASURE_SLACK,
   LEGEND_PADDING,
   LEGEND_SWATCH_GAP,
   LEGEND_SWATCH_WIDTH,
@@ -243,26 +244,29 @@ function NSensitivityChart({
   // 対象が多くて（または図が狭くて）どこにも収まらない時は、プロットの下に並べて図を高くする
   // （線を隠すより、図が高い方を選ぶ）。
   const measure = useLegendMeasure(wrapRef);
-  const labelRoom = CHART_WIDTH - LEGEND_BELOW_SIDE * 2 - LEGEND_PADDING * 2 - LEGEND_SWATCH_WIDTH - LEGEND_SWATCH_GAP;
-  const legendLabels = fitLabels(series.map((s) => s.label), measure, undefined, labelRoom);
+  // 凡例の枠が図の幅を超えないよう、名前に使える幅は図の幅から枠の余白・見本・測り誤差を引いた分まで。
+  const labelRoom = CHART_WIDTH - LEGEND_BELOW_SIDE * 2 - LEGEND_PADDING * 2 - LEGEND_SWATCH_WIDTH - LEGEND_SWATCH_GAP - LEGEND_MEASURE_SLACK;
+  const { labels: legendLabels, distinct: legendDistinct } = fitLegendLabels(series.map((s) => s.label), measure, undefined, labelRoom);
+  // 図の幅に収めると名前を見分けられない時は、図の中の枠をやめ、名前を省かずに図の下へ折り返して並べる。
+  const legendInList = !legendDistinct;
   const layoutFor = (chartHeight: number) => {
     const plotHeight = chartHeight - MARGIN.top - MARGIN.bottom;
     const yScale = (y: number) => MARGIN.top + plotHeight - ((y - yRange.lo) / ySpan) * plotHeight;
-    const legend = placeLegend(
+    const legend = legendInList ? null : placeLegend(
       { x: MARGIN.left, y: MARGIN.top, width: plotWidth, height: plotHeight },
       series.map((s) => s.points.map((p) => ({ x: xScale(p.windowSize), y: yScale(p.y) }))),
       legendLabels,
       measure,
       { x: LEGEND_BELOW_SIDE, y: chartHeight + LEGEND_BELOW_GAP, width: CHART_WIDTH - LEGEND_BELOW_SIDE * 2 },
     );
-    const svgHeight = legend.corner === 'below' ? legend.rect.y + legend.rect.height + LEGEND_BELOW_GAP : chartHeight;
+    const svgHeight = legend?.corner === 'below' ? legend.rect.y + legend.rect.height + LEGEND_BELOW_GAP : chartHeight;
     return { chartHeight, yScale, legend, svgHeight };
   };
   let layout = layoutFor(baseHeight);
   if (fitHeight !== null) {
     // 領域の高さを図と、図の下に並べる凡例で分け合う。凡例が下に出るなら、その分を引いて組み直す。
     layout = layoutFor(Math.max(MIN_FIT_CHART_HEIGHT, fitHeight));
-    if (layout.legend.corner === 'below') {
+    if (layout.legend?.corner === 'below') {
       const below = layout.svgHeight - layout.chartHeight;
       layout = layoutFor(Math.max(MIN_FIT_CHART_HEIGHT, fitHeight - below));
     }
@@ -278,12 +282,13 @@ function NSensitivityChart({
     const floor = layoutFor(MIN_FIT_CHART_HEIGHT);
     wrapStyle = {
       maxHeight: Math.round(CHART_WIDTH * MAX_FIT_ASPECT),
-      minHeight: floor.legend.corner === 'below' ? floor.svgHeight : undefined,
+      minHeight: floor.legend?.corner === 'below' ? floor.svgHeight : undefined,
     };
   }
   const yTickLabels = formatYTicks(scale === 'relative', yTickValues);
 
   return (
+    <>
     <div className="n-sensitivity-chart" ref={wrapRef} style={wrapStyle}>
     <svg
       className="n-sensitivity-svg"
@@ -354,6 +359,7 @@ function NSensitivityChart({
         );
       })}
 
+      {legend === null ? null : (
       <g
         className="n-sensitivity-legend"
         data-n-sensitivity-legend={legend.corner}
@@ -385,8 +391,31 @@ function NSensitivityChart({
           );
         })}
       </g>
+      )}
     </svg>
     </div>
+    {legendInList ? (
+      <ul className="n-sensitivity-legend-list" data-n-sensitivity-legend="list" aria-label="凡例">
+        {series.map((s) => (
+          <li key={s.targetKey} data-n-sensitivity-row="ok" title={s.fullName || s.label}>
+            <svg className="n-sensitivity-legend-swatch" width={LEGEND_SWATCH_WIDTH} height={12} viewBox={`0 0 ${LEGEND_SWATCH_WIDTH} 12`} aria-hidden="true">
+              <line
+                className="n-sensitivity-line"
+                x1={0}
+                x2={LEGEND_SWATCH_WIDTH}
+                y1={6}
+                y2={6}
+                style={{ stroke: s.color }}
+                strokeDasharray={s.mark.dashed ? TARGET_DASH_ARRAY : undefined}
+              />
+              <SeriesMark className="n-sensitivity-legend-mark" mark={s.mark} color={s.color} x={LEGEND_SWATCH_WIDTH / 2} y={6} />
+            </svg>
+            <span className="n-sensitivity-legend-name">{s.label}</span>
+          </li>
+        ))}
+      </ul>
+    ) : null}
+    </>
   );
 }
 

@@ -52,7 +52,7 @@ const LINE_CLEARANCE = 5;
 /** 1つの名前に使う幅の目安。これを超えたら中央を「…」で省く。 */
 export const LEGEND_MAX_LABEL_WIDTH = 120;
 /** 名前の幅の測り誤差に備える余裕。 */
-const MEASURE_SLACK = 2;
+export const LEGEND_MEASURE_SLACK = 2;
 
 /** 文字の幅を返す関数。ブラウザでは実際のフォントで測った値を渡す。 */
 export type MeasureText = (text: string) => number;
@@ -139,29 +139,54 @@ function shortenLabel(label: string, cap: number, measure: MeasureText, region: 
   return elideMiddle(around(0), cap, measure);
 }
 
+export interface FittedLegendLabels {
+  readonly labels: string[];
+  /**
+   * 省いた後も、名前どうしを見分けられ、どの名前も`hardMax`に収まるか。
+   * `false`の時は図の中の凡例に名前を並べても見分けられない（見分ける区間が`hardMax`に入らない）ので、
+   * 呼び出し側は名前を省かない別の置き方（図の外に折り返して並べる）を使う。`labels`は参考値。
+   */
+  readonly distinct: boolean;
+}
+
 /**
  * 凡例に出す名前をそろえて省く。**省いた後も、別の対象と見分けられる**ことを保証する
  * （元の名前が互いに異なる限り）。「見分けられる」は、同じ文字列にならないこと、かつ、
  * 名前ごとに、他の名前と違う区間（`labelRegions`）が「…」で消えていないこと。
- * 消える時は、上限の幅を広げて省き直し、`hardMax`まで広げても消えるなら省かない。
- * `hardMax`は図の幅に収まる名前の幅の上限で、全文がそれを超える時だけ、`hardMax`で省いた名前
- * （区間が消えうる）を返す。完全な名前は、凡例の項目のhover（`<title>`）に別に出す。
+ * 消える時は、上限の幅を広げて省き直し、`hardMax`まで広げても消えるなら`distinct: false`を返す。
+ * `hardMax`は図の幅に収まる名前の幅の上限で、どの名前もこれを超えない（超える省き方は`distinct: false`）。
+ * 図が狭く`hardMax`が既定の上限（`maxWidth`）より小さい時は、`hardMax`から始める
+ * （既定の上限で省いた名前は、図の幅を超えうるため）。完全な名前は、凡例の項目のhover（`<title>`）に別に出す。
  */
+export function fitLegendLabels(
+  labels: readonly string[],
+  measure: MeasureText = estimateTextWidth,
+  maxWidth = LEGEND_MAX_LABEL_WIDTH,
+  hardMax = maxWidth,
+): FittedLegendLabels {
+  const regions = labelRegions(labels);
+  const caps: number[] = [];
+  for (let cap = Math.min(maxWidth, hardMax); cap < hardMax; cap += 20) caps.push(cap);
+  caps.push(hardMax);
+  const wanted = new Set(labels).size;
+  for (const cap of caps) {
+    const fitted = labels.map((label, i) => shortenLabel(label, cap, measure, regions[i]!));
+    const distinct = new Set(fitted).size === wanted
+      && fitted.every((text, i) => text.includes(regions[i]!.text))
+      && fitted.every((text) => measure(text) <= hardMax);
+    if (distinct) return { labels: fitted, distinct: true };
+  }
+  return { labels: labels.map((label, i) => shortenLabel(label, hardMax, measure, regions[i]!)), distinct: false };
+}
+
+/** `fitLegendLabels`の名前だけを返す形。 */
 export function fitLabels(
   labels: readonly string[],
   measure: MeasureText = estimateTextWidth,
   maxWidth = LEGEND_MAX_LABEL_WIDTH,
   hardMax = maxWidth,
 ): string[] {
-  const upper = Math.max(maxWidth, hardMax);
-  const regions = labelRegions(labels);
-  for (let cap = maxWidth; cap <= upper; cap += 20) {
-    const fitted = labels.map((label, i) => shortenLabel(label, cap, measure, regions[i]!));
-    const distinct = new Set(fitted).size === new Set(labels).size;
-    if (distinct && fitted.every((text, i) => text.includes(regions[i]!.text))) return fitted;
-  }
-  if (labels.every((label) => measure(label) <= upper)) return [...labels];
-  return labels.map((label, i) => shortenLabel(label, upper, measure, regions[i]!));
+  return fitLegendLabels(labels, measure, maxWidth, hardMax).labels;
 }
 
 export interface LegendPlacement {
@@ -254,7 +279,7 @@ export function placeLegend(
   below: BelowArea,
 ): LegendPlacement {
   const itemWidth = LEGEND_SWATCH_WIDTH + LEGEND_SWATCH_GAP
-    + Math.max(0, ...labels.map((label) => measure(label))) + MEASURE_SLACK;
+    + Math.max(0, ...labels.map((label) => measure(label))) + LEGEND_MEASURE_SLACK;
   const boxWidth = (columns: number) => LEGEND_PADDING * 2 + columns * itemWidth + (columns - 1) * LEGEND_COLUMN_GAP;
 
   for (const anchors of [CORNERS, MIDDLES]) {
