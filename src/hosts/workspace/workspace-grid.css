@@ -251,3 +251,9 @@
 .workspace-grid-area[data-maximized] .workspace-drag-handle {
   cursor: default;
 }
+
+/* 最初の1コマが出るまでは配置の動きを止める（開いた直後にペインが動いて見えないように） */
+.workspace-grid-area:not([data-animated]) .react-grid-item,
+.workspace-grid-area:not([data-animated]) .react-grid-layout {
+  transition: none;
+}

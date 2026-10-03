@@ -202,6 +202,7 @@ function KeyboardFlow({
   lineScale,
   layerOrder,
   hoverScale,
+  showRepeatBadge,
 }: {
   geometry: Geometry;
   layout: Layout;
@@ -212,6 +213,7 @@ function KeyboardFlow({
   lineScale: KeyboardFlowWeightScale;
   layerOrder: KeyboardFlowLayerOrder;
   hoverScale: KeyboardFlowHoverScale;
+  showRepeatBadge: boolean;
 }) {
   const reduceMotion = useReducedMotion();
   const keys = useMemo(() => geometry.grid.flat(), [geometry]);
@@ -381,7 +383,7 @@ function KeyboardFlow({
             // 数字の意味は常に「ホバー元 → そのキー」の回数に揃える。
             // ホバー元自身は線が無い（repeatは線から除外済み）ので、repeat回数を出す。
             // 出発の合計はここに出さず、下部の「このキーから出る打鍵」で読ませる。
-            const repeatCount = repeatCounts.get(key.id);
+            const repeatCount = showRepeatBadge ? repeatCounts.get(key.id) : undefined;
             const count = hoveredKeyId === null || hoveredKeyId === key.id
               ? repeatCount
               : hoverCounts.destinations.get(key.id);
@@ -734,6 +736,7 @@ export function BigramFlowBody({
     lineScale,
     layerOrder,
     hoverScale,
+    repeatBadge,
     polarBandwidth,
     polarGain,
   } = options;
@@ -751,6 +754,7 @@ export function BigramFlowBody({
       data-line-scale={lineScale}
       data-layer-order={layerOrder}
       data-hover-scale={hoverScale}
+      data-repeat-badge={repeatBadge}
       data-polar-bandwidth={polarBandwidth}
       data-polar-gain={polarGain}
     >
@@ -785,6 +789,7 @@ export function BigramFlowBody({
           lineScale={lineScale}
           layerOrder={layerOrder}
           hoverScale={hoverScale}
+          showRepeatBadge={repeatBadge}
         />
       </section>
 
@@ -981,6 +986,7 @@ function KeyboardFlowFigureSettings({ options, onOptionsChange }: FigureSettings
           onChange: (checked) => onOptionsChange({ ...options, hoverScale: checked ? 'key' : 'global' }),
         }}
       />
+      <CheckboxOptionField label="同じキーの連打の回数を表示する" binding={bind('repeatBadge')} />
     </div>
   );
 }

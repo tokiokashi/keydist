@@ -207,3 +207,15 @@ test('下限の列数は、面の幅が変わると計算し直される（左�
   await shrink();
   await expect.poll(async () => (await itemOf(page, 'a')).w).toBe(2);
 });
+
+test('保存した高さが今の下限より低くても、右の辺を引くと幅だけが変わる（高さは広がらない）', async ({ page }) => {
+  await open(page, 'light', FHD, [
+    { id: 'a', x: 0, y: 0, w: 8, h: 4 },
+    { id: 'b', x: 8, y: 0, w: 8, h: 16 },
+    { id: 'c', x: 16, y: 0, w: 8, h: 16 },
+  ]);
+  const east = (await itemLocator(page, 'a').locator('.react-resizable-handle-e').boundingBox())!;
+  await dragBy(page, center(east), -80, 0);
+  await expect.poll(async () => (await itemOf(page, 'a')).w).toBeLessThan(8);
+  expect(await itemOf(page, 'a')).toMatchObject({ x: 0, h: 4 });
+});

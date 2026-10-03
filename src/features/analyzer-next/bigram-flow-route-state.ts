@@ -111,6 +111,7 @@ export function bigramFlowConfigFromSearch(
     lineScale: search.lineScale ?? DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG.lineScale,
     layerOrder: search.layerOrder ?? DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG.layerOrder,
     hoverScale: search.hoverScale ?? DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG.hoverScale,
+    repeatBadge: DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG.repeatBadge,
     polarBandwidth: search.bandwidth ?? DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG.polarBandwidth,
     polarGain: search.gain ?? DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG.polarGain,
   };

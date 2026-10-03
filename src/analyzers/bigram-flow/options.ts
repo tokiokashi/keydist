@@ -3,6 +3,7 @@ import type { CodecDiagnostic } from '#input/codec/index.ts';
 import {
   defineOption,
   defineOptions,
+  booleanUrlCodec,
   numberUrlCodec,
   picklistUrlCodec,
   stringSetUrlCodec,
@@ -111,6 +112,13 @@ export const bigramFlowOptions = defineOptions({
     url: picklistUrlCodec('hoverScale', HOVER_SCALES),
     label: 'ホバー基準',
   }),
+  repeatBadge: defineOption<boolean>({
+    schema: v.boolean(),
+    default: true,
+    affects: 'view',
+    url: booleanUrlCodec('repeatBadge'),
+    label: '連打の回数',
+  }),
   polarBandwidth: defineOption<number>({
     schema: v.pipe(v.number(), v.minValue(MIN_POLAR_BANDWIDTH_DEGREES), v.maxValue(45)),
     default: 5,
@@ -144,6 +152,7 @@ export const ALTERNATE_BIGRAM_FLOW_OPTIONS: BigramFlowOptions = {
   lineScale: 'sqrt',
   layerOrder: 'same-hand-top',
   hoverScale: 'global',
+  repeatBadge: false,
   polarBandwidth: 20,
   polarGain: 2,
 };

@@ -1249,7 +1249,7 @@ test('ペインの解析設定には両方の図に効く項目だけがあり�
   await settings.getByRole('button', { name: '解析設定を閉じる' }).click();
   const keyboard = await openFigureSettings(page, 'Keyboard Flow');
   await expect(keyboard.locator('select')).toHaveCount(2);
-  await expect(keyboard.locator('input[type="checkbox"]')).toHaveCount(1);
+  await expect(keyboard.locator('input[type="checkbox"]')).toHaveCount(2);
   await expect(keyboard.getByLabel('紐の太さ', { exact: true })).toBeVisible();
   await expect(keyboard.getByLabel('重ね順', { exact: true })).toBeVisible();
   await expect(keyboard.getByLabel('ホバー中はそのキーの線だけで太さを決める')).toBeVisible();
