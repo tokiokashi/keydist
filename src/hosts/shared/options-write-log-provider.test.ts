@@ -16,11 +16,11 @@ function Draft() {
   return createElement('span', null, String(draft.on));
 }
 
-test('OptionsWriteLogsProvider の外で解析設定の下書きを使うと、描画が例外になる', () => {
-  assert.throws(() => renderToString(createElement(Draft)), /OptionsWriteLogsProvider の外/);
+test('OptionsWriteLogsProviderの外で解析設定の下書きを使うと、描画が例外になる', () => {
+  assert.throws(() => renderToString(createElement(Draft)), /OptionsWriteLogsProviderの外/);
 });
 
-test('OptionsWriteLogsProvider で包めば描画できる', () => {
+test('OptionsWriteLogsProviderで包めば描画できる', () => {
   const html = renderToString(createElement(OptionsWriteLogsProvider, { logs: createOptionsWriteLogs(), children: createElement(Draft) }));
   assert.match(html, /true/);
 });
