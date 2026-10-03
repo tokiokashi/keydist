@@ -80,6 +80,8 @@ export interface WorkspacePageProps {
    */
   readonly onDuplicate: () => void;
   readonly onDelete: () => void;
+  /** 空のWorkspaceの中の「サンプルのWorkspaceを作る」。作成と、作ったWorkspaceを開くのは組み立て側（`app`）が行う。 */
+  readonly onCreateSample: () => void;
 }
 
 /**
@@ -105,6 +107,7 @@ export function WorkspacePage({
   onPaneOptionsCommit,
   onDuplicate,
   onDelete,
+  onCreateSample,
 }: WorkspacePageProps) {
   const workspace = findWorkspace(assets.workspaces, workspaceId);
   // スマホ幅では格子を外し、ペインを縦に積む。資産の格子は読むだけなので、戻ると元の並びで描き直される
@@ -340,6 +343,7 @@ export function WorkspacePage({
           <div className="workspace-empty" data-workspace-empty="true">
             <p>ペインを追加して、並べて見る。</p>
             <AddPaneMenu onAdd={addPane} onAddBlank={addBlankPane} variant="empty" />
+            <button type="button" className="workspace-sample-button" onClick={onCreateSample}>サンプルのWorkspaceを作る</button>
           </div>
         ) : (
           <>

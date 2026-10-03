@@ -23,6 +23,7 @@ import {
   type WorkspacePane,
   type WorkspacePaneTarget,
 } from './workspace.ts';
+import { createSampleWorkspace } from './sample-workspace.ts';
 import type { GridSize, WorkspaceGrid } from './workspace-grid.ts';
 
 /**
@@ -76,6 +77,18 @@ function createWorkspaceFromAssets(
   };
   // 集合の色の番号も写す（`createWorkspaceCommand`と「新しいWorkspaceに追加」で同じ）
   return createWorkspace(library, () => id, name, target, new Map(Object.entries(multiColorSlots(selection))));
+}
+
+/**
+ * 中身入りのサンプルのWorkspaceを作る（中身は`sample-workspace.ts`）。`id`・`generatePaneId`は呼び出し側が発行する。
+ * 対象は個別画面の選択を写さず、サンプルの定義どおり。作成は1回の操作で、元に戻すも1回で戻る。
+ */
+export function createSampleWorkspaceCommand(id: string, generatePaneId: () => string): Command<KeydistAssets> {
+  return (current) => {
+    if (current.workspaces.some((workspace) => workspace.id === id)) return { kind: 'no-op' };
+    const created = createSampleWorkspace(current.workspaces, () => id, generatePaneId);
+    return { kind: 'applied', label: 'サンプルのWorkspaceを作成する', changes: { workspaces: created.library } };
+  };
 }
 
 /** 個別画面から送るAnalyzer（ペインの素）。idと、個別画面で使っていた解析設定。 */

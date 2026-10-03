@@ -11,6 +11,7 @@ import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
 import { useTextContentCommit } from '../standalone/use-text-content-commit.ts';
 import { setDeletedWorkspace } from './deleted-workspace-notice.ts';
 import { generatePaneId, generateWorkspaceId } from './id-generator.ts';
+import { useCreateSampleWorkspace } from './use-create-sample-workspace.ts';
 import { usePaneOptionsCommit } from './use-pane-options-commit.ts';
 
 /**
@@ -49,6 +50,7 @@ export function WorkspaceApp({ workspaceId }: { readonly workspaceId: string }) 
   };
 
   const navigate = useNavigate();
+  const createSample = useCreateSampleWorkspace();
 
   // 複製したら、写したWorkspaceを開く（作った時と同じ）。
   const duplicate = () => {
@@ -90,6 +92,10 @@ export function WorkspaceApp({ workspaceId }: { readonly workspaceId: string }) 
       onPaneOptionsCommit={commitPaneOptions}
       onDuplicate={duplicate}
       onDelete={remove}
+      onCreateSample={() => {
+        commitTextContent.flush();
+        createSample();
+      }}
     />
   );
 }

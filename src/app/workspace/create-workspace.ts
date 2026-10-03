@@ -1,6 +1,6 @@
 import type { Workspace } from '#engine/workspace.ts';
 import { emptyCommandHistory } from '#input/commands/index.ts';
-import { createWorkspaceCommand, restoreWorkspaceCommand } from '#engine/workspace-commands.ts';
+import { createSampleWorkspaceCommand, createWorkspaceCommand, restoreWorkspaceCommand } from '#engine/workspace-commands.ts';
 import { initialAssets } from '../standalone/asset-storage-specs.ts';
 import { buildAssetSyncs, commitCommand, loadAssets } from '../standalone/asset-syncs.ts';
 
@@ -34,6 +34,22 @@ export function restoreWorkspaceInStorage(workspace: Workspace, index: number): 
     syncs,
     () => ({ assets, history: emptyCommandHistory() }),
     restoreWorkspaceCommand(workspace, index),
+  );
+  return result.outcome.kind === 'applied';
+}
+
+/**
+ * 中身入りのサンプルのWorkspaceを作って保存する（トップと空のWorkspaceの「サンプルのWorkspaceを作る」）。
+ * 書き込みの入口は`createWorkspaceInStorage`と同じ理由で、手持ちをこの場でstorageから読んで組み立てる。
+ * 全体の条件は書かない（サンプルの条件はWorkspaceのレベルに入る）。作ったら`true`。
+ */
+export function createSampleWorkspaceInStorage(id: string, generatePaneId: () => string): boolean {
+  const syncs = buildAssetSyncs({ onExternalChange: () => {} });
+  const assets = { ...initialAssets(), ...loadAssets(syncs) };
+  const result = commitCommand(
+    syncs,
+    () => ({ assets, history: emptyCommandHistory() }),
+    createSampleWorkspaceCommand(id, generatePaneId),
   );
   return result.outcome.kind === 'applied';
 }
