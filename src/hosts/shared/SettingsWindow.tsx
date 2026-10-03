@@ -8,6 +8,8 @@ import { MOBILE_QUERY } from '#ui/theme/breakpoints.ts';
  * - 非モーダル。背後を暗くせず、開いている間も図や他のペインを操作できる
  * - 見出しをドラッグして動かせる（図を見ながら値を変えられるように）
  * - Workspaceでは、どのペインの設定か分かるよう`paneName`を見出しに出す
+ * - 開く位置は「解析設定」の真下に右端を揃えた所。そこがペインの中の操作（図の表示ボタン等）を覆う時は、
+ *   覆わない所まで左へずらす（`avoidControls`）
  *
  * 個別画面とWorkspaceの両方で使うので`hosts/shared`に置き、ペインを並べる面のライブラリの
  * 部品では作らない（ライブラリは`hosts/workspace`だけが使う。依存の規則）。
@@ -70,12 +72,40 @@ function clamp(position: Position, element: HTMLElement | null): Position {
   };
 }
 
-function initialPosition(anchor: HTMLElement | null, element: HTMLElement | null): Position {
+/** ペインの中で、押す・入力する操作になる要素。小窓で覆わない対象。 */
+const CONTROL_SELECTOR = 'button, a[href], input, select, textarea, summary, [role="button"], [tabindex]:not([tabindex="-1"])';
+/** 覆わない位置を探す横の刻み幅（px）。 */
+const SCAN_STEP = 8;
+
+/**
+ * 右端揃えの位置が、ペインの中の操作（図の表示ボタン等）を覆う時は、そこから左へずらして
+ * 覆わない最初の位置にする。覆わない位置が無ければ、右端揃えのまま出す（隠す方を諦めて、動かせるようにしておく）。
+ * 操作の位置は図の配置や幅で変わるので、Analyzerごとの位置を知らずに、実際の矩形で決める。
+ */
+function avoidControls(preferred: Position, anchor: HTMLElement, element: HTMLElement | null): Position {
+  const frame = anchor.closest('.pane-frame');
+  if (frame === null || element === null) return preferred;
+  const width = element.offsetWidth;
+  const height = Math.min(element.offsetHeight, window.innerHeight - preferred.y - EDGE);
+  const controls = [...frame.querySelectorAll(CONTROL_SELECTOR)]
+    .map((el) => el.getBoundingClientRect())
+    // 小窓より上の操作（見出し）と、表示されていない操作は見ない。
+    .filter((r) => r.width > 0 && r.height > 0 && r.bottom > preferred.y && r.top < preferred.y + height);
+  const covers = (x: number) => controls.some((r) => r.left < x + width && x < r.right);
+  const left = Math.max(EDGE, frame.getBoundingClientRect().left);
+  for (let x = preferred.x; x >= left; x -= SCAN_STEP) {
+    if (!covers(x)) return { x, y: preferred.y };
+  }
+  return preferred;
+}
+
+function initialPosition(anchor: HTMLElement | null, element: HTMLElement | null, avoid: boolean): Position {
   const width = element?.offsetWidth ?? 320;
   if (anchor === null) return clamp({ x: window.innerWidth - width - 24, y: 80 }, element);
   const rect = anchor.getBoundingClientRect();
   // ボタンの右端に小窓の右端を揃え、ボタンのすぐ下に出す。
-  return clamp({ x: rect.right - width, y: rect.bottom + 6 }, element);
+  const preferred = clamp({ x: rect.right - width, y: rect.bottom + 6 }, element);
+  return avoid ? avoidControls(preferred, anchor, element) : preferred;
 }
 
 export function SettingsWindow({ open, onClose, paneName, anchor, onReset, children }: SettingsWindowProps) {
@@ -104,7 +134,7 @@ export function SettingsWindow({ open, onClose, paneName, anchor, onReset, child
       closingRef.current = false;
       return;
     }
-    setPosition(initialPosition(anchor, windowRef.current));
+    setPosition(initialPosition(anchor, windowRef.current, !isSheet));
     focusPendingRef.current = true;
   }, [open, anchor]);
 
