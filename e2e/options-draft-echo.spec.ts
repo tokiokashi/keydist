@@ -118,6 +118,32 @@ test('個別画面: 保存されなかった入れ直しの後の元に戻すで
     .not.toContain('"repeatBadge":false');
 });
 
+test('個別画面: 保存のtimerが遅れても、書かれなかった入力が元に戻すを取り違えない', async ({ page }) => {
+  // 保存のtimer（400ms）を700msに遅らせる。入力の時刻から「書かれたはず」と推測する方式は、この順序で外れる
+  await page.addInitScript((debounceMs) => {
+    const origSet = window.setTimeout.bind(window);
+    (window as unknown as { setTimeout: unknown }).setTimeout = (fn: () => void, ms?: number, ...args: unknown[]) =>
+      origSet(fn, ms === debounceMs ? 700 : ms, ...args);
+  }, DEFAULT_DEBOUNCE_MS);
+  await page.goto('/standalone/bigram-flow');
+  const flow = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flow).toBeVisible({ timeout: 10_000 });
+  await waitForHydration(page);
+  const toggle = (await openFigureSettings(page, 'Keyboard Flow')).getByRole('checkbox', { name: LABEL });
+  await toggle.uncheck();
+  await page.waitForTimeout(1200); // 消した設定が書かれる
+  await toggle.check();
+  await page.waitForTimeout(450); // 戻した値の保存はまだ書かれない
+  await toggle.uncheck();
+  await page.waitForTimeout(3000);
+  await page.getByRole('button', { name: '元に戻す' }).click();
+  await expect(toggle).toBeChecked();
+  await expect(flow).toHaveAttribute('data-repeat-badge', 'true');
+  await expect
+    .poll(async () => page.evaluate(() => localStorage.getItem('keydist:standalone-analyzer-options') ?? ''))
+    .not.toContain('"repeatBadge":false');
+});
+
 test('Workspace のペイン: 保存の反響が次の入力の後に届いても、下書きは新しい値のまま', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await hookSaveTimer(page);

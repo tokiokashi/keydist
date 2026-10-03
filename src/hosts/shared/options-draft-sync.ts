@@ -1,4 +1,5 @@
 import { stableStringify } from '#engine/cache-key.ts';
+import type { OptionsWrite } from './options-write-log.ts';
 
 /**
  * 解析設定の下書きと保存先（資産）の同期の判断。`useOptionsDraft`から切り出した純粋な部分で、
@@ -7,70 +8,51 @@ import { stableStringify } from '#engine/cache-key.ts';
  * 下書きを保存先へ揃え直すのは「外からの変更」のときだけにする。自分が書いた値の反響まで
  * 揃え直すと、反響が利用者の次の入力より後に届いた時に、下書きが1つ前の値へ戻る
  * （debounce約400msのあいだ、チェックが外れた状態に戻る等。#935）。
- * そこで、保存として書かれうる下書きの値を覚えておき、保存先がその値になった時は反響として扱う。
  *
- * 書かれうる値だけを覚える点が要になる。debounceは次の入力が間隔内に来ると前の値を捨てるので、
- * 間隔より短く上書きされた値は保存先へ届かない。それも覚えておくと、「元に戻す」で保存先が
- * その値へ戻った時に反響と取り違え、下書きが揃わなくなる。
+ * 反響かどうかは、書く側が実際に書いた時に残した記録（`options-write-log.ts`）で決める。
+ * 入力の時刻から書かれたかを推測すると、timerの遅れや書き込みの有無で外れ、書かれなかった値が
+ * 反響として残って、後の「元に戻す」で保存先がその値へ戻った時に取り違える。
  */
-
-/**
- * 保存のdebounceの間隔。`platform/persistence/debounced-scheduler.ts`の`DEFAULT_DEBOUNCE_MS`と
- * 揃える（`hosts`は`platform`をimportできない）。ずれても、書かれた値を覚え損ねて従来どおり
- * 揃え直すか、書かれない値を少し長く覚えるだけで、下書きが壊れることはない。
- */
-export const SAVE_DEBOUNCE_MS = 400;
-
-/** timerの発火と`Date.now`の刻みのずれ。ちょうど間隔で入った入力を、書かれた後の入力として扱うための余裕。 */
-const CLOCK_SLACK_MS = 5;
-
-export interface OwnInput {
-  readonly key: string;
-  readonly at: number;
-}
 
 export interface DraftSyncState<T> {
   readonly draft: T;
   /** 最後に見た保存先の値 */
   readonly source: T;
-  /** 書かれうる下書きの値を、入力順に。まだ反響が届いていないもの */
-  readonly own: readonly OwnInput[];
+  /** ここまでの番号の書き込みは、反響として届いたか外からの変更に呑まれたので、もう見ない */
+  readonly seen: number;
 }
 
-export function initialDraftSync<T>(stored: T): DraftSyncState<T> {
-  return { draft: stored, source: stored, own: [] };
+/** `seen`は、この下書きを作った時点の書き込みの最後の番号（それ以前の書き込みは自分の分ではない）。 */
+export function initialDraftSync<T>(stored: T, seen: number): DraftSyncState<T> {
+  return { draft: stored, source: stored, seen };
 }
 
 /** 利用者の入力で下書きを更新する。 */
-export function applyDraftInput<T>(state: DraftSyncState<T>, next: T, now: number): DraftSyncState<T> {
-  const last = state.own[state.own.length - 1];
-  // 直前の値は、間隔内に上書きされたら保存されない
-  const kept = last !== undefined && now - last.at < SAVE_DEBOUNCE_MS - CLOCK_SLACK_MS ? state.own.slice(0, -1) : state.own;
-  return { ...state, draft: next, own: [...kept, { key: stableStringify(next), at: now }] };
+export function applyDraftInput<T>(state: DraftSyncState<T>, next: T): DraftSyncState<T> {
+  return { ...state, draft: next };
 }
 
 /**
- * 保存先の値が変わった時の下書きの扱い。
+ * 保存先の値が変わった時の下書きの扱い。`writes`は書き込みの記録、`latest`はその最後の番号。
  * - 参照が同じ: 何もしない
  * - 中身が同じ（他タブが別のAnalyzerの設定を書いて記録全体が読み直された等）: 下書きを触らない（#606）
- * - 書かれうる下書きの値になった（反響）: 下書きを触らない。その値より前の記録は捨てる
- * - それ以外（元に戻す・やり直す・別タブ・共有URL・既定値へ戻す等）: 下書きを保存先に揃え、記録を捨てる
+ * - まだ見ていない書き込みと同じ値になった（反響）: 下書きを触らない。最も新しい同じ値の書き込みまでを見たことにする
+ * - それ以外（元に戻す・やり直す・別タブ・共有URL・既定値へ戻す等）: 下書きを保存先に揃え、
+ *   今ある書き込みはすべて見たことにする。保存先が動かなかった書き込み（同じ値の書き込み）が残って、
+ *   後の元に戻す・やり直すを反響と取り違えないため
  */
-export function syncDraftWithStored<T>(state: DraftSyncState<T>, stored: T): DraftSyncState<T> {
+export function syncDraftWithStored<T>(
+  state: DraftSyncState<T>,
+  stored: T,
+  writes: readonly OptionsWrite[],
+  latest: number,
+): DraftSyncState<T> {
   if (state.source === stored) return state;
   if (stableStringify(state.source) === stableStringify(stored)) return { ...state, source: stored };
-  const index = lastEchoIndex(state.own, stableStringify(stored));
-  if (index >= 0) return { ...state, source: stored, own: state.own.slice(index + 1) };
-  return { draft: stored, source: stored, own: [] };
-}
-
-/**
- * 反響に当たる記録のうち、最も新しいものの位置。古いものに当てると、同じ値を入れ直した時に
- * その後ろの記録が残り、後の「元に戻す」が反響として無視される。
- */
-function lastEchoIndex(own: readonly OwnInput[], key: string): number {
-  for (let i = own.length - 1; i >= 0; i--) {
-    if (own[i]!.key === key) return i;
+  const key = stableStringify(stored);
+  for (let i = writes.length - 1; i >= 0; i--) {
+    const write = writes[i]!;
+    if (write.seq > state.seen && write.key === key) return { ...state, source: stored, seen: write.seq };
   }
-  return -1;
+  return { draft: stored, source: stored, seen: latest };
 }

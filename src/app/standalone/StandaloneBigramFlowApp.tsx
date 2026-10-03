@@ -9,6 +9,8 @@ import { sharedEngineComputer } from './engine-computer.ts';
 import { generatePresetId, generateTextId } from './id-generator.ts';
 import { useKeydistAssets } from './use-keydist-assets.ts';
 import { useAddToWorkspace } from './use-add-to-workspace.ts';
+import { OptionsWriteLogsProvider } from '#hosts/shared/OptionsWriteLogsContext.tsx';
+import { createOptionsWriteLogs, STANDALONE_WRITE_LOG_KEY } from '#hosts/shared/options-write-log.ts';
 import { useDebouncedCommit } from './use-debounced-commit.ts';
 import { useTextContentCommit } from './use-text-content-commit.ts';
 
@@ -29,7 +31,10 @@ export function StandaloneBigramFlowApp() {
 
   // 解析設定の書き込みは間引いてから`dispatch`する（`use-debounced-commit.ts`参照。
   // スライダーのような連続操作でstorage書き込み・Undo履歴が埋まらないようにするため）。
+  // 保存先へ書いた値を記録し、解析設定の下書きが自分の保存の反響を見分けるのに使う
+  const writeLogs = useMemo(createOptionsWriteLogs, []);
   const commitBigramFlowOptions = useDebouncedCommit<BigramFlowOptions>(dispatch, {
+    onWrite: (options) => writeLogs.forKey(STANDALONE_WRITE_LOG_KEY).record(options),
     commandFor: (options) => setStandaloneAnalyzerOptionsCommand(bigramFlowAnalyzer.definition.id, options),
   });
 
@@ -61,18 +66,20 @@ export function StandaloneBigramFlowApp() {
   };
 
   return (
-    <BigramFlowStandalonePage
-      assets={assets}
-      assetsReady={ready}
-      dispatch={dispatch}
-      cache={sharedEngineComputer}
-      catalog={catalog}
-      generateTextId={generateTextId}
-      generatePresetId={generatePresetId}
-      history={history}
-      onTextContentCommit={commitTextContent}
-      onAddToWorkspace={addToWorkspace}
-      onBigramFlowOptionsCommit={commitBigramFlowOptions}
-    />
+    <OptionsWriteLogsProvider logs={writeLogs}>
+      <BigramFlowStandalonePage
+        assets={assets}
+        assetsReady={ready}
+        dispatch={dispatch}
+        cache={sharedEngineComputer}
+        catalog={catalog}
+        generateTextId={generateTextId}
+        generatePresetId={generatePresetId}
+        history={history}
+        onTextContentCommit={commitTextContent}
+        onAddToWorkspace={addToWorkspace}
+        onBigramFlowOptionsCommit={commitBigramFlowOptions}
+      />
+    </OptionsWriteLogsProvider>
   );
 }

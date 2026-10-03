@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { useOptionsWriteLog } from './OptionsWriteLogsContext.tsx';
 import { applyDraftInput, initialDraftSync, syncDraftWithStored } from './options-draft-sync.ts';
 
 /**
@@ -17,13 +18,15 @@ import { applyDraftInput, initialDraftSync, syncDraftWithStored } from './option
  * 設定も中身は同じまま新しい参照になる。参照で比べると、debounce待ちの下書きが保存値へ戻され、
  * 戻っている間の別の変更が先の変更を上書きして失われる（#606）。
  *
- * 自分のcommitの反響は揃え直さない。反響は次の入力より後に届くことがあり、その時に揃え直すと
- * 新しい下書きが1つ前の値へ戻る（#935）。判断は`options-draft-sync.ts`にある。
+ * 自分が書いた値の反響は揃え直さない。反響は次の入力より後に届くことがあり、その時に揃え直すと
+ * 新しい下書きが1つ前の値へ戻る（#935）。書いた値は`app`が書く時に残す記録（`options-write-log.ts`）で
+ * 知る。`writeLogKey`は記録の引き先（個別画面は固定の名前、Workspaceはペインのid）。判断は`options-draft-sync.ts`にある。
  */
-export function useOptionsDraft<T>(stored: T): readonly [T, (next: T) => void] {
-  const [state, setState] = useState(() => initialDraftSync(stored));
-  const synced = syncDraftWithStored(state, stored);
+export function useOptionsDraft<T>(stored: T, writeLogKey: string): readonly [T, (next: T) => void] {
+  const log = useOptionsWriteLog(writeLogKey);
+  const [state, setState] = useState(() => initialDraftSync(stored, log?.latestSeq() ?? 0));
+  const synced = syncDraftWithStored(state, stored, log?.entries() ?? [], log?.latestSeq() ?? 0);
   if (synced !== state) setState(synced);
-  const setDraft = useCallback((next: T) => setState((current) => applyDraftInput(current, next, Date.now())), []);
+  const setDraft = useCallback((next: T) => setState((current) => applyDraftInput(current, next)), []);
   return [synced.draft, setDraft] as const;
 }
