@@ -143,6 +143,7 @@ export function ComparisonPane({
       assetsReady={assetsReady}
       name={comparisonAnalyzer.name}
       description={comparisonAnalyzer.description}
+      help={comparisonAnalyzer.help}
       recommendedWidthRem={recommendedWidthRemOf(comparisonAnalyzer)}
       headingLevel={chrome.headingLevel}
       stickyHeader={chrome.stickyHeader}

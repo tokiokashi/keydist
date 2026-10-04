@@ -256,6 +256,14 @@ export function WorkspacePage({
     [panesById],
   );
 
+  const helpOf = useCallback(
+    (paneId: string) => {
+      const pane = panesById.get(paneId);
+      return pane === undefined ? undefined : findWorkspacePaneMeta(pane.analyzerId)?.help;
+    },
+    [panesById],
+  );
+
   const renderPane = useCallback((paneId: string) => {
     const pane = panesById.get(paneId);
     if (pane === undefined || runtime === undefined) return null;
@@ -368,7 +376,7 @@ export function WorkspacePage({
         ) : (
           <>
             {stacked ? (
-              <WorkspaceStack paneIds={paneIds} titleOf={titleOf} descriptionOf={descriptionOf} renderPane={renderPane} />
+              <WorkspaceStack paneIds={paneIds} titleOf={titleOf} descriptionOf={descriptionOf} helpOf={helpOf} renderPane={renderPane} />
             ) : (
               <div className="workspace-stage">
                 <WorkspaceGrid
@@ -376,6 +384,7 @@ export function WorkspacePage({
                   analyzerIdOf={analyzerIdOf}
                   titleOf={titleOf}
                   descriptionOf={descriptionOf}
+                  helpOf={helpOf}
                   renderPane={renderPane}
                   compact={workspace.compactPanes === true}
                   maximizedId={maximizedId !== undefined && panesById.has(maximizedId) ? maximizedId : undefined}
