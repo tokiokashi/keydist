@@ -1,5 +1,8 @@
 import * as v from 'valibot';
 import { booleanUrlCodec, defineOption, defineOptions, stringSetUrlCodec, type OptionUrlCodec } from '#analyzers/options.ts';
+import { COMPARISON_COLUMN_IDS, COMPARISON_COLUMN_TEXT, type ComparisonColumnId } from './column-text.ts';
+
+export { COMPARISON_COLUMN_IDS, COMPARISON_UNIT_NOTE, type ComparisonColumnId } from './column-text.ts';
 
 /**
  * 比較表Analyzerの列（#544 Phase 3「集合を対象にする最初のAnalyzer（比較表）」）。
@@ -12,24 +15,8 @@ import { booleanUrlCodec, defineOption, defineOptions, stringSetUrlCodec, type O
  * `computeMetrics`が返す`Metrics`から`extract.ts`（`computeComparisonRowValues`）が
  * 読み出すだけの単純な写像で、独自の派生指標・合成スコアは作らない
  * （AGENTS.md「優劣の判定・順位付け・合成スコアを作らない」）。
+ * 列の名前と説明は`column-text.ts`（見出しのⓘから開く説明も読むため分けてある）。
  */
-export const COMPARISON_COLUMN_IDS = [
-  'actions',
-  'totalUnits',
-  'meanPerStroke',
-  'perCharUnits',
-  'perCharSteps',
-  'perCharPresses',
-  'singleTapLayerRate',
-  'singleTapRate',
-  'singleKeyRate',
-  'sameFinger',
-  'sameFingerRate',
-  'adjacentMean',
-  'adjacentStdDev',
-] as const;
-
-export type ComparisonColumnId = (typeof COMPARISON_COLUMN_IDS)[number];
 
 /**
  * 列ごとの表示形式（レビュー対応: 一律ルールではなく列の宣言に持たせる）。
@@ -42,12 +29,9 @@ export type ComparisonColumnId = (typeof COMPARISON_COLUMN_IDS)[number];
  * （値そのものを変えない）。
  */
 export interface ComparisonColumnDef {
-  /**
-   * 見出しの短い名前。見出しには単位を付けない（単位は表の「列の説明」に書く）。
-   * 率の列は値の側に `%` が付き、`u/打鍵`・`u/文字` は名前が単位を含む。
-   */
+  /** 見出しの短い名前。 */
   readonly label: string;
-  /** 表の下の「列の説明」に出す、この列の説明。指標の定義は spec §11 と README「出力」の言い方に合わせる。 */
+  /** この列の説明（見出しのⓘから開く説明に出す）。 */
   readonly description: string;
   /** 値をそのまま渡すと表示用の文字列を返す。丸め・%表記はここに閉じる。 */
   readonly format: (value: number) => string;
@@ -57,73 +41,57 @@ const fixed = (digits: number) => (value: number): string => value.toFixed(digit
 const percent = (value: number): string => `${value.toFixed(1)}%`;
 const count = (value: number): string => `${value}`;
 
-/** 「列の説明」の先頭に出す、距離の単位の説明。 */
-export const COMPARISON_UNIT_NOTE = '距離の単位 u は、キーの幅を1とした距離。';
-
 export const COMPARISON_COLUMNS: Readonly<Record<ComparisonColumnId, ComparisonColumnDef>> = {
   actions: {
-    label: '動作数',
-    description: 'テキストを打つのに要したアクション（打鍵のまとまり）の総数。同時押しは1アクションと数える。',
+    ...COMPARISON_COLUMN_TEXT.actions,
     format: count,
   },
   totalUnits: {
-    label: '距離',
-    description: '全指の総移動距離（u）。',
+    ...COMPARISON_COLUMN_TEXT.totalUnits,
     format: fixed(0),
   },
   meanPerStroke: {
-    label: 'u/打鍵',
-    description: '1打鍵あたりの平均移動距離（u/打鍵）。',
+    ...COMPARISON_COLUMN_TEXT.meanPerStroke,
     format: fixed(3),
   },
   perCharUnits: {
-    label: 'u/文字',
-    description: '入力1文字あたりの総移動距離（u/文字）。文字数はローマ字展開やコンボ結合の前の原文で数えるので、打鍵数を減らした効果がこの値に残る。',
+    ...COMPARISON_COLUMN_TEXT.perCharUnits,
     format: fixed(3),
   },
   perCharSteps: {
-    label: '動作数/文字',
-    description: '入力1文字あたりのアクション数。コンボなどでまとめて打つほど小さくなる。',
+    ...COMPARISON_COLUMN_TEXT.perCharSteps,
     format: fixed(3),
   },
   perCharPresses: {
-    label: '押下/文字',
-    description: '入力1文字あたりのキーを押す回数。コンボでまとめても減らない。',
+    ...COMPARISON_COLUMN_TEXT.perCharPresses,
     format: fixed(3),
   },
   singleTapLayerRate: {
-    label: '単打面率',
-    description: '出力する全文字のうち、単打面に配置された文字の割合（%）。',
+    ...COMPARISON_COLUMN_TEXT.singleTapLayerRate,
     format: percent,
   },
   singleTapRate: {
-    label: '単打率',
-    description: '全アクションのうち、単打面の文字を出すアクションの割合（%）。',
+    ...COMPARISON_COLUMN_TEXT.singleTapRate,
     format: percent,
   },
   singleKeyRate: {
-    label: '1キー率',
-    description: '全アクションのうち、新たに押すキーが1つだけのアクションの割合（%）。',
+    ...COMPARISON_COLUMN_TEXT.singleKeyRate,
     format: percent,
   },
   sameFinger: {
-    label: '同指',
-    description: '同じ指で違うキーを続けて打った回数。',
+    ...COMPARISON_COLUMN_TEXT.sameFinger,
     format: count,
   },
   sameFingerRate: {
-    label: '同指率',
-    description: '同指連続回数を打鍵数で割った割合（%）。',
+    ...COMPARISON_COLUMN_TEXT.sameFingerRate,
     format: percent,
   },
   adjacentMean: {
-    label: '指間平均',
-    description: '同じ手で隣り合う2本の指の距離が、ホームに置いた時の間隔よりどれだけ開いたかの平均。6組の平均で、ホームより近いと負になる（u）。',
+    ...COMPARISON_COLUMN_TEXT.adjacentMean,
     format: fixed(3),
   },
   adjacentStdDev: {
-    label: '指間σ',
-    description: '隣り合う2本の指の距離のばらつき（標準偏差）。6組の平均（u）。',
+    ...COMPARISON_COLUMN_TEXT.adjacentStdDev,
     format: fixed(3),
   },
 } as const;
