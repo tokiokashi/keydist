@@ -902,7 +902,7 @@ test('Workspaceのペインの条件のモーダルはWorkspaceのレベルで�
   await expect(modal.getByText(/このWorkspaceの値を変える。/)).toBeVisible();
   const row = modal.locator('[data-item="windowSize"]');
   // 開いた時の編集先はWorkspace
-  await expect(row.getByRole('button', { name: /の編集先: / })).toHaveText('Workspace');
+  await expect(row.getByRole('button', { name: /の編集先: / })).toHaveAttribute('aria-label', /の編集先: Workspace$/);
   await row.getByRole('button', { name: '先読みNを1増やす' }).click();
   await expect(row).toContainText('Workspaceで変更');
   await page.keyboard.press('Escape');
@@ -947,7 +947,7 @@ test('Workspaceのペインの条件のモーダル: 行のメニューで全体
 
   // 全体を編集すると、全体の保存先に書かれる（個別画面にも反映される）
   await pickScope(row, '全体を編集');
-  await expect(row.getByRole('button', { name: /の編集先: / })).toHaveText('全体');
+  await expect(row.getByRole('button', { name: /の編集先: / })).toHaveAttribute('aria-label', /の編集先: 全体$/);
   await row.getByRole('button', { name: '先読みNを1増やす' }).click();
   await expect(row).toContainText('全体で変更');
   await expect.poll(async () => (await storedGlobalOverrides(page)).windowSize).toBe(4);
@@ -1021,7 +1021,7 @@ test('Workspaceのペインでも、推奨を持つ配列（大西配列）の�
   await expect(targetButton(panes.first())).toHaveAttribute('aria-label', '対象: 大西配列');
   const modal = await openPaneConditionModal(page, panes.first());
   const row = modal.locator('[data-item="romajiRuleId"]');
-  await expect(row.getByRole('button', { name: /の編集先: / })).toHaveText('Workspace');
+  await expect(row.getByRole('button', { name: /の編集先: / })).toHaveAttribute('aria-label', /の編集先: Workspace$/);
   await expect(row.locator('[data-condition-notice]')).toContainText('この配列の推奨（大西式');
   await expect(row.locator('[data-condition-notice]')).toContainText('Workspaceを変えてもこの画面は変わらない');
 });

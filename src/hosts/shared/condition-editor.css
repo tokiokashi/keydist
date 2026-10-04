@@ -14,14 +14,26 @@
   box-shadow: 0 20px 50px rgb(0 0 0 / 30%);
 }
 
+/*
+ * 開いている時だけ、縦に並べる器にする（閉じた<dialog>は`display: none`のまま。ここへ`[open]`を付けないと閉じても見える）。
+ * スクロールするのは本文（`.condition-modal-body`）だけにする。<dialog>はUAの指定で`overflow: auto`のため、
+ * 中身が枠のborder分（上下2px）はみ出すと、<dialog>自体が二重にスクロールして幅15pxの帯が出る。
+ */
+.condition-modal[open] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .condition-modal::backdrop {
   background: rgb(0 0 0 / 40%);
 }
 
+/* 高さの上限は器（.condition-modal）が持つ。ここで同じ値を持つと、borderの分だけ器の中身より大きくなる。 */
 .condition-modal-inner {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
-  max-height: inherit;
   min-height: 0;
 }
 
@@ -34,7 +46,9 @@
 }
 
 .condition-modal-head h2 {
+  flex: none;
   margin: 0;
+  white-space: nowrap;
   font-size: 1rem;
 }
 
@@ -88,22 +102,28 @@
   font-size: 0.84rem;
 }
 
+/*
+ * 群は列ごとに上から詰めて積む（段ごとに高さをそろえる格子は、短い群の下に空きを作る）。
+ * CSSの段組（multi-column）にする理由: DOMの順のまま列を上から下へ・左から右へ埋めるので、
+ * Tabの順・読み上げの順が見た目の順と食い違わない。列ごとの入れ物に分ける案は、列数（幅で変わる）と
+ * 群の高さに合わせて群を振り分けるために、描画後の測定とやり直しが要る。CSSだけで済む段組を選んだ。
+ * 群の間隔は群の下の余白（--condition-group-gap）。段組は列の末尾の余白を含めないので、最後の群の下に余白は残らない。
+ */
 .condition-groups {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 0.9rem 1.4rem;
-  align-items: start;
+  --condition-group-gap: 0.9rem;
+  column-count: 1;
+  column-gap: 1.4rem;
 }
 
 @container condition-body (min-width: 34rem) {
   .condition-groups {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-count: 2;
   }
 }
 
 @container condition-body (min-width: 50rem) {
   .condition-groups {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-count: 3;
   }
 }
 
@@ -111,6 +131,8 @@
   display: grid;
   gap: 0.55rem;
   min-width: 0;
+  margin-bottom: var(--condition-group-gap);
+  break-inside: avoid;
 }
 
 .condition-group-title {
@@ -142,8 +164,22 @@
   margin-left: auto;
 }
 
+/*
+ * 札と項目名は途中で折り返さない。1行に入らない時は、札・編集先・戻すを次の行へ回す
+ * （項目名と札を合わせた幅が、3列の1列には入らないことがある）。
+ */
+.condition-row .option-field-head {
+  flex-wrap: wrap;
+  row-gap: 0.1rem;
+}
+
+.condition-row .option-field-label {
+  white-space: nowrap;
+}
+
 .condition-origin {
   color: var(--text-muted);
+  white-space: nowrap;
   font-size: 0.72rem;
 }
 
@@ -163,50 +199,27 @@
 }
 
 /*
- * 行の編集先（全体か配列か）のメニュー。札の横に置く小さいボタンで、文字がいま編集しているレベル。
- * ペイン見出しの文字つきメニューのボタンより小さくし、狭い幅でも文字を残す。
+ * 行の編集先（Workspace・全体・配列）のメニュー。札の横に置く、⋯だけの小さいボタン。
+ * 書き先の名前をボタンに出すと、名前の長さで札と並ばず折り返すので、名前は開いたメニューの見出しと読み上げ名に置く。
  */
-.condition-scope-menu .pane-menu-button[data-with-text] {
-  gap: 0.15rem;
-  width: auto;
-  height: auto;
-  min-height: 1.2rem;
-  padding: 0 0.3rem;
-  border-color: transparent;
+.condition-scope-menu .pane-menu-button {
+  width: 1.5rem;
+  height: 1.2rem;
   border-radius: 999px;
-  background: transparent;
-  color: var(--text-muted);
-  font-size: 0.72rem;
 }
 
-.condition-scope-menu .pane-menu-button[data-with-text]:hover,
-.condition-scope-menu .pane-menu-button[data-with-text]:focus-visible,
-.condition-scope-menu .pane-menu-button[data-with-text][aria-expanded="true"] {
-  border-color: var(--border-strong);
-  background: var(--surface-muted);
-  color: var(--text);
-}
-
-/* 配列の値を編集している行は、ボタンの文字を札と同じ色にして、どちらのレベルかを読めるようにする。 */
-.condition-scope-menu[data-condition-scope="layout"] .pane-menu-button[data-with-text] {
+/* 配列の値を編集している行は、⋯を札と同じ色にして、全体・Workspaceの行と見分けられるようにする。 */
+.condition-scope-menu[data-condition-scope="layout"] .pane-menu-button {
   color: var(--accent-strong);
-  font-weight: 600;
-}
-
-.condition-scope-menu .pane-menu-button[data-with-text] .pane-menu-button-text {
-  display: inline;
 }
 
 .condition-scope-menu .pane-menu-button svg {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
 }
 
 .condition-scope-menu .pane-menu-list {
-  right: auto;
-  left: 0;
   min-width: 13rem;
-  z-index: 40;
 }
 
 .condition-row-flag,

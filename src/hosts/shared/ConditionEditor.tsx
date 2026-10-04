@@ -102,7 +102,7 @@ export interface ConditionEditorProps {
 /** 行の編集先。 */
 type EditScope = 'workspace' | 'global' | 'layout';
 
-/** 編集先のメニューのボタンの文字（いま編集しているレベル）。 */
+/** 編集先の名前。ボタンには出さず、開いたメニューの見出しと読み上げ名に使う。 */
 const SCOPE_TEXT: Readonly<Record<EditScope, string>> = {
   workspace: 'Workspace',
   global: '全体',
@@ -189,8 +189,9 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
   };
 
   /**
-   * 行の編集先（Workspace・全体・配列）の切り替え。札の横に置く1つのメニューにまとめ、ボタンの文字で
-   * いま編集しているレベルを示す（行の高さを増やさない）。
+   * 行の編集先（Workspace・全体・配列）の切り替え。札の横に置く1つのメニューにまとめる。ボタンは⋯だけにして
+   * （書き先の名前の長さで1列に収まらなくなるため）、いま編集しているレベルは開いたメニューの見出しと
+   * 読み上げ名が持つ。
    */
   const scopeMenu = (id: GlobalEditableId, label: string, notApplicable: boolean) => {
     const scope = scopeOf(id);
@@ -247,7 +248,8 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
         paneName={label}
         label={`${label}の編集先: ${text}`}
         title={scope === 'layout' ? `「${layout?.name ?? 'この配列'}」の値を編集している` : scope === 'workspace' ? 'このWorkspaceの値を編集している' : '全体の値を編集している'}
-        text={text}
+        caption={`編集中: ${text}`}
+        align="start"
         className="condition-scope-menu"
         data={{ 'data-condition-scope': scope }}
         items={items}
