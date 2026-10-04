@@ -459,7 +459,7 @@ h2.pane-frame-title {
 
 /*
  * 条件のモーダルの中のメニューはpopover（top layer）に出す。UAの指定（中央寄せ・余白・枠）を外し、
- * 位置は画面基準の座標（JSが leftとtopを置く）で決める。`display`は、開いていない間UAの `none` に戻す。
+ * 位置は画面基準の座標（JSが `left` と `top` を置く）で決める。`display`は、開いていない間UAの `none` に戻す。
  */
 .pane-menu-list[popover] {
   position: fixed;
