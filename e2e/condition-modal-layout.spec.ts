@@ -198,30 +198,89 @@ test('行の編集先のボタンは⋯だけで、書き先の名前は開い�
   await expect(standaloneRow.getByRole('menu', { name: '先読みNの編集先: 全体' })).toContainText('編集中: 全体');
 });
 
-for (const size of [
+type MenuState = 'standalone-global' | 'standalone-layout' | 'workspace-default' | 'workspace-changed';
+
+const MENU_STATES: readonly MenuState[] = ['standalone-global', 'standalone-layout', 'workspace-default', 'workspace-changed'];
+const MENU_SIZES = [
   { width: 1920, height: 1080 },
   { width: 1280, height: 720 },
   { width: 761, height: 900 },
   { width: 390, height: 844 },
-]) {
-  test(`どの列の行の編集先のメニューも、開くと枠（モーダルと画面）の中に収まる（${size.width}x${size.height}）`, async ({ page }) => {
-    const modal = await openWorkspaceModal(page, size);
-    const buttons = modal.locator('.condition-scope-menu > button');
-    const count = await buttons.count();
-    expect(count).toBeGreaterThan(6);
-    for (let i = 0; i < count; i++) {
-      const button = buttons.nth(i);
-      await button.click();
-      const menu = modal.getByRole('menu');
-      await expect(menu).toBeVisible();
-      const [box, dialog] = [(await menu.boundingBox())!, (await modal.boundingBox())!];
-      const label = await button.getAttribute('aria-label');
-      expect(box.x, `${label}の左端`).toBeGreaterThanOrEqual(dialog.x - 0.5);
-      expect(box.x + box.width, `${label}の右端`).toBeLessThanOrEqual(dialog.x + dialog.width + 0.5);
-      expect(box.y + box.height, `${label}の下端`).toBeLessThanOrEqual(Math.min(dialog.y + dialog.height, size.height) + 0.5);
-      expect(box.x + box.width).toBeLessThanOrEqual(size.width + 0.5);
-      await page.keyboard.press('Escape');
-      await expect(menu).toBeHidden();
-    }
-  });
+] as const;
+
+async function openModalFor(page: Page, state: MenuState, size: { width: number; height: number }): Promise<Locator> {
+  if (state === 'workspace-default') return openWorkspaceModal(page, size);
+  if (state === 'workspace-changed') return openWorkspaceModal(page, size, WORKSPACE_CHANGED);
+  const modal = await openStandaloneModal(page, size);
+  if (state === 'standalone-layout') {
+    // 先頭の行を配列だけの値の編集先にして、「全体へ移す」を持つ行のメニューも測る
+    const row = modal.locator('[data-item="windowSize"]');
+    await row.getByRole('button', { name: /の編集先: / }).click();
+    await row.getByRole('menuitem', { name: /この配列だけ別に/ }).click();
+    await row.getByRole('button', { name: '先読みNを1増やす' }).click();
+    await expect(row.getByRole('button', { name: /の編集先: この配列$/ })).toBeVisible();
+  }
+  return modal;
 }
+
+for (const state of MENU_STATES) {
+  for (const size of MENU_SIZES) {
+    test(`編集先のメニュー: 全行で分割されず、モーダルと画面の中に収まり、全項目に当たる（${state}・${size.width}x${size.height}）`, async ({ page }) => {
+      const modal = await openModalFor(page, state, size);
+      const buttons = modal.locator('.condition-scope-menu > button');
+      const count = await buttons.count();
+      expect(count).toBeGreaterThan(6);
+      for (let i = 0; i < count; i++) {
+        const button = buttons.nth(i);
+        const label = (await button.getAttribute('aria-label')) ?? `${i}`;
+        await button.scrollIntoViewIfNeeded();
+        await button.click();
+        const menu = modal.getByRole('menu');
+        await expect(menu).toBeVisible();
+        const result = await menu.evaluate((list) => {
+          const rect = list.getBoundingClientRect();
+          const style = getComputedStyle(list);
+          const children = [...list.children].map((child) => child.getBoundingClientRect().height);
+          const frame = list.closest('dialog')!.getBoundingClientRect();
+          // 項目（とメニューの見出し）の中心に、その項目自身が当たるか
+          const unreachable = [...list.children].filter((child) => {
+            const box = child.getBoundingClientRect();
+            const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+            return hit === null || !child.contains(hit);
+          }).map((child) => (child.textContent ?? '').trim());
+          return {
+            rect: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, height: rect.height },
+            frame: { left: frame.left, top: frame.top, right: frame.right, bottom: frame.bottom },
+            expectedHeight: children.reduce((sum, h) => sum + h, 0)
+              + parseFloat(style.paddingTop) + parseFloat(style.paddingBottom)
+              + parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth),
+            unreachable,
+            innerWidth,
+            innerHeight,
+          };
+        });
+        const { rect, frame } = result;
+        // 分割されていない（段組の列をまたいで描かれると、箱の高さが項目の合計と合わない）
+        expect(Math.abs(rect.height - result.expectedHeight), `${label}の高さ`).toBeLessThan(1.5);
+        expect(rect.left, `${label}の左端`).toBeGreaterThanOrEqual(Math.max(frame.left, 0) - 0.5);
+        expect(rect.right, `${label}の右端`).toBeLessThanOrEqual(Math.min(frame.right, result.innerWidth) + 0.5);
+        expect(rect.top, `${label}の上端`).toBeGreaterThanOrEqual(Math.max(frame.top, 0) - 0.5);
+        expect(rect.bottom, `${label}の下端`).toBeLessThanOrEqual(Math.min(frame.bottom, result.innerHeight) + 0.5);
+        expect(result.unreachable, `${label}の当たらない項目`).toEqual([]);
+        // Escapeでメニューだけが閉じ、モーダルは開いたまま、フォーカスはボタンへ戻る
+        await page.keyboard.press('Escape');
+        await expect(menu).toBeHidden();
+        await expect(modal).toBeVisible();
+        await expect(button).toBeFocused();
+      }
+    });
+  }
+}
+
+test('編集先のメニューは、本文をスクロールすると閉じる（ボタンから離れた位置に残らない）', async ({ page }) => {
+  const modal = await openWorkspaceModal(page, { width: 1280, height: 600 });
+  await modal.locator('[data-item="windowSize"]').getByRole('button', { name: /の編集先: / }).click();
+  await expect(modal.getByRole('menu')).toBeVisible();
+  await modal.locator('.condition-modal-body').evaluate((el) => { el.scrollTop = 40; });
+  await expect(modal.getByRole('menu')).toBeHidden();
+});

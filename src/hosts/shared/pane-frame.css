@@ -457,6 +457,21 @@ h2.pane-frame-title {
   box-shadow: 0 6px 20px rgb(0 0 0 / 14%);
 }
 
+/*
+ * 条件のモーダルの中のメニューはpopover（top layer）に出す。UAの指定（中央寄せ・余白・枠）を外し、
+ * 位置は画面基準の座標（JSが leftとtopを置く）で決める。`display`は、開いていない間UAの `none` に戻す。
+ */
+.pane-menu-list[popover] {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  overflow: auto;
+}
+
+.pane-menu-list[popover]:not(:popover-open) {
+  display: none;
+}
+
 .pane-menu-caption {
   padding: 0.3rem 0.6rem 0.2rem;
   color: var(--text-muted);

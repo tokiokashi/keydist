@@ -33,6 +33,7 @@ export function PaneMenu({
   icon,
   text,
   caption,
+  align = 'end',
   className,
   data,
 }: {
@@ -50,6 +51,8 @@ export function PaneMenu({
    * 読み上げはメニューの名前（`label`）が同じ内容を持つので、見出しは読み上げから外す。
    */
   readonly caption?: string;
+  /** メニューをボタンのどちらの端にそろえて開くか。既定は右端（見出しの右寄りのボタン向け）。 */
+  readonly align?: 'start' | 'end';
   readonly className?: string;
   readonly data?: Readonly<Record<string, string>>;
 }) {
@@ -63,14 +66,30 @@ export function PaneMenu({
   // 切れた項目は見えず押せない。見出しが1行の狭いペインでは、連動のボタンが枠の左寄りに来て右端揃えだと左へはみ出す
   const [shift, setShift] = useState(0);
 
+  // 条件のモーダル（<dialog>）の中のメニューか。モーダルの中は、本文のスクロールと段組（列の高さを超えた分が
+  // 次の列へ分割される）がメニューを切るので、メニューをtop layer（popover）に出して画面基準で置く。
+  const [floating, setFloating] = useState(false);
+  useLayoutEffect(() => {
+    setFloating(rootRef.current?.closest('dialog') != null);
+  }, []);
+
   useLayoutEffect(() => {
     const list = listRef.current;
-    // 条件のモーダル（<dialog>）の中に置いたメニューは、ペインの枠ではなくモーダルの枠を基準にずらす。
-    // ペインの枠を基準にすると、ボタンから離れて開く。モーダルの枠は角丸とoverflowで中身を切るので、
-    // 群が右の列へ移った行のメニューも、枠の中に収まるまで横へ戻す
     const root = rootRef.current;
-    const frame = root === null ? null : root.closest('dialog') ?? root.closest('.pane-frame');
-    if (!open || list === null || frame === null || frame === undefined) {
+    if (!open || list === null || root === null) {
+      setShift(0);
+      return;
+    }
+    if (floating) {
+      // popover="manual": 閉じる操作（外のクリック・Escape・スクロール）は下で自分で持つ。
+      // autoの外側クリックによる閉じ方は、モーダルのEscapeの扱いと干渉するので使わない
+      list.showPopover();
+      placeFloating(list, buttonRef.current, root.closest('dialog'), align);
+      setShift(0);
+      return;
+    }
+    const frame = root.closest('.pane-frame');
+    if (frame === null) {
       setShift(0);
       return;
     }
@@ -82,18 +101,24 @@ export function PaneMenu({
     if (box.left < bounds.left + margin) setShift(bounds.left + margin - box.left);
     else if (box.right > bounds.right - margin) setShift(bounds.right - margin - box.right);
     else setShift(0);
-    // モーダルの中では、下へ開くと本文の下端を超える行（最後の群の行）のメニューは、上に余裕があれば上へ開く。
-    // 本文の下端を超えた分は、本文をスクロールしないと見えない
-    const body = root?.closest('.condition-modal-body');
-    if (body !== null && body !== undefined) {
-      const room = body.getBoundingClientRect();
-      const button = buttonRef.current?.getBoundingClientRect();
-      if (button !== undefined && box.bottom > room.bottom - margin && button.top - room.top > box.height + margin) {
-        list.style.top = 'auto';
-        list.style.bottom = 'calc(100% + 4px)';
-      }
-    }
-  }, [open]);
+  }, [open, floating, align]);
+
+  // 画面基準で置いたメニューは、本文のスクロールや窓の大きさの変化にボタンへ追従しない。
+  // 位置を測り直して追うより、閉じて開き直してもらう方が、ずれた位置に残る状態を作らない
+  useEffect(() => {
+    if (!open || !floating) return undefined;
+    const closeOnScroll = (event: Event) => {
+      if (event.target instanceof Node && listRef.current?.contains(event.target)) return;
+      setOpen(false);
+    };
+    const closeOnResize = () => setOpen(false);
+    document.addEventListener('scroll', closeOnScroll, true);
+    window.addEventListener('resize', closeOnResize);
+    return () => {
+      document.removeEventListener('scroll', closeOnScroll, true);
+      window.removeEventListener('resize', closeOnResize);
+    };
+  }, [open, floating]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -154,6 +179,7 @@ export function PaneMenu({
         <div
           ref={listRef}
           className="pane-menu-list"
+          popover={floating ? 'manual' : undefined}
           role="menu"
           id={menuId}
           aria-label={accessibleName}
@@ -187,6 +213,42 @@ export function PaneMenu({
       ) : null}
     </div>
   );
+}
+
+/**
+ * top layerに出したメニューを、ボタンの近くへ置く（`position: fixed`なので座標は画面基準）。
+ * 既定はボタンの下で、`align`の側の端をそろえ、はみ出すなら枠の中へ寄せる。下に入らず上に入るなら上へ開く。
+ * どちらにも入らない高さなら、枠の高さに縮めてメニュー内をスクロールさせる。
+ * 枠はモーダルと画面の共通部分。
+ */
+function placeFloating(list: HTMLElement, button: HTMLElement | null, dialog: Element | null, align: 'start' | 'end'): void {
+  const margin = 8;
+  const gap = 4;
+  const view = { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
+  const frame = dialog === null ? view : dialog.getBoundingClientRect();
+  const bounds = {
+    left: Math.max(view.left, frame.left) + margin,
+    top: Math.max(view.top, frame.top) + margin,
+    right: Math.min(view.right, frame.right) - margin,
+    bottom: Math.min(view.bottom, frame.bottom) - margin,
+  };
+  // 前回の置き方を外した自然な大きさで測る
+  list.style.maxHeight = '';
+  list.style.left = '0px';
+  list.style.top = '0px';
+  const natural = list.getBoundingClientRect();
+  const anchor = button?.getBoundingClientRect() ?? natural;
+  const height = Math.min(natural.height, bounds.bottom - bounds.top);
+  if (height < natural.height) list.style.maxHeight = `${height}px`;
+  const width = natural.width;
+  const wanted = align === 'start' ? anchor.left : anchor.right - width;
+  const left = Math.max(bounds.left, Math.min(wanted, bounds.right - width));
+  const below = anchor.bottom + gap;
+  const above = anchor.top - gap - height;
+  let top = below;
+  if (below + height > bounds.bottom) top = above >= bounds.top ? above : Math.max(bounds.top, bounds.bottom - height);
+  list.style.left = `${left}px`;
+  list.style.top = `${top}px`;
 }
 
 /** 解析設定を開くボタンのアイコン（狭いペインではアイコンだけにする）。 */

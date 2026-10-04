@@ -219,10 +219,7 @@
 }
 
 .condition-scope-menu .pane-menu-list {
-  right: auto;
-  left: 0;
   min-width: 13rem;
-  z-index: 40;
 }
 
 .condition-row-flag,
