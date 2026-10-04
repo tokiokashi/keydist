@@ -457,6 +457,12 @@ h2.pane-frame-title {
   box-shadow: 0 6px 20px rgb(0 0 0 / 14%);
 }
 
+.pane-menu-caption {
+  padding: 0.3rem 0.6rem 0.2rem;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
 .pane-menu-item {
   display: grid;
   gap: 0.15rem;

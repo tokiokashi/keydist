@@ -280,7 +280,7 @@ test('条件のモーダル: この配列だけ別にすると配列のレベル
   const row = modal.locator('[data-item="windowSize"]');
   await pickScope(row, 'この配列だけ別に');
   await row.getByRole('button', { name: '先読みNを1増やす' }).click();
-  await expect(row.getByRole('button', { name: /の編集先: / })).toHaveText('この配列');
+  await expect(row.getByRole('button', { name: /の編集先: / })).toHaveAttribute('aria-label', /の編集先: この配列$/);
   await expect(row.locator('output[aria-label="先読みN"]')).toHaveText('4');
   await expect(row).toContainText('配列「QWERTY」で変更');
   // 配列のレベルだけに書く。全体の値は既定のまま
@@ -292,7 +292,7 @@ test('条件のモーダル: この配列だけ別にすると配列のレベル
   await pickScope(row, '全体へ移す');
   await expect(row.locator('output[aria-label="先読みN"]')).toHaveText('4');
   await expect(row).toContainText('全体で変更');
-  await expect(row.getByRole('button', { name: /の編集先: / })).toHaveText('全体');
+  await expect(row.getByRole('button', { name: /の編集先: / })).toHaveAttribute('aria-label', /の編集先: 全体$/);
   await expect(row.locator('[data-condition-notice]')).toHaveCount(0);
   // 配列の値を消すと、継承する値へ戻る
   await pickScope(row, 'この配列だけ別に');

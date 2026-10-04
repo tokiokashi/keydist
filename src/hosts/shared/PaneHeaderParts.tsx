@@ -32,6 +32,7 @@ export function PaneMenu({
   title,
   icon,
   text,
+  caption,
   className,
   data,
 }: {
@@ -44,6 +45,11 @@ export function PaneMenu({
   readonly icon?: ReactNode;
   /** アイコンの隣に出すボタンの文字。省略すればアイコンだけ。 */
   readonly text?: string;
+  /**
+   * 開いたメニューの先頭に出す1行の見出し（いまの状態の名前）。項目ではないので選べない。
+   * 読み上げはメニューの名前（`label`）が同じ内容を持つので、見出しは読み上げから外す。
+   */
+  readonly caption?: string;
   readonly className?: string;
   readonly data?: Readonly<Record<string, string>>;
 }) {
@@ -141,6 +147,7 @@ export function PaneMenu({
           aria-label={accessibleName}
           style={shift === 0 ? undefined : { transform: `translateX(${shift}px)` }}
         >
+          {caption === undefined ? null : <div className="pane-menu-caption" aria-hidden="true">{caption}</div>}
           {items.map((item) => (
             <button
               type="button"
