@@ -4,7 +4,7 @@ import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import { compactGrid, GRID_COLS, gridPaneIds, resolveOverlaps, type GridItem, type WorkspaceGrid } from '#engine/workspace-grid.ts';
 import { PaneHeaderLeadContext, PaneNameInLeadContext } from '#hosts/shared/pane-name-in-lead.ts';
-import { InfoButton } from '#ui/primitives/info-button.tsx';
+import { InfoButton, type InfoHelp } from '#ui/primitives/info-button.tsx';
 import { GRID_MARGIN_PX, GRID_PADDING_PX, GRID_ROW_HEIGHT_PX, minGridSize } from './grid-metrics.ts';
 import './workspace-grid.css';
 
@@ -15,6 +15,7 @@ export interface WorkspaceGridProps {
   readonly titleOf: (paneId: string) => string;
   /** ⓘに出す短い説明。空ならⓘを出さない。 */
   readonly descriptionOf: (paneId: string) => string;
+  readonly helpOf: (paneId: string) => InfoHelp | undefined;
   readonly renderPane: (paneId: string) => ReactNode;
   /**
    * 拡大表示しているペイン。保存しない見た目だけの状態で、格子の並び（x・y・w・h）は書き換えない。
@@ -114,7 +115,7 @@ function fromLayout(layout: Layout): WorkspaceGrid {
  * 正は資産の格子（`grid`）で、ライブラリには毎回その値を渡す。人の操作は、離した時（ドラッグ・大きさの変更の終わり）に
  * 1回だけ資産へ書く。途中の位置は書かないので、Undoは1操作につき1回で戻る。
  */
-export function WorkspaceGrid({ grid, analyzerIdOf, titleOf, descriptionOf, renderPane, maximizedId, compact, onGridChange }: WorkspaceGridProps) {
+export function WorkspaceGrid({ grid, analyzerIdOf, titleOf, descriptionOf, helpOf, renderPane, maximizedId, compact, onGridChange }: WorkspaceGridProps) {
   const { width, containerRef } = useGridAreaWidth();
   const mounted = width !== null;
   const animated = useAfterFirstPaint(mounted);
@@ -163,7 +164,7 @@ export function WorkspaceGrid({ grid, analyzerIdOf, titleOf, descriptionOf, rend
               data-maximized={id === maximizedId || undefined}
               inert={maximized && id !== maximizedId}
             >
-              <PaneShell paneId={id} title={titleOf(id)} description={descriptionOf(id)} draggable>
+              <PaneShell paneId={id} title={titleOf(id)} description={descriptionOf(id)} help={helpOf(id)} draggable>
                 {renderPane(id)}
               </PaneShell>
             </div>
@@ -241,12 +242,14 @@ export function PaneShell({
   paneId,
   title,
   description,
+  help,
   draggable,
   children,
 }: {
   readonly paneId: string;
   readonly title: string;
   readonly description: string;
+  readonly help?: InfoHelp;
   readonly draggable: boolean;
   readonly children: ReactNode;
 }) {
@@ -256,7 +259,7 @@ export function PaneShell({
         {draggable ? <GripIcon /> : null}
         <span className="workspace-pane-lead-name">{title}</span>
       </div>
-      {description === '' ? null : <InfoButton name={title} description={description} floating />}
+      {description === '' ? null : <InfoButton name={title} description={description} help={help} floating />}
     </div>
   );
   return (

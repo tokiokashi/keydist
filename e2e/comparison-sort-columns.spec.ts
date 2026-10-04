@@ -3,7 +3,7 @@ import { expectTargetNames, openSettings, targetNames } from './pane-helper.ts';
 import { waitForHydration } from './hydration-helper.ts';
 
 /**
- * 比較表の列の見出し: 並び替え（昇順 → 降順 → 解除）と、列名・列ごとの説明。
+ * 比較表の列の見出し: 並び替え（昇順 → 降順 → 解除）と、列名。
  * 並び替えは比較表の表示だけで、対象の集合の順（N感度と共有している）は変えない。
  */
 
@@ -176,7 +176,7 @@ test('並び替えても対象の集合の順は変わらず、N感度の対象�
   await expectTargetNames(page, listOrder);
 });
 
-test('列名は短くそろい、表の下の「列の説明」に全列の説明が出る（内部の語を使わない）', async ({ page }) => {
+test('列名は短くそろい、見出しのセルにⓘは置かない', async ({ page }) => {
   const table = await openComparison(page);
   const headers = (await table.locator('thead th').allInnerTexts()).map((text) => text.replace(/[↑↓]/g, '').trim());
   expect(headers).toEqual([
@@ -195,77 +195,8 @@ test('列名は短くそろい、表の下の「列の説明」に全列の説�
     '指間平均',
     '指間σ',
   ]);
-
-  // 見出しにⓘは置かず、表の下の「列の説明」に全列を列名と組でまとめて出す。
+  // 列ごとの説明は、見出しのⓘから開くモーダルに出る（comparison-column-help.spec.ts）。見出しのセルにⓘは置かない。
   await expect(table.locator('thead .info-button')).toHaveCount(0);
-  const toggle = page.getByRole('button', { name: '列の説明' });
-  await expect(toggle).toHaveCount(1);
-  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-  await expect(page.locator('.comparison-column-descriptions')).toHaveCount(0);
-  // 閉じている間は、aria-controls が DOM に無い id を指さない。
-  await expect(toggle).not.toHaveAttribute('aria-controls', /.+/);
-
-  // キーボードだけで開いて閉じられる。
-  await toggle.focus();
-  await page.keyboard.press('Enter');
-  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-  const panel = page.locator('.comparison-column-descriptions');
-  await expect(panel).toBeVisible();
-  await expect(panel).toContainText('距離の単位 u は、キーの幅を1とした距離');
-  await expect(panel).toContainText('ホームに置いた時の間隔');
-  await expect(panel.locator('.comparison-column-description')).toHaveCount(13);
-  // 開いている間は、aria-controls が指す id がブロックとして DOM にある。
-  const controls = await toggle.getAttribute('aria-controls');
-  expect(controls).toBeTruthy();
-  await expect(page.locator(`[id="${controls}"]`)).toHaveCount(1);
-  await expect(page.locator(`[id="${controls}"]`)).toHaveClass(/comparison-column-descriptions/);
-  // dl の直下は dt / dd か、それを包む div だけ。単位の文などの p は置かない。
-  const badChildren = await panel.locator('dl').evaluateAll((lists) =>
-    lists.flatMap((dl) => [...dl.children].filter((child) => {
-      const tag = child.tagName;
-      if (tag === 'DT' || tag === 'DD') return false;
-      return !(tag === 'DIV' && [...child.children].every((c) => c.tagName === 'DT' || c.tagName === 'DD'));
-    }).map((child) => child.tagName)));
-  expect(badChildren).toEqual([]);
-  await expect(panel.locator('dl')).toHaveCount(1);
-  for (const label of headers.slice(1)) {
-    await expect(panel.locator('dt', { hasText: new RegExp(`^${label.replace(/[/.]/g, '\\$&')}$`) })).toHaveCount(1);
-  }
-  for (const word of ['Policy', 'fresh', 'Stroke', 'physical', 'mean']) {
-    await expect(panel).not.toContainText(word);
-  }
-  await page.keyboard.press('Space');
-  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-  await expect(panel).toHaveCount(0);
-
-  // 表示していない列の説明は出さない（今の表と対応させる）。
-  const settings = await openSettings(page);
-  await settings.getByRole('checkbox', { name: '指間σ', exact: true }).uncheck();
-  await settings.getByRole('button', { name: '解析設定を閉じる' }).click();
-  await toggle.click();
-  await expect(panel.locator('.comparison-column-description')).toHaveCount(12);
-});
-
-test('列の説明は入れ物の幅に収まり、表とページの横幅を広げず、全文をページのスクロールで読める（390px）', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 500 });
-  const table = await openComparison(page);
-  const scrollWidthBefore = await page.evaluate(() => document.documentElement.scrollWidth);
-  const tableWidthBefore = await table.evaluate((t) => t.getBoundingClientRect().width);
-  await page.getByRole('button', { name: '列の説明' }).click();
-  const panel = page.locator('.comparison-feature .comparison-column-descriptions');
-  await expect(panel).toBeVisible();
-  // 浮かせず、表の下に流れの中のブロックとして出る。
-  expect(await panel.evaluate((el) => getComputedStyle(el).position)).toBe('static');
-  const box = await panel.boundingBox();
-  expect(box!.x).toBeGreaterThanOrEqual(0);
-  expect(box!.x + box!.width).toBeLessThanOrEqual(390);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(scrollWidthBefore);
-  expect(await table.evaluate((t) => t.getBoundingClientRect().width)).toBeCloseTo(tableWidthBefore, 0);
-  // 説明の中でスクロールさせず、ページのスクロールで最後の項目まで届く。
-  expect(await panel.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(1);
-  const last = panel.locator('.comparison-column-description').last();
-  await last.scrollIntoViewIfNeeded();
-  await expect(last).toBeInViewport();
 });
 
 /** 見出しのセルの幅（左から順）。 */
@@ -301,7 +232,7 @@ for (const width of [1500, 390]) {
   });
 }
 
-test('Workspace: 並び替えはペインごとに持ち、片方を並べても他方の行の順は変わらない。列の説明は狭いペインに収まる', async ({ page }) => {
+test('Workspace: 並び替えはペインごとに持ち、片方を並べても他方の行の順は変わらない', async ({ page }) => {
   await page.setViewportSize({ width: 800, height: 900 });
   await page.goto('/');
   await waitForHydration(page);
@@ -323,21 +254,6 @@ test('Workspace: 並び替えはペインごとに持ち、片方を並べても
     await expect(tables.nth(n).locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(3, { timeout: 15_000 });
   }
   const original = await rowNames(tables.nth(1));
-
-  // 狭いペインでも、列の説明は開いた時にペインの幅に収まり、表の横幅を広げない。
-  const narrow = panes.nth(0);
-  const scroller = narrow.locator('.comparison-table-scroll');
-  const scrollWidthBefore = await scroller.evaluate((el) => el.scrollWidth);
-  await narrow.getByRole('button', { name: '列の説明' }).click();
-  const panel = narrow.locator('.comparison-column-descriptions');
-  await expect(panel).toBeVisible();
-  const paneBox = (await narrow.boundingBox())!;
-  const panelBox = (await panel.boundingBox())!;
-  expect(panelBox.x).toBeGreaterThanOrEqual(paneBox.x);
-  expect(panelBox.x + panelBox.width).toBeLessThanOrEqual(paneBox.x + paneBox.width + 1);
-  expect(await scroller.evaluate((el) => el.scrollWidth)).toBe(scrollWidthBefore);
-  await narrow.getByRole('button', { name: '列の説明' }).click();
-  await expect(panel).toHaveCount(0);
 
   const first = tables.nth(0);
   await sortButton(first, '距離').click();
