@@ -65,10 +65,11 @@ export function PaneMenu({
 
   useLayoutEffect(() => {
     const list = listRef.current;
-    // 条件のモーダル（<dialog>）の中に置いたメニューは、ペインの枠の中に描かれていてもモーダルの中で開く。
-    // 枠を基準にずらすと、ボタンから離れて開くのでずらさない
+    // 条件のモーダル（<dialog>）の中に置いたメニューは、ペインの枠ではなくモーダルの枠を基準にずらす。
+    // ペインの枠を基準にすると、ボタンから離れて開く。モーダルの枠は角丸とoverflowで中身を切るので、
+    // 群が右の列へ移った行のメニューも、枠の中に収まるまで横へ戻す
     const root = rootRef.current;
-    const frame = root === null || root.closest('dialog') !== null ? null : root.closest('.pane-frame');
+    const frame = root === null ? null : root.closest('dialog') ?? root.closest('.pane-frame');
     if (!open || list === null || frame === null || frame === undefined) {
       setShift(0);
       return;
@@ -81,6 +82,17 @@ export function PaneMenu({
     if (box.left < bounds.left + margin) setShift(bounds.left + margin - box.left);
     else if (box.right > bounds.right - margin) setShift(bounds.right - margin - box.right);
     else setShift(0);
+    // モーダルの中では、下へ開くと本文の下端を超える行（最後の群の行）のメニューは、上に余裕があれば上へ開く。
+    // 本文の下端を超えた分は、本文をスクロールしないと見えない
+    const body = root?.closest('.condition-modal-body');
+    if (body !== null && body !== undefined) {
+      const room = body.getBoundingClientRect();
+      const button = buttonRef.current?.getBoundingClientRect();
+      if (button !== undefined && box.bottom > room.bottom - margin && button.top - room.top > box.height + margin) {
+        list.style.top = 'auto';
+        list.style.bottom = 'calc(100% + 4px)';
+      }
+    }
   }, [open]);
 
   useEffect(() => {

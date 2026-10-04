@@ -186,7 +186,7 @@ test('行の編集先のボタンは⋯だけで、書き先の名前は開い�
   await expect(button.locator('svg')).toBeVisible();
   await button.click();
   const menu = row.getByRole('menu', { name: '先読みNの編集先: Workspace' });
-  await expect(menu).toContainText('いま編集: Workspace');
+  await expect(menu).toContainText('編集中: Workspace');
   await expect(menu.getByRole('menuitem', { name: '全体を編集' })).toBeVisible();
   await page.keyboard.press('Escape');
 
@@ -195,5 +195,33 @@ test('行の編集先のボタンは⋯だけで、書き先の名前は開い�
   const standaloneButton = standaloneRow.getByRole('button', { name: '先読みNの編集先: 全体' });
   await expect(standaloneButton).toHaveText('');
   await standaloneButton.click();
-  await expect(standaloneRow.getByRole('menu', { name: '先読みNの編集先: 全体' })).toContainText('いま編集: 全体');
+  await expect(standaloneRow.getByRole('menu', { name: '先読みNの編集先: 全体' })).toContainText('編集中: 全体');
 });
+
+for (const size of [
+  { width: 1920, height: 1080 },
+  { width: 1280, height: 720 },
+  { width: 761, height: 900 },
+  { width: 390, height: 844 },
+]) {
+  test(`どの列の行の編集先のメニューも、開くと枠（モーダルと画面）の中に収まる（${size.width}x${size.height}）`, async ({ page }) => {
+    const modal = await openWorkspaceModal(page, size);
+    const buttons = modal.locator('.condition-scope-menu > button');
+    const count = await buttons.count();
+    expect(count).toBeGreaterThan(6);
+    for (let i = 0; i < count; i++) {
+      const button = buttons.nth(i);
+      await button.click();
+      const menu = modal.getByRole('menu');
+      await expect(menu).toBeVisible();
+      const [box, dialog] = [(await menu.boundingBox())!, (await modal.boundingBox())!];
+      const label = await button.getAttribute('aria-label');
+      expect(box.x, `${label}の左端`).toBeGreaterThanOrEqual(dialog.x - 0.5);
+      expect(box.x + box.width, `${label}の右端`).toBeLessThanOrEqual(dialog.x + dialog.width + 0.5);
+      expect(box.y + box.height, `${label}の下端`).toBeLessThanOrEqual(Math.min(dialog.y + dialog.height, size.height) + 0.5);
+      expect(box.x + box.width).toBeLessThanOrEqual(size.width + 0.5);
+      await page.keyboard.press('Escape');
+      await expect(menu).toBeHidden();
+    }
+  });
+}

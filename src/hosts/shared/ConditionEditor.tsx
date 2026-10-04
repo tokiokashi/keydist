@@ -248,7 +248,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
         paneName={label}
         label={`${label}の編集先: ${text}`}
         title={scope === 'layout' ? `「${layout?.name ?? 'この配列'}」の値を編集している` : scope === 'workspace' ? 'このWorkspaceの値を編集している' : '全体の値を編集している'}
-        caption={`いま編集: ${text}`}
+        caption={`編集中: ${text}`}
         className="condition-scope-menu"
         data={{ 'data-condition-scope': scope }}
         items={items}
