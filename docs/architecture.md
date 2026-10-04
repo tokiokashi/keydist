@@ -371,5 +371,6 @@ src/
 Phase 1（#544）で既存ファイルの配置は完了した。置き換え前の実装については次の扱いを続ける。
 
 - `features/analyzer-next/` は #505 の実装で、engine・Setup・Analyzer契約ができた時点で置き換えて消す（#544 のPhase 0コメント）。それまで旧実装と同じく何をimportしてもよく、新しいコードからはimportしない。`docs/analyzer-next-state-contract.md` も同時に消す
+- 旧画面の機能と新しい受け皿の対応表は [legacy-inventory.md](legacy-inventory.md)。切り替え（#604）の完了条件で、旧画面を消す前に「作る候補」「捨てる候補」の行を無くす
 - 規則に反するが今は直せないimportは `KNOWN_VIOLATIONS` に理由付きで載せる。解消したら消す（残っているとテストが落ちる）
 - 純粋さの違反（ブラウザAPIの使用）には逃げ道を作らない。移行で当たる箇所は、指示書で先に扱いを決めておく
