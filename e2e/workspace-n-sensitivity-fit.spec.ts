@@ -7,8 +7,8 @@ import { waitForHydration } from './hydration-helper.ts';
  */
 
 const REM = 16;
-/** 図の領域の下限（n-sensitivity-view.css の min-height: 12rem）。 */
-const CHART_FLOOR = 12 * REM;
+/** 図の領域の下限（`n-sensitivity-view.css` の `min-height: 8.5rem`）。 */
+const CHART_FLOOR = 8.5 * REM;
 
 const QWERTY = { kind: 'layout', layoutId: 'qwerty' };
 const set = { kind: 'set', selection: { targets: [QWERTY, { kind: 'layout', layoutId: 'dvorak' }], colorSlots: [0, 1] } };
@@ -151,11 +151,20 @@ test('グラフはペインの残りの高さに合わせ、領域はスクロ�
   expect(low.bodyScrollHeight).toBeLessThanOrEqual(low.bodyClientHeight + 1);
 });
 
-test('下限より低いペインでは本体の中でスクロールし、図は下限より小さくならない', async ({ page }) => {
-  // 7行（244px）にすると、本体が最低の窓（12rem）まで縮む
+test('最低の窓（12rem）まで縮めても、図は下限より小さくならず、表の見出しまで本体の中に収まる', async ({ page }) => {
+  // 7行（244px）にすると、本体が最低の窓（12rem）まで縮む。図の下限（8.5rem）と表の見出しは、この窓に収まる
   await openWorkspace(page, [nsens], [cell('n', 0, 0, 24, 7)], { width: 1440, height: 900 });
   const m = await measure(page);
-  expect(m.bodyHeight).toBeLessThan(CHART_FLOOR + 20);
+  expect(m.bodyHeight).toBeLessThan(12 * REM + 4);
+  expect(m.svgHeight).toBeGreaterThanOrEqual(CHART_FLOOR - 1);
+  expect(m.bodyScrollHeight).toBeLessThanOrEqual(m.bodyClientHeight + 1);
+  await expect(page.getByText('各Nの実測値 [u]', { exact: true })).toBeInViewport();
+});
+
+test('凡例が図の下に出る組では、領域が下限に当たると図は潰れず、本体の中でスクロールして表の見出しに届く', async ({ page }) => {
+  // 17件・24列 x 7行: 凡例が図の下に並ぶので、図の下限と凡例と表の見出しは最低の窓（12rem）に収まらない
+  await openWorkspace(page, [nsens17], [cell('n', 0, 0, 24, 7)], { width: 1920, height: 900 }, 17);
+  const m = await measure(page);
   expect(m.svgHeight).toBeGreaterThanOrEqual(CHART_FLOOR - 1);
   expect(m.bodyScrollHeight).toBeGreaterThan(m.bodyClientHeight);
   // 本体の中でスクロールすれば表の見出しに届く
