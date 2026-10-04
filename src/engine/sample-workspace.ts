@@ -49,11 +49,16 @@ export const SAMPLE_BIGRAM_FLOW_OPTIONS = { source: 'within-hand' } as const;
 /**
  * 並びの大きさ（24列）。上の段は比較表とN感度が横に並び（18 + 6列）、下の段は同じ幅（6列）のBigram Flow 4つ。
  * 比較表は列が多く広いほど表が収まり、N感度は6列（下の段の1つと同じ幅）で図・凡例・表が縦に収まる。比較表は1440pxでは右の数列が横スクロールになるが、狭い画面でも対象名の列は固定される。
- * 高さは升目（36px）単位で、上の段は2つで揃え、画面で見て中身が収まる高さにした。
+ * 高さは升目（1升は行28pxと間8pxで36px）単位で、上の段は2つで揃える。実測して決めた。
+ * - 上の段の12升: 1920x1080でも1440x900（サイドバー固定）でも、比較表は7行の表と「列の説明」まで、
+ *   N感度は図・凡例・横軸のラベル・畳んだ表の見出しまでがペインの中で収まる。1440pxの固定ではN感度の見出しが
+ *   2行になって本体が低くなるので、11升では見出しの行が切れる。
+ * - 下の段の15升: Bigram FlowのKeyboard FlowとRelative vectorsが凡例まで収まる。
+ * - 合わせて27升で、1920x1080のサイドバー固定・非固定のどちらでも、Workspace全体が1画面に入る（ページが縦にスクロールしない）。
  */
-export const SAMPLE_COMPARISON_SIZE: GridSize = { w: 18, h: 15 };
-export const SAMPLE_N_SENSITIVITY_SIZE: GridSize = { w: 6, h: 15 };
-export const SAMPLE_LOWER_SIZE: GridSize = { w: 6, h: 18 };
+export const SAMPLE_COMPARISON_SIZE: GridSize = { w: 18, h: 12 };
+export const SAMPLE_N_SENSITIVITY_SIZE: GridSize = { w: 6, h: 12 };
+export const SAMPLE_LOWER_SIZE: GridSize = { w: 6, h: 15 };
 
 const layoutTarget = (layoutId: string): AnalysisTarget => ({ kind: 'layout', layoutId });
 

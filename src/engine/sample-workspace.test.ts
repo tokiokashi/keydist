@@ -82,6 +82,8 @@ test('サンプルの並び: 上に比較表とN感度の横並び（18 + 6列�
   assert.deepEqual([nSensitivity!.x, nSensitivity!.y], [comparison!.w, 0]);
   assert.equal(comparison!.w + nSensitivity!.w, GRID_COLS);
   assert.equal(comparison!.h, nSensitivity!.h);
+  // 高さ（升目）: 上の段12・下の段15。1920x1080で1画面に入る大きさ（`e2e/sample-workspace.spec.ts` で実測）
+  assert.deepEqual([comparison!.h, ...lower.map((item) => item.h)], [12, 15, 15, 15, 15]);
   assert.equal(lower.length, 4);
   assert.ok(lower.every((item) => item.y === comparison!.h && item.w === GRID_COLS / 4));
   assert.deepEqual(lower.map((item) => item.x), [0, 6, 12, 18]);

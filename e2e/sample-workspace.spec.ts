@@ -68,6 +68,8 @@ async function expectSampleLayout(page: Page, id: string): Promise<void> {
   expect([nSensitivity!.x, nSensitivity!.y]).toEqual([comparison!.w, 0]);
   expect(comparison!.w + nSensitivity!.w).toBe(24);
   expect(nSensitivity!.h).toBe(comparison!.h);
+  // 高さ（升目）: 上の段12・下の段15。1920x1080で1画面に入る大きさ（下のe2eで実測）
+  expect([comparison!.h, ...lower.map((item) => item.h)]).toEqual([12, 15, 15, 15, 15]);
   expect(lower.map((item) => [item.x, item.y, item.w])).toEqual([0, 6, 12, 18].map((x) => [x, comparison!.h, 6]));
 
   // 画面にも出る
@@ -153,4 +155,42 @@ test('サンプルのWorkspaceは普通のWorkspaceと同じに扱える。Bigra
   await expect(page.locator('.pane-frame')).toHaveCount(5);
   await bar.getByRole('button', { name: '元に戻す' }).click();
   await expect(page.locator('.pane-frame')).toHaveCount(6);
+});
+
+/** サンプルを開き、全ペインの描画が済むまで待つ。 */
+async function openSampleAt(page: Page, size: { width: number; height: number }, sidebar: 'pinned' | 'unpinned'): Promise<void> {
+  await page.setViewportSize(size);
+  if (sidebar === 'unpinned') {
+    await page.addInitScript(() => localStorage.setItem('keydist:app-state', JSON.stringify({ shell: { sidebarPinned: false } })));
+  }
+  await page.goto('/');
+  await waitForHydration(page);
+  await page.locator('.hero').getByRole('button', { name: 'サンプルのWorkspaceを作る' }).click();
+  await expectSampleWorkspace(page, 'サンプル');
+  await expect(page.locator('[data-flow-edge="true"]').first()).toBeAttached({ timeout: 15_000 });
+  await expect(page.locator('[data-n-sensitivity-series]').first()).toBeAttached({ timeout: 15_000 });
+  // 図の描画（N感度は領域の実寸に合わせて描き直す）が落ち着くまで待つ
+  await page.waitForTimeout(1500);
+}
+
+for (const sidebar of ['pinned', 'unpinned'] as const) {
+  test(`1920x1080（サイドバー${sidebar === 'pinned' ? '固定' : '非固定'}）で、サンプルのWorkspace全体が1画面に入り、どのペインも中でスクロールしない`, async ({ page }) => {
+    await openSampleAt(page, { width: 1920, height: 1080 }, sidebar);
+    const m = await page.evaluate(() => ({
+      page: [document.documentElement.scrollHeight, document.documentElement.clientHeight],
+      panes: [...document.querySelectorAll('.workspace-grid-item .pane-body')].map((body) => [body.scrollHeight, body.clientHeight]),
+    }));
+    // ページが縦にスクロールしない
+    expect(m.page[0]).toBeLessThanOrEqual(m.page[1]!);
+    // 各ペインの中身が、ペインの中でスクロールせずに収まる（N感度は図・凡例・横軸・畳んだ表の見出しまで）
+    expect(m.panes).toHaveLength(6);
+    for (const [scrollHeight, clientHeight] of m.panes) expect(scrollHeight).toBeLessThanOrEqual(clientHeight! + 1);
+  });
+}
+
+test('1440x900（サイドバー固定）では1画面に入らなくても、どのペインも中身が切れない', async ({ page }) => {
+  await openSampleAt(page, { width: 1440, height: 900 }, 'pinned');
+  const panes = await page.evaluate(() => [...document.querySelectorAll('.workspace-grid-item .pane-body')].map((body) => [body.scrollHeight, body.clientHeight]));
+  expect(panes).toHaveLength(6);
+  for (const [scrollHeight, clientHeight] of panes) expect(scrollHeight).toBeLessThanOrEqual(clientHeight! + 1);
 });

@@ -156,7 +156,7 @@
     position: relative;
     flex: 1 1 0;
     /* 線の間隔と軸の文字が読める高さ。凡例を図の下に出す時の下限は definition.tsx の MIN_FIT_CHART_HEIGHT。 */
-    min-height: 12rem;
+    min-height: 8.5rem;
   }
 
   .n-sensitivity-svg {
