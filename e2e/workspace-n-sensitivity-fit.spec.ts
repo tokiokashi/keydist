@@ -161,6 +161,17 @@ test('最低の窓（12rem）まで縮めても、図は下限より小さくな
   await expect(page.getByText('各Nの実測値 [u]', { exact: true })).toBeInViewport();
 });
 
+test('凡例が図の下に出る組では、領域が下限に当たると図は潰れず、本体の中でスクロールして表の見出しに届く', async ({ page }) => {
+  // 17件・24列 x 7行: 凡例が図の下に並ぶので、図の下限と凡例と表の見出しは最低の窓（12rem）に収まらない
+  await openWorkspace(page, [nsens17], [cell('n', 0, 0, 24, 7)], { width: 1920, height: 900 }, 17);
+  const m = await measure(page);
+  expect(m.svgHeight).toBeGreaterThanOrEqual(CHART_FLOOR - 1);
+  expect(m.bodyScrollHeight).toBeGreaterThan(m.bodyClientHeight);
+  // 本体の中でスクロールすれば表の見出しに届く
+  await page.getByText('各Nの実測値 [u]', { exact: true }).scrollIntoViewIfNeeded();
+  await expect(page.getByText('各Nの実測値 [u]', { exact: true })).toBeInViewport();
+});
+
 test('凡例は、ペインの高さが変わっても線や点に重ならず図の中に収まる', async ({ page }) => {
   await openWorkspace(page, [nsens], [cell('n', 0, 0, 24, 22)], { width: 1440, height: 1300 });
   // ペインの下の辺を3行（108px）ずつ縮める（22行 → 19 → 16 → 13）
