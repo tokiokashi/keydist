@@ -9,7 +9,7 @@ import { ErrorDetails } from './ErrorDetails.tsx';
 import { PaneErrorBoundary } from './PaneErrorBoundary.tsx';
 import { PaneHeaderLeadContext, PaneNameInLeadContext } from './pane-name-in-lead.ts';
 import { useStatusBadgeFit } from './use-status-badge-fit.ts';
-import { InfoButton } from '#ui/primitives/info-button.tsx';
+import { InfoButton, type InfoHelp } from '#ui/primitives/info-button.tsx';
 import type { PaneTargetBindingControl } from './panes/pane-environment.ts';
 import { BindingGlyph, PaneMenu, SettingsIcon, type PaneMenuItem } from './PaneHeaderParts.tsx';
 import { SettingsWindow } from './SettingsWindow.tsx';
@@ -36,6 +36,8 @@ export interface PaneFrameProps {
   readonly name: string;
   /** Analyzerの短い説明。見出しのⓘで出す。 */
   readonly description: string;
+  /** 短い説明に収まらない説明。あれば見出しのⓘはモーダルを開く。 */
+  readonly help?: InfoHelp;
   /**
    * 本体の推奨幅 [rem]（`analyzers/recommended-width.ts`）。ペインがこれより広い時、本体はここで止まって中央に寄る。
    * 狭い時は効かず、ペインの幅に縮む。
@@ -122,6 +124,7 @@ function StatusBadge({ status, label, asText = false }: { readonly status: Engin
 export function PaneFrame({
   name,
   description,
+  help,
   recommendedWidthRem,
   headingLevel = 2,
   stickyHeader = false,
@@ -194,7 +197,7 @@ export function PaneFrame({
         ) : (
           <div className="pane-frame-name">
             <Heading className="pane-frame-title">{name}</Heading>
-            <InfoButton name={name} description={description} />
+            <InfoButton name={name} description={description} help={help} />
             {statusLabel ? (
               <StatusBadge status={engineState.status} label={statusLabel} />
             ) : null}

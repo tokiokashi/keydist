@@ -53,3 +53,116 @@
   position: fixed;
   max-width: min(22rem, calc(100vw - 1rem));
 }
+
+/*
+ * 見出しのⓘから開くモーダル（info-button.tsxの`help`）。
+ * dialog自体はスクロールさせず（overflow: hidden）、本文だけがスクロールする。
+ * dialogにも本文にもスクロールが付くと二重になり、どちらを動かすか分からなくなる。
+ */
+.info-modal {
+  --info-modal-max-height: min(40rem, calc(100dvh - 4rem));
+  width: min(38rem, calc(100% - 2rem));
+  max-height: var(--info-modal-max-height);
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--surface-raised);
+  color: var(--text);
+  box-shadow: 0 20px 50px rgb(0 0 0 / 30%);
+}
+
+.info-modal::backdrop {
+  background: rgb(0 0 0 / 40%);
+}
+
+/* 枠線の分（上下2px）を引き、dialogの内側に収める */
+.info-modal-inner {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(var(--info-modal-max-height) - 2px);
+}
+
+.info-modal-head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.55rem 0.55rem 0.55rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.info-modal-head h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.info-modal-close {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.info-modal-close:hover,
+.info-modal-close:focus-visible {
+  border-color: var(--border-strong);
+  background: var(--surface-muted);
+}
+
+.info-modal-body {
+  min-height: 0;
+  padding: 0.9rem 1rem 1rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  font-size: 0.84rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.info-modal-body:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: -2px;
+}
+
+.info-modal-body p {
+  margin: 0 0 0.6rem;
+}
+
+.info-modal-body h3 {
+  margin: 1rem 0 0.5rem;
+  font-size: 0.9rem;
+}
+
+.info-modal-list {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+}
+
+.info-modal-item dt {
+  font-weight: 600;
+}
+
+.info-modal-item dd {
+  margin: 0;
+}
+
+@media (max-width: 760px) {
+  .info-modal {
+    --info-modal-max-height: 80dvh;
+    width: 100%;
+    max-width: 100%;
+    margin: auto 0 0;
+    border-bottom: 0;
+    border-radius: 12px 12px 0 0;
+  }
+}
