@@ -74,7 +74,7 @@ test('見出しのⓘでモーダルが開き、比較表の説明・単位・�
   await expect(dialog).toBeVisible();
   await expect(info).toHaveAttribute('aria-expanded', 'true');
   await expect(dialog).toContainText('同じテキストを打った時の、指の移動距離');
-  await expect(dialog).toContainText('距離の単位 u は、キーの幅を1とした距離');
+  await expect(dialog).toContainText('距離の単位uは、キーの幅を1とした距離');
   await expect(dialog.getByRole('heading', { name: '列の説明' })).toBeVisible();
   await expect(dialog.locator('dt')).toHaveText(COLUMN_LABELS);
   await expect(dialog.locator('dd')).toHaveCount(13);

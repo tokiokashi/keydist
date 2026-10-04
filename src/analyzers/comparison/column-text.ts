@@ -34,7 +34,7 @@ export interface ComparisonColumnText {
 }
 
 /** 説明の先頭に出す、距離の単位の説明。 */
-export const COMPARISON_UNIT_NOTE = '距離の単位 u は、キーの幅を1とした距離。';
+export const COMPARISON_UNIT_NOTE = '距離の単位uは、キーの幅を1とした距離。';
 
 export const COMPARISON_COLUMN_TEXT: Readonly<Record<ComparisonColumnId, ComparisonColumnText>> = {
   actions: {

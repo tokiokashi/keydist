@@ -68,7 +68,7 @@ test('URL: 未知の列や真偽値は診断を積んで捨てる', () => {
   assert.equal(diagnostics.length, 2);
 });
 
-test('見出し: 単位は付けず、距離の列の説明に単位 u を書く', () => {
+test('見出し: 単位は付けず、距離の列の説明に単位uを書く', () => {
   for (const def of Object.values(COMPARISON_COLUMNS)) assert.ok(!def.label.includes('['), def.label);
   assert.equal(COMPARISON_COLUMNS.totalUnits.label, '距離');
   assert.equal(COMPARISON_COLUMNS.adjacentMean.label, '指間平均');
