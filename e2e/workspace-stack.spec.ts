@@ -78,9 +78,11 @@ for (const size of [PHONE, { width: 360, height: 780 }]) {
     }));
     expect(scroll.scrollHeight).toBeGreaterThan(scroll.innerHeight * 1.2);
     expect(scroll.scrollWidth).toBeLessThanOrEqual(scroll.innerWidth);
+    // 動ける量は積んだ全体の高さと読み込みの進み具合で変わるので、固定の値ではなく、回す直前の動ける量に対して判定する
+    const scrollable = scroll.scrollHeight - scroll.innerHeight;
+    expect(scrollable, 'ホイールで動ける量が小さすぎて検査にならない').toBeGreaterThanOrEqual(50);
     await page.mouse.wheel(0, 600);
-    // 見出しが1行に収まる（名前を省略する）幅では積んだ全体が低く、動ける量は約270px。大きく動けば足りる
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(200);
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThanOrEqual(Math.min(600, scrollable) - 20);
     // 文脈バーは上に貼り付いたまま残る
     expect((await box(page.locator('.context-bar'))).y).toBeLessThanOrEqual(1);
   });
