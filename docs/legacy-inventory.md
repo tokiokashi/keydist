@@ -127,7 +127,7 @@
 | E2 | 比較元の選択と、比較元を100%とした比率 | `compare-baseline` | 操作 | 実装済み | 集合の基準（`engine/multi-target-selection.ts`）・解析設定 `showBaselineRatio` |
 | E3 | 列見出しによる並び替え | `table-sort` | 操作 | 実装済み | 比較表の解析設定 `sort` |
 | E4 | 最小の行を太字で示す | 比較表の `best` | 操作 | 捨てる（決定済み） | docs/architecture.md「対象の選択」の比較表の節（最小の行の強調などはしない）・AGENTS.md「優劣の判定を作らない」 |
-| E5 | 総移動距離の棒グラフと、棒グラフにする項目の選択 | `AnalyzerComparisonChart`・`compare-chart-metric` | 操作 | 捨てる候補 | X6。表のセルの中立なデータバー（予定）は、旧画面の独立した棒グラフ（と棒グラフの項目選択）は受けない。最小値の強調はE4と同じ理由で持ち越さない |
+| E5 | 総移動距離の棒グラフと、棒グラフにする項目の選択 | `AnalyzerComparisonChart`・`compare-chart-metric` | 操作 | 捨てる候補 | X6。表のセルの中立なデータバー（#18）は、旧画面の独立した棒グラフ（と棒グラフの項目選択）は受けない。最小値の強調はE4と同じ理由で持ち越さない |
 | E6 | N感度（Nを0〜10で振った総移動距離。相対・絶対の切り替え） | `AnalyzerSensitivityResults` | 操作 | 実装済み | N感度（`analyzers/n-sensitivity/`）。縦軸の切り替えは解析設定 `scale`。距離以外の指標は未対応 |
 | E7 | N感度を展開した時だけ計算する | `panels.sensitivity` | 操作 | 実装済み | 表示しているペインだけを計算する。ペインの計算はengineが担う |
 | E8 | Bigram Flow（Keyboard Flow・Relative vectors・Actual / Within-hand・指の組み合わせ） | `analyzer-bigram-flow.tsx`・`analyzers/bigram-flow/` | 操作 | 実装済み | Bigram Flow（`analyzers/bigram-flow/`）。解析設定は保存・共有に載る |
@@ -164,10 +164,10 @@
 |---|---|---|---|---|---|
 | G1 | 配列を追加（名前・4段の文字・配列側のホームキー・ローマ字規則） | `AnalyzerLayoutEditor` | 操作 | 作る候補 | N9。かな配列を画面から定義する機能とは対象が違う（旧画面はQWERTYの4段を並べる形）。N15の後 |
 | G2 | 配列の定義ファイルの取り込み（DvorakJの `.txt`・Vialの `.vil`・紅皿の `.bnz` `.ini`。注意の表示） | `importLayout`・`input/layouts/import.ts` | コード | 作る候補 | N10。取り込みの処理は `input/layouts/import.ts` に残っている。自前の形式での書き出し・読み込み（G7）やJSONの貼り付けでは、他ツールの形式（DvorakJ・Vial・紅皿）のファイルは受けない |
-| G3 | 物理配列エディタ（ピッチ・段ずれ・列オフセット・親指キー・分割間隔・mmとuの単位・名前を付けて保存・上書き・削除） | `AnalyzerGeometryDialog` | 表示だけ | 捨てる候補 | X7。オーナーの判断（2026-10-04）は「物理配列を作る人がいるか。機能がそもそも過剰」。置き場の案は `editors/`（未着手） |
+| G3 | 物理配列エディタ（ピッチ・段ずれ・列オフセット・親指キー・分割間隔・mmとuの単位・名前を付けて保存・上書き・削除） | `AnalyzerGeometryDialog` | 表示だけ | 捨てる（決定済み） | 物理配列エディタを作らない。決定は #29（自作の物理配列を読む経路も消す）。置き場の案だった `editors/` も作らない |
 | G4 | 指の割り当てエディタ（列の一括・キー単位・運指を既定へ戻す） | `AnalyzerGeometryDialog` | 表示だけ | 作る候補 | N13。新しい構成では指の割当が物理配列から切り離された資産になっている（`platform/assets/user-finger-assignments-storage.ts`）。X7と同じ観点で、作るかを見直す |
 | G5 | ローマ字の綴りエディタ（基底ルール＋差分・揺れる箇所の一覧・配列への割り当て・新規作成） | `AnalyzerRomajiDialog` | 表示だけ | 作る候補 | N14。配列への割り当てはD5が受ける。X7と同じ観点で、作るかを見直す |
-| G6 | 物理配列設定の書き出し・読み込み（JSON） | 「打ち手と機材」の「設定を書き出す」「設定を読み込む」 | 操作（書き出しだけ。読み込みはコード） | 予定あり | #39。自作の物理配列を含む資産の書き出し・読み込み。条件のプリセットのファイルと同じ封筒の形式で、旧画面の設定ファイルそのものではない。物理配列エディタ（X7）を作らない場合は、物理配列の分は要らなくなる |
+| G6 | 物理配列設定の書き出し・読み込み（JSON） | 「打ち手と機材」の「設定を書き出す」「設定を読み込む」 | 操作（書き出しだけ。読み込みはコード） | 捨てる（決定済み） | 物理配列エディタを作らず、自作の物理配列を扱わないため、物理配列設定の書き出し・読み込みも作らない。決定は #29・#39（#39は自作の物理配列を扱わない） |
 | G7 | 自作の配列・ローマ字規則の書き出し・読み込み | 条件ファイルに同梱 | コード | 予定あり | #39。G6と同じ、自作の資産の書き出し・読み込み |
 | G8 | 旧画面の保存データの読み込み（保存先の `keydist:app-state` の `analyzer`・`conditions`・`playback` と、初回だけの移行元の `keydist:ui-state`・`keydist:condition-presets`） | `analyzer-ui-state-owner.ts:53-78`・`docs/app-state.md` | コード | 捨てる候補 | X4。通常の保存先は `keydist:app-state` の `analyzer`・`conditions`・`playback`。`keydist:ui-state` は、`keydist:app-state` にこの3つが無い時に1回だけ読む移行元で、移行に成功すると消す。AGENTS.mdは保存データの互換を求めない |
 | G9 | 新しい画面で、自作の配列・ローマ字規則を持ち、Analyzerで選べること | `platform/assets/*-storage.ts`・`interpretation/timing/calibration.ts` | コード | 作る候補 | N15。今は `keydist:layouts`・`keydist:romaji-rules` を読むのは `src/legacy/` と `src/features/analyzer-next/` だけで、新しいAnalyzerは読まない。`keydist.playback-calibration.v3` を読むのは `src/legacy/` だけ。`keydist:geometry-shapes` を読むのは、旧画面と `src/features/analyzer-next/`（`runtime.ts:18`・`browser-runtime.ts:12`）のほかにはTesterだけ。自作の物理配列はX7 |
@@ -188,7 +188,7 @@
 | ID | 機能 | 旧画面での出どころ | 確認 | 状態 | 受け皿・候補 |
 |---|---|---|---|---|---|
 | I1 | 旧画面からTesterへの導線 | `analyzer-page.tsx` のリンクはkeydistのトップだけ | 操作 | 実装済み | 導線は元から無い。新側のサイドバーにTesterがある |
-| I2 | Testerが読む自作の物理配列 | `tester/input-converter-view.tsx` が `keydist:geometry-shapes` を読む | コード | 捨てる候補 | 自作の物理配列を作る手段は旧画面のG3だけ。X7で物理配列エディタを作らないと決めると、Testerが読む自作の物理配列を作れなくなる。このキーを読む経路を残すか消すかをX7と一緒に決める |
+| I2 | Testerが読む自作の物理配列 | `tester/input-converter-view.tsx` が `keydist:geometry-shapes` を読む | コード | 捨てる（決定済み） | 物理配列エディタを作らないので、Testerが `keydist:geometry-shapes` を読む経路は消す。決定は #29 |
 | I3 | 自作の配列を読む画面 | `tester/input-converter-view.tsx` のimport（`LAYOUTS`・`LAYOUTS_JA`だけ） | コード | 作る候補 | Testerは自作の配列を読まない（組み込みの配列だけ）。自作の配列を読むのは旧画面と `src/features/analyzer-next/` だけで、新しいAnalyzer・Setupの対象解決も読まない。新しい構成の資産として作り直す（N15。G10） |
 
 ### J. 切り替えの作業
@@ -198,7 +198,7 @@
 | J1 | `/analyzer` と `src/legacy/` と旧画面のe2eの削除 | `src/routes/analyzer.tsx`・`e2e/analyzer-*.spec.ts` | コード | 予定あり | #29。旧画面の削除（切り替えの本体） |
 | J2 | `/analyzer/flow` と `features/analyzer-next/` の削除 | `src/routes/analyzer_.flow.tsx` | コード | 予定あり | #29。旧画面の削除の範囲。`features/analyzer-next/session-app-state.ts:58,72` も `analyzer`・`conditions`・`playback` を読み、一緒に消える |
 | J3 | 古い画面の入口を `/classic/` へ付け替える（トップ・サイドバー） | `app/shell/Sidebar.tsx` | コード | 予定あり | #36。旧画面の入口の付け替え（`/classic/`） |
-| J4 | 旧い外部リンクの `legacy.html`（`/analyzer` への転送） | `scripts/write-legacy-analyzer-redirect.ts`・`vite build` の後処理 | コード | 捨てる候補 | X5。一緒に消す箇所が多い（X5の一覧） |
+| J4 | 旧い外部リンクの `legacy.html`（`/analyzer` への転送） | `scripts/write-legacy-analyzer-redirect.ts`・`vite build` の後処理 | コード | 捨てる（決定済み） | 旧URLの転送は作らない。`legacy.html` と、一緒に消す箇所（X5の一覧）は #29で消す |
 | J5 | `/analyzer` と `/classic/` の保存の分離 | `keydist-classic:` と `keydist:` | コード | 予定あり | #36。リリースノートに書くかを決める。書く内容は、`/analyzer` で作った自作の配列・物理配列・ローマ字規則（`keydist:*`）が `/classic/` に出ず、`/analyzer` を消すとどこからも使えなくなること（G10） |
 | J6 | 旧画面の外にある `#legacy` への依存 | `src/app/state/app-state.ts:2`（型のimport）・`src/app/theme/appearance.ts:13-17`（定数のimport）・`src/app/theme/theme.ts:26`（`keydist:ui-state` を読む初期スクリプト）・`src/app/theme/theme.ts:22`・`src/app/theme/appearance.ts:27-29`（`analyzer.theme` を読む）・`docs/app-state.md` の該当節（Root schemaの `analyzer`・`conditions`・`playback`、Migration sourcesの表） | コード | 予定あり | #29。旧画面の削除の範囲。`src/legacy/` を消すとtypecheckが落ちる箇所と、テーマの初期値の移行元（`keydist:ui-state`）をどうするかがある |
 | J7 | 旧画面だけが読む保存の項目（`keydist:app-state` の `analyzer`（`analyzer.theme` を含む）・`conditions`・`playback`） | `src/app/state/app-state.ts`・`docs/app-state.md` | コード | 予定あり | #29。旧画面の削除の範囲。旧画面を消した後は誰も読まないので、スキーマから消すかを決める。ただし `analyzer.theme` は、新しい側のテーマのコード（`theme.ts:22`・`appearance.ts:27-29`）が移行元として読むので、消す時はそちらも直す。X4が「捨てる」なら消せる |
@@ -225,9 +225,9 @@
 | N15 | 自作の配列・ローマ字規則を新しい構成の資産として作り、Analyzerで選べるようにする | 中 | G9・I3（C1・D5は実装済みで、組み込みのみという注記が付く行。N15で選べる範囲が広がる） | **N9〜N11・N14の前提。** 旧画面の保存キー（`keydist:layouts`・`keydist:romaji-rules`）を新しい側で読む作業にはしない（G10）。`KeydistAssets` と版付きのcodecとして持ち、作成の画面はN9〜N11で作る。Analyzerのカタログ（`app/standalone/catalog.ts` の `builtinPaneCatalog()`。今は `userLayouts: new Map()` を返し、組み込みだけを返す。使う場所は `TopTargetPick.tsx`・`WorkspaceApp.tsx`・`Standalone*App.tsx`）がそれを読む。**移す処理を作らないので、資産の保存形式の整理の範囲は、旧画面の保存の読み手（`src/legacy/`・`src/features/analyzer-next/`・Tester）を資産の同期の経路へ移す部分が要らなくなり、新しい構成の資産・codec・Analyzerの読み手だけになる。** 物理配列はX7に含める |
 
 
-N12（物理配列エディタ）は、オーナーの判断で「捨てる候補」X7へ移したので欠番にした。
+N12（物理配列エディタ）は、決定済みの項目X7へ移したので欠番にした。
 
-## 捨てる候補（オーナーの判断が要る）
+## 捨てる候補（X5・X7は決定済み。他はオーナーの判断が要る）
 
 | ID | 捨てるもの | 含む行 | 理由と推奨 | 捨てない場合 |
 |---|---|---|---|---|
@@ -235,9 +235,9 @@ N12（物理配列エディタ）は、オーナーの判断で「捨てる候�
 | X2 | 再生の表示設定を配列ごとの上書きにする機能（「この配列専用にする」） | F5 | 推奨は捨てる。表示だけの設定で、数値が変わらない。カスケードの配列のレベルに置く項目としても、設定が増える割に使い道が見えない | 再生のAnalyzer（N3）の設定を配列のレベルに置ける項目にする |
 | X3 | テキストの保存上限（10万字）とその表示 | B3 | 推奨は捨てる。上限はブラウザの保存容量の都合で、容量超過の扱いは、全データのバックアップ・復元と保存容量の扱いとしてまとめて決める | 資産のテキストに上限を設け、超えたら保存しない旨を出す（小） |
 | X4 | 旧画面の保存データ（保存先の `keydist:app-state` の `analyzer`・`conditions`・`playback` と、移行元の `keydist:ui-state`・`keydist:condition-presets`）を、新しい構成へ1回だけ移す処理 | G8 | 推奨は捨てる。AGENTS.mdは保存データの互換と移行を要件にしない。旧画面は `/classic/` で `keydist-classic:` のキーのまま動き続ける。なお旧画面の通常の保存先は `keydist:app-state` で、`keydist:ui-state` は初回に1回だけ読む移行元（`analyzer-ui-state-owner.ts:53-78`） | 移行を作る（`keydist:app-state` の `analyzer`・`conditions`・`playback` を、新しい全体のレベルの上書き・対象の選択へ写す。中〜大） |
-| X5 | 旧URL（`/analyzer`・`/analyzer/flow?...`）の転送と、`legacy.html` の転送ページ | A2・J4 | 推奨は転送を作らない。`/analyzer` は消えた後に404になり、古い画面は `/classic/` へ入口を付け替える（J3）。`legacy.html` は旧アプリの入口で、その後は外部の古いリンクのために `/analyzer` へ転送するページとして残った。一緒に消す箇所は次の全部: `vite.config.ts:12-31,49`（開発サーバーの転送のプラグイン）・`package.json:12`（`build` の `write-legacy-analyzer-redirect.ts`）・`scripts/write-legacy-analyzer-redirect.ts`・`.github/workflows/ci.yml:76`（`.output/public/legacy.html` の検査）・`e2e/analyzer-route.spec.ts:67-71` | `/analyzer` を `/classic/` へ、`/analyzer/flow` を `/standalone/bigram-flow` へ転送する（小。静的配信なので転送ページをビルドで作る。上の箇所を転送先の変更に直す） |
-| X6 | 総移動距離の棒グラフと、棒グラフにする項目の選択 | E5 | 推奨は捨てる。表のセルの中立なデータバー（予定）が「値の大きさを見比べる」用途を受ける。棒グラフの最小値の強調は、`AnalyzerBarChart` の任意の引数 `emphasise`（`analyzer-metrics-content.tsx:286-298`）で付けるもので、棒グラフの前提ではない。強調はE4と同じ理由で持ち越さない | 比較表のペインの下に、解析設定で選んだ列の棒グラフを足す（中）。表のセルのデータバーとどちらかに寄せる |
-| X7 | 物理配列エディタ（ピッチ・段ずれ・列オフセット・親指キー・分割間隔・単位・保存・削除） | G3・I2 | オーナーの判断は「物理配列を作る人がいるか。機能がそもそも過剰」。推奨は捨てる。関連する論点が2つある。**(1) Testerが読む自作の物理配列（`keydist:geometry-shapes`）の経路を残すか消すか。** 消すなら、Testerの `loadUserGeometryShapes` と、物理配列の書き出し・読み込み（G6）も不要になる。**(2) 指の割り当てエディタ（N13）・ローマ字の綴りエディタ（N14）も、同じ観点（作る人がいるか）で見直すか。** G4・G5が対応する。**`/classic/` のエディタで作れるか:** 作れるが、`keydist-classic:geometry-shapes` に入るので、`keydist:geometry-shapes` を読むTesterには届かない | 物理配列エディタを作る（大。`editors/`。切り替えの前に要る。N15の後） |
+| X5 | 旧URL（`/analyzer`・`/analyzer/flow?...`）の転送と、`legacy.html` の転送ページ | A2・J4 | 決定済み（#29）。転送を作らない。`/analyzer` は消えた後に404になり、古い画面は `/classic/` へ入口を付け替える（J3）。`legacy.html` は旧アプリの入口で、その後は外部の古いリンクのために `/analyzer` へ転送するページとして残った。一緒に消す箇所は次の全部: `vite.config.ts:12-31,49`（開発サーバーの転送のプラグイン）・`package.json:12`（`build` の `write-legacy-analyzer-redirect.ts`）・`scripts/write-legacy-analyzer-redirect.ts`・`.github/workflows/ci.yml:76`（`.output/public/legacy.html` の検査）・`e2e/analyzer-route.spec.ts:67-71` | 決定済みなので無し |
+| X6 | 総移動距離の棒グラフと、棒グラフにする項目の選択 | E5 | 推奨は捨てる。表のセルの中立なデータバー（#18）が「値の大きさを見比べる」用途を受ける。棒グラフの最小値の強調は、`AnalyzerBarChart` の任意の引数 `emphasise`（`analyzer-metrics-content.tsx:286-298`）で付けるもので、棒グラフの前提ではない。強調はE4と同じ理由で持ち越さない | 比較表のペインの下に、解析設定で選んだ列の棒グラフを足す（中）。表のセルのデータバーとどちらかに寄せる |
+| X7 | 物理配列エディタ（ピッチ・段ずれ・列オフセット・親指キー・分割間隔・単位・保存・削除） | G3・I2 | 決定済み（#29）。物理配列エディタを作らない（理由は「物理配列を作る人がいるか。機能がそもそも過剰」）。Testerが自作の物理配列を読む経路（`keydist:geometry-shapes`）も消す。物理配列の書き出し・読み込み（G6）も作らない。指の割り当てエディタ（N13）・ローマ字の綴りエディタ（N14）を同じ観点で見直すかは、決まっていない。`/classic/` のエディタで作れるが、`keydist-classic:geometry-shapes` に入るので、Testerには届かない | 決定済みなので無し |
 
 ## 保存のキー
 
@@ -255,7 +255,7 @@ N12（物理配列エディタ）は、オーナーの判断で「捨てる候�
 
 ## 決めきれなかった点
 
-- **「捨てる候補」の7件**（X1〜X7）は、上の表の推奨でよいか。X7は、Testerの自作の物理配列の経路と、N13・N14の見直しを一緒に決める
+- **「捨てる候補」の5件**（X1〜X4・X6）は、上の表の推奨でよいか。X5・X7は決定済み。X7のうち、N13・N14の見直しは決まっていない
 - **作る候補の分け方**。N3・N4の分け方はレビュー役の推奨を表に書いた。N15は他の多くの候補の前提なので、最初に立てる
 
 ## 関連
