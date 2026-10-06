@@ -1,0 +1,34 @@
+/*
+ * スマホ幅でペインを縦に積む面（`WorkspaceStack.tsx`）。積むかどうかは `use-stacked.ts` が決め、
+ * 積む時だけページに `data-stacked` が付く。ページ全体を縦にスクロールして見る。
+ * ペインの枠は、並べる面（`workspace-grid.css`）に揃える。
+ */
+.workspace-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding: 0.5rem var(--workspace-board-padding) 1.5rem;
+}
+
+.workspace-stack-pane {
+  min-width: 0;
+}
+
+/* ペインの枠は並べる面と同じ部品（PaneShell）。高さは中身で決まる */
+.workspace-stack .workspace-pane {
+  height: auto;
+}
+
+.workspace-stack .workspace-pane-scroll {
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
+/*
+ * 縦に積む時は、ページの高さを中身で決める（横に並べる時は画面の高さに収めて、ペインの中でスクロールする）。
+ * 文脈バーは上に貼り付いたまま残る（context-bar.css）。
+ */
+.workspace-page[data-stacked] {
+  height: auto;
+  min-height: 100dvh;
+}

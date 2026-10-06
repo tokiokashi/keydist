@@ -1,0 +1,69 @@
+.standalone-page {
+  display: flex;
+  flex-direction: column;
+}
+
+/*
+ * ペインの領域。個別画面のペインは枠を付けない。
+ * 幅の上限はペインの推奨幅（`analyzers/recommended-width.ts`）で決まる。ここには持たない。
+ * 個別画面はペインが1枚なので、見出しも含めた枠ごと推奨幅で止めて中央へ寄せる
+ * （右にだけ空白を残さない。見出しだけ広く本体が狭い、という見た目にもしない）。
+ */
+.standalone-stage {
+  width: 100%;
+  padding: 1rem 1.5rem 3rem;
+}
+
+.standalone-stage > .pane-frame {
+  max-width: var(--pane-recommended-width);
+  margin-inline: auto;
+}
+
+@media (max-width: 760px) {
+  .standalone-stage {
+    padding: 0.85rem 1rem 2.5rem;
+  }
+
+  /*
+   * スマホ幅の個別画面では、ペインの見出しを1行にし、Analyzer名を見た目から外す
+   * （個別画面はペイン1枚で、どのAnalyzerかはサイドバーとページタイトルで分かる）。
+   * 名前のh1は読み上げ用に残し、ⓘのラベルにも名前が入っている。空いた幅は対象ボタンに全部渡す。
+   * ペインの幅だけで決まる2段（pane-frame.css）を、ここで上書きする。Workspaceのペインは
+   * この画面の外なので影響を受けない。
+   */
+  .standalone-page .pane-frame-header {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.4rem;
+  }
+
+  .standalone-page .pane-frame-name {
+    flex: none;
+  }
+
+  .standalone-page .pane-frame-title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .standalone-page .pane-frame-target {
+    flex: 1 1 0;
+    min-width: 4rem;
+  }
+
+  .standalone-page .pane-settings-button,
+  .standalone-page .pane-frame-menu {
+    flex: none;
+  }
+}
+
+.standalone-control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+}

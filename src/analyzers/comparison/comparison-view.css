@@ -1,0 +1,128 @@
+.comparison-table-scroll {
+  overflow-x: auto;
+}
+
+.comparison-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.82rem;
+}
+
+.comparison-table th,
+.comparison-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 0.4rem 0.6rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.comparison-table th[scope='row'] {
+  text-align: left;
+  font-weight: 600;
+}
+
+.comparison-table th[scope='col'] {
+  text-align: right;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/*
+ * 行の見出し（対象名）の列は、横にスクロールしても左端に残す。どの行の値か分からなくなるため。
+ * 背景を敷くのは、下をスクロールする数値が透けないようにするため。
+ * border-collapseでは固定したセルの罫線がスクロールに付いてこないので、右の境界はbox-shadowで描く。
+ * 縦方向の固定（ペイン見出し）とは別の軸で、この表の外側にあるので重ならない。
+ */
+.comparison-table th[scope='row'],
+.comparison-table thead th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--bg);
+  box-shadow: 1px 0 0 var(--border-strong);
+}
+
+/* 狭い幅では固定した列が画面を占めすぎないよう幅を絞り、長い名前は折り返して全文をその場で読めるようにする。 */
+@container (max-width: 40rem) {
+  .comparison-table th[scope='row'] {
+    max-width: 7.5rem;
+    white-space: normal;
+    min-width: 5rem;
+    overflow-wrap: break-word;
+  }
+}
+
+.comparison-value-cell {
+  display: table-cell;
+}
+
+.comparison-value {
+  display: block;
+}
+
+.comparison-ratio {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.comparison-table tr[data-comparison-row='failed'] td {
+  color: var(--text-muted);
+  text-align: left;
+  white-space: normal;
+}
+
+.comparison-baseline-tag {
+  margin-left: 0.4rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+/* 対象の選択に差し込む項目（基準にする対象）。置き場所はホストが決める。 */
+.comparison-baseline-item {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+}
+
+.comparison-baseline-item select {
+  max-width: 100%;
+}
+
+/*
+ * 列の見出し: 並び替えのボタン。向きの印は列の幅に入れず、セルの右の余白へ絶対配置する
+ * （印の出し入れで列の幅が動かず、幅を確保するための余分な幅も要らない）。
+ */
+.comparison-table th[scope='col'] {
+  position: relative;
+}
+
+.comparison-sort-button {
+  all: unset;
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+.comparison-sort-button:hover {
+  color: var(--text);
+}
+
+.comparison-sort-button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.comparison-sort-mark {
+  position: absolute;
+  top: 50%;
+  right: 0.1rem;
+  width: 0.5rem;
+  transform: translateY(-50%);
+  text-align: center;
+  pointer-events: none;
+}
+
+.comparison-table th[aria-sort] {
+  color: var(--text);
+}

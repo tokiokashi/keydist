@@ -1,0 +1,208 @@
+/*
+ * Workspaceの画面。文脈バーの下に、ペインを並べる面を置く（「ペインを追加」は文脈バーの中）。
+ * 面の高さはペインの並び（格子の行数）で決まり、画面より長ければページが縦にスクロールする
+ * （文脈バーは上に貼り付いたまま）。
+ */
+.workspace-page {
+  display: flex;
+  flex-direction: column;
+  height: auto;
+  min-height: 100dvh;
+}
+
+.workspace-add-pane-slot {
+  display: contents;
+}
+
+.workspace-stage {
+  flex: 1 0 auto;
+  display: flex;
+}
+
+/* ペインが1つも無い時、または見つからない時。 */
+.workspace-empty,
+.workspace-missing {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 1rem;
+  padding: 4rem 1.5rem;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.workspace-empty p,
+.workspace-missing p {
+  margin: 0;
+}
+
+.workspace-missing h1 {
+  margin: 0;
+  color: var(--text);
+  font-size: 1.35rem;
+  line-height: 1.3;
+}
+
+/* ---- ペインの追加 ---- */
+.workspace-add-pane {
+  position: relative;
+}
+
+.workspace-add-pane-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 2rem;
+  padding: 0 0.85rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.88rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* 文字は見た目から省く（読み上げには残す）。文脈バーの中では＋だけを見せる。 */
+.workspace-add-pane[data-variant="toolbar"] .workspace-add-pane-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.workspace-add-pane[data-variant="toolbar"] .workspace-add-pane-button {
+  width: 2rem;
+  padding: 0;
+}
+
+.workspace-add-pane-button:hover,
+.workspace-add-pane-button[aria-expanded="true"] {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.workspace-add-pane[data-variant="empty"] .workspace-add-pane-button {
+  min-height: 2.5rem;
+  padding: 0 1.4rem;
+  font-size: 1rem;
+}
+
+/* 空のWorkspaceの「サンプルの並びで始める」。主の操作（ペインを追加）より控えめな文字のボタン。 */
+.workspace-sample-button {
+  padding: 0.25rem 0.5rem;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.9rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.workspace-sample-button:hover {
+  color: var(--accent-strong);
+}
+
+/* 一覧はボタンの下に、ペインの⋯のメニューと同じ部品で出す（左端をボタンに揃える）。 */
+.workspace-add-pane .pane-menu-list {
+  right: auto;
+  left: 0;
+  width: max-content;
+  max-width: min(24rem, calc(100vw - 2rem));
+}
+
+/* ---- 文脈バーの左端のWorkspace名（h1） ---- */
+/* 全体のh1（トップの大見出し）の大きさ・余白を打ち消し、バーに収まる大きさにする。 */
+/*
+ * 1行に並べる幅が足りない時は、名前を先に省略記号で縮め、最小幅になってから条件のチップ（テキスト・物理配列）を縮める。
+ * 縮み方は元の幅に比例するので、名前だけ縮み率を大きくして先に使い切らせる。
+ * 最小幅（3.5rem）は、短い名前（1〜2文字）では文字数に応じた幅で止める（名前と⋯の間を空けない。文字数は`WorkspaceName`が渡す）。
+ */
+.workspace-name {
+  display: flex;
+  flex: 0 1000 auto;
+  min-width: min(3.5rem, calc(var(--name-length, 3) * 1em + 1.3rem));
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.workspace-name-button,
+.workspace-name-input {
+  /* 上限の16remは、名前の枠（h1）ではなく中身に置く。枠に置くと、上限で止まった枠は縮み始める基準の幅を上限より大きく数えて、縮まない。 */
+  min-width: 0;
+  max-width: 16rem;
+  min-height: 2rem;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.workspace-name-button {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: text;
+}
+
+.workspace-name-button:hover,
+.workspace-name-button:focus-visible {
+  border-color: var(--border);
+  background: var(--surface);
+}
+
+.workspace-name-input {
+  width: 14rem;
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+/* 見出しの⋯（複製・削除）。名前の右隣に置く。 */
+.workspace-menu {
+  flex: none;
+}
+
+/* 見出しの左寄りに置くので、一覧は右端ではなくボタンの左端に揃えて開く（左へはみ出して切れないように）。 */
+.workspace-menu .pane-menu-list {
+  right: auto;
+  left: 0;
+  min-width: 15rem;
+}
+
+/* 入り・切りの項目（空いた所に詰める）。入っている間だけ先頭にチェックを出す。切りでも先頭の幅は空けて、ラベルの位置を揃える */
+.workspace-menu .pane-menu-item[role="menuitemcheckbox"] .pane-menu-item-label::before {
+  content: "";
+  display: inline-block;
+  width: 1.1em;
+}
+
+.workspace-menu .pane-menu-item[role="menuitemcheckbox"][aria-checked="true"] .pane-menu-item-label::before {
+  content: "\2713";
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.workspace-menu .pane-menu-item[role="menuitemcheckbox"] .pane-menu-item-description {
+  padding-left: 1.1em;
+}
+
+/* ---- 使えないペイン・表示できなかったペイン ---- */
+.workspace-pane-notice {
+  display: grid;
+  gap: 0.75rem;
+  justify-items: start;
+  padding: 1rem;
+}
+
+.workspace-pane-notice p {
+  margin: 0;
+}

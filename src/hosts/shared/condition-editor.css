@@ -1,0 +1,471 @@
+/*
+ * 条件のモーダルとその中身。パソコン幅は中央のモーダル、スマホ幅（760px以下。解析設定のシートと同じ境目）は
+ * 下からのシート。項目の入力は解析設定と同じ部品（`ui/primitives/option-fields`）を使い、
+ * ここでは行の外枠（左線・札・理由）とグループの並びだけを足す。
+ */
+.condition-modal {
+  width: min(58rem, calc(100% - 2rem));
+  max-height: min(46rem, calc(100dvh - 4rem));
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--surface-raised);
+  color: var(--text);
+  box-shadow: 0 20px 50px rgb(0 0 0 / 30%);
+}
+
+/*
+ * 開いている時だけ、縦に並べる器にする（閉じた<dialog>は`display: none`のまま。ここへ`[open]`を付けないと閉じても見える）。
+ * スクロールするのは本文（`.condition-modal-body`）だけにする。<dialog>はUAの指定で`overflow: auto`のため、
+ * 中身が枠のborder分（上下2px）はみ出すと、<dialog>自体が二重にスクロールして幅15pxの帯が出る。
+ */
+.condition-modal[open] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.condition-modal::backdrop {
+  background: rgb(0 0 0 / 40%);
+}
+
+/* 高さの上限は器（.condition-modal）が持つ。ここで同じ値を持つと、borderの分だけ器の中身より大きくなる。 */
+.condition-modal-inner {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.condition-modal-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.55rem 0.55rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.condition-modal-head h2 {
+  flex: none;
+  margin: 0;
+  white-space: nowrap;
+  font-size: 1rem;
+}
+
+.condition-modal-scope {
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.condition-modal-reset-all {
+  margin-left: auto;
+  padding: 0.2rem 0.3rem;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--accent-strong);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.condition-modal-reset-all:disabled {
+  color: var(--text-muted);
+  opacity: 0.6;
+  cursor: default;
+}
+
+.condition-modal-close {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.condition-modal-close:hover,
+.condition-modal-close:focus-visible {
+  border-color: var(--border-strong);
+  background: var(--surface-muted);
+}
+
+.condition-modal-body {
+  container: condition-body / inline-size;
+  min-height: 0;
+  padding: 0.9rem 1rem 1rem;
+  overflow-y: auto;
+  font-size: 0.84rem;
+}
+
+/*
+ * 群は列ごとに上から詰めて積む（段ごとに高さをそろえる格子は、短い群の下に空きを作る）。
+ * CSSの段組（multi-column）にする理由: DOMの順のまま列を上から下へ・左から右へ埋めるので、
+ * Tabの順・読み上げの順が見た目の順と食い違わない。列ごとの入れ物に分ける案は、列数（幅で変わる）と
+ * 群の高さに合わせて群を振り分けるために、描画後の測定とやり直しが要る。CSSだけで済む段組を選んだ。
+ * 群の間隔は群の下の余白（--condition-group-gap）。段組は列の末尾の余白を含めないので、最後の群の下に余白は残らない。
+ */
+.condition-groups {
+  --condition-group-gap: 0.9rem;
+  column-count: 1;
+  column-gap: 1.4rem;
+}
+
+@container condition-body (min-width: 34rem) {
+  .condition-groups {
+    column-count: 2;
+  }
+}
+
+@container condition-body (min-width: 50rem) {
+  .condition-groups {
+    column-count: 3;
+  }
+}
+
+.condition-group {
+  display: grid;
+  gap: 0.55rem;
+  min-width: 0;
+  margin-bottom: var(--condition-group-gap);
+  break-inside: avoid;
+}
+
+.condition-group-title {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.condition-row {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 0;
+  padding-left: 0.55rem;
+  border-left: 3px solid transparent;
+}
+
+.condition-row[data-changed] {
+  border-left-color: var(--accent);
+}
+
+.condition-row[data-not-applicable] > * {
+  opacity: 0.55;
+}
+
+/* 札があると、戻すボタンは項目名の直後にならない。行の右端へ寄せ直す。 */
+.condition-row .option-field-head .option-field-reset {
+  margin-left: auto;
+}
+
+/*
+ * 札と項目名は途中で折り返さない。1行に入らない時は、札・編集先・戻すを次の行へ回す
+ * （項目名と札を合わせた幅が、3列の1列には入らないことがある）。
+ */
+.condition-row .option-field-head {
+  flex-wrap: wrap;
+  row-gap: 0.1rem;
+}
+
+.condition-row .option-field-label {
+  white-space: nowrap;
+}
+
+.condition-origin {
+  color: var(--text-muted);
+  white-space: nowrap;
+  font-size: 0.72rem;
+}
+
+.condition-origin[data-origin="global"] {
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent-strong);
+  font-weight: 600;
+}
+
+.condition-origin[data-origin="lower"] {
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+/*
+ * 行の編集先（Workspace・全体・配列）のメニュー。札の横に置く、⋯だけの小さいボタン。
+ * 書き先の名前をボタンに出すと、名前の長さで札と並ばず折り返すので、名前は開いたメニューの見出しと読み上げ名に置く。
+ */
+.condition-scope-menu .pane-menu-button {
+  width: 1.5rem;
+  height: 1.2rem;
+  border-radius: 999px;
+}
+
+/* 配列の値を編集している行は、⋯を札と同じ色にして、全体・Workspaceの行と見分けられるようにする。 */
+.condition-scope-menu[data-condition-scope="layout"] .pane-menu-button {
+  color: var(--accent-strong);
+}
+
+.condition-scope-menu .pane-menu-button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.condition-scope-menu .pane-menu-list {
+  min-width: 13rem;
+}
+
+.condition-row-flag,
+.condition-row-notice,
+.condition-row-diagnostic {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.condition-row-flag {
+  color: var(--text-muted);
+}
+
+.condition-row-notice {
+  color: var(--text);
+}
+
+.condition-row-diagnostic {
+  color: #b8860b;
+}
+
+.condition-readonly-value {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* 先読みNの数の入力は、項目名と同じ行の右に詰める（説明文だけ下の行へ回す）。 */
+.condition-row[data-item="windowSize"] .option-field {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.condition-row[data-item="windowSize"] .option-field-head {
+  flex-wrap: wrap;
+}
+
+.condition-row[data-item="windowSize"] .option-field-label {
+  white-space: nowrap;
+}
+
+.condition-row[data-item="windowSize"] .option-field-input {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.condition-row[data-item="windowSize"] .option-field-hint {
+  grid-column: 1 / -1;
+}
+
+.condition-stepper {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--surface-subtle);
+}
+
+.condition-stepper button {
+  width: 1.8rem;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.condition-stepper button:disabled {
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.condition-stepper output {
+  display: grid;
+  place-items: center;
+  min-width: 2rem;
+  border-inline: 1px solid var(--border);
+  font: 600 0.85rem/1.8rem ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.condition-fold {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-subtle);
+}
+
+.condition-fold > summary {
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.3rem 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+
+.condition-fold-count {
+  margin-left: auto;
+}
+
+.condition-fold-body {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.1rem 0.5rem 0.5rem;
+}
+
+.condition-fold-row {
+  display: grid;
+  gap: 0.2rem;
+  font-size: 0.76rem;
+}
+
+/* モーダル上部のプリセットの節。閉じたまま開き、条件の行と同じ幅で並べる。 */
+.condition-presets {
+  margin-bottom: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-subtle);
+}
+
+.condition-presets > summary {
+  padding: 0.4rem 0.7rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.condition-presets-body {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.2rem 0.7rem 0.7rem;
+}
+
+.condition-presets-empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.condition-preset-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.condition-preset-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.condition-preset-row:last-child {
+  border-bottom: 0;
+}
+
+.condition-preset-name {
+  min-width: 0;
+  margin-right: auto;
+  overflow-wrap: anywhere;
+}
+
+.condition-preset-same {
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.condition-preset-rename,
+.condition-preset-save {
+  display: flex;
+  flex: 1;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.condition-preset-rename input,
+.condition-preset-save input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface-raised);
+  color: var(--text);
+  font: inherit;
+}
+
+.condition-presets button:not(.pane-menu-button):not(.pane-menu-item) {
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface-raised);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.78rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.condition-presets button:disabled {
+  color: var(--text-muted);
+  opacity: 0.6;
+  cursor: default;
+}
+
+.condition-preset-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.condition-preset-result-block {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.condition-preset-result {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+.condition-preset-result button {
+  margin-left: auto;
+}
+
+@media (max-width: 760px) {
+  .condition-modal {
+    width: 100%;
+    max-width: 100%;
+    max-height: 72dvh;
+    margin: auto 0 0;
+    border-bottom: 0;
+    border-radius: 12px 12px 0 0;
+  }
+
+  .condition-preset-save,
+  .condition-preset-result {
+    flex-wrap: wrap;
+  }
+}

@@ -1,0 +1,935 @@
+/*
+ * ペインの枠。ペイン自身をcontainerにし、見出しの段組みをペインの幅で切り替える。
+ * 個別画面のペインは枠を付けない（Workspaceのペインの枠は、Workspaceができた時にそちらで付ける）。
+ */
+.pane-frame {
+  container: pane / inline-size;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.pane-frame-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-areas: "name target settings menu";
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+/*
+ * 個別画面では文脈バーの下に固定する。位置は文脈バーが公開する実際の高さ（折り返すスマホ幅で変わる）。
+ * 背景を敷くのは、下を通る図が透けて見出しに重ならないようにするため。文脈バーより下の層に置く。
+ */
+.pane-frame-header[data-sticky] {
+  position: sticky;
+  top: var(--context-bar-height, 3.1rem);
+  z-index: 10;
+  padding-block: 0.15rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+/*
+ * ⋯が無い見出し（個別画面）は、右端の列を持たない。特異度が下の狭いペイン用の2段（@container）より高いので、
+ * 個別画面は狭いペインでも1行のまま（固定する見出しを薄く保つため。意図した挙動）。
+ */
+.pane-frame-header:not([data-menu]) {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "name target settings";
+}
+
+.pane-frame-header[data-action]:not([data-menu]) {
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-areas: "name target settings menu";
+}
+
+.pane-frame-name {
+  grid-area: name;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.pane-frame-title {
+  margin: 0;
+  font-size: 1.35rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+h2.pane-frame-title {
+  font-size: 1.05rem;
+}
+
+.pane-frame-target {
+  grid-area: target;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.pane-frame-target select {
+  min-width: 0;
+  max-width: 100%;
+  text-overflow: ellipsis;
+}
+
+/*
+ * 対象の持ち方。連動に従っている間は鎖と組の番号をアクセント色で、固定の間はピンを控えめに出す。組の番号は
+ * 対象の色（配列ごとの色）と紛れないよう、色を使わず数字で見分ける。
+ */
+.pane-target-binding .pane-menu-button {
+  width: auto;
+  min-width: 2rem;
+  padding: 0 0.4rem;
+}
+
+.pane-binding-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  color: var(--text-muted);
+}
+
+.pane-binding-icon[data-linked="true"] {
+  color: var(--accent);
+}
+
+.pane-binding-icon-number {
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.pane-menu-item[data-selected="true"] {
+  background: var(--surface-muted);
+}
+
+.pane-menu-item[data-selected="true"] .pane-menu-item-label {
+  font-weight: 600;
+}
+
+/* 絵つきの項目は1行にする（絵・要約の順）。 */
+.pane-menu-item[data-glyph] {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.pane-menu-item[data-glyph] .pane-menu-item-label {
+  white-space: nowrap;
+}
+
+.pane-menu-item[data-glyph] .pane-binding-icon {
+  flex: none;
+  min-width: 2rem;
+}
+
+.pane-settings-button {
+  grid-area: settings;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2rem;
+  padding: 0 0.7rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.pane-settings-button[aria-expanded="true"] {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.pane-frame-menu {
+  grid-area: menu;
+}
+
+.pane-icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.pane-icon-button:hover,
+.pane-icon-button:focus-visible,
+.pane-icon-button[aria-expanded="true"] {
+  border-color: var(--border);
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+/* 狭いペインは2段に固定する（1段目: 名前・ⓘ・⋯、2段目: 対象・解析設定）。解析設定はアイコンだけにする。 */
+@container pane (max-width: 40rem) {
+  .pane-frame-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "name menu"
+      "target settings";
+  }
+
+  .pane-settings-button {
+    width: 2rem;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .pane-settings-button-text {
+    display: none;
+  }
+}
+
+/*
+ * 名前とⓘを見出しの先頭に出すペイン（data-name-in-lead。Workspaceのペイン）は、名前の行を持たないので、
+ * 見出しを対象・連動・条件・状態・解析設定・⋯の1行にする（先頭を置く時の列と狭い時の2段は、この下）。
+ * 上の2段（名前・⋯ / 対象・解析設定）は、名前の行を持つ面のためのもの。
+ * 特異度で上の規則（.pane-frame-headerの@container）に勝たせる。
+ * 解析設定を絵だけにする規則は上の@containerの規則が、そのまま適用される（文字が入る幅は40rem超）。
+ */
+.pane-frame[data-name-in-lead] .pane-frame-header {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas: "target settings menu";
+  gap: 0.5rem;
+}
+
+.pane-frame[data-name-in-lead] .pane-frame-target {
+  flex-wrap: nowrap;
+}
+
+/*
+ * ホストが見出しの先頭に置くもの（Workspaceのペインのつかみ所・名前・ⓘ）の列。
+ * 狭くなった時は、先に名前を省略記号で縮め（つかみ所とⓘは残す。何のAnalyzerかは図で分かり、
+ * 全文はⓘ・読み上げ・title・見出し（h2）に残る）、名前が最小幅になってから対象の選択を縮める。
+ * 見出しは1段のままで、ボタンの位置は動かさない。どちらも最小幅まで縮めても入らない幅になって初めて、
+ * 先頭を1段目、操作を2段目へ送る。
+ * 名前の最小幅は、全部を消さずに「Big…」ほどを残す（何の見出しか分かる手がかり）。
+ * 連動・条件・解析設定・⋯の絵のボタンは縮めない。
+ */
+.pane-frame[data-name-in-lead] {
+  /* つかみ所の絵(10px)・ⓘ(1.6rem)・間隔・右の余白。名前以外で先頭が取る幅 */
+  --pane-lead-chrome: 3.1rem;
+  --pane-lead-name-min: 2.4rem;
+  --pane-target-select-min: 3.2rem;
+}
+
+/* 1段に入らない幅（既定）。先頭を1段目、対象・連動・条件・解析設定・⋯を2段目に置く */
+.pane-frame[data-name-in-lead] .pane-frame-header[data-lead] {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    "lead lead lead"
+    "target settings menu";
+}
+
+.pane-frame-lead {
+  grid-area: lead;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+/*
+ * 1段に入る幅。名前・対象の欄を同じ行に置き、縮める順を決める。
+ * flexの縮みは「縮み率 x 基準の幅」の比で配るので、名前の縮み率を対象の1000倍にして、名前が最小幅になるまで
+ * 対象の幅をほぼ変えない（最小幅に着いた名前は縮まず、残りを対象が受ける）。
+ * 対象の縮み率を1より小さくしないのは、縮みの合計が1未満だと配る量が縮み率の合計の分だけに減り、縮まなくなるため。
+ * 下限の合計は、先頭 3.1rem + 2.4rem、対象の欄 3.2rem + 連動・条件（各2rem）+ 状態の点 0.5rem + 間隔3つ（各0.35rem）、
+ * 解析設定・⋯（各2rem）、見出しの間隔3つ（各0.35rem）= 19.3rem。ペインの枠の余白を足して19.4rem超を1段にする。
+ */
+@container pane (width > 19.4rem) {
+  .pane-frame[data-name-in-lead] .pane-frame-header[data-lead] {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .pane-frame[data-name-in-lead] .pane-frame-lead {
+    flex: 0 1000 auto;
+    min-width: calc(var(--pane-lead-chrome) + var(--pane-lead-name-min));
+  }
+
+  .pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-frame-target {
+    flex: 1 1 auto;
+    gap: 0.35rem;
+    min-width: calc(var(--pane-target-select-min) + 5.55rem);
+  }
+
+  .pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .target-selection {
+    min-width: var(--pane-target-select-min);
+  }
+
+  .pane-frame[data-name-in-lead] .pane-settings-button,
+  .pane-frame[data-name-in-lead] .pane-frame-menu {
+    flex: none;
+  }
+}
+
+/*
+ * 状態のバッジ（Workspaceのペイン）。既定は文字の無い点で、状態の文は読み上げ（隠した文字）とtitleに残す。
+ * 全文が入る時（下のdata-text）は、今までどおり文字で出す。
+ * 点は、対象の欄の下限に0.5remの場所を確保してある。入らない文字でボタンの下に隠れたり、
+ * 字の途中で切れたりしないようにするため。
+ */
+.pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-status-badge {
+  position: relative;
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  padding: 0;
+  background: var(--text-muted);
+}
+
+.pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-status-badge[data-status="failed"] {
+  background: #d6333f;
+}
+
+.pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-status-badge-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+/*
+ * 文字で出す時（data-text）。文字が入るかは、見出しの実際の幅と中身から測って決める（use-status-badge-fit.ts）。
+ * 条件のchipの幅が中身で変わる（既定値・N件変更・対象ごとに差あり）ので、固定の幅では決めない。
+ */
+.pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-status-badge[data-text] {
+  width: auto;
+  height: auto;
+  padding: 0.15rem 0.55rem;
+  background: color-mix(in srgb, currentColor 15%, transparent);
+}
+
+.pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-status-badge[data-text][data-status="failed"] {
+  background: color-mix(in srgb, #d6333f 15%, transparent);
+}
+
+.pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-status-badge[data-text] .pane-status-badge-text {
+  position: static;
+  width: auto;
+  height: auto;
+  clip-path: none;
+}
+
+/*
+ * 極端に狭いペイン（15rem以下。Workspaceで格子の下限の2列まで縮めた幅）。
+ * 2段目に対象の選択・連動・条件・状態・解析設定・⋯を並べると、ボタンだけで幅を超え、対象の選択が0幅に潰れて
+ * ボタンどうしが重なる。そこで見出しを折り返す並びにする。先頭の行（つかみ所・名前・ⓘ）、対象の選択だけの行、
+ * 残りのボタンを入るだけ並べて次の行へ送る行、の順。対象を包む箱は外して、中身を見出しの直下に並べる。
+ * ⋯は並びの最後に置き、行の右端へ寄せる。
+ */
+@container pane (max-width: 15rem) {
+  .pane-frame[data-name-in-lead] .pane-frame-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .pane-frame[data-name-in-lead] .pane-frame-lead {
+    flex: 1 1 100%;
+  }
+
+  .pane-frame[data-name-in-lead] .pane-frame-target {
+    display: contents;
+  }
+
+  .pane-frame[data-name-in-lead] .target-selection {
+    flex: 1 1 100%;
+  }
+
+  .pane-frame[data-name-in-lead] .pane-condition-summary[data-compact] {
+    margin-left: 0;
+  }
+
+  .pane-frame[data-name-in-lead] .pane-frame-menu {
+    margin-left: auto;
+  }
+}
+
+/* 視覚的には隠し、読み上げには残す（見出しの階層・ペインの名前を保つ） */
+.pane-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/*
+ * 見出しの1行に畳んだ条件（ConditionSummaryのcompact）。広い時は文字のchip、狭い時（34rem以下）は
+ * 絵だけにして、既定と違う時は右上の点で知らせる。文字は消さず、読み上げ用に残す。
+ * 右へ寄せるのは、対象の選択が空きを取り、条件・状態が右端の操作の隣に並ぶようにするため。
+ */
+.pane-condition-summary[data-compact] {
+  flex: none;
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+}
+
+.pane-condition-summary[data-compact] .pane-condition-trigger {
+  position: relative;
+  width: auto;
+  min-height: 2rem;
+  padding: 0 0.6rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  white-space: nowrap;
+}
+
+.pane-condition-summary[data-compact] .pane-condition-trigger:hover {
+  background: var(--surface-muted);
+}
+
+.pane-condition-summary[data-compact][data-changed-count]:not([data-changed-count="0"]) .pane-condition-chip-text {
+  color: var(--accent-strong);
+}
+
+/* 既定と違う印。文字が出ている間は文字が兼ねるので、絵だけに縮んだ時に出す */
+.pane-condition-dot {
+  display: none;
+  position: absolute;
+  top: 0.28rem;
+  right: 0.28rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+@container pane (max-width: 34rem) {
+  .pane-condition-summary[data-compact] .pane-condition-trigger {
+    width: 2rem;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .pane-condition-summary[data-compact] .pane-condition-chip-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .pane-condition-dot {
+    display: block;
+  }
+}
+
+.pane-menu {
+  position: relative;
+}
+
+.pane-menu-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 30;
+  display: grid;
+  min-width: 15rem;
+  padding: 0.3rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 14%);
+}
+
+/*
+ * 条件のモーダルの中のメニューはpopover（top layer）に出す。UAの指定（中央寄せ・余白・枠）を外し、
+ * 位置は画面基準の座標（JSが `left` と `top` を置く）で決める。`display`は、開いていない間UAの `none` に戻す。
+ */
+.pane-menu-list[popover] {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  overflow: auto;
+}
+
+.pane-menu-list[popover]:not(:popover-open) {
+  display: none;
+}
+
+.pane-menu-caption {
+  padding: 0.3rem 0.6rem 0.2rem;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.pane-menu-item {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.45rem 0.6rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pane-menu-item:hover,
+.pane-menu-item:focus-visible {
+  background: var(--surface-muted);
+}
+
+.pane-menu-item-label {
+  font-size: 0.85rem;
+}
+
+.pane-menu-item-description {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+/*
+ * 解析設定の小窓。位置はドラッグで動く値（--settings-window-x/y）で決める。
+ * 中身をcontainer queryの入れ物にするので、幅は明示する（中身基準の幅のままだと0に潰れる）。
+ */
+.settings-window {
+  position: fixed;
+  top: var(--settings-window-y, 5rem);
+  left: var(--settings-window-x, auto);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  width: 21rem;
+  max-width: calc(100% - 16px);
+  /* 下端が画面の外へ出ないよう、置いた位置から画面の下端までに収め、中身は小窓の中でスクロールする。 */
+  max-height: max(12rem, calc(100dvh - var(--settings-window-y, 5rem) - 8px));
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--surface-raised);
+  color: var(--text);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 20%);
+}
+
+.settings-window:focus {
+  outline: none;
+}
+
+.settings-window:focus-visible {
+  outline: 2px solid var(--focus);
+}
+
+.settings-window-handle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.4rem 0.4rem 0.4rem 0.8rem;
+  border-bottom: 1px solid var(--border);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.settings-window-handle:active {
+  cursor: grabbing;
+}
+
+.settings-window-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-width: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.settings-window-pane {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-window-close {
+  display: inline-grid;
+  place-items: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.settings-window-close:hover,
+.settings-window-close:focus-visible {
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+.settings-window-body {
+  container-type: inline-size;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.8rem;
+}
+
+.settings-window-body .option-groups {
+  display: grid;
+  gap: 0.9rem;
+}
+
+/*
+ * スマホ幅では、下から出るシートにする。高さを画面の半分までに止め、上半分の図を見ながら変えられるようにする。
+ * 上端の掴みとヘッダー行を下へドラッグすると、--settings-sheet-yだけ下がり、超えると閉じる（SettingsWindow.tsx）。
+ * ここは小窓という器の置き方なので、Analyzerの中身と違い画面の幅で切り替える（幅はSHEET_QUERYと揃える。`ui/theme/breakpoints.ts` が正）。
+ */
+@media (max-width: 760px) {
+  .settings-window {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: auto;
+    max-width: none;
+    max-height: 55dvh;
+    border-radius: 12px 12px 0 0;
+    transform: translateY(var(--settings-sheet-y, 0px));
+    transition: transform 0.2s ease-out;
+  }
+
+  .settings-window[data-sheet-dragging] {
+    transition: none;
+  }
+
+  .settings-window-handle {
+    cursor: default;
+    /* 掴みが上の縁を担うので、ヘッダー行の上の余白は詰める。 */
+    padding-top: 0.1rem;
+  }
+
+  .settings-sheet-grabber {
+    display: grid;
+    flex: none;
+    place-items: center;
+    height: 1.4rem;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+  }
+
+  .settings-sheet-grabber-bar {
+    width: 2.5rem;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border-strong);
+  }
+}
+
+@media (max-width: 760px) and (prefers-reduced-motion: reduce) {
+  .settings-window {
+    transition: none;
+  }
+}
+
+.pane-status-badge {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.pane-status-badge[data-status="computing"],
+.pane-status-badge[data-status="stale"] {
+  background: color-mix(in srgb, currentColor 15%, transparent);
+}
+
+.pane-status-badge[data-status="failed"] {
+  color: #d6333f;
+  background: color-mix(in srgb, #d6333f 15%, transparent);
+}
+
+/*
+ * 条件の要約。閉じた状態は1行に収め、入り切らない項目は省略記号で切る
+ * （「他N件」は切らない。残りがあると見えれば開く理由が分かるため）。押すと条件のモーダルが開く。
+ */
+.pane-condition-summary {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-subtle);
+  font-size: 0.84rem;
+}
+
+.pane-condition-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: 100%;
+  min-width: 0;
+  padding: 0.38rem 0.65rem;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pane-condition-trigger:hover {
+  background: var(--surface-muted);
+}
+
+.pane-condition-icon {
+  flex: none;
+}
+
+.pane-condition-key {
+  flex: none;
+}
+
+.pane-condition-default {
+  flex: none;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.pane-condition-items {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pane-condition-more {
+  flex: none;
+  color: var(--accent-strong);
+}
+
+.pane-condition-diff-flag {
+  flex: none;
+  color: var(--accent-strong);
+}
+
+.pane-condition-diffs h4 {
+  margin: 0 0 0.3rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--border);
+  font-size: inherit;
+  color: var(--text-muted);
+}
+
+.pane-condition-diffs dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.3rem 0.9rem;
+  margin: 0;
+}
+
+.pane-condition-diff {
+  display: contents;
+}
+
+.pane-condition-diff dt {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.pane-condition-diff dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.pane-condition-target {
+  margin: 0 0 0.6rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/*
+ * 狭い幅では対象ごとの差も項目名と値を縦に積む。条件のモーダルの中の並べ方なので、スマホ幅の境目
+ * （760px）には合わせない。760pxに合わせると、シートの中身の幅（726px）で縦積みになり、
+ * 中央のモーダルの中身の幅（694px）では2列のままという逆転が起きる。
+ */
+@media (max-width: 640px) {
+  .pane-condition-diffs dl {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.05rem;
+  }
+
+  .pane-condition-diff dd {
+    margin-bottom: 0.4rem;
+  }
+}
+
+.pane-trace-errors,
+.pane-error {
+  color: #d6333f;
+}
+
+.pane-trace-errors {
+  font-size: 0.85rem;
+}
+
+.pane-trace-errors p,
+.pane-error p,
+.pane-crashed p {
+  margin: 0;
+}
+
+.pane-error-details {
+  margin-top: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.pane-error-details pre {
+  margin: 0.3rem 0 0;
+  max-height: 12rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--text-muted);
+  user-select: text;
+}
+
+.pane-settings-diagnostics {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.85rem;
+  color: #b8860b;
+}
+
+.pane-empty-button {
+  min-height: 2.25rem;
+  padding: 0 1rem;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.pane-empty-button:hover {
+  background: var(--accent-strong);
+}
+
+.pane-empty,
+.pane-busy {
+  margin: 0;
+  padding: 1.5rem 0;
+  color: var(--text-muted);
+}
+
+/*
+ * 推奨幅（`analyzers/recommended-width.ts`。PaneFrameが --pane-recommended-width に入れる）。
+ * ペインが推奨幅より広い時、見出しを除く中身（条件の要約・通知・本体）をそこで止めて中央に寄せる。
+ * 狭い時は min() で100%になり、ペインの幅に縮むだけ（固定幅にしないのでスクロールは出ない）。
+ * 見出しはペインの幅いっぱいのまま残す（ペインの操作は端に置く）。
+ */
+.pane-frame > :not(.pane-frame-header) {
+  width: min(100%, var(--pane-recommended-width, 100%));
+  margin-inline: auto;
+}
+
+/*
+ * 本体の領域はペインいっぱいに取り、containerにする（本体は画面ではなくこの幅で描く）。
+ * 名前（pane-body）を付けるのは、Analyzerが「高さを測れる本体の領域か」を名前つきで問えるようにするため。
+ * 名前の無い問い合わせは、条件を測れる祖先のうち一番近いものを選ぶので、個別画面（幅だけ）の本体は飛ばされ、
+ * 外側に高さを測れるcontainerがあると規則が漏れる。
+ */
+.pane-body {
+  container: pane-body / inline-size;
+  min-width: 0;
+}
+
+.pane-body[data-pane-stale="true"] {
+  opacity: 0.6;
+}
+
+.pane-crashed {
+  border: 1px dashed #d6333f;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  color: #d6333f;
+}
+
+
+/* 解析設定の小窓のヘッダー行にある、文字だけの小さいボタン。タイトルの右、閉じるボタンの左に寄せる。 */
+.settings-window-reset-all {
+  margin-left: auto;
+  padding: 0.2rem 0.4rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.settings-window-reset-all:hover,
+.settings-window-reset-all:focus-visible {
+  background: var(--surface-muted);
+}
+
+/* 個別画面の見出しの右端に置く「Workspaceに追加」。文字つきのボタンで、設定ボタンと同じ高さ・見た目に揃える。 */
+.pane-menu-button[data-with-text] {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: auto;
+  min-height: 2rem;
+  padding: 0 0.7rem;
+  border-color: var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+/* スマホ幅は1行に収めるため、文字を省いてアイコンだけにする（対象の欄を狭めない）。読み上げ名とhoverの説明は残る。 */
+@media (max-width: 760px) {
+  .pane-menu-button[data-with-text] {
+    width: 2rem;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .pane-menu-button[data-with-text] .pane-menu-button-text {
+    display: none;
+  }
+}
+
+/* 保存したWorkspaceが多くても、メニューが画面の下へはみ出さないようにする。 */
+.add-to-workspace .pane-menu-list {
+  max-height: min(60vh, 24rem);
+  overflow-y: auto;
+}

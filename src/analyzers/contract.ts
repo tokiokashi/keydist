@@ -1,0 +1,277 @@
+import type { CodecDiagnostic } from '#input/codec/index.ts';
+import type { Geometry } from '#input/shapes/geometry.ts';
+import type { Layout } from '#input/layouts/types.ts';
+import type { AnalysisTarget } from '#input/setup/index.ts';
+import type { Trace, TracePolicy } from '#trace/generate.ts';
+import type { AggregatedAnalysisResult } from '#interpretation/structure/aggregate.ts';
+import type { Metrics } from '#interpretation/metrics.ts';
+import type { OptionsDefinition, OptionsDisciplineFixture, OptionsRegistry, OptionsValueMap } from './options.ts';
+
+// `OptionsRegistry`はこのファイルの型なので再exportして、横断テスト
+// （`test/analyzer-options-discipline.test.ts`）が`optionsItems`の型を書けるようにする。
+export type { OptionsRegistry } from './options.ts';
+
+/**
+ * Analyzerの契約のうち純粋な部分（docs/architecture.md）。
+ *
+ * ここに置くのは「抽出（extract）・解析設定（Options）・Traceを依頼する窓口の型」だけ。
+ * 可視化のcomponentとの結び付けは各Analyzerの `definition.tsx` が行う（このファイルは
+ * Reactを一切知らない。`import type` も含めて禁止 — 純粋さは推移的に守る。
+ * docs/architecture.md「純粋さは推移的に守る」）。
+ *
+ * engineはこの契約（`analyzers/` 直下）だけを知り、個別のAnalyzer（`analyzers/<name>/`）を
+ * importしない（依存の規則）。逆にこのファイルも個別のAnalyzerへは向かない。
+ */
+
+// ---------------------------------------------------------------------------
+// 抽出の入力
+// ---------------------------------------------------------------------------
+
+/**
+ * Traceを依頼する引数。`engine/resolved-input.ts` の `ResolvedInput` を丸ごと渡さない。
+ * `ResolvedInput` は engine 層の型で、analyzers はengineをimportできない（依存の規則）ため、
+ * Trace生成に実際に要る4フィールドだけをここで複製する（`engine/keys.ts` の `traceKeyOf` が
+ * キーに使うフィールドと同じ）。
+ *
+ * 全フィールド省略可（`tracePolicy`の中身も省略可）: 依頼元（Analyzerの抽出）は
+ * 「その依頼元自身のTraceを生成した元の入力」を土台に、変えたいフィールドだけを渡す
+ * （実装は`engine/trace-requester.ts`の`createTraceRequesterFor`）。N感度のように
+ * `windowSize`だけを振りたい場合、`{ tracePolicy: { windowSize: n } }`だけを渡せば済み、
+ * `text`/`layout`/`geometry`や`tracePolicy`の他フィールドを自前で複製し直さずに済む
+ * （`AnalyzerSetMember.requestTrace`のコメント参照）。
+ */
+export interface TraceRequestInput {
+  readonly text?: string;
+  readonly layout?: Layout;
+  readonly geometry?: Geometry;
+  readonly tracePolicy?: Partial<TracePolicy>;
+}
+
+/**
+ * 「Traceを依頼する窓口」（集合対象とN感度向け）。
+ *
+ * N感度のように、1つの抽出がNを振った複数本のTraceを必要とする場合、抽出は
+ * このAPIを通じて追加のTraceを依頼する。実装（キャッシュ経由で共有する・
+ * 同期で返す）はengine側が持つ（`engine/trace-requester.ts`）。契約はここでは
+ * 「同期でTraceが返る窓口」という形だけを決める。
+ *
+ * 依存の向きは一方向のまま: 抽出がengineを呼び返すのではなく、engineが抽出へ
+ * この窓口を渡す（依存性の注入）。
+ */
+export interface TraceRequester {
+  requestTrace(input: TraceRequestInput): Trace;
+}
+
+/** 単一Setup対象の抽出に渡す値。 */
+export interface SingleAnalyzerExtractContext<Options> {
+  readonly trace: Trace;
+  readonly analysis: AggregatedAnalysisResult;
+  readonly metrics: Metrics;
+  readonly options: Options;
+  /** N感度など、追加のTraceが要る抽出だけが使う。多くの抽出は無視してよい。 */
+  readonly requestTrace: TraceRequester;
+}
+
+/** 集合対象の抽出が受け取る、集合の1メンバー分のTrace結果・解釈結果。 */
+export interface AnalyzerSetMember {
+  readonly target: AnalysisTarget;
+  readonly trace: Trace;
+  readonly analysis: AggregatedAnalysisResult;
+  readonly metrics: Metrics;
+  /**
+   * このメンバー（Setup）自身の解決済み入力を土台にした`TraceRequester`。
+   *
+   * 集合レベルに1つの窓口（`members`の先頭を土台にする）は置かず、メンバーごとに持たせる。
+   * N感度は集合の各メンバーごとに独立したNの掃引が要り、先頭だけを土台にする窓口では
+   * 他メンバーの`text`/`layout`/`geometry`を再現できないため
+   * （engine側の実装は`engine/cache.ts`の`getSetExtraction`が
+   * 解決できたメンバーそれぞれに対して`createTraceRequesterFor`を呼ぶ）。
+   */
+  readonly requestTrace: TraceRequester;
+}
+
+/**
+ * 集合の1メンバーの解決が失敗した時の値。
+ *
+ * 集合対象では、メンバーの一部が失敗（Setup参照切れ・このテキストに使えない配列・
+ * 物理配列を組み立てられない）しても集合全体を`failed`にしない。失敗したメンバーは
+ * `members`からは外し、代わりにこの値として`failures`へ積む。`kind`は`engine/resolved-input.ts`の`ResolvedInputError.kind`と
+ * 同じ語彙にするが、`analyzers/contract.ts`（契約側）は`engine`をimportできない
+ * （依存の規則）ため、ここでは文字列リテラルとして複製する。表示用の文言
+ * （`message`）はengine側（`resolveEngineInput`を呼ぶ側）が組み立てて渡す。
+ */
+export interface AnalyzerSetMemberFailure {
+  readonly target: AnalysisTarget;
+  readonly kind: 'reference' | 'incompatible-text' | 'geometry' | 'target-missing';
+  readonly message: string;
+}
+
+/**
+ * 集合対象の抽出に渡す値。
+ *
+ * 集合レベルの`requestTrace`は持たない。
+ * 追加のTraceが要る抽出（N感度等）は`members[i].requestTrace`（メンバーごとの窓口）を使う。
+ * 「集合のどのメンバーを基準にするか一意に決まらない」問題は、窓口をメンバーへ分配する
+ * ことで解消する（1つの集合レベル窓口が先頭メンバーだけを土台にすると、
+ * メンバーごとに異なる`text`/`layout`/`geometry`を再現できない）。
+ */
+export interface SetAnalyzerExtractContext<Options> {
+  readonly members: readonly AnalyzerSetMember[];
+  /** 解決に失敗したメンバー。空配列なら全メンバーが解決できている。 */
+  readonly failures: readonly AnalyzerSetMemberFailure[];
+  readonly options: Options;
+}
+
+// ---------------------------------------------------------------------------
+// AnalyzerDefinition
+// ---------------------------------------------------------------------------
+
+/**
+ * `SingleAnalyzerDefinition`/`SetAnalyzerDefinition`の“証”。
+ *
+ * この`unique symbol`はこのモジュールの外へexportしないので、外のコードはこのキーを
+ * 持つオブジェクトリテラルを書けない。結果として、この2つの型はオブジェクトリテラルを
+ * 手組みして満たすことができず、`defineSingleAnalyzer`/`defineSetAnalyzer`（このファイルの
+ * 中でだけこのsymbolを使える）を経由してしか作れなくなる。狙いは`defaultOptions`/
+ * `decodeOptions`/`extractKeyOf`を宣言（`options.ts`）からしか得られない状態を
+ * 型検査でも強制すること: 手組みで3つを個別に書ける経路が残っていると、
+ * 「抽出に効く設定をextractKeyOfへ入れ忘れる」事故がAnalyzerを足すたびに再発しうる。
+ */
+const ANALYZER_DEFINITION_BRAND: unique symbol = Symbol('AnalyzerDefinition');
+
+/**
+ * `AnalyzerDefinition` を対象の種類で2つに分ける（Analyzerの対象はSetup 1つかSetupの集合）。1つの型に両方の形を詰め込むと、`cardinality` によって `extract` の引数の
+ * 形が変わることをTypeScriptの型で表現しづらくなる（呼び出し側で毎回絞り込みが要る）ため、
+ * 判別可能なUnionの片側ずつを別の型として定義し、`AnalyzerDefinition` はその合併にする。
+ */
+export interface SingleAnalyzerDefinition<Options = unknown, Extracted = unknown> {
+  readonly [ANALYZER_DEFINITION_BRAND]: 'single';
+  readonly id: string;
+  readonly cardinality: 'single';
+  readonly defaultOptions: Options;
+  /**
+   * 保存された解析設定をdecodeする（`#input/codec` の `decodeField` 等と同じ作法。
+   * 未知・壊れた値は診断を積んで既定値へ戻す。例外を投げない）。
+   */
+  decodeOptions(raw: unknown, diagnostics: CodecDiagnostic[]): Options;
+  /**
+   * 解析設定のうち抽出に効く部分だけを取り出す（解析設定は「抽出に効くもの」と
+   * 「見た目だけのもの」をAnalyzerごとに宣言する）。ここで返した値がそのまま抽出の
+   * キャッシュキーへ畳み込まれる（`engine/keys.ts` の `analyzerExtractionKeyOf`）ので、
+   * 見た目だけの項目（色・並び順の表示切替等）はここで返り値から外す。
+   * それだけで「見た目だけの設定変更では抽出を走らせない」が実現する
+   * （engine側で二重に判定しない）。
+   */
+  extractKeyOf(options: Options): unknown;
+  /** 抽出の純関数。Trace・解釈・options以外の外部状態を参照しない。 */
+  extract(context: SingleAnalyzerExtractContext<Options>): Extracted;
+  /**
+   * 入れ忘れ防止テストの材料。`defineSingleAnalyzer`が必須で
+   * 要求するので、宣言（items）だけ書いてテストの材料を用意し忘れる、という状態を
+   * 型検査の時点で作れない。横断テスト（`test/analyzer-options-discipline.test.ts`）が
+   * これを使って全Analyzerへ`checkOptionsDiscipline`（`options.ts`）を回す。
+   */
+  readonly optionsDiscipline: OptionsDisciplineFixture<Options, Extracted>;
+  /**
+   * 宣言（`options.ts`の`items`）そのもの。ジェネリックを`OptionsRegistry`まで消した形
+   * （`OptionsValueMap<R>`が`Options`と一致する保証をこの型だけでは表現できないため）。
+   * `test/analyzer-options-discipline.test.ts`が個別のAnalyzerユニットをimportできない
+   * 場所（analyzers/直下・engineから）から動的に読み込んだ定義を検査するために使う
+   * （`items`の`affects`宣言が要る。`extractKeyOf`は上の`extractKeyOf`をそのまま使う）。
+   */
+  readonly optionsItems: OptionsRegistry;
+}
+
+export interface SetAnalyzerDefinition<Options = unknown, Extracted = unknown> {
+  readonly [ANALYZER_DEFINITION_BRAND]: 'set';
+  readonly id: string;
+  readonly cardinality: 'set';
+  readonly defaultOptions: Options;
+  decodeOptions(raw: unknown, diagnostics: CodecDiagnostic[]): Options;
+  extractKeyOf(options: Options): unknown;
+  extract(context: SetAnalyzerExtractContext<Options>): Extracted;
+  readonly optionsDiscipline: OptionsDisciplineFixture<Options, Extracted>;
+  readonly optionsItems: OptionsRegistry;
+}
+
+export type AnalyzerDefinition<Options = unknown, Extracted = unknown> =
+  | SingleAnalyzerDefinition<Options, Extracted>
+  | SetAnalyzerDefinition<Options, Extracted>;
+
+// ---------------------------------------------------------------------------
+// 宣言（options.ts）からAnalyzerDefinitionを組み立てる
+// ---------------------------------------------------------------------------
+
+/**
+ * `defaultOptions` / `decodeOptions` / `extractKeyOf`を`OptionsDefinition`（`options.ts`。
+ * 項目ごとの宣言）から導いて`SingleAnalyzerDefinition`を組み立てる。
+ * Analyzerが手書きで上書きできる口は作らない: この3つを個別に上書きする引数は
+ * 存在しない。Analyzer実装が書くのは`id`・`options`（宣言）・`extract`・
+ * `optionsDiscipline`（入れ忘れ防止テストの材料）だけ。
+ * `optionsDiscipline`は省略できない必須のconfigフィールドなので、宣言（items）は
+ * 書いたがテストの材料を用意し忘れる、という状態を型検査で防ぐ。
+ */
+export function defineSingleAnalyzer<R extends OptionsRegistry, Extracted>(config: {
+  readonly id: string;
+  readonly options: OptionsDefinition<R>;
+  readonly extract: (context: SingleAnalyzerExtractContext<OptionsValueMap<R>>) => Extracted;
+  readonly optionsDiscipline: OptionsDisciplineFixture<OptionsValueMap<R>, Extracted>;
+}): SingleAnalyzerDefinition<OptionsValueMap<R>, Extracted> {
+  return {
+    [ANALYZER_DEFINITION_BRAND]: 'single',
+    id: config.id,
+    cardinality: 'single',
+    defaultOptions: config.options.defaultOptions,
+    decodeOptions: config.options.decodeOptions,
+    extractKeyOf: config.options.extractKeyOf,
+    extract: config.extract,
+    optionsDiscipline: config.optionsDiscipline,
+    optionsItems: config.options.items,
+  };
+}
+
+/** `defineSingleAnalyzer`の集合対象版。 */
+export function defineSetAnalyzer<R extends OptionsRegistry, Extracted>(config: {
+  readonly id: string;
+  readonly options: OptionsDefinition<R>;
+  readonly extract: (context: SetAnalyzerExtractContext<OptionsValueMap<R>>) => Extracted;
+  readonly optionsDiscipline: OptionsDisciplineFixture<OptionsValueMap<R>, Extracted>;
+}): SetAnalyzerDefinition<OptionsValueMap<R>, Extracted> {
+  return {
+    [ANALYZER_DEFINITION_BRAND]: 'set',
+    id: config.id,
+    cardinality: 'set',
+    defaultOptions: config.options.defaultOptions,
+    decodeOptions: config.options.decodeOptions,
+    extractKeyOf: config.options.extractKeyOf,
+    extract: config.extract,
+    optionsDiscipline: config.optionsDiscipline,
+    optionsItems: config.options.items,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// AnalyzerInstance
+// ---------------------------------------------------------------------------
+
+/**
+ * ペインに置かれた1個のAnalyzerが見る対象。
+ *
+ * 対象そのものの形（配列かSetupか）は`AnalysisTarget`（`input/setup/target.ts`）が持つ。ここはその1個か集合かだけを表す最小形: 単一対象Analyzer
+ * （`SingleAnalyzerDefinition`）は`single`、集合対象Analyzer（`SetAnalyzerDefinition`）は
+ * `set`を使う。
+ * Workspaceの「Workspaceに従う / 固定」はまだここに無い
+ * （host/Workspace未着手のため、今は持たない）。
+ * 将来足す時は `kind` を増やす形を想定する（例: `{ kind: 'follows-workspace' }`）。
+ */
+export type AnalyzerTarget =
+  | { readonly kind: 'single'; readonly target: AnalysisTarget }
+  | { readonly kind: 'set'; readonly targets: readonly AnalysisTarget[] };
+
+/** ペインに置かれた1個のAnalyzer。 */
+export interface AnalyzerInstance<Options = unknown> {
+  readonly id: string;
+  readonly definitionId: string;
+  readonly options: Options;
+  readonly target: AnalyzerTarget;
+}

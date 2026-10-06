@@ -1,0 +1,219 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: ['**']  # mainも含む。公開（release.yml / pages.yml）は公開するタグのコミットを自前で検査するが、mainそのものは検査しないため。ブラウザe2eは重いのでe2e.ymlに分けてある
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.ref == 'refs/heads/main' && format('ci-main-{0}', github.sha) || format('ci-{0}', github.ref) }}
+  # main は sha ごとの group にして取り消さない。同じ group では pending の run が新しい queued に置き換わって cancelled になるため、
+  # 続けてマージすると途中のマージコミットのverifyが消え、どこで壊れたか追えなくなる
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        id: setup-node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        id: install
+        shell: bash
+        run: |
+          set -o pipefail
+          npm ci 2>&1 | tee "$RUNNER_TEMP/npm-ci.log"
+
+      - name: Typecheck
+        id: typecheck
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run typecheck 2>&1 | tee "$RUNNER_TEMP/typecheck.log"
+
+      - name: Test
+        id: test
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee "$RUNNER_TEMP/test.log"
+
+      - name: Build
+        id: build
+        shell: bash
+        env:
+          KEYDIST_BASE_PATH: /keydist/
+        run: |
+          set -o pipefail
+          # typecheck が生成した route tree に依存せず、Start plugin 単体で
+          # production build 時に再生成できることも検証する。
+          rm -f src/routeTree.gen.ts
+          npm run build 2>&1 | tee "$RUNNER_TEMP/build.log"
+
+      - name: Pages artifact smoke check
+        id: pages-smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          paths=(
+            .output/public/index.html
+            .output/public/analyzer/index.html
+            .output/public/input/index.html
+            .output/public/legacy.html
+            .output/public/404.html
+          )
+
+          for path in "${paths[@]}"; do
+            test -f "$path" || {
+              echo "Missing Pages artifact: $path" >&2
+              exit 1
+            }
+
+            bad_urls=$(
+              grep -Eo '(src|href)="/[^"]*"' "$path" \
+                | grep -v '="/keydist/' \
+                || true
+            )
+
+            if [ -n "$bad_urls" ]; then
+              echo "Found URL outside /keydist/ in $path:" >&2
+              echo "$bad_urls" >&2
+              exit 1
+            fi
+          done
+
+      - name: Write CI summary
+        if: always()
+        shell: bash
+        env:
+          CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
+          SETUP_NODE_OUTCOME: ${{ steps.setup-node.outcome }}
+          INSTALL_OUTCOME: ${{ steps.install.outcome }}
+          TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
+          TEST_OUTCOME: ${{ steps.test.outcome }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          PAGES_SMOKE_OUTCOME: ${{ steps.pages-smoke.outcome }}
+        run: |
+          icon() {
+            case "$1" in
+              success) printf '✅' ;;
+              failure) printf '❌' ;;
+              skipped) printf '⏭️' ;;
+              cancelled) printf '🚫' ;;
+              *) printf '❔' ;;
+            esac
+          }
+
+          {
+            echo "## CI Summary"
+            echo
+            echo "| Check | Result |"
+            echo "| --- | --- |"
+            printf '| Checkout | %s %s |\n' "$(icon "$CHECKOUT_OUTCOME")" "$CHECKOUT_OUTCOME"
+            printf '| Setup Node.js | %s %s |\n' "$(icon "$SETUP_NODE_OUTCOME")" "$SETUP_NODE_OUTCOME"
+            printf '| Install dependencies | %s %s |\n' "$(icon "$INSTALL_OUTCOME")" "$INSTALL_OUTCOME"
+            printf '| Typecheck | %s %s |\n' "$(icon "$TYPECHECK_OUTCOME")" "$TYPECHECK_OUTCOME"
+            printf '| Test | %s %s |\n' "$(icon "$TEST_OUTCOME")" "$TEST_OUTCOME"
+            printf '| Build | %s %s |\n' "$(icon "$BUILD_OUTCOME")" "$BUILD_OUTCOME"
+            printf '| Pages artifact smoke | %s %s |\n' "$(icon "$PAGES_SMOKE_OUTCOME")" "$PAGES_SMOKE_OUTCOME"
+            echo
+            echo "[Open full run logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          append_failure_log() {
+            local title="$1"
+            local outcome="$2"
+            local log_file="$3"
+
+            if [ "$outcome" != "failure" ] || [ ! -s "$log_file" ]; then
+              return
+            fi
+
+            {
+              echo
+              echo "<details open>"
+              echo "<summary>❌ $title — last 80 log lines</summary>"
+              echo
+              echo '~~~text'
+              tail -n 80 "$log_file"
+              echo '~~~'
+              echo "</details>"
+            } >> "$GITHUB_STEP_SUMMARY"
+          }
+
+          append_failure_log "Install dependencies" "$INSTALL_OUTCOME" "$RUNNER_TEMP/npm-ci.log"
+          append_failure_log "Typecheck" "$TYPECHECK_OUTCOME" "$RUNNER_TEMP/typecheck.log"
+          append_failure_log "Test" "$TEST_OUTCOME" "$RUNNER_TEMP/test.log"
+          append_failure_log "Build" "$BUILD_OUTCOME" "$RUNNER_TEMP/build.log"
+
+  # pull_request でだけ走らせる。検査する範囲（base..head）を決められるのが PR だけで、
+  # push の before は新規ブランチでは全ゼロになり、main への push ではマージコミットを含む。
+  # push 時点ではローカルの commit-msg フックが同じスクリプトを掛けている
+  commit-messages:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Angular 規約の検査
+        id: commit-message-check
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          status=0
+          tmp=$(mktemp)
+          for sha in $(git rev-list "$BASE..$HEAD"); do
+            git log -1 --format=%B "$sha" > "$tmp"
+            if ! bash .githooks/commit-msg "$tmp"; then
+              echo "  ^ $sha" >&2
+              status=1
+            fi
+          done
+          exit $status
+
+      - name: Write commit message summary
+        if: always()
+        shell: bash
+        env:
+          CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
+          COMMIT_MESSAGE_OUTCOME: ${{ steps.commit-message-check.outcome }}
+        run: |
+          icon() {
+            case "$1" in
+              success) printf '✅' ;;
+              failure) printf '❌' ;;
+              skipped) printf '⏭️' ;;
+              cancelled) printf '🚫' ;;
+              *) printf '❔' ;;
+            esac
+          }
+
+          {
+            echo "## Commit message check"
+            echo
+            echo "| Check | Result |"
+            echo "| --- | --- |"
+            printf '| Checkout | %s %s |\n' "$(icon "$CHECKOUT_OUTCOME")" "$CHECKOUT_OUTCOME"
+            printf '| Angular commit convention | %s %s |\n' "$(icon "$COMMIT_MESSAGE_OUTCOME")" "$COMMIT_MESSAGE_OUTCOME"
+            echo
+            echo "[Open full run logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          } >> "$GITHUB_STEP_SUMMARY"

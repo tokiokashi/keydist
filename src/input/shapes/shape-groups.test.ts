@@ -1,0 +1,50 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { PHYSICAL_SHAPES } from './geometry.ts';
+import { groupShapes, shapeGroupKey } from './shape-groups.ts';
+
+test('組み込みの物理配列は、規格の定義からANSIとJISの各4つに分かれる', () => {
+  const groups = groupShapes(Object.values(PHYSICAL_SHAPES));
+  assert.deepEqual(groups.map((g) => [g.label, g.shapes.length]), [['US配列（ANSI）', 4], ['JIS配列', 4]]);
+  for (const g of groups) {
+    for (const shape of g.shapes) {
+      assert.equal(shapeGroupKey(shape.id), g.key);
+      assert.equal(shape.id.startsWith('jis-'), g.key === 'jis');
+    }
+  }
+});
+
+test('グループは名前の文字列に依らず、定義の規格で決まる', () => {
+  const renamed = { ...PHYSICAL_SHAPES['jis-ortholinear'], name: 'ANSIという語を含む名前' };
+  assert.equal(shapeGroupKey(renamed.id), 'jis');
+  assert.deepEqual(groupShapes([renamed]).map((g) => g.key), ['jis']);
+});
+
+test('組み込みの物理配列のグループ内の並びは、ロウ → オーソ → オーソ分割 → カラム', () => {
+  for (const g of groupShapes(Object.values(PHYSICAL_SHAPES))) {
+    assert.deepEqual(
+      g.shapes.map((s) => s.name.split('（')[0]),
+      ['ロウスタッガード', 'オーソリニア', 'オーソリニア', 'カラムスタッガード'],
+    );
+  }
+});
+
+test('カラムスタッガードの名前はオーソリニアの分割と同じ「分割」で揃う', () => {
+  assert.equal(PHYSICAL_SHAPES['column-staggered'].name, 'カラムスタッガード（ANSI・分割）');
+  assert.equal(PHYSICAL_SHAPES['jis-column-staggered'].name, 'カラムスタッガード（JIS・分割）');
+});
+
+test('組み込みでない物理配列は自作のグループに入り、空のグループは返さない', () => {
+  const user = { id: 'user-1', name: 'JIS風の自作' };
+  const groups = groupShapes([user, PHYSICAL_SHAPES['row-staggered']]);
+  assert.deepEqual(groups.map((g) => g.key), ['ansi', 'user']);
+  assert.equal(groups[1]!.label, '自作');
+});
+
+test('選択肢に出す組み込みの物理配列の名前: JISのオーソリニアと、ANSI・JISの分割は規格つきで区別でき、109キー版は含まない', () => {
+  const names = Object.values(PHYSICAL_SHAPES).map((shape) => shape.name);
+  assert.equal(PHYSICAL_SHAPES['jis-ortholinear'].name, 'オーソリニア（JIS）');
+  assert.equal(PHYSICAL_SHAPES['split-ortholinear'].name, 'オーソリニア（ANSI・分割）');
+  assert.equal(PHYSICAL_SHAPES['jis-split-ortholinear'].name, 'オーソリニア（JIS・分割）');
+  assert.equal(names.filter((name) => name.includes('109')).length, 0);
+});

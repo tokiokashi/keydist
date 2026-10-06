@@ -1,0 +1,805 @@
+.flow-feature {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.flow-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0;
+}
+
+.flow-status span {
+  padding: 0.3rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 650;
+}
+
+.flow-block {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+}
+
+/* 図の読み方は小見出しの横のⓘに置く（段落にすると図より先に文章を読ませることになるため）。 */
+.flow-block-heading {
+  position: relative;
+  display: flex;
+  /* 狭い本体では、ⓘと表示調整のボタンを見出しの次の行へ送る（本体の右端からはみ出して届かなくなるのを避ける）。 */
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.1rem 0.25rem;
+  min-width: 0;
+}
+
+/*
+ * 読み方の説明はⓘではなく小見出しの行の左端に揃える。ⓘは指の組み合わせの表示の後ろにあって
+ * 右へ寄るので、ⓘから出すと狭いペインで説明が右へはみ出すため。
+ */
+.flow-block-heading .info {
+  position: static;
+}
+
+/* 図のそばの表示調整。ボタンは見出し行の右端、展開は見出しの直下（小窓にしない）。 */
+.flow-figure-settings-toggle {
+  display: inline-grid;
+  place-items: center;
+  margin-left: auto;
+  padding: 0.25rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.flow-figure-settings-toggle:hover,
+.flow-figure-settings-toggle[aria-expanded='true'] {
+  border-color: var(--border, currentColor);
+  color: var(--text);
+}
+
+.flow-figure-settings {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--border, currentColor);
+  border-radius: 8px;
+}
+
+/* 広い画面で入力が全幅に伸びて間延びしないように、入力の幅だけを抑える。 */
+.flow-figure-settings > * {
+  max-width: 24rem;
+}
+
+/* 図が2つあるので、図ごとの小見出しだけを持つ（Analyzer名・説明の段落はペインの見出しが持つ）。 */
+.flow-block-title {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.flow-block-subject {
+  /* 指の表示（全指・人 + 中など）が単位の途中で折り返さないようにする。 */
+  white-space: nowrap;
+  margin-left: 0.4rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* 組の数は見出しの名前より一段小さくする（狭いペインでも、ⓘと表示調整のボタンが次の行へ送られずに済む幅に収める）。 */
+.flow-block-count {
+  margin-left: 0.25rem;
+  font-size: 0.7rem;
+}
+
+.flow-stage,
+.flow-mini-panel {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--viz-canvas-border);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 50% -20%, color-mix(in srgb, var(--viz-key-border) 28%, transparent), transparent 45%),
+    linear-gradient(145deg, var(--viz-canvas), var(--viz-canvas-deep));
+  color: var(--viz-key-text);
+}
+
+.flow-stage::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--viz-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--viz-grid) 1px, transparent 1px);
+  background-size: 28px 28px;
+  content: "";
+  mask-image: linear-gradient(to bottom, black, transparent 90%);
+}
+
+/*
+ * 描画エリアの縦横比はviewBoxで固定（物理配列によらない）。置かれた領域の幅へ全体を伸縮するので
+ * 横スクロールにしない。余白はviewBoxの中（AREA_PAD）に持つので、ここでは足さない。
+ */
+.flow-keyboard-svg {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.flow-vector-layer {
+  pointer-events: none;
+}
+
+.flow-edge {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.flow-key rect {
+  fill: var(--viz-key-surface);
+  stroke: var(--viz-key-border);
+  stroke-width: 1;
+}
+
+.flow-key text {
+  fill: var(--viz-key-text);
+  font-size: 10px;
+  font-weight: 750;
+  paint-order: stroke;
+  stroke: var(--viz-canvas);
+  stroke-width: 2px;
+}
+
+.flow-key .flow-key-id {
+  fill: var(--viz-key-muted);
+  font-size: 5.5px;
+  font-weight: 600;
+  stroke-width: 1.5px;
+}
+
+.flow-key[data-selected] rect {
+  fill: var(--viz-key-surface-active);
+  stroke: var(--viz-key-text);
+  stroke-width: 1.6;
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--viz-key-text) 18%, transparent));
+}
+
+.flow-key[data-hovered] rect {
+  fill: var(--viz-key-surface-hover);
+  stroke: var(--viz-key-text);
+  stroke-width: 1.8;
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--viz-key-text) 28%, transparent));
+}
+
+.flow-overlay-layer {
+  pointer-events: none;
+}
+
+.flow-key-badge rect {
+  fill: var(--viz-overlay-strong);
+  stroke: color-mix(in srgb, var(--viz-key-text) 28%, transparent);
+  stroke-width: 0.6;
+}
+
+.flow-key-badge text {
+  fill: var(--viz-key-text);
+  font: 700 6.2px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.flow-repeat-badge rect {
+  fill: color-mix(in srgb, var(--viz-key-surface-hover) 88%, transparent);
+  stroke: color-mix(in srgb, var(--viz-overlay-muted) 30%, transparent);
+}
+
+.flow-repeat-badge text {
+  fill: var(--viz-overlay-muted);
+}
+
+/*
+ * 凡例は図の上に重ねず、図の下に置く（重ねると幅によってキーや線を覆い、枠の外へ切れる）。
+ * 件数の文が長いので、狭い幅では折り返す。
+ */
+.flow-legend {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+  margin: 0 0.65rem 0.65rem;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--viz-key-text) 9%, transparent);
+  border-radius: 12px;
+  background: var(--viz-overlay);
+  color: var(--viz-overlay-muted);
+  font-size: 0.64rem;
+  backdrop-filter: blur(8px);
+}
+
+.flow-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.flow-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+}
+
+.flow-dot-left {
+  background: var(--viz-flow-left);
+}
+
+.flow-dot-right {
+  background: var(--viz-flow-right);
+}
+
+.flow-dot-cross {
+  background: var(--viz-flow-cross);
+}
+
+.flow-dot-inward {
+  background: var(--viz-flow-inward);
+}
+
+.flow-dot-outward {
+  background: var(--viz-flow-outward);
+}
+
+.flow-coverage {
+  padding-left: 0.65rem;
+  border-left: 1px solid color-mix(in srgb, var(--viz-key-text) 12%, transparent);
+  color: var(--viz-key-muted);
+}
+
+.flow-analysis-locked {
+  display: grid;
+  gap: 0.25rem;
+  margin-top: 1rem;
+  padding: 1.25rem 1.4rem;
+  border: 1px dashed var(--border-strong);
+  border-radius: 10px;
+  background: var(--surface-subtle);
+  color: var(--text-muted);
+}
+
+.flow-analysis-locked span {
+  font: 650 0.7rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.flow-analysis-locked strong {
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.flow-analysis-locked p {
+  margin: 0.1rem 0 0;
+  font-size: 0.82rem;
+}
+
+.flow-two-up {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.8rem;
+}
+
+.flow-mini-panel {
+  min-width: 0;
+}
+
+/* 狭い幅で2つ並べるので、見出しは図に重ねず図の上に置く（重ねると図と文字がぶつかる）。 */
+.flow-mini-panel header {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.6rem 0.7rem 0;
+}
+
+.flow-mini-panel header strong {
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.flow-profile-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.55rem;
+  color: var(--viz-key-muted);
+  font: 600 0.64rem/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.flow-mini-panel svg {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+}
+
+.flow-profile-panel {
+  display: grid;
+  /* 列を明示しないと、中身（枠・図）の幅まで列が広がり、狭いカードから図がはみ出す。 */
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/*
+ * 図は置かれた幅へ縮む（上限は描画の大きさ）。円の外へ伸びる方向分布は、図の枠で見切れてよい。
+ * 狭い幅でも左右を横に並べるため、図の大きさを幅に追従させる。
+ */
+.flow-profile-viewport {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  padding: 0.3rem 0.2rem;
+  overflow: hidden;
+}
+
+.flow-profile-stage {
+  width: 100%;
+}
+
+.flow-profile-svg {
+  display: block;
+  margin: 0;
+  overflow: visible;
+  width: 100% !important;
+  height: auto !important;
+}
+
+.flow-axis {
+  stroke: color-mix(in srgb, var(--viz-key-text) 11%, transparent);
+  stroke-width: 0.8;
+}
+
+.flow-axis-ring {
+  fill: none;
+  stroke: color-mix(in srgb, var(--viz-key-text) 12%, transparent);
+  stroke-dasharray: 2 4;
+  /* 図が縮んでも線の太さ・点線の刻みは画面上で変えない（縮む分だけ細くなると、DPR 1の画面でほぼ消える）。 */
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+
+.flow-axis-ring-label {
+  fill: var(--viz-key-muted);
+  font: 600 6px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  pointer-events: none;
+}
+
+.direction-polar-baseline {
+  fill: none;
+  stroke: color-mix(in srgb, var(--viz-resultant) 18%, transparent);
+  stroke-width: 0.8;
+  stroke-dasharray: 1.5 3;
+}
+
+.direction-polar-shape {
+  fill: color-mix(in srgb, var(--viz-resultant) 9%, transparent);
+  stroke: color-mix(in srgb, var(--viz-resultant) 62%, transparent);
+  stroke-width: 1.15;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.flow-origin {
+  fill: var(--viz-resultant);
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--viz-key-text) 35%, transparent));
+}
+
+.relative-vector {
+  stroke-linecap: round;
+}
+
+.relative-vector-inward {
+  color: var(--viz-flow-inward);
+  stroke: currentColor;
+}
+
+.relative-vector-outward {
+  color: var(--viz-flow-outward);
+  stroke: currentColor;
+}
+
+.relative-vector-same {
+  color: var(--viz-flow-cross);
+  stroke: currentColor;
+}
+
+.actual-vector-layer {
+  pointer-events: none;
+}
+
+.mean-displacement {
+  stroke: var(--viz-resultant);
+  stroke-width: 3;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--viz-resultant) 42%, transparent));
+}
+
+.mean-endpoint {
+  fill: var(--viz-resultant);
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--viz-resultant) 34%, transparent));
+}
+
+/* 内向き・外向きの凡例と目盛りの要約。左右の図で共通なので、図の下に1つだけ置く（Keyboard Flowの凡例も図の下にあり、2つの図の上端が揃う）。 */
+.flow-roll-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.65rem;
+  color: var(--text-muted);
+  font: 600 0.61rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.flow-roll-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.flow-profile-scale-summary {
+  margin-left: auto;
+}
+
+.roll-summary {
+  padding: 0 0.7rem 0.65rem;
+}
+
+.roll-bar {
+  display: flex;
+  height: 0.32rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--viz-key-text) 7%, transparent);
+}
+
+.roll-bar span {
+  display: block;
+  height: 100%;
+}
+
+.roll-inward {
+  background: var(--viz-flow-inward);
+}
+
+.roll-outward {
+  background: var(--viz-flow-outward);
+}
+
+.roll-summary > div:last-child span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.roll-summary > div:last-child {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.3rem;
+  color: var(--viz-overlay-muted);
+  font: 600 0.62rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/*
+ * 幅の切り替えは画面ではなく置かれた領域（ホストがcontainerにする本体の領域）の幅で行う
+ * （docs/architecture.md「Analyzerがペインに渡すもの」）。
+ */
+@container (max-width: 600px) {
+  /* 図の目盛りの数字は、縮んだ図では読めないので消す（大きさは上の凡例の「最大」で分かる）。 */
+  .flow-axis-ring-label {
+    display: none;
+  }
+}
+
+/* 左右の図が読めなくなる幅（1つがおよそ120px）より狭い時だけ、縦に積む。 */
+@container (max-width: 280px) {
+  .flow-two-up {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flow-feature *,
+  .flow-feature *::before,
+  .flow-feature *::after {
+    scroll-behavior: auto !important;
+  }
+}
+
+/* 旧画面（`bigram-flow-view.tsx`）だけが使う並び。旧画面の削除とともに消す。 */
+.flow-legacy-compat {
+  display: grid;
+  gap: 1rem;
+  container-type: inline-size;
+}
+
+.flow-legacy-settings {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.flow-legacy-settings .option-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1rem;
+}
+
+/*
+ * 高さに合わせて縮める。ホストが本体の領域に高さを持たせている時（Workspaceのペイン）だけ効く。
+ * 名前つきの `@container pane-body (min-height: 1px)` は、高さを測れる本体の領域の中でだけ真になる。
+ * 個別画面の本体は同じ名前で幅しか測れないので偽になり、外側に同じ名前のcontainerも無い
+ * （名前を付けないと、条件を測れる外側の祖先まで探しに行って規則が漏れる）。ホストが誰かをここで知らずに済む。
+ *
+ * 縦に積む時は、状態の1行・Keyboard Flow・Relative vectorsを中身の高さで縦に並べ、領域より高くなる分だけ
+ * 縦横比を保って縮める。枠は図の縦横比より縦に伸ばさず、余った高さは枠の外（一番下）に置く
+ * （枠へ高さを配ると、幅で大きさが決まる細長いペインで、図は小さいまま枠だけが縦に伸びる）。
+ * 縮めすぎて読めなくなる前に下限で止め、それより低い領域では本体の領域の中でスクロールする。
+ * 領域が横長で幅も足りるなら左右に並べる（下の並びの規則）。
+ */
+@container pane-body (min-height: 1px) {
+  .flow-feature {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    /* Keyboard Flowの図（横長）とRelative vectorsの正方形が、図として読める大きさで残る高さ。 */
+    min-height: 26rem;
+    gap: 0.6rem;
+  }
+
+  .flow-status {
+    flex: none;
+  }
+
+  /* 図を縮める時、連打ラベルは図と一緒に縮める（縮んだ図でラベルだけ大きいと、キーと後ろの線を覆う）。 */
+  .flow-keyboard-svg {
+    --flow-repeat-label-max-scale: 1.4;
+  }
+
+  .flow-block {
+    display: flex;
+    flex: 0 1 auto;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-height: 0;
+  }
+
+  /* 縦が足りない時の縮み方。横長のKeyboard Flowは縮めると幅が余るので、正方形の図の側を多く縮める。 */
+  .flow-keyboard-block {
+    flex-shrink: 0.5;
+  }
+
+  .flow-block-heading,
+  .flow-figure-settings,
+  .flow-roll-legend {
+    flex: none;
+  }
+
+  /* Keyboard Flow: 枠は図の高さまで。足りない時だけ、図が縦横比を保ったまま枠の中へ縮む。凡例は図の下に1行で残す。 */
+  .flow-stage {
+    display: flex;
+    flex: 0 1 auto;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .flow-keyboard-svg {
+    flex: 0 1 auto;
+    min-height: 0;
+  }
+
+  .flow-legend {
+    flex: none;
+    margin: 0 0.5rem 0.4rem;
+    padding: 0.2rem 0.5rem;
+  }
+
+  /* Relative vectors: 左右の図は正方形。幅で決まる高さまで枠を取り、足りない時だけ縮む。 */
+  .flow-two-up {
+    flex: 0 1 auto;
+    grid-template-rows: minmax(0, 1fr);
+    min-height: 0;
+  }
+
+  .flow-mini-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    min-height: 0;
+  }
+
+  .flow-mini-panel header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 0.5rem;
+    padding: 0.4rem 0.6rem 0;
+  }
+
+  /*
+   * 枠は幅いっぱい、高さは幅の分（正方形）まで。高さが足りない時は枠の幅を保ったまま低くなり、
+   * 描かれる正方形は枠の中央に収まる（`aspect-ratio` だけだと枠の幅まで縮んで左端に寄る）。
+   */
+  .flow-profile-viewport {
+    align-self: stretch;
+    justify-self: stretch;
+    aspect-ratio: 1;
+    min-height: 0;
+    padding: 0.15rem;
+  }
+
+  /* 図の大きさは枠（幅も高さも）で決める。元の規則は幅だけで決めるので、ここで上書きする。 */
+  .flow-profile-stage {
+    position: absolute;
+    inset: 0.15rem;
+    width: auto;
+    max-width: none !important;
+  }
+
+  .flow-profile-svg {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  .roll-summary {
+    padding: 0 0.6rem 0.4rem;
+  }
+}
+
+/*
+ * 縦が足りない時は、件数の文と手ごとの要約（件数・平均移動・まとまり）を隠す。図から読める流れは残り、
+ * 数字が要る時は領域を縦に広げるか、個別画面で見る。
+ */
+@container pane-body (min-height: 1px) and (max-height: 520px) {
+  .flow-legend .flow-coverage,
+  .flow-profile-stats {
+    display: none;
+  }
+}
+
+/*
+ * 領域が横長（幅が高さの1.5倍以上）で、幅も足りる時だけ、Keyboard Flowを左、Relative vectorsを右に並べる。
+ * 切り替えは画面の幅ではなく、置かれた領域の大きさで決める。縦長・正方形に近い時、幅が足りない時は縦に積んだまま。
+ * 幅の下限は520px。横に並べたKeyboard Flowは幅が約0.535倍になり、520pxで図の倍率が約0.3（キーの間隔が約17px）。
+ * これより狭いと図が読めなくなるので縦に積む。幅が約530pxで高さが低い領域は、従来どおり左右に並べる。
+ * 縦横比だけで決めると、幅の狭い低いペインで2つの図が小さく潰れる。
+ */
+@container pane-body (min-height: 1px) and (min-aspect-ratio: 3 / 2) and (min-width: 520px) {
+  .flow-feature {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    /*
+     * 行は「状態 / 見出し / 図のそばの設定 / 図 / 凡例」。2つのブロックが行を共有（subgrid）するので、
+     * 見出しや凡例が折り返しても、片方だけ設定を開いても、2つの図の上端・下端が同じ高さで揃う。
+     * 図の行は中身の高さまで（余った高さは下に置く）で、足りない時だけ縮む。
+     */
+    grid-template-rows: auto auto auto minmax(0, max-content) auto;
+    align-content: start;
+    column-gap: 0.8rem;
+    row-gap: 0;
+    min-height: 16rem;
+  }
+
+  .flow-status {
+    grid-column: 1 / -1;
+    margin-bottom: 0.6rem;
+  }
+
+  /*
+   * 図のそばの設定を開いている間は、図の行を縮めない（本体の領域の中でスクロールする）。
+   * 縮めると設定の行が先に高さを取り、共有している図の行が0まで縮んで、反対側の図まで消える。
+   */
+  .flow-feature:has(.flow-figure-settings) {
+    grid-template-rows: auto auto auto max-content auto;
+  }
+
+  .flow-block {
+    display: grid;
+    grid-row: 2 / span 4;
+    grid-template-rows: subgrid;
+    row-gap: 0;
+    min-height: 0;
+  }
+
+  .flow-keyboard-block {
+    grid-column: 1;
+  }
+
+  .flow-analysis {
+    grid-column: 2;
+  }
+
+  .flow-block-heading {
+    grid-row: 1;
+    padding-bottom: 0.6rem;
+  }
+
+  .flow-figure-settings {
+    grid-row: 2;
+    margin-bottom: 0.6rem;
+  }
+
+  /* 図の枠は行の高さまで伸ばす。キーボードの絵は縦横比を保ったまま枠の中央に置く（凡例は枠の下端に付いたまま）。 */
+  .flow-stage,
+  .flow-two-up {
+    grid-row: 3;
+    min-height: 0;
+  }
+
+  .flow-keyboard-svg {
+    margin-block: auto;
+  }
+
+  .flow-roll-legend {
+    grid-row: 4;
+    padding-top: 0.35rem;
+  }
+}
+
+/* 高さに合わせる時は左右の図を1行に収める前提なので、極端に狭くても縦に積まない（行が増えて高さの配分が崩れる）。 */
+@container pane-body (min-height: 1px) and (max-width: 280px) {
+  .flow-two-up {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    /*
+     * カードの行（見出し・図・割合）を2枚で共有する。狭いと片方の見出しだけが折り返すことがあり、
+     * 共有しないと左右の図の上端・下端がずれる（広い並びの揃えと同じ考え方）。
+     */
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    row-gap: 0;
+  }
+
+  .flow-two-up > .flow-mini-panel {
+    grid-row: span 3;
+    grid-template-rows: subgrid;
+  }
+}
+
+/*
+ * 左右のカードが1つ約100px以下になる狭さでは、件数・平均移動・まとまりを隠し、見出しの余白と字を詰める。
+ * 残すLEFT / RIGHTと図はカードの幅に収まる。数字が要る時は領域を広げるか個別画面で見る
+ * （縦が足りない時に隠す規則と同じ扱い）。
+ */
+@container (max-width: 280px) {
+  .flow-mini-panel header {
+    min-width: 0;
+    padding-inline: 0.2rem;
+    overflow-wrap: anywhere;
+  }
+
+  .flow-mini-panel header strong {
+    font-size: 0.62rem;
+    letter-spacing: 0;
+  }
+
+  .flow-profile-stats {
+    display: none;
+  }
+
+  /* 内向き・外向きの割合の2つが横に並ばない時は、2行に折り返す（カードの枠で切れないように）。 */
+  .roll-summary {
+    padding-inline: 0.1rem;
+  }
+
+  .roll-summary > div:last-child {
+    flex-wrap: wrap;
+    gap: 0.1rem 0.4rem;
+    font-size: 0.56rem;
+  }
+
+  .roll-summary > div:last-child span {
+    gap: 0.15rem;
+  }
+}

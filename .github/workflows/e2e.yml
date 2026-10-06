@@ -1,0 +1,223 @@
+name: Browser E2E
+
+# ブラウザe2eは全件で約20分かかるので、4つのshardに分けて並列に回す。
+# 走らせるのはpull_request（draftを含む）・mainへのpush・手動実行だけ。
+# PRを開いているブランチへのpushでは、push由来とpull_request由来が同じheadで2本ずつ走り、同じ処理が二重に回るため。
+# mainは外さない。公開（release.yml / pages.yml）はtypecheck・test・buildだけで、ブラウザe2eは回さないため。
+# PRを開く前に全件を見たい時は、draft PRを開くかworkflow_dispatchで回す。
+# ブランチへのpushで `playwright test --only-changed` により変更に関係するspecだけを回す案は試して外した。
+# specはブラウザ越しにアプリを操作して `src/` をimportしないので、`src/` の変更では選ばれるspecが0件になり（src/input/text/samples.ts
+# を触って `Total: 0 tests` を確認）、アプリを検査していない緑が検査済みと読まれるため。
+#
+# pull_requestで、baseとの差分が全部 `*.md` なら、shardを走らせず、まとめ役 `browser-e2e` だけを成功にする。
+# アプリとe2eは `.md` を読み込まないため。判定はディレクトリではなく拡張子で行う。mainへのpushとworkflow_dispatchは常に全件。
+#
+# ci.ymlのjobにifを付けて外さず、ワークフローを分けた。jobレベルのifで外すと、外れたpushにskippedのcheck runが付く。
+# merge-stack-checks.cjsは必須ジョブのskippedを数えない作りだが、そもそもcheck runを作らない方が
+# headのcheck-runsを人が読む時にも紛れない
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.ref == 'refs/heads/main' && format('e2e-main-{0}', github.sha) || format('e2e-{0}', github.ref) }}
+  # mainはshaごとのgroupにして取り消さない。同じgroupではpendingのrunが新しいqueuedに置き換わってcancelledになるため、
+  # 続けてマージすると途中のマージコミットのe2eが消え、どこで壊れたか追えなくなる
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  # ドキュメントだけの変更かを決める。判定は外部のactionを使わず、git diffで書く（拡張子の一致を見るだけで、依存を増やす理由が無い）。
+  # pull_requestだけが対象で、それ以外のeventは常に全件を回すのでdocs_onlyはfalseにする。
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      docs_only: ${{ steps.diff.outputs.docs_only }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # pull_requestのcheckoutはbaseとheadのmerge commitになる。深さ2で、その第1親（baseの先頭）との差分を取れる
+          fetch-depth: 2
+
+      - name: Detect docs-only change
+        id: diff
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          docs_only=false
+          if [ "$EVENT" = "pull_request" ]; then
+            # merge commit（HEAD）と第1親（baseの先頭）の差分を、git diff --quietの終了コードで判定する（0=差分なし、1=差分あり、他=エラー）。
+            # パイプにしない。bashのpipefailの下では、head -c1が先に閉じた後に上流がSIGPIPE（141）で落ち、
+            # 「.md以外を含む」を「含まない」と取り違えて、e2eを1件も回さずに緑にする
+            any_rc=0
+            git diff --quiet HEAD^1 HEAD || any_rc=$?
+            # リネームは旧名も別のファイルとして数える（foo.ts → foo.mdを.mdだけの変更にしない）。*.mdの除外パターンはdocs/配下にも当たる
+            nonmd_rc=0
+            git diff --quiet --no-renames HEAD^1 HEAD -- . ':(exclude)*.md' || nonmd_rc=$?
+            if [ "$any_rc" -gt 1 ] || [ "$nonmd_rc" -gt 1 ]; then
+              # 判定できないのでdocs_onlyに落とさず、ジョブを失敗にする
+              echo "差分を取れなかった: any=$any_rc nonmd=$nonmd_rc" >&2
+              exit 1
+            elif [ "$any_rc" -eq 0 ]; then
+              echo "差分が空なので全件を回す"
+            elif [ "$nonmd_rc" -eq 1 ]; then
+              echo ".md以外のファイルを含むので全件を回す"
+            else
+              docs_only=true
+              echo "差分が全部.mdなのでe2eを飛ばす"
+            fi
+          fi
+          echo "docs_only=$docs_only" >> "$GITHUB_OUTPUT"
+
+  # ビルドを1回にして .output/ をartifactでshardに渡す形も試して外した。実測では、shardの前に直列で約31秒かかり、
+  # shardごとの短縮は約2秒で、runが約30秒延びた。shardごとにwebServerが `npm run build` を走らせる
+  e2e-shard:
+    # 必須チェック名の `browser-e2e` は下の集約ジョブが持つ。shardのジョブ名はそれと重ならないようにする
+    # mdだけのPRでこのjobがjobレベルのifで外れると、GitHubはmatrixを展開しない。
+    # check runは `browser-e2e-shard (${{ matrix.shard }}/4)` という名前のskipped 1本になる（異常ではない）
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true'
+    name: browser-e2e-shard (${{ matrix.shard }}/4)
+    runs-on: ubuntu-latest
+    strategy:
+      # 1つが落ちても残りを最後まで回す。全shardの結果が揃えば、落ちた分をまとめて直せる
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        id: setup-node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        id: install
+        shell: bash
+        run: |
+          set -o pipefail
+          npm ci 2>&1 | tee "$RUNNER_TEMP/npm-ci.log"
+
+      # ブラウザのキャッシュ（~/.cache/ms-playwright）は試して外した。実測では、当たってもrestoreの2秒を足してinstallが約1秒短くなるだけで
+      # （install-depsのapt分が残る）、短縮が無かった。Playwrightの公式文書もキャッシュを勧めていない
+      - name: Install Chromium
+        id: playwright-install
+        shell: bash
+        run: |
+          set -o pipefail
+          npx playwright install --with-deps --only-shell chromium 2>&1 | tee "$RUNNER_TEMP/playwright-install.log"
+
+      - name: Browser E2E
+        id: browser-e2e
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:browser -- --shard=${{ matrix.shard }}/4 2>&1 | tee "$RUNNER_TEMP/browser-e2e.log"
+
+      - name: Upload browser failure trace
+        if: failure() && steps.browser-e2e.outcome == 'failure'
+        uses: actions/upload-artifact@v7
+        with:
+          # shardごとに別名にする。同じ名前だと、v4以降のupload-artifactは2つ目のshardのアップロードで衝突する
+          name: browser-e2e-trace-${{ matrix.shard }}
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Write shard summary
+        if: always()
+        shell: bash
+        env:
+          SHARD: ${{ matrix.shard }}
+          INSTALL_OUTCOME: ${{ steps.install.outcome }}
+          PLAYWRIGHT_INSTALL_OUTCOME: ${{ steps.playwright-install.outcome }}
+          BROWSER_E2E_OUTCOME: ${{ steps.browser-e2e.outcome }}
+        run: |
+          {
+            echo "## Browser E2E shard $SHARD/4"
+            echo
+            echo "- Install dependencies: $INSTALL_OUTCOME"
+            echo "- Playwright Chromium install: $PLAYWRIGHT_INSTALL_OUTCOME"
+            echo "- Browser E2E: $BROWSER_E2E_OUTCOME"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          append_failure_log() {
+            local title="$1"
+            local outcome="$2"
+            local log_file="$3"
+
+            if [ "$outcome" != "failure" ] || [ ! -s "$log_file" ]; then
+              return
+            fi
+
+            {
+              echo
+              echo "<details open>"
+              echo "<summary>❌ $title — last 80 log lines</summary>"
+              echo
+              echo '~~~text'
+              tail -n 80 "$log_file"
+              echo '~~~'
+              echo "</details>"
+            } >> "$GITHUB_STEP_SUMMARY"
+          }
+
+          append_failure_log "Install dependencies" "$INSTALL_OUTCOME" "$RUNNER_TEMP/npm-ci.log"
+          append_failure_log "Playwright Chromium install" "$PLAYWRIGHT_INSTALL_OUTCOME" "$RUNNER_TEMP/playwright-install.log"
+          append_failure_log "Browser E2E" "$BROWSER_E2E_OUTCOME" "$RUNNER_TEMP/browser-e2e.log"
+
+  # merge-stack.ymlのREQUIRED_CHECKSが名指しする必須チェック `browser-e2e`。shardの結果をまとめて1つのcheck runにする。
+  # `!cancelled()` にしないと、shardが失敗した時にこのジョブがskippedになり、失敗のcheck runが付かない。
+  # `always()` ではなく `!cancelled()` なのは、concurrencyで取り消された古いheadでこのジョブが走り、cancelledを見て
+  # failureの印を残さないため。取り消されたrunではこのジョブがskippedになる。merge-stackは必須ジョブがskippedだけだと
+  # 「走っていない」で止めるが、見るのは現在のheadで、そこには新しいrunが付くので判定には影響しない
+  browser-e2e:
+    needs: [changes, e2e-shard]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check shard results
+        shell: bash
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
+          RESULT: ${{ needs.e2e-shard.result }}
+        run: |
+          {
+            echo "## Browser E2E"
+            echo
+            echo "差分の判定: $CHANGES（docs_only=$DOCS_ONLY）"
+            echo "全shardの結果: $RESULT"
+            echo
+            echo "[Open full run logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # 成功にするのは次の2つだけ。shardのskipped・cancelled・failureは通さない
+          #  - 差分が全部 .mdで、shardを走らせなかった（skipped）
+          #  - 全shardがsuccess（matrixのresultは全shardがsuccessの時だけsuccess）
+          if [ "$CHANGES" != "success" ]; then
+            echo "差分の判定がsuccessではない: $CHANGES" >&2
+            exit 1
+          fi
+          if [ "$DOCS_ONLY" = "true" ]; then
+            if [ "$RESULT" != "skipped" ]; then
+              echo ".mdだけの変更なのにshardが走った: $RESULT" >&2
+              exit 1
+            fi
+            exit 0
+          fi
+          if [ "$RESULT" != "success" ]; then
+            echo "全shardがsuccessではない: $RESULT" >&2
+            exit 1
+          fi

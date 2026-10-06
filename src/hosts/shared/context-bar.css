@@ -1,0 +1,561 @@
+/*
+ * 文脈バー。本体の上端に貼り付け、スクロールしても残す。
+ * 左から（シェルが差し込むサイドバーのボタン）/ テキストのチップ等 / 右端に常時出す操作。
+ */
+.context-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 3.1rem;
+  padding: 0.45rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(10px);
+  /* 狭い時の見た目は画面幅ではなくバー自身の幅で決める（サイドバーの固定で本体の幅が変わるため）。 */
+  container: context-bar / inline-size;
+}
+
+.context-bar-fieldset {
+  display: contents;
+}
+
+.context-bar-items {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.context-bar-actions {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  flex: none;
+  margin-left: auto;
+}
+
+.context-bar button,
+.context-bar select,
+.context-bar input,
+.context-bar textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* ---- チップ（テキスト・既定の物理配列） ---- */
+.context-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 2rem;
+  padding: 0.2rem 0.6rem 0.2rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 0.88rem;
+  line-height: 1.3;
+}
+
+button.context-chip {
+  cursor: pointer;
+}
+
+button.context-chip:hover:not(:disabled),
+.context-select-chip:hover {
+  border-color: var(--border-strong);
+}
+
+.context-chip[aria-expanded="true"] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.context-chip-key {
+  flex: none;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.context-chip-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.context-chip-chevron {
+  flex: none;
+  color: var(--text-muted);
+}
+
+.text-chip-root {
+  position: relative;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.text-chip {
+  position: relative;
+  max-width: 28rem;
+}
+
+/* 競合で選ばれずに残ったコピーの印。チップの角に重ねるので、狭くて中身を絞っても見える */
+.text-chip-unseen {
+  position: absolute;
+  top: -0.15rem;
+  right: -0.15rem;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
+.text-chip-language {
+  flex: none;
+  padding: 0 0.45rem;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.context-select-chip {
+  flex: 0 1 auto;
+  padding-right: 0.35rem;
+}
+
+.context-select-chip select {
+  min-width: 0;
+  max-width: 12rem;
+  border: 0;
+  background: transparent;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+/* selectは透明でも、選択肢の一覧は自前の背景を持つ。背景を指定しないと、暗いテーマで
+   文字だけ明るく背景が明るいまま（または透明）になって読めない。テーマの面と文字の色を明示する。
+   テキストの編集内の select（一覧・言語）も同じ規則で覆う。 */
+.context-bar select option,
+.context-bar select optgroup {
+  background-color: var(--surface-raised);
+  color: var(--text);
+}
+
+/* ---- ポップオーバー（テキストの選択と編集） ---- */
+.context-popover {
+  position: absolute;
+  z-index: 30;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-raised);
+  box-shadow:
+    0 14px 36px light-dark(rgb(26 25 23 / 16%), rgb(0 0 0 / 45%)),
+    0 2px 6px light-dark(rgb(26 25 23 / 8%), rgb(0 0 0 / 30%));
+}
+
+.text-chip-panel {
+  top: calc(100% + 0.45rem);
+  left: 0;
+  width: min(34rem, calc(100vw - 2rem));
+  padding: 0.85rem;
+}
+
+.text-editor {
+  display: grid;
+  gap: 0.6rem;
+  font-size: 0.86rem;
+}
+
+.text-editor-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.text-editor-select {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.text-editor-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-muted);
+}
+
+.text-editor-inline select,
+.text-editor-inline input {
+  color: var(--text);
+}
+
+.text-editor-name {
+  flex: 1 1 12rem;
+}
+
+.text-editor-name input {
+  flex: 1;
+  min-width: 0;
+}
+
+.text-editor select,
+.text-editor input,
+.text-editor button {
+  min-height: 1.9rem;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+}
+
+.text-editor button {
+  cursor: pointer;
+}
+
+.text-editor button:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+
+.text-editor button:disabled,
+.text-editor input:disabled,
+.text-editor select:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.text-editor-body {
+  width: 100%;
+  min-height: 7rem;
+  resize: vertical;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  line-height: 1.7;
+}
+
+.text-editor-buttons {
+  display: flex;
+  gap: 0.35rem;
+  margin-left: auto;
+}
+
+.text-editor-hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.6;
+}
+
+/* バーが狭い時だけ見せるアイコン（広い時は文字のラベルを見せる）。 */
+.context-chip-icon {
+  display: none;
+}
+
+/* ---- 常時出す操作 ---- */
+.context-icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.context-icon-button:hover:not(:disabled) {
+  background: var(--surface-muted);
+}
+
+.context-icon-button:disabled {
+  color: var(--text-muted);
+  opacity: 0.45;
+  cursor: default;
+}
+
+.context-share {
+  position: relative;
+  display: inline-flex;
+  margin-left: 0.25rem;
+}
+
+.context-share-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2rem;
+  padding: 0.2rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.context-share-button:hover {
+  border-color: var(--border-strong);
+}
+
+.context-share-status:empty {
+  display: none;
+}
+
+.context-share-status {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  z-index: 30;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface-raised);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.context-bar :focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* バー自身の余白と間隔は、自分の幅では変えられない（コンテナの外側）ので画面幅で詰める。 */
+@media (max-width: 760px) {
+  .context-bar {
+    padding: 0.4rem 0.75rem;
+    gap: 0.35rem;
+  }
+}
+
+/*
+ * 文脈バーが狭い時: 全体を1行に収める（☰ / テキストのチップ / 既定の物理配列のチップ / Undo・Redo / 共有）。
+ * そのために「テキスト」「既定の物理配列」の文字とテキストの言語の札は見た目から省き（読み上げには残す）、
+ * 物理配列はアイコンだけにし、共有もアイコンだけにする（Undo/Redoと共に常時出す）。
+ * チップが余る幅を分け合い、足りない時はテキストのチップが省略して縮む。
+ *
+ * 境目は、テキストのチップが8文字読める最小幅（338px）＋物理配列のチップの幅（307px。selectの上限12remで切られた幅で、
+ * どの配列を選んでいても同じ。この上限を変えるなら閾値も見直す）
+ * ＋Undo/Redo・共有（151px）＋行の間隔（8px×2）＝812pxに、サイドバーを固定していない時に左端へ入る
+ * ☰（32px＋間隔8px）を足した852pxを、rem（16px基準）へ丸めた53.5rem。これ未満で3つを同時に切り替える
+ * （中間段階は置かない）。コンテナの幅は余白を除いた内側の幅。
+ */
+@container context-bar (max-width: 53.5rem) {
+  .context-bar-items {
+    gap: 0.35rem;
+  }
+
+  .text-chip-root {
+    position: static;
+    flex: 1 1 0;
+  }
+
+  .text-chip {
+    width: 100%;
+    max-width: none;
+  }
+
+  .text-chip .context-chip-key,
+  .text-chip .text-chip-language,
+  .context-select-chip .context-chip-key {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .text-chip .context-chip-value {
+    flex: 1 1 auto;
+    /* 伸びた枠の中でbuttonの既定（中央寄せ）を継がず、左端から読ませる。 */
+    text-align: start;
+  }
+
+  .context-share-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .context-share {
+    margin-left: 0;
+  }
+
+  .context-share-button {
+    width: 2rem;
+    padding: 0;
+    justify-content: center;
+  }
+
+  /* 幅が足りないので、チップは詰めた形にする。 */
+  .context-bar .context-chip {
+    gap: 0.3rem;
+    padding: 0.2rem 0.5rem;
+  }
+
+  /* 物理配列は名前を出さず、キーボードのアイコンだけにする。 */
+  .context-bar .context-select-chip {
+    position: relative;
+    flex: none;
+    padding-inline: 0.3rem;
+  }
+
+  .context-select-chip .context-chip-icon {
+    display: block;
+    color: var(--text-muted);
+  }
+
+  /* 選択は透明なselectが受ける。チップ全体を覆い、タップでネイティブの選択肢が開く。 */
+  .context-select-chip select {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    max-width: none;
+    opacity: 0;
+  }
+
+  /* 文脈バーの真下に全幅で出す（バーは backdrop-filter で fixed の基準になるので absolute で足りる）。 */
+  .text-chip-panel {
+    top: 100%;
+    left: 0.5rem;
+    right: 0.5rem;
+    width: auto;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+}
+
+/*
+ * Workspaceの文脈バー（Workspace名がある）が狭い時は、2段にする。
+ *   1段目: ☰ / Workspace名 / ⋯ ………… 元に戻す・やり直す
+ *   2段目: テキストのチップ（余る幅を全部取る）/ 物理配列のチップ
+ * 名前と⋯を同じ行に足すと、1行ではテキストのチップが潰れて、文字も▾も見えなくなる
+ * （390pxで18px。タップの最小の大きさ24pxを下回る）。テキストのチップが潰れないよう、チップは次の段へ送る。
+ * 段が増えても、狭い時の切り替えは上と同じ境目（53.5rem）で行う（中間段階は置かない）。個別画面（Workspace名が無い）は1行のまま。
+ *
+ * 2段目へ送るのは、テキストのチップの基準の幅を「1段目いっぱいから物理配列のチップ分を引いた幅」にして、
+ * 1段目に入りきらなくするため。物理配列のチップ（アイコンだけ、約2rem）と間隔が2段目の残りに収まる。
+ * Workspace名は長くても1段目の幅を超えないよう、⋯の分（2.5rem）を残して省略する。
+ */
+@container context-bar (max-width: 53.5rem) {
+  .context-bar-items:has(.workspace-name) {
+    flex-wrap: wrap;
+    row-gap: 0.35rem;
+  }
+
+  .context-bar-items:has(.workspace-name) .workspace-name {
+    flex: 0 1 auto;
+    /* ⋯と「ペインを追加」（＋だけ）の分（2.5rem×2と間隔）を残して省略する。 */
+    max-width: min(16rem, calc(100% - 5.5rem));
+  }
+
+  .context-bar-items:has(.workspace-name) .text-chip-root {
+    flex: 1 1 calc(100% - 3.5rem);
+  }
+
+  /* ☰と右端の操作は1段目の高さ（2rem）に揃える（2段分の真ん中に浮かせない）。 */
+  .context-bar:has(.workspace-name) > .shell-sidebar-toggle,
+  .context-bar:has(.workspace-name) .context-bar-actions {
+    align-self: flex-start;
+  }
+}
+
+/*
+ * Workspaceの「ペインを追加」（`.workspace-add-pane`。名前・⋯の右、テキストのチップの左）。
+ * どの幅でも＋だけを見せる（文字は見た目から省き、読み上げ・titleには「ペインを追加」を残す）。
+ * 幅によって文字が出入りすると、その分だけ名前の幅が増減して、画面幅を狭めている間に名前が広がり直すため。
+ * 狭くなる時の動きは次の2つ:
+ *   1. 1行の範囲: 名前を先に縮める（`workspace.css`の`.workspace-name`）。
+ *   2. 53.5rem未満（2段）: ＋は1段目に残す（名前を省略して場所を空ける）。一覧は、ボタンでなくバーの全幅に開く
+ *      （ボタンは左寄りにあり、文字の長い項目の一覧が画面の右へはみ出すため）。
+ */
+/*
+ * Workspaceのバーが1行の幅（53.5rem超）では、テキストのチップの枠を中身（8文字が読める幅）より縮めない。
+ * 縮めると、中身のボタンが枠からはみ出して右隣のチップに重なる（足りない分は名前が先に縮む）。
+ * 2段の幅ではチップが段の幅いっぱいに伸びるので、この指定は1行の時だけにする。
+ */
+@container context-bar (width > 53.5rem) {
+  .context-bar-items:has(.workspace-name) .text-chip-root {
+    min-width: min-content;
+  }
+}
+
+@container context-bar (max-width: 53.5rem) {
+  .context-bar .workspace-add-pane {
+    position: static;
+    flex: none;
+  }
+
+  .context-bar .workspace-add-pane .pane-menu-list {
+    top: 100%;
+    right: 0.5rem;
+    left: 0.5rem;
+    width: auto;
+    max-width: none;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+}
+
+/* ---- チップの理由（既定の物理配列） ----
+   配列のレベルの値が勝つ配列がある時、チップを操作している間だけ、チップの下に重ねて出す。
+   バーの高さを変えない（狭い時の1行も保つ）ために、流れに入れず重ねる。 */
+.context-chip-group {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.context-chip-note {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  /* チップの右端に揃える。チップはバーの右寄りに並ぶので、左端に揃えると画面の右へはみ出す。 */
+  right: 0;
+  z-index: 30;
+  display: none;
+  width: max-content;
+  max-width: min(22rem, calc(100cqw - 2.5rem));
+  margin: 0;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  box-shadow: 0 6px 18px light-dark(rgb(26 25 23 / 14%), rgb(0 0 0 / 40%));
+  color: var(--text);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.context-chip-group:focus-within .context-chip-note {
+  display: block;
+}
+
+/* 狭いバーはチップがアイコンだけで右寄りに並ぶので、理由の箱はチップでなくバーを基準に、バーの全幅へ収める。 */
+@container context-bar (max-width: 53.5rem) {
+  .context-chip-group {
+    position: static;
+  }
+
+  .context-chip-note {
+    top: 100%;
+    right: 0.5rem;
+    left: 0.5rem;
+    width: auto;
+    max-width: none;
+  }
+}

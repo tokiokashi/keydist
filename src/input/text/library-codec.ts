@@ -1,0 +1,96 @@
+import * as v from 'valibot';
+import { decodeDroppingInvalid, decodeField, defineAssetCodec, isRecord, type AssetCodec, type CodecDiagnostic } from '#input/codec/index.ts';
+import type { TextLibrary, UserText } from './library.ts';
+
+/**
+ * `TextLibrary`（ユーザーテキストの手持ち）のcodec。`setup/codec.ts`の
+ * `setupSchema`と同じ形: idが無いと機能しない・要素単位で寛容に読む（`decodeDroppingInvalid`）。
+ * `Setup`と違いカスケードの上書きを伴わない（テキストはSetupのような他資産との整合を
+ * 持たない、`selection.ts`冒頭コメント参照）ので、`setupLibraryCodec`のような
+ * ジェネリックな`ItemSchemaMap`受け取りは要らない。
+ *
+ * `languageOverride`だけは要素本体（id/name/text）と分けて別々にdecodeする:
+ * 1つの`strictObject`で丸ごと検証すると、`languageOverride`だけが壊れている時でも
+ * バリデーション全体が失敗し、本文ごとテキストを1件失ってしまう。壊れているのは
+ * その1フィールドだけなので、要素本体は`requiredFieldsSchema`（`languageOverride`を
+ * 型的には受け入れつつ検証しない）で読み、`languageOverride`は`decodeField`で
+ * 個別に検証して診断を積む（「捨てた値には必ず診断」を保ちつつ要素は残す）。
+ */
+const textLanguageSchema = v.union([v.literal('en'), v.literal('ja')]);
+const optionalTextLanguageSchema = v.optional(textLanguageSchema);
+const optionalUnseenSchema = v.optional(v.literal(true));
+
+// `languageOverride`を持つ入力も構造としては受け入れる必要があるので`v.looseObject`にする
+// （`v.strictObject`は未知のキーがあると要素ごと弾いてしまう）。値の中身は見ず、
+// 個別のフィールド検証（下の`decodeField`呼び出し）に任せる。
+const requiredFieldsSchema = v.looseObject({
+  id: v.pipe(v.string(), v.minLength(1)),
+  name: v.pipe(v.string(), v.minLength(1)),
+  text: v.string(),
+});
+
+const KNOWN_USER_TEXT_KEYS: ReadonlySet<string> = new Set(['id', 'name', 'text', 'languageOverride', 'unseen']);
+
+function decodeUserTexts(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): UserText[] {
+  if (!Array.isArray(raw)) {
+    // 値があって配列でない時は、全件が消えることを診断で示す（無い時は空の手持ちで正しい）
+    if (raw !== undefined) diagnostics.push({ path, message: '配列形式でないためテキストを捨てた' });
+    return [];
+  }
+  const seen = new Set<string>();
+  const texts: UserText[] = [];
+  raw.forEach((candidate, index) => {
+    const elementPath = `${path}[${index}]`;
+    const decoded = decodeDroppingInvalid(requiredFieldsSchema, candidate, elementPath, diagnostics);
+    if (decoded === undefined) return;
+    if (seen.has(decoded.id)) {
+      diagnostics.push({ path: elementPath, message: `id「${decoded.id}」が重複しているため捨てた` });
+      return;
+    }
+    seen.add(decoded.id);
+    // `looseObject`は未知のキーを黙って通すので、捨てる前に診断を積む（「捨てた値には必ず診断」）
+    for (const extraKey of Object.keys(decoded)) {
+      if (!KNOWN_USER_TEXT_KEYS.has(extraKey)) {
+        diagnostics.push({ path: `${elementPath}.${extraKey}`, message: `未知の項目「${extraKey}」を捨てた` });
+      }
+    }
+
+    const rawLanguageOverride = isRecord(candidate) ? candidate.languageOverride : undefined;
+    const languageOverride = decodeField(
+      optionalTextLanguageSchema,
+      rawLanguageOverride,
+      undefined,
+      `${elementPath}.languageOverride`,
+      diagnostics,
+    );
+
+    // 印は壊れていても要素は残す（印が消えるだけで本文は失わない）
+    const unseen = decodeField(
+      optionalUnseenSchema,
+      isRecord(candidate) ? candidate.unseen : undefined,
+      undefined,
+      `${elementPath}.unseen`,
+      diagnostics,
+    );
+
+    texts.push({
+      id: decoded.id,
+      name: decoded.name,
+      text: decoded.text,
+      ...(languageOverride === undefined ? {} : { languageOverride }),
+      ...(unseen === undefined ? {} : { unseen }),
+    });
+  });
+  return texts;
+}
+
+export const TEXT_LIBRARY_CODEC: AssetCodec<TextLibrary> = defineAssetCodec<TextLibrary>({
+  currentVersion: 1,
+  decodePayload: (payload, diagnostics) => {
+    if (!isRecord(payload)) return undefined;
+    return { texts: decodeUserTexts(payload.texts, 'texts', diagnostics) };
+  },
+  encodePayload: (value) => ({
+    texts: value.texts.map((text) => ({ ...text })),
+  }),
+});

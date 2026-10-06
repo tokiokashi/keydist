@@ -1,0 +1,214 @@
+.n-sensitivity-feature {
+  display: grid;
+  gap: 1rem;
+}
+
+/*
+ * チャートの座標系は、置かれた領域の実寸の幅に合わせて組み直す（definition.tsx）。
+ * 表示と座標系が等倍なので、文字は領域の幅によらず指定のpxで出る。
+ */
+.n-sensitivity-chart {
+  min-width: 0;
+}
+
+.n-sensitivity-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.n-sensitivity-grid-line {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.n-sensitivity-axis-label {
+  fill: var(--text-muted);
+  font-size: 10px;
+}
+
+.n-sensitivity-axis-title {
+  fill: var(--text-muted);
+  font-size: 11px;
+}
+
+.n-sensitivity-line {
+  stroke-width: 2;
+}
+
+/*
+ * 凡例は図の中の隅に置く枠（配置は legend-placement.ts）。線には重ならない位置を選ぶが、
+ * 罫線は下を通るので、枠に背景を敷いて文字を読めるようにする。
+ */
+.n-sensitivity-legend-frame {
+  fill: var(--bg);
+  fill-opacity: 0.92;
+  stroke: var(--border-strong);
+  stroke-width: 1;
+}
+
+.n-sensitivity-legend-label {
+  fill: var(--text);
+}
+
+.n-sensitivity-failures {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+}
+
+.n-sensitivity-failures li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* 横に長い表を内側でスクロールさせるため、幅の最小値を中身（nowrapの表）に引きずらせない。 */
+.n-sensitivity-table-details {
+  min-width: 0;
+}
+
+/* 表の見出し。畳んだ時も開いた時も同じ見た目で、押せることはマーカーと手のカーソルで示す。 */
+.n-sensitivity-table-details > summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.n-sensitivity-table-scroll {
+  overflow-x: auto;
+  margin-top: 0.35rem;
+}
+
+.n-sensitivity-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.78rem;
+}
+
+.n-sensitivity-table th,
+.n-sensitivity-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 0.3rem 0.5rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.n-sensitivity-table th[scope='row'] {
+  text-align: left;
+  font-weight: 600;
+}
+
+.n-sensitivity-table th[scope='col'] {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/*
+ * 行の見出し（対象名）の列は、横にスクロールしても左端に残す。どの行の値か分からなくなるため。
+ * 背景を敷くのは、下をスクロールする数値が透けないようにするため。
+ * border-collapseでは固定したセルの罫線がスクロールに付いてこないので、右の境界はbox-shadowで描く。
+ * 縦方向の固定（ペイン見出し）とは別の軸で、この表の外側にあるので重ならない。
+ */
+.n-sensitivity-table th[scope='row'],
+.n-sensitivity-table thead th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--bg);
+  box-shadow: 1px 0 0 var(--border-strong);
+}
+
+/* 狭い幅では固定した列が画面を占めすぎないよう幅を絞り、長い名前は折り返して全文をその場で読めるようにする。 */
+@container (max-width: 40rem) {
+  .n-sensitivity-table th[scope='row'] {
+    max-width: 7.5rem;
+    white-space: normal;
+    min-width: 5rem;
+    overflow-wrap: break-word;
+  }
+}
+
+/*
+ * ペインの残りの高さに合わせる。ホストが本体の領域に高さを持たせている時（Workspaceのペイン）だけ
+ * 真になる（個別画面では偽。理由は docs/architecture.md「Analyzerがペインに渡すもの」）。
+ *
+ * 図は領域の残りの高さをもらい、縦横比を固定せず高さに追従する。描く大きさはJS側が領域の実寸から決める
+ * （definition.tsx。凡例の置き場が図の大きさから空きを計算するため）ので、svgは領域を絶対配置で埋めるだけにする。
+ * 自分の高さが領域の高さを押し広げると、測った高さが前の描画の高さになって縮められなくなる。
+ * 縮めすぎて線の間隔と軸の文字が読めなくなる前に下限（図の領域の min-height）で止め、
+ * それより低い領域では本体の領域の中でスクロールする。
+ * --n-sensitivity-fit は、この規則が効いていることをJSが読むための印。
+ */
+@container pane-body (min-height: 1px) {
+  .n-sensitivity-feature {
+    --n-sensitivity-fit: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    height: 100%;
+  }
+
+  .n-sensitivity-chart {
+    position: relative;
+    flex: 1 1 0;
+    /* 線の間隔と軸の文字が読める高さ。凡例を図の下に出す時の下限は definition.tsx の MIN_FIT_CHART_HEIGHT。 */
+    min-height: 8.5rem;
+  }
+
+  .n-sensitivity-svg {
+    position: absolute;
+    inset: 0;
+    height: 100%;
+  }
+
+  .n-sensitivity-failures,
+  .n-sensitivity-table-details {
+    flex: none;
+  }
+
+  .n-sensitivity-table-scroll {
+    margin-top: 0.35rem;
+  }
+}
+
+/*
+ * 図の幅に収めると名前を見分けられない時（狭い図に長い名前を多く並べた時）の凡例。
+ * 図の中の枠では名前を省くしかないので、図の下に名前を省かず折り返して並べる。
+ */
+.n-sensitivity-legend-list {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.75rem;
+}
+
+.n-sensitivity-legend-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.n-sensitivity-legend-swatch {
+  flex: none;
+  margin-top: 0.2rem;
+}
+
+.n-sensitivity-legend-name {
+  min-width: 0;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+@container pane-body (min-height: 1px) {
+  .n-sensitivity-legend-list {
+    flex: none;
+  }
+}

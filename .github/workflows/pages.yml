@@ -1,0 +1,301 @@
+name: Deploy to GitHub Pages
+
+# 公開物は常に v* タグで辿れるものに限る。任意のブランチ・コミットは公開できない。
+# 起点は2つで、どちらも main の上で走り、「既存の v* タグ」だけを受け付ける。
+# - release.yml からの呼び出し（workflow_call）: リリースPR（package.json の version を上げるPR）が
+#   main に入った時、release.yml がタグを打ってからここを呼ぶ。GITHUB_TOKEN で打ったタグの push は
+#   別のワークフローを起動しないので、同じ実行の中で呼ぶ
+# - 手動実行（workflow_dispatch）: 過去に公開したバージョンへ戻す・配信し直す時。入力は既存の v* タグ名だけで、
+#   ブランチ名・SHA・存在しないタグは拒否する。以前 workflow_dispatch を外したのは任意の ref を公開できたから。
+#   タグ限定なら「公開物は常にタグで辿れる」を崩さない。Re-run の30日制限も受けない
+# タグの push では起動しない。タグの push はタグのコミットにあるこのファイルで走るため、検査ごと書き換えられる。
+# 同じ理由で、main 以外のブランチから手動実行した時も断る（検査の定義は常に main のもの）
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: 公開する既存の v* タグ（例 v0.1.0）
+        required: true
+        type: string
+      commit:
+        description: タグが指しているはずのコミット。release.yml が決めたものと食い違ったら公開しない
+        required: false
+        type: string
+        default: ''
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 公開する既存の v* タグ（例 v0.1.0）。ブランチ名・SHAは受け付けない
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      KEYDIST_BASE_PATH: /keydist/
+      # 旧画面（Analyzerの作り直し前の最終形）を /keydist/classic/ に同梱する。
+      # ソースは残さず、このタグのコミットをそのままビルドする。旧画面は今後変えないので、
+      # 保守するコードを持たない
+      CLASSIC_REF: classic-final
+      CLASSIC_BASE_PATH: /keydist/classic/
+    steps:
+      # タグ名を決めて検証する。タグは呼び出し・手動実行の入力で受け取る。
+      # workflow_call では github.ref は呼び出し側のもの（release.yml なら main）になる。
+      # 入力はブランチ名や SHA でもチェックアウト自体はできてしまうので、形と実在をここで確かめ、
+      # 以降は refs/tags/ を付けて参照する（同名のブランチがあっても取り違えない）
+      - name: Resolve tag
+        id: resolve
+        shell: bash
+        env:
+          RUN_REF: ${{ github.ref }}
+          INPUT_TAG: ${{ inputs.tag }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [ "$RUN_REF" != refs/heads/main ]; then
+            echo "::error::公開は main の上で走らせる（今は $RUN_REF）。手動実行ではブランチに main を選ぶ"
+            exit 1
+          fi
+          tag="$INPUT_TAG"
+          if ! [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::'$tag' は vX.Y.Z 形式のタグ名ではない。ブランチ名・SHAは公開できない"
+            exit 1
+          fi
+          if ! gh api "repos/$REPO/git/ref/tags/$tag" --silent; then
+            echo "::error::タグ $tag が存在しない。公開できるのは既存の v* タグだけ"
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ steps.resolve.outputs.tag }}
+
+      # タグと package.json の version が一致しないものは公開しない。version を唯一の正にするため
+      - name: Verify tag matches package.json version
+        id: verify-tag
+        shell: bash
+        env:
+          TAG: ${{ steps.resolve.outputs.tag }}
+          EXPECTED_COMMIT: ${{ inputs.commit }}
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./package.json').version")
+          if [ "$TAG" != "v$version" ]; then
+            echo "::error::タグ $TAG と package.json の version ($version) が一致しない"
+            exit 1
+          fi
+          tag_commit=$(git rev-parse "refs/tags/$TAG^{commit}")
+          head_commit=$(git rev-parse HEAD)
+          if [ "$tag_commit" != "$head_commit" ]; then
+            echo "::error::チェックアウトしたコミット $head_commit がタグ $TAG のコミット $tag_commit と違う"
+            exit 1
+          fi
+          if [ -n "$EXPECTED_COMMIT" ] && [ "$EXPECTED_COMMIT" != "$head_commit" ]; then
+            echo "::error::タグ $TAG は $head_commit を指しているが、release.yml が決めたのは $EXPECTED_COMMIT"
+            exit 1
+          fi
+          {
+            echo "## Publishing $TAG"
+            echo
+            echo "commit: \`$head_commit\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Checkout classic
+        id: checkout-classic
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.CLASSIC_REF }}
+          path: classic
+
+      - name: Setup Node.js
+        id: setup-node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        id: install
+        shell: bash
+        run: |
+          set -o pipefail
+          npm ci 2>&1 | tee "$RUNNER_TEMP/npm-ci.log"
+
+      - name: Typecheck
+        id: typecheck
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run typecheck 2>&1 | tee "$RUNNER_TEMP/typecheck.log"
+
+      - name: Test
+        id: test
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee "$RUNNER_TEMP/test.log"
+
+      - name: Build
+        id: build
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tee "$RUNNER_TEMP/build.log"
+
+      - name: Build classic
+        id: build-classic
+        shell: bash
+        working-directory: classic
+        env:
+          KEYDIST_BASE_PATH: ${{ env.CLASSIC_BASE_PATH }}
+        run: |
+          set -o pipefail
+          {
+            npm ci
+            npm run build
+          } 2>&1 | tee "$RUNNER_TEMP/build-classic.log"
+          rm -rf ../.output/public/classic
+          cp -R .output/public ../.output/public/classic
+
+      - name: Upload Pages artifact
+        id: upload-pages
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: .output/public
+
+      - name: Write build summary
+        if: always()
+        shell: bash
+        env:
+          RESOLVE_OUTCOME: ${{ steps.resolve.outcome }}
+          CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
+          VERIFY_TAG_OUTCOME: ${{ steps.verify-tag.outcome }}
+          SETUP_NODE_OUTCOME: ${{ steps.setup-node.outcome }}
+          INSTALL_OUTCOME: ${{ steps.install.outcome }}
+          TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
+          TEST_OUTCOME: ${{ steps.test.outcome }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          CHECKOUT_CLASSIC_OUTCOME: ${{ steps.checkout-classic.outcome }}
+          BUILD_CLASSIC_OUTCOME: ${{ steps.build-classic.outcome }}
+          UPLOAD_PAGES_OUTCOME: ${{ steps.upload-pages.outcome }}
+        run: |
+          icon() {
+            case "$1" in
+              success) printf '✅' ;;
+              failure) printf '❌' ;;
+              skipped) printf '⏭️' ;;
+              cancelled) printf '🚫' ;;
+              *) printf '❔' ;;
+            esac
+          }
+
+          {
+            echo "## Pages build summary"
+            echo
+            echo "| Check | Result |"
+            echo "| --- | --- |"
+            printf '| Resolve tag | %s %s |\n' "$(icon "$RESOLVE_OUTCOME")" "$RESOLVE_OUTCOME"
+            printf '| Checkout | %s %s |\n' "$(icon "$CHECKOUT_OUTCOME")" "$CHECKOUT_OUTCOME"
+            printf '| Tag matches package.json | %s %s |\n' "$(icon "$VERIFY_TAG_OUTCOME")" "$VERIFY_TAG_OUTCOME"
+            printf '| Setup Node.js | %s %s |\n' "$(icon "$SETUP_NODE_OUTCOME")" "$SETUP_NODE_OUTCOME"
+            printf '| Install dependencies | %s %s |\n' "$(icon "$INSTALL_OUTCOME")" "$INSTALL_OUTCOME"
+            printf '| Typecheck | %s %s |\n' "$(icon "$TYPECHECK_OUTCOME")" "$TYPECHECK_OUTCOME"
+            printf '| Test | %s %s |\n' "$(icon "$TEST_OUTCOME")" "$TEST_OUTCOME"
+            printf '| Build | %s %s |\n' "$(icon "$BUILD_OUTCOME")" "$BUILD_OUTCOME"
+            printf '| Checkout classic (%s) | %s %s |\n' "$CLASSIC_REF" "$(icon "$CHECKOUT_CLASSIC_OUTCOME")" "$CHECKOUT_CLASSIC_OUTCOME"
+            printf '| Build classic | %s %s |\n' "$(icon "$BUILD_CLASSIC_OUTCOME")" "$BUILD_CLASSIC_OUTCOME"
+            printf '| Upload Pages artifact | %s %s |\n' "$(icon "$UPLOAD_PAGES_OUTCOME")" "$UPLOAD_PAGES_OUTCOME"
+            echo
+            echo "[Open full run logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          append_failure_log() {
+            local title="$1"
+            local outcome="$2"
+            local log_file="$3"
+
+            if [ "$outcome" != "failure" ] || [ ! -s "$log_file" ]; then
+              return
+            fi
+
+            {
+              echo
+              echo "<details open>"
+              echo "<summary>❌ $title — last 80 log lines</summary>"
+              echo
+              echo '~~~text'
+              tail -n 80 "$log_file"
+              echo '~~~'
+              echo "</details>"
+            } >> "$GITHUB_STEP_SUMMARY"
+          }
+
+          append_failure_log "Install dependencies" "$INSTALL_OUTCOME" "$RUNNER_TEMP/npm-ci.log"
+          append_failure_log "Typecheck" "$TYPECHECK_OUTCOME" "$RUNNER_TEMP/typecheck.log"
+          append_failure_log "Test" "$TEST_OUTCOME" "$RUNNER_TEMP/test.log"
+          append_failure_log "Build" "$BUILD_OUTCOME" "$RUNNER_TEMP/build.log"
+          append_failure_log "Build classic" "$BUILD_CLASSIC_OUTCOME" "$RUNNER_TEMP/build-classic.log"
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    # 書き込みの権限は配信だけに渡す。workflow_call では呼び出し側のジョブもこの2つを渡す
+    permissions:
+      pages: write
+      id-token: write
+    # workflow_call で呼ばれても効くよう、トップレベルではなくジョブに置く。
+    # 配信は同時に1つだけ。走っている配信は途中で止めず、待っている方は新しいものに置き換わる。
+    # 2つのリリースが続けて待った時は古い方の配信が飛ばされるが、タグは両方残り、公開されるのは新しい方なので構わない
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      # Pages の設定の確認・有効化は pages: write を要るので、build ではなくここで行う
+      - name: Configure Pages
+        id: configure-pages
+        uses: actions/configure-pages@v6
+        with:
+          enablement: true
+
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
+
+      - name: Write deploy summary
+        if: always()
+        shell: bash
+        env:
+          CONFIGURE_PAGES_OUTCOME: ${{ steps.configure-pages.outcome }}
+          DEPLOY_OUTCOME: ${{ steps.deployment.outcome }}
+        run: |
+          icon() {
+            case "$1" in
+              success) printf '✅' ;;
+              failure) printf '❌' ;;
+              skipped) printf '⏭️' ;;
+              cancelled) printf '🚫' ;;
+              *) printf '❔' ;;
+            esac
+          }
+
+          {
+            echo "## Pages deploy summary"
+            echo
+            echo "| Check | Result |"
+            echo "| --- | --- |"
+            printf '| Configure Pages | %s %s |\n' "$(icon "$CONFIGURE_PAGES_OUTCOME")" "$CONFIGURE_PAGES_OUTCOME"
+            printf '| Deploy Pages | %s %s |\n' "$(icon "$DEPLOY_OUTCOME")" "$DEPLOY_OUTCOME"
+            echo
+            echo "[Open full run logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          } >> "$GITHUB_STEP_SUMMARY"

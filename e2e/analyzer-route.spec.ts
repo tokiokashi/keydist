@@ -1,0 +1,103 @@
+import { expect, test } from '@playwright/test';
+import { gotoAnalyzer, waitForAnalyzerRuntime } from './analyzer-helper.ts';
+import { waitForHydration } from './hydration-helper.ts';
+
+test('Analyzer route stays operational when shared layer/picker helpers change', async ({ page }) => {
+  const pageErrors: string[] = [];
+  page.on('pageerror', (error) => {
+    pageErrors.push(error.message);
+    console.error('[analyzer pageerror]', error.stack ?? error.message);
+  });
+  page.on('console', (message) => {
+    if (message.type() === 'error') console.error('[analyzer console]', message.text());
+  });
+
+  await gotoAnalyzer(page);
+  // 時間では待たず、制御部が組み上がった印を見てから、起動中の例外が無いことを確かめる
+  await expect(page.locator('#analyzer-react-shell')).toHaveAttribute('data-analyzer-react-shell', 'mounted');
+  expect(pageErrors, 'Analyzer startup must not throw before controls initialize').toEqual([]);
+
+  const mode = page.locator('#mode');
+  await expect(mode).toHaveValue('ja');
+  await mode.selectOption('en');
+  await expect(mode).toHaveValue('en');
+  await mode.selectOption('ja');
+
+  const text = page.locator('#text');
+  const sample = page.locator('#sample');
+  await expect(text).toBeVisible();
+  await expect(sample).toHaveValue('legacy');
+
+  await text.fill('custom analyzer input');
+  await text.blur();
+  await expect.poll(async () => page.evaluate(() => {
+    const raw = localStorage.getItem('keydist:app-state');
+    return raw ? JSON.parse(raw).analyzer?.input?.customText ?? null : null;
+  })).toBe('custom analyzer input');
+
+  await mode.selectOption('en');
+  await expect(text).toHaveValue('custom analyzer input');
+  await page.locator('#sample-reset').click();
+  await expect(text).not.toHaveValue('custom analyzer input');
+  await mode.selectOption('ja');
+
+  const layout = page.locator('#detail-layout');
+  await expect(layout).toBeVisible();
+  await expect(layout.locator('option[value="naginata-v18"]')).toHaveCount(1);
+  await expect(page.locator('#heatmap svg').first()).toBeVisible();
+
+  // detail-layoutは「選択中の配列」だけを出す。月は既定選択ではないのでpickerから有効化する。
+  const tsukiPicker = page.locator('#layout-picker label').filter({ hasText: '月配列2-263式' });
+  await expect(tsukiPicker).toBeVisible();
+  await tsukiPicker.getByRole('checkbox').check();
+  await expect(layout.locator('option[value="tsuki-2-263"]')).toHaveCount(1);
+
+  await layout.selectOption('tsuki-2-263');
+  await expect(layout).toHaveValue('tsuki-2-263');
+  await expect(page.locator('#heatmap svg').first()).toBeVisible();
+
+  await layout.selectOption('naginata-v18');
+  await expect(layout).toHaveValue('naginata-v18');
+  await expect(page.locator('#heatmap svg').first()).toBeVisible();
+
+  expect(pageErrors).toEqual([]);
+});
+
+
+test('legacy Analyzer URL redirects to the React Analyzer route', async ({ page }) => {
+  await page.goto('/legacy.html');
+  await expect(page).toHaveURL(/\/analyzer\/?$/);
+  await waitForAnalyzerRuntime(page);
+});
+
+
+test('Analyzer runtime remounts after SPA navigation away and back', async ({ page }) => {
+  // 旧バージョンへの導線はトップの下端とサイドバーの最下端にある。ここはトップ側を通る（サイドバーにも同名のリンクがあるので範囲を絞る）。
+  await page.goto('/input');
+  // ハイドレーション前に押すとSPA遷移にならず全体の読み込みになり、確かめたい経路を通らない。
+  await waitForHydration(page);
+  await page.locator('.app-sidebar').getByRole('link', { name: 'keydist', exact: true }).click();
+  await page.locator('.hero').getByRole('link', { name: '旧バージョン', exact: true }).click();
+  await expect(page).toHaveURL(/\/analyzer\/?$/);
+  await waitForAnalyzerRuntime(page);
+  await expect(page.locator('#mode')).toHaveValue('ja');
+
+  await page.goBack();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator('.hero')).toBeVisible();
+
+  await page.goForward();
+  await expect(page).toHaveURL(/\/analyzer\/?$/);
+  await waitForAnalyzerRuntime(page);
+  await expect(page.locator('#mode')).toHaveValue('ja');
+  await expect(page.locator('#heatmap svg').first()).toBeVisible();
+});
+
+test('Analyzer topbar title returns to the app root', async ({ page }) => {
+  await gotoAnalyzer(page);
+  await expect(page.locator('.app-sidebar')).toHaveCount(0);
+
+  await page.locator('.topbar').getByRole('link', { name: 'keydist', exact: true }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator('.app-sidebar')).toBeVisible();
+});
