@@ -15,7 +15,7 @@
 | 状態 | 意味 |
 |---|---|
 | 実装済み | 新しい構成に受け皿がある。場所を書く |
-| 予定あり | 受け皿の作業が決まっている。内容を書く |
+| 予定あり | 受け皿のissueがある。番号と内容を書く |
 | 作る候補 | 受け皿が無い。作る案。作業としてはまだ決めていない |
 | 捨てる候補 | 受け皿が無い。捨てる案。オーナーの判断が要る（`needs-decision`） |
 | 捨てる（決定済み） | 既に捨てると決まっている。決めた場所を書く |
@@ -92,7 +92,7 @@
 | ID | 機能 | 旧画面での出どころ | 確認 | 状態 | 受け皿・候補 |
 |---|---|---|---|---|---|
 | C1 | 比べる配列の複数選択（チェックリスト・色見本） | `AnalyzerSidebarControls` の `layout-picker` | 操作 | 実装済み | 対象の選択（`hosts/shared/TargetSelection.tsx`）。色の配り方は `engine/workspace-colors.ts` に従う。**組み込みの配列だけ。自作の配列は出ない（旧画面より狭い）。** 新しいAnalyzerは自作の配列・物理配列・ローマ字規則を読まない（`app/standalone/catalog.ts` の `builtinPaneCatalog()` は組み込みだけを返す）。自作の配列は、新しい構成の資産として作り、Analyzerで選べるようにする（N15） |
-| C2 | 比べる配列の絞り込み（ローマ字配列 / かな・直接入力） | `AnalyzerSidebarControls` の `picker-filters` | 表示だけ | 予定あり | 配列の絞り込み（ローマ字配列 / かな・直接入力）を、新しい対象の選択に置く |
+| C2 | 比べる配列の絞り込み（ローマ字配列 / かな・直接入力） | `AnalyzerSidebarControls` の `picker-filters` | 表示だけ | 予定あり | #35。配列の絞り込み（ローマ字配列 / かな・直接入力）を、新しい対象の選択に置く |
 | C3 | 詳細を見る配列を1つ選ぶ | `detail-layout` のselect | 操作 | 実装済み | Singleの対象（`hosts/shared/use-set-target-selection.ts` ほか）。トップで選んだ配列がSingleの対象になる |
 | C4 | 詳細を見る配列ごとに物理配列を選ぶ | `detail-geometry` のselect | 操作 | 実装済み | 配列のレベルの「既定の物理配列」（条件のモーダル。`hosts/shared/ConditionEditor.tsx`）。**選べるのは組み込みの物理配列だけ。自作の物理配列は出ない（旧画面より狭い）。** 自作の物理配列を作る画面を作るかはX7 |
 | C5 | 全体の物理配列の選択 | 「打ち手と機材」の `geometry` | 表示だけ | 実装済み | 文脈バーの物理配列のチップ（`hosts/shared/DefaultShapeChip.tsx`）。**組み込みの物理配列だけ（旧画面より狭い）。** X7 |
@@ -167,8 +167,8 @@
 | G3 | 物理配列エディタ（ピッチ・段ずれ・列オフセット・親指キー・分割間隔・mmとuの単位・名前を付けて保存・上書き・削除） | `AnalyzerGeometryDialog` | 表示だけ | 捨てる候補 | X7。オーナーの判断（2026-10-04）は「物理配列を作る人がいるか。機能がそもそも過剰」。置き場の案は `editors/`（未着手） |
 | G4 | 指の割り当てエディタ（列の一括・キー単位・運指を既定へ戻す） | `AnalyzerGeometryDialog` | 表示だけ | 作る候補 | N13。新しい構成では指の割当が物理配列から切り離された資産になっている（`platform/assets/user-finger-assignments-storage.ts`）。X7と同じ観点で、作るかを見直す |
 | G5 | ローマ字の綴りエディタ（基底ルール＋差分・揺れる箇所の一覧・配列への割り当て・新規作成） | `AnalyzerRomajiDialog` | 表示だけ | 作る候補 | N14。配列への割り当てはD5が受ける。X7と同じ観点で、作るかを見直す |
-| G6 | 物理配列設定の書き出し・読み込み（JSON） | 「打ち手と機材」の「設定を書き出す」「設定を読み込む」 | 操作（書き出しだけ。読み込みはコード） | 予定あり | 自作の物理配列を含む資産の書き出し・読み込み。条件のプリセットのファイルと同じ封筒の形式で、旧画面の設定ファイルそのものではない。物理配列エディタ（X7）を作らない場合は、物理配列の分は要らなくなる |
-| G7 | 自作の配列・ローマ字規則の書き出し・読み込み | 条件ファイルに同梱 | コード | 予定あり | G6と同じ、自作の資産の書き出し・読み込み |
+| G6 | 物理配列設定の書き出し・読み込み（JSON） | 「打ち手と機材」の「設定を書き出す」「設定を読み込む」 | 操作（書き出しだけ。読み込みはコード） | 予定あり | #39。自作の物理配列を含む資産の書き出し・読み込み。条件のプリセットのファイルと同じ封筒の形式で、旧画面の設定ファイルそのものではない。物理配列エディタ（X7）を作らない場合は、物理配列の分は要らなくなる |
+| G7 | 自作の配列・ローマ字規則の書き出し・読み込み | 条件ファイルに同梱 | コード | 予定あり | #39。G6と同じ、自作の資産の書き出し・読み込み |
 | G8 | 旧画面の保存データの読み込み（保存先の `keydist:app-state` の `analyzer`・`conditions`・`playback` と、初回だけの移行元の `keydist:ui-state`・`keydist:condition-presets`） | `analyzer-ui-state-owner.ts:53-78`・`docs/app-state.md` | コード | 捨てる候補 | X4。通常の保存先は `keydist:app-state` の `analyzer`・`conditions`・`playback`。`keydist:ui-state` は、`keydist:app-state` にこの3つが無い時に1回だけ読む移行元で、移行に成功すると消す。AGENTS.mdは保存データの互換を求めない |
 | G9 | 新しい画面で、自作の配列・ローマ字規則を持ち、Analyzerで選べること | `platform/assets/*-storage.ts`・`interpretation/timing/calibration.ts` | コード | 作る候補 | N15。今は `keydist:layouts`・`keydist:romaji-rules` を読むのは `src/legacy/` と `src/features/analyzer-next/` だけで、新しいAnalyzerは読まない。`keydist.playback-calibration.v3` を読むのは `src/legacy/` だけ。`keydist:geometry-shapes` を読むのは、旧画面と `src/features/analyzer-next/`（`runtime.ts:18`・`browser-runtime.ts:12`）のほかにはTesterだけ。自作の物理配列はX7 |
 | G10 | 旧画面で作った自作の配列・物理配列・ローマ字規則を、新しい側へ移す・読む処理 | `keydist:layouts`・`keydist:geometry-shapes`・`keydist:romaji-rules` | コード | 捨てる（決定済み） | オーナーの方針（2026-10-04）。「旧画面で作ったものを持っていく構造がプログラムを歪めていなければいい。作り直したほうが速いなら新画面で作るほうがいい」。AGENTS.mdの「利用者の保存データの互換は守らない」に合う。新しい構成の資産として新しい画面で作り直す（N15）。**`/classic/` は `keydist-classic:layouts`・`keydist-classic:romaji-rules`・`keydist-classic:geometry-shapes` という別のキーに保存する（`classic-final` の `src/user-layouts.ts:12`・`src/romaji/rules.ts:66`・`src/user-geometries.ts:4`）ので、`/analyzer` で作った `keydist:*` の資産は `/classic/` に出ない。`/analyzer` を消すと、どこからも使えなくなる。** X4（旧保存データの移行）と同じ扱い。リリースノートに書くかの判断（J5）につなぐ |
@@ -195,13 +195,13 @@
 
 | ID | 機能 | 旧画面での出どころ | 確認 | 状態 | 受け皿・候補 |
 |---|---|---|---|---|---|
-| J1 | `/analyzer` と `src/legacy/` と旧画面のe2eの削除 | `src/routes/analyzer.tsx`・`e2e/analyzer-*.spec.ts` | コード | 予定あり | 旧画面の削除（切り替えの本体） |
-| J2 | `/analyzer/flow` と `features/analyzer-next/` の削除 | `src/routes/analyzer_.flow.tsx` | コード | 予定あり | 旧画面の削除の範囲。`features/analyzer-next/session-app-state.ts:58,72` も `analyzer`・`conditions`・`playback` を読み、一緒に消える |
-| J3 | 古い画面の入口を `/classic/` へ付け替える（トップ・サイドバー） | `app/shell/Sidebar.tsx` | コード | 予定あり | 旧画面の入口の付け替え（`/classic/`） |
+| J1 | `/analyzer` と `src/legacy/` と旧画面のe2eの削除 | `src/routes/analyzer.tsx`・`e2e/analyzer-*.spec.ts` | コード | 予定あり | #29。旧画面の削除（切り替えの本体） |
+| J2 | `/analyzer/flow` と `features/analyzer-next/` の削除 | `src/routes/analyzer_.flow.tsx` | コード | 予定あり | #29。旧画面の削除の範囲。`features/analyzer-next/session-app-state.ts:58,72` も `analyzer`・`conditions`・`playback` を読み、一緒に消える |
+| J3 | 古い画面の入口を `/classic/` へ付け替える（トップ・サイドバー） | `app/shell/Sidebar.tsx` | コード | 予定あり | #36。旧画面の入口の付け替え（`/classic/`） |
 | J4 | 旧い外部リンクの `legacy.html`（`/analyzer` への転送） | `scripts/write-legacy-analyzer-redirect.ts`・`vite build` の後処理 | コード | 捨てる候補 | X5。一緒に消す箇所が多い（X5の一覧） |
-| J5 | `/analyzer` と `/classic/` の保存の分離 | `keydist-classic:` と `keydist:` | コード | 予定あり | リリースノートに書くかを決める。書く内容は、`/analyzer` で作った自作の配列・物理配列・ローマ字規則（`keydist:*`）が `/classic/` に出ず、`/analyzer` を消すとどこからも使えなくなること（G10） |
-| J6 | 旧画面の外にある `#legacy` への依存 | `src/app/state/app-state.ts:2`（型のimport）・`src/app/theme/appearance.ts:13-17`（定数のimport）・`src/app/theme/theme.ts:26`（`keydist:ui-state` を読む初期スクリプト）・`src/app/theme/theme.ts:22`・`src/app/theme/appearance.ts:27-29`（`analyzer.theme` を読む）・`docs/app-state.md` の該当節（Root schemaの `analyzer`・`conditions`・`playback`、Migration sourcesの表） | コード | 予定あり | 旧画面の削除の範囲。`src/legacy/` を消すとtypecheckが落ちる箇所と、テーマの初期値の移行元（`keydist:ui-state`）をどうするかがある |
-| J7 | 旧画面だけが読む保存の項目（`keydist:app-state` の `analyzer`（`analyzer.theme` を含む）・`conditions`・`playback`） | `src/app/state/app-state.ts`・`docs/app-state.md` | コード | 予定あり | 旧画面の削除の範囲。旧画面を消した後は誰も読まないので、スキーマから消すかを決める。ただし `analyzer.theme` は、新しい側のテーマのコード（`theme.ts:22`・`appearance.ts:27-29`）が移行元として読むので、消す時はそちらも直す。X4が「捨てる」なら消せる |
+| J5 | `/analyzer` と `/classic/` の保存の分離 | `keydist-classic:` と `keydist:` | コード | 予定あり | #36。リリースノートに書くかを決める。書く内容は、`/analyzer` で作った自作の配列・物理配列・ローマ字規則（`keydist:*`）が `/classic/` に出ず、`/analyzer` を消すとどこからも使えなくなること（G10） |
+| J6 | 旧画面の外にある `#legacy` への依存 | `src/app/state/app-state.ts:2`（型のimport）・`src/app/theme/appearance.ts:13-17`（定数のimport）・`src/app/theme/theme.ts:26`（`keydist:ui-state` を読む初期スクリプト）・`src/app/theme/theme.ts:22`・`src/app/theme/appearance.ts:27-29`（`analyzer.theme` を読む）・`docs/app-state.md` の該当節（Root schemaの `analyzer`・`conditions`・`playback`、Migration sourcesの表） | コード | 予定あり | #29。旧画面の削除の範囲。`src/legacy/` を消すとtypecheckが落ちる箇所と、テーマの初期値の移行元（`keydist:ui-state`）をどうするかがある |
+| J7 | 旧画面だけが読む保存の項目（`keydist:app-state` の `analyzer`（`analyzer.theme` を含む）・`conditions`・`playback`） | `src/app/state/app-state.ts`・`docs/app-state.md` | コード | 予定あり | #29。旧画面の削除の範囲。旧画面を消した後は誰も読まないので、スキーマから消すかを決める。ただし `analyzer.theme` は、新しい側のテーマのコード（`theme.ts:22`・`appearance.ts:27-29`）が移行元として読むので、消す時はそちらも直す。X4が「捨てる」なら消せる |
 
 ## 作る候補（issueを立てる候補）
 
