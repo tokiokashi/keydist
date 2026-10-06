@@ -41,7 +41,7 @@ Claude Code は `CLAUDE.md` が無いプロジェクトでは `AGENTS.md` を読
 - コミットメッセージとPR本文に、セッションのURL（`Claude-Session:` の行など）を入れない。公開リポジトリなので、同じセッションで作業を続けていることが外から読み取れてしまう
 - GitHubへの書き込み（PR・issueの作成と編集、コメント）は `gh api` のRESTで行う。例: `gh api repos/tokiokashi/keydist/pulls -f title=… -f head=… -f base=main -F body=@<file>`。
   MCPのGitHubツール（`create_pull_request`・`add_issue_comment` 等）は読み取りにだけ使う。
-  MCPツールでの投稿は、本文の末尾にセッションのURLを含むフッターを自動で付け、作成時の文面が編集履歴と通知に残る。`gh api` 経由ではセッションを特定できないURLになる
+  MCPツールでの投稿は、本文の末尾にセッションのURLを含むフッターを自動で付け、作成時の文面が編集履歴と通知に残る。`gh api` で投稿した本文には、セッションのURLは付かない
 - クラウドのセッションではGraphQLが使えないので、`gh pr create` などGraphQLを使うコマンドは失敗する。RESTのエンドポイントを直接叩く
 
 ## エージェントの役割
