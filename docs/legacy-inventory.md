@@ -1,6 +1,6 @@
 # 旧画面の機能と新しい受け皿の対応表
 
-旧画面（`src/legacy/`、`/analyzer`、`/analyzer/flow`、タグ `classic-final` の旧画面）の機能を、利用者から見える単位で1つずつ挙げ、新しい構成のどこで受けるかを書く。
+旧画面（`src/legacy/`、`/analyzer`、`/analyzer/flow`）の機能を、利用者から見える単位で1つずつ挙げ、新しい構成のどこで受けるかを書く。
 旧画面を消す切り替えの前提で、**この表を切り替えの完了条件にする**。
 作業単位を切り出す元にもなる。
 
@@ -171,7 +171,7 @@
 | G7 | 自作の配列・ローマ字規則の書き出し・読み込み | 条件ファイルに同梱 | コード | 予定あり | #39。G6と同じ、自作の資産の書き出し・読み込み |
 | G8 | 旧画面の保存データの読み込み（保存先の `keydist:app-state` の `analyzer`・`conditions`・`playback` と、初回だけの移行元の `keydist:ui-state`・`keydist:condition-presets`） | `analyzer-ui-state-owner.ts:53-78`・`docs/app-state.md` | コード | 捨てる（決定済み） | X4。通常の保存先は `keydist:app-state` の `analyzer`・`conditions`・`playback`。`keydist:ui-state` は、`keydist:app-state` にこの3つが無い時に1回だけ読む移行元で、移行に成功すると消す。AGENTS.mdは保存データの互換を求めない |
 | G9 | 新しい画面で、自作の配列・ローマ字規則を持ち、Analyzerで選べること | `platform/assets/*-storage.ts`・`interpretation/timing/calibration.ts` | コード | 予定あり | #50。N15。今は `keydist:layouts`・`keydist:romaji-rules` を読むのは `src/legacy/` と `src/features/analyzer-next/` だけで、新しいAnalyzerは読まない。`keydist.playback-calibration.v3` を読むのは `src/legacy/` だけ。`keydist:geometry-shapes` を読むのは、旧画面と `src/features/analyzer-next/`（`runtime.ts:18`・`browser-runtime.ts:12`）のほかにはTesterだけ。自作の物理配列はX7 |
-| G10 | 旧画面で作った自作の配列・物理配列・ローマ字規則を、新しい側へ移す・読む処理 | `keydist:layouts`・`keydist:geometry-shapes`・`keydist:romaji-rules` | コード | 捨てる（決定済み） | オーナーの方針（2026-10-04）。「旧画面で作ったものを持っていく構造がプログラムを歪めていなければいい。作り直したほうが速いなら新画面で作るほうがいい」。AGENTS.mdの「利用者の保存データの互換は守らない」に合う。新しい構成の資産として新しい画面で作り直す（N15）。**`/classic/` は `keydist-classic:layouts`・`keydist-classic:romaji-rules`・`keydist-classic:geometry-shapes` という別のキーに保存する（`classic-final` の `src/user-layouts.ts:12`・`src/romaji/rules.ts:66`・`src/user-geometries.ts:4`）ので、`/analyzer` で作った `keydist:*` の資産は `/classic/` に出ない。`/analyzer` を消すと、どこからも使えなくなる。** X4（旧保存データの移行）と同じ扱い。リリースノートに書くかの判断（J5）につなぐ |
+| G10 | 旧画面で作った自作の配列・物理配列・ローマ字規則を、新しい側へ移す・読む処理 | `keydist:layouts`・`keydist:geometry-shapes`・`keydist:romaji-rules` | コード | 捨てる（決定済み） | オーナーの方針（2026-10-04）。「旧画面で作ったものを持っていく構造がプログラムを歪めていなければいい。作り直したほうが速いなら新画面で作るほうがいい」。AGENTS.mdの「利用者の保存データの互換は守らない」に合う。新しい構成の資産として新しい画面で作り直す（N15）。**`/analyzer` を消すと、`/analyzer` で作った `keydist:*` の資産はどこからも使えなくなる。** X4（旧保存データの移行）と同じ扱い。リリースノートに書くかの判断（J5）につなぐ |
 
 ### H. 共有・キーボード
 
@@ -197,9 +197,9 @@
 |---|---|---|---|---|---|
 | J1 | `/analyzer` と `src/legacy/` と旧画面のe2eの削除 | `src/routes/analyzer.tsx`・`e2e/analyzer-*.spec.ts` | コード | 予定あり | #29。旧画面の削除（切り替えの本体） |
 | J2 | `/analyzer/flow` と `features/analyzer-next/` の削除 | `src/routes/analyzer_.flow.tsx` | コード | 予定あり | #29。旧画面の削除の範囲。`features/analyzer-next/session-app-state.ts:58,72` も `analyzer`・`conditions`・`playback` を読み、一緒に消える |
-| J3 | 古い画面の入口を `/classic/` へ付け替える（トップ・サイドバー） | `app/shell/Sidebar.tsx` | コード | 予定あり | #36。旧画面の入口の付け替え（`/classic/`） |
+| J3 | 古い画面の入口（トップ・サイドバー） | `app/shell/Sidebar.tsx` | コード | 捨てる（決定済み） | `/classic/` は公開しないので、付け替え先は無い。`/analyzer` と一緒に入口も消す |
 | J4 | 旧い外部リンクの `legacy.html`（`/analyzer` への転送） | `scripts/write-legacy-analyzer-redirect.ts`・`vite build` の後処理 | コード | 捨てる（決定済み） | 旧URLの転送は作らない。`legacy.html` と、一緒に消す箇所（X5の一覧）は #29で消す |
-| J5 | `/analyzer` と `/classic/` の保存の分離 | `keydist-classic:` と `keydist:` | コード | 予定あり | #36。リリースノートに書くかを決める。書く内容は、`/analyzer` で作った自作の配列・物理配列・ローマ字規則（`keydist:*`）が `/classic/` に出ず、`/analyzer` を消すとどこからも使えなくなること（G10） |
+| J5 | `/analyzer` で作った自作の配列・物理配列・ローマ字規則（`keydist:*`）が、`/analyzer` を消すとどこからも使えなくなること | `keydist:` | コード | 予定あり | リリースノートに書くかを決める（G10） |
 | J6 | 旧画面の外にある `#legacy` への依存 | `src/app/state/app-state.ts:2`（型のimport）・`src/app/theme/appearance.ts:13-17`（定数のimport）・`src/app/theme/theme.ts:26`（`keydist:ui-state` を読む初期スクリプト）・`src/app/theme/theme.ts:22`・`src/app/theme/appearance.ts:27-29`（`analyzer.theme` を読む）・`docs/app-state.md` の該当節（Root schemaの `analyzer`・`conditions`・`playback`、Migration sourcesの表） | コード | 予定あり | #29。旧画面の削除の範囲。`src/legacy/` を消すとtypecheckが落ちる箇所と、テーマの初期値の移行元（`keydist:ui-state`）をどうするかがある |
 | J7 | 旧画面だけが読む保存の項目（`keydist:app-state` の `analyzer`（`analyzer.theme` を含む）・`conditions`・`playback`） | `src/app/state/app-state.ts`・`docs/app-state.md` | コード | 予定あり | #29。旧画面の削除の範囲。旧画面を消した後は誰も読まないので、スキーマから消すかを決める。ただし `analyzer.theme` は、新しい側のテーマのコード（`theme.ts:22`・`appearance.ts:27-29`）が移行元として読むので、消す時はそちらも直す。X4が「捨てる」なら消せる |
 
@@ -231,27 +231,27 @@ N12（物理配列エディタ）は、決定済みの項目X7へ移したので
 
 | ID | 捨てるもの | 含む行 | 理由 | 捨てない場合 |
 |---|---|---|---|---|
-| X1 | triggerの保持・独立action化を、論理trigger単位・物理trigger単位で個別に指定する機能 | D6 | 決定済み。AGENTS.md「設定項目を足すか決める」の3つ目（割れる人を想像できるが実例が無いものは今は足さない）に当てはまる。新側はキーの種類ごとの例外まで持つ。保存の形（`triggerActivationOverrides`）は新側も読めるので、後から足す時にデータの形は変わらない。粒度の細かい指定が要る人は `/classic/` で使える | 決定済みなので無し |
+| X1 | triggerの保持・独立action化を、論理trigger単位・物理trigger単位で個別に指定する機能 | D6 | 決定済み。AGENTS.md「設定項目を足すか決める」の3つ目（割れる人を想像できるが実例が無いものは今は足さない）に当てはまる。新側はキーの種類ごとの例外まで持つ。保存の形（`triggerActivationOverrides`）は新側も読めるので、後から足す時にデータの形は変わらない。 | 決定済みなので無し |
 | X2 | 再生の表示設定を配列ごとの上書きにする機能（「この配列専用にする」） | F5 | 決定済み。表示だけの設定で、数値が変わらない。カスケードの配列のレベルに置く項目としても、設定が増える割に使い道が見えない | 決定済みなので無し |
 | X3 | テキストの保存上限（10万字）とその表示 | B3 | 決定済み。上限はブラウザの保存容量の都合で、容量超過の扱いは、全データのバックアップ・復元と保存容量の扱いとしてまとめて決める | 決定済みなので無し |
-| X4 | 旧画面の保存データ（保存先の `keydist:app-state` の `analyzer`・`conditions`・`playback` と、移行元の `keydist:ui-state`・`keydist:condition-presets`）を、新しい構成へ1回だけ移す処理 | G8 | 決定済み。AGENTS.mdは保存データの互換と移行を要件にしない。旧画面は `/classic/` で `keydist-classic:` のキーのまま動き続ける。なお旧画面の通常の保存先は `keydist:app-state` で、`keydist:ui-state` は初回に1回だけ読む移行元（`analyzer-ui-state-owner.ts:53-78`） | 決定済みなので無し |
-| X5 | 旧URL（`/analyzer`・`/analyzer/flow?...`）の転送と、`legacy.html` の転送ページ | A2・J4 | 決定済み（#29）。転送を作らない。`/analyzer` は消えた後に404になり、古い画面は `/classic/` へ入口を付け替える（J3）。`legacy.html` は旧アプリの入口で、その後は外部の古いリンクのために `/analyzer` へ転送するページとして残った。一緒に消す箇所は次の全部: `vite.config.ts:12-31,49`（開発サーバーの転送のプラグイン）・`package.json:12`（`build` の `write-legacy-analyzer-redirect.ts`）・`scripts/write-legacy-analyzer-redirect.ts`・`.github/workflows/ci.yml:76`（`.output/public/legacy.html` の検査）・`e2e/analyzer-route.spec.ts:67-71` | 決定済みなので無し |
+| X4 | 旧画面の保存データ（保存先の `keydist:app-state` の `analyzer`・`conditions`・`playback` と、移行元の `keydist:ui-state`・`keydist:condition-presets`）を、新しい構成へ1回だけ移す処理 | G8 | 決定済み。AGENTS.mdは保存データの互換と移行を要件にしない。なお旧画面の通常の保存先は `keydist:app-state` で、`keydist:ui-state` は初回に1回だけ読む移行元（`analyzer-ui-state-owner.ts:53-78`） | 決定済みなので無し |
+| X5 | 旧URL（`/analyzer`・`/analyzer/flow?...`）の転送と、`legacy.html` の転送ページ | A2・J4 | 決定済み（#29）。転送を作らない。`/analyzer` は消えた後に404になり、古い画面の入口も消す（J3）。`legacy.html` は旧アプリの入口で、その後は外部の古いリンクのために `/analyzer` へ転送するページとして残った。一緒に消す箇所は次の全部: `vite.config.ts:12-31,49`（開発サーバーの転送のプラグイン）・`package.json:12`（`build` の `write-legacy-analyzer-redirect.ts`）・`scripts/write-legacy-analyzer-redirect.ts`・`.github/workflows/ci.yml:76`（`.output/public/legacy.html` の検査）・`e2e/analyzer-route.spec.ts:67-71` | 決定済みなので無し |
 | X6 | 総移動距離の棒グラフと、棒グラフにする項目の選択 | E5 | 決定済み。表のセルの中立なデータバー（#18）が「値の大きさを見比べる」用途を受ける。棒グラフの最小値の強調は、`AnalyzerBarChart` の任意の引数 `emphasise`（`analyzer-metrics-content.tsx:286-298`）で付けるもので、棒グラフの前提ではない。強調はE4と同じ理由で持ち越さない | 決定済みなので無し |
-| X7 | 物理配列エディタ（ピッチ・段ずれ・列オフセット・親指キー・分割間隔・単位・保存・削除） | G3・I2 | 決定済み（#29）。物理配列エディタを作らない（理由は「物理配列を作る人がいるか。機能がそもそも過剰」）。Testerが自作の物理配列を読む経路（`keydist:geometry-shapes`）は消し、物理配列の書き出し・読み込み（G6）も作らない。`/classic/` のエディタで作れるが、`keydist-classic:geometry-shapes` に入るので、Testerには届かない | 決定済みなので無し |
+| X7 | 物理配列エディタ（ピッチ・段ずれ・列オフセット・親指キー・分割間隔・単位・保存・削除） | G3・I2 | 決定済み（#29）。物理配列エディタを作らない（理由は「物理配列を作る人がいるか。機能がそもそも過剰」）。Testerが自作の物理配列を読む経路（`keydist:geometry-shapes`）は消し、物理配列の書き出し・読み込み（G6）も作らない | 決定済みなので無し |
 
 ## 保存のキー
 
-旧画面が読み書きするキーと、新しい構成との関係。`/classic/`（`classic-final`）は、ほとんどのキーを `keydist-classic:` に切り離してある。そのため `/analyzer` で作った `keydist:*` の資産は `/classic/` に出ない。例外は `keydist.playback-calibration.v3` で、両方が同じキーを使う。
+旧画面が読み書きするキーと、新しい構成との関係。
 
 | キー | 旧画面での中身 | 新しい構成 |
 |---|---|---|
 | `keydist:app-state` | 旧画面の通常の保存先（`analyzer`・`conditions`・`playback`）と、Testerの作業台・入力設定・テーマ | 新しい構成も使う（`appearance`・Testerの分）。`analyzer`・`conditions`・`playback` は旧画面と `features/analyzer-next/session-app-state.ts` だけが読む（J2・J7）。`analyzer.theme` は新しい側のテーマのコードが移行元として読む（J6・J7） |
 | `keydist:ui-state` | 初回に1回だけ読む移行元。`keydist:app-state` にこの3つが無い時に読み、保存に成功すると消す | 読まない（X4）。テーマの初期スクリプト（`app/theme/theme.ts:26`）が移行元として読む（J6） |
 | `keydist:condition-presets` | 旧画面の条件プリセット（`keydist:app-state` に吸収されない独立した資産） | 読まない。新しい保存先は `keydist:presets` |
-| `keydist:layouts` | 自作配列 | 読むのは `src/legacy/` と `src/features/analyzer-next/` だけ。新しいAnalyzerは読まず、移さない（G10）。新しい構成の資産として作り直す（N15）。`/classic/` は `keydist-classic:layouts` に保存するので、このキーの資産は `/classic/` に出ない |
-| `keydist:geometry-shapes` | 自作の物理配列 | 読むのは旧画面・`src/features/analyzer-next/`（`runtime.ts:18`・`browser-runtime.ts:12`）・Testerだけ。新しいAnalyzerは読まず、移さない（G10）。Testerの経路は消す（X7）。`/classic/` は `keydist-classic:geometry-shapes` に保存する |
-| `keydist:romaji-rules` | ローマ字規則と配列への割り当て | 読むのは `src/legacy/` と `src/features/analyzer-next/` だけ。新しいAnalyzerは読まず、移さない（G10）。新しい構成の資産として作り直す（N15）。`/classic/` は `keydist-classic:romaji-rules` に保存する |
-| `keydist.playback-calibration.v3` | 個人速度 | 読むのは `src/legacy/` だけ（再生のAnalyzerができるまで）。`/classic/` も同じキーを使うので、旧画面と共有される |
+| `keydist:layouts` | 自作配列 | 読むのは `src/legacy/` と `src/features/analyzer-next/` だけ。新しいAnalyzerは読まず、移さない（G10）。新しい構成の資産として作り直す（N15） |
+| `keydist:geometry-shapes` | 自作の物理配列 | 読むのは旧画面・`src/features/analyzer-next/`（`runtime.ts:18`・`browser-runtime.ts:12`）・Testerだけ。新しいAnalyzerは読まず、移さない（G10）。Testerの経路は消す（X7） |
+| `keydist:romaji-rules` | ローマ字規則と配列への割り当て | 読むのは `src/legacy/` と `src/features/analyzer-next/` だけ。新しいAnalyzerは読まず、移さない（G10）。新しい構成の資産として作り直す（N15） |
+| `keydist.playback-calibration.v3` | 個人速度 | 読むのは `src/legacy/` だけ（再生のAnalyzerができるまで） |
 
 ## 関連
 

@@ -37,11 +37,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       KEYDIST_BASE_PATH: /keydist/
-      # 旧画面（Analyzerの作り直し前の最終形）を /keydist/classic/ に同梱する。
-      # ソースは残さず、このタグのコミットをそのままビルドする。旧画面は今後変えないので、
-      # 保守するコードを持たない
-      CLASSIC_REF: classic-final
-      CLASSIC_BASE_PATH: /keydist/classic/
     steps:
       # タグ名を決めて検証する。タグは呼び出し・手動実行の入力で受け取る。
       # workflow_call では github.ref は呼び出し側のもの（release.yml なら main）になる。
@@ -108,13 +103,6 @@ jobs:
             echo "commit: \`$head_commit\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Checkout classic
-        id: checkout-classic
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ env.CLASSIC_REF }}
-          path: classic
-
       - name: Setup Node.js
         id: setup-node
         uses: actions/setup-node@v7
@@ -150,21 +138,6 @@ jobs:
           set -o pipefail
           npm run build 2>&1 | tee "$RUNNER_TEMP/build.log"
 
-      - name: Build classic
-        id: build-classic
-        shell: bash
-        working-directory: classic
-        env:
-          KEYDIST_BASE_PATH: ${{ env.CLASSIC_BASE_PATH }}
-        run: |
-          set -o pipefail
-          {
-            npm ci
-            npm run build
-          } 2>&1 | tee "$RUNNER_TEMP/build-classic.log"
-          rm -rf ../.output/public/classic
-          cp -R .output/public ../.output/public/classic
-
       - name: Upload Pages artifact
         id: upload-pages
         uses: actions/upload-pages-artifact@v5
@@ -183,8 +156,6 @@ jobs:
           TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
           TEST_OUTCOME: ${{ steps.test.outcome }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
-          CHECKOUT_CLASSIC_OUTCOME: ${{ steps.checkout-classic.outcome }}
-          BUILD_CLASSIC_OUTCOME: ${{ steps.build-classic.outcome }}
           UPLOAD_PAGES_OUTCOME: ${{ steps.upload-pages.outcome }}
         run: |
           icon() {
@@ -210,8 +181,6 @@ jobs:
             printf '| Typecheck | %s %s |\n' "$(icon "$TYPECHECK_OUTCOME")" "$TYPECHECK_OUTCOME"
             printf '| Test | %s %s |\n' "$(icon "$TEST_OUTCOME")" "$TEST_OUTCOME"
             printf '| Build | %s %s |\n' "$(icon "$BUILD_OUTCOME")" "$BUILD_OUTCOME"
-            printf '| Checkout classic (%s) | %s %s |\n' "$CLASSIC_REF" "$(icon "$CHECKOUT_CLASSIC_OUTCOME")" "$CHECKOUT_CLASSIC_OUTCOME"
-            printf '| Build classic | %s %s |\n' "$(icon "$BUILD_CLASSIC_OUTCOME")" "$BUILD_CLASSIC_OUTCOME"
             printf '| Upload Pages artifact | %s %s |\n' "$(icon "$UPLOAD_PAGES_OUTCOME")" "$UPLOAD_PAGES_OUTCOME"
             echo
             echo "[Open full run logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
@@ -242,7 +211,6 @@ jobs:
           append_failure_log "Typecheck" "$TYPECHECK_OUTCOME" "$RUNNER_TEMP/typecheck.log"
           append_failure_log "Test" "$TEST_OUTCOME" "$RUNNER_TEMP/test.log"
           append_failure_log "Build" "$BUILD_OUTCOME" "$RUNNER_TEMP/build.log"
-          append_failure_log "Build classic" "$BUILD_CLASSIC_OUTCOME" "$RUNNER_TEMP/build-classic.log"
 
   deploy:
     needs: build
