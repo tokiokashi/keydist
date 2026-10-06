@@ -149,7 +149,7 @@ PRのタイトル・`version`・同じ版のタグが別のコミットに無い
 - headのCIが緑である（`verify` はpushとpull_requestの両方のrun、`browser-e2e` はpull_requestのrun。`.md` だけの変更ではshardが飛ばされる）
 - その版のマイルストーンの開いたissueが0件である
 
-方式は**merge commit**（`gh pr merge <番号> --merge`。クラウドのセッションでは `gh api -X PUT repos/tokiokashi/keydist/pulls/<番号>/merge -f merge_method=merge`）。squash・rebaseマージは使わない。
+方式は**merge commit**（`gh pr merge <番号> --merge`。クラウドのセッションでは `gh api -X PUT repos/tokiokashi/keydist/pulls/<番号>/merge -f merge_method=merge -f sha=<承認したhead>`）。`sha` を付けると、承認の後にheadが動いていた時にGitHubがマージを拒むので、「承認は現在のheadに対して」を機械で守れる。squash・rebaseマージは使わない。
 上にブランチが積まれたPRをsquashすると、上のブランチが持つ元のコミットと `main` のsquashコミットが別物になり、
 上のブランチを `main` へ入れる時にadd/addの衝突が出た。
 
