@@ -1955,3 +1955,110 @@ h1 {
     transition: none;
   }
 }
+
+/* 計算方法のページ。読み物の幅は.heroと同じ50remに抑えて中央に置く */
+.about {
+  max-width: 50rem;
+  margin-inline: auto;
+  line-height: 1.75;
+}
+
+.about h1 {
+  margin-bottom: 0.75rem;
+  font-size: clamp(1.8rem, 5vw, 2.6rem);
+}
+
+.about h2 {
+  margin: 2rem 0 0.5rem;
+  font-size: 1.2rem;
+}
+
+.about p,
+.about li {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.about li strong {
+  color: var(--text);
+}
+
+.about a {
+  color: var(--text);
+  text-underline-offset: 3px;
+}
+
+.about a:hover {
+  color: var(--accent-strong);
+}
+
+.distance-figure {
+  margin: 1.25rem 0 0;
+  padding: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  background: var(--surface);
+}
+
+.distance-figure svg {
+  display: block;
+  width: 100%;
+  max-width: 26rem;
+  height: auto;
+  margin-inline: auto;
+}
+
+.distance-figure figcaption p {
+  margin: 0.75rem 0 0;
+}
+
+.distance-figure figcaption ul {
+  margin: 0.4rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.distance-figure-key {
+  fill: var(--surface);
+  stroke: var(--border-strong);
+}
+
+.distance-figure-key.is-pressed {
+  fill: var(--surface-muted);
+}
+
+.distance-figure-key.is-other {
+  fill: var(--surface);
+  stroke: var(--text-muted);
+  stroke-dasharray: 1 2;
+}
+
+.distance-figure-legend {
+  fill: var(--text-muted);
+  font-size: 15px;
+}
+
+.distance-figure-order {
+  fill: var(--accent-strong);
+  font-size: 12px;
+}
+
+.distance-figure-arrow {
+  stroke: var(--text-muted);
+  stroke-width: 1.6;
+  stroke-dasharray: 4 3;
+  stroke-linecap: round;
+}
+
+.distance-figure-arrow.is-adopted {
+  stroke: var(--accent);
+  stroke-width: 2.2;
+  stroke-dasharray: none;
+}
+
+.distance-figure-head {
+  fill: var(--text-muted);
+}
+
+.distance-figure-head.is-adopted {
+  fill: var(--accent);
+}

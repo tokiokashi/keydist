@@ -11,7 +11,7 @@ import { targetNameSource } from '#hosts/shared/target-name-source.ts';
 import { resolvePaneInput } from '#hosts/shared/resolve-pane-input.ts';
 import { nameTargets } from '#input/setup/index.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
-import { builtinPaneCatalog } from '../standalone/catalog.ts';
+import { paneCatalog } from '../standalone/catalog.ts';
 import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
 
 /**
@@ -26,7 +26,7 @@ import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
  */
 export function TopTargetPick() {
   const { assets, ready, dispatch } = useKeydistAssets();
-  const catalog = useMemo(() => builtinPaneCatalog(), []);
+  const catalog = useMemo(() => paneCatalog(assets), [assets.userLayouts, assets.userRomajiRules]);
   const setups = assets.setupLibrary.setups;
   const target = effectiveSingleTarget(assets.singleTargetSelection);
 

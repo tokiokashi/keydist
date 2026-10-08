@@ -4,7 +4,7 @@ import { deleteWorkspaceCommand, duplicateWorkspaceCommand } from '#engine/works
 import { findWorkspace } from '#engine/workspace.ts';
 import type { ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { WorkspacePage } from '#hosts/workspace/index.ts';
-import { builtinPaneCatalog } from '../standalone/catalog.ts';
+import { paneCatalog } from '../standalone/catalog.ts';
 import { sharedEngineComputer } from '../standalone/engine-computer.ts';
 import { generatePresetId, generateTextId } from '../standalone/id-generator.ts';
 import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
@@ -27,7 +27,7 @@ import { usePaneOptionsCommit } from './use-pane-options-commit.ts';
  */
 export function WorkspaceApp({ workspaceId }: { readonly workspaceId: string }) {
   const { assets, ready, dispatch, getAssets, canUndo, canRedo, undo, redo } = useKeydistAssets();
-  const catalog = useMemo(() => builtinPaneCatalog(), []);
+  const catalog = useMemo(() => paneCatalog(assets), [assets.userLayouts, assets.userRomajiRules]);
   const holder = useMemo(() => ({ workspaceId }), [workspaceId]);
 
   const commitTextContent = useTextContentCommit(dispatch, getAssets, generateTextId, holder);

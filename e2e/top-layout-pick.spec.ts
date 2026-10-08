@@ -75,3 +75,30 @@ test('Setup を選んだ時の名前は、Bigram Flow の見出しと同じ（�
   await expect.poll(async () => targetButton(page).getAttribute('aria-label')).toBe(topLabel);
   expect(topLabel).not.toContain('/');
 });
+
+test('資産の自作の配列が対象の選択に並び、選んだ配列が比較表に出る', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (localStorage.getItem('keydist:user-layouts') !== null) return;
+    localStorage.setItem(
+      'keydist:user-layouts',
+      JSON.stringify({
+        version: 1,
+        layouts: [{
+          id: 'user-e2e',
+          name: '自作のテスト配列',
+          rows: ['1234567890-=', 'qwertyuiop[]', "asdfghjkl;'", 'zxcvbnm,./'],
+          romaji: 'kunrei',
+        }],
+      }),
+    );
+  });
+  await page.goto('/');
+  await waitForHydration(page);
+
+  const hero = page.locator('.hero');
+  await hero.getByRole('button', { name: /^対象: / }).click();
+  await page.getByRole('dialog', { name: '対象の選択' }).locator('input[value="layout:user-e2e"]').click();
+  await hero.getByRole('link', { name: '比較表', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '比較表', level: 1, exact: true })).toBeVisible();
+  await expectTargetNames(page, ['自作のテスト配列']);
+});

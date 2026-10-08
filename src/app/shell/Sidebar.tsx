@@ -11,6 +11,8 @@ import {
   subscribeAppearance,
 } from '../theme/appearance.ts';
 import type { ThemeChoice } from '../theme/theme.ts';
+import { ABOUT_LABEL } from '../about/AboutPage.tsx';
+import { REPOSITORY_URL, SPEC_LINKS } from '../about/links.ts';
 import { createWorkspaceInStorage } from '../workspace/create-workspace.ts';
 import { generateWorkspaceId } from '../workspace/id-generator.ts';
 import { useWorkspaceLinks } from './use-workspace-links.ts';
@@ -18,7 +20,7 @@ import { useWorkspaceLinks } from './use-workspace-links.ts';
 /** 旧バージョン（`/analyzer`）へのリンクの文言。トップの下端のリンクも同じ文を出す。 */
 export const LEGACY_ANALYZER_LABEL = '旧バージョン';
 
-/** Workspace 区分の案内文（保存したWorkspaceが1つも無い時）。トップの見本も同じ文を出す。 */
+/** Workspace区分の案内文（保存したWorkspaceが1つも無い時）。トップの見本も同じ文を出す。 */
 export const WORKSPACE_EMPTY_TEXT = 'Analyzerを並べて見る画面。';
 
 /**
@@ -26,8 +28,9 @@ export const WORKSPACE_EMPTY_TEXT = 'Analyzerを並べて見る画面。';
  * 最下端にだけ例外として版表示・旧バージョンへのリンク・テーマ切替を置く。
  *
  * 区分見出しは英語（Analyze / Workspace / Assets）。Analyzeの中は対象の数で
- * Single / Multi に分ける。Testerは区分に入れず単独で置く。
+ * Single / Multiに分ける。Testerは区分に入れず単独で置く。
  * Workspaceは保存したWorkspaceの一覧と「＋ 新しいWorkspace」で、1つも無い時は案内文を出す。
+ * Aboutは計算方法のページと、仕様書・リポジトリ（GitHub）へのリンク。どの画面からも同じ場所でたどれる。
  * Assetsは手持ちの資産の編集画面へのリンクを並べる区分で、編集画面がまだ1つも無いので出さない。
  */
 export interface SidebarProps {
@@ -168,11 +171,20 @@ export function Sidebar({ pinned, onPinnedChange, onNavigate }: SidebarProps) {
         <section className="sidebar-group">
           <NavLink to="/input" onNavigate={onNavigate}>Tester</NavLink>
         </section>
+
+        <section className="sidebar-group" aria-labelledby="sidebar-about">
+          <h2 className="sidebar-heading" id="sidebar-about">About</h2>
+          <NavLink to="/about" onNavigate={onNavigate}>{ABOUT_LABEL}</NavLink>
+          {SPEC_LINKS.map((link) => (
+            <a key={link.url} className="sidebar-link" href={link.url} target="_blank" rel="noopener noreferrer">{link.label}</a>
+          ))}
+          <a className="sidebar-link" href={REPOSITORY_URL} target="_blank" rel="noopener noreferrer">GitHub</a>
+        </section>
       </nav>
 
       <div className="sidebar-foot">
         <span className="sidebar-version">v{__KEYDIST_VERSION__}</span>
-        {/* /analyzer はシェルに載らない別ページ。リンクで遷移すると新しい画面に切り替わる */}
+        {/* /analyzerはシェルに載らない別ページ。リンクで遷移すると新しい画面に切り替わる */}
         <Link className="sidebar-legacy" to="/analyzer" onClick={onNavigate}>{LEGACY_ANALYZER_LABEL}</Link>
         <ThemeSwitch />
       </div>
