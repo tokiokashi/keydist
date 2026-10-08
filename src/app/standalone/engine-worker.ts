@@ -2,6 +2,7 @@ import { createEngineCache } from '#engine/cache.ts';
 import { createEngineWorkerHandler } from '#engine/worker-handler.ts';
 import type { EngineWorkerRequest, EngineWorkerResponse } from '#engine/worker-protocol.ts';
 import { bigramFlowDefinition } from '#analyzers/bigram-flow/extract.ts';
+import { fingerDistanceDefinition } from '#analyzers/finger-distance/extract.ts';
 import { comparisonDefinition } from '#analyzers/comparison/extract.ts';
 import { nSensitivityDefinition } from '#analyzers/n-sensitivity/extract.ts';
 
@@ -13,7 +14,7 @@ import { nSensitivityDefinition } from '#analyzers/n-sensitivity/extract.ts';
  * 描画側（`definition.tsx`）はReactを引き込むので読み込まず、抽出だけの`extract.ts`を使う。
  */
 const handle = createEngineWorkerHandler(createEngineCache(), {
-  single: [bigramFlowDefinition],
+  single: [bigramFlowDefinition, fingerDistanceDefinition],
   set: [comparisonDefinition, nSensitivityDefinition],
 });
 
