@@ -58,3 +58,13 @@ test('版を持たない旧形式の読み取りも、id重複を同じ扱いに
   assert.deepEqual(result.value.rules.map((r) => r.id), ['rule-a']);
   assert.deepEqual(result.diagnostics.map((d) => d.path), ['rules[1]']);
 });
+
+test('組み込みの規則と同じidの自作の規則は捨てて、経路付きの診断を積む', () => {
+  const decoded = USER_ROMAJI_RULES_CODEC.decode({
+    version: 1,
+    rules: [rule('kunrei'), rule('rule-a'), rule('constructor'), rule('azik')],
+  });
+  assert.ok(decoded.ok);
+  assert.deepEqual(decoded.value.map((r) => r.id), ['rule-a', 'constructor']);
+  assert.deepEqual(decoded.diagnostics.map((d) => d.path), ['rules[0]', 'rules[3]']);
+});

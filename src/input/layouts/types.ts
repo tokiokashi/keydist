@@ -197,6 +197,11 @@ export interface Layout {
    * かな配列は持たない。同じかなテキストを両者に食わせて比較できる。
    */
   romajiTable?: Map<string, string>;
+  /**
+   * この配列が前提とするローマ字規則のid（自作配列の`UserLayout.romaji`）。
+   * 組み込みの推奨（`recommendedRomajiRuleId`）と同じく、カスケードの配列の推奨として読む。
+   */
+  recommendedRomajiRuleId?: string;
   /** withCombos由来のコンボ定義。物理キーまで解決済みで、配列図等の表示にも使う。 */
   resolvedComboDefinitions?: readonly ResolvedComboDefinition[];
   /** 層・コンボの表示順と種別。 */

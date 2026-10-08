@@ -4,7 +4,7 @@ import { setStandaloneAnalyzerOptionsCommand } from '#engine/commands.ts';
 import { comparisonAnalyzer } from '#analyzers/comparison/definition.tsx';
 import type { ComparisonOptions } from '#analyzers/comparison/options.ts';
 import { ComparisonStandalonePage } from '#hosts/standalone/index.ts';
-import { builtinPaneCatalog } from './catalog.ts';
+import { paneCatalog } from './catalog.ts';
 import { sharedEngineComputer } from './engine-computer.ts';
 import { generatePresetId, generateTextId } from './id-generator.ts';
 import { useKeydistAssets } from './use-keydist-assets.ts';
@@ -21,7 +21,7 @@ import { useTextContentCommit } from './use-text-content-commit.ts';
  */
 export function StandaloneComparisonApp() {
   const { assets, ready, dispatch, getAssets, canUndo, canRedo, undo, redo } = useKeydistAssets();
-  const catalog = useMemo(() => builtinPaneCatalog(), []);
+  const catalog = useMemo(() => paneCatalog(assets), [assets.userLayouts, assets.userRomajiRules]);
 
   // 保存先へ書いた値を記録し、解析設定の下書きが自分の保存の反響を見分けるのに使う
   const writeLogs = useMemo(createOptionsWriteLogs, []);

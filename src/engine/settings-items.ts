@@ -188,7 +188,7 @@ export const SETTINGS_ITEMS = {
     id: 'romajiRuleId',
     allowedLevels: GLOBAL_WORKSPACE_INPUT_METHOD_LAYOUT_SETUP,
     defaultValue: DEFAULT_ROMAJI_RULE_ID,
-    layoutRecommendation: (context) => recommendedRomajiRuleId(context.layoutId),
+    layoutRecommendation: (context) => context.layout.recommendedRomajiRuleId ?? recommendedRomajiRuleId(context.layoutId),
     isApplicable: (context) => context.inputMethod === 'romaji',
   }),
   /**

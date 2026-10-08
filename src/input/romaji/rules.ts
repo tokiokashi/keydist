@@ -115,7 +115,7 @@ function baseTable(base: BuiltinRomajiRuleId, generateSokuon: boolean): Map<stri
 }
 
 export function isBuiltin(id: string): id is BuiltinRomajiRuleId {
-  return id in ROMAJI_RULES;
+  return Object.hasOwn(ROMAJI_RULES, id);
 }
 
 export function allRomajiRules(customRules: UserRomajiRule[] = []) {
@@ -194,6 +194,11 @@ export function decodeUserRomajiRules(
   raw.forEach((candidate, index) => {
     if (!isUserRomajiRule(candidate)) {
       diagnostics.push({ path: `${path}[${index}]`, message: '形式が不正なためローマ字規則を捨てた' });
+      return;
+    }
+    // 組み込みと同じidの自作は、規則のidを引く時に組み込みと区別できないので読まない
+    if (isBuiltin(candidate.id)) {
+      diagnostics.push({ path: `${path}[${index}]`, message: `id「${candidate.id}」が組み込みの規則と同じため捨てた` });
       return;
     }
     if (seen.has(candidate.id)) {
