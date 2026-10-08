@@ -103,7 +103,7 @@ function ColumnHeader({ column, sort, onSortChange }: {
       <button
         type="button"
         className="comparison-sort-button"
-        title="押すたびに昇順・降順・並び替えなしへ切り替える"
+        title="押すたびに昇順・降順・並び替えなしへ切り替わります"
         onClick={() => onSortChange(nextComparisonSort(sort, column))}
       >
         {COMPARISON_COLUMNS[column].label}

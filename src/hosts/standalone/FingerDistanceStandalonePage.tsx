@@ -150,7 +150,7 @@ export function FingerDistanceStandalonePage({
         disabled={!assetsReady}
         history={history}
         share={{
-          description: '今の対象と解析設定を含むこの画面のURLをコピーする',
+          description: '今の対象と解析設定を含むこの画面のURLをコピーします',
           query: () => {
             const params = fingerDistanceOptions.encodeOptionsToUrl(optionsDraft);
             const encoded = encodeSingleTargetToUrl(target, shareSource);
