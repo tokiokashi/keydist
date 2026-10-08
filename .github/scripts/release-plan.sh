@@ -17,7 +17,8 @@
 #   リリースPRを作った時点の main の状態に固定し、マージまでの間に main へ入った別の作業を公開物に混ぜないため
 # - タグ v<X.Y.Z> が既にあり、同じコミットを指していれば打たずに公開だけする（再実行の冪等性）。
 #   別のコミットを指していれば失敗させる。同じ版番号で中身の違う公開を作らない
-# - リリースPRは main から分かれた後の1コミットだけで、package.json と package-lock.json しか変えないこと
+# - リリースPRは main から分かれた後の1コミットだけで、package.json と package-lock.json の version しか変えないこと
+#   （version の位置は release-version-only.cjs が解析した JSON で確かめる。依存関係や scripts の変更は公開しない）
 # - version を変えたのが push の先頭以外のコミットなら、そのコミットと PR を名指しして失敗させる
 # - version が下がった場合は公開しない（警告だけ）。初回リリースの準備で 0.0.0 に戻した時がこれにあたる
 #
@@ -141,6 +142,10 @@ count=$(git rev-list --count "$fork..$head")
 [ "$count" = 1 ] || fail "リリースPR #$pr_number のコミットが $count 個ある。version を上げる1コミットだけにする"
 extra=$(git diff --name-only "$fork" "$head" | grep -vxE 'package\.json|package-lock\.json' || true)
 [ -z "$extra" ] || fail "リリースPR #$pr_number が package.json / package-lock.json 以外を変えている: $(echo "$extra" | tr '\n' ' ')"
+
+if ! violations=$(node "$(dirname "$0")/release-version-only.cjs" "$fork" "$head" "$new"); then
+  fail "リリースPR #$pr_number が version 以外を変えている: $(echo "$violations" | tr '\n' ' ')"
+fi
 
 tag="v$new"
 create_tag=true

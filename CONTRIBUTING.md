@@ -144,8 +144,9 @@ PRのタイトル・`version`・同じ版のタグが別のコミットに無い
 1つ目は `release-plan.sh` も確かめるが、外れたPRがマージされると、公開はされなくても `main` には入るので、マージ前に見る。
 
 - `git diff --stat origin/main...<head>` が `package.json` と `package-lock.json` だけで、`main` から分かれた後が1コミットである
-- `git diff -U0 origin/main...<head>` の変更行が `"version"` の行だけである（`npm version` の差分は `package.json` に1行、`package-lock.json` に2行）。
-  `release-plan.sh` はファイル名しか見ないので、依存関係まで変えたPRを見逃さないようリードが確かめる
+- 変更が `package.json` の `version` と、`package-lock.json` の `version`（ルートと `packages[""]`）だけである
+  （`npm version` の差分は `package.json` に1行、`package-lock.json` に2行）。
+  `release-plan.sh` が解析したJSONで比べ、依存関係や `scripts` を変えていれば公開しない。マージ前にリードが目で見る必要は無い
 - headのCIが緑である（`verify` はpushとpull_requestの両方のrun、`browser-e2e` はpull_requestのrun。`.md` だけの変更ではshardが飛ばされる）
 - その版のマイルストーンの開いたissueが0件である
 
