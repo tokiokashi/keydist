@@ -14,3 +14,4 @@ export {
   redo,
   undo,
 } from './history.ts';
+export { composeCommands } from './compose.ts';

@@ -943,3 +943,31 @@ test('上書きありのSetupを1件だけ選ぶと、条件の要約の「対�
   await summary.locator('.pane-condition-trigger').click();
   await expect(summary.getByRole('region', { name: '対象ごとの差' })).toContainText('先読みN=2');
 });
+
+test('共有リンクで届いた解析設定と対象は、「元に戻す」1回でリンクを開く前へ戻る', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'keydist:multi-target-selection',
+      JSON.stringify({ version: 1, targets: [{ kind: 'layout', layoutId: 'qwerty' }] }),
+    );
+    localStorage.setItem(
+      'keydist:standalone-analyzer-options',
+      JSON.stringify({ version: 1, comparison: { visibleColumns: ['actions', 'totalUnits'] } }),
+    );
+  });
+  await page.goto('/standalone/comparison?targets=layout%3Advorak&targets=layout%3Aqwerty&columns=totalUnits');
+  const rows = page.locator('.comparison-table tbody tr[data-comparison-row="ok"]');
+  await expect(rows).toHaveCount(2, { timeout: 10_000 });
+  await expect(page).toHaveURL(/\/standalone\/comparison$/);
+  const firstColumn = async () => (await openSettings(page)).getByRole('checkbox', { name: '動作数', exact: true });
+  await expect(await firstColumn()).not.toBeChecked();
+  await page.keyboard.press('Escape');
+
+  const undo = page.getByRole('button', { name: '元に戻す' });
+  await undo.click();
+  await expect(rows).toHaveCount(1);
+  await expect(await firstColumn()).toBeChecked();
+  await page.keyboard.press('Escape');
+  // 取り込みは履歴1項目なので、これ以上戻すものは無い。
+  await expect(undo).toBeDisabled();
+});

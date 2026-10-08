@@ -21,8 +21,7 @@ import { useLatestCallback } from '#hosts/shared/use-latest-callback.ts';
 import { useOptionsDraft } from '#hosts/shared/use-options-draft.ts';
 import { STANDALONE_WRITE_LOG_KEY } from '#hosts/shared/options-write-log.ts';
 import { AddToWorkspaceMenu, type AddToWorkspaceDestination } from '#hosts/shared/AddToWorkspaceMenu.tsx';
-import { urlOptionsNotices, useUrlOptions } from './use-url-options.ts';
-import { useTargetShareSource, useUrlTargets } from './use-url-targets.ts';
+import { urlOptionsNotices, useSharedLink, useTargetShareSource } from './use-shared-link.ts';
 import { encodeSingleTargetToUrl } from './target-share.ts';
 import './standalone.css';
 
@@ -106,19 +105,18 @@ export function BigramFlowStandalonePage({
   );
   const [optionsDraft, setOptionsDraft] = useOptionsDraft<BigramFlowOptions>(decoded.options, STANDALONE_WRITE_LOG_KEY);
 
-  // URL経由で解析設定を受け取る（3つの単体ページ共通。`use-url-options.ts`）。
-  const urlDiagnostics = useUrlOptions({
-    analyzerId,
+  // URL経由で解析設定と対象を受け取る（共有リンク。`use-shared-link.ts`）。書き込みは1つのコマンドで、Undo 1回で戻る。
+  const shareSource = useTargetShareSource(catalog, assets.setupLibrary.setups);
+  const { optionDiagnostics: urlDiagnostics, targetNotices } = useSharedLink({
+    analyzerId: analyzerId,
     optionsDefinition: bigramFlowOptions,
     currentOptions: decoded.options,
+    kind: 'single',
     assetsReady,
+    source: shareSource,
     dispatch,
     setOptionsDraft,
   });
-
-  // URL経由で対象を受け取る（`use-url-targets.ts`）。
-  const shareSource = useTargetShareSource(catalog, assets.setupLibrary.setups);
-  const targetNotices = useUrlTargets({ kind: 'single', assetsReady, source: shareSource, dispatch });
 
   const undo = useLatestCallback(history.undo);
   const env: PaneEnvironment = useMemo(() => ({

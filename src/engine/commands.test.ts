@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { applyCommand, emptyCommandHistory, redo, undo } from '#input/commands/index.ts';
+import { applyCommand, composeCommands, emptyCommandHistory, redo, undo } from '#input/commands/index.ts';
 import { emptyCascadeOverrides } from '#input/settings/index.ts';
 import type { AnalysisTarget, SetupLibrary } from '#input/setup/index.ts';
 import { DEFAULT_FINGER_ASSIGNMENT } from '#input/shapes/geometry.ts';
@@ -931,4 +931,48 @@ test('setTargetForSingleAndMultiCommand: どちらかが揃っていても、足
 
   const again = applyCommand(filled.assets, filled.history, setTargetForSingleAndMultiCommand(TARGET_A));
   assert.equal(again.outcome.kind, 'no-op');
+});
+
+test('共有リンクの取り込み: 解析設定と対象を1コマンドにまとめると、履歴は1項目でUndo 1回で両方戻る', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+  const before = applyCommand(assets, history, setStandaloneAnalyzerOptionsCommand('comparison', { columns: 'old' }));
+  const beforeTargets = applyCommand(before.assets, before.history, setMultiTargetsCommand([TARGET_NOT_SELECTED]));
+
+  const imported = composeCommands('共有リンクの内容を取り込む', [
+    setStandaloneAnalyzerOptionsCommand('comparison', { columns: 'new' }),
+    setMultiSelectionCommand([TARGET_A, TARGET_B], TARGET_A),
+  ]);
+  const step = applyCommand(beforeTargets.assets, beforeTargets.history, imported);
+  assert.equal(step.outcome.kind, 'applied');
+  assert.equal(step.history.undoStack.length, beforeTargets.history.undoStack.length + 1);
+  assert.deepEqual(step.assets.standaloneAnalyzerOptions['comparison'], { columns: 'new' });
+  assert.deepEqual(step.assets.multiTargetSelection.targets, [TARGET_A, TARGET_B]);
+
+  const undone = undo(step.assets, step.history);
+  assert.deepEqual(undone.assets.standaloneAnalyzerOptions['comparison'], { columns: 'old' });
+  assert.deepEqual(undone.assets.multiTargetSelection.targets, [TARGET_NOT_SELECTED]);
+  assert.equal(undone.history.undoStack.length, beforeTargets.history.undoStack.length);
+
+  const redone = redo(undone.assets, undone.history);
+  assert.deepEqual(redone.assets.standaloneAnalyzerOptions['comparison'], { columns: 'new' });
+  assert.deepEqual(redone.assets.multiTargetSelection.targets, [TARGET_A, TARGET_B]);
+});
+
+test('共有リンクの取り込み: 片方が変化なしでも、もう片方だけを1項目で積む。両方変化なしなら積まない', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+  const first = applyCommand(assets, history, setStandaloneAnalyzerOptionsCommand('comparison', { columns: 'x' }));
+
+  const onlyTargets = applyCommand(first.assets, first.history, composeCommands('取り込み', [
+    setStandaloneAnalyzerOptionsCommand('comparison', { columns: 'x' }),
+    setSingleTargetCommand(TARGET_A),
+  ]));
+  assert.equal(onlyTargets.history.undoStack.length, 2);
+
+  const nothing = applyCommand(onlyTargets.assets, onlyTargets.history, composeCommands('取り込み', [
+    setSingleTargetCommand(TARGET_A),
+  ]));
+  assert.equal(nothing.outcome.kind, 'no-op');
+  assert.equal(nothing.history, onlyTargets.history);
 });

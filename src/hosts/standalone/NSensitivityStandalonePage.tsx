@@ -22,8 +22,7 @@ import { useOptionsDraft } from '#hosts/shared/use-options-draft.ts';
 import { STANDALONE_WRITE_LOG_KEY } from '#hosts/shared/options-write-log.ts';
 import { effectiveMultiBaseline } from '#engine/multi-target-selection.ts';
 import { AddToWorkspaceMenu, type AddToWorkspaceDestination } from '#hosts/shared/AddToWorkspaceMenu.tsx';
-import { urlOptionsNotices, useUrlOptions } from './use-url-options.ts';
-import { useTargetShareSource, useUrlTargets } from './use-url-targets.ts';
+import { urlOptionsNotices, useSharedLink, useTargetShareSource } from './use-shared-link.ts';
 import { encodeMultiTargetsToUrl, hasSharedTargetParams } from './target-share.ts';
 import './standalone.css';
 
@@ -86,19 +85,18 @@ export function NSensitivityStandalonePage({
     [storedOptionsRaw],
   );
   const [optionsDraft, setOptionsDraft] = useOptionsDraft<NSensitivityOptions>(decoded.options, STANDALONE_WRITE_LOG_KEY);
-  // URL経由で解析設定を受け取る（共有リンク。`use-url-options.ts`）。対象は載らない。
-  const urlDiagnostics = useUrlOptions({
+  // URL経由で解析設定と対象を受け取る（共有リンク。`use-shared-link.ts`）。書き込みは1つのコマンドで、Undo 1回で戻る。
+  const shareSource = useTargetShareSource(catalog, assets.setupLibrary.setups);
+  const { optionDiagnostics: urlDiagnostics, targetNotices } = useSharedLink({
     analyzerId: ANALYZER_ID,
     optionsDefinition: nSensitivityOptions,
     currentOptions: decoded.options,
+    kind: 'multi',
     assetsReady,
+    source: shareSource,
     dispatch,
     setOptionsDraft,
   });
-
-  // URL経由で対象（集合と基準）を受け取る（`use-url-targets.ts`）。
-  const shareSource = useTargetShareSource(catalog, assets.setupLibrary.setups);
-  const targetNotices = useUrlTargets({ kind: 'multi', assetsReady, source: shareSource, dispatch });
 
   const undo = useLatestCallback(history.undo);
   const env: PaneEnvironment = useMemo(() => ({
