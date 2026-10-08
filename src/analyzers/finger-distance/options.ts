@@ -1,18 +1,32 @@
-import { defineOptions } from '#analyzers/options.ts';
+import * as v from 'valibot';
+import { defineOption, defineOptions, picklistUrlCodec } from '#analyzers/options.ts';
 
 /**
- * 指ごとの距離Analyzerの解析設定。
+ * 指ごとの距離Analyzerの解析設定。表示だけが変わる項目で、抽出の結果は動かない
+ * （`affects: 'view'`）。計算に効く条件（N・ローマ字の綴り・物理配列・指割り当て）は、
+ * 対象の条件としてペインの見出しの条件から変える。
  *
- * 持つ項目は無い。指ごとの値は `Metrics`（対象の条件で測った値）から機械的に読み出すもので、
- * 表示の切り替えが要る実例がまだ無いため、先回りして設定を足さない。
- * 計算に効く条件（N・ローマ字の綴り・物理配列・指割り当て）は、対象の条件として
- * ペインの見出しの条件から変える。
+ * - `chartMetric`: 縦棒グラフで見る量。指ごと（移動距離・押下数）と、隣り合う指の組
+ *   （標準偏差・平均・最大）から1つ選ぶ。既定は移動距離
  */
-export const fingerDistanceOptions = defineOptions({});
+const CHART_METRICS = ['distance', 'presses', 'stdDev', 'mean', 'max'] as const;
+export type FingerDistanceChartMetric = (typeof CHART_METRICS)[number];
+
+export const fingerDistanceOptions = defineOptions({
+  chartMetric: defineOption<FingerDistanceChartMetric>({
+    schema: v.picklist(CHART_METRICS),
+    default: 'distance',
+    affects: 'view',
+    url: picklistUrlCodec('metric', CHART_METRICS),
+    label: '見る量',
+  }),
+});
 
 export type FingerDistanceOptions = typeof fingerDistanceOptions.defaultOptions;
 
 export const DEFAULT_FINGER_DISTANCE_OPTIONS: FingerDistanceOptions = fingerDistanceOptions.defaultOptions;
 
-/** 項目が無いので、既定値と異なる組も空。 */
-export const ALTERNATE_FINGER_DISTANCE_OPTIONS: FingerDistanceOptions = {};
+/** 入れ忘れ防止テスト（`optionsDiscipline`）用の、既定値と異なる妥当な値の組。 */
+export const ALTERNATE_FINGER_DISTANCE_OPTIONS: FingerDistanceOptions = {
+  chartMetric: 'presses',
+};

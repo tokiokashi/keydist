@@ -131,8 +131,8 @@
 | E6 | N感度（Nを0〜10で振った総移動距離。相対・絶対の切り替え） | `AnalyzerSensitivityResults` | 操作 | 実装済み | N感度（`analyzers/n-sensitivity/`）。縦軸の切り替えは解析設定 `scale`。距離以外の指標は未対応 |
 | E7 | N感度を展開した時だけ計算する | `panels.sensitivity` | 操作 | 実装済み | 表示しているペインだけを計算する。ペインの計算はengineが担う |
 | E8 | Bigram Flow（Keyboard Flow・Relative vectors・Actual / Within-hand・指の組み合わせ） | `analyzer-bigram-flow.tsx`・`analyzers/bigram-flow/` | 操作 | 実装済み | Bigram Flow（`analyzers/bigram-flow/`）。解析設定は保存・共有に載る |
-| E9 | 指ごとの移動距離の棒グラフ（左右別・押下数と割合のホバー） | `AnalyzerFingerChart` | 表示だけ | 実装済み | 指ごとの距離（`analyzers/finger-distance/`）。親指を含む10本を表と棒で出す（旧画面は親指を除く8本） |
-| E10 | 指間距離の標準偏差の棒グラフ（隣り合う指6組） | `AnalyzerAdjacentChart` | 操作 | 実装済み | 指ごとの距離（`analyzers/finger-distance/`）。標準偏差に加えて平均と最大も同じ表に出す |
+| E9 | 指ごとの移動距離の棒グラフ（左右別・押下数と割合のホバー） | `AnalyzerFingerChart` | 表示だけ | 実装済み | 指ごとの距離（`analyzers/finger-distance/`）。親指を含む10本を縦棒グラフで出す。見る量は移動距離・押下数から選び、割合はツールチップに出す（旧画面は親指を除く8本） |
+| E10 | 指間距離の標準偏差の棒グラフ（隣り合う指6組） | `AnalyzerAdjacentChart` | 操作 | 実装済み | 指ごとの距離（`analyzers/finger-distance/`）。見る量の選択に標準偏差・平均・最大があり、同じ縦棒グラフで出す |
 | E11 | 配列 × 指のマトリックス4種（押下数・移動距離・指間距離の平均・標準偏差）と列ごとの並び替え | `AnalyzerMatrixResult` | 表示だけ | 予定あり | #60。N8。同指連続を指ごとに出す表示は、このマトリックスに面を足す形で一緒に扱える |
 | E12 | 統合ヒートマップ（打鍵数をキーに色付け・ホバーの詳細） | `AnalyzerHeatmap` | 表示だけ | 予定あり | #57。N4。`analyzers/heatmap/layer-heatmap.ts` に集計だけがある |
 | E13 | 層別ヒートマップ（色の尺度の線形・対数・共通の最大値・シフトキーの枠色の凡例） | `AnalyzerHeatmap` | コード | 予定あり | #57。N4に含める。QWERTYは層が1つなので、複数層の見え方は画面では操作していない |

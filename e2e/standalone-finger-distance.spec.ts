@@ -3,26 +3,28 @@ import { waitForHydration } from './hydration-helper.ts';
 
 /**
  * 指ごとの距離のE2E。値の正しさは抽出のunit testで固定しているので、
- * ここでは描画と、全体の行が左右の手の合計に一致することだけを見る。
+ * ここでは描画（既定の縦棒グラフ・見る量の切り替え・幅390px）だけを見る。
  */
-test('単体ページが開き、指ごとの表と指間距離の標準偏差の表が描画される', async ({ page }) => {
+test('既定では移動距離の縦棒グラフが、左手の小指から右手の小指の順に出る', async ({ page }) => {
   await page.goto('/standalone/finger-distance');
   await expect(page.getByRole('heading', { name: '指ごとの距離', exact: true, level: 1 })).toBeVisible();
 
   const feature = page.locator('[data-react-feature="finger-distance"]');
   await expect(feature).toBeVisible({ timeout: 10_000 });
-  // 左右の手に分かれ、親指を含む10本が並ぶ
-  await expect(feature.locator('tbody[data-hand="left"] tr[data-finger]')).toHaveCount(5);
-  await expect(feature.locator('tbody[data-hand="right"] tr[data-finger]')).toHaveCount(5);
-  await expect(feature.locator('tr[data-adjacent-pair]')).toHaveCount(6);
+  await expect(feature.locator('[data-chart-bar]')).toHaveCount(10);
+  expect(await feature.locator('[data-chart-bar]').evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-chart-bar'))))
+    .toEqual(['LP', 'LR', 'LM', 'LI', 'LT', 'RT', 'RI', 'RM', 'RR', 'RP']);
+});
 
-  const distanceOf = async (selector: string) => Number((await feature.locator(selector).locator('td').nth(1).innerText()).trim());
-  const total = await distanceOf('tr[data-total]');
-  const left = await distanceOf('tr[data-hand-total="left"]');
-  const right = await distanceOf('tr[data-hand-total="right"]');
-  // 表示は小数第1位までなので、丸めの分だけ許す
-  expect(Math.abs(left + right - total)).toBeLessThan(0.11);
-  expect(total).toBeGreaterThan(0);
+test('見る量を隣り合う指の組にすると6本の棒になり、幅390pxでもはみ出さない', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 800 });
+  await page.goto('/standalone/finger-distance?metric=stdDev');
+  const feature = page.locator('[data-react-feature="finger-distance"]');
+  await expect(feature.locator('[data-chart-bar]')).toHaveCount(6, { timeout: 10_000 });
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+  const box = await feature.locator('svg').boundingBox();
+  expect(box!.x + box!.width).toBeLessThanOrEqual(390);
 });
 
 test('Workspaceにペインとして追加できる', async ({ page }) => {

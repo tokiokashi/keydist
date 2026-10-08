@@ -10,56 +10,46 @@
   font-weight: 600;
 }
 
-.finger-distance-scroll {
-  overflow-x: auto;
+/* 棒は値の大きさを示すだけの中立な1色。最大や最小を強調しない。 */
+.finger-distance-chart {
+  min-width: 0;
+  max-width: 32rem;
 }
 
-.finger-distance-table {
-  border-collapse: collapse;
-  width: 100%;
-  font-size: 0.82rem;
-}
-
-.finger-distance-table th,
-.finger-distance-table td {
-  border-bottom: 1px solid var(--border);
-  padding: 0.3rem 0.6rem;
-  text-align: right;
-  white-space: nowrap;
-}
-
-.finger-distance-table th[scope='row'],
-.finger-distance-table thead th:first-child {
-  text-align: left;
-}
-
-.finger-distance-table th[scope='row'] {
-  font-weight: 600;
-}
-
-.finger-distance-table th[scope='col'] {
-  color: var(--text-muted);
-  font-weight: 500;
-}
-
-/* 棒は値の大きさを示すだけの中立な色。最大や最小を強調しない。 */
-.finger-distance-bar-cell {
-  width: 40%;
-  min-width: 4rem;
-  text-align: left;
-}
-
-.finger-distance-bar {
+.finger-distance-chart svg {
   display: block;
-  height: 0.6rem;
-  border-radius: 2px;
-  background: var(--accent);
+  width: 100%;
+  height: auto;
 }
 
-.finger-distance-subtotal th,
-.finger-distance-subtotal td {
-  color: var(--text-muted);
-  font-weight: 500;
+.finger-distance-chart-bar {
+  fill: var(--accent);
+}
+
+.finger-distance-chart-baseline,
+.finger-distance-chart-divider {
+  stroke: var(--border-strong);
+  stroke-width: 1;
+}
+
+.finger-distance-chart-divider {
+  stroke-dasharray: 3 3;
+}
+
+.finger-distance-chart-value {
+  fill: var(--text-muted);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+.finger-distance-chart-label {
+  fill: var(--text);
+  font-size: 10px;
+}
+
+.finger-distance-chart-hand {
+  fill: var(--text-muted);
+  font-size: 10px;
 }
 
 .finger-distance-note {
