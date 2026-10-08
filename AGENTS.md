@@ -80,8 +80,13 @@ Claude Code は `CLAUDE.md` が無いプロジェクトでは `AGENTS.md` を読
 
 - 実装役とレビュー役はそれぞれ**自分の git worktree**（`.claude/worktrees/`、`origin/main` から切られる）で動く。
   本体のチェックアウトを共有しない。同じファイルに触る単位は並行にしない（`CONTRIBUTING.md`「作業単位の切り方」）
-- リードはサブエージェントを1回起動するたびに、結果に付く使用量（`subagent_tokens`・`tool_uses`・`duration_ms`）を
+- リードはサブエージェントを1回起動するたびに、結果に付く使用量（`subagent_tokens`・`tool_uses`・`duration_ms`）と、
+  `node --experimental-strip-types scripts/agent-usage.ts <agent-id>...` の出力（キャッシュの書き込み・読み出し・入力側の金額）の**両方**を、
   区分・役・モデル・effortと一緒にPRのコメントに残す。モデルの組を替えた時にコストと効果を比べる材料はこれしか無い
+  - **モデルの比較は金額で行う。** `subagent_tokens` は最後のコンテキストの大きさに近い数字で、料金を表さない。
+    モデルの単価は大きく違い（Haiku 5.5はSonnet 5.5の1/20）、量の大半はキャッシュの読み出しになる。
+    サブエージェントを再開した回の `subagent_tokens` は、再開前を含む累計に見える
+  - スクリプトの金額は出力tokensを含まない（transcriptには各リクエストの最初の数tokens分しか記録されない）。出力にもその旨が付く
 - **実装役にはCIを待たせない。** 待つと時間がかかる。代わりに、実装役の報告には「headのCIを見たか・見た結果」を必ず書かせる。
   リードはレビューに出す前に、headのshaのcheck run（`CONTRIBUTING.md`「ブラウザe2e」）を確かめる。落ちていれば実装役に戻す
 - **サブエージェントが規約から外れた動きをしたら、禁止を足す前にtranscriptで理由を確かめる。**
