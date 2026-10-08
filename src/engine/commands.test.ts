@@ -14,6 +14,8 @@ import {
   deleteFingerAssignmentCommand,
   deleteSetupCommand,
   deleteTextCommand,
+  deleteUserLayoutCommand,
+  deleteUserRomajiRuleCommand,
   duplicateFingerAssignmentCommand,
   duplicateSetupCommand,
   duplicateTextCommand,
@@ -977,4 +979,58 @@ test('共有リンクの取り込み: 片方が変化なしでも、もう片方
   ]));
   assert.equal(nothing.outcome.kind, 'no-op');
   assert.equal(nothing.history, onlyTargets.history);
+});
+
+const USER_LAYOUT_A = { id: 'user-a', name: 'A', rows: ['', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'] as [string, string, string, string], romaji: 'rule-a' };
+const USER_LAYOUT_B = { ...USER_LAYOUT_A, id: 'user-b', name: 'B' };
+const USER_RULE_A = { id: 'rule-a', name: 'R', base: 'kunrei' as const, overrides: {}, generateSokuon: true };
+
+test('deleteUserLayoutCommand: 指定した配列だけを消し、undoで元の位置に戻る。他の資産は触らない', () => {
+  const assets: KeydistAssets = { ...emptyAssets(), userLayouts: [USER_LAYOUT_A, USER_LAYOUT_B], userRomajiRules: [USER_RULE_A] };
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const step = applyCommand(assets, history, deleteUserLayoutCommand('user-a'));
+  assert.equal(step.outcome.kind, 'applied');
+  assert.deepEqual(step.assets.userLayouts, [USER_LAYOUT_B]);
+  assert.equal(step.assets.userRomajiRules, assets.userRomajiRules);
+
+  const undone = undo(step.assets, step.history);
+  assert.deepEqual(undone.assets.userLayouts, [USER_LAYOUT_A, USER_LAYOUT_B]);
+  const redone = redo(undone.assets, undone.history);
+  assert.deepEqual(redone.assets.userLayouts, [USER_LAYOUT_B]);
+});
+
+test('deleteUserRomajiRuleCommand: 規則だけを消し、それを推奨に持つ配列は書き換えない。undoで戻る', () => {
+  const assets: KeydistAssets = { ...emptyAssets(), userLayouts: [USER_LAYOUT_A], userRomajiRules: [USER_RULE_A] };
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const step = applyCommand(assets, history, deleteUserRomajiRuleCommand('rule-a'));
+  assert.equal(step.outcome.kind, 'applied');
+  assert.deepEqual(step.assets.userRomajiRules, []);
+  assert.equal(step.assets.userLayouts, assets.userLayouts);
+
+  assert.deepEqual(undo(step.assets, step.history).assets.userRomajiRules, [USER_RULE_A]);
+});
+
+test('自作の配列・規則の削除: 存在しないidはno-opで履歴に積まない', () => {
+  const assets: KeydistAssets = { ...emptyAssets(), userLayouts: [USER_LAYOUT_A], userRomajiRules: [USER_RULE_A] };
+  const history = emptyCommandHistory<KeydistAssets>();
+  for (const command of [deleteUserLayoutCommand('none'), deleteUserRomajiRuleCommand('none')]) {
+    const step = applyCommand(assets, history, command);
+    assert.equal(step.outcome.kind, 'no-op');
+    assert.equal(step.assets, assets);
+    assert.equal(step.history, history);
+  }
+});
+
+test('自作の配列と規則の削除をまとめると、undo1回で両方が戻る', () => {
+  const assets: KeydistAssets = { ...emptyAssets(), userLayouts: [USER_LAYOUT_A], userRomajiRules: [USER_RULE_A] };
+  const step = applyCommand(
+    assets,
+    emptyCommandHistory<KeydistAssets>(),
+    composeCommands('自作の配列と規則を削除する', [deleteUserLayoutCommand('user-a'), deleteUserRomajiRuleCommand('rule-a')]),
+  );
+  assert.deepEqual([step.assets.userLayouts, step.assets.userRomajiRules], [[], []]);
+  const undone = undo(step.assets, step.history);
+  assert.deepEqual([undone.assets.userLayouts, undone.assets.userRomajiRules], [[USER_LAYOUT_A], [USER_RULE_A]]);
 });
