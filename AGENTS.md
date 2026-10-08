@@ -56,21 +56,37 @@ Claude Code は `CLAUDE.md` が無いプロジェクトでは `AGENTS.md` を読
 | 役 | 定義 | やること | やらないこと |
 |---|---|---|---|
 | リード | （セッション本体） | 作業単位の切り出し・委任・マージ判断・オーナーへの確認 | 実装を自分で書く（リリースPRの作成は除く）。レビュー修正も実装役に戻す |
-| implementer | `.claude/agents/implementer.md` | 1単位の実装、`npm run typecheck` / `npm test` / `npm run build`、PR 本文の材料（実装したモデルと effort を含む） | 自分の変更の承認、`main` への push、マージ |
-| reviewer | `.claude/agents/reviewer.md` | head の sha に対する承認/差し戻し。数値と生成物を測り直す。検証用の一時ファイルは Write で書き、追跡ファイルを書き換えたら戻す | 修正のコミット・push（指摘として返す） |
+| implementer | `.claude/agents/implementer.md` | standard・strict区分の1単位の実装、`npm run typecheck` / `npm test` / `npm run build`、PR本文の材料（実装したモデルとeffortを含む） | 自分の変更の承認、`main` へのpush、マージ |
+| implementer-light | `.claude/agents/implementer-light.md` | light区分の1単位の実装と、implementerと同じ検査・PR本文の材料。`spec/`・数値・codec・保存形式に触る必要が出たら止めてリードに戻す | implementerと同じ。light区分の外の単位を受けること |
+| reviewer | `.claude/agents/reviewer.md` | light・standard区分の、headのshaに対する承認/差し戻し。数値と生成物を測り直す。検証用の一時ファイルはWriteで書き、追跡ファイルを書き換えたら戻す | 修正のコミット・push（指摘として返す） |
+| reviewer-strict | `.claude/agents/reviewer-strict.md` | strict区分の、reviewerと同じ手順での承認/差し戻し | reviewerと同じ |
+
+### 作業単位の区分
+
+リードは単位を切る時に区分を決め、PR本文に書く。迷ったら、light → standard → strictの順で上の区分を選ぶ。
+
+| 区分 | 対象 | 実装 | レビュー |
+|---|---|---|---|
+| light | 文言・小さいUI・小さいスクリプト。`spec/` と数値に触らない | implementer-light（`claude-haiku-5-5`） | reviewer（`claude-sonnet-5-5`） |
+| standard | 通常のUI・基盤の単位 | implementer（`claude-sonnet-5-5`） | reviewer（`claude-sonnet-5-5`） |
+| strict | モデル・指標・codec・保存形式・`spec/` に触る単位 | implementer（`claude-sonnet-5-5`） | reviewer-strict（`claude-opus-5-5`） |
+
+- 数値の退行がマージ後に出たら、その区分のレビューをreviewer-strictに戻す
+- reviewerとreviewer-strictは、手順の本文を同じ内容で2つ持つ。定義ファイルは別の定義ファイルを読み込めず、手順の本文を参照させる形にすると読みに行くかがモデル任せになるため。
+  手順を直す時は両方を同じように直す。違ってよいのは `name`・`description`・`model`・`color` だけ
 
 - 実装役とレビュー役はそれぞれ**自分の git worktree**（`.claude/worktrees/`、`origin/main` から切られる）で動く。
   本体のチェックアウトを共有しない。同じファイルに触る単位は並行にしない（`CONTRIBUTING.md`「作業単位の切り方」）
-- リードは implementer / reviewer を1回起動するたびに、結果に付く使用量（`subagent_tokens`・`tool_uses`・`duration_ms`）を
-  役・モデル・effort と一緒に PR のコメントに残す。モデルの組を替えた時にコストと効果を比べる材料はこれしか無い
-- 「マージ」の条件（`CONTRIBUTING.md`）のうち、レビューの有無は機械で確かめられない。**reviewer が現在の head を承認した記録が無ければ、リードはマージしない**。
+- リードはサブエージェントを1回起動するたびに、結果に付く使用量（`subagent_tokens`・`tool_uses`・`duration_ms`）を
+  区分・役・モデル・effortと一緒にPRのコメントに残す。モデルの組を替えた時にコストと効果を比べる材料はこれしか無い
+- 「マージ」の条件（`CONTRIBUTING.md`）のうち、レビューの有無は機械で確かめられない。**区分で決まる側のreviewerまたはreviewer-strictが現在のheadを承認した記録が無ければ、リードはマージしない**。
   レビューを通さずに入れた変更から退行が出た実績がある。リリースPRはこの条件から除く（独立したレビューを条件にしない。代わりの条件は `CONTRIBUTING.md`「マージ」の「リリースPRの条件」）
 - **同じ単位の差し戻しが2回目になり、原因が方式そのもの（固定値・推測）にある時は、修正を重ねずに方式を変える指示を出す。**
   方式が推測に頼る限り、境目の外側で別の入力が通って差し戻しが続く。指示には、答えを持つ側（実測・書いた時の記録）を名指しする
-- **リスクを許容する判断は、前提（どの条件でだけ起きるか）をreviewerに確かめさせてから下す。**
+- **リスクを許容する判断は、前提（どの条件でだけ起きるか）をreviewer（strict区分ならreviewer-strict）に確かめさせてから下す。**
   前提を実装役の報告だけで置かない。前提が崩れたら、判断を取り消して理由を残す
 - **worktreeを片付ける目的は、ディスクの空きを保つことだけ。** 残っていること自体は問題にしない（セッションが変わればコンテナごと消える）。
-  リードはimplementer・reviewerを起動する前とチェックインの時に `df -h /` を見て、空きが足りなくなりそうなら、
+  リードはサブエージェントを起動する前とチェックインの時に `df -h /` を見て、空きが足りなくなりそうなら、
   マージ済み・閉じた単位のworktree（`.claude/worktrees/agent-<id>`）や検証用の一時worktreeから消す。
   worktree1つの大きさは、`node_modules` を含めて約240MB（2026-10-04の実測）
   - クラウドの書き込みはセッションごとの割り当てで決まる。空き（Avail）が0で使用量（Used）が小さい時は、ディスクの故障ではなく割り当ての使い切りで、消せば書き込めるようになる
