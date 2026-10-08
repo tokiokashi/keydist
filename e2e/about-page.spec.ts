@@ -10,7 +10,7 @@ test('サイドバーから計算方法のページを開け、仕様書とリ�
   await expect(page).toHaveURL(/\/about\/?$/);
   await expect(page.getByRole('heading', { name: '計算方法', level: 1 })).toBeVisible();
   await expect(page.getByRole('heading', { name: '距離モデルが落とした次元' })).toBeVisible();
-  await expect(page.getByRole('img', { name: /「じょうほう」の最初の4打鍵/ })).toBeVisible();
+  await expect(page.getByRole('img', { name: /「ぬいぐるみ」（訓令式のnuigurumi）の最初の3打鍵/ })).toBeVisible();
 
   // 外部リンクは別タブで開くので、遷移せずリンク先だけ確かめる
   await expect(sidebar.getByRole('link', { name: '距離モデルの仕様書' }))

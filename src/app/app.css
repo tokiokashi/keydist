@@ -2003,7 +2003,7 @@ h1 {
 .distance-figure svg {
   display: block;
   width: 100%;
-  max-width: 40rem;
+  max-width: 26rem;
   height: auto;
   margin-inline: auto;
 }
@@ -2026,14 +2026,20 @@ h1 {
   fill: var(--surface-muted);
 }
 
+.distance-figure-key.is-other {
+  fill: var(--surface);
+  stroke: var(--text-muted);
+  stroke-dasharray: 1 2;
+}
+
 .distance-figure-legend {
   fill: var(--text-muted);
-  font-size: 12px;
+  font-size: 15px;
 }
 
 .distance-figure-order {
   fill: var(--accent-strong);
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .distance-figure-arrow {
