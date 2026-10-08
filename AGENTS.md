@@ -90,8 +90,8 @@ Claude Code は `CLAUDE.md` が無いプロジェクトでは `AGENTS.md` を読
 - **実装役にはCIを待たせない。** 待つと時間がかかる。代わりに、実装役の報告には「headのCIを見たか・見た結果」を必ず書かせる。
   リードはレビューに出す前に、headのshaのcheck run（`CONTRIBUTING.md`「ブラウザe2e」）を確かめる。落ちていれば実装役に戻す
 - **リードはマージの直前に、今の `main` と合わせた状態で `npm run typecheck`・`npm test`・`npm run build` を回す。**
-  headのCIが緑でも、PRを開いた後に `main` が進んでいれば、PRのheadを今の `main` に合わせた一時の作業ツリー（`.claude/worktrees/` の下。`node_modules` は本体のものを使ってよい）で回し、通ってからマージする。
-  落ちたら実装役に `main` をマージさせる（rebaseはしない）。e2eは見ない。条件は `CONTRIBUTING.md`「マージ」
+  PRのheadが今の `origin/main` を祖先に含まない時は、CIが緑でも一時の作業ツリー（`.claude/worktrees/` の下）で回し、通ってからマージする。
+  落ちたら実装役に `main` をマージさせる（rebaseはしない）。e2eは見ない。判定と手順は `CONTRIBUTING.md`「マージ」
 - **サブエージェントが規約から外れた動きをしたら、禁止を足す前にtranscriptで理由を確かめる。**
   理由が規約の欠落や食い違いなら、規約を直す。外れた動きの方が良ければ、規約の方を変える
 - 「マージ」の条件（`CONTRIBUTING.md`）のうち、レビューの有無は機械で確かめられない。**区分で決まる側のreviewerまたはreviewer-strictが現在のheadを承認した記録が無ければ、リードはマージしない**。
