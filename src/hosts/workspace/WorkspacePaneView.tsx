@@ -1,12 +1,14 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import type { WorkspacePane } from '#engine/workspace.ts';
 import { bigramFlowDefinition } from '#analyzers/bigram-flow/extract.ts';
+import { fingerDistanceDefinition } from '#analyzers/finger-distance/extract.ts';
 import { comparisonDefinition } from '#analyzers/comparison/extract.ts';
 import { nSensitivityDefinition } from '#analyzers/n-sensitivity/extract.ts';
 import { ErrorDetails } from '#hosts/shared/ErrorDetails.tsx';
 import { describeErrorDetail } from '#hosts/shared/pane-status.ts';
 import { findWorkspaceAnalyzer, isBlankPane } from './analyzer-registry.ts';
 import { BigramFlowWorkspacePane } from './panes/BigramFlowWorkspacePane.tsx';
+import { FingerDistanceWorkspacePane } from './panes/FingerDistanceWorkspacePane.tsx';
 import { BlankWorkspacePane } from './panes/BlankWorkspacePane.tsx';
 import { ComparisonWorkspacePane } from './panes/ComparisonWorkspacePane.tsx';
 import { NSensitivityWorkspacePane } from './panes/NSensitivityWorkspacePane.tsx';
@@ -48,6 +50,8 @@ function AnalyzerPane({ pane, runtime }: { readonly pane: WorkspacePane; readonl
   switch (pane.analyzerId) {
     case bigramFlowDefinition.id:
       return <BigramFlowWorkspacePane pane={pane} runtime={runtime} />;
+    case fingerDistanceDefinition.id:
+      return <FingerDistanceWorkspacePane pane={pane} runtime={runtime} />;
     case comparisonDefinition.id:
       return <ComparisonWorkspacePane pane={pane} runtime={runtime} />;
     case nSensitivityDefinition.id:
