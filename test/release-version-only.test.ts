@@ -12,7 +12,7 @@ let dir = '';
 const run = (cmd: string, ...args: string[]) => execFileSync(cmd, args, { cwd: dir, encoding: 'utf8' }).trim();
 const git = (...args: string[]) => run('git', ...args);
 
-// 実物の package.json と package-lock.json を置いた作業用リポジトリで、変更を1コミットにして検査を回す
+// 実物のpackage.jsonとpackage-lock.jsonを置いた作業用リポジトリで、変更を1コミットにして検査を回す
 function verdict(edit: () => void, version: () => string): { ok: boolean; out: string } {
   git('checkout', '-q', '-B', 'work', 'base');
   edit();
@@ -27,7 +27,7 @@ const editJson = (file: string, f: (j: any) => void) => {
   writeFileSync(join(dir, file), JSON.stringify(j, null, 2) + '\n');
 };
 
-// package.json と package-lock.json の version（ルートと packages[""]）を揃えて書き換える
+// package.jsonとpackage-lock.jsonのversion（ルートとpackages[""]）を揃えて書き換える
 function setVersion(version: string) {
   editJson('package.json', (j) => (j.version = version));
   editJson('package-lock.json', (j) => {
@@ -48,7 +48,7 @@ describe('release-version-only', () => {
   });
   after(() => rmSync(dir, { recursive: true, force: true }));
 
-  test('npm version patch の差分（package.json 1行、package-lock.json 2行）は通る', () => {
+  test('npm version patchの差分（package.json 1行、package-lock.json 2行）は通る', () => {
     let next = '';
     const r = verdict(
       () => {
@@ -62,7 +62,7 @@ describe('release-version-only', () => {
     assert.equal(git('diff', '-U0', 'base', 'HEAD', '--', 'package-lock.json').match(/^\+ .*"version"/gm)?.length, 2);
   });
 
-  test('npm version が出した版番号と違う版番号を期待すれば通らない', () => {
+  test('npm versionが出した版番号と違う版番号を期待すれば通らない', () => {
     const r = verdict(
       () => {
         run('npm', 'version', 'patch', '--no-git-tag-version');
@@ -72,7 +72,7 @@ describe('release-version-only', () => {
     assert.equal(r.ok, false);
   });
 
-  test('依存関係を足した差分は、version の行が正しくても通らない', () => {
+  test('依存関係を足した差分は、versionの行が正しくても通らない', () => {
     const r = verdict(
       () => {
         setVersion('9.9.9');
@@ -86,7 +86,7 @@ describe('release-version-only', () => {
     assert.match(r.out, /package\.json: \/dependencies\/leftpad/);
   });
 
-  test('scripts の行を変えた差分は通らない', () => {
+  test('scriptsの行を変えた差分は通らない', () => {
     const r = verdict(
       () => {
         setVersion('9.9.9');
@@ -100,7 +100,7 @@ describe('release-version-only', () => {
     assert.match(r.out, /package\.json: \/scripts\/test/);
   });
 
-  test('package-lock.json の依存の version 行を変えた差分は、version の行でも通らない', () => {
+  test('package-lock.jsonの依存のversion行を変えた差分は、versionの行でも通らない', () => {
     const r = verdict(
       () => {
         setVersion('9.9.9');
@@ -115,7 +115,7 @@ describe('release-version-only', () => {
     assert.match(r.out, /package-lock\.json: \/packages\/node_modules\//);
   });
 
-  test('package-lock.json の packages[""] の version が上がっていなければ通らない', () => {
+  test('package-lock.jsonのpackages[""] のversionが上がっていなければ通らない', () => {
     const r = verdict(
       () => {
         editJson('package.json', (j) => (j.version = '9.9.9'));

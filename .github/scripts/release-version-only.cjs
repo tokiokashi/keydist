@@ -1,15 +1,15 @@
 #!/usr/bin/env node
-// リリースPRの差分が version の変更だけかを確かめる。release-plan.sh が呼ぶ。
+// リリースPRの差分がversionの変更だけかを確かめる。release-plan.shが呼ぶ。
 //
 // 使い方: release-version-only.cjs <fork> <head> <version>
-//   package.json の version と、package-lock.json の version（ルートと packages[""]）を
-//   <version> と確かめた上で取り除き、fork と head の両ファイルが一致することを確かめる。
-//   行の形ではなく解析した JSON で比べるので、依存関係の version 行や scripts の変更は
-//   version の行に見えても通らない。外れた箇所は標準出力へ1行ずつ書き、1で終わる。
+//   package.jsonのversionと、package-lock.jsonのversion（ルートとpackages[""]）を
+//   <version> と確かめた上で取り除き、forkとheadの両ファイルが一致することを確かめる。
+//   行の形ではなく解析したJSONで比べるので、依存関係のversion行やscriptsの変更は
+//   versionの行に見えても通らない。外れた箇所は標準出力へ1行ずつ書き、1で終わる。
 'use strict';
 const { execFileSync } = require('node:child_process');
 
-// 値の違いを JSON のパスで列挙する
+// 値の違いをJSONのパスで列挙する
 function diffPaths(a, b, path = '') {
   if (a === b) return [];
   const isObj = (v) => v !== null && typeof v === 'object';
@@ -18,7 +18,7 @@ function diffPaths(a, b, path = '') {
   return [...keys].flatMap((k) => diffPaths(a[k], b[k], `${path}/${k}`));
 }
 
-// version を置く位置。ここだけが変わってよい
+// versionを置く位置。ここだけが変わってよい
 const versionPaths = {
   'package.json': [['version']],
   'package-lock.json': [['version'], ['packages', '', 'version']],
@@ -42,7 +42,7 @@ function check(readAt, version) {
       const b = parent(before, p);
       if (b && typeof b === 'object') delete b[last];
     }
-    for (const d of diffPaths(before, after)) problems.push(`${file}: ${d} が version 以外で変わっている`);
+    for (const d of diffPaths(before, after)) problems.push(`${file}: ${d} がversion以外で変わっている`);
   }
   return problems;
 }
