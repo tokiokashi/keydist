@@ -1,11 +1,11 @@
 // サブエージェントのtranscript（JSONL）から、入力側の使用量と金額を集計する純粋な関数。
-// ファイルの読み込みは agent-usage.ts が受け持つ。
+// ファイルの読み込みは agent-usage.tsが受け持つ。
 
 /** 100万tokensあたりの米ドル。 */
 export interface Price {
   input: number;
   cacheRead: number;
-  /** 1リクエストのプロンプト（入力+書き込み+読み出し）がこの値を超えたら、そのリクエストの単価を全部 multiplier 倍にする。 */
+  /** 1リクエストのプロンプト（入力+書き込み+読み出し）がこの値を超えたら、そのリクエストの単価を全部multiplier倍にする。 */
   longPrompt?: { threshold: number; multiplier: number };
 }
 
@@ -137,7 +137,7 @@ export function summarize(
   };
 }
 
-/** 1000以上は 78K / 2.63M の形。1000未満はそのまま。 */
+/** 1000以上は78Kや2.63Mの形。1000未満はそのまま。 */
 export function formatTokens(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
   if (n >= 1_000) return `${Math.round(n / 1_000)}K`;

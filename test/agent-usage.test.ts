@@ -29,7 +29,7 @@ test('キャッシュ書き込みは5分と1時間を分け、内訳が無けれ
   );
   assert.deepEqual([a!.write5m, a!.write1h], [100, 200]);
   assert.deepEqual([b!.write5m, b!.write1h], [50, 0]);
-  // 100*2*1.25 + 200*2*2 = 1050 を100万で割った値
+  // 100*2*1.25と200*2*2の和（1050）を100万で割った値
   assert.ok(Math.abs(summarize([a!]).costUsd! - 0.00105) < 1e-12);
 });
 
