@@ -17,7 +17,7 @@
 #   リリースPRを作った時点の main の状態に固定し、マージまでの間に main へ入った別の作業を公開物に混ぜないため
 # - タグ v<X.Y.Z> が既にあり、同じコミットを指していれば打たずに公開だけする（再実行の冪等性）。
 #   別のコミットを指していれば失敗させる。同じ版番号で中身の違う公開を作らない
-# - リリースPRは main から分かれた後の1コミットだけで、package.json と package-lock.json のversionしか変えないこと
+# - リリースPRはmainから分かれた後の1コミットだけで、package.jsonとpackage-lock.jsonのversionしか変えないこと
 #   （versionの位置はrelease-version-only.cjsが解析したJSONで確かめる。依存関係やscriptsの変更は公開しない）
 # - version を変えたのが push の先頭以外のコミットなら、そのコミットと PR を名指しして失敗させる
 # - version が下がった場合は公開しない（警告だけ）。初回リリースの準備で 0.0.0 に戻した時がこれにあたる
