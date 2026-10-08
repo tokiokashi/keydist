@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
-import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
+import { ALL_FINGERS, PHYSICAL_SHAPES, type Finger, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { AnalysisTarget, Setup } from '#input/setup/index.ts';
 import { EMPTY_SETTINGS_OVERRIDES } from '#engine/settings-items.ts';
 import { resolveEngineInput } from '#engine/resolved-input.ts';
 import { createEngineCache } from '#engine/cache.ts';
+import { computeFingerDistanceExtraction } from '#analyzers/finger-distance/extract.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { findOptionsKeyDisciplineViolations, findViewOptionsExtractionViolations } from '#analyzers/options.ts';
 import { computeComparisonExtraction, computeComparisonRowValues } from './extract.ts';
@@ -60,7 +61,8 @@ test('computeComparisonRowValues: interpretation/metrics.tsを同条件で直接
   const adjacentMean = directMetrics.adjacent.reduce((sum, item) => sum + item.meanExcess, 0) / directMetrics.adjacent.length;
   const adjacentStdDev = directMetrics.adjacent.reduce((sum, item) => sum + item.stdDev, 0) / directMetrics.adjacent.length;
 
-  assert.deepEqual(row, {
+  const { rightHandDistanceShare, rightHandPressShare, ...existing } = row;
+  assert.deepEqual(existing, {
     actions: directMetrics.actions,
     totalUnits: directMetrics.totalUnits,
     meanPerStroke: directMetrics.meanPerStroke,
@@ -75,6 +77,66 @@ test('computeComparisonRowValues: interpretation/metrics.tsを同条件で直接
     adjacentMean,
     adjacentStdDev,
   });
+  assert.ok(rightHandDistanceShare > 0 && rightHandDistanceShare < 100);
+  assert.ok(rightHandPressShare > 0 && rightHandPressShare < 100);
+});
+
+test('右手の割合: 指ごとの距離のAnalyzerの右手の小計と同じ値（%）になる', () => {
+  for (const text of ['hello world', 'the quick brown fox jumps over the lazy dog', 'asdf']) {
+    const setup: Setup = { id: 'setup-a', number: 1, layoutId: 'qwerty', shapeId: 'row-staggered' };
+    const resolution = resolveEngineInput({
+      target: { kind: 'setup', setupId: setup.id },
+      setups: new Map([[setup.id, setup]]),
+      catalog: CATALOG,
+      userLayouts: new Map(),
+      overrides: EMPTY_SETTINGS_OVERRIDES,
+      text,
+      language: 'en',
+    });
+    assert.ok(resolution.ok);
+    if (!resolution.ok) return;
+    const { metrics } = createEngineCache().getInterpretation(resolution.input);
+    const right = computeFingerDistanceExtraction(metrics).hands.right;
+    const row = computeComparisonRowValues(metrics);
+    assert.ok(Math.abs(row.rightHandDistanceShare - right.distanceShare * 100) < 1e-9, text);
+    assert.ok(Math.abs(row.rightHandPressShare - right.pressShare * 100) < 1e-9, text);
+  }
+});
+
+test('右手の割合: 右手だけ・左手だけ・0の入力で、親指を右手に数え、0除算しない', () => {
+  const zero = Object.fromEntries(ALL_FINGERS.map((finger) => [finger, 0])) as Record<Finger, number>;
+  const setup: Setup = { id: 'setup-a', number: 1, layoutId: 'qwerty', shapeId: 'row-staggered' };
+  const resolution = resolveEngineInput({
+    target: { kind: 'setup', setupId: setup.id },
+    setups: new Map([[setup.id, setup]]),
+    catalog: CATALOG,
+    userLayouts: new Map(),
+    overrides: EMPTY_SETTINGS_OVERRIDES,
+    text: 'a',
+    language: 'en',
+  });
+  assert.ok(resolution.ok);
+  if (!resolution.ok) return;
+  const base = createEngineCache().getInterpretation(resolution.input).metrics;
+  const only = (fingers: readonly Finger[]) => Object.assign({ ...zero }, ...fingers.map((finger) => ({ [finger]: 1 })));
+  const row = (perFinger: Record<Finger, number>, perFingerPresses: Record<Finger, number>) =>
+    computeComparisonRowValues({ ...base, perFinger, perFingerPresses });
+
+  const none = row(zero, zero);
+  assert.equal(none.rightHandDistanceShare, 0);
+  assert.equal(none.rightHandPressShare, 0);
+
+  const thumb = row(only(['RT']), only(['RT']));
+  assert.equal(thumb.rightHandDistanceShare, 100);
+  assert.equal(thumb.rightHandPressShare, 100);
+
+  const left = row(only(['LT', 'LI']), only(['LP']));
+  assert.equal(left.rightHandDistanceShare, 0);
+  assert.equal(left.rightHandPressShare, 0);
+
+  const mixed = row(only(['LI', 'RI', 'RM']), only(['LI', 'RI', 'RT', 'LM']));
+  assert.ok(Math.abs(mixed.rightHandDistanceShare - (2 / 3) * 100) < 1e-9);
+  assert.equal(mixed.rightHandPressShare, 50);
 });
 
 test('computeComparisonExtraction: 解決できたメンバーはok行、失敗はfailed行になる（行を消さない）', () => {

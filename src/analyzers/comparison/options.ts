@@ -8,7 +8,7 @@ export { COMPARISON_COLUMN_IDS, COMPARISON_UNIT_NOTE, type ComparisonColumnId } 
  * 比較表Analyzerの列。
  *
  * 旧実装（`src/legacy/analyzer-metrics-content.tsx`の`compareMetricValues`・
- * `results-view.ts`の`COMPARE_HEADERS`）が並べていた13列と同じ範囲・同じ式にする
+ * `results-view.ts`の`COMPARE_HEADERS`）が並べていた13列に、右手の割合の2列を足した範囲にする（13列は同じ式）
  * （AGENTS.md「作り直しの範囲は新しい構成に残るかで決める」: 列の中身・式そのものは
  * `interpretation/metrics.ts`の`Metrics`から機械的に読める値で、旧実装固有の事情に
  * 依存しないため、そのまま引き継ぐ）。列の値は`interpretation/metrics.ts`の
@@ -94,6 +94,14 @@ export const COMPARISON_COLUMNS: Readonly<Record<ComparisonColumnId, ComparisonC
     ...COMPARISON_COLUMN_TEXT.adjacentStdDev,
     format: fixed(3),
   },
+  rightHandDistanceShare: {
+    ...COMPARISON_COLUMN_TEXT.rightHandDistanceShare,
+    format: percent,
+  },
+  rightHandPressShare: {
+    ...COMPARISON_COLUMN_TEXT.rightHandPressShare,
+    format: percent,
+  },
 } as const;
 
 function isComparisonColumnId(value: string): value is ComparisonColumnId {
@@ -103,11 +111,11 @@ function isComparisonColumnId(value: string): value is ComparisonColumnId {
 /**
  * 比較表の解析設定。
  *
- * **どれも`affects: 'view'`にする。** 比較表が並べる数値（`Metrics`由来の13列）は
+ * **どれも`affects: 'view'`にする。** 比較表が並べる数値（`Metrics`由来の列）は
  * `SetAnalyzerExtractContext.members`から機械的に決まり、この解析設定のどの項目を
  * 変えても値そのものは変わらない（列の表示/非表示・基準比の表示可否はどちらも
  * 「どう見せるか」で、「何を計算するか」ではない）。「解析設定は抽出に効く
- * ものと見た目だけのものを宣言する」の帰結として、抽出結果（行の集合と各行の13列の
+ * ものと見た目だけのものを宣言する」の帰結として、抽出結果（行の集合と各行の
  * 生値）はAnalyzerの解析設定を変えても再計算されない。
  *
  * **基準（baseline）対象はここに置かない。** 集合を見るAnalyzerはSetupの集合を対象にし、集合はそのページ自身が
