@@ -26,7 +26,7 @@ keydist の作業単位を1つ実装する。**自分の変更を自分で承認
   （コピーは symlink を運ばず `node_modules/.bin` が無い。放置すると親の本体側の道具で動いてしまう。0.5 秒で `.bin` のリンクだけ作り直し、`postinstall` は走らない。`npm ci` は `.bin` も作り直すので不要）。コピーが無ければ（`.worktreeinclude` が効かなかった場合）`npm ci`
 - スクリーンショットや測定の出力、ログなど追跡しないファイルは、worktreeの中に置かず、セッションのscratchpadに置く（未追跡ファイルがあると `git worktree remove` が止まる）
 - 検証用の一時worktreeは `.claude/worktrees/` の下に作り、終わったら消す（`AGENTS.md`「エージェントの役割」）
-- `git config core.hooksPath` は打たない。設定は本体と共有されていて、本体のチェックアウトで設定済み（`AGENTS.md`「リモートと作業開始」）
+- `git config core.hooksPath` は打たない
 - 作業ブランチは `<type>/<短い説明>` で切り直す（`git checkout -b feat/...`）。
   worktree が用意した `worktree-*` ブランチのまま push しない
 - push は自分のブランチだけ。`main` へ push しない。既存ブランチの rebase・強制 push もしない

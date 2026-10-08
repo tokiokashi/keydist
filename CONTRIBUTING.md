@@ -91,11 +91,9 @@ git config core.hooksPath .githooks
 ```
 
 設定は `.git/config` に入り、worktreeと共有される。worktreeの中では打たない。
-値は相対パスのままにし、絶対パスに書き換えない。gitのドキュメントは、相対パスを
-「hooksを走らせるディレクトリからの相対」と定めている（`core.hooksPath`）。
-hooksを走らせるのはworking treeの最上位である（`githooks`「DESCRIPTION」）。
-相対パスなら各worktreeが自分のブランチの `.githooks` を使う。
-絶対パスにすると全worktreeが本体の `.githooks` を使い、本体が古いコミットにいると古いhooksで検査する。
+サブエージェント用のworktreeを作る時に、値が絶対パス（本体の `.githooks`）へ書き換わる。値は直さない。
+その結果、hooksは本体のチェックアウトにある版が使われる。本体が古いコミットにいると古いhooksで検査するので、
+リードは単位を始める前に本体を `origin/main` に保つ。
 
 検査するのは次の4点。`Merge` / `Revert` / `fixup!` / `squash!` で始まるメッセージは
 gitが形を決めるので素通しする。
