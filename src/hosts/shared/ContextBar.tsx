@@ -168,10 +168,10 @@ function useShareCopy(query: ContextBarShare['query']): { readonly state: ShareS
     // 安全でない接続ではclipboardが無い。失敗は黙らずに知らせる。
     const clipboard = navigator.clipboard as Clipboard | undefined;
     if (clipboard === undefined) {
-      show('failed', notices);
+      show('failed', []);
       return;
     }
-    clipboard.writeText(url).then(() => show('copied', notices), () => show('failed', notices));
+    clipboard.writeText(url).then(() => show('copied', notices), () => show('failed', []));
   };
 
   return { state, copy };
