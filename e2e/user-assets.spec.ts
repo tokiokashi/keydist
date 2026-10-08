@@ -68,7 +68,7 @@ test('配列を削除すると保存先から消え、その配列を対象に�
 
   // 対象にしていた画面へ移ると、配列が見つからない旨が出る
   await page.locator('#app-sidebar').getByRole('link', { name: 'Bigram Flow', exact: true }).click();
-  await expect(page.locator('.pane-frame')).toContainText('配列が見つからない', { timeout: 10_000 });
+  await expect(page.locator('.pane-frame')).toContainText('配列が見つかりません', { timeout: 10_000 });
 });
 
 test('削除した直後は元に戻すで一覧と保存先が戻り、やり直すで再び消える', async ({ page }) => {
@@ -108,7 +108,7 @@ test('削除の確認: 文に影響と元に戻せる範囲が出て、キャン
   await layouts.getByRole('button', { name: '「自作A」を削除' }).click();
   const dialog = page.getByRole('dialog', { name: '「自作A」を削除しますか' });
   await expect(dialog).toContainText('この画面にいる間だけ');
-  await expect(dialog).toContainText('配列が見つからない');
+  await expect(dialog).toContainText('配列が見つかりません');
   await expect(dialog.getByRole('button', { name: 'キャンセル' })).toBeFocused();
   await dialog.getByRole('button', { name: 'キャンセル' }).click();
   await expect(dialog).toHaveCount(0);

@@ -344,7 +344,7 @@ test('解決に失敗したメンバーにも意味のある名前が付く（L2
   const failedRow = table.locator('tbody tr[data-comparison-row="failed"]');
   await expect(failedRow).toContainText('削除されたSetup');
   // 理由は1つの短い文で、前置きを重ねない・idを出さない。
-  await expect(failedRow.locator('td')).toHaveText('Setupが削除された');
+  await expect(failedRow.locator('td')).toHaveText('Setupが削除されました');
   await expect(failedRow).not.toContainText(/deleted-setup|解決できない/);
 });
 

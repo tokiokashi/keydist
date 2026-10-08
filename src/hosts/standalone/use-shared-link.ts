@@ -56,7 +56,7 @@ export interface SharedLinkResult {
  * 残りを取り込み、値全体を捨てた時は今の値が残る。どちらも「取り込まなかった」は正しい。
  */
 export function urlOptionsNotices(diagnostics: readonly CodecDiagnostic[]): readonly string[] {
-  return diagnostics.length === 0 ? [] : [`共有リンクの解析設定のうち、読み取れない値は取り込まなかった（${diagnostics.length}件）`];
+  return diagnostics.length === 0 ? [] : [`共有リンクの解析設定のうち、読み取れない値は取り込みませんでした（${diagnostics.length}件）`];
 }
 
 /**

@@ -136,7 +136,7 @@ export function parseOverrides(text: string): { overrides: Record<string, string
     if (!line || line.startsWith('#')) return;
     const equal = line.indexOf('=');
     if (equal < 1) {
-      errors.push(`${i + 1} 行目: 「かな = 綴り」の形で書く`);
+      errors.push(`${i + 1} 行目: 「かな = 綴り」の形で書いてください`);
       return;
     }
     const kana = line.slice(0, equal).trim();

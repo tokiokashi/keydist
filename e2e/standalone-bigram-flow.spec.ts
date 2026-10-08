@@ -505,7 +505,7 @@ test('URLパラメータの壊れた値は既定値へ戻し、診断をペイ�
   // 共有リンクの取り込みは、保存済みの読み直し（既定値へ戻した）とは別の文で伝える。
   const notice = page.locator('[data-pane-link-notice="true"]');
   await expect(notice).toBeVisible();
-  await expect(notice).toContainText('取り込まなかった');
+  await expect(notice).toContainText('取り込みませんでした');
   await expect(page.locator('[data-pane-settings-diagnostics="true"]:not([data-pane-link-notice])')).toHaveCount(0);
 
   // 既定値のまま（壊れたURLパラメータは使われない）。

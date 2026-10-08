@@ -243,7 +243,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
       <PaneMenu
         paneName={label}
         label={`${label}の編集先: ${text}`}
-        title={scope === 'layout' ? `「${layout?.name ?? 'この配列'}」の値を編集している` : scope === 'workspace' ? 'このWorkspaceの値を編集している' : '全体の値を編集している'}
+        title={scope === 'layout' ? `「${layout?.name ?? 'この配列'}」の値を編集しています` : scope === 'workspace' ? 'このWorkspaceの値を編集しています' : '全体の値を編集しています'}
         caption={`編集中: ${text}`}
         align="start"
         className="condition-scope-menu"
@@ -278,7 +278,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
             {scopeMenu(id, summary?.label ?? id, notApplicable)}
           </>,
         )}
-        {notApplicable ? <p className="condition-row-flag">この配列・Setupでは効かない</p> : null}
+        {notApplicable ? <p className="condition-row-flag">この配列・Setupでは効きません</p> : null}
         {notice === undefined ? null : <p className="condition-row-notice" data-condition-notice="true">{notice}</p>}
         {diagnostics.map((text, index) => <p key={index} className="condition-row-diagnostic">{text}</p>)}
       </div>

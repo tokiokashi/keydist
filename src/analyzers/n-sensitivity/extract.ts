@@ -198,7 +198,7 @@ const FIXTURE_MEMBERS: readonly AnalyzerSetMember[] = [
 ];
 
 const FIXTURE_FAILURES: readonly AnalyzerSetMemberFailure[] = [
-  { target: FIXTURE_TARGET_MISSING, kind: 'reference', message: '配列が見つからない（削除された可能性がある）' },
+  { target: FIXTURE_TARGET_MISSING, kind: 'reference', message: '配列が見つかりません（削除された可能性があります）' },
 ];
 
 /**

@@ -423,7 +423,7 @@ export function TargetSelection({
                   <button type="button" onClick={() => onChange([])} disabled={selected.length === 0}>すべて外す</button>
                 </>
               ) : (
-                <span className="target-selection-count">配列かSetupを1つ選ぶ</span>
+                <span className="target-selection-count">配列かSetupを1つ選んでください</span>
               )}
               <button type="button" onClick={() => close(true)}>閉じる</button>
             </div>

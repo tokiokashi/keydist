@@ -62,7 +62,7 @@ export function buildUserCatalog(
     }
     const errors = validate(definition.rows);
     if (errors.length > 0) {
-      diagnostics.push({ path, message: `配列として組めないため捨てた（${errors.join('、')}）` });
+      diagnostics.push({ path, message: `配列として組めないため捨てました（${errors.join('、')}）` });
       return;
     }
     let layout: Layout;
@@ -70,14 +70,14 @@ export function buildUserCatalog(
       layout = toLayout(definition);
     } catch (cause) {
       const reason = cause instanceof Error ? cause.message : String(cause);
-      diagnostics.push({ path, message: `配列として組めないため捨てた（${reason}）` });
+      diagnostics.push({ path, message: `配列として組めないため捨てました（${reason}）` });
       return;
     }
     if (definition.direct !== true) {
       if (isBuiltin(definition.romaji) || ruleIds.has(definition.romaji)) {
         layout = { ...layout, recommendedRomajiRuleId: definition.romaji };
       } else {
-        diagnostics.push({ path: `${path}.romaji`, message: `ローマ字規則「${definition.romaji}」が見つからないため、全体の値の規則で打つ` });
+        diagnostics.push({ path: `${path}.romaji`, message: `ローマ字規則「${definition.romaji}」が見つからないため、全体の値の規則で打ちます` });
       }
     }
     definitions.set(definition.id, definition);

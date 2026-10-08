@@ -73,10 +73,10 @@ function rowFor(rows: readonly ComparisonRow[], targetKey: string): ComparisonRo
 
 function failureLabel(kind: ComparisonFailedRow['failureKind']): string {
   switch (kind) {
-    case 'reference': return '配列・物理配列が見つからない（削除された可能性がある）';
-    case 'incompatible-text': return 'このテキストには使えない';
-    case 'geometry': return 'キーボードを組み立てられない';
-    case 'target-missing': return '削除された、または見つからない';
+    case 'reference': return '配列・物理配列が見つかりません（削除された可能性があります）';
+    case 'incompatible-text': return 'このテキストには使えません';
+    case 'geometry': return 'キーボードを組み立てられません';
+    case 'target-missing': return '削除されたか、見つかりません';
   }
 }
 

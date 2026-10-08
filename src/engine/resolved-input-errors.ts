@@ -17,8 +17,8 @@ import type { SetupReferenceError } from '#input/setup/index.ts';
 // どの対象の失敗かは、行・見出しに並ぶ対象の名前で分かる。
 function describeSetupReferenceError(error: SetupReferenceError): string {
   switch (error.kind) {
-    case 'layout-missing': return '配列が見つからない（削除された可能性がある）';
-    case 'shape-missing': return '物理配列が見つからない（削除された可能性がある）';
+    case 'layout-missing': return '配列が見つかりません（削除された可能性があります）';
+    case 'shape-missing': return '物理配列が見つかりません（削除された可能性があります）';
   }
 }
 
@@ -32,6 +32,6 @@ export function describeResolvedInputError(error: ResolvedInputError): string {
       // 例外の文（`error.message`）は定義の内部を指す開発者向けの文なので出さない。
       return '物理配列と指の割当が噛み合わず、キーボードを組み立てられません';
     case 'target-missing':
-      return error.target.kind === 'setup' ? 'Setupが削除された' : '配列が見つからない（削除された可能性がある）';
+      return error.target.kind === 'setup' ? 'Setupが削除されました' : '配列が見つかりません（削除された可能性があります）';
   }
 }

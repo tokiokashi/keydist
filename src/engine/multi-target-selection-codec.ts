@@ -50,7 +50,7 @@ function decodeSetParts(payload: unknown, path: string, diagnostics: CodecDiagno
     if (decoded === undefined) return;
     const key = analysisTargetKey(decoded);
     if (seen.has(key)) {
-      diagnostics.push({ path: `${path}.targets[${index}]`, message: `重複した対象「${key}」を1つに畳んだ` });
+      diagnostics.push({ path: `${path}.targets[${index}]`, message: `重複した対象「${key}」を1つに畳みました` });
       return;
     }
     seen.add(key);

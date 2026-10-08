@@ -158,7 +158,7 @@ test('一部の値だけ読めない時は、読める分を読み込み、項�
   const row = result(section);
   await expect(row).toContainText('1件のプリセットを読み込みました');
   await expect(row).toContainText('2件の値は読み込めませんでした（同指連続のホーム復帰距離、この版に無い項目 1件）');
-  await expect(row).toContainText('「自分用メモ」はこの端末に無い指の割当を使っています。流し込むと既定に戻ります');
+  await expect(row).toContainText('「自分用メモ」はこの端末にない指の割当を使っています。流し込むと既定に戻ります');
   await expect(row).not.toContainText('futureItem');
   const details = section.locator('[data-pane-error-details]');
   await details.locator('summary').click();
@@ -175,7 +175,7 @@ test('参照先の注記は、番号が付いた追加分の名前を指す（�
     presets: [{ id: 'x', name: '比較用（N=5）', values: { fingerAssignmentId: 'from-elsewhere' } }],
   };
   await importText(section, JSON.stringify(file));
-  await expect(result(section)).toContainText('「比較用（N=5） 2」はこの端末に無い指の割当を使っています');
+  await expect(result(section)).toContainText('「比較用（N=5） 2」はこの端末にない指の割当を使っています');
   await expect(result(section)).not.toContainText('「比較用（N=5）」');
 });
 

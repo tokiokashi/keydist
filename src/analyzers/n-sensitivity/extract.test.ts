@@ -129,7 +129,7 @@ test('computeNSensitivityExtraction: 解決できたメンバーはok系列、�
       metrics: interpretationResult.metrics,
       requestTrace: { requestTrace: () => traceResult.trace },
     }],
-    [{ target: targetDeleted, kind: 'reference', message: '配列が見つからない（削除された可能性がある）' }],
+    [{ target: targetDeleted, kind: 'reference', message: '配列が見つかりません（削除された可能性があります）' }],
   );
 
   assert.equal(extracted.series.length, 2);

@@ -143,7 +143,7 @@ test('上限: 件数が上限を超えたら丸ごと断る。上限ちょうど
   assert.equal(exact.presets.length, PRESET_FILE_MAX_PRESETS);
 });
 
-test('参照先: この端末に無い指の割当・ローマ字規則・物理配列は、値を残して注記する', () => {
+test('参照先: この端末にない指の割当・ローマ字規則・物理配列は、値を残して注記する', () => {
   const result = parsePresetFile(
     fileText({
       version: 1,
@@ -160,9 +160,9 @@ test('参照先: この端末に無い指の割当・ローマ字規則・物理
   assert.equal((result.presets[0]!.values as Record<string, unknown>).fingerAssignmentId, 'custom-1');
   const names = result.presets.map((preset) => preset.name);
   const message = importResultMessage(result.message, result.missingReferences, names);
-  assert.match(message, /「自分用メモ」はこの端末に無い指の割当を使っています。流し込むと既定に戻ります/);
-  assert.match(message, /「比較用（N=5）」はこの端末に無いローマ字規則を使っています/);
-  assert.match(message, /「比較用（N=5）」はこの端末に無い物理配列を使っています/);
+  assert.match(message, /「自分用メモ」はこの端末にない指の割当を使っています。流し込むと既定に戻ります/);
+  assert.match(message, /「比較用（N=5）」はこの端末にないローマ字規則を使っています/);
+  assert.match(message, /「比較用（N=5）」はこの端末にない物理配列を使っています/);
   assert.doesNotMatch(message, /手元にあるだけ/);
 });
 
@@ -175,7 +175,7 @@ test('参照先: 手元に同名のプリセットがあっても、注記は番
   const library: PresetLibrary<SettingsValueMap> = { presets: [{ id: 'own', name: '比較用（N=5）', values: {} }] };
   const added = appendImportedPresets(library, result.presets, () => 'new').presets.slice(library.presets.length);
   const message = importResultMessage(result.message, result.missingReferences, added.map((preset) => preset.name));
-  assert.match(message, /「比較用（N=5） 2」はこの端末に無い指の割当/);
+  assert.match(message, /「比較用（N=5） 2」はこの端末にない指の割当/);
   assert.doesNotMatch(message, /「比較用（N=5）」/);
 });
 

@@ -168,7 +168,7 @@ export function importResultMessage(
 ): string {
   const notes = missing.map(({ noun, indices }) => {
     const names = indices.map((index) => `「${addedNames[index] ?? ''}」`).join('');
-    return `${names}はこの端末に無い${noun}を使っています。流し込むと既定に戻ります`;
+    return `${names}はこの端末にない${noun}を使っています。流し込むと既定に戻ります`;
   });
   return [message, ...notes].join('。');
 }

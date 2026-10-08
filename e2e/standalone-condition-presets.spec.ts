@@ -99,7 +99,7 @@ test('プリセット: 流し込むと全体の値が置き換わり、結果の
   const windowRow = modal.locator('[data-item="windowSize"]');
   await expect(windowRow.locator('output')).toHaveText('5');
   await expect(windowRow).toContainText('全体で変更');
-  await expect(section.locator('[data-preset-result]')).toContainText('「厳しめ」の値にした（2項目が変わった）');
+  await expect(section.locator('[data-preset-result]')).toContainText('「厳しめ」の値にしました（2項目が変わりました）');
   await expect(rowOf(section, '厳しめ')).toContainText('今の値と同じ');
 
   await section.getByRole('button', { name: '元に戻す' }).click();

@@ -82,7 +82,7 @@ interface PendingDelete {
 /** 削除の確認の文。元に戻すが使える範囲と、削除が他へ及ぼす影響を書く。 */
 function confirmText(pending: PendingDelete): readonly string[] {
   const lines = pending.kind === 'layout'
-    ? ['この配列を対象にしているペインは、「配列が見つからない」の表示になります。']
+    ? ['この配列を対象にしているペインは、「配列が見つかりません」の表示になります。']
     : ['この規則を推奨にしている配列は、全体の値の規則で打つようになります。'];
   lines.push('「元に戻す」はこの画面にいる間だけ使えます。別の画面へ移ったり開き直したりすると、戻せません。');
   return lines;

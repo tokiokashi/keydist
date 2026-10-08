@@ -56,13 +56,13 @@ test('changedGlobalItemCount: 全体以外のレベルは数えない', () => {
 });
 
 test('applyResultText: 変わった項目数を出し、元に戻せる', () => {
-  assert.deepEqual(applyResultText('厳しめ', 4, []), { text: '「厳しめ」の値にした（4項目が変わった）', undoable: true });
+  assert.deepEqual(applyResultText('厳しめ', 4, []), { text: '「厳しめ」の値にしました（4項目が変わりました）', undoable: true });
 });
 
 test('applyResultText: 変わる項目が無ければ元に戻せない', () => {
   const result = applyResultText('厳しめ', 0, []);
   assert.equal(result.undoable, false);
-  assert.match(result.text, /変わった項目は無い/);
+  assert.match(result.text, /変わった項目はありませんでした/);
 });
 
 test('skippedItemsText: 行の名前へ写し、写せない項目は件数にする。内部のidは出さない', () => {
@@ -76,7 +76,7 @@ test('skippedItemsText: 行の名前へ写し、写せない項目は件数に�
 test('applyResultText: 入れなかった項目があれば結果の行に添える', () => {
   assert.equal(
     applyResultText('厳しめ', 2, ['windowSize']).text,
-    '「厳しめ」の値にした（2項目が変わった）。入れなかった項目: 先読みN',
+    '「厳しめ」の値にしました（2項目が変わりました）。入れなかった項目: 先読みN',
   );
 });
 
@@ -126,5 +126,5 @@ test('Workspaceへ流し込む: プリセットに無い指の割当は、全体
   assert.equal(presetRows(library, { global: { fingerAssignmentId: 'X-custom' } }, WORKSPACE)[0]?.sameAsCurrent, false);
   // 全体に指の割当の上書きが無ければ入れなかった項目は無く、同じになる
   assert.equal(presetRows(library, {}, WORKSPACE)[0]?.sameAsCurrent, true);
-  assert.deepEqual(applyResultText('空', 0, ['fingerAssignmentId']), { text: '「空」で変わった項目は無い。入れなかった項目: 指の割当', undoable: false });
+  assert.deepEqual(applyResultText('空', 0, ['fingerAssignmentId']), { text: '「空」で変わった項目はありませんでした。入れなかった項目: 指の割当', undoable: false });
 });

@@ -63,7 +63,7 @@ export function blankPaneMenuItems(
   paneId: string,
 ): readonly PaneMenuItem[] {
   return [
-    { id: 'duplicate', label: '複製', description: '同じ大きさで隣に並べる', onSelect: () => runtime.duplicatePane(paneId) },
+    { id: 'duplicate', label: '複製', description: '同じ大きさで隣に並べます', onSelect: () => runtime.duplicatePane(paneId) },
     { id: 'close', label: '閉じる', onSelect: () => runtime.closePane(paneId) },
   ];
 }
@@ -82,10 +82,10 @@ export function paneMenuItems(
     ...(runtime.maximizePane === undefined ? [] : [{
       id: 'maximize',
       label: maximized ? '元の大きさに戻す' : '拡大表示',
-      description: maximized ? '並びは変えずに、元の大きさへ戻ります' : 'このペインをWorkspaceいっぱいに広げる',
+      description: maximized ? '並びは変えずに、元の大きさへ戻ります' : 'このペインをWorkspaceいっぱいに広げます',
       onSelect: () => runtime.maximizePane?.(maximized ? undefined : paneId),
     }]),
-    { id: 'duplicate', label: '複製', description: '解析設定と対象を写して、同じ大きさで隣に並べる', onSelect: () => runtime.duplicatePane(paneId) },
+    { id: 'duplicate', label: '複製', description: '解析設定と対象を写して、同じ大きさで隣に並べます', onSelect: () => runtime.duplicatePane(paneId) },
     {
       id: 'reset-options',
       label: '解析設定を初期値に戻す',

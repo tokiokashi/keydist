@@ -203,7 +203,7 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
       <summary>プリセット（{rows.length}）</summary>
       <div className="condition-presets-body">
         {rows.length === 0 ? (
-          <p className="condition-presets-empty">保存したプリセットは無い</p>
+          <p className="condition-presets-empty">保存したプリセットはありません</p>
         ) : (
           <ul className="condition-preset-list">
             {rows.map((row) => (
