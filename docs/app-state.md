@@ -41,6 +41,7 @@ AppState側にsliceが既にある場合も、残存する旧keyはcleanupする
 - `keydist:geometry-shapes`
 - `keydist:layouts`
 - `keydist:romaji-rules`
+- `keydist:user-layouts`・`keydist:user-romaji-rules`（新しい構成の資産。版付きのcodecで読み書きし、旧形式の2つとは別のキー）
 - `keydist:condition-presets`
 - playback calibration storage
 

@@ -34,6 +34,8 @@ function initialAssets(): KeydistAssets {
     singleTargetSelection: initialSingleTargetSelection(),
     workspaces: initialWorkspaceLibrary(),
     presetLibrary: emptyPresetLibrary(),
+    userLayouts: [],
+    userRomajiRules: [],
   };
 }
 

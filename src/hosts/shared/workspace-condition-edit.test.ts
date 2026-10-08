@@ -52,6 +52,8 @@ function assets(overrides: SettingsCascadeOverrides = emptyCascadeOverrides()): 
     singleTargetSelection: initialSingleTargetSelection(),
     workspaces: createWorkspace(initialWorkspaceLibrary(), () => 'w1', 'w').library,
     presetLibrary: { presets: [] },
+    userLayouts: [],
+    userRomajiRules: [],
   };
 }
 

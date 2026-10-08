@@ -50,6 +50,8 @@ function emptyAssets(): KeydistAssets {
     singleTargetSelection: initialSingleTargetSelection(),
     workspaces: [],
     presetLibrary: { presets: [] },
+    userLayouts: [],
+    userRomajiRules: [],
   };
 }
 

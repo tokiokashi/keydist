@@ -177,6 +177,36 @@ export function isUserRomajiRule(value: unknown): value is UserRomajiRule {
 }
 
 /**
+ * 自作のローマ字規則の一覧を読む。壊れた要素とid重複は捨てて診断を積む（`decodeUserLayouts`と同じ方針）。
+ * 値があって配列でない時は全件が消えるので診断を積み、`undefined`（項目が無い）は空で正しいので積まない。
+ */
+export function decodeUserRomajiRules(
+  raw: unknown,
+  path: string,
+  diagnostics: CodecDiagnostic[],
+): UserRomajiRule[] {
+  if (!Array.isArray(raw)) {
+    if (raw !== undefined) diagnostics.push({ path, message: '配列形式でないためローマ字規則を捨てた' });
+    return [];
+  }
+  const seen = new Set<string>();
+  const rules: UserRomajiRule[] = [];
+  raw.forEach((candidate, index) => {
+    if (!isUserRomajiRule(candidate)) {
+      diagnostics.push({ path: `${path}[${index}]`, message: '形式が不正なためローマ字規則を捨てた' });
+      return;
+    }
+    if (seen.has(candidate.id)) {
+      diagnostics.push({ path: `${path}[${index}]`, message: `id「${candidate.id}」が重複しているため捨てた` });
+      return;
+    }
+    seen.add(candidate.id);
+    rules.push(candidate);
+  });
+  return rules;
+}
+
+/**
  * 保存された自作のローマ字規則と割り当てを読む。値があって想定の形でない時（nullを含む）と、
  * 壊れた要素を捨てる時は診断を積む。`undefined`（保存が無い・項目が無い）は空で正しいので診断しない。
  */
@@ -186,15 +216,7 @@ export function decodeStoredRomajiSettings(value: unknown): DecodedWithDiagnosti
     if (value !== undefined) diagnostics.push({ path: '', message: '形式が不正なため自作のローマ字規則を捨てた' });
     return { value: { rules: [], assignments: {} }, diagnostics };
   }
-  const rules: UserRomajiRule[] = [];
-  if (Array.isArray(value.rules)) {
-    value.rules.forEach((candidate, index) => {
-      if (isUserRomajiRule(candidate)) rules.push(candidate);
-      else diagnostics.push({ path: `rules[${index}]`, message: '形式が不正なためローマ字規則を捨てた' });
-    });
-  } else if (value.rules !== undefined) {
-    diagnostics.push({ path: 'rules', message: '配列形式でないためローマ字規則を捨てた' });
-  }
+  const rules = decodeUserRomajiRules(value.rules, 'rules', diagnostics);
   const assignments: Record<string, string> = {};
   if (isRecord(value.assignments)) {
     for (const [key, id] of Object.entries(value.assignments)) {

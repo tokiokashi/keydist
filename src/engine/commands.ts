@@ -7,7 +7,9 @@ import {
   duplicateUserFingerAssignment,
   renameUserFingerAssignment,
 } from '#input/shapes/user-finger-assignments.ts';
+import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { PresetLibrary } from '#input/presets/index.ts';
+import type { UserRomajiRule } from '#input/romaji/rules.ts';
 import {
   createSetup,
   deleteSetup,
@@ -138,6 +140,13 @@ export interface KeydistAssets {
    * 消えない）。流し込みだけが`setupLibrary`に触れる（`preset-commands.ts`）。
    */
   readonly presetLibrary: PresetLibrary<SettingsValueMap>;
+  /**
+   * 自作の配列の手持ち。`fingerAssignments`と同じく、他の資産と対にならない独立の値なので
+   * 別のキーとして持つ。
+   */
+  readonly userLayouts: readonly UserLayout[];
+  /** 自作のローマ字規則の手持ち。`userLayouts`とは別のキーで、互いに触れずに読み書きする。 */
+  readonly userRomajiRules: readonly UserRomajiRule[];
 }
 
 type SetupLibraryComputation =
