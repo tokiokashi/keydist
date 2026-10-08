@@ -445,6 +445,32 @@ export function renameFingerAssignmentCommand(id: string, name: string): Command
 }
 
 /**
+ * 自作の配列を削除する。存在しないidの削除は何もしない。
+ * この配列を対象に選んでいる所（対象の選択・Setup・Workspaceのペイン）は書き換えず、
+ * 解決の側が「見つからない」として扱う。元に戻せば、同じ参照が再び解決できる。
+ */
+export function deleteUserLayoutCommand(id: string): Command<KeydistAssets> {
+  return (current) => {
+    const next = current.userLayouts.filter((layout) => layout.id !== id);
+    if (next.length === current.userLayouts.length) return { kind: 'no-op' };
+    return { kind: 'applied', label: '自作の配列を削除する', changes: { userLayouts: next } };
+  };
+}
+
+/**
+ * 自作のローマ字規則を削除する。存在しないidの削除は何もしない。
+ * この規則を推奨に持つ自作の配列は書き換えない。配列の解決が、見つからない規則を
+ * 推奨なし（全体の値の規則で打つ）として扱う。
+ */
+export function deleteUserRomajiRuleCommand(id: string): Command<KeydistAssets> {
+  return (current) => {
+    const next = current.userRomajiRules.filter((rule) => rule.id !== id);
+    if (next.length === current.userRomajiRules.length) return { kind: 'no-op' };
+    return { kind: 'applied', label: '自作のローマ字規則を削除する', changes: { userRomajiRules: next } };
+  };
+}
+
+/**
  * テキストの選択の持ち主。個別画面は全体で1つの選択（`standaloneTextSelection`）、Workspaceは
  * 自分の選択を持つ（`Workspace.text`）。コマンドの名前に持ち主を埋め込まず、引数として
  * 渡す形にしてある（持ち主が増えても、別名の関数一式を複製しない）。
