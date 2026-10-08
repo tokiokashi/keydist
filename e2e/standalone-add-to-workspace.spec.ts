@@ -208,7 +208,7 @@ test('解析設定の書き込みが間引き待ちの間に追加しても、�
   expect(await storedWorkspaces(page)).toHaveLength(0);
 });
 
-/** 共有の設定（Bigram Flowは Within-hand、指ごとの距離は何も変えていない）を持つWorkspaceを保存先へ直接書く。 */
+/** 共有の設定（Bigram FlowはWithin-hand、指ごとの距離は何も変えていない）を持つWorkspaceを保存先へ直接書く。 */
 function seedWorkspaceWithSharedOptions(page: Page): Promise<void> {
   const fixedQwerty = { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } } };
   return page.addInitScript(({ key, value }) => {
