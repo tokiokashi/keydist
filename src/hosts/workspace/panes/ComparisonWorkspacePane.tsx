@@ -19,7 +19,7 @@ export function ComparisonWorkspacePane({
   const { options, onOptionsChange, diagnostics } = usePaneOptions<ComparisonOptions>(
     comparisonAnalyzer.definition,
     runtime.paneOptions(pane),
-    pane.id,
+    runtime.paneOptionsKey(pane),
     (next) => runtime.commitPaneOptions(pane.id, next),
   );
   const chrome: PaneChrome = useMemo(

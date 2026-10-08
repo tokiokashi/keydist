@@ -331,3 +331,54 @@ test('Workspace: 「このペインだけ」にしたペインは並び替えを
   await page.getByRole('menuitem', { name: /解析設定を初期値に戻す/ }).click();
   await expect(headerOf(page.locator('.comparison-table').nth(0), '距離')).not.toHaveAttribute('aria-sort', /.+/);
 });
+
+test('Workspace: 共有に従う2つの比較表で、間引きの待ちの間に別々のペインで続けて並べても、収まった後は両方の表示と保存値が一致する', async ({ page }) => {
+  await openTwoComparisons(page);
+  const tables = page.locator('.comparison-table');
+  // 保存の間引き（約400ms）の中で、1つ目は「距離」、2つ目は「動作数」を並べる
+  await sortButton(tables.nth(0), '距離').click();
+  await sortButton(tables.nth(1), '動作数').click();
+
+  await expect(headerOf(tables.nth(0), '動作数')).toHaveAttribute('aria-sort', 'ascending');
+  await expect(headerOf(tables.nth(1), '動作数')).toHaveAttribute('aria-sort', 'ascending');
+  // 保存が済むまで待ってから、もう一度両方を確かめる（待ちの間の反響で食い違わない）
+  await expect.poll(async () => JSON.stringify((await storedSortState(page))?.optionSets)).toContain('"sort"');
+  await page.waitForTimeout(1500);
+  for (let n = 0; n < 2; n += 1) {
+    await expect(headerOf(tables.nth(n), '動作数')).toHaveAttribute('aria-sort', 'ascending');
+    await expect(headerOf(tables.nth(n), '距離')).not.toHaveAttribute('aria-sort', /.+/);
+  }
+  const stored = await storedSortState(page);
+  expect(JSON.stringify(stored?.optionSets)).toContain('"sort":{"column":"actions"');
+  await page.reload();
+  await waitForHydration(page);
+  for (let n = 0; n < 2; n += 1) {
+    await expect(headerOf(page.locator('.comparison-table').nth(n), '動作数')).toHaveAttribute('aria-sort', 'ascending');
+  }
+});
+
+test('Workspace: 共有に従う2つの比較表で、項目の違う変更を続けて行っても、両方の変更が残る', async ({ page }) => {
+  await openTwoComparisons(page);
+  const tables = page.locator('.comparison-table');
+  // 2つ目の解析設定を開いておき、1つ目の並び替えと、2つ目の「基準比も表示する」（既定はオン）を外す
+  const second = page.locator('.pane-frame').nth(1);
+  await second.getByRole('button', { name: '解析設定', exact: true }).click();
+  const settings = page.locator('[data-settings-window="true"]');
+  await expect(settings).toBeVisible();
+  // DOMのclickで続けて押し、間引きの待ち（約400ms）の間に収める（Playwrightのclickは操作できるまでの待ちで長引く）
+  await sortButton(tables.nth(0), '距離').evaluate((element) => (element as HTMLElement).click());
+  await settings.getByRole('checkbox', { name: '基準比（%）も表示する' }).evaluate((element) => (element as HTMLElement).click());
+
+  await page.waitForTimeout(1500);
+  await expect(headerOf(tables.nth(0), '距離')).toHaveAttribute('aria-sort', 'ascending');
+  await expect(headerOf(tables.nth(1), '距離')).toHaveAttribute('aria-sort', 'ascending');
+  await expect(settings.getByRole('checkbox', { name: '基準比（%）も表示する' })).not.toBeChecked();
+  const stored = JSON.stringify((await storedSortState(page))?.optionSets);
+  expect(stored).toContain('"sort":{"column":"totalUnits"');
+  expect(stored).toContain('"showBaselineRatio":false');
+  await page.reload();
+  await waitForHydration(page);
+  await expect(headerOf(page.locator('.comparison-table').nth(1), '距離')).toHaveAttribute('aria-sort', 'ascending');
+  await page.locator('.pane-frame').nth(0).getByRole('button', { name: '解析設定', exact: true }).click();
+  await expect(page.locator('[data-settings-window="true"]').getByRole('checkbox', { name: '基準比（%）も表示する' })).not.toBeChecked();
+});

@@ -1,6 +1,6 @@
-import { useCallback, useState } from 'react';
-import { useOptionsWriteLog } from './OptionsWriteLogsContext.ts';
-import { applyDraftInput, initialDraftSync, syncDraftWithStored } from './options-draft-sync.ts';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useOptionsDraftPeers, useOptionsWriteLog } from './OptionsWriteLogsContext.ts';
+import { applyDraftInput, initialDraftSync, syncDraftWithStored, type DraftSyncState } from './options-draft-sync.ts';
 
 /**
  * 解析設定の下書き（UI用の一時状態）。見た目は即座に変えつつ、資産への書き込みは
@@ -20,13 +20,38 @@ import { applyDraftInput, initialDraftSync, syncDraftWithStored } from './option
  *
  * 自分が書いた値の反響は揃え直さない。反響は次の入力より後に届くことがあり、その時に揃え直すと
  * 新しい下書きが1つ前の値へ戻る。書いた値は`app`が書く時に残す記録（`options-write-log.ts`）で
- * 知る。`writeLogKey`は記録の引き先（個別画面は固定の名前、Workspaceはペインのid）。判断は`options-draft-sync.ts`にある。
+ * 知る。`writeLogKey`は記録の引き先で、保存先の値の持ち主を指す（個別画面は固定の名前、Workspaceは
+ * 共有に従うペインなら共有の設定の組、そうでなければペイン）。
+ *
+ * 同じ`writeLogKey`の下書きが複数ある時（共有に従う複数のペイン）は、入力を互いの下書きへ即座に伝える。
+ * 保存はdebounceで遅れるので、伝えないと、片方の待ち中の変更を知らない下書きが、別の項目の変更を
+ * 古い全体に重ねて書き、先の変更を消す。持ち主（`writeLogKey`）が変わったら、下書きを保存先から作り直す。
  */
 export function useOptionsDraft<T>(stored: T, writeLogKey: string): readonly [T, (next: T) => void] {
   const log = useOptionsWriteLog(writeLogKey);
-  const [state, setState] = useState(() => initialDraftSync(stored, log.latestSeq()));
-  const synced = syncDraftWithStored(state, stored, log.entries(), log.latestSeq());
-  if (synced !== state) setState(synced);
-  const setDraft = useCallback((next: T) => setState((current) => applyDraftInput(current, next)), []);
+  const peers = useOptionsDraftPeers();
+  const [state, setState] = useState<{ readonly key: string; readonly sync: DraftSyncState<T> }>(
+    () => ({ key: writeLogKey, sync: initialDraftSync(stored, log.latestSeq()) }),
+  );
+  const current = state.key === writeLogKey
+    ? state.sync
+    : initialDraftSync(stored, log.latestSeq());
+  const synced = state.key === writeLogKey ? syncDraftWithStored(current, stored, log.entries(), log.latestSeq()) : current;
+  if (state.key !== writeLogKey || synced !== state.sync) setState({ key: writeLogKey, sync: synced });
+
+  const listenerRef = useRef<(value: unknown) => void>(() => {});
+  listenerRef.current = (value) => setState((prev) => (
+    prev.key === writeLogKey ? { key: prev.key, sync: applyDraftInput(prev.sync, value as T) } : prev
+  ));
+  // 購読の同一性（自分を除いて伝える時の目印）は、この下書きの存続中は変えない
+  const selfRef = useRef<((value: unknown) => void) | undefined>(undefined);
+  selfRef.current ??= (value) => listenerRef.current(value);
+  const self = selfRef.current;
+  useEffect(() => peers.subscribe(writeLogKey, self), [peers, writeLogKey, self]);
+
+  const setDraft = useCallback((next: T) => {
+    setState((prev) => (prev.key === writeLogKey ? { key: prev.key, sync: applyDraftInput(prev.sync, next) } : prev));
+    peers.publish(writeLogKey, next, self);
+  }, [peers, writeLogKey, self]);
   return [synced.draft, setDraft] as const;
 }

@@ -176,7 +176,7 @@ test('コマンド: 共有の設定の変更も持ち方の切り替えも、元
 test('個別画面から足す: 共有と同じ設定なら共有に従い、違えば共有を書き換えずこのペインだけの設定にする。組が無ければ作る', () => {
   const assets = assetsWith(sample());
   const history = emptyCommandHistory<KeydistAssets>();
-  const same = applyCommand(assets, history, addStandalonePaneToWorkspaceCommand('w', { paneId: 'same', analyzerId: FLOW, options: { source: 'within-hand' } }, SIZE));
+  const same = applyCommand(assets, history, addStandalonePaneToWorkspaceCommand('w', { paneId: 'same', analyzerId: FLOW, options: { source: 'within-hand' }, matchesShared: true }, SIZE));
   const different = applyCommand(same.assets, same.history, addStandalonePaneToWorkspaceCommand('w', { paneId: 'diff', analyzerId: FLOW, options: { source: 'all' } }, SIZE));
   const created = applyCommand(different.assets, different.history, addStandalonePaneToWorkspaceCommand('w', { paneId: 'new', analyzerId: 'comparison', options: { visible: ['a'] } }, SIZE));
   const workspace = findWorkspace(created.assets.workspaces, 'w')!;

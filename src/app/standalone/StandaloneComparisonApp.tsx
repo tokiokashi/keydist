@@ -19,6 +19,8 @@ import { useTextContentCommit } from './use-text-content-commit.ts';
  *
  * 計算の窓口は他の単体ページと共有する（`engine-computer.ts`。ブラウザではWorker）。
  */
+const decodeComparisonOptions = (raw: unknown) => comparisonAnalyzer.definition.decodeOptions(raw, []);
+
 export function StandaloneComparisonApp() {
   const { assets, ready, dispatch, getAssets, canUndo, canRedo, undo, redo } = useKeydistAssets();
   const catalog = useMemo(() => paneCatalog(assets), [assets.userLayouts, assets.userRomajiRules]);
@@ -32,7 +34,7 @@ export function StandaloneComparisonApp() {
 
   const commitTextContent = useTextContentCommit(dispatch, getAssets, generateTextId);
 
-  const addToWorkspace = useAddToWorkspace(comparisonAnalyzer.definition.id, dispatch, getAssets, () => {
+  const addToWorkspace = useAddToWorkspace(comparisonAnalyzer.definition.id, decodeComparisonOptions, dispatch, getAssets, () => {
     commitTextContent.flush();
     commitComparisonOptions.flush();
   });

@@ -100,13 +100,26 @@ export function defaultOptionsBinding(
   workspace: Pick<Workspace, 'optionSets'>,
   analyzerId: string,
 ): PaneOptionsBinding {
-  const set = workspace.optionSets.find((candidate) => candidate.analyzerId === analyzerId);
+  const set = findDefaultOptionSet(workspace, analyzerId);
   return sharedOptions(set?.id ?? initialOptionSetId(analyzerId));
+}
+
+/** 新しいペインが従う組（そのAnalyzerの先頭の組）。無ければ`undefined`。 */
+export function findDefaultOptionSet(workspace: Pick<Workspace, 'optionSets'>, analyzerId: string): OptionSet | undefined {
+  return workspace.optionSets.find((candidate) => candidate.analyzerId === analyzerId);
 }
 
 function defaultOptionSetId(workspace: Pick<Workspace, 'optionSets'>, analyzerId: string): string {
   const binding = defaultOptionsBinding(workspace, analyzerId);
   return binding.mode === 'shared' ? binding.set : initialOptionSetId(analyzerId);
+}
+
+/**
+ * ペインの解析設定を書く先の持ち主を指す名前。共有に従うペインは組、そうでなければペイン自身。
+ * 下書き・書き込みの記録・間引きの待ちは、この名前ごとに持つ（同じ組に従うペインが1つの保存先を書くため）。
+ */
+export function paneOptionsOwnerKey(pane: Pick<WorkspacePane, 'id' | 'optionsBinding'>): string {
+  return pane.optionsBinding.mode === 'shared' ? `set:${pane.optionsBinding.set}` : `pane:${pane.id}`;
 }
 
 /** ペインの解析設定として今効いている値（保存した形）。共有ならその組の値、自分だけならペインの値。 */

@@ -25,6 +25,8 @@ import { useTextContentCommit } from './use-text-content-commit.ts';
  *
  * 計算の窓口は他の単体ページと共有する（`engine-computer.ts`。ブラウザではWorker）。
  */
+const decodeFingerDistanceOptions = (raw: unknown) => fingerDistanceAnalyzer.definition.decodeOptions(raw, []);
+
 export function StandaloneFingerDistanceApp() {
   const { assets, ready, dispatch, getAssets, canUndo, canRedo, undo, redo } = useKeydistAssets();
   const catalog = useMemo(() => paneCatalog(assets), [assets.userLayouts, assets.userRomajiRules]);
@@ -43,7 +45,7 @@ export function StandaloneFingerDistanceApp() {
   // debounce完了時に「今の選択」を読み直して事故る競合を避ける）。
   const commitTextContent = useTextContentCommit(dispatch, getAssets, generateTextId);
 
-  const addToWorkspace = useAddToWorkspace(fingerDistanceAnalyzer.definition.id, dispatch, getAssets, () => {
+  const addToWorkspace = useAddToWorkspace(fingerDistanceAnalyzer.definition.id, decodeFingerDistanceOptions, dispatch, getAssets, () => {
     commitTextContent.flush();
     commitFingerDistanceOptions.flush();
   });

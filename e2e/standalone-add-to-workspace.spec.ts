@@ -207,3 +207,67 @@ test('解析設定の書き込みが間引き待ちの間に追加しても、�
   await page.locator('.context-bar').getByRole('button', { name: '元に戻す' }).click();
   expect(await storedWorkspaces(page)).toHaveLength(0);
 });
+
+/** 共有の設定（Bigram Flowは Within-hand、指ごとの距離は何も変えていない）を持つWorkspaceを保存先へ直接書く。 */
+function seedWorkspaceWithSharedOptions(page: Page): Promise<void> {
+  const fixedQwerty = { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } } };
+  return page.addInitScript(({ key, value }) => {
+    if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 4, workspaces: [value] }));
+  }, {
+    key: WORKSPACES_KEY,
+    value: {
+      id: 'w1',
+      name: '共有あり',
+      text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+      optionSets: [
+        { id: 'bigram-flow-1', analyzerId: 'bigram-flow', options: { source: 'within-hand' } },
+        { id: 'finger-distance-1', analyzerId: 'finger-distance' },
+      ],
+      panes: [
+        { id: 'flow', analyzerId: 'bigram-flow', optionsBinding: { mode: 'shared', set: 'bigram-flow-1' }, binding: fixedQwerty },
+        { id: 'finger', analyzerId: 'finger-distance', optionsBinding: { mode: 'shared', set: 'finger-distance-1' }, binding: fixedQwerty },
+      ],
+      grid: [{ id: 'flow', x: 0, y: 0, w: 12, h: 15 }, { id: 'finger', x: 12, y: 0, w: 12, h: 15 }],
+    },
+  });
+}
+
+async function addedPane(page: Page): Promise<{ optionsBinding?: { mode: string; set?: string }; options?: unknown }> {
+  await page.locator('[data-added-to-workspace-notice]').waitFor();
+  const panes = (await storedWorkspaces(page))[0]!.panes as unknown as { id: string; optionsBinding?: { mode: string; set?: string }; options?: unknown }[];
+  return panes[2]!;
+}
+
+test('共有の設定がある追加先へ、何も変えていない指ごとの距離を追加すると、共有に従う（保存した形と全項目の下書きは同じ設定として比べる）', async ({ page }) => {
+  await seedWorkspaceWithSharedOptions(page);
+  await openStandalone(page, '/standalone/finger-distance');
+  await addButton(page).click();
+  await page.getByRole('menuitem', { name: '共有あり' }).click();
+  const pane = await addedPane(page);
+  expect(pane.optionsBinding).toEqual({ mode: 'shared', set: 'finger-distance-1' });
+  expect(pane.options).toBeUndefined();
+});
+
+test('共有の設定と同じWithin-handを選んだBigram Flowを追加すると共有に従い、違う設定なら共有を書き換えずこのペインだけの設定になる', async ({ page }) => {
+  await seedWorkspaceWithSharedOptions(page);
+  await openStandalone(page, '/standalone/bigram-flow');
+  await page.getByRole('button', { name: '解析設定', exact: true }).click();
+  await page.locator('[data-settings-window="true"]').getByRole('button', { name: 'Within-hand' }).click();
+  await page.locator('[data-settings-window="true"]').getByRole('button', { name: '解析設定を閉じる' }).click();
+  await addButton(page).click();
+  await page.getByRole('menuitem', { name: '共有あり' }).click();
+  const same = await addedPane(page);
+  expect(same.optionsBinding).toEqual({ mode: 'shared', set: 'bigram-flow-1' });
+  expect(same.options).toBeUndefined();
+
+  // 既定の設定（Actual）に戻して追加すると、共有（Within-hand）とは違うのでこのペインだけの設定
+  await page.getByRole('button', { name: '解析設定', exact: true }).click();
+  await page.locator('[data-settings-window="true"]').getByRole('button', { name: 'Actual' }).click();
+  await page.locator('[data-settings-window="true"]').getByRole('button', { name: '解析設定を閉じる' }).click();
+  await addButton(page).click();
+  await page.getByRole('menuitem', { name: '共有あり' }).click();
+  await expect.poll(async () => (await storedWorkspaces(page))[0]!.panes.length).toBe(4);
+  const stored = (await storedWorkspaces(page))[0]! as unknown as { panes: { optionsBinding?: { mode: string } }[]; optionSets: { options?: unknown }[] };
+  expect(stored.panes[3]!.optionsBinding).toEqual({ mode: 'own' });
+  expect(stored.optionSets[0]!.options).toEqual({ source: 'within-hand' });
+});

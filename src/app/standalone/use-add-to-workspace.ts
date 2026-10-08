@@ -5,9 +5,10 @@ import {
   addStandalonePaneToNewWorkspaceCommand,
   addStandalonePaneToWorkspaceCommand,
 } from '#engine/workspace-commands.ts';
-import { findWorkspace } from '#engine/workspace.ts';
+import { findDefaultOptionSet, findWorkspace } from '#engine/workspace.ts';
 import type { AddToWorkspaceDestination } from '#hosts/shared/AddToWorkspaceMenu.tsx';
 import { defaultGridSize } from '#hosts/workspace/grid-metrics.ts';
+import { sameAsSharedOptions } from './shared-options-match.ts';
 import { setAddedToWorkspace } from '../workspace/added-to-workspace-notice.ts';
 import { generatePaneId, generateWorkspaceId } from '../workspace/id-generator.ts';
 
@@ -20,6 +21,8 @@ import { generatePaneId, generateWorkspaceId } from '../workspace/id-generator.t
  */
 export function useAddToWorkspace(
   analyzerId: string,
+  /** Analyzerの解析設定のdecode（保存した形も全項目の下書きも、既定値で埋めた同じ形にする）。 */
+  decodeOptions: (raw: unknown) => unknown,
   dispatch: (command: Command<KeydistAssets>) => void,
   getAssets: () => KeydistAssets,
   /**
@@ -30,7 +33,11 @@ export function useAddToWorkspace(
 ) {
   return useCallback((destination: AddToWorkspaceDestination, options: unknown) => {
     flushPending();
-    const source = { paneId: generatePaneId(), analyzerId, options };
+    // 追加先の共有の設定と同じ値か。保存した形（変えた項目だけ）と下書き（全項目）は、decodeを通した形で比べる
+    const workspace = destination.kind === 'existing' ? findWorkspace(getAssets().workspaces, destination.workspaceId) : undefined;
+    const shared = workspace === undefined ? undefined : findDefaultOptionSet(workspace, analyzerId);
+    const matchesShared = shared !== undefined && sameAsSharedOptions(decodeOptions, shared.options, options);
+    const source = { paneId: generatePaneId(), analyzerId, options, matchesShared };
     const size = defaultGridSize(analyzerId);
     if (destination.kind === 'existing') {
       dispatch(addStandalonePaneToWorkspaceCommand(destination.workspaceId, source, size));
@@ -44,5 +51,5 @@ export function useAddToWorkspace(
       : workspaces.find((workspace) => workspace.panes.some((pane) => pane.id === source.paneId));
     if (target === undefined || !target.panes.some((pane) => pane.id === source.paneId)) return;
     setAddedToWorkspace({ workspaceId: target.id, paneId: source.paneId });
-  }, [analyzerId, dispatch, getAssets, flushPending]);
+  }, [analyzerId, decodeOptions, dispatch, getAssets, flushPending]);
 }

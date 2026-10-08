@@ -1,6 +1,5 @@
 import type { Command } from '#input/commands/index.ts';
 import type { KeydistAssets } from './commands.ts';
-import { stableStringify } from './cache-key.ts';
 import { multiColorSlots } from './multi-target-selection.ts';
 import {
   addWorkspacePane,
@@ -111,11 +110,18 @@ export interface PaneFromStandalone {
   readonly analyzerId: string;
   /** 個別画面の解析設定（画面で今見えている値。既定値のままでも、既定値を展開した値が入る）。 */
   readonly options: unknown;
+  /**
+   * 追加先のWorkspaceにそのAnalyzerの共有の設定があり、個別画面の設定とAnalyzerの解釈で同じ値かどうか。
+   * 保存した形（変えた項目だけ・未設定）と画面の下書き（全項目）は文字列では比べられず、
+   * Analyzerのdecodeを通して比べられるのはAnalyzerを知る呼び出し側だけなので、結果を渡す。
+   * 共有の設定が無い追加先では使わない。
+   */
+  readonly matchesShared?: boolean;
 }
 
 /**
  * 個別画面から足すペインの解析設定の持ち方。見た目を変えないため、個別画面の設定をそのまま引き継ぐ:
- * WorkspaceにそのAnalyzerの共有の設定があり、同じ値なら共有に従う。違う値なら、共有を書き換えず、
+ * WorkspaceにそのAnalyzerの共有の設定があり、同じ値（`matchesShared`）なら共有に従う。違う値なら、共有を書き換えず、
  * このペインだけの設定として持つ。共有の設定がまだ無ければ、個別画面の設定で共有の設定を作って従う
  * （`addWorkspacePane`が組を作る）。
  */
@@ -123,7 +129,7 @@ function standalonePane(workspace: Workspace, source: PaneFromStandalone, groupI
   const base = { id: source.paneId, analyzerId: source.analyzerId, binding: followBinding(groupId) };
   const shared = defaultOptionsBinding(workspace, source.analyzerId);
   const set = shared.mode === 'shared' ? workspace.optionSets.find((candidate) => candidate.id === shared.set) : undefined;
-  if (set !== undefined && stableStringify(set.options ?? null) !== stableStringify(source.options ?? null)) {
+  if (set !== undefined && source.matchesShared !== true) {
     return { ...base, options: source.options, optionsBinding: OWN_OPTIONS };
   }
   return { ...base, options: source.options, optionsBinding: shared };

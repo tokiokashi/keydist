@@ -21,6 +21,7 @@ import {
   BLANK_PANE_ID,
   defaultOptionsBinding,
   OWN_OPTIONS,
+  paneOptionsOwnerKey,
   resolvePaneOptions,
   followBinding,
   findWorkspace,
@@ -60,7 +61,7 @@ import { initialWorkspaceColorSlots } from '#engine/workspace-colors.ts';
 import './workspace.css';
 
 /** ペインの解析設定を間引いて資産へ反映する関数（`app`が組み立てる。ペインごとに別の待ち行列を持つ）。 */
-export type PaneOptionsCommit = ((paneId: string, options: unknown) => void) & {
+export type PaneOptionsCommit = ((ownerKey: string, paneId: string, options: unknown) => void) & {
   /** 待っている書き込みを今すぐ行う（ペインの複製・Undoの前に呼ぶ）。 */
   readonly flush: () => void;
 };
@@ -206,7 +207,11 @@ export function WorkspacePage({
       flushPending();
       dispatch(setWorkspacePaneOptionsBindingCommand(workspaceId, paneId, { kind: shared ? 'shared' : 'own' }));
     },
-    commitPaneOptions: (paneId: string, options: unknown) => onPaneOptionsCommit(paneId, options),
+    paneOptionsKey: (pane: WorkspacePane) => paneOptionsOwnerKey(pane),
+    commitPaneOptions: (paneId: string, options: unknown) => {
+      const pane = panesById.get(paneId);
+      if (pane !== undefined) onPaneOptionsCommit(paneOptionsOwnerKey(pane), paneId, options);
+    },
     paneTarget: (pane: WorkspacePane, kind: WorkspacePaneTarget['kind']) => (
       groups === undefined ? undefined : resolveWorkspacePaneTarget(pane.binding, groups, kind)
     ),

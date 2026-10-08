@@ -1,5 +1,5 @@
 import { createContext, createElement, useContext, type ReactNode } from 'react';
-import type { OptionsWriteLog, OptionsWriteLogs } from './options-write-log.ts';
+import type { DraftPeers, OptionsWriteLog, OptionsWriteLogs } from './options-write-log.ts';
 
 const OptionsWriteLogsContext = createContext<OptionsWriteLogs | undefined>(undefined);
 
@@ -23,4 +23,13 @@ export function useOptionsWriteLog(key: string): OptionsWriteLog {
     );
   }
   return logs.forKey(key);
+}
+
+/** 同じ書き込みの記録の持ち主の下書きどうしが入力を伝え合う口。`useOptionsWriteLog`と同じ理由で、包み忘れは例外にする。 */
+export function useOptionsDraftPeers(): DraftPeers {
+  const logs = useContext(OptionsWriteLogsContext);
+  if (logs === undefined) {
+    throw new Error('解析設定の下書きがOptionsWriteLogsProviderの外で使われている。');
+  }
+  return logs.peers;
 }

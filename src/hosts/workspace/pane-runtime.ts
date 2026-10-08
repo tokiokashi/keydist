@@ -17,6 +17,8 @@ export interface WorkspacePaneRuntime {
    * ペイン自身の設定。ペインはこれをAnalyzerのdecodeで読む。
    */
   readonly paneOptions: (pane: WorkspacePane) => unknown;
+  /** ペインの解析設定の書き先の持ち主の名前。下書き・書き込みの記録はこの名前で引く（同じ組に従うペインは同じ名前）。 */
+  readonly paneOptionsKey: (pane: WorkspacePane) => string;
   /** ペインの解析設定の持ち方を切り替える（`true`で共有に従う）。このペインだけにする時は今の設定を写す。 */
   readonly setPaneOptionsShared: (paneId: string, shared: boolean) => void;
   /** 解析設定の変更を資産へ反映する（間引き済み）。共有に従うペインは、共有の設定を書き換える。 */
