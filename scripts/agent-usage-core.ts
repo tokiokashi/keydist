@@ -1,5 +1,5 @@
 // サブエージェントのtranscript（JSONL）から、入力側の使用量と金額を集計する純粋な関数。
-// ファイルの読み込みは agent-usage.tsが受け持つ。
+// ファイルの読み込みは別ファイル（agent-usage.ts）が受け持つ。
 
 /** 100万tokensあたりの米ドル。 */
 export interface Price {

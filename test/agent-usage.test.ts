@@ -65,7 +65,7 @@ test('出力の形', () => {
 
 test('単価表は公式の価格表と一致する（入力・5分書き込み・1時間書き込み・読み出し）', () => {
   const near = (a: number, b: number) => assert.ok(Math.abs(a - b) < 1e-9, `${a} != ${b}`);
-  // tokens分のリクエストの金額を、100万tokens換算の $/MTok にして返す
+  // 指定のtokens数のリクエストの金額を、100万tokensあたりの単価に換算して返す
   const perMtok = (model: string, field: 'input' | 'write5m' | 'write1h' | 'read', tokens: number) => {
     const req = { model, input: 0, write5m: 0, write1h: 0, read: 0, [field]: tokens };
     return (summarize([req]).costUsd! * 1_000_000) / tokens;
