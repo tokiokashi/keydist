@@ -10,7 +10,7 @@ const KEY = 34;
 const PAD = 6;
 /** 図に出す段。数字段と親指は例に出てこないので省く */
 const ROWS = [1, HOME_ROW, 3];
-/** 打鍵順。右手人差し指が打つキーは j・u・h */
+/** 打鍵順。右手人差し指が打つキーはj・u・h */
 const SEQUENCE = ['j', 'o', 'u', 'h'] as const;
 const CIRCLED = ['①', '②', '③', '④'] as const;
 const HOME_KEY = 'j';
@@ -99,10 +99,10 @@ export function DistanceFigure() {
         <Arrow from={center(HOME_KEY)} to={center('h')} adopted={false} />
       </svg>
       <figcaption>
-        <p>「じょうほう」を打つ時の、右手人差し指の動きです（ロウスタッガード。1u はキー1つ分の間隔）。破線で囲んだ {HOME_KEY} がこの指のホームです。</p>
+        <p>「じょうほう」を打つ時の、右手人差し指の動きです（ロウスタッガード。1uはキー1つ分の間隔）。破線で囲んだ {HOME_KEY} がこの指のホームです。</p>
         <ul>
-          <li>①から③: ホームの {HOME_KEY} から u へ動きます。指は最初ホームにあるので、距離は {fmt(homeToU)} です。</li>
-          <li>③から④: u の直後に、同じ指でまた h を打ちます。ホームへ戻る時間が無いので、u から h への {fmt(uToH)} を足します。ホームから h への {fmt(homeToH)} は候補になりません（破線の矢印）。</li>
+          <li>①から③: ホームの {HOME_KEY} からuへ動きます。指は最初ホームにあるので、距離は {fmt(homeToU)} です。</li>
+          <li>③から④: uの直後に、同じ指でまたhを打ちます。ホームへ戻る時間が無いので、uからhへの {fmt(uToH)} を足します。ホームからhへの {fmt(homeToH)} は候補になりません（破線の矢印）。</li>
         </ul>
       </figcaption>
     </figure>

@@ -19,7 +19,7 @@ import { useWorkspaceLinks } from './use-workspace-links.ts';
 /** 旧バージョン（`/analyzer`）へのリンクの文言。トップの下端のリンクも同じ文を出す。 */
 export const LEGACY_ANALYZER_LABEL = '旧バージョン';
 
-/** Workspace 区分の案内文（保存したWorkspaceが1つも無い時）。トップの見本も同じ文を出す。 */
+/** Workspace区分の案内文（保存したWorkspaceが1つも無い時）。トップの見本も同じ文を出す。 */
 export const WORKSPACE_EMPTY_TEXT = 'Analyzerを並べて見る画面。';
 
 /**
@@ -27,9 +27,9 @@ export const WORKSPACE_EMPTY_TEXT = 'Analyzerを並べて見る画面。';
  * 最下端にだけ例外として版表示・旧バージョンへのリンク・テーマ切替を置く。
  *
  * 区分見出しは英語（Analyze / Workspace / Assets）。Analyzeの中は対象の数で
- * Single / Multi に分ける。Testerは区分に入れず単独で置く。
+ * Single / Multiに分ける。Testerは区分に入れず単独で置く。
  * Workspaceは保存したWorkspaceの一覧と「＋ 新しいWorkspace」で、1つも無い時は案内文を出す。
- * About は計算方法のページと、仕様書・リポジトリ（GitHub）へのリンク。どの画面からも同じ場所でたどれる。
+ * Aboutは計算方法のページと、仕様書・リポジトリ（GitHub）へのリンク。どの画面からも同じ場所でたどれる。
  * Assetsは手持ちの資産の編集画面へのリンクを並べる区分で、編集画面がまだ1つも無いので出さない。
  */
 export interface SidebarProps {
@@ -182,7 +182,7 @@ export function Sidebar({ pinned, onPinnedChange, onNavigate }: SidebarProps) {
 
       <div className="sidebar-foot">
         <span className="sidebar-version">v{__KEYDIST_VERSION__}</span>
-        {/* /analyzer はシェルに載らない別ページ。リンクで遷移すると新しい画面に切り替わる */}
+        {/* /analyzerはシェルに載らない別ページ。リンクで遷移すると新しい画面に切り替わる */}
         <Link className="sidebar-legacy" to="/analyzer" onClick={onNavigate}>{LEGACY_ANALYZER_LABEL}</Link>
         <ThemeSwitch />
       </div>

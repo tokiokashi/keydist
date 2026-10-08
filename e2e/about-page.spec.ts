@@ -19,6 +19,6 @@ test('サイドバーから計算方法のページを開け、仕様書とリ�
     .toHaveAttribute('href', 'https://github.com/tokiokashi/keydist/blob/main/spec/playback-timing.md');
   await expect(sidebar.getByRole('link', { name: 'GitHub', exact: true }))
     .toHaveAttribute('href', 'https://github.com/tokiokashi/keydist');
-  await expect(page.locator('.about').getByRole('link', { name: 'GitHub のリポジトリ' }))
+  await expect(page.locator('.about').getByRole('link', { name: 'GitHubのリポジトリ' }))
     .toHaveAttribute('href', 'https://github.com/tokiokashi/keydist');
 });
