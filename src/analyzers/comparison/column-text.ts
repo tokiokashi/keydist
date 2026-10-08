@@ -41,7 +41,7 @@ export const COMPARISON_UNIT_NOTE = '距離の単位uは、キーの幅を1と�
 export const COMPARISON_COLUMN_TEXT: Readonly<Record<ComparisonColumnId, ComparisonColumnText>> = {
   actions: {
     label: '動作数',
-    description: 'テキストを打つのに要したアクション（打鍵のまとまり）の総数。同時押しは1アクションと数える。',
+    description: 'テキストを打つのに要したアクション（打鍵のまとまり）の総数。同時押しは1アクションと数えます。',
   },
   totalUnits: {
     label: '距離',
@@ -53,15 +53,15 @@ export const COMPARISON_COLUMN_TEXT: Readonly<Record<ComparisonColumnId, Compari
   },
   perCharUnits: {
     label: 'u/文字',
-    description: '入力1文字あたりの総移動距離（u/文字）。文字数はローマ字展開やコンボ結合の前の原文で数えるので、打鍵数を減らした効果がこの値に残る。',
+    description: '入力1文字あたりの総移動距離（u/文字）。文字数はローマ字展開やコンボ結合の前の原文で数えるので、打鍵数を減らした効果がこの値に残ります。',
   },
   perCharSteps: {
     label: '動作数/文字',
-    description: '入力1文字あたりのアクション数。コンボなどでまとめて打つほど小さくなる。',
+    description: '入力1文字あたりのアクション数。コンボなどでまとめて打つほど小さくなります。',
   },
   perCharPresses: {
     label: '押下/文字',
-    description: '入力1文字あたりのキーを押す回数。コンボでまとめても減らない。',
+    description: '入力1文字あたりのキーを押す回数。コンボでまとめても減りません。',
   },
   singleTapLayerRate: {
     label: '単打面率',
@@ -85,7 +85,7 @@ export const COMPARISON_COLUMN_TEXT: Readonly<Record<ComparisonColumnId, Compari
   },
   adjacentMean: {
     label: '指間平均',
-    description: '同じ手で隣り合う2本の指の距離が、ホームに置いた時の間隔よりどれだけ開いたかの平均。6組の平均で、ホームより近いと負になる（u）。',
+    description: '同じ手で隣り合う2本の指の距離が、ホームに置いた時の間隔よりどれだけ開いたかの平均。6組の平均で、ホームより近いと負になります（u）。',
   },
   adjacentStdDev: {
     label: '指間σ',

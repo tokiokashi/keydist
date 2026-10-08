@@ -74,7 +74,7 @@ test('既存のWorkspaceへ追加すると、個別画面に留まって知ら�
   await page.getByRole('menuitem', { name: '比較用' }).click();
 
   const notice = page.locator('[data-added-to-workspace-notice]');
-  await expect(notice).toContainText('「比較用」に追加した');
+  await expect(notice).toContainText('「比較用」に追加しました');
   await expect(page).toHaveURL(/\/standalone\/n-sensitivity$/);
   await expect.poll(async () => (await storedWorkspaces(page))[0]?.panes.map((pane) => pane.analyzerId))
     .toEqual(['bigram-flow', 'n-sensitivity']);
@@ -94,7 +94,7 @@ test('新しいWorkspaceに追加すると、Workspaceが1つ増えてそのペ�
   await page.getByRole('menuitem', { name: '新しいWorkspaceに追加' }).click();
 
   const notice = page.locator('[data-added-to-workspace-notice]');
-  await expect(notice).toContainText('に追加した');
+  await expect(notice).toContainText('に追加しました');
   await expect(page).toHaveURL(/\/standalone\/bigram-flow$/);
   await expect.poll(async () => (await storedWorkspaces(page)).map((workspace) => workspace.panes.map((pane) => pane.analyzerId)))
     .toEqual([['bigram-flow']]);
@@ -127,7 +127,7 @@ test('キーボードだけで開いて選べ、Escapeで何も追加せずに�
   await expect(page.getByRole('menuitem', { name: '新しいWorkspaceに追加' })).toBeFocused();
   await page.keyboard.press('Shift+Tab');
   await page.keyboard.press('Enter');
-  await expect(page.locator('[data-added-to-workspace-notice]')).toContainText('「比較用」に追加した');
+  await expect(page.locator('[data-added-to-workspace-notice]')).toContainText('「比較用」に追加しました');
   await expect.poll(async () => (await storedWorkspaces(page))[0]?.panes.map((pane) => pane.analyzerId))
     .toEqual(['bigram-flow', 'comparison']);
   expect(await storedWorkspaces(page)).toHaveLength(1);
@@ -140,7 +140,7 @@ test('削除の知らせと追加の知らせが同時に出ても重ならず�
   await page.locator('.context-bar').getByRole('button', { name: 'Workspaceの操作' }).click();
   await page.getByRole('menuitem', { name: '削除', exact: true }).click();
   const deleted = page.locator('[data-deleted-workspace-notice]');
-  await expect(deleted).toContainText('を削除した');
+  await expect(deleted).toContainText('を削除しました');
 
   // 画面内の移動（読み込み直さない）で個別画面へ移り、そこで追加する
   await page.locator('#app-sidebar').getByRole('link', { name: 'N感度', exact: true }).click();
@@ -148,7 +148,7 @@ test('削除の知らせと追加の知らせが同時に出ても重ならず�
   await addButton(page).click();
   await page.getByRole('menuitem', { name: '二つ目' }).click();
   const added = page.locator('[data-added-to-workspace-notice]');
-  await expect(added).toContainText('「二つ目」に追加した');
+  await expect(added).toContainText('「二つ目」に追加しました');
   await expect(deleted).toBeVisible();
 
   const a = (await deleted.boundingBox())!;
@@ -168,7 +168,7 @@ test('追加を元に戻すと知らせが消え、やり直すと戻る（「�
   await addButton(page).click();
   await page.getByRole('menuitem', { name: '新しいWorkspaceに追加' }).click();
   const notice = page.locator('[data-added-to-workspace-notice]');
-  await expect(notice).toContainText('に追加した');
+  await expect(notice).toContainText('に追加しました');
   expect(await storedWorkspaces(page)).toHaveLength(1);
 
   const bar = page.locator('.context-bar');
@@ -177,7 +177,7 @@ test('追加を元に戻すと知らせが消え、やり直すと戻る（「�
   expect(await storedWorkspaces(page)).toHaveLength(0);
 
   await bar.getByRole('button', { name: 'やり直す' }).click();
-  await expect(notice).toContainText('に追加した');
+  await expect(notice).toContainText('に追加しました');
   expect(await storedWorkspaces(page)).toHaveLength(1);
   await notice.getByRole('link', { name: '開く' }).click();
   await expect(page.locator('.pane-frame').filter({ has: page.getByRole('heading', { level: 2, name: 'Bigram Flow', exact: true }) })).toBeVisible({ timeout: 15_000 });
@@ -200,7 +200,7 @@ test('解析設定の書き込みが間引き待ちの間に追加しても、�
 
   await addButton(page).click();
   await page.getByRole('menuitem', { name: '新しいWorkspaceに追加' }).click();
-  await expect(page.locator('[data-added-to-workspace-notice]')).toContainText('に追加した');
+  await expect(page.locator('[data-added-to-workspace-notice]')).toContainText('に追加しました');
   // 追加の前に、待っていた解析設定が書かれている
   expect(await page.evaluate(() => localStorage.getItem('keydist:standalone-analyzer-options')) ?? '').toContain('bigram-flow');
 

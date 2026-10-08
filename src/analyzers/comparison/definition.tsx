@@ -230,12 +230,12 @@ export function ComparisonSettings({ options, onOptionsChange }: AnalyzerSetting
       <CheckboxOptionField
         label="基準比（%）も表示する"
         binding={bind('showBaselineRatio')}
-        hint="対象の選択で基準を選んだ時に、各値の横に基準に対する割合を出す。"
+        hint="対象の選択で基準を選んだ時に、各値の横に基準に対する割合を出します。"
       />
       <OptionField
         label="並び替え"
         binding={bind('sort')}
-        hint="列の見出しを押すと切り替わる。"
+        hint="列の見出しを押すと切り替わります。"
       >
         {(id) => (
           <span id={id}>

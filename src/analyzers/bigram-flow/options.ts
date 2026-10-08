@@ -42,7 +42,7 @@ function decodeSelectedFingers(
 ): readonly FingerClass[] {
   if (raw === undefined) return [];
   if (!Array.isArray(raw)) {
-    diagnostics.push({ path, message: '配列でないため既定値へ戻した' });
+    diagnostics.push({ path, message: '配列でないため既定値へ戻しました' });
     return [];
   }
   const seen = new Set<FingerClass>();
@@ -52,11 +52,11 @@ function decodeSelectedFingers(
       seen.add(item as FingerClass);
       result.push(item as FingerClass);
     } else {
-      diagnostics.push({ path: `${path}[]`, message: `未知の指クラス「${String(item)}」を捨てた` });
+      diagnostics.push({ path: `${path}[]`, message: `未知の指クラス「${String(item)}」を捨てました` });
     }
   }
   if (result.length > MAX_SELECTED_FINGERS) {
-    diagnostics.push({ path, message: `指の組み合わせは${MAX_SELECTED_FINGERS}件までのため、3件目以降を捨てた` });
+    diagnostics.push({ path, message: `指の組み合わせは${MAX_SELECTED_FINGERS}件までのため、3件目以降を捨てました` });
   }
   return result.slice(0, MAX_SELECTED_FINGERS);
 }

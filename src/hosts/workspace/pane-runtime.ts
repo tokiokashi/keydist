@@ -82,14 +82,14 @@ export function paneMenuItems(
     ...(runtime.maximizePane === undefined ? [] : [{
       id: 'maximize',
       label: maximized ? '元の大きさに戻す' : '拡大表示',
-      description: maximized ? '並びは変えずに、元の大きさへ戻る' : 'このペインをWorkspaceいっぱいに広げる',
+      description: maximized ? '並びは変えずに、元の大きさへ戻ります' : 'このペインをWorkspaceいっぱいに広げる',
       onSelect: () => runtime.maximizePane?.(maximized ? undefined : paneId),
     }]),
     { id: 'duplicate', label: '複製', description: '解析設定と対象を写して、同じ大きさで隣に並べる', onSelect: () => runtime.duplicatePane(paneId) },
     {
       id: 'reset-options',
       label: '解析設定を初期値に戻す',
-      description: optionsShared ? OPTIONS_SHARED_RESET_TITLE : '対象と条件は変わらない',
+      description: optionsShared ? OPTIONS_SHARED_RESET_TITLE : '対象と条件は変わりません',
       onSelect: resetOptions,
     },
     { id: 'close', label: '閉じる', onSelect: () => runtime.closePane(paneId) },

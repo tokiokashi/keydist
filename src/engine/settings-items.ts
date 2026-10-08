@@ -101,7 +101,7 @@ export const SETTINGS_ITEMS = {
       const realizable = shapeHasThumb(context, 'LT') && shapeHasThumb(context, 'RT');
       return realizable
         ? { ok: true }
-        : { ok: false, fallback: false, reason: '物理配列に左右いずれかの親指キーが無く、反対側への振り替えを実現できない' };
+        : { ok: false, fallback: false, reason: '物理配列に左右いずれかの親指キーが無く、反対側への振り替えを実現できません' };
     },
   }),
   /**
@@ -246,7 +246,7 @@ export const SETTINGS_ITEMS = {
         : {
           ok: false,
           fallback: context.shapeId,
-          reason: `既定に選んでいた物理配列が見つからないため、「${context.shape.name}」で測った`,
+          reason: `既定に選んでいた物理配列が見つからないため、「${context.shape.name}」で測りました`,
         };
     },
   }),

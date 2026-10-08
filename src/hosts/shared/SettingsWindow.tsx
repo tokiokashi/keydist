@@ -80,7 +80,7 @@ function initialPosition(anchor: HTMLElement | null, element: HTMLElement | null
   return clamp({ x: rect.right - width, y: rect.bottom + 6 }, element);
 }
 
-export function SettingsWindow({ open, onClose, paneName, anchor, onReset, resetTitle = '対象と条件は変わらない', children }: SettingsWindowProps) {
+export function SettingsWindow({ open, onClose, paneName, anchor, onReset, resetTitle = '対象と条件は変わりません', children }: SettingsWindowProps) {
   const windowRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<Position | undefined>(undefined);
   const focusPendingRef = useRef(false);

@@ -18,7 +18,7 @@ test('配列の行: 推奨の規則の名前を出し、見つからない規則
     [RULE],
   );
   assert.equal(rows[0]!.detail, '推奨のローマ字規則: 自作の規則');
-  assert.match(rows[1]!.detail!, /見つからないため、全体の値の規則で打つ/);
+  assert.match(rows[1]!.detail!, /見つからないため、全体の値の規則で打ちます/);
   assert.match(rows[2]!.detail!, /^推奨のローマ字規則: AZIK/);
   assert.equal(rows[3]!.detail, 'ローマ字を経ずに直接打つ配列');
 });

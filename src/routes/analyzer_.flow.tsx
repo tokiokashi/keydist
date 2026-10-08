@@ -59,7 +59,7 @@ function AnalyzerFlowRoute() {
       <section className="analysis-standalone" aria-busy="true">
         <p className="eyebrow">Analyzer View</p>
         <h1>Bigram Flow</h1>
-        <p className="analysis-standalone-loading">解析Sessionを読み込んでいる。</p>
+        <p className="analysis-standalone-loading">解析Sessionを読み込み中</p>
       </section>
     );
   }

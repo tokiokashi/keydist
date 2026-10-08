@@ -131,7 +131,7 @@ export function defineAssetCodec<T>(options: AssetCodecOptions<T>): AssetCodec<T
       const diagnostics: CodecDiagnostic[] = [];
       const value = options.decodePayload(payload, diagnostics);
       if (value === undefined) {
-        return { ok: false, reason: { kind: 'invalid-shape', message: 'payloadの形式が不正で読み取れない' } };
+        return { ok: false, reason: { kind: 'invalid-shape', message: 'payloadの形式が不正で読み取れません' } };
       }
       return { ok: true, value, diagnostics };
     },
@@ -157,7 +157,7 @@ export function decodeField<T>(
   if (result.success) return result.output;
   diagnostics.push({
     path,
-    message: `${describeIssues(result.issues)}のため既定値へ戻した`,
+    message: `${describeIssues(result.issues)}のため既定値へ戻しました`,
   });
   return fallback;
 }
@@ -177,7 +177,7 @@ export function decodeDroppingInvalid<T>(
   if (result.success) return result.output;
   diagnostics.push({
     path,
-    message: `${describeIssues(result.issues)}のため要素を捨てた`,
+    message: `${describeIssues(result.issues)}のため要素を捨てました`,
   });
   return undefined;
 }

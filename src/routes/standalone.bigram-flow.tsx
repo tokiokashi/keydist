@@ -22,7 +22,7 @@ export const Route = createFileRoute('/standalone/bigram-flow')({
       { title: `${BIGRAM_FLOW_PANE_META.name} | keydist` },
       {
         name: 'description',
-        content: '配列やSetupを1つ選んで、続けて打つ2打鍵で指がキーボード上をどう動くかを図で見る。',
+        content: '配列やSetupを1つ選んで、続けて打つ2打鍵で指がキーボード上をどう動くかを図で見ます。',
       },
     ],
   }),

@@ -38,7 +38,7 @@ export function WorkspacePaneView({
     <WorkspacePaneBoundary onClose={() => runtime.closePane(pane.id)}>
       {usable ? <AnalyzerPane pane={pane} runtime={runtime} /> : (
         <PaneNotice
-          message="このAnalyzerは使えない。閉じて、追加し直してほしい"
+          message="このAnalyzerは使えません。閉じてから、もう一度追加してください"
           onClose={() => runtime.closePane(pane.id)}
         />
       )}
@@ -103,7 +103,7 @@ class WorkspacePaneBoundary extends Component<
     if (this.state.error !== undefined) {
       return (
         <PaneNotice
-          message="このAnalyzerを表示できなかった。閉じて、追加し直してほしい"
+          message="このAnalyzerを表示できませんでした。閉じてから、もう一度追加してください"
           details={describeErrorDetail(this.state.error)}
           onClose={this.props.onClose}
         />

@@ -80,8 +80,8 @@ test('受け取った側に無い自作の配列・Setupは、名前を添えて
   ]);
   assert.equal(decoded.notice.unreadable, 1);
   assert.deepEqual(describeSharedTargetsNotice(decoded.notice), [
-    '共有されたSetup「どこにも無い」・自作の配列「消した配列」は、この端末に見つからなかった',
-    '共有リンクの対象のうち、読み取れないものがあった（1件）',
+    '共有されたSetup「どこにも無い」・自作の配列「消した配列」は、この端末に見つかりませんでした',
+    '共有リンクの対象のうち、読み取れないものがありました（1件）',
   ]);
 });
 
@@ -133,7 +133,7 @@ test('見つからない名前が多い時は先頭の数件だけ名前を出�
     notFound: ['a', 'b', 'c', 'd', 'e'].map((name) => ({ kind: 'setup' as const, name })),
     unreadable: 0,
   });
-  assert.deepEqual(lines, ['共有されたSetup「a」・Setup「b」・Setup「c」ほか2件は、この端末に見つからなかった']);
+  assert.deepEqual(lines, ['共有されたSetup「a」・Setup「b」・Setup「c」ほか2件は、この端末に見つかりませんでした']);
 });
 
 test('載らない対象（削除済み・名前が長すぎる・件数超過）は理由ごとに返し、載る対象だけをURLに置く', () => {
@@ -190,9 +190,9 @@ test('送る側へ示す文は、載らなかった対象と名前だけが載�
     src,
   );
   assert.deepEqual(describeShareEncodeNotice(notice), [
-    '削除済みの対象（1件）はリンクに載らなかった',
-    `名前が長すぎるSetup「${'あ'.repeat(20)}…」はリンクに載らなかった`,
-    '自作の配列「自作,配列」は名前だけがリンクに載る。受け取った側に同じ名前の配列が無いと開けない',
+    '削除済みの対象（1件）はリンクに載りませんでした',
+    `名前が長すぎるSetup「${'あ'.repeat(20)}…」はリンクに載りませんでした`,
+    '自作の配列「自作,配列」は名前だけがリンクに載ります。受け取った側に同じ名前の配列が無いと開けません',
   ]);
   const single = encodeSingleTargetToUrl({ kind: 'setup', setupId: 'uuid-long' }, src);
   assert.equal(single.params.toString(), '');

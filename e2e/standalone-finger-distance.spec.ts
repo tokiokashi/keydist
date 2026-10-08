@@ -60,7 +60,7 @@ test('共有リンクに載らない対象（名前が長すぎるSetup）は、
   const notice = page.locator('[data-share-notice="true"]');
   await expect(notice).toHaveCount(1);
   await expect(notice).toContainText('名前が長すぎるSetup');
-  await expect(notice).toContainText('リンクに載らなかった');
+  await expect(notice).toContainText('リンクに載りませんでした');
   const url = await page.evaluate(() => navigator.clipboard.readText());
   expect(new URL(url).searchParams.has('target')).toBe(false);
 });

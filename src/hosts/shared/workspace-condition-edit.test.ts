@@ -180,7 +180,7 @@ test('出どころ: Workspaceの値は「Workspace」と出て、変えた項目
   assert.equal(n.displayValue, '5');
   // 全体を編集している行: Workspaceの値が勝つので、全体を変えても画面は変わらない
   const global = overrideWinsNotices(rows);
-  assert.equal(global.get('windowSize'), 'Workspaceの値が優先されるため、全体を変えてもこの画面は変わらない');
+  assert.equal(global.get('windowSize'), 'Workspaceの値が優先されるため、全体を変えてもこの画面は変わりません');
   // Workspaceを編集している行: Workspaceの値自身には勝つ理由を出さない
   assert.equal(overrideWinsNotices(rows, undefined, 'Workspace').get('windowSize'), undefined);
 });
@@ -188,12 +188,12 @@ test('出どころ: Workspaceの値は「Workspace」と出て、変えた項目
 test('出どころ: Workspaceより強いレベル・配列の推奨が勝つ行は、Workspaceを変えても変わらない理由が出る', () => {
   const view = withWorkspaceConditions({ layout: { qwerty: { windowSize: 2 } } }, { windowSize: 5 });
   const notices = overrideWinsNotices(rowsOf('qwerty', view), undefined, 'Workspace');
-  assert.match(notices.get('windowSize') ?? '', /Workspaceを変えてもこの画面は変わらない/);
+  assert.match(notices.get('windowSize') ?? '', /Workspaceを変えてもこの画面は変わりません/);
   // 大西配列の推奨（大西式）は、Workspaceのローマ字規則に勝つ。出どころは既定値のまま
   const romaji = withWorkspaceConditions(EMPTY_SETTINGS_OVERRIDES, { romajiRuleId: 'hepburn' });
   const rows = rowsOf('oonishi', romaji);
   assert.equal(rows.find((row) => row.id === 'romajiRuleId')!.recommendationWinsOverWorkspace, true);
-  assert.match(overrideWinsNotices(rows, undefined, 'Workspace').get('romajiRuleId') ?? '', /この配列の推奨（.+）が優先されるため、Workspaceを変えてもこの画面は変わらない/);
+  assert.match(overrideWinsNotices(rows, undefined, 'Workspace').get('romajiRuleId') ?? '', /この配列の推奨（.+）が優先されるため、Workspaceを変えてもこの画面は変わりません/);
   // 推奨の無い配列はWorkspaceの値に従う
   assert.equal(rowsOf('qwerty', romaji).find((row) => row.id === 'romajiRuleId')!.value, 'hepburn');
 });

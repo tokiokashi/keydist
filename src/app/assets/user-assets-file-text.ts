@@ -20,7 +20,7 @@ export function exportedText(assets: UserAssetsHoldings): string {
     ['finger-assignment', assets.fingerAssignments.length],
   ] as const;
   const listed = parts.filter(([, count]) => count > 0).map(([kind, count]) => `${KIND_LABELS[kind]}${count}件`);
-  return `${listed.join('、')}を書き出した`;
+  return `${listed.join('、')}を書き出しました`;
 }
 
 /** 読み込みの結果の1行。足した・別名で足した・足さなかったを言い分ける。 */
@@ -29,15 +29,15 @@ export function importEntryText(entry: UserAssetImportEntry): string {
   const { outcome } = entry;
   switch (outcome.kind) {
     case 'added':
-      return `${label}「${entry.name}」を足した`;
+      return `${label}「${entry.name}」を足しました`;
     case 'added-renamed':
       return outcome.overlap.with === 'builtin'
-        ? `組み込みの${label}「${outcome.overlap.name}」と重なるため、${label}「${outcome.addedName}」として足した`
-        : `${label}「${entry.name}」は、手元の「${outcome.overlap.name}」と重なり中身が違うため、「${outcome.addedName}」として足した`;
+        ? `組み込みの${label}「${outcome.overlap.name}」と重なるため、${label}「${outcome.addedName}」として足しました`
+        : `${label}「${entry.name}」は、手元の「${outcome.overlap.name}」と重なり中身が違うため、「${outcome.addedName}」として足しました`;
     case 'skipped-same':
       return outcome.existingName === entry.name
-        ? `${label}「${entry.name}」は、手元と同じ中身なので足さなかった`
-        : `${label}「${entry.name}」は、手元の「${outcome.existingName}」と同じ中身なので足さなかった`;
+        ? `${label}「${entry.name}」は、手元と同じ中身なので足しませんでした`
+        : `${label}「${entry.name}」は、手元の「${outcome.existingName}」と同じ中身なので足しませんでした`;
   }
 }
 
@@ -46,5 +46,5 @@ export function importSummaryText(entries: readonly UserAssetImportEntry[]): str
   const skipped = entries.filter((entry) => entry.outcome.kind === 'skipped-same').length;
   const added = entries.length - skipped;
   if (added === 0) return `手元と同じ中身なので、足したものはありません（${skipped}件）`;
-  return skipped === 0 ? `${added}件を足した` : `${added}件を足した。${skipped}件は手元と同じ中身なので足さなかった`;
+  return skipped === 0 ? `${added}件を足しました` : `${added}件を足しました。${skipped}件は手元と同じ中身なので足しませんでした`;
 }

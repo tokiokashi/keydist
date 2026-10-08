@@ -37,14 +37,14 @@ export function decodeUserGeometryShapes(value: unknown): DecodedWithDiagnostics
   if (!Array.isArray(value)) {
     const diagnostics = value === undefined
       ? []
-      : [{ path: '', message: '配列形式でないため自作の物理配列を捨てた' }];
+      : [{ path: '', message: '配列形式でないため自作の物理配列を捨てました' }];
     return { value: [], diagnostics };
   }
   const diagnostics: CodecDiagnostic[] = [];
   const shapes: PhysicalShape[] = [];
   value.forEach((candidate, index) => {
     if (!isStoredShape(candidate)) {
-      diagnostics.push({ path: `[${index}]`, message: '形式が不正なため自作の物理配列を捨てた' });
+      diagnostics.push({ path: `[${index}]`, message: '形式が不正なため自作の物理配列を捨てました' });
       return;
     }
     shapes.push(sanitizePhysicalShape(candidate, storageFallback));

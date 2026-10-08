@@ -17,7 +17,7 @@ export const Route = createFileRoute('/workspace/$id')({
       { title: 'Workspace | keydist' },
       {
         name: 'description',
-        content: 'Analyzerを並べて、同じテキストでの配列の違いを一度に見る。',
+        content: 'Analyzerを並べて、同じテキストでの配列の違いを一度に見ます。',
       },
     ],
   }),

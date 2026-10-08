@@ -77,7 +77,7 @@ function Home() {
         観測値の注記はトップにだけ置く（docs/architecture.md「画面の構成」）。
         各ペイン・各Analyzerには出さない。
       */}
-      <p className="hero-note">数値は観測値であり、配列の優劣を判定するスコアではない。</p>
+      <p className="hero-note">数値は観測値であり、配列の優劣を判定するスコアではありません。</p>
       <p className="hero-legacy">
         <Link to="/analyzer">{LEGACY_ANALYZER_LABEL}</Link>
       </p>

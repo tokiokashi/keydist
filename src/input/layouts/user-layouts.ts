@@ -85,7 +85,7 @@ export function decodeUserLayouts(value: unknown): DecodedWithDiagnostics<UserLa
   if (!Array.isArray(value)) {
     const diagnostics = value === undefined
       ? []
-      : [{ path: '', message: '配列形式でないため自作の配列を捨てた' }];
+      : [{ path: '', message: '配列形式でないため自作の配列を捨てました' }];
     return { value: [], diagnostics };
   }
   const diagnostics: CodecDiagnostic[] = [];
@@ -94,11 +94,11 @@ export function decodeUserLayouts(value: unknown): DecodedWithDiagnostics<UserLa
   value.forEach((candidate, index) => {
     const path = `[${index}]`;
     if (!isValidUserLayout(candidate)) {
-      diagnostics.push({ path, message: '形式が不正なため自作の配列を捨てた' });
+      diagnostics.push({ path, message: '形式が不正なため自作の配列を捨てました' });
       return;
     }
     if (seen.has(candidate.id)) {
-      diagnostics.push({ path, message: `id「${candidate.id}」が重複しているため捨てた` });
+      diagnostics.push({ path, message: `id「${candidate.id}」が重複しているため捨てました` });
       return;
     }
     seen.add(candidate.id);
@@ -135,7 +135,7 @@ export function validate(rows: string[]): string[] {
   rows.forEach((row, i) => {
     const length = [...row.trim()].length;
     if (length > ROW_LIMITS[i]) {
-      errors.push(`${ROW_LABELS[i]}が ${length} 文字。この物理配列には ${ROW_LIMITS[i]} 個までしか置けない`);
+      errors.push(`${ROW_LABELS[i]}が ${length} 文字。この物理配列には ${ROW_LIMITS[i]} 個までしか置けません`);
     }
   });
   if (rows.slice(1).every((r) => r.trim() === '')) errors.push('英字の段が空');

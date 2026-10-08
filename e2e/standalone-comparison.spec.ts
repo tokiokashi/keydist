@@ -448,7 +448,7 @@ test('候補に当てはまる配列・Setupが無い時は、その旨を出す
   await page.goto('/standalone/comparison');
   const selection = await openTargetSelection(page);
   await selection.getByRole('searchbox').fill('そんな配列は無い');
-  await expect(selection).toContainText('当てはまる配列・Setupは無い。');
+  await expect(selection).toContainText('当てはまる配列・Setupはありません。');
 });
 
 test('対象の選択は組み込み・英字 / 組み込み・かな / Setupの区分に分かれ、外を押すと閉じる', async ({ page }) => {
@@ -515,7 +515,7 @@ test('基準にする対象は対象の選択の中にあり、解析設定に�
   // 本体は見出し・説明段落・観測値の注記を持たない。
   const body = page.locator('.pane-body');
   await expect(body.getByRole('heading', { name: '比較表' })).toHaveCount(0);
-  await expect(body).not.toContainText('配列の優劣を判定するスコアではない');
+  await expect(body).not.toContainText('配列の優劣を判定するスコアではありません');
 });
 
 test('対象が空の時は、ペインに選ぶボタンだけを出し、パソコン幅では選択を自動で開く（フォーカスは奪わない）', async ({ page }) => {
@@ -745,7 +745,7 @@ test('「共有」でコピーしたURLを新しいページで開くと、解�
   await expect(table.locator('thead th', { hasText: /^動作数$/ })).toHaveCount(0);
 
   await page.getByRole('button', { name: '共有', exact: true }).click();
-  await expect(page.getByRole('status').filter({ hasText: 'URLをコピーした' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'コピーしました' })).toBeVisible();
   const url = await page.evaluate(() => navigator.clipboard.readText());
   expect(url).toContain('columns=');
 
@@ -801,7 +801,7 @@ test('共有リンクは集合を並び順・基準ごと運び、自作のSetup
   await page.getByLabel('基準', { exact: true }).selectOption('setup:src-1');
   await expect(page.locator('.comparison-table tr[data-baseline="true"]')).toContainText('仕事用');
   await page.getByRole('button', { name: '共有', exact: true }).click();
-  await expect(page.getByRole('status').filter({ hasText: 'URLをコピーした' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'コピーしました' })).toBeVisible();
   // 載らない対象が無い時は、送る側へ示す文を出さない。
   await expect(page.locator('[data-share-notice="true"]')).toHaveCount(0);
   const url = await page.evaluate(() => navigator.clipboard.readText());
@@ -833,7 +833,7 @@ test('共有リンクは集合を並び順・基準ごと運び、自作のSetup
   try {
     await expect(missing.opened.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
     await expect(missing.opened.locator('[data-pane-link-notice="true"]')).toContainText('Setup「仕事用」');
-    await expect(missing.opened.locator('[data-pane-link-notice="true"]')).toContainText('見つからなかった');
+    await expect(missing.opened.locator('[data-pane-link-notice="true"]')).toContainText('見つかりませんでした');
     await expect(missing.opened.locator('.comparison-table tr[data-baseline="true"]')).toHaveCount(0);
   } finally {
     await missing.close();
@@ -996,7 +996,7 @@ test('共有リンクに載らない対象（名前が長すぎるSetup）は、
   const notice = page.locator('[data-share-notice="true"]');
   await expect(notice).toHaveCount(1);
   await expect(notice).toContainText('名前が長すぎるSetup');
-  await expect(notice).toContainText('リンクに載らなかった');
+  await expect(notice).toContainText('リンクに載りませんでした');
   const url = await page.evaluate(() => navigator.clipboard.readText());
   expect(new URL(url).searchParams.getAll('targets')).toEqual(['layout:dvorak']);
 });

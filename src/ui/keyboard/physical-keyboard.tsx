@@ -53,7 +53,7 @@ export function PhysicalKeyboard({
   });
 
   if (positioned.length === 0) {
-    return <div className="physical-keyboard physical-keyboard-empty">表示できるキーがない。</div>;
+    return <div className="physical-keyboard physical-keyboard-empty">表示できるキーがありません。</div>;
   }
 
   const minX = Math.min(...positioned.map(({ x }) => x));

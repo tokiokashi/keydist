@@ -35,7 +35,7 @@ export function decodeTextSelectionState(
   const refPath = path === '' ? 'ref' : `${path}.ref`;
   const ref = decodeField<TextRef>(textRefSchema, raw.ref, DEFAULT_TEXT_REF, refPath, diagnostics);
   if (ref.kind === 'builtin' && builtinTextById(ref.id) === undefined) {
-    diagnostics.push({ path: refPath, message: `組み込みテキスト「${ref.id}」が存在しないため既定へ戻した` });
+    diagnostics.push({ path: refPath, message: `組み込みテキスト「${ref.id}」が存在しないため既定へ戻しました` });
     return { ref: DEFAULT_TEXT_REF };
   }
   return { ref };

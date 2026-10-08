@@ -247,7 +247,7 @@ export function UserAssetsPage({
             if (pending.kind === 'layout') onDeleteLayout(pending.row.id);
             else onDeleteRomajiRule(pending.row.id);
             clearResults();
-            setMessage(`「${pending.row.name}」を削除した`);
+            setMessage(`「${pending.row.name}」を削除しました`);
             focusAfterClose.current = 'undo';
             setPending(undefined);
           }}

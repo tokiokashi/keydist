@@ -462,7 +462,7 @@ test('保存された解析設定が壊れていたら、既定値へ戻しつ�
 
   const diagnostics = page.locator('[data-pane-settings-diagnostics="true"]');
   await expect(diagnostics).toBeVisible();
-  await expect(diagnostics).toContainText('既定値へ戻した');
+  await expect(diagnostics).toContainText('既定値へ戻しました');
 
   // 既定値へ戻っているので、Actualが選ばれている（壊れた値のsourceは使われない）。
   const actual = (await openSettings(page)).getByRole('button', { name: 'Actual', exact: true });
@@ -546,7 +546,7 @@ test('文脈バーの「共有」で既定値と違う項目だけを含むURL�
   await expect(withinHand).toHaveAttribute('aria-pressed', 'true');
 
   await page.getByRole('button', { name: '共有', exact: true }).click();
-  await expect(page.getByRole('status').filter({ hasText: 'URLをコピーした' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'コピーしました' })).toBeVisible();
 
   const clipboardText = await page.evaluate(() => navigator.clipboard.readText());
   expect(clipboardText).toContain('source=within-hand');
@@ -561,7 +561,7 @@ test('共有リンクで対象（配列）が届き、取り込み後はURLか�
   await toggleTarget(page, 'layout:dvorak');
   await expectChosenTarget(page, 'layout:dvorak');
   await page.getByRole('button', { name: '共有', exact: true }).click();
-  await expect(page.getByRole('status').filter({ hasText: 'URLをコピーした' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'コピーしました' })).toBeVisible();
   const url = await page.evaluate(() => navigator.clipboard.readText());
   expect(url).toContain('target=layout%3Advorak');
 
@@ -838,7 +838,7 @@ test('見出しは「名前 ⓘ / 対象 / 解析設定」で、ⓘで短い説�
   // 本体は見出し・説明段落・観測値の注記を持たない（ペインの見出しとトップが持つ）。
   const body = page.locator('.pane-body');
   await expect(body.getByRole('heading', { name: 'Bigram Flow' })).toHaveCount(0);
-  await expect(body).not.toContainText('配列の優劣を判定するスコアではない');
+  await expect(body).not.toContainText('配列の優劣を判定するスコアではありません');
 
   const info = page.getByRole('button', { name: 'Bigram Flowの説明' });
   await info.click();
@@ -1012,7 +1012,7 @@ test('解析設定の小窓のヘッダーの「すべて初期値に戻す」�
   // 個別画面の見出しに⋯は無い。
   await expect(page.getByRole('button', { name: /の操作$/ })).toHaveCount(0);
   const reset = settings.getByRole('button', { name: 'すべて初期値に戻す' });
-  await expect(reset).toHaveAttribute('title', '対象と条件は変わらない');
+  await expect(reset).toHaveAttribute('title', '対象と条件は変わりません');
   // ヘッダー行（タイトルと閉じるボタンの間）にある。本体の中ではない。
   await expect(settings.locator('.settings-window-handle').getByRole('button', { name: 'すべて初期値に戻す' })).toHaveCount(1);
   await expect(settings.locator('.settings-window-body').getByRole('button', { name: 'すべて初期値に戻す' })).toHaveCount(0);
@@ -1027,7 +1027,7 @@ test('解析設定の小窓のヘッダーの「すべて初期値に戻す」�
 
 test('観測値の注記はトップにだけ置く', async ({ page }) => {
   await page.goto('/');
-  await expect(page.locator('.hero')).toContainText('数値は観測値であり、配列の優劣を判定するスコアではない。');
+  await expect(page.locator('.hero')).toContainText('数値は観測値であり、配列の優劣を判定するスコアではありません。');
 });
 
 test('解析設定の小窓を開くとフォーカスが中へ入り、Escapeで閉じて解析設定ボタンへ戻る', async ({ page }) => {

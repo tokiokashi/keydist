@@ -365,7 +365,7 @@ export function TargetSelection({
             </div>
             <div className="target-selection-list">
               {visibleGroups.length === 0 ? (
-                <p className="target-selection-empty">当てはまる配列・Setupは無い。</p>
+                <p className="target-selection-empty">当てはまる配列・Setupはありません。</p>
               ) : visibleGroups.map((group) => (
                 <fieldset key={group.id} className="target-selection-group" data-target-group={group.id}>
                   <legend>{group.label}</legend>

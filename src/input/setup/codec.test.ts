@@ -89,7 +89,7 @@ test('decode: 存在しないSetup idのoverrides.setupは孤児として診断�
   if (result.ok) {
     assert.deepEqual(result.value.overrides, { setup: { 's-1': { windowSize: 4 } } });
     assert.equal(result.diagnostics.length, 1);
-    assert.match(result.diagnostics[0].message, /孤児として捨てた/);
+    assert.match(result.diagnostics[0].message, /孤児として捨てました/);
     assert.equal(result.diagnostics[0].path, 'overrides.setup.ghost-id');
   }
 });
@@ -107,7 +107,7 @@ test('decode: Setup要素が壊れて捨てられた場合も、そのidのoverr
     assert.deepEqual(result.value.overrides, { setup: { 's-1': { windowSize: 4 } } });
     // 診断は「Setup要素を捨てた」旨と「孤児のoverridesを捨てた」旨の2件になる。
     assert.equal(result.diagnostics.length, 2);
-    assert.ok(result.diagnostics.some((d) => d.message.includes('孤児として捨てた') && d.path === 'overrides.setup.s-3'));
+    assert.ok(result.diagnostics.some((d) => d.message.includes('孤児として捨てました') && d.path === 'overrides.setup.s-3'));
   }
 });
 

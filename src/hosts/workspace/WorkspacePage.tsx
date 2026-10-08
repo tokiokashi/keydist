@@ -355,7 +355,7 @@ export function WorkspacePage({
               {
                 id: 'compact',
                 label: '空いた所に詰める',
-                description: 'ペインを縮める・動かす・閉じた時に、下のペインが上の空きへ移る',
+                description: 'ペインを縮める・動かす・閉じた時に、下のペインが上の空きへ移ります',
                 checked: workspace.compactPanes === true,
                 onSelect: () => dispatch(setWorkspaceCompactPanesCommand(workspaceId, workspace.compactPanes !== true)),
               },
@@ -394,7 +394,7 @@ export function WorkspacePage({
         >
           {workspace.panes.length === 0 ? (
             <div className="workspace-empty" data-workspace-empty="true">
-              <p>ペインを追加して、並べて見る。</p>
+              <p>ペインを追加して、並べて見られます。</p>
               <AddPaneMenu onAdd={addPane} onAddBlank={addBlankPane} variant="empty" />
               <button type="button" className="workspace-sample-button" onClick={startFromSample}>サンプルの並びで始める</button>
             </div>

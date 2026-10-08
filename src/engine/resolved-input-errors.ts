@@ -27,10 +27,10 @@ export function describeResolvedInputError(error: ResolvedInputError): string {
     case 'reference':
       return error.errors.map(describeSetupReferenceError).join(' / ');
     case 'incompatible-text':
-      return `このテキスト（${error.language === 'ja' ? '日本語' : '英語'}）には「${error.layout.name}」を使えない`;
+      return `このテキスト（${error.language === 'ja' ? '日本語' : '英語'}）には「${error.layout.name}」を使えません`;
     case 'geometry':
       // 例外の文（`error.message`）は定義の内部を指す開発者向けの文なので出さない。
-      return '物理配列と指の割当が噛み合わず、キーボードを組み立てられない';
+      return '物理配列と指の割当が噛み合わず、キーボードを組み立てられません';
     case 'target-missing':
       return error.target.kind === 'setup' ? 'Setupが削除された' : '配列が見つからない（削除された可能性がある）';
   }

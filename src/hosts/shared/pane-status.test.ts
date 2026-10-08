@@ -48,7 +48,7 @@ test('describeResolvedInputError: incompatible-text（このテキストには�
 test('describeResolvedInputError: geometry（物理配列が組めない）', () => {
   const error: ResolvedInputError = { kind: 'geometry', message: '指割り当て「finger-x」にキー q が無い' };
   const message = describeResolvedInputError(error);
-  assert.match(message, /組み立てられない/);
+  assert.match(message, /組み立てられません/);
   // 例外の文は定義の内部（idやキー名）を指すので出さない。
   assert.doesNotMatch(message, /finger-x/);
 });

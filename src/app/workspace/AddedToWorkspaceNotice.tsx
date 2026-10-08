@@ -22,7 +22,7 @@ export function AddedToWorkspaceNotice() {
 
   return (
     <div className="shell-notice" role="status" data-added-to-workspace-notice="true" key={added.serial}>
-      <span className="shell-notice-text">「{workspace.name}」に追加した</span>
+      <span className="shell-notice-text">「{workspace.name}」に追加しました</span>
       <Link
         className="shell-notice-link"
         to="/workspace/$id"

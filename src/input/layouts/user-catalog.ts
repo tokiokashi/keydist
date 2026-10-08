@@ -39,9 +39,9 @@ export function buildUserCatalog(
   userRomajiRules.forEach((rule, index) => {
     const path = `userRomajiRules[${index}]`;
     if (isBuiltin(rule.id)) {
-      diagnostics.push({ path, message: `id「${rule.id}」が組み込みの規則と同じため捨てた` });
+      diagnostics.push({ path, message: `id「${rule.id}」が組み込みの規則と同じため捨てました` });
     } else if (ruleIds.has(rule.id)) {
-      diagnostics.push({ path, message: `id「${rule.id}」が重複しているため捨てた` });
+      diagnostics.push({ path, message: `id「${rule.id}」が重複しているため捨てました` });
     } else {
       ruleIds.add(rule.id);
       romajiRules.push(rule);
@@ -53,11 +53,11 @@ export function buildUserCatalog(
   userLayouts.forEach((definition, index) => {
     const path = `userLayouts[${index}]`;
     if (LAYOUT_BY_ID.has(definition.id)) {
-      diagnostics.push({ path, message: `id「${definition.id}」が組み込みの配列と同じため捨てた` });
+      diagnostics.push({ path, message: `id「${definition.id}」が組み込みの配列と同じため捨てました` });
       return;
     }
     if (definitions.has(definition.id)) {
-      diagnostics.push({ path, message: `id「${definition.id}」が重複しているため捨てた` });
+      diagnostics.push({ path, message: `id「${definition.id}」が重複しているため捨てました` });
       return;
     }
     const errors = validate(definition.rows);

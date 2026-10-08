@@ -10,7 +10,7 @@ export const Route = createFileRoute('/analyzer')({
       { title: 'keydist — キーボード配列指移動距離' },
       {
         name: 'description',
-        content: 'キーボード論理配列を指の総移動距離で評価する',
+        content: 'キーボード論理配列を指の総移動距離で評価します',
       },
     ],
     links: [{ rel: 'stylesheet', href: analyzerCss }],

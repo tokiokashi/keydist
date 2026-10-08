@@ -57,7 +57,7 @@ export function decodeUserFingerAssignments(
 ): FingerAssignment[] {
   if (!Array.isArray(raw)) {
     // 値があって配列でない時は、全件が消えることを診断で示す（無い時は空の手持ちで正しい）
-    if (raw !== undefined) diagnostics.push({ path, message: '配列形式でないため指の割り当てを捨てた' });
+    if (raw !== undefined) diagnostics.push({ path, message: '配列形式でないため指の割り当てを捨てました' });
     return [];
   }
   const seen = new Set<string>();
@@ -68,14 +68,14 @@ export function decodeUserFingerAssignments(
     if (isRecord(candidate) && isRecord(candidate.keyFinger)) {
       for (const key of Object.keys(candidate.keyFinger)) {
         if (UNSAFE_OBJECT_KEYS.has(key)) {
-          diagnostics.push({ path: `${path}[${index}].keyFinger.${key}`, message: `予約名のキー「${key}」を捨てた` });
+          diagnostics.push({ path: `${path}[${index}].keyFinger.${key}`, message: `予約名のキー「${key}」を捨てました` });
         }
       }
     }
     const decoded = decodeDroppingInvalid(userFingerAssignmentSchema, candidate, `${path}[${index}]`, diagnostics);
     if (decoded === undefined) return;
     if (seen.has(decoded.id)) {
-      diagnostics.push({ path: `${path}[${index}]`, message: `id「${decoded.id}」が重複しているため捨てた` });
+      diagnostics.push({ path: `${path}[${index}]`, message: `id「${decoded.id}」が重複しているため捨てました` });
       return;
     }
     seen.add(decoded.id);

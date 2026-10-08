@@ -14,7 +14,7 @@ export const Route = createFileRoute('/standalone/finger-distance')({
       { title: `${FINGER_DISTANCE_PANE_META.name} | keydist` },
       {
         name: 'description',
-        content: '配列やSetupを1つ選んで、指ごとの移動距離と押下数、隣り合う指の間隔のばらつきを見る。',
+        content: '配列やSetupを1つ選んで、指ごとの移動距離と押下数、隣り合う指の間隔のばらつきを見ます。',
       },
     ],
   }),

@@ -139,7 +139,7 @@ test('decodeField: 妥当なら値を、不正なら既定値へ戻し診断を�
   assert.equal(decodeField(schema, -1, 0, 'count', diagnostics), 0);
   assert.equal(diagnostics.length, 1);
   assert.equal(diagnostics[0].path, 'count');
-  assert.match(diagnostics[0].message, /既定値へ戻した$/);
+  assert.match(diagnostics[0].message, /既定値へ戻しました$/);
 });
 
 test('decodeDroppingInvalid: 妥当なら値を、不正ならundefinedを返し診断を積む', () => {
@@ -150,7 +150,7 @@ test('decodeDroppingInvalid: 妥当なら値を、不正ならundefinedを返し
 
   assert.equal(decodeDroppingInvalid(schema, '', 'items[1]', diagnostics), undefined);
   assert.equal(diagnostics.length, 1);
-  assert.match(diagnostics[0].message, /要素を捨てた$/);
+  assert.match(diagnostics[0].message, /要素を捨てました$/);
 });
 
 test('encodedSizeBytes: JSONにした時のUTF-8バイト数を返す', () => {

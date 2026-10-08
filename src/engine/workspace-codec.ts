@@ -48,7 +48,7 @@ import { normalizeGrid, type GridItem, type WorkspaceGrid } from './workspace-gr
 /** 格子の枠1つを読む。数でない値は`normalizeGrid`が範囲に収めるので、ここでは形だけを見る。 */
 function decodeGridItem(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): GridItem | undefined {
   if (!isRecord(raw) || typeof raw.id !== 'string' || raw.id === '') {
-    diagnostics.push({ path, message: '配置の枠が読めないため捨てた' });
+    diagnostics.push({ path, message: '配置の枠が読めないため捨てました' });
     return undefined;
   }
   const num = (value: unknown, fallback: number) => (typeof value === 'number' && Number.isFinite(value) ? value : fallback);
@@ -57,7 +57,7 @@ function decodeGridItem(raw: unknown, path: string, diagnostics: CodecDiagnostic
 
 function decodePaneTarget(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): WorkspacePaneTarget | undefined {
   if (!isRecord(raw)) {
-    diagnostics.push({ path, message: 'object形式でないためペインを捨てた' });
+    diagnostics.push({ path, message: 'object形式でないためペインを捨てました' });
     return undefined;
   }
   if (raw.kind === 'single') {
@@ -68,7 +68,7 @@ function decodePaneTarget(raw: unknown, path: string, diagnostics: CodecDiagnost
     const selection = decodeTargetSet(raw.selection ?? {}, `${path}.selection`, diagnostics);
     return selection === undefined ? undefined : { kind: 'set', selection };
   }
-  diagnostics.push({ path: `${path}.kind`, message: '対象の種類が読めないためペインを捨てた' });
+  diagnostics.push({ path: `${path}.kind`, message: '対象の種類が読めないためペインを捨てました' });
   return undefined;
 }
 
@@ -84,16 +84,16 @@ function decodeBinding(
   diagnostics: CodecDiagnostic[],
 ): PaneTargetBinding | undefined {
   if (raw === undefined) {
-    diagnostics.push({ path, message: '対象の持ち方が無いためペインを捨てた' });
+    diagnostics.push({ path, message: '対象の持ち方が無いためペインを捨てました' });
     return undefined;
   }
   if (!isRecord(raw)) {
-    diagnostics.push({ path, message: 'object形式でないため対象の持ち方が読めず、ペインを捨てた' });
+    diagnostics.push({ path, message: 'object形式でないため対象の持ち方が読めず、ペインを捨てました' });
     return undefined;
   }
   if (raw.mode === 'follow') {
     if (typeof raw.group === 'string' && groupIds.has(raw.group)) return followBinding(raw.group);
-    diagnostics.push({ path: `${path}.group`, message: '従う組が見つからないため先頭の組へ従わせた' });
+    diagnostics.push({ path: `${path}.group`, message: '従う組が見つからないため先頭の組へ従わせました' });
     return followBinding(fallbackGroup);
   }
   if (raw.mode === 'none') return NO_BINDING;
@@ -101,7 +101,7 @@ function decodeBinding(
     const target = decodePaneTarget(raw.target, `${path}.target`, diagnostics);
     return target === undefined ? undefined : { mode: 'fixed', target };
   }
-  diagnostics.push({ path: `${path}.mode`, message: '対象の持ち方が読めないためペインを捨てた' });
+  diagnostics.push({ path: `${path}.mode`, message: '対象の持ち方が読めないためペインを捨てました' });
   return undefined;
 }
 
@@ -110,7 +110,7 @@ function decodeWorkspaceTarget(raw: unknown, path: string, diagnostics: CodecDia
   const initial = initialWorkspaceTarget();
   if (raw === undefined) return initial;
   if (!isRecord(raw)) {
-    diagnostics.push({ path, message: 'object形式でないため組の対象を空へ戻した' });
+    diagnostics.push({ path, message: 'object形式でないため組の対象を空へ戻しました' });
     return initial;
   }
   const singleTarget = raw.single === undefined ? undefined : decodeAnalysisTarget(raw.single, `${path}.single`, diagnostics);
@@ -123,16 +123,16 @@ function decodeGroups(raw: unknown, path: string, diagnostics: CodecDiagnostic[]
   const groups: LinkGroup[] = [];
   const seen = new Set<string>();
   if (!Array.isArray(raw)) {
-    diagnostics.push({ path, message: '配列形式でないため連動の組を作り直した' });
+    diagnostics.push({ path, message: '配列形式でないため連動の組を作り直しました' });
   } else {
     raw.forEach((item, index) => {
       const itemPath = `${path}[${index}]`;
       if (!isRecord(item) || typeof item.id !== 'string' || item.id === '') {
-        diagnostics.push({ path: itemPath, message: 'idが読めないため連動の組を捨てた' });
+        diagnostics.push({ path: itemPath, message: 'idが読めないため連動の組を捨てました' });
         return;
       }
       if (seen.has(item.id)) {
-        diagnostics.push({ path: `${itemPath}.id`, message: `重複したid「${item.id}」のため連動の組を捨てた` });
+        diagnostics.push({ path: `${itemPath}.id`, message: `重複したid「${item.id}」のため連動の組を捨てました` });
         return;
       }
       seen.add(item.id);
@@ -140,7 +140,7 @@ function decodeGroups(raw: unknown, path: string, diagnostics: CodecDiagnostic[]
     });
   }
   if (groups.length === 0) {
-    if (Array.isArray(raw)) diagnostics.push({ path, message: '読める連動の組が無いため作り直した' });
+    if (Array.isArray(raw)) diagnostics.push({ path, message: '読める連動の組が無いため作り直しました' });
     groups.push({ id: INITIAL_LINK_GROUP_ID, target: initialWorkspaceTarget() });
   }
   return groups;
@@ -150,7 +150,7 @@ function decodeGroups(raw: unknown, path: string, diagnostics: CodecDiagnostic[]
 function decodeOptionSets(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): readonly OptionSet[] {
   if (raw === undefined) return [];
   if (!Array.isArray(raw)) {
-    diagnostics.push({ path, message: '配列形式でないため解析設定の組を捨てた' });
+    diagnostics.push({ path, message: '配列形式でないため解析設定の組を捨てました' });
     return [];
   }
   const sets: OptionSet[] = [];
@@ -158,11 +158,11 @@ function decodeOptionSets(raw: unknown, path: string, diagnostics: CodecDiagnost
   raw.forEach((item, index) => {
     const itemPath = `${path}[${index}]`;
     if (!isRecord(item) || typeof item.id !== 'string' || item.id === '' || typeof item.analyzerId !== 'string' || item.analyzerId === '') {
-      diagnostics.push({ path: itemPath, message: 'idまたはAnalyzerが読めないため解析設定の組を捨てた' });
+      diagnostics.push({ path: itemPath, message: 'idまたはAnalyzerが読めないため解析設定の組を捨てました' });
       return;
     }
     if (seen.has(item.id)) {
-      diagnostics.push({ path: `${itemPath}.id`, message: `重複したid「${item.id}」のため解析設定の組を捨てた` });
+      diagnostics.push({ path: `${itemPath}.id`, message: `重複したid「${item.id}」のため解析設定の組を捨てました` });
       return;
     }
     seen.add(item.id);
@@ -188,10 +188,10 @@ function decodeOptionsBinding(
   if (isRecord(raw) && raw.mode === 'shared' && typeof raw.set === 'string') {
     const set = sets.find((candidate) => candidate.id === raw.set);
     if (set !== undefined && set.analyzerId === analyzerId) return sharedOptions(set.id);
-    diagnostics.push({ path: `${path}.set`, message: '従う解析設定の組が見つからないため、このペインだけの設定にした' });
+    diagnostics.push({ path: `${path}.set`, message: '従う解析設定の組が見つからないため、このペインだけの設定にしました' });
     return OWN_OPTIONS;
   }
-  diagnostics.push({ path, message: '解析設定の持ち方が読めないため、このペインだけの設定にした' });
+  diagnostics.push({ path, message: '解析設定の持ち方が読めないため、このペインだけの設定にしました' });
   return OWN_OPTIONS;
 }
 
@@ -205,15 +205,15 @@ function decodePane(
   diagnostics: CodecDiagnostic[],
 ): WorkspacePane | undefined {
   if (!isRecord(raw)) {
-    diagnostics.push({ path, message: 'object形式でないためペインを捨てた' });
+    diagnostics.push({ path, message: 'object形式でないためペインを捨てました' });
     return undefined;
   }
   if (typeof raw.id !== 'string' || raw.id === '' || typeof raw.analyzerId !== 'string' || raw.analyzerId === '') {
-    diagnostics.push({ path, message: 'idまたはAnalyzerが読めないためペインを捨てた' });
+    diagnostics.push({ path, message: 'idまたはAnalyzerが読めないためペインを捨てました' });
     return undefined;
   }
   if (seen.has(raw.id)) {
-    diagnostics.push({ path: `${path}.id`, message: `重複したペインid「${raw.id}」のためペインを捨てた` });
+    diagnostics.push({ path: `${path}.id`, message: `重複したペインid「${raw.id}」のためペインを捨てました` });
     return undefined;
   }
   const binding = decodeBinding(raw.binding, `${path}.binding`, groupIds, fallbackGroup, diagnostics);
@@ -234,15 +234,15 @@ function decodePane(
 
 function decodeWorkspace(raw: unknown, path: string, seenIds: Set<string>, diagnostics: CodecDiagnostic[]): Workspace | undefined {
   if (!isRecord(raw)) {
-    diagnostics.push({ path, message: 'object形式でないためWorkspaceを捨てた' });
+    diagnostics.push({ path, message: 'object形式でないためWorkspaceを捨てました' });
     return undefined;
   }
   if (typeof raw.id !== 'string' || raw.id === '') {
-    diagnostics.push({ path: `${path}.id`, message: 'idが読めないためWorkspaceを捨てた' });
+    diagnostics.push({ path: `${path}.id`, message: 'idが読めないためWorkspaceを捨てました' });
     return undefined;
   }
   if (seenIds.has(raw.id)) {
-    diagnostics.push({ path: `${path}.id`, message: `重複したid「${raw.id}」のためWorkspaceを捨てた` });
+    diagnostics.push({ path: `${path}.id`, message: `重複したid「${raw.id}」のためWorkspaceを捨てました` });
     return undefined;
   }
   seenIds.add(raw.id);
@@ -251,7 +251,7 @@ function decodeWorkspace(raw: unknown, path: string, seenIds: Set<string>, diagn
   if (typeof raw.name === 'string' && raw.name.trim() !== '') {
     name = raw.name;
   } else {
-    diagnostics.push({ path: `${path}.name`, message: '名前が読めないため既定の名前へ戻した' });
+    diagnostics.push({ path: `${path}.name`, message: '名前が読めないため既定の名前へ戻しました' });
   }
 
   const text = raw.text === undefined
@@ -265,7 +265,7 @@ function decodeWorkspace(raw: unknown, path: string, seenIds: Set<string>, diagn
 
   const rawPanes: readonly unknown[] = Array.isArray(raw.panes) ? raw.panes : [];
   if (raw.panes !== undefined && !Array.isArray(raw.panes)) {
-    diagnostics.push({ path: `${path}.panes`, message: '配列形式でないためペインを捨てた' });
+    diagnostics.push({ path: `${path}.panes`, message: '配列形式でないためペインを捨てました' });
   }
   const seenPaneIds = new Set<string>();
   const panes: WorkspacePane[] = [];
@@ -276,7 +276,7 @@ function decodeWorkspace(raw: unknown, path: string, seenIds: Set<string>, diagn
 
   const rawGrid: GridItem[] = [];
   if (raw.grid !== undefined && !Array.isArray(raw.grid)) {
-    diagnostics.push({ path: `${path}.grid`, message: '配列形式でないため配置を捨てた' });
+    diagnostics.push({ path: `${path}.grid`, message: '配列形式でないため配置を捨てました' });
   }
   (Array.isArray(raw.grid) ? raw.grid : []).forEach((item: unknown, index: number) => {
     const decoded = decodeGridItem(item, `${path}.grid[${index}]`, diagnostics);
@@ -335,7 +335,7 @@ export const WORKSPACE_LIBRARY_CODEC: AssetCodec<WorkspaceLibrary> = defineAsset
     if (!isRecord(payload)) return undefined;
     const raw: readonly unknown[] = Array.isArray(payload.workspaces) ? payload.workspaces : [];
     if (payload.workspaces !== undefined && !Array.isArray(payload.workspaces)) {
-      diagnostics.push({ path: 'payload.workspaces', message: '配列形式でないためWorkspaceを捨てた' });
+      diagnostics.push({ path: 'payload.workspaces', message: '配列形式でないためWorkspaceを捨てました' });
     }
     const seenIds = new Set<string>();
     const workspaces: Workspace[] = [];

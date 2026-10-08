@@ -30,19 +30,19 @@ interface DecodedSet {
 
 function decodeSetParts(payload: unknown, path: string, diagnostics: CodecDiagnostic[], readSlots: boolean): DecodedSet | undefined {
   if (!isRecord(payload)) {
-    diagnostics.push({ path, message: 'object形式でないため選択を捨てた' });
+    diagnostics.push({ path, message: 'object形式でないため選択を捨てました' });
     return undefined;
   }
   const rawTargets: readonly unknown[] = Array.isArray(payload.targets) ? payload.targets : [];
   if (payload.targets !== undefined && !Array.isArray(payload.targets)) {
-    diagnostics.push({ path: `${path}.targets`, message: '配列形式でないため選択を捨てた' });
+    diagnostics.push({ path: `${path}.targets`, message: '配列形式でないため選択を捨てました' });
   }
   const seen = new Set<string>();
   const targets: AnalysisTarget[] = [];
   const rawSlots: readonly unknown[] = readSlots && Array.isArray(payload.colorSlots) ? payload.colorSlots : [];
   // 値があるのに配列でないのは、番号の一覧ごと壊れている（要素1つの不備とは違い、全対象の色が振り直される）
   if (readSlots && payload.colorSlots !== undefined && !Array.isArray(payload.colorSlots)) {
-    diagnostics.push({ path: `${path}.colorSlots`, message: '配列形式でないため色の番号を配り直した' });
+    diagnostics.push({ path: `${path}.colorSlots`, message: '配列形式でないため色の番号を配り直しました' });
   }
   const knownSlots = new Map<string, number>();
   rawTargets.forEach((item, index) => {

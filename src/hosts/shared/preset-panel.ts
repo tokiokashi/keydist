@@ -107,11 +107,11 @@ export function applyResultText(
 }
 
 export function savedResultText(name: string, scope: string = '全体'): string {
-  return `「${name}」として今の${scope}の値を保存した`;
+  return `「${name}」として今の${scope}の値を保存しました`;
 }
 
 export function deletedResultText(name: string): string {
-  return `「${name}」を削除した`;
+  return `「${name}」を削除しました`;
 }
 
 /** 保存できる名前か（trimして1文字以上）。ボタンの有効・無効に使う。 */

@@ -162,7 +162,7 @@ const sortUrl: OptionUrlCodec<ComparisonSort> = {
     ) {
       return { column, direction: direction as ComparisonSortDirection };
     }
-    diagnostics.push({ path, message: `URLパラメータの値「${raw}」は未知のため捨てた` });
+    diagnostics.push({ path, message: `URLパラメータの値「${raw}」は未知のため捨てました` });
     return undefined;
   },
 };
@@ -173,7 +173,7 @@ export const comparisonOptions = defineOptions({
     decode: (raw, path, diagnostics) => {
       if (raw === undefined) return [...COMPARISON_COLUMN_IDS];
       if (!Array.isArray(raw)) {
-        diagnostics.push({ path, message: '配列でないため既定値（全列）へ戻した' });
+        diagnostics.push({ path, message: '配列でないため既定値（全列）へ戻しました' });
         return [...COMPARISON_COLUMN_IDS];
       }
       const seen = new Set<ComparisonColumnId>();
@@ -183,7 +183,7 @@ export const comparisonOptions = defineOptions({
           seen.add(item);
           result.push(item);
         } else {
-          diagnostics.push({ path, message: `未知の列「${String(item)}」を捨てた` });
+          diagnostics.push({ path, message: `未知の列「${String(item)}」を捨てました` });
         }
       }
       return result;

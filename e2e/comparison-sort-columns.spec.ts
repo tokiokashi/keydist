@@ -133,7 +133,7 @@ test('共有URLに並び替えが載り、開いた先でも同じ並びにな�
   const sorted = await rowNames(table);
 
   await page.getByRole('button', { name: '共有', exact: true }).click();
-  await expect(page.getByRole('status').filter({ hasText: 'URLをコピーした' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'コピーしました' })).toBeVisible();
   const url = await page.evaluate(() => navigator.clipboard.readText());
   expect(new URL(url).searchParams.get('sort')).toBe('sameFingerRate:desc');
 
@@ -152,7 +152,7 @@ test('共有URLに並び替えが載り、開いた先でも同じ並びにな�
   await sortButton(table, '同指率').click();
   await expect(headerOf(table, '同指率')).not.toHaveAttribute('aria-sort', /.+/);
   await page.getByRole('button', { name: '共有', exact: true }).click();
-  await expect(page.getByRole('status').filter({ hasText: 'URLをコピーした' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'コピーしました' })).toBeVisible();
   const cleared = await page.evaluate(() => navigator.clipboard.readText());
   expect(new URL(cleared).searchParams.has('sort')).toBe(false);
 });

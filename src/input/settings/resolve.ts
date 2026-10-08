@@ -129,7 +129,7 @@ function resolveItem(
     if (!item.allowedLevels.has(level.kind)) {
       diagnostics.push({
         kind: 'ignored-disallowed-level',
-        message: `項目「${itemId}」の${level.kind}レベルの値は許可されていないため無視した`,
+        message: `項目「${itemId}」の${level.kind}レベルの値は許可されていないため無視しました`,
       });
       continue;
     }
@@ -172,7 +172,7 @@ function resolveItem(
   if (!applicable) {
     diagnostics.push({
       kind: 'not-applicable',
-      message: `項目「${itemId}」はこの配列・Setupでは効かない`,
+      message: `項目「${itemId}」はこの配列・Setupでは効きません`,
     });
   }
 
