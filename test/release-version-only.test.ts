@@ -115,6 +115,17 @@ describe('release-version-only', () => {
     assert.match(r.out, /package-lock\.json: \/packages\/node_modules\//);
   });
 
+  test('JSONが壊れていれば、例外で落ちずに原因を出力して非0で終わる', () => {
+    const r = verdict(
+      () => {
+        writeFileSync(join(dir, 'package.json'), '{ "version": ');
+      },
+      () => '9.9.9',
+    );
+    assert.equal(r.ok, false);
+    assert.match(r.out, /検査を実行できない/);
+  });
+
   test('package-lock.jsonのpackages[""] のversionが上がっていなければ通らない', () => {
     const r = verdict(
       () => {

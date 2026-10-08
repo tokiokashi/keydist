@@ -139,14 +139,15 @@ CIもPRの各コミットに同じスクリプトを掛けるため、フック�
 **リリースPRの条件。** 次を**全部**満たせばマージしてよい。レビュー役の承認は要らない。
 `release-plan.sh` をスタブで再現するような検証もしない。
 `release-plan.sh` が、`main` から分かれた後が1コミットであること・変更ファイルが `package.json` と `package-lock.json` だけであること・
-PRのタイトル・`version`・同じ版のタグが別のコミットに無いことの5つを機械で確かめ、外れていれば公開しない。
-人が同じ5つを二重に確かめても得るものが無い。次の条件は、リードがマージの前に確かめる。
-1つ目は `release-plan.sh` も確かめるが、外れたPRがマージされると、公開はされなくても `main` には入るので、マージ前に見る。
+変更が両ファイルの `version` だけであること・PRのタイトル・`version`・同じ版のタグが別のコミットに無いことの6つを機械で確かめ、外れていれば公開しない。
+人が同じ6つを二重に確かめても得るものが無い。次の条件は、リードがマージの前に確かめる。
+`release-plan.sh` が走るのはマージの後で、外れたPRがマージされると、公開はされなくても `main` には入る。マージ後の検査では入るのを止められないので、マージ前に確かめる。
 
 - `git diff --stat origin/main...<head>` が `package.json` と `package-lock.json` だけで、`main` から分かれた後が1コミットである
 - 変更が `package.json` の `version` と、`package-lock.json` の `version`（ルートと `packages[""]`）だけである
   （`npm version` の差分は `package.json` に1行、`package-lock.json` に2行）。
-  `release-plan.sh` が解析したJSONで比べ、依存関係や `scripts` を変えていれば公開しない。マージ前にリードが目で見る必要は無い
+  `release-plan.sh` と同じ `.github/scripts/release-version-only.cjs` を、PRの分岐点とheadに対して手元で実行する。
+  `node .github/scripts/release-version-only.cjs "$(git merge-base origin/main <head>)" <head> <新しい版番号>` が0で終われば通り、非0なら標準出力に外れた箇所が出る
 - headのCIが緑である（`verify` はpushとpull_requestの両方のrun、`browser-e2e` はpull_requestのrun。`.md` だけの変更ではshardが飛ばされる）
 - その版のマイルストーンの開いたissueが0件である
 

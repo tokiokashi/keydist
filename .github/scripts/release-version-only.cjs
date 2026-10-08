@@ -53,7 +53,13 @@ if (require.main === module) {
   const [fork, head, version] = process.argv.slice(2);
   const readAt = (side, file) =>
     execFileSync('git', ['show', `${side === 'before' ? fork : head}:${file}`], { encoding: 'utf8', maxBuffer: 1 << 28 });
-  const problems = check(readAt, version);
+  let problems;
+  try {
+    problems = check(readAt, version);
+  } catch (e) {
+    // JSONが壊れている・ファイルが無いなど。原因を違反として出し、公開を止める
+    problems = [`検査を実行できない: ${String(e.message).split('\n')[0]}`];
+  }
   for (const p of problems) console.log(p);
   process.exit(problems.length ? 1 : 0);
 }
