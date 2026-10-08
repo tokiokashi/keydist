@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { openTextChip } from './context-bar-helper.ts';
-import { toggleTarget } from './pane-helper.ts';
+import { targetButton, toggleTarget } from './pane-helper.ts';
 import { waitForHydration } from './hydration-helper.ts';
 
 /**
@@ -20,10 +20,6 @@ async function openReady(page: Page, path: string) {
   await expect(page.locator('.pane-frame').first()).toHaveAttribute('data-pane-status', 'ready', { timeout: 20_000 });
   await expect(page.locator('.pane-status-badge')).toHaveCount(0);
 }
-
-// 計算が数秒かかる長いテキスト。stale（計算中・直前の結果を表示）の間を保つために使う。
-// 日本語にしているのは、対象に親指シフト（NICOLA）を選ぶので、英文では使えない配列になるため。
-const LONG_TEXT = '吾輩は猫である。名前はまだ無い。どこで生れたかとんと見当がつかぬ。'.repeat(1000);
 
 for (const path of PAGES) {
   test(`スマホ幅の${path}: 文脈バーとペインの見出しが1行に収まり、横にあふれない`, async ({ page }) => {
@@ -96,14 +92,34 @@ test('スマホ幅の見出しにAnalyzer名が出ず、対象名が省略され
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
 });
 
-test('スマホ幅: 計算中（直前の結果を表示）のバッジは点で出し、対象名は省略されない', async ({ page }) => {
+// 英文では親指シフト（NICOLA）が使えないので、対象をNICOLAにすると「失敗」になる。失敗は計算の時間に依らず、
+// 依頼を出した時点で決まるので、状態を検査の前提にできる（計算中の「直前の結果を表示」は時間に依るので使わない）。
+// `width`を渡すと、その幅で見る。点と文字の境目は幅で決まる（幅は固定なので、判定も決まる）。
+async function failWithNicola(page: Page, width?: number): Promise<void> {
   await openReady(page, 'bigram-flow');
-  // 長いテキストへ変えて、計算の間（stale）を保つ。その間に対象を変える。
+  if (width !== undefined) await page.setViewportSize({ width, height: 844 });
   const panel = await openTextChip(page);
-  await panel.getByLabel('テキスト', { exact: true }).fill(LONG_TEXT);
+  await panel.getByLabel('テキストを選ぶ', { exact: true }).selectOption({ label: '英文（既定）' });
+  await expect(page.locator('.context-bar button.text-chip')).toContainText('英文');
   await page.keyboard.press('Escape');
-  await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'stale', { timeout: 10_000 });
+  await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 20_000 });
   await toggleTarget(page, 'layout:nicola');
+  await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'failed', { timeout: 10_000 });
+}
+
+test('スマホ幅（360px）: 状態のバッジを点で出しても、対象の欄は動かず、対象名は省略されない', async ({ page }) => {
+  // 360pxでは「失敗」の文字が名前の欄に入らず、点で出る。文字で出すと対象名が省略される幅（370px以下）。
+  await openReady(page, 'bigram-flow');
+  await page.setViewportSize({ width: 360, height: 844 });
+  const panel = await openTextChip(page);
+  await panel.getByLabel('テキストを選ぶ', { exact: true }).selectOption({ label: '英文（既定）' });
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 20_000 });
+  const before = await targetButton(page).boundingBox();
+  expect(before).not.toBeNull();
+
+  await toggleTarget(page, 'layout:nicola');
+  await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'failed', { timeout: 10_000 });
 
   // 状態と測った値を、同じ時点（同じ描画）で読む
   const sample = await page.evaluate(() => {
@@ -111,33 +127,44 @@ test('スマホ幅: 計算中（直前の結果を表示）のバッジは点で
     const badge = frame.querySelector<HTMLElement>('.pane-status-badge');
     const summary = frame.querySelector<HTMLElement>('.target-selection-summary')!;
     return {
-      status: frame.getAttribute('data-pane-status'),
       badgeCount: frame.querySelectorAll('.pane-status-badge').length,
       badgeAsText: badge?.hasAttribute('data-text') ?? null,
       badgeWidth: badge?.getBoundingClientRect().width ?? null,
       badgeTitle: badge?.getAttribute('title') ?? null,
-      badgeShadow: badge === undefined || badge === null ? null : getComputedStyle(badge).boxShadow,
       truncated: summary.scrollWidth > summary.clientWidth,
       summaryText: summary.textContent,
       overflow: document.documentElement.scrollWidth - window.innerWidth,
     };
   });
-  expect(sample.status).toBe('stale');
   expect(sample.badgeCount).toBe(1);
   // 点で出す（文字は出さない）。大きさは点の寸法。
   expect(sample.badgeAsText).toBe(false);
   expect(sample.badgeWidth).toBeLessThanOrEqual(10);
-  // 点でも計算中であることが分かる。状態の文は読み上げとtitleに残り、輪郭だけの点（塗りつぶし・失敗と形で分かれる）で出す。
-  expect(sample.badgeTitle).toBe('計算中…（直前の結果を表示）');
-  expect(sample.badgeShadow).not.toBe('none');
+  // 点でも状態が分かる。状態の文は読み上げとtitleに残る
+  expect(sample.badgeTitle).toBe('失敗');
   expect(sample.truncated).toBe(false);
   expect(sample.summaryText).toBe('親指シフト（NICOLA）');
   expect(sample.overflow).toBeLessThanOrEqual(0);
 
-  // 計算が済むと点も消え、対象名は全文のまま残る
-  await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 20_000 });
-  await expect(page.locator('.pane-status-badge')).toHaveCount(0);
-  await expect(page.locator('.target-selection-summary')).toHaveText('親指シフト（NICOLA）');
+  // 点の出し入れで、対象ボタンは読み込み前の位置から動かない（点は名前の欄の流れに入らない）
+  const after = await targetButton(page).boundingBox();
+  expect(Math.abs((after?.x ?? -100) - before!.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs((after?.y ?? -100) - before!.y)).toBeLessThanOrEqual(1);
+});
+
+test('スマホ幅（360px）: 点の形は、計算中（直前の結果を表示）が輪郭、失敗が塗りつぶしで分かれる', async ({ page }) => {
+  // 計算中（stale）は計算の時間に依って出るので、失敗の点を出した後で状態の属性だけを書き換え、点のCSSの形を確かめる
+  await failWithNicola(page, 360);
+  const badge = page.locator('.pane-frame-name .pane-status-badge');
+  const failedFill = await badge.evaluate((element) => getComputedStyle(element).backgroundColor);
+  await badge.evaluate((element) => element.setAttribute('data-status', 'stale'));
+  const stale = await badge.evaluate((element) => ({
+    background: getComputedStyle(element).backgroundColor,
+    shadow: getComputedStyle(element).boxShadow,
+  }));
+  expect(stale.shadow).not.toBe('none');
+  expect(stale.background).toBe('rgba(0, 0, 0, 0)');
+  expect(failedFill).not.toBe('rgba(0, 0, 0, 0)');
 });
 
 test('スマホ幅: 文脈バーの元に戻す・やり直す・共有が直接押せる', async ({ page, context }) => {
@@ -188,15 +215,11 @@ test.describe('パソコン幅', () => {
     expect((await page.getByRole('heading', { name: 'Bigram Flow', level: 1 }).boundingBox())?.width ?? 0).toBeGreaterThan(40);
   });
 
-  // 名前の行に幅がある時は、計算中のバッジを文字で出す（点にするのは幅が足りない時だけ）。
-  test('個別画面: 計算中（直前の結果を表示）のバッジは、幅があれば文字で出る', async ({ page }) => {
-    await openReady(page, 'bigram-flow');
-    const panel = await openTextChip(page);
-    await panel.getByLabel('テキスト', { exact: true }).fill(LONG_TEXT);
-    await page.keyboard.press('Escape');
-    await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'stale', { timeout: 10_000 });
+  // 名前の行に幅がある時は、状態のバッジを文字で出す（点にするのは幅が足りない時だけ）。
+  test('個別画面: 状態のバッジは、幅があれば文字で出る', async ({ page }) => {
+    await failWithNicola(page);
     const badge = page.locator('.pane-frame .pane-status-badge');
-    await expect(badge).toHaveText('計算中…（直前の結果を表示）');
+    await expect(badge).toHaveText('失敗');
     await expect(badge).toHaveAttribute('data-text', 'true');
   });
 });

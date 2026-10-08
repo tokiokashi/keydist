@@ -300,15 +300,6 @@ h2.pane-frame-title {
   background: #d6333f;
 }
 
-/*
- * 前の結果を表示したまま計算中の点は、輪郭だけにする。失敗の塗りつぶしと形で分け、色だけに頼らない。
- * 点に文字が無いので、計算中であることは形で伝える（状態の文は読み上げとtitleに残る）。
- */
-.pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-status-badge[data-status="stale"]:not([data-text]) {
-  background: transparent;
-  box-shadow: inset 0 0 0 1.5px var(--text-muted);
-}
-
 .pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-status-badge-text {
   position: absolute;
   width: 1px;
@@ -340,16 +331,25 @@ h2.pane-frame-title {
 }
 
 /*
- * 名前の行に出す状態のバッジ（個別画面。スマホ幅の1行で、文字が入らない時）。Workspaceの点と同じ形と色にする。
- * 文字の要素は隠して読み上げとtitleに残す。点の大きさは名前の行の高さに収まる。
+ * 名前の行に出す状態のバッジの点（個別画面。スマホ幅の1行で、文字が入らない時）。
+ * 点は名前の欄の流れに入れず、ⓘの右上の角に重ねる。流れに入れると、出し入れのたびに対象の欄の左端が動く
+ * （対象ボタンは読み込み前の位置から動かさない。`e2e/preload-status-badge.spec.ts`）。
+ * 点は名前の欄の右端（対象との間の余白）へ少しはみ出すだけなので、対象の欄には重ならない。
+ * 押せない見た目にする（ⓘの押下を妨げない）。文字の要素は隠して読み上げとtitleに残す。
  */
-.pane-frame-name > .pane-status-badge:not([data-text]) {
+.pane-frame-name {
   position: relative;
-  flex: none;
+}
+
+.pane-frame-name > .pane-status-badge:not([data-text]) {
+  position: absolute;
+  top: 0.1rem;
+  left: calc(100% - 0.25rem);
   width: 0.5rem;
   height: 0.5rem;
   padding: 0;
   background: var(--text-muted);
+  pointer-events: none;
 }
 
 .pane-frame-name > .pane-status-badge:not([data-text])[data-status="stale"] {
