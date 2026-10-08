@@ -309,6 +309,20 @@ h2.pane-frame-title {
 }
 
 /*
+ * 計算中の点（初回の計算中・直前の結果を表示しながらの計算中）は、青い輪が回る。
+ * 失敗の点（赤の塗りつぶし・動かない）とは、形と動きの両方で分かれる。輪の切れ目を回すので、回っていると分かる。
+ * `prefers-reduced-motion` の時は回さず、同じ青い輪を切れ目なしで静止して出す。
+ */
+.pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-status-badge[data-status="computing"]:not([data-text]),
+.pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-status-badge[data-status="stale"]:not([data-text]) {
+  box-sizing: border-box;
+  background: none;
+  border: 2px solid var(--accent);
+  border-top-color: transparent;
+  animation: pane-status-spin 0.9s linear infinite;
+}
+
+/*
  * 文字で出す時（data-text）。文字が入るかは、見出しの実際の幅と中身から測って決める（use-status-badge-fit.ts）。
  * 条件のchipの幅が中身で変わる（既定値・N件変更・対象ごとに差あり）ので、固定の幅では決めない。
  */
@@ -352,11 +366,6 @@ h2.pane-frame-title {
   pointer-events: none;
 }
 
-.pane-frame-name > .pane-status-badge:not([data-text])[data-status="stale"] {
-  background: transparent;
-  box-shadow: inset 0 0 0 1.5px var(--text-muted);
-}
-
 .pane-frame-name > .pane-status-badge:not([data-text])[data-status="failed"] {
   background: #d6333f;
 }
@@ -367,6 +376,33 @@ h2.pane-frame-title {
   height: 1px;
   overflow: hidden;
   clip-path: inset(50%);
+}
+
+/* 計算中の点の青い輪（Workspaceの見出しと同じ形）。名前の行の点も、輪の切れ目が回る */
+.pane-frame-name > .pane-status-badge[data-status="computing"]:not([data-text]),
+.pane-frame-name > .pane-status-badge[data-status="stale"]:not([data-text]) {
+  box-sizing: border-box;
+  background: none;
+  border: 2px solid var(--accent);
+  border-top-color: transparent;
+  animation: pane-status-spin 0.9s linear infinite;
+}
+
+@keyframes pane-status-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 動きを止める設定の時は、切れ目を消した青い輪を静止して出す（計算中と分かる形は残す） */
+@media (prefers-reduced-motion: reduce) {
+  .pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-status-badge[data-status="computing"]:not([data-text]),
+  .pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-status-badge[data-status="stale"]:not([data-text]),
+  .pane-frame-name > .pane-status-badge[data-status="computing"]:not([data-text]),
+  .pane-frame-name > .pane-status-badge[data-status="stale"]:not([data-text]) {
+    animation: none;
+    border-top-color: var(--accent);
+  }
 }
 
 /*

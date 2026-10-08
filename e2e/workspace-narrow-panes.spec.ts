@@ -2,6 +2,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { collectBrowserErrors } from './browser-errors-helper.ts';
 import { openTextChip } from './context-bar-helper.ts';
 import { waitForHydration } from './hydration-helper.ts';
+import { holdWorker, installWorkerHold } from './worker-hold-helper.ts';
 
 /**
  * 下限の幅まで縮めたペイン（FHD・左のメニューを開いた状態で24列のうち2列 = 約131px、面が狭い時の100px前後）で、
@@ -453,7 +454,7 @@ test('Bigram Flow: 見出しが狭まると、先に名前が最小幅まで縮�
 });
 
 // ---- 状態のバッジ（実際の状態で検査する）----
-// 失敗: Bigram Flowの対象に、存在しないSetupを置く。計算中（直前の結果を表示）: 長いテキストへ変えて、計算の間を保つ。
+// 失敗: Bigram Flowの対象に、存在しないSetupを置く。計算中（直前の結果を表示）: 計算の依頼を保留して、計算中のまま保つ。
 // 状態のバッジを文字で出すか点で出すかは、見出しの実際の幅と中身から測って決める。条件のchipは中身で幅が変わる
 // （「既定値」・「N件変更」・「対象ごとに差あり」）ので、3種類をそれぞれ作る。
 
@@ -474,10 +475,15 @@ const CHIPS: readonly Chip[] = [
   { name: '対象ごとに差あり', expected: '条件: 対象ごとに差あり', overrides: { layout: { dvorak: { windowSize: 2 } } } },
 ];
 
-/** 実際の状態のバッジを作る。`stale`は長いテキストへ変えた直後（計算の間は保たれる）。 */
+/**
+ * 実際の状態のバッジを作る。`stale`は、直前の結果を残したまま計算の依頼を保留して作る（計算の速さに頼らない。
+ * `worker-hold-helper.ts`）。テキストの値は、今までどおり長いものへ変える。
+ */
 async function openWithBadge(page: Page, analyzerId: AnalyzerId, status: BadgeStatus, cols: number, chip: Chip): Promise<void> {
+  if (status === 'stale') await installWorkerHold(page);
   await open(page, analyzerId, FHD, { cols, status: status === 'failed' ? 'failed' : 'ready', ...(chip.conditions === undefined ? {} : { conditions: chip.conditions }), ...(chip.overrides === undefined ? {} : { overrides: chip.overrides }) });
   if (status === 'stale') {
+    await holdWorker(page);
     const panel = await openTextChip(page);
     await panel.getByLabel('テキスト', { exact: true }).fill(LONG_TEXT);
     await page.keyboard.press('Escape');
