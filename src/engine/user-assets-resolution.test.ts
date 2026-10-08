@@ -92,12 +92,24 @@ test('自作のローマ字規則を指す自作の配列は、組み込みの�
   assert.notDeepEqual(user.trace.trace.strokes, plain.trace.trace.strokes);
 });
 
-test('自作の配列が指す規則が無ければ、既定の規則で打つ', () => {
+test('自作の配列が指す規則が無ければ、推奨を持たず全体の値の規則で打つ', () => {
   const [, text] = TEXTS[1];
-  const missing = measure('user-gone', [{ ...USER_QWERTY, id: 'user-gone', romaji: 'romaji-gone' }], [], 'ja', text);
+  const gone: UserLayout = { ...USER_QWERTY, id: 'user-gone', romaji: 'romaji-gone' };
+  // 全体の値が無い時は、全体の既定（訓令式）
+  const missing = measure('user-gone', [gone], [], 'ja', text);
   const builtin = measure('qwerty', [], [], 'ja', text);
   assert.equal(missing.input.romajiRuleId, 'kunrei');
   assert.deepEqual(missing.trace.trace.strokes, builtin.trace.trace.strokes);
+
+  // 全体の値を置くと、それに従う（既定ではなく全体の値で打つことの確認）
+  const globalOonishi = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'romajiRuleId', 'oonishi');
+  assert.ok(globalOonishi.ok);
+  if (!globalOonishi.ok) return;
+  const followed = measure('user-gone', [gone], [], 'ja', text, globalOonishi.overrides);
+  const builtinOonishi = measure('qwerty', [], [], 'ja', text, globalOonishi.overrides);
+  assert.equal(followed.input.romajiRuleId, 'oonishi');
+  assert.deepEqual(followed.trace.trace.strokes, builtinOonishi.trace.trace.strokes);
+  assert.notDeepEqual(followed.trace.trace.strokes, missing.trace.trace.strokes);
 });
 
 test('組み込みと同じidの自作の規則・配列は無視され、組み込みの数値は動かない', () => {
