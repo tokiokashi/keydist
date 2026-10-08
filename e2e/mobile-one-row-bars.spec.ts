@@ -152,17 +152,22 @@ test('スマホ幅（360px）: 状態のバッジを点で出しても、対象�
   expect(Math.abs((after?.y ?? -100) - before!.y)).toBeLessThanOrEqual(1);
 });
 
-test('スマホ幅（360px）: 点の形は、計算中（直前の結果を表示）が輪郭、失敗が塗りつぶしで分かれる', async ({ page }) => {
-  // 計算中（stale）は計算の時間に依って出るので、失敗の点を出した後で状態の属性だけを書き換え、点のCSSの形を確かめる
+test('スマホ幅（360px）: 点の形は、計算中（直前の結果を表示）が回る青い輪、失敗が塗りつぶしで分かれる', async ({ page }) => {
+  // 計算中（stale）の表示そのもの（回ること・動きの検査）は `status-badge-spinner.spec.ts` で見る。
+  // ここでは失敗の点を出した後で状態の属性だけを書き換え、点のCSSの形（輪の切れ目・塗り）が状態で変わることを確かめる
   await failWithNicola(page, 360);
   const badge = page.locator('.pane-frame-name .pane-status-badge');
   const failedFill = await badge.evaluate((element) => getComputedStyle(element).backgroundColor);
   await badge.evaluate((element) => element.setAttribute('data-status', 'stale'));
   const stale = await badge.evaluate((element) => ({
     background: getComputedStyle(element).backgroundColor,
-    shadow: getComputedStyle(element).boxShadow,
+    borderStyle: getComputedStyle(element).borderTopStyle,
+    borderTop: getComputedStyle(element).borderTopColor,
+    borderRight: getComputedStyle(element).borderRightColor,
   }));
-  expect(stale.shadow).not.toBe('none');
+  expect(stale.borderStyle).toBe('solid');
+  expect(stale.borderTop).toBe('rgba(0, 0, 0, 0)');
+  expect(stale.borderRight).not.toBe('rgba(0, 0, 0, 0)');
   expect(stale.background).toBe('rgba(0, 0, 0, 0)');
   expect(failedFill).not.toBe('rgba(0, 0, 0, 0)');
 });
