@@ -1,3 +1,5 @@
+import { scaleRangeWithZero } from '../shared-scale.ts';
+import { useSharedScale } from '../shared-scale.tsx';
 import { HAND_LABEL, type ChartSpec } from './chart-data.ts';
 
 /**
@@ -13,11 +15,11 @@ const SIDE = 4;
 /** 左手と右手の間に空けるすき間（棒の幅に対する倍率）。 */
 const HAND_GAP_SLOTS = 0.6;
 
-export function FingerDistanceChart({ spec }: { readonly spec: ChartSpec }) {
+export function FingerDistanceChart({ spec, scaleKey }: { readonly spec: ChartSpec; readonly scaleKey: string }) {
   const { bars } = spec;
   const plotH = HEIGHT - TOP - BOTTOM;
-  const high = Math.max(0, ...bars.map((bar) => bar.value));
-  const low = Math.min(0, ...bars.map((bar) => bar.value));
+  // 縦軸は、同じ見る量で並んだペイン全部を含む範囲（置かれた場所に配るものが無ければ自分の範囲）
+  const { min: low, max: high } = useSharedScale(scaleKey, scaleRangeWithZero(bars.map((bar) => bar.value)));
   // 全部0なら棒が1本も立たないので、目盛りの幅だけ確保して底の線を描く
   const span = high - low > 0 ? high - low : 1;
   const yOf = (value: number) => TOP + ((high - value) / span) * plotH;
