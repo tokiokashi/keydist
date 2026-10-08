@@ -100,6 +100,28 @@ test('書き出したファイルを読み込むと、同じ中身は足さず�
   await expect(result).toHaveCount(0);
 });
 
+test('読み込めなかった要素の詳細を開いても、狭い幅で横にはみ出さない', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 800 });
+  await page.goto('/assets');
+  await waitForHydration(page);
+  const longId = 'default-with-a-very-long-identifier-that-has-no-break-opportunities-at-all-0123456789';
+  await page.getByLabel('読み込む自作の資産のファイル').setInputFiles({
+    name: 'broken.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({
+      format: 'keydist-user-assets',
+      version: 1,
+      layouts: [{ id: 'user-a', name: '自作A', rows: ['', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'], romaji: 'kunrei' }],
+      fingerAssignments: [{ id: longId, name: '壊れた指', keyFinger: {}, homeKey: {} }],
+    })),
+  });
+  const result = page.locator('[data-user-assets-import-result]');
+  await result.locator('summary').click();
+  await expect(result.locator('pre')).toContainText('fingerAssignments[0]');
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBe(0);
+});
+
 test('自作の資産のファイルでないものを読み込むと、理由が出て何も変わらない', async ({ page }) => {
   await seed(page);
   await page.goto('/assets');
