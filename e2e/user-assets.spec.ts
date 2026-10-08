@@ -54,10 +54,12 @@ test('配列を削除すると保存先から消え、その配列を対象に�
   await expect(layouts.locator('[data-user-asset-row]')).toHaveCount(2);
 
   await layouts.getByRole('button', { name: '「自作A」を削除' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: '削除する' }).click();
   await expect(layouts.locator('[data-user-asset-row]')).toHaveCount(1);
   await page.getByRole('button', { name: '元に戻す' }).click();
   await expect(layouts.locator('[data-user-asset-row]')).toHaveCount(2);
   await layouts.getByRole('button', { name: '「自作A」を削除' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: '削除する' }).click();
   await expect(layouts.locator('[data-user-asset-row]')).toHaveCount(1);
   await expect(page.getByRole('status')).toHaveText('「自作A」を削除した');
   await expect
@@ -75,6 +77,7 @@ test('削除した直後は元に戻すで一覧と保存先が戻り、やり�
   await waitForHydration(page);
   const rules = page.locator('[data-user-assets-section="romaji-rule"]');
   await rules.getByRole('button', { name: '「自作の規則」を削除' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: '削除する' }).click();
   await expect(rules.locator('[data-user-asset-row]')).toHaveCount(0);
   // 規則を推奨にしていた配列は残り、全体の値の規則で打つ旨が出る
   await expect(page.locator('[data-user-asset-row="user-a"]')).toContainText('全体の値の規則で打つ');
@@ -95,4 +98,31 @@ test('自作の配列が無ければ、空の旨を出す', async ({ page }) => 
   await waitForHydration(page);
   await expect(page.getByText('自作の配列はありません。')).toBeVisible();
   await expect(page.getByText('自作のローマ字規則はありません。')).toBeVisible();
+});
+
+test('削除の確認: 文に影響と元に戻せる範囲が出て、キャンセルが既定。キャンセルとEscでは消えない', async ({ page }) => {
+  await seed(page);
+  await page.goto('/assets');
+  await waitForHydration(page);
+  const layouts = page.locator('[data-user-assets-section="layout"]');
+  await layouts.getByRole('button', { name: '「自作A」を削除' }).click();
+  const dialog = page.getByRole('dialog', { name: '「自作A」を削除しますか' });
+  await expect(dialog).toContainText('この画面にいる間だけ');
+  await expect(dialog).toContainText('配列が見つからない');
+  await expect(dialog.getByRole('button', { name: 'キャンセル' })).toBeFocused();
+  await dialog.getByRole('button', { name: 'キャンセル' }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(layouts.locator('[data-user-asset-row]')).toHaveCount(2);
+
+  await layouts.getByRole('button', { name: '「自作A」を削除' }).click();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(layouts.locator('[data-user-asset-row]')).toHaveCount(2);
+  expect(await page.evaluate(() => localStorage.getItem('keydist:user-layouts'))).toContain('user-a');
+
+  const rules = page.locator('[data-user-assets-section="romaji-rule"]');
+  await rules.getByRole('button', { name: '「自作の規則」を削除' }).click();
+  await expect(page.getByRole('dialog')).toContainText('全体の値の規則で打つ');
+  await page.getByRole('button', { name: 'キャンセル' }).click();
+  await expect(rules.locator('[data-user-asset-row]')).toHaveCount(1);
 });

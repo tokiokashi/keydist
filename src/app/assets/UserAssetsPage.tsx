@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { KeydistAssets } from '#engine/commands.ts';
 import { userLayoutRows, userRomajiRuleRows, type UserAssetRow } from './user-asset-rows.ts';
 
@@ -47,8 +47,45 @@ function AssetSection({ title, kind, emptyText, rows, onDelete }: AssetSectionPr
   );
 }
 
+interface PendingDelete {
+  readonly kind: 'layout' | 'romaji-rule';
+  readonly row: UserAssetRow;
+}
+
+/** 削除の確認の文。元に戻すが使える範囲と、削除が他へ及ぼす影響を書く。 */
+function confirmText(pending: PendingDelete): readonly string[] {
+  const lines = pending.kind === 'layout'
+    ? ['この配列を対象にしているペインは、「配列が見つからない」の表示になります。']
+    : ['この規則を推奨にしている配列は、全体の値の規則で打つようになります。'];
+  lines.push('「元に戻す」はこの画面にいる間だけ使えます。別の画面へ移ったり開き直したりすると、戻せません。');
+  return lines;
+}
+
+/** 削除の確認。キャンセルにフォーカスを置き、Escでもキャンセルになる。 */
+function ConfirmDelete({ pending, onConfirm, onCancel }: {
+  readonly pending: PendingDelete;
+  readonly onConfirm: () => void;
+  readonly onCancel: () => void;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = ref.current;
+    if (dialog !== null && !dialog.open) dialog.showModal();
+  }, []);
+  return (
+    <dialog ref={ref} className="user-assets-confirm" aria-labelledby="user-assets-confirm-title" onCancel={(event) => { event.preventDefault(); onCancel(); }}>
+      <h2 id="user-assets-confirm-title">「{pending.row.name}」を削除しますか</h2>
+      {confirmText(pending).map((line) => <p key={line}>{line}</p>)}
+      <div className="user-assets-confirm-actions">
+        <button type="button" autoFocus onClick={onCancel}>キャンセル</button>
+        <button type="button" onClick={onConfirm}>削除する</button>
+      </div>
+    </dialog>
+  );
+}
+
 /**
- * 自作の配列とローマ字規則を一覧して削除する画面。削除は確認を挟まず、元に戻すで戻せる。
+ * 自作の配列とローマ字規則を一覧して削除する画面。削除は確認の後に行い、この画面にいる間は元に戻すで戻せる。
  * 削除した配列を対象にしているペインは、その旨を各画面で出す。
  */
 export function UserAssetsPage({
@@ -62,6 +99,7 @@ export function UserAssetsPage({
   onDeleteRomajiRule,
 }: UserAssetsPageProps) {
   const [message, setMessage] = useState('');
+  const [pending, setPending] = useState<PendingDelete | undefined>(undefined);
   const layouts = userLayoutRows(assets.userLayouts, assets.userRomajiRules);
   const rules = userRomajiRuleRows(assets.userLayouts, assets.userRomajiRules);
 
@@ -80,17 +118,29 @@ export function UserAssetsPage({
             kind="layout"
             emptyText="自作の配列はありません。"
             rows={layouts}
-            onDelete={(row) => { onDeleteLayout(row.id); setMessage(`「${row.name}」を削除した`); }}
+            onDelete={(row) => setPending({ kind: 'layout', row })}
           />
           <AssetSection
             title="ローマ字規則"
             kind="romaji-rule"
             emptyText="自作のローマ字規則はありません。"
             rows={rules}
-            onDelete={(row) => { onDeleteRomajiRule(row.id); setMessage(`「${row.name}」を削除した`); }}
+            onDelete={(row) => setPending({ kind: 'romaji-rule', row })}
           />
         </>
       ) : null}
+      {pending === undefined ? null : (
+        <ConfirmDelete
+          pending={pending}
+          onCancel={() => setPending(undefined)}
+          onConfirm={() => {
+            if (pending.kind === 'layout') onDeleteLayout(pending.row.id);
+            else onDeleteRomajiRule(pending.row.id);
+            setMessage(`「${pending.row.name}」を削除した`);
+            setPending(undefined);
+          }}
+        />
+      )}
     </article>
   );
 }
