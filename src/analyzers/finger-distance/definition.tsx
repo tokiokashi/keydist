@@ -27,7 +27,7 @@ export function FingerDistanceBody({ extracted, options }: FingerDistanceBodyPro
   return (
     <section className="finger-distance-feature" data-react-feature="finger-distance">
       <h3 className="finger-distance-heading">{spec.title}</h3>
-      <FingerDistanceChart spec={spec} />
+      <FingerDistanceChart spec={spec} scaleKey={`finger-distance:${options.chartMetric}`} />
       {isAdjacent
         ? <p className="finger-distance-note">間隔は、2本の指がホームに並んだ時の間隔からの超過。</p>
         : null}

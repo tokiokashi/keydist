@@ -41,6 +41,7 @@ import {
 } from './keyboard-flow-area.ts';
 import { BIGRAM_FLOW_PANE_META } from './pane-meta.ts';
 import type { AnalyzerPaneParts, AnalyzerSettingsProps } from '../pane-parts.tsx';
+import { useSharedScale } from '../shared-scale.tsx';
 import './bigram-vector-view.css';
 
 /**
@@ -744,6 +745,11 @@ export function BigramFlowBody({
   // 展開の状態は保存しない（再読み込みで閉じる）。閉じるまで開いたまま。
   const [keyboardFlowOpen, setKeyboardFlowOpen] = useState(false);
   const [relativeVectorsOpen, setRelativeVectorsOpen] = useState(false);
+  // Relative vectorsの半径は、並んだペイン全部の最長ベクトルまで（配るものが無ければ自分の最長）
+  const relativeMaxDistance = useSharedScale(
+    'bigram-flow:relative-radius',
+    { min: 0, max: extracted.relativeMaxDistance },
+  ).max;
 
   return (
     <section
@@ -835,14 +841,14 @@ export function BigramFlowBody({
             <MovementProfilePlot
               hand="left"
               profile={extracted.hands.left}
-              maxDistance={extracted.relativeMaxDistance}
+              maxDistance={relativeMaxDistance}
               maxVectorWeight={extracted.relativeMaxWeight}
               polarGain={polarGain}
             />
             <MovementProfilePlot
               hand="right"
               profile={extracted.hands.right}
-              maxDistance={extracted.relativeMaxDistance}
+              maxDistance={relativeMaxDistance}
               maxVectorWeight={extracted.relativeMaxWeight}
               polarGain={polarGain}
             />
@@ -851,7 +857,7 @@ export function BigramFlowBody({
             <span><i className="flow-dot flow-dot-inward" /> 内向き</span>
             <span><i className="flow-dot flow-dot-outward" /> 外向き</span>
             <span className="flow-profile-scale-summary">
-              最大{movementPlotScale(extracted.relativeMaxDistance).scaleMax}u · ±{polarBandwidth}°
+              最大{movementPlotScale(relativeMaxDistance).scaleMax}u · ±{polarBandwidth}°
             </span>
           </div>
         </motion.section>
