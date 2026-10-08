@@ -23,7 +23,7 @@ import { STANDALONE_WRITE_LOG_KEY } from '#hosts/shared/options-write-log.ts';
 import { effectiveMultiBaseline } from '#engine/multi-target-selection.ts';
 import { AddToWorkspaceMenu, type AddToWorkspaceDestination } from '#hosts/shared/AddToWorkspaceMenu.tsx';
 import { urlOptionsNotices, useSharedLink, useTargetShareSource } from './use-shared-link.ts';
-import { encodeMultiTargetsToUrl, hasSharedTargetParams } from './target-share.ts';
+import { describeShareEncodeNotice, encodeMultiTargetsToUrl, hasSharedTargetParams } from './target-share.ts';
 import './standalone.css';
 
 /**
@@ -153,9 +153,9 @@ export function ComparisonStandalonePage({
           query: () => {
             const params = comparisonOptions.encodeOptionsToUrl(optionsDraft);
             const selection = assets.multiTargetSelection;
-            encodeMultiTargetsToUrl(selection.targets, effectiveMultiBaseline(selection), shareSource)
-              .forEach((value, key) => params.append(key, value));
-            return params;
+            const encoded = encodeMultiTargetsToUrl(selection.targets, effectiveMultiBaseline(selection), shareSource);
+            encoded.params.forEach((value, key) => params.append(key, value));
+            return { params, notices: describeShareEncodeNotice(encoded.notice) };
           },
         }}
       >

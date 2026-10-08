@@ -802,6 +802,8 @@ test('共有リンクは集合を並び順・基準ごと運び、自作のSetup
   await expect(page.locator('.comparison-table tr[data-baseline="true"]')).toContainText('仕事用');
   await page.getByRole('button', { name: '共有', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: 'URLをコピーした' })).toBeVisible();
+  // 載らない対象が無い時は、送る側へ示す文を出さない。
+  await expect(page.locator('[data-share-notice="true"]')).toHaveCount(0);
   const url = await page.evaluate(() => navigator.clipboard.readText());
   // 組み込みの配列はid、Setupは名前だけ（端末ごとのidは載せない）。
   expect(url).toContain('targets=layout%3Advorak');
@@ -970,4 +972,31 @@ test('共有リンクで届いた解析設定と対象は、「元に戻す」1�
   await page.keyboard.press('Escape');
   // 取り込みは履歴1項目なので、これ以上戻すものは無い。
   await expect(undo).toBeDisabled();
+});
+
+test('共有リンクに載らない対象（名前が長すぎるSetup）は、リンクをコピーした時に送る側へ示し、載る対象だけをURLに置く', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  const longLabel = 'あ'.repeat(200);
+  await page.addInitScript((label) => {
+    localStorage.setItem(
+      'keydist:setup-library',
+      JSON.stringify({
+        version: 1,
+        setups: [{ id: 'src-long', layoutId: 'colemak-dh', shapeId: 'row-staggered', label }],
+        overrides: {},
+      }),
+    );
+  }, longLabel);
+  await page.goto('/standalone/comparison');
+  await addTarget(page, 'layout:dvorak');
+  await addTarget(page, 'setup:src-long');
+  await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
+
+  await page.getByRole('button', { name: '共有', exact: true }).click();
+  const notice = page.locator('[data-share-notice="true"]');
+  await expect(notice).toHaveCount(1);
+  await expect(notice).toContainText('名前が長すぎるSetup');
+  await expect(notice).toContainText('リンクに載らなかった');
+  const url = await page.evaluate(() => navigator.clipboard.readText());
+  expect(new URL(url).searchParams.getAll('targets')).toEqual(['layout:dvorak']);
 });

@@ -22,7 +22,7 @@ import { useOptionsDraft } from '#hosts/shared/use-options-draft.ts';
 import { STANDALONE_WRITE_LOG_KEY } from '#hosts/shared/options-write-log.ts';
 import { AddToWorkspaceMenu, type AddToWorkspaceDestination } from '#hosts/shared/AddToWorkspaceMenu.tsx';
 import { urlOptionsNotices, useSharedLink, useTargetShareSource } from './use-shared-link.ts';
-import { encodeSingleTargetToUrl } from './target-share.ts';
+import { describeShareEncodeNotice, encodeSingleTargetToUrl } from './target-share.ts';
 import './standalone.css';
 
 /**
@@ -153,8 +153,9 @@ export function FingerDistanceStandalonePage({
           description: '今の対象と解析設定を含むこの画面のURLをコピーする',
           query: () => {
             const params = fingerDistanceOptions.encodeOptionsToUrl(optionsDraft);
-            encodeSingleTargetToUrl(target, shareSource).forEach((value, key) => params.append(key, value));
-            return params;
+            const encoded = encodeSingleTargetToUrl(target, shareSource);
+            encoded.params.forEach((value, key) => params.append(key, value));
+            return { params, notices: describeShareEncodeNotice(encoded.notice) };
           },
         }}
       >
