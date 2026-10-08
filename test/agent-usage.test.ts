@@ -59,6 +59,26 @@ test('出力の形', () => {
   const s = summarize([{ model: 'claude-sonnet-5-5', input: 0, write5m: 78_000, write1h: 0, read: 2_630_000 }]);
   assert.equal(
     formatSummary(s),
-    'model: claude-sonnet-5-5 / requests: 1 / cache write: 78K / cache read: 2.63M / input-side cost: $0.72（出力tokensは含まない）',
+    'model: claude-sonnet-5-5 / requests: 1 / cache write: 78K / cache read: 2.63M / input-side cost: $0.46（出力tokensは含まない）',
   );
+});
+
+test('単価表は公式の価格表と一致する（入力・5分書き込み・1時間書き込み・読み出し）', () => {
+  const near = (a: number, b: number) => assert.ok(Math.abs(a - b) < 1e-9, `${a} != ${b}`);
+  // tokens分のリクエストの金額を、100万tokens換算の $/MTok にして返す
+  const perMtok = (model: string, field: 'input' | 'write5m' | 'write1h' | 'read', tokens: number) => {
+    const req = { model, input: 0, write5m: 0, write1h: 0, read: 0, [field]: tokens };
+    return (summarize([req]).costUsd! * 1_000_000) / tokens;
+  };
+  const check = (model: string, expected: [number, number, number, number], tokens: number) => {
+    near(perMtok(model, 'input', tokens), expected[0]);
+    near(perMtok(model, 'write5m', tokens), expected[1]);
+    near(perMtok(model, 'write1h', tokens), expected[2]);
+    near(perMtok(model, 'read', tokens), expected[3]);
+  };
+  check('claude-opus-5-5', [4, 5, 8, 0.2], 1_000_000);
+  check('claude-sonnet-5-5', [2, 2.5, 4, 0.1], 1_000_000);
+  // Haikuは、ちょうど10万tokensまでが通常の単価、超えたら5倍
+  check('claude-haiku-5-5', [0.1, 0.125, 0.2, 0.01], 100_000);
+  check('claude-haiku-5-5', [0.5, 0.625, 1, 0.05], 100_001);
 });

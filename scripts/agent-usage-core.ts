@@ -9,11 +9,15 @@ export interface Price {
   longPrompt?: { threshold: number; multiplier: number };
 }
 
-/** 公式の価格表の値。キャッシュ書き込みは入力単価から導く（5分が1.25倍、1時間が2倍）。 */
+/**
+ * 公式の価格表の値（https://platform.claude.com/docs/en/about-claude/pricing ）。
+ * モデルを足す・単価を変える時は、公式の表と突き合わせる。
+ * キャッシュ書き込みは入力単価から導く（5分が1.25倍、1時間が2倍）。
+ */
 export const PRICES: Readonly<Record<string, Price>> = {
-  // 読み出し・書き込みにも倍率が掛かるのは仮定（公式に明記されているのは入力と出力）
+  // プロンプトが10万tokensを超えたリクエストは、入力・キャッシュの読み書き・出力の単価が全部5倍になる
   'claude-haiku-5-5': { input: 0.1, cacheRead: 0.01, longPrompt: { threshold: 100_000, multiplier: 5 } },
-  'claude-sonnet-5-5': { input: 2, cacheRead: 0.2 },
+  'claude-sonnet-5-5': { input: 2, cacheRead: 0.1 },
   'claude-opus-5-5': { input: 4, cacheRead: 0.2 },
 };
 
@@ -162,7 +166,7 @@ export function formatSummary(s: Summary, prices: Readonly<Record<string, Price>
     .filter((t): t is number => t !== undefined);
   if (thresholds.length > 0) {
     parts.push(
-      `プロンプト${formatTokens(thresholds[0]!)}超え: ${s.longPromptRequests}件（倍率を読み出し・書き込みにも掛けた仮定）`,
+      `プロンプト${formatTokens(thresholds[0]!)}超え: ${s.longPromptRequests}件（単価が5倍）`,
     );
   }
   return `${parts.join(' / ')}（出力tokensは含まない）`;
