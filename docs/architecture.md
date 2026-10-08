@@ -325,6 +325,8 @@ src/
   legacy/            旧Analyzer。切り替え時に削除
 ```
 
+`src/` の外にある `scripts/` は、ビルドや運用で単体実行する道具。`src/` の層に属さず、依存の規則の検査対象でもない。`src/` を読む時は `#` の別名で入口のファイルを指す。`src/` から `scripts/` をimportしない。単体実行するファイルの純粋な部分は `scripts/<名前>-core.ts` に分け、`test/` からテストする（例: `scripts/agent-usage.ts`）。
+
 ## 依存の規則
 
 どの層も自分の層の中は import してよい。表はそれ以外の行き先。
