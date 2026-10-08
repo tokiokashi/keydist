@@ -745,7 +745,7 @@ test('「共有」でコピーしたURLを新しいページで開くと、解�
   await expect(table.locator('thead th', { hasText: /^動作数$/ })).toHaveCount(0);
 
   await page.getByRole('button', { name: '共有', exact: true }).click();
-  await expect(page.getByRole('status').filter({ hasText: 'コピーしました' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'URLをコピーしました' })).toBeVisible();
   const url = await page.evaluate(() => navigator.clipboard.readText());
   expect(url).toContain('columns=');
 
@@ -801,7 +801,7 @@ test('共有リンクは集合を並び順・基準ごと運び、自作のSetup
   await page.getByLabel('基準', { exact: true }).selectOption('setup:src-1');
   await expect(page.locator('.comparison-table tr[data-baseline="true"]')).toContainText('仕事用');
   await page.getByRole('button', { name: '共有', exact: true }).click();
-  await expect(page.getByRole('status').filter({ hasText: 'コピーしました' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'URLをコピーしました' })).toBeVisible();
   // 載らない対象が無い時は、送る側へ示す文を出さない。
   await expect(page.locator('[data-share-notice="true"]')).toHaveCount(0);
   const url = await page.evaluate(() => navigator.clipboard.readText());

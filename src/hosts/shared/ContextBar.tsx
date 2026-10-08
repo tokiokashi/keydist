@@ -68,7 +68,7 @@ export function ContextBar({ children, history, share, disabled = false }: Conte
             <>
               <ShareButton description={share.description} onCopy={copy} />
               <span className="context-share-status" role="status">
-                {state.kind === 'copied' ? 'コピーしました' : state.kind === 'failed' ? 'コピーできませんでした' : ''}
+                {state.kind === 'copied' ? 'URLをコピーしました' : state.kind === 'failed' ? 'コピーできませんでした' : ''}
                 {state.kind === 'idle'
                   ? null
                   : state.notices.map((line) => <span key={line} className="context-share-notice" data-share-notice="true">{line}</span>)}

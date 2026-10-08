@@ -546,7 +546,7 @@ test('文脈バーの「共有」で既定値と違う項目だけを含むURL�
   await expect(withinHand).toHaveAttribute('aria-pressed', 'true');
 
   await page.getByRole('button', { name: '共有', exact: true }).click();
-  await expect(page.getByRole('status').filter({ hasText: 'コピーしました' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'URLをコピーしました' })).toBeVisible();
 
   const clipboardText = await page.evaluate(() => navigator.clipboard.readText());
   expect(clipboardText).toContain('source=within-hand');
@@ -561,7 +561,7 @@ test('共有リンクで対象（配列）が届き、取り込み後はURLか�
   await toggleTarget(page, 'layout:dvorak');
   await expectChosenTarget(page, 'layout:dvorak');
   await page.getByRole('button', { name: '共有', exact: true }).click();
-  await expect(page.getByRole('status').filter({ hasText: 'コピーしました' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'URLをコピーしました' })).toBeVisible();
   const url = await page.evaluate(() => navigator.clipboard.readText());
   expect(url).toContain('target=layout%3Advorak');
 
