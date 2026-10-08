@@ -1,0 +1,311 @@
+{
+ "version": 3,
+ "workspaces": [
+  {
+   "id": "90d73281-5523-4cac-82f8-56b14948c710",
+   "name": "サンプル",
+   "text": {
+    "ref": {
+     "kind": "builtin",
+     "id": "builtin:ja.legacy"
+    }
+   },
+   "groups": [
+    {
+     "id": "link-1",
+     "target": {
+      "single": {
+       "kind": "layout",
+       "layoutId": "qwerty"
+      },
+      "set": {
+       "targets": [
+        {
+         "kind": "layout",
+         "layoutId": "qwerty"
+        },
+        {
+         "kind": "layout",
+         "layoutId": "dvorak"
+        },
+        {
+         "kind": "layout",
+         "layoutId": "oonishi"
+        },
+        {
+         "kind": "layout",
+         "layoutId": "naginata-v18"
+        },
+        {
+         "kind": "layout",
+         "layoutId": "shin-jis-prefix"
+        },
+        {
+         "kind": "layout",
+         "layoutId": "shingeta"
+        },
+        {
+         "kind": "layout",
+         "layoutId": "tsuki-2-263"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "id": "link-2",
+     "target": {
+      "single": {
+       "kind": "layout",
+       "layoutId": "oonishi"
+      },
+      "set": {
+       "targets": []
+      }
+     }
+    },
+    {
+     "id": "link-3",
+     "target": {
+      "single": {
+       "kind": "layout",
+       "layoutId": "tsuki-2-263"
+      },
+      "set": {
+       "targets": []
+      }
+     }
+    },
+    {
+     "id": "link-4",
+     "target": {
+      "single": {
+       "kind": "layout",
+       "layoutId": "naginata-v18"
+      },
+      "set": {
+       "targets": []
+      }
+     }
+    }
+   ],
+   "panes": [
+    {
+     "id": "26ff14f6-c42a-4236-a4cb-2edecb57739e",
+     "analyzerId": "comparison",
+     "binding": {
+      "mode": "follow",
+      "group": "link-1"
+     }
+    },
+    {
+     "id": "b42d148b-abe6-4b44-bbfc-4341f218b428",
+     "analyzerId": "n-sensitivity",
+     "binding": {
+      "mode": "follow",
+      "group": "link-1"
+     }
+    },
+    {
+     "id": "927063bd-8171-4b93-a02f-253c8de64408",
+     "analyzerId": "bigram-flow",
+     "options": {
+      "source": "within-hand"
+     },
+     "binding": {
+      "mode": "follow",
+      "group": "link-1"
+     }
+    },
+    {
+     "id": "48840587-c328-4b89-883c-1165c07b50c6",
+     "analyzerId": "bigram-flow",
+     "options": {
+      "source": "within-hand"
+     },
+     "binding": {
+      "mode": "follow",
+      "group": "link-2"
+     }
+    },
+    {
+     "id": "28be78f6-0ebc-4c1e-bb43-c02fb159f938",
+     "analyzerId": "bigram-flow",
+     "options": {
+      "source": "within-hand"
+     },
+     "binding": {
+      "mode": "follow",
+      "group": "link-3"
+     }
+    },
+    {
+     "id": "ba71f4e8-d84b-4fbb-a5e5-83b91b1efb86",
+     "analyzerId": "bigram-flow",
+     "options": {
+      "source": "within-hand"
+     },
+     "binding": {
+      "mode": "follow",
+      "group": "link-4"
+     }
+    }
+   ],
+   "colorSlots": {
+    "layout:qwerty": 0,
+    "layout:dvorak": 1,
+    "layout:oonishi": 2,
+    "layout:naginata-v18": 3,
+    "layout:shin-jis-prefix": 4,
+    "layout:shingeta": 5,
+    "layout:tsuki-2-263": 6
+   },
+   "grid": [
+    {
+     "id": "26ff14f6-c42a-4236-a4cb-2edecb57739e",
+     "x": 0,
+     "y": 0,
+     "w": 18,
+     "h": 9
+    },
+    {
+     "id": "b42d148b-abe6-4b44-bbfc-4341f218b428",
+     "x": 18,
+     "y": 0,
+     "w": 6,
+     "h": 9
+    },
+    {
+     "id": "927063bd-8171-4b93-a02f-253c8de64408",
+     "x": 0,
+     "y": 9,
+     "w": 6,
+     "h": 15
+    },
+    {
+     "id": "48840587-c328-4b89-883c-1165c07b50c6",
+     "x": 6,
+     "y": 9,
+     "w": 6,
+     "h": 15
+    },
+    {
+     "id": "28be78f6-0ebc-4c1e-bb43-c02fb159f938",
+     "x": 12,
+     "y": 9,
+     "w": 6,
+     "h": 15
+    },
+    {
+     "id": "ba71f4e8-d84b-4fbb-a5e5-83b91b1efb86",
+     "x": 18,
+     "y": 9,
+     "w": 6,
+     "h": 15
+    }
+   ],
+   "conditions": {
+    "defaultShapeId": "split-ortholinear"
+   }
+  },
+  {
+   "id": "8afa52b4-2f31-4801-ba37-16745c774534",
+   "name": "新しいWorkspace",
+   "text": {
+    "ref": {
+     "kind": "builtin",
+     "id": "builtin:ja.legacy"
+    }
+   },
+   "groups": [
+    {
+     "id": "link-1",
+     "target": {
+      "set": {
+       "targets": []
+      }
+     }
+    }
+   ],
+   "panes": [
+    {
+     "id": "991d1c24-4d7c-4ed5-a6f5-65229e4ebe46",
+     "analyzerId": "comparison",
+     "binding": {
+      "mode": "follow",
+      "group": "link-1"
+     }
+    },
+    {
+     "id": "1d33ce76-0fa5-41ff-be3d-9c3ca3881e25",
+     "analyzerId": "n-sensitivity",
+     "binding": {
+      "mode": "follow",
+      "group": "link-1"
+     }
+    },
+    {
+     "id": "4f74b955-c94f-4b13-92e7-84da58eeb1a5",
+     "analyzerId": "bigram-flow",
+     "binding": {
+      "mode": "follow",
+      "group": "link-1"
+     }
+    },
+    {
+     "id": "c4281883-2695-4c2c-892a-ecebe42c07f2",
+     "analyzerId": "finger-distance",
+     "binding": {
+      "mode": "follow",
+      "group": "link-1"
+     }
+    },
+    {
+     "id": "f90ef10e-df49-4122-a864-25751c9981f1",
+     "analyzerId": "blank",
+     "binding": {
+      "mode": "none"
+     }
+    }
+   ],
+   "colorSlots": {},
+   "grid": [
+    {
+     "id": "991d1c24-4d7c-4ed5-a6f5-65229e4ebe46",
+     "x": 0,
+     "y": 0,
+     "w": 12,
+     "h": 8
+    },
+    {
+     "id": "1d33ce76-0fa5-41ff-be3d-9c3ca3881e25",
+     "x": 12,
+     "y": 0,
+     "w": 12,
+     "h": 9
+    },
+    {
+     "id": "4f74b955-c94f-4b13-92e7-84da58eeb1a5",
+     "x": 0,
+     "y": 8,
+     "w": 12,
+     "h": 14
+    },
+    {
+     "id": "c4281883-2695-4c2c-892a-ecebe42c07f2",
+     "x": 12,
+     "y": 9,
+     "w": 12,
+     "h": 11
+    },
+    {
+     "id": "f90ef10e-df49-4122-a864-25751c9981f1",
+     "x": 12,
+     "y": 20,
+     "w": 6,
+     "h": 4
+    }
+   ]
+  }
+ ]
+}

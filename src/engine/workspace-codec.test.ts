@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { WORKSPACE_LIBRARY_CODEC } from './workspace-codec.ts';
 import {
@@ -340,4 +341,40 @@ test('gridが配列でなければ診断を1件積み、ペインは失わない
   const absent = decode(undefined);
   assert.ok(absent.ok);
   assert.deepEqual(absent.diagnostics.filter((d) => d.path.includes('grid')), []);
+});
+
+/** 解析設定の共有を持つ前の版（版3）のアプリが実際に保存した手持ち（サンプルのWorkspaceと、手で足したペイン5種を並べたWorkspace）。 */
+const VERSION_3_STORED = JSON.parse(readFileSync(new URL('../../test/fixtures/workspace-library-v3.json', import.meta.url), 'utf8')) as {
+  readonly version: number;
+  readonly workspaces: readonly { readonly panes: readonly { readonly id: string; readonly analyzerId: string; readonly options?: unknown }[] }[];
+};
+
+test('版3の保存は、各ペインが自分の解析設定を持つ形として、診断なしで読める', () => {
+  assert.equal(VERSION_3_STORED.version, 3);
+  const decoded = WORKSPACE_LIBRARY_CODEC.decode(VERSION_3_STORED);
+  assert.ok(decoded.ok);
+  assert.deepEqual(decoded.diagnostics, []);
+  assert.equal(decoded.value.length, VERSION_3_STORED.workspaces.length);
+  decoded.value.forEach((workspace, index) => {
+    const stored = VERSION_3_STORED.workspaces[index]!;
+    assert.deepEqual(workspace.optionSets, []);
+    // ペインを1つも失わず、解析設定はそのペインのものとして残る
+    assert.deepEqual(workspace.panes.map((pane) => pane.id), stored.panes.map((pane) => pane.id));
+    assert.deepEqual(workspace.panes.map((pane) => pane.analyzerId), stored.panes.map((pane) => pane.analyzerId));
+    workspace.panes.forEach((pane, paneIndex) => {
+      assert.equal(pane.optionsBinding.mode, 'own');
+      assert.deepEqual(pane.options, stored.panes[paneIndex]!.options);
+    });
+    assert.deepEqual([...gridPaneIds(workspace.grid)].sort(), workspace.panes.map((pane) => pane.id).sort());
+  });
+});
+
+test('版3の保存を読んで書き直すと版4になり、もう一度読んでも同じ値になる', () => {
+  const first = WORKSPACE_LIBRARY_CODEC.decode(VERSION_3_STORED);
+  assert.ok(first.ok);
+  const rewritten = JSON.parse(JSON.stringify(WORKSPACE_LIBRARY_CODEC.encode(first.value))) as unknown;
+  assert.equal((rewritten as { version: number }).version, 4);
+  const second = WORKSPACE_LIBRARY_CODEC.decode(rewritten);
+  assert.ok(second.ok);
+  assert.deepEqual(second.value, first.value);
 });
