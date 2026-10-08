@@ -4,6 +4,8 @@ import { bigramFlowDefinition } from '#analyzers/bigram-flow/extract.ts';
 import { BIGRAM_FLOW_PANE_META } from '#analyzers/bigram-flow/pane-meta.ts';
 import { comparisonDefinition } from '#analyzers/comparison/extract.ts';
 import { COMPARISON_PANE_META } from '#analyzers/comparison/pane-meta.ts';
+import { fingerDistanceDefinition } from '#analyzers/finger-distance/extract.ts';
+import { FINGER_DISTANCE_PANE_META } from '#analyzers/finger-distance/pane-meta.ts';
 import { nSensitivityDefinition } from '#analyzers/n-sensitivity/extract.ts';
 import { N_SENSITIVITY_PANE_META } from '#analyzers/n-sensitivity/pane-meta.ts';
 
@@ -29,6 +31,7 @@ export interface WorkspaceAnalyzerEntry {
 
 export const WORKSPACE_ANALYZERS: readonly WorkspaceAnalyzerEntry[] = [
   { id: bigramFlowDefinition.id, ...BIGRAM_FLOW_PANE_META, cardinality: 'single' },
+  { id: fingerDistanceDefinition.id, ...FINGER_DISTANCE_PANE_META, cardinality: 'single' },
   { id: comparisonDefinition.id, ...COMPARISON_PANE_META, cardinality: 'set' },
   { id: nSensitivityDefinition.id, ...N_SENSITIVITY_PANE_META, cardinality: 'set' },
 ];
