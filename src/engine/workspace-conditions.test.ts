@@ -53,6 +53,8 @@ function assetsWithWorkspaces(...ids: string[]): KeydistAssets {
     singleTargetSelection: initialSingleTargetSelection(),
     workspaces: library,
     presetLibrary: { presets: [] },
+    userLayouts: [],
+    userRomajiRules: [],
   };
 }
 

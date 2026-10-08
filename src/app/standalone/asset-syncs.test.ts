@@ -259,3 +259,36 @@ test('commitHistoryStep: 他タブが書き換えた資産はUndoで巻き戻さ
   const stored = loadAssets(buildAssetSyncs({ onExternalChange: () => {}, storage }));
   assert.equal(stored.textLibrary?.texts.length, 2);
 });
+
+test('自作の配列とローマ字規則: 書いたものが往復し、別タブの変更が同じキーのonExternalChangeへ届く', () => {
+  const storage = createFakeStorage();
+  const bus = createFakeBus();
+  const seen: unknown[] = [];
+  const syncsA = buildAssetSyncs({
+    onExternalChange: (key, value) => seen.push([key, value]),
+    storage,
+    subscribe: bus.subscribe,
+    notify: bus.notify,
+  });
+  const syncsB = buildAssetSyncs({ onExternalChange: () => {}, storage, subscribe: bus.subscribe, notify: bus.notify });
+  const stopA = startAssetSyncs(syncsA);
+  const userLayouts = [{ id: 'user-a', name: 'A', rows: ['', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'] as [string, string, string, string], romaji: 'kunrei' }];
+  const userRomajiRules = [{ id: 'rule-a', name: 'R', base: 'kunrei' as const, overrides: { し: 'si' }, generateSokuon: true }];
+
+  saveChangedAssets(syncsB, { ...baseAssets(), userLayouts, userRomajiRules }, ['userLayouts', 'userRomajiRules']);
+
+  assert.deepEqual(seen, [['userLayouts', userLayouts], ['userRomajiRules', userRomajiRules]]);
+  assert.deepEqual(loadAssets(buildAssetSyncs({ onExternalChange: () => {}, storage })).userLayouts, userLayouts);
+  stopA();
+});
+
+test('自作の配列とローマ字規則: 保存された値の壊れた要素・id重複は読み込み時に捨てられる', () => {
+  const storage = createFakeStorage();
+  const layout = { id: 'user-a', name: 'A', rows: ['', 'q', 'a', 'z'], romaji: 'kunrei' };
+  const rule = { id: 'rule-a', name: 'R', base: 'kunrei', overrides: {}, generateSokuon: true };
+  storage.setItem(ASSET_STORAGE_SPECS.userLayouts.storageKey, JSON.stringify({ version: 1, layouts: [layout, layout, 5] }));
+  storage.setItem(ASSET_STORAGE_SPECS.userRomajiRules.storageKey, JSON.stringify({ version: 1, rules: [rule, rule, 5] }));
+  const loaded = loadAssets(buildAssetSyncs({ onExternalChange: () => {}, storage }));
+  assert.equal(loaded.userLayouts?.length, 1);
+  assert.equal(loaded.userRomajiRules?.length, 1);
+});

@@ -1,4 +1,10 @@
-import type { CodecDiagnostic, DecodedWithDiagnostics } from '../codec/index.ts';
+import {
+  defineAssetCodec,
+  isRecord,
+  type AssetCodec,
+  type CodecDiagnostic,
+  type DecodedWithDiagnostics,
+} from '../codec/index.ts';
 import {
   canonicalInputAlternativeIdentity,
   compileSequenceInputAlternative,
@@ -59,6 +65,7 @@ export const isValidUserLayout = (l: unknown): l is UserLayout => {
   const value = l as Partial<UserLayout>;
   return typeof value.id === 'string' &&
     typeof value.name === 'string' &&
+    typeof value.romaji === 'string' &&
     Array.isArray(value.rows) &&
     value.rows.length === 4 &&
     value.rows.every((row) => typeof row === 'string') &&
@@ -100,6 +107,23 @@ export function decodeUserLayouts(value: unknown): DecodedWithDiagnostics<UserLa
   return { value: layouts, diagnostics };
 }
 
+/**
+ * 自作の配列の手持ちのcodec（版1）。配列そのものの形は`decodeUserLayouts`が決め、
+ * ここは版付きの外殻と診断の経路（`layouts`以下）だけを持つ。
+ * `layouts`が配列でなくても資産全体は失敗にせず空扱いにする（捨てた旨の診断は積む）。
+ */
+export const USER_LAYOUTS_CODEC: AssetCodec<readonly UserLayout[]> = defineAssetCodec({
+  currentVersion: 1,
+  decodePayload: (payload, diagnostics) => {
+    if (!isRecord(payload)) return undefined;
+    const decoded = decodeUserLayouts(payload.layouts);
+    for (const diagnostic of decoded.diagnostics) {
+      diagnostics.push({ path: `layouts${diagnostic.path}`, message: diagnostic.message });
+    }
+    return decoded.value;
+  },
+  encodePayload: (value) => ({ layouts: value.map((layout) => structuredClone(layout)) }),
+});
 
 /**
  * 入力を検査する。列数オーバーだけを弾く。

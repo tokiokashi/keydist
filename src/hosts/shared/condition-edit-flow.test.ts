@@ -58,6 +58,8 @@ function newSession(): Session {
       singleTargetSelection: initialSingleTargetSelection(),
       workspaces: initialWorkspaceLibrary(),
       presetLibrary: { presets: [] },
+      userLayouts: [],
+      userRomajiRules: [],
     },
     history: emptyCommandHistory<KeydistAssets>(),
   };
