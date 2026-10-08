@@ -65,15 +65,39 @@ function setupShareName(setup: Setup, source: TargetShareSource): string {
     ?? `${source.layouts.get(setup.layoutId)?.name ?? ''}/${source.shapes.get(setup.shapeId)?.name ?? ''}`;
 }
 
-/** 対象を参照へ。手持ちに無い対象（削除されたSetup等）は載せる名前が無いので`undefined`。 */
-export function encodeTargetRef(target: AnalysisTarget, source: TargetShareSource): string | undefined {
+/** 対象が参照として載るか。載らない理由を持つ。 */
+export type TargetRefEncoding =
+  | { readonly ok: true; readonly ref: string }
+  /** 手持ちに無い対象（削除されたSetup・配列）。載せる名前が無い。 */
+  | { readonly ok: false; readonly reason: 'missing' }
+  /** 参照が長さの上限を超える。受け取った側が読めないので載せない。`name`は画面に出す名前。 */
+  | { readonly ok: false; readonly reason: 'too-long'; readonly kind: 'user-layout' | 'setup'; readonly name: string };
+
+/** 対象を参照へ。載せられない時は理由を返す。 */
+export function encodeTargetRef(target: AnalysisTarget, source: TargetShareSource): TargetRefEncoding {
+  let kind: 'layout' | 'user-layout' | 'setup';
+  let ref: string;
+  let name = '';
   if (target.kind === 'layout') {
     const layout = source.layouts.get(target.layoutId);
-    if (layout === undefined) return undefined;
-    return source.userLayoutIds.has(target.layoutId) ? `user-layout:${layout.name}` : `layout:${target.layoutId}`;
+    if (layout === undefined) return { ok: false, reason: 'missing' };
+    if (source.userLayoutIds.has(target.layoutId)) {
+      kind = 'user-layout';
+      name = layout.name;
+      ref = `user-layout:${name}`;
+    } else {
+      kind = 'layout';
+      ref = `layout:${target.layoutId}`;
+    }
+  } else {
+    const setup = source.setups.find((s) => s.id === target.setupId);
+    if (setup === undefined) return { ok: false, reason: 'missing' };
+    kind = 'setup';
+    name = setupShareName(setup, source);
+    ref = `setup:${name}`;
   }
-  const setup = source.setups.find((s) => s.id === target.setupId);
-  return setup === undefined ? undefined : `setup:${setupShareName(setup, source)}`;
+  if (ref.length > SHARE_MAX_REF_LENGTH && kind !== 'layout') return { ok: false, reason: 'too-long', kind, name };
+  return { ok: true, ref };
 }
 
 export type TargetRefResolution =
@@ -103,33 +127,80 @@ export function resolveTargetRef(ref: TargetRef, source: TargetShareSource): Tar
     : { ok: true, target: { kind: 'setup', setupId: setup.id } };
 }
 
-/** Singleの対象をURLへ。載せられなければ何も足さない。 */
-export function encodeSingleTargetToUrl(target: AnalysisTarget, source: TargetShareSource): URLSearchParams {
+/** 共有URLを作った時に、送る側へ伝えること。 */
+export interface ShareEncodeNotice {
+  /** 手持ちに無く、載せられなかった対象の件数。 */
+  readonly missing: number;
+  /** 名前が長すぎて載せられなかった自作の配列・Setupの名前。 */
+  readonly tooLong: readonly { readonly kind: 'user-layout' | 'setup'; readonly name: string }[];
+  /** 件数の上限を超えて載せられなかった対象の件数。 */
+  readonly overLimit: number;
+  /** 名前だけを載せた自作の配列の名前。受け取った側に同じ名前の配列が無いと開けない。 */
+  readonly nameOnlyLayouts: readonly string[];
+}
+
+export interface EncodedTargetShare {
+  readonly params: URLSearchParams;
+  readonly notice: ShareEncodeNotice;
+}
+
+interface EncodeNoticeBuilder {
+  missing: number;
+  tooLong: { kind: 'user-layout' | 'setup'; name: string }[];
+  overLimit: number;
+  nameOnlyLayouts: string[];
+}
+
+function newEncodeNotice(): EncodeNoticeBuilder {
+  return { missing: 0, tooLong: [], overLimit: 0, nameOnlyLayouts: [] };
+}
+
+/** 参照を足す。載らない時は理由を`notice`へ積み、`undefined`を返す。 */
+function encodeInto(target: AnalysisTarget, source: TargetShareSource, notice: EncodeNoticeBuilder): string | undefined {
+  const encoded = encodeTargetRef(target, source);
+  if (encoded.ok) {
+    if (encoded.ref.startsWith('user-layout:')) notice.nameOnlyLayouts.push(encoded.ref.slice('user-layout:'.length));
+    return encoded.ref;
+  }
+  if (encoded.reason === 'missing') notice.missing += 1;
+  else notice.tooLong.push({ kind: encoded.kind, name: encoded.name });
+  return undefined;
+}
+
+/** Singleの対象をURLへ。載せられなければ何も足さず、理由を返す。 */
+export function encodeSingleTargetToUrl(target: AnalysisTarget, source: TargetShareSource): EncodedTargetShare {
   const params = new URLSearchParams();
-  const ref = encodeTargetRef(target, source);
+  const notice = newEncodeNotice();
+  const ref = encodeInto(target, source, notice);
   if (ref !== undefined) params.set(SHARE_TARGET_PARAM, ref);
-  return params;
+  return { params, notice };
 }
 
 /**
  * Multiの集合をURLへ。`targets`は加えた順（`MultiTargetSelection.targets`の順）で運ぶ。
  * `baseline`は効いている基準（集合に含まれるもの。`effectiveMultiBaseline`）を渡す。
+ * 基準は、対象として載った時だけ運ぶ（受け取った側は集合に無い基準を捨てるため）。
  */
 export function encodeMultiTargetsToUrl(
   targets: readonly AnalysisTarget[],
   baseline: AnalysisTarget | undefined,
   source: TargetShareSource,
-): URLSearchParams {
+): EncodedTargetShare {
   const params = new URLSearchParams();
+  const notice = newEncodeNotice();
+  const carried = new Set<string>();
   for (const target of targets.slice(0, SHARE_MAX_TARGETS)) {
-    const ref = encodeTargetRef(target, source);
-    if (ref !== undefined) params.append(SHARE_TARGETS_PARAM, ref);
+    const ref = encodeInto(target, source, notice);
+    if (ref === undefined) continue;
+    params.append(SHARE_TARGETS_PARAM, ref);
+    carried.add(analysisTargetKey(target));
   }
-  if (baseline !== undefined) {
+  notice.overLimit = Math.max(0, targets.length - SHARE_MAX_TARGETS);
+  if (baseline !== undefined && carried.has(analysisTargetKey(baseline))) {
     const ref = encodeTargetRef(baseline, source);
-    if (ref !== undefined) params.set(SHARE_BASELINE_PARAM, ref);
+    if (ref.ok) params.set(SHARE_BASELINE_PARAM, ref.ref);
   }
-  return params;
+  return { params, notice };
 }
 
 export interface SharedTargetsNotice {
@@ -258,6 +329,40 @@ export function describeSharedTargetsNotice(notice: SharedTargetsNotice): readon
   }
   if (notice.unreadable > 0) {
     lines.push(`共有リンクの対象のうち、読み取れないものがあった（${notice.unreadable}件）`);
+  }
+  return lines;
+}
+
+/** 名前の表示の長さ。長すぎて載らなかった名前をそのまま出すと画面を埋めるので切る。 */
+const MAX_NAME_CHARS = 20;
+
+function quoteName(item: { readonly kind: 'user-layout' | 'setup'; readonly name: string }): string {
+  const name = item.name.length > MAX_NAME_CHARS ? `${item.name.slice(0, MAX_NAME_CHARS)}…` : item.name;
+  return item.kind === 'setup' ? `Setup「${name}」` : `自作の配列「${name}」`;
+}
+
+/**
+ * 共有URLを作った送る側へ、リンクで起きることを伝える文（画面に出す）。何も無ければ空。
+ * 載らなかった対象と、名前だけが載った自作の配列（受け取った側に同じ名前が無いと開けない）を分けて書く。
+ */
+export function describeShareEncodeNotice(notice: ShareEncodeNotice): readonly string[] {
+  const lines: string[] = [];
+  if (notice.missing > 0) {
+    lines.push(`削除済みの対象（${notice.missing}件）はリンクに載らなかった`);
+  }
+  if (notice.tooLong.length > 0) {
+    const names = notice.tooLong.slice(0, MAX_NAMES_SHOWN).map(quoteName);
+    const rest = notice.tooLong.length - names.length;
+    lines.push(`名前が長すぎる${names.join('・')}${rest > 0 ? `ほか${rest}件` : ''}はリンクに載らなかった`);
+  }
+  if (notice.overLimit > 0) {
+    lines.push(`対象は${SHARE_MAX_TARGETS}件までのため、超えた分（${notice.overLimit}件）はリンクに載らなかった`);
+  }
+  if (notice.nameOnlyLayouts.length > 0) {
+    const names = notice.nameOnlyLayouts.slice(0, MAX_NAMES_SHOWN).map((name) =>
+      quoteName({ kind: 'user-layout', name }));
+    const rest = notice.nameOnlyLayouts.length - names.length;
+    lines.push(`${names.join('・')}${rest > 0 ? `ほか${rest}件` : ''}は名前だけがリンクに載る。受け取った側に同じ名前の配列が無いと開けない`);
   }
   return lines;
 }

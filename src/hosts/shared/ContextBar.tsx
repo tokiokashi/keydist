@@ -68,7 +68,10 @@ export function ContextBar({ children, history, share, disabled = false }: Conte
             <>
               <ShareButton description={share.description} onCopy={copy} />
               <span className="context-share-status" role="status">
-                {state === 'copied' ? 'URLをコピーした' : state === 'failed' ? 'コピーできなかった' : ''}
+                {state.kind === 'copied' ? 'URLをコピーした' : state.kind === 'failed' ? 'コピーできなかった' : ''}
+                {state.kind === 'idle'
+                  ? null
+                  : state.notices.map((line) => <span key={line} className="context-share-notice" data-share-notice="true">{line}</span>)}
               </span>
             </>
           )}
@@ -124,35 +127,51 @@ export interface ContextBarShare {
    * URLに載せる値（解析設定など）。無ければ今の画面のURLをそのままコピーする。
    * URLとクリップボードに触るのはホストだけ（Analyzerの本体・解析設定は触らない）。
    */
-  readonly query?: () => URLSearchParams;
+  readonly query?: () => ShareQuery;
   /** 何を含むURLをコピーするかの説明（ボタンのtitle・メニュー項目の説明）。 */
   readonly description: string;
 }
 
-type ShareState = 'idle' | 'copied' | 'failed';
+/** URLに載せる値と、載らなかった対象などコピーの時に添えて示す文。 */
+export interface ShareQuery {
+  readonly params: URLSearchParams;
+  readonly notices?: readonly string[];
+}
+
+interface ShareState {
+  readonly kind: 'idle' | 'copied' | 'failed';
+  readonly notices: readonly string[];
+}
+
+const IDLE: ShareState = { kind: 'idle', notices: [] };
+/** 添える文がある時は、読み終える時間が要るので長く出す。 */
+const STATUS_MS = 1800;
+const STATUS_WITH_NOTICES_MS = 10_000;
 
 /** URLのコピーと、その結果の表示状態（しばらくして消える）。 */
 function useShareCopy(query: ContextBarShare['query']): { readonly state: ShareState; readonly copy: () => void } {
-  const [state, setState] = useState<ShareState>('idle');
+  const [state, setState] = useState<ShareState>(IDLE);
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(timerRef.current), []);
 
-  const show = (next: ShareState) => {
-    setState(next);
+  const show = (kind: ShareState['kind'], notices: readonly string[]) => {
+    setState({ kind, notices });
     clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => setState('idle'), 1800);
+    timerRef.current = setTimeout(() => setState(IDLE), notices.length > 0 ? STATUS_WITH_NOTICES_MS : STATUS_MS);
   };
 
   const copy = () => {
-    const params = query?.().toString() ?? '';
+    const shared = query?.();
+    const params = shared?.params.toString() ?? '';
+    const notices = shared?.notices ?? [];
     const url = `${window.location.origin}${window.location.pathname}${params ? `?${params}` : ''}`;
     // 安全でない接続ではclipboardが無い。失敗は黙らずに知らせる。
     const clipboard = navigator.clipboard as Clipboard | undefined;
     if (clipboard === undefined) {
-      show('failed');
+      show('failed', notices);
       return;
     }
-    clipboard.writeText(url).then(() => show('copied'), () => show('failed'));
+    clipboard.writeText(url).then(() => show('copied', notices), () => show('failed', notices));
   };
 
   return { state, copy };

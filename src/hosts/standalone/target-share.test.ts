@@ -10,6 +10,7 @@ import {
   decodeMultiTargetsFromUrl,
   decodeSingleTargetFromUrl,
   describeSharedTargetsNotice,
+  describeShareEncodeNotice,
   encodeMultiTargetsToUrl,
   encodeSingleTargetToUrl,
   hasSharedTargetParams,
@@ -37,7 +38,7 @@ const setupB: Setup = { id: 'uuid-b', number: 2, layoutId: 'dvorak', shapeId: 'r
 
 test('組み込みの配列はidで、自作の配列とSetupは名前だけで載せる（内部のidを運ばない）', () => {
   const src = source([setupA, setupB]);
-  const params = encodeMultiTargetsToUrl(
+  const { params } = encodeMultiTargetsToUrl(
     [DVORAK, MINE, { kind: 'setup', setupId: 'uuid-a' }, { kind: 'setup', setupId: 'uuid-b' }],
     undefined,
     src,
@@ -50,7 +51,7 @@ test('組み込みの配列はidで、自作の配列とSetupは名前だけで�
 test('Multiは並び順ごと往復し、基準は集合に含まれる時だけ運ばれる', () => {
   const src = source([setupA]);
   const targets: AnalysisTarget[] = [DVORAK, QWERTY, { kind: 'setup', setupId: 'uuid-a' }, MINE];
-  const params = encodeMultiTargetsToUrl(targets, QWERTY, src);
+  const { params } = encodeMultiTargetsToUrl(targets, QWERTY, src);
   // 受け取った側が別のid（別のSetup id）を持っていても、名前で同じものに当たる。
   const other = source([{ ...setupA, id: 'other-uuid' }]);
   const decoded = decodeMultiTargetsFromUrl(new URLSearchParams(params.toString()), other, []);
@@ -92,9 +93,9 @@ test('自作の名前でも組み込みのidに化けさせない（user-layout�
 
 test('Singleは1件だけ載せ、手持ちに無い対象は何も載せない', () => {
   const src = source([setupA]);
-  assert.equal(encodeSingleTargetToUrl(DVORAK, src).get('target'), 'layout:dvorak');
-  assert.equal(encodeSingleTargetToUrl({ kind: 'setup', setupId: 'gone' }, src).toString(), '');
-  assert.equal(encodeSingleTargetToUrl({ kind: 'layout', layoutId: 'gone' }, src).toString(), '');
+  assert.equal(encodeSingleTargetToUrl(DVORAK, src).params.get('target'), 'layout:dvorak');
+  assert.equal(encodeSingleTargetToUrl({ kind: 'setup', setupId: 'gone' }, src).params.toString(), '');
+  assert.equal(encodeSingleTargetToUrl({ kind: 'layout', layoutId: 'gone' }, src).params.toString(), '');
 });
 
 test('壊れた参照・長すぎる参照・件数超過は捨てて診断を積み、残りは読む（サイズの上限）', () => {
@@ -133,4 +134,67 @@ test('見つからない名前が多い時は先頭の数件だけ名前を出�
     unreadable: 0,
   });
   assert.deepEqual(lines, ['共有されたSetup「a」・Setup「b」・Setup「c」ほか2件は、この端末に見つからなかった']);
+});
+
+test('載らない対象（削除済み・名前が長すぎる・件数超過）は理由ごとに返し、載る対象だけをURLに置く', () => {
+  const longSetup: Setup = { id: 'uuid-long', number: 3, layoutId: 'qwerty', shapeId: 'row-staggered', label: 'あ'.repeat(SHARE_MAX_REF_LENGTH) };
+  const justFits: Setup = { id: 'uuid-fit', number: 4, layoutId: 'qwerty', shapeId: 'row-staggered', label: 'い'.repeat(SHARE_MAX_REF_LENGTH - 'setup:'.length) };
+  const src = source([setupA, longSetup, justFits]);
+  const { params, notice } = encodeMultiTargetsToUrl(
+    [
+      DVORAK,
+      { kind: 'setup', setupId: 'gone' },
+      { kind: 'layout', layoutId: 'gone' },
+      { kind: 'setup', setupId: 'uuid-long' },
+      { kind: 'setup', setupId: 'uuid-fit' },
+      MINE,
+    ],
+    undefined,
+    src,
+  );
+  assert.deepEqual(params.getAll('targets').length, 3);
+  assert.equal(notice.missing, 2);
+  assert.deepEqual(notice.tooLong, [{ kind: 'setup', name: longSetup.label }]);
+  assert.equal(notice.overLimit, 0);
+  assert.deepEqual(notice.nameOnlyLayouts, ['自作,配列']);
+  // 載せたものは、受け取った側で読み戻せる（上限ぎりぎりの名前も落ちない）。
+  const decoded = decodeMultiTargetsFromUrl(new URLSearchParams(params.toString()), src, []);
+  assert.equal(decoded.notice.unreadable, 0);
+  assert.equal(decoded.targets.length, 3);
+});
+
+test('件数の上限を超えた分は載せず、超えた件数を返す。載らなかった対象を基準にしても運ばない', () => {
+  const targets: AnalysisTarget[] = [];
+  const src = source();
+  for (let i = 0; i < SHARE_MAX_TARGETS; i++) targets.push(i % 2 === 0 ? QWERTY : DVORAK);
+  const extra: AnalysisTarget = { kind: 'layout', layoutId: 'colemak-dh' };
+  const { params, notice } = encodeMultiTargetsToUrl([...targets, extra, extra], extra, src);
+  assert.equal(params.getAll('targets').length, SHARE_MAX_TARGETS);
+  assert.equal(notice.overLimit, 2);
+  assert.equal(params.has('baseline'), false);
+});
+
+test('載らない対象が無い時は、送る側へ示す文が出ない（組み込みの配列だけ・Setupが手持ちにある）', () => {
+  const src = source([setupA]);
+  const { notice } = encodeMultiTargetsToUrl([DVORAK, QWERTY, { kind: 'setup', setupId: 'uuid-a' }], QWERTY, src);
+  assert.deepEqual(describeShareEncodeNotice(notice), []);
+  assert.deepEqual(describeShareEncodeNotice(encodeSingleTargetToUrl(DVORAK, src).notice), []);
+});
+
+test('送る側へ示す文は、載らなかった対象と名前だけが載る自作の配列を分けて書き、長い名前は切る', () => {
+  const longSetup: Setup = { id: 'uuid-long', number: 3, layoutId: 'qwerty', shapeId: 'row-staggered', label: 'あ'.repeat(SHARE_MAX_REF_LENGTH) };
+  const src = source([longSetup]);
+  const { notice } = encodeMultiTargetsToUrl(
+    [{ kind: 'setup', setupId: 'gone' }, { kind: 'setup', setupId: 'uuid-long' }, MINE],
+    undefined,
+    src,
+  );
+  assert.deepEqual(describeShareEncodeNotice(notice), [
+    '削除済みの対象（1件）はリンクに載らなかった',
+    `名前が長すぎるSetup「${'あ'.repeat(20)}…」はリンクに載らなかった`,
+    '自作の配列「自作,配列」は名前だけがリンクに載る。受け取った側に同じ名前の配列が無いと開けない',
+  ]);
+  const single = encodeSingleTargetToUrl({ kind: 'setup', setupId: 'uuid-long' }, src);
+  assert.equal(single.params.toString(), '');
+  assert.equal(single.notice.tooLong.length, 1);
 });
