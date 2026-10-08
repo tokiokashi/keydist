@@ -234,7 +234,8 @@ for (const width of [1500, 390]) {
   });
 }
 
-test('Workspace: 並び替えはペインごとに持ち、片方を並べても他方の行の順は変わらない', async ({ page }) => {
+/** 比較表を2つ並べ、3つの配列を対象にして、表が出るまで待つ。 */
+async function openTwoComparisons(page: Page): Promise<void> {
   await page.setViewportSize({ width: 800, height: 900 });
   await page.goto('/');
   await waitForHydration(page);
@@ -244,10 +245,9 @@ test('Workspace: 並び替えはペインごとに持ち、片方を並べても
     await page.getByRole('button', { name: /ペインを追加/ }).click();
     await page.getByRole('menuitem', { name: /比較表/ }).click();
   }
-  const panes = page.locator('.pane-frame');
-  await expect(panes).toHaveCount(2);
+  await expect(page.locator('.pane-frame')).toHaveCount(2);
   // 先頭のペインで対象を選ぶ。2つ目は同じ連動に従う。
-  await panes.nth(0).getByRole('button', { name: /^対象: / }).click();
+  await page.locator('.pane-frame').nth(0).getByRole('button', { name: /^対象: / }).click();
   const dialog = page.getByRole('dialog', { name: '対象の選択' });
   for (const id of ['qwerty', 'dvorak', 'colemak-dh']) await dialog.locator(`input[value="layout:${id}"]`).click();
   await page.keyboard.press('Escape');
@@ -255,7 +255,57 @@ test('Workspace: 並び替えはペインごとに持ち、片方を並べても
   for (let n = 0; n < 2; n += 1) {
     await expect(tables.nth(n).locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(3, { timeout: 15_000 });
   }
+}
+
+interface StoredSortWorkspace {
+  readonly optionSets?: { options?: unknown }[];
+  readonly panes: { options?: unknown; optionsBinding?: { mode: string } }[];
+}
+
+async function storedSortState(page: Page): Promise<StoredSortWorkspace | undefined> {
+  const raw = await page.evaluate((key) => localStorage.getItem(key), WORKSPACES_KEY);
+  return (JSON.parse(raw ?? '{"workspaces":[]}') as { workspaces: StoredSortWorkspace[] }).workspaces[0];
+}
+
+const hasSort = (value: unknown) => JSON.stringify(value ?? null).includes('totalUnits');
+
+test('Workspace: 共有に従う2つの比較表では、片方を並べるともう片方も同じ順になる', async ({ page }) => {
+  await openTwoComparisons(page);
+  const tables = page.locator('.comparison-table');
+  const first = tables.nth(0);
+  await sortButton(first, '距離').click();
+  await sortButton(first, '距離').click();
+  await expect(headerOf(first, '距離')).toHaveAttribute('aria-sort', 'descending');
+  await expect(headerOf(tables.nth(1), '距離')).toHaveAttribute('aria-sort', 'descending');
+  await expect.poll(async () => rowNames(tables.nth(1))).toEqual(await rowNames(first));
+
+  // 並び替えは共有の設定に保存され、ペインの欄には書かれない
+  await expect.poll(async () => hasSort((await storedSortState(page))?.optionSets?.map((set) => set.options))).toBe(true);
+  expect((await storedSortState(page))?.panes.map((p) => p.options)).toEqual([undefined, undefined]);
+  await page.reload();
+  await waitForHydration(page);
+  for (let n = 0; n < 2; n += 1) {
+    await expect(headerOf(page.locator('.comparison-table').nth(n), '距離')).toHaveAttribute('aria-sort', 'descending');
+  }
+
+  // ⋯の「解析設定を初期値に戻す」で共有の並び替えが解除され、もう片方も解除される。
+  await page.locator('.pane-frame').nth(0).getByRole('button', { name: /の操作$/ }).click();
+  await page.getByRole('menuitem', { name: /解析設定を初期値に戻す/ }).click();
+  for (let n = 0; n < 2; n += 1) {
+    await expect(headerOf(page.locator('.comparison-table').nth(n), '距離')).not.toHaveAttribute('aria-sort', /.+/);
+  }
+});
+
+test('Workspace: 「このペインだけ」にしたペインは並び替えを自分で持ち、片方を並べても他方の行の順は変わらない', async ({ page }) => {
+  await openTwoComparisons(page);
+  const tables = page.locator('.comparison-table');
   const original = await rowNames(tables.nth(1));
+
+  // 2つ目を「このペインだけ」にする
+  await page.locator('.pane-frame').nth(1).getByRole('button', { name: '解析設定', exact: true }).click();
+  const settings = page.locator('[data-settings-window="true"]');
+  await settings.getByRole('radio', { name: 'このペインだけ' }).click();
+  await settings.getByRole('button', { name: '解析設定を閉じる' }).click();
 
   const first = tables.nth(0);
   await sortButton(first, '距離').click();
@@ -264,13 +314,12 @@ test('Workspace: 並び替えはペインごとに持ち、片方を並べても
   await expect(headerOf(tables.nth(1), '距離')).not.toHaveAttribute('aria-sort', /.+/);
   expect(await rowNames(tables.nth(1))).toEqual(original);
 
-  // ペインごとに保存され、再読み込みしても先頭のペインだけ並んでいる。
+  // 並び替えは先頭のペインが従う共有の設定にだけ保存され、再読み込みしても先頭のペインだけ並んでいる。
   await expect.poll(async () => {
-    const stored = JSON.parse((await page.evaluate((key) => localStorage.getItem(key), WORKSPACES_KEY)) ?? '{"workspaces":[]}') as {
-      workspaces: { panes: { options?: unknown }[] }[];
-    };
-    return stored.workspaces[0]?.panes.map((p) => JSON.stringify(p.options ?? null).includes('totalUnits'));
-  }).toEqual([true, false]);
+    const state = await storedSortState(page);
+    return [hasSort(state?.optionSets?.map((set) => set.options)), ...(state?.panes.map((p) => hasSort(p.options)) ?? [])];
+  }).toEqual([true, false, false]);
+  expect((await storedSortState(page))?.panes.map((p) => p.optionsBinding?.mode)).toEqual(['shared', 'own']);
   await page.reload();
   await waitForHydration(page);
   await expect(page.locator('.comparison-table').nth(0).locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(3, { timeout: 15_000 });
