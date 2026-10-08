@@ -14,7 +14,8 @@ import {
  *
  * 個別画面の`useDebouncedCommit`（`app/standalone/`）は値を1つの待ち行列で間引く。ペインが
  * 複数あるWorkspaceで1つの待ち行列を共有すると、別のペインを続けて操作した時に、先のペインの
- * 待ち中の値が後の値に置き換わって消える。そのためペインidごとに待ち行列を持つ。
+ * 待ち中の値が後の値に置き換わって消える。そのため書き先の持ち主（`paneOptionsOwnerKey`）ごとに待ち行列を持つ。
+ * 共有に従うペインは同じ組を書くので同じ待ち行列に入り、後の値（下書きどうしが伝え合うので先の変更を含む）が先の値を置き換える。
  * `hosts`は`platform`をimportできない（依存規則）ので、間引きの組み立てはここ（`app`）で行う。
  *
  * 離脱（アンマウント・ページを離れる・タブを隠す）でも待っている値を書く（`useDebouncedCommit`と同じ理由）。
@@ -31,28 +32,28 @@ export function usePaneOptionsCommit(
   const workspaceIdRef = useRef(workspaceId);
   workspaceIdRef.current = workspaceId;
 
-  const schedulersRef = useRef(new Map<string, DebouncedPersistenceScheduler<unknown>>());
+  const schedulersRef = useRef(new Map<string, DebouncedPersistenceScheduler<{ readonly paneId: string; readonly options: unknown }>>());
   const commitRef = useRef<PaneOptionsCommit | undefined>(undefined);
   if (commitRef.current === undefined) {
-    const schedulerFor = (paneId: string) => {
-      let scheduler = schedulersRef.current.get(paneId);
+    const schedulerFor = (ownerKey: string) => {
+      let scheduler = schedulersRef.current.get(ownerKey);
       if (scheduler === undefined) {
-        scheduler = createDebouncedPersistenceScheduler<unknown>({
+        scheduler = createDebouncedPersistenceScheduler<{ readonly paneId: string; readonly options: unknown }>({
           // 重複排除はしない。同じ値かどうかは、適用時点の資産と比べるコマンド側のno-op判定に任せる
-          write: (options) => {
+          write: ({ paneId, options }) => {
             // 書いた値を記録し、ペインの下書きが自分の保存の反響を見分けるのに使う
             // 記録は、この直後の資産の更新（dispatch）と同じ同期の処理で続ける。間に非同期を挟むと、
             // 下書きが資産の更新より先に古い保存先で描画され、入力が巻き戻る。
-            writeLogs.forKey(paneId).record(options);
+            writeLogs.forKey(ownerKey).record(options);
             dispatchRef.current(setWorkspacePaneOptionsCommand(workspaceIdRef.current, paneId, options));
           },
         });
-        schedulersRef.current.set(paneId, scheduler);
+        schedulersRef.current.set(ownerKey, scheduler);
       }
       return scheduler;
     };
     commitRef.current = Object.assign(
-      (paneId: string, options: unknown) => schedulerFor(paneId).notify(options),
+      (ownerKey: string, paneId: string, options: unknown) => schedulerFor(ownerKey).notify({ paneId, options }),
       { flush: () => { for (const scheduler of schedulersRef.current.values()) scheduler.flush(); } },
     );
   }

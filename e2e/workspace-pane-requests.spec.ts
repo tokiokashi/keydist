@@ -28,7 +28,7 @@ async function openSeeded(page: Page, workspace: unknown): Promise<void> {
   // 保存の間引きが切れるまでの時間を、実時間で待たずに `advance` で進める
   await page.clock.install();
   await page.addInitScript(({ key, value }) => {
-    if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 3, workspaces: [value] }));
+    if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 4, workspaces: [value] }));
     const log = { requests: 0, stale: [] as number[] };
     (window as unknown as { __log: typeof log }).__log = log;
     const Original = window.Worker;

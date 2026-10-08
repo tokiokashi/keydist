@@ -95,6 +95,7 @@ export function FingerDistancePane({
       menuItems={chrome.menuItems}
       headerAction={chrome.headerAction}
       targetBinding={chrome.targetBinding}
+      optionsBinding={chrome.optionsBinding}
       showPaneNameInSettings={chrome.showPaneNameInSettings}
       {...(named === undefined || !assetsReady ? {} : { targetName: named.displayName })}
       target={(

@@ -55,6 +55,16 @@ export interface PaneTargetBindingControl {
 }
 
 /**
+ * 解析設定の持ち方（共有に従う / このペインだけ）の表示と切り替え（Workspaceのペイン）。
+ * 解析設定の小窓の中に置く（対象の「固定」と同じ考え方）。
+ */
+export interface PaneOptionsBindingControl {
+  /** `true`なら同じAnalyzerの共有の設定に従っている。`false`ならこのペインだけの設定を持つ。 */
+  readonly shared: boolean;
+  readonly onChange: (shared: boolean) => void;
+}
+
+/**
  * ペインの枠まわりの、器ごとの違い。個別画面はペインのAnalyzer名がページのh1で見出しを
  * 文脈バーの下に固定し、Workspaceのペインはh2で固定せず、⋯を持つ。
  */
@@ -69,6 +79,8 @@ export interface PaneChrome {
    * ペインの外に持たないので置かない。
    */
   readonly targetBinding?: PaneTargetBindingControl;
+  /** 解析設定が共有に従っているか、このペインだけかの表示と切り替え（Workspaceのペイン）。個別画面は置かない。 */
+  readonly optionsBinding?: PaneOptionsBindingControl;
   /** 解析設定の小窓にペイン名を出す（Workspaceでは、どのペインの設定か分かるように）。 */
   readonly showPaneNameInSettings?: boolean;
   /**

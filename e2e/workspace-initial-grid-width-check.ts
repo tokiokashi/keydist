@@ -20,7 +20,7 @@ export async function checkFirstFrame(page: Page, scrollbarTakesWidth: boolean):
     { id: 'c', x: 0, y: 12, w: 24, h: 12 },
   ];
   await page.addInitScript((value) => {
-    localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [value] }));
+    localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
     // ペインが初めてDOMに現れた時の矩形と、その後の全ての描画コマでの矩形を記録する
     const snap = () => [...document.querySelectorAll('.workspace-grid-item')].map((el) => {
       const r = el.getBoundingClientRect();

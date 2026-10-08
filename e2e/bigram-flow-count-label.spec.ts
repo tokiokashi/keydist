@@ -14,7 +14,7 @@ async function openWorkspace(page: Page, cols: number): Promise<void> {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.addInitScript((value) => {
     if (localStorage.getItem('keydist:workspaces') === null) {
-      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [value] }));
+      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
     }
   }, {
     id: 'c', name: '組の数', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes: [flow],

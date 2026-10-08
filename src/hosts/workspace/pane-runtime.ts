@@ -3,6 +3,7 @@ import { summarizePaneTarget, type LinkGroupSummary } from './group-summary.ts';
 import type { LinkGroup, WorkspacePane, WorkspacePaneTarget } from '#engine/workspace.ts';
 import type { WorkspaceColorSlots } from '#engine/workspace-colors.ts';
 import type { PaneChrome, PaneEnvironment, PaneTargetBindingControl } from '#hosts/shared/panes/pane-environment.ts';
+import { OPTIONS_SHARED_RESET_TITLE } from '#hosts/shared/options-binding.ts';
 import type { PaneMenuItem } from '#hosts/shared/PaneHeaderParts.tsx';
 
 /**
@@ -11,7 +12,16 @@ import type { PaneMenuItem } from '#hosts/shared/PaneHeaderParts.tsx';
  */
 export interface WorkspacePaneRuntime {
   readonly env: PaneEnvironment;
-  /** 解析設定の変更を資産へ反映する（間引き済み）。 */
+  /**
+   * ペインの解析設定として今効いている値（保存した形）。共有に従うなら共有の設定、このペインだけなら
+   * ペイン自身の設定。ペインはこれをAnalyzerのdecodeで読む。
+   */
+  readonly paneOptions: (pane: WorkspacePane) => unknown;
+  /** ペインの解析設定の書き先の持ち主の名前。下書き・書き込みの記録はこの名前で引く（同じ組に従うペインは同じ名前）。 */
+  readonly paneOptionsKey: (pane: WorkspacePane) => string;
+  /** ペインの解析設定の持ち方を切り替える（`true`で共有に従う）。このペインだけにする時は今の設定を写す。 */
+  readonly setPaneOptionsShared: (paneId: string, shared: boolean) => void;
+  /** 解析設定の変更を資産へ反映する（間引き済み）。共有に従うペインは、共有の設定を書き換える。 */
   readonly commitPaneOptions: (paneId: string, options: unknown) => void;
   /**
    * ペインが今映す対象。従うならWorkspaceの対象、固定ならペイン自身の対象。
@@ -65,6 +75,7 @@ export function paneMenuItems(
   runtime: Pick<WorkspacePaneRuntime, 'duplicatePane' | 'closePane' | 'maximizePane' | 'maximizedPaneId'>,
   paneId: string,
   resetOptions: () => void,
+  optionsShared: boolean,
 ): readonly PaneMenuItem[] {
   const maximized = runtime.maximizedPaneId === paneId;
   return [
@@ -75,7 +86,12 @@ export function paneMenuItems(
       onSelect: () => runtime.maximizePane?.(maximized ? undefined : paneId),
     }]),
     { id: 'duplicate', label: '複製', description: '解析設定と対象を写して、同じ大きさで隣に並べる', onSelect: () => runtime.duplicatePane(paneId) },
-    { id: 'reset-options', label: '解析設定を初期値に戻す', description: '対象と条件は変わらない', onSelect: resetOptions },
+    {
+      id: 'reset-options',
+      label: '解析設定を初期値に戻す',
+      description: optionsShared ? OPTIONS_SHARED_RESET_TITLE : '対象と条件は変わらない',
+      onSelect: resetOptions,
+    },
     { id: 'close', label: '閉じる', onSelect: () => runtime.closePane(paneId) },
   ];
 }
@@ -89,7 +105,11 @@ export function workspacePaneChrome(
   return {
     headingLevel: 2,
     showPaneNameInSettings: true,
-    menuItems: paneMenuItems(runtime, pane.id, resetOptions),
+    menuItems: paneMenuItems(runtime, pane.id, resetOptions, pane.optionsBinding.mode === 'shared'),
+    optionsBinding: {
+      shared: pane.optionsBinding.mode === 'shared',
+      onChange: (shared) => runtime.setPaneOptionsShared(pane.id, shared),
+    },
     targetBinding: bindingControl(runtime, pane),
   };
 }

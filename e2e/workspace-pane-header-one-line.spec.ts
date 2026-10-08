@@ -35,7 +35,7 @@ async function openWorkspace(page: Page, panes: readonly unknown[], grid: unknow
   await page.setViewportSize(size);
   await page.addInitScript((value) => {
     if (localStorage.getItem('keydist:workspaces') === null) {
-      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [value] }));
+      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
     }
   }, workspaceOf(panes, grid));
   await page.goto('/workspace/h');
@@ -77,7 +77,7 @@ test('見出しは、広いペインでは1行、30rem以下でも名前を省�
 
   // 4つ並べる（各6升 = 約290px）と、名前を省略しても1行に入らない。先頭が上、対象・解析設定・⋯が同じ下の段
   const four = ['a', 'b', 'c', 'd'].map(flow);
-  await page.evaluate((value) => localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [value] })), workspaceOf(four, rowGrid(['a', 6], ['b', 6], ['c', 6], ['d', 6])));
+  await page.evaluate((value) => localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] })), workspaceOf(four, rowGrid(['a', 6], ['b', 6], ['c', 6], ['d', 6])));
   await page.reload();
   await waitForHydration(page);
   await expect(page.locator('.workspace-grid-item')).toHaveCount(4);
@@ -89,7 +89,7 @@ test('見出しは、広いペインでは1行、30rem以下でも名前を省�
   expect(Math.abs(narrow.menuTop - narrow.targetTop)).toBeLessThan(10);
   expect(narrow.targetSelect).toBeGreaterThan(80);
 
-  await page.evaluate((value) => localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [value] })), workspaceOf(THREE.slice(0, 2), rowGrid(['f', 12], ['c', 12])));
+  await page.evaluate((value) => localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] })), workspaceOf(THREE.slice(0, 2), rowGrid(['f', 12], ['c', 12])));
   await page.reload();
   await waitForHydration(page);
   await expect(page.locator('.workspace-grid-item')).toHaveCount(2);
@@ -150,7 +150,7 @@ test('条件: 広い時は文字のchip、狭い時は絵と変更の点。ど�
   expect(icons.condition).not.toBe(icons.settings);
 
   // 広い（約590px、34remより広い）: 文字のchip
-  await page.evaluate((value) => localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [value] })), workspaceOf(
+  await page.evaluate((value) => localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] })), workspaceOf(
     THREE.slice(0, 2),
     rowGrid(['f', 12], ['c', 12]),
     // 条件のモーダルで変えた値はWorkspaceの条件に入る。保存先を書き直すので、同じ値を持たせる

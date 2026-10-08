@@ -10,8 +10,9 @@ import { PaneErrorBoundary } from './PaneErrorBoundary.tsx';
 import { PaneHeaderLeadContext, PaneNameInLeadContext } from './pane-name-in-lead.ts';
 import { useStatusBadgeFit } from './use-status-badge-fit.ts';
 import { InfoButton, type InfoHelp } from '#ui/primitives/info-button.tsx';
-import type { PaneTargetBindingControl } from './panes/pane-environment.ts';
+import type { PaneOptionsBindingControl, PaneTargetBindingControl } from './panes/pane-environment.ts';
 import { BindingGlyph, PaneMenu, SettingsIcon, type PaneMenuItem } from './PaneHeaderParts.tsx';
+import { OPTIONS_SHARED_RESET_TITLE } from './options-binding.ts';
 import { SettingsWindow } from './SettingsWindow.tsx';
 import './pane-frame.css';
 
@@ -59,6 +60,8 @@ export interface PaneFrameProps {
   readonly target: ReactNode;
   /** 対象が連動の組に従っているか固定かの表示と選択。Workspaceのペインだけが渡す。 */
   readonly targetBinding?: PaneTargetBindingControl;
+  /** 解析設定が共有に従っているか、このペインだけかの表示と切り替え。小窓の先頭に出す。Workspaceのペインだけが渡す。 */
+  readonly optionsBinding?: PaneOptionsBindingControl;
   /** 解析設定のcomponent（Analyzerの`Settings`をホストが値と結んだもの）。 */
   readonly settings: ReactNode;
   /** Workspaceのペインでは、小窓にペイン名を出す。個別画面ではページに1枚なので出さない。 */
@@ -121,6 +124,39 @@ function StatusBadge({ status, label, asText = false }: { readonly status: Engin
   );
 }
 
+/** 解析設定の小窓の先頭で、設定の持ち方を切り替える（対象の固定と同じく、持ち方を明示して選ぶ）。 */
+function OptionsBindingSwitch({ control }: { readonly control: PaneOptionsBindingControl }) {
+  return (
+    <div className="settings-window-binding" data-options-binding={control.shared ? 'shared' : 'own'}>
+      <div className="settings-window-binding-choices" role="radiogroup" aria-label="設定の持ち方">
+        <button
+          type="button"
+          role="radio"
+          aria-checked={control.shared}
+          className="settings-window-binding-choice"
+          onClick={() => control.onChange(true)}
+        >
+          共有に従う
+        </button>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={!control.shared}
+          className="settings-window-binding-choice"
+          onClick={() => control.onChange(false)}
+        >
+          このペインだけ
+        </button>
+      </div>
+      <p className="settings-window-binding-note">
+        {control.shared
+          ? '同じAnalyzerの共有に従うペインと、設定が一緒に変わる'
+          : 'このペインの設定は、他のペインに合わせて変わらない'}
+      </p>
+    </div>
+  );
+}
+
 export function PaneFrame({
   name,
   description,
@@ -131,6 +167,7 @@ export function PaneFrame({
   targetName,
   target,
   targetBinding,
+  optionsBinding,
   settings,
   assetsReady = true,
   showPaneNameInSettings = false,
@@ -247,8 +284,10 @@ export function PaneFrame({
         onClose={closeSettings}
         anchor={settingsButtonRef.current}
         {...(onResetOptions === undefined ? {} : { onReset: onResetOptions })}
+        {...(optionsBinding?.shared ? { resetTitle: OPTIONS_SHARED_RESET_TITLE } : {})}
         {...(showPaneNameInSettings ? { paneName } : {})}
       >
+        {optionsBinding === undefined ? null : <OptionsBindingSwitch control={optionsBinding} />}
         {settings}
       </SettingsWindow>
 

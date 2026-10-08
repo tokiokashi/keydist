@@ -21,7 +21,7 @@ async function openWorkspaceModal(
   await page.setViewportSize(size);
   await page.addInitScript((value) => {
     if (localStorage.getItem('keydist:workspaces') === null) {
-      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [value] }));
+      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
     }
   }, {
     id: 'm',

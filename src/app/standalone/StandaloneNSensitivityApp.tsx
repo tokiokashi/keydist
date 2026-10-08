@@ -18,6 +18,8 @@ import { useTextContentCommit } from './use-text-content-commit.ts';
  * N感度単体ページの組み立て（`StandaloneComparisonApp.tsx`と同じ形）。
  * 計算の窓口は他の単体ページと共有する（`engine-computer.ts`。ブラウザではWorker）。
  */
+const decodeNSensitivityOptions = (raw: unknown) => nSensitivityAnalyzer.definition.decodeOptions(raw, []);
+
 export function StandaloneNSensitivityApp() {
   const { assets, ready, dispatch, getAssets, canUndo, canRedo, undo, redo } = useKeydistAssets();
   const catalog = useMemo(() => paneCatalog(assets), [assets.userLayouts, assets.userRomajiRules]);
@@ -31,7 +33,7 @@ export function StandaloneNSensitivityApp() {
 
   const commitTextContent = useTextContentCommit(dispatch, getAssets, generateTextId);
 
-  const addToWorkspace = useAddToWorkspace(nSensitivityAnalyzer.definition.id, dispatch, getAssets, () => {
+  const addToWorkspace = useAddToWorkspace(nSensitivityAnalyzer.definition.id, decodeNSensitivityOptions, dispatch, getAssets, () => {
     commitTextContent.flush();
     commitOptions.flush();
   });

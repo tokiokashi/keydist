@@ -64,7 +64,7 @@ test('Workspaceのペイン: 広いペインでも中身は推奨幅で止まり
   await page.addInitScript((ids) => {
     const targets = ids.map((layoutId) => ({ kind: 'layout', layoutId }));
     localStorage.setItem('keydist:workspaces', JSON.stringify({
-      version: 3,
+      version: 4,
       workspaces: [{
         id: 'seeded',
         name: '幅の確認',

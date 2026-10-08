@@ -77,7 +77,7 @@ interface SideCase {
 async function openWorkspace(page: Page, c: SideCase): Promise<void> {
   await page.setViewportSize({ width: c.viewport ?? 1440, height: 1100 });
   await page.addInitScript((value) => {
-    localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [value] }));
+    localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
   }, {
     id: 'legend',
     name: '凡例の確認',

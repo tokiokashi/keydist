@@ -13,9 +13,13 @@ import {
   DEFAULT_WORKSPACE_NAME,
   followBinding,
   NO_BINDING,
+  OWN_OPTIONS,
+  sharedOptions,
   initialWorkspaceTarget,
   INITIAL_LINK_GROUP_ID,
   type LinkGroup,
+  type OptionSet,
+  type PaneOptionsBinding,
   type PaneTargetBinding,
   type Workspace,
   type WorkspaceTarget,
@@ -36,9 +40,9 @@ import { normalizeGrid, type GridItem, type WorkspaceGrid } from './workspace-gr
  * - 並びが壊れている・ペインと食い違っている時は、ペインを失わないよう`normalizeGrid`で直す
  * - 今のアプリが知らないAnalyzerのペインは捨てずに残す（表示側が使えないペインとして出す）
  *
- * 版3は、ペインの対象の持ち方（従う組 / 固定）と、連動の組ごとの対象を持ち、色の番号をWorkspaceが全ペインの和に配って持つ形。集合ごとに色の番号を持っていた頃の値は、集合の`colorSlots`を読まず、色を配り直す（版は上げない。
- * 版を上げても読めない値が増えるだけで、既存のペイン・組・配置は同じ形のまま読めるため）。版2以前は読まない
- * （互換は守らない。AGENTS.md）。
+ * 版4は、ペインの対象の持ち方（従う組 / 固定）と連動の組ごとの対象に加え、解析設定の組（`optionSets`。Analyzerごとの共有の設定）と、
+ * ペインの解析設定の持ち方（`optionsBinding`。組に従う / このペインだけ）を持つ。色の番号はWorkspaceが全ペインの和に配って持つ。
+ * 版3以前は読まない（互換は守らない。AGENTS.md）。
  */
 
 /** 格子の枠1つを読む。数でない値は`normalizeGrid`が範囲に収めるので、ここでは形だけを見る。 */
@@ -142,12 +146,62 @@ function decodeGroups(raw: unknown, path: string, diagnostics: CodecDiagnostic[]
   return groups;
 }
 
+/** 解析設定の組を読む。idが読めない・重複・Analyzerが読めない組は捨てる（従っていたペインは`decodeOptionsBinding`が自分だけの設定へ戻す）。 */
+function decodeOptionSets(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): readonly OptionSet[] {
+  if (raw === undefined) return [];
+  if (!Array.isArray(raw)) {
+    diagnostics.push({ path, message: '配列形式でないため解析設定の組を捨てた' });
+    return [];
+  }
+  const sets: OptionSet[] = [];
+  const seen = new Set<string>();
+  raw.forEach((item, index) => {
+    const itemPath = `${path}[${index}]`;
+    if (!isRecord(item) || typeof item.id !== 'string' || item.id === '' || typeof item.analyzerId !== 'string' || item.analyzerId === '') {
+      diagnostics.push({ path: itemPath, message: 'idまたはAnalyzerが読めないため解析設定の組を捨てた' });
+      return;
+    }
+    if (seen.has(item.id)) {
+      diagnostics.push({ path: `${itemPath}.id`, message: `重複したid「${item.id}」のため解析設定の組を捨てた` });
+      return;
+    }
+    seen.add(item.id);
+    sets.push({ id: item.id, analyzerId: item.analyzerId, options: item.options });
+  });
+  return sets;
+}
+
+/**
+ * ペインの解析設定の持ち方を読む。無い場合はペイン自身の設定。読めない・従う先の組が無い・別のAnalyzerの組を指す時は、ペインを失わず、
+ * ペイン自身の設定（`options`）で持つ形へ戻す（診断は出す）。
+ */
+function decodeOptionsBinding(
+  raw: unknown,
+  analyzerId: string,
+  sets: readonly OptionSet[],
+  path: string,
+  diagnostics: CodecDiagnostic[],
+): PaneOptionsBinding {
+  // 持ち方が無いペインは、ペイン自身の設定で持つ（診断は出さない。ペインの`options`をそのまま読める）
+  if (raw === undefined) return OWN_OPTIONS;
+  if (isRecord(raw) && raw.mode === 'own') return OWN_OPTIONS;
+  if (isRecord(raw) && raw.mode === 'shared' && typeof raw.set === 'string') {
+    const set = sets.find((candidate) => candidate.id === raw.set);
+    if (set !== undefined && set.analyzerId === analyzerId) return sharedOptions(set.id);
+    diagnostics.push({ path: `${path}.set`, message: '従う解析設定の組が見つからないため、このペインだけの設定にした' });
+    return OWN_OPTIONS;
+  }
+  diagnostics.push({ path, message: '解析設定の持ち方が読めないため、このペインだけの設定にした' });
+  return OWN_OPTIONS;
+}
+
 function decodePane(
   raw: unknown,
   path: string,
   seen: Set<string>,
   groupIds: ReadonlySet<string>,
   fallbackGroup: string,
+  sets: readonly OptionSet[],
   diagnostics: CodecDiagnostic[],
 ): WorkspacePane | undefined {
   if (!isRecord(raw)) {
@@ -165,7 +219,17 @@ function decodePane(
   const binding = decodeBinding(raw.binding, `${path}.binding`, groupIds, fallbackGroup, diagnostics);
   if (binding === undefined) return undefined;
   seen.add(raw.id);
-  return { id: raw.id, analyzerId: raw.analyzerId, options: raw.options, binding };
+  // 余白のペインは設定を持たないので、持ち方の欄が無くても診断しない
+  const optionsBinding = binding.mode === 'none'
+    ? OWN_OPTIONS
+    : decodeOptionsBinding(raw.optionsBinding, raw.analyzerId, sets, `${path}.optionsBinding`, diagnostics);
+  return {
+    id: raw.id,
+    analyzerId: raw.analyzerId,
+    options: optionsBinding.mode === 'own' ? raw.options : undefined,
+    optionsBinding,
+    binding,
+  };
 }
 
 function decodeWorkspace(raw: unknown, path: string, seenIds: Set<string>, diagnostics: CodecDiagnostic[]): Workspace | undefined {
@@ -197,6 +261,8 @@ function decodeWorkspace(raw: unknown, path: string, seenIds: Set<string>, diagn
   const groups = decodeGroups(raw.groups, `${path}.groups`, diagnostics);
   const groupIds = new Set(groups.map((group) => group.id));
 
+  const optionSets = decodeOptionSets(raw.optionSets, `${path}.optionSets`, diagnostics);
+
   const rawPanes: readonly unknown[] = Array.isArray(raw.panes) ? raw.panes : [];
   if (raw.panes !== undefined && !Array.isArray(raw.panes)) {
     diagnostics.push({ path: `${path}.panes`, message: '配列形式でないためペインを捨てた' });
@@ -204,7 +270,7 @@ function decodeWorkspace(raw: unknown, path: string, seenIds: Set<string>, diagn
   const seenPaneIds = new Set<string>();
   const panes: WorkspacePane[] = [];
   rawPanes.forEach((item, index) => {
-    const pane = decodePane(item, `${path}.panes[${index}]`, seenPaneIds, groupIds, groups[0]!.id, diagnostics);
+    const pane = decodePane(item, `${path}.panes[${index}]`, seenPaneIds, groupIds, groups[0]!.id, optionSets, diagnostics);
     if (pane !== undefined) panes.push(pane);
   });
 
@@ -231,7 +297,7 @@ function decodeWorkspace(raw: unknown, path: string, seenIds: Set<string>, diagn
     ? undefined
     : decodeLevelOverrides(SETTINGS_ITEM_SCHEMAS, raw.conditions, `${path}.conditions`, diagnostics);
   return {
-    id: raw.id, name, text, groups, panes, grid, colorSlots,
+    id: raw.id, name, text, groups, optionSets, panes, grid, colorSlots,
     ...(compactPanes ? { compactPanes: true as const } : {}),
     ...(conditions === undefined ? {} : { conditions }),
   };
@@ -255,13 +321,16 @@ function encodePane(pane: WorkspacePane): Record<string, unknown> {
   return {
     id: pane.id,
     analyzerId: pane.analyzerId,
-    ...(pane.options === undefined ? {} : { options: pane.options }),
+    ...(pane.optionsBinding.mode === 'own' && pane.options !== undefined ? { options: pane.options } : {}),
+    optionsBinding: pane.optionsBinding.mode === 'shared'
+      ? { mode: 'shared', set: pane.optionsBinding.set }
+      : { mode: 'own' },
     binding: encodeBinding(pane.binding),
   };
 }
 
 export const WORKSPACE_LIBRARY_CODEC: AssetCodec<WorkspaceLibrary> = defineAssetCodec({
-  currentVersion: 3,
+  currentVersion: 4,
   decodePayload: (payload, diagnostics) => {
     if (!isRecord(payload)) return undefined;
     const raw: readonly unknown[] = Array.isArray(payload.workspaces) ? payload.workspaces : [];
@@ -287,6 +356,11 @@ export const WORKSPACE_LIBRARY_CODEC: AssetCodec<WorkspaceLibrary> = defineAsset
           ...(group.target.single.target === undefined ? {} : { single: encodeAnalysisTarget(group.target.single.target) }),
           set: encodeTargetSet(group.target.set),
         },
+      })),
+      optionSets: workspace.optionSets.map((set) => ({
+        id: set.id,
+        analyzerId: set.analyzerId,
+        ...(set.options === undefined ? {} : { options: set.options }),
       })),
       panes: workspace.panes.map(encodePane),
       colorSlots: { ...workspace.colorSlots },

@@ -26,6 +26,8 @@ export interface SettingsWindowProps {
   readonly anchor: HTMLElement | null;
   /** 解析設定をすべて初期値へ戻す。あればヘッダー行（タイトルと閉じるボタンの間）に文字ボタンを出す。 */
   readonly onReset?: () => void;
+  /** 「すべて初期値に戻す」のtitle。省略は「対象と条件は変わらない」。 */
+  readonly resetTitle?: string;
   readonly children: ReactNode;
 }
 
@@ -78,7 +80,7 @@ function initialPosition(anchor: HTMLElement | null, element: HTMLElement | null
   return clamp({ x: rect.right - width, y: rect.bottom + 6 }, element);
 }
 
-export function SettingsWindow({ open, onClose, paneName, anchor, onReset, children }: SettingsWindowProps) {
+export function SettingsWindow({ open, onClose, paneName, anchor, onReset, resetTitle = '対象と条件は変わらない', children }: SettingsWindowProps) {
   const windowRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<Position | undefined>(undefined);
   const focusPendingRef = useRef(false);
@@ -246,7 +248,7 @@ export function SettingsWindow({ open, onClose, paneName, anchor, onReset, child
           <button
             type="button"
             className="settings-window-reset-all"
-            title="対象と条件は変わらない"
+            title={resetTitle}
             onClick={onReset}
           >
             すべて初期値に戻す

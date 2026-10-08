@@ -40,14 +40,48 @@ export function createOptionsWriteLog(): OptionsWriteLog {
   };
 }
 
-/** 書き込みの記録を、書き先（個別画面なら1つ、Workspaceならペイン）ごとに引く表。 */
+/**
+ * 同じ書き先（`OptionsWriteLogs.forKey`の`key`）の下書きどうしが、入力を伝え合う口。
+ * 共有に従う複数のペインは1つの保存先を書くので、片方の入力を、保存を待たずにもう片方の下書きへ届ける。
+ */
+export interface DraftPeers {
+  /** `key`の入力を受け取る。戻り値で購読をやめる。 */
+  readonly subscribe: (key: string, listener: (value: unknown) => void) => () => void;
+  /** `key`の入力を、`except`以外の購読へ伝える。 */
+  readonly publish: (key: string, value: unknown, except: (value: unknown) => void) => void;
+}
+
+export function createDraftPeers(): DraftPeers {
+  const listeners = new Map<string, Set<(value: unknown) => void>>();
+  return {
+    subscribe: (key, listener) => {
+      let set = listeners.get(key);
+      if (set === undefined) {
+        set = new Set();
+        listeners.set(key, set);
+      }
+      set.add(listener);
+      return () => {
+        set.delete(listener);
+        if (set.size === 0 && listeners.get(key) === set) listeners.delete(key);
+      };
+    },
+    publish: (key, value, except) => {
+      for (const listener of [...(listeners.get(key) ?? [])]) if (listener !== except) listener(value);
+    },
+  };
+}
+
+/** 書き込みの記録を、書き先（個別画面なら1つ、Workspaceなら保存先の持ち主）ごとに引く表。 */
 export interface OptionsWriteLogs {
   readonly forKey: (key: string) => OptionsWriteLog;
+  readonly peers: DraftPeers;
 }
 
 export function createOptionsWriteLogs(): OptionsWriteLogs {
   const logs = new Map<string, OptionsWriteLog>();
   return {
+    peers: createDraftPeers(),
     forKey: (key) => {
       let log = logs.get(key);
       if (log === undefined) {

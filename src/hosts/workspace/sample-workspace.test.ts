@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createSampleWorkspace } from '#engine/sample-workspace.ts';
+import { createSampleWorkspace, SAMPLE_FINGER_DISTANCE_SIZE } from '#engine/sample-workspace.ts';
 import { initialWorkspaceLibrary } from '#engine/workspace.ts';
 import { findWorkspaceAnalyzer } from './analyzer-registry.ts';
+import { defaultGridSize } from './grid-metrics.ts';
 
 // サンプルのAnalyzerのidは engine が文字列で持つ（engine は analyzers/<name>/ を読めない）。
 // 組み込みのAnalyzerのidが変わったら、ペインが「使えない」ままのサンプルになる前にここで落とす。
@@ -19,4 +20,8 @@ test('サンプルのペインのAnalyzerは、Workspaceに置ける組み込み
     if (entry.cardinality === 'set') assert.ok(group.target.set.targets.length > 0);
     else assert.ok(group.target.single.target !== undefined);
   }
+});
+
+test('サンプルの指ごとの距離の高さは、ペインを足した時の既定の高さより低い', () => {
+  assert.ok(SAMPLE_FINGER_DISTANCE_SIZE.h < defaultGridSize('finger-distance').h);
 });

@@ -131,7 +131,7 @@ test('縦積み（スマホ幅）: 並びを書き換えず、設定の切り替
   const gapped = [cell('a', 0, 0, 12, 5), cell('b', 12, 0, 12, 16), cell('c', 0, 10, 12, 6)];
   await page.addInitScript((value) => {
     if (localStorage.getItem('keydist:workspaces') === null) {
-      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [value] }));
+      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
     }
   }, {
     id: 'g',
@@ -163,7 +163,7 @@ test('拡大表示: 拡大しても戻しても、保存した並びも空きも
   });
   await page.addInitScript((value) => {
     if (localStorage.getItem('keydist:workspaces') === null) {
-      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [value] }));
+      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
     }
   }, {
     id: 'g',

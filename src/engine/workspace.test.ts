@@ -28,6 +28,7 @@ import {
   type WorkspaceLibrary,
   type WorkspacePane,
   type WorkspaceTarget,
+  OWN_OPTIONS,
 } from './workspace.ts';
 import { gridPaneIds, type GridSize } from './workspace-grid.ts';
 
@@ -37,7 +38,7 @@ const QWERTY: AnalysisTarget = { kind: 'layout', layoutId: 'qwerty' };
 const COLEMAK: AnalysisTarget = { kind: 'layout', layoutId: 'colemak-dh' };
 
 function pane(id: string, analyzerId = 'bigram-flow'): WorkspacePane {
-  return { id, analyzerId, options: undefined, binding: followBinding(G) };
+  return { id, analyzerId, options: undefined, optionsBinding: OWN_OPTIONS, binding: followBinding(G) };
 }
 
 function libraryWith(...paneIds: string[]): WorkspaceLibrary {
@@ -262,7 +263,7 @@ test('workspaceLayoutIds: 従う組の対象（単体・集合）と固定のペ
 });
 
 test('余白のペイン: 対象を持たず、組を残す理由にならない。閉じても組と他のペインに影響しない', () => {
-  const blank: WorkspacePane = { id: 'b', analyzerId: BLANK_PANE_ID, options: undefined, binding: NO_BINDING };
+  const blank: WorkspacePane = { id: 'b', analyzerId: BLANK_PANE_ID, options: undefined, optionsBinding: OWN_OPTIONS, binding: NO_BINDING };
   assert.equal(resolveWorkspacePaneTarget(NO_BINDING, [], 'single'), undefined);
   let library = addWorkspacePane(libraryWith('a'), 'w1', blank, SIZE);
   assert.deepEqual([...gridPaneIds(findWorkspace(library, 'w1')!.grid)].sort(), ['a', 'b']);

@@ -14,9 +14,13 @@ import {
   withWorkspaceCompactPanes,
   followBinding,
   withWorkspacePaneOptions,
+  withWorkspacePaneOptionsBinding,
+  defaultOptionsBinding,
+  OWN_OPTIONS,
   withWorkspacePaneBinding,
   withPaneInNewLinkGroup,
   withWorkspaceTarget,
+  type PaneOptionsChoice,
   type PaneTargetBinding,
   type Workspace,
   type WorkspaceTarget,
@@ -106,10 +110,29 @@ export interface PaneFromStandalone {
   readonly analyzerId: string;
   /** 個別画面の解析設定（画面で今見えている値。既定値のままでも、既定値を展開した値が入る）。 */
   readonly options: unknown;
+  /**
+   * 追加先のWorkspaceにそのAnalyzerの共有の設定があり、個別画面の設定とAnalyzerの解釈で同じ値かどうか。
+   * 保存した形（変えた項目だけ・未設定）と画面の下書き（全項目）は文字列では比べられず、
+   * Analyzerのdecodeを通して比べられるのはAnalyzerを知る呼び出し側だけなので、結果を渡す。
+   * 共有の設定が無い追加先では使わない。
+   */
+  readonly matchesShared?: boolean;
 }
 
-function standalonePane(source: PaneFromStandalone, groupId: string): WorkspacePane {
-  return { id: source.paneId, analyzerId: source.analyzerId, options: source.options, binding: followBinding(groupId) };
+/**
+ * 個別画面から足すペインの解析設定の持ち方。見た目を変えないため、個別画面の設定をそのまま引き継ぐ:
+ * WorkspaceにそのAnalyzerの共有の設定があり、同じ値（`matchesShared`）なら共有に従う。違う値なら、共有を書き換えず、
+ * このペインだけの設定として持つ。共有の設定がまだ無ければ、個別画面の設定で共有の設定を作って従う
+ * （`addWorkspacePane`が組を作る）。
+ */
+function standalonePane(workspace: Workspace, source: PaneFromStandalone, groupId: string): WorkspacePane {
+  const base = { id: source.paneId, analyzerId: source.analyzerId, binding: followBinding(groupId) };
+  const shared = defaultOptionsBinding(workspace, source.analyzerId);
+  const set = shared.mode === 'shared' ? workspace.optionSets.find((candidate) => candidate.id === shared.set) : undefined;
+  if (set !== undefined && source.matchesShared !== true) {
+    return { ...base, options: source.options, optionsBinding: OWN_OPTIONS };
+  }
+  return { ...base, options: source.options, optionsBinding: shared };
 }
 
 /**
@@ -127,7 +150,7 @@ export function addStandalonePaneToWorkspaceCommand(
     const group = workspace?.groups[0];
     if (workspace === undefined || group === undefined) return { kind: 'no-op' };
     const library = current.workspaces;
-    const next = addWorkspacePane(library, workspaceId, standalonePane(source, group.id), size);
+    const next = addWorkspacePane(library, workspaceId, standalonePane(workspace, source, group.id), size);
     if (next === library) return { kind: 'no-op' };
     return { kind: 'applied', label: 'Workspaceに追加する', changes: { workspaces: next } };
   };
@@ -147,7 +170,7 @@ export function addStandalonePaneToNewWorkspaceCommand(
     if (created === undefined) return { kind: 'no-op' };
     const group = created.created.groups[0];
     if (group === undefined) return { kind: 'no-op' };
-    const withPane = addWorkspacePane(created.library, workspaceId, standalonePane(source, group.id), size);
+    const withPane = addWorkspacePane(created.library, workspaceId, standalonePane(created.created, source, group.id), size);
     return { kind: 'applied', label: '新しいWorkspaceに追加する', changes: { workspaces: withPane } };
   };
 }
@@ -206,6 +229,20 @@ export function setWorkspacePaneOptionsCommand(
 ): Command<KeydistAssets> {
   return workspacesCommand('解析設定を変更する', (library) => (
     withWorkspacePaneOptions(library, workspaceId, paneId, options)
+  ));
+}
+
+/**
+ * ペインの解析設定の持ち方（共有に従う / このペインだけ）を切り替える。切り替えは1回の操作で、Undoも1回で戻る。
+ * 中身の写し方は`withWorkspacePaneOptionsBinding`。
+ */
+export function setWorkspacePaneOptionsBindingCommand(
+  workspaceId: string,
+  paneId: string,
+  choice: PaneOptionsChoice,
+): Command<KeydistAssets> {
+  return workspacesCommand('解析設定の持ち方を切り替える', (library) => (
+    withWorkspacePaneOptionsBinding(library, workspaceId, paneId, choice)
   ));
 }
 

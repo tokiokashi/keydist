@@ -33,14 +33,14 @@ function pane(page: Page, name: string): Locator {
 }
 
 /** 保存したWorkspaceの手持ち（decodeせず生のJSON）。 */
-async function storedWorkspaces(page: Page): Promise<{ workspaces: { id: string; name: string; panes: { id: string; analyzerId: string; options?: unknown }[]; grid?: { id: string; x: number; y: number; w: number; h: number }[]; text: { ref: { kind: string; id: string } } }[] }> {
+async function storedWorkspaces(page: Page): Promise<{ workspaces: { id: string; name: string; optionSets?: { id: string; options?: unknown }[]; panes: { id: string; analyzerId: string; options?: unknown; optionsBinding?: { mode: string; set?: string } }[]; grid?: { id: string; x: number; y: number; w: number; h: number }[]; text: { ref: { kind: string; id: string } } }[] }> {
   return JSON.parse((await page.evaluate((key) => localStorage.getItem(key), WORKSPACES_KEY)) ?? '{"workspaces":[]}');
 }
 
 /** 保存先へ、ペインを指定してWorkspaceを直接書く（画面を経由せず状態を作る）。 */
 function seedWorkspace(page: Page, workspace: unknown): Promise<void> {
   return page.addInitScript(({ key, value }) => {
-    if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 3, workspaces: [value] }));
+    if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 4, workspaces: [value] }));
   }, { key: WORKSPACES_KEY, value: workspace });
 }
 
@@ -223,7 +223,7 @@ test('⋯で閉じたペインも資産から消え、最後の1つを閉じる�
   await expect(page.locator('.pane-frame h2.pane-frame-title')).toHaveText(['Bigram Flow']);
 });
 
-test('ペインの解析設定はペインごとに持ち、再読み込みしても残り、初期値へ戻せる', async ({ page }) => {
+test('新しく足したペインは同じAnalyzerの共有の設定に従い、設定は再読み込みしても残り、初期値へ戻せる', async ({ page }) => {
   await createWorkspace(page);
   await addAnalyzer(page, 'Bigram Flow');
   await addAnalyzer(page, 'Bigram Flow');
@@ -233,30 +233,38 @@ test('ペインの解析設定はペインごとに持ち、再読み込みし�
 
   await left.getByRole('button', { name: '解析設定', exact: true }).click();
   const settings = page.locator('[data-settings-window="true"]');
+  await expect(settings.getByRole('radio', { name: '共有に従う' })).toHaveAttribute('aria-checked', 'true');
   await settings.getByRole('button', { name: 'Within-hand' }).click();
   await expect(settings.getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'true');
   await settings.getByRole('button', { name: '解析設定を閉じる' }).click();
 
-  // 間引き後に保存される。右のペインの設定は変わらない
-  await expect.poll(async () => JSON.stringify((await storedWorkspaces(page)).workspaces[0]?.panes[0]?.options ?? null)).toContain('within-hand');
-  expect((await storedWorkspaces(page)).workspaces[0]!.panes[1]!.options).toBeUndefined();
+  // 間引き後に、Workspaceの共有の設定として保存される。ペインの欄には書かれず、右のペインも同じ設定を読む
+  await expect.poll(async () => JSON.stringify((await storedWorkspaces(page)).workspaces[0]?.optionSets?.[0]?.options ?? null)).toContain('within-hand');
+  const stored = (await storedWorkspaces(page)).workspaces[0]!;
+  expect(stored.panes.map((candidate) => candidate.options)).toEqual([undefined, undefined]);
+  expect(stored.panes.map((candidate) => candidate.optionsBinding)).toEqual([
+    { mode: 'shared', set: 'bigram-flow-1' },
+    { mode: 'shared', set: 'bigram-flow-1' },
+  ]);
   // 個別画面の解析設定にも書かれない
   expect(await page.evaluate(() => localStorage.getItem('keydist:standalone-analyzer-options'))).toBeNull();
 
   await page.reload();
   await waitForHydration(page);
-  await page.locator('.pane-frame').nth(0).getByRole('button', { name: '解析設定', exact: true }).click();
-  await expect(page.locator('[data-settings-window="true"]').getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'true');
-  await page.locator('[data-settings-window="true"]').getByRole('button', { name: '解析設定を閉じる' }).click();
-  await page.locator('.pane-frame').nth(1).getByRole('button', { name: '解析設定', exact: true }).click();
-  await expect(page.locator('[data-settings-window="true"]').getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'false');
-  await page.locator('[data-settings-window="true"]').getByRole('button', { name: '解析設定を閉じる' }).click();
+  for (const index of [0, 1]) {
+    await page.locator('.pane-frame').nth(index).getByRole('button', { name: '解析設定', exact: true }).click();
+    await expect(page.locator('[data-settings-window="true"]').getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'true');
+    await page.locator('[data-settings-window="true"]').getByRole('button', { name: '解析設定を閉じる' }).click();
+  }
 
-  // ⋯の「解析設定を初期値に戻す」。対象は変わらない
+  // ⋯の「解析設定を初期値に戻す」。共有の設定が戻るので、右のペインも戻る。対象は変わらない
   await page.locator('.pane-frame').nth(0).getByRole('button', { name: /の操作$/ }).click();
   await page.getByRole('menuitem', { name: /解析設定を初期値に戻す/ }).click();
-  await page.locator('.pane-frame').nth(0).getByRole('button', { name: '解析設定', exact: true }).click();
-  await expect(page.locator('[data-settings-window="true"]').getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'false');
+  for (const index of [0, 1]) {
+    await page.locator('.pane-frame').nth(index).getByRole('button', { name: '解析設定', exact: true }).click();
+    await expect(page.locator('[data-settings-window="true"]').getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'false');
+    await page.locator('[data-settings-window="true"]').getByRole('button', { name: '解析設定を閉じる' }).click();
+  }
 });
 
 /** ペインの見出しの対象ボタン。 */
@@ -681,7 +689,7 @@ test('使えないAnalyzerのペインは使えないと出て、閉じられる
 test('壊れた保存データでも画面は開き、壊れた部分だけが落ちる', async ({ page }) => {
   await page.addInitScript(({ key }) => {
     localStorage.setItem(key, JSON.stringify({
-      version: 3,
+      version: 4,
       workspaces: [
         { id: 'w', name: '一部が壊れている', panes: [
           { id: 'ok', analyzerId: 'bigram-flow', binding: { mode: 'follow' } },

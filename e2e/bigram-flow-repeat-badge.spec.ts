@@ -109,7 +109,7 @@ test('Workspace のペイン: 連打の回数バッジを消せて、戻せる�
   await page.addInitScript(() => {
     if (localStorage.getItem('keydist:workspaces') === null) {
       localStorage.setItem('keydist:workspaces', JSON.stringify({
-        version: 3,
+        version: 4,
         workspaces: [{
           id: 'badge',
           name: 'バッジ',

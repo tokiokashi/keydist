@@ -232,13 +232,13 @@ test('Workspaceの資産: 条件は複製で写り、空は消え、codecで往�
   assert.deepEqual(decoded.value, copied);
 
   const broken = WORKSPACE_LIBRARY_CODEC.decode({
-    version: 3,
+    version: 4,
     workspaces: [{ id: 'w', name: 'x', groups: [{ id: 'link-1', target: {} }], conditions: { windowSize: 'many', sfbHomeCost: false, unknownItem: 1 } }],
   });
   assert.ok(broken.ok);
   assert.deepEqual(broken.value[0]?.conditions, { sfbHomeCost: false });
   assert.equal(broken.diagnostics.length, 2);
-  const none = WORKSPACE_LIBRARY_CODEC.decode({ version: 3, workspaces: [{ id: 'w', name: 'x', groups: [{ id: 'link-1', target: {} }], conditions: {} }] });
+  const none = WORKSPACE_LIBRARY_CODEC.decode({ version: 4, workspaces: [{ id: 'w', name: 'x', groups: [{ id: 'link-1', target: {} }], conditions: {} }] });
   assert.ok(none.ok);
   assert.equal('conditions' in none.value[0]!, false);
 });

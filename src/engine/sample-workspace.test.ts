@@ -17,7 +17,7 @@ import {
 } from './sample-workspace.ts';
 import { initialSingleTargetSelection } from './single-target-selection.ts';
 import { createWorkspaceCommand, createSampleWorkspaceCommand, startWorkspaceFromSampleCommand } from './workspace-commands.ts';
-import { initialWorkspaceLibrary } from './workspace.ts';
+import { initialWorkspaceLibrary, resolvePaneOptions } from './workspace.ts';
 import { GRID_COLS, normalizeGrid } from './workspace-grid.ts';
 
 function sequence(prefix: string): () => string {
@@ -48,15 +48,21 @@ test('サンプルの対象と物理配列は、すべて組み込みに存在�
   assert.ok(Object.values(PHYSICAL_SHAPES).some((shape) => shape.id === SAMPLE_DEFAULT_SHAPE_ID));
 });
 
-test('サンプルの並び: 上に比較表とN感度の横並び（18 + 6列）、下に同じ幅のBigram Flow 4つ。連動・対象・解析設定・Workspaceの条件', () => {
+test('サンプルの並び: 上に比較表とN感度の横並び（18 + 6列）、中に同じ幅のBigram Flow 4つ、下に同じ幅の指ごとの距離4つ。連動・対象・共有の解析設定・Workspaceの条件', () => {
   const { created } = createSampleWorkspace(initialWorkspaceLibrary(), () => 'w', sequence('p'));
   assert.equal(created.name, SAMPLE_WORKSPACE_NAME);
   assert.deepEqual(created.panes.map((pane) => pane.analyzerId), [
-    'comparison', 'n-sensitivity', 'bigram-flow', 'bigram-flow', 'bigram-flow', 'bigram-flow',
+    'comparison', 'n-sensitivity',
+    'bigram-flow', 'bigram-flow', 'bigram-flow', 'bigram-flow',
+    'finger-distance', 'finger-distance', 'finger-distance', 'finger-distance',
   ]);
   assert.deepEqual(created.panes.map((pane) => pane.binding), [
     { mode: 'follow', group: 'link-1' },
     { mode: 'follow', group: 'link-1' },
+    { mode: 'follow', group: 'link-1' },
+    { mode: 'follow', group: 'link-2' },
+    { mode: 'follow', group: 'link-3' },
+    { mode: 'follow', group: 'link-4' },
     { mode: 'follow', group: 'link-1' },
     { mode: 'follow', group: 'link-2' },
     { mode: 'follow', group: 'link-3' },
@@ -71,8 +77,14 @@ test('サンプルの並び: 上に比較表とN感度の横並び（18 + 6列�
     created.groups.map((group) => group.target.single.target),
     SAMPLE_BIGRAM_FLOW_LAYOUT_IDS.map((layoutId) => ({ kind: 'layout', layoutId })),
   );
-  for (const pane of created.panes.filter((candidate) => candidate.analyzerId === 'bigram-flow')) {
-    assert.deepEqual(pane.options, { source: 'within-hand' });
+  // Bigram Flowの4つは、2打鍵の取り方がWithin-handの共有の設定に従う。指ごとの距離の4つも1つの共有の設定に従う
+  assert.deepEqual(created.optionSets, [
+    { id: 'bigram-flow-1', analyzerId: 'bigram-flow', options: { source: 'within-hand' } },
+    { id: 'finger-distance-1', analyzerId: 'finger-distance', options: undefined },
+  ]);
+  for (const pane of created.panes.filter((candidate) => ['bigram-flow', 'finger-distance'].includes(candidate.analyzerId))) {
+    assert.deepEqual(pane.optionsBinding, { mode: 'shared', set: `${pane.analyzerId}-1` });
+    assert.equal(resolvePaneOptions(created, pane) === undefined, pane.analyzerId === 'finger-distance');
   }
   assert.deepEqual(created.conditions, { defaultShapeId: 'split-ortholinear' });
   // サンプルも既定どおり詰めない
@@ -84,11 +96,15 @@ test('サンプルの並び: 上に比較表とN感度の横並び（18 + 6列�
   assert.deepEqual([nSensitivity!.x, nSensitivity!.y], [comparison!.w, 0]);
   assert.equal(comparison!.w + nSensitivity!.w, GRID_COLS);
   assert.equal(comparison!.h, nSensitivity!.h);
-  // 高さ（升目）: 上の段9・下の段15。1920x930で1画面に入る大きさ（`e2e/sample-workspace.spec.ts` で実測）
-  assert.deepEqual([comparison!.h, ...lower.map((item) => item.h)], [9, 15, 15, 15, 15]);
-  assert.equal(lower.length, 4);
-  assert.ok(lower.every((item) => item.y === comparison!.h && item.w === GRID_COLS / 4));
-  assert.deepEqual(lower.map((item) => item.x), [0, 6, 12, 18]);
+  // 高さ（升目）: 上の段9・中の段15・下の段10。上の2段は1920x930で1画面に入り、下の段は指ごとの距離がペインの中でスクロールしない最小の高さ
+  // （`e2e/sample-workspace.spec.ts` で実測）。
+  assert.deepEqual([comparison!.h, ...lower.map((item) => item.h)], [9, 15, 15, 15, 15, 10, 10, 10, 10]);
+  assert.equal(lower.length, 8);
+  const [middle, bottom] = [lower.slice(0, 4), lower.slice(4)];
+  assert.ok(middle.every((item) => item.y === comparison!.h && item.w === GRID_COLS / 4));
+  assert.deepEqual(middle.map((item) => item.x), [0, 6, 12, 18]);
+  assert.ok(bottom.every((item) => item.y === comparison!.h + 15 && item.w === GRID_COLS / 4));
+  assert.deepEqual(bottom.map((item) => item.x), [0, 6, 12, 18]);
   // 不変条件を満たした形（正規化しても変わらない）
   assert.deepEqual(normalizeGrid(created.grid, created.panes.map((pane) => pane.id), false), created.grid);
 });

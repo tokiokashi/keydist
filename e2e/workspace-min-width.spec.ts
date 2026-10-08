@@ -21,7 +21,7 @@ async function open(page: Page, theme: 'light' | 'dark' = 'light', size = FHD, g
   await page.setViewportSize(size);
   await page.addInitScript(({ key, value, theme }) => {
     if (localStorage.getItem(key) === null) {
-      localStorage.setItem(key, JSON.stringify({ version: 3, workspaces: [value] }));
+      localStorage.setItem(key, JSON.stringify({ version: 4, workspaces: [value] }));
       localStorage.setItem('keydist:app-state', JSON.stringify({ version: 2, appearance: { theme } }));
     }
   }, {

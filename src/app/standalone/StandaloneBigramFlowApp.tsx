@@ -25,6 +25,8 @@ import { useTextContentCommit } from './use-text-content-commit.ts';
  *
  * 計算の窓口は他の単体ページと共有する（`engine-computer.ts`。ブラウザではWorker）。
  */
+const decodeBigramFlowOptions = (raw: unknown) => bigramFlowAnalyzer.definition.decodeOptions(raw, []);
+
 export function StandaloneBigramFlowApp() {
   const { assets, ready, dispatch, getAssets, canUndo, canRedo, undo, redo } = useKeydistAssets();
   const catalog = useMemo(() => paneCatalog(assets), [assets.userLayouts, assets.userRomajiRules]);
@@ -43,7 +45,7 @@ export function StandaloneBigramFlowApp() {
   // debounce完了時に「今の選択」を読み直して事故る競合を避ける）。
   const commitTextContent = useTextContentCommit(dispatch, getAssets, generateTextId);
 
-  const addToWorkspace = useAddToWorkspace(bigramFlowAnalyzer.definition.id, dispatch, getAssets, () => {
+  const addToWorkspace = useAddToWorkspace(bigramFlowAnalyzer.definition.id, decodeBigramFlowOptions, dispatch, getAssets, () => {
     commitTextContent.flush();
     commitBigramFlowOptions.flush();
   });

@@ -59,6 +59,80 @@ export const BLANK_PANE_ID = 'blank';
 export const NO_BINDING: PaneTargetBinding = { mode: 'none' };
 
 /**
+ * ペインの解析設定の持ち方。`shared`はWorkspaceが持つ解析設定の組（`OptionSet`）を読み書きし、同じ組に従う
+ * ペインどうしで設定が一緒に変わる。`own`はペイン自身の設定（`WorkspacePane.options`）を持つ。
+ * 対象の持ち方（`PaneTargetBinding`）とは独立で、連動の組とも別の仕組み（対象を分けて設定を揃える用途に連動の組は使えない）。
+ * 余白のペインは設定を持たないので`own`。
+ */
+export type PaneOptionsBinding =
+  | { readonly mode: 'shared'; readonly set: string }
+  | { readonly mode: 'own' };
+
+export const OWN_OPTIONS: PaneOptionsBinding = { mode: 'own' };
+
+/**
+ * 解析設定の組。Analyzerごとに持ち、同じ組に従うペイン（`PaneOptionsBinding`の`shared`）が読み書きする。
+ * 中身はAnalyzerごとに違う形なので、ペインの`options`と同じく`unknown`で持つ。一度も変えていなければ`undefined`
+ * （Analyzerの既定値）。組はidで区別し、1つのAnalyzerが複数の組を持てる形で保存する（今の画面が作るのは
+ * Analyzerごとに1組だけ）。
+ */
+export interface OptionSet {
+  readonly id: string;
+  /** この組を使えるAnalyzer（`WorkspacePane.analyzerId`）。別のAnalyzerのペインは従えない。 */
+  readonly analyzerId: string;
+  readonly options: unknown;
+}
+
+/** Analyzerの最初の組のid。画面が作る組はこれ1つだけ。 */
+export function initialOptionSetId(analyzerId: string): string {
+  return `${analyzerId}-1`;
+}
+
+export function sharedOptions(set: string): PaneOptionsBinding {
+  return { mode: 'shared', set };
+}
+
+/**
+ * 新しく足すペインの解析設定の持ち方の既定: そのAnalyzerの組があれば先頭の組に従い、無ければ最初の組のidに従う
+ * （組はペインを足す時に作られる。`addWorkspacePane`）。
+ */
+export function defaultOptionsBinding(
+  workspace: Pick<Workspace, 'optionSets'>,
+  analyzerId: string,
+): PaneOptionsBinding {
+  const set = findDefaultOptionSet(workspace, analyzerId);
+  return sharedOptions(set?.id ?? initialOptionSetId(analyzerId));
+}
+
+/** 新しいペインが従う組（そのAnalyzerの先頭の組）。無ければ`undefined`。 */
+export function findDefaultOptionSet(workspace: Pick<Workspace, 'optionSets'>, analyzerId: string): OptionSet | undefined {
+  return workspace.optionSets.find((candidate) => candidate.analyzerId === analyzerId);
+}
+
+function defaultOptionSetId(workspace: Pick<Workspace, 'optionSets'>, analyzerId: string): string {
+  const binding = defaultOptionsBinding(workspace, analyzerId);
+  return binding.mode === 'shared' ? binding.set : initialOptionSetId(analyzerId);
+}
+
+/**
+ * ペインの解析設定を書く先の持ち主を指す名前。共有に従うペインは組、そうでなければペイン自身。
+ * 下書き・書き込みの記録・間引きの待ちは、この名前ごとに持つ（同じ組に従うペインが1つの保存先を書くため）。
+ */
+export function paneOptionsOwnerKey(pane: Pick<WorkspacePane, 'id' | 'optionsBinding'>): string {
+  return pane.optionsBinding.mode === 'shared' ? `set:${pane.optionsBinding.set}` : `pane:${pane.id}`;
+}
+
+/** ペインの解析設定として今効いている値（保存した形）。共有ならその組の値、自分だけならペインの値。 */
+export function resolvePaneOptions(
+  workspace: Pick<Workspace, 'optionSets'>,
+  pane: Pick<WorkspacePane, 'options' | 'optionsBinding'>,
+): unknown {
+  if (pane.optionsBinding.mode === 'own') return pane.options;
+  const id = pane.optionsBinding.set;
+  return workspace.optionSets.find((set) => set.id === id)?.options;
+}
+
+/**
  * 組の対象。Setup1つを見るAnalyzer用の1つと、集合を見るAnalyzer用の集合を別々に持つ
  * （個別画面のSingle・Multiが別々の選択を持つのと同じ。1つの値へ畳むとAnalyzerの種類で意味が変わる）。
  */
@@ -141,11 +215,13 @@ export interface WorkspacePane {
    */
   readonly analyzerId: string;
   /**
-   * このペインの解析設定。中身はAnalyzerごとに違う形で、engineは個別Analyzerの型を知らないので
+   * このペインだけの解析設定（`optionsBinding`が`own`の時に読む）。中身はAnalyzerごとに違う形で、engineは個別Analyzerの型を知らないので
    * `unknown`のまま持つ（`standalone-analyzer-options.ts`と同じ理由）。一度も変えていなければ`undefined`
    * （Analyzerの既定値を使う）。
    */
   readonly options: unknown;
+  /** 解析設定の持ち方。`own`の時だけ`options`を読み、`shared`の間は`options`を持たない（共有へ戻す時に捨てる）。 */
+  readonly optionsBinding: PaneOptionsBinding;
   readonly binding: PaneTargetBinding;
 }
 
@@ -156,6 +232,8 @@ export interface Workspace {
   readonly text: TextSelectionState;
   /** 連動の組。「従う」ペインは、このうち1つの対象を読む。1つ以上を常に持つ。 */
   readonly groups: readonly LinkGroup[];
+  /** 解析設定の組。`shared`のペインは、このうち1つの値を読み書きする。ペインが従わなくなっても組は残す。 */
+  readonly optionSets: readonly OptionSet[];
   readonly panes: readonly WorkspacePane[];
   /** ペインごとの位置と大きさ（格子の升目。`workspace-grid.ts`）。ペインの集まりと同じ集まりのidを持つ。 */
   readonly grid: WorkspaceGrid;
@@ -219,6 +297,7 @@ export function createWorkspace(
     name: uniqueWorkspaceName(library, name?.trim() || DEFAULT_WORKSPACE_NAME),
     text: initialTextSelection(),
     groups: [{ id: INITIAL_LINK_GROUP_ID, target }],
+    optionSets: [],
     panes: [],
     grid: [],
     colorSlots: initialWorkspaceColorSlots(),
@@ -327,13 +406,27 @@ function pruneLinkGroups(workspace: Workspace): Workspace {
   return kept.length === workspace.groups.length ? workspace : { ...workspace, groups: kept };
 }
 
-/** ペインを足す。`size`の大きさで、格子の空いている最初の場所に置く。同じidのペインが既にあれば何もしない。 */
+/**
+ * ペインを足す。`size`の大きさで、格子の空いている最初の場所に置く。同じidのペインが既にあれば何もしない。
+ * 共有に従うペインで、従う先の組がまだ無ければ、渡された`options`を値にして組を作る（最初のペインの設定が共有の設定になる）。
+ * 組が既にあれば共有の値が勝つので、ペインの`options`は捨てる。
+ */
 export function addWorkspacePane(library: WorkspaceLibrary, workspaceId: string, pane: WorkspacePane, size: GridSize): WorkspaceLibrary {
   return updateWorkspace(library, workspaceId, (workspace) => {
     if (workspace.panes.some((existing) => existing.id === pane.id)) return workspace;
+    let optionSets = workspace.optionSets;
+    let added = pane;
+    if (pane.optionsBinding.mode === 'shared') {
+      const setId = pane.optionsBinding.set;
+      const existing = optionSets.find((set) => set.id === setId);
+      if (existing !== undefined && existing.analyzerId !== pane.analyzerId) return workspace;
+      if (existing === undefined) optionSets = [...optionSets, { id: setId, analyzerId: pane.analyzerId, options: pane.options }];
+      added = { ...pane, options: undefined };
+    }
     return {
       ...workspace,
-      panes: [...workspace.panes, pane],
+      optionSets,
+      panes: [...workspace.panes, added],
       grid: gridWithPane(workspace.grid, pane.id, size, workspace.compactPanes === true),
     };
   });
@@ -372,24 +465,13 @@ export function duplicateWorkspacePane(
   });
 }
 
-function updatePane(
-  library: WorkspaceLibrary,
-  workspaceId: string,
-  paneId: string,
-  update: (pane: WorkspacePane) => WorkspacePane,
-): WorkspaceLibrary {
-  return updateWorkspace(library, workspaceId, (workspace) => {
-    const index = workspace.panes.findIndex((pane) => pane.id === paneId);
-    if (index === -1) return workspace;
-    const current = workspace.panes[index]!;
-    const next = update(current);
-    if (next === current) return workspace;
-    return { ...workspace, panes: workspace.panes.map((pane, i) => (i === index ? next : pane)) };
-  });
+function sameOptions(a: unknown, b: unknown): boolean {
+  return a === undefined || b === undefined ? a === b : stableStringify(a) === stableStringify(b);
 }
 
 /**
  * ペインの解析設定を書き換える。`undefined` は「一度も変えていない状態へ戻す」。
+ * 共有に従うペインなら、ペインではなく従う組の値を書き換える（同じ組に従う他のペインも一緒に変わる）。
  * 中身が同じなら何もしない（`stableStringify`。キーの並びに依らない）。
  */
 export function withWorkspacePaneOptions(
@@ -398,11 +480,61 @@ export function withWorkspacePaneOptions(
   paneId: string,
   options: unknown,
 ): WorkspaceLibrary {
-  return updatePane(library, workspaceId, paneId, (pane) => {
-    const same = pane.options === undefined || options === undefined
-      ? pane.options === options
-      : stableStringify(pane.options) === stableStringify(options);
-    return same ? pane : { ...pane, options };
+  return updateWorkspace(library, workspaceId, (workspace) => {
+    const index = workspace.panes.findIndex((pane) => pane.id === paneId);
+    if (index === -1) return workspace;
+    const pane = workspace.panes[index]!;
+    if (pane.optionsBinding.mode === 'own') {
+      if (sameOptions(pane.options, options)) return workspace;
+      return { ...workspace, panes: workspace.panes.map((candidate, i) => (i === index ? { ...pane, options } : candidate)) };
+    }
+    const setId = pane.optionsBinding.set;
+    const setIndex = workspace.optionSets.findIndex((set) => set.id === setId);
+    if (setIndex === -1) return workspace;
+    const set = workspace.optionSets[setIndex]!;
+    if (sameOptions(set.options, options)) return workspace;
+    return { ...workspace, optionSets: workspace.optionSets.map((candidate, i) => (i === setIndex ? { ...set, options } : candidate)) };
+  });
+}
+
+/** 解析設定の持ち方の切り替え。`shared`の`set`を省くと、そのAnalyzerの先頭の組（無ければ最初の組のid）。 */
+export type PaneOptionsChoice =
+  | { readonly kind: 'own' }
+  | { readonly kind: 'shared'; readonly set?: string };
+
+/**
+ * ペインの解析設定の持ち方を切り替える。押した瞬間の見た目が変わらないよう、`own`にする時は今効いている設定
+ * （共有の値）をペインの値として写す。共有に戻す時は、ペイン自身の設定を捨てて組の値を読む
+ * （戻したい時はUndo）。従う先の組がまだ無ければ、ペインの今の設定を値にして作る。
+ * 別のAnalyzerの組へは従えない。持ち方が変わらない時・存在しないペインは何もしない。
+ */
+export function withWorkspacePaneOptionsBinding(
+  library: WorkspaceLibrary,
+  workspaceId: string,
+  paneId: string,
+  choice: PaneOptionsChoice,
+): WorkspaceLibrary {
+  return updateWorkspace(library, workspaceId, (workspace) => {
+    const index = workspace.panes.findIndex((pane) => pane.id === paneId);
+    if (index === -1) return workspace;
+    const pane = workspace.panes[index]!;
+    const replace = (next: WorkspacePane, optionSets: readonly OptionSet[] = workspace.optionSets): Workspace => ({
+      ...workspace,
+      optionSets,
+      panes: workspace.panes.map((candidate, i) => (i === index ? next : candidate)),
+    });
+    if (choice.kind === 'own') {
+      if (pane.optionsBinding.mode === 'own') return workspace;
+      return replace({ ...pane, options: resolvePaneOptions(workspace, pane), optionsBinding: OWN_OPTIONS });
+    }
+    const id = choice.set ?? defaultOptionSetId(workspace, pane.analyzerId);
+    if (pane.optionsBinding.mode === 'shared' && pane.optionsBinding.set === id) return workspace;
+    const existing = workspace.optionSets.find((set) => set.id === id);
+    if (existing !== undefined && existing.analyzerId !== pane.analyzerId) return workspace;
+    const optionSets = existing === undefined
+      ? [...workspace.optionSets, { id, analyzerId: pane.analyzerId, options: resolvePaneOptions(workspace, pane) }]
+      : workspace.optionSets;
+    return replace({ ...pane, options: undefined, optionsBinding: sharedOptions(id) }, optionSets);
   });
 }
 
