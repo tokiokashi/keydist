@@ -26,7 +26,7 @@ git fetch origin <ブランチ名> && git checkout --detach FETCH_HEAD
 Write は**一時のファイルだけ**に使う。検証スクリプト、e2eの一時のplaywright config（別ポートに立てる目的では要らない。`CONTRIBUTING.md` の「ブラウザe2e」）、反証（修正を一時的に外して落ちることを確かめる）のための一時の書き換え。
 Bash での書き込みは、コマンドの形によっては worktree の分離の検査に止められる。一時ファイルは Write で書く。
 
-- 置き場は自分のworktreeの中。外へは書かない。ただしスクリーンショットや測定の出力など、残る出力はセッションのscratchpadに置く（未追跡ファイルがあると `git worktree remove` が止まる）
+- 置き場は自分のworktreeの中。外へは書かない。ただしスクリーンショットや測定の出力、ログなど、残る出力はセッションのscratchpadに置く（未追跡ファイルがあると `git worktree remove` が止まる）
 - 追跡ファイルを一時に書き換えた時は、確かめた後に**必ず元へ戻す**
 - 追跡ファイルを書き換えたかどうかに関わらず、結果を書く前に一時ファイルを消し、`git status` が空なことを確かめる
 - 追跡ファイルを恒久的に直さない。`Edit` は持たない。修正は指摘として返す
@@ -75,7 +75,7 @@ PR 側の完了条件リストがその項目を落としていたため、リ�
   新しい検査が変更前でも通るなら指摘する
 - **閾値による許容は、許容が要る組だけに掛かっているかを見る。** 全部の組に掛かっていると、小さな違反を見逃す
 - **PR本文の数値は、最後のheadと照らし合わせる。** 途中のheadの値が残っていないかを、headのshaを指定して測り直して確かめる
-- 変更前の挙動で試す時は、自分のworktreeで `git checkout <sha> -- src` や `git stash` を使わない。代わりに `git checkout --detach <sha>` か、一時worktree（`git worktree add --detach <path> <sha>`、`npm ci` の後に試す。残っていても問題なく、ディスクの空きが足りない時だけ `git worktree remove` で消す）を使う。一時の書き換えは元へ戻し、`git status` が空なことを確かめる
+- 変更前の挙動で試す時は、自分のworktreeで `git checkout <sha> -- src` や `git stash` を使わない。代わりに `git checkout --detach <sha>` か、一時worktree（`git worktree add --detach .claude/worktrees/<名前> <sha>`、`npm ci` の後に試す。終わったら `git worktree remove` で消す）を使う。一時worktreeは `.claude/worktrees/` の下に作る（`AGENTS.md`「エージェントの役割」）。一時の書き換えは元へ戻し、`git status` が空なことを確かめる
 
 ## 数値が合わない時
 

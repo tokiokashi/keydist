@@ -84,11 +84,16 @@ Refs #XX
 ## commit-msgフック
 
 規約違反をcommit時点で弾くフックを `.githooks/` に置いてある。
-clone直後に1度だけ有効化する。
+clone直後に、本体のチェックアウトで1度だけ有効化する。
 
 ```bash
 git config core.hooksPath .githooks
 ```
+
+設定は `.git/config` に入り、worktreeと共有される。worktreeの中では打たない。
+サブエージェント用のworktreeを作る時に、値が絶対パス（本体の `.githooks`）へ書き換わる。値は直さない。
+その結果、hooksは本体のチェックアウトにある版が使われる。本体が古いコミットにいると古いhooksで検査するので、
+リードは単位を始める前に本体を `origin/main` に保つ。
 
 検査するのは次の4点。`Merge` / `Revert` / `fixup!` / `squash!` で始まるメッセージは
 gitが形を決めるので素通しする。
@@ -331,6 +336,9 @@ PRを開く前に全件を見たい時は、draft PRを開くか、`e2e.yml` を
 判定は拡張子で行う（`main` へのpushと `workflow_dispatch` は常に全件）。
 
 - 手元では、触ったspecだけを1ワーカーで回す: `npx playwright test e2e/<触ったspec>.spec.ts --workers=1`
+- `@playwright/test`（`package.json`）が要求するブラウザの版が実行環境に無いと、「Executable doesn't exist」で1件も起動しない。
+  版が合わないエラーが出たら `npx playwright install chromium-headless-shell` で入れてよい（入るのは追跡しないファイルだけ）。
+  symlinkなどの回避策は作らない
 - 手元のdev serverのポートはworktreeごとに決まる（configのあるリポジトリのルートの絶対パスから4200〜4999。どのディレクトリから回しても同じ）。並行する別worktreeでも、一時のconfigを作らずそのまま回せる。
   ポートが別のworktreeのserverと重なった時は、e2eの実行が最初に止まり、`KEYDIST_E2E_PORT` で変えるよう案内が出る。
   実行の冒頭に出る `e2e: http://127.0.0.1:<ポート>` が、当たるserverのポート。`KEYDIST_E2E_PORT=<番号>` で固定もできる。CIは4173の固定
