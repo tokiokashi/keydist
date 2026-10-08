@@ -136,6 +136,16 @@ CIもPRの各コミットに同じスクリプトを掛けるため、フック�
 - 実装者と別のレビュアー（レビュー役のエージェント）が、**現在のhead**を承認している。スタックなら全PRのheadについて。
   レビュー後に修正コミットを足したら、その修正も含めて再レビューを受けてからマージする
 - headのCIが緑。このリポジトリはCIをマージの必須条件にしていないので、赤くてもマージ自体はできてしまう。`gh pr checks` で自分で確かめる（クラウドのセッションではGraphQLが使えず失敗するので、`gh api repos/tokiokashi/keydist/commits/<sha>/check-runs` を使う）
+- PRのheadが今の `origin/main` を祖先に含まない時は、今の `main` と合わせた状態で `npm run typecheck`・`npm test`・`npm run build` が通る。
+  headのCIは、PRを開いた・pushした時点の `main` と合わせて走るので、その後に `main` が進むと結果が古くなる。
+  GitHubの衝突の判定は同じ行の書き換えしか見ないため、先に入ったPRが変えた関数を後のPRが古い形で使っていても、衝突は出ずに `main` で型検査とビルドが落ちる。
+  リードがマージの直前に次の手順で確かめる。e2eは見ない（CIを回し直さない）。待ち時間とCIの使用量が増えるわりに、型とビルドの食い違いは3つで見つかるため
+  - 要否の判定: `git fetch origin main <ブランチ>` の後に `git merge-base --is-ancestor origin/main origin/<ブランチ>` を打つ。終了コードが0なら、headが今の `main` を含むので検査は要らない
+  - 一時の作業ツリーを作る: `git worktree add --detach .claude/worktrees/<名前> origin/<ブランチ>`。PRのブランチは `origin/<ブランチ>` と明示し、`FETCH_HEAD` は使わない（直前の `git fetch` が複数のrefを取ると、`FETCH_HEAD` の先頭が `main` を指して `main` だけを検査してしまう）
+  - 一時の作業ツリーの中で `git merge --no-edit origin/main` を打ち、3つの検査を回す。コミットもpushもしない
+  - `node_modules` は、本体の `node_modules` を一時の作業ツリーにsymlinkする（`ln -s <本体>/node_modules node_modules`）。差分に `package.json`・`package-lock.json`・`patches/` が含まれる時はsymlinkせず、一時の作業ツリーで `npm ci` する
+  - 終わったらsymlinkを外してから `git worktree remove` で消す
+  - マージが衝突した時、または3つのどれかが落ちた時は、実装役に `main` をマージさせて追従させる（rebaseはしない）。実装役に戻した後は、新しいheadで再レビューを受けてからマージする
 - オーナーが決めていない選択を含まない。含むなら、PR本文に「決めきれなかった点」として選択肢とそれぞれで何が変わるかを書き、マージせずに残す
 - PRで直さずに残すもの（後続）は、マージ前に**issueにして**、PR本文にはその番号だけを書く。
   issueにしないものは「後続」に書かない。後から見る仕組みの無いメモは残らない。
