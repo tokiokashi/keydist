@@ -333,3 +333,13 @@ test('トップのサイドバーの見本は、サイドバーが引き出し�
   await expect(sample).toBeVisible();
   await expect(sample.getByRole('link', { name: 'Bigram Flow', exact: true })).toBeVisible();
 });
+
+test('テキストのチップは文字数を出し、本文を編集すると追従する', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  const chip = page.locator('.context-bar button.text-chip');
+  await expect(chip).toBeEnabled({ timeout: 10_000 });
+
+  const panel = await openTextChip(page);
+  await panel.getByLabel('テキスト', { exact: true }).fill('あいうえお');
+  await expect(chip.locator('.text-chip-count')).toHaveText('5字', { timeout: 10_000 });
+});

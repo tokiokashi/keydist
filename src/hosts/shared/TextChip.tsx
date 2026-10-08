@@ -14,6 +14,7 @@ import {
 import { BUILTIN_TEXTS } from '#input/text/builtin.ts';
 import type { TextIdGenerator, TextLibrary } from '#input/text/library.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
+import { countTextCharacters } from '#input/text/char-count.ts';
 import type { TextLanguage } from '#input/text/language.ts';
 import type { TextRef, TextSelectionState } from '#input/text/selection.ts';
 import './context-bar.css';
@@ -65,6 +66,11 @@ function languageLabel(language: TextLanguage): string {
   return language === 'ja' ? '日本語' : '英語';
 }
 
+/** 文字数は確定した本文（資産の値）から数える。打鍵の下書きは確定まで反映しない（解析が見る量と揃える）。 */
+function formatTextCount(count: number): string {
+  return `${new Intl.NumberFormat('ja-JP').format(count)}字`;
+}
+
 export function TextChip(props: TextChipProps) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
@@ -109,6 +115,7 @@ export function TextChip(props: TextChipProps) {
       >
         <span className="context-chip-key">テキスト</span>
         <span className="context-chip-value">{resolved.name}</span>
+        <span className="text-chip-count">{formatTextCount(countTextCharacters(resolved.text))}</span>
         {hasUnseen ? (
           <span className="text-chip-unseen" role="img" aria-label="新しいテキストがある" title="新しいテキストがある" />
         ) : null}

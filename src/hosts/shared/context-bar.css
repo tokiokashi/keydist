@@ -118,6 +118,14 @@ button.context-chip:hover:not(:disabled),
   box-shadow: 0 0 0 2px var(--surface);
 }
 
+.text-chip-count {
+  flex: none;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .text-chip-language {
   flex: none;
   padding: 0 0.45rem;
@@ -366,6 +374,7 @@ button.context-chip:hover:not(:disabled),
   }
 
   .text-chip .context-chip-key,
+  .text-chip .text-chip-count,
   .text-chip .text-chip-language,
   .context-select-chip .context-chip-key {
     position: absolute;
