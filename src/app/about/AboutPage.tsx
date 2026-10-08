@@ -52,7 +52,7 @@ export function AboutPage() {
         <p>数値の定義は、リポジトリの仕様書にあります。</p>
         <ul>
           {SPEC_LINKS.map((link) => (
-            <li key={link.path}>
+            <li key={link.url}>
               <a href={link.url} target="_blank" rel="noopener noreferrer">{link.label}</a>
             </li>
           ))}

@@ -174,7 +174,7 @@ export function Sidebar({ pinned, onPinnedChange, onNavigate }: SidebarProps) {
           <h2 className="sidebar-heading" id="sidebar-about">About</h2>
           <NavLink to="/about" onNavigate={onNavigate}>{ABOUT_LABEL}</NavLink>
           {SPEC_LINKS.map((link) => (
-            <a key={link.path} className="sidebar-link" href={link.url} target="_blank" rel="noopener noreferrer">{link.label}</a>
+            <a key={link.url} className="sidebar-link" href={link.url} target="_blank" rel="noopener noreferrer">{link.label}</a>
           ))}
           <a className="sidebar-link" href={REPOSITORY_URL} target="_blank" rel="noopener noreferrer">GitHub</a>
         </section>
