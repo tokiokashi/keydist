@@ -216,6 +216,6 @@ test('codec: 別のAnalyzerの組を指すペインは、このペインだけ�
   assert.equal(decoded.value[0]!.panes.find((p) => p.id === 'f')!.optionsBinding.mode, 'own');
 });
 
-test('codec: 前の版の保存は読まない', () => {
-  assert.equal(WORKSPACE_LIBRARY_CODEC.decode({ version: 3, workspaces: [] }).ok, false);
+test('codec: 版2以前の保存は読まない', () => {
+  assert.equal(WORKSPACE_LIBRARY_CODEC.decode({ version: 2, workspaces: [] }).ok, false);
 });

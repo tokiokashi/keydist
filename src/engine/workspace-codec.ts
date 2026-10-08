@@ -42,7 +42,8 @@ import { normalizeGrid, type GridItem, type WorkspaceGrid } from './workspace-gr
  *
  * 版4は、ペインの対象の持ち方（従う組 / 固定）と連動の組ごとの対象に加え、解析設定の組（`optionSets`。Analyzerごとの共有の設定）と、
  * ペインの解析設定の持ち方（`optionsBinding`。組に従う / このペインだけ）を持つ。色の番号はWorkspaceが全ペインの和に配って持つ。
- * 版3以前は読まない（互換は守らない。AGENTS.md）。
+ * 版3は解析設定の組と持ち方の欄が無いだけで、ペインは自分の解析設定（`options`）を持つ。版4の「このペインだけ」と同じ形なので、読み方を変えずにそのまま読む
+ * （`decodeOptionsBinding`が、持ち方の無いペインをこのペインだけの設定にする）。版2以前は読まない。
  */
 
 /** 格子の枠1つを読む。数でない値は`normalizeGrid`が範囲に収めるので、ここでは形だけを見る。 */
@@ -331,6 +332,7 @@ function encodePane(pane: WorkspacePane): Record<string, unknown> {
 
 export const WORKSPACE_LIBRARY_CODEC: AssetCodec<WorkspaceLibrary> = defineAssetCodec({
   currentVersion: 4,
+  migrations: [{ fromVersion: 3, toVersion: 4, migrate: (payload) => payload }],
   decodePayload: (payload, diagnostics) => {
     if (!isRecord(payload)) return undefined;
     const raw: readonly unknown[] = Array.isArray(payload.workspaces) ? payload.workspaces : [];
