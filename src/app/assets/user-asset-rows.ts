@@ -19,7 +19,7 @@ export function userLayoutRows(
     if (layout.direct === true) return { id: layout.id, name: layout.name, detail: 'ローマ字を経ずに直接打つ配列' };
     const ruleName = isBuiltin(layout.romaji) ? ROMAJI_RULES[layout.romaji].name : ruleNames.get(layout.romaji);
     const detail = ruleName === undefined
-      ? '推奨のローマ字規則が見つからないため、全体の値の規則で打つ'
+      ? '推奨のローマ字規則が見つからないため、全体の値の規則で打ちます'
       : `推奨のローマ字規則: ${ruleName}`;
     return { id: layout.id, name: layout.name, detail };
   });
@@ -34,7 +34,7 @@ export function userRomajiRuleRows(
     const users = userLayouts.filter((layout) => layout.direct !== true && layout.romaji === rule.id);
     const detail = users.length === 0
       ? undefined
-      : `推奨に使っている配列: ${users.map((layout) => layout.name).join('、')}。削除すると、その配列は全体の値の規則で打つ`;
+      : `推奨に使っている配列: ${users.map((layout) => layout.name).join('、')}。削除すると、その配列は全体の値の規則で打ちます`;
     return { id: rule.id, name: rule.name, detail };
   });
 }

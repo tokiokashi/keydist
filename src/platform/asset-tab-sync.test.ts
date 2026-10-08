@@ -248,7 +248,7 @@ test('load: storageに壊れた値がある場合はundefinedを返し、onLoadF
 
   assert.equal(sync.load(), undefined);
   assert.equal(failures.length, 1);
-  assert.deepEqual(failures[0], { kind: 'invalid-shape', message: 'payloadの形式が不正で読み取れない' });
+  assert.deepEqual(failures[0], { kind: 'invalid-shape', message: 'payloadの形式が不正で読み取れません' });
 });
 
 test('start()が返す停止関数を呼ぶと、以後notifyが届いてもonExternalChangeを呼ばない', () => {

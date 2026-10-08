@@ -32,7 +32,7 @@ export class PaneErrorBoundary extends Component<{ children: ReactNode }, PaneEr
     if (this.state.error !== undefined) {
       return (
         <div className="pane-crashed" role="alert" data-pane-crashed="true">
-          <p>この可視化を表示できなかった。条件を変えて試してほしい</p>
+          <p>この可視化を表示できませんでした。条件を変えて試してください</p>
           <ErrorDetails lines={describeErrorDetail(this.state.error)} />
         </div>
       );

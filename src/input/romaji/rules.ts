@@ -136,25 +136,25 @@ export function parseOverrides(text: string): { overrides: Record<string, string
     if (!line || line.startsWith('#')) return;
     const equal = line.indexOf('=');
     if (equal < 1) {
-      errors.push(`${i + 1} 行目: 「かな = 綴り」の形で書く`);
+      errors.push(`${i + 1} 行目: 「かな = 綴り」の形で書いてください`);
       return;
     }
     const kana = line.slice(0, equal).trim();
     const roman = line.slice(equal + 1).trim().toLowerCase();
     if (!kana || !roman || /\s/.test(kana) || /\s/.test(roman)) {
-      errors.push(`${i + 1} 行目: かなと綴りを空白なしで指定する`);
+      errors.push(`${i + 1} 行目: かなと綴りを空白なしで指定してください`);
       return;
     }
     if (!/[ぁ-ゖァ-ヺー]/u.test(kana)) {
-      errors.push(`${i + 1} 行目: 左辺はかなで指定する`);
+      errors.push(`${i + 1} 行目: 左辺はかなで指定してください`);
       return;
     }
     if ([...roman].some((key) => !QWERTY_KEYS.has(key))) {
-      errors.push(`${i + 1} 行目: 綴りにキーボードに無いキーが含まれている`);
+      errors.push(`${i + 1} 行目: 綴りにキーボードに無いキーが含まれています`);
       return;
     }
     if (overrides[kana] !== undefined) {
-      errors.push(`${i + 1} 行目: 「${kana}」が重複している`);
+      errors.push(`${i + 1} 行目: 「${kana}」が重複しています`);
       return;
     }
     overrides[kana] = roman;
@@ -186,23 +186,23 @@ export function decodeUserRomajiRules(
   diagnostics: CodecDiagnostic[],
 ): UserRomajiRule[] {
   if (!Array.isArray(raw)) {
-    if (raw !== undefined) diagnostics.push({ path, message: '配列形式でないためローマ字規則を捨てた' });
+    if (raw !== undefined) diagnostics.push({ path, message: '配列形式でないためローマ字規則を捨てました' });
     return [];
   }
   const seen = new Set<string>();
   const rules: UserRomajiRule[] = [];
   raw.forEach((candidate, index) => {
     if (!isUserRomajiRule(candidate)) {
-      diagnostics.push({ path: `${path}[${index}]`, message: '形式が不正なためローマ字規則を捨てた' });
+      diagnostics.push({ path: `${path}[${index}]`, message: '形式が不正なためローマ字規則を捨てました' });
       return;
     }
     // 組み込みと同じidの自作は、規則のidを引く時に組み込みと区別できないので読まない
     if (isBuiltin(candidate.id)) {
-      diagnostics.push({ path: `${path}[${index}]`, message: `id「${candidate.id}」が組み込みの規則と同じため捨てた` });
+      diagnostics.push({ path: `${path}[${index}]`, message: `id「${candidate.id}」が組み込みの規則と同じため捨てました` });
       return;
     }
     if (seen.has(candidate.id)) {
-      diagnostics.push({ path: `${path}[${index}]`, message: `id「${candidate.id}」が重複しているため捨てた` });
+      diagnostics.push({ path: `${path}[${index}]`, message: `id「${candidate.id}」が重複しているため捨てました` });
       return;
     }
     seen.add(candidate.id);
@@ -218,7 +218,7 @@ export function decodeUserRomajiRules(
 export function decodeStoredRomajiSettings(value: unknown): DecodedWithDiagnostics<RomajiSettings> {
   const diagnostics: CodecDiagnostic[] = [];
   if (!isRecord(value)) {
-    if (value !== undefined) diagnostics.push({ path: '', message: '形式が不正なため自作のローマ字規則を捨てた' });
+    if (value !== undefined) diagnostics.push({ path: '', message: '形式が不正なため自作のローマ字規則を捨てました' });
     return { value: { rules: [], assignments: {} }, diagnostics };
   }
   const rules = decodeUserRomajiRules(value.rules, 'rules', diagnostics);
@@ -226,12 +226,12 @@ export function decodeStoredRomajiSettings(value: unknown): DecodedWithDiagnosti
   if (isRecord(value.assignments)) {
     for (const [key, id] of Object.entries(value.assignments)) {
       // 予約名のキーは代入で自分のプロパティにならず黙って消えるので、捨てる旨を診断に残す
-      if (UNSAFE_OBJECT_KEYS.has(key)) diagnostics.push({ path: `assignments.${key}`, message: `予約名のキー「${key}」を捨てた` });
+      if (UNSAFE_OBJECT_KEYS.has(key)) diagnostics.push({ path: `assignments.${key}`, message: `予約名のキー「${key}」を捨てました` });
       else if (typeof id === 'string') assignments[key] = id;
-      else diagnostics.push({ path: `assignments.${key}`, message: '文字列でないため規則の割り当てを捨てた' });
+      else diagnostics.push({ path: `assignments.${key}`, message: '文字列でないため規則の割り当てを捨てました' });
     }
   } else if (value.assignments !== undefined) {
-    diagnostics.push({ path: 'assignments', message: '形式が不正なため規則の割り当てを捨てた' });
+    diagnostics.push({ path: 'assignments', message: '形式が不正なため規則の割り当てを捨てました' });
   }
   return { value: { rules, assignments }, diagnostics };
 }

@@ -65,7 +65,7 @@ export function resolveFingerAssignment(
     assignment: fallback,
     diagnostic: {
       kind: 'invalid-fallback',
-      message: `選んでいた指の割当が見つからないため、既定の「${fallback.name}」で測った`,
+      message: `選んでいた指の割当が見つからないため、既定の「${fallback.name}」で測りました`,
     },
   };
 }

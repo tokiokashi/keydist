@@ -18,7 +18,7 @@ test('describeResolvedInputError: reference（配列・物理配列の削除）'
     errors: [{ kind: 'layout-missing', layoutId: 'ghost-layout' }],
   };
   const message = describeResolvedInputError(error);
-  assert.match(message, /配列が見つからない/);
+  assert.match(message, /配列が見つかりません/);
   // 画面にそのまま出る文なので、内部のidは含めない。
   assert.doesNotMatch(message, /ghost-layout/);
 });
@@ -27,7 +27,7 @@ test('describeResolvedInputError: 削除された対象はidを出さず、1つ�
   const setupMissing: ResolvedInputError = { kind: 'target-missing', target: { kind: 'setup', setupId: '3f2a-uuid' } };
   const layoutMissing: ResolvedInputError = { kind: 'target-missing', target: { kind: 'layout', layoutId: 'gone-layout' } };
   const shapeMissing: ResolvedInputError = { kind: 'reference', errors: [{ kind: 'shape-missing', shapeId: 'gone-shape' }] };
-  assert.equal(describeResolvedInputError(setupMissing), 'Setupが削除された');
+  assert.equal(describeResolvedInputError(setupMissing), 'Setupが削除されました');
   for (const error of [setupMissing, layoutMissing, shapeMissing]) {
     const message = describeResolvedInputError(error);
     assert.doesNotMatch(message, /3f2a|gone-|:/);
@@ -48,7 +48,7 @@ test('describeResolvedInputError: incompatible-text（このテキストには�
 test('describeResolvedInputError: geometry（物理配列が組めない）', () => {
   const error: ResolvedInputError = { kind: 'geometry', message: '指割り当て「finger-x」にキー q が無い' };
   const message = describeResolvedInputError(error);
-  assert.match(message, /組み立てられない/);
+  assert.match(message, /組み立てられません/);
   // 例外の文は定義の内部（idやキー名）を指すので出さない。
   assert.doesNotMatch(message, /finger-x/);
 });

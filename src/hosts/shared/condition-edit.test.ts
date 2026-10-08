@@ -384,13 +384,13 @@ test('defaultShapeChipNotice: 配列の上書きがある配列を、全体を�
   const overrides = own.assets.setupLibrary.overrides;
   assert.equal(
     defaultShapeChipNotice(overrides, ['naginata-v18'], SHAPE_NAMES.layouts),
-    '配列「薙刀式」は物理配列を別に決めているため、ここで変えても変わらない',
+    '配列「薙刀式」は物理配列を別に決めているため、ここで変えても変わりません',
   );
   assert.equal(defaultShapeChipNotice(overrides, ['oonishi'], SHAPE_NAMES.layouts), undefined, '別の配列だけを出している画面では出さない');
   assert.equal(defaultShapeChipNotice(overrides, [], SHAPE_NAMES.layouts), undefined);
   assert.equal(
     defaultShapeChipNotice(overrides, ['naginata-v18', 'oonishi', 'naginata-v18'], SHAPE_NAMES.layouts),
-    '配列「薙刀式」は物理配列を別に決めているため、ここで変えても変わらない',
+    '配列「薙刀式」は物理配列を別に決めているため、ここで変えても変わりません',
     '同じ配列は1度だけ',
   );
 });

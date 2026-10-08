@@ -168,7 +168,7 @@ export function importResultMessage(
 ): string {
   const notes = missing.map(({ noun, indices }) => {
     const names = indices.map((index) => `「${addedNames[index] ?? ''}」`).join('');
-    return `${names}はこの端末に無い${noun}を使っています。流し込むと既定に戻ります`;
+    return `${names}はこの端末にない${noun}を使っています。流し込むと既定に戻ります`;
   });
   return [message, ...notes].join('。');
 }
@@ -198,7 +198,7 @@ export function parsePresetFile(text: string, references: PresetReferences): Pre
     const { reason } = decoded;
     if (reason.kind === 'future-version') {
       return failure(
-        '新しい形式のファイルです。keydist を更新してから読み込んでください',
+        '新しい形式のファイルです。keydistを更新してから読み込んでください',
         `version: ${reason.version} (対応: ${reason.currentVersion})`,
       );
     }
@@ -213,6 +213,6 @@ export function parsePresetFile(text: string, references: PresetReferences): Pre
       ...(details.length === 0 ? ['presets: 0'] : []),
     );
   }
-  const message = [`${presets.length}件のプリセットを読み込んだ`, ...droppedTexts(decoded.diagnostics)].join('。');
+  const message = [`${presets.length}件のプリセットを読み込みました`, ...droppedTexts(decoded.diagnostics)].join('。');
   return { ok: true, presets, message, missingReferences: missingReferences(presets, references), details };
 }

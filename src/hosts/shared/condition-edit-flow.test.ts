@@ -190,7 +190,7 @@ test('下のレベルが勝つ行: 配列の上書きがあれば、全体を変
     dispatch(session, setLayoutCommand(layoutId, 'windowSize', 2, windowDefault));
     const view = viewOf(session, layoutId);
     assert.equal(view.rowOf('windowSize').originLabel, `上書き: 配列「${name}」`, layoutId);
-    assert.match(view.notices.get('windowSize')!, new RegExp(`^配列「${name}」の値が優先されるため、全体を変えてもこの画面は変わらない`), layoutId);
+    assert.match(view.notices.get('windowSize')!, new RegExp(`^配列「${name}」の値が優先されるため、全体を変えてもこの画面は変わりません`), layoutId);
     // 編集はできるまま: 全体へ書いても、値は配列のまま
     dispatch(session, setGlobalCommand('windowSize', windowDefault + 1, windowDefault));
     assert.equal(viewOf(session, layoutId).rowOf('windowSize').displayValue, '2', layoutId);
@@ -301,7 +301,7 @@ test('既定の物理配列を配列だけ別にする: その配列だけ物理
   const names = new Map([['qwerty', { name: 'QWERTY' }]]);
   assert.equal(
     defaultShapeChipNotice(session.assets.setupLibrary.overrides, ['qwerty'], names),
-    '配列「QWERTY」は物理配列を別に決めているため、ここで変えても変わらない',
+    '配列「QWERTY」は物理配列を別に決めているため、ここで変えても変わりません',
   );
   // チップで全体を変えても、配列の値が勝つので図の物理配列は変わらない
   dispatch(session, defaultShapeCommand('column-staggered'));

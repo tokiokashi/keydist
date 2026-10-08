@@ -163,11 +163,11 @@ function ConditionModal({ rows, header, targetDiffs, editor, onClose }: Conditio
           <span className="condition-modal-scope">
             {inWorkspace
               ? (editor.layout === undefined
-                ? 'このWorkspaceの値を変える。他の画面には反映されない'
-                : `このWorkspaceの値を変える。行ごとに全体や「${editor.layout.name}」だけの値にもできる`)
+                ? 'このWorkspaceの値を変えます。他の画面には反映されません'
+                : `このWorkspaceの値を変えます。行ごとに全体や「${editor.layout.name}」だけの値にもできます`)
               : (editor.layout === undefined
-                ? '全体の値を変える。すべての画面に反映される'
-                : `全体の値を変える。行ごとに「${editor.layout.name}」だけの値にもできる`)}
+                ? '全体の値を変えます。すべての画面に反映されます'
+                : `全体の値を変えます。行ごとに「${editor.layout.name}」だけの値にもできます`)}
           </span>
           <button
             type="button"

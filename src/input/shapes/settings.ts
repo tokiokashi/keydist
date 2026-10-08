@@ -261,7 +261,7 @@ export function parseGeometrySettings(source: string, fallback = DEFAULT_GEOMETR
     if (value.version !== GEOMETRY_SETTINGS_VERSION || !value.settings) throw new Error('設定ファイルのバージョンが違う');
     return sanitizeGeometrySettings(value.settings, fallback);
   } catch (error) {
-    throw error instanceof Error ? error : new Error('設定ファイルを読み込めない');
+    throw error instanceof Error ? error : new Error('設定ファイルを読み込めません');
   }
 }
 

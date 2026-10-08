@@ -132,7 +132,7 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
       ? presetFileName({ kind: 'one', name: chosen[0]!.name })
       : presetFileName({ kind: 'all', date: new Date() });
     fileIo.saveJson(filename, PRESET_FILE_FORMAT, presetFileBody({ presets: chosen }));
-    show(chosen.length === 1 && ids !== undefined ? `「${chosen[0]!.name}」を書き出した` : `${chosen.length}件のプリセットを書き出した`, false);
+    show(chosen.length === 1 && ids !== undefined ? `「${chosen[0]!.name}」を書き出しました` : `${chosen.length}件のプリセットを書き出しました`, false);
   };
 
   const importFile = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -194,7 +194,7 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
   const undo = () => {
     editor.undo();
     // 戻した結果の行は、戻したこと自体を伝える（元に戻すは付けない）
-    setNotice({ text: '元に戻した', undoable: false, base: { overrides, library: presetLibrary } });
+    setNotice({ text: '元に戻しました', undoable: false, base: { overrides, library: presetLibrary } });
     pendingFocus.current = { kind: 'summary' };
   };
 
@@ -203,7 +203,7 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
       <summary>プリセット（{rows.length}）</summary>
       <div className="condition-presets-body">
         {rows.length === 0 ? (
-          <p className="condition-presets-empty">保存したプリセットは無い</p>
+          <p className="condition-presets-empty">保存したプリセットはありません</p>
         ) : (
           <ul className="condition-preset-list">
             {rows.map((row) => (

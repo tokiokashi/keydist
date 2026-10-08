@@ -43,7 +43,7 @@ test('封筒: 書き出して読み直すと、名前と値が往復する（id�
     { name: '自分用メモ', values: { windowSize: 5 } },
     { name: '比較用（N=5）', values: {} },
   ]);
-  assert.equal(result.message, '2件のプリセットを読み込んだ');
+  assert.equal(result.message, '2件のプリセットを読み込みました');
   assert.deepEqual(result.details, []);
 });
 
@@ -74,7 +74,7 @@ test('診断: 旧画面の条件ファイル（conditionsとversion 4）', () =>
 
 test('診断: 新しい版', () => {
   const result = failed(fileText({ version: 2, presets: [] }));
-  assert.equal(result.message, '新しい形式のファイルです。keydist を更新してから読み込んでください');
+  assert.equal(result.message, '新しい形式のファイルです。keydistを更新してから読み込んでください');
   assert.deepEqual(result.details, ['version: 2 (対応: 1)']);
 });
 
@@ -104,7 +104,7 @@ test('診断: 壊れた値・未知の項目は捨てて残りを読み、項目
   );
   assert.ok(result.ok);
   assert.deepEqual(result.presets.map((preset) => preset.values), [{ windowSize: 5 }, {}]);
-  assert.match(result.message, /^2件のプリセットを読み込んだ。4件の値は読み込めませんでした（/);
+  assert.match(result.message, /^2件のプリセットを読み込みました。4件の値は読み込めませんでした（/);
   assert.match(result.message, /先読みN/);
   assert.match(result.message, /同指連続のホーム復帰距離/);
   assert.match(result.message, /この版に無い項目 1件/);
@@ -130,7 +130,7 @@ test('診断: 壊れたプリセットは件数で伝え、残りは読む', () 
   );
   assert.ok(result.ok);
   assert.equal(result.presets.length, 1);
-  assert.equal(result.message, '1件のプリセットを読み込んだ。2件のプリセットは読み込めませんでした');
+  assert.equal(result.message, '1件のプリセットを読み込みました。2件のプリセットは読み込めませんでした');
 });
 
 test('上限: 件数が上限を超えたら丸ごと断る。上限ちょうどは読む', () => {
@@ -143,7 +143,7 @@ test('上限: 件数が上限を超えたら丸ごと断る。上限ちょうど
   assert.equal(exact.presets.length, PRESET_FILE_MAX_PRESETS);
 });
 
-test('参照先: この端末に無い指の割当・ローマ字規則・物理配列は、値を残して注記する', () => {
+test('参照先: この端末にない指の割当・ローマ字規則・物理配列は、値を残して注記する', () => {
   const result = parsePresetFile(
     fileText({
       version: 1,
@@ -160,9 +160,9 @@ test('参照先: この端末に無い指の割当・ローマ字規則・物理
   assert.equal((result.presets[0]!.values as Record<string, unknown>).fingerAssignmentId, 'custom-1');
   const names = result.presets.map((preset) => preset.name);
   const message = importResultMessage(result.message, result.missingReferences, names);
-  assert.match(message, /「自分用メモ」はこの端末に無い指の割当を使っています。流し込むと既定に戻ります/);
-  assert.match(message, /「比較用（N=5）」はこの端末に無いローマ字規則を使っています/);
-  assert.match(message, /「比較用（N=5）」はこの端末に無い物理配列を使っています/);
+  assert.match(message, /「自分用メモ」はこの端末にない指の割当を使っています。流し込むと既定に戻ります/);
+  assert.match(message, /「比較用（N=5）」はこの端末にないローマ字規則を使っています/);
+  assert.match(message, /「比較用（N=5）」はこの端末にない物理配列を使っています/);
   assert.doesNotMatch(message, /手元にあるだけ/);
 });
 
@@ -175,7 +175,7 @@ test('参照先: 手元に同名のプリセットがあっても、注記は番
   const library: PresetLibrary<SettingsValueMap> = { presets: [{ id: 'own', name: '比較用（N=5）', values: {} }] };
   const added = appendImportedPresets(library, result.presets, () => 'new').presets.slice(library.presets.length);
   const message = importResultMessage(result.message, result.missingReferences, added.map((preset) => preset.name));
-  assert.match(message, /「比較用（N=5） 2」はこの端末に無い指の割当/);
+  assert.match(message, /「比較用（N=5） 2」はこの端末にない指の割当/);
   assert.doesNotMatch(message, /「比較用（N=5）」/);
 });
 
@@ -185,7 +185,7 @@ test('参照先: 手元にある参照先なら注記しない', () => {
     REFERENCES,
   );
   assert.ok(result.ok);
-  assert.equal(result.message, '1件のプリセットを読み込んだ');
+  assert.equal(result.message, '1件のプリセットを読み込みました');
 });
 
 test('同名の番号付け: 読み込みは常に追加し、既存と同じ名前は「名前 2」になる', () => {

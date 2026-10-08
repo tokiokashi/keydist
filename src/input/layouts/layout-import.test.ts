@@ -130,7 +130,7 @@ test('DvorakJと紅皿の面内容からローマ字・かなを判定する', (
   ].join('\n'));
   assert.equal(kana.direct, true);
   assert.deepEqual(kana.sequences.find(([output]) => output === 'が'), ['が', [['thumb-l', 'space', '1']]]);
-  assert.deepEqual(kana.warnings, ['面「かな小指シフト」は対応する親指キーを決められないため無視した']);
+  assert.deepEqual(kana.warnings, ['面「かな小指シフト」は対応する親指キーを決められないため無視しました']);
 
   const mixed = importBenizara([
     '[ローマ字シフト無し]',

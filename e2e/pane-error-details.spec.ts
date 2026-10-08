@@ -51,7 +51,7 @@ test('計算中の例外: 1文だけ出し、原文は折りたたんだ詳細�
 
   const alert = pane.locator('[data-pane-error]');
   await expect(alert).toBeVisible({ timeout: 10_000 });
-  await expect(alert.locator('> p')).toHaveText('計算中にエラーが発生した。条件を変えて試してほしい');
+  await expect(alert.locator('> p')).toHaveText('計算中にエラーが発生しました。条件を変えて試してください');
   await expect(alert.locator('> p')).not.toContainText(/k_99/);
   await expectFoldedDetails(alert, false);
 });
@@ -69,7 +69,7 @@ test('描画中の例外（error boundary）: 1文だけ出し、原文とstack�
   const alert = pane.locator('[data-pane-crashed]');
   await expect(alert).toBeVisible({ timeout: 10_000 });
   await expect(pane).toHaveAttribute('data-pane-status', 'ready');
-  await expect(alert.locator('> p')).toHaveText('この可視化を表示できなかった。条件を変えて試してほしい');
+  await expect(alert.locator('> p')).toHaveText('この可視化を表示できませんでした。条件を変えて試してください');
   await expect(alert.locator('> p')).not.toContainText(/k_99/);
   await expectFoldedDetails(alert, true);
 });

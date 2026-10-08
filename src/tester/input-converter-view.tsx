@@ -1264,12 +1264,12 @@ export function InputConverterView() {
             </div>
             <p className="input-capture-hint" id="input-capture-help">
               {session.active ? '入力を受け付けています。' : '入力欄をクリックすると入力を開始します。'}
-              {' '}Backspaceで1文字削除します。
+              Backspaceで1文字削除します。
               {randomPracticeMode === null
-                ? ' Enterで改行します。'
-                : ' ランダム練習中は完成後Enterで次のお題へ進みます。'}
-              {escapeIsLayoutInput ? ' Escは配列入力として扱います。' : ' Escで全削除します。'}
-              {session.composing ? ' IMEで変換中のため、キーを認識していません。' : ''}
+                ? 'Enterで改行します。'
+                : 'ランダム練習中は完成後Enterで次のお題へ進みます。'}
+              {escapeIsLayoutInput ? 'Escは配列入力として扱います。' : 'Escで全削除します。'}
+              {session.composing ? 'IMEで変換中のため、キーを認識していません。' : ''}
             </p>
           </WorkspacePanel>
 

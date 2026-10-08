@@ -73,10 +73,10 @@ function rowFor(rows: readonly ComparisonRow[], targetKey: string): ComparisonRo
 
 function failureLabel(kind: ComparisonFailedRow['failureKind']): string {
   switch (kind) {
-    case 'reference': return '配列・物理配列が見つからない（削除された可能性がある）';
-    case 'incompatible-text': return 'このテキストには使えない';
-    case 'geometry': return 'キーボードを組み立てられない';
-    case 'target-missing': return '削除された、または見つからない';
+    case 'reference': return '配列・物理配列が見つかりません（削除された可能性があります）';
+    case 'incompatible-text': return 'このテキストには使えません';
+    case 'geometry': return 'キーボードを組み立てられません';
+    case 'target-missing': return '削除されたか、見つかりません';
   }
 }
 
@@ -103,7 +103,7 @@ function ColumnHeader({ column, sort, onSortChange }: {
       <button
         type="button"
         className="comparison-sort-button"
-        title="押すたびに昇順・降順・並び替えなしへ切り替える"
+        title="押すたびに昇順・降順・並び替えなしへ切り替わります"
         onClick={() => onSortChange(nextComparisonSort(sort, column))}
       >
         {COMPARISON_COLUMNS[column].label}
@@ -230,12 +230,12 @@ export function ComparisonSettings({ options, onOptionsChange }: AnalyzerSetting
       <CheckboxOptionField
         label="基準比（%）も表示する"
         binding={bind('showBaselineRatio')}
-        hint="対象の選択で基準を選んだ時に、各値の横に基準に対する割合を出す。"
+        hint="対象の選択で基準を選んだ時に、各値の横に基準に対する割合を出します。"
       />
       <OptionField
         label="並び替え"
         binding={bind('sort')}
-        hint="列の見出しを押すと切り替わる。"
+        hint="列の見出しを押すと切り替わります。"
       >
         {(id) => (
           <span id={id}>

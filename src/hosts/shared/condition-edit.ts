@@ -293,7 +293,7 @@ export function defaultShapeChipNotice(
     .filter((layoutId) => layoutOverrideOf(overrides, layoutId, 'defaultShapeId') !== undefined)
     .map((layoutId) => layoutNames?.get(layoutId)?.name ?? 'この配列');
   if (own.length === 0) return undefined;
-  return `配列${own.map((name) => `「${name}」`).join('')}は物理配列を別に決めているため、ここで変えても変わらない`;
+  return `配列${own.map((name) => `「${name}」`).join('')}は物理配列を別に決めているため、ここで変えても変わりません`;
 }
 
 /** 既定値が文脈に依らない項目の既定値。 */
@@ -356,7 +356,7 @@ export function overrideWinsNotices(
     // 配列の推奨が勝つ行は、推奨が実効値なので「変えた行」ではない（出どころは既定値のまま）。
     const recommendationWins = edited === '全体' ? row.recommendationWinsOverGlobal : row.recommendationWinsOverWorkspace;
     if (recommendationWins) {
-      notices.set(row.id, `この配列の推奨（${row.displayValue}）が優先されるため、${edited}を変えてもこの画面は変わらない`);
+      notices.set(row.id, `この配列の推奨（${row.displayValue}）が優先されるため、${edited}を変えてもこの画面は変わりません`);
       continue;
     }
     // 効かない行は理由が要らない。出どころが強いレベルなら、値が既定と同じ（「動作数の扱い」の1動作など）でも
@@ -364,7 +364,7 @@ export function overrideWinsNotices(
     if (!row.applicable) continue;
     if (row.origin.kind === 'default' || row.origin.kind === 'global') continue;
     if (edited === 'Workspace' && row.origin.kind === 'workspace') continue;
-    notices.set(row.id, `${conditionLevelLabel(row.origin, names)}の値が優先されるため、${edited}を変えてもこの画面は変わらない`);
+    notices.set(row.id, `${conditionLevelLabel(row.origin, names)}の値が優先されるため、${edited}を変えてもこの画面は変わりません`);
   }
   return notices;
 }

@@ -55,11 +55,11 @@ function assignMissingNumbers(indexed: readonly IndexedRawSetup[], path: string,
   const kept = indexed.map(({ raw, index }) => {
     if (raw.number === undefined) return undefined;
     if (!isSetupNumber(raw.number)) {
-      diagnostics.push({ path: `${path}[${index}].number`, message: '番号として読めないため、振り直した' });
+      diagnostics.push({ path: `${path}[${index}].number`, message: '番号として読めないため、振り直しました' });
       return undefined;
     }
     if (used.has(raw.number)) {
-      diagnostics.push({ path: `${path}[${index}].number`, message: `番号「${raw.number}」が重複しているため、振り直した` });
+      diagnostics.push({ path: `${path}[${index}].number`, message: `番号「${raw.number}」が重複しているため、振り直しました` });
       return undefined;
     }
     used.add(raw.number);
@@ -72,7 +72,7 @@ function assignMissingNumbers(indexed: readonly IndexedRawSetup[], path: string,
 function decodeSetups(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): Setup[] {
   if (!Array.isArray(raw)) {
     // 値があって配列でない時は、全件が消えることを診断で示す（無い時は空の手持ちで正しい）
-    if (raw !== undefined) diagnostics.push({ path, message: '配列形式でないためSetupを捨てた' });
+    if (raw !== undefined) diagnostics.push({ path, message: '配列形式でないためSetupを捨てました' });
     return [];
   }
   const seen = new Set<string>();
@@ -81,7 +81,7 @@ function decodeSetups(raw: unknown, path: string, diagnostics: CodecDiagnostic[]
     const decoded = decodeDroppingInvalid(setupSchema, candidate, `${path}[${index}]`, diagnostics);
     if (decoded === undefined) return;
     if (seen.has(decoded.id)) {
-      diagnostics.push({ path: `${path}[${index}]`, message: `id「${decoded.id}」が重複しているため捨てた` });
+      diagnostics.push({ path: `${path}[${index}]`, message: `id「${decoded.id}」が重複しているため捨てました` });
       return;
     }
     seen.add(decoded.id);
@@ -109,7 +109,7 @@ function dropOrphanSetupOverrides<V>(
     if (survivingSetupIds.has(setupId)) continue;
     diagnostics.push({
       path: `overrides.setup.${setupId}`,
-      message: `Setup「${setupId}」の手持ちが無いため、対応する上書きを孤児として捨てた`,
+      message: `Setup「${setupId}」の手持ちが無いため、対応する上書きを孤児として捨てました`,
     });
     result = dropSetupOverrides(result, setupId);
   }

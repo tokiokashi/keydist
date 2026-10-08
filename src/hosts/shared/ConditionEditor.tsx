@@ -204,7 +204,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
         items.push({
           id: 'promote',
           label: '全体へ移す',
-          description: `「${layout.name}」の値を全体の値にして、この配列だけの値は消す`,
+          description: `「${layout.name}」の値を全体の値にして、この配列だけの値は消します`,
           onSelect: () => {
             dispatch(promoteToGlobalCommand(layout.id, id, globalDefaultOf(id) as never));
             chooseScope(id, 'global');
@@ -218,7 +218,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
       items.push({
         id: 'promote-workspace',
         label: '全体へ移す',
-        description: 'Workspaceの値を全体の値にして、Workspaceだけの値は消す。他の画面にも反映される',
+        description: 'Workspaceの値を全体の値にして、Workspaceだけの値は消します。他の画面にも反映されます',
         onSelect: () => {
           dispatch(promoteWorkspaceToGlobalCommand(workspace.id, id, globalDefaultOf(id) as never));
           chooseScope(id, 'global');
@@ -243,7 +243,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
       <PaneMenu
         paneName={label}
         label={`${label}の編集先: ${text}`}
-        title={scope === 'layout' ? `「${layout?.name ?? 'この配列'}」の値を編集している` : scope === 'workspace' ? 'このWorkspaceの値を編集している' : '全体の値を編集している'}
+        title={scope === 'layout' ? `「${layout?.name ?? 'この配列'}」の値を編集しています` : scope === 'workspace' ? 'このWorkspaceの値を編集しています' : '全体の値を編集しています'}
         caption={`編集中: ${text}`}
         align="start"
         className="condition-scope-menu"
@@ -278,7 +278,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
             {scopeMenu(id, summary?.label ?? id, notApplicable)}
           </>,
         )}
-        {notApplicable ? <p className="condition-row-flag">この配列・Setupでは効かない</p> : null}
+        {notApplicable ? <p className="condition-row-flag">この配列・Setupでは効きません</p> : null}
         {notice === undefined ? null : <p className="condition-row-notice" data-condition-notice="true">{notice}</p>}
         {diagnostics.map((text, index) => <p key={index} className="condition-row-diagnostic">{text}</p>)}
       </div>
@@ -375,7 +375,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
               binding={boolBinding('sfbHomeCost')}
               choices={ON_OFF}
               badge={badge}
-              hint="同じ指で続けて打つ時、ホームキーへ戻る移動も距離に入れる"
+              hint="同じ指で続けて打つ時、ホームキーへ戻る移動も距離に入れます"
             />
           ))}
           {row('preferOppositeThumb', (badge) => (
@@ -384,7 +384,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
               binding={boolBinding('preferOppositeThumb')}
               choices={ON_OFF}
               badge={badge}
-              hint="親指シフトを、出力するキーと反対側の親指で押す"
+              hint="親指シフトを、出力するキーと反対側の親指で押します"
             />
           ))}
         </section>
@@ -402,7 +402,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
               }}
               choices={[{ value: 'on', label: 'する' }, { value: 'off', label: 'しない' }]}
               badge={badge}
-              hint="押し続けられるシフト系キーを、続けて打つ間は押したままにする"
+              hint="押し続けられるシフト系キーを、続けて打つ間は押したままにします"
             />
           ))}
           {row('actionRealizationPolicy', (badge) => (
@@ -464,7 +464,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
                 binding={romajiBinding}
                 choices={romajiChoices}
                 badge={badge}
-                hint="かなをローマ字で打つ時の綴り。かな配列には効かない"
+                hint="かなをローマ字で打つ時の綴り。かな配列には効きません"
               />
             ))}
           </section>
@@ -478,7 +478,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
               binding={shapeBinding}
               choices={shapeChoices}
               badge={badge}
-              hint="配列を選んだ時に使う物理配列。Setup は自分の物理配列を使う"
+              hint="配列を選んだ時に使う物理配列。Setupは自分の物理配列を使います"
             />
           ))}
           {row('fingerAssignmentId', (badge) => (

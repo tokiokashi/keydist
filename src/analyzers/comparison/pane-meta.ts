@@ -10,7 +10,7 @@ import { COMPARISON_COLUMN_IDS, COMPARISON_COLUMN_TEXT, COMPARISON_UNIT_NOTE } f
  */
 export const COMPARISON_PANE_META = {
   name: '比較表',
-  description: '選んだ配列やSetupで同じテキストを打った時の、指の移動距離などの数値を表に並べる。基準を選ぶと、基準に対する割合も出せる。',
+  description: '選んだ配列やSetupで同じテキストを打った時の、指の移動距離などの数値を表に並べます。基準を選ぶと、基準に対する割合も出せます。',
   /**
    * 見出しのⓘから開く説明。全列の説明を列名と組で出す（今表示している列には絞らない。
    * 解析設定に依らない固定の文なので、Workspaceのペインの見出し（解析設定を持たない枠）からも開ける）。

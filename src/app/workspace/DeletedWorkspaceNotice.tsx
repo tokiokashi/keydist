@@ -24,7 +24,7 @@ export function DeletedWorkspaceNotice() {
 
   return (
     <div className="shell-notice" role="status" data-deleted-workspace-notice="true">
-      <span className="shell-notice-text">「{deleted.workspace.name}」を削除した</span>
+      <span className="shell-notice-text">「{deleted.workspace.name}」を削除しました</span>
       <button type="button" onClick={restore}>元に戻す</button>
       <button type="button" aria-label="閉じる" title="閉じる" onClick={() => setDeletedWorkspace(undefined)}>×</button>
     </div>

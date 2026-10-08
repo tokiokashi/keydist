@@ -200,7 +200,7 @@ test('スマホ幅: 文脈バーの元に戻す・やり直す・共有が直接
   await expect(chip).toContainText('英文');
 
   await share.click();
-  await expect(page.getByRole('status').filter({ hasText: 'URLをコピーした' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'URLをコピーしました' })).toBeVisible();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('/standalone/bigram-flow');
 });
 

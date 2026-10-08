@@ -48,7 +48,7 @@ export function paneStatusLabel(status: PaneEngineState<unknown>['status']): str
 /** `EngineRequestError`（依頼そのものの失敗と計算中の例外の2種）の、利用者向けの1文。 */
 export function describeEngineRequestError(error: EngineRequestError): string {
   if (error.kind === 'resolution') return describeResolvedInputError(error.error);
-  return '計算中にエラーが発生した。条件を変えて試してほしい';
+  return '計算中にエラーが発生しました。条件を変えて試してください';
 }
 
 /** 例外の原文（メッセージとstack）。不具合報告用に折りたたんで出す。 */
@@ -67,4 +67,4 @@ export function engineRequestErrorDetail(error: EngineRequestError): string[] {
 }
 
 /** Trace生成の診断（キーidを含む）につける、利用者向けの1文。 */
-export const TRACE_ERRORS_SENTENCE = '配列と物理配列が噛み合わず、一部の文字を計算に含められなかった';
+export const TRACE_ERRORS_SENTENCE = '配列と物理配列が噛み合わず、一部の文字を計算に含められませんでした';

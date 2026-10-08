@@ -16,7 +16,7 @@ export function loadWithDiagnostics(): DecodedWithDiagnostics<UserLayout[]> {
     if (!raw) return { value: [], diagnostics: [] };
     return decodeUserLayouts(JSON.parse(raw));
   } catch {
-    const diagnostics: CodecDiagnostic[] = [{ path: '', message: '読み取れないため自作の配列を捨てた' }];
+    const diagnostics: CodecDiagnostic[] = [{ path: '', message: '読み取れないため自作の配列を捨てました' }];
     return { value: [], diagnostics };
   }
 }

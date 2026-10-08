@@ -22,7 +22,7 @@ test('Bigram Flow is React-owned and follows the current Analyzer detail result'
   await expect(withinHand).toHaveAttribute('aria-pressed', 'true');
 
   await page.locator('.flow-legacy-settings').getByRole('button', { name: '人', exact: true }).click();
-  await expect(page.locator('.flow-legacy-settings').getByText('1指選択では、その指自身のキー間移動だけを描く。')).toBeVisible();
+  await expect(page.locator('.flow-legacy-settings').getByText('1指選択では、その指自身のキー間移動だけを描きます。')).toBeVisible();
 });
 
 test('Bigram Flow hover keeps connection DOM mounted', async ({ page }) => {

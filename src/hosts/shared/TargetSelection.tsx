@@ -365,7 +365,7 @@ export function TargetSelection({
             </div>
             <div className="target-selection-list">
               {visibleGroups.length === 0 ? (
-                <p className="target-selection-empty">当てはまる配列・Setupは無い。</p>
+                <p className="target-selection-empty">当てはまる配列・Setupはありません。</p>
               ) : visibleGroups.map((group) => (
                 <fieldset key={group.id} className="target-selection-group" data-target-group={group.id}>
                   <legend>{group.label}</legend>
@@ -423,7 +423,7 @@ export function TargetSelection({
                   <button type="button" onClick={() => onChange([])} disabled={selected.length === 0}>すべて外す</button>
                 </>
               ) : (
-                <span className="target-selection-count">配列かSetupを1つ選ぶ</span>
+                <span className="target-selection-count">配列かSetupを1つ選んでください</span>
               )}
               <button type="button" onClick={() => close(true)}>閉じる</button>
             </div>

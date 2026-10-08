@@ -185,7 +185,7 @@ function dvorakJAliases(lines: string[], warnings: string[]): Map<string, string
       ? 'space'
       : dvorakJScanCode(code);
     if (physical) aliases.set(key, physical);
-    else addWarning(warnings, `DvorakJのエイリアス「${key}」の物理キーを解決できないため無視した`);
+    else addWarning(warnings, `DvorakJのエイリアス「${key}」の物理キーを解決できないため無視しました`);
   }
   return aliases;
 }
@@ -247,7 +247,7 @@ export function importDvorakJ(source: string, name = 'DvorakJ取り込み'): Imp
     if (!triggers || (!openingBracketIsOnHeader && lines[bodyStart]?.trim() !== '[')) {
       if (header !== '-option-input[' &&
         (header.endsWith('[') || (/^-(?:[^-]+-?)+$/.test(header) && lines[i + 1]?.trim() === '['))) {
-        addWarning(warnings, `DvorakJの面ヘッダ「${header}」を解釈できないため無視した`);
+        addWarning(warnings, `DvorakJの面ヘッダ「${header}」を解釈できないため無視しました`);
       }
       continue;
     }
@@ -258,7 +258,7 @@ export function importDvorakJ(source: string, name = 'DvorakJ取り込み'): Imp
     i = end;
     const grid = body.filter((line) => line.includes('|')).map(dvorakJCells).slice(0, 4);
     if (grid.length === 0) {
-      addWarning(warnings, `DvorakJの面「${header}」にセルがないため無視した`);
+      addWarning(warnings, `DvorakJの面「${header}」にセルがないため無視しました`);
       continue;
     }
     const base = triggers.length === 0;
@@ -389,7 +389,7 @@ export function importVial(source: string, name = 'Vial取り込み'): ImportedL
         if (!char) continue;
         const physical = locations.get(char);
         if (!physical) {
-          addWarning(warnings, `Vialのコンボ ${comboIndex} は入力キー「${String(code)}」の物理位置を解決できないため無視した`);
+          addWarning(warnings, `Vialのコンボ ${comboIndex} は入力キー「${String(code)}」の物理位置を解決できないため無視しました`);
           inputs.length = 0;
           break;
         }
@@ -399,7 +399,7 @@ export function importVial(source: string, name = 'Vial取り込み'): ImportedL
         const unresolvedCode = entry.slice(0, 4).find((code) =>
           typeof code === 'string' && !QMK_NOOP.has(code.toUpperCase()) && !qmkChar(code));
         if (unresolvedCode !== undefined) {
-          addWarning(warnings, `Vialのコンボ ${comboIndex} は入力キー「${String(unresolvedCode)}」を解決できないため無視した`);
+          addWarning(warnings, `Vialのコンボ ${comboIndex} は入力キー「${String(unresolvedCode)}」を解決できないため無視しました`);
         }
         continue;
       }
@@ -407,7 +407,7 @@ export function importVial(source: string, name = 'Vial取り込み'): ImportedL
       const macro = macroIndex(outputCode);
       const output = macro === undefined ? qmkChar(outputCode) : macroText(macros[macro]);
       if (!output || output === ' ') {
-        addWarning(warnings, `Vialのコンボ ${comboIndex} は出力「${String(outputCode)}」を解決できないため無視した`);
+        addWarning(warnings, `Vialのコンボ ${comboIndex} は出力「${String(outputCode)}」を解決できないため無視しました`);
         continue;
       }
       // コンボの出力が通常キーと同じでも、コンボの打鍵列を優先する。
@@ -483,13 +483,13 @@ export function importBenizara(source: string, name = '紅皿取り込み'): Imp
   const warnings: string[] = [];
   for (const section of candidates) {
     if (!family.includes(section)) {
-      addWarning(warnings, `面「${section}」は選択した出力形式「${prefix}」と異なるため無視した`);
+      addWarning(warnings, `面「${section}」は選択した出力形式「${prefix}」と異なるため無視しました`);
     }
   }
   for (const section of [base, ...family.filter((candidate) => candidate !== base)]) {
     const trigger = benizaraTrigger(section);
     if (!trigger) {
-      addWarning(warnings, `面「${section}」は対応する親指キーを決められないため無視した`);
+      addWarning(warnings, `面「${section}」は対応する親指キーを決められないため無視しました`);
       continue;
     }
     const grid = sections.get(section)!

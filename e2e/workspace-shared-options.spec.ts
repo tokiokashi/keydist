@@ -139,16 +139,16 @@ test('「解析設定を初期値に戻す」は、共有に従うペインで�
 
   // 小窓のボタンのtitleと、⋯のメニューの説明
   const settings = await openSettings(page, 'b');
-  await expect(settings.getByRole('button', { name: 'すべて初期値に戻す' })).toHaveAttribute('title', /共有の設定を戻す/);
+  await expect(settings.getByRole('button', { name: 'すべて初期値に戻す' })).toHaveAttribute('title', /共有の設定を戻します/);
   await closeSettings(page);
   await pane(page, 'b').locator('.pane-frame-menu').getByRole('button', { name: /の操作$/ }).click();
   const item = page.getByRole('menuitem', { name: /解析設定を初期値に戻す/ });
-  await expect(item).toContainText('共有の設定を戻す');
+  await expect(item).toContainText('共有の設定を戻します');
   await item.click();
   await expectWithinHand(page, { a: false, b: false, c: false });
 
   // このペインだけのペインの説明に、共有の話は出ない
   const own = await openSettings(page, 'c');
-  await expect(own.getByRole('button', { name: 'すべて初期値に戻す' })).toHaveAttribute('title', '対象と条件は変わらない');
+  await expect(own.getByRole('button', { name: 'すべて初期値に戻す' })).toHaveAttribute('title', '対象と条件は変わりません');
   await closeSettings(page);
 });

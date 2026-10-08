@@ -127,7 +127,7 @@ export function defineOptions<R extends OptionsRegistry>(items: R): OptionsDefin
   function decodeOptions(raw: unknown, diagnostics: CodecDiagnostic[]): OptionsValueMap<R> {
     if (!isRecord(raw)) {
       if (raw !== undefined) {
-        diagnostics.push({ path: OPTIONS_PATH_ROOT, message: '未知の形式のため既定値へ戻した' });
+        diagnostics.push({ path: OPTIONS_PATH_ROOT, message: '未知の形式のため既定値へ戻しました' });
       }
       return defaultOptions;
     }
@@ -155,7 +155,7 @@ export function defineOptions<R extends OptionsRegistry>(items: R): OptionsDefin
       if (!Object.hasOwn(items, key)) {
         diagnostics.push({
           path: `${OPTIONS_PATH_ROOT}.${key}`,
-          message: `未知の項目「${key}」の解析設定を捨てた`,
+          message: `未知の項目「${key}」の解析設定を捨てました`,
         });
       }
     }
@@ -224,7 +224,7 @@ export function picklistUrlCodec<T extends string>(name: string, allowed: readon
     encode: (value) => value,
     decode: (raw, path, diagnostics) => {
       if ((allowed as readonly string[]).includes(raw)) return raw as T;
-      diagnostics.push({ path, message: `URLパラメータの値「${raw}」は未知のため捨てた` });
+      diagnostics.push({ path, message: `URLパラメータの値「${raw}」は未知のため捨てました` });
       return undefined;
     },
   };
@@ -238,7 +238,7 @@ export function booleanUrlCodec(name: string): OptionUrlCodec<boolean> {
     decode: (raw, path, diagnostics) => {
       if (raw === 'true') return true;
       if (raw === 'false') return false;
-      diagnostics.push({ path, message: `URLパラメータの値「${raw}」は未知のため捨てた` });
+      diagnostics.push({ path, message: `URLパラメータの値「${raw}」は未知のため捨てました` });
       return undefined;
     },
   };
@@ -252,7 +252,7 @@ export function numberUrlCodec(name: string, min: number, max: number): OptionUr
     decode: (raw, path, diagnostics) => {
       const value = Number(raw);
       if (!Number.isFinite(value) || value < min || value > max) {
-        diagnostics.push({ path, message: `URLパラメータの値「${raw}」は範囲外・不正のため捨てた` });
+        diagnostics.push({ path, message: `URLパラメータの値「${raw}」は範囲外・不正のため捨てました` });
         return undefined;
       }
       return value;
@@ -281,11 +281,11 @@ export function stringSetUrlCodec<T extends string>(
           seen.add(element as T);
           result.push(element as T);
         } else {
-          diagnostics.push({ path, message: `URLパラメータの要素「${element}」を捨てた` });
+          diagnostics.push({ path, message: `URLパラメータの要素「${element}」を捨てました` });
         }
       }
       if (result.length > maxCount) {
-        diagnostics.push({ path, message: `要素は${maxCount}件までのため超過分を捨てた` });
+        diagnostics.push({ path, message: `要素は${maxCount}件までのため超過分を捨てました` });
       }
       return result.slice(0, maxCount);
     },

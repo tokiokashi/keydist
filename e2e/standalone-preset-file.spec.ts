@@ -83,12 +83,12 @@ test('書き出したファイルを読み込み直すと、同名は番号付�
   const file = JSON.parse(text);
   expect(file).toMatchObject({ format: 'keydist-presets', version: 1 });
   expect(file.presets.map((preset: { name: string }) => preset.name)).toEqual(['自分用メモ', '比較用（N=5）']);
-  await expect(result(section)).toContainText('2件のプリセットを書き出した');
+  await expect(result(section)).toContainText('2件のプリセットを書き出しました');
 
   await importText(section, text);
   // 同じファイルを続けて選べるよう、読み込みの後に選択を空へ戻している
   await expect(section.getByLabel('読み込むプリセットのファイル')).toHaveValue('');
-  await expect(result(section)).toContainText('2件のプリセットを読み込んだ');
+  await expect(result(section)).toContainText('2件のプリセットを読み込みました');
   await expect(section.locator('summary')).toHaveText('プリセット（4）');
   await expect(section.locator('.condition-preset-name')).toHaveText(['自分用メモ', '比較用（N=5）', '自分用メモ 2', '比較用（N=5） 2']);
   // 読み込んだだけでは条件は変わらない
@@ -123,7 +123,7 @@ test('1件だけ書き出せる。ファイル名にプリセット名が入る'
   expect(await downloadNames(page)).toEqual(['keydist-プリセット-比較用（N=5）.json']);
   const file = JSON.parse(await readFile((await download.path())!, 'utf8'));
   expect(file.presets.map((preset: { name: string }) => preset.name)).toEqual(['比較用（N=5）']);
-  await expect(result(section)).toContainText('「比較用（N=5）」を書き出した');
+  await expect(result(section)).toContainText('「比較用（N=5）」を書き出しました');
 });
 
 test('読み込めないファイルは、理由を文で伝え、プリセットを変えない', async ({ page }) => {
@@ -133,7 +133,7 @@ test('読み込めないファイルは、理由を文で伝え、プリセッ�
     ['壊れたJSON', '{ 壊れた', '条件ファイルとして読めませんでした'],
     ['印が無い', '{"version":1,"presets":[]}', 'keydist の条件ファイルではありません'],
     ['旧画面の形式', '{"version":4,"conditions":{"defaults":{}}}', '旧画面の条件ファイルは読み込めません'],
-    ['新しい版', '{"format":"keydist-presets","version":2,"presets":[]}', '新しい形式のファイルです。keydist を更新してから読み込んでください'],
+    ['新しい版', '{"format":"keydist-presets","version":2,"presets":[]}', '新しい形式のファイルです。keydistを更新してから読み込んでください'],
     ['形が正しくない', '{"format":"keydist-presets","presets":[]}', 'ファイルの形式が正しくありません'],
     ['大きすぎる', Buffer.alloc(1024 * 1024 + 1, 32), 'ファイルが大きすぎます'],
   ];
@@ -156,9 +156,9 @@ test('一部の値だけ読めない時は、読める分を読み込み、項�
   };
   await importText(section, JSON.stringify(file));
   const row = result(section);
-  await expect(row).toContainText('1件のプリセットを読み込んだ');
+  await expect(row).toContainText('1件のプリセットを読み込みました');
   await expect(row).toContainText('2件の値は読み込めませんでした（同指連続のホーム復帰距離、この版に無い項目 1件）');
-  await expect(row).toContainText('「自分用メモ」はこの端末に無い指の割当を使っています。流し込むと既定に戻ります');
+  await expect(row).toContainText('「自分用メモ」はこの端末にない指の割当を使っています。流し込むと既定に戻ります');
   await expect(row).not.toContainText('futureItem');
   const details = section.locator('[data-pane-error-details]');
   await details.locator('summary').click();
@@ -175,7 +175,7 @@ test('参照先の注記は、番号が付いた追加分の名前を指す（�
     presets: [{ id: 'x', name: '比較用（N=5）', values: { fingerAssignmentId: 'from-elsewhere' } }],
   };
   await importText(section, JSON.stringify(file));
-  await expect(result(section)).toContainText('「比較用（N=5） 2」はこの端末に無い指の割当を使っています');
+  await expect(result(section)).toContainText('「比較用（N=5） 2」はこの端末にない指の割当を使っています');
   await expect(result(section)).not.toContainText('「比較用（N=5）」');
 });
 

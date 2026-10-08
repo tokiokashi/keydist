@@ -23,7 +23,7 @@ function decodePresets<V>(
 ): Preset<V>[] {
   if (!Array.isArray(raw)) {
     // 値があって配列でない時は、全件が消えることを診断で示す（無い時は空の手持ちで正しい）
-    if (raw !== undefined) diagnostics.push({ path, message: '配列形式でないためプリセットを捨てた' });
+    if (raw !== undefined) diagnostics.push({ path, message: '配列形式でないためプリセットを捨てました' });
     return [];
   }
   const seen = new Set<string>();
@@ -31,24 +31,24 @@ function decodePresets<V>(
   raw.forEach((candidate, index) => {
     const at = `${path}[${index}]`;
     if (!isRecord(candidate)) {
-      diagnostics.push({ path: at, message: 'プリセットの形が正しくないため捨てた' });
+      diagnostics.push({ path: at, message: 'プリセットの形が正しくないため捨てました' });
       return;
     }
     const { id, name, values } = candidate;
     if (typeof id !== 'string' || id === '') {
-      diagnostics.push({ path: `${at}.id`, message: 'idが無い、または空のプリセットを捨てた' });
+      diagnostics.push({ path: `${at}.id`, message: 'idが無い、または空のプリセットを捨てました' });
       return;
     }
     if (typeof name !== 'string' || name.trim() === '') {
-      diagnostics.push({ path: `${at}.name`, message: '名前が無い、または空のプリセットを捨てた' });
+      diagnostics.push({ path: `${at}.name`, message: '名前が無い、または空のプリセットを捨てました' });
       return;
     }
     if (!isRecord(values)) {
-      diagnostics.push({ path: `${at}.values`, message: '値の形が正しくないプリセットを捨てた' });
+      diagnostics.push({ path: `${at}.values`, message: '値の形が正しくないプリセットを捨てました' });
       return;
     }
     if (seen.has(id)) {
-      diagnostics.push({ path: at, message: `id「${id}」が重複しているため捨てた` });
+      diagnostics.push({ path: at, message: `id「${id}」が重複しているため捨てました` });
       return;
     }
     seen.add(id);

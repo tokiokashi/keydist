@@ -101,17 +101,17 @@ export function applyResultText(
 ): { readonly text: string; readonly undoable: boolean } {
   const skippedText = skippedItemsText(skipped);
   const tail = skippedText === undefined ? '' : `。${skippedText}`;
-  if (changedCount === 0 && skippedText !== undefined) return { text: `「${name}」で変わった項目は無い${tail}`, undoable: false };
-  if (changedCount === 0) return { text: `「${name}」は今の値と同じで、変わった項目は無い${tail}`, undoable: false };
-  return { text: `「${name}」の値にした（${changedCount}項目が変わった）${tail}`, undoable: true };
+  if (changedCount === 0 && skippedText !== undefined) return { text: `「${name}」で変わった項目はありませんでした${tail}`, undoable: false };
+  if (changedCount === 0) return { text: `「${name}」は今の値と同じで、変わった項目はありませんでした${tail}`, undoable: false };
+  return { text: `「${name}」の値にしました（${changedCount}項目が変わりました）${tail}`, undoable: true };
 }
 
 export function savedResultText(name: string, scope: string = '全体'): string {
-  return `「${name}」として今の${scope}の値を保存した`;
+  return `「${name}」として今の${scope}の値を保存しました`;
 }
 
 export function deletedResultText(name: string): string {
-  return `「${name}」を削除した`;
+  return `「${name}」を削除しました`;
 }
 
 /** 保存できる名前か（trimして1文字以上）。ボタンの有効・無効に使う。 */

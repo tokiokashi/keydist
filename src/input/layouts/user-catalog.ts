@@ -39,9 +39,9 @@ export function buildUserCatalog(
   userRomajiRules.forEach((rule, index) => {
     const path = `userRomajiRules[${index}]`;
     if (isBuiltin(rule.id)) {
-      diagnostics.push({ path, message: `id「${rule.id}」が組み込みの規則と同じため捨てた` });
+      diagnostics.push({ path, message: `id「${rule.id}」が組み込みの規則と同じため捨てました` });
     } else if (ruleIds.has(rule.id)) {
-      diagnostics.push({ path, message: `id「${rule.id}」が重複しているため捨てた` });
+      diagnostics.push({ path, message: `id「${rule.id}」が重複しているため捨てました` });
     } else {
       ruleIds.add(rule.id);
       romajiRules.push(rule);
@@ -53,16 +53,16 @@ export function buildUserCatalog(
   userLayouts.forEach((definition, index) => {
     const path = `userLayouts[${index}]`;
     if (LAYOUT_BY_ID.has(definition.id)) {
-      diagnostics.push({ path, message: `id「${definition.id}」が組み込みの配列と同じため捨てた` });
+      diagnostics.push({ path, message: `id「${definition.id}」が組み込みの配列と同じため捨てました` });
       return;
     }
     if (definitions.has(definition.id)) {
-      diagnostics.push({ path, message: `id「${definition.id}」が重複しているため捨てた` });
+      diagnostics.push({ path, message: `id「${definition.id}」が重複しているため捨てました` });
       return;
     }
     const errors = validate(definition.rows);
     if (errors.length > 0) {
-      diagnostics.push({ path, message: `配列として組めないため捨てた（${errors.join('、')}）` });
+      diagnostics.push({ path, message: `配列として組めないため捨てました（${errors.join('、')}）` });
       return;
     }
     let layout: Layout;
@@ -70,14 +70,14 @@ export function buildUserCatalog(
       layout = toLayout(definition);
     } catch (cause) {
       const reason = cause instanceof Error ? cause.message : String(cause);
-      diagnostics.push({ path, message: `配列として組めないため捨てた（${reason}）` });
+      diagnostics.push({ path, message: `配列として組めないため捨てました（${reason}）` });
       return;
     }
     if (definition.direct !== true) {
       if (isBuiltin(definition.romaji) || ruleIds.has(definition.romaji)) {
         layout = { ...layout, recommendedRomajiRuleId: definition.romaji };
       } else {
-        diagnostics.push({ path: `${path}.romaji`, message: `ローマ字規則「${definition.romaji}」が見つからないため、全体の値の規則で打つ` });
+        diagnostics.push({ path: `${path}.romaji`, message: `ローマ字規則「${definition.romaji}」が見つからないため、全体の値の規則で打ちます` });
       }
     }
     definitions.set(definition.id, definition);

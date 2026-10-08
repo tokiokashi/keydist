@@ -65,14 +65,14 @@ test('書き出したファイルを読み込むと、同じ中身は足さず�
   for await (const chunk of stream) chunks.push(chunk as Buffer);
   const text = Buffer.concat(chunks).toString('utf8');
   expect(JSON.parse(text).format).toBe('keydist-user-assets');
-  await expect(page.locator('.user-assets-message')).toContainText('書き出した');
+  await expect(page.locator('.user-assets-message')).toContainText('書き出しました');
 
   // 同じファイルを読み込むと何も足さない
   const input = page.getByLabel('読み込む自作の資産のファイル');
   await input.setInputFiles({ name: 'assets.json', mimeType: 'application/json', buffer: Buffer.from(text) });
   const result = page.locator('[data-user-assets-import-result]');
   await expect(result).toContainText('手元と同じ中身なので、足したものはありません');
-  await expect(result).toContainText('配列「自作A」は、手元と同じ中身なので足さなかった');
+  await expect(result).toContainText('配列「自作A」は、手元と同じ中身なので足しませんでした');
   await expect(layouts.locator('[data-user-asset-row]')).toHaveCount(2);
 
   // 同じidで中身が違うものは、手元を残して別名で足す
@@ -83,7 +83,7 @@ test('書き出したファイルを読み込むと、同じ中身は足さず�
   changed.layouts[0]!.rows[1] = 'poiuytrewq';
   changed.romajiRules[0]!.overrides = { し: 'si' };
   await input.setInputFiles({ name: 'changed.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(changed)) });
-  await expect(result).toContainText('「自作A (2)」として足した');
+  await expect(result).toContainText('「自作A (2)」として足しました');
   await expect(layouts.locator('[data-user-asset-row]')).toHaveCount(3);
   await expect(rules.locator('[data-user-asset-row]')).toHaveCount(2);
   await expect(layouts.locator('[data-user-asset-row="user-a"]')).toContainText('推奨のローマ字規則: 自作の規則');

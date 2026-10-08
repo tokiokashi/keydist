@@ -70,7 +70,7 @@ test('プリセット: 今の全体の値を保存すると一覧に加わり、
   await expect(section.locator('summary')).toHaveText('プリセット（1）');
   const row = rowOf(section, '厳しめ');
   await expect(row).toContainText('今の値と同じ');
-  await expect(section.locator('[data-preset-result]')).toContainText('「厳しめ」として今の全体の値を保存した');
+  await expect(section.locator('[data-preset-result]')).toContainText('「厳しめ」として今の全体の値を保存しました');
   await expect(section.getByLabel('プリセットの名前')).toHaveValue('');
 
   // 保存の中身は、その時の全体の上書き（既定から変えた項目だけ）
@@ -99,13 +99,13 @@ test('プリセット: 流し込むと全体の値が置き換わり、結果の
   const windowRow = modal.locator('[data-item="windowSize"]');
   await expect(windowRow.locator('output')).toHaveText('5');
   await expect(windowRow).toContainText('全体で変更');
-  await expect(section.locator('[data-preset-result]')).toContainText('「厳しめ」の値にした（2項目が変わった）');
+  await expect(section.locator('[data-preset-result]')).toContainText('「厳しめ」の値にしました（2項目が変わりました）');
   await expect(rowOf(section, '厳しめ')).toContainText('今の値と同じ');
 
   await section.getByRole('button', { name: '元に戻す' }).click();
   await expect(windowRow.locator('output')).toHaveText('3');
   await expect(modal.locator('[data-changed]')).toHaveCount(0);
-  await expect(section.locator('[data-preset-result]')).toContainText('元に戻した');
+  await expect(section.locator('[data-preset-result]')).toContainText('元に戻しました');
   await expect(section.getByRole('button', { name: '元に戻す' })).toHaveCount(0);
 
   // モーダルを閉じた要約にも、流し込みの結果が出ている（文脈バーの元に戻すとも同じ履歴）
@@ -162,7 +162,7 @@ test('プリセット: 削除すると一覧から消え、結果の行の元に
   await page.getByRole('menuitem', { name: '削除' }).click();
   await expect(section.locator('summary')).toHaveText('プリセット（1）');
   await expect(rowOf(section, '厳しめ')).toHaveCount(0);
-  await expect(section.locator('[data-preset-result]')).toContainText('「厳しめ」を削除した');
+  await expect(section.locator('[data-preset-result]')).toContainText('「厳しめ」を削除しました');
 
   await section.getByRole('button', { name: '元に戻す' }).click();
   await expect(section.locator('summary')).toHaveText('プリセット（2）');

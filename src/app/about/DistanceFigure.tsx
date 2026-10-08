@@ -63,7 +63,7 @@ export function DistanceFigure() {
       <svg
         viewBox={`0 0 ${width} ${height}`}
         role="img"
-        aria-label={`「ぬいぐるみ」（訓令式のnuigurumi）の最初の3打鍵（${label}）。右手人差し指は、ホームの${HOME_KEY}からnへ${fmt(homeToN)}、続けてnからuへ${fmt(nToU)}動く。`}
+        aria-label={`「ぬいぐるみ」（訓令式のnuigurumi）の最初の3打鍵（${label}）。右手人差し指は、ホームの${HOME_KEY}からnへ${fmt(homeToN)}、続けてnからuへ${fmt(nToU)}動きます。`}
       >
         <defs>
           <marker id="distance-figure-head" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">

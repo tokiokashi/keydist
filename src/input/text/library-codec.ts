@@ -34,7 +34,7 @@ const KNOWN_USER_TEXT_KEYS: ReadonlySet<string> = new Set(['id', 'name', 'text',
 function decodeUserTexts(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): UserText[] {
   if (!Array.isArray(raw)) {
     // 値があって配列でない時は、全件が消えることを診断で示す（無い時は空の手持ちで正しい）
-    if (raw !== undefined) diagnostics.push({ path, message: '配列形式でないためテキストを捨てた' });
+    if (raw !== undefined) diagnostics.push({ path, message: '配列形式でないためテキストを捨てました' });
     return [];
   }
   const seen = new Set<string>();
@@ -44,14 +44,14 @@ function decodeUserTexts(raw: unknown, path: string, diagnostics: CodecDiagnosti
     const decoded = decodeDroppingInvalid(requiredFieldsSchema, candidate, elementPath, diagnostics);
     if (decoded === undefined) return;
     if (seen.has(decoded.id)) {
-      diagnostics.push({ path: elementPath, message: `id「${decoded.id}」が重複しているため捨てた` });
+      diagnostics.push({ path: elementPath, message: `id「${decoded.id}」が重複しているため捨てました` });
       return;
     }
     seen.add(decoded.id);
     // `looseObject`は未知のキーを黙って通すので、捨てる前に診断を積む（「捨てた値には必ず診断」）
     for (const extraKey of Object.keys(decoded)) {
       if (!KNOWN_USER_TEXT_KEYS.has(extraKey)) {
-        diagnostics.push({ path: `${elementPath}.${extraKey}`, message: `未知の項目「${extraKey}」を捨てた` });
+        diagnostics.push({ path: `${elementPath}.${extraKey}`, message: `未知の項目「${extraKey}」を捨てました` });
       }
     }
 

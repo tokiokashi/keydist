@@ -261,7 +261,7 @@ export { formatOrigin, cascadeLevelLabel as conditionLevelLabel };
 export function conditionDiagnosticText(row: ConditionSummaryRow, diagnostic: Diagnostic): string | undefined {
   switch (diagnostic.kind) {
     case 'not-applicable': return undefined;
-    case 'ignored-disallowed-level': return `「${row.label}」の上書きのうち、置けない場所にあった値を無視した`;
+    case 'ignored-disallowed-level': return `「${row.label}」の上書きのうち、置けない場所にあった値を無視しました`;
     case 'invalid-fallback': return diagnostic.message;
   }
 }

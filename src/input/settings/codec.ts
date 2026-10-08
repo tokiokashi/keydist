@@ -70,7 +70,7 @@ export function decodeLevelOverrides<V>(
     // "constructor"は実在しない項目id同様に自然と「未知の項目」経路へ落ちる
     // （UNSAFE_OBJECT_KEYSのような別の予約リストを二重に持つ必要が無い）。
     if (!Object.hasOwn(schemas, itemId)) {
-      diagnostics.push({ path: `${path}.${itemId}`, message: `未知の項目「${itemId}」の上書きを捨てた` });
+      diagnostics.push({ path: `${path}.${itemId}`, message: `未知の項目「${itemId}」の上書きを捨てました` });
       continue;
     }
     const schema = schemas[itemId];
@@ -116,7 +116,7 @@ export function decodeCascadeOverrides<V>(
         // 「捨てた値には必ず診断」を守る。
         diagnostics.push({
           path: `${path}.${bucketKey}.${instanceKey}`,
-          message: `予約された名前「${instanceKey}」のため、このidの上書きを丸ごと捨てた`,
+          message: `予約された名前「${instanceKey}」のため、このidの上書きを丸ごと捨てました`,
         });
         continue;
       }

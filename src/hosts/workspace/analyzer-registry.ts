@@ -47,7 +47,7 @@ export function findWorkspaceAnalyzer(analyzerId: string): WorkspaceAnalyzerEntr
 export const BLANK_PANE_META = {
   id: BLANK_PANE_ID,
   name: '余白',
-  description: '何も表示しない。並びの空きを埋める',
+  description: '何も表示しません。並びの空きを埋めます',
 } as const;
 
 export function isBlankPane(analyzerId: string): boolean {

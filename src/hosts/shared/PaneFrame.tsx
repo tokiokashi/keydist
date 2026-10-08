@@ -150,8 +150,8 @@ function OptionsBindingSwitch({ control }: { readonly control: PaneOptionsBindin
       </div>
       <p className="settings-window-binding-note">
         {control.shared
-          ? '同じAnalyzerの共有に従うペインと、設定が一緒に変わる'
-          : 'このペインの設定は、他のペインに合わせて変わらない'}
+          ? '同じAnalyzerの共有に従うペインと、設定が一緒に変わります'
+          : 'このペインの設定は、他のペインに合わせて変わりません'}
       </p>
     </div>
   );
@@ -248,8 +248,8 @@ export function PaneFrame({
               items={targetBinding.items}
               label={`${targetBinding.follows ? `連動 ${targetBinding.groupNumber}` : '固定'}（対象: ${targetBinding.summary}）`}
               title={targetBinding.follows
-                ? `連動 ${targetBinding.groupNumber}: 同じ番号のペインと、配列・Setupが一緒に変わる`
-                : '固定: このペインの対象は、他のペインに合わせて変わらない'}
+                ? `連動 ${targetBinding.groupNumber}: 同じ番号のペインと、配列・Setupが一緒に変わります`
+                : '固定: このペインの対象は、他のペインに合わせて変わりません'}
               icon={<BindingGlyph kind={targetBinding.follows ? 'link' : 'pin'} number={targetBinding.follows ? targetBinding.groupNumber : undefined} />}
               className="pane-target-binding"
               data={{ 'data-follows': String(targetBinding.follows) }}
@@ -306,7 +306,7 @@ export function PaneFrame({
       */}
       {settingsDiagnostics && settingsDiagnostics.length > 0 ? (
         <p className="pane-settings-diagnostics" role="status" data-pane-settings-diagnostics="true">
-          読み取れない解析設定があったため、その項目は既定値へ戻した（{settingsDiagnostics.length}件）
+          読み取れない解析設定があったため、その項目は既定値へ戻しました（{settingsDiagnostics.length}件）
         </p>
       ) : null}
 

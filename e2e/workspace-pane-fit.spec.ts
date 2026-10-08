@@ -185,7 +185,7 @@ test('左右の手をまたぐ2打鍵の注記は図の下ではなくRelative v
   await expect(flowRoot).toBeVisible({ timeout: 15_000 });
   await expect(flowRoot).not.toContainText('左右の手をまたぐ');
   await flowRoot.getByRole('button', { name: 'Relative vectorsの説明' }).click();
-  await expect(page.getByRole('tooltip')).toContainText('左右の手をまたぐ2打鍵は、Keyboard Flowには含めるが、Relative vectorsからは除く');
+  await expect(page.getByRole('tooltip')).toContainText('左右の手をまたぐ2打鍵は、Keyboard Flowには含めますが、Relative vectorsからは除きます');
 });
 
 test('個別画面の外側に高さを測れるcontainerがあっても、Workspace用の規則は漏れない（本体の領域は名前つきで問う）', async ({ page }) => {

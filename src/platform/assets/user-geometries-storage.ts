@@ -29,7 +29,7 @@ export function loadWithDiagnostics(storage = storageOrUndefined()): DecodedWith
     const raw = storage.getItem(USER_GEOMETRIES_STORAGE_KEY);
     return decodeUserGeometryShapes(raw === null ? undefined : JSON.parse(raw));
   } catch {
-    const diagnostics: CodecDiagnostic[] = [{ path: '', message: '読み取れないため自作の物理配列を捨てた' }];
+    const diagnostics: CodecDiagnostic[] = [{ path: '', message: '読み取れないため自作の物理配列を捨てました' }];
     return { value: [], diagnostics };
   }
 }

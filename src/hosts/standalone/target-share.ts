@@ -292,7 +292,7 @@ export function decodeMultiTargetsFromUrl(
   if (rawTargets.length === 0 && rawBaseline === null) return { present: false, targets: [], baseline: undefined, notice };
 
   if (rawTargets.length > SHARE_MAX_TARGETS) {
-    diagnostics.push({ path: `url.${SHARE_TARGETS_PARAM}`, message: `対象は${SHARE_MAX_TARGETS}件までのため超過分を捨てた` });
+    diagnostics.push({ path: `url.${SHARE_TARGETS_PARAM}`, message: `対象は${SHARE_MAX_TARGETS}件までのため超過分を捨てました` });
     notice.unreadable += rawTargets.length - SHARE_MAX_TARGETS;
   }
   const resolved = resolveAll(rawTargets.slice(0, SHARE_MAX_TARGETS), `url.${SHARE_TARGETS_PARAM}`, source, diagnostics, notice);
@@ -325,10 +325,10 @@ export function describeSharedTargetsNotice(notice: SharedTargetsNotice): readon
     const names = notice.notFound.slice(0, MAX_NAMES_SHOWN).map((item) =>
       item.kind === 'setup' ? `Setup「${item.name}」` : `自作の配列「${item.name}」`);
     const rest = notice.notFound.length - names.length;
-    lines.push(`共有された${names.join('・')}${rest > 0 ? `ほか${rest}件` : ''}は、この端末に見つからなかった`);
+    lines.push(`共有された${names.join('・')}${rest > 0 ? `ほか${rest}件` : ''}は、この端末に見つかりませんでした`);
   }
   if (notice.unreadable > 0) {
-    lines.push(`共有リンクの対象のうち、読み取れないものがあった（${notice.unreadable}件）`);
+    lines.push(`共有リンクの対象のうち、読み取れないものがありました（${notice.unreadable}件）`);
   }
   return lines;
 }
@@ -348,21 +348,21 @@ function quoteName(item: { readonly kind: 'user-layout' | 'setup'; readonly name
 export function describeShareEncodeNotice(notice: ShareEncodeNotice): readonly string[] {
   const lines: string[] = [];
   if (notice.missing > 0) {
-    lines.push(`削除済みの対象（${notice.missing}件）はリンクに載らなかった`);
+    lines.push(`削除済みの対象（${notice.missing}件）はリンクに載りませんでした`);
   }
   if (notice.tooLong.length > 0) {
     const names = notice.tooLong.slice(0, MAX_NAMES_SHOWN).map(quoteName);
     const rest = notice.tooLong.length - names.length;
-    lines.push(`名前が長すぎる${names.join('・')}${rest > 0 ? `ほか${rest}件` : ''}はリンクに載らなかった`);
+    lines.push(`名前が長すぎる${names.join('・')}${rest > 0 ? `ほか${rest}件` : ''}はリンクに載りませんでした`);
   }
   if (notice.overLimit > 0) {
-    lines.push(`対象は${SHARE_MAX_TARGETS}件までのため、超えた分（${notice.overLimit}件）はリンクに載らなかった`);
+    lines.push(`対象は${SHARE_MAX_TARGETS}件までのため、超えた分（${notice.overLimit}件）はリンクに載りませんでした`);
   }
   if (notice.nameOnlyLayouts.length > 0) {
     const names = notice.nameOnlyLayouts.slice(0, MAX_NAMES_SHOWN).map((name) =>
       quoteName({ kind: 'user-layout', name }));
     const rest = notice.nameOnlyLayouts.length - names.length;
-    lines.push(`${names.join('・')}${rest > 0 ? `ほか${rest}件` : ''}は名前だけがリンクに載る。受け取った側に同じ名前の配列が無いと開けない`);
+    lines.push(`${names.join('・')}${rest > 0 ? `ほか${rest}件` : ''}は名前だけがリンクに載ります。受け取った側に同じ名前の配列が無いと開けません`);
   }
   return lines;
 }

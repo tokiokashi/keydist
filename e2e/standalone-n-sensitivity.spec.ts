@@ -370,7 +370,7 @@ test('「共有」でコピーしたURLを新しいページで開くと、解�
   await (await openSettings(page)).getByRole('radio', { name: '実測値 [u]' }).check();
 
   await page.getByRole('button', { name: '共有', exact: true }).click();
-  await expect(page.getByRole('status').filter({ hasText: 'URLをコピーした' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'URLをコピーしました' })).toBeVisible();
   const url = await page.evaluate(() => navigator.clipboard.readText());
   expect(url).toContain('scale=absolute');
 

@@ -16,7 +16,7 @@ export function loadRomajiSettingsWithDiagnostics(): DecodedWithDiagnostics<Roma
     if (!raw) return decodeStoredRomajiSettings(undefined);
     return decodeStoredRomajiSettings(JSON.parse(raw));
   } catch {
-    const diagnostics: CodecDiagnostic[] = [{ path: '', message: '読み取れないため自作のローマ字規則を捨てた' }];
+    const diagnostics: CodecDiagnostic[] = [{ path: '', message: '読み取れないため自作のローマ字規則を捨てました' }];
     return { value: { rules: [], assignments: {} }, diagnostics };
   }
 }

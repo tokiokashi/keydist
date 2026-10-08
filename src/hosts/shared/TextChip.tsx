@@ -117,7 +117,7 @@ export function TextChip(props: TextChipProps) {
         <span className="context-chip-value">{resolved.name}</span>
         <span className="text-chip-count">{formatTextCount(countTextCharacters(resolved.text))}</span>
         {hasUnseen ? (
-          <span className="text-chip-unseen" role="img" aria-label="新しいテキストがある" title="新しいテキストがある" />
+          <span className="text-chip-unseen" role="img" aria-label="新しいテキストがあります" title="新しいテキストがあります" />
         ) : null}
         <span className="text-chip-language">{languageLabel(resolved.language)}</span>
         <svg className="context-chip-chevron" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
@@ -320,8 +320,8 @@ function TextEditor({
 
       <p className="text-editor-hint">
         {resolved.isBuiltin
-          ? 'サンプルを書き換えると、自作のテキストとして新しく保存する。元のサンプルはそのまま残る。'
-          : '自作のテキストはその場で書き換わる。残しておきたい時は先に複製する。'}
+          ? 'サンプルを書き換えると、自作のテキストとして新しく保存します。元のサンプルはそのまま残ります。'
+          : '自作のテキストはその場で書き換わります。残しておきたい時は先に複製します。'}
       </p>
     </div>
   );

@@ -468,8 +468,8 @@ test('連動のメニュー: 項目は絵と対象の要約の1行で、読み�
   await expect(items.nth(0).locator('svg[data-icon="pin"]')).toBeVisible();
   await expect(page.locator('.pane-menu-list')).not.toContainText('リンク');
   // ボタンの説明（hover）は、対象に付く条件が変わらないとは書かない
-  await expect(pinButton(panes.nth(0))).toHaveAttribute('title', /同じ番号のペインと、配列・Setupが一緒に変わる/);
-  await expect(pinButton(panes.nth(1))).toHaveAttribute('title', /他のペインに合わせて変わらない/);
+  await expect(pinButton(panes.nth(0))).toHaveAttribute('title', /同じ番号のペインと、配列・Setupが一緒に変わります/);
+  await expect(pinButton(panes.nth(1))).toHaveAttribute('title', /他のペインに合わせて変わりません/);
   await page.keyboard.press('Escape');
 });
 
@@ -675,7 +675,7 @@ test('使えないAnalyzerのペインは使えないと出て、閉じられる
   await expect(pane(page, 'Bigram Flow').locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   const notices = page.locator('[data-workspace-pane-notice]');
   await expect(notices).toHaveCount(2);
-  await expect(notices.first()).toContainText('このAnalyzerは使えない');
+  await expect(notices.first()).toContainText('このAnalyzerは使えません');
 
   await notices.first().getByRole('button', { name: '閉じる' }).click();
   await expect(notices).toHaveCount(1);
@@ -905,7 +905,7 @@ test('Workspaceのペインの条件のモーダルはWorkspaceのレベルで�
   await expect(panes.first().locator('.pane-condition-trigger')).toHaveText('条件: 既定値');
 
   const modal = await openPaneConditionModal(page, panes.first());
-  await expect(modal.getByText(/このWorkspaceの値を変える。/)).toBeVisible();
+  await expect(modal.getByText(/このWorkspaceの値を変えます。/)).toBeVisible();
   const row = modal.locator('[data-item="windowSize"]');
   // 開いた時の編集先はWorkspace
   await expect(row.getByRole('button', { name: /の編集先: / })).toHaveAttribute('aria-label', /の編集先: Workspace$/);
@@ -966,7 +966,7 @@ test('Workspaceのペインの条件のモーダル: 行のメニューで全体
   await expect(row).toContainText('Workspaceで変更');
   await expect.poll(async () => (await storedWorkspaceConditions(page)).windowSize).toBe(5);
   await pickScope(row, '全体を編集');
-  await expect(row.locator('[data-condition-notice]')).toContainText('Workspaceの値が優先されるため、全体を変えてもこの画面は変わらない');
+  await expect(row.locator('[data-condition-notice]')).toContainText('Workspaceの値が優先されるため、全体を変えてもこの画面は変わりません');
 
   // Workspaceの値を全体へ移す。このWorkspaceの値は変わらず、全体の値になる
   await pickScope(row, 'Workspaceを編集');
@@ -1029,7 +1029,7 @@ test('Workspaceのペインでも、推奨を持つ配列（大西配列）の�
   const row = modal.locator('[data-item="romajiRuleId"]');
   await expect(row.getByRole('button', { name: /の編集先: / })).toHaveAttribute('aria-label', /の編集先: Workspace$/);
   await expect(row.locator('[data-condition-notice]')).toContainText('この配列の推奨（大西式');
-  await expect(row.locator('[data-condition-notice]')).toContainText('Workspaceを変えてもこの画面は変わらない');
+  await expect(row.locator('[data-condition-notice]')).toContainText('Workspaceを変えてもこの画面は変わりません');
 });
 
 test('Workspaceのレベルのプリセット: 全体の値を重ねた値を保存し、全体の既定で保存した値を全体N=7のWorkspaceへ流し込める', async ({ page }) => {
@@ -1221,7 +1221,7 @@ test('Workspaceを削除すると次のWorkspaceへ移り、元に戻すで元�
   await workspaceMenu(page, '削除');
   await expect(page).toHaveURL(new RegExp(`/workspace/${thirdId}$`));
   await expect(bar.getByRole('heading', { level: 1 })).toBeVisible();
-  await expect(notice).toContainText('を削除した');
+  await expect(notice).toContainText('を削除しました');
   expect((await storedWorkspaces(page)).workspaces.map((w) => w.id)).toEqual([firstId, thirdId]);
 
   // 元に戻すと、元の位置へ戻ってそのWorkspaceが開く
