@@ -2,7 +2,7 @@ import { defineAssetCodec, isRecord, type AssetCodec, type CodecDiagnostic } fro
 import type { Command } from '#input/commands/index.ts';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { decodeUserLayouts, type UserLayout } from '#input/layouts/user-layouts.ts';
-import { decodeUserRomajiRules, isBuiltin, type UserRomajiRule } from '#input/romaji/rules.ts';
+import { decodeUserRomajiRules, isBuiltin, ROMAJI_RULES, type UserRomajiRule } from '#input/romaji/rules.ts';
 import { decodeUserFingerAssignments } from '#input/shapes/user-finger-assignments.ts';
 import type { FingerAssignment } from '#input/shapes/geometry.ts';
 import type { KeydistAssets } from './commands.ts';
@@ -11,8 +11,8 @@ import { FINGER_ASSIGNMENT_REGISTRY } from './finger-assignment.ts';
 /**
  * 自作の配列・ローマ字規則・指の割り当ての書き出しファイルの形と、読み込み時の突き合わせ（DOMを使わない計算）。
  *
- * ファイルは`{ format, version, layouts, romajiRules, fingerAssignments }`。`format`は書く直前に
- * `platform/browser-download.ts`が付け、読む時は`format`を見てからこのcodecへ渡す（プリセットのファイルと同じ封筒）。
+ * ファイルは `{ format, version, layouts, romajiRules, fingerAssignments }`。`format` は書く直前に
+ * `platform/browser-download.ts` が付け、読む時は `format` を見てからこのcodecへ渡す（プリセットのファイルと同じ封筒）。
  * 自作の物理配列は扱わない。
  */
 
@@ -53,7 +53,7 @@ export const USER_ASSETS_FILE_CODEC: AssetCodec<UserAssetsBundle> = defineAssetC
 
 export type UserAssetsHoldings = Pick<KeydistAssets, 'userLayouts' | 'userRomajiRules' | 'fingerAssignments'>;
 
-/** 書き出すファイルの本体（`format`は付けない）。 */
+/** 書き出すファイルの本体（`format` は付けない）。 */
 export function userAssetsFileBody(assets: UserAssetsHoldings): Record<string, unknown> {
   return USER_ASSETS_FILE_CODEC.encode({
     layouts: assets.userLayouts,
@@ -69,8 +69,14 @@ export type UserAssetImportOutcome =
   /** 手元に同じidが無く、そのまま足した。 */
   | { readonly kind: 'added' }
   /** 手元に同じidで中身の違うものがあり（または組み込みと同じidで）、別のidと別名で足した。 */
-  | { readonly kind: 'added-renamed'; readonly addedName: string; readonly addedId: string }
-  /** 手元に同じidで中身が同じものがあり、何も足さなかった。`existingName`は手元の名前（ファイルの名前と違いうる）。 */
+  | {
+    readonly kind: 'added-renamed';
+    readonly addedName: string;
+    readonly addedId: string;
+    /** 重なった相手。手元の自作か、組み込みか。名前は相手の名前。 */
+    readonly overlap: { readonly with: 'own' | 'builtin'; readonly name: string };
+  }
+  /** 手元に同じidで中身が同じものがあり、何も足さなかった。`existingName` は手元の名前（ファイルの名前と違いうる）。 */
   | { readonly kind: 'skipped-same'; readonly existingName: string };
 
 export interface UserAssetImportEntry {
@@ -98,8 +104,8 @@ function canonical(value: unknown): string {
 
 /**
  * 「中身が同じ」の判定に使う項目。idと名前は比べない（idは突き合わせの鍵で、名前は数値に関わらない）。
- * 数値に関わる項目はすべて比べる。値が無いこととfalseが同じ意味の`direct`だけ、省略を揃える。
- * `romaji`は推奨の規則の読み込み後のidで比べる。ローマ字を経ない配列は`romaji`を使わないので比べない。
+ * 数値に関わる項目はすべて比べる。値が無いこととfalseが同じ意味の `direct` だけ、省略を揃える。
+ * `romaji` は推奨の規則の読み込み後のidで比べる。ローマ字を経ない配列は `romaji` を使わないので比べない。
  */
 function layoutContent(layout: UserLayout): string {
   const direct = layout.direct === true;
@@ -131,12 +137,14 @@ interface MergeKind<T extends Item> {
   readonly incoming: readonly T[];
   /** 組み込みの資産のid。同じidの自作は足さない（引いた結果がどちらか分からなくなるため）。 */
   readonly builtinIds: (id: string) => boolean;
+  /** 組み込みの資産の名前。組み込みと重なったと伝える文に使う。 */
+  readonly builtinName: (id: string) => string | undefined;
   readonly content: (item: T) => string;
   /** 別名で足す時の組み替え（新しいidと名前）。 */
   readonly rebuild: (item: T, id: string, name: string) => T;
 }
 
-/** 重ならない新しいid。`stamp`は1回の読み込みで固定の値で、同じ入力なら同じidになる。 */
+/** 重ならない新しいid。`stamp` は1回の読み込みで固定の値で、同じ入力なら同じidになる。 */
 function freshId(prefix: string, stamp: string, used: ReadonlySet<string>, builtin: (id: string) => boolean): string {
   for (let n = 1; ; n += 1) {
     const id = `${prefix}${stamp}-${n}`;
@@ -184,6 +192,10 @@ function mergeKind<T extends Item>(kind: MergeKind<T>, stamp: string): {
       entries.push({ assetKind: kind.assetKind, name: incoming.name, outcome: { kind: 'skipped-same', existingName: same.name } });
       continue;
     }
+    const builtinName = kind.builtinIds(incoming.id) ? kind.builtinName(incoming.id) : undefined;
+    const overlap = builtinName !== undefined
+      ? { with: 'builtin', name: builtinName } as const
+      : { with: 'own', name: existing?.name ?? incoming.name } as const;
     const addedId = freshId(kind.idPrefix, stamp, new Set(byId.keys()), kind.builtinIds);
     const addedName = freshName(incoming.name, names);
     const added = kind.rebuild(incoming, addedId, addedName);
@@ -191,14 +203,14 @@ function mergeKind<T extends Item>(kind: MergeKind<T>, stamp: string): {
     byId.set(addedId, added);
     names.add(addedName);
     idMap.set(incoming.id, addedId);
-    entries.push({ assetKind: kind.assetKind, name: incoming.name, outcome: { kind: 'added-renamed', addedName, addedId } });
+    entries.push({ assetKind: kind.assetKind, name: incoming.name, outcome: { kind: 'added-renamed', addedName, addedId, overlap } });
   }
   return { items, entries, idMap };
 }
 
 /**
  * 読み込んだ資産を手元に突き合わせる。同じidが手元にある時、
- * - 中身が同じ（`layoutContent`等の項目が一致。名前だけが違っても同じとみなす）なら何も足さない。
+ * - 中身が同じ（`layoutContent` 等の項目が一致。名前だけが違っても同じとみなす）なら何も足さない。
  *   同じファイルを二度読んでも増えず、名前を変えた手元のものを元の名前の複製で散らかさない
  * - 中身が違うなら手元を残し、読み込んだ側を新しいidと「名前 (2)」の別名で足す。ただし、別のidで同じ中身のものが
  *   既に手元にあれば（前に別名で足したもの）、それと同じとみなして足さない
@@ -212,6 +224,7 @@ export function mergeUserAssets(current: UserAssetsHoldings, incoming: UserAsset
     current: current.userRomajiRules,
     incoming: incoming.romajiRules,
     builtinIds: isBuiltin,
+    builtinName: (id) => (isBuiltin(id) ? ROMAJI_RULES[id].name : undefined),
     content: ruleContent,
     rebuild: (rule, id, name) => ({ ...rule, id, name }),
   }, stamp);
@@ -221,6 +234,7 @@ export function mergeUserAssets(current: UserAssetsHoldings, incoming: UserAsset
     current: current.userLayouts,
     incoming: incoming.layouts.map((layout) => ({ ...layout, romaji: rules.idMap.get(layout.romaji) ?? layout.romaji })),
     builtinIds: (id) => LAYOUT_BY_ID.has(id),
+    builtinName: (id) => LAYOUT_BY_ID.get(id)?.name,
     content: layoutContent,
     rebuild: (layout, id, name) => ({ ...layout, id, name }),
   }, stamp);
@@ -230,6 +244,7 @@ export function mergeUserAssets(current: UserAssetsHoldings, incoming: UserAsset
     current: current.fingerAssignments,
     incoming: incoming.fingerAssignments,
     builtinIds: (id) => Object.hasOwn(FINGER_ASSIGNMENT_REGISTRY, id),
+    builtinName: (id) => FINGER_ASSIGNMENT_REGISTRY[id]?.name,
     content: fingerContent,
     rebuild: (assignment, id, name) => ({ ...assignment, id, name }),
   }, stamp);

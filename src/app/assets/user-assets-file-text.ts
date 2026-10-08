@@ -31,7 +31,9 @@ export function importEntryText(entry: UserAssetImportEntry): string {
     case 'added':
       return `${label}「${entry.name}」を足した`;
     case 'added-renamed':
-      return `${label}「${entry.name}」は、手元に同じものがあり中身が違うため、「${outcome.addedName}」として足した`;
+      return outcome.overlap.with === 'builtin'
+        ? `組み込みの${label}「${outcome.overlap.name}」と重なるため、${label}「${outcome.addedName}」として足した`
+        : `${label}「${entry.name}」は、手元の「${outcome.overlap.name}」と重なり中身が違うため、「${outcome.addedName}」として足した`;
     case 'skipped-same':
       return outcome.existingName === entry.name
         ? `${label}「${entry.name}」は、手元と同じ中身なので足さなかった`

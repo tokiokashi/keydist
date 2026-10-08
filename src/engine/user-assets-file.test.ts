@@ -225,7 +225,15 @@ test('組み込みの配列と同じidは別のidで足し、組み込みの規�
   assert.equal(merged.assets.userLayouts.length, 1);
   assert.equal(merged.assets.userLayouts[0]!.id, 'user-stamp-1');
   assert.equal(LAYOUT_BY_ID.has(merged.assets.userLayouts[0]!.id), false);
-  assert.equal(merged.entries[0]!.outcome.kind, 'added-renamed');
+  const outcome = merged.entries[0]!.outcome;
+  assert.equal(outcome.kind, 'added-renamed');
+  assert.deepEqual(outcome.kind === 'added-renamed' ? outcome.overlap : undefined, { with: 'builtin', name: LAYOUT_BY_ID.get('qwerty')!.name });
+});
+
+test('手元と重なって別名で足した時、重なった相手の手元の名前を持つ', () => {
+  const local: UserAssetsHoldings = { ...EMPTY, userLayouts: [{ ...LAYOUT, name: '手元で名前を変えた配列', rows: ROWS }] };
+  const outcome = mergeUserAssets(local, { layouts: [LAYOUT], romajiRules: [], fingerAssignments: [] }, STAMP).entries[0]!.outcome;
+  assert.deepEqual(outcome.kind === 'added-renamed' ? outcome.overlap : undefined, { with: 'own', name: '手元で名前を変えた配列' });
 });
 
 test('コマンド: 1回で3つの資産を足し、元に戻すと全部が戻る。足すものが無ければ履歴に積まない', () => {

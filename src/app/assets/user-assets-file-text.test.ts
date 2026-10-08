@@ -18,8 +18,12 @@ test('書き出しの文は、0件の種類を出さない', () => {
 test('読み込みの行: 足した・別名で足した・足さなかった（名前が違う時は手元の名前を添える）', () => {
   assert.equal(importEntryText({ assetKind: 'layout', name: 'A', outcome: { kind: 'added' } }), '配列「A」を足した');
   assert.equal(
-    importEntryText({ assetKind: 'romaji-rule', name: 'R', outcome: { kind: 'added-renamed', addedName: 'R (2)', addedId: 'x' } }),
-    'ローマ字規則「R」は、手元に同じものがあり中身が違うため、「R (2)」として足した',
+    importEntryText({ assetKind: 'romaji-rule', name: 'R', outcome: { kind: 'added-renamed', addedName: 'R (2)', addedId: 'x', overlap: { with: 'own', name: '手元の名前' } } }),
+    'ローマ字規則「R」は、手元の「手元の名前」と重なり中身が違うため、「R (2)」として足した',
+  );
+  assert.equal(
+    importEntryText({ assetKind: 'layout', name: 'A', outcome: { kind: 'added-renamed', addedName: 'A (2)', addedId: 'x', overlap: { with: 'builtin', name: 'QWERTY' } } }),
+    '組み込みの配列「QWERTY」と重なるため、配列「A (2)」として足した',
   );
   assert.equal(
     importEntryText({ assetKind: 'finger-assignment', name: 'F', outcome: { kind: 'skipped-same', existingName: 'F' } }),
