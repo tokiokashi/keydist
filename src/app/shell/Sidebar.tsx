@@ -10,6 +10,8 @@ import {
   subscribeAppearance,
 } from '../theme/appearance.ts';
 import type { ThemeChoice } from '../theme/theme.ts';
+import { ABOUT_LABEL } from '../about/AboutPage.tsx';
+import { REPOSITORY_URL, SPEC_LINKS } from '../about/links.ts';
 import { createWorkspaceInStorage } from '../workspace/create-workspace.ts';
 import { generateWorkspaceId } from '../workspace/id-generator.ts';
 import { useWorkspaceLinks } from './use-workspace-links.ts';
@@ -27,6 +29,7 @@ export const WORKSPACE_EMPTY_TEXT = 'Analyzerを並べて見る画面。';
  * 区分見出しは英語（Analyze / Workspace / Assets）。Analyzeの中は対象の数で
  * Single / Multi に分ける。Testerは区分に入れず単独で置く。
  * Workspaceは保存したWorkspaceの一覧と「＋ 新しいWorkspace」で、1つも無い時は案内文を出す。
+ * About は計算方法のページと、仕様書・リポジトリ（GitHub）へのリンク。どの画面からも同じ場所でたどれる。
  * Assetsは手持ちの資産の編集画面へのリンクを並べる区分で、編集画面がまだ1つも無いので出さない。
  */
 export interface SidebarProps {
@@ -165,6 +168,15 @@ export function Sidebar({ pinned, onPinnedChange, onNavigate }: SidebarProps) {
 
         <section className="sidebar-group">
           <NavLink to="/input" onNavigate={onNavigate}>Tester</NavLink>
+        </section>
+
+        <section className="sidebar-group" aria-labelledby="sidebar-about">
+          <h2 className="sidebar-heading" id="sidebar-about">About</h2>
+          <NavLink to="/about" onNavigate={onNavigate}>{ABOUT_LABEL}</NavLink>
+          {SPEC_LINKS.map((link) => (
+            <a key={link.path} className="sidebar-link" href={link.url} target="_blank" rel="noopener noreferrer">{link.label}</a>
+          ))}
+          <a className="sidebar-link" href={REPOSITORY_URL} target="_blank" rel="noopener noreferrer">GitHub</a>
         </section>
       </nav>
 
