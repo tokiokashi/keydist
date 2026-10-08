@@ -2086,6 +2086,26 @@ h1 {
   gap: 0.5rem;
 }
 
+.user-assets-import-result {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.user-assets-import-result p {
+  margin: 0;
+  font-weight: 650;
+}
+
+.user-assets-import-result ul {
+  display: grid;
+  gap: 0.2rem;
+  margin: 0;
+  padding-left: 1.2rem;
+  color: var(--text-muted);
+}
+
 .user-assets-message {
   margin: 0;
   color: var(--text-muted);
