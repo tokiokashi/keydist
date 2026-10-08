@@ -63,7 +63,7 @@ Claude Code は `CLAUDE.md` が無いプロジェクトでは `AGENTS.md` を読
 
 ### 作業単位の区分
 
-リードは単位を切る時に区分を決め、PR本文に書く。迷ったらlight → standard → strictの向きに寄せる。
+リードは単位を切る時に区分を決め、PR本文に書く。迷ったら、light → standard → strictの順で上の区分を選ぶ。
 
 | 区分 | 対象 | 実装 | レビュー |
 |---|---|---|---|
@@ -72,7 +72,7 @@ Claude Code は `CLAUDE.md` が無いプロジェクトでは `AGENTS.md` を読
 | strict | モデル・指標・codec・保存形式・`spec/` に触る単位 | implementer（`claude-sonnet-5-5`） | reviewer-strict（`claude-opus-5-5`） |
 
 - 数値の退行がマージ後に出たら、その区分のレビューをreviewer-strictに戻す
-- reviewerとreviewer-strictは、サブエージェントが定義ファイルの本文しか読まないため、手順の本文を同じ内容で2つ持つ。
+- reviewerとreviewer-strictは、手順の本文を同じ内容で2つ持つ。定義ファイルは別の定義ファイルを読み込めず、手順の本文を参照させる形にすると読みに行くかがモデル任せになるため。
   手順を直す時は両方を同じように直す。違ってよいのは `name`・`description`・`model`・`color` だけ
 
 - 実装役とレビュー役はそれぞれ**自分の git worktree**（`.claude/worktrees/`、`origin/main` から切られる）で動く。
