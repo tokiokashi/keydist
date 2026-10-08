@@ -109,8 +109,8 @@ export interface PaneFrameProps {
 }
 
 /**
- * 状態のバッジ。Workspaceのペインの見出しでは、文字が入る時だけ文字（`asText`）、入らない時は点で出す
- * （`use-status-badge-fit.ts`が測る。`pane-frame.css`）。
+ * 状態のバッジ。見出しの幅に文字が入る時だけ文字（`asText`）、入らない時は点で出す
+ * （Workspaceのペインも個別画面も、`use-status-badge-fit.ts`が測る。`pane-frame.css`）。
  * 状態の文は文字の要素とtitleに残すので、点でも読み上げとホバーで分かる。
  */
 function StatusBadge({ status, label, asText = false }: { readonly status: EngineRequestState<unknown>['status']; readonly label: string; readonly asText?: boolean }) {
@@ -162,8 +162,8 @@ export function PaneFrame({
   const Heading = headingLevel === 1 ? 'h1' : 'h2';
   const nameInLead = useContext(PaneNameInLeadContext);
   const headerLead = useContext(PaneHeaderLeadContext);
-  // 先頭を持つ見出し（Workspaceのペイン）だけ、バッジを文字で出せるかを測る
-  const badgeAsText = useStatusBadgeFit(headerRef, nameInLead && headerLead !== null && statusLabel !== '');
+  // 文字で出せるかを見出しの実際の幅から測る。先頭を持つ見出し（Workspaceのペイン）と、名前の行に出す個別画面の見出しが対象
+  const badgeAsText = useStatusBadgeFit(headerRef, statusLabel !== '' && (!nameInLead || headerLead !== null));
 
   const closeSettings = () => {
     setSettingsOpen(false);
@@ -199,7 +199,7 @@ export function PaneFrame({
             <Heading className="pane-frame-title">{name}</Heading>
             <InfoButton name={name} description={description} help={help} />
             {statusLabel ? (
-              <StatusBadge status={engineState.status} label={statusLabel} />
+              <StatusBadge status={engineState.status} label={statusLabel} asText={badgeAsText} />
             ) : null}
           </div>
         )}

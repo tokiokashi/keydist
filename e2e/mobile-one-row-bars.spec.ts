@@ -16,7 +16,14 @@ async function openReady(page: Page, path: string) {
   await waitForHydration(page);
   // 資産の読み込みが済むまでバーの操作は効かない。読み込み後にだけ測る／押す。
   await expect(page.locator('.context-bar button.text-chip')).toBeEnabled({ timeout: 10_000 });
+  // 見出しの高さ・位置は、計算が済んで状態のバッジが消えてから測る（計算中の間は点が出て、見出しの並びが変わる）。
+  await expect(page.locator('.pane-frame').first()).toHaveAttribute('data-pane-status', 'ready', { timeout: 20_000 });
+  await expect(page.locator('.pane-status-badge')).toHaveCount(0);
 }
+
+// 計算が数秒かかる長いテキスト。stale（計算中・直前の結果を表示）の間を保つために使う。
+// 日本語にしているのは、対象に親指シフト（NICOLA）を選ぶので、英文では使えない配列になるため。
+const LONG_TEXT = '吾輩は猫である。名前はまだ無い。どこで生れたかとんと見当がつかぬ。'.repeat(1000);
 
 for (const path of PAGES) {
   test(`スマホ幅の${path}: 文脈バーとペインの見出しが1行に収まり、横にあふれない`, async ({ page }) => {
@@ -83,11 +90,54 @@ test('スマホ幅の見出しにAnalyzer名が出ず、対象名が省略され
   await page.keyboard.press('Escape');
   const summary = page.locator('.target-selection-summary');
   await expect(summary).toHaveText('親指シフト（NICOLA）');
-  // 対象を変えた直後は「計算中…」のバッジが見出しに出て、対象の欄を狭める（測ると省略されている）。
-  // 計算が終わってバッジが消え、欄が広がってから測る。
+  // 計算が終わってバッジが消えてから、対象の欄の全文が入っているかを測る（計算中の間は下のテストで測る）。
   await expect(page.locator('.pane-status-badge')).toHaveCount(0);
   expect(await summary.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
+});
+
+test('スマホ幅: 計算中（直前の結果を表示）のバッジは点で出し、対象名は省略されない', async ({ page }) => {
+  await openReady(page, 'bigram-flow');
+  // 長いテキストへ変えて、計算の間（stale）を保つ。その間に対象を変える。
+  const panel = await openTextChip(page);
+  await panel.getByLabel('テキスト', { exact: true }).fill(LONG_TEXT);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'stale', { timeout: 10_000 });
+  await toggleTarget(page, 'layout:nicola');
+
+  // 状態と測った値を、同じ時点（同じ描画）で読む
+  const sample = await page.evaluate(() => {
+    const frame = document.querySelector('.pane-frame')!;
+    const badge = frame.querySelector<HTMLElement>('.pane-status-badge');
+    const summary = frame.querySelector<HTMLElement>('.target-selection-summary')!;
+    return {
+      status: frame.getAttribute('data-pane-status'),
+      badgeCount: frame.querySelectorAll('.pane-status-badge').length,
+      badgeAsText: badge?.hasAttribute('data-text') ?? null,
+      badgeWidth: badge?.getBoundingClientRect().width ?? null,
+      badgeTitle: badge?.getAttribute('title') ?? null,
+      badgeShadow: badge === undefined || badge === null ? null : getComputedStyle(badge).boxShadow,
+      truncated: summary.scrollWidth > summary.clientWidth,
+      summaryText: summary.textContent,
+      overflow: document.documentElement.scrollWidth - window.innerWidth,
+    };
+  });
+  expect(sample.status).toBe('stale');
+  expect(sample.badgeCount).toBe(1);
+  // 点で出す（文字は出さない）。大きさは点の寸法。
+  expect(sample.badgeAsText).toBe(false);
+  expect(sample.badgeWidth).toBeLessThanOrEqual(10);
+  // 点でも計算中であることが分かる。状態の文は読み上げとtitleに残り、輪郭だけの点（塗りつぶし・失敗と形で分かれる）で出す。
+  expect(sample.badgeTitle).toBe('計算中…（直前の結果を表示）');
+  expect(sample.badgeShadow).not.toBe('none');
+  expect(sample.truncated).toBe(false);
+  expect(sample.summaryText).toBe('親指シフト（NICOLA）');
+  expect(sample.overflow).toBeLessThanOrEqual(0);
+
+  // 計算が済むと点も消え、対象名は全文のまま残る
+  await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 20_000 });
+  await expect(page.locator('.pane-status-badge')).toHaveCount(0);
+  await expect(page.locator('.target-selection-summary')).toHaveText('親指シフト（NICOLA）');
 });
 
 test('スマホ幅: 文脈バーの元に戻す・やり直す・共有が直接押せる', async ({ page, context }) => {
@@ -136,6 +186,18 @@ test.describe('パソコン幅', () => {
     expect(header?.height).toBeLessThan(40);
     // パソコン幅では、見出しにAnalyzer名を出す。
     expect((await page.getByRole('heading', { name: 'Bigram Flow', level: 1 }).boundingBox())?.width ?? 0).toBeGreaterThan(40);
+  });
+
+  // 名前の行に幅がある時は、計算中のバッジを文字で出す（点にするのは幅が足りない時だけ）。
+  test('個別画面: 計算中（直前の結果を表示）のバッジは、幅があれば文字で出る', async ({ page }) => {
+    await openReady(page, 'bigram-flow');
+    const panel = await openTextChip(page);
+    await panel.getByLabel('テキスト', { exact: true }).fill(LONG_TEXT);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'stale', { timeout: 10_000 });
+    const badge = page.locator('.pane-frame .pane-status-badge');
+    await expect(badge).toHaveText('計算中…（直前の結果を表示）');
+    await expect(badge).toHaveAttribute('data-text', 'true');
   });
 });
 

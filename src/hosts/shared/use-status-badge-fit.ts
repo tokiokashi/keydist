@@ -44,11 +44,13 @@ export function useStatusBadgeFit(headerRef: RefObject<HTMLElement | null>, enab
 const px = (value: string): number => Number.parseFloat(value) || 0;
 
 /**
- * 1段の見出し（`pane-frame.css`の`@container pane (width > 19.4rem)`）で、バッジの全文が入るか。
- * 2段の見出しでは文字を出さない（常に点）。
+ * バッジの全文が入るか。先頭（`.pane-frame-lead`）を持つWorkspaceの見出しと、名前の行にバッジを出す個別画面の見出しで測り方が違う。
  */
 function badgeTextFits(header: HTMLElement): boolean {
   const headerStyle = getComputedStyle(header);
+  if (header.querySelector('.pane-frame-lead') === null) return nameBadgeTextFits(header, headerStyle);
+  // 1段の見出し（`pane-frame.css`の`@container pane (width > 19.4rem)`）で、バッジの全文が入るか。
+  // 2段の見出しでは文字を出さない（常に点）。
   if (headerStyle.display !== 'flex') return false;
   const lead = header.querySelector<HTMLElement>('.pane-frame-lead');
   const target = header.querySelector<HTMLElement>('.pane-frame-target');
@@ -81,5 +83,57 @@ function badgeTextFits(header: HTMLElement): boolean {
   const leadMin = px(getComputedStyle(lead).minWidth);
   const needed = leadMin + targetMin + fixed + (flowCount - 1) * headerGap;
   // 間隔（約5.6px）を見込んだ値なので、測り誤差の分（0.5px）は引いてよい
+  return header.clientWidth >= needed - 0.5;
+}
+
+/**
+ * 個別画面の見出し（名前の行にバッジを出す）で、バッジの全文が入るか。
+ * 名前の行にバッジが文字で入ると名前の欄が広がり、その分だけ対象の欄が縮んで対象名が省略される。
+ * スマホ幅の1行（flex）だけ測る。それ以外の段組みは名前の行に十分な幅があるので、文字で出す。
+ * 名前・対象・固定の欄は、バッジが文字か点かで変わらない部分の幅で測る（往復を起こさないため）。
+ */
+function nameBadgeTextFits(header: HTMLElement, headerStyle: CSSStyleDeclaration): boolean {
+  if (headerStyle.display !== 'flex') return true;
+  const name = header.querySelector<HTMLElement>('.pane-frame-name');
+  const target = header.querySelector<HTMLElement>('.pane-frame-target');
+  if (name === null || target === null) return false;
+  const text = name.querySelector<HTMLElement>('.pane-status-badge-text');
+  if (text === null) return false;
+  const rootFont = px(getComputedStyle(document.documentElement).fontSize);
+  const badgeFull = Math.max(text.scrollWidth, text.getBoundingClientRect().width) + 2 * 0.55 * rootFont;
+  // 名前の行のうち、バッジ以外（ⓘ）の幅。絶対配置の見出し（名前の文字は読み上げ用に隠す）は行の幅に入らない
+  const nameGap = px(getComputedStyle(name).columnGap);
+  let nameBase = 0;
+  let nameCount = 0;
+  for (const child of name.children) {
+    if (child.classList.contains('pane-status-badge') || getComputedStyle(child).position === 'absolute') continue;
+    nameBase += child.getBoundingClientRect().width;
+    nameCount += 1;
+  }
+  const nameNeeded = nameBase + nameCount * nameGap + badgeFull;
+  // 対象の欄は、選択の全文（測るための見えない要素の幅）と、ボタンの枠・記号の分で決まる。
+  // 枠・記号は、ボタンの幅から文字（要約と「他N件」）の幅を除いたもの。どちらも今の幅で縮むので、差し引いて測る
+  let targetNeeded = 0;
+  for (const child of target.children) {
+    if (child.classList.contains('target-selection')) continue;
+    targetNeeded += child.getBoundingClientRect().width;
+  }
+  const selectionButton = target.querySelector<HTMLElement>('.target-selection-button');
+  const summary = target.querySelector<HTMLElement>('.target-selection-summary');
+  const more = target.querySelector<HTMLElement>('.target-selection-more');
+  const measure = target.querySelector<HTMLElement>('.target-selection-measure');
+  if (selectionButton !== null && summary !== null && measure !== null) {
+    const textWidth = summary.getBoundingClientRect().width + (more?.getBoundingClientRect().width ?? 0);
+    targetNeeded += selectionButton.getBoundingClientRect().width - textWidth + measure.getBoundingClientRect().width;
+  }
+  const headerGap = px(headerStyle.columnGap);
+  let fixed = 0;
+  let flowCount = 0;
+  for (const child of header.children) {
+    if (getComputedStyle(child).position === 'absolute') continue;
+    flowCount += 1;
+    if (child !== name && child !== target) fixed += child.getBoundingClientRect().width;
+  }
+  const needed = nameNeeded + targetNeeded + fixed + (flowCount - 1) * headerGap;
   return header.clientWidth >= needed - 0.5;
 }
