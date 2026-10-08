@@ -286,6 +286,8 @@ function TextEditor({
         rows={5}
         aria-label="テキスト"
       />
+      {/* 狭い文脈バーではチップの文字数を見た目から省くので、開いた欄の近くでも同じ数を出す。 */}
+      <p className="text-editor-count">{formatTextCount(countTextCharacters(resolved.text))}</p>
 
       <div className="text-editor-row">
         <label className="text-editor-inline text-editor-name">

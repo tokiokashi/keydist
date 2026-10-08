@@ -252,6 +252,14 @@ button.context-chip:hover:not(:disabled),
   line-height: 1.7;
 }
 
+.text-editor-count {
+  margin: 0;
+  text-align: end;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .text-editor-buttons {
   display: flex;
   gap: 0.35rem;
