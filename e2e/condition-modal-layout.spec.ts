@@ -283,10 +283,55 @@ for (const { state, size } of MENU_CASES) {
   });
 }
 
-test('編集先のメニューは、本文をスクロールすると閉じる（ボタンから離れた位置に残らない）', async ({ page }) => {
-  const modal = await openWorkspaceModal(page, { width: 1280, height: 600 });
-  await modal.locator('[data-item="windowSize"]').getByRole('button', { name: /の編集先: / }).click();
-  await expect(modal.getByRole('menu')).toBeVisible();
-  await modal.locator('.condition-modal-body').evaluate((el) => { el.scrollTop = 40; });
-  await expect(modal.getByRole('menu')).toBeHidden();
-});
+/**
+ * 編集先のメニューを、本文の外へ出る操作で閉じた時の扱い。メニューはボタンから離れた位置に残さず閉じ、
+ * フォーカスは⋯のボタンへ戻る（`body`へ落とさない）。戻す時に本文は動かない。
+ */
+const MENU_CLOSING_PATHS = [
+  {
+    path: 'ホイール',
+    // 本文の右下でホイールを回し、先頭の行の⋯ボタンを本文の外へ送る
+    close: async (page: Page, modal: Locator) => {
+      const box = (await modal.locator('.condition-modal-body').boundingBox())!;
+      await page.mouse.move(box.x + box.width - 16, box.y + box.height - 16);
+      await page.mouse.wheel(0, 1000);
+    },
+    scrolls: true,
+  },
+  {
+    path: 'scrollTopの変更',
+    close: async (_page: Page, modal: Locator) => {
+      await modal.locator('.condition-modal-body').evaluate((el) => { el.scrollTop = 300; });
+    },
+    scrolls: true,
+  },
+  {
+    path: '窓の大きさの変更',
+    close: async (page: Page) => {
+      await page.setViewportSize({ width: 1280, height: 560 });
+    },
+    scrolls: false,
+  },
+] as const;
+
+for (const { path, close, scrolls } of MENU_CLOSING_PATHS) {
+  test(`編集先のメニューは、${path}で閉じ、フォーカスはボタンへ戻る`, async ({ page }) => {
+    // 本文を先頭の行の⋯より下まで送れる高さ（本文が短いと、送った後もボタンが本文の中に残る）
+    const modal = await openWorkspaceModal(page, { width: 1280, height: 420 });
+    const body = modal.locator('.condition-modal-body');
+    const button = modal.locator('[data-item="windowSize"]').getByRole('button', { name: /の編集先: / });
+    await button.click();
+    await expect(modal.getByRole('menu')).toBeVisible();
+    await close(page, modal);
+    await expect(modal.getByRole('menu')).toBeHidden();
+    await expect(button).toBeFocused();
+    if (scrolls) {
+      // ボタンは本文の外へ出ている。フォーカスを戻す時に本文が動いていれば（preventScrollを外すと、ボタンを見せる位置へ戻る）、ここで落ちる
+      expect(await body.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+      // ボタンの下端が本文の上端より上（本文の外）にある。toBeInViewportは本文の切り抜きを見ないので使わない
+      const bodyBox = (await body.boundingBox())!;
+      const buttonBox = (await button.boundingBox())!;
+      expect(buttonBox.y + buttonBox.height).toBeLessThanOrEqual(bodyBox.y + 0.5);
+    }
+  });
+}
