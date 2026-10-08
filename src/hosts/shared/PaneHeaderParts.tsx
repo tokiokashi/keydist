@@ -104,14 +104,22 @@ export function PaneMenu({
   }, [open, floating, align]);
 
   // 画面基準で置いたメニューは、本文のスクロールや窓の大きさの変化にボタンへ追従しない。
-  // 位置を測り直して追うより、閉じて開き直してもらう方が、ずれた位置に残る状態を作らない
+  // 位置を測り直して追うより、閉じて開き直してもらう方が、ずれた位置に残る状態を作らない。
+  // 閉じる時、フォーカスがメニューの中（または何も無い`body`）にあれば、ボタンへ戻す。メニューを閉じた先が
+  // `body`だと、キーボードで続ける利用者が位置を見失う。利用者が別の場所へ移していたフォーカスは動かさない。
   useEffect(() => {
     if (!open || !floating) return undefined;
-    const closeOnScroll = (event: Event) => {
-      if (event.target instanceof Node && listRef.current?.contains(event.target)) return;
+    const closeKeepingFocus = () => {
+      const active = document.activeElement;
+      const lost = active === null || active === document.body || (listRef.current?.contains(active) ?? false);
+      if (lost) buttonRef.current?.focus({ preventScroll: true });
       setOpen(false);
     };
-    const closeOnResize = () => setOpen(false);
+    const closeOnScroll = (event: Event) => {
+      if (event.target instanceof Node && listRef.current?.contains(event.target)) return;
+      closeKeepingFocus();
+    };
+    const closeOnResize = () => closeKeepingFocus();
     document.addEventListener('scroll', closeOnScroll, true);
     window.addEventListener('resize', closeOnResize);
     return () => {
