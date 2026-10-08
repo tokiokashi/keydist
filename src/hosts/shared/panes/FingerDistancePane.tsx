@@ -138,7 +138,7 @@ export function FingerDistancePane({
       settingsDiagnostics={settingsDiagnostics}
       linkNotices={linkNotices}
     >
-      {resolution.ok && hasExtraction ? <Body extracted={extraction.value.extracted} /> : undefined}
+      {resolution.ok && hasExtraction ? <Body extracted={extraction.value.extracted} options={options} /> : undefined}
     </PaneFrame>
   );
 }

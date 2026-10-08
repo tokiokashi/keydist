@@ -11,6 +11,7 @@ import { DEFAULT_COMPARISON_OPTIONS } from '#analyzers/comparison/options.ts';
 import { checkOptionsDiscipline } from '#analyzers/options.ts';
 import { fingerDistanceDefinition, type FingerDistanceExtracted } from './extract.ts';
 import { DEFAULT_FINGER_DISTANCE_OPTIONS, fingerDistanceOptions } from './options.ts';
+import { chartSpecOf, formatShare } from './chart-data.ts';
 
 /**
  * 指ごとの距離の抽出（仕様 §11.1・§11.2・§11.6）を、実際のengine経路（解決 → Trace → Metrics → 抽出）で検証する。
@@ -218,10 +219,32 @@ test('移動も押下も無いテキストでは、割合は0で出て非数に�
   for (const item of extracted.adjacent) assert.equal(item.stdDev, 0);
 });
 
-test('入れ忘れ防止: 解析設定の項目は無く、抽出キーも空になる', () => {
-  assert.deepEqual(Object.keys(fingerDistanceOptions.items), []);
+test('入れ忘れ防止: 見る量は表示専用で、抽出キーは空になる', () => {
+  assert.deepEqual(Object.keys(fingerDistanceOptions.items), ['chartMetric']);
+  assert.deepEqual(fingerDistanceOptions.extractKeyOf(DEFAULT_FINGER_DISTANCE_OPTIONS), {});
   assert.deepEqual(
     checkOptionsDiscipline(fingerDistanceOptions, fingerDistanceDefinition.optionsDiscipline),
     { keyViolations: [], viewExtractionViolations: [] },
   );
+});
+
+test('既定の見る量は移動距離', () => {
+  assert.equal(DEFAULT_FINGER_DISTANCE_OPTIONS.chartMetric, 'distance');
+});
+
+test('グラフの棒は左手の小指から右手の小指の順で、値は抽出結果と同じ', () => {
+  const extracted = extract(resolve('qwerty', 'row-staggered', 'the quick brown fox'));
+  const distance = chartSpecOf(extracted, 'distance');
+  assert.deepEqual(distance.bars.map((bar) => bar.key), ['LP', 'LR', 'LM', 'LI', 'LT', 'RT', 'RI', 'RM', 'RR', 'RP']);
+  assert.deepEqual(distance.bars.map((bar) => bar.value), extracted.fingers.map((item) => item.distance));
+  assert.deepEqual(distance.bars.map((bar) => bar.hand), [...Array(5).fill('left'), ...Array(5).fill('right')]);
+  assert.deepEqual(chartSpecOf(extracted, 'presses').bars.map((bar) => bar.value), extracted.fingers.map((item) => item.presses));
+  // 割合はツールチップに出る
+  assert.ok(distance.bars[0]!.tip.includes(formatShare(extracted.fingers[0]!.distanceShare)));
+
+  const pairs = extracted.adjacent;
+  assert.deepEqual(chartSpecOf(extracted, 'stdDev').bars.map((bar) => bar.value), pairs.map((item) => item.stdDev));
+  assert.deepEqual(chartSpecOf(extracted, 'mean').bars.map((bar) => bar.value), pairs.map((item) => item.meanExcess));
+  assert.deepEqual(chartSpecOf(extracted, 'max').bars.map((bar) => bar.value), pairs.map((item) => item.maxExcess));
+  assert.deepEqual(chartSpecOf(extracted, 'max').bars.map((bar) => bar.hand), ['left', 'left', 'left', 'right', 'right', 'right']);
 });
