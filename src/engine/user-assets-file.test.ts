@@ -171,16 +171,31 @@ test('同じidで中身が違う時は手元を残し、読み込んだ側を新
   assert.equal(merged.assets.userLayouts[1]!.romaji, 'romaji-stamp-1');
 });
 
-test('別名「(2)」が手元で使われていれば(3)にし、別名で足した後に同じファイルを読むとまた足す', () => {
+test('別名「(2)」が手元で使われていれば(3)にする', () => {
   const local: UserAssetsHoldings = {
     ...EMPTY,
     userLayouts: [{ ...LAYOUT, rows: ROWS }, { ...LAYOUT, id: 'user-b', name: '自作A (2)', rows: ROWS }],
   };
   const merged = mergeUserAssets(local, { layouts: [LAYOUT], romajiRules: [], fingerAssignments: [] }, STAMP);
   assert.equal(merged.assets.userLayouts[2]!.name, '自作A (3)');
-  // 別名で足したものは元のidと別なので、同じファイルを読み直すと元のidは手元の（中身の違う）ものと再び衝突する
-  const again = mergeUserAssets(merged.assets, { layouts: [LAYOUT], romajiRules: [], fingerAssignments: [] }, 'stamp2');
-  assert.equal(again.assets.userLayouts.length, 4);
+});
+
+test('中身の違うものを別名で足した後に同じファイルを読み直しても、増えない', () => {
+  const local: UserAssetsHoldings = {
+    userLayouts: [{ ...LAYOUT, rows: ROWS }],
+    userRomajiRules: [{ ...RULE, overrides: { し: 'si' } }],
+    fingerAssignments: [{ ...FINGER, homeKey: { ...FINGER.homeKey, LI: 'g' } }],
+  };
+  const bundle = read(HOLDINGS);
+  const first = mergeUserAssets(local, bundle, STAMP);
+  assert.equal(first.assets.userLayouts.length, 2);
+  const again = mergeUserAssets(first.assets, bundle, 'stamp2');
+  assert.deepEqual(again.assets, first.assets);
+  assert.deepEqual(again.entries.map((entry) => entry.outcome), [
+    { kind: 'skipped-same', existingName: '自作A (2)' },
+    { kind: 'skipped-same', existingName: 'し・ちをshi・chiで打つ (2)' },
+    { kind: 'skipped-same', existingName: '自作の指 (2)' },
+  ]);
 });
 
 test('規則が同じで足さなかった時、配列の参照は手元の規則のまま', () => {

@@ -173,9 +173,15 @@ function mergeKind<T extends Item>(kind: MergeKind<T>, stamp: string): {
       entries.push({ assetKind: kind.assetKind, name: incoming.name, outcome: { kind: 'added' } });
       continue;
     }
-    if (existing !== undefined && kind.content(existing) === kind.content(incoming)) {
-      idMap.set(incoming.id, existing.id);
-      entries.push({ assetKind: kind.assetKind, name: incoming.name, outcome: { kind: 'skipped-same', existingName: existing.name } });
+    // idが衝突している時は、同じidのものに加えて、別のidで足し済みの同じ中身（前に別名で足したもの）も同じとみなす。
+    // 探さないと、中身の違うものを別名で足した後に同じファイルを読み直すたびに、また別名で足してしまう
+    const content = kind.content(incoming);
+    const same = existing !== undefined && kind.content(existing) === content
+      ? existing
+      : items.find((item) => kind.content(item) === content);
+    if (same !== undefined) {
+      idMap.set(incoming.id, same.id);
+      entries.push({ assetKind: kind.assetKind, name: incoming.name, outcome: { kind: 'skipped-same', existingName: same.name } });
       continue;
     }
     const addedId = freshId(kind.idPrefix, stamp, new Set(byId.keys()), kind.builtinIds);
@@ -194,7 +200,8 @@ function mergeKind<T extends Item>(kind: MergeKind<T>, stamp: string): {
  * 読み込んだ資産を手元に突き合わせる。同じidが手元にある時、
  * - 中身が同じ（`layoutContent`等の項目が一致。名前だけが違っても同じとみなす）なら何も足さない。
  *   同じファイルを二度読んでも増えず、名前を変えた手元のものを元の名前の複製で散らかさない
- * - 中身が違うなら手元を残し、読み込んだ側を新しいidと「名前 (2)」の別名で足す
+ * - 中身が違うなら手元を残し、読み込んだ側を新しいidと「名前 (2)」の別名で足す。ただし、別のidで同じ中身のものが
+ *   既に手元にあれば（前に別名で足したもの）、それと同じとみなして足さない
  * 組み込みと同じidは中身を問わず別のidで足す。ローマ字規則を先に突き合わせ、配列の推奨の規則が別のidになったら
  * 配列の参照も振り直す（振り直した後の参照で配列の中身を比べる）。
  */
