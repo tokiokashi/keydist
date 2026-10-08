@@ -33,7 +33,9 @@ keydist の作業単位を1つ実装する。**自分の変更を自分で承認
   差分が依存に触る単位（`package.json` / `package-lock.json` / `patches/` のいずれかを含む）は `npm ci` で入れ直す。
   触らないなら、まず `npm rebuild --ignore-scripts` を1回流してからコピーのまま使う
   （コピーは symlink を運ばず `node_modules/.bin` が無い。放置すると親の本体側の道具で動いてしまう。0.5 秒で `.bin` のリンクだけ作り直し、`postinstall` は走らない。`npm ci` は `.bin` も作り直すので不要）。コピーが無ければ（`.worktreeinclude` が効かなかった場合）`npm ci`
-- スクリーンショットや測定の出力など追跡しないファイルは、worktreeの中に置かず、セッションのscratchpadに置く（未追跡ファイルがあると `git worktree remove` が止まる）
+- スクリーンショットや測定の出力、ログなど追跡しないファイルは、worktreeの中に置かず、セッションのscratchpadに置く（未追跡ファイルがあると `git worktree remove` が止まる）
+- 検証用の一時worktreeは `.claude/worktrees/` の下に作り、終わったら消す（`AGENTS.md`「エージェントの役割」）
+- `git config core.hooksPath` は打たない。設定は本体と共有されていて、本体のチェックアウトで設定済み（`AGENTS.md`「リモートと作業開始」）
 - 作業ブランチは `<type>/<短い説明>` で切り直す（`git checkout -b feat/...`）。
   worktree が用意した `worktree-*` ブランチのまま push しない
 - push は自分のブランチだけ。`main` へ push しない。既存ブランチの rebase・強制 push もしない
@@ -58,7 +60,7 @@ keydist の作業単位を1つ実装する。**自分の変更を自分で承認
 - **新しい検査は、変更前の挙動で落ちることを確かめる。** 変更前でも通るなら何も検査していないので、検査を強める。
   変更前のコードで試す時は、作業中のworktreeで `git checkout <sha> -- src` を使わない（未コミットの変更を失う）。
   `git stash` も使わない（退避の一覧は本体と全worktreeで共有され、並行するセッションが別の退避を取り出しうる。戻す順を誤ると変更が消える）。
-  一時worktreeで試す。`git worktree add --detach <path> <sha>` で作り、`node_modules` が無いので `npm ci` を流す。試し終えた一時worktreeは、残っていても問題ない。ディスクの空きが足りない時だけ `git worktree remove <path>` で消す（`AGENTS.md`「エージェントの役割」）
+  一時worktreeで試す。`git worktree add --detach .claude/worktrees/<名前> <sha>` で作り、`node_modules` が無いので `npm ci` を流す。試し終えたら `git worktree remove` で消す（`AGENTS.md`「エージェントの役割」）
 
 ## push の前に必ず
 
@@ -69,6 +71,9 @@ npm run typecheck && npm test && npm run build
 落ちたまま push しない。ブラウザ e2e は触った spec だけを `npx playwright test e2e/<spec> --workers=1` で回し、全件は CI に任せる。
 ポートはworktreeごとに分かれるので、並行する別worktreeがあっても一時のconfigは要らない（確かめ方は `CONTRIBUTING.md` の「ブラウザe2e」）。
 e2eに書く範囲は `CONTRIBUTING.md` の「ブラウザe2e」に従う（計算で判定できる検査はunit testに書く）。
+ブラウザの版が合わないエラーが出た時の対処も同じ節にある。symlinkなどの回避策は作らない。
+
+pushしたら、CIの完了を待たない。headのshaのcheck runを1回だけ見て（`CONTRIBUTING.md`「ブラウザe2e」）、結果を報告に書く。
 
 ## コミット
 
@@ -106,4 +111,5 @@ Angular 形式。1行目 72 **文字**以内、末尾に 。を付けない。�
 - 確かめていない範囲（無ければ「無し」）
 - 決めきれなかった点（無ければ「無し」）
 - 後続として issue にしたもの（番号）
+- headのCIを見たか・見た結果（見ていなければ「見ていない」。実行中なら「実行中」）
 - `npm run typecheck` / `npm test` / `npm run build` の結果
