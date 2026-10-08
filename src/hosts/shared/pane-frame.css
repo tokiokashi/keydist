@@ -331,6 +331,45 @@ h2.pane-frame-title {
 }
 
 /*
+ * 名前の行に出す状態のバッジの点（個別画面。スマホ幅の1行で、文字が入らない時）。
+ * 点は名前の欄の流れに入れず、ⓘの右上の角に重ねる。流れに入れると、出し入れのたびに対象の欄の左端が動く
+ * （対象ボタンは読み込み前の位置から動かさない。`e2e/preload-status-badge.spec.ts`）。
+ * 点は名前の欄の右端（対象との間の余白）へ少しはみ出すだけなので、対象の欄には重ならない。
+ * 押せない見た目にする（ⓘの押下を妨げない）。文字の要素は隠して読み上げとtitleに残す。
+ */
+.pane-frame-name {
+  position: relative;
+}
+
+.pane-frame-name > .pane-status-badge:not([data-text]) {
+  position: absolute;
+  top: 0.1rem;
+  left: calc(100% - 0.25rem);
+  width: 0.5rem;
+  height: 0.5rem;
+  padding: 0;
+  background: var(--text-muted);
+  pointer-events: none;
+}
+
+.pane-frame-name > .pane-status-badge:not([data-text])[data-status="stale"] {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--text-muted);
+}
+
+.pane-frame-name > .pane-status-badge:not([data-text])[data-status="failed"] {
+  background: #d6333f;
+}
+
+.pane-frame-name > .pane-status-badge:not([data-text]) > .pane-status-badge-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+/*
  * 極端に狭いペイン（15rem以下。Workspaceで格子の下限の2列まで縮めた幅）。
  * 2段目に対象の選択・連動・条件・状態・解析設定・⋯を並べると、ボタンだけで幅を超え、対象の選択が0幅に潰れて
  * ボタンどうしが重なる。そこで見出しを折り返す並びにする。先頭の行（つかみ所・名前・ⓘ）、対象の選択だけの行、
