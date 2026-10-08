@@ -8,7 +8,7 @@ export const Route = createFileRoute('/assets')({
       { title: `${USER_ASSETS_LABEL} | keydist` },
       {
         name: 'description',
-        content: '自作した配列とローマ字規則の一覧。不要なものを削除でき、削除は元に戻せます。',
+        content: '自作した配列・ローマ字規則・指の割り当ての一覧。不要なものを削除でき、ファイルへの書き出しと読み込みもできます。削除と読み込みは元に戻せます。',
       },
     ],
   }),

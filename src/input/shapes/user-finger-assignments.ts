@@ -50,7 +50,7 @@ const userFingerAssignmentSchema = v.strictObject({
  * `raw`から自作の指割り当ての配列を読み取る。壊れた要素・id重複は捨てて診断を積む
  * （`input/setup/codec.ts`の`decodeSetups`と同じ「壊れた要素だけ捨てて残りを読む」方針）。
  */
-function decodeUserFingerAssignments(
+export function decodeUserFingerAssignments(
   raw: unknown,
   path: string,
   diagnostics: CodecDiagnostic[],
