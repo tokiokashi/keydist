@@ -493,7 +493,7 @@ test('Workspaceの狭いペイン（約500px）に3つ並べても、凡例は�
   const layouts = ['qwerty', 'dvorak', 'colemak-dh'].map((layoutId) => ({ kind: 'layout', layoutId }));
   await page.addInitScript((targets) => {
     const set = (id: string) => ({ id, analyzerId: 'n-sensitivity', binding: { mode: 'fixed', target: { kind: 'set', selection: { targets } } } });
-    localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [{
+    localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [{
       id: 'legend-panes', name: '凡例の確認', panes: [set('a'), set('b'), set('c')],
       grid: [{ id: 'a', x: 0, y: 0, w: 8, h: 22 }, { id: 'b', x: 8, y: 0, w: 8, h: 22 }, { id: 'c', x: 16, y: 0, w: 8, h: 22 }],
     }] }));
@@ -590,7 +590,7 @@ test('Workspaceのペインでも縦軸の範囲が効き、ペインごとに�
   const layouts = ['qwerty', 'dvorak'].map((layoutId) => ({ kind: 'layout', layoutId }));
   await page.addInitScript((targets) => {
     const set = (id: string, options?: unknown) => ({ id, analyzerId: 'n-sensitivity', options, binding: { mode: 'fixed', target: { kind: 'set', selection: { targets } } } });
-    localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [{
+    localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [{
       id: 'yrange-panes', name: '縦軸の確認', panes: [set('a'), set('b', { yRange: 'fit' })],
       layout: { kind: 'split', direction: 'row', weight: 1, children: [
         { kind: 'group', paneIds: ['a'], weight: 1 }, { kind: 'group', paneIds: ['b'], weight: 1 },
@@ -681,7 +681,7 @@ test('Workspaceの狭い4ペイン（約340px）でも、凡例は図の中に�
   const layouts = ['qwerty', 'dvorak', 'colemak', 'colemak-dh', 'workman', 'oonishi', 'nicola', 'asuka'].map((layoutId) => ({ kind: 'layout', layoutId }));
   await page.addInitScript((targets) => {
     const set = (id: string) => ({ id, analyzerId: 'n-sensitivity', binding: { mode: 'fixed', target: { kind: 'set', selection: { targets } } } });
-    localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [{
+    localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [{
       id: 'four-panes', name: '4ペイン', panes: [set('a'), set('b'), set('c'), set('d')],
       grid: ['a', 'b', 'c', 'd'].map((id, i) => ({ id, x: i * 6, y: 0, w: 6, h: 22 })),
     }] }));

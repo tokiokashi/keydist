@@ -674,6 +674,53 @@ h2.pane-frame-title {
   gap: 0.9rem;
 }
 
+/* 設定の持ち方（共有に従う / このペインだけ）。解析設定の項目の前に置く。 */
+.settings-window-binding {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 0.9rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-window-binding-choices {
+  display: inline-flex;
+  justify-self: start;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.settings-window-binding-choice {
+  padding: 0.25rem 0.7rem;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.settings-window-binding-choice + .settings-window-binding-choice {
+  border-left: 1px solid var(--border-strong);
+}
+
+.settings-window-binding-choice[aria-checked='true'] {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.settings-window-binding-choice:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+.settings-window-binding-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
 /*
  * スマホ幅では、下から出るシートにする。高さを画面の半分までに止め、上半分の図を見ながら変えられるようにする。
  * 上端の掴みとヘッダー行を下へドラッグすると、--settings-sheet-yだけ下がり、超えると閉じる（SettingsWindow.tsx）。

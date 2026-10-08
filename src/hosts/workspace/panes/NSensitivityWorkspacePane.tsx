@@ -18,7 +18,7 @@ export function NSensitivityWorkspacePane({
 }) {
   const { options, onOptionsChange, diagnostics } = usePaneOptions<NSensitivityOptions>(
     nSensitivityAnalyzer.definition,
-    pane.options,
+    runtime.paneOptions(pane),
     pane.id,
     (next) => runtime.commitPaneOptions(pane.id, next),
   );

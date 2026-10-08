@@ -17,7 +17,7 @@ export function BigramFlowWorkspacePane({
 }) {
   const { options, onOptionsChange, diagnostics } = usePaneOptions<BigramFlowOptions>(
     bigramFlowAnalyzer.definition,
-    pane.options,
+    runtime.paneOptions(pane),
     pane.id,
     (next) => runtime.commitPaneOptions(pane.id, next),
   );

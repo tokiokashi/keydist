@@ -14,10 +14,14 @@ import {
   setWorkspaceCompactPanesCommand,
   linkWorkspacePaneToNewGroupCommand,
   setWorkspacePaneBindingCommand,
+  setWorkspacePaneOptionsBindingCommand,
   setWorkspaceTargetCommand,
 } from '#engine/workspace-commands.ts';
 import {
   BLANK_PANE_ID,
+  defaultOptionsBinding,
+  OWN_OPTIONS,
+  resolvePaneOptions,
   followBinding,
   findWorkspace,
   NO_BINDING,
@@ -185,6 +189,7 @@ export function WorkspacePage({
   useMaximizeKeys(maximizedId, () => setMaximizedId(undefined));
 
   const groups = workspace?.groups;
+  const optionSets = workspace?.optionSets;
   const colorSlots = workspace?.colorSlots ?? initialWorkspaceColorSlots();
   const groupSummaries = useMemo(
     () => (env === undefined || groups === undefined ? [] : summarizeLinkGroups(env, groups)),
@@ -193,6 +198,14 @@ export function WorkspacePage({
 
   const runtime: WorkspacePaneRuntime | undefined = useMemo(() => (env === undefined ? undefined : {
     env,
+    paneOptions: (pane: WorkspacePane) => (
+      optionSets === undefined ? pane.options : resolvePaneOptions({ optionSets }, pane)
+    ),
+    setPaneOptionsShared: (paneId: string, shared: boolean) => {
+      // 待っている設定の書き込みを先に反映する。持ち方を替えた後にその値が書かれると、切り替えの結果を上書きする
+      flushPending();
+      dispatch(setWorkspacePaneOptionsBindingCommand(workspaceId, paneId, { kind: shared ? 'shared' : 'own' }));
+    },
     commitPaneOptions: (paneId: string, options: unknown) => onPaneOptionsCommit(paneId, options),
     paneTarget: (pane: WorkspacePane, kind: WorkspacePaneTarget['kind']) => (
       groups === undefined ? undefined : resolveWorkspacePaneTarget(pane.binding, groups, kind)
@@ -237,7 +250,7 @@ export function WorkspacePage({
     },
     // 縦積みは格子を使わず拡大できないので、渡さない（⋯に項目を出さない）
     ...(stacked ? {} : { maximizedPaneId: maximizedId, maximizePane: setMaximizedId }),
-  }), [stacked, maximizedId, env, onPaneOptionsCommit, dispatch, workspaceId, generateId, flushPending, panesById, groups, groupSummaries, colorSlots]);
+  }), [stacked, maximizedId, env, onPaneOptionsCommit, dispatch, workspaceId, generateId, flushPending, panesById, groups, optionSets, groupSummaries, colorSlots]);
 
   const titleOf = useCallback(
     (paneId: string) => {
@@ -282,6 +295,8 @@ export function WorkspacePage({
       id: generateId(),
       analyzerId: entry.id,
       options: undefined,
+      // 解析設定は、そのAnalyzerの共有の設定に従う（無ければ、足すときに共有の設定が作られる）
+      optionsBinding: defaultOptionsBinding(workspace!, entry.id),
       // 新しいペインは最初の組に従う（比較中に黙って別の対象を映さない）。
       binding: followBinding(workspace!.groups[0]!.id),
     };
@@ -291,7 +306,7 @@ export function WorkspacePage({
   const addBlankPane = () => {
     flushPending();
     setMaximizedId(undefined);
-    dispatch(addWorkspacePaneCommand(workspaceId, { id: generateId(), analyzerId: BLANK_PANE_ID, options: undefined, binding: NO_BINDING }, defaultGridSize(BLANK_PANE_ID)));
+    dispatch(addWorkspacePaneCommand(workspaceId, { id: generateId(), analyzerId: BLANK_PANE_ID, options: undefined, optionsBinding: OWN_OPTIONS, binding: NO_BINDING }, defaultGridSize(BLANK_PANE_ID)));
   };
 
   // 今開いている空のWorkspaceへサンプルの並びを入れる（新しいWorkspaceは作らない）。元に戻すで空へ戻る

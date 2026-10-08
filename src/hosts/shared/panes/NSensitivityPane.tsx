@@ -170,6 +170,7 @@ export function NSensitivityPane({
       menuItems={chrome.menuItems}
       headerAction={chrome.headerAction}
       targetBinding={chrome.targetBinding}
+      optionsBinding={chrome.optionsBinding}
       showPaneNameInSettings={chrome.showPaneNameInSettings}
       target={(
         <TargetSelection

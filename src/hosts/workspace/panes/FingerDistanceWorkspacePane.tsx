@@ -17,7 +17,7 @@ export function FingerDistanceWorkspacePane({
 }) {
   const { options, onOptionsChange, diagnostics } = usePaneOptions<FingerDistanceOptions>(
     fingerDistanceAnalyzer.definition,
-    pane.options,
+    runtime.paneOptions(pane),
     pane.id,
     (next) => runtime.commitPaneOptions(pane.id, next),
   );

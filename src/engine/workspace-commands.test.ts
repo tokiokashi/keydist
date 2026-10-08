@@ -34,7 +34,7 @@ import {
   linkWorkspacePaneToNewGroupCommand,
   setWorkspaceTargetCommand,
 } from './workspace-commands.ts';
-import { findWorkspace, followBinding, INITIAL_LINK_GROUP_ID as G, type WorkspacePane } from './workspace.ts';
+import { findWorkspace, followBinding, INITIAL_LINK_GROUP_ID as G, OWN_OPTIONS, type WorkspacePane } from './workspace.ts';
 import { gridPaneIds, type GridSize } from './workspace-grid.ts';
 
 const SIZE: GridSize = { w: 6, h: 10 };
@@ -59,6 +59,7 @@ const pane = (id: string): WorkspacePane => ({
   id,
   analyzerId: 'bigram-flow',
   options: undefined,
+  optionsBinding: OWN_OPTIONS,
   binding: followBinding(G),
 });
 
@@ -342,7 +343,9 @@ test('個別画面から既存のWorkspaceへ追加: 解析設定を写し、最
   assert.deepEqual(workspace.panes.map((p) => p.id), ['a', 'b', 'c']);
   const created = workspace.panes[2]!;
   assert.equal(created.analyzerId, 'comparison');
-  assert.deepEqual(created.options, options);
+  // そのAnalyzerの共有の設定がまだ無いので、個別画面の設定が共有の設定になり、このペインが従う
+  assert.deepEqual(created.optionsBinding, { mode: 'shared', set: 'comparison-1' });
+  assert.deepEqual(workspace.optionSets, [{ id: 'comparison-1', analyzerId: 'comparison', options }]);
   assert.deepEqual(created.binding, followBinding(G));
   assert.deepEqual(workspace.groups, findWorkspace(before.assets.workspaces, 'w1')!.groups);
   assert.deepEqual(gridPaneIds(workspace.grid), ['a', 'b', 'c']);

@@ -23,7 +23,7 @@ async function storedWorkspaces(page: Page): Promise<StoredWorkspace[]> {
 /** 既存のWorkspace（Bigram Flowのペインを1つ持つ）を保存先へ直接書く。 */
 function seedWorkspace(page: Page, id = 'w1', name = '比較用'): Promise<void> {
   return page.addInitScript(({ key, value }) => {
-    if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 3, workspaces: [value] }));
+    if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 4, workspaces: [value] }));
   }, {
     key: WORKSPACES_KEY,
     value: {
@@ -46,7 +46,7 @@ function seedTwoWorkspaces(page: Page): Promise<void> {
     grid: [{ id: `${id}-pane`, x: 0, y: 0, w: 12, h: 15 }],
   });
   return page.addInitScript(({ key, value }) => {
-    if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 3, workspaces: value }));
+    if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 4, workspaces: value }));
   }, { key: WORKSPACES_KEY, value: [make('w1', '一つ目'), make('w2', '二つ目')] });
 }
 

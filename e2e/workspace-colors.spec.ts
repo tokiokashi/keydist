@@ -24,7 +24,7 @@ const comparison = (id: string, targets: unknown[]) => ({
 
 async function openWorkspace(page: Page): Promise<void> {
   await page.addInitScript((value) => {
-    localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [value] }));
+    localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
   }, {
     id: 'colors',
     name: '色の確認',

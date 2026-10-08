@@ -183,7 +183,7 @@ test('Workspace のペイン: 保存の反響が次の入力の後に届いて�
   await page.addInitScript(() => {
     if (localStorage.getItem('keydist:workspaces') === null) {
       localStorage.setItem('keydist:workspaces', JSON.stringify({
-        version: 3,
+        version: 4,
         workspaces: [{
           id: 'echo',
           name: 'echo',

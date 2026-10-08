@@ -18,7 +18,7 @@ export function ComparisonWorkspacePane({
 }) {
   const { options, onOptionsChange, diagnostics } = usePaneOptions<ComparisonOptions>(
     comparisonAnalyzer.definition,
-    pane.options,
+    runtime.paneOptions(pane),
     pane.id,
     (next) => runtime.commitPaneOptions(pane.id, next),
   );

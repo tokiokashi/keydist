@@ -50,7 +50,7 @@ async function open(page: Page, analyzerId: AnalyzerId, size: { width: number; h
   await page.setViewportSize(size);
   await page.addInitScript(({ key, setupKey, setups, overrides, theme, value }) => {
     if (localStorage.getItem(key) === null) {
-      localStorage.setItem(key, JSON.stringify({ version: 3, workspaces: [value] }));
+      localStorage.setItem(key, JSON.stringify({ version: 4, workspaces: [value] }));
       localStorage.setItem(setupKey, JSON.stringify({ version: 1, setups, overrides }));
       localStorage.setItem('keydist:app-state', JSON.stringify({ version: 2, appearance: { theme } }));
     }

@@ -36,7 +36,7 @@ async function openWorkspace(page: Page, size: { width: number; height: number }
   await page.setViewportSize(size);
   await page.addInitScript((value) => {
     if (localStorage.getItem('keydist:workspaces') === null) {
-      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [value] }));
+      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
     }
   }, { id: 'stack', name, text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes: [flow, comparison, withTarget ? sensitivityWithTarget : sensitivity], grid: GRID });
   await page.goto('/workspace/stack');

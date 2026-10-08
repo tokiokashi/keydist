@@ -29,7 +29,7 @@ async function open(page: Page, size = { width: 1440, height: 900 }): Promise<vo
   await page.clock.install();
   await page.setViewportSize(size);
   await page.addInitScript(({ key, value }) => {
-    if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 3, workspaces: [value] }));
+    if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 4, workspaces: [value] }));
     const log = { requests: 0, stale: 0 };
     (window as unknown as { __log: typeof log }).__log = log;
     const Original = window.Worker;

@@ -3,7 +3,7 @@ import { waitForHydration } from './hydration-helper.ts';
 import { settleBy } from './settle-helper.ts';
 
 /**
- * 中身入りのサンプルのWorkspace。トップの「サンプルのWorkspaceを作る」は、比較表・N感度・Bigram Flowを並べた
+ * 中身入りのサンプルのWorkspace。トップの「サンプルのWorkspaceを作る」は、比較表・N感度・Bigram Flow・指ごとの距離を並べた
  * Workspaceを新しく作って開く。空のWorkspaceの中の「サンプルの並びで始める」は、新しく作らず今のWorkspaceに同じ並びを入れる。
  */
 
@@ -14,7 +14,8 @@ interface StoredWorkspace {
   readonly id: string;
   readonly name: string;
   readonly groups: readonly { id: string; target: { single?: { layoutId?: string }; set?: { targets: { layoutId: string }[] } } }[];
-  readonly panes: readonly { id: string; analyzerId: string; options?: unknown; binding: { mode: string; group?: string } }[];
+  readonly optionSets: readonly { id: string; analyzerId: string; options?: unknown }[];
+  readonly panes: readonly { id: string; analyzerId: string; options?: unknown; optionsBinding: { mode: string; set?: string }; binding: { mode: string; group?: string } }[];
   readonly grid: readonly { id: string; x: number; y: number; w: number; h: number }[];
   readonly conditions?: Record<string, unknown>;
 }
@@ -39,14 +40,20 @@ async function expectSampleWorkspace(page: Page, name: string): Promise<void> {
 async function expectSampleLayout(page: Page, id: string): Promise<void> {
   const workspace = (await storedWorkspaces(page)).find((candidate) => candidate.id === id)!;
 
-  // 並び: 上の段は比較表とN感度、下の段はBigram Flow 4つ
+  // 並び: 上の段は比較表とN感度、中の段はBigram Flow 4つ、下の段は指ごとの距離4つ
   expect(workspace.panes.map((pane) => pane.analyzerId)).toEqual([
-    'comparison', 'n-sensitivity', 'bigram-flow', 'bigram-flow', 'bigram-flow', 'bigram-flow',
+    'comparison', 'n-sensitivity',
+    'bigram-flow', 'bigram-flow', 'bigram-flow', 'bigram-flow',
+    'finger-distance', 'finger-distance', 'finger-distance', 'finger-distance',
   ]);
-  // 連動: 比較表・N感度・1つ目のBigram Flowが連動1、残りが連動2〜4
+  // 連動: 比較表・N感度・1つ目のBigram Flow・1つ目の指ごとの距離が連動1、残りが連動2〜4
   expect(workspace.panes.map((pane) => pane.binding)).toEqual([
     { mode: 'follow', group: 'link-1' },
     { mode: 'follow', group: 'link-1' },
+    { mode: 'follow', group: 'link-1' },
+    { mode: 'follow', group: 'link-2' },
+    { mode: 'follow', group: 'link-3' },
+    { mode: 'follow', group: 'link-4' },
     { mode: 'follow', group: 'link-1' },
     { mode: 'follow', group: 'link-2' },
     { mode: 'follow', group: 'link-3' },
@@ -57,24 +64,32 @@ async function expectSampleLayout(page: Page, id: string): Promise<void> {
     'qwerty', 'dvorak', 'oonishi', 'naginata-v18', 'shin-jis-prefix', 'shingeta', 'tsuki-2-263',
   ]);
   expect(workspace.groups.map((group) => group.target.single?.layoutId)).toEqual(['qwerty', 'oonishi', 'tsuki-2-263', 'naginata-v18']);
-  // 解析設定: Bigram Flowは2打鍵の取り方を Within-hand
-  for (const pane of workspace.panes.filter((candidate) => candidate.analyzerId === 'bigram-flow')) {
-    expect(pane.options).toEqual({ source: 'within-hand' });
+  // 解析設定: Bigram Flowの4つは、2打鍵の取り方がWithin-handの共有の設定に従う。指ごとの距離の4つも1つの共有の設定に従う
+  expect(workspace.optionSets).toEqual([
+    { id: 'bigram-flow-1', analyzerId: 'bigram-flow', options: { source: 'within-hand' } },
+    { id: 'finger-distance-1', analyzerId: 'finger-distance' },
+  ]);
+  for (const pane of workspace.panes.filter((candidate) => ['bigram-flow', 'finger-distance'].includes(candidate.analyzerId))) {
+    expect(pane.optionsBinding).toEqual({ mode: 'shared', set: `${pane.analyzerId}-1` });
+    expect(pane.options).toBeUndefined();
   }
   // Workspaceの条件
   expect(workspace.conditions).toEqual({ defaultShapeId: 'split-ortholinear' });
-  // 格子: 上の段は比較表とN感度が横に並んで24列を使い切り、下の段は同じ幅の4つが横に並ぶ
+  // 格子: 上の段は比較表とN感度が横に並んで24列を使い切り、中の段・下の段は同じ幅の4つが横に並ぶ
   const [comparison, nSensitivity, ...lower] = workspace.grid;
   expect([comparison!.x, comparison!.y]).toEqual([0, 0]);
   expect([nSensitivity!.x, nSensitivity!.y]).toEqual([comparison!.w, 0]);
   expect(comparison!.w + nSensitivity!.w).toBe(24);
   expect(nSensitivity!.h).toBe(comparison!.h);
-  // 高さ（升目）: 上の段9・下の段15。1920x930で1画面に入る大きさ（下のe2eで実測）
-  expect([comparison!.h, ...lower.map((item) => item.h)]).toEqual([9, 15, 15, 15, 15]);
-  expect(lower.map((item) => [item.x, item.y, item.w])).toEqual([0, 6, 12, 18].map((x) => [x, comparison!.h, 6]));
+  // 高さ（升目）: 上の段9・中の段15・下の段10。上の2段は1920x930で1画面に入り、下の段は指ごとの距離がペインの中でスクロールしない最小の高さ（下のe2eで実測）
+  expect([comparison!.h, ...lower.map((item) => item.h)]).toEqual([9, 15, 15, 15, 15, 10, 10, 10, 10]);
+  expect(lower.map((item) => [item.x, item.y, item.w])).toEqual([
+    ...[0, 6, 12, 18].map((x) => [x, comparison!.h, 6]),
+    ...[0, 6, 12, 18].map((x) => [x, comparison!.h + 15, 6]),
+  ]);
 
   // 画面にも出る
-  await expect(page.locator('.pane-frame')).toHaveCount(6);
+  await expect(page.locator('.pane-frame')).toHaveCount(10);
   await expect(page.locator('.pane-frame').first().getByRole('heading', { level: 2, name: '比較表', exact: true })).toBeVisible();
 }
 
@@ -92,7 +107,7 @@ test('トップの「サンプルのWorkspaceを作る」で、サンプルのWo
   await page.reload();
   await waitForHydration(page);
   await expect(page.locator('#app-sidebar').getByRole('link', { name: 'サンプル', exact: true })).toBeVisible();
-  await expect(page.locator('.pane-frame')).toHaveCount(6);
+  await expect(page.locator('.pane-frame')).toHaveCount(10);
 });
 
 test('空のWorkspaceの「サンプルの並びで始める」で、今のWorkspaceにサンプルの並びが入る。一覧は増えず、元に戻すで空に戻る', async ({ page }) => {
@@ -106,7 +121,7 @@ test('空のWorkspaceの「サンプルの並びで始める」で、今のWorks
 
   await page.locator('[data-workspace-empty="true"]').getByRole('button', { name: 'サンプルの並びで始める' }).click();
   // 同じ画面のまま、名前も変わらずに並びが入る
-  await expect(page.locator('.pane-frame')).toHaveCount(6);
+  await expect(page.locator('.pane-frame')).toHaveCount(10);
   expect(page.url()).toBe(url);
   await expectSampleLayout(page, emptyId);
   expect(await globalSnapshot(page)).toEqual(before);
@@ -122,7 +137,7 @@ test('空のWorkspaceの「サンプルの並びで始める」で、今のWorks
   expect(emptied.conditions).toBeUndefined();
   expect(await globalSnapshot(page)).toEqual(before);
   await bar.getByRole('button', { name: 'やり直す' }).click();
-  await expect(page.locator('.pane-frame')).toHaveCount(6);
+  await expect(page.locator('.pane-frame')).toHaveCount(10);
 });
 
 test('トップから2回作ると、名前は既存のWorkspaceと同じく連番になる', async ({ page }) => {
@@ -146,6 +161,7 @@ test('サンプルのWorkspaceは普通のWorkspaceと同じに扱える。Bigra
   await bigramFlow.getByRole('button', { name: '解析設定', exact: true }).click();
   const settings = page.locator('[data-settings-window="true"]');
   await expect(settings.getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(settings.getByRole('radio', { name: '共有に従う' })).toHaveAttribute('aria-checked', 'true');
   await settings.getByRole('button', { name: '解析設定を閉じる' }).click();
 
   // 作った直後の画面の履歴は空（画面を移ると履歴は引き継がない）。以降の変更は元に戻せる
@@ -153,9 +169,9 @@ test('サンプルのWorkspaceは普通のWorkspaceと同じに扱える。Bigra
   await expect(bar.getByRole('button', { name: '元に戻す' })).toBeDisabled();
   await bigramFlow.getByRole('button', { name: /の操作$/ }).click();
   await page.getByRole('menuitem', { name: /閉じる/ }).click();
-  await expect(page.locator('.pane-frame')).toHaveCount(5);
+  await expect(page.locator('.pane-frame')).toHaveCount(9);
   await bar.getByRole('button', { name: '元に戻す' }).click();
-  await expect(page.locator('.pane-frame')).toHaveCount(6);
+  await expect(page.locator('.pane-frame')).toHaveCount(10);
 });
 
 /** サンプルを開き、全ペインの描画が済むまで待つ。 */
@@ -170,6 +186,7 @@ async function openSampleAt(page: Page, size: { width: number; height: number },
   await expectSampleWorkspace(page, 'サンプル');
   await expect(page.locator('[data-flow-edge="true"]').first()).toBeAttached({ timeout: 15_000 });
   await expect(page.locator('[data-n-sensitivity-series]').first()).toBeAttached({ timeout: 15_000 });
+  await expect(page.locator('.workspace-grid-item .pane-frame[data-pane-status="ready"]')).toHaveCount(10, { timeout: 30_000 });
   // 図の描画（N感度は領域の実寸に合わせて描き直す）が落ち着くまで待つ。
   // ペインの寸法と、N感度の図の大きさ・viewBox（実寸に合わせた描き直しの結果）が変わらなくなるのを見る
   await settleBy(page, () => page.evaluate(() => [
@@ -188,16 +205,19 @@ async function openSampleAt(page: Page, size: { width: number; height: number },
 const VIEWPORT_1080_MONITOR = { width: 1920, height: 930 };
 
 for (const sidebar of ['pinned', 'unpinned'] as const) {
-  test(`1920x930（サイドバー${sidebar === 'pinned' ? '固定' : '非固定'}）で、サンプルのWorkspace全体が1画面に入り、どのペインも中でスクロールしない`, async ({ page }) => {
+  test(`1920x930（サイドバー${sidebar === 'pinned' ? '固定' : '非固定'}）で、サンプルの上の2段が1画面に入り、どのペインも中でスクロールしない`, async ({ page }) => {
     await openSampleAt(page, { width: VIEWPORT_1080_MONITOR.width, height: VIEWPORT_1080_MONITOR.height }, sidebar);
     const m = await page.evaluate(() => ({
-      page: [document.documentElement.scrollHeight, document.documentElement.clientHeight],
+      viewport: document.documentElement.clientHeight,
+      items: [...document.querySelectorAll('.workspace-grid-item')].map((item) => item.getBoundingClientRect().bottom),
       panes: [...document.querySelectorAll('.workspace-grid-item .pane-body')].map((body) => [body.scrollHeight, body.clientHeight]),
     }));
-    // ページが縦にスクロールしない
-    expect(m.page[0]).toBeLessThanOrEqual(m.page[1]!);
-    // 各ペインの中身が、ペインの中でスクロールせずに収まる（N感度は図・凡例・横軸・畳んだ表の見出しまで）
-    expect(m.panes).toHaveLength(6);
+    // 比較表・N感度・Bigram Flow 4つは、ページを縦にスクロールせずに全部見える。指ごとの距離の段は、その下
+    expect(m.items).toHaveLength(10);
+    for (const bottom of m.items.slice(0, 6)) expect(bottom).toBeLessThanOrEqual(m.viewport);
+    // 各ペインの中身が、ペインの中でスクロールせずに収まる（N感度は図・凡例・横軸・畳んだ表の見出しまで。
+    // 指ごとの距離は見出し・縦棒・指の名前・左手と右手の見出しまで）
+    expect(m.panes).toHaveLength(10);
     for (const [scrollHeight, clientHeight] of m.panes) expect(scrollHeight).toBeLessThanOrEqual(clientHeight! + 1);
   });
 }
@@ -208,7 +228,7 @@ for (const sidebar of ['pinned', 'unpinned'] as const) {
  * 9升は1080のモニタの普通の窓（1920x930）に1画面で入ることを優先した大きさで、1440幅は実際の利用環境ではなく想定の条件。
  * そのため比較表とBigram Flow 4つは中でスクロールしないことを見て、N感度は図が左・右・上で本体から切れないことだけを見る。
  */
-test('1440x900（サイドバー固定）では、比較表とBigram Flowは中でスクロールしない。N感度の図は横に切れない', async ({ page }) => {
+test('1440x900（サイドバー固定）では、比較表・Bigram Flow・指ごとの距離は中でスクロールしない。N感度の図は横に切れない', async ({ page }) => {
   await openSampleAt(page, { width: 1440, height: 900 }, 'pinned');
   const m = await page.evaluate(() => {
     const bodies = [...document.querySelectorAll('.workspace-grid-item .pane-body')];
@@ -220,7 +240,7 @@ test('1440x900（サイドバー固定）では、比較表とBigram Flowは中�
       svg: { left: svg.left - body.left, right: body.right - svg.right, top: svg.top - body.top },
     };
   });
-  expect(m.panes).toHaveLength(6);
+  expect(m.panes).toHaveLength(10);
   for (const [scrollHeight, clientHeight, isNSensitivity] of m.panes) {
     if (!isNSensitivity) expect(scrollHeight).toBeLessThanOrEqual((clientHeight as number) + 1);
   }

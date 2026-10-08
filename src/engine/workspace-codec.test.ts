@@ -18,6 +18,7 @@ import {
   withWorkspaceText,
   type WorkspaceLibrary,
   type WorkspacePane,
+  OWN_OPTIONS,
 } from './workspace.ts';
 import { gridPaneIds, type GridSize } from './workspace-grid.ts';
 
@@ -27,12 +28,14 @@ const singlePane = (id: string): WorkspacePane => ({
   id,
   analyzerId: 'bigram-flow',
   options: undefined,
+  optionsBinding: OWN_OPTIONS,
   binding: followBinding(G),
 });
 const setPane = (id: string): WorkspacePane => ({
   id,
   analyzerId: 'comparison',
   options: { visible: ['a'] },
+  optionsBinding: OWN_OPTIONS,
   binding: {
     mode: 'fixed',
     target: {
@@ -58,7 +61,7 @@ function sample(): WorkspaceLibrary {
     selection: { targets: [{ kind: 'layout', layoutId: 'qwerty' }], baseline: undefined },
   });
   library = withPaneInNewLinkGroup(library, 'w1', 'p1', 'link-2', { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } });
-  library = addWorkspacePane(library, 'w1', { id: 'p4', analyzerId: BLANK_PANE_ID, options: undefined, binding: NO_BINDING }, SIZE);
+  library = addWorkspacePane(library, 'w1', { id: 'p4', analyzerId: BLANK_PANE_ID, options: undefined, optionsBinding: OWN_OPTIONS, binding: NO_BINDING }, SIZE);
   library = createWorkspace(library, () => 'w2').library;
   return library;
 }
@@ -78,7 +81,7 @@ test('保存形式は自前の格子で、載せるライブラリの形（`i`�
   assert.equal(encoded.includes('"minW"'), false);
   assert.equal(encoded.includes('"panels"'), false);
   assert.equal(encoded.includes('"views"'), false);
-  assert.equal(WORKSPACE_LIBRARY_CODEC.encode(sample()).version, 3);
+  assert.equal(WORKSPACE_LIBRARY_CODEC.encode(sample()).version, 4);
 });
 
 test('将来の版・版の無い値は失敗として返す（黙って切り捨てない）', () => {
@@ -91,7 +94,7 @@ test('将来の版・版の無い値は失敗として返す（黙って切り�
 
 test('壊れたWorkspace・ペインはその1件だけ診断つきで捨て、残りを読む', () => {
   const result = WORKSPACE_LIBRARY_CODEC.decode({
-    version: 3,
+    version: 4,
     workspaces: [
       'not-an-object',
       { name: 'idなし' },
@@ -130,7 +133,7 @@ test('従う組 / 固定と、組ごとの対象は往復で保たれる', () =>
 
 test('組が壊れていれば壊れた部分だけ空へ戻し、捨てた値には診断を出す', () => {
   const broken = WORKSPACE_LIBRARY_CODEC.decode({
-    version: 3,
+    version: 4,
     workspaces: [{
       id: 'w',
       name: 'n',
@@ -157,22 +160,22 @@ test('組が壊れていれば壊れた部分だけ空へ戻し、捨てた値�
 });
 
 test('組が1つも読めなければ空の組を1つ作り、診断を出す。従う組が無いペインは先頭の組へ従わせる', () => {
-  const missing = WORKSPACE_LIBRARY_CODEC.decode({ version: 3, workspaces: [{ id: 'w', name: 'n' }] });
+  const missing = WORKSPACE_LIBRARY_CODEC.decode({ version: 4, workspaces: [{ id: 'w', name: 'n' }] });
   assert.ok(missing.ok);
   assert.deepEqual(missing.value[0]!.groups.map((g) => g.id), [G]);
   assert.deepEqual(missing.value[0]!.groups[0]!.target.single, { target: undefined });
   assert.ok(missing.diagnostics.some((d) => d.path === 'payload.workspaces[0].groups'));
 
   const result = WORKSPACE_LIBRARY_CODEC.decode({
-    version: 3,
+    version: 4,
     workspaces: [{
       id: 'w',
       name: 'n',
       groups: [{ id: 'x', target: {} }],
       panes: [
-        { id: 'p1', analyzerId: 'bigram-flow', binding: { mode: 'follow', group: 'x' } },
-        { id: 'p2', analyzerId: 'bigram-flow', binding: { mode: 'follow', group: 'gone' } },
-        { id: 'p3', analyzerId: 'bigram-flow', binding: { mode: 'follow' } },
+        { id: 'p1', analyzerId: 'bigram-flow', optionsBinding: { mode: 'own' }, binding: { mode: 'follow', group: 'x' } },
+        { id: 'p2', analyzerId: 'bigram-flow', optionsBinding: { mode: 'own' }, binding: { mode: 'follow', group: 'gone' } },
+        { id: 'p3', analyzerId: 'bigram-flow', optionsBinding: { mode: 'own' }, binding: { mode: 'follow' } },
         { id: 'p4', analyzerId: 'bigram-flow' },
         { id: 'p5', analyzerId: 'bigram-flow', binding: 'oops' },
       ],
@@ -191,7 +194,7 @@ test('組が1つも読めなければ空の組を1つ作り、診断を出す。
 
 test('ペインの集合の選択がobject形式でなければ診断を出してペインを捨てる', () => {
   const result = WORKSPACE_LIBRARY_CODEC.decode({
-    version: 3,
+    version: 4,
     workspaces: [{
       id: 'w',
       name: 'n',
@@ -205,7 +208,7 @@ test('ペインの集合の選択がobject形式でなければ診断を出し�
 
 test('名前・テキストの選択が壊れていれば既定へ戻し、診断を出す', () => {
   const result = WORKSPACE_LIBRARY_CODEC.decode({
-    version: 3,
+    version: 4,
     workspaces: [{ id: 'w', name: 42, text: { ref: { kind: 'builtin', id: 'no-such-text' } } }],
   });
   assert.ok(result.ok);
@@ -217,7 +220,7 @@ test('名前・テキストの選択が壊れていれば既定へ戻し、診�
 
 test('配置がペインと食い違っていてもペインを失わず、並びを直して読む', () => {
   const result = WORKSPACE_LIBRARY_CODEC.decode({
-    version: 3,
+    version: 4,
     workspaces: [{
       id: 'w',
       name: 'n',
@@ -253,7 +256,7 @@ test('配置がペインと食い違っていてもペインを失わず、並�
 
 test('配置が無くてもペインは並ぶ。ペインが無ければ配置も無い', () => {
   const result = WORKSPACE_LIBRARY_CODEC.decode({
-    version: 3,
+    version: 4,
     workspaces: [
       { id: 'w', name: 'n', panes: [{ id: 'a', analyzerId: 'x', binding: { mode: 'follow' } }, { id: 'b', analyzerId: 'x', binding: { mode: 'follow' } }] },
       { id: 'empty', name: 'e' },
@@ -266,7 +269,7 @@ test('配置が無くてもペインは並ぶ。ペインが無ければ配置�
 
 test('知らないAnalyzerのペインは捨てずに残す', () => {
   const result = WORKSPACE_LIBRARY_CODEC.decode({
-    version: 3,
+    version: 4,
     workspaces: [{ id: 'w', name: 'n', panes: [{ id: 'a', analyzerId: 'future-analyzer', options: { z: 1 }, binding: { mode: 'follow' } }] }],
   });
   assert.ok(result.ok);
@@ -296,7 +299,7 @@ test('詰める設定は往復する。詰めない（既定）は値を持た�
   assert.equal(JSON.stringify(WORKSPACE_LIBRARY_CODEC.encode(sample())).includes('compactPanes'), false);
 
   const raw = (compactPanes: unknown) => WORKSPACE_LIBRARY_CODEC.decode({
-    version: 3,
+    version: 4,
     workspaces: [{
       id: 'w',
       name: 'n',
@@ -320,7 +323,7 @@ test('詰める設定は往復する。詰めない（既定）は値を持た�
 
 test('gridが配列でなければ診断を1件積み、ペインは失わない。undefinedは診断なし', () => {
   const decode = (grid: unknown) => WORKSPACE_LIBRARY_CODEC.decode({
-    version: 3,
+    version: 4,
     workspaces: [{
       id: 'w',
       name: 'n',

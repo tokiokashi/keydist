@@ -20,7 +20,7 @@ const cell = (id: string, x: number, y: number, w: number, h: number) => ({ id, 
 async function openWorkspace(page: Page, panes: readonly unknown[], grid: unknown, size: { width: number; height: number }, seriesCount = 2) {
   await page.setViewportSize(size);
   await page.addInitScript((value) => {
-    localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [value] }));
+    localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
   }, { id: 'fit', name: '収まりの確認', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes, grid });
   await page.goto('/workspace/fit');
   await waitForHydration(page);

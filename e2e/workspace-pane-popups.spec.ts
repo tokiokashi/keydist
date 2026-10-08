@@ -14,7 +14,7 @@ async function openWorkspace(page: Page, panes: readonly unknown[], layout: unkn
   await page.setViewportSize(size);
   await page.addInitScript((value) => {
     if (localStorage.getItem('keydist:workspaces') === null) {
-      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [value] }));
+      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
     }
   }, { id: 'p', name: 'ポップアップ', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes, grid: layout });
   await page.goto('/workspace/p');

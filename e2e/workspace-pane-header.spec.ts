@@ -12,7 +12,7 @@ const pane = (id: string) => ({ id, analyzerId: 'bigram-flow', binding: { mode: 
 
 async function openWorkspace(page: Page, theme: 'light' | 'dark'): Promise<void> {
   await page.addInitScript(({ workspace, theme }) => {
-    localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [workspace] }));
+    localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [workspace] }));
     localStorage.setItem('keydist:app-state', JSON.stringify({ version: 2, appearance: { theme } }));
   }, {
     theme,

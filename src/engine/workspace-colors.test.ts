@@ -14,6 +14,7 @@ import {
   withWorkspaceTarget,
   type WorkspaceLibrary,
   type WorkspacePane,
+  OWN_OPTIONS,
 } from './workspace.ts';
 import { WORKSPACE_LIBRARY_CODEC } from './workspace-codec.ts';
 
@@ -29,6 +30,7 @@ function fixedSetPane(id: string, targets: readonly AnalysisTarget[]): Workspace
     id,
     analyzerId: 'comparison',
     options: undefined,
+    optionsBinding: OWN_OPTIONS,
     binding: { mode: 'fixed', target: { kind: 'set', selection: { targets, baseline: undefined } } },
   };
 }
@@ -52,7 +54,7 @@ test('同じ対象は、別のペインに違う順で入れても同じ色に�
 });
 
 test('従う組の集合と、固定のペインの集合も同じ1つの集合として配る', () => {
-  let library = withPanes({ id: 'p1', analyzerId: 'comparison', options: undefined, binding: followBinding(INITIAL_LINK_GROUP_ID) });
+  let library = withPanes({ id: 'p1', analyzerId: 'comparison', options: undefined, optionsBinding: OWN_OPTIONS, binding: followBinding(INITIAL_LINK_GROUP_ID) });
   library = withWorkspaceTarget(library, 'w1', INITIAL_LINK_GROUP_ID, { kind: 'set', selection: { targets: [A, B], baseline: undefined } });
   library = addWorkspacePane(library, 'w1', fixedSetPane('p2', [B, C]), { w: 6, h: 10 });
   assert.deepEqual([A, B, C].map((t) => slotOf(library, t)), [0, 1, 2]);
