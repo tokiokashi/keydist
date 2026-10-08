@@ -70,7 +70,7 @@
 | ID | 機能 | 旧画面での出どころ | 確認 | 状態 | 受け皿・候補 |
 |---|---|---|---|---|---|
 | A1 | 全機能を縦に並べた1ページ（`/analyzer`） | `analyzer-page.tsx` | 操作 | 実装済み | 機能ごとの個別画面（`/standalone/<名前>`）とWorkspace（`/workspace/<id>`）に分けた。個別画面のルートを `/analyzer/<名前>` に揃える作業は、旧画面の削除（J1）と一緒に行う |
-| A2 | Bigram FlowのURL付きページ（`/analyzer/flow`。`mode`・`layout`・`source`・`fingers`・`lineScale`・`layerOrder`・`hoverScale`・`bandwidth`・`gain`） | `analyzer_.flow.tsx`・`features/analyzer-next/bigram-flow-route-state.ts` | 操作 | 実装済み | `/standalone/bigram-flow`。解析設定はURLに載り、共有で運ぶ（`hosts/standalone/use-url-options.ts`）。`mode`・`layout` の2つのクエリは持ち越さない（A8と同じ理由）。旧URLの転送はX5 |
+| A2 | Bigram FlowのURL付きページ（`/analyzer/flow`。`mode`・`layout`・`source`・`fingers`・`lineScale`・`layerOrder`・`hoverScale`・`bandwidth`・`gain`） | `analyzer_.flow.tsx`・`features/analyzer-next/bigram-flow-route-state.ts` | 操作 | 実装済み | `/standalone/bigram-flow`。解析設定はURLに載り、共有で運ぶ（`hosts/standalone/use-shared-link.ts`）。`mode`・`layout` の2つのクエリは持ち越さない（A8と同じ理由）。旧URLの転送はX5 |
 | A3 | keydistのリンク（トップへ） | `analyzer-page.tsx` | 操作 | 実装済み | `app/shell/Sidebar.tsx` の `keydist` |
 | A4 | テーマの切り替え（ライト・自動・ダーク） | `analyzer-remaining-ui.tsx` の `AnalyzerThemeControls` | 操作 | 実装済み | サイドバー最下端（`app/shell/Sidebar.tsx`・`app/theme/appearance.ts`） |
 | A5 | 情報ボタン（i）の説明 | `analyzer-page.tsx` の `InfoButton` | コード | 実装済み | `ui/primitives/info-button.tsx` |
@@ -177,7 +177,7 @@
 
 | ID | 機能 | 旧画面での出どころ | 確認 | 状態 | 受け皿・候補 |
 |---|---|---|---|---|---|
-| H1 | 共有URL | （`/analyzer` には無い。`location`・`history`・`URLSearchParams` を使っていない） | コード | 実装済み | 旧画面に無かった機能として新側にある（文脈バーの共有。`hosts/standalone/use-url-options.ts`・`use-url-targets.ts`）。旧 `/analyzer/flow` のURLはA2 |
+| H1 | 共有URL | （`/analyzer` には無い。`location`・`history`・`URLSearchParams` を使っていない） | コード | 実装済み | 旧画面に無かった機能として新側にある（文脈バーの共有。`hosts/standalone/use-shared-link.ts`）。旧 `/analyzer/flow` のURLはA2 |
 | H2 | 比較表の列見出しのキーボード操作（Enter・Space） | `table-sort` | コード | 実装済み | 比較表の見出し（`analyzers/comparison/`） |
 | H3 | 較正中のキー入力の取得 | `analyzer-calibration-dialog.tsx` | コード | 予定あり | #53。N6に含める |
 
