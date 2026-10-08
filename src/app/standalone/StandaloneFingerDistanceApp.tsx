@@ -4,7 +4,7 @@ import { setStandaloneAnalyzerOptionsCommand } from '#engine/commands.ts';
 import { fingerDistanceAnalyzer } from '#analyzers/finger-distance/definition.tsx';
 import type { FingerDistanceOptions } from '#analyzers/finger-distance/options.ts';
 import { FingerDistanceStandalonePage } from '#hosts/standalone/index.ts';
-import { builtinPaneCatalog } from './catalog.ts';
+import { paneCatalog } from './catalog.ts';
 import { sharedEngineComputer } from './engine-computer.ts';
 import { generatePresetId, generateTextId } from './id-generator.ts';
 import { useKeydistAssets } from './use-keydist-assets.ts';
@@ -27,7 +27,7 @@ import { useTextContentCommit } from './use-text-content-commit.ts';
  */
 export function StandaloneFingerDistanceApp() {
   const { assets, ready, dispatch, getAssets, canUndo, canRedo, undo, redo } = useKeydistAssets();
-  const catalog = useMemo(() => builtinPaneCatalog(), []);
+  const catalog = useMemo(() => paneCatalog(assets), [assets.userLayouts, assets.userRomajiRules]);
 
   // 解析設定の書き込みは間引いてから`dispatch`する（`use-debounced-commit.ts`参照。
   // スライダーのような連続操作でstorage書き込み・Undo履歴が埋まらないようにするため）。
