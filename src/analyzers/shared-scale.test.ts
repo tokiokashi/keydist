@@ -2,18 +2,18 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createScaleRegistry, mergeScaleRanges, scaleRangeWithZero } from './shared-scale.ts';
 
-test('mergeScaleRanges は全部の範囲を含む最小と最大を返す', () => {
+test('mergeScaleRangesは全部の範囲を含む最小と最大を返す', () => {
   assert.deepEqual(
     mergeScaleRanges([{ min: 0, max: 69.7 }, { min: -2, max: 110.5 }, { min: 0, max: 40 }]),
     { min: -2, max: 110.5 },
   );
 });
 
-test('mergeScaleRanges は範囲が1つも無ければ undefined', () => {
+test('mergeScaleRangesは範囲が1つも無ければundefined', () => {
   assert.equal(mergeScaleRanges([]), undefined);
 });
 
-test('scaleRangeWithZero は0を常に含める', () => {
+test('scaleRangeWithZeroは0を常に含める', () => {
   assert.deepEqual(scaleRangeWithZero([3, 5]), { min: 0, max: 5 });
   assert.deepEqual(scaleRangeWithZero([-4, -1]), { min: -4, max: 0 });
   assert.deepEqual(scaleRangeWithZero([]), { min: 0, max: 0 });
