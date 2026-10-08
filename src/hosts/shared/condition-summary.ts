@@ -130,6 +130,8 @@ function cascadeLevelLabel(level: CascadeLevel, names: ConditionValueNames | und
 export interface ConditionValueNames {
   readonly shapes: ReadonlyMap<string, { readonly name: string }>;
   readonly layouts?: ReadonlyMap<string, { readonly name: string }>;
+  /** 自作のローマ字規則（組み込みは含めない）。 */
+  readonly romajiRules?: ReadonlyMap<string, { readonly name: string }>;
 }
 
 function formatValue(
@@ -143,7 +145,7 @@ function formatValue(
   }
   if (id === 'romajiRuleId' && typeof value === 'string') {
     const builtin = Object.hasOwn(ROMAJI_RULES, value) ? ROMAJI_RULES[value as keyof typeof ROMAJI_RULES] : undefined;
-    return { format: 'primitive', displayValue: builtin?.name ?? '自作のローマ字規則' };
+    return { format: 'primitive', displayValue: builtin?.name ?? names?.romajiRules?.get(value)?.name ?? '見つからないローマ字規則' };
   }
   if (id === 'fingerAssignmentId' && typeof value === 'string') {
     const builtin = Object.hasOwn(FINGER_ASSIGNMENT_REGISTRY, value) ? FINGER_ASSIGNMENT_REGISTRY[value] : undefined;

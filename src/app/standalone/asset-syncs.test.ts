@@ -292,3 +292,36 @@ test('自作の配列とローマ字規則: 保存された値の壊れた要素
   assert.equal(loaded.userLayouts?.length, 1);
   assert.equal(loaded.userRomajiRules?.length, 1);
 });
+
+test('外部変更: 他タブで書いた自作の配列とローマ字規則が、それぞれのキーのonExternalChangeへ届く', () => {
+  const storage = createFakeStorage();
+  const bus = createFakeBus();
+  const seen: unknown[] = [];
+
+  const syncsA = buildAssetSyncs({
+    onExternalChange: (key, value) => seen.push([key, value]),
+    storage,
+    subscribe: bus.subscribe,
+    notify: bus.notify,
+  });
+  const syncsB = buildAssetSyncs({ onExternalChange: () => {}, storage, subscribe: bus.subscribe, notify: bus.notify });
+  const stopA = startAssetSyncs(syncsA);
+  const stopB = startAssetSyncs(syncsB);
+
+  const userLayouts = [{
+    id: 'user-a',
+    name: '自作の配列',
+    rows: ['1234567890', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'] as [string, string, string, string],
+    romaji: 'romaji-a',
+  }];
+  const userRomajiRules = [{ id: 'romaji-a', name: '自作の規則', base: 'kunrei' as const, overrides: { し: 'shi' }, generateSokuon: true }];
+  saveChangedAssets(syncsB, { ...baseAssets(), userLayouts, userRomajiRules }, ['userLayouts', 'userRomajiRules']);
+
+  assert.deepEqual(seen, [['userLayouts', userLayouts], ['userRomajiRules', userRomajiRules]]);
+  // 新しいタブの読み込みでも同じ値が読める
+  const loaded = loadAssets(buildAssetSyncs({ onExternalChange: () => {}, storage }));
+  assert.deepEqual(loaded.userLayouts, userLayouts);
+  assert.deepEqual(loaded.userRomajiRules, userRomajiRules);
+  stopA();
+  stopB();
+});
