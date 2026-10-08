@@ -1956,7 +1956,7 @@ h1 {
   }
 }
 
-/* 計算方法のページ。読み物の幅は .hero と同じ50remに抑えて中央に置く */
+/* 計算方法のページ。読み物の幅は.heroと同じ50remに抑えて中央に置く */
 .about {
   max-width: 50rem;
   margin-inline: auto;
