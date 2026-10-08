@@ -7,7 +7,7 @@ import {
 } from '#analyzers/contract.ts';
 import { DEFAULT_METRIC_CONDITIONS, type Metrics } from '#interpretation/metrics.ts';
 import { analysisTargetKey, type AnalysisTarget } from '#input/setup/index.ts';
-import type { Finger, Key } from '#input/shapes/geometry.ts';
+import { ALL_FINGERS, type Finger, type Key } from '#input/shapes/geometry.ts';
 import type { Press, Stroke, StrokeParticipation, Trace } from '#trace/generate.ts';
 import {
   ALTERNATE_COMPARISON_OPTIONS,
@@ -22,14 +22,13 @@ import {
  * 比較表Analyzerの抽出。
  *
  * 集合対象（`SetAnalyzerDefinition`）の最初の実例。各メンバー（Setup）の`Metrics`から
- * 旧実装（`src/legacy/analyzer-metrics-content.tsx`の`compareMetricValues`）と同じ
- * 13列を機械的に読み出すだけで、独自の合成指標・優劣判定は行わない（AGENTS.md
+ * 列の値を機械的に読み出すだけで、独自の合成指標・優劣判定は行わない（AGENTS.md
  * 「優劣の判定・順位付け・合成スコアを作らない」）。基準（baseline）との比較・
  * 列の表示/非表示は解析設定（`affects: 'view'`）で、抽出結果には含めない
  * （`options.ts`のコメント参照）。
  */
 
-/** 1行（1 Setup）ぶんの、13列の生値。 */
+/** 1行（1 Setup）ぶんの、全列の生値。 */
 export type ComparisonRowValues = Readonly<Record<ComparisonColumnId, number>>;
 
 /** 解決できたメンバー1件の行。 */
@@ -66,7 +65,18 @@ export interface ComparisonExtracted {
   readonly rows: readonly ComparisonRow[];
 }
 
-/** `Metrics`から13列を読み出す純関数。`options.ts`のコメント参照。 */
+/**
+ * 右手（親指を含む5本。指の頭文字がR）の割合（%）。分母が0なら0。
+ * 指ごとの距離のAnalyzerの右手の小計（`distanceShare`・`pressShare`）と同じ値を、百分率で返す（仕様 §11）。
+ */
+function rightHandShare(byFinger: Readonly<Record<Finger, number>>): number {
+  const total = ALL_FINGERS.reduce((sum, finger) => sum + byFinger[finger], 0);
+  if (total === 0) return 0;
+  const right = ALL_FINGERS.filter((finger) => finger.startsWith('R')).reduce((sum, finger) => sum + byFinger[finger], 0);
+  return (right / total) * 100;
+}
+
+/** `Metrics`から全列を読み出す純関数。`options.ts`のコメント参照。 */
 export function computeComparisonRowValues(metrics: Metrics): ComparisonRowValues {
   const adjacentCount = metrics.adjacent.length || 1;
   const adjacentMean = metrics.adjacent.reduce((sum, item) => sum + item.meanExcess, 0) / adjacentCount;
@@ -85,6 +95,8 @@ export function computeComparisonRowValues(metrics: Metrics): ComparisonRowValue
     sameFingerRate: (metrics.sameFinger / Math.max(1, metrics.strokes)) * 100,
     adjacentMean,
     adjacentStdDev,
+    rightHandDistanceShare: rightHandShare(metrics.perFinger),
+    rightHandPressShare: rightHandShare(metrics.perFingerPresses),
   };
 }
 
@@ -152,6 +164,10 @@ const FIXTURE_TRACE: Trace = {
   layerDefinitions: [],
 };
 
+function fixtureFingerRecord(): Record<Finger, number> {
+  return Object.fromEntries(ALL_FINGERS.map((finger) => [finger, 0])) as Record<Finger, number>;
+}
+
 function fixtureMetrics(totalUnits: number): Metrics {
   return {
     geometryId: 'row-staggered',
@@ -164,8 +180,8 @@ function fixtureMetrics(totalUnits: number): Metrics {
     presses: 3,
     skipped: 0,
     inputChars: 3,
-    perFinger: {} as Metrics['perFinger'],
-    perFingerPresses: {} as Metrics['perFingerPresses'],
+    perFinger: fixtureFingerRecord(),
+    perFingerPresses: fixtureFingerRecord(),
     totalUnits,
     totalMm: totalUnits * 19,
     meanPerStroke: totalUnits / 3,

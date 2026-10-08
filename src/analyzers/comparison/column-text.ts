@@ -19,6 +19,8 @@ export const COMPARISON_COLUMN_IDS = [
   'sameFingerRate',
   'adjacentMean',
   'adjacentStdDev',
+  'rightHandDistanceShare',
+  'rightHandPressShare',
 ] as const;
 
 export type ComparisonColumnId = (typeof COMPARISON_COLUMN_IDS)[number];
@@ -88,5 +90,13 @@ export const COMPARISON_COLUMN_TEXT: Readonly<Record<ComparisonColumnId, Compari
   adjacentStdDev: {
     label: '指間σ',
     description: '隣り合う2本の指の距離のばらつき（標準偏差）。6組の平均（u）。',
+  },
+  rightHandDistanceShare: {
+    label: '右手距離率',
+    description: '右手（親指を含む5本）の総移動距離を、全指の総移動距離で割った割合（%）。左手は100%から引いた値。',
+  },
+  rightHandPressShare: {
+    label: '右手押下率',
+    description: '右手（親指を含む5本）の押下数を、全押下数で割った割合（%）。左手は100%から引いた値。',
   },
 } as const;
