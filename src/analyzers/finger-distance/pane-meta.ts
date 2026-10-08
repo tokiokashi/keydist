@@ -5,4 +5,6 @@
 export const FINGER_DISTANCE_PANE_META = {
   name: '指ごとの距離',
   description: '同じテキストを打った時の、指ごとの移動距離と押下数を左右の手に分けて並べる。隣り合う指の間隔のばらつき（標準偏差）も出す。',
+  /** 左手の5本と小計が見える高さ [rem]（`analyzers/min-body-height.ts`）。 */
+  minBodyHeightRem: 20,
 } as const;

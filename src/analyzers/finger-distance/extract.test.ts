@@ -17,9 +17,17 @@ import { DEFAULT_FINGER_DISTANCE_OPTIONS, fingerDistanceOptions } from './option
  * 期待値は、仕様の式から手で導ける小さいテキストと、Traceから仕様の式で数え直した値の2通りで確かめる。
  */
 
+/** 右親指キーが2つあり、space以外のキーをホームにした物理配列。右親指がspaceでホームから動く。 */
+const TWO_THUMB_SHAPE: PhysicalShape = {
+  ...PHYSICAL_SHAPES['row-staggered'],
+  id: 'row-staggered-two-thumbs',
+  thumbs: [...PHYSICAL_SHAPES['row-staggered'].thumbs, { id: 'thumb-r2', finger: 'RT', col: 6.5, y: 4 }],
+  thumbHome: { RT: 'thumb-r2' },
+};
+
 const CATALOG = {
   layouts: LAYOUT_BY_ID,
-  shapes: new Map<string, PhysicalShape>(Object.values(PHYSICAL_SHAPES).map((shape) => [shape.id, shape])),
+  shapes: new Map<string, PhysicalShape>([...Object.values(PHYSICAL_SHAPES), TWO_THUMB_SHAPE].map((shape) => [shape.id, shape])),
 };
 
 function resolve(layoutId: string, shapeId: string, text: string): ResolvedInput {
@@ -53,7 +61,7 @@ const fingerOf = (extracted: FingerDistanceExtracted, finger: string) => {
 
 test('「ae」: 左中指がdからeへ動いた距離だけが計上され、指間距離の標準偏差も手で導ける', () => {
   // QWERTY / row-staggered / 既定の指割り当て。a（左小指）はホームなので距離0、
-  // e（左中指）はホームのdから、上段へ1u・横へ0.25u（段ずれ）離れているので、距離は`hypot(0.25, 1)`。
+  // e（左中指）はホームのdから、上段へ1u・横へ0.25u（段ずれ）離れているので、距離は `hypot(0.25, 1)`。
   const extracted = extract(resolve('qwerty', 'row-staggered', 'ae'));
   const eMove = Math.hypot(0.25, 1);
 
@@ -175,6 +183,28 @@ test('指ごとの移動距離の合計は、比較表の総移動距離と一�
     near(sumOfFingers, row.values.totalUnits, `${item.name}: 指ごとの合計と比較表の総移動距離`);
     near(extracted.totalDistance, row.values.totalUnits);
   }
+});
+
+test('親指キーが複数ある物理配列では、親指の移動距離も合計に入り、比較表の総移動距離と一致する', () => {
+  const input = resolve('qwerty', TWO_THUMB_SHAPE.id, 'a b c');
+  const extracted = extract(input);
+  const comparison = createEngineCache().getSetExtraction(
+    [{ target: { kind: 'setup', setupId: 'setup-finger-distance' }, resolution: { ok: true, input } }],
+    comparisonDefinition,
+    DEFAULT_COMPARISON_OPTIONS,
+  ).extracted;
+  const row = comparison.rows[0];
+  assert.ok(row && row.kind === 'ok');
+  const thumb = fingerOf(extracted, 'RT');
+  assert.ok(thumb.distance > 0, '右親指の距離が0（親指が動く入力になっていない）');
+  const all = extracted.fingers.reduce((sum, entry) => sum + entry.distance, 0);
+  const withoutThumbs = extracted.fingers.filter((entry) => !entry.finger.endsWith('T')).reduce((sum, entry) => sum + entry.distance, 0);
+  near(thumb.distance, 1, '右親指の距離');
+  near(all, 3.9208096264818897, '10本の合計');
+  near(withoutThumbs, 2.9208096264818897, '8本の合計');
+  near(all, row.values.totalUnits, '10本の合計と比較表の総移動距離');
+  assert.ok(Math.abs(withoutThumbs - row.values.totalUnits) > 0.1, '8本の合計が総移動距離と同じになっている');
+  near(extracted.hands.right.distance + extracted.hands.left.distance, row.values.totalUnits);
 });
 
 test('移動も押下も無いテキストでは、割合は0で出て非数にならない', () => {

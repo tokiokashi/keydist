@@ -15,7 +15,7 @@ import './finger-distance-view.css';
 /**
  * 指ごとの距離の可視化。
  *
- * `extracted`（`extract.ts`の計算結果）をそのまま描くだけで、`Metrics`の再計算はしない
+ * `extracted`（`extract.ts` の計算結果）をそのまま描くだけで、`Metrics` の再計算はしない
  * （docs/architecture.md「可視化は計算しない」）。**優劣を示す色・強調・順位は出さない**
  * （AGENTS.md「優劣の判定・順位付け・合成スコアを作らない」）。棒の長さは値の大きさを
  * 示すだけで、最大や最小の指を強調しない。指の並びは物理的な並び（左手の小指から右手の小指）のまま。

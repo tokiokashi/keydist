@@ -11,7 +11,7 @@ import {
 /**
  * 指ごとの距離の抽出（仕様 §11.1・§11.2・§11.6）。
  *
- * `Metrics`が持つ指ごとの総移動距離・押下数・隣接指間距離の統計を、画面がそのまま描ける形に
+ * `Metrics` が持つ指ごとの総移動距離・押下数・隣接指間距離の統計を、画面がそのまま描ける形に
  * 並べ直すだけで、新しい指標や合成スコアは作らない。割合と手ごとの小計は同じ値の割り算と足し算。
  */
 
@@ -23,7 +23,7 @@ export interface FingerDistanceFinger {
   readonly hand: FingerDistanceHand;
   /** 総移動距離 `D_f` [u]（仕様 §11.1） */
   readonly distance: number;
-  /** `D_f / D`。`D`が0の時は0（0〜1） */
+  /** `D_f / D`。`D` が0の時は0（0〜1） */
   readonly distanceShare: number;
   /** 押下数 `Q_f`（仕様 §11.2） */
   readonly presses: number;
@@ -151,7 +151,7 @@ function fixtureMetrics(): Metrics {
 }
 
 /**
- * engine（`engine/cache.ts`の`getExtraction`）が呼ぶ、Analyzer契約の実体。
+ * engine（`engine/cache.ts` の `getExtraction`）が呼ぶ、Analyzer契約の実体。
  * 解析設定の項目は無い。
  */
 export const fingerDistanceDefinition: SingleAnalyzerDefinition<FingerDistanceOptions, FingerDistanceExtracted> = defineSingleAnalyzer({

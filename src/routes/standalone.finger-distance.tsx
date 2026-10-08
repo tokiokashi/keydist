@@ -3,9 +3,9 @@ import { FINGER_DISTANCE_PANE_META } from '#analyzers/finger-distance/pane-meta.
 import { StandaloneFingerDistanceApp } from '#app/standalone/StandaloneFingerDistanceApp.tsx';
 
 /**
- * 指ごとの距離の単体ページのroute。pathは`/standalone/<Analyzerのid>`で、他の単体ページと揃える。
- * route自体は`createFileRoute`だけの薄いファイルにし、実体は`app`が組み立てる
- * （`hosts/standalone`はTanStack Routerを知らない）。
+ * 指ごとの距離の単体ページのroute。pathは `/standalone/<Analyzerのid>` で、他の単体ページと揃える。
+ * route自体は `createFileRoute` だけの薄いファイルにし、実体は `app` が組み立てる
+ * （`hosts/standalone` はTanStack Routerを知らない）。
  */
 export const Route = createFileRoute('/standalone/finger-distance')({
   staticData: { contextBar: true },
