@@ -4,6 +4,7 @@ import type { EngineWorkerRequest, EngineWorkerResponse } from '#engine/worker-p
 import { bigramFlowDefinition } from '#analyzers/bigram-flow/extract.ts';
 import { fingerDistanceDefinition } from '#analyzers/finger-distance/extract.ts';
 import { heatmapDefinition } from '#analyzers/heatmap/extract.ts';
+import { layerComboDefinition } from '#analyzers/layer-combo/extract.ts';
 import { comparisonDefinition } from '#analyzers/comparison/extract.ts';
 import { fingerMatrixDefinition } from '#analyzers/finger-matrix/extract.ts';
 import { nSensitivityDefinition } from '#analyzers/n-sensitivity/extract.ts';
@@ -16,7 +17,7 @@ import { nSensitivityDefinition } from '#analyzers/n-sensitivity/extract.ts';
  * 描画側（`definition.tsx`）はReactを引き込むので読み込まず、抽出だけの`extract.ts`を使う。
  */
 const handle = createEngineWorkerHandler(createEngineCache(), {
-  single: [bigramFlowDefinition, fingerDistanceDefinition, heatmapDefinition],
+  single: [bigramFlowDefinition, fingerDistanceDefinition, heatmapDefinition, layerComboDefinition],
   set: [comparisonDefinition, fingerMatrixDefinition, nSensitivityDefinition],
 });
 
