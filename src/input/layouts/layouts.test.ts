@@ -615,7 +615,7 @@ test('薙刀式のSandS presentationをFace authoringで明示する', () => {
     mergeIntoLayerId: 'single',
     mergedTitleSuffix: '（レイヤー3以降を合算）',
     controlLabel: '薙刀式の表示',
-    compactLabel: '2面にまとめる',
+    compactLabel: '2レイヤーにまとめる',
     detailLabel: '全レイヤー詳細',
   });
   assert.deepEqual(layout.map.get('の'), [['space', 'j']]);

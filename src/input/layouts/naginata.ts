@@ -115,7 +115,7 @@ export const NAGINATA_V18: Layout = withAliases(withThumbShiftAlternatives(
         mergeIntoLayerId: SINGLE_LAYER_ID,
         mergedTitleSuffix: '（レイヤー3以降を合算）',
         controlLabel: '薙刀式の表示',
-        compactLabel: '2面にまとめる',
+        compactLabel: '2レイヤーにまとめる',
         detailLabel: '全レイヤー詳細',
       },
     },

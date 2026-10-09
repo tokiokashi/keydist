@@ -85,7 +85,7 @@ test('層をまとめる配列: まとめと詳細を切り替えられ、層の
   const box = page.getByRole('group', { name: 'レイヤー別ヒートマップの表示' });
   await box.getByRole('button', { name: '全レイヤー詳細' }).click();
   await expect(diagrams(page)).toHaveCount(32);
-  await box.getByRole('button', { name: '2面にまとめる' }).click();
+  await box.getByRole('button', { name: '2レイヤーにまとめる' }).click();
   await expect(diagrams(page)).toHaveCount(3);
 });
 
