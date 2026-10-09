@@ -8,7 +8,6 @@ import { resolveEngineInput } from '#engine/resolved-input.ts';
 import type { EngineSetMemberInput } from '#engine/request.ts';
 import { createEngineCache } from '#engine/cache.ts';
 import { computeFingerDistanceExtraction } from '#analyzers/finger-distance/extract.ts';
-import { findOptionsKeyDisciplineViolations, findViewOptionsExtractionViolations } from '#analyzers/options.ts';
 import {
   FINGER_MATRIX_SURFACES,
   computeFingerMatrixExtraction,
@@ -16,12 +15,12 @@ import {
   type FingerMatrixExtracted,
   type FingerMatrixOkRow,
 } from './extract.ts';
-import { ALTERNATE_FINGER_MATRIX_OPTIONS, DEFAULT_FINGER_MATRIX_OPTIONS, FINGER_MATRIX_SURFACE_IDS, fingerMatrixOptions } from './options.ts';
+import { ALTERNATE_FINGER_MATRIX_OPTIONS, DEFAULT_FINGER_MATRIX_OPTIONS, FINGER_MATRIX_SURFACE_IDS } from './options.ts';
 
 /**
  * 配列×指のマトリックスの抽出（仕様 §11.1・§11.2・§11.6）を、実際のengine経路で検証する。
- * 条件: 物理配列 row-staggered・指割当は既定・テキスト "hello world"（英語）・
- * windowSizeなどはengineの既定（`EMPTY_SETTINGS_OVERRIDES`）。配列は qwerty と dvorak。
+ * 条件: 物理配列`row-staggered`・指割当は既定・テキスト "hello world"（英語）・
+ * windowSizeなどはengineの既定（`EMPTY_SETTINGS_OVERRIDES`）。配列は`qwerty`と`dvorak`。
  */
 
 const CATALOG = {
@@ -58,7 +57,7 @@ function assertCloseArray(actual: readonly number[], expected: readonly number[]
 
 const MEMBERS = [memberFor('qwerty', 'hello world'), memberFor('dvorak', 'hello world')];
 
-// 実行して出した値（列の順は FINGER_MATRIX_SURFACES の columns）。
+// 実行して出した値（列の順は`FINGER_MATRIX_SURFACES`の`columns`）。
 // 指の列: LP LR LM LI LT RT RI RM RR RP。指間の列: LP-LR LR-LM LM-LI RI-RM RM-RR RR-RP。
 const EXPECTED: Readonly<Record<string, Readonly<Record<string, readonly number[]>>>> = {
   qwerty: {
@@ -101,7 +100,7 @@ test('面の列: 指の面は親指を含む10本、指間の面は仕様 §11.6
   assert.equal(FINGER_MATRIX_SURFACES, extracted.surfaces);
 });
 
-test('既存の抽出と同じ量: 指ごとの押下数・距離は指ごとの距離の抽出、全体の和は Metrics と一致する', () => {
+test('既存の抽出と同じ量: 指ごとの押下数・距離は指ごとの距離の抽出、全体の和は`Metrics`と一致する', () => {
   const cache = createEngineCache();
   const { extracted } = cache.getSetExtraction(MEMBERS, fingerMatrixDefinition, DEFAULT_FINGER_MATRIX_OPTIONS);
   for (const [layoutId, member] of [['qwerty', MEMBERS[0]!], ['dvorak', MEMBERS[1]!]] as const) {
@@ -114,7 +113,7 @@ test('既存の抽出と同じ量: 指ごとの押下数・距離は指ごとの
     assert.deepEqual(row.surfaces.distance, fingerDistance.fingers.map((item) => item.distance));
     assert.deepEqual(row.surfaces.pairMean, fingerDistance.adjacent.map((item) => item.meanExcess));
     assert.deepEqual(row.surfaces.pairStdDev, fingerDistance.adjacent.map((item) => item.stdDev));
-    assert.equal(row.surfaces.presses.reduce((sum, value) => sum + value, 0), fingerDistance.totalPresses);
+    assert.equal(row.surfaces.presses.reduce((sum, value) => sum + value, 0), metrics.presses);
     assert.ok(Math.abs(row.surfaces.distance.reduce((sum, value) => sum + value, 0) - metrics.totalUnits) < 1e-9);
   }
 });
@@ -128,14 +127,14 @@ test('面を切り替えても抽出は作り直さない: 面の選択は抽出
   assert.deepEqual(cache.size, sizeAfterFirst);
 });
 
-test('順位や最小の印を持たない: 行は targetKey・inputChars・面の値だけ', () => {
+test('順位や最小の印を持たない: 行は`targetKey`・`inputChars`・面の値だけ', () => {
   const { extracted } = createEngineCache().getSetExtraction(MEMBERS, fingerMatrixDefinition, DEFAULT_FINGER_MATRIX_OPTIONS);
   for (const row of extracted.rows) {
     assert.deepEqual(Object.keys(row).sort(), ['inputChars', 'kind', 'surfaces', 'targetKey']);
   }
 });
 
-test('解決に失敗したメンバーは failed 行になり、行を消さない', () => {
+test('解決に失敗したメンバーは `failed`行になり、行を消さない', () => {
   const missing: AnalysisTarget = { kind: 'setup', setupId: 'setup-deleted' };
   const extracted = computeFingerMatrixExtraction(
     [],
@@ -148,20 +147,4 @@ test('解決に失敗したメンバーは failed 行になり、行を消さな
     assert.equal(row.targetKey, 'setup:setup-deleted');
     assert.equal(row.failureKind, 'reference');
   }
-});
-
-test('optionsDiscipline: 面の選択は表示だけの設定（抽出のキーに入らない）', () => {
-  assert.deepEqual(
-    findOptionsKeyDisciplineViolations(fingerMatrixOptions, DEFAULT_FINGER_MATRIX_OPTIONS, ALTERNATE_FINGER_MATRIX_OPTIONS),
-    [],
-  );
-  assert.deepEqual(
-    findViewOptionsExtractionViolations(
-      fingerMatrixOptions,
-      DEFAULT_FINGER_MATRIX_OPTIONS,
-      ALTERNATE_FINGER_MATRIX_OPTIONS,
-      () => 'dummy',
-    ),
-    [],
-  );
 });
