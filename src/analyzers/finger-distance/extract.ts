@@ -108,7 +108,9 @@ export function computeFingerDistanceExtraction(metrics: Metrics): FingerDistanc
 function fixtureMetrics(): Metrics {
   const perFinger = {} as Metrics['perFinger'];
   const perFingerPresses = {} as Metrics['perFingerPresses'];
+  const perFingerSameFinger = {} as Metrics['perFingerSameFinger'];
   for (const finger of ALL_FINGERS) {
+    perFingerSameFinger[finger] = 0;
     perFinger[finger] = 0;
     perFingerPresses[finger] = 0;
   }
@@ -129,6 +131,7 @@ function fixtureMetrics(): Metrics {
     inputChars: 3,
     perFinger,
     perFingerPresses,
+    perFingerPressEvents: perFingerPresses,
     totalUnits: 3,
     totalMm: 57,
     meanPerStroke: 1,
@@ -140,6 +143,7 @@ function fixtureMetrics(): Metrics {
     singleKeyRate: 100,
     adjacent: ADJACENT_PAIRS.map((pair, i) => ({ pair, meanExcess: i * 0.1, stdDev: i * 0.05, maxExcess: i * 0.2 })),
     sameFinger: 0,
+    perFingerSameFinger,
     combos: { definitions: 0, matched: 0, hits: 0 },
     layers: [],
     comboPresses: 0,

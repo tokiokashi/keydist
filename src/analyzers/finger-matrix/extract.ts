@@ -39,8 +39,8 @@ export interface FingerMatrixColumn {
 const FINGER_COLUMNS: readonly FingerMatrixColumn[] = ALL_FINGERS.map((finger) => ({ id: finger, fingers: [finger] }));
 const PAIR_COLUMNS: readonly FingerMatrixColumn[] = ADJACENT_PAIRS.map((pair) => ({ id: `${pair[0]}-${pair[1]}`, fingers: pair }));
 
-/** 面の単位。押下数は回数、それ以外は距離 [u]。 */
-export type FingerMatrixUnit = 'count' | 'u';
+/** 面の単位。押下数・同指連続の回数は回数、比率と割合は百分率（0〜100）、それ以外は距離 [u]。 */
+export type FingerMatrixUnit = 'count' | 'u' | 'percent';
 
 export interface FingerMatrixSurfaceDef {
   readonly id: FingerMatrixSurfaceId;
@@ -55,6 +55,10 @@ export const FINGER_MATRIX_SURFACES: readonly FingerMatrixSurfaceDef[] = [
   // 指間距離は仕様 §11.6の「ホーム間隔からの超過」。親指は隣接ペアに含まれない
   { id: 'pairMean', unit: 'u', columns: PAIR_COLUMNS },
   { id: 'pairStdDev', unit: 'u', columns: PAIR_COLUMNS },
+  // 同指連続（仕様 §11.7）はPress単位で数える。親指も列に含める
+  { id: 'sfbCount', unit: 'count', columns: FINGER_COLUMNS },
+  { id: 'sfbRate', unit: 'percent', columns: FINGER_COLUMNS },
+  { id: 'sfbShare', unit: 'percent', columns: FINGER_COLUMNS },
 ];
 
 /** 解決できた1行（1 Setup）。面ごとに、列の並びと同じ順の値を持つ。 */
@@ -64,6 +68,11 @@ export interface FingerMatrixOkRow {
   /** 入力文字数。1文字あたりへ直す時の分母 */
   readonly inputChars: number;
   readonly surfaces: Readonly<Record<FingerMatrixSurfaceId, readonly number[]>>;
+  /**
+   * 指ごとのPressの回数（仕様 §11.7の `P_f`）。値の並びは指の列（`ALL_FINGERS`）と同じ。
+   * 同指連続の比率の分母で、同時押しを押したキーの数で数える押下数の面（`Q_f`）とは別の量。
+   */
+  readonly fingerPressEvents: readonly number[];
 }
 
 /** 解決に失敗した1行。黙って消さず、失敗した事実を値として持つ。 */
@@ -83,6 +92,11 @@ export interface FingerMatrixExtracted {
   readonly rows: readonly FingerMatrixRow[];
 }
 
+/** 百分率。分母が0の時は0（仕様 §11.7） */
+function percent(numerator: number, denominator: number): number {
+  return denominator === 0 ? 0 : (numerator / denominator) * 100;
+}
+
 function surfaceCells(id: FingerMatrixSurfaceId, metrics: Metrics): number[] {
   switch (id) {
     case 'presses':
@@ -93,6 +107,12 @@ function surfaceCells(id: FingerMatrixSurfaceId, metrics: Metrics): number[] {
       return metrics.adjacent.map((item) => item.meanExcess);
     case 'pairStdDev':
       return metrics.adjacent.map((item) => item.stdDev);
+    case 'sfbCount':
+      return ALL_FINGERS.map((finger) => metrics.perFingerSameFinger[finger]);
+    case 'sfbRate':
+      return ALL_FINGERS.map((finger) => percent(metrics.perFingerSameFinger[finger], metrics.perFingerPressEvents[finger]));
+    case 'sfbShare':
+      return ALL_FINGERS.map((finger) => percent(metrics.perFingerSameFinger[finger], metrics.sameFinger));
   }
 }
 
@@ -109,6 +129,7 @@ function memberToRow(member: AnalyzerSetMember): FingerMatrixOkRow {
     targetKey: analysisTargetKey(member.target),
     inputChars: member.metrics.inputChars,
     surfaces: computeFingerMatrixSurfaces(member.metrics),
+    fingerPressEvents: ALL_FINGERS.map((finger) => member.metrics.perFingerPressEvents[finger]),
   };
 }
 
@@ -137,8 +158,12 @@ function fixtureMetrics(): Metrics {
     perFinger[finger] = 0;
     perFingerPresses[finger] = 0;
   }
+  const perFingerPressEvents = { ...perFingerPresses };
+  const perFingerSameFinger = { ...perFingerPresses };
   perFinger.LI = 2;
   perFingerPresses.LI = 2;
+  perFingerPressEvents.LI = 2;
+  perFingerSameFinger.LI = 1;
   return {
     geometryId: 'row-staggered',
     geometryName: 'Row-staggered',
@@ -152,6 +177,7 @@ function fixtureMetrics(): Metrics {
     inputChars: 2,
     perFinger,
     perFingerPresses,
+    perFingerPressEvents,
     totalUnits: 2,
     totalMm: 38,
     meanPerStroke: 1,
@@ -162,7 +188,8 @@ function fixtureMetrics(): Metrics {
     singleTapRate: 100,
     singleKeyRate: 100,
     adjacent: ADJACENT_PAIRS.map((pair, i) => ({ pair, meanExcess: i * 0.1, stdDev: i * 0.05, maxExcess: i * 0.2 })),
-    sameFinger: 0,
+    sameFinger: 1,
+    perFingerSameFinger,
     combos: { definitions: 0, matched: 0, hits: 0 },
     layers: [],
     comboPresses: 0,

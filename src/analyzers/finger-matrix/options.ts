@@ -7,7 +7,7 @@ import { defineOption, defineOptions, picklistUrlCodec } from '#analyzers/option
  * - `surface`: 表に出す面。抽出は全ての面をまとめて持つので、面を切り替えても抽出は走り直さない
  *   （`affects: 'view'`）。面を足す時は、この一覧と抽出の面の定義（`extract.ts`）に足す
  */
-export const FINGER_MATRIX_SURFACE_IDS = ['presses', 'distance', 'pairMean', 'pairStdDev'] as const;
+export const FINGER_MATRIX_SURFACE_IDS = ['presses', 'distance', 'pairMean', 'pairStdDev', 'sfbCount', 'sfbRate', 'sfbShare'] as const;
 export type FingerMatrixSurfaceId = (typeof FINGER_MATRIX_SURFACE_IDS)[number];
 
 export const fingerMatrixOptions = defineOptions({
