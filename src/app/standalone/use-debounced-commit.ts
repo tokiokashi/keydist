@@ -31,7 +31,7 @@ export interface UseDebouncedCommitOptions<T> {
  * `hosts`のALLOWEDに`platform`が無い）ため、debounceの組み立てはここ（`app`）で行い、
  * `hosts`へは「呼べば間引かれて反映される関数」だけを返す。呼び出し側（`hosts`）は
  * 見た目の即時反映（draft state）と、この関数呼び出しによる資産への反映を分けて持つ
- * （`BigramFlowStandalonePage.tsx`の`optionsDraft`参照。既存の`textDraft`と同じ形）。
+ * （`SingleAnalyzerStandalonePage.tsx`の`optionsDraft`参照。既存の`textDraft`と同じ形）。
  */
 export function useDebouncedCommit<T>(
   dispatch: (command: Command<KeydistAssets>) => void,

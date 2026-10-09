@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { BIGRAM_FLOW_PANE_META } from '#analyzers/bigram-flow/pane-meta.ts';
-import { StandaloneBigramFlowApp } from '#app/standalone/StandaloneBigramFlowApp.tsx';
+import { bigramFlowAnalyzer } from '#analyzers/bigram-flow/definition.tsx';
+import { StandaloneSingleAnalyzerApp } from '#app/standalone/StandaloneSingleAnalyzerApp.tsx';
 
 /**
  * Bigram Flow単体ページのroute。
@@ -26,5 +27,5 @@ export const Route = createFileRoute('/standalone/bigram-flow')({
       },
     ],
   }),
-  component: StandaloneBigramFlowApp,
+  component: () => <StandaloneSingleAnalyzerApp analyzer={bigramFlowAnalyzer} />,
 });

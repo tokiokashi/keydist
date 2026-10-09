@@ -11,7 +11,8 @@ import { N_SENSITIVITY_PANE_META } from '#analyzers/n-sensitivity/pane-meta.ts';
 
 /**
  * Workspaceのペインに置けるAnalyzer。ペインの追加（Analyzerを選ぶ）と、保存したペインの
- * AnalyzerのidからAnalyzerを引くのに使う。Analyzerを足す時は、ここに1行足し、
+ * AnalyzerのidからAnalyzerを引くのに使う。Analyzerを足す時は、ここに1行足す。Singleなら、さらに`single-analyzers.ts`に
+ * そのAnalyzerのペインに渡すもの（`definition.tsx`）を1行足す（足し忘れは`single-analyzers.test.ts`が落とす）。Multiは
  * `WorkspacePaneView.tsx`の分岐にそのAnalyzerのペインを足す。
  *
  * idは各Analyzerの`definition.id`（純粋な部分）から取る。名前と短い説明は、Reactに依存しない

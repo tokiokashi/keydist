@@ -25,7 +25,7 @@ import type { PaneChrome, PaneEnvironment } from './pane-environment.ts';
 /**
  * 比較表のペイン（対象の集合を見るAnalyzer）。個別画面とWorkspaceのペインが同じこのcomponentを使う。
  * 値の持ち主（集合・解析設定をどこへ保存するか）は器が決め、ここには集合の値と変更の通知だけを渡す
- * （`BigramFlowPane`と同じ分担）。
+ * （`SingleAnalyzerPane`と同じ分担）。
  */
 export interface ComparisonPaneProps {
   readonly env: PaneEnvironment;

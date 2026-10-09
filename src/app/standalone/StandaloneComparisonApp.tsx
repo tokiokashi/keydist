@@ -15,7 +15,7 @@ import { useDebouncedCommit } from './use-debounced-commit.ts';
 import { useTextContentCommit } from './use-text-content-commit.ts';
 
 /**
- * 比較表単体ページの組み立て（`StandaloneBigramFlowApp.tsx`と同じ形）。
+ * 比較表単体ページの組み立て（`StandaloneSingleAnalyzerApp.tsx`と同じ形）。
  *
  * 計算の窓口は他の単体ページと共有する（`engine-computer.ts`。ブラウザではWorker）。
  */

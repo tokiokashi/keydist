@@ -1,10 +1,10 @@
 import { bindOption, SelectOptionField } from '#ui/primitives/option-fields.tsx';
 import { fingerDistanceDefinition, type FingerDistanceExtracted } from './extract.ts';
-import { DEFAULT_FINGER_DISTANCE_OPTIONS, type FingerDistanceOptions } from './options.ts';
+import { DEFAULT_FINGER_DISTANCE_OPTIONS, fingerDistanceOptions, type FingerDistanceOptions } from './options.ts';
 import { FINGER_DISTANCE_PANE_META } from './pane-meta.ts';
 import { chartSpecOf } from './chart-data.ts';
 import { FingerDistanceChart } from './finger-distance-chart.tsx';
-import type { AnalyzerPaneParts, AnalyzerSettingsProps } from '../pane-parts.tsx';
+import type { AnalyzerSettingsProps, SingleAnalyzerPaneParts } from '../pane-parts.tsx';
 import './finger-distance-view.css';
 
 /**
@@ -63,4 +63,5 @@ export const fingerDistanceAnalyzer = {
   Body: FingerDistanceBody,
   Settings: FingerDistanceSettings,
   defaultOptions: DEFAULT_FINGER_DISTANCE_OPTIONS,
-} satisfies AnalyzerPaneParts<typeof fingerDistanceDefinition, FingerDistanceOptions, FingerDistanceBodyProps>;
+  urlOptions: fingerDistanceOptions,
+} satisfies SingleAnalyzerPaneParts<FingerDistanceOptions, FingerDistanceExtracted>;

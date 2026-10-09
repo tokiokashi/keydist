@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { FINGER_DISTANCE_PANE_META } from '#analyzers/finger-distance/pane-meta.ts';
-import { StandaloneFingerDistanceApp } from '#app/standalone/StandaloneFingerDistanceApp.tsx';
+import { fingerDistanceAnalyzer } from '#analyzers/finger-distance/definition.tsx';
+import { StandaloneSingleAnalyzerApp } from '#app/standalone/StandaloneSingleAnalyzerApp.tsx';
 
 /**
  * 指ごとの距離の単体ページのroute。pathは `/standalone/<Analyzerのid>` で、他の単体ページと揃える。
@@ -18,5 +19,5 @@ export const Route = createFileRoute('/standalone/finger-distance')({
       },
     ],
   }),
-  component: StandaloneFingerDistanceApp,
+  component: () => <StandaloneSingleAnalyzerApp analyzer={fingerDistanceAnalyzer} />,
 });

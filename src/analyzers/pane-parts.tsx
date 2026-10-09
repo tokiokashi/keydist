@@ -1,5 +1,10 @@
 import type { ComponentType } from 'react';
+import type { Geometry } from '#input/shapes/geometry.ts';
+import type { Layout } from '#input/layouts/types.ts';
+import type { Trace } from '#trace/generate.ts';
 import type { InfoHelp } from '#ui/primitives/info-button.tsx';
+import type { SingleAnalyzerDefinition } from './contract.ts';
+import type { UrlOptionsCodec } from './options.ts';
 
 /**
  * Analyzerがペインに渡すもの（docs/architecture.md「Analyzerがペインに渡すもの」）。
@@ -50,4 +55,30 @@ export interface AnalyzerPaneParts<Definition, Options, BodyProps, TargetItemVal
   readonly defaultOptions: Options;
   /** 対象の集合に属する、このAnalyzerだけの項目（比較表の基準）。 */
   readonly TargetItem?: ComponentType<AnalyzerTargetItemProps<TargetItemValue>>;
+}
+
+/**
+ * 対象を1つ見るAnalyzer（Single）の本体に、ホストが渡すprops。どのSingleにも同じ形で渡し、
+ * 使わないものは本体が受け取らなければよい。Singleのペインの組み立てはAnalyzerごとに分けず、
+ * これを受ける`Body`だけが違う。
+ */
+export interface SingleBodyProps<Extracted, Options> {
+  readonly layout: Layout;
+  readonly geometry: Geometry;
+  readonly trace: Trace;
+  readonly extracted: Extracted;
+  readonly options: Options;
+  /** 図のそばで開く表示の調整の書き込み先。解析設定と同じ1つの値を書き換える。 */
+  readonly onOptionsChange: (next: Options) => void;
+}
+
+/**
+ * Singleのホスト（単体ページ・Workspaceのペイン・ペイン本体）が引数に取る形。
+ * 各Singleの`definition.tsx`がこの形のオブジェクトを1つexportし、ホストへ渡すだけで
+ * 単体ページとWorkspaceのペインに載る。
+ */
+export interface SingleAnalyzerPaneParts<Options, Extracted>
+  extends AnalyzerPaneParts<SingleAnalyzerDefinition<Options, Extracted>, Options, SingleBodyProps<Extracted, Options>> {
+  /** 解析設定の共有リンクでの読み書き。`options.ts`の`defineOptions`の結果をそのまま渡す。 */
+  readonly urlOptions: UrlOptionsCodec<Options>;
 }

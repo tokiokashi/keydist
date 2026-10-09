@@ -11,6 +11,7 @@ import {
 } from './movement-profile-scale.ts';
 import {
   computeOutgoingMaxWeight,
+  bigramFlowOptions,
   DEFAULT_BIGRAM_FLOW_OPTIONS,
   orderKeyboardFlowVectors,
   resolveKeyboardFlowMaxWeight,
@@ -40,7 +41,7 @@ import {
   repeatLabelScale,
 } from './keyboard-flow-area.ts';
 import { BIGRAM_FLOW_PANE_META } from './pane-meta.ts';
-import type { AnalyzerPaneParts, AnalyzerSettingsProps } from '../pane-parts.tsx';
+import type { AnalyzerSettingsProps, SingleAnalyzerPaneParts } from '../pane-parts.tsx';
 import { useSharedScale } from '../shared-scale.tsx';
 import './bigram-vector-view.css';
 
@@ -1038,4 +1039,5 @@ export const bigramFlowAnalyzer = {
   Body: BigramFlowBody,
   Settings: BigramFlowSettings,
   defaultOptions: DEFAULT_BIGRAM_FLOW_OPTIONS,
-} satisfies AnalyzerPaneParts<typeof bigramFlowDefinition, BigramFlowOptions, BigramFlowBodyProps>;
+  urlOptions: bigramFlowOptions,
+} satisfies SingleAnalyzerPaneParts<BigramFlowOptions, BigramFlowExtracted>;
