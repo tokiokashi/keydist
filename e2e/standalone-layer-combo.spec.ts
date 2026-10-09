@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 /**
- * レイヤーとコンボのE2E。押下数・コンボ表の行数・英文でのコンボの除外は unit test
+ * レイヤーとコンボのE2E。押下数・コンボ表の行数・英文でのコンボの除外はunit test
  * （`extract.test.ts`・`layout-breakdown.test.ts`）で固定しているので、ここでは画面の配線
  * （帰属先の表・修飾・コンボ表・配列図・該当が無い時の文）だけを見る。
  */

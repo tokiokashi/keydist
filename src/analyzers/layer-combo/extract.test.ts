@@ -38,7 +38,7 @@ test('レイヤーが1つの配列: 唯一のレイヤーが全押下を持つ',
 });
 
 test('Shiftのレイヤーを持つ配列: "aAa" は単打2、Shift2。Shiftのレイヤーは修飾', () => {
-  // A は右Shiftとaの2押下をShiftのレイヤーへ数える
+  // 「A」は右Shiftとaの2押下をShiftのレイヤーへ数える
   const { extracted } = extractFor('qwerty', 'aAa');
   assert.equal(extracted.presses, 4);
   assert.deepEqual(pairs(extracted.rows), [['single', 2], ['layer:Shift', 2]]);
