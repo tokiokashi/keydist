@@ -20,7 +20,7 @@ import { modifierRows } from '#analyzers/layer-combo/layout-breakdown.ts';
 
 /**
  * 名前の無いレイヤーの名前が、画面に出る経路のどこでも空でなく、同じ名前で出ること。
- * 条件: 組み込みの全配列（英字・日本語）、物理配列は row-staggered、`DEFAULT_TRACE_POLICY`。
+ * 条件: 組み込みの全配列（英字・日本語）、物理配列はrow-staggered、`DEFAULT_TRACE_POLICY`。
  */
 
 const geometry = buildGeometry('row-staggered');
