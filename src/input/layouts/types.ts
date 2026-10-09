@@ -100,6 +100,11 @@ export interface LayerDefinition {
   presentationRole?: LayerPresentationRole;
   /** aggregation titleに添えるpresentation-onlyの入力方式表示。 */
   presentationModeLabel?: string;
+  /**
+   * 名前を配列が付けていない層。`label` は仮の空文字で、表示・トレースに出す時は
+   * `layerDefinitionsWithLabels` が配列の刻印から名前を作る。組み立ての途中では刻印が揃わないので、ここでは作らない。
+   */
+  labelIsDefault?: true;
 }
 
 export interface CompactLayerViewPresentation {
@@ -436,12 +441,16 @@ export function fromFaces(
     const presentationModeLabel = trigger.length === 0 || isCombo
       ? undefined
       : face.mode === 'simultaneous' ? '同時' : face.mode === 'prefix' ? '前置' : '後置';
+    // 名前が無いトリガー付きの面は、名前を後で作る（labelIsDefault）
+    const unnamedTriggerLayer = !isCombo && face.presentationLabel === undefined
+      && face.layer === undefined && trigger.length > 0;
     addDefinition({
       id: layerId,
       kind: isCombo ? 'combo' : 'layer',
       label: isCombo
         ? 'コンボ'
-        : face.presentationLabel ?? face.layer ?? (trigger.length === 0 ? '単打' : `面 ${faceIndex + 1}`),
+        : face.presentationLabel ?? face.layer ?? (trigger.length === 0 ? '単打' : ''),
+      ...(unnamedTriggerLayer ? { labelIsDefault: true as const } : {}),
       ...(presentationRole === undefined ? {} : { presentationRole }),
       ...(presentationModeLabel === undefined ? {} : { presentationModeLabel }),
     }, isCombo ? undefined : face.presentationLabel);

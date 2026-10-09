@@ -7,6 +7,7 @@ import {
   type Layout,
   withoutRomajiOnlyCombos,
 } from '#input/layouts/types.ts';
+import { layerDefinitionsWithLabels } from '#input/layouts/layers.ts';
 import { kanaToRomajiChunks } from '#input/romaji/kunrei.ts';
 import {
   applyActionRealizationPolicy,
@@ -174,11 +175,9 @@ export function generateTrace(
   const comboHits: string[] = [];
   const resolvedComboDefinitions = layout.resolvedComboDefinitions ?? [];
   const comboDefinitions = resolvedComboDefinitions.length;
-  const layerDefinitions = [...layout.layerDefinitions ?? [{
-    id: SINGLE_LAYER_ID,
-    kind: 'layer' as const,
-    label: '単打',
-  }]];
+  const layerDefinitions: LayerDefinition[] = layout.layerDefinitions === undefined
+    ? [{ id: SINGLE_LAYER_ID, kind: 'layer', label: '単打' }]
+    : layerDefinitionsWithLabels(layout);
   if (comboDefinitions > 0 && !layerDefinitions.some((definition) => definition.id === COMBO_LAYER_ID)) {
     layerDefinitions.push({ id: COMBO_LAYER_ID, kind: 'combo', label: 'コンボ' });
   }

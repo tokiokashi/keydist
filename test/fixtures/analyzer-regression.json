@@ -4834,7 +4834,7 @@
           },
           {
             "id": "face:2",
-            "label": "面 3",
+            "label": "小書き",
             "presses": 0
           },
           {
@@ -4849,132 +4849,132 @@
           },
           {
             "id": "face:7",
-            "label": "面 8",
+            "label": "拗音（ゃ）",
             "presses": 4
           },
           {
             "id": "face:8",
-            "label": "面 9",
+            "label": "拗音（ゅ）",
             "presses": 4
           },
           {
             "id": "face:9",
-            "label": "面 10",
+            "label": "拗音（ょ）",
             "presses": 4
           },
           {
             "id": "face:10",
-            "label": "面 11",
+            "label": "外来音（ぇ）",
             "presses": 0
           },
           {
             "id": "face:11",
-            "label": "面 12",
+            "label": "外来音（ぃ）",
             "presses": 0
           },
           {
             "id": "face:12",
-            "label": "面 13",
+            "label": "外来音（ぉ）",
             "presses": 0
           },
           {
             "id": "face:13",
-            "label": "面 14",
+            "label": "濁音の拗音（ゃ）",
             "presses": 0
           },
           {
             "id": "face:14",
-            "label": "面 15",
+            "label": "濁音の拗音（ゅ）",
             "presses": 0
           },
           {
             "id": "face:15",
-            "label": "面 16",
+            "label": "濁音の拗音（ょ）",
             "presses": 0
           },
           {
             "id": "face:16",
-            "label": "面 17",
+            "label": "外来音（ぁ）",
             "presses": 0
           },
           {
             "id": "face:17",
-            "label": "面 18",
+            "label": "てぃ",
             "presses": 0
           },
           {
             "id": "face:18",
-            "label": "面 19",
+            "label": "てゅ・ぴゅ",
             "presses": 0
           },
           {
             "id": "face:19",
-            "label": "面 20",
+            "label": "でぃ",
             "presses": 0
           },
           {
             "id": "face:20",
-            "label": "面 21",
+            "label": "外来音（ぅ）",
             "presses": 0
           },
           {
             "id": "face:21",
-            "label": "面 22",
+            "label": "濁音の外来音（ぅ）",
             "presses": 0
           },
           {
             "id": "face:22",
-            "label": "面 23",
+            "label": "半濁音の拗音（ゃ）",
             "presses": 0
           },
           {
             "id": "face:23",
-            "label": "面 24",
+            "label": "半濁音の拗音（ょ）",
             "presses": 0
           },
           {
             "id": "face:24",
-            "label": "面 25",
+            "label": "濁音の外来音（ぇ）",
             "presses": 0
           },
           {
             "id": "face:25",
-            "label": "面 26",
+            "label": "しぇ・ちぇ",
             "presses": 0
           },
           {
             "id": "face:26",
-            "label": "面 27",
+            "label": "濁音の外来音（ぁ）",
             "presses": 0
           },
           {
             "id": "face:27",
-            "label": "面 28",
+            "label": "ぐぃ",
             "presses": 0
           },
           {
             "id": "face:28",
-            "label": "面 29",
+            "label": "ぐぇ",
             "presses": 0
           },
           {
             "id": "face:29",
-            "label": "面 30",
+            "label": "濁音の外来音（ぉ）",
             "presses": 0
           },
           {
             "id": "face:30",
-            "label": "面 31",
+            "label": "濁音の合拗音（ゎ）",
             "presses": 0
           },
           {
             "id": "face:31",
-            "label": "面 32",
+            "label": "合拗音（ゎ）",
             "presses": 0
           },
           {
             "id": "face:32",
-            "label": "面 33",
+            "label": "ふゅ",
             "presses": 0
           }
         ],
@@ -5180,7 +5180,7 @@
           },
           {
             "id": "face:2",
-            "label": "面 3",
+            "label": "小書き",
             "presses": 0
           },
           {
@@ -5195,132 +5195,132 @@
           },
           {
             "id": "face:7",
-            "label": "面 8",
+            "label": "拗音（ゃ）",
             "presses": 4
           },
           {
             "id": "face:8",
-            "label": "面 9",
+            "label": "拗音（ゅ）",
             "presses": 6
           },
           {
             "id": "face:9",
-            "label": "面 10",
+            "label": "拗音（ょ）",
             "presses": 24
           },
           {
             "id": "face:10",
-            "label": "面 11",
+            "label": "外来音（ぇ）",
             "presses": 0
           },
           {
             "id": "face:11",
-            "label": "面 12",
+            "label": "外来音（ぃ）",
             "presses": 0
           },
           {
             "id": "face:12",
-            "label": "面 13",
+            "label": "外来音（ぉ）",
             "presses": 0
           },
           {
             "id": "face:13",
-            "label": "面 14",
+            "label": "濁音の拗音（ゃ）",
             "presses": 0
           },
           {
             "id": "face:14",
-            "label": "面 15",
+            "label": "濁音の拗音（ゅ）",
             "presses": 6
           },
           {
             "id": "face:15",
-            "label": "面 16",
+            "label": "濁音の拗音（ょ）",
             "presses": 9
           },
           {
             "id": "face:16",
-            "label": "面 17",
+            "label": "外来音（ぁ）",
             "presses": 0
           },
           {
             "id": "face:17",
-            "label": "面 18",
+            "label": "てぃ",
             "presses": 0
           },
           {
             "id": "face:18",
-            "label": "面 19",
+            "label": "てゅ・ぴゅ",
             "presses": 0
           },
           {
             "id": "face:19",
-            "label": "面 20",
+            "label": "でぃ",
             "presses": 0
           },
           {
             "id": "face:20",
-            "label": "面 21",
+            "label": "外来音（ぅ）",
             "presses": 0
           },
           {
             "id": "face:21",
-            "label": "面 22",
+            "label": "濁音の外来音（ぅ）",
             "presses": 0
           },
           {
             "id": "face:22",
-            "label": "面 23",
+            "label": "半濁音の拗音（ゃ）",
             "presses": 0
           },
           {
             "id": "face:23",
-            "label": "面 24",
+            "label": "半濁音の拗音（ょ）",
             "presses": 0
           },
           {
             "id": "face:24",
-            "label": "面 25",
+            "label": "濁音の外来音（ぇ）",
             "presses": 0
           },
           {
             "id": "face:25",
-            "label": "面 26",
+            "label": "しぇ・ちぇ",
             "presses": 0
           },
           {
             "id": "face:26",
-            "label": "面 27",
+            "label": "濁音の外来音（ぁ）",
             "presses": 0
           },
           {
             "id": "face:27",
-            "label": "面 28",
+            "label": "ぐぃ",
             "presses": 0
           },
           {
             "id": "face:28",
-            "label": "面 29",
+            "label": "ぐぇ",
             "presses": 0
           },
           {
             "id": "face:29",
-            "label": "面 30",
+            "label": "濁音の外来音（ぉ）",
             "presses": 0
           },
           {
             "id": "face:30",
-            "label": "面 31",
+            "label": "濁音の合拗音（ゎ）",
             "presses": 0
           },
           {
             "id": "face:31",
-            "label": "面 32",
+            "label": "合拗音（ゎ）",
             "presses": 0
           },
           {
             "id": "face:32",
-            "label": "面 33",
+            "label": "ふゅ",
             "presses": 0
           }
         ],
@@ -5553,7 +5553,7 @@
           },
           {
             "id": "face:2",
-            "label": "面 3",
+            "label": "小書き",
             "presses": 0
           },
           {
@@ -5568,132 +5568,132 @@
           },
           {
             "id": "face:7",
-            "label": "面 8",
+            "label": "拗音（ゃ）",
             "presses": 4
           },
           {
             "id": "face:8",
-            "label": "面 9",
+            "label": "拗音（ゅ）",
             "presses": 6
           },
           {
             "id": "face:9",
-            "label": "面 10",
+            "label": "拗音（ょ）",
             "presses": 24
           },
           {
             "id": "face:10",
-            "label": "面 11",
+            "label": "外来音（ぇ）",
             "presses": 0
           },
           {
             "id": "face:11",
-            "label": "面 12",
+            "label": "外来音（ぃ）",
             "presses": 0
           },
           {
             "id": "face:12",
-            "label": "面 13",
+            "label": "外来音（ぉ）",
             "presses": 0
           },
           {
             "id": "face:13",
-            "label": "面 14",
+            "label": "濁音の拗音（ゃ）",
             "presses": 0
           },
           {
             "id": "face:14",
-            "label": "面 15",
+            "label": "濁音の拗音（ゅ）",
             "presses": 6
           },
           {
             "id": "face:15",
-            "label": "面 16",
+            "label": "濁音の拗音（ょ）",
             "presses": 9
           },
           {
             "id": "face:16",
-            "label": "面 17",
+            "label": "外来音（ぁ）",
             "presses": 0
           },
           {
             "id": "face:17",
-            "label": "面 18",
+            "label": "てぃ",
             "presses": 0
           },
           {
             "id": "face:18",
-            "label": "面 19",
+            "label": "てゅ・ぴゅ",
             "presses": 0
           },
           {
             "id": "face:19",
-            "label": "面 20",
+            "label": "でぃ",
             "presses": 0
           },
           {
             "id": "face:20",
-            "label": "面 21",
+            "label": "外来音（ぅ）",
             "presses": 0
           },
           {
             "id": "face:21",
-            "label": "面 22",
+            "label": "濁音の外来音（ぅ）",
             "presses": 0
           },
           {
             "id": "face:22",
-            "label": "面 23",
+            "label": "半濁音の拗音（ゃ）",
             "presses": 0
           },
           {
             "id": "face:23",
-            "label": "面 24",
+            "label": "半濁音の拗音（ょ）",
             "presses": 0
           },
           {
             "id": "face:24",
-            "label": "面 25",
+            "label": "濁音の外来音（ぇ）",
             "presses": 0
           },
           {
             "id": "face:25",
-            "label": "面 26",
+            "label": "しぇ・ちぇ",
             "presses": 0
           },
           {
             "id": "face:26",
-            "label": "面 27",
+            "label": "濁音の外来音（ぁ）",
             "presses": 0
           },
           {
             "id": "face:27",
-            "label": "面 28",
+            "label": "ぐぃ",
             "presses": 0
           },
           {
             "id": "face:28",
-            "label": "面 29",
+            "label": "ぐぇ",
             "presses": 0
           },
           {
             "id": "face:29",
-            "label": "面 30",
+            "label": "濁音の外来音（ぉ）",
             "presses": 0
           },
           {
             "id": "face:30",
-            "label": "面 31",
+            "label": "濁音の合拗音（ゎ）",
             "presses": 0
           },
           {
             "id": "face:31",
-            "label": "面 32",
+            "label": "合拗音（ゎ）",
             "presses": 0
           },
           {
             "id": "face:32",
-            "label": "面 33",
+            "label": "ふゅ",
             "presses": 0
           }
         ],
@@ -5900,7 +5900,7 @@
           },
           {
             "id": "face:2",
-            "label": "面 3",
+            "label": "小書き",
             "presses": 0
           },
           {
@@ -5915,132 +5915,132 @@
           },
           {
             "id": "face:7",
-            "label": "面 8",
+            "label": "拗音（ゃ）",
             "presses": 4
           },
           {
             "id": "face:8",
-            "label": "面 9",
+            "label": "拗音（ゅ）",
             "presses": 6
           },
           {
             "id": "face:9",
-            "label": "面 10",
+            "label": "拗音（ょ）",
             "presses": 24
           },
           {
             "id": "face:10",
-            "label": "面 11",
+            "label": "外来音（ぇ）",
             "presses": 0
           },
           {
             "id": "face:11",
-            "label": "面 12",
+            "label": "外来音（ぃ）",
             "presses": 0
           },
           {
             "id": "face:12",
-            "label": "面 13",
+            "label": "外来音（ぉ）",
             "presses": 0
           },
           {
             "id": "face:13",
-            "label": "面 14",
+            "label": "濁音の拗音（ゃ）",
             "presses": 0
           },
           {
             "id": "face:14",
-            "label": "面 15",
+            "label": "濁音の拗音（ゅ）",
             "presses": 6
           },
           {
             "id": "face:15",
-            "label": "面 16",
+            "label": "濁音の拗音（ょ）",
             "presses": 9
           },
           {
             "id": "face:16",
-            "label": "面 17",
+            "label": "外来音（ぁ）",
             "presses": 0
           },
           {
             "id": "face:17",
-            "label": "面 18",
+            "label": "てぃ",
             "presses": 0
           },
           {
             "id": "face:18",
-            "label": "面 19",
+            "label": "てゅ・ぴゅ",
             "presses": 0
           },
           {
             "id": "face:19",
-            "label": "面 20",
+            "label": "でぃ",
             "presses": 0
           },
           {
             "id": "face:20",
-            "label": "面 21",
+            "label": "外来音（ぅ）",
             "presses": 0
           },
           {
             "id": "face:21",
-            "label": "面 22",
+            "label": "濁音の外来音（ぅ）",
             "presses": 0
           },
           {
             "id": "face:22",
-            "label": "面 23",
+            "label": "半濁音の拗音（ゃ）",
             "presses": 0
           },
           {
             "id": "face:23",
-            "label": "面 24",
+            "label": "半濁音の拗音（ょ）",
             "presses": 0
           },
           {
             "id": "face:24",
-            "label": "面 25",
+            "label": "濁音の外来音（ぇ）",
             "presses": 0
           },
           {
             "id": "face:25",
-            "label": "面 26",
+            "label": "しぇ・ちぇ",
             "presses": 0
           },
           {
             "id": "face:26",
-            "label": "面 27",
+            "label": "濁音の外来音（ぁ）",
             "presses": 0
           },
           {
             "id": "face:27",
-            "label": "面 28",
+            "label": "ぐぃ",
             "presses": 0
           },
           {
             "id": "face:28",
-            "label": "面 29",
+            "label": "ぐぇ",
             "presses": 0
           },
           {
             "id": "face:29",
-            "label": "面 30",
+            "label": "濁音の外来音（ぉ）",
             "presses": 0
           },
           {
             "id": "face:30",
-            "label": "面 31",
+            "label": "濁音の合拗音（ゎ）",
             "presses": 0
           },
           {
             "id": "face:31",
-            "label": "面 32",
+            "label": "合拗音（ゎ）",
             "presses": 0
           },
           {
             "id": "face:32",
-            "label": "面 33",
+            "label": "ふゅ",
             "presses": 0
           }
         ],
@@ -6247,7 +6247,7 @@
           },
           {
             "id": "face:2",
-            "label": "面 3",
+            "label": "小書き",
             "presses": 0
           },
           {
@@ -6262,132 +6262,132 @@
           },
           {
             "id": "face:7",
-            "label": "面 8",
+            "label": "拗音（ゃ）",
             "presses": 4
           },
           {
             "id": "face:8",
-            "label": "面 9",
+            "label": "拗音（ゅ）",
             "presses": 6
           },
           {
             "id": "face:9",
-            "label": "面 10",
+            "label": "拗音（ょ）",
             "presses": 24
           },
           {
             "id": "face:10",
-            "label": "面 11",
+            "label": "外来音（ぇ）",
             "presses": 0
           },
           {
             "id": "face:11",
-            "label": "面 12",
+            "label": "外来音（ぃ）",
             "presses": 0
           },
           {
             "id": "face:12",
-            "label": "面 13",
+            "label": "外来音（ぉ）",
             "presses": 0
           },
           {
             "id": "face:13",
-            "label": "面 14",
+            "label": "濁音の拗音（ゃ）",
             "presses": 0
           },
           {
             "id": "face:14",
-            "label": "面 15",
+            "label": "濁音の拗音（ゅ）",
             "presses": 6
           },
           {
             "id": "face:15",
-            "label": "面 16",
+            "label": "濁音の拗音（ょ）",
             "presses": 9
           },
           {
             "id": "face:16",
-            "label": "面 17",
+            "label": "外来音（ぁ）",
             "presses": 0
           },
           {
             "id": "face:17",
-            "label": "面 18",
+            "label": "てぃ",
             "presses": 0
           },
           {
             "id": "face:18",
-            "label": "面 19",
+            "label": "てゅ・ぴゅ",
             "presses": 0
           },
           {
             "id": "face:19",
-            "label": "面 20",
+            "label": "でぃ",
             "presses": 0
           },
           {
             "id": "face:20",
-            "label": "面 21",
+            "label": "外来音（ぅ）",
             "presses": 0
           },
           {
             "id": "face:21",
-            "label": "面 22",
+            "label": "濁音の外来音（ぅ）",
             "presses": 0
           },
           {
             "id": "face:22",
-            "label": "面 23",
+            "label": "半濁音の拗音（ゃ）",
             "presses": 0
           },
           {
             "id": "face:23",
-            "label": "面 24",
+            "label": "半濁音の拗音（ょ）",
             "presses": 0
           },
           {
             "id": "face:24",
-            "label": "面 25",
+            "label": "濁音の外来音（ぇ）",
             "presses": 0
           },
           {
             "id": "face:25",
-            "label": "面 26",
+            "label": "しぇ・ちぇ",
             "presses": 0
           },
           {
             "id": "face:26",
-            "label": "面 27",
+            "label": "濁音の外来音（ぁ）",
             "presses": 0
           },
           {
             "id": "face:27",
-            "label": "面 28",
+            "label": "ぐぃ",
             "presses": 0
           },
           {
             "id": "face:28",
-            "label": "面 29",
+            "label": "ぐぇ",
             "presses": 0
           },
           {
             "id": "face:29",
-            "label": "面 30",
+            "label": "濁音の外来音（ぉ）",
             "presses": 0
           },
           {
             "id": "face:30",
-            "label": "面 31",
+            "label": "濁音の合拗音（ゎ）",
             "presses": 0
           },
           {
             "id": "face:31",
-            "label": "面 32",
+            "label": "合拗音（ゎ）",
             "presses": 0
           },
           {
             "id": "face:32",
-            "label": "面 33",
+            "label": "ふゅ",
             "presses": 0
           }
         ],
@@ -6594,7 +6594,7 @@
           },
           {
             "id": "face:2",
-            "label": "面 3",
+            "label": "小書き",
             "presses": 0
           },
           {
@@ -6609,132 +6609,132 @@
           },
           {
             "id": "face:7",
-            "label": "面 8",
+            "label": "拗音（ゃ）",
             "presses": 4
           },
           {
             "id": "face:8",
-            "label": "面 9",
+            "label": "拗音（ゅ）",
             "presses": 6
           },
           {
             "id": "face:9",
-            "label": "面 10",
+            "label": "拗音（ょ）",
             "presses": 24
           },
           {
             "id": "face:10",
-            "label": "面 11",
+            "label": "外来音（ぇ）",
             "presses": 0
           },
           {
             "id": "face:11",
-            "label": "面 12",
+            "label": "外来音（ぃ）",
             "presses": 0
           },
           {
             "id": "face:12",
-            "label": "面 13",
+            "label": "外来音（ぉ）",
             "presses": 0
           },
           {
             "id": "face:13",
-            "label": "面 14",
+            "label": "濁音の拗音（ゃ）",
             "presses": 0
           },
           {
             "id": "face:14",
-            "label": "面 15",
+            "label": "濁音の拗音（ゅ）",
             "presses": 6
           },
           {
             "id": "face:15",
-            "label": "面 16",
+            "label": "濁音の拗音（ょ）",
             "presses": 9
           },
           {
             "id": "face:16",
-            "label": "面 17",
+            "label": "外来音（ぁ）",
             "presses": 0
           },
           {
             "id": "face:17",
-            "label": "面 18",
+            "label": "てぃ",
             "presses": 0
           },
           {
             "id": "face:18",
-            "label": "面 19",
+            "label": "てゅ・ぴゅ",
             "presses": 0
           },
           {
             "id": "face:19",
-            "label": "面 20",
+            "label": "でぃ",
             "presses": 0
           },
           {
             "id": "face:20",
-            "label": "面 21",
+            "label": "外来音（ぅ）",
             "presses": 0
           },
           {
             "id": "face:21",
-            "label": "面 22",
+            "label": "濁音の外来音（ぅ）",
             "presses": 0
           },
           {
             "id": "face:22",
-            "label": "面 23",
+            "label": "半濁音の拗音（ゃ）",
             "presses": 0
           },
           {
             "id": "face:23",
-            "label": "面 24",
+            "label": "半濁音の拗音（ょ）",
             "presses": 0
           },
           {
             "id": "face:24",
-            "label": "面 25",
+            "label": "濁音の外来音（ぇ）",
             "presses": 0
           },
           {
             "id": "face:25",
-            "label": "面 26",
+            "label": "しぇ・ちぇ",
             "presses": 0
           },
           {
             "id": "face:26",
-            "label": "面 27",
+            "label": "濁音の外来音（ぁ）",
             "presses": 0
           },
           {
             "id": "face:27",
-            "label": "面 28",
+            "label": "ぐぃ",
             "presses": 0
           },
           {
             "id": "face:28",
-            "label": "面 29",
+            "label": "ぐぇ",
             "presses": 0
           },
           {
             "id": "face:29",
-            "label": "面 30",
+            "label": "濁音の外来音（ぉ）",
             "presses": 0
           },
           {
             "id": "face:30",
-            "label": "面 31",
+            "label": "濁音の合拗音（ゎ）",
             "presses": 0
           },
           {
             "id": "face:31",
-            "label": "面 32",
+            "label": "合拗音（ゎ）",
             "presses": 0
           },
           {
             "id": "face:32",
-            "label": "面 33",
+            "label": "ふゅ",
             "presses": 0
           }
         ],
@@ -6936,12 +6936,12 @@
           },
           {
             "id": "face:1",
-            "label": "面 2",
+            "label": "無変換のシフト",
             "presses": 106
           },
           {
             "id": "face:2",
-            "label": "面 3",
+            "label": "変換のシフト",
             "presses": 138
           }
         ],
@@ -7142,12 +7142,12 @@
           },
           {
             "id": "face:1",
-            "label": "面 2",
+            "label": "無変換のシフト",
             "presses": 588
           },
           {
             "id": "face:2",
-            "label": "面 3",
+            "label": "変換のシフト",
             "presses": 846
           }
         ],
@@ -11054,6 +11054,6 @@
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     }
   ],
-  "sourceCommit": "cc62a95b93ee379d1e3395554412d0d1bf6cbdd9",
+  "sourceCommit": "4e8b81436b52fbe5f9721600df4f9063203333d1",
   "version": 1
 }

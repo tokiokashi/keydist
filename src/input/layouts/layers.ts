@@ -12,6 +12,7 @@ import {
   type LayerPresentationRole,
   type Layout,
 } from './types.ts';
+import { kanaKindName } from './kana-kind.ts';
 
 export { faceCells, handOfKey };
 export type { Hand };
@@ -407,6 +408,129 @@ export function aggregationTriggerDisplayText(
   return triggerChordsDisplayText(layout, aggregationTriggerChords(layout, aggregationGroupId));
 }
 
+/** 配列が名前を付けていない層に、表示とトレースで付ける名前。 */
+export interface DefaultLayerName {
+  label: string;
+  /** 名前にトリガーのキーが入っている。見出しでトリガーを重ねて出さないために使う。 */
+  includesTrigger: boolean;
+}
+
+type DefaultLayerNameLayout = Pick<
+  Layout,
+  'faces' | 'faceLayerIds' | 'layerDefinitions' | 'thumbShiftKeys' | 'legends'
+>;
+
+/** 出る文字を並べた名前に入れる文字数の上限。超えたら「…」で省く。 */
+const LISTED_OUTPUT_LIMIT = 3;
+
+function listedOutputsName(outputs: readonly string[]): string {
+  const shown = outputs.slice(0, LISTED_OUTPUT_LIMIT).join('・');
+  return outputs.length > LISTED_OUTPUT_LIMIT ? `${shown}…` : shown;
+}
+
+/**
+ * 名前の無い層（`labelIsDefault`）の名前を、層の識別子ごとに返す。
+ * 名前は次の順で決める。
+ * 1. 層が出す文字の種類と、出る文字に共通する小書き（例: 拗音（ゃ）、外来音（ぇ））
+ * 2. 同じ配列の別の層の名前と重なる時は、出る文字を並べる（3つまで。例: てぃ）。
+ *    重なる層のうち、出る文字の数が一番多い層が1つに決まる時は、その層だけ1の名前を残す。
+ *    並べても重なる時は、3の名前にする
+ * 3. 文字の種類で呼べない層は「<トリガーの表示>のシフト」（例: 無変換のシフト）。
+ *    これも重なる時は、後ろの層に（2）のような番号を付ける
+ * 配列が付けた名前は変えず、既定の名前が配列が付けた名前と重ならないようにする。
+ * 刻印は配列の組み立ての後で差し替わることがあるので、
+ * 組み立ての途中ではなく、表示・トレースを作る時点の配列から読む。
+ * 刻印の無いキーの表示名は物理配列の規格で変わるが、名前はどの画面でも同じにするため、規格を渡さない既定の表示名で作る。
+ */
+export function defaultLayerNames(
+  layout: DefaultLayerNameLayout,
+): ReadonlyMap<string, DefaultLayerName> {
+  const definitions = layout.layerDefinitions ?? [];
+  const candidates = definitions.flatMap((definition) => {
+    if (definition.labelIsDefault !== true) return [];
+    const faces = (layout.faces ?? [])
+      .filter((face) => layout.faceLayerIds?.get(face) === definition.id);
+    const trigger = triggerChordsDisplayText(
+      layout,
+      faces.flatMap((face) => displayTriggerAlternatives(face)),
+    );
+    const outputs = [...new Set(faces.flatMap((face) => [...faceCells(face).values()]))];
+    return [{
+      id: definition.id,
+      shift: `${trigger}のシフト`,
+      kind: kanaKindName(outputs),
+      listed: listedOutputsName(outputs),
+      outputCount: outputs.length,
+    }];
+  });
+
+  const authored = definitions
+    .filter((definition) => definition.labelIsDefault !== true)
+    .map((definition) => definition.label);
+  const countOf = (labels: readonly string[], label: string) =>
+    labels.filter((other) => other === label).length;
+
+  // 1と2: 種類の名前が重なる層は、出る文字が一番多い層を除いて、出る文字を並べる
+  const stage = new Map<string, DefaultLayerName & { listed: boolean }>();
+  for (const candidate of candidates) {
+    if (candidate.kind === undefined) {
+      stage.set(candidate.id, { label: candidate.shift, includesTrigger: true, listed: false });
+      continue;
+    }
+    const sameKind = candidates.filter((other) => other.kind === candidate.kind);
+    const mostOutputs = Math.max(...sameKind.map((other) => other.outputCount));
+    const keepsKind = !authored.includes(candidate.kind)
+      && (sameKind.length === 1
+        || (candidate.outputCount === mostOutputs
+          && sameKind.filter((other) => other.outputCount === mostOutputs).length === 1));
+    stage.set(candidate.id, keepsKind
+      ? { label: candidate.kind, includesTrigger: false, listed: false }
+      : { label: candidate.listed, includesTrigger: false, listed: true });
+  }
+
+  // 並べても重なる層は、3の名前にする
+  const listedLabels = [...authored, ...[...stage.values()].map((name) => name.label)];
+  for (const candidate of candidates) {
+    const name = stage.get(candidate.id)!;
+    if (name.listed && countOf(listedLabels, name.label) > 1) {
+      stage.set(candidate.id, { label: candidate.shift, includesTrigger: true, listed: false });
+    }
+  }
+
+  // 3の名前も重なる時は、後ろの層に番号を付けて区別する
+  const names = new Map<string, DefaultLayerName>();
+  const used = new Set(authored);
+  const pending = new Set([...stage.values()].map((name) => name.label));
+  for (const candidate of candidates) {
+    const { label, includesTrigger } = stage.get(candidate.id)!;
+    let unique = label;
+    for (let number = 2; used.has(unique); number += 1) {
+      unique = `${label}（${number}）`;
+      if (pending.has(unique)) used.add(unique);
+    }
+    used.add(unique);
+    names.set(candidate.id, { label: unique, includesTrigger });
+  }
+  return names;
+}
+
+/**
+ * 名前の無い層に `defaultLayerNames` の名前を入れた層定義の列。
+ * 層の名前を画面に出す箇所は、配列の `layerDefinitions` を直接読まずに、この列を使う。
+ * 名前の付いた層の定義は、そのまま返す。
+ */
+export function layerDefinitionsWithLabels(
+  layout: DefaultLayerNameLayout,
+): LayerDefinition[] {
+  const names = defaultLayerNames(layout);
+  return (layout.layerDefinitions ?? []).map((definition) => {
+    const name = names.get(definition.id);
+    if (name === undefined) return definition;
+    const { labelIsDefault: _marker, ...named } = definition;
+    return { ...named, label: name.label };
+  });
+}
+
 /** aggregationTriggerKeysのchord構造を保ったview。realizationごとに1 chordとする。 */
 function aggregationTriggerChords(
   layout: Pick<Layout, 'canonicalInputs'>,
@@ -572,9 +696,9 @@ export function semanticCombinationLabels(
  * base(single)はmain keyboardが担うためカンペから除外する。
  */
 export function compactLayerGuideDefinitions(
-  layout: Pick<Layout, 'layerDefinitions' | 'layerViewPresentation'>,
+  layout: DefaultLayerNameLayout & Pick<Layout, 'layerViewPresentation'>,
 ): readonly LayerDefinition[] {
-  const definitions = (layout.layerDefinitions ?? [])
+  const definitions = layerDefinitionsWithLabels(layout)
     .filter((definition) =>
       definition.kind === 'layer'
       && definition.presentationRole === 'layer');
