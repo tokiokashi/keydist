@@ -13,7 +13,7 @@ import { InfoButton, type InfoHelp } from '#ui/primitives/info-button.tsx';
 import type { PaneOptionsBindingControl, PaneTargetBindingControl } from './panes/pane-environment.ts';
 import { BindingGlyph, PaneMenu, SettingsIcon, type PaneMenuItem } from './PaneHeaderParts.tsx';
 import { OPTIONS_SHARED_RESET_TITLE } from './options-binding.ts';
-import { SettingsWindow } from './SettingsWindow.tsx';
+import { FloatingWindow } from './FloatingWindow.tsx';
 import './pane-frame.css';
 
 /**
@@ -66,6 +66,11 @@ export interface PaneFrameProps {
   readonly settings: ReactNode;
   /** Workspaceのペインでは、小窓にペイン名を出す。個別画面ではページに1枚なので出さない。 */
   readonly showPaneNameInSettings?: boolean;
+  /**
+   * 本体の操作で開く小窓（キーの詳細）。解析設定の小窓と同じく、ペイン名を受け取って出す（Workspaceだけ名前が渡る）。
+   * 本体を呼べる間だけ`undefined`以外を返す。
+   */
+  readonly floating?: (paneName: string | undefined) => ReactNode;
   /** ⋯のメニュー。空なら⋯を出さない（個別画面は出さない。Workspaceのペインが使う）。 */
   readonly menuItems?: readonly PaneMenuItem[];
   /** 見出しの右端に置く操作（個別画面の「Workspaceに追加」）。⋯と同じ位置に出す。 */
@@ -171,6 +176,7 @@ export function PaneFrame({
   settings,
   assetsReady = true,
   showPaneNameInSettings = false,
+  floating,
   menuItems = [],
   headerAction,
   onResetOptions,
@@ -279,7 +285,7 @@ export function PaneFrame({
         )}
       </header>
 
-      <SettingsWindow
+      <FloatingWindow
         open={settingsOpen}
         onClose={closeSettings}
         anchor={settingsButtonRef.current}
@@ -289,7 +295,9 @@ export function PaneFrame({
       >
         {optionsBinding === undefined ? null : <OptionsBindingSwitch control={optionsBinding} />}
         {settings}
-      </SettingsWindow>
+      </FloatingWindow>
+
+      {floating?.(showPaneNameInSettings ? paneName : undefined)}
 
       {nameInLead ? null : conditionSummary}
 

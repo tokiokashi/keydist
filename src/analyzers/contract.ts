@@ -4,6 +4,7 @@ import type { Layout } from '#input/layouts/types.ts';
 import type { AnalysisTarget } from '#input/setup/index.ts';
 import type { Trace, TracePolicy } from '#trace/generate.ts';
 import type { AggregatedAnalysisResult } from '#interpretation/structure/aggregate.ts';
+import type { KeyDetails } from '#interpretation/key-detail.ts';
 import type { Metrics } from '#interpretation/metrics.ts';
 import type { OptionsDefinition, OptionsDisciplineFixture, OptionsRegistry, OptionsValueMap } from './options.ts';
 
@@ -70,6 +71,11 @@ export interface SingleAnalyzerExtractContext<Options> {
   readonly options: Options;
   /** N感度など、追加のTraceが要る抽出だけが使う。多くの抽出は無視してよい。 */
   readonly requestTrace: TraceRequester;
+  /**
+   * このTraceのキーの詳細（仕様 §11.11）。呼んだ時に初めて計算し、同じTrace（と物理配列）を見る
+   * 抽出どうしでは1回の計算を共有する。キーの詳細を使わない抽出は呼ばなければ計算しない。
+   */
+  readonly keyDetails: () => KeyDetails;
 }
 
 /** 集合対象の抽出が受け取る、集合の1メンバー分のTrace結果・解釈結果。 */

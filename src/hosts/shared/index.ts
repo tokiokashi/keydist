@@ -32,7 +32,7 @@ export { ConditionSummary, type ConditionSummaryProps } from './ConditionSummary
 export { PaneFrame, type PaneFrameProps } from './PaneFrame.tsx';
 export { PaneErrorBoundary } from './PaneErrorBoundary.tsx';
 export { PaneMenu, type PaneMenuItem } from './PaneHeaderParts.tsx';
-export { SettingsWindow, type SettingsWindowProps } from './SettingsWindow.tsx';
+export { FloatingWindow, type FloatingWindowProps } from './FloatingWindow.tsx';
 export {
   filterTargetChoiceGroups,
   setupNumbersOf,

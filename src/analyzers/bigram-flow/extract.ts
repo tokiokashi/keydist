@@ -1,5 +1,6 @@
 import { defineSingleAnalyzer, type SingleAnalyzerDefinition, type SingleAnalyzerExtractContext } from '#analyzers/contract.ts';
-import type { Finger, Key } from '#input/shapes/geometry.ts';
+import { buildGeometry, type Finger, type Key } from '#input/shapes/geometry.ts';
+import { computeKeyDetails, type KeyDetails } from '#interpretation/key-detail.ts';
 import type { Press, Stroke, StrokeParticipation, Trace } from '#trace/generate.ts';
 import {
   aggregateBigramVectors,
@@ -67,7 +68,12 @@ export interface BigramFlowExtracted {
   readonly relativeMaxWeight: number;
   /** Cross-hand bigramがMovement profile対象（analysisVectors）に含まれるか。脚注の出し分けに使う。 */
   readonly hasCrossHandInAnalysis: boolean;
+  /** キーの詳細（仕様 §11.11）。配列図のキーのツールチップと、キーを選んだ時の小窓が読む */
+  readonly keyDetails: KeyDetails;
 }
+
+/** `keyDetails` を除いた、図の計算結果。`options` で値が変わる部分。 */
+export type BigramFlowFigures = Omit<BigramFlowExtracted, 'keyDetails'>;
 
 /**
  * `SingleAnalyzerDefinition.extract`の中身。engineの`SingleAnalyzerExtractContext`からは
@@ -79,7 +85,7 @@ export interface BigramFlowExtracted {
 export function computeBigramFlowExtraction(
   trace: Trace,
   options: BigramFlowOptions,
-): BigramFlowExtracted {
+): BigramFlowFigures {
   const vectors = buildBigramVectors(trace.strokes, options.source);
   const filtered = filterBigramVectors(vectors, options.selectedFingers);
   const aggregated = aggregateBigramVectors(filtered);
@@ -207,11 +213,14 @@ export const bigramFlowDefinition: SingleAnalyzerDefinition<BigramFlowOptions, B
   id: 'bigram-flow',
   options: bigramFlowOptions,
   extract(context: SingleAnalyzerExtractContext<BigramFlowOptions>): BigramFlowExtracted {
-    return computeBigramFlowExtraction(context.trace, context.options);
+    return { ...computeBigramFlowExtraction(context.trace, context.options), keyDetails: context.keyDetails() };
   },
   optionsDiscipline: {
     sample: DEFAULT_BIGRAM_FLOW_OPTIONS,
     alternates: ALTERNATE_BIGRAM_FLOW_OPTIONS,
-    extractForTest: (options) => computeBigramFlowExtraction(OPTIONS_DISCIPLINE_FIXTURE_TRACE, options),
+    extractForTest: (options) => ({
+      ...computeBigramFlowExtraction(OPTIONS_DISCIPLINE_FIXTURE_TRACE, options),
+      keyDetails: computeKeyDetails(OPTIONS_DISCIPLINE_FIXTURE_TRACE, buildGeometry('row-staggered')),
+    }),
   },
 });

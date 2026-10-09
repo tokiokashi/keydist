@@ -28,8 +28,8 @@ for (const [layoutId, text, rule] of cases) {
     assert.ok(base);
     const layout = rule ? withRomaji(base, tableForRule(rule)) : base;
     const trace = generateTrace(text, layout, geometry, DEFAULT_TRACE_POLICY);
-    const extracted = computeHeatmapExtraction({ trace, metrics: computeMetrics(trace, geometry), options: DEFAULT_HEATMAP_OPTIONS });
     const details = computeKeyDetails(trace, geometry);
+    const extracted = computeHeatmapExtraction({ trace, metrics: computeMetrics(trace, geometry), keyDetails: details, options: DEFAULT_HEATMAP_OPTIONS });
 
     // 統合: 物理キーごとの押下数と総数
     const merged = new Map([...details.merged].map(([id, detail]) => [id, detail.presses]));

@@ -11,6 +11,7 @@ import {
   buildLayerEntries,
   canToggleLayerDetail,
   compactPresentationOf,
+  entryKeyDetail,
   layerLegends,
   presentationLayersOf,
   resolveArrangement,
@@ -28,6 +29,9 @@ import './heatmap-view.css';
  * `extracted`（`extract.ts` の計算結果）を色にして描くだけで、押下数は数え直さない
  * （docs/architecture.md「可視化は計算しない」）。層どうしで共通の最大値は、表示する図の組から
  * `layer-view.ts` が求める。優劣を示す色・強調・順位は出さない。
+ *
+ * キーのツールチップは、図が表すものの値を出す。統合図は面をまたいだ合算、レイヤー別の図はそのレイヤー、
+ * 「まとめ」の図は合算したレイヤーの和。キーを選ぶ操作はホストが持ち、選んだキーはどの図でも同じ枠で示す。
  */
 
 /** 層を切り替えるキーの枠を、キーidへ引き直す。 */
@@ -44,7 +48,7 @@ function shiftStylesByKey(faces: readonly Face[], styles: ReadonlyMap<Face, Heat
   return byKey;
 }
 
-export function HeatmapBody({ layout, geometry, extracted, options, onOptionsChange }: SingleBodyProps<HeatmapExtracted, HeatmapOptions>) {
+export function HeatmapBody({ layout, geometry, extracted, options, onOptionsChange, keySelection }: SingleBodyProps<HeatmapExtracted, HeatmapOptions>) {
   const standard = keyboardStandardForGeometryId(geometry.id);
   const [detailOpen, setDetailOpen] = useState(false);
   const view = useMemo(() => {
@@ -86,13 +90,14 @@ export function HeatmapBody({ layout, geometry, extracted, options, onOptionsCha
             title="統合"
             diagramId="integrated"
             legends={view.baseLegends}
-            keyCounts={extracted.integrated.keyCounts}
+            detailOf={(keyId) => extracted.keyDetails.merged.get(keyId)}
             colorCounts={extracted.integrated.keyCounts}
             maxCount={Math.max(1, extracted.integrated.maxCount)}
             scale="linear"
             shiftStyles={shiftStylesByKey(view.baseFaces, styles)}
             standard={standard}
             ariaSuffix="（全レイヤー合算・線形）"
+            {...(keySelection === undefined ? {} : { keySelection })}
           />
         </div>
       </section>
@@ -154,7 +159,7 @@ export function HeatmapBody({ layout, geometry, extracted, options, onOptionsCha
               title={entry.title}
               diagramId={entry.id}
               legends={layerLegends(entry.layer, layout)}
-              keyCounts={entry.keyCounts}
+              detailOf={(keyId) => entryKeyDetail(extracted.keyDetails, entry.faceIds, keyId)}
               colorCounts={entry.colorCounts}
               maxCount={view.max}
               scale={options.colorScale}
@@ -162,6 +167,7 @@ export function HeatmapBody({ layout, geometry, extracted, options, onOptionsCha
               standard={standard}
               hidden={tabbed && activeIndex !== index}
               ariaSuffix={`（レイヤー別・${scaleText}・共通の最大値）`}
+              {...(keySelection === undefined ? {} : { keySelection })}
             />
           ))}
         </div>
@@ -207,4 +213,5 @@ export const heatmapAnalyzer = {
   Settings: HeatmapSettings,
   defaultOptions: DEFAULT_HEATMAP_OPTIONS,
   urlOptions: heatmapOptions,
+  keyDetailsOf: (extracted) => extracted.keyDetails,
 } satisfies SingleAnalyzerPaneParts<HeatmapOptions, HeatmapExtracted>;

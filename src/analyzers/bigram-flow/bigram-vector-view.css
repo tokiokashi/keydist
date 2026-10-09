@@ -149,6 +149,25 @@
   filter: drop-shadow(0 0 10px color-mix(in srgb, var(--viz-key-text) 28%, transparent));
 }
 
+/* 選んだキー（指の選択の強調とは別）。押せる図では手の形にし、フォーカスの枠も出す */
+.flow-key[role='button'] {
+  cursor: pointer;
+}
+
+.flow-key[data-key-selected] rect {
+  stroke: var(--picker-selected);
+  stroke-width: 2.6;
+}
+
+.flow-key:focus {
+  outline: none;
+}
+
+.flow-key:focus-visible rect {
+  stroke: var(--focus);
+  stroke-width: 2.4;
+}
+
 .flow-overlay-layer {
   pointer-events: none;
 }
