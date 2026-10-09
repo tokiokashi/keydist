@@ -1,5 +1,6 @@
 import type { KeyboardEvent } from 'react';
-import { isThumb, type Key } from '#input/shapes/geometry.ts';
+import type { Key } from '#input/shapes/geometry.ts';
+import { drawnKeySpans } from '#input/shapes/drawn-key-spans.ts';
 import { keyboardStandardForGeometryId, physicalKeyDisplayLabel } from '#input/shapes/key-labels.ts';
 
 export interface PhysicalKeyboardKeyView {
@@ -38,7 +39,6 @@ export interface PhysicalKeyboardProps {
 const DEFAULT_UNIT = 54;
 const GAP_RATIO = 4 / DEFAULT_UNIT;
 const PAD_RATIO = 8 / DEFAULT_UNIT;
-const THUMB_WIDTH = 1.9;
 
 export function PhysicalKeyboard({
   keys,
@@ -56,11 +56,12 @@ export function PhysicalKeyboard({
   const standard = geometryId === undefined ? undefined : keyboardStandardForGeometryId(geometryId);
   const gap = unit * GAP_RATIO;
   const pad = unit * PAD_RATIO;
+  const spans = drawnKeySpans(keys);
   const positioned = keys.map((key) => {
-    const widthU = key.width ?? (isThumb(key.finger) ? THUMB_WIDTH : 1);
-    const width = Math.max(unit * widthU - gap, unit / 4);
+    const span = spans.get(key.id)!;
+    const width = Math.max(unit * span.width - gap, unit / 4);
     const height = unit - gap;
-    const x = (key.x - (widthU - 1) / 2) * unit;
+    const x = span.left * unit;
     const y = key.y * unit;
     return { key, width, height, x, y };
   });
