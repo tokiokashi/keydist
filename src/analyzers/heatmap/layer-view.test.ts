@@ -4,6 +4,7 @@ import { buildGeometry } from '#input/shapes/geometry.ts';
 import { LAYOUT_BY_ID, LAYOUTS, LAYOUTS_JA } from '#input/layouts/index.ts';
 import { sampleText } from '#input/text/samples.ts';
 import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
+import { computeKeyDetails } from '#interpretation/key-detail.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { computeHeatmapExtraction } from './extract.ts';
 import { DEFAULT_HEATMAP_OPTIONS } from './options.ts';
@@ -11,6 +12,7 @@ import {
   activeEntryIndex,
   buildLayerEntries,
   canToggleLayerDetail,
+  entryKeyDetail,
   heatIntensity,
   resolveArrangement,
   sharedMaxCount,
@@ -28,7 +30,7 @@ function extractionFor(layoutId: string, text: string) {
   assert.ok(layout, layoutId);
   const trace = generateTrace(text, layout, geometry, DEFAULT_TRACE_POLICY);
   assert.equal(trace.skipped, 0);
-  return { layout, extracted: computeHeatmapExtraction({ trace, metrics: computeMetrics(trace, geometry), options: DEFAULT_HEATMAP_OPTIONS }) };
+  return { layout, extracted: computeHeatmapExtraction({ trace, metrics: computeMetrics(trace, geometry), keyDetails: computeKeyDetails(trace, geometry), options: DEFAULT_HEATMAP_OPTIONS }) };
 }
 
 const total = (counts: ReadonlyMap<string, number>) => [...counts.values()].reduce((sum, count) => sum + count, 0);
@@ -93,7 +95,7 @@ test('全配列: 層別図の押下数の合計とコンボ枠は、統合の押
     const text = LAYOUTS_JA.includes(layout) ? 'あいがぱ' : 'aAbB';
     const trace = generateTrace(text, layout, geometry, DEFAULT_TRACE_POLICY);
     if (trace.skipped > 0) continue;
-    const extracted = computeHeatmapExtraction({ trace, metrics: computeMetrics(trace, geometry), options: DEFAULT_HEATMAP_OPTIONS });
+    const extracted = computeHeatmapExtraction({ trace, metrics: computeMetrics(trace, geometry), keyDetails: computeKeyDetails(trace, geometry), options: DEFAULT_HEATMAP_OPTIONS });
     for (const detail of ['compact', 'detail'] as const) {
       const entries = buildLayerEntries(layout, extracted, detail);
       const layered = entries.reduce((sum, entry) => sum + total(entry.keyCounts), 0);
@@ -143,4 +145,48 @@ test('レイヤーの見出しは、トリガーのキーを物理キーの名�
   const titles = (detail: 'compact' | 'detail') => buildLayerEntries(naginata.layout, naginata.extracted, detail, 'ansi').map((entry) => entry.title);
   assert.deepEqual(titles('compact'), ['レイヤー1: 単打（レイヤー3以降を合算）', 'レイヤー2: SandS [Space]・同時']);
   assert.equal(titles('detail')[3], 'レイヤー4: 濁音 [あ / か]・同時');
+});
+
+test('図ごとのキーの詳細: 押下数は、その図のツールチップの値（keyCounts）と全キーで一致する', () => {
+  const cases: Array<[string, string]> = [
+    ['naginata-v18', sampleText('ja', 'legacy')],
+    ['shingeta', 'あいがぱきゃ'],
+    ['qwerty', 'aAbB'],
+    ['shin-koume', 'ぴあぴかぴ'],
+  ];
+  for (const [layoutId, text] of cases) {
+    const { layout, extracted } = extractionFor(layoutId, text);
+    for (const detail of ['compact', 'detail'] as const) {
+      for (const entry of buildLayerEntries(layout, extracted, detail)) {
+        const keys = new Set([...entry.keyCounts.keys(), ...extracted.integrated.keyCounts.keys()]);
+        for (const keyId of keys) {
+          const value = entryKeyDetail(extracted.keyDetails, entry.faceIds, keyId);
+          assert.equal(value?.presses ?? 0, entry.keyCounts.get(keyId) ?? 0, `${layoutId} ${detail} ${entry.id} ${keyId}`);
+        }
+      }
+    }
+  }
+});
+
+test('図ごとのキーの詳細: まとめた図は合算した面の和、統合図は面をまたいだ合算と一致する', () => {
+  const { layout, extracted } = extractionFor('naginata-v18', sampleText('ja', 'legacy'));
+  const compact = buildLayerEntries(layout, extracted, 'compact');
+  const detail = buildLayerEntries(layout, extracted, 'detail');
+  // 合算先の単打に、残す層（SandS）以外の29層を足す
+  assert.equal(compact[0]!.faceIds[0], 'single');
+  assert.equal(compact[0]!.faceIds.length, 30);
+  assert.ok(!compact[0]!.faceIds.includes('layer:SandS'));
+  assert.deepEqual(compact[1]!.faceIds, ['layer:SandS']);
+  // jの押し方: まとめた図の内訳は、合算した面の内訳の和
+  const merged = entryKeyDetail(extracted.keyDetails, compact[0]!.faceIds, 'j')!;
+  const parts = detail.filter((entry) => compact[0]!.faceIds.includes(entry.id))
+    .flatMap((entry) => entryKeyDetail(extracted.keyDetails, entry.faceIds, 'j') ?? []);
+  assert.equal(merged.presses, parts.reduce((sum, part) => sum + part.presses, 0));
+  assert.equal([...merged.roles.values()].reduce((sum, count) => sum + count, 0), merged.presses);
+  // 全部の面を合わせると、統合図と同じ
+  const everyFace = [...extracted.keyDetails.faces.keys()];
+  assert.equal(entryKeyDetail(extracted.keyDetails, everyFace, 'j')!.presses, extracted.keyDetails.merged.get('j')!.presses);
+  // 押下の無いキー・面は `undefined`
+  assert.equal(entryKeyDetail(extracted.keyDetails, ['single'], 'no-such-key'), undefined);
+  assert.equal(entryKeyDetail(extracted.keyDetails, ['no-such-face'], 'j'), undefined);
 });

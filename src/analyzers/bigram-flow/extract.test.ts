@@ -25,6 +25,7 @@ import {
   bigramFlowDefinition,
   computeBigramFlowExtraction,
   type BigramFlowExtracted,
+  type BigramFlowFigures,
 } from './extract.ts';
 import {
   ALTERNATE_BIGRAM_FLOW_OPTIONS,
@@ -112,7 +113,7 @@ function fixtureTrace(): Trace {
   };
 }
 
-function referenceExtraction(trace: Trace, options: BigramFlowOptions): BigramFlowExtracted {
+function referenceExtraction(trace: Trace, options: BigramFlowOptions): BigramFlowFigures {
   const vectors = buildBigramVectors(trace.strokes, options.source);
   const filtered = filterBigramVectors(vectors, options.selectedFingers);
   const aggregated = aggregateBigramVectors(filtered);

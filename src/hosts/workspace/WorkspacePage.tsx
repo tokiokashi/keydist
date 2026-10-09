@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createScaleRegistry } from '#analyzers/shared-scale.ts';
 import { SharedScaleProvider } from '#analyzers/shared-scale.tsx';
 import type { Command } from '#input/commands/index.ts';
@@ -38,6 +38,7 @@ import type { TextIdGenerator } from '#input/text/library.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
 import { ContextBar, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { DefaultShapeChip } from '#hosts/shared/DefaultShapeChip.tsx';
+import { KeySelectionContext, useKeySelectionStore } from '#hosts/shared/key-selection-store.tsx';
 import { useStableResolvedText } from '#hosts/shared/stable-resolved-text.ts';
 import { useLatestCallback } from '#hosts/shared/use-latest-callback.ts';
 import type { PaneEnvironment } from '#hosts/shared/panes/pane-environment.ts';
@@ -123,6 +124,14 @@ export function WorkspacePage({
   const [maximizedId, setMaximizedId] = useState<string | undefined>(undefined);
   // ペインどうしで揃える目盛りの範囲を集める所（Workspaceごとに1つ）
   const scaleRegistry = useMemo(() => createScaleRegistry(), [workspaceId]);
+  // 図のキーの選択。同じ配列・物理配列を映すペインどうしで連動する。保存しない見た目だけの状態で、
+  // Workspaceを開き直すと外れる（資産・Undoの履歴には入れない）
+  const keySelection = useKeySelectionStore();
+  const { closeWindowsExcept: closeKeyWindowsExcept } = keySelection;
+  // ペインを拡大した時は、他のペインのキーの詳細の小窓を閉じる（選択は残す。小窓はbodyへ出るので`inert`が届かない）
+  useEffect(() => {
+    if (maximizedId !== undefined) closeKeyWindowsExcept(maximizedId);
+  }, [maximizedId, closeKeyWindowsExcept]);
   if (stacked && maximizedId !== undefined) setMaximizedId(undefined);
 
   // 待っている変更（解析設定）を先に資産へ書いてから、ペインを増減する・戻す。待ち中の値を
@@ -337,90 +346,92 @@ export function WorkspacePage({
 
   return (
     <SharedScaleProvider value={scaleRegistry}>
-      <div ref={pageRef} className="workspace-page" data-stacked={stacked || undefined}>
-        <ContextBar
-          disabled={!assetsReady}
-          history={pageHistory}
-        >
-          <WorkspaceName
-            name={workspace.name}
-            onRename={(next) => dispatch(renameWorkspaceCommand(workspaceId, next))}
-          />
-          {/* 待っている変更（並び・解析設定）を先に書いてから複製・削除する。写す・戻す中身が古くならないように */}
-          <PaneMenu
-            paneName={workspace.name}
-            label="Workspaceの操作"
-            className="workspace-menu"
-            items={[
-              {
-                id: 'compact',
-                label: '空いた所に詰める',
-                description: 'ペインを縮める・動かす・閉じた時に、下のペインが上の空きへ移ります',
-                checked: workspace.compactPanes === true,
-                onSelect: () => dispatch(setWorkspaceCompactPanesCommand(workspaceId, workspace.compactPanes !== true)),
-              },
-              { id: 'duplicate', label: '複製', onSelect: () => { flushPending(); onDuplicate(); } },
-              { id: 'delete', label: '削除', onSelect: () => { flushPending(); onDelete(); } },
-            ]}
-          />
-          {/* 空の間は、中央の大きい「ペインを追加」を使う（同じ操作を2つ出さない）。
-              拡大中は、隠れた格子へ足しても見えないので、フォーカスも操作も届かせない */}
-          {workspace.panes.length === 0 ? null : (
-            <span className="workspace-add-pane-slot" inert={maximizedId !== undefined}>
-              <AddPaneMenu onAdd={addPane} onAddBlank={addBlankPane} />
-            </span>
-          )}
-          <TextChip
-            holder={{ workspaceId }}
-            textLibrary={assets.textLibrary}
-            selection={workspace.text}
-            dispatch={dispatch}
-            generateTextId={generateTextId}
-            onTextContentCommit={onTextContentCommit}
-          />
-          <DefaultShapeChip
-            overrides={overrides}
-            workspaceId={workspaceId}
-            dispatch={dispatch}
-            shapes={catalog.setupCatalog.shapes}
-            layoutIds={workspaceLayoutIds(workspace)}
-            layouts={catalog.setupCatalog.layouts}
-          />
-        </ContextBar>
-        {/* プリレンダーやハイドレーション前は操作を効かせない（個別画面と同じ扱い）。 */}
-        <fieldset
-          disabled={!assetsReady}
-          style={{ display: 'contents', border: 0, padding: 0, margin: 0, minWidth: 0 }}
-        >
-          {workspace.panes.length === 0 ? (
-            <div className="workspace-empty" data-workspace-empty="true">
-              <p>ペインを追加して、並べて見られます。</p>
-              <AddPaneMenu onAdd={addPane} onAddBlank={addBlankPane} variant="empty" />
-              <button type="button" className="workspace-sample-button" onClick={startFromSample}>サンプルの並びで始める</button>
-            </div>
-          ) : (
-            <>
-              {stacked ? (
-                <WorkspaceStack paneIds={paneIds} titleOf={titleOf} descriptionOf={descriptionOf} helpOf={helpOf} renderPane={renderPane} />
-              ) : (
-                <div className="workspace-stage">
-                  <WorkspaceGrid
-                    grid={workspace.grid}
-                    analyzerIdOf={analyzerIdOf}
-                    titleOf={titleOf}
-                    descriptionOf={descriptionOf}
-                    helpOf={helpOf}
-                    renderPane={renderPane}
-                    compact={workspace.compactPanes === true}
-                    maximizedId={maximizedId !== undefined && panesById.has(maximizedId) ? maximizedId : undefined}
-                    onGridChange={(grid) => dispatch(setWorkspaceGridCommand(workspaceId, grid))}
-                  />
-                </div>
-              )}
-            </>
-          )}
-        </fieldset>
-      </div>
+      <KeySelectionContext.Provider value={keySelection}>
+        <div ref={pageRef} className="workspace-page" data-stacked={stacked || undefined}>
+          <ContextBar
+            disabled={!assetsReady}
+            history={pageHistory}
+          >
+            <WorkspaceName
+              name={workspace.name}
+              onRename={(next) => dispatch(renameWorkspaceCommand(workspaceId, next))}
+            />
+            {/* 待っている変更（並び・解析設定）を先に書いてから複製・削除する。写す・戻す中身が古くならないように */}
+            <PaneMenu
+              paneName={workspace.name}
+              label="Workspaceの操作"
+              className="workspace-menu"
+              items={[
+                {
+                  id: 'compact',
+                  label: '空いた所に詰める',
+                  description: 'ペインを縮める・動かす・閉じた時に、下のペインが上の空きへ移ります',
+                  checked: workspace.compactPanes === true,
+                  onSelect: () => dispatch(setWorkspaceCompactPanesCommand(workspaceId, workspace.compactPanes !== true)),
+                },
+                { id: 'duplicate', label: '複製', onSelect: () => { flushPending(); onDuplicate(); } },
+                { id: 'delete', label: '削除', onSelect: () => { flushPending(); onDelete(); } },
+              ]}
+            />
+            {/* 空の間は、中央の大きい「ペインを追加」を使う（同じ操作を2つ出さない）。
+                拡大中は、隠れた格子へ足しても見えないので、フォーカスも操作も届かせない */}
+            {workspace.panes.length === 0 ? null : (
+              <span className="workspace-add-pane-slot" inert={maximizedId !== undefined}>
+                <AddPaneMenu onAdd={addPane} onAddBlank={addBlankPane} />
+              </span>
+            )}
+            <TextChip
+              holder={{ workspaceId }}
+              textLibrary={assets.textLibrary}
+              selection={workspace.text}
+              dispatch={dispatch}
+              generateTextId={generateTextId}
+              onTextContentCommit={onTextContentCommit}
+            />
+            <DefaultShapeChip
+              overrides={overrides}
+              workspaceId={workspaceId}
+              dispatch={dispatch}
+              shapes={catalog.setupCatalog.shapes}
+              layoutIds={workspaceLayoutIds(workspace)}
+              layouts={catalog.setupCatalog.layouts}
+            />
+          </ContextBar>
+          {/* プリレンダーやハイドレーション前は操作を効かせない（個別画面と同じ扱い）。 */}
+          <fieldset
+            disabled={!assetsReady}
+            style={{ display: 'contents', border: 0, padding: 0, margin: 0, minWidth: 0 }}
+          >
+            {workspace.panes.length === 0 ? (
+              <div className="workspace-empty" data-workspace-empty="true">
+                <p>ペインを追加して、並べて見られます。</p>
+                <AddPaneMenu onAdd={addPane} onAddBlank={addBlankPane} variant="empty" />
+                <button type="button" className="workspace-sample-button" onClick={startFromSample}>サンプルの並びで始める</button>
+              </div>
+            ) : (
+              <>
+                {stacked ? (
+                  <WorkspaceStack paneIds={paneIds} titleOf={titleOf} descriptionOf={descriptionOf} helpOf={helpOf} renderPane={renderPane} />
+                ) : (
+                  <div className="workspace-stage">
+                    <WorkspaceGrid
+                      grid={workspace.grid}
+                      analyzerIdOf={analyzerIdOf}
+                      titleOf={titleOf}
+                      descriptionOf={descriptionOf}
+                      helpOf={helpOf}
+                      renderPane={renderPane}
+                      compact={workspace.compactPanes === true}
+                      maximizedId={maximizedId !== undefined && panesById.has(maximizedId) ? maximizedId : undefined}
+                      onGridChange={(grid) => dispatch(setWorkspaceGridCommand(workspaceId, grid))}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+          </fieldset>
+        </div>
+      </KeySelectionContext.Provider>
     </SharedScaleProvider>
   );
 }

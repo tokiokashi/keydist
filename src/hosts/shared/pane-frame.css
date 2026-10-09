@@ -581,7 +581,7 @@ h2.pane-frame-title {
 }
 
 /*
- * 解析設定の小窓。位置はドラッグで動く値（--settings-window-x/y）で決める。
+ * 浮かぶ小窓（解析設定とキーの詳細で共通）。位置はドラッグで動く値（--settings-window-x/y）で決める。
  * 中身をcontainer queryの入れ物にするので、幅は明示する（中身基準の幅のままだと0に潰れる）。
  */
 .settings-window {
@@ -723,7 +723,7 @@ h2.pane-frame-title {
 
 /*
  * スマホ幅では、下から出るシートにする。高さを画面の半分までに止め、上半分の図を見ながら変えられるようにする。
- * 上端の掴みとヘッダー行を下へドラッグすると、--settings-sheet-yだけ下がり、超えると閉じる（SettingsWindow.tsx）。
+ * 上端の掴みとヘッダー行を下へドラッグすると、--settings-sheet-yだけ下がり、超えると閉じる（FloatingWindow.tsx）。
  * ここは小窓という器の置き方なので、Analyzerの中身と違い画面の幅で切り替える（幅はSHEET_QUERYと揃える。`ui/theme/breakpoints.ts` が正）。
  */
 @media (max-width: 760px) {
@@ -738,6 +738,11 @@ h2.pane-frame-title {
     border-radius: 12px 12px 0 0;
     transform: translateY(var(--settings-sheet-y, 0px));
     transition: transform 0.2s ease-out;
+  }
+
+  /* キーの詳細の小窓はパソコン幅で幅を持つので、シートでは打ち消して画面いっぱいにする（読み込み順に依らないよう詳細度を上げる） */
+  .settings-window[data-key-detail-window][data-sheet] {
+    width: auto;
   }
 
   .settings-window[data-sheet-dragging] {

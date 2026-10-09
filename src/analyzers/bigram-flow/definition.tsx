@@ -1,7 +1,9 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { useId, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type RefObject } from 'react';
 import type { Geometry, Key, Point } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
+import { keyboardStandardForGeometryId } from '#input/shapes/key-labels.ts';
+import type { KeyDetails } from '#interpretation/key-detail.ts';
 import type { Trace } from '#trace/generate.ts';
 import type { BigramVector, FingerClass, RelativeVector } from './bigram-vectors.ts';
 import { bigramFlowDefinition, type BigramFlowExtracted, type BigramFlowHandProfile } from './extract.ts';
@@ -42,7 +44,8 @@ import {
   repeatLabelScale,
 } from './keyboard-flow-area.ts';
 import { BIGRAM_FLOW_PANE_META } from './pane-meta.ts';
-import type { AnalyzerSettingsProps, SingleAnalyzerPaneParts } from '../pane-parts.tsx';
+import { keyDetailTooltip, keyName } from '../key-detail-view.ts';
+import type { AnalyzerSettingsProps, KeySelectionProps, SingleAnalyzerPaneParts } from '../pane-parts.tsx';
 import { useSharedScale } from '../shared-scale.tsx';
 import './bigram-vector-view.css';
 
@@ -206,9 +209,15 @@ function KeyboardFlow({
   layerOrder,
   hoverScale,
   showRepeatBadge,
+  keyDetails,
+  keySelection,
 }: {
   geometry: Geometry;
   layout: Layout;
+  /** キーのツールチップの値。面をまたいだ合算 */
+  keyDetails: KeyDetails;
+  /** キーの選択。渡さなければ、キーは押せない */
+  keySelection?: KeySelectionProps | undefined;
   vectors: readonly BigramVector[];
   repeatCounts: ReadonlyMap<string, number>;
   maxWeight: number;
@@ -263,6 +272,7 @@ function KeyboardFlow({
     [allFlowVectors],
   );
   const showRollDirection = selectedFingers.length === 2;
+  const standard = keyboardStandardForGeometryId(geometry.id);
 
   return (
     <div className="flow-stage">
@@ -270,7 +280,7 @@ function KeyboardFlow({
         ref={stageRef}
         className="flow-keyboard-svg"
         viewBox={`0 0 ${AREA_WIDTH} ${AREA_HEIGHT}`}
-        role="img"
+        role={keySelection === undefined ? 'img' : 'group'}
         aria-label="キーボード上の打鍵の流れ"
       >
         {/* 自作の物理配列がエリアに収まらない時だけshrinkが1未満。エリアの中心を軸に縮める。 */}
@@ -294,17 +304,38 @@ function KeyboardFlow({
                     : undefined;
             const selected = keyClass !== undefined && selectedFingers.includes(keyClass);
             const label = layout.legends.get(key.id) ?? key.id;
+            const tooltip = keyDetailTooltip(keyName(key.id, layout.legends.get(key.id), standard), keyDetails.merged.get(key.id));
+            const chosen = keySelection?.selectedKeyId === key.id;
+            const interactive = keySelection === undefined ? {} : {
+              role: 'button',
+              tabIndex: 0,
+              'aria-pressed': chosen,
+              'aria-label': tooltip.split('\n')[0],
+              onClick: (event: MouseEvent<SVGGElement>) => keySelection.onKeyPress(key.id, event.currentTarget),
+              onKeyDown: (event: KeyboardEvent<SVGGElement>) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  keySelection.onKeyPress(key.id, event.currentTarget);
+                } else if (event.key === 'Escape' && keySelection.selectedKeyId !== undefined) {
+                  event.stopPropagation();
+                  keySelection.onClear();
+                }
+              },
+            };
             return (
               <g
                 className="flow-key"
                 data-key-id={key.id}
                 data-selected={selected || undefined}
+                data-key-selected={chosen || undefined}
                 data-hovered={hoveredKeyId === key.id || undefined}
                 key={key.id}
                 transform={`translate(${point.x} ${point.y})`}
                 onPointerEnter={() => setHoveredKeyId(key.id)}
                 onPointerLeave={() => setHoveredKeyId((current) => current === key.id ? null : current)}
+                {...interactive}
               >
+                <title>{tooltip}</title>
                 <rect x="-21" y="-19" width="42" height="38" rx="8" />
                 <text y="1" textAnchor="middle" dominantBaseline="middle">
                   {label.length > 3 ? label.slice(0, 3) : label}
@@ -705,6 +736,8 @@ export interface BigramFlowBodyProps {
    * 値の持ち主は解析設定と同じ1つの`AnalyzerOptions`で、ここは開く場所が増えるだけ。
    */
   readonly onOptionsChange?: (next: BigramFlowOptions) => void;
+  /** 図のキーの選択。省略すると、キーは押せない */
+  readonly keySelection?: KeySelectionProps;
 }
 
 /**
@@ -732,6 +765,7 @@ export function BigramFlowBody({
   extracted,
   options,
   onOptionsChange,
+  keySelection,
 }: BigramFlowBodyProps) {
   const {
     source,
@@ -805,6 +839,8 @@ export function BigramFlowBody({
           layerOrder={layerOrder}
           hoverScale={hoverScale}
           showRepeatBadge={repeatBadge}
+          keyDetails={extracted.keyDetails}
+          keySelection={keySelection}
         />
       </section>
 
@@ -1009,4 +1045,5 @@ export const bigramFlowAnalyzer = {
   Settings: BigramFlowSettings,
   defaultOptions: DEFAULT_BIGRAM_FLOW_OPTIONS,
   urlOptions: bigramFlowOptions,
+  keyDetailsOf: (extracted) => extracted.keyDetails,
 } satisfies SingleAnalyzerPaneParts<BigramFlowOptions, BigramFlowExtracted>;

@@ -1,0 +1,141 @@
+/*
+ * キーの詳細の小窓の中身。器（位置・ヘッダー・シート化）は`pane-frame.css`の浮かぶ小窓が持つ。
+ * 縦に長い時は小窓の本文の中でスクロールする。
+ */
+/* 表を読める幅にする。スマホ幅の下から出るシートは、画面いっぱいの幅に戻す（`pane-frame.css`） */
+.settings-window[data-key-detail-window] {
+  width: 26rem;
+}
+
+.key-detail {
+  display: grid;
+  gap: 0.9rem;
+  font-size: 0.82rem;
+}
+
+.key-detail-name {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.key-detail-presses {
+  margin: -0.5rem 0 0;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.key-detail-empty,
+.key-detail-note {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.key-detail-section {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.key-detail-section > h5 {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.key-detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.key-detail-table th,
+.key-detail-table td {
+  padding: 0.2rem 0.4rem;
+  border-bottom: 1px solid var(--border);
+  font-weight: 400;
+  text-align: left;
+}
+
+.key-detail-table thead th {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.key-detail-table [data-numeric] {
+  text-align: right;
+}
+
+.key-detail-faces {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.key-detail-faces details {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.key-detail-faces summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.3rem 0.5rem;
+  cursor: pointer;
+}
+
+.key-detail-faces details[open] > summary {
+  border-bottom: 1px solid var(--border);
+}
+
+.key-detail-faces details > :not(summary) {
+  margin: 0.5rem;
+}
+
+.key-detail-face-count {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.key-detail-pattern-group {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.key-detail-pattern-group > h6 {
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.key-detail-triggers {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.key-detail-patterns {
+  display: grid;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.key-detail-patterns li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.key-detail-pattern-output {
+  font-weight: 700;
+}
+
+.key-detail-pattern-note {
+  padding: 0 0.35rem;
+  border-radius: 4px;
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}

@@ -62,6 +62,7 @@ test('SingleAnalyzerDefinition: extractは Trace結果 + 解釈結果 + options 
     metrics: { totalUnits: 12, strokes: 0 } as never,
     options: DEFAULT_OPTIONS,
     requestTrace: { requestTrace: () => { throw new Error('unused'); } },
+    keyDetails: () => { throw new Error('unused'); },
   });
   assert.equal(result, 3);
 });

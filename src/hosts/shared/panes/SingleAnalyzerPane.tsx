@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import type { CodecDiagnostic } from '#input/codec/index.ts';
 import { nameTargets, type AnalysisTarget } from '#input/setup/index.ts';
 import type { SingleAnalyzerPaneParts } from '#analyzers/pane-parts.tsx';
@@ -11,6 +11,9 @@ import { resolvePaneInput } from '../resolve-pane-input.ts';
 import { targetNameSource } from '../target-name-source.ts';
 import { setupNumbersOf, targetChoiceGroups } from '../target-choices.ts';
 import { TargetSelection } from '../TargetSelection.tsx';
+import { KeyDetailWindow } from '../KeyDetailWindow.tsx';
+import { keySelectionTargetOf } from '../key-selection.ts';
+import { usePaneKeySelection } from '../key-selection-store.tsx';
 import { useAnalyzerPane } from '../use-analyzer-pane.ts';
 import type { PaneChrome, PaneEnvironment } from './pane-environment.ts';
 
@@ -82,7 +85,19 @@ export function SingleAnalyzerPane<Options, Extracted>({
     selected: [target],
   }), [catalog, setups, target]);
 
-  const { Body, Settings } = analyzer;
+  // 図のキーの選択。同じ配列・物理配列のペインどうしで共有し、キーの詳細を持つAnalyzerだけが使う
+  const { Body, Settings, keyDetailsOf } = analyzer;
+  const selectionTarget = keyDetailsOf !== undefined && resolution.ok
+    ? keySelectionTargetOf(resolution.input.layout.id, resolution.input.geometry.id)
+    : undefined;
+  const keySelection = usePaneKeySelection(chrome.paneKey, selectionTarget);
+  const selectedGeometry = resolution.ok ? resolution.input.geometry : undefined;
+  const { selectedKeyId, clear: clearKeySelection } = keySelection;
+  // 対象を替えて、選んだキーが物理配列に無くなったら選択を外す
+  useEffect(() => {
+    if (selectedKeyId !== undefined && selectedGeometry !== undefined && !selectedGeometry.keys.has(selectedKeyId)) clearKeySelection();
+  }, [selectedKeyId, selectedGeometry, clearKeySelection]);
+
   const extraction = pane.extraction;
   const hasExtraction = extraction.status === 'ready' || extraction.status === 'stale';
   const hasTrace = pane.trace.status === 'ready' || pane.trace.status === 'stale';
@@ -100,6 +115,21 @@ export function SingleAnalyzerPane<Options, Extracted>({
       targetBinding={chrome.targetBinding}
       optionsBinding={chrome.optionsBinding}
       showPaneNameInSettings={chrome.showPaneNameInSettings}
+      floating={(paneName) => (
+        keyDetailsOf !== undefined && keySelection.windowKeyId !== undefined && resolution.ok && hasExtraction && hasTrace
+          && resolution.input.geometry.keys.has(keySelection.windowKeyId) ? (
+            <KeyDetailWindow
+              keyId={keySelection.windowKeyId}
+              layout={resolution.input.layout}
+              geometry={resolution.input.geometry}
+              trace={pane.trace.value.trace}
+              keyDetails={keyDetailsOf(extraction.value.extracted)}
+              anchor={keySelection.anchor}
+              onClose={keySelection.clear}
+              {...(paneName === undefined ? {} : { paneName })}
+            />
+          ) : null
+      )}
       {...(named === undefined || !assetsReady ? {} : { targetName: named.displayName })}
       target={(
         <TargetSelection
@@ -150,6 +180,9 @@ export function SingleAnalyzerPane<Options, Extracted>({
           extracted={extraction.value.extracted}
           options={options}
           onOptionsChange={onOptionsChange}
+          {...(keyDetailsOf === undefined ? {} : {
+            keySelection: { selectedKeyId, onKeyPress: keySelection.press, onClear: keySelection.clear },
+          })}
         />
       ) : undefined}
     </PaneFrame>

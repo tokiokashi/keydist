@@ -3,12 +3,14 @@ import type { AnalysisTarget } from '#input/setup/index.ts';
 import { LruCache } from './lru-cache.ts';
 import { interpretationKeyOf, setAnalyzerExtractionKeyOf, setMemberKeyOf, singleExtractionKeyOf, traceKeyOf } from './keys.ts';
 import {
+  computeEngineKeyDetails,
   extractSet,
   extractSingle,
   generateEngineTrace,
   interpretEngineTrace,
   type EngineExtractionResult,
   type EngineInterpretationResult,
+  type EngineKeyDetailsResult,
   type EngineTraceResult,
 } from './pipeline.ts';
 import type { EngineSetMemberInput } from './request.ts';
@@ -30,6 +32,8 @@ export interface EngineCacheOptions {
   readonly maxInterpretationEntries?: number;
   /** 抽出キャッシュの最大保持件数。省略時は`DEFAULT_MAX_ENTRIES`。 */
   readonly maxExtractionEntries?: number;
+  /** キーの詳細のキャッシュの最大保持件数。省略時は`DEFAULT_MAX_ENTRIES`。 */
+  readonly maxKeyDetailsEntries?: number;
 }
 
 export interface EngineCache {
@@ -40,6 +44,12 @@ export interface EngineCache {
    * 解釈だけが違う（chain/arpeggio解釈の変更）2つの呼び出しはTraceを再利用する。
    */
   getInterpretation(input: ResolvedInput): EngineInterpretationResult;
+  /**
+   * キーの詳細（仕様 §11.11）をTraceのキーで引く。無ければ計算して積む。
+   * 同じTrace（と物理配列）を見る抽出どうし（ヒートマップとBigram Flow等）は、抽出の `keyDetails()` を通して
+   * 1回の計算を共有する。
+   */
+  getKeyDetails(input: ResolvedInput): EngineKeyDetailsResult;
   /**
    * 単一Setup対象のAnalyzerの抽出を、抽出のキー（解釈のキー + Analyzer id +
    * 抽出に効くoptions）で引く。無ければ解釈（さらにその中でTrace）まで遡って計算し、
@@ -73,7 +83,12 @@ export interface EngineCache {
   ): EngineExtractionResult<Extracted>;
   /** 計算結果は永続化しない。明示的に空にする時だけ使う。 */
   clear(): void;
-  readonly size: { readonly trace: number; readonly interpretation: number; readonly extraction: number };
+  readonly size: {
+    readonly trace: number;
+    readonly interpretation: number;
+    readonly extraction: number;
+    readonly keyDetails: number;
+  };
 }
 
 /**
@@ -91,6 +106,9 @@ export function createEngineCache(options: EngineCacheOptions = {}): EngineCache
   const traceCache = new LruCache<string, EngineTraceResult>(options.maxTraceEntries ?? DEFAULT_MAX_ENTRIES);
   const interpretationCache = new LruCache<string, EngineInterpretationResult>(
     options.maxInterpretationEntries ?? DEFAULT_MAX_ENTRIES,
+  );
+  const keyDetailsCache = new LruCache<string, EngineKeyDetailsResult>(
+    options.maxKeyDetailsEntries ?? DEFAULT_MAX_ENTRIES,
   );
   // 値の型はAnalyzerごとに違うので`unknown`で持ち、`getExtraction`の呼び出し側の
   // ジェネリックで絞り込む（このファイル内では中身の型を知らないまま扱う）。
@@ -117,6 +135,16 @@ export function createEngineCache(options: EngineCacheOptions = {}): EngineCache
     return result;
   }
 
+  function getKeyDetails(input: ResolvedInput): EngineKeyDetailsResult {
+    // 物理配列は指の割当を含んだ形でTraceのキーに入っているので、Traceのキーだけで決まる
+    const key = traceKeyOf(input);
+    const cached = keyDetailsCache.get(key);
+    if (cached) return cached;
+    const result = computeEngineKeyDetails(getTrace(input), input);
+    keyDetailsCache.set(key, result);
+    return result;
+  }
+
   function getExtraction<Options, Extracted>(
     input: ResolvedInput,
     definition: SingleAnalyzerDefinition<Options, Extracted>,
@@ -128,7 +156,14 @@ export function createEngineCache(options: EngineCacheOptions = {}): EngineCache
     if (cached) return cached as EngineExtractionResult<Extracted>;
     const traceResult = getTrace(input);
     const requester = createTraceRequesterFor({ getTrace }, input);
-    const result = extractSingle(definition, options, traceResult, interpretationResult, requester);
+    const result = extractSingle(
+      definition,
+      options,
+      traceResult,
+      interpretationResult,
+      requester,
+      () => getKeyDetails(input).keyDetails,
+    );
     extractionCache.set(key, result as EngineExtractionResult<unknown>);
     return result;
   }
@@ -184,15 +219,22 @@ export function createEngineCache(options: EngineCacheOptions = {}): EngineCache
   return {
     getTrace,
     getInterpretation,
+    getKeyDetails,
     getExtraction,
     getSetExtraction,
     clear() {
       traceCache.clear();
       interpretationCache.clear();
       extractionCache.clear();
+      keyDetailsCache.clear();
     },
     get size() {
-      return { trace: traceCache.size, interpretation: interpretationCache.size, extraction: extractionCache.size };
+      return {
+        trace: traceCache.size,
+        interpretation: interpretationCache.size,
+        extraction: extractionCache.size,
+        keyDetails: keyDetailsCache.size,
+      };
     },
   };
 }

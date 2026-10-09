@@ -99,3 +99,17 @@
   border: 3px solid var(--shift-color);
   border-radius: 4px;
 }
+
+/* キーを選べる図。キーボードでも選べるよう、フォーカスの枠を出す */
+.heatmap-key[role='button'] {
+  cursor: pointer;
+}
+
+.heatmap-key:focus {
+  outline: none;
+}
+
+.heatmap-key:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
