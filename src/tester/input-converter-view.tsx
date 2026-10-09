@@ -25,6 +25,7 @@ import {
   aggregationLegendMap,
   aggregationTriggerKeys,
   compactLayerGuideDefinitions,
+  layerDefinitionsWithLabels,
   presentationLayerGuide,
   presentationTriggerColorSlots,
   semanticCombinationLabels,
@@ -632,7 +633,9 @@ export function InputConverterView() {
   );
   const activeGroupIds = session.presentation.activeAggregationGroupIds;
   const activeDefinitions = useMemo(() => {
-    const byId = new Map((layout.layerDefinitions ?? []).map((definition) => [definition.id, definition] as const));
+    const byId = new Map(
+      layerDefinitionsWithLabels(layout).map((definition) => [definition.id, definition] as const),
+    );
     return activeGroupIds.flatMap((id) => {
       const definition = byId.get(id);
       return definition === undefined ? [] : [definition];
