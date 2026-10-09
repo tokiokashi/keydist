@@ -44,7 +44,28 @@ test('修飾のレイヤーを持つ配列: 修飾の一覧が出て、コンボ
   await expect(feature(page).locator('[data-layer-combo-diagram]')).toHaveCount(0);
 });
 
-test('どちらも持たない配列: 帰属先の表だけに行があり、修飾とコンボには無いと分かる', async ({ page }) => {
+test('入力パターン: キーボードでキーを選ぶと出る文字が候補に出て、Escapeで選択が外れる', async ({ page }) => {
+  await selectLayout(page, 'qwerty');
+  await page.goto('/standalone/layer-combo');
+  await expect(feature(page)).toBeVisible({ timeout: 10_000 });
+
+  const pattern = feature(page).locator('[data-layer-combo-pattern]');
+  const result = pattern.locator('[data-layer-combo-pattern-result]');
+  await expect(result).toContainText('キーを選ぶと');
+
+  const shift = pattern.locator('[data-key-id="shift-l"]');
+  await shift.focus();
+  await page.keyboard.press('Enter');
+  await expect(shift).toHaveAttribute('aria-pressed', 'true');
+  await expect(result).toContainText('青い枠');
+  await expect(pattern.locator('[data-key-id="a"] text')).toHaveText('A');
+
+  await page.keyboard.press('Escape');
+  await expect(shift).toHaveAttribute('aria-pressed', 'false');
+  await expect(result).toContainText('キーを選ぶと');
+});
+
+test('どちらも持たない配列:帰属先の表だけに行があり、修飾とコンボには無いと分かる', async ({ page }) => {
   await selectLayout(page, 'nicola');
   await page.goto('/standalone/layer-combo');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
