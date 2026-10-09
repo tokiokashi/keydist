@@ -40,7 +40,7 @@ test('層が1つの配列: 統合と唯一の層が同じ押下数になる', ()
 });
 
 test('層が複数の配列(Shiftあり): 統合は合算、層別は層のidごとに分かれる', () => {
-  // "aAa": a(単打) + A(右Shift + a) + a(単打)。Shiftの層は右Shiftの押下と a の押下を1回ずつ持つ
+  // "aAa": a(単打) + A(右Shift + a) + a(単打)。Shiftの層は右Shiftとaの押下を1回ずつ持つ
   const extracted = extractFor('qwerty', 'aAa');
   assert.deepEqual(entries(extracted.integrated.keyCounts), [['a', 3], ['shift-r', 1]]);
   assert.equal(extracted.integrated.presses, 4);
@@ -112,7 +112,7 @@ test('同時押下したトリガーは色用の押下数へ足し戻し、修�
   const a = key('a', 'LP');
   const trace = syntheticTrace(
     [
-      // 通常の層: j と f を同時に押し、どちらもトリガー。a が出力
+      // 通常の層: jとfを同時に押し、どちらもトリガー。aが出力
       syntheticStroke('layer:L', [j, f, a], ['j', 'f'], ['j', 'f']),
       // 修飾面: 同じ押し方でも足し戻さない
       syntheticStroke('layer:M', [j, f, a], ['j', 'f'], ['j', 'f']),

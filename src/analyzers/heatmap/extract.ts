@@ -3,7 +3,7 @@ import type { Trace } from '#trace/generate.ts';
 import { normalizedRoleColors } from './layer-heatmap.ts';
 
 /**
- * ヒートマップの抽出（仕様 §11.2 のキー別の押下数）。
+ * ヒートマップの抽出（仕様 §11.2・§11.10のキー別の押下数）。
  *
  * 数えるのは、キー（物理キーid）× 面（Traceの `aggregationGroupId`。層のid）ごとの押下数だけ。
  * 色の尺度（線形・対数）と層の表示方法は表示側の設定で、ここには入らない。
