@@ -11,7 +11,7 @@ import { settleGrid } from './settle-helper.ts';
 const QWERTY = { kind: 'layout', layoutId: 'qwerty' };
 const LAYOUT_IDS_17 = [
   'qwerty', 'dvorak', 'colemak', 'colemak-dh', 'workman', 'oonishi', 'naginata-v18', 'nicola', 'shin-koume', 'asuka',
-  'shin-jis-prefix', 'shin-jis-simultaneous', 'shingeta', 'tsuki-2-263', 'kawasemi-kai', 'kawasemi-plus', 'oonishi-custom',
+  'shin-jis-prefix', 'shin-jis-simultaneous', 'shingeta', 'tsuki-2-263', 'kawasemi-plus', 'oonishi-custom',
 ];
 const setOf = (ids: readonly string[]) => ({
   kind: 'set',

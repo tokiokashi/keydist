@@ -4,18 +4,17 @@ import { faceFromEntries, fromFaces, withAliases, type Face, type Layout } from 
 /**
  * かわせみ配列+。
  *
- * 正本:
- *   semialt/kawasemi `plus` branch
+ * 出典:
+ *   semialt/kawasemi `master` ブランチ
  *   `Kikyo/かわせみ配列+.kky`
- *   source blob: c844edd43dbcd00cd0c0bc768c3f59879d1c0179
+ *   最後の変更コミット: 911bb8f
+ *   blob: 220851f9e4d733c1c7cf83000f750faed02e6525
  *
- * DvorakJ版の「かわせみ配列改」は2022年版で、二重母音拡張までは持つが、
- * Kikyo版にある左右親指の「く・き」「つ・ち」拡張を持たないため、配字はKikyo版を採用する。
- * ただしKikyoの出力表現はDvorakJ版に合わせて `，→、`、`．→。`、`－→ー`、
- * `va/vi/vu/ve/vo→ヴァ/ヴィ/ヴ/ヴェ/ヴォ` と正規化している。
+ * 出力の表現はKikyo版から次のように正規化している。
+ * `，→、`、`．→。`、`－→ー`、`va/vi/vu/ve/vo→ヴァ/ヴィ/ヴ/ヴェ/ヴォ`。
  *
  * KikyoはJIS物理配列なので、ANSIに存在しない各段末尾の専用キーは除外する。
- * 数字・英数記号・括弧マクロなど解析対象外の出力も除外し、かな・長音・日本語句読点を移植する。
+ * 数字・英数記号・括弧マクロ・！・？など解析対象外の出力も除外し、かな・長音・日本語句読点を移植する。
  *
  * 同じ出力に複数の打ち方が定義されている場合、keydistのLayoutは代替Sequenceを持てないため、
  * 同時押しの押下キー数が最少の定義を採る。同数ならKikyoファイルで先に現れる定義を採る。
@@ -162,7 +161,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       "i": "ちゅ",
       "o": "ちゃ",
       "p": "つぁ",
-      "g": "ため",
+      "g": "ひと",
       "h": "て",
       "j": "と",
       "k": "つ",
@@ -198,6 +197,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       "/": "なん",
     }, { inputRole: 'composition', triggerPersistence: 'single' }),
   sourceFace(["x"], {
+      "z": "もの",
       "u": "りょ",
       "i": "りゅ",
       "o": "りゃ",
@@ -233,7 +233,6 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       "j": "・",
       "k": "…",
       ",": "、",
-      ".": "。",
     }, { inputRole: 'composition', triggerPersistence: 'single' }),
   sourceFace(["b"], {
       "u": "ぴょ",
@@ -515,7 +514,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       "g": "はく",
       "h": "えく",
       "j": "おく",
-      "k": "うき",
+      "k": "うく",
       "l": "いく",
       ";": "あく",
       "z": "なく",

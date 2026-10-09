@@ -3874,7 +3874,7 @@
       "analysis": {
         "arpeggio": {
           "coverage": {
-            "rate": 0.092,
+            "rate": 0.09663865546218488,
             "strokes": 23
           },
           "meanSpanLength": 2.090909090909091,
@@ -3882,433 +3882,41 @@
         },
         "directionalTransitions": {
           "empty": 0,
-          "inward": 86,
-          "mixed": 2,
-          "outward": 87,
-          "same": 20,
-          "total": 195
-        },
-        "redirect": {
-          "events": 84,
-          "pivots": {
-            "rate": 0.328,
-            "strokes": 82
-          }
-        },
-        "roll": {
-          "anyRoll": {
-            "rate": 0.092,
-            "strokes": 23
-          },
-          "longRoll": {
-            "rate": 0.012,
-            "strokes": 3
-          },
-          "twoRoll": {
-            "rate": 0.08,
-            "strokes": 20
-          }
-        },
-        "sfb": {
-          "events": 22,
-          "involvedStrokes": {
-            "rate": 0.156,
-            "strokes": 39
-          }
-        },
-        "strokeCount": 250
-      },
-      "conditions": {
-        "actionRealizationPolicy": {
-          "triggerActivation": "disabled",
-          "triggerActivationClassOverrides": {},
-          "triggerActivationOverrides": []
-        },
-        "arpeggioInterpretation": {
-          "bridgeSameFinger": false,
-          "includeSingleRedirectTail": false,
-          "includeThumb": false
-        },
-        "chainInterpretation": {
-          "breakOnOppositeHandSimultaneous": false,
-          "breakOnSameFinger": true,
-          "breakOnThumbOnly": true,
-          "breakOnTriggerOnly": false
-        },
-        "fingerAssignmentId": "default",
-        "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
-        "romajiRuleId": null,
-        "sfbHomeCost": true,
-        "triggerRealizationPolicy": {
-          "useHold": false
-        },
-        "windowSize": 3
-      },
-      "id": "ja:kawasemi-kai:legacy",
-      "language": "ja",
-      "layoutId": "kawasemi-kai",
-      "metrics": {
-        "actions": 250,
-        "adjacent": [
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.06112236396285529,
-            "pair": [
-              "LP",
-              "LR"
-            ],
-            "stdDev": 0.19434332686738118
-          },
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.0979879365704497,
-            "pair": [
-              "LR",
-              "LM"
-            ],
-            "stdDev": 0.23910769779696767
-          },
-          {
-            "maxExcess": 1.6925824035672523,
-            "meanExcess": 0.20099780819702087,
-            "pair": [
-              "LM",
-              "LI"
-            ],
-            "stdDev": 0.40847798558300763
-          },
-          {
-            "maxExcess": 1.462214450449026,
-            "meanExcess": 0.15686795845752563,
-            "pair": [
-              "RI",
-              "RM"
-            ],
-            "stdDev": 0.37802979604036063
-          },
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.04393635484856859,
-            "pair": [
-              "RM",
-              "RR"
-            ],
-            "stdDev": 0.1766264052328627
-          },
-          {
-            "maxExcess": 1.6575364531836625,
-            "meanExcess": 0.0509488560127542,
-            "pair": [
-              "RR",
-              "RP"
-            ],
-            "stdDev": 0.2097772677043042
-          }
-        ],
-        "comboPresses": 235,
-        "combos": {
-          "definitions": 0,
-          "hits": 0,
-          "matched": 0
-        },
-        "fingerAssignmentId": "default",
-        "fingerAssignmentName": "既定（列固定）",
-        "geometryId": "row-staggered",
-        "geometryName": "ロウスタッガード（ANSI）",
-        "inputChars": 290,
-        "layers": [
-          {
-            "id": "single",
-            "label": "単打",
-            "presses": 142
-          }
-        ],
-        "meanPerStroke": 0.713757402509931,
-        "perCharPresses": 1.3,
-        "perCharSteps": 0.8620689655172413,
-        "perCharUnits": 0.6153081056120095,
-        "perFinger": {
-          "LI": 51.13054403400608,
-          "LM": 27.114293642338332,
-          "LP": 8.68249916296272,
-          "LR": 23.61129542904755,
-          "LT": 0,
-          "RI": 36.00127817945407,
-          "RM": 2.0615528128088303,
-          "RP": 14.359926689057675,
-          "RR": 15.47796067780757,
-          "RT": 0
-        },
-        "perFingerPresses": {
-          "LI": 83,
-          "LM": 43,
-          "LP": 25,
-          "LR": 52,
-          "LT": 0,
-          "RI": 66,
-          "RM": 27,
-          "RP": 44,
-          "RR": 37,
-          "RT": 0
-        },
-        "presses": 377,
-        "sameFinger": 37,
-        "singleKeyRate": 56.8,
-        "singleTapLayerRate": 48.96551724137931,
-        "singleTapRate": 56.8,
-        "skipped": 0,
-        "strokes": 250,
-        "totalMm": 3399.2696294535467,
-        "totalUnits": 178.43935062748275
-      },
-      "sampleId": "legacy",
-      "textLength": 290,
-      "textSha256": "13032193a6d690c3512871d49b029cf1f04bca30a16c3df6b5f1b3d5d5182fdc"
-    },
-    {
-      "analysis": {
-        "arpeggio": {
-          "coverage": {
-            "rate": 0.10323468685478321,
-            "strokes": 150
-          },
-          "meanSpanLength": 2.027027027027027,
-          "spans": 74
-        },
-        "directionalTransitions": {
-          "empty": 0,
-          "inward": 446,
-          "mixed": 25,
-          "outward": 467,
-          "same": 90,
-          "total": 1028
-        },
-        "redirect": {
-          "events": 384,
-          "pivots": {
-            "rate": 0.2553337921541638,
-            "strokes": 371
-          }
-        },
-        "roll": {
-          "anyRoll": {
-            "rate": 0.10323468685478321,
-            "strokes": 150
-          },
-          "longRoll": {
-            "rate": 0.0041293874741913286,
-            "strokes": 6
-          },
-          "twoRoll": {
-            "rate": 0.09910529938059189,
-            "strokes": 144
-          }
-        },
-        "sfb": {
-          "events": 115,
-          "involvedStrokes": {
-            "rate": 0.13902271163110805,
-            "strokes": 202
-          }
-        },
-        "strokeCount": 1453
-      },
-      "conditions": {
-        "actionRealizationPolicy": {
-          "triggerActivation": "disabled",
-          "triggerActivationClassOverrides": {},
-          "triggerActivationOverrides": []
-        },
-        "arpeggioInterpretation": {
-          "bridgeSameFinger": false,
-          "includeSingleRedirectTail": false,
-          "includeThumb": false
-        },
-        "chainInterpretation": {
-          "breakOnOppositeHandSimultaneous": false,
-          "breakOnSameFinger": true,
-          "breakOnThumbOnly": true,
-          "breakOnTriggerOnly": false
-        },
-        "fingerAssignmentId": "default",
-        "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
-        "romajiRuleId": null,
-        "sfbHomeCost": true,
-        "triggerRealizationPolicy": {
-          "useHold": false
-        },
-        "windowSize": 3
-      },
-      "id": "ja:kawasemi-kai:modern",
-      "language": "ja",
-      "layoutId": "kawasemi-kai",
-      "metrics": {
-        "actions": 1453,
-        "adjacent": [
-          {
-            "maxExcess": 1.6575364531836625,
-            "meanExcess": 0.08710902872348907,
-            "pair": [
-              "LP",
-              "LR"
-            ],
-            "stdDev": 0.23458801566552495
-          },
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.11663666141106467,
-            "pair": [
-              "LR",
-              "LM"
-            ],
-            "stdDev": 0.25991963521688755
-          },
-          {
-            "maxExcess": 1.6925824035672523,
-            "meanExcess": 0.14196556823231096,
-            "pair": [
-              "LM",
-              "LI"
-            ],
-            "stdDev": 0.3238766103444625
-          },
-          {
-            "maxExcess": 2.400367627183861,
-            "meanExcess": 0.17266635362773503,
-            "pair": [
-              "RI",
-              "RM"
-            ],
-            "stdDev": 0.36912389935672335
-          },
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.05779404750755227,
-            "pair": [
-              "RM",
-              "RR"
-            ],
-            "stdDev": 0.18633136789009078
-          },
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.03299990671706467,
-            "pair": [
-              "RR",
-              "RP"
-            ],
-            "stdDev": 0.12240412073165208
-          }
-        ],
-        "comboPresses": 1459,
-        "combos": {
-          "definitions": 0,
-          "hits": 0,
-          "matched": 0
-        },
-        "fingerAssignmentId": "default",
-        "fingerAssignmentName": "既定（列固定）",
-        "geometryId": "row-staggered",
-        "geometryName": "ロウスタッガード（ANSI）",
-        "inputChars": 1676,
-        "layers": [
-          {
-            "id": "single",
-            "label": "単打",
-            "presses": 768
-          }
-        ],
-        "meanPerStroke": 0.8653759133417335,
-        "perCharPresses": 1.3287589498806682,
-        "perCharSteps": 0.866945107398568,
-        "perCharUnits": 0.750233414132183,
-        "perFinger": {
-          "LI": 267.60644864133815,
-          "LM": 193.49180500846987,
-          "LP": 75.31883170096714,
-          "LR": 172.78200905220328,
-          "LT": 0,
-          "RI": 202.9457017768979,
-          "RM": 130.62604264378504,
-          "RP": 97.51079552426616,
-          "RR": 117.10956773761585,
-          "RT": 0
-        },
-        "perFingerPresses": {
-          "LI": 412,
-          "LM": 311,
-          "LP": 115,
-          "LR": 329,
-          "LT": 0,
-          "RI": 312,
-          "RM": 248,
-          "RP": 222,
-          "RR": 278,
-          "RT": 0
-        },
-        "presses": 2227,
-        "sameFinger": 268,
-        "singleKeyRate": 52.856159669649,
-        "singleTapLayerRate": 45.82338902147971,
-        "singleTapRate": 52.856159669649,
-        "skipped": 0,
-        "strokes": 1453,
-        "totalMm": 23953.302399729513,
-        "totalUnits": 1257.3912020855387
-      },
-      "sampleId": "modern",
-      "textLength": 1676,
-      "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
-    },
-    {
-      "analysis": {
-        "arpeggio": {
-          "coverage": {
-            "rate": 0.09623430962343096,
-            "strokes": 23
-          },
-          "meanSpanLength": 2.090909090909091,
-          "spans": 11
-        },
-        "directionalTransitions": {
-          "empty": 0,
-          "inward": 76,
+          "inward": 75,
           "mixed": 8,
-          "outward": 73,
+          "outward": 72,
           "same": 19,
-          "total": 176
+          "total": 174
         },
         "redirect": {
           "events": 74,
           "pivots": {
-            "rate": 0.301255230125523,
+            "rate": 0.3025210084033613,
             "strokes": 72
           }
         },
         "roll": {
           "anyRoll": {
-            "rate": 0.09623430962343096,
+            "rate": 0.09663865546218488,
             "strokes": 23
           },
           "longRoll": {
-            "rate": 0.012552301255230125,
+            "rate": 0.012605042016806723,
             "strokes": 3
           },
           "twoRoll": {
-            "rate": 0.08368200836820083,
+            "rate": 0.08403361344537816,
             "strokes": 20
           }
         },
         "sfb": {
           "events": 23,
           "involvedStrokes": {
-            "rate": 0.17154811715481172,
+            "rate": 0.1722689075630252,
             "strokes": 41
           }
         },
-        "strokeCount": 239
+        "strokeCount": 238
       },
       "conditions": {
         "actionRealizationPolicy": {
@@ -4341,61 +3949,61 @@
       "language": "ja",
       "layoutId": "kawasemi-plus",
       "metrics": {
-        "actions": 239,
+        "actions": 238,
         "adjacent": [
           {
             "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.06393552715779842,
+            "meanExcess": 0.06420416382652866,
             "pair": [
               "LP",
               "LR"
             ],
-            "stdDev": 0.19831239227571879
+            "stdDev": 0.19868517865026383
           },
           {
             "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.10249784160088882,
+            "meanExcess": 0.0933054252864132,
             "pair": [
               "LR",
               "LM"
             ],
-            "stdDev": 0.24360132491366082
+            "stdDev": 0.23101995980696408
           },
           {
             "maxExcess": 1.6925824035672523,
-            "meanExcess": 0.20353096558071648,
+            "meanExcess": 0.20289831431740146,
             "pair": [
               "LM",
               "LI"
             ],
-            "stdDev": 0.41228092119886184
+            "stdDev": 0.41345532924114065
           },
           {
             "maxExcess": 1.462214450449026,
-            "meanExcess": 0.17779038161971958,
+            "meanExcess": 0.17853740002988647,
             "pair": [
               "RI",
               "RM"
             ],
-            "stdDev": 0.39358903366878295
+            "stdDev": 0.39424592430567423
           },
           {
             "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.04595853017632697,
+            "meanExcess": 0.04615163324429473,
             "pair": [
               "RM",
               "RR"
             ],
-            "stdDev": 0.18038788986038237
+            "stdDev": 0.180741806443416
           },
           {
             "maxExcess": 1.6575364531836625,
-            "meanExcess": 0.05665267632184328,
+            "meanExcess": 0.056890712776977076,
             "pair": [
               "RR",
               "RP"
             ],
-            "stdDev": 0.21962257533500715
+            "stdDev": 0.22005271576683977
           }
         ],
         "comboPresses": 226,
@@ -4413,7 +4021,7 @@
           {
             "id": "single",
             "label": "単打",
-            "presses": 135
+            "presses": 134
           },
           {
             "id": "layer:右親指",
@@ -4426,15 +4034,15 @@
             "presses": 4
           }
         ],
-        "meanPerStroke": 0.7683442735844515,
-        "perCharPresses": 1.2724137931034483,
-        "perCharSteps": 0.8241379310344827,
-        "perCharUnits": 0.6332216599540824,
+        "meanPerStroke": 0.78096785447136,
+        "perCharPresses": 1.2689655172413794,
+        "perCharSteps": 0.8206896551724138,
+        "perCharUnits": 0.6409322391868403,
         "perFinger": {
           "LI": 50.704528443053334,
           "LM": 27.114293642338332,
-          "LP": 8.68249916296272,
-          "LR": 24.642071835451965,
+          "LP": 9.800533151712616,
+          "LR": 25.760105824201858,
           "LT": 0,
           "RI": 39.47341413445364,
           "RM": 2.0615528128088303,
@@ -4444,25 +4052,25 @@
         },
         "perFingerPresses": {
           "LI": 80,
-          "LM": 43,
+          "LM": 42,
           "LP": 25,
-          "LR": 43,
+          "LR": 44,
           "LT": 3,
-          "RI": 69,
+          "RI": 68,
           "RM": 22,
           "RP": 45,
           "RR": 30,
           "RT": 9
         },
-        "presses": 369,
+        "presses": 368,
         "sameFinger": 39,
-        "singleKeyRate": 56.48535564853556,
-        "singleTapLayerRate": 46.55172413793103,
-        "singleTapRate": 56.48535564853556,
+        "singleKeyRate": 56.30252100840336,
+        "singleTapLayerRate": 46.206896551724135,
+        "singleTapRate": 56.30252100840336,
         "skipped": 0,
-        "strokes": 239,
-        "totalMm": 3498.2330604163285,
-        "totalUnits": 183.6342813866839
+        "strokes": 238,
+        "totalMm": 3540.830155387699,
+        "totalUnits": 185.87034936418368
       },
       "sampleId": "legacy",
       "textLength": 290,
@@ -4472,49 +4080,49 @@
       "analysis": {
         "arpeggio": {
           "coverage": {
-            "rate": 0.10395314787701318,
-            "strokes": 142
+            "rate": 0.09977989728539985,
+            "strokes": 136
           },
-          "meanSpanLength": 2.0285714285714285,
-          "spans": 70
+          "meanSpanLength": 2.029850746268657,
+          "spans": 67
         },
         "directionalTransitions": {
           "empty": 0,
-          "inward": 394,
-          "mixed": 49,
-          "outward": 411,
+          "inward": 390,
+          "mixed": 51,
+          "outward": 410,
           "same": 62,
-          "total": 916
+          "total": 913
         },
         "redirect": {
-          "events": 346,
+          "events": 344,
           "pivots": {
-            "rate": 0.24743777452415813,
-            "strokes": 338
+            "rate": 0.24651504035216434,
+            "strokes": 336
           }
         },
         "roll": {
           "anyRoll": {
-            "rate": 0.10395314787701318,
-            "strokes": 142
+            "rate": 0.09977989728539985,
+            "strokes": 136
           },
           "longRoll": {
-            "rate": 0.004392386530014641,
+            "rate": 0.004402054292002935,
             "strokes": 6
           },
           "twoRoll": {
-            "rate": 0.09956076134699854,
-            "strokes": 136
+            "rate": 0.09537784299339692,
+            "strokes": 130
           }
         },
         "sfb": {
-          "events": 91,
+          "events": 94,
           "involvedStrokes": {
-            "rate": 0.11346998535871157,
-            "strokes": 155
+            "rate": 0.11738811445341159,
+            "strokes": 160
           }
         },
-        "strokeCount": 1366
+        "strokeCount": 1363
       },
       "conditions": {
         "actionRealizationPolicy": {
@@ -4547,64 +4155,64 @@
       "language": "ja",
       "layoutId": "kawasemi-plus",
       "metrics": {
-        "actions": 1366,
+        "actions": 1363,
         "adjacent": [
           {
             "maxExcess": 1.6575364531836625,
-            "meanExcess": 0.09579442786132995,
+            "meanExcess": 0.09423834302669165,
             "pair": [
               "LP",
               "LR"
             ],
-            "stdDev": 0.24964018788126913
+            "stdDev": 0.2476991073253816
           },
           {
             "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.12390956320372949,
+            "meanExcess": 0.12426889018711987,
             "pair": [
               "LR",
               "LM"
             ],
-            "stdDev": 0.2656259813489768
+            "stdDev": 0.265833215031649
           },
           {
             "maxExcess": 1.6925824035672523,
-            "meanExcess": 0.15539968568195303,
+            "meanExcess": 0.15148919127911617,
             "pair": [
               "LM",
               "LI"
             ],
-            "stdDev": 0.3365382719587068
+            "stdDev": 0.33147551534865455
           },
           {
             "maxExcess": 2.400367627183861,
-            "meanExcess": 0.19549923962491328,
+            "meanExcess": 0.20179894448102095,
             "pair": [
               "RI",
               "RM"
             ],
-            "stdDev": 0.3845479195929698
+            "stdDev": 0.3894268243924779
           },
           {
             "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.06474877975814994,
+            "meanExcess": 0.0648912935800681,
             "pair": [
               "RM",
               "RR"
             ],
-            "stdDev": 0.19663533070191666
+            "stdDev": 0.19682812066947197
           },
           {
             "maxExcess": 1.0155644370746373,
-            "meanExcess": 0.04026939157720858,
+            "meanExcess": 0.04035802560122299,
             "pair": [
               "RR",
               "RP"
             ],
-            "stdDev": 0.14047707869490147
+            "stdDev": 0.1406188721159125
           }
         ],
-        "comboPresses": 1374,
+        "comboPresses": 1393,
         "combos": {
           "definitions": 0,
           "hits": 0,
@@ -4619,7 +4227,7 @@
           {
             "id": "single",
             "label": "単打",
-            "presses": 715
+            "presses": 708
           },
           {
             "id": "layer:右親指",
@@ -4629,46 +4237,46 @@
           {
             "id": "layer:左親指",
             "label": "左親指",
-            "presses": 38
+            "presses": 28
           }
         ],
-        "meanPerStroke": 0.9273483026420559,
-        "perCharPresses": 1.2881861575178997,
-        "perCharSteps": 0.815035799522673,
-        "perCharUnits": 0.7558220652798618,
+        "meanPerStroke": 0.9295647555010651,
+        "perCharPresses": 1.2893794749403342,
+        "perCharSteps": 0.8132458233890215,
+        "perCharUnits": 0.7559646549808782,
         "perFinger": {
-          "LI": 259.6716558753086,
-          "LM": 192.37377101971998,
-          "LP": 75.31883170096714,
-          "LR": 164.01225230689514,
+          "LI": 250.1716558753086,
+          "LM": 195.72787298596964,
+          "LP": 76.43686568971704,
+          "LR": 167.3663542731448,
           "LT": 0,
-          "RI": 225.6883475631458,
+          "RI": 227.68834756314578,
           "RM": 131.74407663253493,
-          "RP": 100.839278572866,
-          "RR": 117.10956773761585,
+          "RP": 101.87005497927042,
+          "RR": 115.99153374886595,
           "RT": 0
         },
         "perFingerPresses": {
-          "LI": 363,
-          "LM": 311,
+          "LI": 364,
+          "LM": 312,
           "LP": 116,
-          "LR": 284,
-          "LT": 49,
-          "RI": 329,
-          "RM": 195,
-          "RP": 224,
-          "RR": 243,
+          "LR": 287,
+          "LT": 44,
+          "RI": 330,
+          "RM": 199,
+          "RP": 228,
+          "RR": 236,
           "RT": 45
         },
-        "presses": 2159,
+        "presses": 2161,
         "sameFinger": 256,
-        "singleKeyRate": 52.342606149341144,
-        "singleTapLayerRate": 42.66109785202864,
-        "singleTapRate": 52.342606149341144,
+        "singleKeyRate": 51.94424064563463,
+        "singleTapLayerRate": 42.243436754176614,
+        "singleTapRate": 51.94424064563463,
         "skipped": 0,
-        "strokes": 1366,
-        "totalMm": 24131.735735842372,
-        "totalUnits": 1266.7577814090484
+        "strokes": 1363,
+        "totalMm": 24136.288311298482,
+        "totalUnits": 1266.9967617479517
       },
       "sampleId": "modern",
       "textLength": 1676,
@@ -11054,6 +10662,6 @@
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     }
   ],
-  "sourceCommit": "cc62a95b93ee379d1e3395554412d0d1bf6cbdd9",
+  "sourceCommit": "b913de50b90e0ddb2147874134ddbffa08e56887",
   "version": 1
 }

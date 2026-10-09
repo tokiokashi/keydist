@@ -261,12 +261,11 @@ for (const fixtureCase of fixture.cases) {
   });
 }
 
-test('50ケース全件がengineの経路で一致した', () => {
+test('fixtureの全ケースがengineの経路で一致した', () => {
   assert.equal(matched, fixture.cases.length);
-  assert.equal(matched, 50);
 });
 
-// 全50件を非同期経路でも回すと重複が大きいので、代表として先頭・末尾・中間の3件だけを見る。
+// 全件を非同期経路でも回すと重複が大きいので、代表として先頭・末尾・中間の3件だけを見る。
 const ASYNC_SAMPLE_INDICES = [0, Math.floor(fixture.cases.length / 2), fixture.cases.length - 1];
 for (const index of ASYNC_SAMPLE_INDICES) {
   const fixtureCase = fixture.cases[index];
