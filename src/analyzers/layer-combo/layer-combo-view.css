@@ -74,3 +74,22 @@
 .layer-combo-diagram select {
   max-width: 100%;
 }
+
+.layer-combo-pattern {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.layer-combo-pattern-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 1rem;
+}
+
+.layer-combo-pattern-result {
+  flex: 1 1 16em;
+  margin: 0;
+  font-size: 0.8rem;
+}

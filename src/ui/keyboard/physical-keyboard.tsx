@@ -1,4 +1,6 @@
+import type { KeyboardEvent } from 'react';
 import { isThumb, type Key } from '#input/shapes/geometry.ts';
+import { keyboardStandardForGeometryId, physicalKeyDisplayLabel } from '#input/shapes/key-labels.ts';
 
 export interface PhysicalKeyboardKeyView {
   readonly legend?: string;
@@ -10,6 +12,8 @@ export interface PhysicalKeyboardKeyView {
   readonly accentSlot?: number;
   readonly guide?: 'continuation' | 'output';
   readonly lookup?: boolean;
+  /** キーを選んでいく操作で、選択中のキー。 */
+  readonly selected?: boolean;
   readonly home?: boolean;
 }
 
@@ -23,6 +27,12 @@ export interface PhysicalKeyboardProps {
   readonly horizontalAlign?: 'left' | 'center';
   readonly selectedKeyId?: string;
   readonly onKeyClick?: (key: Key) => void;
+  /**
+   * キーをボタンとして扱い、Tabで移れてEnter・Spaceで押せるようにする（`onKeyClick` と一緒に使う）。
+   * 各キーの `selected` が押された状態になる。Escapeは `onEscape` を呼ぶ。
+   */
+  readonly operable?: boolean;
+  readonly onEscape?: () => void;
 }
 
 const DEFAULT_UNIT = 54;
@@ -40,7 +50,10 @@ export function PhysicalKeyboard({
   horizontalAlign = 'center',
   selectedKeyId,
   onKeyClick,
+  operable = false,
+  onEscape,
 }: PhysicalKeyboardProps) {
+  const standard = geometryId === undefined ? undefined : keyboardStandardForGeometryId(geometryId);
   const gap = unit * GAP_RATIO;
   const pad = unit * PAD_RATIO;
   const positioned = keys.map((key) => {
@@ -71,7 +84,7 @@ export function PhysicalKeyboard({
         aria-label={ariaLabel}
         data-geometry-id={geometryId}
         height={height}
-        role="img"
+        role={operable ? 'group' : 'img'}
         preserveAspectRatio={horizontalAlign === 'left' ? 'xMinYMid meet' : 'xMidYMid meet'}
         viewBox={`${viewX} ${viewY} ${width} ${height}`}
         width={width}
@@ -101,7 +114,23 @@ export function PhysicalKeyboard({
               data-binding-target={selectedKeyId === key.id || undefined}
               data-interactive={onKeyClick === undefined ? undefined : true}
               key={key.id}
+              data-selected={view?.selected || undefined}
               onClick={onKeyClick === undefined ? undefined : () => onKeyClick(key)}
+              {...(operable && onKeyClick !== undefined ? {
+                role: 'button',
+                tabIndex: 0,
+                'aria-pressed': view?.selected === true,
+                'aria-label': legend === '' ? physicalKeyDisplayLabel(key.id, standard) : `${physicalKeyDisplayLabel(key.id, standard)}（${legend}）`,
+                onKeyDown: (event: KeyboardEvent<SVGGElement>) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    onKeyClick(key);
+                  } else if (event.key === 'Escape' && onEscape !== undefined) {
+                    event.stopPropagation();
+                    onEscape();
+                  }
+                },
+              } : {})}
             >
               <rect
                 height={keyHeight}

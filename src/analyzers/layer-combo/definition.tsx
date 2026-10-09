@@ -2,6 +2,7 @@ import { useId, useMemo, useState } from 'react';
 import { visibleGeometryKeys } from '#input/layouts/physical-keys.ts';
 import { keyboardStandardForGeometryId } from '#input/shapes/key-labels.ts';
 import { PhysicalKeyboard, type PhysicalKeyboardKeyView } from '#ui/keyboard/physical-keyboard.tsx';
+import { keyPatternSelectionView, toggleSelectedKey } from './key-pattern-selection.ts';
 import { layerComboDefinition, type LayerComboExtracted } from './extract.ts';
 import { comboDiagramItems, comboRows, modifierRows, type ComboDiagramItem } from './layout-breakdown.ts';
 import { DEFAULT_LAYER_COMBO_OPTIONS, layerComboOptions, type LayerComboOptions } from './options.ts';
@@ -154,11 +155,58 @@ function ComboSection({ layout, geometry }: { readonly layout: Layout; readonly 
   );
 }
 
+/**
+ * 入力パターンの選択。キーを1つずつ選ぶと、続けて押せるキーが枠で、あと1キーで決まるキーには出る文字が出る。
+ * 3キー以上を同時に押すコンボも、選んでいくと出る文字までたどれる。シフトのキーを選べば、そのレイヤーで出る文字が出る。
+ */
+function KeyPatternSection({ layout, geometry }: { readonly layout: Layout; readonly geometry: Geometry }) {
+  const keys = useMemo(() => visibleGeometryKeys(layout, geometry), [layout, geometry]);
+  const [selected, setSelected] = useState<readonly string[]>([]);
+  const view = useMemo(() => keyPatternSelectionView(layout, selected), [layout, selected]);
+  const views = useMemo(() => {
+    const chosen = new Set(selected);
+    return new Map<string, PhysicalKeyboardKeyView>(keys.map((key) => {
+      const candidate = view.candidateLegends.get(key.id);
+      const guide = candidate !== undefined ? 'output' as const : view.continuationKeys.has(key.id) ? 'continuation' as const : undefined;
+      return [key.id, {
+        legend: candidate ?? layout.legends.get(key.id) ?? '',
+        selected: chosen.has(key.id),
+        guide,
+      }];
+    }));
+  }, [keys, layout, selected, view]);
+  const clear = () => setSelected([]);
+  return (
+    <section className="layer-combo-section" aria-labelledby="layer-combo-pattern-heading">
+      <h3 id="layer-combo-pattern-heading">入力パターン</h3>
+      <div className="layer-combo-pattern" data-layer-combo-pattern>
+        <div className="layer-combo-pattern-controls">
+          <p className="layer-combo-pattern-result" role="status" data-layer-combo-pattern-result>{view.message}</p>
+          <button type="button" onClick={clear} disabled={selected.length === 0}>選択を外す</button>
+        </div>
+        <PhysicalKeyboard
+          ariaLabel="入力パターンの選択"
+          geometryId={geometry.id}
+          keys={keys}
+          keyViews={views}
+          showSecondary={false}
+          unit={36}
+          horizontalAlign="left"
+          operable
+          onKeyClick={(key) => setSelected((current) => toggleSelectedKey(current, key.id))}
+          onEscape={clear}
+        />
+      </div>
+    </section>
+  );
+}
+
 export function LayerComboBody({ layout, geometry, extracted }: SingleBodyProps<LayerComboExtracted, LayerComboOptions>) {
   return (
     <div className="layer-combo-feature" data-react-feature="layer-combo">
       <AttributionTable extracted={extracted} />
       <ModifierSection layout={layout} />
+      <KeyPatternSection layout={layout} geometry={geometry} />
       <ComboSection layout={layout} geometry={geometry} />
     </div>
   );
