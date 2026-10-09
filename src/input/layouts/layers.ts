@@ -407,6 +407,26 @@ export function aggregationTriggerDisplayText(
   return triggerChordsDisplayText(layout, aggregationTriggerChords(layout, aggregationGroupId));
 }
 
+/**
+ * 名前の無い層（`labelIsDefault`）に、面のトリガーの表示から名前を付けた層定義の列。
+ * 名前は「<トリガーの表示>のシフト」にする。刻印は配列の組み立ての後で差し替わることがあるので、
+ * 組み立ての途中ではなく、表示・トレースを作る時点の配列から読む。
+ * 名前の付いた層の定義は、そのまま返す。
+ */
+export function layerDefinitionsWithLabels(
+  layout: Pick<Layout, 'faces' | 'faceLayerIds' | 'layerDefinitions' | 'thumbShiftKeys' | 'legends'>,
+  standard?: PhysicalKeyboardStandard,
+): LayerDefinition[] {
+  return (layout.layerDefinitions ?? []).map((definition) => {
+    if (definition.labelIsDefault !== true) return definition;
+    const chords = (layout.faces ?? [])
+      .filter((face) => layout.faceLayerIds?.get(face) === definition.id)
+      .flatMap((face) => displayTriggerAlternatives(face));
+    const { labelIsDefault: _marker, ...named } = definition;
+    return { ...named, label: `${triggerChordsDisplayText(layout, chords, standard)}のシフト` };
+  });
+}
+
 /** aggregationTriggerKeysのchord構造を保ったview。realizationごとに1 chordとする。 */
 function aggregationTriggerChords(
   layout: Pick<Layout, 'canonicalInputs'>,

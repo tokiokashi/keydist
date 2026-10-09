@@ -6,6 +6,7 @@ import {
   displayTriggerKeys,
   faceCells,
   faceDisplayCells,
+  layerDefinitionsWithLabels,
   triggerChordsDisplayText,
 } from '#input/layouts/layers.ts';
 import { resolveKeyId, type PhysicalKeyboardStandard } from '#input/shapes/geometry.ts';
@@ -57,7 +58,7 @@ function faceCombos(layout: Layout): readonly Face[] {
 
 /** 表示区分が修飾のレイヤー。宣言の順。 */
 export function modifierRows(layout: Layout): ModifierRow[] {
-  return (layout.layerDefinitions ?? [])
+  return layerDefinitionsWithLabels(layout)
     .filter((definition) => definition.kind === 'layer' && definition.presentationRole === 'modifier')
     .map((definition) => ({
       id: definition.id,

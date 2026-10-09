@@ -3,6 +3,7 @@ import {
   classifyPresentationFaces,
   displayTriggerAlternatives,
   faceDisplayCells,
+  layerDefinitionsWithLabels,
   orderedPresentationLayers,
   triggerChordsDisplayText,
   type Layer,
@@ -126,8 +127,9 @@ export function buildLayerEntries(
   const undeclared = extracted.layers
     .filter((stat) => !declared.has(stat.id) && stat.presses > 0)
     .map((stat): Layer => ({ id: stat.id, role: stat.role ?? 'layer', order: Number.MAX_SAFE_INTEGER, faces: [] }));
+  const definitions = layerDefinitionsWithLabels(layout, standard);
   const entries = [...presentation, ...undeclared].map((layer, index) => {
-    const label = layout.layerDefinitions?.find((definition) => definition.id === layer.id)?.label ?? layer.id;
+    const label = definitions.find((definition) => definition.id === layer.id)?.label ?? layer.id;
     const stat = stats.get(layer.id) ?? emptyLayer(layer.id, label);
     return { stat, entry: { id: layer.id, faceIds: [layer.id], title: layerTitle(layer, index, stat.label, layout, standard), label: stat.label, layer, keyCounts: stat.keyCounts, colorCounts: stat.colorCounts } };
   });
