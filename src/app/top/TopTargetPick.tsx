@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Link } from '@tanstack/react-router';
 import { BIGRAM_FLOW_PANE_META } from '#analyzers/bigram-flow/pane-meta.ts';
 import { FINGER_DISTANCE_PANE_META } from '#analyzers/finger-distance/pane-meta.ts';
+import { HEATMAP_PANE_META } from '#analyzers/heatmap/pane-meta.ts';
 import { COMPARISON_PANE_META } from '#analyzers/comparison/pane-meta.ts';
 import { N_SENSITIVITY_PANE_META } from '#analyzers/n-sensitivity/pane-meta.ts';
 import { setTargetForSingleAndMultiCommand } from '#engine/commands.ts';
@@ -70,6 +71,7 @@ export function TopTargetPick() {
         <p className="top-pick-links">
           <Link className="top-pick-link" to="/standalone/bigram-flow">{BIGRAM_FLOW_PANE_META.name}</Link>
           <Link className="top-pick-link" to="/standalone/finger-distance">{FINGER_DISTANCE_PANE_META.name}</Link>
+          <Link className="top-pick-link" to="/standalone/heatmap">{HEATMAP_PANE_META.name}</Link>
           <Link className="top-pick-link" to="/standalone/comparison">{COMPARISON_PANE_META.name}</Link>
           <Link className="top-pick-link" to="/standalone/n-sensitivity">{N_SENSITIVITY_PANE_META.name}</Link>
         </p>

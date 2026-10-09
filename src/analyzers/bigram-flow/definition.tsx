@@ -31,6 +31,7 @@ import {
   SelectOptionField,
   type OptionBinding,
 } from '#ui/primitives/option-fields.tsx';
+import { FigureSettingsBox, FigureSettingsToggle } from '#ui/primitives/figure-settings.tsx';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
 import {
   AREA_HEIGHT,
@@ -933,38 +934,6 @@ export function BigramFlowSettings({ options, onOptionsChange }: AnalyzerSetting
   );
 }
 
-/**
- * 図の見出し行の右に置く、その図の表示を調整するボタン。ペインの解析設定のボタンとは別の
- * 目のアイコンにして、押すと見出しの直下へ展開する（小窓ではない）。
- */
-function FigureSettingsToggle({ name, open, onToggle }: {
-  readonly name: string;
-  readonly open: boolean;
-  readonly onToggle: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      className="flow-figure-settings-toggle"
-      aria-label={`${name}の表示`}
-      title={`${name}の表示を調整する`}
-      aria-expanded={open}
-      onClick={onToggle}
-    >
-      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-        <path
-          d="M1.5 8C3 5 5.3 3.5 8 3.5S13 5 14.5 8C13 11 10.7 12.5 8 12.5S3 11 1.5 8Z"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinejoin="round"
-        />
-        <circle cx="8" cy="8" r="2" fill="none" stroke="currentColor" strokeWidth="1.5" />
-      </svg>
-    </button>
-  );
-}
-
 interface FigureSettingsProps {
   readonly options: BigramFlowOptions;
   readonly onOptionsChange: (next: BigramFlowOptions) => void;
@@ -973,7 +942,7 @@ interface FigureSettingsProps {
 function KeyboardFlowFigureSettings({ options, onOptionsChange }: FigureSettingsProps) {
   const bind = <K extends keyof BigramFlowOptions>(key: K) => bindBigramFlowOption(options, onOptionsChange, key);
   return (
-    <div className="flow-figure-settings" role="group" aria-label="Keyboard Flowの表示">
+    <FigureSettingsBox name="Keyboard Flow">
       <SelectOptionField
         label="紐の太さ"
         binding={bind('lineScale')}
@@ -1001,14 +970,14 @@ function KeyboardFlowFigureSettings({ options, onOptionsChange }: FigureSettings
         }}
       />
       <CheckboxOptionField label="同じキーの連打の回数を表示する" binding={bind('repeatBadge')} />
-    </div>
+    </FigureSettingsBox>
   );
 }
 
 function RelativeVectorsFigureSettings({ options, onOptionsChange }: FigureSettingsProps) {
   const bind = <K extends keyof BigramFlowOptions>(key: K) => bindBigramFlowOption(options, onOptionsChange, key);
   return (
-    <div className="flow-figure-settings" role="group" aria-label="Relative vectorsの表示">
+    <FigureSettingsBox name="Relative vectors">
       <RangeOptionField
         label="方向の広がり"
         binding={bind('polarBandwidth')}
@@ -1025,7 +994,7 @@ function RelativeVectorsFigureSettings({ options, onOptionsChange }: FigureSetti
         step={0.05}
         format={(value) => `${value.toFixed(1)}×`}
       />
-    </div>
+    </FigureSettingsBox>
   );
 }
 
