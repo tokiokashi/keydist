@@ -93,6 +93,14 @@ export interface OptionsUrlDecodeResult<V> {
   readonly consumedParamNames: readonly string[];
 }
 
+/** 解析設定のURLクエリでの読み書き。`OptionsDefinition`がこの形を満たす。 */
+export interface UrlOptionsCodec<V> {
+  /** 既定値と違う項目だけをURLクエリへ書き出す。 */
+  encodeOptionsToUrl(options: V): URLSearchParams;
+  /** URLクエリから読める項目だけをdecodeする。無かった項目は`values`に含まれない。 */
+  decodeOptionsFromUrl(params: URLSearchParams, diagnostics: CodecDiagnostic[]): OptionsUrlDecodeResult<V>;
+}
+
 export interface OptionsDefinition<R extends OptionsRegistry> {
   readonly items: R;
   readonly defaultOptions: OptionsValueMap<R>;

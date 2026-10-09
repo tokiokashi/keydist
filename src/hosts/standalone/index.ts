@@ -1,11 +1,7 @@
 export {
-  BigramFlowStandalonePage,
-  type BigramFlowStandalonePageProps,
-} from './BigramFlowStandalonePage.tsx';
-export {
-  FingerDistanceStandalonePage,
-  type FingerDistanceStandalonePageProps,
-} from './FingerDistanceStandalonePage.tsx';
+  SingleAnalyzerStandalonePage,
+  type SingleAnalyzerStandalonePageProps,
+} from './SingleAnalyzerStandalonePage.tsx';
 export {
   ComparisonStandalonePage,
   type ComparisonStandalonePageProps,

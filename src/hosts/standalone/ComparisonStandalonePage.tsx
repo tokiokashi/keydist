@@ -33,7 +33,7 @@ import './standalone.css';
  * 対象は**配列かSetupの集合**（用語表「対象」）。集合（選んだ対象・色・基準）は
  * MultiのAnalyzerが共有する資産（`assets.multiTargetSelection`）が持ち、
  * 書き込みはすべて`dispatch`を経由する
- * （`BigramFlowStandalonePage.tsx`と同じ形）。テキストは単体ページ全体で
+ * （`SingleAnalyzerStandalonePage.tsx`と同じ形）。テキストは単体ページ全体で
  * 共有の「最後に使ったテキスト」を使う。
  *
  * 配列は常に選べる（組み込みカタログに最初から入っている）ため、旧`use-ensure-setup.ts`の
@@ -84,13 +84,13 @@ export function ComparisonStandalonePage({
   ));
 
   // 解析設定（列の表示・基準比の表示可否）は資産（standaloneAnalyzerOptions）が正
-  // （BigramFlowStandalonePageと同じ形）。
+  // （SingleAnalyzerStandalonePageと同じ形）。
   const storedOptionsRaw = assets.standaloneAnalyzerOptions[ANALYZER_ID];
   const decoded = useMemo(
     () => decodeStoredAnalyzerOptions(comparisonAnalyzer.definition, storedOptionsRaw),
     [storedOptionsRaw],
   );
-  // `BigramFlowStandalonePage`と同じ形: 見た目は即座に反映しつつ（controlled）、
+  // `SingleAnalyzerStandalonePage`と同じ形: 見た目は即座に反映しつつ（controlled）、
   // 資産への書き込みは呼び出し側がdebounceする（`onComparisonOptionsCommit`）。
   const [optionsDraft, setOptionsDraft] = useOptionsDraft<ComparisonOptions>(decoded.options, STANDALONE_WRITE_LOG_KEY);
   // URL経由で解析設定と対象を受け取る（共有リンク。`use-shared-link.ts`）。書き込みは1つのコマンドで、Undo 1回で戻る。

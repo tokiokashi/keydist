@@ -1,9 +1,8 @@
 import { useMemo } from 'react';
 import type { ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { setStandaloneAnalyzerOptionsCommand } from '#engine/commands.ts';
-import { fingerDistanceAnalyzer } from '#analyzers/finger-distance/definition.tsx';
-import type { FingerDistanceOptions } from '#analyzers/finger-distance/options.ts';
-import { FingerDistanceStandalonePage } from '#hosts/standalone/index.ts';
+import type { SingleAnalyzerPaneParts } from '#analyzers/pane-parts.tsx';
+import { SingleAnalyzerStandalonePage } from '#hosts/standalone/index.ts';
 import { paneCatalog } from './catalog.ts';
 import { sharedEngineComputer } from './engine-computer.ts';
 import { generatePresetId, generateTextId } from './id-generator.ts';
@@ -15,19 +14,17 @@ import { useDebouncedCommit } from './use-debounced-commit.ts';
 import { useTextContentCommit } from './use-text-content-commit.ts';
 
 /**
- * 指ごとの距離の単体ページの組み立て（platformの注入、Analyzerの
- * 登録）。
- *
- * Analyzerの登録は、`hosts/standalone/FingerDistanceStandalonePage.tsx`が
- * `#analyzers/finger-distance/definition.tsx`の`fingerDistanceAnalyzer`（ペインに渡すもの。
- * `analyzers/pane-parts.tsx`）を直接importする形のまま。「idから動的に引く」必要が生じた
- * 時点で、`app`側にAnalyzer idごとのレジストリを立てる（先回りして作らない）。
+ * 対象を1つ見るAnalyzer（Single）の単体ページの組み立て（platformの注入）。Analyzerは引数で受け取り、
+ * 各routeが自分のAnalyzerを渡す。
  *
  * 計算の窓口は他の単体ページと共有する（`engine-computer.ts`。ブラウザではWorker）。
  */
-const decodeFingerDistanceOptions = (raw: unknown) => fingerDistanceAnalyzer.definition.decodeOptions(raw, []);
-
-export function StandaloneFingerDistanceApp() {
+export function StandaloneSingleAnalyzerApp<Options, Extracted>({
+  analyzer,
+}: {
+  readonly analyzer: SingleAnalyzerPaneParts<Options, Extracted>;
+}) {
+  const decodeOptions = (raw: unknown) => analyzer.definition.decodeOptions(raw, []);
   const { assets, ready, dispatch, getAssets, canUndo, canRedo, undo, redo } = useKeydistAssets();
   const catalog = useMemo(() => paneCatalog(assets), [assets.userLayouts, assets.userRomajiRules]);
 
@@ -35,9 +32,9 @@ export function StandaloneFingerDistanceApp() {
   // スライダーのような連続操作でstorage書き込み・Undo履歴が埋まらないようにするため）。
   // 保存先へ書いた値を記録し、解析設定の下書きが自分の保存の反響を見分けるのに使う
   const writeLogs = useMemo(createOptionsWriteLogs, []);
-  const commitFingerDistanceOptions = useDebouncedCommit<FingerDistanceOptions>(dispatch, {
+  const commitOptions = useDebouncedCommit<Options>(dispatch, {
     onWrite: (options) => writeLogs.forKey(STANDALONE_WRITE_LOG_KEY).record(options),
-    commandFor: (options) => setStandaloneAnalyzerOptionsCommand(fingerDistanceAnalyzer.definition.id, options),
+    commandFor: (options) => setStandaloneAnalyzerOptionsCommand(analyzer.definition.id, options),
   });
 
   // テキストの本文もdebounceしてから`dispatch`する。値は`{ ref, text }`のペアで運ぶ
@@ -45,9 +42,9 @@ export function StandaloneFingerDistanceApp() {
   // debounce完了時に「今の選択」を読み直して事故る競合を避ける）。
   const commitTextContent = useTextContentCommit(dispatch, getAssets, generateTextId);
 
-  const addToWorkspace = useAddToWorkspace(fingerDistanceAnalyzer.definition.id, decodeFingerDistanceOptions, dispatch, getAssets, () => {
+  const addToWorkspace = useAddToWorkspace(analyzer.definition.id, decodeOptions, dispatch, getAssets, () => {
     commitTextContent.flush();
-    commitFingerDistanceOptions.flush();
+    commitOptions.flush();
   });
 
   // 間引き待ちの変更を先に書いてから戻す。待ち中の値を残したまま戻すと、戻した後にその値が
@@ -57,19 +54,20 @@ export function StandaloneFingerDistanceApp() {
     canRedo,
     undo: () => {
       commitTextContent.flush();
-      commitFingerDistanceOptions.flush();
+      commitOptions.flush();
       undo();
     },
     redo: () => {
       commitTextContent.flush();
-      commitFingerDistanceOptions.flush();
+      commitOptions.flush();
       redo();
     },
   };
 
   return (
     <OptionsWriteLogsProvider logs={writeLogs}>
-      <FingerDistanceStandalonePage
+      <SingleAnalyzerStandalonePage
+        analyzer={analyzer}
         assets={assets}
         assetsReady={ready}
         dispatch={dispatch}
@@ -80,7 +78,7 @@ export function StandaloneFingerDistanceApp() {
         history={history}
         onTextContentCommit={commitTextContent}
         onAddToWorkspace={addToWorkspace}
-        onFingerDistanceOptionsCommit={commitFingerDistanceOptions}
+        onOptionsCommit={commitOptions}
       />
     </OptionsWriteLogsProvider>
   );

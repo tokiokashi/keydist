@@ -116,6 +116,8 @@ host（個別画面 / Workspace）
 
 保存したWorkspaceを開き、Analyzerをペインとして並べる器。個別画面と同じAnalyzerのcomponent（`hosts/shared/panes/`）を載せる。
 
+- **Single（対象を1つ見るAnalyzer）の配線はAnalyzerごとに持たない。** ペイン（`hosts/shared/panes/SingleAnalyzerPane.tsx`）・個別画面（`hosts/standalone/SingleAnalyzerStandalonePage.tsx`、組み立ては`app/standalone/StandaloneSingleAnalyzerApp.tsx`）・Workspaceのペイン（`hosts/workspace/panes/SingleAnalyzerWorkspacePane.tsx`）は、Analyzerの`definition.tsx`がexportする`SingleAnalyzerPaneParts`（`analyzers/pane-parts.tsx`）を引数に取る。Singleを足す時に書くのは、`definition.tsx`、`analyzer-registry.ts`と`single-analyzers.ts`に1行ずつ、個別画面のroute（`routes/standalone.<id>.tsx`。`StandaloneSingleAnalyzerApp`に渡すだけ）、`app/standalone/engine-worker.ts`への登録。本体（`Body`）にはどのSingleにも同じprops（`SingleBodyProps`）を渡し、使わないものは受け取らない。Multi（比較表・N感度）は対象の集合と行ごとの表示名・色を持つので、まだこの形に載せていない
+
 - **資産として持つ。** 名前・自分のテキストの選択・連動の組（と組ごとの対象）・解析設定の組（Analyzerごとの共有の設定）・ペイン・ペインの並び（格子の位置と大きさ）・条件（カスケードのWorkspaceのレベル。変えた項目だけ）が1件のWorkspaceで、手持ちは資産のcodec（版番号 + decode）を通して保存する。書き込み（作成・名前の変更・ペインの追加/複製/閉じる・対象と解析設定の変更・解析設定の持ち方の切り替え・連動の組の対象の変更と付け替え・並びの変更・テキストの選択）はすべてコマンドで、Undoが効く
 - **保存形式は載せるライブラリの形を持たない。** 並びは自前の格子で持つ（`engine/workspace-grid.ts`）。ペインごとに `{id, x, y, w, h}`（単位は格子の升目。列数は24）で、1つのペインの大きさを変えても他のペインの大きさは変わらない。ライブラリ（react-grid-layout）の `{i, x, y, w, h}` との変換は `hosts/workspace/WorkspaceGrid.tsx` の1か所に閉じる。資産の枠は常に、列に収まり・重ならない（`normalizeGrid`）。縦に詰めるかはWorkspaceごとの設定「空いた所に詰める」（`Workspace.compactPanes`、既定は詰めない。表示だけが変わる設定）で決まり、詰める設定の時だけ枠は縦に詰めてあり、閉じると下のペインが上へ詰まる。詰めない時は、縮めた・閉じた所を空いたまま残す。切り替えは並びを書き換えず、詰める設定にした直後は表示だけが詰めた形になる（並びへ書かれるのは次にペインを動かす・足す・閉じた時）。ペインを足す時は空いている最初の場所に既定の大きさで、複製は元と同じ大きさで右隣（無ければ真下）に置く。react-grid-layoutを読むのは `hosts/workspace/WorkspaceGrid.tsx` だけ
 - **グラフの目盛りの範囲**は、同じAnalyzerと見る量のペインどうしで揃える。集める所はWorkspaceが1つ持ち、単体ページには無い（「ペインどうしで揃える目盛り」）

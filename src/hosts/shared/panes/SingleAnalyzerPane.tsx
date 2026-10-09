@@ -1,8 +1,7 @@
 import { useMemo } from 'react';
 import type { CodecDiagnostic } from '#input/codec/index.ts';
 import { nameTargets, type AnalysisTarget } from '#input/setup/index.ts';
-import { bigramFlowAnalyzer } from '#analyzers/bigram-flow/definition.tsx';
-import type { BigramFlowOptions } from '#analyzers/bigram-flow/options.ts';
+import type { SingleAnalyzerPaneParts } from '#analyzers/pane-parts.tsx';
 import { conditionHeaderInfoFromResolvedInput, traceConditionSummary } from '../condition-summary.ts';
 import { combinePaneStates } from '../pane-status.ts';
 import { recommendedWidthRemOf } from '#analyzers/recommended-width.ts';
@@ -16,29 +15,32 @@ import { useAnalyzerPane } from '../use-analyzer-pane.ts';
 import type { PaneChrome, PaneEnvironment } from './pane-environment.ts';
 
 /**
- * Bigram Flowのペイン（対象を1つ見るAnalyzer）。個別画面とWorkspaceのペインが同じこのcomponentを使う
+ * 対象を1つ見るAnalyzer（Single）のペイン。どのSingleも、渡された`analyzer`だけが違う。個別画面とWorkspaceのペインが同じこのcomponentを使う
  * （docs/architecture.md「画面の構成」「Analyzerがペインに渡すもの」）。
  *
  * 持つのは、対象の解決・engineへの依頼・条件の要約・見出し・状態表示まで。値の持ち主
  * （対象・解析設定をどこへ保存するか）と、文脈バー・テキストは持たない。器が、下書きの値と
  * 変更の通知をここへ結ぶ。
  */
-export interface BigramFlowPaneProps {
+export interface SingleAnalyzerPaneProps<Options, Extracted> {
+  /** このペインが映すAnalyzer（各Analyzerの`definition.tsx`がexportする、ペインに渡すもの）。 */
+  readonly analyzer: SingleAnalyzerPaneParts<Options, Extracted>;
   readonly env: PaneEnvironment;
   readonly chrome?: PaneChrome;
   readonly target: AnalysisTarget;
   readonly onTargetChange: (next: AnalysisTarget) => void;
   /** 画面上の解析設定（下書き）。 */
-  readonly options: BigramFlowOptions;
+  readonly options: Options;
   /** 下書きの更新と、資産への反映（間引き済み）は器が結ぶ。 */
-  readonly onOptionsChange: (next: BigramFlowOptions) => void;
+  readonly onOptionsChange: (next: Options) => void;
   /** 保存した解析設定を読み直した時の診断。 */
   readonly settingsDiagnostics?: readonly CodecDiagnostic[];
   /** 共有リンクを開いた時に、取り込めなかったものを伝える文。 */
   readonly linkNotices?: readonly string[];
 }
 
-export function BigramFlowPane({
+export function SingleAnalyzerPane<Options, Extracted>({
+  analyzer,
   env,
   chrome = {},
   target,
@@ -47,7 +49,7 @@ export function BigramFlowPane({
   onOptionsChange,
   settingsDiagnostics = [],
   linkNotices,
-}: BigramFlowPaneProps) {
+}: SingleAnalyzerPaneProps<Options, Extracted>) {
   const { setups, overrides, catalog, resolvedText, cache, dispatch, assetsReady } = env;
   const setupsById = useMemo(() => new Map(setups.map((setup) => [setup.id, setup] as const)), [setups]);
 
@@ -55,7 +57,7 @@ export function BigramFlowPane({
     () => resolvePaneInput(target, setupsById, catalog, overrides, resolvedText),
     [target, setupsById, catalog, overrides, resolvedText],
   );
-  const pane = useAnalyzerPane(cache, bigramFlowAnalyzer.definition, options, resolution);
+  const pane = useAnalyzerPane(cache, analyzer.definition, options, resolution);
 
   const conditionRows = resolution.ok ? traceConditionSummary(resolution.input.cascade, catalog.setupCatalog) : [];
   const header = resolution.ok
@@ -80,7 +82,7 @@ export function BigramFlowPane({
     selected: [target],
   }), [catalog, setups, target]);
 
-  const { Body, Settings } = bigramFlowAnalyzer;
+  const { Body, Settings } = analyzer;
   const extraction = pane.extraction;
   const hasExtraction = extraction.status === 'ready' || extraction.status === 'stale';
   const hasTrace = pane.trace.status === 'ready' || pane.trace.status === 'stale';
@@ -88,9 +90,9 @@ export function BigramFlowPane({
   return (
     <PaneFrame
       assetsReady={assetsReady}
-      name={bigramFlowAnalyzer.name}
-      description={bigramFlowAnalyzer.description}
-      recommendedWidthRem={recommendedWidthRemOf(bigramFlowAnalyzer)}
+      name={analyzer.name}
+      description={analyzer.description}
+      recommendedWidthRem={recommendedWidthRemOf(analyzer)}
       headingLevel={chrome.headingLevel}
       stickyHeader={chrome.stickyHeader}
       menuItems={chrome.menuItems}
@@ -113,7 +115,7 @@ export function BigramFlowPane({
         />
       )}
       settings={<Settings options={options} onOptionsChange={onOptionsChange} />}
-      onResetOptions={() => onOptionsChange(bigramFlowAnalyzer.defaultOptions)}
+      onResetOptions={() => onOptionsChange(analyzer.defaultOptions)}
       header={header}
       conditionRows={conditionRows}
       conditionEditor={{
