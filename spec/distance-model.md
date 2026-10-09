@@ -136,10 +136,17 @@ Face = {
   rows: FaceRow[],
   layer?: string,
   inputRole?: "layer" | "modifier" | "composition",
+  compositionAggregation?: "layer" | "combo",
   triggerPersistence?: "single" | "hold-capable",
 }
 FaceRow = string | string[]
 ```
+
+`compositionAggregation` は `inputRole="composition"` の面だけが持ち、その面の打鍵を層とコンボ枠のどちらへ
+計上するか（§11.10）を配列の定義が明示する。`composition` の面は必ずこの値を宣言する。
+triggerのキー数や手の左右から推測しない。同じ配列の中でも、作者が基本の打ち方とみなす面と
+拡張とみなす面は配列ごとに違うため、面ごとに宣言する。`"layer"` を宣言できるのはtriggerが1キーの面だけで、
+triggerが2キー以上の面は `"combo"` を宣言する。`inputRole` が `composition` でない面は、この値を持たない。
 
 authoring sourceはcompile時に `SemanticInput` と `BaseActionRealization` へ変換する。
 
@@ -199,8 +206,10 @@ physical activationとは別に、そのpathがruntime context上成立する条
 
 さらに、top-level authoring provenanceを `origin` として保持する。
 `sequence / face / combo / composed` は「どのauthoring経路がこのpathを生成したか」を表し、
-classificationやaggregationGroupIdとは別軸である。コンボ命中集計はselected pathの
-`origin='combo'` を基準にし、同outputに別のcomposition pathが存在しても誤算入しない。
+classificationやaggregationGroupIdとは別軸である。コンボ命中集計（§11.8）は、selected pathが
+1ステップで、そのステップの `aggregationGroupId` がコンボ枠（`'combo'`）であり、`origin` が
+`combo` か `face` であることを基準にする。同outputに層へ帰属する別のpathが存在しても、
+selected pathが層に帰属するなら命中として数えない。
 
 評価時は次の順で処理する。
 
@@ -1010,18 +1019,25 @@ P_f = 指fのPressの回数
 
 **11.8コンボ命中数**
 
-コンボ定義数・命中した定義数・延べ命中回数を独立に出す。
+コンボ定義数・命中した定義数・延べ命中回数を独立に出す。数える対象は、コンボ枠（§11.10）に帰属する見出しである。
+コンボ枠に帰属するのは、配列のコンボ定義（`origin='combo'`）と、`compositionAggregation="combo"` の面が出す出力（`origin='face'`）。
+`compositionAggregation="layer"` の面は層に帰属するので、ここでは数えない。
 
 ```
-B = 配列に定義されたコンボ見出しの数
-U = 評価中に一度でも命中したコンボ見出しの数
-H = コンボ見出しが命中した延べ回数
+B = コンボ枠に帰属する見出しの数
+U = 評価中に一度でも命中したコンボ枠の見出しの数
+H = コンボ枠の見出しが命中した延べ回数
 ```
 
-同じ見出しが複数回当たる場合、`U` は1件、`H` は回数分だけ増える。ヤ行コンボは
-§4.3の発火条件を満たした場合だけ命中として数える。`B` はその打ち方で使えるコンボだけを
-数える。英文を打つ時の `romajiOnly` のコンボ（§4.3）は `B` に入れない。
-コンボを持たない配列、およびその打ち方で使えるコンボが無い配列は `B = U = H = 0` とする。
+`B` は、コンボ定義の数に、コンボ枠の面が出す出力のうち、コンボ定義の見出しと重ならないものの数
+（見出しごとに1件）を足した値である。面の数ではなく、その打ち方で使える出力の数で数える。
+`U` と同じ単位（見出し）で数えるので、`U ≤ B` が常に成り立つ。
+
+見出しが命中するのは、その見出しの選ばれたpath（`selected path`）がコンボ枠に帰属する時である。
+同じ見出しが層にも打てる場合、層のpathが選ばれた打鍵は命中に数えない。同じ見出しが複数回当たる場合、
+`U` は1件、`H` は回数分だけ増える。ヤ行コンボは §4.3の発火条件を満たした場合だけ命中として数える。
+`B` はその打ち方で使えるコンボだけを数える。英文を打つ時の `romajiOnly` のコンボ（§4.3）は `B` に入れない。
+コンボ枠に帰属する見出しを持たない配列、およびその打ち方で使えるものが無い配列は `B = U = H = 0` とする。
 
 **11.9 N感度曲線**
 
@@ -1040,7 +1056,15 @@ H = コンボ見出しが命中した延べ回数
 - triggerの押下は、呼び出した面の層へ計上する。単打面からは引かない
 - prefix / suffix面は、triggerと本体の両方を同じ層へ計上する
 - 合成濁音のように複数の面を連結した `Sequence` は、各ステップを元の面の層へ分けて計上する
-- triggerが2キー以上のコンボ面は、通常の層とは別のコンボ枠へ計上する
+- `composition` の面は、面が宣言する `compositionAggregation`（§4）に従う。`"layer"` の面はtriggerと出力の両方を、
+  面ごとに1つの層へ計上する。triggerのキーごとに1つの層になるよう、同じtriggerキーの `"layer"` の面は
+  1配列に2枚以上置けない（配列の検証がエラーにする）。`"combo"` の面は、
+  通常の層とは別のコンボ枠へ計上する
+- triggerが2キー以上の面と、配列のコンボ定義は、常にコンボ枠へ計上する
+
+同じ配列の中で、基本の打ち方に当たる面（かわせみ配列+の行指定キーの面、新小梅の文字キー同時押しの面）は層、
+基本の打ち方から外れた拡張（かわせみ配列+の二重母音拡張と左手コンボ拡張、トリガーが2キー以上の面）はコンボ枠に数える。
+どの面がどちらかは配列の定義が宣言する。
 
 層 `l` の押下数を `Q_l`、コンボ枠の押下数を `Q_combo` とすると、保存則は次のとおり。
 

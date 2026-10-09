@@ -185,6 +185,7 @@ test('matchKeyPatterns: exactがあっても1キー追加で成立する上位�
   const youon = {
     ...faceFromEntries(['h', 'j'], 'simultaneous', { r: 'じゃ' }),
     inputRole: 'composition' as const,
+    compositionAggregation: 'combo' as const,
   };
   const layout = compiledFaces(dakuon, youon);
   const result = matchKeyPatterns(layout, new Set(['j', 'r']));
@@ -423,6 +424,7 @@ test('findActiveLayerFace: aggregation帰属はinputRoleではなくcompiled pre
   const legacyComposition: Face = {
     ...faceFromEntries(['f'], 'simultaneous', { j: 'あ' }),
     inputRole: 'composition',
+    compositionAggregation: 'combo',
   };
   const mappedLayer = stubLayout({
     faces: [legacyComposition],

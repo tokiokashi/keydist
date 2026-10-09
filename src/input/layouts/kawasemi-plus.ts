@@ -19,10 +19,29 @@ import { faceFromEntries, fromFaces, withAliases, type Face, type Layout } from 
  * 同じ出力に複数の打ち方が定義されている場合、keydistのLayoutは代替Sequenceを持てないため、
  * 同時押しの押下キー数が最少の定義を採る。同数ならKikyoファイルで先に現れる定義を採る。
  */
+/**
+ * compositionの面の帰属先。文字キー1つを押しながら別の文字キーで打つ面のうち、
+ * 左手の行指定キーの面は層に数える。右手1キーの二重母音拡張の面、左手コンボ拡張、
+ * triggerが2キー以上の面は、コンボ枠に数える。
+ */
+const LAYER_COMPOSITION = {
+  inputRole: 'composition',
+  compositionAggregation: 'layer',
+  triggerPersistence: 'single',
+} as const;
+const COMBO_COMPOSITION = {
+  inputRole: 'composition',
+  compositionAggregation: 'combo',
+  triggerPersistence: 'single',
+} as const;
+
+/** 行指定キーの面。画面に出す層の名前は、作者の資料（Kikyo定義の各面の呼び名）に合わせる。 */
+const layerComposition = (presentationLabel: string) => ({ ...LAYER_COMPOSITION, presentationLabel });
+
 type SourceFace = {
   trigger: readonly string[];
   entries: Readonly<Record<string, string>>;
-  options?: Pick<Face, 'layer' | 'inputRole' | 'triggerPersistence'>;
+  options?: Pick<Face, 'layer' | 'inputRole' | 'compositionAggregation' | 'triggerPersistence' | 'presentationLabel'>;
 };
 
 function sourceFace(
@@ -112,7 +131,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "ぬん",
       ".": "にん",
       "/": "なん",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, layerComposition('な行')),
   sourceFace(["s"], {
       "7": "くぉ",
       "-": "くぃ",
@@ -131,15 +150,13 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "くん",
       ".": "きん",
       "/": "かん",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, layerComposition('か行')),
   sourceFace(["d"], {
       "-": "すぃ",
       "y": "しぇ",
       "u": "しょ",
       "i": "しゅ",
       "o": "しゃ",
-      "s": "こと",
-      "f": "する",
       "h": "せ",
       "j": "そ",
       "k": "す",
@@ -150,7 +167,11 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "すん",
       ".": "しん",
       "/": "さん",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, layerComposition('さ行')),
+  sourceFace(["d"], {
+      "s": "こと",
+      "f": "する",
+    }, COMBO_COMPOSITION),
   sourceFace(["f"], {
       "6": "つぇ",
       "7": "つぉ",
@@ -161,7 +182,6 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       "i": "ちゅ",
       "o": "ちゃ",
       "p": "つぁ",
-      "g": "ひと",
       "h": "て",
       "j": "と",
       "k": "つ",
@@ -172,7 +192,10 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "つん",
       ".": "ちん",
       "/": "たん",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, layerComposition('た行')),
+  sourceFace(["f"], {
+      "g": "ひと",
+    }, COMBO_COMPOSITION),
   sourceFace(["g"], {
       "7": "ふぉ",
       "8": "ふゅ",
@@ -192,12 +215,11 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "ふん",
       ".": "ひん",
       "/": "はん",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, layerComposition('は行')),
   sourceFace(["z"], {
       "/": "なん",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, layerComposition('な行の補完')),
   sourceFace(["x"], {
-      "z": "もの",
       "u": "りょ",
       "i": "りゅ",
       "o": "りゃ",
@@ -211,7 +233,10 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "るん",
       ".": "りん",
       "/": "らん",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, layerComposition('ら行')),
+  sourceFace(["x"], {
+      "z": "もの",
+    }, COMBO_COMPOSITION),
   sourceFace(["c"], {
       "u": "みょ",
       "i": "みゅ",
@@ -221,19 +246,21 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       "k": "む",
       "l": "み",
       ";": "ま",
-      "x": "から",
-      "v": "ます",
       "n": "めん",
       "m": "もん",
       ",": "むん",
       ".": "みん",
       "/": "まん",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, layerComposition('ま行')),
+  sourceFace(["c"], {
+      "x": "から",
+      "v": "ます",
+    }, COMBO_COMPOSITION),
   sourceFace(["v"], {
       "j": "・",
       "k": "…",
       ",": "、",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, layerComposition('記号')),
   sourceFace(["b"], {
       "u": "ぴょ",
       "i": "ぴゅ",
@@ -248,7 +275,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "ぷん",
       ".": "ぴん",
       "/": "ぱん",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, layerComposition('ぱ行')),
   sourceFace(["q"], {
       "9": "ゐ",
       "y": "ヶ",
@@ -265,7 +292,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "、",
       ".": "。",
       "/": "ヵ",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, layerComposition('捨て仮名、旧かな')),
   sourceFace(["w"], {
       "0": "ぐゎ",
       "7": "ぐぉ",
@@ -285,7 +312,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "ぐん",
       ".": "ぎん",
       "/": "がん",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, layerComposition('が行')),
   sourceFace(["e"], {
       "9": "ずぃ",
       "y": "じぇ",
@@ -302,11 +329,10 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "ずん",
       ".": "じん",
       "/": "ざん",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, layerComposition('ざ行')),
   sourceFace(["r"], {
       "8": "どぅ",
       "9": "でぃ",
-      "e": "です",
       "y": "ぢぇ",
       "u": "ぢょ",
       "i": "でゅ",
@@ -321,7 +347,10 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "づん",
       ".": "ぢん",
       "/": "だん",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, layerComposition('だ行')),
+  sourceFace(["r"], {
+      "e": "です",
+    }, COMBO_COMPOSITION),
   sourceFace(["t"], {
       "7": "ヴォ",
       "8": "ヴ",
@@ -341,7 +370,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "ぶん",
       ".": "びん",
       "/": "ばん",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, layerComposition('ば行')),
   sourceFace(["l", ";"], {
       "w": "がい",
       "e": "ざい",
@@ -355,11 +384,11 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       "x": "らい",
       "c": "まい",
       "b": "ぱい",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace(["l"], {
       "k": "うう",
       ";": "あい",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace(["k", "l"], {
       "w": "ぐう",
       "e": "ずう",
@@ -373,7 +402,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       "x": "るう",
       "c": "むう",
       "b": "ぷう",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace(["j", "k"], {
       "w": "ごう",
       "e": "ぞう",
@@ -387,11 +416,11 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       "x": "ろう",
       "c": "もう",
       "b": "ぽう",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace(["j"], {
       "h": "えい",
       "k": "おう",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace(["h", "j"], {
       "w": "げい",
       "e": "ぜい",
@@ -405,7 +434,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       "x": "れい",
       "c": "めい",
       "b": "ぺい",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace([".", "/"], {
       "w": "ぎい",
       "e": "じい",
@@ -419,7 +448,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       "x": "りい",
       "c": "みい",
       "b": "ぴい",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace([",", "."], {
       "w": "ぐい",
       "e": "ずい",
@@ -433,15 +462,15 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       "x": "るい",
       "c": "むい",
       "b": "ぷい",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace(["."], {
       ",": "うい",
       "/": "いい",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace(["o"], {
       "i": "ゆう",
       "p": "やい",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace(["i", "o"], {
       "w": "ぎゅう",
       "e": "じゅう",
@@ -455,7 +484,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       "x": "りゅう",
       "c": "みゅう",
       "b": "ぴゅう",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace(["u", "i"], {
       "w": "ぎょう",
       "e": "じょう",
@@ -469,10 +498,10 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       "x": "りょう",
       "c": "みょう",
       "b": "ぴょう",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace(["i"], {
       "u": "よう",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace(["o", "p"], {
       "w": "ぎゃい",
       "e": "じゃい",
@@ -486,7 +515,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       "x": "りゃい",
       "c": "みゃい",
       "b": "ぴゃい",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace(["y", "u"], {
       "w": "ぐぇい",
       "e": "じぇい",
@@ -496,7 +525,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       "d": "しぇい",
       "f": "ちぇい",
       "g": "ふぇい",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace([THUMB_KEY.RT], {
       "q": "にく",
       "w": "がく",
@@ -542,7 +571,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "ぬき",
       ".": "にき",
       "/": "なき",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace([THUMB_KEY.RT, "s"], {
       "u": "きょく",
       "i": "きゅく",
@@ -557,7 +586,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "くき",
       ".": "きき",
       "/": "かき",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace([THUMB_KEY.RT, "d"], {
       "-": "すぃ",
       "y": "しぇ",
@@ -574,7 +603,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "すき",
       ".": "しき",
       "/": "さき",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace([THUMB_KEY.RT, "f"], {
       "6": "つぇ",
       "7": "つぉ",
@@ -595,7 +624,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "つき",
       ".": "ちき",
       "/": "たき",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace([THUMB_KEY.RT, "g"], {
       "7": "ふぉ",
       "8": "ふゅく",
@@ -615,7 +644,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "ふき",
       ".": "ひき",
       "/": "はき",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace([THUMB_KEY.RT, "x"], {
       "u": "りょく",
       "i": "りゅく",
@@ -630,7 +659,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "るき",
       ".": "りき",
       "/": "らき",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace([THUMB_KEY.RT, "c"], {
       "u": "みょく",
       "i": "みゅく",
@@ -645,13 +674,13 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "むき",
       ".": "みき",
       "/": "まき",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace([THUMB_KEY.RT, "v"], {
       "j": "・",
       "k": "…",
       ",": "、",
       ".": "。",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace([THUMB_KEY.RT, "b"], {
       "u": "ぴょく",
       "i": "ぴゅく",
@@ -666,7 +695,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "ぷき",
       ".": "ぴき",
       "/": "ぱき",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace([THUMB_KEY.RT, "q"], {
       "9": "ゐ",
       "y": "ヶ",
@@ -683,7 +712,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "、",
       ".": "。",
       "/": "ヵ",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace([THUMB_KEY.RT, "w"], {
       "0": "ぐゎ",
       "7": "ぐぉ",
@@ -703,7 +732,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "ぐき",
       ".": "ぎき",
       "/": "がき",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace([THUMB_KEY.RT, "e"], {
       "9": "ずぃ",
       "y": "じぇ",
@@ -720,7 +749,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "ずき",
       ".": "じき",
       "/": "ざき",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace([THUMB_KEY.RT, "r"], {
       "8": "どぅ",
       "9": "でぃ",
@@ -738,7 +767,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "づき",
       ".": "ぢき",
       "/": "だき",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace([THUMB_KEY.RT, "t"], {
       "7": "ヴォ",
       "8": "ヴ",
@@ -758,7 +787,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "ぶき",
       ".": "びき",
       "/": "ばき",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace([THUMB_KEY.LT], {
       "q": "にち",
       "w": "がつ",
@@ -804,7 +833,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "ぬち",
       ".": "にち",
       "/": "なち",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace([THUMB_KEY.LT, "s"], {
       "7": "くぉ",
       "-": "くぃ",
@@ -823,7 +852,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "くち",
       ".": "きち",
       "/": "かち",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace([THUMB_KEY.LT, "d"], {
       "-": "すぃ",
       "y": "しぇ",
@@ -840,7 +869,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "すち",
       ".": "しち",
       "/": "さち",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace([THUMB_KEY.LT, "f"], {
       "6": "つぇ",
       "7": "つぉ",
@@ -861,7 +890,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "つち",
       ".": "ちち",
       "/": "たち",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace([THUMB_KEY.LT, "g"], {
       "7": "ふぉ",
       "8": "ふゅ",
@@ -881,7 +910,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "ふち",
       ".": "ひち",
       "/": "はち",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace([THUMB_KEY.LT, "x"], {
       "u": "りょ",
       "i": "りゅ",
@@ -896,7 +925,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "るち",
       ".": "りち",
       "/": "らち",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace([THUMB_KEY.LT, "c"], {
       "u": "みょ",
       "i": "みゅ",
@@ -911,13 +940,13 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "むち",
       ".": "みち",
       "/": "まち",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace([THUMB_KEY.LT, "v"], {
       "j": "・",
       "k": "…",
       ",": "、",
       ".": "。",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace([THUMB_KEY.LT, "b"], {
       "u": "ぴょ",
       "i": "ぴゅ",
@@ -932,7 +961,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "ぷち",
       ".": "ぴち",
       "/": "ぱち",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace([THUMB_KEY.LT, "q"], {
       "9": "ゐ",
       "y": "ヶ",
@@ -949,7 +978,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "、",
       ".": "。",
       "/": "ヵ",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace([THUMB_KEY.LT, "w"], {
       "0": "ぐゎ",
       "7": "ぐぉ",
@@ -969,7 +998,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "ぐち",
       ".": "ぎち",
       "/": "がち",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace([THUMB_KEY.LT, "e"], {
       "9": "ずぃ",
       "y": "じぇ",
@@ -986,7 +1015,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "ずち",
       ".": "じち",
       "/": "ざち",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace([THUMB_KEY.LT, "r"], {
       "8": "どぅ",
       "9": "でぃ",
@@ -1004,7 +1033,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "づち",
       ".": "ぢち",
       "/": "だち",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
   sourceFace([THUMB_KEY.LT, "t"], {
       "7": "ヴォ",
       "8": "ヴ",
@@ -1024,7 +1053,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "ぶち",
       ".": "びち",
       "/": "ばち",
-    }, { inputRole: 'composition', triggerPersistence: 'single' }),
+    }, COMBO_COMPOSITION),
 ];
 
 export const KAWASEMI_PLUS_FACES: Face[] = selectShortestFaces(KAWASEMI_PLUS_SOURCES);

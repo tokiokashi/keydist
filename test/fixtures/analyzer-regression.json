@@ -4006,11 +4006,11 @@
             "stdDev": 0.22005271576683977
           }
         ],
-        "comboPresses": 226,
+        "comboPresses": 84,
         "combos": {
-          "definitions": 0,
-          "hits": 0,
-          "matched": 0
+          "definitions": 383,
+          "hits": 29,
+          "matched": 23
         },
         "fingerAssignmentId": "default",
         "fingerAssignmentName": "既定（列固定）",
@@ -4022,6 +4022,76 @@
             "id": "single",
             "label": "単打",
             "presses": 134
+          },
+          {
+            "id": "face:1",
+            "label": "な行",
+            "presses": 18
+          },
+          {
+            "id": "face:2",
+            "label": "か行",
+            "presses": 22
+          },
+          {
+            "id": "face:3",
+            "label": "さ行",
+            "presses": 16
+          },
+          {
+            "id": "face:5",
+            "label": "た行",
+            "presses": 28
+          },
+          {
+            "id": "face:7",
+            "label": "は行",
+            "presses": 6
+          },
+          {
+            "id": "face:8",
+            "label": "ら行",
+            "presses": 12
+          },
+          {
+            "id": "face:10",
+            "label": "ま行",
+            "presses": 16
+          },
+          {
+            "id": "face:12",
+            "label": "記号",
+            "presses": 0
+          },
+          {
+            "id": "face:13",
+            "label": "ぱ行",
+            "presses": 0
+          },
+          {
+            "id": "face:14",
+            "label": "捨て仮名、旧かな",
+            "presses": 0
+          },
+          {
+            "id": "face:15",
+            "label": "が行",
+            "presses": 8
+          },
+          {
+            "id": "face:16",
+            "label": "ざ行",
+            "presses": 0
+          },
+          {
+            "id": "face:17",
+            "label": "だ行",
+            "presses": 14
+          },
+          {
+            "id": "face:19",
+            "label": "ば行",
+            "presses": 2
           },
           {
             "id": "layer:右親指",
@@ -4212,11 +4282,11 @@
             "stdDev": 0.1406188721159125
           }
         ],
-        "comboPresses": 1393,
+        "comboPresses": 591,
         "combos": {
-          "definitions": 0,
-          "hits": 0,
-          "matched": 0
+          "definitions": 383,
+          "hits": 224,
+          "matched": 78
         },
         "fingerAssignmentId": "default",
         "fingerAssignmentName": "既定（列固定）",
@@ -4228,6 +4298,76 @@
             "id": "single",
             "label": "単打",
             "presses": 708
+          },
+          {
+            "id": "face:1",
+            "label": "な行",
+            "presses": 8
+          },
+          {
+            "id": "face:2",
+            "label": "か行",
+            "presses": 118
+          },
+          {
+            "id": "face:3",
+            "label": "さ行",
+            "presses": 124
+          },
+          {
+            "id": "face:5",
+            "label": "た行",
+            "presses": 126
+          },
+          {
+            "id": "face:7",
+            "label": "は行",
+            "presses": 28
+          },
+          {
+            "id": "face:8",
+            "label": "ら行",
+            "presses": 116
+          },
+          {
+            "id": "face:10",
+            "label": "ま行",
+            "presses": 142
+          },
+          {
+            "id": "face:12",
+            "label": "記号",
+            "presses": 0
+          },
+          {
+            "id": "face:13",
+            "label": "ぱ行",
+            "presses": 2
+          },
+          {
+            "id": "face:14",
+            "label": "捨て仮名、旧かな",
+            "presses": 2
+          },
+          {
+            "id": "face:15",
+            "label": "が行",
+            "presses": 22
+          },
+          {
+            "id": "face:16",
+            "label": "ざ行",
+            "presses": 24
+          },
+          {
+            "id": "face:17",
+            "label": "だ行",
+            "presses": 62
+          },
+          {
+            "id": "face:19",
+            "label": "ば行",
+            "presses": 28
           },
           {
             "id": "layer:右親指",
@@ -9149,7 +9289,7 @@
             "stdDev": 0.14166840375336867
           }
         ],
-        "comboPresses": 16,
+        "comboPresses": 0,
         "combos": {
           "definitions": 0,
           "hits": 0,
@@ -9175,6 +9315,76 @@
             "id": "layer:右親指",
             "label": "右親指",
             "presses": 144
+          },
+          {
+            "id": "face:3",
+            "label": "半濁音",
+            "presses": 0
+          },
+          {
+            "id": "face:4",
+            "label": "おのシフト",
+            "presses": 0
+          },
+          {
+            "id": "face:5",
+            "label": "ののシフト",
+            "presses": 0
+          },
+          {
+            "id": "face:6",
+            "label": "にのシフト",
+            "presses": 4
+          },
+          {
+            "id": "face:7",
+            "label": "ーのシフト",
+            "presses": 0
+          },
+          {
+            "id": "face:8",
+            "label": "んのシフト",
+            "presses": 0
+          },
+          {
+            "id": "face:9",
+            "label": "いのシフト",
+            "presses": 4
+          },
+          {
+            "id": "face:10",
+            "label": "しのシフト",
+            "presses": 6
+          },
+          {
+            "id": "face:11",
+            "label": "外来音（ぅ）",
+            "presses": 0
+          },
+          {
+            "id": "face:12",
+            "label": "っのシフト",
+            "presses": 0
+          },
+          {
+            "id": "face:13",
+            "label": "うのシフト",
+            "presses": 0
+          },
+          {
+            "id": "face:14",
+            "label": "すのシフト",
+            "presses": 0
+          },
+          {
+            "id": "face:15",
+            "label": "らのシフト",
+            "presses": 2
+          },
+          {
+            "id": "face:16",
+            "label": "外来音（ぉ）",
+            "presses": 0
           }
         ],
         "meanPerStroke": 0.5051119314661964,
@@ -9355,7 +9565,7 @@
             "stdDev": 0.2480603190301841
           }
         ],
-        "comboPresses": 148,
+        "comboPresses": 0,
         "combos": {
           "definitions": 0,
           "hits": 0,
@@ -9381,6 +9591,76 @@
             "id": "layer:右親指",
             "label": "右親指",
             "presses": 774
+          },
+          {
+            "id": "face:3",
+            "label": "半濁音",
+            "presses": 4
+          },
+          {
+            "id": "face:4",
+            "label": "おのシフト",
+            "presses": 6
+          },
+          {
+            "id": "face:5",
+            "label": "ののシフト",
+            "presses": 8
+          },
+          {
+            "id": "face:6",
+            "label": "にのシフト",
+            "presses": 0
+          },
+          {
+            "id": "face:7",
+            "label": "ーのシフト",
+            "presses": 2
+          },
+          {
+            "id": "face:8",
+            "label": "んのシフト",
+            "presses": 0
+          },
+          {
+            "id": "face:9",
+            "label": "いのシフト",
+            "presses": 98
+          },
+          {
+            "id": "face:10",
+            "label": "しのシフト",
+            "presses": 24
+          },
+          {
+            "id": "face:11",
+            "label": "外来音（ぅ）",
+            "presses": 0
+          },
+          {
+            "id": "face:12",
+            "label": "っのシフト",
+            "presses": 0
+          },
+          {
+            "id": "face:13",
+            "label": "うのシフト",
+            "presses": 0
+          },
+          {
+            "id": "face:14",
+            "label": "すのシフト",
+            "presses": 0
+          },
+          {
+            "id": "face:15",
+            "label": "らのシフト",
+            "presses": 6
+          },
+          {
+            "id": "face:16",
+            "label": "外来音（ぉ）",
+            "presses": 0
           }
         ],
         "meanPerStroke": 0.6147369095643668,
@@ -10662,6 +10942,6 @@
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     }
   ],
-  "sourceCommit": "d8dbcf6250ba3f8881b195715a4abf90adf10351",
+  "sourceCommit": "f5cc7e0e03302cb3c276836339430638d6ebb5b4",
   "version": 1
 }

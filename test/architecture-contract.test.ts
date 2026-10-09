@@ -267,8 +267,13 @@ test('legacy comboConditionsをsemantic/runtime authorityへ戻さない', async
   assert.doesNotMatch(traceSource, /\bcomboConditions\b/);
   assert.match(
     traceSource,
-    /const comboDefinitions = resolvedComboDefinitions\.length/,
-    'resolved combo definitions must be the combo definition-count authority',
+    /const comboDefinitions = comboFrameHeadingCount\(layout\)/,
+    'combo-frame headings must be the combo definition-count authority',
+  );
+  assert.match(
+    traceSource,
+    /layout\.resolvedComboDefinitions/,
+    'resolved combo definitions must stay in the combo definition-count authority',
   );
 });
 

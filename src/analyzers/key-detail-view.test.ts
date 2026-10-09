@@ -172,8 +172,8 @@ test('入力パターン: 押したまま打つトリガーを示し、コンボ
     { keyNames: ['左Shift'], held: true },
     { keyNames: ['右Shift'], held: true },
   ]);
-  const koume = keyPatternGroups(LAYOUT_BY_ID.get('shin-koume')!, 'g', (id) => id);
-  const combo = koume.find((group) => group.faceId === 'combo');
+  const kawasemi = keyPatternGroups(LAYOUT_BY_ID.get('kawasemi-plus')!, 'l', (id) => id);
+  const combo = kawasemi.find((group) => group.faceId === 'combo');
   assert.ok(combo);
   assert.deepEqual(combo.triggers, []);
   assert.equal(combo.selfTrigger, false);

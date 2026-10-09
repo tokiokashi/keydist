@@ -932,7 +932,7 @@ test('再生layer groupingはinputRoleではなくfaceLayerIdsをauthorityにす
   assert.ok(layerId);
   assert.equal(layout.faceLayerIds.get(dFace), layerId);
 
-  const mismatchedKFace = { ...kFace, inputRole: 'composition' as const };
+  const mismatchedKFace = { ...kFace, inputRole: 'composition' as const, compositionAggregation: 'combo' as const };
   const copiedDFace = { ...dFace };
   const presentationLayout = {
     ...layout,
@@ -962,6 +962,7 @@ test('combo再生はpresentation trigger alternativeで選択済み親指pathを
   const face = {
     ...faceFromEntries(['thumb-r'], 'simultaneous', { j: 'あ' }),
     inputRole: 'composition' as const,
+    compositionAggregation: 'combo' as const,
     triggerPersistence: 'single' as const,
     presentationTriggerAlternatives: [['thumb-r'], ['thumb-l']] as const,
   };

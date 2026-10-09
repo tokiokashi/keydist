@@ -9,12 +9,13 @@ import { faceFromEntries, fromFaces, withAliases, type Face, type Layout } from 
  *   http://61degc.seesaa.net/article/483919146.html
  *
  * 親指シフトと文字キー同士の同時押しを混在させる配列なので、
- * 親指面は layer、文字キーcomboは composition としてsemanticを分離する。
+ * 親指面はlayer、文字キーの同時押しはcompositionとしてsemanticを分離する。
+ * 基本の打ち方から外れた拡張の面は無いので、文字キーの同時押しの面はtriggerのキーごとの層に数える。
  */
 const face = (
   trigger: string[],
   entries: Record<string, string>,
-  options: Pick<Face, 'layer' | 'inputRole' | 'triggerPersistence'> = { inputRole: 'layer' },
+  options: Pick<Face, 'layer' | 'inputRole' | 'compositionAggregation' | 'triggerPersistence'> = { inputRole: 'layer' },
 ): Face => ({
   ...faceFromEntries(trigger, 'simultaneous', entries),
   ...options,
@@ -35,6 +36,7 @@ const layerFace = (
 const compositionFace = (trigger: string, entries: Record<string, string>): Face =>
   face([trigger], entries, {
     inputRole: 'composition',
+    compositionAggregation: 'layer',
     triggerPersistence: 'single',
   });
 

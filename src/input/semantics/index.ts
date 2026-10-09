@@ -1,5 +1,7 @@
 export {
   compileFaceSemanticInputs,
+  faceAggregatesAsCombo,
+  isComboFrameAlternative,
   canonicalInputAlternativeIdentity,
   inputAlternativeSelectionIdentity,
   compileSequenceInputAlternative,

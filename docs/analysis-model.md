@@ -78,7 +78,7 @@ presentation互換として先頭pathだけを保持してよいが、canonical 
 physical activation以外の成立条件は `InputAlternative.contextRequirements` に保持する。
 また、pathを生成したtop-level authoring provenanceは `InputAlternative.origin` に保持する。
 現在は `sequence / face / combo / composed` を持ち、classificationやaggregationGroupIdから逆推測しない。
-`comboHits` は実際にselectedされた `origin='combo'` pathだけを数える。
+`comboHits` は実際にselectedされたpathのうち、1ステップでコンボ枠に帰属し、`origin` が `combo` か `face` のものだけを数える。
 現在は `{ kind: 'youon-only' }` を持ち、logical output全体ではなくそのpathだけへ適用する。
 runtimeではまずcontext requirementを満たすalternativeだけをeligibleに絞り、1つも無ければ
 その見出し自体を不成立として短い見出しへfallbackする。その後にselection policyを適用する。

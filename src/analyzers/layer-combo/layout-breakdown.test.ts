@@ -93,12 +93,19 @@ test('コンボ定義の配列図は、同じ組・同じ押し方のコンボ�
   assert.equal(items.reduce((total, item) => total + item.outputs.size, 0), 41);
 });
 
-test('面として宣言されたコンボは、面ごとに表の1行と図の1枚になる', () => {
-  const { input, trace } = measure('shin-koume', 'ja');
-  assert.equal(trace.comboDefinitions, 0);
-  assert.equal(comboRows(input.layout, undefined).length, 14);
-  assert.equal(comboDiagramItems(input.layout, undefined).length, 14);
-  assert.deepEqual(comboRows(input.layout, undefined)[0], { trigger: 'は', output: 'ぴ / ぺ' });
+test('コンボ枠に計上すると宣言された面は、面ごとに表の1行と図の1枚になる。層に計上する面は載らない', () => {
+  const { input, trace } = measure('kawasemi-plus', 'ja');
+  assert.equal(comboRows(input.layout, undefined).length, 45);
+  assert.equal(comboDiagramItems(input.layout, undefined).length, 45);
+  // 左手コンボ拡張は、行指定キーの面（層）とは別の面として載る
+  assert.deepEqual(comboRows(input.layout, undefined)[0], { trigger: 'し', output: 'こと / する' });
+  // コンボ枠の見出しの数は、面の数ではなく使える出力の数
+  assert.ok(trace.comboDefinitions > comboRows(input.layout, undefined).length);
+
+  const koume = measure('shin-koume', 'ja');
+  assert.equal(koume.trace.comboDefinitions, 0);
+  assert.deepEqual(comboRows(koume.input.layout, undefined), []);
+  assert.deepEqual(comboDiagramItems(koume.input.layout, undefined), []);
 });
 
 test('コンボも修飾も持たない配列では、どちらも空', () => {

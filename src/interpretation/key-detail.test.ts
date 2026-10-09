@@ -94,12 +94,21 @@ test('面ごとの値と、面をまたいだ合算', () => {
 });
 
 test('コンボの面も1つの面として持つ', () => {
-  const details = computeKeyDetails(traceFor('shin-koume', 'ぴ'), geometry);
+  const details = computeKeyDetails(traceFor('kawasemi-plus', 'あい'), geometry);
   assert.deepEqual([...details.faces.keys()], ['combo']);
   const combo = details.faces.get('combo')!;
-  assert.deepEqual([...combo.keys()].sort(), ['g', 'u']);
-  assert.equal(combo.get('g')?.presses, 1);
-  assert.equal(combo.get('u')?.presses, 1);
+  assert.deepEqual([...combo.keys()].sort(), [';', 'l']);
+  assert.equal(combo.get('l')?.presses, 1);
+  assert.equal(combo.get(';')?.presses, 1);
+});
+
+test('層に計上する文字キーの同時押しは、トリガーのキーごとの層の面に持つ', () => {
+  const details = computeKeyDetails(traceFor('shin-koume', 'ぴ'), geometry);
+  const faceIds = [...details.faces.keys()];
+  assert.equal(faceIds.length, 1);
+  assert.notEqual(faceIds[0], 'combo');
+  const layer = details.faces.get(faceIds[0]!)!;
+  assert.deepEqual([...layer.keys()].sort(), ['g', 'u']);
 });
 
 test('ローマ字: 同じかなを打つ複数の打鍵が同じ前の文字を持つ', () => {

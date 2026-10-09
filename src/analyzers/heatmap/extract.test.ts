@@ -108,14 +108,31 @@ test('同時押下したトリガーは、修飾の層では足し戻さない',
 });
 
 test('コンボ枠は層に含めず別に持つ。押下が無ければ持たない', () => {
-  // 新小梅の「ぴ」はgとuの同時押しのコンボ
-  const used = extractFor('shin-koume', 'ぴ');
+  // かわせみ配列+の「あい」はlと;の同時押しのコンボ
+  const used = extractFor('kawasemi-plus', 'あい');
   assert.equal(used.combo?.id, 'combo');
-  assert.deepEqual(entries(used.combo!.keyCounts), [['g', 1], ['u', 1]]);
+  assert.deepEqual(entries(used.combo!.keyCounts), [[';', 1], ['l', 1]]);
   assert.equal(used.combo!.presses, 2);
   assert.equal(used.layers.some((layer) => layer.id === 'combo'), false);
-  assert.deepEqual(entries(used.integrated.keyCounts), [['g', 1], ['u', 1]]);
+  assert.deepEqual(entries(used.integrated.keyCounts), [[';', 1], ['l', 1]]);
 
-  const unused = extractFor('shin-koume', 'あ');
+  const unused = extractFor('kawasemi-plus', 'あ');
   assert.equal(unused.combo, undefined);
+});
+
+test('層に計上すると宣言された文字キーの同時押しは、層の図に載りコンボ枠には載らない', () => {
+  // 新小梅の「ぴ」はgとuの同時押し
+  const koume = extractFor('shin-koume', 'ぴ');
+  assert.equal(koume.combo, undefined);
+  const layer = koume.layers.find((entry) => entry.id !== 'single' && entry.keyCounts.size > 0);
+  assert.ok(layer);
+  assert.deepEqual(entries(layer.keyCounts), [['g', 1], ['u', 1]]);
+  assert.deepEqual(entries(layer.triggerKeyCounts), [['g', 1]]);
+});
+
+test('かわせみ配列+の行指定キーの層は、見出しに作者の呼び名が付く', () => {
+  const extracted = extractFor('kawasemi-plus', 'く');
+  const layer = extracted.layers.find((entry) => entry.label === 'か行');
+  assert.ok(layer);
+  assert.equal(layer.presses, 2);
 });

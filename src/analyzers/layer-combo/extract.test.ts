@@ -57,14 +57,30 @@ test('レイヤーが複数のかな配列: 使わなかったレイヤーも宣
 });
 
 test('コンボ枠は末尾に1行。押下が無くても、配列がコンボを持つなら行は残る', () => {
-  // 新小梅の「ぴ」はgとuの同時押しのコンボ
-  const used = extractFor('shin-koume', 'ぴ').extracted;
-  assert.deepEqual(used.rows.at(-1), { id: 'combo', label: 'コンボ', kind: 'combo', role: undefined, presses: 2 });
+  // かわせみ配列+の「あい」はlと;の同時押しで、二重母音拡張としてコンボ枠に数える
+  const used = extractFor('kawasemi-plus', 'あい').extracted;
+  assert.deepEqual(used.rows.find((row) => row.kind === 'combo'), { id: 'combo', label: 'コンボ', kind: 'combo', role: undefined, presses: 2 });
   assert.equal(used.rows.filter((row) => row.kind === 'combo').length, 1);
   assert.equal(used.presses, 2);
 
-  const unused = extractFor('shin-koume', 'あ').extracted;
-  assert.deepEqual(unused.rows.at(-1), { id: 'combo', label: 'コンボ', kind: 'combo', role: undefined, presses: 0 });
+  const unused = extractFor('kawasemi-plus', 'あ').extracted;
+  assert.deepEqual(unused.rows.find((row) => row.kind === 'combo'), { id: 'combo', label: 'コンボ', kind: 'combo', role: undefined, presses: 0 });
+});
+
+test('層に計上すると宣言された文字キーの同時押しは、コンボ枠ではなくトリガーのキーごとの層に数える', () => {
+  // 新小梅の「ぴ」はgとuの同時押しで、gの面（層）に2押下を数える
+  const koume = extractFor('shin-koume', 'ぴ').extracted;
+  assert.equal(koume.rows.some((row) => row.kind === 'combo'), false);
+  const layer = koume.rows.find((row) => row.presses > 0 && row.id !== 'single');
+  assert.ok(layer);
+  assert.equal(layer.kind, 'layer');
+  assert.equal(layer.presses, 2);
+  assert.equal(koume.presses, 2);
+
+  // かわせみ配列+の「く」は行指定キーsとkの同時押しで、sの面（層）に数える
+  const kawasemi = extractFor('kawasemi-plus', 'く').extracted;
+  assert.equal(kawasemi.rows.filter((row) => row.kind === 'layer' && row.presses > 0).length, 1);
+  assert.equal(kawasemi.rows.find((row) => row.kind === 'combo')?.presses, 0);
 });
 
 test('コンボを持たない配列には、コンボ枠の行が無い', () => {

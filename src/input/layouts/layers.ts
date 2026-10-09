@@ -33,7 +33,7 @@ export interface FaceGroups {
   layers: Layer[];
   /** かなへ作用する修飾面。宣言されたlayerはここでも畳む */
   modifiers: Layer[];
-  /** compositionとして明示された面 */
+  /** コンボ枠に計上すると明示された面 */
   combos: readonly Face[];
 }
 

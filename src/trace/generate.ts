@@ -14,6 +14,7 @@ import {
   DEFAULT_ACTION_REALIZATION_POLICY,
   DEFAULT_TRIGGER_REALIZATION_POLICY,
   inputAlternativeSelectionIdentity,
+  isComboFrameAlternative,
   realizeTriggerActions,
   type ActionRealizationPolicy,
   type InputAlternative,
@@ -130,14 +131,32 @@ export interface Trace {
    * 「1文字あたり」の分母に使える（仕様 §11.4）。
    */
   inputChars: number;
-  /** 配列が持つコンボ見出しのうち、評価中に命中した見出し（命中ごとに1件） */
+  /** コンボ枠の見出しのうち、評価中に命中した見出し（命中ごとに1件） */
   comboHits: string[];
-  /** 配列が持つコンボ見出しの定義数 */
+  /** コンボ枠の見出しの数（コンボ定義と、コンボ枠に計上する面の出力） */
   comboDefinitions: number;
   /** 層・コンボの定義。評価対象外の未使用層も含む */
   layerDefinitions: LayerDefinition[];
   /** 配列定義の不備。同一ステップ内で同じ指が複数のキーを要求された場合など */
   errors: string[];
+}
+
+/**
+ * コンボ枠の見出しの数（仕様 §11.8の `B`）。コンボ定義の数に、コンボ枠に帰属する面の出力のうち
+ * コンボ定義の見出しと重ならないものを見出しごとに1件足す。
+ */
+function comboFrameHeadingCount(layout: Layout): number {
+  const definitions = layout.resolvedComboDefinitions ?? [];
+  const definedHeadings = new Set(definitions.map((combo) => combo.output));
+  let faceHeadings = 0;
+  for (const [output, alternatives] of layout.canonicalInputs) {
+    if (definedHeadings.has(output)) continue;
+    if (alternatives.some((alternative) =>
+      alternative.origin === 'face' && isComboFrameAlternative(alternative))) {
+      faceHeadings++;
+    }
+  }
+  return definitions.length + faceHeadings;
 }
 
 /**
@@ -173,8 +192,7 @@ export function generateTrace(
   const errors: string[] = [];
   const seen = new Set<string>();
   const comboHits: string[] = [];
-  const resolvedComboDefinitions = layout.resolvedComboDefinitions ?? [];
-  const comboDefinitions = resolvedComboDefinitions.length;
+  const comboDefinitions = comboFrameHeadingCount(layout);
   const layerDefinitions: LayerDefinition[] = layout.layerDefinitions === undefined
     ? [{ id: SINGLE_LAYER_ID, kind: 'layer', label: '単打' }]
     : layerDefinitionsWithLabels(layout);
@@ -263,7 +281,7 @@ export function generateTrace(
       geometry,
       options,
     );
-    if (selectedAlternative.origin === 'combo') comboHits.push(char);
+    if (isComboFrameAlternative(selectedAlternative)) comboHits.push(char);
 
     const realized = realizeTriggerActions(
       selectedAlternative.baseRealizations,
