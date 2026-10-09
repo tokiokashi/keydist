@@ -1,7 +1,10 @@
-import { COMBO_LAYER_ID, type LayerPresentationRole } from '#input/layouts/types.ts';
-import type { Metrics } from '#interpretation/metrics.ts';
-import type { Trace } from '#trace/generate.ts';
+import { defineSingleAnalyzer, type SingleAnalyzerDefinition, type SingleAnalyzerExtractContext } from '#analyzers/contract.ts';
+import { COMBO_LAYER_ID, fromRows, type LayerPresentationRole } from '#input/layouts/types.ts';
+import { buildGeometry } from '#input/shapes/geometry.ts';
+import { computeMetrics, type Metrics } from '#interpretation/metrics.ts';
+import { DEFAULT_TRACE_POLICY, generateTrace, type Trace } from '#trace/generate.ts';
 import { normalizedRoleColors } from './layer-heatmap.ts';
+import { ALTERNATE_HEATMAP_OPTIONS, DEFAULT_HEATMAP_OPTIONS, heatmapOptions, type HeatmapOptions } from './options.ts';
 
 /**
  * ヒートマップの抽出（仕様 §11.10のキーごとの押下数）。
@@ -90,3 +93,32 @@ export function computeHeatmapExtraction(trace: Trace, metrics: Metrics): Heatma
       : undefined,
   };
 }
+
+// ---------------------------------------------------------------------------
+// 入れ忘れ防止テストの材料
+// ---------------------------------------------------------------------------
+
+/** `optionsDiscipline.extractForTest` 専用の、1層だけの小さい配列で打った結果。 */
+function fixtureExtraction(): HeatmapExtracted {
+  const layout = fromRows('heatmap-fixture', 'fixture', ['qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./']);
+  const geometry = buildGeometry('row-staggered');
+  const trace = generateTrace('aaq', layout, geometry, DEFAULT_TRACE_POLICY);
+  return computeHeatmapExtraction(trace, computeMetrics(trace, geometry));
+}
+
+/**
+ * engine（`engine/cache.ts` の `getExtraction`）が呼ぶ、Analyzer契約の実体。
+ * 解析設定はどれも表示だけが変わるので、抽出の結果には効かない。
+ */
+export const heatmapDefinition: SingleAnalyzerDefinition<HeatmapOptions, HeatmapExtracted> = defineSingleAnalyzer({
+  id: 'heatmap',
+  options: heatmapOptions,
+  extract(context: SingleAnalyzerExtractContext<HeatmapOptions>): HeatmapExtracted {
+    return computeHeatmapExtraction(context.trace, context.metrics);
+  },
+  optionsDiscipline: {
+    sample: DEFAULT_HEATMAP_OPTIONS,
+    alternates: ALTERNATE_HEATMAP_OPTIONS,
+    extractForTest: () => fixtureExtraction(),
+  },
+});

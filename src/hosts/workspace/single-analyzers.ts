@@ -1,5 +1,6 @@
 import { bigramFlowAnalyzer } from '#analyzers/bigram-flow/definition.tsx';
 import { fingerDistanceAnalyzer } from '#analyzers/finger-distance/definition.tsx';
+import { heatmapAnalyzer } from '#analyzers/heatmap/definition.tsx';
 import type { SingleAnalyzerPaneParts } from '#analyzers/pane-parts.tsx';
 
 /**
@@ -16,6 +17,7 @@ type AnyPaneParts = SingleAnalyzerPaneParts<any, any>;
 export const SINGLE_ANALYZER_PANE_PARTS: readonly AnyPaneParts[] = [
   bigramFlowAnalyzer,
   fingerDistanceAnalyzer,
+  heatmapAnalyzer,
 ];
 
 export function findSingleAnalyzer(analyzerId: string): AnyPaneParts | undefined {
