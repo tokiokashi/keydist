@@ -95,17 +95,19 @@ test('2つの依頼窓口が同じ中身のSetupを依頼すると、EngineCache
 // 項目0件の宣言（`defineOptions({})`。`defaultOptions`は`{}`）で足りる。
 const emptyOptions = defineOptions({});
 
-// 項目0件の宣言なので`optionsDiscipline`の中身は自明（違反しようが無い）。実際の`extract`を
-// 再現する必要も無く、ダミー値を返すだけでよい。
-function emptyOptionsDiscipline<Extracted>(dummy: Extracted): {
+// 項目0件の宣言なので`optionsDiscipline`の中身は自明（違反しようが無い）。このファイルの
+// フィクスチャは入れ忘れ防止テストの対象外で、材料を作る関数は呼ばれない。
+function emptyOptionsDiscipline<Context>(): {
   readonly sample: typeof emptyOptions.defaultOptions;
   readonly alternates: typeof emptyOptions.defaultOptions;
-  readonly extractForTest: (options: typeof emptyOptions.defaultOptions) => Extracted;
+  readonly context: () => Context;
 } {
   return {
     sample: emptyOptions.defaultOptions,
     alternates: emptyOptions.defaultOptions,
-    extractForTest: () => dummy,
+    context: () => {
+      throw new Error('入れ忘れ防止テストの材料は使わない');
+    },
   };
 }
 
@@ -116,7 +118,7 @@ function createFailingDefinition(): SingleAnalyzerDefinition<typeof emptyOptions
     extract() {
       throw new Error('抽出が失敗した');
     },
-    optionsDiscipline: emptyOptionsDiscipline<never>(undefined as never),
+    optionsDiscipline: emptyOptionsDiscipline(),
   });
 }
 
@@ -126,7 +128,7 @@ test('createExtractRequest: 実物のEngineCacheを通してreadyまで届く', 
     id: 'total-units',
     options: emptyOptions,
     extract: (context) => context.metrics.totalUnits,
-    optionsDiscipline: emptyOptionsDiscipline(0),
+    optionsDiscipline: emptyOptionsDiscipline(),
   });
   const states: ExtractionRequestState<number>[] = [];
   const channel = createExtractRequest(cache, definition, emptyOptions.defaultOptions, (s) => states.push(s));
@@ -165,7 +167,7 @@ function createSetTotalUnitsDefinition(): SetAnalyzerDefinition<typeof emptyOpti
     id: 'set-total-units',
     options: emptyOptions,
     extract: (context) => context.members.reduce((sum, member) => sum + member.metrics.totalUnits, 0),
-    optionsDiscipline: emptyOptionsDiscipline(0),
+    optionsDiscipline: emptyOptionsDiscipline(),
   });
 }
 

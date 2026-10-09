@@ -1,6 +1,7 @@
 import { defineSingleAnalyzer, type SingleAnalyzerDefinition, type SingleAnalyzerExtractContext } from '#analyzers/contract.ts';
-import { DEFAULT_METRIC_CONDITIONS, type Metrics } from '#interpretation/metrics.ts';
-import { ADJACENT_PAIRS, ALL_FINGERS, type Finger } from '#input/shapes/geometry.ts';
+import { plainDisciplineContext } from '#analyzers/discipline-material.ts';
+import type { Metrics } from '#interpretation/metrics.ts';
+import { ALL_FINGERS, type Finger } from '#input/shapes/geometry.ts';
 import {
   ALTERNATE_FINGER_DISTANCE_OPTIONS,
   DEFAULT_FINGER_DISTANCE_OPTIONS,
@@ -101,59 +102,6 @@ export function computeFingerDistanceExtraction(metrics: Metrics): FingerDistanc
   };
 }
 
-// ---------------------------------------------------------------------------
-// 入れ忘れ防止テストの材料
-// ---------------------------------------------------------------------------
-
-function fixtureMetrics(): Metrics {
-  const perFinger = {} as Metrics['perFinger'];
-  const perFingerPresses = {} as Metrics['perFingerPresses'];
-  const perFingerSameFinger = {} as Metrics['perFingerSameFinger'];
-  for (const finger of ALL_FINGERS) {
-    perFingerSameFinger[finger] = 0;
-    perFinger[finger] = 0;
-    perFingerPresses[finger] = 0;
-  }
-  perFinger.LI = 2;
-  perFinger.RM = 1;
-  perFingerPresses.LI = 2;
-  perFingerPresses.RM = 1;
-  return {
-    geometryId: 'row-staggered',
-    geometryName: 'Row-staggered',
-    fingerAssignmentId: 'default',
-    fingerAssignmentName: '既定',
-    conditions: DEFAULT_METRIC_CONDITIONS,
-    strokes: 3,
-    actions: 3,
-    presses: 3,
-    skipped: 0,
-    inputChars: 3,
-    perFinger,
-    perFingerPresses,
-    perFingerPressEvents: perFingerPresses,
-    totalUnits: 3,
-    totalMm: 57,
-    meanPerStroke: 1,
-    perCharUnits: 1,
-    perCharSteps: 1,
-    perCharPresses: 1,
-    singleTapLayerRate: 100,
-    singleTapRate: 100,
-    singleKeyRate: 100,
-    adjacent: ADJACENT_PAIRS.map((pair, i) => ({ pair, meanExcess: i * 0.1, stdDev: i * 0.05, maxExcess: i * 0.2 })),
-    sameFinger: 0,
-    perFingerSameFinger,
-    combos: { definitions: 0, matched: 0, hits: 0 },
-    layers: [],
-    comboPresses: 0,
-    comboKeyCounts: new Map(),
-    comboKeyDistance: new Map(),
-    keyCounts: new Map(),
-    keyDistance: new Map(),
-  };
-}
-
 /**
  * engine（`engine/cache.ts` の `getExtraction`）が呼ぶ、Analyzer契約の実体。
  * 解析設定の項目は無い。
@@ -167,6 +115,6 @@ export const fingerDistanceDefinition: SingleAnalyzerDefinition<FingerDistanceOp
   optionsDiscipline: {
     sample: DEFAULT_FINGER_DISTANCE_OPTIONS,
     alternates: ALTERNATE_FINGER_DISTANCE_OPTIONS,
-    extractForTest: () => computeFingerDistanceExtraction(fixtureMetrics()),
+    context: plainDisciplineContext,
   },
 });

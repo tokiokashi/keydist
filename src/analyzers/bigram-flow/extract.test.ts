@@ -312,7 +312,6 @@ test('engineのgetExtraction経由でBigram Flowを回すと、同じ抽出キ�
   assert.equal(counter.calls, 1);
 
   // 見た目だけの設定変更ではextractが増えない。
-  // `optionsDiscipline.extractForTest`が`Options`を反変位置でもう一度使うようになった影響で、
   // ここから`Options`を推論に任せると型が広がってしまう（`lineScale`等がリテラル型では
   // なく`string`に推論される）ため、明示的に型引数を渡して`definition`と揃える。
   cache.getExtraction<BigramFlowOptions, BigramFlowExtracted>(

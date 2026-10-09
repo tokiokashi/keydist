@@ -23,6 +23,11 @@ type FixtureOptions = typeof fixtureOptions.defaultOptions;
 
 let fixtureCalls = 0;
 
+/** このファイルのフィクスチャは入れ忘れ防止テストの対象外なので、材料を作る関数は呼ばれない。 */
+function unusedDisciplineContext(): never {
+  throw new Error('入れ忘れ防止テストの材料は使わない');
+}
+
 /** `getExtraction`のテスト専用フィクスチャ。呼び出し回数を数えて共有・再計算を検証する。 */
 function createFixtureDefinition(): SingleAnalyzerDefinition<FixtureOptions, number> {
   return defineSingleAnalyzer({
@@ -36,7 +41,7 @@ function createFixtureDefinition(): SingleAnalyzerDefinition<FixtureOptions, num
     optionsDiscipline: {
       sample: fixtureOptions.defaultOptions,
       alternates: { scale: 2, highlightColor: 'blue' },
-      extractForTest: (options) => 100 * options.scale,
+      context: unusedDisciplineContext,
     },
   });
 }
@@ -102,7 +107,7 @@ function createSetFixtureDefinition(): SetAnalyzerDefinition<SetFixtureOptions, 
     optionsDiscipline: {
       sample: setFixtureOptions.defaultOptions,
       alternates: { scale: 2, highlightColor: 'blue' },
-      extractForTest: (options) => ({ setupIds: [], failureSetupIds: [], total: 100 * options.scale }),
+      context: unusedDisciplineContext,
     },
   });
 }
@@ -363,7 +368,7 @@ function createKeyDetailsDefinition(id: string): SingleAnalyzerDefinition<Fixtur
     optionsDiscipline: {
       sample: fixtureOptions.defaultOptions,
       alternates: { scale: 2, highlightColor: 'blue' },
-      extractForTest: () => undefined,
+      context: unusedDisciplineContext,
     },
   });
 }

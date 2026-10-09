@@ -6,7 +6,13 @@ import type { Trace, TracePolicy } from '#trace/generate.ts';
 import type { AggregatedAnalysisResult } from '#interpretation/structure/aggregate.ts';
 import type { KeyDetails } from '#interpretation/key-detail.ts';
 import type { Metrics } from '#interpretation/metrics.ts';
-import type { OptionsDefinition, OptionsDisciplineFixture, OptionsRegistry, OptionsValueMap } from './options.ts';
+import type {
+  OptionsDefinition,
+  OptionsDisciplineCheck,
+  OptionsDisciplineFixture,
+  OptionsRegistry,
+  OptionsValueMap,
+} from './options.ts';
 
 // `OptionsRegistry`はこのファイルの型なので再exportして、横断テスト
 // （`test/analyzer-options-discipline.test.ts`）が`optionsItems`の型を書けるようにする。
@@ -128,6 +134,12 @@ export interface SetAnalyzerExtractContext<Options> {
   readonly options: Options;
 }
 
+/** 入れ忘れ防止テストの材料（`options`以外の`extract`の引数 + 基準のOptions値）。 */
+export type SingleOptionsDisciplineFixture<Options> =
+  OptionsDisciplineFixture<Options, Omit<SingleAnalyzerExtractContext<Options>, 'options'>>;
+export type SetOptionsDisciplineFixture<Options> =
+  OptionsDisciplineFixture<Options, Omit<SetAnalyzerExtractContext<Options>, 'options'>>;
+
 // ---------------------------------------------------------------------------
 // AnalyzerDefinition
 // ---------------------------------------------------------------------------
@@ -174,10 +186,11 @@ export interface SingleAnalyzerDefinition<Options = unknown, Extracted = unknown
   /**
    * 入れ忘れ防止テストの材料。`defineSingleAnalyzer`が必須で
    * 要求するので、宣言（items）だけ書いてテストの材料を用意し忘れる、という状態を
-   * 型検査の時点で作れない。横断テスト（`test/analyzer-options-discipline.test.ts`）が
+   * 型検査の時点で作れない。`extract`は、この定義の`extract`を材料の文脈とOptionsから
+   * 組んだ引数で呼ぶ。横断テスト（`test/analyzer-options-discipline.test.ts`）が
    * これを使って全Analyzerへ`checkOptionsDiscipline`（`options.ts`）を回す。
    */
-  readonly optionsDiscipline: OptionsDisciplineFixture<Options, Extracted>;
+  readonly optionsDiscipline: OptionsDisciplineCheck<Options, Extracted>;
   /**
    * 宣言（`options.ts`の`items`）そのもの。ジェネリックを`OptionsRegistry`まで消した形
    * （`OptionsValueMap<R>`が`Options`と一致する保証をこの型だけでは表現できないため）。
@@ -196,7 +209,7 @@ export interface SetAnalyzerDefinition<Options = unknown, Extracted = unknown> {
   decodeOptions(raw: unknown, diagnostics: CodecDiagnostic[]): Options;
   extractKeyOf(options: Options): unknown;
   extract(context: SetAnalyzerExtractContext<Options>): Extracted;
-  readonly optionsDiscipline: OptionsDisciplineFixture<Options, Extracted>;
+  readonly optionsDiscipline: OptionsDisciplineCheck<Options, Extracted>;
   readonly optionsItems: OptionsRegistry;
 }
 
@@ -221,7 +234,7 @@ export function defineSingleAnalyzer<R extends OptionsRegistry, Extracted>(confi
   readonly id: string;
   readonly options: OptionsDefinition<R>;
   readonly extract: (context: SingleAnalyzerExtractContext<OptionsValueMap<R>>) => Extracted;
-  readonly optionsDiscipline: OptionsDisciplineFixture<OptionsValueMap<R>, Extracted>;
+  readonly optionsDiscipline: SingleOptionsDisciplineFixture<OptionsValueMap<R>>;
 }): SingleAnalyzerDefinition<OptionsValueMap<R>, Extracted> {
   return {
     [ANALYZER_DEFINITION_BRAND]: 'single',
@@ -231,7 +244,11 @@ export function defineSingleAnalyzer<R extends OptionsRegistry, Extracted>(confi
     decodeOptions: config.options.decodeOptions,
     extractKeyOf: config.options.extractKeyOf,
     extract: config.extract,
-    optionsDiscipline: config.optionsDiscipline,
+    optionsDiscipline: {
+      sample: config.optionsDiscipline.sample,
+      alternates: config.optionsDiscipline.alternates,
+      extract: (options) => config.extract({ ...config.optionsDiscipline.context(), options }),
+    },
     optionsItems: config.options.items,
   };
 }
@@ -241,7 +258,7 @@ export function defineSetAnalyzer<R extends OptionsRegistry, Extracted>(config: 
   readonly id: string;
   readonly options: OptionsDefinition<R>;
   readonly extract: (context: SetAnalyzerExtractContext<OptionsValueMap<R>>) => Extracted;
-  readonly optionsDiscipline: OptionsDisciplineFixture<OptionsValueMap<R>, Extracted>;
+  readonly optionsDiscipline: SetOptionsDisciplineFixture<OptionsValueMap<R>>;
 }): SetAnalyzerDefinition<OptionsValueMap<R>, Extracted> {
   return {
     [ANALYZER_DEFINITION_BRAND]: 'set',
@@ -251,7 +268,11 @@ export function defineSetAnalyzer<R extends OptionsRegistry, Extracted>(config: 
     decodeOptions: config.options.decodeOptions,
     extractKeyOf: config.options.extractKeyOf,
     extract: config.extract,
-    optionsDiscipline: config.optionsDiscipline,
+    optionsDiscipline: {
+      sample: config.optionsDiscipline.sample,
+      alternates: config.optionsDiscipline.alternates,
+      extract: (options) => config.extract({ ...config.optionsDiscipline.context(), options }),
+    },
     optionsItems: config.options.items,
   };
 }

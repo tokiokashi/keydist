@@ -215,6 +215,6 @@ export const nSensitivityDefinition: SetAnalyzerDefinition<NSensitivityOptions, 
   optionsDiscipline: {
     sample: DEFAULT_N_SENSITIVITY_OPTIONS,
     alternates: ALTERNATE_N_SENSITIVITY_OPTIONS,
-    extractForTest: () => computeNSensitivityExtraction(FIXTURE_MEMBERS, FIXTURE_FAILURES),
+    context: () => ({ members: FIXTURE_MEMBERS, failures: FIXTURE_FAILURES }),
   },
 });

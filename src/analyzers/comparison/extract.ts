@@ -248,7 +248,7 @@ export const comparisonDefinition: SetAnalyzerDefinition<ComparisonOptions, Comp
   optionsDiscipline: {
     sample: DEFAULT_COMPARISON_OPTIONS,
     alternates: ALTERNATE_COMPARISON_OPTIONS,
-    extractForTest: () => computeComparisonExtraction(FIXTURE_MEMBERS, FIXTURE_FAILURES),
+    context: () => ({ members: FIXTURE_MEMBERS, failures: FIXTURE_FAILURES }),
   },
 });
 

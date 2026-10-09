@@ -1,10 +1,10 @@
 import { defineSingleAnalyzer, type SingleAnalyzerDefinition, type SingleAnalyzerExtractContext } from '#analyzers/contract.ts';
-import { fromRows, type LayerPresentationRole } from '#input/layouts/types.ts';
-import { buildGeometry } from '#input/shapes/geometry.ts';
+import type { LayerPresentationRole } from '#input/layouts/types.ts';
 import { attributeMetrics } from '#interpretation/attribution.ts';
-import { computeKeyDetails, type KeyDetails } from '#interpretation/key-detail.ts';
-import { computeMetrics, type Metrics } from '#interpretation/metrics.ts';
-import { DEFAULT_TRACE_POLICY, generateTrace, type Trace } from '#trace/generate.ts';
+import type { KeyDetails } from '#interpretation/key-detail.ts';
+import type { Metrics } from '#interpretation/metrics.ts';
+import type { Trace } from '#trace/generate.ts';
+import { layerComboDisciplineContext } from '#analyzers/discipline-material.ts';
 import { normalizedRoleColors } from './layer-heatmap.ts';
 import { ALTERNATE_HEATMAP_OPTIONS, DEFAULT_HEATMAP_OPTIONS, heatmapOptions, type HeatmapOptions } from './options.ts';
 
@@ -98,14 +98,6 @@ export function computeHeatmapExtraction({ trace, metrics, keyDetails }: Heatmap
 // 入れ忘れ防止テストの材料
 // ---------------------------------------------------------------------------
 
-/** `optionsDiscipline.extractForTest` 専用の、1層だけの小さい配列で打ったTraceとMetrics。 */
-function fixtureInput(): Pick<HeatmapExtractInput, 'trace' | 'metrics' | 'keyDetails'> {
-  const layout = fromRows('heatmap-fixture', 'fixture', ['qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./']);
-  const geometry = buildGeometry('row-staggered');
-  const trace = generateTrace('aaq', layout, geometry, DEFAULT_TRACE_POLICY);
-  return { trace, metrics: computeMetrics(trace, geometry), keyDetails: computeKeyDetails(trace, geometry) };
-}
-
 /**
  * engine（`engine/cache.ts` の `getExtraction`）が呼ぶ、Analyzer契約の実体。
  * 解析設定はどれも表示だけが変わるので、抽出の結果には効かない。
@@ -119,6 +111,6 @@ export const heatmapDefinition: SingleAnalyzerDefinition<HeatmapOptions, Heatmap
   optionsDiscipline: {
     sample: DEFAULT_HEATMAP_OPTIONS,
     alternates: ALTERNATE_HEATMAP_OPTIONS,
-    extractForTest: (options) => computeHeatmapExtraction({ ...fixtureInput(), options }),
+    context: layerComboDisciplineContext,
   },
 });
