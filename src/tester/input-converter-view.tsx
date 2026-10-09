@@ -1036,7 +1036,7 @@ export function InputConverterView() {
               renderHeader={() => (
                 <>
                   <strong>Layer Guide</strong>
-                  <span>{guideDefinitions.length} 面</span>
+                  <span>{guideDefinitions.length} レイヤー</span>
                 </>
               )}
               renderDockedActions={() => <small>クリックで小窓表示</small>}
