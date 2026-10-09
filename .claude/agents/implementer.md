@@ -1,6 +1,6 @@
 ---
 name: implementer
-description: keydist の作業単位を1つ実装して PR を出せる状態にする。リードが issue か指示書を渡して起動する。レビューはしない
+description: keydistの作業単位を1つ実装してPRを作る。リードがissueか指示書を渡して起動する。レビューはしない
 model: claude-sonnet-5-5
 isolation: worktree
 effort: medium
@@ -65,7 +65,35 @@ npm run typecheck && npm test && npm run build
 e2eに書く範囲は `CONTRIBUTING.md` の「ブラウザe2e」に従う（計算で判定できる検査はunit testに書く）。
 ブラウザの版が合わないエラーが出た時の対処も同じ節にある。symlinkなどの回避策は作らない。
 
-pushしたら、CIの完了を待たない。headのshaのcheck runを1回だけ見て（`CONTRIBUTING.md`「ブラウザe2e」）、結果を報告に書く。
+pushしたら、次の「PRを作る」でPRを作る。CIの完了は待たない。PRを作ったら、headのshaのcheck runを1回だけ見て（`CONTRIBUTING.md`「ブラウザe2e」）、結果を報告に書く。
+
+## PRを作る
+
+PRは実装役が作る（リリースPRは除く。リードが作る）。baseは `main`。スタックに積む指示がある時は、指示書のbaseとスタックの手順（`CONTRIBUTING.md`「スタックPR」）に従う。
+手順は `AGENTS.md`「リモートと作業開始」にある。要点は次の通り。
+
+- 本文はWriteでセッションのscratchpadに書き、`-F body=@<file>` で渡す。worktreeの中に置かない
+- 作る: `gh api repos/tokiokashi/keydist/pulls -f title=… -f head=<ブランチ> -f base=main -F body=@<file>`。タイトルは先頭のコミットの1行目に合わせる
+- 作った直後に、同じ本文で `gh api -X PATCH repos/tokiokashi/keydist/pulls/<番号> -F body=@<file>` を打って、作成時に付くセッションのURLのフッターを外す。
+  その後 `gh api repos/tokiokashi/keydist/pulls/<番号> --jq .body` で本文の末尾を読み直し、セッションのURLが残っていないことを確かめる
+- 作成時の文面は編集履歴と通知に残るので、本文に秘密を書かない
+- GraphQLは使えない場合があるので `gh pr create` は使わない
+- PRを作る順番（draftにするか）、下書きの置き場は自分で決め、判断と理由を本文に書く
+
+本文に書くこと。
+
+- 区分（light・standard・strict）。リードが指示書に書いた区分をそのまま書く。指示書に無ければ、書かずに報告で伝える
+- 実装したモデルとeffort（この定義のfrontmatterの値）
+- 何を変えたか
+- 判断と理由。レビューは、この作業を生んだ推論を知らない状態で読む。選んだ案と、採らなかった案の比較を書く
+- 測った数値と条件（数値が動く変更のみ）
+- 確かめた範囲。実行して確かめたことだけ
+- 確かめていない範囲（無ければ「無し」）
+- 決めきれなかった点（無ければ「無し」）
+- 後続として作ったissueの番号
+- `Closes #XX` / `Refs #XX`
+
+差し戻しで直した時は、本文を `PATCH` で書き直し、数値と「確かめた範囲」を最後のheadにそろえる。版の履歴は本文に残さない。
 
 ## コミット
 
@@ -83,7 +111,7 @@ Angular 形式。1行目 72 **文字**以内、末尾に 。を付けない。�
   re='[\p{Hiragana}\p{Katakana}\p{Han}] [A-Za-z0-9]|[A-Za-z0-9] [\p{Hiragana}\p{Katakana}\p{Han}]'
   git diff origin/main...HEAD | grep '^+' | LC_ALL=C.UTF-8 grep -nP "$re"
   git log origin/main..HEAD --format=%B | LC_ALL=C.UTF-8 grep -nP "$re"   # コミットメッセージ
-  LC_ALL=C.UTF-8 grep -nP "$re" tmp/pr-body.md   # PR本文を書いたファイル
+  LC_ALL=C.UTF-8 grep -nP "$re" <scratchpad>/pr-body.md   # PR本文を書いたファイル
   ```
 
 - **PR本文の数値は、最後のheadで測った値にそろえる。** 途中のheadの値を表に残さない。headを積んだら本文の数値を測り直して書き換える
@@ -97,7 +125,8 @@ Angular 形式。1行目 72 **文字**以内、末尾に 。を付けない。�
 リードへ返すのは次だけ。作業ログの全文は返さない。
 
 - ブランチ名と head の sha
-- 実装したモデルと effort（この定義の frontmatter の値。リードが PR 本文に載せる）
+- 作ったPRの番号
+- 実装したモデルとeffort（この定義のfrontmatterの値）
 - 何を変えたか（3〜5行）
 - 測った数値と条件（数値が動く変更のみ）
 - 確かめていない範囲（無ければ「無し」）
