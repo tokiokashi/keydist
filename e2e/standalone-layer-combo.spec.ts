@@ -73,3 +73,27 @@ test('どちらも持たない配列:帰属先の表だけに行があり、修�
   await expect(feature(page).getByText('この配列は修飾のレイヤーを持ちません。')).toBeVisible();
   await expect(feature(page).getByText('この打ち方で使えるコンボはありません。')).toBeVisible();
 });
+
+test.describe('幅390pxの画面', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  for (const [layoutId, diagram] of [['qwerty', 'pattern'], ['naginata-v18', 'pattern'], ['shin-koume', 'combo']] as const) {
+    test(`${layoutId}: ${diagram === 'pattern' ? '入力パターン' : 'コンボ'}の図が枠の幅に収まり、横スクロールにならない`, async ({ page }) => {
+      await selectLayout(page, layoutId);
+      await page.goto('/standalone/layer-combo');
+      await expect(feature(page)).toBeVisible({ timeout: 10_000 });
+
+      const frame = feature(page).locator(diagram === 'pattern' ? '[data-layer-combo-pattern] .physical-keyboard' : '[data-layer-combo-diagram] .physical-keyboard');
+      await expect(frame.locator('svg')).toBeVisible();
+      const [frameBox, svgBox] = await Promise.all([frame.boundingBox(), frame.locator('svg').boundingBox()]);
+      expect(svgBox!.x + svgBox!.width).toBeLessThanOrEqual(frameBox!.x + frameBox!.width + 0.5);
+      expect(await frame.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+
+      if (diagram === 'pattern') {
+        const key = frame.locator('[data-key-id="a"]');
+        await key.click();
+        await expect(key).toHaveAttribute('aria-pressed', 'true');
+      }
+    });
+  }
+});

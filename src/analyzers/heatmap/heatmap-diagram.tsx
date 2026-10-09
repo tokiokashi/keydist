@@ -1,6 +1,7 @@
 import type { KeyboardEvent, MouseEvent } from 'react';
 import { THUMB_ROW, type Geometry } from '#input/shapes/geometry.ts';
 import { visibleGeometryKeys } from '#input/layouts/physical-keys.ts';
+import { drawnKeySpans } from '#input/shapes/drawn-key-spans.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { PhysicalKeyboardStandard } from '#input/shapes/geometry.ts';
 import type { KeyDetail } from '#interpretation/key-detail.ts';
@@ -48,7 +49,6 @@ export interface HeatmapDiagramProps {
 
 const KEY_SIZE = 30;
 const PAD = 6;
-const THUMB_WIDTH = 1.9;
 
 export function HeatmapDiagram({
   layout,
@@ -70,11 +70,13 @@ export function HeatmapDiagram({
   let minY = 0;
   let maxX = 0;
   let maxY = 0;
-  const keys = visibleGeometryKeys(layout, geometry).map((key) => {
+  const visibleKeys = visibleGeometryKeys(layout, geometry);
+  const spans = drawnKeySpans(visibleKeys);
+  const keys = visibleKeys.map((key) => {
     const thumb = key.row === THUMB_ROW;
-    const widthU = thumb ? THUMB_WIDTH : (key.width ?? 1);
-    const width = widthU * KEY_SIZE;
-    const x = (key.x - (widthU - 1) / 2) * KEY_SIZE;
+    const span = spans.get(key.id)!;
+    const width = span.width * KEY_SIZE;
+    const x = span.left * KEY_SIZE;
     const y = key.y * KEY_SIZE;
     minX = Math.min(minX, x);
     minY = Math.min(minY, y);
