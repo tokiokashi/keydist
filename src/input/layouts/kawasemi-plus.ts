@@ -215,7 +215,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
     }, LAYER_COMPOSITION),
   sourceFace(["z"], {
       "/": "なん",
-    }, COMBO_COMPOSITION),
+    }, LAYER_COMPOSITION),
   sourceFace(["x"], {
       "u": "りょ",
       "i": "りゅ",

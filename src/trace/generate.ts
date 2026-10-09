@@ -131,9 +131,9 @@ export interface Trace {
    * 「1文字あたり」の分母に使える（仕様 §11.4）。
    */
   inputChars: number;
-  /** 配列が持つコンボ見出しのうち、評価中に命中した見出し（命中ごとに1件） */
+  /** コンボ枠の見出しのうち、評価中に命中した見出し（命中ごとに1件） */
   comboHits: string[];
-  /** 配列が持つコンボ見出しの定義数 */
+  /** コンボ枠の見出しの数（コンボ定義と、コンボ枠に計上する面の出力） */
   comboDefinitions: number;
   /** 層・コンボの定義。評価対象外の未使用層も含む */
   layerDefinitions: LayerDefinition[];

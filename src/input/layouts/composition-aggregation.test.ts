@@ -5,7 +5,7 @@ import { sampleText } from '../text/samples.ts';
 import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { attributeMetrics } from '#interpretation/attribution.ts';
-import { COMBO_LAYER_ID, LAYOUT_BY_ID } from './index.ts';
+import { COMBO_LAYER_ID, faceFromEntries, fromFaces, LAYOUT_BY_ID } from './index.ts';
 import { faceCells, handOfKey } from './face-geometry.ts';
 import type { Face } from './types.ts';
 
@@ -97,3 +97,17 @@ for (const layout of [kawasemi, koume]) {
     });
   }
 }
+
+test('同じtriggerキーの層に計上するcompositionの面は、2枚置けない', () => {
+  const layerFace = (key: string, output: string): Face => ({
+    ...faceFromEntries(['d'], 'simultaneous', { [key]: output }),
+    inputRole: 'composition',
+    compositionAggregation: 'layer',
+    triggerPersistence: 'single',
+  });
+  assert.doesNotThrow(() => fromFaces('one-layer-face', 'one-layer-face', [layerFace('j', '甲')]));
+  assert.throws(
+    () => fromFaces('two-layer-faces', 'two-layer-faces', [layerFace('j', '甲'), layerFace('k', '乙')]),
+    /2枚以上計上できない/,
+  );
+});

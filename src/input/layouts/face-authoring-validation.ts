@@ -1,4 +1,5 @@
 import { faceAggregatesAsCombo } from '../semantics/index.ts';
+import { resolveKeyId } from '../shapes/geometry.ts';
 import { faceCells, handOfKey, type Hand } from './face-geometry.ts';
 import type { Face } from './types.ts';
 
@@ -71,6 +72,7 @@ function validatePresentationMetadata(face: Face, faceIndex: number): void {
  */
 export function validateFaceAuthoring(faces: readonly Face[]): void {
   const groups = new Map<string, Face[]>();
+  const compositionLayerTriggers = new Set<string>();
 
   for (const [faceIndex, face] of faces.entries()) {
     validatePresentationMetadata(face, faceIndex);
@@ -82,6 +84,15 @@ export function validateFaceAuthoring(faces: readonly Face[]): void {
       throw new Error(
         `compositionの面をレイヤーに計上できるのはtriggerが1キーの面だけ（face:${faceIndex}）`,
       );
+    }
+    if (face.inputRole === 'composition') {
+      const key = resolveKeyId(face.trigger[0]!);
+      if (compositionLayerTriggers.has(key)) {
+        throw new Error(
+          `同じtriggerキーのcompositionの面を、レイヤーに2枚以上計上できない（face:${faceIndex}）`,
+        );
+      }
+      compositionLayerTriggers.add(key);
     }
     if (face.layer === undefined) continue;
     const group = groups.get(face.layer);

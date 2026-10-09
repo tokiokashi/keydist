@@ -30,7 +30,7 @@ export interface PairStat {
 }
 
 export interface ComboStats {
-  /** 配列に定義されたコンボ見出しの数 */
+  /** コンボ枠の見出しの数（コンボ定義と、コンボ枠に計上する面の出力） */
   definitions: number;
   /** 評価中に一度でも命中したコンボ見出しの数 */
   matched: number;
