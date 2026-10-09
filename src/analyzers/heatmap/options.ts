@@ -62,5 +62,5 @@ export const ALTERNATE_HEATMAP_OPTIONS: HeatmapOptions = {
   colorScale: 'log',
   layerArrangement: 'tabs',
   layerDetail: 'detail',
-  activeLayerId: 'layer:Shift',
+  activeLayerId: 'layer:左親指',
 };

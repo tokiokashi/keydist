@@ -189,8 +189,8 @@ test('optionsDiscipline: affectsの宣言どおりの入れ忘れが無い（比
   );
   assert.deepEqual(keyViolations, []);
 
-  // 比較表は全項目がaffects:'view'なので、extractForTestはoptionsを無視した
-  // ダミー関数でよい（実際の`extractForTest`は`comparisonDefinition.optionsDiscipline`側）。
+  // 比較表は全項目がaffects:'view'なので、抽出を呼ぶ関数はoptionsを無視した
+  // ダミー関数でよい（定義の`extract`を通す検査は`comparisonDefinition.optionsDiscipline`側）。
   const viewViolations = findViewOptionsExtractionViolations(
     comparisonOptions,
     DEFAULT_COMPARISON_OPTIONS,

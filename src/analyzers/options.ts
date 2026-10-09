@@ -422,45 +422,60 @@ export function findViewOptionsExtractionViolations<R extends OptionsRegistry, E
 }
 
 /**
- * 入れ忘れ防止テストに要る、Analyzer 1つぶんのfixture。
+ * 入れ忘れ防止テストの材料。Analyzer 1つぶんの、判別の基準になるOptions値と、
+ * `extract`に渡す文脈（`options`以外）。
  *
  * `defineSingleAnalyzer`/`defineSetAnalyzer`（`contract.ts`）がこれを**必須**の設定として
  * 要求するので、Analyzerを新しく作る側は「宣言（items）は書いたが入れ忘れ防止テストの
  * 材料は用意し忘れた」という状態を型検査の時点で作れない。`sample`/`alternates`は
  * `OptionsValueMap`の全キーが必須（`findOptionsKeyDisciplineViolations`と同じ理由）。
+ *
+ * 抽出を呼ぶ関数は持たせない。契約側が`context`とOptionsから`extract`の引数を組んで、
+ * 定義の`extract`そのものを呼ぶ（`OptionsDisciplineCheck`）ので、計算の関数ではなく
+ * `extract`の中でOptionsを読む誤りも検査に掛かる。
  */
-export interface OptionsDisciplineFixture<Options, Extracted> {
+export interface OptionsDisciplineFixture<Options, Context> {
   /** 判別の基準点になるOptions値（通常は既定値）。 */
   readonly sample: Options;
   /** `sample`の各項目と異なる妥当な値の組（全キー必須）。 */
   readonly alternates: Options;
   /**
-   * optionsだけを受け取り抽出結果を返す関数。Trace等の他の文脈はAnalyzer側で
-   * 固定した上で部分適用して渡す（`extract`の引数の形はcardinalityで違うため、
-   * ここでは「optionsを渡すと抽出結果が返る」という形まで揃えてもらう）。
+   * `extract`の引数から`options`を除いた値を返す関数。検査の時にだけ呼ばれる
+   * （材料のTraceを作る計算を、アプリの起動時に払わないため）。
    */
-  readonly extractForTest: (options: Options) => Extracted;
+  readonly context: () => Context;
 }
 
 /**
- * `OptionsDisciplineFixture`を使って`findOptionsKeyDisciplineViolations`と
+ * `checkOptionsDiscipline`が受け取る、実行できる形の材料。`extract`は定義の`extract`を
+ * `OptionsDisciplineFixture.context`とOptionsから組んだ引数で呼ぶ関数
+ * （`contract.ts`の`defineSingleAnalyzer`/`defineSetAnalyzer`が作る）。
+ */
+export interface OptionsDisciplineCheck<Options, Extracted> {
+  readonly sample: Options;
+  readonly alternates: Options;
+  readonly extract: (options: Options) => Extracted;
+}
+
+/**
+ * `OptionsDisciplineCheck`を使って`findOptionsKeyDisciplineViolations`と
  * `findViewOptionsExtractionViolations`の両方を回す（横断テストが全Analyzerに対して
  * 呼ぶ入口を1つにする）。
  */
 export function checkOptionsDiscipline<R extends OptionsRegistry, Extracted>(
   optionsDef: ExtractKeyOfSource<R>,
-  fixture: OptionsDisciplineFixture<OptionsValueMap<R>, Extracted>,
+  check: OptionsDisciplineCheck<OptionsValueMap<R>, Extracted>,
 ): {
   readonly keyViolations: readonly string[];
   readonly viewExtractionViolations: readonly string[];
 } {
   return {
-    keyViolations: findOptionsKeyDisciplineViolations(optionsDef, fixture.sample, fixture.alternates),
+    keyViolations: findOptionsKeyDisciplineViolations(optionsDef, check.sample, check.alternates),
     viewExtractionViolations: findViewOptionsExtractionViolations(
       optionsDef,
-      fixture.sample,
-      fixture.alternates,
-      fixture.extractForTest,
+      check.sample,
+      check.alternates,
+      check.extract,
     ),
   };
 }
