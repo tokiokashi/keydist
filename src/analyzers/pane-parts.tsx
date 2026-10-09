@@ -3,7 +3,8 @@ import type { Geometry } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { Trace } from '#trace/generate.ts';
 import type { InfoHelp } from '#ui/primitives/info-button.tsx';
-import type { SingleAnalyzerDefinition } from './contract.ts';
+import type { TargetMark } from '#ui/theme/target-marks.ts';
+import type { SetAnalyzerDefinition, SingleAnalyzerDefinition } from './contract.ts';
 import type { UrlOptionsCodec } from './options.ts';
 
 /**
@@ -81,4 +82,64 @@ export interface SingleAnalyzerPaneParts<Options, Extracted>
   extends AnalyzerPaneParts<SingleAnalyzerDefinition<Options, Extracted>, Options, SingleBodyProps<Extracted, Options>> {
   /** 解析設定の共有リンクでの読み書き。`options.ts`の`defineOptions`の結果をそのまま渡す。 */
   readonly urlOptions: UrlOptionsCodec<Options>;
+}
+
+/**
+ * 集合を見るAnalyzer（Set）の本体に、ホストが渡すprops。どのSetにも同じ形で渡し、使わないものは
+ * 本体が受け取らなければよい。`RowContext`は行ごとの表示に使う値で、Analyzerごとに
+ * `SetAnalyzerPaneParts.rowContext`が作る。
+ */
+export interface SetBodyProps<Extracted, Options, RowContext> {
+  readonly extracted: Extracted;
+  /** 表示順（対象keyの列）。ホストが持つ集合の並び順。 */
+  readonly order: readonly string[];
+  readonly rowContext: ReadonlyMap<string, RowContext>;
+  /** 集合の基準にする対象key。`undefined`は「基準なし」。基準を使わない本体は読まない。 */
+  readonly baselineTargetKey: string | undefined;
+  readonly options: Options;
+  /** 本体の中で開く表示の調整の書き込み先。解析設定と同じ1つの値を書き換える。 */
+  readonly onOptionsChange: (next: Options) => void;
+}
+
+/** 行の文脈を作る時の、解決した配列・物理配列・指割当の名前。対象を解決できなかった行には無い。 */
+export interface SetRowHeader {
+  readonly layoutName: string;
+  readonly shapeName: string;
+  readonly fingerAssignmentName: string;
+}
+
+/** `SetAnalyzerPaneParts.rowContext`に渡す、集合のメンバー1つぶん。表示名や色はホストが集合に対して決めたもの。 */
+export interface SetRowSource {
+  readonly targetKey: string;
+  readonly label: string;
+  /** 集合によらない完全な名前。 */
+  readonly fullName: string;
+  /** 解決できた時だけある。 */
+  readonly header: SetRowHeader | undefined;
+  /** 集合が配った色。まだ配られていない間は`undefined`。 */
+  readonly color: string | undefined;
+  readonly mark: TargetMark | undefined;
+}
+
+/**
+ * Setのホスト（単体ページ・Workspaceのペイン・ペイン本体）が引数に取る形。
+ * 各Setの`definition.tsx`がこの形のオブジェクトを1つexportし、ホストへ渡すだけで
+ * 単体ページとWorkspaceのペインに載る。
+ */
+export interface SetAnalyzerPaneParts<Options, Extracted, RowContext>
+  extends AnalyzerPaneParts<
+    SetAnalyzerDefinition<Options, Extracted>,
+    Options,
+    SetBodyProps<Extracted, Options, RowContext>,
+    string | undefined
+  > {
+  /** 解析設定の共有リンクでの読み書き。`options.ts`の`defineOptions`の結果をそのまま渡す。 */
+  readonly urlOptions: UrlOptionsCodec<Options>;
+  /** 本体が行ごとに使う文脈を作る。`undefined`を返した行は本体へ渡さない。 */
+  readonly rowContext: (source: SetRowSource) => RowContext | undefined;
+  /**
+   * 条件の要約・条件の編集・表示名の作り分けから除く項目のid。このAnalyzerが自分で振る軸など、
+   * 全員に共通の軸として別に見せる項目を挙げる。
+   */
+  readonly conditionExcludeIds?: readonly string[];
 }

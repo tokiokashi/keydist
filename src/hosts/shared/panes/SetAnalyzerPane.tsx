@@ -1,11 +1,10 @@
 import { useMemo, useState } from 'react';
 import type { CodecDiagnostic } from '#input/codec/index.ts';
 import type { EngineSetMemberInput } from '#engine/request.ts';
-import type { ResolvedInputResult } from '#engine/resolved-input.ts';
-import type { ColorSlotsByKey, TargetSet } from '#engine/multi-target-selection.ts';
-import { analysisTargetKey, nameTargets, type AnalysisTarget, type NamedTarget } from '#input/setup/index.ts';
-import { nSensitivityAnalyzer, type NSensitivityRowContext } from '#analyzers/n-sensitivity/definition.tsx';
-import type { NSensitivityOptions } from '#analyzers/n-sensitivity/options.ts';
+import { effectiveMultiBaseline, type ColorSlotsByKey, type TargetSet } from '#engine/multi-target-selection.ts';
+import { SETTINGS_ITEMS, type SettingsItemId } from '#engine/settings-items.ts';
+import { analysisTargetKey, nameTargets, type AnalysisTarget } from '#input/setup/index.ts';
+import type { SetAnalyzerPaneParts, SetRowSource } from '#analyzers/pane-parts.tsx';
 import {
   conditionHeaderInfoFromResolvedInput,
   globalConditionLevels,
@@ -15,7 +14,6 @@ import {
   type ConditionValueNames,
 } from '../condition-summary.ts';
 import { recommendedWidthRemOf } from '#analyzers/recommended-width.ts';
-import type { TargetMark } from '#ui/theme/target-marks.ts';
 import { PaneFrame } from '../PaneFrame.tsx';
 import { resolvePaneInput } from '../resolve-pane-input.ts';
 import { targetNameSource } from '../target-name-source.ts';
@@ -26,70 +24,47 @@ import { useSetTargetSelection } from '../use-set-target-selection.ts';
 import type { PaneChrome, PaneEnvironment } from './pane-environment.ts';
 
 /**
- * N感度のペイン（対象の集合を見るAnalyzer）。個別画面とWorkspaceのペインが同じこのcomponentを使う。
- * `ComparisonPane`と同じ形だが、基準の概念を持たない（集合の基準は触らない）。
+ * 対象の集合を見るAnalyzer（Set）のペイン。どのSetも、渡された`analyzer`だけが違う。個別画面とWorkspaceのペインが同じこのcomponentを使う。
+ * 値の持ち主（集合・解析設定をどこへ保存するか）は器が決め、ここには集合の値と変更の通知だけを渡す
+ * （`SingleAnalyzerPane`と同じ分担）。
  */
-export interface NSensitivityPaneProps {
+export interface SetAnalyzerPaneProps<Options, Extracted, RowContext> {
+  /** このペインが映すAnalyzer（各Analyzerの`definition.tsx`がexportする、ペインに渡すもの）。 */
+  readonly analyzer: SetAnalyzerPaneParts<Options, Extracted, RowContext>;
   readonly env: PaneEnvironment;
   readonly chrome?: PaneChrome;
+  /** 選んだ対象・基準。 */
   readonly selection: TargetSet;
   /** 対象に配った色の番号（対象のkey → 番号）。配るのは器（個別画面は集合、Workspaceは全ペインの和）。 */
   readonly colorSlots: ColorSlotsByKey;
   readonly onTargetsChange: (next: readonly AnalysisTarget[]) => void;
-  readonly options: NSensitivityOptions;
-  readonly onOptionsChange: (next: NSensitivityOptions) => void;
+  /** 基準にする対象。`undefined`で「基準なし」。基準を選ぶ部品を持つAnalyzerだけが呼ぶ。 */
+  readonly onBaselineChange: (next: AnalysisTarget | undefined) => void;
+  readonly options: Options;
+  readonly onOptionsChange: (next: Options) => void;
   readonly settingsDiagnostics?: readonly CodecDiagnostic[];
   /** 共有リンクを開いた時に、取り込めなかったものを伝える文。 */
   readonly linkNotices?: readonly string[];
 }
 
-/** Nはこのペイン自身が掃引する軸なので、条件の要約からは除く。 */
-const N_SENSITIVITY_CONDITION_EXCLUDE_IDS = ['windowSize'] as const;
-
-function buildRowContext(
-  target: AnalysisTarget,
-  resolution: ResolvedInputResult,
-  named: NamedTarget,
-  color: string,
-  mark: TargetMark,
-): NSensitivityRowContext {
-  const targetKey = analysisTargetKey(target);
-  if (resolution.ok) {
-    const header = conditionHeaderInfoFromResolvedInput(resolution.input.layout, resolution.input.geometry);
-    return {
-      targetKey,
-      label: named.displayName,
-      fullName: named.fullName,
-      layoutName: header.layoutName,
-      geometryName: header.shapeName,
-      fingerAssignmentName: header.fingerAssignmentName,
-      color,
-      mark,
-    };
-  }
-  return {
-    targetKey,
-    label: named.displayName,
-    fullName: named.fullName,
-    layoutName: named.fullName,
-    geometryName: '—',
-    fingerAssignmentName: '—',
-    color,
-    mark,
-  };
+/** 条件から除くidは、設定項目のidだけを通す。 */
+function settingsItemIds(ids: readonly string[] | undefined): readonly SettingsItemId[] {
+  return (ids ?? []).filter((id): id is SettingsItemId => id in SETTINGS_ITEMS);
 }
 
-export function NSensitivityPane({
+export function SetAnalyzerPane<Options, Extracted, RowContext>({
+  analyzer,
   env,
   chrome = {},
   selection,
   colorSlots,
   onTargetsChange,
+  onBaselineChange,
   options,
   onOptionsChange,
   settingsDiagnostics = [],
   linkNotices,
-}: NSensitivityPaneProps) {
+}: SetAnalyzerPaneProps<Options, Extracted, RowContext>) {
   const { setups, overrides, catalog, resolvedText, cache, dispatch, assetsReady } = env;
   const setupsById = useMemo(() => new Map(setups.map((setup) => [setup.id, setup] as const)), [setups]);
   const { choiceGroups, targets, colorByKey, markByKey } = useSetTargetSelection(selection, colorSlots, setups, catalog);
@@ -97,6 +72,8 @@ export function NSensitivityPane({
   // 対象の選択を開いているか。空の時のペインのボタンからも開くので、ここで持つ。
   const [selectionOpen, setSelectionOpen] = useState(false);
 
+  // 各メンバーの解決済み入力（または解決失敗）。表示順（`targets`）のまま作る
+  // （engineの抽出キーが順序込みで畳み込む対象）。
   const members: readonly EngineSetMemberInput[] = useMemo(
     () => targets.map((target): EngineSetMemberInput => ({
       target,
@@ -106,6 +83,9 @@ export function NSensitivityPane({
   );
   const membersByTarget = useMemo(() => new Map(members.map((m) => [m.target, m] as const)), [members]);
 
+  // 表示名は常に集合全体に対して計算する。解決に失敗したメンバーは、共通性の判定からは除く
+  // （`naming.ts`の`TargetNameSource.failed`参照）。
+  const excludeIds = useMemo(() => settingsItemIds(analyzer.conditionExcludeIds), [analyzer]);
   const setupNumbers = useMemo(() => setupNumbersOf(setups), [setups]);
   const namedTargets = useMemo(() => nameTargets(targets.map((target) => targetNameSource(
     target,
@@ -113,8 +93,8 @@ export function NSensitivityPane({
     setupsById,
     setupNumbers,
     catalog.setupCatalog,
-    N_SENSITIVITY_CONDITION_EXCLUDE_IDS,
-  ))), [targets, setupsById, setupNumbers, membersByTarget, catalog.setupCatalog]);
+    excludeIds,
+  ))), [targets, setupsById, setupNumbers, membersByTarget, catalog.setupCatalog, excludeIds]);
   const namedByKey = useMemo(() => new Map(namedTargets.map((n) => [n.key, n] as const)), [namedTargets]);
 
   const targetSummary = useMemo(() => targets.map((target) => {
@@ -125,18 +105,27 @@ export function NSensitivityPane({
 
   const conditionNames: ConditionValueNames = catalog.setupCatalog;
   const rowContext = useMemo(() => {
-    const map = new Map<string, NSensitivityRowContext>();
-    // 色は集合が配った番号から引く（加えた順。表示順とは別）。
-    members.forEach((member) => {
+    const map = new Map<string, RowContext>();
+    for (const member of members) {
       const key = analysisTargetKey(member.target);
       const named = namedByKey.get(key);
-      const color = colorByKey.get(key);
-      const mark = markByKey.get(key);
-      if (named === undefined || color === undefined || mark === undefined) return;
-      map.set(key, buildRowContext(member.target, member.resolution, named, color, mark));
-    });
+      if (named === undefined) continue;
+      const source: SetRowSource = {
+        targetKey: key,
+        label: named.displayName,
+        fullName: named.fullName,
+        header: member.resolution.ok
+          ? conditionHeaderInfoFromResolvedInput(member.resolution.input.layout, member.resolution.input.geometry)
+          : undefined,
+        // 色は集合が配った番号から引く（加えた順。表示順とは別）。
+        color: colorByKey.get(key),
+        mark: markByKey.get(key),
+      };
+      const context = analyzer.rowContext(source);
+      if (context !== undefined) map.set(key, context);
+    }
     return map;
-  }, [members, namedByKey, colorByKey, markByKey]);
+  }, [analyzer, members, namedByKey, colorByKey, markByKey]);
 
   // 条件の要約は、共通の条件と、対象ごとに違う条件（Setupの上書き）に分けて出す。
   const conditionSummary = useMemo(() => multiTargetConditionSummary(
@@ -149,22 +138,31 @@ export function NSensitivityPane({
         rows: traceConditionSummary(member.resolution.input.cascade, conditionNames),
       }];
     }),
-    { excludeIds: N_SENSITIVITY_CONDITION_EXCLUDE_IDS, globalValues: globalConditionValues(overrides), globalLevels: globalConditionLevels(overrides), names: conditionNames },
-  ), [members, namedByKey, conditionNames, overrides]);
+    { excludeIds, globalValues: globalConditionValues(overrides), globalLevels: globalConditionLevels(overrides), names: conditionNames },
+  ), [members, namedByKey, conditionNames, overrides, excludeIds]);
 
   const order = useMemo(() => targets.map(analysisTargetKey), [targets]);
 
-  const pane = useAnalyzerSetPane(cache, nSensitivityAnalyzer.definition, options, members);
-  const { Body, Settings } = nSensitivityAnalyzer;
+  const pane = useAnalyzerSetPane(cache, analyzer.definition, options, members);
+  const { Body, Settings, TargetItem } = analyzer;
   const extraction = pane.extraction;
   const extracted = extraction.status === 'ready' || extraction.status === 'stale' ? extraction.value.extracted : undefined;
+
+  const effectiveBaseline = effectiveMultiBaseline(selection);
+  const baselineTargetKey = effectiveBaseline === undefined ? undefined : analysisTargetKey(effectiveBaseline);
+  const candidates = order.map((key) => ({
+    key,
+    label: namedByKey.get(key)?.displayName ?? key,
+    fullName: namedByKey.get(key)?.fullName ?? '',
+  }));
 
   return (
     <PaneFrame
       assetsReady={assetsReady}
-      name={nSensitivityAnalyzer.name}
-      description={nSensitivityAnalyzer.description}
-      recommendedWidthRem={recommendedWidthRemOf(nSensitivityAnalyzer)}
+      name={analyzer.name}
+      description={analyzer.description}
+      help={analyzer.help}
+      recommendedWidthRem={recommendedWidthRemOf(analyzer)}
       headingLevel={chrome.headingLevel}
       stickyHeader={chrome.stickyHeader}
       menuItems={chrome.menuItems}
@@ -182,10 +180,20 @@ export function NSensitivityPane({
           open={selectionOpen}
           onOpenChange={setSelectionOpen}
           autoOpen={assetsReady && chrome.autoOpenTargetSelection ? targets.length === 0 && !chrome.holdTargetSelectionClosed : undefined}
+          extraItem={TargetItem === undefined ? undefined : (
+            <TargetItem
+              value={baselineTargetKey}
+              candidates={candidates}
+              onChange={(nextKey) => {
+                const next = nextKey === undefined ? undefined : targets.find((t) => analysisTargetKey(t) === nextKey);
+                onBaselineChange(next);
+              }}
+            />
+          )}
         />
       )}
       settings={<Settings options={options} onOptionsChange={onOptionsChange} />}
-      onResetOptions={() => onOptionsChange(nSensitivityAnalyzer.defaultOptions)}
+      onResetOptions={() => onOptionsChange(analyzer.defaultOptions)}
       conditionRows={conditionSummary.rows}
       conditionEditor={{
         overrides,
@@ -197,7 +205,7 @@ export function NSensitivityPane({
         customFingerAssignments: catalog.customFingerAssignments,
         customRomajiRules: catalog.customRomajiRules,
         ...(env.workspaceId === undefined ? {} : { workspace: { id: env.workspaceId } }),
-        hiddenIds: N_SENSITIVITY_CONDITION_EXCLUDE_IDS,
+        hiddenIds: excludeIds,
       }}
       conditionTargetDiffs={conditionSummary.diffs}
       engineState={extraction}
@@ -216,7 +224,14 @@ export function NSensitivityPane({
         : {})}
     >
       {extracted === undefined ? undefined : (
-        <Body extracted={extracted} order={order} rowContext={rowContext} options={options} />
+        <Body
+          extracted={extracted}
+          order={order}
+          rowContext={rowContext}
+          baselineTargetKey={baselineTargetKey}
+          options={options}
+          onOptionsChange={onOptionsChange}
+        />
       )}
     </PaneFrame>
   );
