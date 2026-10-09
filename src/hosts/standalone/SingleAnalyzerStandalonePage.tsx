@@ -182,7 +182,7 @@ export function SingleAnalyzerStandalonePage<Options, Extracted>({
        * ハイドレーション完了までの約750〜850msの間にクリック・入力すると、見た目は
        * 変わっても実際には何も起きず、そのまま消える。加えてプリレンダー時点のDOMは
        * `initialAssets()`＝ユーザーの保存済み資産ではない。`assetsReady`が経由する
-       * `useKeydistAssets`はハイドレーション後にstorageを読み終えてから true になるので、
+       * `useKeydistAssets`はハイドレーション後にstorageを読み終えてからtrueになるので、
        * それまでは操作系を丸ごと`disabled`にして「触れるが効かない」状態を作らない。
        * `display:contents`でレイアウトへの影響を無くす（fieldsetは既定でblock）。
        */}
