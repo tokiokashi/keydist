@@ -240,6 +240,6 @@ export const fingerMatrixDefinition: SetAnalyzerDefinition<FingerMatrixOptions, 
   optionsDiscipline: {
     sample: DEFAULT_FINGER_MATRIX_OPTIONS,
     alternates: ALTERNATE_FINGER_MATRIX_OPTIONS,
-    extractForTest: () => computeFingerMatrixExtraction(FIXTURE_MEMBERS, FIXTURE_FAILURES),
+    context: () => ({ members: FIXTURE_MEMBERS, failures: FIXTURE_FAILURES }),
   },
 });

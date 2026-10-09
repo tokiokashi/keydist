@@ -1,9 +1,7 @@
 import { defineSingleAnalyzer, type SingleAnalyzerDefinition, type SingleAnalyzerExtractContext } from '#analyzers/contract.ts';
-import { fromRows, type LayerPresentationRole } from '#input/layouts/types.ts';
-import { buildGeometry } from '#input/shapes/geometry.ts';
+import type { LayerPresentationRole } from '#input/layouts/types.ts';
 import { attributeMetrics } from '#interpretation/attribution.ts';
-import { computeMetrics } from '#interpretation/metrics.ts';
-import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
+import { layerComboDisciplineContext } from '#analyzers/discipline-material.ts';
 import { DEFAULT_LAYER_COMBO_OPTIONS, layerComboOptions, type LayerComboOptions } from './options.ts';
 
 /**
@@ -58,14 +56,6 @@ export function computeLayerComboExtraction({ trace, metrics }: LayerComboExtrac
   return { presses: metrics.presses, rows };
 }
 
-/** `optionsDiscipline.extractForTest` 専用の、1レイヤーだけの小さい配列で打ったTraceとMetrics。 */
-function fixtureInput(): LayerComboExtractInput {
-  const layout = fromRows('layer-combo-fixture', 'fixture', ['qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./']);
-  const geometry = buildGeometry('row-staggered');
-  const trace = generateTrace('aaq', layout, geometry, DEFAULT_TRACE_POLICY);
-  return { trace, metrics: computeMetrics(trace, geometry) };
-}
-
 /** engine（`engine/cache.ts` の `getExtraction`）が呼ぶ、Analyzer契約の実体。 */
 export const layerComboDefinition: SingleAnalyzerDefinition<LayerComboOptions, LayerComboExtracted> = defineSingleAnalyzer({
   id: 'layer-combo',
@@ -74,6 +64,6 @@ export const layerComboDefinition: SingleAnalyzerDefinition<LayerComboOptions, L
   optionsDiscipline: {
     sample: DEFAULT_LAYER_COMBO_OPTIONS,
     alternates: DEFAULT_LAYER_COMBO_OPTIONS,
-    extractForTest: () => computeLayerComboExtraction(fixtureInput()),
+    context: layerComboDisciplineContext,
   },
 });
