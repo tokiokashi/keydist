@@ -1,4 +1,5 @@
 import { comparisonAnalyzer } from '#analyzers/comparison/definition.tsx';
+import { fingerMatrixAnalyzer } from '#analyzers/finger-matrix/definition.tsx';
 import { nSensitivityAnalyzer } from '#analyzers/n-sensitivity/definition.tsx';
 import type { SetAnalyzerPaneParts } from '#analyzers/pane-parts.tsx';
 
@@ -15,6 +16,7 @@ type AnyPaneParts = SetAnalyzerPaneParts<any, any, any>;
 
 export const SET_ANALYZER_PANE_PARTS: readonly AnyPaneParts[] = [
   comparisonAnalyzer,
+  fingerMatrixAnalyzer,
   nSensitivityAnalyzer,
 ];
 

@@ -214,7 +214,7 @@ for (const width of [1500, 390]) {
     expect(none).toHaveLength(16);
 
     // 全列を順に押して、押した列を含む全列の幅が3状態で1px以内で同じことを確かめる。
-    const labels = (await table.locator('thead th .comparison-sort-button').allInnerTexts()).map((text) => text.replace(/[↑↓]/g, '').trim());
+    const labels = (await table.locator('thead th .sort-column-button').allInnerTexts()).map((text) => text.replace(/[↑↓]/g, '').trim());
     expect(labels).toHaveLength(15);
     for (const label of labels) {
       const button = sortButton(table, label);

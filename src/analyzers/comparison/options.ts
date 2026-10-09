@@ -1,5 +1,5 @@
 import * as v from 'valibot';
-import { booleanUrlCodec, defineOption, defineOptions, stringSetUrlCodec, type OptionUrlCodec } from '#analyzers/options.ts';
+import { booleanUrlCodec, columnSortOption, type ColumnSortOptionValue, defineOption, defineOptions, stringSetUrlCodec, type OptionUrlCodec } from '#analyzers/options.ts';
 import { COMPARISON_COLUMN_IDS, COMPARISON_COLUMN_TEXT, type ComparisonColumnId } from './column-text.ts';
 
 export { COMPARISON_COLUMN_IDS, COMPARISON_UNIT_NOTE, type ComparisonColumnId } from './column-text.ts';
@@ -136,36 +136,8 @@ const visibleColumnsUrl: OptionUrlCodec<readonly ComparisonColumnId[]> = (() => 
   return { ...set, encode: (value) => value.join(',') };
 })();
 
-/** 並び替えの向き。 */
-export type ComparisonSortDirection = 'asc' | 'desc';
-
 /** 並び替えの状態。`null`は並び替えなし（対象の一覧の順のまま）。 */
-export type ComparisonSort = { readonly column: ComparisonColumnId; readonly direction: ComparisonSortDirection } | null;
-
-const COMPARISON_SORT_DIRECTIONS = ['asc', 'desc'] as const;
-
-const comparisonSortSchema = v.nullable(v.object({
-  column: v.picklist(COMPARISON_COLUMN_IDS),
-  direction: v.picklist(COMPARISON_SORT_DIRECTIONS),
-}));
-
-/** `列id:向き`（例 `totalUnits:asc`）で読み書きする。 */
-const sortUrl: OptionUrlCodec<ComparisonSort> = {
-  name: 'sort',
-  encode: (value) => (value === null ? undefined : `${value.column}:${value.direction}`),
-  decode: (raw, path, diagnostics) => {
-    const [column, direction, ...rest] = raw.split(':');
-    if (
-      rest.length === 0
-      && column !== undefined && isComparisonColumnId(column)
-      && direction !== undefined && (COMPARISON_SORT_DIRECTIONS as readonly string[]).includes(direction)
-    ) {
-      return { column, direction: direction as ComparisonSortDirection };
-    }
-    diagnostics.push({ path, message: `URLパラメータの値「${raw}」は未知のため捨てました` });
-    return undefined;
-  },
-};
+export type ComparisonSort = ColumnSortOptionValue<ComparisonColumnId>;
 
 export const comparisonOptions = defineOptions({
   /** 表示する列。空集合は「全列表示」という意味にはしない（要求どおり0列を描く）。 */
@@ -208,12 +180,7 @@ export const comparisonOptions = defineOptions({
    * 対象の集合の順（N感度と共有している値）は変えない。値は表に出ている数値（基準比ではなく値）で並べる。
    * 表示する列とは独立に効く（列を隠しても並びは保たれ、解析設定の並び替えの欄に今の状態が出る）。
    */
-  sort: defineOption<ComparisonSort>({
-    schema: comparisonSortSchema,
-    default: null,
-    affects: 'view',
-    url: sortUrl,
-  }),
+  sort: columnSortOption('sort', COMPARISON_COLUMN_IDS),
 });
 
 export type ComparisonOptions = typeof comparisonOptions.defaultOptions;

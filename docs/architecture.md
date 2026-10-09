@@ -118,7 +118,7 @@ host（個別画面 / Workspace）
 保存したWorkspaceを開き、Analyzerをペインとして並べる器。個別画面と同じAnalyzerのcomponent（`hosts/shared/panes/`）を載せる。
 
 - **Single（対象を1つ見るAnalyzer）の配線はAnalyzerごとに持たない。** ペイン（`hosts/shared/panes/SingleAnalyzerPane.tsx`）・個別画面（`hosts/standalone/SingleAnalyzerStandalonePage.tsx`、組み立ては`app/standalone/StandaloneSingleAnalyzerApp.tsx`）・Workspaceのペイン（`hosts/workspace/panes/SingleAnalyzerWorkspacePane.tsx`）は、Analyzerの`definition.tsx`がexportする`SingleAnalyzerPaneParts`（`analyzers/pane-parts.tsx`）を引数に取る。Singleを足す時に書くのは、`definition.tsx`、`analyzer-registry.ts`と`single-analyzers.ts`に1行ずつ、個別画面のroute（`routes/standalone.<id>.tsx`。`StandaloneSingleAnalyzerApp`に渡すだけ）、`app/standalone/engine-worker.ts`への登録。本体（`Body`）にはどのSingleにも同じprops（`SingleBodyProps`）を渡し、使わないものは受け取らない。
-- **Multi（対象の集合を見るAnalyzer。比較表・N感度）の配線もAnalyzerごとに持たない。** ペイン（`hosts/shared/panes/SetAnalyzerPane.tsx`）・個別画面（`hosts/standalone/SetAnalyzerStandalonePage.tsx`、組み立ては`app/standalone/StandaloneSetAnalyzerApp.tsx`）・Workspaceのペイン（`hosts/workspace/panes/SetAnalyzerWorkspacePane.tsx`）は、Analyzerの`definition.tsx`がexportする`SetAnalyzerPaneParts`（`analyzers/pane-parts.tsx`）を引数に取る。Singleとは対象の形（集合・色・基準）と本体のpropsが違うので、別の型にしている。Multiを足す時に書くのは、`definition.tsx`、`analyzer-registry.ts`と`set-analyzers.ts`に1行ずつ（足し忘れは`set-analyzers.test.ts`が落とす）、個別画面のroute（`routes/standalone.<id>.tsx`。`StandaloneSetAnalyzerApp`に渡すだけ）、`app/standalone/engine-worker.ts`の`set:`への登録
+- **Multi（対象の集合を見るAnalyzer。比較表・指ごとの比較・N感度）の配線もAnalyzerごとに持たない。** ペイン（`hosts/shared/panes/SetAnalyzerPane.tsx`）・個別画面（`hosts/standalone/SetAnalyzerStandalonePage.tsx`、組み立ては`app/standalone/StandaloneSetAnalyzerApp.tsx`）・Workspaceのペイン（`hosts/workspace/panes/SetAnalyzerWorkspacePane.tsx`）は、Analyzerの`definition.tsx`がexportする`SetAnalyzerPaneParts`（`analyzers/pane-parts.tsx`）を引数に取る。Singleとは対象の形（集合・色・基準）と本体のpropsが違うので、別の型にしている。Multiを足す時に書くのは、`definition.tsx`、`analyzer-registry.ts`と`set-analyzers.ts`に1行ずつ（足し忘れは`set-analyzers.test.ts`が落とす）、個別画面のroute（`routes/standalone.<id>.tsx`。`StandaloneSetAnalyzerApp`に渡すだけ）、`app/standalone/engine-worker.ts`の`set:`への登録
   - 本体（`Body`）にはどのMultiにも同じprops（`SetBodyProps`）を渡し、使わないものは受け取らない。基準を選ぶ部品（`TargetItem`）を持つ定義にだけ、ホストが対象の選択へ基準の選択を差し込む。共有リンクには基準を持たないAnalyzerでも載せる
   - 行ごとの文脈（表示名・色・解決した配列名など）はホストが集合に対して決めた値を`SetRowSource`で定義の`rowContext`へ渡し、定義が本体向けの形にする。ホストはAnalyzer固有の値を知らない
   - 条件の要約・条件の編集・対象の名前の作り分けから除く項目は、定義の`conditionExcludeIds`に挙げる（N感度が振るN）
@@ -199,7 +199,7 @@ Analyzerの結び付け（各Analyzerの `definition.tsx`）が渡すもの:
 
 | 渡すもの | 中身 | ホストが出す場所 |
 |---|---|---|
-| 名前 | 画面に出すAnalyzer名（「Bigram Flow」「比較表」「N感度」） | ペインの見出し（Workspaceは見出しの先頭）、個別画面のh1、読み上げ用の名前、サイドバー |
+| 名前 | 画面に出すAnalyzer名（「Bigram Flow」「比較表」「指ごとの比較」「N感度」） | ペインの見出し（Workspaceは見出しの先頭）、個別画面のh1、読み上げ用の名前、サイドバー |
 | 短い説明 | 何を描くかを1〜2文で。操作の説明や経緯は書かない | 名前の横のⓘ（Workspaceは見出しの先頭） |
 | 本体 | 図・表を描くcomponent。抽出の結果・対象の入力・解析設定を受け取って描く | ペインの残りの領域いっぱい |
 | 解析設定 | 解析設定の項目を並べるcomponent。今の値を受け取り、変更を返す | 見出しの「解析設定」ボタンから開く小窓 |
@@ -263,7 +263,7 @@ Workspaceで並べたペインは、同じキー（Analyzerと見る量。例: `
 - モーダルの見出しの「すべて既定値に戻す」は、モーダルに行がある項目の全体の上書きと、対象が配列・Setupの時はその配列の上書きを、1コマンドで消す（行の無い項目、他の配列・Setupの上書きは消さない。配列の上書きだけがある時も押せる。元に戻すの1回で全部戻る）。Workspaceのペインでは「Workspaceの変更をすべて戻す」で、Workspaceの上書きだけを消す（全体と今の配列の上書きは、単体ページや他のWorkspaceにも入るので消さない）
 - Workspaceのレベルの値は、変えた項目として数える（出どころは「Workspaceで変更」）。比較表・N感度の共通の行は、全体の値にWorkspaceの値を重ねた値で、出どころもそのレベル。同じ配列・Setupでも、Workspaceが違えば数値が変わるので、出どころは必ず出す
 - 個別画面とWorkspaceで同じ部品を使う（`hosts/shared/ConditionSummary.tsx`）
-- 複数の対象を持つペイン（比較表・N感度）は、**共通の条件 + 差のある対象だけ**を出す。単一の対象のペインは変えない
+- 複数の対象を持つペイン（比較表・指ごとの比較・N感度）は、**共通の条件 + 差のある対象だけ**を出す。単一の対象のペインは変えない
   - 共通の行は**この画面で効く値**（対象ごとの上書きも、配列・物理配列ごとの既定も受けない時の値。全体のレベルの値、それも無ければ項目の既定値。指の割当は列固定）。対象の並びに依らず、最初の対象の値を共通として採らない。閉じた1行はこの共通の行だけを、上と同じ規則で数える。効く値が共通の行と違う対象があれば、末尾に「対象ごとに差あり」を添える
   - モーダルの中で、共通の行（出どころ付き）の下に「対象ごとの差」の節を置き、**効く値が共通の行と違う対象だけ**を、違う項目だけで並べる（例: 共通「ローマ字規則 訓令式（既定値）」に対し `大西配列: ローマ字規則=大西式`。全体をAZIKにしても大西配列は大西式のままなので、共通「AZIK（全体）」に対して差に出る）。全対象が共通の行と同じなら節を出さない。全対象が同じ値へ上書きしても、共通の行は画面の値のまま、全対象が差に出る。その項目が効かない対象は数えない
   - ペインが自分で掃引する項目（N感度の先読みN）は、共通の条件にも差にも出さない
@@ -279,6 +279,7 @@ Workspaceで並べたペインは、同じキー（Analyzerと見る量。例: `
 - 集合の対象は、付けた順ではなく一覧の順（組み込みの定義順 → 自作の配列 → Setup）に並べる。色は並びと別で、加えた順に配る（「表示名と色」）。並べ替えは将来、手持ちの配列の画面で一覧の順を変える形で持つ
 - **比較表の列の見出しによる並び替えは、集合の順とは別物。** 比較表の解析設定`sort`（`affects: 'view'`）で、見出しを押すたびに 昇順 → 降順 → 解除 と切り替わる。並べ替わるのは比較表の表示だけで、対象の集合の順（N感度と共有している値）は変えない。表に出ている値で並べ、最小の行の強調などはしない。既定は並び替えなし（一覧の順）。列の説明は、比較表の見出しのⓘ（Analyzerの名前の横）を押して開くモーダルに、比較表の説明・距離の単位u・全列の説明（列名と組。表示していない列も含む）をまとめて出す（列ごとのⓘや浮かせる説明は、見出しの幅を食い、長い説明が画面や入れ物に収まらないので使わない。モーダルはdialog自体をスクロールさせず本文だけがスクロールし、本文はキーボードのフォーカスを受ける。他のAnalyzerのⓘは今の小窓のまま。定義はspec §11の言い方で、内部の語を使わない）
 - 対象が空のペインには説明文を置かず、「配列・Setupを選ぶ」ボタンだけを置く（押すと見出しから開くのと同じ選択が開く）。パソコン幅では、空のペインを開いた直後に選択を自動で開く。フォーカスは奪わず、一度閉じたらそのペインでは出し直さない。スマホ幅のシートは画面を覆うので自動では出さない
+- **指ごとの比較（配列×指のマトリックス）の列の見出しも、比較表と同じ並び替えの部品（`ui/primitives/sort-column-header.tsx`・`column-sort.ts`）を使う。** 解析設定`sort`は表の表示だけを変え、列のidは指か指の組。指の面（押下数・移動距離・同指連続の5面）どうしでは同じ指の列が並ぶので、面を切り替えても並び替えを保つ。今の面に無い列で並べている時は、並び替えていない状態として扱う。表に出る値（押下数と移動距離は入力1文字あたり）で並べ、値を持たない行（計算中・失敗・分母が0）は末尾に置く。最小の行や列の強調、値に応じたセルの塗り分けはしない。見る量（`surface`）は表示だけの設定で、切り替えても抽出は走り直さない
 - Analyzerは、対象の選択に自分だけの項目を差し込める（「Analyzerがペインに渡すもの」）。比較表の「基準にする対象」がこれで、値の持ち主が対象の集合なので、解析設定ではなく対象の選択の中に置く
 
 #### 個別画面どうしで共有する対象
