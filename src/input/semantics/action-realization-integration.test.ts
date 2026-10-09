@@ -31,6 +31,7 @@ const composition = fromFaces('action-composition', 'action-composition', [{
   mode: 'simultaneous',
   rows: ['', '', ['', '', 'y', 'x'], ''],
   inputRole: 'composition',
+  compositionAggregation: 'combo',
   triggerPersistence: 'hold-capable',
 }]);
 

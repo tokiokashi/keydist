@@ -51,7 +51,7 @@ function faceTriggerText(layout: Layout, face: Face, standard: PhysicalKeyboardS
     ?? triggerChordsDisplayText(layout, displayTriggerAlternatives(face), standard);
 }
 
-/** 面として宣言されたコンボ。面を持たない配列は空。 */
+/** コンボ枠に計上すると宣言された面。面を持たない配列は空。 */
 function faceCombos(layout: Layout): readonly Face[] {
   return (layout.faces?.length ?? 0) === 0 ? [] : classifyPresentationFaces(layout).combos;
 }
@@ -69,8 +69,8 @@ export function modifierRows(layout: Layout): ModifierRow[] {
 }
 
 /**
- * コンボ表の行。配列に定義されたコンボ定義（仕様 §11.8の `B`）を1件ずつ並べ、
- * 面として宣言されたコンボは面ごとに1行を足す。
+ * コンボ表の行。配列のコンボ定義を1件ずつ並べ、コンボ枠に計上すると宣言された面は
+ * 面ごとに1行を足す（面の行は複数の出力をまとめるので、行数は仕様 §11.8の `B` と一致しない）。
  */
 export function comboRows(layout: Layout, standard: PhysicalKeyboardStandard | undefined): ComboRow[] {
   const faceRows = faceCombos(layout).map((face): ComboRow => ({
@@ -85,7 +85,7 @@ export function comboRows(layout: Layout, standard: PhysicalKeyboardStandard | u
 }
 
 /**
- * コンボの配列図の材料。面として宣言されたコンボは面ごとに1枚。コンボ定義は、
+ * コンボの配列図の材料。コンボ枠に計上すると宣言された面は面ごとに1枚。コンボ定義は、
  * 同じ組・同じ押し方で別のキーを押すものを1枚にまとめる。
  */
 export function comboDiagramItems(layout: Layout, standard: PhysicalKeyboardStandard | undefined): ComboDiagramItem[] {

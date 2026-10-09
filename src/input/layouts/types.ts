@@ -2,6 +2,7 @@ import {
   canonicalInputAlternativeIdentity,
   compileFaceSemanticInputs,
   compileSequenceInputAlternative,
+  faceAggregatesAsCombo,
   mapInputAlternativePhysicalKeys,
   validateBaseActionRealization,
   validateCanonicalInputMap,
@@ -57,6 +58,12 @@ export interface Face {
   role?: 'layer' | 'modifier';
   /** authoring時に明示する入力意味。fromFacesは値を推測しない。 */
   inputRole?: InputRole;
+  /**
+   * compositionの面の打鍵を層とコンボ枠のどちらへ計上するか（仕様 §11.10）。
+   * compositionの面は必ず明示し、それ以外の面は持たない。triggerが2キー以上の面は'combo'に限る。
+   * 'layer'の面は、triggerのキーごとに1つの層になる。
+   */
+  compositionAggregation?: LayerKind;
   /** triggerの持続能力。FaceModeとは独立し、triggerを持つcanonical Faceでは明示する。 */
   triggerPersistence?: TriggerPersistence;
   /**
@@ -84,7 +91,7 @@ export interface Face {
   presentationTriggerAlternatives?: PresentationTriggerAlternatives;
   /** trigger集合の表示文言。physical key集合から導出不能な表記だけ明示する。 */
   presentationTriggerText?: string;
-  /** 入力方式・層のpresentation-only名称。semantic classificationには使わない。composition Faceでは指定不可。 */
+  /** 入力方式・層のpresentation-only名称。semantic classificationには使わない。コンボ枠に計上するFaceでは指定不可。 */
   presentationLabel?: string;
 }
 
@@ -423,10 +430,10 @@ export function fromFaces(
         `triggerを持つFaceはtriggerPersistenceを明示する必要がある（face:${faceIndex}）`,
       );
     }
-    const isCombo = face.inputRole === 'composition';
+    const isCombo = faceAggregatesAsCombo(face);
     if (isCombo && face.presentationLabel !== undefined) {
       throw new Error(
-        `composition FaceではpresentationLabelを指定できない（face:${faceIndex}）`,
+        `コンボ枠に計上するFaceにはpresentationLabelを指定できない（face:${faceIndex}）`,
       );
     }
     const layerId = isCombo

@@ -29,8 +29,8 @@ test('Face authoring layer validationは各authoring invariantを個別に検証
   }[] = [
     {
       name: 'composition + layer',
-      faces: [face(['k'], 'd', { inputRole: 'composition' })],
-      expected: /コンボ面にはレイヤーを宣言できない/,
+      faces: [face(['k'], 'd', { inputRole: 'composition', compositionAggregation: 'combo' })],
+      expected: /コンボ枠に計上する面にはレイヤーを宣言できない/,
     },
     {
       name: 'presentation role混在',

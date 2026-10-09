@@ -39,14 +39,15 @@ export function singleDisciplineContext(
 }
 
 /**
- * レイヤーを3つ（単打・左親指・右親指）とコンボを持つ組み込みの配列（新小梅）で、
- * 3つのレイヤーとコンボのどれにも押下がつくテキスト（「ぴ」がコンボ）を打った材料。
+ * 単打・行指定キーの面のレイヤーと、コンボ枠を持つ組み込みの配列（かわせみ配列+）で、
+ * 単打・行指定キーの面のレイヤー・コンボ枠のどれにも押下がつくテキスト
+ * （「く」が行指定キーの面、「あい」がコンボ）を打った材料。
  * レイヤーやコンボの中身を読む`extract`が、表示だけの設定に依存していないかを確かめるのに使う。
  */
 export function layerComboDisciplineContext(): ReturnType<typeof singleDisciplineContext> {
-  const layout = LAYOUT_BY_ID.get('shin-koume');
-  if (layout === undefined) throw new Error('組み込みの配列「shin-koume」が見つかりません');
-  return singleDisciplineContext(layout, 'あいうえおぴがぎ');
+  const layout = LAYOUT_BY_ID.get('kawasemi-plus');
+  if (layout === undefined) throw new Error('組み込みの配列「kawasemi-plus」が見つかりません');
+  return singleDisciplineContext(layout, 'あいうえおかくが');
 }
 
 /** QWERTYで左右の手をまたぐ短いテキストを打った材料。レイヤーとコンボには依らない`extract`の検査に使う。 */

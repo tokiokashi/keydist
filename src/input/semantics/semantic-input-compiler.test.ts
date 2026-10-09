@@ -27,7 +27,7 @@ const face = (
   entries: Record<string, string>,
   options: Partial<Pick<
     Face,
-    'layer' | 'inputRole' | 'triggerPersistence' | 'modifierGroups' | 'triggerOrder' | 'presentationCells'
+    'layer' | 'inputRole' | 'compositionAggregation' | 'triggerPersistence' | 'modifierGroups' | 'triggerOrder' | 'presentationCells'
   >> = {},
 ): Face => ({
   ...faceFromEntries(trigger, mode, entries),
@@ -220,7 +220,7 @@ test('triggerなしFaceを単打SemanticInputへcompileする', () => {
 
 test('triggerless compositionはexplicit author intentを優先してcomboへcompileする', () => {
   const [input] = compileFaceSemanticInputs([
-    face([], 'simultaneous', { a: 'きゃ' }, { inputRole: 'composition' }),
+    face([], 'simultaneous', { a: 'きゃ' }, { inputRole: 'composition', compositionAggregation: 'combo' }),
   ]);
 
   assert.equal(input.aggregationGroupId, 'combo');
@@ -312,6 +312,7 @@ test('hold-capable Faceはtrigger集合全体をwhile-held Capabilityへ写像�
   const [input] = compileFaceSemanticInputs([
     face(['k', 'd'], 'simultaneous', { j: 'x' }, {
       inputRole: 'composition',
+      compositionAggregation: 'combo',
       triggerPersistence: 'hold-capable',
     }),
   ]);
@@ -468,6 +469,7 @@ test('subset / superset physicalKeysは別SemanticInputとして共存できる'
     face(['d'], 'simultaneous', { h: 'へ' }, { layer: '中指シフト' }),
     face(['d', 'h'], 'simultaneous', { j: 'じゃ' }, {
       inputRole: 'composition',
+      compositionAggregation: 'combo',
     }),
   ]);
 
@@ -489,12 +491,14 @@ test('authoring上のtrigger順にcanonical field orderが依存しない', () =
   const first = compileFaceSemanticInputs([
     face(['k', 'd'], 'simultaneous', { j: 'x' }, {
       inputRole: 'composition',
+      compositionAggregation: 'combo',
       triggerPersistence: 'hold-capable',
     }),
   ]);
   const second = compileFaceSemanticInputs([
     face(['d', 'k'], 'simultaneous', { j: 'x' }, {
       inputRole: 'composition',
+      compositionAggregation: 'combo',
       triggerPersistence: 'hold-capable',
     }),
   ]);
@@ -525,6 +529,7 @@ test('canonical sortはlocale非依存のcode-unit順を使う', () => {
   const [input] = compileFaceSemanticInputs([
     face(['ä', 'Z'], 'simultaneous', { a: 'x' }, {
       inputRole: 'composition',
+      compositionAggregation: 'combo',
       triggerPersistence: 'hold-capable',
     }),
   ]);
@@ -754,6 +759,7 @@ test('composition Faceはclassificationをcanonicalへ保持する', () => {
   const [input] = compileFaceSemanticInputs([
     face(['d', 'k'], 'simultaneous', { j: 'x' }, {
       inputRole: 'composition',
+      compositionAggregation: 'combo',
       triggerPersistence: 'single',
     }),
   ]);

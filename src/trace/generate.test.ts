@@ -700,15 +700,16 @@ test('youonOnlyしかない長い見出しは拗音外でeligibleにならず短
 });
 
 
-test('Face compositionがselectedされた場合は同outputのwithCombos定義をcombo hitに数えない', () => {
+test('層に計上するFace compositionがselectedされた場合は、同outputのwithCombos定義をcombo hitに数えない', () => {
   const base = fromFaces('combo-origin-selection', 'combo-origin-selection', [
     {
       ...faceFromEntries([], 'simultaneous', { f: 'a', j: 'b' }),
       inputRole: 'layer',
     },
     {
-      ...faceFromEntries(['d', 'k'], 'simultaneous', { q: 'x' }),
+      ...faceFromEntries(['d'], 'simultaneous', { q: 'x' }),
       inputRole: 'composition',
+      compositionAggregation: 'layer',
       triggerPersistence: 'single',
     },
   ]);
@@ -725,8 +726,41 @@ test('Face compositionがselectedされた場合は同outputのwithCombos定義�
 
   const trace = generateTrace('x', layout, geometry, opts());
   assert.deepEqual(trace.comboHits, []);
+  assert.equal(trace.comboDefinitions, 1);
   assert.deepEqual(
     trace.strokes[0].presses.flatMap((press) => press.keys.map((key) => key.id)).sort(),
-    ['d', 'k', 'q'],
+    ['d', 'q'],
   );
+});
+
+test('コンボ枠に計上するFace compositionの出力は、定義数B・命中数U・延べ回数Hに数える', () => {
+  const faces = [
+    {
+      ...faceFromEntries([], 'simultaneous', { f: 'a', j: 'b' }),
+      inputRole: 'layer' as const,
+    },
+    {
+      ...faceFromEntries(['d', 'k'], 'simultaneous', { q: 'x', w: 'y' }),
+      inputRole: 'composition' as const,
+      compositionAggregation: 'combo' as const,
+      triggerPersistence: 'single' as const,
+    },
+    {
+      ...faceFromEntries(['d'], 'simultaneous', { e: 'z' }),
+      inputRole: 'composition' as const,
+      compositionAggregation: 'layer' as const,
+      triggerPersistence: 'single' as const,
+    },
+  ];
+  const layout = fromFaces('combo-frame-count', 'combo-frame-count', faces);
+
+  // 面の数ではなく出力の数で数える。層に計上する面の出力zはBに入らない
+  const trace = generateTrace('xxaz', layout, geometry, opts());
+  assert.equal(trace.comboDefinitions, 2);
+  assert.deepEqual(trace.comboHits, ['x', 'x']);
+  assert.ok(trace.comboDefinitions >= new Set(trace.comboHits).size);
+
+  // コンボ定義の見出しと重なる出力は、見出しごとに1件で数える
+  const withDefinition = withCombos('combo-frame-count-2', 'combo-frame-count-2', layout, [['x', ['a', 'b']]]);
+  assert.equal(generateTrace('a', withDefinition, geometry, opts()).comboDefinitions, 2);
 });

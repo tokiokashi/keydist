@@ -1,3 +1,4 @@
+import { faceAggregatesAsCombo } from '../semantics/index.ts';
 import { faceCells, handOfKey, type Hand } from './face-geometry.ts';
 import type { Face } from './types.ts';
 
@@ -73,9 +74,14 @@ export function validateFaceAuthoring(faces: readonly Face[]): void {
 
   for (const [faceIndex, face] of faces.entries()) {
     validatePresentationMetadata(face, faceIndex);
-    if (face.inputRole === 'composition') {
-      if (face.layer !== undefined) throw new Error('コンボ面にはレイヤーを宣言できない');
+    if (faceAggregatesAsCombo(face)) {
+      if (face.layer !== undefined) throw new Error('コンボ枠に計上する面にはレイヤーを宣言できない');
       continue;
+    }
+    if (face.inputRole === 'composition' && new Set(face.trigger).size !== 1) {
+      throw new Error(
+        `compositionの面をレイヤーに計上できるのはtriggerが1キーの面だけ（face:${faceIndex}）`,
+      );
     }
     if (face.layer === undefined) continue;
     const group = groups.get(face.layer);

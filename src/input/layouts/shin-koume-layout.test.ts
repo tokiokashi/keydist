@@ -26,7 +26,7 @@ test('シン蜂蜜小梅は作者定義の代表配字を保持する', () => {
   assertKanaLayout(layout);
 });
 
-test('親指shiftはlayer + single、文字キーcomboはcomposition + singleとして区別する', () => {
+test('親指shiftはlayer + single、文字キーの同時押しはcomposition + singleとして区別する', () => {
   const shifted = layout.faces!.filter((face) =>
     face.trigger.includes('thumb-l') || face.trigger.includes('thumb-r'));
   assert.equal(shifted.length, 2);
@@ -46,16 +46,19 @@ test('親指shiftはlayer + single、文字キーcomboはcomposition + singleと
   assert.ok(composition.participations.every((p) => !p.roles.includes('held-trigger')));
 });
 
-test('文字compositionは表示・集計でも通常layerではなくcomboへ帰属する', () => {
+test('文字compositionは表示・集計でも、コンボ枠ではなくトリガーのキーごとの層へ帰属する', () => {
   const groups = classifyPresentationFaces(layout);
-  assert.ok(groups.combos.length > 0);
-  assert.ok(groups.combos.every((face) => face.inputRole === 'composition'));
-  assert.ok(groups.layers.flatMap((group) => group.faces)
-    .every((face) => face.inputRole !== 'composition'));
-  assert.equal(
-    layout.canonicalInputs.get('ぱ')?.[0]?.semanticInputs[0].aggregationGroupId,
-    COMBO_LAYER_ID,
-  );
+  assert.equal(groups.combos.length, 0);
+  const compositionFaces = layout.faces!.filter((face) => face.inputRole === 'composition');
+  assert.equal(compositionFaces.length, 14);
+  const layerIds = compositionFaces.map((face) => layout.faceLayerIds!.get(face));
+  assert.equal(new Set(layerIds).size, 14);
+  assert.ok(layerIds.every((id) => id !== undefined && id !== COMBO_LAYER_ID));
+  assert.equal(layout.layerDefinitions?.some((definition) => definition.kind === 'combo'), false);
+  // 同じ「ぱ」でも、帰属先はトリガーhの面の層になる
+  const aggregation = layout.canonicalInputs.get('ぱ')?.[0]?.semanticInputs[0].aggregationGroupId;
+  assert.notEqual(aggregation, COMBO_LAYER_ID);
+  assert.equal(aggregation, layout.faceLayerIds!.get(compositionFaces.find((face) => face.trigger[0] === 'h')!));
 });
 
 test('breakOnTriggerOnly=trueでも文字compositionをshift扱いでChainから除外しない', () => {

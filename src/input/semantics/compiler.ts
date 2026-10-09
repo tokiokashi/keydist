@@ -253,12 +253,38 @@ const assertCanonicalInput = (input: Pick<
   }
 };
 
+/**
+ * 面の打鍵をコンボ枠へ帰属させるか。compositionの面は、層とコンボ枠のどちらかを
+ * 面が明示する。triggerのキー数や手の左右からは決めない。
+ */
+export const faceAggregatesAsCombo = (face: Face): boolean => {
+  if (face.inputRole !== 'composition') {
+    if (face.compositionAggregation !== undefined) {
+      throw new Error('compositionAggregationはinputRoleがcompositionの面だけが持てる');
+    }
+    return false;
+  }
+  if (face.compositionAggregation === undefined) {
+    throw new Error('compositionの面はcompositionAggregationを明示する必要がある');
+  }
+  return face.compositionAggregation === 'combo';
+};
+
+/**
+ * コンボ枠の見出しとして命中を数えるpathか（仕様 §11.8）。
+ * 1ステップで、コンボ枠に帰属する、コンボ定義か面から作ったpathに限る。
+ */
+export const isComboFrameAlternative = (alternative: InputAlternative): boolean =>
+  (alternative.origin === 'combo' || alternative.origin === 'face')
+  && alternative.semanticInputs.length === 1
+  && alternative.semanticInputs[0].aggregationGroupId === 'combo';
+
 const normalizedAggregationGroupId = (
   face: Face,
   faceIndex: number,
   triggerKeys: readonly PhysicalKeyId[],
 ): string => {
-  if (face.inputRole === 'composition') return 'combo';
+  if (faceAggregatesAsCombo(face)) return 'combo';
   if (triggerKeys.length === 0) return 'single';
   if (face.layer !== undefined) return `layer:${face.layer}`;
   return `face:${faceIndex}`;

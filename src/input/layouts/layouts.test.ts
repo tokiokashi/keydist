@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { buildGeometry } from '../shapes/geometry.ts';
 import { mapInputAlternativePhysicalKeys } from '../semantics/index.ts';
 import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
-import { faceFromEntries, fromFaces, fromRows, LAYOUT_BY_ID, LAYOUTS, LAYOUTS_JA, withCombos, type Face } from './index.ts';
+import { COMBO_LAYER_ID, faceFromEntries, fromFaces, fromRows, LAYOUT_BY_ID, LAYOUTS, LAYOUTS_JA, withCombos, type Face } from './index.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { SAMPLE_TEXT_JA } from '../text/sample-ja.ts';
 import { toLayout } from './user-layouts.ts';
@@ -44,7 +44,7 @@ test('面の展開後も各ステップの層帰属を保持する', () => {
     { trigger: [], mode: 'simultaneous', rows: faceAtF('あ'), inputRole: 'layer' },
     { trigger: ['d'], mode: 'prefix', rows: faceAtF('か'), layer: '中指', inputRole: 'modifier', triggerPersistence: 'single' },
     { trigger: ['j'], mode: 'prefix', rows: faceAtF('さ'), layer: '人差指', inputRole: 'modifier', triggerPersistence: 'single' },
-    { trigger: ['k', 'l'], mode: 'simultaneous', rows: faceAtF('た'), inputRole: 'composition', triggerPersistence: 'single' },
+    { trigger: ['k', 'l'], mode: 'simultaneous', rows: faceAtF('た'), inputRole: 'composition', compositionAggregation: 'combo', triggerPersistence: 'single' },
   ]);
   const trace = generateTrace('あかさた', layout, buildGeometry('row-staggered'), DEFAULT_TRACE_POLICY);
 
@@ -134,6 +134,7 @@ test('triggerless compositionはcanonicalとpresentationの両方でcomboへ帰�
     mode: 'simultaneous',
     rows: faceAtF('きゃ'),
     inputRole: 'composition',
+    compositionAggregation: 'combo',
   };
   const layout = fromFaces('triggerless-composition', 'triggerless-composition', [face]);
 
@@ -371,6 +372,7 @@ test('presentation分類はcompiled aggregation metadataをauthorityにする', 
   const semanticCompositionMappedAsLayer: Face = {
     ...faceFromEntries(['f'], 'simultaneous', { j: 'あ' }),
     inputRole: 'composition',
+    compositionAggregation: 'combo',
     role: 'modifier',
   };
   const mappedLayer = {
@@ -1119,21 +1121,70 @@ test('同一aggregationで片側だけpresentationLabelなら順序によらずc
 });
 
 
-test('composition FaceのpresentationLabelはsilent ignoreせずrejectする', () => {
+test('コンボ枠に計上するcomposition FaceのpresentationLabelはsilent ignoreせずrejectする', () => {
   const face: Face = {
     ...faceFromEntries(['d'], 'simultaneous', { j: '甲' }),
     inputRole: 'composition',
+    compositionAggregation: 'combo',
     triggerPersistence: 'single',
     presentationLabel: 'Custom Combo',
   };
 
   assert.throws(
     () => fromFaces('composition-presentation-label', 'composition-presentation-label', [face]),
-    /composition FaceではpresentationLabelを指定できない/,
+    /コンボ枠に計上するFaceにはpresentationLabelを指定できない/,
   );
 });
 
 test('組み込み配列の名前はすべて異なる（配列を選ぶ一覧・並べた時の名前で見分けられる）', () => {
   const names = [...LAYOUT_BY_ID.values()].map((layout) => layout.name);
   assert.equal(new Set(names).size, names.length, names.join(', '));
+});
+
+test('composition Faceは層とコンボ枠のどちらに計上するかを明示する。推測しない', () => {
+  const base = faceFromEntries(['d'], 'simultaneous', { j: '甲' });
+  const layerFace: Face = {
+    ...base,
+    inputRole: 'composition',
+    compositionAggregation: 'layer',
+    triggerPersistence: 'single',
+  };
+  const comboFace: Face = { ...layerFace, compositionAggregation: 'combo' };
+
+  const layerLayout = fromFaces('composition-layer', 'composition-layer', [layerFace]);
+  const comboLayout = fromFaces('composition-combo', 'composition-combo', [comboFace]);
+  assert.equal(layerLayout.faceLayerIds?.get(layerFace), 'face:0');
+  assert.equal(comboLayout.faceLayerIds?.get(comboFace), COMBO_LAYER_ID);
+  // どちらも打鍵の意味（composition）は同じで、帰属先だけが違う
+  const layerInput = layerLayout.canonicalInputs.get('甲')?.[0]?.semanticInputs[0];
+  const comboInput = comboLayout.canonicalInputs.get('甲')?.[0]?.semanticInputs[0];
+  assert.ok(layerInput?.classifications.includes('composition'));
+  assert.ok(comboInput?.classifications.includes('composition'));
+  assert.equal(layerInput?.aggregationGroupId, 'face:0');
+  assert.equal(comboInput?.aggregationGroupId, COMBO_LAYER_ID);
+  assert.equal(layerLayout.layerDefinitions?.some((definition) => definition.kind === 'combo'), false);
+
+  const { compositionAggregation: _omitted, ...undeclared } = layerFace;
+  assert.throws(
+    () => fromFaces('composition-undeclared', 'composition-undeclared', [undeclared]),
+    /compositionAggregationを明示する必要がある/,
+  );
+  assert.throws(
+    () => fromFaces('layer-with-aggregation', 'layer-with-aggregation', [{
+      ...base,
+      inputRole: 'layer',
+      compositionAggregation: 'layer',
+      triggerPersistence: 'single',
+    }]),
+    /inputRoleがcompositionの面だけが持てる/,
+  );
+  assert.throws(
+    () => fromFaces('multi-trigger-layer', 'multi-trigger-layer', [{
+      ...faceFromEntries(['d', 'k'], 'simultaneous', { j: '甲' }),
+      inputRole: 'composition',
+      compositionAggregation: 'layer',
+      triggerPersistence: 'single',
+    }]),
+    /triggerが1キーの面だけ/,
+  );
 });

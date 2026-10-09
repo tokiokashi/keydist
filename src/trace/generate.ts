@@ -14,6 +14,7 @@ import {
   DEFAULT_ACTION_REALIZATION_POLICY,
   DEFAULT_TRIGGER_REALIZATION_POLICY,
   inputAlternativeSelectionIdentity,
+  isComboFrameAlternative,
   realizeTriggerActions,
   type ActionRealizationPolicy,
   type InputAlternative,
@@ -141,6 +142,24 @@ export interface Trace {
 }
 
 /**
+ * コンボ枠の見出しの数（仕様 §11.8の `B`）。コンボ定義の数に、コンボ枠に帰属する面の出力のうち
+ * コンボ定義の見出しと重ならないものを見出しごとに1件足す。
+ */
+function comboFrameHeadingCount(layout: Layout): number {
+  const definitions = layout.resolvedComboDefinitions ?? [];
+  const definedHeadings = new Set(definitions.map((combo) => combo.output));
+  let faceHeadings = 0;
+  for (const [output, alternatives] of layout.canonicalInputs) {
+    if (definedHeadings.has(output)) continue;
+    if (alternatives.some((alternative) =>
+      alternative.origin === 'face' && isComboFrameAlternative(alternative))) {
+      faceHeadings++;
+    }
+  }
+  return definitions.length + faceHeadings;
+}
+
+/**
  * 仕様 §9。テキストを打鍵ステップ列へ展開し、各押下の移動距離を求める。
  *
  * realized Stroke gap = 0 → d_stay（同指連続。戻る時間がない）
@@ -173,8 +192,7 @@ export function generateTrace(
   const errors: string[] = [];
   const seen = new Set<string>();
   const comboHits: string[] = [];
-  const resolvedComboDefinitions = layout.resolvedComboDefinitions ?? [];
-  const comboDefinitions = resolvedComboDefinitions.length;
+  const comboDefinitions = comboFrameHeadingCount(layout);
   const layerDefinitions: LayerDefinition[] = layout.layerDefinitions === undefined
     ? [{ id: SINGLE_LAYER_ID, kind: 'layer', label: '単打' }]
     : layerDefinitionsWithLabels(layout);
@@ -263,7 +281,7 @@ export function generateTrace(
       geometry,
       options,
     );
-    if (selectedAlternative.origin === 'combo') comboHits.push(char);
+    if (isComboFrameAlternative(selectedAlternative)) comboHits.push(char);
 
     const realized = realizeTriggerActions(
       selectedAlternative.baseRealizations,
