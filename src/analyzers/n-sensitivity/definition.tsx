@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { N_SENSITIVITY_RANGE, nSensitivityDefinition, type NSensitivityExtracted, type NSensitivitySeries, type NSensitivitySeriesFailed } from './extract.ts';
-import { DEFAULT_N_SENSITIVITY_OPTIONS, type NSensitivityOptions } from './options.ts';
+import { DEFAULT_N_SENSITIVITY_OPTIONS, nSensitivityOptions, type NSensitivityOptions } from './options.ts';
 import { bindOption, RadioOptionField } from '#ui/primitives/option-fields.tsx';
 import { N_SENSITIVITY_PANE_META } from './pane-meta.ts';
 import { computeYRange, formatYTicks } from './y-range.ts';
@@ -18,7 +18,7 @@ import {
   type MeasureText,
 } from './legend-placement.ts';
 import { isStrokeOnlyMark, targetMarkPath, TARGET_DASH_ARRAY, targetMark, type TargetMark } from '#ui/theme/target-marks.ts';
-import type { AnalyzerPaneParts, AnalyzerSettingsProps } from '../pane-parts.tsx';
+import type { AnalyzerSettingsProps, SetAnalyzerPaneParts, SetBodyProps } from '../pane-parts.tsx';
 import './n-sensitivity-view.css';
 
 /**
@@ -73,13 +73,7 @@ export interface NSensitivityRowContext {
   readonly mark: TargetMark;
 }
 
-export interface NSensitivityBodyProps {
-  readonly extracted: NSensitivityExtracted;
-  /** 表示順（対象keyの列）。ホストが持つ集合の並び順。 */
-  readonly order: readonly string[];
-  readonly rowContext: ReadonlyMap<string, NSensitivityRowContext>;
-  readonly options: NSensitivityOptions;
-}
+export type NSensitivityBodyProps = SetBodyProps<NSensitivityExtracted, NSensitivityOptions, NSensitivityRowContext>;
 
 function seriesFor(series: readonly NSensitivitySeries[], targetKey: string): NSensitivitySeries | undefined {
   return series.find((item) => item.targetKey === targetKey);
@@ -571,4 +565,21 @@ export const nSensitivityAnalyzer = {
   Body: NSensitivityBody,
   Settings: NSensitivitySettings,
   defaultOptions: DEFAULT_N_SENSITIVITY_OPTIONS,
-} satisfies AnalyzerPaneParts<typeof nSensitivityDefinition, NSensitivityOptions, NSensitivityBodyProps>;
+  urlOptions: nSensitivityOptions,
+  rowContext: ({ targetKey, label, fullName, header, color, mark }) => {
+    if (color === undefined || mark === undefined) return undefined;
+    return {
+      targetKey,
+      label,
+      fullName,
+      // 対象を解決できなかった行は、配列の欄に完全な名前を出し、物理配列と指割当は不明として示す
+      layoutName: header?.layoutName ?? fullName,
+      geometryName: header?.shapeName ?? '—',
+      fingerAssignmentName: header?.fingerAssignmentName ?? '—',
+      color,
+      mark,
+    };
+  },
+  // Nはこのペイン自身が掃引する軸なので、条件からは除く
+  conditionExcludeIds: ['windowSize'],
+} satisfies SetAnalyzerPaneParts<NSensitivityOptions, NSensitivityExtracted, NSensitivityRowContext>;

@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { N_SENSITIVITY_PANE_META } from '#analyzers/n-sensitivity/pane-meta.ts';
-import { StandaloneNSensitivityApp } from '#app/standalone/StandaloneNSensitivityApp.tsx';
+import { nSensitivityAnalyzer } from '#analyzers/n-sensitivity/definition.tsx';
+import { StandaloneSetAnalyzerApp } from '#app/standalone/StandaloneSetAnalyzerApp.tsx';
 
 /**
  * N感度単体ページのroute。`standalone.comparison.tsx`と同じ形
@@ -17,5 +18,5 @@ export const Route = createFileRoute('/standalone/n-sensitivity')({
       },
     ],
   }),
-  component: StandaloneNSensitivityApp,
+  component: () => <StandaloneSetAnalyzerApp analyzer={nSensitivityAnalyzer} />,
 });

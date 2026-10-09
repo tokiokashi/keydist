@@ -1,15 +1,13 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import type { WorkspacePane } from '#engine/workspace.ts';
-import { comparisonDefinition } from '#analyzers/comparison/extract.ts';
-import { nSensitivityDefinition } from '#analyzers/n-sensitivity/extract.ts';
 import { ErrorDetails } from '#hosts/shared/ErrorDetails.tsx';
 import { describeErrorDetail } from '#hosts/shared/pane-status.ts';
 import { findWorkspaceAnalyzer, isBlankPane } from './analyzer-registry.ts';
 import { SingleAnalyzerWorkspacePane } from './panes/SingleAnalyzerWorkspacePane.tsx';
 import { findSingleAnalyzer } from './single-analyzers.ts';
 import { BlankWorkspacePane } from './panes/BlankWorkspacePane.tsx';
-import { ComparisonWorkspacePane } from './panes/ComparisonWorkspacePane.tsx';
-import { NSensitivityWorkspacePane } from './panes/NSensitivityWorkspacePane.tsx';
+import { SetAnalyzerWorkspacePane } from './panes/SetAnalyzerWorkspacePane.tsx';
+import { findSetAnalyzer } from './set-analyzers.ts';
 import type { WorkspacePaneRuntime } from './pane-runtime.ts';
 
 /**
@@ -47,14 +45,9 @@ export function WorkspacePaneView({
 function AnalyzerPane({ pane, runtime }: { readonly pane: WorkspacePane; readonly runtime: WorkspacePaneRuntime }) {
   const single = findSingleAnalyzer(pane.analyzerId);
   if (single !== undefined) return <SingleAnalyzerWorkspacePane analyzer={single} pane={pane} runtime={runtime} />;
-  switch (pane.analyzerId) {
-    case comparisonDefinition.id:
-      return <ComparisonWorkspacePane pane={pane} runtime={runtime} />;
-    case nSensitivityDefinition.id:
-      return <NSensitivityWorkspacePane pane={pane} runtime={runtime} />;
-    default:
-      return null;
-  }
+  const set = findSetAnalyzer(pane.analyzerId);
+  if (set !== undefined) return <SetAnalyzerWorkspacePane analyzer={set} pane={pane} runtime={runtime} />;
+  return null;
 }
 
 function PaneNotice({

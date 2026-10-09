@@ -1,9 +1,8 @@
 import { useMemo } from 'react';
 import type { ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { setStandaloneAnalyzerOptionsCommand } from '#engine/commands.ts';
-import { comparisonAnalyzer } from '#analyzers/comparison/definition.tsx';
-import type { ComparisonOptions } from '#analyzers/comparison/options.ts';
-import { ComparisonStandalonePage } from '#hosts/standalone/index.ts';
+import type { SetAnalyzerPaneParts } from '#analyzers/pane-parts.tsx';
+import { SetAnalyzerStandalonePage } from '#hosts/standalone/index.ts';
 import { paneCatalog } from './catalog.ts';
 import { sharedEngineComputer } from './engine-computer.ts';
 import { generatePresetId, generateTextId } from './id-generator.ts';
@@ -15,28 +14,32 @@ import { useDebouncedCommit } from './use-debounced-commit.ts';
 import { useTextContentCommit } from './use-text-content-commit.ts';
 
 /**
- * 比較表単体ページの組み立て（`StandaloneSingleAnalyzerApp.tsx`と同じ形）。
+ * 対象の集合を見るAnalyzer（Set）の単体ページの組み立て（`StandaloneSingleAnalyzerApp.tsx`と同じ形）。
+ * Analyzerは引数で受け取り、各routeが自分のAnalyzerを渡す。
  *
  * 計算の窓口は他の単体ページと共有する（`engine-computer.ts`。ブラウザではWorker）。
  */
-const decodeComparisonOptions = (raw: unknown) => comparisonAnalyzer.definition.decodeOptions(raw, []);
-
-export function StandaloneComparisonApp() {
+export function StandaloneSetAnalyzerApp<Options, Extracted, RowContext>({
+  analyzer,
+}: {
+  readonly analyzer: SetAnalyzerPaneParts<Options, Extracted, RowContext>;
+}) {
+  const decodeOptions = (raw: unknown) => analyzer.definition.decodeOptions(raw, []);
   const { assets, ready, dispatch, getAssets, canUndo, canRedo, undo, redo } = useKeydistAssets();
   const catalog = useMemo(() => paneCatalog(assets), [assets.userLayouts, assets.userRomajiRules]);
 
   // 保存先へ書いた値を記録し、解析設定の下書きが自分の保存の反響を見分けるのに使う
   const writeLogs = useMemo(createOptionsWriteLogs, []);
-  const commitComparisonOptions = useDebouncedCommit<ComparisonOptions>(dispatch, {
+  const commitOptions = useDebouncedCommit<Options>(dispatch, {
     onWrite: (options) => writeLogs.forKey(STANDALONE_WRITE_LOG_KEY).record(options),
-    commandFor: (options) => setStandaloneAnalyzerOptionsCommand(comparisonAnalyzer.definition.id, options),
+    commandFor: (options) => setStandaloneAnalyzerOptionsCommand(analyzer.definition.id, options),
   });
 
   const commitTextContent = useTextContentCommit(dispatch, getAssets, generateTextId);
 
-  const addToWorkspace = useAddToWorkspace(comparisonAnalyzer.definition.id, decodeComparisonOptions, dispatch, getAssets, () => {
+  const addToWorkspace = useAddToWorkspace(analyzer.definition.id, decodeOptions, dispatch, getAssets, () => {
     commitTextContent.flush();
-    commitComparisonOptions.flush();
+    commitOptions.flush();
   });
 
   // 間引き待ちの変更を先に書いてから戻す。待ち中の値を残したまま戻すと、戻した後にその値が
@@ -46,19 +49,20 @@ export function StandaloneComparisonApp() {
     canRedo,
     undo: () => {
       commitTextContent.flush();
-      commitComparisonOptions.flush();
+      commitOptions.flush();
       undo();
     },
     redo: () => {
       commitTextContent.flush();
-      commitComparisonOptions.flush();
+      commitOptions.flush();
       redo();
     },
   };
 
   return (
     <OptionsWriteLogsProvider logs={writeLogs}>
-      <ComparisonStandalonePage
+      <SetAnalyzerStandalonePage
+        analyzer={analyzer}
         assets={assets}
         assetsReady={ready}
         dispatch={dispatch}
@@ -69,7 +73,7 @@ export function StandaloneComparisonApp() {
         history={history}
         onTextContentCommit={commitTextContent}
         onAddToWorkspace={addToWorkspace}
-        onComparisonOptionsCommit={commitComparisonOptions}
+        onOptionsCommit={commitOptions}
       />
     </OptionsWriteLogsProvider>
   );

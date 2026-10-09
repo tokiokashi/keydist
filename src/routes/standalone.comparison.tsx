@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { COMPARISON_PANE_META } from '#analyzers/comparison/pane-meta.ts';
-import { StandaloneComparisonApp } from '#app/standalone/StandaloneComparisonApp.tsx';
+import { comparisonAnalyzer } from '#analyzers/comparison/definition.tsx';
+import { StandaloneSetAnalyzerApp } from '#app/standalone/StandaloneSetAnalyzerApp.tsx';
 
 /**
  * 比較表単体ページのroute。`standalone.bigram-flow.tsx`と同じ形
@@ -17,5 +18,5 @@ export const Route = createFileRoute('/standalone/comparison')({
       },
     ],
   }),
-  component: StandaloneComparisonApp,
+  component: () => <StandaloneSetAnalyzerApp analyzer={comparisonAnalyzer} />,
 });

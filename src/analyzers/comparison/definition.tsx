@@ -7,11 +7,12 @@ import {
   type ComparisonColumnId,
   type ComparisonOptions,
   type ComparisonSort,
+  comparisonOptions,
 } from './options.ts';
 import { bindOption, CheckboxGroupOptionField, CheckboxOptionField, OptionField } from '#ui/primitives/option-fields.tsx';
 import { nextComparisonSort, sortComparisonOrder } from './sort.ts';
 import { COMPARISON_PANE_META } from './pane-meta.ts';
-import type { AnalyzerPaneParts, AnalyzerSettingsProps, AnalyzerTargetItemProps } from '../pane-parts.tsx';
+import type { AnalyzerSettingsProps, AnalyzerTargetItemProps, SetAnalyzerPaneParts, SetBodyProps } from '../pane-parts.tsx';
 import './comparison-view.css';
 
 /**
@@ -37,20 +38,12 @@ export interface ComparisonRowContext {
   readonly fullName: string;
 }
 
-export interface ComparisonBodyProps {
-  readonly extracted: ComparisonExtracted;
-  /** 表示順（対象keyの列）。ホストが持つ集合の並び順。 */
-  readonly order: readonly string[];
-  readonly rowContext: ReadonlyMap<string, ComparisonRowContext>;
-  /**
-   * 基準（baseline）にする対象key。解析設定ではなく「対象の集合」の一部としてホストが持つ値
-   * （対象の選択に差し込む`ComparisonBaselineItem`で選ぶ）を受け取る。`undefined`は「基準なし」。
-   */
-  readonly baselineTargetKey: string | undefined;
-  readonly options: ComparisonOptions;
-  /** 見出しを押した時の並び替えの切り替えに使う。 */
-  readonly onOptionsChange: (next: ComparisonOptions) => void;
-}
+/**
+ * 基準（`baselineTargetKey`）は、解析設定ではなく「対象の集合」の一部としてホストが持つ値
+ * （対象の選択に差し込む`ComparisonBaselineItem`で選ぶ）を受け取る。
+ * `onOptionsChange`は見出しを押した時の並び替えの切り替えに使う。
+ */
+export type ComparisonBodyProps = SetBodyProps<ComparisonExtracted, ComparisonOptions, ComparisonRowContext>;
 
 /**
  * 列ごとの表示形式（`COMPARISON_COLUMNS[column].format`）で描く。値が非有限
@@ -281,4 +274,6 @@ export const comparisonAnalyzer = {
   Settings: ComparisonSettings,
   defaultOptions: DEFAULT_COMPARISON_OPTIONS,
   TargetItem: ComparisonBaselineItem,
-} satisfies AnalyzerPaneParts<typeof comparisonDefinition, ComparisonOptions, ComparisonBodyProps, string | undefined>;
+  urlOptions: comparisonOptions,
+  rowContext: ({ targetKey, label, fullName }) => ({ targetKey, label, fullName }),
+} satisfies SetAnalyzerPaneParts<ComparisonOptions, ComparisonExtracted, ComparisonRowContext>;

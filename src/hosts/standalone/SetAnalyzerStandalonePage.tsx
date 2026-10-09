@@ -1,19 +1,18 @@
 import { useMemo, useRef } from 'react';
 import type { Command } from '#input/commands/index.ts';
-import { setMultiTargetsCommand, type KeydistAssets } from '#engine/commands.ts';
+import { setMultiBaselineCommand, setMultiTargetsCommand, type KeydistAssets } from '#engine/commands.ts';
 import type { EngineComputer } from '#engine/computer.ts';
 import { layoutIdsOfTargets } from '#input/setup/index.ts';
 import type { PresetIdGenerator } from '#input/presets/index.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
-import { nSensitivityAnalyzer } from '#analyzers/n-sensitivity/definition.tsx';
-import { nSensitivityOptions, type NSensitivityOptions } from '#analyzers/n-sensitivity/options.ts';
+import type { SetAnalyzerPaneParts } from '#analyzers/pane-parts.tsx';
 import { useStableResolvedText } from '#hosts/shared/stable-resolved-text.ts';
 import { ContextBar, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { TextChip, type TextContentCommit } from '#hosts/shared/TextChip.tsx';
 import { DefaultShapeChip } from '#hosts/shared/DefaultShapeChip.tsx';
 import { decodeStoredAnalyzerOptions } from '#hosts/shared/decode-analyzer-options.ts';
-import { NSensitivityPane } from '#hosts/shared/panes/NSensitivityPane.tsx';
+import { SetAnalyzerPane } from '#hosts/shared/panes/SetAnalyzerPane.tsx';
 import type { PaneChrome, PaneEnvironment } from '#hosts/shared/panes/pane-environment.ts';
 import type { PaneCatalog } from '#hosts/shared/resolve-pane-input.ts';
 import { useMultiColorSlots } from '#hosts/shared/use-set-target-selection.ts';
@@ -27,15 +26,21 @@ import { describeShareEncodeNotice, encodeMultiTargetsToUrl, hasSharedTargetPara
 import './standalone.css';
 
 /**
- * N感度の単体ページ。
- * `ComparisonStandalonePage.tsx`と同じ形（対象は配列かSetupの**集合**。書き込みは`dispatch`を経由する）。
- * ペインは1枚だけで、Workspaceのペインと同じcomponent（`hosts/shared/panes/NSensitivityPane.tsx`）を使う。
+ * 対象の集合を見るAnalyzer（Set）の単体ページ。ペインは1枚だけで、Workspaceのペインと
+ * 同じcomponent（`hosts/shared/panes/SetAnalyzerPane.tsx`）を使う。
  *
- * 集合はMultiのAnalyzerが共有する`assets.multiTargetSelection`（`engine/multi-target-selection.ts`）。
- * 比較表で選んだ基準も集合に入っているが、このページは基準を使わないので触らない
- * （基準の対象をここで外しても記録は残り、比較表では効く基準が無くなる。付け直すと戻る）。
+ * 対象は**配列かSetupの集合**（用語表「対象」）。集合（選んだ対象・色・基準）は
+ * MultiのAnalyzerが共有する資産（`assets.multiTargetSelection`）が持ち、
+ * 書き込みはすべて`dispatch`を経由する
+ * （`SingleAnalyzerStandalonePage.tsx`と同じ形）。テキストは単体ページ全体で
+ * 共有の「最後に使ったテキスト」を使う。
+ *
+ * 配列は常に選べる（組み込みカタログに最初から入っている）ため、旧`use-ensure-setup.ts`の
+ * ような「手持ちが空なら初期Setupを作る」副作用は無くなった。
  */
-export interface NSensitivityStandalonePageProps {
+export interface SetAnalyzerStandalonePageProps<Options, Extracted, RowContext> {
+  /** 単体ページに載せるAnalyzer（各Analyzerの`definition.tsx`がexportする、ペインに渡すもの）。 */
+  readonly analyzer: SetAnalyzerPaneParts<Options, Extracted, RowContext>;
   readonly assets: KeydistAssets;
   readonly assetsReady: boolean;
   readonly dispatch: (command: Command<KeydistAssets>) => void;
@@ -48,7 +53,7 @@ export interface NSensitivityStandalonePageProps {
   readonly history: ContextBarHistory;
   /** プリセットの新しいidの発行（条件のモーダルのプリセットの節が使う）。 */
   readonly generatePresetId: PresetIdGenerator;
-  readonly onOptionsCommit: (options: NSensitivityOptions) => void;
+  readonly onOptionsCommit: (options: Options) => void;
   /**
    * 見出しの「Workspaceに追加」で送り先を選んだ時。今の解析設定（`options`）を添えて渡す。
    * 書き込みと通知は組み立て側（`app`）が持つ。
@@ -56,12 +61,11 @@ export interface NSensitivityStandalonePageProps {
   readonly onAddToWorkspace: (destination: AddToWorkspaceDestination, options: unknown) => void;
 }
 
-const ANALYZER_ID = nSensitivityAnalyzer.definition.id;
-
 /** 個別画面のペインの枠まわり。ペインのAnalyzer名がページのh1で、見出しを文脈バーの下に固定する。 */
 const STANDALONE_CHROME: PaneChrome = { headingLevel: 1, stickyHeader: true, autoOpenTargetSelection: true };
 
-export function NSensitivityStandalonePage({
+export function SetAnalyzerStandalonePage<Options, Extracted, RowContext>({
+  analyzer,
   assets,
   assetsReady,
   dispatch,
@@ -73,23 +77,28 @@ export function NSensitivityStandalonePage({
   history,
   generatePresetId,
   onAddToWorkspace,
-}: NSensitivityStandalonePageProps) {
+}: SetAnalyzerStandalonePageProps<Options, Extracted, RowContext>) {
+  const analyzerId = analyzer.definition.id;
   const resolvedText = useStableResolvedText(useMemo(
     () => resolveTextSelection(assets.standaloneTextSelection, assets.textLibrary),
     [assets.standaloneTextSelection, assets.textLibrary],
   ));
 
-  const storedOptionsRaw = assets.standaloneAnalyzerOptions[ANALYZER_ID];
+  // 解析設定は資産（standaloneAnalyzerOptions）が正
+  // （SingleAnalyzerStandalonePageと同じ形）。
+  const storedOptionsRaw = assets.standaloneAnalyzerOptions[analyzerId];
   const decoded = useMemo(
-    () => decodeStoredAnalyzerOptions(nSensitivityAnalyzer.definition, storedOptionsRaw),
+    () => decodeStoredAnalyzerOptions(analyzer.definition, storedOptionsRaw),
     [storedOptionsRaw],
   );
-  const [optionsDraft, setOptionsDraft] = useOptionsDraft<NSensitivityOptions>(decoded.options, STANDALONE_WRITE_LOG_KEY);
+  // `SingleAnalyzerStandalonePage`と同じ形: 見た目は即座に反映しつつ（controlled）、
+  // 資産への書き込みは呼び出し側がdebounceする（`onOptionsCommit`）。
+  const [optionsDraft, setOptionsDraft] = useOptionsDraft<Options>(decoded.options, STANDALONE_WRITE_LOG_KEY);
   // URL経由で解析設定と対象を受け取る（共有リンク。`use-shared-link.ts`）。書き込みは1つのコマンドで、Undo 1回で戻る。
   const shareSource = useTargetShareSource(catalog, assets.setupLibrary.setups);
   const { optionDiagnostics: urlDiagnostics, targetNotices } = useSharedLink({
-    analyzerId: ANALYZER_ID,
-    optionsDefinition: nSensitivityOptions,
+    analyzerId,
+    optionsDefinition: analyzer.urlOptions,
     currentOptions: decoded.options,
     kind: 'multi',
     assetsReady,
@@ -112,7 +121,7 @@ export function NSensitivityStandalonePage({
     assetsReady,
   }), [assets.setupLibrary, assets.presetLibrary, catalog, resolvedText, cache, dispatch, generatePresetId, undo, assetsReady]);
 
-  const changeOptions = (next: NSensitivityOptions) => {
+  const changeOptions = (next: Options) => {
     setOptionsDraft(next);
     onOptionsCommit(next);
   };
@@ -143,7 +152,7 @@ export function NSensitivityStandalonePage({
         share={{
           description: '今の対象と解析設定を含むこの画面のURLをコピーします',
           query: () => {
-            const params = nSensitivityOptions.encodeOptionsToUrl(optionsDraft);
+            const params = analyzer.urlOptions.encodeOptionsToUrl(optionsDraft);
             const selection = assets.multiTargetSelection;
             const encoded = encodeMultiTargetsToUrl(selection.targets, effectiveMultiBaseline(selection), shareSource);
             encoded.params.forEach((value, key) => params.append(key, value));
@@ -173,12 +182,14 @@ export function NSensitivityStandalonePage({
         style={{ display: 'contents', border: 0, padding: 0, margin: 0, minWidth: 0 }}
       >
         <div className="standalone-stage">
-          <NSensitivityPane
+          <SetAnalyzerPane
+            analyzer={analyzer}
             env={env}
             chrome={chrome}
             selection={assets.multiTargetSelection}
             colorSlots={colorSlots}
             onTargetsChange={(next) => dispatch(setMultiTargetsCommand(next))}
+            onBaselineChange={(next) => dispatch(setMultiBaselineCommand(next))}
             options={optionsDraft}
             onOptionsChange={changeOptions}
             settingsDiagnostics={decoded.diagnostics}
