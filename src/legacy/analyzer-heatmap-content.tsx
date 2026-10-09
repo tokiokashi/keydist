@@ -20,6 +20,7 @@ import {
   faceCells,
   faceDisplayCells,
   handOfKey,
+  defaultLayerNames,
   layerDefinitionsWithLabels,
   layerShiftStyles,
   orderedPresentationLayers,
@@ -136,7 +137,9 @@ function layerTitle(layer: Layer, index: number, layout: Layout): string {
       `レイヤー表示にはaggregation「${layer.id}」のpresentationModeLabel明示が必要`,
     );
   }
-  return `レイヤー ${index + 1}: ${label} [${triggers.join(' / ')}]・${definition.presentationModeLabel}`;
+  // 名前にトリガーのキーが入っている既定の名前は、見出しでトリガーを重ねて出さない
+  const bracket = defaultLayerNames(layout).get(layer.id)?.includesTrigger === true ? '' : ` [${triggers.join(' / ')}]`;
+  return `レイヤー ${index + 1}: ${label}${bracket}・${definition.presentationModeLabel}`;
 }
 
 function layerCells(layer: Layer, layout: Layout): Map<string, LayerCell> {

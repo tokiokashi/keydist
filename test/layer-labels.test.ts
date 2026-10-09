@@ -3,7 +3,7 @@ import test from 'node:test';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { LAYOUTS, LAYOUTS_JA, type Layout } from '#input/layouts/index.ts';
+import { faceFromEntries, fromFaces, LAYOUTS, LAYOUTS_JA, type Face, type Layout } from '#input/layouts/index.ts';
 import {
   compactLayerGuideDefinitions,
   defaultLayerNames,
@@ -76,7 +76,30 @@ test('既定の名前は、役割名を持つ面なら役割名、持たない�
     ['face:7', 'face:8', 'face:9'].map((id) => naginata.get(id)?.label),
     ['拗音（く）', '拗音（へ）', '拗音（る）'],
   );
+  // o+vの面。外来音と半濁音の組は、役割名の並びが他の面でも同じになる
   assert.equal(naginata.get('face:10')?.label, '外来音 + 半濁音（す + こ）');
+  assert.equal(naginata.get('face:16')?.label, '外来音 + 半濁音（あ + こ）');
+  assert.equal(naginata.get('face:14')?.label, '濁音 + 拗音（あ + へ）');
+});
+
+test('役割の組が同じ面は、キーの並びが違っても同じ並びの名前になり、重なるのでキーを添える', () => {
+  const role = (trigger: readonly string[], groups: Record<string, string>, key: string): Face => ({
+    ...faceFromEntries(trigger, 'simultaneous', { [key]: 'あ' }),
+    layer: undefined,
+    role: 'modifier',
+    inputRole: 'modifier',
+    triggerPersistence: 'hold-capable',
+    modifierGroups: groups,
+  });
+  const base: Face = { ...faceFromEntries([], 'simultaneous', { h: 'H' }), inputRole: 'layer' };
+  const layout = fromFaces('role-order', 'role-order', [
+    base,
+    role(['a', 'b'], { a: 'X', b: 'Y' }, 'h'),
+    role(['c', 'd'], { c: 'Y', d: 'X' }, 'h'),
+  ]);
+  const labels = [...defaultLayerNames(layout).values()].map((name) => name.label);
+  assert.deepEqual(labels.map((label) => label.replace(/（.*）$/, '')), ['Y + X', 'Y + X']);
+  assert.equal(new Set(labels).size, 2);
 });
 
 test('ヒートマップの見出しは、名前にキーが入る既定の名前ではトリガーを重ねず、それ以外では残す', () => {
@@ -95,6 +118,7 @@ test('ヒートマップの見出しは、名前にキーが入る既定の名�
 test('レイヤーの名前を画面に出すソースは、生の定義の名前を読まない', () => {
   // `layerDefinitions` を直接読んでよいのは、名前以外（種別・役割・入力方式）を読む箇所と、
   // 名前を作り直す箇所だけ。新しい箇所が増えたら、名前を読んでいないか確かめてから足す。
+  // 拾うのは `layout.layerDefinitions` という書き方だけで、別の変数名や分割代入で読む箇所は拾えない。
   const allowed = new Set([
     'src/input/layouts/types.ts',
     'src/input/layouts/layers.ts',

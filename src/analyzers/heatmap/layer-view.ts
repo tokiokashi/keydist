@@ -60,7 +60,7 @@ function layerTitle(layer: Layer, index: number, label: string, layout: Layout, 
   const head = `レイヤー${index + 1}: ${label}`;
   if (layer.faces.length === 0 || layer.id === SINGLE_LAYER_ID) return head;
   // 名前にトリガーのキーが入っている既定の名前は、見出しでトリガーを重ねて出さない
-  const omitTrigger = defaultLayerNames(layout, standard).get(layer.id)?.includesTrigger === true;
+  const omitTrigger = defaultLayerNames(layout).get(layer.id)?.includesTrigger === true;
   const triggers = layer.faces.map((face) => displayTriggerText(layout, face, standard));
   const modeLabel = layout.layerDefinitions?.find((definition) => definition.id === layer.id)?.presentationModeLabel;
   const bracket = omitTrigger ? '' : ` [${triggers.join(' / ')}]`;
@@ -131,7 +131,7 @@ export function buildLayerEntries(
   const undeclared = extracted.layers
     .filter((stat) => !declared.has(stat.id) && stat.presses > 0)
     .map((stat): Layer => ({ id: stat.id, role: stat.role ?? 'layer', order: Number.MAX_SAFE_INTEGER, faces: [] }));
-  const definitions = layerDefinitionsWithLabels(layout, standard);
+  const definitions = layerDefinitionsWithLabels(layout);
   const entries = [...presentation, ...undeclared].map((layer, index) => {
     const label = definitions.find((definition) => definition.id === layer.id)?.label ?? layer.id;
     const stat = stats.get(layer.id) ?? emptyLayer(layer.id, label);

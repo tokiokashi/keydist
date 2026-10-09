@@ -420,7 +420,9 @@ type DefaultLayerNameLayout = Pick<
 >;
 
 /**
- * 面のキーに付いた役割名（modifierGroups）を、トリガーの順に「 + 」でつないだ名前。
+ * 面のキーに付いた役割名（modifierGroups）を「 + 」でつないだ名前。
+ * 同じ役割の組が配列の中で同じ名前になるよう、並びはトリガーの順ではなく役割名の文字コードの降順に決める。
+ * 降順に意味は無く、どの配列でも同じ並びになることと、「外来音 + 半濁音」の並びになることだけを理由にしている。
  * 役割名を持たない面は `undefined`。
  */
 function modifierRoleName(faces: readonly Face[]): string | undefined {
@@ -434,7 +436,7 @@ function modifierRoleName(faces: readonly Face[]): string | undefined {
     face.trigger
       .map((key) => groups.get(resolveKeyId(key)))
       .filter((group): group is string => group !== undefined && group.trim() !== ''),
-  )];
+  )].sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
   return names.length === 0 ? undefined : names.join(' + ');
 }
 
@@ -444,10 +446,10 @@ function modifierRoleName(faces: readonly Face[]): string | undefined {
  * 役割名が配列内の別の層の名前と重なる時は、トリガーの表示を添えて区別する（例: 拗音（く））。
  * 配列が付けた名前は変えない。刻印は配列の組み立ての後で差し替わることがあるので、
  * 組み立ての途中ではなく、表示・トレースを作る時点の配列から読む。
+ * 刻印の無いキーの表示名は物理配列の規格で変わるが、名前はどの画面でも同じにするため、規格を渡さない既定の表示名で作る。
  */
 export function defaultLayerNames(
   layout: DefaultLayerNameLayout,
-  standard?: PhysicalKeyboardStandard,
 ): ReadonlyMap<string, DefaultLayerName> {
   const definitions = layout.layerDefinitions ?? [];
   const candidates = definitions.flatMap((definition) => {
@@ -457,7 +459,6 @@ export function defaultLayerNames(
     const trigger = triggerChordsDisplayText(
       layout,
       faces.flatMap((face) => displayTriggerAlternatives(face)),
-      standard,
     );
     const role = modifierRoleName(faces);
     return [{ id: definition.id, trigger, role }];
@@ -490,9 +491,8 @@ export function defaultLayerNames(
  */
 export function layerDefinitionsWithLabels(
   layout: DefaultLayerNameLayout,
-  standard?: PhysicalKeyboardStandard,
 ): LayerDefinition[] {
-  const names = defaultLayerNames(layout, standard);
+  const names = defaultLayerNames(layout);
   return (layout.layerDefinitions ?? []).map((definition) => {
     const name = names.get(definition.id);
     if (name === undefined) return definition;
@@ -667,9 +667,8 @@ export function semanticCombinationLabels(
  */
 export function compactLayerGuideDefinitions(
   layout: DefaultLayerNameLayout & Pick<Layout, 'layerViewPresentation'>,
-  standard?: PhysicalKeyboardStandard,
 ): readonly LayerDefinition[] {
-  const definitions = layerDefinitionsWithLabels(layout, standard)
+  const definitions = layerDefinitionsWithLabels(layout)
     .filter((definition) =>
       definition.kind === 'layer'
       && definition.presentationRole === 'layer');
