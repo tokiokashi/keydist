@@ -82,7 +82,7 @@ test('テキストが空なら、すべて0で層の構成だけが残る', () =
 
 
 test('同時押下したトリガーは、通常の層では色用の押下数へ足し戻す', () => {
-  // 新下駄の「れ」は中指シフト(k)を押して d を打つ。k はトリガーかつ同時押下のトリガー
+  // 新下駄の「れ」は中指シフト(k)を押してdを打つ。kはトリガーかつ同時押下のトリガー
   const extracted = extractFor('shingeta', 'れ');
   const layer = extracted.layers.find((entry) => entry.id === 'layer:中指シフト');
   assert.ok(layer);
@@ -94,7 +94,7 @@ test('同時押下したトリガーは、通常の層では色用の押下数�
 });
 
 test('同時押下したトリガーは、修飾の層では足し戻さない', () => {
-  // 薙刀式の「が」は濁音の層。j がトリガーかつ同時押下のトリガーだが、修飾の層なので色には戻さない
+  // 薙刀式の「が」は濁音の層。jがトリガーかつ同時押下のトリガーだが、修飾の層なので色には戻さない
   const extracted = extractFor('naginata-v18', 'が');
   const layer = extracted.layers.find((entry) => entry.id === 'layer:濁音');
   assert.ok(layer);
@@ -106,7 +106,7 @@ test('同時押下したトリガーは、修飾の層では足し戻さない',
 });
 
 test('コンボ枠は層に含めず別に持つ。押下が無ければ持たない', () => {
-  // 新小梅の「ぴ」は g と u の同時押しのコンボ
+  // 新小梅の「ぴ」は gとuの同時押しのコンボ
   const used = extractFor('shin-koume', 'ぴ');
   assert.equal(used.combo?.id, 'combo');
   assert.deepEqual(entries(used.combo!.keyCounts), [['g', 1], ['u', 1]]);

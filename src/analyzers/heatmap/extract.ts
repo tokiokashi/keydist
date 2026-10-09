@@ -4,7 +4,7 @@ import type { Trace } from '#trace/generate.ts';
 import { normalizedRoleColors } from './layer-heatmap.ts';
 
 /**
- * ヒートマップの抽出（仕様 §11.10 のキーごとの押下数）。
+ * ヒートマップの抽出（仕様 §11.10のキーごとの押下数）。
  *
  * 押下を層へ割り振る規則（§11.10）は `computeMetrics` が持つので、ここでは数え直さず、
  * `Metrics` の層別・コンボ枠の集計を並べ替えて、色用の押下数を足すだけにする。
