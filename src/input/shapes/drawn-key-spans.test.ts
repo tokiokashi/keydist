@@ -22,8 +22,8 @@ for (const kind of kinds) {
       const span = spans.get(key.id)!;
       if (key.id === 'shift-l' || key.id === 'shift-r') continue;
       const width = key.width ?? (key.row === THUMB_ROW ? 1.9 : 1);
-      near(span.width, width, `${key.id} の幅`);
-      near(span.left, key.x + 0.5 - width / 2, `${key.id} の左端`);
+      near(span.width, width, `${key.id}の幅`);
+      near(span.left, key.x + 0.5 - width / 2, `${key.id}の左端`);
     }
 
     const bottom = geometry.grid[3]!;
@@ -31,14 +31,14 @@ for (const kind of kinds) {
     const shiftR = spans.get('shift-r')!;
     const z = spans.get(bottom[0]!.id)!;
     const slash = spans.get(bottom.at(-1)!.id)!;
-    near(shiftL.width, 1, 'shift-l の幅');
-    near(shiftR.width, 1, 'shift-r の幅');
+    near(shiftL.width, 1, 'shift-lの幅');
+    near(shiftR.width, 1, 'shift-rの幅');
     near(shiftL.left + shiftL.width, z.left, 'shift-l は最初の文字キーの左隣');
     near(shiftR.left, slash.left + slash.width, 'shift-r は最後の文字キーの右隣');
 
     // 計算上の座標と実寸は変えない
-    near(geometry.keys.get('shift-l')!.width!, 2.25, 'shift-l の実寸');
-    near(geometry.keys.get('shift-r')!.width!, 2.75, 'shift-r の実寸');
+    near(geometry.keys.get('shift-l')!.width!, 2.25, 'shift-lの実寸');
+    near(geometry.keys.get('shift-r')!.width!, 2.75, 'shift-rの実寸');
   });
 }
 
