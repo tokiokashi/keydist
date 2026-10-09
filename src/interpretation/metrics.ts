@@ -87,6 +87,12 @@ export interface Metrics {
   perFinger: Record<Finger, number>;
   /** 指ごとの押下数 */
   perFingerPresses: Record<Finger, number>;
+  /**
+   * 指ごとのPressの回数。同時押しで1本の指が複数キーを押しても1回と数える。
+   * 押したキーの数を数える `perFingerPresses`（仕様 §11.2の `Q_f`）とは別の量で、
+   * 同指連続の比率の分母に使う（仕様 §11.7）。
+   */
+  perFingerPressEvents: Record<Finger, number>;
   /** 総移動距離 [u] */
   totalUnits: number;
   /** 総移動距離 [mm] */
@@ -129,6 +135,8 @@ export interface Metrics {
   adjacent: PairStat[];
   /** 同指連続回数。同じ指で異なる位置を続けて打った数 */
   sameFinger: number;
+  /** 指ごとの同指連続回数。Press単位で数え、合計は `sameFinger` に一致する（仕様 §11.7） */
+  perFingerSameFinger: Record<Finger, number>;
   /** コンボの定義数・命中した定義数・延べ命中回数（仕様 §11.8） */
   combos: ComboStats;
   /** 宣言順の層別集計。コンボ枠は含めない */
@@ -182,9 +190,13 @@ export function computeMetrics(
 ): Metrics {
   const perFinger = {} as Record<Finger, number>;
   const perFingerPresses = {} as Record<Finger, number>;
+  const perFingerPressEvents = {} as Record<Finger, number>;
+  const perFingerSameFinger = {} as Record<Finger, number>;
   for (const finger of ALL_FINGERS) {
     perFinger[finger] = 0;
     perFingerPresses[finger] = 0;
+    perFingerPressEvents[finger] = 0;
+    perFingerSameFinger[finger] = 0;
   }
 
   let totalUnits = 0;
@@ -234,7 +246,11 @@ export function computeMetrics(
       presses += press.keys.length;
       perFinger[press.finger] += press.distance;
       perFingerPresses[press.finger] += press.keys.length;
-      if (press.sfb) sameFinger++;
+      perFingerPressEvents[press.finger]++;
+      if (press.sfb) {
+        sameFinger++;
+        perFingerSameFinger[press.finger]++;
+      }
       // 1本の指で複数キーを押した場合、距離はキーへ均等に按分する
       const share = press.distance / press.keys.length;
       for (const key of press.keys) {
@@ -302,6 +318,7 @@ export function computeMetrics(
     inputChars,
     perFinger,
     perFingerPresses,
+    perFingerPressEvents,
     totalUnits,
     totalMm: totalUnits * geometry.pitchMm,
     meanPerStroke: strokes ? totalUnits / strokes : 0,
@@ -313,6 +330,7 @@ export function computeMetrics(
     singleKeyRate: singleKeyRate(trace, actions),
     adjacent,
     sameFinger,
+    perFingerSameFinger,
     combos,
     layers: layerStats,
     comboPresses,

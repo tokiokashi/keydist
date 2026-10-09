@@ -502,3 +502,40 @@ test('隣接指の標準偏差は打鍵ごとのスナップショットから�
     near(stat.maxExcess, Math.max(...samples), `${stat.pair.join('-')} max`);
   }
 });
+
+test('指ごとの同指連続回数の合計は全体の同指連続回数と一致する', () => {
+  // 同指連続はPress単位で数える（仕様 §11.7）。内訳の合計が全体とずれてはいけない
+  const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
+  let anySameFinger = false;
+  for (const layout of LAYOUTS_JA) {
+    const m = computeMetrics(generateTrace(text, layout, geometry, opts()), geometry);
+    const sum = ALL_FINGERS.reduce((a, f) => a + m.perFingerSameFinger[f], 0);
+    assert.equal(sum, m.sameFinger, `${layout.id} の指ごとの同指連続回数の合計`);
+    if (m.sameFinger > 0) anySameFinger = true;
+  }
+  assert.ok(anySameFinger, '同指連続が1件も出ない入力では検査にならない');
+});
+
+test('指ごとのPressの回数の合計は全Pressの数と一致する', () => {
+  const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
+  for (const layout of LAYOUTS_JA) {
+    const trace = generateTrace(text, layout, geometry, opts());
+    const m = computeMetrics(trace, geometry);
+    const total = trace.strokes.reduce((a, stroke) => a + stroke.presses.length, 0);
+    const sum = ALL_FINGERS.reduce((a, f) => a + m.perFingerPressEvents[f], 0);
+    assert.equal(sum, total, `${layout.id} の指ごとのPressの回数の合計`);
+  }
+});
+
+test('1本の指が2キーを同時に押してもPressは1回で、押下数は2になる', () => {
+  // dとeはどちらも左中指。「きゃ」は左中指の2キー同時押しの後に同じ指で別の位置cを打つ
+  const chord = fromKana('chord', 'chord', {
+    き: [['d', 'e']],
+    ゃ: [['c']],
+  });
+  const m = computeMetrics(generateTrace('きゃきゃ', chord, geometry, opts()), geometry);
+  assert.equal(m.perFingerPresses.LM, 6, '押したキーの数: (2+1)×2');
+  assert.equal(m.perFingerPressEvents.LM, 4, 'Pressの回数: 2×2');
+  assert.ok(m.perFingerSameFinger.LM > 0 && m.perFingerSameFinger.LM <= m.perFingerPressEvents.LM);
+  assert.equal(m.perFingerSameFinger.LM, m.sameFinger);
+});
