@@ -12,6 +12,7 @@ import {
   type LayerPresentationRole,
   type Layout,
 } from './types.ts';
+import { kanaKindName } from './kana-kind.ts';
 
 export { faceCells, handOfKey };
 export type { Hand };
@@ -419,32 +420,25 @@ type DefaultLayerNameLayout = Pick<
   'faces' | 'faceLayerIds' | 'layerDefinitions' | 'thumbShiftKeys' | 'legends'
 >;
 
-/**
- * 面のキーに付いた役割名（modifierGroups）を「 + 」でつないだ名前。
- * 同じ役割の組が配列の中で同じ名前になるよう、並びはトリガーの順ではなく役割名の文字コードの降順に決める。
- * 降順に意味は無く、どの配列でも同じ並びになることと、「外来音 + 半濁音」の並びになることだけを理由にしている。
- * 役割名を持たない面は `undefined`。
- */
-function modifierRoleName(faces: readonly Face[]): string | undefined {
-  if (faces.length !== 1) return undefined;
-  const [face] = faces;
-  if (face.modifierGroups === undefined) return undefined;
-  const groups = new Map(
-    Object.entries(face.modifierGroups).map(([key, group]) => [resolveKeyId(key), group] as const),
-  );
-  const names = [...new Set(
-    face.trigger
-      .map((key) => groups.get(resolveKeyId(key)))
-      .filter((group): group is string => group !== undefined && group.trim() !== ''),
-  )].sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
-  return names.length === 0 ? undefined : names.join(' + ');
+/** 出る文字を並べた名前に入れる文字数の上限。超えたら「…」で省く。 */
+const LISTED_OUTPUT_LIMIT = 3;
+
+function listedOutputsName(outputs: readonly string[]): string {
+  const shown = outputs.slice(0, LISTED_OUTPUT_LIMIT).join('・');
+  return outputs.length > LISTED_OUTPUT_LIMIT ? `${shown}…` : shown;
 }
 
 /**
  * 名前の無い層（`labelIsDefault`）の名前を、層の識別子ごとに返す。
- * 面のキーが役割名を持つ時は役割名（例: 外来音 + 半濁音）、持たない時は「<トリガーの表示>のシフト」にする。
- * 役割名が配列内の別の層の名前と重なる時は、トリガーの表示を添えて区別する（例: 拗音（く））。
- * 配列が付けた名前は変えない。刻印は配列の組み立ての後で差し替わることがあるので、
+ * 名前は次の順で決める。
+ * 1. 層が出す文字の種類と、出る文字に共通する小書き（例: 拗音（ゃ）、外来音（ぇ））
+ * 2. 同じ配列の別の層の名前と重なる時は、出る文字を並べる（3つまで。例: てぃ）。
+ *    重なる層のうち、出る文字の数が一番多い層が1つに決まる時は、その層だけ1の名前を残す。
+ *    並べても重なる時は、3の名前にする
+ * 3. 文字の種類で呼べない層は「<トリガーの表示>のシフト」（例: 無変換のシフト）。
+ *    これも重なる時は、後ろの層に（2）のような番号を付ける
+ * 配列が付けた名前は変えず、既定の名前が配列が付けた名前と重ならないようにする。
+ * 刻印は配列の組み立ての後で差し替わることがあるので、
  * 組み立ての途中ではなく、表示・トレースを作る時点の配列から読む。
  * 刻印の無いキーの表示名は物理配列の規格で変わるが、名前はどの画面でも同じにするため、規格を渡さない既定の表示名で作る。
  */
@@ -460,26 +454,62 @@ export function defaultLayerNames(
       layout,
       faces.flatMap((face) => displayTriggerAlternatives(face)),
     );
-    const role = modifierRoleName(faces);
-    return [{ id: definition.id, trigger, role }];
+    const outputs = [...new Set(faces.flatMap((face) => [...faceCells(face).values()]))];
+    return [{
+      id: definition.id,
+      shift: `${trigger}のシフト`,
+      kind: kanaKindName(outputs),
+      listed: listedOutputsName(outputs),
+      outputCount: outputs.length,
+    }];
   });
 
-  const labelCounts = new Map<string, number>();
-  const count = (label: string) => labelCounts.set(label, (labelCounts.get(label) ?? 0) + 1);
-  for (const definition of definitions) {
-    if (definition.labelIsDefault !== true) count(definition.label);
-  }
-  for (const { trigger, role } of candidates) count(role ?? `${trigger}のシフト`);
+  const authored = definitions
+    .filter((definition) => definition.labelIsDefault !== true)
+    .map((definition) => definition.label);
+  const countOf = (labels: readonly string[], label: string) =>
+    labels.filter((other) => other === label).length;
 
-  const names = new Map<string, DefaultLayerName>();
-  for (const { id, trigger, role } of candidates) {
-    if (role === undefined) {
-      names.set(id, { label: `${trigger}のシフト`, includesTrigger: true });
-    } else if ((labelCounts.get(role) ?? 0) > 1) {
-      names.set(id, { label: `${role}（${trigger}）`, includesTrigger: true });
-    } else {
-      names.set(id, { label: role, includesTrigger: false });
+  // 1と2: 種類の名前が重なる層は、出る文字が一番多い層を除いて、出る文字を並べる
+  const stage = new Map<string, DefaultLayerName & { listed: boolean }>();
+  for (const candidate of candidates) {
+    if (candidate.kind === undefined) {
+      stage.set(candidate.id, { label: candidate.shift, includesTrigger: true, listed: false });
+      continue;
     }
+    const sameKind = candidates.filter((other) => other.kind === candidate.kind);
+    const mostOutputs = Math.max(...sameKind.map((other) => other.outputCount));
+    const keepsKind = !authored.includes(candidate.kind)
+      && (sameKind.length === 1
+        || (candidate.outputCount === mostOutputs
+          && sameKind.filter((other) => other.outputCount === mostOutputs).length === 1));
+    stage.set(candidate.id, keepsKind
+      ? { label: candidate.kind, includesTrigger: false, listed: false }
+      : { label: candidate.listed, includesTrigger: false, listed: true });
+  }
+
+  // 並べても重なる層は、3の名前にする
+  const listedLabels = [...authored, ...[...stage.values()].map((name) => name.label)];
+  for (const candidate of candidates) {
+    const name = stage.get(candidate.id)!;
+    if (name.listed && countOf(listedLabels, name.label) > 1) {
+      stage.set(candidate.id, { label: candidate.shift, includesTrigger: true, listed: false });
+    }
+  }
+
+  // 3の名前も重なる時は、後ろの層に番号を付けて区別する
+  const names = new Map<string, DefaultLayerName>();
+  const used = new Set(authored);
+  const pending = new Set([...stage.values()].map((name) => name.label));
+  for (const candidate of candidates) {
+    const { label, includesTrigger } = stage.get(candidate.id)!;
+    let unique = label;
+    for (let number = 2; used.has(unique); number += 1) {
+      unique = `${label}（${number}）`;
+      if (pending.has(unique)) used.add(unique);
+    }
+    used.add(unique);
+    names.set(candidate.id, { label: unique, includesTrigger });
   }
   return names;
 }
