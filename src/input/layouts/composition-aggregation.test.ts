@@ -7,6 +7,7 @@ import { computeMetrics } from '#interpretation/metrics.ts';
 import { attributeMetrics } from '#interpretation/attribution.ts';
 import { COMBO_LAYER_ID, faceFromEntries, fromFaces, LAYOUT_BY_ID } from './index.ts';
 import { faceCells, handOfKey } from './face-geometry.ts';
+import { layerDefinitionsWithLabels } from './layers.ts';
 import type { Face } from './types.ts';
 
 /**
@@ -110,4 +111,19 @@ test('同じtriggerキーの層に計上するcompositionの面は、2枚置け�
     () => fromFaces('two-layer-faces', 'two-layer-faces', [layerFace('j', '甲'), layerFace('k', '乙')]),
     /2枚以上計上できない/,
   );
+});
+
+test('かわせみ配列+: 行指定キーの14層には、作者の資料の呼び名が付き、名前は重ならない', () => {
+  const labelOf = (key: string) => {
+    const face = compositionFaces(kawasemi.faces!).find((candidate) =>
+      candidate.compositionAggregation === 'layer' && candidate.trigger[0] === key)!;
+    return layerDefinitionsWithLabels(kawasemi).find((definition) =>
+      definition.id === kawasemi.faceLayerIds!.get(face))!.label;
+  };
+  const keys = ['a', 's', 'd', 'f', 'g', 'x', 'c', 'v', 'b', 'q', 'w', 'e', 'r', 't'];
+  assert.deepEqual(keys.map(labelOf), [
+    'な行', 'か行', 'さ行', 'た行', 'は行', 'ら行', 'ま行', '記号', 'ぱ行', '捨て仮名、旧かな', 'が行', 'ざ行', 'だ行', 'ば行',
+  ]);
+  const labels = layerDefinitionsWithLabels(kawasemi).map((definition) => definition.label);
+  assert.equal(new Set(labels).size, labels.length);
 });

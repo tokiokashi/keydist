@@ -25,6 +25,8 @@ test('コンボを持つ配列: 帰属先の表の合計とコンボ表と配列
   const attribution = feature(page).locator('[data-layer-combo-table="attribution"]');
   await expect(attribution.locator('tbody tr')).toHaveCount(18);
   await expect(attribution.locator('[data-attribution-row="combo"]')).toBeVisible();
+  // 行指定キーの面は、作者の呼び名の層として載る
+  await expect(attribution.locator('tbody tr', { hasText: 'か行' })).toHaveCount(1);
   // 帰属先ごとの押下数の和が、合計の行と一致する
   const presses = await attribution.locator('tbody tr td:nth-child(2)').allTextContents();
   const total = await attribution.locator('tfoot td:nth-child(2)').textContent();

@@ -35,10 +35,13 @@ const COMBO_COMPOSITION = {
   triggerPersistence: 'single',
 } as const;
 
+/** 行指定キーの面。画面に出す層の名前は、作者の資料（Kikyo定義の各面の呼び名）に合わせる。 */
+const layerComposition = (presentationLabel: string) => ({ ...LAYER_COMPOSITION, presentationLabel });
+
 type SourceFace = {
   trigger: readonly string[];
   entries: Readonly<Record<string, string>>;
-  options?: Pick<Face, 'layer' | 'inputRole' | 'compositionAggregation' | 'triggerPersistence'>;
+  options?: Pick<Face, 'layer' | 'inputRole' | 'compositionAggregation' | 'triggerPersistence' | 'presentationLabel'>;
 };
 
 function sourceFace(
@@ -128,7 +131,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "ぬん",
       ".": "にん",
       "/": "なん",
-    }, LAYER_COMPOSITION),
+    }, layerComposition('な行')),
   sourceFace(["s"], {
       "7": "くぉ",
       "-": "くぃ",
@@ -147,7 +150,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "くん",
       ".": "きん",
       "/": "かん",
-    }, LAYER_COMPOSITION),
+    }, layerComposition('か行')),
   sourceFace(["d"], {
       "-": "すぃ",
       "y": "しぇ",
@@ -164,7 +167,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "すん",
       ".": "しん",
       "/": "さん",
-    }, LAYER_COMPOSITION),
+    }, layerComposition('さ行')),
   sourceFace(["d"], {
       "s": "こと",
       "f": "する",
@@ -189,7 +192,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "つん",
       ".": "ちん",
       "/": "たん",
-    }, LAYER_COMPOSITION),
+    }, layerComposition('た行')),
   sourceFace(["f"], {
       "g": "ひと",
     }, COMBO_COMPOSITION),
@@ -212,10 +215,10 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "ふん",
       ".": "ひん",
       "/": "はん",
-    }, LAYER_COMPOSITION),
+    }, layerComposition('は行')),
   sourceFace(["z"], {
       "/": "なん",
-    }, LAYER_COMPOSITION),
+    }, layerComposition('な行の補完')),
   sourceFace(["x"], {
       "u": "りょ",
       "i": "りゅ",
@@ -230,7 +233,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "るん",
       ".": "りん",
       "/": "らん",
-    }, LAYER_COMPOSITION),
+    }, layerComposition('ら行')),
   sourceFace(["x"], {
       "z": "もの",
     }, COMBO_COMPOSITION),
@@ -248,7 +251,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "むん",
       ".": "みん",
       "/": "まん",
-    }, LAYER_COMPOSITION),
+    }, layerComposition('ま行')),
   sourceFace(["c"], {
       "x": "から",
       "v": "ます",
@@ -257,7 +260,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       "j": "・",
       "k": "…",
       ",": "、",
-    }, LAYER_COMPOSITION),
+    }, layerComposition('記号')),
   sourceFace(["b"], {
       "u": "ぴょ",
       "i": "ぴゅ",
@@ -272,7 +275,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "ぷん",
       ".": "ぴん",
       "/": "ぱん",
-    }, LAYER_COMPOSITION),
+    }, layerComposition('ぱ行')),
   sourceFace(["q"], {
       "9": "ゐ",
       "y": "ヶ",
@@ -289,7 +292,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "、",
       ".": "。",
       "/": "ヵ",
-    }, LAYER_COMPOSITION),
+    }, layerComposition('捨て仮名、旧かな')),
   sourceFace(["w"], {
       "0": "ぐゎ",
       "7": "ぐぉ",
@@ -309,7 +312,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "ぐん",
       ".": "ぎん",
       "/": "がん",
-    }, LAYER_COMPOSITION),
+    }, layerComposition('が行')),
   sourceFace(["e"], {
       "9": "ずぃ",
       "y": "じぇ",
@@ -326,7 +329,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "ずん",
       ".": "じん",
       "/": "ざん",
-    }, LAYER_COMPOSITION),
+    }, layerComposition('ざ行')),
   sourceFace(["r"], {
       "8": "どぅ",
       "9": "でぃ",
@@ -344,7 +347,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "づん",
       ".": "ぢん",
       "/": "だん",
-    }, LAYER_COMPOSITION),
+    }, layerComposition('だ行')),
   sourceFace(["r"], {
       "e": "です",
     }, COMBO_COMPOSITION),
@@ -367,7 +370,7 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
       ",": "ぶん",
       ".": "びん",
       "/": "ばん",
-    }, LAYER_COMPOSITION),
+    }, layerComposition('ば行')),
   sourceFace(["l", ";"], {
       "w": "がい",
       "e": "ざい",

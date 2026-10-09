@@ -4025,72 +4025,72 @@
           },
           {
             "id": "face:1",
-            "label": "ののシフト",
+            "label": "な行",
             "presses": 18
           },
           {
             "id": "face:2",
-            "label": "かのシフト",
+            "label": "か行",
             "presses": 22
           },
           {
             "id": "face:3",
-            "label": "しのシフト",
+            "label": "さ行",
             "presses": 16
           },
           {
             "id": "face:5",
-            "label": "とのシフト",
+            "label": "た行",
             "presses": 28
           },
           {
             "id": "face:7",
-            "label": "はのシフト",
+            "label": "は行",
             "presses": 6
           },
           {
             "id": "face:8",
-            "label": "るのシフト",
+            "label": "ら行",
             "presses": 12
           },
           {
             "id": "face:10",
-            "label": "まのシフト",
+            "label": "ま行",
             "presses": 16
           },
           {
             "id": "face:12",
-            "label": "てのシフト",
+            "label": "記号",
             "presses": 0
           },
           {
             "id": "face:13",
-            "label": "わのシフト",
+            "label": "ぱ行",
             "presses": 0
           },
           {
             "id": "face:14",
-            "label": "にのシフト",
+            "label": "捨て仮名、旧かな",
             "presses": 0
           },
           {
             "id": "face:15",
-            "label": "がのシフト",
+            "label": "が行",
             "presses": 8
           },
           {
             "id": "face:16",
-            "label": "じのシフト",
+            "label": "ざ行",
             "presses": 0
           },
           {
             "id": "face:17",
-            "label": "でのシフト",
+            "label": "だ行",
             "presses": 14
           },
           {
             "id": "face:19",
-            "label": "ばのシフト",
+            "label": "ば行",
             "presses": 2
           },
           {
@@ -4301,72 +4301,72 @@
           },
           {
             "id": "face:1",
-            "label": "ののシフト",
+            "label": "な行",
             "presses": 8
           },
           {
             "id": "face:2",
-            "label": "かのシフト",
+            "label": "か行",
             "presses": 118
           },
           {
             "id": "face:3",
-            "label": "しのシフト",
+            "label": "さ行",
             "presses": 124
           },
           {
             "id": "face:5",
-            "label": "とのシフト",
+            "label": "た行",
             "presses": 126
           },
           {
             "id": "face:7",
-            "label": "はのシフト",
+            "label": "は行",
             "presses": 28
           },
           {
             "id": "face:8",
-            "label": "るのシフト",
+            "label": "ら行",
             "presses": 116
           },
           {
             "id": "face:10",
-            "label": "まのシフト",
+            "label": "ま行",
             "presses": 142
           },
           {
             "id": "face:12",
-            "label": "てのシフト",
+            "label": "記号",
             "presses": 0
           },
           {
             "id": "face:13",
-            "label": "わのシフト",
+            "label": "ぱ行",
             "presses": 2
           },
           {
             "id": "face:14",
-            "label": "にのシフト",
+            "label": "捨て仮名、旧かな",
             "presses": 2
           },
           {
             "id": "face:15",
-            "label": "がのシフト",
+            "label": "が行",
             "presses": 22
           },
           {
             "id": "face:16",
-            "label": "じのシフト",
+            "label": "ざ行",
             "presses": 24
           },
           {
             "id": "face:17",
-            "label": "でのシフト",
+            "label": "だ行",
             "presses": 62
           },
           {
             "id": "face:19",
-            "label": "ばのシフト",
+            "label": "ば行",
             "presses": 28
           },
           {

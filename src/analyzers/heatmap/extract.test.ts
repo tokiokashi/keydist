@@ -129,3 +129,10 @@ test('層に計上すると宣言された文字キーの同時押しは、層�
   assert.deepEqual(entries(layer.keyCounts), [['g', 1], ['u', 1]]);
   assert.deepEqual(entries(layer.triggerKeyCounts), [['g', 1]]);
 });
+
+test('かわせみ配列+の行指定キーの層は、見出しに作者の呼び名が付く', () => {
+  const extracted = extractFor('kawasemi-plus', 'く');
+  const layer = extracted.layers.find((entry) => entry.label === 'か行');
+  assert.ok(layer);
+  assert.equal(layer.presses, 2);
+});
