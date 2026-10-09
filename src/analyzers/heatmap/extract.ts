@@ -1,6 +1,7 @@
 import { defineSingleAnalyzer, type SingleAnalyzerDefinition, type SingleAnalyzerExtractContext } from '#analyzers/contract.ts';
-import { COMBO_LAYER_ID, fromRows, type LayerPresentationRole } from '#input/layouts/types.ts';
+import { fromRows, type LayerPresentationRole } from '#input/layouts/types.ts';
 import { buildGeometry } from '#input/shapes/geometry.ts';
+import { attributeMetrics } from '#interpretation/attribution.ts';
 import { computeMetrics, type Metrics } from '#interpretation/metrics.ts';
 import { DEFAULT_TRACE_POLICY, generateTrace, type Trace } from '#trace/generate.ts';
 import { normalizedRoleColors } from './layer-heatmap.ts';
@@ -72,16 +73,10 @@ export interface HeatmapExtractInput {
 }
 
 export function computeHeatmapExtraction({ trace, metrics }: HeatmapExtractInput): HeatmapExtracted {
-  const definitions = new Map(trace.layerDefinitions.map((definition) => [definition.id, definition]));
-  const layers = metrics.layers.map((stat): HeatmapLayer => ({
-    id: stat.id,
-    label: stat.label,
-    role: definitions.get(stat.id)?.presentationRole,
-    presses: stat.presses,
-    keyCounts: stat.keyCounts,
-    triggerKeyCounts: stat.triggerKeyCounts,
-    pairedTriggerKeyCounts: stat.pairedTriggerKeyCounts,
-    colorCounts: normalizedRoleColors(definitions.get(stat.id)?.presentationRole, stat),
+  const attribution = attributeMetrics(trace.layerDefinitions, metrics);
+  const layers = attribution.layers.map((layer): HeatmapLayer => ({
+    ...layer,
+    colorCounts: normalizedRoleColors(layer.role, layer),
   }));
   return {
     integrated: {
@@ -90,14 +85,7 @@ export function computeHeatmapExtraction({ trace, metrics }: HeatmapExtractInput
       maxCount: Math.max(0, ...metrics.keyCounts.values()),
     },
     layers,
-    combo: metrics.comboPresses > 0
-      ? {
-        id: COMBO_LAYER_ID,
-        label: definitions.get(COMBO_LAYER_ID)?.label ?? COMBO_LAYER_ID,
-        presses: metrics.comboPresses,
-        keyCounts: metrics.comboKeyCounts,
-      }
-      : undefined,
+    combo: attribution.combo !== undefined && attribution.combo.presses > 0 ? attribution.combo : undefined,
   };
 }
 
