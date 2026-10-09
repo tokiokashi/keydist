@@ -25,6 +25,7 @@ import {
   aggregationLegendMap,
   aggregationTriggerKeys,
   compactLayerGuideDefinitions,
+  layerDefinitionsWithLabels,
   presentationLayerGuide,
   presentationTriggerColorSlots,
   semanticCombinationLabels,
@@ -321,8 +322,8 @@ export function InputConverterView() {
   const preferences = useInputConverterPreferences();
   const persistedPreferencesRef = useRef<InputConverterPreferencesV2 | null>(null);
   const guideDefinitions = useMemo(
-    () => compactLayerGuideDefinitions(layout),
-    [layout],
+    () => compactLayerGuideDefinitions(layout, keyboardStandard),
+    [layout, keyboardStandard],
   );
   const workspaceRegistry = useMemo(
     () => createWorkspacePanelRegistry([
@@ -632,12 +633,14 @@ export function InputConverterView() {
   );
   const activeGroupIds = session.presentation.activeAggregationGroupIds;
   const activeDefinitions = useMemo(() => {
-    const byId = new Map((layout.layerDefinitions ?? []).map((definition) => [definition.id, definition] as const));
+    const byId = new Map(
+      layerDefinitionsWithLabels(layout, keyboardStandard).map((definition) => [definition.id, definition] as const),
+    );
     return activeGroupIds.flatMap((id) => {
       const definition = byId.get(id);
       return definition === undefined ? [] : [definition];
     });
-  }, [activeGroupIds, layout]);
+  }, [activeGroupIds, layout, keyboardStandard]);
   const activeTriggerKeys = useMemo(
     () => new Set(activeGroupIds.flatMap((id) => aggregationTriggerKeys(layout, id))),
     [activeGroupIds, layout],

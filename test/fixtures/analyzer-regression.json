@@ -4834,7 +4834,7 @@
           },
           {
             "id": "face:2",
-            "label": "Qのシフト",
+            "label": "小書き",
             "presses": 0
           },
           {
@@ -4849,132 +4849,132 @@
           },
           {
             "id": "face:7",
-            "label": "くのシフト",
+            "label": "拗音（く）",
             "presses": 4
           },
           {
             "id": "face:8",
-            "label": "へのシフト",
+            "label": "拗音（へ）",
             "presses": 4
           },
           {
             "id": "face:9",
-            "label": "るのシフト",
+            "label": "拗音（る）",
             "presses": 4
           },
           {
             "id": "face:10",
-            "label": "す + このシフト",
+            "label": "外来音 + 半濁音（す + こ）",
             "presses": 0
           },
           {
             "id": "face:11",
-            "label": "い + このシフト",
+            "label": "外来音 + 半濁音（い + こ）",
             "presses": 0
           },
           {
             "id": "face:12",
-            "label": "た + このシフト",
+            "label": "外来音 + 半濁音（た + こ）",
             "presses": 0
           },
           {
             "id": "face:13",
-            "label": "く + あのシフト",
+            "label": "拗音 + 濁音（く + あ）",
             "presses": 0
           },
           {
             "id": "face:14",
-            "label": "あ + へのシフト",
+            "label": "濁音 + 拗音",
             "presses": 0
           },
           {
             "id": "face:15",
-            "label": "る + あのシフト",
+            "label": "拗音 + 濁音（る + あ）",
             "presses": 0
           },
           {
             "id": "face:16",
-            "label": "あ + このシフト",
+            "label": "外来音 + 半濁音（あ + こ）",
             "presses": 0
           },
           {
             "id": "face:17",
-            "label": "い + なのシフト",
+            "label": "外来音 + 半濁音（い + な）",
             "presses": 0
           },
           {
             "id": "face:18",
-            "label": "な + へのシフト",
+            "label": "半濁音 + 拗音",
             "presses": 0
           },
           {
             "id": "face:19",
-            "label": "あ + いのシフト",
+            "label": "濁音 + 外来音（あ + い）",
             "presses": 0
           },
           {
             "id": "face:20",
-            "label": "う + なのシフト",
+            "label": "外来音 + 半濁音（う + な）",
             "presses": 0
           },
           {
             "id": "face:21",
-            "label": "あ + うのシフト",
+            "label": "濁音 + 外来音（あ + う）",
             "presses": 0
           },
           {
             "id": "face:22",
-            "label": "く + なのシフト",
+            "label": "拗音 + 半濁音（く + な）",
             "presses": 0
           },
           {
             "id": "face:23",
-            "label": "る + なのシフト",
+            "label": "拗音 + 半濁音（る + な）",
             "presses": 0
           },
           {
             "id": "face:24",
-            "label": "あ + すのシフト",
+            "label": "濁音 + 外来音（あ + す）",
             "presses": 0
           },
           {
             "id": "face:25",
-            "label": "な + すのシフト",
+            "label": "半濁音 + 外来音",
             "presses": 0
           },
           {
             "id": "face:26",
-            "label": "か + あのシフト",
+            "label": "濁音 + 外来音（か + あ）",
             "presses": 0
           },
           {
             "id": "face:27",
-            "label": "か + いのシフト",
+            "label": "濁音 + 外来音（か + い）",
             "presses": 0
           },
           {
             "id": "face:28",
-            "label": "か + すのシフト",
+            "label": "濁音 + 外来音（か + す）",
             "presses": 0
           },
           {
             "id": "face:29",
-            "label": "か + たのシフト",
+            "label": "濁音 + 外来音（か + た）",
             "presses": 0
           },
           {
             "id": "face:30",
-            "label": "ら + かのシフト",
+            "label": "外来音 + 濁音",
             "presses": 0
           },
           {
             "id": "face:31",
-            "label": "ら + このシフト",
+            "label": "外来音 + 半濁音（ら + こ）",
             "presses": 0
           },
           {
             "id": "face:32",
-            "label": "へ + このシフト",
+            "label": "拗音 + 半濁音（へ + こ）",
             "presses": 0
           }
         ],
@@ -5180,7 +5180,7 @@
           },
           {
             "id": "face:2",
-            "label": "Qのシフト",
+            "label": "小書き",
             "presses": 0
           },
           {
@@ -5195,132 +5195,132 @@
           },
           {
             "id": "face:7",
-            "label": "くのシフト",
+            "label": "拗音（く）",
             "presses": 4
           },
           {
             "id": "face:8",
-            "label": "へのシフト",
+            "label": "拗音（へ）",
             "presses": 6
           },
           {
             "id": "face:9",
-            "label": "るのシフト",
+            "label": "拗音（る）",
             "presses": 24
           },
           {
             "id": "face:10",
-            "label": "す + このシフト",
+            "label": "外来音 + 半濁音（す + こ）",
             "presses": 0
           },
           {
             "id": "face:11",
-            "label": "い + このシフト",
+            "label": "外来音 + 半濁音（い + こ）",
             "presses": 0
           },
           {
             "id": "face:12",
-            "label": "た + このシフト",
+            "label": "外来音 + 半濁音（た + こ）",
             "presses": 0
           },
           {
             "id": "face:13",
-            "label": "く + あのシフト",
+            "label": "拗音 + 濁音（く + あ）",
             "presses": 0
           },
           {
             "id": "face:14",
-            "label": "あ + へのシフト",
+            "label": "濁音 + 拗音",
             "presses": 6
           },
           {
             "id": "face:15",
-            "label": "る + あのシフト",
+            "label": "拗音 + 濁音（る + あ）",
             "presses": 9
           },
           {
             "id": "face:16",
-            "label": "あ + このシフト",
+            "label": "外来音 + 半濁音（あ + こ）",
             "presses": 0
           },
           {
             "id": "face:17",
-            "label": "い + なのシフト",
+            "label": "外来音 + 半濁音（い + な）",
             "presses": 0
           },
           {
             "id": "face:18",
-            "label": "な + へのシフト",
+            "label": "半濁音 + 拗音",
             "presses": 0
           },
           {
             "id": "face:19",
-            "label": "あ + いのシフト",
+            "label": "濁音 + 外来音（あ + い）",
             "presses": 0
           },
           {
             "id": "face:20",
-            "label": "う + なのシフト",
+            "label": "外来音 + 半濁音（う + な）",
             "presses": 0
           },
           {
             "id": "face:21",
-            "label": "あ + うのシフト",
+            "label": "濁音 + 外来音（あ + う）",
             "presses": 0
           },
           {
             "id": "face:22",
-            "label": "く + なのシフト",
+            "label": "拗音 + 半濁音（く + な）",
             "presses": 0
           },
           {
             "id": "face:23",
-            "label": "る + なのシフト",
+            "label": "拗音 + 半濁音（る + な）",
             "presses": 0
           },
           {
             "id": "face:24",
-            "label": "あ + すのシフト",
+            "label": "濁音 + 外来音（あ + す）",
             "presses": 0
           },
           {
             "id": "face:25",
-            "label": "な + すのシフト",
+            "label": "半濁音 + 外来音",
             "presses": 0
           },
           {
             "id": "face:26",
-            "label": "か + あのシフト",
+            "label": "濁音 + 外来音（か + あ）",
             "presses": 0
           },
           {
             "id": "face:27",
-            "label": "か + いのシフト",
+            "label": "濁音 + 外来音（か + い）",
             "presses": 0
           },
           {
             "id": "face:28",
-            "label": "か + すのシフト",
+            "label": "濁音 + 外来音（か + す）",
             "presses": 0
           },
           {
             "id": "face:29",
-            "label": "か + たのシフト",
+            "label": "濁音 + 外来音（か + た）",
             "presses": 0
           },
           {
             "id": "face:30",
-            "label": "ら + かのシフト",
+            "label": "外来音 + 濁音",
             "presses": 0
           },
           {
             "id": "face:31",
-            "label": "ら + このシフト",
+            "label": "外来音 + 半濁音（ら + こ）",
             "presses": 0
           },
           {
             "id": "face:32",
-            "label": "へ + このシフト",
+            "label": "拗音 + 半濁音（へ + こ）",
             "presses": 0
           }
         ],
@@ -5553,7 +5553,7 @@
           },
           {
             "id": "face:2",
-            "label": "Qのシフト",
+            "label": "小書き",
             "presses": 0
           },
           {
@@ -5568,132 +5568,132 @@
           },
           {
             "id": "face:7",
-            "label": "くのシフト",
+            "label": "拗音（く）",
             "presses": 4
           },
           {
             "id": "face:8",
-            "label": "へのシフト",
+            "label": "拗音（へ）",
             "presses": 6
           },
           {
             "id": "face:9",
-            "label": "るのシフト",
+            "label": "拗音（る）",
             "presses": 24
           },
           {
             "id": "face:10",
-            "label": "す + このシフト",
+            "label": "外来音 + 半濁音（す + こ）",
             "presses": 0
           },
           {
             "id": "face:11",
-            "label": "い + このシフト",
+            "label": "外来音 + 半濁音（い + こ）",
             "presses": 0
           },
           {
             "id": "face:12",
-            "label": "た + このシフト",
+            "label": "外来音 + 半濁音（た + こ）",
             "presses": 0
           },
           {
             "id": "face:13",
-            "label": "く + あのシフト",
+            "label": "拗音 + 濁音（く + あ）",
             "presses": 0
           },
           {
             "id": "face:14",
-            "label": "あ + へのシフト",
+            "label": "濁音 + 拗音",
             "presses": 6
           },
           {
             "id": "face:15",
-            "label": "る + あのシフト",
+            "label": "拗音 + 濁音（る + あ）",
             "presses": 9
           },
           {
             "id": "face:16",
-            "label": "あ + このシフト",
+            "label": "外来音 + 半濁音（あ + こ）",
             "presses": 0
           },
           {
             "id": "face:17",
-            "label": "い + なのシフト",
+            "label": "外来音 + 半濁音（い + な）",
             "presses": 0
           },
           {
             "id": "face:18",
-            "label": "な + へのシフト",
+            "label": "半濁音 + 拗音",
             "presses": 0
           },
           {
             "id": "face:19",
-            "label": "あ + いのシフト",
+            "label": "濁音 + 外来音（あ + い）",
             "presses": 0
           },
           {
             "id": "face:20",
-            "label": "う + なのシフト",
+            "label": "外来音 + 半濁音（う + な）",
             "presses": 0
           },
           {
             "id": "face:21",
-            "label": "あ + うのシフト",
+            "label": "濁音 + 外来音（あ + う）",
             "presses": 0
           },
           {
             "id": "face:22",
-            "label": "く + なのシフト",
+            "label": "拗音 + 半濁音（く + な）",
             "presses": 0
           },
           {
             "id": "face:23",
-            "label": "る + なのシフト",
+            "label": "拗音 + 半濁音（る + な）",
             "presses": 0
           },
           {
             "id": "face:24",
-            "label": "あ + すのシフト",
+            "label": "濁音 + 外来音（あ + す）",
             "presses": 0
           },
           {
             "id": "face:25",
-            "label": "な + すのシフト",
+            "label": "半濁音 + 外来音",
             "presses": 0
           },
           {
             "id": "face:26",
-            "label": "か + あのシフト",
+            "label": "濁音 + 外来音（か + あ）",
             "presses": 0
           },
           {
             "id": "face:27",
-            "label": "か + いのシフト",
+            "label": "濁音 + 外来音（か + い）",
             "presses": 0
           },
           {
             "id": "face:28",
-            "label": "か + すのシフト",
+            "label": "濁音 + 外来音（か + す）",
             "presses": 0
           },
           {
             "id": "face:29",
-            "label": "か + たのシフト",
+            "label": "濁音 + 外来音（か + た）",
             "presses": 0
           },
           {
             "id": "face:30",
-            "label": "ら + かのシフト",
+            "label": "外来音 + 濁音",
             "presses": 0
           },
           {
             "id": "face:31",
-            "label": "ら + このシフト",
+            "label": "外来音 + 半濁音（ら + こ）",
             "presses": 0
           },
           {
             "id": "face:32",
-            "label": "へ + このシフト",
+            "label": "拗音 + 半濁音（へ + こ）",
             "presses": 0
           }
         ],
@@ -5900,7 +5900,7 @@
           },
           {
             "id": "face:2",
-            "label": "Qのシフト",
+            "label": "小書き",
             "presses": 0
           },
           {
@@ -5915,132 +5915,132 @@
           },
           {
             "id": "face:7",
-            "label": "くのシフト",
+            "label": "拗音（く）",
             "presses": 4
           },
           {
             "id": "face:8",
-            "label": "へのシフト",
+            "label": "拗音（へ）",
             "presses": 6
           },
           {
             "id": "face:9",
-            "label": "るのシフト",
+            "label": "拗音（る）",
             "presses": 24
           },
           {
             "id": "face:10",
-            "label": "す + このシフト",
+            "label": "外来音 + 半濁音（す + こ）",
             "presses": 0
           },
           {
             "id": "face:11",
-            "label": "い + このシフト",
+            "label": "外来音 + 半濁音（い + こ）",
             "presses": 0
           },
           {
             "id": "face:12",
-            "label": "た + このシフト",
+            "label": "外来音 + 半濁音（た + こ）",
             "presses": 0
           },
           {
             "id": "face:13",
-            "label": "く + あのシフト",
+            "label": "拗音 + 濁音（く + あ）",
             "presses": 0
           },
           {
             "id": "face:14",
-            "label": "あ + へのシフト",
+            "label": "濁音 + 拗音",
             "presses": 6
           },
           {
             "id": "face:15",
-            "label": "る + あのシフト",
+            "label": "拗音 + 濁音（る + あ）",
             "presses": 9
           },
           {
             "id": "face:16",
-            "label": "あ + このシフト",
+            "label": "外来音 + 半濁音（あ + こ）",
             "presses": 0
           },
           {
             "id": "face:17",
-            "label": "い + なのシフト",
+            "label": "外来音 + 半濁音（い + な）",
             "presses": 0
           },
           {
             "id": "face:18",
-            "label": "な + へのシフト",
+            "label": "半濁音 + 拗音",
             "presses": 0
           },
           {
             "id": "face:19",
-            "label": "あ + いのシフト",
+            "label": "濁音 + 外来音（あ + い）",
             "presses": 0
           },
           {
             "id": "face:20",
-            "label": "う + なのシフト",
+            "label": "外来音 + 半濁音（う + な）",
             "presses": 0
           },
           {
             "id": "face:21",
-            "label": "あ + うのシフト",
+            "label": "濁音 + 外来音（あ + う）",
             "presses": 0
           },
           {
             "id": "face:22",
-            "label": "く + なのシフト",
+            "label": "拗音 + 半濁音（く + な）",
             "presses": 0
           },
           {
             "id": "face:23",
-            "label": "る + なのシフト",
+            "label": "拗音 + 半濁音（る + な）",
             "presses": 0
           },
           {
             "id": "face:24",
-            "label": "あ + すのシフト",
+            "label": "濁音 + 外来音（あ + す）",
             "presses": 0
           },
           {
             "id": "face:25",
-            "label": "な + すのシフト",
+            "label": "半濁音 + 外来音",
             "presses": 0
           },
           {
             "id": "face:26",
-            "label": "か + あのシフト",
+            "label": "濁音 + 外来音（か + あ）",
             "presses": 0
           },
           {
             "id": "face:27",
-            "label": "か + いのシフト",
+            "label": "濁音 + 外来音（か + い）",
             "presses": 0
           },
           {
             "id": "face:28",
-            "label": "か + すのシフト",
+            "label": "濁音 + 外来音（か + す）",
             "presses": 0
           },
           {
             "id": "face:29",
-            "label": "か + たのシフト",
+            "label": "濁音 + 外来音（か + た）",
             "presses": 0
           },
           {
             "id": "face:30",
-            "label": "ら + かのシフト",
+            "label": "外来音 + 濁音",
             "presses": 0
           },
           {
             "id": "face:31",
-            "label": "ら + このシフト",
+            "label": "外来音 + 半濁音（ら + こ）",
             "presses": 0
           },
           {
             "id": "face:32",
-            "label": "へ + このシフト",
+            "label": "拗音 + 半濁音（へ + こ）",
             "presses": 0
           }
         ],
@@ -6247,7 +6247,7 @@
           },
           {
             "id": "face:2",
-            "label": "Qのシフト",
+            "label": "小書き",
             "presses": 0
           },
           {
@@ -6262,132 +6262,132 @@
           },
           {
             "id": "face:7",
-            "label": "くのシフト",
+            "label": "拗音（く）",
             "presses": 4
           },
           {
             "id": "face:8",
-            "label": "へのシフト",
+            "label": "拗音（へ）",
             "presses": 6
           },
           {
             "id": "face:9",
-            "label": "るのシフト",
+            "label": "拗音（る）",
             "presses": 24
           },
           {
             "id": "face:10",
-            "label": "す + このシフト",
+            "label": "外来音 + 半濁音（す + こ）",
             "presses": 0
           },
           {
             "id": "face:11",
-            "label": "い + このシフト",
+            "label": "外来音 + 半濁音（い + こ）",
             "presses": 0
           },
           {
             "id": "face:12",
-            "label": "た + このシフト",
+            "label": "外来音 + 半濁音（た + こ）",
             "presses": 0
           },
           {
             "id": "face:13",
-            "label": "く + あのシフト",
+            "label": "拗音 + 濁音（く + あ）",
             "presses": 0
           },
           {
             "id": "face:14",
-            "label": "あ + へのシフト",
+            "label": "濁音 + 拗音",
             "presses": 6
           },
           {
             "id": "face:15",
-            "label": "る + あのシフト",
+            "label": "拗音 + 濁音（る + あ）",
             "presses": 9
           },
           {
             "id": "face:16",
-            "label": "あ + このシフト",
+            "label": "外来音 + 半濁音（あ + こ）",
             "presses": 0
           },
           {
             "id": "face:17",
-            "label": "い + なのシフト",
+            "label": "外来音 + 半濁音（い + な）",
             "presses": 0
           },
           {
             "id": "face:18",
-            "label": "な + へのシフト",
+            "label": "半濁音 + 拗音",
             "presses": 0
           },
           {
             "id": "face:19",
-            "label": "あ + いのシフト",
+            "label": "濁音 + 外来音（あ + い）",
             "presses": 0
           },
           {
             "id": "face:20",
-            "label": "う + なのシフト",
+            "label": "外来音 + 半濁音（う + な）",
             "presses": 0
           },
           {
             "id": "face:21",
-            "label": "あ + うのシフト",
+            "label": "濁音 + 外来音（あ + う）",
             "presses": 0
           },
           {
             "id": "face:22",
-            "label": "く + なのシフト",
+            "label": "拗音 + 半濁音（く + な）",
             "presses": 0
           },
           {
             "id": "face:23",
-            "label": "る + なのシフト",
+            "label": "拗音 + 半濁音（る + な）",
             "presses": 0
           },
           {
             "id": "face:24",
-            "label": "あ + すのシフト",
+            "label": "濁音 + 外来音（あ + す）",
             "presses": 0
           },
           {
             "id": "face:25",
-            "label": "な + すのシフト",
+            "label": "半濁音 + 外来音",
             "presses": 0
           },
           {
             "id": "face:26",
-            "label": "か + あのシフト",
+            "label": "濁音 + 外来音（か + あ）",
             "presses": 0
           },
           {
             "id": "face:27",
-            "label": "か + いのシフト",
+            "label": "濁音 + 外来音（か + い）",
             "presses": 0
           },
           {
             "id": "face:28",
-            "label": "か + すのシフト",
+            "label": "濁音 + 外来音（か + す）",
             "presses": 0
           },
           {
             "id": "face:29",
-            "label": "か + たのシフト",
+            "label": "濁音 + 外来音（か + た）",
             "presses": 0
           },
           {
             "id": "face:30",
-            "label": "ら + かのシフト",
+            "label": "外来音 + 濁音",
             "presses": 0
           },
           {
             "id": "face:31",
-            "label": "ら + このシフト",
+            "label": "外来音 + 半濁音（ら + こ）",
             "presses": 0
           },
           {
             "id": "face:32",
-            "label": "へ + このシフト",
+            "label": "拗音 + 半濁音（へ + こ）",
             "presses": 0
           }
         ],
@@ -6594,7 +6594,7 @@
           },
           {
             "id": "face:2",
-            "label": "Qのシフト",
+            "label": "小書き",
             "presses": 0
           },
           {
@@ -6609,132 +6609,132 @@
           },
           {
             "id": "face:7",
-            "label": "くのシフト",
+            "label": "拗音（く）",
             "presses": 4
           },
           {
             "id": "face:8",
-            "label": "へのシフト",
+            "label": "拗音（へ）",
             "presses": 6
           },
           {
             "id": "face:9",
-            "label": "るのシフト",
+            "label": "拗音（る）",
             "presses": 24
           },
           {
             "id": "face:10",
-            "label": "す + このシフト",
+            "label": "外来音 + 半濁音（す + こ）",
             "presses": 0
           },
           {
             "id": "face:11",
-            "label": "い + このシフト",
+            "label": "外来音 + 半濁音（い + こ）",
             "presses": 0
           },
           {
             "id": "face:12",
-            "label": "た + このシフト",
+            "label": "外来音 + 半濁音（た + こ）",
             "presses": 0
           },
           {
             "id": "face:13",
-            "label": "く + あのシフト",
+            "label": "拗音 + 濁音（く + あ）",
             "presses": 0
           },
           {
             "id": "face:14",
-            "label": "あ + へのシフト",
+            "label": "濁音 + 拗音",
             "presses": 6
           },
           {
             "id": "face:15",
-            "label": "る + あのシフト",
+            "label": "拗音 + 濁音（る + あ）",
             "presses": 9
           },
           {
             "id": "face:16",
-            "label": "あ + このシフト",
+            "label": "外来音 + 半濁音（あ + こ）",
             "presses": 0
           },
           {
             "id": "face:17",
-            "label": "い + なのシフト",
+            "label": "外来音 + 半濁音（い + な）",
             "presses": 0
           },
           {
             "id": "face:18",
-            "label": "な + へのシフト",
+            "label": "半濁音 + 拗音",
             "presses": 0
           },
           {
             "id": "face:19",
-            "label": "あ + いのシフト",
+            "label": "濁音 + 外来音（あ + い）",
             "presses": 0
           },
           {
             "id": "face:20",
-            "label": "う + なのシフト",
+            "label": "外来音 + 半濁音（う + な）",
             "presses": 0
           },
           {
             "id": "face:21",
-            "label": "あ + うのシフト",
+            "label": "濁音 + 外来音（あ + う）",
             "presses": 0
           },
           {
             "id": "face:22",
-            "label": "く + なのシフト",
+            "label": "拗音 + 半濁音（く + な）",
             "presses": 0
           },
           {
             "id": "face:23",
-            "label": "る + なのシフト",
+            "label": "拗音 + 半濁音（る + な）",
             "presses": 0
           },
           {
             "id": "face:24",
-            "label": "あ + すのシフト",
+            "label": "濁音 + 外来音（あ + す）",
             "presses": 0
           },
           {
             "id": "face:25",
-            "label": "な + すのシフト",
+            "label": "半濁音 + 外来音",
             "presses": 0
           },
           {
             "id": "face:26",
-            "label": "か + あのシフト",
+            "label": "濁音 + 外来音（か + あ）",
             "presses": 0
           },
           {
             "id": "face:27",
-            "label": "か + いのシフト",
+            "label": "濁音 + 外来音（か + い）",
             "presses": 0
           },
           {
             "id": "face:28",
-            "label": "か + すのシフト",
+            "label": "濁音 + 外来音（か + す）",
             "presses": 0
           },
           {
             "id": "face:29",
-            "label": "か + たのシフト",
+            "label": "濁音 + 外来音（か + た）",
             "presses": 0
           },
           {
             "id": "face:30",
-            "label": "ら + かのシフト",
+            "label": "外来音 + 濁音",
             "presses": 0
           },
           {
             "id": "face:31",
-            "label": "ら + このシフト",
+            "label": "外来音 + 半濁音（ら + こ）",
             "presses": 0
           },
           {
             "id": "face:32",
-            "label": "へ + このシフト",
+            "label": "拗音 + 半濁音（へ + こ）",
             "presses": 0
           }
         ],
@@ -11054,6 +11054,6 @@
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     }
   ],
-  "sourceCommit": "2d369feeab017ecb64bdc07d92b9fc3a84c44422",
+  "sourceCommit": "60e7b63b33366a94191b29e0c5376a8f2630c060",
   "version": 1
 }

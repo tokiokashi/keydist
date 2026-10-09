@@ -407,23 +407,97 @@ export function aggregationTriggerDisplayText(
   return triggerChordsDisplayText(layout, aggregationTriggerChords(layout, aggregationGroupId));
 }
 
+/** 配列が名前を付けていない層に、表示とトレースで付ける名前。 */
+export interface DefaultLayerName {
+  label: string;
+  /** 名前にトリガーのキーが入っている。見出しでトリガーを重ねて出さないために使う。 */
+  includesTrigger: boolean;
+}
+
+type DefaultLayerNameLayout = Pick<
+  Layout,
+  'faces' | 'faceLayerIds' | 'layerDefinitions' | 'thumbShiftKeys' | 'legends'
+>;
+
 /**
- * 名前の無い層（`labelIsDefault`）に、面のトリガーの表示から名前を付けた層定義の列。
- * 名前は「<トリガーの表示>のシフト」にする。刻印は配列の組み立ての後で差し替わることがあるので、
+ * 面のキーに付いた役割名（modifierGroups）を、トリガーの順に「 + 」でつないだ名前。
+ * 役割名を持たない面は `undefined`。
+ */
+function modifierRoleName(faces: readonly Face[]): string | undefined {
+  if (faces.length !== 1) return undefined;
+  const [face] = faces;
+  if (face.modifierGroups === undefined) return undefined;
+  const groups = new Map(
+    Object.entries(face.modifierGroups).map(([key, group]) => [resolveKeyId(key), group] as const),
+  );
+  const names = [...new Set(
+    face.trigger
+      .map((key) => groups.get(resolveKeyId(key)))
+      .filter((group): group is string => group !== undefined && group.trim() !== ''),
+  )];
+  return names.length === 0 ? undefined : names.join(' + ');
+}
+
+/**
+ * 名前の無い層（`labelIsDefault`）の名前を、層の識別子ごとに返す。
+ * 面のキーが役割名を持つ時は役割名（例: 外来音 + 半濁音）、持たない時は「<トリガーの表示>のシフト」にする。
+ * 役割名が配列内の別の層の名前と重なる時は、トリガーの表示を添えて区別する（例: 拗音（く））。
+ * 配列が付けた名前は変えない。刻印は配列の組み立ての後で差し替わることがあるので、
  * 組み立ての途中ではなく、表示・トレースを作る時点の配列から読む。
+ */
+export function defaultLayerNames(
+  layout: DefaultLayerNameLayout,
+  standard?: PhysicalKeyboardStandard,
+): ReadonlyMap<string, DefaultLayerName> {
+  const definitions = layout.layerDefinitions ?? [];
+  const candidates = definitions.flatMap((definition) => {
+    if (definition.labelIsDefault !== true) return [];
+    const faces = (layout.faces ?? [])
+      .filter((face) => layout.faceLayerIds?.get(face) === definition.id);
+    const trigger = triggerChordsDisplayText(
+      layout,
+      faces.flatMap((face) => displayTriggerAlternatives(face)),
+      standard,
+    );
+    const role = modifierRoleName(faces);
+    return [{ id: definition.id, trigger, role }];
+  });
+
+  const labelCounts = new Map<string, number>();
+  const count = (label: string) => labelCounts.set(label, (labelCounts.get(label) ?? 0) + 1);
+  for (const definition of definitions) {
+    if (definition.labelIsDefault !== true) count(definition.label);
+  }
+  for (const { trigger, role } of candidates) count(role ?? `${trigger}のシフト`);
+
+  const names = new Map<string, DefaultLayerName>();
+  for (const { id, trigger, role } of candidates) {
+    if (role === undefined) {
+      names.set(id, { label: `${trigger}のシフト`, includesTrigger: true });
+    } else if ((labelCounts.get(role) ?? 0) > 1) {
+      names.set(id, { label: `${role}（${trigger}）`, includesTrigger: true });
+    } else {
+      names.set(id, { label: role, includesTrigger: false });
+    }
+  }
+  return names;
+}
+
+/**
+ * 名前の無い層に `defaultLayerNames` の名前を入れた層定義の列。
+ * 層の名前を画面に出す箇所は、配列の `layerDefinitions` を直接読まずに、この列を使う。
  * 名前の付いた層の定義は、そのまま返す。
  */
 export function layerDefinitionsWithLabels(
-  layout: Pick<Layout, 'faces' | 'faceLayerIds' | 'layerDefinitions' | 'thumbShiftKeys' | 'legends'>,
+  layout: DefaultLayerNameLayout,
   standard?: PhysicalKeyboardStandard,
 ): LayerDefinition[] {
+  const names = defaultLayerNames(layout, standard);
   return (layout.layerDefinitions ?? []).map((definition) => {
-    if (definition.labelIsDefault !== true) return definition;
-    const chords = (layout.faces ?? [])
-      .filter((face) => layout.faceLayerIds?.get(face) === definition.id)
-      .flatMap((face) => displayTriggerAlternatives(face));
+    const name = names.get(definition.id);
+    if (name === undefined) return definition;
     const { labelIsDefault: _marker, ...named } = definition;
-    return { ...named, label: `${triggerChordsDisplayText(layout, chords, standard)}のシフト` };
+    return { ...named, label: name.label };
   });
 }
 
@@ -592,9 +666,10 @@ export function semanticCombinationLabels(
  * base(single)はmain keyboardが担うためカンペから除外する。
  */
 export function compactLayerGuideDefinitions(
-  layout: Pick<Layout, 'layerDefinitions' | 'layerViewPresentation'>,
+  layout: DefaultLayerNameLayout & Pick<Layout, 'layerViewPresentation'>,
+  standard?: PhysicalKeyboardStandard,
 ): readonly LayerDefinition[] {
-  const definitions = (layout.layerDefinitions ?? [])
+  const definitions = layerDefinitionsWithLabels(layout, standard)
     .filter((definition) =>
       definition.kind === 'layer'
       && definition.presentationRole === 'layer');

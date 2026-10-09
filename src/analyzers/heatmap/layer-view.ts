@@ -3,6 +3,7 @@ import {
   classifyPresentationFaces,
   displayTriggerAlternatives,
   faceDisplayCells,
+  defaultLayerNames,
   layerDefinitionsWithLabels,
   orderedPresentationLayers,
   triggerChordsDisplayText,
@@ -58,9 +59,12 @@ function displayTriggerText(layout: Layout, face: Layer['faces'][number], standa
 function layerTitle(layer: Layer, index: number, label: string, layout: Layout, standard: PhysicalKeyboardStandard | undefined): string {
   const head = `レイヤー${index + 1}: ${label}`;
   if (layer.faces.length === 0 || layer.id === SINGLE_LAYER_ID) return head;
+  // 名前にトリガーのキーが入っている既定の名前は、見出しでトリガーを重ねて出さない
+  const omitTrigger = defaultLayerNames(layout, standard).get(layer.id)?.includesTrigger === true;
   const triggers = layer.faces.map((face) => displayTriggerText(layout, face, standard));
   const modeLabel = layout.layerDefinitions?.find((definition) => definition.id === layer.id)?.presentationModeLabel;
-  return modeLabel === undefined ? `${head} [${triggers.join(' / ')}]` : `${head} [${triggers.join(' / ')}]・${modeLabel}`;
+  const bracket = omitTrigger ? '' : ` [${triggers.join(' / ')}]`;
+  return modeLabel === undefined ? `${head}${bracket}` : `${head}${bracket}・${modeLabel}`;
 }
 
 /** 層が持つキーの刻印。層が面を持たない（単打だけの）時は配列の刻印を使う。 */

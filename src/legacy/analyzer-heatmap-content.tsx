@@ -20,6 +20,7 @@ import {
   faceCells,
   faceDisplayCells,
   handOfKey,
+  layerDefinitionsWithLabels,
   layerShiftStyles,
   orderedPresentationLayers,
   type Layer,
@@ -109,7 +110,7 @@ function displayTriggerAnnotation(
 }
 
 function layerDefinitionForId(layout: Layout, layerId: string) {
-  const definition = layout.layerDefinitions?.find((entry) => entry.id === layerId);
+  const definition = layerDefinitionsWithLabels(layout).find((entry) => entry.id === layerId);
   if (definition === undefined) {
     throw new Error(
       `レイヤー表示にはaggregation「${layerId}」のlayerDefinitions明示が必要`,
