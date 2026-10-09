@@ -822,7 +822,7 @@ test('保存済みの解析設定は、操作可能になった瞬間から表�
       storageValue: JSON.stringify({ version: 1, 'bigram-flow': { lineScale: 'sqrt' } }),
     },
     // 紐の太さは図のそばの展開にあり、展開のボタンは図が描かれてから（読み込みが済んでから）出る。
-    { selector: '.flow-figure-settings select', read: 'value' },
+    { selector: '.figure-settings select', read: 'value' },
   );
   await page.goto('/standalone/bigram-flow');
   const lineScale = (await openFigureSettings(page, 'Keyboard Flow')).getByLabel('紐の太さ', { exact: true });
@@ -909,7 +909,7 @@ test('ペインの解析設定には両方の図に効く項目だけがあり�
   await expect(settings.getByLabel('紐の太さ', { exact: true })).toHaveCount(0);
 
   // 展開は閉じている間は無く、ボタンで見出しの直下に開き、閉じるまで開いたまま。
-  await expect(page.locator('.flow-figure-settings')).toHaveCount(0);
+  await expect(page.locator('.figure-settings')).toHaveCount(0);
   await settings.getByRole('button', { name: '解析設定を閉じる' }).click();
   const keyboard = await openFigureSettings(page, 'Keyboard Flow');
   await expect(keyboard.locator('select')).toHaveCount(2);
@@ -966,7 +966,7 @@ test('展開の状態は保存しない（再読み込みで閉じ、値は残�
     .toContain('sqrt');
   await page.reload();
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
-  await expect(page.locator('.flow-figure-settings')).toHaveCount(0);
+  await expect(page.locator('.figure-settings')).toHaveCount(0);
   await expect((await openFigureSettings(page, 'Keyboard Flow')).getByLabel('紐の太さ', { exact: true })).toHaveValue('sqrt');
 });
 

@@ -4,7 +4,7 @@
  */
 export const HEATMAP_PANE_META = {
   name: 'ヒートマップ',
-  description: '同じテキストを打った時の、キーごとの押下数を配列の図に色で出します。全部の層を合わせた図と、層ごとの図を見られます。',
+  description: '同じテキストを打った時の、キーごとの押下数を配列の図に色で出します。全部のレイヤーを合わせた図と、レイヤー別の図を見られます。',
   /** 図が読める高さ [rem]（`analyzers/min-body-height.ts`）。 */
   minBodyHeightRem: 31,
 } as const;

@@ -1,7 +1,9 @@
 import { THUMB_ROW, type Geometry } from '#input/shapes/geometry.ts';
 import { visibleGeometryKeys } from '#input/layouts/physical-keys.ts';
 import type { Layout } from '#input/layouts/types.ts';
+import type { PhysicalKeyboardStandard } from '#input/shapes/geometry.ts';
 import type { HeatmapColorScale } from './options.ts';
+import { keyTooltipText } from './key-tooltip.ts';
 import { heatIntensity } from './layer-view.ts';
 
 /**
@@ -32,6 +34,8 @@ export interface HeatmapDiagramProps {
   readonly scale: HeatmapColorScale;
   /** キーid → 枠 */
   readonly shiftStyles: ReadonlyMap<string, HeatmapShiftStyle>;
+  /** キーの名前に使う規格。自作の物理配列は未指定 */
+  readonly standard: PhysicalKeyboardStandard | undefined;
   readonly hidden?: boolean;
   readonly ariaSuffix: string;
 }
@@ -51,6 +55,7 @@ export function HeatmapDiagram({
   maxCount,
   scale,
   shiftStyles,
+  standard,
   hidden = false,
   ariaSuffix,
 }: HeatmapDiagramProps) {
@@ -87,7 +92,7 @@ export function HeatmapDiagram({
       <svg viewBox={`${viewX} ${viewY} ${width} ${height}`} role="img" aria-label={`${caption}${ariaSuffix}`}>
         {keys.map((item) => (
           <g key={item.key.id} data-heatmap-key={item.key.id} data-heat={item.intensity.toFixed(3)}>
-            <title>{`${item.label || item.key.id} (${item.key.id}): ${item.count} 打`}</title>
+            <title>{keyTooltipText(item.key.id, item.label, item.count, standard)}</title>
             <rect
               x={item.x + 1}
               y={item.y + 1}

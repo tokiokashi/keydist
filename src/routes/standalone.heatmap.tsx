@@ -15,7 +15,7 @@ export const Route = createFileRoute('/standalone/heatmap')({
       { title: `${HEATMAP_PANE_META.name} | keydist` },
       {
         name: 'description',
-        content: '配列やSetupを1つ選んで、キーごとの押下数を、全部の層を合わせた図と層ごとの図で見ます。',
+        content: '配列やSetupを1つ選んで、キーごとの押下数を、全部のレイヤーを合わせた図とレイヤー別の図で見ます。',
       },
     ],
   }),

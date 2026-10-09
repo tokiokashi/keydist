@@ -36,20 +36,20 @@ export const heatmapOptions = defineOptions({
     default: 'auto',
     affects: 'view',
     url: picklistUrlCodec('arrange', LAYER_ARRANGEMENTS),
-    label: '層の並べ方',
+    label: 'レイヤーの並べ方',
   }),
   layerDetail: defineOption<HeatmapLayerDetail>({
     schema: v.picklist(LAYER_DETAILS),
     default: 'compact',
     affects: 'view',
     url: picklistUrlCodec('layers', LAYER_DETAILS),
-    label: '層のまとめ方',
+    label: 'レイヤーのまとめ方',
   }),
   activeLayerId: defineOption<string>({
     schema: v.string(),
     default: '',
     affects: 'view',
-    label: '表示中のタブの層',
+    label: '表示中のタブのレイヤー',
   }),
 });
 

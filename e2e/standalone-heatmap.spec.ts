@@ -30,6 +30,9 @@ test('層が1つの配列: 統合図と層別図が1枚ずつ出て、タブは�
   const heat = (id: string) => diagrams(page).nth(1).locator(`[data-heatmap-key="${id}"]`).getAttribute('data-heat');
   expect(Number(await heat('e'))).toBeGreaterThan(0);
   expect(Number(await heat('1'))).toBe(0);
+  // ツールチップは物理キーの名前と押下数だけで、内部のキーidは出さない
+  const tip = await diagrams(page).nth(1).locator('[data-heatmap-key="e"] title').textContent();
+  expect(tip).toMatch(/^E: \d+打$/);
 });
 
 test('層が複数の配列: 並置で全部の層が見え、タブにすると1枚だけ見える', async ({ page }) => {
@@ -78,9 +81,11 @@ test('層をまとめる配列: まとめと詳細を切り替えられ、層の
   await page.goto('/standalone/heatmap?arrange=side-by-side');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   await expect(diagrams(page)).toHaveCount(3);
-  await feature(page).getByRole('button', { name: '全レイヤー詳細' }).click();
+  await page.getByRole('button', { name: 'レイヤー別ヒートマップの表示', exact: true }).click();
+  const box = page.getByRole('group', { name: 'レイヤー別ヒートマップの表示' });
+  await box.getByRole('button', { name: '全レイヤー詳細' }).click();
   await expect(diagrams(page)).toHaveCount(32);
-  await feature(page).getByRole('button', { name: '2面にまとめる' }).click();
+  await box.getByRole('button', { name: '2面にまとめる' }).click();
   await expect(diagrams(page)).toHaveCount(3);
 });
 
@@ -88,6 +93,7 @@ test('層をまとめる宣言が無い配列には、まとめと詳細の切�
   await selectLayout(page, 'shingeta');
   await page.goto('/standalone/heatmap');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole('button', { name: 'レイヤー別ヒートマップの表示' })).toHaveCount(0);
   await expect(feature(page).getByRole('button', { name: '全レイヤー詳細' })).toHaveCount(0);
 });
 
@@ -106,7 +112,7 @@ test('Workspaceのペインで、解析設定から層の並べ方と色の尺�
 
   await page.getByRole('button', { name: '解析設定', exact: true }).click();
   const settings = page.locator('[data-settings-window="true"]');
-  await settings.getByRole('group', { name: '層の並べ方' }).getByRole('button', { name: 'タブ' }).click();
+  await settings.getByRole('group', { name: 'レイヤーの並べ方' }).getByRole('button', { name: 'タブ' }).click();
   await settings.getByRole('group', { name: '色の尺度' }).getByRole('button', { name: '対数' }).click();
   await settings.getByRole('button', { name: '解析設定を閉じる' }).click();
   await expect(feature(page).getByRole('tab')).toHaveCount(5);

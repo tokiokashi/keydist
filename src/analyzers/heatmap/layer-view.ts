@@ -1,9 +1,10 @@
-import { resolveKeyId, THUMB_KEY } from '#input/shapes/geometry.ts';
+import type { PhysicalKeyboardStandard } from '#input/shapes/geometry.ts';
 import {
   classifyPresentationFaces,
   displayTriggerAlternatives,
   faceDisplayCells,
   orderedPresentationLayers,
+  triggerChordsDisplayText,
   type Layer,
 } from '#input/layouts/layers.ts';
 import { SINGLE_LAYER_ID, type CompactLayerViewPresentation, type Layout } from '#input/layouts/types.ts';
@@ -45,21 +46,15 @@ export function presentationLayersOf(layout: Layout): Layer[] {
   return layers;
 }
 
-function triggerKeyText(key: string, legends: ReadonlyMap<string, string>): string {
-  const resolved = resolveKeyId(key);
-  return resolved === THUMB_KEY.LT || resolved === THUMB_KEY.RT ? legends.get(resolved) ?? resolved : resolved;
+function displayTriggerText(layout: Layout, face: Layer['faces'][number], standard: PhysicalKeyboardStandard | undefined): string {
+  return face.presentationTriggerText
+    ?? triggerChordsDisplayText(layout, displayTriggerAlternatives(face), standard);
 }
 
-function displayTriggerText(layout: Layout, face: Layer['faces'][number]): string {
-  return face.presentationTriggerText ?? displayTriggerAlternatives(face)
-    .map((alternative) => alternative.map((key) => triggerKeyText(key, layout.legends)).join(' + '))
-    .join(' / ');
-}
-
-function layerTitle(layer: Layer, index: number, label: string, layout: Layout): string {
+function layerTitle(layer: Layer, index: number, label: string, layout: Layout, standard: PhysicalKeyboardStandard | undefined): string {
   const head = `レイヤー${index + 1}: ${label}`;
   if (layer.faces.length === 0 || layer.id === SINGLE_LAYER_ID) return head;
-  const triggers = layer.faces.map((face) => displayTriggerText(layout, face));
+  const triggers = layer.faces.map((face) => displayTriggerText(layout, face, standard));
   const modeLabel = layout.layerDefinitions?.find((definition) => definition.id === layer.id)?.presentationModeLabel;
   return modeLabel === undefined ? `${head} [${triggers.join(' / ')}]` : `${head} [${triggers.join(' / ')}]・${modeLabel}`;
 }
@@ -118,6 +113,7 @@ export function buildLayerEntries(
   layout: Layout,
   extracted: HeatmapExtracted,
   detail: HeatmapLayerDetail,
+  standard?: PhysicalKeyboardStandard,
 ): HeatmapLayerEntry[] {
   const stats = new Map(extracted.layers.map((layer) => [layer.id, layer]));
   const presentation = presentationLayersOf(layout);
@@ -130,19 +126,19 @@ export function buildLayerEntries(
   const entries = [...presentation, ...undeclared].map((layer, index) => {
     const label = layout.layerDefinitions?.find((definition) => definition.id === layer.id)?.label ?? layer.id;
     const stat = stats.get(layer.id) ?? emptyLayer(layer.id, label);
-    return { stat, entry: { id: layer.id, title: layerTitle(layer, index, stat.label, layout), label: stat.label, layer, keyCounts: stat.keyCounts, colorCounts: stat.colorCounts } };
+    return { stat, entry: { id: layer.id, title: layerTitle(layer, index, stat.label, layout, standard), label: stat.label, layer, keyCounts: stat.keyCounts, colorCounts: stat.colorCounts } };
   });
 
   const compact = compactPresentationOf(layout);
   if (compact === undefined || detail === 'detail') return entries.map((item) => item.entry);
 
   const keepIds = new Set(compact.keepLayerIds);
-  if (keepIds.size !== compact.keepLayerIds.length) throw new Error('層をまとめる表示のkeepLayerIdsに重複がある');
-  if (!keepIds.has(compact.mergeIntoLayerId)) throw new Error('層をまとめる表示のmergeIntoLayerIdはkeepLayerIdsに含める必要がある');
+  if (keepIds.size !== compact.keepLayerIds.length) throw new Error('レイヤーをまとめる表示の定義が正しくありません（残すレイヤーが重複しています）');
+  if (!keepIds.has(compact.mergeIntoLayerId)) throw new Error('レイヤーをまとめる表示の定義が正しくありません（合算先は残すレイヤーに含めてください）');
   const byId = new Map(entries.map((item) => [item.entry.id, item]));
   const kept = compact.keepLayerIds.map((id) => {
     const item = byId.get(id);
-    if (item === undefined) throw new Error(`層をまとめる表示の層「${id}」が配列に無い`);
+    if (item === undefined) throw new Error(`レイヤーをまとめる表示の定義が正しくありません（レイヤー「${id}」が配列にありません）`);
     return item;
   });
   const merged = entries.filter((item) => !keepIds.has(item.entry.id));

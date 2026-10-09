@@ -64,7 +64,7 @@ for (const cols of [2, 4, 6, 12]) {
       const parts = [
         ['count', heading.querySelector('.flow-block-count')!],
         ['info', heading.querySelector('.info')!],
-        ['toggle', heading.querySelector('.flow-figure-settings-toggle')!],
+        ['toggle', heading.querySelector('.figure-settings-toggle')!],
       ] as const;
       const rects = parts.map(([name, el]) => ({ name, r: el.getBoundingClientRect() }));
       const overlaps: string[] = [];

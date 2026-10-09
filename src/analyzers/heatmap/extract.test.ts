@@ -6,6 +6,7 @@ import { fromRows, type Layout } from '#input/layouts/types.ts';
 import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { computeHeatmapExtraction } from './extract.ts';
+import { DEFAULT_HEATMAP_OPTIONS } from './options.ts';
 
 /**
  * ヒートマップの抽出（キー × 層の押下数）。期待値は、打つ文字から手で数えられる小さいテキストで固定する。
@@ -21,7 +22,7 @@ function extractFor(layoutId: string, text: string) {
   assert.ok(layout, layoutId);
   const trace = generateTrace(text, layout, geometry, DEFAULT_TRACE_POLICY);
   assert.equal(trace.skipped, 0);
-  return computeHeatmapExtraction(trace, computeMetrics(trace, geometry));
+  return computeHeatmapExtraction({ trace, metrics: computeMetrics(trace, geometry), options: DEFAULT_HEATMAP_OPTIONS });
 }
 
 const entries = (map: ReadonlyMap<string, number>) => [...map].sort(([a], [b]) => a.localeCompare(b));

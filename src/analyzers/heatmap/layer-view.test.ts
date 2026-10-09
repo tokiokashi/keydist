@@ -6,6 +6,7 @@ import { sampleText } from '#input/text/samples.ts';
 import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { computeHeatmapExtraction } from './extract.ts';
+import { DEFAULT_HEATMAP_OPTIONS } from './options.ts';
 import {
   activeEntryIndex,
   buildLayerEntries,
@@ -27,7 +28,7 @@ function extractionFor(layoutId: string, text: string) {
   assert.ok(layout, layoutId);
   const trace = generateTrace(text, layout, geometry, DEFAULT_TRACE_POLICY);
   assert.equal(trace.skipped, 0);
-  return { layout, extracted: computeHeatmapExtraction(trace, computeMetrics(trace, geometry)) };
+  return { layout, extracted: computeHeatmapExtraction({ trace, metrics: computeMetrics(trace, geometry), options: DEFAULT_HEATMAP_OPTIONS }) };
 }
 
 const total = (counts: ReadonlyMap<string, number>) => [...counts.values()].reduce((sum, count) => sum + count, 0);
@@ -92,7 +93,7 @@ test('全配列: 層別図の押下数の合計とコンボ枠は、統合の押
     const text = LAYOUTS_JA.includes(layout) ? 'あいがぱ' : 'aAbB';
     const trace = generateTrace(text, layout, geometry, DEFAULT_TRACE_POLICY);
     if (trace.skipped > 0) continue;
-    const extracted = computeHeatmapExtraction(trace, computeMetrics(trace, geometry));
+    const extracted = computeHeatmapExtraction({ trace, metrics: computeMetrics(trace, geometry), options: DEFAULT_HEATMAP_OPTIONS });
     for (const detail of ['compact', 'detail'] as const) {
       const entries = buildLayerEntries(layout, extracted, detail);
       const layered = entries.reduce((sum, entry) => sum + total(entry.keyCounts), 0);
@@ -124,4 +125,22 @@ test('タブの層はidで引く。今の図に無いidや未選択は最初の�
   assert.equal(activeEntryIndex(entries, 'layer:薬指シフト'), 2);
   assert.equal(activeEntryIndex(entries, 'layer:Shift'), 0);
   assert.equal(activeEntryIndex(entries, ''), 0);
+});
+
+test('レイヤーの見出しは、トリガーのキーを物理キーの名前か刻印で出し、内部のキーidを出さない', () => {
+  const shingeta = extractionFor('shingeta', 'あいがぱ');
+  assert.deepEqual(
+    buildLayerEntries(shingeta.layout, shingeta.extracted, 'detail', 'ansi').map((entry) => entry.title),
+    [
+      'レイヤー1: 単打',
+      'レイヤー2: 中指シフト [い / か]・同時',
+      'レイヤー3: 薬指シフト [し / と]・同時',
+      'レイヤー4: 拗音1 [こ]・同時',
+      'レイヤー5: 拗音2 [が]・同時',
+    ],
+  );
+  const naginata = extractionFor('naginata-v18', 'あ');
+  const titles = (detail: 'compact' | 'detail') => buildLayerEntries(naginata.layout, naginata.extracted, detail, 'ansi').map((entry) => entry.title);
+  assert.deepEqual(titles('compact'), ['レイヤー1: 単打（レイヤー3以降を合算）', 'レイヤー2: SandS [Space]・同時']);
+  assert.equal(titles('detail')[3], 'レイヤー4: 濁音 [あ / か]・同時');
 });

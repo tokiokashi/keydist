@@ -1,4 +1,4 @@
-import { resolveKeyId } from '../shapes/geometry.ts';
+import { resolveKeyId, type PhysicalKeyboardStandard } from '../shapes/geometry.ts';
 import { physicalKeyDisplayLabel } from '../shapes/key-labels.ts';
 import {
   faceCells,
@@ -431,15 +431,16 @@ function aggregationTriggerChords(
 /**
  * triggerのchord列を表示文字列へ畳む。chord内の同時押しは「+」、どれか1つで足りる
  * alternative同士は「/」でつなぐ（「+」でつなぐと、どちらか片方で足りるシフトを同時押しと誤読させる）。
- * 刻印の無いキーは物理キーの表示名で出し、内部のキーidを画面に出さない。
+ * 刻印の無いキーは物理キーの表示名（規格を渡せばその規格の刻印）で出し、内部のキーidを画面に出さない。
  */
-function triggerChordsDisplayText(
+export function triggerChordsDisplayText(
   layout: Pick<Layout, 'thumbShiftKeys' | 'legends'>,
   chords: readonly (readonly string[])[],
+  standard?: PhysicalKeyboardStandard,
 ): string {
   const label = (key: string) => {
     const legend = layout.legends.get(key);
-    return legend !== undefined && legend.trim() !== '' ? legend : physicalKeyDisplayLabel(key);
+    return legend !== undefined && legend.trim() !== '' ? legend : physicalKeyDisplayLabel(key, standard);
   };
   const seen = new Set<string>();
   const unique: (readonly string[])[] = [];

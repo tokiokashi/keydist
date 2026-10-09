@@ -64,7 +64,14 @@ export interface HeatmapExtracted {
   readonly combo: HeatmapCombo | undefined;
 }
 
-export function computeHeatmapExtraction(trace: Trace, metrics: Metrics): HeatmapExtracted {
+/** 抽出の入力。解析設定はどれも表示だけが変わるので、抽出の結果には効かない。 */
+export interface HeatmapExtractInput {
+  readonly trace: Trace;
+  readonly metrics: Metrics;
+  readonly options: HeatmapOptions;
+}
+
+export function computeHeatmapExtraction({ trace, metrics }: HeatmapExtractInput): HeatmapExtracted {
   const definitions = new Map(trace.layerDefinitions.map((definition) => [definition.id, definition]));
   const layers = metrics.layers.map((stat): HeatmapLayer => ({
     id: stat.id,
@@ -98,12 +105,12 @@ export function computeHeatmapExtraction(trace: Trace, metrics: Metrics): Heatma
 // 入れ忘れ防止テストの材料
 // ---------------------------------------------------------------------------
 
-/** `optionsDiscipline.extractForTest` 専用の、1層だけの小さい配列で打った結果。 */
-function fixtureExtraction(): HeatmapExtracted {
+/** `optionsDiscipline.extractForTest` 専用の、1層だけの小さい配列で打ったTraceとMetrics。 */
+function fixtureInput(): Pick<HeatmapExtractInput, 'trace' | 'metrics'> {
   const layout = fromRows('heatmap-fixture', 'fixture', ['qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./']);
   const geometry = buildGeometry('row-staggered');
   const trace = generateTrace('aaq', layout, geometry, DEFAULT_TRACE_POLICY);
-  return computeHeatmapExtraction(trace, computeMetrics(trace, geometry));
+  return { trace, metrics: computeMetrics(trace, geometry) };
 }
 
 /**
@@ -114,11 +121,11 @@ export const heatmapDefinition: SingleAnalyzerDefinition<HeatmapOptions, Heatmap
   id: 'heatmap',
   options: heatmapOptions,
   extract(context: SingleAnalyzerExtractContext<HeatmapOptions>): HeatmapExtracted {
-    return computeHeatmapExtraction(context.trace, context.metrics);
+    return computeHeatmapExtraction(context);
   },
   optionsDiscipline: {
     sample: DEFAULT_HEATMAP_OPTIONS,
     alternates: ALTERNATE_HEATMAP_OPTIONS,
-    extractForTest: () => fixtureExtraction(),
+    extractForTest: (options) => computeHeatmapExtraction({ ...fixtureInput(), options }),
   },
 });

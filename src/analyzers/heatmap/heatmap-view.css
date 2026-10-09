@@ -57,7 +57,12 @@
   height: auto;
 }
 
-.heatmap-controls,
+.heatmap-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 .heatmap-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -65,13 +70,6 @@
   gap: 0.4rem;
 }
 
-.heatmap-controls > span {
-  margin-right: 0.25rem;
-  color: var(--text-muted);
-  font-size: 0.76rem;
-}
-
-.heatmap-controls button,
 .heatmap-tabs button {
   padding: 0.2rem 0.6rem;
   color: var(--text-muted);
@@ -83,7 +81,6 @@
   cursor: pointer;
 }
 
-.heatmap-controls button[aria-pressed='true'],
 .heatmap-tabs button[aria-selected='true'] {
   color: var(--text);
   border-color: var(--accent);
