@@ -78,10 +78,10 @@ export interface Press {
   /** この押下で計上された移動距離 [u] */
   distance: number;
   /**
-   * 距離が採用した候補の起点（仕様 §9, §11.11）。generateTrace生成時は必ず入る。
+   * 距離が採用した候補の起点（仕様 §9, §11.11）。
    * 候補が同値の時は直前の位置（`from: 'previous'`）を採る。
    */
-  origin?: PressOrigin;
+  origin: PressOrigin;
   /**
    * 同指連続（same finger bigram）。
    * 同じ指で**異なる位置**を続けて打った場合のみ真。
@@ -321,6 +321,8 @@ export function generateTrace(
           gap,
           inputDistance,
           distance: 0,
+          // 仮の値。pressCostが距離と同時に採用した候補の起点で置き換える
+          origin: { at: target, from: 'home' as const },
           sfb: gap === 0 && (at.x !== target.x || at.y !== target.y),
         };
       });

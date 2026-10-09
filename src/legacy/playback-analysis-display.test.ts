@@ -21,6 +21,7 @@ const press = (finger: Finger, id: string, x: number, sfb = false): Press => ({
   finger,
   keys: [key(id, finger, x)],
   target: { x, y: 2 },
+  origin: { at: { x, y: 2 }, from: 'home' },
   gap: 1,
   distance: 0,
   sfb,

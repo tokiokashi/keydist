@@ -41,7 +41,7 @@ test('役の組は並べ替えて1つの値にし、役が無ければnone', () 
 
 test('かな配列: 同じキーを繰り返すと、起点は先頭だけホームで、前の文字は直前のかなになる', () => {
   const trace = traceFor('shingeta', 'かかか');
-  const d = detailOf(computeKeyDetails(trace), 'd');
+  const d = detailOf(computeKeyDetails(trace, geometry), 'd');
   assert.equal(d.presses, 3);
   assert.deepEqual(entries(d.roles), [['output', 3]]);
   assert.deepEqual(entries(d.previousChars), [['か', 2]]);
@@ -60,7 +60,7 @@ test('かな配列: 同じキーを繰り返すと、起点は先頭だけホー
 
 test('かな配列: 同時押しとトリガーは、同じ入力単位の押下がどれも同じ前の文字を持つ', () => {
   // 「きゃ」は右中指のトリガーiと左人差し指のvの同時押し。「ぱ」はd(トリガー)とu
-  const details = computeKeyDetails(traceFor('shingeta', 'がきゃ。ぱ'));
+  const details = computeKeyDetails(traceFor('shingeta', 'がきゃ。ぱ'), geometry);
   const i = detailOf(details, 'i');
   const v = detailOf(details, 'v');
   assert.deepEqual(entries(i.roles), [['trigger', 1]]);
@@ -77,7 +77,7 @@ test('かな配列: 同時押しとトリガーは、同じ入力単位の押下
 
 test('面ごとの値と、面をまたいだ合算', () => {
   // 「か」は単打の面のd、「ぱ」は中指シフトの面でd(トリガー)とu(出力)
-  const details = computeKeyDetails(traceFor('shingeta', 'かぱ'));
+  const details = computeKeyDetails(traceFor('shingeta', 'かぱ'), geometry);
   assert.deepEqual([...details.faces.keys()], ['single', 'layer:中指シフト']);
   const single = details.faces.get('single')!;
   const shift = details.faces.get('layer:中指シフト')!;
@@ -94,7 +94,7 @@ test('面ごとの値と、面をまたいだ合算', () => {
 });
 
 test('コンボの面も1つの面として持つ', () => {
-  const details = computeKeyDetails(traceFor('shin-koume', 'ぴ'));
+  const details = computeKeyDetails(traceFor('shin-koume', 'ぴ'), geometry);
   assert.deepEqual([...details.faces.keys()], ['combo']);
   const combo = details.faces.get('combo')!;
   assert.deepEqual([...combo.keys()].sort(), ['g', 'u']);
@@ -104,7 +104,7 @@ test('コンボの面も1つの面として持つ', () => {
 
 test('ローマ字: 同じかなを打つ複数の打鍵が同じ前の文字を持つ', () => {
   // 「しゃ」はs・y・aの3打鍵で1つの入力単位。前の「か」(k・a)が前の文字になる
-  const details = computeKeyDetails(traceFor('qwerty', 'かしゃ', 'kunrei'));
+  const details = computeKeyDetails(traceFor('qwerty', 'かしゃ', 'kunrei'), geometry);
   for (const id of ['s', 'y']) {
     const detail = detailOf(details, id);
     assert.deepEqual(entries(detail.previousChars), [['か', 1]], id);
@@ -119,7 +119,7 @@ test('ローマ字: 同じかなを打つ複数の打鍵が同じ前の文字を
 });
 
 test('ローマ字: 続くかなの前の文字は、直前の入力単位のかなになる', () => {
-  const details = computeKeyDetails(traceFor('qwerty', 'しゃか', 'kunrei'));
+  const details = computeKeyDetails(traceFor('qwerty', 'しゃか', 'kunrei'), geometry);
   const k = detailOf(details, 'k');
   assert.deepEqual(entries(k.previousChars), [['しゃ', 1]]);
   assert.equal(k.noPreviousChar, 0);
@@ -138,7 +138,7 @@ test('AZIK: 複数のかなを1つの見出しにした綴りは1つの入力単
     [[0, 'かん'], [0, 'かん'], [2, 'か'], [2, 'か']],
   );
   assert.deepEqual(trace.strokes.map((stroke) => stroke.presses[0].keys[0].id), ['k', 'z', 'k', 'a']);
-  const details = computeKeyDetails(trace);
+  const details = computeKeyDetails(trace, geometry);
   const k = detailOf(details, 'k');
   assert.equal(k.presses, 2);
   assert.deepEqual(entries(k.previousChars), [['かん', 1]]);
@@ -150,7 +150,7 @@ test('AZIK: 複数のかなを1つの見出しにした綴りは1つの入力単
 test('打てずに飛ばした文字を挟んでも、直前に打った入力単位が前の文字になる', () => {
   const trace = traceFor('shingeta', 'か☃か');
   assert.equal(trace.skipped, 1);
-  const d = detailOf(computeKeyDetails(trace), 'd');
+  const d = detailOf(computeKeyDetails(trace, geometry), 'd');
   assert.deepEqual(entries(d.previousChars), [['か', 1]]);
   assert.equal(d.noPreviousChar, 1);
 });
@@ -160,7 +160,7 @@ test('1つの押下が複数のキーを持つ時は、各キーに1回ずつ数
   const layout = fromKana('chord', 'chord', { x: [['a', 'q']] });
   const trace = chordTrace('xx', layout);
   assert.equal(trace.strokes[0].presses[0].keys.length, 2);
-  const details = computeKeyDetails(trace);
+  const details = computeKeyDetails(trace, geometry);
   const [first, second] = trace.strokes.map((stroke) => stroke.presses[0]);
   const rounded = (value: number) => Math.round(value * 1000) / 1000;
   for (const id of ['a', 'q']) {
@@ -194,7 +194,7 @@ test('押し方の内訳・前の文字・起点・距離の回数の和は、�
   ];
   for (const [layoutId, text, rule] of cases) {
     const trace = traceFor(layoutId, text, rule);
-    const details = computeKeyDetails(trace);
+    const details = computeKeyDetails(trace, geometry);
     const label = `${layoutId}:${rule ?? ''}`;
     const all = [...details.merged.values(), ...[...details.faces.values()].flatMap((face) => [...face.values()])];
     for (const detail of all) {
@@ -233,4 +233,40 @@ test('Traceが記録した起点から求めた距離はpress.distanceと一致�
       }
     }
   }
+});
+
+test('起点の物理キーidは、押されなかったキーも含めて物理配列の全キーと照合する', () => {
+  // 「qq」の1打目は左小指のホームから来る。ホームの位置はaだが、このテキストではaを押さない
+  const trace = traceFor('qwerty', 'qq');
+  const q = detailOf(computeKeyDetails(trace, geometry), 'q');
+  assert.equal(q.presses, 2);
+  assert.equal(q.origins.length, 2);
+  const fromHome = q.origins.find((origin) => origin.fromHome === 1);
+  const fromPrevious = q.origins.find((origin) => origin.fromPrevious === 1);
+  assert.deepEqual(fromHome?.keyIds, ['a']);
+  // 2打目は同指連続で、直前の位置はq
+  assert.deepEqual(fromPrevious?.keyIds, ['q']);
+  assert.equal(trace.strokes[1].presses[0].origin.from, 'previous');
+});
+
+test('sfbHomeCostが偽でホームキーへ同指連続すると、起点は直前の位置で距離は0になる', () => {
+  // qの次にa（左小指のホーム）を打つ。距離は0に固定され、起点から求めた距離とは一致しない
+  const trace = traceFor('qwerty', 'qa', undefined, { ...DEFAULT_TRACE_POLICY, sfbHomeCost: false });
+  const press = trace.strokes[1].presses[0];
+  assert.equal(press.keys[0].id, 'a');
+  assert.equal(press.distance, 0);
+  assert.equal(press.origin.from, 'previous');
+  assert.ok(dist(press.origin.at, press.target) > 0);
+  const a = detailOf(computeKeyDetails(trace, geometry), 'a');
+  assert.deepEqual(entries(a.distances), [[0, 1]]);
+  assert.deepEqual(a.origins.map((origin) => [origin.keyIds, origin.fromPrevious]), [[['q'], 1]]);
+});
+
+test('同時押しの後の起点は重心になり、どのキーとも一致しなければidが空になる', () => {
+  const layout = fromKana('chord', 'chord', { x: [['a', 'q']] });
+  const details = computeKeyDetails(chordTrace('xx', layout), geometry);
+  const a = detailOf(details, 'a');
+  const centroid = a.origins.find((origin) => origin.fromPrevious === 1);
+  assert.ok(centroid);
+  assert.deepEqual(centroid.keyIds, []);
 });

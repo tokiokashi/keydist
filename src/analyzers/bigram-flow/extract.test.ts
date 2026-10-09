@@ -60,6 +60,7 @@ const press = (
   finger,
   keys: [key(id, finger, x, y)],
   target: target ?? { x, y },
+  origin: { at: target ?? { x, y }, from: 'home' },
   gap: 1,
   distance: 0,
   sfb: false,

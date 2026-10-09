@@ -1,3 +1,4 @@
+import type { Geometry } from '#input/shapes/geometry.ts';
 import type { ParticipationRole, Trace } from '#trace/generate.ts';
 
 /**
@@ -36,8 +37,8 @@ export interface KeyOriginCount {
   readonly x: number;
   readonly y: number;
   /**
-   * 位置が一致する物理キーのid（Traceに現れたキーのうち、丸めた座標が同じもの。昇順）。
-   * 同じ座標に複数のキーがあれば全部を持つ。一致するキーが無ければ空。
+   * 位置が一致する物理キーのid（物理配列の全キーのうち、小数第3位で丸めた座標が同じもの。昇順）。
+   * 同じ座標に複数のキーがあれば全部を持つ。一致するキーが無ければ空（同時押しの後の重心など）。
    */
   readonly keyIds: readonly string[];
   /** 直前の位置から来た回数 */
@@ -110,35 +111,29 @@ function accumulate(
   target: Accumulator,
   role: string,
   previousChar: string | undefined,
-  origin: RoundedOrigin | undefined,
+  origin: RoundedOrigin,
   distance: number,
 ): void {
   target.presses++;
   increment(target.roles, role);
   if (previousChar === undefined) target.noPreviousChar++;
   else increment(target.previousChars, previousChar);
-  if (origin) {
-    const id = pointId(origin.x, origin.y);
-    const entry = target.origins.get(id) ?? { x: origin.x, y: origin.y, fromPrevious: 0, fromHome: 0 };
-    if (origin.from === 'previous') entry.fromPrevious++;
-    else entry.fromHome++;
-    target.origins.set(id, entry);
-  }
+  const id = pointId(origin.x, origin.y);
+  const entry = target.origins.get(id) ?? { x: origin.x, y: origin.y, fromPrevious: 0, fromHome: 0 };
+  if (origin.from === 'previous') entry.fromPrevious++;
+  else entry.fromHome++;
+  target.origins.set(id, entry);
   increment(target.distances, distance);
 }
 
-export function computeKeyDetails(trace: Trace): KeyDetails {
-  // 起点の位置が物理キーに当たるかの判定に使う、Traceに現れたキーの座標 → キーid
+export function computeKeyDetails(trace: Trace, geometry: Geometry): KeyDetails {
+  // 起点の位置が物理キーに当たるかの判定に使う、物理配列の全キー（親指を含む）の座標 → キーid
   const keyIdsByPoint = new Map<string, Set<string>>();
-  for (const stroke of trace.strokes) {
-    for (const press of stroke.presses) {
-      for (const key of press.keys) {
-        const id = pointId(round3(key.x), round3(key.y));
-        const ids = keyIdsByPoint.get(id);
-        if (ids) ids.add(key.id);
-        else keyIdsByPoint.set(id, new Set([key.id]));
-      }
-    }
+  for (const key of geometry.keys.values()) {
+    const id = pointId(round3(key.x), round3(key.y));
+    const ids = keyIdsByPoint.get(id);
+    if (ids) ids.add(key.id);
+    else keyIdsByPoint.set(id, new Set([key.id]));
   }
 
   const faces = new Map<string, Map<string, Accumulator>>();
@@ -170,9 +165,11 @@ export function computeKeyDetails(trace: Trace): KeyDetails {
     for (const press of stroke.presses) {
       const participation = stroke.participations.find((candidate) => candidate.finger === press.finger);
       const role = roleSetId(participation?.roles ?? []);
-      const origin: RoundedOrigin | undefined = press.origin
-        ? { x: round3(press.origin.at.x), y: round3(press.origin.at.y), from: press.origin.from }
-        : undefined;
+      const origin: RoundedOrigin = {
+        x: round3(press.origin.at.x),
+        y: round3(press.origin.at.y),
+        from: press.origin.from,
+      };
       const distance = round3(press.distance);
       for (const key of press.keys) {
         accumulate(entryOf(faceMap, key.id), role, previousChar, origin, distance);
