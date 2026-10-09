@@ -18,7 +18,7 @@ import { FloatingWindow } from './FloatingWindow.tsx';
 import './key-detail-window.css';
 
 /**
- * 図のキーを押した時に開く、キーの詳細の小窓（docs/architecture.md「キーの詳細は小窓で開く」）。
+ * 図のキーを押した時に開く、キーの詳細の小窓（docs/architecture.md「キーの詳細は、図のキーで見せる」）。
  *
  * 面をまたいだ合算を出し、レイヤー・コンボごとの内訳を開いて読める。回数は集計
  * （`interpretation/key-detail.ts`）の値をそのまま出し、割合だけをここで求めて元の回数を添える。
@@ -136,7 +136,8 @@ export function KeyDetailWindow({ keyId, layout, geometry, trace, keyDetails, pa
     returnFocusRef.current = document.activeElement;
     return () => {
       const target = returnFocusRef.current;
-      if (target instanceof HTMLElement && target.isConnected) target.focus({ preventScroll: true });
+      // 押したキーはSVGの要素なので、HTMLElementに限らずfocusを持つものへ戻す
+      if ((target instanceof HTMLElement || target instanceof SVGElement) && target.isConnected) target.focus({ preventScroll: true });
     };
   }, []);
 

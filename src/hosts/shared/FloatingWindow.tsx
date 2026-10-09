@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as Reac
 import { MOBILE_QUERY } from '#ui/theme/breakpoints.ts';
 
 /**
- * ペインの浮かぶ小窓（docs/architecture.md「ペイン」の「解析設定は小窓で開く」「キーの詳細は小窓で開く」）。
+ * ペインの浮かぶ小窓（docs/architecture.md「ペイン」の「解析設定は小窓で開く」「キーの詳細は、図のキーで見せる」）。
  * 解析設定とキーの詳細が同じ部品を使い、見出しの語と閉じるボタンの名前だけが違う。
  *
  * - 非モーダル。背後を暗くせず、開いている間も図や他のペインを操作できる

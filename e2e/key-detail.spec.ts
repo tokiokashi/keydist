@@ -235,3 +235,27 @@ test('Workspace: ペインを拡大すると他のペインの小窓は閉じ、
   await expect(detailWindow(page)).toHaveCount(0);
   await expect(flowKey(b, 'e')).toHaveAttribute('data-key-selected', 'true');
 });
+
+test('小窓を閉じると、フォーカスは押したキーへ戻る（Escapeでも、閉じるボタンでも）', async ({ page }) => {
+  await selectLayout(page, 'shingeta');
+  await page.goto('/standalone/heatmap');
+  const feature = page.locator('[data-react-feature="heatmap"]');
+  await expect(feature).toBeVisible({ timeout: 10_000 });
+  const key = heatmapKey(feature, 'integrated', 'd');
+  const win = detailWindow(page);
+
+  // キーボード: フォーカスしてEnterで開き、小窓の中のEscapeで閉じる
+  await key.focus();
+  await page.keyboard.press('Enter');
+  await expect(win).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(win).toHaveCount(0);
+  await expect(key).toBeFocused();
+
+  // マウス: 押して開き、閉じるボタンで閉じる
+  await key.click();
+  await expect(win).toBeVisible();
+  await win.getByRole('button', { name: 'キーの詳細を閉じる' }).click();
+  await expect(win).toHaveCount(0);
+  await expect(key).toBeFocused();
+});
