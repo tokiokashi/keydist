@@ -178,7 +178,7 @@ test('clear()は永続化していないメモリキャッシュを空にする'
   cache.getInterpretation(resolve(setup));
   assert.ok(cache.size.trace > 0);
   cache.clear();
-  assert.deepEqual(cache.size, { trace: 0, interpretation: 0, extraction: 0 });
+  assert.deepEqual(cache.size, { trace: 0, interpretation: 0, extraction: 0, keyDetails: 0 });
 });
 
 test('getExtraction: 同じ抽出キーの2インスタンスはextractを1回しか呼ばない', () => {
@@ -352,4 +352,50 @@ test('getSetExtraction: 見た目だけのoptions変更ではextractを走らせ
   cache.getSetExtraction(members, definition, { scale: 1, highlightColor: 'red' });
   cache.getSetExtraction(members, definition, { scale: 1, highlightColor: 'blue' });
   assert.equal(setFixtureCalls, 1);
+});
+
+/** `keyDetails()` をそのまま返す抽出。Analyzerのidだけが違う。 */
+function createKeyDetailsDefinition(id: string): SingleAnalyzerDefinition<FixtureOptions, unknown> {
+  return defineSingleAnalyzer({
+    id,
+    options: fixtureOptions,
+    extract: (context) => context.keyDetails(),
+    optionsDiscipline: {
+      sample: fixtureOptions.defaultOptions,
+      alternates: { scale: 2, highlightColor: 'blue' },
+      extractForTest: () => undefined,
+    },
+  });
+}
+
+test('キーの詳細: 同じ対象を見る別のAnalyzerの抽出は、1回の計算を共有する', () => {
+  const cache = createEngineCache();
+  const setup: Setup = { id: 'setup-a', number: 1, layoutId: 'qwerty', shapeId: 'row-staggered' };
+  const input = resolve(setup);
+  const options = { scale: 1, highlightColor: 'red' };
+
+  const first = cache.getExtraction(input, createKeyDetailsDefinition('key-details-a'), options).extracted;
+  const second = cache.getExtraction(input, createKeyDetailsDefinition('key-details-b'), options).extracted;
+  assert.equal(first, second, '同じ参照を返す（2回目は計算しない）');
+  assert.equal(first, cache.getKeyDetails(input).keyDetails);
+  assert.equal(cache.size.keyDetails, 1);
+  assert.equal(cache.size.extraction, 2);
+});
+
+test('キーの詳細: 抽出が呼ばない間は計算しない', () => {
+  const cache = createEngineCache();
+  const setup: Setup = { id: 'setup-a', number: 1, layoutId: 'qwerty', shapeId: 'row-staggered' };
+  cache.getExtraction(resolve(setup), createFixtureDefinition(), { scale: 1, highlightColor: 'red' });
+  assert.equal(cache.size.keyDetails, 0);
+});
+
+test('キーの詳細: テキストが違えば別の計算になる', () => {
+  const cache = createEngineCache();
+  const setup: Setup = { id: 'setup-a', number: 1, layoutId: 'qwerty', shapeId: 'row-staggered' };
+  const a = cache.getKeyDetails(resolve(setup, EMPTY_SETTINGS_OVERRIDES, 'aaa')).keyDetails;
+  const b = cache.getKeyDetails(resolve(setup, EMPTY_SETTINGS_OVERRIDES, 'bbb')).keyDetails;
+  assert.notEqual(a, b);
+  assert.equal(a.merged.get('a')?.presses, 3);
+  assert.equal(b.merged.get('b')?.presses, 3);
+  assert.equal(cache.size.keyDetails, 2);
 });

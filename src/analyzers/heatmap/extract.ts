@@ -1,6 +1,7 @@
 import { defineSingleAnalyzer, type SingleAnalyzerDefinition, type SingleAnalyzerExtractContext } from '#analyzers/contract.ts';
 import { COMBO_LAYER_ID, fromRows, type LayerPresentationRole } from '#input/layouts/types.ts';
 import { buildGeometry } from '#input/shapes/geometry.ts';
+import { computeKeyDetails, type KeyDetails } from '#interpretation/key-detail.ts';
 import { computeMetrics, type Metrics } from '#interpretation/metrics.ts';
 import { DEFAULT_TRACE_POLICY, generateTrace, type Trace } from '#trace/generate.ts';
 import { normalizedRoleColors } from './layer-heatmap.ts';
@@ -18,8 +19,8 @@ import { ALTERNATE_HEATMAP_OPTIONS, DEFAULT_HEATMAP_OPTIONS, heatmapOptions, typ
  * 層どうしで共通にする最大値は、表示する層の組（まとめ・詳細など）で変わるので、
  * 表示側が表示する層の `colorCounts` から求める。
  *
- * 層ごとの集計は「キーid → 件数」の1形に揃えてあり、キーの詳細を共通の集計へ寄せる時に
- * 層の単位をそのまま使える。
+ * キーの詳細（仕様 §11.11）は共通の集計（`interpretation/key-detail.ts`）の結果をそのまま持つ。
+ * 面のidは層のid（コンボの面は `COMBO_LAYER_ID`）なので、層別図は `HeatmapLayer.id` でその面の値を引く。
  */
 
 /** 層1つぶんの、キーごとの押下数。 */
@@ -62,16 +63,19 @@ export interface HeatmapExtracted {
   readonly layers: readonly HeatmapLayer[];
   /** コンボ枠。コンボの押下が無ければ `undefined` */
   readonly combo: HeatmapCombo | undefined;
+  /** キーの詳細。ツールチップと、キーを選んだ時の小窓が読む */
+  readonly keyDetails: KeyDetails;
 }
 
 /** 抽出の入力。解析設定はどれも表示だけが変わるので、抽出の結果には効かない。 */
 export interface HeatmapExtractInput {
   readonly trace: Trace;
   readonly metrics: Metrics;
+  readonly keyDetails: KeyDetails;
   readonly options: HeatmapOptions;
 }
 
-export function computeHeatmapExtraction({ trace, metrics }: HeatmapExtractInput): HeatmapExtracted {
+export function computeHeatmapExtraction({ trace, metrics, keyDetails }: HeatmapExtractInput): HeatmapExtracted {
   const definitions = new Map(trace.layerDefinitions.map((definition) => [definition.id, definition]));
   const layers = metrics.layers.map((stat): HeatmapLayer => ({
     id: stat.id,
@@ -98,6 +102,7 @@ export function computeHeatmapExtraction({ trace, metrics }: HeatmapExtractInput
         keyCounts: metrics.comboKeyCounts,
       }
       : undefined,
+    keyDetails,
   };
 }
 
@@ -106,11 +111,11 @@ export function computeHeatmapExtraction({ trace, metrics }: HeatmapExtractInput
 // ---------------------------------------------------------------------------
 
 /** `optionsDiscipline.extractForTest` 専用の、1層だけの小さい配列で打ったTraceとMetrics。 */
-function fixtureInput(): Pick<HeatmapExtractInput, 'trace' | 'metrics'> {
+function fixtureInput(): Pick<HeatmapExtractInput, 'trace' | 'metrics' | 'keyDetails'> {
   const layout = fromRows('heatmap-fixture', 'fixture', ['qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./']);
   const geometry = buildGeometry('row-staggered');
   const trace = generateTrace('aaq', layout, geometry, DEFAULT_TRACE_POLICY);
-  return { trace, metrics: computeMetrics(trace, geometry) };
+  return { trace, metrics: computeMetrics(trace, geometry), keyDetails: computeKeyDetails(trace, geometry) };
 }
 
 /**
@@ -121,7 +126,7 @@ export const heatmapDefinition: SingleAnalyzerDefinition<HeatmapOptions, Heatmap
   id: 'heatmap',
   options: heatmapOptions,
   extract(context: SingleAnalyzerExtractContext<HeatmapOptions>): HeatmapExtracted {
-    return computeHeatmapExtraction(context);
+    return computeHeatmapExtraction({ ...context, keyDetails: context.keyDetails() });
   },
   optionsDiscipline: {
     sample: DEFAULT_HEATMAP_OPTIONS,

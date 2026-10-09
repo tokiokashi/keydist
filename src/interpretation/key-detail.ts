@@ -197,3 +197,38 @@ export function computeKeyDetails(trace: Trace, geometry: Geometry): KeyDetails 
     merged: freezeAll(merged),
   };
 }
+
+const addCounts = <K>(target: Map<K, number>, source: ReadonlyMap<K, number>): void => {
+  for (const [key, count] of source) target.set(key, (target.get(key) ?? 0) + count);
+};
+
+/**
+ * 複数の面（または面と面の合算）の詳細を、量ごとに足して1つにする（仕様 §11.11「複数の面の合算」）。
+ * 移動の起点は位置が同じものの回数を足す。同じ位置の `keyIds` は物理配列で決まるので、どの部分でも同じ値になる。
+ * 部分が無ければ、押下数0の詳細を返す。
+ */
+export function mergeKeyDetails(parts: readonly KeyDetail[]): KeyDetail {
+  let presses = 0;
+  let noPreviousChar = 0;
+  const roles = new Map<string, number>();
+  const previousChars = new Map<string, number>();
+  const distances = new Map<number, number>();
+  const origins = new Map<string, { x: number; y: number; keyIds: readonly string[]; fromPrevious: number; fromHome: number }>();
+  for (const part of parts) {
+    presses += part.presses;
+    noPreviousChar += part.noPreviousChar;
+    addCounts(roles, part.roles);
+    addCounts(previousChars, part.previousChars);
+    addCounts(distances, part.distances);
+    for (const origin of part.origins) {
+      const id = pointId(origin.x, origin.y);
+      const entry = origins.get(id);
+      if (entry === undefined) origins.set(id, { ...origin });
+      else {
+        entry.fromPrevious += origin.fromPrevious;
+        entry.fromHome += origin.fromHome;
+      }
+    }
+  }
+  return { presses, roles, previousChars, noPreviousChar, origins: [...origins.values()], distances };
+}

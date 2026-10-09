@@ -103,6 +103,7 @@ export function workspacePaneChrome(
   resetOptions: () => void,
 ): PaneChrome {
   return {
+    paneKey: pane.id,
     headingLevel: 2,
     showPaneNameInSettings: true,
     menuItems: paneMenuItems(runtime, pane.id, resetOptions, pane.optionsBinding.mode === 'shared'),

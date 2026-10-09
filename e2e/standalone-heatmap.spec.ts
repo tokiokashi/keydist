@@ -30,9 +30,9 @@ test('層が1つの配列: 統合図と層別図が1枚ずつ出て、タブは�
   const heat = (id: string) => diagrams(page).nth(1).locator(`[data-heatmap-key="${id}"]`).getAttribute('data-heat');
   expect(Number(await heat('e'))).toBeGreaterThan(0);
   expect(Number(await heat('1'))).toBe(0);
-  // ツールチップは物理キーの名前と押下数だけで、内部のキーidは出さない
+  // ツールチップの1行目は物理キーの名前と押下数で、内部のキーidは出さない。続く行の値はkey-detail.spec.tsで見る
   const tip = await diagrams(page).nth(1).locator('[data-heatmap-key="e"] title').textContent();
-  expect(tip).toMatch(/^E: \d+打$/);
+  expect(tip?.split('\n')[0]).toMatch(/^E: \d+打$/);
 });
 
 test('層が複数の配列: 並置で全部の層が見え、タブにすると1枚だけ見える', async ({ page }) => {

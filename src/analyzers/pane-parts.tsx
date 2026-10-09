@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react';
 import type { Geometry } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
+import type { KeyDetails } from '#interpretation/key-detail.ts';
 import type { Trace } from '#trace/generate.ts';
 import type { InfoHelp } from '#ui/primitives/info-button.tsx';
 import type { TargetMark } from '#ui/theme/target-marks.ts';
@@ -59,11 +60,29 @@ export interface AnalyzerPaneParts<Definition, Options, BodyProps, TargetItemVal
 }
 
 /**
+ * 図のキーの選択（物理キーの単位）。選んだキーは、同じペインの図どうしと、同じ対象を映す別のペインでまとめて強調する。
+ * ホストが持ち主で、本体は強調する側と、押された時に知らせる側だけを受け持つ。
+ */
+export interface KeySelectionProps {
+  /** 選んでいる物理キー。無ければ `undefined` */
+  readonly selectedKeyId: string | undefined;
+  /** 図のキーを押した。`anchor` は押したキーの要素で、小窓を寄せる基準になる */
+  readonly onKeyPress: (keyId: string, anchor: Element) => void;
+  /** 選択を外す（キーにフォーカスがある間のEscape） */
+  readonly onClear: () => void;
+}
+
+/**
  * 対象を1つ見るAnalyzer（Single）の本体に、ホストが渡すprops。どのSingleにも同じ形で渡し、
  * 使わないものは本体が受け取らなければよい。Singleのペインの組み立てはAnalyzerごとに分けず、
  * これを受ける`Body`だけが違う。
  */
 export interface SingleBodyProps<Extracted, Options> {
+  /**
+   * 図のキーを選ぶ操作と、選んだキー。キーの詳細（`SingleAnalyzerPaneParts.keyDetailsOf`）を持つAnalyzerにだけ渡す。
+   * 選択の持ち主と、クリックで開く小窓はホストが持つ。
+   */
+  readonly keySelection?: KeySelectionProps;
   readonly layout: Layout;
   readonly geometry: Geometry;
   readonly trace: Trace;
@@ -82,6 +101,11 @@ export interface SingleAnalyzerPaneParts<Options, Extracted>
   extends AnalyzerPaneParts<SingleAnalyzerDefinition<Options, Extracted>, Options, SingleBodyProps<Extracted, Options>> {
   /** 解析設定の共有リンクでの読み書き。`options.ts`の`defineOptions`の結果をそのまま渡す。 */
   readonly urlOptions: UrlOptionsCodec<Options>;
+  /**
+   * 抽出の結果から、キーの詳細（仕様 §11.11）を取り出す。持つAnalyzerだけが渡す。
+   * 渡すと、ホストが図のキーの選択を本体へ渡し、キーを押した時の小窓を出す。
+   */
+  readonly keyDetailsOf?: (extracted: Extracted) => KeyDetails;
 }
 
 /**

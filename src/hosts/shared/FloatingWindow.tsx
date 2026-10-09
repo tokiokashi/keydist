@@ -3,27 +3,39 @@ import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as Reac
 import { MOBILE_QUERY } from '#ui/theme/breakpoints.ts';
 
 /**
- * 解析設定の小窓（docs/architecture.md「ペイン」の「解析設定は小窓で開く」）。
+ * ペインの浮かぶ小窓（docs/architecture.md「ペイン」の「解析設定は小窓で開く」「キーの詳細は小窓で開く」）。
+ * 解析設定とキーの詳細が同じ部品を使い、見出しの語と閉じるボタンの名前だけが違う。
  *
  * - 非モーダル。背後を暗くせず、開いている間も図や他のペインを操作できる
  * - 見出しをドラッグして動かせる（図を見ながら値を変えられるように）
- * - Workspaceでは、どのペインの設定か分かるよう`paneName`を見出しに出す
+ * - Workspaceでは、どのペインの小窓か分かるよう`paneName`を見出しに出す
  *
  * 個別画面とWorkspaceの両方で使うので`hosts/shared`に置き、ペインを並べる面のライブラリの
  * 部品では作らない（ライブラリは`hosts/workspace`だけが使う。依存の規則）。
  *
  * スマホ幅（`SHEET_QUERY`）では、画面の下から出るシートにする（`pane-frame.css`）。高さは画面の半分まで。
  * 上端の掴みとヘッダー行を下へドラッグすると閉じる（×とEscapeでも閉じる。掴みはタッチ専用の見た目で、Tabや読み上げの対象にしない）。ドラッグを掴みとヘッダー行に
- * 限るのは、本文のスクロールとドラッグが喧嘩しないようにするため。シートが「解析設定」ボタンを覆っても、
+ * 限るのは、本文のスクロールとドラッグが喧嘩しないようにするため。シートが開いた元のボタンを覆っても、
  * ドラッグで閉じられるので、ボタンを押し直して閉じる必要はない。
  */
-export interface SettingsWindowProps {
+export interface FloatingWindowProps {
   readonly open: boolean;
   readonly onClose: () => void;
+  /** 見出しの語。省略は「解析設定」。 */
+  readonly title?: string;
+  /** 閉じるボタンの読み上げ名。省略は「解析設定を閉じる」。 */
+  readonly closeLabel?: string;
+  /** 小窓の種類。画面の部品を見分ける印になる。省略は解析設定。 */
+  readonly kind?: 'settings' | 'key-detail';
   /** Workspaceのペイン名（読み上げ用の名前と同じもの）。個別画面ではページに1枚なので出さない。 */
   readonly paneName?: string;
-  /** 開いた時に小窓を寄せる基準（見出しの「解析設定」ボタン）。 */
-  readonly anchor: HTMLElement | null;
+  /** 開いた時に小窓を寄せる基準（見出しの「解析設定」ボタン、選んだキー）。 */
+  readonly anchor: Element | null;
+  /**
+   * 基準に対する初期位置。`below`は基準のすぐ下に右端をそろえる（解析設定）。`edge`は基準の高さで画面の右端に寄せ、
+   * 基準に重なる時だけ左端に寄せる（キーの詳細。押したキーを隠さず、図を覆う範囲を小さくする）。どちらも、開いた後はドラッグで動かせる。
+   */
+  readonly placement?: 'below' | 'edge';
   /** 解析設定をすべて初期値へ戻す。あればヘッダー行（タイトルと閉じるボタンの間）に文字ボタンを出す。 */
   readonly onReset?: () => void;
   /** 「すべて初期値に戻す」のtitle。省略は「対象と条件は変わらない」。 */
@@ -72,15 +84,33 @@ function clamp(position: Position, element: HTMLElement | null): Position {
   };
 }
 
-function initialPosition(anchor: HTMLElement | null, element: HTMLElement | null): Position {
+function initialPosition(anchor: Element | null, element: HTMLElement | null, placement: 'below' | 'edge'): Position {
   const width = element?.offsetWidth ?? 320;
   if (anchor === null) return clamp({ x: window.innerWidth - width - 24, y: 80 }, element);
   const rect = anchor.getBoundingClientRect();
+  if (placement === 'edge') {
+    // 画面の右端に寄せる。押したキーに重なる時は左端へ寄せ、押したキーを隠さない
+    const rightX = window.innerWidth - width - 24;
+    const covers = rect.right > rightX && rect.left < rightX + width;
+    return clamp({ x: covers ? 24 : rightX, y: rect.top }, element);
+  }
   // ボタンの右端に小窓の右端を揃え、ボタンのすぐ下に出す。
   return clamp({ x: rect.right - width, y: rect.bottom + 6 }, element);
 }
 
-export function SettingsWindow({ open, onClose, paneName, anchor, onReset, resetTitle = '対象と条件は変わりません', children }: SettingsWindowProps) {
+export function FloatingWindow({
+  open,
+  onClose,
+  title = '解析設定',
+  closeLabel = '解析設定を閉じる',
+  kind = 'settings',
+  paneName,
+  anchor,
+  placement = 'below',
+  onReset,
+  resetTitle = '対象と条件は変わりません',
+  children,
+}: FloatingWindowProps) {
   const windowRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<Position | undefined>(undefined);
   const focusPendingRef = useRef(false);
@@ -106,7 +136,7 @@ export function SettingsWindow({ open, onClose, paneName, anchor, onReset, reset
       closingRef.current = false;
       return;
     }
-    setPosition(initialPosition(anchor, windowRef.current));
+    setPosition(initialPosition(anchor, windowRef.current, placement));
     focusPendingRef.current = true;
   }, [open, anchor]);
 
@@ -192,7 +222,7 @@ export function SettingsWindow({ open, onClose, paneName, anchor, onReset, reset
     event.currentTarget.releasePointerCapture(event.pointerId);
   };
 
-  const title = paneName === undefined ? '解析設定' : `解析設定 — ${paneName}`;
+  const label = paneName === undefined ? title : `${title} — ${paneName}`;
 
   // bodyへ出す。ペインの枠はcontainer（レイアウト封じ込め）なので、中に置くと
   // position: fixedが画面ではなくペインを基準にしてしまう。
@@ -202,9 +232,10 @@ export function SettingsWindow({ open, onClose, paneName, anchor, onReset, reset
       className="settings-window"
       role="dialog"
       aria-modal="false"
-      aria-label={title}
+      aria-label={label}
       tabIndex={-1}
-      data-settings-window="true"
+      data-settings-window={kind === 'settings' || undefined}
+      data-key-detail-window={kind === 'key-detail' || undefined}
       data-sheet={isSheet || undefined}
       data-sheet-dragging={sheetDragging || undefined}
       style={position === undefined
@@ -241,7 +272,7 @@ export function SettingsWindow({ open, onClose, paneName, anchor, onReset, reset
         onPointerCancel={isSheet ? onSheetPointerEnd : endDrag}
       >
         <span className="settings-window-title">
-          解析設定
+          {title}
           {paneName === undefined ? null : <span className="settings-window-pane">{paneName}</span>}
         </span>
         {onReset === undefined ? null : (
@@ -254,7 +285,7 @@ export function SettingsWindow({ open, onClose, paneName, anchor, onReset, reset
             すべて初期値に戻す
           </button>
         )}
-        <button type="button" className="settings-window-close" aria-label="解析設定を閉じる" onClick={onClose}>
+        <button type="button" className="settings-window-close" aria-label={closeLabel} onClick={onClose}>
           <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
             <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
           </svg>

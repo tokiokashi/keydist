@@ -20,6 +20,7 @@ import {
   buildKeyPatternMatrix,
   EMPTY_KEY_PATTERN_PRESENTATION_STATE,
   findActiveLayerFace,
+  keyPatternsContaining,
   matchKeyPatterns,
   summarizeCandidateMatches,
 } from './key-pattern-picker.ts';
@@ -117,6 +118,19 @@ test('buildKeyPatternMatrix: resolvedComboDefinitionsも同じ表へ入れる', 
     })),
     [{ output: 'ye', group: '拗音拡張', keys: ['d', 'k'] }],
   );
+});
+
+test('keyPatternsContaining: そのキーを使うパターンを、トリガーとしても出力キーとしても取り出す', () => {
+  const layout = compiledFaces(
+    faceFromEntries(['j'], 'simultaneous', { r: 'じ', t: 'ぜ' }),
+    faceFromEntries(['k'], 'simultaneous', { r: 'き' }),
+  );
+  const outputsOf = (key: string) => keyPatternsContaining(layout, key).map((match) => match.output).sort();
+  // トリガーのjは、jを使う2つのパターンに含まれる
+  assert.deepEqual(outputsOf('j'), ['じ', 'ぜ']);
+  // 出力キーのrは、jと組むパターンとkと組むパターンの両方に含まれる
+  assert.deepEqual(outputsOf('r'), ['き', 'じ']);
+  assert.deepEqual(outputsOf('z'), []);
 });
 
 test('matchKeyPatterns: レイヤー出力はtrigger + 文字キーの完全一致でexactになる', () => {

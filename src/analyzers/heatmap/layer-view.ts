@@ -8,6 +8,7 @@ import {
   type Layer,
 } from '#input/layouts/layers.ts';
 import { SINGLE_LAYER_ID, type CompactLayerViewPresentation, type Layout } from '#input/layouts/types.ts';
+import { mergeKeyDetails, type KeyDetail, type KeyDetails } from '#interpretation/key-detail.ts';
 import type { HeatmapExtracted, HeatmapLayer } from './extract.ts';
 import { normalizedRoleColors } from './layer-heatmap.ts';
 import {
@@ -28,6 +29,8 @@ import {
 export interface HeatmapLayerEntry {
   /** 層のid。「まとめ」で合算した図は、合算先の層のid */
   readonly id: string;
+  /** この図が表す面のid（キーの詳細の面）。「まとめ」で合算した図は、合算先と合算した層のid全部 */
+  readonly faceIds: readonly string[];
   readonly title: string;
   /** 層の名前（タイトルの前置きを除いたもの） */
   readonly label: string;
@@ -126,7 +129,7 @@ export function buildLayerEntries(
   const entries = [...presentation, ...undeclared].map((layer, index) => {
     const label = layout.layerDefinitions?.find((definition) => definition.id === layer.id)?.label ?? layer.id;
     const stat = stats.get(layer.id) ?? emptyLayer(layer.id, label);
-    return { stat, entry: { id: layer.id, title: layerTitle(layer, index, stat.label, layout, standard), label: stat.label, layer, keyCounts: stat.keyCounts, colorCounts: stat.colorCounts } };
+    return { stat, entry: { id: layer.id, faceIds: [layer.id], title: layerTitle(layer, index, stat.label, layout, standard), label: stat.label, layer, keyCounts: stat.keyCounts, colorCounts: stat.colorCounts } };
   });
 
   const compact = compactPresentationOf(layout);
@@ -153,8 +156,24 @@ export function buildLayerEntries(
       triggerKeyCounts: sumCounts(parts.map((part) => part.triggerKeyCounts)),
       pairedTriggerKeyCounts: sumCounts(parts.map((part) => part.pairedTriggerKeyCounts)),
     });
-    return { ...item.entry, title: `${item.entry.title}${compact.mergedTitleSuffix}`, keyCounts, colorCounts };
+    return {
+      ...item.entry,
+      faceIds: [item.entry.id, ...merged.map((other) => other.entry.id)],
+      title: `${item.entry.title}${compact.mergedTitleSuffix}`,
+      keyCounts,
+      colorCounts,
+    };
   });
+}
+
+/**
+ * 図1枚のキーの詳細。その図が表す面の値で、「まとめ」で合算した図は合算した面の和になる
+ * （統合図は面をまたいだ合算 `keyDetails.merged` を直接引く）。表す面のどれにも押下が無いキーは `undefined`。
+ */
+export function entryKeyDetail(keyDetails: KeyDetails, faceIds: readonly string[], keyId: string): KeyDetail | undefined {
+  const parts = faceIds.flatMap((faceId) => keyDetails.faces.get(faceId)?.get(keyId) ?? []);
+  if (parts.length <= 1) return parts[0];
+  return mergeKeyDetails(parts);
 }
 
 /**

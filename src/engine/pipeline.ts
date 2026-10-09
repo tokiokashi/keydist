@@ -1,6 +1,7 @@
 import { generateTrace, type Trace } from '#trace/generate.ts';
 import { analyzeStrokeStructure, type AggregatedAnalysisResult } from '#interpretation/structure/aggregate.ts';
 import { computeMetrics, type Metrics } from '#interpretation/metrics.ts';
+import { computeKeyDetails, type KeyDetails } from '#interpretation/key-detail.ts';
 import type {
   AnalyzerSetMember,
   AnalyzerSetMemberFailure,
@@ -64,6 +65,16 @@ export function interpretEngineTrace(
   return { modelVersion: MODEL_VERSION, analysis, metrics };
 }
 
+export interface EngineKeyDetailsResult {
+  readonly modelVersion: number;
+  readonly keyDetails: KeyDetails;
+}
+
+/** キーの詳細の計算（仕様 §11.11）。Traceと物理配列だけで決まり、解釈の値には依らない。 */
+export function computeEngineKeyDetails(traceResult: EngineTraceResult, input: ResolvedInput): EngineKeyDetailsResult {
+  return { modelVersion: MODEL_VERSION, keyDetails: computeKeyDetails(traceResult.trace, input.geometry) };
+}
+
 export interface EngineExtractionResult<Extracted> {
   readonly modelVersion: number;
   readonly extracted: Extracted;
@@ -85,6 +96,7 @@ export function extractSingle<Options, Extracted>(
   traceResult: EngineTraceResult,
   interpretationResult: EngineInterpretationResult,
   requestTrace: TraceRequester,
+  keyDetails: () => KeyDetails,
 ): EngineExtractionResult<Extracted> {
   const extracted = definition.extract({
     trace: traceResult.trace,
@@ -92,6 +104,7 @@ export function extractSingle<Options, Extracted>(
     metrics: interpretationResult.metrics,
     options,
     requestTrace,
+    keyDetails,
   });
   return { modelVersion: MODEL_VERSION, extracted };
 }

@@ -174,6 +174,15 @@ export function buildKeyPatternMatrix(layout: Layout): readonly KeyPatternMatch[
   return matrix;
 }
 
+/**
+ * 物理キーを含む入力パターンを、表示用マトリクス（`buildKeyPatternMatrix`）から取り出す。
+ * そのキーで始まるものに限らず、同時押し・レイヤーの切り替えでそのキーを使うものも含める。
+ */
+export function keyPatternsContaining(layout: Layout, keyId: string): readonly KeyPatternMatch[] {
+  const id = resolveKeyId(keyId);
+  return buildKeyPatternMatrix(layout).filter((match) => match.keys.includes(id));
+}
+
 function exactAllowedByOrder(
   match: KeyPatternMatch,
   selected: ReadonlySet<string>,

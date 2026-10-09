@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import type { Geometry } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
+import { computeKeyDetails } from '#interpretation/key-detail.ts';
 import type { Trace } from '#trace/generate.ts';
 import { BigramFlowBody, BigramFlowSettings } from './definition.tsx';
 import { computeBigramFlowExtraction } from './extract.ts';
@@ -43,7 +44,9 @@ export function BigramFlowView({
   // bigramFlowExtractKeyOfコメント参照）。見た目だけの設定変更で毎回再計算しないよう、
   // メモの依存もその3項目に絞る。
   const extracted = useMemo(
-    () => data ? computeBigramFlowExtraction(data.trace, config) : null,
+    () => data
+      ? { ...computeBigramFlowExtraction(data.trace, config), keyDetails: computeKeyDetails(data.trace, data.geometry) }
+      : null,
     [data, config.source, config.selectedFingers.join(','), config.polarBandwidth],
   );
 

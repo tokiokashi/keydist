@@ -29,6 +29,7 @@ import { createEngineCache } from '#engine/cache.ts';
 import { bigramFlowDefinition } from '#analyzers/bigram-flow/extract.ts';
 import { DEFAULT_BIGRAM_FLOW_OPTIONS } from '#analyzers/bigram-flow/options.ts';
 import { computeBigramFlowExtraction } from '#analyzers/bigram-flow/extract.ts';
+import { computeKeyDetails } from '#interpretation/key-detail.ts';
 
 /**
  * hosts/standalone のBigram Flow単体ページが使う経路（Setup + カスケードの上書き →
@@ -168,7 +169,7 @@ function engineTrace(fixtureCase: FixtureCase) {
   const cache = createEngineCache();
   const extraction = cache.getExtraction(resolved.input, bigramFlowDefinition, DEFAULT_BIGRAM_FLOW_OPTIONS);
   const traceResult = cache.getTrace(resolved.input);
-  return { trace: traceResult.trace, extracted: extraction.extracted };
+  return { trace: traceResult.trace, extracted: extraction.extracted, geometry: resolved.input.geometry };
 }
 
 for (const id of CASE_IDS) {
@@ -180,6 +181,9 @@ for (const id of CASE_IDS) {
     const engine = engineTrace(fixtureCase);
 
     assert.deepEqual(engine.trace.strokes.length, direct.strokes.length);
-    assert.deepEqual(engine.extracted, directExtracted);
+    // キーの詳細（仕様 §11.11）は図の計算結果とは別の集計。図の部分は直接経路と同じで、キーの詳細は同じTraceと物理配列から求めた値と同じ
+    const { keyDetails, ...figures } = engine.extracted;
+    assert.deepEqual(figures, directExtracted);
+    assert.deepEqual(keyDetails, computeKeyDetails(direct, engine.geometry));
   });
 }

@@ -4,7 +4,7 @@ import { fromKana, LAYOUT_BY_ID, withRomaji, type Layout } from '#input/layouts/
 import { tableForRule } from '#input/romaji/rules.ts';
 import { buildGeometry, dist } from '#input/shapes/geometry.ts';
 import { DEFAULT_TRACE_POLICY, generateTrace, type Trace, type TracePolicy } from '#trace/generate.ts';
-import { computeKeyDetails, NO_ROLE, roleSetId, type KeyDetail } from './key-detail.ts';
+import { computeKeyDetails, mergeKeyDetails, NO_ROLE, roleSetId, type KeyDetail } from './key-detail.ts';
 import { computeMetrics } from './metrics.ts';
 
 /**
@@ -269,4 +269,38 @@ test('同時押しの後の起点は重心になり、どのキーとも一致�
   const centroid = a.origins.find((origin) => origin.fromPrevious === 1);
   assert.ok(centroid);
   assert.deepEqual(centroid.keyIds, []);
+});
+
+test('面の詳細を足した値は、全部の面なら面をまたいだ合算と一致し、一部の面なら選んだ面の和になる', () => {
+  const cases: Array<[string, string, string | undefined]> = [
+    ['shingeta', 'がきゃ。ぱかかか、んー', undefined],
+    ['qwerty', 'かんかんがんじゃくらんこう', 'azik'],
+    ['naginata-v18', 'がぎぐ、げごぱ。', undefined],
+  ];
+  for (const [layoutId, text, rule] of cases) {
+    const details = computeKeyDetails(traceFor(layoutId, text, rule), geometry);
+    const label = `${layoutId}:${rule ?? ''}`;
+    for (const [keyId, mergedDetail] of details.merged) {
+      const parts = [...details.faces.values()].flatMap((face) => face.get(keyId) ?? []);
+      const summed = mergeKeyDetails(parts);
+      assert.equal(summed.presses, mergedDetail.presses, `${label}:${keyId}`);
+      assert.deepEqual(entries(summed.roles), entries(mergedDetail.roles), `${label}:${keyId}`);
+      assert.deepEqual(entries(summed.previousChars), entries(mergedDetail.previousChars), `${label}:${keyId}`);
+      assert.equal(summed.noPreviousChar, mergedDetail.noPreviousChar, `${label}:${keyId}`);
+      assert.deepEqual(entries(summed.distances), entries(mergedDetail.distances), `${label}:${keyId}`);
+      const originCounts = (detail: KeyDetail) =>
+        detail.origins.map((o) => [o.x, o.y, o.keyIds.join('+'), o.fromPrevious, o.fromHome] as const).sort((a, b) => String(a).localeCompare(String(b)));
+      assert.deepEqual(originCounts(summed), originCounts(mergedDetail), `${label}:${keyId}`);
+    }
+  }
+  // 一部の面だけ: 「か」は単打の面のd、「ぱ」は中指シフトの面でd(トリガー)とu(出力)
+  const details = computeKeyDetails(traceFor('shingeta', 'かぱ'), geometry);
+  const single = details.faces.get('single')!.get('d')!;
+  const shift = details.faces.get('layer:中指シフト')!.get('d')!;
+  const both = mergeKeyDetails([single, shift]);
+  assert.equal(both.presses, 2);
+  assert.deepEqual(entries(both.roles), [['output', 1], ['trigger', 1]]);
+  assert.deepEqual(mergeKeyDetails([single]).presses, 1);
+  assert.equal(mergeKeyDetails([]).presses, 0);
+  assert.deepEqual(mergeKeyDetails([]).origins, []);
 });

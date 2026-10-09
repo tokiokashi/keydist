@@ -4,6 +4,7 @@ import { buildGeometry } from '#input/shapes/geometry.ts';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { fromRows, type Layout } from '#input/layouts/types.ts';
 import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
+import { computeKeyDetails } from '#interpretation/key-detail.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { computeHeatmapExtraction } from './extract.ts';
 import { DEFAULT_HEATMAP_OPTIONS } from './options.ts';
@@ -22,7 +23,7 @@ function extractFor(layoutId: string, text: string) {
   assert.ok(layout, layoutId);
   const trace = generateTrace(text, layout, geometry, DEFAULT_TRACE_POLICY);
   assert.equal(trace.skipped, 0);
-  return computeHeatmapExtraction({ trace, metrics: computeMetrics(trace, geometry), options: DEFAULT_HEATMAP_OPTIONS });
+  return computeHeatmapExtraction({ trace, metrics: computeMetrics(trace, geometry), keyDetails: computeKeyDetails(trace, geometry), options: DEFAULT_HEATMAP_OPTIONS });
 }
 
 const entries = (map: ReadonlyMap<string, number>) => [...map].sort(([a], [b]) => a.localeCompare(b));

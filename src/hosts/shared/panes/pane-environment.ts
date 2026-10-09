@@ -69,6 +69,11 @@ export interface PaneOptionsBindingControl {
  * 文脈バーの下に固定し、Workspaceのペインはh2で固定せず、⋯を持つ。
  */
 export interface PaneChrome {
+  /**
+   * ペインを見分ける印。図のキーを選んで開く小窓の持ち主になる（Workspaceはペインのid）。
+   * 省略すると、ペイン自身が自分の印を作る。
+   */
+  readonly paneKey?: string;
   readonly headingLevel?: 1 | 2;
   readonly stickyHeader?: boolean;
   readonly menuItems?: readonly PaneMenuItem[];
