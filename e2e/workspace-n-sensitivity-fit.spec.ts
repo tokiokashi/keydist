@@ -163,8 +163,8 @@ test('最低の窓（12rem）まで縮めても、図は下限より小さくな
 });
 
 test('凡例が図の下に出る組では、領域が下限に当たると図は潰れず、本体の中でスクロールして表の見出しに届く', async ({ page }) => {
-  // 17件・24列 x 7行: 凡例が図の下に並ぶので、図の下限と凡例と表の見出しは最低の窓（12rem）に収まらない
-  await openWorkspace(page, [nsens17], [cell('n', 0, 0, 24, 7)], { width: 1920, height: 900 }, 17);
+  // 全件（LAYOUT_IDS_MANY）・24列 x 7行: 凡例が図の下に並ぶので、図の下限と凡例と表の見出しは最低の窓（12rem）に収まらない
+  await openWorkspace(page, [nsensMany], [cell('n', 0, 0, 24, 7)], { width: 1920, height: 900 }, LAYOUT_IDS_MANY.length);
   const m = await measure(page);
   expect(m.svgHeight).toBeGreaterThanOrEqual(CHART_FLOOR - 1);
   expect(m.bodyScrollHeight).toBeGreaterThan(m.bodyClientHeight);
@@ -210,16 +210,16 @@ test('個別画面に漏れない: 外側に高さを測れるcontainerがあっ
   expect(before).toBeLessThanOrEqual(360 + 1);
 });
 
-const LAYOUT_IDS_17 = [
+const LAYOUT_IDS_MANY = [
   'qwerty', 'dvorak', 'colemak', 'colemak-dh', 'workman', 'oonishi', 'naginata-v18', 'nicola', 'shin-koume', 'asuka',
   'shin-jis-prefix', 'shin-jis-simultaneous', 'shingeta', 'tsuki-2-263', 'kawasemi-plus', 'oonishi-custom',
 ];
-const nsens17 = {
+const nsensMany = {
   id: 'n',
   analyzerId: 'n-sensitivity',
   binding: {
     mode: 'fixed',
-    target: { kind: 'set', selection: { targets: LAYOUT_IDS_17.map((layoutId) => ({ kind: 'layout', layoutId })), colorSlots: LAYOUT_IDS_17.map((_, i) => i % 8) } },
+    target: { kind: 'set', selection: { targets: LAYOUT_IDS_MANY.map((layoutId) => ({ kind: 'layout', layoutId })), colorSlots: LAYOUT_IDS_MANY.map((_, i) => i % 8) } },
   },
 };
 
@@ -239,13 +239,13 @@ function recordFrames(page: Page, frames = 40) {
 }
 
 test('凡例が図の下に出て下限に当たる低いペインでも、描画の高さは振動しない', async ({ page }) => {
-  // 対象17件の凡例は図の中に収まらず下に出る。7行にして図の領域を下限まで縮める。
+  // 対象が多い時の凡例は図の中に収まらず下に出る。7行にして図の領域を下限まで縮める。
   await openWorkspace(
     page,
-    [nsens17],
+    [nsensMany],
     [cell('n', 0, 0, 24, 7)],
     { width: 1920, height: 900 },
-    17,
+    LAYOUT_IDS_MANY.length,
   );
   await expect(page.locator('[data-n-sensitivity-legend]')).toHaveAttribute('data-n-sensitivity-legend', 'below');
   const frames = await recordFrames(page);

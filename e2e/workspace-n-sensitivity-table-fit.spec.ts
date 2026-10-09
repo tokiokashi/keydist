@@ -9,7 +9,7 @@ import { settleGrid } from './settle-helper.ts';
  */
 
 const QWERTY = { kind: 'layout', layoutId: 'qwerty' };
-const LAYOUT_IDS_17 = [
+const LAYOUT_IDS_MANY = [
   'qwerty', 'dvorak', 'colemak', 'colemak-dh', 'workman', 'oonishi', 'naginata-v18', 'nicola', 'shin-koume', 'asuka',
   'shin-jis-prefix', 'shin-jis-simultaneous', 'shingeta', 'tsuki-2-263', 'kawasemi-plus', 'oonishi-custom',
 ];
@@ -19,7 +19,7 @@ const setOf = (ids: readonly string[]) => ({
 });
 const nsensOf = (ids: readonly string[]) => ({ id: 'n', analyzerId: 'n-sensitivity', binding: { mode: 'fixed', target: setOf(ids) } });
 const nsens2 = nsensOf(['qwerty', 'dvorak']);
-const nsens17 = nsensOf(LAYOUT_IDS_17);
+const nsensMany = nsensOf(LAYOUT_IDS_MANY);
 const flow = { id: 'f', analyzerId: 'bigram-flow', binding: { mode: 'fixed', target: { kind: 'single', target: QWERTY } } };
 const cell = (id: string, x: number, y: number, w: number, h: number) => ({ id, x, y, w, h });
 
@@ -92,9 +92,9 @@ test('余りに表が収まる時（2件・3ペイン 各8列 x 22行）は開�
   expect(m.detailsBottom).toBeLessThanOrEqual(m.bodyBottom + 1);
 });
 
-test('余りに表が収まらない時（17件・3ペイン 各8列 x 22行）は畳んで始まる', async ({ page }) => {
-  const { panes, grid } = threePanes(nsens17);
-  await openWorkspace(page, panes, grid, { width: 1440, height: 900 }, 17);
+test(`余りに表が収まらない時（${LAYOUT_IDS_MANY.length}件・3ペイン 各8列 x 22行）は畳んで始まる`, async ({ page }) => {
+  const { panes, grid } = threePanes(nsensMany);
+  await openWorkspace(page, panes, grid, { width: 1440, height: 900 }, LAYOUT_IDS_MANY.length);
   expect(await isOpen(page)).toBe(false);
   const m = await measure(page);
   expect(m.bodyScrollHeight).toBeLessThanOrEqual(m.bodyClientHeight + 1);
@@ -151,8 +151,8 @@ test('開いた後にペインを小さくしても、利用者が畳んだ後�
 });
 
 test('畳んで始まった表は、ペインを大きくしても勝手に開かない', async ({ page }) => {
-  const { panes, grid } = threePanes(nsens17);
-  await openWorkspace(page, panes, grid, { width: 1440, height: 1800 }, 17);
+  const { panes, grid } = threePanes(nsensMany);
+  await openWorkspace(page, panes, grid, { width: 1440, height: 1800 }, LAYOUT_IDS_MANY.length);
   expect(await isOpen(page)).toBe(false);
   // 19行（684px）伸ばす
   await dragCornerBy(page, 684);
