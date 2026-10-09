@@ -1,0 +1,34 @@
+/* 列の見出し: 並び替えのボタン。向きの印は列の幅に入れず、セルの右の余白へ絶対配置する。 */
+.sort-column-header {
+  position: relative;
+}
+
+.sort-column-header[aria-sort][scope='col'] {
+  /* 表側の列見出しの色（淡色）より優先させるため、属性を重ねて詳細度を上げる */
+  color: var(--text);
+}
+
+.sort-column-button {
+  all: unset;
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+.sort-column-button:hover {
+  color: var(--text);
+}
+
+.sort-column-button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.sort-column-mark {
+  position: absolute;
+  top: 50%;
+  right: 0.1rem;
+  width: 0.5rem;
+  transform: translateY(-50%);
+  text-align: center;
+  pointer-events: none;
+}

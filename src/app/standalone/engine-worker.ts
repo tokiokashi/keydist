@@ -5,6 +5,7 @@ import { bigramFlowDefinition } from '#analyzers/bigram-flow/extract.ts';
 import { fingerDistanceDefinition } from '#analyzers/finger-distance/extract.ts';
 import { heatmapDefinition } from '#analyzers/heatmap/extract.ts';
 import { comparisonDefinition } from '#analyzers/comparison/extract.ts';
+import { fingerMatrixDefinition } from '#analyzers/finger-matrix/extract.ts';
 import { nSensitivityDefinition } from '#analyzers/n-sensitivity/extract.ts';
 
 /**
@@ -16,7 +17,7 @@ import { nSensitivityDefinition } from '#analyzers/n-sensitivity/extract.ts';
  */
 const handle = createEngineWorkerHandler(createEngineCache(), {
   single: [bigramFlowDefinition, fingerDistanceDefinition, heatmapDefinition],
-  set: [comparisonDefinition, nSensitivityDefinition],
+  set: [comparisonDefinition, fingerMatrixDefinition, nSensitivityDefinition],
 });
 
 // このファイルはWorkerとして動く。DOMの型のままだと`self`が`Window`になるので、使う分だけ型を当てる。

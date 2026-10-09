@@ -1,4 +1,4 @@
-import type { Finger } from '#input/shapes/geometry.ts';
+import { FINGER_LABEL, SHORT_FINGER } from '#input/shapes/finger-names.ts';
 import type { FingerDistanceExtracted, FingerDistanceHand } from './extract.ts';
 import type { FingerDistanceChartMetric } from './options.ts';
 
@@ -6,16 +6,6 @@ import type { FingerDistanceChartMetric } from './options.ts';
  * 縦棒グラフに渡す棒の並びを、抽出結果と見る量から作る。値は抽出結果をそのまま写すだけで、
  * 再計算しない。並びは物理的な並び（左手の小指から右手の小指）で、抽出結果の並びのまま。
  */
-
-export const FINGER_LABEL: Readonly<Record<Finger, string>> = {
-  LP: '左小指', LR: '左薬指', LM: '左中指', LI: '左人差し指', LT: '左親指',
-  RT: '右親指', RI: '右人差し指', RM: '右中指', RR: '右薬指', RP: '右小指',
-};
-
-export const SHORT_FINGER: Readonly<Record<Finger, string>> = {
-  LP: '小', LR: '薬', LM: '中', LI: '人', LT: '親',
-  RT: '親', RI: '人', RM: '中', RR: '薬', RP: '小',
-};
 
 export const HAND_LABEL: Readonly<Record<FingerDistanceHand, string>> = { left: '左手', right: '右手' };
 

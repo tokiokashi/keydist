@@ -1,3 +1,4 @@
+import * as v from 'valibot';
 import type { BaseIssue, BaseSchema } from 'valibot';
 import { decodeField, isRecord, type CodecDiagnostic } from '#input/codec/index.ts';
 
@@ -298,6 +299,47 @@ export function stringSetUrlCodec<T extends string>(
       return result.slice(0, maxCount);
     },
   };
+}
+
+/**
+ * 表の列の並び替えの状態。`null`は並び替えなし。`ui/primitives/column-sort.ts`の`ColumnSort`と同じ形
+ * （純粋なファイルは`ui/`を読めないので、形だけをここにも持つ）。
+ */
+export type ColumnSortOptionValue<Column extends string> =
+  | { readonly column: Column; readonly direction: 'asc' | 'desc' }
+  | null;
+
+/**
+ * 表の列の並び替え（`ui/primitives/column-sort.ts`の`ColumnSort`）の解析設定項目。
+ * 既定は並び替えなしで、表示だけが変わる。URLには`列id:向き`（例 `totalUnits:asc`）で読み書きする。
+ * 列idは`:`を含まない文字列に限る。壊れた値は捨てて既定（並び替えなし）へ戻す。
+ */
+export function columnSortOption<Column extends string>(urlName: string, columns: readonly Column[]): OptionDef<ColumnSortOptionValue<Column>> {
+  const directions = ['asc', 'desc'] as const;
+  return defineOption<ColumnSortOptionValue<Column>>({
+    schema: v.nullable(v.object({
+      column: v.picklist(columns as readonly [Column, ...Column[]]),
+      direction: v.picklist(directions),
+    })) as BaseSchema<unknown, ColumnSortOptionValue<Column>, BaseIssue<unknown>>,
+    default: null,
+    affects: 'view',
+    url: {
+      name: urlName,
+      encode: (value) => (value === null ? undefined : `${value.column}:${value.direction}`),
+      decode: (raw, path, diagnostics) => {
+        const [column, direction, ...rest] = raw.split(':');
+        if (
+          rest.length === 0
+          && column !== undefined && (columns as readonly string[]).includes(column)
+          && direction !== undefined && (directions as readonly string[]).includes(direction)
+        ) {
+          return { column: column as Column, direction: direction as 'asc' | 'desc' };
+        }
+        diagnostics.push({ path, message: `URLパラメータの値「${raw}」は未知のため捨てました` });
+        return undefined;
+      },
+    },
+  });
 }
 
 // ---------------------------------------------------------------------------

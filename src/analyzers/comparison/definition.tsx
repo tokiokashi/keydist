@@ -6,11 +6,11 @@ import {
   DEFAULT_COMPARISON_OPTIONS,
   type ComparisonColumnId,
   type ComparisonOptions,
-  type ComparisonSort,
   comparisonOptions,
 } from './options.ts';
 import { bindOption, CheckboxGroupOptionField, CheckboxOptionField, OptionField } from '#ui/primitives/option-fields.tsx';
-import { nextComparisonSort, sortComparisonOrder } from './sort.ts';
+import { sortOrderByColumn } from '#ui/primitives/column-sort.ts';
+import { SortColumnHeader } from '#ui/primitives/sort-column-header.tsx';
 import { COMPARISON_PANE_META } from './pane-meta.ts';
 import type { AnalyzerSettingsProps, AnalyzerTargetItemProps, SetAnalyzerPaneParts, SetBodyProps } from '../pane-parts.tsx';
 import './comparison-view.css';
@@ -73,41 +73,6 @@ function failureLabel(kind: ComparisonFailedRow['failureKind']): string {
   }
 }
 
-const SORT_ARIA: Readonly<Record<'asc' | 'desc', 'ascending' | 'descending'>> = {
-  asc: 'ascending',
-  desc: 'descending',
-};
-
-/**
- * 列の見出し。名前のボタンを押す（Enter・Spaceも同じ）たびに 昇順 → 降順 → 解除 と切り替わり、
- * 並べている列には向きの印と`aria-sort`が付く。見出しは名前と印だけにする（列の説明は、比較表の見出しのⓘから開く
- * モーダルにまとめる。列ごとに置くと、ペインを狭めた時に見出しの並びの幅を食うため）。
- * 印は列の幅に入れず、セルの右の余白へ絶対配置する。印の出し入れで列の幅が動かず、
- * 幅を確保するための余分な幅も要らない。
- */
-function ColumnHeader({ column, sort, onSortChange }: {
-  readonly column: ComparisonColumnId;
-  readonly sort: ComparisonSort;
-  readonly onSortChange: (next: ComparisonSort) => void;
-}) {
-  const active = sort !== null && sort.column === column ? sort : undefined;
-  return (
-    <th scope="col" aria-sort={active === undefined ? undefined : SORT_ARIA[active.direction]}>
-      <button
-        type="button"
-        className="comparison-sort-button"
-        title="押すたびに昇順・降順・並び替えなしへ切り替わります"
-        onClick={() => onSortChange(nextComparisonSort(sort, column))}
-      >
-        {COMPARISON_COLUMNS[column].label}
-        <span className="comparison-sort-mark" aria-hidden="true">
-          {active === undefined ? '' : active.direction === 'asc' ? '↑' : '↓'}
-        </span>
-      </button>
-    </th>
-  );
-}
-
 /**
  * 比較表の本体（表）。行ごとの失敗・計算中（抽出の値として届くメンバー単位の状態）は行に出す。
  * ペイン全体の計算中・失敗・対象が空の時はホストが出し、本体は呼ばれない。
@@ -122,7 +87,13 @@ export function ComparisonBody({
 }: ComparisonBodyProps) {
   const { visibleColumns, showBaselineRatio, sort } = options;
   // 並び替えは表の表示だけ。集合の順（order）はそのまま、描く順だけを並べ直す。
-  const displayOrder = useMemo(() => sortComparisonOrder(order, extracted.rows, sort), [order, extracted.rows, sort]);
+  const displayOrder = useMemo(() => {
+    const valueOf = new Map<string, ComparisonRow>(extracted.rows.map((row) => [row.targetKey, row]));
+    return sortOrderByColumn<ComparisonColumnId>(order, (targetKey, column) => {
+      const row = valueOf.get(targetKey);
+      return row?.kind === 'ok' ? row.values[column] : undefined;
+    }, sort);
+  }, [order, extracted.rows, sort]);
   // 基準に選んだ対象が集合から外れていたら（削除・選択解除）「基準なし」として扱う。
   // 存在しないidを指したままの表示にしない。
   const baselineRow = baselineTargetKey === undefined ? undefined : rowFor(extracted.rows, baselineTargetKey);
@@ -136,9 +107,10 @@ export function ComparisonBody({
             <tr>
               <th scope="col">対象</th>
               {visibleColumns.map((column) => (
-                <ColumnHeader
+                <SortColumnHeader<ComparisonColumnId>
                   key={column}
                   column={column}
+                  label={COMPARISON_COLUMNS[column].label}
                   sort={sort}
                   onSortChange={(next) => onOptionsChange({ ...options, sort: next })}
                 />

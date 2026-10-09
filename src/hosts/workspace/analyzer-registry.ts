@@ -4,6 +4,8 @@ import { bigramFlowDefinition } from '#analyzers/bigram-flow/extract.ts';
 import { BIGRAM_FLOW_PANE_META } from '#analyzers/bigram-flow/pane-meta.ts';
 import { comparisonDefinition } from '#analyzers/comparison/extract.ts';
 import { COMPARISON_PANE_META } from '#analyzers/comparison/pane-meta.ts';
+import { fingerMatrixDefinition } from '#analyzers/finger-matrix/extract.ts';
+import { FINGER_MATRIX_PANE_META } from '#analyzers/finger-matrix/pane-meta.ts';
 import { fingerDistanceDefinition } from '#analyzers/finger-distance/extract.ts';
 import { FINGER_DISTANCE_PANE_META } from '#analyzers/finger-distance/pane-meta.ts';
 import { heatmapDefinition } from '#analyzers/heatmap/extract.ts';
@@ -15,7 +17,7 @@ import { N_SENSITIVITY_PANE_META } from '#analyzers/n-sensitivity/pane-meta.ts';
  * Workspaceのペインに置けるAnalyzer。ペインの追加（Analyzerを選ぶ）と、保存したペインの
  * AnalyzerのidからAnalyzerを引くのに使う。Analyzerを足す時は、ここに1行足す。Singleなら、さらに`single-analyzers.ts`に
  * そのAnalyzerのペインに渡すもの（`definition.tsx`）を1行足す（足し忘れは`single-analyzers.test.ts`が落とす）。Multiは
- * `WorkspacePaneView.tsx`の分岐にそのAnalyzerのペインを足す。
+ * `set-analyzers.ts`に同じものを1行足す（足し忘れは`set-analyzers.test.ts`が落とす）。
  *
  * idは各Analyzerの`definition.id`（純粋な部分）から取る。名前と短い説明は、Reactに依存しない
  * `pane-meta.ts`から読む（個別画面のサイドバー・見出しと同じ出どころ）。
@@ -37,6 +39,7 @@ export const WORKSPACE_ANALYZERS: readonly WorkspaceAnalyzerEntry[] = [
   { id: fingerDistanceDefinition.id, ...FINGER_DISTANCE_PANE_META, cardinality: 'single' },
   { id: heatmapDefinition.id, ...HEATMAP_PANE_META, cardinality: 'single' },
   { id: comparisonDefinition.id, ...COMPARISON_PANE_META, cardinality: 'set' },
+  { id: fingerMatrixDefinition.id, ...FINGER_MATRIX_PANE_META, cardinality: 'set' },
   { id: nSensitivityDefinition.id, ...N_SENSITIVITY_PANE_META, cardinality: 'set' },
 ];
 

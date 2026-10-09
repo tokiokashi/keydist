@@ -1,27 +1,35 @@
-.comparison-table-scroll {
+.finger-matrix-scroll {
   overflow-x: auto;
 }
 
-.comparison-table {
+.finger-matrix-table {
   border-collapse: collapse;
   width: 100%;
   font-size: 0.82rem;
 }
 
-.comparison-table th,
-.comparison-table td {
+.finger-matrix-table caption {
+  caption-side: top;
+  padding: 0 0.6rem 0.4rem;
+  text-align: left;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.finger-matrix-table th,
+.finger-matrix-table td {
   border-bottom: 1px solid var(--border);
   padding: 0.4rem 0.6rem;
   text-align: right;
   white-space: nowrap;
 }
 
-.comparison-table th[scope='row'] {
+.finger-matrix-table th[scope='row'] {
   text-align: left;
   font-weight: 600;
 }
 
-.comparison-table th[scope='col'] {
+.finger-matrix-table th[scope='col'] {
   text-align: right;
   color: var(--text-muted);
   font-weight: 500;
@@ -31,10 +39,9 @@
  * 行の見出し（対象名）の列は、横にスクロールしても左端に残す。どの行の値か分からなくなるため。
  * 背景を敷くのは、下をスクロールする数値が透けないようにするため。
  * border-collapseでは固定したセルの罫線がスクロールに付いてこないので、右の境界はbox-shadowで描く。
- * 縦方向の固定（ペイン見出し）とは別の軸で、この表の外側にあるので重ならない。
  */
-.comparison-table th[scope='row'],
-.comparison-table thead th:first-child {
+.finger-matrix-table th[scope='row'],
+.finger-matrix-table thead th:first-child {
   position: sticky;
   left: 0;
   z-index: 1;
@@ -44,7 +51,7 @@
 
 /* 狭い幅では固定した列が画面を占めすぎないよう幅を絞り、長い名前は折り返して全文をその場で読めるようにする。 */
 @container (max-width: 40rem) {
-  .comparison-table th[scope='row'] {
+  .finger-matrix-table th[scope='row'] {
     max-width: 7.5rem;
     white-space: normal;
     min-width: 5rem;
@@ -52,40 +59,12 @@
   }
 }
 
-.comparison-value-cell {
-  display: table-cell;
-}
-
-.comparison-value {
-  display: block;
-}
-
-.comparison-ratio {
-  display: block;
+.finger-matrix-table td[data-empty] {
   color: var(--text-muted);
-  font-size: 0.75rem;
 }
 
-.comparison-table tr[data-comparison-row='failed'] td {
+.finger-matrix-table tr[data-finger-matrix-row='failed'] td {
   color: var(--text-muted);
   text-align: left;
   white-space: normal;
-}
-
-.comparison-baseline-tag {
-  margin-left: 0.4rem;
-  color: var(--text-muted);
-  font-size: 0.75rem;
-  font-weight: 400;
-}
-
-/* 対象の選択に差し込む項目（基準にする対象）。置き場所はホストが決める。 */
-.comparison-baseline-item {
-  display: grid;
-  gap: 0.25rem;
-  font-size: 0.85rem;
-}
-
-.comparison-baseline-item select {
-  max-width: 100%;
 }

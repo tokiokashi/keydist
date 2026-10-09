@@ -4,6 +4,7 @@ import { BIGRAM_FLOW_PANE_META } from '#analyzers/bigram-flow/pane-meta.ts';
 import { FINGER_DISTANCE_PANE_META } from '#analyzers/finger-distance/pane-meta.ts';
 import { HEATMAP_PANE_META } from '#analyzers/heatmap/pane-meta.ts';
 import { COMPARISON_PANE_META } from '#analyzers/comparison/pane-meta.ts';
+import { FINGER_MATRIX_PANE_META } from '#analyzers/finger-matrix/pane-meta.ts';
 import { N_SENSITIVITY_PANE_META } from '#analyzers/n-sensitivity/pane-meta.ts';
 import {
   getAppearanceSnapshot,
@@ -148,6 +149,7 @@ export function Sidebar({ pinned, onPinnedChange, onNavigate }: SidebarProps) {
           <NavLink to="/standalone/heatmap" onNavigate={onNavigate}>{HEATMAP_PANE_META.name}</NavLink>
           <h3 className="sidebar-subheading">Multi</h3>
           <NavLink to="/standalone/comparison" onNavigate={onNavigate}>{COMPARISON_PANE_META.name}</NavLink>
+          <NavLink to="/standalone/finger-matrix" onNavigate={onNavigate}>{FINGER_MATRIX_PANE_META.name}</NavLink>
           <NavLink to="/standalone/n-sensitivity" onNavigate={onNavigate}>{N_SENSITIVITY_PANE_META.name}</NavLink>
         </section>
 
