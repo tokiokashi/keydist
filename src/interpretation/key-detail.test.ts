@@ -8,7 +8,7 @@ import { computeKeyDetails, NO_ROLE, roleSetId, type KeyDetail } from './key-det
 import { computeMetrics } from './metrics.ts';
 
 /**
- * キーの詳細（仕様 §11.11）。期待値は、打つ文字から手で追える小さいテキストで固定する。
+ * キーの詳細（仕様§11.11）。期待値は、打つ文字から手で追える小さいテキストで固定する。
  */
 
 const geometry = buildGeometry('row-staggered');
@@ -33,7 +33,7 @@ function detailOf(details: ReturnType<typeof computeKeyDetails>, keyId: string):
   return detail;
 }
 
-test('役の組は並べ替えて1つの値にし、役が無ければ none', () => {
+test('役の組は並べ替えて1つの値にし、役が無ければnone', () => {
   assert.equal(roleSetId(['trigger', 'output']), 'output+trigger');
   assert.equal(roleSetId(['held-trigger', 'trigger', 'output']), 'output+trigger+held-trigger');
   assert.equal(roleSetId([]), NO_ROLE);
@@ -59,7 +59,7 @@ test('かな配列: 同じキーを繰り返すと、起点は先頭だけホー
 });
 
 test('かな配列: 同時押しとトリガーは、同じ入力単位の押下がどれも同じ前の文字を持つ', () => {
-  // 「きゃ」は右中指のトリガー i と左人差し指の v の同時押し。「ぱ」は d(トリガー)と u
+  // 「きゃ」は右中指のトリガーiと左人差し指のvの同時押し。「ぱ」はd(トリガー)とu
   const details = computeKeyDetails(traceFor('shingeta', 'がきゃ。ぱ'));
   const i = detailOf(details, 'i');
   const v = detailOf(details, 'v');
@@ -76,7 +76,7 @@ test('かな配列: 同時押しとトリガーは、同じ入力単位の押下
 });
 
 test('面ごとの値と、面をまたいだ合算', () => {
-  // 「か」は単打の面のd、「ぱ」は中指シフトの面で d(トリガー)と u(出力)
+  // 「か」は単打の面のd、「ぱ」は中指シフトの面でd(トリガー)とu(出力)
   const details = computeKeyDetails(traceFor('shingeta', 'かぱ'));
   assert.deepEqual([...details.faces.keys()], ['single', 'layer:中指シフト']);
   const single = details.faces.get('single')!;
@@ -103,7 +103,7 @@ test('コンボの面も1つの面として持つ', () => {
 });
 
 test('ローマ字: 同じかなを打つ複数の打鍵が同じ前の文字を持つ', () => {
-  // 「しゃ」は s・y・a の3打鍵で1つの入力単位。前の「か」(k・a)が前の文字になる
+  // 「しゃ」はs・y・aの3打鍵で1つの入力単位。前の「か」(k・a)が前の文字になる
   const details = computeKeyDetails(traceFor('qwerty', 'かしゃ', 'kunrei'));
   for (const id of ['s', 'y']) {
     const detail = detailOf(details, id);
@@ -123,14 +123,14 @@ test('ローマ字: 続くかなの前の文字は、直前の入力単位のか
   const k = detailOf(details, 'k');
   assert.deepEqual(entries(k.previousChars), [['しゃ', 1]]);
   assert.equal(k.noPreviousChar, 0);
-  // 2つめの a は「か」の中の打鍵。前の文字は「しゃ」
+  // 2つめのaは「か」の中の打鍵。前の文字は「しゃ」
   const a = detailOf(details, 'a');
   assert.deepEqual(entries(a.previousChars), [['しゃ', 1]]);
   assert.equal(a.noPreviousChar, 1);
 });
 
 test('AZIK: 複数のかなを1つの見出しにした綴りは1つの入力単位になる', () => {
-  // 「かん」は kz の2打鍵。続く「か」の前の文字が「かん」になる
+  // 「かん」はkzの2打鍵。続く「か」の前の文字が「かん」になる
   const trace = traceFor('qwerty', 'かんか', 'azik');
   assert.equal(trace.skipped, 0);
   assert.deepEqual(
@@ -156,7 +156,7 @@ test('打てずに飛ばした文字を挟んでも、直前に打った入力�
 });
 
 test('1つの押下が複数のキーを持つ時は、各キーに1回ずつ数え、距離を按分しない', () => {
-  // a(r2c0)と q(r1c0)はどちらも左小指。指はその間の重心を押す
+  // a(r2c0)とq(r1c0)はどちらも左小指。指はその間の重心を押す
   const layout = fromKana('chord', 'chord', { x: [['a', 'q']] });
   const trace = chordTrace('xx', layout);
   assert.equal(trace.strokes[0].presses[0].keys.length, 2);
@@ -176,8 +176,8 @@ test('1つの押下が複数のキーを持つ時は、各キーに1回ずつ数
   assert.equal(first.origin?.from, 'home');
 });
 
-test('起点が採用した候補を表す: 同指連続は直前の位置、N を超えるとホーム', () => {
-  // d の後に別の指で何度か打ってから d に戻る。N=1 では ΔI=2 でホームから来たことになる
+test('起点が採用した候補を表す: 同指連続は直前の位置、Nを超えるとホーム', () => {
+  // dの後に別の指で何度か打ってからdに戻る。N=1では ΔI=2でホームから来たことになる
   const n1: TracePolicy = { ...DEFAULT_TRACE_POLICY, windowSize: 1 };
   const trace = traceFor('qwerty', 'eaaae', undefined, n1);
   const origins = trace.strokes.map((stroke) => stroke.presses[0].origin?.from);
@@ -203,7 +203,7 @@ test('押し方の内訳・前の文字・起点・距離の回数の和は、�
       assert.equal(sum(detail.origins.map((o) => o.fromPrevious + o.fromHome)), detail.presses, label);
       assert.equal(sum(detail.distances.values()), detail.presses, label);
     }
-    // 面ごとの和は合算と一致し、全面の押下数の和は Metrics.presses と一致する
+    // 面ごとの和は合算と一致し、全面の押下数の和はMetrics.pressesと一致する
     const metrics = computeMetrics(trace, geometry);
     assert.equal(sum([...details.merged.values()].map((detail) => detail.presses)), metrics.presses, label);
     for (const [keyId, detail] of details.merged) {
@@ -214,7 +214,7 @@ test('押し方の内訳・前の文字・起点・距離の回数の和は、�
   }
 });
 
-test('Trace が記録した起点から求めた距離は press.distance と一致する', () => {
+test('Traceが記録した起点から求めた距離はpress.distanceと一致する', () => {
   // sfbHomeCost: true（既定）では、距離は起点から目標までの距離そのもの
   const cases: Array<[string, string, string | undefined]> = [
     ['shingeta', 'がきゃ。ぱかかか、んー', undefined],

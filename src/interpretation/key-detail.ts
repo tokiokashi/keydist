@@ -1,14 +1,14 @@
 import type { ParticipationRole, Trace } from '#trace/generate.ts';
 
 /**
- * キーの詳細（仕様 §11.11）。キーボード図のキーごとに、使われ方を整数の回数で集計する。
+ * キーの詳細（仕様§11.11）。キーボード図のキーごとに、使われ方を整数の回数で集計する。
  *
- * 集計の単位は「面 × 物理キーid」。面は Trace の `aggregationGroupId` の値で、コンボの面
+ * 集計の単位は「面 × 物理キーid」。面はTraceの `aggregationGroupId` の値で、コンボの面
  * （`COMBO_LAYER_ID`）も1つの面に含める。用語集の「レイヤー」はコンボを含まないので別の語。
  * 面をまたいで物理キーidごとに合算した値も出す。値は1つの対象（配列 × 物理配列 × テキスト × 条件）の
- * Trace から出るので、対象ごとに別の値になる。
+ * Traceから出るので、対象ごとに別の値になる。
  *
- * どの量も、`Press.keys` の1キーを1回として数える。1つの Press が複数のキーを持つ時は、
+ * どの量も、`Press.keys` の1キーを1回として数える。1つのPressが複数のキーを持つ時は、
  * 各キーに1回ずつ数え、距離などを按分しない。割合は表示側で求める。
  */
 
@@ -36,7 +36,7 @@ export interface KeyOriginCount {
   readonly x: number;
   readonly y: number;
   /**
-   * 位置が一致する物理キーのid（Trace に現れたキーのうち、丸めた座標が同じもの。昇順）。
+   * 位置が一致する物理キーのid（Traceに現れたキーのうち、丸めた座標が同じもの。昇順）。
    * 同じ座標に複数のキーがあれば全部を持つ。一致するキーが無ければ空。
    */
   readonly keyIds: readonly string[];
@@ -63,7 +63,7 @@ export interface KeyDetail {
 }
 
 export interface KeyDetails {
-  /** 面のid → 物理キーid → 詳細。面は Trace に現れた順 */
+  /** 面のid → 物理キーid → 詳細。面はTraceに現れた順 */
   readonly faces: ReadonlyMap<string, ReadonlyMap<string, KeyDetail>>;
   /** 面をまたいで合算した、物理キーid → 詳細 */
   readonly merged: ReadonlyMap<string, KeyDetail>;
@@ -128,7 +128,7 @@ function accumulate(
 }
 
 export function computeKeyDetails(trace: Trace): KeyDetails {
-  // 起点の位置が物理キーに当たるかの判定に使う、Trace に現れたキーの座標 → キーid
+  // 起点の位置が物理キーに当たるかの判定に使う、Traceに現れたキーの座標 → キーid
   const keyIdsByPoint = new Map<string, Set<string>>();
   for (const stroke of trace.strokes) {
     for (const press of stroke.presses) {
@@ -151,7 +151,7 @@ export function computeKeyDetails(trace: Trace): KeyDetails {
     return created;
   };
 
-  // 入力単位は `inputIndex` が同じ Stroke のまとまり。直前の単位の最後の Stroke の `inputChar` が前の文字
+  // 入力単位は `inputIndex` が同じStrokeのまとまり。直前の単位の最後のStrokeの `inputChar` が前の文字
   let currentInputIndex: number | undefined;
   let currentInputChar: string | undefined;
   let previousChar: string | undefined;
