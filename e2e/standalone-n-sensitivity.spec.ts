@@ -604,30 +604,30 @@ test('Workspaceのペインでも縦軸の範囲が効き、ペインごとに�
   await expect.poll(async () => (await yTickTexts(page, 1))[0]).not.toBe('0%');
 });
 
-const LAYOUT_IDS_17 = [
+const LAYOUT_IDS_MANY = [
   'qwerty', 'dvorak', 'colemak', 'colemak-dh', 'workman', 'oonishi', 'naginata-v18', 'nicola', 'shin-koume', 'asuka',
-  'shin-jis-prefix', 'shin-jis-simultaneous', 'shingeta', 'tsuki-2-263', 'kawasemi-kai', 'kawasemi-plus', 'oonishi-custom',
+  'shin-jis-prefix', 'shin-jis-simultaneous', 'shingeta', 'tsuki-2-263', 'kawasemi-plus', 'oonishi-custom',
 ];
 
 for (const { width, yRange, scale } of [
   { width: 320, yRange: 'full', scale: 'relative' }, { width: 390, yRange: 'fit', scale: 'relative' }, { width: 390, yRange: 'fit', scale: 'absolute' },
   { width: 1440, yRange: 'full', scale: 'absolute' }, { width: 1440, yRange: 'fit', scale: 'relative' },
 ] as const) {
-  test(`対象17件でも、凡例は図の幅に収まり線に重ならず、名前は重複しない（${width}px・${scale}・縦軸の範囲${yRange}）`, async ({ page }) => {
+  test(`対象${LAYOUT_IDS_MANY.length}件でも、凡例は図の幅に収まり線に重ならず、名前は重複しない（${width}px・${scale}・縦軸の範囲${yRange}）`, async ({ page }) => {
     await page.addInitScript(({ range, scaleValue }) => {
       localStorage.setItem('keydist:standalone-analyzer-options', JSON.stringify({ version: 1, 'n-sensitivity': { yRange: range, scale: scaleValue } }));
     }, { range: yRange, scaleValue: scale });
-    await seedLayouts(page, LAYOUT_IDS_17);
+    await seedLayouts(page, LAYOUT_IDS_MANY);
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/standalone/n-sensitivity');
-    await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(17, { timeout: 30_000 });
+    await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(LAYOUT_IDS_MANY.length, { timeout: 30_000 });
     await waitForMeasuredWidth(page.locator('.n-sensitivity-svg'));
     const legend = await measureLegend(page);
     expect(legend.insideSvg, '枠が図の中に収まる').toBe(true);
     expect(legend.linePointsInside).toBe(0);
     expect(legend.dotsInside).toBe(0);
     expect(legend.labelsInsideFrame, '名前が枠に収まる').toBe(true);
-    expect(new Set(legend.names).size, '名前が重複しない').toBe(17);
+    expect(new Set(legend.names).size, '名前が重複しない').toBe(LAYOUT_IDS_MANY.length);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBe(0);
   });

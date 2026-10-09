@@ -73,7 +73,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const FIXTURE_PATH = join(HERE, 'fixtures', 'analyzer-regression.json');
 const fixture: Fixture = JSON.parse(readFileSync(FIXTURE_PATH, 'utf8'));
 
-// 全50ケース回す必要は無い（Trace生成の数値一致はengine-regression.test.tsが既に見ている）。
+// 全ケース回す必要は無い（Trace生成の数値一致はengine-regression.test.tsが既に見ている）。
 // ここで見たいのは「Bigram Flowの抽出まで含めて、直接経路とengine経路が一致するか」なので、
 // 英語直接入力・日本語ローマ字入力・日本語かな直接入力の3通りを代表させる。
 const CASE_IDS = ['en:colemak-dh:default', 'ja:colemak-dh:legacy', 'ja:asuka:legacy'];

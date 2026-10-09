@@ -107,7 +107,7 @@ test('絞り込みの正規化は、ひらがな・カタカナ・半角カナ�
 test('絞り込みはひらがな・カタカナを区別せず、読み・別名でも当たる', () => {
   const groups = targetChoiceGroups(source({ setups: SETUPS }));
   const keys = (query: string) => filterTargetChoiceGroups(groups, query).flatMap((group) => group.choices.map((choice) => choice.key));
-  assert.deepEqual(keys('かわせみ'), ['layout:kawasemi-kai', 'layout:kawasemi-plus']);
+  assert.deepEqual(keys('かわせみ'), ['layout:kawasemi-plus']);
   assert.deepEqual(keys('カワセミ'), keys('かわせみ'));
   assert.deepEqual(keys('なぎなた'), ['layout:naginata-v18']);
   assert.deepEqual(keys('ナギナタ'), ['layout:naginata-v18']);
