@@ -57,6 +57,13 @@ export interface StrokeParticipation {
   holdPhase?: HoldPhase;
 }
 
+/** 距離が採用した候補の起点。 */
+export interface PressOrigin {
+  /** 起点の位置。`from` が `previous` ならその指の直前の位置、`home` ならその指のホーム */
+  at: Point;
+  from: 'previous' | 'home';
+}
+
 /** 1ステップの中の1指分の押下 */
 export interface Press {
   finger: Finger;
@@ -70,6 +77,11 @@ export interface Press {
   inputDistance?: number;
   /** この押下で計上された移動距離 [u] */
   distance: number;
+  /**
+   * 距離が採用した候補の起点（仕様 §9, §11.11）。generateTrace生成時は必ず入る。
+   * 候補が同値の時は直前の位置（`from: 'previous'`）を採る。
+   */
+  origin?: PressOrigin;
   /**
    * 同指連続（same finger bigram）。
    * 同じ指で**異なる位置**を続けて打った場合のみ真。
@@ -334,6 +346,9 @@ export function generateTrace(
           options,
         );
         press.distance = decision.distance;
+        press.origin = decision.stay
+          ? { at: { x: prev[press.finger].x, y: prev[press.finger].y }, from: 'previous' }
+          : { at: { x: geometry.homes[press.finger].x, y: geometry.homes[press.finger].y }, from: 'home' };
         if (decision.stay) {
           restoreStaySnapshots(
             strokes,
