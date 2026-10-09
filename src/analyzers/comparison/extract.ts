@@ -126,7 +126,7 @@ function fixtureKey(id: string, finger: Finger, x: number, y = 2): Key {
 }
 
 function fixturePress(finger: Finger, id: string, x: number, y = 2): Press {
-  return { finger, keys: [fixtureKey(id, finger, x, y)], target: { x, y }, gap: 1, distance: 0, sfb: false };
+  return { finger, keys: [fixtureKey(id, finger, x, y)], target: { x, y }, origin: { at: { x, y }, from: 'home' }, gap: 1, distance: 0, sfb: false };
 }
 
 function fixtureParticipation(p: Press): StrokeParticipation {
