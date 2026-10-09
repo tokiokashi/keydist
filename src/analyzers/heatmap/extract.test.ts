@@ -106,7 +106,7 @@ test('同時押下したトリガーは、修飾の層では足し戻さない',
 });
 
 test('コンボ枠は層に含めず別に持つ。押下が無ければ持たない', () => {
-  // 新小梅の「ぴ」は gとuの同時押しのコンボ
+  // 新小梅の「ぴ」はgとuの同時押しのコンボ
   const used = extractFor('shin-koume', 'ぴ');
   assert.equal(used.combo?.id, 'combo');
   assert.deepEqual(entries(used.combo!.keyCounts), [['g', 1], ['u', 1]]);
