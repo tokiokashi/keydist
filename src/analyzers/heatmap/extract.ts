@@ -1,27 +1,32 @@
-import { COMBO_LAYER_ID, type LayerKind, type LayerPresentationRole } from '#input/layouts/types.ts';
+import { COMBO_LAYER_ID, type LayerPresentationRole } from '#input/layouts/types.ts';
+import type { Metrics } from '#interpretation/metrics.ts';
 import type { Trace } from '#trace/generate.ts';
 import { normalizedRoleColors } from './layer-heatmap.ts';
 
 /**
- * ヒートマップの抽出（仕様 §11.2・§11.10のキー別の押下数）。
+ * ヒートマップの抽出（仕様 §11.10 のキーごとの押下数）。
  *
- * 数えるのは、キー（物理キーid）× 面（Traceの `aggregationGroupId`。層のid）ごとの押下数だけ。
+ * 押下を層へ割り振る規則（§11.10）は `computeMetrics` が持つので、ここでは数え直さず、
+ * `Metrics` の層別・コンボ枠の集計を並べ替えて、色用の押下数を足すだけにする。
+ * 層の宣言順・役割は `trace.layerDefinitions` から読む。
+ *
  * 色の尺度（線形・対数）と層の表示方法は表示側の設定で、ここには入らない。
- * 表示側が層を選ぶ時は番号ではなく `HeatmapSurface.id` で引く（層の構成は配列ごとに違うため）。
+ * 表示側が層を選ぶ時は番号ではなく `HeatmapLayer.id` で引く（層の構成は配列ごとに違うため）。
+ * 層どうしで共通にする最大値は、表示する層の組（まとめ・詳細など）で変わるので、
+ * 表示側が表示する層の `colorCounts` から求める。
  *
- * 面ごとの集計は `HeatmapSurface` の1形に揃え、統合は全面を物理キーで合算した値として別に持つ。
- * キーの詳細を共通の集計へ寄せる時に、面の単位をそのまま使える。
+ * 層ごとの集計は「キーid → 件数」の1形に揃えてあり、キーの詳細を共通の集計へ寄せる時に
+ * 層の単位をそのまま使える。
  */
 
-/** 面（層またはコンボ枠）1つぶんの、キーごとの押下数。 */
-export interface HeatmapSurface {
-  /** 面のid（Traceの `aggregationGroupId`） */
+/** 層1つぶんの、キーごとの押下数。 */
+export interface HeatmapLayer {
+  /** 層のid（Traceの `aggregationGroupId`） */
   readonly id: string;
   readonly label: string;
-  readonly kind: LayerKind;
-  /** 配列定義が宣言した表示区分。宣言の無い面は `undefined` */
+  /** 配列定義が宣言した表示区分。宣言の無い層は `undefined` */
   readonly role: LayerPresentationRole | undefined;
-  /** 面に帰属するキー押下の総数 */
+  /** 層に帰属するキー押下の総数 */
   readonly presses: number;
   /** キーid → 押下数。ツールチップにも使う実際の値 */
   readonly keyCounts: ReadonlyMap<string, number>;
@@ -31,12 +36,18 @@ export interface HeatmapSurface {
   readonly pairedTriggerKeyCounts: ReadonlyMap<string, number>;
   /** 色を決める押下数。層操作の分を除き、同時押下したトリガーを足し戻した値 */
   readonly colorCounts: ReadonlyMap<string, number>;
-  /** `colorCounts` の最大値。キーが無ければ0 */
-  readonly maxColorCount: number;
+}
+
+/** コンボ枠。層とは別に数える。 */
+export interface HeatmapCombo {
+  readonly id: string;
+  readonly label: string;
+  readonly presses: number;
+  readonly keyCounts: ReadonlyMap<string, number>;
 }
 
 export interface HeatmapExtracted {
-  /** 統合ヒートマップ。全面の押下を物理キーで合算した値 */
+  /** 統合ヒートマップ。全キー押下を物理キーで合算した値 */
   readonly integrated: {
     readonly presses: number;
     /** キーid → 押下数 */
@@ -45,88 +56,37 @@ export interface HeatmapExtracted {
     readonly maxCount: number;
   };
   /** 層別ヒートマップ。宣言順で、コンボ枠は含めない */
-  readonly layers: readonly HeatmapSurface[];
+  readonly layers: readonly HeatmapLayer[];
   /** コンボ枠。コンボの押下が無ければ `undefined` */
-  readonly combo: HeatmapSurface | undefined;
-  /** 層どうしで共通にする最大値（`layers` の `maxColorCount` の最大）。キーが無ければ0 */
-  readonly sharedMaxColorCount: number;
+  readonly combo: HeatmapCombo | undefined;
 }
 
-interface Accumulator {
-  presses: number;
-  keyCounts: Map<string, number>;
-  triggerKeyCounts: Map<string, number>;
-  pairedTriggerKeyCounts: Map<string, number>;
-}
-
-function increment(map: Map<string, number>, key: string): void {
-  map.set(key, (map.get(key) ?? 0) + 1);
-}
-
-function maxValue(map: ReadonlyMap<string, number>): number {
-  return Math.max(0, ...map.values());
-}
-
-export function computeHeatmapExtraction(trace: Trace): HeatmapExtracted {
+export function computeHeatmapExtraction(trace: Trace, metrics: Metrics): HeatmapExtracted {
   const definitions = new Map(trace.layerDefinitions.map((definition) => [definition.id, definition]));
-  // 宣言順の面を先に作り、宣言に無い面は初出の順で後ろへ足す
-  const accumulators = new Map<string, Accumulator>();
-  const ensure = (id: string): Accumulator => {
-    let accumulator = accumulators.get(id);
-    if (accumulator === undefined) {
-      accumulator = { presses: 0, keyCounts: new Map(), triggerKeyCounts: new Map(), pairedTriggerKeyCounts: new Map() };
-      accumulators.set(id, accumulator);
-    }
-    return accumulator;
-  };
-  for (const definition of trace.layerDefinitions) ensure(definition.id);
-
-  const integratedCounts = new Map<string, number>();
-  let integratedPresses = 0;
-  for (const stroke of trace.strokes) {
-    const accumulator = ensure(stroke.aggregationGroupId);
-    const triggerKeys = new Set(stroke.triggerKeys);
-    const pairedTriggerKeys = new Set(stroke.pairedTriggerKeys);
-    for (const press of stroke.presses) {
-      for (const key of press.keys) {
-        integratedPresses++;
-        increment(integratedCounts, key.id);
-        accumulator.presses++;
-        increment(accumulator.keyCounts, key.id);
-        if (triggerKeys.has(key.id)) increment(accumulator.triggerKeyCounts, key.id);
-        if (pairedTriggerKeys.has(key.id)) increment(accumulator.pairedTriggerKeyCounts, key.id);
-      }
-    }
-  }
-
-  const surfaces = [...accumulators].map(([id, accumulator]): HeatmapSurface => {
-    const definition = definitions.get(id);
-    const role = definition?.presentationRole;
-    const colorCounts = normalizedRoleColors(role, accumulator);
-    return {
-      id,
-      label: definition?.label ?? id,
-      kind: definition?.kind ?? 'layer',
-      role,
-      presses: accumulator.presses,
-      keyCounts: accumulator.keyCounts,
-      triggerKeyCounts: accumulator.triggerKeyCounts,
-      pairedTriggerKeyCounts: accumulator.pairedTriggerKeyCounts,
-      colorCounts,
-      maxColorCount: maxValue(colorCounts),
-    };
-  });
-
-  const layers = surfaces.filter((surface) => surface.id !== COMBO_LAYER_ID);
-  const combo = surfaces.find((surface) => surface.id === COMBO_LAYER_ID);
+  const layers = metrics.layers.map((stat): HeatmapLayer => ({
+    id: stat.id,
+    label: stat.label,
+    role: definitions.get(stat.id)?.presentationRole,
+    presses: stat.presses,
+    keyCounts: stat.keyCounts,
+    triggerKeyCounts: stat.triggerKeyCounts,
+    pairedTriggerKeyCounts: stat.pairedTriggerKeyCounts,
+    colorCounts: normalizedRoleColors(definitions.get(stat.id)?.presentationRole, stat),
+  }));
   return {
     integrated: {
-      presses: integratedPresses,
-      keyCounts: integratedCounts,
-      maxCount: maxValue(integratedCounts),
+      presses: metrics.presses,
+      keyCounts: metrics.keyCounts,
+      maxCount: Math.max(0, ...metrics.keyCounts.values()),
     },
     layers,
-    combo: combo !== undefined && combo.presses > 0 ? combo : undefined,
-    sharedMaxColorCount: Math.max(0, ...layers.map((layer) => layer.maxColorCount)),
+    combo: metrics.comboPresses > 0
+      ? {
+        id: COMBO_LAYER_ID,
+        label: definitions.get(COMBO_LAYER_ID)?.label ?? COMBO_LAYER_ID,
+        presses: metrics.comboPresses,
+        keyCounts: metrics.comboKeyCounts,
+      }
+      : undefined,
   };
 }
