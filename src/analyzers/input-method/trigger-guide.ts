@@ -25,10 +25,10 @@ export interface TriggerGuideLegendItem {
 }
 
 export interface TriggerGuide {
-  /** トリガーになる物理キーid → 色の番号（無ければ undefined）。レイヤー、コンボの面、コンボの定義の順に、先に決まった色を残す */
+  /** トリガーになる物理キーid → 色の番号（無ければ未定義）。レイヤー、コンボの面、コンボの定義の順に、先に決まった色を残す */
   readonly keySlots: ReadonlyMap<string, number | undefined>;
   readonly legend: readonly TriggerGuideLegendItem[];
-  /** 1つのキーだけでレイヤーに切り替わるトリガーを選んだ時の、そのレイヤーの色の番号。該当しなければ undefined */
+  /** 1つのキーだけでレイヤーに切り替わるトリガーを選んだ時の、そのレイヤーの色の番号。該当しなければ未定義 */
   readonly slotOfSelected: (selected: readonly string[]) => number | undefined;
 }
 
