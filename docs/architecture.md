@@ -117,7 +117,7 @@ host（個別画面 / Workspace）
 
 保存したWorkspaceを開き、Analyzerをペインとして並べる器。個別画面と同じAnalyzerのcomponent（`hosts/shared/panes/`）を載せる。
 
-- **Single（対象を1つ見るAnalyzer）の配線はAnalyzerごとに持たない。** ペイン（`hosts/shared/panes/SingleAnalyzerPane.tsx`）・個別画面（`hosts/standalone/SingleAnalyzerStandalonePage.tsx`、組み立ては`app/standalone/StandaloneSingleAnalyzerApp.tsx`）・Workspaceのペイン（`hosts/workspace/panes/SingleAnalyzerWorkspacePane.tsx`）は、Analyzerの`definition.tsx`がexportする`SingleAnalyzerPaneParts`（`analyzers/pane-parts.tsx`）を引数に取る。Singleを足す時に書くのは、`definition.tsx`、`analyzer-registry.ts`と`single-analyzers.ts`に1行ずつ、個別画面のroute（`routes/standalone.<id>.tsx`。`StandaloneSingleAnalyzerApp`に渡すだけ）、`app/standalone/engine-worker.ts`への登録。本体（`Body`）にはどのSingleにも同じprops（`SingleBodyProps`）を渡し、使わないものは受け取らない。
+- **Single（対象を1つ見るAnalyzer）の配線はAnalyzerごとに持たない。** ペイン（`hosts/shared/panes/SingleAnalyzerPane.tsx`）・個別画面（`hosts/standalone/SingleAnalyzerStandalonePage.tsx`、組み立ては`app/standalone/StandaloneSingleAnalyzerApp.tsx`）・Workspaceのペイン（`hosts/workspace/panes/SingleAnalyzerWorkspacePane.tsx`）は、Analyzerの`definition.tsx`がexportする`SingleAnalyzerPaneParts`（`analyzers/pane-parts.tsx`）を引数に取る。Singleを足す時に書くのは、`definition.tsx`、`analyzer-registry.ts`と`single-analyzers.ts`に1行ずつ、個別画面のroute（`routes/standalone.<id>.tsx`。`StandaloneSingleAnalyzerApp`に渡すだけ）、`app/standalone/engine-worker.ts`への登録。本体（`Body`）にはどのSingleにも同じprops（`SingleBodyProps`）を渡し、使わないものは受け取らない。例外は、省略できる宣言を持つAnalyzerにだけ渡す項目で、`keyDetailsOf`（宣言すると`keySelection`を渡す）と`standaloneSetTargets`（宣言すると、単体の画面でだけ`setTargets`を渡す。下の「個別画面どうしで共有する対象」）がある。Workspaceのペインは`setTargets`を渡さず、本体は1つの図を出す
 - **Multi（対象の集合を見るAnalyzer。比較表・指ごとの比較・N感度）の配線もAnalyzerごとに持たない。** ペイン（`hosts/shared/panes/SetAnalyzerPane.tsx`）・個別画面（`hosts/standalone/SetAnalyzerStandalonePage.tsx`、組み立ては`app/standalone/StandaloneSetAnalyzerApp.tsx`）・Workspaceのペイン（`hosts/workspace/panes/SetAnalyzerWorkspacePane.tsx`）は、Analyzerの`definition.tsx`がexportする`SetAnalyzerPaneParts`（`analyzers/pane-parts.tsx`）を引数に取る。Singleとは対象の形（集合・色・基準）と本体のpropsが違うので、別の型にしている。Multiを足す時に書くのは、`definition.tsx`、`analyzer-registry.ts`と`set-analyzers.ts`に1行ずつ（足し忘れは`set-analyzers.test.ts`が落とす）、個別画面のroute（`routes/standalone.<id>.tsx`。`StandaloneSetAnalyzerApp`に渡すだけ）、`app/standalone/engine-worker.ts`の`set:`への登録
   - 本体（`Body`）にはどのMultiにも同じprops（`SetBodyProps`）を渡し、使わないものは受け取らない。基準を選ぶ部品（`TargetItem`）を持つ定義にだけ、ホストが対象の選択へ基準の選択を差し込む。共有リンクには基準を持たないAnalyzerでも載せる
   - 行ごとの文脈（表示名・色・解決した配列名など）はホストが集合に対して決めた値を`SetRowSource`で定義の`rowContext`へ渡し、定義が本体向けの形にする。ホストはAnalyzer固有の値を知らない
@@ -234,6 +234,7 @@ Analyzerの結び付け（各Analyzerの `definition.tsx`）が渡すもの:
 
 ホストの責任:
 
+- 単体の画面のホストは、`standaloneSetTargets`を宣言したSingleのAnalyzerの時だけ、Multiの集合の対象を追加で計算して`setTargets`で本体へ渡し、並べる対象がある間だけペインの幅の上限を宣言した推奨幅へ広げる（ホストはAnalyzerのidを見て分けない）
 - ペインの見出し（名前・対象・「解析設定」。Workspaceのペインは⋯も）、条件の要約、状態表示、error boundary、診断の表示
 - 解析設定を小窓で開閉し、解析設定のcomponentを置く。値の保存はコマンドを通す
 - Analyzerが差し込む項目を対象の選択の中に置く
@@ -293,6 +294,11 @@ Workspaceで並べたペインは、同じキー（Analyzerと見る量。例: `
 - **個別画面が持つ対象は2つだけ。** Singleの対象1つと、Multiの集合1つ。同じ区分のAnalyzerはどれも同じ値を読み書きし、Analyzerごとには持たない。1つの配列（や集合）を選んで、いろいろな解析を見るため。Analyzerを移るたびに選び直させない
 - Multiの集合は、選んだ対象（加えた順に持つ。表示の並びは上のとおり一覧の順で、ここに持つ順ではない）・色の番号・基準をまとめて1つの値として持つ。比較表の「基準にする対象」も集合の値で、基準を使わないAnalyzer（N感度）でも集合から消さない。基準は「集合に含まれる時だけ効く値」で、基準の対象を集合から外しても記録は消えず、効く基準が「なし」になる（同じ対象を付け直すと戻る。基準を選び直すと記録も上書きする）。不変条件は「効く基準 ∈ 選択」で、比較表は効く基準だけを読む
 - **SingleとMultiは連動させない。** 片方で選び直しても、もう片方は変わらない
+  - 連動しないことと、読むことは別。`SingleAnalyzerPaneParts.standaloneSetTargets`を宣言したSingleのAnalyzer（ヒートマップ）の単体の画面は、Singleの対象の図の下に、Multiの集合の対象（Singleの対象と同じ対象は除く）の図を格子に並べる。SingleとMultiの値は読むだけで、どちらにも書かない。集合が空、またはSingleの対象だけなら、今までどおり1つの図だけを出す。Workspaceのペインは並べず、1つの図のまま（対象を並べたい時はペインを増やす）
+  - 並べた対象の計算は、その対象をSingleで選んだ時と同じ経路（`engine/cache.ts`の`getExtraction`）を対象ごとに通す。条件（物理配列など）は対象ごとに解決する。押下数がSingleで選んだ時と一致し、計算結果も共有できる。計算できない対象（このテキストで使えない配列など）は、名前とその理由を出す。表示名は、Singleの対象と並べた対象を合わせた集合に対して計算し、色と印は集合の色の番号から引く（「表示名と色」）
+  - 色の尺度は並べた図の全部で共通にする（仕様 §11.10）
+  - 並べた図のツールチップは押下数だけで、キーの選択と小窓は一番上の図だけが持つ
+  - 共有リンクはSingleの対象だけを運ぶ。開いた側の格子は、開いた側のMultiの集合で決まる
   - 例外は1つ: Singleの対象がまだ選ばれていない時にMultiで基準を選ぶと、同じ操作でSingleにもその基準を一度だけ書く（1操作・1履歴なので、Undoで基準とSingleが一緒に戻る）。Singleに値が入った後は、基準を変えてもSingleは変わらない
   - Singleの対象がまだ選ばれていない間は、既定の配列（QWERTY）を出す。表示中のQWERTYを押しても「選んだ」になる（キーボードで選ばれているラジオにSpace・Enterを押した時も同じで、書き込んで閉じる。矢印キーで送る間は閉じない）
 - Workspaceのペインの「従う / 固定」で「従う」の先になるのは、Workspaceの連動の組の対象。この共有の値ではなく、Workspaceを作る時にここから最初の組へ写して始める（写した後は連動しない）

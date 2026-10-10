@@ -16,6 +16,7 @@ import { decodeStoredAnalyzerOptions } from '#hosts/shared/decode-analyzer-optio
 import { SingleAnalyzerPane } from '#hosts/shared/panes/SingleAnalyzerPane.tsx';
 import type { PaneChrome, PaneEnvironment } from '#hosts/shared/panes/pane-environment.ts';
 import type { PaneCatalog } from '#hosts/shared/resolve-pane-input.ts';
+import { useMultiColorSlots } from '#hosts/shared/use-set-target-selection.ts';
 import { useLatestCallback } from '#hosts/shared/use-latest-callback.ts';
 import { useOptionsDraft } from '#hosts/shared/use-options-draft.ts';
 import { STANDALONE_WRITE_LOG_KEY } from '#hosts/shared/options-write-log.ts';
@@ -134,6 +135,13 @@ export function SingleAnalyzerStandalonePage<Options, Extracted>({
     assetsReady,
   }), [assets.setupLibrary, assets.presetLibrary, catalog, resolvedText, cache, dispatch, generatePresetId, undo, assetsReady]);
 
+  // Multiの集合は読むだけ（Singleの対象の図の下に並べる宣言をしたAnalyzerにだけ渡す）
+  const multiColorSlots = useMultiColorSlots(assets.multiTargetSelection);
+  const setTargetSource = useMemo(
+    () => (analyzer.standaloneSetTargets === undefined ? undefined : { selection: assets.multiTargetSelection, colorSlots: multiColorSlots }),
+    [analyzer.standaloneSetTargets, assets.multiTargetSelection, multiColorSlots],
+  );
+
   const changeOptions = (next: Options) => {
     setOptionsDraft(next);
     onOptionsCommit(next);
@@ -200,6 +208,7 @@ export function SingleAnalyzerStandalonePage<Options, Extracted>({
             options={optionsDraft}
             onOptionsChange={changeOptions}
             settingsDiagnostics={decoded.diagnostics}
+            {...(setTargetSource === undefined ? {} : { setTargetSource })}
             linkNotices={[...urlOptionsNotices(urlDiagnostics), ...targetNotices]}
           />
         </div>

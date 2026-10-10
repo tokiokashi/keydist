@@ -57,3 +57,51 @@
   color: var(--text-muted);
   font-size: 0.8rem;
 }
+
+/*
+ * 単体の画面でSingleの対象の図の下に並べる、集合の対象の図の格子。
+ * 列の数は置かれた領域の幅で決まる（1列の最小幅は18rem）。図は列の幅に合わせて縮み、図の大きさより広がらない。
+ */
+.heatmap-set-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+  gap: 1.2rem 1.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+}
+
+.heatmap-set-cell {
+  min-width: 0;
+}
+
+.heatmap-set-name {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.35rem;
+  font-size: 0.85rem;
+  min-width: 0;
+}
+
+.heatmap-set-name > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.heatmap-set-swatch {
+  flex: none;
+  width: 1.4rem;
+  height: 0.7rem;
+}
+
+/* 名前は格子の見出しに出しているので、図の見出しは読み上げ用に残して見た目から外す */
+.heatmap-set-cell .heatmap-diagram figcaption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}

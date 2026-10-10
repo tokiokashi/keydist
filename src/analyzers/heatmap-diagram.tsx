@@ -45,6 +45,10 @@ export interface HeatmapDiagramProps {
   readonly ariaSuffix: string;
   /** キーの選択。渡さなければ、キーは押せない */
   readonly keySelection?: KeySelectionProps;
+  /** 置かれた領域の幅に合わせて縮む。広げる時も図の大きさまでで、省くと図の大きさ（領域が狭ければ領域の幅）で描く */
+  readonly fill?: boolean;
+  /** ツールチップに押下数だけを出す。省くと押し方と前の文字の内訳も出す */
+  readonly countOnlyTooltip?: boolean;
 }
 
 const KEY_SIZE = 30;
@@ -65,6 +69,8 @@ export function HeatmapDiagram({
   hidden = false,
   ariaSuffix,
   keySelection,
+  fill = false,
+  countOnlyTooltip = false,
 }: HeatmapDiagramProps) {
   let minX = 0;
   let minY = 0;
@@ -96,12 +102,14 @@ export function HeatmapDiagram({
   const caption = title === undefined ? '打鍵頻度' : `${title}・打鍵頻度`;
 
   return (
-    <figure className="heatmap-diagram" data-heatmap-diagram={diagramId} style={{ width, maxWidth: '100%' }} hidden={hidden}>
+    <figure className="heatmap-diagram" data-heatmap-diagram={diagramId} style={fill ? { width: '100%', maxWidth: width } : { width, maxWidth: '100%' }} hidden={hidden}>
       <figcaption>{caption}</figcaption>
       <svg viewBox={`${viewX} ${viewY} ${width} ${height}`} role={keySelection === undefined ? 'img' : 'group'} aria-label={`${caption}${ariaSuffix}`}>
         {keys.map((item) => {
           const name = keyName(item.key.id, item.label, standard);
-          const tooltip = keyDetailTooltip(name, item.detail);
+          const tooltip = countOnlyTooltip
+            ? `${name}: ${item.detail?.presses ?? 0}打`
+            : keyDetailTooltip(name, item.detail);
           const selected = keySelection?.selectedKeyId === item.key.id;
           const interactive = keySelection === undefined ? {} : {
             role: 'button',

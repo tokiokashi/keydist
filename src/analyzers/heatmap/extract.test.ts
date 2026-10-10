@@ -7,7 +7,7 @@ import { buildGeometry } from '#input/shapes/geometry.ts';
 import { computeKeyDetails } from '#interpretation/key-detail.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
-import { computeHeatmapExtraction } from './extract.ts';
+import { computeHeatmapExtraction, sharedMaxCount } from './extract.ts';
 
 /**
  * ヒートマップの抽出（キーごとの押下数）。期待値は、打つ文字から手で数えられる小さいテキストで固定する。
@@ -75,4 +75,11 @@ test('キーの詳細の押下数は、ヒートマップの押下数と全キ�
     assert.deepEqual(merged, new Map(extracted.keyCounts), layoutId);
     assert.equal([...merged.values()].reduce((a, b) => a + b, 0), extracted.presses, layoutId);
   }
+});
+
+test('色の尺度の最大値: 並べた図の全部の最大値を取り、全部0なら1にする', () => {
+  assert.equal(sharedMaxCount([3, 10, 7]), 10);
+  assert.equal(sharedMaxCount([4]), 4);
+  assert.equal(sharedMaxCount([0, 0]), 1);
+  assert.equal(sharedMaxCount([]), 1);
 });
