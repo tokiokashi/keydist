@@ -2,7 +2,8 @@ import { bigramFlowAnalyzer } from '#analyzers/bigram-flow/definition.tsx';
 import { fingerDistanceAnalyzer } from '#analyzers/finger-distance/definition.tsx';
 import { heatmapIntegratedAnalyzer } from '#analyzers/heatmap-integrated/definition.tsx';
 import { heatmapLayersAnalyzer } from '#analyzers/heatmap-layers/definition.tsx';
-import { layerComboAnalyzer } from '#analyzers/layer-combo/definition.tsx';
+import { inputMethodAnalyzer } from '#analyzers/input-method/definition.tsx';
+import { layerComboPressesAnalyzer } from '#analyzers/layer-combo-presses/definition.tsx';
 import type { SingleAnalyzerPaneParts } from '#analyzers/pane-parts.tsx';
 
 /**
@@ -21,7 +22,8 @@ export const SINGLE_ANALYZER_PANE_PARTS: readonly AnyPaneParts[] = [
   fingerDistanceAnalyzer,
   heatmapIntegratedAnalyzer,
   heatmapLayersAnalyzer,
-  layerComboAnalyzer,
+  layerComboPressesAnalyzer,
+  inputMethodAnalyzer,
 ];
 
 export function findSingleAnalyzer(analyzerId: string): AnyPaneParts | undefined {

@@ -3,7 +3,8 @@ import { BIGRAM_FLOW_PANE_META } from '#analyzers/bigram-flow/pane-meta.ts';
 import { FINGER_DISTANCE_PANE_META } from '#analyzers/finger-distance/pane-meta.ts';
 import { HEATMAP_INTEGRATED_PANE_META } from '#analyzers/heatmap-integrated/pane-meta.ts';
 import { HEATMAP_LAYERS_PANE_META } from '#analyzers/heatmap-layers/pane-meta.ts';
-import { LAYER_COMBO_PANE_META } from '#analyzers/layer-combo/pane-meta.ts';
+import { INPUT_METHOD_PANE_META } from '#analyzers/input-method/pane-meta.ts';
+import { LAYER_COMBO_PRESSES_PANE_META } from '#analyzers/layer-combo-presses/pane-meta.ts';
 import { COMPARISON_PANE_META } from '#analyzers/comparison/pane-meta.ts';
 import { FINGER_MATRIX_PANE_META } from '#analyzers/finger-matrix/pane-meta.ts';
 import { N_SENSITIVITY_PANE_META } from '#analyzers/n-sensitivity/pane-meta.ts';
@@ -29,7 +30,8 @@ function SidebarSample() {
         <Link className="sidebar-link" to="/standalone/finger-distance">{FINGER_DISTANCE_PANE_META.name}</Link>
         <Link className="sidebar-link" to="/standalone/heatmap-integrated">{HEATMAP_INTEGRATED_PANE_META.name}</Link>
         <Link className="sidebar-link" to="/standalone/heatmap-layers">{HEATMAP_LAYERS_PANE_META.name}</Link>
-        <Link className="sidebar-link" to="/standalone/layer-combo">{LAYER_COMBO_PANE_META.name}</Link>
+        <Link className="sidebar-link" to="/standalone/layer-combo-presses">{LAYER_COMBO_PRESSES_PANE_META.name}</Link>
+        <Link className="sidebar-link" to="/standalone/input-method">{INPUT_METHOD_PANE_META.name}</Link>
         <p className="sidebar-subheading">Multi</p>
         <Link className="sidebar-link" to="/standalone/comparison">{COMPARISON_PANE_META.name}</Link>
         <Link className="sidebar-link" to="/standalone/finger-matrix">{FINGER_MATRIX_PANE_META.name}</Link>

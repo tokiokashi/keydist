@@ -1,94 +1,83 @@
-.layer-combo-feature {
+.input-method-feature {
   display: flex;
   flex-direction: column;
   gap: 1.2rem;
 }
 
-.layer-combo-section h3 {
+.input-method-section h3 {
   margin: 0 0 0.4rem;
   font-size: 0.9rem;
   font-weight: 600;
 }
 
-.layer-combo-empty {
+.input-method-empty {
   margin: 0;
   color: var(--text-muted);
   font-size: 0.8rem;
 }
 
 /* 行が多いコンボ表は、表の中でスクロールさせる。 */
-.layer-combo-table-scroll {
+.input-method-table-scroll {
   max-height: 20rem;
   overflow: auto;
 }
 
-.layer-combo-table {
+.input-method-table {
   border-collapse: collapse;
   font-size: 0.8rem;
 }
 
-.layer-combo-table th,
-.layer-combo-table td {
+.input-method-table th,
+.input-method-table td {
   padding: 0.2rem 0.7rem;
   border-bottom: 1px solid var(--border);
   text-align: left;
   vertical-align: top;
 }
 
-.layer-combo-table thead th {
+.input-method-table thead th {
   position: sticky;
   top: 0;
   background: var(--surface);
   font-weight: 600;
 }
 
-.layer-combo-table tfoot th,
-.layer-combo-table tfoot td {
-  border-top: 1px solid var(--border-strong);
-  border-bottom: 0;
-}
-
-.layer-combo-table tbody th {
+.input-method-table tbody th {
   font-weight: 400;
 }
 
-.layer-combo-table .layer-combo-num {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.layer-combo-diagram {
+.input-method-diagram {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
   margin-bottom: 0.8rem;
 }
 
-.layer-combo-diagram label {
+.input-method-diagram label {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   font-size: 0.8rem;
 }
 
-.layer-combo-diagram select {
+.input-method-diagram select {
   max-width: 100%;
 }
 
-.layer-combo-pattern {
+.input-method-pattern {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
 }
 
-.layer-combo-pattern-controls {
+.input-method-pattern-controls {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.4rem 1rem;
 }
 
-.layer-combo-pattern-result {
+.input-method-pattern-result {
   flex: 1 1 16em;
   margin: 0;
   font-size: 0.8rem;

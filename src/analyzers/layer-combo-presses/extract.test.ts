@@ -6,8 +6,8 @@ import { fromRows, type Layout } from '#input/layouts/types.ts';
 import { checkOptionsDiscipline } from '#analyzers/options.ts';
 import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
-import { computeLayerComboExtraction, layerComboDefinition } from './extract.ts';
-import { DEFAULT_LAYER_COMBO_OPTIONS, layerComboOptions } from './options.ts';
+import { computeLayerComboPressesExtraction, layerComboPressesDefinition } from './extract.ts';
+import { DEFAULT_LAYER_COMBO_PRESSES_OPTIONS, layerComboPressesOptions } from './options.ts';
 import { attributionShare } from './share.ts';
 
 /**
@@ -26,7 +26,7 @@ function extractFor(layoutId: string, text: string) {
   const trace = generateTrace(text, layout, geometry, DEFAULT_TRACE_POLICY);
   assert.equal(trace.skipped, 0);
   const metrics = computeMetrics(trace, geometry);
-  return { extracted: computeLayerComboExtraction({ trace, metrics }), metrics };
+  return { extracted: computeLayerComboPressesExtraction({ trace, metrics }), metrics };
 }
 
 const pairs = (rows: readonly { readonly id: string; readonly presses: number }[]) => rows.map((row) => [row.id, row.presses]);
@@ -101,10 +101,10 @@ test('割合は全体に対する百分率。全体が0なら0.0%', () => {
 });
 
 test('宣言と、抽出に効く設定の入れ忘れが無い', () => {
-  assert.deepEqual(Object.keys(layerComboOptions.items), []);
+  assert.deepEqual(Object.keys(layerComboPressesOptions.items), []);
   assert.deepEqual(
-    checkOptionsDiscipline(layerComboOptions, layerComboDefinition.optionsDiscipline),
+    checkOptionsDiscipline(layerComboPressesOptions, layerComboPressesDefinition.optionsDiscipline),
     { keyViolations: [], viewExtractionViolations: [] },
   );
-  assert.deepEqual(DEFAULT_LAYER_COMBO_OPTIONS, {});
+  assert.deepEqual(DEFAULT_LAYER_COMBO_PRESSES_OPTIONS, {});
 });

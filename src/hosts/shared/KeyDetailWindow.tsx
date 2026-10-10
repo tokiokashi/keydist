@@ -22,7 +22,7 @@ import './key-detail-window.css';
  *
  * 面をまたいだ合算を出し、レイヤー・コンボごとの内訳を開いて読める。回数は集計
  * （`interpretation/key-detail.ts`）の値をそのまま出し、割合だけをここで求めて元の回数を添える。
- * 入力パターンとトリガーのガイドは、集計ではなく配列の定義から出す。
+ * 入力方法とトリガーのガイドは、集計ではなく配列の定義から出す。
  */
 export interface KeyDetailWindowProps {
   readonly keyId: string;
@@ -180,9 +180,9 @@ export function KeyDetailWindow({ keyId, layout, geometry, trace, keyDetails, pa
             <DetailTables detail={merged} standard={standard} />
           </>
         )}
-        <Section title="入力パターン">
+        <Section title="入力方法">
           {patterns.length === 0 ? (
-            <p className="key-detail-empty">このキーを使う入力パターンはありません。</p>
+            <p className="key-detail-empty">このキーを使う入力方法はありません。</p>
           ) : patterns.map((group) => (
             <div key={group.faceId} className="key-detail-pattern-group" data-pattern-face={group.faceId}>
               <h6>{group.label}</h6>

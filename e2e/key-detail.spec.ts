@@ -68,7 +68,7 @@ test('ヒートマップ: キーを押すと小窓が開き、図で同じキー
   await expect(win.getByRole('heading', { name: '移動の起点', level: 5 })).toBeVisible();
   await expect(win.getByRole('heading', { name: '距離の分布', level: 5 })).toBeVisible();
   // 入力パターンとトリガーのガイド: QWERTYのeは単打の面とShiftの面に出る
-  await expect(win.getByRole('heading', { name: '入力パターン', level: 5 })).toBeVisible();
+  await expect(win.getByRole('heading', { name: '入力方法', level: 5 })).toBeVisible();
   await expect(win.locator('[data-pattern-face="single"]')).toContainText(/E\s*→\s*e/);
   await expect(win.locator('[data-pattern-face="layer:Shift"]')).toContainText('トリガー: 左Shift（押したまま） / 右Shift（押したまま）');
   await expect(heatmapKey(feature, 'integrated', 'e')).toHaveAttribute('data-key-selected', 'true');

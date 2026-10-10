@@ -1,0 +1,58 @@
+.layer-combo-presses-feature {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.layer-combo-presses-section h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.layer-combo-presses-empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+/* 行が多い表は、表の中でスクロールさせる。 */
+.layer-combo-presses-table-scroll {
+  max-height: 20rem;
+  overflow: auto;
+}
+
+.layer-combo-presses-table {
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.layer-combo-presses-table th,
+.layer-combo-presses-table td {
+  padding: 0.2rem 0.7rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.layer-combo-presses-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  font-weight: 600;
+}
+
+.layer-combo-presses-table tfoot th,
+.layer-combo-presses-table tfoot td {
+  border-top: 1px solid var(--border-strong);
+  border-bottom: 0;
+}
+
+.layer-combo-presses-table tbody th {
+  font-weight: 400;
+}
+
+.layer-combo-presses-table .layer-combo-presses-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
