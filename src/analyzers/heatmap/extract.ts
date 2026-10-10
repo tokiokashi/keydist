@@ -44,3 +44,11 @@ export const heatmapDefinition: SingleAnalyzerDefinition<HeatmapOptions, Heatmap
     context: plainDisciplineContext,
   },
 });
+
+/**
+ * 並べた図の全部で共通にする色の尺度の最大値（仕様 §11.10）。各図の全キーの押下数の最大値を渡す。
+ * 計算できた図だけを渡し、全部0（または図が無い）なら1にする。
+ */
+export function sharedMaxCount(maxCounts: readonly number[]): number {
+  return Math.max(1, ...maxCounts);
+}

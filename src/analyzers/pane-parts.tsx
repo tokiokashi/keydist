@@ -73,6 +73,25 @@ export interface KeySelectionProps {
 }
 
 /**
+ * 単体の画面でSingleの対象の図の下に並べる、Multiの集合の対象1つぶん。計算は、その対象をSingleで選んだ時と
+ * 同じ経路（解決→抽出）を対象ごとに通した結果。表示名と色はホストが画面に並ぶ集合に対して決めたもの。
+ */
+export interface SetTargetFigure<Extracted> {
+  readonly key: string;
+  readonly label: string;
+  /** 集合によらない完全な名前。 */
+  readonly fullName: string;
+  /** 集合が配った色。まだ配られていない間は`undefined`。 */
+  readonly color: string | undefined;
+  readonly mark: TargetMark | undefined;
+  readonly state:
+    | { readonly status: 'ready'; readonly layout: Layout; readonly geometry: Geometry; readonly extracted: Extracted }
+    | { readonly status: 'computing' }
+    /** `message`は画面にそのまま出せる文（このテキストで使えない配列など）。 */
+    | { readonly status: 'failed'; readonly message: string };
+}
+
+/**
  * 対象を1つ見るAnalyzer（Single）の本体に、ホストが渡すprops。どのSingleにも同じ形で渡し、
  * 使わないものは本体が受け取らなければよい。Singleのペインの組み立てはAnalyzerごとに分けず、
  * これを受ける`Body`だけが違う。
@@ -83,6 +102,12 @@ export interface SingleBodyProps<Extracted, Options> {
    * 選択の持ち主と、クリックで開く小窓はホストが持つ。
    */
   readonly keySelection?: KeySelectionProps;
+  /**
+   * Singleの対象の図の下に並べる、Multiの集合の対象（Singleの対象は除く）。単体の画面で、
+   * `SingleAnalyzerPaneParts.standaloneSetTargets`を宣言したAnalyzerにだけ渡す。Workspaceのペインは渡さない。
+   * 集合に並べる対象が無い時は渡さない。
+   */
+  readonly setTargets?: readonly SetTargetFigure<Extracted>[];
   readonly layout: Layout;
   readonly geometry: Geometry;
   readonly trace: Trace;
@@ -106,6 +131,16 @@ export interface SingleAnalyzerPaneParts<Options, Extracted>
    * 渡すと、ホストが図のキーの選択を本体へ渡し、キーを押した時の小窓を出す。
    */
   readonly keyDetailsOf?: (extracted: Extracted) => KeyDetails;
+  /**
+   * 単体の画面で、Singleの対象の図の下にMultiの集合の対象を並べることの宣言。持つAnalyzerだけが渡す。
+   * 渡すと、単体の画面のホストが集合の対象を追加で計算して本体へ`setTargets`で渡し、
+   * 並べる対象がある間だけペインの幅の上限を`recommendedWidthRem`に広げる。
+   * SingleとMultiの値は読むだけで、どちらにも書かない。
+   */
+  readonly standaloneSetTargets?: {
+    /** 集合の対象を並べる間の、ペインの推奨幅 [rem]。 */
+    readonly recommendedWidthRem: number;
+  };
 }
 
 /**

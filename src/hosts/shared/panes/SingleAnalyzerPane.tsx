@@ -1,7 +1,8 @@
 import { useEffect, useMemo } from 'react';
 import type { CodecDiagnostic } from '#input/codec/index.ts';
-import { nameTargets, type AnalysisTarget } from '#input/setup/index.ts';
-import type { SingleAnalyzerPaneParts } from '#analyzers/pane-parts.tsx';
+import { analysisTargetKey, nameTargets, type AnalysisTarget } from '#input/setup/index.ts';
+import type { ColorSlotsByKey, TargetSet } from '#engine/multi-target-selection.ts';
+import type { SetTargetFigure, SingleAnalyzerPaneParts } from '#analyzers/pane-parts.tsx';
 import { conditionHeaderInfoFromResolvedInput, traceConditionSummary } from '../condition-summary.ts';
 import { combinePaneStates } from '../pane-status.ts';
 import { recommendedWidthRemOf } from '#analyzers/recommended-width.ts';
@@ -15,6 +16,9 @@ import { KeyDetailWindow } from '../KeyDetailWindow.tsx';
 import { keySelectionTargetOf } from '../key-selection.ts';
 import { usePaneKeySelection } from '../key-selection-store.tsx';
 import { useAnalyzerPane } from '../use-analyzer-pane.ts';
+import { useTargetExtractions } from '../use-target-extractions.ts';
+import { useSetTargetSelection } from '../use-set-target-selection.ts';
+import { setTargetFigureState, setTargetsBesideSingle } from '../set-target-figures.ts';
 import type { PaneChrome, PaneEnvironment } from './pane-environment.ts';
 
 /**
@@ -40,7 +44,14 @@ export interface SingleAnalyzerPaneProps<Options, Extracted> {
   readonly settingsDiagnostics?: readonly CodecDiagnostic[];
   /** 共有リンクを開いた時に、取り込めなかったものを伝える文。 */
   readonly linkNotices?: readonly string[];
+  /**
+   * Singleの対象の図の下に並べる、Multiの集合（選んだ対象と、対象に配った色の番号）。単体の画面が、
+   * Analyzerが`standaloneSetTargets`を宣言している時だけ渡す。読むだけで、どちらにも書かない。
+   */
+  readonly setTargetSource?: { readonly selection: TargetSet; readonly colorSlots: ColorSlotsByKey };
 }
+
+const NO_SET_TARGETS: TargetSet = { targets: [], baseline: undefined };
 
 export function SingleAnalyzerPane<Options, Extracted>({
   analyzer,
@@ -52,6 +63,7 @@ export function SingleAnalyzerPane<Options, Extracted>({
   onOptionsChange,
   settingsDiagnostics = [],
   linkNotices,
+  setTargetSource,
 }: SingleAnalyzerPaneProps<Options, Extracted>) {
   const { setups, overrides, catalog, resolvedText, cache, dispatch, assetsReady } = env;
   const setupsById = useMemo(() => new Map(setups.map((setup) => [setup.id, setup] as const)), [setups]);
@@ -76,6 +88,38 @@ export function SingleAnalyzerPane<Options, Extracted>({
     () => nameTargets([targetNameSource(target, resolution, setupsById, setupNumbers, catalog.setupCatalog)])[0],
     [target, resolution, setupsById, setupNumbers, catalog.setupCatalog],
   );
+
+  // Singleの対象の図の下に並べる、Multiの集合の対象。宣言したAnalyzerの単体の画面でだけ並ぶ
+  const standaloneSetTargets = analyzer.standaloneSetTargets;
+  const setSource = standaloneSetTargets === undefined ? undefined : setTargetSource;
+  const setSelection = useSetTargetSelection(setSource?.selection ?? NO_SET_TARGETS, setSource?.colorSlots ?? {}, setups, catalog);
+  const besideTargets = useMemo(() => setTargetsBesideSingle(setSelection.targets, target), [setSelection.targets, target]);
+  const besideMembers = useMemo(
+    () => besideTargets.map((beside) => ({
+      key: analysisTargetKey(beside),
+      target: beside,
+      resolution: resolvePaneInput(beside, setupsById, catalog, overrides, resolvedText),
+    })),
+    [besideTargets, setupsById, catalog, overrides, resolvedText],
+  );
+  const besideExtractions = useTargetExtractions(cache, analyzer.definition, options, besideMembers);
+  // 表示名は、画面に並ぶ集合（Singleの対象と並べる対象）に対して計算する
+  const besideNamed = useMemo(() => {
+    if (besideMembers.length === 0) return new Map<string, ReturnType<typeof nameTargets>[number]>();
+    const sources = [
+      targetNameSource(target, resolution, setupsById, setupNumbers, catalog.setupCatalog),
+      ...besideMembers.map((member) => targetNameSource(member.target, member.resolution, setupsById, setupNumbers, catalog.setupCatalog)),
+    ];
+    return new Map(nameTargets(sources).map((item) => [item.key, item] as const));
+  }, [besideMembers, target, resolution, setupsById, setupNumbers, catalog.setupCatalog]);
+  const setTargetFigures = useMemo((): readonly SetTargetFigure<Extracted>[] => besideMembers.map((member) => ({
+    key: member.key,
+    label: besideNamed.get(member.key)?.displayName ?? member.key,
+    fullName: besideNamed.get(member.key)?.fullName ?? '',
+    color: setSelection.colorByKey.get(member.key),
+    mark: setSelection.markByKey.get(member.key),
+    state: setTargetFigureState(member.resolution, besideExtractions.get(member.key)),
+  })), [besideMembers, besideNamed, setSelection.colorByKey, setSelection.markByKey, besideExtractions]);
 
   const choiceGroups = useMemo(() => targetChoiceGroups({
     layouts: catalog.setupCatalog.layouts,
@@ -107,7 +151,11 @@ export function SingleAnalyzerPane<Options, Extracted>({
       assetsReady={assetsReady}
       name={analyzer.name}
       description={analyzer.description}
-      recommendedWidthRem={recommendedWidthRemOf(analyzer)}
+      recommendedWidthRem={
+        standaloneSetTargets !== undefined && setTargetFigures.length > 0
+          ? standaloneSetTargets.recommendedWidthRem
+          : recommendedWidthRemOf(analyzer)
+      }
       headingLevel={chrome.headingLevel}
       stickyHeader={chrome.stickyHeader}
       menuItems={chrome.menuItems}
@@ -180,6 +228,7 @@ export function SingleAnalyzerPane<Options, Extracted>({
           extracted={extraction.value.extracted}
           options={options}
           onOptionsChange={onOptionsChange}
+          {...(setTargetFigures.length === 0 ? {} : { setTargets: setTargetFigures })}
           {...(keyDetailsOf === undefined ? {} : {
             keySelection: { selectedKeyId, onKeyPress: keySelection.press, onClear: keySelection.clear },
           })}
