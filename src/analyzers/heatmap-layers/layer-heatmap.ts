@@ -15,7 +15,7 @@ function keepsPairedTriggers(role: LayerPresentationRole | undefined): boolean {
   return role !== 'modifier';
 }
 
-/** 層別ヒートマップの色用押下数を作る。実測値は `data.keyCounts` のまま残す。 */
+/** ヒートマップ（レイヤー）の色用押下数を作る。実測値は `data.keyCounts` のまま残す。 */
 export function normalizedLayerColors(
   layer: Layer,
   data: LayerColorData,

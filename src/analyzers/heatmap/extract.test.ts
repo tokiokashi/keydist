@@ -7,10 +7,10 @@ import { buildGeometry } from '#input/shapes/geometry.ts';
 import { computeKeyDetails } from '#interpretation/key-detail.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
-import { computeHeatmapIntegratedExtraction } from './extract.ts';
+import { computeHeatmapExtraction } from './extract.ts';
 
 /**
- * 統合ヒートマップの抽出（キーごとの押下数）。期待値は、打つ文字から手で数えられる小さいテキストで固定する。
+ * ヒートマップの抽出（キーごとの押下数）。期待値は、打つ文字から手で数えられる小さいテキストで固定する。
  */
 
 const geometry = buildGeometry('row-staggered');
@@ -24,7 +24,7 @@ function extractFor(layoutId: string, text: string, rule?: string) {
   const layout = rule ? withRomaji(base, tableForRule(rule)) : base;
   const trace = generateTrace(text, layout, geometry, DEFAULT_TRACE_POLICY);
   assert.equal(trace.skipped, 0);
-  return computeHeatmapIntegratedExtraction({ metrics: computeMetrics(trace, geometry), keyDetails: computeKeyDetails(trace, geometry) });
+  return computeHeatmapExtraction({ metrics: computeMetrics(trace, geometry), keyDetails: computeKeyDetails(trace, geometry) });
 }
 
 const entries = (map: ReadonlyMap<string, number>) => [...map].sort(([a], [b]) => a.localeCompare(b));
@@ -62,7 +62,7 @@ test('テキストが空なら、すべて0', () => {
   assert.equal(extracted.maxCount, 0);
 });
 
-test('キーの詳細の押下数は、統合の押下数と全キーで一致する', () => {
+test('キーの詳細の押下数は、ヒートマップの押下数と全キーで一致する', () => {
   const cases: Array<[string, string, string | undefined]> = [
     ['shingeta', 'がきゃ。ぱかかか、んー', undefined],
     ['qwerty', 'しゃかんじょうほうがっこう', 'kunrei'],

@@ -4,7 +4,7 @@ import { heatmapLayersAnalyzer } from '#analyzers/heatmap-layers/definition.tsx'
 import { StandaloneSingleAnalyzerApp } from '#app/standalone/StandaloneSingleAnalyzerApp.tsx';
 
 /**
- * レイヤー別ヒートマップの単体ページのroute。pathは `/standalone/<Analyzerのid>` で、他の単体ページと揃える。
+ * ヒートマップ（レイヤー）の単体ページのroute。pathは `/standalone/<Analyzerのid>` で、他の単体ページと揃える。
  * route自体は `createFileRoute` だけの薄いファイルにし、実体は `app` が組み立てる
  * （`hosts/standalone` はTanStack Routerを知らない）。
  */

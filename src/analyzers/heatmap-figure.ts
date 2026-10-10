@@ -2,7 +2,7 @@ import { classifyPresentationFaces, faceDisplayCells, orderedPresentationLayers,
 import { SINGLE_LAYER_ID, type Layout } from '#input/layouts/types.ts';
 
 /**
- * 統合ヒートマップとレイヤー別ヒートマップが同じ図（`heatmap-diagram.tsx`）を描くための、
+ * ヒートマップとヒートマップ（レイヤー）が同じ図（`heatmap-diagram.tsx`）を描くための、
  * 純粋な計算。Analyzerどうしは互いをimportしないので、2つが共有するものをここに置く。
  */
 
@@ -29,7 +29,7 @@ export function layerLegends(layer: Layer, layout: Layout): Map<string, string> 
   return cells;
 }
 
-/** 統合図の刻印。単打の層（無ければ最初の層）の刻印を使う。 */
+/** ヒートマップの図の刻印。単打の層（無ければ最初の層）の刻印を使う。 */
 export function baseLayerLegends(layout: Layout): Map<string, string> {
   const presentation = presentationLayersOf(layout);
   const base = presentation.find((layer) => layer.id === SINGLE_LAYER_ID) ?? presentation[0]!;

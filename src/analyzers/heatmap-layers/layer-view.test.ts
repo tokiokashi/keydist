@@ -18,7 +18,7 @@ import {
 } from './layer-view.ts';
 
 /**
- * レイヤー別ヒートマップの図の組み立て。期待値は、実行して確かめた値を固定している
+ * ヒートマップ（レイヤー）の図の組み立て。期待値は、実行して確かめた値を固定している
  * （配列・テキストは各テストに併記。物理配列はrow-staggered、`DEFAULT_TRACE_POLICY`）。
  */
 
@@ -89,7 +89,7 @@ test('英字配列: 面として宣言していないShiftの層は、使われ�
   assert.deepEqual([...entries[1]!.colorCounts], [['a', 1]]);
 });
 
-test('全配列: 層別図の押下数の合計とコンボ枠は、統合の押下数と一致する(まとめ・詳細とも)', () => {
+test('全配列: 層別図の押下数の合計とコンボ枠は、ヒートマップの押下数と一致する(まとめ・詳細とも)', () => {
   for (const layout of [...LAYOUTS, ...LAYOUTS_JA]) {
     const text = LAYOUTS_JA.includes(layout) ? 'あいがぱ' : 'aAbB';
     const trace = generateTrace(text, layout, geometry, DEFAULT_TRACE_POLICY);
@@ -158,7 +158,7 @@ test('図ごとのキーの詳細: 押下数は、その図のツールチップ
   }
 });
 
-test('図ごとのキーの詳細: まとめた図は合算した面の和、統合図は面をまたいだ合算と一致する', () => {
+test('図ごとのキーの詳細: まとめた図は合算した面の和、ヒートマップの図は面をまたいだ合算と一致する', () => {
   const { layout, extracted } = extractionFor('naginata-v18', sampleText('ja', 'legacy'));
   const compact = buildLayerEntries(layout, extracted, 'compact');
   const detail = buildLayerEntries(layout, extracted, 'detail');
@@ -173,7 +173,7 @@ test('図ごとのキーの詳細: まとめた図は合算した面の和、統
     .flatMap((entry) => entryKeyDetail(extracted.keyDetails, entry.faceIds, 'j') ?? []);
   assert.equal(merged.presses, parts.reduce((sum, part) => sum + part.presses, 0));
   assert.equal([...merged.roles.values()].reduce((sum, count) => sum + count, 0), merged.presses);
-  // 全部の面を合わせると、統合図と同じ
+  // 全部の面を合わせると、ヒートマップの図と同じ
   const everyFace = [...extracted.keyDetails.faces.keys()];
   assert.equal(entryKeyDetail(extracted.keyDetails, everyFace, 'j')!.presses, extracted.keyDetails.merged.get('j')!.presses);
   // 押下の無いキー・面は `undefined`

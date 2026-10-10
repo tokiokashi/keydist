@@ -10,7 +10,7 @@ import { computeHeatmapLayersExtraction } from './extract.ts';
 import { DEFAULT_HEATMAP_LAYERS_OPTIONS } from './options.ts';
 
 /**
- * レイヤー別ヒートマップの抽出（キー × 層の押下数）。期待値は、打つ文字から手で数えられる小さいテキストで固定する。
+ * ヒートマップ（レイヤー）の抽出（キー × 層の押下数）。期待値は、打つ文字から手で数えられる小さいテキストで固定する。
  */
 
 const geometry = buildGeometry('row-staggered');

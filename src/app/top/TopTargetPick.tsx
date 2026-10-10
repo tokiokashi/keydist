@@ -2,9 +2,9 @@ import { useMemo } from 'react';
 import { Link } from '@tanstack/react-router';
 import { BIGRAM_FLOW_PANE_META } from '#analyzers/bigram-flow/pane-meta.ts';
 import { FINGER_DISTANCE_PANE_META } from '#analyzers/finger-distance/pane-meta.ts';
-import { HEATMAP_INTEGRATED_PANE_META } from '#analyzers/heatmap-integrated/pane-meta.ts';
+import { HEATMAP_PANE_META } from '#analyzers/heatmap/pane-meta.ts';
 import { HEATMAP_LAYERS_PANE_META } from '#analyzers/heatmap-layers/pane-meta.ts';
-import { INPUT_METHOD_PANE_META } from '#analyzers/input-method/pane-meta.ts';
+import { KEYMAP_PANE_META } from '#analyzers/keymap/pane-meta.ts';
 import { LAYER_COMBO_PRESSES_PANE_META } from '#analyzers/layer-combo-presses/pane-meta.ts';
 import { COMPARISON_PANE_META } from '#analyzers/comparison/pane-meta.ts';
 import { FINGER_MATRIX_PANE_META } from '#analyzers/finger-matrix/pane-meta.ts';
@@ -75,10 +75,10 @@ export function TopTargetPick() {
         <p className="top-pick-links">
           <Link className="top-pick-link" to="/standalone/bigram-flow">{BIGRAM_FLOW_PANE_META.name}</Link>
           <Link className="top-pick-link" to="/standalone/finger-distance">{FINGER_DISTANCE_PANE_META.name}</Link>
-          <Link className="top-pick-link" to="/standalone/heatmap-integrated">{HEATMAP_INTEGRATED_PANE_META.name}</Link>
+          <Link className="top-pick-link" to="/standalone/heatmap">{HEATMAP_PANE_META.name}</Link>
           <Link className="top-pick-link" to="/standalone/heatmap-layers">{HEATMAP_LAYERS_PANE_META.name}</Link>
           <Link className="top-pick-link" to="/standalone/layer-combo-presses">{LAYER_COMBO_PRESSES_PANE_META.name}</Link>
-          <Link className="top-pick-link" to="/standalone/input-method">{INPUT_METHOD_PANE_META.name}</Link>
+          <Link className="top-pick-link" to="/standalone/keymap">{KEYMAP_PANE_META.name}</Link>
           <Link className="top-pick-link" to="/standalone/comparison">{COMPARISON_PANE_META.name}</Link>
           <Link className="top-pick-link" to="/standalone/finger-matrix">{FINGER_MATRIX_PANE_META.name}</Link>
           <Link className="top-pick-link" to="/standalone/n-sensitivity">{N_SENSITIVITY_PANE_META.name}</Link>

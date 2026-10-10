@@ -3,7 +3,7 @@ import { defineOption, defineOptions, picklistUrlCodec } from '#analyzers/option
 import type { HeatmapColorScale } from '../heatmap-figure.ts';
 
 /**
- * レイヤー別ヒートマップAnalyzerの解析設定。どれも表示だけが変わる項目で、抽出の結果は動かない
+ * ヒートマップ（レイヤー）Analyzerの解析設定。どれも表示だけが変わる項目で、抽出の結果は動かない
  * （`affects: 'view'`）。
  *
  * - `colorScale`: 図の色の尺度（仕様 §11.10）

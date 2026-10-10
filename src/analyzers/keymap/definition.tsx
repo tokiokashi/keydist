@@ -3,31 +3,31 @@ import { visibleGeometryKeys } from '#input/layouts/physical-keys.ts';
 import { keyboardStandardForGeometryId } from '#input/shapes/key-labels.ts';
 import { PhysicalKeyboard, type PhysicalKeyboardKeyView } from '#ui/keyboard/physical-keyboard.tsx';
 import { keyPatternSelectionView, toggleSelectedKey } from './key-pattern-selection.ts';
-import { inputMethodDefinition, type InputMethodExtracted } from './extract.ts';
+import { keymapDefinition, type KeymapExtracted } from './extract.ts';
 import { comboDiagramItems, comboRows, modifierRows, type ComboDiagramItem } from './layout-breakdown.ts';
-import { DEFAULT_INPUT_METHOD_OPTIONS, inputMethodOptions, type InputMethodOptions } from './options.ts';
-import { INPUT_METHOD_PANE_META } from './pane-meta.ts';
+import { DEFAULT_KEYMAP_OPTIONS, keymapOptions, type KeymapOptions } from './options.ts';
+import { KEYMAP_PANE_META } from './pane-meta.ts';
 import { triggerGuide } from './trigger-guide.ts';
 import type { Geometry } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { AnalyzerSettingsProps, SingleAnalyzerPaneParts, SingleBodyProps } from '../pane-parts.tsx';
-import './input-method-view.css';
+import './keymap-view.css';
 
 /**
- * 入力方法。配列が持つ修飾・キーを選んで出る文字を調べる図・コンボの一覧と配列図を、配列の定義から並べる。
+ * キーマップ。キーを選んで出る文字を調べる図・配列が持つ修飾・コンボの一覧と配列図を、配列の定義から並べる。
  * テキストを打った結果は使わない。優劣を示す強調・順位は出さない。
  */
 
 function ModifierSection({ layout }: { readonly layout: Layout }) {
   const rows = useMemo(() => modifierRows(layout), [layout]);
   return (
-    <section className="input-method-section" aria-labelledby="input-method-modifier-heading">
-      <h3 id="input-method-modifier-heading">修飾（{rows.length}）</h3>
+    <section className="keymap-section" aria-labelledby="keymap-modifier-heading">
+      <h3 id="keymap-modifier-heading">修飾（{rows.length}）</h3>
       {rows.length === 0 ? (
-        <p className="input-method-empty">この配列は修飾のレイヤーを持ちません。</p>
+        <p className="keymap-empty">この配列は修飾のレイヤーを持ちません。</p>
       ) : (
-        <div className="input-method-table-scroll">
-          <table className="input-method-table" data-input-method-table="modifier">
+        <div className="keymap-table-scroll">
+          <table className="keymap-table" data-keymap-table="modifier">
             <thead>
               <tr><th scope="col">レイヤー</th><th scope="col">押し方</th><th scope="col">出る文字</th></tr>
             </thead>
@@ -82,14 +82,14 @@ function ComboSection({ layout, geometry }: { readonly layout: Layout; readonly 
   const selectId = useId();
   const current = items[Math.min(selected, items.length - 1)];
   return (
-    <section className="input-method-section" aria-labelledby="input-method-combo-heading">
-      <h3 id="input-method-combo-heading">コンボ（{rows.length}）</h3>
+    <section className="keymap-section" aria-labelledby="keymap-combo-heading">
+      <h3 id="keymap-combo-heading">コンボ（{rows.length}）</h3>
       {rows.length === 0 ? (
-        <p className="input-method-empty">この打ち方で使えるコンボはありません。</p>
+        <p className="keymap-empty">この打ち方で使えるコンボはありません。</p>
       ) : (
         <>
           {current === undefined ? null : (
-            <div className="input-method-diagram" data-input-method-diagram>
+            <div className="keymap-diagram" data-keymap-diagram>
               <label htmlFor={selectId}>
                 コンボの配列図
                 <select id={selectId} value={items.indexOf(current)} onChange={(event) => setSelected(Number(event.currentTarget.value))}>
@@ -101,8 +101,8 @@ function ComboSection({ layout, geometry }: { readonly layout: Layout; readonly 
               <ComboDiagram layout={layout} geometry={geometry} item={current} />
             </div>
           )}
-          <div className="input-method-table-scroll">
-            <table className="input-method-table" data-input-method-table="combo">
+          <div className="keymap-table-scroll">
+            <table className="keymap-table" data-keymap-table="combo">
               <thead>
                 <tr><th scope="col">押し方</th><th scope="col">出力</th></tr>
               </thead>
@@ -126,8 +126,9 @@ function ComboSection({ layout, geometry }: { readonly layout: Layout; readonly 
  * キーを選んで出る文字を調べる図。キーを1つずつ選ぶと、続けて押せるキーが枠で、あと1キーで決まるキーには出る文字が出る。
  * 3キー以上を同時に押すコンボも、選んでいくと出る文字までたどれる。シフトのキーを選べば、そのレイヤーで出る文字が出る。
  *
- * 何も選んでいない間は、トリガーになるキーを破線の枠で示す（レイヤーはその色、コンボは選択の色）。
- * 続けて押せるキーの実線の青い枠とは、線の形で分ける。凡例は図のそばに置く。
+ * 何も選んでいない間は、トリガーになるキーを細い実線の枠で示す（レイヤーはその色、コンボは選択の色）。
+ * 普通のキーの枠より太く、続けて押せるキーの枠・選んだキーの枠より細くして、選んだ後の枠と見た目を分ける。
+ * 凡例は図のそばに置く。
  */
 function KeyPatternSection({ layout, geometry }: { readonly layout: Layout; readonly geometry: Geometry }) {
   const keys = useMemo(() => visibleGeometryKeys(layout, geometry), [layout, geometry]);
@@ -155,19 +156,19 @@ function KeyPatternSection({ layout, geometry }: { readonly layout: Layout; read
   }, [keys, layout, selected, view, triggers, selectedSlot]);
   const clear = () => setSelected([]);
   return (
-    <section className="input-method-section" aria-labelledby="input-method-pattern-heading">
-      <h3 id="input-method-pattern-heading">キーを選んで出る文字を調べる</h3>
-      <div className="input-method-pattern" data-input-method-pattern>
-        <div className="input-method-pattern-controls">
-          <p className="input-method-pattern-result" role="status" data-input-method-pattern-result>{view.message}</p>
+    <section className="keymap-section" aria-labelledby="keymap-pattern-heading">
+      <h3 id="keymap-pattern-heading">キーを選んで出る文字を調べる</h3>
+      <div className="keymap-pattern" data-keymap-pattern>
+        <div className="keymap-pattern-controls">
+          <p className="keymap-pattern-result" role="status" data-keymap-pattern-result>{view.message}</p>
           <button type="button" onClick={clear} disabled={selected.length === 0}>選択を外す</button>
         </div>
         {triggers.legend.length > 0 ? (
-          <div className="input-method-trigger-legend" aria-label="トリガーになるキーの枠" data-input-method-trigger-legend>
+          <div className="keymap-trigger-legend" aria-label="トリガーになるキーの枠" data-keymap-trigger-legend>
             {triggers.legend.map((item) => (
               <span
                 key={item.id}
-                className="input-method-trigger-swatch"
+                className="keymap-trigger-swatch"
                 data-legend-slot={item.slot}
                 style={{ ['--trigger-color' as string]: item.slot === undefined ? 'var(--picker-selected)' : `var(--series-${item.slot})` }}
               >
@@ -193,27 +194,27 @@ function KeyPatternSection({ layout, geometry }: { readonly layout: Layout; read
   );
 }
 
-export function InputMethodBody({ layout, geometry }: SingleBodyProps<InputMethodExtracted, InputMethodOptions>) {
+export function KeymapBody({ layout, geometry }: SingleBodyProps<KeymapExtracted, KeymapOptions>) {
   return (
-    <div className="input-method-feature" data-react-feature="input-method">
-      <ModifierSection layout={layout} />
+    <div className="keymap-feature" data-react-feature="keymap">
       <KeyPatternSection layout={layout} geometry={geometry} />
+      <ModifierSection layout={layout} />
       <ComboSection layout={layout} geometry={geometry} />
     </div>
   );
 }
 
 /** 設定できる項目は無い。 */
-export function InputMethodSettings(_props: AnalyzerSettingsProps<InputMethodOptions>) {
-  return <p className="input-method-empty">このAnalyzerに解析設定はありません。</p>;
+export function KeymapSettings(_props: AnalyzerSettingsProps<KeymapOptions>) {
+  return <p className="keymap-empty">このAnalyzerに解析設定はありません。</p>;
 }
 
 /** ペインに渡すもの（`analyzers/pane-parts.tsx`）。 */
-export const inputMethodAnalyzer = {
-  definition: inputMethodDefinition,
-  ...INPUT_METHOD_PANE_META,
-  Body: InputMethodBody,
-  Settings: InputMethodSettings,
-  defaultOptions: DEFAULT_INPUT_METHOD_OPTIONS,
-  urlOptions: inputMethodOptions,
-} satisfies SingleAnalyzerPaneParts<InputMethodOptions, InputMethodExtracted>;
+export const keymapAnalyzer = {
+  definition: keymapDefinition,
+  ...KEYMAP_PANE_META,
+  Body: KeymapBody,
+  Settings: KeymapSettings,
+  defaultOptions: DEFAULT_KEYMAP_OPTIONS,
+  urlOptions: keymapOptions,
+} satisfies SingleAnalyzerPaneParts<KeymapOptions, KeymapExtracted>;

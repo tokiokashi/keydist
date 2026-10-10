@@ -2,9 +2,9 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import { useSyncExternalStore, type ReactNode } from 'react';
 import { BIGRAM_FLOW_PANE_META } from '#analyzers/bigram-flow/pane-meta.ts';
 import { FINGER_DISTANCE_PANE_META } from '#analyzers/finger-distance/pane-meta.ts';
-import { HEATMAP_INTEGRATED_PANE_META } from '#analyzers/heatmap-integrated/pane-meta.ts';
+import { HEATMAP_PANE_META } from '#analyzers/heatmap/pane-meta.ts';
 import { HEATMAP_LAYERS_PANE_META } from '#analyzers/heatmap-layers/pane-meta.ts';
-import { INPUT_METHOD_PANE_META } from '#analyzers/input-method/pane-meta.ts';
+import { KEYMAP_PANE_META } from '#analyzers/keymap/pane-meta.ts';
 import { LAYER_COMBO_PRESSES_PANE_META } from '#analyzers/layer-combo-presses/pane-meta.ts';
 import { COMPARISON_PANE_META } from '#analyzers/comparison/pane-meta.ts';
 import { FINGER_MATRIX_PANE_META } from '#analyzers/finger-matrix/pane-meta.ts';
@@ -149,10 +149,10 @@ export function Sidebar({ pinned, onPinnedChange, onNavigate }: SidebarProps) {
           <h3 className="sidebar-subheading">Single</h3>
           <NavLink to="/standalone/bigram-flow" onNavigate={onNavigate}>{BIGRAM_FLOW_PANE_META.name}</NavLink>
           <NavLink to="/standalone/finger-distance" onNavigate={onNavigate}>{FINGER_DISTANCE_PANE_META.name}</NavLink>
-          <NavLink to="/standalone/heatmap-integrated" onNavigate={onNavigate}>{HEATMAP_INTEGRATED_PANE_META.name}</NavLink>
+          <NavLink to="/standalone/heatmap" onNavigate={onNavigate}>{HEATMAP_PANE_META.name}</NavLink>
           <NavLink to="/standalone/heatmap-layers" onNavigate={onNavigate}>{HEATMAP_LAYERS_PANE_META.name}</NavLink>
           <NavLink to="/standalone/layer-combo-presses" onNavigate={onNavigate}>{LAYER_COMBO_PRESSES_PANE_META.name}</NavLink>
-          <NavLink to="/standalone/input-method" onNavigate={onNavigate}>{INPUT_METHOD_PANE_META.name}</NavLink>
+          <NavLink to="/standalone/keymap" onNavigate={onNavigate}>{KEYMAP_PANE_META.name}</NavLink>
           <h3 className="sidebar-subheading">Multi</h3>
           <NavLink to="/standalone/comparison" onNavigate={onNavigate}>{COMPARISON_PANE_META.name}</NavLink>
           <NavLink to="/standalone/finger-matrix" onNavigate={onNavigate}>{FINGER_MATRIX_PANE_META.name}</NavLink>

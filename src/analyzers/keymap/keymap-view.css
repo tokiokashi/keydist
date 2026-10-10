@@ -1,89 +1,89 @@
-.input-method-feature {
+.keymap-feature {
   display: flex;
   flex-direction: column;
   gap: 1.2rem;
 }
 
-.input-method-section h3 {
+.keymap-section h3 {
   margin: 0 0 0.4rem;
   font-size: 0.9rem;
   font-weight: 600;
 }
 
-.input-method-empty {
+.keymap-empty {
   margin: 0;
   color: var(--text-muted);
   font-size: 0.8rem;
 }
 
 /* 行が多いコンボ表は、表の中でスクロールさせる。 */
-.input-method-table-scroll {
+.keymap-table-scroll {
   max-height: 20rem;
   overflow: auto;
 }
 
-.input-method-table {
+.keymap-table {
   border-collapse: collapse;
   font-size: 0.8rem;
 }
 
-.input-method-table th,
-.input-method-table td {
+.keymap-table th,
+.keymap-table td {
   padding: 0.2rem 0.7rem;
   border-bottom: 1px solid var(--border);
   text-align: left;
   vertical-align: top;
 }
 
-.input-method-table thead th {
+.keymap-table thead th {
   position: sticky;
   top: 0;
   background: var(--surface);
   font-weight: 600;
 }
 
-.input-method-table tbody th {
+.keymap-table tbody th {
   font-weight: 400;
 }
 
-.input-method-diagram {
+.keymap-diagram {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
   margin-bottom: 0.8rem;
 }
 
-.input-method-diagram label {
+.keymap-diagram label {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   font-size: 0.8rem;
 }
 
-.input-method-diagram select {
+.keymap-diagram select {
   max-width: 100%;
 }
 
-.input-method-pattern {
+.keymap-pattern {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
 }
 
-.input-method-pattern-controls {
+.keymap-pattern-controls {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.4rem 1rem;
 }
 
-.input-method-pattern-result {
+.keymap-pattern-result {
   flex: 1 1 16em;
   margin: 0;
   font-size: 0.8rem;
 }
 
-.input-method-trigger-legend {
+.keymap-trigger-legend {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem 0.8rem;
@@ -91,9 +91,9 @@
   font-size: 0.76rem;
 }
 
-/* 図のトリガーの枠と同じ破線にする */
-.input-method-trigger-swatch {
+/* 図のトリガーの枠（細い実線。`app.css` の `data-guide="trigger"`）と同じ線にする */
+.keymap-trigger-swatch {
   padding: 1px 6px;
-  border: 3px dashed var(--trigger-color);
+  border: 2px solid var(--trigger-color);
   border-radius: 4px;
 }

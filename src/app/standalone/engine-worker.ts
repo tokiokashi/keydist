@@ -3,9 +3,9 @@ import { createEngineWorkerHandler } from '#engine/worker-handler.ts';
 import type { EngineWorkerRequest, EngineWorkerResponse } from '#engine/worker-protocol.ts';
 import { bigramFlowDefinition } from '#analyzers/bigram-flow/extract.ts';
 import { fingerDistanceDefinition } from '#analyzers/finger-distance/extract.ts';
-import { heatmapIntegratedDefinition } from '#analyzers/heatmap-integrated/extract.ts';
+import { heatmapDefinition } from '#analyzers/heatmap/extract.ts';
 import { heatmapLayersDefinition } from '#analyzers/heatmap-layers/extract.ts';
-import { inputMethodDefinition } from '#analyzers/input-method/extract.ts';
+import { keymapDefinition } from '#analyzers/keymap/extract.ts';
 import { layerComboPressesDefinition } from '#analyzers/layer-combo-presses/extract.ts';
 import { comparisonDefinition } from '#analyzers/comparison/extract.ts';
 import { fingerMatrixDefinition } from '#analyzers/finger-matrix/extract.ts';
@@ -19,7 +19,7 @@ import { nSensitivityDefinition } from '#analyzers/n-sensitivity/extract.ts';
  * 描画側（`definition.tsx`）はReactを引き込むので読み込まず、抽出だけの`extract.ts`を使う。
  */
 const handle = createEngineWorkerHandler(createEngineCache(), {
-  single: [bigramFlowDefinition, fingerDistanceDefinition, heatmapIntegratedDefinition, heatmapLayersDefinition, layerComboPressesDefinition, inputMethodDefinition],
+  single: [bigramFlowDefinition, fingerDistanceDefinition, heatmapDefinition, heatmapLayersDefinition, layerComboPressesDefinition, keymapDefinition],
   set: [comparisonDefinition, fingerMatrixDefinition, nSensitivityDefinition],
 });
 
