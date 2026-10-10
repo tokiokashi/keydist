@@ -95,7 +95,7 @@ test('修飾のレイヤー: 表示区分が修飾のレイヤーだけが、押
   const naginata = modifierRows(measure('naginata-v18', 'ja').input.layout);
   const dakuon = naginata.find((row) => row.id === 'layer:濁音');
   assert.ok(dakuon);
-  assert.equal(dakuon.trigger, 'あ / か');
+  assert.equal(dakuon.trigger, 'J / F');
   // 同じ文字は1度だけ並ぶ
   const outputs = dakuon.outputs.split(' / ');
   assert.equal(new Set(outputs).size, outputs.length);

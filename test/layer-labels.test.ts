@@ -144,8 +144,8 @@ test('ヒートマップの見出しは、名前にキーが入る既定の名�
 
   const naginata = titles('naginata-v18');
   assert.match(naginata.get('face:2')!, /^レイヤー\d+: 小書き \[Q\]/);
-  assert.match(naginata.get('face:7')!, /^レイヤー\d+: 拗音（ゃ） \[く\]/);
-  assert.match(naginata.get('face:17')!, /^レイヤー\d+: てぃ \[い \+ な\]/);
+  assert.match(naginata.get('face:7')!, /^レイヤー\d+: 拗音（ゃ） \[や\]/);
+  assert.match(naginata.get('face:17')!, /^レイヤー\d+: てぃ \[い \+ 半濁音（M）\]/);
   // 配列が名前を付けたレイヤーの見出しは変えない
   assert.match(naginata.get('layer:濁音')!, /\[.+\]/);
 });

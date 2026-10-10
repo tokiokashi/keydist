@@ -2,7 +2,7 @@ import {
   aggregationLegendMap,
   aggregationTriggerDisplayText,
   classifyPresentationFaces,
-  displayTriggerAlternatives,
+  displayTriggerChords,
   displayTriggerKeys,
   faceCells,
   faceDisplayCells,
@@ -48,7 +48,7 @@ export interface ComboDiagramItem {
 
 function faceTriggerText(layout: Layout, face: Face, standard: PhysicalKeyboardStandard | undefined): string {
   return face.presentationTriggerText
-    ?? triggerChordsDisplayText(layout, displayTriggerAlternatives(face), standard);
+    ?? triggerChordsDisplayText(layout, displayTriggerChords(face), standard);
 }
 
 /** コンボ枠に計上すると宣言された面。面を持たない配列は空。 */

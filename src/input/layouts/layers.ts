@@ -11,6 +11,7 @@ import {
   type LayerDefinition,
   type LayerPresentationRole,
   type Layout,
+  type TriggerMeaning,
 } from './types.ts';
 import { kanaKindName } from './kana-kind.ts';
 
@@ -81,6 +82,21 @@ export function displayTriggerAlternatives(face: Face): readonly (readonly strin
     alternatives.push(chord);
   });
   return alternatives;
+}
+
+/** 表示するtriggerの1 chord。キーが属する修飾の組が分かる時は `groups` に持つ（キーは正規化済み）。 */
+export interface TriggerChord {
+  readonly keys: readonly string[];
+  readonly groups?: ReadonlyMap<string, string>;
+}
+
+/** 面のtrigger alternativeを、面の `modifierGroups` を添えたchord列にする。 */
+export function displayTriggerChords(face: Face): readonly TriggerChord[] {
+  const entries = Object.entries(face.modifierGroups ?? {});
+  const groups = entries.length === 0
+    ? undefined
+    : new Map(entries.map(([key, group]) => [resolveKeyId(key), group] as const));
+  return displayTriggerAlternatives(face).map((keys) => ({ keys, groups }));
 }
 
 /**
@@ -231,6 +247,7 @@ export function presentationLayerGuide(
     | 'layerDefinitions'
     | 'thumbShiftKeys'
     | 'legends'
+    | 'triggerMeanings'
   >,
   layerId: string,
 ): PresentationLayerGuide | undefined {
@@ -279,7 +296,9 @@ export function presentationLayerGuide(
     ? authoredTexts[0]
     : triggerChordsDisplayText(
       layout,
-      layer.faces.flatMap((face) => displayTriggerAlternatives(face)),
+      layer.faces.flatMap((face) => displayTriggerChords(face)),
+      undefined,
+      layerLabelOf(layout, layerId),
     );
 
   return { legends, triggerKeys, triggerDisplayText };
@@ -393,7 +412,13 @@ export function aggregationTriggerKeys(
 export function aggregationTriggerDisplayText(
   layout: Pick<
     Layout,
-    'canonicalInputs' | 'faces' | 'faceLayerIds' | 'thumbShiftKeys' | 'legends'
+    | 'canonicalInputs'
+    | 'faces'
+    | 'faceLayerIds'
+    | 'layerDefinitions'
+    | 'thumbShiftKeys'
+    | 'legends'
+    | 'triggerMeanings'
   >,
   aggregationGroupId: string,
 ): string {
@@ -405,7 +430,21 @@ export function aggregationTriggerDisplayText(
   )];
   if (authoredTexts.length === 1) return authoredTexts[0];
 
-  return triggerChordsDisplayText(layout, aggregationTriggerChords(layout, aggregationGroupId));
+  return triggerChordsDisplayText(
+    layout,
+    aggregationTriggerChords(layout, aggregationGroupId),
+    undefined,
+    layerLabelOf(layout, aggregationGroupId),
+  );
+}
+
+/** 層の名前（配列が付けた名前。名前の無い層は既定の名前の仮置きなので、意味と突き合わせる相手にならない）。 */
+export function layerLabelOf(
+  layout: Pick<Layout, 'layerDefinitions'>,
+  layerId: string,
+): string | undefined {
+  const definition = (layout.layerDefinitions ?? []).find((candidate) => candidate.id === layerId);
+  return definition === undefined || definition.labelIsDefault === true ? undefined : definition.label;
 }
 
 /** 配列が名前を付けていない層に、表示とトレースで付ける名前。 */
@@ -535,16 +574,26 @@ export function layerDefinitionsWithLabels(
 function aggregationTriggerChords(
   layout: Pick<Layout, 'canonicalInputs'>,
   aggregationGroupId: string,
-): readonly (readonly string[])[] {
-  const chords: string[][] = [];
+): readonly TriggerChord[] {
+  const chords: TriggerChord[] = [];
   for (const alternatives of layout.canonicalInputs.values()) {
     for (const alternative of alternatives) {
       alternative.semanticInputs.forEach((input, index) => {
         if (input.aggregationGroupId !== aggregationGroupId) return;
         const realization = alternative.baseRealizations[index];
-        chords.push((realization?.defaultTriggerKeys ?? []).map(resolveKeyId));
+        const groups = new Map<string, string>();
+        for (const role of input.roles) {
+          if (role.role === 'modifier' && role.modifierGroupId !== undefined) {
+            groups.set(resolveKeyId(role.key), role.modifierGroupId);
+          }
+        }
+        const groupsOrUndefined = groups.size === 0 ? undefined : groups;
+        chords.push({
+          keys: (realization?.defaultTriggerKeys ?? []).map(resolveKeyId),
+          groups: groupsOrUndefined,
+        });
         for (const view of realization?.alternateParticipations ?? []) {
-          chords.push(view.triggerKeys.map(resolveKeyId));
+          chords.push({ keys: view.triggerKeys.map(resolveKeyId), groups: groupsOrUndefined });
         }
       });
     }
@@ -556,37 +605,70 @@ function aggregationTriggerChords(
  * triggerのchord列を表示文字列へ畳む。chord内の同時押しは「+」、どれか1つで足りる
  * alternative同士は「/」でつなぐ（「+」でつなぐと、どちらか片方で足りるシフトを同時押しと誤読させる）。
  * 刻印の無いキーは物理キーの表示名（規格を渡せばその規格の刻印）で出し、内部のキーidを画面に出さない。
+ *
+ * 配列が `triggerMeanings` を書いたキーは、刻印ではなく修飾の中での意味を出す。意味を引くには、
+ * chordが `groups`（キーが属する修飾の組）を持っている必要がある。
+ * - 文字の意味はそのまま出す
+ * - 修飾のキーの意味は、押すキーが読めるよう物理キーの名前を添える（「濁音（J）」）
+ * - `layerName` を渡し、全chordの全キーが意味を持ち、その意味がどれも層の名前と同じ時は、
+ *   行の名前と同じ語が並ぶだけなので、意味の代わりに物理キーの名前を出す（「J / F」）
  */
 export function triggerChordsDisplayText(
-  layout: Pick<Layout, 'thumbShiftKeys' | 'legends'>,
-  chords: readonly (readonly string[])[],
+  layout: Pick<Layout, 'thumbShiftKeys' | 'legends' | 'triggerMeanings'>,
+  chords: readonly (readonly string[] | TriggerChord)[],
   standard?: PhysicalKeyboardStandard,
+  layerName?: string,
 ): string {
-  const label = (key: string) => {
-    const legend = layout.legends.get(key);
-    return legend !== undefined && legend.trim() !== '' ? legend : physicalKeyDisplayLabel(key, standard);
+  const meaningOf = (key: string, groups: ReadonlyMap<string, string> | undefined): TriggerMeaning | undefined => {
+    const group = groups?.get(key);
+    if (group === undefined) return undefined;
+    const byKey = layout.triggerMeanings?.[group];
+    if (byKey === undefined) return undefined;
+    for (const [rawKey, meaning] of Object.entries(byKey)) {
+      if (resolveKeyId(rawKey) === key) return meaning;
+    }
+    return undefined;
   };
+  const physical = (key: string) => physicalKeyDisplayLabel(key, standard);
+  const legendLabel = (key: string) => {
+    const legend = layout.legends.get(key);
+    return legend !== undefined && legend.trim() !== '' ? legend : physical(key);
+  };
+
   const seen = new Set<string>();
-  const unique: (readonly string[])[] = [];
+  const unique: { keys: string[]; groups: ReadonlyMap<string, string> | undefined }[] = [];
   for (const chord of chords) {
-    const keys = [...new Set(chord.map(resolveKeyId))];
+    const rawKeys = Array.isArray(chord) ? chord : (chord as TriggerChord).keys;
+    const groups = Array.isArray(chord) ? undefined : (chord as TriggerChord).groups;
+    const keys = [...new Set(rawKeys.map(resolveKeyId))];
     if (keys.length === 0) continue;
-    const signature = [...keys].sort().join('\u0000');
+    const signature = [...keys].sort()
+      .map((key) => `${key}\u0001${meaningOf(key, groups)?.text ?? ''}`).join('\u0000');
     if (seen.has(signature)) continue;
     seen.add(signature);
-    unique.push(keys);
+    unique.push({ keys, groups });
   }
   if (unique.length === 0) return '—';
 
+  const sameAsLayer = layerName !== undefined && unique.every(
+    ({ keys, groups }) => keys.every((key) => meaningOf(key, groups)?.text === layerName),
+  );
+  const label = (key: string, groups: ReadonlyMap<string, string> | undefined) => {
+    if (sameAsLayer) return physical(key);
+    const meaning = meaningOf(key, groups);
+    if (meaning === undefined) return legendLabel(key);
+    return meaning.kind === 'char' ? meaning.text : `${meaning.text}（${physical(key)}）`;
+  };
+
   // 左右どちらの親指でも同じシフトになる配列は、刻印が揃っていれば1つにまとめる
   const equivalentThumbs = new Set((layout.thumbShiftKeys ?? []).map(resolveKeyId));
-  const allKeys = unique.flat();
+  const allKeys = unique.flatMap(({ keys }) => keys);
   if (equivalentThumbs.size > 1 && allKeys.every((key) => equivalentThumbs.has(key))) {
-    const labels = [...new Set(allKeys.map(label))];
+    const labels = [...new Set(unique.flatMap(({ keys, groups }) => keys.map((key) => label(key, groups))))];
     if (labels.length === 1) return labels[0]!;
   }
 
-  return [...new Set(unique.map((chord) => chord.map(label).join(' + ')))].join(' / ');
+  return [...new Set(unique.map(({ keys, groups }) => keys.map((key) => label(key, groups)).join(' + ')))].join(' / ');
 }
 
 
