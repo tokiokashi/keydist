@@ -2,7 +2,7 @@ import { matchKeyPatterns, summarizeCandidateMatches } from '#input/layouts/key-
 import type { Layout } from '#input/layouts/types.ts';
 
 /**
- * 入力パターンの選択（キーを1つずつ選んでいき、続けて押せるキーと出る文字をたどる）の純粋な計算。
+ * キーを選んで出る文字を調べる図の選択（キーを1つずつ選んでいき、続けて押せるキーと出る文字をたどる）の純粋な計算。
  *
  * 選んだ順は押す順として照合に渡す。照合そのものは `input/layouts/key-pattern-picker.ts` が持ち、
  * ここでは画面に出す形（キーごとの見た目・結果の文）へ並べるだけにする。

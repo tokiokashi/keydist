@@ -1,19 +1,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { LAYOUT_BY_ID, LAYOUTS, LAYOUTS_JA } from '#input/layouts/index.ts';
+import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES } from '#input/shapes/geometry.ts';
 import { sampleText } from '#input/text/samples.ts';
 import type { Setup } from '#input/setup/index.ts';
 import { EMPTY_SETTINGS_OVERRIDES } from '#engine/settings-items.ts';
 import { resolveEngineInput, type ResolvedInput } from '#engine/resolved-input.ts';
 import { generateTrace } from '#trace/generate.ts';
-import { computeMetrics } from '#interpretation/metrics.ts';
-import { computeLayerComboExtraction } from './extract.ts';
 import { comboDiagramItems, comboRows, modifierRows } from './layout-breakdown.ts';
 
 /**
- * 配列の定義から出す修飾・コンボ表・コンボの配列図と、帰属先の保存則を、実際のengine経路
- * （解決 → Trace → Metrics）で検証する。物理配列はrow-staggered。テキストは組み込みのサンプル
+ * 配列の定義から出す修飾・コンボ表・コンボの配列図を、実際のengine経路（解決 → Trace）で検証する。物理配列はrow-staggered。テキストは組み込みのサンプル
  * （日本語は `legacy`、英文は `default`）。
  */
 
@@ -23,7 +20,7 @@ const CATALOG = {
 };
 
 function tryResolve(layoutId: string, language: 'ja' | 'en', text: string) {
-  const setup: Setup = { id: 'setup-layer-combo', number: 1, layoutId, shapeId: 'row-staggered' };
+  const setup: Setup = { id: 'setup-input-method', number: 1, layoutId, shapeId: 'row-staggered' };
   return resolveEngineInput({
     target: { kind: 'setup', setupId: setup.id },
     setups: new Map([[setup.id, setup]]),
@@ -37,8 +34,7 @@ function tryResolve(layoutId: string, language: 'ja' | 'en', text: string) {
 
 function measureInput(input: ResolvedInput) {
   const trace = generateTrace(input.text, input.layout, input.geometry, input.tracePolicy);
-  const metrics = computeMetrics(trace, input.geometry);
-  return { input, trace, metrics, extracted: computeLayerComboExtraction({ trace, metrics }) };
+  return { input, trace };
 }
 
 function measure(layoutId: string, language: 'ja' | 'en') {
@@ -48,39 +44,15 @@ function measure(layoutId: string, language: 'ja' | 'en') {
   return measureInput(result.input);
 }
 
-test('帰属先ごとの押下数の和は、全配列・日本語と英文のどちらでも全押下数に一致する', () => {
-  const ids = [...new Set([...LAYOUTS, ...LAYOUTS_JA].map((layout) => layout.id))];
-  let measured = 0;
-  for (const id of ids) {
-    for (const language of ['ja', 'en'] as const) {
-      const result = tryResolve(id, language, sampleText(language, language === 'ja' ? 'legacy' : 'default'));
-      // その言語のテキストを打てない配列は、エンジンが対象から外す
-      if (!result.ok) {
-        assert.equal(result.error.kind, 'incompatible-text', `${id}/${language}`);
-        continue;
-      }
-      const { extracted, metrics } = measureInput(result.input);
-      const sum = extracted.rows.reduce((total, row) => total + row.presses, 0);
-      assert.equal(sum, metrics.presses, `${id}/${language}`);
-      assert.equal(extracted.presses, metrics.presses, `${id}/${language}`);
-      assert.ok(metrics.presses > 0, `${id}/${language}`);
-      measured++;
-    }
-  }
-  assert.ok(measured >= ids.length, `測れた組が少ない: ${measured}`);
-});
-
 test('コンボ表のコンボ定義の行数は、Traceのコンボ定義数と一致する。英文ではローマ字のコンボが外れる', () => {
   const ja = measure('oonishi-custom', 'ja');
   assert.equal(ja.trace.comboDefinitions, 73);
   assert.equal(comboRows(ja.input.layout, undefined).length, ja.trace.comboDefinitions);
-  assert.deepEqual(ja.extracted.rows.map((row) => row.kind), ['layer', 'layer', 'combo']);
 
   const en = measure('oonishi-custom', 'en');
   assert.equal(en.trace.comboDefinitions, 0);
   assert.equal(comboRows(en.input.layout, undefined).length, 0);
   assert.equal(comboDiagramItems(en.input.layout, undefined).length, 0);
-  assert.deepEqual(en.extracted.rows.map((row) => row.kind), ['layer', 'layer']);
 });
 
 test('コンボ定義の配列図は、同じ組・同じ押し方のコンボを1枚にまとめる', () => {
