@@ -70,7 +70,7 @@ export function HeatmapBody({ layout, geometry, extracted, keySelection, setTarg
         />
       </div>
       {setTargets === undefined ? null : (
-        <ul className="heatmap-set-grid" aria-label="集合の対象の打鍵頻度">
+        <ul className="heatmap-set-grid" aria-label="他の対象の打鍵頻度">
           {setTargets.map((figure) => (
             <li key={figure.key} className="heatmap-set-cell" data-heatmap-set-target={figure.key} data-state={figure.state.status}>
               <p className="heatmap-set-name" title={figure.fullName}>

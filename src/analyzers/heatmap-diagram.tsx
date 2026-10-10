@@ -45,7 +45,7 @@ export interface HeatmapDiagramProps {
   readonly ariaSuffix: string;
   /** キーの選択。渡さなければ、キーは押せない */
   readonly keySelection?: KeySelectionProps;
-  /** 置かれた領域の幅いっぱいに広げる。省くと図の大きさ（それより領域が狭ければ領域の幅）で描く */
+  /** 置かれた領域の幅に合わせて縮む。広げる時も図の大きさまでで、省くと図の大きさ（領域が狭ければ領域の幅）で描く */
   readonly fill?: boolean;
   /** ツールチップに押下数だけを出す。省くと押し方と前の文字の内訳も出す */
   readonly countOnlyTooltip?: boolean;
@@ -102,7 +102,7 @@ export function HeatmapDiagram({
   const caption = title === undefined ? '打鍵頻度' : `${title}・打鍵頻度`;
 
   return (
-    <figure className="heatmap-diagram" data-heatmap-diagram={diagramId} style={fill ? undefined : { width, maxWidth: '100%' }} hidden={hidden}>
+    <figure className="heatmap-diagram" data-heatmap-diagram={diagramId} style={fill ? { width: '100%', maxWidth: width } : { width, maxWidth: '100%' }} hidden={hidden}>
       <figcaption>{caption}</figcaption>
       <svg viewBox={`${viewX} ${viewY} ${width} ${height}`} role={keySelection === undefined ? 'img' : 'group'} aria-label={`${caption}${ariaSuffix}`}>
         {keys.map((item) => {

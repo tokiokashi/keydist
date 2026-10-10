@@ -110,7 +110,7 @@ test('集合が空、またはSingleの対象だけなら、図は1つだけ', a
   await expect(cells(onlySingle)).toHaveCount(0);
 });
 
-test('格子の図の押下数は、同じ対象をSingleで選んだ時の図と一致し、同じ押下数のキーは全部の図で同じ濃さになる', async ({ page }) => {
+test('格子の図の押下数は、同じ対象をSingleで選んだ時の図と一致する', async ({ page }) => {
   await seedSelections(page, 'colemak-dh', ['colemak-dh']);
   await page.goto('/standalone/heatmap');
   await expect(diagrams(page)).toHaveCount(1, { timeout: 10_000 });
@@ -123,15 +123,35 @@ test('格子の図の押下数は、同じ対象をSingleで選んだ時の図�
   await expect(cell).toHaveCount(1, { timeout: 10_000 });
   const inGrid = await keyReadings(cell.locator('[data-heatmap-diagram]'));
   expect(inGrid.map(({ id, tooltip }) => ({ id, tooltip }))).toEqual(asSingle.map(({ id, tooltip }) => ({ id, tooltip })));
+});
 
-  // 同じ押下数のキーは、一番上の図と格子の図のどちらでも同じ濃さ
-  const all = [...(await keyReadings(diagrams(grid).first())), ...inGrid];
-  const heatByTooltipCount = new Map<string, string>();
-  for (const { tooltip, heat } of all) {
-    const count = tooltip.split(': ')[1]!;
-    const seen = heatByTooltipCount.get(count);
-    if (seen === undefined) heatByTooltipCount.set(count, heat);
-    else expect(heat).toBe(seen);
+test('色の尺度は全部の図の最大で揃う。最大の違う組では、格子の図の濃さが押下数÷全部の図の最大になる', async ({ page }) => {
+  // 既定のテキストで、QWERTYの最大は84、新下駄の最大は47
+  await seedSelections(page, 'qwerty', ['shingeta']);
+  await page.goto('/standalone/heatmap');
+  const cell = cells(page).filter({ has: page.locator('[data-heatmap-diagram]') });
+  await expect(cell).toHaveCount(1, { timeout: 10_000 });
+  const top = await keyReadings(diagrams(page).first());
+  const grid = await keyReadings(cell.locator('[data-heatmap-diagram]'));
+  const countOf = (tooltip: string) => Number(tooltip.split(': ')[1]!.replace('打', ''));
+  const max = Math.max(...top.map((key) => countOf(key.tooltip)), ...grid.map((key) => countOf(key.tooltip)));
+  expect(max).toBe(84);
+  expect(Math.max(...grid.map((key) => countOf(key.tooltip)))).toBe(47);
+  for (const key of [...top, ...grid]) {
+    expect(Math.abs(Number(key.heat) - countOf(key.tooltip) / max)).toBeLessThan(0.002);
+  }
+  expect(Math.max(...grid.map((key) => Number(key.heat)))).toBeLessThan(0.6);
+});
+
+test('格子の図は、1列になる幅でも一番上の図より大きくならない', async ({ page }) => {
+  await page.setViewportSize({ width: 600, height: 900 });
+  await seedSelections(page, 'qwerty', ['dvorak', 'workman']);
+  await page.goto('/standalone/heatmap');
+  await expect(cells(page).filter({ has: page.locator('[data-heatmap-diagram]') })).toHaveCount(2, { timeout: 10_000 });
+  const top = (await diagrams(page).first().boundingBox())!;
+  for (const cell of await cells(page).all()) {
+    const box = (await cell.locator('[data-heatmap-diagram]').boundingBox())!;
+    expect(box.width).toBeLessThanOrEqual(top.width + 1);
   }
 });
 
