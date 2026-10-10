@@ -1,8 +1,9 @@
 import type { PhysicalKeyboardStandard } from '#input/shapes/geometry.ts';
 import {
-  displayTriggerAlternatives,
+  displayTriggerChords,
   defaultLayerNames,
   layerDefinitionsWithLabels,
+  layerLabelOf,
   triggerChordsDisplayText,
   type Layer,
 } from '#input/layouts/layers.ts';
@@ -42,9 +43,9 @@ export interface HeatmapLayerEntry {
   readonly colorCounts: ReadonlyMap<string, number>;
 }
 
-function displayTriggerText(layout: Layout, face: Layer['faces'][number], standard: PhysicalKeyboardStandard | undefined): string {
+function displayTriggerText(layout: Layout, face: Layer['faces'][number], layerName: string | undefined, standard: PhysicalKeyboardStandard | undefined): string {
   return face.presentationTriggerText
-    ?? triggerChordsDisplayText(layout, displayTriggerAlternatives(face), standard);
+    ?? triggerChordsDisplayText(layout, displayTriggerChords(face), standard, layerName);
 }
 
 function layerTitle(layer: Layer, index: number, label: string, layout: Layout, standard: PhysicalKeyboardStandard | undefined): string {
@@ -52,7 +53,7 @@ function layerTitle(layer: Layer, index: number, label: string, layout: Layout, 
   if (layer.faces.length === 0 || layer.id === SINGLE_LAYER_ID) return head;
   // 名前にトリガーのキーが入っている既定の名前は、見出しでトリガーを重ねて出さない
   const omitTrigger = defaultLayerNames(layout).get(layer.id)?.includesTrigger === true;
-  const triggers = layer.faces.map((face) => displayTriggerText(layout, face, standard));
+  const triggers = layer.faces.map((face) => displayTriggerText(layout, face, layerLabelOf(layout, layer.id), standard));
   const modeLabel = layout.layerDefinitions?.find((definition) => definition.id === layer.id)?.presentationModeLabel;
   const bracket = omitTrigger ? '' : ` [${triggers.join(' / ')}]`;
   return modeLabel === undefined ? `${head}${bracket}` : `${head}${bracket}・${modeLabel}`;

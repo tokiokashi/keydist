@@ -134,7 +134,7 @@ test('レイヤーの見出しは、トリガーのキーを物理キーの名�
   const naginata = extractionFor('naginata-v18', 'あ');
   const titles = (detail: 'compact' | 'detail') => buildLayerEntries(naginata.layout, naginata.extracted, detail, 'ansi').map((entry) => entry.title);
   assert.deepEqual(titles('compact'), ['レイヤー1: 単打（レイヤー3以降を合算）', 'レイヤー2: SandS [Space]・同時']);
-  assert.equal(titles('detail')[3], 'レイヤー4: 濁音 [あ / か]・同時');
+  assert.equal(titles('detail')[3], 'レイヤー4: 濁音 [J / F]・同時');
 });
 
 test('図ごとのキーの詳細: 押下数は、その図のツールチップの値（keyCounts）と全キーで一致する', () => {

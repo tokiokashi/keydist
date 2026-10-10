@@ -1,5 +1,5 @@
 import { THUMB_KEY } from '../shapes/geometry.ts';
-import { SINGLE_LAYER_ID, fromFaces, withAliases, withThumbShiftAlternatives, type Face, type Layout } from './types.ts';
+import { SINGLE_LAYER_ID, fromFaces, withAliases, withThumbShiftAlternatives, type Face, type Layout, type TriggerMeaning, type TriggerMeanings } from './types.ts';
 
 /**
  * 薙刀式v18（作: 大岡俊彦）。
@@ -106,9 +106,28 @@ export const NAGINATA_V18_FACES: Face[] = [
   face(['p', 'v'], { ';': 'ふゅ' }, { modifierGroups: { p: '拗音', v: '半濁音' }, role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
 ];
 
+const char = (text: string): TriggerMeaning => ({ kind: 'char', text });
+const modifierKey = (text: string): TriggerMeaning => ({ kind: 'modifierKey', text });
+
+/**
+ * 修飾のトリガーのキーが、修飾の組の中で持つ意味。
+ * 拗音は裏の「や・ゆ・よ」の位置、外来音は母音の位置（o・n・ピリオドは裏の「え・お・わ」、j・k・lは表の「あ・い・う」）を押す。
+ * 濁音・半濁音のキーは文字を持たない修飾のキーとして押す。
+ */
+const NAGINATA_TRIGGER_MEANINGS: TriggerMeanings = {
+  拗音: { h: char('や'), p: char('ゆ'), i: char('よ') },
+  外来音: {
+    o: char('え'), n: char('お'), '.': char('わ'),
+    j: char('あ'), k: char('い'), l: char('う'),
+  },
+  濁音: { f: modifierKey('濁音'), j: modifierKey('濁音') },
+  半濁音: { v: modifierKey('半濁音'), m: modifierKey('半濁音') },
+};
+
 export const NAGINATA_V18: Layout = withAliases(withThumbShiftAlternatives(
   {
     ...fromFaces('naginata-v18', '薙刀式v18', NAGINATA_V18_FACES),
+    triggerMeanings: NAGINATA_TRIGGER_MEANINGS,
     layerViewPresentation: {
       compact: {
         keepLayerIds: [SINGLE_LAYER_ID, 'layer:SandS'],

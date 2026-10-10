@@ -182,6 +182,18 @@ export interface ResolvedComboDefinition {
   foldTargetKey?: string;
 }
 
+/**
+ * 修飾のトリガーのキーが、ある修飾の組の中で持つ意味。
+ * `char` は刻印ではなく押している意味の文字（や・え等）で、そのまま出す。
+ * `modifierKey` は文字を持たない修飾のキー（濁音・半濁音等）で、押すキーが読めるよう物理キーの名前を添えて出す。
+ */
+export type TriggerMeaning =
+  | { readonly kind: 'char'; readonly text: string }
+  | { readonly kind: 'modifierKey'; readonly text: string };
+
+/** 修飾の組（`Face.modifierGroups` の値）→ トリガーのキー → 意味。 */
+export type TriggerMeanings = Readonly<Record<string, Readonly<Record<string, TriggerMeaning>>>>;
+
 export interface Layout {
   id: string;
   name: string;
@@ -196,6 +208,11 @@ export interface Layout {
   faces?: readonly Face[];
   /** キーid → そのキーの刻印。表示用 */
   legends: Map<string, string>;
+  /**
+   * 修飾のトリガーを文字で出す時の、キーの意味。キーと修飾の組で決める。
+   * 書いていないキーは、`legends` の刻印を出す。
+   */
+  triggerMeanings?: TriggerMeanings;
   /** authoring上の既定親指シフトキー。 */
   thumbShiftKey?: string;
   /** 同じshift semanticを成立させられる合法な親指キー集合。 */
