@@ -7,6 +7,7 @@ import { inputMethodDefinition, type InputMethodExtracted } from './extract.ts';
 import { comboDiagramItems, comboRows, modifierRows, type ComboDiagramItem } from './layout-breakdown.ts';
 import { DEFAULT_INPUT_METHOD_OPTIONS, inputMethodOptions, type InputMethodOptions } from './options.ts';
 import { INPUT_METHOD_PANE_META } from './pane-meta.ts';
+import { triggerGuide } from './trigger-guide.ts';
 import type { Geometry } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { AnalyzerSettingsProps, SingleAnalyzerPaneParts, SingleBodyProps } from '../pane-parts.tsx';
@@ -124,23 +125,34 @@ function ComboSection({ layout, geometry }: { readonly layout: Layout; readonly 
 /**
  * キーを選んで出る文字を調べる図。キーを1つずつ選ぶと、続けて押せるキーが枠で、あと1キーで決まるキーには出る文字が出る。
  * 3キー以上を同時に押すコンボも、選んでいくと出る文字までたどれる。シフトのキーを選べば、そのレイヤーで出る文字が出る。
+ *
+ * 何も選んでいない間は、トリガーになるキーを破線の枠で示す（レイヤーはその色、コンボは選択の色）。
+ * 続けて押せるキーの実線の青い枠とは、線の形で分ける。凡例は図のそばに置く。
  */
 function KeyPatternSection({ layout, geometry }: { readonly layout: Layout; readonly geometry: Geometry }) {
   const keys = useMemo(() => visibleGeometryKeys(layout, geometry), [layout, geometry]);
   const [selected, setSelected] = useState<readonly string[]>([]);
   const view = useMemo(() => keyPatternSelectionView(layout, selected), [layout, selected]);
+  const triggers = useMemo(() => triggerGuide(layout), [layout]);
+  const selectedSlot = useMemo(() => triggers.slotOfSelected(selected), [triggers, selected]);
   const views = useMemo(() => {
     const chosen = new Set(selected);
+    const showTriggers = selected.length === 0;
     return new Map<string, PhysicalKeyboardKeyView>(keys.map((key) => {
       const candidate = view.candidateLegends.get(key.id);
-      const guide = candidate !== undefined ? 'output' as const : view.continuationKeys.has(key.id) ? 'continuation' as const : undefined;
+      const isTrigger = showTriggers && triggers.keySlots.has(key.id);
+      const guide = candidate !== undefined
+        ? 'output' as const
+        : view.continuationKeys.has(key.id) ? 'continuation' as const : isTrigger ? 'trigger' as const : undefined;
+      const slot = isTrigger ? triggers.keySlots.get(key.id) : chosen.has(key.id) ? selectedSlot : undefined;
       return [key.id, {
         legend: candidate ?? layout.legends.get(key.id) ?? '',
         selected: chosen.has(key.id),
         guide,
+        ...(slot === undefined ? {} : { accentSlot: slot }),
       }];
     }));
-  }, [keys, layout, selected, view]);
+  }, [keys, layout, selected, view, triggers, selectedSlot]);
   const clear = () => setSelected([]);
   return (
     <section className="input-method-section" aria-labelledby="input-method-pattern-heading">
@@ -150,6 +162,20 @@ function KeyPatternSection({ layout, geometry }: { readonly layout: Layout; read
           <p className="input-method-pattern-result" role="status" data-input-method-pattern-result>{view.message}</p>
           <button type="button" onClick={clear} disabled={selected.length === 0}>選択を外す</button>
         </div>
+        {triggers.legend.length > 0 ? (
+          <div className="input-method-trigger-legend" aria-label="トリガーになるキーの枠" data-input-method-trigger-legend>
+            {triggers.legend.map((item) => (
+              <span
+                key={item.id}
+                className="input-method-trigger-swatch"
+                data-legend-slot={item.slot}
+                style={{ ['--trigger-color' as string]: item.slot === undefined ? 'var(--picker-selected)' : `var(--series-${item.slot})` }}
+              >
+                {item.label}
+              </span>
+            ))}
+          </div>
+        ) : null}
         <PhysicalKeyboard
           ariaLabel="出る文字を調べるキーの選択"
           geometryId={geometry.id}

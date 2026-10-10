@@ -62,6 +62,42 @@ test('キーを選んで出る文字を調べる: キーボードでキーを選
   await expect(result).toContainText('キーを選ぶと');
 });
 
+test('トリガーになるキーの色付け: レイヤーとコンボの両方を持つ配列は、何も選ばない間に色付きの破線の枠と凡例が出る', async ({ page }) => {
+  await selectLayout(page, 'kawasemi-plus');
+  await page.goto('/standalone/input-method');
+  await expect(feature(page)).toBeVisible({ timeout: 10_000 });
+  const pattern = feature(page).locator('[data-input-method-pattern]');
+  await expect(pattern.locator('[data-input-method-trigger-legend]')).toBeVisible();
+  await expect(pattern.locator('[data-input-method-trigger-legend] [data-legend-slot]').first()).toBeVisible();
+  await expect(pattern.getByText('コンボ', { exact: true })).toBeVisible();
+  await expect(pattern.locator('[data-guide="trigger"][data-accent-slot]').first()).toBeVisible();
+  await expect(pattern.locator('[data-guide="trigger"]:not([data-accent-slot])').first()).toBeVisible();
+});
+
+test('トリガーになるキーの色付け: 1キーでレイヤーに切り替わるキーを選ぶと、選んだ枠がそのレイヤーの色になり、破線の枠は消える', async ({ page }) => {
+  await selectLayout(page, 'nicola');
+  await page.goto('/standalone/input-method');
+  await expect(feature(page)).toBeVisible({ timeout: 10_000 });
+  const pattern = feature(page).locator('[data-input-method-pattern]');
+  const first = pattern.locator('[data-guide="trigger"][data-accent-slot]').first();
+  await expect(first).toBeVisible();
+  const slot = await first.getAttribute('data-accent-slot');
+  const trigger = pattern.locator(`[data-key-id="${await first.getAttribute('data-key-id')}"]`);
+  await trigger.click();
+  await expect(trigger).toHaveAttribute('aria-pressed', 'true');
+  await expect(trigger).toHaveAttribute('data-accent-slot', slot!);
+  await expect(pattern.locator('[data-guide="trigger"]')).toHaveCount(0);
+});
+
+test('トリガーになるキーの色付け: レイヤーもコンボも持たない配列には凡例が出ない', async ({ page }) => {
+  await selectLayout(page, 'qwerty');
+  await page.goto('/standalone/input-method');
+  await expect(feature(page)).toBeVisible({ timeout: 10_000 });
+  await expect(feature(page).locator('[data-input-method-pattern]')).toBeVisible();
+  await expect(feature(page).locator('[data-input-method-trigger-legend]')).toHaveCount(0);
+  await expect(feature(page).locator('[data-guide="trigger"]')).toHaveCount(0);
+});
+
 test('どちらも持たない配列: 修飾とコンボには無いと分かる', async ({ page }) => {
   await selectLayout(page, 'nicola');
   await page.goto('/standalone/input-method');
