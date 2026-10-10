@@ -1,0 +1,52 @@
+.heatmap-feature.heatmap-layers {
+  gap: 0.6rem;
+}
+
+.heatmap-heading h3 {
+  margin: 0.4rem 0 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.heatmap-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.heatmap-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.heatmap-tabs button {
+  padding: 0.2rem 0.6rem;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.8rem;
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.heatmap-tabs button[aria-selected='true'] {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.heatmap-shift-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.8rem;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+}
+
+.heatmap-shift-swatch {
+  padding: 1px 6px;
+  border: 3px solid var(--shift-color);
+  border-radius: 4px;
+}

@@ -6,10 +6,10 @@ import type { Metrics } from '#interpretation/metrics.ts';
 import type { Trace } from '#trace/generate.ts';
 import { layerComboDisciplineContext } from '#analyzers/discipline-material.ts';
 import { normalizedRoleColors } from './layer-heatmap.ts';
-import { ALTERNATE_HEATMAP_OPTIONS, DEFAULT_HEATMAP_OPTIONS, heatmapOptions, type HeatmapOptions } from './options.ts';
+import { ALTERNATE_HEATMAP_LAYERS_OPTIONS, DEFAULT_HEATMAP_LAYERS_OPTIONS, heatmapLayersOptions, type HeatmapLayersOptions } from './options.ts';
 
 /**
- * ヒートマップの抽出（仕様 §11.10のキーごとの押下数）。
+ * レイヤー別ヒートマップの抽出（仕様 §11.10のキーごとの押下数）。
  *
  * 押下を層へ割り振る規則（§11.10）は `computeMetrics` が持つので、ここでは数え直さず、
  * `Metrics` の層別・コンボ枠の集計を並べ替えて、色用の押下数を足すだけにする。
@@ -21,7 +21,7 @@ import { ALTERNATE_HEATMAP_OPTIONS, DEFAULT_HEATMAP_OPTIONS, heatmapOptions, typ
  * 表示側が表示する層の `colorCounts` から求める。
  *
  * キーの詳細（仕様 §11.11）は共通の集計（`interpretation/key-detail.ts`）の結果をそのまま持つ。
- * 面のidは層のid（コンボの面は `COMBO_LAYER_ID`）なので、層別図は `HeatmapLayer.id` でその面の値を引く。
+ * 面のidは層のid（コンボの面は `COMBO_LAYER_ID`）なので、レイヤー別の図は `HeatmapLayer.id` でその面の値を引く。
  */
 
 /** 層1つぶんの、キーごとの押下数。 */
@@ -51,16 +51,8 @@ export interface HeatmapCombo {
   readonly keyCounts: ReadonlyMap<string, number>;
 }
 
-export interface HeatmapExtracted {
-  /** 統合ヒートマップ。全キー押下を物理キーで合算した値 */
-  readonly integrated: {
-    readonly presses: number;
-    /** キーid → 押下数 */
-    readonly keyCounts: ReadonlyMap<string, number>;
-    /** `keyCounts` の最大値。キーが無ければ0 */
-    readonly maxCount: number;
-  };
-  /** 層別ヒートマップ。宣言順で、コンボ枠は含めない */
+export interface HeatmapLayersExtracted {
+  /** 層ごとの押下数。宣言順で、コンボ枠は含めない */
   readonly layers: readonly HeatmapLayer[];
   /** コンボ枠。コンボの押下が無ければ `undefined` */
   readonly combo: HeatmapCombo | undefined;
@@ -69,25 +61,20 @@ export interface HeatmapExtracted {
 }
 
 /** 抽出の入力。解析設定はどれも表示だけが変わるので、抽出の結果には効かない。 */
-export interface HeatmapExtractInput {
+export interface HeatmapLayersExtractInput {
   readonly trace: Trace;
   readonly metrics: Metrics;
   readonly keyDetails: KeyDetails;
-  readonly options: HeatmapOptions;
+  readonly options: HeatmapLayersOptions;
 }
 
-export function computeHeatmapExtraction({ trace, metrics, keyDetails }: HeatmapExtractInput): HeatmapExtracted {
+export function computeHeatmapLayersExtraction({ trace, metrics, keyDetails }: HeatmapLayersExtractInput): HeatmapLayersExtracted {
   const attribution = attributeMetrics(trace.layerDefinitions, metrics);
   const layers = attribution.layers.map((layer): HeatmapLayer => ({
     ...layer,
     colorCounts: normalizedRoleColors(layer.role, layer),
   }));
   return {
-    integrated: {
-      presses: metrics.presses,
-      keyCounts: metrics.keyCounts,
-      maxCount: Math.max(0, ...metrics.keyCounts.values()),
-    },
     layers,
     combo: attribution.combo !== undefined && attribution.combo.presses > 0 ? attribution.combo : undefined,
     keyDetails,
@@ -102,15 +89,15 @@ export function computeHeatmapExtraction({ trace, metrics, keyDetails }: Heatmap
  * engine（`engine/cache.ts` の `getExtraction`）が呼ぶ、Analyzer契約の実体。
  * 解析設定はどれも表示だけが変わるので、抽出の結果には効かない。
  */
-export const heatmapDefinition: SingleAnalyzerDefinition<HeatmapOptions, HeatmapExtracted> = defineSingleAnalyzer({
-  id: 'heatmap',
-  options: heatmapOptions,
-  extract(context: SingleAnalyzerExtractContext<HeatmapOptions>): HeatmapExtracted {
-    return computeHeatmapExtraction({ ...context, keyDetails: context.keyDetails() });
+export const heatmapLayersDefinition: SingleAnalyzerDefinition<HeatmapLayersOptions, HeatmapLayersExtracted> = defineSingleAnalyzer({
+  id: 'heatmap-layers',
+  options: heatmapLayersOptions,
+  extract(context: SingleAnalyzerExtractContext<HeatmapLayersOptions>): HeatmapLayersExtracted {
+    return computeHeatmapLayersExtraction({ ...context, keyDetails: context.keyDetails() });
   },
   optionsDiscipline: {
-    sample: DEFAULT_HEATMAP_OPTIONS,
-    alternates: ALTERNATE_HEATMAP_OPTIONS,
+    sample: DEFAULT_HEATMAP_LAYERS_OPTIONS,
+    alternates: ALTERNATE_HEATMAP_LAYERS_OPTIONS,
     context: layerComboDisciplineContext,
   },
 });

@@ -548,11 +548,11 @@ test('新しいファイルは新しい構造の中に置く（src直下など�
 test('依存規則の判定そのもの', () => {
   assert.equal(layerViolation('trace/generate.ts', 'input/shapes/geometry.ts'), undefined);
   assert.ok(layerViolation('input/shapes/geometry.ts', 'trace/generate.ts'));
-  assert.ok(layerViolation('analyzers/heatmap/extract.ts', 'analyzers/bigram-flow/extract.ts'));
-  assert.equal(layerViolation('analyzers/heatmap/extract.ts', 'analyzers/contract.ts'), undefined);
-  assert.ok(layerViolation('analyzers/contract.ts', 'analyzers/heatmap/extract.ts'));
+  assert.ok(layerViolation('analyzers/heatmap-layers/extract.ts', 'analyzers/bigram-flow/extract.ts'));
+  assert.equal(layerViolation('analyzers/heatmap-layers/extract.ts', 'analyzers/contract.ts'), undefined);
+  assert.ok(layerViolation('analyzers/contract.ts', 'analyzers/heatmap-layers/extract.ts'));
   assert.equal(layerViolation('engine/run.ts', 'analyzers/contract.ts'), undefined);
-  assert.ok(layerViolation('engine/run.ts', 'analyzers/heatmap/extract.ts'));
+  assert.ok(layerViolation('engine/run.ts', 'analyzers/heatmap-layers/extract.ts'));
   assert.ok(layerViolation('hosts/workspace/pane.tsx', 'hosts/standalone/page.tsx'));
   assert.equal(layerViolation('hosts/workspace/pane.tsx', 'hosts/shared/chrome.tsx'), undefined);
   assert.ok(layerViolation('ui/primitives/button.tsx', 'input/layouts/types.ts'));
@@ -561,10 +561,10 @@ test('依存規則の判定そのもの', () => {
   assert.equal(layerViolation('app/app-state.ts', 'legacy/ui-state.ts'), undefined);
   assert.ok(layerViolation('platform/storage.ts', 'app/app-state.ts'));
   // 純粋さは推移的に守る。
-  assert.ok(layerViolation('analyzers/heatmap/extract.ts', 'ui/charts/bar.tsx'));
-  assert.ok(layerViolation('analyzers/heatmap/extract.ts', 'analyzers/heatmap/view.tsx'));
-  assert.equal(layerViolation('analyzers/heatmap/view.tsx', 'analyzers/heatmap/extract.ts'), undefined);
-  assert.equal(layerViolation('analyzers/heatmap/view.tsx', 'ui/charts/bar.tsx'), undefined);
+  assert.ok(layerViolation('analyzers/heatmap-layers/extract.ts', 'ui/charts/bar.tsx'));
+  assert.ok(layerViolation('analyzers/heatmap-layers/extract.ts', 'analyzers/heatmap-layers/view.tsx'));
+  assert.equal(layerViolation('analyzers/heatmap-layers/view.tsx', 'analyzers/heatmap-layers/extract.ts'), undefined);
+  assert.equal(layerViolation('analyzers/heatmap-layers/view.tsx', 'ui/charts/bar.tsx'), undefined);
   assert.ok(layerViolation('tester/engine/engine.ts', 'platform/storage.ts'));
   assert.ok(layerViolation('tester/engine/engine.ts', 'ui/primitives/button.tsx'));
   assert.equal(layerViolation('tester/view.tsx', 'platform/storage.ts'), undefined);

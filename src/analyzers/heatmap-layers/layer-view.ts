@@ -1,27 +1,24 @@
 import type { PhysicalKeyboardStandard } from '#input/shapes/geometry.ts';
 import {
-  classifyPresentationFaces,
   displayTriggerAlternatives,
-  faceDisplayCells,
   defaultLayerNames,
   layerDefinitionsWithLabels,
-  orderedPresentationLayers,
   triggerChordsDisplayText,
   type Layer,
 } from '#input/layouts/layers.ts';
 import { SINGLE_LAYER_ID, type CompactLayerViewPresentation, type Layout } from '#input/layouts/types.ts';
 import { mergeKeyDetails, type KeyDetail, type KeyDetails } from '#interpretation/key-detail.ts';
-import type { HeatmapExtracted, HeatmapLayer } from './extract.ts';
+import { presentationLayersOf } from '../heatmap-figure.ts';
+import type { HeatmapLayersExtracted, HeatmapLayer } from './extract.ts';
 import { normalizedRoleColors } from './layer-heatmap.ts';
 import {
   AUTO_SIDE_BY_SIDE_MAX_LAYERS,
-  type HeatmapColorScale,
   type HeatmapLayerArrangement,
   type HeatmapLayerDetail,
 } from './options.ts';
 
 /**
- * ヒートマップの層別図を並べるための、表示側の組み立て（純粋な計算）。
+ * レイヤー別ヒートマップの図を並べるための、表示側の組み立て（純粋な計算）。
  *
  * 押下数は抽出（`extract.ts`）が数えたものをそのまま使い、ここでは数え直さない。
  * 足すのは、配列が宣言した層の並び・タイトル・「まとめ」の合算と、図どうしで共通にする最大値だけ。
@@ -44,13 +41,6 @@ export interface HeatmapLayerEntry {
   readonly colorCounts: ReadonlyMap<string, number>;
 }
 
-/** 配列が宣言した層を、元の面の出現順に並べる。層の宣言が無い配列は、全キーを1枚にする。 */
-export function presentationLayersOf(layout: Layout): Layer[] {
-  const layers = orderedPresentationLayers(classifyPresentationFaces(layout));
-  if (layers.length === 0) layers.push({ id: SINGLE_LAYER_ID, role: 'layer', order: 0, faces: [] });
-  return layers;
-}
-
 function displayTriggerText(layout: Layout, face: Layer['faces'][number], standard: PhysicalKeyboardStandard | undefined): string {
   return face.presentationTriggerText
     ?? triggerChordsDisplayText(layout, displayTriggerAlternatives(face), standard);
@@ -65,19 +55,6 @@ function layerTitle(layer: Layer, index: number, label: string, layout: Layout, 
   const modeLabel = layout.layerDefinitions?.find((definition) => definition.id === layer.id)?.presentationModeLabel;
   const bracket = omitTrigger ? '' : ` [${triggers.join(' / ')}]`;
   return modeLabel === undefined ? `${head}${bracket}` : `${head}${bracket}・${modeLabel}`;
-}
-
-/** 層が持つキーの刻印。層が面を持たない（単打だけの）時は配列の刻印を使う。 */
-export function layerLegends(layer: Layer, layout: Layout): Map<string, string> {
-  if (layer.faces.length === 0) return new Map(layout.legends);
-  const cells = new Map<string, string>();
-  for (const face of layer.faces) {
-    for (const [key, label] of faceDisplayCells(face)) {
-      const previous = cells.get(key);
-      cells.set(key, previous === undefined ? label : `${previous} / ${label}`);
-    }
-  }
-  return cells;
 }
 
 function emptyLayer(id: string, label: string): HeatmapLayer {
@@ -119,7 +96,7 @@ export function canToggleLayerDetail(layout: Layout): boolean {
  */
 export function buildLayerEntries(
   layout: Layout,
-  extracted: HeatmapExtracted,
+  extracted: HeatmapLayersExtracted,
   detail: HeatmapLayerDetail,
   standard?: PhysicalKeyboardStandard,
 ): HeatmapLayerEntry[] {
@@ -192,12 +169,6 @@ export function sharedMaxCount(entries: readonly HeatmapLayerEntry[]): number {
     for (const count of entry.colorCounts.values()) max = Math.max(max, count);
   }
   return max;
-}
-
-/** 色の強度 `t`（0〜1）。仕様 §11.10の線形・対数。 */
-export function heatIntensity(count: number, maxCount: number, scale: HeatmapColorScale): number {
-  const max = Math.max(1, maxCount);
-  return scale === 'log' ? Math.log1p(count) / Math.log1p(max) : count / max;
 }
 
 /** 並べ方が自動の時は、層の数で並置かタブに決める。 */
