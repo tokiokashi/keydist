@@ -11,11 +11,11 @@ import { DEFAULT_HEATMAP_LAYERS_OPTIONS } from './options.ts';
 import {
   activeEntryIndex,
   buildLayerEntries,
-  canToggleLayerDetail,
   entryKeyDetail,
     resolveArrangement,
   sharedMaxCount,
 } from './layer-view.ts';
+import { canToggleLayerDetail } from '../layer-detail.ts';
 
 /**
  * ヒートマップ（レイヤー）の図の組み立て。期待値は、実行して確かめた値を固定している
