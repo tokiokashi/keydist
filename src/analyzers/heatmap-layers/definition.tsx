@@ -1,17 +1,15 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { displayTriggerKeys, handOfKey, layerShiftStyles } from '#input/layouts/layers.ts';
 import { resolveKeyId } from '#input/shapes/geometry.ts';
 import { keyboardStandardForGeometryId } from '#input/shapes/key-labels.ts';
-import { FigureSettingsBox, FigureSettingsToggle } from '#ui/primitives/figure-settings.tsx';
 import { bindOption, SegmentedOptionField } from '#ui/primitives/option-fields.tsx';
 import { heatmapLayersDefinition, type HeatmapLayersExtracted } from './extract.ts';
 import { HeatmapDiagram, type HeatmapShiftStyle } from '../heatmap-diagram.tsx';
 import { layerLegends, presentationLayersOf } from '../heatmap-figure.ts';
+import { LayerDetailHeading } from '../layer-detail-heading.tsx';
 import {
   activeEntryIndex,
   buildLayerEntries,
-  canToggleLayerDetail,
-  compactPresentationOf,
   entryKeyDetail,
   resolveArrangement,
   sharedMaxCount,
@@ -49,7 +47,6 @@ function shiftStylesByKey(faces: readonly Face[], styles: ReadonlyMap<Face, Heat
 
 export function HeatmapLayersBody({ layout, geometry, extracted, options, onOptionsChange, keySelection }: SingleBodyProps<HeatmapLayersExtracted, HeatmapLayersOptions>) {
   const standard = keyboardStandardForGeometryId(geometry.id);
-  const [detailOpen, setDetailOpen] = useState(false);
   const view = useMemo(() => {
     const entries = buildLayerEntries(layout, extracted, options.layerDetail, standard);
     const presentation = presentationLayersOf(layout);
@@ -68,7 +65,6 @@ export function HeatmapLayersBody({ layout, geometry, extracted, options, onOpti
   const arrangement = resolveArrangement(options.layerArrangement, entries.length);
   const tabbed = arrangement === 'tabs' && entries.length > 1;
   const activeIndex = activeEntryIndex(entries, options.activeLayerId);
-  const compact = compactPresentationOf(layout);
   const shiftLegend = entries.flatMap((entry) => {
     const style = entry.layer.faces.map((face) => styles.get(face)).find((candidate) => candidate !== undefined);
     return style === undefined ? [] : [{ id: entry.id, style, label: `レイヤー${style.layerIndex}の${entry.label}` }];
@@ -77,24 +73,14 @@ export function HeatmapLayersBody({ layout, geometry, extracted, options, onOpti
 
   return (
     <div className="heatmap-feature heatmap-layers" data-react-feature="heatmap-layers">
-      <div className="heatmap-heading">
+      <LayerDetailHeading
+        layout={layout}
+        figureName="ヒートマップ（レイヤー）"
+        headingClassName="heatmap-heading"
+        binding={bindOption(options, DEFAULT_HEATMAP_LAYERS_OPTIONS, onOptionsChange, 'layerDetail')}
+      >
         <h3 id="heatmap-layers-heading">ヒートマップ（レイヤー）・{entries.length}図</h3>
-        {compact !== undefined && canToggleLayerDetail(layout) ? (
-          <FigureSettingsToggle name="ヒートマップ（レイヤー）" open={detailOpen} onToggle={() => setDetailOpen(!detailOpen)} />
-        ) : null}
-      </div>
-      {compact !== undefined && canToggleLayerDetail(layout) && detailOpen ? (
-        <FigureSettingsBox name="ヒートマップ（レイヤー）">
-          <SegmentedOptionField
-            label={compact.controlLabel}
-            binding={bindOption(options, DEFAULT_HEATMAP_LAYERS_OPTIONS, onOptionsChange, 'layerDetail')}
-            choices={[
-              { value: 'compact', label: compact.compactLabel },
-              { value: 'detail', label: compact.detailLabel },
-            ]}
-          />
-        </FigureSettingsBox>
-      ) : null}
+      </LayerDetailHeading>
       {shiftLegend.length > 0 ? (
         <div className="heatmap-shift-legend" aria-label="シフトキーの枠色">
           {shiftLegend.map((item) => (

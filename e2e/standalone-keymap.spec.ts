@@ -89,6 +89,44 @@ test('トリガーになるキーの色付け: 1キーでレイヤーに切り�
   await expect(pattern.locator('[data-guide="trigger"]')).toHaveCount(0);
 });
 
+test('レイヤーをまとめる配列: 既定では凡例が2項目で、まとめられる側のトリガーは目立たない色になり、全レイヤー詳細で全レイヤーの凡例が出る', async ({ page }) => {
+  await selectLayout(page, 'naginata-v18');
+  await page.goto('/standalone/keymap');
+  await expect(feature(page)).toBeVisible({ timeout: 10_000 });
+  const pattern = feature(page).locator('[data-keymap-pattern]');
+  const legend = pattern.locator('[data-keymap-trigger-legend] [data-legend-tone]');
+  await expect(legend).toHaveCount(2);
+  await expect(legend.nth(1)).toHaveText('それ以外のレイヤー');
+
+  const q = pattern.locator('[data-key-id="q"]');
+  await expect(q).toHaveAttribute('data-accent-tone', 'muted');
+  const strokeOf = (key: Locator) => key.locator('rect').first().evaluate((rect) => getComputedStyle(rect).stroke);
+  const plain = await strokeOf(pattern.locator('.physical-keyboard-key:not([data-guide]):not([data-accent-tone]):not([data-accent-slot])').first());
+  expect(await strokeOf(q)).not.toBe(plain);
+  await q.click();
+  await expect(q).toHaveAttribute('aria-pressed', 'true');
+  await expect(q).toHaveAttribute('data-accent-tone', 'muted');
+  await q.click();
+
+  await page.getByRole('button', { name: 'キーを選んで出る文字を調べる図の表示', exact: true }).click();
+  const box = page.getByRole('group', { name: 'キーを選んで出る文字を調べる図の表示' });
+  await box.getByRole('button', { name: '全レイヤー詳細' }).click();
+  await expect(legend).toHaveCount(30);
+  await expect(q).not.toHaveAttribute('data-accent-tone', 'muted');
+  await expect(q).toHaveAttribute('data-accent-slot', /\d/);
+  await box.getByRole('button', { name: '2レイヤーにまとめる' }).click();
+  await expect(legend).toHaveCount(2);
+});
+
+for (const layoutId of ['kawasemi-plus', 'nicola']) {
+  test(`${layoutId}: レイヤーをまとめる宣言が無い配列には、まとめ方の切り替えを出さない`, async ({ page }) => {
+    await selectLayout(page, layoutId);
+    await page.goto('/standalone/keymap');
+    await expect(feature(page)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('button', { name: 'キーを選んで出る文字を調べる図の表示' })).toHaveCount(0);
+  });
+}
+
 test('トリガーになるキーの枠: 実線で、普通のキーの枠より太く、続けて押せるキーの枠より細い。凡例の見本も実線', async ({ page }) => {
   await selectLayout(page, 'kawasemi-plus');
   await page.goto('/standalone/keymap');

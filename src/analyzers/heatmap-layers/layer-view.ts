@@ -6,9 +6,10 @@ import {
   triggerChordsDisplayText,
   type Layer,
 } from '#input/layouts/layers.ts';
-import { SINGLE_LAYER_ID, type CompactLayerViewPresentation, type Layout } from '#input/layouts/types.ts';
+import { SINGLE_LAYER_ID, type Layout } from '#input/layouts/types.ts';
 import { mergeKeyDetails, type KeyDetail, type KeyDetails } from '#interpretation/key-detail.ts';
 import { presentationLayersOf } from '../heatmap-figure.ts';
+import { compactPresentationOf } from '../layer-detail.ts';
 import type { HeatmapLayersExtracted, HeatmapLayer } from './extract.ts';
 import { normalizedRoleColors } from './layer-heatmap.ts';
 import {
@@ -76,17 +77,6 @@ function sumCounts(parts: readonly ReadonlyMap<string, number>[]): Map<string, n
     for (const [key, count] of part) total.set(key, (total.get(key) ?? 0) + count);
   }
   return total;
-}
-
-/** 層をまとめる表示を、この配列が宣言しているか。 */
-export function compactPresentationOf(layout: Layout): CompactLayerViewPresentation | undefined {
-  return layout.layerViewPresentation?.compact;
-}
-
-/** 「まとめ」と「詳細」を切り替える意味がある（まとめると層の数が減る）か。 */
-export function canToggleLayerDetail(layout: Layout): boolean {
-  const compact = compactPresentationOf(layout);
-  return compact !== undefined && presentationLayersOf(layout).length > compact.keepLayerIds.length;
 }
 
 /**

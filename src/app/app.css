@@ -1096,6 +1096,14 @@ h1 {
 .physical-keyboard-key[data-selected][data-accent-slot="7"] rect { stroke: var(--series-7); }
 .physical-keyboard-key[data-selected][data-accent-slot="8"] rect { stroke: var(--series-8); }
 
+/*
+ * まとめられた側のレイヤーのトリガーは、レイヤーの色でも選択の色でもない、目立たない1色の枠にする。
+ * 普通のキーの枠（--border）より濃い色にして、トリガーのキーと見分ける。選んだ時もこの色のままにする
+ */
+.physical-keyboard-key[data-accent-tone="muted"]:not([data-accent-slot]) rect {
+  stroke: var(--text-muted);
+}
+
 .physical-keyboard-key[role="button"]:focus-visible {
   outline: none;
 }
