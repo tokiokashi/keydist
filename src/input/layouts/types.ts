@@ -72,6 +72,12 @@ export interface Face {
    */
   modifierGroups?: Readonly<Record<string, string>>;
   /**
+   * 修飾の面ではない面（compositionの面など）が、各trigger keyの意味を引く組。
+   * keyはFace.trigger内のauthoring key、値は `Layout.triggerMeanings` の組。
+   * 修飾のroleは作らず、トリガーの文字の表示だけに使う。修飾の面は `modifierGroups` が同じ役を担う。
+   */
+  triggerMeaningGroups?: Readonly<Record<string, string>>;
+  /**
    * trigger が出力キーより先/後である必要がある場合の順序制約。
    * mode='prefix' / 'suffix' は暗黙に同じ制約を持つ。simultaneousのまま
    * 「先押しして重ねる」入力を表す場合だけ明示する。
@@ -191,8 +197,25 @@ export type TriggerMeaning =
   | { readonly kind: 'char'; readonly text: string }
   | { readonly kind: 'modifierKey'; readonly text: string };
 
-/** 修飾の組（`Face.modifierGroups` の値）→ トリガーのキー → 意味。 */
+export const charMeaning = (text: string): TriggerMeaning => ({ kind: 'char', text });
+export const modifierKeyMeaning = (text: string): TriggerMeaning => ({ kind: 'modifierKey', text });
+
+/** 組（`Face.modifierGroups` と `Face.triggerMeaningGroups` の値）→ トリガーのキー → 意味。 */
 export type TriggerMeanings = Readonly<Record<string, Readonly<Record<string, TriggerMeaning>>>>;
+
+/**
+ * 面のトリガーのキーが属する組の名前を、そのまま修飾のキーの意味にした表。
+ * 位置で決まるキーが、層の名前と同じ修飾のキーとして働く配列が使う（組の名前に層の名前を書く）。
+ */
+export function groupNamedModifierKeyMeanings(faces: readonly Face[]): TriggerMeanings {
+  const meanings: Record<string, Record<string, TriggerMeaning>> = {};
+  for (const face of faces) {
+    for (const [key, group] of Object.entries({ ...face.modifierGroups, ...face.triggerMeaningGroups })) {
+      (meanings[group] ??= {})[key] = modifierKeyMeaning(group);
+    }
+  }
+  return meanings;
+}
 
 export interface Layout {
   id: string;

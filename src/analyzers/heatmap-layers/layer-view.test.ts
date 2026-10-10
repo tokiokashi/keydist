@@ -125,10 +125,10 @@ test('レイヤーの見出しは、トリガーのキーを物理キーの名�
     buildLayerEntries(shingeta.layout, shingeta.extracted, 'detail', 'ansi').map((entry) => entry.title),
     [
       'レイヤー1: 単打',
-      'レイヤー2: 中指シフト [い / か]・同時',
-      'レイヤー3: 薬指シフト [し / と]・同時',
-      'レイヤー4: 拗音1 [こ]・同時',
-      'レイヤー5: 拗音2 [が]・同時',
+      'レイヤー2: 中指シフト [K / D]・同時',
+      'レイヤー3: 薬指シフト [L / S]・同時',
+      'レイヤー4: 拗音1 [I]・同時',
+      'レイヤー5: 拗音2 [O]・同時',
     ],
   );
   const naginata = extractionFor('naginata-v18', 'あ');

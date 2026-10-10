@@ -163,6 +163,6 @@ test('どれか1つで足りるtriggerは「/」、刻印の無いキーは表�
   };
   // 月配列のd・kはどちらか片方で前置シフトになる。同時押しではない
   assert.equal(text(TSUKI_2_263, '中指シフト'), 'D / K');
-  assert.equal(text(SHINGETA, '中指シフト'), 'い / か');
-  assert.equal(text(SHINGETA, '薬指シフト'), 'し / と');
+  assert.equal(text(SHINGETA, '中指シフト'), 'K / D');
+  assert.equal(text(SHINGETA, '薬指シフト'), 'L / S');
 });

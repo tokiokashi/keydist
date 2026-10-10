@@ -9323,37 +9323,37 @@
           },
           {
             "id": "face:4",
-            "label": "おのシフト",
+            "label": "ひ・びのシフト",
             "presses": 0
           },
           {
             "id": "face:5",
-            "label": "ののシフト",
+            "label": "き・ぎのシフト",
             "presses": 0
           },
           {
             "id": "face:6",
-            "label": "にのシフト",
+            "label": "つ・に・づのシフト",
             "presses": 4
           },
           {
             "id": "face:7",
-            "label": "ーのシフト",
+            "label": "ぴ・ぱのシフト",
             "presses": 0
           },
           {
             "id": "face:8",
-            "label": "んのシフト",
+            "label": "ふ・ぶのシフト",
             "presses": 0
           },
           {
             "id": "face:9",
-            "label": "いのシフト",
+            "label": "く・い・ぐのシフト",
             "presses": 4
           },
           {
             "id": "face:10",
-            "label": "しのシフト",
+            "label": "り・し・じのシフト",
             "presses": 6
           },
           {
@@ -9363,22 +9363,22 @@
           },
           {
             "id": "face:12",
-            "label": "っのシフト",
+            "label": "みのシフト",
             "presses": 0
           },
           {
             "id": "face:13",
-            "label": "うのシフト",
+            "label": "う・ヴのシフト",
             "presses": 0
           },
           {
             "id": "face:14",
-            "label": "すのシフト",
+            "label": "て・でのシフト",
             "presses": 0
           },
           {
             "id": "face:15",
-            "label": "らのシフト",
+            "label": "ち・ぢのシフト",
             "presses": 2
           },
           {
@@ -9599,37 +9599,37 @@
           },
           {
             "id": "face:4",
-            "label": "おのシフト",
+            "label": "ひ・びのシフト",
             "presses": 6
           },
           {
             "id": "face:5",
-            "label": "ののシフト",
+            "label": "き・ぎのシフト",
             "presses": 8
           },
           {
             "id": "face:6",
-            "label": "にのシフト",
+            "label": "つ・に・づのシフト",
             "presses": 0
           },
           {
             "id": "face:7",
-            "label": "ーのシフト",
+            "label": "ぴ・ぱのシフト",
             "presses": 2
           },
           {
             "id": "face:8",
-            "label": "んのシフト",
+            "label": "ふ・ぶのシフト",
             "presses": 0
           },
           {
             "id": "face:9",
-            "label": "いのシフト",
+            "label": "く・い・ぐのシフト",
             "presses": 98
           },
           {
             "id": "face:10",
-            "label": "しのシフト",
+            "label": "り・し・じのシフト",
             "presses": 24
           },
           {
@@ -9639,22 +9639,22 @@
           },
           {
             "id": "face:12",
-            "label": "っのシフト",
+            "label": "みのシフト",
             "presses": 0
           },
           {
             "id": "face:13",
-            "label": "うのシフト",
+            "label": "う・ヴのシフト",
             "presses": 0
           },
           {
             "id": "face:14",
-            "label": "すのシフト",
+            "label": "て・でのシフト",
             "presses": 0
           },
           {
             "id": "face:15",
-            "label": "らのシフト",
+            "label": "ち・ぢのシフト",
             "presses": 6
           },
           {
@@ -10942,6 +10942,6 @@
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     }
   ],
-  "sourceCommit": "f5cc7e0e03302cb3c276836339430638d6ebb5b4",
+  "sourceCommit": "d0a8bb26e620fadbba4db16175f824e84ec32369",
   "version": 1
 }

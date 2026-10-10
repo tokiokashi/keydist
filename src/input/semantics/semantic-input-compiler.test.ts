@@ -563,8 +563,8 @@ test('built-inの相互Face membershipはauthoring側へ明示される', () => 
     && input.physicalKeys.includes('d')
     && input.physicalKeys.includes('k'))!;
   assert.deepEqual(re.roles, [
-    { key: 'd', role: 'modifier' },
-    { key: 'k', role: 'modifier' },
+    { key: 'd', role: 'modifier', modifierGroupId: '中指シフト' },
+    { key: 'k', role: 'modifier', modifierGroupId: '中指シフト' },
   ]);
   assert.equal(re.faceMemberships.length, 2);
 
