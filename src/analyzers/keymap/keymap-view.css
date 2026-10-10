@@ -10,6 +10,17 @@
   font-weight: 600;
 }
 
+.keymap-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.4rem;
+}
+
+.keymap-heading h3 {
+  margin: 0;
+}
+
 .keymap-empty {
   margin: 0;
   color: var(--text-muted);

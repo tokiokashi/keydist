@@ -1,5 +1,6 @@
 import * as v from 'valibot';
 import { defineOption, defineOptions, picklistUrlCodec } from '#analyzers/options.ts';
+import { layerDetailOption, type LayerDetail } from '#analyzers/layer-detail.ts';
 import type { HeatmapColorScale } from '../heatmap-figure.ts';
 
 /**
@@ -17,8 +18,7 @@ const COLOR_SCALES = ['linear', 'log'] as const satisfies readonly HeatmapColorS
 const LAYER_ARRANGEMENTS = ['auto', 'side-by-side', 'tabs'] as const;
 export type HeatmapLayerArrangement = (typeof LAYER_ARRANGEMENTS)[number];
 
-const LAYER_DETAILS = ['compact', 'detail'] as const;
-export type HeatmapLayerDetail = (typeof LAYER_DETAILS)[number];
+export type HeatmapLayerDetail = LayerDetail;
 
 /** 並べ方が自動の時に、並置にする層の数の上限。 */
 export const AUTO_SIDE_BY_SIDE_MAX_LAYERS = 5;
@@ -38,13 +38,7 @@ export const heatmapLayersOptions = defineOptions({
     url: picklistUrlCodec('arrange', LAYER_ARRANGEMENTS),
     label: 'レイヤーの並べ方',
   }),
-  layerDetail: defineOption<HeatmapLayerDetail>({
-    schema: v.picklist(LAYER_DETAILS),
-    default: 'compact',
-    affects: 'view',
-    url: picklistUrlCodec('layers', LAYER_DETAILS),
-    label: 'レイヤーのまとめ方',
-  }),
+  layerDetail: layerDetailOption(),
   activeLayerId: defineOption<string>({
     schema: v.string(),
     default: '',

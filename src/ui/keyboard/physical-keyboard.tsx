@@ -11,6 +11,8 @@ export interface PhysicalKeyboardKeyView {
   readonly trigger?: boolean;
   readonly combo?: boolean;
   readonly accentSlot?: number;
+  /** レイヤーの色の番号を持たない、目立たない1色の枠（まとめられた側のレイヤーのトリガー）。 */
+  readonly accentTone?: 'muted';
   readonly guide?: 'continuation' | 'output' | 'trigger';
   readonly lookup?: boolean;
   /** キーを選んでいく操作で、選択中のキー。 */
@@ -104,6 +106,7 @@ export function PhysicalKeyboard({
             <g
               className="physical-keyboard-key"
               data-accent-slot={view?.accentSlot}
+              data-accent-tone={view?.accentTone}
               data-combo={view?.combo || undefined}
               data-guide={view?.guide}
               data-highlighted={view?.highlighted || undefined}
