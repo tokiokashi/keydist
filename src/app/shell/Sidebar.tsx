@@ -2,7 +2,8 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import { useSyncExternalStore, type ReactNode } from 'react';
 import { BIGRAM_FLOW_PANE_META } from '#analyzers/bigram-flow/pane-meta.ts';
 import { FINGER_DISTANCE_PANE_META } from '#analyzers/finger-distance/pane-meta.ts';
-import { HEATMAP_PANE_META } from '#analyzers/heatmap/pane-meta.ts';
+import { HEATMAP_INTEGRATED_PANE_META } from '#analyzers/heatmap-integrated/pane-meta.ts';
+import { HEATMAP_LAYERS_PANE_META } from '#analyzers/heatmap-layers/pane-meta.ts';
 import { LAYER_COMBO_PANE_META } from '#analyzers/layer-combo/pane-meta.ts';
 import { COMPARISON_PANE_META } from '#analyzers/comparison/pane-meta.ts';
 import { FINGER_MATRIX_PANE_META } from '#analyzers/finger-matrix/pane-meta.ts';
@@ -147,7 +148,8 @@ export function Sidebar({ pinned, onPinnedChange, onNavigate }: SidebarProps) {
           <h3 className="sidebar-subheading">Single</h3>
           <NavLink to="/standalone/bigram-flow" onNavigate={onNavigate}>{BIGRAM_FLOW_PANE_META.name}</NavLink>
           <NavLink to="/standalone/finger-distance" onNavigate={onNavigate}>{FINGER_DISTANCE_PANE_META.name}</NavLink>
-          <NavLink to="/standalone/heatmap" onNavigate={onNavigate}>{HEATMAP_PANE_META.name}</NavLink>
+          <NavLink to="/standalone/heatmap-integrated" onNavigate={onNavigate}>{HEATMAP_INTEGRATED_PANE_META.name}</NavLink>
+          <NavLink to="/standalone/heatmap-layers" onNavigate={onNavigate}>{HEATMAP_LAYERS_PANE_META.name}</NavLink>
           <NavLink to="/standalone/layer-combo" onNavigate={onNavigate}>{LAYER_COMBO_PANE_META.name}</NavLink>
           <h3 className="sidebar-subheading">Multi</h3>
           <NavLink to="/standalone/comparison" onNavigate={onNavigate}>{COMPARISON_PANE_META.name}</NavLink>

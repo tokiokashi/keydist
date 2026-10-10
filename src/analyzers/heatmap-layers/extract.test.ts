@@ -6,11 +6,11 @@ import { fromRows, type Layout } from '#input/layouts/types.ts';
 import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
 import { computeKeyDetails } from '#interpretation/key-detail.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
-import { computeHeatmapExtraction } from './extract.ts';
-import { DEFAULT_HEATMAP_OPTIONS } from './options.ts';
+import { computeHeatmapLayersExtraction } from './extract.ts';
+import { DEFAULT_HEATMAP_LAYERS_OPTIONS } from './options.ts';
 
 /**
- * ヒートマップの抽出（キー × 層の押下数）。期待値は、打つ文字から手で数えられる小さいテキストで固定する。
+ * レイヤー別ヒートマップの抽出（キー × 層の押下数）。期待値は、打つ文字から手で数えられる小さいテキストで固定する。
  */
 
 const geometry = buildGeometry('row-staggered');
@@ -23,16 +23,13 @@ function extractFor(layoutId: string, text: string) {
   assert.ok(layout, layoutId);
   const trace = generateTrace(text, layout, geometry, DEFAULT_TRACE_POLICY);
   assert.equal(trace.skipped, 0);
-  return computeHeatmapExtraction({ trace, metrics: computeMetrics(trace, geometry), keyDetails: computeKeyDetails(trace, geometry), options: DEFAULT_HEATMAP_OPTIONS });
+  return computeHeatmapLayersExtraction({ trace, metrics: computeMetrics(trace, geometry), keyDetails: computeKeyDetails(trace, geometry), options: DEFAULT_HEATMAP_LAYERS_OPTIONS });
 }
 
 const entries = (map: ReadonlyMap<string, number>) => [...map].sort(([a], [b]) => a.localeCompare(b));
 
-test('層が1つの配列: 統合と唯一の層が同じ押下数になる', () => {
+test('層が1つの配列: 唯一の層に全部の押下が入る', () => {
   const extracted = extractFor('single-layer', 'aaq');
-  assert.deepEqual(entries(extracted.integrated.keyCounts), [['a', 2], ['q', 1]]);
-  assert.equal(extracted.integrated.presses, 3);
-  assert.equal(extracted.integrated.maxCount, 2);
   assert.deepEqual(extracted.layers.map((layer) => layer.id), ['single']);
   const [single] = extracted.layers;
   assert.deepEqual(entries(single.keyCounts), [['a', 2], ['q', 1]]);
@@ -41,13 +38,9 @@ test('層が1つの配列: 統合と唯一の層が同じ押下数になる', ()
   assert.equal(extracted.combo, undefined);
 });
 
-test('層が複数の配列(Shiftあり): 統合は合算、層別は層のidごとに分かれる', () => {
+test('層が複数の配列(Shiftあり): 押下は層のidごとに分かれる', () => {
   // "aAa": a(単打) + A(右Shift + a) + a(単打)。Shiftの層は右Shiftとaの押下を1回ずつ持つ
   const extracted = extractFor('qwerty', 'aAa');
-  assert.deepEqual(entries(extracted.integrated.keyCounts), [['a', 3], ['shift-r', 1]]);
-  assert.equal(extracted.integrated.presses, 4);
-  assert.equal(extracted.integrated.maxCount, 3);
-
   assert.deepEqual(extracted.layers.map((layer) => layer.id), ['single', 'layer:Shift']);
   const [single, shift] = extracted.layers;
   assert.deepEqual(entries(single.keyCounts), [['a', 2]]);
@@ -56,14 +49,13 @@ test('層が複数の配列(Shiftあり): 統合は合算、層別は層のidご
   assert.equal(shift.role, 'modifier');
   // 色用の押下数では、層操作として押したShiftを除く
   assert.deepEqual(entries(shift.colorCounts), [['a', 1]]);
-  // 層の合計は統合と一致する
-  assert.equal(single.presses + shift.presses, extracted.integrated.presses);
+  // 層の合計は全押下数と一致する
+  assert.equal(single.presses + shift.presses, 4);
 });
 
 test('層が複数のかな配列: 使わなかった層も宣言順に空の層として残る', () => {
   // 新下駄の "あいがぱ": 単打(あ・い)と中指シフト(が・ぱ)
   const extracted = extractFor('shingeta', 'あいがぱ');
-  assert.deepEqual(entries(extracted.integrated.keyCounts), [['d', 2], ['j', 1], ['k', 1], ['o', 1], ['u', 1]]);
   assert.deepEqual(
     extracted.layers.map((layer) => [layer.id, layer.presses]),
     [['single', 2], ['layer:中指シフト', 4], ['layer:薬指シフト', 0], ['layer:拗音1', 0], ['layer:拗音2', 0]],
@@ -77,8 +69,6 @@ test('層が複数のかな配列: 使わなかった層も宣言順に空の層
 
 test('テキストが空なら、すべて0で層の構成だけが残る', () => {
   const extracted = extractFor('qwerty', '');
-  assert.equal(extracted.integrated.presses, 0);
-  assert.equal(extracted.integrated.maxCount, 0);
   assert.deepEqual(extracted.layers.map((layer) => layer.id), ['single', 'layer:Shift']);
 });
 
@@ -114,7 +104,6 @@ test('コンボ枠は層に含めず別に持つ。押下が無ければ持た�
   assert.deepEqual(entries(used.combo!.keyCounts), [[';', 1], ['l', 1]]);
   assert.equal(used.combo!.presses, 2);
   assert.equal(used.layers.some((layer) => layer.id === 'combo'), false);
-  assert.deepEqual(entries(used.integrated.keyCounts), [[';', 1], ['l', 1]]);
 
   const unused = extractFor('kawasemi-plus', 'あ');
   assert.equal(unused.combo, undefined);

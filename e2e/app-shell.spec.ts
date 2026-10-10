@@ -262,8 +262,11 @@ test('テキストの名前は、チップの外を押して閉じても書か�
 
   // 1回目: 欄に打ってすぐチップの外（ページの見出し）を押す。
   await name.fill('名前その1');
-  // サイドバーの何も無い所（チップの欄が被らない所）を押す。
-  await page.mouse.click(120, 600);
+  // チップの外にある操作の無い要素（本体の図の見出し）を押す。ボタンやリンクを含まない見出しで、パネルの外にある。
+  const outside = page.getByRole('heading', { name: /^Relative vectors/ });
+  await expect(panel.getByRole('heading', { name: /^Relative vectors/ })).toHaveCount(0);
+  await expect(outside.locator('a, button, input')).toHaveCount(0);
+  await outside.click();
   await expect(panel).toBeHidden();
   await expect(chip).toContainText('名前その1');
 

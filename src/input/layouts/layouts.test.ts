@@ -21,7 +21,7 @@ import {
   layerDefinitionsWithLabels,
   layerShiftStyles,
 } from './layers.ts';
-import { normalizedLayerColors } from '#analyzers/heatmap/layer-heatmap.ts';
+import { normalizedLayerColors } from '#analyzers/heatmap-layers/layer-heatmap.ts';
 
 const faceAtF = (output: string) => ['', '', ['', '', '', output], ''];
 

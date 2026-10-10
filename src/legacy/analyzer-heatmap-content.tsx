@@ -11,7 +11,7 @@ import {
 } from '#input/shapes/geometry.ts';
 import type { AnalyzerMetricsModel } from './analyzer-metrics-model.ts';
 import type { AnalyzerUiStateOwner } from './analyzer-ui-state-owner.ts';
-import { normalizedLayerColors } from '#analyzers/heatmap/layer-heatmap.ts';
+import { normalizedLayerColors } from '#analyzers/heatmap-layers/layer-heatmap.ts';
 import {
   classifyPresentationFaces,
   displayTriggerAlternatives,

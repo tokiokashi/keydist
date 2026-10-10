@@ -13,9 +13,9 @@ import { buildGeometry } from '#input/shapes/geometry.ts';
 import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { computeKeyDetails } from '#interpretation/key-detail.ts';
-import { computeHeatmapExtraction } from '#analyzers/heatmap/extract.ts';
-import { DEFAULT_HEATMAP_OPTIONS } from '#analyzers/heatmap/options.ts';
-import { buildLayerEntries } from '#analyzers/heatmap/layer-view.ts';
+import { computeHeatmapLayersExtraction } from '#analyzers/heatmap-layers/extract.ts';
+import { DEFAULT_HEATMAP_LAYERS_OPTIONS } from '#analyzers/heatmap-layers/options.ts';
+import { buildLayerEntries } from '#analyzers/heatmap-layers/layer-view.ts';
 import { modifierRows } from '#analyzers/layer-combo/layout-breakdown.ts';
 
 /**
@@ -28,11 +28,11 @@ const ALL_LAYOUTS: readonly Layout[] = [...LAYOUTS, ...LAYOUTS_JA];
 
 function heatmapTitles(layout: Layout) {
   const trace = generateTrace('あ', layout, geometry, DEFAULT_TRACE_POLICY);
-  const extracted = computeHeatmapExtraction({
+  const extracted = computeHeatmapLayersExtraction({
     trace,
     metrics: computeMetrics(trace, geometry),
     keyDetails: computeKeyDetails(trace, geometry),
-    options: DEFAULT_HEATMAP_OPTIONS,
+    options: DEFAULT_HEATMAP_LAYERS_OPTIONS,
   });
   return { trace, entries: buildLayerEntries(layout, extracted, 'detail') };
 }
@@ -159,7 +159,7 @@ test('レイヤーの名前を画面に出すソースは、生の定義の名�
     'src/input/layouts/layers.ts',
     'src/input/layouts/key-pattern-picker.ts',
     'src/analyzers/key-detail-view.ts',
-    'src/analyzers/heatmap/layer-view.ts',
+    'src/analyzers/heatmap-layers/layer-view.ts',
     'src/legacy/analyzer-heatmap-content.tsx',
     'src/trace/generate.ts',
   ]);

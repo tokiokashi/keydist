@@ -6,20 +6,19 @@ import { sampleText } from '#input/text/samples.ts';
 import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
 import { computeKeyDetails } from '#interpretation/key-detail.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
-import { computeHeatmapExtraction } from './extract.ts';
-import { DEFAULT_HEATMAP_OPTIONS } from './options.ts';
+import { computeHeatmapLayersExtraction } from './extract.ts';
+import { DEFAULT_HEATMAP_LAYERS_OPTIONS } from './options.ts';
 import {
   activeEntryIndex,
   buildLayerEntries,
   canToggleLayerDetail,
   entryKeyDetail,
-  heatIntensity,
-  resolveArrangement,
+    resolveArrangement,
   sharedMaxCount,
 } from './layer-view.ts';
 
 /**
- * ヒートマップの層別図の組み立て。期待値は、実行して確かめた値を固定している
+ * レイヤー別ヒートマップの図の組み立て。期待値は、実行して確かめた値を固定している
  * （配列・テキストは各テストに併記。物理配列はrow-staggered、`DEFAULT_TRACE_POLICY`）。
  */
 
@@ -30,7 +29,7 @@ function extractionFor(layoutId: string, text: string) {
   assert.ok(layout, layoutId);
   const trace = generateTrace(text, layout, geometry, DEFAULT_TRACE_POLICY);
   assert.equal(trace.skipped, 0);
-  return { layout, extracted: computeHeatmapExtraction({ trace, metrics: computeMetrics(trace, geometry), keyDetails: computeKeyDetails(trace, geometry), options: DEFAULT_HEATMAP_OPTIONS }) };
+  return { layout, extracted: computeHeatmapLayersExtraction({ trace, metrics: computeMetrics(trace, geometry), keyDetails: computeKeyDetails(trace, geometry), options: DEFAULT_HEATMAP_LAYERS_OPTIONS }) };
 }
 
 const total = (counts: ReadonlyMap<string, number>) => [...counts.values()].reduce((sum, count) => sum + count, 0);
@@ -95,23 +94,14 @@ test('全配列: 層別図の押下数の合計とコンボ枠は、統合の押
     const text = LAYOUTS_JA.includes(layout) ? 'あいがぱ' : 'aAbB';
     const trace = generateTrace(text, layout, geometry, DEFAULT_TRACE_POLICY);
     if (trace.skipped > 0) continue;
-    const extracted = computeHeatmapExtraction({ trace, metrics: computeMetrics(trace, geometry), keyDetails: computeKeyDetails(trace, geometry), options: DEFAULT_HEATMAP_OPTIONS });
+    const metrics = computeMetrics(trace, geometry);
+    const extracted = computeHeatmapLayersExtraction({ trace, metrics, keyDetails: computeKeyDetails(trace, geometry), options: DEFAULT_HEATMAP_LAYERS_OPTIONS });
     for (const detail of ['compact', 'detail'] as const) {
       const entries = buildLayerEntries(layout, extracted, detail);
       const layered = entries.reduce((sum, entry) => sum + total(entry.keyCounts), 0);
-      assert.equal(layered + (extracted.combo?.presses ?? 0), extracted.integrated.presses, `${layout.id} ${detail}`);
+      assert.equal(layered + (extracted.combo?.presses ?? 0), metrics.presses, `${layout.id} ${detail}`);
     }
   }
-});
-
-test('色の強度の線形と対数。最大値が0以下でも割り算で壊れない', () => {
-  assert.equal(heatIntensity(5, 10, 'linear'), 0.5);
-  assert.equal(heatIntensity(0, 10, 'linear'), 0);
-  assert.equal(heatIntensity(10, 10, 'linear'), 1);
-  assert.equal(heatIntensity(9, 99, 'log'), Math.log(10) / Math.log(100));
-  assert.equal(heatIntensity(10, 10, 'log'), 1);
-  assert.equal(heatIntensity(0, 0, 'linear'), 0);
-  assert.equal(heatIntensity(0, 0, 'log'), 0);
 });
 
 test('並べ方は自動なら5層まで並置、6層からタブ', () => {
@@ -158,7 +148,7 @@ test('図ごとのキーの詳細: 押下数は、その図のツールチップ
     const { layout, extracted } = extractionFor(layoutId, text);
     for (const detail of ['compact', 'detail'] as const) {
       for (const entry of buildLayerEntries(layout, extracted, detail)) {
-        const keys = new Set([...entry.keyCounts.keys(), ...extracted.integrated.keyCounts.keys()]);
+        const keys = new Set([...entry.keyCounts.keys(), ...extracted.keyDetails.merged.keys()]);
         for (const keyId of keys) {
           const value = entryKeyDetail(extracted.keyDetails, entry.faceIds, keyId);
           assert.equal(value?.presses ?? 0, entry.keyCounts.get(keyId) ?? 0, `${layoutId} ${detail} ${entry.id} ${keyId}`);

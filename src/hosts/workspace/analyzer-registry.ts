@@ -8,8 +8,10 @@ import { fingerMatrixDefinition } from '#analyzers/finger-matrix/extract.ts';
 import { FINGER_MATRIX_PANE_META } from '#analyzers/finger-matrix/pane-meta.ts';
 import { fingerDistanceDefinition } from '#analyzers/finger-distance/extract.ts';
 import { FINGER_DISTANCE_PANE_META } from '#analyzers/finger-distance/pane-meta.ts';
-import { heatmapDefinition } from '#analyzers/heatmap/extract.ts';
-import { HEATMAP_PANE_META } from '#analyzers/heatmap/pane-meta.ts';
+import { heatmapIntegratedDefinition } from '#analyzers/heatmap-integrated/extract.ts';
+import { HEATMAP_INTEGRATED_PANE_META } from '#analyzers/heatmap-integrated/pane-meta.ts';
+import { heatmapLayersDefinition } from '#analyzers/heatmap-layers/extract.ts';
+import { HEATMAP_LAYERS_PANE_META } from '#analyzers/heatmap-layers/pane-meta.ts';
 import { layerComboDefinition } from '#analyzers/layer-combo/extract.ts';
 import { LAYER_COMBO_PANE_META } from '#analyzers/layer-combo/pane-meta.ts';
 import { nSensitivityDefinition } from '#analyzers/n-sensitivity/extract.ts';
@@ -39,7 +41,8 @@ export interface WorkspaceAnalyzerEntry {
 export const WORKSPACE_ANALYZERS: readonly WorkspaceAnalyzerEntry[] = [
   { id: bigramFlowDefinition.id, ...BIGRAM_FLOW_PANE_META, cardinality: 'single' },
   { id: fingerDistanceDefinition.id, ...FINGER_DISTANCE_PANE_META, cardinality: 'single' },
-  { id: heatmapDefinition.id, ...HEATMAP_PANE_META, cardinality: 'single' },
+  { id: heatmapIntegratedDefinition.id, ...HEATMAP_INTEGRATED_PANE_META, cardinality: 'single' },
+  { id: heatmapLayersDefinition.id, ...HEATMAP_LAYERS_PANE_META, cardinality: 'single' },
   { id: layerComboDefinition.id, ...LAYER_COMBO_PANE_META, cardinality: 'single' },
   { id: comparisonDefinition.id, ...COMPARISON_PANE_META, cardinality: 'set' },
   { id: fingerMatrixDefinition.id, ...FINGER_MATRIX_PANE_META, cardinality: 'set' },

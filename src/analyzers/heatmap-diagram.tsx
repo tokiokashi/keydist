@@ -5,10 +5,10 @@ import { drawnKeySpans } from '#input/shapes/drawn-key-spans.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { PhysicalKeyboardStandard } from '#input/shapes/geometry.ts';
 import type { KeyDetail } from '#interpretation/key-detail.ts';
-import { keyDetailTooltip, keyName } from '../key-detail-view.ts';
-import type { KeySelectionProps } from '../pane-parts.tsx';
-import type { HeatmapColorScale } from './options.ts';
-import { heatIntensity } from './layer-view.ts';
+import { keyDetailTooltip, keyName } from './key-detail-view.ts';
+import type { KeySelectionProps } from './pane-parts.tsx';
+import './heatmap-diagram.css';
+import { heatIntensity, type HeatmapColorScale } from './heatmap-figure.ts';
 
 /**
  * ヒートマップの図1枚。キーの色は押下数から決め、キーの上にマウスを乗せると、その図が表す面の
