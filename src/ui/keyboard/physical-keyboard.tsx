@@ -11,7 +11,7 @@ export interface PhysicalKeyboardKeyView {
   readonly trigger?: boolean;
   readonly combo?: boolean;
   readonly accentSlot?: number;
-  readonly guide?: 'continuation' | 'output';
+  readonly guide?: 'continuation' | 'output' | 'trigger';
   readonly lookup?: boolean;
   /** キーを選んでいく操作で、選択中のキー。 */
   readonly selected?: boolean;

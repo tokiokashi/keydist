@@ -1057,6 +1057,16 @@ h1 {
   stroke-width: 2.5;
 }
 
+/* トリガーになるキー。続けて押せるキーの実線と、線の形で見分ける。色はレイヤーの番号（無ければ選択の色） */
+.physical-keyboard-key[data-guide="trigger"] rect {
+  stroke-width: 3;
+  stroke-dasharray: 6 3;
+}
+
+.physical-keyboard-key[data-guide="trigger"]:not([data-accent-slot]) rect {
+  stroke: var(--picker-selected);
+}
+
 .physical-keyboard-key[data-guide="output"] rect {
   fill: color-mix(in srgb, var(--picker-candidate) 16%, var(--surface));
   stroke: var(--picker-candidate);
@@ -1072,6 +1082,16 @@ h1 {
   stroke: var(--picker-selected);
   stroke-width: 3;
 }
+
+/* 1キーでレイヤーに切り替わるトリガーを選んだ時は、選択の枠をそのレイヤーの色にする */
+.physical-keyboard-key[data-selected][data-accent-slot="1"] rect { stroke: var(--series-1); }
+.physical-keyboard-key[data-selected][data-accent-slot="2"] rect { stroke: var(--series-2); }
+.physical-keyboard-key[data-selected][data-accent-slot="3"] rect { stroke: var(--series-3); }
+.physical-keyboard-key[data-selected][data-accent-slot="4"] rect { stroke: var(--series-4); }
+.physical-keyboard-key[data-selected][data-accent-slot="5"] rect { stroke: var(--series-5); }
+.physical-keyboard-key[data-selected][data-accent-slot="6"] rect { stroke: var(--series-6); }
+.physical-keyboard-key[data-selected][data-accent-slot="7"] rect { stroke: var(--series-7); }
+.physical-keyboard-key[data-selected][data-accent-slot="8"] rect { stroke: var(--series-8); }
 
 .physical-keyboard-key[role="button"]:focus-visible {
   outline: none;
