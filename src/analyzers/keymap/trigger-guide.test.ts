@@ -74,7 +74,7 @@ test('全レイヤー詳細: 1キーのトリガーを選ぶと、そのレイ�
 test('同じキーが残すレイヤーとまとめられる側の両方のトリガーなら、残すレイヤーの色にする', () => {
   const base = resolvedLayout('naginata-v18');
   const compact = base.layerViewPresentation!.compact!;
-  // 濁音のレイヤーを残す側にすると、濁音と他のレイヤーが共有する j は残す側の色になる
+  // 濁音のレイヤーを残す側にすると、濁音と他のレイヤーが共有するjは残す側の色になる
   const layout: Layout = {
     ...base,
     layerViewPresentation: { compact: { ...compact, keepLayerIds: [...compact.keepLayerIds, 'layer:濁音'] } },
