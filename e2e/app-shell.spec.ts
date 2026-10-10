@@ -262,16 +262,11 @@ test('テキストの名前は、チップの外を押して閉じても書か�
 
   // 1回目: 欄に打ってすぐチップの外（ページの見出し）を押す。
   await name.fill('名前その1');
-  // サイドバーの何も無い所を押す。項目の数や行の高さに依らないよう、一番下の項目の下端とサイドバーの下端の間を要素の位置から求める。
-  const empty = await page.locator('#app-sidebar').evaluate((sidebar) => {
-    const box = sidebar.getBoundingClientRect();
-    const limit = Math.min(box.bottom, window.innerHeight);
-    const bottoms = [...sidebar.querySelectorAll('*')].map((el) => el.getBoundingClientRect()).filter((rect) => rect.height > 0 && rect.bottom <= limit).map((rect) => rect.bottom);
-    const bottom = Math.max(box.top, ...bottoms);
-    return { x: box.x + box.width / 2, y: (bottom + limit) / 2, gap: limit - bottom };
-  });
-  expect(empty.gap).toBeGreaterThan(10);
-  await page.mouse.click(empty.x, empty.y);
+  // チップの外にある操作の無い要素（本体の図の見出し）を押す。ボタンやリンクを含まない見出しで、パネルの外にある。
+  const outside = page.getByRole('heading', { name: /^Relative vectors/ });
+  await expect(panel.getByRole('heading', { name: /^Relative vectors/ })).toHaveCount(0);
+  await expect(outside.locator('a, button, input')).toHaveCount(0);
+  await outside.click();
   await expect(panel).toBeHidden();
   await expect(chip).toContainText('名前その1');
 
