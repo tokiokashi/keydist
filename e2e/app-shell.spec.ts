@@ -262,8 +262,16 @@ test('テキストの名前は、チップの外を押して閉じても書か�
 
   // 1回目: 欄に打ってすぐチップの外（ページの見出し）を押す。
   await name.fill('名前その1');
-  // サイドバーの何も無い所（チップの欄が被らない所）を押す。
-  await page.mouse.click(120, 600);
+  // サイドバーの何も無い所を押す。項目の数や行の高さに依らないよう、一番下の項目の下端とサイドバーの下端の間を要素の位置から求める。
+  const empty = await page.locator('#app-sidebar').evaluate((sidebar) => {
+    const box = sidebar.getBoundingClientRect();
+    const limit = Math.min(box.bottom, window.innerHeight);
+    const bottoms = [...sidebar.querySelectorAll('*')].map((el) => el.getBoundingClientRect()).filter((rect) => rect.height > 0 && rect.bottom <= limit).map((rect) => rect.bottom);
+    const bottom = Math.max(box.top, ...bottoms);
+    return { x: box.x + box.width / 2, y: (bottom + limit) / 2, gap: limit - bottom };
+  });
+  expect(empty.gap).toBeGreaterThan(10);
+  await page.mouse.click(empty.x, empty.y);
   await expect(panel).toBeHidden();
   await expect(chip).toContainText('名前その1');
 
