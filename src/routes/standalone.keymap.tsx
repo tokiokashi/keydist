@@ -15,7 +15,7 @@ export const Route = createFileRoute('/standalone/keymap')({
       { title: `${KEYMAP_PANE_META.name} | keydist` },
       {
         name: 'description',
-        content: '配列やSetupを1つ選んで、配列が持つ修飾、キーを選んで出る文字、コンボの一覧と配列図を見ます。',
+        content: '配列やSetupを1つ選んで、キーを選んで出る文字、配列が持つ修飾、コンボの一覧と配列図を見ます。',
       },
     ],
   }),

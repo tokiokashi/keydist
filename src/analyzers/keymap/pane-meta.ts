@@ -4,7 +4,7 @@
  */
 export const KEYMAP_PANE_META = {
   name: 'キーマップ',
-  description: '配列の修飾、キーを選んで出る文字、コンボの一覧と配列図を出します。テキストには依りません。',
+  description: 'キーを選んで出る文字、配列の修飾、コンボの一覧と配列図を出します。テキストには依りません。',
   /** 図と表が読める高さ [rem]（`analyzers/min-body-height.ts`）。 */
   minBodyHeightRem: 24,
 } as const;

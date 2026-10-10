@@ -2,7 +2,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 
 /**
  * キーマップのE2E。行数や中身はunit test（`layout-breakdown.test.ts`・`key-pattern-selection.test.ts`）で固定しているので、
- * ここでは画面の配線（修飾・コンボの表と配列図・キーを選んで出る文字を調べる図・該当が無い時の文）だけを見る。
+ * ここでは画面の配線（キーを選んで出る文字を調べる図・修飾・コンボの表と配列図・該当が無い時の文）だけを見る。
  */
 
 async function selectLayout(page: Page, layoutId: string) {

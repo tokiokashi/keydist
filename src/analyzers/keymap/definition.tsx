@@ -14,7 +14,7 @@ import type { AnalyzerSettingsProps, SingleAnalyzerPaneParts, SingleBodyProps } 
 import './keymap-view.css';
 
 /**
- * キーマップ。配列が持つ修飾・キーを選んで出る文字を調べる図・コンボの一覧と配列図を、配列の定義から並べる。
+ * キーマップ。キーを選んで出る文字を調べる図・配列が持つ修飾・コンボの一覧と配列図を、配列の定義から並べる。
  * テキストを打った結果は使わない。優劣を示す強調・順位は出さない。
  */
 
