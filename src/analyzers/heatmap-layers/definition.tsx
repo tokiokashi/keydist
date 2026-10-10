@@ -78,13 +78,13 @@ export function HeatmapLayersBody({ layout, geometry, extracted, options, onOpti
   return (
     <div className="heatmap-feature heatmap-layers" data-react-feature="heatmap-layers">
       <div className="heatmap-heading">
-        <h3 id="heatmap-layers-heading">レイヤー別ヒートマップ（{entries.length}）</h3>
+        <h3 id="heatmap-layers-heading">ヒートマップ（レイヤー）・{entries.length}図</h3>
         {compact !== undefined && canToggleLayerDetail(layout) ? (
-          <FigureSettingsToggle name="レイヤー別ヒートマップ" open={detailOpen} onToggle={() => setDetailOpen(!detailOpen)} />
+          <FigureSettingsToggle name="ヒートマップ（レイヤー）" open={detailOpen} onToggle={() => setDetailOpen(!detailOpen)} />
         ) : null}
       </div>
       {compact !== undefined && canToggleLayerDetail(layout) && detailOpen ? (
-        <FigureSettingsBox name="レイヤー別ヒートマップ">
+        <FigureSettingsBox name="ヒートマップ（レイヤー）">
           <SegmentedOptionField
             label={compact.controlLabel}
             binding={bindOption(options, DEFAULT_HEATMAP_LAYERS_OPTIONS, onOptionsChange, 'layerDetail')}

@@ -10,7 +10,7 @@ import { computeHeatmapLayersExtraction } from './extract.ts';
 import { DEFAULT_HEATMAP_LAYERS_OPTIONS } from './options.ts';
 
 /**
- * キーの詳細の押下数は、レイヤー別ヒートマップの抽出（層別・コンボ枠）と同じ値になる。
+ * キーの詳細の押下数は、ヒートマップ（レイヤー）の抽出（層別・コンボ枠）と同じ値になる。
  */
 
 const geometry = buildGeometry('row-staggered');
@@ -23,7 +23,7 @@ const cases: Array<[string, string, string | undefined]> = [
 ];
 
 for (const [layoutId, text, rule] of cases) {
-  test(`押下数がレイヤー別ヒートマップの抽出と一致する: ${layoutId}${rule ? `(${rule})` : ''}`, () => {
+  test(`押下数がヒートマップ（レイヤー）の抽出と一致する: ${layoutId}${rule ? `(${rule})` : ''}`, () => {
     const base = LAYOUT_BY_ID.get(layoutId);
     assert.ok(base);
     const layout = rule ? withRomaji(base, tableForRule(rule)) : base;

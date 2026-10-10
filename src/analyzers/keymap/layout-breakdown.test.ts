@@ -20,7 +20,7 @@ const CATALOG = {
 };
 
 function tryResolve(layoutId: string, language: 'ja' | 'en', text: string) {
-  const setup: Setup = { id: 'setup-input-method', number: 1, layoutId, shapeId: 'row-staggered' };
+  const setup: Setup = { id: 'setup-keymap', number: 1, layoutId, shapeId: 'row-staggered' };
   return resolveEngineInput({
     target: { kind: 'setup', setupId: setup.id },
     setups: new Map([[setup.id, setup]]),

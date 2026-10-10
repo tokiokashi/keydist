@@ -9,7 +9,7 @@ import { normalizedRoleColors } from './layer-heatmap.ts';
 import { ALTERNATE_HEATMAP_LAYERS_OPTIONS, DEFAULT_HEATMAP_LAYERS_OPTIONS, heatmapLayersOptions, type HeatmapLayersOptions } from './options.ts';
 
 /**
- * レイヤー別ヒートマップの抽出（仕様 §11.10のキーごとの押下数）。
+ * ヒートマップ（レイヤー）の抽出（仕様 §11.10のキーごとの押下数）。
  *
  * 押下を層へ割り振る規則（§11.10）は `computeMetrics` が持つので、ここでは数え直さず、
  * `Metrics` の層別・コンボ枠の集計を並べ替えて、色用の押下数を足すだけにする。

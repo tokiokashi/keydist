@@ -1042,7 +1042,7 @@ h1 {
 .physical-keyboard-key[data-accent-slot="7"] rect { stroke: var(--series-7); }
 .physical-keyboard-key[data-accent-slot="8"] rect { stroke: var(--series-8); }
 
-.physical-keyboard-key[data-accent-slot] rect {
+.physical-keyboard-key[data-accent-slot]:not([data-guide="trigger"]) rect {
   stroke-width: 3;
 }
 
@@ -1057,10 +1057,13 @@ h1 {
   stroke-width: 2.5;
 }
 
-/* トリガーになるキー。続けて押せるキーの実線と、線の形で見分ける。色はレイヤーの番号（無ければ選択の色） */
+/*
+ * トリガーになるキー。何も選んでいない時だけ出る。太さは、普通のキーの枠（1）より太く、
+ * 続けて押せるキーの枠（2.5）・選んだキーの枠（3）より細くして、選んだ後の枠と分ける。
+ * 色はレイヤーの番号（無ければ選択の色）。レイヤーの色の太さの規則（`data-accent-slot`）は、トリガーの枠を除いている
+ */
 .physical-keyboard-key[data-guide="trigger"] rect {
-  stroke-width: 3;
-  stroke-dasharray: 6 3;
+  stroke-width: 2;
 }
 
 .physical-keyboard-key[data-guide="trigger"]:not([data-accent-slot]) rect {

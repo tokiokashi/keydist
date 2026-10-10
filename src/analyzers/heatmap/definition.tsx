@@ -2,9 +2,9 @@ import { keyboardStandardForGeometryId } from '#input/shapes/key-labels.ts';
 import { HeatmapDiagram, type HeatmapShiftStyle } from '../heatmap-diagram.tsx';
 import { baseLayerLegends } from '../heatmap-figure.ts';
 import type { AnalyzerSettingsProps, SingleAnalyzerPaneParts, SingleBodyProps } from '../pane-parts.tsx';
-import { heatmapIntegratedDefinition, type HeatmapIntegratedExtracted } from './extract.ts';
-import { DEFAULT_HEATMAP_INTEGRATED_OPTIONS, heatmapIntegratedOptions, type HeatmapIntegratedOptions } from './options.ts';
-import { HEATMAP_INTEGRATED_PANE_META } from './pane-meta.ts';
+import { heatmapDefinition, type HeatmapExtracted } from './extract.ts';
+import { DEFAULT_HEATMAP_OPTIONS, heatmapOptions, type HeatmapOptions } from './options.ts';
+import { HEATMAP_PANE_META } from './pane-meta.ts';
 
 /**
  * 全部のレイヤーを合わせた、キーごとの押下数のヒートマップ。
@@ -17,14 +17,13 @@ import { HEATMAP_INTEGRATED_PANE_META } from './pane-meta.ts';
 
 const NO_SHIFT_STYLES: ReadonlyMap<string, HeatmapShiftStyle> = new Map();
 
-export function HeatmapIntegratedBody({ layout, geometry, extracted, keySelection }: SingleBodyProps<HeatmapIntegratedExtracted, HeatmapIntegratedOptions>) {
+export function HeatmapBody({ layout, geometry, extracted, keySelection }: SingleBodyProps<HeatmapExtracted, HeatmapOptions>) {
   return (
-    <div className="heatmap-feature" data-react-feature="heatmap-integrated">
+    <div className="heatmap-feature" data-react-feature="heatmap">
       <div className="heatmap-diagrams">
         <HeatmapDiagram
           layout={layout}
           geometry={geometry}
-          title="統合"
           diagramId="integrated"
           legends={baseLayerLegends(layout)}
           detailOf={(keyId) => extracted.keyDetails.merged.get(keyId)}
@@ -42,17 +41,17 @@ export function HeatmapIntegratedBody({ layout, geometry, extracted, keySelectio
 }
 
 /** 設定できる項目は無い。 */
-export function HeatmapIntegratedSettings(_props: AnalyzerSettingsProps<HeatmapIntegratedOptions>) {
+export function HeatmapSettings(_props: AnalyzerSettingsProps<HeatmapOptions>) {
   return <p className="heatmap-empty">このAnalyzerに解析設定はありません。</p>;
 }
 
 /** ペインに渡すもの（`analyzers/pane-parts.tsx`）。 */
-export const heatmapIntegratedAnalyzer = {
-  definition: heatmapIntegratedDefinition,
-  ...HEATMAP_INTEGRATED_PANE_META,
-  Body: HeatmapIntegratedBody,
-  Settings: HeatmapIntegratedSettings,
-  defaultOptions: DEFAULT_HEATMAP_INTEGRATED_OPTIONS,
-  urlOptions: heatmapIntegratedOptions,
+export const heatmapAnalyzer = {
+  definition: heatmapDefinition,
+  ...HEATMAP_PANE_META,
+  Body: HeatmapBody,
+  Settings: HeatmapSettings,
+  defaultOptions: DEFAULT_HEATMAP_OPTIONS,
+  urlOptions: heatmapOptions,
   keyDetailsOf: (extracted) => extracted.keyDetails,
-} satisfies SingleAnalyzerPaneParts<HeatmapIntegratedOptions, HeatmapIntegratedExtracted>;
+} satisfies SingleAnalyzerPaneParts<HeatmapOptions, HeatmapExtracted>;

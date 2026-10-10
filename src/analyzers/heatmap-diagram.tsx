@@ -25,8 +25,8 @@ export interface HeatmapShiftStyle {
 export interface HeatmapDiagramProps {
   readonly layout: Layout;
   readonly geometry: Geometry;
-  /** 図の見出し */
-  readonly title: string;
+  /** 図の見出しの前半。省くと「打鍵頻度」だけになる */
+  readonly title?: string;
   /** 図を区別する印（テストと読み上げに使う） */
   readonly diagramId: string;
   /** キーid → 刻印 */
@@ -93,7 +93,7 @@ export function HeatmapDiagram({
   const viewY = minY - PAD / 2;
   const width = maxX - minX + PAD;
   const height = maxY - minY + PAD;
-  const caption = `${title}・打鍵頻度`;
+  const caption = title === undefined ? '打鍵頻度' : `${title}・打鍵頻度`;
 
   return (
     <figure className="heatmap-diagram" data-heatmap-diagram={diagramId} style={{ width, maxWidth: '100%' }} hidden={hidden}>

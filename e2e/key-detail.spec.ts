@@ -30,10 +30,10 @@ async function moveWindowAway(page: Page, win: Locator): Promise<void> {
 }
 const tooltipOf = async (key: Locator) => (await key.locator('title').first().textContent()) ?? '';
 
-test('ヒートマップ: ツールチップは押下数・押し方・前の文字を出し、統合とレイヤー別で同じキーは同じ値になる', async ({ page }) => {
+test('ヒートマップ: ツールチップは押下数・押し方・前の文字を出し、ヒートマップとヒートマップ（レイヤー）で同じキーは同じ値になる', async ({ page }) => {
   await selectLayout(page, 'qwerty');
-  await page.goto('/standalone/heatmap-integrated');
-  const feature = page.locator('[data-react-feature="heatmap-integrated"]');
+  await page.goto('/standalone/heatmap');
+  const feature = page.locator('[data-react-feature="heatmap"]');
   await expect(feature).toBeVisible({ timeout: 10_000 });
 
   const integrated = await tooltipOf(heatmapKey(feature, 'integrated', 'e'));
@@ -44,7 +44,7 @@ test('ヒートマップ: ツールチップは押下数・押し方・前の文
   // 押していないキーは名前と0打だけ
   expect(await tooltipOf(heatmapKey(feature, 'integrated', '1'))).toBe('1: 0打');
 
-  // 層が1つの配列では、レイヤー別の図が表す面は統合図と同じ
+  // 層が1つの配列では、ヒートマップ（レイヤー）の図が表す面はヒートマップの図と同じ
   await page.goto('/standalone/heatmap-layers');
   const layers = page.locator('[data-react-feature="heatmap-layers"]');
   await expect(layers).toBeVisible({ timeout: 10_000 });
@@ -53,8 +53,8 @@ test('ヒートマップ: ツールチップは押下数・押し方・前の文
 
 test('ヒートマップ: キーを押すと小窓が開き、図で同じキーが選ばれる。Escapeと押し直しで外れる', async ({ page }) => {
   await selectLayout(page, 'qwerty');
-  await page.goto('/standalone/heatmap-integrated');
-  const feature = page.locator('[data-react-feature="heatmap-integrated"]');
+  await page.goto('/standalone/heatmap');
+  const feature = page.locator('[data-react-feature="heatmap"]');
   await expect(feature).toBeVisible({ timeout: 10_000 });
 
   await expect(detailWindow(page)).toHaveCount(0);
@@ -99,7 +99,7 @@ test('ヒートマップ: キーを押すと小窓が開き、図で同じキー
   await expect(feature.locator('[data-key-selected]')).toHaveCount(0);
 });
 
-test('レイヤー別ヒートマップ: キーを押すと小窓が開き、全部のレイヤーの図で同じキーが選ばれる', async ({ page }) => {
+test('ヒートマップ（レイヤー）: キーを押すと小窓が開き、全部のレイヤーの図で同じキーが選ばれる', async ({ page }) => {
   await selectLayout(page, 'shingeta');
   await page.goto('/standalone/heatmap-layers');
   const feature = page.locator('[data-react-feature="heatmap-layers"]');
@@ -135,10 +135,10 @@ test('ヒートマップ: レイヤーごとの内訳を開くと、そのレイ
   // レイヤー別の図のツールチップは、そのレイヤーの値
   const shiftTip = await tooltipOf(heatmapKey(feature, 'layer:中指シフト', 'd'));
   expect(shiftTip).toMatch(/\（D\）: \d+打\n押し方: 出力 \d+打・トリガー \d+打|\（D\）: \d+打\n押し方: トリガー \d+打・出力 \d+打/);
-  // 統合ヒートマップは、単打の面とシフトの面を合算した値（シフトの面だけの値より大きい）
+  // ヒートマップは、単打の面とシフトの面を合算した値（シフトの面だけの値より大きい）
   const total = (tip: string) => Number(/: (\d+)打/.exec(tip)![1]);
-  await page.goto('/standalone/heatmap-integrated');
-  const integrated = page.locator('[data-react-feature="heatmap-integrated"]');
+  await page.goto('/standalone/heatmap');
+  const integrated = page.locator('[data-react-feature="heatmap"]');
   await expect(integrated).toBeVisible({ timeout: 10_000 });
   const mergedTip = await tooltipOf(heatmapKey(integrated, 'integrated', 'd'));
   expect(total(mergedTip)).toBeGreaterThan(total(shiftTip));
@@ -186,12 +186,12 @@ async function openWorkspace(page: Page): Promise<void> {
       id: 'k',
       name: 'キー',
       text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
-      // a: 統合ヒートマップ(QWERTY) / b: Bigram Flow(QWERTY) / c: 統合ヒートマップ(Dvorak) / d: レイヤー別ヒートマップ(QWERTY)。
+      // a: ヒートマップ(QWERTY) / b: Bigram Flow(QWERTY) / c: ヒートマップ(Dvorak) / d: ヒートマップ（レイヤー）(QWERTY)。
       // a・b・dは配列と物理配列が同じ
       panes: [
-        fixed('a', 'heatmap-integrated', 'qwerty'),
+        fixed('a', 'heatmap', 'qwerty'),
         fixed('b', 'bigram-flow', 'qwerty'),
-        fixed('c', 'heatmap-integrated', 'dvorak'),
+        fixed('c', 'heatmap', 'dvorak'),
         fixed('d', 'heatmap-layers', 'qwerty'),
       ],
       grid: [
@@ -225,9 +225,9 @@ test('Workspace: 配列と物理配列が同じペインどうしでは選択が
   await expect(detailWindow(page)).toHaveCount(1);
   await moveWindowAway(page, detailWindow(page));
   // Workspaceでは、どのペインの小窓か分かるようペインの名前を出す
-  await expect(detailWindow(page)).toContainText('統合ヒートマップ');
+  await expect(detailWindow(page)).toContainText('ヒートマップ');
   await expect(flowKey(b, 'e')).toHaveAttribute('data-key-selected', 'true');
-  // 別のAnalyzer（レイヤー別ヒートマップ）のペインでも、同じ対象なら選ばれる
+  // 別のAnalyzer（ヒートマップ（レイヤー））のペインでも、同じ対象なら選ばれる
   await expect(heatmapKey(d, 'single', 'e')).toHaveAttribute('data-key-selected', 'true');
   await expect(c.locator('[data-key-selected]')).toHaveCount(0);
 
@@ -266,8 +266,8 @@ test('Workspace: ペインを拡大すると他のペインの小窓は閉じ、
 
 test('小窓を閉じると、フォーカスは押したキーへ戻る（Escapeでも、閉じるボタンでも）', async ({ page }) => {
   await selectLayout(page, 'shingeta');
-  await page.goto('/standalone/heatmap-integrated');
-  const feature = page.locator('[data-react-feature="heatmap-integrated"]');
+  await page.goto('/standalone/heatmap');
+  const feature = page.locator('[data-react-feature="heatmap"]');
   await expect(feature).toBeVisible({ timeout: 10_000 });
   const key = heatmapKey(feature, 'integrated', 'd');
   const win = detailWindow(page);

@@ -16,7 +16,7 @@ import { computeKeyDetails } from '#interpretation/key-detail.ts';
 import { computeHeatmapLayersExtraction } from '#analyzers/heatmap-layers/extract.ts';
 import { DEFAULT_HEATMAP_LAYERS_OPTIONS } from '#analyzers/heatmap-layers/options.ts';
 import { buildLayerEntries } from '#analyzers/heatmap-layers/layer-view.ts';
-import { modifierRows } from '#analyzers/input-method/layout-breakdown.ts';
+import { modifierRows } from '#analyzers/keymap/layout-breakdown.ts';
 
 /**
  * 名前の無いレイヤーの名前が、画面に出る経路のどこでも空でなく、同じ名前で出ること。
@@ -50,7 +50,7 @@ test('組み込みの全配列で、レイヤーの名前は画面に出るど�
     for (const definition of trace.layerDefinitions) check('トレース', definition.id, definition.label);
     for (const entry of entries) check('ヒートマップ', entry.id, entry.label);
     for (const definition of compactLayerGuideDefinitions(layout)) check('Testerのカンペ', definition.id, definition.label);
-    for (const row of modifierRows(layout)) check('入力方法', row.id, row.label);
+    for (const row of modifierRows(layout)) check('キーマップ', row.id, row.label);
   }
 });
 

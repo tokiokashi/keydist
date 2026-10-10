@@ -18,7 +18,7 @@ import {
 } from './options.ts';
 
 /**
- * レイヤー別ヒートマップの図を並べるための、表示側の組み立て（純粋な計算）。
+ * ヒートマップ（レイヤー）の図を並べるための、表示側の組み立て（純粋な計算）。
  *
  * 押下数は抽出（`extract.ts`）が数えたものをそのまま使い、ここでは数え直さない。
  * 足すのは、配列が宣言した層の並び・タイトル・「まとめ」の合算と、図どうしで共通にする最大値だけ。
@@ -103,7 +103,7 @@ export function buildLayerEntries(
   const stats = new Map(extracted.layers.map((layer) => [layer.id, layer]));
   const presentation = presentationLayersOf(layout);
   // 配列が面として宣言していない層（英字配列のShiftなど）にも押下は帰属する。押下が無い間は図を足さず、
-  // 使われた時だけ宣言済みの層の後ろへ足して、層別図の押下数の合計が統合と食い違わないようにする
+  // 使われた時だけ宣言済みの層の後ろへ足して、層別図の押下数の合計がヒートマップと食い違わないようにする
   const declared = new Set(presentation.map((layer) => layer.id));
   const undeclared = extracted.layers
     .filter((stat) => !declared.has(stat.id) && stat.presses > 0)
@@ -151,7 +151,7 @@ export function buildLayerEntries(
 
 /**
  * 図1枚のキーの詳細。その図が表す面の値で、「まとめ」で合算した図は合算した面の和になる
- * （統合図は面をまたいだ合算 `keyDetails.merged` を直接引く）。表す面のどれにも押下が無いキーは `undefined`。
+ * （ヒートマップの図は面をまたいだ合算 `keyDetails.merged` を直接引く）。表す面のどれにも押下が無いキーは `undefined`。
  */
 export function entryKeyDetail(keyDetails: KeyDetails, faceIds: readonly string[], keyId: string): KeyDetail | undefined {
   const parts = faceIds.flatMap((faceId) => keyDetails.faces.get(faceId)?.get(keyId) ?? []);
