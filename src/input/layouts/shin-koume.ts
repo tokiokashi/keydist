@@ -1,5 +1,5 @@
 import { THUMB_KEY } from '../shapes/geometry.ts';
-import { faceFromEntries, fromFaces, withAliases, type Face, type Layout } from './types.ts';
+import { charMeaning, faceFromEntries, fromFaces, modifierKeyMeaning, withAliases, type Face, type Layout, type TriggerMeaning } from './types.ts';
 
 /**
  * シン蜂蜜小梅（作: 141F氏）。
@@ -33,12 +33,47 @@ const layerFace = (
   triggerPersistence: 'single',
 });
 
-const compositionFace = (trigger: string, entries: Record<string, string>): Face =>
-  face([trigger], entries, {
+/** 文字キー同時押しの面が、トリガーのキーの意味を引く組。 */
+const SIMULTANEOUS_GROUP = '文字キー同時押し';
+
+/**
+ * 文字キー同時押しの面のトリガーのキーが持つ意味。
+ * キーは出るかなの1文字目を決めるので、単打面の文字とは関係が無い。
+ * 意味の文字は、面で出るかなの1文字目を、面に現れる順に「・」でつないだもの。
+ * 「を」（k）は1字で出るかなで、拗音・外来音の1文字目ではないので含めない。
+ * 「ぱ」（h）は、ぱ・ぽ・ぷ（1字で出る半濁音）の代表として書く。
+ * 半濁音のキー（g）は、文字を持たない修飾のキーとして働く。
+ */
+const SIMULTANEOUS_KEY_MEANINGS: Readonly<Record<string, TriggerMeaning>> = {
+  u: charMeaning('ひ・び'),
+  i: charMeaning('き・ぎ'),
+  o: charMeaning('つ・に・づ'),
+  h: charMeaning('ぴ・ぱ'),
+  j: charMeaning('ふ・ぶ'),
+  k: charMeaning('く・い・ぐ'),
+  l: charMeaning('り・し・じ'),
+  n: charMeaning('み'),
+  m: charMeaning('う・ヴ'),
+  ',': charMeaning('て・で'),
+  '.': charMeaning('ち・ぢ'),
+  g: modifierKeyMeaning('半濁音'),
+  ';': charMeaning('と・ど'),
+  '/': charMeaning('ぬ'),
+};
+
+/**
+ * 文字キー同時押しの面。層の名前を定義で付ける時は `layer` に書く。
+ * 付けない時は既定の名前になる（出るかなの種類、または「<トリガーの文字>のシフト」）。
+ */
+const compositionFace = (trigger: string, entries: Record<string, string>, layer?: string): Face => ({
+  ...face([trigger], entries, {
     inputRole: 'composition',
     compositionAggregation: 'layer',
     triggerPersistence: 'single',
-  });
+  }),
+  triggerMeaningGroups: { [trigger]: SIMULTANEOUS_GROUP },
+  ...(layer === undefined ? {} : { presentationLabel: layer }),
+});
 
 const SHIN_KOUME_FACES: Face[] = [
   // シフト無し
@@ -63,7 +98,7 @@ const SHIN_KOUME_FACES: Face[] = [
   }, '右親指'),
 
   // 半濁音・拗音・外来音。紅皿定義の文字キー同時押しをcompositionとして表す。
-  compositionFace('g', { u: 'ぴ', '/': 'ぺ' }),
+  compositionFace('g', { u: 'ぴ', '/': 'ぺ' }, '半濁音'),
 
   compositionFace('u', {
     q: 'ひぇ', w: 'ひゅ', e: 'ひょ', r: 'ひゃ', t: 'ひぃ',
@@ -120,7 +155,10 @@ const SHIN_KOUME_FACES: Face[] = [
   }),
 ];
 
-const layout: Layout = fromFaces('shin-koume', 'シン蜂蜜小梅', SHIN_KOUME_FACES);
+const layout: Layout = {
+  ...fromFaces('shin-koume', 'シン蜂蜜小梅', SHIN_KOUME_FACES),
+  triggerMeanings: { [SIMULTANEOUS_GROUP]: SIMULTANEOUS_KEY_MEANINGS },
+};
 layout.legends.set(THUMB_KEY.LT, '親指左');
 layout.legends.set(THUMB_KEY.RT, '親指右');
 

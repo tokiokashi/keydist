@@ -1,5 +1,5 @@
 import { THUMB_KEY } from '../shapes/geometry.ts';
-import { faceFromEntries, fromFaces, withAliases, type Face, type Layout } from './types.ts';
+import { faceFromEntries, fromFaces, groupNamedModifierKeyMeanings, withAliases, type Face, type Layout } from './types.ts';
 
 /**
  * かわせみ配列+。
@@ -1056,9 +1056,25 @@ const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
     }, COMBO_COMPOSITION),
 ];
 
-export const KAWASEMI_PLUS_FACES: Face[] = selectShortestFaces(KAWASEMI_PLUS_SOURCES);
+/**
+ * 行指定キーは位置で決まるキーで、単打面の文字の意味を持たない。
+ * 層の名前と同じ修飾のキーとして、物理キーの名前で出す。
+ * コンボ枠に計上する面は行指定の働きをしないので、意味を書かない。
+ */
+const withLineKeyMeaning = (face: Face): Face =>
+  face.compositionAggregation === 'layer' && face.presentationLabel !== undefined
+    ? {
+      ...face,
+      triggerMeaningGroups: Object.fromEntries(face.trigger.map((key) => [key, face.presentationLabel!])),
+    }
+    : face;
 
-const layout: Layout = fromFaces('kawasemi-plus', 'かわせみ配列+', KAWASEMI_PLUS_FACES);
+export const KAWASEMI_PLUS_FACES: Face[] = selectShortestFaces(KAWASEMI_PLUS_SOURCES).map(withLineKeyMeaning);
+
+const layout: Layout = {
+  ...fromFaces('kawasemi-plus', 'かわせみ配列+', KAWASEMI_PLUS_FACES),
+  triggerMeanings: groupNamedModifierKeyMeanings(KAWASEMI_PLUS_FACES),
+};
 layout.legends.set(THUMB_KEY.LT, '左親指');
 layout.legends.set(THUMB_KEY.RT, '右親指');
 

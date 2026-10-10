@@ -1,5 +1,5 @@
 import { THUMB_KEY } from '../shapes/geometry.ts';
-import { faceFromEntries, fromFaces, withAliases, type Face, type Layout } from './types.ts';
+import { faceFromEntries, fromFaces, groupNamedModifierKeyMeanings, withAliases, type Face, type Layout } from './types.ts';
 
 /**
  * 新下駄配列。
@@ -23,6 +23,10 @@ const face = (
   inputRole,
   ...(presentationCells === undefined ? {} : { presentationCells }),
   ...(trigger.length > 0 ? { triggerPersistence: 'single' as const } : {}),
+  // 修飾の面のトリガーのキーは、層の名前の修飾のキーとして働く
+  ...(inputRole === 'modifier' && layer !== undefined
+    ? { modifierGroups: Object.fromEntries(trigger.map((key) => [key, layer])) }
+    : {}),
 });
 
 export const SHINGETA_FACES: Face[] = [
@@ -67,7 +71,14 @@ export const SHINGETA_FACES: Face[] = [
   }, '拗音2', 'modifier'),
 ];
 
-const layout: Layout = fromFaces('shingeta', '新下駄', SHINGETA_FACES);
+/**
+ * シフトのキーは位置で決まる修飾のキーで、単打面の文字の意味を持たない。
+ * 層の名前と同じ修飾のキーとして、物理キーの名前で出す。
+ */
+const layout: Layout = {
+  ...fromFaces('shingeta', '新下駄', SHINGETA_FACES),
+  triggerMeanings: groupNamedModifierKeyMeanings(SHINGETA_FACES),
+};
 layout.legends.delete(THUMB_KEY.LT);
 layout.legends.delete(THUMB_KEY.RT);
 export const SHINGETA = withAliases(layout, ['しんげた']);

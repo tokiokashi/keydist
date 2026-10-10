@@ -1,5 +1,5 @@
 import { THUMB_KEY } from '../shapes/geometry.ts';
-import { SINGLE_LAYER_ID, fromFaces, withAliases, withThumbShiftAlternatives, type Face, type Layout, type TriggerMeaning, type TriggerMeanings } from './types.ts';
+import { SINGLE_LAYER_ID, fromFaces, withAliases, withThumbShiftAlternatives, charMeaning as char, modifierKeyMeaning as modifierKey, type Face, type Layout, type TriggerMeanings } from './types.ts';
 
 /**
  * 薙刀式v18（作: 大岡俊彦）。
@@ -105,9 +105,6 @@ export const NAGINATA_V18_FACES: Face[] = [
   face(['.', 'v'], { h: 'くゎ' }, { modifierGroups: { '.': '外来音', v: '半濁音' }, role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
   face(['p', 'v'], { ';': 'ふゅ' }, { modifierGroups: { p: '拗音', v: '半濁音' }, role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
 ];
-
-const char = (text: string): TriggerMeaning => ({ kind: 'char', text });
-const modifierKey = (text: string): TriggerMeaning => ({ kind: 'modifierKey', text });
 
 /**
  * 修飾のトリガーのキーが、修飾の組の中で持つ意味。

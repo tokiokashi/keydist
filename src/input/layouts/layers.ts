@@ -84,15 +84,15 @@ export function displayTriggerAlternatives(face: Face): readonly (readonly strin
   return alternatives;
 }
 
-/** 表示するtriggerの1 chord。キーが属する修飾の組が分かる時は `groups` に持つ（キーは正規化済み）。 */
+/** 表示するtriggerの1 chord。キーが属する組が分かる時は `groups` に持つ（キーは正規化済み）。 */
 export interface TriggerChord {
   readonly keys: readonly string[];
   readonly groups?: ReadonlyMap<string, string>;
 }
 
-/** 面のtrigger alternativeを、面の `modifierGroups` を添えたchord列にする。 */
+/** 面のtrigger alternativeを、キーが属する組（`modifierGroups` と `triggerMeaningGroups`）を添えたchord列にする。 */
 export function displayTriggerChords(face: Face): readonly TriggerChord[] {
-  const entries = Object.entries(face.modifierGroups ?? {});
+  const entries = Object.entries({ ...face.modifierGroups, ...face.triggerMeaningGroups });
   const groups = entries.length === 0
     ? undefined
     : new Map(entries.map(([key, group]) => [resolveKeyId(key), group] as const));
@@ -456,7 +456,7 @@ export interface DefaultLayerName {
 
 type DefaultLayerNameLayout = Pick<
   Layout,
-  'faces' | 'faceLayerIds' | 'layerDefinitions' | 'thumbShiftKeys' | 'legends'
+  'faces' | 'faceLayerIds' | 'layerDefinitions' | 'thumbShiftKeys' | 'legends' | 'triggerMeanings'
 >;
 
 /** 出る文字を並べた名前に入れる文字数の上限。超えたら「…」で省く。 */
@@ -475,6 +475,7 @@ function listedOutputsName(outputs: readonly string[]): string {
  *    重なる層のうち、出る文字の数が一番多い層が1つに決まる時は、その層だけ1の名前を残す。
  *    並べても重なる時は、3の名前にする
  * 3. 文字の種類で呼べない層は「<トリガーの表示>のシフト」（例: 無変換のシフト）。
+ *    トリガーの表示は、配列が意味を書いたキーならその意味の文字（`triggerChordsDisplayText`）。
  *    これも重なる時は、後ろの層に（2）のような番号を付ける
  * 配列が付けた名前は変えず、既定の名前が配列が付けた名前と重ならないようにする。
  * 刻印は配列の組み立ての後で差し替わることがあるので、
@@ -491,7 +492,7 @@ export function defaultLayerNames(
       .filter((face) => layout.faceLayerIds?.get(face) === definition.id);
     const trigger = triggerChordsDisplayText(
       layout,
-      faces.flatMap((face) => displayTriggerAlternatives(face)),
+      faces.flatMap((face) => displayTriggerChords(face)),
     );
     const outputs = [...new Set(faces.flatMap((face) => [...faceCells(face).values()]))];
     return [{
@@ -606,8 +607,8 @@ function aggregationTriggerChords(
  * alternative同士は「/」でつなぐ（「+」でつなぐと、どちらか片方で足りるシフトを同時押しと誤読させる）。
  * 刻印の無いキーは物理キーの表示名（規格を渡せばその規格の刻印）で出し、内部のキーidを画面に出さない。
  *
- * 配列が `triggerMeanings` を書いたキーは、刻印ではなく修飾の中での意味を出す。意味を引くには、
- * chordが `groups`（キーが属する修飾の組）を持っている必要がある。
+ * 配列が `triggerMeanings` を書いたキーは、刻印ではなく組の中での意味を出す。意味を引くには、
+ * chordが `groups`（キーが属する組。修飾の面の `modifierGroups`、それ以外の面の `triggerMeaningGroups`）を持っている必要がある。
  * - 文字の意味はそのまま出す
  * - 修飾のキーの意味は、押すキーが読めるよう物理キーの名前を添える（「濁音（J）」）
  * - `layerName` を渡し、全chordの全キーが意味を持ち、その意味がどれも層の名前と同じ時は、
