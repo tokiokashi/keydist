@@ -58,7 +58,7 @@ export interface WorkspacePanelProps {
   renderHeader: (controls: WorkspacePanelControls) => ReactNode;
   renderPlaceholder?: (controls: WorkspacePanelControls) => ReactNode;
   /**
-   * docked時だけheaderへ追加するfeature固有control（例: 個別カンペの明示float button）。
+   * docked時だけheaderへ追加するfeature固有control（例: Layer Guideの「クリックで小窓表示」の案内）。
    * WorkspacePanel側がmodeを見て呼ぶかどうかを決めるので、feature側はmodeを読まずに済む。
    */
   renderDockedActions?: (controls: WorkspacePanelControls) => ReactNode;

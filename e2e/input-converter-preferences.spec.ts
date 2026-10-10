@@ -243,11 +243,11 @@ test('layout B restore also revives a floating layer card of B without a visible
   await page.getByLabel('配列', { exact: true }).selectOption('shingeta');
   await expect(feature).toHaveAttribute('data-input-ready', 'shingeta');
 
-  const floatButton = page.locator('.input-layer-card .input-layer-card-float').first();
-  const buttonLabel = await floatButton.getAttribute('aria-label');
-  expect(buttonLabel).not.toBeNull();
-  const cardLabel = buttonLabel!.replace(/を小窓表示$/, '');
-  await floatButton.click();
+  const cardHeader = page.locator('.input-layer-card > header').first();
+  const headerLabel = await cardHeader.getAttribute('aria-label');
+  expect(headerLabel).not.toBeNull();
+  const cardLabel = headerLabel!.replace(/カンペをクリックまたはドラッグして小窓表示$/, '');
+  await cardHeader.click();
 
   const cardPanel = page.getByLabel(`${cardLabel} 個別カンペ`, { exact: true });
   await expect(cardPanel).toHaveAttribute('data-floating', 'true');

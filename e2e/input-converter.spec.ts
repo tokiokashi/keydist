@@ -479,25 +479,6 @@ test('docked panel headerは閾値drag・cancel・keyboardを区別する', asyn
   await page.mouse.move(resetX + 50, resetY + 2);
   await expect(guide).not.toHaveAttribute('data-floating');
   await page.mouse.up();
-
-  // Header内の明示buttonはdrag detach surfaceにしない。
-  if (await guide.getAttribute('data-floating') === 'true') {
-    await page.getByRole('button', { name: 'Layer Guideを元に戻す' }).click();
-  }
-  await page.getByLabel('配列', { exact: true }).selectOption('shingeta');
-  await expect(feature).toHaveAttribute('data-input-ready', 'shingeta');
-  const cardFloatButton = guide.locator('.input-layer-card-float').first();
-  await expect(cardFloatButton).toBeVisible();
-  const buttonBox = await cardFloatButton.boundingBox();
-  expect(buttonBox).not.toBeNull();
-  await page.mouse.move(
-    buttonBox!.x + buttonBox!.width / 2,
-    buttonBox!.y + buttonBox!.height / 2,
-  );
-  await page.mouse.down();
-  await page.mouse.move(buttonBox!.x + buttonBox!.width / 2 + 30, buttonBox!.y);
-  await expect(page.locator('.input-layer-card[data-floating]')).toHaveCount(0);
-  await page.mouse.up();
 });
 
 test('レイヤーカンペはWorkspace overlayで移動・リサイズしながら入力を継続できる', async ({ page }) => {
@@ -660,12 +641,12 @@ test('レイヤーカンペは盤面ごとに独立して複数小窓表示で�
   await page.getByLabel('配列', { exact: true }).selectOption('shingeta');
   await expect(feature).toHaveAttribute('data-input-ready', 'shingeta');
   const guide = page.getByLabel('Layer Guide', { exact: true });
-  const floatButtons = guide.locator('.input-layer-card-float');
-  await expect.poll(() => floatButtons.count()).toBeGreaterThan(1);
+  const cardHeaders = guide.locator('.input-layer-card > header');
+  await expect.poll(() => cardHeaders.count()).toBeGreaterThan(1);
 
   const firstSourceBox = await guide.locator('.input-layer-card').first().boundingBox();
   expect(firstSourceBox).not.toBeNull();
-  await floatButtons.first().click();
+  await cardHeaders.first().click();
   let floatingCards = page.locator('.input-layer-card[data-floating]');
   await expect(floatingCards).toHaveCount(1);
   const firstFloatingBox = await floatingCards.first().boundingBox();
@@ -677,7 +658,7 @@ test('レイヤーカンペは盤面ごとに独立して複数小窓表示で�
   // 1枚目を浮かした後も、残りのカードからさらに個別小窓表示できる。
   const secondSourceBox = await guide.locator('.input-layer-card').first().boundingBox();
   expect(secondSourceBox).not.toBeNull();
-  await guide.locator('.input-layer-card-float').first().click();
+  await cardHeaders.first().click();
   floatingCards = page.locator('.input-layer-card[data-floating]');
   await expect(floatingCards).toHaveCount(2);
   const secondFloatingBox = await floatingCards.nth(1).boundingBox();
@@ -766,12 +747,12 @@ test('#regression レイヤーカンペ本体を浮かせた状態でも入れ�
   await page.getByLabel('Layer Guideを小窓表示').click();
   await expect(guide).toHaveAttribute('data-floating', 'true');
 
-  const floatButtons = guide.locator('.input-layer-card-float');
-  await expect.poll(() => floatButtons.count()).toBeGreaterThan(1);
+  const cardHeaders = guide.locator('.input-layer-card > header');
+  await expect.poll(() => cardHeaders.count()).toBeGreaterThan(1);
 
-  // ボタンがfloating cardに覆われて素のclick()が届かないことがあるため、
+  // 帯がfloating cardに覆われて素のclick()が届かないことがあるため、
   // evaluateで直接クリックする(過去に必要だった回避策)。
-  await floatButtons.first().evaluate((element) => (element as HTMLElement).click());
+  await cardHeaders.first().evaluate((element) => (element as HTMLElement).click());
   const cardA = page.locator('.input-layer-card[data-floating]').first();
   await expect(cardA).toHaveCount(1);
 
@@ -790,8 +771,7 @@ test('#regression レイヤーカンペ本体を浮かせた状態でも入れ�
   };
   await dragBy(cardA.locator('> header'), 700, 0);
 
-  await guide.locator('.input-layer-card-float').first()
-    .evaluate((element) => (element as HTMLElement).click());
+  await cardHeaders.first().evaluate((element) => (element as HTMLElement).click());
   const floatingCards = page.locator('.input-layer-card[data-floating]');
   await expect(floatingCards).toHaveCount(2);
   const cardB = floatingCards.nth(1);

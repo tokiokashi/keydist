@@ -44,8 +44,6 @@ import {
 import { load as loadUserGeometryShapes } from '#platform/assets/user-geometries-storage.ts';
 import {
   createWorkspacePanelRegistry,
-  resolvePanelLayout,
-  type PanelId,
 } from './panels/panel-registry.ts';
 import { WorkspacePanel } from './panels/workspace-panel.tsx';
 import { WorkspaceProvider, useWorkspace } from './panels/workspace-runtime.tsx';
@@ -143,7 +141,6 @@ type GuideGridLayout = {
 
 const MIN_FLOATING_GUIDE_WIDTH = 320;
 const MIN_FLOATING_GUIDE_HEIGHT = 240;
-const FLOATING_GUIDE_VIEWPORT_GAP = 12;
 
 const INPUT_SETTINGS_PANEL_ID = 'input.settings';
 const INPUT_TYPING_PANEL_ID = 'input.typing';
@@ -407,25 +404,6 @@ export function InputConverterView() {
     const bounds = workspace.getBoundingClientRect();
     if (bounds.width <= 0) return;
     setSplitPercent(clampSplitPercent(((clientX - bounds.left) / bounds.width) * 100));
-  };
-
-  const initialLayerCardRect = (source: HTMLElement, panelId: PanelId) => {
-    const bounds = source.closest<HTMLElement>('.input-layer-card')?.getBoundingClientRect();
-    const { defaultFloatingWidth, defaultFloatingHeight } = resolvePanelLayout(
-      workspaceRegistry.get(panelId),
-    );
-    const width = Math.max(defaultFloatingWidth, bounds?.width ?? defaultFloatingWidth);
-    const height = Math.max(defaultFloatingHeight, bounds?.height ?? defaultFloatingHeight);
-
-    // 個別カンペは「何枚目か」で画面端へ並べるのではなく、
-    // そのカードが元々あった場所を初期位置のauthorityにする。
-    // 複数枚を浮かせても各カードが元の位置の近くから出る。
-    return {
-      x: bounds?.left ?? FLOATING_GUIDE_VIEWPORT_GAP,
-      y: bounds?.top ?? FLOATING_GUIDE_VIEWPORT_GAP,
-      width,
-      height,
-    };
   };
 
   const currentLayoutPreferences = (): InputConverterLayoutPreferencesV2 => ({
@@ -1076,7 +1054,6 @@ export function InputConverterView() {
                       },
                     ]),
                   );
-                  const panelId = layerGuideCardPanelId(definition.id);
 
                   return (
                     <WorkspacePanel
@@ -1085,30 +1062,16 @@ export function InputConverterView() {
                       dockAriaLabel={`${definition.label}を元に戻す`}
                       dockedHeaderAriaLabel={`${definition.label}カンペをクリックまたはドラッグして小窓表示`}
                       floatingHeaderAriaLabel={`${definition.label}カンペを移動`}
-                      id={panelId}
+                      id={layerGuideCardPanelId(definition.id)}
                       key={definition.id}
                       resizeAriaLabel={`${definition.label}カンペのサイズを変更`}
                       renderHeader={() => (
                         <h3>
-                          <span>
-                            {definition.label}
-                            {definition.presentationModeLabel
-                              ? <small>{definition.presentationModeLabel}</small>
-                              : null}
-                          </span>
+                          {definition.label}
+                          {definition.presentationModeLabel
+                            ? <small>{definition.presentationModeLabel}</small>
+                            : null}
                         </h3>
-                      )}
-                      renderDockedActions={({ float }) => (
-                        <button
-                          aria-label={`${definition.label}を小窓表示`}
-                          className="input-layer-card-float"
-                          onClick={(event) => float(
-                            initialLayerCardRect(event.currentTarget, panelId),
-                          )}
-                          type="button"
-                        >
-                          小窓表示
-                        </button>
                       )}
                       renderPlaceholder={({ dock }) => (
                         <section className="input-layer-card-placeholder">

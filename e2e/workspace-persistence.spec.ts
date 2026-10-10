@@ -73,7 +73,7 @@ test('reload restores floating rect, mode and z-order', async ({ page }) => {
 
   // レイヤーカンペの個別カード(SandS)も小窓化して動かす
   const cardPanel = page.getByLabel('SandS 個別カンペ', { exact: true });
-  await page.getByLabel('SandSを小窓表示').click();
+  await page.getByLabel('SandSカンペをクリックまたはドラッグして小窓表示').click();
   await expect(cardPanel).toHaveAttribute('data-floating', 'true');
   const cardMove = page.getByLabel('SandSカンペを移動');
   box = await cardMove.boundingBox();
@@ -318,7 +318,7 @@ test('layer definitions settle before reconcile: switching A -> B -> A restores 
   const feature = page.locator('.input-feature');
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
 
-  await page.getByLabel('SandSを小窓表示').click();
+  await page.getByLabel('SandSカンペをクリックまたはドラッグして小窓表示').click();
   const cardPanel = page.getByLabel('SandS 個別カンペ', { exact: true });
   await expect(cardPanel).toHaveAttribute('data-floating', 'true');
   const moveHandle = page.getByLabel('SandSカンペを移動');

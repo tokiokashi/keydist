@@ -1279,23 +1279,17 @@ h1 {
 }
 
 .input-layer-card h3 {
-  display: flex;
   min-width: 0;
   flex: 1 1 auto;
-  gap: 0.4rem;
-  align-items: baseline;
   margin: 0;
   font-size: 0.82rem;
 }
 
-.input-layer-card h3 > span {
-  display: inline-flex;
-  min-width: 0;
-  align-items: baseline;
-  gap: 0.4rem;
+.input-layer-card h3 > small {
+  margin-left: 0.4rem;
+  white-space: nowrap;
 }
 
-.input-layer-card-float,
 .input-layer-card-placeholder button,
 .input-layer-card[data-floating] > header button {
   flex: 0 0 auto;
