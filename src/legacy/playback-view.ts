@@ -45,7 +45,7 @@ import {
   playbackRedirectWindows,
   playbackStrokeAnnotation,
   type PlaybackOrderSpan,
-} from './playback-analysis-display.ts';
+} from '#analyzers/playback/structure-display.ts';
 
 export interface PlaybackViewContext {
   getUiState: () => UiStateV1;
