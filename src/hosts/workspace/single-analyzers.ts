@@ -4,6 +4,7 @@ import { heatmapAnalyzer } from '#analyzers/heatmap/definition.tsx';
 import { heatmapLayersAnalyzer } from '#analyzers/heatmap-layers/definition.tsx';
 import { keymapAnalyzer } from '#analyzers/keymap/definition.tsx';
 import { layerComboPressesAnalyzer } from '#analyzers/layer-combo-presses/definition.tsx';
+import { playbackAnalyzer } from '#analyzers/playback/definition.tsx';
 import type { SingleAnalyzerPaneParts } from '#analyzers/pane-parts.tsx';
 
 /**
@@ -24,6 +25,7 @@ export const SINGLE_ANALYZER_PANE_PARTS: readonly AnyPaneParts[] = [
   heatmapLayersAnalyzer,
   layerComboPressesAnalyzer,
   keymapAnalyzer,
+  playbackAnalyzer,
 ];
 
 export function findSingleAnalyzer(analyzerId: string): AnyPaneParts | undefined {

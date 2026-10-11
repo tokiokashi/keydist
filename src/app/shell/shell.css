@@ -33,7 +33,7 @@
   gap: 1.1rem;
   width: var(--sidebar-width);
   height: 100vh;
-  overflow-y: auto;
+  overflow: hidden;
   padding: 0.85rem 0.7rem 0.7rem;
   border-right: 1px solid var(--border);
   background: var(--surface-subtle);
@@ -69,6 +69,7 @@
 
 .sidebar-top {
   display: flex;
+  flex: none;
   align-items: center;
   gap: 0.25rem;
   padding-left: 0.5rem;
@@ -109,8 +110,15 @@
 
 .sidebar-nav {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: 1.1rem;
+  /* 項目が増えて高さを超えた時は、ナビだけがスクロールする（最下端の版表示・リンク・テーマ切替は常に見える） */
+  min-height: 0;
+  overflow-y: auto;
+  /* フォーカスの枠（外側へ4px）がスクロールの枠で切れないよう、余白を取って外側の余白で相殺する */
+  padding: 4px;
+  margin: -4px;
 }
 
 .sidebar-group {
@@ -180,6 +188,7 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 0.5rem 0.6rem;
+  flex: none;
   margin-top: auto;
   padding: 0.6rem 0.5rem 0;
   border-top: 1px solid var(--border);

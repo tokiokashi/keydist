@@ -16,6 +16,8 @@ import { keymapDefinition } from '#analyzers/keymap/extract.ts';
 import { KEYMAP_PANE_META } from '#analyzers/keymap/pane-meta.ts';
 import { layerComboPressesDefinition } from '#analyzers/layer-combo-presses/extract.ts';
 import { LAYER_COMBO_PRESSES_PANE_META } from '#analyzers/layer-combo-presses/pane-meta.ts';
+import { playbackDefinition } from '#analyzers/playback/extract.ts';
+import { PLAYBACK_PANE_META } from '#analyzers/playback/pane-meta.ts';
 import { nSensitivityDefinition } from '#analyzers/n-sensitivity/extract.ts';
 import { N_SENSITIVITY_PANE_META } from '#analyzers/n-sensitivity/pane-meta.ts';
 
@@ -47,6 +49,7 @@ export const WORKSPACE_ANALYZERS: readonly WorkspaceAnalyzerEntry[] = [
   { id: heatmapLayersDefinition.id, ...HEATMAP_LAYERS_PANE_META, cardinality: 'single' },
   { id: layerComboPressesDefinition.id, ...LAYER_COMBO_PRESSES_PANE_META, cardinality: 'single' },
   { id: keymapDefinition.id, ...KEYMAP_PANE_META, cardinality: 'single' },
+  { id: playbackDefinition.id, ...PLAYBACK_PANE_META, cardinality: 'single' },
   { id: comparisonDefinition.id, ...COMPARISON_PANE_META, cardinality: 'set' },
   { id: fingerMatrixDefinition.id, ...FINGER_MATRIX_PANE_META, cardinality: 'set' },
   { id: nSensitivityDefinition.id, ...N_SENSITIVITY_PANE_META, cardinality: 'set' },

@@ -12,7 +12,7 @@ import {
   playbackAnalysisChainOrders,
   playbackRedirectWindows,
   playbackStrokeAnnotation,
-} from './playback-analysis-display.ts';
+} from './structure-display.ts';
 
 const key = (id: string, finger: Finger, x: number): Key => ({
   id, finger, x, y: 2, row: 2, col: 0,

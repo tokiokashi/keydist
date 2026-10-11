@@ -5,6 +5,7 @@ import { FINGER_DISTANCE_PANE_META } from '#analyzers/finger-distance/pane-meta.
 import { HEATMAP_PANE_META } from '#analyzers/heatmap/pane-meta.ts';
 import { HEATMAP_LAYERS_PANE_META } from '#analyzers/heatmap-layers/pane-meta.ts';
 import { KEYMAP_PANE_META } from '#analyzers/keymap/pane-meta.ts';
+import { PLAYBACK_PANE_META } from '#analyzers/playback/pane-meta.ts';
 import { LAYER_COMBO_PRESSES_PANE_META } from '#analyzers/layer-combo-presses/pane-meta.ts';
 import { COMPARISON_PANE_META } from '#analyzers/comparison/pane-meta.ts';
 import { FINGER_MATRIX_PANE_META } from '#analyzers/finger-matrix/pane-meta.ts';
@@ -154,6 +155,7 @@ export function Sidebar({ pinned, onPinnedChange, onNavigate }: SidebarProps) {
           <NavLink to="/standalone/heatmap-layers" onNavigate={onNavigate}>{HEATMAP_LAYERS_PANE_META.name}</NavLink>
           <NavLink to="/standalone/layer-combo-presses" onNavigate={onNavigate}>{LAYER_COMBO_PRESSES_PANE_META.name}</NavLink>
           <NavLink to="/standalone/keymap" onNavigate={onNavigate}>{KEYMAP_PANE_META.name}</NavLink>
+          <NavLink to="/standalone/playback" onNavigate={onNavigate}>{PLAYBACK_PANE_META.name}</NavLink>
           <h3 className="sidebar-subheading">Multi</h3>
           <NavLink to="/standalone/comparison" onNavigate={onNavigate}>{COMPARISON_PANE_META.name}</NavLink>
           <NavLink to="/standalone/finger-matrix" onNavigate={onNavigate}>{FINGER_MATRIX_PANE_META.name}</NavLink>
