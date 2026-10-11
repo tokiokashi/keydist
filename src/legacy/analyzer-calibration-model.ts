@@ -23,17 +23,16 @@ import {
   CALIBRATION_FINGER_SPEED_MAX,
   CALIBRATION_FINGER_SPEED_MIN,
   CALIBRATION_SAME_HAND_SAMPLES,
-  clearPlaybackCalibration,
   fallbackFingerSpeedFromSamples,
   fingerSpeedFromSamples,
   handDirection,
   sameHandDirectedFingerPairKey,
   sameHandFingerPairKey,
-  savePlaybackCalibration,
   type CalibrationKeyPair,
   type FingerSpeedSample,
   type PlaybackCalibration,
 } from '#interpretation/timing/calibration.ts';
+import { clearPlaybackCalibration, savePlaybackCalibration } from './playback-calibration-storage.ts';
 import type { UiPlaybackState, UiStateStorage, UiStateV1 } from './ui-state.ts';
 
 export type CalibrationDirection = 'L→R' | 'R→L';

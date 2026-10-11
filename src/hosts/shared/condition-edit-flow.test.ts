@@ -1,3 +1,4 @@
+import { EMPTY_PERSONAL_SPEED } from '#interpretation/timing/calibration-codec.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { initialWorkspaceLibrary } from '#engine/workspace.ts';
@@ -60,6 +61,7 @@ function newSession(): Session {
       presetLibrary: { presets: [] },
       userLayouts: [],
       userRomajiRules: [],
+      personalSpeed: EMPTY_PERSONAL_SPEED,
     },
     history: emptyCommandHistory<KeydistAssets>(),
   };

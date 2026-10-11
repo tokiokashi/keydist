@@ -44,7 +44,6 @@ import { analyzeStrokeStructure } from '../structure/aggregate.ts';
 import { DEFAULT_CHAIN_INTERPRETATION, type ChainInterpretation } from '../structure/chain.ts';
 import {
   actionsPerSecondFromIntervals,
-  clearPlaybackCalibration,
   calibrationActionPair,
   calibrationEligibleKeyIds,
   calibrationKeyMatches,
@@ -54,9 +53,6 @@ import {
   fallbackFingerSpeedFromSamples,
   fingerSpeedFromSamples,
   handDirection,
-  loadPlaybackCalibration,
-  PLAYBACK_CALIBRATION_STORAGE_KEY,
-  savePlaybackCalibration,
   sameHandDirectedFingerPairKey,
   sameHandFingerPairKey,
 } from './calibration.ts';
@@ -620,55 +616,6 @@ test('キャリブレーションの中央値は外れ値を抑えて速度を�
     { finger: 'LI', distance: 2, durationMs: 250 },
     { finger: 'RI', distance: 2, durationMs: 500 },
   ]), 8);
-});
-
-test('キャリブレーションの保存値は壊れたJSONを無視する', () => {
-  const data = new Map<string, string>();
-  const storage = {
-    getItem: (key: string) => data.get(key) ?? null,
-    setItem: (key: string, value: string) => data.set(key, value),
-    removeItem: (key: string) => { data.delete(key); },
-  };
-  const calibration = {
-    actionsPerSecond: 40,
-    sameHandDifferentFingerActionsPerSecond: 2.5,
-    sameHandDifferentFingerActionsPerSecondByPair: { 'LP:LR': 2 },
-    fingerSpeedUnitsPerSecond: { LI: 12 },
-    fallbackFingerSpeedUnitsPerSecond: 12,
-    measuredAt: 4,
-  };
-  savePlaybackCalibration(storage, calibration);
-  assert.deepEqual(loadPlaybackCalibration(storage), calibration);
-  const oldV2 = { ...calibration } as Record<string, unknown>;
-  delete oldV2.sameHandDifferentFingerActionsPerSecond;
-  delete oldV2.sameHandDifferentFingerActionsPerSecondByPair;
-  data.set(PLAYBACK_CALIBRATION_STORAGE_KEY, JSON.stringify(oldV2));
-  assert.equal(loadPlaybackCalibration(storage)?.sameHandDifferentFingerActionsPerSecond, calibration.actionsPerSecond);
-  assert.deepEqual(loadPlaybackCalibration(storage)?.sameHandDifferentFingerActionsPerSecondByPair, {});
-  data.clear();
-  data.set('keydist.playback-calibration.v2', JSON.stringify(oldV2));
-  assert.equal(loadPlaybackCalibration(storage)?.actionsPerSecond, calibration.actionsPerSecond);
-  assert.equal(loadPlaybackCalibration(storage)?.actionsPerSecondByDirection, undefined);
-  data.set(PLAYBACK_CALIBRATION_STORAGE_KEY, '{broken');
-  assert.equal(loadPlaybackCalibration(storage), undefined);
-  data.clear();
-  data.set('keydist.playback-calibration.v1', JSON.stringify(calibration));
-  assert.equal(loadPlaybackCalibration(storage), undefined);
-});
-
-test('キャリブレーションの保存値を新旧キーから削除できる', () => {
-  const data = new Map<string, string>();
-  const storage = {
-    getItem: (key: string) => data.get(key) ?? null,
-    setItem: (key: string, value: string) => data.set(key, value),
-    removeItem: (key: string) => { data.delete(key); },
-  };
-  data.set(PLAYBACK_CALIBRATION_STORAGE_KEY, '{}');
-  data.set('keydist.playback-calibration.v2', '{}');
-
-  clearPlaybackCalibration(storage);
-
-  assert.equal(data.size, 0);
 });
 
 test('キャリブレーションの指ペアはホーム段と下段で揃える', () => {

@@ -10,6 +10,8 @@ import {
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { PresetLibrary } from '#input/presets/index.ts';
 import type { UserRomajiRule } from '#input/romaji/rules.ts';
+import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
+import type { PersonalSpeed } from '#interpretation/timing/calibration-codec.ts';
 import {
   createSetup,
   deleteSetup,
@@ -147,6 +149,11 @@ export interface KeydistAssets {
   readonly userLayouts: readonly UserLayout[];
   /** 自作のローマ字規則の手持ち。`userLayouts`とは別のキーで、互いに触れずに読み書きする。 */
   readonly userRomajiRules: readonly UserRomajiRule[];
+  /**
+   * 個人の打鍵・指移動の速度。配列・物理配列・指の割り当てのどれにも紐づかず、他の資産と
+   * 対にならない独立の値なので別のキーとして持つ。
+   */
+  readonly personalSpeed: PersonalSpeed;
 }
 
 type SetupLibraryComputation =
@@ -836,5 +843,20 @@ export function setSingleTargetCommand(target: AnalysisTarget): Command<KeydistA
     const next = withSingleTarget(current.singleTargetSelection, target);
     if (next === current.singleTargetSelection) return { kind: 'no-op' };
     return { kind: 'applied', label: '対象を選ぶ', changes: { singleTargetSelection: next } };
+  };
+}
+
+/**
+ * 個人速度を保存する。`undefined`なら破棄して「個人速度無し」に戻す。
+ * 測定の結果の保存・保存値の編集・全破棄のどれも、この1つのコマンドで書く。
+ */
+export function setPersonalSpeedCommand(calibration: PlaybackCalibration | undefined): Command<KeydistAssets> {
+  return (current) => {
+    if (current.personalSpeed.calibration === calibration) return { kind: 'no-op' };
+    return {
+      kind: 'applied',
+      label: calibration === undefined ? '個人速度を破棄する' : '個人速度を保存する',
+      changes: { personalSpeed: { calibration } },
+    };
   };
 }

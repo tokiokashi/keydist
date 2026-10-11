@@ -4,7 +4,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// 旧画面（legacy/・features/analyzer-next/）が保存した自作の配列・ローマ字規則は新しい側へ移さない。
+// 旧画面（legacy/・features/analyzer-next/）が保存した自作の配列・ローマ字規則・個人速度は新しい側へ移さない。
 // 新しい側のコードが旧画面の保存キーや、そのキーを読み書きするモジュールを参照していないことを検査する。
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -21,6 +21,8 @@ const FORBIDDEN = [
   'keydist:romaji-rules',
   'user-layouts-storage',
   'romaji-settings-storage',
+  'keydist.playback-calibration',
+  'playback-calibration-storage',
 ];
 
 async function sourceFiles(dir: string): Promise<string[]> {

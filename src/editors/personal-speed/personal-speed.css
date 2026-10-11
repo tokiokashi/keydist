@@ -1,0 +1,210 @@
+/* 個人速度の画面。読み物の幅は自作の配列・規則の画面と同じに抑えて中央に置く */
+.personal-speed {
+  max-width: 50rem;
+  margin-inline: auto;
+}
+
+.personal-speed h1 {
+  margin-bottom: 0.5rem;
+  font-size: clamp(1.5rem, 5vw, 2rem);
+}
+
+.personal-speed h2 {
+  margin: 1.75rem 0 0.5rem;
+  font-size: 1.1rem;
+}
+
+.personal-speed h3 {
+  margin: 1.25rem 0 0.4rem;
+  font-size: 0.95rem;
+}
+
+.personal-speed-lead,
+.personal-speed-note {
+  margin: 0 0 0.6rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.personal-speed-toolbar,
+.personal-speed-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.personal-speed button {
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.personal-speed button:hover:not(:disabled) {
+  background: var(--surface-muted);
+}
+
+.personal-speed button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.personal-speed-select-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.75rem;
+}
+
+.personal-speed-select-grid label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.personal-speed select,
+.personal-speed input[type='text'] {
+  min-width: 0;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+}
+
+.personal-speed-run {
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.personal-speed-run[hidden] {
+  display: none;
+}
+
+.personal-speed-run:focus {
+  outline: none;
+}
+
+.personal-speed-run:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.personal-speed-instruction {
+  margin: 0 0 0.4rem;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.personal-speed-progress {
+  margin: 0 0 0.4rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.personal-speed-warning {
+  margin: 0 0 0.4rem;
+  min-height: 1.2em;
+  color: var(--danger);
+  font-size: 0.9rem;
+}
+
+.personal-speed-message,
+.personal-speed-error {
+  margin: 0.6rem 0 0;
+  min-height: 1.2em;
+  font-size: 0.9rem;
+}
+
+.personal-speed-message {
+  color: var(--text-muted);
+}
+
+.personal-speed-error {
+  color: var(--danger);
+}
+
+.personal-speed-rows {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.personal-speed-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.5rem;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.personal-speed-row-label {
+  flex: 1 1 10rem;
+  overflow-wrap: anywhere;
+}
+
+.personal-speed-row input[type='text'] {
+  width: 5.5rem;
+}
+
+.personal-speed-unit {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.personal-speed-row button {
+  white-space: nowrap;
+}
+
+.personal-speed-details {
+  margin-top: 1rem;
+}
+
+.personal-speed-details > summary {
+  margin-bottom: 0.4rem;
+  font-size: 0.95rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.personal-speed-confirm {
+  max-width: min(28rem, calc(100vw - 2rem));
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.personal-speed-confirm::backdrop {
+  background: rgb(0 0 0 / 0.35);
+}
+
+.personal-speed-confirm h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+}
+
+.personal-speed-confirm p {
+  margin: 0 0 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.personal-speed-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
