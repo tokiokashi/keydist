@@ -13,6 +13,7 @@ import {
   nonDefaultConditionRows,
   summarizeNonDefaultConditions,
   traceConditionSummary,
+  type ConditionSummaryScope,
 } from './condition-summary.ts';
 
 /**
@@ -32,6 +33,7 @@ function failedDescription(target: AnalysisTarget, setup: Setup | undefined, cat
 /**
  * 集合対象ページの1メンバーを、`nameTargets`へ渡す形にする（比較表・N感度で同じ組み立て）。
  * `excludeIds`は条件の併記から外す項目（N感度の`windowSize`）。
+ * `scope`は条件の併記に足す、このペインが読む項目（再生の時間モデルなど）。
  */
 export function targetNameSource(
   target: AnalysisTarget,
@@ -40,6 +42,7 @@ export function targetNameSource(
   setupNumbers: ReadonlyMap<string, number>,
   catalog: SetupCatalog,
   excludeIds: readonly SettingsItemId[] = [],
+  scope: ConditionSummaryScope = {},
 ): TargetNameSource {
   const setup = target.kind === 'setup' ? setups.get(target.setupId) : undefined;
   const label = effectiveLabel(setup?.label);
@@ -53,7 +56,7 @@ export function targetNameSource(
   if (resolution?.ok) {
     const header = conditionHeaderInfoFromResolvedInput(resolution.input.layout, resolution.input.geometry);
     const overrideSummary = summarizeNonDefaultConditions(
-      nonDefaultConditionRows(traceConditionSummary(resolution.input.cascade, catalog), excludeIds),
+      nonDefaultConditionRows(traceConditionSummary(resolution.input.cascade, catalog, scope), excludeIds),
     );
     return {
       ...base,

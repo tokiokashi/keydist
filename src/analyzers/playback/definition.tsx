@@ -88,4 +88,17 @@ export const playbackAnalyzer = {
   Settings: PlaybackSettings,
   defaultOptions: DEFAULT_PLAYBACK_OPTIONS,
   urlOptions: playbackOptions,
+  // 再生は時間モデルと速度平均の条件、それにChain・Arpeggioの数え方を読むので、要約に数える
+  conditionExtraIds: [
+    'playbackStepsPerSecond',
+    'playbackSpeedMultiplier',
+    'playbackSameFingerDelay',
+    'playbackAllFingerMovementDelay',
+    'playbackPersonalSpeed',
+    'playbackRateAverage',
+    'playbackRateWindow',
+    'playbackRateHalfLifeSeconds',
+    'chainInterpretation',
+    'arpeggioInterpretation',
+  ],
 } satisfies SingleAnalyzerPaneParts<PlaybackOptions, PlaybackExtracted>;

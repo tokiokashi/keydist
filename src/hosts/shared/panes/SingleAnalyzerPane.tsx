@@ -3,7 +3,12 @@ import type { CodecDiagnostic } from '#input/codec/index.ts';
 import { analysisTargetKey, nameTargets, type AnalysisTarget } from '#input/setup/index.ts';
 import type { ColorSlotsByKey, TargetSet } from '#engine/multi-target-selection.ts';
 import type { SetTargetFigure, SingleAnalyzerPaneParts } from '#analyzers/pane-parts.tsx';
-import { conditionHeaderInfoFromResolvedInput, traceConditionSummary } from '../condition-summary.ts';
+import {
+  conditionHeaderInfoFromResolvedInput,
+  settingsItemIds,
+  traceConditionSummary,
+  type ConditionSummaryScope,
+} from '../condition-summary.ts';
 import { combinePaneStates } from '../pane-status.ts';
 import { recommendedWidthRemOf } from '#analyzers/recommended-width.ts';
 import { PaneFrame } from '../PaneFrame.tsx';
@@ -74,7 +79,13 @@ export function SingleAnalyzerPane<Options, Extracted>({
   );
   const pane = useAnalyzerPane(cache, analyzer.definition, options, resolution);
 
-  const conditionRows = resolution.ok ? traceConditionSummary(resolution.input.cascade, catalog.setupCatalog) : [];
+  // このAnalyzerが読む条件だけを、要約と対象名に足して数える（読まない条件を数えると、その条件で測ったように読めるため）
+  const personalSpeedSaved = catalog.personalSpeed !== undefined;
+  const summaryScope = useMemo((): ConditionSummaryScope => ({
+    extraIds: settingsItemIds(analyzer.conditionExtraIds),
+    personalSpeedSaved,
+  }), [analyzer, personalSpeedSaved]);
+  const conditionRows = resolution.ok ? traceConditionSummary(resolution.input.cascade, catalog.setupCatalog, summaryScope) : [];
   const header = resolution.ok
     ? conditionHeaderInfoFromResolvedInput(resolution.input.layout, resolution.input.geometry)
     : undefined;
@@ -85,8 +96,8 @@ export function SingleAnalyzerPane<Options, Extracted>({
   // 対象の名前（読み上げ用の名前と、見出しの対象・hoverに出すフル名）。単一対象なので集合は自分1つ。
   const setupNumbers = useMemo(() => setupNumbersOf(setups), [setups]);
   const named = useMemo(
-    () => nameTargets([targetNameSource(target, resolution, setupsById, setupNumbers, catalog.setupCatalog)])[0],
-    [target, resolution, setupsById, setupNumbers, catalog.setupCatalog],
+    () => nameTargets([targetNameSource(target, resolution, setupsById, setupNumbers, catalog.setupCatalog, [], summaryScope)])[0],
+    [target, resolution, setupsById, setupNumbers, catalog.setupCatalog, summaryScope],
   );
 
   // Singleの対象の図の下に並べる、Multiの集合の対象。宣言したAnalyzerの単体の画面でだけ並ぶ
@@ -107,11 +118,11 @@ export function SingleAnalyzerPane<Options, Extracted>({
   const besideNamed = useMemo(() => {
     if (besideMembers.length === 0) return new Map<string, ReturnType<typeof nameTargets>[number]>();
     const sources = [
-      targetNameSource(target, resolution, setupsById, setupNumbers, catalog.setupCatalog),
-      ...besideMembers.map((member) => targetNameSource(member.target, member.resolution, setupsById, setupNumbers, catalog.setupCatalog)),
+      targetNameSource(target, resolution, setupsById, setupNumbers, catalog.setupCatalog, [], summaryScope),
+      ...besideMembers.map((member) => targetNameSource(member.target, member.resolution, setupsById, setupNumbers, catalog.setupCatalog, [], summaryScope)),
     ];
     return new Map(nameTargets(sources).map((item) => [item.key, item] as const));
-  }, [besideMembers, target, resolution, setupsById, setupNumbers, catalog.setupCatalog]);
+  }, [besideMembers, target, resolution, setupsById, setupNumbers, catalog.setupCatalog, summaryScope]);
   const setTargetFigures = useMemo((): readonly SetTargetFigure<Extracted>[] => besideMembers.map((member) => ({
     key: member.key,
     label: besideNamed.get(member.key)?.displayName ?? member.key,
@@ -202,6 +213,7 @@ export function SingleAnalyzerPane<Options, Extracted>({
         presetLibrary: env.presetLibrary,
         generatePresetId: env.generatePresetId,
         undo: env.undo,
+        personalSpeedSaved,
         shapes: catalog.setupCatalog.shapes,
         customFingerAssignments: catalog.customFingerAssignments,
         customRomajiRules: catalog.customRomajiRules,

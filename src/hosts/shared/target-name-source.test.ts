@@ -138,3 +138,19 @@ test('Setupを削除しても、残ったSetupの衝突時の番号は変わら�
   assert.deepEqual(displayNames(targets, [fixedA, fixedB, dup]).map((n) => n.displayName), [`${qwerty}（Setup 3）`, `${qwerty}（配列）`]);
   assert.deepEqual(displayNames(targets, [fixedA, dup]).map((n) => n.displayName), [`${qwerty}（Setup 3）`, `${qwerty}（配列）`]);
 });
+
+test('対象名の条件の併記: 再生のペインが宣言した時だけ、時間モデルの条件を入れる', () => {
+  const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'playbackStepsPerSecond', 2.5);
+  assert.ok(written.ok);
+  if (!written.ok) return;
+  const target: AnalysisTarget = { kind: 'layout', layoutId: 'qwerty' };
+  const setupsById = new Map<string, Setup>();
+  const resolution = resolvePaneInput(target, setupsById, CATALOG, written.overrides, EN_TEXT);
+  const plain = targetNameSource(target, resolution, setupsById, new Map(), CATALOG.setupCatalog);
+  assert.equal('failed' in plain, false);
+  assert.equal('overrideSummary' in plain, false);
+  const scoped = targetNameSource(target, resolution, setupsById, new Map(), CATALOG.setupCatalog, [], {
+    extraIds: ['playbackStepsPerSecond'],
+  });
+  assert.equal('overrideSummary' in scoped ? scoped.overrideSummary : undefined, '基準速度: 2.5ステップ/秒');
+});

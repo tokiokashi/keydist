@@ -27,7 +27,7 @@ import { usePaneOptionsCommit } from './use-pane-options-commit.ts';
  */
 export function WorkspaceApp({ workspaceId }: { readonly workspaceId: string }) {
   const { assets, ready, dispatch, getAssets, canUndo, canRedo, undo, redo } = useKeydistAssets();
-  const catalog = useMemo(() => paneCatalog(assets), [assets.userLayouts, assets.userRomajiRules]);
+  const catalog = useMemo(() => paneCatalog(assets), [assets.userLayouts, assets.userRomajiRules, assets.personalSpeed]);
   const holder = useMemo(() => ({ workspaceId }), [workspaceId]);
 
   const commitTextContent = useTextContentCommit(dispatch, getAssets, generateTextId, holder);

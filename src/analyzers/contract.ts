@@ -6,7 +6,12 @@ import type { Trace, TracePolicy } from '#trace/generate.ts';
 import type { AggregatedAnalysisResult } from '#interpretation/structure/aggregate.ts';
 import type { KeyDetails } from '#interpretation/key-detail.ts';
 import type { Metrics } from '#interpretation/metrics.ts';
-import { DEFAULT_PLAYBACK_RATE_CONDITIONS, type PlaybackRateConditions } from '#interpretation/timing/playback.ts';
+import {
+  DEFAULT_PLAYBACK_RATE_CONDITIONS,
+  DEFAULT_PLAYBACK_TIMING_SETTINGS,
+  type PlaybackRateConditions,
+  type PlaybackTimingSettings,
+} from '#interpretation/timing/playback.ts';
 import type {
   OptionsDefinition,
   OptionsDisciplineCheck,
@@ -73,15 +78,18 @@ export interface TraceRequester {
 /**
  * 抽出だけが読む条件の実効値。Traceと構造解析の結果を変えないので、変えた時に作り直すのは抽出だけ
  * （`engine/keys.ts` の `singleExtractionKeyOf` がキーに入れる。`interpretationKeyOf` とTraceのキーには入れない）。
- * 新しい項目は、この型・`DEFAULT_EXTRACTION_CONDITIONS`・`engine/resolved-input.ts` の組み立ての3か所に足す。
+ * 新しい項目は、この型・`DEFAULT_EXTRACTION_CONDITIONS`・`engine/resolved-input.ts` の組み立ての3か所（時間モデルは`playbackTiming`にまとめる）に足す。
  */
 export interface ExtractionConditions {
   /** かな毎秒・アクション毎秒の平均 */
   readonly playbackRate: PlaybackRateConditions;
+  /** 再生の時間を決める条件。個人速度は、適用する設定の時だけ保存値を持つ（キーに入る） */
+  readonly playbackTiming: PlaybackTimingSettings;
 }
 
 export const DEFAULT_EXTRACTION_CONDITIONS: ExtractionConditions = {
   playbackRate: DEFAULT_PLAYBACK_RATE_CONDITIONS,
+  playbackTiming: DEFAULT_PLAYBACK_TIMING_SETTINGS,
 };
 
 /** 単一Setup対象の抽出に渡す値。 */

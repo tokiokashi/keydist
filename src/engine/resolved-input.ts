@@ -14,6 +14,7 @@ import { tableForRule, type UserRomajiRule } from '#input/romaji/rules.ts';
 import type { TracePolicy } from '#trace/generate.ts';
 import type { ChainInterpretation } from '#interpretation/structure/chain.ts';
 import type { ArpeggioInterpretation } from '#interpretation/structure/arpeggio.ts';
+import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import { defaultFingerAssignmentId, resolveFingerAssignment } from './finger-assignment.ts';
 import {
   resolveSettings,
@@ -82,6 +83,11 @@ export interface ResolveEngineInputOptions {
    */
   readonly customFingerAssignments?: ReadonlyMap<string, FingerAssignment>;
   readonly overrides: SettingsCascadeOverrides;
+  /**
+   * 個人速度の画面の保存値（資産`personalSpeed`）。条件のカスケードの外にある値なので、ここで受ける。
+   * 無ければ個人速度の保存値は無い。適用する設定の時だけ、抽出の条件（とキー）に入る。
+   */
+  readonly personalSpeed?: PlaybackCalibration;
   readonly text: string;
   readonly language: TextLanguage;
 }
@@ -189,6 +195,15 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
           average: cascade.playbackRateAverage.value,
           window: cascade.playbackRateWindow.value,
           halfLifeSeconds: cascade.playbackRateHalfLifeSeconds.value,
+        },
+        playbackTiming: {
+          stepsPerSecond: cascade.playbackStepsPerSecond.value,
+          speedMultiplier: cascade.playbackSpeedMultiplier.value,
+          sameFingerDelay: cascade.playbackSameFingerDelay.value,
+          allFingerMovementDelay: cascade.playbackAllFingerMovementDelay.value,
+          personalSpeed: cascade.playbackPersonalSpeed.value
+            ? { apply: true, calibration: options.personalSpeed }
+            : { apply: false },
         },
       },
       romajiRuleId,

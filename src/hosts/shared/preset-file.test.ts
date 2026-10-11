@@ -114,13 +114,14 @@ test('診断: 壊れた値・未知の項目は捨てて残りを読み、項目
   assert.ok(result.details.some((line) => line.includes('futureItem')));
 });
 
-test('診断: 行の無い既知の項目は「この版に無い」とは言わず、その他の項目にまとめる', () => {
+test('診断: 再生の条件の項目も、モーダルの行の名前で伝える', () => {
   const result = parsePresetFile(
-    fileText({ version: 1, presets: [{ id: 'a', name: 'A', values: { playbackRateWindow: 'z' } }] }),
+    fileText({ version: 1, presets: [{ id: 'a', name: 'A', values: { playbackRateWindow: 'z', playbackStepsPerSecond: 99 } }] }),
     REFERENCES,
   );
   assert.ok(result.ok);
-  assert.match(result.message, /1件の値は読み込めませんでした（その他の項目 1件）/);
+  assert.match(result.message, /2件の値は読み込めませんでした（平均の窓幅、基準速度）/);
+  assert.doesNotMatch(result.message, /playbackRateWindow|playbackStepsPerSecond/);
 });
 
 test('診断: 壊れたプリセットは件数で伝え、残りは読む', () => {

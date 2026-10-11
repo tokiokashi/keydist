@@ -49,6 +49,14 @@ export type GlobalEditableId = Extract<
   | 'romajiRuleId'
   | 'chainInterpretation'
   | 'arpeggioInterpretation'
+  | 'playbackStepsPerSecond'
+  | 'playbackSpeedMultiplier'
+  | 'playbackSameFingerDelay'
+  | 'playbackAllFingerMovementDelay'
+  | 'playbackPersonalSpeed'
+  | 'playbackRateAverage'
+  | 'playbackRateWindow'
+  | 'playbackRateHalfLifeSeconds'
 >;
 
 /** モーダルに行がある項目。「すべて既定値に戻す」はこの項目の全体の上書きだけを消す。 */
@@ -63,6 +71,14 @@ export const GLOBAL_EDITABLE_IDS: readonly GlobalEditableId[] = [
   'romajiRuleId',
   'chainInterpretation',
   'arpeggioInterpretation',
+  'playbackStepsPerSecond',
+  'playbackSpeedMultiplier',
+  'playbackSameFingerDelay',
+  'playbackAllFingerMovementDelay',
+  'playbackPersonalSpeed',
+  'playbackRateAverage',
+  'playbackRateWindow',
+  'playbackRateHalfLifeSeconds',
 ];
 
 /** 行を出している項目（`hiddenIds`を除く）のうち、全体の上書きがあるもの。 */

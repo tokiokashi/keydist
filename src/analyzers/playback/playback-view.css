@@ -11,6 +11,17 @@
   font-size: 0.8rem;
 }
 
+.playback-notice {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.playback-notice-link {
+  margin-left: 0.4rem;
+}
+
 .playback-controls {
   display: flex;
   flex-wrap: wrap;

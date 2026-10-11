@@ -7,11 +7,17 @@ import {
   playbackRateChartData,
   type PlaybackRateChartPoint,
   type PlaybackRateConditions,
+  type PlaybackTimingSettings,
   type PlaybackTimingStep,
 } from '#interpretation/timing/playback.ts';
 import { ALTERNATE_PLAYBACK_OPTIONS, DEFAULT_PLAYBACK_OPTIONS, playbackOptions, type PlaybackOptions } from './options.ts';
 import { playbackScheduleOf } from './session.ts';
-import { playbackTimingConditions, type PlaybackTimingConditions } from './timing-conditions.ts';
+import {
+  personalSpeedUseOf,
+  playbackTimingConditions,
+  type PersonalSpeedUse,
+  type PlaybackTimingConditions,
+} from './timing-conditions.ts';
 
 /**
  * 打鍵再生の抽出。再生は打鍵の列と構造解析の結果（Chain・Arpeggio・Redirect・遷移）を読んで
@@ -26,6 +32,8 @@ export interface PlaybackExtracted {
   readonly windowSize: number;
   /** 再生の時間を決める条件 */
   readonly timing: PlaybackTimingConditions;
+  /** 個人速度の扱い。適用する設定で保存値が無い（`missing`）時、再生のペインがそのことを知らせる */
+  readonly personalSpeedUse: PersonalSpeedUse;
   /** 各ステップの開始・終了時刻（確定した時間表） */
   readonly schedule: readonly PlaybackTimingStep[];
   /** 再生位置ごとの、かな毎秒・アクション毎秒の平均と、ChainとArpeggioの区間。先頭（位置0）を含む */
@@ -37,14 +45,15 @@ export interface PlaybackExtracted {
   readonly basisId: string;
 }
 
-export function computePlaybackExtraction({ analysis, metrics, geometry, timing, rateConditions, basisId }: {
+export function computePlaybackExtraction({ analysis, metrics, geometry, timingSettings, rateConditions, basisId }: {
   readonly analysis: AggregatedAnalysisResult;
   readonly metrics: Metrics;
   readonly geometry: Geometry;
-  readonly timing: PlaybackTimingConditions;
+  readonly timingSettings: PlaybackTimingSettings;
   readonly rateConditions: PlaybackRateConditions;
   readonly basisId: string;
 }): PlaybackExtracted {
+  const timing = playbackTimingConditions(timingSettings);
   const schedule = playbackScheduleOf(analysis, geometry, timing);
   const rateChart = playbackRateChartData(
     analysis,
@@ -57,7 +66,15 @@ export function computePlaybackExtraction({ analysis, metrics, geometry, timing,
     rateConditions.average,
     rateConditions.halfLifeSeconds,
   );
-  return { analysis, windowSize: metrics.conditions.windowSize, timing, schedule, rateChart, basisId };
+  return {
+    analysis,
+    windowSize: metrics.conditions.windowSize,
+    timing,
+    personalSpeedUse: personalSpeedUseOf(timingSettings),
+    schedule,
+    rateChart,
+    basisId,
+  };
 }
 
 /** engine（`engine/cache.ts` の `getExtraction`）が呼ぶ、Analyzer契約の実体。 */
@@ -69,7 +86,7 @@ export const playbackDefinition: SingleAnalyzerDefinition<PlaybackOptions, Playb
       analysis: context.analysis,
       metrics: context.metrics,
       geometry: context.geometry,
-      timing: playbackTimingConditions(),
+      timingSettings: context.conditions.playbackTiming,
       rateConditions: context.conditions.playbackRate,
       basisId: context.basisId,
     });
