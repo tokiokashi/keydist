@@ -5,6 +5,7 @@ import {
   type Geometry,
 } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
+import type { ExtractionConditions } from '#analyzers/contract.ts';
 import { withoutRomajiOnlyCombos, withRomaji } from '#input/layouts/types.ts';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { TextLanguage } from '#input/text/language.ts';
@@ -36,6 +37,11 @@ export interface ResolvedInput {
   /** 解釈（Traceの読み方）。全体からWorkspaceまで置ける（配列・Setupのレベルには置かない）。 */
   readonly chainInterpretation: ChainInterpretation;
   readonly arpeggioInterpretation: ArpeggioInterpretation;
+  /**
+   * 抽出だけが読む条件の実効値。Traceと解釈のキーには入れず、抽出のキーにだけ入れる
+   * （`keys.ts`の`singleExtractionKeyOf`）。`cascade`は表示専用でキーに使わないので、キーに入れる値はここに複製して持つ。
+   */
+  readonly extractionConditions: ExtractionConditions;
   /** ローマ字入力でなければnull（かな直接・英字直接）。 */
   readonly romajiRuleId: string | null;
   /**
@@ -178,6 +184,13 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
       tracePolicy,
       chainInterpretation: cascade.chainInterpretation.value,
       arpeggioInterpretation: cascade.arpeggioInterpretation.value,
+      extractionConditions: {
+        playbackRate: {
+          average: cascade.playbackRateAverage.value,
+          window: cascade.playbackRateWindow.value,
+          halfLifeSeconds: cascade.playbackRateHalfLifeSeconds.value,
+        },
+      },
       romajiRuleId,
       cascade: resolvedCascade,
     },

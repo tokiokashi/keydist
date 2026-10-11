@@ -115,7 +115,7 @@
 | D8 | 条件プリセット（標準・保存・選ぶ・削除） | `condition-presets.ts` | 表示だけ | 実装済み | 条件のモーダル上部（`hosts/shared/PresetSection.tsx`）。旧画面の組み込み「標準」は「すべて既定値に戻す」が受ける |
 | D9 | 条件ファイルの書き出し・読み込み | `condition-bundle.ts` | 操作（書き出しだけ。読み込みはコード） | 実装済み | プリセットのファイル（`hosts/shared/preset-file.ts`）。同梱していた自作の配列・物理配列・ローマ字規則はG7 |
 | D10 | 現在値と既定値の差分の一覧・結果への条件の併記 | `condition-description.ts`・`metric-conditions` | 表示だけ | 実装済み | 条件の要約と出どころの札（`hosts/shared/ConditionSummary.tsx`）。対象ごとの差は比較表・N感度が出す |
-| D11 | 速度グラフの平均方式（SMA・EWMA）と窓幅・半減期 | 条件の「再生」・再生設定の「グラフ設定」 | 表示だけ | 予定あり | #55・#56。N3に含める。項目は `engine/settings-items.ts` にあるが、編集する行が無い |
+| D11 | 速度グラフの平均方式（SMA・EWMA）と窓幅・半減期 | 条件の「再生」・再生設定の「グラフ設定」 | 表示だけ | 予定あり | #55。N3に含める。項目は `engine/settings-items.ts` にあり、グラフ（画面側）は打鍵再生が持つ（`analyzers/playback/`。実効値は抽出の文脈の `conditions` で受け、値を変えるとTraceを作り直さずにグラフが変わる）。編集する行が無い |
 | D12 | 標準速度・再生倍率・指の移動速度の考慮・全指の移動時間で律速・個人速度の適用 | 条件の「再生」・再生設定 | 表示だけ | 予定あり | #55。N3に含める |
 | D13 | 配列ごとのChainの区切り・Arpeggioの数え方の上書き | `analyzer-metrics-content.tsx:626-631`（`override?.chain`・`override?.arpeggioPolicy`）、条件の「Chain」「Arpeggio」の個別設定 | コード | 捨てる（決定済み） | 解釈は全体とWorkspaceのレベルだけに置く。配列・Setupごとには置かない（`engine/settings-items.ts:138-147`の `chainInterpretation`・`arpeggioInterpretation`の `allowedLevels`）。比較で並ぶ対象の数え方が違うと比べる意味が無くなるため |
 
@@ -145,14 +145,14 @@
 
 ### F. 打鍵再生
 
-再生の時間モデルは `spec/playback-timing.md` と `interpretation/timing/` が持つ。画面は、再生の本体（F1〜F3・F6）が新側にある。速度グラフ（F4）は新側に無い。個人速度（F7・F8）は個人速度の画面にある。
+再生の時間モデルは `spec/playback-timing.md` と `interpretation/timing/` が持つ。画面は、再生の本体（F1〜F4・F6）が新側にある。個人速度（F7・F8）は個人速度の画面にある。
 
 | ID | 機能 | 旧画面での出どころ | 確認 | 状態 | 受け皿・候補 |
 |---|---|---|---|---|---|
-| F1 | 再生の操作（再生・一時停止・停止・1ステップ戻る・進む・再生位置のシーク・位置の表示） | `AnalyzerPlaybackSurface` | 操作 | 実装済み | 打鍵再生（`analyzers/playback/`）。単体の画面とWorkspaceのペインで、再生・一時停止・停止・1ステップ戻る・進む・シークができ、位置を「n / 総数 ステップ」で出す。再生位置はペインの本体のメモリの上だけに持つ。再読み込み・ペインの複製・抽出の作り直し（対象・テキスト・条件の変更）では先頭へ戻る |
+| F1 | 再生の操作（再生・一時停止・停止・1ステップ戻る・進む・再生位置のシーク・位置の表示） | `AnalyzerPlaybackSurface` | 操作 | 実装済み | 打鍵再生（`analyzers/playback/`）。単体の画面とWorkspaceのペインで、再生・一時停止・停止・1ステップ戻る・進む・シークができ、位置を「n / 総数 ステップ」で出す。再生位置はペインの本体のメモリの上だけに持つ。再読み込み・ペインの複製・対象・テキスト・構造の条件の変更では先頭へ戻る。速度の平均の条件（D11）だけを変えた時は保たれる |
 | F2 | 再生中の配列図（指の位置・予定のローマ字・押下予定のキー・押下履歴・順番ラベル・帰属・構造・入力の履歴） | `AnalyzerPlaybackSurface` | 操作 | 実装済み | 打鍵再生（`analyzers/playback/`）。配列図に、指の位置・これから押すキーと順番・押したキーの履歴と順番・今の構造（Chain・Arpeggio・SFB等）・入力の履歴・帰属・ローマ字の予定綴りを重ねる。旧画面で切り替えられた指の位置・予定キー・履歴・順番ラベルは、切り替えを持たず常に出す |
 | F3 | 構造の動的表示（Chain・Arpeggio・同指移動）・押下フィードバック（フェード・パルス・バウンス・なし）・指位置の準備時間・配列図の倍率 | `AnalyzerPlaybackSettings` の「表示設定」 | 表示だけ | 実装済み | 打鍵再生の解析設定（`analyzers/playback/options.ts`）。構造の動的表示（Chain・Arpeggio・同指移動の3つ）・押下フィードバック（なし・フェード・パルス・バウンス）・指位置の準備時間・配列図の倍率。どれも表示だけが変わり、抽出は作り直さない。配列ごとの上書きは持たない（F5） |
-| F4 | かな毎秒・アクション毎秒の速度グラフ（平均の推移・ChainとArpeggioの区間の帯・クリックで再生位置を移す） | `AnalyzerPlaybackRateChart` | コード | 予定あり | #56。N3に含める。平均方式はD11 |
+| F4 | かな毎秒・アクション毎秒の速度グラフ（平均の推移・ChainとArpeggioの区間の帯・クリックで再生位置を移す） | `AnalyzerPlaybackRateChart` | コード | 実装済み | 打鍵再生（`analyzers/playback/`）。配列図の下に、かな/秒・アクション/秒の平均の推移を線で出し、グラフを押すとその位置へ再生位置が移り、再生位置を示す線が追従する。値は抽出が再生と同じ時間表から求める。ChainとArpeggioの区間は、再生の解析設定で動的表示を選んだ種類だけ帯で示す。旧画面の「開閉できる枠」は持たず、常に出す。平均方式はD11 |
 | F5 | 再生設定を配列ごとの上書きにする（「この配列専用にする」） | 再生設定の「適用先」 | 表示だけ | 捨てる（決定済み） | X2。表示だけの設定。旧画面は配列ごとの上書きを持つ |
 | F6 | Escで再生設定を閉じる | `analyzer-playback-surface.tsx` | コード | 実装済み | 解析設定の小窓が持つEscapeの規則（`hosts/shared/FloatingWindow.tsx`）。打鍵再生に再生専用の小窓は無い |
 | F7 | 個人速度の測定（通常・方向別・指の移動・組ごとの測り直し） | `AnalyzerCalibrationDialog`・`analyzer-calibration-model.ts` | 表示だけ | 実装済み | 個人速度の画面（`/personal-speed`。`editors/personal-speed/`・`app/personal-speed/`）。測定の進行は `interpretation/timing/calibration-session.ts`。測るキーの配列・物理配列・指の割り当てはこの画面の中で選ぶ（`spec/playback-timing.md` §7.6）。旧画面のダイアログを開いて項目を確かめただけで、測定はしていない（キー入力を取るため） |
@@ -211,7 +211,7 @@
 |---|---|---|---|---|
 | N1 | 計算方法・仕様へのリンク・GitHubのリンクを新しい画面に置く | 小 | A6・A7 | #51。数値は条件の下での結果という注意は、`AGENTS.md`「数値を外に出す時」の趣旨に沿ってトップだけにある |
 | N2 | テキストの文字数を文脈バーのチップに出す | 小 | B4 | #52。旧画面は「290文字」と出した |
-| N3 | Analyzer: 打鍵再生を作る（配列図・操作・速度グラフ・表示設定・時間モデルの条件） | 大 | D11・D12・F1〜F4・F6 | `spec/playback-timing.md` と `interpretation/timing/` は済み。issueは3つ。再生の本体（F1〜F3・F6）が #54（実装済み）、条件の行（D11・D12）が #55、速度グラフ（F4とD11の画面側）が #56 |
+| N3 | Analyzer: 打鍵再生を作る（配列図・操作・速度グラフ・表示設定・時間モデルの条件） | 大 | D11・D12・F1〜F4・F6 | `spec/playback-timing.md` と `interpretation/timing/` は済み。issueは3つ。再生の本体（F1〜F3・F6）が #54（実装済み）、条件の行（D11・D12）が #55、速度グラフ（F4とD11の画面側）が #56（実装済み） |
 | N4 | Analyzer: ヒートマップ（統合・層別・キー入力パターンの確認）を作る | 大 | E12〜E15 | #57（統合・層別）・#21（E15のキー入力パターン）。統合・層別は実装済み（`analyzers/heatmap/`・`analyzers/heatmap-layers/`の2つのAnalyzer。#57）で、残りはE15（#21）。層が複数ある配列で画面を操作して確かめた。E15のキー入力パターンの確認は、キー詳細の共通化（物理キー×面ごとのツールチップとクリック詳細）の#21に統合した。キー詳細の共通化は、ヒートマップのキーのホバー詳細・入力パターンの確認と範囲が重なる |
 | N5 | Analyzer: 層・コンボの内訳（帰属先・修飾・コンボ表・コンボ配列図）を作る | 中 | E16〜E18 | #58。実装済み（`analyzers/layer-combo-presses/`・`analyzers/keymap/`の2つのAnalyzer） |
 | N6 | 個人速度の測定と編集の画面を作る | 中 | F7・F8・H3 | #53。実装済み（`/personal-speed`）。再生への適用と、再生の画面からのリンクは #55 |

@@ -32,6 +32,21 @@ export const PLAYBACK_RATE_HALF_LIFE_SECONDS_MIN = 0.1;
 export const PLAYBACK_RATE_HALF_LIFE_SECONDS_MAX = 10;
 export const DEFAULT_PLAYBACK_RATE_HALF_LIFE_SECONDS = 1;
 
+/** かな毎秒・アクション毎秒の平均を決める条件（`spec/playback-timing.md` §5）。 */
+export interface PlaybackRateConditions {
+  readonly average: PlaybackRateAverage;
+  /** SMAで使う直近Stroke数 */
+  readonly window: number;
+  /** EWMAで過去寄与が半分になる時間 [秒] */
+  readonly halfLifeSeconds: number;
+}
+
+export const DEFAULT_PLAYBACK_RATE_CONDITIONS: PlaybackRateConditions = {
+  average: DEFAULT_PLAYBACK_RATE_AVERAGE,
+  window: DEFAULT_PLAYBACK_RATE_WINDOW,
+  halfLifeSeconds: DEFAULT_PLAYBACK_RATE_HALF_LIFE_SECONDS,
+};
+
 /** 非アクティブなタブから戻った時の一気送りを防ぐため、1フレームの経過時間を制限する。 */
 const MAX_FRAME_MS = 100;
 

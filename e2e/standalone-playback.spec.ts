@@ -99,6 +99,39 @@ test('表示設定を変えると表示だけが変わり、再生位置は保�
   await expect(page.locator('[data-settings-window="true"]')).toHaveCount(0);
 });
 
+test('速度グラフを押すと再生位置が移り、再生位置を示す線が追従する。帯はChain・Arpeggioの表示設定に従う', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openPlayback(page);
+  const [, total] = await readPosition(page);
+  const chart = feature(page).locator('[data-playback-rate-chart]');
+  await expect(chart).toBeVisible();
+  await expect(chart.locator('svg')).toHaveAttribute('data-playback-rate-total', String(total));
+
+  // 先頭の線はグラフの左端
+  const line = chart.locator('[data-playback-rate-cursor-line]');
+  const startX = Number(await line.getAttribute('x1'));
+
+  // グラフの横方向の中央を押すと、総数のおよそ半分へ移る
+  const hit = chart.locator('[data-playback-rate-hit]');
+  const box = (await hit.boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  const [moved] = await readPosition(page);
+  expect(Math.abs(moved - total / 2)).toBeLessThanOrEqual(1);
+  expect(Number(await line.getAttribute('x1'))).toBeGreaterThan(startX);
+  await expect(chart.locator('[data-playback-rate-readout]')).toContainText(`${moved}ステップ目、`);
+
+  // 帯は、表示設定で選んだ種類だけ出る
+  await expect(chart.locator('[data-playback-rate-band]')).toHaveCount(0);
+  const settings = await openSettings(page);
+  await settings.getByRole('checkbox', { name: 'Chainの動的表示' }).check();
+  await expect(chart.locator('[data-playback-rate-band="chain"]').first()).toBeVisible();
+  await expect(chart.locator('[data-playback-rate-band="arpeggio"]')).toHaveCount(0);
+  await settings.getByRole('checkbox', { name: 'Arpeggioの動的表示' }).check();
+  await expect(chart.locator('[data-playback-rate-band="arpeggio"]').first()).toBeVisible();
+  // 表示設定を変えても再生位置は保たれる
+  expect((await readPosition(page))[0]).toBe(moved);
+});
+
 test('対象を替えて抽出が作り直されると、再生位置は先頭へ戻る', async ({ page }) => {
   await openPlayback(page);
   await feature(page).locator('[data-playback-action="forward"]').click();

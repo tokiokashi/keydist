@@ -97,12 +97,17 @@ export function extractSingle<Options, Extracted>(
   interpretationResult: EngineInterpretationResult,
   requestTrace: TraceRequester,
   keyDetails: () => KeyDetails,
+  input: ResolvedInput,
+  basisId: string,
 ): EngineExtractionResult<Extracted> {
   const extracted = definition.extract({
     trace: traceResult.trace,
     analysis: interpretationResult.analysis,
     metrics: interpretationResult.metrics,
     options,
+    geometry: input.geometry,
+    conditions: input.extractionConditions,
+    basisId,
     requestTrace,
     keyDetails,
   });

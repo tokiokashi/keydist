@@ -1,6 +1,6 @@
 import { stableStringify } from './cache-key.ts';
 import { MODEL_VERSION } from './model-version.ts';
-import type { TraceRequestInput } from '#analyzers/contract.ts';
+import type { ExtractionConditions, TraceRequestInput } from '#analyzers/contract.ts';
 import type { AnalysisTarget } from '#input/setup/index.ts';
 import type { EngineSetMemberInput } from './request.ts';
 import type { ResolvedInput } from './resolved-input.ts';
@@ -52,9 +52,8 @@ const traceKeyByInput = new WeakMap<object, string>();
  * chain/arpeggio解釈は全体とWorkspaceのレベルに置けるが、さらにレベルが広がっても
  * このキーの形は変わらない。
  *
- * 個人速度（`playbackRate*`）はまだこのキーに含めない。今のinterpretationは
- * 構造 + 共通指標だけを扱い時間モデルを持たないため対象外。
- * 足す時はこの関数の引数に個人速度を増やす。
+ * 個人速度（`playbackRate*`）は含めない。解釈は構造 + 共通指標だけを扱い、時間モデルの条件で
+ * 結果が変わらないため。時間モデルの条件は抽出のキーにだけ入る（`singleExtractionKeyOf`）。
  */
 export function interpretationKeyOf(input: ResolvedInput, traceKey: string): string {
   return stableStringify({
@@ -65,7 +64,11 @@ export function interpretationKeyOf(input: ResolvedInput, traceKey: string): str
 }
 
 /**
- * 抽出のキー = 解釈のキー + Analyzer id + 抽出に効くoptions。
+ * 抽出のキー = 解釈のキー + Analyzer id + 抽出に効くoptions + 抽出だけが読む条件（`extractionConditions`）。
+ *
+ * 抽出だけが読む条件（平均方式・窓幅など）は、Traceと解釈のキーに入れない。変えた時に作り直すのは抽出だけで、
+ * Traceと構造解析は作り直さない。条件の項目を読まないAnalyzerの抽出も作り直しになるが、抽出は軽く、
+ * Analyzerごとに「どの条件を読むか」を宣言させるより、キーの組み立てを1か所に保つ方が取り違えが起きない。
  *
  * 「抽出に効くoptions」の判定は`AnalyzerDefinition.extractKeyOf(options)`（`analyzers/contract.ts`）
  * がすでに行っている。見た目だけの項目はそこで返り値から外れているので、ここでは
@@ -79,11 +82,13 @@ export function analyzerExtractionKeyOf(
   interpretationKey: string,
   definitionId: string,
   extractionRelevantOptions: unknown,
+  extractionConditions: ExtractionConditions,
 ): string {
   return stableStringify({
     interpretationKey,
     definitionId,
     options: extractionRelevantOptions,
+    conditions: extractionConditions,
   });
 }
 
@@ -130,7 +135,31 @@ export function singleExtractionKeyOf(
   definitionId: string,
   extractionRelevantOptions: unknown,
 ): string {
-  return analyzerExtractionKeyOf(interpretationKeyOf(input, traceKeyOf(input)), definitionId, extractionRelevantOptions);
+  return analyzerExtractionKeyOf(
+    interpretationKeyOf(input, traceKeyOf(input)),
+    definitionId,
+    extractionRelevantOptions,
+    input.extractionConditions,
+  );
+}
+
+/**
+ * Traceと構造解析の入力が同じなら同じ値、違えば別の値になる識別子（`SingleAnalyzerExtractContext.basisId`）。
+ * 解釈のキーを53bitのハッシュにして短くする。抽出の結果を作り直した時に、結果を受け取る側が
+ * 入力の同一性を比べるだけの用途なので、キャッシュのキーと違って衝突を許容する（確率は約2^-53）。
+ */
+export function basisIdOf(input: ResolvedInput): string {
+  const text = interpretationKeyOf(input, traceKeyOf(input));
+  let h1 = 0xdeadbeef;
+  let h2 = 0x41c6ce57;
+  for (let index = 0; index < text.length; index++) {
+    const code = text.charCodeAt(index);
+    h1 = Math.imul(h1 ^ code, 2654435761);
+    h2 = Math.imul(h2 ^ code, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
 }
 
 /** 集合のメンバー1枠のキー。解決できた枠は解釈キー、失敗した枠は失敗の種類の印（`setAnalyzerExtractionKeyOf`参照）。 */

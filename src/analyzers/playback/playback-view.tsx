@@ -9,45 +9,43 @@ import { PlaybackKeyboard, type PlaybackFeedback } from './playback-keyboard.tsx
 import {
   initialPlaybackState,
   pausePlayback,
-  playbackScheduleOf,
   seekPlayback,
   startPlayback,
   stepPlaybackBy,
   stopPlayback,
   tickPlayback,
 } from './session.ts';
-import { playbackTimingConditions } from './timing-conditions.ts';
+import { PlaybackRateChart } from './rate-chart.tsx';
 import './playback-view.css';
 
 /**
  * 打鍵再生の本体。再生位置はこのペインのメモリの上だけに持つ（解析設定にも資産にもURLにも入れない）。
  * ペインを開き直す・複製する・再読み込みすると先頭から始まる。
- * 対象・テキスト・条件が変わって抽出が作り直された時も先頭へ戻す。打鍵の列が変わるので、
+ * 対象・テキスト・構造の条件が変わった時は先頭へ戻す。打鍵の列と構造が変わるので、
  * 前の位置は新しい列の中で同じ場所を指さない。
- * 表示設定（`options`）を変えても抽出は作り直されないので、再生位置は保たれる。
+ * 表示設定（`options`）や、速度の平均の条件（方式・窓幅・半減時間）を変えた時は、打鍵の列も構造も同じなので、
+ * 再生位置を保つ。速度の平均の条件は抽出を作り直すが、同じ入力から作った結果は同じ`basisId`を持つ。
  */
 
 interface Session {
-  /** この再生位置が属する抽出の結果。別の結果に替わったら先頭へ戻す */
-  readonly source: PlaybackExtracted;
+  /** この再生位置が属する打鍵の列と構造の入力（`PlaybackExtracted.basisId`）。別の入力に替わったら先頭へ戻す */
+  readonly basisId: string;
   readonly state: PlaybackState;
   readonly feedback: PlaybackFeedback;
 }
 
 const NO_KEYS: ReadonlySet<string> = new Set();
 
-function freshSession(source: PlaybackExtracted, state: PlaybackState): Session {
-  return { source, state, feedback: { revision: 0, keys: NO_KEYS } };
+function freshSession(basisId: string, state: PlaybackState): Session {
+  return { basisId, state, feedback: { revision: 0, keys: NO_KEYS } };
 }
 
 export function PlaybackBody({ layout, geometry, trace, extracted, options }: SingleBodyProps<PlaybackExtracted, PlaybackOptions>) {
-  const timing = useMemo(() => playbackTimingConditions(), []);
-  const { analysis, windowSize } = extracted;
+  const { analysis, windowSize, timing, schedule, rateChart, basisId } = extracted;
   const total = trace.strokes.length;
-  const schedule = useMemo(() => playbackScheduleOf(analysis, geometry, timing), [analysis, geometry, timing]);
 
-  const [session, setSession] = useState<Session>(() => freshSession(extracted, initialPlaybackState(timing)));
-  if (session.source !== extracted) setSession(freshSession(extracted, initialPlaybackState(timing)));
+  const [session, setSession] = useState<Session>(() => freshSession(basisId, initialPlaybackState(timing)));
+  if (session.basisId !== basisId) setSession(freshSession(basisId, initialPlaybackState(timing)));
   const { state } = session;
   const seekWasPlaying = useRef<boolean | undefined>(undefined);
 
@@ -67,7 +65,7 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options }: Si
     const tick = (timestamp: number) => {
       if (last !== undefined) {
         const elapsed = timestamp - last;
-        setSession((previous) => previous.source !== extracted
+        setSession((previous) => previous.basisId !== basisId
           ? previous
           : withFeedback(previous, tickPlayback(previous.state, elapsed, analysis, schedule)));
       }
@@ -78,7 +76,7 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options }: Si
     return () => cancelAnimationFrame(frame);
     // withFeedbackはtraceだけを読む。再生の開始・停止と、読む対象の替わりでだけ張り直す
     // （フレームごとに張り直すと、経過時間が積算されない）
-  }, [state.playing, extracted, analysis, schedule, trace]);
+  }, [state.playing, basisId, analysis, schedule, trace]);
 
   const frame = useMemo(
     () => derivePlaybackFrame({
@@ -209,6 +207,17 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options }: Si
           feedback={session.feedback}
           feedbackStyle={options.keyFeedbackStyle}
           scale={options.scale}
+        />
+      </div>
+
+      <div className="playback-rate-panel">
+        <h3 className="playback-rate-heading">かな/秒・アクション/秒の平均推移</h3>
+        <PlaybackRateChart
+          points={rateChart}
+          cursor={state.cursor}
+          showChain={options.showChain}
+          showArpeggio={options.showArpeggio}
+          onSeek={(position) => update((previous) => seekPlayback(previous, position, total))}
         />
       </div>
     </section>

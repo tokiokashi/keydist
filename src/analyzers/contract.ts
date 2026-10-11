@@ -6,6 +6,7 @@ import type { Trace, TracePolicy } from '#trace/generate.ts';
 import type { AggregatedAnalysisResult } from '#interpretation/structure/aggregate.ts';
 import type { KeyDetails } from '#interpretation/key-detail.ts';
 import type { Metrics } from '#interpretation/metrics.ts';
+import { DEFAULT_PLAYBACK_RATE_CONDITIONS, type PlaybackRateConditions } from '#interpretation/timing/playback.ts';
 import type {
   OptionsDefinition,
   OptionsDisciplineCheck,
@@ -69,12 +70,35 @@ export interface TraceRequester {
   requestTrace(input: TraceRequestInput): Trace;
 }
 
+/**
+ * 抽出だけが読む条件の実効値。Traceと構造解析の結果を変えないので、変えた時に作り直すのは抽出だけ
+ * （`engine/keys.ts` の `singleExtractionKeyOf` がキーに入れる。`interpretationKeyOf` とTraceのキーには入れない）。
+ * 新しい項目は、この型・`DEFAULT_EXTRACTION_CONDITIONS`・`engine/resolved-input.ts` の組み立ての3か所に足す。
+ */
+export interface ExtractionConditions {
+  /** かな毎秒・アクション毎秒の平均 */
+  readonly playbackRate: PlaybackRateConditions;
+}
+
+export const DEFAULT_EXTRACTION_CONDITIONS: ExtractionConditions = {
+  playbackRate: DEFAULT_PLAYBACK_RATE_CONDITIONS,
+};
+
 /** 単一Setup対象の抽出に渡す値。 */
 export interface SingleAnalyzerExtractContext<Options> {
   readonly trace: Trace;
   readonly analysis: AggregatedAnalysisResult;
   readonly metrics: Metrics;
   readonly options: Options;
+  /** このTraceを打つ物理配列と指の割り当て（Traceのキーに入っている） */
+  readonly geometry: Geometry;
+  /** 抽出だけが読む条件の実効値 */
+  readonly conditions: ExtractionConditions;
+  /**
+   * Traceと構造解析の入力が同じなら同じ値、違えば別の値になる短い識別子。`conditions` を変えても変わらない。
+   * 抽出の結果を作り直した時に、元の入力が同じかどうかを結果の側から見分けるために使う。
+   */
+  readonly basisId: string;
   /** N感度など、追加のTraceが要る抽出だけが使う。多くの抽出は無視してよい。 */
   readonly requestTrace: TraceRequester;
   /**
