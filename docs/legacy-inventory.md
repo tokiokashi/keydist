@@ -155,8 +155,8 @@
 | F4 | かな毎秒・アクション毎秒の速度グラフ（平均の推移・ChainとArpeggioの区間の帯・クリックで再生位置を移す） | `AnalyzerPlaybackRateChart` | コード | 予定あり | #56。N3に含める。平均方式はD11 |
 | F5 | 再生設定を配列ごとの上書きにする（「この配列専用にする」） | 再生設定の「適用先」 | 表示だけ | 捨てる（決定済み） | X2。表示だけの設定。旧画面は配列ごとの上書きを持つ |
 | F6 | Escで再生設定を閉じる | `analyzer-playback-surface.tsx` | コード | 予定あり | #54。N3に含める（新しい小窓はEscで閉じる規則に揃える） |
-| F7 | 個人速度の測定（通常・方向別・指の移動・組ごとの測り直し） | `AnalyzerCalibrationDialog`・`analyzer-calibration-model.ts` | 表示だけ | 予定あり | #53。N6。ロジックは `interpretation/timing/calibration.ts` にある。ダイアログを開いて項目を確かめただけで、測定はしていない（キー入力を取るため） |
-| F8 | 個人速度の保存値の確認・編集・全破棄 | `AnalyzerCalibrationDialog` | 表示だけ | 予定あり | #53。N6に含める |
+| F7 | 個人速度の測定（通常・方向別・指の移動・組ごとの測り直し） | `AnalyzerCalibrationDialog`・`analyzer-calibration-model.ts` | 表示だけ | 実装済み | 個人速度の画面（`/personal-speed`。`editors/personal-speed/`・`app/personal-speed/`）。測定の進行は `interpretation/timing/calibration-session.ts`。測るキーの配列・物理配列・指の割り当てはこの画面の中で選ぶ（`spec/playback-timing.md` §7.6）。旧画面のダイアログを開いて項目を確かめただけで、測定はしていない（キー入力を取るため） |
+| F8 | 個人速度の保存値の確認・編集・全破棄 | `AnalyzerCalibrationDialog` | 表示だけ | 実装済み | 同じ画面。保存形式は版付きの資産（`keydist:personal-speed`。`interpretation/timing/calibration-codec.ts`）で、旧画面の保存は読まない |
 
 ### G. 資産の編集と入出力
 
@@ -179,7 +179,7 @@
 |---|---|---|---|---|---|
 | H1 | 共有URL | （`/analyzer` には無い。`location`・`history`・`URLSearchParams` を使っていない） | コード | 実装済み | 旧画面に無かった機能として新側にある（文脈バーの共有。`hosts/standalone/use-shared-link.ts`）。旧 `/analyzer/flow` のURLはA2 |
 | H2 | 比較表の列見出しのキーボード操作（Enter・Space） | `table-sort` | コード | 実装済み | 比較表の見出し（`analyzers/comparison/`） |
-| H3 | 較正中のキー入力の取得 | `analyzer-calibration-dialog.tsx` | コード | 予定あり | #53。N6に含める |
+| H3 | 較正中のキー入力の取得 | `analyzer-calibration-dialog.tsx` | コード | 実装済み | `editors/personal-speed/key-capture.ts`。測定中だけ取り、取るのは1文字のキーに限る。Escape・Tab・Enter・Spaceは取らない |
 
 旧画面が `keydown` や `onKeyDown` で独自に登録するキー操作は、`rg` で探した範囲ではH2・H3・F6と、E11のマトリックスの列見出し（Enter・Space）だけだった。ダイアログのEscと背景クリックで閉じる動作は、旧画面が `dialog` 要素の標準の動作と自前の背景クリックで持っていたもので、新しい部品の側に同じ受け皿を作るかは各Analyzerの作業で決める。
 
@@ -214,7 +214,7 @@
 | N3 | Analyzer: 打鍵再生を作る（配列図・操作・速度グラフ・表示設定・時間モデルの条件） | 大 | D11・D12・F1〜F4・F6 | `spec/playback-timing.md` と `interpretation/timing/` は済み。issueは3つ。再生の本体（F1〜F3・F6）が #54、条件の行（D11・D12）が #55、速度グラフ（F4とD11の画面側）が #56 |
 | N4 | Analyzer: ヒートマップ（統合・層別・キー入力パターンの確認）を作る | 大 | E12〜E15 | #57（統合・層別）・#21（E15のキー入力パターン）。統合・層別は実装済み（`analyzers/heatmap/`・`analyzers/heatmap-layers/`の2つのAnalyzer。#57）で、残りはE15（#21）。層が複数ある配列で画面を操作して確かめた。E15のキー入力パターンの確認は、キー詳細の共通化（物理キー×面ごとのツールチップとクリック詳細）の#21に統合した。キー詳細の共通化は、ヒートマップのキーのホバー詳細・入力パターンの確認と範囲が重なる |
 | N5 | Analyzer: 層・コンボの内訳（帰属先・修飾・コンボ表・コンボ配列図）を作る | 中 | E16〜E18 | #58。実装済み（`analyzers/layer-combo-presses/`・`analyzers/keymap/`の2つのAnalyzer） |
-| N6 | 個人速度の測定と編集の画面を作る | 中 | F7・F8・H3 | #53。キー入力を取る測定の部分が大きい。N3より先でも後でもよい |
+| N6 | 個人速度の測定と編集の画面を作る | 中 | F7・F8・H3 | #53。実装済み（`/personal-speed`）。再生への適用と、再生の画面からのリンクは #55 |
 | N7 | Analyzer: 指ごとの距離（移動距離・指間距離の標準偏差）を作る | 中 | E9・E10 | #59。Single |
 | N8 | Analyzer: 配列 × 指のマトリックスを作る | 中 | E11 | #60。Multi。同指連続を指ごとに出す表示を一緒に扱える |
 | N9 | 自作配列を行入力で追加する画面を作る | 中 | G1 | #61。`editors/`。かな配列を画面から定義する機能との範囲の切り分けが要る。N15の後 |
@@ -251,7 +251,7 @@ N12（物理配列エディタ）は、決定済みの項目X7へ移したので
 | `keydist:layouts` | 自作配列 | 読むのは `src/legacy/` と `src/features/analyzer-next/` だけ。新しいAnalyzerは読まず、移さない（G10）。新しい構成の資産として作り直す（N15） |
 | `keydist:geometry-shapes` | 自作の物理配列 | 読むのは旧画面・`src/features/analyzer-next/`（`runtime.ts:18`・`browser-runtime.ts:12`）・Testerだけ。新しいAnalyzerは読まず、移さない（G10）。Testerの経路は消す（X7） |
 | `keydist:romaji-rules` | ローマ字規則と配列への割り当て | 読むのは `src/legacy/` と `src/features/analyzer-next/` だけ。新しいAnalyzerは読まず、移さない（G10）。新しい構成の資産として作り直す（N15） |
-| `keydist.playback-calibration.v3` | 個人速度 | 読むのは `src/legacy/` だけ（再生のAnalyzerができるまで） |
+| `keydist.playback-calibration.v3` | 個人速度 | 読むのは `src/legacy/` だけ。新しい構成の個人速度は別のキー `keydist:personal-speed`（版付き）に置き、旧キーは読まず、移さない（F8） |
 
 ## 関連
 

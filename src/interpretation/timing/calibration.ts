@@ -1,3 +1,4 @@
+import { isRecord } from '#input/codec/index.ts';
 import {
   ALL_FINGERS,
   FINGERS,
@@ -12,9 +13,9 @@ import {
 export interface PlaybackCalibration {
   /** 通常の連続打鍵速度。 */
   actionsPerSecond: number;
-  /** 異手の方向別連続打鍵速度。旧保存値では省略される。 */
+  /** 異手の方向別連続打鍵速度。測っていない方向は持たない。 */
   actionsPerSecondByDirection?: Readonly<Partial<Record<HandDirection, number>>>;
-  /** 同じ手の別の指へ移る連続打鍵速度。 */
+  /** 同じ手の別の指へ移る連続打鍵速度の代表値。 */
   sameHandDifferentFingerActionsPerSecond: number;
   /** 同じ手の別指の組ごとの測定速度。キーは正規化した指ペア（例: `LM:LI`）。 */
   sameHandDifferentFingerActionsPerSecondByPair: Readonly<Record<string, number>>;
@@ -27,12 +28,6 @@ export interface PlaybackCalibration {
   measuredAt: number;
 }
 
-export interface CalibrationStorage {
-  getItem(key: string): string | null;
-  setItem(key: string, value: string): void;
-  removeItem(key: string): void;
-}
-
 export interface CalibrationKeyPair {
   finger: Finger;
   fromKey: string;
@@ -40,8 +35,6 @@ export interface CalibrationKeyPair {
   distance: number;
 }
 
-export const PLAYBACK_CALIBRATION_STORAGE_KEY = 'keydist.playback-calibration.v3';
-const LEGACY_PLAYBACK_CALIBRATION_STORAGE_KEY = 'keydist.playback-calibration.v2';
 export const CALIBRATION_ACTIONS_PER_SECOND_MIN = 0.1;
 export const CALIBRATION_ACTIONS_PER_SECOND_MAX = 40;
 export const CALIBRATION_FINGER_SPEED_MIN = 0.1;
@@ -135,102 +128,66 @@ export function sameHandDirectedFingerPairKey(from: Finger, to: Finger): string 
   return `${from}>${to}`;
 }
 
-function validCalibration(value: unknown): value is PlaybackCalibration {
-  if (!value || typeof value !== 'object') return false;
-  const candidate = value as Partial<PlaybackCalibration>;
-  const fingerSpeeds = candidate.fingerSpeedUnitsPerSecond;
-  const sameHandSpeed = candidate.sameHandDifferentFingerActionsPerSecond ?? candidate.actionsPerSecond;
-  const sameHandPairSpeeds = candidate.sameHandDifferentFingerActionsPerSecondByPair;
-  const directionalSpeeds = candidate.actionsPerSecondByDirection;
-  const directedPairSpeeds = candidate.sameHandDifferentFingerActionsPerDirectedPair;
-  const validFingerSpeeds = fingerSpeeds !== null
-    && typeof fingerSpeeds === 'object'
-    && !Array.isArray(fingerSpeeds)
-    && Object.entries(fingerSpeeds).every(([finger, speed]) =>
-      ALL_FINGERS.includes(finger as Finger)
-      && Number.isFinite(speed)
-      && speed >= CALIBRATION_FINGER_SPEED_MIN
-      && speed <= CALIBRATION_FINGER_SPEED_MAX,
-    );
-  const validSameHandPairSpeeds = sameHandPairSpeeds === undefined
-    || (sameHandPairSpeeds !== null
-      && typeof sameHandPairSpeeds === 'object'
-      && !Array.isArray(sameHandPairSpeeds)
-      && Object.entries(sameHandPairSpeeds).every(([pair, speed]) => {
-        const [first, second] = pair.split(':');
-        return sameHandFingerPairKey(first as Finger, second as Finger) === pair
-          && Number.isFinite(speed)
-          && speed >= CALIBRATION_ACTIONS_PER_SECOND_MIN
-          && speed <= CALIBRATION_ACTIONS_PER_SECOND_MAX;
-      }));
-  const validDirectionalSpeeds = directionalSpeeds === undefined
-    || (directionalSpeeds !== null
-      && typeof directionalSpeeds === 'object'
-      && !Array.isArray(directionalSpeeds)
-      && Object.entries(directionalSpeeds).every(([direction, speed]) =>
-        (direction === 'L→R' || direction === 'R→L')
-        && Number.isFinite(speed)
-        && speed >= CALIBRATION_ACTIONS_PER_SECOND_MIN
-        && speed <= CALIBRATION_ACTIONS_PER_SECOND_MAX,
-      ));
-  const validDirectedPairSpeeds = directedPairSpeeds === undefined
-    || (directedPairSpeeds !== null
-      && typeof directedPairSpeeds === 'object'
-      && !Array.isArray(directedPairSpeeds)
-      && Object.entries(directedPairSpeeds).every(([pair, speed]) => {
-        const [from, to] = pair.split('>');
-        return sameHandDirectedFingerPairKey(from as Finger, to as Finger) === pair
-          && Number.isFinite(speed)
-          && speed >= CALIBRATION_ACTIONS_PER_SECOND_MIN
-          && speed <= CALIBRATION_ACTIONS_PER_SECOND_MAX;
-      }));
-  return Number.isFinite(candidate.actionsPerSecond)
-    && candidate.actionsPerSecond! >= CALIBRATION_ACTIONS_PER_SECOND_MIN
-    && candidate.actionsPerSecond! <= CALIBRATION_ACTIONS_PER_SECOND_MAX
-    && Number.isFinite(sameHandSpeed)
-    && sameHandSpeed! >= CALIBRATION_ACTIONS_PER_SECOND_MIN
-    && sameHandSpeed! <= CALIBRATION_ACTIONS_PER_SECOND_MAX
-    && validSameHandPairSpeeds
-    && validDirectionalSpeeds
-    && validDirectedPairSpeeds
-    && validFingerSpeeds
-    && Number.isFinite(candidate.fallbackFingerSpeedUnitsPerSecond)
-    && candidate.fallbackFingerSpeedUnitsPerSecond! >= CALIBRATION_FINGER_SPEED_MIN
-    && candidate.fallbackFingerSpeedUnitsPerSecond! <= CALIBRATION_FINGER_SPEED_MAX
-    && Number.isFinite(candidate.measuredAt);
+function inRange(value: unknown, min: number, max: number): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
 }
 
-export function loadPlaybackCalibration(storage?: CalibrationStorage): PlaybackCalibration | undefined {
-  if (!storage) return undefined;
-  try {
-    const raw = storage.getItem(PLAYBACK_CALIBRATION_STORAGE_KEY)
-      ?? storage.getItem(LEGACY_PLAYBACK_CALIBRATION_STORAGE_KEY);
-    if (!raw) return undefined;
-    const value: unknown = JSON.parse(raw);
-    if (!validCalibration(value)) return undefined;
-    return {
-      ...value,
-      // v2で保存された旧値は通常速度を同手・別指速度の初期値にする。
-      sameHandDifferentFingerActionsPerSecond:
-        value.sameHandDifferentFingerActionsPerSecond ?? value.actionsPerSecond,
-      sameHandDifferentFingerActionsPerSecondByPair:
-        value.sameHandDifferentFingerActionsPerSecondByPair ?? {},
-    };
-  } catch {
-    return undefined;
-  }
+function isRateRecord(value: unknown, keyValid: (key: string) => boolean, min: number, max: number): boolean {
+  return isRecord(value)
+    && Object.entries(value).every(([key, speed]) => keyValid(key) && inRange(speed, min, max));
 }
 
-export function savePlaybackCalibration(
-  storage: CalibrationStorage,
-  calibration: PlaybackCalibration,
-): void {
-  storage.setItem(PLAYBACK_CALIBRATION_STORAGE_KEY, JSON.stringify(calibration));
+function isSameHandPairKey(key: string): boolean {
+  const parts = key.split(':');
+  return parts.length === 2 && sameHandFingerPairKey(parts[0] as Finger, parts[1] as Finger) === key;
 }
 
-export function clearPlaybackCalibration(storage: CalibrationStorage): void {
-  storage.removeItem(PLAYBACK_CALIBRATION_STORAGE_KEY);
-  storage.removeItem(LEGACY_PLAYBACK_CALIBRATION_STORAGE_KEY);
+function isDirectedPairKey(key: string): boolean {
+  const parts = key.split('>');
+  return parts.length === 2 && sameHandDirectedFingerPairKey(parts[0] as Finger, parts[1] as Finger) === key;
+}
+
+/**
+ * 個人速度として保存できない理由。保存できる値なら `undefined`。
+ * 必須の項目が欠けた値、範囲を外れた値、知らない指や組のキーを持つ値を保存できない値とする。
+ */
+export function playbackCalibrationProblem(value: unknown): string | undefined {
+  if (!isRecord(value)) return '個人速度の形が正しくありません';
+  const rateOk = (speed: unknown) => inRange(speed, CALIBRATION_ACTIONS_PER_SECOND_MIN, CALIBRATION_ACTIONS_PER_SECOND_MAX);
+  const fingerSpeedOk = (speed: unknown) => inRange(speed, CALIBRATION_FINGER_SPEED_MIN, CALIBRATION_FINGER_SPEED_MAX);
+  if (!rateOk(value.actionsPerSecond)) return '通常の打鍵速度が範囲外です';
+  if (!rateOk(value.sameHandDifferentFingerActionsPerSecond)) return '同手・別指の代表の速度が範囲外です';
+  if (!fingerSpeedOk(value.fallbackFingerSpeedUnitsPerSecond)) return '測定できなかった指の移動速度が範囲外です';
+  if (typeof value.measuredAt !== 'number' || !Number.isFinite(value.measuredAt)) return '測定した時刻が正しくありません';
+  if (!isRateRecord(
+    value.sameHandDifferentFingerActionsPerSecondByPair,
+    isSameHandPairKey,
+    CALIBRATION_ACTIONS_PER_SECOND_MIN,
+    CALIBRATION_ACTIONS_PER_SECOND_MAX,
+  )) return '同手・別指の組ごとの速度が正しくありません';
+  if (!isRateRecord(
+    value.fingerSpeedUnitsPerSecond,
+    (finger) => ALL_FINGERS.includes(finger as Finger),
+    CALIBRATION_FINGER_SPEED_MIN,
+    CALIBRATION_FINGER_SPEED_MAX,
+  )) return '指ごとの移動速度が正しくありません';
+  if (value.actionsPerSecondByDirection !== undefined && !isRateRecord(
+    value.actionsPerSecondByDirection,
+    (direction) => direction === 'L→R' || direction === 'R→L',
+    CALIBRATION_ACTIONS_PER_SECOND_MIN,
+    CALIBRATION_ACTIONS_PER_SECOND_MAX,
+  )) return '異手の方向別の速度が正しくありません';
+  if (value.sameHandDifferentFingerActionsPerDirectedPair !== undefined && !isRateRecord(
+    value.sameHandDifferentFingerActionsPerDirectedPair,
+    isDirectedPairKey,
+    CALIBRATION_ACTIONS_PER_SECOND_MIN,
+    CALIBRATION_ACTIONS_PER_SECOND_MAX,
+  )) return '同手・別指の方向別の速度が正しくありません';
+  return undefined;
+}
+
+export function isPlaybackCalibration(value: unknown): value is PlaybackCalibration {
+  return playbackCalibrationProblem(value) === undefined;
 }
 
 const CALIBRATION_KEY_LABEL_PATTERN = /\p{L}|\p{P}/u;

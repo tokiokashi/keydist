@@ -43,7 +43,8 @@ AppState側にsliceが既にある場合も、残存する旧keyはcleanupする
 - `keydist:romaji-rules`
 - `keydist:user-layouts`・`keydist:user-romaji-rules`（新しい構成の資産。版付きのcodecで読み書きし、旧形式の2つとは別のキー）
 - `keydist:condition-presets`
-- playback calibration storage
+- playback calibration storage（旧画面の `keydist.playback-calibration.v3`）
+- `keydist:personal-speed`（新しい構成の個人速度。版付きのcodecで読み書きし、旧画面の保存とは別のキー）
 
 ## Writer authority
 

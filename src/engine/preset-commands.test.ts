@@ -1,3 +1,4 @@
+import { EMPTY_PERSONAL_SPEED } from '#interpretation/timing/calibration-codec.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { applyCommand, emptyCommandHistory, undo, type CommandHistory } from '#input/commands/index.ts';
@@ -36,6 +37,7 @@ function initialAssets(): KeydistAssets {
     presetLibrary: emptyPresetLibrary(),
     userLayouts: [],
     userRomajiRules: [],
+    personalSpeed: EMPTY_PERSONAL_SPEED,
   };
 }
 

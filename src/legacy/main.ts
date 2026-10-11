@@ -28,7 +28,7 @@ import {
   saveRomajiSettings,
   ROMAJI_SETTINGS_STORAGE_KEY,
 } from '#platform/assets/romaji-settings-storage.ts';
-import { loadPlaybackCalibration } from '#interpretation/timing/calibration.ts';
+import { loadPlaybackCalibration } from './playback-calibration-storage.ts';
 import type { ModeId } from './layout-selection.ts';
 import {
   type UiPlaybackState,

@@ -74,7 +74,7 @@ const ALLOWED: Readonly<Record<Layer, ReadonlySet<Layer>>> = {
   hosts: new Set([
     'input', 'trace', 'interpretation', 'engine', 'analyzers', 'hosts', 'ui-base', 'ui-domain',
   ]),
-  editors: new Set(['input', 'editors', 'ui-base', 'ui-domain']),
+  editors: new Set(['input', 'interpretation', 'editors', 'ui-base', 'ui-domain']),
   // Testerは当面platformを直接使ってよい（永続化の作り直しは別に行う）。
   tester: new Set(['input', 'tester', 'ui-base', 'ui-domain', 'platform']),
   'ui-base': new Set(['ui-base']),
@@ -560,6 +560,11 @@ test('依存規則の判定そのもの', () => {
   assert.ok(layerViolation('input/layouts/types.ts', 'legacy/ui-state.ts'));
   assert.equal(layerViolation('app/app-state.ts', 'legacy/ui-state.ts'), undefined);
   assert.ok(layerViolation('platform/storage.ts', 'app/app-state.ts'));
+  assert.equal(layerViolation('editors/personal-speed/editor.tsx', 'interpretation/timing/calibration.ts'), undefined);
+  assert.equal(layerViolation('editors/personal-speed/editor.tsx', 'input/shapes/geometry.ts'), undefined);
+  assert.ok(layerViolation('editors/personal-speed/editor.tsx', 'engine/commands.ts'));
+  assert.ok(layerViolation('editors/personal-speed/editor.tsx', 'hosts/shared/ContextBar.tsx'));
+  assert.ok(layerViolation('interpretation/timing/calibration.ts', 'editors/personal-speed/editor.tsx'));
   // 純粋さは推移的に守る。
   assert.ok(layerViolation('analyzers/heatmap-layers/extract.ts', 'ui/charts/bar.tsx'));
   assert.ok(layerViolation('analyzers/heatmap-layers/extract.ts', 'analyzers/heatmap-layers/view.tsx'));
