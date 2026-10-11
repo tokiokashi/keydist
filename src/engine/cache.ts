@@ -1,7 +1,7 @@
 import type { AnalyzerSetMember, AnalyzerSetMemberFailure, SetAnalyzerDefinition, SingleAnalyzerDefinition } from '#analyzers/contract.ts';
 import type { AnalysisTarget } from '#input/setup/index.ts';
 import { LruCache } from './lru-cache.ts';
-import { interpretationKeyOf, setAnalyzerExtractionKeyOf, setMemberKeyOf, singleExtractionKeyOf, traceKeyOf } from './keys.ts';
+import { basisIdOf, interpretationKeyOf, setAnalyzerExtractionKeyOf, setMemberKeyOf, singleExtractionKeyOf, traceKeyOf } from './keys.ts';
 import {
   computeEngineKeyDetails,
   extractSet,
@@ -163,6 +163,8 @@ export function createEngineCache(options: EngineCacheOptions = {}): EngineCache
       interpretationResult,
       requester,
       () => getKeyDetails(input).keyDetails,
+      input,
+      basisIdOf(input),
     );
     extractionCache.set(key, result as EngineExtractionResult<unknown>);
     return result;

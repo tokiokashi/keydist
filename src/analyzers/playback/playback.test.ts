@@ -3,7 +3,8 @@ import test from 'node:test';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { Setup } from '#input/setup/index.ts';
-import { EMPTY_SETTINGS_OVERRIDES } from '#engine/settings-items.ts';
+import { EMPTY_SETTINGS_OVERRIDES, setSettingsOverride, type SettingsCascadeOverrides } from '#engine/settings-items.ts';
+import { basisIdOf, interpretationKeyOf, singleExtractionKeyOf, traceKeyOf } from '#engine/keys.ts';
 import { resolveEngineInput, type ResolvedInput } from '#engine/resolved-input.ts';
 import { createEngineCache } from '#engine/cache.ts';
 import { checkOptionsDiscipline } from '#analyzers/options.ts';
@@ -36,14 +37,19 @@ const CATALOG = {
   shapes: new Map<string, PhysicalShape>(Object.values(PHYSICAL_SHAPES).map((shape) => [shape.id, shape])),
 };
 
-function resolve(layoutId: string, text: string, language: 'en' | 'ja' = 'en'): ResolvedInput {
+function resolve(
+  layoutId: string,
+  text: string,
+  language: 'en' | 'ja' = 'en',
+  overrides: SettingsCascadeOverrides = EMPTY_SETTINGS_OVERRIDES,
+): ResolvedInput {
   const setup: Setup = { id: 'setup-playback', number: 1, layoutId, shapeId: 'row-staggered' };
   const result = resolveEngineInput({
     target: { kind: 'setup', setupId: setup.id },
     setups: new Map([[setup.id, setup]]),
     catalog: CATALOG,
     userLayouts: new Map(),
-    overrides: EMPTY_SETTINGS_OVERRIDES,
+    overrides,
     text,
     language,
   });
@@ -119,6 +125,135 @@ test('表示設定を替えても同じ抽出結果が返る（Traceも抽出も
   const first = cache.getExtraction(input, playbackDefinition, DEFAULT_PLAYBACK_OPTIONS).extracted;
   const second = cache.getExtraction(input, playbackDefinition, { ...DEFAULT_PLAYBACK_OPTIONS, scale: 2, showChain: true }).extracted;
   assert.equal(second, first);
+});
+
+// ---------------------------------------------------------------------------
+// 速度の推移（spec/playback-timing.md §5）
+// ---------------------------------------------------------------------------
+
+/** 全体のレベルに速度の平均の条件を置いた上書き。 */
+function withRateConditions(values: Partial<{
+  playbackRateAverage: 'sma' | 'ewma';
+  playbackRateWindow: number;
+  playbackRateHalfLifeSeconds: number;
+}>): SettingsCascadeOverrides {
+  let overrides = EMPTY_SETTINGS_OVERRIDES;
+  for (const [id, value] of Object.entries(values) as [keyof typeof values, never][]) {
+    const written = setSettingsOverride(overrides, { kind: 'global' }, id, value);
+    assert.ok(written.ok);
+    if (written.ok) overrides = written.overrides;
+  }
+  return overrides;
+}
+
+function extractionOf(input: ResolvedInput, cache = createEngineCache()): PlaybackExtracted {
+  return cache.getExtraction(input, playbackDefinition, DEFAULT_PLAYBACK_OPTIONS).extracted;
+}
+
+test('速度の推移（SMA・窓幅10）: 完了した入力単位だけをかなに数え、位置0には値が無い（§5.1）', () => {
+  // 条件: 配列qwerty・ローマ字（訓令式）・物理配列row-staggered・指の割り当ては既定・テキスト「かあ」（k・a・aの3打鍵）。
+  // どのステップも指が違うか同じキーの連打で、表示時間は800ms。窓の合計は 800ms × 窓のStroke数。
+  const { rateChart } = extractionOf(resolve('qwerty', 'かあ', 'ja'));
+  assert.deepEqual(rateChart.map((point) => point.cursor), [0, 1, 2, 3]);
+  assert.deepEqual([rateChart[0].kanaPerSecond, rateChart[0].actionsPerSecond], [undefined, undefined]);
+  // アクション/秒 = Stroke数 × 1000 / D = 1000 / 800
+  assert.deepEqual(rateChart.map((point) => point.actionsPerSecond), [undefined, 1.25, 1.25, 1.25]);
+  // かな/秒 = 窓の中で始まり終わる入力単位の文字数 × 1000 / D。
+  // 位置1は「か」の途中（kだけ）なので数えず、位置2で「か」が完了して 1 × 1000 / 1600、位置3で「あ」も加わって 2 × 1000 / 2400
+  assert.deepEqual(rateChart.map((point) => point.kanaPerSecond), [undefined, undefined, 1000 / 1600, 2000 / 2400]);
+  assert.deepEqual(rateChart.map((point) => point.inputText), ['', 'か', 'か', 'かあ']);
+});
+
+test('速度の推移（SMA）: 時間は再生と同じ時間表を使い、同指連続のステップは長くなる（§3.3・§5.1）', () => {
+  // 条件: 配列qwerty・物理配列row-staggered・テキスト「fv」（同じ左人差し指がfからvへ移る）。
+  const input = resolve('qwerty', 'fv');
+  const extracted = extractionOf(input);
+  const f = input.geometry.keys.get('f')!;
+  const v = input.geometry.keys.get('v')!;
+  const moved = Math.hypot(f.x - v.x, f.y - v.y);
+  assert.deepEqual(extracted.schedule, playbackScheduleOf(extracted.analysis, input.geometry, playbackTimingConditions()));
+  // 窓の合計 D は時間表の終わり: 800 + 800 × 移動距離
+  const total = 800 + 800 * moved;
+  assert.ok(Math.abs(extracted.schedule[1].endMs - total) < 1e-6);
+  assert.ok(Math.abs(extracted.rateChart[2].actionsPerSecond! - 2000 / total) < 1e-9);
+  assert.ok(Math.abs(extracted.rateChart[2].kanaPerSecond! - 2000 / total) < 1e-9);
+  assert.equal(extracted.rateChart[2].actionsPerSecond, 1.1803398874989486);
+});
+
+test('速度の推移（SMA）: 窓幅を小さくすると、古いStrokeが窓から外れる', () => {
+  // 条件: 配列qwerty・テキスト「fv」・窓幅1。位置2の窓は2打鍵目だけで、D = 800 × 移動距離
+  const input = resolve('qwerty', 'fv', 'en', withRateConditions({ playbackRateWindow: 1 }));
+  const extracted = extractionOf(input);
+  const second = extracted.schedule[1].endMs - extracted.schedule[1].startMs;
+  assert.ok(Math.abs(extracted.rateChart[2].actionsPerSecond! - 1000 / second) < 1e-9);
+  assert.ok(Math.abs(extracted.rateChart[2].kanaPerSecond! - 1000 / second) < 1e-9);
+});
+
+test('速度の推移（EWMA）: 時間で減衰させ、最初の有効な値を初期値にする（§5.2）', () => {
+  // 条件: 配列qwerty・テキスト「fv」・半減時間1秒。1打鍵目は800ms、2打鍵目は 800 × 移動距離 ms。
+  const input = resolve('qwerty', 'fv', 'en', withRateConditions({ playbackRateAverage: 'ewma', playbackRateHalfLifeSeconds: 1 }));
+  const extracted = extractionOf(input);
+  const second = (extracted.schedule[1].endMs - extracted.schedule[1].startMs) / 1000;
+  const decay = 2 ** (-second / 1);
+  const expected = decay * 1.25 + (1 - decay) * (1 / second);
+  assert.equal(extracted.rateChart[1].actionsPerSecond, 1.25);
+  assert.ok(Math.abs(extracted.rateChart[2].actionsPerSecond! - expected) < 1e-9);
+  // 1 Stroke = 1かなで瞬時値の系列が同じなので、かな/秒もアクション/秒と一致する
+  assert.ok(Math.abs(extracted.rateChart[2].kanaPerSecond! - expected) < 1e-9);
+  assert.equal(extracted.rateChart[2].actionsPerSecond, 1.1890265225127918);
+});
+
+test('速度の推移: ChainとArpeggioの区間を点ごとに持つ（表示するかは見る側が決める）', () => {
+  // 条件: 配列qwerty・テキスト「fv」。構造解析のChainは打鍵0だけ（f）で、vで切れる
+  const fv = extractionOf(resolve('qwerty', 'fv'));
+  assert.deepEqual(fv.analysis.chains.map((chain) => [chain.startStrokeIndex, chain.endStrokeIndex]), [[0, 1]]);
+  assert.deepEqual(fv.rateChart.map((point) => point.chain ?? false), [false, true, false]);
+  // テキスト「asdf」はChain 1本・Arpeggio 1本で、4打鍵すべてが入る
+  const asdf = extractionOf(resolve('qwerty', 'asdf'));
+  assert.deepEqual(asdf.rateChart.slice(1).map((point) => [point.chain, point.arpeggio]), [
+    [true, true], [true, true], [true, true], [true, true],
+  ]);
+});
+
+test('平均方式・窓幅・半減時間を変えると、Traceと構造解析は作り直さずに抽出だけが変わる', () => {
+  const base = resolve('qwerty', 'fv');
+  const ewma = resolve('qwerty', 'fv', 'en', withRateConditions({ playbackRateAverage: 'ewma' }));
+  const narrow = resolve('qwerty', 'fv', 'en', withRateConditions({ playbackRateWindow: 1 }));
+  // 半減時間はEWMAでだけ値に効くので、方式もEWMAにして半減時間の違いだけを見る
+  const halfLife = resolve('qwerty', 'fv', 'en', withRateConditions({ playbackRateAverage: 'ewma', playbackRateHalfLifeSeconds: 2 }));
+  const cache = createEngineCache();
+  const results = [base, ewma, narrow, halfLife].map((input) => extractionOf(input, cache));
+
+  // Traceのキー・解釈のキー・再生位置の識別子は変わらない
+  for (const input of [ewma, narrow, halfLife]) {
+    assert.equal(traceKeyOf(input), traceKeyOf(base));
+    assert.equal(interpretationKeyOf(input, traceKeyOf(input)), interpretationKeyOf(base, traceKeyOf(base)));
+    assert.equal(basisIdOf(input), basisIdOf(base));
+    assert.notEqual(singleExtractionKeyOf(input, 'playback', {}), singleExtractionKeyOf(base, 'playback', {}));
+  }
+  // Traceと解釈は1回だけ作られ、抽出は4回作られる
+  assert.deepEqual(
+    { trace: cache.size.trace, interpretation: cache.size.interpretation, extraction: cache.size.extraction },
+    { trace: 1, interpretation: 1, extraction: 4 },
+  );
+  // 同じ構造解析を指し、速度の推移だけが変わる
+  for (const result of results) assert.equal(result.analysis, results[0].analysis);
+  assert.equal(new Set(results.map((result) => JSON.stringify(result.rateChart))).size, 4);
+  assert.deepEqual(results[0].schedule, results[1].schedule);
+  assert.equal(results[0].basisId, results[1].basisId);
+});
+
+test('テキストや構造の条件を変えると、再生位置の識別子が変わる', () => {
+  const base = resolve('qwerty', 'fjdk');
+  assert.notEqual(basisIdOf(resolve('qwerty', 'fjdl')), basisIdOf(base));
+  const chain = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'chainInterpretation', {
+    breakOnSameFinger: false,
+    breakOnTriggerOnly: false,
+    breakOnThumbOnly: true,
+    breakOnOppositeHandSimultaneous: false,
+  });
+  assert.ok(chain.ok);
+  if (chain.ok) assert.notEqual(basisIdOf(resolve('qwerty', 'fjdk', 'en', chain.overrides)), basisIdOf(base));
 });
 
 // ---------------------------------------------------------------------------

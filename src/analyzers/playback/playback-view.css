@@ -244,3 +244,86 @@
 .playback-figure [data-playback-motion-key] .playback-key-label {
   fill: var(--viz-on-strong);
 }
+
+.playback-rate-panel {
+  min-width: 0;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--border);
+}
+
+.playback-rate-heading {
+  margin: 0 0 0.3rem;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.playback-rate-chart svg {
+  display: block;
+  width: 100%;
+  max-width: 760px;
+  height: auto;
+}
+
+.playback-rate-chart [data-playback-rate-hit] {
+  cursor: pointer;
+}
+
+.playback-rate-legend text,
+.playback-rate-tick {
+  fill: var(--text-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.playback-rate-grid {
+  stroke: var(--border);
+}
+
+.playback-rate-line-kana {
+  stroke: var(--series-2);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.playback-rate-line-action {
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.playback-rate-dot-kana {
+  fill: var(--series-2);
+  pointer-events: none;
+}
+
+.playback-rate-dot-action {
+  fill: var(--accent);
+  pointer-events: none;
+}
+
+.playback-rate-band-chain {
+  fill: var(--series-7);
+  opacity: 0.16;
+  pointer-events: none;
+}
+
+.playback-rate-band-arpeggio {
+  fill: var(--series-3);
+  opacity: 0.16;
+  pointer-events: none;
+}
+
+.playback-rate-cursor {
+  stroke: var(--text);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+  pointer-events: none;
+}
+
+.playback-rate-readout {
+  margin: 0.2rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-variant-numeric: tabular-nums;
+}

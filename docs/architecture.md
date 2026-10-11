@@ -194,7 +194,7 @@ host（個別画面 / Workspace）
   - **小窓**: キーを押したペインだけで開く、非モーダルの小窓（解析設定の小窓と同じ部品 `hosts/shared/FloatingWindow.tsx`。ドラッグで動かせ、スマホ幅では下から出るシート）。面をまたいだ合算として、押下数・押し方・前の文字（全件と、先頭の入力単位）・移動の起点・距離の分布を出し、レイヤー・コンボごとの内訳は開いて同じ表を読める。割合は画面で求め、元の打数を添える。続けて、そのキーを含む入力方法とトリガーのガイドを、レイヤー・コンボごとに分けて出す（配列の定義から出す。`input/layouts/key-pattern-picker.ts`）。選択済みのキーが別のペインで選ばれていて小窓が閉じているペインでは、そのキーを押すと選択は変えずにそのペインの小窓だけが開く
   - **Workspaceでの連動**: 選択は、解決した後の配列と物理配列が両方同じペインどうしで共有する（`hosts/shared/key-selection.ts`）。テキスト・指の割当・解析設定が違っても連動し、出る値はペインごとの値になる。配列か物理配列が違うペインには届かない。小窓は押したペインだけで開き、選択が外れると同じ対象の小窓は全部閉じる。ペインを拡大表示した時は、他のペインの小窓を閉じる（選択は残す）。個別画面は連動する相手が無く、ペイン自身が選択を持つ
 
-- **打鍵再生（`analyzers/playback/`）の再生位置は、ペインの本体のメモリの上だけに持つ。** 解析設定・Workspaceの資産・URLには入れず、Undoの履歴にも載せない。ペインを開き直す・複製する・再読み込みすると先頭から始まる。対象・テキスト・条件が変わって抽出が作り直された時も先頭へ戻す（打鍵の列が変わるため、前の位置は新しい列の同じ場所を指さない）。解析設定（構造の動的表示・押下フィードバック・指位置の準備時間・配列図の倍率）は表示だけが変わる項目（`affects: 'view'`）で、変えても抽出は作り直さないので再生位置は保たれる。再生の時間を決める条件（基準速度・再生倍率・指の移動速度の考慮・全指の移動時間で律速・個人速度）は解析設定に置かず、`analyzers/playback/timing-conditions.ts` の1か所が返す値を読む
+- **打鍵再生（`analyzers/playback/`）の再生位置は、ペインの本体のメモリの上だけに持つ。** 解析設定・Workspaceの資産・URLには入れず、Undoの履歴にも載せない。ペインを開き直す・複製する・再読み込みすると先頭から始まる。対象・テキスト・構造の条件（Chain・Arpeggioの数え方など）が変わった時も先頭へ戻す（打鍵の列と構造が変わるため、前の位置は新しい列の同じ場所を指さない）。速度の平均の条件（方式・窓幅・半減時間）を変えると抽出は作り直されるが、打鍵の列と構造は同じなので、抽出の `basisId` が同じである限り再生位置は保たれる。速度グラフは、抽出が出した推移（再生と同じ時間表から求めた値）を並べるだけで、グラフを押すと再生位置を移す。解析設定（構造の動的表示・押下フィードバック・指位置の準備時間・配列図の倍率）は表示だけが変わる項目（`affects: 'view'`）で、変えても抽出は作り直さないので再生位置は保たれる。再生の時間を決める条件（基準速度・再生倍率・指の移動速度の考慮・全指の移動時間で律速・個人速度）は解析設定に置かず、`analyzers/playback/timing-conditions.ts` の1か所が返す値を読む
 
 ### Analyzerがペインに渡すもの
 
@@ -412,7 +412,8 @@ src/
   - キャッシュが描画のタイミングに縛られない
 - **可視化は計算しない。** engineが抽出を実行し、hostが結果をcomponentへ渡す
 - **Analyzerの契約は純粋な部分だけを `analyzers/contract.ts` に置く。** 名前・短い説明・本体と解析設定のcomponentとの結び付けは各Analyzerの `definition.tsx` で行う（「Analyzerがペインに渡すもの」）。結び付けは `analyzers/pane-parts.tsx` の `AnalyzerPaneParts` の形のオブジェクト（`bigramFlowAnalyzer` 等）で、ペインの見出し・個別画面のh1・routeの `<title>` はここから名前を読む。名前と短い説明はReactに依存しない `analyzers/<name>/pane-meta.ts` に置き、routeはそちらを読む（`definition.tsx` をimportすると本体のcomponentとCSSが全ページの初期読み込みに入るため）。engineは純粋な部分しか知らないので、engineの型にReactが現れず、Workerへそのまま移せる
-  - 抽出のキャッシュキーは「解釈のキー + Analyzer id + 抽出に効くoptions」（`AnalyzerDefinition.extractKeyOf` が返す値。`engine/keys.ts` の `analyzerExtractionKeyOf`）。見た目だけの解析設定はここで除かれるので、見た目だけの変更ではextractが走らない
+  - 抽出のキャッシュキーは「解釈のキー + Analyzer id + 抽出に効くoptions + 抽出だけが読む条件」（optionsは `AnalyzerDefinition.extractKeyOf` が返す値。`engine/keys.ts` の `analyzerExtractionKeyOf`）。見た目だけの解析設定はここで除かれるので、見た目だけの変更ではextractが走らない
+  - 抽出だけが読む条件（速度の平均の方式・窓幅・半減時間。`ExtractionConditions`）は、`ResolvedInput.extractionConditions` に実効値を持ち、抽出の文脈（`conditions`）として渡す。Traceと解釈のキーには入れないので、変えた時に作り直すのは抽出だけで、Traceと構造解析は作り直さない。`ResolvedInput.cascade` は表示専用なので、抽出はそこから読まない。抽出の文脈には物理配列と指の割り当て（`geometry`）と、Traceと構造解析の入力が同じなら同じ値になる識別子（`basisId`）も渡す。`basisId` は、抽出が作り直された時に、結果を受け取る側が元の入力の同一性を見分けるために使う
   - 単体ページの計算は、ブラウザでは Web Worker で走らせる（長いテキストで入力とスクロールが止まらないため）。ペインが頼む窓口は `engine/computer.ts` の `EngineComputer` で、メインスレッドの `EngineCache` と Worker 越しの `engine/worker-client.ts` のどちらも満たす。Worker の入口は `app/standalone/engine-worker.ts` で、そこに載せた Analyzer の定義だけが Worker で計算できる（Analyzer を足す時は、ここにも足す）。数値は変わらない（Worker の中も同じ `EngineCache` と同じ純関数で、メッセージは値の複製だけ）。Worker から受け取った結果は、メインスレッド側にも同じキー（`engine/keys.ts` の共通の入口）で写しておき、計算済みの入力は `peek*` で同期に引ける
   - 集合対象とN感度の例外向けに、抽出は「Traceを依頼する窓口」（`TraceRequester`、`analyzers/contract.ts`）を受け取れる。窓口の実装（キャッシュ経由でTraceを共有する）は `engine/trace-requester.ts` が持つ
 - **storageを直接触るのは platform と app だけ。** 保存が要る層（hosts・editors等）は、appが組み立てたアダプタを注入して使う。Testerは当面の例外
