@@ -30,6 +30,8 @@ import { PRESET_LIBRARY_STORAGE_KEY } from '#platform/assets/preset-library-stor
 import { emptyPresetLibrary } from '#input/presets/index.ts';
 import { WORKSPACE_LIBRARY_CODEC } from '#engine/workspace-codec.ts';
 import { WORKSPACES_STORAGE_KEY } from '#platform/assets/workspaces-storage.ts';
+import { EMPTY_PERSONAL_SPEED, PERSONAL_SPEED_CODEC } from '#interpretation/timing/calibration-codec.ts';
+import { PERSONAL_SPEED_STORAGE_KEY } from '#platform/assets/personal-speed-storage.ts';
 
 /**
  * `KeydistAssets`（`engine/commands.ts`）の各キーを、永続化に要る3点
@@ -125,6 +127,11 @@ export const ASSET_STORAGE_SPECS: { readonly [K in keyof KeydistAssets]: AssetSt
     storageKey: USER_ROMAJI_RULES_STORAGE_KEY,
     codec: USER_ROMAJI_RULES_CODEC,
     initial: () => [],
+  },
+  personalSpeed: {
+    storageKey: PERSONAL_SPEED_STORAGE_KEY,
+    codec: PERSONAL_SPEED_CODEC,
+    initial: () => EMPTY_PERSONAL_SPEED,
   },
 };
 

@@ -1,3 +1,4 @@
+import { EMPTY_PERSONAL_SPEED } from '#interpretation/timing/calibration-codec.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { applyCommand, composeCommands, emptyCommandHistory, redo, undo } from '#input/commands/index.ts';
@@ -28,6 +29,7 @@ import {
   setMultiBaselineCommand,
   setMultiSelectionCommand,
   setMultiTargetsCommand,
+  setPersonalSpeedCommand,
   setSingleTargetCommand,
   setTargetForSingleAndMultiCommand,
   setStandaloneAnalyzerOptionsCommand,
@@ -59,6 +61,7 @@ function emptyAssets(): KeydistAssets {
     presetLibrary: { presets: [] },
     userLayouts: [],
     userRomajiRules: [],
+    personalSpeed: EMPTY_PERSONAL_SPEED,
   };
 }
 
@@ -1033,4 +1036,35 @@ test('自作の配列と規則の削除をまとめると、undo1回で両方が
   assert.deepEqual([step.assets.userLayouts, step.assets.userRomajiRules], [[], []]);
   const undone = undo(step.assets, step.history);
   assert.deepEqual([undone.assets.userLayouts, undone.assets.userRomajiRules], [[USER_LAYOUT_A], [USER_RULE_A]]);
+});
+
+const SAVED_SPEED = {
+  actionsPerSecond: 5,
+  sameHandDifferentFingerActionsPerSecond: 4,
+  sameHandDifferentFingerActionsPerSecondByPair: {},
+  fingerSpeedUnitsPerSecond: {},
+  fallbackFingerSpeedUnitsPerSecond: 7,
+  measuredAt: 1,
+};
+
+test('setPersonalSpeedCommand: 個人速度を保存し、undoで保存前に戻る。他の資産は触らない', () => {
+  const assets = emptyAssets();
+  const step = applyCommand(assets, emptyCommandHistory<KeydistAssets>(), setPersonalSpeedCommand(SAVED_SPEED));
+  assert.equal(step.outcome.kind, 'applied');
+  assert.equal(step.assets.personalSpeed.calibration, SAVED_SPEED);
+  assert.equal(step.assets.setupLibrary, assets.setupLibrary);
+  assert.deepEqual(Object.keys(step.outcome.kind === 'applied' ? step.outcome.changes : {}), ['personalSpeed']);
+  assert.equal(undo(step.assets, step.history).assets.personalSpeed.calibration, undefined);
+});
+
+test('setPersonalSpeedCommand: undefinedで破棄し、undoで保存値に戻る。同じ値の保存と、無い時の破棄はno-op', () => {
+  const saved: KeydistAssets = { ...emptyAssets(), personalSpeed: { calibration: SAVED_SPEED } };
+  const history = emptyCommandHistory<KeydistAssets>();
+  const discarded = applyCommand(saved, history, setPersonalSpeedCommand(undefined));
+  assert.equal(discarded.outcome.kind, 'applied');
+  assert.equal(discarded.assets.personalSpeed.calibration, undefined);
+  assert.equal(undo(discarded.assets, discarded.history).assets.personalSpeed.calibration, SAVED_SPEED);
+
+  assert.equal(applyCommand(saved, history, setPersonalSpeedCommand(SAVED_SPEED)).outcome.kind, 'no-op');
+  assert.equal(applyCommand(emptyAssets(), history, setPersonalSpeedCommand(undefined)).outcome.kind, 'no-op');
 });

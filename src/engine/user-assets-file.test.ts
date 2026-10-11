@@ -1,3 +1,4 @@
+import { EMPTY_PERSONAL_SPEED } from '#interpretation/timing/calibration-codec.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { applyCommand, emptyCommandHistory, undo } from '#input/commands/index.ts';
@@ -249,6 +250,7 @@ test('コマンド: 1回で3つの資産を足し、元に戻すと全部が戻�
     presetLibrary: { presets: [] },
     userLayouts: [],
     userRomajiRules: [],
+    personalSpeed: EMPTY_PERSONAL_SPEED,
   };
   const history = emptyCommandHistory<KeydistAssets>();
   const step = applyCommand(assets, history, importUserAssetsCommand(read(HOLDINGS), STAMP));

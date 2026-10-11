@@ -1,3 +1,4 @@
+import { EMPTY_PERSONAL_SPEED } from '#interpretation/timing/calibration-codec.ts';
 import { initialWorkspaceLibrary } from '#engine/workspace.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -48,6 +49,7 @@ function emptyAssets(): KeydistAssets {
     presetLibrary: { presets: [] },
     userLayouts: [],
     userRomajiRules: [],
+    personalSpeed: EMPTY_PERSONAL_SPEED,
   };
 }
 

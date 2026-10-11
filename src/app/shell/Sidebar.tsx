@@ -18,6 +18,7 @@ import {
 } from '../theme/appearance.ts';
 import type { ThemeChoice } from '../theme/theme.ts';
 import { ABOUT_LABEL } from '../about/AboutPage.tsx';
+import { PERSONAL_SPEED_LABEL } from '#editors/personal-speed/label.ts';
 import { USER_ASSETS_LABEL } from '../assets/UserAssetsPage.tsx';
 import { REPOSITORY_URL, SPEC_LINKS } from '../about/links.ts';
 import { createWorkspaceInStorage } from '../workspace/create-workspace.ts';
@@ -38,7 +39,7 @@ export const WORKSPACE_EMPTY_TEXT = 'Analyzerを並べて見る画面。';
  * Single / Multiに分ける。Testerは区分に入れず単独で置く。
  * Workspaceは保存したWorkspaceの一覧と「＋ 新しいWorkspace」で、1つも無い時は案内文を出す。
  * Aboutは計算方法のページと、仕様書・リポジトリ（GitHub）へのリンク。どの画面からも同じ場所でたどれる。
- * Assetsは手持ちの資産を扱う画面へのリンクを並べる区分。最初の項目は自作の配列・ローマ字規則の一覧と削除。
+ * Assetsは手持ちの資産を扱う画面へのリンクを並べる区分。自作の配列・ローマ字規則の一覧と削除、個人速度の測定と編集。
  */
 export interface SidebarProps {
   readonly pinned: boolean;
@@ -188,6 +189,7 @@ export function Sidebar({ pinned, onPinnedChange, onNavigate }: SidebarProps) {
         <section className="sidebar-group" aria-labelledby="sidebar-assets">
           <h2 className="sidebar-heading" id="sidebar-assets">Assets</h2>
           <NavLink to="/assets" onNavigate={onNavigate}>{USER_ASSETS_LABEL}</NavLink>
+          <NavLink to="/personal-speed" onNavigate={onNavigate}>{PERSONAL_SPEED_LABEL}</NavLink>
         </section>
 
         <section className="sidebar-group" aria-labelledby="sidebar-about">

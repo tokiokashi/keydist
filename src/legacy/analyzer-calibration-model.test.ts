@@ -3,10 +3,8 @@ import test from 'node:test';
 import {
   createAnalyzerCalibrationModel,
 } from './analyzer-calibration-model.ts';
-import {
-  PLAYBACK_CALIBRATION_STORAGE_KEY,
-  type PlaybackCalibration,
-} from '#interpretation/timing/calibration.ts';
+import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
+import { PLAYBACK_CALIBRATION_STORAGE_KEY } from './playback-calibration-storage.ts';
 
 test('calibration model edits, saves, and discards without DOM ownership', () => {
   const stored = new Map<string, string>();

@@ -305,6 +305,14 @@ export function resolveGlobalDefaultShapeId(overrides: SettingsCascadeOverrides)
 }
 
 /**
+ * 全体のレベルの「指の割当」の上書き。上書きが無ければ`undefined`（既定は物理配列から決まるので、
+ * 物理配列を知らないここでは決められない。`finger-assignment.ts`の`defaultFingerAssignmentId`）。
+ */
+export function readGlobalFingerAssignmentId(overrides: SettingsCascadeOverrides): string | undefined {
+  return readOverride(overrides, { kind: 'global' }, 'fingerAssignmentId');
+}
+
+/**
  * Workspaceのレベルまでを見た「既定の物理配列」（配列のレベルの値は見ない）。Workspaceの文脈バーのチップが
  * 読む値。Workspaceの値が無ければ全体の値と同じ。
  */
