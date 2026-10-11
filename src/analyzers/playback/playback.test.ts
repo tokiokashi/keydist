@@ -152,14 +152,14 @@ function extractionOf(input: ResolvedInput, cache = createEngineCache()): Playba
 
 test('速度の推移（SMA・窓幅10）: 完了した入力単位だけをかなに数え、位置0には値が無い（§5.1）', () => {
   // 条件: 配列qwerty・ローマ字（訓令式）・物理配列row-staggered・指の割り当ては既定・テキスト「かあ」（k・a・aの3打鍵）。
-  // どのステップも指が違うか同じキーの連打で、表示時間は800ms。窓の合計は 800ms × 窓のStroke数。
+  // どのステップも指が違うか同じキーの連打で、表示時間は800ms。窓の合計は800ms×窓のStroke数。
   const { rateChart } = extractionOf(resolve('qwerty', 'かあ', 'ja'));
   assert.deepEqual(rateChart.map((point) => point.cursor), [0, 1, 2, 3]);
   assert.deepEqual([rateChart[0].kanaPerSecond, rateChart[0].actionsPerSecond], [undefined, undefined]);
   // アクション/秒 = Stroke数 × 1000 / D = 1000 / 800
   assert.deepEqual(rateChart.map((point) => point.actionsPerSecond), [undefined, 1.25, 1.25, 1.25]);
   // かな/秒 = 窓の中で始まり終わる入力単位の文字数 × 1000 / D。
-  // 位置1は「か」の途中（kだけ）なので数えず、位置2で「か」が完了して 1 × 1000 / 1600、位置3で「あ」も加わって 2 × 1000 / 2400
+  // 位置1は「か」の途中（kだけ）なので数えず、位置2で「か」が完了して1×1000/1600、位置3で「あ」も加わって2×1000/2400
   assert.deepEqual(rateChart.map((point) => point.kanaPerSecond), [undefined, undefined, 1000 / 1600, 2000 / 2400]);
   assert.deepEqual(rateChart.map((point) => point.inputText), ['', 'か', 'か', 'かあ']);
 });
@@ -172,7 +172,7 @@ test('速度の推移（SMA）: 時間は再生と同じ時間表を使い、同
   const v = input.geometry.keys.get('v')!;
   const moved = Math.hypot(f.x - v.x, f.y - v.y);
   assert.deepEqual(extracted.schedule, playbackScheduleOf(extracted.analysis, input.geometry, playbackTimingConditions()));
-  // 窓の合計 D は時間表の終わり: 800 + 800 × 移動距離
+  // 窓の合計Dは時間表の終わり: 800+800×移動距離
   const total = 800 + 800 * moved;
   assert.ok(Math.abs(extracted.schedule[1].endMs - total) < 1e-6);
   assert.ok(Math.abs(extracted.rateChart[2].actionsPerSecond! - 2000 / total) < 1e-9);
@@ -190,7 +190,7 @@ test('速度の推移（SMA）: 窓幅を小さくすると、古いStrokeが窓
 });
 
 test('速度の推移（EWMA）: 時間で減衰させ、最初の有効な値を初期値にする（§5.2）', () => {
-  // 条件: 配列qwerty・テキスト「fv」・半減時間1秒。1打鍵目は800ms、2打鍵目は 800 × 移動距離 ms。
+  // 条件: 配列qwerty・テキスト「fv」・半減時間1秒。1打鍵目は800ms、2打鍵目は800×移動距離ms。
   const input = resolve('qwerty', 'fv', 'en', withRateConditions({ playbackRateAverage: 'ewma', playbackRateHalfLifeSeconds: 1 }));
   const extracted = extractionOf(input);
   const second = (extracted.schedule[1].endMs - extracted.schedule[1].startMs) / 1000;

@@ -138,5 +138,5 @@ function formatRate(value: number | undefined): string {
 /** グラフの下に出す、1つの再生位置の値の読み上げ。 */
 export function rateChartReadout(point: PlaybackRateChartPoint): string {
   const input = point.inputText === '' ? '—' : point.inputText;
-  return `ステップ ${point.cursor}、集計入力 ${input}、かな/秒 ${formatRate(point.kanaPerSecond)}、アクション/秒 ${formatRate(point.actionsPerSecond)}`;
+  return `${point.cursor}ステップ目、集計入力「${input}」、かな/秒は${formatRate(point.kanaPerSecond)}、アクション/秒は${formatRate(point.actionsPerSecond)}`;
 }

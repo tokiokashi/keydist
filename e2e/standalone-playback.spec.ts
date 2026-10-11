@@ -118,7 +118,7 @@ test('速度グラフを押すと再生位置が移り、再生位置を示す�
   const [moved] = await readPosition(page);
   expect(Math.abs(moved - total / 2)).toBeLessThanOrEqual(1);
   expect(Number(await line.getAttribute('x1'))).toBeGreaterThan(startX);
-  await expect(chart.locator('[data-playback-rate-readout]')).toContainText(`ステップ ${moved}、`);
+  await expect(chart.locator('[data-playback-rate-readout]')).toContainText(`${moved}ステップ目、`);
 
   // 帯は、表示設定で選んだ種類だけ出る
   await expect(chart.locator('[data-playback-rate-band]')).toHaveCount(0);

@@ -76,10 +76,10 @@ test('横軸の目盛りは先頭・中央・末尾で、打鍵が1つなら重�
 test('読み上げ: 値の無い項目は「—」、あれば小数2桁', () => {
   assert.equal(
     rateChartReadout({ cursor: 2, inputText: 'かあ', kanaPerSecond: 1 / 1.2, actionsPerSecond: 1.25 }),
-    'ステップ 2、集計入力 かあ、かな/秒 0.83、アクション/秒 1.25',
+    '2ステップ目、集計入力「かあ」、かな/秒は0.83、アクション/秒は1.25',
   );
   assert.equal(
     rateChartReadout({ cursor: 0, inputText: '' }),
-    'ステップ 0、集計入力 —、かな/秒 —、アクション/秒 —',
+    '0ステップ目、集計入力「—」、かな/秒は—、アクション/秒は—',
   );
 });
