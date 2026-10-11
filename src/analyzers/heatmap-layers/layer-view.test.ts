@@ -119,22 +119,22 @@ test('タブの層はidで引く。今の図に無いidや未選択は最初の�
   assert.equal(activeEntryIndex(entries, ''), 0);
 });
 
-test('レイヤーの見出しは、トリガーのキーを物理キーの名前か刻印で出し、内部のキーidを出さない', () => {
+test('レイヤーの見出しは、押し方の区分を番号の後ろの括弧に置き、トリガーのキーを出さない', () => {
   const shingeta = extractionFor('shingeta', 'あいがぱ');
   assert.deepEqual(
-    buildLayerEntries(shingeta.layout, shingeta.extracted, 'detail', 'ansi').map((entry) => entry.title),
+    buildLayerEntries(shingeta.layout, shingeta.extracted, 'detail').map((entry) => entry.title),
     [
       'レイヤー1: 単打',
-      'レイヤー2: 中指シフト [K / D]・同時',
-      'レイヤー3: 薬指シフト [L / S]・同時',
-      'レイヤー4: 拗音1 [I]・同時',
-      'レイヤー5: 拗音2 [O]・同時',
+      'レイヤー2（同時）: 中指シフト',
+      'レイヤー3（同時）: 薬指シフト',
+      'レイヤー4（同時）: 拗音1',
+      'レイヤー5（同時）: 拗音2',
     ],
   );
   const naginata = extractionFor('naginata-v18', 'あ');
-  const titles = (detail: 'compact' | 'detail') => buildLayerEntries(naginata.layout, naginata.extracted, detail, 'ansi').map((entry) => entry.title);
-  assert.deepEqual(titles('compact'), ['レイヤー1: 単打（レイヤー3以降を合算）', 'レイヤー2: SandS [Space]・同時']);
-  assert.equal(titles('detail')[3], 'レイヤー4: 濁音 [J / F]・同時');
+  const titles = (detail: 'compact' | 'detail') => buildLayerEntries(naginata.layout, naginata.extracted, detail).map((entry) => entry.title);
+  assert.deepEqual(titles('compact'), ['レイヤー1: 単打（レイヤー3以降を合算）', 'レイヤー2（同時）: SandS']);
+  assert.equal(titles('detail')[3], 'レイヤー4（同時）: 濁音');
 });
 
 test('図ごとのキーの詳細: 押下数は、その図のツールチップの値（keyCounts）と全キーで一致する', () => {

@@ -9,7 +9,7 @@ import { computeKeyDetails } from '#interpretation/key-detail.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
 import { LAYOUT_BY_ID } from './index.ts';
-import { presentationLayerGuide, triggerChordsDisplayText } from './layers.ts';
+import { triggerChordsDisplayText } from './layers.ts';
 
 /** 薙刀式v18の修飾の表の押し方（既定の条件）。実行して確かめた値を固定している。 */
 const NAGINATA_MODIFIER_TRIGGERS: Record<string, string> = {
@@ -53,17 +53,7 @@ test('薙刀式v18の修飾の表は、キーが修飾の中で持つ意味の�
   );
 });
 
-test('薙刀式v18の層の見出し用の押し方は、修飾の表と同じ文字になる', () => {
-  const layout = LAYOUT_BY_ID.get('naginata-v18')!;
-  const guideOf = (label: string) => {
-    const definition = (layout.layerDefinitions ?? []).find((candidate) => candidate.label === label);
-    return presentationLayerGuide(layout, definition!.id)?.triggerDisplayText;
-  };
-  assert.equal(guideOf('濁音'), 'J / F');
-  assert.equal(guideOf('半濁音'), 'M / V');
-});
-
-test('薙刀式v18のヒートマップ（レイヤー）の見出しのトリガーは、拗音（ゃ）が[や]、濁音が[J / F]になる', () => {
+test('薙刀式v18のヒートマップ（レイヤー）の見出しは、トリガーを出さず、押し方の区分を番号の後ろに置く', () => {
   const layout = LAYOUT_BY_ID.get('naginata-v18')!;
   const geometry = buildGeometry('row-staggered');
   const trace = generateTrace('きゃ', layout, geometry, DEFAULT_TRACE_POLICY);
@@ -74,8 +64,9 @@ test('薙刀式v18のヒートマップ（レイヤー）の見出しのトリ�
     options: DEFAULT_HEATMAP_LAYERS_OPTIONS,
   });
   const titles = buildLayerEntries(layout, extracted, 'detail').map((entry) => entry.title);
-  assert.ok(titles.includes('レイヤー6: 拗音（ゃ） [や]・同時'), titles.join('\n'));
-  assert.ok(titles.includes('レイヤー4: 濁音 [J / F]・同時'), titles.join('\n'));
+  assert.ok(titles.includes('レイヤー6（同時）: 拗音（ゃ）'), titles.join('\n'));
+  assert.ok(titles.includes('レイヤー4（同時）: 濁音'), titles.join('\n'));
+  assert.ok(titles.every((title) => !title.includes('[')), titles.join('\n'));
 });
 
 test('意味を書いていないキーは刻印を出し、層の名前と同じでも物理キーの名前に置き換えない', () => {
@@ -110,7 +101,7 @@ test('意味はキーと修飾の組で決まり、同じキーでも組が違�
   assert.equal(text([['j', '組なし']]), 'あ');
 });
 
-/** 配列の全層について、ヒートマップ（レイヤー）の見出しと、Testerの切り替えキーの文字を読む。 */
+/** 配列の全層について、ヒートマップ（レイヤー）の見出しとTraceの層の名前を読む。 */
 function layerTexts(layoutId: string) {
   const layout = LAYOUT_BY_ID.get(layoutId)!;
   const geometry = buildGeometry('row-staggered');
@@ -121,80 +112,65 @@ function layerTexts(layoutId: string) {
     keyDetails: computeKeyDetails(trace, geometry),
     options: DEFAULT_HEATMAP_LAYERS_OPTIONS,
   });
-  const labelOf = new Map(trace.layerDefinitions.map((definition) => [definition.id, definition.label]));
   return {
     titles: buildLayerEntries(layout, extracted, 'detail').map((entry) => entry.title),
-    tester: (layout.layerDefinitions ?? [])
-      .filter((definition) => definition.kind === 'layer')
-      .map((definition) => [labelOf.get(definition.id), presentationLayerGuide(layout, definition.id)?.triggerDisplayText]),
-    traceLabels: [...labelOf.values()],
+    traceLabels: trace.layerDefinitions.map((definition) => definition.label),
   };
 }
 
-test('新下駄のシフトのキーは、層の名前と同じ修飾のキーとして物理キーの名前で出る', () => {
-  const { titles, tester } = layerTexts('shingeta');
-  assert.deepEqual(titles, [
+test('新下駄の見出しは、トリガーのキーを出さない', () => {
+  assert.deepEqual(layerTexts('shingeta').titles, [
     'レイヤー1: 単打',
-    'レイヤー2: 中指シフト [K / D]・同時',
-    'レイヤー3: 薬指シフト [L / S]・同時',
-    'レイヤー4: 拗音1 [I]・同時',
-    'レイヤー5: 拗音2 [O]・同時',
-  ]);
-  assert.deepEqual(tester, [
-    ['単打', '—'],
-    ['中指シフト', 'K / D'],
-    ['薬指シフト', 'L / S'],
-    ['拗音1', 'I'],
-    ['拗音2', 'O'],
+    'レイヤー2（同時）: 中指シフト',
+    'レイヤー3（同時）: 薬指シフト',
+    'レイヤー4（同時）: 拗音1',
+    'レイヤー5（同時）: 拗音2',
   ]);
 });
 
-test('かわせみ配列+の行指定キーは物理キーの名前で出て、コンボのトリガーは単打面の文字のまま', () => {
-  const { titles, tester } = layerTexts('kawasemi-plus');
+test('かわせみ配列+の見出しは、トリガーのキーを出さず、コンボのトリガーは単打面の文字のまま', () => {
+  const { titles } = layerTexts('kawasemi-plus');
   assert.deepEqual(titles.slice(1, 15), [
-    'レイヤー2: な行 [A]・同時',
-    'レイヤー3: か行 [S]・同時',
-    'レイヤー4: さ行 [D]・同時',
-    'レイヤー5: た行 [F]・同時',
-    'レイヤー6: は行 [G]・同時',
-    'レイヤー7: ら行 [X]・同時',
-    'レイヤー8: ま行 [C]・同時',
-    'レイヤー9: 記号 [V]・同時',
-    'レイヤー10: ぱ行 [B]・同時',
-    'レイヤー11: 捨て仮名、旧かな [Q]・同時',
-    'レイヤー12: が行 [W]・同時',
-    'レイヤー13: ざ行 [E]・同時',
-    'レイヤー14: だ行 [R]・同時',
-    'レイヤー15: ば行 [T]・同時',
+    'レイヤー2（同時）: な行',
+    'レイヤー3（同時）: か行',
+    'レイヤー4（同時）: さ行',
+    'レイヤー5（同時）: た行',
+    'レイヤー6（同時）: は行',
+    'レイヤー7（同時）: ら行',
+    'レイヤー8（同時）: ま行',
+    'レイヤー9（同時）: 記号',
+    'レイヤー10（同時）: ぱ行',
+    'レイヤー11（同時）: 捨て仮名、旧かな',
+    'レイヤー12（同時）: が行',
+    'レイヤー13（同時）: ざ行',
+    'レイヤー14（同時）: だ行',
+    'レイヤー15（同時）: ば行',
   ]);
-  assert.deepEqual(titles.slice(15), ['レイヤー16: 右親指 [右親指]・同時', 'レイヤー17: 左親指 [左親指]・同時']);
-  assert.deepEqual(tester.find(([label]) => label === 'ぱ行'), ['ぱ行', 'B']);
+  assert.deepEqual(titles.slice(15), ['レイヤー16（同時）: 右親指', 'レイヤー17（同時）: 左親指']);
 
   const layout = LAYOUT_BY_ID.get('kawasemi-plus')!;
   assert.deepEqual(comboRows(layout, undefined).slice(0, 5).map((row) => row.trigger), ['し', 'と', 'る', 'ま', 'で']);
   assert.deepEqual(comboDiagramItems(layout, undefined).slice(0, 5).map((item) => item.label), ['し', 'と', 'る', 'ま', 'で']);
 });
 
-test('シン蜂蜜小梅の文字キー同時押しの層は、出るかなの1文字目を名前とトリガーに出す', () => {
-  const { titles, tester, traceLabels } = layerTexts('shin-koume');
+test('シン蜂蜜小梅の文字キー同時押しの層は、出るかなの1文字目を名前に出し、トリガーを重ねない', () => {
+  const { titles, traceLabels } = layerTexts('shin-koume');
   assert.deepEqual(titles.slice(3), [
-    'レイヤー4: 半濁音 [G]・同時',
-    'レイヤー5: ひ・びのシフト・同時',
-    'レイヤー6: き・ぎのシフト・同時',
-    'レイヤー7: つ・に・づのシフト・同時',
-    'レイヤー8: ぴ・ぱのシフト・同時',
-    'レイヤー9: ふ・ぶのシフト・同時',
-    'レイヤー10: く・い・ぐのシフト・同時',
-    'レイヤー11: り・し・じのシフト・同時',
-    'レイヤー12: 外来音（ぅ） [と・ど]・同時',
-    'レイヤー13: みのシフト・同時',
-    'レイヤー14: う・ヴのシフト・同時',
-    'レイヤー15: て・でのシフト・同時',
-    'レイヤー16: ち・ぢのシフト・同時',
-    'レイヤー17: 外来音（ぉ） [ぬ]・同時',
+    'レイヤー4（同時）: 半濁音',
+    'レイヤー5（同時）: ひ・び',
+    'レイヤー6（同時）: き・ぎ',
+    'レイヤー7（同時）: つ・に・づ',
+    'レイヤー8（同時）: ぴ・ぱ',
+    'レイヤー9（同時）: ふ・ぶ',
+    'レイヤー10（同時）: く・い・ぐ',
+    'レイヤー11（同時）: り・し・じ',
+    'レイヤー12（同時）: 外来音（ぅ）',
+    'レイヤー13（同時）: み',
+    'レイヤー14（同時）: う・ヴ',
+    'レイヤー15（同時）: て・で',
+    'レイヤー16（同時）: ち・ぢ',
+    'レイヤー17（同時）: 外来音（ぉ）',
   ]);
-  assert.deepEqual(tester.find(([label]) => label === 'ひ・びのシフト'), ['ひ・びのシフト', 'ひ・び']);
-  assert.deepEqual(tester.find(([label]) => label === '半濁音'), ['半濁音', 'G']);
-  assert.ok(traceLabels.includes('く・い・ぐのシフト'));
-  assert.deepEqual(titles.slice(0, 3), ['レイヤー1: 単打', 'レイヤー2: 左親指 [親指左]・同時', 'レイヤー3: 右親指 [親指右]・同時']);
+  assert.ok(traceLabels.includes('く・い・ぐ'));
+  assert.deepEqual(titles.slice(0, 3), ['レイヤー1: 単打', 'レイヤー2（同時）: 左親指', 'レイヤー3（同時）: 右親指']);
 });

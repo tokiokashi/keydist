@@ -249,7 +249,7 @@ test('layout B restore also revives a floating layer card of B without a visible
   const cardLabel = headerLabel!.replace(/カンペをクリックまたはドラッグして小窓表示$/, '');
   await cardHeader.click();
 
-  const cardPanel = page.getByLabel(`${cardLabel} 個別カンペ`, { exact: true });
+  const cardPanel = page.getByLabel(`${cardLabel}個別カンペ`, { exact: true });
   await expect(cardPanel).toHaveAttribute('data-floating', 'true');
   const moveHandle = page.getByLabel(`${cardLabel}カンペを移動`, { exact: true });
   const box = await moveHandle.boundingBox();
@@ -266,7 +266,7 @@ test('layout B restore also revives a floating layer card of B without a visible
   await expect(feature).toHaveAttribute('data-input-ready', 'shingeta');
   await expect(page.getByLabel('配列', { exact: true })).toHaveValue('shingeta');
 
-  const cardAfterReload = page.getByLabel(`${cardLabel} 個別カンペ`, { exact: true });
+  const cardAfterReload = page.getByLabel(`${cardLabel}個別カンペ`, { exact: true });
   await expect(cardAfterReload).toHaveAttribute('data-floating', 'true');
 
   // 復元直後、通常のドック位置からfloating位置へ「飛ぶ」アニメーションが無ければ、

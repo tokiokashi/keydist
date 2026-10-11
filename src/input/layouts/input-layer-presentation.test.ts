@@ -159,7 +159,7 @@ test('どれか1つで足りるtriggerは「/」、刻印の無いキーは表�
     const definition = compactLayerGuideDefinitions(layout)
       .find((candidate) => candidate.label === label);
     assert.ok(definition);
-    return presentationLayerGuide(layout, definition.id)?.triggerDisplayText;
+    return aggregationTriggerDisplayText(layout, definition.id);
   };
   // 月配列のd・kはどちらか片方で前置シフトになる。同時押しではない
   assert.equal(text(TSUKI_2_263, '中指シフト'), 'D / K');

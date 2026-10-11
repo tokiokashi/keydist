@@ -59,6 +59,16 @@ test('層が複数の配列: 並置で全部の層が見え、タブにすると
   await expect(feature(page).locator('[data-heatmap-diagram="single"]')).toBeHidden();
 });
 
+test('層の名前がトリガーの文字そのものの配列: 図の見出しにトリガーを付けず、凡例は番号と名前の間に「: 」を置く', async ({ page }) => {
+  await selectLayout(page, 'shin-koume');
+  await page.goto('/standalone/heatmap-layers?arrange=side-by-side');
+  await expect(feature(page)).toBeVisible({ timeout: 10_000 });
+  await expect(feature(page).getByLabel('シフトキーの枠色')).toContainText('レイヤー7: つ・に・づ');
+  await expect(feature(page).getByLabel('シフトキーの枠色')).toContainText('レイヤー13: み');
+  // 図の見出し: 押し方の区分は番号の後ろの括弧、名前の後ろに続かない
+  await expect(feature(page).getByText('レイヤー7（同時）: つ・に・づ・打鍵頻度', { exact: true })).toBeVisible();
+});
+
 test('並べ方が自動の時は、5層まで並置', async ({ page }) => {
   await selectLayout(page, 'shingeta');
   await page.goto('/standalone/heatmap-layers');

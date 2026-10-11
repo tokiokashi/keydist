@@ -48,7 +48,7 @@ function shiftStylesByKey(faces: readonly Face[], styles: ReadonlyMap<Face, Heat
 export function HeatmapLayersBody({ layout, geometry, extracted, options, onOptionsChange, keySelection }: SingleBodyProps<HeatmapLayersExtracted, HeatmapLayersOptions>) {
   const standard = keyboardStandardForGeometryId(geometry.id);
   const view = useMemo(() => {
-    const entries = buildLayerEntries(layout, extracted, options.layerDetail, standard);
+    const entries = buildLayerEntries(layout, extracted, options.layerDetail);
     const presentation = presentationLayersOf(layout);
     const allFaces = presentation.flatMap((layer) => layer.faces);
     // シフトキーの枠色は、まとめ方に依らず配列の全レイヤーから1回だけ決める（図と凡例で共有）
@@ -67,7 +67,7 @@ export function HeatmapLayersBody({ layout, geometry, extracted, options, onOpti
   const activeIndex = activeEntryIndex(entries, options.activeLayerId);
   const shiftLegend = entries.flatMap((entry) => {
     const style = entry.layer.faces.map((face) => styles.get(face)).find((candidate) => candidate !== undefined);
-    return style === undefined ? [] : [{ id: entry.id, style, label: `レイヤー${style.layerIndex}の${entry.label}` }];
+    return style === undefined ? [] : [{ id: entry.id, style, label: `レイヤー${style.layerIndex}: ${entry.label}` }];
   });
   const scaleText = options.colorScale === 'log' ? '対数' : '線形';
 

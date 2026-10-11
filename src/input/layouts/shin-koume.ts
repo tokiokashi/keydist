@@ -63,7 +63,7 @@ const SIMULTANEOUS_KEY_MEANINGS: Readonly<Record<string, TriggerMeaning>> = {
 
 /**
  * 文字キー同時押しの面。層の名前を定義で付ける時は `layer` に書く。
- * 付けない時は既定の名前になる（出るかなの種類、または「<トリガーの文字>のシフト」）。
+ * 付けない時は既定の名前になる（出るかなの種類、または押すキーの文字そのもの）。
  */
 const compositionFace = (trigger: string, entries: Record<string, string>, layer?: string): Face => ({
   ...face([trigger], entries, {

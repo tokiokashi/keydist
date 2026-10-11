@@ -40,7 +40,13 @@ test('宣言のある配列の全レイヤー詳細: トリガーはレイヤー
   assert.ok(tones.every((tone) => tone.kind === 'layer' && tone.slot >= 1 && tone.slot <= 8));
   assert.equal(guide.legend.length, 30);
   assert.equal(guide.legend.some((item) => item.id === 'combo' || item.id === 'other-layers'), false);
-  assert.match(guide.legend[0]!.label, /^レイヤー\d+の/);
+  assert.match(guide.legend[0]!.label, /^レイヤー\d+: /);
+});
+
+test('凡例は「レイヤー<番号>: <名前>」で、名前そのものが「み」でも番号と名前の切れ目が読める', () => {
+  const labels = triggerGuide(resolvedLayout('shin-koume'), 'detail').legend.map((item) => item.label);
+  assert.ok(labels.includes('レイヤー13: み'), labels.join('\n'));
+  assert.ok(labels.includes('レイヤー7: つ・に・づ'), labels.join('\n'));
 });
 
 test('宣言のある配列のまとめる表示: 凡例は残すレイヤーと「それ以外のレイヤー」だけになり、まとめられる側は中立の色になる', () => {
