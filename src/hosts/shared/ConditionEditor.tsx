@@ -4,6 +4,17 @@ import type { FingerAssignment, PhysicalShape } from '#input/shapes/geometry.ts'
 import { groupShapes } from '#input/shapes/shape-groups.ts';
 import type { ChainInterpretation } from '#interpretation/structure/chain.ts';
 import type { ArpeggioInterpretation } from '#interpretation/structure/arpeggio.ts';
+import {
+  PLAYBACK_RATE_HALF_LIFE_SECONDS_MAX,
+  PLAYBACK_RATE_HALF_LIFE_SECONDS_MIN,
+  PLAYBACK_RATE_WINDOW_MAX,
+  PLAYBACK_RATE_WINDOW_MIN,
+  PLAYBACK_SPEED_MULTIPLIER_MAX,
+  PLAYBACK_SPEED_MULTIPLIER_MIN,
+  PLAYBACK_STEPS_PER_SECOND_MAX,
+  PLAYBACK_STEPS_PER_SECOND_MIN,
+} from '#interpretation/timing/playback.ts';
+import { PersonalSpeedLink } from '#ui/primitives/personal-speed-link.tsx';
 import { DEFAULT_TRIGGER_ACTIVATION_GROUPINGS } from '#input/semantics/index.ts';
 import { ROMAJI_RULES, type UserRomajiRule } from '#input/romaji/rules.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
@@ -44,7 +55,15 @@ import {
   type ActionCountMode,
   type GlobalEditableId,
 } from './condition-edit.ts';
-import { ACTION_COUNT_TEXT, conditionDiagnosticText, type ConditionSummaryRow } from './condition-summary.ts';
+import {
+  ACTION_COUNT_TEXT,
+  conditionDiagnosticText,
+  conditionItemLabel,
+  inactiveConditionReasons,
+  personalSpeedInUse,
+  screenConditionValue,
+  type ConditionSummaryRow,
+} from './condition-summary.ts';
 import { PaneMenu, type PaneMenuItem } from './PaneHeaderParts.tsx';
 import './condition-editor.css';
 
@@ -83,6 +102,11 @@ export interface ConditionEditorContext {
   readonly workspaceNotices?: ReadonlyMap<SettingsItemId, string>;
   /** このペインが自分で動かす項目（N感度の先読みN）。全体の値として編集させない。 */
   readonly hiddenIds?: readonly SettingsItemId[];
+  /**
+   * 個人速度の画面に保存した測定値があるか。個人速度の行の札と、基準速度が効かない理由を決める。
+   * 保存値は条件の外にある資産なので、カスケードの上書きからは分からない。
+   */
+  readonly personalSpeedSaved: boolean;
   /** 保存したプリセット。モーダル上部のプリセットの節が読む。 */
   readonly presetLibrary: PresetLibrary<SettingsValueMap>;
   /** プリセットの新しいidの発行（純粋層は乱数を持たないので、`app`が注入する）。 */
@@ -118,6 +142,13 @@ const ON_OFF = [
 export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
   const { overrides, dispatch, layout, workspace } = editor;
   const rowOf = (id: SettingsItemId) => rows.find((row) => row.id === id);
+  // 他の条件の値のせいで効かない行の理由。再生の条件を読まないペインにも要約の行は無いので、上書きから直接決める
+  // （どのペインのモーダルでも、チェーン・アルペジオと同じように行を出すため）。
+  const inUse = personalSpeedInUse(overrides, editor.personalSpeedSaved);
+  const inactiveReasons = inactiveConditionReasons({
+    personalSpeedInUse: inUse,
+    average: screenConditionValue(overrides, 'playbackRateAverage'),
+  });
 
   // 行ごとに、いま編集しているレベル。選ばなければ開いた時の既定（Workspaceのペインは Workspace、単体ページは全体）。
   // 強いレベルの値が勝っている行も、開いた時は既定のレベルの値と、勝つ理由を見せる。
@@ -179,7 +210,9 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
     return scoped(id, globalOverrideOf(overrides, id) ?? defaultValue, defaultValue);
   }
 
-  const boolBinding = (id: 'sfbHomeCost' | 'preferOppositeThumb'): OptionBinding<'on' | 'off'> => {
+  const boolBinding = (
+    id: 'sfbHomeCost' | 'preferOppositeThumb' | 'playbackSameFingerDelay' | 'playbackAllFingerMovementDelay' | 'playbackPersonalSpeed',
+  ): OptionBinding<'on' | 'off'> => {
     const inner = bind(id);
     return {
       value: inner.value ? 'on' : 'off',
@@ -257,7 +290,8 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
   const row = (id: GlobalEditableId, content: (badge: ReactNode) => ReactNode) => {
     if (editor.hiddenIds?.includes(id)) return null;
     const summary = rowOf(id);
-    const notApplicable = summary !== undefined && !summary.applicable;
+    const inactiveReason = inactiveReasons.get(id);
+    const notApplicable = summary !== undefined && !summary.applicable && inactiveReason === undefined;
     const diagnostics = (summary?.diagnostics ?? [])
       .map((diagnostic) => (summary === undefined ? undefined : conditionDiagnosticText(summary, diagnostic)))
       .filter((text): text is string => text !== undefined);
@@ -270,15 +304,16 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
         className="condition-row"
         data-item={id}
         data-changed={changed(id) || undefined}
-        data-not-applicable={notApplicable || undefined}
+        data-not-applicable={notApplicable || inactiveReason !== undefined || undefined}
       >
         {content(
           <>
             <OriginBadge id={id} row={summary} changedHere={changed(id) || summary?.origin.kind === 'global'} />
-            {scopeMenu(id, summary?.label ?? id, notApplicable)}
+            {scopeMenu(id, summary?.label ?? conditionItemLabel(id) ?? id, notApplicable)}
           </>,
         )}
         {notApplicable ? <p className="condition-row-flag">この配列・Setupでは効きません</p> : null}
+        {inactiveReason === undefined ? null : <p className="condition-row-flag" data-condition-inactive="true">{inactiveReason}</p>}
         {notice === undefined ? null : <p className="condition-row-notice" data-condition-notice="true">{notice}</p>}
         {diagnostics.map((text, index) => <p key={index} className="condition-row-diagnostic">{text}</p>)}
       </div>
@@ -323,6 +358,12 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
   const actionBinding = bind('actionRealizationPolicy');
   const chainBinding = bind('chainInterpretation');
   const arpeggioBinding = bind('arpeggioInterpretation');
+
+  const stepsBinding = bind('playbackStepsPerSecond');
+  const multiplierBinding = bind('playbackSpeedMultiplier');
+  const averageBinding = bind('playbackRateAverage');
+  const rateWindowBinding = bind('playbackRateWindow');
+  const halfLifeBinding = bind('playbackRateHalfLifeSeconds');
 
   const actionMode = actionCountModeOf(actionBinding.value);
   const exceptionCount = ACTION_EXCEPTION_CLASSES
@@ -529,7 +570,205 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
             </>
           ))}
         </section>
+
+        <section className="condition-group" aria-label="個人速度">
+          <h3 className="condition-group-title">個人速度</h3>
+          {row('playbackPersonalSpeed', (badge) => (
+            <>
+              <SegmentedOptionField
+                label="個人速度"
+                binding={boolBinding('playbackPersonalSpeed')}
+                choices={[{ value: 'on', label: '適用する' }, { value: 'off', label: '適用しない' }]}
+                badge={(
+                  <>
+                    {badge}
+                    {inUse ? <span className="condition-origin" data-origin="personal-speed">個人速度で計算中</span> : null}
+                  </>
+                )}
+                hint="個人速度の画面で測った速さで、再生の時間を求めます"
+              />
+              {!editor.personalSpeedSaved && screenConditionValue(overrides, 'playbackPersonalSpeed') ? (
+                <p className="condition-row-notice" data-condition-personal-speed="missing">
+                  測定した個人速度がありません。測るまでは、個人速度を使わない時間で再生します
+                </p>
+              ) : null}
+              <PersonalSpeedLink className="condition-row-link">個人速度の画面を開く</PersonalSpeedLink>
+            </>
+          ))}
+        </section>
+
+        <section className="condition-group" aria-label="再生の時間">
+          <h3 className="condition-group-title">再生の時間</h3>
+          {row('playbackStepsPerSecond', (badge) => (
+            <OptionField
+              label="基準速度"
+              binding={stepsBinding}
+              badge={badge}
+              hint="1秒に進むステップ数。個人速度で計算している間は使われません"
+            >
+              {(id) => (
+                <NumberInput
+                  id={id}
+                  label="基準速度"
+                  value={stepsBinding.value}
+                  min={PLAYBACK_STEPS_PER_SECOND_MIN}
+                  max={PLAYBACK_STEPS_PER_SECOND_MAX}
+                  step={0.05}
+                  unit="ステップ/秒"
+                  onCommit={stepsBinding.onChange}
+                />
+              )}
+            </OptionField>
+          ))}
+          {row('playbackSpeedMultiplier', (badge) => (
+            <OptionField
+              label="再生倍率"
+              binding={multiplierBinding}
+              badge={badge}
+              hint="個人速度で計算している時も、最後に掛ける倍率"
+            >
+              {(id) => (
+                <NumberInput
+                  id={id}
+                  label="再生倍率"
+                  value={multiplierBinding.value}
+                  min={PLAYBACK_SPEED_MULTIPLIER_MIN}
+                  max={PLAYBACK_SPEED_MULTIPLIER_MAX}
+                  step={0.1}
+                  unit="倍"
+                  onCommit={multiplierBinding.onChange}
+                />
+              )}
+            </OptionField>
+          ))}
+          {row('playbackSameFingerDelay', (badge) => (
+            <SegmentedOptionField
+              label="指の移動速度を考慮"
+              binding={boolBinding('playbackSameFingerDelay')}
+              choices={ON_OFF}
+              badge={badge}
+              hint="同じ指が離れたキーへ移る時間を、ステップの長さに入れます"
+            />
+          ))}
+          {row('playbackAllFingerMovementDelay', (badge) => (
+            <SegmentedOptionField
+              label="全指の移動時間で律速"
+              binding={boolBinding('playbackAllFingerMovementDelay')}
+              choices={ON_OFF}
+              badge={badge}
+              hint="すべての指が次のキーへ移るのに要する時間より、ステップが短くならないようにします"
+            />
+          ))}
+        </section>
+
+        <section className="condition-group" aria-label="速度グラフの平均">
+          <h3 className="condition-group-title">速度グラフの平均</h3>
+          {row('playbackRateAverage', (badge) => (
+            <SegmentedOptionField
+              label="平均の方式"
+              binding={averageBinding}
+              choices={[{ value: 'sma', label: 'SMA' }, { value: 'ewma', label: 'EWMA' }]}
+              badge={badge}
+              hint="SMAは直近の打鍵の単純な平均、EWMAは古い打鍵ほど寄与を時間で減らす平均です"
+            />
+          ))}
+          {row('playbackRateWindow', (badge) => (
+            <OptionField
+              label="平均の窓幅"
+              binding={rateWindowBinding}
+              badge={badge}
+              hint="SMAで平均する直近の打鍵数"
+            >
+              {(id) => (
+                <NumberInput
+                  id={id}
+                  label="平均の窓幅"
+                  value={rateWindowBinding.value}
+                  min={PLAYBACK_RATE_WINDOW_MIN}
+                  max={PLAYBACK_RATE_WINDOW_MAX}
+                  step={1}
+                  integer
+                  unit="打鍵"
+                  onCommit={rateWindowBinding.onChange}
+                />
+              )}
+            </OptionField>
+          ))}
+          {row('playbackRateHalfLifeSeconds', (badge) => (
+            <OptionField
+              label="平均の半減時間"
+              binding={halfLifeBinding}
+              badge={badge}
+              hint="EWMAで、打鍵の寄与が半分になるまでの時間"
+            >
+              {(id) => (
+                <NumberInput
+                  id={id}
+                  label="平均の半減時間"
+                  value={halfLifeBinding.value}
+                  min={PLAYBACK_RATE_HALF_LIFE_SECONDS_MIN}
+                  max={PLAYBACK_RATE_HALF_LIFE_SECONDS_MAX}
+                  step={0.1}
+                  unit="秒"
+                  onCommit={halfLifeBinding.onChange}
+                />
+              )}
+            </OptionField>
+          ))}
+        </section>
       </div>
+    </div>
+  );
+}
+
+/**
+ * 数値の入力。打っている途中の値（空欄・範囲の外）は条件に書かず、確定した時（Enter・フォーカスが外れた時）に
+ * 範囲へ丸めて書く。入力のたびに書くと、元に戻す履歴が1文字ごとに増える。
+ * 矢印のボタンで増減した時は`inputType`の無い入力イベントになるので、その場で書く。
+ */
+function NumberInput({ id, label, value, min, max, step, integer = false, unit, onCommit }: {
+  readonly id: string;
+  readonly label: string;
+  readonly value: number;
+  readonly min: number;
+  readonly max: number;
+  readonly step: number;
+  readonly integer?: boolean;
+  readonly unit: string;
+  readonly onCommit: (next: number) => void;
+}) {
+  const [draft, setDraft] = useState<string | undefined>(undefined);
+  const commit = (text: string) => {
+    setDraft(undefined);
+    const parsed = Number(text);
+    if (text.trim() === '' || !Number.isFinite(parsed)) return;
+    const clamped = Math.min(max, Math.max(min, integer ? Math.round(parsed) : parsed));
+    if (clamped !== value) onCommit(clamped);
+  };
+  return (
+    <div className="condition-number">
+      <input
+        id={id}
+        type="number"
+        inputMode={integer ? 'numeric' : 'decimal'}
+        min={min}
+        max={max}
+        step={step}
+        value={draft ?? String(value)}
+        aria-label={label}
+        onChange={(event) => {
+          const text = event.currentTarget.value;
+          if ((event.nativeEvent as InputEvent).inputType === undefined) commit(text);
+          else setDraft(text);
+        }}
+        onBlur={() => {
+          if (draft !== undefined) commit(draft);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' && draft !== undefined) commit(draft);
+        }}
+      />
+      <span className="condition-number-unit">{unit}</span>
     </div>
   );
 }

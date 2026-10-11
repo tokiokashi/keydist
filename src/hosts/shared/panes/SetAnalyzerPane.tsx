@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import type { CodecDiagnostic } from '#input/codec/index.ts';
 import type { EngineSetMemberInput } from '#engine/request.ts';
 import { effectiveMultiBaseline, type ColorSlotsByKey, type TargetSet } from '#engine/multi-target-selection.ts';
-import { SETTINGS_ITEMS, type SettingsItemId } from '#engine/settings-items.ts';
 import { analysisTargetKey, nameTargets, type AnalysisTarget } from '#input/setup/index.ts';
 import type { SetAnalyzerPaneParts, SetRowSource } from '#analyzers/pane-parts.tsx';
 import {
@@ -10,6 +9,7 @@ import {
   globalConditionLevels,
   globalConditionValues,
   multiTargetConditionSummary,
+  settingsItemIds,
   traceConditionSummary,
   type ConditionValueNames,
 } from '../condition-summary.ts';
@@ -45,11 +45,6 @@ export interface SetAnalyzerPaneProps<Options, Extracted, RowContext> {
   readonly settingsDiagnostics?: readonly CodecDiagnostic[];
   /** 共有リンクを開いた時に、取り込めなかったものを伝える文。 */
   readonly linkNotices?: readonly string[];
-}
-
-/** 条件から除くidは、設定項目のidだけを通す。 */
-function settingsItemIds(ids: readonly string[] | undefined): readonly SettingsItemId[] {
-  return (ids ?? []).filter((id): id is SettingsItemId => id in SETTINGS_ITEMS);
 }
 
 export function SetAnalyzerPane<Options, Extracted, RowContext>({
@@ -201,6 +196,7 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
         presetLibrary: env.presetLibrary,
         generatePresetId: env.generatePresetId,
         undo: env.undo,
+        personalSpeedSaved: catalog.personalSpeed !== undefined,
         shapes: catalog.setupCatalog.shapes,
         customFingerAssignments: catalog.customFingerAssignments,
         customRomajiRules: catalog.customRomajiRules,

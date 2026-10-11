@@ -66,16 +66,16 @@ Per-layout overrides are field-level. An empty legacy per-layout object has no s
 
 | Field | Scope |
 | --- | --- |
-| `playbackRateAverage` | global-only |
-| `playbackRateWindow` | global-only |
-| `playbackRateHalfLifeSeconds` | global-only |
-| `stepsPerSecond` | default + per-layout sparse override |
-| `speedMultiplier` | default + per-layout sparse override |
-| `sameFingerDelay` | default + per-layout sparse override |
-| `allFingerMovementDelay` | default + per-layout sparse override |
-| `useCalibration` | default + per-layout sparse override |
+| `playbackRateAverage` | global + workspace |
+| `playbackRateWindow` | global + workspace |
+| `playbackRateHalfLifeSeconds` | global + workspace |
+| `playbackStepsPerSecond` | global + workspace |
+| `playbackSpeedMultiplier` | global + workspace |
+| `playbackSameFingerDelay` | global + workspace |
+| `playbackAllFingerMovementDelay` | global + workspace |
+| `playbackPersonalSpeed` | global + workspace (boolean: apply the saved personal speed; default true) |
 
-The three playback-rate averaging fields are intentionally absent from the per-layout override type/API.
+All eight timing-model fields are shared by every layout (`spec/playback-timing.md` section 7.5). They are intentionally absent from the per-layout override type/API; a layout does not get its own playback speed or averaging.
 
 ### ViewConfig
 

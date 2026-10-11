@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { keyboardStandardForGeometryId } from '#input/shapes/key-labels.ts';
-import type { PlaybackState } from '#interpretation/timing/playback.ts';
+import {
+  reconcilePlaybackStateAfterAnalysisRefresh,
+  type PlaybackState,
+  type PlaybackTimingStep,
+} from '#interpretation/timing/playback.ts';
+import { PersonalSpeedLink } from '#ui/primitives/personal-speed-link.tsx';
 import type { SingleBodyProps } from '../pane-parts.tsx';
 import type { PlaybackExtracted } from './extract.ts';
 import { derivePlaybackFrame } from './frame.ts';
@@ -23,29 +28,50 @@ import './playback-view.css';
  * ペインを開き直す・複製する・再読み込みすると先頭から始まる。
  * 対象・テキスト・構造の条件が変わった時は先頭へ戻す。打鍵の列と構造が変わるので、
  * 前の位置は新しい列の中で同じ場所を指さない。
- * 表示設定（`options`）や、速度の平均の条件（方式・窓幅・半減時間）を変えた時は、打鍵の列も構造も同じなので、
- * 再生位置を保つ。速度の平均の条件は抽出を作り直すが、同じ入力から作った結果は同じ`basisId`を持つ。
+ * 表示設定（`options`）や、再生の時間・速度の平均の条件を変えた時は、打鍵の列も構造も同じなので、
+ * 再生位置を保つ。これらの条件は抽出を作り直すが、同じ入力から作った結果は同じ`basisId`を持つ。
+ * 時間の条件を変えた時は、カーソルと再生中かどうかを保ち、今のステップの中の経過時間を、
+ * 変える前の進捗率のまま新しい時間表へ写す（`spec/playback-timing.md` §4.0）。
  */
 
 interface Session {
   /** この再生位置が属する打鍵の列と構造の入力（`PlaybackExtracted.basisId`）。別の入力に替わったら先頭へ戻す */
   readonly basisId: string;
+  /** この再生位置の経過時間が基づく時間表。別の時間表に替わったら、進捗率を保って写す */
+  readonly schedule: readonly PlaybackTimingStep[];
   readonly state: PlaybackState;
   readonly feedback: PlaybackFeedback;
 }
 
 const NO_KEYS: ReadonlySet<string> = new Set();
 
-function freshSession(basisId: string, state: PlaybackState): Session {
-  return { basisId, state, feedback: { revision: 0, keys: NO_KEYS } };
+function freshSession(basisId: string, schedule: readonly PlaybackTimingStep[], state: PlaybackState): Session {
+  return { basisId, schedule, state, feedback: { revision: 0, keys: NO_KEYS } };
 }
 
 export function PlaybackBody({ layout, geometry, trace, extracted, options }: SingleBodyProps<PlaybackExtracted, PlaybackOptions>) {
-  const { analysis, windowSize, timing, schedule, rateChart, basisId } = extracted;
+  const { analysis, windowSize, timing, personalSpeedUse, schedule, rateChart, basisId } = extracted;
   const total = trace.strokes.length;
 
-  const [session, setSession] = useState<Session>(() => freshSession(basisId, initialPlaybackState(timing)));
-  if (session.basisId !== basisId) setSession(freshSession(basisId, initialPlaybackState(timing)));
+  const [session, setSession] = useState<Session>(() => freshSession(basisId, schedule, initialPlaybackState(timing)));
+  if (session.basisId !== basisId) {
+    setSession(freshSession(basisId, schedule, initialPlaybackState(timing)));
+  } else if (session.schedule !== schedule) {
+    // 構造は同じで時間だけが変わった。位置と再生中かどうかを保ち、経過時間を新しい時間表へ写す
+    setSession({
+      ...session,
+      schedule,
+      state: reconcilePlaybackStateAfterAnalysisRefresh(
+        session.state,
+        initialPlaybackState(timing),
+        analysis,
+        analysis,
+        session.state.cursor,
+        session.schedule,
+        schedule,
+      ),
+    });
+  }
   const { state } = session;
   const seekWasPlaying = useRef<boolean | undefined>(undefined);
 
@@ -120,6 +146,12 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options }: Si
 
   return (
     <section className="playback-feature" data-react-feature="playback">
+      {personalSpeedUse === 'missing' ? (
+        <p className="playback-notice" data-playback-personal-speed="missing">
+          測定した個人速度がありません。個人速度を使わない時間で再生しています。
+          <PersonalSpeedLink className="playback-notice-link">個人速度の画面を開く</PersonalSpeedLink>
+        </p>
+      ) : null}
       <div className="playback-controls" role="group" aria-label="打鍵再生の操作">
         <button type="button" data-playback-action="back" disabled={state.playing || state.cursor === 0} onClick={() => update((previous) => stepPlaybackBy(previous, -1, total))}>
           <span aria-hidden="true">◀</span> 1ステップ戻る

@@ -151,7 +151,7 @@ test('overrideWinsNotices: 配列の推奨が全体に勝つ行は、既定値�
   assert.match(notices.get('romajiRuleId')!, /^この配列の推奨（大西式）が優先されるため/);
 });
 
-test('すべて既定値に戻す: 行のある項目の全体の上書きだけを1コマンドで消し、行の無い項目は残す。元に戻すの1回で全部戻る', () => {
+test('すべて既定値に戻す: 行のある項目の全体の上書きを1コマンドで消す。元に戻すの1回で全部戻る', () => {
   let assets = emptyAssets();
   let history = emptyCommandHistory<KeydistAssets>();
   for (const command of [
@@ -164,16 +164,17 @@ test('すべて既定値に戻す: 行のある項目の全体の上書きだけ
     history = step.history;
   }
   const ids = resettableGlobalIds(assets.setupLibrary.overrides);
-  assert.deepEqual(ids, ['windowSize', 'sfbHomeCost']);
+  assert.deepEqual(ids, ['windowSize', 'sfbHomeCost', 'playbackRateWindow']);
   const before = history.undoStack.length;
   const reset = applyCommand(assets, history, resetAllCommand(ids));
   assert.equal(reset.history.undoStack.length, before + 1);
   assert.equal(globalOverrideOf(reset.assets.setupLibrary.overrides, 'windowSize'), undefined);
   assert.equal(globalOverrideOf(reset.assets.setupLibrary.overrides, 'sfbHomeCost'), undefined);
-  assert.equal(reset.assets.setupLibrary.overrides.global?.playbackRateWindow, 9);
+  assert.equal(globalOverrideOf(reset.assets.setupLibrary.overrides, 'playbackRateWindow'), undefined);
   const undone = undo(reset.assets, reset.history);
   assert.equal(globalOverrideOf(undone.assets.setupLibrary.overrides, 'windowSize'), 5);
   assert.equal(globalOverrideOf(undone.assets.setupLibrary.overrides, 'sfbHomeCost'), false);
+  assert.equal(globalOverrideOf(undone.assets.setupLibrary.overrides, 'playbackRateWindow'), 9);
 });
 
 test('既定の物理配列: 全体のレベルへ書き、既定の物理配列と同じ値を書くと上書きを消す。元に戻すが効く', () => {

@@ -1,6 +1,8 @@
+import { Link } from '@tanstack/react-router';
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { ContextBarLeadingSlot } from '#hosts/shared/ContextBar.tsx';
 import { PresetFileIoContext, type PresetFileIo } from '#hosts/shared/preset-file-io.ts';
+import { PersonalSpeedLinkContext, type PersonalSpeedLinkProps } from '#ui/primitives/personal-speed-link.tsx';
 import { downloadJson } from '#platform/browser-download.ts';
 import { readTextFile } from '#platform/browser-file.ts';
 import { AddedToWorkspaceNotice } from '../workspace/AddedToWorkspaceNotice.tsx';
@@ -27,6 +29,11 @@ import { MOBILE_QUERY } from '#ui/theme/breakpoints.ts';
 
 /** プリセットの書き出し・読み込みのブラウザ実装。条件のモーダルがどの画面でも使えるよう、シェルで渡す。 */
 const PRESET_FILE_IO: PresetFileIo = { saveJson: downloadJson, readText: readTextFile };
+
+/** 個人速度の画面へのリンク。条件のモーダルと再生のペインが、ルーターを知らずに同じリンクを出せるよう、シェルで渡す。 */
+function PersonalSpeedRouterLink({ className, children }: PersonalSpeedLinkProps) {
+  return <Link to="/personal-speed" className={className}>{children}</Link>;
+}
 
 
 function subscribeMobile(listener: () => void): () => void {
@@ -191,10 +198,12 @@ export function AppShell({ children, hasContextBar }: AppShellProps) {
 
       <ContextBarLeadingSlot.Provider value={toggle}>
         <PresetFileIoContext.Provider value={PRESET_FILE_IO}>
-          <div className="shell-body" inert={bodyInert}>
-            {hasContextBar ? null : <div className="shell-bar">{toggle}</div>}
-            <main className="app-shell">{children}</main>
-          </div>
+          <PersonalSpeedLinkContext.Provider value={PersonalSpeedRouterLink}>
+            <div className="shell-body" inert={bodyInert}>
+              {hasContextBar ? null : <div className="shell-bar">{toggle}</div>}
+              <main className="app-shell">{children}</main>
+            </div>
+          </PersonalSpeedLinkContext.Provider>
         </PresetFileIoContext.Provider>
       </ContextBarLeadingSlot.Provider>
       <div className="shell-notices">

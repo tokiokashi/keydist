@@ -12,11 +12,11 @@ const BUILTIN_SHAPES: ReadonlyMap<string, PhysicalShape> = new Map(
  * ペイン（個別画面・Workspace）が`resolveEngineInput`へ渡すカタログの組み立て。
  *
  * 配列とローマ字規則は、組み込みに資産の自作を足す。物理配列は組み込みだけ
- * （自作の物理配列は扱わない）。自作の配列・規則の手持ちが変わった時だけ作り直せるよう、
- * 呼び出し側は2つの資産を依存にして`useMemo`で包む。
+ * （自作の物理配列は扱わない）。個人速度の保存値も持つ（再生の時間を決める抽出の入力になる）。
+ * 手持ちが変わった時だけ作り直せるよう、呼び出し側は3つの資産を依存にして`useMemo`で包む。
  */
 export function paneCatalog(
-  assets: Pick<KeydistAssets, 'userLayouts' | 'userRomajiRules'>,
+  assets: Pick<KeydistAssets, 'userLayouts' | 'userRomajiRules'> & Partial<Pick<KeydistAssets, 'personalSpeed'>>,
 ): PaneCatalog {
   const user = buildUserCatalog(assets.userLayouts, assets.userRomajiRules);
   return {
@@ -27,5 +27,6 @@ export function paneCatalog(
     },
     userLayouts: user.userLayouts,
     customRomajiRules: user.romajiRules,
+    ...(assets.personalSpeed?.calibration === undefined ? {} : { personalSpeed: assets.personalSpeed.calibration }),
   };
 }

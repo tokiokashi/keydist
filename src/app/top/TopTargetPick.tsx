@@ -32,7 +32,7 @@ import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
  */
 export function TopTargetPick() {
   const { assets, ready, dispatch } = useKeydistAssets();
-  const catalog = useMemo(() => paneCatalog(assets), [assets.userLayouts, assets.userRomajiRules]);
+  const catalog = useMemo(() => paneCatalog(assets), [assets.userLayouts, assets.userRomajiRules, assets.personalSpeed]);
   const setups = assets.setupLibrary.setups;
   const target = effectiveSingleTarget(assets.singleTargetSelection);
 

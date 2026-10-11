@@ -10,6 +10,10 @@ import {
   PLAYBACK_RATE_HALF_LIFE_SECONDS_MIN,
   PLAYBACK_RATE_WINDOW_MAX,
   PLAYBACK_RATE_WINDOW_MIN,
+  PLAYBACK_SPEED_MULTIPLIER_MAX,
+  PLAYBACK_SPEED_MULTIPLIER_MIN,
+  PLAYBACK_STEPS_PER_SECOND_MAX,
+  PLAYBACK_STEPS_PER_SECOND_MIN,
 } from '#interpretation/timing/playback.ts';
 import { SETTINGS_ITEMS, type SettingsCascadeOverrides, type SettingsValueMap } from './settings-items.ts';
 
@@ -97,6 +101,15 @@ export const SETTINGS_ITEM_SCHEMAS = {
   actionRealizationPolicy: actionRealizationPolicySchema,
   chainInterpretation: chainInterpretationSchema,
   arpeggioInterpretation: arpeggioInterpretationSchema,
+  playbackStepsPerSecond: v.pipe(
+    v.number(), v.minValue(PLAYBACK_STEPS_PER_SECOND_MIN), v.maxValue(PLAYBACK_STEPS_PER_SECOND_MAX),
+  ),
+  playbackSpeedMultiplier: v.pipe(
+    v.number(), v.minValue(PLAYBACK_SPEED_MULTIPLIER_MIN), v.maxValue(PLAYBACK_SPEED_MULTIPLIER_MAX),
+  ),
+  playbackSameFingerDelay: v.boolean(),
+  playbackAllFingerMovementDelay: v.boolean(),
+  playbackPersonalSpeed: v.boolean(),
   playbackRateAverage: v.picklist(['sma', 'ewma']),
   playbackRateWindow: v.pipe(
     v.number(), v.integer(), v.minValue(PLAYBACK_RATE_WINDOW_MIN), v.maxValue(PLAYBACK_RATE_WINDOW_MAX),
