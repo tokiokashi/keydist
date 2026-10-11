@@ -302,7 +302,7 @@ test('traceConditionSummary: 1動作の時は、残っている例外を出さ�
   assert.equal(rows.find((row) => row.id === 'actionRealizationPolicy')!.displayValue, 'Shift+A で1動作');
 });
 
-test('チェーン・アルペジオを全体で変えても、要約の数にも対象名の差分にも出ない（今の画面に読む数値が無い）', () => {
+test('チェーン・アルペジオを全体で変えても、宣言しないペインの要約の数にも対象名の差分にも出ない（読むペインが宣言した時だけ数える）', () => {
   const rows = overrideRows([
     ['chainInterpretation', { ...DEFAULT_CHAIN_INTERPRETATION, breakOnTriggerOnly: true }],
     ['arpeggioInterpretation', { ...DEFAULT_ARPEGGIO_INTERPRETATION, includeThumb: true }],

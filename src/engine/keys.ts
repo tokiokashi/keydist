@@ -52,8 +52,10 @@ const traceKeyByInput = new WeakMap<object, string>();
  * chain/arpeggio解釈は全体とWorkspaceのレベルに置けるが、さらにレベルが広がっても
  * このキーの形は変わらない。
  *
- * 個人速度（`playbackRate*`）は含めない。解釈は構造 + 共通指標だけを扱い、時間モデルの条件で
- * 結果が変わらないため。時間モデルの条件は抽出のキーにだけ入る（`singleExtractionKeyOf`）。
+ * 再生の時間モデルの条件（`playbackStepsPerSecond`・`playbackSpeedMultiplier`・`playbackSameFingerDelay`・
+ * `playbackAllFingerMovementDelay`・個人速度の`playbackPersonalSpeed`。抽出の文脈では`playbackTiming`にまとまる）と、
+ * 速度平均の条件（`playbackRateAverage`・`playbackRateWindow`・`playbackRateHalfLifeSeconds`。抽出の文脈では`playbackRate`）は含めない。
+ * 解釈は構造 + 共通指標だけを扱い、これらの条件で結果が変わらないため。両方とも抽出のキーにだけ入る（`singleExtractionKeyOf`）。
  */
 export function interpretationKeyOf(input: ResolvedInput, traceKey: string): string {
   return stableStringify({
