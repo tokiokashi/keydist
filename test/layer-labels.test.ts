@@ -65,10 +65,9 @@ test('組み込みの全配列で、既定の名前のレイヤーは同じ配�
   }
 });
 
-test('既定の名前は、出る文字の種類と共通する小書き、重なる時は出る文字、呼べない時は「<キー>のシフト」になる', () => {
+test('既定の名前は、出る文字の種類と共通する小書き、重なる時は出る文字、呼べない時はトリガーの表示そのものになる', () => {
   const nicola = defaultLayerNames(ALL_LAYOUTS.find((layout) => layout.id === 'nicola')!);
-  assert.deepEqual([...nicola.values()].map((name) => name.label), ['無変換のシフト', '変換のシフト']);
-  assert.ok([...nicola.values()].every((name) => name.includesTrigger));
+  assert.deepEqual([...nicola.values()].map((name) => name.label), ['無変換', '変換']);
 
   const naginata = defaultLayerNames(ALL_LAYOUTS.find((layout) => layout.id === 'naginata-v18')!);
   const label = (id: string) => naginata.get(id)?.label;
@@ -84,8 +83,6 @@ test('既定の名前は、出る文字の種類と共通する小書き、重�
   assert.equal(label('face:18'), 'てゅ・ぴゅ');
   // 出る文字の数が並ぶ面は、どちらも出る文字を並べる
   assert.deepEqual(['face:19', 'face:27'].map(label), ['でぃ', 'ぐぃ']);
-  // 文字の種類で呼べる面の名前には、トリガーのキーが入らない
-  assert.ok([...naginata.values()].every((name) => !name.includesTrigger));
 });
 
 test('文字の種類で呼べない面と、並べても重なる面の名前', () => {
@@ -102,12 +99,11 @@ test('文字の種類で呼べない面と、並べても重なる面の名前',
 
   // かな以外や、種類の混ざる出力を含む面は、トリガーで呼ぶ
   const mixed = names(layer(['a'], { h: 'A' }), layer(['b'], { h: 'きゃ', j: 'ぎゃ', k: 'て' }));
-  assert.deepEqual(mixed.map((name) => name.label), ['Aのシフト', 'Bのシフト']);
-  assert.ok(mixed.every((name) => name.includesTrigger));
+  assert.deepEqual(mixed.map((name) => name.label), ['A', 'B']);
 
   // 同じ文字を出す面どうしは、並べても重なるので、トリガーで呼ぶ
   const same = names(layer(['a'], { h: 'てぃ' }), layer(['b'], { h: 'てぃ' }));
-  assert.deepEqual(same.map((name) => name.label), ['Aのシフト', 'Bのシフト']);
+  assert.deepEqual(same.map((name) => name.label), ['A', 'B']);
 
   // 4つ以上出る面は3つまで並べて「…」で省く
   const long = names(
@@ -137,17 +133,72 @@ test('配列が付けた名前と重なる既定の名前は、出る文字を�
   assert.equal(new Set(labels).size, labels.length);
 });
 
-test('ヒートマップの見出しは、名前にキーが入る既定の名前ではトリガーを重ねず、それ以外では残す', () => {
+test('トリガーの表示だけの名前が、配列が付けた名前・種類の名前・出る文字を並べた名前と重なる時の名前', () => {
+  const layer = (trigger: readonly string[], outputs: Record<string, string>, label?: string): Face => ({
+    ...faceFromEntries(trigger, 'simultaneous', outputs),
+    layer: undefined,
+    ...(label === undefined ? {} : { presentationLabel: label }),
+    role: 'modifier',
+    inputRole: 'modifier',
+    triggerPersistence: 'hold-capable',
+  });
+  // キーaの意味を、重ねたい名前にする（刻印は1文字しか持てないので、文字の意味で与える）
+  const GROUP = 'overlap';
+  const labels = (meaning: string, ...faces: Face[]) => {
+    const withMeaning = faces.map((face) => (face.trigger.includes('a')
+      ? { ...face, triggerMeaningGroups: { a: GROUP } }
+      : face));
+    const built = fromFaces('overlap-test', 'overlap-test', [base, ...withMeaning]);
+    const layout = { ...built, triggerMeanings: { [GROUP]: { a: { kind: 'char' as const, text: meaning } } } };
+    return layerDefinitionsWithLabels(layout)
+      .filter((definition) => definition.id !== 'single')
+      .map((definition) => definition.label);
+  };
+  const base: Face = { ...faceFromEntries([], 'simultaneous', { h: 'H' }), inputRole: 'layer' };
+
+  // 配列が付けた名前: 配列の名前は変えず、既定の名前に番号を付ける
+  assert.deepEqual(
+    labels('あ', layer(['b'], { h: 'B' }, 'あ'), layer(['a'], { h: 'A' })),
+    ['あ', 'あ（2）'],
+  );
+
+  // 種類の名前: 種類の名前の層が前にあれば、その層が名前を取り、トリガーの表示の層に番号が付く
+  assert.deepEqual(
+    labels('拗音（ゃ）', layer(['b'], { h: 'きゃ', j: 'しゃ' }), layer(['a'], { h: 'A' })),
+    ['拗音（ゃ）', '拗音（ゃ）（2）'],
+  );
+  // 種類の名前の層が後ろにあれば、前の層（トリガーの表示）が名前を取り、種類の名前の層に番号が付く
+  assert.deepEqual(
+    labels('拗音（ゃ）', layer(['a'], { h: 'A' }), layer(['b'], { h: 'きゃ', j: 'しゃ' })),
+    ['拗音（ゃ）', '拗音（ゃ）（2）'],
+  );
+
+  // 出る文字を並べた名前: 並べた名前がトリガーの表示と重なる層は、並べた名前をやめてトリガーの表示で呼ぶ。
+  // トリガーの表示の層は名前を変えない
+  assert.deepEqual(
+    labels(
+      'ちゃ',
+      layer(['b'], { h: 'きゃ', j: 'しゃ' }),
+      layer(['c'], { h: 'ちゃ' }),
+      layer(['a'], { h: 'A' }),
+    ),
+    ['拗音（ゃ）', 'C', 'ちゃ'],
+  );
+});
+
+test('ヒートマップの見出しは、どの層にもトリガーを付けず、押し方の区分を番号の後ろに置く', () => {
   const titles = (id: string) => new Map(heatmapTitles(ALL_LAYOUTS.find((layout) => layout.id === id)!).entries.map((entry) => [entry.id, entry.title]));
-  const nicola = titles('nicola');
-  assert.equal(nicola.get('face:1'), 'レイヤー2: 無変換のシフト・同時');
+  assert.equal(titles('nicola').get('face:1'), 'レイヤー2（同時）: 無変換');
 
   const naginata = titles('naginata-v18');
-  assert.match(naginata.get('face:2')!, /^レイヤー\d+: 小書き \[Q\]/);
-  assert.match(naginata.get('face:7')!, /^レイヤー\d+: 拗音（ゃ） \[や\]/);
-  assert.match(naginata.get('face:17')!, /^レイヤー\d+: てぃ \[い \+ 半濁音（M）\]/);
-  // 配列が名前を付けたレイヤーの見出しは変えない
-  assert.match(naginata.get('layer:濁音')!, /\[.+\]/);
+  assert.match(naginata.get('face:2')!, /^レイヤー\d+（同時）: 小書き$/);
+  assert.match(naginata.get('face:7')!, /^レイヤー\d+（同時）: 拗音（ゃ）$/);
+  assert.match(naginata.get('face:17')!, /^レイヤー\d+（同時）: てぃ$/);
+  assert.match(naginata.get('layer:濁音')!, /^レイヤー\d+（同時）: 濁音$/);
+
+  for (const layout of ALL_LAYOUTS) {
+    for (const [id, title] of titles(layout.id)) assert.ok(!title.includes('['), `${layout.id}: ${id}: ${title}`);
+  }
 });
 
 test('レイヤーの名前を画面に出すソースは、生の定義の名前を読まない', () => {

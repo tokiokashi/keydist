@@ -433,8 +433,8 @@ test('組み込み配列の層の名前は「面」を出さず、名前の無�
     }
   }
   const nicola = layerDefinitionsWithLabels(LAYOUT_BY_ID.get('nicola')!);
-  assert.equal(nicola.find((definition) => definition.id === 'face:1')?.label, '無変換のシフト');
-  assert.equal(nicola.find((definition) => definition.id === 'face:2')?.label, '変換のシフト');
+  assert.equal(nicola.find((definition) => definition.id === 'face:1')?.label, '無変換');
+  assert.equal(nicola.find((definition) => definition.id === 'face:2')?.label, '変換');
 });
 
 test('layer aggregationのpresentationRole欠落は表示契約違反としてerrorにする', () => {

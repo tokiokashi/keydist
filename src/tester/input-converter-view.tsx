@@ -1057,14 +1057,14 @@ export function InputConverterView() {
 
                   return (
                     <WorkspacePanel
-                      ariaLabel={`${definition.label} 個別カンペ`}
+                      ariaLabel={`「${definition.label}」個別カンペ`}
                       className="input-layer-card"
-                      dockAriaLabel={`${definition.label}を元に戻す`}
-                      dockedHeaderAriaLabel={`${definition.label}カンペをクリックまたはドラッグして小窓表示`}
-                      floatingHeaderAriaLabel={`${definition.label}カンペを移動`}
+                      dockAriaLabel={`「${definition.label}」を元に戻す`}
+                      dockedHeaderAriaLabel={`「${definition.label}」カンペをクリックまたはドラッグして小窓表示`}
+                      floatingHeaderAriaLabel={`「${definition.label}」カンペを移動`}
                       id={layerGuideCardPanelId(definition.id)}
                       key={definition.id}
-                      resizeAriaLabel={`${definition.label}カンペのサイズを変更`}
+                      resizeAriaLabel={`「${definition.label}」カンペのサイズを変更`}
                       renderHeader={() => (
                         <h3>
                           {definition.label}
@@ -1078,7 +1078,7 @@ export function InputConverterView() {
                           <strong>{definition.label}</strong>
                           <span>小窓表示中</span>
                           <button
-                            aria-label={`${definition.label}を元に戻す`}
+                            aria-label={`「${definition.label}」を元に戻す`}
                             onClick={dock}
                             type="button"
                           >
@@ -1087,13 +1087,8 @@ export function InputConverterView() {
                         </section>
                       )}
                     >
-                      <p>
-                        {triggers.size > 0
-                          ? `切り替えキー: ${guide?.triggerDisplayText ?? '—'}`
-                          : '切り替えキー: —'}
-                      </p>
                       <PhysicalKeyboard
-                        ariaLabel={`${definition.label} レイヤー`}
+                        ariaLabel={`「${definition.label}」レイヤー`}
                         geometryId={geometry.id}
                         keys={visibleKeys}
                         keyViews={views}

@@ -612,8 +612,8 @@ test('新下駄レイヤーカンペはpresentation-only交点を表示する', 
   await page.getByLabel('配列', { exact: true }).selectOption('shingeta');
   await expect(feature).toHaveAttribute('data-input-ready', 'shingeta');
 
-  const middle = page.getByLabel('中指シフト 個別カンペ');
-  const ring = page.getByLabel('薬指シフト 個別カンペ');
+  const middle = page.getByLabel('「中指シフト」個別カンペ');
+  const ring = page.getByLabel('「薬指シフト」個別カンペ');
 
   // semantic所属は別レイヤーでも、authoringでpresentationCellsとして明示した交点を表示する。
   await expect(
@@ -630,6 +630,13 @@ test('新下駄レイヤーカンペはpresentation-only交点を表示する', 
   await expect(
     middle.locator('[data-key-id="k"] .physical-keyboard-legend'),
   ).toHaveText('れ');
+
+  // 切り替えキーは配列図の枠が示すので、カードに文字の行は出さない。小窓にしても同じ。
+  await expect(middle).not.toContainText('切り替えキー');
+  await expect(middle.locator('[data-trigger]')).not.toHaveCount(0);
+  await page.getByLabel('「中指シフト」カンペをクリックまたはドラッグして小窓表示').click();
+  await expect(middle).toHaveAttribute('data-floating', 'true');
+  await expect(middle).not.toContainText('切り替えキー');
 });
 
 test('レイヤーカンペは盤面ごとに独立して複数小窓表示できる', async ({ page }) => {
@@ -784,7 +791,7 @@ test('#regression レイヤーカンペ本体を浮かせた状態でも入れ�
   );
 
   // Aのbody(ボタンでない場所)をpointerdown + clickして前面化する。
-  const cardABody = cardA.locator('p');
+  const cardABody = cardA.locator('.physical-keyboard');
   const cardABox = await cardABody.boundingBox();
   expect(cardABox).not.toBeNull();
   await page.mouse.move(cardABox!.x + cardABox!.width / 2, cardABox!.y + cardABox!.height / 2);
@@ -1063,11 +1070,12 @@ test('Tester chooses the cheatsheet grid that maximizes readable card size', asy
 
   await setLayoutWithSettingsCollapsed('shingeta');
   await expect(page.locator('.input-layer-card')).toHaveCount(4);
-  await expect.poll(columns).toBe(2);
+  await expect.poll(columns).toBe(1);
 });
 
 test('レイヤーカンペ全体を小窓化して戻してもdocked gridの詰め方を再計算する', async ({ page }) => {
-  await page.setViewportSize({ width: 1920, height: 1080 });
+  // 新下駄の4枚が2列に並ぶ高さにする
+  await page.setViewportSize({ width: 1920, height: 800 });
   await page.goto('/input');
 
   const feature = page.locator('.input-feature');
@@ -1101,7 +1109,7 @@ test('レイヤーカンペ全体を小窓化して戻してもdocked gridの詰
     resizeBox!.y + resizeBox!.height / 2,
   );
   await page.mouse.down();
-  await page.mouse.move(resizeBox!.x - 260, resizeBox!.y);
+  await page.mouse.move(resizeBox!.x - 420, resizeBox!.y);
   await page.mouse.up();
   await expect.poll(columns).toBe(1);
 
@@ -1899,7 +1907,8 @@ test('打ち方逆引きは配列ごとのcanonical inputを表示する', async
     .getAttribute('data-accent-slot');
   expect(naginataLeftSlot).not.toBeNull();
   expect(naginataLeftSlot).toBe(naginataRightSlot);
-  await expect(page.locator('.input-layer-card').first()).toContainText('切り替えキー: Space');
+  await expect(page.locator('.input-layer-card').first()).toBeVisible();
+  await expect(page.locator('.input-layer-card').first()).not.toContainText('切り替えキー');
 
   // 新JISも左右Spaceを同一presentation layerとして扱う。
   await page.getByLabel('配列', { exact: true }).selectOption('shin-jis-simultaneous');
@@ -1917,7 +1926,8 @@ test('打ち方逆引きは配列ごとのcanonical inputを表示する', async
     .getAttribute('data-accent-slot');
   expect(shinJisLeftSlot).not.toBeNull();
   expect(shinJisLeftSlot).toBe(shinJisRightSlot);
-  await expect(page.locator('.input-layer-card').first()).toContainText('切り替えキー: Space');
+  await expect(page.locator('.input-layer-card').first()).toBeVisible();
+  await expect(page.locator('.input-layer-card').first()).not.toContainText('切り替えキー');
 
   await page.getByLabel('配列', { exact: true }).selectOption('oonishi-custom');
   await expect(feature).toHaveAttribute('data-input-ready', 'oonishi-custom');

@@ -229,7 +229,6 @@ export function orderedPresentationLayers(
 export interface PresentationLayerGuide {
   readonly legends: ReadonlyMap<string, string>;
   readonly triggerKeys: readonly string[];
-  readonly triggerDisplayText: string;
 }
 
 /**
@@ -262,12 +261,7 @@ export function presentationLayerGuide(
     );
     if (definition === undefined) return undefined;
     const legends = aggregationLegendMap(layout, layerId);
-    const triggerKeys = aggregationTriggerKeys(layout, layerId);
-    return {
-      legends,
-      triggerKeys,
-      triggerDisplayText: aggregationTriggerDisplayText(layout, layerId),
-    };
+    return { legends, triggerKeys: aggregationTriggerKeys(layout, layerId) };
   }
 
   const legends = new Map<string, string>();
@@ -286,22 +280,7 @@ export function presentationLayerGuide(
     layer.faces.flatMap((face) => displayTriggerKeys(face)),
   )];
 
-  const authoredTexts = [...new Set(
-    layer.faces
-      .map((face) => face.presentationTriggerText)
-      .filter((text): text is string => text !== undefined && text.trim() !== ''),
-  )];
-
-  const triggerDisplayText = authoredTexts.length === 1
-    ? authoredTexts[0]
-    : triggerChordsDisplayText(
-      layout,
-      layer.faces.flatMap((face) => displayTriggerChords(face)),
-      undefined,
-      layerLabelOf(layout, layerId),
-    );
-
-  return { legends, triggerKeys, triggerDisplayText };
+  return { legends, triggerKeys };
 }
 
 
@@ -450,8 +429,6 @@ export function layerLabelOf(
 /** 配列が名前を付けていない層に、表示とトレースで付ける名前。 */
 export interface DefaultLayerName {
   label: string;
-  /** 名前にトリガーのキーが入っている。見出しでトリガーを重ねて出さないために使う。 */
-  includesTrigger: boolean;
 }
 
 type DefaultLayerNameLayout = Pick<
@@ -474,7 +451,7 @@ function listedOutputsName(outputs: readonly string[]): string {
  * 2. 同じ配列の別の層の名前と重なる時は、出る文字を並べる（3つまで。例: てぃ）。
  *    重なる層のうち、出る文字の数が一番多い層が1つに決まる時は、その層だけ1の名前を残す。
  *    並べても重なる時は、3の名前にする
- * 3. 文字の種類で呼べない層は「<トリガーの表示>のシフト」（例: 無変換のシフト）。
+ * 3. 文字の種類で呼べない層はトリガーの表示そのもの（例: 無変換）。
  *    トリガーの表示は、配列が意味を書いたキーならその意味の文字（`triggerChordsDisplayText`）。
  *    これも重なる時は、後ろの層に（2）のような番号を付ける
  * 配列が付けた名前は変えず、既定の名前が配列が付けた名前と重ならないようにする。
@@ -497,7 +474,7 @@ export function defaultLayerNames(
     const outputs = [...new Set(faces.flatMap((face) => [...faceCells(face).values()]))];
     return [{
       id: definition.id,
-      shift: `${trigger}のシフト`,
+      trigger,
       kind: kanaKindName(outputs),
       listed: listedOutputsName(outputs),
       outputCount: outputs.length,
@@ -511,10 +488,10 @@ export function defaultLayerNames(
     labels.filter((other) => other === label).length;
 
   // 1と2: 種類の名前が重なる層は、出る文字が一番多い層を除いて、出る文字を並べる
-  const stage = new Map<string, DefaultLayerName & { listed: boolean }>();
+  const stage = new Map<string, { label: string; listed: boolean }>();
   for (const candidate of candidates) {
     if (candidate.kind === undefined) {
-      stage.set(candidate.id, { label: candidate.shift, includesTrigger: true, listed: false });
+      stage.set(candidate.id, { label: candidate.trigger, listed: false });
       continue;
     }
     const sameKind = candidates.filter((other) => other.kind === candidate.kind);
@@ -524,8 +501,8 @@ export function defaultLayerNames(
         || (candidate.outputCount === mostOutputs
           && sameKind.filter((other) => other.outputCount === mostOutputs).length === 1));
     stage.set(candidate.id, keepsKind
-      ? { label: candidate.kind, includesTrigger: false, listed: false }
-      : { label: candidate.listed, includesTrigger: false, listed: true });
+      ? { label: candidate.kind, listed: false }
+      : { label: candidate.listed, listed: true });
   }
 
   // 並べても重なる層は、3の名前にする
@@ -533,7 +510,7 @@ export function defaultLayerNames(
   for (const candidate of candidates) {
     const name = stage.get(candidate.id)!;
     if (name.listed && countOf(listedLabels, name.label) > 1) {
-      stage.set(candidate.id, { label: candidate.shift, includesTrigger: true, listed: false });
+      stage.set(candidate.id, { label: candidate.trigger, listed: false });
     }
   }
 
@@ -542,14 +519,14 @@ export function defaultLayerNames(
   const used = new Set(authored);
   const pending = new Set([...stage.values()].map((name) => name.label));
   for (const candidate of candidates) {
-    const { label, includesTrigger } = stage.get(candidate.id)!;
+    const { label } = stage.get(candidate.id)!;
     let unique = label;
     for (let number = 2; used.has(unique); number += 1) {
       unique = `${label}（${number}）`;
       if (pending.has(unique)) used.add(unique);
     }
     used.add(unique);
-    names.set(candidate.id, { label: unique, includesTrigger });
+    names.set(candidate.id, { label: unique });
   }
   return names;
 }

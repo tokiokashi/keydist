@@ -87,7 +87,7 @@ export function triggerGuide(layout: Layout, detail: LayerDetail): TriggerGuide 
     }
     if (style !== undefined) {
       const name = definitions.find((definition) => definition.id === layer.id)?.label ?? layer.id;
-      legend.push({ id: layer.id, tone: { kind: 'layer', slot: style.colorSlot }, label: `レイヤー${style.layerIndex}の${name}` });
+      legend.push({ id: layer.id, tone: { kind: 'layer', slot: style.colorSlot }, label: `レイヤー${style.layerIndex}: ${name}` });
     }
   }
 

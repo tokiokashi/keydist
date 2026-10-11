@@ -1,10 +1,5 @@
-import type { PhysicalKeyboardStandard } from '#input/shapes/geometry.ts';
 import {
-  displayTriggerChords,
-  defaultLayerNames,
   layerDefinitionsWithLabels,
-  layerLabelOf,
-  triggerChordsDisplayText,
   type Layer,
 } from '#input/layouts/layers.ts';
 import { SINGLE_LAYER_ID, type Layout } from '#input/layouts/types.ts';
@@ -43,20 +38,12 @@ export interface HeatmapLayerEntry {
   readonly colorCounts: ReadonlyMap<string, number>;
 }
 
-function displayTriggerText(layout: Layout, face: Layer['faces'][number], layerName: string | undefined, standard: PhysicalKeyboardStandard | undefined): string {
-  return face.presentationTriggerText
-    ?? triggerChordsDisplayText(layout, displayTriggerChords(face), standard, layerName);
-}
-
-function layerTitle(layer: Layer, index: number, label: string, layout: Layout, standard: PhysicalKeyboardStandard | undefined): string {
-  const head = `レイヤー${index + 1}: ${label}`;
-  if (layer.faces.length === 0 || layer.id === SINGLE_LAYER_ID) return head;
-  // 名前にトリガーのキーが入っている既定の名前は、見出しでトリガーを重ねて出さない
-  const omitTrigger = defaultLayerNames(layout).get(layer.id)?.includesTrigger === true;
-  const triggers = layer.faces.map((face) => displayTriggerText(layout, face, layerLabelOf(layout, layer.id), standard));
-  const modeLabel = layout.layerDefinitions?.find((definition) => definition.id === layer.id)?.presentationModeLabel;
-  const bracket = omitTrigger ? '' : ` [${triggers.join(' / ')}]`;
-  return modeLabel === undefined ? `${head}${bracket}` : `${head}${bracket}・${modeLabel}`;
+function layerTitle(layer: Layer, index: number, label: string, layout: Layout): string {
+  // 押し方の区分は番号の後ろに括弧で置く。名前が括弧を使う（「外来音（ぅ）」）ので、名前の後ろには続けない
+  const modeLabel = layer.faces.length === 0 || layer.id === SINGLE_LAYER_ID
+    ? undefined
+    : layout.layerDefinitions?.find((definition) => definition.id === layer.id)?.presentationModeLabel;
+  return `レイヤー${index + 1}${modeLabel === undefined ? '' : `（${modeLabel}）`}: ${label}`;
 }
 
 function emptyLayer(id: string, label: string): HeatmapLayer {
@@ -89,7 +76,6 @@ export function buildLayerEntries(
   layout: Layout,
   extracted: HeatmapLayersExtracted,
   detail: HeatmapLayerDetail,
-  standard?: PhysicalKeyboardStandard,
 ): HeatmapLayerEntry[] {
   const stats = new Map(extracted.layers.map((layer) => [layer.id, layer]));
   const presentation = presentationLayersOf(layout);
@@ -103,7 +89,7 @@ export function buildLayerEntries(
   const entries = [...presentation, ...undeclared].map((layer, index) => {
     const label = definitions.find((definition) => definition.id === layer.id)?.label ?? layer.id;
     const stat = stats.get(layer.id) ?? emptyLayer(layer.id, label);
-    return { stat, entry: { id: layer.id, faceIds: [layer.id], title: layerTitle(layer, index, stat.label, layout, standard), label: stat.label, layer, keyCounts: stat.keyCounts, colorCounts: stat.colorCounts } };
+    return { stat, entry: { id: layer.id, faceIds: [layer.id], title: layerTitle(layer, index, stat.label, layout), label: stat.label, layer, keyCounts: stat.keyCounts, colorCounts: stat.colorCounts } };
   });
 
   const compact = compactPresentationOf(layout);
