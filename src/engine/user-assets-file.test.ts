@@ -280,7 +280,7 @@ test('コマンド: 1回で3つの資産を足し、元に戻すと全部が戻�
 });
 
 test('ファイルに無い規則を指す配列は、手元の同じidの規則に結び付けず、書き出した側と同じ数値で打つ', () => {
-  // 書き出した側: 規則 rule-a を消した後で、配列だけが rule-a を指している（全体の値の規則で打つ）
+  // 書き出した側: 規則を消した後で、配列だけがその規則のidを指している（全体の値の規則で打つ）
   const exporter: UserAssetsHoldings = { userLayouts: [LAYOUT], userRomajiRules: [], fingerAssignments: [] };
   // 読み込む側: 同じidで別の中身の規則（し・ちをshi・chiで打つ）を持っている
   const importer: UserAssetsHoldings = { userLayouts: [], userRomajiRules: [RULE], fingerAssignments: [] };
