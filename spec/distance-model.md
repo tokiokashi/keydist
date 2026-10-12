@@ -238,7 +238,11 @@ authoring defaultを基準に、thumb keyだけが異なる合法variantの中�
 thumb variant生成時の重複判定はaction groupingだけではなくcanonical alternative全体で行い、
 Requirement / Capability / classification / role / layer / context / origin等が異なるpathを失わない。
 
-英字配列の通常Shiftも同じcanonical pipelineで扱う。大文字と、**現在モデル化しているbase
+英字配列の通常Shiftも同じcanonical pipelineで扱う。対象は組み込みの英字配列と、自作の配列のうち
+単打の段定義だけで組んだもの（かなを直接打つ配列と、取り込み形式の配列を除く）である。
+自作の配列も、同じ段の定義を持つ組み込みの配列と同じ数値になる。
+配列が大文字や記号を単打などで既に置いている時は、置かれた定義を優先し、その出力に通常Shiftの経路を足さない。
+大文字と、**現在モデル化しているbase
 physical key**のShift記号はbase keyに `shift-l` / `shift-r` のいずれかを重ねる2つの
 合法alternativeとしてcompileする。各alternativeはbase keyとの `overlap` Requirement、
 Shift keyの `while-held` Capability、`modifierGroupId='Shift'` のmodifier roleを持つ。
