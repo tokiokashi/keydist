@@ -251,7 +251,7 @@ test('解析設定で再生倍率を変えると、ペインの中に既定と�
   await multiplier.press('Enter');
   // 小窓を閉じても、ペインの中で既定と違う設定で計算していることが分かる
   await settings.press('Escape');
-  await expect(calculation(page)).toContainText('既定と違う設定で計算しています。再生倍率 2倍');
+  await expect(calculation(page)).toContainText('既定と違う設定で計算しています。再生倍率: 2倍');
   // 時間の設定を変えても、再生位置は保たれる。条件の要約には出ない
   expect((await readPosition(page))[0]).toBe(3);
   await expect(page.locator('.pane-condition-trigger')).toHaveText('条件すべて既定値');
@@ -303,7 +303,7 @@ test('個人速度の保存値がある時は、ペインの中に個人速度�
   await settings.getByRole('button', { name: '適用しない' }).click();
   await expect(settings).not.toContainText('個人速度で計算しているため、基準速度は使われません');
   await settings.press('Escape');
-  await expect(calculation(page)).toContainText('既定と違う設定で計算しています。基準速度 2ステップ/秒、個人速度を適用しない');
+  await expect(calculation(page)).toContainText('既定と違う設定で計算しています。基準速度: 2ステップ/秒、個人速度を適用しない');
   await expect(calculation(page)).not.toContainText('個人速度で計算しています。');
   // 適用しない設定では、保存値が無いことも知らせない
   await expect(feature(page).locator('[data-playback-personal-speed="missing"]')).toHaveCount(0);
@@ -327,7 +327,7 @@ test('解析設定の共有リンクに、時間の設定が載る。開くと�
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/standalone/playback?multiplier=2&rateAverage=ewma&rateHalfLife=2');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
-  await expect(calculation(page)).toContainText('再生倍率 2倍、平均の方式 EWMA、平均の半減時間 2秒');
+  await expect(calculation(page)).toContainText('再生倍率: 2倍、平均の方式: EWMA、平均の半減時間: 2秒');
   const settings = await openSettings(page);
   await expect(settings.getByRole('spinbutton', { name: '再生倍率' })).toHaveValue('2');
 });
@@ -380,8 +380,8 @@ test('Workspaceで、共有に従う打鍵再生のペインは時間の設定�
   await multiplier.fill('2');
   await multiplier.press('Enter');
   await settings.getByRole('button', { name: '解析設定を閉じる' }).click();
-  await expect(noteOf('a')).toContainText('再生倍率 2倍');
-  await expect(noteOf('b')).toContainText('再生倍率 2倍');
+  await expect(noteOf('a')).toContainText('再生倍率: 2倍');
+  await expect(noteOf('b')).toContainText('再生倍率: 2倍');
   await expect(noteOf('c')).toHaveCount(0);
 
   // cは別の値を持てる
@@ -390,6 +390,6 @@ test('Workspaceで、共有に従う打鍵再生のペインは時間の設定�
   await own.fill('3');
   await own.press('Enter');
   await page.locator('[data-settings-window="true"]').getByRole('button', { name: '解析設定を閉じる' }).click();
-  await expect(noteOf('c')).toContainText('再生倍率 3倍');
-  await expect(noteOf('a')).toContainText('再生倍率 2倍');
+  await expect(noteOf('c')).toContainText('再生倍率: 3倍');
+  await expect(noteOf('a')).toContainText('再生倍率: 2倍');
 });

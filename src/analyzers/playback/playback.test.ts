@@ -266,18 +266,18 @@ test('既定と違う計算の知らせ: 使われない項目は挙げず、個
     playbackCalculationNotes({ ...DEFAULT_PLAYBACK_OPTIONS, ...options }, use);
   assert.deepEqual(notes({}, 'missing'), { personalSpeedInUse: false, changes: [] });
   assert.deepEqual(notes({}, 'applied'), { personalSpeedInUse: true, changes: [] });
-  assert.deepEqual(notes({ stepsPerSecond: 2, speedMultiplier: 3 }, 'missing').changes, ['基準速度 2ステップ/秒', '再生倍率 3倍']);
+  assert.deepEqual(notes({ stepsPerSecond: 2, speedMultiplier: 3 }, 'missing').changes, ['基準速度: 2ステップ/秒', '再生倍率: 3倍']);
   // 個人速度で計算している間、基準速度は数値に入らない。再生倍率は入る
-  assert.deepEqual(notes({ stepsPerSecond: 2, speedMultiplier: 3 }, 'applied').changes, ['再生倍率 3倍']);
+  assert.deepEqual(notes({ stepsPerSecond: 2, speedMultiplier: 3 }, 'applied').changes, ['再生倍率: 3倍']);
   assert.deepEqual(
     notes({ sameFingerDelay: false, allFingerMovementDelay: true, applyPersonalSpeed: false }, 'not-applied').changes,
     ['指の移動速度を考慮しない', '全指の移動時間で律速する', '個人速度を適用しない'],
   );
   // 平均の方式で使われない側の窓幅・半減時間は挙げない
-  assert.deepEqual(notes({ rateWindow: 20, rateHalfLifeSeconds: 2 }, 'missing').changes, ['平均の窓幅 20打鍵']);
+  assert.deepEqual(notes({ rateWindow: 20, rateHalfLifeSeconds: 2 }, 'missing').changes, ['平均の窓幅: 20打鍵']);
   assert.deepEqual(
     notes({ rateAverage: 'ewma', rateWindow: 20, rateHalfLifeSeconds: 2 }, 'missing').changes,
-    ['平均の方式 EWMA', '平均の半減時間 2秒'],
+    ['平均の方式: EWMA', '平均の半減時間: 2秒'],
   );
 });
 

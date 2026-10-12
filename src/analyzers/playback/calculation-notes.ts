@@ -23,9 +23,9 @@ export function playbackCalculationNotes(
   const personalSpeedInUse = personalSpeedUse === 'applied';
   const changes: string[] = [];
   if (!personalSpeedInUse && options.stepsPerSecond !== defaults.stepsPerSecond) {
-    changes.push(`基準速度 ${options.stepsPerSecond}ステップ/秒`);
+    changes.push(`基準速度: ${options.stepsPerSecond}ステップ/秒`);
   }
-  if (options.speedMultiplier !== defaults.speedMultiplier) changes.push(`再生倍率 ${options.speedMultiplier}倍`);
+  if (options.speedMultiplier !== defaults.speedMultiplier) changes.push(`再生倍率: ${options.speedMultiplier}倍`);
   if (options.sameFingerDelay !== defaults.sameFingerDelay) {
     changes.push(options.sameFingerDelay ? '指の移動速度を考慮する' : '指の移動速度を考慮しない');
   }
@@ -36,13 +36,13 @@ export function playbackCalculationNotes(
     changes.push(options.applyPersonalSpeed ? '個人速度を適用する' : '個人速度を適用しない');
   }
   if (options.rateAverage !== defaults.rateAverage) {
-    changes.push(`平均の方式 ${options.rateAverage === 'ewma' ? 'EWMA' : 'SMA'}`);
+    changes.push(`平均の方式: ${options.rateAverage === 'ewma' ? 'EWMA' : 'SMA'}`);
   }
   if (options.rateAverage === 'sma' && options.rateWindow !== defaults.rateWindow) {
-    changes.push(`平均の窓幅 ${options.rateWindow}打鍵`);
+    changes.push(`平均の窓幅: ${options.rateWindow}打鍵`);
   }
   if (options.rateAverage === 'ewma' && options.rateHalfLifeSeconds !== defaults.rateHalfLifeSeconds) {
-    changes.push(`平均の半減時間 ${options.rateHalfLifeSeconds}秒`);
+    changes.push(`平均の半減時間: ${options.rateHalfLifeSeconds}秒`);
   }
   return { personalSpeedInUse, changes };
 }
