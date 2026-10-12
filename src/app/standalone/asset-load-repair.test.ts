@@ -5,7 +5,8 @@ import type { KeydistAssets } from '#engine/commands.ts';
 import { ASSET_KEYS, ASSET_STORAGE_SPECS, type AssetStorageSpec } from './asset-storage-specs.ts';
 import { buildAssetSyncs, loadAssetsAndRepair, startAssetSyncs } from './asset-syncs.ts';
 import {
-  dismissAssetLoadNotice,
+  claimInitialAssetLoad,
+  dismissAssetLoadNotices,
   getAssetLoadNoticesSnapshot,
   reportAssetLoadNotices,
   resetAssetLoadNoticesForTest,
@@ -179,7 +180,7 @@ test('知らせの記憶: 同じ資産は重複せず、新しい版の値は閉
   reportAssetLoadNotices([{ key: 'workspaces', kind: 'newer-version', diagnostics: [] }]);
   assert.equal(getAssetLoadNoticesSnapshot().length, 1);
 
-  dismissAssetLoadNotice('workspaces');
+  dismissAssetLoadNotices();
   reportAssetLoadNotices([{ key: 'workspaces', kind: 'newer-version', diagnostics: [] }]);
   assert.deepEqual(getAssetLoadNoticesSnapshot(), [], '同じタブで知らせ済み');
 
@@ -187,12 +188,22 @@ test('知らせの記憶: 同じ資産は重複せず、新しい版の値は閉
   assert.equal(getAssetLoadNoticesSnapshot().length, 1);
 });
 
-test('知らせの文: 何の資産がどうなったかを出し、内容は重複を畳んで上限で切る', () => {
-  const diagnostics = [1, 2, 3, 4, 5].map((n) => ({ path: `texts[${n}]`, message: n <= 2 ? '同じ文' : `別の文${n}` }));
-  const repaired = assetNoticeText({ key: 'textLibrary', kind: 'repaired', diagnostics });
-  assert.match(repaired.summary, /^テキストの保存データ/);
-  assert.deepEqual(repaired.details, ['同じ文', '別の文3', '別の文4', 'ほか1件']);
+test('そのタブの最初の読み込みだけが知らせと書き戻しを担う', () => {
+  assert.equal(claimInitialAssetLoad(), true);
+  assert.equal(claimInitialAssetLoad(), false);
+  resetAssetLoadNoticesForTest();
+  assert.equal(claimInitialAssetLoad(), true);
+});
 
-  assert.match(assetNoticeText({ key: 'userLayouts', kind: 'reset', diagnostics: [] }).summary, /自作の配列/);
-  assert.match(assetNoticeText({ key: 'workspaces', kind: 'newer-version', diagnostics: [] }).summary, /Workspace.*新しい版/);
+test('知らせの文: 資産の名前と件数だけを出し、codecの診断の文を流さない', () => {
+  const diagnostics = [
+    { path: 'presets[0]', message: 'Invalid type: Expected Object but received 5のため捨てました' },
+    { path: 'presets[1]', message: '項目「playbackRateAverage」を捨てました' },
+  ];
+  const repaired = assetNoticeText({ key: 'presetLibrary', kind: 'repaired', diagnostics });
+  assert.equal(repaired, 'プリセット: 読めない部分が2件あったため、読める部分だけで開きました。');
+  assert.doesNotMatch(repaired, /Invalid|playbackRateAverage/);
+
+  assert.match(assetNoticeText({ key: 'userLayouts', kind: 'reset', diagnostics: [] }), /^自作の配列: .*初期の状態/);
+  assert.match(assetNoticeText({ key: 'workspaces', kind: 'newer-version', diagnostics: [] }), /^Workspace: 新しい版/);
 });

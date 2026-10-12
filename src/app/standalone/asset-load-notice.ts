@@ -40,14 +40,28 @@ export function reportAssetLoadNotices(notices: readonly AssetLoadNotice[]): voi
   emit();
 }
 
-export function dismissAssetLoadNotice(key: keyof KeydistAssets): void {
-  current = current.filter((notice) => notice.key !== key);
+export function dismissAssetLoadNotices(): void {
+  current = [];
   emit();
+}
+
+let initialLoadClaimed = false;
+
+/**
+ * そのタブで最初の読み込みかどうか。最初の1回だけ`true`を返す。
+ * 捨てた・直した値の知らせと書き戻しはその1回に限る。画面を移るたびに書き戻すと、
+ * 開いたままの古いタブが、新しい版のアプリが書いた項目を未知の項目として消してしまう。
+ */
+export function claimInitialAssetLoad(): boolean {
+  if (initialLoadClaimed) return false;
+  initialLoadClaimed = true;
+  return true;
 }
 
 /** テスト用。タブを開き直した状態に戻す。 */
 export function resetAssetLoadNoticesForTest(): void {
   current = [];
   reportedNewerVersion.clear();
+  initialLoadClaimed = false;
   emit();
 }

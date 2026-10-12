@@ -6,12 +6,13 @@ import {
   type CommandHistory,
 } from '#input/commands/index.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
-import { reportAssetLoadNotices } from './asset-load-notice.ts';
+import { claimInitialAssetLoad, reportAssetLoadNotices } from './asset-load-notice.ts';
 import { initialAssets } from './asset-storage-specs.ts';
 import {
   buildAssetSyncs,
   commitCommand,
   commitHistoryStep,
+  loadAssets,
   loadAssetsAndRepair,
   startAssetSyncs,
   type AssetSyncMap,
@@ -97,8 +98,15 @@ export function useKeydistAssets(): KeydistAssetsController {
 
   useEffect(() => {
     // 捨てた・直した値と読めなかった値は、直した形（読めなければ既定値）を書き戻した上で知らせる。
-    const { assets: loaded, notices } = loadAssetsAndRepair(syncs);
-    reportAssetLoadNotices(notices);
+    // 知らせと書き戻しはタブにつき最初の1回だけ。以後の画面は、書き戻しなしで読むだけにする。
+    let loaded: Partial<KeydistAssets>;
+    if (claimInitialAssetLoad()) {
+      const outcome = loadAssetsAndRepair(syncs);
+      loaded = outcome.assets;
+      reportAssetLoadNotices(outcome.notices);
+    } else {
+      loaded = loadAssets(syncs);
+    }
     if (Object.keys(loaded).length > 0) {
       assetsRef.current = { ...assetsRef.current, ...loaded };
     }
