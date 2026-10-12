@@ -33,7 +33,7 @@ async function expectToggleCycle(
 
   const toggle = (await settings()).getByRole('checkbox', { name: LABEL });
   await expect(toggle).toBeChecked();
-  // 設定の欄を開くと図の大きさが変わり線の太さも動くので、開いた後に比べの基準を取る。
+  // 設定の小窓を開く前後で線の太さが動きうるので、開いた後に比べの基準を取る。
   const before = await snapshot(flow);
   await toggle.uncheck();
   await expect(flow).toHaveAttribute('data-repeat-badge', 'false');
@@ -131,7 +131,7 @@ test('Workspace のペイン: 連打の回数バッジを消せて、戻せる�
   const flow = pane.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible();
   await expectToggleCycle(flow, async () => {
-    const panel = pane.getByRole('group', { name: 'Keyboard Flowの表示' });
+    const panel = page.getByRole('dialog', { name: /^Keyboard Flowの表示/ });
     if (!(await panel.isVisible())) await pane.getByRole('button', { name: 'Keyboard Flowの表示', exact: true }).click();
     await expect(panel).toBeVisible();
     return panel;

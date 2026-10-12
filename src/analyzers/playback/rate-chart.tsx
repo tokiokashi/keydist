@@ -12,7 +12,7 @@ import {
 
 /**
  * かな毎秒・アクション毎秒の平均の推移。値は抽出が出した点を並べるだけで、ここでは計算しない。
- * グラフを押すと、その位置へ再生位置を移す。ChainとArpeggioの区間は、配列図の見出しの欄で表示を選んだものだけを帯で示す。
+ * グラフを押すと、その位置へ再生位置を移す。ChainとArpeggioの区間は、配列図の表示の小窓で表示を選んだものだけを帯で示す。
  */
 export interface PlaybackRateChartProps {
   readonly points: readonly PlaybackRateChartPoint[];

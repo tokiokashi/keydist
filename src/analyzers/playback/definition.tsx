@@ -11,7 +11,7 @@ import { PLAYBACK_WINDOW_GROUPS, type PlaybackSettingsGroupId } from './settings
 
 /**
  * 再生の設定の小窓。変えると時間表と速度グラフを計算し直す項目（再生位置は保つ）だけを置く。
- * 表示だけが変わる項目は、配列図の見出しの欄（`PlaybackFigureSettings`）に置く。
+ * 表示だけが変わる項目は、配列図の見出しのボタンから開く小窓（`PlaybackFigureSettings`）に置く。
  * 項目の並びは`settings-sections.ts`の表に従う。
  */
 export function PlaybackSettings({ options, onOptionsChange }: AnalyzerSettingsProps<PlaybackOptions>) {

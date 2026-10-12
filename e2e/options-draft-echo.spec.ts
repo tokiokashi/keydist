@@ -227,7 +227,7 @@ test('Workspace のペイン: 保存の反響が次の入力の後に届いて�
   await waitForHydration(page);
   const pane = page.locator('.workspace-grid-item[data-pane-id="a"]');
   await expect(pane.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 20_000 });
-  const panel = pane.getByRole('group', { name: 'Keyboard Flowの表示' });
+  const panel = page.getByRole('dialog', { name: /^Keyboard Flowの表示/ });
   if (!(await panel.isVisible())) await pane.getByRole('button', { name: 'Keyboard Flowの表示', exact: true }).click();
   await expect(panel).toBeVisible();
   await expectNoRevert(page, panel.getByRole('checkbox', { name: LABEL }));

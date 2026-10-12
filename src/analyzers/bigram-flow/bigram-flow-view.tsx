@@ -3,6 +3,8 @@ import type { Geometry } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import { computeKeyDetails } from '#interpretation/key-detail.ts';
 import type { Trace } from '#trace/generate.ts';
+import type { ReactNode } from 'react';
+import { FigureSettingsWindowContext, type FigureSettingsWindowProps } from '#ui/primitives/figure-settings.tsx';
 import { BigramFlowBody, BigramFlowSettings } from './definition.tsx';
 import { computeBigramFlowExtraction } from './extract.ts';
 import type { BigramFlowDisplayConfig } from './options.ts';
@@ -33,6 +35,17 @@ export interface BigramFlowViewProps {
   data: BigramFlowViewData | null;
   config: BigramFlowDisplayConfig;
   onConfigChange(next: BigramFlowDisplayConfig): void;
+}
+
+/** 旧画面には浮かぶ小窓の器が無いので、図の表示の項目を図の下の枠に開く。 */
+function renderInlineFigureSettings({ open, onClose, title, closeLabel, children }: FigureSettingsWindowProps): ReactNode {
+  if (!open) return null;
+  return (
+    <div className="flow-legacy-figure-settings" role="dialog" aria-label={title}>
+      {children}
+      <button type="button" onClick={onClose}>{closeLabel}</button>
+    </div>
+  );
 }
 
 export function BigramFlowView({
@@ -68,14 +81,16 @@ export function BigramFlowView({
       <div className="flow-legacy-settings">
         <BigramFlowSettings options={config} onOptionsChange={onConfigChange} />
       </div>
-      <BigramFlowBody
-        layout={data.layout}
-        geometry={data.geometry}
-        trace={data.trace}
-        extracted={extracted}
-        options={config}
-        onOptionsChange={onConfigChange}
-      />
+      <FigureSettingsWindowContext.Provider value={renderInlineFigureSettings}>
+        <BigramFlowBody
+          layout={data.layout}
+          geometry={data.geometry}
+          trace={data.trace}
+          extracted={extracted}
+          options={config}
+          onOptionsChange={onConfigChange}
+        />
+      </FigureSettingsWindowContext.Provider>
     </div>
   );
 }

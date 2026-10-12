@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { figureSettingsWindow } from './bigram-flow-figure-helper.ts';
 import { waitForHydration } from './hydration-helper.ts';
 import { settleBy } from './settle-helper.ts';
 
@@ -95,7 +96,7 @@ async function openWorkspace(page: Page, c: SideCase): Promise<void> {
   }
   if (c.openSettings !== undefined) {
     await page.getByRole('button', { name: `${c.openSettings}の表示`, exact: true }).click();
-    await expect(page.getByRole('group', { name: `${c.openSettings}の表示` })).toBeVisible();
+    await expect(figureSettingsWindow(page, c.openSettings)).toBeVisible();
     await settle(page);
   }
 }
@@ -111,8 +112,8 @@ const sideBySide: SideCase[] = [
   { name: '12列で指を2つ選ぶ', w: 12, h: 10, fingers: ['ring', 'pinky'] },
   { name: '文字サイズ24px・下限付近', w: 24, h: 10, viewport: 940, bodyWidth: [520, 560], rootFontSize: '24px' },
   { name: '文字サイズ24px・やや広い', w: 24, h: 10, viewport: 960, bodyWidth: [520, 600], rootFontSize: '24px', fingers: ['ring', 'pinky'] },
-  { name: 'Relative vectorsの設定だけ開く', w: 24, h: 19, openSettings: 'Relative vectors' },
-  { name: 'Keyboard Flowの設定だけ開く', w: 24, h: 19, openSettings: 'Keyboard Flow' },
+  { name: 'Relative vectorsの表示の小窓だけ開く', w: 24, h: 19, openSettings: 'Relative vectors' },
+  { name: 'Keyboard Flowの表示の小窓だけ開く', w: 24, h: 19, openSettings: 'Keyboard Flow' },
 ];
 
 // 文字サイズ24pxで、横に並ぶ下限付近の幅を細かく動かしても、横スクロールが出ず、上端・下端が揃う。
@@ -143,7 +144,7 @@ for (const c of sideBySide) {
   });
 }
 
-// 低いペインで片方の図のそばの設定を開いても、反対側の図は縮まず、開いた側の図も消えない。
+// 低いペインで図の表示の小窓を開いても、図は押し出されず、大きさも位置も変わらない。
 const lowPanes: readonly SideCase[] = [
   { name: '24列 x 12行', w: 24, h: 12, fingers: ['ring', 'pinky'] },
   { name: '24列 x 10行（本体520〜560px）', w: 24, h: 10, viewport: 840, bodyWidth: [520, 560], fingers: ['ring', 'pinky'] },
@@ -153,21 +154,20 @@ const lowPanes: readonly SideCase[] = [
 
 for (const c of lowPanes) {
   for (const figure of ['Keyboard Flow', 'Relative vectors'] as const) {
-    test(`低いペイン（${c.name}）で${figure}の設定を開いても、反対側の図は縮まず、上端・下端が揃う`, async ({ page }) => {
+    test(`低いペイン（${c.name}）で${figure}の表示の小窓を開いても、2つの図の大きさと位置は変わらない`, async ({ page }) => {
       await openWorkspace(page, c);
       const closed = await measure(page);
       await page.getByRole('button', { name: `${figure}の表示`, exact: true }).click();
-      await expect(page.getByRole('group', { name: `${figure}の表示` })).toBeVisible();
+      await expect(figureSettingsWindow(page, figure)).toBeVisible();
       await settle(page);
       const open = await measure(page);
       // 横に並んだまま
       expect(open.vectorsFigure.left).toBeGreaterThan(open.keyboardFigure.right - 1);
-      const height = (m: typeof closed, side: 'keyboardFigure' | 'vectorsFigure') => m[side].bottom - m[side].top;
-      const opposite = figure === 'Keyboard Flow' ? 'vectorsFigure' : 'keyboardFigure';
-      // 反対側の図は縮まない。閉じていた時に高さへ収めるために縮んでいた分は、開くと本体の中のスクロールへ回って元の大きさに戻るので、増える分は許す。
-      expect(height(open, opposite)).toBeGreaterThanOrEqual(height(closed, opposite) - 1);
-      expect(height(open, 'keyboardFigure')).toBeGreaterThan(50);
-      expect(height(open, 'vectorsFigure')).toBeGreaterThan(50);
+      for (const side of ['keyboardFigure', 'vectorsFigure'] as const) {
+        for (const edge of ['top', 'bottom', 'left', 'right'] as const) {
+          expect(Math.abs(open[side][edge] - closed[side][edge]), `${side}.${edge}`).toBeLessThanOrEqual(1);
+        }
+      }
       expect(Math.abs(open.vectorsFigure.top - open.keyboardFigure.top)).toBeLessThanOrEqual(1);
       expect(Math.abs(open.vectorsFigure.bottom - open.keyboardFigure.bottom)).toBeLessThanOrEqual(1);
     });
