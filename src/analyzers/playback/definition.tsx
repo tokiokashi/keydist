@@ -28,6 +28,8 @@ import {
   PLAYBACK_PREPARATION_SECONDS_MIN,
   PLAYBACK_SCALE_MAX,
   PLAYBACK_SCALE_MIN,
+  PLAYBACK_TRAIL_STEPS_MAX,
+  PLAYBACK_TRAIL_STEPS_MIN,
   playbackOptions,
   type PlaybackOptions,
 } from './options.ts';
@@ -155,6 +157,38 @@ export function PlaybackSettings({ options, onOptionsChange }: AnalyzerSettingsP
         />
       </OptionGroup>
       <OptionGroup title="キーと指">
+        <CheckboxOptionField
+          label="指の位置を表示"
+          binding={bind('showFingerPositions')}
+          hint="各指が今いるキーを、指ごとの色で配列図に出します。"
+        />
+        <CheckboxOptionField
+          label="押下予定キーを表示"
+          binding={bind('showPlannedKeys')}
+          hint="これから押すキーを、先読みの窓幅の分だけ配列図に出します。"
+        />
+        <CheckboxOptionField
+          label="押下履歴を表示"
+          binding={bind('showTrail')}
+          hint="押したキーを、残すステップ数の分だけ配列図に残します。"
+        />
+        <NumberOptionField
+          label="押下履歴を残すステップ数"
+          binding={bind('trailSteps')}
+          min={PLAYBACK_TRAIL_STEPS_MIN}
+          max={PLAYBACK_TRAIL_STEPS_MAX}
+          step={1}
+          integer
+          unit="ステップ"
+          hint={options.showTrail
+            ? '押したキーを何ステップ前まで残すかです。'
+            : '押したキーを何ステップ前まで残すかです。押下履歴を表示しない間は使われません。'}
+        />
+        <CheckboxOptionField
+          label="順番ラベルを表示"
+          binding={bind('showOrderLabels')}
+          hint="出ている押下予定キーと押下履歴に、押す順番を付けます。ChainとArpeggioの順番には関わりません。"
+        />
         <SelectOptionField
           label="押下フィードバック"
           binding={bind('keyFeedbackStyle')}

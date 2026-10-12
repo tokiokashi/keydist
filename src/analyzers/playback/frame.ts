@@ -36,9 +36,6 @@ import type { PlaybackTimingConditions } from './timing-conditions.ts';
  * 構造の判定・時間の計算は`interpretation/`の関数に任せ、ここは表示の用途ごとに取り出して並べ直すだけ。
  */
 
-/** 押下履歴として残すステップ数。 */
-export const PLAYBACK_TRAIL_STEPS = 5;
-
 /** 構造の動的表示でキーが動く時間の下限・上限 [ms]。短すぎる動きは見えず、長すぎる動きは次の打鍵と重なる。 */
 const MOTION_DURATION_MIN_MS = 150;
 const MOTION_DURATION_MAX_MS = 1500;
@@ -171,6 +168,11 @@ export function derivePlaybackFrame(input: PlaybackFrameInput): PlaybackFrame {
   const inputPreview = playbackInputPreview(trace.strokes, cursor, windowSize);
   const plan = isRomaji ? playbackRomajiPlan(trace.strokes, cursor) : undefined;
 
+  const none = <V>() => new Map<string, V>();
+  // 履歴と予定の順番ラベルは、そのキー自体が出ている時にだけ付く
+  const showTrail = options.showTrail;
+  const showPlanned = options.showPlannedKeys;
+
   return {
     total,
     cursor,
@@ -189,22 +191,28 @@ export function derivePlaybackFrame(input: PlaybackFrameInput): PlaybackFrame {
     keyLabels: display?.keyLabels ?? new Map<string, string>(),
     activeKeys: new Set(stroke?.presses.flatMap((press) => press.keys.map((key) => key.id)) ?? []),
     triggerKeys: new Set(stroke?.triggerKeys ?? []),
-    fingerPositionKeys: playbackPreparedFingerPositionKeys(
-      analysis,
-      schedule,
-      cursor,
-      input.elapsedMs,
-      geometry,
-      options.fingerPreparationSeconds,
-      timing.stepsPerSecond,
-      timing.calibration,
-      timing.speedMultiplier,
-    ),
-    trailKeys: playbackTrailKeys(trace.strokes, cursor, PLAYBACK_TRAIL_STEPS),
+    fingerPositionKeys: options.showFingerPositions
+      ? playbackPreparedFingerPositionKeys(
+        analysis,
+        schedule,
+        cursor,
+        input.elapsedMs,
+        geometry,
+        options.fingerPreparationSeconds,
+        timing.stepsPerSecond,
+        timing.calibration,
+        timing.speedMultiplier,
+      )
+      : none<Finger>(),
+    trailKeys: showTrail ? playbackTrailKeys(trace.strokes, cursor, options.trailSteps) : none<number>(),
     // これから押すキー。ローマ字配列でもそれ以外でも、先読みN入力ぶんを近さに応じた濃さと順番で出す
-    plannedKeys: playbackPlannedKeys(trace.strokes, cursor, windowSize),
-    plannedOrders: playbackPlannedOrders(trace.strokes, cursor, windowSize),
-    trailOrders: playbackTrailOrders(trace.strokes, cursor, PLAYBACK_TRAIL_STEPS),
+    plannedKeys: showPlanned ? playbackPlannedKeys(trace.strokes, cursor, windowSize) : none<number>(),
+    plannedOrders: showPlanned && options.showOrderLabels
+      ? playbackPlannedOrders(trace.strokes, cursor, windowSize)
+      : none<number>(),
+    trailOrders: showTrail && options.showOrderLabels
+      ? playbackTrailOrders(trace.strokes, cursor, options.trailSteps)
+      : none<number>(),
     chainOrders: options.showChain ? firstOrders(playbackAnalysisChainOrders(analysis, cursor)) : new Map<string, number>(),
     arpeggioOrders: options.showArpeggio ? firstOrders(playbackAnalysisArpeggioOrders(analysis, cursor)) : new Map<string, number>(),
     motions: motionsOf(input, cursor),
