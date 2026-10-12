@@ -43,6 +43,10 @@ import {
  * - `rateAverage` / `rateWindow` / `rateHalfLifeSeconds`: 速度グラフの平均の方式・SMAの直近Stroke数・EWMAの半減時間 [秒]
  * - `showChain` / `showArpeggio` / `showSameFingerMotion`: 構造の動的表示。Chain・Arpeggioの区間の中で、
  *   今のステップの押下へ向かうキーの動きと順番を配列図に重ねる
+ * - `showFingerPositions` / `showPlannedKeys` / `showTrail` / `showOrderLabels`: 配列図に、指の位置・これから押すキー・
+ *   押したキーの履歴・順番ラベルを出すか。それぞれ自分の表示だけを出し入れする。順番ラベルは、その時に出ている
+ *   これから押すキーと履歴にだけ付き、Chain・Arpeggioの順番表示は切り替えの対象にしない
+ * - `trailSteps`: 押下履歴に残すステップ数。履歴を出さない時は表示に影響しない
  * - `keyFeedbackStyle`: キーを押した瞬間の見せ方
  * - `fingerPreparationSeconds`: 指の位置を、次の押下より前に動かして見せる時間 [秒]。0なら押下の瞬間に切り替える
  * - `scale`: 配列図の倍率
@@ -52,6 +56,9 @@ export type PlaybackKeyFeedbackStyle = (typeof KEY_FEEDBACK_STYLES)[number];
 
 export const PLAYBACK_PREPARATION_SECONDS_MIN = 0;
 export const PLAYBACK_PREPARATION_SECONDS_MAX = 5;
+export const PLAYBACK_TRAIL_STEPS_MIN = 1;
+export const PLAYBACK_TRAIL_STEPS_MAX = 20;
+export const DEFAULT_PLAYBACK_TRAIL_STEPS = 5;
 export const PLAYBACK_SCALE_MIN = 0.5;
 export const PLAYBACK_SCALE_MAX = 3;
 
@@ -149,6 +156,41 @@ export const playbackOptions = defineOptions({
     url: booleanUrlCodec('sameFinger'),
     label: '同指移動の動的表示',
   }),
+  showFingerPositions: defineOption<boolean>({
+    schema: v.boolean(),
+    default: false,
+    affects: 'view',
+    url: booleanUrlCodec('fingerPos'),
+    label: '指の位置を表示',
+  }),
+  showPlannedKeys: defineOption<boolean>({
+    schema: v.boolean(),
+    default: false,
+    affects: 'view',
+    url: booleanUrlCodec('plan'),
+    label: '押下予定キーを表示',
+  }),
+  showTrail: defineOption<boolean>({
+    schema: v.boolean(),
+    default: false,
+    affects: 'view',
+    url: booleanUrlCodec('trail'),
+    label: '押下履歴を表示',
+  }),
+  trailSteps: defineOption<number>({
+    schema: v.pipe(v.number(), v.integer(), v.minValue(PLAYBACK_TRAIL_STEPS_MIN), v.maxValue(PLAYBACK_TRAIL_STEPS_MAX)),
+    default: DEFAULT_PLAYBACK_TRAIL_STEPS,
+    affects: 'view',
+    url: integerUrlCodec('trailSteps', PLAYBACK_TRAIL_STEPS_MIN, PLAYBACK_TRAIL_STEPS_MAX),
+    label: '押下履歴を残すステップ数',
+  }),
+  showOrderLabels: defineOption<boolean>({
+    schema: v.boolean(),
+    default: false,
+    affects: 'view',
+    url: booleanUrlCodec('order'),
+    label: '順番ラベルを表示',
+  }),
   keyFeedbackStyle: defineOption<PlaybackKeyFeedbackStyle>({
     schema: v.picklist(KEY_FEEDBACK_STYLES),
     default: 'fade',
@@ -189,6 +231,11 @@ export const ALTERNATE_PLAYBACK_OPTIONS: PlaybackOptions = {
   showChain: true,
   showArpeggio: true,
   showSameFingerMotion: true,
+  showFingerPositions: true,
+  showPlannedKeys: true,
+  showTrail: true,
+  trailSteps: 12,
+  showOrderLabels: true,
   keyFeedbackStyle: 'bounce',
   fingerPreparationSeconds: 0.5,
   scale: 2,

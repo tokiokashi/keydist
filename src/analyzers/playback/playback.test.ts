@@ -33,6 +33,14 @@ import { playbackCalculationNotes } from './calculation-notes.ts';
 import { playbackTimingConditions as timingConditionsOf } from './timing-conditions.ts';
 
 /** 既定の解析設定で、個人速度の保存値が無い時の時間の設定。 */
+/** 配列図の4つの表示をすべて出す設定。既定は4つとも非表示。 */
+const SHOW_ALL_FIGURE = {
+  showFingerPositions: true,
+  showPlannedKeys: true,
+  showTrail: true,
+  showOrderLabels: true,
+} as const;
+
 const defaultTiming = () => timingConditionsOf(DEFAULT_PLAYBACK_OPTIONS, DEFAULT_EXTRACTION_ASSETS);
 
 /**
@@ -126,9 +134,14 @@ test('解析設定は、時間と速度平均の8項目だけが抽出のキー�
     'scale',
     'showArpeggio',
     'showChain',
+    'showFingerPositions',
+    'showOrderLabels',
+    'showPlannedKeys',
     'showSameFingerMotion',
+    'showTrail',
     'speedMultiplier',
     'stepsPerSecond',
+    'trailSteps',
   ]);
   assert.deepEqual(playbackOptions.extractKeyOf(DEFAULT_PLAYBACK_OPTIONS), {
     stepsPerSecond: 1.25,
@@ -624,7 +637,7 @@ test('時間の経過: 800msのステップ1つぶんでカーソルが1つ進�
 // ---------------------------------------------------------------------------
 
 test('開始前: 打鍵の表示は無く、帰属は「開始前」、指はホームに居る', () => {
-  const { frame } = frameAt('qwerty', 'fj', 0);
+  const { frame } = frameAt('qwerty', 'fj', 0, SHOW_ALL_FIGURE);
   assert.equal(frame.total, 2);
   assert.equal(frame.currentText, '—');
   assert.equal(frame.layerLabel, '開始前');
@@ -636,7 +649,7 @@ test('開始前: 打鍵の表示は無く、帰属は「開始前」、指はホ
 });
 
 test('1打鍵目の後: 押したキー・履歴・予定・入力の履歴が揃う', () => {
-  const { frame } = frameAt('qwerty', 'fjd', 1);
+  const { frame } = frameAt('qwerty', 'fjd', 1, SHOW_ALL_FIGURE);
   assert.equal(frame.cursor, 1);
   assert.deepEqual([...frame.activeKeys], ['f']);
   assert.equal(frame.typedText, 'f');
@@ -653,7 +666,7 @@ test('1打鍵目の後: 押したキー・履歴・予定・入力の履歴が�
 });
 
 test('最後まで進んだ後でも値が求まり、カーソルは総数で止まる', () => {
-  const { frame } = frameAt('qwerty', 'fj', 99);
+  const { frame } = frameAt('qwerty', 'fj', 99, SHOW_ALL_FIGURE);
   assert.equal(frame.cursor, 2);
   assert.equal(frame.plannedKeys.size, 0);
   assert.deepEqual([...frame.activeKeys], ['j']);
@@ -661,19 +674,101 @@ test('最後まで進んだ後でも値が求まり、カーソルは総数で�
 
 test('指位置の準備時間: 0秒では打鍵の瞬間に切り替わり、準備時間があると次の押下より前に動く（§4.1）', () => {
   // f→v: 左人差し指がfからvへ動く。時間表では2打鍵目の終わりが押下の時刻。
-  const before = frameAt('qwerty', 'fv', 1, { fingerPreparationSeconds: 0 }, 790);
+  const before = frameAt('qwerty', 'fv', 1, { ...SHOW_ALL_FIGURE, fingerPreparationSeconds: 0 }, 790);
   assert.equal(before.frame.fingerPositionKeys.get('f'), 'LI');
   assert.equal(before.frame.fingerPositionKeys.has('v'), false);
 
   // 準備時間を長くしても、物理的に間に合わない間は動かない。経過0msではまだvに着かない
-  const early = frameAt('qwerty', 'fv', 1, { fingerPreparationSeconds: 5 }, 0);
+  const early = frameAt('qwerty', 'fv', 1, { ...SHOW_ALL_FIGURE, fingerPreparationSeconds: 5 }, 0);
   assert.equal(early.frame.fingerPositionKeys.has('v'), false);
   // 次の押下の時刻（2打鍵目の終わり）に着く。1打鍵目の終わりからの経過時間は、2打鍵目の表示時間
   const { input, extracted } = prepare('qwerty', 'fv');
   const schedule = playbackScheduleOf(extracted.analysis, input.geometry, defaultTiming());
-  const arrived = frameAt('qwerty', 'fv', 1, { fingerPreparationSeconds: 5 }, schedule[1].endMs - schedule[0].endMs);
+  const arrived = frameAt('qwerty', 'fv', 1, { ...SHOW_ALL_FIGURE, fingerPreparationSeconds: 5 }, schedule[1].endMs - schedule[0].endMs);
   assert.equal(arrived.frame.fingerPositionKeys.get('v'), 'LI');
   assert.equal(arrived.frame.fingerPositionKeys.has('f'), false);
+});
+
+test('配列図の表示の既定値は、指の位置・押下予定キー・押下履歴・順番ラベルが非表示で、履歴は5ステップ', () => {
+  assert.deepEqual(
+    [
+      DEFAULT_PLAYBACK_OPTIONS.showFingerPositions,
+      DEFAULT_PLAYBACK_OPTIONS.showPlannedKeys,
+      DEFAULT_PLAYBACK_OPTIONS.showTrail,
+      DEFAULT_PLAYBACK_OPTIONS.showOrderLabels,
+      DEFAULT_PLAYBACK_OPTIONS.trailSteps,
+    ],
+    [false, false, false, false, 5],
+  );
+  const { frame } = frameAt('qwerty', 'fjd', 1);
+  assert.equal(frame.fingerPositionKeys.size, 0);
+  assert.equal(frame.trailKeys.size, 0);
+  assert.equal(frame.plannedKeys.size, 0);
+  assert.equal(frame.plannedOrders.size, 0);
+  assert.equal(frame.trailOrders.size, 0);
+  // 押した瞬間のキーと入力の履歴は、この設定に関わらず出る
+  assert.deepEqual([...frame.activeKeys], ['f']);
+  assert.equal(frame.inputPreview.length, 3);
+});
+
+test('配列図の4つの切り替えは、それぞれ自分の表示だけを出し入れする', () => {
+  const only = (key: keyof typeof SHOW_ALL_FIGURE) => frameAt('qwerty', 'fjd', 1, { [key]: true }).frame;
+  const sizes = (frame: PlaybackFrame) => [
+    frame.fingerPositionKeys.size > 0,
+    frame.plannedKeys.size > 0,
+    frame.trailKeys.size > 0,
+    frame.plannedOrders.size + frame.trailOrders.size > 0,
+  ];
+  assert.deepEqual(sizes(only('showFingerPositions')), [true, false, false, false]);
+  assert.deepEqual(sizes(only('showPlannedKeys')), [false, true, false, false]);
+  assert.deepEqual(sizes(only('showTrail')), [false, false, true, false]);
+  // 順番ラベルだけを出しても、ラベルを付ける先の予定キーも履歴も出ていないので何も出ない
+  assert.deepEqual(sizes(only('showOrderLabels')), [false, false, false, false]);
+  // 順番ラベルは、出ている表示にだけ付く
+  const plannedWithOrders = frameAt('qwerty', 'fjd', 1, { showPlannedKeys: true, showOrderLabels: true }).frame;
+  assert.deepEqual([...plannedWithOrders.plannedOrders].sort(), [['d', 2], ['j', 1]]);
+  assert.equal(plannedWithOrders.trailOrders.size, 0);
+  const trailWithOrders = frameAt('qwerty', 'fjd', 1, { showTrail: true, showOrderLabels: true }).frame;
+  assert.deepEqual([...trailWithOrders.trailOrders], [['f', 1]]);
+  assert.equal(trailWithOrders.plannedOrders.size, 0);
+});
+
+test('押下履歴を残すステップ数は、履歴が残る長さを決める', () => {
+  const trailAt = (trailSteps: number) =>
+    [...frameAt('qwerty', 'fjdksl', 6, { showTrail: true, trailSteps }).frame.trailKeys.keys()].sort();
+  assert.deepEqual(trailAt(1), ['l']);
+  assert.deepEqual(trailAt(3), ['k', 'l', 's']);
+  assert.equal(trailAt(5).length, 5);
+  // 履歴を出さない間は、ステップ数を変えても何も出ない
+  assert.equal(frameAt('qwerty', 'fjdksl', 6, { trailSteps: 20 }).frame.trailKeys.size, 0);
+});
+
+test('順番ラベルを出さなくても、ChainとArpeggioの順番は設定に従って出る', () => {
+  const { frame } = frameAt('qwerty', 'asdf', 2, { showChain: true, showOrderLabels: false });
+  assert.equal(frame.chainOrders.get('s'), 2);
+});
+
+test('配列図の表示の5項目は、既定と違う時だけURLに書き、読み戻すと同じ値になり、範囲外は捨てる', () => {
+  const changed: PlaybackOptions = {
+    ...DEFAULT_PLAYBACK_OPTIONS,
+    showFingerPositions: true,
+    showPlannedKeys: true,
+    showTrail: true,
+    trailSteps: 12,
+    showOrderLabels: true,
+  };
+  const params = playbackOptions.encodeOptionsToUrl(changed);
+  assert.equal(params.size, 5);
+  const diagnostics: never[] = [];
+  const decoded = playbackOptions.decodeOptionsFromUrl(params, diagnostics);
+  assert.deepEqual({ ...DEFAULT_PLAYBACK_OPTIONS, ...decoded.values }, changed);
+  assert.deepEqual(diagnostics, []);
+  for (const raw of ['0', '21', '2.5']) {
+    const broken: unknown[] = [];
+    const result = playbackOptions.decodeOptionsFromUrl(new URLSearchParams({ trailSteps: raw }), broken as never);
+    assert.deepEqual(result.values, {}, raw);
+    assert.equal(broken.length, 1, raw);
+  }
 });
 
 test('同指移動の動的表示: 設定が真の時だけ、同じ指の移動元から移動先への動きが出る', () => {

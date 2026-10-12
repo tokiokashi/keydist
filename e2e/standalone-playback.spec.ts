@@ -86,6 +86,15 @@ test('表示設定を変えると表示だけが変わり、再生位置は保�
   await expect(settings.getByRole('checkbox', { name: '同指移動の動的表示' })).toBeVisible();
   await expect(settings.getByRole('combobox', { name: '押下フィードバック' })).toBeVisible();
   await expect(settings.getByRole('slider', { name: '指位置の準備時間' })).toBeVisible();
+  // 配列図の表示の項目。既定は非表示で、押下履歴を表示にすると押したキーが図に残る
+  for (const name of ['指の位置を表示', '押下予定キーを表示', '押下履歴を表示', '順番ラベルを表示']) {
+    await expect(settings.getByRole('checkbox', { name })).not.toBeChecked();
+  }
+  await expect(settings.getByRole('spinbutton', { name: '押下履歴を残すステップ数' })).toHaveValue('5');
+  await expect(feature(page).locator('[data-playback-trail="true"]')).toHaveCount(0);
+  await settings.getByRole('checkbox', { name: '押下履歴を表示' }).check();
+  await expect(feature(page).locator('[data-playback-trail="true"]').first()).toBeVisible();
+  await expect(feature(page).locator('[data-playback-plan="true"]')).toHaveCount(0);
   await settings.getByRole('slider', { name: '倍率' }).fill('2');
 
   // 倍率が変わっても、再生位置は先頭へ戻らない
