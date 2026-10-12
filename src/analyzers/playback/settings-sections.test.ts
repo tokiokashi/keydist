@@ -1,25 +1,66 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { playbackOptions } from './options.ts';
-import { PLAYBACK_SETTINGS_SECTIONS } from './settings-sections.ts';
+import { PLAYBACK_FIGURE_GROUPS, PLAYBACK_WINDOW_GROUPS, type PlaybackSettingsGroup } from './settings-sections.ts';
 
-// 数値が変わる項目（extract）は「計算」、見た目だけの項目（view）は「見た目」に、ちょうど1回ずつ置く。
-const SECTION_OF_AFFECT = { extract: 'calculation', view: 'appearance' } as const;
+type Place = 'window' | 'figure';
 
-test('打鍵再生の解析設定の項目は、affectsに合う節にちょうど1回ずつ置かれる', () => {
-  const placed = new Map<string, string[]>();
-  for (const section of PLAYBACK_SETTINGS_SECTIONS) {
-    for (const group of section.groups) {
-      for (const key of group.keys) placed.set(key, [...(placed.get(key) ?? []), section.id]);
+// 数値が変わる項目（extract）は解析設定の小窓、見た目だけの項目（view）は配列図の欄に、ちょうど1回ずつ置く。
+const PLACE_OF_AFFECT: Record<'extract' | 'view', Place> = { extract: 'window', view: 'figure' };
+
+function placements(tables: Readonly<Record<Place, readonly PlaybackSettingsGroup[]>>): Map<string, Place[]> {
+  const placed = new Map<string, Place[]>();
+  for (const place of ['window', 'figure'] as const) {
+    for (const group of tables[place]) {
+      for (const key of group.keys) placed.set(key, [...(placed.get(key) ?? []), place]);
     }
   }
+  return placed;
+}
+
+/** 表の置き方が`affects`と合わない項目と理由を返す。合っていれば空。 */
+function mismatches(tables: Readonly<Record<Place, readonly PlaybackSettingsGroup[]>>): string[] {
+  const placed = placements(tables);
   const items: Readonly<Record<string, { readonly affects: 'extract' | 'view' }>> = playbackOptions.items;
+  const problems: string[] = [];
   for (const [key, def] of Object.entries(items)) {
-    assert.deepEqual(placed.get(key), [SECTION_OF_AFFECT[def.affects]], `${key}（${def.affects}）の置き場`);
+    const actual = placed.get(key) ?? [];
+    if (actual.length !== 1 || actual[0] !== PLACE_OF_AFFECT[def.affects]) {
+      problems.push(`${key}（${def.affects}）の置き場: ${actual.join('、') || 'なし'}`);
+    }
   }
-  for (const key of placed.keys()) assert.ok(key in items, `${key}は項目として存在しない`);
+  for (const key of placed.keys()) if (!(key in items)) problems.push(`${key}は項目として存在しない`);
+  return problems;
+}
+
+const actual = { window: PLAYBACK_WINDOW_GROUPS, figure: PLAYBACK_FIGURE_GROUPS };
+
+test('打鍵再生の項目は、affectsに合う置き場にちょうど1回ずつ置かれる', () => {
+  assert.deepEqual(mismatches(actual), []);
 });
 
-test('節は「計算」「見た目」の順に並ぶ', () => {
-  assert.deepEqual(PLAYBACK_SETTINGS_SECTIONS.map((section) => section.title), ['計算', '見た目']);
+test('項目をどこにも置かない時・違う所に置いた時・2回置いた時は検査が落ちる', () => {
+  const dropped = {
+    window: PLAYBACK_WINDOW_GROUPS,
+    figure: PLAYBACK_FIGURE_GROUPS.map((group) => ({ ...group, keys: group.keys.filter((key) => key !== 'scale') })),
+  };
+  assert.equal(mismatches(dropped).length, 1);
+  const wrongPlace = {
+    window: [...PLAYBACK_WINDOW_GROUPS, { id: 'layoutFigure' as const, title: '', keys: ['scale' as const] }],
+    figure: PLAYBACK_FIGURE_GROUPS.map((group) => ({ ...group, keys: group.keys.filter((key) => key !== 'scale') })),
+  };
+  assert.equal(mismatches(wrongPlace).length, 1);
+  const twice = {
+    window: [...PLAYBACK_WINDOW_GROUPS, { id: 'layoutFigure' as const, title: '', keys: ['scale' as const] }],
+    figure: PLAYBACK_FIGURE_GROUPS,
+  };
+  assert.equal(mismatches(twice).length, 1);
+});
+
+test('小窓のグループは再生の時間・個人速度・速度グラフの平均の順に並ぶ', () => {
+  assert.deepEqual(PLAYBACK_WINDOW_GROUPS.map((group) => group.title), ['再生の時間', '個人速度', '速度グラフの平均']);
+});
+
+test('配列図の欄のグループは構造の動的表示・キーと指・配列図の順に並ぶ', () => {
+  assert.deepEqual(PLAYBACK_FIGURE_GROUPS.map((group) => group.title), ['構造の動的表示', 'キーと指', '配列図']);
 });

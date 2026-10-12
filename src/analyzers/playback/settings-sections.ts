@@ -1,12 +1,13 @@
 import type { PlaybackOptions } from './options.ts';
 
 /**
- * 打鍵再生の解析設定の小窓の並び。節の下にグループ、グループの下に項目を置く。
+ * 打鍵再生の設定項目の置き場。グループの下に項目を置く。
  *
- * - 計算: 再生の時間と速度グラフの数値を変える項目（`affects: 'extract'`）
- * - 見た目: 配列図の見た目だけを変える項目（`affects: 'view'`）
+ * - 解析設定の小窓: 再生の時間と速度グラフの数値を変える項目（`affects: 'extract'`）
+ * - 配列図の見出しの欄: 表示だけを変える項目（`affects: 'view'`）。ChainとArpeggioの2項目は速度グラフの帯も切り替えるが、
+ *   どちらの図でも同じ構造の表示を切り替える項目なので、配列図の欄に置く
  *
- * 小窓はこの表の順に項目を描く。どの項目をどの節に置くかは`settings-sections.test.ts`が`affects`と照らす。
+ * 小窓と欄はこの表の順に項目を描く。どの項目をどちらに置くかは`settings-sections.test.ts`が`affects`と照らす。
  */
 export type PlaybackSettingsGroupId =
   | 'timing'
@@ -22,46 +23,31 @@ export interface PlaybackSettingsGroup {
   readonly keys: readonly (keyof PlaybackOptions)[];
 }
 
-export interface PlaybackSettingsSection {
-  readonly id: 'calculation' | 'appearance';
-  readonly title: string;
-  readonly groups: readonly PlaybackSettingsGroup[];
-}
+export const PLAYBACK_WINDOW_GROUPS: readonly PlaybackSettingsGroup[] = [
+  {
+    id: 'timing',
+    title: '再生の時間',
+    keys: ['stepsPerSecond', 'speedMultiplier', 'sameFingerDelay', 'allFingerMovementDelay'],
+  },
+  { id: 'personalSpeed', title: '個人速度', keys: ['applyPersonalSpeed'] },
+  { id: 'rateAverage', title: '速度グラフの平均', keys: ['rateAverage', 'rateWindow', 'rateHalfLifeSeconds'] },
+];
 
-export const PLAYBACK_SETTINGS_SECTIONS: readonly PlaybackSettingsSection[] = [
+export const PLAYBACK_FIGURE_GROUPS: readonly PlaybackSettingsGroup[] = [
+  { id: 'structure', title: '構造の動的表示', keys: ['showChain', 'showArpeggio', 'showSameFingerMotion'] },
   {
-    id: 'calculation',
-    title: '計算',
-    groups: [
-      {
-        id: 'timing',
-        title: '再生の時間',
-        keys: ['stepsPerSecond', 'speedMultiplier', 'sameFingerDelay', 'allFingerMovementDelay'],
-      },
-      { id: 'personalSpeed', title: '個人速度', keys: ['applyPersonalSpeed'] },
-      { id: 'rateAverage', title: '速度グラフの平均', keys: ['rateAverage', 'rateWindow', 'rateHalfLifeSeconds'] },
+    id: 'keysAndFingers',
+    title: 'キーと指',
+    keys: [
+      'showFingerPositions',
+      'showPlannedKeys',
+      'showRomajiPlan',
+      'showTrail',
+      'trailSteps',
+      'showOrderLabels',
+      'keyFeedbackStyle',
+      'fingerPreparationSeconds',
     ],
   },
-  {
-    id: 'appearance',
-    title: '見た目',
-    groups: [
-      { id: 'structure', title: '構造の動的表示', keys: ['showChain', 'showArpeggio', 'showSameFingerMotion'] },
-      {
-        id: 'keysAndFingers',
-        title: 'キーと指',
-        keys: [
-          'showFingerPositions',
-          'showPlannedKeys',
-          'showRomajiPlan',
-          'showTrail',
-          'trailSteps',
-          'showOrderLabels',
-          'keyFeedbackStyle',
-          'fingerPreparationSeconds',
-        ],
-      },
-      { id: 'layoutFigure', title: '配列図', keys: ['scale'] },
-    ],
-  },
+  { id: 'layoutFigure', title: '配列図', keys: ['scale'] },
 ];
