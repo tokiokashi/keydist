@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { keyboardStandardForGeometryId } from '#input/shapes/key-labels.ts';
 import {
   reconcilePlaybackStateAfterAnalysisRefresh,
@@ -21,6 +21,7 @@ import {
   stopPlayback,
   tickPlayback,
 } from './session.ts';
+import { rateChartAxisInsets } from './rate-chart-model.ts';
 import { PlaybackRateChart } from './rate-chart.tsx';
 import './playback-view.css';
 
@@ -45,6 +46,7 @@ interface Session {
 }
 
 const NO_KEYS: ReadonlySet<string> = new Set();
+const axisInsets = rateChartAxisInsets();
 
 function freshSession(basisId: string, schedule: readonly PlaybackTimingStep[], state: PlaybackState): Session {
   return { basisId, schedule, state, feedback: { revision: 0, keys: NO_KEYS } };
@@ -188,7 +190,10 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options }: Si
         </span>
       </div>
 
-      <label className="playback-seek">
+      <label
+        className="playback-seek"
+        style={{ '--seek-axis-left': axisInsets.left, '--seek-axis-right': axisInsets.right } as CSSProperties}
+      >
         <span>再生位置</span>
         <input
           type="range"

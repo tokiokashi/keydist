@@ -50,6 +50,17 @@ export interface RateChartDisplay {
 const PLOT_WIDTH = RATE_CHART_WIDTH - RATE_CHART_MARGIN.left - RATE_CHART_MARGIN.right;
 const PLOT_HEIGHT = RATE_CHART_HEIGHT - RATE_CHART_MARGIN.top - RATE_CHART_MARGIN.bottom;
 
+/**
+ * グラフの幅に対する、横軸（再生位置0から最後まで）の左端と右端の余白の割合（百分率）。
+ * シークバーのつまみの動く範囲をこの横軸に合わせるのに使う。
+ */
+export function rateChartAxisInsets(): { readonly left: string; readonly right: string } {
+  return {
+    left: `${(RATE_CHART_MARGIN.left / RATE_CHART_WIDTH) * 100}%`,
+    right: `${(RATE_CHART_MARGIN.right / RATE_CHART_WIDTH) * 100}%`,
+  };
+}
+
 export function rateChartX(position: number, total: number): number {
   return RATE_CHART_MARGIN.left + (position / total) * PLOT_WIDTH;
 }
