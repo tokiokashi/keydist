@@ -26,8 +26,10 @@ export interface UserAssetsPageProps {
   readonly onRedo: () => void;
   readonly onDeleteLayout: (id: string) => void;
   readonly onDeleteRomajiRule: (id: string) => void;
-  /** 読み込んだ資産を手元へ足す。`stamp`は足す時に振る新しいidの元になる、1回の読み込みで固定の値。 */
-  /** 読み込みを書き込み、書き込みに使った突き合わせの内訳を返す（書き込めなかった時は `undefined`）。 */
+  /**
+   * 読み込んだ資産を手元へ足し、書き込みに使った突き合わせの内訳を返す（書き込めなかった時は`undefined`）。
+   * `stamp`は足す時に振る新しいidの元になる、1回の読み込みで固定の値。
+   */
   readonly onImport: (bundle: UserAssetsBundle, stamp: string) => readonly UserAssetImportEntry[] | undefined;
 }
 

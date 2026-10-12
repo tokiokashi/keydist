@@ -54,8 +54,8 @@ export const USER_ASSETS_FILE_CODEC: AssetCodec<UserAssetsBundle> = defineAssetC
 export type UserAssetsHoldings = Pick<KeydistAssets, 'userLayouts' | 'userRomajiRules' | 'fingerAssignments'>;
 
 /**
- * 推奨の規則を、解決できるものだけ残した配列にする。組み込みでも `resolve` が返す先でもない規則を指す配列は、
- * 参照を外す（手元の規則に結び付かず、全体の値の規則で打つ配列になる。ローマ字を経ない配列は `romaji` を見ないので触らない）。
+ * 推奨の規則を、解決できるものだけ残した配列にする。組み込みでも`resolve`が返す先でもない規則を指す配列は、
+ * 参照を外す（手元の規則に結び付かず、全体の値の規則で打つ配列になる。ローマ字を経ない配列は`romaji`を見ないので触らない）。
  */
 function withResolvableRomaji(layout: UserLayout, resolve: (id: string) => string | undefined): UserLayout {
   if (layout.direct === true || layout.romaji === undefined) return layout;
@@ -66,7 +66,7 @@ function withResolvableRomaji(layout: UserLayout, resolve: (id: string) => strin
 }
 
 /**
- * 書き出すファイルの本体（`format` は付けない）。ファイルに入れる規則（手元の自作の規則）に無い規則を
+ * 書き出すファイルの本体（`format`は付けない）。ファイルに入れる規則（手元の自作の規則）に無い規則を
  * 指す配列は、参照を外して書く。読み込む側が手元の同じidの規則に結び付けないようにするため。
  */
 export function userAssetsFileBody(assets: UserAssetsHoldings): Record<string, unknown> {
@@ -244,6 +244,9 @@ export function mergeUserAssets(current: UserAssetsHoldings, incoming: UserAsset
     content: ruleContent,
     rebuild: (rule, id, name) => ({ ...rule, id, name }),
   }, stamp);
+  // 比べる時だけ、手元の配列の宙に浮いた参照（消した規則を指す）も外す。保存する手元の値は変えない
+  const knownRuleIds = new Set(rules.items.map((rule) => rule.id));
+  const resolveKnown = (id: string): string | undefined => (knownRuleIds.has(id) ? id : undefined);
   const layouts = mergeKind<UserLayout>({
     assetKind: 'layout',
     idPrefix: 'user-',
@@ -252,7 +255,7 @@ export function mergeUserAssets(current: UserAssetsHoldings, incoming: UserAsset
     incoming: incoming.layouts.map((layout) => withResolvableRomaji(layout, (id) => rules.idMap.get(id))),
     builtinIds: (id) => LAYOUT_BY_ID.has(id),
     builtinName: (id) => LAYOUT_BY_ID.get(id)?.name,
-    content: layoutContent,
+    content: (layout) => layoutContent(withResolvableRomaji(layout, resolveKnown)),
     rebuild: (layout, id, name) => ({ ...layout, id, name }),
   }, stamp);
   const fingers = mergeKind<FingerAssignment>({
@@ -278,8 +281,8 @@ export function mergeUserAssets(current: UserAssetsHoldings, incoming: UserAsset
 export interface UserAssetsImportPlan {
   readonly command: Command<KeydistAssets>;
   /**
-   * `command` が最後に適用された時の突き合わせの結果（画面に出す内訳）。書き込みと同じ突き合わせから作るので、
-   * 読み込みの途中で別のタブが資産を書き換えても、出した内訳と書いた中身は食い違わない。適用前は `undefined`。
+   * `command`が最後に適用された時の突き合わせの結果（画面に出す内訳）。書き込みと同じ突き合わせから作るので、
+   * 読み込みの途中で別のタブが資産を書き換えても、出した内訳と書いた中身は食い違わない。適用前は`undefined`。
    */
   entries(): readonly UserAssetImportEntry[] | undefined;
 }

@@ -336,6 +336,14 @@ test('読み込みの内訳は、書き込みを決めた突き合わせから�
   }
 });
 
+test('消した規則を指す手元の配列を書き出して自分へ読み直すと、同じ中身として足さない', () => {
+  const holdings: UserAssetsHoldings = { userLayouts: [LAYOUT], userRomajiRules: [], fingerAssignments: [] };
+  const merged = mergeUserAssets(holdings, read(holdings), STAMP);
+  assert.deepEqual(merged.entries.map((entry) => entry.outcome.kind), ['skipped-same']);
+  assert.equal(merged.assets.userLayouts.length, 1);
+  assert.equal(merged.assets.userLayouts[0], LAYOUT);
+});
+
 test('ファイルの分類: 印の無いもの・別の種類・新しい版・空・多すぎるものを理由つきで断る', () => {
   const messageOf = (text: string): string => {
     const result = parseUserAssetsFile(text);
