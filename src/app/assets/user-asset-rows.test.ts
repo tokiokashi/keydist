@@ -23,6 +23,11 @@ test('配列の行: 推奨の規則の名前を出し、見つからない規則
   assert.equal(rows[3]!.detail, 'ローマ字を経ずに直接打つ配列');
 });
 
+test('配列の行: 推奨の規則を持たない配列は、全体の値の規則で打つ旨を出す', () => {
+  const rows = userLayoutRows([{ id: 'a', name: 'A', rows: ROWS }], [RULE]);
+  assert.equal(rows[0]!.detail, '推奨のローマ字規則はありません。全体の値の規則で打ちます');
+});
+
 test('規則の行: 推奨に使っている配列を挙げる。使われていなければ補足なし', () => {
   const layouts: UserLayout[] = [
     { id: 'a', name: 'A', rows: ROWS, romaji: 'rule-a' },

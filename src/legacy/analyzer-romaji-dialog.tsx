@@ -160,11 +160,11 @@ function updateVariantOverride(overrides: string, kana: string, value: string): 
 }
 
 function validAssignment(
-  requested: string,
+  requested: string | undefined,
   layoutId: string,
   rules: readonly { id: string }[],
 ): string {
-  return rules.some((rule) => rule.id === requested)
+  return requested !== undefined && rules.some((rule) => rule.id === requested)
     ? requested
     : defaultRomajiRuleId(layoutId);
 }

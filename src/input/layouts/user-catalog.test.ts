@@ -75,6 +75,14 @@ test('romajiが指す規則が無い配列は残し、推奨を持たせず診�
   assert.deepEqual(catalog.diagnostics.map((d) => d.path), ['userLayouts[0].romaji']);
 });
 
+test('romajiを持たない配列は残し、推奨を持たせず、診断も積まない', () => {
+  const { romaji: _omitted, ...withoutRomaji } = layout('user-a');
+  const catalog = buildUserCatalog([withoutRomaji], []);
+  assert.equal(catalog.layouts.has('user-a'), true);
+  assert.equal(catalog.layouts.get('user-a')?.recommendedRomajiRuleId, undefined);
+  assert.deepEqual(catalog.diagnostics, []);
+});
+
 test('捨てた自作の規則を指すromajiは、見つからない扱いになる', () => {
   const catalog = buildUserCatalog([layout('user-a', { romaji: 'romaji-dup' })], []);
   assert.equal(catalog.layouts.get('user-a')?.recommendedRomajiRuleId, undefined);

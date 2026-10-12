@@ -89,13 +89,20 @@ test('USER_LAYOUTS_CODEC: layoutsが無ければ診断なしの空、配列で�
   assert.deepEqual(broken.diagnostics.map((d) => d.path), ['layouts']);
 });
 
-test('USER_LAYOUTS_CODEC: 壊れた要素・romajiの無い要素・id重複は捨てて、経路付きの診断を積む', () => {
-  const noRomaji = { id: 'user-x', name: 'x', rows: ['', 'q', 'a', 'z'] };
+test('USER_LAYOUTS_CODEC: 壊れた要素・romajiが文字列でない要素・id重複は捨てて、経路付きの診断を積む', () => {
+  const badRomaji = { id: 'user-x', name: 'x', rows: ['', 'q', 'a', 'z'], romaji: 1 };
   const decoded = USER_LAYOUTS_CODEC.decode({
     version: 1,
-    layouts: [layout('user-a'), { id: 1 }, noRomaji, layout('user-a'), layout('user-c')],
+    layouts: [layout('user-a'), { id: 1 }, badRomaji, layout('user-a'), layout('user-c')],
   });
   assert.ok(decoded.ok);
   assert.deepEqual(decoded.value.map((l) => l.id), ['user-a', 'user-c']);
   assert.deepEqual(decoded.diagnostics.map((d) => d.path), ['layouts[1]', 'layouts[2]', 'layouts[3]']);
+});
+
+test('USER_LAYOUTS_CODEC: romajiの無い要素は、推奨の規則を持たない配列として残す', () => {
+  const decoded = USER_LAYOUTS_CODEC.decode({ version: 1, layouts: [{ id: 'user-x', name: 'x', rows: ['', 'q', 'a', 'z'] }] });
+  assert.ok(decoded.ok);
+  assert.deepEqual(decoded.value.map((l) => l.id), ['user-x']);
+  assert.deepEqual(decoded.diagnostics, []);
 });

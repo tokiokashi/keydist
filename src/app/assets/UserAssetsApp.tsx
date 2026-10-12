@@ -16,7 +16,11 @@ export function UserAssetsApp() {
       onRedo={redo}
       onDeleteLayout={(id) => dispatch(deleteUserLayoutCommand(id))}
       onDeleteRomajiRule={(id) => dispatch(deleteUserRomajiRuleCommand(id))}
-      onImport={(bundle, stamp) => dispatch(importUserAssetsCommand(bundle, stamp))}
+      onImport={(bundle, stamp) => {
+        const plan = importUserAssetsCommand(bundle, stamp);
+        dispatch(plan.command);
+        return plan.entries();
+      }}
     />
   );
 }
