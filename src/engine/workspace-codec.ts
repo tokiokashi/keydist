@@ -337,12 +337,12 @@ export const WORKSPACE_LIBRARY_CODEC: AssetCodec<WorkspaceLibrary> = defineAsset
     if (!isRecord(payload)) return undefined;
     const raw: readonly unknown[] = Array.isArray(payload.workspaces) ? payload.workspaces : [];
     if (payload.workspaces !== undefined && !Array.isArray(payload.workspaces)) {
-      diagnostics.push({ path: 'payload.workspaces', message: '配列形式でないためWorkspaceを捨てました' });
+      diagnostics.push({ path: 'workspaces', message: '配列形式でないためWorkspaceを捨てました' });
     }
     const seenIds = new Set<string>();
     const workspaces: Workspace[] = [];
     raw.forEach((item, index) => {
-      const workspace = decodeWorkspace(item, `payload.workspaces[${index}]`, seenIds, diagnostics);
+      const workspace = decodeWorkspace(item, `workspaces[${index}]`, seenIds, diagnostics);
       if (workspace !== undefined) workspaces.push(workspace);
     });
     return workspaces;

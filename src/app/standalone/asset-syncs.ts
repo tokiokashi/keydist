@@ -6,7 +6,8 @@ import {
   type CommandHistory,
   type CommandStepResult,
 } from '#input/commands/index.ts';
-import { createAssetTabSync, type AssetTabSync } from '#platform/asset-tab-sync.ts';
+import { createAssetTabSync, type AssetLoadReport, type AssetTabSync } from '#platform/asset-tab-sync.ts';
+import type { CodecDiagnostic } from '#input/codec/index.ts';
 import type { KeyValueStorage } from '#platform/persistence/storage.ts';
 import { notifyKeydistStorageChange, subscribeKeydistStorageChanges } from '#platform/browser-storage-events.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
@@ -79,6 +80,63 @@ export function loadAssets(syncs: AssetSyncMap): Partial<KeydistAssets> {
     .map((key) => loadOne(syncs, key))
     .filter((entry) => entry !== undefined);
   return Object.fromEntries(entries) as unknown as Partial<KeydistAssets>;
+}
+
+/**
+ * 起動時の読み込みで、利用者に知らせる出来事。
+ * - `repaired`: 壊れた値を捨てた・直して読めた。直した形を書き戻した
+ * - `reset`: 読めず、既定値で始めた。既定値を書き戻した
+ * - `newer-version`: 新しい版が書いた値で読めず、既定値で始めた。元の値は書き戻さず残した
+ */
+export type AssetLoadNoticeKind = 'repaired' | 'reset' | 'newer-version';
+
+export interface AssetLoadNotice {
+  readonly key: keyof KeydistAssets;
+  readonly kind: AssetLoadNoticeKind;
+  /** `repaired`の時だけ。何を捨てた・直したか。 */
+  readonly diagnostics: readonly CodecDiagnostic[];
+}
+
+export interface AssetLoadOutcome {
+  readonly assets: Partial<KeydistAssets>;
+  readonly notices: readonly AssetLoadNotice[];
+}
+
+function reportToNotice<K extends keyof KeydistAssets>(key: K, report: AssetLoadReport<KeydistAssets[K]>): AssetLoadNotice | undefined {
+  if (report.kind === 'loaded') {
+    return report.diagnostics.length === 0 ? undefined : { key, kind: 'repaired', diagnostics: report.diagnostics };
+  }
+  if (report.kind === 'failed') {
+    return { key, kind: report.reason.kind === 'future-version' ? 'newer-version' : 'reset', diagnostics: [] };
+  }
+  return undefined;
+}
+
+/** 1資産を読み、直した形（読めなければ既定値）を書き戻す。新しい版の値と、無い値は書き戻さない。 */
+function loadAndRepairOne<K extends keyof KeydistAssets>(
+  syncs: AssetSyncMap,
+  key: K,
+): { readonly entry?: readonly [K, KeydistAssets[K]]; readonly notice?: AssetLoadNotice } {
+  const report = syncs[key].loadReport();
+  const notice = reportToNotice(key, report);
+  if (report.kind === 'loaded') {
+    if (notice !== undefined) syncs[key].save(report.value);
+    return { entry: [key, report.value], notice };
+  }
+  if (notice !== undefined && notice.kind === 'reset') syncs[key].save(ASSET_STORAGE_SPECS[key].initial());
+  return { notice };
+}
+
+/**
+ * アプリを開いた時の読み込み。`loadAssets`に加えて、捨てた・直した値と読めなかった値を知らせる材料を返し、
+ * 直した形（読めなければ既定値）をstorageへ書き戻す。書き戻すので、次に開いた時に同じ知らせは出ない。
+ * 新しい版が書いた値は書き戻さず、元の値を残す。
+ */
+export function loadAssetsAndRepair(syncs: AssetSyncMap): AssetLoadOutcome {
+  const results = ASSET_KEYS.map((key) => loadAndRepairOne(syncs, key));
+  const entries = results.flatMap((result) => (result.entry === undefined ? [] : [result.entry]));
+  const notices = results.flatMap((result) => (result.notice === undefined ? [] : [result.notice]));
+  return { assets: Object.fromEntries(entries) as unknown as Partial<KeydistAssets>, notices };
 }
 
 function saveOne<K extends keyof KeydistAssets>(syncs: AssetSyncMap, assets: KeydistAssets, key: K): void {

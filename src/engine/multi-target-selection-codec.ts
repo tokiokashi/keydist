@@ -28,6 +28,11 @@ interface DecodedSet {
   readonly knownSlots: ReadonlyMap<string, number>;
 }
 
+/** 診断のpathの子。資産のpayload直下を指す根は空文字なので、その時は区切りを付けない。 */
+function childPath(path: string, key: string): string {
+  return path === '' ? key : `${path}.${key}`;
+}
+
 function decodeSetParts(payload: unknown, path: string, diagnostics: CodecDiagnostic[], readSlots: boolean): DecodedSet | undefined {
   if (!isRecord(payload)) {
     diagnostics.push({ path, message: 'object形式でないため選択を捨てました' });
@@ -35,22 +40,22 @@ function decodeSetParts(payload: unknown, path: string, diagnostics: CodecDiagno
   }
   const rawTargets: readonly unknown[] = Array.isArray(payload.targets) ? payload.targets : [];
   if (payload.targets !== undefined && !Array.isArray(payload.targets)) {
-    diagnostics.push({ path: `${path}.targets`, message: '配列形式でないため選択を捨てました' });
+    diagnostics.push({ path: childPath(path, 'targets'), message: '配列形式でないため選択を捨てました' });
   }
   const seen = new Set<string>();
   const targets: AnalysisTarget[] = [];
   const rawSlots: readonly unknown[] = readSlots && Array.isArray(payload.colorSlots) ? payload.colorSlots : [];
   // 値があるのに配列でないのは、番号の一覧ごと壊れている（要素1つの不備とは違い、全対象の色が振り直される）
   if (readSlots && payload.colorSlots !== undefined && !Array.isArray(payload.colorSlots)) {
-    diagnostics.push({ path: `${path}.colorSlots`, message: '配列形式でないため色の番号を配り直しました' });
+    diagnostics.push({ path: childPath(path, 'colorSlots'), message: '配列形式でないため色の番号を配り直しました' });
   }
   const knownSlots = new Map<string, number>();
   rawTargets.forEach((item, index) => {
-    const decoded = decodeAnalysisTarget(item, `${path}.targets[${index}]`, diagnostics);
+    const decoded = decodeAnalysisTarget(item, `${childPath(path, 'targets')}[${index}]`, diagnostics);
     if (decoded === undefined) return;
     const key = analysisTargetKey(decoded);
     if (seen.has(key)) {
-      diagnostics.push({ path: `${path}.targets[${index}]`, message: `重複した対象「${key}」を1つに畳みました` });
+      diagnostics.push({ path: `${childPath(path, 'targets')}[${index}]`, message: `重複した対象「${key}」を1つに畳みました` });
       return;
     }
     seen.add(key);
@@ -61,7 +66,7 @@ function decodeSetParts(payload: unknown, path: string, diagnostics: CodecDiagno
 
   let baseline: AnalysisTarget | undefined;
   if (payload.baseline !== undefined) {
-    const decodedBaseline = decodeAnalysisTarget(payload.baseline, `${path}.baseline`, diagnostics);
+    const decodedBaseline = decodeAnalysisTarget(payload.baseline, childPath(path, 'baseline'), diagnostics);
     if (decodedBaseline !== undefined) {
       baseline = decodedBaseline;
     }
@@ -102,6 +107,6 @@ export function encodeTargetSet(value: TargetSet): Record<string, unknown> {
 
 export const MULTI_TARGET_SELECTION_CODEC: AssetCodec<MultiTargetSelection> = defineAssetCodec({
   currentVersion: 1,
-  decodePayload: (payload, diagnostics) => decodeMultiTargetSelection(payload, 'payload', diagnostics),
+  decodePayload: (payload, diagnostics) => decodeMultiTargetSelection(payload, '', diagnostics),
   encodePayload: encodeMultiTargetSelection,
 });

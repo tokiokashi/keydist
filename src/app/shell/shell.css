@@ -367,6 +367,22 @@
   white-space: nowrap;
 }
 
+/* 文が長い知らせ。本文は折り返し、閉じるボタンは上に寄せる */
+.shell-notice-detailed {
+  align-items: flex-start;
+  max-width: min(36rem, calc(100vw - 2rem));
+}
+
+.shell-notice-body {
+  min-width: 0;
+}
+
+.shell-notice-details {
+  margin: 0.3rem 0 0;
+  padding-left: 1.2rem;
+  color: var(--text-muted);
+}
+
 .shell-notice button,
 .shell-notice-link {
   flex: none;

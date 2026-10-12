@@ -36,13 +36,13 @@ export const STANDALONE_ANALYZER_OPTIONS_CODEC: AssetCodec<StandaloneAnalyzerOpt
     for (const [analyzerId, raw] of Object.entries(payload)) {
       if (UNSAFE_OBJECT_KEYS.has(analyzerId)) {
         diagnostics.push({
-          path: `payload.${analyzerId}`,
+          path: analyzerId,
           message: `予約された名前「${analyzerId}」のため、この設定を丸ごと捨てました`,
         });
         continue;
       }
       if (!isRecord(raw)) {
-        diagnostics.push({ path: `payload.${analyzerId}`, message: 'object形式でないため設定を捨てました' });
+        diagnostics.push({ path: analyzerId, message: 'object形式でないため設定を捨てました' });
         continue;
       }
       // `analyzerId`はここまでで`UNSAFE_OBJECT_KEYS`を通過済み（予約名ではない）ので、
