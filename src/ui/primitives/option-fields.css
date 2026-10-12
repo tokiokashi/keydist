@@ -2,6 +2,28 @@
  * 解析設定の入力部品。縦1列で成立させる（小窓・狭いペイン・スマホ幅のどこに置かれても崩れないように）。
  * 幅は置かれた入れ物に従い、自分で最大幅を決めない。
  */
+.option-section {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.option-section + .option-section {
+  padding-top: 0.9rem;
+  border-top: 2px solid var(--border-strong);
+}
+
+.option-section-title {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.option-section-body {
+  display: grid;
+  gap: 0.9rem;
+}
+
 .option-group {
   display: grid;
   gap: 0.6rem;

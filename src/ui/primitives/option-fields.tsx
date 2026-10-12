@@ -341,6 +341,16 @@ export function CheckboxGroupOptionField<T extends string>({
   );
 }
 
+/** 解析設定のグループ（`OptionGroup`）をまとめる節。グループの1つ上の階層の見出しを持つ。 */
+export function OptionSection({ title, children }: { readonly title: string; readonly children: ReactNode }) {
+  return (
+    <section className="option-section">
+      <h3 className="option-section-title">{title}</h3>
+      <div className="option-section-body">{children}</div>
+    </section>
+  );
+}
+
 /** 解析設定のまとまり（図ごと等）の小見出し。 */
 export function OptionGroup({ title, children }: { readonly title: string; readonly children: ReactNode }) {
   return (
