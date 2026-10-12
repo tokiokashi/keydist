@@ -46,21 +46,69 @@
   white-space: nowrap;
 }
 
+/*
+ * つまみの中心が動く範囲を、速度グラフの横軸（再生位置0から最後まで）に合わせる。
+ * 幅の上限と左右の余白の割合は速度グラフと同じ値を使い、ラベルの幅を速度グラフと同じに止める。
+ * つまみは幅を決めて自前で描く。つまみの中心の動く範囲は、つまみの幅の半分だけ内側に寄るので、
+ * 入力の左右をつまみの幅の半分だけ外へ広げる。
+ */
 .playback-seek {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
+  --seek-thumb-size: 16px;
+  display: block;
+  max-width: 760px;
   color: var(--text-muted);
   font-size: 0.76rem;
 }
 
-.playback-seek span {
-  flex: none;
+.playback-seek input {
+  display: block;
+  box-sizing: border-box;
+  width: calc(100% - var(--seek-axis-left) - var(--seek-axis-right) + var(--seek-thumb-size));
+  height: var(--seek-thumb-size);
+  margin: 0.2rem 0 0 calc(var(--seek-axis-left) - var(--seek-thumb-size) / 2);
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
-.playback-seek input {
-  flex: 1;
-  min-width: 7rem;
+.playback-seek input::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+}
+
+.playback-seek input::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+}
+
+.playback-seek input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
+  width: var(--seek-thumb-size);
+  height: var(--seek-thumb-size);
+  margin-top: calc((4px - var(--seek-thumb-size)) / 2);
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.playback-seek input::-moz-range-thumb {
+  box-sizing: border-box;
+  width: var(--seek-thumb-size);
+  height: var(--seek-thumb-size);
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.playback-seek input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .playback-status {
