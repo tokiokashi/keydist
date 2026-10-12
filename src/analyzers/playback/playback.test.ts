@@ -786,6 +786,26 @@ test('同指移動の動的表示: 設定が真の時だけ、同じ指の移動
   assert.ok(on.frame.motions[0].durationMs >= 150 && on.frame.motions[0].durationMs <= 1500);
 });
 
+test('Arpeggioの動的表示: 動きの種類はArpeggioの値になる', () => {
+  // 条件: 配列qwerty・テキスト「asdf」。Arpeggioだけを出す
+  const { frame } = frameAt('qwerty', 'asdf', 2, { showArpeggio: true });
+  assert.ok(frame.motions.length > 0);
+  assert.ok(frame.motions.every((motion) => motion.kind === 'arpeggio'));
+});
+
+test('ChainとArpeggioの両方に入るキーは、動くキーが1つでArpeggioの値になる', () => {
+  // 条件: 配列qwerty・テキスト「asdf」。4打鍵がChainにもArpeggioにも入る
+  for (const cursor of [2, 3, 4]) {
+    const chainOnly = frameAt('qwerty', 'asdf', cursor, { showChain: true }).frame.motions;
+    const arpeggioOnly = frameAt('qwerty', 'asdf', cursor, { showArpeggio: true }).frame.motions;
+    const both = frameAt('qwerty', 'asdf', cursor, { showChain: true, showArpeggio: true }).frame.motions;
+    assert.ok(chainOnly.length > 0 && arpeggioOnly.length > 0, `cursor ${cursor}`);
+    const targets = both.map((motion) => motion.toKey);
+    assert.equal(new Set(targets).size, targets.length, `行き先ごとに動くキーは1つ（${cursor}打目）`);
+    assert.deepEqual(both, arpeggioOnly, `Arpeggioの動き（出発位置を含む）だけが残る（${cursor}打目）`);
+  }
+});
+
 test('Chainの動的表示: 設定が真の時だけ、区間の中の順番が出る', () => {
   // 同じ手の指を内側へ4打。構造解析がChainを作る並びを使う。
   const text = 'asdf';
