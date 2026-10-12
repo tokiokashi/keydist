@@ -5,7 +5,7 @@ import { PLAYBACK_FIGURE_GROUPS, PLAYBACK_WINDOW_GROUPS, type PlaybackSettingsGr
 
 type Place = 'window' | 'figure';
 
-// 数値が変わる項目（extract）は解析設定の小窓、見た目だけの項目（view）は配列図の欄に、ちょうど1回ずつ置く。
+// 数値が変わる項目（extract）は解析設定の小窓、見た目だけの項目（view）は配列図の表示の小窓に、ちょうど1回ずつ置く。
 const PLACE_OF_AFFECT: Record<'extract' | 'view', Place> = { extract: 'window', view: 'figure' };
 
 function placements(tables: Readonly<Record<Place, readonly PlaybackSettingsGroup[]>>): Map<string, Place[]> {
@@ -61,6 +61,6 @@ test('小窓のグループは再生の時間・個人速度・速度グラフ�
   assert.deepEqual(PLAYBACK_WINDOW_GROUPS.map((group) => group.title), ['再生の時間', '個人速度', '速度グラフの平均']);
 });
 
-test('配列図の欄のグループは構造の動的表示・キーと指・配列図の順に並ぶ', () => {
+test('配列図の表示の小窓のグループは構造の動的表示・キーと指・配列図の順に並ぶ', () => {
   assert.deepEqual(PLAYBACK_FIGURE_GROUPS.map((group) => group.title), ['構造の動的表示', 'キーと指', '配列図']);
 });

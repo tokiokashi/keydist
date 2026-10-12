@@ -4,10 +4,10 @@ import type { PlaybackOptions } from './options.ts';
  * 打鍵再生の設定項目の置き場。グループの下に項目を置く。
  *
  * - 解析設定の小窓: 再生の時間と速度グラフの数値を変える項目（`affects: 'extract'`）
- * - 配列図の見出しの欄: 表示だけを変える項目（`affects: 'view'`）。ChainとArpeggioの2項目は速度グラフの帯も切り替えるが、
- *   どちらの図でも同じ構造の表示を切り替える項目なので、配列図の欄に置く
+ * - 配列図の表示の小窓: 表示だけを変える項目（`affects: 'view'`）。ChainとArpeggioの2項目は速度グラフの帯も切り替えるが、
+ *   どちらの図でも同じ構造の表示を切り替える項目なので、配列図の表示の小窓に置く
  *
- * 小窓と欄はこの表の順に項目を描く。どの項目をどちらに置くかは`settings-sections.test.ts`が`affects`と照らす。
+ * 二つの小窓はこの表の順に項目を描く。どの項目をどちらに置くかは`settings-sections.test.ts`が`affects`と照らす。
  */
 export type PlaybackSettingsGroupId =
   | 'timing'
