@@ -28,7 +28,7 @@ export function AssetLoadNotices() {
                 </ul>
               )}
             </div>
-            <button type="button" aria-label="閉じる" title="閉じる" onClick={() => dismissAssetLoadNotice(notice.key)}>×</button>
+            <button type="button" aria-label="知らせを閉じる" title="知らせを閉じる" onClick={() => dismissAssetLoadNotice(notice.key)}>×</button>
           </div>
         );
       })}

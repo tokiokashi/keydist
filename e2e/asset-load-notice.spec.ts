@@ -25,7 +25,7 @@ test('壊れた保存データで開くと知らせ、開き直すと知らせ�
     JSON.stringify({ version: 1, texts: [] }),
   );
 
-  await notice.getByRole('button', { name: '閉じる' }).click();
+  await notice.getByRole('button', { name: '知らせを閉じる' }).click();
   await expect(notice).toHaveCount(0);
 
   await page.reload();
