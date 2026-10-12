@@ -114,7 +114,7 @@ test('診断: 壊れた値・未知の項目は捨てて残りを読み、項目
   assert.ok(result.details.some((line) => line.includes('futureItem')));
 });
 
-test('診断: 打鍵再生の解析設定へ移した項目を含む前の版のファイルは、エラーにせず、その値を読まずにこの版に無い項目として伝える', () => {
+test('診断: 条件に無い項目（playbackStepsPerSecondなど）を含むファイルは、エラーにせず、その値を読まずにこの版に無い項目として伝える', () => {
   const result = parsePresetFile(
     fileText({
       version: 1,

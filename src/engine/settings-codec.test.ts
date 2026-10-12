@@ -60,7 +60,7 @@ test('decode: 妥当な上書きはそのまま読める', () => {
   assert.equal(result.value.layout?.[LAYOUTS[0].id]?.fingerAssignmentId, 'jis-default');
 });
 
-test('decode: 打鍵再生の解析設定へ移した8項目の値は、前の版で保存されていても読まずに捨てる', () => {
+test('decode: 条件に無い項目（playbackStepsPerSecondなど）8個を含む保存は、値を読まずに捨てる', () => {
   const result = SETTINGS_CASCADE_OVERRIDES_CODEC.decode({
     version: 1,
     global: {

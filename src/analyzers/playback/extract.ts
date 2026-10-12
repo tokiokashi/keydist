@@ -43,7 +43,7 @@ export interface PlaybackExtracted {
   /** 再生位置ごとの、かな毎秒・アクション毎秒の平均と、ChainとArpeggioの区間。先頭（位置0）を含む */
   readonly rateChart: readonly PlaybackRateChartPoint[];
   /**
-   * 打鍵の列と構造解析の入力が同じなら同じ値になる識別子。平均方式などの抽出だけの条件を変えて抽出が
+   * 打鍵の列と構造解析の入力が同じなら同じ値になる識別子。平均方式などの解析設定を変えて抽出が
    * 作り直されても変わらないので、再生位置を保つかどうかの判定に使う
    */
   readonly basisId: string;

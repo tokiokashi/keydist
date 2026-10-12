@@ -96,7 +96,7 @@ export interface SingleAnalyzerExtractContext<Options> {
   /** 抽出が読む資産の値 */
   readonly assets: ExtractionAssets;
   /**
-   * Traceと構造解析の入力が同じなら同じ値、違えば別の値になる短い識別子。`conditions` を変えても変わらない。
+   * Traceと構造解析の入力が同じなら同じ値、違えば別の値になる短い識別子。`options` と `assets` を変えても変わらない。
    * 抽出の結果を作り直した時に、元の入力が同じかどうかを結果の側から見分けるために使う。
    */
   readonly basisId: string;

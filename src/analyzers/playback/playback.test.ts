@@ -281,8 +281,8 @@ test('既定と違う計算の知らせ: 使われない項目は挙げず、個
   );
 });
 
-test('設定を条件から解析設定へ移す前と、時間表と速度の推移が同じ値になる', () => {
-  // 期待値は、8項目が条件のカスケードにあった版（移す前）で同じ入力を実行して得た値。
+test('時間表と速度の推移が、固定した値になる', () => {
+  // 期待値は固定した実測値。
   // 条件: 配列qwerty・物理配列row-staggered・指の割り当ては既定。個人速度の保存値は、あるとして5アクション/秒
   // （同手別指も5）を使う。
   const rates = (extracted: PlaybackExtracted) => extracted.rateChart.map((point) => [point.cursor, point.kanaPerSecond, point.actionsPerSecond]);
