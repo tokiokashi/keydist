@@ -137,7 +137,11 @@ export function PlaybackKeyboard({
     const fontSize = item.thumb ? 10 : label.length > 3 ? 9 : 12;
     const trailOpacity = frame.trailKeys.get(id);
     const plannedOpacity = frame.plannedKeys.get(id);
-    const romajiPlanned = frame.romajiPlannedKeys.has(id);
+    const romajiPlannedOpacity = frame.romajiPlannedKeys.get(id);
+    // 押下予定キーと予定ローマ字の両方に入るキーは、濃さの大きい方で1つの塗りにする
+    const planFillOpacity = plannedOpacity === undefined && romajiPlannedOpacity === undefined
+      ? undefined
+      : Math.max(plannedOpacity ?? 0, romajiPlannedOpacity ?? 0);
     // 押下予定キーと予定ローマ字のキーの順番はどちらも再生位置から数えるので、両方に入るキーでは同じ番号になり、ラベルは1つにまとめる
     const planOrder = frame.plannedOrders.get(id) ?? frame.romajiPlannedOrders.get(id);
     const trailOrder = frame.trailOrders.get(id);
@@ -163,10 +167,10 @@ export function PlaybackKeyboard({
         data-playback-finger-position={fingerPosition ?? ''}
         data-playback-trail={!isMotion && trailOpacity !== undefined ? 'true' : 'false'}
         data-playback-plan={!isMotion && plannedOpacity !== undefined ? 'true' : 'false'}
-        data-playback-romaji-plan={!isMotion && romajiPlanned ? 'true' : 'false'}
+        data-playback-romaji-plan={!isMotion && romajiPlannedOpacity !== undefined ? 'true' : 'false'}
         style={{
           ...(trailOpacity === undefined ? {} : { ['--playback-trail-opacity' as string]: String(trailOpacity) }),
-          ...(plannedOpacity === undefined ? {} : { ['--playback-plan-opacity' as string]: String(plannedOpacity) }),
+          ...(planFillOpacity === undefined ? {} : { ['--playback-plan-opacity' as string]: String(planFillOpacity) }),
           ...(isMotion ? { pointerEvents: 'none' } : {}),
         }}
       >
@@ -190,16 +194,6 @@ export function PlaybackKeyboard({
           rx={5}
           fill="var(--surface)"
           opacity={0}
-          pointerEvents="none"
-        />
-        <rect
-          className="playback-romaji-mark"
-          x={item.x + 3}
-          y={item.y + 3}
-          width={item.width - 6}
-          height={KEY_SIZE - 6}
-          rx={3}
-          fill="none"
           pointerEvents="none"
         />
         <text className="playback-order playback-order-plan" x={item.x + 7} y={item.y + 10} textAnchor="middle" visibility={planOrder === undefined ? 'hidden' : 'visible'}>

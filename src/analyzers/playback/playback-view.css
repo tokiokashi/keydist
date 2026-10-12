@@ -214,19 +214,15 @@
   fill: color-mix(in srgb, var(--accent) calc(var(--playback-trail-opacity) * 100%), var(--surface));
 }
 
-.playback-figure [data-playback-plan='true'] .playback-key-face {
+/* 押下予定キーと予定ローマ字のキーは同じ緑の塗りで出す。両方に入るキーは濃さの大きい方（`playback-keyboard.tsx`） */
+.playback-figure [data-playback-plan='true'] .playback-key-face,
+.playback-figure [data-playback-romaji-plan='true'] .playback-key-face {
   fill: color-mix(in srgb, var(--series-3) calc(var(--playback-plan-opacity) * 100%), var(--surface));
 }
 
-.playback-romaji-mark {
-  display: none;
-}
-
-.playback-figure [data-playback-romaji-plan='true'] .playback-romaji-mark {
-  display: inline;
-  stroke: var(--text);
-  stroke-width: 1.5;
-  stroke-dasharray: 3 2;
+/* 予定ローマ字のキーは濃さが常に1で緑が濃い。文字は両方のテーマで暗い色にする（明るい文字は暗いテーマで緑の上の対比が足りない） */
+.playback-figure [data-playback-romaji-plan='true'] .playback-key-label {
+  fill: light-dark(var(--text), var(--surface));
 }
 
 .playback-figure [data-playback-active='true'] .playback-key-face {
