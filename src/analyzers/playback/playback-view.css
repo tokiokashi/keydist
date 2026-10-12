@@ -170,6 +170,17 @@
   fill: color-mix(in srgb, var(--series-3) calc(var(--playback-plan-opacity) * 100%), var(--surface));
 }
 
+.playback-romaji-mark {
+  display: none;
+}
+
+.playback-figure [data-playback-romaji-plan='true'] .playback-romaji-mark {
+  display: inline;
+  stroke: var(--series-3);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 2;
+}
+
 .playback-figure [data-playback-active='true'] .playback-key-face {
   fill: var(--accent);
   stroke: var(--accent);

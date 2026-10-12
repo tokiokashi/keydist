@@ -8,6 +8,8 @@ import {
   playbackPlannedOrders,
   playbackPreparedFingerPositionKeys,
   playbackRomajiPlan,
+  playbackRomajiPlannedKeys,
+  playbackRomajiPlannedOrders,
   playbackSameFingerKeyMotions,
   playbackStepDurationMs,
   playbackStrokeAt,
@@ -69,6 +71,9 @@ export interface PlaybackFrame {
   readonly trailKeys: ReadonlyMap<string, number>;
   readonly plannedKeys: ReadonlyMap<string, number>;
   readonly plannedOrders: ReadonlyMap<string, number>;
+  /** ローマ字配列で、今の入力単位のまだ押していないキー。これから押すキーの表示とは独立 */
+  readonly romajiPlannedKeys: ReadonlyMap<string, number>;
+  readonly romajiPlannedOrders: ReadonlyMap<string, number>;
   readonly trailOrders: ReadonlyMap<string, number>;
   readonly chainOrders: ReadonlyMap<string, number>;
   readonly arpeggioOrders: ReadonlyMap<string, number>;
@@ -172,6 +177,7 @@ export function derivePlaybackFrame(input: PlaybackFrameInput): PlaybackFrame {
   // 履歴と予定の順番ラベルは、そのキー自体が出ている時にだけ付く
   const showTrail = options.showTrail;
   const showPlanned = options.showPlannedKeys;
+  const showRomaji = isRomaji && options.showRomajiPlan;
 
   return {
     total,
@@ -209,6 +215,10 @@ export function derivePlaybackFrame(input: PlaybackFrameInput): PlaybackFrame {
     plannedKeys: showPlanned ? playbackPlannedKeys(trace.strokes, cursor, windowSize) : none<number>(),
     plannedOrders: showPlanned && options.showOrderLabels
       ? playbackPlannedOrders(trace.strokes, cursor, windowSize)
+      : none<number>(),
+    romajiPlannedKeys: showRomaji ? playbackRomajiPlannedKeys(trace.strokes, cursor) : none<number>(),
+    romajiPlannedOrders: showRomaji && options.showOrderLabels
+      ? playbackRomajiPlannedOrders(trace.strokes, cursor)
       : none<number>(),
     trailOrders: showTrail && options.showOrderLabels
       ? playbackTrailOrders(trace.strokes, cursor, options.trailSteps)
