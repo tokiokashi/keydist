@@ -1,15 +1,18 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { keyboardStandardForGeometryId } from '#input/shapes/key-labels.ts';
 import {
   reconcilePlaybackStateAfterAnalysisRefresh,
   type PlaybackState,
   type PlaybackTimingStep,
 } from '#interpretation/timing/playback.ts';
+import { FigureSettingsBox, FigureSettingsToggle } from '#ui/primitives/figure-settings.tsx';
+import { OptionGroup } from '#ui/primitives/option-fields.tsx';
 import { PersonalSpeedLink } from '#ui/primitives/personal-speed-link.tsx';
 import type { SingleBodyProps } from '../pane-parts.tsx';
 import type { PlaybackExtracted } from './extract.ts';
 import { derivePlaybackFrame } from './frame.ts';
 import { playbackCalculationNotes } from './calculation-notes.ts';
+import { usePlaybackFields } from './option-fields.tsx';
 import type { PlaybackOptions } from './options.ts';
 import { PlaybackKeyboard, type PlaybackFeedback } from './playback-keyboard.tsx';
 import {
@@ -21,6 +24,7 @@ import {
   stopPlayback,
   tickPlayback,
 } from './session.ts';
+import { PLAYBACK_FIGURE_GROUPS } from './settings-sections.ts';
 import { rateChartAxisInsets } from './rate-chart-model.ts';
 import { PlaybackRateChart } from './rate-chart.tsx';
 import './playback-view.css';
@@ -30,7 +34,7 @@ import './playback-view.css';
  * ペインを開き直す・複製する・再読み込みすると先頭から始まる。
  * 対象・テキスト・構造の条件が変わった時は先頭へ戻す。打鍵の列と構造が変わるので、
  * 前の位置は新しい列の中で同じ場所を指さない。
- * 表示設定や、再生の時間・速度の平均の設定（`options`）を変えた時は、打鍵の列も構造も同じなので、
+ * 配列図の見出しの欄で変える表示設定や、解析設定の小窓で変える再生の時間・速度の平均の設定（`options`）を変えた時は、打鍵の列も構造も同じなので、
  * 再生位置を保つ。時間と速度の平均の設定は抽出を作り直すが、同じ入力から作った結果は同じ`basisId`を持つ。
  * 時間の設定を変えた時は、カーソルと再生中かどうかを保ち、今のステップの中の経過時間を、
  * 変える前の進捗率のまま新しい時間表へ写す（`spec/playback-timing.md` §4.0）。
@@ -52,10 +56,30 @@ function freshSession(basisId: string, schedule: readonly PlaybackTimingStep[], 
   return { basisId, schedule, state, feedback: { revision: 0, keys: NO_KEYS } };
 }
 
-export function PlaybackBody({ layout, geometry, trace, extracted, options }: SingleBodyProps<PlaybackExtracted, PlaybackOptions>) {
+/** 配列図の見出しから開く欄。表示だけが変わる項目を、解析設定の小窓と同じ形のグループで並べる。 */
+function PlaybackFigureSettings({ options, onOptionsChange }: {
+  readonly options: PlaybackOptions;
+  readonly onOptionsChange: (next: PlaybackOptions) => void;
+}) {
+  const fields = usePlaybackFields(options, onOptionsChange);
+  return (
+    <FigureSettingsBox name="配列図">
+      {PLAYBACK_FIGURE_GROUPS.map((group) => (
+        <OptionGroup key={group.id} title={group.title}>
+          {group.keys.map((key) => (
+            <Fragment key={key}>{fields[key]}</Fragment>
+          ))}
+        </OptionGroup>
+      ))}
+    </FigureSettingsBox>
+  );
+}
+
+export function PlaybackBody({ layout, geometry, trace, extracted, options, onOptionsChange }: SingleBodyProps<PlaybackExtracted, PlaybackOptions>) {
   const { analysis, windowSize, timing, personalSpeedUse, schedule, rateChart, basisId } = extracted;
   const total = trace.strokes.length;
   const calculation = playbackCalculationNotes(options, personalSpeedUse);
+  const [figureSettingsOpen, setFigureSettingsOpen] = useState(false);
 
   const [session, setSession] = useState<Session>(() => freshSession(basisId, schedule, initialPlaybackState(timing)));
   if (session.basisId !== basisId) {
@@ -247,6 +271,15 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options }: Si
         </div>
       </div>
 
+      <div className="playback-figure-heading">
+        <h3 className="playback-figure-title">配列図</h3>
+        <FigureSettingsToggle
+          name="配列図"
+          open={figureSettingsOpen}
+          onToggle={() => setFigureSettingsOpen(!figureSettingsOpen)}
+        />
+      </div>
+      {figureSettingsOpen ? <PlaybackFigureSettings options={options} onOptionsChange={onOptionsChange} /> : null}
       <div className="playback-figure">
         <PlaybackKeyboard
           layout={layout}
