@@ -1,4 +1,4 @@
-import { useContext, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useContext, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { EngineRequestState } from '#engine/request.ts';
 import type { CodecDiagnostic } from '#input/codec/index.ts';
 import { describeEngineRequestError, engineRequestErrorDetail, paneStatusLabel, TRACE_ERRORS_SENTENCE } from './pane-status.ts';
@@ -14,6 +14,7 @@ import type { PaneOptionsBindingControl, PaneTargetBindingControl } from './pane
 import { BindingGlyph, PaneMenu, SettingsIcon, type PaneMenuItem } from './PaneHeaderParts.tsx';
 import { OPTIONS_SHARED_RESET_TITLE } from './options-binding.ts';
 import { FloatingWindow } from './FloatingWindow.tsx';
+import { FigureSettingsWindowContext, type FigureSettingsWindowProps } from '#ui/primitives/figure-settings.tsx';
 import './pane-frame.css';
 
 /**
@@ -208,6 +209,24 @@ export function PaneFrame({
   // 文字で出せるかを見出しの実際の幅から測る。先頭を持つ見出し（Workspaceのペイン）と、名前の行に出す個別画面の見出しが対象
   const badgeAsText = useStatusBadgeFit(headerRef, statusLabel !== '' && (!nameInLead || headerLead !== null));
 
+  // 本体の図の表示の小窓。解析設定の小窓と同じ部品で描き、Workspaceでは同じくペイン名を出す。
+  // 関数を毎回作り直さないよう、ペイン名が変わる時だけ作る
+  const figureWindowPaneName = showPaneNameInSettings ? paneName : undefined;
+  const renderFigureWindow = useCallback((props: FigureSettingsWindowProps) => (
+    <FloatingWindow
+      open={props.open}
+      onClose={props.onClose}
+      title={props.title}
+      closeLabel={props.closeLabel}
+      kind="figure-settings"
+      placement="below-start"
+      anchor={props.anchor}
+      {...(figureWindowPaneName === undefined ? {} : { paneName: figureWindowPaneName })}
+    >
+      <div className="option-groups">{props.children}</div>
+    </FloatingWindow>
+  ), [figureWindowPaneName]);
+
   const closeSettings = () => {
     setSettingsOpen(false);
     // 見出しを固定しないペインではボタンが画面外にあり、既定のfocus()はそこまでスクロールしてしまう。
@@ -334,7 +353,7 @@ export function PaneFrame({
       ) : (
         <PaneErrorBoundary>
           <div className="pane-body" data-pane-stale={engineState.status === 'stale' || undefined}>
-            {children}
+            <FigureSettingsWindowContext.Provider value={renderFigureWindow}>{children}</FigureSettingsWindowContext.Provider>
           </div>
         </PaneErrorBoundary>
       )}

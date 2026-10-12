@@ -33,7 +33,7 @@ import {
   SelectOptionField,
   type OptionBinding,
 } from '#ui/primitives/option-fields.tsx';
-import { FigureSettingsBox, FigureSettingsToggle } from '#ui/primitives/figure-settings.tsx';
+import { useFigureSettings } from '#ui/primitives/figure-settings.tsx';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
 import {
   AREA_HEIGHT,
@@ -756,7 +756,7 @@ const CROSS_HAND_NOTE = '左右の手をまたぐ2打鍵は、Keyboard Flowに�
 /**
  * Bigram Flowの本体（図）。`extracted`（`extract.ts`の計算結果）と見た目だけの設定を描くだけで、
  * Trace・vectorそのものからの再計算はしない。両方の図に効く解析設定の入力部品は持たない
- * （`BigramFlowSettings`）。図ごとにしか効かない項目だけは、図の見出し行のボタンから図のそばで開く。
+ * （`BigramFlowSettings`）。図ごとにしか効かない項目だけは、図の見出し行のボタンから小窓で開く。
  */
 export function BigramFlowBody({
   layout,
@@ -778,9 +778,10 @@ export function BigramFlowBody({
     polarGain,
   } = options;
 
-  // 展開の状態は保存しない（再読み込みで閉じる）。閉じるまで開いたまま。
-  const [keyboardFlowOpen, setKeyboardFlowOpen] = useState(false);
-  const [relativeVectorsOpen, setRelativeVectorsOpen] = useState(false);
+  // 小窓の開閉は保存しない（再読み込みで閉じる）。閉じるまで開いたまま。小窓は指の選択で作り直される
+  // 図のブロックの外に置くので、指を選んでも閉じず、動かした位置も保たれる
+  const keyboardFlowSettings = useFigureSettings('Keyboard Flow');
+  const relativeVectorsSettings = useFigureSettings('Relative vectors');
   // Relative vectorsの半径は、並んだペイン全部の最長ベクトルまで（配るものが無ければ自分の最長）
   const relativeMaxDistance = useSharedScale(
     'bigram-flow:relative-radius',
@@ -817,17 +818,8 @@ export function BigramFlowBody({
             Keyboard Flow <span className="flow-block-subject flow-block-count">2打鍵 {extracted.rawCount.toLocaleString()}組</span>
           </h3>
           <InfoButton name="Keyboard Flow" description={KEYBOARD_FLOW_READING} />
-          {onOptionsChange !== undefined ? (
-            <FigureSettingsToggle
-              name="Keyboard Flow"
-              open={keyboardFlowOpen}
-              onToggle={() => setKeyboardFlowOpen(!keyboardFlowOpen)}
-            />
-          ) : null}
+          {onOptionsChange !== undefined ? keyboardFlowSettings.toggle : null}
         </div>
-        {onOptionsChange !== undefined && keyboardFlowOpen ? (
-          <KeyboardFlowFigureSettings options={options} onOptionsChange={onOptionsChange} />
-        ) : null}
         <KeyboardFlow
           geometry={geometry}
           layout={layout}
@@ -864,17 +856,8 @@ export function BigramFlowBody({
                 ? `${RELATIVE_VECTORS_READING}${CROSS_HAND_NOTE}`
                 : RELATIVE_VECTORS_READING}
             />
-            {onOptionsChange !== undefined ? (
-              <FigureSettingsToggle
-                name="Relative vectors"
-                open={relativeVectorsOpen}
-                onToggle={() => setRelativeVectorsOpen(!relativeVectorsOpen)}
-              />
-            ) : null}
+            {onOptionsChange !== undefined ? relativeVectorsSettings.toggle : null}
           </div>
-          {onOptionsChange !== undefined && relativeVectorsOpen ? (
-            <RelativeVectorsFigureSettings options={options} onOptionsChange={onOptionsChange} />
-          ) : null}
           <div className="flow-two-up">
             <MovementProfilePlot
               hand="left"
@@ -900,6 +883,12 @@ export function BigramFlowBody({
           </div>
         </motion.section>
       </AnimatePresence>
+      {onOptionsChange === undefined ? null : (
+        <>
+          {keyboardFlowSettings.renderWindow(<KeyboardFlowFigureSettings options={options} onOptionsChange={onOptionsChange} />)}
+          {relativeVectorsSettings.renderWindow(<RelativeVectorsFigureSettings options={options} onOptionsChange={onOptionsChange} />)}
+        </>
+      )}
     </section>
   );
 }
@@ -946,7 +935,7 @@ const bindBigramFlowOption = <K extends keyof BigramFlowOptions>(
 
 /**
  * Bigram Flowのペインの解析設定。両方の図に効く入力（2打鍵の取り方・指）だけを置く。
- * 図ごとにしか効かない項目は、その図のそばで開く（`FigureSettingsToggle`）。
+ * 図ごとにしか効かない項目は、その図の見出し行のボタンから小窓で開く（`useFigureSettings`）。
  */
 export function BigramFlowSettings({ options, onOptionsChange }: AnalyzerSettingsProps<BigramFlowOptions>) {
   const bind = <K extends keyof BigramFlowOptions>(key: K) => bindBigramFlowOption(options, onOptionsChange, key);
@@ -978,7 +967,7 @@ interface FigureSettingsProps {
 function KeyboardFlowFigureSettings({ options, onOptionsChange }: FigureSettingsProps) {
   const bind = <K extends keyof BigramFlowOptions>(key: K) => bindBigramFlowOption(options, onOptionsChange, key);
   return (
-    <FigureSettingsBox name="Keyboard Flow">
+    <>
       <SelectOptionField
         label="紐の太さ"
         binding={bind('lineScale')}
@@ -1006,14 +995,14 @@ function KeyboardFlowFigureSettings({ options, onOptionsChange }: FigureSettings
         }}
       />
       <CheckboxOptionField label="同じキーの連打の回数を表示する" binding={bind('repeatBadge')} />
-    </FigureSettingsBox>
+    </>
   );
 }
 
 function RelativeVectorsFigureSettings({ options, onOptionsChange }: FigureSettingsProps) {
   const bind = <K extends keyof BigramFlowOptions>(key: K) => bindBigramFlowOption(options, onOptionsChange, key);
   return (
-    <FigureSettingsBox name="Relative vectors">
+    <>
       <RangeOptionField
         label="方向の広がり"
         binding={bind('polarBandwidth')}
@@ -1030,7 +1019,7 @@ function RelativeVectorsFigureSettings({ options, onOptionsChange }: FigureSetti
         step={0.05}
         format={(value) => `${value.toFixed(1)}×`}
       />
-    </FigureSettingsBox>
+    </>
   );
 }
 

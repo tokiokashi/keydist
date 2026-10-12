@@ -4,7 +4,7 @@ import { openSettings, toggleTarget } from './pane-helper.ts';
 
 /**
  * 打鍵再生のE2E。時間の決め方・配列図に出す値はunit test（`playback.test.ts`）で固定しているので、
- * ここでは画面の配線（操作・再生位置の表示・配列図の欄の表示設定の反映・解析設定の小窓のEscape）だけを見る。
+ * ここでは画面の配線（操作・再生位置の表示・配列図の表示の小窓の設定の反映・解析設定の小窓のEscape）だけを見る。
  */
 
 const feature = (page: Page) => page.locator('[data-react-feature="playback"]');
@@ -68,7 +68,7 @@ test('再生すると位置が進み、一時停止で止まり、停止で先�
   await expect(feature(page).locator('[data-playback-action="stop"]')).toBeDisabled();
 });
 
-test('見た目の項目は配列図の見出しの欄にあり、変えると表示だけが変わって再生位置は保たれる。解析設定の小窓はEscapeで閉じる', async ({ page }) => {
+test('見た目の項目は配列図の見出しのボタンから開く小窓にあり、変えると表示だけが変わって再生位置は保たれる。解析設定の小窓はEscapeで閉じる', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await openPlayback(page);
   await feature(page).locator('[data-playback-action="forward"]').click();
@@ -79,7 +79,7 @@ test('見た目の項目は配列図の見出しの欄にあり、変えると�
   const keyboard = feature(page).locator('svg.playback-keyboard');
   const widthBefore = Number(await keyboard.getAttribute('width'));
 
-  // 見た目の項目は解析設定の小窓には出ず、配列図の見出しのボタンから開く欄に出る
+  // 見た目の項目は解析設定の小窓には出ず、配列図の見出しのボタンから開く小窓に出る
   const settings = await openSettings(page);
   await expect(settings.getByRole('checkbox', { name: 'Chainの動的表示' })).toHaveCount(0);
   await expect(settings.getByRole('slider', { name: '倍率' })).toHaveCount(0);
@@ -89,9 +89,9 @@ test('見た目の項目は配列図の見出しの欄にあり、変えると�
 
   const toggle = feature(page).getByRole('button', { name: '配列図の表示', exact: true });
   await expect(feature(page).getByRole('heading', { name: '配列図', level: 3 })).toBeVisible();
-  await expect(feature(page).getByRole('group', { name: '配列図の表示' })).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: '配列図の表示' })).toHaveCount(0);
   await toggle.click();
-  const box = feature(page).getByRole('group', { name: '配列図の表示' });
+  const box = page.getByRole('dialog', { name: '配列図の表示' });
   await expect(box).toBeVisible();
   await expect(box.getByText('構造の動的表示', { exact: true })).toBeVisible();
   await expect(box.getByText('キーと指', { exact: true })).toBeVisible();
@@ -118,7 +118,7 @@ test('見た目の項目は配列図の見出しの欄にあり、変えると�
   await box.getByRole('combobox', { name: '押下フィードバック' }).selectOption('bounce');
   expect((await readPosition(page))[0]).toBe(3);
 
-  // 解析設定の「すべて初期値に戻す」は、欄の見た目の項目も既定に戻す
+  // 解析設定の「すべて初期値に戻す」は、図の表示の小窓の項目も既定に戻す
   const reopened = await openSettings(page);
   await reopened.getByRole('button', { name: 'すべて初期値に戻す' }).click();
   await expect(box.getByRole('checkbox', { name: '押下履歴を表示' })).not.toBeChecked();
@@ -132,7 +132,7 @@ test('見た目の項目は配列図の見出しの欄にあり、変えると�
   await expect(box).toHaveCount(0);
 });
 
-test('速度グラフを押すと再生位置が移り、再生位置を示す線が追従する。帯は配列図の欄のChain・Arpeggioの表示設定に従う', async ({ page }) => {
+test('速度グラフを押すと再生位置が移り、再生位置を示す線が追従する。帯は配列図の表示のChain・Arpeggioの表示設定に従う', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await openPlayback(page);
   const [, total] = await readPosition(page);
@@ -156,7 +156,7 @@ test('速度グラフを押すと再生位置が移り、再生位置を示す�
   // 帯は、表示設定で選んだ種類だけ出る
   await expect(chart.locator('[data-playback-rate-band]')).toHaveCount(0);
   await feature(page).getByRole('button', { name: '配列図の表示', exact: true }).click();
-  const figureBox = feature(page).getByRole('group', { name: '配列図の表示' });
+  const figureBox = page.getByRole('dialog', { name: '配列図の表示' });
   await figureBox.getByRole('checkbox', { name: 'Chainの動的表示' }).check();
   await expect(chart.locator('[data-playback-rate-band="chain"]').first()).toBeVisible();
   await expect(chart.locator('[data-playback-rate-band="arpeggio"]')).toHaveCount(0);

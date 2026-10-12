@@ -5,7 +5,7 @@ import {
   type PlaybackState,
   type PlaybackTimingStep,
 } from '#interpretation/timing/playback.ts';
-import { FigureSettingsBox, FigureSettingsToggle } from '#ui/primitives/figure-settings.tsx';
+import { useFigureSettings } from '#ui/primitives/figure-settings.tsx';
 import { OptionGroup } from '#ui/primitives/option-fields.tsx';
 import { PersonalSpeedLink } from '#ui/primitives/personal-speed-link.tsx';
 import type { SingleBodyProps } from '../pane-parts.tsx';
@@ -56,14 +56,14 @@ function freshSession(basisId: string, schedule: readonly PlaybackTimingStep[], 
   return { basisId, schedule, state, feedback: { revision: 0, keys: NO_KEYS } };
 }
 
-/** 配列図の見出しから開く欄。表示だけが変わる項目を、解析設定の小窓と同じ形のグループで並べる。 */
+/** 配列図の見出しのボタンから開く小窓の中身。表示だけが変わる項目を、解析設定の小窓と同じ形のグループで並べる。 */
 function PlaybackFigureSettings({ options, onOptionsChange }: {
   readonly options: PlaybackOptions;
   readonly onOptionsChange: (next: PlaybackOptions) => void;
 }) {
   const fields = usePlaybackFields(options, onOptionsChange);
   return (
-    <FigureSettingsBox name="配列図">
+    <>
       {PLAYBACK_FIGURE_GROUPS.map((group) => (
         <OptionGroup key={group.id} title={group.title}>
           {group.keys.map((key) => (
@@ -71,7 +71,7 @@ function PlaybackFigureSettings({ options, onOptionsChange }: {
           ))}
         </OptionGroup>
       ))}
-    </FigureSettingsBox>
+    </>
   );
 }
 
@@ -79,7 +79,7 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options, onOp
   const { analysis, windowSize, timing, personalSpeedUse, schedule, rateChart, basisId } = extracted;
   const total = trace.strokes.length;
   const calculation = playbackCalculationNotes(options, personalSpeedUse);
-  const [figureSettingsOpen, setFigureSettingsOpen] = useState(false);
+  const figureSettings = useFigureSettings('配列図');
 
   const [session, setSession] = useState<Session>(() => freshSession(basisId, schedule, initialPlaybackState(timing)));
   if (session.basisId !== basisId) {
@@ -273,13 +273,9 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options, onOp
 
       <div className="playback-figure-heading">
         <h3 className="playback-figure-title">配列図</h3>
-        <FigureSettingsToggle
-          name="配列図"
-          open={figureSettingsOpen}
-          onToggle={() => setFigureSettingsOpen(!figureSettingsOpen)}
-        />
+        {figureSettings.toggle}
       </div>
-      {figureSettingsOpen ? <PlaybackFigureSettings options={options} onOptionsChange={onOptionsChange} /> : null}
+      {figureSettings.renderWindow(<PlaybackFigureSettings options={options} onOptionsChange={onOptionsChange} />)}
       <div className="playback-figure">
         <PlaybackKeyboard
           layout={layout}

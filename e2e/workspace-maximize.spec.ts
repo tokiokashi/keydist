@@ -281,23 +281,45 @@ test('背面のペインで開いていた解析設定の小窓は、拡大す�
   await expect.poll(() => isMaximized(page, 'a')).toBe(false);
 });
 
-test('図の表示（Escapeで閉じない開閉）を開いていても、Escapeで拡大が解ける（拡大したペインで開いた場合・背面で開いてから拡大した場合）', async ({ page }) => {
+test('背面のペインで開いていた図の表示の小窓は、拡大すると閉じ、拡大したペインの上に残らない', async ({ page }) => {
   await openReady(page);
-  const toggle = (id: string) => page.locator(`.workspace-grid-item[data-pane-id="${id}"] button[aria-label$="の表示"]`).first();
-  // 背面（b）で開いてから拡大する
+  const toggle = (id: string) => page.locator(`.workspace-grid-item[data-pane-id="${id}"] button[aria-label="Keyboard Flowの表示"]`);
+  const figureWindow = page.locator('[data-figure-settings-window]');
   await toggle('b').click();
-  await expect(toggle('b')).toHaveAttribute('aria-expanded', 'true');
+  await expect(figureWindow).toHaveCount(1);
+  await expect(figureWindow).toBeVisible();
+  // どのペインの小窓か分かるよう、ペイン名が出る
+  await expect(figureWindow.locator('.settings-window-pane')).not.toHaveText('');
   await maximize(page, 'a');
+  await expect(figureWindow).toHaveCount(0);
+  await expect(toggle('b')).toHaveAttribute('aria-expanded', 'false');
+  // 小窓が残らないので、Escapeで拡大が解ける
   await page.keyboard.press('Escape');
   await expect.poll(() => isMaximized(page, 'a')).toBe(false);
+});
 
-  // 拡大したペイン（a）で開く
+test('拡大したペインで図の表示の小窓を開いている時、Escapeはまず小窓を閉じ、拡大は解かない', async ({ page }) => {
+  await openReady(page);
+  const toggle = page.locator('.workspace-grid-item[data-pane-id="a"] button[aria-label="Keyboard Flowの表示"]');
+  const figureWindow = page.locator('[data-figure-settings-window]');
   await maximize(page, 'a');
-  await toggle('a').click();
-  await expect(toggle('a')).toHaveAttribute('aria-expanded', 'true');
-  await toggle('a').blur();
+  await toggle.click();
+  await expect(figureWindow).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(figureWindow).toHaveCount(0);
+  expect(await isMaximized(page, 'a')).toBe(true);
+  // 閉じた後のフォーカスはボタンへ戻る
+  await expect(toggle).toBeFocused();
+  // 小窓が無くなったので、次のEscapeで拡大が解ける
   await page.keyboard.press('Escape');
   await expect.poll(() => isMaximized(page, 'a')).toBe(false);
+});
+
+test('図の表示の小窓は、解析設定の小窓としては数えない', async ({ page }) => {
+  await openReady(page);
+  await page.locator('.workspace-grid-item[data-pane-id="a"] button[aria-label="Keyboard Flowの表示"]').click();
+  await expect(page.locator('[data-figure-settings-window]')).toHaveCount(1);
+  await expect(page.locator('[data-settings-window="true"]')).toHaveCount(0);
 });
 
 test('拡大中にTabを回しても、フォーカスは拡大したペイン・上の帯・左のメニューの外へ行かず、「ペインを追加」には入らない', async ({ page }) => {

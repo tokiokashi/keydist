@@ -635,6 +635,15 @@ h2.pane-frame-title {
   font-weight: 700;
 }
 
+/* 見出しの語は折り返さず、狭い時はペイン名より後に縮める（先に縮むのはペイン名）。 */
+.settings-window-title-text {
+  flex: 0 0.01 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .settings-window-pane {
   overflow: hidden;
   color: var(--text-muted);
