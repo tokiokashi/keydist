@@ -45,7 +45,7 @@ const MOTION_DURATION_MAX_MS = 1500;
 export interface PlaybackMotion {
   readonly fromKey: string;
   readonly toKey: string;
-  readonly kind: 'sameFinger' | 'chain';
+  readonly kind: 'sameFinger' | 'chain' | 'arpeggio';
   readonly durationMs: number;
 }
 
@@ -122,7 +122,11 @@ function structureLabelOf(analysis: AggregatedAnalysisResult, cursor: number): s
   return tags.length > 0 ? tags.join(' / ') : '—';
 }
 
-/** 構造の動的表示で重ねるキーの動き。同指移動のキーは、Chain・Arpeggioの動きから外す。 */
+/**
+ * 構造の動的表示で重ねるキーの動き。同指移動のキーは、Chain・Arpeggioの動きから外す。
+ * 同じ行き先のキーがChainとArpeggioの両方に入る時は、動くキーを1つにしてArpeggioの動きを残す
+ * （2つ描くと、どちらの色が見えるかが描く順番で決まるため）。
+ */
 function motionsOf(input: PlaybackFrameInput, cursor: number): PlaybackMotion[] {
   const { analysis, options, timing, schedule, trace } = input;
   const sameFingerMotions = timing.sameFingerDelay && options.showSameFingerMotion
@@ -142,7 +146,7 @@ function motionsOf(input: PlaybackFrameInput, cursor: number): PlaybackMotion[] 
   const abstractMotions = [
     ...sameFingerMotions.map((motion) => ({ ...motion, kind: 'sameFinger' as const })),
     ...chainMotions.map((motion) => ({ ...motion, kind: 'chain' as const })),
-    ...arpeggioMotions.map((motion) => ({ ...motion, kind: 'chain' as const })),
+    ...arpeggioMotions.map((motion) => ({ ...motion, kind: 'arpeggio' as const })),
   ];
 
   const durationIndex = Math.max(0, cursor - 1);
@@ -156,10 +160,13 @@ function motionsOf(input: PlaybackFrameInput, cursor: number): PlaybackMotion[] 
       timing.speedMultiplier,
     );
   const durationMs = Math.max(MOTION_DURATION_MIN_MS, Math.min(MOTION_DURATION_MAX_MS, stepMs));
-  return abstractMotions.flatMap((motion) =>
+  const motions = abstractMotions.flatMap((motion) =>
     motion.toKeys
       .filter((key) => key !== motion.fromKey)
       .map((toKey) => ({ fromKey: motion.fromKey, toKey, kind: motion.kind, durationMs })));
+  // 動かない動き（行き先と出発位置が同じ）を除いた後で重なりを見る。先に見ると、Arpeggioの動きが消えた時にChainの動きも消えてしまう
+  const arpeggioTargets = new Set(motions.filter((motion) => motion.kind === 'arpeggio').map((motion) => motion.toKey));
+  return motions.filter((motion) => motion.kind !== 'chain' || !arpeggioTargets.has(motion.toKey));
 }
 
 export function derivePlaybackFrame(input: PlaybackFrameInput): PlaybackFrame {

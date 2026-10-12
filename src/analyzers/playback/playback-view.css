@@ -288,26 +288,55 @@
 }
 
 .playback-order-chain {
-  fill: var(--series-2);
+  fill: var(--accent);
   font-size: 10px;
 }
 
 .playback-order-arpeggio {
-  fill: var(--series-3);
+  fill: var(--series-7);
   font-size: 9px;
 }
 
+/*
+ * 動きの種類の色は、同指移動=赤、Arpeggio=紫、Chain=押下中のキーと同じ青。
+ * 速度の図の帯と凡例（playback-rate-band-*）も同じ色にする。
+ */
 .playback-figure [data-playback-motion-kind='sameFinger'] .playback-key-face {
+  fill: var(--series-8);
+  stroke: var(--series-8);
+}
+
+.playback-figure [data-playback-motion-kind='arpeggio'] .playback-key-face {
   fill: var(--series-7);
   stroke: var(--series-7);
 }
 
 .playback-figure [data-playback-motion-kind='chain'] .playback-key-face {
-  fill: var(--series-8);
-  stroke: var(--series-8);
+  fill: var(--accent);
+  stroke: var(--accent);
 }
 
-.playback-figure [data-playback-motion-key] .playback-key-label {
+/*
+ * Chain・Arpeggioの順番の数字は、通常の面（塗りの無いキー）の上でだけ動きの種類の色にする。
+ * 履歴・予定の塗り、押下中のキー、動くキーの上では、キーの文字と同じ色にする。
+ * 数字の周りの縁取りは読める根拠に含めない。
+ */
+.playback-figure [data-playback-trail='true'] :is(.playback-order-chain, .playback-order-arpeggio),
+.playback-figure [data-playback-plan='true'] :is(.playback-order-chain, .playback-order-arpeggio),
+.playback-figure [data-playback-romaji-plan='true'] :is(.playback-order-chain, .playback-order-arpeggio) {
+  fill: var(--text);
+}
+
+.playback-figure [data-playback-plan-strong='true'] :is(.playback-order-chain, .playback-order-arpeggio) {
+  fill: light-dark(var(--text), var(--surface));
+}
+
+.playback-figure [data-playback-active='true'] :is(.playback-order-chain, .playback-order-arpeggio) {
+  fill: var(--accent-contrast);
+}
+
+.playback-figure [data-playback-motion-key] .playback-key-label,
+.playback-figure [data-playback-motion-key] :is(.playback-order-chain, .playback-order-arpeggio) {
   fill: var(--viz-on-strong);
 }
 
@@ -369,13 +398,13 @@
 }
 
 .playback-rate-band-chain {
-  fill: var(--series-7);
+  fill: var(--accent);
   opacity: 0.16;
   pointer-events: none;
 }
 
 .playback-rate-band-arpeggio {
-  fill: var(--series-3);
+  fill: var(--series-7);
   opacity: 0.16;
   pointer-events: none;
 }
