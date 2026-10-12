@@ -20,6 +20,8 @@ interface EchoWindow {
   __seen: boolean[];
   /** 記録の1秒が済んだ印。待つ側は `__seenDone` を見る。 */
   __seenDone?: boolean;
+  /** まだ走っていない保存のtimerの数。 */
+  __pendingSaves: number;
 }
 
 /** 保存のtimerの処理の直後に、1度だけ`__afterSave`を呼ぶ。 */
@@ -27,28 +29,50 @@ async function hookSaveTimer(page: Page): Promise<void> {
   await page.addInitScript((debounceMs) => {
     const w = window as unknown as EchoWindow;
     const origSet = window.setTimeout.bind(window);
+    const origClear = window.clearTimeout.bind(window);
+    const pending = new Set<number>();
+    w.__pendingSaves = 0;
+    (window as unknown as { clearTimeout: unknown }).clearTimeout = (id?: number) => {
+      if (id !== undefined) pending.delete(id);
+      w.__pendingSaves = pending.size;
+      origClear(id);
+    };
     (window as unknown as { setTimeout: unknown }).setTimeout = (fn: () => void, ms?: number, ...args: unknown[]) => {
       if (ms !== debounceMs) return origSet(fn, ms, ...args);
-      return origSet(() => {
+      const id: number = origSet(() => {
+        pending.delete(id);
+        w.__pendingSaves = pending.size;
         fn();
         const after = w.__afterSave;
         w.__afterSave = undefined;
         after?.();
       }, ms, ...args);
+      pending.add(id);
+      w.__pendingSaves = pending.size;
+      return id;
     };
   }, DEFAULT_DEBOUNCE_MS);
 }
 
-/** 次の保存のtimerの直後にチェックを押し、その後の約1秒に表示された状態を記録する。 */
-async function armToggleAfterSave(page: Page): Promise<void> {
+/**
+ * チェックを外し、その保存のtimerの直後にチェックを押して、その後の約1秒に表示された状態を記録する。
+ * 外す操作と、押す処理を仕掛ける操作は、ページの中の同じ処理で続けて行う。
+ * 検査側から別々に操作すると、往復が遅い環境では、仕掛ける前にtimerが走り終えるか、
+ * 外す操作の結果を確かめている間にtimerが走って押す処理が先に動き、押す処理が走らないまま待ち続ける。
+ * 先に立っていた別の保存のtimerが外す操作の直後に走ると、押す処理がそのtimerで走ってしまうので、
+ * 走っていないtimerが無くなるまで待ってから行う。
+ */
+async function uncheckThenToggleAfterSave(page: Page): Promise<void> {
+  await expect.poll(() => page.evaluate(() => (window as unknown as EchoWindow).__pendingSaves)).toBe(0);
   await page.evaluate((label) => {
     const w = window as unknown as EchoWindow;
+    const labelEl = [...document.querySelectorAll('label')].find((l) => l.textContent === label);
+    const box = labelEl === undefined ? null : document.getElementById(labelEl.htmlFor);
+    if (!(box instanceof HTMLInputElement)) throw new Error('チェックが見つからない');
+    if (!box.checked) throw new Error('チェックが外れている');
     w.__seen = [];
     w.__seenDone = false;
     w.__afterSave = () => {
-      const labelEl = [...document.querySelectorAll('label')].find((l) => l.textContent === label);
-      const box = labelEl === undefined ? null : document.getElementById(labelEl.htmlFor);
-      if (!(box instanceof HTMLInputElement)) throw new Error('チェックが見つからない');
       box.click();
       const start = performance.now();
       const sample = () => {
@@ -59,12 +83,13 @@ async function armToggleAfterSave(page: Page): Promise<void> {
       sample();
       requestAnimationFrame(sample);
     };
+    box.click();
   }, LABEL);
 }
 
 async function expectNoRevert(page: Page, toggle: Locator): Promise<void> {
-  await toggle.uncheck();
-  await armToggleAfterSave(page);
+  await expect(toggle).toBeChecked();
+  await uncheckThenToggleAfterSave(page);
   // 保存のtimerが走り、その中で押されたチェックが入るまで待つ
   await expect(toggle).toBeChecked();
   // 記録の1秒が済むまで待つ。実時間の長さではなく、記録する側が終わった印を見る
