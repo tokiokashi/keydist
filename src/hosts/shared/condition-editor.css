@@ -470,36 +470,3 @@
   }
 }
 
-.condition-number {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.condition-number input {
-  width: 5.5rem;
-  min-width: 0;
-  padding: 0.2rem 0.4rem;
-  border: 1px solid var(--border-strong);
-  border-radius: 6px;
-  background: var(--surface-subtle);
-  color: var(--text);
-  font: 600 0.85rem ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-
-.condition-number-unit {
-  color: var(--text-muted);
-  font-size: 0.76rem;
-}
-
-.condition-row-link {
-  justify-self: start;
-  font-size: 0.76rem;
-}
-
-.condition-origin[data-origin="personal-speed"] {
-  padding: 0 0.4rem;
-  border-radius: 999px;
-  background: var(--surface-muted);
-  color: var(--text);
-}

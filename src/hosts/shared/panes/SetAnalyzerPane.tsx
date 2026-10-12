@@ -196,7 +196,6 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
         presetLibrary: env.presetLibrary,
         generatePresetId: env.generatePresetId,
         undo: env.undo,
-        personalSpeedSaved: catalog.personalSpeed !== undefined,
         shapes: catalog.setupCatalog.shapes,
         customFingerAssignments: catalog.customFingerAssignments,
         customRomajiRules: catalog.customRomajiRules,

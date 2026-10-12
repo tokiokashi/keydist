@@ -106,7 +106,7 @@ export function extractSingle<Options, Extracted>(
     metrics: interpretationResult.metrics,
     options,
     geometry: input.geometry,
-    conditions: input.extractionConditions,
+    assets: input.extractionAssets,
     basisId,
     requestTrace,
     keyDetails,

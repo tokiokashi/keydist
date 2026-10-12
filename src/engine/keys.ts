@@ -1,6 +1,6 @@
 import { stableStringify } from './cache-key.ts';
 import { MODEL_VERSION } from './model-version.ts';
-import type { ExtractionConditions, TraceRequestInput } from '#analyzers/contract.ts';
+import type { SingleAnalyzerDefinition, TraceRequestInput } from '#analyzers/contract.ts';
 import type { AnalysisTarget } from '#input/setup/index.ts';
 import type { EngineSetMemberInput } from './request.ts';
 import type { ResolvedInput } from './resolved-input.ts';
@@ -52,10 +52,8 @@ const traceKeyByInput = new WeakMap<object, string>();
  * chain/arpeggio解釈は全体とWorkspaceのレベルに置けるが、さらにレベルが広がっても
  * このキーの形は変わらない。
  *
- * 再生の時間モデルの条件（`playbackStepsPerSecond`・`playbackSpeedMultiplier`・`playbackSameFingerDelay`・
- * `playbackAllFingerMovementDelay`・個人速度の`playbackPersonalSpeed`。抽出の文脈では`playbackTiming`にまとまる）と、
- * 速度平均の条件（`playbackRateAverage`・`playbackRateWindow`・`playbackRateHalfLifeSeconds`。抽出の文脈では`playbackRate`）は含めない。
- * 解釈は構造 + 共通指標だけを扱い、これらの条件で結果が変わらないため。両方とも抽出のキーにだけ入る（`singleExtractionKeyOf`）。
+ * 打鍵再生の解析設定（時間モデルと速度平均の項目）と個人速度の保存値は含めない。
+ * 解釈は構造 + 共通指標だけを扱い、これらで結果が変わらないため。抽出のキーにだけ入る（`singleExtractionKeyOf`）。
  */
 export function interpretationKeyOf(input: ResolvedInput, traceKey: string): string {
   return stableStringify({
@@ -66,11 +64,11 @@ export function interpretationKeyOf(input: ResolvedInput, traceKey: string): str
 }
 
 /**
- * 抽出のキー = 解釈のキー + Analyzer id + 抽出に効くoptions + 抽出だけが読む条件（`extractionConditions`）。
+ * 抽出のキー = 解釈のキー + Analyzer id + 抽出に効くoptions + 抽出が読む資産（`AnalyzerDefinition.assetsKeyOf`）。
  *
- * 抽出だけが読む条件（平均方式・窓幅など）は、Traceと解釈のキーに入れない。変えた時に作り直すのは抽出だけで、
- * Traceと構造解析は作り直さない。条件の項目を読まないAnalyzerの抽出も作り直しになるが、抽出は軽く、
- * Analyzerごとに「どの条件を読むか」を宣言させるより、キーの組み立てを1か所に保つ方が取り違えが起きない。
+ * 抽出が読む資産（個人速度の保存値など）は、Traceと解釈のキーに入れない。変えた時に作り直すのは抽出だけで、
+ * Traceと構造解析は作り直さない。資産のうちキーに入れる分は、解析設定に照らして各Analyzerが決める
+ * （個人速度を適用しない設定の時は、保存値が変わっても抽出を作り直さない）。
  *
  * 「抽出に効くoptions」の判定は`AnalyzerDefinition.extractKeyOf(options)`（`analyzers/contract.ts`）
  * がすでに行っている。見た目だけの項目はそこで返り値から外れているので、ここでは
@@ -84,13 +82,13 @@ export function analyzerExtractionKeyOf(
   interpretationKey: string,
   definitionId: string,
   extractionRelevantOptions: unknown,
-  extractionConditions: ExtractionConditions,
+  extractionAssetsKey: unknown,
 ): string {
   return stableStringify({
     interpretationKey,
     definitionId,
     options: extractionRelevantOptions,
-    conditions: extractionConditions,
+    assets: extractionAssetsKey,
   });
 }
 
@@ -132,16 +130,16 @@ export function setAnalyzerExtractionKeyOf(
  * メインスレッドに写して同期に引く側（`worker-client.ts`）が同じキーで引くための共通の入口。
  * 2か所で組み立てを書き分けると、片方だけ直してキーがずれ、当たるはずの結果を外す。
  */
-export function singleExtractionKeyOf(
+export function singleExtractionKeyOf<Options>(
   input: ResolvedInput,
-  definitionId: string,
-  extractionRelevantOptions: unknown,
+  definition: Pick<SingleAnalyzerDefinition<Options>, 'id' | 'extractKeyOf' | 'assetsKeyOf'>,
+  options: Options,
 ): string {
   return analyzerExtractionKeyOf(
     interpretationKeyOf(input, traceKeyOf(input)),
-    definitionId,
-    extractionRelevantOptions,
-    input.extractionConditions,
+    definition.id,
+    definition.extractKeyOf(options),
+    definition.assetsKeyOf(options, input.extractionAssets),
   );
 }
 

@@ -4,6 +4,7 @@ import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import { nameTargets, type AnalysisTarget, type Setup } from '#input/setup/index.ts';
 import { EMPTY_SETTINGS_OVERRIDES, setSettingsOverride, type SettingsCascadeOverrides } from '#engine/settings-items.ts';
+import { DEFAULT_CHAIN_INTERPRETATION } from '#interpretation/structure/chain.ts';
 import type { ResolvedText } from '#input/text/resolve.ts';
 import { resolvePaneInput, type PaneCatalog } from './resolve-pane-input.ts';
 import { setupNumbersOf } from './target-choices.ts';
@@ -139,8 +140,11 @@ test('Setupを削除しても、残ったSetupの衝突時の番号は変わら�
   assert.deepEqual(displayNames(targets, [fixedA, dup]).map((n) => n.displayName), [`${qwerty}（Setup 3）`, `${qwerty}（配列）`]);
 });
 
-test('対象名の条件の併記: 再生のペインが宣言した時だけ、時間モデルの条件を入れる', () => {
-  const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'playbackStepsPerSecond', 2.5);
+test('対象名の条件の併記: 再生のペインが宣言した時だけ、チェーンの区切りを入れる', () => {
+  const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'chainInterpretation', {
+    ...DEFAULT_CHAIN_INTERPRETATION,
+    breakOnSameFinger: !DEFAULT_CHAIN_INTERPRETATION.breakOnSameFinger,
+  });
   assert.ok(written.ok);
   if (!written.ok) return;
   const target: AnalysisTarget = { kind: 'layout', layoutId: 'qwerty' };
@@ -150,7 +154,7 @@ test('対象名の条件の併記: 再生のペインが宣言した時だけ、
   assert.equal('failed' in plain, false);
   assert.equal('overrideSummary' in plain, false);
   const scoped = targetNameSource(target, resolution, setupsById, new Map(), CATALOG.setupCatalog, [], {
-    extraIds: ['playbackStepsPerSecond'],
+    extraIds: ['chainInterpretation'],
   });
-  assert.equal('overrideSummary' in scoped ? scoped.overrideSummary : undefined, '基準速度: 2.5ステップ/秒');
+  assert.equal('overrideSummary' in scoped ? scoped.overrideSummary : undefined, 'チェーンの区切り: 1項目を変更');
 });

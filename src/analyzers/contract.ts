@@ -6,12 +6,7 @@ import type { Trace, TracePolicy } from '#trace/generate.ts';
 import type { AggregatedAnalysisResult } from '#interpretation/structure/aggregate.ts';
 import type { KeyDetails } from '#interpretation/key-detail.ts';
 import type { Metrics } from '#interpretation/metrics.ts';
-import {
-  DEFAULT_PLAYBACK_RATE_CONDITIONS,
-  DEFAULT_PLAYBACK_TIMING_SETTINGS,
-  type PlaybackRateConditions,
-  type PlaybackTimingSettings,
-} from '#interpretation/timing/playback.ts';
+import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import type {
   OptionsDefinition,
   OptionsDisciplineCheck,
@@ -76,20 +71,18 @@ export interface TraceRequester {
 }
 
 /**
- * 抽出だけが読む条件の実効値。Traceと構造解析の結果を変えないので、変えた時に作り直すのは抽出だけ
- * （`engine/keys.ts` の `singleExtractionKeyOf` がキーに入れる。`interpretationKeyOf` とTraceのキーには入れない）。
- * 新しい項目は、この型・`DEFAULT_EXTRACTION_CONDITIONS`・`engine/resolved-input.ts` の組み立ての3か所（時間モデルは`playbackTiming`にまとめる）に足す。
+ * 抽出が解析設定のほかに読む、利用者の資産の値。Traceと構造解析の結果を変えないので、
+ * 読むAnalyzerの抽出だけが影響を受ける。どの値を抽出のキーに入れるかは、各Analyzerが
+ * `assetsKeyOf`で決める（読まないAnalyzerの抽出は、資産が変わっても作り直さない）。
+ * 新しい資産を足す時は、この型・`DEFAULT_EXTRACTION_ASSETS`・`engine/resolved-input.ts` の組み立ての3か所に足す。
  */
-export interface ExtractionConditions {
-  /** かな毎秒・アクション毎秒の平均 */
-  readonly playbackRate: PlaybackRateConditions;
-  /** 再生の時間を決める条件。個人速度は、適用する設定の時だけ保存値を持つ（キーに入る） */
-  readonly playbackTiming: PlaybackTimingSettings;
+export interface ExtractionAssets {
+  /** 個人速度の画面の保存値。保存値が無ければ`undefined` */
+  readonly personalSpeed: PlaybackCalibration | undefined;
 }
 
-export const DEFAULT_EXTRACTION_CONDITIONS: ExtractionConditions = {
-  playbackRate: DEFAULT_PLAYBACK_RATE_CONDITIONS,
-  playbackTiming: DEFAULT_PLAYBACK_TIMING_SETTINGS,
+export const DEFAULT_EXTRACTION_ASSETS: ExtractionAssets = {
+  personalSpeed: undefined,
 };
 
 /** 単一Setup対象の抽出に渡す値。 */
@@ -100,8 +93,8 @@ export interface SingleAnalyzerExtractContext<Options> {
   readonly options: Options;
   /** このTraceを打つ物理配列と指の割り当て（Traceのキーに入っている） */
   readonly geometry: Geometry;
-  /** 抽出だけが読む条件の実効値 */
-  readonly conditions: ExtractionConditions;
+  /** 抽出が読む資産の値 */
+  readonly assets: ExtractionAssets;
   /**
    * Traceと構造解析の入力が同じなら同じ値、違えば別の値になる短い識別子。`conditions` を変えても変わらない。
    * 抽出の結果を作り直した時に、元の入力が同じかどうかを結果の側から見分けるために使う。
@@ -213,7 +206,12 @@ export interface SingleAnalyzerDefinition<Options = unknown, Extracted = unknown
    * （engine側で二重に判定しない）。
    */
   extractKeyOf(options: Options): unknown;
-  /** 抽出の純関数。Trace・解釈・options以外の外部状態を参照しない。 */
+  /**
+   * 抽出が読む資産のうち、解析設定に照らして実際に結果へ入る分だけを返す。ここで返した値が抽出のキーに畳み込まれる
+   * ので、資産を読まない設定の時は資産が変わっても抽出を作り直さない。資産を読まないAnalyzerは常に`null`を返す。
+   */
+  assetsKeyOf(options: Options, assets: ExtractionAssets): unknown;
+  /** 抽出の純関数。Trace・解釈・options・資産以外の外部状態を参照しない。 */
   extract(context: SingleAnalyzerExtractContext<Options>): Extracted;
   /**
    * 入れ忘れ防止テストの材料。`defineSingleAnalyzer`が必須で
@@ -266,6 +264,8 @@ export function defineSingleAnalyzer<R extends OptionsRegistry, Extracted>(confi
   readonly id: string;
   readonly options: OptionsDefinition<R>;
   readonly extract: (context: SingleAnalyzerExtractContext<OptionsValueMap<R>>) => Extracted;
+  /** 抽出が資産を読むAnalyzerだけが渡す。省略すると資産はキーに入れない。 */
+  readonly assetsKeyOf?: (options: OptionsValueMap<R>, assets: ExtractionAssets) => unknown;
   readonly optionsDiscipline: SingleOptionsDisciplineFixture<OptionsValueMap<R>>;
 }): SingleAnalyzerDefinition<OptionsValueMap<R>, Extracted> {
   return {
@@ -275,6 +275,7 @@ export function defineSingleAnalyzer<R extends OptionsRegistry, Extracted>(confi
     defaultOptions: config.options.defaultOptions,
     decodeOptions: config.options.decodeOptions,
     extractKeyOf: config.options.extractKeyOf,
+    assetsKeyOf: config.assetsKeyOf ?? (() => null),
     extract: config.extract,
     optionsDiscipline: {
       sample: config.optionsDiscipline.sample,

@@ -30,7 +30,7 @@ test('decode: このアプリより新しいversionはfuture-versionとして報
   }
 });
 
-test('decode: 妥当な上書きはそのまま読める（全12項目）', () => {
+test('decode: 妥当な上書きはそのまま読める', () => {
   const raw = {
     version: 1,
     global: {
@@ -40,9 +40,6 @@ test('decode: 妥当な上書きはそのまま読める（全12項目）', () =
         breakOnSameFinger: true, breakOnTriggerOnly: false, breakOnThumbOnly: true, breakOnOppositeHandSimultaneous: false,
       },
       arpeggioInterpretation: { includeThumb: true, bridgeSameFinger: false, includeSingleRedirectTail: true },
-      playbackRateAverage: 'ewma',
-      playbackRateWindow: 5,
-      playbackRateHalfLifeSeconds: 2,
     },
     layout: {
       [LAYOUTS[0].id]: {
@@ -61,6 +58,28 @@ test('decode: 妥当な上書きはそのまま読める（全12項目）', () =
   assert.equal(result.value.global?.windowSize, 4);
   assert.equal(result.value.layout?.[LAYOUTS[0].id]?.preferOppositeThumb, true);
   assert.equal(result.value.layout?.[LAYOUTS[0].id]?.fingerAssignmentId, 'jis-default');
+});
+
+test('decode: 打鍵再生の解析設定へ移した8項目の値は、前の版で保存されていても読まずに捨てる', () => {
+  const result = SETTINGS_CASCADE_OVERRIDES_CODEC.decode({
+    version: 1,
+    global: {
+      windowSize: 4,
+      playbackStepsPerSecond: 2,
+      playbackSpeedMultiplier: 2,
+      playbackSameFingerDelay: false,
+      playbackAllFingerMovementDelay: true,
+      playbackPersonalSpeed: false,
+      playbackRateAverage: 'ewma',
+      playbackRateWindow: 5,
+      playbackRateHalfLifeSeconds: 2,
+    },
+  });
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.deepEqual(result.value.global, { windowSize: 4 });
+  assert.equal(result.diagnostics.length, 8);
+  assert.ok(result.diagnostics.every((diagnostic) => /未知の項目/.test(diagnostic.message)));
 });
 
 test('decode: 未知の項目idは捨てて診断を積む（将来バージョンが足した項目・削除済みの項目の両方を想定）', () => {
@@ -115,7 +134,7 @@ test('decode: 許可されていないレベルの値も型さえ合えば保持
 
 test('encode→decode: 往復で同じ上書きに戻る（roundtrip）', () => {
   const value = {
-    global: { windowSize: 3, playbackRateAverage: 'sma' as const },
+    global: { windowSize: 3, sfbHomeCost: false },
     setup: { 's-1': { preferOppositeThumb: true } },
   };
   const encoded = SETTINGS_CASCADE_OVERRIDES_CODEC.encode(value);

@@ -47,7 +47,7 @@ const INVALID_NAME: InvalidPresetNameError = { kind: 'invalid-preset-name' };
 /**
  * 保存する値。Workspaceのレベルは全体の上に重なる差分なので、差分だけだと全体の値が抜ける
  * （全体がN=7の画面の保存が空になる）。画面で見ている値を保存するため、全体にWorkspaceを重ねた値を使う。
- * Workspaceに置けない項目（再生の速度の平均）は、流し込みで入れられないので含めない。
+ * Workspaceに置けない項目は、流し込みで入れられないので含めない。
  */
 export function presetValuesAt(
   view: SettingsCascadeOverrides,

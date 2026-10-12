@@ -64,20 +64,9 @@ test('各項目の置けるレベル: 全体に置ける項目は、すべてWor
   const global = Object.entries(SETTINGS_ITEMS).filter(([, item]) => item.allowedLevels.has('global')).map(([id]) => id);
   const workspace = Object.entries(SETTINGS_ITEMS).filter(([, item]) => item.allowedLevels.has('workspace')).map(([id]) => id);
   assert.deepEqual(global.filter((id) => !workspace.includes(id)), []);
-  // 解釈（chain・arpeggio）と再生の時間モデル・速度平均の条件はWorkspaceのレベルまで広げる。配列・Setupには置かない
-  // （同じ画面で比べる配列の間で、数値の定義や再生の時間の条件を混ぜないため）
-  for (const id of [
-    'chainInterpretation',
-    'arpeggioInterpretation',
-    'playbackStepsPerSecond',
-    'playbackSpeedMultiplier',
-    'playbackSameFingerDelay',
-    'playbackAllFingerMovementDelay',
-    'playbackPersonalSpeed',
-    'playbackRateAverage',
-    'playbackRateWindow',
-    'playbackRateHalfLifeSeconds',
-  ] as const) {
+  // 解釈（chain・arpeggio）はWorkspaceのレベルまで広げる。配列・Setupには置かない
+  // （同じ画面で比べる配列の間で、数値の定義を混ぜないため）
+  for (const id of ['chainInterpretation', 'arpeggioInterpretation'] as const) {
     assert.deepEqual([...SETTINGS_ITEMS[id].allowedLevels].sort(), ['global', 'workspace']);
   }
 });

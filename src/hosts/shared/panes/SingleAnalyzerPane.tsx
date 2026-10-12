@@ -25,6 +25,7 @@ import { useTargetExtractions } from '../use-target-extractions.ts';
 import { useSetTargetSelection } from '../use-set-target-selection.ts';
 import { setTargetFigureState, setTargetsBesideSingle } from '../set-target-figures.ts';
 import type { PaneChrome, PaneEnvironment } from './pane-environment.ts';
+import { PersonalSpeedSavedContext } from '#ui/primitives/personal-speed-link.tsx';
 
 /**
  * 対象を1つ見るAnalyzer（Single）のペイン。どのSingleも、渡された`analyzer`だけが違う。個別画面とWorkspaceのペインが同じこのcomponentを使う
@@ -80,11 +81,9 @@ export function SingleAnalyzerPane<Options, Extracted>({
   const pane = useAnalyzerPane(cache, analyzer.definition, options, resolution);
 
   // このAnalyzerが読む条件だけを、要約と対象名に足して数える（読まない条件を数えると、その条件で測ったように読めるため）
-  const personalSpeedSaved = catalog.personalSpeed !== undefined;
   const summaryScope = useMemo((): ConditionSummaryScope => ({
     extraIds: settingsItemIds(analyzer.conditionExtraIds),
-    personalSpeedSaved,
-  }), [analyzer, personalSpeedSaved]);
+  }), [analyzer]);
   const conditionRows = resolution.ok ? traceConditionSummary(resolution.input.cascade, catalog.setupCatalog, summaryScope) : [];
   const header = resolution.ok
     ? conditionHeaderInfoFromResolvedInput(resolution.input.layout, resolution.input.geometry)
@@ -203,7 +202,11 @@ export function SingleAnalyzerPane<Options, Extracted>({
           }}
         />
       )}
-      settings={<Settings options={options} onOptionsChange={onOptionsChange} />}
+      settings={(
+        <PersonalSpeedSavedContext.Provider value={catalog.personalSpeed !== undefined}>
+          <Settings options={options} onOptionsChange={onOptionsChange} />
+        </PersonalSpeedSavedContext.Provider>
+      )}
       onResetOptions={() => onOptionsChange(analyzer.defaultOptions)}
       header={header}
       conditionRows={conditionRows}
@@ -213,7 +216,6 @@ export function SingleAnalyzerPane<Options, Extracted>({
         presetLibrary: env.presetLibrary,
         generatePresetId: env.generatePresetId,
         undo: env.undo,
-        personalSpeedSaved,
         shapes: catalog.setupCatalog.shapes,
         customFingerAssignments: catalog.customFingerAssignments,
         customRomajiRules: catalog.customRomajiRules,

@@ -16,7 +16,7 @@ import type { PlaybackTimingConditions } from './timing-conditions.ts';
  * 再生位置はペインの本体のメモリの上だけに置く値で、保存しない。ここは遷移の規則だけを持つ。
  */
 
-/** 先頭にいて止まっている再生位置。時間の条件は`spec/playback-timing.md` §2の条件を渡す。 */
+/** 先頭にいて止まっている再生位置。時間の設定は`spec/playback-timing.md` §2の項目から求めた値を渡す。 */
 export function initialPlaybackState(timing: PlaybackTimingConditions): PlaybackState {
   return createPlaybackState(timing.stepsPerSecond, timing.sameFingerDelay, timing.calibration, timing.speedMultiplier);
 }

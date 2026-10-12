@@ -9,6 +9,7 @@ import { PersonalSpeedLink } from '#ui/primitives/personal-speed-link.tsx';
 import type { SingleBodyProps } from '../pane-parts.tsx';
 import type { PlaybackExtracted } from './extract.ts';
 import { derivePlaybackFrame } from './frame.ts';
+import { playbackCalculationNotes } from './calculation-notes.ts';
 import type { PlaybackOptions } from './options.ts';
 import { PlaybackKeyboard, type PlaybackFeedback } from './playback-keyboard.tsx';
 import {
@@ -28,9 +29,9 @@ import './playback-view.css';
  * ペインを開き直す・複製する・再読み込みすると先頭から始まる。
  * 対象・テキスト・構造の条件が変わった時は先頭へ戻す。打鍵の列と構造が変わるので、
  * 前の位置は新しい列の中で同じ場所を指さない。
- * 表示設定（`options`）や、再生の時間・速度の平均の条件を変えた時は、打鍵の列も構造も同じなので、
- * 再生位置を保つ。これらの条件は抽出を作り直すが、同じ入力から作った結果は同じ`basisId`を持つ。
- * 時間の条件を変えた時は、カーソルと再生中かどうかを保ち、今のステップの中の経過時間を、
+ * 表示設定や、再生の時間・速度の平均の設定（`options`）を変えた時は、打鍵の列も構造も同じなので、
+ * 再生位置を保つ。時間と速度の平均の設定は抽出を作り直すが、同じ入力から作った結果は同じ`basisId`を持つ。
+ * 時間の設定を変えた時は、カーソルと再生中かどうかを保ち、今のステップの中の経過時間を、
  * 変える前の進捗率のまま新しい時間表へ写す（`spec/playback-timing.md` §4.0）。
  */
 
@@ -52,6 +53,7 @@ function freshSession(basisId: string, schedule: readonly PlaybackTimingStep[], 
 export function PlaybackBody({ layout, geometry, trace, extracted, options }: SingleBodyProps<PlaybackExtracted, PlaybackOptions>) {
   const { analysis, windowSize, timing, personalSpeedUse, schedule, rateChart, basisId } = extracted;
   const total = trace.strokes.length;
+  const calculation = playbackCalculationNotes(options, personalSpeedUse);
 
   const [session, setSession] = useState<Session>(() => freshSession(basisId, schedule, initialPlaybackState(timing)));
   if (session.basisId !== basisId) {
@@ -150,6 +152,16 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options }: Si
         <p className="playback-notice" data-playback-personal-speed="missing">
           測定した個人速度がありません。個人速度を使わない時間で再生しています。
           <PersonalSpeedLink className="playback-notice-link">個人速度の画面を開く</PersonalSpeedLink>
+        </p>
+      ) : null}
+      {calculation.personalSpeedInUse || calculation.changes.length > 0 ? (
+        <p className="playback-notice" data-playback-calculation>
+          {calculation.personalSpeedInUse ? <span data-playback-calculation-personal-speed>個人速度で計算しています。</span> : null}
+          {calculation.changes.length > 0 ? (
+            <span data-playback-calculation-changes>
+              {calculation.personalSpeedInUse ? ' ' : ''}既定と違う設定で計算しています。{calculation.changes.join('、')}
+            </span>
+          ) : null}
         </p>
       ) : null}
       <div className="playback-controls" role="group" aria-label="打鍵再生の操作">

@@ -26,17 +26,6 @@ import { DEFAULT_ROMAJI_RULE_ID, recommendedRomajiRuleId } from '#input/romaji/r
 import { defaultFingerAssignmentId } from './finger-assignment.ts';
 import { DEFAULT_CHAIN_INTERPRETATION, type ChainInterpretation } from '#interpretation/structure/chain.ts';
 import { DEFAULT_ARPEGGIO_INTERPRETATION, type ArpeggioInterpretation } from '#interpretation/structure/arpeggio.ts';
-import {
-  DEFAULT_PLAYBACK_ALL_FINGER_MOVEMENT_DELAY,
-  DEFAULT_PLAYBACK_APPLY_PERSONAL_SPEED,
-  DEFAULT_PLAYBACK_RATE_AVERAGE,
-  DEFAULT_PLAYBACK_RATE_HALF_LIFE_SECONDS,
-  DEFAULT_PLAYBACK_RATE_WINDOW,
-  DEFAULT_PLAYBACK_SAME_FINGER_DELAY,
-  DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
-  DEFAULT_PLAYBACK_STEPS_PER_SECOND,
-  type PlaybackRateAverage,
-} from '#interpretation/timing/playback.ts';
 
 /**
  * カスケードの具体的な項目定義。
@@ -58,11 +47,8 @@ export const DEFAULT_SHAPE_ID = 'row-staggered';
  * 各項目が置けるレベル。全体に置ける項目は、基本的にWorkspaceにも置ける（Workspaceは「この画面の並びだけ
  * 条件を変えたい」ための1レベルで、全体と同じ項目を持つ）。
  *
- * 再生の時間モデルの条件（`playbackStepsPerSecond`ほか）と速度平均の条件（`playbackRate*`）は、再生の時間と速度グラフの数値を
- * 変えるのでTraceの数値に入らない`conditions`の項目で、全体とWorkspaceにだけ置く。配列・Setupごとには置かない:
- * 同じ画面で配列を比べる時に、違う時間の条件を混ぜないため（`spec/playback-timing.md` §7.5）。
- * Workspaceのレベルはそのペイン全体に同じ値が入るので、比べる配列の間で条件は混ざらない。
- * 個人速度は配列に紐づかない（同 §7.6）。解釈（`chainInterpretation`）と同じ置き方になる。
+ * 再生の時間モデルと速度平均の項目は、今は打鍵再生だけが読むので、条件ではなく打鍵再生の解析設定に置く
+ * （`spec/playback-timing.md` §7.5）。複数のAnalyzerが読む解釈（`chainInterpretation`）は、全体とWorkspaceにだけ置く。
  */
 const ANY_LEVEL = new Set<CascadeLevel['kind']>(['global', 'workspace', 'shape', 'inputMethod', 'layout', 'setup']);
 const GLOBAL_WORKSPACE = new Set<CascadeLevel['kind']>(['global', 'workspace']);
@@ -152,57 +138,6 @@ export const SETTINGS_ITEMS = {
     id: 'arpeggioInterpretation',
     allowedLevels: GLOBAL_WORKSPACE,
     defaultValue: { ...DEFAULT_ARPEGGIO_INTERPRETATION },
-  }),
-  /** 再生の基準速度 [ステップ/秒]。個人速度で計算している間は使われない（`spec/playback-timing.md` §3.1）。 */
-  playbackStepsPerSecond: defineItem<number>({
-    id: 'playbackStepsPerSecond',
-    allowedLevels: GLOBAL_WORKSPACE,
-    defaultValue: DEFAULT_PLAYBACK_STEPS_PER_SECOND,
-  }),
-  /** 再生倍率。測定値・基準速度のどちらにも最後に掛かる。 */
-  playbackSpeedMultiplier: defineItem<number>({
-    id: 'playbackSpeedMultiplier',
-    allowedLevels: GLOBAL_WORKSPACE,
-    defaultValue: DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
-  }),
-  /** 同指連続の移動時間を再生の時間に反映するか。 */
-  playbackSameFingerDelay: defineItem<boolean>({
-    id: 'playbackSameFingerDelay',
-    allowedLevels: GLOBAL_WORKSPACE,
-    defaultValue: DEFAULT_PLAYBACK_SAME_FINGER_DELAY,
-  }),
-  /** 全指の移動時間で律速するか。 */
-  playbackAllFingerMovementDelay: defineItem<boolean>({
-    id: 'playbackAllFingerMovementDelay',
-    allowedLevels: GLOBAL_WORKSPACE,
-    defaultValue: DEFAULT_PLAYBACK_ALL_FINGER_MOVEMENT_DELAY,
-  }),
-  /**
-   * 個人速度を適用するか。値そのものは条件に持たず、個人速度の画面の保存値（資産`personalSpeed`）を読む
-   * （`spec/playback-timing.md` §2.1）。
-   */
-  playbackPersonalSpeed: defineItem<boolean>({
-    id: 'playbackPersonalSpeed',
-    allowedLevels: GLOBAL_WORKSPACE,
-    defaultValue: DEFAULT_PLAYBACK_APPLY_PERSONAL_SPEED,
-  }),
-  /** 速度平均の方式。 */
-  playbackRateAverage: defineItem<PlaybackRateAverage>({
-    id: 'playbackRateAverage',
-    allowedLevels: GLOBAL_WORKSPACE,
-    defaultValue: DEFAULT_PLAYBACK_RATE_AVERAGE,
-  }),
-  /** SMAの直近Stroke数。 */
-  playbackRateWindow: defineItem<number>({
-    id: 'playbackRateWindow',
-    allowedLevels: GLOBAL_WORKSPACE,
-    defaultValue: DEFAULT_PLAYBACK_RATE_WINDOW,
-  }),
-  /** EWMAの半減時間 [秒]。 */
-  playbackRateHalfLifeSeconds: defineItem<number>({
-    id: 'playbackRateHalfLifeSeconds',
-    allowedLevels: GLOBAL_WORKSPACE,
-    defaultValue: DEFAULT_PLAYBACK_RATE_HALF_LIFE_SECONDS,
   }),
   /**
    * ローマ字規則id。全体の既定は訓令式で、大西配列（大西式）・TK音直入力法（訓令式）のように

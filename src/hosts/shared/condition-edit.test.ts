@@ -157,24 +157,24 @@ test('すべて既定値に戻す: 行のある項目の全体の上書きを1�
   for (const command of [
     setGlobalCommand('windowSize', 5, staticDefaultOf('windowSize')),
     setGlobalCommand('sfbHomeCost', false, true),
-    setCascadeOverrideCommand({ kind: 'global' }, 'playbackRateWindow', 9),
+    setCascadeOverrideCommand({ kind: 'global' }, 'preferOppositeThumb', true),
   ]) {
     const step = applyCommand(assets, history, command);
     assets = step.assets;
     history = step.history;
   }
   const ids = resettableGlobalIds(assets.setupLibrary.overrides);
-  assert.deepEqual(ids, ['windowSize', 'sfbHomeCost', 'playbackRateWindow']);
+  assert.deepEqual(ids, ['windowSize', 'sfbHomeCost', 'preferOppositeThumb']);
   const before = history.undoStack.length;
   const reset = applyCommand(assets, history, resetAllCommand(ids));
   assert.equal(reset.history.undoStack.length, before + 1);
   assert.equal(globalOverrideOf(reset.assets.setupLibrary.overrides, 'windowSize'), undefined);
   assert.equal(globalOverrideOf(reset.assets.setupLibrary.overrides, 'sfbHomeCost'), undefined);
-  assert.equal(globalOverrideOf(reset.assets.setupLibrary.overrides, 'playbackRateWindow'), undefined);
+  assert.equal(globalOverrideOf(reset.assets.setupLibrary.overrides, 'preferOppositeThumb'), undefined);
   const undone = undo(reset.assets, reset.history);
   assert.equal(globalOverrideOf(undone.assets.setupLibrary.overrides, 'windowSize'), 5);
   assert.equal(globalOverrideOf(undone.assets.setupLibrary.overrides, 'sfbHomeCost'), false);
-  assert.equal(globalOverrideOf(undone.assets.setupLibrary.overrides, 'playbackRateWindow'), 9);
+  assert.equal(globalOverrideOf(undone.assets.setupLibrary.overrides, 'preferOppositeThumb'), true);
 });
 
 test('既定の物理配列: 全体のレベルへ書き、既定の物理配列と同じ値を書くと上書きを消す。元に戻すが効く', () => {
