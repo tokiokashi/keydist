@@ -3,11 +3,12 @@ import assert from 'node:assert/strict';
 import { buildGeometry } from '../shapes/geometry.ts';
 import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
-import { fromRows, LAYOUT_BY_ID, type Layout } from './index.ts';
+import { fromRows, LAYOUTS, type Layout } from './index.ts';
 import { buildKeyPatternMatrix } from './key-pattern-picker.ts';
 import { toLayout, type UserLayout } from './user-layouts.ts';
 
 const QWERTY_ROWS: UserLayout['rows'] = ['1234567890-=', 'qwertyuiop[]', "asdfghjkl;'", 'zxcvbnm,./'];
+const ENGLISH_QWERTY = LAYOUTS.find((layout) => layout.id === 'qwerty')!;
 const SAMPLE = 'Hello, World. The quick brown fox!';
 
 const geometry = buildGeometry('row-staggered');
@@ -27,14 +28,14 @@ const shiftPathsOf = (layout: Layout, output: string) =>
       (realization.defaultTriggerKeys?.length ?? 0) > 0));
 
 test('組み込みのqwertyと同じ段の自作配列は、大文字と記号を含む文でも組み込みと同じ数値になる', () => {
-  const builtin = measure(LAYOUT_BY_ID.get('qwerty')!, SAMPLE);
+  const builtin = measure(ENGLISH_QWERTY, SAMPLE);
   const user = measure(userQwerty(), SAMPLE);
   assert.equal(user.skipped, 0);
   assert.deepEqual(user, builtin);
 });
 
 test('自作のqwertyは、配列の定義と鍵盤の選択肢も組み込みのqwertyと同じになる', () => {
-  const builtin = LAYOUT_BY_ID.get('qwerty')!;
+  const builtin = ENGLISH_QWERTY;
   const user = userQwerty();
   assert.deepEqual([...user.canonicalInputs], [...builtin.canonicalInputs]);
   assert.deepEqual([...user.map], [...builtin.map]);
@@ -60,7 +61,7 @@ test('自作配列が大文字や記号を単打で置いている時は、そ�
     assert.equal(layout.canonicalInputs.get(output)?.length, 1, `${output}の経路は置いた1つだけ`);
     assert.equal(shiftPathsOf(layout, output).length, 0, `${output}にShift経路が無い`);
   }
-  // 置いていない大文字には従来どおりShift経路が付く
+  // 置いていない大文字には、組み込みの英字配列と同じくShift経路が付く
   assert.equal(shiftPathsOf(layout, 'B').length, 2);
 
   const trace = generateTrace('A!', layout, geometry, DEFAULT_TRACE_POLICY);
