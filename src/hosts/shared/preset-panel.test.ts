@@ -68,8 +68,8 @@ test('applyResultText: 変わる項目が無ければ元に戻せない', () => 
 test('skippedItemsText: 行の名前へ写し、写せない項目は件数にする。内部のidは出さない', () => {
   assert.equal(skippedItemsText([]), undefined);
   assert.equal(skippedItemsText(['windowSize', 'romajiRuleId']), '入れなかった項目: 先読みN、ローマ字規則');
-  const mixed = skippedItemsText(['windowSize', 'playbackRateWindow', 'unknownItem']);
-  assert.equal(mixed, '入れなかった項目: 先読みN、平均の窓幅、ほか1項目');
+  const mixed = skippedItemsText(['windowSize', 'chainInterpretation', 'unknownItem']);
+  assert.equal(mixed, '入れなかった項目: 先読みN、チェーンの区切り、ほか1項目');
   assert.doesNotMatch(mixed ?? '', /playbackRate|unknownItem/);
 });
 
@@ -83,8 +83,7 @@ test('applyResultText: 入れなかった項目があれば結果の行に添え
 test('conditionItemLabel: モーダルの行の名前と一致する', () => {
   assert.equal(conditionItemLabel('chainInterpretation'), 'チェーンの区切り');
   assert.equal(conditionItemLabel('arpeggioInterpretation'), 'アルペジオ');
-  assert.equal(conditionItemLabel('playbackStepsPerSecond'), '基準速度');
-  assert.equal(conditionItemLabel('playbackPersonalSpeed'), '個人速度');
+  assert.equal(conditionItemLabel('playbackStepsPerSecond'), undefined);
   assert.equal(conditionItemLabel('nothing'), undefined);
 });
 

@@ -142,7 +142,7 @@ test('結果を同期に引ける計算機では、解決し直した同じ中�
   // 計算のたびに記録し、結果は入力の中身のキーで`peek`からも引ける計算機（メインスレッドに結果を写すWorker側の形）
   const remembered = new Map<string, unknown>();
   const traceKey = (input: ResolvedInput) => traceKeyOf(input);
-  const extractionKey = (input: ResolvedInput) => singleExtractionKeyOf(input, bigramFlowDefinition.id, bigramFlowDefinition.extractKeyOf(DEFAULT_BIGRAM_FLOW_OPTIONS));
+  const extractionKey = (input: ResolvedInput) => singleExtractionKeyOf(input, bigramFlowDefinition, DEFAULT_BIGRAM_FLOW_OPTIONS);
   const computer: EngineComputer = {
     getTrace: (input) => {
       requested.push('trace');

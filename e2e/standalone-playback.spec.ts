@@ -172,7 +172,7 @@ test('Workspaceのペインとして追加でき、ペインごとに独立し�
 });
 
 // ---------------------------------------------------------------------------
-// 条件のモーダルの、再生の時間モデルと速度平均の行
+// 解析設定の、再生の時間・速度グラフの平均・個人速度
 // ---------------------------------------------------------------------------
 
 const PERSONAL_SPEED_KEY = 'keydist:personal-speed';
@@ -190,6 +190,8 @@ const SAVED_PERSONAL_SPEED = {
   },
 };
 
+const calculation = (page: Page) => feature(page).locator('[data-playback-calculation]');
+
 async function openConditionModal(page: Page): Promise<Locator> {
   await page.locator('.pane-condition-trigger').click();
   const modal = page.getByRole('dialog', { name: '条件' });
@@ -205,41 +207,64 @@ async function seedPersonalSpeed(page: Page): Promise<void> {
   }, { key: PERSONAL_SPEED_KEY, value: SAVED_PERSONAL_SPEED });
 }
 
-test('条件のモーダルで再生倍率を変えると要約に出て、再生位置は保たれる。保存値が無い間は再生のペインと個人速度の行がそれを知らせる', async ({ page }) => {
+test('条件のモーダルに、再生の時間・速度グラフの平均・個人速度の行は無く、チェーンの区切りとアルペジオの数え方の行は残る', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openPlayback(page);
+  const modal = await openConditionModal(page);
+  await expect(modal.locator('[data-item="chainInterpretation"]')).toBeVisible();
+  await expect(modal.locator('[data-item="arpeggioInterpretation"]')).toBeVisible();
+  for (const id of [
+    'playbackStepsPerSecond',
+    'playbackSpeedMultiplier',
+    'playbackSameFingerDelay',
+    'playbackAllFingerMovementDelay',
+    'playbackPersonalSpeed',
+    'playbackRateAverage',
+    'playbackRateWindow',
+    'playbackRateHalfLifeSeconds',
+  ]) {
+    await expect(modal.locator(`[data-item="${id}"]`)).toHaveCount(0);
+  }
+  for (const group of ['再生の時間', '速度グラフの平均', '個人速度']) {
+    await expect(modal.locator(`section[aria-label="${group}"]`)).toHaveCount(0);
+  }
+});
+
+test('解析設定で再生倍率を変えると、ペインの中に既定と違う設定が出て、再生位置は保たれる。保存値が無い間は再生のペインと個人速度の行がそれを知らせる', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await openPlayback(page);
   for (let i = 0; i < 3; i++) await feature(page).locator('[data-playback-action="forward"]').click();
   expect((await readPosition(page))[0]).toBe(3);
 
-  // 保存値が無い間は、再生のペインが個人速度の画面へのリンクつきで知らせる
+  // 保存値が無い間は、再生のペインが個人速度の画面へのリンクつきで知らせる。既定の設定なので、計算の知らせは出ない
   const notice = feature(page).locator('[data-playback-personal-speed="missing"]');
   await expect(notice).toContainText('測定した個人速度がありません');
   await expect(notice.getByRole('link', { name: '個人速度の画面を開く' })).toHaveAttribute('href', /\/personal-speed$/);
+  await expect(calculation(page)).toHaveCount(0);
 
-  const modal = await openConditionModal(page);
-  const personal = modal.locator('[data-item="playbackPersonalSpeed"]');
-  await expect(personal.locator('[data-condition-personal-speed="missing"]')).toBeVisible();
-  await expect(personal.getByRole('link', { name: '個人速度の画面を開く' })).toBeVisible();
-  await expect(personal).not.toContainText('個人速度で計算中');
+  const settings = await openSettings(page);
+  await expect(settings.locator('[data-playback-personal-speed-missing]')).toContainText('測定した個人速度がありません');
+  await expect(settings.getByRole('link', { name: '個人速度の画面を開く' })).toHaveAttribute('href', /\/personal-speed$/);
 
-  const row = modal.locator('[data-item="playbackSpeedMultiplier"]');
-  await expect(row).toContainText('既定値');
-  await row.getByRole('spinbutton', { name: '再生倍率' }).fill('2');
-  await row.getByRole('spinbutton', { name: '再生倍率' }).press('Enter');
-  await expect(row).toContainText('全体で変更');
-  await modal.getByRole('button', { name: '閉じる' }).click();
-  await expect(page.locator('.pane-condition-trigger')).toContainText('再生倍率: 2倍');
-  // 時間の条件を変えても、再生位置は保たれる
+  const multiplier = settings.getByRole('spinbutton', { name: '再生倍率' });
+  await multiplier.fill('2');
+  await multiplier.press('Enter');
+  // 小窓を閉じても、ペインの中で既定と違う設定で計算していることが分かる
+  await settings.press('Escape');
+  await expect(calculation(page)).toContainText('既定と違う設定で計算しています。再生倍率: 2倍');
+  // 時間の設定を変えても、再生位置は保たれる。条件の要約には出ない
   expect((await readPosition(page))[0]).toBe(3);
-
-  const again = await openConditionModal(page);
-  await again.getByRole('button', { name: 'すべて既定値に戻す' }).click();
-  await again.getByRole('button', { name: '閉じる' }).click();
   await expect(page.locator('.pane-condition-trigger')).toHaveText('条件すべて既定値');
+
+  // 既定へ戻すと、知らせは消える
+  const again = await openSettings(page);
+  await again.getByRole('button', { name: '再生倍率を既定値へ戻す' }).click();
+  await again.press('Escape');
+  await expect(calculation(page)).toHaveCount(0);
   expect((await readPosition(page))[0]).toBe(3);
 });
 
-test('再生中に時間の条件を変えても、再生は止まらず新しい時間で続く', async ({ page }) => {
+test('再生中に時間の設定を変えても、再生は止まらず新しい時間で続く', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await openPlayback(page);
   const toggle = feature(page).locator('[data-playback-action="toggle"]');
@@ -247,48 +272,44 @@ test('再生中に時間の条件を変えても、再生は止まらず新し�
   await expect.poll(async () => (await readPosition(page))[0], { timeout: 10_000 }).toBeGreaterThan(0);
 
   // 再生倍率を最大の10倍にする。1ステップは800msから80msになる
-  const modal = await openConditionModal(page);
-  const input = modal.getByRole('spinbutton', { name: '再生倍率' });
+  const settings = await openSettings(page);
+  const input = settings.getByRole('spinbutton', { name: '再生倍率' });
   await input.fill('10');
   await input.press('Enter');
-  await modal.getByRole('button', { name: '閉じる' }).click();
+  await settings.press('Escape');
   await expect(toggle).toContainText('一時停止');
   const changedAt = (await readPosition(page))[0];
   // 10倍の速さなら、約0.5秒で数ステップ以上進む（1.25ステップ/秒のままなら1ステップも進まない）
   await expect.poll(async () => (await readPosition(page))[0], { timeout: 10_000 }).toBeGreaterThan(changedAt + 3);
 });
 
-test('個人速度の保存値がある時は、個人速度で計算していることを要約と行に出し、基準速度は効かない行になる。適用しない設定にすると差分に出る', async ({ page }) => {
+test('個人速度の保存値がある時は、ペインの中に個人速度で計算していることを出し、基準速度は使われない理由が付く。適用しない設定にすると、既定と違う設定として出る', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await seedPersonalSpeed(page);
   await openPlayback(page);
   await expect(feature(page).locator('[data-playback-personal-speed="missing"]')).toHaveCount(0);
-  await expect(page.locator('.pane-condition-trigger')).toContainText('個人速度: 適用中');
+  await expect(calculation(page)).toHaveText('個人速度で計算しています。');
 
-  const modal = await openConditionModal(page);
-  const personal = modal.locator('[data-item="playbackPersonalSpeed"]');
-  await expect(personal).toContainText('個人速度で計算中');
-  await expect(personal.locator('[data-condition-personal-speed="missing"]')).toHaveCount(0);
-  await expect(personal.getByRole('link', { name: '個人速度の画面を開く' })).toBeVisible();
-  const steps = modal.locator('[data-item="playbackStepsPerSecond"]');
-  await expect(steps.locator('[data-condition-inactive="true"]')).toHaveText('個人速度で計算しているため、基準速度は使われません');
-  // 行は編集できるまま、効かない間の変更は要約に数えない
-  await steps.getByRole('spinbutton', { name: '基準速度' }).fill('2');
-  await steps.getByRole('spinbutton', { name: '基準速度' }).press('Enter');
-  await expect(steps).toContainText('全体で変更');
-  await expect(page.locator('.pane-condition-trigger')).not.toContainText('基準速度');
+  const settings = await openSettings(page);
+  await expect(settings.locator('[data-playback-personal-speed-missing]')).toHaveCount(0);
+  await expect(settings.getByRole('link', { name: '個人速度の画面を開く' })).toBeVisible();
+  await expect(settings).toContainText('個人速度で計算しているため、基準速度は使われません');
+  // 使われない間は、基準速度を変えても知らせに数えない
+  const steps = settings.getByRole('spinbutton', { name: '基準速度' });
+  await steps.fill('2');
+  await steps.press('Enter');
+  await expect(calculation(page)).toHaveText('個人速度で計算しています。');
 
-  await personal.getByRole('button', { name: '適用しない' }).click();
-  await expect(personal).not.toContainText('個人速度で計算中');
-  await expect(steps.locator('[data-condition-inactive="true"]')).toHaveCount(0);
-  await modal.getByRole('button', { name: '閉じる' }).click();
-  await expect(page.locator('.pane-condition-trigger')).toContainText('個人速度: 適用しない');
-  await expect(page.locator('.pane-condition-trigger')).toContainText('基準速度: 2ステップ/秒');
+  await settings.getByRole('button', { name: '適用しない' }).click();
+  await expect(settings).not.toContainText('個人速度で計算しているため、基準速度は使われません');
+  await settings.press('Escape');
+  await expect(calculation(page)).toContainText('既定と違う設定で計算しています。基準速度: 2ステップ/秒、個人速度を適用しない');
+  await expect(calculation(page)).not.toContainText('個人速度で計算しています。');
   // 適用しない設定では、保存値が無いことも知らせない
   await expect(feature(page).locator('[data-playback-personal-speed="missing"]')).toHaveCount(0);
 });
 
-test('他のタブで個人速度を保存すると、このタブの再生のペインと要約に届く', async ({ page, context }) => {
+test('他のタブで個人速度を保存すると、このタブの再生のペインに届く', async ({ page, context }) => {
   await openPlayback(page);
   await expect(feature(page).locator('[data-playback-personal-speed="missing"]')).toBeVisible();
   const other = await context.newPage();
@@ -298,24 +319,77 @@ test('他のタブで個人速度を保存すると、このタブの再生の�
     value: SAVED_PERSONAL_SPEED,
   });
   await expect(feature(page).locator('[data-playback-personal-speed="missing"]')).toHaveCount(0);
-  await expect(page.locator('.pane-condition-trigger')).toContainText('個人速度: 適用中');
+  await expect(calculation(page)).toHaveText('個人速度で計算しています。');
   await other.close();
 });
 
-test('再生を読まないペインでも、モーダルに同じ行が出て編集できる。要約には数えない', async ({ page }) => {
+test('解析設定の共有リンクに、時間の設定が載る。開くと同じ設定で計算する', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/standalone/playback?multiplier=2&rateAverage=ewma&rateHalfLife=2');
+  await expect(feature(page)).toBeVisible({ timeout: 10_000 });
+  await expect(calculation(page)).toContainText('再生倍率: 2倍、平均の方式: EWMA、平均の半減時間: 2秒');
+  const settings = await openSettings(page);
+  await expect(settings.getByRole('spinbutton', { name: '再生倍率' })).toHaveValue('2');
+});
+
+test('個人速度を保存していても、再生を読まないペインの条件のモーダルに再生の行は出ない', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await seedPersonalSpeed(page);
   await page.goto('/standalone/bigram-flow');
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
   const modal = await openConditionModal(page);
-  // 行と、個人速度で計算している旨の札は、再生のペインと同じに出る
-  await expect(modal.locator('[data-item="playbackPersonalSpeed"]')).toContainText('個人速度で計算中');
-  await expect(modal.locator('[data-item="playbackStepsPerSecond"] [data-condition-inactive="true"]')).toBeVisible();
-  const row = modal.locator('[data-item="playbackSpeedMultiplier"]');
-  await row.getByRole('spinbutton', { name: '再生倍率' }).fill('3');
-  await row.getByRole('spinbutton', { name: '再生倍率' }).press('Enter');
-  await expect(row).toContainText('全体で変更');
+  await expect(modal.locator('[data-item="chainInterpretation"]')).toBeVisible();
+  await expect(modal.locator('[data-item="playbackPersonalSpeed"]')).toHaveCount(0);
+  await expect(modal.locator('[data-item="playbackSpeedMultiplier"]')).toHaveCount(0);
   await modal.getByRole('button', { name: '閉じる' }).click();
-  // この画面は時間の条件を読まないので、変えた項目に数えない
   await expect(page.locator('.pane-condition-trigger')).toHaveText('条件すべて既定値');
+});
+
+test('Workspaceで、共有に従う打鍵再生のペインは時間の設定が揃い、「このペインだけ」にしたペインは別の値を持つ', async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  const layoutTarget = (layoutId: string) => ({ mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId } } });
+  const panes = [
+    { id: 'a', analyzerId: 'playback', optionsBinding: { mode: 'shared', set: 'playback-1' }, binding: layoutTarget('qwerty') },
+    { id: 'b', analyzerId: 'playback', optionsBinding: { mode: 'shared', set: 'playback-1' }, binding: layoutTarget('dvorak') },
+    { id: 'c', analyzerId: 'playback', optionsBinding: { mode: 'own' }, binding: layoutTarget('qwerty') },
+  ];
+  await page.addInitScript((value) => {
+    if (localStorage.getItem('keydist:workspaces') === null) {
+      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
+    }
+  }, {
+    id: 's',
+    name: '共有',
+    text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+    optionSets: [{ id: 'playback-1', analyzerId: 'playback' }],
+    panes,
+    grid: panes.map((pane, i) => ({ id: pane.id, x: i * 8, y: 0, w: 8, h: 30 })),
+  });
+  await page.goto('/workspace/s');
+  await waitForHydration(page);
+  await expect(page.locator('.pane-frame[data-pane-status="ready"]')).toHaveCount(panes.length, { timeout: 30_000 });
+
+  const paneOf = (id: string) => page.locator(`.workspace-grid-item[data-pane-id="${id}"]`);
+  const noteOf = (id: string) => paneOf(id).locator('[data-playback-calculation]');
+  await expect(page.locator('[data-playback-calculation]')).toHaveCount(0);
+
+  // 共有に従うaで再生倍率を変えると、同じ共有に従うbも変わり、このペインだけのcは変わらない
+  await paneOf('a').getByRole('button', { name: '解析設定', exact: true }).click();
+  const settings = page.locator('[data-settings-window="true"]');
+  const multiplier = settings.getByRole('spinbutton', { name: '再生倍率' });
+  await multiplier.fill('2');
+  await multiplier.press('Enter');
+  await settings.getByRole('button', { name: '解析設定を閉じる' }).click();
+  await expect(noteOf('a')).toContainText('再生倍率: 2倍');
+  await expect(noteOf('b')).toContainText('再生倍率: 2倍');
+  await expect(noteOf('c')).toHaveCount(0);
+
+  // cは別の値を持てる
+  await paneOf('c').getByRole('button', { name: '解析設定', exact: true }).click();
+  const own = page.locator('[data-settings-window="true"]').getByRole('spinbutton', { name: '再生倍率' });
+  await own.fill('3');
+  await own.press('Enter');
+  await page.locator('[data-settings-window="true"]').getByRole('button', { name: '解析設定を閉じる' }).click();
+  await expect(noteOf('c')).toContainText('再生倍率: 3倍');
+  await expect(noteOf('a')).toContainText('再生倍率: 2倍');
 });

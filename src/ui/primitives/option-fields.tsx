@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import './option-fields.css';
 
 /**
@@ -348,5 +348,68 @@ export function OptionGroup({ title, children }: { readonly title: string; reado
       <h3 className="option-group-title">{title}</h3>
       <div className="option-group-body">{children}</div>
     </section>
+  );
+}
+
+/**
+ * 数値の入力。打っている途中の値（空欄・範囲の外）は書かず、確定した時（Enter・フォーカスが外れた時）に
+ * 範囲へ丸めて書く。入力のたびに書くと、元に戻す履歴が1文字ごとに増える。
+ * 矢印のボタンで増減した時は`inputType`の無い入力イベントになるので、その場で書く。
+ */
+export function NumberOptionField({
+  label,
+  binding,
+  min,
+  max,
+  step,
+  integer = false,
+  unit,
+  hint,
+}: {
+  readonly label: string;
+  readonly binding: OptionBinding<number>;
+  readonly min: number;
+  readonly max: number;
+  readonly step: number;
+  readonly integer?: boolean;
+  readonly unit: string;
+  readonly hint?: ReactNode;
+}) {
+  const [draft, setDraft] = useState<string | undefined>(undefined);
+  const commit = (text: string) => {
+    setDraft(undefined);
+    const parsed = Number(text);
+    if (text.trim() === '' || !Number.isFinite(parsed)) return;
+    const clamped = Math.min(max, Math.max(min, integer ? Math.round(parsed) : parsed));
+    if (clamped !== binding.value) binding.onChange(clamped);
+  };
+  return (
+    <OptionField label={label} binding={binding} hint={hint}>
+      {(id) => (
+        <div className="option-number">
+          <input
+            id={id}
+            type="number"
+            inputMode={integer ? 'numeric' : 'decimal'}
+            min={min}
+            max={max}
+            step={step}
+            value={draft ?? String(binding.value)}
+            onChange={(event) => {
+              const text = event.currentTarget.value;
+              if ((event.nativeEvent as InputEvent).inputType === undefined) commit(text);
+              else setDraft(text);
+            }}
+            onBlur={() => {
+              if (draft !== undefined) commit(draft);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && draft !== undefined) commit(draft);
+            }}
+          />
+          <span className="option-number-unit">{unit}</span>
+        </div>
+      )}
+    </OptionField>
   );
 }

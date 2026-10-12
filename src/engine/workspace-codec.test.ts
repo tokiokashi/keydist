@@ -378,3 +378,30 @@ test('版3の保存を読んで書き直すと版4になり、もう一度読ん
   assert.ok(second.ok);
   assert.deepEqual(second.value, first.value);
 });
+
+test('Workspaceの条件に保存されていた再生の時間と速度平均の8項目は、読まずに捨てて診断を出す', () => {
+  const encoded = WORKSPACE_LIBRARY_CODEC.encode(sample()) as { workspaces: readonly Record<string, unknown>[] };
+  const withOldItems = {
+    ...encoded,
+    workspaces: encoded.workspaces.map((workspace, index) => (index === 0
+      ? {
+        ...workspace,
+        conditions: {
+          windowSize: 4,
+          playbackStepsPerSecond: 2,
+          playbackSpeedMultiplier: 2,
+          playbackSameFingerDelay: false,
+          playbackAllFingerMovementDelay: true,
+          playbackPersonalSpeed: false,
+          playbackRateAverage: 'ewma',
+          playbackRateWindow: 5,
+          playbackRateHalfLifeSeconds: 2,
+        },
+      }
+      : workspace)),
+  };
+  const decoded = WORKSPACE_LIBRARY_CODEC.decode(withOldItems);
+  assert.ok(decoded.ok);
+  assert.deepEqual(decoded.value[0]!.conditions, { windowSize: 4 });
+  assert.equal(decoded.diagnostics.length, 8);
+});

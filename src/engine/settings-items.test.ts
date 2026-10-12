@@ -65,9 +65,6 @@ test('上書きが無ければ全項目が現行アプリの既定値で解決�
   assert.equal(resolved.windowSize.value, 3);
   assert.equal(resolved.sfbHomeCost.value, true);
   assert.equal(resolved.preferOppositeThumb.value, false);
-  assert.equal(resolved.playbackRateAverage.value, 'sma');
-  assert.equal(resolved.playbackRateWindow.value, 10);
-  assert.equal(resolved.playbackRateHalfLifeSeconds.value, 1);
 });
 
 test('windowSize/sfbHomeCostはglobal/layout/setupのみ許可（shape/inputMethodは拒否）', () => {

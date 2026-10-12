@@ -1,11 +1,9 @@
-import {
-  DEFAULT_PLAYBACK_TIMING_SETTINGS,
-  type PlaybackTimingSettings,
-} from '#interpretation/timing/playback.ts';
+import type { ExtractionAssets } from '#analyzers/contract.ts';
 import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
+import type { PlaybackOptions } from './options.ts';
 
 /**
- * 再生の時間を求める処理が読む値（`spec/playback-timing.md` §2）。条件の実効値（`PlaybackTimingSettings`）から、
+ * 再生の時間を求める処理が読む値（`spec/playback-timing.md` §2）。解析設定の項目から、
  * 個人速度の適用の設定と保存値を合わせて、実際に使う個人速度だけを残した形にする。
  */
 export interface PlaybackTimingConditions {
@@ -21,22 +19,33 @@ export interface PlaybackTimingConditions {
   readonly calibration: PlaybackCalibration | undefined;
 }
 
-export function playbackTimingConditions(
-  settings: PlaybackTimingSettings = DEFAULT_PLAYBACK_TIMING_SETTINGS,
-): PlaybackTimingConditions {
+type TimingOptions = Pick<
+  PlaybackOptions,
+  'stepsPerSecond' | 'speedMultiplier' | 'sameFingerDelay' | 'allFingerMovementDelay' | 'applyPersonalSpeed'
+>;
+
+export function playbackTimingConditions(options: TimingOptions, assets: ExtractionAssets): PlaybackTimingConditions {
   return {
-    stepsPerSecond: settings.stepsPerSecond,
-    speedMultiplier: settings.speedMultiplier,
-    sameFingerDelay: settings.sameFingerDelay,
-    allFingerMovementDelay: settings.allFingerMovementDelay,
-    calibration: settings.personalSpeed.apply ? settings.personalSpeed.calibration : undefined,
+    stepsPerSecond: options.stepsPerSecond,
+    speedMultiplier: options.speedMultiplier,
+    sameFingerDelay: options.sameFingerDelay,
+    allFingerMovementDelay: options.allFingerMovementDelay,
+    calibration: options.applyPersonalSpeed ? assets.personalSpeed : undefined,
   };
 }
 
 /** 個人速度の扱いの状態。再生のペインが、保存値が無いことを知らせるかの判定に使う。 */
 export type PersonalSpeedUse = 'applied' | 'not-applied' | 'missing';
 
-export function personalSpeedUseOf(settings: PlaybackTimingSettings): PersonalSpeedUse {
-  if (!settings.personalSpeed.apply) return 'not-applied';
-  return settings.personalSpeed.calibration === undefined ? 'missing' : 'applied';
+export function personalSpeedUseOf(options: Pick<PlaybackOptions, 'applyPersonalSpeed'>, assets: ExtractionAssets): PersonalSpeedUse {
+  if (!options.applyPersonalSpeed) return 'not-applied';
+  return assets.personalSpeed === undefined ? 'missing' : 'applied';
+}
+
+/**
+ * 抽出のキーに入れる資産。個人速度を適用する設定の時だけ保存値を入れる（保存値が無い時は`null`）。
+ * 適用しない設定の時は保存値を読まないので、保存値が変わっても抽出を作り直さない。
+ */
+export function playbackAssetsKeyOf(options: Pick<PlaybackOptions, 'applyPersonalSpeed'>, assets: ExtractionAssets): unknown {
+  return options.applyPersonalSpeed ? { personalSpeed: assets.personalSpeed ?? null } : null;
 }

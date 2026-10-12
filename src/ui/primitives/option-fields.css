@@ -161,3 +161,30 @@
   gap: 0.35rem;
   font-size: 0.8rem;
 }
+
+.option-number {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.option-number input {
+  width: 5.5rem;
+  min-width: 0;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface-subtle);
+  color: var(--text);
+  font: 600 0.85rem ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.option-number-unit {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+}
+
+.option-field-link {
+  justify-self: start;
+  font-size: 0.76rem;
+}

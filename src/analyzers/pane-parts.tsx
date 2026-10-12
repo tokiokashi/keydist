@@ -143,7 +143,7 @@ export interface SingleAnalyzerPaneParts<Options, Extracted>
   };
   /**
    * 条件の要約（閉じた1行・対象名の併記）に、基本の項目へ足して数える項目のid。このAnalyzerが読む条件だけを挙げる
-   * （再生の時間モデル・速度平均・チェーン・アルペジオ）。挙げない項目は、モーダルの行としては編集できるが、
+   * （打鍵再生ならチェーン・アルペジオ）。挙げない項目は、モーダルの行としては編集できるが、
    * 読まない条件で測ったように読めないよう、要約には数えない。
    */
   readonly conditionExtraIds?: readonly string[];

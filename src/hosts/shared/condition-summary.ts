@@ -5,15 +5,14 @@ import type { Layout } from '#input/layouts/types.ts';
 import type { InputMethod } from '#input/settings/levels.ts';
 import { ROMAJI_RULES } from '#input/romaji/rules.ts';
 import { FINGER_ASSIGNMENT_REGISTRY } from '#engine/finger-assignment.ts';
-import type { PlaybackRateAverage } from '#interpretation/timing/playback.ts';
 
 /**
  * ペインの条件表示（実効値の出どころを表示する。少なくともTraceに
  * 効く項目と、診断・警告があれば出す）。
  *
  * 全ペインに共通で数えるのはTracePolicy（`generateTrace`が直接読む値）に効く項目 + 指の割当id。
- * 解釈（chain/arpeggio）・再生の時間モデル・速度平均はTraceそのものには効かない（docs/architecture.mdの
- * 「解釈はTraceの読み方」）うえ、読む数値を出すのは再生のペインだけ。
+ * 解釈（chain/arpeggio）はTraceそのものには効かない（docs/architecture.mdの「解釈はTraceの読み方」）うえ、
+ * 読む数値を出すのは再生のペインだけ。
  * 効かない上書きを「変えた項目」に数えると、その条件で測ったように読めるため、これらは
  * それを読むペインが宣言した時（`ConditionSummaryScope.extraIds`）にだけ要約の閉じた1行・対象名の併記に数える。
  * 宣言しないペインでも、条件のモーダルの行としては編集できる（`ConditionEditor`）。
@@ -35,18 +34,10 @@ const TRACE_AFFECTING_ITEMS: readonly { readonly id: SettingsItemId; readonly la
 ];
 
 /**
- * 再生のペインが読む条件。再生のペインが宣言した時だけ、要約の閉じた1行と対象名の併記に数える
+ * 打鍵再生のペインが読む条件。ペインが宣言した時だけ、要約の閉じた1行と対象名の併記に数える
  * （`ConditionSummaryScope.extraIds`）。定義順がそのまま行の順になる。
  */
-const PLAYBACK_CONDITION_ITEMS: readonly { readonly id: SettingsItemId; readonly label: string }[] = [
-  { id: 'playbackStepsPerSecond', label: '基準速度' },
-  { id: 'playbackSpeedMultiplier', label: '再生倍率' },
-  { id: 'playbackSameFingerDelay', label: '指の移動速度を考慮' },
-  { id: 'playbackAllFingerMovementDelay', label: '全指の移動時間で律速' },
-  { id: 'playbackPersonalSpeed', label: '個人速度' },
-  { id: 'playbackRateAverage', label: '平均の方式' },
-  { id: 'playbackRateWindow', label: '平均の窓幅' },
-  { id: 'playbackRateHalfLifeSeconds', label: '平均の半減時間' },
+const PANE_CONDITION_ITEMS: readonly { readonly id: SettingsItemId; readonly label: string }[] = [
   { id: 'chainInterpretation', label: 'チェーンの区切り' },
   { id: 'arpeggioInterpretation', label: 'アルペジオ' },
 ];
@@ -57,7 +48,7 @@ const PLAYBACK_CONDITION_ITEMS: readonly { readonly id: SettingsItemId; readonly
  * （呼び出し側が件数だけで伝える）。
  */
 export function conditionItemLabel(id: string): string | undefined {
-  return [...TRACE_AFFECTING_ITEMS, ...PLAYBACK_CONDITION_ITEMS].find((item) => item.id === id)?.label;
+  return [...TRACE_AFFECTING_ITEMS, ...PANE_CONDITION_ITEMS].find((item) => item.id === id)?.label;
 }
 
 /**
@@ -65,43 +56,13 @@ export function conditionItemLabel(id: string): string | undefined {
  * 要約と対象名は固定の項目リストから作るので、ペインごとに「この条件を読む」と宣言した項目だけを足す。
  */
 export interface ConditionSummaryScope {
-  /** 基本の項目に足す、このペインが読む項目。定義順（`PLAYBACK_CONDITION_ITEMS`の順）で行になる。 */
+  /** 基本の項目に足す、このペインが読む項目。定義順（`PANE_CONDITION_ITEMS`の順）で行になる。 */
   readonly extraIds?: readonly SettingsItemId[];
-  /** 個人速度の画面に保存した測定値があるか（`PaneCatalog.personalSpeed`）。 */
-  readonly personalSpeedSaved?: boolean;
 }
 
 /** ペインの定義が宣言する項目のidのうち、設定項目のidだけを通す。 */
 export function settingsItemIds(ids: readonly string[] | undefined): readonly SettingsItemId[] {
   return (ids ?? []).filter((id): id is SettingsItemId => id in SETTINGS_ITEMS);
-}
-
-/** 再生のペインが宣言する、読む条件の項目。 */
-export const PLAYBACK_PANE_CONDITION_IDS: readonly SettingsItemId[] = PLAYBACK_CONDITION_ITEMS.map((item) => item.id);
-
-/** 他の条件の値のせいで効かない項目の理由。モーダルの行の下に出し、要約の変えた項目には数えない。 */
-export function inactiveConditionReasons(state: {
-  readonly personalSpeedInUse: boolean;
-  readonly average: PlaybackRateAverage;
-}): ReadonlyMap<SettingsItemId, string> {
-  const reasons = new Map<SettingsItemId, string>();
-  if (state.personalSpeedInUse) reasons.set('playbackStepsPerSecond', '個人速度で計算しているため、基準速度は使われません');
-  if (state.average === 'ewma') reasons.set('playbackRateWindow', '平均の方式がEWMAのため、窓幅は使われません');
-  if (state.average === 'sma') reasons.set('playbackRateHalfLifeSeconds', '平均の方式がSMAのため、半減時間は使われません');
-  return reasons;
-}
-
-/**
- * 個人速度で計算しているか。個人速度を適用する設定で、測定値が保存されている時。
- * 適用の設定は全体とWorkspaceのレベルにだけ置けるので、画面で効く値はWorkspace ＞ 全体 ＞ 既定の順で決まる。
- */
-export function personalSpeedInUse(overrides: SettingsCascadeOverrides, saved: boolean): boolean {
-  return saved && screenConditionValue(overrides, 'playbackPersonalSpeed') === true;
-}
-
-/** 全体とWorkspaceにだけ置ける項目の、画面で効く値（上書きが無ければ既定値）。 */
-export function screenConditionValue<K extends SettingsItemId>(overrides: SettingsCascadeOverrides, id: K): ResolvedSettingsCascade[K]['value'] {
-  return (screenLevelValue(overrides, id)?.value ?? SETTINGS_ITEMS[id].defaultValue) as ResolvedSettingsCascade[K]['value'];
 }
 
 export type ConditionValueFormat = 'primitive' | 'object';
@@ -129,16 +90,6 @@ export interface ConditionSummaryRow {
   /** `origin`を画面に出す文言（「既定値」「上書き: 配列「QWERTY」」等）。idは名前へ引いてある。 */
   readonly originLabel: string;
   readonly applicable: boolean;
-  /**
-   * 他の条件の値のせいで効かない時の理由（`inactiveConditionReasons`）。ある時は`applicable`も偽。
-   * 配列・Setupに効かない（`applicable`だけが偽）とは別で、行の下には配列・Setupの文でなくこの理由を出す。
-   */
-  readonly inactiveReason?: string;
-  /**
-   * 既定のまま（出どころは既定値）でも、数値に入っているので変えた項目と同じに数える。
-   * 個人速度で計算している時が該当する（測定値は条件の外にあり、カスケードの差分に出ないため）。
-   */
-  readonly countsAsChanged?: boolean;
   /**
    * 上書きされていても、効く値が既定と同じか。「動作数の扱い」は、Shift+Aを1動作にする時は例外を
    * 一切読まないため、例外だけ違う上書きは既定と同じに働く。
@@ -237,12 +188,6 @@ function formatValue(
       displayValue: classOverrides + overrides > 0 ? `${ACTION_COUNT_TEXT.separate}（例外あり）` : ACTION_COUNT_TEXT.separate,
     };
   }
-  if (id === 'playbackStepsPerSecond' && typeof value === 'number') return { format: 'primitive', displayValue: `${value}ステップ/秒` };
-  if (id === 'playbackSpeedMultiplier' && typeof value === 'number') return { format: 'primitive', displayValue: `${value}倍` };
-  if (id === 'playbackPersonalSpeed' && typeof value === 'boolean') return { format: 'primitive', displayValue: value ? '適用する' : '適用しない' };
-  if (id === 'playbackRateAverage' && typeof value === 'string') return { format: 'primitive', displayValue: value === 'ewma' ? 'EWMA' : 'SMA' };
-  if (id === 'playbackRateWindow' && typeof value === 'number') return { format: 'primitive', displayValue: `${value}打鍵` };
-  if (id === 'playbackRateHalfLifeSeconds' && typeof value === 'number') return { format: 'primitive', displayValue: `${value}秒` };
   // チェーン・アルペジオは項目を並べず、既定から変えた数だけを示す
   if ((id === 'chainInterpretation' || id === 'arpeggioInterpretation') && isRecord(value)) {
     const defaults: unknown = SETTINGS_ITEMS[id].defaultValue;
@@ -289,17 +234,11 @@ export function traceConditionSummary(
   const extraIds = scope.extraIds ?? [];
   const items = [
     ...TRACE_AFFECTING_ITEMS,
-    ...PLAYBACK_CONDITION_ITEMS.filter((item) => extraIds.includes(item.id)),
+    ...PANE_CONDITION_ITEMS.filter((item) => extraIds.includes(item.id)),
   ];
-  const inUse = scope.personalSpeedSaved === true && cascade.playbackPersonalSpeed.value;
-  const reasons = inactiveConditionReasons({ personalSpeedInUse: inUse, average: cascade.playbackRateAverage.value });
   return items.map(({ id, label }) => {
     const resolved = cascade[id];
-    const reason = reasons.get(id);
-    const personalSpeedApplied = id === 'playbackPersonalSpeed' && inUse;
-    const { format, displayValue } = personalSpeedApplied
-      ? { format: 'primitive' as const, displayValue: '適用中' }
-      : formatValue(id, resolved.value, names);
+    const { format, displayValue } = formatValue(id, resolved.value, names);
     return {
       id,
       label,
@@ -312,9 +251,7 @@ export function traceConditionSummary(
       ...(resolved.promotedBase === undefined ? {} : { promotedBase: resolved.promotedBase }),
       origin: resolved.origin,
       originLabel: formatOrigin(resolved.origin, names),
-      applicable: resolved.applicable && reason === undefined,
-      ...(reason === undefined ? {} : { inactiveReason: reason }),
-      ...(personalSpeedApplied ? { countsAsChanged: true } : {}),
+      applicable: resolved.applicable,
       sameAsDefault: effectivelySameAsDefault(id, resolved.value),
       diagnostics: resolved.diagnostics,
       recommendationWinsOverGlobal: resolved.recommendationWins?.shadowed.includes('global') ?? false,
@@ -409,7 +346,7 @@ export function summarizeNonDefaultConditions(rows: readonly ConditionSummaryRow
  * 対象ボタンの名前（`nonDefaultConditionRows`）と閉じた1行が食い違わないよう、両方がこれを使う。
  */
 export function isChangedConditionRow(row: ConditionSummaryRow): boolean {
-  return row.applicable && (row.countsAsChanged === true || (row.origin.kind !== 'default' && !row.sameAsDefault));
+  return row.applicable && row.origin.kind !== 'default' && !row.sameAsDefault;
 }
 
 /** 閉じた1行に名前を出す、変えた項目の件数。残りは「他N件」に畳む。 */

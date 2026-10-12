@@ -151,7 +151,7 @@ export function createEngineCache(options: EngineCacheOptions = {}): EngineCache
     options: Options,
   ): EngineExtractionResult<Extracted> {
     const interpretationResult = getInterpretation(input);
-    const key = singleExtractionKeyOf(input, definition.id, definition.extractKeyOf(options));
+    const key = singleExtractionKeyOf(input, definition, options);
     const cached = extractionCache.get(key);
     if (cached) return cached as EngineExtractionResult<Extracted>;
     const traceResult = getTrace(input);

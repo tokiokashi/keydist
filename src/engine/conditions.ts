@@ -6,6 +6,11 @@ import type {
   TriggerRealizationPolicy,
 } from '#input/semantics/index.ts';
 
+/**
+ * 旧画面（`legacy/`）と移行中の`features/analyzer-next/`が持つ全体の条件。
+ * 速度平均の3項目（`playbackRate*`）は旧画面だけが読む。新しい構成では打鍵再生の解析設定にあり、
+ * 旧画面と一緒に消える。
+ */
 export interface ConditionDefaults {
   geometry: GeometryKind;
   windowSize: number;

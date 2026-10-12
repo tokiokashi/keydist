@@ -32,54 +32,9 @@ export const PLAYBACK_RATE_HALF_LIFE_SECONDS_MIN = 0.1;
 export const PLAYBACK_RATE_HALF_LIFE_SECONDS_MAX = 10;
 export const DEFAULT_PLAYBACK_RATE_HALF_LIFE_SECONDS = 1;
 
-/** かな毎秒・アクション毎秒の平均を決める条件（`spec/playback-timing.md` §5）。 */
-export interface PlaybackRateConditions {
-  readonly average: PlaybackRateAverage;
-  /** SMAで使う直近Stroke数 */
-  readonly window: number;
-  /** EWMAで過去寄与が半分になる時間 [秒] */
-  readonly halfLifeSeconds: number;
-}
-
-export const DEFAULT_PLAYBACK_RATE_CONDITIONS: PlaybackRateConditions = {
-  average: DEFAULT_PLAYBACK_RATE_AVERAGE,
-  window: DEFAULT_PLAYBACK_RATE_WINDOW,
-  halfLifeSeconds: DEFAULT_PLAYBACK_RATE_HALF_LIFE_SECONDS,
-};
-
-/**
- * 個人速度を使うかどうか（`spec/playback-timing.md` §2.1）。値そのもの（保存値）は条件に持たず、
- * 適用する設定の時だけ、個人速度の画面の保存値を持つ（保存値が無ければ`undefined`で、個人速度無しの時間になる）。
- */
-export type PlaybackPersonalSpeed =
-  | { readonly apply: false }
-  | { readonly apply: true; readonly calibration: PlaybackCalibration | undefined };
-
-/** 再生の時間を決める条件（`spec/playback-timing.md` §2）。 */
-export interface PlaybackTimingSettings {
-  /** 基準速度 [ステップ/秒] */
-  readonly stepsPerSecond: PlaybackStepsPerSecond;
-  /** 再生倍率 */
-  readonly speedMultiplier: number;
-  /** 指の移動速度を考慮するか */
-  readonly sameFingerDelay: boolean;
-  /** 全指の移動時間で律速するか */
-  readonly allFingerMovementDelay: boolean;
-  readonly personalSpeed: PlaybackPersonalSpeed;
-}
-
 export const DEFAULT_PLAYBACK_SAME_FINGER_DELAY = true;
 export const DEFAULT_PLAYBACK_ALL_FINGER_MOVEMENT_DELAY = false;
 export const DEFAULT_PLAYBACK_APPLY_PERSONAL_SPEED = true;
-
-/** 個人速度の保存値が無い間の既定。適用する設定のまま、保存値が無いので個人速度無しの時間になる。 */
-export const DEFAULT_PLAYBACK_TIMING_SETTINGS: PlaybackTimingSettings = {
-  stepsPerSecond: DEFAULT_PLAYBACK_STEPS_PER_SECOND,
-  speedMultiplier: DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
-  sameFingerDelay: DEFAULT_PLAYBACK_SAME_FINGER_DELAY,
-  allFingerMovementDelay: DEFAULT_PLAYBACK_ALL_FINGER_MOVEMENT_DELAY,
-  personalSpeed: { apply: DEFAULT_PLAYBACK_APPLY_PERSONAL_SPEED, calibration: undefined },
-};
 
 /** 非アクティブなタブから戻った時の一気送りを防ぐため、1フレームの経過時間を制限する。 */
 const MAX_FRAME_MS = 100;

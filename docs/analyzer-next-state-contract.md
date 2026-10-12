@@ -14,7 +14,7 @@ URLが運ぶものは同「条件の編集とURL」にあり、この文書の�
 | Domain catalog | user layouts / geometry shapes / romaji rules / presets / calibration | existing independent storage | dependent snapshot / derivation |
 | AnalysisSession target | mode / text / selected layouts | AppState analyzer session | affected snapshots |
 | AnalysisSession distance conditions | distance model defaults + per-layout field overrides | AppState conditions | affected snapshots |
-| AnalysisSession timing conditions | playback timing model inputs | Analyzer session timing slice | timing derivation only |
+| Playback Analyzer options (timing model) | playback timing model inputs | Analyzer options | playback extraction only |
 | AnalysisSession focus | current detail layout | AppState analyzer session | no snapshot recompute |
 | AnalysisSnapshot | generateTrace + structural analysis + metrics per selected layout | no | keyed by resolved analysis inputs |
 | ViewConfig | projection / filtering / ordering / visualization choices | host-owned | view derivation/render only |
@@ -24,7 +24,7 @@ URLが運ぶものは同「条件の編集とURL」にあり、この文書の�
 
 ### Classification rule
 
-Session conditions are model parameters. Changing distance-model conditions changes the meaning of snapshot metrics and therefore invalidates the affected snapshot. Timing-model conditions are also Session-owned, but invalidate only timing derivations.
+Session conditions are model parameters read by more than one Analyzer. Changing distance-model conditions changes the meaning of snapshot metrics and therefore invalidates the affected snapshot. A model parameter that only one Analyzer reads (the playback timing model) is owned by that Analyzer's options and invalidates only that Analyzer's extraction.
 
 ViewConfig selects or presents already-defined model output. A ViewConfig may change displayed numbers without becoming an AnalysisSession condition. Bigram Flow source, comparison subset/sort, heatmap presentation and playback display controls are ViewConfig.
 
@@ -62,20 +62,22 @@ This table is the implementation authority for state ownership in the migrating 
 
 Per-layout overrides are field-level. An empty legacy per-layout object has no semantic effect and is discarded during migration.
 
-### Timing-model Session fields
+### Timing-model fields (playback Analyzer options)
 
-| Field | Scope |
+The playback timing model and the speed-graph average are read only by the playback Analyzer, so they are not Session conditions. They are the playback Analyzer's options (`analyzers/playback/options.ts`), declared with `affects: 'extract'`.
+
+| Field | Meaning |
 | --- | --- |
-| `playbackRateAverage` | global + workspace |
-| `playbackRateWindow` | global + workspace |
-| `playbackRateHalfLifeSeconds` | global + workspace |
-| `playbackStepsPerSecond` | global + workspace |
-| `playbackSpeedMultiplier` | global + workspace |
-| `playbackSameFingerDelay` | global + workspace |
-| `playbackAllFingerMovementDelay` | global + workspace |
-| `playbackPersonalSpeed` | global + workspace (boolean: apply the saved personal speed; default true) |
+| `stepsPerSecond` | base speed |
+| `speedMultiplier` | playback multiplier |
+| `sameFingerDelay` | include same-finger movement time |
+| `allFingerMovementDelay` | bound each step by the all-finger movement time |
+| `applyPersonalSpeed` | apply the saved personal speed (boolean; default true) |
+| `rateAverage` | speed-graph average method |
+| `rateWindow` | SMA window (strokes) |
+| `rateHalfLifeSeconds` | EWMA half-life |
 
-All eight timing-model fields are shared by every layout (`spec/playback-timing.md` section 7.5). They are intentionally absent from the per-layout override type/API; a layout does not get its own playback speed or averaging.
+The saved personal speed itself stays an asset. It enters the extraction input and key only while `applyPersonalSpeed` is true. When another Analyzer starts reading any of these fields, move that field to the Session conditions (global + workspace).
 
 ### ViewConfig
 
@@ -88,7 +90,7 @@ All eight timing-model fields are shared by every layout (`spec/playback-timing.
 | Sensitivity | `scale` |
 | Playback | `showFingers`, `showRomajiPlan`, `showPlanKeys`, `showTrail`, `trailTau`, `showOrderLabels`, `showSameFingerMotion`, `keyFeedbackStyle`, `fingerPreparationSeconds`, `showChain`, `showArpeggio`, rate-chart chain/arpeggio visibility, `scale`, playback/rate-chart open state |
 
-Playback timing parameters are never ViewConfig. Saved per-layout display settings from the legacy `perLayout[id].playback` are discarded at cutover.
+Playback timing parameters are not ViewConfig: they change the numbers, so they are Analyzer options that affect extraction. Saved per-layout display settings from the legacy `perLayout[id].playback` are discarded at cutover.
 
 ### Shell / Ephemeral / Domain catalog
 

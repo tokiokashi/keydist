@@ -3,7 +3,7 @@ import test from 'node:test';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { DEFAULT_FINGER_ASSIGNMENT, PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { Setup } from '#input/setup/index.ts';
-import { EMPTY_SETTINGS_OVERRIDES, resolveSettings, setSettingsOverride, type SettingsItemId } from '#engine/settings-items.ts';
+import { EMPTY_SETTINGS_OVERRIDES, resolveSettings, SETTINGS_ITEMS, setSettingsOverride, type SettingsItemId } from '#engine/settings-items.ts';
 import { resolveSetupForText } from '#input/setup/index.ts';
 import { DEFAULT_CHAIN_INTERPRETATION } from '#interpretation/structure/chain.ts';
 import { DEFAULT_ARPEGGIO_INTERPRETATION } from '#interpretation/structure/arpeggio.ts';
@@ -16,10 +16,7 @@ import {
   formatOrigin,
   globalConditionValues,
   multiTargetConditionSummary,
-  inactiveConditionReasons,
   nonDefaultConditionRows,
-  personalSpeedInUse,
-  PLAYBACK_PANE_CONDITION_IDS,
   type ConditionSummaryRow,
   type ConditionSummaryScope,
   summarizeNonDefaultConditions,
@@ -537,12 +534,12 @@ test('multiTargetConditionSummary: 対象が無ければ空', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 再生の時間モデルと速度平均の条件（読むペインが宣言した時だけ数える）
+// ペインが読む条件（読むペインが宣言した時だけ数える）
 // ---------------------------------------------------------------------------
 
-const PLAYBACK_SCOPE: ConditionSummaryScope = { extraIds: PLAYBACK_PANE_CONDITION_IDS };
+const PLAYBACK_SCOPE: ConditionSummaryScope = { extraIds: ['chainInterpretation', 'arpeggioInterpretation'] };
 
-function playbackRows(
+function interpretationRows(
   entries: readonly (readonly [string, unknown])[],
   scope: ConditionSummaryScope,
 ): readonly ConditionSummaryRow[] {
@@ -556,92 +553,29 @@ function playbackRows(
   return traceConditionSummary(resolveWith({ kind: 'layout', layoutId: 'qwerty' }, [], overrides, 'en').cascade, CATALOG, scope);
 }
 
-test('時間モデルと速度平均の条件は、宣言しないペインの要約の数にも対象名の差分にも出ない', () => {
-  const entries = [
-    ['playbackStepsPerSecond', 2.5],
-    ['playbackSpeedMultiplier', 2],
-    ['playbackSameFingerDelay', false],
-    ['playbackAllFingerMovementDelay', true],
-    ['playbackPersonalSpeed', false],
-    ['playbackRateAverage', 'ewma'],
-    ['playbackRateWindow', 5],
-    ['playbackRateHalfLifeSeconds', 3],
-  ] as const;
-  const rows = playbackRows(entries, {});
-  assert.equal(rows.some((row) => row.id.startsWith('playback')), false);
+const INTERPRETATION_ENTRIES = [
+  ['chainInterpretation', { ...DEFAULT_CHAIN_INTERPRETATION, breakOnTriggerOnly: true }],
+  ['arpeggioInterpretation', { ...DEFAULT_ARPEGGIO_INTERPRETATION, includeThumb: !DEFAULT_ARPEGGIO_INTERPRETATION.includeThumb }],
+] as const;
+
+test('チェーンの区切り・アルペジオの数え方は、宣言しないペインの要約の数にも対象名の差分にも出ない', () => {
+  const rows = interpretationRows(INTERPRETATION_ENTRIES, {});
+  assert.equal(rows.some((row) => row.id === 'chainInterpretation' || row.id === 'arpeggioInterpretation'), false);
   assert.equal(conditionSummaryLine(rows).changedCount, 0);
   assert.equal(summarizeNonDefaultConditions(nonDefaultConditionRows(rows)), undefined);
-  // 保存値の有無を渡しても、宣言しないペインでは行が増えない
-  assert.equal(playbackRows(entries, { personalSpeedSaved: true }).some((row) => row.id.startsWith('playback')), false);
 });
 
-test('再生のペインは、宣言した項目を定義順に要約へ足し、既定から変えたものを数える', () => {
-  const rows = playbackRows([
-    ['playbackStepsPerSecond', 2.5],
-    ['playbackSpeedMultiplier', 2],
-    ['chainInterpretation', { ...DEFAULT_CHAIN_INTERPRETATION, breakOnTriggerOnly: true }],
-  ], PLAYBACK_SCOPE);
-  const playbackIds = rows.map((row) => row.id).filter((id) => PLAYBACK_PANE_CONDITION_IDS.includes(id));
-  assert.deepEqual(playbackIds, PLAYBACK_PANE_CONDITION_IDS);
+test('打鍵再生のペインは、宣言した項目を定義順に要約へ足し、既定から変えたものを数える', () => {
+  const rows = interpretationRows(INTERPRETATION_ENTRIES, PLAYBACK_SCOPE);
+  const ids = rows.map((row) => row.id).filter((id) => id === 'chainInterpretation' || id === 'arpeggioInterpretation');
+  assert.deepEqual(ids, ['chainInterpretation', 'arpeggioInterpretation']);
   const line = conditionSummaryLine(rows);
-  assert.equal(line.changedCount, 3);
-  assert.deepEqual(line.shown.map((row) => `${row.label}: ${row.displayValue}`), ['基準速度: 2.5ステップ/秒', '再生倍率: 2倍']);
-  assert.equal(rows.find((row) => row.id === 'chainInterpretation')!.displayValue, '1項目を変更');
-  assert.equal(summarizeNonDefaultConditions(nonDefaultConditionRows(rows)), '基準速度: 2.5ステップ/秒 ・ 再生倍率: 2倍 ・ チェーンの区切り: 1項目を変更');
+  assert.equal(line.changedCount, 2);
+  assert.deepEqual(line.shown.map((row) => `${row.label}: ${row.displayValue}`), ['チェーンの区切り: 1項目を変更', 'アルペジオ: 1項目を変更']);
+  assert.equal(summarizeNonDefaultConditions(nonDefaultConditionRows(rows)), 'チェーンの区切り: 1項目を変更 ・ アルペジオ: 1項目を変更');
 });
 
-test('個人速度: 適用する設定で保存値がある時は個人速度で計算していることを数え、基準速度は効かない行にする', () => {
-  const rows = playbackRows([['playbackStepsPerSecond', 2.5]], { ...PLAYBACK_SCOPE, personalSpeedSaved: true });
-  const personal = rows.find((row) => row.id === 'playbackPersonalSpeed')!;
-  assert.equal(personal.displayValue, '適用中');
-  assert.equal(personal.origin.kind, 'default');
-  assert.equal(personal.countsAsChanged, true);
-  const steps = rows.find((row) => row.id === 'playbackStepsPerSecond')!;
-  assert.equal(steps.applicable, false);
-  assert.equal(steps.inactiveReason, '個人速度で計算しているため、基準速度は使われません');
-  // 基準速度の上書きは数えず、個人速度で計算していることだけが数に入る
-  assert.deepEqual(conditionSummaryLine(rows).shown.map((row) => row.id), ['playbackPersonalSpeed']);
-  assert.equal(summarizeNonDefaultConditions(nonDefaultConditionRows(rows)), '個人速度: 適用中');
-});
-
-test('個人速度: 保存値が無い時は個人速度で計算している旨を出さず、基準速度も効く', () => {
-  const rows = playbackRows([['playbackStepsPerSecond', 2.5]], { ...PLAYBACK_SCOPE, personalSpeedSaved: false });
-  const personal = rows.find((row) => row.id === 'playbackPersonalSpeed')!;
-  assert.equal(personal.displayValue, '適用する');
-  assert.equal(personal.countsAsChanged, undefined);
-  assert.equal(rows.find((row) => row.id === 'playbackStepsPerSecond')!.applicable, true);
-  assert.deepEqual(conditionSummaryLine(rows).shown.map((row) => row.id), ['playbackStepsPerSecond']);
-});
-
-test('個人速度: 適用しない設定は、保存値があっても既存の仕組みどおり差分として出て、基準速度は効く', () => {
-  const rows = playbackRows([['playbackPersonalSpeed', false]], { ...PLAYBACK_SCOPE, personalSpeedSaved: true });
-  const personal = rows.find((row) => row.id === 'playbackPersonalSpeed')!;
-  assert.equal(personal.displayValue, '適用しない');
-  assert.equal(personal.origin.kind, 'global');
-  assert.equal(personal.countsAsChanged, undefined);
-  assert.equal(rows.find((row) => row.id === 'playbackStepsPerSecond')!.applicable, true);
-  assert.equal(summarizeNonDefaultConditions(nonDefaultConditionRows(rows)), '個人速度: 適用しない');
-});
-
-test('平均の方式に使われない側の窓幅・半減時間は、効かない行にして数えない', () => {
-  const sma = playbackRows([['playbackRateWindow', 5], ['playbackRateHalfLifeSeconds', 3]], PLAYBACK_SCOPE);
-  assert.equal(sma.find((row) => row.id === 'playbackRateWindow')!.applicable, true);
-  assert.equal(sma.find((row) => row.id === 'playbackRateHalfLifeSeconds')!.applicable, false);
-  assert.deepEqual(conditionSummaryLine(sma).shown.map((row) => row.id), ['playbackRateWindow']);
-  const ewma = playbackRows([['playbackRateAverage', 'ewma'], ['playbackRateWindow', 5], ['playbackRateHalfLifeSeconds', 3]], PLAYBACK_SCOPE);
-  assert.equal(ewma.find((row) => row.id === 'playbackRateWindow')!.inactiveReason, '平均の方式がEWMAのため、窓幅は使われません');
-  assert.deepEqual(conditionSummaryLine(ewma).shown.map((row) => row.id), ['playbackRateAverage', 'playbackRateHalfLifeSeconds']);
-});
-
-test('inactiveConditionReasons・personalSpeedInUse: 画面で効く値はWorkspace ＞ 全体 ＞ 既定の順で決まる', () => {
-  assert.equal(inactiveConditionReasons({ personalSpeedInUse: false, average: 'sma' }).size, 1);
-  assert.equal(personalSpeedInUse(EMPTY_SETTINGS_OVERRIDES, true), true);
-  assert.equal(personalSpeedInUse(EMPTY_SETTINGS_OVERRIDES, false), false);
-  const off = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'playbackPersonalSpeed', false);
-  assert.ok(off.ok);
-  if (!off.ok) return;
-  assert.equal(personalSpeedInUse(off.overrides, true), false);
-  const workspaceOn = setSettingsOverride(off.overrides, { kind: 'workspace' }, 'playbackPersonalSpeed', true);
-  assert.ok(workspaceOn.ok);
-  if (workspaceOn.ok) assert.equal(personalSpeedInUse(workspaceOn.overrides, true), true);
+test('時間モデルと速度平均の項目は条件の項目に無い（打鍵再生の解析設定にある）', () => {
+  const ids = Object.keys(SETTINGS_ITEMS);
+  assert.deepEqual(ids.filter((id) => id.startsWith('playback')), []);
 });

@@ -33,7 +33,7 @@ function failedDescription(target: AnalysisTarget, setup: Setup | undefined, cat
 /**
  * 集合対象ページの1メンバーを、`nameTargets`へ渡す形にする（比較表・N感度で同じ組み立て）。
  * `excludeIds`は条件の併記から外す項目（N感度の`windowSize`）。
- * `scope`は条件の併記に足す、このペインが読む項目（再生の時間モデルなど）。
+ * `scope`は条件の併記に足す、このペインが読む項目（チェーンの区切りなど）。
  */
 export function targetNameSource(
   target: AnalysisTarget,

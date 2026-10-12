@@ -22,7 +22,7 @@ export interface PaneCatalog {
   readonly customRomajiRules?: readonly UserRomajiRule[];
   readonly customFingerAssignments?: ReadonlyMap<string, FingerAssignment>;
   /**
-   * 個人速度の画面の保存値（資産`personalSpeed`）。無ければ保存値は無い。再生の時間を決める抽出の入力とキーに入るので、
+   * 個人速度の画面の保存値（資産`personalSpeed`）。無ければ保存値は無い。個人速度を適用する設定の打鍵再生の抽出の入力とキーに入るので、
    * 保存値が変わった時（個人速度の画面で測り直した時・他のタブで変えた時）にペインの計算を作り直す。
    */
   readonly personalSpeed?: PlaybackCalibration;

@@ -1,4 +1,9 @@
-import { defineSingleAnalyzer, type SingleAnalyzerDefinition, type SingleAnalyzerExtractContext } from '#analyzers/contract.ts';
+import {
+  defineSingleAnalyzer,
+  type ExtractionAssets,
+  type SingleAnalyzerDefinition,
+  type SingleAnalyzerExtractContext,
+} from '#analyzers/contract.ts';
 import { plainDisciplineContext } from '#analyzers/discipline-material.ts';
 import type { Geometry } from '#input/shapes/geometry.ts';
 import type { AggregatedAnalysisResult } from '#interpretation/structure/aggregate.ts';
@@ -6,14 +11,13 @@ import type { Metrics } from '#interpretation/metrics.ts';
 import {
   playbackRateChartData,
   type PlaybackRateChartPoint,
-  type PlaybackRateConditions,
-  type PlaybackTimingSettings,
   type PlaybackTimingStep,
 } from '#interpretation/timing/playback.ts';
 import { ALTERNATE_PLAYBACK_OPTIONS, DEFAULT_PLAYBACK_OPTIONS, playbackOptions, type PlaybackOptions } from './options.ts';
 import { playbackScheduleOf } from './session.ts';
 import {
   personalSpeedUseOf,
+  playbackAssetsKeyOf,
   playbackTimingConditions,
   type PersonalSpeedUse,
   type PlaybackTimingConditions,
@@ -24,7 +28,7 @@ import {
  * 1打鍵ずつ見せるだけなので、新しい指標は作らない。構造解析の結果をそのまま持つ。
  * 構造解析の条件（Chain・Arpeggioの数え方）は条件の実効値から解決済みで、`analysis.aggregate.conditions` に載っている。
  *
- * 再生の時間表と速度の推移は、同じ時間の条件（`timing`）から1回だけ組み立て、再生とグラフの両方がこの値を読む。
+ * 再生の時間表と速度の推移は、同じ時間の設定（`timing`）から1回だけ組み立て、再生とグラフの両方がこの値を読む。
  */
 export interface PlaybackExtracted {
   readonly analysis: AggregatedAnalysisResult;
@@ -39,38 +43,38 @@ export interface PlaybackExtracted {
   /** 再生位置ごとの、かな毎秒・アクション毎秒の平均と、ChainとArpeggioの区間。先頭（位置0）を含む */
   readonly rateChart: readonly PlaybackRateChartPoint[];
   /**
-   * 打鍵の列と構造解析の入力が同じなら同じ値になる識別子。平均方式などの抽出だけの条件を変えて抽出が
+   * 打鍵の列と構造解析の入力が同じなら同じ値になる識別子。平均方式などの解析設定を変えて抽出が
    * 作り直されても変わらないので、再生位置を保つかどうかの判定に使う
    */
   readonly basisId: string;
 }
 
-export function computePlaybackExtraction({ analysis, metrics, geometry, timingSettings, rateConditions, basisId }: {
+export function computePlaybackExtraction({ analysis, metrics, geometry, options, assets, basisId }: {
   readonly analysis: AggregatedAnalysisResult;
   readonly metrics: Metrics;
   readonly geometry: Geometry;
-  readonly timingSettings: PlaybackTimingSettings;
-  readonly rateConditions: PlaybackRateConditions;
+  readonly options: PlaybackOptions;
+  readonly assets: ExtractionAssets;
   readonly basisId: string;
 }): PlaybackExtracted {
-  const timing = playbackTimingConditions(timingSettings);
+  const timing = playbackTimingConditions(options, assets);
   const schedule = playbackScheduleOf(analysis, geometry, timing);
   const rateChart = playbackRateChartData(
     analysis,
     timing.stepsPerSecond,
     timing.sameFingerDelay,
-    rateConditions.window,
+    options.rateWindow,
     timing.calibration,
     timing.speedMultiplier,
     schedule,
-    rateConditions.average,
-    rateConditions.halfLifeSeconds,
+    options.rateAverage,
+    options.rateHalfLifeSeconds,
   );
   return {
     analysis,
     windowSize: metrics.conditions.windowSize,
     timing,
-    personalSpeedUse: personalSpeedUseOf(timingSettings),
+    personalSpeedUse: personalSpeedUseOf(options, assets),
     schedule,
     rateChart,
     basisId,
@@ -81,13 +85,14 @@ export function computePlaybackExtraction({ analysis, metrics, geometry, timingS
 export const playbackDefinition: SingleAnalyzerDefinition<PlaybackOptions, PlaybackExtracted> = defineSingleAnalyzer({
   id: 'playback',
   options: playbackOptions,
+  assetsKeyOf: playbackAssetsKeyOf,
   extract(context: SingleAnalyzerExtractContext<PlaybackOptions>): PlaybackExtracted {
     return computePlaybackExtraction({
       analysis: context.analysis,
       metrics: context.metrics,
       geometry: context.geometry,
-      timingSettings: context.conditions.playbackTiming,
-      rateConditions: context.conditions.playbackRate,
+      options: context.options,
+      assets: context.assets,
       basisId: context.basisId,
     });
   },

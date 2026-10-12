@@ -97,7 +97,7 @@ test('診断: 壊れた値・未知の項目は捨てて残りを読み、項目
       version: 1,
       presets: [
         { id: 'a', name: '自分用メモ', values: { windowSize: 5, sfbHomeCost: 'yes', futureItem: 1 } },
-        { id: 'b', name: '比較用（N=5）', values: { windowSize: 'x', playbackRateWindow: 'z' } },
+        { id: 'b', name: '比較用（N=5）', values: { windowSize: 'x', playbackRateWindow: 9 } },
       ],
     }),
     REFERENCES,
@@ -107,21 +107,25 @@ test('診断: 壊れた値・未知の項目は捨てて残りを読み、項目
   assert.match(result.message, /^2件のプリセットを読み込みました。4件の値は読み込めませんでした（/);
   assert.match(result.message, /先読みN/);
   assert.match(result.message, /同指連続のホーム復帰距離/);
-  assert.match(result.message, /この版に無い項目 1件/);
+  assert.match(result.message, /この版に無い項目 2件/);
   // 内部のid・パスは画面の文に出さない。原文は詳細へ
   assert.doesNotMatch(result.message, /sfbHomeCost|windowSize|futureItem|presets\[/);
   assert.equal(result.details.length, 4);
   assert.ok(result.details.some((line) => line.includes('futureItem')));
 });
 
-test('診断: 再生の条件の項目も、モーダルの行の名前で伝える', () => {
+test('診断: 条件に無い項目（playbackStepsPerSecondなど）を含むファイルは、エラーにせず、その値を読まずにこの版に無い項目として伝える', () => {
   const result = parsePresetFile(
-    fileText({ version: 1, presets: [{ id: 'a', name: 'A', values: { playbackRateWindow: 'z', playbackStepsPerSecond: 99 } }] }),
+    fileText({
+      version: 1,
+      presets: [{ id: 'a', name: 'A', values: { windowSize: 4, playbackRateWindow: 5, playbackStepsPerSecond: 99, playbackPersonalSpeed: false } }],
+    }),
     REFERENCES,
   );
   assert.ok(result.ok);
-  assert.match(result.message, /2件の値は読み込めませんでした（平均の窓幅、基準速度）/);
-  assert.doesNotMatch(result.message, /playbackRateWindow|playbackStepsPerSecond/);
+  assert.deepEqual(result.presets.map((preset) => preset.values), [{ windowSize: 4 }]);
+  assert.match(result.message, /3件の値は読み込めませんでした（この版に無い項目 3件）/);
+  assert.doesNotMatch(result.message, /playbackRateWindow|playbackStepsPerSecond|playbackPersonalSpeed/);
 });
 
 test('診断: 壊れたプリセットは件数で伝え、残りは読む', () => {

@@ -12,6 +12,12 @@ export interface PersonalSpeedLinkProps {
 
 export const PersonalSpeedLinkContext = createContext<ComponentType<PersonalSpeedLinkProps> | undefined>(undefined);
 
+/**
+ * 個人速度の画面に保存した測定値があるか。個人速度を使う解析設定の小窓が、基準速度が使われない理由と
+ * 測定値が無い知らせを決めるのに読む。ホストが、そのペインの資産から渡す。渡されなければ（テスト等）、保存値は無いものとして扱う。
+ */
+export const PersonalSpeedSavedContext = createContext<boolean>(false);
+
 export function PersonalSpeedLink({ className, children }: PersonalSpeedLinkProps) {
   const Link = useContext(PersonalSpeedLinkContext);
   if (Link === undefined) return null;

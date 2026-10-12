@@ -3,7 +3,7 @@ import test from 'node:test';
 import * as v from 'valibot';
 import { checkOptionsDiscipline, defineOption, defineOptions } from './options.ts';
 import {
-  DEFAULT_EXTRACTION_CONDITIONS,
+  DEFAULT_EXTRACTION_ASSETS,
   defineSetAnalyzer,
   defineSingleAnalyzer,
   type AnalyzerTarget,
@@ -46,7 +46,7 @@ function fixtureContext() {
     analysis: { aggregate: { strokeCount: 0 } } as never,
     metrics: { totalUnits: 100, strokes: 0 } as never,
     geometry: {} as never,
-    conditions: DEFAULT_EXTRACTION_CONDITIONS,
+    assets: DEFAULT_EXTRACTION_ASSETS,
     basisId: 'fixture',
     requestTrace: { requestTrace: () => { throw new Error('unused'); } },
     keyDetails: () => { throw new Error('unused'); },
@@ -77,7 +77,7 @@ test('SingleAnalyzerDefinition: extractは Trace結果 + 解釈結果 + options 
     metrics: { totalUnits: 12, strokes: 0 } as never,
     options: DEFAULT_OPTIONS,
     geometry: {} as never,
-    conditions: DEFAULT_EXTRACTION_CONDITIONS,
+    assets: DEFAULT_EXTRACTION_ASSETS,
     basisId: 'fixture',
     requestTrace: { requestTrace: () => { throw new Error('unused'); } },
     keyDetails: () => { throw new Error('unused'); },

@@ -5,7 +5,7 @@ import {
   type Geometry,
 } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
-import type { ExtractionConditions } from '#analyzers/contract.ts';
+import type { ExtractionAssets } from '#analyzers/contract.ts';
 import { withoutRomajiOnlyCombos, withRomaji } from '#input/layouts/types.ts';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { TextLanguage } from '#input/text/language.ts';
@@ -39,10 +39,10 @@ export interface ResolvedInput {
   readonly chainInterpretation: ChainInterpretation;
   readonly arpeggioInterpretation: ArpeggioInterpretation;
   /**
-   * 抽出だけが読む条件の実効値。Traceと解釈のキーには入れず、抽出のキーにだけ入れる
-   * （`keys.ts`の`singleExtractionKeyOf`）。`cascade`は表示専用でキーに使わないので、キーに入れる値はここに複製して持つ。
+   * 抽出が読む資産の値。Traceと解釈のキーには入れず、抽出のキーにだけ、各Analyzerが決めた分を入れる
+   * （`keys.ts`の`singleExtractionKeyOf`）。
    */
-  readonly extractionConditions: ExtractionConditions;
+  readonly extractionAssets: ExtractionAssets;
   /** ローマ字入力でなければnull（かな直接・英字直接）。 */
   readonly romajiRuleId: string | null;
   /**
@@ -85,7 +85,7 @@ export interface ResolveEngineInputOptions {
   readonly overrides: SettingsCascadeOverrides;
   /**
    * 個人速度の画面の保存値（資産`personalSpeed`）。条件のカスケードの外にある値なので、ここで受ける。
-   * 無ければ個人速度の保存値は無い。適用する設定の時だけ、抽出の条件（とキー）に入る。
+   * 無ければ個人速度の保存値は無い。読むAnalyzerが適用する設定の時だけ、抽出のキーに入る。
    */
   readonly personalSpeed?: PlaybackCalibration;
   readonly text: string;
@@ -190,22 +190,7 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
       tracePolicy,
       chainInterpretation: cascade.chainInterpretation.value,
       arpeggioInterpretation: cascade.arpeggioInterpretation.value,
-      extractionConditions: {
-        playbackRate: {
-          average: cascade.playbackRateAverage.value,
-          window: cascade.playbackRateWindow.value,
-          halfLifeSeconds: cascade.playbackRateHalfLifeSeconds.value,
-        },
-        playbackTiming: {
-          stepsPerSecond: cascade.playbackStepsPerSecond.value,
-          speedMultiplier: cascade.playbackSpeedMultiplier.value,
-          sameFingerDelay: cascade.playbackSameFingerDelay.value,
-          allFingerMovementDelay: cascade.playbackAllFingerMovementDelay.value,
-          personalSpeed: cascade.playbackPersonalSpeed.value
-            ? { apply: true, calibration: options.personalSpeed }
-            : { apply: false },
-        },
-      },
+      extractionAssets: { personalSpeed: options.personalSpeed },
       romajiRuleId,
       cascade: resolvedCascade,
     },

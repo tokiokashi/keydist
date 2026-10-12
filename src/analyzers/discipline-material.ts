@@ -5,7 +5,7 @@ import { analyzeStrokeStructure } from '#interpretation/structure/aggregate.ts';
 import { computeKeyDetails } from '#interpretation/key-detail.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
-import { DEFAULT_EXTRACTION_CONDITIONS, type SingleAnalyzerExtractContext } from './contract.ts';
+import { DEFAULT_EXTRACTION_ASSETS, type SingleAnalyzerExtractContext } from './contract.ts';
 
 /**
  * 解析設定の入れ忘れ防止テスト（`options.ts`の`checkOptionsDiscipline`）が、定義の`extract`へ
@@ -27,7 +27,7 @@ export function singleDisciplineContext(
     analysis: analyzeStrokeStructure(trace.strokes),
     metrics: computeMetrics(trace, geometry),
     geometry,
-    conditions: DEFAULT_EXTRACTION_CONDITIONS,
+    assets: DEFAULT_EXTRACTION_ASSETS,
     basisId: 'discipline',
     requestTrace: {
       requestTrace: (input) => generateTrace(
