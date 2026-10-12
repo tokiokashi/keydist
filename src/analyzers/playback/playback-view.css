@@ -220,8 +220,8 @@
   fill: color-mix(in srgb, var(--series-3) calc(var(--playback-plan-opacity) * 100%), var(--surface));
 }
 
-/* 予定ローマ字のキーは濃さが常に1で緑が濃い。文字は両方のテーマで暗い色にする（明るい文字は暗いテーマで緑の上の対比が足りない） */
-.playback-figure [data-playback-romaji-plan='true'] .playback-key-label {
+/* 緑の塗りが濃いキーの文字は、両方のテーマで暗い色にする（明るい文字は暗いテーマで緑の上の対比が足りない）。濃さの判定は`playback-keyboard.tsx` */
+.playback-figure [data-playback-plan-strong='true'] .playback-key-label {
   fill: light-dark(var(--text), var(--surface));
 }
 

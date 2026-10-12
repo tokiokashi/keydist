@@ -18,6 +18,11 @@ import type { PlaybackKeyFeedbackStyle } from './options.ts';
 
 const KEY_SIZE = 30;
 const PAD = 6;
+/**
+ * 緑の塗りの濃さがこの値以上のキーは、文字を暗い色にする。暗いテーマでは、この付近を境に
+ * 明るい文字と暗い文字の対比が入れ替わる（`--series-3`の面の上で、どちらも約3.8:1）。
+ */
+const PLAN_LABEL_STRONG_FROM = 0.83;
 
 /** 押下フィードバックを出す1回の合図。`revision`が変わるたびに`keys`のキーを光らせる。 */
 export interface PlaybackFeedback {
@@ -142,6 +147,8 @@ export function PlaybackKeyboard({
     const planFillOpacity = plannedOpacity === undefined && romajiPlannedOpacity === undefined
       ? undefined
       : Math.max(plannedOpacity ?? 0, romajiPlannedOpacity ?? 0);
+    // 緑の塗りの上の文字は、濃さが高い時だけ暗い色にする（濃さが低い時は、暗い色だと暗いテーマで面の上の対比が落ちる）
+    const planLabelStrong = planFillOpacity !== undefined && planFillOpacity >= PLAN_LABEL_STRONG_FROM;
     // 押下予定キーと予定ローマ字のキーの順番はどちらも再生位置から数えるので、両方に入るキーでは同じ番号になり、ラベルは1つにまとめる
     const planOrder = frame.plannedOrders.get(id) ?? frame.romajiPlannedOrders.get(id);
     const trailOrder = frame.trailOrders.get(id);
@@ -168,6 +175,7 @@ export function PlaybackKeyboard({
         data-playback-trail={!isMotion && trailOpacity !== undefined ? 'true' : 'false'}
         data-playback-plan={!isMotion && plannedOpacity !== undefined ? 'true' : 'false'}
         data-playback-romaji-plan={!isMotion && romajiPlannedOpacity !== undefined ? 'true' : 'false'}
+        data-playback-plan-strong={!isMotion && planLabelStrong ? 'true' : 'false'}
         style={{
           ...(trailOpacity === undefined ? {} : { ['--playback-trail-opacity' as string]: String(trailOpacity) }),
           ...(planFillOpacity === undefined ? {} : { ['--playback-plan-opacity' as string]: String(planFillOpacity) }),
