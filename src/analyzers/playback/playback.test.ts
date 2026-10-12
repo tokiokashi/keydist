@@ -801,8 +801,8 @@ test('ChainとArpeggioの両方に入るキーは、動くキーが1つでArpegg
     const both = frameAt('qwerty', 'asdf', cursor, { showChain: true, showArpeggio: true }).frame.motions;
     assert.ok(chainOnly.length > 0 && arpeggioOnly.length > 0, `cursor ${cursor}`);
     const targets = both.map((motion) => motion.toKey);
-    assert.equal(new Set(targets).size, targets.length, `行き先ごとに動くキーは1つ cursor ${cursor}`);
-    assert.deepEqual(both, arpeggioOnly, `Arpeggioの動き（出発位置を含む）だけが残る cursor ${cursor}`);
+    assert.equal(new Set(targets).size, targets.length, `行き先ごとに動くキーは1つ（${cursor}打目）`);
+    assert.deepEqual(both, arpeggioOnly, `Arpeggioの動き（出発位置を含む）だけが残る（${cursor}打目）`);
   }
 });
 
