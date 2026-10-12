@@ -224,7 +224,7 @@
 
 .playback-figure [data-playback-romaji-plan='true'] .playback-romaji-mark {
   display: inline;
-  stroke: var(--series-3);
+  stroke: var(--text);
   stroke-width: 1.5;
   stroke-dasharray: 3 2;
 }
