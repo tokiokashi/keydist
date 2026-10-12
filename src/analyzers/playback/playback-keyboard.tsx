@@ -18,6 +18,11 @@ import type { PlaybackKeyFeedbackStyle } from './options.ts';
 
 const KEY_SIZE = 30;
 const PAD = 6;
+/**
+ * 緑の塗りの濃さがこの値以上のキーは、文字を暗い色にする。暗いテーマでは、この付近を境に
+ * 明るい文字と暗い文字の対比が入れ替わる（`--series-3`の面の上で、どちらも約3.8:1）。
+ */
+const PLAN_LABEL_STRONG_FROM = 0.83;
 
 /** 押下フィードバックを出す1回の合図。`revision`が変わるたびに`keys`のキーを光らせる。 */
 export interface PlaybackFeedback {
@@ -137,7 +142,13 @@ export function PlaybackKeyboard({
     const fontSize = item.thumb ? 10 : label.length > 3 ? 9 : 12;
     const trailOpacity = frame.trailKeys.get(id);
     const plannedOpacity = frame.plannedKeys.get(id);
-    const romajiPlanned = frame.romajiPlannedKeys.has(id);
+    const romajiPlannedOpacity = frame.romajiPlannedKeys.get(id);
+    // 押下予定キーと予定ローマ字の両方に入るキーは、濃さの大きい方で1つの塗りにする
+    const planFillOpacity = plannedOpacity === undefined && romajiPlannedOpacity === undefined
+      ? undefined
+      : Math.max(plannedOpacity ?? 0, romajiPlannedOpacity ?? 0);
+    // 緑の塗りの上の文字は、濃さが高い時だけ暗い色にする（濃さが低い時は、暗い色だと暗いテーマで面の上の対比が落ちる）
+    const planLabelStrong = planFillOpacity !== undefined && planFillOpacity >= PLAN_LABEL_STRONG_FROM;
     // 押下予定キーと予定ローマ字のキーの順番はどちらも再生位置から数えるので、両方に入るキーでは同じ番号になり、ラベルは1つにまとめる
     const planOrder = frame.plannedOrders.get(id) ?? frame.romajiPlannedOrders.get(id);
     const trailOrder = frame.trailOrders.get(id);
@@ -163,10 +174,11 @@ export function PlaybackKeyboard({
         data-playback-finger-position={fingerPosition ?? ''}
         data-playback-trail={!isMotion && trailOpacity !== undefined ? 'true' : 'false'}
         data-playback-plan={!isMotion && plannedOpacity !== undefined ? 'true' : 'false'}
-        data-playback-romaji-plan={!isMotion && romajiPlanned ? 'true' : 'false'}
+        data-playback-romaji-plan={!isMotion && romajiPlannedOpacity !== undefined ? 'true' : 'false'}
+        data-playback-plan-strong={!isMotion && planLabelStrong ? 'true' : 'false'}
         style={{
           ...(trailOpacity === undefined ? {} : { ['--playback-trail-opacity' as string]: String(trailOpacity) }),
-          ...(plannedOpacity === undefined ? {} : { ['--playback-plan-opacity' as string]: String(plannedOpacity) }),
+          ...(planFillOpacity === undefined ? {} : { ['--playback-plan-opacity' as string]: String(planFillOpacity) }),
           ...(isMotion ? { pointerEvents: 'none' } : {}),
         }}
       >
@@ -190,16 +202,6 @@ export function PlaybackKeyboard({
           rx={5}
           fill="var(--surface)"
           opacity={0}
-          pointerEvents="none"
-        />
-        <rect
-          className="playback-romaji-mark"
-          x={item.x + 3}
-          y={item.y + 3}
-          width={item.width - 6}
-          height={KEY_SIZE - 6}
-          rx={3}
-          fill="none"
           pointerEvents="none"
         />
         <text className="playback-order playback-order-plan" x={item.x + 7} y={item.y + 10} textAnchor="middle" visibility={planOrder === undefined ? 'hidden' : 'visible'}>

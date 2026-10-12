@@ -184,7 +184,7 @@ export function PlaybackSettings({ options, onOptionsChange }: AnalyzerSettingsP
       <CheckboxOptionField
         label="予定ローマ字を表示"
         binding={bind('showRomajiPlan')}
-        hint="ローマ字の規則を持つ配列で、今の入力単位のまだ押していないキーを破線の枠で配列図に出します。ローマ字の規則を持たない配列では出ません。"
+        hint="ローマ字の規則を持つ配列で、今の入力単位のまだ押していないキーを、押下予定キーと同じ緑の塗りで配列図に出します。ローマ字の規則を持たない配列では出ません。"
       />
     ),
     showTrail: (
