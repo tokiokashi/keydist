@@ -168,6 +168,11 @@ export function PlaybackSettings({ options, onOptionsChange }: AnalyzerSettingsP
           hint="これから押すキーを、先読みの窓幅の分だけ配列図に出します。"
         />
         <CheckboxOptionField
+          label="予定ローマ字を表示"
+          binding={bind('showRomajiPlan')}
+          hint="ローマ字の規則を持つ配列で、今の入力単位のまだ押していないキーを破線の枠で配列図に出します。ローマ字の規則を持たない配列では出ません。"
+        />
+        <CheckboxOptionField
           label="押下履歴を表示"
           binding={bind('showTrail')}
           hint="押したキーを、残すステップ数の分だけ配列図に残します。"
@@ -187,7 +192,7 @@ export function PlaybackSettings({ options, onOptionsChange }: AnalyzerSettingsP
         <CheckboxOptionField
           label="順番ラベルを表示"
           binding={bind('showOrderLabels')}
-          hint="出ている押下予定キーと押下履歴に、押す順番を付けます。ChainとArpeggioの順番には関わりません。"
+          hint="出ている押下予定キー・予定ローマ字のキー・押下履歴に、押す順番を付けます。ChainとArpeggioの順番には関わりません。"
         />
         <SelectOptionField
           label="押下フィードバック"

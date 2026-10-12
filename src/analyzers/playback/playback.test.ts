@@ -137,6 +137,7 @@ test('解析設定は、時間と速度平均の8項目だけが抽出のキー�
     'showFingerPositions',
     'showOrderLabels',
     'showPlannedKeys',
+    'showRomajiPlan',
     'showSameFingerMotion',
     'showTrail',
     'speedMultiplier',
@@ -748,17 +749,18 @@ test('順番ラベルを出さなくても、ChainとArpeggioの順番は設定�
   assert.equal(frame.chainOrders.get('s'), 2);
 });
 
-test('配列図の表示の5項目は、既定と違う時だけURLに書き、読み戻すと同じ値になり、範囲外は捨てる', () => {
+test('配列図の表示の6項目は、既定と違う時だけURLに書き、読み戻すと同じ値になり、範囲外は捨てる', () => {
   const changed: PlaybackOptions = {
     ...DEFAULT_PLAYBACK_OPTIONS,
     showFingerPositions: true,
     showPlannedKeys: true,
+    showRomajiPlan: false,
     showTrail: true,
     trailSteps: 12,
     showOrderLabels: true,
   };
   const params = playbackOptions.encodeOptionsToUrl(changed);
-  assert.equal(params.size, 5);
+  assert.equal(params.size, 6);
   const diagnostics: never[] = [];
   const decoded = playbackOptions.decodeOptionsFromUrl(params, diagnostics);
   assert.deepEqual({ ...DEFAULT_PLAYBACK_OPTIONS, ...decoded.values }, changed);
@@ -803,4 +805,36 @@ test('ローマ字入力では、今の入力単位（かな）と、その予�
   assert.equal(frame.kanaText, 'か');
   assert.equal(frame.plannedText, 'ka');
   assert.equal(frame.typedText, 'k');
+});
+
+test('予定ローマ字のキーは、既定で出て、今の単位のまだ押していないキーだけを、これから押すキーとは独立に出す', () => {
+  assert.equal(DEFAULT_PLAYBACK_OPTIONS.showRomajiPlan, true);
+  // 「か」(ka)の1打鍵目の後は、aだけが残る
+  const base = frameAt('qwerty', 'か', 1, {}, 0, 'ja').frame;
+  assert.deepEqual([...base.romajiPlannedKeys.keys()], ['a']);
+  assert.equal(base.plannedKeys.size, 0);
+  // 単位を打ち終えた位置と再生位置0では、残りが無いので出ない
+  assert.equal(frameAt('qwerty', 'か', 2, {}, 0, 'ja').frame.romajiPlannedKeys.size, 0);
+  assert.equal(frameAt('qwerty', 'か', 0, {}, 0, 'ja').frame.romajiPlannedKeys.size, 0);
+  // 押下予定キーを出しても、予定ローマ字のキーは変わらない
+  const withPlanned = frameAt('qwerty', 'か', 1, { showPlannedKeys: true }, 0, 'ja').frame;
+  assert.deepEqual([...withPlanned.romajiPlannedKeys], [...base.romajiPlannedKeys]);
+  assert.deepEqual([...withPlanned.plannedKeys.keys()], ['a']);
+  // 切ると、予定ローマ字のキーだけが消え、他の表示は変わらない
+  const off = frameAt('qwerty', 'か', 1, { showRomajiPlan: false, showPlannedKeys: true }, 0, 'ja').frame;
+  assert.equal(off.romajiPlannedKeys.size, 0);
+  assert.deepEqual([...off.plannedKeys], [...withPlanned.plannedKeys]);
+  // ローマ字の規則を持たない配列では出ない
+  assert.equal(frameAt('qwerty', 'fjd', 1).frame.romajiPlannedKeys.size, 0);
+});
+
+test('順番ラベルが表示の時、予定ローマ字のキーにも順番が付き、両方に入るキーでは押下予定キーと同じ番号になる', () => {
+  const both = frameAt('qwerty', 'か', 1, { showPlannedKeys: true, showOrderLabels: true }, 0, 'ja').frame;
+  assert.deepEqual([...both.romajiPlannedOrders], [['a', 1]]);
+  assert.equal(both.plannedOrders.get('a'), both.romajiPlannedOrders.get('a'));
+  const romajiOnly = frameAt('qwerty', 'か', 1, { showOrderLabels: true }, 0, 'ja').frame;
+  assert.deepEqual([...romajiOnly.romajiPlannedOrders], [['a', 1]]);
+  assert.equal(romajiOnly.plannedOrders.size, 0);
+  // 順番ラベルを出さない間は付かない
+  assert.equal(frameAt('qwerty', 'か', 1, {}, 0, 'ja').frame.romajiPlannedOrders.size, 0);
 });

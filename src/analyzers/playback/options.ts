@@ -46,6 +46,8 @@ import {
  * - `showFingerPositions` / `showPlannedKeys` / `showTrail` / `showOrderLabels`: 配列図に、指の位置・これから押すキー・
  *   押したキーの履歴・順番ラベルを出すか。それぞれ自分の表示だけを出し入れする。順番ラベルは、その時に出ている
  *   これから押すキーと履歴にだけ付き、Chain・Arpeggioの順番表示は切り替えの対象にしない
+ * - `showRomajiPlan`: ローマ字の規則を持つ配列で、今の入力単位のまだ押していないキーを配列図に出すか。
+ *   これから押すキーの表示とは独立に出し入れし、順番ラベルが表示の時は、出ているこのキーにも順番を付ける
  * - `trailSteps`: 押下履歴に残すステップ数。履歴を出さない時は表示に影響しない
  * - `keyFeedbackStyle`: キーを押した瞬間の見せ方
  * - `fingerPreparationSeconds`: 指の位置を、次の押下より前に動かして見せる時間 [秒]。0なら押下の瞬間に切り替える
@@ -170,6 +172,13 @@ export const playbackOptions = defineOptions({
     url: booleanUrlCodec('plan'),
     label: '押下予定キーを表示',
   }),
+  showRomajiPlan: defineOption<boolean>({
+    schema: v.boolean(),
+    default: true,
+    affects: 'view',
+    url: booleanUrlCodec('romajiPlan'),
+    label: '予定ローマ字を表示',
+  }),
   showTrail: defineOption<boolean>({
     schema: v.boolean(),
     default: false,
@@ -233,6 +242,7 @@ export const ALTERNATE_PLAYBACK_OPTIONS: PlaybackOptions = {
   showSameFingerMotion: true,
   showFingerPositions: true,
   showPlannedKeys: true,
+  showRomajiPlan: false,
   showTrail: true,
   trailSteps: 12,
   showOrderLabels: true,
