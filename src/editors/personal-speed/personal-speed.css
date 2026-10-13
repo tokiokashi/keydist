@@ -244,3 +244,27 @@
   font: inherit;
   text-align: center;
 }
+
+.personal-speed-result {
+  margin-top: 0.6rem;
+  overflow-x: auto;
+}
+
+.personal-speed-result-table {
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.personal-speed-result-table th,
+.personal-speed-result-table td {
+  padding: 0.25rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.personal-speed-result-table th[scope='row'],
+.personal-speed-result-table thead th:first-child,
+.personal-speed-result-table td:last-child {
+  text-align: left;
+}

@@ -11,7 +11,13 @@ import {
   CALIBRATION_SAME_HAND_FIELD,
   type ParseCalibrationFormResult,
 } from '#interpretation/timing/calibration-form.ts';
-import { SENTENCE_MIN_SAMPLES, type ApplySentenceResult, type SentenceMeasurement } from '#interpretation/timing/sentence-measurement.ts';
+import {
+  SENTENCE_MIN_SAMPLES,
+  type ApplySentenceResult,
+  type CrossHandDirection,
+  type SentenceMeasurement,
+  type SentenceSaveStatus,
+} from '#interpretation/timing/sentence-measurement.ts';
 import type { SentenceUnmeasurable } from '#interpretation/timing/sentence-session.ts';
 import {
   remainingCalibrationIntervals,
@@ -198,6 +204,54 @@ export function sentenceFailureText(result: Exclude<ApplySentenceResult, { ok: t
       return `測った連打との差が保存できる範囲（${CALIBRATION_OVERHEAD_MS_MIN}から${CALIBRATION_OVERHEAD_MS_MAX}ミリ秒）を外れていたため、保存していません。もう一度測ってください。`;
   }
 }
+
+/** 測り終えた時の表の見出し。 */
+export const SENTENCE_TABLE_COLUMNS = {
+  kind: '種類',
+  count: '打鍵の数',
+  base: '基準の時間の中央値（ミリ秒）',
+  interval: '打った間隔の中央値（ミリ秒）',
+  difference: '連打との差（ミリ秒）',
+  saved: '保存',
+} as const;
+
+/** 測り終えた時の表に添える説明。 */
+export const SENTENCE_TABLE_NOTES: readonly string[] = [
+  '連打との差は、打鍵ごとの差（打った間隔から基準の時間を引いた値）の中央値で、負の時は0にします。'
+  + '打った間隔の中央値から基準の時間の中央値を引いた値とは、一致しないことがあります。',
+  '基準の時間は、連打の時間です。続け打ちは同じキーを続けて打つ時間、同指連続は連打の時間と指が動く時間の長い方です。',
+  '左手から右手・右手から左手の行は、「その他」のうち、手が替わる打鍵だけを分けた値です。「その他」の行にも含まれ、保存しません。'
+  + '方向ごとに分けるので打鍵の数が少なく、値が揺れやすくなります。',
+];
+
+/** 表の行の名前。同指連続と続け打ちは、基準の時間が分かる形にする。 */
+export function sentenceTableKindLabel(kind: OverheadKind): string {
+  switch (kind) {
+    case 'repeat': return `${OVERHEAD_KIND_LABEL[kind]}（同じキーを続けて打つ時間が基準）`;
+    case 'sfb': return `${OVERHEAD_KIND_LABEL[kind]}（連打の時間と指が動く時間の長い方が基準）`;
+    default: return OVERHEAD_KIND_LABEL[kind];
+  }
+}
+
+export function sentenceTableDirectionLabel(direction: CrossHandDirection): string {
+  return `その他のうち ${direction === 'L→R' ? '左手から右手' : '右手から左手'}`;
+}
+
+/** 表の中央値の表示。数えた打鍵が無い行は「なし」。 */
+export function sentenceTableValueText(value: number | undefined): string {
+  return value === undefined ? 'なし' : value.toFixed(1);
+}
+
+/** 差の種類の行で、保存したかを示す文。 */
+export function sentenceTableSavedText(status: SentenceSaveStatus): string {
+  switch (status) {
+    case 'saved': return '保存した';
+    case 'below-minimum': return `保存していない（${SENTENCE_MIN_SAMPLES}打に満たず、値が揺れやすい）`;
+    case 'out-of-range': return '保存していない（範囲を外れた種類があるため）';
+  }
+}
+
+export const SENTENCE_TABLE_NOT_SAVED_TEXT = '保存しない';
 
 /** 打った内容から測定の値を求められなかった時の文。 */
 export const SENTENCE_UNMEASURED_TEXT = '打った内容から測定の値を求められなかったため、保存していません。もう一度測ってください。';

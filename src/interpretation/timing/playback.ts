@@ -491,7 +491,8 @@ function playbackSameHandDifferentFingerPair(
   return undefined;
 }
 
-function playbackCrossHandDirection(
+/** ステップ`i`と`i-1`が異手の時の方向（`spec/playback-timing.md` §3.1「異手の判定」）。異手でなければ`undefined`。 */
+export function playbackCrossHandDirection(
   stroke: Stroke | undefined,
   previousStroke: Stroke | undefined,
 ): 'L→R' | 'R→L' | undefined {
