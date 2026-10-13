@@ -148,7 +148,7 @@ test('各測定に、何を測るかと、測った値が打鍵再生のどこ�
   for (const [title, text] of [
     ['通常の速度と指の移動', '同指連続を含まない打鍵の時間と、同じキーを続けて打つ時間、同指連続で指が動く時間'],
     ['方向別の速度', '直前の打鍵との指の組み合わせと向き'],
-    ['文章を打つ速さ', '続け打ちと他の種類の値は連打の時間に足します'],
+    ['文章を打つ速さ', '続け打ちの値は、同じキーを続けて打つ速さを測ってあればその時間に、測っていなければ連打の時間に足します'],
   ] as const) {
     await expect(measure.getByRole('heading', { name: title, level: 3 })).toBeVisible();
     await expect(measure).toContainText(text);
