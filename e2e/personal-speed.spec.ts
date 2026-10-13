@@ -92,6 +92,30 @@ async function typeThroughSentence(page: Page): Promise<void> {
   throw new Error('文章を打つ測定が終わらなかった');
 }
 
+/** 文章を打つ測定で、今の回を打ち終えて次の回に進むまで、画面が示す次のキーを順に打つ。 */
+async function typeThroughRound(page: Page): Promise<void> {
+  const position = page.locator('[data-personal-speed-sentence-position]');
+  const next = page.locator('[data-personal-speed-next] kbd');
+  const progress = page.locator('[data-personal-speed-sentence-progress]');
+  const start = await position.textContent();
+  for (let step = 0; step < 200; step += 1) {
+    if ((await position.textContent()) !== start) return;
+    const before = (await progress.textContent({ timeout: 1000 }).catch(() => null)) ?? '';
+    const keys = (await next.allTextContents()).map((key) => key.toLowerCase());
+    if (keys.length === 0) continue;
+    for (const key of keys) await page.keyboard.press(key);
+    await page.waitForFunction(
+      (previous) => {
+        const element = document.querySelector('[data-personal-speed-sentence-progress]');
+        return element === null || element.textContent !== previous;
+      },
+      before,
+      { timeout: 2000 },
+    );
+  }
+  throw new Error('1回が終わらなかった');
+}
+
 /** keydownを送り、既定動作が止められたか・windowのバブリング段階に届いたかを返す。 */
 function probe(page: Page, key: string): Promise<{ prevented: boolean; reached: boolean }> {
   return page.evaluate((pressed) => {
@@ -243,6 +267,7 @@ test('項目の測り直しは、その項目だけを入れ替える', async ({
 });
 
 test('文章を打つ測定の途中に別のタブで個人速度が変わると、連打との差を保存せず測り直しを促す', async ({ page, context }) => {
+  test.setTimeout(240_000);
   await seed(page, { [STORAGE_KEY]: SEEDED });
   await open(page);
   await page.locator('[data-personal-speed-start="sentence"]').click();
@@ -277,6 +302,7 @@ test('画面内で選んだ配列は、Singleの対象や条件を変えない�
 });
 
 test('文章を打つ測定で、種類ごとの連打との差を測って保存し、数えた打鍵の数が知らされる', async ({ page }) => {
+  test.setTimeout(240_000);
   await seed(page, { [STORAGE_KEY]: SEEDED });
   await open(page);
   await expect(page.locator('[data-personal-speed-sentence]').first()).toBeVisible();
@@ -297,6 +323,28 @@ test('文章を打つ測定で、種類ごとの連打との差を測って保�
   // 他の項目は残る
   expect(saved.calibration.actionsPerSecond).toBe(5);
   await expect(page.locator('[id="personal-speed-overhead:other"]')).not.toHaveValue('');
+});
+
+test('文章を打つ測定は、何本目の何回目かを示し、1回目だけを数えない回と示す。2回目以降も次に打つキーが出る', async ({ page }) => {
+  await seed(page, { [STORAGE_KEY]: SEEDED });
+  await open(page);
+  await page.locator('[data-personal-speed-start="sentence"]').click();
+  const position = page.locator('[data-personal-speed-sentence-position]');
+  const learning = page.locator('[data-personal-speed-sentence-learning]');
+  await expect(position).toHaveText('1本目 / 全8本、1回目 / 全3回');
+  await expect(learning).toHaveText('1回目は文を覚える回です。この回は数えません。');
+  await typeThroughRound(page);
+  await expect(position).toHaveText('1本目 / 全8本、2回目 / 全3回');
+  await expect(learning).toHaveCount(0);
+  // 2回目も、示す文と次に打つキーが出る。
+  await expect(page.locator('[data-personal-speed-sentence-run] [data-personal-speed-sentence]')).toHaveCount(1);
+  await expect(page.locator('[data-personal-speed-next] kbd').first()).toBeVisible();
+  await typeThroughRound(page);
+  await typeThroughRound(page);
+  await expect(position).toHaveText('2本目 / 全8本、1回目 / 全3回');
+  await expect(learning).toBeVisible();
+  await page.locator('[data-personal-speed-sentence-cancel]').click();
+  expect(await stored(page)).toEqual(SEEDED);
 });
 
 test('文章を打つ測定は、違うキーを知らせ、中止すると保存値を変えない。測定中だけキー入力を取る', async ({ page }) => {
@@ -368,14 +416,14 @@ test('文章を打つ測定で、示した綴りと違う綴りで打ち始め�
   const progress = page.locator('[data-personal-speed-sentence-progress]');
   await expect(progress).toBeVisible();
   const total = Number(/あと(\d+)打/.exec(await progress.innerText())?.[1]);
-  // 「きょうはてんき」を、「ん」をnの1打で打つ。nnの2打ではなく1打で、次のかなのkへ進む。
-  for (const key of 'kyouhatenk') {
+  // 「こんしゅう」を、「ん」をnの1打で打つ。nnの2打ではなく1打で、次のかなのsへ進む。
+  for (const key of 'kons') {
     await page.keyboard.press(key);
     await page.waitForTimeout(40);
   }
-  await expect(page.locator('[data-personal-speed-next] kbd')).toHaveText(['I']);
+  await expect(page.locator('[data-personal-speed-next] kbd')).toHaveText(['Y']);
   // 示していた綴り（nn）より1打少ない分だけ、残りが減る。
-  await expect(progress).toHaveText(`あと${total - 11}打`);
+  await expect(progress).toHaveText(`あと${total - 5}打`);
   // 最後まで打って保存する流れは別のテストが見る。ここは途中で中止する。
   await page.locator('[data-personal-speed-sentence-cancel]').click();
   await expect(page.locator('[data-personal-speed-sentence-run="active"]')).toHaveCount(0);

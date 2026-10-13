@@ -26,13 +26,14 @@ import {
   remainingSentenceKeys,
   remainingSentenceStrokes,
   sentencePlan,
+  sentenceSamples,
   sentenceSteps,
   sentenceUnmeasurable,
   upcomingSentenceSteps,
   type SentencePlan,
   type SentenceRun,
+  type SentenceSession,
 } from '#interpretation/timing/sentence-session.ts';
-import type { SentenceAnalysis } from '#interpretation/timing/sentence-measurement.ts';
 import {
   calibrationFieldLabel,
   calibrationFieldUnit,
@@ -41,7 +42,9 @@ import {
   calibrationProgressText,
   MEASUREMENT_DESCRIPTION,
   MEASUREMENT_OUT_OF_RANGE_TEXT,
-  MEASUREMENT_SENTENCE,
+  MEASUREMENT_SENTENCES,
+  SENTENCE_LEARNING_ROUND_TEXT,
+  sentenceProgressText,
   PERSONAL_SPEED_PURPOSE,
   savedMessage,
   SENTENCE_UNMEASURED_TEXT,
@@ -91,22 +94,21 @@ export interface PersonalSpeedEditorProps {
   readonly onDiscard: () => void;
 }
 
-/** 文章を打つ測定の準備。打てる時は打鍵の列と構造を持ち、打てない時は理由の文を持つ。 */
+/** 文章を打つ測定の準備。打てる時は文ごとの測定の計画を持ち、打てない時は理由の文を持つ。 */
 type SentenceSetup =
-  | {
-      readonly ok: true;
-      readonly analysis: SentenceAnalysis;
-      readonly plan: SentencePlan;
-    }
+  | { readonly ok: true; readonly plans: readonly SentencePlan[] }
   | { readonly ok: false; readonly message: string };
 
-function sentenceSetupOf(build: SentenceBuildResult): SentenceSetup {
-  if (!build.ok) return build;
-  const steps = sentenceSteps(build.analysis);
-  const unmeasurable = sentenceUnmeasurable(steps);
-  return unmeasurable === undefined
-    ? { ok: true, analysis: build.analysis, plan: sentencePlan(build.analysis, build.spelling) }
-    : { ok: false, message: sentenceUnmeasurableText(unmeasurable) };
+/** 示す文の全部が打てる時だけ、測れる。1本でも作れない・測れない文があれば、その理由を返す。 */
+function sentenceSetupOf(builds: readonly SentenceBuildResult[]): SentenceSetup {
+  const plans: SentencePlan[] = [];
+  for (const build of builds) {
+    if (!build.ok) return build;
+    const unmeasurable = sentenceUnmeasurable(sentenceSteps(build.analysis));
+    if (unmeasurable !== undefined) return { ok: false, message: sentenceUnmeasurableText(unmeasurable) };
+    plans.push(sentencePlan(build.analysis, build.spelling));
+  }
+  return { ok: true, plans };
 }
 
 /** 示す文と、打つ位置の表示。打ち終えた入力単位・今の入力単位・まだの入力単位に分けて見せる。 */
@@ -262,27 +264,27 @@ export function PersonalSpeedEditor({
   const sentence: SentenceSetup | undefined = useMemo(
     () => (!ready || layout === undefined || shape === undefined || assignment === undefined
       ? undefined
-      : sentenceSetupOf(buildSentence(
+      : sentenceSetupOf(MEASUREMENT_SENTENCES.map((text) => buildSentence(
         { layoutId: layout.id, shapeId: shape.id, fingerAssignmentId: assignment.id },
-        MEASUREMENT_SENTENCE,
-      ))),
+        text,
+      )))),
     [ready, buildSentence, layout, shape, assignment],
   );
   // 測定を始めた時の示す文・打鍵の列と構造・保存値。別のタブで条件や保存値が変わっても、終わりまでこれを使う。
   const [sentenceStart, setSentenceStart] = useState<SentenceStart | undefined>(undefined);
   const sentenceStartRef = useRef<SentenceStart | undefined>(undefined);
-  const sentenceFinished = (run: SentenceRun) => {
+  const sentenceFinished = (session: SentenceSession) => {
     const started = sentenceStartRef.current;
     sentenceStartRef.current = undefined;
     setSentenceStart(undefined);
     if (started === undefined) return;
-    // 値は、示した綴りではなく、打った綴りで作った打鍵の列と構造から求める。
-    const typedAnalysis = started.setup.plan.analyze(run.typed);
-    if (typedAnalysis === undefined || typedAnalysis.strokes.length !== run.taps.length) {
+    // 数えるのは2回目以降だけ。値は、示した綴りではなく、回ごとに打った綴りで作った打鍵の列と構造から求める。
+    const samples = sentenceSamples(started.setup.plans, session.records);
+    if (samples === undefined) {
       setError(SENTENCE_UNMEASURED_TEXT);
       return;
     }
-    const result = applySentenceMeasurement(started.calibration, typedAnalysis, run.taps, Date.now(), calibration);
+    const result = applySentenceMeasurement(started.calibration, samples, Date.now(), calibration);
     if (!result.ok) {
       setError(sentenceFailureText(result));
       return;
@@ -291,12 +293,12 @@ export function PersonalSpeedEditor({
     setMessage(sentenceSavedMessage(result.measurement));
   };
   const sentenceRunner = useSentenceRun({ keyLabel, onFinished: sentenceFinished });
-  const running = runner.run !== undefined || sentenceRunner.run !== undefined;
+  const running = runner.run !== undefined || sentenceRunner.session !== undefined;
 
   // 測定中は案内にフォーカスを置き（押した測定のボタンは無効になるため）、終わったら押したボタンへ戻す。
   useEffect(() => {
     if (running) {
-      (sentenceRunner.run === undefined ? regionRef : sentenceRegionRef).current?.focus();
+      (sentenceRunner.session === undefined ? regionRef : sentenceRegionRef).current?.focus();
       return undefined;
     }
     const target = opener.current;
@@ -322,14 +324,15 @@ export function PersonalSpeedEditor({
     opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setMessage('');
     setError('');
-    sentenceRunner.start(sentence.plan);
+    sentenceRunner.start(sentence.plans);
   };
   const cancelSentence = () => {
     sentenceStartRef.current = undefined;
     setSentenceStart(undefined);
     sentenceRunner.cancel();
   };
-  const sentenceRun = sentenceRunner.run;
+  const sentenceSession = sentenceRunner.session;
+  const sentenceRun = sentenceSession?.run;
   const runningSentence = sentenceStart?.setup;
   const nextSentenceKeys = sentenceRun === undefined ? [] : remainingSentenceKeys(sentenceRun);
   const upcomingSentenceKeys = sentenceRun === undefined
@@ -452,7 +455,7 @@ export function PersonalSpeedEditor({
             <div className="personal-speed-measurement">
               <h3>文章を打つ速さ</h3>
               <p className="personal-speed-note">{MEASUREMENT_DESCRIPTION.sentence}</p>
-              {sentence?.ok === true ? <SentenceText plan={sentence.plan} run={undefined} /> : null}
+              {sentence?.ok === true ? sentence.plans.map((plan, index) => <SentenceText key={index} plan={plan} run={undefined} />) : null}
               {sentence?.ok === false ? <p className="personal-speed-warning" role="alert" data-personal-speed-sentence-unavailable>{sentence.message}</p> : null}
               <div className="personal-speed-actions">
                 <button type="button" data-personal-speed-start="sentence" disabled={sentenceDisabled} onClick={startSentence}>
@@ -463,12 +466,16 @@ export function PersonalSpeedEditor({
                 className="personal-speed-run"
                 ref={sentenceRegionRef}
                 tabIndex={-1}
-                hidden={sentenceRun === undefined}
-                data-personal-speed-sentence-run={sentenceRun === undefined ? undefined : 'active'}
+                hidden={sentenceSession === undefined}
+                data-personal-speed-sentence-run={sentenceSession === undefined ? undefined : 'active'}
               >
-                {sentenceRun === undefined || runningSentence === undefined ? null : (
+                {sentenceSession === undefined || sentenceRun === undefined || runningSentence === undefined ? null : (
                   <>
-                    <SentenceText plan={runningSentence.plan} run={sentenceRun} />
+                    <p className="personal-speed-progress" data-personal-speed-sentence-position>
+                      {sentenceProgressText(sentenceSession.sentence, sentenceSession.plans.length, sentenceSession.round, sentenceSession.rounds)}
+                    </p>
+                    {sentenceSession.round === 0 ? <p className="personal-speed-note" data-personal-speed-sentence-learning>{SENTENCE_LEARNING_ROUND_TEXT}</p> : null}
+                    <SentenceText plan={sentenceSession.plans[sentenceSession.sentence]} run={sentenceRun} />
                     <p className="personal-speed-instruction">
                       次に打つキー:{' '}
                       <span data-personal-speed-next>

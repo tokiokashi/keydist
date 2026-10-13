@@ -13,10 +13,11 @@ import { strokeStructureKinds } from './stroke-structure.ts';
 /**
  * 文章を打つ測定（`spec/playback-timing.md` §6.4）の計算。構造の種類ごとに、同指連続を含まない
  * ストロークの実際の間隔から連打の時間（`normalMs`）を引いた差の中央値を、連打との差にする。
+ * 数えるのは、覚えた文を繰り返し打つ2回目以降だけ。
  * 時刻は呼び出し側が渡すので、描画にもタイマーにも依存しない。
  */
 
-/** 種類ごとの連打との差を保存する、数えたストロークの最小数。これ未満の種類は保存しない。 */
+/** 種類ごとの連打との差を保存する、数えたストロークの最小数（文の中の位置が違うストロークの数）。これ未満の種類は保存しない。 */
 export const SENTENCE_MIN_SAMPLES = 10;
 
 /** 打ち終えたストローク1つの記録。 */
@@ -82,31 +83,59 @@ function medianOf(values: readonly number[]): number {
   return sorted.length % 2 === 1 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
 }
 
+/** 数える回（2回目以降）1回分の、打った綴りで作った打鍵の列と構造、ストロークごとの記録。 */
+export interface SentenceSample {
+  /** 示した文の番号。位置の違いを数える時に、文を区別する。 */
+  readonly sentence: number;
+  readonly analysis: SentenceAnalysis;
+  /** `analysis.strokes`と同じ長さ。 */
+  readonly taps: readonly SentenceTap[];
+}
+
 /**
- * 打ち終えたストロークの記録から、種類ごとの連打との差を求める。`taps`は`analysis.strokes`と同じ長さ。
- * 最初のストローク、違うキーを押したストローク、同指連続を含むストロークは数えない。
+ * 回ごとの打鍵の列の、ストロークの位置。文の番号と、入力単位の通し番号（`inputIndex`）と、その単位の中の何打目かで決める。
+ * 同じ文の2回目と3回目で綴りが違い打数がずれても、同じ入力単位の同じ何打目なら同じ位置になる。
+ */
+function strokePositions(sentence: number, strokes: SentenceAnalysis['strokes']): string[] {
+  const positions: string[] = [];
+  let ordinal = 0;
+  strokes.forEach((stroke, index) => {
+    ordinal = index > 0 && strokes[index - 1].inputIndex === stroke.inputIndex ? ordinal + 1 : 0;
+    positions.push(`${sentence}:${stroke.inputIndex}:${ordinal}`);
+  });
+  return positions;
+}
+
+/**
+ * 数える回の記録から、種類ごとの連打との差を求める。回ごとに、最初のストローク（直前の時刻が無い）、
+ * 違うキーを押したストローク、同指連続を含むストロークは数えない。
+ * 差の中央値は数えたストロークの全部から取る。数えた数は位置の違うストロークの数で、種類ごとの下限（`SENTENCE_MIN_SAMPLES`）の判定にも使う。
  */
 export function measureSentence(
-  analysis: SentenceAnalysis,
+  samples: readonly SentenceSample[],
   calibration: PlaybackCalibration,
-  taps: readonly SentenceTap[],
 ): SentenceMeasurement {
-  const kinds = strokeStructureKinds(analysis);
   const differences: Record<StrokeStructureKind, number[]> = { arpeggio: [], chain: [], other: [] };
-  for (let index = 1; index < analysis.strokes.length; index++) {
-    const tap = taps[index];
-    const previous = taps[index - 1];
-    if (tap === undefined || previous === undefined || !tap.clean) continue;
-    if (analysis.strokes[index].presses.some((press) => press.sfb)) continue;
-    const normalMs = playbackNormalMs(analysis, index, calibration);
-    if (!Number.isFinite(normalMs)) continue;
-    differences[kinds[index]].push(tap.atMs - previous.atMs - normalMs);
+  const positions: Record<StrokeStructureKind, Set<string>> = { arpeggio: new Set(), chain: new Set(), other: new Set() };
+  for (const { sentence, analysis, taps } of samples) {
+    const kinds = strokeStructureKinds(analysis);
+    const where = strokePositions(sentence, analysis.strokes);
+    for (let index = 1; index < analysis.strokes.length; index++) {
+      const tap = taps[index];
+      const previous = taps[index - 1];
+      if (tap === undefined || previous === undefined || !tap.clean) continue;
+      if (analysis.strokes[index].presses.some((press) => press.sfb)) continue;
+      const normalMs = playbackNormalMs(analysis, index, calibration);
+      if (!Number.isFinite(normalMs)) continue;
+      differences[kinds[index]].push(tap.atMs - previous.atMs - normalMs);
+      positions[kinds[index]].add(where[index]);
+    }
   }
 
   const counts = { arpeggio: 0, chain: 0, other: 0 };
   const overheadMs: Partial<Record<StrokeStructureKind, number>> = {};
   for (const kind of STROKE_STRUCTURE_KINDS) {
-    counts[kind] = differences[kind].length;
+    counts[kind] = positions[kind].size;
     if (counts[kind] >= SENTENCE_MIN_SAMPLES) overheadMs[kind] = Math.max(0, medianOf(differences[kind]));
   }
   return { counts, overheadMs };
@@ -129,15 +158,14 @@ export type ApplySentenceResult =
  */
 export function applySentenceMeasurement(
   base: PlaybackCalibration | undefined,
-  analysis: SentenceAnalysis,
-  taps: readonly SentenceTap[],
+  samples: readonly SentenceSample[],
   nowMs: number,
   /** 保存の時点の保存値。測定を始めた時の保存値`base`と違えば保存しない。 */
   current: PlaybackCalibration | undefined,
 ): ApplySentenceResult {
   if (base === undefined) return { ok: false, reason: 'no-saved-value' };
   if (!sameValue(base, current)) return { ok: false, reason: 'changed' };
-  const measurement = measureSentence(analysis, base, taps);
+  const measurement = measureSentence(samples, base);
   if (Object.keys(measurement.overheadMs).length === 0) return { ok: false, reason: 'too-few', measurement };
   const inRange = Object.values(measurement.overheadMs).every((value) =>
     value >= CALIBRATION_OVERHEAD_MS_MIN && value <= CALIBRATION_OVERHEAD_MS_MAX);

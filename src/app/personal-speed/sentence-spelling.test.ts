@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { EMPTY_SETTINGS_OVERRIDES, setSettingsOverride, type SettingsCascadeOverrides } from '#engine/settings-items.ts';
 import type { PersonalSpeedSelection } from '#editors/personal-speed/PersonalSpeedEditor.tsx';
-import { MEASUREMENT_SENTENCE } from '#editors/personal-speed/calibration-text.ts';
 import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import { applySentenceMeasurement } from '#interpretation/timing/sentence-measurement.ts';
 import {
@@ -67,7 +66,7 @@ function usualSpelling(kana: string, spellings: readonly string[]): string {
 }
 
 test('訓令式の条件のQWERTYで、shi・chi・tsu・shaと子音の前のn1打を混ぜて示す文を打ち切れ、値は打った綴りの打鍵の列から求める', () => {
-  const { result, plan } = planOf(MEASUREMENT_SENTENCE);
+  const { result, plan } = planOf('でんしゃがおくれてかいしゃにちこくしたつくえ');
   assert.ok(result.spelling !== undefined);
   const spelled = plan.units.map((unit) => usualSpelling(unit.text, unit.spellings));
   // 「ん」のn1打を選んだ単位の次は、次の単位の最初のキーで確定する。
@@ -85,7 +84,7 @@ test('訓令式の条件のQWERTYで、shi・chi・tsu・shaと子音の前のn1
   assert.equal(analysis.strokes.map((stroke) => stroke.char).join(''), keys);
   assert.notEqual(result.analysis.strokes.length, run.taps.length);
 
-  const saved = applySentenceMeasurement(SAVED, analysis, run.taps.map((tap, index) => ({ ...tap, atMs: index * 300 })), 2, SAVED);
+  const saved = applySentenceMeasurement(SAVED, [{ sentence: 0, analysis, taps: run.taps.map((tap, index) => ({ ...tap, atMs: index * 300 })) }], 2, SAVED);
   assert.ok(saved.ok);
   assert.ok(Object.values(saved.measurement.counts).reduce((a, b) => a + b, 0) > 0);
 });
