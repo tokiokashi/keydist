@@ -134,25 +134,46 @@ test('サイドバーのAssetsから開ける。保存が無ければ空の状�
   await waitForHydration(page);
   await page.locator('#app-sidebar').getByRole('link', { name: '個人速度', exact: true }).click();
   await expect(page).toHaveURL(/\/personal-speed$/);
-  await expect(page.locator('[data-personal-speed-empty]')).toBeVisible();
+  // 保存値が無い間は、3つの測定のそれぞれが、まだ測っていないことを示す
+  await expect(page.locator('[data-personal-speed-empty]')).toHaveCount(3);
   await expect(page.locator('[data-personal-speed-start="normal"]')).toBeEnabled();
   await expect(page.locator('[data-personal-speed-start="directional"]')).toBeDisabled();
   await expect(page.locator('[data-personal-speed-start="sentence"]')).toBeDisabled();
   await expect(page.locator('[data-personal-speed-discard]')).toBeDisabled();
+  // 使えない測定には、ボタンの近くに理由が出る
+  await expect(page.locator('#personal-speed-group-directional [data-personal-speed-reason]')).toContainText('先に、通常の速度と指の移動を測って保存してください');
+  await expect(page.locator('#personal-speed-group-sentence [data-personal-speed-reason]')).toContainText('先に、通常の速度と指の移動を測って保存してください');
+  await expect(page.locator('#personal-speed-group-normal [data-personal-speed-reason]')).toHaveCount(0);
 });
 
-test('各測定に、何を測るかと、測った値が打鍵再生のどこに使われるかの説明がある', async ({ page }) => {
+test('各測定のまとまりに、短い説明と再生時間モデルの仕様書へのリンクがあり、計算の詳細は書いていない', async ({ page }) => {
   await open(page);
   await expect(page.locator('[data-personal-speed-purpose]')).toContainText('打鍵再生の時間');
-  const measure = page.getByRole('region', { name: '測定' });
-  for (const [title, text] of [
-    ['通常の速度と指の移動', '同指連続を含まない打鍵の時間と、同じキーを続けて打つ時間、同指連続で指が動く時間'],
-    ['方向別の速度', '直前の打鍵との指の組み合わせと向き'],
-    ['文章を打つ速さ', '続け打ちの値は、同じキーを続けて打つ速さを測ってあればその時間に、測っていなければ連打の時間に足します'],
-  ] as const) {
-    await expect(measure.getByRole('heading', { name: title, level: 3 })).toBeVisible();
-    await expect(measure).toContainText(text);
+  const expected = {
+    normal: ['同指連続を含まない打鍵の時間と、同指連続で指が動く時間', '連打との差は全て消えます'],
+    directional: ['同指連続を含まない打鍵の時間', 'Arpeggio・Chain・その他・同指連続が消えます（続け打ちは残ります）'],
+    sentence: [
+      '覚えた文を考えずに打ってください',
+      '1回目は文を覚える回で数えない',
+      '間違えたらその打鍵だけを数えずに続けられ',
+      '普段の綴りで打てます',
+      '手に馴染んだ配列で測ってください',
+      '別の配列で測ると求まる種類が変わります',
+      '前の連打との差は全て置き換わります',
+      'コンボを文字に変えて送る場合も測れます',
+    ],
+  } as const;
+  for (const [id, texts] of Object.entries(expected)) {
+    const description = page.locator(`[data-personal-speed-description="${id}"]`);
+    for (const text of texts) await expect(description).toContainText(text);
+    await expect(description.getByRole('link', { name: '再生時間モデルの仕様書' })).toHaveAttribute('href', /spec\/playback-timing\.md$/);
+    // 計算の詳細は仕様書にある
+    await expect(description).not.toContainText('四分位平均');
+    await expect(description).not.toContainText('基準の時間');
   }
+  await expect(page.locator('#personal-speed-group-normal').getByRole('heading', { name: '通常の速度と指の移動', level: 2 })).toBeVisible();
+  await expect(page.locator('#personal-speed-group-directional').getByRole('heading', { name: '方向別の速度', level: 2 })).toBeVisible();
+  await expect(page.locator('#personal-speed-group-sentence').getByRole('heading', { name: '文章を打つ速さ', level: 2 })).toBeVisible();
 });
 
 test('通常の測定をキー入力で行い、結果が保存される', async ({ page }) => {
@@ -161,8 +182,11 @@ test('通常の測定をキー入力で行い、結果が保存される', async
   await expect(page.locator('[data-personal-speed-run="active"]')).toBeVisible();
   await typeThroughRun(page);
   await expect(page.locator('[data-personal-speed-run="active"]')).toHaveCount(0);
-  await expect(page.getByText('通常の速度、同じキーを続けて打つ速さ、指の移動速度を測って保存しました。')).toBeVisible();
+  // 知らせは、測ったまとまりの中に出る
+  await expect(page.locator('#personal-speed-group-normal').getByText('通常の速度、同じキーを続けて打つ速さ、指の移動速度を測って保存しました。')).toBeVisible();
   await expect(page.locator('[data-personal-speed-empty]')).toHaveCount(0);
+  // 測った値は、測ったまとまりの中の行に出る
+  await expect(page.locator('#personal-speed-group-normal #personal-speed-actions')).not.toHaveValue('');
 
   const saved = await stored(page) as { version: number; calibration: { actionsPerSecond: number; sameKeyActionsPerSecond: number; fingerSpeedUnitsPerSecond: Record<string, number> } };
   expect(saved.version).toBe(1);
@@ -208,31 +232,108 @@ test('測定を完了した後は、文字キーを取らない', async ({ page 
   expect(await probe(page, 'f')).toEqual({ prevented: false, reached: true });
 });
 
-test('保存した値を編集できる。範囲外と必須項目の空は保存されず、任意項目の空は消える', async ({ page }) => {
+test('保存した値の直接編集は、欄を確定した時にその場で保存され、元に戻すで戻せる。測定は別の操作なしに始められる', async ({ page }) => {
+  await seed(page, { [STORAGE_KEY]: SEEDED });
+  await open(page);
+  // 「変更を保存」「変更を戻す」は無い
+  await expect(page.getByRole('button', { name: '変更を保存' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '変更を戻す' })).toHaveCount(0);
+  const actions = page.locator('#personal-speed-actions');
+  await expect(actions).toHaveValue('5.00');
+
+  // Enterで確定
+  await actions.fill('7.5');
+  await actions.press('Enter');
+  await expect.poll(async () => ((await stored(page)) as { calibration: { actionsPerSecond: number } }).calibration.actionsPerSecond).toBe(7.5);
+  await expect(actions).toHaveValue('7.50');
+  // 保存の知らせは出さない
+  await expect(page.locator('.personal-speed-message:not(:empty)')).toHaveCount(0);
+
+  // 欄から離れて確定
+  const finger = page.locator('[id="personal-speed-finger:LI"]');
+  await finger.fill('12');
+  await finger.blur();
+  await expect.poll(async () => ((await stored(page)) as { calibration: { fingerSpeedUnitsPerSecond: Record<string, number> } }).calibration.fingerSpeedUnitsPerSecond.LI).toBe(12);
+
+  // 元に戻すで、保存した順に戻る
+  await page.getByRole('button', { name: '元に戻す' }).click();
+  await expect(finger).toHaveValue('10.00');
+  await page.getByRole('button', { name: '元に戻す' }).click();
+  await expect(actions).toHaveValue('5.00');
+  await expect.poll(() => stored(page)).toEqual(SEEDED);
+
+  // 編集の直後に、別の操作をせずに測定を始められる
+  await actions.fill('6');
+  await actions.press('Enter');
+  await page.locator('[data-personal-speed-start="normal"]').click();
+  await expect(page.locator('[data-personal-speed-run="active"]')).toBeVisible();
+  await page.locator('[data-personal-speed-cancel]').click();
+});
+
+test('任意の項目を空にして確定すると、その場で消え、元に戻すで戻る。必須の項目は空にできない', async ({ page }) => {
+  await seed(page, { [STORAGE_KEY]: SEEDED });
+  await open(page);
+  const finger = page.locator('[id="personal-speed-finger:LI"]');
+  await finger.fill('');
+  await finger.press('Enter');
+  await expect.poll(async () => ((await stored(page)) as { calibration: { fingerSpeedUnitsPerSecond: unknown } }).calibration.fingerSpeedUnitsPerSecond).toEqual({});
+  // 消えた項目の行は、測っていない項目へ移る
+  await expect(page.locator('[id="personal-speed-finger:LI"]')).toHaveValue('');
+  await expect(page.locator('#personal-speed-group-normal details', { hasText: '測っていない項目' }).first()).toBeVisible();
+
+  await page.getByRole('button', { name: '元に戻す' }).click();
+  await expect(page.locator('[id="personal-speed-finger:LI"]')).toHaveValue('10.00');
+  await expect.poll(() => stored(page)).toEqual(SEEDED);
+
+  const actions = page.locator('#personal-speed-actions');
+  await actions.fill('');
+  await actions.press('Enter');
+  await expect(page.getByRole('alert').filter({ hasText: '通常の打鍵速度を入力してください' })).toBeVisible();
+  expect(await stored(page)).toEqual(SEEDED);
+});
+
+test('保存できない値は保存されずに欄の近くに理由が出て、別の欄の正しい値は保存される。理由と入力は残る', async ({ page }) => {
   await seed(page, { [STORAGE_KEY]: SEEDED });
   await open(page);
   const actions = page.locator('#personal-speed-actions');
-  await expect(actions).toHaveValue('5.00');
-  const save = page.locator('[data-personal-speed-save]');
-  await expect(save).toBeDisabled();
-
   await actions.fill('100');
-  await save.click();
-  await expect(page.getByRole('alert').filter({ hasText: '通常の打鍵速度' })).toBeVisible();
+  await actions.press('Enter');
+  const reason = page.locator('[data-personal-speed-row="actions"]').getByRole('alert');
+  await expect(reason).toContainText('通常の打鍵速度は0.1から40までの数値で入力してください');
   expect(await stored(page)).toEqual(SEEDED);
 
-  await actions.fill('');
-  await save.click();
-  await expect(page.getByRole('alert').filter({ hasText: '入力してください' })).toBeVisible();
-  expect(await stored(page)).toEqual(SEEDED);
+  // 別の欄の保存は止まらず、保存できない入力と理由は残る
+  const finger = page.locator('[id="personal-speed-finger:LI"]');
+  await finger.fill('11');
+  await finger.press('Enter');
+  await expect.poll(async () => ((await stored(page)) as { calibration: { fingerSpeedUnitsPerSecond: Record<string, number> } }).calibration.fingerSpeedUnitsPerSecond.LI).toBe(11);
+  await expect(actions).toHaveValue('100');
+  await expect(reason).toBeVisible();
+  expect(((await stored(page)) as { calibration: { actionsPerSecond: number } }).calibration.actionsPerSecond).toBe(5);
 
-  await actions.fill('7.5');
-  await page.locator('[id="personal-speed-finger:LI"]').fill('');
-  await save.click();
-  await expect(page.getByText('保存しました。', { exact: true })).toBeVisible();
-  const saved = await stored(page) as { calibration: Record<string, unknown> };
-  expect(saved.calibration.actionsPerSecond).toBe(7.5);
-  expect(saved.calibration.fingerSpeedUnitsPerSecond).toEqual({});
+  // 直すと理由が消え、保存される
+  await actions.fill('6');
+  await expect(reason).toHaveCount(0);
+  await actions.press('Enter');
+  await expect.poll(async () => ((await stored(page)) as { calibration: { actionsPerSecond: number } }).calibration.actionsPerSecond).toBe(6);
+});
+
+test('測っていない項目は空欄の行で並ばず、まとめた一覧から値を足せる。測れる項目には測る入口がある', async ({ page }) => {
+  await seed(page, { [STORAGE_KEY]: SEEDED });
+  await open(page);
+  const normal = page.locator('#personal-speed-group-normal');
+  // 指の移動速度は測った1本だけが行になる
+  await expect(normal.locator('[data-personal-speed-row^="finger:"]:visible')).toHaveCount(1);
+  const missing = normal.locator('details').filter({ has: page.locator('[id="personal-speed-finger:LR"]') });
+  await missing.locator('summary').click();
+  const ring = missing.locator('[id="personal-speed-finger:LR"]');
+  await expect(ring).toHaveValue('');
+  // 測る入口（今の配列で測れる項目）
+  await expect(missing.getByRole('button', { name: /だけを測る$/ }).first()).toBeVisible();
+  // 値を足す
+  await ring.fill('9');
+  await ring.press('Enter');
+  await expect.poll(async () => ((await stored(page)) as { calibration: { fingerSpeedUnitsPerSecond: Record<string, number> } }).calibration.fingerSpeedUnitsPerSecond.LR).toBe(9);
 });
 
 test('全破棄は確認のあとに保存を消し、元に戻すで戻る', async ({ page }) => {
@@ -246,7 +347,8 @@ test('全破棄は確認のあとに保存を消し、元に戻すで戻る', as
 
   await page.locator('[data-personal-speed-discard]').click();
   await page.getByRole('dialog').getByRole('button', { name: '破棄する' }).click();
-  await expect(page.locator('[data-personal-speed-empty]')).toBeVisible();
+  await expect(page.locator('[data-personal-speed-empty]')).toHaveCount(3);
+  await expect(page.getByText('個人速度を破棄しました。')).toBeVisible();
   await expect.poll(async () => {
     const value = await stored(page) as { calibration?: unknown } | null;
     return value === null || value.calibration === undefined;
@@ -260,9 +362,11 @@ test('全破棄は確認のあとに保存を消し、元に戻すで戻る', as
 test('項目の測り直しは、その項目だけを入れ替える', async ({ page }) => {
   await seed(page, { [STORAGE_KEY]: SEEDED });
   await open(page);
-  await page.getByRole('button', { name: '通常の打鍵速度を測り直す' }).click();
+  await page.getByRole('button', { name: '通常の打鍵速度だけを測り直す' }).click();
+  // 測定中の案内は、その行のまとまりに出る
+  await expect(page.locator('#personal-speed-group-normal [data-personal-speed-run="active"]')).toBeVisible();
   await typeThroughRun(page);
-  await expect(page.getByText('通常の打鍵速度を測り直して保存しました。')).toBeVisible();
+  await expect(page.locator('#personal-speed-group-normal').getByText('通常の打鍵速度を測り直して保存しました。')).toBeVisible();
   const saved = await stored(page) as { calibration: Record<string, unknown> };
   expect(saved.calibration.actionsPerSecond).not.toBe(5);
   expect(saved.calibration.fingerSpeedUnitsPerSecond).toEqual(SEEDED.calibration.fingerSpeedUnitsPerSecond);
@@ -309,17 +413,20 @@ test('文章を打つ測定で、差の種類ごとの連打との差を測っ�
   test.setTimeout(240_000);
   await seed(page, { [STORAGE_KEY]: SEEDED });
   await open(page);
-  await expect(page.locator('[data-personal-speed-sentence]').first()).toBeVisible();
+  // 測る前に、文の一覧は並ばない
+  await expect(page.locator('[data-personal-speed-sentence]')).toHaveCount(0);
   await page.locator('[data-personal-speed-start="sentence"]').click();
   await expect(page.locator('[data-personal-speed-sentence-run="active"]')).toBeVisible();
   await typeThroughSentence(page);
   await expect(page.locator('[data-personal-speed-sentence-run="active"]')).toHaveCount(0);
-  await expect(page.getByText('文章を打つ速さを測って保存しました。')).toBeVisible();
-  await expect(page.locator('.personal-speed-message')).toContainText('Arpeggio');
-  await expect(page.locator('.personal-speed-message')).toContainText('続け打ち');
-  await expect(page.locator('.personal-speed-message')).toContainText('同指連続');
-  await expect(page.locator('.personal-speed-message')).toContainText('打）');
-  await expect(page.locator('.personal-speed-message')).not.toContainText('別の配列で測ると');
+  const sentenceGroup = page.locator('#personal-speed-group-sentence');
+  await expect(sentenceGroup.getByText('文章を打つ速さを測って保存しました。')).toBeVisible();
+  const message = sentenceGroup.locator('.personal-speed-message');
+  await expect(message).toContainText('Arpeggio');
+  await expect(message).toContainText('続け打ち');
+  await expect(message).toContainText('同指連続');
+  await expect(message).toContainText('打）');
+  await expect(message).not.toContainText('別の配列で測ると');
 
   const saved = await stored(page) as { calibration: { keystrokeOverheadMs: Record<string, number>; actionsPerSecond: number } };
   expect(Object.keys(saved.calibration.keystrokeOverheadMs).sort()).toEqual(['arpeggio', 'chain', 'other', 'repeat', 'sfb']);
@@ -329,10 +436,10 @@ test('文章を打つ測定で、差の種類ごとの連打との差を測っ�
   }
   // 他の項目は残る
   expect(saved.calibration.actionsPerSecond).toBe(5);
-  await expect(page.locator('[id="personal-speed-overhead:other"]')).not.toHaveValue('');
+  await expect(sentenceGroup.locator('[id="personal-speed-overhead:other"]')).not.toHaveValue('');
 
   // 知らせの後に、差の種類の5行と異手の方向の2行の表が出る
-  const result = page.locator('[data-personal-speed-sentence-result]');
+  const result = sentenceGroup.locator('[data-personal-speed-sentence-result]');
   await expect(result).toBeVisible();
   await expect(result.locator('tbody tr')).toHaveCount(7);
   await expect(result.locator('[data-personal-speed-result-row="cross-hand:L→R"]')).toContainText('保存しない');
@@ -340,11 +447,11 @@ test('文章を打つ測定で、差の種類ごとの連打との差を測っ�
   await expect(result.locator('[data-personal-speed-result-row="other"]')).toContainText('保存した');
   await expect(result).toContainText('一致しないことがあります');
 
-  // 表が付いていない側の文を消す操作（変更を戻す）では、知らせも表も残る
+  // 直接編集では、知らせも表も消えない
   await page.locator('#personal-speed-actions').fill('6');
-  await page.getByRole('button', { name: '変更を戻す' }).click();
-  await expect(page.locator('#personal-speed-actions')).toHaveValue('5.00');
-  await expect(page.getByText('文章を打つ速さを測って保存しました。')).toBeVisible();
+  await page.locator('#personal-speed-actions').press('Enter');
+  await expect.poll(async () => ((await stored(page)) as { calibration: { actionsPerSecond: number } }).calibration.actionsPerSecond).toBe(6);
+  await expect(sentenceGroup.getByText('文章を打つ速さを測って保存しました。')).toBeVisible();
   await expect(result).toBeVisible();
 });
 
@@ -352,14 +459,13 @@ test('文章を打つ測定で、下限に届かない種類がある配列で�
   test.setTimeout(240_000);
   await seed(page, { [STORAGE_KEY]: SEEDED });
   await open(page);
-  await expect(page.locator('[data-personal-speed-sentence]').first()).toBeVisible();
   await page.locator('.personal-speed-select-grid select').first().selectOption('oonishi');
   await page.locator('[data-personal-speed-start="sentence"]').click();
   await expect(page.locator('[data-personal-speed-sentence-run="active"]')).toBeVisible();
   await typeThroughSentence(page);
   await expect(page.locator('[data-personal-speed-sentence-run="active"]')).toHaveCount(0);
   await expect(page.getByText('文章を打つ速さを測って保存しました。')).toBeVisible();
-  const message = page.locator('.personal-speed-message');
+  const message = page.locator('#personal-speed-group-sentence .personal-speed-message');
   await expect(message).toContainText('に満たないため、保存していません');
   await expect(message).toContainText('手に馴染んだ別の配列で測ると、求まる種類が増えることがあります。');
   await expect(message).toContainText('測り直して保存すると、全ての種類が置き換わり、下限に届かなかった種類の値は無くなります。');
@@ -411,9 +517,11 @@ test('他の測定を保存すると、基準が変わる連打との差が消�
   await seed(page, { [STORAGE_KEY]: withOverhead });
   await open(page);
   await expect(page.locator('[id="personal-speed-overhead:other"]')).toHaveValue('60.0');
-  await page.getByRole('button', { name: '通常の打鍵速度を測り直す' }).click();
+  await page.getByRole('button', { name: '通常の打鍵速度だけを測り直す' }).click();
   await typeThroughRun(page);
-  await expect(page.getByText('連打との差（その他）は、他の値が変わったため消しました')).toBeVisible();
+  // 消えた値のある文章を打つ速さのまとまりに、消えたことが出る。測ったまとまりにも知らせる
+  await expect(page.locator('#personal-speed-group-sentence').getByText('連打との差（その他）は、他の値が変わったため消しました。文章を打つ速さをもう一度測ってください。')).toBeVisible();
+  await expect(page.locator('#personal-speed-group-normal').getByText('文章を打つ速さの連打との差が消えました。')).toBeVisible();
   const saved = await stored(page) as { calibration: Record<string, unknown> };
   expect('keystrokeOverheadMs' in saved.calibration).toBe(false);
   await expect(page.locator('[id="personal-speed-overhead:other"]')).toHaveValue('');
@@ -422,20 +530,23 @@ test('他の測定を保存すると、基準が変わる連打との差が消�
 test('連打との差を数値で直接編集して保存でき、空欄にすると消える。範囲外は保存されない', async ({ page }) => {
   await seed(page, { [STORAGE_KEY]: SEEDED });
   await open(page);
-  const arpeggio = page.locator('[id="personal-speed-overhead:arpeggio"]');
-  const save = page.locator('[data-personal-speed-save]');
+  const group = page.locator('#personal-speed-group-sentence');
+  await group.locator('summary').click();
+  const arpeggio = group.locator('[id="personal-speed-overhead:arpeggio"]');
   await arpeggio.fill('1000.5');
-  await save.click();
-  await expect(page.getByRole('alert').filter({ hasText: '連打との差 Arpeggio' })).toBeVisible();
+  await arpeggio.press('Enter');
+  await expect(group.getByRole('alert').filter({ hasText: '連打との差 Arpeggio' })).toBeVisible();
   expect(await stored(page)).toEqual(SEEDED);
 
   await arpeggio.fill('25');
-  await save.click();
-  await expect(page.getByText('保存しました。', { exact: true })).toBeVisible();
-  expect((await stored(page) as { calibration: { keystrokeOverheadMs: unknown } }).calibration.keystrokeOverheadMs).toEqual({ arpeggio: 25 });
+  await arpeggio.press('Enter');
+  await expect.poll(async () => ((await stored(page)) as { calibration: { keystrokeOverheadMs: unknown } }).calibration.keystrokeOverheadMs).toEqual({ arpeggio: 25 });
 
-  await arpeggio.fill('');
-  await save.click();
+  // 値のある行は、測っていない項目の外に出る
+  const measured = group.locator('[data-personal-speed-row="overhead:arpeggio"]');
+  await expect(measured).toBeVisible();
+  await measured.locator('input').fill('');
+  await measured.locator('input').press('Enter');
   await expect.poll(async () => 'keystrokeOverheadMs' in ((await stored(page)) as { calibration: object }).calibration).toBe(false);
 });
 
@@ -477,10 +588,10 @@ test('同じキーを続けて打つ速さを測り直すと、続け打ちの�
   };
   await seed(page, { [STORAGE_KEY]: seeded });
   await open(page);
-  await page.getByRole('button', { name: '同じキーを続けて打つ速さを測り直す' }).click();
+  await page.getByRole('button', { name: '同じキーを続けて打つ速さだけを測り直す' }).click();
   await typeThroughRun(page);
-  await expect(page.getByText('同じキーを続けて打つ速さを測り直して保存しました。')).toBeVisible();
-  await expect(page.getByText('連打との差（続け打ち）は、他の値が変わったため消しました')).toBeVisible();
+  await expect(page.locator('#personal-speed-group-normal').getByText('同じキーを続けて打つ速さを測り直して保存しました。')).toBeVisible();
+  await expect(page.locator('#personal-speed-group-sentence').getByText('連打との差（続け打ち）は、他の値が変わったため消しました')).toBeVisible();
   const saved = await stored(page) as { calibration: { sameKeyActionsPerSecond: number; keystrokeOverheadMs: Record<string, number> } };
   expect(saved.calibration.sameKeyActionsPerSecond).not.toBe(6);
   expect(saved.calibration.keystrokeOverheadMs).toEqual({ other: 60, sfb: 20 });
@@ -494,29 +605,65 @@ test('同じキーを続けて打つ速さと、続け打ち・同指連続の�
   const sameKey = page.locator('[id="personal-speed-same-key"]');
   const repeat = page.locator('[id="personal-speed-overhead:repeat"]');
   const sfb = page.locator('[id="personal-speed-overhead:sfb"]');
-  const save = page.locator('[data-personal-speed-save]');
+  // 測っていない項目は、畳んだ一覧に入っている
+  for (const group of ['normal', 'sentence']) await page.locator(`#personal-speed-group-${group} summary`).first().click();
   await expect(sameKey).toHaveValue('');
 
   await sameKey.fill('41');
-  await save.click();
+  await sameKey.press('Enter');
   await expect(page.getByRole('alert').filter({ hasText: '同じキーを続けて打つ速さ' })).toBeVisible();
   expect(await stored(page)).toEqual(SEEDED);
 
   await sameKey.fill('7.5');
+  await sameKey.press('Enter');
   await repeat.fill('12');
+  await repeat.press('Enter');
   await sfb.fill('30');
-  await save.click();
-  await expect(page.getByText('保存しました。', { exact: true })).toBeVisible();
-  const saved = await stored(page) as { calibration: { sameKeyActionsPerSecond: number; keystrokeOverheadMs: unknown } };
-  expect(saved.calibration.sameKeyActionsPerSecond).toBe(7.5);
-  expect(saved.calibration.keystrokeOverheadMs).toEqual({ repeat: 12, sfb: 30 });
+  await sfb.press('Enter');
+  await expect.poll(async () => {
+    const calibration = ((await stored(page)) as { calibration: { sameKeyActionsPerSecond?: number; keystrokeOverheadMs?: unknown } }).calibration;
+    return [calibration.sameKeyActionsPerSecond, calibration.keystrokeOverheadMs];
+  }).toEqual([7.5, { repeat: 12, sfb: 30 }]);
 
-  await sameKey.fill('');
-  await repeat.fill('');
-  await sfb.fill('');
-  await save.click();
+  for (const field of [sameKey, repeat, sfb]) {
+    await field.fill('');
+    await field.press('Enter');
+  }
   await expect.poll(async () => {
     const calibration = ((await stored(page)) as { calibration: object }).calibration;
     return 'sameKeyActionsPerSecond' in calibration || 'keystrokeOverheadMs' in calibration;
   }).toBe(false);
+});
+
+test('文章を打つ測定を始めると、今打つ文・次に打つキー・中止のボタンが画面の中に入る', async ({ page }) => {
+  await seed(page, { [STORAGE_KEY]: SEEDED });
+  await open(page);
+  await page.locator('[data-personal-speed-start="sentence"]').click();
+  const run = page.locator('[data-personal-speed-sentence-run="active"]');
+  await expect(run).toBeVisible();
+  for (const target of [
+    run.locator('[data-personal-speed-sentence]'),
+    run.locator('[data-personal-speed-next]'),
+    run.locator('[data-personal-speed-sentence-cancel]'),
+  ]) {
+    await expect(target).toBeInViewport({ ratio: 1 });
+  }
+  await expect(run).toBeFocused();
+});
+
+test('スマートフォンの幅でも横にスクロールせず、測定中の案内が画面の中に入る', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 700 });
+  await seed(page, { [STORAGE_KEY]: { ...SEEDED, calibration: { ...SEEDED.calibration, keystrokeOverheadMs: { other: 60 } } } });
+  await open(page);
+  const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(await overflow()).toBeLessThanOrEqual(0);
+  for (const summary of await page.locator('.personal-speed summary').all()) await summary.click();
+  expect(await overflow()).toBeLessThanOrEqual(0);
+
+  await page.locator('[data-personal-speed-start="sentence"]').click();
+  const run = page.locator('[data-personal-speed-sentence-run="active"]');
+  await expect(run).toBeVisible();
+  await expect(run.locator('[data-personal-speed-next]')).toBeInViewport({ ratio: 1 });
+  await expect(run.locator('[data-personal-speed-sentence-cancel]')).toBeInViewport({ ratio: 1 });
+  expect(await overflow()).toBeLessThanOrEqual(0);
 });

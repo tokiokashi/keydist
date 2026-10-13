@@ -1,9 +1,13 @@
 import { useMemo } from 'react';
 import { setPersonalSpeedCommand } from '#engine/commands.ts';
 import { PersonalSpeedEditor } from '#editors/personal-speed/PersonalSpeedEditor.tsx';
+import { SPEC_LINKS } from '../about/links.ts';
 import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
 import { defaultFingerAssignmentIdOf, initialPersonalSpeedSelection, personalSpeedCatalog } from './personal-speed-setup.ts';
 import { personalSpeedSentenceBuilder } from './sentence-source.ts';
+
+/** 画面の説明から、計算の詳細へ案内する再生時間モデルの仕様書。 */
+const TIMING_SPEC_HREF = SPEC_LINKS.find((link) => link.path === 'spec/playback-timing.md')?.url;
 
 /**
  * 個人速度の画面の組み立て。資産の読み書きと履歴は、個別画面と同じ仕組みに乗せる。
@@ -35,6 +39,7 @@ export function PersonalSpeedApp() {
       onRedo={redo}
       onSave={(calibration) => dispatch(setPersonalSpeedCommand(calibration))}
       onDiscard={() => dispatch(setPersonalSpeedCommand(undefined))}
+      specHref={TIMING_SPEC_HREF}
     />
   );
 }
