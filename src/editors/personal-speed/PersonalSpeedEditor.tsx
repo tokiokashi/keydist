@@ -48,7 +48,9 @@ import {
   calibrationInstruction,
   calibrationProgressText,
   MEASUREMENT_DESCRIPTION,
+  MEASUREMENT_HOW_TO,
   MEASUREMENT_OUT_OF_RANGE_TEXT,
+  measurementEffectText,
   MEASUREMENT_SENTENCES,
   SENTENCE_LEARNING_ROUND_TEXT,
   sentenceProgressText,
@@ -263,22 +265,34 @@ interface MeasurementGroupProps {
   readonly id: Exclude<GroupId, 'all'>;
   readonly title: string;
   readonly description: string;
+  readonly howTo: readonly string[];
   readonly specHref: string | undefined;
   readonly children: ReactNode;
 }
 
-/** 1つの測定のまとまり。説明・測るボタン・測定中の案内・結果・その測定が求める保存値を持つ。 */
-function MeasurementGroup({ id, title, description, specHref, children }: MeasurementGroupProps) {
+/**
+ * 1つの測定のまとまり。説明（何を測るか・どこに使うか）・測り方・仕様書へのリンク・測るボタン・
+ * 測るボタンの直後の保存値への影響・測定中の案内・結果・その測定が求める保存値を持つ。
+ */
+function MeasurementGroup({ id, title, description, howTo, specHref, children }: MeasurementGroupProps) {
   const headingId = `personal-speed-group-${id}-title`;
   return (
     <section className="personal-speed-group" id={`personal-speed-group-${id}`} aria-labelledby={headingId}>
       <h2 id={headingId}>{title}</h2>
-      <p className="personal-speed-note" data-personal-speed-description={id}>
-        {description}
-        {specHref === undefined ? null : (
-          <> 計算の詳細は<a href={specHref} target="_blank" rel="noreferrer">再生時間モデルの仕様書</a>にあります。</>
-        )}
-      </p>
+      <p className="personal-speed-note" data-personal-speed-description={id}>{description}</p>
+      {howTo.length === 0 ? null : (
+        <div className="personal-speed-howto" data-personal-speed-howto={id}>
+          <h3>測り方</h3>
+          <ul>
+            {howTo.map((line) => <li key={line}>{line}</li>)}
+          </ul>
+        </div>
+      )}
+      {specHref === undefined ? null : (
+        <p className="personal-speed-note" data-personal-speed-spec={id}>
+          計算の詳細は<a href={specHref} target="_blank" rel="noreferrer">再生時間モデルの仕様書</a>にあります。
+        </p>
+      )}
       {children}
     </section>
   );
@@ -549,6 +563,13 @@ export function PersonalSpeedEditor({
   const directed = splitIds('directed-pair:', plannedIds('directed-pair:'));
   const overheads = splitIds('overhead:', OVERHEAD_KINDS.map(calibrationOverheadFieldId));
 
+  // 測ると置き換わる・消える値は、今の保存値から決まる。保存値を持たない時と、置き換わる値も消える値も無い時は文を出さない。
+  const savedOverheads = OVERHEAD_KINDS.filter((kind) => calibration?.keystrokeOverheadMs?.[kind] !== undefined);
+  const effectOf = (group: 'normal' | 'directional' | 'sentence') => {
+    const text = measurementEffectText(group, calibration !== undefined, savedOverheads);
+    return text === undefined ? null : <p className="personal-speed-note" data-personal-speed-effect={group}>{text}</p>;
+  };
+
   const normalReason = plan?.normal === undefined ? NO_BASIS_TEXT : undefined;
   const directionalReason = calibration === undefined
     ? NEED_NORMAL_FIRST_TEXT
@@ -633,12 +654,13 @@ export function PersonalSpeedEditor({
             </div>
           </section>
 
-          <MeasurementGroup id="normal" title="通常の速度と指の移動" description={MEASUREMENT_DESCRIPTION.normal} specHref={specHref}>
+          <MeasurementGroup id="normal" title="通常の速度と指の移動" description={MEASUREMENT_DESCRIPTION.normal} howTo={MEASUREMENT_HOW_TO.normal} specHref={specHref}>
             <div className="personal-speed-actions">
               <button type="button" data-personal-speed-start="normal" disabled={normalDisabled} onClick={() => startRun('normal', plan?.normal ?? [])}>
                 通常の速度と指の移動を全て測る
               </button>
             </div>
+            {effectOf('normal')}
             {reasonText(normalReason)}
             {calibrationRegion('normal')}
             <NoticeLines notice={notices.normal} />
@@ -651,12 +673,13 @@ export function PersonalSpeedEditor({
             )}
           </MeasurementGroup>
 
-          <MeasurementGroup id="directional" title="方向別の速度" description={MEASUREMENT_DESCRIPTION.directional} specHref={specHref}>
+          <MeasurementGroup id="directional" title="方向別の速度" description={MEASUREMENT_DESCRIPTION.directional} howTo={MEASUREMENT_HOW_TO.directional} specHref={specHref}>
             <div className="personal-speed-actions">
               <button type="button" data-personal-speed-start="directional" disabled={directionalDisabled} onClick={() => startRun('directional', plan?.directional ?? [])}>
                 方向別の速度を全て測る
               </button>
             </div>
+            {effectOf('directional')}
             {reasonText(directionalReason)}
             {calibrationRegion('directional')}
             <NoticeLines notice={notices.directional} />
@@ -668,12 +691,13 @@ export function PersonalSpeedEditor({
             )}
           </MeasurementGroup>
 
-          <MeasurementGroup id="sentence" title="文章を打つ速さ" description={MEASUREMENT_DESCRIPTION.sentence} specHref={specHref}>
+          <MeasurementGroup id="sentence" title="文章を打つ速さ" description={MEASUREMENT_DESCRIPTION.sentence} howTo={MEASUREMENT_HOW_TO.sentence} specHref={specHref}>
             <div className="personal-speed-actions">
               <button type="button" data-personal-speed-start="sentence" disabled={sentenceDisabled} onClick={startSentence}>
                 文章を打つ速さを測る
               </button>
             </div>
+            {effectOf('sentence')}
             {reasonText(sentenceReason)}
             {sentence?.ok === false ? <p className="personal-speed-warning" role="alert" data-personal-speed-sentence-unavailable>{sentence.message}</p> : null}
             {sentenceSession === undefined ? null : (
