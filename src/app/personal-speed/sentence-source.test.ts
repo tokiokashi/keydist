@@ -3,7 +3,7 @@ import test from 'node:test';
 import { EMPTY_SETTINGS_OVERRIDES, setSettingsOverride, type SettingsCascadeOverrides } from '#engine/settings-items.ts';
 import type { PersonalSpeedSelection } from '#editors/personal-speed/PersonalSpeedEditor.tsx';
 import { MEASUREMENT_SENTENCE } from '#editors/personal-speed/calibration-text.ts';
-import { pressSentenceKey, sentenceRunFinished, sentenceSteps, sentenceUnmeasurable, startSentenceRun } from '#interpretation/timing/sentence-session.ts';
+import { pressSentenceKey, sentenceRunFinished, sentenceSteps, sentenceUnmeasurable, startSentenceRun, stepsSentencePlan } from '#interpretation/timing/sentence-session.ts';
 import { strokeStructureKinds } from '#interpretation/timing/stroke-structure.ts';
 import { personalSpeedSentenceBuilder } from './sentence-source.ts';
 
@@ -94,7 +94,7 @@ test('TK音直入力法の示す文のコンボのストロークは、出力の
   assert.equal(sentenceUnmeasurable(steps), undefined);
   assert.ok(steps.some((step) => step.outputChars !== undefined));
   for (const useOutput of [false, true]) {
-    let run = startSentenceRun(steps);
+    let run = startSentenceRun(stepsSentencePlan(steps, () => undefined));
     let atMs = 0;
     for (const step of steps) {
       for (const key of useOutput && step.outputChars !== undefined ? step.outputChars : step.keys) {

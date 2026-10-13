@@ -1,10 +1,14 @@
+import type { Stroke } from '#trace/generate.ts';
 import { calibrationKeyMatches } from './calibration.ts';
-import type { SentenceAnalysis, SentenceTap } from './sentence-measurement.ts';
+import type { SentenceAnalysis, SentenceSpellingSource, SentenceTap } from './sentence-measurement.ts';
 
 /**
  * 示す文を打つ測定の進行（打つキーの列・打鍵の照合・ストロークごとの時刻の記録）。
  * 時刻とキーの押下は呼び出し側が渡すので、描画にもタイマーにも依存しない。
  * 測定の計算は `sentence-measurement.ts`、規則は `spec/playback-timing.md` §6.4。
+ *
+ * 示す文は入力単位（かな1見出しなど）に分け、単位ごとに受け付ける綴りの候補を持つ。
+ * 単位の中では、候補ごとに打つキーの列を1本ずつ追い（スレッド）、押下の列が一致し続ける候補だけを残す。
  */
 
 /** 打つ1ストローク。`keys`は同時に押すキーのid（押す順は問わない）。 */
@@ -29,8 +33,11 @@ function capturableKey(keyId: string): boolean {
   return [...keyId].length === 1 && keyId.trim() !== '';
 }
 
+/** 打つキーの列を作るのに読むストロークの部分。 */
+type SentenceStroke = Pick<Stroke, 'selectionIndex' | 'char' | 'aggregationGroupId' | 'presses' | 'inputIndex' | 'inputChar'>;
+
 /** 打鍵の列を、打つキーの列にする。 */
-export function sentenceSteps(analysis: SentenceAnalysis): SentenceStep[] {
+export function sentenceSteps(analysis: { readonly strokes: readonly SentenceStroke[] }): SentenceStep[] {
   // 出力の文字列は、1回の入力の選択が1つのストロークになる時だけ、そのストロークの出力として決まる。
   // 複数のストロークになる時は、`char`が全ストロークに同じ値で入る。
   const strokesPerSelection = new Map<number, number>();
@@ -63,27 +70,86 @@ export function sentenceUnmeasurable(steps: readonly SentenceStep[]): SentenceUn
     : undefined;
 }
 
-/** 示す文の入力単位（かな1文字など）と、それを打つステップの範囲。 */
-export interface SentenceUnit {
-  readonly text: string;
-  /** 打つステップの範囲（半開区間）。 */
-  readonly start: number;
-  readonly end: number;
-}
 
-export function sentenceUnits(steps: readonly SentenceStep[]): SentenceUnit[] {
-  const units: SentenceUnit[] = [];
-  for (let start = 0; start < steps.length; ) {
-    let end = start + 1;
-    while (end < steps.length && steps[end].inputIndex === steps[start].inputIndex) end++;
-    units.push({ text: steps[end - 1].inputChar, start, end });
-    start = end;
+/** 打つキーの列を、同じ入力単位を打つ連続したステップごとの組に分ける。 */
+function groupSteps(steps: readonly SentenceStep[]): SentenceStep[][] {
+  const groups: SentenceStep[][] = [];
+  for (const step of steps) {
+    const last = groups[groups.length - 1];
+    if (last !== undefined && last[0].inputIndex === step.inputIndex) last.push(step);
+    else groups.push([step]);
   }
-  return units;
+  return groups;
 }
 
-/** 測定の進行。打鍵のたびに`pressSentenceKey`が新しい値を返す。 */
-export interface SentenceRun {
+/** 示す文の入力単位（かな1見出しなど）と、受け付ける綴り。 */
+export interface SentenceUnit {
+  /** 画面に出す入力単位の文字。 */
+  readonly text: string;
+  /** 受け付ける綴り。先頭は今の条件のローマ字規則の綴り。綴りを選べない配列では空の綴り1つ。 */
+  readonly spellings: readonly string[];
+}
+
+/** 測定の計画。示す文の入力単位と、単位ごとの綴りの候補から打つキーの列を求める方法。 */
+export interface SentencePlan {
+  readonly units: readonly SentenceUnit[];
+  /** 全単位を先頭の綴りで打つ時の、単位ごとの打つキーの列。 */
+  readonly baseSteps: readonly (readonly SentenceStep[])[];
+  /**
+   * それまでに打った単位の綴り`typed`の後で、単位`unit`を`spelling`で打つ時の打つキーの列。
+   * 打てない綴り（取れないキーが要る・配列に無い文字を含む）は無い。
+   */
+  candidateSteps(typed: readonly string[], unit: number, spelling: string): readonly SentenceStep[] | undefined;
+  /** 単位ごとに打った綴りから、打鍵の列と構造を作る。 */
+  analyze(typed: readonly string[]): SentenceAnalysis | undefined;
+}
+
+/**
+ * 入力単位ごとの打つキーの列から、綴りを1つに決めた計画を作る。同じ入力単位を打つ連続したステップを1単位にする。
+ * 打った綴りの打鍵の列と構造は`analyze`が返す。
+ */
+export function stepsSentencePlan(steps: readonly SentenceStep[], analyze: () => SentenceAnalysis | undefined): SentencePlan {
+  const groups = groupSteps(steps);
+  return {
+    units: groups.map((group) => ({ text: group[group.length - 1].inputChar, spellings: [''] })),
+    baseSteps: groups,
+    candidateSteps: (_typed, unit) => groups[unit],
+    analyze: () => analyze(),
+  };
+}
+
+/**
+ * 示す文の測定の計画を作る。`spelling`があり、かなの入力単位とストロークが1対1に対応する時だけ、綴りの候補を使う。
+ * 対応しない時（出力が複数のかなにまたがるコンボを持つ配列など）と、かな配列は、先頭の綴りの打鍵の列だけで進める。
+ */
+export function sentencePlan(analysis: SentenceAnalysis, spelling?: SentenceSpellingSource): SentencePlan {
+  const groups = groupSteps(sentenceSteps(analysis));
+  const aligned = spelling !== undefined
+    && spelling.units.length === groups.length
+    && spelling.units.every((unit, index) => groups[index][groups[index].length - 1].inputChar === unit.kana);
+  if (!aligned) return stepsSentencePlan(sentenceSteps(analysis), () => analysis);
+  const baseSpellings = spelling.units.map((unit) => unit.spellings[0]);
+  return {
+    units: spelling.units.map((unit) => ({ text: unit.kana, spellings: unit.spellings })),
+    baseSteps: groups,
+    candidateSteps(typed, unit, candidate) {
+      if (candidate === baseSpellings[unit] && typed.every((spell, index) => spell === baseSpellings[index])) return groups[unit];
+      // 前に打った綴りで後の単位の打ち方が変わる配列があるので、打った綴りの列で作り直して単位の分を取る。
+      const rebuilt = spelling.strokes([...typed, candidate, ...baseSpellings.slice(unit + 1)]);
+      const rebuiltGroups = rebuilt === undefined ? undefined : groupSteps(sentenceSteps({ strokes: rebuilt }));
+      const steps = rebuiltGroups?.length === groups.length ? rebuiltGroups[unit] : undefined;
+      if (steps !== undefined && steps[steps.length - 1].inputChar === spelling.units[unit].kana && sentenceUnmeasurable(steps) === undefined) {
+        return steps;
+      }
+      // 作り直せない時、先頭の綴りは測定を始めた時の打鍵の列で進める。他の綴りは受け付けない。
+      return candidate === baseSpellings[unit] ? groups[unit] : undefined;
+    },
+    analyze: (typed) => spelling.analyze(typed),
+  };
+}
+
+/** 1本の綴りの打つキーの列を追う進行。 */
+interface StepRun {
   readonly steps: readonly SentenceStep[];
   /** 今打つステップの位置。`steps.length`なら全ステップが済んでいる。 */
   readonly index: number;
@@ -99,7 +165,7 @@ export interface SentenceRun {
   readonly firstAtMs: number | undefined;
   /** 今のステップで違うキーを押していなければ真。 */
   readonly clean: boolean;
-  /** 済んだステップの記録。 */
+  /** 測定の最初から済んだステップの記録。 */
   readonly taps: readonly SentenceTap[];
 }
 
@@ -116,19 +182,16 @@ function stepStart(steps: readonly SentenceStep[], index: number) {
   } as const;
 }
 
-export function startSentenceRun(steps: readonly SentenceStep[]): SentenceRun {
-  return { steps, ...stepStart(steps, 0), taps: [] };
+function startStepRun(steps: readonly SentenceStep[], taps: readonly SentenceTap[]): StepRun {
+  return { steps, ...stepStart(steps, 0), taps };
 }
 
-export function sentenceRunFinished(run: SentenceRun): boolean {
+function stepRunFinished(run: StepRun): boolean {
   return run.index >= run.steps.length;
 }
 
-/**
- * 今のステップでまだ押していないキーのid。画面の「次に打つキー」に使う。
- * 出力の文字で打っている間も、押すキーを示したまま変えない。
- */
-export function remainingSentenceKeys(run: SentenceRun): readonly string[] {
+/** 今のステップでまだ押していないキーのid。 */
+function remainingStepKeys(run: StepRun): readonly string[] {
   const step = run.steps[run.index];
   return step === undefined ? [] : step.keys.filter((key) => !run.pressed.includes(key));
 }
@@ -147,17 +210,20 @@ export type SentencePressOutcome =
   | { readonly kind: 'wrong-key'; readonly expectedKey: string; readonly expectedIsOutput: boolean }
   /** 時刻が戻った、または同時刻だった。進行は変わらない。 */
   | { readonly kind: 'ignored' }
-  /** 同時に押すキーの一部を押した。または、完了した読み方があるが、他方の読み方が途中でステップを確定していない。 */
+  /** 同時に押すキーの一部を押した。または、完了した読み方・綴りがあるが、他方が途中で確定していない。 */
   | { readonly kind: 'partial' }
   | { readonly kind: 'step-finished' }
   | { readonly kind: 'run-finished' };
+
+/** 1本の綴りの進行が返す結果。`overflow`は、綴りを打ち終えた後の押下で、次の単位へ回す。 */
+type StepOutcome = SentencePressOutcome | { readonly kind: 'overflow' };
 
 function outputCharMatches(event: SentenceKeyEvent, char: string): boolean {
   return event.key.toLowerCase() === char.toLowerCase();
 }
 
 /** 今のステップを確定して、次のステップへ進める。 */
-function finishStep(run: SentenceRun, firstAtMs: number): SentenceRun {
+function finishStep(run: StepRun, firstAtMs: number): StepRun {
   return {
     ...run,
     ...stepStart(run.steps, run.index + 1),
@@ -166,28 +232,31 @@ function finishStep(run: SentenceRun, firstAtMs: number): SentenceRun {
 }
 
 /**
- * 打鍵1つを進行に反映する。ステップの時刻は、そのステップの最初の押下の時刻にする。
+ * 1本の綴りの進行に打鍵1つを反映する。ステップの時刻は、そのステップの最初の押下の時刻にする。
  * `atMs`は単調に増える時刻[ms]で、前のステップの時刻より後でなければ無視する。
  *
  * コンボで打つステップは、押すキーの読み方と出力の文字の読み方を別々に追い、押下の列が一致し続ける読み方だけを残す。
  * 一方の読み方が完了しても他方が途中で一致している間はステップを確定せず、次の押下が他方の続きに一致しなければ、
  * 完了した読み方で確定して、その押下を次のステップの最初の押下として扱う（`spec/playback-timing.md` §6.4）。
+ * 最後のステップが済むと、`run-finished`を返す（綴りを打ち終えた印）。綴りを打ち終えた後の押下は`overflow`を返す。
+ * 他方の読み方が途中でも最後のステップで確定するのは、`final`（示す文の最後の単位）の時だけ。
  */
-export function pressSentenceKey(
-  run: SentenceRun,
+function pressStep(
+  run: StepRun,
   event: SentenceKeyEvent,
   atMs: number,
   keyLabel: (keyId: string) => string,
-): { readonly run: SentenceRun; readonly outcome: SentencePressOutcome } {
+  final: boolean,
+): { readonly run: StepRun; readonly outcome: StepOutcome } {
   const step = run.steps[run.index];
-  if (step === undefined) return { run, outcome: { kind: 'ignored' } };
+  if (step === undefined) return { run, outcome: { kind: 'overflow' } };
 
   const output = step.outputChars;
   const pressDone = run.pressReadingAlive && run.pressed.length >= step.keys.length;
   const outputDone = run.outputReadingAlive && output !== undefined && run.outputCount >= output.length;
 
   const pressMatch = run.pressReadingAlive && !pressDone
-    ? remainingSentenceKeys(run).find((key) => calibrationKeyMatches(event, key, keyLabel(key)))
+    ? remainingStepKeys(run).find((key) => calibrationKeyMatches(event, key, keyLabel(key)))
     : undefined;
   const outputMatches = run.outputReadingAlive && output !== undefined && !outputDone
     && outputCharMatches(event, output[run.outputCount]);
@@ -195,10 +264,10 @@ export function pressSentenceKey(
   if (pressMatch === undefined && !outputMatches) {
     if (pressDone || outputDone) {
       // 完了した読み方で確定し、この押下を次のステップの最初の押下にする。
-      return pressSentenceKey(finishStep(run, run.firstAtMs ?? atMs), event, atMs, keyLabel);
+      return pressStep(finishStep(run, run.firstAtMs ?? atMs), event, atMs, keyLabel, final);
     }
     const expected = run.pressReadingAlive || output === undefined
-      ? { expectedKey: remainingSentenceKeys(run)[0], expectedIsOutput: false }
+      ? { expectedKey: remainingStepKeys(run)[0], expectedIsOutput: false }
       : { expectedKey: output[run.outputCount], expectedIsOutput: true };
     return { run: { ...run, clean: false }, outcome: { kind: 'wrong-key', ...expected } };
   }
@@ -209,7 +278,7 @@ export function pressSentenceKey(
   }
 
   const firstAtMs = run.firstAtMs ?? atMs;
-  const advanced: SentenceRun = {
+  const advanced: StepRun = {
     ...run,
     pressed: pressMatch === undefined ? run.pressed : [...run.pressed, pressMatch],
     outputCount: outputMatches ? run.outputCount + 1 : run.outputCount,
@@ -219,12 +288,153 @@ export function pressSentenceKey(
   };
   const pressComplete = advanced.pressReadingAlive && advanced.pressed.length >= step.keys.length;
   const outputComplete = advanced.outputReadingAlive && output !== undefined && advanced.outputCount >= output.length;
-  const lastStep = run.index === run.steps.length - 1;
+  const lastStep = final && run.index === run.steps.length - 1;
   // 完了した読み方があり、他方が無い、または完了している、または最後のステップなら確定する。
   const otherPending = (advanced.pressReadingAlive && !pressComplete) || (advanced.outputReadingAlive && !outputComplete);
   if ((pressComplete || outputComplete) && (!otherPending || lastStep)) {
     const next = finishStep(advanced, firstAtMs);
-    return { run: next, outcome: { kind: sentenceRunFinished(next) ? 'run-finished' : 'step-finished' } };
+    return { run: next, outcome: { kind: stepRunFinished(next) ? 'run-finished' : 'step-finished' } };
   }
   return { run: advanced, outcome: { kind: 'partial' } };
+}
+
+/** 単位の中で追っている、1つの綴り。 */
+interface SentenceThread {
+  readonly spelling: string;
+  readonly run: StepRun;
+}
+
+/** 測定の進行。打鍵のたびに`pressSentenceKey`が新しい値を返す。 */
+export interface SentenceRun {
+  readonly plan: SentencePlan;
+  /** 今打つ単位の位置。`plan.units.length`なら全単位が済んでいる。 */
+  readonly unit: number;
+  /** 済んだ単位を打った綴り。 */
+  readonly typed: readonly string[];
+  /** 済んだ単位までの、ストロークごとの記録。全単位が済めば全ストロークの記録になる。 */
+  readonly taps: readonly SentenceTap[];
+  /** 今の単位で残っている綴り。先頭に近いほど、今の条件のローマ字規則の綴りに近い。 */
+  readonly threads: readonly SentenceThread[];
+}
+
+/** 単位`unit`の綴りの候補を、打つキーの列が同じものを除いてスレッドにする。 */
+function startUnit(plan: SentencePlan, typed: readonly string[], taps: readonly SentenceTap[], unit: number): readonly SentenceThread[] {
+  const seen = new Set<string>();
+  const threads: SentenceThread[] = [];
+  for (const spelling of plan.units[unit].spellings) {
+    const steps = plan.candidateSteps(typed, unit, spelling);
+    if (steps === undefined || steps.length === 0) continue;
+    const signature = JSON.stringify(steps.map((step) => [step.keys, step.outputChars]));
+    if (seen.has(signature)) continue;
+    seen.add(signature);
+    threads.push({ spelling, run: startStepRun(steps, taps) });
+  }
+  return threads;
+}
+
+export function startSentenceRun(plan: SentencePlan): SentenceRun {
+  return { plan, unit: 0, typed: [], taps: [], threads: startUnit(plan, [], [], 0) };
+}
+
+export function sentenceRunFinished(run: SentenceRun): boolean {
+  return run.unit >= run.plan.units.length;
+}
+
+/** 画面で次に打つキーを示す綴り。残っている綴りのうち、打ち終えていない先頭のもの。 */
+function shownThread(run: SentenceRun): SentenceThread | undefined {
+  return run.threads.find((thread) => !stepRunFinished(thread.run)) ?? run.threads[0];
+}
+
+/**
+ * 今のステップでまだ押していないキーのid。画面の「次に打つキー」に使う。
+ * 出力の文字で打っている間も、押すキーを示したまま変えない。
+ */
+export function remainingSentenceKeys(run: SentenceRun): readonly string[] {
+  const shown = shownThread(run);
+  return shown === undefined ? [] : remainingStepKeys(shown.run);
+}
+
+/** 今のステップの後に打つキーの列。画面の「この後:」に使う。後の単位は先頭の綴りで数える。 */
+export function upcomingSentenceSteps(run: SentenceRun, count: number): readonly SentenceStep[] {
+  const shown = shownThread(run);
+  if (shown === undefined) return [];
+  const steps = [...shown.run.steps.slice(shown.run.index + 1)];
+  for (let unit = run.unit + 1; unit < run.plan.baseSteps.length && steps.length < count; unit++) {
+    steps.push(...run.plan.baseSteps[unit]);
+  }
+  return steps.slice(0, count);
+}
+
+/** 残りのストロークの数。画面の「あと何打」に使う。後の単位は先頭の綴りで数える。 */
+export function remainingSentenceStrokes(run: SentenceRun): number {
+  const shown = shownThread(run);
+  if (shown === undefined) return 0;
+  let count = shown.run.steps.length - shown.run.index;
+  for (let unit = run.unit + 1; unit < run.plan.baseSteps.length; unit++) count += run.plan.baseSteps[unit].length;
+  return count;
+}
+
+/** 単位を`thread`の綴りで確定して、次の単位へ進める。 */
+function commitUnit(run: SentenceRun, thread: SentenceThread): SentenceRun {
+  const typed = [...run.typed, thread.spelling];
+  const taps = thread.run.taps;
+  const unit = run.unit + 1;
+  return {
+    plan: run.plan,
+    unit,
+    typed,
+    taps,
+    threads: unit >= run.plan.units.length ? [] : startUnit(run.plan, typed, taps, unit),
+  };
+}
+
+/**
+ * 打鍵1つを進行に反映する。
+ *
+ * 残っている綴りのうち、押下の列が一致し続けるものだけを残す。どの綴りにも続かない押下は違うキーで、残っている綴り全部の
+ * 今のステップの間隔を数えない印を付ける。打ち終えた綴りがあっても、より長い綴りが途中で一致している間は確定せず、
+ * 次の押下が長い綴りに続かなければ、打ち終えた綴りで確定して、その押下を次の単位の最初の押下として扱う。
+ * 最後の単位は、綴りを打ち終えた時点で確定する（`spec/playback-timing.md` §6.4）。
+ */
+export function pressSentenceKey(
+  run: SentenceRun,
+  event: SentenceKeyEvent,
+  atMs: number,
+  keyLabel: (keyId: string) => string,
+): { readonly run: SentenceRun; readonly outcome: SentencePressOutcome } {
+  if (sentenceRunFinished(run)) return { run, outcome: { kind: 'ignored' } };
+
+  const open = run.threads.filter((thread) => !stepRunFinished(thread.run));
+  const held = run.threads.filter((thread) => stepRunFinished(thread.run));
+  const final = run.unit === run.plan.units.length - 1;
+  if (open.length === 0 && held.length === 0) return { run, outcome: { kind: 'ignored' } };
+  const results = open.map((thread) => ({ thread, ...pressStep(thread.run, event, atMs, keyLabel, final) }));
+  const matched = results.flatMap((result) =>
+    result.outcome.kind === 'wrong-key' || result.outcome.kind === 'overflow' ? [] : [{ ...result, outcome: result.outcome }]);
+
+  if (matched.length === 0) {
+    // 押下の途中だった綴りが、この押下で確定して綴りを打ち終えることもある。
+    const finished = [...held, ...results.filter((result) => result.outcome.kind === 'overflow').map(({ thread, run: stepRun }) => ({ spelling: thread.spelling, run: stepRun }))];
+    if (finished.length > 0) {
+      // 打ち終えた綴りで確定し、この押下を次の単位の最初の押下にする。
+      return pressSentenceKey(commitUnit(run, finished[0]), event, atMs, keyLabel);
+    }
+    const first = results[0].outcome;
+    return {
+      run: { ...run, threads: results.map(({ thread, run: stepRun }) => ({ spelling: thread.spelling, run: stepRun })) },
+      outcome: first.kind === 'wrong-key' ? first : { kind: 'ignored' },
+    };
+  }
+
+  const advanced = matched.filter((result) => result.outcome.kind !== 'ignored');
+  if (advanced.length === 0) return { run, outcome: { kind: 'ignored' } };
+
+  const threads = advanced.map(({ thread, run: stepRun }) => ({ spelling: thread.spelling, run: stepRun }));
+  const complete = threads.filter((thread) => stepRunFinished(thread.run));
+  if (complete.length > 0 && (complete.length === threads.length || final)) {
+    const next = commitUnit(run, complete[0]);
+    return { run: next, outcome: { kind: sentenceRunFinished(next) ? 'run-finished' : 'step-finished' } };
+  }
+  const stepFinished = advanced.some((result) => result.outcome.kind === 'step-finished');
+  return { run: { ...run, threads }, outcome: { kind: stepFinished ? 'step-finished' : 'partial' } };
 }

@@ -6,6 +6,7 @@ import {
   type PlaybackCalibration,
   type StrokeStructureKind,
 } from './calibration.ts';
+import type { Stroke } from '#trace/generate.ts';
 import { playbackNormalMs, type PlaybackTimingAnalysis } from './playback.ts';
 import { strokeStructureKinds } from './stroke-structure.ts';
 
@@ -26,9 +27,28 @@ export interface SentenceTap {
   readonly clean: boolean;
 }
 
+/**
+ * ローマ字の配列で、示す文のかなごとに受け付ける綴りと、打った綴りから打鍵の列を作る関数
+ * （`spec/playback-timing.md` §6.4「ローマ字の綴り」）。条件・配列・物理配列・指の割り当ては、測定を始めた時に解決したものを使う。
+ */
+export interface SentenceSpellingSource {
+  /** かなの入力単位と、受け付ける綴り。先頭は今の条件のローマ字規則の綴り。 */
+  readonly units: readonly { readonly kana: string; readonly spellings: readonly string[] }[];
+  /** 単位ごとの綴りを打つ時の打鍵の列。打てない綴りを含む時は無い。 */
+  strokes(spellings: readonly string[]): readonly Stroke[] | undefined;
+  /** 単位ごとの綴りを打つ時の打鍵の列と構造。打てない綴りを含む時は無い。 */
+  analyze(spellings: readonly string[]): SentenceAnalysis | undefined;
+}
+
 /** 示す文の打鍵の列と構造。打てなければ理由を文で返す。 */
 export type SentenceBuildResult =
-  | { readonly ok: true; readonly analysis: SentenceAnalysis }
+  | {
+      readonly ok: true;
+      /** 今の条件のローマ字規則の綴り（かな配列などでは配列の打ち方）で打つ打鍵の列と構造。 */
+      readonly analysis: SentenceAnalysis;
+      /** 受け付ける綴りを複数持つ時だけある。 */
+      readonly spelling?: SentenceSpellingSource;
+    }
   | { readonly ok: false; readonly message: string };
 
 /** 打鍵の列と、その構造解析の結果。再生と同じ方法で作ったもの。 */
