@@ -12,6 +12,7 @@ import {
   conditionHeaderInfo,
   conditionHeaderInfoFromResolvedInput,
   conditionSummaryLine,
+  conditionTriggerTitle,
   conditionDiagnosticText,
   formatOrigin,
   globalConditionValues,
@@ -578,4 +579,57 @@ test('打鍵再生のペインは、宣言した項目を定義順に要約へ�
 test('時間モデルと速度平均の項目は条件の項目に無い（打鍵再生の解析設定にある）', () => {
   const ids = Object.keys(SETTINGS_ITEMS);
   assert.deepEqual(ids.filter((id) => id.startsWith('playback')), []);
+});
+
+test('conditionTriggerTitle: 単体の画面は条件の例を先に挙げ、今の「条件を見る・変える」で終える', () => {
+  const title = conditionTriggerTitle({
+    rows: overrideRows([]),
+    hiddenIds: [],
+    compact: false,
+    line: conditionSummaryLine(overrideRows([])),
+    hasTargetDiffs: false,
+  });
+  assert.equal(
+    title,
+    '条件は、このペインの結果に効く設定をまとめたものです。例: 先読みN・同指連続のホーム復帰距離・親指シフトの振り替え。条件を見る・変える',
+  );
+});
+
+test('conditionTriggerTitle: 先読みNを隠すペイン（N感度）は、単体の画面もWorkspaceも先読みNを挙げない', () => {
+  // N感度の行は共通の行から先読みNを外して作る。モーダルはhiddenIdsの行を出さないので、ここでも外す
+  const rows = overrideRows([]);
+  const single = conditionTriggerTitle({
+    rows,
+    hiddenIds: ['windowSize'],
+    compact: false,
+    line: conditionSummaryLine(rows),
+    hasTargetDiffs: false,
+  });
+  assert.equal(
+    single,
+    '条件は、このペインの結果に効く設定をまとめたものです。例: 同指連続のホーム復帰距離・親指シフトの振り替え・シフト系キーの押し続け。条件を見る・変える',
+  );
+  const workspace = conditionTriggerTitle({
+    rows,
+    hiddenIds: ['windowSize'],
+    compact: true,
+    line: conditionSummaryLine(rows),
+    hasTargetDiffs: true,
+  });
+  assert.equal(
+    workspace,
+    '条件は、このペインの結果に効く設定をまとめたものです。例: 同指連続のホーム復帰距離・親指シフトの振り替え・シフト系キーの押し続け。条件: すべて既定値（対象ごとに差あり）',
+  );
+});
+
+test('conditionTriggerTitle: Workspaceのペインは、例のあとに変えた項目の一覧を今と同じ形で続ける', () => {
+  const rows = overrideRows([['windowSize', 5], ['sfbHomeCost', false]]);
+  assert.equal(
+    conditionTriggerTitle({ rows, hiddenIds: [], compact: true, line: conditionSummaryLine(rows), hasTargetDiffs: false }),
+    '条件は、このペインの結果に効く設定をまとめたものです。例: 先読みN・同指連続のホーム復帰距離・親指シフトの振り替え。条件: 先読みN: 5 · 同指連続のホーム復帰距離: OFF',
+  );
+  assert.equal(
+    conditionTriggerTitle({ rows, hiddenIds: [], compact: true, line: conditionSummaryLine(rows), hasTargetDiffs: true }),
+    '条件は、このペインの結果に効く設定をまとめたものです。例: 先読みN・同指連続のホーム復帰距離・親指シフトの振り替え。条件: 先読みN: 5 · 同指連続のホーム復帰距離: OFF（対象ごとに差あり）',
+  );
 });

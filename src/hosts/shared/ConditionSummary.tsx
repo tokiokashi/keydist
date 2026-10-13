@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import {
   conditionSummaryLine,
+  conditionTriggerTitle,
   type ConditionHeaderInfo,
   type ConditionSummaryRow,
   type ConditionTargetDiff,
@@ -62,10 +63,15 @@ export function ConditionSummary({ rows, header, targetDiffs = [], editor, compa
   };
 
   const differs = line.changedCount > 0 || targetDiffs.length > 0;
-  // 変えた項目の中身はchipに載らないので、hoverで読めるようにする（押せば条件のモーダルで全部読める）
-  const detail = line.changedCount === 0
-    ? 'すべて既定値'
-    : `${line.shown.map((row) => `${row.label}: ${row.displayValue}`).join(' · ')}${line.restCount > 0 ? ` 他${line.restCount}件` : ''}`;
+  // hoverには、条件の役割とモーダルに出る行の例を先に置く。compactでは変えた項目の中身も続ける
+  // （chipに載らないので、hoverで読めるようにする。押せば条件のモーダルで全部読める）
+  const title = conditionTriggerTitle({
+    rows,
+    hiddenIds: editor.hiddenIds ?? [],
+    compact,
+    line,
+    hasTargetDiffs: targetDiffs.length > 0,
+  });
 
   return (
     <div
@@ -79,7 +85,7 @@ export function ConditionSummary({ rows, header, targetDiffs = [], editor, compa
         className="pane-condition-trigger"
         aria-haspopup="dialog"
         aria-expanded={open}
-        title={compact ? `条件: ${detail}${targetDiffs.length > 0 ? '（対象ごとに差あり）' : ''}` : '条件を見る・変える'}
+        title={title}
         onClick={() => setOpen(true)}
       >
         {compact ? (

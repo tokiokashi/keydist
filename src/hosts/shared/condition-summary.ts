@@ -368,6 +368,37 @@ export function conditionSummaryLine(rows: readonly ConditionSummaryRow[]): Cond
   return { changedCount: changed.length, shown, restCount: changed.length - shown.length };
 }
 
+/** hoverの説明に、条件の例として挙げる行の数。 */
+const TITLE_EXAMPLE_COUNT = 3;
+
+/**
+ * 条件の要約のボタンのhover説明（`title`）。先頭に条件がどんな設定かを置き、このペインの条件のモーダルに
+ * 出る行の名前を例に挙げる。モーダルは`hiddenIds`の行を出さないので、例からも外す（N感度の先読みN）。
+ * 例は`rows`の先頭から取る。`rows`は定義順なので、先読みNなどTraceに効く項目が先に並ぶ。
+ * 単体の画面は「条件を見る・変える」で終え、Workspaceのペインは変えた項目の一覧などを続ける。
+ */
+export function conditionTriggerTitle(input: {
+  readonly rows: readonly ConditionSummaryRow[];
+  readonly hiddenIds: readonly SettingsItemId[];
+  readonly compact: boolean;
+  readonly line: ConditionSummaryLine;
+  readonly hasTargetDiffs: boolean;
+}): string {
+  const examples = input.rows
+    .filter((row) => !input.hiddenIds.includes(row.id))
+    .slice(0, TITLE_EXAMPLE_COUNT)
+    .map((row) => row.label);
+  const intro = examples.length === 0
+    ? '条件は、このペインの結果に効く設定をまとめたものです。'
+    : `条件は、このペインの結果に効く設定をまとめたものです。例: ${examples.join('・')}。`;
+  if (!input.compact) return `${intro}条件を見る・変える`;
+  const { line } = input;
+  const detail = line.changedCount === 0
+    ? 'すべて既定値'
+    : `${line.shown.map((row) => `${row.label}: ${row.displayValue}`).join(' · ')}${line.restCount > 0 ? ` 他${line.restCount}件` : ''}`;
+  return `${intro}条件: ${detail}${input.hasTargetDiffs ? '（対象ごとに差あり）' : ''}`;
+}
+
 /** 複数の対象を持つペインに渡す、対象1つぶんの条件。 */
 export interface TargetConditionInput {
   readonly key: string;
