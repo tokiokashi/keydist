@@ -591,7 +591,7 @@ test('conditionTriggerTitle: 単体の画面は条件の例を先に挙げ、今
   });
   assert.equal(
     title,
-    '条件は、このペインの結果に効く設定をまとめたものです。例: 先読みN・同指連続のホーム復帰距離・親指シフトの振り替え。条件を見る・変える',
+    '条件は、このペインの結果に影響する設定をまとめたものです。例: 先読みN・同指連続のホーム復帰距離・親指シフトの振り替え。条件を見る・変える',
   );
 });
 
@@ -607,7 +607,7 @@ test('conditionTriggerTitle: 先読みNを隠すペイン（N感度）は、単�
   });
   assert.equal(
     single,
-    '条件は、このペインの結果に効く設定をまとめたものです。例: 同指連続のホーム復帰距離・親指シフトの振り替え・シフト系キーの押し続け。条件を見る・変える',
+    '条件は、このペインの結果に影響する設定をまとめたものです。例: 同指連続のホーム復帰距離・親指シフトの振り替え・シフト系キーの押し続け。条件を見る・変える',
   );
   const workspace = conditionTriggerTitle({
     rows,
@@ -618,7 +618,7 @@ test('conditionTriggerTitle: 先読みNを隠すペイン（N感度）は、単�
   });
   assert.equal(
     workspace,
-    '条件は、このペインの結果に効く設定をまとめたものです。例: 同指連続のホーム復帰距離・親指シフトの振り替え・シフト系キーの押し続け。条件: すべて既定値（対象ごとに差あり）',
+    '条件は、このペインの結果に影響する設定をまとめたものです。例: 同指連続のホーム復帰距離・親指シフトの振り替え・シフト系キーの押し続け。条件: すべて既定値（対象ごとに差あり）',
   );
 });
 
@@ -626,10 +626,10 @@ test('conditionTriggerTitle: Workspaceのペインは、例のあとに変えた
   const rows = overrideRows([['windowSize', 5], ['sfbHomeCost', false]]);
   assert.equal(
     conditionTriggerTitle({ rows, hiddenIds: [], compact: true, line: conditionSummaryLine(rows), hasTargetDiffs: false }),
-    '条件は、このペインの結果に効く設定をまとめたものです。例: 先読みN・同指連続のホーム復帰距離・親指シフトの振り替え。条件: 先読みN: 5 · 同指連続のホーム復帰距離: OFF',
+    '条件は、このペインの結果に影響する設定をまとめたものです。例: 先読みN・同指連続のホーム復帰距離・親指シフトの振り替え。条件: 先読みN: 5 · 同指連続のホーム復帰距離: OFF',
   );
   assert.equal(
     conditionTriggerTitle({ rows, hiddenIds: [], compact: true, line: conditionSummaryLine(rows), hasTargetDiffs: true }),
-    '条件は、このペインの結果に効く設定をまとめたものです。例: 先読みN・同指連続のホーム復帰距離・親指シフトの振り替え。条件: 先読みN: 5 · 同指連続のホーム復帰距離: OFF（対象ごとに差あり）',
+    '条件は、このペインの結果に影響する設定をまとめたものです。例: 先読みN・同指連続のホーム復帰距離・親指シフトの振り替え。条件: 先読みN: 5 · 同指連続のホーム復帰距離: OFF（対象ごとに差あり）',
   );
 });

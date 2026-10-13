@@ -389,8 +389,8 @@ export function conditionTriggerTitle(input: {
     .slice(0, TITLE_EXAMPLE_COUNT)
     .map((row) => row.label);
   const intro = examples.length === 0
-    ? '条件は、このペインの結果に効く設定をまとめたものです。'
-    : `条件は、このペインの結果に効く設定をまとめたものです。例: ${examples.join('・')}。`;
+    ? '条件は、このペインの結果に影響する設定をまとめたものです。'
+    : `条件は、このペインの結果に影響する設定をまとめたものです。例: ${examples.join('・')}。`;
   if (!input.compact) return `${intro}条件を見る・変える`;
   const { line } = input;
   const detail = line.changedCount === 0
