@@ -1,5 +1,8 @@
 import { ALL_FINGERS, type Finger } from '#input/shapes/geometry.ts';
 import {
+  CALIBRATION_OVERHEAD_MS_MAX,
+  CALIBRATION_OVERHEAD_MS_MIN,
+  STROKE_STRUCTURE_KINDS,
   CALIBRATION_ACTIONS_PER_SECOND_MAX,
   CALIBRATION_ACTIONS_PER_SECOND_MIN,
   CALIBRATION_FINGER_SPEED_MAX,
@@ -7,6 +10,7 @@ import {
   playbackCalibrationProblem,
   type HandDirection,
   type PlaybackCalibration,
+  type StrokeStructureKind,
 } from './calibration.ts';
 import { calibrationItemId } from './calibration-session.ts';
 
@@ -17,6 +21,11 @@ import { calibrationItemId } from './calibration-session.ts';
 export const CALIBRATION_SAME_HAND_FIELD = 'same-hand';
 export const CALIBRATION_FALLBACK_FINGER_FIELD = 'fallback-finger';
 const ACTIONS_FIELD = 'actions';
+
+/** 構造の種類ごとの1打ごとの上乗せの欄の識別子。 */
+export function calibrationOverheadFieldId(kind: StrokeStructureKind): string {
+  return `overhead:${kind}`;
+}
 
 export type CalibrationFormValues = Readonly<Record<string, string>>;
 
@@ -42,6 +51,9 @@ export function calibrationFormValues(calibration: PlaybackCalibration): Calibra
   }
   for (const [finger, speed] of Object.entries(calibration.fingerSpeedUnitsPerSecond)) {
     values[calibrationItemId({ kind: 'finger', finger: finger as Finger })] = formatted(speed);
+  }
+  for (const [kind, overhead] of Object.entries(calibration.keystrokeOverheadMs ?? {})) {
+    values[calibrationOverheadFieldId(kind as StrokeStructureKind)] = overhead.toFixed(1);
   }
   return values;
 }
@@ -80,6 +92,7 @@ function parseValue(raw: string | undefined): number | undefined {
 export function parseCalibrationForm(values: CalibrationFormValues, measuredAtMs: number): ParseCalibrationFormResult {
   const rateRange = { min: CALIBRATION_ACTIONS_PER_SECOND_MIN, max: CALIBRATION_ACTIONS_PER_SECOND_MAX };
   const speedRange = { min: CALIBRATION_FINGER_SPEED_MIN, max: CALIBRATION_FINGER_SPEED_MAX };
+  const overheadRange = { min: CALIBRATION_OVERHEAD_MS_MIN, max: CALIBRATION_OVERHEAD_MS_MAX };
   let failure: Extract<ParseCalibrationFormResult, { ok: false }> | undefined;
 
   /** 欄を読む。欄が空なら`undefined`、不正なら失敗を記録して`undefined`。 */
@@ -105,6 +118,11 @@ export function parseCalibrationForm(values: CalibrationFormValues, measuredAtMs
   for (const direction of ['L→R', 'R→L'] as const) {
     const speed = read(calibrationItemId({ kind: 'direction', direction }), rateRange, false);
     if (speed !== undefined) byDirection[direction] = speed;
+  }
+  const overheads: Partial<Record<StrokeStructureKind, number>> = {};
+  for (const kind of STROKE_STRUCTURE_KINDS) {
+    const overhead = read(calibrationOverheadFieldId(kind), overheadRange, false);
+    if (overhead !== undefined) overheads[kind] = overhead;
   }
   const byPair: Record<string, number> = {};
   const directed: Record<string, number> = {};
@@ -136,6 +154,7 @@ export function parseCalibrationForm(values: CalibrationFormValues, measuredAtMs
     ...(Object.keys(directed).length === 0 ? {} : { sameHandDifferentFingerActionsPerDirectedPair: directed }),
     fingerSpeedUnitsPerSecond: fingers,
     fallbackFingerSpeedUnitsPerSecond: fallback,
+    ...(Object.keys(overheads).length === 0 ? {} : { keystrokeOverheadMs: overheads }),
     measuredAt: measuredAtMs,
   };
   // 組のキーが指の組として成り立たない欄などは、保存値の検証で落とす。

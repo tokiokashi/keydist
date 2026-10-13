@@ -3,6 +3,7 @@ import test from 'node:test';
 import type { PlaybackCalibration } from './calibration.ts';
 import {
   calibrationFormValues,
+  calibrationOverheadFieldId,
   CALIBRATION_FALLBACK_FINGER_FIELD,
   CALIBRATION_SAME_HAND_FIELD,
   parseCalibrationForm,
@@ -101,4 +102,39 @@ test('欄の値の比較は、空の欄と欄が無いことを同じとみな�
   assert.equal(sameCalibrationFormValues({ a: '1.00', b: '' }, { a: '1.00' }), true);
   assert.equal(sameCalibrationFormValues({ a: '1.00' }, { a: '1.50' }), false);
   assert.equal(sameCalibrationFormValues({ a: '1.00', b: '2' }, { a: '1.00' }), false);
+});
+
+const WITH_OVERHEAD: PlaybackCalibration = { ...SAVED, keystrokeOverheadMs: { arpeggio: 12.34, other: 80 } };
+
+test('1打ごとの上乗せは、種類ごとの欄に小数第1位までの文字列で写る', () => {
+  const values = calibrationFormValues(WITH_OVERHEAD);
+  assert.equal(values[calibrationOverheadFieldId('arpeggio')], '12.3');
+  assert.equal(values[calibrationOverheadFieldId('other')], '80.0');
+  assert.equal(calibrationOverheadFieldId('chain') in values, false);
+});
+
+test('1打ごとの上乗せの欄を編集して保存値に入れられ、空欄にすると項目ごと消える', () => {
+  const added = parseCalibrationForm({ ...calibrationFormValues(SAVED), [calibrationOverheadFieldId('chain')]: '45' }, 2);
+  assert.ok(added.ok);
+  assert.deepEqual(added.calibration.keystrokeOverheadMs, { chain: 45 });
+
+  const cleared = parseCalibrationForm({
+    ...calibrationFormValues(WITH_OVERHEAD),
+    [calibrationOverheadFieldId('arpeggio')]: '',
+    [calibrationOverheadFieldId('other')]: '',
+  }, 2);
+  assert.ok(cleared.ok);
+  assert.equal('keystrokeOverheadMs' in cleared.calibration, false);
+});
+
+test('1打ごとの上乗せの欄は0から1000までで、範囲の外の欄を返す', () => {
+  const values = calibrationFormValues(WITH_OVERHEAD);
+  const field = calibrationOverheadFieldId('other');
+  assert.deepEqual(
+    parseCalibrationForm({ ...values, [field]: '1000.1' }, 2),
+    { ok: false, fieldId: field, problem: 'invalid', min: 0, max: 1000 },
+  );
+  assert.ok(parseCalibrationForm({ ...values, [field]: '0' }, 2).ok);
+  assert.ok(parseCalibrationForm({ ...values, [field]: '1000' }, 2).ok);
+  assert.equal(parseCalibrationForm({ ...values, [field]: '-1' }, 2).ok, false);
 });

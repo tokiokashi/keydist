@@ -278,8 +278,8 @@ test('別のAnalyzerの抽出のキーは、個人速度の保存値が変わっ
 test('既定と違う計算の知らせ: 使われない項目は挙げず、個人速度で計算している時は基準速度を挙げない', () => {
   const notes = (options: Partial<PlaybackOptions>, use: 'applied' | 'not-applied' | 'missing') =>
     playbackCalculationNotes({ ...DEFAULT_PLAYBACK_OPTIONS, ...options }, use);
-  assert.deepEqual(notes({}, 'missing'), { personalSpeedInUse: false, changes: [] });
-  assert.deepEqual(notes({}, 'applied'), { personalSpeedInUse: true, changes: [] });
+  assert.deepEqual(notes({}, 'missing'), { personalSpeedInUse: false, keystrokeOverheadInUse: false, changes: [] });
+  assert.deepEqual(notes({}, 'applied'), { personalSpeedInUse: true, keystrokeOverheadInUse: false, changes: [] });
   assert.deepEqual(notes({ stepsPerSecond: 2, speedMultiplier: 3 }, 'missing').changes, ['基準速度: 2ステップ/秒', '再生倍率: 3倍']);
   // 個人速度で計算している間、基準速度は数値に入らない。再生倍率は入る
   assert.deepEqual(notes({ stepsPerSecond: 2, speedMultiplier: 3 }, 'applied').changes, ['再生倍率: 3倍']);
@@ -476,6 +476,39 @@ test('個人速度: 適用する設定で保存値があれば、その値で時
   assert.notEqual(extractionKeyOf(applied), extractionKeyOf(base));
   assert.equal(traceKeyOf(remeasured), traceKeyOf(applied));
   assert.equal(basisIdOf(remeasured), basisIdOf(base));
+});
+
+test('個人速度: 1打ごとの上乗せは構造の種類で選ばれて時間表に入り、抽出のキーが変わる（§3.1.1）', () => {
+  // 条件: 配列qwerty・物理配列row-staggered・通常速度5アクション/秒（200ms）・同手別指も5・既定の解析設定。
+  // 「fjdk」は手が交互で、Chain・Arpeggioに入らない。どの遷移もその他
+  const overhead = { arpeggio: 10, chain: 30, other: 70 };
+  const withOverhead = { ...CALIBRATION, keystrokeOverheadMs: overhead };
+  const fjdk = resolve('qwerty', 'fjdk', 'en', EMPTY_SETTINGS_OVERRIDES, withOverhead);
+  assert.deepEqual(STEP_ENDS(extractionOf(fjdk)), [270, 540, 810, 1080]);
+  // 「asdf」はChain 1本・Arpeggio 1本で4打鍵すべてが入る。最初のステップはその他、残りの遷移はArpeggio
+  const asdf = extractionOf(resolve('qwerty', 'asdf', 'en', EMPTY_SETTINGS_OVERRIDES, withOverhead));
+  assert.deepEqual(STEP_ENDS(asdf), [270, 480, 690, 900]);
+  // 再生倍率は上乗せを足した後に掛かる
+  assert.deepEqual(STEP_ENDS(extractionOf(fjdk, { speedMultiplier: 2 })), [135, 270, 405, 540]);
+  // 上乗せを持たない保存値とはキーが違い、上乗せが変わってもキーが変わる
+  const plain = resolve('qwerty', 'fjdk', 'en', EMPTY_SETTINGS_OVERRIDES, CALIBRATION);
+  assert.notEqual(extractionKeyOf(fjdk), extractionKeyOf(plain));
+  const changed = resolve('qwerty', 'fjdk', 'en', EMPTY_SETTINGS_OVERRIDES, { ...CALIBRATION, keystrokeOverheadMs: { other: 71 } });
+  assert.notEqual(extractionKeyOf(fjdk), extractionKeyOf(changed));
+  // 個人速度を適用しない設定では上乗せも入らない
+  assert.deepEqual(STEP_ENDS(extractionOf(fjdk, { applyPersonalSpeed: false })), [800, 1600, 2400, 3200]);
+});
+
+test('既定と違う計算の知らせ: 個人速度で計算していて上乗せを足している時だけ、そのことを挙げる', () => {
+  const notes = (use: 'applied' | 'not-applied' | 'missing', calibration?: PlaybackCalibration) =>
+    playbackCalculationNotes(DEFAULT_PLAYBACK_OPTIONS, use, calibration);
+  const withOverhead = { ...CALIBRATION, keystrokeOverheadMs: { other: 60 } };
+  assert.equal(notes('applied', withOverhead).keystrokeOverheadInUse, true);
+  assert.equal(notes('applied', CALIBRATION).keystrokeOverheadInUse, false);
+  assert.equal(notes('applied', { ...CALIBRATION, keystrokeOverheadMs: {} }).keystrokeOverheadInUse, false);
+  assert.equal(notes('applied').keystrokeOverheadInUse, false);
+  assert.equal(notes('not-applied', withOverhead).keystrokeOverheadInUse, false);
+  assert.equal(notes('missing', withOverhead).keystrokeOverheadInUse, false);
 });
 
 test('個人速度: 保存値が無ければ個人速度無しの時間で、そのことを抽出が伝える（§2.1）', () => {

@@ -243,6 +243,29 @@ test('1項目の測り直しは、その項目だけを置き換え、代表値�
   assert.equal(actionsApplied.calibration.actionsPerSecond, 10);
 });
 
+test('通常速度・移動速度、方向別、1項目の測定は、保存値の1打ごとの上乗せを消して知らせる', () => {
+  const withOverhead: PlaybackCalibration = { ...SAVED, keystrokeOverheadMs: { chain: 20, other: 60 } };
+  const runs: readonly CalibrationRun[] = [
+    playAll(startCalibrationRun('normal', PLAN.normal!), 250),
+    playAll(startCalibrationRun('directional', [PLAN.byItem.get('direction:R→L')!]), 200),
+    playAll(startCalibrationRun('item', [PLAN.byItem.get('actions')!]), 200),
+  ];
+  for (const run of runs) {
+    const applied = applyCalibrationRun(withOverhead, run, 5);
+    assert.ok(applied.ok, run.scope);
+    assert.equal(applied.calibration.keystrokeOverheadMs, undefined, run.scope);
+    assert.equal(applied.overheadCleared, true, run.scope);
+    assert.equal('keystrokeOverheadMs' in applied.calibration, false, run.scope);
+  }
+});
+
+test('上乗せを持たない保存値への測定は、消したと知らせない', () => {
+  const run = playAll(startCalibrationRun('item', [PLAN.byItem.get('actions')!]), 200);
+  const applied = applyCalibrationRun(SAVED, run, 5);
+  assert.ok(applied.ok);
+  assert.equal(applied.overheadCleared, false);
+});
+
 test('測った値が保存できる範囲を外れたら、保存値を作らない', () => {
   // 1msごとの打鍵は1000アクション/秒で、上限の40を超える。
   const fast = playAll(startCalibrationRun('item', [PLAN.byItem.get('actions')!]), 1);

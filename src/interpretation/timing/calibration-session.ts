@@ -286,7 +286,12 @@ export function pressCalibrationKey(
 }
 
 export type ApplyCalibrationResult =
-  | { readonly ok: true; readonly calibration: PlaybackCalibration }
+  | {
+      readonly ok: true;
+      readonly calibration: PlaybackCalibration;
+      /** 保存値が持っていた1打ごとの上乗せを消した。文章を打つ測定の測り直しを促す。 */
+      readonly overheadCleared: boolean;
+    }
   /** 方向別・1項目の測定は、保存値が無いと反映先が無い。 */
   | { readonly ok: false; readonly reason: 'no-saved-value' }
   /** 測った値が足りない、または保存できる範囲を外れた。 */
@@ -371,6 +376,7 @@ function applyNormal(base: PlaybackCalibration | undefined, run: CalibrationRun,
 /**
  * 済んだ測定を保存値へ反映する（`spec/playback-timing.md` §6.3）。
  * 反映した値が保存できる範囲を外れていれば、保存値は作らない。
+ * 1打ごとの上乗せは、その時の保存値から求めた差なので、ここで測る他の値が変わる時は消す。
  */
 export function applyCalibrationRun(
   base: PlaybackCalibration | undefined,
@@ -382,7 +388,8 @@ export function applyCalibrationRun(
     next = applyNormal(base, run, nowMs);
   } else {
     if (base === undefined) return { ok: false, reason: 'no-saved-value' };
-    let current: PlaybackCalibration = { ...base, measuredAt: nowMs };
+    const { keystrokeOverheadMs: _overhead, ...withoutOverhead } = base;
+    let current: PlaybackCalibration = { ...withoutOverhead, measuredAt: nowMs };
     for (const result of run.results) {
       const updated = withMeasuredItem(current, result);
       if (updated === undefined) return { ok: false, reason: 'invalid-measurement' };
@@ -393,5 +400,5 @@ export function applyCalibrationRun(
   if (next === undefined || playbackCalibrationProblem(next) !== undefined) {
     return { ok: false, reason: 'invalid-measurement' };
   }
-  return { ok: true, calibration: next };
+  return { ok: true, calibration: next, overheadCleared: base?.keystrokeOverheadMs !== undefined };
 }

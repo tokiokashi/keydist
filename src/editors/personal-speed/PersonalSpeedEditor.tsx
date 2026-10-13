@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Layout } from '#input/layouts/types.ts';
 import { FINGERS, type FingerAssignment, type PhysicalShape } from '#input/shapes/geometry.ts';
-import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
+import { STROKE_STRUCTURE_KINDS, type PlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import {
   calibrationFormValues,
+  calibrationOverheadFieldId,
   CALIBRATION_FALLBACK_FINGER_FIELD,
   CALIBRATION_SAME_HAND_FIELD,
   parseCalibrationForm,
@@ -20,18 +21,36 @@ import {
   type CalibrationScope,
   type CalibrationTask,
 } from '#interpretation/timing/calibration-session.ts';
+import { applySentenceMeasurement, type SentenceBuildResult } from '#interpretation/timing/sentence-measurement.ts';
+import {
+  remainingSentenceKeys,
+  sentenceSteps,
+  sentenceUnits,
+  sentenceUnmeasurable,
+  type SentenceRun,
+  type SentenceStep,
+  type SentenceUnit,
+} from '#interpretation/timing/sentence-session.ts';
+import type { SentenceAnalysis } from '#interpretation/timing/sentence-measurement.ts';
 import {
   calibrationFieldLabel,
   calibrationFieldUnit,
   calibrationFormProblemText,
   calibrationInstruction,
   calibrationProgressText,
+  MEASUREMENT_DESCRIPTION,
   MEASUREMENT_OUT_OF_RANGE_TEXT,
+  MEASUREMENT_SENTENCE,
+  PERSONAL_SPEED_PURPOSE,
   savedMessage,
+  sentenceFailureText,
+  sentenceSavedMessage,
+  sentenceUnmeasurableText,
   wrongKeyText,
 } from './calibration-text.ts';
 import { PERSONAL_SPEED_LABEL } from './label.ts';
 import { useCalibrationRun } from './use-calibration-run.ts';
+import { useSentenceRun } from './use-sentence-run.ts';
 import './personal-speed.css';
 
 /** 測るキーを決める配列・物理配列・指の割り当ての選択肢。 */
@@ -57,12 +76,54 @@ export interface PersonalSpeedEditorProps {
   readonly initialSelection: PersonalSpeedSelection;
   /** 物理配列を変えた時に選び直す、その物理配列の既定の指の割り当てのid。 */
   readonly defaultFingerAssignmentId: (shapeId: string) => string;
+  /**
+   * 示す文を、選んだ配列・物理配列・指の割り当てで打つ打鍵の列と構造にする。
+   * 条件の解決とTrace生成は`editors`から読めないので、appが組み立てて渡す。
+   */
+  readonly buildSentence: (selection: PersonalSpeedSelection, text: string) => SentenceBuildResult;
   readonly canUndo: boolean;
   readonly canRedo: boolean;
   readonly onUndo: () => void;
   readonly onRedo: () => void;
   readonly onSave: (calibration: PlaybackCalibration) => void;
   readonly onDiscard: () => void;
+}
+
+/** 文章を打つ測定の準備。打てる時は打鍵の列と構造を持ち、打てない時は理由の文を持つ。 */
+type SentenceSetup =
+  | {
+      readonly ok: true;
+      readonly analysis: SentenceAnalysis;
+      readonly steps: readonly SentenceStep[];
+      readonly units: readonly SentenceUnit[];
+    }
+  | { readonly ok: false; readonly message: string };
+
+function sentenceSetupOf(build: SentenceBuildResult): SentenceSetup {
+  if (!build.ok) return build;
+  const steps = sentenceSteps(build.analysis);
+  const unmeasurable = sentenceUnmeasurable(steps);
+  return unmeasurable === undefined
+    ? { ok: true, analysis: build.analysis, steps, units: sentenceUnits(steps) }
+    : { ok: false, message: sentenceUnmeasurableText(unmeasurable) };
+}
+
+/** 示す文と、打つ位置の表示。打ち終えた入力単位・今の入力単位・まだの入力単位に分けて見せる。 */
+function SentenceText({ units, run }: { readonly units: readonly SentenceUnit[]; readonly run: SentenceRun | undefined }) {
+  return (
+    <p className="personal-speed-sentence" data-personal-speed-sentence>
+      {units.map((unit) => {
+        const state = run === undefined ? 'rest' : run.index >= unit.end ? 'done' : run.index >= unit.start ? 'current' : 'rest';
+        return <span key={unit.start} data-sentence-unit={state}>{unit.text}</span>;
+      })}
+    </p>
+  );
+}
+
+/** 文章を打つ測定を始めた時点の入力。 */
+interface SentenceStart {
+  readonly setup: Extract<SentenceSetup, { readonly ok: true }>;
+  readonly calibration: PlaybackCalibration;
 }
 
 const NO_BASIS_TEXT = 'この配列・物理配列・指の割り当ての組では、測定用のキーを作れません。別の組を選んでください。';
@@ -122,7 +183,7 @@ function ConfirmDiscard({ onConfirm, onCancel }: { readonly onConfirm: () => voi
   return (
     <dialog ref={ref} className="personal-speed-confirm" aria-labelledby="personal-speed-confirm-title" onCancel={(event) => { event.preventDefault(); onCancel(); }}>
       <h2 id="personal-speed-confirm-title">保存した個人速度を全て破棄しますか</h2>
-      <p>通常の速度、方向別の速度、指の移動速度を全て消します。「元に戻す」はこの画面にいる間だけ使えます。</p>
+      <p>通常の速度、方向別の速度、指の移動速度、文章を打つ時の1打ごとの上乗せを全て消します。「元に戻す」はこの画面にいる間だけ使えます。</p>
       <div className="personal-speed-confirm-actions">
         <button type="button" autoFocus onClick={onCancel}>キャンセル</button>
         <button type="button" onClick={onConfirm}>破棄する</button>
@@ -144,6 +205,7 @@ export function PersonalSpeedEditor({
   defaultFingerAssignmentId,
   canUndo,
   canRedo,
+  buildSentence,
   onUndo,
   onRedo,
   onSave,
@@ -183,6 +245,7 @@ export function PersonalSpeedEditor({
 
   const opener = useRef<HTMLElement | null>(null);
   const regionRef = useRef<HTMLDivElement>(null);
+  const sentenceRegionRef = useRef<HTMLDivElement>(null);
 
   const finished = (run: CalibrationRun) => {
     const result = applyCalibrationRun(calibration, run, Date.now());
@@ -191,15 +254,42 @@ export function PersonalSpeedEditor({
       return;
     }
     onSave(result.calibration);
-    setMessage(savedMessage(run.scope, run.tasks[0]?.item));
+    setMessage(savedMessage(run.scope, run.tasks[0]?.item, result.overheadCleared));
   };
   const runner = useCalibrationRun({ keyLabel, onFinished: finished });
-  const running = runner.run !== undefined;
+
+  const sentence: SentenceSetup | undefined = useMemo(
+    () => (!ready || layout === undefined || shape === undefined || assignment === undefined
+      ? undefined
+      : sentenceSetupOf(buildSentence(
+        { layoutId: layout.id, shapeId: shape.id, fingerAssignmentId: assignment.id },
+        MEASUREMENT_SENTENCE,
+      ))),
+    [ready, buildSentence, layout, shape, assignment],
+  );
+  // 測定を始めた時の示す文・打鍵の列と構造・保存値。別のタブで条件や保存値が変わっても、終わりまでこれを使う。
+  const [sentenceStart, setSentenceStart] = useState<SentenceStart | undefined>(undefined);
+  const sentenceStartRef = useRef<SentenceStart | undefined>(undefined);
+  const sentenceFinished = (run: SentenceRun) => {
+    const started = sentenceStartRef.current;
+    sentenceStartRef.current = undefined;
+    setSentenceStart(undefined);
+    if (started === undefined) return;
+    const result = applySentenceMeasurement(started.calibration, started.setup.analysis, run.taps, Date.now(), calibration);
+    if (!result.ok) {
+      setError(sentenceFailureText(result));
+      return;
+    }
+    onSave(result.calibration);
+    setMessage(sentenceSavedMessage(result.measurement));
+  };
+  const sentenceRunner = useSentenceRun({ keyLabel, onFinished: sentenceFinished });
+  const running = runner.run !== undefined || sentenceRunner.run !== undefined;
 
   // 測定中は案内にフォーカスを置き（押した測定のボタンは無効になるため）、終わったら押したボタンへ戻す。
   useEffect(() => {
     if (running) {
-      regionRef.current?.focus();
+      (sentenceRunner.run === undefined ? regionRef : sentenceRegionRef).current?.focus();
       return undefined;
     }
     const target = opener.current;
@@ -216,6 +306,29 @@ export function PersonalSpeedEditor({
   };
 
   const currentTask = runner.run === undefined ? undefined : runner.run.tasks[runner.run.index];
+
+  const startSentence = () => {
+    if (sentence?.ok !== true || calibration === undefined) return;
+    const started: SentenceStart = { setup: sentence, calibration };
+    sentenceStartRef.current = started;
+    setSentenceStart(started);
+    opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setMessage('');
+    setError('');
+    sentenceRunner.start(sentence.steps);
+  };
+  const cancelSentence = () => {
+    sentenceStartRef.current = undefined;
+    setSentenceStart(undefined);
+    sentenceRunner.cancel();
+  };
+  const sentenceRun = sentenceRunner.run;
+  const runningSentence = sentenceStart?.setup;
+  const sentenceStep = sentenceRun === undefined ? undefined : sentenceRun.steps[sentenceRun.index];
+  const nextSentenceKeys = sentenceRun === undefined ? [] : remainingSentenceKeys(sentenceRun);
+  const upcomingSentenceKeys = sentenceRun === undefined
+    ? []
+    : sentenceRun.steps.slice(sentenceRun.index + 1, sentenceRun.index + 9).map((step) => step.keys.map(keyLabel).join('+'));
 
   const saveValues = () => {
     const parsed = parseCalibrationForm(values, Date.now());
@@ -251,11 +364,13 @@ export function PersonalSpeedEditor({
 
   const normalDisabled = running || plan?.normal === undefined || dirty;
   const directionalDisabled = running || plan?.directional === undefined || calibration === undefined || dirty;
+  const sentenceDisabled = running || sentence?.ok !== true || calibration === undefined || dirty;
 
   return (
     <article className="personal-speed">
       <h1>{PERSONAL_SPEED_LABEL}</h1>
       <p className="personal-speed-lead">打鍵と指の移動の速さを測って保存します。</p>
+      <p className="personal-speed-note" data-personal-speed-purpose>{PERSONAL_SPEED_PURPOSE}</p>
       <div className="personal-speed-toolbar">
         <button type="button" disabled={!canUndo || running} onClick={() => { setMessage(''); setError(''); onUndo(); }}>元に戻す</button>
         <button type="button" disabled={!canRedo || running} onClick={() => { setMessage(''); setError(''); onRedo(); }}>やり直す</button>
@@ -310,22 +425,72 @@ export function PersonalSpeedEditor({
 
           <section className="personal-speed-section" aria-labelledby="personal-speed-measure">
             <h2 id="personal-speed-measure">測定</h2>
+            <div className="personal-speed-measurement">
+              <h3>通常の速度と指の移動</h3>
+              <p className="personal-speed-note">{MEASUREMENT_DESCRIPTION.normal}</p>
+              <div className="personal-speed-actions">
+                <button type="button" data-personal-speed-start="normal" disabled={normalDisabled} onClick={() => startRun('normal', plan?.normal ?? [])}>
+                  通常の速度と指の移動を測る
+                </button>
+              </div>
+            </div>
+            <div className="personal-speed-measurement">
+              <h3>方向別の速度</h3>
+              <p className="personal-speed-note">{MEASUREMENT_DESCRIPTION.directional}</p>
+              <div className="personal-speed-actions">
+                <button type="button" data-personal-speed-start="directional" disabled={directionalDisabled} onClick={() => startRun('directional', plan?.directional ?? [])}>
+                  方向別の速度を測る
+                </button>
+              </div>
+            </div>
+            <div className="personal-speed-measurement">
+              <h3>文章を打つ速さ</h3>
+              <p className="personal-speed-note">{MEASUREMENT_DESCRIPTION.sentence}</p>
+              {sentence?.ok === true ? <SentenceText units={sentence.units} run={undefined} /> : null}
+              {sentence?.ok === false ? <p className="personal-speed-warning" role="alert" data-personal-speed-sentence-unavailable>{sentence.message}</p> : null}
+              <div className="personal-speed-actions">
+                <button type="button" data-personal-speed-start="sentence" disabled={sentenceDisabled} onClick={startSentence}>
+                  文章を打つ速さを測る
+                </button>
+              </div>
+              <div
+                className="personal-speed-run"
+                ref={sentenceRegionRef}
+                tabIndex={-1}
+                hidden={sentenceRun === undefined}
+                data-personal-speed-sentence-run={sentenceRun === undefined ? undefined : 'active'}
+              >
+                {sentenceRun === undefined || runningSentence === undefined || sentenceStep === undefined ? null : (
+                  <>
+                    <SentenceText units={runningSentence.units} run={sentenceRun} />
+                    <p className="personal-speed-instruction">
+                      次に打つキー:{' '}
+                      <span data-personal-speed-next>
+                        {nextSentenceKeys.map((key) => <kbd key={key}>{keyLabel(key)}</kbd>)}
+                      </span>
+                    </p>
+                    <p className="personal-speed-progress" data-personal-speed-upcoming>
+                      この後: {upcomingSentenceKeys.join(' ')}
+                    </p>
+                    <p className="personal-speed-progress" data-personal-speed-sentence-progress>
+                      あと{sentenceRun.steps.length - sentenceRun.index}打
+                    </p>
+                    <p className="personal-speed-warning" role="status">{sentenceRunner.wrongKey === undefined ? '' : wrongKeyText(sentenceRunner.wrongKey)}</p>
+                    <button type="button" data-personal-speed-sentence-cancel onClick={cancelSentence}>中止</button>
+                  </>
+                )}
+              </div>
+            </div>
             <div className="personal-speed-actions">
-              <button type="button" data-personal-speed-start="normal" disabled={normalDisabled} onClick={() => startRun('normal', plan?.normal ?? [])}>
-                通常の速度と指の移動を測る
-              </button>
-              <button type="button" data-personal-speed-start="directional" disabled={directionalDisabled} onClick={() => startRun('directional', plan?.directional ?? [])}>
-                方向別の速度を測る
-              </button>
               <button type="button" data-personal-speed-discard disabled={calibration === undefined || running} onClick={() => setConfirming(true)}>
                 全て破棄
               </button>
             </div>
             {calibration === undefined ? (
-              <p className="personal-speed-note">方向別の速度と、項目ごとの測り直しは、通常の測定を保存した後に行えます。</p>
+              <p className="personal-speed-note">方向別の速度、文章を打つ速さ、項目ごとの測り直しは、通常の測定を保存した後に行えます。</p>
             ) : null}
             {dirty ? <p className="personal-speed-note">保存していない変更があります。保存するか元に戻してから測ってください。</p> : null}
-            <div className="personal-speed-run" ref={regionRef} tabIndex={-1} hidden={!running} data-personal-speed-run={running ? 'active' : undefined}>
+            <div className="personal-speed-run" ref={regionRef} tabIndex={-1} hidden={runner.run === undefined} data-personal-speed-run={runner.run === undefined ? undefined : 'active'}>
               {runner.run === undefined || currentTask === undefined ? null : (
                 <>
                   <p className="personal-speed-instruction" data-personal-speed-instruction>{calibrationInstruction(currentTask, keyLabel)}</p>
@@ -354,6 +519,10 @@ export function PersonalSpeedEditor({
                 <h3>異手の方向別</h3>
                 <div className="personal-speed-rows">
                   {directionIds.map((id) => <ValueRow key={id} {...rowProps(id)} />)}
+                </div>
+                <h3>文章を打つ時の1打ごとの上乗せ</h3>
+                <div className="personal-speed-rows">
+                  {STROKE_STRUCTURE_KINDS.map((kind) => <ValueRow key={kind} {...rowProps(calibrationOverheadFieldId(kind))} />)}
                 </div>
                 <h3>指ごとの移動速度</h3>
                 <div className="personal-speed-rows">
