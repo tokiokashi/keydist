@@ -2,7 +2,7 @@ import { ALL_FINGERS, type Finger } from '#input/shapes/geometry.ts';
 import {
   CALIBRATION_OVERHEAD_MS_MAX,
   CALIBRATION_OVERHEAD_MS_MIN,
-  STROKE_STRUCTURE_KINDS,
+  OVERHEAD_KINDS,
   CALIBRATION_ACTIONS_PER_SECOND_MAX,
   CALIBRATION_ACTIONS_PER_SECOND_MIN,
   CALIBRATION_FINGER_SPEED_MAX,
@@ -10,7 +10,7 @@ import {
   playbackCalibrationProblem,
   type HandDirection,
   type PlaybackCalibration,
-  type StrokeStructureKind,
+  type OverheadKind,
 } from './calibration.ts';
 import { calibrationItemId } from './calibration-session.ts';
 
@@ -21,9 +21,11 @@ import { calibrationItemId } from './calibration-session.ts';
 export const CALIBRATION_SAME_HAND_FIELD = 'same-hand';
 export const CALIBRATION_FALLBACK_FINGER_FIELD = 'fallback-finger';
 const ACTIONS_FIELD = 'actions';
+/** 同じキーを続けて打つ速さの欄の識別子。 */
+export const CALIBRATION_SAME_KEY_FIELD = 'same-key';
 
-/** 構造の種類ごとの連打との差の欄の識別子。 */
-export function calibrationOverheadFieldId(kind: StrokeStructureKind): string {
+/** 差の種類ごとの連打との差の欄の識別子。 */
+export function calibrationOverheadFieldId(kind: OverheadKind): string {
   return `overhead:${kind}`;
 }
 
@@ -40,6 +42,9 @@ export function calibrationFormValues(calibration: PlaybackCalibration): Calibra
     [CALIBRATION_SAME_HAND_FIELD]: formatted(calibration.sameHandDifferentFingerActionsPerSecond),
     [CALIBRATION_FALLBACK_FINGER_FIELD]: formatted(calibration.fallbackFingerSpeedUnitsPerSecond),
   };
+  if (calibration.sameKeyActionsPerSecond !== undefined) {
+    values[CALIBRATION_SAME_KEY_FIELD] = formatted(calibration.sameKeyActionsPerSecond);
+  }
   for (const [direction, speed] of Object.entries(calibration.actionsPerSecondByDirection ?? {})) {
     values[calibrationItemId({ kind: 'direction', direction: direction as HandDirection })] = formatted(speed);
   }
@@ -53,7 +58,7 @@ export function calibrationFormValues(calibration: PlaybackCalibration): Calibra
     values[calibrationItemId({ kind: 'finger', finger: finger as Finger })] = formatted(speed);
   }
   for (const [kind, overhead] of Object.entries(calibration.keystrokeOverheadMs ?? {})) {
-    values[calibrationOverheadFieldId(kind as StrokeStructureKind)] = overhead.toFixed(1);
+    values[calibrationOverheadFieldId(kind as OverheadKind)] = overhead.toFixed(1);
   }
   return values;
 }
@@ -119,8 +124,9 @@ export function parseCalibrationForm(values: CalibrationFormValues, measuredAtMs
     const speed = read(calibrationItemId({ kind: 'direction', direction }), rateRange, false);
     if (speed !== undefined) byDirection[direction] = speed;
   }
-  const overheads: Partial<Record<StrokeStructureKind, number>> = {};
-  for (const kind of STROKE_STRUCTURE_KINDS) {
+  const sameKey = read(CALIBRATION_SAME_KEY_FIELD, rateRange, false);
+  const overheads: Partial<Record<OverheadKind, number>> = {};
+  for (const kind of OVERHEAD_KINDS) {
     const overhead = read(calibrationOverheadFieldId(kind), overheadRange, false);
     if (overhead !== undefined) overheads[kind] = overhead;
   }
@@ -154,6 +160,7 @@ export function parseCalibrationForm(values: CalibrationFormValues, measuredAtMs
     ...(Object.keys(directed).length === 0 ? {} : { sameHandDifferentFingerActionsPerDirectedPair: directed }),
     fingerSpeedUnitsPerSecond: fingers,
     fallbackFingerSpeedUnitsPerSecond: fallback,
+    ...(sameKey === undefined ? {} : { sameKeyActionsPerSecond: sameKey }),
     ...(Object.keys(overheads).length === 0 ? {} : { keystrokeOverheadMs: overheads }),
     measuredAt: measuredAtMs,
   };

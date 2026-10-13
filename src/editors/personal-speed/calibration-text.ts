@@ -3,8 +3,8 @@ import type { Finger } from '#input/shapes/geometry.ts';
 import {
   CALIBRATION_OVERHEAD_MS_MAX,
   CALIBRATION_OVERHEAD_MS_MIN,
-  STROKE_STRUCTURE_KINDS,
-  type StrokeStructureKind,
+  OVERHEAD_KINDS,
+  type OverheadKind,
 } from '#interpretation/timing/calibration.ts';
 import {
   CALIBRATION_FALLBACK_FINGER_FIELD,
@@ -42,11 +42,13 @@ export const MEASUREMENT_SENTENCES: readonly string[] = [
   'なつやすみにはうみへあそびにいきたい',
 ];
 
-/** 構造の種類の名前。 */
-export const STRUCTURE_KIND_LABEL: Readonly<Record<StrokeStructureKind, string>> = {
+/** 連打との差の種類の名前。 */
+export const OVERHEAD_KIND_LABEL: Readonly<Record<OverheadKind, string>> = {
   arpeggio: 'Arpeggio',
   chain: 'Chain',
   other: 'その他',
+  repeat: '続け打ち',
+  sfb: '同指連続',
 };
 
 /** 構造の種類の欄の識別子の接頭辞。 */
@@ -65,6 +67,7 @@ function pairLabel(pair: string, separator: ':' | '>'): string {
 export function calibrationItemLabel(item: CalibrationItem): string {
   switch (item.kind) {
     case 'actions': return '通常の打鍵速度';
+    case 'same-key': return '同じキーを続けて打つ速さ';
     case 'direction': return item.direction === 'L→R' ? '左手から右手' : '右手から左手';
     case 'finger': return fingerLabel(item.finger);
     case 'same-hand-pair': return pairLabel(item.pair, ':');
@@ -80,8 +83,9 @@ export function calibrationFieldLabel(fieldId: string): string {
   const name = rest.join(':');
   switch (kind) {
     case 'actions': return calibrationItemLabel({ kind: 'actions' });
+    case 'same-key': return calibrationItemLabel({ kind: 'same-key', hand: 'L' });
     case 'direction': return `異手 ${calibrationItemLabel({ kind: 'direction', direction: name === 'L→R' ? 'L→R' : 'R→L' })}`;
-    case 'overhead': return `連打との差 ${STRUCTURE_KIND_LABEL[name as StrokeStructureKind] ?? name}`;
+    case 'overhead': return `連打との差 ${OVERHEAD_KIND_LABEL[name as OverheadKind] ?? name}`;
     case 'finger': return `${fingerLabel(name)}の移動速度`;
     case 'same-hand-pair': return `同手・別指 ${pairLabel(name, ':')}`;
     case 'directed-pair': return `同手・別指 ${pairLabel(name, '>')}`;
@@ -111,6 +115,8 @@ export function calibrationInstruction(task: CalibrationTask, keyLabel: (keyId: 
   switch (task.item.kind) {
     case 'actions':
       return `${first}と${second}を、普段の速さで交互に打ってください。`;
+    case 'same-key':
+      return `${subject}: ${first}を、普段の速さで続けて打ってください。`;
     case 'finger':
       return `${subject}: ${first}と${second}を交互に打ってください。`;
     case 'same-hand-pair':
@@ -134,12 +140,12 @@ export function wrongKeyText(keyLabel: string): string {
 export function savedMessage(
   scope: 'normal' | 'directional' | 'item',
   item?: CalibrationItem,
-  overheadCleared = false,
+  clearedOverheads: readonly OverheadKind[] = [],
 ): string {
-  const notice = overheadCleared
-    ? ' 文章を打つ時の連打との差は、他の値が変わったため消しました。文章を打つ速さをもう一度測ってください。'
+  const notice = clearedOverheads.length > 0
+    ? ` 文章を打つ時の連打との差（${clearedOverheads.map((kind) => OVERHEAD_KIND_LABEL[kind]).join('・')}）は、他の値が変わったため消しました。文章を打つ速さをもう一度測ってください。`
     : '';
-  if (scope === 'normal') return `通常の速度と指の移動速度を測って保存しました。${notice}`;
+  if (scope === 'normal') return `通常の速度、同じキーを続けて打つ速さ、指の移動速度を測って保存しました。${notice}`;
   if (scope === 'directional') return `方向別の速度を測って保存しました。${notice}`;
   return item === undefined ? `保存しました。${notice}` : `${calibrationItemLabel(item)}を測り直して保存しました。${notice}`;
 }
@@ -162,19 +168,19 @@ export function sentenceUnmeasurableText(reason: SentenceUnmeasurable): string {
 }
 
 function countsText(measurement: SentenceMeasurement): string {
-  return STROKE_STRUCTURE_KINDS
-    .map((kind) => `${STRUCTURE_KIND_LABEL[kind]} ${measurement.counts[kind]}打`)
+  return OVERHEAD_KINDS
+    .map((kind) => `${OVERHEAD_KIND_LABEL[kind]} ${measurement.counts[kind]}打`)
     .join('、');
 }
 
 /** 文章を打つ測定を保存した時の知らせ。種類ごとに、保存した値と数えた打鍵の数を示す。 */
 export function sentenceSavedMessage(measurement: SentenceMeasurement): string {
-  const parts = STROKE_STRUCTURE_KINDS.map((kind) => {
+  const parts = OVERHEAD_KINDS.map((kind) => {
     const value = measurement.overheadMs[kind];
     const count = measurement.counts[kind];
     return value === undefined
-      ? `${STRUCTURE_KIND_LABEL[kind]}は数えた打鍵が${count}打で${SENTENCE_MIN_SAMPLES}打に満たないため、保存していません`
-      : `${STRUCTURE_KIND_LABEL[kind]} ${value.toFixed(1)}ミリ秒（${count}打）`;
+      ? `${OVERHEAD_KIND_LABEL[kind]}は数えた打鍵が${count}打で${SENTENCE_MIN_SAMPLES}打に満たないため、保存していません`
+      : `${OVERHEAD_KIND_LABEL[kind]} ${value.toFixed(1)}ミリ秒（${count}打）`;
   });
   return `文章を打つ速さを測って保存しました。連打との差: ${parts.join('、')}。`;
 }
@@ -198,21 +204,26 @@ export const SENTENCE_UNMEASURED_TEXT = '打った内容から測定の値を求
 
 /** 個人速度の画面の各測定の説明。何を測るか、打鍵再生のどこに使われるか、測らなかった時に何が代わるか。 */
 export const MEASUREMENT_DESCRIPTION = {
-  normal: '左右の人差し指の連打と、同じ手の2本の指を交互に打つ速さ、各指がホームから動く速さを測ります。'
-    + '打鍵再生では、同指連続を含まない打鍵の時間と、同指連続で指が動く時間に使います。「全指の移動時間で律速」の設定でも、指の移動速度を使います。'
-    + '測っていない指の移動速度には、測れた指の代表値が使われます。',
+  normal: '左右の人差し指の連打と、同じキーを1本の指で続けて打つ速さ、同じ手の2本の指を交互に打つ速さ、各指がホームから動く速さを測ります。'
+    + '打鍵再生では、同指連続を含まない打鍵の時間と、同じキーを続けて打つ時間、同指連続で指が動く時間に使います。「全指の移動時間で律速」の設定でも、指の移動速度を使います。'
+    + '測っていない指の移動速度には、測れた指の代表値が使われます。同じキーを続けて打つ速さを測っていなければ、通常の打鍵速度が使われます。',
   directional: '左手から右手、右手から左手の向きごとの連打の速さと、同じ手の2本の指を向きごとに交互に打つ速さを測ります。'
     + '打鍵再生では、同指連続を含まない打鍵の時間を、直前の打鍵との指の組み合わせと向きで決めるのに使います。'
     + '測っていない向きには、通常の速度や同手・別指の代表の速度が使われます。',
-  sentence: '示す短い文を1本ずつ3回続けて打って、文章を打つ時の連打との差を、Arpeggio・Chain・その他の3種類ごとに測ります。'
+  sentence: '示す短い文を1本ずつ3回続けて打って、文章を打つ時の連打との差を、Arpeggio・Chain・その他・続け打ち・同指連続の5種類ごとに測ります。'
+    + '続け打ちは同じ指で同じキーを続けて打つ打鍵、同指連続は同じ指で違う位置を続けて打つ打鍵です。'
     + '1回目は文を覚える回で、数えません。2回目以降の打鍵だけを数えるので、覚えた文を考えずに打ってください。'
+    + '句読点を打つ打鍵と直後の打鍵は、文の区切りで止まる間を含みうるので数えません。'
     + '間違えたら、その打鍵だけを数えずに続けられます。'
     + 'ローマ字で打つ配列では、普段の綴り（shi・chi・tsu、子音の前のnの1打など）で打てます。'
-    + 'ここでの連打は、この画面の通常の速度・方向別の速度の測定（同じ手の2本の指を交互に打つ速さを含む）で測る打鍵の速さです。'
-    + '同指連続を含まない打鍵の間隔から連打の時間を引いた差の中央値で求めるので、長い間はほとんど入りません。'
+    + '連打との差は、打鍵の間隔から基準の時間を引いた差の中央値で求めるので、長い間はほとんど入りません。'
+    + '基準の時間は、続け打ちでは同じキーを続けて打つ速さ（測っていなければ通常の打鍵速度）、同指連続では連打の時間と指が動く時間の遅い方、それ以外では連打の時間です。'
+    + '連打の時間は、この画面の通常の速度・方向別の速度の測定（同じ手の2本の指を交互に打つ速さを含む）で測る打鍵の速さで決まります。'
     + '打鍵の数は、文ごとに2回目と3回目のうち数えた打鍵が多い方の数を、全文で足した数です。'
-    + '打鍵再生では、同指連続を含まない打鍵の時間に足します。指が動く時間には足しません。'
-    + '測っていない種類には「その他」の連打との差が使われ、測っていなければ連打との差はありません。'
+    + '打鍵再生では、同指連続の値は連打の時間と指が動く時間の遅い方に足します。続け打ちの値は、同じキーを続けて打つ速さを測ってあればその時間に、測っていなければ連打の時間に足します。他の種類の値は連打の時間に足します。'
+    + '測っていない構造の種類には「その他」の連打との差が使われます。続け打ちと同指連続を測っていない時は、その打鍵が属する構造の種類の値が使われます。'
+    + '同じキーを続けて打つ速さを測ってあり、続け打ちの差が無い時は、続け打ちに連打との差を足しません。'
+    + '測っていなければ連打との差はありません。'
     + '打ちやすい形の違いが再生に出るよう、手に馴染んだ配列で測ってください。'
     + 'キーボードがコンボを文字に変えて送る場合も測れます。',
 } as const;

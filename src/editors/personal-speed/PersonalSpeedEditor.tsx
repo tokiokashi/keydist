@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Layout } from '#input/layouts/types.ts';
 import { FINGERS, type FingerAssignment, type PhysicalShape } from '#input/shapes/geometry.ts';
-import { STROKE_STRUCTURE_KINDS, type PlaybackCalibration } from '#interpretation/timing/calibration.ts';
+import { OVERHEAD_KINDS, type PlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import {
   calibrationFormValues,
   calibrationOverheadFieldId,
   CALIBRATION_FALLBACK_FINGER_FIELD,
   CALIBRATION_SAME_HAND_FIELD,
+  CALIBRATION_SAME_KEY_FIELD,
   parseCalibrationForm,
   sameCalibrationFormValues,
   type CalibrationFormValues,
@@ -139,14 +140,14 @@ interface ValueRowProps {
   readonly fieldId: string;
   readonly value: string;
   readonly disabled: boolean;
-  readonly task: CalibrationTask | undefined;
+  readonly tasks: readonly CalibrationTask[];
   readonly measureDisabled: boolean;
   readonly onChange: (fieldId: string, value: string) => void;
-  readonly onMeasure: (task: CalibrationTask) => void;
+  readonly onMeasure: (tasks: readonly CalibrationTask[]) => void;
 }
 
 /** 保存値の1項目。数値を直接編集でき、測れる項目は測定のボタンを持つ。 */
-function ValueRow({ fieldId, value, disabled, task, measureDisabled, onChange, onMeasure }: ValueRowProps) {
+function ValueRow({ fieldId, value, disabled, tasks, measureDisabled, onChange, onMeasure }: ValueRowProps) {
   const label = calibrationFieldLabel(fieldId);
   const inputId = `personal-speed-${fieldId}`;
   return (
@@ -162,12 +163,12 @@ function ValueRow({ fieldId, value, disabled, task, measureDisabled, onChange, o
         onChange={(event) => onChange(fieldId, event.currentTarget.value)}
       />
       <span className="personal-speed-unit">{calibrationFieldUnit(fieldId)}</span>
-      {task === undefined ? <span /> : (
+      {tasks.length === 0 ? <span /> : (
         <button
           type="button"
           disabled={measureDisabled}
           aria-label={`${label}を${value.trim() === '' ? '測る' : '測り直す'}`}
-          onClick={() => onMeasure(task)}
+          onClick={() => onMeasure(tasks)}
         >
           {value.trim() === '' ? '測る' : '測り直す'}
         </button>
@@ -186,7 +187,7 @@ function ConfirmDiscard({ onConfirm, onCancel }: { readonly onConfirm: () => voi
   return (
     <dialog ref={ref} className="personal-speed-confirm" aria-labelledby="personal-speed-confirm-title" onCancel={(event) => { event.preventDefault(); onCancel(); }}>
       <h2 id="personal-speed-confirm-title">保存した個人速度を全て破棄しますか</h2>
-      <p>通常の速度、方向別の速度、指の移動速度、文章を打つ時の連打との差を全て消します。「元に戻す」はこの画面にいる間だけ使えます。</p>
+      <p>通常の速度、同じキーを続けて打つ速さ、方向別の速度、指の移動速度、文章を打つ時の連打との差を全て消します。「元に戻す」はこの画面にいる間だけ使えます。</p>
       <div className="personal-speed-confirm-actions">
         <button type="button" autoFocus onClick={onCancel}>キャンセル</button>
         <button type="button" onClick={onConfirm}>破棄する</button>
@@ -257,7 +258,7 @@ export function PersonalSpeedEditor({
       return;
     }
     onSave(result.calibration);
-    setMessage(savedMessage(run.scope, run.tasks[0]?.item, result.overheadCleared));
+    setMessage(savedMessage(run.scope, run.tasks[0]?.item, result.clearedOverheads));
   };
   const runner = useCalibrationRun({ keyLabel, onFinished: finished });
 
@@ -365,10 +366,10 @@ export function PersonalSpeedEditor({
     fieldId,
     value: values[fieldId] ?? '',
     disabled: running,
-    task: plan?.byItem.get(fieldId),
+    tasks: plan?.byField.get(fieldId) ?? [],
     measureDisabled: running || dirty || calibration === undefined,
     onChange: (id, value) => { setValues((current) => ({ ...current, [id]: value })); },
-    onMeasure: (task) => startRun('item', [task]),
+    onMeasure: (tasks) => startRun('item', tasks),
   });
 
   const normalDisabled = running || plan?.normal === undefined || dirty;
@@ -526,6 +527,7 @@ export function PersonalSpeedEditor({
                 <p className="personal-speed-note">数値は直接書き換えられます。任意の項目は空にすると消えます。</p>
                 <div className="personal-speed-rows">
                   <ValueRow {...rowProps('actions')} />
+                  <ValueRow {...rowProps(CALIBRATION_SAME_KEY_FIELD)} />
                   <ValueRow {...rowProps(CALIBRATION_SAME_HAND_FIELD)} />
                   <ValueRow {...rowProps(CALIBRATION_FALLBACK_FINGER_FIELD)} />
                 </div>
@@ -535,7 +537,7 @@ export function PersonalSpeedEditor({
                 </div>
                 <h3>文章を打つ時の連打との差</h3>
                 <div className="personal-speed-rows">
-                  {STROKE_STRUCTURE_KINDS.map((kind) => <ValueRow key={kind} {...rowProps(calibrationOverheadFieldId(kind))} />)}
+                  {OVERHEAD_KINDS.map((kind) => <ValueRow key={kind} {...rowProps(calibrationOverheadFieldId(kind))} />)}
                 </div>
                 <h3>指ごとの移動速度</h3>
                 <div className="personal-speed-rows">

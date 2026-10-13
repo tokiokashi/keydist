@@ -24,8 +24,12 @@ import {
   CALIBRATION_ACTION_SAMPLES,
   CALIBRATION_FINGER_SAMPLES,
   CALIBRATION_SAME_HAND_SAMPLES,
+  CALIBRATION_SAME_KEY_SAMPLES,
+  OVERHEAD_KINDS,
+  STROKE_STRUCTURE_KINDS,
   type FingerSpeedSample,
   type HandDirection,
+  type OverheadKind,
   type PlaybackCalibration,
 } from './calibration.ts';
 
@@ -38,6 +42,8 @@ import {
 /** 測る1項目。保存値の1つの値に対応する。 */
 export type CalibrationItem =
   | { readonly kind: 'actions' }
+  /** 同じキーを続けて打つ速さ。左右の人差し指のホームキーを1つずつ測り、2つを通した中央値を値にする。 */
+  | { readonly kind: 'same-key'; readonly hand: 'L' | 'R' }
   | { readonly kind: 'direction'; readonly direction: HandDirection }
   | { readonly kind: 'finger'; readonly finger: Finger }
   /** 同じ手の別指の順序なしの組。`pair`は`LM:LI`の形。 */
@@ -49,6 +55,7 @@ export type CalibrationItem =
 export function calibrationItemId(item: CalibrationItem): string {
   switch (item.kind) {
     case 'actions': return 'actions';
+    case 'same-key': return `same-key:${item.hand}`;
     case 'direction': return `direction:${item.direction}`;
     case 'finger': return `finger:${item.finger}`;
     case 'same-hand-pair': return `same-hand-pair:${item.pair}`;
@@ -56,10 +63,15 @@ export function calibrationItemId(item: CalibrationItem): string {
   }
 }
 
+/** 項目が書き込む保存値の欄の識別子。同じキーを続けて打つ速さは、左右の項目が1つの欄を作る。 */
+export function calibrationItemFieldId(item: CalibrationItem): string {
+  return item.kind === 'same-key' ? 'same-key' : calibrationItemId(item);
+}
+
 /** 1項目を測るために打つキーと、必要な間隔の数。 */
 export interface CalibrationTask {
   readonly item: CalibrationItem;
-  /** 打つ2つのキー。`keys[0]`から打ち始め、2つを交互に打つ。 */
+  /** 打つ2つのキー。`keys[0]`から打ち始め、2つを交互に打つ。同じキーを続けて打つ項目は、2つが同じキー。 */
   readonly keys: readonly [string, string];
   /** 数える間隔の数。 */
   readonly required: number;
@@ -86,6 +98,11 @@ export interface CalibrationPlan {
   readonly directional: readonly CalibrationTask[] | undefined;
   /** 項目ごとの測定。キーは`calibrationItemId`。 */
   readonly byItem: ReadonlyMap<string, CalibrationTask>;
+  /**
+   * 保存値の欄ごとの測り直し。キーは欄の識別子。ほとんどの欄は項目1つだが、
+   * 同じキーを続けて打つ速さの欄は、左右の2項目をまとめて測る。
+   */
+  readonly byField: ReadonlyMap<string, readonly CalibrationTask[]>;
 }
 
 /** 測定に使うキーの土台。選んだ配列・物理配列・指の割り当てから決まる。 */
@@ -174,16 +191,28 @@ export function planCalibration(basis: CalibrationBasis): CalibrationPlan {
     { item: { kind: 'direction', direction: 'R→L' }, keys: [actionKeys[1], actionKeys[0]], required: CALIBRATION_ACTION_SAMPLES, oneWay: true },
   ];
 
+  const sameKeyTasks: CalibrationTask[] = actionKeys === undefined ? [] : (['L', 'R'] as const).map((hand, index) => ({
+    item: { kind: 'same-key', hand },
+    keys: [actionKeys[index], actionKeys[index]],
+    required: CALIBRATION_SAME_KEY_SAMPLES,
+    oneWay: false,
+  }));
+
   const normal = actionsTask !== undefined && fingerTasks.length > 0 && sameHandTasks.length > 0
-    ? [actionsTask, ...fingerTasks, ...sameHandTasks]
+    ? [actionsTask, ...sameKeyTasks, ...fingerTasks, ...sameHandTasks]
     : undefined;
   const directional = directionTasks.length > 0 && directedTasks.length > 0
     ? [...directionTasks, ...directedTasks]
     : undefined;
 
   const byItem = new Map<string, CalibrationTask>();
-  for (const task of [...(normal ?? []), ...(directional ?? [])]) byItem.set(calibrationItemId(task.item), task);
-  return { normal, directional, byItem };
+  const byField = new Map<string, CalibrationTask[]>();
+  for (const task of [...(normal ?? []), ...(directional ?? [])]) {
+    byItem.set(calibrationItemId(task.item), task);
+    const field = calibrationItemFieldId(task.item);
+    byField.set(field, [...(byField.get(field) ?? []), task]);
+  }
+  return { normal, directional, byItem, byField };
 }
 
 /** 測った間隔1項目ぶん。 */
@@ -289,8 +318,8 @@ export type ApplyCalibrationResult =
   | {
       readonly ok: true;
       readonly calibration: PlaybackCalibration;
-      /** 保存値が持っていた連打との差を消した。文章を打つ測定の測り直しを促す。 */
-      readonly overheadCleared: boolean;
+      /** 保存値が持っていて消した連打との差の種類。文章を打つ測定の測り直しを促す。 */
+      readonly clearedOverheads: readonly OverheadKind[];
     }
   /** 方向別・1項目の測定は、保存値が無いと反映先が無い。 */
   | { readonly ok: false; readonly reason: 'no-saved-value' }
@@ -312,6 +341,30 @@ function fingerSamplesOf(results: readonly CalibrationTaskResult[]): FingerSpeed
   return samples;
 }
 
+/** 同じキーを続けて打つ速さ。左右の間隔を通した中央値の逆数。測れていなければ`undefined`。 */
+function sameKeyRate(results: readonly CalibrationTaskResult[]): number | undefined {
+  return actionsPerSecondFromIntervals(
+    results.filter((result) => result.task.item.kind === 'same-key').flatMap((result) => result.intervalsMs),
+  );
+}
+
+/**
+ * 測り直した項目を基準に使う、連打との差の種類。基準が変わると、その基準から求めた差は意味が合わなくなる。
+ * 構造の種類と同指連続の基準の連打の時間は、通常速度・方向別・同手・別指の速度のどれかで決まる。
+ * 同指連続の基準は指の移動の時間も含む。続け打ちの基準は、同じキーを続けて打つ速さを持てばその値、持たなければ通常速度。
+ */
+function overheadKindsBasedOn(item: CalibrationItem, base: PlaybackCalibration): readonly OverheadKind[] {
+  const normalBased: OverheadKind[] = [...STROKE_STRUCTURE_KINDS, 'sfb'];
+  switch (item.kind) {
+    case 'actions': return base.sameKeyActionsPerSecond === undefined ? [...normalBased, 'repeat'] : normalBased;
+    case 'same-key': return ['repeat'];
+    case 'finger': return ['sfb'];
+    case 'direction':
+    case 'same-hand-pair':
+    case 'directed-pair': return normalBased;
+  }
+}
+
 /** 保存値の1項目を、測った間隔で置き換える。測れていなければ`undefined`。 */
 function withMeasuredItem(base: PlaybackCalibration, result: CalibrationTaskResult): PlaybackCalibration | undefined {
   const item = result.task.item;
@@ -324,6 +377,9 @@ function withMeasuredItem(base: PlaybackCalibration, result: CalibrationTaskResu
   const rate = rateOf(result);
   if (rate === undefined) return undefined;
   switch (item.kind) {
+    case 'same-key':
+      // 左右の2項目を通した中央値で求める値なので、`applyCalibrationRun`がまとめて反映する。
+      return base;
     case 'actions':
       return { ...base, actionsPerSecond: rate };
     case 'direction':
@@ -349,8 +405,9 @@ function applyNormal(base: PlaybackCalibration | undefined, run: CalibrationRun,
   const fingerSpeeds = fingerSpeedFromSamples(samples);
   const fallback = fallbackFingerSpeedFromSamples(samples);
   const actionsPerSecond = actions === undefined ? undefined : rateOf(actions);
+  const sameKey = sameKeyRate(run.results);
   const sameHand = actionsPerSecondFromIntervals(pairResults.flatMap((result) => result.intervalsMs));
-  if (actionsPerSecond === undefined || sameHand === undefined || fallback === undefined || fingerSpeeds.size === 0) {
+  if (actionsPerSecond === undefined || sameKey === undefined || sameHand === undefined || fallback === undefined || fingerSpeeds.size === 0) {
     return undefined;
   }
   const byPair: Record<string, number> = {};
@@ -361,6 +418,7 @@ function applyNormal(base: PlaybackCalibration | undefined, run: CalibrationRun,
   }
   return {
     actionsPerSecond,
+    sameKeyActionsPerSecond: sameKey,
     ...(base?.actionsPerSecondByDirection === undefined ? {} : { actionsPerSecondByDirection: base.actionsPerSecondByDirection }),
     sameHandDifferentFingerActionsPerSecond: sameHand,
     sameHandDifferentFingerActionsPerSecondByPair: byPair,
@@ -376,7 +434,8 @@ function applyNormal(base: PlaybackCalibration | undefined, run: CalibrationRun,
 /**
  * 済んだ測定を保存値へ反映する（`spec/playback-timing.md` §6.3）。
  * 反映した値が保存できる範囲を外れていれば、保存値は作らない。
- * 連打との差は、その時の保存値から求めた差なので、ここで測る他の値が変わる時は消す。
+ * 連打との差は、その時の保存値から求めた差なので、測り直した項目を基準に使う種類だけを消す。
+ * 通常速度・移動速度の測定は、保存値の連打との差を全て消す。
  */
 export function applyCalibrationRun(
   base: PlaybackCalibration | undefined,
@@ -384,21 +443,40 @@ export function applyCalibrationRun(
   nowMs: number,
 ): ApplyCalibrationResult {
   let next: PlaybackCalibration | undefined;
+  let cleared: readonly OverheadKind[];
   if (run.scope === 'normal') {
     next = applyNormal(base, run, nowMs);
+    cleared = OVERHEAD_KINDS.filter((kind) => base?.keystrokeOverheadMs?.[kind] !== undefined);
   } else {
     if (base === undefined) return { ok: false, reason: 'no-saved-value' };
-    const { keystrokeOverheadMs: _overhead, ...withoutOverhead } = base;
-    let current: PlaybackCalibration = { ...withoutOverhead, measuredAt: nowMs };
+    const basedOn = new Set<OverheadKind>();
+    for (const result of run.results) {
+      for (const kind of overheadKindsBasedOn(result.task.item, base)) basedOn.add(kind);
+    }
+    const { keystrokeOverheadMs: overheads, ...withoutOverhead } = base;
+    cleared = OVERHEAD_KINDS.filter((kind) => basedOn.has(kind) && overheads?.[kind] !== undefined);
+    const kept = Object.fromEntries(
+      Object.entries(overheads ?? {}).filter(([kind]) => !basedOn.has(kind as OverheadKind)),
+    ) as Partial<Record<OverheadKind, number>>;
+    let current: PlaybackCalibration = {
+      ...withoutOverhead,
+      ...(Object.keys(kept).length === 0 ? {} : { keystrokeOverheadMs: kept }),
+      measuredAt: nowMs,
+    };
     for (const result of run.results) {
       const updated = withMeasuredItem(current, result);
       if (updated === undefined) return { ok: false, reason: 'invalid-measurement' };
       current = updated;
+    }
+    if (run.results.some((result) => result.task.item.kind === 'same-key')) {
+      const sameKey = sameKeyRate(run.results);
+      if (sameKey === undefined) return { ok: false, reason: 'invalid-measurement' };
+      current = { ...current, sameKeyActionsPerSecond: sameKey };
     }
     next = current;
   }
   if (next === undefined || playbackCalibrationProblem(next) !== undefined) {
     return { ok: false, reason: 'invalid-measurement' };
   }
-  return { ok: true, calibration: next, overheadCleared: base?.keystrokeOverheadMs !== undefined };
+  return { ok: true, calibration: next, clearedOverheads: cleared };
 }

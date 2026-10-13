@@ -13,6 +13,7 @@ import type { PlaybackTimingAnalysis } from './playback.ts';
 import {
   SENTENCE_MIN_SAMPLES,
   applySentenceMeasurement as applyMeasurement,
+  adjoinsPunctuation,
   measureSentence,
   type SentenceSample,
   type SentenceTap,
@@ -69,6 +70,8 @@ function applySentenceMeasurement(base: PlaybackCalibration | undefined, analysi
   return applyWithCurrent(base, analysis, taps, nowMs, base);
 }
 
+const NO_COUNTS = { arpeggio: 0, chain: 0, other: 0, repeat: 0, sfb: 0 };
+
 const SAVED: PlaybackCalibration = {
   actionsPerSecond: 5,
   sameHandDifferentFingerActionsPerSecond: 5,
@@ -93,7 +96,7 @@ test('間隔からnormalMsを引いた差の中央値を、その他の連打と
   const analysis = alternating(20);
   const taps = tapsFor(20, () => 260);
   const { counts, overheadMs } = measureOne(analysis, SAVED, taps);
-  assert.deepEqual(counts, { arpeggio: 0, chain: 0, other: 19 });
+  assert.deepEqual(counts, { ...NO_COUNTS, other: 19 });
   assert.deepEqual(overheadMs, { other: 60 });
 });
 
@@ -102,7 +105,7 @@ test('構造の種類ごとに別の連打との差を求める', () => {
   const analysis = alternating(40, [range(14, 28)], [range(0, 14)]);
   const interval = (index: number) => (index <= 13 ? 230 : index >= 15 && index <= 27 ? 250 : 300);
   const { counts, overheadMs } = measureOne(analysis, SAVED, tapsFor(40, interval));
-  assert.deepEqual(counts, { arpeggio: 13, chain: 13, other: 13 });
+  assert.deepEqual(counts, { ...NO_COUNTS, arpeggio: 13, chain: 13, other: 13 });
   assert.deepEqual(overheadMs, { arpeggio: 30, chain: 50, other: 100 });
 });
 
@@ -132,12 +135,13 @@ test('数えたストロークが10未満の種類は連打との差を持たな
   assert.deepEqual(overheadMs, { other: 50 });
 });
 
-test('最初のストローク、違うキーを押したストローク、同指連続を含むストロークは数えない', () => {
+test('最初のストロークと違うキーを押したストロークは数えず、同指連続を含むストロークは構造の種類に数えない', () => {
   const analysis = alternating(30, [], [], [5, 6]);
   const taps = tapsFor(30, () => 250, (index) => index !== 10 && index !== 11);
   const { counts } = measureOne(analysis, SAVED, taps);
-  // 29の遷移から、同指連続の2つと、違うキーを押した2つを除く。
+  // 29の遷移から、違うキーを押した2つを除く。同指連続の2つは、構造の種類でなく同指連続として数える。
   assert.equal(counts.other, 25);
+  assert.equal(counts.sfb, 2);
 });
 
 test('違うキーを押したストロークの間隔は、中央値に影響しない', () => {
@@ -224,4 +228,121 @@ test('数えるのは渡された回だけで、各回の最初のストロー�
   ], SAVED);
   // 回をまたぐ間隔は作られず、12打の回が2つなら数えるのは11打ずつ。
   assert.equal(result.counts.other, 22);
+});
+
+/** 指の位置を変えながら打つ列。`fingers[i]`の指で、`keyOf(i)`のキーを打ち、距離が`distanceOf(i)`の時は同指連続とする。 */
+function custom(
+  fingers: readonly Finger[],
+  keyOf: (index: number) => string,
+  distanceOf: (index: number) => number = () => 0,
+  inputCharOf: (index: number) => string = String,
+  inputIndexOf: (index: number) => number = (index) => index,
+): PlaybackTimingAnalysis {
+  const strokes = fingers.map((finger, index) => {
+    const base = stroke(index, press(finger));
+    const distance = distanceOf(index);
+    const key: Key = { ...base.presses[0].keys[0], id: keyOf(index) };
+    return {
+      ...base,
+      inputChar: inputCharOf(index),
+      inputIndex: inputIndexOf(index),
+      presses: [{ ...base.presses[0], keys: [key], distance, sfb: distance > 0 }],
+    };
+  });
+  return { strokes, transitions: [], chains: [], arpeggioSpans: [] } as unknown as PlaybackTimingAnalysis;
+}
+
+const REPEATING = custom(Array.from({ length: 20 }, () => 'LI' as Finger), () => 'f');
+
+test('続け打ちの差は、間隔から続け打ちのnormalMsを引いた中央値で、構造の種類に混ぜない', () => {
+  // 同じキーを続けて打つ速さを持たない保存値では、続け打ちのnormalMsは通常速度の200ms。
+  const without = measureOne(REPEATING, SAVED, tapsFor(20, () => 260));
+  assert.deepEqual(without.counts, { ...NO_COUNTS, repeat: 19 });
+  assert.deepEqual(without.overheadMs, { repeat: 60 });
+  // 8アクション/秒（125ms）を持つ保存値では、そのnormalMsを引く。
+  const withSameKey = measureOne(REPEATING, { ...SAVED, sameKeyActionsPerSecond: 8 }, tapsFor(20, () => 260));
+  assert.deepEqual(withSameKey.overheadMs, { repeat: 135 });
+});
+
+test('同じキーを続けて打っても、押下を複数持つストロークは続け打ちに数えない', () => {
+  const analysis = custom(Array.from({ length: 20 }, () => 'LI' as Finger), () => 'f');
+  const doubled = {
+    ...analysis,
+    strokes: analysis.strokes.map((s) => ({ ...s, presses: [s.presses[0], { ...s.presses[0], finger: 'RI' as Finger }] })),
+  } as PlaybackTimingAnalysis;
+  const { counts } = measureOne(doubled, SAVED, tapsFor(20, () => 260));
+  assert.equal(counts.repeat, 0);
+});
+
+test('同指連続の差は、間隔からmax(normalMs, 指の移動の時間)を引いた中央値になる', () => {
+  // 同じ指が離れた2つのキーを往復する。距離2u、LIの移動速度4u/秒なら移動の時間は500msで、normalMsの200msより長い。
+  const analysis = custom(
+    Array.from({ length: 20 }, () => 'LI' as Finger),
+    (index) => (index % 2 === 0 ? 'f' : 'r'),
+    (index) => (index === 0 ? 0 : 2),
+  );
+  const calibration = { ...SAVED, fingerSpeedUnitsPerSecond: { LI: 4 } };
+  const slow = measureOne(analysis, calibration, tapsFor(20, () => 600));
+  assert.deepEqual(slow.counts, { ...NO_COUNTS, sfb: 19 });
+  assert.deepEqual(slow.overheadMs, { sfb: 100 });
+  // 移動の時間が連打の時間より短ければ、normalMsとの差になる。距離0.5uなら移動の時間は125ms。
+  const near = custom(
+    Array.from({ length: 20 }, () => 'LI' as Finger),
+    (index) => (index % 2 === 0 ? 'f' : 'r'),
+    (index) => (index === 0 ? 0 : 0.5),
+  );
+  assert.deepEqual(measureOne(near, calibration, tapsFor(20, () => 260)).overheadMs, { sfb: 60 });
+  // 解析設定のsameFingerDelayは見ない。移動の時間が律速する同指連続も、基準に移動の時間が入るので差を測れる。
+  assert.deepEqual(measureOne(analysis, calibration, tapsFor(20, () => 500)).overheadMs, { sfb: 0 });
+});
+
+test('句読点を打つストロークと、その入力単位の最後のストロークの次のストロークは、数えない', () => {
+  // 入力単位は「あ」「あ」…「、」「い」…の順。ストローク5が「、」、ストローク6がその直後。
+  const chars = ['あ', 'あ', 'あ', 'あ', 'あ', '、'];
+  const analysis = alternating(30);
+  const strokes = analysis.strokes.map((s, index) => ({ ...s, inputChar: chars[index] ?? 'い', inputIndex: index }));
+  const punctuated = { ...analysis, strokes } as PlaybackTimingAnalysis;
+  const { counts } = measureOne(punctuated, SAVED, tapsFor(30, () => 260));
+  assert.equal(counts.other, 27);
+  // 句読点の前後の長い間は値に入らない。
+  const paused = tapsFor(30, (index) => (index === 5 || index === 6 ? 4000 : 260));
+  assert.deepEqual(measureOne(punctuated, SAVED, paused).overheadMs, { other: 60 });
+  assert.equal(measureOne(analysis, SAVED, paused).counts.other, 29);
+});
+
+test('句読点が複数のストロークで打つ入力単位なら、その全ストロークと最後の次のストロークを数えない', () => {
+  const strokes = alternating(8).strokes.map((s, index) => ({
+    ...s,
+    inputChar: index === 2 || index === 3 ? '。' : 'あ',
+    inputIndex: index <= 2 ? index : index - 1,
+  }));
+  assert.deepEqual([1, 2, 3, 4, 5].map((index) => adjoinsPunctuation(strokes, index)), [false, true, true, true, false]);
+});
+
+test('句読点は「、」「。」「，」「．」「！」「？」で、他の文字の前後は数える', () => {
+  const stroke = (inputChar: string, inputIndex: number) => ({ inputChar, inputIndex });
+  for (const mark of ['、', '。', '，', '．', '！', '？']) {
+    assert.equal(adjoinsPunctuation([stroke(mark, 0), stroke('あ', 1)], 1), true, mark);
+    assert.equal(adjoinsPunctuation([stroke('あ', 0), stroke(mark, 1)], 1), true, mark);
+  }
+  for (const other of ['あ', 'ー', ',', '.', '!', '?', 'っ']) {
+    assert.equal(adjoinsPunctuation([stroke(other, 0), stroke(other, 1)], 1), false, other);
+  }
+  assert.equal(adjoinsPunctuation([stroke('、', 0)], 0), true);
+  assert.equal(adjoinsPunctuation([stroke('あ', 0)], 0), false);
+});
+
+test('下限は差の種類ごとに当てはめ、届いた種類だけを保存する', () => {
+  // 25打の列のうち、10〜14が同指連続、残りは異手で構造の種類はその他。続け打ちは無い。
+  const analysis = custom(
+    Array.from({ length: 30 }, (_, index) => (index % 2 === 0 ? 'LI' : 'RI') as Finger),
+    (index) => `k${index}`,
+    (index) => (index >= 10 && index < 15 ? 1 : 0),
+  );
+  const { counts, overheadMs } = measureOne(analysis, SAVED, tapsFor(30, () => 260));
+  assert.deepEqual(counts, { ...NO_COUNTS, other: 24, sfb: 5 });
+  assert.deepEqual(overheadMs, { other: 60 });
+  const result = applySentenceMeasurement(SAVED, analysis, tapsFor(30, () => 260), 7);
+  assert.ok(result.ok);
+  assert.deepEqual(result.calibration.keystrokeOverheadMs, { other: 60 });
 });

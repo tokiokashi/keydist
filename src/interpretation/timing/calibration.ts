@@ -17,6 +17,14 @@ export type StrokeStructureKind = 'arpeggio' | 'chain' | 'other';
 
 export const STROKE_STRUCTURE_KINDS: readonly StrokeStructureKind[] = ['arpeggio', 'chain', 'other'];
 
+/**
+ * 連打との差（`keystrokeOverheadMs`）を集める単位「差の種類」。構造の種類の3つに、続け打ち（`repeat`）と
+ * 同指連続（`sfb`）を足した5つ。ステップごとに1つに決まる（`stroke-structure.ts`）。
+ */
+export type OverheadKind = StrokeStructureKind | 'repeat' | 'sfb';
+
+export const OVERHEAD_KINDS: readonly OverheadKind[] = [...STROKE_STRUCTURE_KINDS, 'repeat', 'sfb'];
+
 /** 再生へ反映する個人の打鍵・指移動速度。 */
 export interface PlaybackCalibration {
   /** 通常の連続打鍵速度。 */
@@ -34,11 +42,16 @@ export interface PlaybackCalibration {
   /** 指ごとの速度が無い場合に使う移動速度。単位は物理キーのu/秒。 */
   fallbackFingerSpeedUnitsPerSecond: number;
   /**
-   * 文章を打つ時の連打との差[ms]。構造の種類ごとに持ち、基準の時間のうち連打の時間（`normalMs`）の側にだけ足す。
-   * 同指連続のステップでは`max(normalMs + 連打との差, 移動の時間)`の内側に入り、移動の時間には足さない。
-   * 持たない種類は「その他」の値を使う。
+   * 同じキーを1本の指で続けて打つ速さ（続け打ちの基準）。測っていない時は持たず、続け打ちは通常速度で決める。
    */
-  keystrokeOverheadMs?: Readonly<Partial<Record<StrokeStructureKind, number>>>;
+  sameKeyActionsPerSecond?: number;
+  /**
+   * 文章を打つ時の連打との差[ms]。差の種類ごとに持つ。
+   * 続け打ちと同指連続を除く種類は、基準の時間のうち連打の時間（`normalMs`）の側にだけ足す。
+   * 同指連続のステップは、値を持つ時は`max(normalMs, 移動の時間)`の外に足す。
+   * 持たない構造の種類は「その他」の値を使う。
+   */
+  keystrokeOverheadMs?: Readonly<Partial<Record<OverheadKind, number>>>;
   measuredAt: number;
 }
 
@@ -56,6 +69,8 @@ export const CALIBRATION_FINGER_SPEED_MAX = 100;
 export const CALIBRATION_OVERHEAD_MS_MIN = 0;
 export const CALIBRATION_OVERHEAD_MS_MAX = 1000;
 export const CALIBRATION_ACTION_SAMPLES = 9;
+/** 同じキーを続けて打つ速さを、左右それぞれで取る間隔の数。 */
+export const CALIBRATION_SAME_KEY_SAMPLES = 9;
 export const CALIBRATION_FINGER_SAMPLES = 6;
 export const CALIBRATION_SAME_HAND_SAMPLES = 6;
 
@@ -199,9 +214,12 @@ export function playbackCalibrationProblem(value: unknown): string | undefined {
     CALIBRATION_ACTIONS_PER_SECOND_MIN,
     CALIBRATION_ACTIONS_PER_SECOND_MAX,
   )) return '同手・別指の方向別の速度が正しくありません';
+  if (value.sameKeyActionsPerSecond !== undefined && !rateOk(value.sameKeyActionsPerSecond)) {
+    return '同じキーを続けて打つ速さが範囲外です';
+  }
   if (value.keystrokeOverheadMs !== undefined && !isRateRecord(
     value.keystrokeOverheadMs,
-    (kind) => STROKE_STRUCTURE_KINDS.includes(kind as StrokeStructureKind),
+    (kind) => OVERHEAD_KINDS.includes(kind as OverheadKind),
     CALIBRATION_OVERHEAD_MS_MIN,
     CALIBRATION_OVERHEAD_MS_MAX,
   )) return '連打との差が正しくありません';
