@@ -47,7 +47,8 @@ export function useSentenceRun(options: SentenceRunOptions): SentenceRunControll
         // 違うキーを押したストロークは、間隔を数えない印を進行に残す。
         runRef.current = pressed.run;
         setRun(pressed.run);
-        setWrongKey(keyLabel(pressed.outcome.expectedKey));
+        // 出力の文字の読み方だけが残っている時は、キーボードが送る文字をそのまま案内する。
+        setWrongKey(pressed.outcome.expectedIsOutput ? pressed.outcome.expectedKey.toUpperCase() : keyLabel(pressed.outcome.expectedKey));
         return;
       }
       // 打つキーだった。ブラウザの検索などの働きと、他の層のキー操作へ渡さない。

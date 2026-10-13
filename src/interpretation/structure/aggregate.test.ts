@@ -50,6 +50,7 @@ const stroke = (index: number, p: Press): Stroke => ({
   char: String(index),
   inputChar: String(index),
   inputIndex: index,
+  selectionIndex: index,
   aggregationGroupId: 'single',
   classifications: [],
   triggerKeys: [],

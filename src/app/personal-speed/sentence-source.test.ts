@@ -3,7 +3,7 @@ import test from 'node:test';
 import { EMPTY_SETTINGS_OVERRIDES, setSettingsOverride, type SettingsCascadeOverrides } from '#engine/settings-items.ts';
 import type { PersonalSpeedSelection } from '#editors/personal-speed/PersonalSpeedEditor.tsx';
 import { MEASUREMENT_SENTENCE } from '#editors/personal-speed/calibration-text.ts';
-import { sentenceSteps, sentenceUnmeasurable } from '#interpretation/timing/sentence-session.ts';
+import { pressSentenceKey, sentenceRunFinished, sentenceSteps, sentenceUnmeasurable, startSentenceRun } from '#interpretation/timing/sentence-session.ts';
 import { strokeStructureKinds } from '#interpretation/timing/stroke-structure.ts';
 import { personalSpeedSentenceBuilder } from './sentence-source.ts';
 
@@ -69,4 +69,40 @@ test('配列が無い、または打てない文字がある時は、打鍵の�
   const unplayable = builderWith(EMPTY_SETTINGS_OVERRIDES)({ ...SELECTION, layoutId: 'tsuki-2-263' }, '\u{1F642}');
   assert.equal(unplayable.ok, false);
   if (!unplayable.ok) assert.ok(unplayable.message.length > 0);
+});
+
+test('コンボで打つストロークだけが出力の文字を持ち、同じ入力単位の別のストロークは持たない', () => {
+  const build = (layoutId: string, text: string) => {
+    const result = builderWith(EMPTY_SETTINGS_OVERRIDES)({ ...SELECTION, layoutId }, text);
+    assert.ok(result.ok);
+    return sentenceSteps(result.analysis);
+  };
+  // 「きょう」は、kと、コンボyouの2ストロークで、同じ入力単位を打つkは出力の文字を持たない。
+  const combo = build('oonishi-custom', 'きょう');
+  assert.deepEqual(combo.map((step) => step.outputChars), [undefined, ['y', 'o', 'u']]);
+  assert.equal(combo[1].keys.length, 3);
+  assert.equal(combo[0].inputIndex, combo[1].inputIndex);
+  // コンボを含まない配列と、かなの同時押しの配列は、どのストロークも持たない。
+  assert.ok(build('qwerty', 'きょう').every((step) => step.outputChars === undefined));
+  assert.ok(build('nicola', 'きょう').every((step) => step.outputChars === undefined));
+});
+
+test('TK音直入力法の示す文のコンボのストロークは、出力の文字の押下だけでも最後まで進む', () => {
+  const result = builderWith(EMPTY_SETTINGS_OVERRIDES)({ ...SELECTION, layoutId: 'oonishi-custom' }, MEASUREMENT_SENTENCE);
+  assert.ok(result.ok);
+  const steps = sentenceSteps(result.analysis);
+  assert.equal(sentenceUnmeasurable(steps), undefined);
+  assert.ok(steps.some((step) => step.outputChars !== undefined));
+  for (const useOutput of [false, true]) {
+    let run = startSentenceRun(steps);
+    let atMs = 0;
+    for (const step of steps) {
+      for (const key of useOutput && step.outputChars !== undefined ? step.outputChars : step.keys) {
+        atMs += 100;
+        run = pressSentenceKey(run, { key, code: 'Digit9' }, atMs, (id) => id).run;
+      }
+    }
+    assert.ok(sentenceRunFinished(run));
+    assert.ok(run.taps.every((tap) => tap.clean));
+  }
 });
