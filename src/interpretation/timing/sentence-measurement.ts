@@ -12,7 +12,7 @@ import { strokeOverheadKinds } from './stroke-structure.ts';
 
 /**
  * 文章を打つ測定（`spec/playback-timing.md` §6.4）の計算。差の種類（構造の種類の3つ・続け打ち・同指連続）ごとに、
- * ストロークの実際の間隔から基準の時間を引いた差の中央値を、連打との差にする。
+ * ストロークの実際の間隔から基準の時間を引いた差の四分位平均を、連打との差にする。
  * 基準の時間は、続け打ちと構造の種類では連打の時間（`normalMs`）、同指連続では`max(normalMs, 指の移動の時間)`。
  * 数えるのは、覚えた文を繰り返し打つ2回目以降だけ。句読点を打つストロークと、その直後のストロークは数えない。
  * 時刻は呼び出し側が渡すので、描画にもタイマーにも依存しない。
@@ -79,15 +79,15 @@ export type SentenceCounts = Readonly<Record<OverheadKind, number>>;
 export const CROSS_HAND_DIRECTIONS = ['L→R', 'R→L'] as const;
 export type CrossHandDirection = (typeof CROSS_HAND_DIRECTIONS)[number];
 
-/** 表の1行ぶんの値。数えたストロークが無い行は、中央値を持たない。 */
+/** 表の1行ぶんの値。数えたストロークが無い行は、四分位平均を持たない。 */
 export interface SentenceRowStats {
   /** 数えたストロークの数（下限の判定に使う数）。 */
   readonly count: number;
-  /** 差を求める元の時間の中央値[ms]。 */
+  /** 差を求める元の時間の四分位平均[ms]。 */
   readonly baseMs?: number;
-  /** 文章を打った間隔の中央値[ms]。 */
+  /** 文章を打った間隔の四分位平均[ms]。 */
   readonly intervalMs?: number;
-  /** ストロークごとの差の中央値[ms]。負なら0にしてある。 */
+  /** ストロークごとの差の四分位平均[ms]。負なら0にしてある。 */
   readonly differenceMs?: number;
 }
 
@@ -98,7 +98,7 @@ export interface SentenceMeasurement {
   readonly kinds: Readonly<Record<OverheadKind, SentenceRowStats>>;
   /** 「その他」のうち異手のストロークを、異手の方向で分けた表に示す値。保存しない。 */
   readonly crossHand: Readonly<Record<CrossHandDirection, SentenceRowStats>>;
-  /** 数えたストロークが最小数以上の種類の連打との差[ms]。負の中央値は0にしてある。 */
+  /** 数えたストロークが最小数以上の種類の連打との差[ms]。負の値は0にしてある。 */
   readonly overheadMs: Readonly<Partial<Record<OverheadKind, number>>>;
 }
 
@@ -115,10 +115,16 @@ function sameValue(a: unknown, b: unknown): boolean {
   return true;
 }
 
-function medianOf(values: readonly number[]): number {
+/**
+ * 四分位平均。小さい方と大きい方から、それぞれ`floor(n / 4)`個を除いた残りの平均。
+ * 除く数の端数は切り捨てる（`n`が4で割り切れない時は、除く数が25%に満たない）ので、値の一部だけを除くことはしない。
+ * `n`が1以上なら、残りは必ず1個以上ある。値が無ければ`NaN`。
+ */
+export function interquartileMean(values: readonly number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
-  const middle = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 1 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+  const trim = Math.floor(sorted.length / 4);
+  const kept = sorted.slice(trim, sorted.length - trim);
+  return kept.reduce((sum, value) => sum + value, 0) / kept.length;
 }
 
 /** 数える回（2回目以降）1回分の、打った綴りで作った打鍵の列と構造、ストロークごとの記録。 */
@@ -147,9 +153,9 @@ function rowStats(count: number, values: Collected): SentenceRowStats {
   if (values.differences.length === 0) return { count };
   return {
     count,
-    baseMs: medianOf(values.bases),
-    intervalMs: medianOf(values.intervals),
-    differenceMs: Math.max(0, medianOf(values.differences)),
+    baseMs: interquartileMean(values.bases),
+    intervalMs: interquartileMean(values.intervals),
+    differenceMs: Math.max(0, interquartileMean(values.differences)),
   };
 }
 
@@ -162,7 +168,7 @@ function emptyCounts(): Record<OverheadKind, number> {
  * 違うキーを押したストローク、句読点を打つストロークと直後のストロークは数えない。
  * 続け打ちの差は間隔から続け打ちの`normalMs`（同じキーを続けて打つ速さ、無ければ通常速度）を引いた値、
  * 同指連続の差は間隔から`max(normalMs, 指の移動の時間)`を引いた値、構造の種類の差は間隔から`normalMs`を引いた値。
- * `sameFingerDelay`は見ない。差の中央値は、数えたストロークの全部から取る。
+ * `sameFingerDelay`は見ない。差の四分位平均は、数えたストロークの全部から取る。
  * 数えた数（`counts`。種類ごとの下限`SENTENCE_MIN_SAMPLES`の判定にも、画面と知らせにも使う）は、
  * 文ごとに数える回のそれぞれで数えたストロークの数の最大を取り、全文で足した数にする。
  * 文ごとの数はその文で数えた回のどれか1回の数に等しく、同じ打鍵を2回目と3回目で数え直して下限を満たすことが無い。
@@ -217,7 +223,7 @@ export function measureSentence(
   const kinds = {} as Record<OverheadKind, SentenceRowStats>;
   for (const kind of OVERHEAD_KINDS) {
     for (const best of maxPerSentence.values()) counts[kind] += best[kind];
-    if (counts[kind] >= SENTENCE_MIN_SAMPLES) overheadMs[kind] = Math.max(0, medianOf(gathered[kind].differences));
+    if (counts[kind] >= SENTENCE_MIN_SAMPLES) overheadMs[kind] = Math.max(0, interquartileMean(gathered[kind].differences));
     kinds[kind] = rowStats(counts[kind], gathered[kind]);
   }
   const crossHand = {} as Record<CrossHandDirection, SentenceRowStats>;

@@ -14,6 +14,7 @@ import {
   SENTENCE_MIN_SAMPLES,
   applySentenceMeasurement as applyMeasurement,
   adjoinsPunctuation,
+  interquartileMean,
   measureSentence,
   sentenceResultTable,
   type SentenceSample,
@@ -93,12 +94,61 @@ function tapsFor(count: number, intervalOf: (index: number) => number, cleanAt: 
   return taps;
 }
 
-test('間隔からnormalMsを引いた差の中央値を、その他の連打との差にする', () => {
+test('間隔からnormalMsを引いた差の四分位平均を、その他の連打との差にする', () => {
   const analysis = alternating(20);
   const taps = tapsFor(20, () => 260);
   const { counts, overheadMs } = measureOne(analysis, SAVED, taps);
   assert.deepEqual(counts, { ...NO_COUNTS, other: 19 });
   assert.deepEqual(overheadMs, { other: 60 });
+});
+
+test('四分位平均は、小さい方と大きい方からn/4個（切り捨て）ずつ除いた残りの平均である', () => {
+  // n=4: 1個ずつ除いて中の2個。
+  assert.equal(interquartileMean([100, 1, 3, 5]), 4);
+  // n=5, 6, 7: 除く数の端数を切り捨てて1個ずつ。
+  assert.equal(interquartileMean([1, 2, 4, 6, 100]), 4);
+  assert.equal(interquartileMean([1, 2, 4, 6, 8, 100]), 5);
+  assert.equal(interquartileMean([1, 2, 4, 6, 8, 10, 100]), 6);
+  // n=3以下は除かず全部の平均。
+  assert.equal(interquartileMean([2, 4, 9]), 5);
+  assert.equal(interquartileMean([7]), 7);
+  // 下限に届いた最小のn=10: 2個ずつ除いて中の6個。
+  assert.equal(interquartileMean([-900, 0, 10, 20, 30, 40, 50, 60, 70, 5000]), 35);
+});
+
+test('下限に届いた最小の10打でも、四分位平均で連打との差を求める', () => {
+  // 11打から10の遷移。差は5,15,25,35,45,55,65,75の昇順に、-900と5000を足した10個。
+  const diffs = [5000, 25, -900, 55, 15, 75, 35, 5, 65, 45];
+  const analysis = alternating(11);
+  const { counts, overheadMs } = measureOne(analysis, SAVED, tapsFor(11, (index) => 200 + diffs[index - 1]));
+  assert.equal(counts.other, SENTENCE_MIN_SAMPLES);
+  assert.deepEqual(overheadMs, { other: 40 });
+});
+
+test('大きい方と小さい方の25%に入る値は、より外れた値に替えても連打との差が変わらない', () => {
+  const base = tapsFor(41, (index) => 200 + (index <= 20 ? 10 : 80));
+  const replaced = tapsFor(41, (index) => (index === 1 ? 200 - 5000 : index === 40 ? 200 + 9000 : 200 + (index <= 20 ? 10 : 80)));
+  const before = measureOne(alternating(41), SAVED, base).overheadMs;
+  assert.deepEqual(measureOne(alternating(41), SAVED, replaced).overheadMs, before);
+});
+
+test('差が大きく違う2つの群が混ざる時、四分位平均は群の割合に沿って動き、群の間で飛ばない', () => {
+  const mixed = (lowCount: number) => measureOne(alternating(41), SAVED, tapsFor(41, (index) => 200 + (index <= lowCount ? 15 : 90))).overheadMs.other;
+  // 40の遷移のうち、差15msが20個・差90msが20個: 除いた残りは両群10個ずつ。
+  assert.equal(mixed(20), 52.5);
+  // 21個と19個: 除いた残りは11個と9個。
+  assert.equal(mixed(21), 48.75);
+  assert.equal(mixed(19), 56.25);
+});
+
+test('負の値は、平均を取ってから0にする。先に0にした値の平均とは違う', () => {
+  // 12個のうち下の3個と上の3個を除いた残りは-30,-10,10,30,50,70で、平均は20。
+  const diffs = [-90, -70, -50, -30, -10, 10, 30, 50, 70, 90, 110, 130];
+  assert.equal(interquartileMean(diffs), 20);
+  // 先に0にしてから平均を取ると、残りが0,0,10,30,50,70になり値が変わる。
+  assert.notEqual(interquartileMean(diffs.map((v) => Math.max(0, v))), 20);
+  const { overheadMs } = measureOne(alternating(13), SAVED, tapsFor(13, (index) => 200 + diffs[index - 1]));
+  assert.deepEqual(overheadMs, { other: 20 });
 });
 
 test('構造の種類ごとに別の連打との差を求める', () => {
@@ -110,13 +160,13 @@ test('構造の種類ごとに別の連打との差を求める', () => {
   assert.deepEqual(overheadMs, { arpeggio: 30, chain: 50, other: 100 });
 });
 
-test('文節の切れ目のような長い間は、中央値で外れる', () => {
+test('文節の切れ目のような長い間は、四分位平均で除かれる', () => {
   const analysis = alternating(30);
   const { overheadMs } = measureOne(analysis, SAVED, tapsFor(30, (index) => (index % 10 === 0 ? 3000 : 250)));
   assert.deepEqual(overheadMs, { other: 50 });
 });
 
-test('間隔がnormalMsより短くて中央値が負なら0にする', () => {
+test('間隔がnormalMsより短くて四分位平均が負なら0にする', () => {
   const { overheadMs } = measureOne(alternating(20), SAVED, tapsFor(20, () => 150));
   assert.deepEqual(overheadMs, { other: 0 });
 });
@@ -145,7 +195,7 @@ test('最初のストロークと違うキーを押したストロークは数�
   assert.equal(counts.sfb, 2);
 });
 
-test('違うキーを押したストロークの間隔は、中央値に影響しない', () => {
+test('違うキーを押したストロークの間隔は、四分位平均に影響しない', () => {
   const analysis = alternating(30);
   const taps = tapsFor(30, (index) => (index === 12 ? 5000 : 250), (index) => index !== 12);
   assert.deepEqual(measureOne(analysis, SAVED, taps).overheadMs, { other: 50 });
@@ -255,7 +305,7 @@ function custom(
 
 const REPEATING = custom(Array.from({ length: 20 }, () => 'LI' as Finger), () => 'f');
 
-test('続け打ちの差は、間隔から続け打ちのnormalMsを引いた中央値で、構造の種類に混ぜない', () => {
+test('続け打ちの差は、間隔から続け打ちのnormalMsを引いた四分位平均で、構造の種類に混ぜない', () => {
   // 同じキーを続けて打つ速さを持たない保存値では、続け打ちのnormalMsは通常速度の200ms。
   const without = measureOne(REPEATING, SAVED, tapsFor(20, () => 260));
   assert.deepEqual(without.counts, { ...NO_COUNTS, repeat: 19 });
@@ -275,7 +325,7 @@ test('同じキーを続けて打っても、押下を複数持つストロー�
   assert.equal(counts.repeat, 0);
 });
 
-test('同指連続の差は、間隔からmax(normalMs, 指の移動の時間)を引いた中央値になる', () => {
+test('同指連続の差は、間隔からmax(normalMs, 指の移動の時間)を引いた四分位平均になる', () => {
   // 同じ指が離れた2つのキーを往復する。距離2u、LIの移動速度4u/秒なら移動の時間は500msで、normalMsの200msより長い。
   const analysis = custom(
     Array.from({ length: 20 }, () => 'LI' as Finger),
@@ -350,15 +400,15 @@ test('下限は差の種類ごとに当てはめ、届いた種類だけを保�
 
 const emptyRow = (count = 0) => ({ count });
 
-test('表の1行は、数えたストロークの基準の時間・間隔・差の中央値を持ち、差は2つの中央値の差と一致しないことがある', () => {
-  // 通常速度5/秒の基準は200ms。間隔150msの差は-50msで、負の中央値は0にする。
+test('表の1行は、数えたストロークの基準の時間・間隔・差の四分位平均を持ち、差は2つの四分位平均の差と一致しないことがある', () => {
+  // 通常速度5/秒の基準は200ms。間隔150msの差は-50msで、負の値は0にする。
   const { kinds, overheadMs } = measureOne(alternating(20), SAVED, tapsFor(20, () => 150));
   assert.deepEqual(kinds.other, { count: 19, baseMs: 200, intervalMs: 150, differenceMs: 0 });
   assert.deepEqual(overheadMs, { other: 0 });
   assert.notEqual(kinds.other.differenceMs, (kinds.other.intervalMs ?? 0) - (kinds.other.baseMs ?? 0));
 });
 
-test('数えたストロークが無い種類の行は、打数だけを持ち中央値を持たない', () => {
+test('数えたストロークが無い種類の行は、打数だけを持ち四分位平均を持たない', () => {
   const { kinds, crossHand } = measureOne(alternating(20), SAVED, tapsFor(20, () => 260));
   assert.deepEqual(kinds.arpeggio, emptyRow());
   assert.deepEqual(kinds.chain, emptyRow());
@@ -367,7 +417,7 @@ test('数えたストロークが無い種類の行は、打数だけを持ち�
   assert.equal(crossHand['L→R'].count + crossHand['R→L'].count, 19);
 });
 
-test('下限に届かない種類の行も、打数と中央値を持つ', () => {
+test('下限に届かない種類の行も、打数と四分位平均を持つ', () => {
   const { kinds, overheadMs } = measureOne(alternating(6), SAVED, tapsFor(6, () => 260));
   assert.deepEqual(overheadMs, {});
   assert.deepEqual(kinds.other, { count: 5, baseMs: 200, intervalMs: 260, differenceMs: 60 });
