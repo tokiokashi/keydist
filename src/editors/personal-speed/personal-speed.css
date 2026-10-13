@@ -119,9 +119,14 @@
 
 .personal-speed-message,
 .personal-speed-error {
-  margin: 0.6rem 0 0;
-  min-height: 1.2em;
+  margin: 0;
   font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.personal-speed-message:not(:empty),
+.personal-speed-error:not(:empty) {
+  margin-top: 0.6rem;
 }
 
 .personal-speed-message {
@@ -151,6 +156,25 @@
 .personal-speed-row-label {
   flex: 1 1 10rem;
   overflow-wrap: anywhere;
+}
+
+.personal-speed-row-hint {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.personal-speed-field-error {
+  flex: 1 0 100%;
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.personal-speed-reason {
+  margin: 0.4rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
 }
 
 .personal-speed-row input[type='text'] {
@@ -209,11 +233,22 @@
   margin-top: 0.75rem;
 }
 
-.personal-speed-measurement {
+.personal-speed-group {
+  margin-top: 1.5rem;
+  padding: 0.25rem 1rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.personal-speed-group > h2 {
+  margin-top: 0.75rem;
+}
+
+.personal-speed-value-block {
   margin-top: 1rem;
 }
 
-.personal-speed-measurement h3 {
+.personal-speed-value-block h3 {
   margin-top: 0;
 }
 

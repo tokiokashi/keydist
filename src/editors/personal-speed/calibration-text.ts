@@ -9,7 +9,7 @@ import {
 import {
   CALIBRATION_FALLBACK_FINGER_FIELD,
   CALIBRATION_SAME_HAND_FIELD,
-  type ParseCalibrationFormResult,
+  type ApplyCalibrationFieldResult,
 } from '#interpretation/timing/calibration-form.ts';
 import {
   SENTENCE_MIN_SAMPLES,
@@ -108,6 +108,23 @@ export function calibrationFieldLabel(fieldId: string): string {
   }
 }
 
+/**
+ * 見出しの下に並べる行の名前。見出しで分かる語（異手・同手・別指・連打との差・移動速度）は外す。
+ * 行の外で読む名前（入力欄の読み上げ・保存できない理由）は`calibrationFieldLabel`。
+ */
+export function calibrationFieldRowLabel(fieldId: string): string {
+  const [kind, ...rest] = fieldId.split(':');
+  const name = rest.join(':');
+  switch (kind) {
+    case 'direction': return calibrationItemLabel({ kind: 'direction', direction: name === 'L→R' ? 'L→R' : 'R→L' });
+    case 'overhead': return OVERHEAD_KIND_LABEL[name as OverheadKind] ?? name;
+    case 'finger': return fingerLabel(name);
+    case 'same-hand-pair': return pairLabel(name, ':');
+    case 'directed-pair': return pairLabel(name, '>');
+    default: return calibrationFieldLabel(fieldId);
+  }
+}
+
 /** 欄の値の単位。指の移動速度は物理キーの距離（u）で、他は1秒あたりの打鍵数。 */
 export function calibrationFieldUnit(fieldId: string): string {
   if (fieldId.startsWith(OVERHEAD_FIELD_PREFIX)) return OVERHEAD_UNIT;
@@ -115,7 +132,7 @@ export function calibrationFieldUnit(fieldId: string): string {
 }
 
 /** 保存値を編集した欄の値を保存できなかった理由。 */
-export function calibrationFormProblemText(problem: Extract<ParseCalibrationFormResult, { ok: false }>): string {
+export function calibrationFormProblemText(problem: Extract<ApplyCalibrationFieldResult, { ok: false }>): string {
   const label = calibrationFieldLabel(problem.fieldId);
   return problem.problem === 'empty'
     ? `${label}を入力してください。`
@@ -157,12 +174,15 @@ export function savedMessage(
   item?: CalibrationItem,
   clearedOverheads: readonly OverheadKind[] = [],
 ): string {
-  const notice = clearedOverheads.length > 0
-    ? ` 文章を打つ時の連打との差（${clearedOverheads.map((kind) => OVERHEAD_KIND_LABEL[kind]).join('・')}）は、他の値が変わったため消しました。文章を打つ速さをもう一度測ってください。`
-    : '';
+  const notice = clearedOverheads.length > 0 ? ' 文章を打つ速さの連打との差が消えました。' : '';
   if (scope === 'normal') return `通常の速度、同じキーを続けて打つ速さ、指の移動速度を測って保存しました。${notice}`;
   if (scope === 'directional') return `方向別の速度を測って保存しました。${notice}`;
   return item === undefined ? `保存しました。${notice}` : `${calibrationItemLabel(item)}を測り直して保存しました。${notice}`;
+}
+
+/** 測定で連打との差が消えた時に、消えた値のある文章を打つ速さの欄へ出す知らせ。 */
+export function clearedOverheadsText(clearedOverheads: readonly OverheadKind[]): string {
+  return `連打との差（${clearedOverheads.map((kind) => OVERHEAD_KIND_LABEL[kind]).join('・')}）は、他の値が変わったため消しました。文章を打つ速さをもう一度測ってください。`;
 }
 
 export const MEASUREMENT_OUT_OF_RANGE_TEXT = '測った値が保存できる範囲を外れていたため、保存していません。もう一度測ってください。';
@@ -276,35 +296,41 @@ export const SENTENCE_TABLE_NOT_SAVED_TEXT = '保存しない';
 /** 打った内容から測定の値を求められなかった時の文。 */
 export const SENTENCE_UNMEASURED_TEXT = '打った内容から測定の値を求められなかったため、保存していません。もう一度測ってください。';
 
-/** 個人速度の画面の各測定の説明。何を測るか、打鍵再生のどこに使われるか、測らなかった時に何が代わるか。 */
+/**
+ * 個人速度の画面の各測定の説明。何を打つか・どう打つか・測った値が何に使われるか・測ると前の値がどうなるかだけを書く。
+ * 計算の詳細は再生時間モデルの仕様書（`spec/playback-timing.md` §3.1.1・§3.2・§3.3・§6）が持つ。
+ */
 export const MEASUREMENT_DESCRIPTION = {
-  normal: '左右の人差し指の連打と、同じキーを1本の指で続けて打つ速さ、同じ手の2本の指を交互に打つ速さ、各指がホームから動く速さを測ります。'
-    + '打鍵再生では、同指連続を含まない打鍵の時間と、同じキーを続けて打つ時間、同指連続で指が動く時間に使います。「全指の移動時間で律速」の設定でも、指の移動速度を使います。'
-    + '測っていない指の移動速度には、測れた指の代表値が使われます。同じキーを続けて打つ速さを測っていなければ、通常の打鍵速度が使われます。',
-  directional: '左手から右手、右手から左手の向きごとの連打の速さと、同じ手の2本の指を向きごとに交互に打つ速さを測ります。'
-    + '打鍵再生では、同指連続を含まない打鍵の時間を、直前の打鍵との指の組み合わせと向きで決めるのに使います。'
-    + '測っていない向きには、通常の速度や同手・別指の代表の速度が使われます。',
-  sentence: '示す短い文を1本ずつ3回続けて打って、文章を打つ時の連打との差を、Arpeggio・Chain・その他・続け打ち・同指連続の5種類ごとに測ります。'
-    + `打鍵が${SENTENCE_MIN_SAMPLES}打に届いた種類だけを保存します。届く種類は、選んだ配列と綴りで大きく違います。`
-    + '手に馴染んだ配列が複数ある時は、届く種類が多い配列で測ると、多くの種類の値が求まります。'
-    + '測り直して保存すると、全ての種類が置き換わり、下限に届かなかった種類の値は無くなります。'
-    + '再生する配列と違う配列で測ると、構造の種類の分かれ方が違う配列で測った値になります。'
-    + '続け打ちは同じ指で同じキーを続けて打つ打鍵、同指連続は同じ指で違う位置を続けて打つ打鍵です。'
-    + '1回目は文を覚える回で、数えません。2回目以降の打鍵だけを数えるので、覚えた文を考えずに打ってください。'
-    + '句読点を打つ打鍵と直後の打鍵は、文の区切りで止まる間を含みうるので数えません。'
-    + '間違えたら、その打鍵だけを数えずに続けられます。'
-    + 'ローマ字で打つ配列では、普段の綴り（shi・chi・tsu、子音の前のnの1打など）で打てます。'
-    + '連打との差は、打鍵の間隔から基準の時間を引いた差の四分位平均（小さい方と大きい方から4分の1ずつ除いた残りの平均）で求めるので、長い間は、大きい方の4分の1に入る限り除かれます。'
-    + '基準の時間は、続け打ちでは同じキーを続けて打つ速さ（測っていなければ通常の打鍵速度）、同指連続では連打の時間と指が動く時間の遅い方、それ以外では連打の時間です。'
-    + '連打の時間は、この画面の通常の速度・方向別の速度の測定（同じ手の2本の指を交互に打つ速さを含む）で測る打鍵の速さで決まります。'
-    + '打鍵の数は、文ごとに2回目と3回目のうち数えた打鍵が多い方の数を、全文で足した数です。'
-    + '打鍵再生では、同指連続の値は連打の時間と指が動く時間の遅い方に足します。続け打ちの値は、同じキーを続けて打つ速さを測ってあればその時間に、測っていなければ連打の時間に足します。他の種類の値は連打の時間に足します。'
-    + '測っていない構造の種類には「その他」の連打との差が使われます。続け打ちと同指連続を測っていない時は、その打鍵が属する構造の種類の値が使われます。'
-    + '同じキーを続けて打つ速さを測ってあり、続け打ちの差が無い時は、続け打ちに連打との差を足しません。'
-    + '測っていなければ連打との差はありません。'
-    + '打ちやすい形の違いが再生に出るよう、手に馴染んだ配列で測ってください。'
+  normal: '指定されたキーを交互に打って、通常の打鍵速度、同じキーを続けて打つ速さ、同じ手の2本の指の速さ、各指の移動速度を測ります。'
+    + '打鍵再生の、同指連続を含まない打鍵の時間と、同指連続で指が動く時間に使います。'
+    + '測ると、方向別の値を除く保存値が置き換わり、文章を打つ時の連打との差は全て消えます。',
+  directional: '指定されたキーを繰り返し打って、左手から右手、右手から左手の向きごとの打鍵の速さと、同じ手の2本の指を向きごとに打つ速さを測ります。'
+    + '打鍵再生の、同指連続を含まない打鍵の時間に使います。'
+    + '測ると、測った向きの値が置き換わり、連打との差のうちArpeggio・Chain・その他・同指連続が消えます（続け打ちは残ります）。',
+  sentence: '短い文を1本ずつ3回続けて打って、文章を打つ時の連打との差を、Arpeggio・Chain・その他・続け打ち・同指連続の5種類ごとに測ります。'
+    + '1回目は文を覚える回で数えないので、覚えた文を考えずに打ってください。'
+    + '間違えたらその打鍵だけを数えずに続けられ、ローマ字で打つ配列では普段の綴りで打てます。'
+    + '打鍵再生では、打鍵ごとの時間に足す分として使います。'
+    + '手に馴染んだ配列で測ってください。'
+    + `打鍵が${SENTENCE_MIN_SAMPLES}打に届いた種類だけを保存するので、別の配列で測ると求まる種類が変わります。`
+    + '測り直して保存すると、前の連打との差は全て置き換わります。'
     + 'キーボードがコンボを文字に変えて送る場合も測れます。',
 } as const;
+
+/** 行のボタンを持たない行が、どの測定で求まるかを示す文。 */
+export const NORMAL_DERIVED_HINT = '通常の測定で求まります';
+/** 選んだキーでは測れない行に出す文。 */
+export const UNMEASURABLE_ROW_HINT = '選んだキーでは測れません';
+/** 保存値を持たない時の、各測定の欄の文。 */
+export const UNMEASURED_TEXT = {
+  normal: '通常の速度と指の移動はまだ測っていません。',
+  directional: '方向別の速度はまだ測っていません。',
+  sentence: '連打との差はまだ測っていません。',
+} as const;
+/** 通常の測定が保存値の前提になる測定のボタンが使えない理由。 */
+export const NEED_NORMAL_FIRST_TEXT = '先に、通常の速度と指の移動を測って保存してください。';
+/** 選んだキーで方向別の測定が組めない理由。 */
+export const NO_DIRECTIONAL_TEXT = '選んだキーでは、方向別の速度を測れません。別の組を選んでください。';
 
 export const PERSONAL_SPEED_PURPOSE =
   '打鍵再生の時間を、基準速度ではなく、測った打鍵と指の移動の速さで決めるために測ります。'
