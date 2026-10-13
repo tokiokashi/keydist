@@ -83,3 +83,20 @@ test('連打との差だけが範囲外・知らない種類でも、他の任�
     assert.equal(decoded.diagnostics.length, 1);
   }
 });
+
+test('同じキーを続けて打つ速さと、続け打ち・同指連続の差は、書き出して読み直すと同じ値になる', () => {
+  const full: PlaybackCalibration = { ...CALIBRATION, sameKeyActionsPerSecond: 7.5, keystrokeOverheadMs: { repeat: 4, sfb: 33.5, other: 10 } };
+  const decoded = PERSONAL_SPEED_CODEC.decode(JSON.parse(JSON.stringify(PERSONAL_SPEED_CODEC.encode({ calibration: full }))));
+  assert.ok(decoded.ok);
+  assert.deepEqual(decoded.value, { calibration: full });
+  assert.equal(PERSONAL_SPEED_CODEC.decode({ version: 1, calibration: CALIBRATION }).ok, true);
+});
+
+test('同じキーを続けて打つ速さが範囲外なら、保存値ごと捨てる', () => {
+  for (const sameKeyActionsPerSecond of [0.05, 41]) {
+    const decoded = PERSONAL_SPEED_CODEC.decode({ version: 1, calibration: { ...CALIBRATION, sameKeyActionsPerSecond } });
+    assert.ok(decoded.ok);
+    assert.equal(decoded.value.calibration, undefined);
+    assert.equal(decoded.diagnostics.length, 1);
+  }
+});

@@ -17,7 +17,8 @@ import {
   stepsSentencePlan,
   type SentenceStep,
 } from '#interpretation/timing/sentence-session.ts';
-import { strokeStructureKinds } from '#interpretation/timing/stroke-structure.ts';
+import { adjoinsPunctuation } from '#interpretation/timing/sentence-measurement.ts';
+import { strokeOverheadKinds } from '#interpretation/timing/stroke-structure.ts';
 import { paneCatalog } from '../standalone/catalog.ts';
 import { personalSpeedSentenceBuilder } from './sentence-source.ts';
 
@@ -71,16 +72,19 @@ test('示す文は6本以上で、どれもかな15〜25文字の短い文', () 
   }
 });
 
-/** 各文の1回分の打鍵の列で、最初のストロークと同指連続を含むストロークを除いて数えた、種類ごとの打鍵の数の合計。 */
+/**
+ * 各文の1回分の打鍵の列で、最初のストロークと、同指連続・続け打ち・句読点の前後のストロークを除いて数えた、
+ * 構造の種類ごとの打鍵の数の合計。続け打ちと同指連続の数もあわせて返す。
+ */
 function countedPerKind(layoutId: string) {
-  const counts = { arpeggio: 0, chain: 0, other: 0 };
+  const counts = { arpeggio: 0, chain: 0, other: 0, repeat: 0, sfb: 0 };
   for (const sentence of MEASUREMENT_SENTENCES) {
     const result = builderWith(EMPTY_SETTINGS_OVERRIDES)({ ...SELECTION, layoutId }, sentence);
     assert.ok(result.ok, `${layoutId}: ${sentence}`);
     assert.equal(sentenceUnmeasurable(sentenceSteps(result.analysis)), undefined, layoutId);
-    const kinds = strokeStructureKinds(result.analysis);
-    result.analysis.strokes.forEach((stroke, index) => {
-      if (index === 0 || stroke.presses.some((press) => press.sfb)) return;
+    const kinds = strokeOverheadKinds(result.analysis);
+    result.analysis.strokes.forEach((_, index) => {
+      if (index === 0 || adjoinsPunctuation(result.analysis.strokes, index)) return;
       counts[kinds[index]] += 1;
     });
   }
@@ -92,9 +96,13 @@ test('確かめる配列のそれぞれで、示す文の全文の合計がArpeg
   for (const layoutId of ['qwerty', 'shingeta', 'tsuki-2-263']) {
     const counts = countedPerKind(layoutId);
     for (const kind of ['arpeggio', 'chain', 'other'] as const) {
-      assert.ok(counts[kind] >= 10, `${layoutId} ${kind}: ${counts[kind]}`);
+      assert.ok(counts[kind] >= 10, `${layoutId} ${kind}: ${JSON.stringify(counts)}`);
     }
   }
+});
+
+test('示す文は句読点を含まないので、句読点の前後を数えない規則は数えるストロークを変えない', () => {
+  assert.ok(MEASUREMENT_SENTENCES.every((sentence) => !/[、。，．！？]/.test(sentence)));
 });
 
 test('Spaceや修飾キーを押しながら打つ配列は作れるが、測れない', () => {

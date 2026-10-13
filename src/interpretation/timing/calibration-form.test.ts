@@ -6,6 +6,7 @@ import {
   calibrationOverheadFieldId,
   CALIBRATION_FALLBACK_FINGER_FIELD,
   CALIBRATION_SAME_HAND_FIELD,
+  CALIBRATION_SAME_KEY_FIELD,
   parseCalibrationForm,
   sameCalibrationFormValues,
 } from './calibration-form.ts';
@@ -137,4 +138,43 @@ test('連打との差の欄は0から1000までで、範囲の外の欄を返す
   assert.ok(parseCalibrationForm({ ...values, [field]: '0' }, 2).ok);
   assert.ok(parseCalibrationForm({ ...values, [field]: '1000' }, 2).ok);
   assert.equal(parseCalibrationForm({ ...values, [field]: '-1' }, 2).ok, false);
+});
+
+test('続け打ち・同指連続の差と同じキーを続けて打つ速さを、欄に写して編集・空欄にできる', () => {
+  const full: PlaybackCalibration = {
+    ...SAVED,
+    sameKeyActionsPerSecond: 6.5,
+    keystrokeOverheadMs: { repeat: 12.34, sfb: 40 },
+  };
+  const values = calibrationFormValues(full);
+  assert.equal(values[CALIBRATION_SAME_KEY_FIELD], '6.50');
+  assert.equal(values[calibrationOverheadFieldId('repeat')], '12.3');
+  assert.equal(values[calibrationOverheadFieldId('sfb')], '40.0');
+  const parsed = parseCalibrationForm(values, 3);
+  assert.ok(parsed.ok);
+  assert.equal(parsed.calibration.sameKeyActionsPerSecond, 6.5);
+  assert.deepEqual(parsed.calibration.keystrokeOverheadMs, { repeat: 12.3, sfb: 40 });
+  const cleared = parseCalibrationForm({
+    ...values,
+    [CALIBRATION_SAME_KEY_FIELD]: '',
+    [calibrationOverheadFieldId('repeat')]: '',
+    [calibrationOverheadFieldId('sfb')]: '',
+  }, 3);
+  assert.ok(cleared.ok);
+  assert.equal('sameKeyActionsPerSecond' in cleared.calibration, false);
+  assert.equal('keystrokeOverheadMs' in cleared.calibration, false);
+  // 持たない保存値の欄は含まない。
+  assert.equal(CALIBRATION_SAME_KEY_FIELD in calibrationFormValues(SAVED), false);
+});
+
+test('同じキーを続けて打つ速さの欄は他の速度と同じ0.1から40までで、範囲の外の欄を返す', () => {
+  const values = calibrationFormValues({ ...SAVED, sameKeyActionsPerSecond: 6 });
+  for (const bad of ['0.09', '40.1', 'x']) {
+    assert.deepEqual(
+      parseCalibrationForm({ ...values, [CALIBRATION_SAME_KEY_FIELD]: bad }, 2),
+      { ok: false, fieldId: CALIBRATION_SAME_KEY_FIELD, problem: 'invalid', min: 0.1, max: 40 },
+    );
+  }
+  assert.ok(parseCalibrationForm({ ...values, [CALIBRATION_SAME_KEY_FIELD]: '0.1' }, 2).ok);
+  assert.ok(parseCalibrationForm({ ...values, [CALIBRATION_SAME_KEY_FIELD]: '40' }, 2).ok);
 });

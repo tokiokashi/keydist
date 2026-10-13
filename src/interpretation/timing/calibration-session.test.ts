@@ -65,11 +65,12 @@ function playAll(run: CalibrationRun, intervalMs: number): CalibrationRun {
   return current;
 }
 
-test('row-staggeredの測定は通常8指・同手12組、方向別は2方向・24組になる', () => {
-  assert.equal(PLAN.normal?.length, 1 + 8 + 12);
+test('row-staggeredの測定は通常速度・左右の続け打ち・8指・同手12組、方向別は2方向・24組になる', () => {
+  assert.equal(PLAN.normal?.length, 1 + 2 + 8 + 12);
   assert.equal(PLAN.directional?.length, 2 + 24);
   assert.deepEqual(PLAN.normal?.[0]?.keys, ['f', 'j']);
   assert.equal(PLAN.normal?.[0]?.required, 9);
+  assert.deepEqual(PLAN.normal?.slice(0, 3).map((task) => calibrationItemId(task.item)), ['actions', 'same-key:L', 'same-key:R']);
   assert.equal(PLAN.byItem.get('finger:LI')?.required, 6);
   assert.equal(PLAN.byItem.get('same-hand-pair:LM:LI')?.required, 12);
   assert.equal(PLAN.byItem.get('same-hand-pair:LM:LI')?.oneWay, false);
@@ -87,6 +88,7 @@ test('刻印の無いキーしか無い配列では、測るキーを作れな�
 
 test('項目の識別子は種類と対象で決まる', () => {
   assert.equal(calibrationItemId({ kind: 'actions' }), 'actions');
+  assert.equal(calibrationItemId({ kind: 'same-key', hand: 'R' }), 'same-key:R');
   assert.equal(calibrationItemId({ kind: 'direction', direction: 'L→R' }), 'direction:L→R');
   assert.equal(calibrationItemId({ kind: 'finger', finger: 'LI' }), 'finger:LI');
 });
@@ -243,27 +245,111 @@ test('1項目の測り直しは、その項目だけを置き換え、代表値�
   assert.equal(actionsApplied.calibration.actionsPerSecond, 10);
 });
 
-test('通常速度・移動速度、方向別、1項目の測定は、保存値の連打との差を消して知らせる', () => {
-  const withOverhead: PlaybackCalibration = { ...SAVED, keystrokeOverheadMs: { chain: 20, other: 60 } };
-  const runs: readonly CalibrationRun[] = [
-    playAll(startCalibrationRun('normal', PLAN.normal!), 250),
-    playAll(startCalibrationRun('directional', [PLAN.byItem.get('direction:R→L')!]), 200),
-    playAll(startCalibrationRun('item', [PLAN.byItem.get('actions')!]), 200),
-  ];
-  for (const run of runs) {
+const ALL_OVERHEADS = { arpeggio: 10, chain: 20, other: 60, repeat: 5, sfb: 15 } as const;
+
+test('通常速度・移動速度の測定は、保存値の連打との差を全て消して知らせる', () => {
+  const withOverhead: PlaybackCalibration = { ...SAVED, sameKeyActionsPerSecond: 6, keystrokeOverheadMs: ALL_OVERHEADS };
+  const run = playAll(startCalibrationRun('normal', PLAN.normal!), 250);
+  const applied = applyCalibrationRun(withOverhead, run, 5);
+  assert.ok(applied.ok);
+  assert.equal('keystrokeOverheadMs' in applied.calibration, false);
+  assert.deepEqual(applied.clearedOverheads, ['arpeggio', 'chain', 'other', 'repeat', 'sfb']);
+});
+
+test('通常速度・移動速度の測定は、同じキーを続けて打つ速さを左右の間隔を通した中央値で求める', () => {
+  const sameKeyTasks = PLAN.normal!.filter((task) => task.item.kind === 'same-key');
+  assert.deepEqual(sameKeyTasks.map((task) => calibrationItemId(task.item)), ['same-key:L', 'same-key:R']);
+  assert.deepEqual(sameKeyTasks.map((task) => task.keys), [['f', 'f'], ['j', 'j']]);
+  assert.ok(sameKeyTasks.every((task) => task.required === 9 && !task.oneWay));
+  const run = playAll(startCalibrationRun('normal', PLAN.normal!), 250);
+  const applied = applyCalibrationRun(undefined, run, 1);
+  assert.ok(applied.ok);
+  assert.equal(applied.calibration.sameKeyActionsPerSecond, 4);
+  // 左の9間隔が100ms、右の9間隔が300msなら、18間隔の中央値は200msで5アクション/秒。
+  let uneven = startCalibrationRun('normal', PLAN.normal!);
+  let atMs = 1000;
+  while (!calibrationRunFinished(uneven)) {
+    const task = currentCalibrationTask(uneven)!;
+    const interval = task.item.kind === 'same-key' ? (task.item.hand === 'L' ? 100 : 300) : 250;
+    const expected = expectedCalibrationKey(uneven)!;
+    uneven = pressCalibrationKey(uneven, event(expected), atMs, label).run;
+    atMs += interval;
+  }
+  const unevenApplied = applyCalibrationRun(undefined, uneven, 1);
+  assert.ok(unevenApplied.ok);
+  assert.equal(unevenApplied.calibration.sameKeyActionsPerSecond, 5);
+});
+
+test('同じキーを続けて打つ速さの欄は、左右の2項目をまとめて測り直す', () => {
+  assert.deepEqual(PLAN.byField.get('same-key')?.map((task) => calibrationItemId(task.item)), ['same-key:L', 'same-key:R']);
+  assert.equal(PLAN.byField.get('actions')?.length, 1);
+  assert.equal(PLAN.byField.get('direction:L→R')?.length, 1);
+});
+
+test('同じキーを続けて打つ速さの測り直しは、続け打ちの差だけを消して知らせる', () => {
+  const withOverhead: PlaybackCalibration = { ...SAVED, sameKeyActionsPerSecond: 6, keystrokeOverheadMs: ALL_OVERHEADS };
+  const run = playAll(startCalibrationRun('item', PLAN.byField.get('same-key')!), 125);
+  const applied = applyCalibrationRun(withOverhead, run, 5);
+  assert.ok(applied.ok);
+  assert.equal(applied.calibration.sameKeyActionsPerSecond, 8);
+  assert.deepEqual(applied.calibration.keystrokeOverheadMs, { arpeggio: 10, chain: 20, other: 60, sfb: 15 });
+  assert.deepEqual(applied.clearedOverheads, ['repeat']);
+});
+
+test('同じキーを続けて打つ速さを持たない保存値で初めて測ると、通常速度を基準に求めた続け打ちの差も消す', () => {
+  const run = playAll(startCalibrationRun('item', PLAN.byField.get('same-key')!), 125);
+  const applied = applyCalibrationRun({ ...SAVED, keystrokeOverheadMs: ALL_OVERHEADS }, run, 5);
+  assert.ok(applied.ok);
+  assert.equal(applied.calibration.sameKeyActionsPerSecond, 8);
+  assert.deepEqual(applied.calibration.keystrokeOverheadMs, { arpeggio: 10, chain: 20, other: 60, sfb: 15 });
+  assert.deepEqual(applied.clearedOverheads, ['repeat']);
+});
+
+test('通常速度の測り直しは、同じキーを続けて打つ速さを持たない保存値では続け打ちの差も消す', () => {
+  const run = playAll(startCalibrationRun('item', [PLAN.byItem.get('actions')!]), 200);
+  const without = applyCalibrationRun({ ...SAVED, keystrokeOverheadMs: ALL_OVERHEADS }, run, 5);
+  assert.ok(without.ok);
+  assert.equal('keystrokeOverheadMs' in without.calibration, false);
+  assert.deepEqual(without.clearedOverheads, ['arpeggio', 'chain', 'other', 'repeat', 'sfb']);
+  // 同じキーを続けて打つ速さを持つ保存値では、続け打ちの差は基準が変わらないので残る。
+  const withSameKey = applyCalibrationRun({ ...SAVED, sameKeyActionsPerSecond: 6, keystrokeOverheadMs: ALL_OVERHEADS }, run, 5);
+  assert.ok(withSameKey.ok);
+  assert.deepEqual(withSameKey.calibration.keystrokeOverheadMs, { repeat: 5 });
+  assert.equal(withSameKey.calibration.sameKeyActionsPerSecond, 6);
+  assert.deepEqual(withSameKey.clearedOverheads, ['arpeggio', 'chain', 'other', 'sfb']);
+});
+
+test('方向別・同手別指の測り直しは構造の種類と同指連続の差を消し、続け打ちの差は残す', () => {
+  const withOverhead: PlaybackCalibration = { ...SAVED, keystrokeOverheadMs: ALL_OVERHEADS };
+  for (const [scope, id] of [['directional', 'direction:R→L'], ['item', 'same-hand-pair:LM:LI'], ['item', 'directed-pair:LI>LM']] as const) {
+    const run = playAll(startCalibrationRun(scope, [PLAN.byItem.get(id)!]), 200);
     const applied = applyCalibrationRun(withOverhead, run, 5);
-    assert.ok(applied.ok, run.scope);
-    assert.equal(applied.calibration.keystrokeOverheadMs, undefined, run.scope);
-    assert.equal(applied.overheadCleared, true, run.scope);
-    assert.equal('keystrokeOverheadMs' in applied.calibration, false, run.scope);
+    assert.ok(applied.ok, id);
+    assert.deepEqual(applied.calibration.keystrokeOverheadMs, { repeat: 5 }, id);
+    assert.deepEqual(applied.clearedOverheads, ['arpeggio', 'chain', 'other', 'sfb'], id);
   }
 });
 
-test('連打との差を持たない保存値への測定は、消したと知らせない', () => {
+test('指の移動速度の測り直しは、同指連続の差だけを消す', () => {
+  const withOverhead: PlaybackCalibration = { ...SAVED, keystrokeOverheadMs: ALL_OVERHEADS };
+  const run = playAll(startCalibrationRun('item', [PLAN.byItem.get('finger:LI')!]), 500);
+  const applied = applyCalibrationRun(withOverhead, run, 5);
+  assert.ok(applied.ok);
+  assert.deepEqual(applied.calibration.keystrokeOverheadMs, { arpeggio: 10, chain: 20, other: 60, repeat: 5 });
+  assert.deepEqual(applied.clearedOverheads, ['sfb']);
+});
+
+test('消す連打との差を持たない保存値への測定は、消したと知らせない', () => {
   const run = playAll(startCalibrationRun('item', [PLAN.byItem.get('actions')!]), 200);
   const applied = applyCalibrationRun(SAVED, run, 5);
   assert.ok(applied.ok);
-  assert.equal(applied.overheadCleared, false);
+  assert.deepEqual(applied.clearedOverheads, []);
+  // 指の移動速度の測り直しは、構造の種類の差を持つだけの保存値では何も消さない。
+  const finger = playAll(startCalibrationRun('item', [PLAN.byItem.get('finger:LI')!]), 500);
+  const kept = applyCalibrationRun({ ...SAVED, keystrokeOverheadMs: { other: 60 } }, finger, 5);
+  assert.ok(kept.ok);
+  assert.deepEqual(kept.calibration.keystrokeOverheadMs, { other: 60 });
+  assert.deepEqual(kept.clearedOverheads, []);
 });
 
 test('測った値が保存できる範囲を外れたら、保存値を作らない', () => {
