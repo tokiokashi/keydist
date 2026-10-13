@@ -203,6 +203,43 @@ test('完了した読み方で確定した押下が次のストロークの最�
   assert.equal(output.run.threads[0].run.clean, false);
 });
 
+test('読み方が決まる前のaeは、続きの押下が押すキーの残りに一致すると押すキーの読み方で進み、その押下はaeに取られる', () => {
+  // 出力の文字で a・e と打った直後に、次のストロークの最初の文字が I と一致する。限界として仕様に書いてある挙動。
+  const steps = [comboStep(['a', 'e', 'i'], ['a', 'e'], 0), step(['i'], 1), step(['d'], 2)];
+  const played = play(steps, [['a', 'out'], ['e', 'out'], 'i', 'd']);
+  assert.deepEqual(played.kinds, ['partial', 'partial', 'step-finished', 'wrong-key']);
+});
+
+test('出力の文字だけで完了したコンボの後は、aeの後に押すキーの残りと同じ押下が続いても出力の読み方で進む', () => {
+  // you: 出力の文字y・o・uで完了し、押すキーの読み方は外れている。以後は出力の読み方だけで進める。
+  const steps = [
+    comboStep(['i', 'a', 'o'], ['y', 'o', 'u'], 0),
+    comboStep(['a', 'e', 'i'], ['a', 'e'], 1),
+    step(['i'], 2),
+  ];
+  const played = play(steps, [['y', 'out'], ['o', 'out'], ['u', 'out'], ['a', 'out'], ['e', 'out'], 'i']);
+  assert.deepEqual(played.kinds, ['partial', 'partial', 'step-finished', 'partial', 'step-finished', 'run-finished']);
+  assert.ok(played.run.taps.every((tap) => tap.clean));
+  assert.ok(sentenceRunFinished(played.run));
+});
+
+test('押すキーだけで完了したコンボの後は、押すキーの読み方だけで進み、出力の文字は受け付けない', () => {
+  const steps = [comboStep(['i', 'a', 'o'], ['y', 'o', 'u'], 0), comboStep(['j', 'k', 'l'], ['q', 'w'], 1)];
+  const played = play(steps, ['o', 'i', 'a', 'j', 'k', 'l']);
+  assert.deepEqual(played.kinds, ['partial', 'partial', 'step-finished', 'partial', 'partial', 'run-finished']);
+  assert.ok(sentenceRunFinished(played.run));
+  // 決まった後の出力の文字の押下は、違うキーになる。
+  const output = play(steps, ['o', 'i', 'a', ['q', 'out']]);
+  assert.equal(output.kinds[3], 'wrong-key');
+});
+
+test('次の押下で他方の読み方が外れて確定したコンボからも、読み方が決まる', () => {
+  // ae を出力の文字で打ち、続く s が押すキーの残り I と一致しないので、出力の読み方に決まる。
+  const steps = [comboStep(['a', 'e', 'i'], ['a', 'e'], 0), step(['s'], 1), comboStep(['a', 'e', 'i'], ['a', 'e'], 2), step(['i'], 3)];
+  const played = play(steps, [['a', 'out'], ['e', 'out'], 's', ['a', 'out'], ['e', 'out'], 'i']);
+  assert.deepEqual(played.kinds, ['partial', 'partial', 'step-finished', 'partial', 'step-finished', 'run-finished']);
+});
+
 test('最後のストロークは、一方の読み方が完了した時点で確定する', () => {
   const steps = [step(['s'], 0), comboStep(['a', 'e', 'i'], ['a', 'e'], 1)];
   const played = play(steps, ['s', ['a', 'out'], ['e', 'out']]);
