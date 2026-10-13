@@ -93,15 +93,19 @@ export interface SentenceSample {
 }
 
 /**
- * 回ごとの打鍵の列の、ストロークの位置。文の番号と、入力単位の通し番号（`inputIndex`）と、その単位の中の何打目かで決める。
- * 同じ文の2回目と3回目で綴りが違い打数がずれても、同じ入力単位の同じ何打目なら同じ位置になる。
+ * 回ごとの打鍵の列の、ストロークの位置。文の番号と、入力単位の番号と、その単位の中の何打目かで決める。
+ * 入力単位の番号は、`inputIndex`が変わるたびに1つ進む番号。`inputIndex`そのものはローマ字の文字数で進み、
+ * 綴りが違うと同じ単位でも値が変わるので、位置には使わない。
+ * 同じ文の2回目と3回目で綴りが違い打数がずれても、同じ単位の同じ何打目なら同じ位置になる。
  */
 function strokePositions(sentence: number, strokes: SentenceAnalysis['strokes']): string[] {
   const positions: string[] = [];
+  let unit = -1;
   let ordinal = 0;
   strokes.forEach((stroke, index) => {
-    ordinal = index > 0 && strokes[index - 1].inputIndex === stroke.inputIndex ? ordinal + 1 : 0;
-    positions.push(`${sentence}:${stroke.inputIndex}:${ordinal}`);
+    if (index > 0 && strokes[index - 1].inputIndex === stroke.inputIndex) ordinal += 1;
+    else { unit += 1; ordinal = 0; }
+    positions.push(`${sentence}:${unit}:${ordinal}`);
   });
   return positions;
 }

@@ -3,7 +3,7 @@ import test from 'node:test';
 import { EMPTY_SETTINGS_OVERRIDES, setSettingsOverride, type SettingsCascadeOverrides } from '#engine/settings-items.ts';
 import type { PersonalSpeedSelection } from '#editors/personal-speed/PersonalSpeedEditor.tsx';
 import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
-import { applySentenceMeasurement } from '#interpretation/timing/sentence-measurement.ts';
+import { applySentenceMeasurement, measureSentence } from '#interpretation/timing/sentence-measurement.ts';
 import {
   pressSentenceKey,
   remainingSentenceKeys,
@@ -207,4 +207,26 @@ test('ローマ字だけで成立するコンボを持つ配列（TK音直入力
 
 test('かな配列は綴りを選べない', () => {
   assert.equal(build('しゃしんです', { layoutId: 'nicola' }).spelling, undefined);
+});
+
+test('回ごとに綴りが違って打数とinputIndexがずれても、同じ入力単位の同じ何打目は同じ位置と数え、1回分の数を超えない', () => {
+  const { plan } = planOf('でんしゃがおくれてかいしゃにちこくした');
+  const sampleOf = (pick: (spellings: readonly string[]) => string) => {
+    const analysis = plan.analyze(plan.units.map((unit) => pick(unit.spellings)));
+    assert.ok(analysis !== undefined);
+    return { sentence: 0, analysis, taps: analysis.strokes.map((_, index) => ({ atMs: index * 300, clean: true })) };
+  };
+  const rule = sampleOf((spellings) => spellings[0]);
+  const last = sampleOf((spellings) => spellings[spellings.length - 1]);
+  // 綴りが違う回は、打数もinputIndexも変わる。
+  assert.notEqual(rule.analysis.strokes.length, last.analysis.strokes.length);
+  assert.notDeepEqual(rule.analysis.strokes.map((stroke) => stroke.inputIndex), last.analysis.strokes.map((stroke) => stroke.inputIndex));
+  const total = (counts: { arpeggio: number; chain: number; other: number }) => counts.arpeggio + counts.chain + counts.other;
+  const one = total(measureSentence([rule], SAVED).counts);
+  const both = total(measureSentence([rule, last], SAVED).counts);
+  // 同じ入力単位の同じ何打目は1つ。綴りが違って増えるのは、片方にだけある何打目だけ。
+  assert.ok(both < one * 2);
+  assert.equal(total(measureSentence([rule, rule], SAVED).counts), one);
+  const units = plan.units.length;
+  assert.ok(both <= last.analysis.strokes.length + rule.analysis.strokes.length - units);
 });
