@@ -240,6 +240,22 @@ test('次の押下で他方の読み方が外れて確定したコンボから�
   assert.deepEqual(played.kinds, ['partial', 'partial', 'step-finished', 'partial', 'step-finished', 'run-finished']);
 });
 
+test('他方が先に完了していた読み方では、後から完了した読み方に決めない', () => {
+  // ae を出力の文字で打ち、続けて押すキーの残り I を押す。出力の読み方は先に完了していたので、どちらにも決めない。
+  const steps = [comboStep(['a', 'e', 'i'], ['a', 'e'], 0), comboStep(['i', 'a', 'o'], ['y', 'o', 'u'], 1)];
+  const played = play(steps, [['a', 'out'], ['e', 'out'], 'i', ['y', 'out'], ['o', 'out'], ['u', 'out']]);
+  assert.deepEqual(played.kinds, ['partial', 'partial', 'step-finished', 'partial', 'partial', 'run-finished']);
+  assert.ok(played.run.taps.every((tap) => tap.clean));
+});
+
+test('完了後の押下が次のストロークにも一致しない打ち間違いでは、読み方を決めない', () => {
+  const steps = [comboStep(['a', 'e', 'i'], ['a', 'e'], 0), comboStep(['i', 'a', 'o'], ['y', 'o', 'u'], 1)];
+  // ae を A・E で押した後の Q は、どちらの読み方にも続かない。その後は押すキーで正しく押す。
+  const played = play(steps, ['a', 'e', 'q', 'o', 'i', 'a']);
+  assert.deepEqual(played.kinds, ['partial', 'partial', 'wrong-key', 'partial', 'partial', 'run-finished']);
+  assert.deepEqual(played.run.taps.map((tap) => tap.clean), [true, false]);
+});
+
 test('最後のストロークは、一方の読み方が完了した時点で確定する', () => {
   const steps = [step(['s'], 0), comboStep(['a', 'e', 'i'], ['a', 'e'], 1)];
   const played = play(steps, ['s', ['a', 'out'], ['e', 'out']]);

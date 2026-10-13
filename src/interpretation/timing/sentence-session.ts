@@ -172,6 +172,11 @@ interface StepRun {
    * まだ決まっていなければ無い。
    */
   readonly reading: ComboReading | undefined;
+  /**
+   * 綴りを打ち終えた後の押下で確定したコンボのステップが決めた読み方。その押下が次の単位に受け付けられた時だけ、`reading`にする。
+   * 打ち終えた綴りの進行にだけ付く。
+   */
+  readonly pendingReading?: ComboReading;
 }
 
 /** コンボで打つステップの読み方。`press`は押すキー、`output`は出力の文字。 */
@@ -280,8 +285,18 @@ function pressStep(
     if (pressDone || outputDone) {
       // 完了した読み方で確定し、この押下を次のステップの最初の押下にする。
       // 次の押下が他方の続きに一致しなかったので、他方の読み方は外れている。
+      // 読み方を決めるのは、その押下が次のストロークに受け付けられた時だけ（打ち間違いでは決めない）。
       const decided = output === undefined || (pressDone && outputDone) ? undefined : pressDone ? 'press' : 'output';
-      return pressStep(finishStep(run, run.firstAtMs ?? atMs, decided), event, atMs, keyLabel, final);
+      const firstAt = run.firstAtMs ?? atMs;
+      if (decided !== undefined) {
+        const trial = pressStep(finishStep(run, firstAt, decided), event, atMs, keyLabel, final);
+        if (trial.outcome.kind !== 'wrong-key' && trial.outcome.kind !== 'overflow') return trial;
+        const undecided = pressStep(finishStep(run, firstAt, undefined), event, atMs, keyLabel, final);
+        return trial.outcome.kind === 'overflow' && undecided.outcome.kind === 'overflow'
+          ? { run: { ...undecided.run, pendingReading: decided }, outcome: undecided.outcome }
+          : undecided;
+      }
+      return pressStep(finishStep(run, firstAt, undefined), event, atMs, keyLabel, final);
     }
     const expected = run.pressReadingAlive || output === undefined
       ? { expectedKey: remainingStepKeys(run)[0], expectedIsOutput: false }
@@ -309,10 +324,11 @@ function pressStep(
   // 完了した読み方があり、他方が無い、または完了している、または最後のステップなら確定する。
   const otherPending = (advanced.pressReadingAlive && !pressComplete) || (advanced.outputReadingAlive && !outputComplete);
   if ((pressComplete || outputComplete) && (!otherPending || lastStep)) {
-    // もう一方の読み方が、これまでの押下で外れていれば、完了した読み方に決まる。
+    // もう一方の読み方が、完了せずに外れていれば、完了した読み方に決まる。
+    // 入った時点で既に完了していた読み方は、この押下で外れても決めない。
     const decided = output === undefined ? undefined
-      : pressComplete && !advanced.outputReadingAlive ? 'press'
-        : outputComplete && !advanced.pressReadingAlive ? 'output' : undefined;
+      : pressComplete && !advanced.outputReadingAlive && !outputDone ? 'press'
+        : outputComplete && !advanced.pressReadingAlive && !pressDone ? 'output' : undefined;
     const next = finishStep(advanced, firstAtMs, decided);
     return { run: next, outcome: { kind: stepRunFinished(next) ? 'run-finished' : 'step-finished' } };
   }
@@ -402,7 +418,7 @@ export function remainingSentenceStrokes(run: SentenceRun): number {
 }
 
 /** 単位を`thread`の綴りで確定して、次の単位へ進める。 */
-function commitUnit(run: SentenceRun, thread: SentenceThread): SentenceRun {
+function commitUnit(run: SentenceRun, thread: SentenceThread, reading: ComboReading | undefined = thread.run.reading): SentenceRun {
   const typed = [...run.typed, thread.spelling];
   const taps = thread.run.taps;
   const unit = run.unit + 1;
@@ -411,7 +427,7 @@ function commitUnit(run: SentenceRun, thread: SentenceThread): SentenceRun {
     unit,
     typed,
     taps,
-    threads: unit >= run.plan.units.length ? [] : startUnit(run.plan, typed, taps, unit, thread.run.reading),
+    threads: unit >= run.plan.units.length ? [] : startUnit(run.plan, typed, taps, unit, reading),
   };
 }
 
@@ -444,6 +460,12 @@ export function pressSentenceKey(
     const finished = [...held, ...results.filter((result) => result.outcome.kind === 'overflow').map(({ thread, run: stepRun }) => ({ spelling: thread.spelling, run: stepRun }))];
     if (finished.length > 0) {
       // 打ち終えた綴りで確定し、この押下を次の単位の最初の押下にする。
+      const pending = finished[0].run.pendingReading;
+      if (pending !== undefined) {
+        // 決めた読み方は、この押下が次の単位に受け付けられた時だけ使う。
+        const trial = pressSentenceKey(commitUnit(run, finished[0], pending), event, atMs, keyLabel);
+        if (trial.outcome.kind !== 'wrong-key') return trial;
+      }
       return pressSentenceKey(commitUnit(run, finished[0]), event, atMs, keyLabel);
     }
     const first = results[0].outcome;
