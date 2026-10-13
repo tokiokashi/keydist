@@ -33,7 +33,7 @@ export const PLAYBACK_RATE_HALF_LIFE_SECONDS_MAX = 10;
 export const DEFAULT_PLAYBACK_RATE_HALF_LIFE_SECONDS = 1;
 
 export const DEFAULT_PLAYBACK_SAME_FINGER_DELAY = true;
-export const DEFAULT_PLAYBACK_ALL_FINGER_MOVEMENT_DELAY = false;
+export const DEFAULT_PLAYBACK_ALL_FINGER_MOVEMENT_DELAY = true;
 export const DEFAULT_PLAYBACK_APPLY_PERSONAL_SPEED = true;
 
 /** 非アクティブなタブから戻った時の一気送りを防ぐため、1フレームの経過時間を制限する。 */
@@ -670,7 +670,7 @@ export interface PlaybackTimingStep {
 }
 
 export interface PlaybackTimingOptions {
-  /** 全指の物理移動が間に合う時刻までStrokeを遅らせる。既定false。 */
+  /** 全指の物理移動が間に合う時刻までStrokeを遅らせる。引数を省略した時はfalse（画面の既定は`DEFAULT_PLAYBACK_ALL_FINGER_MOVEMENT_DELAY`が決める）。 */
   allFingerMovementDelay?: boolean;
   /** allFingerMovementDelay=trueの時にホーム位置を得るため必須。 */
   geometry?: Geometry;

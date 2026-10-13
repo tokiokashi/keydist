@@ -232,7 +232,7 @@ export const ALTERNATE_PLAYBACK_OPTIONS: PlaybackOptions = {
   stepsPerSecond: 2,
   speedMultiplier: 2,
   sameFingerDelay: false,
-  allFingerMovementDelay: true,
+  allFingerMovementDelay: false,
   applyPersonalSpeed: false,
   rateAverage: 'ewma',
   rateWindow: 20,
