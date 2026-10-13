@@ -7,6 +7,7 @@ import {
   playbackCompletedInputs,
   playbackFingerPositionKeys,
   playbackInputPreview,
+  PLAYBACK_COMPLETED_INPUT_LIMIT,
   playbackPlannedKeys,
   playbackPlannedOrders,
   playbackRecentActionsPerSecond as playbackRecentActionsPerSecondAnalysis,
@@ -943,4 +944,15 @@ test('薙刀式の濁音はシフトと出力かなを同じステップで表�
   assert.equal(display.character, 'が');
   assert.equal(display.keyLabels.get('j'), '⇧');
   assert.equal(display.keyLabels.get('f'), 'が');
+});
+
+test('入力プレビューの入力済みは、既定で20個まで返し、数を渡せばその数で切る', () => {
+  const layout = withRomaji(LAYOUT_BY_ID.get('qwerty')!, kunrei());
+  const trace = generateTrace('a'.repeat(40), layout, buildGeometry('row-staggered'));
+  const completed = (limit?: number) =>
+    playbackInputPreview(trace.strokes, 30, 0, limit).filter((segment) => segment.kind === 'completed').length;
+
+  assert.equal(PLAYBACK_COMPLETED_INPUT_LIMIT, 20);
+  assert.equal(completed(), 20);
+  assert.equal(completed(10), 10);
 });

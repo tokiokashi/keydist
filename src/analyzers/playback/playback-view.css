@@ -162,12 +162,12 @@
 }
 
 .playback-history {
+  display: flex;
   min-height: 1.2em;
   margin-top: 0.25rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.82rem;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -177,7 +177,30 @@
 }
 
 .playback-history-label {
+  flex: none;
   margin-right: 0.4rem;
+}
+
+/*
+ * 打ち終えた入力の欄。幅をかな10文字分（全角10em）に固定し、中身を右に寄せて、はみ出す左側を隠す。
+ * 入力単位ごとに文字の数や字の幅が違っても、現在の入力の1文字目が動かない。
+ * 狭い行では、現在の入力が見えるように欄が先に縮む。
+ */
+.playback-history-done {
+  display: flex;
+  flex: 0 1 10em;
+  justify-content: flex-end;
+  min-width: 0;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 1.5em);
+  mask-image: linear-gradient(to right, transparent, #000 1.5em);
+}
+
+.playback-history-rest {
+  flex: 1 1 0;
+  min-width: 4em;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .playback-input-current {
