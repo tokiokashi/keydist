@@ -1329,5 +1329,10 @@ test('Relative vectorsの小窓を動かした後に指を選んで図が作り�
   const after = (await figure.boundingBox())!;
   expect(Math.abs(after.x - moved.x)).toBeLessThanOrEqual(1);
   expect(Math.abs(after.y - moved.y)).toBeLessThanOrEqual(1);
-  await expect(page.getByRole('button', { name: 'Relative vectorsの表示', exact: true })).toHaveAttribute('aria-expanded', 'true');
+  // 指を選ぶと図は作り直され、退出中の古い図と新しい図が一時的に並ぶ。古い図が消えて図と見出しのボタンが1つずつに戻るまで待つ。
+  // 並んでいる間は見出しのボタンが2つになり、そのまま確かめるとstrict modeで落ちる。
+  await expect(page.locator('section[aria-label="Relative vectors"]')).toHaveCount(1);
+  const toggle = page.getByRole('button', { name: 'Relative vectorsの表示', exact: true });
+  await expect(toggle).toHaveCount(1);
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
 });
