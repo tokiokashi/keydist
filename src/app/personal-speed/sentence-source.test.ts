@@ -64,11 +64,11 @@ test('画面で選んだ物理配列を使い、配列のレベルの上書き�
   assert.deepEqual(targetOf('column-staggered', layoutLevel), columnStaggered);
 });
 
-test('示す文は6本以上で、どれもかな15〜25文字の短い文', () => {
+test('示す文は6本以上で、どれもかな8〜12文字の短い文や句', () => {
   assert.ok(MEASUREMENT_SENTENCES.length >= 6);
   for (const sentence of MEASUREMENT_SENTENCES) {
     const length = [...sentence].length;
-    assert.ok(length >= 15 && length <= 25, `${sentence}: ${length}`);
+    assert.ok(length >= 8 && length <= 12, `${sentence}: ${length}`);
   }
 });
 
