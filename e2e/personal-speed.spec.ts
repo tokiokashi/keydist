@@ -338,6 +338,13 @@ test('文章を打つ測定で、差の種類ごとの連打との差を測っ�
   await expect(result.locator('[data-personal-speed-result-row="cross-hand:R→L"]')).toContainText('保存しない');
   await expect(result.locator('[data-personal-speed-result-row="other"]')).toContainText('保存した');
   await expect(result).toContainText('一致しないことがあります');
+
+  // 表が付いていない側の文を消す操作（変更を戻す）では、知らせも表も残る
+  await page.locator('#personal-speed-actions').fill('6');
+  await page.getByRole('button', { name: '変更を戻す' }).click();
+  await expect(page.locator('#personal-speed-actions')).toHaveValue('5.00');
+  await expect(page.getByText('文章を打つ速さを測って保存しました。')).toBeVisible();
+  await expect(result).toBeVisible();
 });
 
 test('文章を打つ測定は、何本目の何回目かを示し、1回目だけを数えない回と示す。2回目以降も次に打つキーが出る', async ({ page }) => {

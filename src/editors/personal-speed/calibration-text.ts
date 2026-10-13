@@ -234,7 +234,7 @@ export function sentenceTableKindLabel(kind: OverheadKind): string {
 }
 
 export function sentenceTableDirectionLabel(direction: CrossHandDirection): string {
-  return `その他のうち ${direction === 'L→R' ? '左手から右手' : '右手から左手'}`;
+  return `その他のうち${direction === 'L→R' ? '左手から右手' : '右手から左手'}`;
 }
 
 /** 表の中央値の表示。数えた打鍵が無い行は「なし」。 */

@@ -219,10 +219,16 @@ export function PersonalSpeedEditor({
   const [selection, setSelection] = useState(initialSelection);
   const [message, setMessageText] = useState('');
   const [error, setErrorText] = useState('');
-  // 文章を打つ測定の表。知らせまたは理由の文と同じ時に消えるよう、文を置き換える時に一緒に消す。
-  const [resultTable, setResultTable] = useState<SentenceResultTableData | undefined>(undefined);
-  const setMessage = (text: string) => { setMessageText(text); setResultTable(undefined); };
-  const setError = (text: string) => { setErrorText(text); setResultTable(undefined); };
+  // 文章を打つ測定の表。付いている側の文（知らせか理由）が置き換わる・消える時に一緒に消す。
+  const [resultTable, setResultTable] = useState<{ readonly table: SentenceResultTableData; readonly side: 'message' | 'error' } | undefined>(undefined);
+  const setMessage = (text: string) => {
+    setMessageText(text);
+    setResultTable((current) => (current?.side === 'message' ? undefined : current));
+  };
+  const setError = (text: string) => {
+    setErrorText(text);
+    setResultTable((current) => (current?.side === 'error' ? undefined : current));
+  };
   const [confirming, setConfirming] = useState(false);
   const savedValues = useMemo(() => (calibration === undefined ? {} : calibrationFormValues(calibration)), [calibration]);
   const [values, setValues] = useState<CalibrationFormValues>(savedValues);
@@ -294,12 +300,12 @@ export function PersonalSpeedEditor({
     const table = sentenceResultTable(result);
     if (!result.ok) {
       setError(sentenceFailureText(result));
-      setResultTable(table);
+      setResultTable(table === undefined ? undefined : { table, side: 'error' });
       return;
     }
     onSave(result.calibration);
     setMessage(sentenceSavedMessage(result.measurement));
-    setResultTable(table);
+    setResultTable(table === undefined ? undefined : { table, side: 'message' });
   };
   const sentenceRunner = useSentenceRun({ keyLabel, onFinished: sentenceFinished });
   const running = runner.run !== undefined || sentenceRunner.session !== undefined;
@@ -524,7 +530,7 @@ export function PersonalSpeedEditor({
             </div>
             <p className="personal-speed-message" role="status">{message}</p>
             <p className="personal-speed-error" role="alert">{error}</p>
-            {resultTable === undefined ? null : <SentenceResultTable table={resultTable} />}
+            {resultTable === undefined ? null : <SentenceResultTable table={resultTable.table} />}
           </section>
 
           <section className="personal-speed-section" aria-labelledby="personal-speed-values">
