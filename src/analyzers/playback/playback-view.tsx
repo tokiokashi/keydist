@@ -260,8 +260,18 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options, onOp
         </div>
         <div className="playback-history" data-playback-history hidden={frame.inputPreview.length === 0}>
           <span className="playback-history-label">入力:</span>
-          <span data-playback-history-text>
-            {frame.inputPreview.map((segment, index) => (
+          <span className="playback-history-done" data-playback-history-done>
+            {frame.inputPreview.map((segment, index) => segment.kind === 'completed' && (
+              <span
+                key={`${segment.kind}-${index}`}
+                className={`playback-input-segment playback-input-${segment.kind}`}
+              >
+                {segment.text}
+              </span>
+            ))}
+          </span>
+          <span className="playback-history-rest" data-playback-history-text>
+            {frame.inputPreview.map((segment, index) => segment.kind !== 'completed' && (
               <span
                 key={`${segment.kind}-${index}`}
                 className={`playback-input-segment playback-input-${segment.kind}`}

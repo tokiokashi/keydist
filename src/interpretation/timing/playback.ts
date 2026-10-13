@@ -321,12 +321,18 @@ export interface PlaybackInputPreviewSegment {
   kind: PlaybackInputPreviewKind;
 }
 
+/**
+ * 入力済みの入力単位を返す既定の数。表示側の欄がかな10文字分の幅で、半角の文字だけの入力単位
+ * （1単位が全角の半分の幅）でも欄が埋まる20個にしてある。
+ */
+export const PLAYBACK_COMPLETED_INPUT_LIMIT = 20;
+
 /** 入力済み・現在・先読みの入力単位を表示順に返す。先読み値は打鍵ステップ数として扱う。 */
 export function playbackInputPreview(
   strokes: readonly Stroke[],
   cursor: number,
   lookaheadSteps = 0,
-  completedLimit = 10,
+  completedLimit = PLAYBACK_COMPLETED_INPUT_LIMIT,
 ): PlaybackInputPreviewSegment[] {
   const end = Math.min(Math.max(0, cursor), strokes.length);
   const groups: { inputIndex: number; start: number; end: number }[] = [];
