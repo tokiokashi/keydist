@@ -146,34 +146,84 @@ test('サイドバーのAssetsから開ける。保存が無ければ空の状�
   await expect(page.locator('#personal-speed-group-normal [data-personal-speed-reason]')).toHaveCount(0);
 });
 
-test('各測定のまとまりに、短い説明と再生時間モデルの仕様書へのリンクがあり、計算の詳細は書いていない', async ({ page }) => {
+test('各測定のまとまりに、何を測るか・どこに使うかの説明と、測り方と、仕様書へのリンクがあり、計算の詳細は書いていない', async ({ page }) => {
   await open(page);
   await expect(page.locator('[data-personal-speed-purpose]')).toContainText('打鍵再生の時間');
   const expected = {
-    normal: ['同指連続を含まない打鍵の時間と、同指連続で指が動く時間', '連打との差は全て消えます'],
-    directional: ['同指連続を含まない打鍵の時間', 'Arpeggio・Chain・その他・同指連続が消えます（続け打ちは残ります）'],
-    sentence: [
-      '覚えた文を考えずに打ってください',
-      '1回目は文を覚える回で数えない',
-      '間違えたらその打鍵だけを数えずに続けられ',
-      '普段の綴りで打てます',
-      '手に馴染んだ配列で測ってください',
-      '別の配列で測ると求まる種類が変わります',
-      '前の連打との差は全て置き換わります',
-      'コンボを文字に変えて送る場合も測れます',
-    ],
+    normal: {
+      purpose: ['キーを打つ速さ、同じキーを続けて打つ速さ', '1打ごとの時間と、同じ指で別のキーを続けて打つ時に指が動く時間を決めます'],
+      howTo: ['指定されたキーを交互に打ってください。', '同じキーを続けて打ってください。'],
+    },
+    directional: {
+      purpose: ['左手と右手の交互打ちと、同じ手の2本の指で打つ時の', '測った向きの1打の時間を、向きを区別しない値の代わりに決めます'],
+      howTo: ['指定されたキーを繰り返し打ってください。'],
+    },
+    sentence: {
+      purpose: ['覚えた文を考えずに打つ時に', 'Arpeggio・Chain・その他・続け打ち・同指連続の5種類ごとに測ります', '1打ごとの時間に種類ごとの連打との差を足します'],
+      howTo: [
+        '1回目は文を覚える回で数えないので、2回目からは考えずに打ってください。',
+        '間違えたら、その打鍵を数えずに続けられます。',
+        'ローマ字で打つ配列では、普段の綴りで打てます。',
+        '手に馴染んだ配列で測ってください。',
+        '別の配列で測ると求まる種類が変わります。',
+        'キーボードがコンボを文字に変えて送る場合も測れます。',
+      ],
+    },
   } as const;
-  for (const [id, texts] of Object.entries(expected)) {
+  for (const [id, { purpose, howTo }] of Object.entries(expected)) {
     const description = page.locator(`[data-personal-speed-description="${id}"]`);
-    for (const text of texts) await expect(description).toContainText(text);
-    await expect(description.getByRole('link', { name: '再生時間モデルの仕様書' })).toHaveAttribute('href', /spec\/playback-timing\.md$/);
+    for (const text of purpose) await expect(description).toContainText(text);
     // 計算の詳細は仕様書にある
     await expect(description).not.toContainText('四分位平均');
     await expect(description).not.toContainText('基準の時間');
+    const group = page.locator(`#personal-speed-group-${id}`);
+    const list = group.locator(`[data-personal-speed-howto="${id}"]`);
+    await expect(list.getByRole('heading', { name: '測り方', level: 3 })).toBeVisible();
+    for (const text of howTo) await expect(list).toContainText(text);
+    // 仕様書へのリンクは、測り方の後の1行にある
+    const spec = group.locator(`[data-personal-speed-spec="${id}"]`);
+    await expect(spec.getByRole('link', { name: '再生時間モデルの仕様書' })).toHaveAttribute('href', /spec\/playback-timing\.md$/);
+    const order = await group.evaluate((section) => {
+      const parts = Array.from(section.children);
+      return [
+        parts.findIndex((el) => el.hasAttribute('data-personal-speed-description')),
+        parts.findIndex((el) => el.hasAttribute('data-personal-speed-howto')),
+        parts.findIndex((el) => el.hasAttribute('data-personal-speed-spec')),
+        parts.findIndex((el) => el.hasAttribute('data-personal-speed-effect') || el.matches('.personal-speed-actions')),
+      ];
+    });
+    expect(order[0]).toBeLessThan(order[1]);
+    expect(order[1]).toBeLessThan(order[2]);
+    expect(order[2]).toBeLessThan(order[3]);
   }
   await expect(page.locator('#personal-speed-group-normal').getByRole('heading', { name: '通常の速度と指の移動', level: 2 })).toBeVisible();
   await expect(page.locator('#personal-speed-group-directional').getByRole('heading', { name: '方向別の速度', level: 2 })).toBeVisible();
   await expect(page.locator('#personal-speed-group-sentence').getByRole('heading', { name: '文章を打つ速さ', level: 2 })).toBeVisible();
+  // 保存値を持たない時は、測るボタンの直後に保存値への影響の文を出さない
+  await expect(page.locator('[data-personal-speed-effect]')).toHaveCount(0);
+});
+
+test('保存値を持つ時だけ、測るボタンの直後に、置き換わる値と消える値を示す文が出る', async ({ page }) => {
+  await seed(page, { [STORAGE_KEY]: SEEDED });
+  await open(page);
+  await expect(page.locator('#personal-speed-group-normal [data-personal-speed-effect]')).toHaveText('測ると、方向別の値を除く保存値が置き換わります。');
+  await expect(page.locator('#personal-speed-group-directional [data-personal-speed-effect]')).toHaveText('測ると、測った向きの値が置き換わります。');
+  // 連打との差を持たない時の文章を打つ速さは、前の連打との差が無いので文を出さない
+  await expect(page.locator('#personal-speed-group-sentence [data-personal-speed-effect]')).toHaveCount(0);
+});
+
+test('連打との差を保存している時は、その種類だけを挙げる文が、測るボタンの直後に出る', async ({ page }) => {
+  await seed(page, { [STORAGE_KEY]: { ...SEEDED, calibration: { ...SEEDED.calibration, keystrokeOverheadMs: { chain: 12, repeat: 30 } } } });
+  await open(page);
+  await expect(page.locator('#personal-speed-group-normal [data-personal-speed-effect]')).toHaveText('測ると、方向別の値を除く保存値が置き換わり、文章を打つ速さの連打との差は全て消えます。');
+  await expect(page.locator('#personal-speed-group-directional [data-personal-speed-effect]')).toHaveText('測ると、測った向きの値が置き換わり、連打との差のうちChainが消えます（続け打ちは残ります）。');
+  await expect(page.locator('#personal-speed-group-sentence [data-personal-speed-effect]')).toHaveText('測り直して保存すると、前の連打との差は全て置き換わります。');
+  // 測るボタンの直後に文が並ぶ
+  const after = await page.locator('#personal-speed-group-directional').evaluate((section) => {
+    const button = section.querySelector('[data-personal-speed-start="directional"]');
+    return button?.parentElement?.nextElementSibling?.getAttribute('data-personal-speed-effect') ?? null;
+  });
+  expect(after).toBe('directional');
 });
 
 test('通常の測定をキー入力で行い、結果が保存される', async ({ page }) => {
