@@ -81,15 +81,22 @@ test('打ち終えた入力・今の入力・この後の入力が、テキス�
   expect(TEXT).toContain(segments.map((segment) => segment.text).join(''));
 });
 
-test('狭いペインの幅でも、今の入力が見える', async ({ page }) => {
-  await openWithText(page, 360);
+test('行が狭くて欄が縮む時も、今の入力が文字の欄の中に見える', async ({ page }) => {
+  await openWithText(page, 1200);
   const last = await total(page);
+  // ペインの幅はこれ以上縮まないので、行そのものに狭い幅を与えて、欄が縮む状況を作る
+  await row(page).evaluate((element) => { (element as HTMLElement).style.width = '150px'; });
+  const done = feature(page).locator('.playback-history-done');
+  const rest = feature(page).locator('.playback-history-rest');
   for (const position of [1, 12, 30, last]) {
     await goTo(page, position);
     const box = (await current(page).boundingBox())!;
-    const rowBox = (await row(page).boundingBox())!;
+    const restBox = (await rest.boundingBox())!;
+    const doneBox = (await done.boundingBox())!;
+    // 欄は決めた幅より縮んでいる
+    expect(doneBox.width).toBeLessThan(10 * 0.82 * 16 - 1);
     expect(box.width).toBeGreaterThan(0);
-    expect(box.x).toBeGreaterThanOrEqual(rowBox.x);
-    expect(box.x + box.width).toBeLessThanOrEqual(rowBox.x + rowBox.width + 0.5);
+    expect(box.x).toBeGreaterThanOrEqual(restBox.x - 0.5);
+    expect(box.x + box.width).toBeLessThanOrEqual(restBox.x + restBox.width + 0.5);
   }
 });
