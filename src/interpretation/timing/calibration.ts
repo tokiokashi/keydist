@@ -10,7 +10,7 @@ import {
 } from '#input/shapes/geometry.ts';
 
 /**
- * 遷移（直前のストロークから今のストロークへ）が属する構造の種類。1打ごとの上乗せ（`keystrokeOverheadMs`）を選ぶ。
+ * 遷移（直前のストロークから今のストロークへ）が属する構造の種類。連打との差（`keystrokeOverheadMs`）を選ぶ。
  * Arpeggioの中、Chainの中でArpeggioでないもの、どちらでもないもの（最初のストロークを含む）の3つ。
  */
 export type StrokeStructureKind = 'arpeggio' | 'chain' | 'other';
@@ -34,8 +34,8 @@ export interface PlaybackCalibration {
   /** 指ごとの速度が無い場合に使う移動速度。単位は物理キーのu/秒。 */
   fallbackFingerSpeedUnitsPerSecond: number;
   /**
-   * 文章を打つ時の1打ごとの上乗せ[ms]。構造の種類ごとに持ち、基準の時間のうち連打の時間（`normalMs`）の側にだけ足す。
-   * 同指連続のステップでは`max(normalMs + 上乗せ, 移動の時間)`の内側に入り、移動の時間には足さない。
+   * 文章を打つ時の連打との差[ms]。構造の種類ごとに持ち、基準の時間のうち連打の時間（`normalMs`）の側にだけ足す。
+   * 同指連続のステップでは`max(normalMs + 連打との差, 移動の時間)`の内側に入り、移動の時間には足さない。
    * 持たない種類は「その他」の値を使う。
    */
   keystrokeOverheadMs?: Readonly<Partial<Record<StrokeStructureKind, number>>>;
@@ -204,7 +204,7 @@ export function playbackCalibrationProblem(value: unknown): string | undefined {
     (kind) => STROKE_STRUCTURE_KINDS.includes(kind as StrokeStructureKind),
     CALIBRATION_OVERHEAD_MS_MIN,
     CALIBRATION_OVERHEAD_MS_MAX,
-  )) return '1打ごとの上乗せが正しくありません';
+  )) return '連打との差が正しくありません';
   return undefined;
 }
 

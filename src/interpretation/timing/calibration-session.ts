@@ -289,7 +289,7 @@ export type ApplyCalibrationResult =
   | {
       readonly ok: true;
       readonly calibration: PlaybackCalibration;
-      /** 保存値が持っていた1打ごとの上乗せを消した。文章を打つ測定の測り直しを促す。 */
+      /** 保存値が持っていた連打との差を消した。文章を打つ測定の測り直しを促す。 */
       readonly overheadCleared: boolean;
     }
   /** 方向別・1項目の測定は、保存値が無いと反映先が無い。 */
@@ -376,7 +376,7 @@ function applyNormal(base: PlaybackCalibration | undefined, run: CalibrationRun,
 /**
  * 済んだ測定を保存値へ反映する（`spec/playback-timing.md` §6.3）。
  * 反映した値が保存できる範囲を外れていれば、保存値は作らない。
- * 1打ごとの上乗せは、その時の保存値から求めた差なので、ここで測る他の値が変わる時は消す。
+ * 連打との差は、その時の保存値から求めた差なので、ここで測る他の値が変わる時は消す。
  */
 export function applyCalibrationRun(
   base: PlaybackCalibration | undefined,

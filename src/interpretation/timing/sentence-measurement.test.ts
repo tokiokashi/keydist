@@ -79,7 +79,7 @@ function tapsFor(count: number, intervalOf: (index: number) => number, cleanAt: 
   return taps;
 }
 
-test('間隔からnormalMsを引いた差の中央値を、その他の上乗せにする', () => {
+test('間隔からnormalMsを引いた差の中央値を、その他の連打との差にする', () => {
   const analysis = alternating(20);
   const taps = tapsFor(20, () => 260);
   const { counts, overheadMs } = measureSentence(analysis, SAVED, taps);
@@ -87,7 +87,7 @@ test('間隔からnormalMsを引いた差の中央値を、その他の上乗せ
   assert.deepEqual(overheadMs, { other: 60 });
 });
 
-test('構造の種類ごとに別の上乗せを求める', () => {
+test('構造の種類ごとに別の連打との差を求める', () => {
   // 遷移1〜13はArpeggio、15〜27はChain、0・14・28〜39はその他。
   const analysis = alternating(40, [range(14, 28)], [range(0, 14)]);
   const interval = (index: number) => (index <= 13 ? 230 : index >= 15 && index <= 27 ? 250 : 300);
@@ -113,7 +113,7 @@ test('normalMsは測定の時点の保存値で求める', () => {
   assert.deepEqual(overheadMs, { other: 50 });
 });
 
-test('数えたストロークが10未満の種類は上乗せを持たない', () => {
+test('数えたストロークが10未満の種類は連打との差を持たない', () => {
   const analysis = alternating(30, [], [range(0, 10)]);
   const { counts, overheadMs } = measureSentence(analysis, SAVED, tapsFor(30, () => 250));
   assert.equal(counts.arpeggio, 9);
@@ -136,7 +136,7 @@ test('違うキーを押したストロークの間隔は、中央値に影響�
   assert.deepEqual(measureSentence(analysis, SAVED, taps).overheadMs, { other: 50 });
 });
 
-test('反映は1打ごとの上乗せだけを置き換え、他の項目と、持たない種類の古い値は残さない', () => {
+test('反映は連打との差だけを置き換え、他の項目と、持たない種類の古い値は残さない', () => {
   const base: PlaybackCalibration = { ...SAVED, keystrokeOverheadMs: { chain: 5, other: 5 } };
   const analysis = alternating(20);
   const result = applySentenceMeasurement(base, analysis, tapsFor(20, () => 260), 99);
@@ -171,7 +171,7 @@ test('どの種類も10未満なら、保存せずに測り直させる', () => 
   assert.equal(!result.ok && result.reason === 'too-few' && result.measurement.counts.other, 7);
 });
 
-test('上乗せが範囲を外れたら、保存せずに測り直させる', () => {
+test('連打との差が範囲を外れたら、保存せずに測り直させる', () => {
   const result = applySentenceMeasurement(SAVED, alternating(20), tapsFor(20, () => 1300), 1);
   assert.equal(!result.ok && result.reason, 'out-of-range');
   // 1000ミリ秒ちょうどは保存できる

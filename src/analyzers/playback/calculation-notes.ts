@@ -12,7 +12,7 @@ import type { PersonalSpeedUse } from './timing-conditions.ts';
 export interface PlaybackCalculationNotes {
   /** 保存した個人速度で計算しているか */
   readonly personalSpeedInUse: boolean;
-  /** 個人速度で計算していて、保存値の文章を打つ時の1打ごとの上乗せを時間に足しているか */
+  /** 個人速度で計算していて、保存値の文章を打つ時の連打との差を時間に足しているか */
   readonly keystrokeOverheadInUse: boolean;
   /** 既定と違い、数値に入っている項目の名前と値 */
   readonly changes: readonly string[];

@@ -11,11 +11,11 @@ import { strokeStructureKinds } from './stroke-structure.ts';
 
 /**
  * 文章を打つ測定（`spec/playback-timing.md` §6.4）の計算。構造の種類ごとに、同指連続を含まない
- * ストロークの実際の間隔から連打の時間（`normalMs`）を引いた差の中央値を、1打ごとの上乗せにする。
+ * ストロークの実際の間隔から連打の時間（`normalMs`）を引いた差の中央値を、連打との差にする。
  * 時刻は呼び出し側が渡すので、描画にもタイマーにも依存しない。
  */
 
-/** 種類ごとの上乗せを保存する、数えたストロークの最小数。これ未満の種類は保存しない。 */
+/** 種類ごとの連打との差を保存する、数えたストロークの最小数。これ未満の種類は保存しない。 */
 export const SENTENCE_MIN_SAMPLES = 10;
 
 /** 打ち終えたストローク1つの記録。 */
@@ -39,7 +39,7 @@ export type SentenceCounts = Readonly<Record<StrokeStructureKind, number>>;
 export interface SentenceMeasurement {
   /** 種類ごとに数えたストロークの数。 */
   readonly counts: SentenceCounts;
-  /** 数えたストロークが最小数以上の種類の上乗せ[ms]。負の中央値は0にしてある。 */
+  /** 数えたストロークが最小数以上の種類の連打との差[ms]。負の中央値は0にしてある。 */
   readonly overheadMs: Readonly<Partial<Record<StrokeStructureKind, number>>>;
 }
 
@@ -63,7 +63,7 @@ function medianOf(values: readonly number[]): number {
 }
 
 /**
- * 打ち終えたストロークの記録から、種類ごとの上乗せを求める。`taps`は`analysis.strokes`と同じ長さ。
+ * 打ち終えたストロークの記録から、種類ごとの連打との差を求める。`taps`は`analysis.strokes`と同じ長さ。
  * 最初のストローク、違うキーを押したストローク、同指連続を含むストロークは数えない。
  */
 export function measureSentence(
@@ -96,15 +96,15 @@ export type ApplySentenceResult =
   | { readonly ok: true; readonly calibration: PlaybackCalibration; readonly measurement: SentenceMeasurement }
   /** 文章を打つ測定は、`normalMs`を求める保存値が無いと反映先が無い。 */
   | { readonly ok: false; readonly reason: 'no-saved-value' }
-  /** 測定を始めた時の保存値と、保存の時の保存値が違う。打った時の基準で求めた上乗せを、違う保存値に付けない。 */
+  /** 測定を始めた時の保存値と、保存の時の保存値が違う。打った時の基準で求めた連打との差を、違う保存値に付けない。 */
   | { readonly ok: false; readonly reason: 'changed' }
   /** どの種類も数えたストロークが足りない。 */
   | { readonly ok: false; readonly reason: 'too-few'; readonly measurement: SentenceMeasurement }
-  /** 測った上乗せが保存できる範囲を外れた。 */
+  /** 測った連打との差が保存できる範囲を外れた。 */
   | { readonly ok: false; readonly reason: 'out-of-range'; readonly measurement: SentenceMeasurement };
 
 /**
- * 済んだ文章を打つ測定を保存値へ反映する（§6.3・§6.4）。1打ごとの上乗せだけを置き換え、他の項目は残す。
+ * 済んだ文章を打つ測定を保存値へ反映する（§6.3・§6.4）。連打との差だけを置き換え、他の項目は残す。
  * 数えたストロークが最小数に満たない種類は持たない。
  */
 export function applySentenceMeasurement(

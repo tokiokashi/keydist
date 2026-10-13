@@ -183,7 +183,7 @@ function ConfirmDiscard({ onConfirm, onCancel }: { readonly onConfirm: () => voi
   return (
     <dialog ref={ref} className="personal-speed-confirm" aria-labelledby="personal-speed-confirm-title" onCancel={(event) => { event.preventDefault(); onCancel(); }}>
       <h2 id="personal-speed-confirm-title">保存した個人速度を全て破棄しますか</h2>
-      <p>通常の速度、方向別の速度、指の移動速度、文章を打つ時の1打ごとの上乗せを全て消します。「元に戻す」はこの画面にいる間だけ使えます。</p>
+      <p>通常の速度、方向別の速度、指の移動速度、文章を打つ時の連打との差を全て消します。「元に戻す」はこの画面にいる間だけ使えます。</p>
       <div className="personal-speed-confirm-actions">
         <button type="button" autoFocus onClick={onCancel}>キャンセル</button>
         <button type="button" onClick={onConfirm}>破棄する</button>
@@ -520,7 +520,7 @@ export function PersonalSpeedEditor({
                 <div className="personal-speed-rows">
                   {directionIds.map((id) => <ValueRow key={id} {...rowProps(id)} />)}
                 </div>
-                <h3>文章を打つ時の1打ごとの上乗せ</h3>
+                <h3>文章を打つ時の連打との差</h3>
                 <div className="personal-speed-rows">
                   {STROKE_STRUCTURE_KINDS.map((kind) => <ValueRow key={kind} {...rowProps(calibrationOverheadFieldId(kind))} />)}
                 </div>
