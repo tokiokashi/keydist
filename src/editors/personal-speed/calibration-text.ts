@@ -74,7 +74,7 @@ export function calibrationFieldLabel(fieldId: string): string {
   switch (kind) {
     case 'actions': return calibrationItemLabel({ kind: 'actions' });
     case 'direction': return `異手 ${calibrationItemLabel({ kind: 'direction', direction: name === 'L→R' ? 'L→R' : 'R→L' })}`;
-    case 'overhead': return `1打ごとの上乗せ ${STRUCTURE_KIND_LABEL[name as StrokeStructureKind] ?? name}`;
+    case 'overhead': return `連打との差 ${STRUCTURE_KIND_LABEL[name as StrokeStructureKind] ?? name}`;
     case 'finger': return `${fingerLabel(name)}の移動速度`;
     case 'same-hand-pair': return `同手・別指 ${pairLabel(name, ':')}`;
     case 'directed-pair': return `同手・別指 ${pairLabel(name, '>')}`;
@@ -130,7 +130,7 @@ export function savedMessage(
   overheadCleared = false,
 ): string {
   const notice = overheadCleared
-    ? ' 文章を打つ時の1打ごとの上乗せは、他の値が変わったため消しました。文章を打つ速さをもう一度測ってください。'
+    ? ' 文章を打つ時の連打との差は、他の値が変わったため消しました。文章を打つ速さをもう一度測ってください。'
     : '';
   if (scope === 'normal') return `通常の速度と指の移動速度を測って保存しました。${notice}`;
   if (scope === 'directional') return `方向別の速度を測って保存しました。${notice}`;
@@ -161,7 +161,7 @@ export function sentenceSavedMessage(measurement: SentenceMeasurement): string {
       ? `${STRUCTURE_KIND_LABEL[kind]}は数えた打鍵が${count}打で${SENTENCE_MIN_SAMPLES}打に満たないため、保存していません`
       : `${STRUCTURE_KIND_LABEL[kind]} ${value.toFixed(1)}ミリ秒（${count}打）`;
   });
-  return `文章を打つ速さを測って保存しました。1打ごとの上乗せ: ${parts.join('、')}。`;
+  return `文章を打つ速さを測って保存しました。連打との差: ${parts.join('、')}。`;
 }
 
 /** 文章を打つ測定を保存できなかった時の文。 */
@@ -174,7 +174,7 @@ export function sentenceFailureText(result: Exclude<ApplySentenceResult, { ok: t
     case 'too-few':
       return `数えた打鍵が少なく、保存していません。もう一度測ってください（${countsText(result.measurement)}）。`;
     case 'out-of-range':
-      return `測った上乗せが保存できる範囲（${CALIBRATION_OVERHEAD_MS_MIN}から${CALIBRATION_OVERHEAD_MS_MAX}ミリ秒）を外れていたため、保存していません。もう一度測ってください。`;
+      return `測った連打との差が保存できる範囲（${CALIBRATION_OVERHEAD_MS_MIN}から${CALIBRATION_OVERHEAD_MS_MAX}ミリ秒）を外れていたため、保存していません。もう一度測ってください。`;
   }
 }
 
@@ -186,10 +186,11 @@ export const MEASUREMENT_DESCRIPTION = {
   directional: '左手から右手、右手から左手の向きごとの連打の速さと、同じ手の2本の指を向きごとに交互に打つ速さを測ります。'
     + '打鍵再生では、同指連続を含まない打鍵の時間を、直前の打鍵との指の組み合わせと向きで決めるのに使います。'
     + '測っていない向きには、通常の速度や同手・別指の代表の速度が使われます。',
-  sentence: '示す文を打って、文章を打つ時に連打より余分にかかる時間を、Arpeggio・Chain・その他の3種類ごとに測ります。'
+  sentence: '示す文を打って、文章を打つ時の連打との差を、Arpeggio・Chain・その他の3種類ごとに測ります。'
+    + 'ここでの連打は、この画面の通常の速度・方向別の速度の測定（同じ手の2本の指を交互に打つ速さを含む）で測る打鍵の速さです。'
     + '同指連続を含まない打鍵の間隔から連打の時間を引いた差の中央値で求めるので、文節の切れ目の長い間はほとんど入りません。'
     + '打鍵再生では、同指連続を含まない打鍵の時間に足します。指が動く時間には足しません。'
-    + '測っていない種類には「その他」の上乗せが使われ、測っていなければ上乗せはありません。'
+    + '測っていない種類には「その他」の連打との差が使われ、測っていなければ連打との差はありません。'
     + '打ちやすい形の違いが再生に出るよう、手に馴染んだ配列で測ってください。'
     + 'キーボードがコンボを文字に変えて送る場合も測れます。',
 } as const;

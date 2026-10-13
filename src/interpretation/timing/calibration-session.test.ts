@@ -243,7 +243,7 @@ test('1項目の測り直しは、その項目だけを置き換え、代表値�
   assert.equal(actionsApplied.calibration.actionsPerSecond, 10);
 });
 
-test('通常速度・移動速度、方向別、1項目の測定は、保存値の1打ごとの上乗せを消して知らせる', () => {
+test('通常速度・移動速度、方向別、1項目の測定は、保存値の連打との差を消して知らせる', () => {
   const withOverhead: PlaybackCalibration = { ...SAVED, keystrokeOverheadMs: { chain: 20, other: 60 } };
   const runs: readonly CalibrationRun[] = [
     playAll(startCalibrationRun('normal', PLAN.normal!), 250),
@@ -259,7 +259,7 @@ test('通常速度・移動速度、方向別、1項目の測定は、保存値�
   }
 });
 
-test('上乗せを持たない保存値への測定は、消したと知らせない', () => {
+test('連打との差を持たない保存値への測定は、消したと知らせない', () => {
   const run = playAll(startCalibrationRun('item', [PLAN.byItem.get('actions')!]), 200);
   const applied = applyCalibrationRun(SAVED, run, 5);
   assert.ok(applied.ok);

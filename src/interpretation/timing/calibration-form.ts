@@ -22,7 +22,7 @@ export const CALIBRATION_SAME_HAND_FIELD = 'same-hand';
 export const CALIBRATION_FALLBACK_FINGER_FIELD = 'fallback-finger';
 const ACTIONS_FIELD = 'actions';
 
-/** 構造の種類ごとの1打ごとの上乗せの欄の識別子。 */
+/** 構造の種類ごとの連打との差の欄の識別子。 */
 export function calibrationOverheadFieldId(kind: StrokeStructureKind): string {
   return `overhead:${kind}`;
 }

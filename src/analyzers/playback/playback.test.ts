@@ -478,7 +478,7 @@ test('個人速度: 適用する設定で保存値があれば、その値で時
   assert.equal(basisIdOf(remeasured), basisIdOf(base));
 });
 
-test('個人速度: 1打ごとの上乗せは構造の種類で選ばれて時間表に入り、抽出のキーが変わる（§3.1.1）', () => {
+test('個人速度: 連打との差は構造の種類で選ばれて時間表に入り、抽出のキーが変わる（§3.1.1）', () => {
   // 条件: 配列qwerty・物理配列row-staggered・通常速度5アクション/秒（200ms）・同手別指も5・既定の解析設定。
   // 「fjdk」は手が交互で、Chain・Arpeggioに入らない。どの遷移もその他
   const overhead = { arpeggio: 10, chain: 30, other: 70 };
@@ -488,18 +488,18 @@ test('個人速度: 1打ごとの上乗せは構造の種類で選ばれて時�
   // 「asdf」はChain 1本・Arpeggio 1本で4打鍵すべてが入る。最初のステップはその他、残りの遷移はArpeggio
   const asdf = extractionOf(resolve('qwerty', 'asdf', 'en', EMPTY_SETTINGS_OVERRIDES, withOverhead));
   assert.deepEqual(STEP_ENDS(asdf), [270, 480, 690, 900]);
-  // 再生倍率は上乗せを足した後に掛かる
+  // 再生倍率は連打との差を足した後に掛かる
   assert.deepEqual(STEP_ENDS(extractionOf(fjdk, { speedMultiplier: 2 })), [135, 270, 405, 540]);
-  // 上乗せを持たない保存値とはキーが違い、上乗せが変わってもキーが変わる
+  // 連打との差を持たない保存値とはキーが違い、連打との差が変わってもキーが変わる
   const plain = resolve('qwerty', 'fjdk', 'en', EMPTY_SETTINGS_OVERRIDES, CALIBRATION);
   assert.notEqual(extractionKeyOf(fjdk), extractionKeyOf(plain));
   const changed = resolve('qwerty', 'fjdk', 'en', EMPTY_SETTINGS_OVERRIDES, { ...CALIBRATION, keystrokeOverheadMs: { other: 71 } });
   assert.notEqual(extractionKeyOf(fjdk), extractionKeyOf(changed));
-  // 個人速度を適用しない設定では上乗せも入らない
+  // 個人速度を適用しない設定では連打との差も入らない
   assert.deepEqual(STEP_ENDS(extractionOf(fjdk, { applyPersonalSpeed: false })), [800, 1600, 2400, 3200]);
 });
 
-test('既定と違う計算の知らせ: 個人速度で計算していて上乗せを足している時だけ、そのことを挙げる', () => {
+test('既定と違う計算の知らせ: 個人速度で計算していて連打との差を足している時だけ、そのことを挙げる', () => {
   const notes = (use: 'applied' | 'not-applied' | 'missing', calibration?: PlaybackCalibration) =>
     playbackCalculationNotes(DEFAULT_PLAYBACK_OPTIONS, use, calibration);
   const withOverhead = { ...CALIBRATION, keystrokeOverheadMs: { other: 60 } };

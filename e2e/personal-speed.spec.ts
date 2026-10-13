@@ -242,7 +242,7 @@ test('項目の測り直しは、その項目だけを入れ替える', async ({
   expect(saved.calibration.sameHandDifferentFingerActionsPerSecond).toBe(4);
 });
 
-test('文章を打つ測定の途中に別のタブで個人速度が変わると、上乗せを保存せず測り直しを促す', async ({ page, context }) => {
+test('文章を打つ測定の途中に別のタブで個人速度が変わると、連打との差を保存せず測り直しを促す', async ({ page, context }) => {
   await seed(page, { [STORAGE_KEY]: SEEDED });
   await open(page);
   await page.locator('[data-personal-speed-start="sentence"]').click();
@@ -276,7 +276,7 @@ test('画面内で選んだ配列は、Singleの対象や条件を変えない�
   expect(after.library).toBeNull();
 });
 
-test('文章を打つ測定で、種類ごとの1打ごとの上乗せを測って保存し、数えた打鍵の数が知らされる', async ({ page }) => {
+test('文章を打つ測定で、種類ごとの連打との差を測って保存し、数えた打鍵の数が知らされる', async ({ page }) => {
   await seed(page, { [STORAGE_KEY]: SEEDED });
   await open(page);
   await expect(page.locator('[data-personal-speed-sentence]').first()).toBeVisible();
@@ -317,27 +317,27 @@ test('文章を打つ測定は、違うキーを知らせ、中止すると保�
   expect(await stored(page)).toEqual(SEEDED);
 });
 
-test('他の測定を保存すると1打ごとの上乗せが消え、測り直しを促す知らせが出る', async ({ page }) => {
+test('他の測定を保存すると連打との差が消え、測り直しを促す知らせが出る', async ({ page }) => {
   const withOverhead = { ...SEEDED, calibration: { ...SEEDED.calibration, keystrokeOverheadMs: { other: 60 } } };
   await seed(page, { [STORAGE_KEY]: withOverhead });
   await open(page);
   await expect(page.locator('[id="personal-speed-overhead:other"]')).toHaveValue('60.0');
   await page.getByRole('button', { name: '通常の打鍵速度を測り直す' }).click();
   await typeThroughRun(page);
-  await expect(page.getByText('1打ごとの上乗せは、他の値が変わったため消しました')).toBeVisible();
+  await expect(page.getByText('連打との差は、他の値が変わったため消しました')).toBeVisible();
   const saved = await stored(page) as { calibration: Record<string, unknown> };
   expect('keystrokeOverheadMs' in saved.calibration).toBe(false);
   await expect(page.locator('[id="personal-speed-overhead:other"]')).toHaveValue('');
 });
 
-test('1打ごとの上乗せを数値で直接編集して保存でき、空欄にすると消える。範囲外は保存されない', async ({ page }) => {
+test('連打との差を数値で直接編集して保存でき、空欄にすると消える。範囲外は保存されない', async ({ page }) => {
   await seed(page, { [STORAGE_KEY]: SEEDED });
   await open(page);
   const arpeggio = page.locator('[id="personal-speed-overhead:arpeggio"]');
   const save = page.locator('[data-personal-speed-save]');
   await arpeggio.fill('1000.5');
   await save.click();
-  await expect(page.getByRole('alert').filter({ hasText: '1打ごとの上乗せ Arpeggio' })).toBeVisible();
+  await expect(page.getByRole('alert').filter({ hasText: '連打との差 Arpeggio' })).toBeVisible();
   expect(await stored(page)).toEqual(SEEDED);
 
   await arpeggio.fill('25');

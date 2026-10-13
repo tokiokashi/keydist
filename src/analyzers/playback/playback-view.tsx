@@ -184,7 +184,7 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options, onOp
         <p className="playback-notice" data-playback-calculation>
           {calculation.personalSpeedInUse ? <span data-playback-calculation-personal-speed>個人速度で計算しています。</span> : null}
           {calculation.keystrokeOverheadInUse ? (
-            <span data-playback-calculation-overhead>{' '}文章を打つ時の1打ごとの上乗せを足しています。</span>
+            <span data-playback-calculation-overhead>{' '}個人速度で測った、文章を打つ時の連打との差を足しています。</span>
           ) : null}
           {calculation.changes.length > 0 ? (
             <span data-playback-calculation-changes>

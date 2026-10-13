@@ -593,7 +593,7 @@ function playbackTransitionRateFromAnalysis(
 }
 
 /**
- * ステップ `i` の `normalMs`（倍率1・上乗せ無し）。個人速度で求める（`spec/playback-timing.md` §3.1）。
+ * ステップ `i` の `normalMs`（倍率1・連打との差を足さない）。個人速度で求める（`spec/playback-timing.md` §3.1）。
  * 文章を打つ測定が、実際の間隔から引く連打の時間を求めるのに使う。
  */
 export function playbackNormalMs(
@@ -611,8 +611,8 @@ export function playbackNormalMs(
 }
 
 /**
- * ステップ `i` の1打ごとの上乗せ[ms]（§3.1.1）。直前からの遷移が属する構造の種類の値を選び、
- * その種類の値が無ければ「その他」の値、それも無ければ0。個人速度が無い時、上乗せを持たない時は0。
+ * ステップ `i` の連打との差[ms]（§3.1.1）。直前からの遷移が属する構造の種類の値を選び、
+ * その種類の値が無ければ「その他」の値、それも無ければ0。個人速度が無い時、連打との差を持たない時は0。
  */
 export function playbackKeystrokeOverheadMs(
   analysis: Pick<AggregatedAnalysisResult, 'strokes' | 'chains' | 'arpeggioSpans'>,
@@ -627,8 +627,8 @@ export function playbackKeystrokeOverheadMs(
 
 /**
  * 1ステップを表示する時間。正規化ディレイは1uを通常の1アクション相当とする。
- * 解析結果を受け取らないので、遷移が属する構造の種類が分からず、1打ごとの上乗せ（§3.1.1）は足さない。
- * 上乗せを含む時間は、解析結果を受け取る`playbackStepDurationMs`が求める。
+ * 解析結果を受け取らないので、遷移が属する構造の種類が分からず、連打との差（§3.1.1）は足さない。
+ * 連打との差を含む時間は、解析結果を受け取る`playbackStepDurationMs`が求める。
  */
 export function playbackStrokeDurationMs(
   stroke: Stroke | undefined,
@@ -664,7 +664,7 @@ function playbackStrokeDurationFromNormalMs(
   const multiplier = Number.isFinite(speedMultiplier) && speedMultiplier > 0
     ? speedMultiplier
     : DEFAULT_PLAYBACK_SPEED_MULTIPLIER;
-  // 1打ごとの上乗せは連打の時間の側にだけ足す。指の移動の時間には足さない。
+  // 連打との差は連打の時間の側にだけ足す。指の移動の時間には足さない。
   const baseMs = normalMs + overheadMs;
   if (!stroke || !sameFingerDelay) return baseMs / multiplier;
 
