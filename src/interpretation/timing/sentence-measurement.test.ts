@@ -190,40 +190,30 @@ test('連打との差が範囲を外れたら、保存せずに測り直させ�
   assert.deepEqual(edge.calibration.keystrokeOverheadMs, { other: 1000 });
 });
 
-/** 入力単位ごとに`strokesPerUnit`打ずつ並べた、左右の人差し指を交互に打つ列。位置は入力単位と、その中の何打目かで決まる。 */
-function unitsAlternating(unitCount: number, strokesPerUnit: number): PlaybackTimingAnalysis {
-  const analysis = alternating(unitCount * strokesPerUnit);
-  analysis.strokes.forEach((item, index) => {
-    (item as { inputIndex: number }).inputIndex = Math.floor(index / strokesPerUnit);
-  });
-  return analysis;
-}
-
-test('下限は、数えたストロークの数ではなく、文の中の位置が違うストロークの数で数える', () => {
-  // 5入力単位×2打=10打。最初の1打は数えないので、1回分で数えるのは9打。
-  const analysis = unitsAlternating(5, 2);
+test('下限の数は、文ごとに数える回のうち最大の回の数で、同じ文の2回目と3回目で数え直さない', () => {
+  const analysis = alternating(10);
   const taps = tapsFor(10, () => 260);
   const sample = (sentence: number): SentenceSample => ({ sentence, analysis, taps });
-  // 同じ文の2回目と3回目で同じ位置を数えても、位置の数は増えない。
+  // 1回分で数えるのは9打。同じ文の2回目と3回目を数えても、9打のまま。
   const sameSentence = measureSentence([sample(0), sample(0)], SAVED);
   assert.equal(sameSentence.counts.other, 9);
   assert.deepEqual(sameSentence.overheadMs, {});
-  // 別の文の同じ番号の位置は、別の位置になる。
-  const otherSentence = measureSentence([sample(0), sample(1)], SAVED);
+  // 別の文は足す。
+  const otherSentence = measureSentence([sample(0), sample(0), sample(1), sample(1)], SAVED);
   assert.equal(otherSentence.counts.other, 18);
   assert.deepEqual(otherSentence.overheadMs, { other: 60 });
 });
 
-test('回ごとに綴りが違って打数がずれても、同じ入力単位の同じ何打目は同じ位置と数える', () => {
-  // 1回目は各単位2打、2回目は各単位1打で打った。2回目の位置は、1回目の各単位の1打目に重なる。
-  const twoStrokes = unitsAlternating(6, 2);
-  const oneStroke = unitsAlternating(6, 1);
+test('文ごとの数は回の最大で、回ごとに数が違えば大きい回の数になる', () => {
+  const short = alternating(6);
+  const long = alternating(12);
   const result = measureSentence([
-    { sentence: 0, analysis: twoStrokes, taps: tapsFor(12, () => 260) },
-    { sentence: 0, analysis: oneStroke, taps: tapsFor(6, () => 260) },
+    { sentence: 0, analysis: short, taps: tapsFor(6, () => 260) },
+    { sentence: 0, analysis: long, taps: tapsFor(12, () => 260) },
+    { sentence: 1, analysis: long, taps: tapsFor(12, () => 260) },
+    { sentence: 1, analysis: short, taps: tapsFor(6, () => 260) },
   ], SAVED);
-  // 1回目: 位置は(単位, 0)が単位1〜5の5つと(単位, 1)が単位0〜5の6つで11。2回目の(単位, 0)は単位1〜5で、1回目と重なる。
-  assert.equal(result.counts.other, 11);
+  assert.equal(result.counts.other, 11 + 11);
 });
 
 test('数えるのは渡された回だけで、各回の最初のストロークは数えない', () => {

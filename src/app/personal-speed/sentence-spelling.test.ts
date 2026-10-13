@@ -209,24 +209,30 @@ test('かな配列は綴りを選べない', () => {
   assert.equal(build('しゃしんです', { layoutId: 'nicola' }).spelling, undefined);
 });
 
-test('回ごとに綴りが違って打数とinputIndexがずれても、同じ入力単位の同じ何打目は同じ位置と数え、1回分の数を超えない', () => {
-  const { plan } = planOf('でんしゃがおくれてかいしゃにちこくした');
-  const sampleOf = (pick: (spellings: readonly string[]) => string) => {
-    const analysis = plan.analyze(plan.units.map((unit) => pick(unit.spellings)));
-    assert.ok(analysis !== undefined);
-    return { sentence: 0, analysis, taps: analysis.strokes.map((_, index) => ({ atMs: index * 300, clean: true })) };
-  };
-  const rule = sampleOf((spellings) => spellings[0]);
-  const last = sampleOf((spellings) => spellings[spellings.length - 1]);
-  // 綴りが違う回は、打数もinputIndexも変わる。
-  assert.notEqual(rule.analysis.strokes.length, last.analysis.strokes.length);
-  assert.notDeepEqual(rule.analysis.strokes.map((stroke) => stroke.inputIndex), last.analysis.strokes.map((stroke) => stroke.inputIndex));
-  const total = (counts: { arpeggio: number; chain: number; other: number }) => counts.arpeggio + counts.chain + counts.other;
-  const one = total(measureSentence([rule], SAVED).counts);
-  const both = total(measureSentence([rule, last], SAVED).counts);
-  // 同じ入力単位の同じ何打目は1つ。綴りが違って増えるのは、片方にだけある何打目だけ。
-  assert.ok(both < one * 2);
-  assert.equal(total(measureSentence([rule, rule], SAVED).counts), one);
-  const units = plan.units.length;
-  assert.ok(both <= last.analysis.strokes.length + rule.analysis.strokes.length - units);
+test('回ごとに綴りが違っても、文ごと・構造の種類ごとの下限の数は、その文で数えた回のどれか1回の数に等しい', () => {
+  const texts = ['なつやすみにはうみへあそびにいきたい', 'でんしゃがおくれてかいしゃにちこくした', 'こんしゅうのどようびにえいがをみにいく'];
+  const kinds = ['arpeggio', 'chain', 'other'] as const;
+  for (const text of texts) {
+    const { plan } = planOf(text);
+    const sampleOf = (pick: (spellings: readonly string[], kana: string) => string) => {
+      const analysis = plan.analyze(plan.units.map((unit) => pick(unit.spellings, unit.text)));
+      assert.ok(analysis !== undefined);
+      return { sentence: 0, analysis, taps: analysis.strokes.map((_, index) => ({ atMs: index * 300, clean: true })) };
+    };
+    const rule = sampleOf((spellings) => spellings[0]);
+    // つはtu、nは1打、候補の最後の綴りなど、綴りの長さが違う回。
+    const variants = [
+      sampleOf((spellings) => spellings[spellings.length - 1]),
+      sampleOf((spellings, kana) => (kana === 'つ' ? 'tu' : kana === 'ん' ? 'n' : spellings[0])),
+      sampleOf((spellings, kana) => (kana === 'つ' ? 'tsu' : kana === 'ん' ? 'nn' : spellings[0])),
+      sampleOf((spellings) => spellings[Math.min(1, spellings.length - 1)]),
+    ];
+    for (const mix of [[rule, variants[0]], [variants[1], variants[2]], [variants[3], rule], [variants[2], variants[1], rule]]) {
+      const counts = measureSentence(mix, SAVED).counts;
+      const each = mix.map((sample) => measureSentence([sample], SAVED).counts);
+      for (const kind of kinds) {
+        assert.equal(counts[kind], Math.max(...each.map((one) => one[kind])), `${text} ${kind}`);
+      }
+    }
+  }
 });

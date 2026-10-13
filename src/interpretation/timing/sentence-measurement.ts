@@ -17,7 +17,7 @@ import { strokeStructureKinds } from './stroke-structure.ts';
  * 時刻は呼び出し側が渡すので、描画にもタイマーにも依存しない。
  */
 
-/** 種類ごとの連打との差を保存する、数えたストロークの最小数（文の中の位置が違うストロークの数）。これ未満の種類は保存しない。 */
+/** 種類ごとの連打との差を保存する、数えたストロークの最小数（文ごとに数える回の最大を全文で足した数）。これ未満の種類は保存しない。 */
 export const SENTENCE_MIN_SAMPLES = 10;
 
 /** 打ち終えたストローク1つの記録。 */
@@ -85,7 +85,7 @@ function medianOf(values: readonly number[]): number {
 
 /** 数える回（2回目以降）1回分の、打った綴りで作った打鍵の列と構造、ストロークごとの記録。 */
 export interface SentenceSample {
-  /** 示した文の番号。位置の違いを数える時に、文を区別する。 */
+  /** 示した文の番号。下限に使う数を文ごとに求める。 */
   readonly sentence: number;
   readonly analysis: SentenceAnalysis;
   /** `analysis.strokes`と同じ長さ。 */
@@ -93,37 +93,22 @@ export interface SentenceSample {
 }
 
 /**
- * 回ごとの打鍵の列の、ストロークの位置。文の番号と、入力単位の番号と、その単位の中の何打目かで決める。
- * 入力単位の番号は、`inputIndex`が変わるたびに1つ進む番号。`inputIndex`そのものはローマ字の文字数で進み、
- * 綴りが違うと同じ単位でも値が変わるので、位置には使わない。
- * 同じ文の2回目と3回目で綴りが違い打数がずれても、同じ単位の同じ何打目なら同じ位置になる。
- */
-function strokePositions(sentence: number, strokes: SentenceAnalysis['strokes']): string[] {
-  const positions: string[] = [];
-  let unit = -1;
-  let ordinal = 0;
-  strokes.forEach((stroke, index) => {
-    if (index > 0 && strokes[index - 1].inputIndex === stroke.inputIndex) ordinal += 1;
-    else { unit += 1; ordinal = 0; }
-    positions.push(`${sentence}:${unit}:${ordinal}`);
-  });
-  return positions;
-}
-
-/**
  * 数える回の記録から、種類ごとの連打との差を求める。回ごとに、最初のストローク（直前の時刻が無い）、
  * 違うキーを押したストローク、同指連続を含むストロークは数えない。
- * 差の中央値は数えたストロークの全部から取る。数えた数は位置の違うストロークの数で、種類ごとの下限（`SENTENCE_MIN_SAMPLES`）の判定にも使う。
+ * 差の中央値は、数えたストロークの全部から取る。
+ * 数えた数（`counts`。種類ごとの下限`SENTENCE_MIN_SAMPLES`の判定にも、画面と知らせにも使う）は、
+ * 文ごとに数える回のそれぞれで数えたストロークの数の最大を取り、全文で足した数にする。
+ * 文ごとの数はその文で数えた回のどれか1回の数に等しく、同じ打鍵を2回目と3回目で数え直して下限を満たすことが無い。
  */
 export function measureSentence(
   samples: readonly SentenceSample[],
   calibration: PlaybackCalibration,
 ): SentenceMeasurement {
   const differences: Record<StrokeStructureKind, number[]> = { arpeggio: [], chain: [], other: [] };
-  const positions: Record<StrokeStructureKind, Set<string>> = { arpeggio: new Set(), chain: new Set(), other: new Set() };
+  const maxPerSentence = new Map<number, Record<StrokeStructureKind, number>>();
   for (const { sentence, analysis, taps } of samples) {
     const kinds = strokeStructureKinds(analysis);
-    const where = strokePositions(sentence, analysis.strokes);
+    const round = { arpeggio: 0, chain: 0, other: 0 };
     for (let index = 1; index < analysis.strokes.length; index++) {
       const tap = taps[index];
       const previous = taps[index - 1];
@@ -132,14 +117,17 @@ export function measureSentence(
       const normalMs = playbackNormalMs(analysis, index, calibration);
       if (!Number.isFinite(normalMs)) continue;
       differences[kinds[index]].push(tap.atMs - previous.atMs - normalMs);
-      positions[kinds[index]].add(where[index]);
+      round[kinds[index]] += 1;
     }
+    const best = maxPerSentence.get(sentence) ?? { arpeggio: 0, chain: 0, other: 0 };
+    for (const kind of STROKE_STRUCTURE_KINDS) best[kind] = Math.max(best[kind], round[kind]);
+    maxPerSentence.set(sentence, best);
   }
 
   const counts = { arpeggio: 0, chain: 0, other: 0 };
   const overheadMs: Partial<Record<StrokeStructureKind, number>> = {};
   for (const kind of STROKE_STRUCTURE_KINDS) {
-    counts[kind] = positions[kind].size;
+    for (const best of maxPerSentence.values()) counts[kind] += best[kind];
     if (counts[kind] >= SENTENCE_MIN_SAMPLES) overheadMs[kind] = Math.max(0, medianOf(differences[kind]));
   }
   return { counts, overheadMs };
