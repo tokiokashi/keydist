@@ -13,10 +13,11 @@ import { strokeStructureKinds } from './stroke-structure.ts';
 /**
  * 文章を打つ測定（`spec/playback-timing.md` §6.4）の計算。構造の種類ごとに、同指連続を含まない
  * ストロークの実際の間隔から連打の時間（`normalMs`）を引いた差の中央値を、連打との差にする。
+ * 数えるのは、覚えた文を繰り返し打つ2回目以降だけ。
  * 時刻は呼び出し側が渡すので、描画にもタイマーにも依存しない。
  */
 
-/** 種類ごとの連打との差を保存する、数えたストロークの最小数。これ未満の種類は保存しない。 */
+/** 種類ごとの連打との差を保存する、数えたストロークの最小数（文ごとに数える回の最大を全文で足した数）。これ未満の種類は保存しない。 */
 export const SENTENCE_MIN_SAMPLES = 10;
 
 /** 打ち終えたストローク1つの記録。 */
@@ -82,31 +83,51 @@ function medianOf(values: readonly number[]): number {
   return sorted.length % 2 === 1 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
 }
 
+/** 数える回（2回目以降）1回分の、打った綴りで作った打鍵の列と構造、ストロークごとの記録。 */
+export interface SentenceSample {
+  /** 示した文の番号。下限に使う数を文ごとに求める。 */
+  readonly sentence: number;
+  readonly analysis: SentenceAnalysis;
+  /** `analysis.strokes`と同じ長さ。 */
+  readonly taps: readonly SentenceTap[];
+}
+
 /**
- * 打ち終えたストロークの記録から、種類ごとの連打との差を求める。`taps`は`analysis.strokes`と同じ長さ。
- * 最初のストローク、違うキーを押したストローク、同指連続を含むストロークは数えない。
+ * 数える回の記録から、種類ごとの連打との差を求める。回ごとに、最初のストローク（直前の時刻が無い）、
+ * 違うキーを押したストローク、同指連続を含むストロークは数えない。
+ * 差の中央値は、数えたストロークの全部から取る。
+ * 数えた数（`counts`。種類ごとの下限`SENTENCE_MIN_SAMPLES`の判定にも、画面と知らせにも使う）は、
+ * 文ごとに数える回のそれぞれで数えたストロークの数の最大を取り、全文で足した数にする。
+ * 文ごとの数はその文で数えた回のどれか1回の数に等しく、同じ打鍵を2回目と3回目で数え直して下限を満たすことが無い。
  */
 export function measureSentence(
-  analysis: SentenceAnalysis,
+  samples: readonly SentenceSample[],
   calibration: PlaybackCalibration,
-  taps: readonly SentenceTap[],
 ): SentenceMeasurement {
-  const kinds = strokeStructureKinds(analysis);
   const differences: Record<StrokeStructureKind, number[]> = { arpeggio: [], chain: [], other: [] };
-  for (let index = 1; index < analysis.strokes.length; index++) {
-    const tap = taps[index];
-    const previous = taps[index - 1];
-    if (tap === undefined || previous === undefined || !tap.clean) continue;
-    if (analysis.strokes[index].presses.some((press) => press.sfb)) continue;
-    const normalMs = playbackNormalMs(analysis, index, calibration);
-    if (!Number.isFinite(normalMs)) continue;
-    differences[kinds[index]].push(tap.atMs - previous.atMs - normalMs);
+  const maxPerSentence = new Map<number, Record<StrokeStructureKind, number>>();
+  for (const { sentence, analysis, taps } of samples) {
+    const kinds = strokeStructureKinds(analysis);
+    const round = { arpeggio: 0, chain: 0, other: 0 };
+    for (let index = 1; index < analysis.strokes.length; index++) {
+      const tap = taps[index];
+      const previous = taps[index - 1];
+      if (tap === undefined || previous === undefined || !tap.clean) continue;
+      if (analysis.strokes[index].presses.some((press) => press.sfb)) continue;
+      const normalMs = playbackNormalMs(analysis, index, calibration);
+      if (!Number.isFinite(normalMs)) continue;
+      differences[kinds[index]].push(tap.atMs - previous.atMs - normalMs);
+      round[kinds[index]] += 1;
+    }
+    const best = maxPerSentence.get(sentence) ?? { arpeggio: 0, chain: 0, other: 0 };
+    for (const kind of STROKE_STRUCTURE_KINDS) best[kind] = Math.max(best[kind], round[kind]);
+    maxPerSentence.set(sentence, best);
   }
 
   const counts = { arpeggio: 0, chain: 0, other: 0 };
   const overheadMs: Partial<Record<StrokeStructureKind, number>> = {};
   for (const kind of STROKE_STRUCTURE_KINDS) {
-    counts[kind] = differences[kind].length;
+    for (const best of maxPerSentence.values()) counts[kind] += best[kind];
     if (counts[kind] >= SENTENCE_MIN_SAMPLES) overheadMs[kind] = Math.max(0, medianOf(differences[kind]));
   }
   return { counts, overheadMs };
@@ -129,15 +150,14 @@ export type ApplySentenceResult =
  */
 export function applySentenceMeasurement(
   base: PlaybackCalibration | undefined,
-  analysis: SentenceAnalysis,
-  taps: readonly SentenceTap[],
+  samples: readonly SentenceSample[],
   nowMs: number,
   /** 保存の時点の保存値。測定を始めた時の保存値`base`と違えば保存しない。 */
   current: PlaybackCalibration | undefined,
 ): ApplySentenceResult {
   if (base === undefined) return { ok: false, reason: 'no-saved-value' };
   if (!sameValue(base, current)) return { ok: false, reason: 'changed' };
-  const measurement = measureSentence(analysis, base, taps);
+  const measurement = measureSentence(samples, base);
   if (Object.keys(measurement.overheadMs).length === 0) return { ok: false, reason: 'too-few', measurement };
   const inRange = Object.values(measurement.overheadMs).every((value) =>
     value >= CALIBRATION_OVERHEAD_MS_MIN && value <= CALIBRATION_OVERHEAD_MS_MAX);

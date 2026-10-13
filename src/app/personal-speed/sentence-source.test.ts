@@ -2,9 +2,21 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { EMPTY_SETTINGS_OVERRIDES, setSettingsOverride, type SettingsCascadeOverrides } from '#engine/settings-items.ts';
 import type { PersonalSpeedSelection } from '#editors/personal-speed/PersonalSpeedEditor.tsx';
-import { MEASUREMENT_SENTENCE } from '#editors/personal-speed/calibration-text.ts';
+import { MEASUREMENT_SENTENCES } from '#editors/personal-speed/calibration-text.ts';
 import { calibrationKeyLabel } from '#interpretation/timing/calibration-session.ts';
-import { pressSentenceKey, sentenceRunFinished, sentenceSteps, sentenceUnmeasurable, startSentenceRun, stepsSentencePlan } from '#interpretation/timing/sentence-session.ts';
+import {
+  SENTENCE_ROUNDS,
+  pressSentenceKey,
+  pressSentenceSessionKey,
+  sentenceRunFinished,
+  sentenceSessionFinished,
+  sentenceSteps,
+  sentenceUnmeasurable,
+  startSentenceRun,
+  startSentenceSession,
+  stepsSentencePlan,
+  type SentenceStep,
+} from '#interpretation/timing/sentence-session.ts';
 import { strokeStructureKinds } from '#interpretation/timing/stroke-structure.ts';
 import { paneCatalog } from '../standalone/catalog.ts';
 import { personalSpeedSentenceBuilder } from './sentence-source.ts';
@@ -51,16 +63,42 @@ test('画面で選んだ物理配列を使い、配列のレベルの上書き�
   assert.deepEqual(targetOf('column-staggered', layoutLevel), columnStaggered);
 });
 
-test('構造は再生と同じ構造解析の結果で、示す文にArpeggio・Chain・その他のどれも出る', () => {
-  const result = builderWith(EMPTY_SETTINGS_OVERRIDES)(SELECTION, MEASUREMENT_SENTENCE);
-  assert.ok(result.ok);
-  const kinds = new Set(strokeStructureKinds(result.analysis));
-  assert.deepEqual([...kinds].sort(), ['arpeggio', 'chain', 'other']);
-  assert.equal(sentenceUnmeasurable(sentenceSteps(result.analysis)), undefined);
+test('示す文は6本以上で、どれもかな15〜25文字の短い文', () => {
+  assert.ok(MEASUREMENT_SENTENCES.length >= 6);
+  for (const sentence of MEASUREMENT_SENTENCES) {
+    const length = [...sentence].length;
+    assert.ok(length >= 15 && length <= 25, `${sentence}: ${length}`);
+  }
+});
+
+/** 各文の1回分の打鍵の列で、最初のストロークと同指連続を含むストロークを除いて数えた、種類ごとの打鍵の数の合計。 */
+function countedPerKind(layoutId: string) {
+  const counts = { arpeggio: 0, chain: 0, other: 0 };
+  for (const sentence of MEASUREMENT_SENTENCES) {
+    const result = builderWith(EMPTY_SETTINGS_OVERRIDES)({ ...SELECTION, layoutId }, sentence);
+    assert.ok(result.ok, `${layoutId}: ${sentence}`);
+    assert.equal(sentenceUnmeasurable(sentenceSteps(result.analysis)), undefined, layoutId);
+    const kinds = strokeStructureKinds(result.analysis);
+    result.analysis.strokes.forEach((stroke, index) => {
+      if (index === 0 || stroke.presses.some((press) => press.sfb)) return;
+      counts[kinds[index]] += 1;
+    });
+  }
+  return counts;
+}
+
+test('確かめる配列のそれぞれで、示す文の全文の合計がArpeggio・Chain・その他のどれも10打以上になる', () => {
+  // QWERTYは訓令式の綴り。かなの配列は、組み込みのうち測定できるもの。
+  for (const layoutId of ['qwerty', 'shingeta', 'tsuki-2-263']) {
+    const counts = countedPerKind(layoutId);
+    for (const kind of ['arpeggio', 'chain', 'other'] as const) {
+      assert.ok(counts[kind] >= 10, `${layoutId} ${kind}: ${counts[kind]}`);
+    }
+  }
 });
 
 test('Spaceや修飾キーを押しながら打つ配列は作れるが、測れない', () => {
-  const result = builderWith(EMPTY_SETTINGS_OVERRIDES)({ ...SELECTION, layoutId: 'nicola' }, MEASUREMENT_SENTENCE);
+  const result = builderWith(EMPTY_SETTINGS_OVERRIDES)({ ...SELECTION, layoutId: 'nicola' }, MEASUREMENT_SENTENCES[0]);
   assert.ok(result.ok);
   assert.equal(sentenceUnmeasurable(sentenceSteps(result.analysis)), 'uncapturable-key');
 });
@@ -101,28 +139,41 @@ function codeOfKeyId(id: string): string {
 }
 
 /**
- * TK音直入力法で`text`を打つ。画面と同じ刻印（`calibrationKeyLabel`）で照合する。
+ * 1ステップを打つ押下の列。画面と同じ刻印（`calibrationKeyLabel`）で照合する。
  * `output`が真なら、コンボは出力の文字を、それ以外は刻印の文字を送り、`code`は送る文字の位置にする。
  * 偽なら、`key`に刻印の文字、`code`にキーのidの物理位置を送る。
  */
-function playTkText(text: string, output: boolean) {
+function pressesOf(step: SentenceStep, output: boolean, keyLabel: (id: string) => string) {
+  return output && step.outputChars !== undefined
+    ? step.outputChars.map((char) => ({ key: char, code: codeOfKeyId(char) }))
+    : step.keys.map((id) => (output
+      ? { key: keyLabel(id), code: codeOfKeyId(keyLabel(id).toLowerCase()) }
+      : { key: keyLabel(id), code: codeOfKeyId(id) }));
+}
+
+function tkContext(texts: readonly string[]) {
   const layout = paneCatalog(BASE).setupCatalog.layouts.get('oonishi-custom');
   assert.ok(layout !== undefined);
   const keyLabel = (id: string) => calibrationKeyLabel(layout.legends, id);
-  const result = builderWith(EMPTY_SETTINGS_OVERRIDES)({ ...SELECTION, layoutId: 'oonishi-custom' }, text);
-  assert.ok(result.ok);
-  const steps = sentenceSteps(result.analysis);
-  assert.equal(sentenceUnmeasurable(steps), undefined);
+  const stepsOf = texts.map((text) => {
+    const result = builderWith(EMPTY_SETTINGS_OVERRIDES)({ ...SELECTION, layoutId: 'oonishi-custom' }, text);
+    assert.ok(result.ok);
+    const steps = sentenceSteps(result.analysis);
+    assert.equal(sentenceUnmeasurable(steps), undefined);
+    return steps;
+  });
+  return { keyLabel, stepsOf };
+}
+
+/** TK音直入力法で`text`を1回打つ。 */
+function playTkText(text: string, output: boolean) {
+  const { keyLabel, stepsOf } = tkContext([text]);
+  const steps = stepsOf[0];
   let run = startSentenceRun(stepsSentencePlan(steps, () => undefined));
   const outcomes: string[] = [];
   let atMs = 0;
   for (const step of steps) {
-    const events = output && step.outputChars !== undefined
-      ? step.outputChars.map((char) => ({ key: char, code: codeOfKeyId(char) }))
-      : step.keys.map((id) => (output
-        ? { key: keyLabel(id), code: codeOfKeyId(keyLabel(id).toLowerCase()) }
-        : { key: keyLabel(id), code: codeOfKeyId(id) }));
-    for (const event of events) {
+    for (const event of pressesOf(step, output, keyLabel)) {
       atMs += 100;
       const pressed = pressSentenceKey(run, event, atMs, keyLabel);
       run = pressed.run;
@@ -132,14 +183,41 @@ function playTkText(text: string, output: boolean) {
   return { steps, run, outcomes };
 }
 
-test('TK音直入力法の示す文は、押すキーでも出力の文字でも、違うキーを出さずに最後まで進む', () => {
-  for (const output of [false, true]) {
-    const { steps, run, outcomes } = playTkText(MEASUREMENT_SENTENCE, output);
-    assert.ok(steps.some((step) => step.outputChars !== undefined));
-    assert.ok(!outcomes.includes('wrong-key'), `output=${output}`);
-    assert.ok(sentenceRunFinished(run), `output=${output}`);
-    assert.ok(run.taps.every((tap) => tap.clean));
+/** TK音直入力法で、示す文の全部を、文ごとに続けて回数分打つ（測定の進行と同じ）。 */
+function playTkSession(texts: readonly string[], output: boolean) {
+  const { keyLabel, stepsOf } = tkContext(texts);
+  let session = startSentenceSession(stepsOf.map((steps) => stepsSentencePlan(steps, () => undefined)));
+  const outcomes: string[] = [];
+  let atMs = 0;
+  for (const steps of stepsOf) {
+    for (let round = 0; round < SENTENCE_ROUNDS; round++) {
+      for (const step of steps) {
+        for (const event of pressesOf(step, output, keyLabel)) {
+          atMs += 100;
+          const pressed = pressSentenceSessionKey(session, event, atMs, keyLabel);
+          session = pressed.session;
+          outcomes.push(pressed.outcome.kind);
+        }
+      }
+    }
   }
+  return { session, outcomes };
+}
+
+test('TK音直入力法の示す文は、押すキーでも出力の文字でも、違うキーを出さずに全文を回数分、最後まで進む', () => {
+  for (const output of [false, true]) {
+    const { session, outcomes } = playTkSession(MEASUREMENT_SENTENCES, output);
+    assert.ok(!outcomes.includes('wrong-key'), `output=${output}`);
+    assert.ok(sentenceSessionFinished(session), `output=${output}`);
+    assert.equal(session.records.length, MEASUREMENT_SENTENCES.length * SENTENCE_ROUNDS);
+    assert.ok(session.records.every((record) => record.taps.every((tap) => tap.clean)), `output=${output}`);
+  }
+});
+
+test('TK音直入力法の示す文に、出力の文字で打つコンボがあり、aeの並びは無い', () => {
+  assert.ok(MEASUREMENT_SENTENCES.every((sentence) => !sentence.includes('あえ')));
+  const { stepsOf } = tkContext(MEASUREMENT_SENTENCES);
+  assert.ok(stepsOf.flat().some((step) => step.outputChars !== undefined));
 });
 
 test('TK音直入力法で、先に出力の文字で打ったコンボの後は、aeの後に押すキーの残りと同じ文字が続いても違うキーを出さない', () => {

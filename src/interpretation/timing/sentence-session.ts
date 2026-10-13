@@ -1,6 +1,6 @@
 import type { Stroke } from '#trace/generate.ts';
 import { calibrationKeyMatches } from './calibration.ts';
-import type { SentenceAnalysis, SentenceSpellingSource, SentenceTap } from './sentence-measurement.ts';
+import type { SentenceAnalysis, SentenceSample, SentenceSpellingSource, SentenceTap } from './sentence-measurement.ts';
 
 /**
  * 示す文を打つ測定の進行（打つキーの列・打鍵の照合・ストロークごとの時刻の記録）。
@@ -180,7 +180,7 @@ interface StepRun {
 }
 
 /** コンボで打つステップの読み方。`press`は押すキー、`output`は出力の文字。 */
-type ComboReading = 'press' | 'output';
+export type ComboReading = 'press' | 'output';
 
 /** 新しいステップに入った時の、読み方の状態。 */
 function stepStart(steps: readonly SentenceStep[], index: number, reading: ComboReading | undefined) {
@@ -352,6 +352,8 @@ export interface SentenceRun {
   readonly taps: readonly SentenceTap[];
   /** 今の単位で残っている綴り。先頭に近いほど、今の条件のローマ字規則の綴りに近い。 */
   readonly threads: readonly SentenceThread[];
+  /** ここまでに決まったコンボの打ち方。まだ決まっていなければ無い。 */
+  readonly reading: ComboReading | undefined;
 }
 
 /** 単位`unit`の綴りの候補を、打つキーの列が同じものを除いてスレッドにする。 */
@@ -375,8 +377,9 @@ function startUnit(
   return threads;
 }
 
-export function startSentenceRun(plan: SentencePlan): SentenceRun {
-  return { plan, unit: 0, typed: [], taps: [], threads: startUnit(plan, [], [], 0, undefined) };
+/** `reading`は、前の文までに決まったコンボの打ち方。1台のキーボードの送り方は測定の間変わらないので、文をまたいで持ち越す。 */
+export function startSentenceRun(plan: SentencePlan, reading?: ComboReading): SentenceRun {
+  return { plan, unit: 0, typed: [], taps: [], threads: startUnit(plan, [], [], 0, reading), reading };
 }
 
 export function sentenceRunFinished(run: SentenceRun): boolean {
@@ -428,6 +431,7 @@ function commitUnit(run: SentenceRun, thread: SentenceThread, reading: ComboRead
     typed,
     taps,
     threads: unit >= run.plan.units.length ? [] : startUnit(run.plan, typed, taps, unit, reading),
+    reading,
   };
 }
 
@@ -486,4 +490,92 @@ export function pressSentenceKey(
   }
   const stepFinished = advanced.some((result) => result.outcome.kind === 'step-finished');
   return { run: { ...run, threads }, outcome: { kind: stepFinished ? 'step-finished' : 'partial' } };
+}
+
+/** 1本の文を打つ回数。1回目は文を覚える回で、数えない。 */
+export const SENTENCE_ROUNDS = 3;
+
+/** 打ち終えた1回の記録。 */
+export interface SentenceRoundRecord {
+  /** 何本目の文か（0から）。 */
+  readonly sentence: number;
+  /** 何回目か（0から）。0は覚える回で、数えない。 */
+  readonly round: number;
+  /** 打った綴り。 */
+  readonly typed: readonly string[];
+  readonly taps: readonly SentenceTap[];
+}
+
+/**
+ * 短い文を複数本、1本ずつ続けて`rounds`回打つ測定の進行。1回ごとに、その文の`SentenceRun`を新しく始める。
+ * 回をまたぐストロークの間隔は作らない（`taps`は回ごとに別）。コンボの打ち方だけは、測定の全体で持ち越す。
+ */
+export interface SentenceSession {
+  readonly plans: readonly SentencePlan[];
+  readonly rounds: number;
+  /** 今打つ文の位置（0から）。 */
+  readonly sentence: number;
+  /** 今打つ回の位置（0から）。 */
+  readonly round: number;
+  /** 今打つ回の進行。 */
+  readonly run: SentenceRun;
+  /** 打ち終えた回の記録。 */
+  readonly records: readonly SentenceRoundRecord[];
+}
+
+export type SentenceSessionOutcome =
+  | SentencePressOutcome
+  /** 1回を打ち終えて、次の回（次の文の1回目を含む）に進んだ。 */
+  | { readonly kind: 'round-finished' };
+
+export function startSentenceSession(plans: readonly SentencePlan[], rounds: number = SENTENCE_ROUNDS): SentenceSession {
+  return { plans, rounds, sentence: 0, round: 0, run: startSentenceRun(plans[0]), records: [] };
+}
+
+/** 全文の全回が済んでいれば真。 */
+export function sentenceSessionFinished(session: SentenceSession): boolean {
+  return session.records.length >= session.plans.length * session.rounds;
+}
+
+/** 打鍵1つを進行に反映する。1回を打ち終えると記録して次の回を始め、最後の回なら`run-finished`を返す。 */
+export function pressSentenceSessionKey(
+  session: SentenceSession,
+  event: SentenceKeyEvent,
+  atMs: number,
+  keyLabel: (keyId: string) => string,
+): { readonly session: SentenceSession; readonly outcome: SentenceSessionOutcome } {
+  if (sentenceSessionFinished(session)) return { session, outcome: { kind: 'ignored' } };
+  const pressed = pressSentenceKey(session.run, event, atMs, keyLabel);
+  if (pressed.outcome.kind !== 'run-finished') return { session: { ...session, run: pressed.run }, outcome: pressed.outcome };
+
+  const records = [
+    ...session.records,
+    { sentence: session.sentence, round: session.round, typed: pressed.run.typed, taps: pressed.run.taps },
+  ];
+  const last = session.sentence === session.plans.length - 1 && session.round === session.rounds - 1;
+  if (last) return { session: { ...session, run: pressed.run, records }, outcome: pressed.outcome };
+  const sentence = session.round === session.rounds - 1 ? session.sentence + 1 : session.sentence;
+  const round = session.round === session.rounds - 1 ? 0 : session.round + 1;
+  return {
+    session: { ...session, sentence, round, run: startSentenceRun(session.plans[sentence], pressed.run.reading), records },
+    outcome: { kind: 'round-finished' },
+  };
+}
+
+/**
+ * 打ち終えた回の記録から、数える回（2回目以降）の標本を作る。各文の1回目は文を覚える回なので数えない。
+ * 標本の打鍵の列と構造は、回ごとに、打った綴りから作る。作れない回、または打鍵の列のストロークの数が記録と合わない回があれば、無い。
+ */
+export function sentenceSamples(
+  plans: readonly SentencePlan[],
+  records: readonly SentenceRoundRecord[],
+): SentenceSample[] | undefined {
+  const samples: SentenceSample[] = [];
+  for (const record of records) {
+    if (record.round === 0) continue;
+    const analysis = plans[record.sentence].analyze(record.typed);
+    if (analysis === undefined || analysis.strokes.length !== record.taps.length) return undefined;
+    samples.push({ sentence: record.sentence, analysis, taps: record.taps });
+  }
+  return samples;
 }

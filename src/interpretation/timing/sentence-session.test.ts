@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  SENTENCE_ROUNDS,
   pressSentenceKey,
+  pressSentenceSessionKey,
+  sentenceSamples,
+  sentenceSessionFinished,
+  startSentenceSession,
   remainingSentenceKeys,
   sentenceRunFinished,
   sentenceSteps,
@@ -296,4 +301,69 @@ test('1回の入力の選択が複数のストロークになるコンボと、�
     undefined,
     undefined,
   ]);
+});
+
+/** 押下の列を、1つの測定の進行へ順に流す。 */
+function playSession(plans: ReturnType<typeof planOf>[], presses: readonly string[], firstAtMs = 100) {
+  let session = startSentenceSession(plans);
+  const kinds: string[] = [];
+  presses.forEach((key, index) => {
+    const pressed = pressSentenceSessionKey(session, keyEvent(key), firstAtMs + index * 100, label);
+    session = pressed.session;
+    kinds.push(pressed.outcome.kind);
+  });
+  return { session, kinds };
+}
+
+test('文ごとに3回続けて打ち、1回を打ち終えるたびに次の回へ進む。最後の回で全体が済む', () => {
+  const plans = [planOf([step(['a'], 0), step(['s'], 1)]), planOf([step(['d'], 0), step(['f'], 1)])];
+  assert.equal(SENTENCE_ROUNDS, 3);
+  const once = playSession(plans, ['a', 's']);
+  assert.deepEqual(once.kinds, ['step-finished', 'round-finished']);
+  assert.deepEqual([once.session.sentence, once.session.round], [0, 1]);
+  const all = playSession(plans, [...'asasas', ...'dfdfdf']);
+  assert.equal(all.kinds.at(-1), 'run-finished');
+  assert.ok(sentenceSessionFinished(all.session));
+  assert.deepEqual(all.session.records.map((record) => [record.sentence, record.round]), [[0, 0], [0, 1], [0, 2], [1, 0], [1, 1], [1, 2]]);
+});
+
+test('回の記録は回ごとに別で、回をまたぐ間隔は記録に入らない', () => {
+  const plans = [planOf([step(['a'], 0), step(['s'], 1)])];
+  const { session } = playSession(plans, [...'asasas']);
+  for (const record of session.records) assert.equal(record.taps.length, 2);
+  // 2回目の最初のストロークの時刻は、1回目の最後のストロークの時刻とは別の記録にある。
+  assert.deepEqual(session.records[1].taps.map((tap) => tap.atMs), [300, 400]);
+});
+
+test('各文の1回目は数えず、2回目以降だけが標本になる', () => {
+  const plans = [planOf([step(['a'], 0), step(['s'], 1)])];
+  const analysis = { strokes: [{}, {}] } as never;
+  const withAnalysis = [{ ...plans[0], analyze: () => analysis }];
+  const { session } = playSession(withAnalysis, [...'asasas']);
+  const samples = sentenceSamples(withAnalysis, session.records);
+  assert.ok(samples !== undefined);
+  assert.deepEqual(samples.map((sample) => sample.taps.map((tap) => tap.atMs)), [[300, 400], [500, 600]]);
+  // 打った綴りの打鍵の列のストロークの数が記録と合わない回があれば、標本を作らない。
+  const mismatched = [{ ...plans[0], analyze: () => ({ strokes: [{}] }) as never }];
+  assert.equal(sentenceSamples(mismatched, session.records), undefined);
+});
+
+test('決まったコンボの打ち方は、次の文・回へ持ち越す', () => {
+  // 1本目のcomboは出力の文字だけで完了して、出力の読み方に決まる。2本目の最初のストロークは、aeを出力の文字で打った後にIが続くが、
+  // 出力の読み方に決まっているので、出力の読み方で確定して次の押下になる。
+  const first = planOf([comboStep(['i', 'a', 'o'], ['y', 'o', 'u'], 0)]);
+  const second = planOf([comboStep(['a', 'e', 'i'], ['a', 'e'], 0), step(['i'], 1)]);
+  const out = (key: string) => ({ key, code: 'Digit9' });
+  let session = startSentenceSession([first, second], 1);
+  const kinds: string[] = [];
+  let atMs = 0;
+  for (const event of [out('y'), out('o'), out('u'), out('a'), out('e'), keyEvent('i')]) {
+    atMs += 100;
+    const pressed = pressSentenceSessionKey(session, event, atMs, label);
+    session = pressed.session;
+    kinds.push(pressed.outcome.kind);
+  }
+  assert.ok(!kinds.includes('wrong-key'), kinds.join());
+  assert.ok(sentenceSessionFinished(session));
+  assert.equal(session.run.reading, 'output');
 });

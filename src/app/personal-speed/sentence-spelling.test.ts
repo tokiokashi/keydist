@@ -2,9 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { EMPTY_SETTINGS_OVERRIDES, setSettingsOverride, type SettingsCascadeOverrides } from '#engine/settings-items.ts';
 import type { PersonalSpeedSelection } from '#editors/personal-speed/PersonalSpeedEditor.tsx';
-import { MEASUREMENT_SENTENCE } from '#editors/personal-speed/calibration-text.ts';
 import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
-import { applySentenceMeasurement } from '#interpretation/timing/sentence-measurement.ts';
+import { applySentenceMeasurement, measureSentence } from '#interpretation/timing/sentence-measurement.ts';
 import {
   pressSentenceKey,
   remainingSentenceKeys,
@@ -67,7 +66,7 @@ function usualSpelling(kana: string, spellings: readonly string[]): string {
 }
 
 test('訓令式の条件のQWERTYで、shi・chi・tsu・shaと子音の前のn1打を混ぜて示す文を打ち切れ、値は打った綴りの打鍵の列から求める', () => {
-  const { result, plan } = planOf(MEASUREMENT_SENTENCE);
+  const { result, plan } = planOf('でんしゃがおくれてかいしゃにちこくしたつくえ');
   assert.ok(result.spelling !== undefined);
   const spelled = plan.units.map((unit) => usualSpelling(unit.text, unit.spellings));
   // 「ん」のn1打を選んだ単位の次は、次の単位の最初のキーで確定する。
@@ -85,7 +84,7 @@ test('訓令式の条件のQWERTYで、shi・chi・tsu・shaと子音の前のn1
   assert.equal(analysis.strokes.map((stroke) => stroke.char).join(''), keys);
   assert.notEqual(result.analysis.strokes.length, run.taps.length);
 
-  const saved = applySentenceMeasurement(SAVED, analysis, run.taps.map((tap, index) => ({ ...tap, atMs: index * 300 })), 2, SAVED);
+  const saved = applySentenceMeasurement(SAVED, [{ sentence: 0, analysis, taps: run.taps.map((tap, index) => ({ ...tap, atMs: index * 300 })) }], 2, SAVED);
   assert.ok(saved.ok);
   assert.ok(Object.values(saved.measurement.counts).reduce((a, b) => a + b, 0) > 0);
 });
@@ -208,4 +207,32 @@ test('ローマ字だけで成立するコンボを持つ配列（TK音直入力
 
 test('かな配列は綴りを選べない', () => {
   assert.equal(build('しゃしんです', { layoutId: 'nicola' }).spelling, undefined);
+});
+
+test('回ごとに綴りが違っても、文ごと・構造の種類ごとの下限の数は、その文で数えた回のどれか1回の数に等しい', () => {
+  const texts = ['なつやすみにはうみへあそびにいきたい', 'でんしゃがおくれてかいしゃにちこくした', 'こんしゅうのどようびにえいがをみにいく'];
+  const kinds = ['arpeggio', 'chain', 'other'] as const;
+  for (const text of texts) {
+    const { plan } = planOf(text);
+    const sampleOf = (pick: (spellings: readonly string[], kana: string) => string) => {
+      const analysis = plan.analyze(plan.units.map((unit) => pick(unit.spellings, unit.text)));
+      assert.ok(analysis !== undefined);
+      return { sentence: 0, analysis, taps: analysis.strokes.map((_, index) => ({ atMs: index * 300, clean: true })) };
+    };
+    const rule = sampleOf((spellings) => spellings[0]);
+    // つはtu、nは1打、候補の最後の綴りなど、綴りの長さが違う回。
+    const variants = [
+      sampleOf((spellings) => spellings[spellings.length - 1]),
+      sampleOf((spellings, kana) => (kana === 'つ' ? 'tu' : kana === 'ん' ? 'n' : spellings[0])),
+      sampleOf((spellings, kana) => (kana === 'つ' ? 'tsu' : kana === 'ん' ? 'nn' : spellings[0])),
+      sampleOf((spellings) => spellings[Math.min(1, spellings.length - 1)]),
+    ];
+    for (const mix of [[rule, variants[0]], [variants[1], variants[2]], [variants[3], rule], [variants[2], variants[1], rule]]) {
+      const counts = measureSentence(mix, SAVED).counts;
+      const each = mix.map((sample) => measureSentence([sample], SAVED).counts);
+      for (const kind of kinds) {
+        assert.equal(counts[kind], Math.max(...each.map((one) => one[kind])), `${text} ${kind}`);
+      }
+    }
+  }
 });
