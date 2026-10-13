@@ -24,12 +24,13 @@ import {
 import { applySentenceMeasurement, type SentenceBuildResult } from '#interpretation/timing/sentence-measurement.ts';
 import {
   remainingSentenceKeys,
+  remainingSentenceStrokes,
+  sentencePlan,
   sentenceSteps,
-  sentenceUnits,
   sentenceUnmeasurable,
+  upcomingSentenceSteps,
+  type SentencePlan,
   type SentenceRun,
-  type SentenceStep,
-  type SentenceUnit,
 } from '#interpretation/timing/sentence-session.ts';
 import type { SentenceAnalysis } from '#interpretation/timing/sentence-measurement.ts';
 import {
@@ -43,6 +44,7 @@ import {
   MEASUREMENT_SENTENCE,
   PERSONAL_SPEED_PURPOSE,
   savedMessage,
+  SENTENCE_UNMEASURED_TEXT,
   sentenceFailureText,
   sentenceSavedMessage,
   sentenceUnmeasurableText,
@@ -94,8 +96,7 @@ type SentenceSetup =
   | {
       readonly ok: true;
       readonly analysis: SentenceAnalysis;
-      readonly steps: readonly SentenceStep[];
-      readonly units: readonly SentenceUnit[];
+      readonly plan: SentencePlan;
     }
   | { readonly ok: false; readonly message: string };
 
@@ -104,17 +105,17 @@ function sentenceSetupOf(build: SentenceBuildResult): SentenceSetup {
   const steps = sentenceSteps(build.analysis);
   const unmeasurable = sentenceUnmeasurable(steps);
   return unmeasurable === undefined
-    ? { ok: true, analysis: build.analysis, steps, units: sentenceUnits(steps) }
+    ? { ok: true, analysis: build.analysis, plan: sentencePlan(build.analysis, build.spelling) }
     : { ok: false, message: sentenceUnmeasurableText(unmeasurable) };
 }
 
 /** 示す文と、打つ位置の表示。打ち終えた入力単位・今の入力単位・まだの入力単位に分けて見せる。 */
-function SentenceText({ units, run }: { readonly units: readonly SentenceUnit[]; readonly run: SentenceRun | undefined }) {
+function SentenceText({ plan, run }: { readonly plan: SentencePlan; readonly run: SentenceRun | undefined }) {
   return (
     <p className="personal-speed-sentence" data-personal-speed-sentence>
-      {units.map((unit) => {
-        const state = run === undefined ? 'rest' : run.index >= unit.end ? 'done' : run.index >= unit.start ? 'current' : 'rest';
-        return <span key={unit.start} data-sentence-unit={state}>{unit.text}</span>;
+      {plan.units.map((unit, index) => {
+        const state = run === undefined ? 'rest' : run.unit > index ? 'done' : run.unit === index ? 'current' : 'rest';
+        return <span key={index} data-sentence-unit={state}>{unit.text}</span>;
       })}
     </p>
   );
@@ -275,7 +276,13 @@ export function PersonalSpeedEditor({
     sentenceStartRef.current = undefined;
     setSentenceStart(undefined);
     if (started === undefined) return;
-    const result = applySentenceMeasurement(started.calibration, started.setup.analysis, run.taps, Date.now(), calibration);
+    // 値は、示した綴りではなく、打った綴りで作った打鍵の列と構造から求める。
+    const typedAnalysis = started.setup.plan.analyze(run.typed);
+    if (typedAnalysis === undefined || typedAnalysis.strokes.length !== run.taps.length) {
+      setError(SENTENCE_UNMEASURED_TEXT);
+      return;
+    }
+    const result = applySentenceMeasurement(started.calibration, typedAnalysis, run.taps, Date.now(), calibration);
     if (!result.ok) {
       setError(sentenceFailureText(result));
       return;
@@ -315,7 +322,7 @@ export function PersonalSpeedEditor({
     opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setMessage('');
     setError('');
-    sentenceRunner.start(sentence.steps);
+    sentenceRunner.start(sentence.plan);
   };
   const cancelSentence = () => {
     sentenceStartRef.current = undefined;
@@ -324,11 +331,10 @@ export function PersonalSpeedEditor({
   };
   const sentenceRun = sentenceRunner.run;
   const runningSentence = sentenceStart?.setup;
-  const sentenceStep = sentenceRun === undefined ? undefined : sentenceRun.steps[sentenceRun.index];
   const nextSentenceKeys = sentenceRun === undefined ? [] : remainingSentenceKeys(sentenceRun);
   const upcomingSentenceKeys = sentenceRun === undefined
     ? []
-    : sentenceRun.steps.slice(sentenceRun.index + 1, sentenceRun.index + 9).map((step) => step.keys.map(keyLabel).join('+'));
+    : upcomingSentenceSteps(sentenceRun, 8).map((step) => step.keys.map(keyLabel).join('+'));
 
   const saveValues = () => {
     const parsed = parseCalibrationForm(values, Date.now());
@@ -446,7 +452,7 @@ export function PersonalSpeedEditor({
             <div className="personal-speed-measurement">
               <h3>文章を打つ速さ</h3>
               <p className="personal-speed-note">{MEASUREMENT_DESCRIPTION.sentence}</p>
-              {sentence?.ok === true ? <SentenceText units={sentence.units} run={undefined} /> : null}
+              {sentence?.ok === true ? <SentenceText plan={sentence.plan} run={undefined} /> : null}
               {sentence?.ok === false ? <p className="personal-speed-warning" role="alert" data-personal-speed-sentence-unavailable>{sentence.message}</p> : null}
               <div className="personal-speed-actions">
                 <button type="button" data-personal-speed-start="sentence" disabled={sentenceDisabled} onClick={startSentence}>
@@ -460,9 +466,9 @@ export function PersonalSpeedEditor({
                 hidden={sentenceRun === undefined}
                 data-personal-speed-sentence-run={sentenceRun === undefined ? undefined : 'active'}
               >
-                {sentenceRun === undefined || runningSentence === undefined || sentenceStep === undefined ? null : (
+                {sentenceRun === undefined || runningSentence === undefined ? null : (
                   <>
-                    <SentenceText units={runningSentence.units} run={sentenceRun} />
+                    <SentenceText plan={runningSentence.plan} run={sentenceRun} />
                     <p className="personal-speed-instruction">
                       次に打つキー:{' '}
                       <span data-personal-speed-next>
@@ -473,7 +479,7 @@ export function PersonalSpeedEditor({
                       この後: {upcomingSentenceKeys.join(' ')}
                     </p>
                     <p className="personal-speed-progress" data-personal-speed-sentence-progress>
-                      あと{sentenceRun.steps.length - sentenceRun.index}打
+                      あと{remainingSentenceStrokes(sentenceRun)}打
                     </p>
                     <p className="personal-speed-warning" role="status">{sentenceRunner.wrongKey === undefined ? '' : wrongKeyText(sentenceRunner.wrongKey)}</p>
                     <button type="button" data-personal-speed-sentence-cancel onClick={cancelSentence}>中止</button>

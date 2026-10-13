@@ -3,7 +3,7 @@ import {
   pressSentenceKey,
   startSentenceRun,
   type SentenceRun,
-  type SentenceStep,
+  type SentencePlan,
 } from '#interpretation/timing/sentence-session.ts';
 import { captureCalibrationKeys } from './key-capture.ts';
 
@@ -19,7 +19,7 @@ export interface SentenceRunController {
   readonly run: SentenceRun | undefined;
   /** 直前の打鍵が違うキーだった時の、次に打つキーの名前。次の正しい打鍵で消える。 */
   readonly wrongKey: string | undefined;
-  start(steps: readonly SentenceStep[]): void;
+  start(plan: SentencePlan): void;
   cancel(): void;
 }
 
@@ -67,9 +67,9 @@ export function useSentenceRun(options: SentenceRunOptions): SentenceRunControll
     });
   }, [active]);
 
-  const start = useCallback((steps: readonly SentenceStep[]) => {
-    if (steps.length === 0) return;
-    const next = startSentenceRun(steps);
+  const start = useCallback((plan: SentencePlan) => {
+    if (plan.units.length === 0) return;
+    const next = startSentenceRun(plan);
     runRef.current = next;
     setWrongKey(undefined);
     setRun(next);

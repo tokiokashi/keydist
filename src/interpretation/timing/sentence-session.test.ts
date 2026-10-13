@@ -5,7 +5,7 @@ import {
   remainingSentenceKeys,
   sentenceRunFinished,
   sentenceSteps,
-  sentenceUnits,
+  stepsSentencePlan,
   sentenceUnmeasurable,
   startSentenceRun,
   type SentenceRun,
@@ -15,13 +15,14 @@ import {
 const step = (keys: string[], inputIndex: number, inputChar = String(inputIndex)): SentenceStep => ({ keys, inputIndex, inputChar });
 const keyEvent = (key: string) => ({ key, code: `Key${key.toUpperCase()}` });
 const label = (id: string) => id.toUpperCase();
+const planOf = (steps: readonly SentenceStep[]) => stepsSentencePlan(steps, () => undefined);
 
 function press(run: SentenceRun, key: string, atMs: number) {
   return pressSentenceKey(run, keyEvent(key), atMs, label);
 }
 
 test('正しいキーを順に押すと、ストロークごとの時刻が記録される', () => {
-  let run = startSentenceRun([step(['a'], 0), step(['s'], 1), step(['d'], 2)]);
+  let run = startSentenceRun(planOf([step(['a'], 0), step(['s'], 1), step(['d'], 2)]));
   for (const [key, atMs, kind] of [['a', 100, 'step-finished'], ['s', 250, 'step-finished'], ['d', 400, 'run-finished']] as const) {
     const pressed = press(run, key, atMs);
     assert.equal(pressed.outcome.kind, kind);
@@ -32,11 +33,11 @@ test('正しいキーを順に押すと、ストロークごとの時刻が記�
 });
 
 test('違うキーを押すと知らされ、そのストロークの間隔は数えない。次のストロークは数える', () => {
-  let run = startSentenceRun([step(['a'], 0), step(['s'], 1), step(['d'], 2)]);
+  let run = startSentenceRun(planOf([step(['a'], 0), step(['s'], 1), step(['d'], 2)]));
   run = press(run, 'a', 100).run;
   const wrong = press(run, 'x', 150);
   assert.deepEqual(wrong.outcome, { kind: 'wrong-key', expectedKey: 's', expectedIsOutput: false });
-  assert.equal(wrong.run.index, 1);
+  assert.equal(wrong.run.unit, 1);
   run = press(wrong.run, 's', 300).run;
   run = press(run, 'd', 450).run;
   assert.deepEqual(run.taps.map((tap) => tap.clean), [true, false, true]);
@@ -44,7 +45,7 @@ test('違うキーを押すと知らされ、そのストロークの間隔は�
 });
 
 test('同時に押すキーは順不同で、ストロークの時刻は最初の押下の時刻になる', () => {
-  let run = startSentenceRun([step(['a'], 0), step(['s', 'd'], 1)]);
+  let run = startSentenceRun(planOf([step(['a'], 0), step(['s', 'd'], 1)]));
   run = press(run, 'a', 100).run;
   const first = press(run, 'd', 220);
   assert.equal(first.outcome.kind, 'partial');
@@ -55,15 +56,15 @@ test('同時に押すキーは順不同で、ストロークの時刻は最初�
 });
 
 test('同時に押すキーのうち、すでに押したキーをもう一度押すと違うキーとして扱う', () => {
-  let run = startSentenceRun([step(['s', 'd'], 0)]);
+  let run = startSentenceRun(planOf([step(['s', 'd'], 0)]));
   run = press(run, 's', 100).run;
   const again = press(run, 's', 120);
   assert.equal(again.outcome.kind, 'wrong-key');
-  assert.equal(again.run.clean, false);
+  assert.equal(again.run.threads[0].run.clean, false);
 });
 
 test('前のストロークの時刻より後でない押下は無視する', () => {
-  let run = startSentenceRun([step(['a'], 0), step(['s'], 1)]);
+  let run = startSentenceRun(planOf([step(['a'], 0), step(['s'], 1)]));
   run = press(run, 'a', 100).run;
   const ignored = press(run, 's', 100);
   assert.equal(ignored.outcome.kind, 'ignored');
@@ -80,8 +81,9 @@ test('Space・修飾キー・親指キーなど、取れないキーが要る列
 });
 
 test('同じ入力単位を打つステップをまとめて、かな1文字ずつにする', () => {
-  const units = sentenceUnits([step(['s'], 0, 'し'), step(['i'], 0, 'し'), step(['a'], 1, 'あ')]);
-  assert.deepEqual(units, [{ text: 'し', start: 0, end: 2 }, { text: 'あ', start: 2, end: 3 }]);
+  const plan = planOf([step(['s'], 0, 'し'), step(['i'], 0, 'し'), step(['a'], 1, 'あ')]);
+  assert.deepEqual(plan.units.map((unit) => unit.text), ['し', 'あ']);
+  assert.deepEqual(plan.baseSteps.map((steps) => steps.length), [2, 1]);
 });
 
 // コンボで打つストロークの出力の文字は、物理位置が違っても文字（key）だけで照合する。
@@ -90,7 +92,7 @@ const comboStep = (keys: string[], outputChars: string[], inputIndex: number): S
 
 /** 押下の列を順に流して、各押下の結果を返す。 */
 function play(steps: SentenceStep[], presses: readonly (string | readonly [string, 'out'])[]) {
-  let run = startSentenceRun(steps);
+  let run = startSentenceRun(planOf(steps));
   const kinds: string[] = [];
   presses.forEach((entry, i) => {
     const pressed = pressSentenceKey(
@@ -118,9 +120,9 @@ test('コンボで打つストロークは、押すキーの押下だけでも�
 test('出力の文字は物理位置ではなく文字だけで照合し、押すキーは文字でも物理位置でも照合する', () => {
   const steps = [comboStep(['i', 'a'], ['q', 'w'], 0)];
   // 出力の文字は、物理位置がQ・Wのキーでも、文字がq・wでなければ受け付けない。
-  assert.equal(pressSentenceKey(startSentenceRun(steps), { key: 'x', code: 'KeyQ' }, 100, label).outcome.kind, 'wrong-key');
+  assert.equal(pressSentenceKey(startSentenceRun(planOf(steps)), { key: 'x', code: 'KeyQ' }, 100, label).outcome.kind, 'wrong-key');
   // 押すキーは、文字がIでなくても物理位置がIなら受け付ける。
-  assert.equal(pressSentenceKey(startSentenceRun(steps), { key: 'x', code: 'KeyI' }, 100, label).outcome.kind, 'partial');
+  assert.equal(pressSentenceKey(startSentenceRun(planOf(steps)), { key: 'x', code: 'KeyI' }, 100, label).outcome.kind, 'partial');
 });
 
 test('2つの読み方が混ざった押下の列は違うキーになり、そのストロークの間隔を数えない', () => {
@@ -137,12 +139,12 @@ test('2つの読み方が混ざった押下の列は違うキーになり、そ�
 
 test('出力の文字の途中で違うキーを押すと、次の出力の文字を案内する', () => {
   const steps = [comboStep(['i', 'a', 'o'], ['y', 'o', 'u'], 0)];
-  let run = startSentenceRun(steps);
+  let run = startSentenceRun(planOf(steps));
   run = pressSentenceKey(run, outputEvent('y'), 100, label).run;
   const wrong = pressSentenceKey(run, outputEvent('x'), 150, label);
   assert.deepEqual(wrong.outcome, { kind: 'wrong-key', expectedKey: 'o', expectedIsOutput: true });
   // 押すキーの読み方が残っている間は、押すキーを案内する。
-  const first = pressSentenceKey(startSentenceRun(steps), keyEvent('i'), 100, label);
+  const first = pressSentenceKey(startSentenceRun(planOf(steps)), keyEvent('i'), 100, label);
   const wrongAfterKey = pressSentenceKey(first.run, keyEvent('x'), 150, label);
   assert.deepEqual(wrongAfterKey.outcome, { kind: 'wrong-key', expectedKey: 'a', expectedIsOutput: false });
 });
@@ -175,7 +177,7 @@ test('一方の読み方の完了が他方の途中にあたるコンボは、�
   const byKeys = play(steps, ['a', 'e', 'i', 's']);
   assert.deepEqual(byKeys.kinds, ['partial', 'partial', 'step-finished', 'run-finished']);
   assert.deepEqual(byKeys.run.taps, [{ atMs: 100, clean: true }, { atMs: 400, clean: true }]);
-  assert.equal(byKeys.run.index, 2);
+  assert.equal(byKeys.run.unit, 2);
 });
 
 test('一方の読み方の完了が他方の途中にあたるコンボは、続きに一致しなければ完了した読み方で確定し、その押下を次のストロークで数える', () => {
@@ -196,9 +198,9 @@ test('完了した読み方で確定した押下が次のストロークの最�
   const steps = [comboStep(['a', 'e', 'i'], ['a', 'e'], 0), step(['s'], 1)];
   const output = play(steps, [['a', 'out'], ['e', 'out'], 'x']);
   assert.deepEqual(output.kinds, ['partial', 'partial', 'wrong-key']);
-  assert.equal(output.run.index, 1);
+  assert.equal(output.run.unit, 1);
   assert.deepEqual(output.run.taps, [{ atMs: 100, clean: true }]);
-  assert.equal(output.run.clean, false);
+  assert.equal(output.run.threads[0].run.clean, false);
 });
 
 test('最後のストロークは、一方の読み方が完了した時点で確定する', () => {

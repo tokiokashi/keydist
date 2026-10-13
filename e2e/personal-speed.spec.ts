@@ -360,3 +360,22 @@ test('示す文を打つのに親指キー・Space・修飾キーなど1文字�
   // 他の測定は使える
   await expect(page.locator('[data-personal-speed-start="directional"]')).toBeEnabled();
 });
+
+test('文章を打つ測定で、示した綴りと違う綴りで打ち始めても進み、続きと残りの打数が打った綴りに合う', async ({ page }) => {
+  await seed(page, { [STORAGE_KEY]: SEEDED });
+  await open(page);
+  await page.locator('[data-personal-speed-start="sentence"]').click();
+  const progress = page.locator('[data-personal-speed-sentence-progress]');
+  await expect(progress).toBeVisible();
+  const total = Number(/あと(\d+)打/.exec(await progress.innerText())?.[1]);
+  // 「きょうはてんき」を、「ん」をnの1打で打つ。nnの2打ではなく1打で、次のかなのkへ進む。
+  for (const key of 'kyouhatenk') {
+    await page.keyboard.press(key);
+    await page.waitForTimeout(40);
+  }
+  await expect(page.locator('[data-personal-speed-next] kbd')).toHaveText(['I']);
+  // 示していた綴り（nn）より1打少ない分だけ、残りが減る。
+  await expect(progress).toHaveText(`あと${total - 11}打`);
+  await typeThroughSentence(page);
+  await expect(page.getByText('文章を打つ速さを測って保存しました。')).toBeVisible();
+});

@@ -1065,6 +1065,11 @@ export function withCombos(
   };
 }
 
+/** ローマ字だけで成立するコンボ（`romajiOnly`）を持つ配列か。 */
+export function hasRomajiOnlyCombos(layout: Layout): boolean {
+  return (layout.resolvedComboDefinitions ?? []).some((combo) => combo.condition?.romajiOnly === true);
+}
+
 /**
  * ローマ字を経ない打ち方（英文の直接入力）で見える配列にする。
  * `romajiOnly` のコンボ（仕様 §4.3）を定義ごと外し、単打配置だけを残す。
