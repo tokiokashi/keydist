@@ -3,6 +3,7 @@ import { setPersonalSpeedCommand } from '#engine/commands.ts';
 import { PersonalSpeedEditor } from '#editors/personal-speed/PersonalSpeedEditor.tsx';
 import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
 import { defaultFingerAssignmentIdOf, initialPersonalSpeedSelection, personalSpeedCatalog } from './personal-speed-setup.ts';
+import { personalSpeedSentenceBuilder } from './sentence-source.ts';
 
 /**
  * 個人速度の画面の組み立て。資産の読み書きと履歴は、個別画面と同じ仕組みに乗せる。
@@ -14,6 +15,11 @@ export function PersonalSpeedApp() {
     () => personalSpeedCatalog(assets),
     [assets.userLayouts, assets.userRomajiRules, assets.fingerAssignments],
   );
+  // 示す文の打鍵の列は、全体の条件（ローマ字規則・Chain・Arpeggioの数え方など）と自作の配列・指の割り当てで決まる。
+  const buildSentence = useMemo(
+    () => personalSpeedSentenceBuilder(assets),
+    [assets.userLayouts, assets.userRomajiRules, assets.fingerAssignments, assets.setupLibrary.overrides],
+  );
   return (
     <PersonalSpeedEditor
       key={ready ? 'ready' : 'loading'}
@@ -22,6 +28,7 @@ export function PersonalSpeedApp() {
       catalog={catalog}
       initialSelection={initialPersonalSpeedSelection(assets, catalog)}
       defaultFingerAssignmentId={(shapeId) => defaultFingerAssignmentIdOf(shapeId, catalog)}
+      buildSentence={buildSentence}
       canUndo={canUndo}
       canRedo={canRedo}
       onUndo={undo}

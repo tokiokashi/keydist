@@ -1,10 +1,18 @@
 import { FINGER_LABEL } from '#input/shapes/finger-names.ts';
 import type { Finger } from '#input/shapes/geometry.ts';
 import {
+  CALIBRATION_OVERHEAD_MS_MAX,
+  CALIBRATION_OVERHEAD_MS_MIN,
+  STROKE_STRUCTURE_KINDS,
+  type StrokeStructureKind,
+} from '#interpretation/timing/calibration.ts';
+import {
   CALIBRATION_FALLBACK_FINGER_FIELD,
   CALIBRATION_SAME_HAND_FIELD,
   type ParseCalibrationFormResult,
 } from '#interpretation/timing/calibration-form.ts';
+import { SENTENCE_MIN_SAMPLES, type ApplySentenceResult, type SentenceMeasurement } from '#interpretation/timing/sentence-measurement.ts';
+import type { SentenceUnmeasurable } from '#interpretation/timing/sentence-session.ts';
 import {
   remainingCalibrationIntervals,
   type CalibrationItem,
@@ -16,6 +24,26 @@ import {
 
 export const ACTIONS_UNIT = 'アクション/秒';
 export const SPEED_UNIT = 'u/秒';
+export const OVERHEAD_UNIT = 'ミリ秒';
+
+/**
+ * 文章を打つ測定で示す文。よく使われる配列で、Arpeggio・Chain・その他のどれもが十分に出る長さと中身にしてある。
+ * 数える打鍵が10に満たない種類は保存しない。
+ */
+export const MEASUREMENT_SENTENCE =
+  'きょうはてんきがよいので、さんぽにでかけました。こうえんではこどもたちがあそんでいて、とてもにぎやかでした。'
+  + 'かえりみちにあたらしいほんをかいました。いえにかえってから、あたたかいおちゃをのみながら、ゆっくりよんでいます。'
+  + 'ことしのなつはながくて、みんなつかれています。あしたはあさはやくおきて、でんしゃでうみにいくよていです。';
+
+/** 構造の種類の名前。 */
+export const STRUCTURE_KIND_LABEL: Readonly<Record<StrokeStructureKind, string>> = {
+  arpeggio: 'Arpeggio',
+  chain: 'Chain',
+  other: 'その他',
+};
+
+/** 構造の種類の欄の識別子の接頭辞。 */
+const OVERHEAD_FIELD_PREFIX = 'overhead:';
 
 function fingerLabel(finger: string): string {
   return FINGER_LABEL[finger as Finger] ?? finger;
@@ -46,6 +74,7 @@ export function calibrationFieldLabel(fieldId: string): string {
   switch (kind) {
     case 'actions': return calibrationItemLabel({ kind: 'actions' });
     case 'direction': return `異手 ${calibrationItemLabel({ kind: 'direction', direction: name === 'L→R' ? 'L→R' : 'R→L' })}`;
+    case 'overhead': return `1打ごとの上乗せ ${STRUCTURE_KIND_LABEL[name as StrokeStructureKind] ?? name}`;
     case 'finger': return `${fingerLabel(name)}の移動速度`;
     case 'same-hand-pair': return `同手・別指 ${pairLabel(name, ':')}`;
     case 'directed-pair': return `同手・別指 ${pairLabel(name, '>')}`;
@@ -55,6 +84,7 @@ export function calibrationFieldLabel(fieldId: string): string {
 
 /** 欄の値の単位。指の移動速度は物理キーの距離（u）で、他は1秒あたりの打鍵数。 */
 export function calibrationFieldUnit(fieldId: string): string {
+  if (fieldId.startsWith(OVERHEAD_FIELD_PREFIX)) return OVERHEAD_UNIT;
   return fieldId === CALIBRATION_FALLBACK_FINGER_FIELD || fieldId.startsWith('finger:') ? SPEED_UNIT : ACTIONS_UNIT;
 }
 
@@ -94,10 +124,73 @@ export function wrongKeyText(keyLabel: string): string {
   return `今は「${keyLabel}」を押す番です。`;
 }
 
-export function savedMessage(scope: 'normal' | 'directional' | 'item', item?: CalibrationItem): string {
-  if (scope === 'normal') return '通常の速度と指の移動速度を測って保存しました。';
-  if (scope === 'directional') return '方向別の速度を測って保存しました。';
-  return item === undefined ? '保存しました。' : `${calibrationItemLabel(item)}を測り直して保存しました。`;
+export function savedMessage(
+  scope: 'normal' | 'directional' | 'item',
+  item?: CalibrationItem,
+  overheadCleared = false,
+): string {
+  const notice = overheadCleared
+    ? ' 文章を打つ時の1打ごとの上乗せは、他の値が変わったため消しました。文章を打つ速さをもう一度測ってください。'
+    : '';
+  if (scope === 'normal') return `通常の速度と指の移動速度を測って保存しました。${notice}`;
+  if (scope === 'directional') return `方向別の速度を測って保存しました。${notice}`;
+  return item === undefined ? `保存しました。${notice}` : `${calibrationItemLabel(item)}を測り直して保存しました。${notice}`;
 }
 
 export const MEASUREMENT_OUT_OF_RANGE_TEXT = '測った値が保存できる範囲を外れていたため、保存していません。もう一度測ってください。';
+
+/** 文章を打つ測定を始められない理由。 */
+export function sentenceUnmeasurableText(reason: SentenceUnmeasurable): string {
+  return reason === 'empty'
+    ? 'この配列では、示す文を打つ打鍵の列を作れません。別の配列を選んでください。'
+    : 'この配列で示す文を打つには、Spaceや修飾キーを押しながらの入力が要るため、文章を打つ測定はできません。別の配列を選んでください。';
+}
+
+function countsText(measurement: SentenceMeasurement): string {
+  return STROKE_STRUCTURE_KINDS
+    .map((kind) => `${STRUCTURE_KIND_LABEL[kind]} ${measurement.counts[kind]}打`)
+    .join('、');
+}
+
+/** 文章を打つ測定を保存した時の知らせ。種類ごとに、保存した値と数えた打鍵の数を示す。 */
+export function sentenceSavedMessage(measurement: SentenceMeasurement): string {
+  const parts = STROKE_STRUCTURE_KINDS.map((kind) => {
+    const value = measurement.overheadMs[kind];
+    const count = measurement.counts[kind];
+    return value === undefined
+      ? `${STRUCTURE_KIND_LABEL[kind]}は数えた打鍵が${count}打で${SENTENCE_MIN_SAMPLES}打に満たないため、保存していません`
+      : `${STRUCTURE_KIND_LABEL[kind]} ${value.toFixed(1)}ミリ秒（${count}打）`;
+  });
+  return `文章を打つ速さを測って保存しました。1打ごとの上乗せ: ${parts.join('、')}。`;
+}
+
+/** 文章を打つ測定を保存できなかった時の文。 */
+export function sentenceFailureText(result: Exclude<ApplySentenceResult, { ok: true }>): string {
+  switch (result.reason) {
+    case 'no-saved-value':
+      return '個人速度が保存されていないため、文章を打つ測定は保存できません。';
+    case 'too-few':
+      return `数えた打鍵が少なく、保存していません。もう一度測ってください（${countsText(result.measurement)}）。`;
+    case 'out-of-range':
+      return `測った上乗せが保存できる範囲（${CALIBRATION_OVERHEAD_MS_MIN}から${CALIBRATION_OVERHEAD_MS_MAX}ミリ秒）を外れていたため、保存していません。もう一度測ってください。`;
+  }
+}
+
+/** 個人速度の画面の各測定の説明。何を測るか、打鍵再生のどこに使われるか、測らなかった時に何が代わるか。 */
+export const MEASUREMENT_DESCRIPTION = {
+  normal: '左右の人差し指の連打と、同じ手の2本の指を交互に打つ速さ、各指がホームから動く速さを測ります。'
+    + '打鍵再生では、同指連続を含まない打鍵の時間と、同指連続で指が動く時間に使います。「全指の移動時間で律速」の設定でも、指の移動速度を使います。'
+    + '測っていない指の移動速度には、測れた指の代表値が使われます。',
+  directional: '左手から右手、右手から左手の向きごとの連打の速さと、同じ手の2本の指を向きごとに交互に打つ速さを測ります。'
+    + '打鍵再生では、同指連続を含まない打鍵の時間を、直前の打鍵との指の組み合わせと向きで決めるのに使います。'
+    + '測っていない向きには、通常の速度や同手・別指の代表の速度が使われます。',
+  sentence: '示す文を打って、文章を打つ時に連打より余分にかかる時間を、Arpeggio・Chain・その他の3種類ごとに測ります。'
+    + '同指連続を含まない打鍵の間隔から連打の時間を引いた差の中央値で求めるので、文節の切れ目の長い間は入りません。'
+    + '打鍵再生では、同指連続を含まない打鍵の時間に足します。指が動く時間には足しません。'
+    + '測っていない種類には「その他」の上乗せが使われ、測っていなければ上乗せはありません。'
+    + '打ちやすい形の違いが再生に出るよう、手に馴染んだ配列で測ってください。',
+} as const;
+
+export const PERSONAL_SPEED_PURPOSE =
+  '打鍵再生の時間を、基準速度ではなく、測った打鍵と指の移動の速さで決めるために測ります。'
+  + '測った値は保存され、打鍵再生の「個人速度を適用」が有効な間に使われます。測っていなければ基準速度で再生します。';

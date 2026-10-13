@@ -9,6 +9,14 @@ import {
   type Key,
 } from '#input/shapes/geometry.ts';
 
+/**
+ * 遷移（直前のストロークから今のストロークへ）が属する構造の種類。1打ごとの上乗せ（`keystrokeOverheadMs`）を選ぶ。
+ * Arpeggioの中、Chainの中でArpeggioでないもの、どちらでもないもの（最初のストロークを含む）の3つ。
+ */
+export type StrokeStructureKind = 'arpeggio' | 'chain' | 'other';
+
+export const STROKE_STRUCTURE_KINDS: readonly StrokeStructureKind[] = ['arpeggio', 'chain', 'other'];
+
 /** 再生へ反映する個人の打鍵・指移動速度。 */
 export interface PlaybackCalibration {
   /** 通常の連続打鍵速度。 */
@@ -25,6 +33,11 @@ export interface PlaybackCalibration {
   fingerSpeedUnitsPerSecond: Partial<Record<Finger, number>>;
   /** 指ごとの速度が無い場合に使う移動速度。単位は物理キーのu/秒。 */
   fallbackFingerSpeedUnitsPerSecond: number;
+  /**
+   * 文章を打つ時の1打ごとの上乗せ[ms]。構造の種類ごとに持ち、同指連続を含まないステップの基準の時間にだけ足す。
+   * 持たない種類は「その他」の値を使う。
+   */
+  keystrokeOverheadMs?: Readonly<Partial<Record<StrokeStructureKind, number>>>;
   measuredAt: number;
 }
 
@@ -39,6 +52,8 @@ export const CALIBRATION_ACTIONS_PER_SECOND_MIN = 0.1;
 export const CALIBRATION_ACTIONS_PER_SECOND_MAX = 40;
 export const CALIBRATION_FINGER_SPEED_MIN = 0.1;
 export const CALIBRATION_FINGER_SPEED_MAX = 100;
+export const CALIBRATION_OVERHEAD_MS_MIN = 0;
+export const CALIBRATION_OVERHEAD_MS_MAX = 1000;
 export const CALIBRATION_ACTION_SAMPLES = 9;
 export const CALIBRATION_FINGER_SAMPLES = 6;
 export const CALIBRATION_SAME_HAND_SAMPLES = 6;
@@ -183,6 +198,12 @@ export function playbackCalibrationProblem(value: unknown): string | undefined {
     CALIBRATION_ACTIONS_PER_SECOND_MIN,
     CALIBRATION_ACTIONS_PER_SECOND_MAX,
   )) return '同手・別指の方向別の速度が正しくありません';
+  if (value.keystrokeOverheadMs !== undefined && !isRateRecord(
+    value.keystrokeOverheadMs,
+    (kind) => STROKE_STRUCTURE_KINDS.includes(kind as StrokeStructureKind),
+    CALIBRATION_OVERHEAD_MS_MIN,
+    CALIBRATION_OVERHEAD_MS_MAX,
+  )) return '1打ごとの上乗せが正しくありません';
   return undefined;
 }
 

@@ -78,7 +78,7 @@ function PlaybackFigureSettings({ options, onOptionsChange }: {
 export function PlaybackBody({ layout, geometry, trace, extracted, options, onOptionsChange }: SingleBodyProps<PlaybackExtracted, PlaybackOptions>) {
   const { analysis, windowSize, timing, personalSpeedUse, schedule, rateChart, basisId } = extracted;
   const total = trace.strokes.length;
-  const calculation = playbackCalculationNotes(options, personalSpeedUse);
+  const calculation = playbackCalculationNotes(options, personalSpeedUse, timing.calibration);
   const figureSettings = useFigureSettings('配列図');
 
   const [session, setSession] = useState<Session>(() => freshSession(basisId, schedule, initialPlaybackState(timing)));
@@ -183,6 +183,9 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options, onOp
       {calculation.personalSpeedInUse || calculation.changes.length > 0 ? (
         <p className="playback-notice" data-playback-calculation>
           {calculation.personalSpeedInUse ? <span data-playback-calculation-personal-speed>個人速度で計算しています。</span> : null}
+          {calculation.keystrokeOverheadInUse ? (
+            <span data-playback-calculation-overhead>{' '}文章を打つ時の1打ごとの上乗せを足しています。</span>
+          ) : null}
           {calculation.changes.length > 0 ? (
             <span data-playback-calculation-changes>
               {calculation.personalSpeedInUse ? ' ' : ''}既定と違う設定で計算しています。{calculation.changes.join('、')}

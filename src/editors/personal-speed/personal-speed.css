@@ -208,3 +208,39 @@
   gap: 0.5rem;
   margin-top: 0.75rem;
 }
+
+.personal-speed-measurement {
+  margin-top: 1rem;
+}
+
+.personal-speed-measurement h3 {
+  margin-top: 0;
+}
+
+.personal-speed-sentence {
+  margin: 0.5rem 0;
+  font-size: 1.05rem;
+  line-height: 1.9;
+  overflow-wrap: anywhere;
+}
+
+.personal-speed-sentence [data-sentence-unit='done'] {
+  color: var(--text-muted);
+}
+
+.personal-speed-sentence [data-sentence-unit='current'] {
+  border-bottom: 2px solid var(--accent);
+  font-weight: 650;
+}
+
+.personal-speed-instruction kbd {
+  display: inline-block;
+  min-width: 1.6rem;
+  margin-inline: 0.15rem;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 5px;
+  background: var(--surface-muted);
+  font: inherit;
+  text-align: center;
+}

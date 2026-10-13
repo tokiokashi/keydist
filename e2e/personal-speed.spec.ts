@@ -68,6 +68,30 @@ async function typeThroughRun(page: Page): Promise<void> {
   throw new Error('測定が終わらなかった');
 }
 
+/** 文章を打つ測定で、画面が示す次のキーを順に打ち、完了まで進める。 */
+async function typeThroughSentence(page: Page): Promise<void> {
+  const run = page.locator('[data-personal-speed-sentence-run="active"]');
+  const next = page.locator('[data-personal-speed-next] kbd');
+  const progress = page.locator('[data-personal-speed-sentence-progress]');
+  for (let step = 0; step < 1000; step += 1) {
+    if (!(await run.isVisible())) return;
+    const before = (await progress.textContent({ timeout: 1000 }).catch(() => null)) ?? '';
+    const keys = (await next.allTextContents()).map((key) => key.toLowerCase());
+    if (keys.length === 0) continue;
+    for (const key of keys) await page.keyboard.press(key);
+    // 画面が次のステップへ進んでから打つ。同じキーが続いても二重に打たない。
+    await page.waitForFunction(
+      (previous) => {
+        const element = document.querySelector('[data-personal-speed-sentence-progress]');
+        return element === null || element.textContent !== previous;
+      },
+      before,
+      { timeout: 2000 },
+    );
+  }
+  throw new Error('文章を打つ測定が終わらなかった');
+}
+
 /** keydownを送り、既定動作が止められたか・windowのバブリング段階に届いたかを返す。 */
 function probe(page: Page, key: string): Promise<{ prevented: boolean; reached: boolean }> {
   return page.evaluate((pressed) => {
@@ -89,7 +113,22 @@ test('サイドバーのAssetsから開ける。保存が無ければ空の状�
   await expect(page.locator('[data-personal-speed-empty]')).toBeVisible();
   await expect(page.locator('[data-personal-speed-start="normal"]')).toBeEnabled();
   await expect(page.locator('[data-personal-speed-start="directional"]')).toBeDisabled();
+  await expect(page.locator('[data-personal-speed-start="sentence"]')).toBeDisabled();
   await expect(page.locator('[data-personal-speed-discard]')).toBeDisabled();
+});
+
+test('各測定に、何を測るかと、測った値が打鍵再生のどこに使われるかの説明がある', async ({ page }) => {
+  await open(page);
+  await expect(page.locator('[data-personal-speed-purpose]')).toContainText('打鍵再生の時間');
+  const measure = page.getByRole('region', { name: '測定' });
+  for (const [title, text] of [
+    ['通常の速度と指の移動', '同指連続を含まない打鍵の時間と、同指連続で指が動く時間'],
+    ['方向別の速度', '直前の打鍵との指の組み合わせと向き'],
+    ['文章を打つ速さ', '同指連続を含まない打鍵の時間に足します'],
+  ] as const) {
+    await expect(measure.getByRole('heading', { name: title, level: 3 })).toBeVisible();
+    await expect(measure).toContainText(text);
+  }
 });
 
 test('通常の測定をキー入力で行い、結果が保存される', async ({ page }) => {
@@ -217,4 +256,89 @@ test('画面内で選んだ配列は、Singleの対象や条件を変えない�
   }));
   expect(after.single).toBe(JSON.stringify(single));
   expect(after.library).toBeNull();
+});
+
+test('文章を打つ測定で、種類ごとの1打ごとの上乗せを測って保存し、数えた打鍵の数が知らされる', async ({ page }) => {
+  await seed(page, { [STORAGE_KEY]: SEEDED });
+  await open(page);
+  await expect(page.locator('[data-personal-speed-sentence]').first()).toBeVisible();
+  await page.locator('[data-personal-speed-start="sentence"]').click();
+  await expect(page.locator('[data-personal-speed-sentence-run="active"]')).toBeVisible();
+  await typeThroughSentence(page);
+  await expect(page.locator('[data-personal-speed-sentence-run="active"]')).toHaveCount(0);
+  await expect(page.getByText('文章を打つ速さを測って保存しました。')).toBeVisible();
+  await expect(page.locator('.personal-speed-message')).toContainText('Arpeggio');
+  await expect(page.locator('.personal-speed-message')).toContainText('打）');
+
+  const saved = await stored(page) as { calibration: { keystrokeOverheadMs: Record<string, number>; actionsPerSecond: number } };
+  expect(Object.keys(saved.calibration.keystrokeOverheadMs).sort()).toEqual(['arpeggio', 'chain', 'other']);
+  for (const value of Object.values(saved.calibration.keystrokeOverheadMs)) {
+    expect(value).toBeGreaterThanOrEqual(0);
+    expect(value).toBeLessThanOrEqual(1000);
+  }
+  // 他の項目は残る
+  expect(saved.calibration.actionsPerSecond).toBe(5);
+  await expect(page.locator('[id="personal-speed-overhead:other"]')).not.toHaveValue('');
+});
+
+test('文章を打つ測定は、違うキーを知らせ、中止すると保存値を変えない。測定中だけキー入力を取る', async ({ page }) => {
+  await seed(page, { [STORAGE_KEY]: SEEDED });
+  await open(page);
+  await page.locator('[data-personal-speed-start="sentence"]').click();
+  const next = page.locator('[data-personal-speed-next] kbd');
+  await expect(next.first()).toBeVisible();
+  const expected = ((await next.first().textContent()) ?? '').toLowerCase();
+  const wrong = expected === 'q' ? 'w' : 'q';
+  expect(await probe(page, wrong)).toEqual({ prevented: false, reached: true });
+  await expect(page.getByRole('status').filter({ hasText: '押す番です' })).toBeVisible();
+  expect(await probe(page, expected)).toEqual({ prevented: true, reached: false });
+
+  await page.locator('[data-personal-speed-sentence-cancel]').click();
+  await expect(page.locator('[data-personal-speed-sentence-run="active"]')).toHaveCount(0);
+  expect(await probe(page, expected)).toEqual({ prevented: false, reached: true });
+  expect(await stored(page)).toEqual(SEEDED);
+});
+
+test('他の測定を保存すると1打ごとの上乗せが消え、測り直しを促す知らせが出る', async ({ page }) => {
+  const withOverhead = { ...SEEDED, calibration: { ...SEEDED.calibration, keystrokeOverheadMs: { other: 60 } } };
+  await seed(page, { [STORAGE_KEY]: withOverhead });
+  await open(page);
+  await expect(page.locator('[id="personal-speed-overhead:other"]')).toHaveValue('60.0');
+  await page.getByRole('button', { name: '通常の打鍵速度を測り直す' }).click();
+  await typeThroughRun(page);
+  await expect(page.getByText('1打ごとの上乗せは、他の値が変わったため消しました')).toBeVisible();
+  const saved = await stored(page) as { calibration: Record<string, unknown> };
+  expect('keystrokeOverheadMs' in saved.calibration).toBe(false);
+  await expect(page.locator('[id="personal-speed-overhead:other"]')).toHaveValue('');
+});
+
+test('1打ごとの上乗せを数値で直接編集して保存でき、空欄にすると消える。範囲外は保存されない', async ({ page }) => {
+  await seed(page, { [STORAGE_KEY]: SEEDED });
+  await open(page);
+  const arpeggio = page.locator('[id="personal-speed-overhead:arpeggio"]');
+  const save = page.locator('[data-personal-speed-save]');
+  await arpeggio.fill('1000.5');
+  await save.click();
+  await expect(page.getByRole('alert').filter({ hasText: '1打ごとの上乗せ Arpeggio' })).toBeVisible();
+  expect(await stored(page)).toEqual(SEEDED);
+
+  await arpeggio.fill('25');
+  await save.click();
+  await expect(page.getByText('保存しました。', { exact: true })).toBeVisible();
+  expect((await stored(page) as { calibration: { keystrokeOverheadMs: unknown } }).calibration.keystrokeOverheadMs).toEqual({ arpeggio: 25 });
+
+  await arpeggio.fill('');
+  await save.click();
+  await expect.poll(async () => 'keystrokeOverheadMs' in ((await stored(page)) as { calibration: object }).calibration).toBe(false);
+});
+
+test('示す文をSpaceや修飾キーなしで打てない配列では、文章を打つ測定は測れないと示す', async ({ page }) => {
+  await seed(page, { [STORAGE_KEY]: SEEDED });
+  await open(page);
+  await expect(page.locator('[data-personal-speed-start="sentence"]')).toBeEnabled();
+  await page.locator('.personal-speed-select-grid select').first().selectOption('nicola');
+  await expect(page.locator('[data-personal-speed-sentence-unavailable]')).toContainText('文章を打つ測定はできません');
+  await expect(page.locator('[data-personal-speed-start="sentence"]')).toBeDisabled();
+  // 他の測定は使える
+  await expect(page.locator('[data-personal-speed-start="directional"]')).toBeEnabled();
 });
