@@ -764,3 +764,15 @@ test('コンボ枠に計上するFace compositionの出力は、定義数B・命
   const withDefinition = withCombos('combo-frame-count-2', 'combo-frame-count-2', layout, [['x', ['a', 'b']]]);
   assert.equal(generateTrace('a', withDefinition, geometry, opts()).comboDefinitions, 2);
 });
+
+test('selectionIndexは入力の選択ごとに振り、同じ入力単位でも別の選択なら別の値になる', () => {
+  const combo = LAYOUT_BY_ID.get('oonishi-custom')!;
+  const kyou = generateTrace('きょう', combo, geometry, opts());
+  assert.deepEqual(kyou.strokes.map((stroke) => stroke.char), ['k', 'you']);
+  assert.equal(kyou.strokes[0].inputIndex, kyou.strokes[1].inputIndex);
+  assert.notEqual(kyou.strokes[0].selectionIndex, kyou.strokes[1].selectionIndex);
+  // 1つの選択が複数のストロークになる時は、そのストロークどうしで共有する。
+  const shifted = generateTrace('が', LAYOUT_BY_ID.get('shin-jis-prefix')!, geometry, opts());
+  assert.ok(shifted.strokes.length >= 2);
+  assert.equal(new Set(shifted.strokes.map((stroke) => stroke.selectionIndex)).size, 1);
+});

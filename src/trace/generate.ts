@@ -104,6 +104,11 @@ export interface Stroke {
   inputChar: string;
   /** 展開後の入力列における入力単位の開始位置。同じかなを複数ステップで打つ場合も共有する */
   inputIndex: number;
+  /**
+   * `char`を決めた1回の入力の選択の通し番号。1つの選択が複数のストロークになる時は、それらが共有する。
+   * `inputIndex`はローマ字の配列で別の選択（「きょう」の`k`とコンボ`you`）とも共有されるので、選択の区別には使えない。
+   */
+  selectionIndex: number;
   /** このステップに含まれるキー押下のaggregation帰属先。入力成立semanticではない。 */
   aggregationGroupId: string;
   /** authoring由来のcanonical classification。 */
@@ -399,6 +404,7 @@ export function generateTrace(
         char,
         inputChar,
         inputIndex,
+        selectionIndex: currentInputOrdinal,
         aggregationGroupId,
         classifications: action.input.classifications,
         triggerKeys,
