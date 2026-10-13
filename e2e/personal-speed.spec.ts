@@ -73,7 +73,7 @@ async function typeThroughSentence(page: Page): Promise<void> {
   const run = page.locator('[data-personal-speed-sentence-run="active"]');
   const next = page.locator('[data-personal-speed-next] kbd');
   const progress = page.locator('[data-personal-speed-sentence-progress]');
-  for (let step = 0; step < 1000; step += 1) {
+  for (let step = 0; step < 1500; step += 1) {
     if (!(await run.isVisible())) return;
     const before = (await progress.textContent({ timeout: 1000 }).catch(() => null)) ?? '';
     const keys = (await next.allTextContents()).map((key) => key.toLowerCase());
@@ -372,17 +372,17 @@ test('文章を打つ測定は、何本目の何回目かを示し、1回目だ�
   await page.locator('[data-personal-speed-start="sentence"]').click();
   const position = page.locator('[data-personal-speed-sentence-position]');
   const learning = page.locator('[data-personal-speed-sentence-learning]');
-  await expect(position).toHaveText('1本目 / 全8本、1回目 / 全3回');
+  await expect(position).toHaveText('1本目 / 全16本、1回目 / 全3回');
   await expect(learning).toHaveText('1回目は文を覚える回です。この回は数えません。');
   await typeThroughRound(page);
-  await expect(position).toHaveText('1本目 / 全8本、2回目 / 全3回');
+  await expect(position).toHaveText('1本目 / 全16本、2回目 / 全3回');
   await expect(learning).toHaveCount(0);
   // 2回目も、示す文と次に打つキーが出る。
   await expect(page.locator('[data-personal-speed-sentence-run] [data-personal-speed-sentence]')).toHaveCount(1);
   await expect(page.locator('[data-personal-speed-next] kbd').first()).toBeVisible();
   await typeThroughRound(page);
   await typeThroughRound(page);
-  await expect(position).toHaveText('2本目 / 全8本、1回目 / 全3回');
+  await expect(position).toHaveText('2本目 / 全16本、1回目 / 全3回');
   await expect(learning).toBeVisible();
   await page.locator('[data-personal-speed-sentence-cancel]').click();
   expect(await stored(page)).toEqual(SEEDED);
