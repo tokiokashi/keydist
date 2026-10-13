@@ -26,8 +26,12 @@ export function playbackCalculationNotes(
 ): PlaybackCalculationNotes {
   const defaults = DEFAULT_PLAYBACK_OPTIONS;
   const personalSpeedInUse = personalSpeedUse === 'applied';
+  // 時間に入る種類は、続け打ちと構造の種類が常に、同指連続が指の移動速度を考慮する時だけ。
+  // 再生するテキストの中身は見ず、解析設定と保存値の組で決める。
   const keystrokeOverheadInUse = personalSpeedInUse
-    && Object.keys(calibration?.keystrokeOverheadMs ?? {}).length > 0;
+    && Object.entries(calibration?.keystrokeOverheadMs ?? {}).some(
+      ([kind, ms]) => ms > 0 && (kind !== 'sfb' || options.sameFingerDelay),
+    );
   const changes: string[] = [];
   if (!personalSpeedInUse && options.stepsPerSecond !== defaults.stepsPerSecond) {
     changes.push(`基準速度: ${options.stepsPerSecond}ステップ/秒`);
