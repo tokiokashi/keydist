@@ -3,8 +3,10 @@ import test from 'node:test';
 import { EMPTY_SETTINGS_OVERRIDES, setSettingsOverride, type SettingsCascadeOverrides } from '#engine/settings-items.ts';
 import type { PersonalSpeedSelection } from '#editors/personal-speed/PersonalSpeedEditor.tsx';
 import { MEASUREMENT_SENTENCE } from '#editors/personal-speed/calibration-text.ts';
+import { calibrationKeyLabel } from '#interpretation/timing/calibration-session.ts';
 import { pressSentenceKey, sentenceRunFinished, sentenceSteps, sentenceUnmeasurable, startSentenceRun, stepsSentencePlan } from '#interpretation/timing/sentence-session.ts';
 import { strokeStructureKinds } from '#interpretation/timing/stroke-structure.ts';
+import { paneCatalog } from '../standalone/catalog.ts';
 import { personalSpeedSentenceBuilder } from './sentence-source.ts';
 
 const BASE = { userLayouts: [], userRomajiRules: [], fingerAssignments: [] };
@@ -87,22 +89,66 @@ test('コンボで打つストロークだけが出力の文字を持ち、同�
   assert.ok(build('nicola', 'きょう').every((step) => step.outputChars === undefined));
 });
 
-test('TK音直入力法の示す文のコンボのストロークは、出力の文字の押下だけでも最後まで進む', () => {
-  const result = builderWith(EMPTY_SETTINGS_OVERRIDES)({ ...SELECTION, layoutId: 'oonishi-custom' }, MEASUREMENT_SENTENCE);
+/** キーのidの物理位置（`event.code`）。 */
+function codeOfKeyId(id: string): string {
+  if (/^[a-z]$/i.test(id)) return `Key${id.toUpperCase()}`;
+  if (/^[0-9]$/.test(id)) return `Digit${id}`;
+  const named: Record<string, string> = {
+    ';': 'Semicolon', "'": 'Quote', ',': 'Comma', '.': 'Period', '/': 'Slash',
+    '[': 'BracketLeft', ']': 'BracketRight', '-': 'Minus', '=': 'Equal',
+  };
+  return named[id] ?? id;
+}
+
+/**
+ * TK音直入力法で`text`を打つ。画面と同じ刻印（`calibrationKeyLabel`）で照合する。
+ * `output`が真なら、コンボは出力の文字を、それ以外は刻印の文字を送り、`code`は送る文字の位置にする。
+ * 偽なら、`key`に刻印の文字、`code`にキーのidの物理位置を送る。
+ */
+function playTkText(text: string, output: boolean) {
+  const layout = paneCatalog(BASE).setupCatalog.layouts.get('oonishi-custom');
+  assert.ok(layout !== undefined);
+  const keyLabel = (id: string) => calibrationKeyLabel(layout.legends, id);
+  const result = builderWith(EMPTY_SETTINGS_OVERRIDES)({ ...SELECTION, layoutId: 'oonishi-custom' }, text);
   assert.ok(result.ok);
   const steps = sentenceSteps(result.analysis);
   assert.equal(sentenceUnmeasurable(steps), undefined);
-  assert.ok(steps.some((step) => step.outputChars !== undefined));
-  for (const useOutput of [false, true]) {
-    let run = startSentenceRun(stepsSentencePlan(steps, () => undefined));
-    let atMs = 0;
-    for (const step of steps) {
-      for (const key of useOutput && step.outputChars !== undefined ? step.outputChars : step.keys) {
-        atMs += 100;
-        run = pressSentenceKey(run, { key, code: 'Digit9' }, atMs, (id) => id).run;
-      }
+  let run = startSentenceRun(stepsSentencePlan(steps, () => undefined));
+  const outcomes: string[] = [];
+  let atMs = 0;
+  for (const step of steps) {
+    const events = output && step.outputChars !== undefined
+      ? step.outputChars.map((char) => ({ key: char, code: codeOfKeyId(char) }))
+      : step.keys.map((id) => (output
+        ? { key: keyLabel(id), code: codeOfKeyId(keyLabel(id).toLowerCase()) }
+        : { key: keyLabel(id), code: codeOfKeyId(id) }));
+    for (const event of events) {
+      atMs += 100;
+      const pressed = pressSentenceKey(run, event, atMs, keyLabel);
+      run = pressed.run;
+      outcomes.push(pressed.outcome.kind);
     }
-    assert.ok(sentenceRunFinished(run));
+  }
+  return { steps, run, outcomes };
+}
+
+test('TK音直入力法の示す文は、押すキーでも出力の文字でも、違うキーを出さずに最後まで進む', () => {
+  for (const output of [false, true]) {
+    const { steps, run, outcomes } = playTkText(MEASUREMENT_SENTENCE, output);
+    assert.ok(steps.some((step) => step.outputChars !== undefined));
+    assert.ok(!outcomes.includes('wrong-key'), `output=${output}`);
+    assert.ok(sentenceRunFinished(run), `output=${output}`);
     assert.ok(run.taps.every((tap) => tap.clean));
+  }
+});
+
+test('TK音直入力法で、先に出力の文字で打ったコンボの後は、aeの後に押すキーの残りと同じ文字が続いても違うキーを出さない', () => {
+  // 「よう」は出力の文字でしか打てない読み方に決まるコンボを含み、その後の「あえ」に続く文字が押すキーの残りと一致する。
+  for (const text of ['ようあえいおう', 'ようあえさ', 'ようかえす', 'ようまえさき', 'ようあえい']) {
+    for (const output of [false, true]) {
+      const { run, outcomes } = playTkText(text, output);
+      assert.ok(!outcomes.includes('wrong-key'), `${text} output=${output}`);
+      assert.ok(sentenceRunFinished(run), `${text} output=${output}`);
+    }
   }
 });

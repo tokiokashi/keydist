@@ -167,23 +167,37 @@ interface StepRun {
   readonly clean: boolean;
   /** 測定の最初から済んだステップの記録。 */
   readonly taps: readonly SentenceTap[];
+  /**
+   * 利用者の打ち方。一方の読み方だけで完了したコンボのステップが済んだ時に決まり、以後のコンボのステップは決まった読み方だけで進める。
+   * まだ決まっていなければ無い。
+   */
+  readonly reading: ComboReading | undefined;
+  /**
+   * 綴りを打ち終えた後の押下で確定したコンボのステップが決めた読み方。その押下が次の単位に受け付けられた時だけ、`reading`にする。
+   * 打ち終えた綴りの進行にだけ付く。
+   */
+  readonly pendingReading?: ComboReading;
 }
 
+/** コンボで打つステップの読み方。`press`は押すキー、`output`は出力の文字。 */
+type ComboReading = 'press' | 'output';
+
 /** 新しいステップに入った時の、読み方の状態。 */
-function stepStart(steps: readonly SentenceStep[], index: number) {
+function stepStart(steps: readonly SentenceStep[], index: number, reading: ComboReading | undefined) {
   return {
     index,
     pressed: [],
     outputCount: 0,
-    pressReadingAlive: true,
-    outputReadingAlive: steps[index]?.outputChars !== undefined,
+    // 打ち方が決まっていれば、コンボで打つステップは決まった読み方だけで進める。
+    pressReadingAlive: steps[index]?.outputChars === undefined || reading !== 'output',
+    outputReadingAlive: steps[index]?.outputChars !== undefined && reading !== 'press',
     firstAtMs: undefined,
     clean: true,
   } as const;
 }
 
-function startStepRun(steps: readonly SentenceStep[], taps: readonly SentenceTap[]): StepRun {
-  return { steps, ...stepStart(steps, 0), taps };
+function startStepRun(steps: readonly SentenceStep[], taps: readonly SentenceTap[], reading: ComboReading | undefined): StepRun {
+  return { steps, ...stepStart(steps, 0, reading), taps, reading };
 }
 
 function stepRunFinished(run: StepRun): boolean {
@@ -222,11 +236,16 @@ function outputCharMatches(event: SentenceKeyEvent, char: string): boolean {
   return event.key.toLowerCase() === char.toLowerCase();
 }
 
-/** 今のステップを確定して、次のステップへ進める。 */
-function finishStep(run: StepRun, firstAtMs: number): StepRun {
+/**
+ * 今のステップを確定して、次のステップへ進める。
+ * `decided`は、このステップが一方の読み方だけで完了した時の、その読み方。
+ */
+function finishStep(run: StepRun, firstAtMs: number, decided: ComboReading | undefined): StepRun {
+  const reading = decided ?? run.reading;
   return {
     ...run,
-    ...stepStart(run.steps, run.index + 1),
+    ...stepStart(run.steps, run.index + 1, reading),
+    reading,
     taps: [...run.taps, { atMs: firstAtMs, clean: run.clean }],
   };
 }
@@ -238,6 +257,7 @@ function finishStep(run: StepRun, firstAtMs: number): StepRun {
  * コンボで打つステップは、押すキーの読み方と出力の文字の読み方を別々に追い、押下の列が一致し続ける読み方だけを残す。
  * 一方の読み方が完了しても他方が途中で一致している間はステップを確定せず、次の押下が他方の続きに一致しなければ、
  * 完了した読み方で確定して、その押下を次のステップの最初の押下として扱う（`spec/playback-timing.md` §6.4）。
+ * 一方の読み方だけで完了したコンボのステップが済むと、以後のコンボのステップはその読み方だけで進める（同じ節の打ち方の決め方）。
  * 最後のステップが済むと、`run-finished`を返す（綴りを打ち終えた印）。綴りを打ち終えた後の押下は`overflow`を返す。
  * 他方の読み方が途中でも最後のステップで確定するのは、`final`（示す文の最後の単位）の時だけ。
  */
@@ -264,7 +284,19 @@ function pressStep(
   if (pressMatch === undefined && !outputMatches) {
     if (pressDone || outputDone) {
       // 完了した読み方で確定し、この押下を次のステップの最初の押下にする。
-      return pressStep(finishStep(run, run.firstAtMs ?? atMs), event, atMs, keyLabel, final);
+      // 次の押下が他方の続きに一致しなかったので、他方の読み方は外れている。
+      // 読み方を決めるのは、その押下が次のストロークに受け付けられた時だけ（打ち間違いでは決めない）。
+      const decided = output === undefined || (pressDone && outputDone) ? undefined : pressDone ? 'press' : 'output';
+      const firstAt = run.firstAtMs ?? atMs;
+      if (decided !== undefined) {
+        const trial = pressStep(finishStep(run, firstAt, decided), event, atMs, keyLabel, final);
+        if (trial.outcome.kind !== 'wrong-key' && trial.outcome.kind !== 'overflow') return trial;
+        const undecided = pressStep(finishStep(run, firstAt, undefined), event, atMs, keyLabel, final);
+        return trial.outcome.kind === 'overflow' && undecided.outcome.kind === 'overflow'
+          ? { run: { ...undecided.run, pendingReading: decided }, outcome: undecided.outcome }
+          : undecided;
+      }
+      return pressStep(finishStep(run, firstAt, undefined), event, atMs, keyLabel, final);
     }
     const expected = run.pressReadingAlive || output === undefined
       ? { expectedKey: remainingStepKeys(run)[0], expectedIsOutput: false }
@@ -292,7 +324,12 @@ function pressStep(
   // 完了した読み方があり、他方が無い、または完了している、または最後のステップなら確定する。
   const otherPending = (advanced.pressReadingAlive && !pressComplete) || (advanced.outputReadingAlive && !outputComplete);
   if ((pressComplete || outputComplete) && (!otherPending || lastStep)) {
-    const next = finishStep(advanced, firstAtMs);
+    // もう一方の読み方が、完了せずに外れていれば、完了した読み方に決まる。
+    // 入った時点で既に完了していた読み方は、この押下で外れても決めない。
+    const decided = output === undefined ? undefined
+      : pressComplete && !advanced.outputReadingAlive && !outputDone ? 'press'
+        : outputComplete && !advanced.pressReadingAlive && !pressDone ? 'output' : undefined;
+    const next = finishStep(advanced, firstAtMs, decided);
     return { run: next, outcome: { kind: stepRunFinished(next) ? 'run-finished' : 'step-finished' } };
   }
   return { run: advanced, outcome: { kind: 'partial' } };
@@ -318,7 +355,13 @@ export interface SentenceRun {
 }
 
 /** 単位`unit`の綴りの候補を、打つキーの列が同じものを除いてスレッドにする。 */
-function startUnit(plan: SentencePlan, typed: readonly string[], taps: readonly SentenceTap[], unit: number): readonly SentenceThread[] {
+function startUnit(
+  plan: SentencePlan,
+  typed: readonly string[],
+  taps: readonly SentenceTap[],
+  unit: number,
+  reading: ComboReading | undefined,
+): readonly SentenceThread[] {
   const seen = new Set<string>();
   const threads: SentenceThread[] = [];
   for (const spelling of plan.units[unit].spellings) {
@@ -327,13 +370,13 @@ function startUnit(plan: SentencePlan, typed: readonly string[], taps: readonly 
     const signature = JSON.stringify(steps.map((step) => [step.keys, step.outputChars]));
     if (seen.has(signature)) continue;
     seen.add(signature);
-    threads.push({ spelling, run: startStepRun(steps, taps) });
+    threads.push({ spelling, run: startStepRun(steps, taps, reading) });
   }
   return threads;
 }
 
 export function startSentenceRun(plan: SentencePlan): SentenceRun {
-  return { plan, unit: 0, typed: [], taps: [], threads: startUnit(plan, [], [], 0) };
+  return { plan, unit: 0, typed: [], taps: [], threads: startUnit(plan, [], [], 0, undefined) };
 }
 
 export function sentenceRunFinished(run: SentenceRun): boolean {
@@ -375,7 +418,7 @@ export function remainingSentenceStrokes(run: SentenceRun): number {
 }
 
 /** 単位を`thread`の綴りで確定して、次の単位へ進める。 */
-function commitUnit(run: SentenceRun, thread: SentenceThread): SentenceRun {
+function commitUnit(run: SentenceRun, thread: SentenceThread, reading: ComboReading | undefined = thread.run.reading): SentenceRun {
   const typed = [...run.typed, thread.spelling];
   const taps = thread.run.taps;
   const unit = run.unit + 1;
@@ -384,7 +427,7 @@ function commitUnit(run: SentenceRun, thread: SentenceThread): SentenceRun {
     unit,
     typed,
     taps,
-    threads: unit >= run.plan.units.length ? [] : startUnit(run.plan, typed, taps, unit),
+    threads: unit >= run.plan.units.length ? [] : startUnit(run.plan, typed, taps, unit, reading),
   };
 }
 
@@ -417,6 +460,12 @@ export function pressSentenceKey(
     const finished = [...held, ...results.filter((result) => result.outcome.kind === 'overflow').map(({ thread, run: stepRun }) => ({ spelling: thread.spelling, run: stepRun }))];
     if (finished.length > 0) {
       // 打ち終えた綴りで確定し、この押下を次の単位の最初の押下にする。
+      const pending = finished[0].run.pendingReading;
+      if (pending !== undefined) {
+        // 決めた読み方は、この押下が次の単位に受け付けられた時だけ使う。
+        const trial = pressSentenceKey(commitUnit(run, finished[0], pending), event, atMs, keyLabel);
+        if (trial.outcome.kind !== 'wrong-key') return trial;
+      }
       return pressSentenceKey(commitUnit(run, finished[0]), event, atMs, keyLabel);
     }
     const first = results[0].outcome;
