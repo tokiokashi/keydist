@@ -269,7 +269,7 @@ test('項目の測り直しは、その項目だけを入れ替える', async ({
   expect(saved.calibration.sameHandDifferentFingerActionsPerSecond).toBe(4);
 });
 
-test('文章を打つ測定の途中に別のタブで個人速度が変わると、連打との差を保存せず測り直しを促す', async ({ page, context }) => {
+test('文章を打つ測定の途中に別のタブで個人速度が変わると、連打との差を保存せず測り直しを促す。表は出さない', async ({ page, context }) => {
   test.setTimeout(240_000);
   await seed(page, { [STORAGE_KEY]: SEEDED });
   await open(page);
@@ -286,6 +286,7 @@ test('文章を打つ測定の途中に別のタブで個人速度が変わる�
   await typeThroughSentence(page);
   await expect(page.getByRole('alert').filter({ hasText: '測定の途中で個人速度が変わったため、保存していません' })).toBeVisible();
   expect(await stored(page)).toEqual(changed);
+  await expect(page.locator('[data-personal-speed-sentence-result]')).toHaveCount(0);
 });
 
 test('画面内で選んだ配列は、Singleの対象や条件を変えない。初期値はSingleの対象', async ({ page }) => {
@@ -328,6 +329,22 @@ test('文章を打つ測定で、差の種類ごとの連打との差を測っ�
   // 他の項目は残る
   expect(saved.calibration.actionsPerSecond).toBe(5);
   await expect(page.locator('[id="personal-speed-overhead:other"]')).not.toHaveValue('');
+
+  // 知らせの後に、差の種類の5行と異手の方向の2行の表が出る
+  const result = page.locator('[data-personal-speed-sentence-result]');
+  await expect(result).toBeVisible();
+  await expect(result.locator('tbody tr')).toHaveCount(7);
+  await expect(result.locator('[data-personal-speed-result-row="cross-hand:L→R"]')).toContainText('保存しない');
+  await expect(result.locator('[data-personal-speed-result-row="cross-hand:R→L"]')).toContainText('保存しない');
+  await expect(result.locator('[data-personal-speed-result-row="other"]')).toContainText('保存した');
+  await expect(result).toContainText('一致しないことがあります');
+
+  // 表が付いていない側の文を消す操作（変更を戻す）では、知らせも表も残る
+  await page.locator('#personal-speed-actions').fill('6');
+  await page.getByRole('button', { name: '変更を戻す' }).click();
+  await expect(page.locator('#personal-speed-actions')).toHaveValue('5.00');
+  await expect(page.getByText('文章を打つ速さを測って保存しました。')).toBeVisible();
+  await expect(result).toBeVisible();
 });
 
 test('文章を打つ測定は、何本目の何回目かを示し、1回目だけを数えない回と示す。2回目以降も次に打つキーが出る', async ({ page }) => {

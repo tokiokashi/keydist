@@ -9,12 +9,13 @@ import {
 } from '#input/shapes/geometry.ts';
 import type { Press, Stroke } from '#trace/generate.ts';
 import type { PlaybackCalibration } from './calibration.ts';
-import type { PlaybackTimingAnalysis } from './playback.ts';
+import { playbackCrossHandDirection, type PlaybackTimingAnalysis } from './playback.ts';
 import {
   SENTENCE_MIN_SAMPLES,
   applySentenceMeasurement as applyMeasurement,
   adjoinsPunctuation,
   measureSentence,
+  sentenceResultTable,
   type SentenceSample,
   type SentenceTap,
 } from './sentence-measurement.ts';
@@ -345,4 +346,105 @@ test('下限は差の種類ごとに当てはめ、届いた種類だけを保�
   const result = applySentenceMeasurement(SAVED, analysis, tapsFor(30, () => 260), 7);
   assert.ok(result.ok);
   assert.deepEqual(result.calibration.keystrokeOverheadMs, { other: 60 });
+});
+
+const emptyRow = (count = 0) => ({ count });
+
+test('表の1行は、数えたストロークの基準の時間・間隔・差の中央値を持ち、差は2つの中央値の差と一致しないことがある', () => {
+  // 通常速度5/秒の基準は200ms。間隔150msの差は-50msで、負の中央値は0にする。
+  const { kinds, overheadMs } = measureOne(alternating(20), SAVED, tapsFor(20, () => 150));
+  assert.deepEqual(kinds.other, { count: 19, baseMs: 200, intervalMs: 150, differenceMs: 0 });
+  assert.deepEqual(overheadMs, { other: 0 });
+  assert.notEqual(kinds.other.differenceMs, (kinds.other.intervalMs ?? 0) - (kinds.other.baseMs ?? 0));
+});
+
+test('数えたストロークが無い種類の行は、打数だけを持ち中央値を持たない', () => {
+  const { kinds, crossHand } = measureOne(alternating(20), SAVED, tapsFor(20, () => 260));
+  assert.deepEqual(kinds.arpeggio, emptyRow());
+  assert.deepEqual(kinds.chain, emptyRow());
+  assert.deepEqual(kinds.repeat, emptyRow());
+  assert.deepEqual(kinds.sfb, emptyRow());
+  assert.equal(crossHand['L→R'].count + crossHand['R→L'].count, 19);
+});
+
+test('下限に届かない種類の行も、打数と中央値を持つ', () => {
+  const { kinds, overheadMs } = measureOne(alternating(6), SAVED, tapsFor(6, () => 260));
+  assert.deepEqual(overheadMs, {});
+  assert.deepEqual(kinds.other, { count: 5, baseMs: 200, intervalMs: 260, differenceMs: 60 });
+});
+
+test('異手の方向は、今のストロークの押下の順に直前の押下と組んで、手の違う最初の組の向きで決まる', () => {
+  const at = (...fingers: Finger[]): Stroke => ({ ...stroke(0, press(fingers[0])), presses: fingers.map((finger) => press(finger)) });
+  assert.equal(playbackCrossHandDirection(at('RI'), at('LI')), 'L→R');
+  assert.equal(playbackCrossHandDirection(at('LI'), at('RI')), 'R→L');
+  assert.equal(playbackCrossHandDirection(at('LM'), at('LI')), undefined);
+  assert.equal(playbackCrossHandDirection(at('LI'), at('LI')), undefined);
+  // 両手の押下を持つストローク。今の押下LIは直前のLMと同手なので飛ばし、RIと直前のLMの組で決まる。
+  assert.equal(playbackCrossHandDirection(at('LI', 'RI'), at('LM')), 'L→R');
+  // 今の押下LIと直前のRIの組が先に見つかる。
+  assert.equal(playbackCrossHandDirection(at('LI', 'RI'), at('RI')), 'R→L');
+  // 直前のストロークの押下の順でも、最初に見つかった組で決まる。
+  assert.equal(playbackCrossHandDirection(at('RI'), at('LM', 'LI')), 'L→R');
+  assert.equal(playbackCrossHandDirection(undefined, at('LI')), undefined);
+});
+
+test('「その他」の異手のストロークは、その他の行と方向の行の両方に入り、ArpeggioとChainの遷移は方向の行に入らない', () => {
+  // 遷移1〜13はArpeggio、15〜27はChain、14と28〜39はその他。奇数番はL→R、偶数番はR→L。
+  const analysis = alternating(40, [range(14, 28)], [range(0, 14)]);
+  const calibration: PlaybackCalibration = { ...SAVED, actionsPerSecondByDirection: { 'L→R': 10, 'R→L': 5 } };
+  const { kinds, crossHand, counts } = measureOne(analysis, calibration, tapsFor(40, (index) => (index % 2 === 1 ? 250 : 260)));
+  assert.deepEqual(counts, { ...NO_COUNTS, arpeggio: 13, chain: 13, other: 13 });
+  assert.deepEqual(crossHand['L→R'], { count: 6, baseMs: 100, intervalMs: 250, differenceMs: 150 });
+  assert.deepEqual(crossHand['R→L'], { count: 7, baseMs: 200, intervalMs: 260, differenceMs: 60 });
+  assert.equal(crossHand['L→R'].count + crossHand['R→L'].count, kinds.other.count);
+  assert.equal(kinds.arpeggio.count, 13);
+});
+
+test('方向の行の打数も、文ごとに数える回の最大を全文で足した数で求める', () => {
+  const analysis = alternating(20);
+  const samples: SentenceSample[] = [
+    { sentence: 0, analysis, taps: tapsFor(20, () => 260) },
+    { sentence: 0, analysis, taps: tapsFor(20, () => 260, (index) => index > 10) },
+  ];
+  const { crossHand } = measureSentence(samples, SAVED);
+  assert.equal(crossHand['L→R'].count + crossHand['R→L'].count, 19);
+});
+
+test('表は、保存した時は届いた種類を「保存した」、届かない種類を「下限に届かず」とする', () => {
+  const result = applySentenceMeasurement(SAVED, alternating(20), tapsFor(20, () => 260), 5);
+  const table = sentenceResultTable(result);
+  assert.ok(table);
+  assert.equal(table.kinds.length, 5);
+  assert.equal(table.crossHand.length, 2);
+  assert.deepEqual(table.kinds.map(({ kind, status }) => [kind, status]), [
+    ['arpeggio', 'below-minimum'],
+    ['chain', 'below-minimum'],
+    ['other', 'saved'],
+    ['repeat', 'below-minimum'],
+    ['sfb', 'below-minimum'],
+  ]);
+  assert.deepEqual(table.kinds[0].stats, emptyRow());
+});
+
+test('表は、どの種類も下限に届かず保存しなかった時にも出る', () => {
+  const table = sentenceResultTable(applySentenceMeasurement(SAVED, alternating(6), tapsFor(6, () => 260), 5));
+  assert.ok(table);
+  assert.ok(table.kinds.every(({ status }) => status === 'below-minimum'));
+  assert.equal(table.kinds[2].stats.intervalMs, 260);
+});
+
+test('表は、範囲の外で保存しなかった時に出て、届いた種類を「範囲の外」、届かない種類を「下限に届かず」とする', () => {
+  const result = applySentenceMeasurement(SAVED, alternating(20), tapsFor(20, () => 5000), 5);
+  assert.ok(!result.ok && result.reason === 'out-of-range');
+  const table = sentenceResultTable(result);
+  assert.ok(table);
+  assert.deepEqual(table.kinds.map(({ status }) => status), ['below-minimum', 'below-minimum', 'out-of-range', 'below-minimum', 'below-minimum']);
+  assert.equal(table.kinds[2].stats.differenceMs, 4800);
+});
+
+test('表は、保存値が無い時と測定の途中で保存値が変わった時は出さない', () => {
+  assert.equal(sentenceResultTable(applySentenceMeasurement(undefined, alternating(20), tapsFor(20, () => 260), 5)), undefined);
+  const changed = applyWithCurrent(SAVED, alternating(20), tapsFor(20, () => 260), 5, { ...SAVED, actionsPerSecond: 6 });
+  assert.ok(!changed.ok && changed.reason === 'changed');
+  assert.equal(sentenceResultTable(changed), undefined);
 });

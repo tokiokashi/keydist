@@ -22,7 +22,7 @@ import {
   type CalibrationScope,
   type CalibrationTask,
 } from '#interpretation/timing/calibration-session.ts';
-import { applySentenceMeasurement, type SentenceBuildResult } from '#interpretation/timing/sentence-measurement.ts';
+import { applySentenceMeasurement, sentenceResultTable, type SentenceBuildResult, type SentenceResultTable as SentenceResultTableData } from '#interpretation/timing/sentence-measurement.ts';
 import {
   remainingSentenceKeys,
   remainingSentenceStrokes,
@@ -55,6 +55,7 @@ import {
   wrongKeyText,
 } from './calibration-text.ts';
 import { PERSONAL_SPEED_LABEL } from './label.ts';
+import { SentenceResultTable } from './SentenceResultTable.tsx';
 import { useCalibrationRun } from './use-calibration-run.ts';
 import { useSentenceRun } from './use-sentence-run.ts';
 import './personal-speed.css';
@@ -216,8 +217,18 @@ export function PersonalSpeedEditor({
   onDiscard,
 }: PersonalSpeedEditorProps) {
   const [selection, setSelection] = useState(initialSelection);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
+  const [message, setMessageText] = useState('');
+  const [error, setErrorText] = useState('');
+  // 文章を打つ測定の表。付いている側の文（知らせか理由）が置き換わる・消える時に一緒に消す。
+  const [resultTable, setResultTable] = useState<{ readonly table: SentenceResultTableData; readonly side: 'message' | 'error' } | undefined>(undefined);
+  const setMessage = (text: string) => {
+    setMessageText(text);
+    setResultTable((current) => (current?.side === 'message' ? undefined : current));
+  };
+  const setError = (text: string) => {
+    setErrorText(text);
+    setResultTable((current) => (current?.side === 'error' ? undefined : current));
+  };
   const [confirming, setConfirming] = useState(false);
   const savedValues = useMemo(() => (calibration === undefined ? {} : calibrationFormValues(calibration)), [calibration]);
   const [values, setValues] = useState<CalibrationFormValues>(savedValues);
@@ -286,12 +297,15 @@ export function PersonalSpeedEditor({
       return;
     }
     const result = applySentenceMeasurement(started.calibration, samples, Date.now(), calibration);
+    const table = sentenceResultTable(result);
     if (!result.ok) {
       setError(sentenceFailureText(result));
+      setResultTable(table === undefined ? undefined : { table, side: 'error' });
       return;
     }
     onSave(result.calibration);
     setMessage(sentenceSavedMessage(result.measurement));
+    setResultTable(table === undefined ? undefined : { table, side: 'message' });
   };
   const sentenceRunner = useSentenceRun({ keyLabel, onFinished: sentenceFinished });
   const running = runner.run !== undefined || sentenceRunner.session !== undefined;
@@ -516,6 +530,7 @@ export function PersonalSpeedEditor({
             </div>
             <p className="personal-speed-message" role="status">{message}</p>
             <p className="personal-speed-error" role="alert">{error}</p>
+            {resultTable === undefined ? null : <SentenceResultTable table={resultTable.table} />}
           </section>
 
           <section className="personal-speed-section" aria-labelledby="personal-speed-values">
