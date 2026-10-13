@@ -376,6 +376,7 @@ test('文章を打つ測定で、示した綴りと違う綴りで打ち始め�
   await expect(page.locator('[data-personal-speed-next] kbd')).toHaveText(['I']);
   // 示していた綴り（nn）より1打少ない分だけ、残りが減る。
   await expect(progress).toHaveText(`あと${total - 11}打`);
-  await typeThroughSentence(page);
-  await expect(page.getByText('文章を打つ速さを測って保存しました。')).toBeVisible();
+  // 最後まで打って保存する流れは別のテストが見る。ここは途中で中止する。
+  await page.locator('[data-personal-speed-sentence-cancel]').click();
+  await expect(page.locator('[data-personal-speed-sentence-run="active"]')).toHaveCount(0);
 });
