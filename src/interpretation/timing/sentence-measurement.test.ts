@@ -102,7 +102,7 @@ test('間隔からnormalMsを引いた差の四分位平均を、その他の連
   assert.deepEqual(overheadMs, { other: 60 });
 });
 
-test('四分位平均は、小さい方と大きい方から n/4個（切り捨て）ずつ除いた残りの平均である', () => {
+test('四分位平均は、小さい方と大きい方からn/4個（切り捨て）ずつ除いた残りの平均である', () => {
   // n=4: 1個ずつ除いて中の2個。
   assert.equal(interquartileMean([100, 1, 3, 5]), 4);
   // n=5, 6, 7: 除く数の端数を切り捨てて1個ずつ。
@@ -139,6 +139,16 @@ test('差が大きく違う2つの群が混ざる時、四分位平均は群の�
   // 21個と19個: 除いた残りは11個と9個。
   assert.equal(mixed(21), 48.75);
   assert.equal(mixed(19), 56.25);
+});
+
+test('負の値は、平均を取ってから0にする。先に0にした値の平均とは違う', () => {
+  // 12個のうち下の3個と上の3個を除いた残りは-30,-10,10,30,50,70で、平均は20。
+  const diffs = [-90, -70, -50, -30, -10, 10, 30, 50, 70, 90, 110, 130];
+  assert.equal(interquartileMean(diffs), 20);
+  // 先に0にしてから平均を取ると、残りが0,0,10,30,50,70になり値が変わる。
+  assert.notEqual(interquartileMean(diffs.map((v) => Math.max(0, v))), 20);
+  const { overheadMs } = measureOne(alternating(13), SAVED, tapsFor(13, (index) => 200 + diffs[index - 1]));
+  assert.deepEqual(overheadMs, { other: 20 });
 });
 
 test('構造の種類ごとに別の連打との差を求める', () => {
