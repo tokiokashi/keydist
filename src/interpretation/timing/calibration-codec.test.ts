@@ -61,21 +61,21 @@ test('版が無い・未来の版・オブジェクトでない値は読み込�
 
 const WITH_OVERHEAD: PlaybackCalibration = { ...CALIBRATION, keystrokeOverheadMs: { arpeggio: 20, other: 80.5 } };
 
-test('連打との差を持つ個人速度は、書き出して読み直すと同じ値になる', () => {
+test('打鍵の上乗せを持つ個人速度は、書き出して読み直すと同じ値になる', () => {
   const encoded = PERSONAL_SPEED_CODEC.encode({ calibration: WITH_OVERHEAD });
   const decoded = PERSONAL_SPEED_CODEC.decode(JSON.parse(JSON.stringify(encoded)));
   assert.ok(decoded.ok);
   assert.deepEqual(decoded.value, { calibration: WITH_OVERHEAD });
 });
 
-test('連打との差を持たない保存値は、そのまま読み込める', () => {
+test('打鍵の上乗せを持たない保存値は、そのまま読み込める', () => {
   const decoded = PERSONAL_SPEED_CODEC.decode({ version: 1, calibration: CALIBRATION });
   assert.ok(decoded.ok);
   assert.equal(decoded.value.calibration?.keystrokeOverheadMs, undefined);
   assert.deepEqual(decoded.diagnostics, []);
 });
 
-test('連打との差だけが範囲外・知らない種類でも、他の任意の項目と同じく保存値ごと捨てる', () => {
+test('打鍵の上乗せだけが範囲外・知らない種類でも、他の任意の項目と同じく保存値ごと捨てる', () => {
   for (const keystrokeOverheadMs of [{ other: 1001 }, { other: -1 }, { unknown: 5 }]) {
     const decoded = PERSONAL_SPEED_CODEC.decode({ version: 1, calibration: { ...CALIBRATION, keystrokeOverheadMs } });
     assert.ok(decoded.ok);

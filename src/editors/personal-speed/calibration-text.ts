@@ -57,7 +57,7 @@ export const MEASUREMENT_SENTENCES: readonly string[] = [
   'あそびにいきたい',
 ];
 
-/** 連打との差の種類の名前。 */
+/** 打鍵の上乗せの種類の名前。 */
 export const OVERHEAD_KIND_LABEL: Readonly<Record<OverheadKind, string>> = {
   arpeggio: 'Arpeggio',
   chain: 'Chain',
@@ -100,7 +100,7 @@ export function calibrationFieldLabel(fieldId: string): string {
     case 'actions': return calibrationItemLabel({ kind: 'actions' });
     case 'same-key': return calibrationItemLabel({ kind: 'same-key', hand: 'L' });
     case 'direction': return `異手 ${calibrationItemLabel({ kind: 'direction', direction: name === 'L→R' ? 'L→R' : 'R→L' })}`;
-    case 'overhead': return `連打との差 ${OVERHEAD_KIND_LABEL[name as OverheadKind] ?? name}`;
+    case 'overhead': return `打鍵の上乗せ ${OVERHEAD_KIND_LABEL[name as OverheadKind] ?? name}`;
     case 'finger': return `${fingerLabel(name)}の移動速度`;
     case 'same-hand-pair': return `同手・別指 ${pairLabel(name, ':')}`;
     case 'directed-pair': return `同手・別指 ${pairLabel(name, '>')}`;
@@ -109,7 +109,7 @@ export function calibrationFieldLabel(fieldId: string): string {
 }
 
 /**
- * 見出しの下に並べる行の名前。見出しで分かる語（異手・同手・別指・連打との差・移動速度）は外す。
+ * 見出しの下に並べる行の名前。見出しで分かる語（異手・同手・別指・打鍵の上乗せ・移動速度）は外す。
  * 行の外で読む名前（入力欄の読み上げ・保存できない理由）は`calibrationFieldLabel`。
  */
 export function calibrationFieldRowLabel(fieldId: string): string {
@@ -174,15 +174,15 @@ export function savedMessage(
   item?: CalibrationItem,
   clearedOverheads: readonly OverheadKind[] = [],
 ): string {
-  const notice = clearedOverheads.length > 0 ? ' 文章を打つ速さの連打との差が消えました。' : '';
+  const notice = clearedOverheads.length > 0 ? ' 文章を打つ速さの打鍵の上乗せが消えました。' : '';
   if (scope === 'normal') return `通常の速度、同じキーを続けて打つ速さ、指の移動速度を測って保存しました。${notice}`;
   if (scope === 'directional') return `方向別の速度を測って保存しました。${notice}`;
   return item === undefined ? `保存しました。${notice}` : `${calibrationItemLabel(item)}を測り直して保存しました。${notice}`;
 }
 
-/** 測定で連打との差が消えた時に、消えた値のある文章を打つ速さの欄へ出す知らせ。 */
+/** 測定で打鍵の上乗せが消えた時に、消えた値のある文章を打つ速さの欄へ出す知らせ。 */
 export function clearedOverheadsText(clearedOverheads: readonly OverheadKind[]): string {
-  return `連打との差（${clearedOverheads.map((kind) => OVERHEAD_KIND_LABEL[kind]).join('・')}）は、他の値が変わったため消しました。文章を打つ速さをもう一度測ってください。`;
+  return `打鍵の上乗せ（${clearedOverheads.map((kind) => OVERHEAD_KIND_LABEL[kind]).join('・')}）は、他の値が変わったため消しました。文章を打つ速さをもう一度測ってください。`;
 }
 
 export const MEASUREMENT_OUT_OF_RANGE_TEXT = '測った値が保存できる範囲を外れていたため、保存していません。もう一度測ってください。';
@@ -226,7 +226,7 @@ export function sentenceSavedMessage(measurement: SentenceMeasurement): string {
       ? `${OVERHEAD_KIND_LABEL[kind]}は数えた打鍵が${count}打で${SENTENCE_MIN_SAMPLES}打に満たないため、保存していません`
       : `${OVERHEAD_KIND_LABEL[kind]} ${value.toFixed(1)}ミリ秒（${count}打）`;
   });
-  const text = `文章を打つ速さを測って保存しました。連打との差: ${parts.join('、')}。`;
+  const text = `文章を打つ速さを測って保存しました。打鍵の上乗せ: ${parts.join('、')}。`;
   const missing = OVERHEAD_KINDS.some((kind) => measurement.overheadMs[kind] === undefined);
   return missing ? `${text}${SENTENCE_OTHER_LAYOUT_NOTE}` : text;
 }
@@ -241,7 +241,7 @@ export function sentenceFailureText(result: Exclude<ApplySentenceResult, { ok: t
     case 'too-few':
       return `数えた打鍵が少なく、保存していません。もう一度測ってください（${countsText(result.measurement)}）。${SENTENCE_OTHER_LAYOUT_NOTE}`;
     case 'out-of-range':
-      return `測った連打との差が保存できる範囲（${CALIBRATION_OVERHEAD_MS_MIN}から${CALIBRATION_OVERHEAD_MS_MAX}ミリ秒）を外れていたため、保存していません。もう一度測ってください。`;
+      return `測った打鍵の上乗せが保存できる範囲（${CALIBRATION_OVERHEAD_MS_MIN}から${CALIBRATION_OVERHEAD_MS_MAX}ミリ秒）を外れていたため、保存していません。もう一度測ってください。`;
   }
 }
 
@@ -251,15 +251,15 @@ export const SENTENCE_TABLE_COLUMNS = {
   count: '打鍵の数',
   base: '基準の時間の四分位平均（ミリ秒）',
   interval: '打った間隔の四分位平均（ミリ秒）',
-  difference: '連打との差（ミリ秒）',
+  difference: '打鍵の上乗せ（ミリ秒）',
   saved: '保存',
 } as const;
 
 /** 測り終えた時の表に添える説明。 */
 export const SENTENCE_TABLE_NOTES: readonly string[] = [
-  '連打との差は、打鍵ごとの差（打った間隔から基準の時間を引いた値）の四分位平均（小さい方と大きい方から4分の1ずつ除いた残りの平均）で、負の時は0にします。'
+  '打鍵の上乗せは、打鍵ごとの差（打った間隔から基準の時間を引いた値）の四分位平均（小さい方と大きい方から4分の1ずつ除いた残りの平均）で、負の時は0にします。'
   + '打った間隔の四分位平均から基準の時間の四分位平均を引いた値とは、一致しないことがあります。',
-  '基準の時間は、連打の時間です。続け打ちは同じキーを続けて打つ時間、同指連続は連打の時間と指が動く時間の長い方です。',
+  '基準の時間は1打の時間です。同指連続では、1打の時間と指が動く時間の長い方です。続け打ちの1打の時間は、同じキーを続けて打つ速さから求めます。',
   '左手から右手・右手から左手の行は、「その他」のうち、手が替わる打鍵だけを分けた値です。「その他」の行にも含まれ、保存しません。'
   + '方向ごとに分けるので打鍵の数が少なく、値が揺れやすくなります。',
 ];
@@ -268,7 +268,7 @@ export const SENTENCE_TABLE_NOTES: readonly string[] = [
 export function sentenceTableKindLabel(kind: OverheadKind): string {
   switch (kind) {
     case 'repeat': return `${OVERHEAD_KIND_LABEL[kind]}（同じキーを続けて打つ時間が基準）`;
-    case 'sfb': return `${OVERHEAD_KIND_LABEL[kind]}（連打の時間と指が動く時間の長い方が基準）`;
+    case 'sfb': return `${OVERHEAD_KIND_LABEL[kind]}（1打の時間と指が動く時間の長い方が基準）`;
     default: return OVERHEAD_KIND_LABEL[kind];
   }
 }
@@ -306,8 +306,8 @@ export const MEASUREMENT_DESCRIPTION = {
     + '打鍵再生で、1打ごとの時間と、同じ指で別のキーを続けて打つ時に指が動く時間を決めます。',
   directional: '左手と右手の交互打ちと、同じ手の2本の指で打つ時の、打つ向きごとの速さを測ります。'
     + '打鍵再生で、測った向きの1打の時間を、向きを区別しない値の代わりに決めます。',
-  sentence: '覚えた文を考えずに打つ時に、測った速さから求めた時間より実際の打鍵が遅くなる分（連打との差）を、Arpeggio・Chain・その他・続け打ち・同指連続の5種類ごとに測ります。'
-    + '打鍵再生で、1打ごとの時間に種類ごとの連打との差を足します。',
+  sentence: '覚えた文を考えずに打つ時に、測った速さから求めた時間と、実際に打った間隔との差（打鍵の上乗せ）を、Arpeggio・Chain・その他・続け打ち・同指連続の5種類ごとに測ります。'
+    + '打鍵再生で、1打ごとの時間に種類ごとの打鍵の上乗せを足します。',
 } as const;
 
 /** 測り方の箇条。説明文の後に、測り方の小見出しを付けて並べる。 */
@@ -333,7 +333,7 @@ export const MEASUREMENT_HOW_TO = {
 /**
  * 測ると保存値がどう変わるかを示す文。測るボタンの直後に置く。
  * 保存値を持たない時と、置き換わる値も消える値も無い時は`undefined`で、文を出さない。
- * `savedOverheads`は保存されている連打との差の種類。
+ * `savedOverheads`は保存されている打鍵の上乗せの種類。
  */
 export function measurementEffectText(
   group: 'normal' | 'directional' | 'sentence',
@@ -345,19 +345,19 @@ export function measurementEffectText(
     case 'normal':
       return savedOverheads.length === 0
         ? '測ると、方向別の値を除く保存値が置き換わります。'
-        : '測ると、方向別の値を除く保存値が置き換わり、文章を打つ速さの連打との差は全て消えます。';
+        : '測ると、方向別の値を除く保存値が置き換わり、文章を打つ速さの打鍵の上乗せは全て消えます。';
     case 'directional': {
       // 同じ向きの測定が基準にする種類のうち、保存されているものだけを挙げる。続け打ちは基準にしないので消えない。
       const cleared = savedOverheads.filter((kind) => kind !== 'repeat');
       const kept = savedOverheads.includes('repeat') ? '（続け打ちは残ります）' : '';
       return cleared.length === 0
         ? '測ると、測った向きの値が置き換わります。'
-        : `測ると、測った向きの値が置き換わり、連打との差のうち${cleared.map((kind) => OVERHEAD_KIND_LABEL[kind]).join('・')}が消えます${kept}。`;
+        : `測ると、測った向きの値が置き換わり、打鍵の上乗せのうち${cleared.map((kind) => OVERHEAD_KIND_LABEL[kind]).join('・')}が消えます${kept}。`;
     }
     case 'sentence':
       return savedOverheads.length === 0
         ? undefined
-        : '測り直して保存すると、前の連打との差は全て置き換わります。';
+        : '測り直して保存すると、前の打鍵の上乗せは全て置き換わります。';
   }
 }
 
@@ -369,7 +369,7 @@ export const UNMEASURABLE_ROW_HINT = '選んだキーでは測れません';
 export const UNMEASURED_TEXT = {
   normal: '通常の速度と指の移動はまだ測っていません。',
   directional: '方向別の速度はまだ測っていません。',
-  sentence: '連打との差はまだ測っていません。',
+  sentence: '打鍵の上乗せはまだ測っていません。',
 } as const;
 /** 通常の測定が保存値の前提になる測定のボタンが使えない理由。 */
 export const NEED_NORMAL_FIRST_TEXT = '先に、通常の速度と指の移動を測って保存してください。';

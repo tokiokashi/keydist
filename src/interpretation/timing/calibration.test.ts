@@ -74,7 +74,7 @@ test('オブジェクトでない値は保存できない', () => {
   assert.notEqual(playbackCalibrationProblem('5'), undefined);
 });
 
-test('連打との差は0から1000ミリ秒までの種類ごとの値で、持たなくても保存できる', () => {
+test('打鍵の上乗せは0から1000ミリ秒までの種類ごとの値で、持たなくても保存できる', () => {
   assert.equal(isPlaybackCalibration(without('keystrokeOverheadMs')), true);
   assert.equal(isPlaybackCalibration({ ...VALID, keystrokeOverheadMs: { arpeggio: 0, chain: 1000, other: 80 } }), true);
   assert.equal(isPlaybackCalibration({ ...VALID, keystrokeOverheadMs: {} }), true);
@@ -82,7 +82,7 @@ test('連打との差は0から1000ミリ秒までの種類ごとの値で、持
   for (const bad of [{ other: -0.1 }, { other: 1000.1 }, { other: Number.NaN }, { other: '5' }, { sfb: -1 }, { repeat: 1001 }, { same: 5 }]) {
     assert.equal(isPlaybackCalibration({ ...VALID, keystrokeOverheadMs: bad }), false);
   }
-  assert.equal(playbackCalibrationProblem({ ...VALID, keystrokeOverheadMs: { other: 2000 } }), '連打との差が正しくありません');
+  assert.equal(playbackCalibrationProblem({ ...VALID, keystrokeOverheadMs: { other: 2000 } }), '打鍵の上乗せが正しくありません');
 });
 
 test('同じキーを続けて打つ速さは0.1から40アクション/秒までで、持たなくても保存できる', () => {

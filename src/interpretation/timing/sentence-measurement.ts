@@ -12,8 +12,8 @@ import { strokeOverheadKinds } from './stroke-structure.ts';
 
 /**
  * 文章を打つ測定（`spec/playback-timing.md` §6.4）の計算。差の種類（構造の種類の3つ・続け打ち・同指連続）ごとに、
- * ストロークの実際の間隔から基準の時間を引いた差の四分位平均を、連打との差にする。
- * 基準の時間は、続け打ちと構造の種類では連打の時間（`normalMs`）、同指連続では`max(normalMs, 指の移動の時間)`。
+ * ストロークの実際の間隔から基準の時間を引いた差の四分位平均を、打鍵の上乗せにする。
+ * 基準の時間は、続け打ちと構造の種類では1打の時間（`normalMs`）、同指連続では`max(normalMs, 指の移動の時間)`。
  * 数えるのは、覚えた文を繰り返し打つ2回目以降だけ。句読点を打つストロークと、その直後のストロークは数えない。
  * 時刻は呼び出し側が渡すので、描画にもタイマーにも依存しない。
  */
@@ -35,7 +35,7 @@ export function adjoinsPunctuation(strokes: readonly Pick<Stroke, 'inputChar' | 
     && previous.inputIndex !== stroke.inputIndex;
 }
 
-/** 差の種類ごとの連打との差を保存する、数えたストロークの最小数（文ごとに数える回の最大を全文で足した数）。これ未満の種類は保存しない。 */
+/** 差の種類ごとの打鍵の上乗せを保存する、数えたストロークの最小数（文ごとに数える回の最大を全文で足した数）。これ未満の種類は保存しない。 */
 export const SENTENCE_MIN_SAMPLES = 10;
 
 /** 打ち終えたストローク1つの記録。 */
@@ -98,7 +98,7 @@ export interface SentenceMeasurement {
   readonly kinds: Readonly<Record<OverheadKind, SentenceRowStats>>;
   /** 「その他」のうち異手のストロークを、異手の方向で分けた表に示す値。保存しない。 */
   readonly crossHand: Readonly<Record<CrossHandDirection, SentenceRowStats>>;
-  /** 数えたストロークが最小数以上の種類の連打との差[ms]。負の値は0にしてある。 */
+  /** 数えたストロークが最小数以上の種類の打鍵の上乗せ[ms]。負の値は0にしてある。 */
   readonly overheadMs: Readonly<Partial<Record<OverheadKind, number>>>;
 }
 
@@ -164,7 +164,7 @@ function emptyCounts(): Record<OverheadKind, number> {
 }
 
 /**
- * 数える回の記録から、差の種類ごとの連打との差を求める。回ごとに、最初のストローク（直前の時刻が無い）、
+ * 数える回の記録から、差の種類ごとの打鍵の上乗せを求める。回ごとに、最初のストローク（直前の時刻が無い）、
  * 違うキーを押したストローク、句読点を打つストロークと直後のストロークは数えない。
  * 続け打ちの差は間隔から続け打ちの`normalMs`（同じキーを続けて打つ速さ、無ければ通常速度）を引いた値、
  * 同指連続の差は間隔から`max(normalMs, 指の移動の時間)`を引いた値、構造の種類の差は間隔から`normalMs`を引いた値。
@@ -239,15 +239,15 @@ export type ApplySentenceResult =
   | { readonly ok: true; readonly calibration: PlaybackCalibration; readonly measurement: SentenceMeasurement }
   /** 文章を打つ測定は、`normalMs`を求める保存値が無いと反映先が無い。 */
   | { readonly ok: false; readonly reason: 'no-saved-value' }
-  /** 測定を始めた時の保存値と、保存の時の保存値が違う。打った時の基準で求めた連打との差を、違う保存値に付けない。 */
+  /** 測定を始めた時の保存値と、保存の時の保存値が違う。打った時の基準で求めた打鍵の上乗せを、違う保存値に付けない。 */
   | { readonly ok: false; readonly reason: 'changed' }
   /** どの種類も数えたストロークが足りない。 */
   | { readonly ok: false; readonly reason: 'too-few'; readonly measurement: SentenceMeasurement }
-  /** 測った連打との差が保存できる範囲を外れた。 */
+  /** 測った打鍵の上乗せが保存できる範囲を外れた。 */
   | { readonly ok: false; readonly reason: 'out-of-range'; readonly measurement: SentenceMeasurement };
 
 /**
- * 済んだ文章を打つ測定を保存値へ反映する（§6.3・§6.4）。連打との差だけを置き換え、他の項目は残す。
+ * 済んだ文章を打つ測定を保存値へ反映する（§6.3・§6.4）。打鍵の上乗せだけを置き換え、他の項目は残す。
  * 数えたストロークが最小数に満たない種類は持たない。
  */
 export function applySentenceMeasurement(
@@ -270,7 +270,7 @@ export function applySentenceMeasurement(
   return { ok: true, calibration: next, measurement };
 }
 
-/** 差の種類の行で、連打との差を保存したか。 */
+/** 差の種類の行で、打鍵の上乗せを保存したか。 */
 export type SentenceSaveStatus =
   /** 保存値に入れた。 */
   | 'saved'

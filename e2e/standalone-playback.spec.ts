@@ -343,7 +343,7 @@ test('個人速度の保存値がある時は、ペインの中に個人速度�
   await expect(feature(page).locator('[data-playback-personal-speed="missing"]')).toHaveCount(0);
 });
 
-test('個人速度の保存値が連打との差を持つ時は、ペインの中に足していることも出る', async ({ page }) => {
+test('個人速度の保存値が打鍵の上乗せを持つ時は、ペインの中に足していることも出る', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.addInitScript(({ key, value }) => {
     if (sessionStorage.getItem('seeded') !== null) return;
@@ -358,8 +358,8 @@ test('個人速度の保存値が連打との差を持つ時は、ペインの�
   });
   await openPlayback(page);
   await expect(calculation(page)).toContainText('個人速度で計算しています。');
-  await expect(calculation(page).locator('[data-playback-calculation-overhead]')).toContainText('個人速度で測った、文章を打つ時の連打との差を足しています。');
-  // 個人速度を適用しない設定にすると、連打との差も入らないので、知らせも消える
+  await expect(calculation(page).locator('[data-playback-calculation-overhead]')).toContainText('個人速度のうち、文章を打つ速さで測った打鍵の上乗せ（ミリ秒）を足しています。');
+  // 個人速度を適用しない設定にすると、打鍵の上乗せも入らないので、知らせも消える
   const settings = await openSettings(page);
   await settings.getByRole('button', { name: '適用しない' }).click();
   await settings.press('Escape');

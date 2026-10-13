@@ -247,7 +247,7 @@ test('1項目の測り直しは、その項目だけを置き換え、代表値�
 
 const ALL_OVERHEADS = { arpeggio: 10, chain: 20, other: 60, repeat: 5, sfb: 15 } as const;
 
-test('通常速度・移動速度の測定は、保存値の連打との差を全て消して知らせる', () => {
+test('通常速度・移動速度の測定は、保存値の打鍵の上乗せを全て消して知らせる', () => {
   const withOverhead: PlaybackCalibration = { ...SAVED, sameKeyActionsPerSecond: 6, keystrokeOverheadMs: ALL_OVERHEADS };
   const run = playAll(startCalibrationRun('normal', PLAN.normal!), 250);
   const applied = applyCalibrationRun(withOverhead, run, 5);
@@ -339,7 +339,7 @@ test('指の移動速度の測り直しは、同指連続の差だけを消す',
   assert.deepEqual(applied.clearedOverheads, ['sfb']);
 });
 
-test('消す連打との差を持たない保存値への測定は、消したと知らせない', () => {
+test('消す打鍵の上乗せを持たない保存値への測定は、消したと知らせない', () => {
   const run = playAll(startCalibrationRun('item', [PLAN.byItem.get('actions')!]), 200);
   const applied = applyCalibrationRun(SAVED, run, 5);
   assert.ok(applied.ok);
