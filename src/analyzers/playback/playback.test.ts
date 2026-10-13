@@ -148,7 +148,7 @@ test('解析設定は、時間と速度平均の8項目だけが抽出のキー�
     stepsPerSecond: 1.25,
     speedMultiplier: 1,
     sameFingerDelay: true,
-    allFingerMovementDelay: false,
+    allFingerMovementDelay: true,
     applyPersonalSpeed: true,
     rateAverage: 'sma',
     rateWindow: 10,
@@ -213,7 +213,7 @@ test('速度の推移（SMA）: 時間は再生と同じ時間表を使い、同
   assert.ok(Math.abs(extracted.schedule[1].endMs - total) < 1e-6);
   assert.ok(Math.abs(extracted.rateChart[2].actionsPerSecond! - 2000 / total) < 1e-9);
   assert.ok(Math.abs(extracted.rateChart[2].kanaPerSecond! - 2000 / total) < 1e-9);
-  assert.equal(extracted.rateChart[2].actionsPerSecond, 1.1803398874989486);
+  assert.equal(extracted.rateChart[2].actionsPerSecond, 1.1803398874989484);
 });
 
 test('速度の推移（SMA）: 窓幅を小さくすると、古いStrokeが窓から外れる', () => {
@@ -246,7 +246,7 @@ test('解析設定の共有リンク: 時間と速度平均の8項目は既定�
     stepsPerSecond: 2.5,
     speedMultiplier: 2,
     sameFingerDelay: false,
-    allFingerMovementDelay: true,
+    allFingerMovementDelay: false,
     applyPersonalSpeed: false,
     rateAverage: 'ewma',
     rateWindow: 20,
@@ -284,8 +284,8 @@ test('既定と違う計算の知らせ: 使われない項目は挙げず、個
   // 個人速度で計算している間、基準速度は数値に入らない。再生倍率は入る
   assert.deepEqual(notes({ stepsPerSecond: 2, speedMultiplier: 3 }, 'applied').changes, ['再生倍率: 3倍']);
   assert.deepEqual(
-    notes({ sameFingerDelay: false, allFingerMovementDelay: true, applyPersonalSpeed: false }, 'not-applied').changes,
-    ['指の移動速度を考慮しない', '全指の移動時間で律速する', '個人速度を適用しない'],
+    notes({ sameFingerDelay: false, allFingerMovementDelay: false, applyPersonalSpeed: false }, 'not-applied').changes,
+    ['指の移動速度を考慮しない', '全指の移動時間で律速しない', '個人速度を適用しない'],
   );
   // 平均の方式で使われない側の窓幅・半減時間は挙げない
   assert.deepEqual(notes({ rateWindow: 20, rateHalfLifeSeconds: 2 }, 'missing').changes, ['平均の窓幅: 20打鍵']);
@@ -304,9 +304,9 @@ test('時間表と速度の推移が、固定した値になる', () => {
   const fv = extractionOf(resolve('qwerty', 'fv'));
   assert.deepEqual(fv.schedule, [
     { strokeIndex: 0, startMs: 0, endMs: 800 },
-    { strokeIndex: 1, startMs: 800, endMs: 1694.4271909999159 },
+    { strokeIndex: 1, startMs: 800, endMs: 1694.427190999916 },
   ]);
-  assert.deepEqual(rates(fv), [[0, undefined, undefined], [1, 1.25, 1.25], [2, 1.1803398874989486, 1.1803398874989486]]);
+  assert.deepEqual(rates(fv), [[0, undefined, undefined], [1, 1.25, 1.25], [2, 1.1803398874989484, 1.1803398874989484]]);
   // 既定の解析設定・テキスト「かあ」
   const kana = extractionOf(resolve('qwerty', 'かあ', 'ja'));
   assert.deepEqual(kana.schedule, [
@@ -320,7 +320,7 @@ test('時間表と速度の推移が、固定した値になる', () => {
     stepsPerSecond: 2.5,
     speedMultiplier: 1.5,
     sameFingerDelay: false,
-    allFingerMovementDelay: true,
+    allFingerMovementDelay: false,
     applyPersonalSpeed: false,
     rateAverage: 'ewma',
     rateWindow: 5,
@@ -328,9 +328,9 @@ test('時間表と速度の推移が、固定した値になる', () => {
   });
   assert.deepEqual(changed.schedule, [
     { strokeIndex: 0, startMs: 0, endMs: 266.6666666666667 },
-    { strokeIndex: 1, startMs: 266.6666666666667, endMs: 564.8090636666386 },
+    { strokeIndex: 1, startMs: 266.6666666666667, endMs: 533.3333333333334 },
   ]);
-  assert.deepEqual(rates(changed), [[0, undefined, undefined], [1, 3.7499999999999996, 3.7499999999999996], [2, 3.7111350348511696, 3.7111350348511696]]);
+  assert.deepEqual(rates(changed), [[0, undefined, undefined], [1, 3.7499999999999996, 3.7499999999999996], [2, 3.7499999999999996, 3.7499999999999996]]);
   // 既定の解析設定・個人速度の保存値あり・テキスト「fv」
   const personal = extractionOf(resolve('qwerty', 'fv', 'en', EMPTY_SETTINGS_OVERRIDES, CALIBRATION));
   assert.deepEqual(personal.schedule, [
@@ -419,7 +419,7 @@ test('基準速度・再生倍率・指の移動速度の考慮の設定が、�
   assert.deepEqual(STEP_ENDS(doubled), [400, 800, 1200, 1600]);
   // 指の移動速度を考慮しなければ、同指連続のステップも800msになる（テキスト「fv」）
   const fv = resolve('qwerty', 'fv');
-  const off = extractionOf(fv, { sameFingerDelay: false });
+  const off = extractionOf(fv, { sameFingerDelay: false, allFingerMovementDelay: false });
   assert.deepEqual(STEP_ENDS(off), [800, 1600]);
   assert.ok(STEP_ENDS(extractionOf(fv))[1] > 1600);
   // 設定の値は抽出が持つ時間の設定にも載る
@@ -431,11 +431,12 @@ test('基準速度・再生倍率・指の移動速度の考慮の設定が、�
 test('全指の移動時間で律速する設定が、抽出の時間表に届く', () => {
   // 条件: 配列qwerty・物理配列row-staggered・テキスト「fv」。fからvへ移る指の移動時間が基本の時間を超えれば、終了時刻が延びる。
   const fv = resolve('qwerty', 'fv');
-  const base = extractionOf(fv);
-  const on = extractionOf(fv, { allFingerMovementDelay: true });
+  const on = extractionOf(fv);
+  const off = extractionOf(fv, { allFingerMovementDelay: false });
   assert.equal(on.timing.allFingerMovementDelay, true);
-  assert.deepEqual(on.schedule.map((step) => step.strokeIndex), base.schedule.map((step) => step.strokeIndex));
-  assert.ok(on.schedule[1].endMs >= base.schedule[1].endMs);
+  assert.equal(off.timing.allFingerMovementDelay, false);
+  assert.deepEqual(on.schedule.map((step) => step.strokeIndex), off.schedule.map((step) => step.strokeIndex));
+  assert.ok(on.schedule[1].endMs >= off.schedule[1].endMs);
 });
 
 test('時間モデルの設定を変えても、Traceと構造解析は作り直さずに抽出だけが変わる', () => {
@@ -445,7 +446,7 @@ test('時間モデルの設定を変えても、Traceと構造解析は作り直
     { stepsPerSecond: 2.5 },
     { speedMultiplier: 2 },
     { sameFingerDelay: false },
-    { allFingerMovementDelay: true },
+    { allFingerMovementDelay: false },
   ];
   const cache = createEngineCache();
   const results = variants.map((options) => extractionOf(input, options, cache));
@@ -545,7 +546,7 @@ test('時間の設定は仕様 §2の既定値で、個人速度の保存値が�
     stepsPerSecond: 1.25,
     speedMultiplier: 1,
     sameFingerDelay: true,
-    allFingerMovementDelay: false,
+    allFingerMovementDelay: true,
     calibration: undefined,
   });
   assert.equal(DEFAULT_PLAYBACK_STEPS_PER_SECOND, 1.25);

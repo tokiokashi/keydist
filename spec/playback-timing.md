@@ -47,7 +47,7 @@ Structural result ───────────→ Timing
 再生から導く速度の移動平均表示（§5）だけである。
 時間モデルの設定（§2）は距離の指標を動かさないので、距離モデルの出力（`Metrics`）の条件には入れない。
 
-距離 [u] が時間へ入る経路は、同指連続（§3.3）と任意の全指移動制約（§3.8）だけである。
+距離 [u] が時間へ入る経路は、同指連続（§3.3）と全指移動制約（§3.8）だけである。
 どちらもCalibrationが無い場合は「1u の移動を通常の1アクション相当」とする同じ正規化を使う。
 
 ## 2. パラメータ
@@ -57,7 +57,7 @@ Structural result ───────────→ Timing
 | 基準速度 `stepsPerSecond` | `stepsPerSecond` | ステップ/秒 | 0.1 〜 20 | 1.25 |
 | 再生倍率 `speedMultiplier` | `speedMultiplier` | 倍 | 0.1 〜 10 | 1 |
 | 指の移動速度を考慮 `sameFingerDelay` | `sameFingerDelay` | — | 真偽 | 真 |
-| 全指の移動時間で律速 `allFingerMovementDelay` | `allFingerMovementDelay` | — | 真偽 | 偽 |
+| 全指の移動時間で律速 `allFingerMovementDelay` | `allFingerMovementDelay` | — | 真偽 | 真 |
 | 個人速度を適用 | `applyPersonalSpeed` | — | 真偽 | 真 |
 
 再生倍率は**測定値・基準速度のどちらに対しても最後に掛かる**（§3.4）。
@@ -105,7 +105,8 @@ Structural result ───────────→ Timing
 
 ## 3. 1ステップの表示時間
 
-ステップ `i` の表示時間 `T(i)` を次の順で求める。
+ステップ `i` の基準の時間 `T(i)` を次の順で求める。
+実際の表示時間は、§4.1の確定scheduleが `T(i)` から決める（§3.8の制約を適用すると `T(i)` より長くなりうる）。
 判定に使うのは**ステップ `i` と直前のステップ `i-1` の関係だけ**である。
 
 ### 3.1 基準となる1アクションの時間
@@ -219,7 +220,7 @@ Span 全体へ「Arpeggio だから高速化」「Redirect だから減速」と
 
 ### 3.8 全指の移動時間によるschedule制約
 
-`allFingerMovementDelay=false` のときは従来どおり、§3.1〜§3.7で得た `T(i)` をそのまま累積する。
+既定は `allFingerMovementDelay=true` である。
 
 `allFingerMovementDelay=true` のときは、各Strokeのbase終了時刻へ全指の移動可能時刻を
 **追加のmax制約**として適用する。base duration自体やTransition Calibrationの選択規則は置き換えない。
@@ -249,6 +250,11 @@ directed finger-pair / cross-hand Calibrationはすでに `T(i)` のbase duratio
 全指制約側ではそれらをもう一度使わず、**finger movementだけ**を評価する。
 これにより同じ現象を加算で二重計上せず、「base Timing」と「物理的に間に合う最短時刻」の遅い方を採る。
 
+`allFingerMovementDelay=false` のときは、全指の移動可能時刻の制約を適用せず、
+§3.1〜§3.7で得た `T(i)` をそのまま累積する。押す指が直前のStrokeで押していない時
+（その指の最初のPressと、その指の前のPressとの間に別の指のStrokeを挟む時）、
+その指の最後の位置（まだ押していなければホーム）から次のキーまでの移動は時間に入らない。
+
 `sameFingerDelay` は既存のbase duration規則として残す。両方ONでも加算せずmax制約なので、
 同指移動がbase duration内で既に満たされていれば追加延長は発生しない。
 
@@ -266,7 +272,7 @@ directed finger-pair / cross-hand Calibrationはすでに `T(i)` のbase duratio
 ## 4. 再生の進行
 
 再生は `requestAnimationFrame` の経過時間を積算し、
-積算値が `T(i)` を超えるたびにカーソルを1つ進める。
+積算値が確定schedule（§4.1）のそのステップの時間（`endMs - startMs`）を超えるたびにカーソルを1つ進める。
 1フレームで複数ステップ進むこともある。
 
 1フレームとして受け取る経過時間には**上限（100ms）**を設ける。
@@ -285,8 +291,8 @@ directed finger-pair / cross-hand Calibrationはすでに `T(i)` のbase duratio
 
 表示側が各ステップの時間計算を再実装しないよう、Timingは各Strokeについて
 `startMs / endMs` を持つ累積scheduleを生成できるものとする。
-`allFingerMovementDelay=false` なら§3の `T(i)` をそのまま累積し、
-ONなら§3.8の全指max制約を適用したscheduleを確定結果とする。
+`allFingerMovementDelay=true`（既定）なら§3.8の全指max制約を適用したscheduleを確定結果とし、
+`false` なら§3の `T(i)` をそのまま累積したscheduleを確定結果とする。
 構造ラベルや表示設定から別のdurationを足さない。
 再生・速度の移動平均・指位置表示は同じ確定scheduleを再利用し、描画フレームごとに全StrokeのTimingを再計算しない。
 
