@@ -120,6 +120,12 @@ function SentenceText({ units, run }: { readonly units: readonly SentenceUnit[];
   );
 }
 
+/** 文章を打つ測定を始めた時点の入力。 */
+interface SentenceStart {
+  readonly setup: Extract<SentenceSetup, { readonly ok: true }>;
+  readonly calibration: PlaybackCalibration;
+}
+
 const NO_BASIS_TEXT = 'この配列・物理配列・指の割り当ての組では、測定用のキーを作れません。別の組を選んでください。';
 
 function firstOf<T extends { readonly id: string }>(items: readonly T[], id: string): T | undefined {
@@ -261,9 +267,15 @@ export function PersonalSpeedEditor({
       ))),
     [ready, buildSentence, layout, shape, assignment],
   );
+  // 測定を始めた時の示す文・打鍵の列と構造・保存値。別のタブで条件や保存値が変わっても、終わりまでこれを使う。
+  const [sentenceStart, setSentenceStart] = useState<SentenceStart | undefined>(undefined);
+  const sentenceStartRef = useRef<SentenceStart | undefined>(undefined);
   const sentenceFinished = (run: SentenceRun) => {
-    if (sentence?.ok !== true) return;
-    const result = applySentenceMeasurement(calibration, sentence.analysis, run.taps, Date.now());
+    const started = sentenceStartRef.current;
+    sentenceStartRef.current = undefined;
+    setSentenceStart(undefined);
+    if (started === undefined) return;
+    const result = applySentenceMeasurement(started.calibration, started.setup.analysis, run.taps, Date.now(), calibration);
     if (!result.ok) {
       setError(sentenceFailureText(result));
       return;
@@ -296,13 +308,22 @@ export function PersonalSpeedEditor({
   const currentTask = runner.run === undefined ? undefined : runner.run.tasks[runner.run.index];
 
   const startSentence = () => {
-    if (sentence?.ok !== true) return;
+    if (sentence?.ok !== true || calibration === undefined) return;
+    const started: SentenceStart = { setup: sentence, calibration };
+    sentenceStartRef.current = started;
+    setSentenceStart(started);
     opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setMessage('');
     setError('');
     sentenceRunner.start(sentence.steps);
   };
+  const cancelSentence = () => {
+    sentenceStartRef.current = undefined;
+    setSentenceStart(undefined);
+    sentenceRunner.cancel();
+  };
   const sentenceRun = sentenceRunner.run;
+  const runningSentence = sentenceStart?.setup;
   const sentenceStep = sentenceRun === undefined ? undefined : sentenceRun.steps[sentenceRun.index];
   const nextSentenceKeys = sentenceRun === undefined ? [] : remainingSentenceKeys(sentenceRun);
   const upcomingSentenceKeys = sentenceRun === undefined
@@ -439,9 +460,9 @@ export function PersonalSpeedEditor({
                 hidden={sentenceRun === undefined}
                 data-personal-speed-sentence-run={sentenceRun === undefined ? undefined : 'active'}
               >
-                {sentenceRun === undefined || sentence?.ok !== true || sentenceStep === undefined ? null : (
+                {sentenceRun === undefined || runningSentence === undefined || sentenceStep === undefined ? null : (
                   <>
-                    <SentenceText units={sentence.units} run={sentenceRun} />
+                    <SentenceText units={runningSentence.units} run={sentenceRun} />
                     <p className="personal-speed-instruction">
                       次に打つキー:{' '}
                       <span data-personal-speed-next>
@@ -455,7 +476,7 @@ export function PersonalSpeedEditor({
                       あと{sentenceRun.steps.length - sentenceRun.index}打
                     </p>
                     <p className="personal-speed-warning" role="status">{sentenceRunner.wrongKey === undefined ? '' : wrongKeyText(sentenceRunner.wrongKey)}</p>
-                    <button type="button" data-personal-speed-sentence-cancel onClick={sentenceRunner.cancel}>中止</button>
+                    <button type="button" data-personal-speed-sentence-cancel onClick={cancelSentence}>中止</button>
                   </>
                 )}
               </div>

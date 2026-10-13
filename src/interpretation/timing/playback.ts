@@ -619,7 +619,11 @@ export function playbackKeystrokeOverheadMs(
   return overheads[kind] ?? overheads.other ?? 0;
 }
 
-/** 1ステップを表示する時間。正規化ディレイは1uを通常の1アクション相当とする。 */
+/**
+ * 1ステップを表示する時間。正規化ディレイは1uを通常の1アクション相当とする。
+ * 解析結果を受け取らないので、遷移が属する構造の種類が分からず、1打ごとの上乗せ（§3.1.1）は足さない。
+ * 上乗せを含む時間は、解析結果を受け取る`playbackStepDurationMs`が求める。
+ */
 export function playbackStrokeDurationMs(
   stroke: Stroke | undefined,
   stepsPerSecond: PlaybackStepsPerSecond,

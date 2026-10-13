@@ -242,6 +242,24 @@ test('項目の測り直しは、その項目だけを入れ替える', async ({
   expect(saved.calibration.sameHandDifferentFingerActionsPerSecond).toBe(4);
 });
 
+test('文章を打つ測定の途中に別のタブで個人速度が変わると、上乗せを保存せず測り直しを促す', async ({ page, context }) => {
+  await seed(page, { [STORAGE_KEY]: SEEDED });
+  await open(page);
+  await page.locator('[data-personal-speed-start="sentence"]').click();
+  await expect(page.locator('[data-personal-speed-sentence-run="active"]')).toBeVisible();
+
+  const changed = { ...SEEDED, calibration: { ...SEEDED.calibration, actionsPerSecond: 6 } };
+  const other = await context.newPage();
+  await other.goto('/about');
+  await other.evaluate(({ key, value }) => localStorage.setItem(key, JSON.stringify(value)), { key: STORAGE_KEY, value: changed });
+  await other.close();
+  await page.bringToFront();
+
+  await typeThroughSentence(page);
+  await expect(page.getByRole('alert').filter({ hasText: '測定の途中で個人速度が変わったため、保存していません' })).toBeVisible();
+  expect(await stored(page)).toEqual(changed);
+});
+
 test('画面内で選んだ配列は、Singleの対象や条件を変えない。初期値はSingleの対象', async ({ page }) => {
   const single = { version: 1, target: { kind: 'layout', layoutId: 'dvorak' } };
   await seed(page, { 'keydist:single-target-selection': single });
@@ -332,7 +350,7 @@ test('1打ごとの上乗せを数値で直接編集して保存でき、空欄�
   await expect.poll(async () => 'keystrokeOverheadMs' in ((await stored(page)) as { calibration: object }).calibration).toBe(false);
 });
 
-test('示す文をSpaceや修飾キーなしで打てない配列では、文章を打つ測定は測れないと示す', async ({ page }) => {
+test('示す文を打つのに親指キー・Space・修飾キーなど1文字のキー以外が要る配列では、文章を打つ測定は測れないと示す', async ({ page }) => {
   await seed(page, { [STORAGE_KEY]: SEEDED });
   await open(page);
   await expect(page.locator('[data-personal-speed-start="sentence"]')).toBeEnabled();

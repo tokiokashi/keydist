@@ -34,7 +34,8 @@ export interface PlaybackCalibration {
   /** 指ごとの速度が無い場合に使う移動速度。単位は物理キーのu/秒。 */
   fallbackFingerSpeedUnitsPerSecond: number;
   /**
-   * 文章を打つ時の1打ごとの上乗せ[ms]。構造の種類ごとに持ち、同指連続を含まないステップの基準の時間にだけ足す。
+   * 文章を打つ時の1打ごとの上乗せ[ms]。構造の種類ごとに持ち、基準の時間のうち連打の時間（`normalMs`）の側にだけ足す。
+   * 同指連続のステップでは`max(normalMs + 上乗せ, 移動の時間)`の内側に入り、移動の時間には足さない。
    * 持たない種類は「その他」の値を使う。
    */
   keystrokeOverheadMs?: Readonly<Partial<Record<StrokeStructureKind, number>>>;

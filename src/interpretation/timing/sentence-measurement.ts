@@ -43,6 +43,19 @@ export interface SentenceMeasurement {
   readonly overheadMs: Readonly<Partial<Record<StrokeStructureKind, number>>>;
 }
 
+/** 保存値全体の比較。キーの並びは問わない。 */
+function sameValue(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false;
+  const left = a as Record<string, unknown>;
+  const right = b as Record<string, unknown>;
+  const keys = new Set([...Object.keys(left), ...Object.keys(right)]);
+  for (const key of keys) {
+    if (!sameValue(left[key], right[key])) return false;
+  }
+  return true;
+}
+
 function medianOf(values: readonly number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
   const middle = Math.floor(sorted.length / 2);
@@ -83,6 +96,8 @@ export type ApplySentenceResult =
   | { readonly ok: true; readonly calibration: PlaybackCalibration; readonly measurement: SentenceMeasurement }
   /** 文章を打つ測定は、`normalMs`を求める保存値が無いと反映先が無い。 */
   | { readonly ok: false; readonly reason: 'no-saved-value' }
+  /** 測定を始めた時の保存値と、保存の時の保存値が違う。打った時の基準で求めた上乗せを、違う保存値に付けない。 */
+  | { readonly ok: false; readonly reason: 'changed' }
   /** どの種類も数えたストロークが足りない。 */
   | { readonly ok: false; readonly reason: 'too-few'; readonly measurement: SentenceMeasurement }
   /** 測った上乗せが保存できる範囲を外れた。 */
@@ -97,8 +112,11 @@ export function applySentenceMeasurement(
   analysis: SentenceAnalysis,
   taps: readonly SentenceTap[],
   nowMs: number,
+  /** 保存の時点の保存値。測定を始めた時の保存値`base`と違えば保存しない。 */
+  current: PlaybackCalibration | undefined,
 ): ApplySentenceResult {
   if (base === undefined) return { ok: false, reason: 'no-saved-value' };
+  if (!sameValue(base, current)) return { ok: false, reason: 'changed' };
   const measurement = measureSentence(analysis, base, taps);
   if (Object.keys(measurement.overheadMs).length === 0) return { ok: false, reason: 'too-few', measurement };
   const inRange = Object.values(measurement.overheadMs).every((value) =>

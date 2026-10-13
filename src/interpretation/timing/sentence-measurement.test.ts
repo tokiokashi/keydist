@@ -12,7 +12,7 @@ import type { PlaybackCalibration } from './calibration.ts';
 import type { PlaybackTimingAnalysis } from './playback.ts';
 import {
   SENTENCE_MIN_SAMPLES,
-  applySentenceMeasurement,
+  applySentenceMeasurement as applyWithCurrent,
   measureSentence,
   type SentenceTap,
 } from './sentence-measurement.ts';
@@ -51,6 +51,11 @@ function alternating(count: number, chains: ReturnType<typeof range>[] = [], arp
   const strokes = Array.from({ length: count }, (_, index) =>
     stroke(index, press(index % 2 === 0 ? 'LI' : 'RI', sfbAt.includes(index))));
   return { strokes, transitions: [], chains, arpeggioSpans } as unknown as PlaybackTimingAnalysis;
+}
+
+/** 保存の時の保存値が、測定を始めた時の保存値と同じ場合。 */
+function applySentenceMeasurement(base: PlaybackCalibration | undefined, analysis: PlaybackTimingAnalysis, taps: readonly SentenceTap[], nowMs: number) {
+  return applyWithCurrent(base, analysis, taps, nowMs, base);
 }
 
 const SAVED: PlaybackCalibration = {
@@ -136,6 +141,21 @@ test('反映は1打ごとの上乗せだけを置き換え、他の項目と、�
   const result = applySentenceMeasurement(base, analysis, tapsFor(20, () => 260), 99);
   assert.ok(result.ok);
   assert.deepEqual(result.calibration, { ...SAVED, keystrokeOverheadMs: { other: 60 }, measuredAt: 99 });
+});
+
+test('保存の時の保存値が、測定を始めた時の保存値と違えば、保存せずに測り直させる', () => {
+  const analysis = alternating(20);
+  const taps = tapsFor(20, () => 260);
+  const same = applyWithCurrent(SAVED, analysis, taps, 1, { ...SAVED });
+  assert.ok(same.ok);
+  for (const current of [
+    { ...SAVED, actionsPerSecond: 6 },
+    { ...SAVED, fingerSpeedUnitsPerSecond: { LI: 9 } },
+    { ...SAVED, keystrokeOverheadMs: { other: 1 } },
+    undefined,
+  ]) {
+    assert.deepEqual(applyWithCurrent(SAVED, analysis, taps, 1, current), { ok: false, reason: 'changed' });
+  }
 });
 
 test('保存値が無い時は反映できない', () => {

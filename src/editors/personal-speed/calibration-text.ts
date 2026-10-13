@@ -143,7 +143,7 @@ export const MEASUREMENT_OUT_OF_RANGE_TEXT = '測った値が保存できる範�
 export function sentenceUnmeasurableText(reason: SentenceUnmeasurable): string {
   return reason === 'empty'
     ? 'この配列では、示す文を打つ打鍵の列を作れません。別の配列を選んでください。'
-    : 'この配列で示す文を打つには、Spaceや修飾キーを押しながらの入力が要るため、文章を打つ測定はできません。別の配列を選んでください。';
+    : 'この配列で示す文を打つには、親指キー・Space・修飾キーなど、1文字のキー以外が要るため、文章を打つ測定はできません。別の配列を選んでください。';
 }
 
 function countsText(measurement: SentenceMeasurement): string {
@@ -167,6 +167,8 @@ export function sentenceSavedMessage(measurement: SentenceMeasurement): string {
 /** 文章を打つ測定を保存できなかった時の文。 */
 export function sentenceFailureText(result: Exclude<ApplySentenceResult, { ok: true }>): string {
   switch (result.reason) {
+    case 'changed':
+      return '測定の途中で個人速度が変わったため、保存していません。もう一度測ってください。';
     case 'no-saved-value':
       return '個人速度が保存されていないため、文章を打つ測定は保存できません。';
     case 'too-few':
@@ -185,7 +187,7 @@ export const MEASUREMENT_DESCRIPTION = {
     + '打鍵再生では、同指連続を含まない打鍵の時間を、直前の打鍵との指の組み合わせと向きで決めるのに使います。'
     + '測っていない向きには、通常の速度や同手・別指の代表の速度が使われます。',
   sentence: '示す文を打って、文章を打つ時に連打より余分にかかる時間を、Arpeggio・Chain・その他の3種類ごとに測ります。'
-    + '同指連続を含まない打鍵の間隔から連打の時間を引いた差の中央値で求めるので、文節の切れ目の長い間は入りません。'
+    + '同指連続を含まない打鍵の間隔から連打の時間を引いた差の中央値で求めるので、文節の切れ目の長い間はほとんど入りません。'
     + '打鍵再生では、同指連続を含まない打鍵の時間に足します。指が動く時間には足しません。'
     + '測っていない種類には「その他」の上乗せが使われ、測っていなければ上乗せはありません。'
     + '打ちやすい形の違いが再生に出るよう、手に馴染んだ配列で測ってください。',
@@ -193,4 +195,4 @@ export const MEASUREMENT_DESCRIPTION = {
 
 export const PERSONAL_SPEED_PURPOSE =
   '打鍵再生の時間を、基準速度ではなく、測った打鍵と指の移動の速さで決めるために測ります。'
-  + '測った値は保存され、打鍵再生の「個人速度を適用」が有効な間に使われます。測っていなければ基準速度で再生します。';
+  + '測った値は保存され、打鍵再生の「個人速度」を「適用する」にしている間に使われます。測っていなければ基準速度で再生します。';
