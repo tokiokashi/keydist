@@ -362,7 +362,7 @@ test('文章を打つ測定で、下限に届かない種類がある配列で�
   const message = page.locator('.personal-speed-message');
   await expect(message).toContainText('に満たないため、保存していません');
   await expect(message).toContainText('手に馴染んだ別の配列で測ると、求まる種類が増えることがあります。');
-  await expect(message).toContainText('測り直して保存すると、全ての種類が測り直した値に置き換わります。');
+  await expect(message).toContainText('測り直して保存すると、全ての種類が置き換わり、下限に届かなかった種類の値は無くなります。');
   await expect(page.locator('[data-personal-speed-sentence-result]')).toBeVisible();
 });
 
