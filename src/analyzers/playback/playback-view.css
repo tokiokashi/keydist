@@ -320,6 +320,9 @@
  * Chain・Arpeggioの順番の数字は、通常の面（塗りの無いキー）の上でだけ動きの種類の色にする。
  * 履歴・予定の塗り、押下中のキー、動くキーの上では、キーの文字と同じ色にする。
  * 数字の周りの縁取りは読める根拠に含めない。
+ * 押下中のキー・動くキー・濃い予定のキーの上では、数字の色をその面に対して選んであるので、縁取りを外す。
+ * 縁取りを残すと、数字の色と縁取りの色が同じ組み合わせで、数字が縁取りの分だけ太く見える。
+ * それ以外の面では、縁取りの有無で見え方が変わるため、この規則では縁取りに触らない。
  */
 .playback-figure [data-playback-trail='true'] :is(.playback-order-chain, .playback-order-arpeggio),
 .playback-figure [data-playback-plan='true'] :is(.playback-order-chain, .playback-order-arpeggio),
@@ -338,6 +341,12 @@
 .playback-figure [data-playback-motion-key] .playback-key-label,
 .playback-figure [data-playback-motion-key] :is(.playback-order-chain, .playback-order-arpeggio) {
   fill: var(--viz-on-strong);
+}
+
+.playback-figure [data-playback-plan-strong='true'] :is(.playback-order-chain, .playback-order-arpeggio),
+.playback-figure [data-playback-active='true'] :is(.playback-order-chain, .playback-order-arpeggio),
+.playback-figure [data-playback-motion-key] :is(.playback-order-chain, .playback-order-arpeggio) {
+  stroke: none;
 }
 
 .playback-rate-panel {

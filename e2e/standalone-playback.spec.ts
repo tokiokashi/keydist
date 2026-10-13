@@ -427,3 +427,37 @@ test('Workspaceで、共有に従う打鍵再生のペインは時間の設定�
   await expect(noteOf('c')).toContainText('再生倍率: 3倍');
   await expect(noteOf('a')).toContainText('再生倍率: 2倍');
 });
+
+test('押下中のキー・動くキー・濃い予定のキーの上のChain・Arpeggioの順番の数字は縁取りを外し、それ以外の面の上の数字は縁取りを残す', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openPlayback(page);
+  const [, total] = await readPosition(page);
+  await feature(page).getByRole('button', { name: '配列図の表示', exact: true }).click();
+  const figureBox = page.getByRole('dialog', { name: '配列図の表示' });
+  for (const name of ['Chainの動的表示', 'Arpeggioの動的表示', '押下履歴を表示', '順番ラベルを表示']) {
+    await figureBox.getByRole('checkbox', { name }).check();
+  }
+  await page.keyboard.press('Escape');
+
+  // 押下中のキーの上に順番の数字が出るステップまで進める
+  const activeOrder = feature(page).locator('[data-playback-active="true"] :is(.playback-order-chain, .playback-order-arpeggio)').filter({ hasText: /\d/ });
+  for (let step = 1; step <= total && (await activeOrder.count()) === 0; step++) {
+    await feature(page).locator('[data-playback-seek]').fill(String(step));
+  }
+  await expect(activeOrder.first()).toBeVisible();
+
+  // 表示中のすべての順番の数字について、面の状態と縁取りの有無の組を見る
+  const strokes = await feature(page).locator('.playback-order-chain, .playback-order-arpeggio').evaluateAll((els) =>
+    els
+      .filter((el) => /\d/.test(el.textContent ?? ''))
+      .map((el) => {
+        const key = el.closest('g[data-playback-key], g[data-playback-motion-key]');
+        const coloredFace = Boolean(key?.hasAttribute('data-playback-motion-key') || key?.getAttribute('data-playback-active') === 'true' || key?.getAttribute('data-playback-plan-strong') === 'true');
+        return { coloredFace, stroke: getComputedStyle(el).stroke };
+      }),
+  );
+  expect(strokes.length).toBeGreaterThan(0);
+  for (const { coloredFace, stroke } of strokes) {
+    expect(stroke === 'none', JSON.stringify({ coloredFace, stroke })).toBe(coloredFace);
+  }
+});
