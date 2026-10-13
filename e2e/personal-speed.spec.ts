@@ -319,6 +319,7 @@ test('文章を打つ測定で、差の種類ごとの連打との差を測っ�
   await expect(page.locator('.personal-speed-message')).toContainText('続け打ち');
   await expect(page.locator('.personal-speed-message')).toContainText('同指連続');
   await expect(page.locator('.personal-speed-message')).toContainText('打）');
+  await expect(page.locator('.personal-speed-message')).not.toContainText('別の配列で測ると');
 
   const saved = await stored(page) as { calibration: { keystrokeOverheadMs: Record<string, number>; actionsPerSecond: number } };
   expect(Object.keys(saved.calibration.keystrokeOverheadMs).sort()).toEqual(['arpeggio', 'chain', 'other', 'repeat', 'sfb']);
@@ -345,6 +346,24 @@ test('文章を打つ測定で、差の種類ごとの連打との差を測っ�
   await expect(page.locator('#personal-speed-actions')).toHaveValue('5.00');
   await expect(page.getByText('文章を打つ速さを測って保存しました。')).toBeVisible();
   await expect(result).toBeVisible();
+});
+
+test('文章を打つ測定で、下限に届かない種類がある配列では、別の配列で測ると求まる種類が変わることと、測り直すと置き換わることが知らされる', async ({ page }) => {
+  test.setTimeout(240_000);
+  await seed(page, { [STORAGE_KEY]: SEEDED });
+  await open(page);
+  await expect(page.locator('[data-personal-speed-sentence]').first()).toBeVisible();
+  await page.locator('.personal-speed-select-grid select').first().selectOption('oonishi');
+  await page.locator('[data-personal-speed-start="sentence"]').click();
+  await expect(page.locator('[data-personal-speed-sentence-run="active"]')).toBeVisible();
+  await typeThroughSentence(page);
+  await expect(page.locator('[data-personal-speed-sentence-run="active"]')).toHaveCount(0);
+  await expect(page.getByText('文章を打つ速さを測って保存しました。')).toBeVisible();
+  const message = page.locator('.personal-speed-message');
+  await expect(message).toContainText('に満たないため、保存していません');
+  await expect(message).toContainText('手に馴染んだ別の配列で測ると、求まる種類が増えることがあります。');
+  await expect(message).toContainText('測り直して保存すると、全ての種類が測り直した値に置き換わります。');
+  await expect(page.locator('[data-personal-speed-sentence-result]')).toBeVisible();
 });
 
 test('文章を打つ測定は、何本目の何回目かを示し、1回目だけを数えない回と示す。2回目以降も次に打つキーが出る', async ({ page }) => {

@@ -179,6 +179,15 @@ function countsText(measurement: SentenceMeasurement): string {
     .join('、');
 }
 
+/**
+ * 下限に届かず保存しなかった種類がある時に、知らせの文へ添える文。
+ * どの種類が届くかは配列と綴りで変わるので、配列の名前は挙げない。
+ */
+export const SENTENCE_OTHER_LAYOUT_NOTE =
+  '手に馴染んだ別の配列で測ると、求まる種類が増えることがあります。'
+  + '測り直して保存すると、全ての種類が測り直した値に置き換わります。'
+  + 'ただし、再生する配列と違う配列で測ると、構造の種類の分かれ方が違う配列で測った値になります。';
+
 /** 文章を打つ測定を保存した時の知らせ。種類ごとに、保存した値と数えた打鍵の数を示す。 */
 export function sentenceSavedMessage(measurement: SentenceMeasurement): string {
   const parts = OVERHEAD_KINDS.map((kind) => {
@@ -188,7 +197,9 @@ export function sentenceSavedMessage(measurement: SentenceMeasurement): string {
       ? `${OVERHEAD_KIND_LABEL[kind]}は数えた打鍵が${count}打で${SENTENCE_MIN_SAMPLES}打に満たないため、保存していません`
       : `${OVERHEAD_KIND_LABEL[kind]} ${value.toFixed(1)}ミリ秒（${count}打）`;
   });
-  return `文章を打つ速さを測って保存しました。連打との差: ${parts.join('、')}。`;
+  const text = `文章を打つ速さを測って保存しました。連打との差: ${parts.join('、')}。`;
+  const missing = OVERHEAD_KINDS.some((kind) => measurement.overheadMs[kind] === undefined);
+  return missing ? `${text}${SENTENCE_OTHER_LAYOUT_NOTE}` : text;
 }
 
 /** 文章を打つ測定を保存できなかった時の文。 */
@@ -199,7 +210,7 @@ export function sentenceFailureText(result: Exclude<ApplySentenceResult, { ok: t
     case 'no-saved-value':
       return '個人速度が保存されていないため、文章を打つ測定は保存できません。';
     case 'too-few':
-      return `数えた打鍵が少なく、保存していません。もう一度測ってください（${countsText(result.measurement)}）。`;
+      return `数えた打鍵が少なく、保存していません。もう一度測ってください（${countsText(result.measurement)}）。${SENTENCE_OTHER_LAYOUT_NOTE}`;
     case 'out-of-range':
       return `測った連打との差が保存できる範囲（${CALIBRATION_OVERHEAD_MS_MIN}から${CALIBRATION_OVERHEAD_MS_MAX}ミリ秒）を外れていたため、保存していません。もう一度測ってください。`;
   }
@@ -265,6 +276,10 @@ export const MEASUREMENT_DESCRIPTION = {
     + '打鍵再生では、同指連続を含まない打鍵の時間を、直前の打鍵との指の組み合わせと向きで決めるのに使います。'
     + '測っていない向きには、通常の速度や同手・別指の代表の速度が使われます。',
   sentence: '示す短い文を1本ずつ3回続けて打って、文章を打つ時の連打との差を、Arpeggio・Chain・その他・続け打ち・同指連続の5種類ごとに測ります。'
+    + `打鍵が${SENTENCE_MIN_SAMPLES}打に届いた種類だけを保存します。届く種類は、選んだ配列と綴りで大きく違います。`
+    + '手に馴染んだ配列が複数ある時は、届く種類が多い配列で測ると、多くの種類の値が求まります。'
+    + '測り直して保存すると、全ての種類が置き換わります。'
+    + '再生する配列と違う配列で測ると、構造の種類の分かれ方が違う配列で測った値になります。'
     + '続け打ちは同じ指で同じキーを続けて打つ打鍵、同指連続は同じ指で違う位置を続けて打つ打鍵です。'
     + '1回目は文を覚える回で、数えません。2回目以降の打鍵だけを数えるので、覚えた文を考えずに打ってください。'
     + '句読点を打つ打鍵と直後の打鍵は、文の区切りで止まる間を含みうるので数えません。'
