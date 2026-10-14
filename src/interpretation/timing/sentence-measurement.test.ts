@@ -407,19 +407,12 @@ test('表の1行は、数えたストロークの基準の時間・間隔・差�
   assert.deepEqual(overheadMs, { other: -50 });
 });
 
-test('異手の向きごとの行の差も、負の値のまま持つ', () => {
-  const { crossHand } = measureOne(alternating(20), SAVED, tapsFor(20, () => 150));
-  assert.equal(crossHand['L→R'].differenceMs, -50);
-  assert.equal(crossHand['R→L'].differenceMs, -50);
-});
-
 test('数えたストロークが無い種類の行は、打数だけを持ち四分位平均を持たない', () => {
-  const { kinds, crossHand } = measureOne(alternating(20), SAVED, tapsFor(20, () => 260));
+  const { kinds } = measureOne(alternating(20), SAVED, tapsFor(20, () => 260));
   assert.deepEqual(kinds.arpeggio, emptyRow());
   assert.deepEqual(kinds.chain, emptyRow());
   assert.deepEqual(kinds.repeat, emptyRow());
   assert.deepEqual(kinds.sfb, emptyRow());
-  assert.equal(crossHand['L→R'].count + crossHand['R→L'].count, 19);
 });
 
 test('下限に届かない種類の行も、打数と四分位平均を持つ', () => {
@@ -443,34 +436,11 @@ test('異手の方向は、今のストロークの押下の順に直前の押�
   assert.equal(playbackCrossHandDirection(undefined, at('LI')), undefined);
 });
 
-test('「その他」の異手のストロークは、その他の行と方向の行の両方に入り、ArpeggioとChainの遷移は方向の行に入らない', () => {
-  // 遷移1〜13はArpeggio、15〜27はChain、14と28〜39はその他。奇数番はL→R、偶数番はR→L。
-  const analysis = alternating(40, [range(14, 28)], [range(0, 14)]);
-  const calibration: PlaybackCalibration = { ...SAVED, actionsPerSecondByDirection: { 'L→R': 10, 'R→L': 5 } };
-  const { kinds, crossHand, counts } = measureOne(analysis, calibration, tapsFor(40, (index) => (index % 2 === 1 ? 250 : 260)));
-  assert.deepEqual(counts, { ...NO_COUNTS, arpeggio: 13, chain: 13, other: 13 });
-  assert.deepEqual(crossHand['L→R'], { count: 6, baseMs: 100, intervalMs: 250, differenceMs: 150 });
-  assert.deepEqual(crossHand['R→L'], { count: 7, baseMs: 200, intervalMs: 260, differenceMs: 60 });
-  assert.equal(crossHand['L→R'].count + crossHand['R→L'].count, kinds.other.count);
-  assert.equal(kinds.arpeggio.count, 13);
-});
-
-test('方向の行の打数も、文ごとに数える回の最大を全文で足した数で求める', () => {
-  const analysis = alternating(20);
-  const samples: SentenceSample[] = [
-    { sentence: 0, analysis, taps: tapsFor(20, () => 260) },
-    { sentence: 0, analysis, taps: tapsFor(20, () => 260, (index) => index > 10) },
-  ];
-  const { crossHand } = measureSentence(samples, SAVED);
-  assert.equal(crossHand['L→R'].count + crossHand['R→L'].count, 19);
-});
-
 test('表は、保存した時は届いた種類を「保存した」、届かない種類を「下限に届かず」とする', () => {
   const result = applySentenceMeasurement(SAVED, alternating(20), tapsFor(20, () => 260), 5);
   const table = sentenceResultTable(result);
   assert.ok(table);
   assert.equal(table.kinds.length, 5);
-  assert.equal(table.crossHand.length, 2);
   assert.deepEqual(table.kinds.map(({ kind, status }) => [kind, status]), [
     ['arpeggio', 'below-minimum'],
     ['chain', 'below-minimum'],
@@ -508,11 +478,10 @@ test('出力の文字の読み方で完了したストロークは、そのス�
   const analysis = alternating(21);
   const flagged = new Set([0, 7, 20]);
   const taps = tapsFor(21, () => 260).map((tap, index) => (flagged.has(index) ? { ...tap, outputCompleted: true } : tap));
-  const { counts, crossHand } = measureOne(analysis, SAVED, taps);
+  const { counts } = measureOne(analysis, SAVED, taps);
   // 20の間隔（1〜20）のうち、7と20は自分の間隔、1と8は直前が印のあるストロークの間隔で外れて、20 - 4 = 16。
   // 0は最初のストロークで自分の間隔が無い。
   assert.deepEqual(counts, { ...NO_COUNTS, other: 16 });
-  assert.equal(crossHand['L→R'].count + crossHand['R→L'].count, 16);
 });
 
 test('出力の文字の読み方で完了した印が無ければ、数えるストロークは今と同じ', () => {

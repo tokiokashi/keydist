@@ -7,7 +7,7 @@ import {
   type PlaybackCalibration,
 } from './calibration.ts';
 import type { Stroke } from '#trace/generate.ts';
-import { playbackCrossHandDirection, playbackNormalMs, playbackSameFingerMovementMs, type PlaybackTimingAnalysis } from './playback.ts';
+import { playbackNormalMs, playbackSameFingerMovementMs, type PlaybackTimingAnalysis } from './playback.ts';
 import { strokeOverheadKinds } from './stroke-structure.ts';
 
 /**
@@ -81,10 +81,6 @@ export type SentenceAnalysis = PlaybackTimingAnalysis;
 
 export type SentenceCounts = Readonly<Record<OverheadKind, number>>;
 
-/** 異手の方向。 */
-export const CROSS_HAND_DIRECTIONS = ['L→R', 'R→L'] as const;
-export type CrossHandDirection = (typeof CROSS_HAND_DIRECTIONS)[number];
-
 /** 表の1行ぶんの値。数えたストロークが無い行は、四分位平均を持たない。 */
 export interface SentenceRowStats {
   /** 数えたストロークの数（下限の判定に使う数）。 */
@@ -102,8 +98,6 @@ export interface SentenceMeasurement {
   readonly counts: SentenceCounts;
   /** 差の種類ごとの、表に示す値。 */
   readonly kinds: Readonly<Record<OverheadKind, SentenceRowStats>>;
-  /** 「その他」のうち異手のストロークを、異手の方向で分けた表に示す値。保存しない。 */
-  readonly crossHand: Readonly<Record<CrossHandDirection, SentenceRowStats>>;
   /** 数えたストロークが最小数以上の種類の打鍵の上乗せ[ms]。負の値もそのまま持つ。 */
   readonly overheadMs: Readonly<Partial<Record<OverheadKind, number>>>;
 }
@@ -187,13 +181,10 @@ export function measureSentence(
   const gathered: Record<OverheadKind, Collected> = {
     arpeggio: collected(), chain: collected(), other: collected(), repeat: collected(), sfb: collected(),
   };
-  const gatheredCross: Record<CrossHandDirection, Collected> = { 'L→R': collected(), 'R→L': collected() };
   const maxPerSentence = new Map<number, Record<OverheadKind, number>>();
-  const maxCrossPerSentence = new Map<number, Record<CrossHandDirection, number>>();
   for (const { sentence, analysis, taps } of samples) {
     const kinds = strokeOverheadKinds(analysis);
     const round = emptyCounts();
-    const crossRound: Record<CrossHandDirection, number> = { 'L→R': 0, 'R→L': 0 };
     for (let index = 1; index < analysis.strokes.length; index++) {
       const tap = taps[index];
       const previous = taps[index - 1];
@@ -210,20 +201,10 @@ export function measureSentence(
       const intervalMs = tap.atMs - previous.atMs;
       push(gathered[kind], baseMs, intervalMs);
       round[kind] += 1;
-      if (kind === 'other') {
-        const direction = playbackCrossHandDirection(analysis.strokes[index], analysis.strokes[index - 1]);
-        if (direction !== undefined) {
-          push(gatheredCross[direction], baseMs, intervalMs);
-          crossRound[direction] += 1;
-        }
-      }
     }
     const best = maxPerSentence.get(sentence) ?? emptyCounts();
     for (const kind of OVERHEAD_KINDS) best[kind] = Math.max(best[kind], round[kind]);
     maxPerSentence.set(sentence, best);
-    const crossBest = maxCrossPerSentence.get(sentence) ?? { 'L→R': 0, 'R→L': 0 };
-    for (const direction of CROSS_HAND_DIRECTIONS) crossBest[direction] = Math.max(crossBest[direction], crossRound[direction]);
-    maxCrossPerSentence.set(sentence, crossBest);
   }
 
   const counts = emptyCounts();
@@ -234,13 +215,7 @@ export function measureSentence(
     if (counts[kind] >= SENTENCE_MIN_SAMPLES) overheadMs[kind] = interquartileMean(gathered[kind].differences);
     kinds[kind] = rowStats(counts[kind], gathered[kind]);
   }
-  const crossHand = {} as Record<CrossHandDirection, SentenceRowStats>;
-  for (const direction of CROSS_HAND_DIRECTIONS) {
-    let count = 0;
-    for (const best of maxCrossPerSentence.values()) count += best[direction];
-    crossHand[direction] = rowStats(count, gatheredCross[direction]);
-  }
-  return { counts, kinds, crossHand, overheadMs };
+  return { counts, kinds, overheadMs };
 }
 
 export type ApplySentenceResult =
@@ -290,8 +265,6 @@ export type SentenceSaveStatus =
 /** 測り終えた時に示す表。 */
 export interface SentenceResultTable {
   readonly kinds: readonly { readonly kind: OverheadKind; readonly stats: SentenceRowStats; readonly status: SentenceSaveStatus }[];
-  /** 保存しない行。 */
-  readonly crossHand: readonly { readonly direction: CrossHandDirection; readonly stats: SentenceRowStats }[];
 }
 
 /**
@@ -308,6 +281,5 @@ export function sentenceResultTable(result: ApplySentenceResult): SentenceResult
       stats: measurement.kinds[kind],
       status: measurement.overheadMs[kind] === undefined ? 'below-minimum' : reachedStatus,
     })),
-    crossHand: CROSS_HAND_DIRECTIONS.map((direction) => ({ direction, stats: measurement.crossHand[direction] })),
   };
 }
