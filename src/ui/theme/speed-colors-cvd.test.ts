@@ -41,7 +41,7 @@ function simulate(rgb: Vec3, matrix: readonly (readonly number[])[]): Vec3 {
   return matrix.map((row) => Math.min(1, Math.max(0, row[0]! * rgb[0] + row[1]! * rgb[1] + row[2]! * rgb[2]))) as Vec3;
 }
 
-// 線形sRGB → OKLab（Björn Ottosson の定義）。
+// 線形sRGB → OKLab（Björn Ottossonの定義）。
 function oklab([r, g, b]: Vec3): Vec3 {
   const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
   const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
