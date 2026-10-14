@@ -8,6 +8,8 @@ import {
   playbackPlannedOrders,
   playbackPreparedFingerPositionKeys,
   playbackRomajiPlan,
+  playbackRomajiPlannedKeys,
+  playbackRomajiPlannedOrders,
   playbackSameFingerKeyMotions,
   playbackStepDurationMs,
   playbackStrokeAt,
@@ -36,9 +38,6 @@ import type { PlaybackTimingConditions } from './timing-conditions.ts';
  * 構造の判定・時間の計算は`interpretation/`の関数に任せ、ここは表示の用途ごとに取り出して並べ直すだけ。
  */
 
-/** 押下履歴として残すステップ数。 */
-export const PLAYBACK_TRAIL_STEPS = 5;
-
 /** 構造の動的表示でキーが動く時間の下限・上限 [ms]。短すぎる動きは見えず、長すぎる動きは次の打鍵と重なる。 */
 const MOTION_DURATION_MIN_MS = 150;
 const MOTION_DURATION_MAX_MS = 1500;
@@ -46,7 +45,7 @@ const MOTION_DURATION_MAX_MS = 1500;
 export interface PlaybackMotion {
   readonly fromKey: string;
   readonly toKey: string;
-  readonly kind: 'sameFinger' | 'chain';
+  readonly kind: 'sameFinger' | 'chain' | 'arpeggio';
   readonly durationMs: number;
 }
 
@@ -72,6 +71,9 @@ export interface PlaybackFrame {
   readonly trailKeys: ReadonlyMap<string, number>;
   readonly plannedKeys: ReadonlyMap<string, number>;
   readonly plannedOrders: ReadonlyMap<string, number>;
+  /** ローマ字配列で、今の入力単位のまだ押していないキー。これから押すキーの表示とは独立 */
+  readonly romajiPlannedKeys: ReadonlyMap<string, number>;
+  readonly romajiPlannedOrders: ReadonlyMap<string, number>;
   readonly trailOrders: ReadonlyMap<string, number>;
   readonly chainOrders: ReadonlyMap<string, number>;
   readonly arpeggioOrders: ReadonlyMap<string, number>;
@@ -120,7 +122,11 @@ function structureLabelOf(analysis: AggregatedAnalysisResult, cursor: number): s
   return tags.length > 0 ? tags.join(' / ') : '—';
 }
 
-/** 構造の動的表示で重ねるキーの動き。同指移動のキーは、Chain・Arpeggioの動きから外す。 */
+/**
+ * 構造の動的表示で重ねるキーの動き。同指移動のキーは、Chain・Arpeggioの動きから外す。
+ * 同じ行き先のキーがChainとArpeggioの両方に入る時は、動くキーを1つにしてArpeggioの動きを残す
+ * （2つ描くと、どちらの色が見えるかが描く順番で決まるため）。
+ */
 function motionsOf(input: PlaybackFrameInput, cursor: number): PlaybackMotion[] {
   const { analysis, options, timing, schedule, trace } = input;
   const sameFingerMotions = timing.sameFingerDelay && options.showSameFingerMotion
@@ -140,7 +146,7 @@ function motionsOf(input: PlaybackFrameInput, cursor: number): PlaybackMotion[] 
   const abstractMotions = [
     ...sameFingerMotions.map((motion) => ({ ...motion, kind: 'sameFinger' as const })),
     ...chainMotions.map((motion) => ({ ...motion, kind: 'chain' as const })),
-    ...arpeggioMotions.map((motion) => ({ ...motion, kind: 'chain' as const })),
+    ...arpeggioMotions.map((motion) => ({ ...motion, kind: 'arpeggio' as const })),
   ];
 
   const durationIndex = Math.max(0, cursor - 1);
@@ -154,10 +160,13 @@ function motionsOf(input: PlaybackFrameInput, cursor: number): PlaybackMotion[] 
       timing.speedMultiplier,
     );
   const durationMs = Math.max(MOTION_DURATION_MIN_MS, Math.min(MOTION_DURATION_MAX_MS, stepMs));
-  return abstractMotions.flatMap((motion) =>
+  const motions = abstractMotions.flatMap((motion) =>
     motion.toKeys
       .filter((key) => key !== motion.fromKey)
       .map((toKey) => ({ fromKey: motion.fromKey, toKey, kind: motion.kind, durationMs })));
+  // 動かない動き（行き先と出発位置が同じ）を除いた後で重なりを見る。先に見ると、Arpeggioの動きが消えた時にChainの動きも消えてしまう
+  const arpeggioTargets = new Set(motions.filter((motion) => motion.kind === 'arpeggio').map((motion) => motion.toKey));
+  return motions.filter((motion) => motion.kind !== 'chain' || !arpeggioTargets.has(motion.toKey));
 }
 
 export function derivePlaybackFrame(input: PlaybackFrameInput): PlaybackFrame {
@@ -170,6 +179,12 @@ export function derivePlaybackFrame(input: PlaybackFrameInput): PlaybackFrame {
 
   const inputPreview = playbackInputPreview(trace.strokes, cursor, windowSize);
   const plan = isRomaji ? playbackRomajiPlan(trace.strokes, cursor) : undefined;
+
+  const none = <V>() => new Map<string, V>();
+  // 履歴と予定の順番ラベルは、そのキー自体が出ている時にだけ付く
+  const showTrail = options.showTrail;
+  const showPlanned = options.showPlannedKeys;
+  const showRomaji = isRomaji && options.showRomajiPlan;
 
   return {
     total,
@@ -189,22 +204,32 @@ export function derivePlaybackFrame(input: PlaybackFrameInput): PlaybackFrame {
     keyLabels: display?.keyLabels ?? new Map<string, string>(),
     activeKeys: new Set(stroke?.presses.flatMap((press) => press.keys.map((key) => key.id)) ?? []),
     triggerKeys: new Set(stroke?.triggerKeys ?? []),
-    fingerPositionKeys: playbackPreparedFingerPositionKeys(
-      analysis,
-      schedule,
-      cursor,
-      input.elapsedMs,
-      geometry,
-      options.fingerPreparationSeconds,
-      timing.stepsPerSecond,
-      timing.calibration,
-      timing.speedMultiplier,
-    ),
-    trailKeys: playbackTrailKeys(trace.strokes, cursor, PLAYBACK_TRAIL_STEPS),
+    fingerPositionKeys: options.showFingerPositions
+      ? playbackPreparedFingerPositionKeys(
+        analysis,
+        schedule,
+        cursor,
+        input.elapsedMs,
+        geometry,
+        options.fingerPreparationSeconds,
+        timing.stepsPerSecond,
+        timing.calibration,
+        timing.speedMultiplier,
+      )
+      : none<Finger>(),
+    trailKeys: showTrail ? playbackTrailKeys(trace.strokes, cursor, options.trailSteps) : none<number>(),
     // これから押すキー。ローマ字配列でもそれ以外でも、先読みN入力ぶんを近さに応じた濃さと順番で出す
-    plannedKeys: playbackPlannedKeys(trace.strokes, cursor, windowSize),
-    plannedOrders: playbackPlannedOrders(trace.strokes, cursor, windowSize),
-    trailOrders: playbackTrailOrders(trace.strokes, cursor, PLAYBACK_TRAIL_STEPS),
+    plannedKeys: showPlanned ? playbackPlannedKeys(trace.strokes, cursor, windowSize) : none<number>(),
+    plannedOrders: showPlanned && options.showOrderLabels
+      ? playbackPlannedOrders(trace.strokes, cursor, windowSize)
+      : none<number>(),
+    romajiPlannedKeys: showRomaji ? playbackRomajiPlannedKeys(trace.strokes, cursor) : none<number>(),
+    romajiPlannedOrders: showRomaji && options.showOrderLabels
+      ? playbackRomajiPlannedOrders(trace.strokes, cursor)
+      : none<number>(),
+    trailOrders: showTrail && options.showOrderLabels
+      ? playbackTrailOrders(trace.strokes, cursor, options.trailSteps)
+      : none<number>(),
     chainOrders: options.showChain ? firstOrders(playbackAnalysisChainOrders(analysis, cursor)) : new Map<string, number>(),
     arpeggioOrders: options.showArpeggio ? firstOrders(playbackAnalysisArpeggioOrders(analysis, cursor)) : new Map<string, number>(),
     motions: motionsOf(input, cursor),

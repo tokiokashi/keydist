@@ -73,3 +73,25 @@ test('オブジェクトでない値は保存できない', () => {
   assert.notEqual(playbackCalibrationProblem([]), undefined);
   assert.notEqual(playbackCalibrationProblem('5'), undefined);
 });
+
+test('打鍵の上乗せは-1000から1000ミリ秒までの種類ごとの値で、持たなくても保存できる', () => {
+  assert.equal(isPlaybackCalibration(without('keystrokeOverheadMs')), true);
+  assert.equal(isPlaybackCalibration({ ...VALID, keystrokeOverheadMs: { arpeggio: 0, chain: 1000, other: 80 } }), true);
+  assert.equal(isPlaybackCalibration({ ...VALID, keystrokeOverheadMs: {} }), true);
+  assert.equal(isPlaybackCalibration({ ...VALID, keystrokeOverheadMs: { repeat: 0, sfb: 1000 } }), true);
+  assert.equal(isPlaybackCalibration({ ...VALID, keystrokeOverheadMs: { other: -0.1, sfb: -1000, repeat: -126 } }), true);
+  for (const bad of [{ other: -1000.1 }, { other: 1000.1 }, { other: Number.NaN }, { other: '5' }, { sfb: -1001 }, { repeat: 1001 }, { same: 5 }]) {
+    assert.equal(isPlaybackCalibration({ ...VALID, keystrokeOverheadMs: bad }), false);
+  }
+  assert.equal(playbackCalibrationProblem({ ...VALID, keystrokeOverheadMs: { other: 2000 } }), '打鍵の上乗せが正しくありません');
+});
+
+test('同じキーを続けて打つ速さは0.1から40アクション/秒までで、持たなくても保存できる', () => {
+  assert.equal(isPlaybackCalibration(without('sameKeyActionsPerSecond')), true);
+  assert.equal(isPlaybackCalibration({ ...VALID, sameKeyActionsPerSecond: 0.1 }), true);
+  assert.equal(isPlaybackCalibration({ ...VALID, sameKeyActionsPerSecond: 40 }), true);
+  for (const bad of [0.09, 40.01, Number.NaN, '5']) {
+    assert.equal(isPlaybackCalibration({ ...VALID, sameKeyActionsPerSecond: bad }), false);
+  }
+  assert.equal(playbackCalibrationProblem({ ...VALID, sameKeyActionsPerSecond: 50 }), '同じキーを続けて打つ速さが範囲外です');
+});

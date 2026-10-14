@@ -4,7 +4,7 @@ import { MOBILE_QUERY } from '#ui/theme/breakpoints.ts';
 
 /**
  * ペインの浮かぶ小窓（docs/architecture.md「ペイン」の「解析設定は小窓で開く」「キーの詳細は、図のキーで見せる」）。
- * 解析設定とキーの詳細が同じ部品を使い、見出しの語と閉じるボタンの名前だけが違う。
+ * 解析設定・キーの詳細・図の表示が同じ部品を使い、見出しの語と閉じるボタンの名前だけが違う。
  *
  * - 非モーダル。背後を暗くせず、開いている間も図や他のペインを操作できる
  * - 見出しをドラッグして動かせる（図を見ながら値を変えられるように）
@@ -26,16 +26,18 @@ export interface FloatingWindowProps {
   /** 閉じるボタンの読み上げ名。省略は「解析設定を閉じる」。 */
   readonly closeLabel?: string;
   /** 小窓の種類。画面の部品を見分ける印になる。省略は解析設定。 */
-  readonly kind?: 'settings' | 'key-detail';
+  readonly kind?: 'settings' | 'key-detail' | 'figure-settings';
   /** Workspaceのペイン名（読み上げ用の名前と同じもの）。個別画面ではページに1枚なので出さない。 */
   readonly paneName?: string;
-  /** 開いた時に小窓を寄せる基準（見出しの「解析設定」ボタン、選んだキー）。 */
+  /** 開いた時に小窓を寄せる基準（見出しの「解析設定」ボタン、選んだキー、図の表示のボタン）。開いている間に基準が替わっても、小窓の位置は動かさない。 */
   readonly anchor: Element | null;
   /**
-   * 基準に対する初期位置。`below`は基準のすぐ下に右端をそろえる（解析設定）。`edge`は基準の高さで画面の右端に寄せ、
-   * 基準に重なる時だけ左端に寄せる（キーの詳細。押したキーを隠さず、図を覆う範囲を小さくする）。どちらも、開いた後はドラッグで動かせる。
+   * 基準に対する初期位置。`below`は基準のすぐ下に右端をそろえる（解析設定。ボタンが見出しの右端にある）。
+   * `below-start`は基準のすぐ下に左端をそろえる（図の表示。ボタンが見出しの文字の隣にある）。
+   * `edge`は基準の高さで画面の右端に寄せ、基準に重なる時だけ左端に寄せる（キーの詳細。押したキーを隠さず、図を覆う範囲を小さくする）。
+   * どれも、開いた後はドラッグで動かせる。
    */
-  readonly placement?: 'below' | 'edge';
+  readonly placement?: 'below' | 'below-start' | 'edge';
   /** 解析設定をすべて初期値へ戻す。あればヘッダー行（タイトルと閉じるボタンの間）に文字ボタンを出す。 */
   readonly onReset?: () => void;
   /** 「すべて初期値に戻す」のtitle。省略は「対象と条件は変わらない」。 */
@@ -84,7 +86,7 @@ function clamp(position: Position, element: HTMLElement | null): Position {
   };
 }
 
-function initialPosition(anchor: Element | null, element: HTMLElement | null, placement: 'below' | 'edge'): Position {
+function initialPosition(anchor: Element | null, element: HTMLElement | null, placement: 'below' | 'below-start' | 'edge'): Position {
   const width = element?.offsetWidth ?? 320;
   if (anchor === null) return clamp({ x: window.innerWidth - width - 24, y: 80 }, element);
   const rect = anchor.getBoundingClientRect();
@@ -94,6 +96,7 @@ function initialPosition(anchor: Element | null, element: HTMLElement | null, pl
     const covers = rect.right > rightX && rect.left < rightX + width;
     return clamp({ x: covers ? 24 : rightX, y: rect.top }, element);
   }
+  if (placement === 'below-start') return clamp({ x: rect.left, y: rect.bottom + 6 }, element);
   // ボタンの右端に小窓の右端を揃え、ボタンのすぐ下に出す。
   return clamp({ x: rect.right - width, y: rect.bottom + 6 }, element);
 }
@@ -124,6 +127,7 @@ export function FloatingWindow({
   const closeTimerRef = useRef<number | undefined>(undefined);
 
   // 開くたびにボタンの近くへ出し直す（前回ドラッグした位置は、閉じたら意味を失う）。
+  // 開いている間は基準の要素が作り直されても出し直さず、ドラッグした位置を保つ。
   useLayoutEffect(() => {
     // 閉じ終わる前に開き直した時、遅れて来る閉じる処理が新しいシートを閉じないようにする。
     window.clearTimeout(closeTimerRef.current);
@@ -138,7 +142,7 @@ export function FloatingWindow({
     }
     setPosition(initialPosition(anchor, windowRef.current, placement));
     focusPendingRef.current = true;
-  }, [open, anchor]);
+  }, [open]);
 
   // フォーカスは位置が決まって見えるようになってから移す。測る間の`visibility: hidden`の要素へは
   // フォーカスが入らず、開いた直後のEscapeで閉じられなくなるため。
@@ -236,6 +240,7 @@ export function FloatingWindow({
       tabIndex={-1}
       data-settings-window={kind === 'settings' || undefined}
       data-key-detail-window={kind === 'key-detail' || undefined}
+      data-figure-settings-window={kind === 'figure-settings' || undefined}
       data-sheet={isSheet || undefined}
       data-sheet-dragging={sheetDragging || undefined}
       style={position === undefined
@@ -272,7 +277,7 @@ export function FloatingWindow({
         onPointerCancel={isSheet ? onSheetPointerEnd : endDrag}
       >
         <span className="settings-window-title">
-          {title}
+          <span className="settings-window-title-text">{title}</span>
           {paneName === undefined ? null : <span className="settings-window-pane">{paneName}</span>}
         </span>
         {onReset === undefined ? null : (

@@ -119,9 +119,14 @@
 
 .personal-speed-message,
 .personal-speed-error {
-  margin: 0.6rem 0 0;
-  min-height: 1.2em;
+  margin: 0;
   font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.personal-speed-message:not(:empty),
+.personal-speed-error:not(:empty) {
+  margin-top: 0.6rem;
 }
 
 .personal-speed-message {
@@ -151,6 +156,25 @@
 .personal-speed-row-label {
   flex: 1 1 10rem;
   overflow-wrap: anywhere;
+}
+
+.personal-speed-row-hint {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.personal-speed-field-error {
+  flex: 1 0 100%;
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.personal-speed-reason {
+  margin: 0.4rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
 }
 
 .personal-speed-row input[type='text'] {
@@ -207,4 +231,91 @@
   justify-content: flex-end;
   gap: 0.5rem;
   margin-top: 0.75rem;
+}
+
+.personal-speed-group {
+  margin-top: 1.5rem;
+  padding: 0.25rem 1rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.personal-speed-group > h2 {
+  margin-top: 0.75rem;
+}
+
+.personal-speed-howto {
+  margin: 0 0 0.6rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.personal-speed-howto h3 {
+  margin: 0.4rem 0 0.2rem;
+  font-size: 0.9rem;
+}
+
+.personal-speed-howto ul {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.personal-speed-value-block {
+  margin-top: 1rem;
+}
+
+.personal-speed-value-block h3 {
+  margin-top: 0;
+}
+
+.personal-speed-sentence {
+  margin: 0.5rem 0;
+  font-size: 1.05rem;
+  line-height: 1.9;
+  overflow-wrap: anywhere;
+}
+
+.personal-speed-sentence [data-sentence-unit='done'] {
+  color: var(--text-muted);
+}
+
+.personal-speed-sentence [data-sentence-unit='current'] {
+  border-bottom: 2px solid var(--accent);
+  font-weight: 650;
+}
+
+.personal-speed-instruction kbd {
+  display: inline-block;
+  min-width: 1.6rem;
+  margin-inline: 0.15rem;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 5px;
+  background: var(--surface-muted);
+  font: inherit;
+  text-align: center;
+}
+
+.personal-speed-result {
+  margin-top: 0.6rem;
+  overflow-x: auto;
+}
+
+.personal-speed-result-table {
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.personal-speed-result-table th,
+.personal-speed-result-table td {
+  padding: 0.25rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.personal-speed-result-table th[scope='row'],
+.personal-speed-result-table thead th:first-child,
+.personal-speed-result-table td:last-child {
+  text-align: left;
 }
