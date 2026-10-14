@@ -30,7 +30,7 @@ export function playbackCalculationNotes(
   // 再生するテキストの中身は見ず、解析設定と保存値の組で決める。
   const keystrokeOverheadInUse = personalSpeedInUse
     && Object.entries(calibration?.keystrokeOverheadMs ?? {}).some(
-      ([kind, ms]) => ms > 0 && (kind !== 'sfb' || options.sameFingerDelay),
+      ([kind, ms]) => ms !== 0 && (kind !== 'sfb' || options.sameFingerDelay),
     );
   const changes: string[] = [];
   if (!personalSpeedInUse && options.stepsPerSecond !== defaults.stepsPerSecond) {

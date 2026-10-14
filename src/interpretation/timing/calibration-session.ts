@@ -25,6 +25,8 @@ import {
   CALIBRATION_FINGER_SAMPLES,
   CALIBRATION_SAME_HAND_SAMPLES,
   CALIBRATION_SAME_KEY_SAMPLES,
+  CALIBRATION_OVERHEAD_MS_MAX,
+  CALIBRATION_OVERHEAD_MS_MIN,
   OVERHEAD_KINDS,
   STROKE_STRUCTURE_KINDS,
   type FingerSpeedSample,
@@ -320,6 +322,8 @@ export type ApplyCalibrationResult =
       readonly calibration: PlaybackCalibration;
       /** 保存値が持っていて消した打鍵の上乗せの種類。文章を打つ測定の測り直しを促す。 */
       readonly clearedOverheads: readonly OverheadKind[];
+      /** 続け打ちの基準の時間が変わったため、再生の時間を保つ値へ置き換えた打鍵の上乗せの種類。置き換えたなら`repeat`だけを持つ。 */
+      readonly replacedOverheads: readonly OverheadKind[];
     }
   /** 方向別・1項目の測定は、保存値が無いと反映先が無い。 */
   | { readonly ok: false; readonly reason: 'no-saved-value' }
@@ -349,20 +353,36 @@ function sameKeyRate(results: readonly CalibrationTaskResult[]): number | undefi
 }
 
 /**
- * 測り直した項目を基準に使う、打鍵の上乗せの種類。基準が変わると、その基準から求めた差は意味が合わなくなる。
+ * 測り直した項目を基準に使う、打鍵の上乗せの種類のうち、消す種類。基準が変わると、その基準から求めた差は意味が合わなくなる。
  * 構造の種類と同指連続の基準の1打の時間は、通常速度・方向別・同手・別指の速度のどれかで決まる。
- * 同指連続の基準は指の移動の時間も含む。続け打ちの基準は、同じキーを続けて打つ速さを持てばその値、持たなければ通常速度。
+ * 同指連続の基準は指の移動の時間も含む。
+ * 続け打ちの基準はどのストロークでも同じ1つの値なので、消さずに求め直す（`rebasedRepeatOverheadMs`）。
  */
-function overheadKindsBasedOn(item: CalibrationItem, base: PlaybackCalibration): readonly OverheadKind[] {
+function overheadKindsBasedOn(item: CalibrationItem): readonly OverheadKind[] {
   const normalBased: OverheadKind[] = [...STROKE_STRUCTURE_KINDS, 'sfb'];
   switch (item.kind) {
-    case 'actions': return base.sameKeyActionsPerSecond === undefined ? [...normalBased, 'repeat'] : normalBased;
-    case 'same-key': return ['repeat'];
+    case 'actions': return normalBased;
+    case 'same-key': return [];
     case 'finger': return ['sfb'];
     case 'direction':
     case 'same-hand-pair':
     case 'directed-pair': return normalBased;
   }
+}
+
+/** 続け打ちの基準の1打の時間[ms]。同じキーを続けて打つ速さを持てばその値、持たなければ通常速度から求める。 */
+function repeatBaseMs(calibration: PlaybackCalibration): number {
+  return 1000 / (calibration.sameKeyActionsPerSecond ?? calibration.actionsPerSecond);
+}
+
+/**
+ * 続け打ちの基準が`before`から`after`の保存値へ変わった時の、続け打ちの打鍵の上乗せ。
+ * 基準の時間と上乗せの和（続け打ちの再生の時間）を保つため、上乗せから基準の変化を引く。
+ * 保存値の範囲を外れる時は`undefined`。
+ */
+function rebasedRepeatOverheadMs(overheadMs: number, before: PlaybackCalibration, after: PlaybackCalibration): number | undefined {
+  const rebased = overheadMs - (repeatBaseMs(after) - repeatBaseMs(before));
+  return rebased >= CALIBRATION_OVERHEAD_MS_MIN && rebased <= CALIBRATION_OVERHEAD_MS_MAX ? rebased : undefined;
 }
 
 /** 保存値の1項目を、測った間隔で置き換える。測れていなければ`undefined`。 */
@@ -434,8 +454,9 @@ function applyNormal(base: PlaybackCalibration | undefined, run: CalibrationRun,
 /**
  * 済んだ測定を保存値へ反映する（`spec/playback-timing.md` §6.3）。
  * 反映した値が保存できる範囲を外れていれば、保存値は作らない。
- * 打鍵の上乗せは、その時の保存値から求めた差なので、測り直した項目を基準に使う種類だけを消す。
- * 通常速度・移動速度の測定は、保存値の打鍵の上乗せを全て消す。
+ * 打鍵の上乗せは、その時の保存値から求めた差なので、測り直した項目を基準に使う種類は消す。
+ * 通常速度・移動速度の測定は、続け打ちを除く打鍵の上乗せを全て消す。
+ * 続け打ちの上乗せは、基準の時間の変化を引いた値へ置き換える。
  */
 export function applyCalibrationRun(
   base: PlaybackCalibration | undefined,
@@ -446,12 +467,15 @@ export function applyCalibrationRun(
   let cleared: readonly OverheadKind[];
   if (run.scope === 'normal') {
     next = applyNormal(base, run, nowMs);
-    cleared = OVERHEAD_KINDS.filter((kind) => base?.keystrokeOverheadMs?.[kind] !== undefined);
+    cleared = OVERHEAD_KINDS.filter((kind) => kind !== 'repeat' && base?.keystrokeOverheadMs?.[kind] !== undefined);
+    if (next !== undefined && base?.keystrokeOverheadMs?.repeat !== undefined) {
+      next = withRebasedRepeat(base, base.keystrokeOverheadMs.repeat, next);
+    }
   } else {
     if (base === undefined) return { ok: false, reason: 'no-saved-value' };
     const basedOn = new Set<OverheadKind>();
     for (const result of run.results) {
-      for (const kind of overheadKindsBasedOn(result.task.item, base)) basedOn.add(kind);
+      for (const kind of overheadKindsBasedOn(result.task.item)) basedOn.add(kind);
     }
     const { keystrokeOverheadMs: overheads, ...withoutOverhead } = base;
     cleared = OVERHEAD_KINDS.filter((kind) => basedOn.has(kind) && overheads?.[kind] !== undefined);
@@ -473,10 +497,28 @@ export function applyCalibrationRun(
       if (sameKey === undefined) return { ok: false, reason: 'invalid-measurement' };
       current = { ...current, sameKeyActionsPerSecond: sameKey };
     }
-    next = current;
+    next = overheads?.repeat === undefined ? current : withRebasedRepeat(base, overheads.repeat, current);
   }
   if (next === undefined || playbackCalibrationProblem(next) !== undefined) {
     return { ok: false, reason: 'invalid-measurement' };
   }
-  return { ok: true, calibration: next, clearedOverheads: cleared };
+  const hadRepeat = base?.keystrokeOverheadMs?.repeat !== undefined;
+  const keepsRepeat = next.keystrokeOverheadMs?.repeat !== undefined;
+  const repeatChanged = hadRepeat && keepsRepeat
+    && base !== undefined && repeatBaseMs(base) !== repeatBaseMs(next);
+  return {
+    ok: true,
+    calibration: next,
+    clearedOverheads: hadRepeat && !keepsRepeat ? [...cleared, 'repeat'] : cleared,
+    replacedOverheads: repeatChanged ? ['repeat'] : [],
+  };
+}
+
+/** 続け打ちの上乗せを、基準が`before`から`after`へ変わった後の値へ置き換える。範囲を外れる時は続け打ちの上乗せだけを消す。 */
+function withRebasedRepeat(before: PlaybackCalibration, overheadMs: number, after: PlaybackCalibration): PlaybackCalibration {
+  const { repeat: _repeat, ...others } = after.keystrokeOverheadMs ?? {};
+  const rebased = rebasedRepeatOverheadMs(overheadMs, before, after);
+  const overheads = rebased === undefined ? others : { ...others, repeat: rebased };
+  const { keystrokeOverheadMs: _overheads, ...withoutOverhead } = after;
+  return Object.keys(overheads).length === 0 ? withoutOverhead : { ...withoutOverhead, keystrokeOverheadMs: overheads };
 }

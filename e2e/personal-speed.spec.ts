@@ -215,7 +215,7 @@ test('保存値を持つ時だけ、測るボタンの直後に、置き換わ�
 test('打鍵の上乗せを保存している時は、その種類だけを挙げる文が、測るボタンの直後に出る', async ({ page }) => {
   await seed(page, { [STORAGE_KEY]: { ...SEEDED, calibration: { ...SEEDED.calibration, keystrokeOverheadMs: { chain: 12, repeat: 30 } } } });
   await open(page);
-  await expect(page.locator('#personal-speed-group-normal [data-personal-speed-effect]')).toHaveText('測ると、方向別の値を除く保存値が置き換わり、文章を打つ速さの打鍵の上乗せは全て消えます。');
+  await expect(page.locator('#personal-speed-group-normal [data-personal-speed-effect]')).toHaveText('測ると、方向別の値を除く保存値が置き換わり、続け打ちの打鍵の上乗せは再生の時間が変わらない値に置き換わって、それ以外の打鍵の上乗せは消えます。');
   await expect(page.locator('#personal-speed-group-directional [data-personal-speed-effect]')).toHaveText('測ると、測った向きの値が置き換わり、打鍵の上乗せのうちChainが消えます（続け打ちは残ります）。');
   await expect(page.locator('#personal-speed-group-sentence [data-personal-speed-effect]')).toHaveText('測り直して保存すると、前の打鍵の上乗せは全て置き換わります。');
   // 測るボタンの直後に文が並ぶ
@@ -481,7 +481,7 @@ test('文章を打つ測定で、差の種類ごとの打鍵の上乗せを測�
   const saved = await stored(page) as { calibration: { keystrokeOverheadMs: Record<string, number>; actionsPerSecond: number } };
   expect(Object.keys(saved.calibration.keystrokeOverheadMs).sort()).toEqual(['arpeggio', 'chain', 'other', 'repeat', 'sfb']);
   for (const value of Object.values(saved.calibration.keystrokeOverheadMs)) {
-    expect(value).toBeGreaterThanOrEqual(0);
+    expect(value).toBeGreaterThanOrEqual(-1000);
     expect(value).toBeLessThanOrEqual(1000);
   }
   // 他の項目は残る
@@ -592,6 +592,19 @@ test('打鍵の上乗せを数値で直接編集して保存でき、空欄に�
   await arpeggio.press('Enter');
   await expect.poll(async () => ((await stored(page)) as { calibration: { keystrokeOverheadMs: unknown } }).calibration.keystrokeOverheadMs).toEqual({ arpeggio: 25 });
 
+  // マイナス記号を打って負の値を保存できる。下限を下回る値は保存されない
+  await arpeggio.fill('-25.5');
+  await arpeggio.press('Enter');
+  await expect.poll(async () => ((await stored(page)) as { calibration: { keystrokeOverheadMs: unknown } }).calibration.keystrokeOverheadMs).toEqual({ arpeggio: -25.5 });
+  await expect(arpeggio).toHaveValue('-25.5');
+  await arpeggio.fill('-1000.5');
+  await arpeggio.press('Enter');
+  await expect(group.getByRole('alert').filter({ hasText: '打鍵の上乗せ Arpeggio' })).toBeVisible();
+  expect(((await stored(page)) as { calibration: { keystrokeOverheadMs: unknown } }).calibration.keystrokeOverheadMs).toEqual({ arpeggio: -25.5 });
+  await arpeggio.fill('25');
+  await arpeggio.press('Enter');
+  await expect.poll(async () => ((await stored(page)) as { calibration: { keystrokeOverheadMs: unknown } }).calibration.keystrokeOverheadMs).toEqual({ arpeggio: 25 });
+
   // 値のある行は、測っていない項目の外に出る
   const measured = group.locator('[data-personal-speed-row="overhead:arpeggio"]');
   await expect(measured).toBeVisible();
@@ -631,7 +644,7 @@ test('文章を打つ測定で、示した綴りと違う綴りで打ち始め�
   await expect(page.locator('[data-personal-speed-sentence-run="active"]')).toHaveCount(0);
 });
 
-test('同じキーを続けて打つ速さを測り直すと、続け打ちの差だけが消えて知らせが出る', async ({ page }) => {
+test('同じキーを続けて打つ速さを測り直すと、続け打ちの差が再生の時間を保つ値に置き換わり、知らせが出る', async ({ page }) => {
   const seeded = {
     ...SEEDED,
     calibration: { ...SEEDED.calibration, sameKeyActionsPerSecond: 6, keystrokeOverheadMs: { other: 60, repeat: 10, sfb: 20 } },
@@ -641,11 +654,14 @@ test('同じキーを続けて打つ速さを測り直すと、続け打ちの�
   await page.getByRole('button', { name: '同じキーを続けて打つ速さだけを測り直す' }).click();
   await typeThroughRun(page);
   await expect(page.locator('#personal-speed-group-normal').getByText('同じキーを続けて打つ速さを測り直して保存しました。')).toBeVisible();
-  await expect(page.locator('#personal-speed-group-sentence').getByText('打鍵の上乗せ（続け打ち）は、他の値が変わったため消しました')).toBeVisible();
+  await expect(page.locator('#personal-speed-group-sentence').getByText('打鍵の上乗せ（続け打ち）は、基準の時間が変わったため、再生の時間が変わらない値に置き換えました。')).toBeVisible();
+  await expect(page.locator('#personal-speed-group-normal').getByText('続け打ちの打鍵の上乗せは置き換えました。')).toBeVisible();
   const saved = await stored(page) as { calibration: { sameKeyActionsPerSecond: number; keystrokeOverheadMs: Record<string, number> } };
   expect(saved.calibration.sameKeyActionsPerSecond).not.toBe(6);
-  expect(saved.calibration.keystrokeOverheadMs).toEqual({ other: 60, sfb: 20 });
-  await expect(page.locator('[id="personal-speed-overhead:repeat"]')).toHaveValue('');
+  const { repeat, ...others } = saved.calibration.keystrokeOverheadMs;
+  expect(others).toEqual({ other: 60, sfb: 20 });
+  // 基準の時間と上乗せの和（続け打ちの再生の時間）が、測り直す前と同じ
+  expect(repeat + 1000 / saved.calibration.sameKeyActionsPerSecond).toBeCloseTo(10 + 1000 / 6, 6);
   await expect(page.locator('[id="personal-speed-overhead:sfb"]')).toHaveValue('20.0');
 });
 

@@ -166,9 +166,9 @@ test('文節の切れ目のような長い間は、四分位平均で除かれ�
   assert.deepEqual(overheadMs, { other: 50 });
 });
 
-test('間隔がnormalMsより短くて四分位平均が負なら0にする', () => {
+test('間隔がnormalMsより短くて四分位平均が負なら、負の値のまま持つ', () => {
   const { overheadMs } = measureOne(alternating(20), SAVED, tapsFor(20, () => 150));
-  assert.deepEqual(overheadMs, { other: 0 });
+  assert.deepEqual(overheadMs, { other: -50 });
 });
 
 test('normalMsは測定の時点の保存値で求める', () => {
@@ -401,11 +401,16 @@ test('下限は差の種類ごとに当てはめ、届いた種類だけを保�
 const emptyRow = (count = 0) => ({ count });
 
 test('表の1行は、数えたストロークの基準の時間・間隔・差の四分位平均を持ち、差は2つの四分位平均の差と一致しないことがある', () => {
-  // 通常速度5/秒の基準は200ms。間隔150msの差は-50msで、負の値は0にする。
+  // 通常速度5/秒の基準は200ms。間隔150msの差は-50msで、負の値のまま持つ。
   const { kinds, overheadMs } = measureOne(alternating(20), SAVED, tapsFor(20, () => 150));
-  assert.deepEqual(kinds.other, { count: 19, baseMs: 200, intervalMs: 150, differenceMs: 0 });
-  assert.deepEqual(overheadMs, { other: 0 });
-  assert.notEqual(kinds.other.differenceMs, (kinds.other.intervalMs ?? 0) - (kinds.other.baseMs ?? 0));
+  assert.deepEqual(kinds.other, { count: 19, baseMs: 200, intervalMs: 150, differenceMs: -50 });
+  assert.deepEqual(overheadMs, { other: -50 });
+});
+
+test('異手の向きごとの行の差も、負の値のまま持つ', () => {
+  const { crossHand } = measureOne(alternating(20), SAVED, tapsFor(20, () => 150));
+  assert.equal(crossHand['L→R'].differenceMs, -50);
+  assert.equal(crossHand['R→L'].differenceMs, -50);
 });
 
 test('数えたストロークが無い種類の行は、打数だけを持ち四分位平均を持たない', () => {

@@ -74,12 +74,13 @@ test('オブジェクトでない値は保存できない', () => {
   assert.notEqual(playbackCalibrationProblem('5'), undefined);
 });
 
-test('打鍵の上乗せは0から1000ミリ秒までの種類ごとの値で、持たなくても保存できる', () => {
+test('打鍵の上乗せは-1000から1000ミリ秒までの種類ごとの値で、持たなくても保存できる', () => {
   assert.equal(isPlaybackCalibration(without('keystrokeOverheadMs')), true);
   assert.equal(isPlaybackCalibration({ ...VALID, keystrokeOverheadMs: { arpeggio: 0, chain: 1000, other: 80 } }), true);
   assert.equal(isPlaybackCalibration({ ...VALID, keystrokeOverheadMs: {} }), true);
   assert.equal(isPlaybackCalibration({ ...VALID, keystrokeOverheadMs: { repeat: 0, sfb: 1000 } }), true);
-  for (const bad of [{ other: -0.1 }, { other: 1000.1 }, { other: Number.NaN }, { other: '5' }, { sfb: -1 }, { repeat: 1001 }, { same: 5 }]) {
+  assert.equal(isPlaybackCalibration({ ...VALID, keystrokeOverheadMs: { other: -0.1, sfb: -1000, repeat: -126 } }), true);
+  for (const bad of [{ other: -1000.1 }, { other: 1000.1 }, { other: Number.NaN }, { other: '5' }, { sfb: -1001 }, { repeat: 1001 }, { same: 5 }]) {
     assert.equal(isPlaybackCalibration({ ...VALID, keystrokeOverheadMs: bad }), false);
   }
   assert.equal(playbackCalibrationProblem({ ...VALID, keystrokeOverheadMs: { other: 2000 } }), '打鍵の上乗せが正しくありません');

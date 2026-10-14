@@ -173,16 +173,29 @@ export function savedMessage(
   scope: 'normal' | 'directional' | 'item',
   item?: CalibrationItem,
   clearedOverheads: readonly OverheadKind[] = [],
+  replacedOverheads: readonly OverheadKind[] = [],
 ): string {
-  const notice = clearedOverheads.length > 0 ? '文章を打つ速さの打鍵の上乗せが消えました。' : '';
+  const notice = `${clearedOverheads.length > 0 ? '文章を打つ速さの打鍵の上乗せが消えました。' : ''}${replacedOverheads.length > 0 ? '続け打ちの打鍵の上乗せは置き換えました。' : ''}`;
   if (scope === 'normal') return `通常の速度、同じキーを続けて打つ速さ、指の移動速度を測って保存しました。${notice}`;
   if (scope === 'directional') return `方向別の速度を測って保存しました。${notice}`;
   return item === undefined ? `保存しました。${notice}` : `${calibrationItemLabel(item)}を測り直して保存しました。${notice}`;
 }
 
-/** 測定で打鍵の上乗せが消えた時に、消えた値のある文章を打つ速さの欄へ出す知らせ。 */
-export function clearedOverheadsText(clearedOverheads: readonly OverheadKind[]): string {
-  return `打鍵の上乗せ（${clearedOverheads.map((kind) => OVERHEAD_KIND_LABEL[kind]).join('・')}）は、他の値が変わったため消しました。文章を打つ速さをもう一度測ってください。`;
+/**
+ * 測定で打鍵の上乗せが消えた時、置き換わった時に、文章を打つ速さの欄へ出す知らせ。
+ * 消えたものがあれば、文章を打つ速さの測り直しを促す。
+ */
+export function clearedOverheadsText(
+  clearedOverheads: readonly OverheadKind[],
+  replacedOverheads: readonly OverheadKind[] = [],
+): string {
+  const cleared = clearedOverheads.length === 0
+    ? ''
+    : `打鍵の上乗せ（${clearedOverheads.map((kind) => OVERHEAD_KIND_LABEL[kind]).join('・')}）は、他の値が変わったため消しました。文章を打つ速さをもう一度測ってください。`;
+  const replaced = replacedOverheads.length === 0
+    ? ''
+    : `打鍵の上乗せ（${replacedOverheads.map((kind) => OVERHEAD_KIND_LABEL[kind]).join('・')}）は、基準の時間が変わったため、再生の時間が変わらない値に置き換えました。`;
+  return `${replaced}${cleared}`;
 }
 
 export const MEASUREMENT_OUT_OF_RANGE_TEXT = '測った値が保存できる範囲を外れていたため、保存していません。もう一度測ってください。';
@@ -257,7 +270,7 @@ export const SENTENCE_TABLE_COLUMNS = {
 
 /** 測り終えた時の表に添える説明。 */
 export const SENTENCE_TABLE_NOTES: readonly string[] = [
-  '打鍵の上乗せは、打鍵ごとの差（打った間隔から基準の時間を引いた値）の四分位平均（小さい方と大きい方から4分の1ずつ除いた残りの平均）で、負の時は0にします。'
+  '打鍵の上乗せは、打鍵ごとの差（打った間隔から基準の時間を引いた値）の四分位平均（小さい方と大きい方から4分の1ずつ除いた残りの平均）で、負の値もそのまま保存します。'
   + '打った間隔の四分位平均から基準の時間の四分位平均を引いた値とは、一致しないことがあります。',
   '基準の時間は1打の時間です。同指連続では、1打の時間と指が動く時間の長い方です。続け打ちの1打の時間は、同じキーを続けて打つ速さから求めます。',
   '左手から右手・右手から左手の行は、「その他」のうち、手が替わる打鍵だけを分けた値です。「その他」の行にも含まれ、保存しません。'
@@ -343,9 +356,13 @@ export function measurementEffectText(
   if (!saved) return undefined;
   switch (group) {
     case 'normal':
-      return savedOverheads.length === 0
-        ? '測ると、方向別の値を除く保存値が置き換わります。'
-        : '測ると、方向別の値を除く保存値が置き換わり、文章を打つ速さの打鍵の上乗せは全て消えます。';
+      if (savedOverheads.length === 0) return '測ると、方向別の値を除く保存値が置き換わります。';
+      if (!savedOverheads.includes('repeat')) {
+        return '測ると、方向別の値を除く保存値が置き換わり、文章を打つ速さの打鍵の上乗せは全て消えます。';
+      }
+      return savedOverheads.length === 1
+        ? '測ると、方向別の値を除く保存値が置き換わり、続け打ちの打鍵の上乗せは再生の時間が変わらない値に置き換わります。'
+        : '測ると、方向別の値を除く保存値が置き換わり、続け打ちの打鍵の上乗せは再生の時間が変わらない値に置き換わって、それ以外の打鍵の上乗せは消えます。';
     case 'directional': {
       // 同じ向きの測定が基準にする種類のうち、保存されているものだけを挙げる。続け打ちは基準にしないので消えない。
       const cleared = savedOverheads.filter((kind) => kind !== 'repeat');

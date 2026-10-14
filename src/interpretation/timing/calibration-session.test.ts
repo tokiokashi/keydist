@@ -247,13 +247,47 @@ test('1項目の測り直しは、その項目だけを置き換え、代表値�
 
 const ALL_OVERHEADS = { arpeggio: 10, chain: 20, other: 60, repeat: 5, sfb: 15 } as const;
 
-test('通常速度・移動速度の測定は、保存値の打鍵の上乗せを全て消して知らせる', () => {
-  const withOverhead: PlaybackCalibration = { ...SAVED, sameKeyActionsPerSecond: 6, keystrokeOverheadMs: ALL_OVERHEADS };
+test('通常速度・移動速度の測定は、続け打ちを除く打鍵の上乗せを消して知らせ、続け打ちは基準の変化を引いた値に置き換える', () => {
+  // 同じキーを続けて打つ速さ5アクション/秒の基準は200ms。測り直すと4アクション/秒で250ms。
+  const withOverhead: PlaybackCalibration = { ...SAVED, sameKeyActionsPerSecond: 5, keystrokeOverheadMs: ALL_OVERHEADS };
   const run = playAll(startCalibrationRun('normal', PLAN.normal!), 250);
   const applied = applyCalibrationRun(withOverhead, run, 5);
   assert.ok(applied.ok);
+  assert.equal(applied.calibration.sameKeyActionsPerSecond, 4);
+  assert.deepEqual(applied.calibration.keystrokeOverheadMs, { repeat: -45 });
+  assert.deepEqual(applied.clearedOverheads, ['arpeggio', 'chain', 'other', 'sfb']);
+  assert.deepEqual(applied.replacedOverheads, ['repeat']);
+});
+
+test('通常速度・移動速度の測定は、続け打ちの上乗せを持たない保存値には何も足さない', () => {
+  const run = playAll(startCalibrationRun('normal', PLAN.normal!), 250);
+  const applied = applyCalibrationRun({ ...SAVED, keystrokeOverheadMs: { other: 60 } }, run, 5);
+  assert.ok(applied.ok);
   assert.equal('keystrokeOverheadMs' in applied.calibration, false);
-  assert.deepEqual(applied.clearedOverheads, ['arpeggio', 'chain', 'other', 'repeat', 'sfb']);
+  assert.deepEqual(applied.clearedOverheads, ['other']);
+  assert.deepEqual(applied.replacedOverheads, []);
+});
+
+test('続け打ちの上乗せは、置き換えた値が保存値の範囲を外れる時だけ消え、測定は保存される', () => {
+  const run = playAll(startCalibrationRun('normal', PLAN.normal!), 250);
+  // 基準は200msから250msへ50ms遅くなるので、置き換えた値は上乗せより50小さい。
+  const below = applyCalibrationRun({ ...SAVED, sameKeyActionsPerSecond: 5, keystrokeOverheadMs: { repeat: -960, other: 7 } }, run, 5);
+  assert.ok(below.ok);
+  assert.equal(below.calibration.sameKeyActionsPerSecond, 4);
+  assert.equal('keystrokeOverheadMs' in below.calibration, false);
+  assert.deepEqual(below.clearedOverheads, ['other', 'repeat']);
+  assert.deepEqual(below.replacedOverheads, []);
+  // 範囲の下限ちょうどには置き換えられる。
+  const edge = applyCalibrationRun({ ...SAVED, sameKeyActionsPerSecond: 5, keystrokeOverheadMs: { repeat: -950 } }, run, 5);
+  assert.ok(edge.ok);
+  assert.deepEqual(edge.calibration.keystrokeOverheadMs, { repeat: -1000 });
+  // 基準が速くなると置き換えた値は大きくなり、上限を外れる。
+  const fast = playAll(startCalibrationRun('item', PLAN.byField.get('same-key')!), 125);
+  const above = applyCalibrationRun({ ...SAVED, sameKeyActionsPerSecond: 5, keystrokeOverheadMs: { repeat: 960, other: 7 } }, fast, 5);
+  assert.ok(above.ok);
+  assert.equal(above.calibration.sameKeyActionsPerSecond, 8);
+  assert.deepEqual(above.calibration.keystrokeOverheadMs, { other: 7 });
+  assert.deepEqual(above.clearedOverheads, ['repeat']);
 });
 
 test('通常速度・移動速度の測定は、同じキーを続けて打つ速さを左右の間隔を通した中央値で求める', () => {
@@ -286,37 +320,49 @@ test('同じキーを続けて打つ速さの欄は、左右の2項目をまと�
   assert.equal(PLAN.byField.get('direction:L→R')?.length, 1);
 });
 
-test('同じキーを続けて打つ速さの測り直しは、続け打ちの差だけを消して知らせる', () => {
-  const withOverhead: PlaybackCalibration = { ...SAVED, sameKeyActionsPerSecond: 6, keystrokeOverheadMs: ALL_OVERHEADS };
+test('同じキーを続けて打つ速さの測り直しは、続け打ちの差を置き換え、他の種類は残す', () => {
+  const withOverhead: PlaybackCalibration = { ...SAVED, sameKeyActionsPerSecond: 5, keystrokeOverheadMs: ALL_OVERHEADS };
   const run = playAll(startCalibrationRun('item', PLAN.byField.get('same-key')!), 125);
   const applied = applyCalibrationRun(withOverhead, run, 5);
   assert.ok(applied.ok);
   assert.equal(applied.calibration.sameKeyActionsPerSecond, 8);
-  assert.deepEqual(applied.calibration.keystrokeOverheadMs, { arpeggio: 10, chain: 20, other: 60, sfb: 15 });
-  assert.deepEqual(applied.clearedOverheads, ['repeat']);
+  // 基準は200msから125msへ75ms速くなるので、置き換えた値は上乗せより75大きい。
+  assert.deepEqual(applied.calibration.keystrokeOverheadMs, { arpeggio: 10, chain: 20, other: 60, repeat: 80, sfb: 15 });
+  assert.deepEqual(applied.clearedOverheads, []);
+  assert.deepEqual(applied.replacedOverheads, ['repeat']);
 });
 
-test('同じキーを続けて打つ速さを持たない保存値で初めて測ると、通常速度を基準に求めた続け打ちの差も消す', () => {
+test('同じキーを続けて打つ速さを持たない保存値で初めて測ると、通常速度を基準に求めた続け打ちの差を置き換える', () => {
   const run = playAll(startCalibrationRun('item', PLAN.byField.get('same-key')!), 125);
   const applied = applyCalibrationRun({ ...SAVED, keystrokeOverheadMs: ALL_OVERHEADS }, run, 5);
   assert.ok(applied.ok);
   assert.equal(applied.calibration.sameKeyActionsPerSecond, 8);
-  assert.deepEqual(applied.calibration.keystrokeOverheadMs, { arpeggio: 10, chain: 20, other: 60, sfb: 15 });
-  assert.deepEqual(applied.clearedOverheads, ['repeat']);
+  assert.deepEqual(applied.calibration.keystrokeOverheadMs, { arpeggio: 10, chain: 20, other: 60, repeat: 80, sfb: 15 });
+  assert.deepEqual(applied.clearedOverheads, []);
+  assert.deepEqual(applied.replacedOverheads, ['repeat']);
 });
 
-test('通常速度の測り直しは、同じキーを続けて打つ速さを持たない保存値では続け打ちの差も消す', () => {
-  const run = playAll(startCalibrationRun('item', [PLAN.byItem.get('actions')!]), 200);
-  const without = applyCalibrationRun({ ...SAVED, keystrokeOverheadMs: ALL_OVERHEADS }, run, 5);
+test('通常速度の測り直しは、同じキーを続けて打つ速さを持たない保存値では続け打ちの差を置き換える', () => {
+  // 続け打ちの基準は通常速度。5アクション/秒の200msから、2.5アクション/秒の400msに変わる。
+  const slow = playAll(startCalibrationRun('item', [PLAN.byItem.get('actions')!]), 400);
+  const without = applyCalibrationRun({ ...SAVED, keystrokeOverheadMs: ALL_OVERHEADS }, slow, 5);
   assert.ok(without.ok);
-  assert.equal('keystrokeOverheadMs' in without.calibration, false);
-  assert.deepEqual(without.clearedOverheads, ['arpeggio', 'chain', 'other', 'repeat', 'sfb']);
+  assert.deepEqual(without.calibration.keystrokeOverheadMs, { repeat: -195 });
+  assert.deepEqual(without.clearedOverheads, ['arpeggio', 'chain', 'other', 'sfb']);
+  assert.deepEqual(without.replacedOverheads, ['repeat']);
+  // 基準が変わらなければ、置き換えたと知らせない。
+  const same = playAll(startCalibrationRun('item', [PLAN.byItem.get('actions')!]), 200);
+  const unchanged = applyCalibrationRun({ ...SAVED, keystrokeOverheadMs: ALL_OVERHEADS }, same, 5);
+  assert.ok(unchanged.ok);
+  assert.deepEqual(unchanged.calibration.keystrokeOverheadMs, { repeat: 5 });
+  assert.deepEqual(unchanged.replacedOverheads, []);
   // 同じキーを続けて打つ速さを持つ保存値では、続け打ちの差は基準が変わらないので残る。
-  const withSameKey = applyCalibrationRun({ ...SAVED, sameKeyActionsPerSecond: 6, keystrokeOverheadMs: ALL_OVERHEADS }, run, 5);
+  const withSameKey = applyCalibrationRun({ ...SAVED, sameKeyActionsPerSecond: 6, keystrokeOverheadMs: ALL_OVERHEADS }, same, 5);
   assert.ok(withSameKey.ok);
   assert.deepEqual(withSameKey.calibration.keystrokeOverheadMs, { repeat: 5 });
   assert.equal(withSameKey.calibration.sameKeyActionsPerSecond, 6);
   assert.deepEqual(withSameKey.clearedOverheads, ['arpeggio', 'chain', 'other', 'sfb']);
+  assert.deepEqual(withSameKey.replacedOverheads, []);
 });
 
 test('方向別・同手別指の測り直しは構造の種類と同指連続の差を消し、続け打ちの差は残す', () => {

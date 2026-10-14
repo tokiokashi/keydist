@@ -8,6 +8,7 @@ import {
 import type { Stroke } from '#trace/generate.ts';
 import { COMBO_LAYER_ID, type Layout } from '#input/layouts/types.ts';
 import {
+  CALIBRATION_ACTIONS_PER_SECOND_MAX,
   handDirection,
   sameHandDirectedFingerPairKey,
   sameHandFingerPairKey,
@@ -33,6 +34,12 @@ export const DEFAULT_PLAYBACK_RATE_AVERAGE: PlaybackRateAverage = 'sma';
 export const PLAYBACK_RATE_HALF_LIFE_SECONDS_MIN = 0.1;
 export const PLAYBACK_RATE_HALF_LIFE_SECONDS_MAX = 10;
 export const DEFAULT_PLAYBACK_RATE_HALF_LIFE_SECONDS = 1;
+
+/**
+ * 打鍵の上乗せを足した時間の下限[ms]。保存値が許す最も速い1打の時間。
+ * 上乗せが負の保存値で、時間が0以下になるのを防ぐ。再生倍率で割る前に当てる。
+ */
+export const PLAYBACK_MIN_STEP_MS = 1000 / CALIBRATION_ACTIONS_PER_SECOND_MAX;
 
 export const DEFAULT_PLAYBACK_SAME_FINGER_DELAY = true;
 export const DEFAULT_PLAYBACK_ALL_FINGER_MOVEMENT_DELAY = true;
@@ -715,7 +722,7 @@ function playbackStrokeDurationFromNormalMs(
     ? speedMultiplier
     : DEFAULT_PLAYBACK_SPEED_MULTIPLIER;
   // 打鍵の上乗せは1打の時間の側にだけ足す。指の移動の時間には足さない。
-  const baseMs = normalMs + overheadMs;
+  const baseMs = Math.max(PLAYBACK_MIN_STEP_MS, normalMs + overheadMs);
   if (!stroke || !sameFingerDelay) return baseMs / multiplier;
 
   const sfbPresses = stroke.presses.filter((press) => press.sfb);
@@ -725,7 +732,9 @@ function playbackStrokeDurationFromNormalMs(
   if (calibration) {
     const movementMs = playbackSameFingerMovementMs(stroke, calibration) ?? 0;
     // 同指連続の値を持つ時は、1打の時間と指の移動の時間の遅い方の外に足す。
-    if (sameFingerOverheadMs !== undefined) return (Math.max(normalMs, movementMs) + sameFingerOverheadMs) / multiplier;
+    if (sameFingerOverheadMs !== undefined) {
+      return Math.max(PLAYBACK_MIN_STEP_MS, Math.max(normalMs, movementMs) + sameFingerOverheadMs) / multiplier;
+    }
     return Math.max(baseMs, movementMs) / multiplier;
   }
   return Math.max(baseMs, normalMs * sameFingerDistance) / multiplier;

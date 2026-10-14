@@ -114,15 +114,48 @@ test('打鍵の上乗せの欄を編集して保存値に入れられ、空欄�
   assert.equal('keystrokeOverheadMs' in second.calibration, false);
 });
 
-test('打鍵の上乗せの欄は0から1000までで、範囲の外の欄を返す', () => {
+test('打鍵の上乗せの欄は-1000から1000までで、範囲の外の欄を返す', () => {
   const field = calibrationOverheadFieldId('other');
   assert.deepEqual(
     applyCalibrationField(WITH_OVERHEAD, field, '1000.1', 2),
-    { ok: false, fieldId: field, problem: 'invalid', min: 0, max: 1000 },
+    { ok: false, fieldId: field, problem: 'invalid', min: -1000, max: 1000 },
+  );
+  assert.deepEqual(
+    applyCalibrationField(WITH_OVERHEAD, field, '-1000.1', 2),
+    { ok: false, fieldId: field, problem: 'invalid', min: -1000, max: 1000 },
   );
   assert.ok(applyCalibrationField(WITH_OVERHEAD, field, '0', 2).ok);
   assert.ok(applyCalibrationField(WITH_OVERHEAD, field, '1000', 2).ok);
-  assert.equal(applyCalibrationField(WITH_OVERHEAD, field, '-1', 2).ok, false);
+  assert.ok(applyCalibrationField(WITH_OVERHEAD, field, '-1000', 2).ok);
+});
+
+test('打鍵の上乗せの欄は、マイナス記号を含む入力を負の値として保存できる', () => {
+  const field = calibrationOverheadFieldId('other');
+  for (const [raw, expected] of [['-1', -1], ['-19.6', -19.6], ['−20', -20], [' -0.5 ', -0.5], ['-.5', -0.5]] as const) {
+    const applied = applyCalibrationField(WITH_OVERHEAD, field, raw, 2);
+    assert.ok(applied.ok, raw);
+    assert.equal(applied.calibration.keystrokeOverheadMs?.other, expected, raw);
+  }
+  for (const raw of ['--1', '-', '1-', '- 1', '+1']) {
+    assert.equal(applyCalibrationField(WITH_OVERHEAD, field, raw, 2).ok, false, raw);
+  }
+  // 負の値は、保存値を欄の文字列に写しても読み戻せる。
+  const saved = applyCalibrationField(WITH_OVERHEAD, field, '-12.5', 2);
+  assert.ok(saved.ok);
+  assert.equal(calibrationFormValues(saved.calibration)[field], '-12.5');
+});
+
+test('マイナス記号は、打鍵の上乗せ以外の欄では受け付けない', () => {
+  assert.equal(applyCalibrationField(WITH_OVERHEAD, CALIBRATION_SAME_KEY_FIELD, '-5', 2).ok, false);
+  assert.equal(applyCalibrationField(WITH_OVERHEAD, 'actions', '-5', 2).ok, false);
+});
+
+test('同じキーを続けて打つ速さを直接編集しても、続け打ちの上乗せは消えず置き換わらない', () => {
+  const base: PlaybackCalibration = { ...WITH_OVERHEAD, sameKeyActionsPerSecond: 5, keystrokeOverheadMs: { repeat: 12, other: 3 } };
+  const edited = applyCalibrationField(base, CALIBRATION_SAME_KEY_FIELD, '8', 2);
+  assert.ok(edited.ok);
+  assert.equal(edited.calibration.sameKeyActionsPerSecond, 8);
+  assert.deepEqual(edited.calibration.keystrokeOverheadMs, { repeat: 12, other: 3 });
 });
 
 test('続け打ち・同指連続の差と同じキーを続けて打つ速さを、欄に写して編集・空欄にできる', () => {
