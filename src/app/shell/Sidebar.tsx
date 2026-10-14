@@ -18,6 +18,7 @@ import {
 } from '../theme/appearance.ts';
 import type { ThemeChoice } from '../theme/theme.ts';
 import { ABOUT_LABEL } from '../about/AboutPage.tsx';
+import { FINGER_ASSIGNMENT_LABEL } from '#editors/finger-assignment/label.ts';
 import { PERSONAL_SPEED_LABEL } from '#editors/personal-speed/label.ts';
 import { USER_ASSETS_LABEL } from '../assets/UserAssetsPage.tsx';
 import { REPOSITORY_URL, SPEC_LINKS } from '../about/links.ts';
@@ -228,6 +229,7 @@ export function Sidebar({ pinned, onPinnedChange, onNavigate }: SidebarProps) {
 
         <SidebarGroup id="assets" title="Assets" collapsed={isCollapsed('assets')}>
           <NavLink to="/assets" onNavigate={onNavigate}>{USER_ASSETS_LABEL}</NavLink>
+          <NavLink to="/finger-assignment" onNavigate={onNavigate}>{FINGER_ASSIGNMENT_LABEL}</NavLink>
           <NavLink to="/personal-speed" onNavigate={onNavigate}>{PERSONAL_SPEED_LABEL}</NavLink>
         </SidebarGroup>
 

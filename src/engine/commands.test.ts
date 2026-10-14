@@ -29,6 +29,7 @@ import {
   setMultiBaselineCommand,
   setMultiSelectionCommand,
   setMultiTargetsCommand,
+  setFingerAssignmentContentCommand,
   setPersonalSpeedCommand,
   setSingleTargetCommand,
   setTargetForSingleAndMultiCommand,
@@ -331,6 +332,28 @@ test('deleteFingerAssignmentCommand: 削除後もそれを参照するカスケ�
   assert.equal(deleted.assets.fingerAssignments.length, 0);
   // Setupの上書きと違い、削除してもoverrides側の値はそのまま残る（orphan-cleanupしない）。
   assert.equal(deleted.assets.setupLibrary.overrides.global?.fingerAssignmentId, assignmentId);
+});
+
+test('setFingerAssignmentContentCommand: 中身を書き換え、undoで戻る。存在しないidと同じ中身はno-op', () => {
+  const created = applyCommand(
+    emptyAssets(),
+    emptyCommandHistory<KeydistAssets>(),
+    createFingerAssignmentCommand(generateFingerAssignmentId, DEFAULT_FINGER_ASSIGNMENT, 'マイ運指'),
+  );
+  const target = created.assets.fingerAssignments[0]!;
+  const content = { keyFinger: { ...target.keyFinger, q: 'RP' as const }, homeKey: target.homeKey };
+
+  const missing = applyCommand(created.assets, created.history, setFingerAssignmentContentCommand('no-such-id', content));
+  assert.equal(missing.outcome.kind, 'no-op');
+  const same = applyCommand(created.assets, created.history, setFingerAssignmentContentCommand(target.id, target));
+  assert.equal(same.outcome.kind, 'no-op');
+
+  const step = applyCommand(created.assets, created.history, setFingerAssignmentContentCommand(target.id, content));
+  assert.equal(step.outcome.kind, 'applied');
+  assert.equal(step.assets.fingerAssignments[0]!.keyFinger.q, 'RP');
+  assert.equal(step.assets.fingerAssignments[0]!.name, 'マイ運指');
+  const undone = undo(step.assets, step.history);
+  assert.equal(undone.assets.fingerAssignments[0]!.keyFinger.q, 'LP');
 });
 
 test('renameFingerAssignmentCommand: 同じ名前への変更はno-op', () => {

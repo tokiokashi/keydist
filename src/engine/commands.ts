@@ -6,6 +6,7 @@ import {
   deleteUserFingerAssignment,
   duplicateUserFingerAssignment,
   renameUserFingerAssignment,
+  updateUserFingerAssignment,
 } from '#input/shapes/user-finger-assignments.ts';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { PresetLibrary } from '#input/presets/index.ts';
@@ -448,6 +449,17 @@ export function renameFingerAssignmentCommand(id: string, name: string): Command
   return fingerAssignmentsCommand('指割り当ての名前を変更する', (assignments) => ({
     ok: true,
     assignments: renameUserFingerAssignment(assignments, id, name),
+  }));
+}
+
+/** 自作の指割り当ての中身（キーごとの指とホームキー）を書き換える。対象が存在しない、または中身が同じなら何もしない。 */
+export function setFingerAssignmentContentCommand(
+  id: string,
+  content: Pick<FingerAssignment, 'keyFinger' | 'homeKey'>,
+): Command<KeydistAssets> {
+  return fingerAssignmentsCommand('指割り当てを編集する', (assignments) => ({
+    ok: true,
+    assignments: updateUserFingerAssignment(assignments, id, content),
   }));
 }
 

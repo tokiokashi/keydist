@@ -7,6 +7,7 @@ import {
   duplicateUserFingerAssignment,
   newId,
   renameUserFingerAssignment,
+  updateUserFingerAssignment,
   USER_FINGER_ASSIGNMENTS_CODEC,
   USER_FINGER_ASSIGNMENT_ID_PREFIX,
 } from './user-finger-assignments.ts';
@@ -151,4 +152,20 @@ test('decode: assignmentsが無い（undefined）時は診断を積まない', (
   const result = USER_FINGER_ASSIGNMENTS_CODEC.decode({ version: 1 });
   assert.equal(result.ok, true);
   if (result.ok) assert.deepEqual(result.diagnostics, []);
+});
+
+test('updateUserFingerAssignment: 中身だけを書き換え、idと名前は変えない。対象なし・同じ中身は同じ配列を返す', () => {
+  const list = [CUSTOM];
+  const content = { keyFinger: { ...CUSTOM.keyFinger, q: 'RP' as const }, homeKey: { ...CUSTOM.homeKey, LP: 'z' } };
+  const updated = updateUserFingerAssignment(list, CUSTOM.id, content);
+  assert.notEqual(updated, list);
+  assert.equal(updated[0]!.keyFinger.q, 'RP');
+  assert.equal(updated[0]!.homeKey.LP, 'z');
+  assert.deepEqual([updated[0]!.id, updated[0]!.name], [CUSTOM.id, CUSTOM.name]);
+  assert.equal(CUSTOM.keyFinger.q, 'LP');
+  assert.equal(updateUserFingerAssignment(list, 'no-such-id', content), list);
+  assert.equal(updateUserFingerAssignment(list, CUSTOM.id, { keyFinger: { ...CUSTOM.keyFinger }, homeKey: { ...CUSTOM.homeKey } }), list);
+  // キーが減る変更（既定へ戻す操作で起きる）も変更として扱う
+  const { q: _q, ...fewer } = CUSTOM.keyFinger;
+  assert.notEqual(updateUserFingerAssignment(list, CUSTOM.id, { keyFinger: fewer, homeKey: CUSTOM.homeKey }), list);
 });
