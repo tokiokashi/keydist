@@ -87,7 +87,7 @@ export interface SentenceRowStats {
   readonly baseMs?: number;
   /** 文章を打った間隔の四分位平均[ms]。 */
   readonly intervalMs?: number;
-  /** ストロークごとの差の四分位平均[ms]。負なら0にしてある。 */
+  /** ストロークごとの差の四分位平均[ms]。負の値もそのまま持つ。 */
   readonly differenceMs?: number;
 }
 
@@ -98,7 +98,7 @@ export interface SentenceMeasurement {
   readonly kinds: Readonly<Record<OverheadKind, SentenceRowStats>>;
   /** 「その他」のうち異手のストロークを、異手の方向で分けた表に示す値。保存しない。 */
   readonly crossHand: Readonly<Record<CrossHandDirection, SentenceRowStats>>;
-  /** 数えたストロークが最小数以上の種類の打鍵の上乗せ[ms]。負の値は0にしてある。 */
+  /** 数えたストロークが最小数以上の種類の打鍵の上乗せ[ms]。負の値もそのまま持つ。 */
   readonly overheadMs: Readonly<Partial<Record<OverheadKind, number>>>;
 }
 
@@ -155,7 +155,7 @@ function rowStats(count: number, values: Collected): SentenceRowStats {
     count,
     baseMs: interquartileMean(values.bases),
     intervalMs: interquartileMean(values.intervals),
-    differenceMs: Math.max(0, interquartileMean(values.differences)),
+    differenceMs: interquartileMean(values.differences),
   };
 }
 
@@ -223,7 +223,7 @@ export function measureSentence(
   const kinds = {} as Record<OverheadKind, SentenceRowStats>;
   for (const kind of OVERHEAD_KINDS) {
     for (const best of maxPerSentence.values()) counts[kind] += best[kind];
-    if (counts[kind] >= SENTENCE_MIN_SAMPLES) overheadMs[kind] = Math.max(0, interquartileMean(gathered[kind].differences));
+    if (counts[kind] >= SENTENCE_MIN_SAMPLES) overheadMs[kind] = interquartileMean(gathered[kind].differences);
     kinds[kind] = rowStats(counts[kind], gathered[kind]);
   }
   const crossHand = {} as Record<CrossHandDirection, SentenceRowStats>;

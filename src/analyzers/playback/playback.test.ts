@@ -511,7 +511,7 @@ test('既定と違う計算の知らせ: 個人速度で計算していて打鍵
   assert.equal(notes('missing', withOverhead).keystrokeOverheadInUse, false);
 });
 
-test('既定と違う計算の知らせ: 打鍵の上乗せは、時間に入る種類が0より大きい値を持つ時だけ足していると示す', () => {
+test('既定と違う計算の知らせ: 打鍵の上乗せは、時間に入る種類が0以外の値を持つ時だけ足していると示す', () => {
   const notes = (sameFingerDelay: boolean, keystrokeOverheadMs: PlaybackCalibration['keystrokeOverheadMs']) =>
     playbackCalculationNotes(
       { ...DEFAULT_PLAYBACK_OPTIONS, sameFingerDelay },
@@ -531,6 +531,11 @@ test('既定と違う計算の知らせ: 打鍵の上乗せは、時間に入る
   assert.equal(notes(true, { arpeggio: 0, chain: 0, other: 0, repeat: 0, sfb: 0 }), false);
   assert.equal(notes(false, { other: 0, sfb: 0 }), false);
   assert.equal(notes(true, { other: 0, sfb: 40 }), true);
+  // 負の値も時間に入っている
+  assert.equal(notes(true, { other: -20 }), true);
+  assert.equal(notes(false, { sfb: -20 }), false);
+  assert.equal(notes(true, { sfb: -20 }), true);
+  assert.equal(notes(false, { sfb: -20, repeat: -1 }), true);
 });
 
 test('個人速度: 保存値が無ければ個人速度無しの時間で、そのことを抽出が伝える（§2.1）', () => {

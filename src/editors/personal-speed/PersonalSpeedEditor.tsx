@@ -179,7 +179,7 @@ function ValueRow({ fieldId, value, error, disabled, action, onChange, onCommit,
       <input
         id={inputId}
         type="text"
-        inputMode="decimal"
+        inputMode={fieldId.startsWith('overhead:') ? 'text' : 'decimal'}
         autoComplete="off"
         aria-label={fullLabel}
         aria-invalid={error === undefined ? undefined : true}
@@ -396,10 +396,10 @@ export function PersonalSpeedEditor({
     dropProblems();
     onSave(result.calibration);
     setNotices({
-      [group]: { kind: 'message', text: savedMessage(run.scope, run.tasks[0]?.item, result.clearedOverheads) },
-      ...(result.clearedOverheads.length === 0
+      [group]: { kind: 'message', text: savedMessage(run.scope, run.tasks[0]?.item, result.clearedOverheads, result.replacedOverheads) },
+      ...(result.clearedOverheads.length === 0 && result.replacedOverheads.length === 0
         ? {}
-        : { sentence: { kind: 'message', text: clearedOverheadsText(result.clearedOverheads) } }),
+        : { sentence: { kind: 'message', text: clearedOverheadsText(result.clearedOverheads, result.replacedOverheads) } }),
     });
   };
   const runner = useCalibrationRun({ keyLabel, onFinished: finished });

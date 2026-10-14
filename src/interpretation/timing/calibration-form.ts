@@ -76,10 +76,13 @@ export type ApplyCalibrationFieldResult =
     };
 
 const DECIMAL = /^(\d+\.?\d*|\.\d+)$/;
+/** 負の値を取れる欄は、先頭のマイナス記号（半角のハイフンマイナス、全角のマイナス）を受け付ける。 */
+const SIGNED_DECIMAL = /^[-−]?(\d+\.?\d*|\.\d+)$/;
 
-function parseValue(raw: string): number | undefined {
+function parseValue(raw: string, range: { readonly min: number }): number | undefined {
   const text = raw.trim();
-  return DECIMAL.test(text) ? Number(text) : undefined;
+  if (range.min >= 0) return DECIMAL.test(text) ? Number(text) : undefined;
+  return SIGNED_DECIMAL.test(text) ? Number(text.replace('−', '-')) : undefined;
 }
 
 const RATE_RANGE = { min: CALIBRATION_ACTIONS_PER_SECOND_MIN, max: CALIBRATION_ACTIONS_PER_SECOND_MAX };
@@ -146,7 +149,7 @@ export function applyCalibrationField(
   if (raw.trim() === '') {
     if (required) return { ok: false, fieldId, problem: 'empty', ...range };
   } else {
-    value = parseValue(raw);
+    value = parseValue(raw, range);
     if (value === undefined || value < range.min || value > range.max) return { ok: false, fieldId, problem: 'invalid', ...range };
   }
   const calibration: PlaybackCalibration = { ...withField(base, fieldId, value), measuredAt: measuredAtMs };

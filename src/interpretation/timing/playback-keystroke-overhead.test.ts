@@ -315,3 +315,38 @@ test('同指連続の値と続け打ちの値を持たない保存値は、時�
     }
   }
 });
+
+test('負の打鍵の上乗せを足した時間は、25ms（保存値が許す最も速い1打の時間）より短くならず、倍率で割る前に当たる', () => {
+  // normalMsは200。
+  const analysis = alternating(3);
+  assert.deepEqual(durations(analysis, withOverhead({ other: -100 })), [100, 100, 100]);
+  assert.deepEqual(durations(analysis, withOverhead({ other: -175 })), [25, 25, 25]);
+  assert.deepEqual(durations(analysis, withOverhead({ other: -190 })), [25, 25, 25]);
+  assert.deepEqual(durations(analysis, withOverhead({ other: -1000 })), [25, 25, 25]);
+  // 倍率で割る前に下限を当てるので、倍率2なら12.5ms、0.5なら50ms。
+  assert.deepEqual(durations(analysis, withOverhead({ other: -190 }), false, 2), [12.5, 12.5, 12.5]);
+  assert.deepEqual(durations(analysis, withOverhead({ other: -190 }), false, 0.5), [50, 50, 50]);
+});
+
+test('同指連続の式でも、上乗せを足した時間は25msより短くならない', () => {
+  const far = withSameFinger(3);
+  const near = withSameFinger(2);
+  // sを持たない式: max(normalMs + o, movementMs)。normalMs + oが25msに当たっても、移動の時間が長ければ移動の時間になる。
+  assert.equal(playbackStepDurationMs(near, 1, 1, true, withOverhead({ other: -190 }), 1), 200);
+  assert.equal(playbackStepDurationMs(far, 1, 1, true, withOverhead({ other: -190 }), 1), 300);
+  // sを持つ式: max(normalMs, movementMs) + s。
+  assert.equal(playbackStepDurationMs(near, 1, 1, true, withOverhead({ sfb: -100 }), 1), 100);
+  assert.equal(playbackStepDurationMs(near, 1, 1, true, withOverhead({ sfb: -190 }), 1), 25);
+  assert.equal(playbackStepDurationMs(far, 1, 1, true, withOverhead({ sfb: -290 }), 1), 25);
+  assert.equal(playbackStepDurationMs(far, 1, 1, true, withOverhead({ sfb: -1000 }), 2), 12.5);
+  // 移動を考慮しない設定の同指連続のステップは、構造の種類の式。
+  assert.equal(playbackStepDurationMs(near, 1, 1, false, withOverhead({ other: -190 }), 1), 25);
+});
+
+test('上乗せが全て0以上の保存値は、下限があっても時間が変わらない', () => {
+  const analysis = alternating(3);
+  assert.deepEqual(durations(analysis, withOverhead({ other: 0 })), [200, 200, 200]);
+  assert.deepEqual(durations(analysis, withOverhead({ other: 1000 })), [1200, 1200, 1200]);
+  const near = withSameFinger(2);
+  assert.equal(playbackStepDurationMs(near, 1, 1, true, withOverhead({ sfb: 0 }), 1), 200);
+});
