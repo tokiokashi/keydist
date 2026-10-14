@@ -248,12 +248,14 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options, onOp
           {frame.isRomaji ? (
             <span className="playback-romaji" data-playback-romaji>
               <span className="playback-current" data-playback-kana>{frame.kanaText}</span>
-              <span className="playback-typed">
-                打鍵: <code data-playback-typed>{frame.typedText}</code>
-                {frame.plannedText === undefined ? null : (
-                  <span className="playback-planned" data-playback-planned>予定: {frame.plannedText}</span>
-                )}
-              </span>
+              {frame.romajiInputPreview !== undefined ? null : (
+                <span className="playback-typed">
+                  打鍵: <code data-playback-typed>{frame.typedText}</code>
+                  {frame.plannedText === undefined ? null : (
+                    <span className="playback-planned" data-playback-planned>予定: {frame.plannedText}</span>
+                  )}
+                </span>
+              )}
             </span>
           ) : (
             <span className="playback-current" data-playback-current>{frame.currentText}</span>
@@ -273,17 +275,46 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options, onOp
               </span>
             ))}
           </span>
-          <span className="playback-history-rest" data-playback-history-text>
-            {frame.inputPreview.map((segment, index) => segment.kind !== 'completed' && (
-              <span
-                key={`${segment.kind}-${index}`}
-                className={`playback-input-segment playback-input-${segment.kind}`}
-                aria-current={segment.kind === 'current' ? 'step' : undefined}
-              >
-                {segment.text}
+          {frame.romajiInputPreview === undefined ? (
+            <span className="playback-history-rest" data-playback-history-text>
+              {frame.inputPreview.map((segment, index) => segment.kind !== 'completed' && (
+                <span
+                  key={`${segment.kind}-${index}`}
+                  className={`playback-input-segment playback-input-${segment.kind}`}
+                  aria-current={segment.kind === 'current' ? 'step' : undefined}
+                >
+                  {segment.text}
+                </span>
+              ))}
+            </span>
+          ) : (
+            <span className="playback-history-rest playback-history-rest-romaji" data-playback-history-text>
+              {frame.romajiInputPreview.map((segment, index) => segment.kind === 'current' && (
+                <span
+                  key={`${segment.kind}-${index}`}
+                  className="playback-input-segment playback-input-current"
+                  aria-current="step"
+                >
+                  {segment.romaji === undefined ? segment.kana : (
+                    <>
+                      <span className="playback-input-typed">{segment.romaji.typed}</span>
+                      {segment.romaji.remaining}
+                    </>
+                  )}
+                </span>
+              ))}
+              <span className="playback-history-ahead">
+                {frame.romajiInputPreview.map((segment, index) => segment.kind === 'planned' && (
+                  <span
+                    key={`${segment.kind}-${index}`}
+                    className="playback-input-segment playback-input-planned"
+                  >
+                    {segment.romaji?.remaining ?? segment.kana}
+                  </span>
+                ))}
               </span>
-            ))}
-          </span>
+            </span>
+          )}
         </div>
       </div>
 

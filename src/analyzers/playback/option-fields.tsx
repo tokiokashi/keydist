@@ -174,9 +174,16 @@ export function usePlaybackFields(
         hint="これから押すキーを、先読みNで決まる入力先まで配列図に出します。先読みNは条件で変えます。距離の計算にも使う値なので、変えると距離の数値も変わります。"
       />
     ),
+    showRomajiInput: (
+      <CheckboxOptionField
+        label="入力の行にローマ字を表示"
+        binding={bind('showRomajiInput')}
+        hint="ローマ字の規則を持つ配列で、入力の行の打っている途中の単位とこの先の単位をローマ字で出し、打ち終えた単位はかなで出します。オンの間は、状態の行の「打鍵」と「予定」は出ません。ローマ字の規則を持たない配列では変わりません。"
+      />
+    ),
     showRomajiPlan: (
       <CheckboxOptionField
-        label="予定ローマ字を表示"
+        label="今のかなの残りキーを配列図に表示"
         binding={bind('showRomajiPlan')}
         hint="ローマ字の規則を持つ配列で、今の入力単位のまだ押していないキーを、押下予定キーと同じ緑の塗りで配列図に出します。ローマ字の規則を持たない配列では出ません。"
       />
