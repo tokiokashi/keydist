@@ -5,10 +5,15 @@ import {
   RATE_CHART_MARGIN,
   RATE_CHART_WIDTH,
   rateChartModel,
+  rateChartOwnRange,
   rateChartPositionAt,
   rateChartReadout,
   rateChartX,
 } from './rate-chart-model.ts';
+import { useSharedScale } from '../shared-scale.tsx';
+
+/** 縦軸の単位（1秒あたりの数）はペインの設定で変わらないので、キーは1つ */
+const PLAYBACK_RATE_SCALE_KEY = 'playback:rate';
 
 /**
  * かな毎秒・アクション毎秒の平均の推移。値は抽出が出した点を並べるだけで、ここでは計算しない。
@@ -27,7 +32,9 @@ const PLOT_RIGHT = RATE_CHART_WIDTH - RATE_CHART_MARGIN.right;
 
 export function PlaybackRateChart({ points, cursor, showChain, showArpeggio, onSeek }: PlaybackRateChartProps) {
   const [hovered, setHovered] = useState<number | undefined>(undefined);
-  const model = rateChartModel(points, { chain: showChain, arpeggio: showArpeggio });
+  // 縦軸は、並んだ打鍵再生のペイン全部を含む範囲（配るものが無ければ自分の範囲）
+  const sharedRange = useSharedScale(PLAYBACK_RATE_SCALE_KEY, rateChartOwnRange(points));
+  const model = rateChartModel(points, { chain: showChain, arpeggio: showArpeggio }, sharedRange);
   if (model === undefined) {
     return <p className="playback-empty">打鍵するデータがありません。</p>;
   }
