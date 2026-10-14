@@ -46,6 +46,8 @@ import {
  * - `showFingerPositions` / `showPlannedKeys` / `showTrail` / `showOrderLabels`: 配列図に、指の位置・これから押すキー・
  *   押したキーの履歴・順番ラベルを出すか。それぞれ自分の表示だけを出し入れする。順番ラベルは、その時に出ている
  *   これから押すキーと履歴にだけ付き、Chain・Arpeggioの順番表示は切り替えの対象にしない
+ * - `showRomajiInput`: ローマ字の規則を持つ配列で、入力の行を、打ち終えた単位はかな・打っている途中の単位とこの先の単位は
+ *   ローマ字で出すか。真の時は、状態の行の「打鍵」と「予定」を出さない。偽の時は、入力の行はかなだけで、状態の行に両方を出す
  * - `showRomajiPlan`: ローマ字の規則を持つ配列で、今の入力単位のまだ押していないキーを配列図に出すか。
  *   これから押すキーの表示とは独立に出し入れし、順番ラベルが表示の時は、出ているこのキーにも順番を付ける
  * - `trailSteps`: 押下履歴に残すステップ数。履歴を出さない時は表示に影響しない
@@ -172,12 +174,19 @@ export const playbackOptions = defineOptions({
     url: booleanUrlCodec('plan'),
     label: '押下予定キーを表示',
   }),
+  showRomajiInput: defineOption<boolean>({
+    schema: v.boolean(),
+    default: true,
+    affects: 'view',
+    url: booleanUrlCodec('romajiInput'),
+    label: '入力の行にローマ字を表示',
+  }),
   showRomajiPlan: defineOption<boolean>({
     schema: v.boolean(),
     default: true,
     affects: 'view',
     url: booleanUrlCodec('romajiPlan'),
-    label: '予定ローマ字を表示',
+    label: '今のかなの残りキーを配列図に表示',
   }),
   showTrail: defineOption<boolean>({
     schema: v.boolean(),
@@ -242,6 +251,7 @@ export const ALTERNATE_PLAYBACK_OPTIONS: PlaybackOptions = {
   showSameFingerMotion: true,
   showFingerPositions: true,
   showPlannedKeys: true,
+  showRomajiInput: false,
   showRomajiPlan: false,
   showTrail: true,
   trailSteps: 12,

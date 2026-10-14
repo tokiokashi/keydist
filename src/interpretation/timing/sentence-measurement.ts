@@ -3,19 +3,28 @@ import {
   CALIBRATION_OVERHEAD_MS_MIN,
   OVERHEAD_KINDS,
   playbackCalibrationProblem,
+  SENTENCE_RECORDED_OVERHEAD_KINDS,
+  SIMULTANEOUS_KINDS,
   sideOverheadKind,
   type OverheadKind,
   type PlaybackCalibration,
+  type SimultaneousKind,
 } from './calibration.ts';
 import type { Stroke } from '#trace/generate.ts';
-import { playbackNormalMs, playbackSameFingerMovementMs, type PlaybackTimingAnalysis } from './playback.ts';
-import { strokeOverheadKinds, strokeOverheadSide } from './stroke-structure.ts';
+import {
+  playbackNormalMs,
+  playbackSameFingerMovementMs,
+  playbackSimultaneousOverheadMs,
+  type PlaybackTimingAnalysis,
+} from './playback.ts';
+import { strokeOverheadKinds, strokeOverheadSide, strokeSimultaneousKind } from './stroke-structure.ts';
 
 /**
  * 文章を打つ測定（`spec/playback-timing.md` §6.4）の計算。差の種類（構造の種類の3つ・続け打ち・同指連続）ごとに、
  * ストロークの実際の間隔から基準の時間を引いた差の四分位平均を、打鍵の上乗せにする。
  * 構造の種類は、分けない値に加えて、かなの中・かなの境目のストロークだけからも求める。
  * 基準の時間は、続け打ちと構造の種類では1打の時間（`normalMs`）、同指連続では`max(normalMs, 指の移動の時間)`。
+ * 同時押しのストロークの基準の時間には、そのストロークの同時押しの上乗せを足す（続け打ちは同時押しにならない）。
  * 数えるのは、覚えた文を繰り返し打つ2回目以降だけ。句読点を打つストロークと、その直後のストロークは数えない。
  * 時刻は呼び出し側が渡すので、描画にもタイマーにも依存しない。
  */
@@ -102,6 +111,11 @@ export interface SentenceMeasurement {
   readonly kinds: Readonly<Record<OverheadKind, SentenceRowStats>>;
   /** 数えたストロークが最小数以上の種類の打鍵の上乗せ[ms]。負の値もそのまま持つ。 */
   readonly overheadMs: Readonly<Partial<Record<OverheadKind, number>>>;
+  /**
+   * 保存する行（構造の種類と同指連続）の値を求めるのに数えたストロークに入っていた、同時押しの分け方。
+   * 四分位平均で除いたストロークも含む。保存する行が無ければ空。
+   */
+  readonly simultaneousKinds: readonly SimultaneousKind[];
 }
 
 /** 保存値全体の比較。キーの並びは問わない。 */
@@ -169,7 +183,8 @@ function emptyCounts(): Record<OverheadKind, number> {
  * 数える回の記録から、差の種類ごとの打鍵の上乗せを求める。回ごとに、最初のストローク（直前の時刻が無い）、
  * 違うキーを押したストローク、出力の文字の読み方で完了したストロークとその直後のストローク、句読点を打つストロークと直後のストロークは数えない。
  * 続け打ちの差は間隔から続け打ちの`normalMs`（同じキーを続けて打つ速さ、無ければ通常速度）を引いた値、
- * 同指連続の差は間隔から`max(normalMs, 指の移動の時間)`を引いた値、構造の種類の差は間隔から`normalMs`を引いた値。
+ * 同指連続の差は間隔から`max(normalMs, 指の移動の時間)`と同時押しの上乗せを引いた値、
+ * 構造の種類の差は間隔から`normalMs`と同時押しの上乗せを引いた値。
  * `sameFingerDelay`は見ない。差の四分位平均は、数えたストロークの全部から取る。
  * 数えた数（`counts`。種類ごとの下限`SENTENCE_MIN_SAMPLES`の判定にも、画面と知らせにも使う）は、
  * 文ごとに数える回のそれぞれで数えたストロークの数の最大を取り、全文で足した数にする。
@@ -182,6 +197,7 @@ export function measureSentence(
   const collected = (): Collected => ({ bases: [], intervals: [], differences: [] });
   const gathered = Object.fromEntries(OVERHEAD_KINDS.map((kind) => [kind, collected()])) as Record<OverheadKind, Collected>;
   const maxPerSentence = new Map<number, Record<OverheadKind, number>>();
+  const rowSimultaneous = Object.fromEntries(OVERHEAD_KINDS.map((kind) => [kind, new Set<SimultaneousKind>()])) as Record<OverheadKind, Set<SimultaneousKind>>;
   for (const { sentence, analysis, taps } of samples) {
     const kinds = strokeOverheadKinds(analysis);
     const round = emptyCounts();
@@ -195,17 +211,21 @@ export function measureSentence(
       const normalMs = playbackNormalMs(analysis, index, calibration);
       if (!Number.isFinite(normalMs)) continue;
       const kind = kinds[index];
-      const baseMs = kind === 'sfb'
+      // 同時押しのストロークの基準の時間には、再生と同じ位置（そのストロークのステップ）で同時押しの上乗せを含める。
+      const simultaneousMs = playbackSimultaneousOverheadMs(analysis.strokes[index], calibration);
+      const baseMs = (kind === 'sfb'
         ? Math.max(normalMs, playbackSameFingerMovementMs(analysis.strokes[index], calibration) ?? 0)
-        : normalMs;
+        : normalMs) + simultaneousMs;
       const intervalMs = tap.atMs - previous.atMs;
       const saved: OverheadKind[] = [kind];
       if (kind === 'arpeggio' || kind === 'chain' || kind === 'other') {
         saved.push(sideOverheadKind(kind, strokeOverheadSide(analysis.strokes, index)));
       }
+      const simultaneousKind = strokeSimultaneousKind(analysis.strokes[index]);
       for (const row of saved) {
         push(gathered[row], baseMs, intervalMs);
         round[row] += 1;
+        if (simultaneousKind !== undefined) rowSimultaneous[row].add(simultaneousKind);
       }
     }
     const best = maxPerSentence.get(sentence) ?? emptyCounts();
@@ -221,7 +241,12 @@ export function measureSentence(
     if (counts[kind] >= SENTENCE_MIN_SAMPLES) overheadMs[kind] = interquartileMean(gathered[kind].differences);
     kinds[kind] = rowStats(counts[kind], gathered[kind]);
   }
-  return { counts, kinds, overheadMs };
+  const recorded = new Set<SimultaneousKind>();
+  for (const kind of SENTENCE_RECORDED_OVERHEAD_KINDS) {
+    if (overheadMs[kind] === undefined) continue;
+    for (const simultaneousKind of rowSimultaneous[kind]) recorded.add(simultaneousKind);
+  }
+  return { counts, kinds, overheadMs, simultaneousKinds: SIMULTANEOUS_KINDS.filter((kind) => recorded.has(kind)) };
 }
 
 export type ApplySentenceResult =
@@ -252,7 +277,15 @@ export function applySentenceMeasurement(
   if (Object.keys(measurement.overheadMs).length === 0) return { ok: false, reason: 'too-few', measurement };
   const inRange = Object.values(measurement.overheadMs).every((value) =>
     value >= CALIBRATION_OVERHEAD_MS_MIN && value <= CALIBRATION_OVERHEAD_MS_MAX);
-  const next: PlaybackCalibration = { ...base, keystrokeOverheadMs: measurement.overheadMs, measuredAt: nowMs };
+  // 続け打ちの行だけを保存する時は、同時押しの分け方の記録を持たせない（記録は構造の種類と同指連続の値の根拠）。
+  const { sentenceSimultaneousKinds: _previous, ...withoutRecord } = base;
+  const recordable = SENTENCE_RECORDED_OVERHEAD_KINDS.some((kind) => measurement.overheadMs[kind] !== undefined);
+  const next: PlaybackCalibration = {
+    ...withoutRecord,
+    keystrokeOverheadMs: measurement.overheadMs,
+    ...(recordable ? { sentenceSimultaneousKinds: measurement.simultaneousKinds } : {}),
+    measuredAt: nowMs,
+  };
   if (!inRange || playbackCalibrationProblem(next) !== undefined) {
     return { ok: false, reason: 'out-of-range', measurement };
   }

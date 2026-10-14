@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { computeYRange, formatYTicks } from './y-range.ts';
+import { computeYRange, formatYTicks, yValuesRange } from './y-range.ts';
 import { DEFAULT_N_SENSITIVITY_OPTIONS } from './options.ts';
 
 const relative = [100, 100, 90, 77, 65, 97, 85, 82];
@@ -61,4 +61,23 @@ test('値の幅がごく狭い時、目盛りは小数で書き分け、同じ�
 test('整数の刻みなら小数を付けない（従来の見た目のまま）', () => {
   assert.deepEqual(formatYTicks(true, [0, 20, 40, 60, 80, 100]), ['0%', '20%', '40%', '60%', '80%', '100%']);
   assert.deepEqual(formatYTicks(false, [0, 76.16, 152.32]), ['0 u', '76 u', '152 u']);
+});
+
+test('揃える範囲: 報告は描く値の最小と最大で、値が無ければ報告しない', () => {
+  assert.deepEqual(yValuesRange([380, 250, 170]), { min: 170, max: 380 });
+  assert.equal(yValuesRange([]), undefined);
+});
+
+test('揃えた範囲を値として渡すと、小さい方のペインも大きい方と同じ目盛りになる', () => {
+  const own = [200, 150];
+  const other = [380, 170];
+  const shared = yValuesRange([...own, ...other])!;
+  const merged = computeYRange('fit', false, [shared.min, shared.max]);
+  assert.notDeepEqual(merged, computeYRange('fit', false, own));
+  assert.deepEqual(merged, computeYRange('fit', false, other.concat(own)));
+  assert.equal(merged.hi >= 380 && merged.lo <= 150, true);
+  // 相対は上限が100%のままで、下限だけが揃う
+  const relativeMerged = computeYRange('fit', true, [60, 100]);
+  assert.equal(relativeMerged.hi, 100);
+  assert.ok(relativeMerged.lo <= 60);
 });

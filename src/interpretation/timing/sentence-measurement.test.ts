@@ -224,7 +224,7 @@ test('反映は打鍵の上乗せだけを置き換え、他の項目と、持�
   const analysis = alternating(20);
   const result = applySentenceMeasurement(base, analysis, tapsFor(20, () => 260), 99);
   assert.ok(result.ok);
-  assert.deepEqual(result.calibration, { ...SAVED, keystrokeOverheadMs: { other: 60, 'other-boundary': 60 }, measuredAt: 99 });
+  assert.deepEqual(result.calibration, { ...SAVED, keystrokeOverheadMs: { other: 60, 'other-boundary': 60 }, sentenceSimultaneousKinds: [], measuredAt: 99 });
 });
 
 test('保存の時の保存値が、測定を始めた時の保存値と違えば、保存せずに測り直させる', () => {
@@ -625,4 +625,74 @@ test('分けない値と打数は、入力単位の分け方が違っても同�
   assert.deepEqual(paired.counts, allBoundary.counts);
   assert.deepEqual(paired.kinds.other, allBoundary.kinds.other);
   assert.equal(paired.overheadMs.other, allBoundary.overheadMs.other);
+});
+
+/** `alternating`の列の、`overrides`の番号のストロークを、指定の押下の指に置き換える。 */
+function withPresses(analysis: PlaybackTimingAnalysis, overrides: Readonly<Record<number, readonly Finger[]>>, punctuationAt: readonly number[] = []): PlaybackTimingAnalysis {
+  return {
+    ...analysis,
+    strokes: analysis.strokes.map((s, index) => {
+      const fingers = overrides[index];
+      const base = punctuationAt.includes(index) ? { ...s, inputChar: '、' } : s;
+      return fingers === undefined ? base : { ...base, presses: fingers.map((finger) => press(finger)) };
+    }),
+  } as PlaybackTimingAnalysis;
+}
+
+test('同時押しの分け方の記録は、保存した行の値を求めるのに数えたストロークの分け方で、四分位平均で除いたストロークも含む', () => {
+  // 5番目は両手、6番目は片手の同時押し。5番目の間隔は大きく外れて四分位平均で除かれる。
+  const analysis = withPresses(alternating(30), { 5: ['LI', 'RI'], 6: ['LI', 'LM'] });
+  const taps = tapsFor(30, (index) => (index === 5 ? 3000 : 260));
+  const { overheadMs, simultaneousKinds } = measureOneRaw(analysis, SAVED, taps);
+  assert.ok(overheadMs.other !== undefined);
+  assert.deepEqual(simultaneousKinds, ['both-hands', 'one-hand']);
+  const result = applySentenceMeasurement(SAVED, analysis, taps, 5);
+  assert.ok(result.ok);
+  assert.deepEqual(result.calibration.sentenceSimultaneousKinds, ['both-hands', 'one-hand']);
+});
+
+test('同時押しの分け方の記録は、数えないストロークと、保存しなかった行にだけ入ったストロークの分け方を含まない', () => {
+  const analysis = withPresses(
+    alternating(40),
+    {
+      0: ['LI', 'RT'], // 最初のストロークは数えない（親指）
+      4: ['LI', 'RI'], // 句読点の直後は数えない（両手）
+      9: ['RI', 'RM'], // 違うキーを押したストロークは数えない（片手）
+    },
+    [3],
+  );
+  const taps = tapsFor(40, () => 260, (index) => index !== 9);
+  assert.deepEqual(measureOneRaw(analysis, SAVED, taps).simultaneousKinds, []);
+  // 同指連続の行は10打に届かず保存しないので、その行にだけ入った片手の同時押しは含まない。
+  const sfbOnly = {
+    ...alternating(40),
+    strokes: alternating(40).strokes.map((s, index) =>
+      index === 7 ? { ...s, presses: [press('LI', true), press('LM')] } : s),
+  } as PlaybackTimingAnalysis;
+  const measured = measureOneRaw(sfbOnly, SAVED, tapsFor(40, () => 260));
+  assert.equal(measured.overheadMs.sfb, undefined);
+  assert.equal(measured.kinds.sfb.count, 1);
+  assert.deepEqual(measured.simultaneousKinds, []);
+});
+
+test('同時押しのストロークが無ければ空の記録を保存し、続け打ちの行だけを保存する時は記録を持たせない', () => {
+  const empty = applySentenceMeasurement(SAVED, alternating(20), tapsFor(20, () => 260), 5);
+  assert.ok(empty.ok);
+  assert.deepEqual(empty.calibration.sentenceSimultaneousKinds, []);
+  // 同じ指で同じキーを続けて打つ列は、続け打ちの行だけが10打に届く。
+  const repeating = {
+    ...alternating(20),
+    strokes: alternating(20).strokes.map((s) => ({ ...s, presses: [press('LI')] })),
+  } as PlaybackTimingAnalysis;
+  const repeatOnly = applySentenceMeasurement(SAVED, repeating, tapsFor(20, () => 260), 5);
+  assert.ok(repeatOnly.ok);
+  assert.deepEqual(Object.keys(repeatOnly.calibration.keystrokeOverheadMs ?? {}), ['repeat']);
+  assert.equal('sentenceSimultaneousKinds' in repeatOnly.calibration, false);
+});
+
+test('記録は文章を打つ測定の保存で置き換わる', () => {
+  const base: PlaybackCalibration = { ...SAVED, keystrokeOverheadMs: { other: 1 }, sentenceSimultaneousKinds: ['thumb'] };
+  const result = applySentenceMeasurement(base, withPresses(alternating(30), { 5: ['LI', 'RI'] }), tapsFor(30, () => 260), 5);
+  assert.ok(result.ok);
+  assert.deepEqual(result.calibration.sentenceSimultaneousKinds, ['both-hands']);
 });

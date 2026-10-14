@@ -39,6 +39,14 @@
   opacity: 0.45;
 }
 
+/*
+ * 再生と一時停止で文字が替わる。文字の幅で行の折り返しが状態ごとに変わらないよう、「一時停止」の幅より広く固定する。
+ * 幅は文字の幅の上限として取り、短い「再生」の時も同じ幅になる。
+ */
+.playback-controls .playback-primary {
+  min-width: 7em;
+}
+
 .playback-position {
   color: var(--text-muted);
   font-size: 0.76rem;
@@ -58,6 +66,14 @@
   max-width: 760px;
   color: var(--text-muted);
   font-size: 0.76rem;
+}
+
+/* 再生位置の数はラベルと同じ行に置く。行の高さはラベルの文字で決まり、数の桁が増えても行の高さは変わらない */
+.playback-seek-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  min-width: 0;
 }
 
 .playback-seek input {
@@ -216,6 +232,32 @@
   color: var(--series-3);
 }
 
+/*
+ * ローマ字で出す行。現在の単位は欄に収まらなくても省略記号で切らず、欄の幅を超えて出す。
+ * この先の単位だけが、残りの幅で省略記号に切れる。
+ */
+.playback-history-rest-romaji {
+  display: flex;
+  overflow: visible;
+}
+
+.playback-history-rest-romaji > .playback-input-current {
+  flex: none;
+}
+
+.playback-history-ahead {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 現在の単位で打ち終えた文字は、まだ打っていない文字より薄くする */
+.playback-input-typed {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
 /* 倍率で図が領域より広がる時は、図の中で横にスクロールさせる */
 .playback-figure {
   min-width: 0;
@@ -237,7 +279,7 @@
   fill: color-mix(in srgb, var(--accent) calc(var(--playback-trail-opacity) * 100%), var(--surface));
 }
 
-/* 押下予定キーと予定ローマ字のキーは同じ緑の塗りで出す。両方に入るキーは濃さの大きい方（`playback-keyboard.tsx`） */
+/* 押下予定キーと今のかなの残りキーは同じ緑の塗りで出す。両方に入るキーは濃さの大きい方（`playback-keyboard.tsx`） */
 .playback-figure [data-playback-plan='true'] .playback-key-face,
 .playback-figure [data-playback-romaji-plan='true'] .playback-key-face {
   fill: color-mix(in srgb, var(--series-3) calc(var(--playback-plan-opacity) * 100%), var(--surface));

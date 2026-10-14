@@ -88,3 +88,18 @@ export function computeYRange(mode: YRangeMode, relative: boolean, values: reado
   const top = relative ? hi : Math.ceil(hi / step) * step;
   return { lo, hi: top, ticks: ticksBetween(lo, top, step) };
 }
+
+/**
+ * ペインどうしで縦軸を揃える時に報告する範囲（描く値の最小と最大）。値が1つも無ければ`undefined`。
+ * 揃えた範囲は`computeYRange`へ値の並びとして渡す（最小と最大だけが目盛りを決める）。
+ */
+export function yValuesRange(values: readonly number[]): { readonly min: number; readonly max: number } | undefined {
+  if (values.length === 0) return undefined;
+  let min = values[0]!;
+  let max = min;
+  for (const value of values) {
+    if (value < min) min = value;
+    if (value > max) max = value;
+  }
+  return { min, max };
+}
