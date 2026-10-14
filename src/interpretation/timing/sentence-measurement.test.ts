@@ -503,3 +503,22 @@ test('表は、保存値が無い時と測定の途中で保存値が変わっ�
   assert.ok(!changed.ok && changed.reason === 'changed');
   assert.equal(sentenceResultTable(changed), undefined);
 });
+
+test('出力の文字の読み方で完了したストロークは、そのストロークの間隔と直後の間隔を数えない', () => {
+  const analysis = alternating(21);
+  const flagged = new Set([0, 7, 20]);
+  const taps = tapsFor(21, () => 260).map((tap, index) => (flagged.has(index) ? { ...tap, outputCompleted: true } : tap));
+  const { counts, crossHand } = measureOne(analysis, SAVED, taps);
+  // 20の間隔（1〜20）のうち、7と20は自分の間隔、1と8は直前が印のあるストロークの間隔で外れて、20 - 4 = 16。
+  // 0は最初のストロークで自分の間隔が無い。
+  assert.deepEqual(counts, { ...NO_COUNTS, other: 16 });
+  assert.equal(crossHand['L→R'].count + crossHand['R→L'].count, 16);
+});
+
+test('出力の文字の読み方で完了した印が無ければ、数えるストロークは今と同じ', () => {
+  const analysis = alternating(21);
+  const plain = measureOne(analysis, SAVED, tapsFor(21, () => 260));
+  const marked = measureOne(analysis, SAVED, tapsFor(21, () => 260).map((tap) => ({ ...tap, outputCompleted: false })));
+  assert.deepEqual(marked, plain);
+  assert.equal(plain.counts.other, 20);
+});

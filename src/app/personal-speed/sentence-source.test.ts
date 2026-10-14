@@ -222,6 +222,16 @@ test('TK音直入力法の示す文は、押すキーでも出力の文字でも
   }
 });
 
+test('TK音直入力法で出力の文字で打つと、コンボのストロークが全部、出力の文字の読み方で完了した印を持つ', () => {
+  const { stepsOf } = tkContext(MEASUREMENT_SENTENCES);
+  const comboStrokes = stepsOf.flat().filter((step) => step.outputChars !== undefined).length * SENTENCE_ROUNDS;
+  assert.ok(comboStrokes > 0);
+  const marked = (output: boolean) => playTkSession(MEASUREMENT_SENTENCES, output).session.records
+    .flatMap((record) => record.taps).filter((tap) => tap.outputCompleted === true).length;
+  assert.equal(marked(false), 0);
+  assert.equal(marked(true), comboStrokes);
+});
+
 test('TK音直入力法の示す文に、出力の文字で打つコンボがあり、aeの並びは無い', () => {
   assert.ok(MEASUREMENT_SENTENCES.every((sentence) => !sentence.includes('あえ')));
   const { stepsOf } = tkContext(MEASUREMENT_SENTENCES);

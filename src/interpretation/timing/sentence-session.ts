@@ -239,14 +239,16 @@ function outputCharMatches(event: SentenceKeyEvent, char: string): boolean {
 /**
  * 今のステップを確定して、次のステップへ進める。
  * `decided`は、このステップが一方の読み方だけで完了した時の、その読み方。
+ * `outputCompleted`は、押すキーの読み方が完了しないまま、出力の文字の読み方で完了したステップなら真。
+ * 打ち方を決めるかとは範囲が違う（`ae`を出力の文字で打った後に別のキーで確定したものや、最後のステップで確定したものも含む）。
  */
-function finishStep(run: StepRun, firstAtMs: number, decided: ComboReading | undefined): StepRun {
+function finishStep(run: StepRun, firstAtMs: number, decided: ComboReading | undefined, outputCompleted: boolean): StepRun {
   const reading = decided ?? run.reading;
   return {
     ...run,
     ...stepStart(run.steps, run.index + 1, reading),
     reading,
-    taps: [...run.taps, { atMs: firstAtMs, clean: run.clean }],
+    taps: [...run.taps, outputCompleted ? { atMs: firstAtMs, clean: run.clean, outputCompleted } : { atMs: firstAtMs, clean: run.clean }],
   };
 }
 
@@ -288,15 +290,17 @@ function pressStep(
       // 読み方を決めるのは、その押下が次のストロークに受け付けられた時だけ（打ち間違いでは決めない）。
       const decided = output === undefined || (pressDone && outputDone) ? undefined : pressDone ? 'press' : 'output';
       const firstAt = run.firstAtMs ?? atMs;
+      // 出力の文字の読み方だけが完了していた（押すキーの読み方は完了していない）。
+      const byOutput = outputDone && !pressDone;
       if (decided !== undefined) {
-        const trial = pressStep(finishStep(run, firstAt, decided), event, atMs, keyLabel, final);
+        const trial = pressStep(finishStep(run, firstAt, decided, byOutput), event, atMs, keyLabel, final);
         if (trial.outcome.kind !== 'wrong-key' && trial.outcome.kind !== 'overflow') return trial;
-        const undecided = pressStep(finishStep(run, firstAt, undefined), event, atMs, keyLabel, final);
+        const undecided = pressStep(finishStep(run, firstAt, undefined, byOutput), event, atMs, keyLabel, final);
         return trial.outcome.kind === 'overflow' && undecided.outcome.kind === 'overflow'
           ? { run: { ...undecided.run, pendingReading: decided }, outcome: undecided.outcome }
           : undecided;
       }
-      return pressStep(finishStep(run, firstAt, undefined), event, atMs, keyLabel, final);
+      return pressStep(finishStep(run, firstAt, undefined, byOutput), event, atMs, keyLabel, final);
     }
     const expected = run.pressReadingAlive || output === undefined
       ? { expectedKey: remainingStepKeys(run)[0], expectedIsOutput: false }
@@ -329,7 +333,9 @@ function pressStep(
     const decided = output === undefined ? undefined
       : pressComplete && !advanced.outputReadingAlive && !outputDone ? 'press'
         : outputComplete && !advanced.pressReadingAlive && !pressDone ? 'output' : undefined;
-    const next = finishStep(advanced, firstAtMs, decided);
+    // 押すキーの読み方が完了しない（前の押下で完了済みでもない）まま出力の文字の読み方が完了したなら、出力の文字の読み方で完了したステップ。
+    const byOutput = outputComplete && !pressComplete && !pressDone;
+    const next = finishStep(advanced, firstAtMs, decided, byOutput);
     return { run: next, outcome: { kind: stepRunFinished(next) ? 'run-finished' : 'step-finished' } };
   }
   return { run: advanced, outcome: { kind: 'partial' } };
