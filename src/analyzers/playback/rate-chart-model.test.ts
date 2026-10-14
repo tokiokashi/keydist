@@ -7,6 +7,7 @@ import {
   RATE_CHART_WIDTH,
   rateChartAxisInsets,
   rateChartModel,
+  rateChartOwnRange,
   rateChartPositionAt,
   rateChartReadout,
   rateChartX,
@@ -89,4 +90,18 @@ test('横軸の左右の余白の割合は、再生位置0と最後のx座標と
   const insets = rateChartAxisInsets();
   assert.equal(parseFloat(insets.left) / 100 * RATE_CHART_WIDTH, rateChartX(0, 10));
   assert.equal(RATE_CHART_WIDTH - parseFloat(insets.right) / 100 * RATE_CHART_WIDTH, rateChartX(10, 10));
+});
+
+test('揃える範囲: 報告は0を含む値の範囲で、値が無ければ報告しない', () => {
+  assert.deepEqual(rateChartOwnRange(points([{ actionsPerSecond: 2 }, { kanaPerSecond: 3, actionsPerSecond: 1 }])), { min: 0, max: 3 });
+  assert.equal(rateChartOwnRange(points([{}, {}])), undefined);
+  assert.equal(rateChartOwnRange(points([{ actionsPerSecond: Number.NaN }])), undefined);
+});
+
+test('揃えた範囲の最大から縦軸を作り、1未満の時は1の1.1倍にする。報告は揃えた範囲に依らない', () => {
+  const data = points([{ actionsPerSecond: 2 }]);
+  assert.equal(rateChartModel(data, NONE, { min: 0, max: 5 })!.yMax, 5 * 1.1);
+  assert.equal(rateChartModel(data, NONE, { min: 0, max: 0.3 })!.yMax, 1.1);
+  assert.equal(rateChartModel(data, NONE)!.yMax, 2 * 1.1);
+  assert.deepEqual(rateChartOwnRange(data), { min: 0, max: 2 });
 });
