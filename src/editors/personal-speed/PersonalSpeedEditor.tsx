@@ -581,7 +581,7 @@ export function PersonalSpeedEditor({
     const missingIds = universe.filter((id) => !(id in savedValues));
     return { measuredIds, missingIds, hasProblem: [...measuredIds, ...missingIds].some((id) => id in fieldErrors) };
   };
-    const main = splitIds('', ['actions', CALIBRATION_SAME_KEY_FIELD, CALIBRATION_SAME_HAND_FIELD, CALIBRATION_FALLBACK_FINGER_FIELD]);
+  const main = splitIds('', ['actions', CALIBRATION_SAME_KEY_FIELD, CALIBRATION_SAME_HAND_FIELD, CALIBRATION_FALLBACK_FINGER_FIELD]);
   const fingers = splitIds('finger:', FINGERS.map((finger) => `finger:${finger}`));
   const directions = splitIds('direction:', ['direction:L→R', 'direction:R→L']);
   const simultaneous = splitIds('simultaneous:', SIMULTANEOUS_KINDS.map(calibrationSimultaneousFieldId));

@@ -120,6 +120,8 @@ interface FingerGridsProps {
   readonly fieldOf: PairFieldId;
   readonly unit: string;
   readonly corner: string;
+  /** 行と列が何かの説明。向きのある表で、見出しの見える位置に添える。 */
+  readonly axes?: string;
   readonly kind: string;
 }
 
@@ -127,7 +129,7 @@ interface FingerGridsProps {
  * 左右の手ごとの、指×指の表。欄を出すマスが1つも無い手の表は出さず、どちらの手にも無ければ何も出さない。
  * 選んだキーでは測れないマスが表にあれば、凡例を添える。
  */
-function FingerGrids({ ctx, fieldOf, unit, corner, kind }: FingerGridsProps) {
+function FingerGrids({ ctx, fieldOf, unit, corner, axes, kind }: FingerGridsProps) {
   const shown = HANDS.filter(({ fingers }) => fingers.some((row) => fingers.some((column) => {
     const fieldId = fieldOf(row, column);
     return fieldId !== undefined && cellHasField(fieldId, ctx);
@@ -136,7 +138,7 @@ function FingerGrids({ ctx, fieldOf, unit, corner, kind }: FingerGridsProps) {
   const tables = shown.map(({ hand, label, fingers }) => (
     <div className="personal-speed-grid-wrap" key={hand}>
       <table className="personal-speed-grid" data-personal-speed-grid={`${kind}:${hand}`}>
-        <caption>{label}（単位: {unit}）</caption>
+        <caption>{label}（単位: {unit}{axes === undefined ? '' : `。${axes}`}）</caption>
         <thead>
           <tr>
             <th scope="col"><span className="personal-speed-visually-hidden">{corner}</span></th>
@@ -185,7 +187,7 @@ export function SameHandPairGrids({ ctx }: { readonly ctx: GridContext }) {
 
 /** 同手・別指の方向別の速度。行が前の指、列が次の指。 */
 export function DirectedPairGrids({ ctx }: { readonly ctx: GridContext }) {
-  return <FingerGrids ctx={ctx} fieldOf={directedPairField} unit={calibrationFieldUnit('directed-pair:LP>LR')} corner="前の指（行）と次の指（列）" kind="directed-pair" />;
+  return <FingerGrids ctx={ctx} fieldOf={directedPairField} unit={calibrationFieldUnit('directed-pair:LP>LR')} corner="前の指（行）と次の指（列）" axes="行が前の指、列が次の指" kind="directed-pair" />;
 }
 
 /** 保存した打鍵の上乗せ。行が差の種類、列が全体・かなの中・かなの境目。保存していない種類も、空の欄から値を足せる。 */

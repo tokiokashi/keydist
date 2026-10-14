@@ -229,7 +229,7 @@ test('打鍵の上乗せを保存している時は、その種類だけを挙�
   await seed(page, { [STORAGE_KEY]: { ...SEEDED, calibration: { ...SEEDED.calibration, keystrokeOverheadMs: { chain: 12, repeat: 30 } } } });
   await open(page);
   await expect(page.locator('#personal-speed-group-normal [data-personal-speed-effect]')).toHaveText('測ると、方向別の値を除く保存値が置き換わり、続け打ちの打鍵の上乗せは再生の時間が変わらない値に置き換わって、それ以外の打鍵の上乗せは消えます。');
-  await expect(page.locator('#personal-speed-group-directional [data-personal-speed-effect]')).toHaveText('測ると、測った向きの値が置き換わり、打鍵の上乗せのうちChain全体が消えます（続け打ちは残ります）。');
+  await expect(page.locator('#personal-speed-group-directional [data-personal-speed-effect]')).toHaveText('測ると、測った向きの値が置き換わり、打鍵の上乗せのうちChainが消えます（続け打ちは残ります）。');
   await expect(page.locator('#personal-speed-group-sentence [data-personal-speed-effect]')).toHaveText('測り直して保存すると、前の打鍵の上乗せは全て置き換わります。');
   // 測るボタンの直後に文が並ぶ
   const after = await page.locator('#personal-speed-group-directional').evaluate((section) => {
@@ -598,7 +598,7 @@ test('他の測定を保存すると、基準が変わる打鍵の上乗せが�
   await page.getByRole('button', { name: '通常の打鍵速度だけを測り直す' }).click();
   await typeThroughRun(page);
   // 消えた値のある文章を打つ速さのまとまりに、消えたことが出る。測ったまとまりにも知らせる
-  await expect(page.locator('#personal-speed-group-sentence').getByText('打鍵の上乗せ（その他全体）は、他の値が変わったため消しました。文章を打つ速さをもう一度測ってください。')).toBeVisible();
+  await expect(page.locator('#personal-speed-group-sentence').getByText('打鍵の上乗せ（その他）は、他の値が変わったため消しました。文章を打つ速さをもう一度測ってください。')).toBeVisible();
   await expect(page.locator('#personal-speed-group-normal').getByText('文章を打つ速さの打鍵の上乗せが消えました。')).toBeVisible();
   const saved = await stored(page) as { calibration: Record<string, unknown> };
   expect('keystrokeOverheadMs' in saved.calibration).toBe(false);
@@ -913,6 +913,8 @@ test('同手・別指の方向別の速度は、行を前の指、列を次の�
   await expect(left.locator('[data-personal-speed-row="directed-pair:LM>LI"] input')).toHaveValue('3.00');
   await expect(left.locator('[data-personal-speed-row="directed-pair:LI>LM"] input')).toHaveValue('');
   await expect(left.locator('[data-personal-speed-row="directed-pair:LM>LM"]')).toHaveCount(0);
+  // 行が前の指、列が次の指であることが、見える位置に書いてある
+  await expect(left.locator('caption')).toContainText('行が前の指、列が次の指');
   const cell = left.locator('[id="personal-speed-directed-pair:LI>LM"]');
   await cell.fill('4');
   await cell.press('Enter');
