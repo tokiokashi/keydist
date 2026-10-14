@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { Fragment, useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { keyboardStandardForGeometryId } from '#input/shapes/key-labels.ts';
 import {
   reconcilePlaybackStateAfterAnalysisRefresh,
@@ -15,9 +15,14 @@ import { playbackCalculationNotes } from './calculation-notes.ts';
 import { usePlaybackFields } from './option-fields.tsx';
 import type { PlaybackOptions } from './options.ts';
 import { PlaybackKeyboard, type PlaybackFeedback } from './playback-keyboard.tsx';
+import { usePlaybackAvailability, usePlaybackBroadcastStore, usePlaybackCommand } from './playback-broadcast.tsx';
 import {
+  applyPlaybackAction,
   initialPlaybackState,
   pausePlayback,
+  playbackPaneReport,
+  playbackPaneStatus,
+  playbackToggleAction,
   seekPlayback,
   startPlayback,
   stepPlaybackBy,
@@ -101,6 +106,42 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options, onOp
     });
   }
   const { state } = session;
+
+  // Workspaceでは、再生・一時停止・停止を全部の打鍵再生のペインへ伝える。伝えられた操作は購読で同じ描画の確定の中に届き、
+  // ここで再生位置へ当てる（副作用で遅れて当てると、ペインどうしの開始が1フレーム以上ずれる）。
+  // 個別画面は伝える相手が無く、自分だけを動かす。
+  const broadcast = usePlaybackBroadcastStore();
+  const command = usePlaybackCommand(broadcast);
+  const availability = usePlaybackAvailability(broadcast);
+  const [appliedRevision, setAppliedRevision] = useState(command.revision);
+  if (appliedRevision !== command.revision) {
+    const { action } = command;
+    setAppliedRevision(command.revision);
+    if (action !== undefined) {
+      setSession((previous) => withFeedback(previous, applyPlaybackAction(previous.state, action, total)));
+    }
+  }
+  // 押せる条件に使う状態を報告する。本体を描いている間だけ加わり、打鍵の無いペインは加わらない
+  const reportOwner = useId();
+  const status = playbackPaneStatus(state, total);
+  const reported = playbackPaneReport(state, total);
+  const reportedAtStart = reported?.atStart;
+  const reportedPlaying = reported?.playing;
+  const reportedAtEnd = reported?.atEnd;
+  useEffect(() => {
+    if (broadcast === undefined) return;
+    broadcast.report(
+      reportOwner,
+      reportedAtStart === undefined || reportedPlaying === undefined || reportedAtEnd === undefined
+        ? undefined
+        : { atStart: reportedAtStart, playing: reportedPlaying, atEnd: reportedAtEnd },
+    );
+  }, [broadcast, reportOwner, reportedAtStart, reportedPlaying, reportedAtEnd]);
+  useEffect(() => {
+    if (broadcast === undefined) return undefined;
+    return () => broadcast.report(reportOwner, undefined);
+  }, [broadcast, reportOwner]);
+
   const seekWasPlaying = useRef<boolean | undefined>(undefined);
 
   // 押した直後の合図。進む向きに動いた時だけ、そのステップで押したキーを光らせる
@@ -171,6 +212,17 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options, onOp
   };
 
   const atEnd = state.cursor >= total;
+  // 全部のペインに伝える時は、押したペインだけでなく全部のペインの状態で押せるかを決める（自分の状態は報告より新しい）
+  const canPlay = !atEnd || (broadcast !== undefined && availability.canPlay);
+  const canStop = !status.atStart || state.playing || (broadcast !== undefined && availability.canStop);
+  const toggle = () => {
+    if (broadcast === undefined) update((previous) => (previous.playing ? pausePlayback(previous) : startPlayback(previous, total)));
+    else broadcast.dispatch(playbackToggleAction(state));
+  };
+  const stop = () => {
+    if (broadcast === undefined) update(stopPlayback);
+    else broadcast.dispatch('stop');
+  };
 
   return (
     <section className="playback-feature" data-react-feature="playback">
@@ -204,12 +256,12 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options, onOp
           type="button"
           className="playback-primary"
           data-playback-action="toggle"
-          disabled={atEnd && !state.playing}
-          onClick={() => update((previous) => (previous.playing ? pausePlayback(previous) : startPlayback(previous, total)))}
+          disabled={!state.playing && !canPlay}
+          onClick={toggle}
         >
           <span aria-hidden="true">{state.playing ? '⏸' : '▶'}</span> {state.playing ? '一時停止' : '再生'}
         </button>
-        <button type="button" data-playback-action="stop" disabled={state.cursor === 0 && !state.playing} onClick={() => update(stopPlayback)}>
+        <button type="button" data-playback-action="stop" disabled={!canStop} onClick={stop}>
           <span aria-hidden="true">■</span> 停止
         </button>
         <button type="button" data-playback-action="forward" disabled={state.playing || atEnd} onClick={() => update((previous) => stepPlaybackBy(previous, 1, total))}>
