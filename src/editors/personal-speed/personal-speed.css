@@ -298,24 +298,119 @@
 
 .personal-speed-result {
   margin-top: 0.6rem;
+}
+
+/* 表は幅が足りない時、このラッパーの中で横にスクロールする。ページは横にスクロールしない */
+.personal-speed-grid-wrap {
+  margin-top: 0.4rem;
   overflow-x: auto;
 }
 
-.personal-speed-result-table {
+.personal-speed-grid {
   border-collapse: collapse;
   font-size: 0.9rem;
 }
 
-.personal-speed-result-table th,
-.personal-speed-result-table td {
-  padding: 0.25rem 0.6rem;
-  border-bottom: 1px solid var(--border);
+.personal-speed-grid caption {
+  padding-bottom: 0.25rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  text-align: left;
+}
+
+.personal-speed-grid th,
+.personal-speed-grid td {
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.personal-speed-grid thead th {
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.personal-speed-grid th[scope='row'] {
+  text-align: left;
+  white-space: nowrap;
+}
+
+.personal-speed-cell {
+  min-width: 6rem;
+  max-width: 8rem;
+}
+
+.personal-speed-cell input[type='text'] {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 4.5rem;
+}
+
+.personal-speed-cell button {
+  display: block;
+  margin-top: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.personal-speed-cell .personal-speed-row-hint {
+  display: block;
+  margin-top: 0.25rem;
+}
+
+.personal-speed-cell .personal-speed-field-error {
+  margin-top: 0.25rem;
+}
+
+/* 測っていないマス: 保存値を持つマスと、背景と破線の枠で見分ける */
+.personal-speed-cell-unmeasured {
+  background: var(--surface-muted);
+  outline: 1px dashed var(--border-strong);
+  outline-offset: -3px;
+}
+
+/* 選んだキーでは測れず、保存値も無いマス */
+.personal-speed-cell-unavailable {
+  color: var(--text-muted);
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* 組が成り立たないマス */
+.personal-speed-cell-blank {
+  background: var(--surface-muted);
+  opacity: 0.5;
+}
+
+.personal-speed-result-cell {
+  display: table-cell;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.personal-speed-result-cell > span {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.personal-speed-result-cell > .personal-speed-result-value {
+  color: inherit;
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+.personal-speed-detail-table td {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-.personal-speed-result-table th[scope='row'],
-.personal-speed-result-table thead th:first-child,
-.personal-speed-result-table td:last-child {
-  text-align: left;
+.personal-speed-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

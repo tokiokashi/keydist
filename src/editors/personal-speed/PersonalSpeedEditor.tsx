@@ -5,7 +5,6 @@ import { OVERHEAD_KINDS, SIMULTANEOUS_KINDS, type PlaybackCalibration } from '#i
 import {
   applyCalibrationField,
   calibrationFormValues,
-  calibrationOverheadFieldId,
   calibrationSimultaneousFieldId,
   CALIBRATION_FALLBACK_FINGER_FIELD,
   CALIBRATION_SAME_HAND_FIELD,
@@ -70,6 +69,7 @@ import { PERSONAL_SPEED_LABEL } from './label.ts';
 import { SentenceResultTable } from './SentenceResultTable.tsx';
 import { useCalibrationRun } from './use-calibration-run.ts';
 import { useSentenceRun } from './use-sentence-run.ts';
+import { DirectedPairGrids, hasFingerGridFields, OverheadGrid, SameHandPairGrids, type GridContext, type RowAction } from './ValueGrids.tsx';
 import './personal-speed.css';
 
 /** 測るキーを決める配列・物理配列・指の割り当ての選択肢。 */
@@ -150,12 +150,6 @@ const NO_BASIS_TEXT = 'この配列・物理配列・指の割り当ての組で
 function firstOf<T extends { readonly id: string }>(items: readonly T[], id: string): T | undefined {
   return items.find((item) => item.id === id) ?? items[0];
 }
-
-/** 欄の右に出す操作。測るボタンか、測れない・別の測定で求まる理由の文。 */
-type RowAction =
-  | { readonly kind: 'measure'; readonly tasks: readonly CalibrationTask[] }
-  | { readonly kind: 'hint'; readonly text: string }
-  | { readonly kind: 'none' };
 
 interface ValueRowProps {
   readonly fieldId: string;
@@ -271,27 +265,40 @@ interface MeasurementGroupProps {
   readonly description: string;
   readonly howTo: readonly string[];
   readonly specHref: string | undefined;
+  /** このまとまりの中に値として出る項目が、保存値を持つか。説明と測り方を、最初に閉じるか開くかだけを決める。 */
+  readonly hasSavedValues: boolean;
   readonly children: ReactNode;
 }
 
 /**
- * 1つの測定のまとまり。説明（何を測るか・どこに使うか）・測り方・仕様書へのリンク・測るボタン・
- * 測るボタンの直後の保存値への影響・測定中の案内・結果・その測定が求める保存値を持つ。
+ * 1つの測定のまとまり。説明（何を測るか・どこに使うか）と測り方は折りたたみに入れ、
+ * 仕様書へのリンク・測るボタン・測るボタンの直後の保存値への影響・測定中の案内・結果・その測定が求める保存値は外に置く。
+ * 折りたたみは、まとまりを出した時の保存値の有無で開閉を決める（保存値を持てば閉じ、持たなければ開く）。
+ * 以降は利用者の開閉を保ち、測って保存しても自動では開閉しない。
  */
-function MeasurementGroup({ id, title, description, howTo, specHref, children }: MeasurementGroupProps) {
+function MeasurementGroup({ id, title, description, howTo, specHref, hasSavedValues, children }: MeasurementGroupProps) {
   const headingId = `personal-speed-group-${id}-title`;
+  const [explanationOpen, setExplanationOpen] = useState(!hasSavedValues);
   return (
     <section className="personal-speed-group" id={`personal-speed-group-${id}`} aria-labelledby={headingId}>
       <h2 id={headingId}>{title}</h2>
-      <p className="personal-speed-note" data-personal-speed-description={id}>{description}</p>
-      {howTo.length === 0 ? null : (
-        <div className="personal-speed-howto" data-personal-speed-howto={id}>
-          <h3>測り方</h3>
-          <ul>
-            {howTo.map((line) => <li key={line}>{line}</li>)}
-          </ul>
-        </div>
-      )}
+      <details
+        className="personal-speed-details personal-speed-explanation"
+        data-personal-speed-explanation={id}
+        open={explanationOpen}
+        onToggle={(event) => setExplanationOpen(event.currentTarget.open)}
+      >
+        <summary>説明と測り方</summary>
+        <p className="personal-speed-note" data-personal-speed-description={id}>{description}</p>
+        {howTo.length === 0 ? null : (
+          <div className="personal-speed-howto" data-personal-speed-howto={id}>
+            <h3>測り方</h3>
+            <ul>
+              {howTo.map((line) => <li key={line}>{line}</li>)}
+            </ul>
+          </div>
+        )}
+      </details>
       {specHref === undefined ? null : (
         <p className="personal-speed-note" data-personal-speed-spec={id}>
           計算の詳細は<a href={specHref} target="_blank" rel="noreferrer">再生時間モデルの仕様書</a>にあります。
@@ -538,6 +545,16 @@ export function PersonalSpeedEditor({
     if (tasks.length > 0) return { kind: 'measure', tasks };
     return fieldId.startsWith('overhead:') ? { kind: 'none' } : { kind: 'hint', text: UNMEASURABLE_ROW_HINT };
   };
+  const gridContext: GridContext = {
+    values,
+    saved: savedValues,
+    errors: fieldErrors,
+    disabled: running,
+    action: rowAction,
+    onChange: onFieldChange,
+    onCommit: commitField,
+    onMeasure: (tasks) => startRun('item', tasks),
+  };
   const renderRow = (fieldId: string): ReactNode => (
     <ValueRow
       fieldId={fieldId}
@@ -564,14 +581,12 @@ export function PersonalSpeedEditor({
     const missingIds = universe.filter((id) => !(id in savedValues));
     return { measuredIds, missingIds, hasProblem: [...measuredIds, ...missingIds].some((id) => id in fieldErrors) };
   };
-  const plannedIds = (prefix: string): string[] => [...(plan?.byItem.keys() ?? [])].filter((id) => id.startsWith(prefix));
-  const main = splitIds('', ['actions', CALIBRATION_SAME_KEY_FIELD, CALIBRATION_SAME_HAND_FIELD, CALIBRATION_FALLBACK_FINGER_FIELD]);
+    const main = splitIds('', ['actions', CALIBRATION_SAME_KEY_FIELD, CALIBRATION_SAME_HAND_FIELD, CALIBRATION_FALLBACK_FINGER_FIELD]);
   const fingers = splitIds('finger:', FINGERS.map((finger) => `finger:${finger}`));
-  const pairs = splitIds('same-hand-pair:', plannedIds('same-hand-pair:'));
   const directions = splitIds('direction:', ['direction:L→R', 'direction:R→L']);
-  const directed = splitIds('directed-pair:', plannedIds('directed-pair:'));
-  const overheads = splitIds('overhead:', OVERHEAD_KINDS.map(calibrationOverheadFieldId));
   const simultaneous = splitIds('simultaneous:', SIMULTANEOUS_KINDS.map(calibrationSimultaneousFieldId));
+  const hasSavedWith = (...prefixes: string[]) => Object.keys(savedValues).some((id) => prefixes.some((prefix) => id.startsWith(prefix)));
+  const savedInNormal = hasSavedWith('actions', 'same-key', CALIBRATION_SAME_HAND_FIELD, CALIBRATION_FALLBACK_FINGER_FIELD, 'finger:', 'same-hand-pair:');
 
   // 測ると置き換わる・消える値は、今の保存値から決まる。保存値を持たない時と、置き換わる値も消える値も無い時は文を出さない。
   const savedOverheads = OVERHEAD_KINDS.filter((kind) => calibration?.keystrokeOverheadMs?.[kind] !== undefined);
@@ -673,7 +688,7 @@ export function PersonalSpeedEditor({
             </div>
           </section>
 
-          <MeasurementGroup id="normal" title="通常の速度と指の移動" description={MEASUREMENT_DESCRIPTION.normal} howTo={MEASUREMENT_HOW_TO.normal} specHref={specHref}>
+          <MeasurementGroup id="normal" title="通常の速度と指の移動" description={MEASUREMENT_DESCRIPTION.normal} howTo={MEASUREMENT_HOW_TO.normal} specHref={specHref} hasSavedValues={savedInNormal}>
             <div className="personal-speed-actions">
               <button type="button" data-personal-speed-start="normal" disabled={normalDisabled} onClick={() => startRun('normal', plan?.normal ?? [])}>
                 通常の速度と指の移動を全て測る
@@ -687,12 +702,15 @@ export function PersonalSpeedEditor({
               <>
                 <ValueBlock {...main} renderRow={renderRow} />
                 <ValueBlock title="指ごとの移動速度" {...fingers} emptyText="まだ測っていません。" renderRow={renderRow} />
-                <ValueBlock title="同手・別指の組ごとの速度" {...pairs} emptyText="まだ測っていません。" renderRow={renderRow} />
+                <div className="personal-speed-value-block">
+                  <h3>同手・別指の組ごとの速度</h3>
+                  {hasFingerGridFields('same-hand-pair', gridContext) ? <SameHandPairGrids ctx={gridContext} /> : <p className="personal-speed-note">まだ測っていません。</p>}
+                </div>
               </>
             )}
           </MeasurementGroup>
 
-          <MeasurementGroup id="directional" title="方向別の速度" description={MEASUREMENT_DESCRIPTION.directional} howTo={MEASUREMENT_HOW_TO.directional} specHref={specHref}>
+          <MeasurementGroup id="directional" title="方向別の速度" description={MEASUREMENT_DESCRIPTION.directional} howTo={MEASUREMENT_HOW_TO.directional} specHref={specHref} hasSavedValues={hasSavedWith('direction:', 'directed-pair:')}>
             <div className="personal-speed-actions">
               <button type="button" data-personal-speed-start="directional" disabled={directionalDisabled} onClick={() => startRun('directional', plan?.directional ?? [])}>
                 方向別の速度を全て測る
@@ -705,12 +723,15 @@ export function PersonalSpeedEditor({
             {calibration === undefined ? emptyText(UNMEASURED_TEXT.directional) : (
               <>
                 <ValueBlock title="異手の方向別" {...directions} emptyText="まだ測っていません。" renderRow={renderRow} />
-                <ValueBlock title="同手・別指の方向別" {...directed} emptyText="まだ測っていません。" renderRow={renderRow} />
+                <div className="personal-speed-value-block">
+                  <h3>同手・別指の方向別</h3>
+                  {hasFingerGridFields('directed-pair', gridContext) ? <DirectedPairGrids ctx={gridContext} /> : <p className="personal-speed-note">まだ測っていません。</p>}
+                </div>
               </>
             )}
           </MeasurementGroup>
 
-          <MeasurementGroup id="simultaneous" title="同時押し" description={MEASUREMENT_DESCRIPTION.simultaneous} howTo={MEASUREMENT_HOW_TO.simultaneous} specHref={specHref}>
+          <MeasurementGroup id="simultaneous" title="同時押し" description={MEASUREMENT_DESCRIPTION.simultaneous} howTo={MEASUREMENT_HOW_TO.simultaneous} specHref={specHref} hasSavedValues={hasSavedWith('simultaneous:')}>
             <div className="personal-speed-actions">
               <button type="button" data-personal-speed-start="simultaneous" disabled={simultaneousDisabled} onClick={() => startRun('simultaneous', plan?.simultaneous ?? [])}>
                 同時押しを全て測る
@@ -730,7 +751,7 @@ export function PersonalSpeedEditor({
             )}
           </MeasurementGroup>
 
-          <MeasurementGroup id="sentence" title="文章を打つ速さ" description={MEASUREMENT_DESCRIPTION.sentence} howTo={MEASUREMENT_HOW_TO.sentence} specHref={specHref}>
+          <MeasurementGroup id="sentence" title="文章を打つ速さ" description={MEASUREMENT_DESCRIPTION.sentence} howTo={MEASUREMENT_HOW_TO.sentence} specHref={specHref} hasSavedValues={hasSavedWith('overhead:')}>
             <div className="personal-speed-actions">
               <button type="button" data-personal-speed-start="sentence" disabled={sentenceDisabled} onClick={startSentence}>
                 文章を打つ速さを測る
@@ -773,13 +794,11 @@ export function PersonalSpeedEditor({
             )}
             <NoticeLines notice={notices.sentence} />
             {calibration === undefined ? emptyText(UNMEASURED_TEXT.sentence) : (
-              <ValueBlock
-                title="打鍵の上乗せ"
-                {...overheads}
-                note="文章を打つ速さの測定で求まります。"
-                emptyText="まだ測っていません。"
-                renderRow={renderRow}
-              />
+              <div className="personal-speed-value-block">
+                <h3>打鍵の上乗せ</h3>
+                <p className="personal-speed-note">文章を打つ速さの測定で求まります。</p>
+                <OverheadGrid ctx={gridContext} />
+              </div>
             )}
           </MeasurementGroup>
         </>

@@ -61,11 +61,11 @@ test('測るボタンの直後の保存値への影響は、置き換わる・�
   );
   assert.equal(
     measurementEffectText('directional', true, ['chain', 'repeat']),
-    '測ると、測った向きの値が置き換わり、打鍵の上乗せのうちChain全体が消えます（続け打ちは残ります）。',
+    '測ると、測った向きの値が置き換わり、打鍵の上乗せのうちChainが消えます（続け打ちは残ります）。',
   );
   assert.equal(
     measurementEffectText('directional', true, ['arpeggio', 'other']),
-    '測ると、測った向きの値が置き換わり、打鍵の上乗せのうちArpeggio全体・その他全体が消えます。',
+    '測ると、測った向きの値が置き換わり、打鍵の上乗せのうちArpeggio・その他が消えます。',
   );
   assert.equal(measurementEffectText('sentence', true, ['sfb']), '測り直して保存すると、前の打鍵の上乗せは全て置き換わります。');
 });
@@ -89,7 +89,7 @@ test('測った後の知らせは、消した種類と置き換えた種類を�
   assert.equal(
     clearedOverheadsText(['other'], ['repeat']),
     '打鍵の上乗せ（続け打ち）は、基準の時間が変わったため、再生の時間が変わらない値に置き換えました。'
-    + '打鍵の上乗せ（その他全体）は、他の値が変わったため消しました。文章を打つ速さをもう一度測ってください。',
+    + '打鍵の上乗せ（その他）は、他の値が変わったため消しました。文章を打つ速さをもう一度測ってください。',
   );
   assert.ok(!clearedOverheadsText([], ['repeat']).includes('消しました'));
   assert.ok(!clearedOverheadsText(['sfb']).includes('置き換えました'));
@@ -120,4 +120,21 @@ test('同時押しを測った後の知らせは、消えた同時押しの上�
   assert.ok(clearedSimultaneousText(['thumb']).endsWith('同時押しをもう一度測ってください。'));
   assert.equal(savedMessage('simultaneous'), '同時押しを測って保存しました。');
   assert.ok(savedMessage('normal', undefined, [], [], ['thumb']).includes('同時押しの上乗せが消えました。'));
+});
+
+test('保存した時の知らせは、値と打鍵の数を並べず、保存しなかった種類がある旨だけを伝える', () => {
+  const all = sentenceSavedMessage(measurement(ALL));
+  assert.equal(all, '文章を打つ速さを測って保存しました。値は下の表で読めます。');
+  const partial = sentenceSavedMessage(measurement({ arpeggio: 10, other: 20, repeat: 30 }));
+  assert.ok(partial.includes('数えた打鍵が10打に満たない種類は保存していません。'));
+  assert.ok(!/ミリ秒|\d+打/.test(partial.replace('10打に満たない', '')));
+});
+
+test('消える・置き換わる打鍵の上乗せは、全体・かなの中・かなの境目をまとめて差の種類の名前で並べる', () => {
+  const text = measurementEffectText('directional', true, ['arpeggio', 'arpeggio-within', 'arpeggio-boundary', 'chain-within', 'sfb', 'repeat']) ?? '';
+  assert.ok(text.includes('打鍵の上乗せのうちArpeggio・Chain・同指連続が消えます（続け打ちは残ります）'));
+  assert.ok(!text.includes('かなの'));
+  const cleared = clearedOverheadsText(['other', 'other-within', 'other-boundary', 'sfb'], ['repeat']);
+  assert.ok(cleared.includes('打鍵の上乗せ（その他・同指連続）は、他の値が変わったため消しました。'));
+  assert.ok(!cleared.includes('かなの'));
 });
