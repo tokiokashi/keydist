@@ -3,16 +3,18 @@ import {
   CALIBRATION_OVERHEAD_MS_MIN,
   OVERHEAD_KINDS,
   playbackCalibrationProblem,
+  sideOverheadKind,
   type OverheadKind,
   type PlaybackCalibration,
 } from './calibration.ts';
 import type { Stroke } from '#trace/generate.ts';
-import { playbackCrossHandDirection, playbackNormalMs, playbackSameFingerMovementMs, type PlaybackTimingAnalysis } from './playback.ts';
-import { strokeOverheadKinds } from './stroke-structure.ts';
+import { playbackNormalMs, playbackSameFingerMovementMs, type PlaybackTimingAnalysis } from './playback.ts';
+import { strokeOverheadKinds, strokeOverheadSide } from './stroke-structure.ts';
 
 /**
  * 文章を打つ測定（`spec/playback-timing.md` §6.4）の計算。差の種類（構造の種類の3つ・続け打ち・同指連続）ごとに、
  * ストロークの実際の間隔から基準の時間を引いた差の四分位平均を、打鍵の上乗せにする。
+ * 構造の種類は、分けない値に加えて、かなの中・かなの境目のストロークだけからも求める。
  * 基準の時間は、続け打ちと構造の種類では1打の時間（`normalMs`）、同指連続では`max(normalMs, 指の移動の時間)`。
  * 数えるのは、覚えた文を繰り返し打つ2回目以降だけ。句読点を打つストロークと、その直後のストロークは数えない。
  * 時刻は呼び出し側が渡すので、描画にもタイマーにも依存しない。
@@ -81,10 +83,6 @@ export type SentenceAnalysis = PlaybackTimingAnalysis;
 
 export type SentenceCounts = Readonly<Record<OverheadKind, number>>;
 
-/** 異手の方向。 */
-export const CROSS_HAND_DIRECTIONS = ['L→R', 'R→L'] as const;
-export type CrossHandDirection = (typeof CROSS_HAND_DIRECTIONS)[number];
-
 /** 表の1行ぶんの値。数えたストロークが無い行は、四分位平均を持たない。 */
 export interface SentenceRowStats {
   /** 数えたストロークの数（下限の判定に使う数）。 */
@@ -98,12 +96,10 @@ export interface SentenceRowStats {
 }
 
 export interface SentenceMeasurement {
-  /** 差の種類ごとに数えたストロークの数。 */
+  /** 保存する行ごとに数えたストロークの数。 */
   readonly counts: SentenceCounts;
-  /** 差の種類ごとの、表に示す値。 */
+  /** 保存する行ごとの、表に示す値。 */
   readonly kinds: Readonly<Record<OverheadKind, SentenceRowStats>>;
-  /** 「その他」のうち異手のストロークを、異手の方向で分けた表に示す値。保存しない。 */
-  readonly crossHand: Readonly<Record<CrossHandDirection, SentenceRowStats>>;
   /** 数えたストロークが最小数以上の種類の打鍵の上乗せ[ms]。負の値もそのまま持つ。 */
   readonly overheadMs: Readonly<Partial<Record<OverheadKind, number>>>;
 }
@@ -166,7 +162,7 @@ function rowStats(count: number, values: Collected): SentenceRowStats {
 }
 
 function emptyCounts(): Record<OverheadKind, number> {
-  return { arpeggio: 0, chain: 0, other: 0, repeat: 0, sfb: 0 };
+  return Object.fromEntries(OVERHEAD_KINDS.map((kind) => [kind, 0])) as Record<OverheadKind, number>;
 }
 
 /**
@@ -184,16 +180,11 @@ export function measureSentence(
   calibration: PlaybackCalibration,
 ): SentenceMeasurement {
   const collected = (): Collected => ({ bases: [], intervals: [], differences: [] });
-  const gathered: Record<OverheadKind, Collected> = {
-    arpeggio: collected(), chain: collected(), other: collected(), repeat: collected(), sfb: collected(),
-  };
-  const gatheredCross: Record<CrossHandDirection, Collected> = { 'L→R': collected(), 'R→L': collected() };
+  const gathered = Object.fromEntries(OVERHEAD_KINDS.map((kind) => [kind, collected()])) as Record<OverheadKind, Collected>;
   const maxPerSentence = new Map<number, Record<OverheadKind, number>>();
-  const maxCrossPerSentence = new Map<number, Record<CrossHandDirection, number>>();
   for (const { sentence, analysis, taps } of samples) {
     const kinds = strokeOverheadKinds(analysis);
     const round = emptyCounts();
-    const crossRound: Record<CrossHandDirection, number> = { 'L→R': 0, 'R→L': 0 };
     for (let index = 1; index < analysis.strokes.length; index++) {
       const tap = taps[index];
       const previous = taps[index - 1];
@@ -208,22 +199,18 @@ export function measureSentence(
         ? Math.max(normalMs, playbackSameFingerMovementMs(analysis.strokes[index], calibration) ?? 0)
         : normalMs;
       const intervalMs = tap.atMs - previous.atMs;
-      push(gathered[kind], baseMs, intervalMs);
-      round[kind] += 1;
-      if (kind === 'other') {
-        const direction = playbackCrossHandDirection(analysis.strokes[index], analysis.strokes[index - 1]);
-        if (direction !== undefined) {
-          push(gatheredCross[direction], baseMs, intervalMs);
-          crossRound[direction] += 1;
-        }
+      const saved: OverheadKind[] = [kind];
+      if (kind === 'arpeggio' || kind === 'chain' || kind === 'other') {
+        saved.push(sideOverheadKind(kind, strokeOverheadSide(analysis.strokes, index)));
+      }
+      for (const row of saved) {
+        push(gathered[row], baseMs, intervalMs);
+        round[row] += 1;
       }
     }
     const best = maxPerSentence.get(sentence) ?? emptyCounts();
     for (const kind of OVERHEAD_KINDS) best[kind] = Math.max(best[kind], round[kind]);
     maxPerSentence.set(sentence, best);
-    const crossBest = maxCrossPerSentence.get(sentence) ?? { 'L→R': 0, 'R→L': 0 };
-    for (const direction of CROSS_HAND_DIRECTIONS) crossBest[direction] = Math.max(crossBest[direction], crossRound[direction]);
-    maxCrossPerSentence.set(sentence, crossBest);
   }
 
   const counts = emptyCounts();
@@ -234,13 +221,7 @@ export function measureSentence(
     if (counts[kind] >= SENTENCE_MIN_SAMPLES) overheadMs[kind] = interquartileMean(gathered[kind].differences);
     kinds[kind] = rowStats(counts[kind], gathered[kind]);
   }
-  const crossHand = {} as Record<CrossHandDirection, SentenceRowStats>;
-  for (const direction of CROSS_HAND_DIRECTIONS) {
-    let count = 0;
-    for (const best of maxCrossPerSentence.values()) count += best[direction];
-    crossHand[direction] = rowStats(count, gatheredCross[direction]);
-  }
-  return { counts, kinds, crossHand, overheadMs };
+  return { counts, kinds, overheadMs };
 }
 
 export type ApplySentenceResult =
@@ -278,7 +259,7 @@ export function applySentenceMeasurement(
   return { ok: true, calibration: next, measurement };
 }
 
-/** 差の種類の行で、打鍵の上乗せを保存したか。 */
+/** 保存する行で、打鍵の上乗せを保存したか。 */
 export type SentenceSaveStatus =
   /** 保存値に入れた。 */
   | 'saved'
@@ -290,8 +271,6 @@ export type SentenceSaveStatus =
 /** 測り終えた時に示す表。 */
 export interface SentenceResultTable {
   readonly kinds: readonly { readonly kind: OverheadKind; readonly stats: SentenceRowStats; readonly status: SentenceSaveStatus }[];
-  /** 保存しない行。 */
-  readonly crossHand: readonly { readonly direction: CrossHandDirection; readonly stats: SentenceRowStats }[];
 }
 
 /**
@@ -308,6 +287,5 @@ export function sentenceResultTable(result: ApplySentenceResult): SentenceResult
       stats: measurement.kinds[kind],
       status: measurement.overheadMs[kind] === undefined ? 'below-minimum' : reachedStatus,
     })),
-    crossHand: CROSS_HAND_DIRECTIONS.map((direction) => ({ direction, stats: measurement.crossHand[direction] })),
   };
 }

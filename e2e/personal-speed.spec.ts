@@ -159,7 +159,7 @@ test('各測定のまとまりに、何を測るか・どこに使うかの説�
       howTo: ['→の2打を、つなげて素早く打ってください。'],
     },
     sentence: {
-      purpose: ['覚えた文を考えずに打つ時に', '測った速さから求めた時間と、実際に打った間隔との差（打鍵の上乗せ）', 'Arpeggio・Chain・その他・続け打ち・同指連続の5種類ごとに測ります', '1打ごとの時間に種類ごとの打鍵の上乗せを足します'],
+      purpose: ['覚えた文を考えずに打つ時に', '測った速さから求めた時間と、実際に打った間隔との差（打鍵の上乗せ）', 'Arpeggio・Chain・その他・続け打ち・同指連続の種類ごとに測ります', 'Arpeggio・Chain・その他は、同じかなの中を打つ打鍵と、違うかなへ移る打鍵に分けても測ります', '1打ごとの時間に種類ごとの打鍵の上乗せを足します'],
       howTo: [
         '1回目は文を覚える回で数えないので、2回目からは考えずに打ってください。',
         '間違えたら、その打鍵を数えずに続けられます。',
@@ -216,7 +216,7 @@ test('打鍵の上乗せを保存している時は、その種類だけを挙�
   await seed(page, { [STORAGE_KEY]: { ...SEEDED, calibration: { ...SEEDED.calibration, keystrokeOverheadMs: { chain: 12, repeat: 30 } } } });
   await open(page);
   await expect(page.locator('#personal-speed-group-normal [data-personal-speed-effect]')).toHaveText('測ると、方向別の値を除く保存値が置き換わり、続け打ちの打鍵の上乗せは再生の時間が変わらない値に置き換わって、それ以外の打鍵の上乗せは消えます。');
-  await expect(page.locator('#personal-speed-group-directional [data-personal-speed-effect]')).toHaveText('測ると、測った向きの値が置き換わり、打鍵の上乗せのうちChainが消えます（続け打ちは残ります）。');
+  await expect(page.locator('#personal-speed-group-directional [data-personal-speed-effect]')).toHaveText('測ると、測った向きの値が置き換わり、打鍵の上乗せのうちChain全体が消えます（続け打ちは残ります）。');
   await expect(page.locator('#personal-speed-group-sentence [data-personal-speed-effect]')).toHaveText('測り直して保存すると、前の打鍵の上乗せは全て置き換わります。');
   // 測るボタンの直後に文が並ぶ
   const after = await page.locator('#personal-speed-group-directional').evaluate((section) => {
@@ -517,7 +517,12 @@ test('文章を打つ測定で、差の種類ごとの打鍵の上乗せを測�
   await expect(message).not.toContainText('別の配列で測ると');
 
   const saved = await stored(page) as { calibration: { keystrokeOverheadMs: Record<string, number>; actionsPerSecond: number } };
-  expect(Object.keys(saved.calibration.keystrokeOverheadMs).sort()).toEqual(['arpeggio', 'chain', 'other', 'repeat', 'sfb']);
+  expect(Object.keys(saved.calibration.keystrokeOverheadMs).sort()).toEqual([
+    'arpeggio', 'arpeggio-boundary', 'arpeggio-within',
+    'chain', 'chain-boundary', 'chain-within',
+    'other', 'other-boundary', 'other-within',
+    'repeat', 'sfb',
+  ]);
   for (const value of Object.values(saved.calibration.keystrokeOverheadMs)) {
     expect(value).toBeGreaterThanOrEqual(-1000);
     expect(value).toBeLessThanOrEqual(1000);
@@ -526,13 +531,15 @@ test('文章を打つ測定で、差の種類ごとの打鍵の上乗せを測�
   expect(saved.calibration.actionsPerSecond).toBe(5);
   await expect(sentenceGroup.locator('[id="personal-speed-overhead:other"]')).not.toHaveValue('');
 
-  // 知らせの後に、差の種類の5行と異手の方向の2行の表が出る
+  // 知らせの後に、保存する11行の表が出る。手の関係で分けた行は無い
   const result = sentenceGroup.locator('[data-personal-speed-sentence-result]');
   await expect(result).toBeVisible();
-  await expect(result.locator('tbody tr')).toHaveCount(7);
-  await expect(result.locator('[data-personal-speed-result-row="cross-hand:L→R"]')).toContainText('保存しない');
-  await expect(result.locator('[data-personal-speed-result-row="cross-hand:R→L"]')).toContainText('保存しない');
-  await expect(result.locator('[data-personal-speed-result-row="other"]')).toContainText('保存した');
+  await expect(result.locator('tbody tr')).toHaveCount(11);
+  for (const row of ['arpeggio', 'arpeggio-within', 'arpeggio-boundary', 'chain', 'chain-within', 'chain-boundary', 'other', 'other-within', 'other-boundary', 'repeat', 'sfb']) {
+    await expect(result.locator(`[data-personal-speed-result-row="${row}"]`)).toContainText('保存した');
+  }
+  await expect(result.locator('[data-personal-speed-result-row^="split:"]')).toHaveCount(0);
+  await expect(result.locator('[data-personal-speed-result-row="other-within"] th')).toHaveText('その他のかなの中');
   await expect(result).toContainText('一致しないことがあります');
 
   // 直接編集では、知らせも表も消えない
@@ -608,7 +615,7 @@ test('他の測定を保存すると、基準が変わる打鍵の上乗せが�
   await page.getByRole('button', { name: '通常の打鍵速度だけを測り直す' }).click();
   await typeThroughRun(page);
   // 消えた値のある文章を打つ速さのまとまりに、消えたことが出る。測ったまとまりにも知らせる
-  await expect(page.locator('#personal-speed-group-sentence').getByText('打鍵の上乗せ（その他）は、他の値が変わったため消しました。文章を打つ速さをもう一度測ってください。')).toBeVisible();
+  await expect(page.locator('#personal-speed-group-sentence').getByText('打鍵の上乗せ（その他全体）は、他の値が変わったため消しました。文章を打つ速さをもう一度測ってください。')).toBeVisible();
   await expect(page.locator('#personal-speed-group-normal').getByText('文章を打つ速さの打鍵の上乗せが消えました。')).toBeVisible();
   const saved = await stored(page) as { calibration: Record<string, unknown> };
   expect('keystrokeOverheadMs' in saved.calibration).toBe(false);
@@ -649,6 +656,30 @@ test('打鍵の上乗せを数値で直接編集して保存でき、空欄に�
   await measured.locator('input').fill('');
   await measured.locator('input').press('Enter');
   await expect.poll(async () => 'keystrokeOverheadMs' in ((await stored(page)) as { calibration: object }).calibration).toBe(false);
+});
+
+test('かなの中・かなの境目の打鍵の上乗せを、分けない値を持たない保存値にも直接編集で足せる', async ({ page }) => {
+  await seed(page, { [STORAGE_KEY]: SEEDED });
+  await open(page);
+  const group = page.locator('#personal-speed-group-sentence');
+  await group.locator('summary').click();
+  const within = group.locator('[id="personal-speed-overhead:other-within"]');
+  const boundary = group.locator('[id="personal-speed-overhead:other-boundary"]');
+  await within.fill('30');
+  await within.press('Enter');
+  await expect.poll(async () => ((await stored(page)) as { calibration: { keystrokeOverheadMs: unknown } }).calibration.keystrokeOverheadMs).toEqual({ 'other-within': 30 });
+  await boundary.fill('-90.5');
+  await boundary.press('Enter');
+  await expect.poll(async () => ((await stored(page)) as { calibration: { keystrokeOverheadMs: unknown } }).calibration.keystrokeOverheadMs).toEqual({ 'other-within': 30, 'other-boundary': -90.5 });
+  // 範囲の外は保存されず、他の値はそのまま残る
+  await within.fill('2000');
+  await within.press('Enter');
+  await expect(group.getByRole('alert').filter({ hasText: '打鍵の上乗せ その他のかなの中' })).toBeVisible();
+  expect(((await stored(page)) as { calibration: { keystrokeOverheadMs: unknown } }).calibration.keystrokeOverheadMs).toEqual({ 'other-within': 30, 'other-boundary': -90.5 });
+  await page.reload();
+  await group.locator('summary').click();
+  await expect(group.locator('[id="personal-speed-overhead:other-within"]')).toHaveValue('30.0');
+  await expect(group.locator('[id="personal-speed-overhead:other-boundary"]')).toHaveValue('-90.5');
 });
 
 test('示す文を打つのに親指キー・Space・修飾キーなど1文字のキー以外が要る配列では、文章を打つ測定は測れないと示す', async ({ page }) => {
