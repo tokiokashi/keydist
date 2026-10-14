@@ -17,7 +17,7 @@ import {
   stepsSentencePlan,
   type SentenceStep,
 } from '#interpretation/timing/sentence-session.ts';
-import { adjoinsPunctuation } from '#interpretation/timing/sentence-measurement.ts';
+import { adjoinsPunctuation, strokeSplitRow } from '#interpretation/timing/sentence-measurement.ts';
 import { strokeOverheadKinds } from '#interpretation/timing/stroke-structure.ts';
 import { paneCatalog } from '../standalone/catalog.ts';
 import { personalSpeedSentenceBuilder } from './sentence-source.ts';
@@ -247,4 +247,48 @@ test('TK音直入力法で、先に出力の文字で打ったコンボの後は
       assert.ok(sentenceRunFinished(run), `${text} output=${output}`);
     }
   }
+});
+
+/** 示す`text`を打つ各ストロークが、手の関係と入力単位で分けた行のどれに入るか（最初のストロークは除く）。 */
+function splitRowsOf(layoutId: string, text: string, overrides: SettingsCascadeOverrides = EMPTY_SETTINGS_OVERRIDES) {
+  const result = builderWith(overrides)({ ...SELECTION, layoutId }, text);
+  assert.ok(result.ok);
+  const { strokes } = result.analysis;
+  return strokes.slice(1).map((_, offset) => strokeSplitRow(strokes, offset + 1));
+}
+
+test('ローマ字入力では、子音から母音がかなの中、かなの変わり目が境目に入る', () => {
+  // 「かな」はkaとnaの2つの入力単位。異手かは再生の向きの判定と同じ。
+  assert.deepEqual(splitRowsOf('qwerty', 'かな'), ['cross-within', 'cross-boundary', 'cross-within']);
+});
+
+test('拗音と「ん」のnnは1つの入力単位で、その中の打鍵はかなの中に入る', () => {
+  // 「しゅ」はsyuの3打が1つの入力単位。
+  assert.deepEqual(splitRowsOf('qwerty', 'しゅ'), ['cross-within', 'other-within']);
+  // 「かんな」の「ん」はnnの2打が1つの入力単位で、次のかなのnは境目。
+  assert.deepEqual(splitRowsOf('qwerty', 'かんな'), ['cross-within', 'cross-boundary', 'other-within', 'other-boundary', 'cross-within']);
+});
+
+test('促音と次のかなは、既定のローマ字規則では1つの入力単位になり、tteの打鍵がかなの中に入る', () => {
+  assert.deepEqual(splitRowsOf('qwerty', 'ってこ'), ['other-within', 'other-within', 'cross-boundary', 'other-within']);
+});
+
+test('TK音直入力法の子音から複数のかなを出すコンボは、前の打鍵と同じ入力単位でかなの中に入る', () => {
+  // 「きょう」は、kと、コンボyouのstrokeが同じ入力単位を打つ。
+  assert.deepEqual(splitRowsOf('oonishi-custom', 'きょう'), ['cross-within']);
+});
+
+test('前置シフトのかな配列では、シフトキーから文字への打鍵がかなの中に入る', () => {
+  // 月配列2-263の「が」は2打で、次の「っ」は境目。
+  assert.deepEqual(splitRowsOf('tsuki-2-263', 'がっ'), ['cross-within', 'other-boundary']);
+});
+
+test('1打で1つのかなを打つ配列では、かなの中の行に入る打鍵が無く、異手のChainは異手の境目に入る', () => {
+  const rows = splitRowsOf('shingeta', 'あいうえお');
+  assert.ok(rows.every((row) => row === 'cross-boundary' || row === 'other-boundary'));
+  assert.ok(rows.includes('cross-boundary'));
+  const result = builderWith(EMPTY_SETTINGS_OVERRIDES)({ ...SELECTION, layoutId: 'shingeta' }, 'あいうえお');
+  assert.ok(result.ok);
+  const kinds = strokeOverheadKinds(result.analysis);
+  assert.ok(rows.some((row, offset) => row === 'cross-boundary' && kinds[offset + 1] === 'chain'));
 });

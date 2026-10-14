@@ -488,11 +488,14 @@ test('文章を打つ測定で、差の種類ごとの打鍵の上乗せを測�
   expect(saved.calibration.actionsPerSecond).toBe(5);
   await expect(sentenceGroup.locator('[id="personal-speed-overhead:other"]')).not.toHaveValue('');
 
-  // 知らせの後に、差の種類の5行の表が出る
+  // 知らせの後に、差の種類の5行と、手の関係と入力単位で分けた保存しない4行の表が出る
   const result = sentenceGroup.locator('[data-personal-speed-sentence-result]');
   await expect(result).toBeVisible();
-  await expect(result.locator('tbody tr')).toHaveCount(5);
+  await expect(result.locator('tbody tr')).toHaveCount(9);
   await expect(result.locator('[data-personal-speed-result-row="other"]')).toContainText('保存した');
+  for (const row of ['cross-within', 'cross-boundary', 'other-within', 'other-boundary']) {
+    await expect(result.locator(`[data-personal-speed-result-row="split:${row}"]`)).toContainText('保存しない');
+  }
   await expect(result).toContainText('一致しないことがあります');
 
   // 直接編集では、知らせも表も消えない

@@ -1,9 +1,11 @@
-import type { SentenceResultTable as SentenceResultTableData } from '#interpretation/timing/sentence-measurement.ts';
+import { SENTENCE_MIN_SAMPLES, type SentenceResultTable as SentenceResultTableData } from '#interpretation/timing/sentence-measurement.ts';
 import {
   SENTENCE_TABLE_COLUMNS,
+  SENTENCE_TABLE_NOT_SAVED_TEXT,
   SENTENCE_TABLE_NOTES,
   sentenceTableKindLabel,
   sentenceTableSavedText,
+  sentenceTableSplitLabel,
   sentenceTableValueText,
 } from './calibration-text.ts';
 
@@ -31,6 +33,16 @@ export function SentenceResultTable({ table }: { readonly table: SentenceResultT
               <td>{sentenceTableValueText(stats.intervalMs)}</td>
               <td>{sentenceTableValueText(stats.differenceMs)}</td>
               <td>{sentenceTableSavedText(status)}</td>
+            </tr>
+          ))}
+          {table.split.map(({ row, stats }) => (
+            <tr key={row} data-personal-speed-result-row={`split:${row}`}>
+              <th scope="row">{sentenceTableSplitLabel(row)}</th>
+              <td>{stats.count}</td>
+              <td>{sentenceTableValueText(stats.baseMs)}</td>
+              <td>{sentenceTableValueText(stats.intervalMs)}</td>
+              <td>{sentenceTableValueText(stats.differenceMs)}</td>
+              <td>{stats.count < SENTENCE_MIN_SAMPLES ? `${SENTENCE_TABLE_NOT_SAVED_TEXT}（値が揺れやすい）` : SENTENCE_TABLE_NOT_SAVED_TEXT}</td>
             </tr>
           ))}
         </tbody>
