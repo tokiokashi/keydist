@@ -1,5 +1,5 @@
 import type { KeyValueStorage } from '#platform/persistence/storage.ts';
-import type { ShellPreferencesV1 } from '../state/app-state.ts';
+import { APP_STATE_VERSION, type ShellPreferencesV1 } from '../state/app-state.ts';
 import { APP_STATE_STORAGE_KEY, loadAppStateDocument, patchAppState } from '../state/app-state-storage.ts';
 
 /**
@@ -73,6 +73,7 @@ export const SIDEBAR_BOOTSTRAP_SCRIPT = `(() => {
     const raw = localStorage.getItem('${APP_STATE_STORAGE_KEY}');
     const state = raw ? JSON.parse(raw) : null;
     const root = document.documentElement;
+    if (state === null || typeof state !== 'object' || state.version !== ${APP_STATE_VERSION}) return;
     if (state?.shell?.sidebarPinned === false) root.setAttribute('data-sidebar', 'unpinned');
     const stored = state?.shell?.sidebarCollapsed;
     if (Array.isArray(stored)) {

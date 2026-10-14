@@ -10,13 +10,15 @@ function isTypingTarget(target: EventTarget | null): boolean {
  * 数えるのはEscapeで閉じるものだけ: モーダル・浮かぶ小窓（解析設定・図の表示・キーの詳細）・ⓘの説明・
  * メニューや選択（`aria-haspopup`）・テキストの選択（`aria-controls`）。
  * `aria-expanded="true"`を全部数えると、Escapeで閉じない開閉まで数えてしまい、Escapeで拡大が解けなくなる。
+ * サイドバーの見出しのまとまりを畳むボタンも`aria-controls`と`aria-expanded`を持つが、
+ * 開いているのが常態でEscapeでは閉じないので数えない。
  */
 const OVERLAY_SELECTOR = [
   'dialog[open]',
   '.settings-window',
   '.info-popover',
   '[aria-haspopup][aria-expanded="true"]',
-  '[aria-controls][aria-expanded="true"]',
+  '[aria-controls][aria-expanded="true"]:not(.sidebar-heading-button)',
 ].join(', ');
 
 /**

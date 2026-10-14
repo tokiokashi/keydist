@@ -108,10 +108,20 @@ test('描画の前のスクリプト: 畳んだまとまりと固定の解除を
   );
 });
 
-test('描画の前のスクリプトと読み込みは、同じ保存値から同じ畳んだまとまりを取り出す', () => {
-  for (const collapsed of [[], ['workspace'], ['about', 'analyze'], ['x'], 'analyze', null, 3]) {
-    const raw = JSON.stringify({ version: 2, shell: { sidebarCollapsed: collapsed } });
-    const fromScript = (runBootstrap(raw)['data-sidebar-collapsed'] ?? '').split(' ').filter((id) => id !== '');
-    assert.deepEqual(fromScript, loadSidebarCollapsed(createFakeStorage({ [APP_STATE_STORAGE_KEY]: raw })), raw);
+test('描画の前のスクリプトと読み込みは、同じ保存値から同じ畳んだまとまりと固定を取り出す', () => {
+  const collapsedValues = [[], ['workspace'], ['about', 'analyze'], ['x'], 'analyze', null, 3];
+  // 版が違う保存値は、読み込みが捨てるので、スクリプトも属性を付けない。
+  for (const version of [2, 1, 3, '2', null, undefined]) {
+    for (const collapsed of collapsedValues) {
+      const raw = JSON.stringify({ version, shell: { sidebarPinned: false, sidebarCollapsed: collapsed } });
+      const storage = createFakeStorage({ [APP_STATE_STORAGE_KEY]: raw });
+      const attributes = runBootstrap(raw);
+      const fromScript = (attributes['data-sidebar-collapsed'] ?? '').split(' ').filter((id) => id !== '');
+      assert.deepEqual(fromScript, loadSidebarCollapsed(storage), raw);
+      assert.equal(attributes['data-sidebar'] === undefined, loadSidebarPinned(storage), raw);
+    }
+  }
+  for (const raw of ['null', '[]', '"2"', '7']) {
+    assert.deepEqual(runBootstrap(raw), {}, raw);
   }
 });
