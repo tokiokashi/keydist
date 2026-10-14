@@ -36,6 +36,9 @@ function copyCalibration(value: PlaybackCalibration): PlaybackCalibration {
     ...(value.keystrokeOverheadMs === undefined
       ? {}
       : { keystrokeOverheadMs: copyRecord(value.keystrokeOverheadMs) }),
+    ...(value.simultaneousOverheadMs === undefined
+      ? {}
+      : { simultaneousOverheadMs: copyRecord(value.simultaneousOverheadMs) }),
     measuredAt: value.measuredAt,
   };
 }

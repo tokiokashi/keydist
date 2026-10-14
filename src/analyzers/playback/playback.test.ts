@@ -278,8 +278,8 @@ test('別のAnalyzerの抽出のキーは、個人速度の保存値が変わっ
 test('既定と違う計算の知らせ: 使われない項目は挙げず、個人速度で計算している時は基準速度を挙げない', () => {
   const notes = (options: Partial<PlaybackOptions>, use: 'applied' | 'not-applied' | 'missing') =>
     playbackCalculationNotes({ ...DEFAULT_PLAYBACK_OPTIONS, ...options }, use);
-  assert.deepEqual(notes({}, 'missing'), { personalSpeedInUse: false, keystrokeOverheadInUse: false, changes: [] });
-  assert.deepEqual(notes({}, 'applied'), { personalSpeedInUse: true, keystrokeOverheadInUse: false, changes: [] });
+  assert.deepEqual(notes({}, 'missing'), { personalSpeedInUse: false, keystrokeOverheadInUse: false, simultaneousOverheadInUse: false, changes: [] });
+  assert.deepEqual(notes({}, 'applied'), { personalSpeedInUse: true, keystrokeOverheadInUse: false, simultaneousOverheadInUse: false, changes: [] });
   assert.deepEqual(notes({ stepsPerSecond: 2, speedMultiplier: 3 }, 'missing').changes, ['基準速度: 2ステップ/秒', '再生倍率: 3倍']);
   // 個人速度で計算している間、基準速度は数値に入らない。再生倍率は入る
   assert.deepEqual(notes({ stepsPerSecond: 2, speedMultiplier: 3 }, 'applied').changes, ['再生倍率: 3倍']);
@@ -509,6 +509,17 @@ test('既定と違う計算の知らせ: 個人速度で計算していて打鍵
   assert.equal(notes('applied').keystrokeOverheadInUse, false);
   assert.equal(notes('not-applied', withOverhead).keystrokeOverheadInUse, false);
   assert.equal(notes('missing', withOverhead).keystrokeOverheadInUse, false);
+});
+
+test('既定と違う計算の知らせ: 個人速度で計算していて同時押しの上乗せが0以外の時だけ、そのことを挙げる', () => {
+  const notes = (use: 'applied' | 'not-applied' | 'missing', calibration?: PlaybackCalibration) =>
+    playbackCalculationNotes(DEFAULT_PLAYBACK_OPTIONS, use, calibration);
+  const withC = { ...CALIBRATION, simultaneousOverheadMs: { thumb: 50 } };
+  assert.equal(notes('applied', withC).simultaneousOverheadInUse, true);
+  assert.equal(notes('applied', { ...CALIBRATION, simultaneousOverheadMs: { thumb: 0 } }).simultaneousOverheadInUse, false);
+  assert.equal(notes('applied', CALIBRATION).simultaneousOverheadInUse, false);
+  assert.equal(notes('not-applied', withC).simultaneousOverheadInUse, false);
+  assert.equal(notes('missing', withC).simultaneousOverheadInUse, false);
 });
 
 test('既定と違う計算の知らせ: 打鍵の上乗せは、時間に入る種類が0以外の値を持つ時だけ足していると示す', () => {

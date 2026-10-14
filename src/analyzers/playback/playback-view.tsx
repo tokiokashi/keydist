@@ -186,6 +186,9 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options, onOp
           {calculation.keystrokeOverheadInUse ? (
             <span data-playback-calculation-overhead>{' '}個人速度のうち、文章を打つ速さで測った打鍵の上乗せ（ミリ秒）を足しています。</span>
           ) : null}
+          {calculation.simultaneousOverheadInUse ? (
+            <span data-playback-calculation-simultaneous>{' '}個人速度のうち、同時押しの上乗せ（ミリ秒）を足しています。</span>
+          ) : null}
           {calculation.changes.length > 0 ? (
             <span data-playback-calculation-changes>
               {calculation.personalSpeedInUse ? ' ' : ''}既定と違う設定で計算しています。{calculation.changes.join('、')}

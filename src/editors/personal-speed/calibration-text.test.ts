@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { SentenceMeasurement } from '#interpretation/timing/sentence-measurement.ts';
-import { SENTENCE_TABLE_NOTES, clearedOverheadsText, measurementEffectText, savedMessage, SENTENCE_OTHER_LAYOUT_NOTE, sentenceFailureText, sentenceSavedMessage } from './calibration-text.ts';
+import { SENTENCE_TABLE_NOTES, clearedOverheadsText, clearedSimultaneousText, measurementEffectText, savedMessage, SENTENCE_OTHER_LAYOUT_NOTE, sentenceFailureText, sentenceSavedMessage } from './calibration-text.ts';
 
 /** 文章の知らせの文だけを検査するための測定結果。表に使う値は持たない。 */
 function measurement(overheadMs: SentenceMeasurement['overheadMs']): SentenceMeasurement {
@@ -99,4 +99,25 @@ test('測った後の知らせは、消した種類と置き換えた種類を�
 
 test('結果の表の説明は、負の値を0にすると書かない', () => {
   assert.ok(SENTENCE_TABLE_NOTES.every((note) => !note.includes('0にします')));
+});
+
+test('同時押しの測定の前の注意は、消える打鍵の上乗せを挙げ、続け打ちは残ると伝える', () => {
+  assert.equal(measurementEffectText('simultaneous', false, []), undefined);
+  assert.equal(measurementEffectText('simultaneous', true, ['repeat']), '測ると、測った同時押しの上乗せが置き換わります。');
+  const text = measurementEffectText('simultaneous', true, ['other', 'repeat']) ?? '';
+  assert.ok(text.includes('が消えます（続け打ちは残ります）'));
+});
+
+test('基準の速さの測定の前の注意は、同時押しの上乗せがある時だけ、消えることを足す', () => {
+  const tail = '同時押しの上乗せは、基準にする速さが変わると消えます。';
+  assert.ok(!(measurementEffectText('normal', true, [], []) ?? '').includes(tail));
+  assert.ok((measurementEffectText('normal', true, [], ['thumb']) ?? '').endsWith(tail));
+  assert.ok((measurementEffectText('directional', true, [], ['thumb']) ?? '').endsWith(tail));
+});
+
+test('同時押しを測った後の知らせは、消えた同時押しの上乗せを伝え、測り直しを促す', () => {
+  assert.ok(clearedSimultaneousText(['thumb', 'one-hand']).includes('親指との同時押し・片手の同時押し'));
+  assert.ok(clearedSimultaneousText(['thumb']).endsWith('同時押しをもう一度測ってください。'));
+  assert.equal(savedMessage('simultaneous'), '同時押しを測って保存しました。');
+  assert.ok(savedMessage('normal', undefined, [], [], ['thumb']).includes('同時押しの上乗せが消えました。'));
 });

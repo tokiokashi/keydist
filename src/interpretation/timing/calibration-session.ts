@@ -2,6 +2,7 @@ import {
   assignmentWithHomeKeys,
   buildGeometry,
   resolveKeyId,
+  THUMB_KEY,
   type FingerAssignment,
   type Finger,
   type Geometry,
@@ -29,13 +30,17 @@ import {
   CALIBRATION_OVERHEAD_MS_MIN,
   OVERHEAD_KINDS,
   OVERHEAD_SIDES,
+  SIMULTANEOUS_KINDS,
   STROKE_STRUCTURE_KINDS,
+  median,
   sideOverheadKind,
   type FingerSpeedSample,
   type HandDirection,
   type OverheadKind,
   type PlaybackCalibration,
+  type SimultaneousKind,
 } from './calibration.ts';
+import { playbackSimultaneousBaseMs } from './playback.ts';
 
 /**
  * 個人速度の測定の進行（測るキーの組・打鍵の照合・測った値の保存値への反映）。
@@ -53,7 +58,9 @@ export type CalibrationItem =
   /** 同じ手の別指の順序なしの組。`pair`は`LM:LI`の形。 */
   | { readonly kind: 'same-hand-pair'; readonly pair: string }
   /** 同じ手の別指の方向つきの組。`pair`は`LM>LI`の形。 */
-  | { readonly kind: 'directed-pair'; readonly pair: string };
+  | { readonly kind: 'directed-pair'; readonly pair: string }
+  /** 同時押しの上乗せ（`spec/playback-timing.md` §6.1.1）。2つのキーを同時に押すことを続ける。 */
+  | { readonly kind: 'simultaneous'; readonly simultaneous: SimultaneousKind };
 
 /** 項目の識別子。画面の行や`Map`のキーに使う。 */
 export function calibrationItemId(item: CalibrationItem): string {
@@ -64,6 +71,7 @@ export function calibrationItemId(item: CalibrationItem): string {
     case 'finger': return `finger:${item.finger}`;
     case 'same-hand-pair': return `same-hand-pair:${item.pair}`;
     case 'directed-pair': return `directed-pair:${item.pair}`;
+    case 'simultaneous': return `simultaneous:${item.simultaneous}`;
   }
 }
 
@@ -75,7 +83,10 @@ export function calibrationItemFieldId(item: CalibrationItem): string {
 /** 1項目を測るために打つキーと、必要な間隔の数。 */
 export interface CalibrationTask {
   readonly item: CalibrationItem;
-  /** 打つ2つのキー。`keys[0]`から打ち始め、2つを交互に打つ。同じキーを続けて打つ項目は、2つが同じキー。 */
+  /**
+   * 打つ2つのキー。`keys[0]`から打ち始め、2つを交互に打つ。同じキーを続けて打つ項目は、2つが同じキー。
+   * 同時押しの項目は、2つのキーを同時に押す（押す順は問わない）。
+   */
   readonly keys: readonly [string, string];
   /** 数える間隔の数。 */
   readonly required: number;
@@ -91,6 +102,8 @@ export type CalibrationScope =
   | 'normal'
   /** 異手の方向別・同手・別指の方向別の全組合せ。 */
   | 'directional'
+  /** 同時押しの3項目。 */
+  | 'simultaneous'
   /** 1項目の測り直し。 */
   | 'item';
 
@@ -100,6 +113,8 @@ export interface CalibrationPlan {
   readonly normal: readonly CalibrationTask[] | undefined;
   /** 方向別の測定。測るキーを作れない時は無い。 */
   readonly directional: readonly CalibrationTask[] | undefined;
+  /** 同時押しの測定。測るキーを組める項目だけを持ち、1つも組めない時は無い。 */
+  readonly simultaneous: readonly CalibrationTask[] | undefined;
   /** 項目ごとの測定。キーは`calibrationItemId`。 */
   readonly byItem: ReadonlyMap<string, CalibrationTask>;
   /**
@@ -134,8 +149,9 @@ export function calibrationBasis(
   }
 }
 
-/** 測定の案内に出すキーの名前。配列の刻印が無いキーはキーidで出す。英字は大文字にする。 */
+/** 測定の案内に出すキーの名前。配列の刻印が無いキーはキーidで出す。英字は大文字にする。右手の親指のキーはSpace。 */
 export function calibrationKeyLabel(legends: ReadonlyMap<string, string>, keyId: string): string {
+  if (resolveKeyId(keyId) === THUMB_KEY.RT) return 'Space';
   const legend = legends.get(resolveKeyId(keyId));
   const label = legend !== undefined && legend.trim().length > 0 ? legend : keyId;
   return /^[a-z]$/i.test(label) ? label.toUpperCase() : label;
@@ -202,6 +218,25 @@ export function planCalibration(basis: CalibrationBasis): CalibrationPlan {
     oneWay: false,
   }));
 
+  // 同時押しの測定。キーは、両手が左右の人差し指のホーム、片手が右手の人差し指と中指のホーム、親指との同時押しが右手の親指のキー（Space）と右手の人差し指のホーム。
+  const rightIndex = geometry.assignment.homeKey.RI;
+  const rightMiddle = geometry.assignment.homeKey.RM;
+  const rightThumb = geometry.thumbs.RT.id;
+  const simultaneousKeys: Readonly<Record<SimultaneousKind, readonly [string, string] | undefined>> = {
+    'both-hands': actionKeys,
+    'one-hand': rightIndex !== undefined && rightMiddle !== undefined && rightIndex !== rightMiddle
+      && eligible.has(rightIndex) && eligible.has(rightMiddle)
+      ? [rightIndex, rightMiddle]
+      : undefined,
+    thumb: rightIndex !== undefined && eligible.has(rightIndex) ? [rightThumb, rightIndex] : undefined,
+  };
+  const simultaneousTasks: CalibrationTask[] = SIMULTANEOUS_KINDS.flatMap((simultaneous) => {
+    const keys = simultaneousKeys[simultaneous];
+    return keys === undefined
+      ? []
+      : [{ item: { kind: 'simultaneous', simultaneous }, keys, required: CALIBRATION_ACTION_SAMPLES, oneWay: false } satisfies CalibrationTask];
+  });
+
   const normal = actionsTask !== undefined && fingerTasks.length > 0 && sameHandTasks.length > 0
     ? [actionsTask, ...sameKeyTasks, ...fingerTasks, ...sameHandTasks]
     : undefined;
@@ -211,12 +246,12 @@ export function planCalibration(basis: CalibrationBasis): CalibrationPlan {
 
   const byItem = new Map<string, CalibrationTask>();
   const byField = new Map<string, CalibrationTask[]>();
-  for (const task of [...(normal ?? []), ...(directional ?? [])]) {
+  for (const task of [...(normal ?? []), ...(directional ?? []), ...simultaneousTasks]) {
     byItem.set(calibrationItemId(task.item), task);
     const field = calibrationItemFieldId(task.item);
     byField.set(field, [...(byField.get(field) ?? []), task]);
   }
-  return { normal, directional, byItem, byField };
+  return { normal, directional, simultaneous: simultaneousTasks.length > 0 ? simultaneousTasks : undefined, byItem, byField };
 }
 
 /** 測った間隔1項目ぶん。 */
@@ -240,10 +275,15 @@ export interface CalibrationRun {
   readonly intervalsMs: readonly number[];
   /** 済んだ項目の間隔。 */
   readonly results: readonly CalibrationTaskResult[];
+  /**
+   * 同時押しの項目で、1つ目の押下を受け付けて、2つ目を待っているキーと時刻。待っていなければ空。
+   * 他の項目では常に空。
+   */
+  readonly pending: readonly { readonly key: string; readonly atMs: number }[];
 }
 
 export function startCalibrationRun(scope: CalibrationScope, tasks: readonly CalibrationTask[]): CalibrationRun {
-  return { scope, tasks, index: 0, expected: 0, lastAtMs: undefined, intervalsMs: [], results: [] };
+  return { scope, tasks, index: 0, expected: 0, lastAtMs: undefined, intervalsMs: [], results: [], pending: [] };
 }
 
 export function calibrationRunFinished(run: CalibrationRun): boolean {
@@ -252,6 +292,11 @@ export function calibrationRunFinished(run: CalibrationRun): boolean {
 
 export function currentCalibrationTask(run: CalibrationRun): CalibrationTask | undefined {
   return run.tasks[run.index];
+}
+
+/** 項目がSpace（右手の親指のキー）を打つか。打つ項目の間だけ、Spaceを測定の打鍵として受け付ける。 */
+export function calibrationTaskAcceptsSpace(task: CalibrationTask | undefined): boolean {
+  return task?.item.kind === 'simultaneous' && task.keys.some((key) => resolveKeyId(key) === THUMB_KEY.RT);
 }
 
 /** 次に打つキーのid。済んでいれば無い。 */
@@ -275,6 +320,8 @@ export type CalibrationPressOutcome =
   | { readonly kind: 'wrong-key'; readonly expectedKey: string }
   /** 時刻が戻った、または同時刻だった。進行は変わらない。 */
   | { readonly kind: 'ignored' }
+  /** 同時押しの項目で、1つ目の押下を受け付けた。2つ目を待つ。 */
+  | { readonly kind: 'pending' }
   | { readonly kind: 'counted' }
   | { readonly kind: 'task-finished' }
   | { readonly kind: 'run-finished' };
@@ -291,6 +338,7 @@ export function pressCalibrationKey(
 ): { readonly run: CalibrationRun; readonly outcome: CalibrationPressOutcome } {
   const task = currentCalibrationTask(run);
   if (task === undefined) return { run, outcome: { kind: 'ignored' } };
+  if (task.item.kind === 'simultaneous') return pressSimultaneousKey(run, task, event, atMs, keyLabel);
   const expectedKey = task.keys[run.expected];
   if (!calibrationKeyMatches(event, expectedKey, keyLabel(expectedKey))) {
     return { run, outcome: { kind: 'wrong-key', expectedKey } };
@@ -307,6 +355,15 @@ export function pressCalibrationKey(
       outcome: { kind: 'counted' },
     };
   }
+  return finishedTask(run, task, intervalsMs);
+}
+
+/** 今の項目の間隔が揃った。次の項目へ進める。 */
+function finishedTask(
+  run: CalibrationRun,
+  task: CalibrationTask,
+  intervalsMs: readonly number[],
+): { readonly run: CalibrationRun; readonly outcome: CalibrationPressOutcome } {
   const next: CalibrationRun = {
     ...run,
     index: run.index + 1,
@@ -314,8 +371,55 @@ export function pressCalibrationKey(
     lastAtMs: undefined,
     intervalsMs: [],
     results: [...run.results, { task, intervalsMs }],
+    pending: [],
   };
   return { run: next, outcome: { kind: calibrationRunFinished(next) ? 'run-finished' : 'task-finished' } };
+}
+
+/**
+ * 同時押しの項目で、2つのキーの押下が互いにこの時間（ミリ秒）以内に揃った時に、1つのストロークとして受け付ける
+ * （`spec/playback-timing.md` §6.1.1）。
+ */
+export const SIMULTANEOUS_PRESS_WINDOW_MS = 50;
+
+/**
+ * 同時押しの項目の打鍵1つを進行に反映する。測る2つのキーのどちらかでなければ進行は変わらない。
+ * 1つ目の押下を待たせ、2つ目が受け付ける時間以内に来れば、早い方の押下の時刻を、そのストロークの時刻にする。
+ * 受け付ける時間を過ぎた1つ目の押下と、同じキーの2回目の押下が来た時は、待たせていた押下を捨てる。
+ * 捨てた押下がある時は、その後で最初に受け付けたストロークの間隔を数えない。
+ */
+function pressSimultaneousKey(
+  run: CalibrationRun,
+  task: CalibrationTask,
+  event: CalibrationKeyEvent,
+  atMs: number,
+  keyLabel: (keyId: string) => string,
+): { readonly run: CalibrationRun; readonly outcome: CalibrationPressOutcome } {
+  const key = task.keys.find((candidate) => calibrationKeyMatches(event, candidate, keyLabel(candidate)));
+  if (key === undefined) return { run, outcome: { kind: 'wrong-key', expectedKey: task.keys[0] } };
+
+  const waiting = run.pending[0];
+  const discarded = waiting !== undefined && (atMs - waiting.atMs > SIMULTANEOUS_PRESS_WINDOW_MS || waiting.key === key);
+  const lastAtMs = discarded ? undefined : run.lastAtMs;
+  if (waiting === undefined || discarded) {
+    // 1つ目の押下。直前に受け付けたストロークより後でなければ無視する。
+    if (lastAtMs !== undefined && atMs <= lastAtMs) return { run, outcome: { kind: 'ignored' } };
+    return {
+      run: { ...run, lastAtMs, pending: [{ key, atMs }] },
+      outcome: { kind: 'pending' },
+    };
+  }
+
+  // 2つ目の押下が受け付ける時間以内に来た。ストロークの時刻は早い方の押下の時刻。
+  const strokeAtMs = Math.min(waiting.atMs, atMs);
+  const intervalsMs = lastAtMs === undefined ? run.intervalsMs : [...run.intervalsMs, strokeAtMs - lastAtMs];
+  if (intervalsMs.length < task.required) {
+    return {
+      run: { ...run, lastAtMs: strokeAtMs, intervalsMs, pending: [] },
+      outcome: { kind: 'counted' },
+    };
+  }
+  return finishedTask(run, task, intervalsMs);
 }
 
 export type ApplyCalibrationResult =
@@ -326,6 +430,8 @@ export type ApplyCalibrationResult =
       readonly clearedOverheads: readonly OverheadKind[];
       /** 続け打ちの基準の時間が変わったため、再生の時間を保つ値へ置き換えた打鍵の上乗せの種類。置き換えたなら`repeat`だけを持つ。 */
       readonly replacedOverheads: readonly OverheadKind[];
+      /** 基準の時間を求めるのに読む値が変わったため消した、同時押しの上乗せの分け方。同時押しの測定そのものでは消さない。 */
+      readonly clearedSimultaneous: readonly SimultaneousKind[];
     }
   /** 方向別・1項目の測定は、保存値が無いと反映先が無い。 */
   | { readonly ok: false; readonly reason: 'no-saved-value' }
@@ -371,7 +477,9 @@ function overheadKindsBasedOn(item: CalibrationItem): readonly OverheadKind[] {
     case 'finger': return ['sfb'];
     case 'direction':
     case 'same-hand-pair':
-    case 'directed-pair': return normalBased;
+    case 'directed-pair':
+    // 同時押しのストロークが入りうる種類。続け打ちは同時押しにならないので含まない。
+    case 'simultaneous': return normalBased;
   }
 }
 
@@ -393,6 +501,16 @@ function rebasedRepeatOverheadMs(overheadMs: number, before: PlaybackCalibration
 /** 保存値の1項目を、測った間隔で置き換える。測れていなければ`undefined`。 */
 function withMeasuredItem(base: PlaybackCalibration, result: CalibrationTaskResult): PlaybackCalibration | undefined {
   const item = result.task.item;
+  if (item.kind === 'simultaneous') {
+    // 再生が同じ同時押しを続けて打つステップに選ぶ1打の時間を、間隔の中央値から引く。
+    const middle = median(result.intervalsMs);
+    return middle === undefined
+      ? undefined
+      : {
+        ...base,
+        simultaneousOverheadMs: { ...base.simultaneousOverheadMs, [item.simultaneous]: middle - playbackSimultaneousBaseMs(item.simultaneous, base) },
+      };
+  }
   if (item.kind === 'finger') {
     const speed = fingerSpeedFromSamples(fingerSamplesOf([result])).get(item.finger);
     return speed === undefined
@@ -452,7 +570,31 @@ function applyNormal(base: PlaybackCalibration | undefined, run: CalibrationRun,
       : { sameHandDifferentFingerActionsPerDirectedPair: base.sameHandDifferentFingerActionsPerDirectedPair }),
     fingerSpeedUnitsPerSecond: Object.fromEntries(fingerSpeeds),
     fallbackFingerSpeedUnitsPerSecond: fallback,
+    ...(base?.simultaneousOverheadMs === undefined ? {} : { simultaneousOverheadMs: base.simultaneousOverheadMs }),
     measuredAt: nowMs,
+  };
+}
+
+/**
+ * 同時押しの上乗せのうち、基準の時間を求めるのに再生が読む値が`before`から`after`の保存値で変わったものを消す。
+ * 上乗せは測った時の基準の時間との差なので、基準の時間が変わると意味が合わなくなる。置き換えは測った間隔が無く求め直せない。
+ */
+function withoutStaleSimultaneous(
+  before: PlaybackCalibration | undefined,
+  after: PlaybackCalibration,
+): { readonly calibration: PlaybackCalibration; readonly cleared: readonly SimultaneousKind[] } {
+  const overheads = after.simultaneousOverheadMs;
+  if (before === undefined || overheads === undefined) return { calibration: after, cleared: [] };
+  const cleared = SIMULTANEOUS_KINDS.filter((kind) =>
+    overheads[kind] !== undefined && playbackSimultaneousBaseMs(kind, before) !== playbackSimultaneousBaseMs(kind, after));
+  if (cleared.length === 0) return { calibration: after, cleared };
+  const kept = Object.fromEntries(
+    Object.entries(overheads).filter(([kind]) => !cleared.includes(kind as SimultaneousKind)),
+  ) as Partial<Record<SimultaneousKind, number>>;
+  const { simultaneousOverheadMs: _overheads, ...others } = after;
+  return {
+    calibration: Object.keys(kept).length === 0 ? others : { ...others, simultaneousOverheadMs: kept },
+    cleared,
   };
 }
 
@@ -507,6 +649,8 @@ export function applyCalibrationRun(
   if (next === undefined || playbackCalibrationProblem(next) !== undefined) {
     return { ok: false, reason: 'invalid-measurement' };
   }
+  const stale = withoutStaleSimultaneous(base, next);
+  next = stale.calibration;
   const hadRepeat = base?.keystrokeOverheadMs?.repeat !== undefined;
   const keepsRepeat = next.keystrokeOverheadMs?.repeat !== undefined;
   const repeatChanged = hadRepeat && keepsRepeat
@@ -516,6 +660,7 @@ export function applyCalibrationRun(
     calibration: next,
     clearedOverheads: hadRepeat && !keepsRepeat ? [...cleared, 'repeat'] : cleared,
     replacedOverheads: repeatChanged ? ['repeat'] : [],
+    clearedSimultaneous: stale.cleared,
   };
 }
 

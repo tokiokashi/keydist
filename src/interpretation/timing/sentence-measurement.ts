@@ -8,7 +8,12 @@ import {
   type PlaybackCalibration,
 } from './calibration.ts';
 import type { Stroke } from '#trace/generate.ts';
-import { playbackNormalMs, playbackSameFingerMovementMs, type PlaybackTimingAnalysis } from './playback.ts';
+import {
+  playbackNormalMs,
+  playbackSameFingerMovementMs,
+  playbackSimultaneousOverheadMs,
+  type PlaybackTimingAnalysis,
+} from './playback.ts';
 import { strokeOverheadKinds, strokeOverheadSide } from './stroke-structure.ts';
 
 /**
@@ -16,6 +21,7 @@ import { strokeOverheadKinds, strokeOverheadSide } from './stroke-structure.ts';
  * ストロークの実際の間隔から基準の時間を引いた差の四分位平均を、打鍵の上乗せにする。
  * 構造の種類は、分けない値に加えて、かなの中・かなの境目のストロークだけからも求める。
  * 基準の時間は、続け打ちと構造の種類では1打の時間（`normalMs`）、同指連続では`max(normalMs, 指の移動の時間)`。
+ * 同時押しのストロークの基準の時間には、そのストロークの同時押しの上乗せを足す（続け打ちは同時押しにならない）。
  * 数えるのは、覚えた文を繰り返し打つ2回目以降だけ。句読点を打つストロークと、その直後のストロークは数えない。
  * 時刻は呼び出し側が渡すので、描画にもタイマーにも依存しない。
  */
@@ -169,7 +175,8 @@ function emptyCounts(): Record<OverheadKind, number> {
  * 数える回の記録から、差の種類ごとの打鍵の上乗せを求める。回ごとに、最初のストローク（直前の時刻が無い）、
  * 違うキーを押したストローク、出力の文字の読み方で完了したストロークとその直後のストローク、句読点を打つストロークと直後のストロークは数えない。
  * 続け打ちの差は間隔から続け打ちの`normalMs`（同じキーを続けて打つ速さ、無ければ通常速度）を引いた値、
- * 同指連続の差は間隔から`max(normalMs, 指の移動の時間)`を引いた値、構造の種類の差は間隔から`normalMs`を引いた値。
+ * 同指連続の差は間隔から`max(normalMs, 指の移動の時間)`と同時押しの上乗せを引いた値、
+ * 構造の種類の差は間隔から`normalMs`と同時押しの上乗せを引いた値。
  * `sameFingerDelay`は見ない。差の四分位平均は、数えたストロークの全部から取る。
  * 数えた数（`counts`。種類ごとの下限`SENTENCE_MIN_SAMPLES`の判定にも、画面と知らせにも使う）は、
  * 文ごとに数える回のそれぞれで数えたストロークの数の最大を取り、全文で足した数にする。
@@ -195,9 +202,11 @@ export function measureSentence(
       const normalMs = playbackNormalMs(analysis, index, calibration);
       if (!Number.isFinite(normalMs)) continue;
       const kind = kinds[index];
-      const baseMs = kind === 'sfb'
+      // 同時押しのストロークの基準の時間には、再生と同じ位置（そのストロークのステップ）で同時押しの上乗せを含める。
+      const simultaneousMs = playbackSimultaneousOverheadMs(analysis.strokes[index], calibration);
+      const baseMs = (kind === 'sfb'
         ? Math.max(normalMs, playbackSameFingerMovementMs(analysis.strokes[index], calibration) ?? 0)
-        : normalMs;
+        : normalMs) + simultaneousMs;
       const intervalMs = tap.atMs - previous.atMs;
       const saved: OverheadKind[] = [kind];
       if (kind === 'arpeggio' || kind === 'chain' || kind === 'other') {

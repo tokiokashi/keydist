@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  calibrationTaskAcceptsSpace,
+  currentCalibrationTask,
   pressCalibrationKey,
   startCalibrationRun,
   type CalibrationRun,
@@ -39,7 +41,7 @@ export function useCalibrationRun(options: CalibrationRunOptions): CalibrationRu
 
   useEffect(() => {
     if (!active) return undefined;
-    return captureCalibrationKeys(document, (event) => {
+    const stop = captureCalibrationKeys(document, (event) => {
       const current = runRef.current;
       if (current === undefined) return;
       const { keyLabel, onFinished } = optionsRef.current;
@@ -61,7 +63,11 @@ export function useCalibrationRun(options: CalibrationRunOptions): CalibrationRu
       }
       runRef.current = pressed.run;
       setRun(pressed.run);
+    }, {
+      // 親指との同時押しを測る間だけSpaceを受け付ける。その間のSpaceは、スクロールとボタンの押下へ渡さない。
+      acceptsSpace: () => runRef.current !== undefined && calibrationTaskAcceptsSpace(currentCalibrationTask(runRef.current)),
     });
+    return stop;
   }, [active]);
 
   const start = useCallback((scope: CalibrationScope, tasks: readonly CalibrationTask[]) => {
