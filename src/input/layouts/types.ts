@@ -836,6 +836,7 @@ const shiftedOutputFor = (output: string): string | undefined => {
  *
  * 左右Shiftは別physical alternativeとして保持し、どちらを使うかはruntime/evaluatorが
  * geometryを見て選べるようauthoring段階では潰さない。
+ * 配列が既に単打などで置いている文字（大文字・記号）には、Shift経路を足さない。
  */
 export function withShiftedOutputs(
   layout: Layout,
@@ -853,6 +854,8 @@ export function withShiftedOutputs(
   for (const [baseOutput, alternatives] of layout.canonicalInputs) {
     const shiftedOutput = shiftedOutputFor(baseOutput);
     if (shiftedOutput === undefined) continue;
+    // 配列がその文字を既に置いている時は、置かれた定義を優先してShift経路を足さない。
+    if (layout.canonicalInputs.has(shiftedOutput)) continue;
 
     for (const alternative of alternatives) {
       if (

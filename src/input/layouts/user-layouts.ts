@@ -12,7 +12,7 @@ import {
   type InputAlternative,
 } from '../semantics/index.ts';
 import { QWERTY_LEGEND, resolveKeyId, type NonThumb } from '../shapes/geometry.ts';
-import { fromRows, SINGLE_LAYER_ID, withRomaji, type Layout } from './index.ts';
+import { fromRows, SINGLE_LAYER_ID, withRomaji, withShiftedOutputs, type Layout } from './index.ts';
 import { ROMAJI_RULES, tableForRule, type RomajiRuleId, type UserRomajiRule } from '../romaji/rules.ts';
 import type { Sequence } from './types.ts';
 
@@ -154,7 +154,12 @@ export function toLayout(def: UserLayout): Layout {
     rows,
     imported ? {} : { RT: ' ' },
   );
-  if (!def.sequences && !def.legends) return { ...layout, homeKeys: def.homeKeys };
+  if (!def.sequences && !def.legends) {
+    // 組み込みの英字配列と同じく、単打の段定義には通常Shiftの出力を付ける。
+    // 直接かな配列は組み込みにShift記号が無いので付けない。
+    const base = def.direct ? layout : withShiftedOutputs(layout);
+    return { ...base, homeKeys: def.homeKeys };
+  }
   const map = new Map(layout.map);
   const canonicalInputs = new Map<string, InputAlternative[]>(
     [...layout.canonicalInputs].map(([output, alternatives]) =>
