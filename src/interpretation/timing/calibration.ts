@@ -9,6 +9,22 @@ import {
   type Key,
 } from '#input/shapes/geometry.ts';
 
+/**
+ * 遷移（直前のストロークから今のストロークへ）が属する構造の種類。打鍵の上乗せ（`keystrokeOverheadMs`）を選ぶ。
+ * Arpeggioの中、Chainの中でArpeggioでないもの、どちらでもないもの（最初のストロークを含む）の3つ。
+ */
+export type StrokeStructureKind = 'arpeggio' | 'chain' | 'other';
+
+export const STROKE_STRUCTURE_KINDS: readonly StrokeStructureKind[] = ['arpeggio', 'chain', 'other'];
+
+/**
+ * 打鍵の上乗せ（`keystrokeOverheadMs`）を集める単位「差の種類」。構造の種類の3つに、続け打ち（`repeat`）と
+ * 同指連続（`sfb`）を足した5つ。ステップごとに1つに決まる（`stroke-structure.ts`）。
+ */
+export type OverheadKind = StrokeStructureKind | 'repeat' | 'sfb';
+
+export const OVERHEAD_KINDS: readonly OverheadKind[] = [...STROKE_STRUCTURE_KINDS, 'repeat', 'sfb'];
+
 /** 再生へ反映する個人の打鍵・指移動速度。 */
 export interface PlaybackCalibration {
   /** 通常の連続打鍵速度。 */
@@ -25,6 +41,17 @@ export interface PlaybackCalibration {
   fingerSpeedUnitsPerSecond: Partial<Record<Finger, number>>;
   /** 指ごとの速度が無い場合に使う移動速度。単位は物理キーのu/秒。 */
   fallbackFingerSpeedUnitsPerSecond: number;
+  /**
+   * 同じキーを1本の指で続けて打つ速さ（続け打ちの基準）。測っていない時は持たず、続け打ちは通常速度で決める。
+   */
+  sameKeyActionsPerSecond?: number;
+  /**
+   * 文章を打つ時の打鍵の上乗せ[ms]。差の種類ごとに持つ。
+   * 続け打ちと同指連続を除く種類は、基準の時間のうち1打の時間（`normalMs`）の側にだけ足す。
+   * 同指連続のステップは、値を持つ時は`max(normalMs, 移動の時間)`の外に足す。
+   * 持たない構造の種類は「その他」の値を使う。
+   */
+  keystrokeOverheadMs?: Readonly<Partial<Record<OverheadKind, number>>>;
   measuredAt: number;
 }
 
@@ -39,7 +66,11 @@ export const CALIBRATION_ACTIONS_PER_SECOND_MIN = 0.1;
 export const CALIBRATION_ACTIONS_PER_SECOND_MAX = 40;
 export const CALIBRATION_FINGER_SPEED_MIN = 0.1;
 export const CALIBRATION_FINGER_SPEED_MAX = 100;
+export const CALIBRATION_OVERHEAD_MS_MIN = -1000;
+export const CALIBRATION_OVERHEAD_MS_MAX = 1000;
 export const CALIBRATION_ACTION_SAMPLES = 9;
+/** 同じキーを続けて打つ速さを、左右それぞれで取る間隔の数。 */
+export const CALIBRATION_SAME_KEY_SAMPLES = 9;
 export const CALIBRATION_FINGER_SAMPLES = 6;
 export const CALIBRATION_SAME_HAND_SAMPLES = 6;
 
@@ -183,6 +214,15 @@ export function playbackCalibrationProblem(value: unknown): string | undefined {
     CALIBRATION_ACTIONS_PER_SECOND_MIN,
     CALIBRATION_ACTIONS_PER_SECOND_MAX,
   )) return '同手・別指の方向別の速度が正しくありません';
+  if (value.sameKeyActionsPerSecond !== undefined && !rateOk(value.sameKeyActionsPerSecond)) {
+    return '同じキーを続けて打つ速さが範囲外です';
+  }
+  if (value.keystrokeOverheadMs !== undefined && !isRateRecord(
+    value.keystrokeOverheadMs,
+    (kind) => OVERHEAD_KINDS.includes(kind as OverheadKind),
+    CALIBRATION_OVERHEAD_MS_MIN,
+    CALIBRATION_OVERHEAD_MS_MAX,
+  )) return '打鍵の上乗せが正しくありません';
   return undefined;
 }
 

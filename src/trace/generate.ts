@@ -8,7 +8,7 @@ import {
   withoutRomajiOnlyCombos,
 } from '#input/layouts/types.ts';
 import { layerDefinitionsWithLabels } from '#input/layouts/layers.ts';
-import { kanaToRomajiChunks } from '#input/romaji/kunrei.ts';
+import { kanaToRomajiChunks, type RomajiChunk } from '#input/romaji/kunrei.ts';
 import {
   applyActionRealizationPolicy,
   DEFAULT_ACTION_REALIZATION_POLICY,
@@ -104,6 +104,11 @@ export interface Stroke {
   inputChar: string;
   /** 展開後の入力列における入力単位の開始位置。同じかなを複数ステップで打つ場合も共有する */
   inputIndex: number;
+  /**
+   * `char`を決めた1回の入力の選択の通し番号。1つの選択が複数のストロークになる時は、それらが共有する。
+   * `inputIndex`はローマ字の配列で別の選択（「きょう」の`k`とコンボ`you`）とも共有されるので、選択の区別には使えない。
+   */
+  selectionIndex: number;
   /** このステップに含まれるキー押下のaggregation帰属先。入力成立semanticではない。 */
   aggregationGroupId: string;
   /** authoring由来のcanonical classification。 */
@@ -174,6 +179,11 @@ export function generateTrace(
   sourceLayout: Layout,
   geometry: Geometry,
   options: TracePolicy = DEFAULT_TRACE_POLICY,
+  /**
+   * ローマ字の配列で、かなの区切りと綴りを呼び出し側が決める時の列。渡すと、配列のローマ字表でかなを展開する代わりに
+   * この列を打つ。配列がローマ字表を持たない時は読まない。
+   */
+  romajiChunks?: readonly RomajiChunk[],
 ): Trace {
   // 仕様 §4.3。ローマ字を経ない打ち方ではromajiOnlyのコンボを配列に無いものとして扱う。
   // 見出し探索だけでなく定義数B（§11.8）とコンボ枠の有無も揃えるため、alternativeの
@@ -207,7 +217,7 @@ export function generateTrace(
   // ローマ字配列はかなテキストを展開してから打つ。コンボの誤命中を防ぐため、
   // 展開前の単位も残しておく。かな配列はそのまま打つ。
   const rawChars = [...text];
-  const chunks = layout.romajiTable ? kanaToRomajiChunks(text, layout.romajiTable) : undefined;
+  const chunks = layout.romajiTable ? (romajiChunks ?? kanaToRomajiChunks(text, layout.romajiTable)) : undefined;
   const chars = (chunks
     ? chunks.flatMap((chunk) => [...chunk.roman])
     : rawChars)
@@ -399,6 +409,7 @@ export function generateTrace(
         char,
         inputChar,
         inputIndex,
+        selectionIndex: currentInputOrdinal,
         aggregationGroupId,
         classifications: action.input.classifications,
         triggerKeys,

@@ -46,21 +46,69 @@
   white-space: nowrap;
 }
 
+/*
+ * つまみの中心が動く範囲を、速度グラフの横軸（再生位置0から最後まで）に合わせる。
+ * 幅の上限と左右の余白の割合は速度グラフと同じ値を使い、ラベルの幅を速度グラフと同じに止める。
+ * つまみは幅を決めて自前で描く。つまみの中心の動く範囲は、つまみの幅の半分だけ内側に寄るので、
+ * 入力の左右をつまみの幅の半分だけ外へ広げる。
+ */
 .playback-seek {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
+  --seek-thumb-size: 16px;
+  display: block;
+  max-width: 760px;
   color: var(--text-muted);
   font-size: 0.76rem;
 }
 
-.playback-seek span {
-  flex: none;
+.playback-seek input {
+  display: block;
+  box-sizing: border-box;
+  width: calc(100% - var(--seek-axis-left) - var(--seek-axis-right) + var(--seek-thumb-size));
+  height: var(--seek-thumb-size);
+  margin: 0.2rem 0 0 calc(var(--seek-axis-left) - var(--seek-thumb-size) / 2);
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
-.playback-seek input {
-  flex: 1;
-  min-width: 7rem;
+.playback-seek input::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+}
+
+.playback-seek input::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+}
+
+.playback-seek input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
+  width: var(--seek-thumb-size);
+  height: var(--seek-thumb-size);
+  margin-top: calc((4px - var(--seek-thumb-size)) / 2);
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.playback-seek input::-moz-range-thumb {
+  box-sizing: border-box;
+  width: var(--seek-thumb-size);
+  height: var(--seek-thumb-size);
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.playback-seek input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .playback-status {
@@ -114,12 +162,12 @@
 }
 
 .playback-history {
+  display: flex;
   min-height: 1.2em;
   margin-top: 0.25rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.82rem;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -129,7 +177,30 @@
 }
 
 .playback-history-label {
+  flex: none;
   margin-right: 0.4rem;
+}
+
+/*
+ * 打ち終えた入力の欄。幅をかな10文字分（全角10em）に固定し、中身を右に寄せて、はみ出す左側を隠す。
+ * 入力単位ごとに文字の数や字の幅が違っても、現在の入力の1文字目が動かない。
+ * 狭い行では、現在の入力が見えるように欄が先に縮む。
+ */
+.playback-history-done {
+  display: flex;
+  flex: 0 1 10em;
+  justify-content: flex-end;
+  min-width: 0;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 1.5em);
+  mask-image: linear-gradient(to right, transparent, #000 1.5em);
+}
+
+.playback-history-rest {
+  flex: 1 1 0;
+  min-width: 4em;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .playback-input-current {
@@ -166,8 +237,15 @@
   fill: color-mix(in srgb, var(--accent) calc(var(--playback-trail-opacity) * 100%), var(--surface));
 }
 
-.playback-figure [data-playback-plan='true'] .playback-key-face {
+/* 押下予定キーと予定ローマ字のキーは同じ緑の塗りで出す。両方に入るキーは濃さの大きい方（`playback-keyboard.tsx`） */
+.playback-figure [data-playback-plan='true'] .playback-key-face,
+.playback-figure [data-playback-romaji-plan='true'] .playback-key-face {
   fill: color-mix(in srgb, var(--series-3) calc(var(--playback-plan-opacity) * 100%), var(--surface));
+}
+
+/* 緑の塗りが濃いキーの文字は、両方のテーマで暗い色にする（明るい文字は暗いテーマで緑の上の対比が足りない）。濃さの判定は`playback-keyboard.tsx` */
+.playback-figure [data-playback-plan-strong='true'] .playback-key-label {
+  fill: light-dark(var(--text), var(--surface));
 }
 
 .playback-figure [data-playback-active='true'] .playback-key-face {
@@ -233,27 +311,65 @@
 }
 
 .playback-order-chain {
-  fill: var(--series-2);
+  fill: var(--accent);
   font-size: 10px;
 }
 
 .playback-order-arpeggio {
-  fill: var(--series-3);
+  fill: var(--series-7);
   font-size: 9px;
 }
 
+/*
+ * 動きの種類の色は、同指移動=赤、Arpeggio=紫、Chain=押下中のキーと同じ青。
+ * 速度の図の帯と凡例（playback-rate-band-*）も同じ色にする。
+ */
 .playback-figure [data-playback-motion-kind='sameFinger'] .playback-key-face {
+  fill: var(--series-8);
+  stroke: var(--series-8);
+}
+
+.playback-figure [data-playback-motion-kind='arpeggio'] .playback-key-face {
   fill: var(--series-7);
   stroke: var(--series-7);
 }
 
 .playback-figure [data-playback-motion-kind='chain'] .playback-key-face {
-  fill: var(--series-8);
-  stroke: var(--series-8);
+  fill: var(--accent);
+  stroke: var(--accent);
 }
 
-.playback-figure [data-playback-motion-key] .playback-key-label {
+/*
+ * Chain・Arpeggioの順番の数字は、通常の面（塗りの無いキー）の上でだけ動きの種類の色にする。
+ * 履歴・予定の塗り、押下中のキー、動くキーの上では、キーの文字と同じ色にする。
+ * 数字の周りの縁取りは読める根拠に含めない。
+ * 押下中のキー・動くキー・濃い予定のキーの上では、数字の色をその面に対して選んであるので、縁取りを外す。
+ * 縁取りを残すと、数字の色と縁取りの色が同じ組み合わせで、数字が縁取りの分だけ太く見える。
+ * それ以外の面では、縁取りの有無で見え方が変わるため、この規則では縁取りに触らない。
+ */
+.playback-figure [data-playback-trail='true'] :is(.playback-order-chain, .playback-order-arpeggio),
+.playback-figure [data-playback-plan='true'] :is(.playback-order-chain, .playback-order-arpeggio),
+.playback-figure [data-playback-romaji-plan='true'] :is(.playback-order-chain, .playback-order-arpeggio) {
+  fill: var(--text);
+}
+
+.playback-figure [data-playback-plan-strong='true'] :is(.playback-order-chain, .playback-order-arpeggio) {
+  fill: light-dark(var(--text), var(--surface));
+}
+
+.playback-figure [data-playback-active='true'] :is(.playback-order-chain, .playback-order-arpeggio) {
+  fill: var(--accent-contrast);
+}
+
+.playback-figure [data-playback-motion-key] .playback-key-label,
+.playback-figure [data-playback-motion-key] :is(.playback-order-chain, .playback-order-arpeggio) {
   fill: var(--viz-on-strong);
+}
+
+.playback-figure [data-playback-plan-strong='true'] :is(.playback-order-chain, .playback-order-arpeggio),
+.playback-figure [data-playback-active='true'] :is(.playback-order-chain, .playback-order-arpeggio),
+.playback-figure [data-playback-motion-key] :is(.playback-order-chain, .playback-order-arpeggio) {
+  stroke: none;
 }
 
 .playback-rate-panel {
@@ -262,11 +378,23 @@
   border-top: 1px solid var(--border);
 }
 
+.playback-figure-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.playback-figure-title,
 .playback-rate-heading {
   margin: 0 0 0.3rem;
   color: var(--text-muted);
   font-size: 0.76rem;
   font-weight: 600;
+}
+
+.playback-figure-title {
+  margin-bottom: 0;
 }
 
 .playback-rate-chart svg {
@@ -314,13 +442,13 @@
 }
 
 .playback-rate-band-chain {
-  fill: var(--series-7);
+  fill: var(--accent);
   opacity: 0.16;
   pointer-events: none;
 }
 
 .playback-rate-band-arpeggio {
-  fill: var(--series-3);
+  fill: var(--series-7);
   opacity: 0.16;
   pointer-events: none;
 }

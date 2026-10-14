@@ -8,12 +8,15 @@ import {
 import type { Stroke } from '#trace/generate.ts';
 import { COMBO_LAYER_ID, type Layout } from '#input/layouts/types.ts';
 import {
+  CALIBRATION_ACTIONS_PER_SECOND_MAX,
   handDirection,
   sameHandDirectedFingerPairKey,
   sameHandFingerPairKey,
   type PlaybackCalibration,
+  type StrokeStructureKind,
 } from './calibration.ts';
 import type { AggregatedAnalysisResult } from '../structure/aggregate.ts';
+import { isRepeatStroke, strokeOverheadKinds, strokeStructureKinds } from './stroke-structure.ts';
 
 /** 再生速度の入力範囲。実際の打鍵時間や距離モデルとは無関係。 */
 export const PLAYBACK_STEPS_PER_SECOND_MIN = 0.1;
@@ -32,9 +35,18 @@ export const PLAYBACK_RATE_HALF_LIFE_SECONDS_MIN = 0.1;
 export const PLAYBACK_RATE_HALF_LIFE_SECONDS_MAX = 10;
 export const DEFAULT_PLAYBACK_RATE_HALF_LIFE_SECONDS = 1;
 
+/**
+ * 打鍵の上乗せを足した時間の下限[ms]。保存値が許す最も速い1打の時間。
+ * 上乗せが負の保存値で、時間が0以下になるのを防ぐ。再生倍率で割る前に当てる。
+ */
+export const PLAYBACK_MIN_STEP_MS = 1000 / CALIBRATION_ACTIONS_PER_SECOND_MAX;
+
 export const DEFAULT_PLAYBACK_SAME_FINGER_DELAY = true;
-export const DEFAULT_PLAYBACK_ALL_FINGER_MOVEMENT_DELAY = false;
+export const DEFAULT_PLAYBACK_ALL_FINGER_MOVEMENT_DELAY = true;
 export const DEFAULT_PLAYBACK_APPLY_PERSONAL_SPEED = true;
+
+/** 時間表を求めるのに読む、構造解析の結果の部分。 */
+export type PlaybackTimingAnalysis = Pick<AggregatedAnalysisResult, 'strokes' | 'transitions' | 'chains' | 'arpeggioSpans'>;
 
 /** 非アクティブなタブから戻った時の一気送りを防ぐため、1フレームの経過時間を制限する。 */
 const MAX_FRAME_MS = 100;
@@ -316,12 +328,18 @@ export interface PlaybackInputPreviewSegment {
   kind: PlaybackInputPreviewKind;
 }
 
+/**
+ * 入力済みの入力単位を返す既定の数。表示側の欄がかな10文字分の幅で、半角の文字だけの入力単位
+ * （1単位が全角の半分の幅）でも欄が埋まる20個にしてある。
+ */
+export const PLAYBACK_COMPLETED_INPUT_LIMIT = 20;
+
 /** 入力済み・現在・先読みの入力単位を表示順に返す。先読み値は打鍵ステップ数として扱う。 */
 export function playbackInputPreview(
   strokes: readonly Stroke[],
   cursor: number,
   lookaheadSteps = 0,
-  completedLimit = 10,
+  completedLimit = PLAYBACK_COMPLETED_INPUT_LIMIT,
 ): PlaybackInputPreviewSegment[] {
   const end = Math.min(Math.max(0, cursor), strokes.length);
   const groups: { inputIndex: number; start: number; end: number }[] = [];
@@ -480,7 +498,8 @@ function playbackSameHandDifferentFingerPair(
   return undefined;
 }
 
-function playbackCrossHandDirection(
+/** ステップ`i`と`i-1`が異手の時の方向（`spec/playback-timing.md` §3.1「異手の判定」）。異手でなければ`undefined`。 */
+export function playbackCrossHandDirection(
   stroke: Stroke | undefined,
   previousStroke: Stroke | undefined,
 ): 'L→R' | 'R→L' | undefined {
@@ -516,6 +535,11 @@ function playbackTransitionRate(
   stepsPerSecond: PlaybackStepsPerSecond,
   calibration?: PlaybackCalibration,
 ): number {
+  // 続け打ちは、同じキーを続けて打つ速さ。測っていなければ通常速度。
+  if (isRepeatStroke(stroke, previousStroke)) {
+    return calibration?.sameKeyActionsPerSecond ?? calibration?.actionsPerSecond ?? stepsPerSecond;
+  }
+
   const crossDirection = playbackCrossHandDirection(stroke, previousStroke);
   if (crossDirection !== undefined) {
     return calibration?.actionsPerSecondByDirection?.[crossDirection]
@@ -545,6 +569,10 @@ function playbackTransitionRateFromAnalysis(
 ): number {
   const stroke = analysis.strokes[strokeIndex];
   const previousStroke = analysis.strokes[strokeIndex - 1];
+
+  if (isRepeatStroke(stroke, previousStroke)) {
+    return calibration?.sameKeyActionsPerSecond ?? calibration?.actionsPerSecond ?? stepsPerSecond;
+  }
 
   // 異手方向はAnalysisResult内の元Strokeから読む。L→R / R→Lは常に方向別Calibration対象。
   const crossDirection = playbackCrossHandDirection(stroke, previousStroke);
@@ -581,7 +609,82 @@ function playbackTransitionRateFromAnalysis(
   return playbackTransitionRate(stroke, previousStroke, stepsPerSecond, calibration);
 }
 
-/** 1ステップを表示する時間。正規化ディレイは1uを通常の1アクション相当とする。 */
+/**
+ * ステップ `i` の `normalMs`（倍率1・打鍵の上乗せを足さない）。個人速度で求める（`spec/playback-timing.md` §3.1）。
+ * 文章を打つ測定が、実際の間隔から引く1打の時間を求めるのに使う。
+ */
+export function playbackNormalMs(
+  analysis: Pick<AggregatedAnalysisResult, 'strokes' | 'transitions'>,
+  strokeIndex: number,
+  calibration: PlaybackCalibration,
+): number {
+  return normalPlaybackStepMs(playbackTransitionRateFromAnalysis(
+    analysis,
+    strokeIndex,
+    // 個人速度が有る時、基準速度は使われない。
+    DEFAULT_PLAYBACK_STEPS_PER_SECOND,
+    calibration,
+  ));
+}
+
+/**
+ * ステップ `i` の、1打の時間（`normalMs`）の側に足す打鍵の上乗せ[ms]（§3.1.1）。
+ * 続け打ちのステップは、続け打ちの値を持つ時はその値、持たず同じキーを続けて打つ速さを持つ時は0、
+ * どちらも持たない時は構造の種類の値。それ以外は構造の種類の値で、その種類の値が無ければ「その他」の値、それも無ければ0。
+ * 同指連続のステップの同指連続の値は、`max`の外に足すので`playbackSameFingerOverheadMs`が返す。
+ * 個人速度が無い時、打鍵の上乗せを持たない時は0。
+ */
+export function playbackKeystrokeOverheadMs(
+  analysis: Pick<AggregatedAnalysisResult, 'strokes' | 'chains' | 'arpeggioSpans'>,
+  strokeIndex: number,
+  calibration: PlaybackCalibration | undefined,
+): number {
+  const overheads = calibration?.keystrokeOverheadMs;
+  if (overheads === undefined) return 0;
+  const structure: StrokeStructureKind = strokeStructureKinds(analysis)[strokeIndex] ?? 'other';
+  const structureMs = overheads[structure] ?? overheads.other ?? 0;
+  if (strokeOverheadKinds(analysis)[strokeIndex] !== 'repeat') return structureMs;
+  return overheads.repeat ?? (calibration?.sameKeyActionsPerSecond === undefined ? structureMs : 0);
+}
+
+/**
+ * 同指連続のステップが`max(normalMs, movementMs)`の外に足す打鍵の上乗せ[ms]。
+ * 同指連続の押下を持つステップで、保存値が同指連続の値を持つ時だけ値を返す。それ以外は`undefined`で、
+ * 構造の種類の値を`normalMs`の側に足す（`playbackKeystrokeOverheadMs`）。
+ */
+export function playbackSameFingerOverheadMs(
+  analysis: Pick<AggregatedAnalysisResult, 'strokes' | 'chains' | 'arpeggioSpans'>,
+  strokeIndex: number,
+  calibration: PlaybackCalibration | undefined,
+): number | undefined {
+  if (strokeOverheadKinds(analysis)[strokeIndex] !== 'sfb') return undefined;
+  return calibration?.keystrokeOverheadMs?.sfb;
+}
+
+/**
+ * 同指連続の押下を持つステップの、指の移動の時間[ms]（倍率1。§3.3）。同指連続の押下が無ければ`undefined`。
+ * 指の移動速度は、その指の測定値、無ければ測定できなかった指の代表値。
+ */
+export function playbackSameFingerMovementMs(
+  stroke: Stroke | undefined,
+  calibration: PlaybackCalibration,
+): number | undefined {
+  const sfbPresses = stroke?.presses.filter((press) => press.sfb) ?? [];
+  if (sfbPresses.length === 0) return undefined;
+  return Math.max(
+    ...sfbPresses.map((press) => {
+      const speed = calibration.fingerSpeedUnitsPerSecond[press.finger]
+        ?? calibration.fallbackFingerSpeedUnitsPerSecond;
+      return (press.distance / speed) * 1000;
+    }),
+  );
+}
+
+/**
+ * 1ステップを表示する時間。正規化ディレイは1uを1打の時間相当とする。
+ * 解析結果を受け取らないので、遷移が属する構造の種類が分からず、打鍵の上乗せ（§3.1.1）は足さない。
+ * 打鍵の上乗せを含む時間は、解析結果を受け取る`playbackStepDurationMs`が求める。
+ */
 export function playbackStrokeDurationMs(
   stroke: Stroke | undefined,
   stepsPerSecond: PlaybackStepsPerSecond,
@@ -611,27 +714,30 @@ function playbackStrokeDurationFromNormalMs(
   sameFingerDelay: boolean,
   calibration: PlaybackCalibration | undefined,
   speedMultiplier: number,
+  overheadMs = 0,
+  /** 同指連続のステップが`max`の外に足す打鍵の上乗せ。 */
+  sameFingerOverheadMs?: number,
 ): number {
   const multiplier = Number.isFinite(speedMultiplier) && speedMultiplier > 0
     ? speedMultiplier
     : DEFAULT_PLAYBACK_SPEED_MULTIPLIER;
-  if (!stroke || !sameFingerDelay) return normalMs / multiplier;
+  // 打鍵の上乗せは1打の時間の側にだけ足す。指の移動の時間には足さない。
+  const baseMs = Math.max(PLAYBACK_MIN_STEP_MS, normalMs + overheadMs);
+  if (!stroke || !sameFingerDelay) return baseMs / multiplier;
 
   const sfbPresses = stroke.presses.filter((press) => press.sfb);
-  if (sfbPresses.length === 0) return normalMs / multiplier;
+  if (sfbPresses.length === 0) return baseMs / multiplier;
 
   const sameFingerDistance = Math.max(1, ...sfbPresses.map((press) => press.distance));
   if (calibration) {
-    const movementMs = Math.max(
-      ...sfbPresses.map((press) => {
-        const speed = calibration.fingerSpeedUnitsPerSecond[press.finger]
-          ?? calibration.fallbackFingerSpeedUnitsPerSecond;
-        return (press.distance / speed) * 1000;
-      }),
-    );
-    return Math.max(normalMs, movementMs) / multiplier;
+    const movementMs = playbackSameFingerMovementMs(stroke, calibration) ?? 0;
+    // 同指連続の値を持つ時は、1打の時間と指の移動の時間の遅い方の外に足す。
+    if (sameFingerOverheadMs !== undefined) {
+      return Math.max(PLAYBACK_MIN_STEP_MS, Math.max(normalMs, movementMs) + sameFingerOverheadMs) / multiplier;
+    }
+    return Math.max(baseMs, movementMs) / multiplier;
   }
-  return Math.max(normalMs, normalMs * sameFingerDistance) / multiplier;
+  return Math.max(baseMs, normalMs * sameFingerDistance) / multiplier;
 }
 
 /**
@@ -639,7 +745,7 @@ function playbackStrokeDurationFromNormalMs(
  * ArpeggioSpan / Roll / Redirect所属はduration sourceにしない。
  */
 export function playbackStepDurationMs(
-  analysis: Pick<AggregatedAnalysisResult, 'strokes' | 'transitions'>,
+  analysis: PlaybackTimingAnalysis,
   strokeIndex: number,
   stepsPerSecond: PlaybackStepsPerSecond,
   sameFingerDelay = true,
@@ -660,6 +766,8 @@ export function playbackStepDurationMs(
     sameFingerDelay,
     calibration,
     speedMultiplier,
+    playbackKeystrokeOverheadMs(analysis, strokeIndex, calibration),
+    playbackSameFingerOverheadMs(analysis, strokeIndex, calibration),
   );
 }
 
@@ -670,7 +778,7 @@ export interface PlaybackTimingStep {
 }
 
 export interface PlaybackTimingOptions {
-  /** 全指の物理移動が間に合う時刻までStrokeを遅らせる。既定false。 */
+  /** 全指の物理移動が間に合う時刻までStrokeを遅らせる。引数を省略した時はfalse（画面の既定は`DEFAULT_PLAYBACK_ALL_FINGER_MOVEMENT_DELAY`が決める）。 */
   allFingerMovementDelay?: boolean;
   /** allFingerMovementDelay=trueの時にホーム位置を得るため必須。 */
   geometry?: Geometry;
@@ -689,7 +797,7 @@ export function playbackTimingStepDurationMs(
  * allFingerMovementDelay=trueでは、各指の到達可能時刻を追加max制約として適用する。
  */
 export function playbackTimingSchedule(
-  analysis: Pick<AggregatedAnalysisResult, 'strokes' | 'transitions'>,
+  analysis: PlaybackTimingAnalysis,
   stepsPerSecond: PlaybackStepsPerSecond,
   sameFingerDelay = true,
   calibration?: PlaybackCalibration,

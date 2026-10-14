@@ -94,7 +94,7 @@ test('層をまとめる配列: まとめと詳細を切り替えられ、層の
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   await expect(diagrams(page)).toHaveCount(2);
   await page.getByRole('button', { name: 'ヒートマップ（レイヤー）の表示', exact: true }).click();
-  const box = page.getByRole('group', { name: 'ヒートマップ（レイヤー）の表示' });
+  const box = page.getByRole('dialog', { name: 'ヒートマップ（レイヤー）の表示' });
   await box.getByRole('button', { name: '全レイヤー詳細' }).click();
   await expect(diagrams(page)).toHaveCount(31);
   await box.getByRole('button', { name: '2レイヤーにまとめる' }).click();

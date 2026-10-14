@@ -108,7 +108,7 @@ test('他タブが別のAnalyzerの解析設定を書いても、自タブの未
   if (!(await settings.isVisible())) await pageA.getByRole('button', { name: '解析設定', exact: true }).click();
   await expect(settings).toBeVisible();
   const withinHand = settings.getByRole('button', { name: 'Within-hand' });
-  // 紐の太さは図のそばの展開にある（展開は解析設定の小窓を閉じてから開く）。
+  // 紐の太さは図の表示の小窓にある（小窓は解析設定の小窓を閉じてから開く）。
   const lineScale = (await openFigureSettings(pageA, 'Keyboard Flow')).getByLabel('紐の太さ', { exact: true });
 
   // 自分のAnalyzerの設定が保存済みの状態にする（未保存だと他タブの書き込みで参照が変わらない）

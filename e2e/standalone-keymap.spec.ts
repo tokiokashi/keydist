@@ -109,7 +109,7 @@ test('レイヤーをまとめる配列: 既定では凡例が2項目で、ま�
   await q.click();
 
   await page.getByRole('button', { name: 'キーを選んで出る文字を調べる図の表示', exact: true }).click();
-  const box = page.getByRole('group', { name: 'キーを選んで出る文字を調べる図の表示' });
+  const box = page.getByRole('dialog', { name: 'キーを選んで出る文字を調べる図の表示' });
   await box.getByRole('button', { name: '全レイヤー詳細' }).click();
   await expect(legend).toHaveCount(30);
   await expect(q).not.toHaveAttribute('data-accent-tone', 'muted');
