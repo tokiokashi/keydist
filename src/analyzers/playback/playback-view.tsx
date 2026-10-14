@@ -143,6 +143,7 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options, onOp
   }, [broadcast, reportOwner]);
 
   const seekWasPlaying = useRef<boolean | undefined>(undefined);
+  const seekId = useId();
 
   // 押した直後の合図。進む向きに動いた時だけ、そのステップで押したキーを光らせる
   const withFeedback = (previous: Session, next: PlaybackState): Session => {
@@ -267,17 +268,21 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options, onOp
         <button type="button" data-playback-action="forward" disabled={state.playing || atEnd} onClick={() => update((previous) => stepPlaybackBy(previous, 1, total))}>
           <span aria-hidden="true">▶</span> 1ステップ進む
         </button>
-        <span className="playback-position" aria-live="polite" data-playback-position>
-          {state.cursor} / {total}ステップ
-        </span>
       </div>
 
-      <label
+      <div
         className="playback-seek"
         style={{ '--seek-axis-left': axisInsets.left, '--seek-axis-right': axisInsets.right } as CSSProperties}
       >
-        <span>再生位置</span>
+        {/* 数はラベルの横に置き、ラベルとスライダーの名前は「再生位置」のまま保つ（数を名前に入れると、数が変わるたびに読み上げ名が変わる） */}
+        <div className="playback-seek-head">
+          <label className="playback-seek-label" htmlFor={seekId}>再生位置</label>
+          <span className="playback-position" aria-live="polite" data-playback-position>
+            {state.cursor} / {total}ステップ
+          </span>
+        </div>
         <input
+          id={seekId}
           type="range"
           data-playback-seek
           min={0}
@@ -293,7 +298,7 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options, onOp
           onPointerUp={finishSeek}
           onPointerCancel={finishSeek}
         />
-      </label>
+      </div>
 
       <div className="playback-status" aria-live="polite">
         <div className="playback-status-line">

@@ -39,6 +39,14 @@
   opacity: 0.45;
 }
 
+/*
+ * 再生と一時停止で文字が替わる。文字の幅で行の折り返しが状態ごとに変わらないよう、「一時停止」の幅より広く固定する。
+ * 幅は文字の幅の上限として取り、短い「再生」の時も同じ幅になる。
+ */
+.playback-controls .playback-primary {
+  min-width: 7em;
+}
+
 .playback-position {
   color: var(--text-muted);
   font-size: 0.76rem;
@@ -58,6 +66,14 @@
   max-width: 760px;
   color: var(--text-muted);
   font-size: 0.76rem;
+}
+
+/* 再生位置の数はラベルと同じ行に置く。行の高さはラベルの文字で決まり、数の桁が増えても行の高さは変わらない */
+.playback-seek-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  min-width: 0;
 }
 
 .playback-seek input {
