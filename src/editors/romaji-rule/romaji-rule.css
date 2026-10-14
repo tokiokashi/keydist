@@ -1,0 +1,138 @@
+/* ローマ字の綴りの画面。読み物の幅は指の割り当ての画面と同じに抑えて中央に置く */
+.romaji-rule {
+  max-width: 50rem;
+  margin-inline: auto;
+}
+
+.romaji-rule h1 {
+  margin-bottom: 0.5rem;
+  font-size: clamp(1.5rem, 5vw, 2rem);
+}
+
+.romaji-rule h2 {
+  margin: 1.75rem 0 0.5rem;
+  font-size: 1.1rem;
+}
+
+.romaji-rule h3 {
+  margin: 1.25rem 0 0.4rem;
+  font-size: 0.95rem;
+}
+
+.romaji-rule-note {
+  margin: 0 0 0.6rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.romaji-rule-toolbar,
+.romaji-rule-actions,
+.romaji-rule-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.romaji-rule button {
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.romaji-rule button:hover:not(:disabled) {
+  background: var(--surface-muted);
+}
+
+.romaji-rule button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.romaji-rule label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.romaji-rule .romaji-rule-check {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.romaji-rule-name {
+  max-width: 20rem;
+  margin-top: 0.5rem;
+}
+
+.romaji-rule select,
+.romaji-rule input[type='text'] {
+  min-width: 0;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+}
+
+.romaji-rule-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.romaji-rule-table th,
+.romaji-rule-table td {
+  padding: 0.25rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  font-weight: normal;
+}
+
+.romaji-rule-table thead th {
+  color: var(--text-muted);
+}
+
+.romaji-rule-table tbody th {
+  font-weight: bold;
+}
+
+.romaji-rule-table input[type='text'] {
+  width: 8rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.romaji-rule-base {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.romaji-rule-table tr[data-differs='true'] {
+  background: var(--surface-muted);
+}
+
+.romaji-rule-mark {
+  white-space: nowrap;
+  font-weight: bold;
+}
+
+.romaji-rule-invalid {
+  margin-left: 0.5rem;
+  color: var(--danger);
+  font-size: 0.85rem;
+}
+
+.romaji-rule-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
