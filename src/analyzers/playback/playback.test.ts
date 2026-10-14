@@ -137,6 +137,7 @@ test('解析設定は、時間と速度平均の8項目だけが抽出のキー�
     'showFingerPositions',
     'showOrderLabels',
     'showPlannedKeys',
+    'showRomajiInput',
     'showRomajiPlan',
     'showSameFingerMotion',
     'showTrail',
@@ -278,8 +279,8 @@ test('別のAnalyzerの抽出のキーは、個人速度の保存値が変わっ
 test('既定と違う計算の知らせ: 使われない項目は挙げず、個人速度で計算している時は基準速度を挙げない', () => {
   const notes = (options: Partial<PlaybackOptions>, use: 'applied' | 'not-applied' | 'missing') =>
     playbackCalculationNotes({ ...DEFAULT_PLAYBACK_OPTIONS, ...options }, use);
-  assert.deepEqual(notes({}, 'missing'), { personalSpeedInUse: false, keystrokeOverheadInUse: false, changes: [] });
-  assert.deepEqual(notes({}, 'applied'), { personalSpeedInUse: true, keystrokeOverheadInUse: false, changes: [] });
+  assert.deepEqual(notes({}, 'missing'), { personalSpeedInUse: false, keystrokeOverheadInUse: false, simultaneousOverheadInUse: false, changes: [] });
+  assert.deepEqual(notes({}, 'applied'), { personalSpeedInUse: true, keystrokeOverheadInUse: false, simultaneousOverheadInUse: false, changes: [] });
   assert.deepEqual(notes({ stepsPerSecond: 2, speedMultiplier: 3 }, 'missing').changes, ['基準速度: 2ステップ/秒', '再生倍率: 3倍']);
   // 個人速度で計算している間、基準速度は数値に入らない。再生倍率は入る
   assert.deepEqual(notes({ stepsPerSecond: 2, speedMultiplier: 3 }, 'applied').changes, ['再生倍率: 3倍']);
@@ -509,6 +510,17 @@ test('既定と違う計算の知らせ: 個人速度で計算していて打鍵
   assert.equal(notes('applied').keystrokeOverheadInUse, false);
   assert.equal(notes('not-applied', withOverhead).keystrokeOverheadInUse, false);
   assert.equal(notes('missing', withOverhead).keystrokeOverheadInUse, false);
+});
+
+test('既定と違う計算の知らせ: 個人速度で計算していて同時押しの上乗せが0以外の時だけ、そのことを挙げる', () => {
+  const notes = (use: 'applied' | 'not-applied' | 'missing', calibration?: PlaybackCalibration) =>
+    playbackCalculationNotes(DEFAULT_PLAYBACK_OPTIONS, use, calibration);
+  const withC = { ...CALIBRATION, simultaneousOverheadMs: { thumb: 50 } };
+  assert.equal(notes('applied', withC).simultaneousOverheadInUse, true);
+  assert.equal(notes('applied', { ...CALIBRATION, simultaneousOverheadMs: { thumb: 0 } }).simultaneousOverheadInUse, false);
+  assert.equal(notes('applied', CALIBRATION).simultaneousOverheadInUse, false);
+  assert.equal(notes('not-applied', withC).simultaneousOverheadInUse, false);
+  assert.equal(notes('missing', withC).simultaneousOverheadInUse, false);
 });
 
 test('既定と違う計算の知らせ: 打鍵の上乗せは、時間に入る種類が0以外の値を持つ時だけ足していると示す', () => {
@@ -810,18 +822,19 @@ test('順番ラベルを出さなくても、ChainとArpeggioの順番は設定�
   assert.equal(frame.chainOrders.get('s'), 2);
 });
 
-test('配列図の表示の6項目は、既定と違う時だけURLに書き、読み戻すと同じ値になり、範囲外は捨てる', () => {
+test('配列図の表示の7項目は、既定と違う時だけURLに書き、読み戻すと同じ値になり、範囲外は捨てる', () => {
   const changed: PlaybackOptions = {
     ...DEFAULT_PLAYBACK_OPTIONS,
     showFingerPositions: true,
     showPlannedKeys: true,
+    showRomajiInput: false,
     showRomajiPlan: false,
     showTrail: true,
     trailSteps: 12,
     showOrderLabels: true,
   };
   const params = playbackOptions.encodeOptionsToUrl(changed);
-  assert.equal(params.size, 6);
+  assert.equal(params.size, 7);
   const diagnostics: never[] = [];
   const decoded = playbackOptions.decodeOptionsFromUrl(params, diagnostics);
   assert.deepEqual({ ...DEFAULT_PLAYBACK_OPTIONS, ...decoded.values }, changed);
@@ -888,7 +901,7 @@ test('ローマ字入力では、今の入力単位（かな）と、その予�
   assert.equal(frame.typedText, 'k');
 });
 
-test('予定ローマ字のキーは、既定で出て、今の単位のまだ押していないキーだけを、これから押すキーとは独立に出す', () => {
+test('今のかなの残りキーは、既定で出て、今の単位のまだ押していないキーだけを、これから押すキーとは独立に出す', () => {
   assert.equal(DEFAULT_PLAYBACK_OPTIONS.showRomajiPlan, true);
   // 「か」(ka)の1打鍵目の後は、aだけが残る
   const base = frameAt('qwerty', 'か', 1, {}, 0, 'ja').frame;
@@ -897,11 +910,11 @@ test('予定ローマ字のキーは、既定で出て、今の単位のまだ�
   // 単位を打ち終えた位置と再生位置0では、残りが無いので出ない
   assert.equal(frameAt('qwerty', 'か', 2, {}, 0, 'ja').frame.romajiPlannedKeys.size, 0);
   assert.equal(frameAt('qwerty', 'か', 0, {}, 0, 'ja').frame.romajiPlannedKeys.size, 0);
-  // 押下予定キーを出しても、予定ローマ字のキーは変わらない
+  // 押下予定キーを出しても、今のかなの残りキーは変わらない
   const withPlanned = frameAt('qwerty', 'か', 1, { showPlannedKeys: true }, 0, 'ja').frame;
   assert.deepEqual([...withPlanned.romajiPlannedKeys], [...base.romajiPlannedKeys]);
   assert.deepEqual([...withPlanned.plannedKeys.keys()], ['a']);
-  // 切ると、予定ローマ字のキーだけが消え、他の表示は変わらない
+  // 切ると、今のかなの残りキーだけが消え、他の表示は変わらない
   const off = frameAt('qwerty', 'か', 1, { showRomajiPlan: false, showPlannedKeys: true }, 0, 'ja').frame;
   assert.equal(off.romajiPlannedKeys.size, 0);
   assert.deepEqual([...off.plannedKeys], [...withPlanned.plannedKeys]);
@@ -909,7 +922,7 @@ test('予定ローマ字のキーは、既定で出て、今の単位のまだ�
   assert.equal(frameAt('qwerty', 'fjd', 1).frame.romajiPlannedKeys.size, 0);
 });
 
-test('順番ラベルが表示の時、予定ローマ字のキーにも順番が付き、両方に入るキーでは押下予定キーと同じ番号になる', () => {
+test('順番ラベルが表示の時、今のかなの残りキーにも順番が付き、両方に入るキーでは押下予定キーと同じ番号になる', () => {
   const both = frameAt('qwerty', 'か', 1, { showPlannedKeys: true, showOrderLabels: true }, 0, 'ja').frame;
   assert.deepEqual([...both.romajiPlannedOrders], [['a', 1]]);
   assert.equal(both.plannedOrders.get('a'), both.romajiPlannedOrders.get('a'));
@@ -918,4 +931,26 @@ test('順番ラベルが表示の時、予定ローマ字のキーにも順番�
   assert.equal(romajiOnly.plannedOrders.size, 0);
   // 順番ラベルを出さない間は付かない
   assert.equal(frameAt('qwerty', 'か', 1, {}, 0, 'ja').frame.romajiPlannedOrders.size, 0);
+});
+
+test('入力の行のローマ字表示は、ローマ字の配列で既定で出て、切るとかなの入力の行のまま変わらない', () => {
+  assert.equal(DEFAULT_PLAYBACK_OPTIONS.showRomajiInput, true);
+  const render = (segments: readonly { kind: string; kana: string; romaji?: { typed: string; remaining: string } }[] | undefined) =>
+    segments?.map((s) => `${s.kind}:${s.romaji === undefined ? s.kana : `${s.romaji.typed}|${s.romaji.remaining}`}`);
+  // 条件: 配列qwerty・既定のローマ字規則・テキスト「って」。「って」は1つの単位で、綴りはtte
+  const on = frameAt('qwerty', 'って', 1, {}, 0, 'ja').frame;
+  assert.deepEqual(render(on.romajiInputPreview), ['current:t|te']);
+  assert.equal(on.kanaText, 'って');
+  assert.deepEqual(render(frameAt('qwerty', 'って', 3, {}, 0, 'ja').frame.romajiInputPreview), ['current:って']);
+  // 切ると入力の行の材料は出さず、かなの入力の行と状態の行の値は、入れ替える前と同じ
+  const off = frameAt('qwerty', 'って', 1, { showRomajiInput: false }, 0, 'ja').frame;
+  assert.equal(off.romajiInputPreview, undefined);
+  assert.deepEqual(off.inputPreview, on.inputPreview);
+  assert.equal(off.typedText, 't');
+  assert.equal(off.plannedText, 'tte');
+  // 配列図の緑の塗りは、設定によらず同じ
+  assert.deepEqual([...off.romajiPlannedKeys], [...on.romajiPlannedKeys]);
+  // ローマ字の規則を持たない配列では、設定によらず出ない
+  assert.equal(frameAt('qwerty', 'fjd', 1).frame.romajiInputPreview, undefined);
+  assert.equal(frameAt('qwerty', 'fjd', 1, { showRomajiInput: false }).frame.romajiInputPreview, undefined);
 });

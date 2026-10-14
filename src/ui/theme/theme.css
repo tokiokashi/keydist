@@ -29,6 +29,9 @@
 
   --heat-0: light-dark(#eef2f6, #1f2225);
   --heat-1: light-dark(#1c5cab, #3987e5);
+  /* 表の中央値より遅い・速いマスの色。色覚の違いがあっても区別できる橙と青の組にする。 */
+  --speed-slow: light-dark(#d9631e, #e8863f);
+  --speed-fast: light-dark(#1c6fd1, #4c97ec);
   --on-heat: light-dark(#ffffff, #0b1220);
 
   --series-1: light-dark(#2a78d6, #3987e5);

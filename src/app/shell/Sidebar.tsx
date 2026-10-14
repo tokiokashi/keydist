@@ -23,6 +23,13 @@ import { USER_ASSETS_LABEL } from '../assets/UserAssetsPage.tsx';
 import { REPOSITORY_URL, SPEC_LINKS } from '../about/links.ts';
 import { createWorkspaceInStorage } from '../workspace/create-workspace.ts';
 import { generateWorkspaceId } from '../workspace/id-generator.ts';
+import {
+  getServerSidebarCollapsedSnapshot,
+  getSidebarCollapsedSnapshot,
+  setSidebarGroupCollapsed,
+  subscribeSidebarPreferences,
+  type SidebarGroupId,
+} from './sidebar-preference.ts';
 import { useWorkspaceLinks } from './use-workspace-links.ts';
 
 /** 旧バージョン（`/analyzer`）へのリンクの文言。トップの下端のリンクも同じ文を出す。 */
@@ -115,9 +122,44 @@ function NavLink({ to, children, onNavigate }: { readonly to: string; readonly c
   );
 }
 
+/**
+ * 畳める見出しのまとまり。見出しのボタンで項目の欄の開閉を切り替える。
+ * 畳んだ見た目は `<html data-sidebar-collapsed>` に対するCSSが決める（描画の前から効かせるため）。
+ * `aria-expanded` はこの状態から出すので、描画が終わるまでの間はHTML上で常に「開いている」と示す。
+ */
+function SidebarGroup({ id, title, collapsed, children }: {
+  readonly id: SidebarGroupId;
+  readonly title: string;
+  readonly collapsed: boolean;
+  readonly children: ReactNode;
+}) {
+  const itemsId = `sidebar-${id}-items`;
+  return (
+    <section className="sidebar-group" data-sidebar-group={id} aria-labelledby={`sidebar-${id}`}>
+      <h2 className="sidebar-heading" id={`sidebar-${id}`}>
+        <button
+          type="button"
+          className="sidebar-heading-button"
+          aria-expanded={!collapsed}
+          aria-controls={itemsId}
+          onClick={() => setSidebarGroupCollapsed(id, !collapsed)}
+        >
+          {title}
+          <svg className="sidebar-heading-chevron" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 6l4 4 4-4" />
+          </svg>
+        </button>
+      </h2>
+      <div className="sidebar-group-items" id={itemsId}>{children}</div>
+    </section>
+  );
+}
+
 export function Sidebar({ pinned, onPinnedChange, onNavigate }: SidebarProps) {
   const { ready: workspacesReady, links: workspaceLinks } = useWorkspaceLinks();
   const navigate = useNavigate();
+  const collapsed = useSyncExternalStore(subscribeSidebarPreferences, getSidebarCollapsedSnapshot, getServerSidebarCollapsedSnapshot);
+  const isCollapsed = (id: SidebarGroupId) => collapsed.includes(id);
 
   const createWorkspace = () => {
     const id = generateWorkspaceId();
@@ -146,8 +188,7 @@ export function Sidebar({ pinned, onPinnedChange, onNavigate }: SidebarProps) {
       </div>
 
       <nav className="sidebar-nav" aria-label="主要ナビゲーション">
-        <section className="sidebar-group" aria-labelledby="sidebar-analyze">
-          <h2 className="sidebar-heading" id="sidebar-analyze">Analyze</h2>
+        <SidebarGroup id="analyze" title="Analyze" collapsed={isCollapsed('analyze')}>
           <h3 className="sidebar-subheading">Single</h3>
           <NavLink to="/standalone/bigram-flow" onNavigate={onNavigate}>{BIGRAM_FLOW_PANE_META.name}</NavLink>
           <NavLink to="/standalone/finger-distance" onNavigate={onNavigate}>{FINGER_DISTANCE_PANE_META.name}</NavLink>
@@ -160,10 +201,9 @@ export function Sidebar({ pinned, onPinnedChange, onNavigate }: SidebarProps) {
           <NavLink to="/standalone/comparison" onNavigate={onNavigate}>{COMPARISON_PANE_META.name}</NavLink>
           <NavLink to="/standalone/finger-matrix" onNavigate={onNavigate}>{FINGER_MATRIX_PANE_META.name}</NavLink>
           <NavLink to="/standalone/n-sensitivity" onNavigate={onNavigate}>{N_SENSITIVITY_PANE_META.name}</NavLink>
-        </section>
+        </SidebarGroup>
 
-        <section className="sidebar-group" aria-labelledby="sidebar-workspace">
-          <h2 className="sidebar-heading" id="sidebar-workspace">Workspace</h2>
+        <SidebarGroup id="workspace" title="Workspace" collapsed={isCollapsed('workspace')}>
           {workspacesReady && workspaceLinks.length === 0 ? <p className="sidebar-empty">{WORKSPACE_EMPTY_TEXT}</p> : null}
           {workspaceLinks.map((workspace) => (
             <Link
@@ -180,26 +220,24 @@ export function Sidebar({ pinned, onPinnedChange, onNavigate }: SidebarProps) {
           <button type="button" className="sidebar-link sidebar-new-workspace" onClick={createWorkspace}>
             ＋ 新しいWorkspace
           </button>
-        </section>
+        </SidebarGroup>
 
         <section className="sidebar-group">
           <NavLink to="/input" onNavigate={onNavigate}>Tester</NavLink>
         </section>
 
-        <section className="sidebar-group" aria-labelledby="sidebar-assets">
-          <h2 className="sidebar-heading" id="sidebar-assets">Assets</h2>
+        <SidebarGroup id="assets" title="Assets" collapsed={isCollapsed('assets')}>
           <NavLink to="/assets" onNavigate={onNavigate}>{USER_ASSETS_LABEL}</NavLink>
           <NavLink to="/personal-speed" onNavigate={onNavigate}>{PERSONAL_SPEED_LABEL}</NavLink>
-        </section>
+        </SidebarGroup>
 
-        <section className="sidebar-group" aria-labelledby="sidebar-about">
-          <h2 className="sidebar-heading" id="sidebar-about">About</h2>
+        <SidebarGroup id="about" title="About" collapsed={isCollapsed('about')}>
           <NavLink to="/about" onNavigate={onNavigate}>{ABOUT_LABEL}</NavLink>
           {SPEC_LINKS.map((link) => (
             <a key={link.url} className="sidebar-link" href={link.url} target="_blank" rel="noopener noreferrer">{link.label}</a>
           ))}
           <a className="sidebar-link" href={REPOSITORY_URL} target="_blank" rel="noopener noreferrer">GitHub</a>
-        </section>
+        </SidebarGroup>
       </nav>
 
       <div className="sidebar-foot">

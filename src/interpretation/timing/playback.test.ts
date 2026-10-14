@@ -14,6 +14,7 @@ import {
   playbackRecentKanaPerSecond as playbackRecentKanaPerSecondAnalysis,
   playbackRateChartData as playbackRateChartDataAnalysis,
   playbackOrderLabel,
+  playbackRomajiInputPreview,
   playbackRomajiPlannedKeys,
   playbackRomajiPlannedOrders,
   playbackRomajiPlan,
@@ -955,4 +956,115 @@ test('入力プレビューの入力済みは、既定で20個まで返し、数
   assert.equal(PLAYBACK_COMPLETED_INPUT_LIMIT, 20);
   assert.equal(completed(), 20);
   assert.equal(completed(10), 10);
+});
+
+// 入力の行をローマ字で出す関数の検査。ストロークは、読まれる項目だけを持つ手作りの列にする。
+type RomajiStrokeSource = {
+  char: string;
+  inputChar: string;
+  inputIndex: number;
+  selectionIndex: number;
+  /** 押すキー。triggerKeysに入れたキーは、文字を出力しないシフトとして扱われる */
+  keys: string[];
+  triggerKeys?: string[];
+};
+const romajiStrokes = (sources: readonly RomajiStrokeSource[]) =>
+  sources.map((source, index) => ({
+    index,
+    char: source.char,
+    inputChar: source.inputChar,
+    inputIndex: source.inputIndex,
+    selectionIndex: source.selectionIndex,
+    triggerKeys: source.triggerKeys ?? [],
+    presses: [{ keys: source.keys.map((id) => ({ id })) }],
+  })) as never[];
+const unit = (segment: { kind: string; kana: string; romaji?: { typed: string; remaining: string } }) =>
+  `${segment.kind}:${segment.romaji === undefined ? segment.kana : `${segment.romaji.typed}|${segment.romaji.remaining}`}`;
+
+test('ローマ字の入力の行: 単位を出す文字は、選択ごとに1回ずつつないだcharになる', () => {
+  // 「しゃ」(s,h,a)の後に、シフトを文字の前に置く「が」相当（シフト,g）、シフトを文字の後に置く「ぎ」相当（g,シフト）
+  const strokes = romajiStrokes([
+    { char: 's', inputChar: 'し', inputIndex: 0, selectionIndex: 0, keys: ['s'] },
+    { char: 'ya', inputChar: 'し', inputIndex: 0, selectionIndex: 1, keys: ['y', 'a'] },
+    { char: 'G', inputChar: 'が', inputIndex: 1, selectionIndex: 2, keys: ['lshift'], triggerKeys: ['lshift'] },
+    { char: 'G', inputChar: 'が', inputIndex: 1, selectionIndex: 2, keys: ['g'] },
+    { char: 'H', inputChar: 'ぎ', inputIndex: 2, selectionIndex: 3, keys: ['h'] },
+    { char: 'H', inputChar: 'ぎ', inputIndex: 2, selectionIndex: 3, keys: ['rshift'], triggerKeys: ['rshift'] },
+  ]);
+  assert.deepEqual(playbackRomajiInputPreview(strokes, 0, 6).map(unit), [
+    'planned:|sya', 'planned:|G', 'planned:|H',
+  ]);
+});
+
+test('ローマ字の入力の行: 現在の単位の境目は、文字を出力するストロークを打った時に進み、シフトだけのステップでは進まない', () => {
+  const strokes = romajiStrokes([
+    { char: 'G', inputChar: 'が', inputIndex: 0, selectionIndex: 0, keys: ['lshift'], triggerKeys: ['lshift'] },
+    { char: 'G', inputChar: 'が', inputIndex: 0, selectionIndex: 0, keys: ['g'] },
+    { char: 'H', inputChar: 'ぎ', inputIndex: 1, selectionIndex: 1, keys: ['h'] },
+    { char: 'H', inputChar: 'ぎ', inputIndex: 1, selectionIndex: 1, keys: ['rshift'], triggerKeys: ['rshift'] },
+  ]);
+  const current = (cursor: number) => playbackRomajiInputPreview(strokes, cursor).filter((s) => s.kind === 'current').map(unit);
+  // シフトが文字の前: シフトを打っても進まず、文字を打つと進む（単位の最後のステップなのでかなに戻る）
+  assert.deepEqual(current(1), ['current:|G']);
+  assert.deepEqual(current(2), ['current:が']);
+  // シフトが文字の後: 文字を打つと進み、シフトを打っても変わらない（その後でかなに戻る）
+  assert.deepEqual(current(3), ['current:H|']);
+  assert.deepEqual(current(4), ['current:ぎ']);
+});
+
+test('ローマ字の入力の行: 1つの選択が複数の文字を持つ時、境目は文字の数だけまとめて進む', () => {
+  // 「きょう」: kの後にコンボyouが1回で3文字を出力する形ではなく、kとyouの2つの選択
+  const strokes = romajiStrokes([
+    { char: 'k', inputChar: 'き', inputIndex: 0, selectionIndex: 0, keys: ['k'] },
+    { char: 'you', inputChar: 'き', inputIndex: 0, selectionIndex: 1, keys: ['y', 'o', 'u'] },
+  ]);
+  const at = (cursor: number) => playbackRomajiInputPreview(strokes, cursor, 2).map(unit);
+  assert.deepEqual(at(0), ['planned:|kyou']);
+  assert.deepEqual(at(1), ['current:k|you']);
+  assert.deepEqual(at(2), ['current:き']);
+});
+
+test('ローマ字の入力の行: 打ち終えた単位はかなで、最後のステップを打ち終えた現在の単位もかなで出る', () => {
+  const strokes = romajiStrokes([
+    { char: 'k', inputChar: 'か', inputIndex: 0, selectionIndex: 0, keys: ['k'] },
+    { char: 'a', inputChar: 'か', inputIndex: 0, selectionIndex: 1, keys: ['a'] },
+    { char: 'k', inputChar: 'き', inputIndex: 1, selectionIndex: 2, keys: ['k'] },
+    { char: 'i', inputChar: 'き', inputIndex: 1, selectionIndex: 3, keys: ['i'] },
+  ]);
+  // カーソル0は現在の単位が無く、最初の単位がこの先の単位としてローマ字で出る
+  assert.deepEqual(playbackRomajiInputPreview(strokes, 0, 4).map(unit), ['planned:|ka', 'planned:|ki']);
+  assert.deepEqual(playbackRomajiInputPreview(strokes, 1, 4).map(unit), ['current:k|a', 'planned:|ki']);
+  assert.deepEqual(playbackRomajiInputPreview(strokes, 2, 4).map(unit), ['current:か', 'planned:|ki']);
+  assert.deepEqual(playbackRomajiInputPreview(strokes, 3, 4).map(unit), ['completed:か', 'current:k|i']);
+  assert.deepEqual(playbackRomajiInputPreview(strokes, 4, 4).map(unit), ['completed:か', 'current:き']);
+});
+
+test('ローマ字の入力の行: 範囲の決め方は、かなの入力の行と同じ', () => {
+  const layout = withRomaji(LAYOUT_BY_ID.get('qwerty')!, kunrei());
+  const trace = generateTrace('かきくけこ', layout, buildGeometry('row-staggered'));
+  for (const cursor of [0, 1, 2, 5, 9]) {
+    for (const lookahead of [0, 2, 4]) {
+      for (const limit of [0, 1, 20]) {
+        assert.deepEqual(
+          playbackRomajiInputPreview(trace.strokes, cursor, lookahead, limit).map((s) => [s.kind, s.kana]),
+          playbackInputPreview(trace.strokes, cursor, lookahead, limit).map((s) => [s.kind, s.text]),
+          `${cursor}/${lookahead}/${limit}`,
+        );
+      }
+    }
+  }
+});
+
+test('ローマ字の入力の行: 実際の打鍵の列で、拗音と、コンボを含む単位は、単位ごとにまとめた綴りで出る', () => {
+  const geometry = buildGeometry('row-staggered');
+  const qwerty = withRomaji(LAYOUT_BY_ID.get('qwerty')!, kunrei());
+  const syu = generateTrace('しゅ', qwerty, geometry);
+  assert.deepEqual(playbackRomajiInputPreview(syu.strokes, 0, 5).map(unit), ['planned:|syu']);
+  assert.deepEqual(playbackRomajiInputPreview(syu.strokes, 2, 5).map(unit), ['current:sy|u']);
+  // 「きょう」のkとコンボyouは同じ単位の別の選択。コンボの3文字は1回で進む
+  const combo = withRomaji(LAYOUT_BY_ID.get('oonishi-custom')!, kunrei());
+  const kyou = generateTrace('きょう', combo, geometry);
+  assert.deepEqual(kyou.strokes.map((stroke) => stroke.char), ['k', 'you']);
+  assert.deepEqual(playbackRomajiInputPreview(kyou.strokes, 1).map(unit), ['current:k|you']);
+  assert.deepEqual(playbackRomajiInputPreview(kyou.strokes, 2).map(unit), ['current:きょう']);
 });
