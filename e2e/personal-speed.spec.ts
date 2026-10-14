@@ -927,6 +927,30 @@ test('同手・別指の組ごとの速度は左右の手ごとの指×指の表
   await page.locator('[data-personal-speed-cancel]').click();
 });
 
+test('指×指の表は、同じ表の中央値から外れた保存値のマスに色と読み上げが付き、入力中は変わらず、確定すると変わる', async ({ page }) => {
+  const pairs = { 'LP:LR': 1, 'LP:LM': 3, 'LP:LI': 3, 'LR:LM': 3, 'LR:LI': 3, 'LM:LI': 3, 'RI:RM': 3, 'RI:RR': 3, 'RI:RP': 3 };
+  await seed(page, { [STORAGE_KEY]: { ...SEEDED, calibration: { ...SEEDED.calibration, sameHandDifferentFingerActionsPerSecondByPair: pairs } } });
+  await open(page);
+  const left = page.locator('[data-personal-speed-grid="same-hand-pair:L"]');
+  const right = page.locator('[data-personal-speed-grid="same-hand-pair:R"]');
+  const slow = left.locator('[data-personal-speed-row="same-hand-pair:LP:LR"]');
+  await expect(slow).toHaveAttribute('data-personal-speed-deviation', 'slow');
+  await expect(slow.locator('input')).toHaveAccessibleDescription('同じ表の他のマスより遅い');
+  // 中央値のマス・別の手の表・保存値の無いマスには付かない
+  await expect(left.locator('[data-personal-speed-row="same-hand-pair:LM:LI"]')).not.toHaveAttribute('data-personal-speed-deviation', /.+/);
+  await expect(right.locator('[data-personal-speed-deviation]')).toHaveCount(0);
+  await expect(page.getByText('色は、同じ表の他のマスと比べた速さです。')).toBeVisible();
+
+  // 入力中の値では色が変わらない。確定すると、保存値で決まり直す
+  const input = left.locator('[id="personal-speed-same-hand-pair:LM:LI"]');
+  await input.fill('30');
+  await expect(left.locator('[data-personal-speed-row="same-hand-pair:LM:LI"]')).not.toHaveAttribute('data-personal-speed-deviation', /.+/);
+  await input.press('Enter');
+  const fast = left.locator('[data-personal-speed-row="same-hand-pair:LM:LI"]');
+  await expect(fast).toHaveAttribute('data-personal-speed-deviation', 'fast');
+  await expect(fast.locator('input')).toHaveAccessibleDescription('同じ表の他のマスより速い');
+});
+
 test('同手・別指の方向別の速度は、行を前の指、列を次の指にした表で出し、同じ指どうしのマスは空ける', async ({ page }) => {
   await seed(page, { [STORAGE_KEY]: { ...SEEDED, calibration: { ...SEEDED.calibration, sameHandDifferentFingerActionsPerDirectedPair: { 'LM>LI': 3 } } } });
   await open(page);
