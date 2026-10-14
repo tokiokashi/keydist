@@ -19,6 +19,7 @@ import {
 import type { ThemeChoice } from '../theme/theme.ts';
 import { ABOUT_LABEL } from '../about/AboutPage.tsx';
 import { FINGER_ASSIGNMENT_LABEL } from '#editors/finger-assignment/label.ts';
+import { ROMAJI_LAYOUT_LABEL } from '#editors/romaji-layout/label.ts';
 import { ROMAJI_RULE_LABEL } from '#editors/romaji-rule/label.ts';
 import { PERSONAL_SPEED_LABEL } from '#editors/personal-speed/label.ts';
 import { USER_ASSETS_LABEL } from '../assets/UserAssetsPage.tsx';
@@ -231,6 +232,7 @@ export function Sidebar({ pinned, onPinnedChange, onNavigate }: SidebarProps) {
         <SidebarGroup id="assets" title="Assets" collapsed={isCollapsed('assets')}>
           <NavLink to="/assets" onNavigate={onNavigate}>{USER_ASSETS_LABEL}</NavLink>
           <NavLink to="/finger-assignment" onNavigate={onNavigate}>{FINGER_ASSIGNMENT_LABEL}</NavLink>
+          <NavLink to="/romaji-layout" onNavigate={onNavigate}>{ROMAJI_LAYOUT_LABEL}</NavLink>
           <NavLink to="/romaji-rule" onNavigate={onNavigate}>{ROMAJI_RULE_LABEL}</NavLink>
           <NavLink to="/personal-speed" onNavigate={onNavigate}>{PERSONAL_SPEED_LABEL}</NavLink>
         </SidebarGroup>
