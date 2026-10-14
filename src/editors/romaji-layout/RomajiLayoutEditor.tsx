@@ -173,11 +173,16 @@ function LayoutForm({ initial, isNew, ruleOptions, onSubmit }: LayoutFormProps) 
       <label className="romaji-layout-romaji">
         推奨のローマ字規則
         <select
-          value={draft.romaji}
+          value={draft.romaji ?? ''}
           data-layout-romaji
-          onChange={(event) => setDraft({ ...draft, romaji: event.currentTarget.value })}
+          onChange={(event) => {
+            const { romaji: _removed, ...rest } = draft;
+            const value = event.currentTarget.value;
+            setDraft(value === '' ? rest : { ...rest, romaji: value });
+          }}
         >
-          {knownRuleIds.has(draft.romaji) ? null : <option value={draft.romaji}>見つからない規則</option>}
+          <option value="">指定しない</option>
+          {draft.romaji === undefined || knownRuleIds.has(draft.romaji) ? null : <option value={draft.romaji}>見つからない規則</option>}
           {ruleOptions.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
         </select>
       </label>
