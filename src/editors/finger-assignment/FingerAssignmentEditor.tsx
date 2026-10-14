@@ -224,6 +224,18 @@ export function FingerAssignmentEditor({
               <button type="button" data-finger-assignment-create onClick={create}>新規作成</button>
               <button type="button" data-finger-assignment-duplicate disabled={assignment === undefined} onClick={duplicate}>複製</button>
             </div>
+            {shape === undefined ? null : (
+              <label className="finger-assignment-shape">
+                物理配列
+                <select aria-label="物理配列を選ぶ" value={shape.id} onChange={(event) => setShapeId(event.currentTarget.value)}>
+                  {groupShapes(shapes).map((group) => (
+                    <optgroup key={group.key} label={group.label}>
+                      {group.shapes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                    </optgroup>
+                  ))}
+                </select>
+              </label>
+            )}
             {assignment === undefined ? (
               <p className="finger-assignment-note">自作の指の割り当てはありません。選んでいる物理配列の既定の割り当てから作れます。</p>
             ) : (
@@ -243,16 +255,6 @@ export function FingerAssignmentEditor({
           {assignment === undefined || shape === undefined || board === undefined || keyViews === undefined ? null : (
             <section className="finger-assignment-section" aria-labelledby="finger-assignment-edit">
               <h2 id="finger-assignment-edit">指の割り当て</h2>
-              <label className="finger-assignment-shape">
-                物理配列
-                <select value={shape.id} onChange={(event) => setShapeId(event.currentTarget.value)}>
-                  {groupShapes(shapes).map((group) => (
-                    <optgroup key={group.key} label={group.label}>
-                      {group.shapes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-                    </optgroup>
-                  ))}
-                </select>
-              </label>
               <p className="finger-assignment-note">キーを選ぶと、そのキーの指を決められます。線の色は指を表し、下線のあるキーが指のホームキーです。</p>
               <PhysicalKeyboard
                 keys={board.keys}
