@@ -86,6 +86,11 @@ export function playbackPaneStatus(state: PlaybackState, total: number): Playbac
   };
 }
 
+/** 全部のペインへ報告する状態。打鍵が無いペインは加わらないので`undefined`（進んだあとに打鍵が0件になった時に古い状態を残さない）。 */
+export function playbackPaneReport(state: PlaybackState, total: number): PlaybackPaneStatus | undefined {
+  return total === 0 ? undefined : playbackPaneStatus(state, total);
+}
+
 /** 「再生／一時停止」を押したペインの状態から、全部のペインに伝える操作を決める。 */
 export function playbackToggleAction(pressed: Pick<PlaybackPaneStatus, 'playing'>): 'play' | 'pause' {
   return pressed.playing ? 'pause' : 'play';

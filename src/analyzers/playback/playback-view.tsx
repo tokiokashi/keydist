@@ -20,6 +20,7 @@ import {
   applyPlaybackAction,
   initialPlaybackState,
   pausePlayback,
+  playbackPaneReport,
   playbackPaneStatus,
   playbackToggleAction,
   seekPlayback,
@@ -123,11 +124,19 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options, onOp
   // 押せる条件に使う状態を報告する。本体を描いている間だけ加わり、打鍵の無いペインは加わらない
   const reportOwner = useId();
   const status = playbackPaneStatus(state, total);
-  const { atStart: statusAtStart, playing: statusPlaying, atEnd: statusAtEnd } = status;
+  const reported = playbackPaneReport(state, total);
+  const reportedAtStart = reported?.atStart;
+  const reportedPlaying = reported?.playing;
+  const reportedAtEnd = reported?.atEnd;
   useEffect(() => {
-    if (broadcast === undefined || total === 0) return;
-    broadcast.report(reportOwner, { atStart: statusAtStart, playing: statusPlaying, atEnd: statusAtEnd });
-  }, [broadcast, reportOwner, total, statusAtStart, statusPlaying, statusAtEnd]);
+    if (broadcast === undefined) return;
+    broadcast.report(
+      reportOwner,
+      reportedAtStart === undefined || reportedPlaying === undefined || reportedAtEnd === undefined
+        ? undefined
+        : { atStart: reportedAtStart, playing: reportedPlaying, atEnd: reportedAtEnd },
+    );
+  }, [broadcast, reportOwner, reportedAtStart, reportedPlaying, reportedAtEnd]);
   useEffect(() => {
     if (broadcast === undefined) return undefined;
     return () => broadcast.report(reportOwner, undefined);

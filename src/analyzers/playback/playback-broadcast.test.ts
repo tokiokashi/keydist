@@ -5,6 +5,7 @@ import { createPlaybackBroadcast } from './playback-broadcast.ts';
 import {
   applyPlaybackAction,
   playbackBroadcastAvailability,
+  playbackPaneReport,
   playbackPaneStatus,
   playbackToggleAction,
   type PlaybackBroadcastAction,
@@ -99,4 +100,26 @@ test('伝える所: 操作は番号を増やして購読者へ知らせ、ペイ
   unsubscribe();
   broadcast.dispatch('play');
   assert.equal(notified, reported + 1 + 1);
+});
+
+test('打鍵の無いペインは報告に加わらず、進んだあとに打鍵が0件になったペインの古い状態は外れる', () => {
+  assert.equal(playbackPaneReport(stopped, 0), undefined);
+  assert.equal(playbackPaneReport(middle, 0), undefined);
+  assert.deepEqual(playbackPaneReport(stopped, TOTAL), { atStart: true, playing: false, atEnd: false });
+
+  const broadcast = createPlaybackBroadcast();
+  const sync = (owner: string, state: PlaybackState, total: number) => broadcast.report(owner, playbackPaneReport(state, total));
+  sync('a', stopped, TOTAL);
+  sync('b', middle, TOTAL);
+  assert.equal(broadcast.canStop(), true);
+  // bの打鍵が0件になる（テキストを空にした時）。残るaは先頭で止まっているので停止は押せない
+  sync('b', middle, 0);
+  assert.equal(broadcast.canStop(), false);
+  // 打鍵の無いペインだけの時は、再生も押せない
+  sync('a', stopped, 0);
+  assert.equal(broadcast.canPlay(), false);
+  // 計算が終わって打鍵が出たペインは、先頭で止まった状態から加わる
+  sync('c', stopped, TOTAL);
+  assert.equal(broadcast.canPlay(), true);
+  assert.equal(broadcast.canStop(), false);
 });
