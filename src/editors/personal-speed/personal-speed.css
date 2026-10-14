@@ -370,6 +370,41 @@
   outline-offset: -3px;
 }
 
+/* 同じ表の中央値より遅い・速い保存値のマス。--deviation（0〜1）が濃さ。
+   マスの大半は入力欄なので、入力欄とマスの両方に、面の色へ混ぜた色を付ける。 */
+.personal-speed-cell-slow {
+  --deviation-color: var(--speed-slow);
+}
+
+.personal-speed-cell-fast {
+  --deviation-color: var(--speed-fast);
+}
+
+.personal-speed-cell-slow,
+.personal-speed-cell-fast,
+.personal-speed-cell-slow input[type='text'],
+.personal-speed-cell-fast input[type='text'] {
+  background: color-mix(in srgb, var(--deviation-color) calc(var(--deviation) * 55%), var(--surface));
+}
+
+.personal-speed-deviation-swatch {
+  display: inline-block;
+  width: 0.9em;
+  height: 0.9em;
+  margin-right: 0.25em;
+  vertical-align: -0.1em;
+  border: 1px solid var(--border-strong);
+}
+
+.personal-speed-deviation-swatch-slow {
+  background: color-mix(in srgb, var(--speed-slow) 55%, var(--surface));
+}
+
+.personal-speed-deviation-swatch-fast {
+  background: color-mix(in srgb, var(--speed-fast) 55%, var(--surface));
+  margin-right: 0.5em;
+}
+
 /* 選んだキーでは測れず、保存値も無いマス */
 .personal-speed-cell-unavailable {
   color: var(--text-muted);

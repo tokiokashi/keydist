@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { FINGERS, type NonThumb } from '#input/shapes/geometry.ts';
 import { calibrationOverheadFieldId } from '#interpretation/timing/calibration-form.ts';
 import type { CalibrationTask } from '#interpretation/timing/calibration-session.ts';
@@ -7,9 +8,12 @@ import {
   fingerHeading,
   OVERHEAD_TABLE_COLUMNS,
   OVERHEAD_TABLE_ROWS,
+  DEVIATION_LEGEND,
+  DEVIATION_READING,
   UNAVAILABLE_LEGEND,
   UNMEASURABLE_ROW_HINT,
 } from './calibration-text.ts';
+import { gridDeviations, type CellDeviation, type DeviationKind } from './grid-deviation.ts';
 
 /** 欄の右に出す操作。測るボタンか、測れない・別の測定で求まる理由の文。 */
 export type RowAction =
@@ -35,19 +39,23 @@ export interface GridContext {
  * 表の1マス。数値を直接編集でき、欄を確定した時（欄から離れた時・Enter）に保存する。
  * 測れる欄は、マスの中の測るボタンでその欄の値だけを測り直す。測れない欄は、マスの中にその旨を出す。
  * 入力の誤りは、マスの中の入力欄の下に出す。保存値を持たないマスは、保存値を持つマスと見た目を分ける。
+ * 同じ表の中央値から外れた保存値のマスは、遅い側・速い側の色を付け、読み上げにも同じ内容を添える。
  */
-function ValueCell({ fieldId, ctx }: { readonly fieldId: string; readonly ctx: GridContext }) {
+function ValueCell({ fieldId, ctx, deviation }: { readonly fieldId: string; readonly ctx: GridContext; readonly deviation?: CellDeviation | undefined }) {
   const fullLabel = calibrationFieldLabel(fieldId);
   const inputId = `personal-speed-${fieldId}`;
   const errorId = `${inputId}-error`;
+  const deviationId = `${inputId}-deviation`;
   const value = ctx.values[fieldId] ?? '';
   const error = ctx.errors[fieldId];
   const measured = value.trim() !== '';
   const action = ctx.action(fieldId);
   return (
     <td
-      className={`personal-speed-cell${fieldId in ctx.saved ? '' : ' personal-speed-cell-unmeasured'}`}
+      className={`personal-speed-cell${fieldId in ctx.saved ? '' : ' personal-speed-cell-unmeasured'}${deviation === undefined ? '' : ` personal-speed-cell-${deviation.direction}`}`}
       data-personal-speed-row={fieldId}
+      data-personal-speed-deviation={deviation?.direction}
+      style={deviation === undefined ? undefined : ({ '--deviation': deviation.intensity.toFixed(3) } as CSSProperties)}
     >
       <input
         id={inputId}
@@ -56,7 +64,7 @@ function ValueCell({ fieldId, ctx }: { readonly fieldId: string; readonly ctx: G
         autoComplete="off"
         aria-label={fullLabel}
         aria-invalid={error === undefined ? undefined : true}
-        aria-describedby={error === undefined ? undefined : errorId}
+        aria-describedby={[deviation === undefined ? undefined : deviationId, error === undefined ? undefined : errorId].filter((id) => id !== undefined).join(' ') || undefined}
         value={value}
         disabled={ctx.disabled}
         onChange={(event) => ctx.onChange(fieldId, event.currentTarget.value)}
@@ -65,6 +73,7 @@ function ValueCell({ fieldId, ctx }: { readonly fieldId: string; readonly ctx: G
           if (event.key === 'Enter' && !event.nativeEvent.isComposing) ctx.onCommit(fieldId);
         }}
       />
+      {deviation === undefined ? null : <span className="personal-speed-visually-hidden" id={deviationId}>{DEVIATION_READING[deviation.direction]}</span>}
       {action.kind === 'measure' ? (
         <button
           type="button"
@@ -122,7 +131,7 @@ interface FingerGridsProps {
   readonly corner: string;
   /** 行と列が何かの説明。向きのある表で、見出しの見える位置に添える。 */
   readonly axes?: string;
-  readonly kind: string;
+  readonly kind: DeviationKind;
 }
 
 /**
@@ -135,6 +144,7 @@ function FingerGrids({ ctx, fieldOf, unit, corner, axes, kind }: FingerGridsProp
     return fieldId !== undefined && cellHasField(fieldId, ctx);
   })));
   let hasUnavailable = false;
+  const deviations = gridDeviations(kind, ctx.saved);
   const tables = shown.map(({ hand, label, fingers }) => (
     <div className="personal-speed-grid-wrap" key={hand}>
       <table className="personal-speed-grid" data-personal-speed-grid={`${kind}:${hand}`}>
@@ -152,7 +162,7 @@ function FingerGrids({ ctx, fieldOf, unit, corner, axes, kind }: FingerGridsProp
               {fingers.map((column) => {
                 const fieldId = fieldOf(row, column);
                 if (fieldId === undefined) return <BlankCell key={column} />;
-                if (cellHasField(fieldId, ctx)) return <ValueCell key={column} fieldId={fieldId} ctx={ctx} />;
+                if (cellHasField(fieldId, ctx)) return <ValueCell key={column} fieldId={fieldId} ctx={ctx} deviation={deviations.get(fieldId)} />;
                 hasUnavailable = true;
                 return <UnavailableCell key={column} fieldId={fieldId} />;
               })}
@@ -166,6 +176,13 @@ function FingerGrids({ ctx, fieldOf, unit, corner, axes, kind }: FingerGridsProp
   return (
     <>
       {tables}
+      {deviations.size === 0 ? null : (
+        <p className="personal-speed-note personal-speed-deviation-legend">
+          <span className="personal-speed-deviation-swatch personal-speed-deviation-swatch-slow" aria-hidden="true" />
+          <span className="personal-speed-deviation-swatch personal-speed-deviation-swatch-fast" aria-hidden="true" />
+          {DEVIATION_LEGEND}
+        </p>
+      )}
       {hasUnavailable ? <p className="personal-speed-note">{UNAVAILABLE_LEGEND}</p> : null}
     </>
   );

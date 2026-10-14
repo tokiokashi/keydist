@@ -509,3 +509,12 @@ export const PERSONAL_SPEED_PURPOSE =
 
 /** 指×指の表に、選んだキーでは測れないマスがある時の凡例。 */
 export const UNAVAILABLE_LEGEND = '―は、選んだキーでは測れない組です。';
+
+/** 指×指の表で、色の付いたマスがあるときの凡例。色は同じ表の中の相対的な速さだけを示す。 */
+export const DEVIATION_LEGEND = '色は、同じ表の他のマスと比べた速さです。オレンジは他のマスより遅く、青は速く、濃いほど差が大きくなります。';
+
+/** 色の付いたマスの読み上げ。色が示す内容を言葉でも伝える。 */
+export const DEVIATION_READING = {
+  slow: '同じ表の他のマスより遅い',
+  fast: '同じ表の他のマスより速い',
+} as const;
