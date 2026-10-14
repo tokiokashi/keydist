@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createScaleRegistry } from '#analyzers/shared-scale.ts';
+import { createPlaybackBroadcast } from '#analyzers/playback/playback-broadcast.ts';
+import { PlaybackBroadcastProvider } from '#analyzers/playback/playback-broadcast.tsx';
 import { SharedScaleProvider } from '#analyzers/shared-scale.tsx';
 import type { Command } from '#input/commands/index.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
@@ -124,6 +126,7 @@ export function WorkspacePage({
   const [maximizedId, setMaximizedId] = useState<string | undefined>(undefined);
   // ペインどうしで揃える目盛りの範囲を集める所（Workspaceごとに1つ）
   const scaleRegistry = useMemo(() => createScaleRegistry(), [workspaceId]);
+  const playbackBroadcast = useMemo(() => createPlaybackBroadcast(), [workspaceId]);
   // 図のキーの選択。同じ配列・物理配列を映すペインどうしで連動する。保存しない見た目だけの状態で、
   // Workspaceを開き直すと外れる（資産・Undoの履歴には入れない）
   const keySelection = useKeySelectionStore();
@@ -346,6 +349,7 @@ export function WorkspacePage({
 
   return (
     <SharedScaleProvider value={scaleRegistry}>
+      <PlaybackBroadcastProvider value={playbackBroadcast}>
       <KeySelectionContext.Provider value={keySelection}>
         <div ref={pageRef} className="workspace-page" data-stacked={stacked || undefined}>
           <ContextBar
@@ -432,6 +436,7 @@ export function WorkspacePage({
           </fieldset>
         </div>
       </KeySelectionContext.Provider>
+      </PlaybackBroadcastProvider>
     </SharedScaleProvider>
   );
 }

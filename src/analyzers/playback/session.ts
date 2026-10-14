@@ -66,6 +66,55 @@ export function seekPlayback(state: PlaybackState, cursor: number, total: number
   return { ...state, cursor: clampPlaybackCursor(cursor, total), elapsedMs: 0 };
 }
 
+/** Workspaceで全部のペインに伝える操作。「再生／一時停止」は押したペインの状態で再生か一時停止かが決まる。 */
+export type PlaybackBroadcastAction = 'play' | 'pause' | 'stop';
+
+/** 押せる条件を決めるための、ペイン1枚の状態。再生位置そのものは含めない。 */
+export interface PlaybackPaneStatus {
+  /** 先頭にいて、今のステップの経過時間も0。止めたあとに揃って始められる状態 */
+  readonly atStart: boolean;
+  readonly playing: boolean;
+  /** 最後まで再生した */
+  readonly atEnd: boolean;
+}
+
+export function playbackPaneStatus(state: PlaybackState, total: number): PlaybackPaneStatus {
+  return {
+    atStart: state.cursor === 0 && state.elapsedMs === 0,
+    playing: state.playing,
+    atEnd: state.cursor >= total,
+  };
+}
+
+/** 「再生／一時停止」を押したペインの状態から、全部のペインに伝える操作を決める。 */
+export function playbackToggleAction(pressed: Pick<PlaybackPaneStatus, 'playing'>): 'play' | 'pause' {
+  return pressed.playing ? 'pause' : 'play';
+}
+
+/**
+ * 伝えられた操作を、ペイン1枚の再生位置に当てた結果。
+ * 再生は止まっていて最後まで再生していないペインだけを今の位置から始め（再生中のペインは続ける）、
+ * 一時停止は再生中のペインだけを止め、停止は先頭へ戻して止める。
+ */
+export function applyPlaybackAction(state: PlaybackState, action: PlaybackBroadcastAction, total: number): PlaybackState {
+  switch (action) {
+    case 'play': return startPlayback(state, total);
+    case 'pause': return pausePlayback(state);
+    case 'stop': return stopPlayback(state);
+  }
+}
+
+/** 全部のペインの状態から、ボタンを押せるか。先頭で止まったペインからも、他のペインの停止・再生ができる。 */
+export function playbackBroadcastAvailability(statuses: Iterable<PlaybackPaneStatus>): { readonly canPlay: boolean; readonly canStop: boolean } {
+  let canPlay = false;
+  let canStop = false;
+  for (const status of statuses) {
+    if (!status.playing && !status.atEnd) canPlay = true;
+    if (!status.atStart || status.playing) canStop = true;
+  }
+  return { canPlay, canStop };
+}
+
 /** 描画フレームの経過時間ぶん再生を進める。 */
 export function tickPlayback(
   state: PlaybackState,
