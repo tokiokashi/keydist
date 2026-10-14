@@ -213,7 +213,7 @@ export function usePlaybackFields(
       <CheckboxOptionField
         label="順番ラベルを表示"
         binding={bind('showOrderLabels')}
-        hint="出ている押下予定キー・予定ローマ字のキー・押下履歴に、押す順番を付けます。ChainとArpeggioの順番には関わりません。"
+        hint="出ている押下予定キー・今のかなの残りキー・押下履歴に、押す順番を付けます。ChainとArpeggioの順番には関わりません。"
       />
     ),
     keyFeedbackStyle: (
