@@ -413,3 +413,42 @@ test('途中で止めた進行は保存値に何も足さない', () => {
   assert.equal(run.results.length, 0);
   assert.deepEqual(applyCalibrationRun(SAVED, run, 5), { ok: false, reason: 'invalid-measurement' });
 });
+
+const SIDE_OVERHEADS = {
+  arpeggio: 10, 'arpeggio-within': 8, 'arpeggio-boundary': 12,
+  chain: 20, 'chain-within': 18, 'chain-boundary': 22,
+  other: 60, 'other-within': 40, 'other-boundary': 70,
+  repeat: 5, sfb: 15,
+} as const;
+
+test('通常速度・移動速度の測定は、かなの中・かなの境目の値も、分けない値と同じく消す', () => {
+  const withOverhead: PlaybackCalibration = { ...SAVED, sameKeyActionsPerSecond: 5, keystrokeOverheadMs: SIDE_OVERHEADS };
+  const run = playAll(startCalibrationRun('normal', PLAN.normal!), 250);
+  const applied = applyCalibrationRun(withOverhead, run, 5);
+  assert.ok(applied.ok);
+  assert.deepEqual(applied.calibration.keystrokeOverheadMs, { repeat: -45 });
+  assert.deepEqual(applied.clearedOverheads, [
+    'arpeggio', 'arpeggio-within', 'arpeggio-boundary',
+    'chain', 'chain-within', 'chain-boundary',
+    'other', 'other-within', 'other-boundary',
+    'sfb',
+  ]);
+});
+
+test('分けない値を持たず、かなの中・かなの境目の値だけを持つ保存値も、基準が変わる測定で消える', () => {
+  const sidesOnly: PlaybackCalibration = { ...SAVED, keystrokeOverheadMs: { 'other-within': 40, 'other-boundary': 70 } };
+  const run = playAll(startCalibrationRun('item', [PLAN.byItem.get('actions')!]), 100);
+  const applied = applyCalibrationRun(sidesOnly, run, 5);
+  assert.ok(applied.ok);
+  assert.equal('keystrokeOverheadMs' in applied.calibration, false);
+  assert.deepEqual(applied.clearedOverheads, ['other-within', 'other-boundary']);
+});
+
+test('同じキーを続けて打つ速さの測り直しは、かなの中・かなの境目の値を消さない', () => {
+  const withOverhead: PlaybackCalibration = { ...SAVED, sameKeyActionsPerSecond: 5, keystrokeOverheadMs: SIDE_OVERHEADS };
+  const sameKey = playAll(startCalibrationRun('item', PLAN.byField.get('same-key')!), 125);
+  const sameKeyApplied = applyCalibrationRun(withOverhead, sameKey, 5);
+  assert.ok(sameKeyApplied.ok);
+  assert.deepEqual(sameKeyApplied.calibration.keystrokeOverheadMs, { ...SIDE_OVERHEADS, repeat: 80 });
+  assert.deepEqual(sameKeyApplied.clearedOverheads, []);
+});
