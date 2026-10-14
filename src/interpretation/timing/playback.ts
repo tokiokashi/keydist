@@ -12,11 +12,12 @@ import {
   handDirection,
   sameHandDirectedFingerPairKey,
   sameHandFingerPairKey,
+  sideOverheadKind,
   type PlaybackCalibration,
   type StrokeStructureKind,
 } from './calibration.ts';
 import type { AggregatedAnalysisResult } from '../structure/aggregate.ts';
-import { isRepeatStroke, strokeOverheadKinds, strokeStructureKinds } from './stroke-structure.ts';
+import { isRepeatStroke, strokeOverheadKinds, strokeOverheadSide, strokeStructureKinds } from './stroke-structure.ts';
 
 /** 再生速度の入力範囲。実際の打鍵時間や距離モデルとは無関係。 */
 export const PLAYBACK_STEPS_PER_SECOND_MIN = 0.1;
@@ -630,7 +631,9 @@ export function playbackNormalMs(
 /**
  * ステップ `i` の、1打の時間（`normalMs`）の側に足す打鍵の上乗せ[ms]（§3.1.1）。
  * 続け打ちのステップは、続け打ちの値を持つ時はその値、持たず同じキーを続けて打つ速さを持つ時は0、
- * どちらも持たない時は構造の種類の値。それ以外は構造の種類の値で、その種類の値が無ければ「その他」の値、それも無ければ0。
+ * どちらも持たない時は構造の種類の値。
+ * 構造の種類の値は、ステップがかなの中かかなの境目かで、同じ側のその種類の値、同じ側の「その他」の値、
+ * その種類の分けない値、「その他」の分けない値の順に最初に見つかった値で、どれも無ければ0。
  * 同指連続のステップの同指連続の値は、`max`の外に足すので`playbackSameFingerOverheadMs`が返す。
  * 個人速度が無い時、打鍵の上乗せを持たない時は0。
  */
@@ -642,7 +645,12 @@ export function playbackKeystrokeOverheadMs(
   const overheads = calibration?.keystrokeOverheadMs;
   if (overheads === undefined) return 0;
   const structure: StrokeStructureKind = strokeStructureKinds(analysis)[strokeIndex] ?? 'other';
-  const structureMs = overheads[structure] ?? overheads.other ?? 0;
+  const side = strokeOverheadSide(analysis.strokes, strokeIndex);
+  const structureMs = overheads[sideOverheadKind(structure, side)]
+    ?? overheads[sideOverheadKind('other', side)]
+    ?? overheads[structure]
+    ?? overheads.other
+    ?? 0;
   if (strokeOverheadKinds(analysis)[strokeIndex] !== 'repeat') return structureMs;
   return overheads.repeat ?? (calibration?.sameKeyActionsPerSecond === undefined ? structureMs : 0);
 }

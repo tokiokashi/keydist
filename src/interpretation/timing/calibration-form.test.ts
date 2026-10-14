@@ -189,3 +189,34 @@ test('同じキーを続けて打つ速さの欄は他の速度と同じ0.1か�
   assert.ok(applyCalibrationField(base, CALIBRATION_SAME_KEY_FIELD, '0.1', 2).ok);
   assert.ok(applyCalibrationField(base, CALIBRATION_SAME_KEY_FIELD, '40', 2).ok);
 });
+
+test('かなの中・かなの境目の欄は、分けない値を持たない保存値にも編集で足せ、空欄にすると消える', () => {
+  const within = calibrationOverheadFieldId('other-within');
+  const boundary = calibrationOverheadFieldId('other-boundary');
+  const first = applyCalibrationField(SAVED, within, '12.5', 2);
+  assert.ok(first.ok);
+  assert.deepEqual(first.calibration.keystrokeOverheadMs, { 'other-within': 12.5 });
+  const second = applyCalibrationField(first.calibration, boundary, '-30', 3);
+  assert.ok(second.ok);
+  assert.deepEqual(second.calibration.keystrokeOverheadMs, { 'other-within': 12.5, 'other-boundary': -30 });
+  assert.equal(calibrationFormValues(second.calibration)[within], '12.5');
+  assert.equal(calibrationFormValues(second.calibration)[boundary], '-30.0');
+  const cleared = applyCalibrationField(second.calibration, within, '', 4);
+  assert.ok(cleared.ok);
+  assert.deepEqual(cleared.calibration.keystrokeOverheadMs, { 'other-boundary': -30 });
+  const none = applyCalibrationField(cleared.calibration, boundary, '', 5);
+  assert.ok(none.ok);
+  assert.equal('keystrokeOverheadMs' in none.calibration, false);
+});
+
+test('かなの中・かなの境目の欄は-1000から1000までで、範囲の外の欄を返す', () => {
+  for (const kind of ['arpeggio-within', 'chain-boundary', 'other-within'] as const) {
+    const field = calibrationOverheadFieldId(kind);
+    assert.deepEqual(
+      applyCalibrationField(WITH_OVERHEAD, field, '1000.1', 2),
+      { ok: false, fieldId: field, problem: 'invalid', min: -1000, max: 1000 },
+    );
+    assert.ok(applyCalibrationField(WITH_OVERHEAD, field, '1000', 2).ok);
+    assert.ok(applyCalibrationField(WITH_OVERHEAD, field, '-1000', 2).ok);
+  }
+});

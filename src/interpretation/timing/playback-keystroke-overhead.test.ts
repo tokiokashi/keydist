@@ -7,7 +7,8 @@ import {
   type Key,
   type Point,
 } from '#input/shapes/geometry.ts';
-import type { Press, Stroke } from '#trace/generate.ts';
+import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
+import { generateTrace, type Press, type Stroke } from '#trace/generate.ts';
 import type { PlaybackCalibration } from './calibration.ts';
 import {
   playbackKeystrokeOverheadMs,
@@ -349,4 +350,106 @@ test('上乗せが全て0以上の保存値は、下限があっても時間が�
   assert.deepEqual(durations(analysis, withOverhead({ other: 1000 })), [1200, 1200, 1200]);
   const near = withSameFinger(2);
   assert.equal(playbackStepDurationMs(near, 1, 1, true, withOverhead({ sfb: 0 }), 1), 200);
+});
+
+/** 入力単位を付け替えた解析結果。構造と指はそのまま。 */
+function withInputIndex(analysis: PlaybackTimingAnalysis, inputIndexOf: (index: number) => number): PlaybackTimingAnalysis {
+  return { ...analysis, strokes: analysis.strokes.map((item, index) => ({ ...item, inputIndex: inputIndexOf(index) })) };
+}
+
+/** 2打ずつが1つの入力単位。奇数番のステップがかなの中、偶数番のステップがかなの境目。 */
+const pairedUnits = (analysis: PlaybackTimingAnalysis) => withInputIndex(analysis, (index) => Math.floor(index / 2));
+
+test('かなの中・かなの境目の値は、ステップが前と同じ入力単位を打つかで選び、最初のステップはかなの境目になる', () => {
+  // 全てその他。ステップ0は直前が無いのでかなの境目、1・3・5はかなの中、2・4はかなの境目。
+  const analysis = pairedUnits(alternating(6));
+  const calibration = withOverhead({ 'other-within': 10, 'other-boundary': 70 });
+  assert.deepEqual(durations(analysis, calibration), [270, 210, 270, 210, 270, 210]);
+  assert.equal(playbackKeystrokeOverheadMs(analysis, 0, calibration), 70);
+  assert.equal(playbackKeystrokeOverheadMs(analysis, 1, calibration), 10);
+});
+
+test('値が無い時は、同じ側のその他、その種類の分けない値、その他の分けない値、0の順に使う', () => {
+  // ステップ1,2はChain（1はかなの中、2はかなの境目）、ステップ3,4はArpeggio（3はかなの中、4はかなの境目）。
+  const analysis = pairedUnits(alternating(5, [range(0, 3)], [range(2, 5)]));
+  const overheadAt = (index: number, values: NonNullable<PlaybackCalibration['keystrokeOverheadMs']>) =>
+    playbackKeystrokeOverheadMs(analysis, index, withOverhead(values));
+  const all = {
+    'chain-within': 1, 'chain-boundary': 2, 'other-within': 3, 'other-boundary': 4,
+    chain: 5, arpeggio: 6, other: 7,
+  };
+  // 同じ側のその種類の値が最優先。
+  assert.equal(overheadAt(1, all), 1);
+  assert.equal(overheadAt(2, all), 2);
+  // その種類の同じ側の値が無ければ、同じ側のその他の値。
+  const { 'chain-within': _within, 'chain-boundary': _boundary, ...noChainSides } = all;
+  assert.equal(overheadAt(1, noChainSides), 3);
+  assert.equal(overheadAt(2, noChainSides), 4);
+  // 同じ側のどれも無ければ、その種類の分けない値。反対側の値は使わない。
+  const onlyOtherSides = { 'other-boundary': 4, chain: 5, arpeggio: 6, other: 7 };
+  assert.equal(overheadAt(1, onlyOtherSides), 5);
+  assert.equal(overheadAt(2, onlyOtherSides), 4);
+  assert.equal(overheadAt(3, onlyOtherSides), 6);
+  // その種類の分けない値も無ければ、その他の分けない値。
+  assert.equal(overheadAt(1, { 'other-boundary': 4, other: 7 }), 7);
+  assert.equal(overheadAt(4, { arpeggio: 6, 'other-within': 3 }), 6);
+  // どれも無ければ0。
+  assert.equal(overheadAt(1, { 'other-boundary': 4, 'chain-boundary': 2 }), 0);
+  assert.equal(overheadAt(1, {}), 0);
+});
+
+test('分けない値を持たず、かなの中・かなの境目の値だけを持つ保存値も、再生の時間が決まる', () => {
+  const analysis = pairedUnits(alternating(4));
+  assert.deepEqual(durations(analysis, withOverhead({ 'other-within': 10, 'other-boundary': 70 })), [270, 210, 270, 210]);
+  assert.deepEqual(durations(analysis, withOverhead({ 'other-within': 10 })), [200, 210, 200, 210]);
+});
+
+test('かなの中・かなの境目の値を持たない保存値の時間は、入力単位の分け方によらず変わらない', () => {
+  const calibration = withOverhead({ arpeggio: 10, chain: 30, other: 70 });
+  const plain = alternating(6, [range(0, 3)], [range(2, 5)]);
+  const expected = [270, 230, 230, 210, 210, 270];
+  assert.deepEqual(durations(plain, calibration), expected);
+  assert.deepEqual(durations(pairedUnits(plain), calibration), expected);
+  assert.deepEqual(durations(withInputIndex(plain, () => 0), calibration), expected);
+});
+
+test('続け打ちが構造の種類の値を使う時も、同じ順でかなの中・かなの境目の値を選ぶ', () => {
+  // 全て続け打ちで、遷移はChainに入る。ステップ1はかなの中、ステップ2はかなの境目。
+  const analysis = pairedUnits(repeating(4, [range(0, 4)]));
+  const values = { 'chain-within': 11, 'chain-boundary': 22, 'other-within': 33, chain: 44 };
+  assert.equal(playbackKeystrokeOverheadMs(analysis, 1, withOverhead(values)), 11);
+  assert.equal(playbackKeystrokeOverheadMs(analysis, 2, withOverhead(values)), 22);
+  assert.equal(playbackKeystrokeOverheadMs(analysis, 2, withOverhead({ 'other-within': 33, chain: 44 })), 44);
+  // 続け打ちの値があればその値、同じキーを続けて打つ速さがあれば0で、かなの中・かなの境目の値は使わない。
+  assert.equal(playbackKeystrokeOverheadMs(analysis, 1, withOverhead({ ...values, repeat: 9 })), 9);
+  assert.equal(playbackKeystrokeOverheadMs(analysis, 1, withSameKey(8, values)), 0);
+});
+
+test('同指連続のステップが構造の種類の値を使う時も、かなの中・かなの境目の値を選ぶ', () => {
+  const near = withInputIndex(withSameFinger(2), () => 0);
+  // sfbの値が無く、同指連続の移動を考慮する設定。ステップ1は直前と同じ入力単位なのでかなの中。
+  assert.equal(playbackStepDurationMs(near, 1, 1, true, withOverhead({ 'other-within': 50, 'other-boundary': 10 }), 1), 250);
+  assert.equal(playbackStepDurationMs(withSameFinger(2), 1, 1, true, withOverhead({ 'other-within': 50, 'other-boundary': 10 }), 1), 210);
+  // sfbの値があれば、それを使う。
+  assert.equal(playbackStepDurationMs(near, 1, 1, true, withOverhead({ 'other-within': 50, sfb: 10 }), 1), 210);
+});
+
+test('句読点を打つステップとその直後のステップにも、かなの中・かなの境目の値を足す', () => {
+  // 測定が外すのは句読点の前後の間隔で、再生は外さない。入力単位は2打ずつ。
+  const base = pairedUnits(alternating(4));
+  const punctuated = { ...base, strokes: base.strokes.map((item, index) => ({ ...item, inputChar: index < 2 ? '、' : 'あ' })) } as PlaybackTimingAnalysis;
+  const calibration = withOverhead({ 'other-within': 10, 'other-boundary': 70 });
+  assert.deepEqual(durations(punctuated, calibration), durations(base, calibration));
+  assert.deepEqual(durations(punctuated, calibration), [270, 210, 270, 210]);
+});
+
+test('配列に無い文字を読み飛ばした所の前後のステップは、かなの境目になる', () => {
+  // 「か」と「な」の間の1文字は配列に無く、読み飛ばす。「か」「な」は2打ずつで、それぞれの2打目がかなの中。
+  const layout = LAYOUT_BY_ID.get('qwerty');
+  assert.ok(layout);
+  const trace = generateTrace('か漢な', layout, geometry, { windowSize: 3, sfbHomeCost: true });
+  assert.equal(trace.skipped, 1);
+  const analysis = { strokes: trace.strokes, transitions: [], chains: [], arpeggioSpans: [] } as unknown as PlaybackTimingAnalysis;
+  const calibration = withOverhead({ 'other-within': 10, 'other-boundary': 70 });
+  assert.deepEqual(trace.strokes.map((_, index) => playbackKeystrokeOverheadMs(analysis, index, calibration)), [70, 10, 70, 10]);
 });

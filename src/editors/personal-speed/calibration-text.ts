@@ -16,7 +16,6 @@ import {
   type ApplySentenceResult,
   type SentenceMeasurement,
   type SentenceSaveStatus,
-  type SentenceSplitRow,
 } from '#interpretation/timing/sentence-measurement.ts';
 import type { SentenceUnmeasurable } from '#interpretation/timing/sentence-session.ts';
 import {
@@ -59,9 +58,15 @@ export const MEASUREMENT_SENTENCES: readonly string[] = [
 
 /** 打鍵の上乗せの種類の名前。 */
 export const OVERHEAD_KIND_LABEL: Readonly<Record<OverheadKind, string>> = {
-  arpeggio: 'Arpeggio',
-  chain: 'Chain',
-  other: 'その他',
+  arpeggio: 'Arpeggio全体',
+  'arpeggio-within': 'Arpeggioのかなの中',
+  'arpeggio-boundary': 'Arpeggioのかなの境目',
+  chain: 'Chain全体',
+  'chain-within': 'Chainのかなの中',
+  'chain-boundary': 'Chainのかなの境目',
+  other: 'その他全体',
+  'other-within': 'その他のかなの中',
+  'other-boundary': 'その他のかなの境目',
   repeat: '続け打ち',
   sfb: '同指連続',
 };
@@ -273,8 +278,8 @@ export const SENTENCE_TABLE_NOTES: readonly string[] = [
   '打鍵の上乗せは、打鍵ごとの差（打った間隔から基準の時間を引いた値）の四分位平均（小さい方と大きい方から4分の1ずつ除いた残りの平均）で、負の値もそのまま保存します。'
   + '打った間隔の四分位平均から基準の時間の四分位平均を引いた値とは、一致しないことがあります。',
   '基準の時間は1打の時間です。同指連続では、1打の時間と指が動く時間の長い方です。続け打ちの1打の時間は、同じキーを続けて打つ速さから求めます。',
-  '異手と異手でない打鍵のそれぞれを、かなの中とかなの境目に分けた4行は、同指連続と続け打ちを除く打鍵を、前の打鍵と手が替わるかと、前の打鍵と同じかなの中かで分けた値で、保存しません。'
-  + '打鍵の数が少ない行は、値が揺れやすくなります。',
+  'かなの中は、前の打鍵と同じ入力の単位（拗音や促音をまとめた単位を含む）を打つ打鍵、かなの境目は、違う入力の単位を打つ打鍵です。Arpeggio・Chain・その他は、全体の値に加えて、かなの中とかなの境目の値も測ります。'
+  + 'かなの中・かなの境目の値は、その打鍵の数が少ない行は保存しません。',
 ];
 
 /** 表の行の名前。同指連続と続け打ちは、基準の時間が分かる形にする。 */
@@ -285,19 +290,6 @@ export function sentenceTableKindLabel(kind: OverheadKind): string {
     default: return OVERHEAD_KIND_LABEL[kind];
   }
 }
-
-/** 手の関係と入力単位で分けた行の名前。 */
-export function sentenceTableSplitLabel(row: SentenceSplitRow): string {
-  switch (row) {
-    case 'cross-within': return '異手・かなの中';
-    case 'cross-boundary': return '異手・かなの境目';
-    case 'other-within': return '異手でない打鍵・かなの中';
-    case 'other-boundary': return '異手でない打鍵・かなの境目';
-  }
-}
-
-/** 保存しない行の、保存の欄の文。 */
-export const SENTENCE_TABLE_NOT_SAVED_TEXT = '保存しない';
 
 /** 表の四分位平均の表示。数えた打鍵が無い行は「なし」。 */
 export function sentenceTableValueText(value: number | undefined): string {
@@ -326,7 +318,8 @@ export const MEASUREMENT_DESCRIPTION = {
     + '打鍵再生で、1打ごとの時間と、同じ指で別のキーを続けて打つ時に指が動く時間を決めます。',
   directional: '左手と右手の交互打ちと、同じ手の2本の指で打つ時の、打つ向きごとの速さを測ります。'
     + '打鍵再生で、測った向きの1打の時間を、向きを区別しない値の代わりに決めます。',
-  sentence: '覚えた文を考えずに打つ時に、測った速さから求めた時間と、実際に打った間隔との差（打鍵の上乗せ）を、Arpeggio・Chain・その他・続け打ち・同指連続の5種類ごとに測ります。'
+  sentence: '覚えた文を考えずに打つ時に、測った速さから求めた時間と、実際に打った間隔との差（打鍵の上乗せ）を、Arpeggio・Chain・その他・続け打ち・同指連続の種類ごとに測ります。'
+    + 'Arpeggio・Chain・その他は、同じかなの中を打つ打鍵と、違うかなへ移る打鍵に分けても測ります。'
     + '打鍵再生で、1打ごとの時間に種類ごとの打鍵の上乗せを足します。',
 } as const;
 
