@@ -143,13 +143,13 @@ export function PlaybackKeyboard({
     const trailOpacity = frame.trailKeys.get(id);
     const plannedOpacity = frame.plannedKeys.get(id);
     const romajiPlannedOpacity = frame.romajiPlannedKeys.get(id);
-    // 押下予定キーと予定ローマ字の両方に入るキーは、濃さの大きい方で1つの塗りにする
+    // 押下予定キーと今のかなの残りキーの両方に入るキーは、濃さの大きい方で1つの塗りにする
     const planFillOpacity = plannedOpacity === undefined && romajiPlannedOpacity === undefined
       ? undefined
       : Math.max(plannedOpacity ?? 0, romajiPlannedOpacity ?? 0);
     // 緑の塗りの上の文字は、濃さが高い時だけ暗い色にする（濃さが低い時は、暗い色だと暗いテーマで面の上の対比が落ちる）
     const planLabelStrong = planFillOpacity !== undefined && planFillOpacity >= PLAN_LABEL_STRONG_FROM;
-    // 押下予定キーと予定ローマ字のキーの順番はどちらも再生位置から数えるので、両方に入るキーでは同じ番号になり、ラベルは1つにまとめる
+    // 押下予定キーと今のかなの残りキーの順番はどちらも再生位置から数えるので、両方に入るキーでは同じ番号になり、ラベルは1つにまとめる
     const planOrder = frame.plannedOrders.get(id) ?? frame.romajiPlannedOrders.get(id);
     const trailOrder = frame.trailOrders.get(id);
     const chainOrder = frame.chainOrders.get(id);
