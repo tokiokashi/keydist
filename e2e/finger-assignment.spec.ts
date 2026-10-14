@@ -34,7 +34,7 @@ test('割り当てを作り、キーと列を編集し、既定へ戻せる。�
   await expect(keyLegend(page, 'q')).toHaveText('右小');
 
   // 列の一括: 2列目（W・S・Xの列）を左小指にする
-  await page.getByLabel('列を選ぶ').selectOption({ index: 1 });
+  await page.getByLabel('列を選ぶ', { exact: true }).selectOption({ index: 1 });
   await page.getByLabel('列の指').selectOption('LP');
   for (const id of ['2', 'w', 's', 'x']) await expect(keyLegend(page, id)).toHaveText('左小');
 
@@ -65,4 +65,13 @@ test('割り当てを作り、キーと列を編集し、既定へ戻せる。�
   await page.getByRole('dialog').getByRole('button', { name: '削除する' }).click();
   await expect(section.locator('[data-user-asset-row]')).toHaveCount(0);
   await expect.poll(() => page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).not.toContain('私の運指');
+});
+
+test('割り当てが1つも無い間も物理配列を選べて、選んだ物理配列の既定から作れる', async ({ page }) => {
+  await page.goto('/finger-assignment');
+  await waitForHydration(page);
+  await page.getByLabel('物理配列を選ぶ').selectOption('jis-row-staggered');
+  await page.locator('[data-finger-assignment-create]').click();
+  // JISの物理配列にだけあるキーが、JIS既定の指で描かれる
+  await expect(keyLegend(page, 'r0c12')).toHaveText('右小');
 });
