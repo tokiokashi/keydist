@@ -343,15 +343,21 @@ export interface PlaybackInputPreviewSegment {
  */
 export const PLAYBACK_COMPLETED_INPUT_LIMIT = 20;
 
-/** 入力済み・現在・先読みの入力単位を表示順に返す。先読み値は打鍵ステップ数として扱う。 */
-export function playbackInputPreview(
+interface PlaybackInputGroup {
+  inputIndex: number;
+  start: number;
+  end: number;
+}
+
+/** 入力済み・現在・先読みの入力単位（同じ`inputIndex`のストロークの並び）を、表示する分だけ選ぶ。 */
+function playbackInputGroupsAround(
   strokes: readonly Stroke[],
   cursor: number,
-  lookaheadSteps = 0,
-  completedLimit = PLAYBACK_COMPLETED_INPUT_LIMIT,
-): PlaybackInputPreviewSegment[] {
+  lookaheadSteps: number,
+  completedLimit: number,
+): { end: number; completed: PlaybackInputGroup[]; current: PlaybackInputGroup | undefined; planned: PlaybackInputGroup[] } {
   const end = Math.min(Math.max(0, cursor), strokes.length);
-  const groups: { inputIndex: number; start: number; end: number }[] = [];
+  const groups: PlaybackInputGroup[] = [];
 
   for (let start = 0; start < strokes.length; ) {
     const inputIndex = strokes[start].inputIndex;
@@ -371,13 +377,89 @@ export function playbackInputPreview(
   const planned = groups.filter((group) =>
     group.inputIndex !== currentInputIndex && group.end > end && group.start < futureEnd,
   );
+  return { end, completed, current: groups[currentGroupIndex], planned };
+}
 
+/** 入力済み・現在・先読みの入力単位を表示順に返す。先読み値は打鍵ステップ数として扱う。 */
+export function playbackInputPreview(
+  strokes: readonly Stroke[],
+  cursor: number,
+  lookaheadSteps = 0,
+  completedLimit = PLAYBACK_COMPLETED_INPUT_LIMIT,
+): PlaybackInputPreviewSegment[] {
+  const { completed, current, planned } = playbackInputGroupsAround(strokes, cursor, lookaheadSteps, completedLimit);
   return [
     ...completed.map((group) => ({ text: strokes[group.end - 1].inputChar, kind: 'completed' as const })),
-    ...(currentGroupIndex < 0
-      ? []
-      : [{ text: strokes[groups[currentGroupIndex].end - 1].inputChar, kind: 'current' as const }]),
+    ...(current === undefined ? [] : [{ text: strokes[current.end - 1].inputChar, kind: 'current' as const }]),
     ...planned.map((group) => ({ text: strokes[group.end - 1].inputChar, kind: 'planned' as const })),
+  ];
+}
+
+export interface PlaybackRomajiInputSegment {
+  kind: PlaybackInputPreviewKind;
+  /** 入力単位のかな。ローマ字で出さない単位は、この文字をそのまま出す */
+  kana: string;
+  /**
+   * ローマ字で出す単位の、打ち終えた文字とまだ打っていない文字。かなで出す単位（打ち終えた単位と、
+   * 最後のステップを打ち終えた現在の単位）では持たない
+   */
+  romaji?: { typed: string; remaining: string };
+}
+
+/** ストロークが、その選択の文字を出力するか。シフトなど層を操作するキーだけを押すステップは出力しない。 */
+function strokeOutputs(stroke: Stroke): boolean {
+  const triggers = new Set(stroke.triggerKeys.map(resolveKeyId));
+  return stroke.presses.some((press) => press.keys.some((key) => !triggers.has(key.id)));
+}
+
+/**
+ * 入力単位を出す文字を、打つ順の選択ごとに1回ずつつなぐ。1つの選択が複数のストロークになる時、それらは同じ`char`を
+ * 持つので、ストロークごとにつなぐと文字が重なる。`typed`は、文字を出力するストロークをカーソルまでに打った選択の文字。
+ */
+function romajiOfInput(strokes: readonly Stroke[], group: PlaybackInputGroup, cursor: number) {
+  let typed = '';
+  let remaining = '';
+  for (let start = group.start; start < group.end; ) {
+    const selectionIndex = strokes[start].selectionIndex;
+    let finish = start + 1;
+    while (finish < group.end && strokes[finish].selectionIndex === selectionIndex) finish++;
+    // 出力するステップが無い選択（想定外）は、最後のステップで出力したものとして扱い、境目が進まなくならないようにする
+    let outputAt = finish - 1;
+    for (let at = start; at < finish; at++) {
+      if (strokeOutputs(strokes[at])) { outputAt = at; break; }
+    }
+    if (outputAt < cursor) typed += strokes[start].char;
+    else remaining += strokes[start].char;
+    start = finish;
+  }
+  return { typed, remaining };
+}
+
+/**
+ * ローマ字の配列で、入力の行に出す入力単位を返す。打ち終えた単位はかな、打っている途中の現在の単位とこの先の単位は
+ * ローマ字にする。現在の単位は、最後のステップを打ち終えた位置ではかなに戻る。
+ * 範囲の決め方（件数・先読み）は`playbackInputPreview`と同じ。
+ */
+export function playbackRomajiInputPreview(
+  strokes: readonly Stroke[],
+  cursor: number,
+  lookaheadSteps = 0,
+  completedLimit = PLAYBACK_COMPLETED_INPUT_LIMIT,
+): PlaybackRomajiInputSegment[] {
+  const { end, completed, current, planned } = playbackInputGroupsAround(strokes, cursor, lookaheadSteps, completedLimit);
+  const kanaOf = (group: PlaybackInputGroup) => strokes[group.end - 1].inputChar;
+  return [
+    ...completed.map((group) => ({ kind: 'completed' as const, kana: kanaOf(group) })),
+    ...(current === undefined ? [] : [
+      end >= current.end
+        ? { kind: 'current' as const, kana: kanaOf(current) }
+        : { kind: 'current' as const, kana: kanaOf(current), romaji: romajiOfInput(strokes, current, end) },
+    ]),
+    ...planned.map((group) => ({
+      kind: 'planned' as const,
+      kana: kanaOf(group),
+      romaji: romajiOfInput(strokes, group, end),
+    })),
   ];
 }
 

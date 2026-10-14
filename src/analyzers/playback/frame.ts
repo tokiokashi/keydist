@@ -7,6 +7,7 @@ import {
   playbackPlannedKeys,
   playbackPlannedOrders,
   playbackPreparedFingerPositionKeys,
+  playbackRomajiInputPreview,
   playbackRomajiPlan,
   playbackRomajiPlannedKeys,
   playbackRomajiPlannedOrders,
@@ -19,6 +20,7 @@ import {
   playbackTrailOrders,
   clampPlaybackCursor,
   type PlaybackInputPreviewSegment,
+  type PlaybackRomajiInputSegment,
   type PlaybackTimingStep,
 } from '#interpretation/timing/playback.ts';
 import {
@@ -61,6 +63,8 @@ export interface PlaybackFrame {
   /** ローマ字配列で、今の入力単位の予定綴り */
   readonly plannedText: string | undefined;
   readonly inputPreview: readonly PlaybackInputPreviewSegment[];
+  /** 入力の行をローマ字で出す時（ローマ字配列で設定が真）の単位の並び。出さない時は無い */
+  readonly romajiInputPreview: readonly PlaybackRomajiInputSegment[] | undefined;
   readonly layerLabel: string;
   readonly structureLabel: string;
   /** 面の定義があるキーの刻印。無いキーは配列の刻印を使う */
@@ -178,6 +182,9 @@ export function derivePlaybackFrame(input: PlaybackFrameInput): PlaybackFrame {
   const isRomaji = layout.romajiTable !== undefined;
 
   const inputPreview = playbackInputPreview(trace.strokes, cursor, windowSize);
+  const romajiInputPreview = isRomaji && options.showRomajiInput
+    ? playbackRomajiInputPreview(trace.strokes, cursor, windowSize)
+    : undefined;
   const plan = isRomaji ? playbackRomajiPlan(trace.strokes, cursor) : undefined;
 
   const none = <V>() => new Map<string, V>();
@@ -199,6 +206,7 @@ export function derivePlaybackFrame(input: PlaybackFrameInput): PlaybackFrame {
     typedText: stroke?.char ?? '—',
     plannedText: plan?.planned,
     inputPreview,
+    romajiInputPreview,
     layerLabel: layerLabelOf(trace, stroke),
     structureLabel: structureLabelOf(analysis, cursor),
     keyLabels: display?.keyLabels ?? new Map<string, string>(),
