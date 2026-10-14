@@ -1,4 +1,4 @@
-import { deleteUserLayoutCommand, deleteUserRomajiRuleCommand } from '#engine/commands.ts';
+import { deleteFingerAssignmentCommand, deleteUserLayoutCommand, deleteUserRomajiRuleCommand } from '#engine/commands.ts';
 import { importUserAssetsCommand } from '#engine/user-assets-file.ts';
 import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
 import { UserAssetsPage } from './UserAssetsPage.tsx';
@@ -16,6 +16,7 @@ export function UserAssetsApp() {
       onRedo={redo}
       onDeleteLayout={(id) => dispatch(deleteUserLayoutCommand(id))}
       onDeleteRomajiRule={(id) => dispatch(deleteUserRomajiRuleCommand(id))}
+      onDeleteFingerAssignment={(id) => dispatch(deleteFingerAssignmentCommand(id))}
       onImport={(bundle, stamp) => dispatch(importUserAssetsCommand(bundle, stamp))}
     />
   );

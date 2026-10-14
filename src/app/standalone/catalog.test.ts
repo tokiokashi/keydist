@@ -7,7 +7,8 @@ import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { UserRomajiRule } from '#input/romaji/rules.ts';
 import type { ResolvedText } from '#input/text/resolve.ts';
 import { DEFAULT_TEXT_REF } from '#input/text/selection.ts';
-import { EMPTY_SETTINGS_OVERRIDES } from '#engine/settings-items.ts';
+import { EMPTY_SETTINGS_OVERRIDES, setSettingsOverride } from '#engine/settings-items.ts';
+import { DEFAULT_FINGER_ASSIGNMENT } from '#input/shapes/geometry.ts';
 import { paneCatalog } from './catalog.ts';
 
 const RULE: UserRomajiRule = {
@@ -83,4 +84,27 @@ test('規則が手持ちに無い時、条件の要約は規則のidを出さな
   const rows = traceConditionSummary(result.input.cascade, { shapes: catalog.setupCatalog.shapes });
   const display = rows.find((row) => row.id === 'romajiRuleId')?.displayValue;
   assert.equal(display, '見つからないローマ字規則');
+});
+
+test('自作の指の割り当てを条件で選ぶと、解決でその割り当てが使われる。手持ちを渡さなければ既定へ戻り診断が付く', () => {
+  const mine = { ...DEFAULT_FINGER_ASSIGNMENT, id: 'finger-mine', name: '私の運指' };
+  const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'fingerAssignmentId', mine.id);
+  assert.ok(written.ok);
+  if (!written.ok) return;
+  const resolve = (catalog: ReturnType<typeof paneCatalog>) =>
+    resolvePaneInput({ kind: 'layout', layoutId: LAYOUT.id }, new Map(), catalog, written.overrides, TEXT);
+
+  const withMine = paneCatalog({ userLayouts: [LAYOUT], userRomajiRules: [RULE], fingerAssignments: [mine] });
+  assert.deepEqual([...withMine.customFingerAssignments!.keys()], [mine.id]);
+  const found = resolve(withMine);
+  assert.ok(found.ok);
+  if (!found.ok) return;
+  assert.equal(found.input.geometry.assignment.id, mine.id);
+  assert.deepEqual(found.input.cascade.fingerAssignmentId.diagnostics, []);
+
+  const without = resolve(paneCatalog({ userLayouts: [LAYOUT], userRomajiRules: [RULE], fingerAssignments: [] }));
+  assert.ok(without.ok);
+  if (!without.ok) return;
+  assert.equal(without.input.geometry.assignment.id, DEFAULT_FINGER_ASSIGNMENT.id);
+  assert.equal(without.input.cascade.fingerAssignmentId.diagnostics.length, 1);
 });
