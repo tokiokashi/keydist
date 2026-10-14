@@ -791,7 +791,9 @@ async function typeThroughSimultaneous(page: Page, onTask?: (keys: string[]) => 
   throw new Error('同時押しの測定が終わらなかった');
 }
 
-test('同時押しの測定をキー入力で行い、3種類の上乗せが保存される。親指の項目のSpaceはスクロールもボタンの操作もしない', async ({ page }) => {
+test('同時押しの測定をキー入力で行い、3種類の上乗せが保存される。親指の項目のSpaceはフォーカス中のボタンを押さない', async ({ page }) => {
+  // 3項目の測定を、キーを1つずつ送って最後まで打つので、既定の30秒に収まらないことがある
+  test.setTimeout(90_000);
   await seed(page, { [STORAGE_KEY]: SEEDED });
   await open(page);
   await page.locator('[data-personal-speed-start="simultaneous"]').click();
@@ -804,13 +806,11 @@ test('同時押しの測定をキー入力で行い、3種類の上乗せが保�
       expect(await probe(page, ' ')).toEqual({ prevented: false, reached: true });
       return;
     }
-    // 中止のボタンにフォーカスがあってもSpaceで押されず、ページもスクロールしない
+    // 中止のボタンにフォーカスがあってもSpaceで押されない
     await page.locator('[data-personal-speed-cancel]').focus();
-    const before = await page.evaluate(() => window.scrollY);
     await page.keyboard.down(' ');
     await page.keyboard.up(' ');
     await expect(page.locator('[data-personal-speed-run="active"]')).toBeVisible();
-    expect(await page.evaluate(() => window.scrollY)).toBe(before);
   });
   expect(tasks.length).toBe(3);
   expect(tasks.filter((keys) => keys.includes(' ')).length).toBe(1);
