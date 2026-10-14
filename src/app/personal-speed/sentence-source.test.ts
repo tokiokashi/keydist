@@ -18,7 +18,7 @@ import {
   type SentenceStep,
 } from '#interpretation/timing/sentence-session.ts';
 import { adjoinsPunctuation } from '#interpretation/timing/sentence-measurement.ts';
-import { strokeOverheadKinds } from '#interpretation/timing/stroke-structure.ts';
+import { strokeOverheadKinds, strokeOverheadSide } from '#interpretation/timing/stroke-structure.ts';
 import { paneCatalog } from '../standalone/catalog.ts';
 import { personalSpeedSentenceBuilder } from './sentence-source.ts';
 
@@ -246,5 +246,70 @@ test('TK音直入力法で、先に出力の文字で打ったコンボの後は
       assert.ok(!outcomes.includes('wrong-key'), `${text} output=${output}`);
       assert.ok(sentenceRunFinished(run), `${text} output=${output}`);
     }
+  }
+});
+
+/**
+ * 示す`text`を打つ各ストロークのうち、測定がかなの中・かなの境目に分けて数えるもの
+ * （Arpeggio・Chain・その他で、最初のストロークと句読点の前後を除く）の、差の種類と、かなの中・かなの境目。
+ */
+function sideRowsOf(layoutId: string, text: string, overrides: SettingsCascadeOverrides = EMPTY_SETTINGS_OVERRIDES) {
+  const result = builderWith(overrides)({ ...SELECTION, layoutId }, text);
+  assert.ok(result.ok);
+  const { strokes } = result.analysis;
+  const kinds = strokeOverheadKinds(result.analysis);
+  const rows: string[] = [];
+  strokes.forEach((_, index) => {
+    if (index === 0 || adjoinsPunctuation(strokes, index)) return;
+    if (kinds[index] === 'repeat' || kinds[index] === 'sfb') return;
+    rows.push(`${kinds[index]}:${strokeOverheadSide(strokes, index)}`);
+  });
+  return rows;
+}
+
+test('ローマ字入力では、子音から母音がかなの中、かなの変わり目が境目に入る', () => {
+  // 「かな」はkaとnaの2つの入力単位。
+  assert.deepEqual(sideRowsOf('qwerty', 'かな'), ['other:within', 'other:boundary', 'other:within']);
+});
+
+test('拗音の子音から次の打鍵は、同じ入力単位でかなの中に入る', () => {
+  // 「しゅ」はsyuの3打が1つの入力単位。s→yはかなの中に入り、y→uは同指連続なので分けない。
+  assert.deepEqual(sideRowsOf('qwerty', 'しゅ'), ['other:within']);
+});
+
+test('同じキーが続く「ん」のnnの2打目と促音のttは続け打ちなので分けず、次のかなへの打鍵は境目に入る', () => {
+  // 「かんな」はka、nn、naの3つの入力単位。nnの2打目とnaのnは続け打ちで分けない。
+  assert.deepEqual(sideRowsOf('qwerty', 'かんな'), ['other:within', 'other:boundary', 'other:within']);
+  // 「ってこ」のtteは1つの入力単位。t→tは続け打ちで分けず、t→eはかなの中、e→kは境目。
+  assert.deepEqual(sideRowsOf('qwerty', 'ってこ'), ['arpeggio:within', 'other:boundary', 'arpeggio:within']);
+});
+
+test('TK音直入力法の子音から複数のかなを出すコンボは、前の打鍵と同じ入力単位でかなの中に入る', () => {
+  // 「きょう」は、kと、コンボyouのstrokeが同じ入力単位を打つ。
+  assert.deepEqual(sideRowsOf('oonishi-custom', 'きょう'), ['other:within']);
+});
+
+test('前置シフトのかな配列では、シフトキーから文字への打鍵がかなの中に入る', () => {
+  // 月配列2-263の「ま」はシフトキーのdから文字のhへ打つ2打。次の「あ」への打鍵は境目。
+  assert.deepEqual(sideRowsOf('tsuki-2-263', 'まあ'), ['other:within', 'chain:boundary', 'other:within']);
+});
+
+test('文字から後置の濁点への打鍵も、かなの中に入る', () => {
+  // 月配列2-263の「が」は、文字のsから濁点のlへ打つ2打。次の「っ」への打鍵は境目。
+  assert.deepEqual(sideRowsOf('tsuki-2-263', 'がっ'), ['other:within', 'arpeggio:boundary']);
+});
+
+test('1打で1つのかなを打つ配列では、全てのストロークの間がかなの境目になる', () => {
+  const rows = sideRowsOf('shingeta', 'あいうえお');
+  assert.ok(rows.length > 0);
+  assert.ok(rows.every((row) => row.endsWith(':boundary')));
+  assert.ok(rows.includes('chain:boundary'));
+});
+
+test('最初のストロークは、直前のストロークが無いのでかなの境目になる', () => {
+  for (const layoutId of ['qwerty', 'tsuki-2-263', 'shingeta']) {
+    const result = builderWith(EMPTY_SETTINGS_OVERRIDES)({ ...SELECTION, layoutId }, 'まあ');
+    assert.ok(result.ok);
+    assert.equal(strokeOverheadSide(result.analysis.strokes, 0), 'boundary', layoutId);
   }
 });
