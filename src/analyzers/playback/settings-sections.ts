@@ -13,6 +13,7 @@ export type PlaybackSettingsGroupId =
   | 'timing'
   | 'personalSpeed'
   | 'rateAverage'
+  | 'inputRow'
   | 'structure'
   | 'keysAndFingers'
   | 'layoutFigure';
@@ -34,6 +35,7 @@ export const PLAYBACK_WINDOW_GROUPS: readonly PlaybackSettingsGroup[] = [
 ];
 
 export const PLAYBACK_FIGURE_GROUPS: readonly PlaybackSettingsGroup[] = [
+  { id: 'inputRow', title: '入力の行と状態の行', keys: ['showRomajiInput'] },
   { id: 'structure', title: '構造の動的表示', keys: ['showChain', 'showArpeggio', 'showSameFingerMotion'] },
   {
     id: 'keysAndFingers',

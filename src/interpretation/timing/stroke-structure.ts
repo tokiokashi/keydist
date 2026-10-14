@@ -1,6 +1,7 @@
 import type { AggregatedAnalysisResult } from '../structure/aggregate.ts';
 import type { Stroke } from '#trace/generate.ts';
-import type { OverheadSide, StepOverheadKind, StrokeStructureKind } from './calibration.ts';
+import { isThumb, type Finger } from '#input/shapes/geometry.ts';
+import type { OverheadSide, SimultaneousKind, StepOverheadKind, StrokeStructureKind } from './calibration.ts';
 
 /** 構造の種類を決めるのに読む、構造解析の結果の部分。 */
 export type StrokeStructureInput = Pick<AggregatedAnalysisResult, 'strokes' | 'chains' | 'arpeggioSpans'>;
@@ -39,12 +40,20 @@ export function strokeStructureKinds(analysis: StrokeStructureInput): readonly S
   return kinds;
 }
 
+/** ストロークの押下のうち、指とキーだけを読む部分。基準の速さと同時押しの分け方を、押下の指の並びだけから決められるようにする。 */
+export interface StrokePressFingers {
+  readonly presses: readonly {
+    readonly finger: Finger;
+    readonly keys: readonly { readonly id: string }[];
+  }[];
+}
+
 /**
  * ステップ `i` が続け打ちか。ステップ `i` と `i-1` がどちらも押下を1つだけ持ち、その指とキーが同じ時に真。
  * 保持を続けるストロークの層キーは押下に入らず、保持を始めるストロークでは層キーも押下に入る。
  * 押下を複数持つストロークは、同じ形で続けても続け打ちにしない。
  */
-export function isRepeatStroke(stroke: Pick<Stroke, 'presses'> | undefined, previous: Pick<Stroke, 'presses'> | undefined): boolean {
+export function isRepeatStroke(stroke: StrokePressFingers | undefined, previous: StrokePressFingers | undefined): boolean {
   if (stroke === undefined || previous === undefined) return false;
   if (stroke.presses.length !== 1 || previous.presses.length !== 1) return false;
   const [press] = stroke.presses;
@@ -62,6 +71,20 @@ export function strokeOverheadSide(strokes: readonly Pick<Stroke, 'inputIndex'>[
   const stroke = strokes[index];
   const previous = strokes[index - 1];
   return stroke !== undefined && previous !== undefined && stroke.inputIndex === previous.inputIndex ? 'within' : 'boundary';
+}
+
+/**
+ * ストロークの同時押しの分け方（`spec/playback-timing.md` §3.1.2）。押下が2本以上の指にまたがらないストロークは`undefined`。
+ * 押下の指に親指を含めば`thumb`、含まず左右の手にまたがれば`both-hands`、含まず全部同じ手なら`one-hand`。
+ * 保持を続けるストロークの層キーは押下に入らず、保持を始めるストロークでは層キーも押下に入る。
+ * 1本の指で複数のキーを押す押下は、指が1つなので同時押しに入れない。
+ */
+export function strokeSimultaneousKind(stroke: StrokePressFingers | undefined): SimultaneousKind | undefined {
+  if (stroke === undefined) return undefined;
+  const fingers = new Set(stroke.presses.map((press) => press.finger));
+  if (fingers.size < 2) return undefined;
+  if ([...fingers].some(isThumb)) return 'thumb';
+  return new Set([...fingers].map((finger) => finger[0])).size > 1 ? 'both-hands' : 'one-hand';
 }
 
 const overheadKindsCache = new WeakMap<object, readonly StepOverheadKind[]>();

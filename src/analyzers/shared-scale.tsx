@@ -20,13 +20,19 @@ const NO_SUBSCRIBE = (): (() => void) => () => undefined;
  * 報告は描画のあとの副作用で行い、値（最小・最大）が変わった時だけ出し直す。報告は全体の範囲を
  * 自分の範囲の上位集合にするだけで、自分の範囲は全体の範囲に依らないので、報告が循環しない。
  * 閉じる・対象や見る量を変えて本体が消えると、そのペインの範囲は外れる。
+ *
+ * 描く値が1つも無いペインは`own`に`undefined`を渡す。報告せず、範囲を広げない。
+ * 返すのは他のペインの範囲で、他にも無ければ`undefined`。
  */
-export function useSharedScale(key: string, own: ScaleRange): ScaleRange {
+export function useSharedScale(key: string, own: ScaleRange): ScaleRange;
+export function useSharedScale(key: string, own: ScaleRange | undefined): ScaleRange | undefined;
+export function useSharedScale(key: string, own: ScaleRange | undefined): ScaleRange | undefined {
   const registry = useContext(SharedScaleContext);
   const owner = useId();
-  const { min, max } = own;
+  const min = own?.min;
+  const max = own?.max;
   useEffect(() => {
-    if (registry === undefined) return undefined;
+    if (registry === undefined || min === undefined || max === undefined) return undefined;
     registry.report(key, owner, { min, max });
     return () => registry.report(key, owner, undefined);
   }, [registry, key, owner, min, max]);
@@ -36,6 +42,7 @@ export function useSharedScale(key: string, own: ScaleRange): ScaleRange {
     NONE,
   );
   if (shared === undefined) return own;
+  if (min === undefined || max === undefined) return shared;
   // 報告が済む前の描画でも、自分の範囲は必ず含める
   return {
     min: Math.min(shared.min, min),

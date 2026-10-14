@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { Fragment, useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { keyboardStandardForGeometryId } from '#input/shapes/key-labels.ts';
 import {
   reconcilePlaybackStateAfterAnalysisRefresh,
@@ -15,9 +15,14 @@ import { playbackCalculationNotes } from './calculation-notes.ts';
 import { usePlaybackFields } from './option-fields.tsx';
 import type { PlaybackOptions } from './options.ts';
 import { PlaybackKeyboard, type PlaybackFeedback } from './playback-keyboard.tsx';
+import { usePlaybackAvailability, usePlaybackBroadcastStore, usePlaybackCommand } from './playback-broadcast.tsx';
 import {
+  applyPlaybackAction,
   initialPlaybackState,
   pausePlayback,
+  playbackPaneReport,
+  playbackPaneStatus,
+  playbackToggleAction,
   seekPlayback,
   startPlayback,
   stepPlaybackBy,
@@ -101,7 +106,44 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options, onOp
     });
   }
   const { state } = session;
+
+  // Workspaceでは、再生・一時停止・停止を全部の打鍵再生のペインへ伝える。伝えられた操作は購読で同じ描画の確定の中に届き、
+  // ここで再生位置へ当てる（副作用で遅れて当てると、ペインどうしの開始が1フレーム以上ずれる）。
+  // 個別画面は伝える相手が無く、自分だけを動かす。
+  const broadcast = usePlaybackBroadcastStore();
+  const command = usePlaybackCommand(broadcast);
+  const availability = usePlaybackAvailability(broadcast);
+  const [appliedRevision, setAppliedRevision] = useState(command.revision);
+  if (appliedRevision !== command.revision) {
+    const { action } = command;
+    setAppliedRevision(command.revision);
+    if (action !== undefined) {
+      setSession((previous) => withFeedback(previous, applyPlaybackAction(previous.state, action, total)));
+    }
+  }
+  // 押せる条件に使う状態を報告する。本体を描いている間だけ加わり、打鍵の無いペインは加わらない
+  const reportOwner = useId();
+  const status = playbackPaneStatus(state, total);
+  const reported = playbackPaneReport(state, total);
+  const reportedAtStart = reported?.atStart;
+  const reportedPlaying = reported?.playing;
+  const reportedAtEnd = reported?.atEnd;
+  useEffect(() => {
+    if (broadcast === undefined) return;
+    broadcast.report(
+      reportOwner,
+      reportedAtStart === undefined || reportedPlaying === undefined || reportedAtEnd === undefined
+        ? undefined
+        : { atStart: reportedAtStart, playing: reportedPlaying, atEnd: reportedAtEnd },
+    );
+  }, [broadcast, reportOwner, reportedAtStart, reportedPlaying, reportedAtEnd]);
+  useEffect(() => {
+    if (broadcast === undefined) return undefined;
+    return () => broadcast.report(reportOwner, undefined);
+  }, [broadcast, reportOwner]);
+
   const seekWasPlaying = useRef<boolean | undefined>(undefined);
+  const seekId = useId();
 
   // 押した直後の合図。進む向きに動いた時だけ、そのステップで押したキーを光らせる
   const withFeedback = (previous: Session, next: PlaybackState): Session => {
@@ -171,6 +213,17 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options, onOp
   };
 
   const atEnd = state.cursor >= total;
+  // 全部のペインに伝える時は、押したペインだけでなく全部のペインの状態で押せるかを決める（自分の状態は報告より新しい）
+  const canPlay = !atEnd || (broadcast !== undefined && availability.canPlay);
+  const canStop = !status.atStart || state.playing || (broadcast !== undefined && availability.canStop);
+  const toggle = () => {
+    if (broadcast === undefined) update((previous) => (previous.playing ? pausePlayback(previous) : startPlayback(previous, total)));
+    else broadcast.dispatch(playbackToggleAction(state));
+  };
+  const stop = () => {
+    if (broadcast === undefined) update(stopPlayback);
+    else broadcast.dispatch('stop');
+  };
 
   return (
     <section className="playback-feature" data-react-feature="playback">
@@ -185,6 +238,9 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options, onOp
           {calculation.personalSpeedInUse ? <span data-playback-calculation-personal-speed>個人速度で計算しています。</span> : null}
           {calculation.keystrokeOverheadInUse ? (
             <span data-playback-calculation-overhead>{' '}個人速度のうち、文章を打つ速さで測った打鍵の上乗せ（ミリ秒）を足しています。</span>
+          ) : null}
+          {calculation.simultaneousOverheadInUse ? (
+            <span data-playback-calculation-simultaneous>{' '}個人速度のうち、同時押しの上乗せ（ミリ秒）を足しています。</span>
           ) : null}
           {calculation.changes.length > 0 ? (
             <span data-playback-calculation-changes>
@@ -201,28 +257,32 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options, onOp
           type="button"
           className="playback-primary"
           data-playback-action="toggle"
-          disabled={atEnd && !state.playing}
-          onClick={() => update((previous) => (previous.playing ? pausePlayback(previous) : startPlayback(previous, total)))}
+          disabled={!state.playing && !canPlay}
+          onClick={toggle}
         >
           <span aria-hidden="true">{state.playing ? '⏸' : '▶'}</span> {state.playing ? '一時停止' : '再生'}
         </button>
-        <button type="button" data-playback-action="stop" disabled={state.cursor === 0 && !state.playing} onClick={() => update(stopPlayback)}>
+        <button type="button" data-playback-action="stop" disabled={!canStop} onClick={stop}>
           <span aria-hidden="true">■</span> 停止
         </button>
         <button type="button" data-playback-action="forward" disabled={state.playing || atEnd} onClick={() => update((previous) => stepPlaybackBy(previous, 1, total))}>
           <span aria-hidden="true">▶</span> 1ステップ進む
         </button>
-        <span className="playback-position" aria-live="polite" data-playback-position>
-          {state.cursor} / {total}ステップ
-        </span>
       </div>
 
-      <label
+      <div
         className="playback-seek"
         style={{ '--seek-axis-left': axisInsets.left, '--seek-axis-right': axisInsets.right } as CSSProperties}
       >
-        <span>再生位置</span>
+        {/* 数はラベルの横に置き、ラベルとスライダーの名前は「再生位置」のまま保つ（数を名前に入れると、数が変わるたびに読み上げ名が変わる） */}
+        <div className="playback-seek-head">
+          <label className="playback-seek-label" htmlFor={seekId}>再生位置</label>
+          <span className="playback-position" aria-live="polite" data-playback-position>
+            {state.cursor} / {total}ステップ
+          </span>
+        </div>
         <input
+          id={seekId}
           type="range"
           data-playback-seek
           min={0}
@@ -238,19 +298,21 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options, onOp
           onPointerUp={finishSeek}
           onPointerCancel={finishSeek}
         />
-      </label>
+      </div>
 
       <div className="playback-status" aria-live="polite">
         <div className="playback-status-line">
           {frame.isRomaji ? (
             <span className="playback-romaji" data-playback-romaji>
               <span className="playback-current" data-playback-kana>{frame.kanaText}</span>
-              <span className="playback-typed">
-                打鍵: <code data-playback-typed>{frame.typedText}</code>
-                {frame.plannedText === undefined ? null : (
-                  <span className="playback-planned" data-playback-planned>予定: {frame.plannedText}</span>
-                )}
-              </span>
+              {frame.romajiInputPreview !== undefined ? null : (
+                <span className="playback-typed">
+                  打鍵: <code data-playback-typed>{frame.typedText}</code>
+                  {frame.plannedText === undefined ? null : (
+                    <span className="playback-planned" data-playback-planned>予定: {frame.plannedText}</span>
+                  )}
+                </span>
+              )}
             </span>
           ) : (
             <span className="playback-current" data-playback-current>{frame.currentText}</span>
@@ -270,17 +332,46 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options, onOp
               </span>
             ))}
           </span>
-          <span className="playback-history-rest" data-playback-history-text>
-            {frame.inputPreview.map((segment, index) => segment.kind !== 'completed' && (
-              <span
-                key={`${segment.kind}-${index}`}
-                className={`playback-input-segment playback-input-${segment.kind}`}
-                aria-current={segment.kind === 'current' ? 'step' : undefined}
-              >
-                {segment.text}
+          {frame.romajiInputPreview === undefined ? (
+            <span className="playback-history-rest" data-playback-history-text>
+              {frame.inputPreview.map((segment, index) => segment.kind !== 'completed' && (
+                <span
+                  key={`${segment.kind}-${index}`}
+                  className={`playback-input-segment playback-input-${segment.kind}`}
+                  aria-current={segment.kind === 'current' ? 'step' : undefined}
+                >
+                  {segment.text}
+                </span>
+              ))}
+            </span>
+          ) : (
+            <span className="playback-history-rest playback-history-rest-romaji" data-playback-history-text>
+              {frame.romajiInputPreview.map((segment, index) => segment.kind === 'current' && (
+                <span
+                  key={`${segment.kind}-${index}`}
+                  className="playback-input-segment playback-input-current"
+                  aria-current="step"
+                >
+                  {segment.romaji === undefined ? segment.kana : (
+                    <>
+                      <span className="playback-input-typed">{segment.romaji.typed}</span>
+                      {segment.romaji.remaining}
+                    </>
+                  )}
+                </span>
+              ))}
+              <span className="playback-history-ahead">
+                {frame.romajiInputPreview.map((segment, index) => segment.kind === 'planned' && (
+                  <span
+                    key={`${segment.kind}-${index}`}
+                    className="playback-input-segment playback-input-planned"
+                  >
+                    {segment.romaji?.remaining ?? segment.kana}
+                  </span>
+                ))}
               </span>
-            ))}
-          </span>
+            </span>
+          )}
         </div>
       </div>
 
