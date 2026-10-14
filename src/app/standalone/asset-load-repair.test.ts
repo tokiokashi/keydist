@@ -1,16 +1,16 @@
 import assert from 'node:assert/strict';
 import test, { beforeEach } from 'node:test';
 import type { KeyValueStorage } from '#platform/persistence/storage.ts';
-import type { KeydistAssets } from '#engine/commands.ts';
+import { setStandaloneAnalyzerOptionsCommand, type KeydistAssets } from '#engine/commands.ts';
 import { ASSET_KEYS, ASSET_STORAGE_SPECS, type AssetStorageSpec } from './asset-storage-specs.ts';
 import { buildAssetSyncs, loadAssetsAndRepair, startAssetSyncs } from './asset-syncs.ts';
 import {
-  claimInitialAssetLoad,
   dismissAssetLoadNotices,
   getAssetLoadNoticesSnapshot,
   reportAssetLoadNotices,
   resetAssetLoadNoticesForTest,
 } from './asset-load-notice.ts';
+import { createAssetStore } from './asset-store.ts';
 import { assetNoticeText } from './asset-load-notice-text.ts';
 
 function createFakeStorage(options: { readonly failWrites?: boolean } = {}) {
@@ -188,11 +188,18 @@ test('知らせの記憶: 同じ資産は重複せず、新しい版の値は閉
   assert.equal(getAssetLoadNoticesSnapshot().length, 1);
 });
 
-test('そのタブの最初の読み込みだけが知らせと書き戻しを担う', () => {
-  assert.equal(claimInitialAssetLoad(), true);
-  assert.equal(claimInitialAssetLoad(), false);
-  resetAssetLoadNoticesForTest();
-  assert.equal(claimInitialAssetLoad(), true);
+test('ストアは最初に読み込む所で1回だけ知らせ、書き戻す', () => {
+  const key = 'presetLibrary';
+  const { storage, map, writes } = createFakeStorage();
+  map.set(ASSET_STORAGE_SPECS[key].storageKey, repairableRaw(key));
+  const store = createAssetStore({ storage, notify: () => {} });
+
+  store.start();
+  store.start();
+  store.dispatch(undefined, setStandaloneAnalyzerOptionsCommand('heatmap', { n: 1 }));
+
+  assert.equal(getAssetLoadNoticesSnapshot().length, 1);
+  assert.equal(writes.filter((w) => w === ASSET_STORAGE_SPECS[key].storageKey).length, 1);
 });
 
 test('知らせの文: 資産の名前と件数だけを出し、codecの診断の文を流さない', () => {

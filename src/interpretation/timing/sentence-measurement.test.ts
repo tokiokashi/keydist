@@ -8,7 +8,7 @@ import {
   type Point,
 } from '#input/shapes/geometry.ts';
 import type { Press, Stroke } from '#trace/generate.ts';
-import type { PlaybackCalibration } from './calibration.ts';
+import type { OverheadKind, PlaybackCalibration } from './calibration.ts';
 import { playbackCrossHandDirection, type PlaybackTimingAnalysis } from './playback.ts';
 import {
   SENTENCE_MIN_SAMPLES,
@@ -58,9 +58,26 @@ function alternating(count: number, chains: ReturnType<typeof range>[] = [], arp
   return { strokes, transitions: [], chains, arpeggioSpans } as unknown as PlaybackTimingAnalysis;
 }
 
+const UNDIVIDED_KINDS: readonly OverheadKind[] = ['arpeggio', 'chain', 'other', 'repeat', 'sfb'];
+
+/** かなの中・かなの境目の値を除き、分けない値と続け打ち・同指連続だけを残す。 */
+function undivided<T>(record: Readonly<Partial<Record<OverheadKind, T>>>): Partial<Record<OverheadKind, T>> {
+  return Object.fromEntries(Object.entries(record).filter(([kind]) => UNDIVIDED_KINDS.includes(kind as OverheadKind)));
+}
+
 /** 1本の文の1回分だけを数える測定。 */
-function measureOne(analysis: PlaybackTimingAnalysis, calibration: PlaybackCalibration, taps: readonly SentenceTap[]) {
+function measureOneRaw(analysis: PlaybackTimingAnalysis, calibration: PlaybackCalibration, taps: readonly SentenceTap[]) {
   return measureSentence([{ sentence: 0, analysis, taps }], calibration);
+}
+
+/** `measureOneRaw`のうち、分けない値と続け打ち・同指連続だけを残した結果。 */
+function measureOne(analysis: PlaybackTimingAnalysis, calibration: PlaybackCalibration, taps: readonly SentenceTap[]) {
+  const result = measureOneRaw(analysis, calibration, taps);
+  return {
+    ...result,
+    counts: undivided(result.counts) as typeof result.counts,
+    overheadMs: undivided(result.overheadMs),
+  };
 }
 
 function applyWithCurrent(base: PlaybackCalibration | undefined, analysis: PlaybackTimingAnalysis, taps: readonly SentenceTap[], nowMs: number, current: PlaybackCalibration | undefined) {
@@ -73,6 +90,7 @@ function applySentenceMeasurement(base: PlaybackCalibration | undefined, analysi
 }
 
 const NO_COUNTS = { arpeggio: 0, chain: 0, other: 0, repeat: 0, sfb: 0 };
+const NO_SIDE_COUNTS = { ...NO_COUNTS, 'arpeggio-within': 0, 'arpeggio-boundary': 0, 'chain-within': 0, 'chain-boundary': 0, 'other-within': 0, 'other-boundary': 0 };
 
 const SAVED: PlaybackCalibration = {
   actionsPerSecond: 5,
@@ -206,7 +224,7 @@ test('反映は打鍵の上乗せだけを置き換え、他の項目と、持�
   const analysis = alternating(20);
   const result = applySentenceMeasurement(base, analysis, tapsFor(20, () => 260), 99);
   assert.ok(result.ok);
-  assert.deepEqual(result.calibration, { ...SAVED, keystrokeOverheadMs: { other: 60 }, measuredAt: 99 });
+  assert.deepEqual(result.calibration, { ...SAVED, keystrokeOverheadMs: { other: 60, 'other-boundary': 60 }, sentenceSimultaneousKinds: [], measuredAt: 99 });
 });
 
 test('保存の時の保存値が、測定を始めた時の保存値と違えば、保存せずに測り直させる', () => {
@@ -242,7 +260,7 @@ test('打鍵の上乗せが範囲を外れたら、保存せずに測り直さ�
   // 1000ミリ秒ちょうどは保存できる
   const edge = applySentenceMeasurement(SAVED, alternating(20), tapsFor(20, () => 1200), 1);
   assert.ok(edge.ok);
-  assert.deepEqual(edge.calibration.keystrokeOverheadMs, { other: 1000 });
+  assert.deepEqual(edge.calibration.keystrokeOverheadMs, { other: 1000, 'other-boundary': 1000 });
 });
 
 test('下限の数は、文ごとに数える回のうち最大の回の数で、同じ文の2回目と3回目で数え直さない', () => {
@@ -252,11 +270,12 @@ test('下限の数は、文ごとに数える回のうち最大の回の数で�
   // 1回分で数えるのは9打。同じ文の2回目と3回目を数えても、9打のまま。
   const sameSentence = measureSentence([sample(0), sample(0)], SAVED);
   assert.equal(sameSentence.counts.other, 9);
+  assert.equal(sameSentence.counts['other-boundary'], 9);
   assert.deepEqual(sameSentence.overheadMs, {});
   // 別の文は足す。
   const otherSentence = measureSentence([sample(0), sample(0), sample(1), sample(1)], SAVED);
   assert.equal(otherSentence.counts.other, 18);
-  assert.deepEqual(otherSentence.overheadMs, { other: 60 });
+  assert.deepEqual(otherSentence.overheadMs, { other: 60, 'other-boundary': 60 });
 });
 
 test('文ごとの数は回の最大で、回ごとに数が違えば大きい回の数になる', () => {
@@ -395,7 +414,7 @@ test('下限は差の種類ごとに当てはめ、届いた種類だけを保�
   assert.deepEqual(overheadMs, { other: 60 });
   const result = applySentenceMeasurement(SAVED, analysis, tapsFor(30, () => 260), 7);
   assert.ok(result.ok);
-  assert.deepEqual(result.calibration.keystrokeOverheadMs, { other: 60 });
+  assert.deepEqual(result.calibration.keystrokeOverheadMs, { other: 60, 'other-boundary': 60 });
 });
 
 const emptyRow = (count = 0) => ({ count });
@@ -407,19 +426,12 @@ test('表の1行は、数えたストロークの基準の時間・間隔・差�
   assert.deepEqual(overheadMs, { other: -50 });
 });
 
-test('異手の向きごとの行の差も、負の値のまま持つ', () => {
-  const { crossHand } = measureOne(alternating(20), SAVED, tapsFor(20, () => 150));
-  assert.equal(crossHand['L→R'].differenceMs, -50);
-  assert.equal(crossHand['R→L'].differenceMs, -50);
-});
-
 test('数えたストロークが無い種類の行は、打数だけを持ち四分位平均を持たない', () => {
-  const { kinds, crossHand } = measureOne(alternating(20), SAVED, tapsFor(20, () => 260));
+  const { kinds } = measureOne(alternating(20), SAVED, tapsFor(20, () => 260));
   assert.deepEqual(kinds.arpeggio, emptyRow());
   assert.deepEqual(kinds.chain, emptyRow());
   assert.deepEqual(kinds.repeat, emptyRow());
   assert.deepEqual(kinds.sfb, emptyRow());
-  assert.equal(crossHand['L→R'].count + crossHand['R→L'].count, 19);
 });
 
 test('下限に届かない種類の行も、打数と四分位平均を持つ', () => {
@@ -443,38 +455,21 @@ test('異手の方向は、今のストロークの押下の順に直前の押�
   assert.equal(playbackCrossHandDirection(undefined, at('LI')), undefined);
 });
 
-test('「その他」の異手のストロークは、その他の行と方向の行の両方に入り、ArpeggioとChainの遷移は方向の行に入らない', () => {
-  // 遷移1〜13はArpeggio、15〜27はChain、14と28〜39はその他。奇数番はL→R、偶数番はR→L。
-  const analysis = alternating(40, [range(14, 28)], [range(0, 14)]);
-  const calibration: PlaybackCalibration = { ...SAVED, actionsPerSecondByDirection: { 'L→R': 10, 'R→L': 5 } };
-  const { kinds, crossHand, counts } = measureOne(analysis, calibration, tapsFor(40, (index) => (index % 2 === 1 ? 250 : 260)));
-  assert.deepEqual(counts, { ...NO_COUNTS, arpeggio: 13, chain: 13, other: 13 });
-  assert.deepEqual(crossHand['L→R'], { count: 6, baseMs: 100, intervalMs: 250, differenceMs: 150 });
-  assert.deepEqual(crossHand['R→L'], { count: 7, baseMs: 200, intervalMs: 260, differenceMs: 60 });
-  assert.equal(crossHand['L→R'].count + crossHand['R→L'].count, kinds.other.count);
-  assert.equal(kinds.arpeggio.count, 13);
-});
-
-test('方向の行の打数も、文ごとに数える回の最大を全文で足した数で求める', () => {
-  const analysis = alternating(20);
-  const samples: SentenceSample[] = [
-    { sentence: 0, analysis, taps: tapsFor(20, () => 260) },
-    { sentence: 0, analysis, taps: tapsFor(20, () => 260, (index) => index > 10) },
-  ];
-  const { crossHand } = measureSentence(samples, SAVED);
-  assert.equal(crossHand['L→R'].count + crossHand['R→L'].count, 19);
-});
-
 test('表は、保存した時は届いた種類を「保存した」、届かない種類を「下限に届かず」とする', () => {
   const result = applySentenceMeasurement(SAVED, alternating(20), tapsFor(20, () => 260), 5);
   const table = sentenceResultTable(result);
   assert.ok(table);
-  assert.equal(table.kinds.length, 5);
-  assert.equal(table.crossHand.length, 2);
+  assert.equal(table.kinds.length, 11);
   assert.deepEqual(table.kinds.map(({ kind, status }) => [kind, status]), [
     ['arpeggio', 'below-minimum'],
+    ['arpeggio-within', 'below-minimum'],
+    ['arpeggio-boundary', 'below-minimum'],
     ['chain', 'below-minimum'],
+    ['chain-within', 'below-minimum'],
+    ['chain-boundary', 'below-minimum'],
     ['other', 'saved'],
+    ['other-within', 'below-minimum'],
+    ['other-boundary', 'saved'],
     ['repeat', 'below-minimum'],
     ['sfb', 'below-minimum'],
   ]);
@@ -485,7 +480,7 @@ test('表は、どの種類も下限に届かず保存しなかった時にも�
   const table = sentenceResultTable(applySentenceMeasurement(SAVED, alternating(6), tapsFor(6, () => 260), 5));
   assert.ok(table);
   assert.ok(table.kinds.every(({ status }) => status === 'below-minimum'));
-  assert.equal(table.kinds[2].stats.intervalMs, 260);
+  assert.equal(table.kinds.find(({ kind }) => kind === 'other')?.stats.intervalMs, 260);
 });
 
 test('表は、範囲の外で保存しなかった時に出て、届いた種類を「範囲の外」、届かない種類を「下限に届かず」とする', () => {
@@ -493,8 +488,11 @@ test('表は、範囲の外で保存しなかった時に出て、届いた種�
   assert.ok(!result.ok && result.reason === 'out-of-range');
   const table = sentenceResultTable(result);
   assert.ok(table);
-  assert.deepEqual(table.kinds.map(({ status }) => status), ['below-minimum', 'below-minimum', 'out-of-range', 'below-minimum', 'below-minimum']);
-  assert.equal(table.kinds[2].stats.differenceMs, 4800);
+  assert.deepEqual(
+    table.kinds.map(({ kind, status }) => [kind, status]).filter(([, status]) => status !== 'below-minimum'),
+    [['other', 'out-of-range'], ['other-boundary', 'out-of-range']],
+  );
+  assert.equal(table.kinds.find(({ kind }) => kind === 'other')?.stats.differenceMs, 4800);
 });
 
 test('表は、保存値が無い時と測定の途中で保存値が変わった時は出さない', () => {
@@ -508,11 +506,10 @@ test('出力の文字の読み方で完了したストロークは、そのス�
   const analysis = alternating(21);
   const flagged = new Set([0, 7, 20]);
   const taps = tapsFor(21, () => 260).map((tap, index) => (flagged.has(index) ? { ...tap, outputCompleted: true } : tap));
-  const { counts, crossHand } = measureOne(analysis, SAVED, taps);
+  const { counts } = measureOne(analysis, SAVED, taps);
   // 20の間隔（1〜20）のうち、7と20は自分の間隔、1と8は直前が印のあるストロークの間隔で外れて、20 - 4 = 16。
   // 0は最初のストロークで自分の間隔が無い。
   assert.deepEqual(counts, { ...NO_COUNTS, other: 16 });
-  assert.equal(crossHand['L→R'].count + crossHand['R→L'].count, 16);
 });
 
 test('出力の文字の読み方で完了した印が無ければ、数えるストロークは今と同じ', () => {
@@ -521,4 +518,181 @@ test('出力の文字の読み方で完了した印が無ければ、数える�
   const marked = measureOne(analysis, SAVED, tapsFor(21, () => 260).map((tap) => ({ ...tap, outputCompleted: false })));
   assert.deepEqual(marked, plain);
   assert.equal(plain.counts.other, 20);
+});
+
+/** 入力単位を付け替えた解析結果。構造と指はそのまま。 */
+function withInputIndex(analysis: PlaybackTimingAnalysis, inputIndexOf: (index: number) => number): PlaybackTimingAnalysis {
+  return { ...analysis, strokes: analysis.strokes.map((item, index) => ({ ...item, inputIndex: inputIndexOf(index) })) };
+}
+
+/** 左右の人差し指を交互に打ち、入力単位は2打ずつ（奇数番が前と同じ入力単位）にした列。 */
+const pairedUnits = (count: number, spans: { chains?: ReturnType<typeof range>[]; arpeggioSpans?: ReturnType<typeof range>[] } = {}) =>
+  withInputIndex(alternating(count, spans.chains ?? [], spans.arpeggioSpans ?? []), (index) => Math.floor(index / 2));
+
+test('構造の種類は、かなの中・かなの境目の値を、分けない値に加えて求める', () => {
+  // 遷移1,3,…が直前と同じ入力単位（かなの中）で間隔300、遷移2,4,…が違う入力単位（かなの境目）で間隔260。
+  const { counts, kinds, overheadMs } = measureOneRaw(pairedUnits(21), SAVED, tapsFor(21, (i) => (i % 2 === 1 ? 300 : 260)));
+  assert.deepEqual(counts, { ...NO_SIDE_COUNTS, other: 20, 'other-within': 10, 'other-boundary': 10 });
+  assert.deepEqual(kinds['other-within'], { count: 10, baseMs: 200, intervalMs: 300, differenceMs: 100 });
+  assert.deepEqual(kinds['other-boundary'], { count: 10, baseMs: 200, intervalMs: 260, differenceMs: 60 });
+  // 分けない値は、20個の差（100が10個・60が10個）から5個ずつ除いた平均。
+  assert.deepEqual(overheadMs, { other: 80, 'other-within': 100, 'other-boundary': 60 });
+});
+
+test('Arpeggio・Chainもかなの中・かなの境目に分け、続け打ちと同指連続は分けない', () => {
+  const arpeggio = measureOneRaw(pairedUnits(21, { arpeggioSpans: [range(0, 21)] }), SAVED, tapsFor(21, (i) => (i % 2 === 1 ? 300 : 260)));
+  assert.deepEqual(arpeggio.overheadMs, { arpeggio: 80, 'arpeggio-within': 100, 'arpeggio-boundary': 60 });
+  const chain = measureOneRaw(pairedUnits(21, { chains: [range(0, 21)] }), SAVED, tapsFor(21, (i) => (i % 2 === 1 ? 300 : 260)));
+  assert.deepEqual(chain.overheadMs, { chain: 80, 'chain-within': 100, 'chain-boundary': 60 });
+  const repeating = measureOneRaw(withInputIndex(REPEATING, (i) => Math.floor(i / 2)), SAVED, tapsFor(20, () => 260));
+  const sfb = measureOneRaw(
+    withInputIndex(custom(Array.from({ length: 20 }, () => 'LI' as Finger), (i) => (i % 2 === 0 ? 'f' : 'g'), () => 2), (i) => Math.floor(i / 2)),
+    SAVED,
+    tapsFor(20, () => 260),
+  );
+  assert.deepEqual(Object.keys(repeating.overheadMs), ['repeat']);
+  assert.deepEqual(Object.keys(sfb.overheadMs), ['sfb']);
+});
+
+test('かなの中・かなの境目は、側ごとに数えた打鍵が10未満なら保存せず、分けない値は分けない打数で決める', () => {
+  // 20打: 遷移19のうち、かなの中が10、かなの境目が9。
+  const analysis = pairedUnits(20);
+  const taps = tapsFor(20, (i) => (i % 2 === 1 ? 300 : 260));
+  const measured = measureOneRaw(analysis, SAVED, taps);
+  assert.equal(measured.counts['other-within'], 10);
+  assert.equal(measured.counts['other-boundary'], 9);
+  assert.deepEqual(Object.keys(measured.overheadMs).sort(), ['other', 'other-within']);
+  assert.equal(measured.kinds['other-boundary'].differenceMs, 60);
+  const result = applySentenceMeasurement(SAVED, analysis, taps, 3);
+  assert.ok(result.ok);
+  assert.deepEqual(Object.keys(result.calibration.keystrokeOverheadMs ?? {}).sort(), ['other', 'other-within']);
+});
+
+test('かなの中が0打の配列でも、分けない値は境目の値と同じになる', () => {
+  const { overheadMs, counts } = measureOneRaw(alternating(20), SAVED, tapsFor(20, () => 260));
+  assert.equal(counts['other-within'], 0);
+  assert.deepEqual(overheadMs, { other: 60, 'other-boundary': 60 });
+});
+
+test('側ごとの打数も、文ごとに数える回の最大を全文で足した数で求める', () => {
+  const analysis = pairedUnits(12);
+  const taps = tapsFor(12, () => 260);
+  const half = tapsFor(12, () => 260, (i) => i > 5);
+  const { counts } = measureSentence([
+    { sentence: 0, analysis, taps },
+    { sentence: 0, analysis, taps: half },
+    { sentence: 1, analysis, taps },
+  ], SAVED);
+  // 1回分は、かなの中が6（遷移1,3,5,7,9,11）、かなの境目が5（遷移2,4,6,8,10）。
+  assert.equal(counts['other-within'], 12);
+  assert.equal(counts['other-boundary'], 10);
+  assert.equal(counts.other, 22);
+});
+
+test('かなの中・かなの境目の値が範囲の外なら、分けない値が範囲の中でも保存値の全部を保存しない', () => {
+  // かなの中の差が1100（範囲の外）、かなの境目は9打で保存しない。分けない値は範囲の中。
+  const analysis = pairedUnits(20);
+  const taps = tapsFor(20, (i) => (i % 2 === 1 ? 1300 : 260));
+  const result = applySentenceMeasurement(SAVED, analysis, taps, 3);
+  assert.ok(!result.ok && result.reason === 'out-of-range');
+  const other = result.measurement.overheadMs.other;
+  assert.ok(other !== undefined && other <= 1000);
+  assert.equal(result.measurement.overheadMs['other-within'], 1100);
+  const table = sentenceResultTable(result);
+  assert.deepEqual(
+    table?.kinds.filter(({ status }) => status === 'out-of-range').map(({ kind }) => kind),
+    ['other', 'other-within'],
+  );
+});
+
+test('表は保存する行の11行を、構造の種類ごとに分けない値・かなの中・かなの境目の順に持ち、手の関係で分けた行を持たない', () => {
+  const table = sentenceResultTable(applySentenceMeasurement(SAVED, pairedUnits(21), tapsFor(21, () => 260), 5));
+  assert.ok(table);
+  assert.deepEqual(table.kinds.map(({ kind }) => kind), [
+    'arpeggio', 'arpeggio-within', 'arpeggio-boundary',
+    'chain', 'chain-within', 'chain-boundary',
+    'other', 'other-within', 'other-boundary',
+    'repeat', 'sfb',
+  ]);
+  assert.deepEqual(Object.keys(table), ['kinds']);
+  assert.equal(table.kinds.find(({ kind }) => kind === 'other-within')?.stats.count, 10);
+});
+
+test('分けない値と打数は、入力単位の分け方が違っても同じ打鍵の記録から変わらない', () => {
+  const taps = tapsFor(21, (i) => (i % 2 === 1 ? 300 : 260));
+  const allBoundary = measureOne(alternating(21), SAVED, taps);
+  const paired = measureOne(pairedUnits(21), SAVED, taps);
+  assert.deepEqual(paired.counts, allBoundary.counts);
+  assert.deepEqual(paired.kinds.other, allBoundary.kinds.other);
+  assert.equal(paired.overheadMs.other, allBoundary.overheadMs.other);
+});
+
+/** `alternating`の列の、`overrides`の番号のストロークを、指定の押下の指に置き換える。 */
+function withPresses(analysis: PlaybackTimingAnalysis, overrides: Readonly<Record<number, readonly Finger[]>>, punctuationAt: readonly number[] = []): PlaybackTimingAnalysis {
+  return {
+    ...analysis,
+    strokes: analysis.strokes.map((s, index) => {
+      const fingers = overrides[index];
+      const base = punctuationAt.includes(index) ? { ...s, inputChar: '、' } : s;
+      return fingers === undefined ? base : { ...base, presses: fingers.map((finger) => press(finger)) };
+    }),
+  } as PlaybackTimingAnalysis;
+}
+
+test('同時押しの分け方の記録は、保存した行の値を求めるのに数えたストロークの分け方で、四分位平均で除いたストロークも含む', () => {
+  // 5番目は両手、6番目は片手の同時押し。5番目の間隔は大きく外れて四分位平均で除かれる。
+  const analysis = withPresses(alternating(30), { 5: ['LI', 'RI'], 6: ['LI', 'LM'] });
+  const taps = tapsFor(30, (index) => (index === 5 ? 3000 : 260));
+  const { overheadMs, simultaneousKinds } = measureOneRaw(analysis, SAVED, taps);
+  assert.ok(overheadMs.other !== undefined);
+  assert.deepEqual(simultaneousKinds, ['both-hands', 'one-hand']);
+  const result = applySentenceMeasurement(SAVED, analysis, taps, 5);
+  assert.ok(result.ok);
+  assert.deepEqual(result.calibration.sentenceSimultaneousKinds, ['both-hands', 'one-hand']);
+});
+
+test('同時押しの分け方の記録は、数えないストロークと、保存しなかった行にだけ入ったストロークの分け方を含まない', () => {
+  const analysis = withPresses(
+    alternating(40),
+    {
+      0: ['LI', 'RT'], // 最初のストロークは数えない（親指）
+      4: ['LI', 'RI'], // 句読点の直後は数えない（両手）
+      9: ['RI', 'RM'], // 違うキーを押したストロークは数えない（片手）
+    },
+    [3],
+  );
+  const taps = tapsFor(40, () => 260, (index) => index !== 9);
+  assert.deepEqual(measureOneRaw(analysis, SAVED, taps).simultaneousKinds, []);
+  // 同指連続の行は10打に届かず保存しないので、その行にだけ入った片手の同時押しは含まない。
+  const sfbOnly = {
+    ...alternating(40),
+    strokes: alternating(40).strokes.map((s, index) =>
+      index === 7 ? { ...s, presses: [press('LI', true), press('LM')] } : s),
+  } as PlaybackTimingAnalysis;
+  const measured = measureOneRaw(sfbOnly, SAVED, tapsFor(40, () => 260));
+  assert.equal(measured.overheadMs.sfb, undefined);
+  assert.equal(measured.kinds.sfb.count, 1);
+  assert.deepEqual(measured.simultaneousKinds, []);
+});
+
+test('同時押しのストロークが無ければ空の記録を保存し、続け打ちの行だけを保存する時は記録を持たせない', () => {
+  const empty = applySentenceMeasurement(SAVED, alternating(20), tapsFor(20, () => 260), 5);
+  assert.ok(empty.ok);
+  assert.deepEqual(empty.calibration.sentenceSimultaneousKinds, []);
+  // 同じ指で同じキーを続けて打つ列は、続け打ちの行だけが10打に届く。
+  const repeating = {
+    ...alternating(20),
+    strokes: alternating(20).strokes.map((s) => ({ ...s, presses: [press('LI')] })),
+  } as PlaybackTimingAnalysis;
+  const repeatOnly = applySentenceMeasurement(SAVED, repeating, tapsFor(20, () => 260), 5);
+  assert.ok(repeatOnly.ok);
+  assert.deepEqual(Object.keys(repeatOnly.calibration.keystrokeOverheadMs ?? {}), ['repeat']);
+  assert.equal('sentenceSimultaneousKinds' in repeatOnly.calibration, false);
+});
+
+test('記録は文章を打つ測定の保存で置き換わる', () => {
+  const base: PlaybackCalibration = { ...SAVED, keystrokeOverheadMs: { other: 1 }, sentenceSimultaneousKinds: ['thumb'] };
+  const result = applySentenceMeasurement(base, withPresses(alternating(30), { 5: ['LI', 'RI'] }), tapsFor(30, () => 260), 5);
+  assert.ok(result.ok);
+  assert.deepEqual(result.calibration.sentenceSimultaneousKinds, ['both-hands']);
 });

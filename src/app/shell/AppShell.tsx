@@ -8,12 +8,14 @@ import { readTextFile } from '#platform/browser-file.ts';
 import { AddedToWorkspaceNotice } from '../workspace/AddedToWorkspaceNotice.tsx';
 import { DeletedWorkspaceNotice } from '../workspace/DeletedWorkspaceNotice.tsx';
 import { AssetLoadNotices } from './AssetLoadNotices.tsx';
+import { HistoryConflictNotice } from './HistoryConflictNotice.tsx';
 import { Sidebar } from './Sidebar.tsx';
 import {
   getServerSidebarPinnedSnapshot,
+  getSidebarCollapsedSnapshot,
   getSidebarPinnedSnapshot,
   setSidebarPinned,
-  subscribeSidebarPinned,
+  subscribeSidebarPreferences,
 } from './sidebar-preference.ts';
 import { MOBILE_QUERY } from '#ui/theme/breakpoints.ts';
 
@@ -61,7 +63,7 @@ export interface AppShellProps {
 type OpenedBy = 'hover' | 'button';
 
 export function AppShell({ children, hasContextBar }: AppShellProps) {
-  const pinnedPreference = useSyncExternalStore(subscribeSidebarPinned, getSidebarPinnedSnapshot, getServerSidebarPinnedSnapshot);
+  const pinnedPreference = useSyncExternalStore(subscribeSidebarPreferences, getSidebarPinnedSnapshot, getServerSidebarPinnedSnapshot);
   const mobile = useSyncExternalStore(subscribeMobile, getMobileSnapshot, () => false);
   const pinned = pinnedPreference && !mobile;
   const [openedBy, setOpenedBy] = useState<OpenedBy | undefined>(undefined);
@@ -95,7 +97,12 @@ export function AppShell({ children, hasContextBar }: AppShellProps) {
     if (focusAsideRef.current) {
       focusAsideRef.current = false;
       const aside = asideRef.current;
-      (aside?.querySelector<HTMLElement>('a[aria-current="page"]') ?? aside?.querySelector<HTMLElement>('a'))?.focus();
+      const current = aside?.querySelector<HTMLElement>('a[aria-current="page"]') ?? null;
+      // 今いる画面の項目が畳まれて見えない時は、フォーカスできないので、そのまとまりの見出しのボタンへ移す。
+      const groupId = current?.closest('[data-sidebar-group]')?.getAttribute('data-sidebar-group');
+      const hiddenGroup = groupId !== null && groupId !== undefined && (getSidebarCollapsedSnapshot() as readonly string[]).includes(groupId);
+      const heading = hiddenGroup ? aside?.querySelector<HTMLElement>(`[data-sidebar-group="${groupId}"] .sidebar-heading-button`) : null;
+      (heading ?? current ?? aside?.querySelector<HTMLElement>('a'))?.focus();
     }
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target as Node;
@@ -211,6 +218,7 @@ export function AppShell({ children, hasContextBar }: AppShellProps) {
         <DeletedWorkspaceNotice />
         <AddedToWorkspaceNotice />
         <AssetLoadNotices />
+        <HistoryConflictNotice />
       </div>
     </div>
   );

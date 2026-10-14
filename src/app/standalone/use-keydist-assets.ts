@@ -1,41 +1,24 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
-import {
-  applyExternalChange,
-  emptyCommandHistory,
-  type Command,
-  type CommandHistory,
-} from '#input/commands/index.ts';
+import { useRouterState } from '@tanstack/react-router';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import type { Command } from '#input/commands/index.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
-import { claimInitialAssetLoad, reportAssetLoadNotices } from './asset-load-notice.ts';
-import { initialAssets } from './asset-storage-specs.ts';
-import {
-  buildAssetSyncs,
-  commitCommand,
-  commitHistoryStep,
-  loadAssets,
-  loadAssetsAndRepair,
-  startAssetSyncs,
-  type AssetSyncMap,
-} from './asset-syncs.ts';
+import { getAssetStore } from './asset-store.ts';
 
 /**
- * `KeydistAssets`の永続化・タブ間追従・コマンド履歴を1つにまとめる
- * アプリ組み立て（`docs/architecture.md`「appが組み立てたアダプタをhostsへ注入する」）。
+ * `KeydistAssets`の永続化・タブ間追従・コマンド履歴を、画面の部品へ配線するhook。
  *
- * storageを直接触るのは`platform`と`app`だけ（依存規則）なので、資産ぶんの
- * `AssetTabSync`を組み立てる仕事はここに置く。実際の組み立ては`asset-syncs.ts`
- * （Reactを知らない、node:testから直接検証できる層）へ切り出してあり、このhookは
- * それをReactのライフサイクルへ配線するだけにする。`hosts/standalone`はこのhookが返す
- * `{ assets, dispatch }`だけを知り、storageもcodecも一切importしない。
+ * 資産の値と画面ごとの履歴はReactの外のストア（`asset-store.ts`）がタブに1つ持つ。このhookは、
+ * ストアの値を読み、呼び出した画面の履歴（`location.pathname`で分けた画面）への書き込みと、
+ * その画面の元に戻す・やり直すを返す。`hosts/standalone`はこのhookが返す`{ assets, dispatch }`だけを知り、
+ * storageもcodecも一切importしない。
  *
  * 資産ごとの組み立て（storageキー・codec・初期値）は`asset-storage-specs.ts`の表に
- * 1本化した。ここは表を`ASSET_KEYS`でループするだけで、資産を1つ足す時にこのファイルを
- * 書き換える必要が無い。
+ * 1本化した。資産を1つ足す時にこのファイルを書き換える必要が無い。
  */
 export interface KeydistAssetsController {
   readonly assets: KeydistAssets;
   /**
-   * storageからの初回読み込み（`loadAssets`）が終わっているか。`hosts`側がURLパラメータの
+   * storageからの初回読み込みが終わっているか。`hosts`側がURLパラメータの
    * 取り込みのように「今の資産の値をベースに部分マージする」処理をする時、この読み込みより
    * 前に`assets`を読んでしまうと、既存の値を初期値へ巻き戻す事故になる。`ready`が`true`になってから
    * `assets`を読めば、その時点の`assets`は必ず読み込み済みの値になっている。
@@ -48,110 +31,70 @@ export interface KeydistAssetsController {
    * 引き継ぐ時はこちらを読む。
    */
   getAssets(): KeydistAssets;
-  /** 戻せる・やり直せる項目があるか（文脈バーのUndo / Redoの押せる状態）。 */
+  /** この画面の履歴に、戻せる・やり直せる項目があるか（元に戻す・やり直すのボタンの押せる状態）。 */
   readonly canUndo: boolean;
   readonly canRedo: boolean;
   undo(): void;
   redo(): void;
+  /** この画面の履歴を捨てる（画面そのものが無くなる時。Workspaceの削除）。 */
+  discardHistory(): void;
+}
+
+export interface UseKeydistAssetsOptions {
+  /**
+   * 履歴を持たない画面（トップ）は`false`。書き込みはどの履歴にも積まず、元に戻す・やり直すは何もしない。
+   * 既定は`true`。
+   */
+  readonly history?: boolean;
 }
 
 /**
- * `AssetSyncMap`（`load`/`save`と、購読を始める`start()`を持つ）を1回だけ組み立てる。
- * `useRef`の遅延初期化（`current === undefined`の時だけ作る）は、`useState(() => …)`と
- * 同じ「初期化子は1回だけ」の規約を、資産ぶんまとめて作りたいのでrefで書いたもの。
- *
- * `buildAssetSyncs`自体は購読（`window`へのイベント登録）を一切行わない
- * （`createAssetTabSync`は構築時に自動購読しない設計にした）ため、
- * ここで1回だけ組み立てても問題ない。実際の購読開始・停止は`useKeydistAssets`の
- * `useEffect`が`startAssetSyncs`/その戻り値で行う（構築とは別のライフサイクルとして
- * Reactの二重実行に耐える形にする）。
+ * 画面を分ける識別子。URLのパス（検索パラメータは含めない）の末尾の`/`を除いたもの。
+ * Workspaceはパスにidを含むので、idごとに別の画面になる。
  */
-function useAssetSyncs(onExternalChange: <K extends keyof KeydistAssets>(key: K, value: KeydistAssets[K]) => void) {
-  const ref = useRef<AssetSyncMap | undefined>(undefined);
-  if (ref.current === undefined) {
-    ref.current = buildAssetSyncs({ onExternalChange });
-  }
-  return ref.current;
+export function screenKeyOf(pathname: string): string {
+  return pathname.length > 1 ? pathname.replace(/\/+$/, '') || '/' : pathname;
 }
 
 /**
- * `KeydistAssets`をReactの状態として持ち、`dispatch`経由のコマンド適用だけで書き換える。
- * `assets`自体はrefに持ち、変更のたびに`forceRender`で再描画する（`useState`で持つと
- * `applyExternalChange`・`dispatch`の両方から「直前の状態」を読みたい箇所で
- * 関数形の更新子を経由する必要が増えるため、単一の可変refのほうがこの用途では単純）。
+ * ストアの資産を読み、呼び出した画面の履歴へ書く。画面は最初の描画のパスで決める
+ * （移動の途中で、離れる側の画面が次のパスを見て別の履歴を動かさないため）。
  */
-export function useKeydistAssets(): KeydistAssetsController {
-  const assetsRef = useRef<KeydistAssets>(initialAssets());
-  const historyRef = useRef<CommandHistory<KeydistAssets>>(emptyCommandHistory());
-  const [, forceRender] = useReducer((count: number) => count + 1, 0);
-  // `ready`は`useState`で持つ（`assetsRef`と違い、これ自体をuseEffectの依存や
-  // 子コンポーネントへのprop変化として使いたいので、参照ではなく値の変化としてReactに
-  // 伝える必要がある）。
-  const [ready, setReady] = useState(false);
-
-  const syncs = useAssetSyncs((key, value) => {
-    const result = applyExternalChange(assetsRef.current, historyRef.current, key, value);
-    assetsRef.current = result.assets;
-    historyRef.current = result.history;
-    forceRender();
-  });
+export function useKeydistAssets(options: UseKeydistAssetsOptions = {}): KeydistAssetsController {
+  const store = getAssetStore();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const trackHistory = options.history !== false;
+  const [screen] = useState(() => (trackHistory ? screenKeyOf(pathname) : undefined));
+  const state = useSyncExternalStore(store.subscribe, store.getState, store.getServerState);
 
   useEffect(() => {
-    // 捨てた・直した値と読めなかった値は、直した形（読めなければ既定値）を書き戻した上で知らせる。
-    // 知らせと書き戻しはタブにつき最初の1回だけ。以後の画面は、書き戻しなしで読むだけにする。
-    let loaded: Partial<KeydistAssets>;
-    if (claimInitialAssetLoad()) {
-      const outcome = loadAssetsAndRepair(syncs);
-      loaded = outcome.assets;
-      reportAssetLoadNotices(outcome.notices);
-    } else {
-      loaded = loadAssets(syncs);
-    }
-    if (Object.keys(loaded).length > 0) {
-      assetsRef.current = { ...assetsRef.current, ...loaded };
-    }
-    // 読み込みが空でも`ready`は必ずtrueにする（`hosts`側が「読み込み済みの`assets`」を
-    // 待てるようにするための合図。何も無かった場合の既定値もこの時点で確定した値）。
-    setReady(true);
-    // 購読の開始・停止は必ずこの`useEffect`の中でペアにする（`startAssetSyncs`のコメント
-    // 参照）。ReactのStrictMode（開発時のmount→cleanup→mount二重実行）でこの関数が
-    // 2回呼ばれても、2回目の`startAssetSyncs`が新しく購読し直すので、最終的に
-    // 「購読が生きている」状態で終わる。構築時に自動購読・cleanupでだけ停止する形だと、
-    // 二重実行後は二度と外部タブの変更を受け取れなくなる
-    // （再現は`asset-tab-sync.test.ts`参照）。
-    return startAssetSyncs(syncs);
-    // syncsは`useAssetSyncs`が1回だけ作る安定した参照なので、依存に含めなくてよい。
-    // eslint的な警告機構はこのリポジトリに無い（AGENTS.md参照）。
-  }, []);
+    store.start();
+  }, [store]);
 
-  const dispatch = useMemo(() => (command: Command<KeydistAssets>) => {
-    const result = commitCommand(syncs, () => ({ assets: assetsRef.current, history: historyRef.current }), command);
-    if (result.outcome.kind !== 'applied') return;
-    assetsRef.current = result.assets;
-    historyRef.current = result.history;
-    forceRender();
-  }, [syncs]);
+  const dispatch = useCallback((command: Command<KeydistAssets>) => {
+    store.dispatch(screen, command);
+  }, [store, screen]);
+  const getAssets = useCallback(() => store.getAssets(), [store]);
+  const undo = useCallback(() => {
+    if (screen !== undefined) store.step(screen, 'undo');
+  }, [store, screen]);
+  const redo = useCallback(() => {
+    if (screen !== undefined) store.step(screen, 'redo');
+  }, [store, screen]);
+  const discardHistory = useCallback(() => {
+    if (screen !== undefined) store.discardHistory(screen);
+  }, [store, screen]);
 
-  const getAssets = useCallback(() => assetsRef.current, []);
-
-  const step = useMemo(() => (direction: 'undo' | 'redo') => {
-    const result = commitHistoryStep(syncs, () => ({ assets: assetsRef.current, history: historyRef.current }), direction);
-    if (result.outcome.kind !== 'applied') return;
-    assetsRef.current = result.assets;
-    historyRef.current = result.history;
-    forceRender();
-  }, [syncs]);
-  const undo = useMemo(() => () => step('undo'), [step]);
-  const redo = useMemo(() => () => step('redo'), [step]);
-
-  return {
-    assets: assetsRef.current,
-    ready,
+  const history = screen === undefined ? undefined : state.histories.get(screen);
+  return useMemo(() => ({
+    assets: state.assets,
+    ready: state.ready,
     dispatch,
     getAssets,
-    canUndo: historyRef.current.undoStack.length > 0,
-    canRedo: historyRef.current.redoStack.length > 0,
+    canUndo: (history?.undoStack.length ?? 0) > 0,
+    canRedo: (history?.redoStack.length ?? 0) > 0,
     undo,
     redo,
-  };
+    discardHistory,
+  }), [state.assets, state.ready, dispatch, getAssets, history, undo, redo, discardHistory]);
 }

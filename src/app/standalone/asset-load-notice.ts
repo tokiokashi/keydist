@@ -3,7 +3,7 @@ import type { AssetLoadNotice } from './asset-syncs.ts';
 
 /**
  * 資産を読んだ時に捨てた・直した・読めなかった値の知らせの記憶（`AssetLoadNotices`が画面に出す）。
- * 知らせるのは、そのタブで最初に読み込んだ時だけ。直した形はstorageへ書き戻すので、
+ * 知らせるのは、タブに1つのストアが最初に読み込む時だけ。直した形はstorageへ書き戻すので、
  * 次に開いた時や別の画面を開いた時には同じ知らせは出ない。
  *
  * 新しい版が書いた値は書き戻さず残すので、読み込むたびに同じ知らせの材料が届く。
@@ -45,23 +45,9 @@ export function dismissAssetLoadNotices(): void {
   emit();
 }
 
-let initialLoadClaimed = false;
-
-/**
- * そのタブで最初の読み込みかどうか。最初の1回だけ`true`を返す。
- * 捨てた・直した値の知らせと書き戻しはその1回に限る。画面を移るたびに書き戻すと、
- * 開いたままの古いタブが、新しい版のアプリが書いた項目を未知の項目として消してしまう。
- */
-export function claimInitialAssetLoad(): boolean {
-  if (initialLoadClaimed) return false;
-  initialLoadClaimed = true;
-  return true;
-}
-
 /** テスト用。タブを開き直した状態に戻す。 */
 export function resetAssetLoadNoticesForTest(): void {
   current = [];
   reportedNewerVersion.clear();
-  initialLoadClaimed = false;
   emit();
 }

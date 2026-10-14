@@ -26,8 +26,8 @@ import { usePaneOptionsCommit } from './use-pane-options-commit.ts';
  * 元のWorkspaceへ書かれて確定するようにするため（切り替えでこのcomponentが作り直される）。
  */
 export function WorkspaceApp({ workspaceId }: { readonly workspaceId: string }) {
-  const { assets, ready, dispatch, getAssets, canUndo, canRedo, undo, redo } = useKeydistAssets();
-  const catalog = useMemo(() => paneCatalog(assets), [assets.userLayouts, assets.userRomajiRules, assets.personalSpeed]);
+  const { assets, ready, dispatch, getAssets, canUndo, canRedo, undo, redo, discardHistory } = useKeydistAssets();
+  const catalog = useMemo(() => paneCatalog(assets), [assets.userLayouts, assets.userRomajiRules, assets.fingerAssignments, assets.personalSpeed]);
   const holder = useMemo(() => ({ workspaceId }), [workspaceId]);
 
   const commitTextContent = useTextContentCommit(dispatch, getAssets, generateTextId, holder);
@@ -71,6 +71,8 @@ export function WorkspaceApp({ workspaceId }: { readonly workspaceId: string }) 
     const deleted = before[index];
     if (deleted === undefined) return;
     dispatch(deleteWorkspaceCommand(workspaceId));
+    // 削除した画面の履歴は捨てる。戻すのは、移った先に出す知らせから行う
+    discardHistory();
     setDeletedWorkspace({ workspace: deleted, index });
     const rest = before.filter((workspace) => workspace.id !== workspaceId);
     const next = rest[Math.min(index, rest.length - 1)];

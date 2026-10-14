@@ -100,3 +100,83 @@ test('同じキーを続けて打つ速さが範囲外なら、保存値ごと�
     assert.equal(decoded.diagnostics.length, 1);
   }
 });
+
+test('かなの中・かなの境目の値は、分けない値を持たない保存値でも、書き出して読み直すと同じ値になる', () => {
+  for (const keystrokeOverheadMs of [
+    { 'other-within': 20.5, 'other-boundary': 90, 'chain-boundary': -3 },
+    { arpeggio: 10, 'arpeggio-within': 5, 'arpeggio-boundary': 15, other: 60, 'other-within': 40, 'other-boundary': 80, repeat: 4, sfb: 9 },
+  ]) {
+    const value: PlaybackCalibration = { ...CALIBRATION, keystrokeOverheadMs };
+    const decoded = PERSONAL_SPEED_CODEC.decode(JSON.parse(JSON.stringify(PERSONAL_SPEED_CODEC.encode({ calibration: value }))));
+    assert.ok(decoded.ok);
+    assert.deepEqual(decoded.value, { calibration: value });
+    assert.deepEqual(decoded.diagnostics, []);
+  }
+});
+
+test('かなの中・かなの境目の値が範囲外なら、他の値が範囲の中でも保存値ごと捨てる', () => {
+  for (const keystrokeOverheadMs of [
+    { 'other-within': 1001 },
+    { other: 80, 'other-boundary': -1001 },
+    { 'chain-within': 5, 'arpeggio-boundary': 2000 },
+  ]) {
+    const decoded = PERSONAL_SPEED_CODEC.decode({ version: 1, calibration: { ...CALIBRATION, keystrokeOverheadMs } });
+    assert.ok(decoded.ok);
+    assert.equal(decoded.value.calibration, undefined);
+    assert.equal(decoded.diagnostics.length, 1);
+  }
+});
+
+test('同時押しの上乗せを持つ個人速度は、書き出して読み直すと同じ値になる', () => {
+  const withSimultaneous: PlaybackCalibration = {
+    ...CALIBRATION,
+    simultaneousOverheadMs: { 'both-hands': 35.5, 'one-hand': -20, thumb: 1000 },
+  };
+  const decoded = PERSONAL_SPEED_CODEC.decode(JSON.parse(JSON.stringify(PERSONAL_SPEED_CODEC.encode({ calibration: withSimultaneous }))));
+  assert.ok(decoded.ok);
+  assert.deepEqual(decoded.value, { calibration: withSimultaneous });
+  assert.deepEqual(decoded.diagnostics, []);
+});
+
+test('同時押しの上乗せを持たない個人速度は、持たないまま読み込める', () => {
+  const decoded = PERSONAL_SPEED_CODEC.decode({ version: 1, calibration: CALIBRATION });
+  assert.ok(decoded.ok);
+  assert.equal(decoded.value.calibration?.simultaneousOverheadMs, undefined);
+  assert.equal('simultaneousOverheadMs' in (decoded.value.calibration ?? {}), false);
+});
+
+test('同時押しの上乗せが範囲外、または知らない分け方のキーを持つ個人速度は、一部だけ残さず捨てる', () => {
+  for (const simultaneousOverheadMs of [{ thumb: 1000.1 }, { 'one-hand': -1001 }, { 'both-hands': Number.NaN }, { 'three-fingers': 10 }]) {
+    const decoded = PERSONAL_SPEED_CODEC.decode({ version: 1, calibration: { ...CALIBRATION, simultaneousOverheadMs } });
+    assert.ok(decoded.ok);
+    assert.equal(decoded.value.calibration, undefined, JSON.stringify(simultaneousOverheadMs));
+    assert.equal(decoded.diagnostics.length, 1);
+  }
+});
+
+test('文章に入った同時押しの分け方は、持つ値も空の値も持たない値も、そのまま書き出して読み直せる', () => {
+  for (const kinds of [[], ['both-hands', 'thumb']] as const) {
+    const calibration: PlaybackCalibration = { ...CALIBRATION, keystrokeOverheadMs: { other: 3 }, sentenceSimultaneousKinds: kinds };
+    const encoded = PERSONAL_SPEED_CODEC.encode({ calibration });
+    const decoded = PERSONAL_SPEED_CODEC.decode(JSON.parse(JSON.stringify(encoded)));
+    assert.ok(decoded.ok);
+    assert.deepEqual(decoded.value.calibration, calibration);
+  }
+  const without = PERSONAL_SPEED_CODEC.encode({ calibration: CALIBRATION });
+  assert.equal('sentenceSimultaneousKinds' in (without.calibration as object), false);
+});
+
+test('文章に入った同時押しの分け方は、読み込みで知らない分け方・重複・並びでない値を持つと保存値ごと捨てる', () => {
+  for (const kinds of [['both-hands', 'palm'], ['thumb', 'thumb'], 'thumb', [1]]) {
+    const decoded = PERSONAL_SPEED_CODEC.decode({ version: 1, calibration: { ...CALIBRATION, sentenceSimultaneousKinds: kinds } });
+    assert.ok(decoded.ok);
+    assert.equal(decoded.value.calibration, undefined);
+    assert.equal(decoded.diagnostics.length, 1);
+  }
+});
+
+test('文章に入った同時押しの分け方は、読み込みでは並びを問わず、書き出しは決まった順にする', () => {
+  const decoded = PERSONAL_SPEED_CODEC.decode({ version: 1, calibration: { ...CALIBRATION, sentenceSimultaneousKinds: ['thumb', 'both-hands'] } });
+  assert.ok(decoded.ok);
+  assert.deepEqual(decoded.value.calibration?.sentenceSimultaneousKinds, ['both-hands', 'thumb']);
+});

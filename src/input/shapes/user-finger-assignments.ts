@@ -177,4 +177,27 @@ export function renameUserFingerAssignment(
   return assignments.map((assignment) => assignment.id === id ? { ...assignment, name } : assignment);
 }
 
+/**
+ * 中身（キーごとの指とホームキー）の書き換え。対象が存在しない、または中身が変わらないなら
+ * `assignments`をそのまま返す。idと名前は変えない（名前は`renameUserFingerAssignment`）。
+ */
+export function updateUserFingerAssignment(
+  assignments: readonly FingerAssignment[],
+  id: string,
+  content: Pick<FingerAssignment, 'keyFinger' | 'homeKey'>,
+): readonly FingerAssignment[] {
+  const target = assignments.find((assignment) => assignment.id === id);
+  if (target === undefined || sameContent(target, content)) return assignments;
+  const keyFinger = { ...content.keyFinger };
+  const homeKey = { ...content.homeKey };
+  return assignments.map((assignment) => assignment.id === id ? { ...assignment, keyFinger, homeKey } : assignment);
+}
+
+function sameContent(a: Pick<FingerAssignment, 'keyFinger' | 'homeKey'>, b: Pick<FingerAssignment, 'keyFinger' | 'homeKey'>): boolean {
+  const aKeys = Object.keys(a.keyFinger);
+  if (aKeys.length !== Object.keys(b.keyFinger).length) return false;
+  if (aKeys.some((key) => a.keyFinger[key] !== b.keyFinger[key])) return false;
+  return FINGERS.every((finger) => a.homeKey[finger] === b.homeKey[finger]);
+}
+
 export type { FingerAssignment } from './geometry.ts';

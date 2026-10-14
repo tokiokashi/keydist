@@ -10,9 +10,11 @@ export interface AppearancePreferencesV1 {
   theme: ThemeChoice;
 }
 
-/** シェルの見た目の状態（このブラウザに覚える。サイドバーの固定）。 */
+/** シェルの見た目の状態（このブラウザに覚える。サイドバーの固定と、畳んだ見出しのまとまり）。 */
 export interface ShellPreferencesV1 {
   sidebarPinned: boolean;
+  /** 畳んだ見出しのまとまりの識別子。無い時は全部開いている。 */
+  sidebarCollapsed?: readonly string[];
 }
 
 export type AnalyzerPreferencesV2 = Omit<UiStateV1['ui'], 'playback'>;

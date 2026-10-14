@@ -4,7 +4,8 @@ import { N_SENSITIVITY_RANGE, nSensitivityDefinition, type NSensitivityExtracted
 import { DEFAULT_N_SENSITIVITY_OPTIONS, nSensitivityOptions, type NSensitivityOptions } from './options.ts';
 import { bindOption, RadioOptionField } from '#ui/primitives/option-fields.tsx';
 import { N_SENSITIVITY_PANE_META } from './pane-meta.ts';
-import { computeYRange, formatYTicks } from './y-range.ts';
+import { computeYRange, formatYTicks, yValuesRange } from './y-range.ts';
+import { useSharedScale } from '../shared-scale.tsx';
 import {
   estimateTextWidth,
   fitLegendLabels,
@@ -232,7 +233,13 @@ function NSensitivityChart({
 
   // 縦軸の範囲は決め方を`y-range.ts`に閉じている（既定は0から）。相対は上限100%固定
   // （N=0が100%で、Nを増やしても距離は増えないため）。実測は系列の最大値に合わせる。
-  const yRange = computeYRange(yRangeMode, scale === 'relative', series.flatMap((s) => s.points.map((p) => p.y)));
+  // 並んだ同じ見せ方・同じ決め方のペイン全部の値を含む範囲で決める（配るものが無ければ自分の値だけ）
+  const ys = series.flatMap((s) => s.points.map((p) => p.y));
+  const sharedRange = useSharedScale(
+    `n-sensitivity:${scale}:${yRangeMode}`,
+    yValuesRange(ys),
+  );
+  const yRange = computeYRange(yRangeMode, scale === 'relative', sharedRange === undefined ? [] : [sharedRange.min, sharedRange.max]);
   const ySpan = yRange.hi - yRange.lo || 1;
   const yTickValues = yRange.ticks;
 

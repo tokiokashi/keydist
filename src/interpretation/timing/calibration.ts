@@ -3,7 +3,9 @@ import {
   ALL_FINGERS,
   FINGERS,
   HOME_ROW,
+  THUMB_KEY,
   dist,
+  resolveKeyId,
   type Finger,
   type Geometry,
   type Key,
@@ -18,12 +20,44 @@ export type StrokeStructureKind = 'arpeggio' | 'chain' | 'other';
 export const STROKE_STRUCTURE_KINDS: readonly StrokeStructureKind[] = ['arpeggio', 'chain', 'other'];
 
 /**
- * 打鍵の上乗せ（`keystrokeOverheadMs`）を集める単位「差の種類」。構造の種類の3つに、続け打ち（`repeat`）と
- * 同指連続（`sfb`）を足した5つ。ステップごとに1つに決まる（`stroke-structure.ts`）。
+ * ステップごとに1つに決まる差の種類（`stroke-structure.ts`）。構造の種類の3つに、続け打ち（`repeat`）と
+ * 同指連続（`sfb`）を足した5つ。
  */
-export type OverheadKind = StrokeStructureKind | 'repeat' | 'sfb';
+export type StepOverheadKind = StrokeStructureKind | 'repeat' | 'sfb';
 
-export const OVERHEAD_KINDS: readonly OverheadKind[] = [...STROKE_STRUCTURE_KINDS, 'repeat', 'sfb'];
+/** 直前のストロークと同じ入力単位を打つか（かなの中）、違う入力単位を打つか（かなの境目）。 */
+export type OverheadSide = 'within' | 'boundary';
+
+export const OVERHEAD_SIDES: readonly OverheadSide[] = ['within', 'boundary'];
+
+/** 構造の種類のかなの中・かなの境目の値のキー（例: `arpeggio-within`）。 */
+export type SideOverheadKind = `${StrokeStructureKind}-${OverheadSide}`;
+
+/**
+ * 打鍵の上乗せ（`keystrokeOverheadMs`）の値のキー。構造の種類の分けない値・かなの中の値・かなの境目の値と、
+ * 続け打ち・同指連続の11個。分けない値とかなの中・境目の値は、どれも独立に持てる。
+ */
+export type OverheadKind = StepOverheadKind | SideOverheadKind;
+
+export function sideOverheadKind(kind: StrokeStructureKind, side: OverheadSide): SideOverheadKind {
+  return `${kind}-${side}`;
+}
+
+/** 表示と編集の並び順。構造の種類ごとに、分けない値・かなの中・かなの境目の順。 */
+export const OVERHEAD_KINDS: readonly OverheadKind[] = [
+  ...STROKE_STRUCTURE_KINDS.flatMap((kind) => [kind, ...OVERHEAD_SIDES.map((side) => sideOverheadKind(kind, side))]),
+  'repeat',
+  'sfb',
+];
+
+/**
+ * 同時押しのストローク（押下が2本以上の指にまたがるストローク）の分け方。同時押しの上乗せ（`simultaneousOverheadMs`）を選ぶ。
+ * 親指を含む（`thumb`）、親指を含まず左右の手にまたがる（`both-hands`）、親指を含まず全部同じ手（`one-hand`）の3つ。
+ */
+export type SimultaneousKind = 'both-hands' | 'one-hand' | 'thumb';
+
+/** 表示と編集の並び順。 */
+export const SIMULTANEOUS_KINDS: readonly SimultaneousKind[] = ['both-hands', 'one-hand', 'thumb'];
 
 /** 再生へ反映する個人の打鍵・指移動速度。 */
 export interface PlaybackCalibration {
@@ -46,12 +80,23 @@ export interface PlaybackCalibration {
    */
   sameKeyActionsPerSecond?: number;
   /**
-   * 文章を打つ時の打鍵の上乗せ[ms]。差の種類ごとに持つ。
+   * 文章を打つ時の打鍵の上乗せ[ms]。差の種類ごとに持ち、構造の種類はかなの中・かなの境目の値も持てる。
    * 続け打ちと同指連続を除く種類は、基準の時間のうち1打の時間（`normalMs`）の側にだけ足す。
    * 同指連続のステップは、値を持つ時は`max(normalMs, 移動の時間)`の外に足す。
-   * 持たない構造の種類は「その他」の値を使う。
+   * 持たない値は、同じ側の「その他」、分けない値、分けない「その他」の順で代わりの値を使う（`playbackKeystrokeOverheadMs`）。
    */
   keystrokeOverheadMs?: Readonly<Partial<Record<OverheadKind, number>>>;
+  /**
+   * 同時押しの上乗せ[ms]。同時押しのストロークのステップで、1打の時間（`normalMs`）の側に、打鍵の上乗せと同じ場所へ足す。
+   * 同じ同時押しを続けて打った間隔の中央値から、再生がそのステップに選ぶ1打の時間を引いた差。分け方ごとに持ち、持たない分け方は足さない。
+   */
+  simultaneousOverheadMs?: Readonly<Partial<Record<SimultaneousKind, number>>>;
+  /**
+   * 文章を打つ測定の保存が、保存した行（構造の種類と同指連続）の値を求めるのに数えたストロークに入っていた同時押しの分け方。
+   * 空は「同時押しのストロークが入っていない」、持たない時は「分からない」を表す。
+   * 同時押しの測定が打鍵の上乗せを消すかを決める（`calibration-session.ts`）。
+   */
+  sentenceSimultaneousKinds?: readonly SimultaneousKind[];
   measuredAt: number;
 }
 
@@ -223,7 +268,38 @@ export function playbackCalibrationProblem(value: unknown): string | undefined {
     CALIBRATION_OVERHEAD_MS_MIN,
     CALIBRATION_OVERHEAD_MS_MAX,
   )) return '打鍵の上乗せが正しくありません';
+  if (value.simultaneousOverheadMs !== undefined && !isRateRecord(
+    value.simultaneousOverheadMs,
+    (kind) => SIMULTANEOUS_KINDS.includes(kind as SimultaneousKind),
+    CALIBRATION_OVERHEAD_MS_MIN,
+    CALIBRATION_OVERHEAD_MS_MAX,
+  )) return '同時押しの上乗せが正しくありません';
+  if (value.sentenceSimultaneousKinds !== undefined && !isSimultaneousKindList(value.sentenceSimultaneousKinds)) {
+    return '文章に入った同時押しの分け方が正しくありません';
+  }
   return undefined;
+}
+
+/** 同時押しの分け方の並び。知らない分け方と重複を持たない。 */
+function isSimultaneousKindList(value: unknown): boolean {
+  return Array.isArray(value)
+    && value.every((kind) => SIMULTANEOUS_KINDS.includes(kind as SimultaneousKind))
+    && new Set(value).size === value.length;
+}
+
+/** 打鍵の上乗せのうち、文章に入った同時押しの分け方の記録を残す根拠になる種類（構造の種類の分けない値・かなの中・かなの境目の値と、同指連続）。 */
+export const SENTENCE_RECORDED_OVERHEAD_KINDS: readonly OverheadKind[] = OVERHEAD_KINDS.filter((kind) => kind !== 'repeat');
+
+/**
+ * 構造の種類と同指連続の打鍵の上乗せが全部無い保存値から、文章に入った同時押しの分け方の記録を外す。
+ * 記録は、それらの値を求めたストロークの分け方なので、値が無ければ意味を持たない。
+ */
+export function withoutOrphanedSentenceSimultaneous(calibration: PlaybackCalibration): PlaybackCalibration {
+  if (calibration.sentenceSimultaneousKinds === undefined) return calibration;
+  const overheads = calibration.keystrokeOverheadMs;
+  if (overheads !== undefined && SENTENCE_RECORDED_OVERHEAD_KINDS.some((kind) => overheads[kind] !== undefined)) return calibration;
+  const { sentenceSimultaneousKinds: _kinds, ...others } = calibration;
+  return others;
 }
 
 export function isPlaybackCalibration(value: unknown): value is PlaybackCalibration {
@@ -328,6 +404,8 @@ export function calibrationDirectedSameHandPairs(
 }
 
 export function calibrationKeyMatches(event: { readonly key: string; readonly code: string }, keyId: string, keyLabel = keyId): boolean {
+  // 右手の親指のキーはSpace。物理配列はSpaceを右手の親指のキーとして扱う。
+  if (resolveKeyId(keyId) === THUMB_KEY.RT) return event.code === 'Space' || event.key === ' ';
   const eventKey = event.key.toLowerCase();
   if (eventKey === keyId.toLowerCase() || eventKey === keyLabel.toLowerCase()) return true;
 

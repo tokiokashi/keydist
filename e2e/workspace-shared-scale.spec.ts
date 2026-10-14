@@ -80,6 +80,57 @@ test('Bigram FlowのRelative vectorsは、並んだペインで最大の半径�
   await expect(summary('b')).toContainText('最大4u');
 });
 
+const playback = (id: string, layoutId: string, options?: Record<string, number>) => ({
+  id,
+  analyzerId: 'playback',
+  binding: fixed(layoutId),
+  ...(options === undefined ? {} : { options }),
+});
+const sensitivity = (id: string, layoutId: string, options: Record<string, string>) => ({
+  id,
+  analyzerId: 'n-sensitivity',
+  binding: { mode: 'fixed', target: { kind: 'set', selection: { targets: [layout(layoutId)] } } },
+  options,
+});
+
+/** 打鍵再生の速度の推移の縦軸の目盛りの文字。 */
+async function rateTicks(item: Locator): Promise<string[]> {
+  return item.locator('.playback-rate-chart .playback-rate-tick').allTextContents();
+}
+
+/** N感度の縦軸の目盛りの文字（横軸のNは含めない）。 */
+async function sensitivityTicks(item: Locator): Promise<string[]> {
+  const labels = await item.locator('.n-sensitivity-svg .n-sensitivity-axis-label').allTextContents();
+  return labels.filter((label) => / u$|%$/.test(label));
+}
+
+test('打鍵再生の速度の推移は、並んだペインで縦軸を揃える。片方を閉じると残りは自分の範囲に戻る', async ({ page }) => {
+  await openWorkspace(page, [playback('a', 'qwerty'), playback('b', 'qwerty', { speedMultiplier: 5 })]);
+  await expect(pane(page, 'a').locator('.playback-rate-chart')).toBeVisible();
+  await expect(pane(page, 'b').locator('.playback-rate-chart')).toBeVisible();
+  await expect.poll(async () => (await rateTicks(pane(page, 'a'))).join()).toBe((await rateTicks(pane(page, 'b'))).join());
+  const shared = await rateTicks(pane(page, 'a'));
+  // 再生倍率の違いで速さが変わる2枚なので、揃えた縦軸は片方の単独の縦軸と違う
+  await closePane(page, 'b');
+  await expect.poll(async () => (await rateTicks(pane(page, 'a'))).join()).not.toBe(shared.join());
+});
+
+test('N感度は、縦軸の見せ方と範囲の決め方が同じペインで縦軸を揃え、違うペインでは揃えない', async ({ page }) => {
+  const fit = { scale: 'absolute', yRange: 'fit' };
+  await openWorkspace(page, [
+    sensitivity('a', 'qwerty', fit),
+    sensitivity('b', 'dvorak', fit),
+    sensitivity('c', 'dvorak', { scale: 'absolute', yRange: 'full' }),
+  ]);
+  const same = async () => (await sensitivityTicks(pane(page, 'a'))).join() === (await sensitivityTicks(pane(page, 'b'))).join();
+  await expect.poll(same).toBe(true);
+  const shared = await sensitivityTicks(pane(page, 'b'));
+  // 決め方が違うペインは別の組なので、揃った縦軸にならない
+  expect((await sensitivityTicks(pane(page, 'c'))).join()).not.toBe(shared.join());
+  await closePane(page, 'a');
+  await expect.poll(async () => (await sensitivityTicks(pane(page, 'b'))).join()).not.toBe(shared.join());
+});
+
 test('Bigram Flowの単体のペインは、自分の最長のベクトルまでで描く', async ({ page }) => {
   await openWorkspace(page, [bigramFlow('b', 'dvorak')]);
   await expect(pane(page, 'b').locator('.flow-profile-scale-summary').first()).toContainText('最大4u');

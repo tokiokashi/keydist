@@ -8,6 +8,7 @@ import type { AnalyzerRomajiDialogModel } from './analyzer-romaji-dialog-model.t
 import { LAYOUTS_JA } from '#input/layouts/index.ts';
 import { SAMPLE_TEXT_JA } from '#input/text/sample-ja.ts';
 import { kanaToRomaji } from '#input/romaji/kunrei.ts';
+import { ROMAJI_VARIANTS, type RomajiVariant } from '#input/romaji/spelling-variations.ts';
 import {
   allRomajiRules,
   defaultRomajiRuleId,
@@ -19,11 +20,6 @@ import {
   type RomajiSettings,
   type UserRomajiRule,
 } from '#input/romaji/rules.ts';
-
-interface RomajiVariant {
-  kana: string;
-  alternatives: string[];
-}
 
 interface RomajiVariantRow {
   variant: RomajiVariant;
@@ -41,27 +37,6 @@ interface RomajiEditorDraft {
   overrides: string;
   variants: RomajiVariantRow[];
 }
-
-const ROMAJI_VARIANTS: RomajiVariant[] = [
-  { kana: 'い', alternatives: ['i'] }, { kana: 'う', alternatives: ['u'] },
-  { kana: 'か', alternatives: ['ka'] }, { kana: 'く', alternatives: ['ku'] },
-  { kana: 'こ', alternatives: ['ko'] }, { kana: 'し', alternatives: ['si', 'shi'] },
-  { kana: 'せ', alternatives: ['se'] }, { kana: 'ち', alternatives: ['ti', 'chi'] },
-  { kana: 'つ', alternatives: ['tu', 'tsu'] }, { kana: 'ふ', alternatives: ['hu', 'fu'] },
-  { kana: 'ん', alternatives: ['n', 'nn'] }, { kana: 'じ', alternatives: ['zi', 'ji'] },
-  { kana: 'っ', alternatives: ['ltu', 'xtu'] }, { kana: 'ぁ', alternatives: ['la', 'xa'] },
-  { kana: 'ぃ', alternatives: ['li', 'xi'] }, { kana: 'ぅ', alternatives: ['lu', 'xu'] },
-  { kana: 'ぇ', alternatives: ['le', 'xe'] }, { kana: 'ぉ', alternatives: ['lo', 'xo'] },
-  { kana: 'ゃ', alternatives: ['lya', 'xya'] }, { kana: 'ゅ', alternatives: ['lyu', 'xyu'] },
-  { kana: 'ょ', alternatives: ['lyo', 'xyo'] }, { kana: 'しゃ', alternatives: ['sha', 'sya'] },
-  { kana: 'しゅ', alternatives: ['shu', 'syu'] }, { kana: 'しぇ', alternatives: ['she', 'sye'] },
-  { kana: 'しょ', alternatives: ['sho', 'syo'] }, { kana: 'じゃ', alternatives: ['ja', 'zya'] },
-  { kana: 'じゅ', alternatives: ['ju', 'zyu'] }, { kana: 'じぇ', alternatives: ['je', 'zye'] },
-  { kana: 'じょ', alternatives: ['jo', 'zyo'] }, { kana: 'ちゃ', alternatives: ['tya', 'cha'] },
-  { kana: 'ちゅ', alternatives: ['tyu', 'chu'] }, { kana: 'ちょ', alternatives: ['tyo', 'cho'] },
-  { kana: 'ちぃ', alternatives: ['tyi'] }, { kana: 'うぃ', alternatives: ['wi'] },
-  { kana: 'うぇ', alternatives: ['we'] },
-];
 
 const ROMAJI_VARIANT_OPTIONS = [
   ...new Set(ROMAJI_VARIANTS.flatMap((variant) => variant.alternatives)),

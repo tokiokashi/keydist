@@ -6,10 +6,19 @@ import {
   deleteUserFingerAssignment,
   duplicateUserFingerAssignment,
   renameUserFingerAssignment,
+  updateUserFingerAssignment,
 } from '#input/shapes/user-finger-assignments.ts';
+import { createUserLayout, updateUserLayout, type UserLayoutContent, type UserLayoutEditResult } from '#input/layouts/layout-edit.ts';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { PresetLibrary } from '#input/presets/index.ts';
-import type { UserRomajiRule } from '#input/romaji/rules.ts';
+import {
+  createUserRomajiRule,
+  duplicateUserRomajiRule,
+  renameUserRomajiRule,
+  updateUserRomajiRule,
+  type RomajiRuleContent,
+} from '#input/romaji/rule-edit.ts';
+import type { BuiltinRomajiRuleId, UserRomajiRule } from '#input/romaji/rules.ts';
 import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import type { PersonalSpeed } from '#interpretation/timing/calibration-codec.ts';
 import {
@@ -451,6 +460,17 @@ export function renameFingerAssignmentCommand(id: string, name: string): Command
   }));
 }
 
+/** 自作の指割り当ての中身（キーごとの指とホームキー）を書き換える。対象が存在しない、または中身が同じなら何もしない。 */
+export function setFingerAssignmentContentCommand(
+  id: string,
+  content: Pick<FingerAssignment, 'keyFinger' | 'homeKey'>,
+): Command<KeydistAssets> {
+  return fingerAssignmentsCommand('指割り当てを編集する', (assignments) => ({
+    ok: true,
+    assignments: updateUserFingerAssignment(assignments, id, content),
+  }));
+}
+
 /**
  * 自作の配列を削除する。存在しないidの削除は何もしない。
  * この配列を対象に選んでいる所（対象の選択・Setup・Workspaceのペイン）は書き換えず、
@@ -464,6 +484,32 @@ export function deleteUserLayoutCommand(id: string): Command<KeydistAssets> {
   };
 }
 
+/** `userLayouts`だけに触れる書き込みの共通の骨組み。変化が無ければ（参照が同じなら）何もしない。保存できない入力は拒否する。 */
+function userLayoutsCommand(
+  label: string,
+  compute: (layouts: readonly UserLayout[]) => UserLayoutEditResult,
+): Command<KeydistAssets> {
+  return (current) => {
+    const result = compute(current.userLayouts);
+    if (!result.ok) return { kind: 'rejected', reason: result.reason };
+    if (result.layouts === current.userLayouts) return { kind: 'no-op' };
+    return { kind: 'applied', label, changes: { userLayouts: result.layouts } };
+  };
+}
+
+/** 段の文字で表す自作の配列を新規作成する。保存できない不備のある入力は拒否する。 */
+export function createUserLayoutCommand(generateId: () => string, content: UserLayoutContent): Command<KeydistAssets> {
+  return userLayoutsCommand('自作の配列を作成する', (layouts) => createUserLayout(layouts, generateId, content));
+}
+
+/**
+ * 自作の配列の中身（名前・段の文字・ホームキー・ローマ字規則）を書き換える。
+ * 対象が存在しない、または中身が同じなら何もしない。取り込み形式の配列と、保存できない不備のある入力は拒否する。
+ */
+export function updateUserLayoutCommand(id: string, content: UserLayoutContent): Command<KeydistAssets> {
+  return userLayoutsCommand('自作の配列を編集する', (layouts) => updateUserLayout(layouts, id, content));
+}
+
 /**
  * 自作のローマ字規則を削除する。存在しないidの削除は何もしない。
  * この規則を推奨に持つ自作の配列は書き換えない。配列の解決が、見つからない規則を
@@ -475,6 +521,46 @@ export function deleteUserRomajiRuleCommand(id: string): Command<KeydistAssets> 
     if (next.length === current.userRomajiRules.length) return { kind: 'no-op' };
     return { kind: 'applied', label: '自作のローマ字規則を削除する', changes: { userRomajiRules: next } };
   };
+}
+
+/** `userRomajiRules`だけに触れるコマンドの共通の骨組み。変化が無ければ（参照が同じなら）何もしない。 */
+function userRomajiRulesCommand(
+  label: string,
+  compute: (rules: readonly UserRomajiRule[]) => readonly UserRomajiRule[],
+): Command<KeydistAssets> {
+  return (current) => {
+    const next = compute(current.userRomajiRules);
+    if (next === current.userRomajiRules) return { kind: 'no-op' };
+    return { kind: 'applied', label, changes: { userRomajiRules: next } };
+  };
+}
+
+/** 自作のローマ字規則を新規作成する。差分を持たない、`base`だけの規則から始める。 */
+export function createUserRomajiRuleCommand(
+  generateId: () => string,
+  name: string,
+  base: BuiltinRomajiRuleId,
+): Command<KeydistAssets> {
+  return userRomajiRulesCommand('自作のローマ字規則を作成する', (rules) => createUserRomajiRule(rules, generateId, name, base));
+}
+
+/** 自作のローマ字規則を複製する。複製元が存在しない場合は何もしない。 */
+export function duplicateUserRomajiRuleCommand(
+  sourceId: string,
+  generateId: () => string,
+  name?: string,
+): Command<KeydistAssets> {
+  return userRomajiRulesCommand('自作のローマ字規則を複製する', (rules) => duplicateUserRomajiRule(rules, sourceId, generateId, name));
+}
+
+/** 自作のローマ字規則の名前を変更する。対象が存在しない、または既に同じ名前なら何もしない。 */
+export function renameUserRomajiRuleCommand(id: string, name: string): Command<KeydistAssets> {
+  return userRomajiRulesCommand('自作のローマ字規則の名前を変更する', (rules) => renameUserRomajiRule(rules, id, name));
+}
+
+/** 自作のローマ字規則の中身（基底のルール・差分・促音の生成）を書き換える。対象が存在しない、または中身が同じなら何もしない。 */
+export function setUserRomajiRuleContentCommand(id: string, content: RomajiRuleContent): Command<KeydistAssets> {
+  return userRomajiRulesCommand('自作のローマ字規則を編集する', (rules) => updateUserRomajiRule(rules, id, content));
 }
 
 /**

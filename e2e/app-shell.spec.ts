@@ -346,3 +346,197 @@ test('テキストのチップは文字数を出し、本文を編集すると�
   await panel.getByLabel('テキスト', { exact: true }).fill('あいうえお');
   await expect(chip.locator('.text-chip-count')).toHaveText('5字', { timeout: 10_000 });
 });
+
+/** サイドバーの見出しのボタン（まとまりを畳む）。 */
+function groupButton(page: Page, name: string) {
+  return page.locator('#app-sidebar').getByRole('button', { name, exact: true });
+}
+
+const COLLAPSIBLE_GROUPS = ['Analyze', 'Workspace', 'Assets', 'About'] as const;
+
+test('サイドバーの見出しのまとまりは、初めて開いた時は全部開いている', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  await waitForHydration(page);
+  const sidebar = page.locator('#app-sidebar');
+  for (const name of COLLAPSIBLE_GROUPS) {
+    await expect(groupButton(page, name)).toHaveAttribute('aria-expanded', 'true');
+    // 見出しの役割は残る。
+    await expect(sidebar.getByRole('heading', { name, level: 2, exact: true })).toBeVisible();
+  }
+  await expect(page.locator('html')).not.toHaveAttribute('data-sidebar-collapsed');
+  await expect(sidebar.getByRole('link', { name: 'Bigram Flow', exact: true })).toBeVisible();
+  await expect(sidebar.getByRole('link', { name: '計算方法', exact: true })).toBeVisible();
+  await expect(sidebar.getByRole('button', { name: '＋ 新しいWorkspace' })).toBeVisible();
+});
+
+test('見出しを押すとまとまりが畳まれ、もう一度押すと開く。今いる画面の項目を含むまとまりも畳める', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  await waitForHydration(page);
+  const sidebar = page.locator('#app-sidebar');
+  const bigramFlow = sidebar.getByRole('link', { name: 'Bigram Flow', exact: true });
+  const newWorkspace = sidebar.getByRole('button', { name: '＋ 新しいWorkspace' });
+  const tester = sidebar.getByRole('link', { name: 'Tester', exact: true });
+
+  // aria-controlsは畳む項目の欄を指す。
+  const controlled = await groupButton(page, 'Analyze').getAttribute('aria-controls');
+  expect(controlled).not.toBeNull();
+  await expect(page.locator(`#${controlled}`)).toContainText('Bigram Flow');
+
+  await groupButton(page, 'Analyze').click();
+  await expect(groupButton(page, 'Analyze')).toHaveAttribute('aria-expanded', 'false');
+  await expect(bigramFlow).toBeHidden();
+  await expect(sidebar.getByRole('link', { name: '比較表', exact: true })).toBeHidden();
+  // 他のまとまりは開いたまま。
+  await expect(groupButton(page, 'Assets')).toHaveAttribute('aria-expanded', 'true');
+
+  await groupButton(page, 'Analyze').click();
+  await expect(groupButton(page, 'Analyze')).toHaveAttribute('aria-expanded', 'true');
+  await expect(bigramFlow).toBeVisible();
+
+  // Workspaceを畳むと「＋ 新しいWorkspace」も隠れる。Testerは畳まれない。
+  await expect(newWorkspace).toBeVisible();
+  await groupButton(page, 'Workspace').click();
+  await expect(newWorkspace).toBeHidden();
+  await expect(tester).toBeVisible();
+  await expect(sidebar.getByRole('button', { name: 'Tester' })).toHaveCount(0);
+
+  await groupButton(page, 'Assets').click();
+  await groupButton(page, 'About').click();
+  await expect(sidebar.getByRole('link', { name: '計算方法', exact: true })).toBeHidden();
+  await expect(sidebar.getByRole('link', { name: 'GitHub', exact: true })).toBeHidden();
+  await expect(tester).toBeVisible();
+});
+
+test('畳んだまとまりの中の画面へ、サイドバーの外のリンクやURLで移っても畳まれたまま。読み込み直しても保たれる', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  await waitForHydration(page);
+  const sidebar = page.locator('#app-sidebar');
+  await groupButton(page, 'Analyze').click();
+  await expect(groupButton(page, 'Analyze')).toHaveAttribute('aria-expanded', 'false');
+
+  // サイドバーの外のリンク（トップの見本。サイドバーが引き出しになる幅で出る）で、畳んだまとまりの中の画面へ移る。
+  await page.goto('/');
+  await page.setViewportSize({ width: 390, height: 800 });
+  await waitForHydration(page);
+  await page.locator('.hero').getByRole('link', { name: '比較表', exact: true }).click();
+  await expect(page).toHaveURL(/\/standalone\/comparison$/);
+  await page.getByRole('button', { name: 'サイドバーを開く' }).click();
+  await expect(sidebar).toBeInViewport();
+  await expect(groupButton(page, 'Analyze')).toHaveAttribute('aria-expanded', 'false');
+  await expect(sidebar.getByRole('link', { name: '比較表', exact: true })).toBeHidden();
+  await page.setViewportSize({ width: 1440, height: 800 });
+
+  await page.goto('/standalone/heatmap');
+  await waitForHydration(page);
+  await expect(groupButton(page, 'Analyze')).toHaveAttribute('aria-expanded', 'false');
+  await expect(sidebar.getByRole('link', { name: 'ヒートマップ', exact: true })).toBeHidden();
+  await expect(page.locator('html')).toHaveAttribute('data-sidebar-collapsed', 'analyze');
+
+  await page.reload();
+  await waitForHydration(page);
+  await expect(groupButton(page, 'Analyze')).toHaveAttribute('aria-expanded', 'false');
+  await expect(groupButton(page, 'About')).toHaveAttribute('aria-expanded', 'true');
+});
+
+test('畳んだまとまりは、画面を作るスクリプトが動く前の事前描画のHTMLから隠れている', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('keydist:app-state', JSON.stringify({ version: 2, shell: { sidebarPinned: true, sidebarCollapsed: ['assets', 'about'] } }));
+  });
+  // 外部のスクリプトを止める。headに埋めた小さなスクリプトは止まらない。
+  await page.route('**/*', (route) => (route.request().resourceType() === 'script' ? route.abort() : route.continue()));
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('html')).toHaveAttribute('data-sidebar-collapsed', 'assets about');
+  const sidebar = page.locator('#app-sidebar');
+  await expect(sidebar.getByRole('link', { name: 'Bigram Flow', exact: true })).toBeVisible();
+  await expect(sidebar.getByRole('link', { name: '個人速度', exact: true })).toBeHidden();
+  await expect(sidebar.getByRole('link', { name: '計算方法', exact: true })).toBeHidden();
+});
+
+test('保存した畳み方が壊れている時は全部開いた状態になる', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('keydist:app-state', JSON.stringify({ version: 2, shell: { sidebarPinned: true, sidebarCollapsed: 'about' } }));
+  });
+  await page.goto('/standalone/bigram-flow');
+  await waitForHydration(page);
+  await expect(page.locator('html')).not.toHaveAttribute('data-sidebar-collapsed');
+  for (const name of COLLAPSIBLE_GROUPS) {
+    await expect(groupButton(page, name)).toHaveAttribute('aria-expanded', 'true');
+  }
+  await expect(page.locator('#app-sidebar').getByRole('link', { name: '計算方法', exact: true })).toBeVisible();
+});
+
+test('固定の切り替えと畳み方は、互いの保存を消さない', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  await waitForHydration(page);
+  await groupButton(page, 'About').click();
+  await page.locator('#app-sidebar').getByRole('button', { name: 'サイドバーを固定' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-sidebar', 'unpinned');
+  await page.reload();
+  await waitForHydration(page);
+  await expect(page.locator('html')).toHaveAttribute('data-sidebar', 'unpinned');
+  await expect(page.locator('html')).toHaveAttribute('data-sidebar-collapsed', 'about');
+});
+
+test('固定を外して重ねて出した時も畳める。今いる画面の項目が畳まれていれば、見出しのボタンにフォーカスが移る', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('keydist:app-state', JSON.stringify({ version: 2, shell: { sidebarPinned: false, sidebarCollapsed: ['analyze'] } }));
+  });
+  await page.goto('/standalone/bigram-flow');
+  await waitForHydration(page);
+  await page.getByRole('button', { name: 'サイドバーを開く' }).click();
+  await expectSidebarShown(page);
+  await expect(groupButton(page, 'Analyze')).toBeFocused();
+
+  await groupButton(page, 'About').click();
+  await expect(page.locator('#app-sidebar').getByRole('link', { name: '計算方法', exact: true })).toBeHidden();
+  await groupButton(page, 'Analyze').click();
+  await expect(page.locator('#app-sidebar').getByRole('link', { name: 'Bigram Flow', exact: true })).toBeVisible();
+});
+
+test('スマホ幅の引き出しでも、まとまりを畳める。開いた時に今いる項目が畳まれていれば見出しのボタンにフォーカスが移る', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/standalone/bigram-flow');
+  await waitForHydration(page);
+  const toggle = page.getByRole('button', { name: 'サイドバーを開く' });
+  await toggle.click();
+  const sidebar = page.locator('#app-sidebar');
+  await expect(sidebar).toBeInViewport();
+  await groupButton(page, 'Analyze').click();
+  await expect(sidebar.getByRole('link', { name: 'Bigram Flow', exact: true })).toBeHidden();
+  await page.keyboard.press('Escape');
+  await expect(sidebar).not.toBeInViewport();
+
+  await toggle.click();
+  await expect(sidebar).toBeInViewport();
+  await expect(groupButton(page, 'Analyze')).toBeFocused();
+  await groupButton(page, 'Analyze').click();
+  await expect(sidebar.getByRole('link', { name: 'Bigram Flow', exact: true })).toBeVisible();
+});
+
+test('まとまりを畳んだ状態でも、Tabはサイドバーの中の見えている項目だけを巡り、本体へ抜けない', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('keydist:app-state', JSON.stringify({ version: 2, shell: { sidebarPinned: false, sidebarCollapsed: ['analyze', 'about'] } }));
+  });
+  await page.goto('/standalone/bigram-flow');
+  await waitForHydration(page);
+  await page.getByRole('button', { name: 'サイドバーを開く' }).click();
+  await expectSidebarShown(page);
+  // 畳んだ項目は数えない。
+  const visible = () =>
+    page.evaluate(() => {
+      const items = [...document.querySelectorAll<HTMLElement>('#app-sidebar a[href], #app-sidebar button:not([disabled])')].filter((item) => item.checkVisibility());
+      return { count: items.length, index: items.indexOf(document.activeElement as HTMLElement), names: items.map((item) => item.textContent ?? '') };
+    });
+  const { count, names } = await visible();
+  expect(names.join('|')).not.toContain('Bigram Flow');
+  expect(names.join('|')).not.toContain('計算方法');
+  expect(names.join('|')).toContain('Assets');
+  // フォーカスはAnalyzeの見出しのボタン（見えている先頭側）にある。残りをTabで巡る。
+  const start = (await visible()).index;
+  expect(start).toBeGreaterThanOrEqual(0);
+  for (let i = 0; i < count - 1 - start; i++) {
+    await page.keyboard.press('Tab');
+    expect((await visible()).index, `Tab ${i + 1}回目でサイドバーの見えている項目の外へ出た`).toBeGreaterThanOrEqual(0);
+  }
+  await expect(page.locator('#app-sidebar')).toBeInViewport();
+});

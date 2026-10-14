@@ -107,7 +107,7 @@ test('削除の確認: 文に影響と元に戻せる範囲が出て、キャン
   const layouts = page.locator('[data-user-assets-section="layout"]');
   await layouts.getByRole('button', { name: '「自作A」を削除' }).click();
   const dialog = page.getByRole('dialog', { name: '「自作A」を削除しますか' });
-  await expect(dialog).toContainText('この画面にいる間だけ');
+  await expect(dialog).toContainText('再読み込みやタブを閉じた後は戻せません');
   await expect(dialog).toContainText('配列が見つかりません');
   await expect(dialog.getByRole('button', { name: 'キャンセル' })).toBeFocused();
   await dialog.getByRole('button', { name: 'キャンセル' }).click();

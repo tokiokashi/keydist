@@ -8,7 +8,7 @@ import {
   createTextCommand,
   selectTextCommand,
 } from '#engine/commands.ts';
-import { applyCommand, applyExternalChange, emptyCommandHistory, type Command } from '#input/commands/index.ts';
+import { applyCommand, applyExternalChangeToScreens, emptyCommandHistory, emptyScreenHistories, type Command } from '#input/commands/index.ts';
 import {
   buildAssetSyncs,
   commitCommand,
@@ -146,22 +146,28 @@ test('ASSET_KEYS: 表に無いキーは無い（KeydistAssetsの全キーをカ�
  * 1タブぶんの手持ちと`commitCommand`を`useKeydistAssets`と同じ配線で組む。
  * 変更通知は届けない（他タブの書き込みの通知がまだ届いていない状況を作るため）。
  */
+const SCREEN = '/screen';
+
 function createTab(storage: KeyValueStorage) {
-  let state: AssetState = { assets: baseAssets(), history: emptyCommandHistory() };
+  let state: AssetState = { assets: baseAssets(), histories: emptyScreenHistories() };
   const syncs = buildAssetSyncs({
-    onExternalChange: (key, value) => { state = applyExternalChange(state.assets, state.history, key, value); },
+    onExternalChange: (key, value) => {
+      state = { ...state, ...applyExternalChangeToScreens(state.assets, state.histories, key, value) };
+    },
     storage,
     notify: () => {},
   });
   return {
     get state() { return state; },
+    /** この画面の履歴。 */
+    get history() { return state.histories.get(SCREEN) ?? emptyCommandHistory<KeydistAssets>(); },
     dispatch(command: Command<KeydistAssets>) {
-      const result = commitCommand(syncs, () => state, command);
+      const result = commitCommand(syncs, () => state, SCREEN, command);
       if (result.outcome.kind === 'applied') state = result;
     },
     step(direction: 'undo' | 'redo') {
-      const result = commitHistoryStep(syncs, () => state, direction);
-      if (result.outcome.kind === 'applied') state = result;
+      const result = commitHistoryStep(syncs, () => state, SCREEN, direction);
+      if (result.outcome.kind === 'applied' || result.outcome.kind === 'conflict') state = result;
     },
   };
 }
@@ -200,11 +206,11 @@ test('commitCommand: 他タブの変更を取り込んだ資産の履歴は捨�
   const tabB = createTab(storage);
 
   tabB.dispatch(createTextCommand('standalone', freshId));
-  assert.equal(tabB.state.history.undoStack.length, 1);
+  assert.equal(tabB.history.undoStack.length, 1);
   tabA.dispatch(createTextCommand('standalone', freshId));
   tabB.dispatch(createTextCommand('standalone', freshId));
 
-  assert.deepEqual(tabB.state.history.undoStack.map((entry) => entry.label), ['テキストを作成する']);
+  assert.deepEqual(tabB.history.undoStack.map((entry) => entry.label), ['テキストを作成する']);
   assert.equal(tabB.state.assets.textLibrary.texts.length, 3);
 });
 
@@ -224,7 +230,7 @@ test('commitCommand: 何も取り込まなければapplyCommandと同じ結果�
   const storage = createFakeStorage();
   const tab = createTab(storage);
   const command = createTextCommand('standalone', () => 'fixed');
-  const expected = applyCommand(tab.state.assets, tab.state.history, command);
+  const expected = applyCommand(tab.state.assets, tab.history, command);
   tab.dispatch(command);
   assert.deepEqual(tab.state.assets, expected.assets);
 });
@@ -240,7 +246,7 @@ test('commitHistoryStep: Undoで戻した値をstorageへ書き、Redoでやり�
   tab.step('undo');
   assert.notDeepEqual(read().standaloneTextSelection?.ref, { kind: 'builtin', id: 'builtin:ja.modern' });
   assert.deepEqual(read().standaloneTextSelection, tab.state.assets.standaloneTextSelection);
-  assert.equal(tab.state.history.redoStack.length, 1);
+  assert.equal(tab.history.redoStack.length, 1);
 
   tab.step('redo');
   assert.deepEqual(read().standaloneTextSelection?.ref, { kind: 'builtin', id: 'builtin:ja.modern' });

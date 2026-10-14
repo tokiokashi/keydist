@@ -26,7 +26,7 @@ export function StandaloneSetAnalyzerApp<Options, Extracted, RowContext>({
 }) {
   const decodeOptions = (raw: unknown) => analyzer.definition.decodeOptions(raw, []);
   const { assets, ready, dispatch, getAssets, canUndo, canRedo, undo, redo } = useKeydistAssets();
-  const catalog = useMemo(() => paneCatalog(assets), [assets.userLayouts, assets.userRomajiRules, assets.personalSpeed]);
+  const catalog = useMemo(() => paneCatalog(assets), [assets.userLayouts, assets.userRomajiRules, assets.fingerAssignments, assets.personalSpeed]);
 
   // 保存先へ書いた値を記録し、解析設定の下書きが自分の保存の反響を見分けるのに使う
   const writeLogs = useMemo(createOptionsWriteLogs, []);
