@@ -48,9 +48,6 @@ export const OVERHEAD_KINDS: readonly OverheadKind[] = [
   'sfb',
 ];
 
-/** ステップごとに決まる差の種類の並び。 */
-export const STEP_OVERHEAD_KINDS: readonly StepOverheadKind[] = [...STROKE_STRUCTURE_KINDS, 'repeat', 'sfb'];
-
 /** 再生へ反映する個人の打鍵・指移動速度。 */
 export interface PlaybackCalibration {
   /** 通常の連続打鍵速度。 */
