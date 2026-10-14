@@ -18,12 +18,38 @@ export type StrokeStructureKind = 'arpeggio' | 'chain' | 'other';
 export const STROKE_STRUCTURE_KINDS: readonly StrokeStructureKind[] = ['arpeggio', 'chain', 'other'];
 
 /**
- * 打鍵の上乗せ（`keystrokeOverheadMs`）を集める単位「差の種類」。構造の種類の3つに、続け打ち（`repeat`）と
- * 同指連続（`sfb`）を足した5つ。ステップごとに1つに決まる（`stroke-structure.ts`）。
+ * ステップごとに1つに決まる差の種類（`stroke-structure.ts`）。構造の種類の3つに、続け打ち（`repeat`）と
+ * 同指連続（`sfb`）を足した5つ。
  */
-export type OverheadKind = StrokeStructureKind | 'repeat' | 'sfb';
+export type StepOverheadKind = StrokeStructureKind | 'repeat' | 'sfb';
 
-export const OVERHEAD_KINDS: readonly OverheadKind[] = [...STROKE_STRUCTURE_KINDS, 'repeat', 'sfb'];
+/** 直前のストロークと同じ入力単位を打つか（かなの中）、違う入力単位を打つか（かなの境目）。 */
+export type OverheadSide = 'within' | 'boundary';
+
+export const OVERHEAD_SIDES: readonly OverheadSide[] = ['within', 'boundary'];
+
+/** 構造の種類のかなの中・かなの境目の値のキー（例: `arpeggio-within`）。 */
+export type SideOverheadKind = `${StrokeStructureKind}-${OverheadSide}`;
+
+/**
+ * 打鍵の上乗せ（`keystrokeOverheadMs`）の値のキー。構造の種類の分けない値・かなの中の値・かなの境目の値と、
+ * 続け打ち・同指連続の11個。分けない値とかなの中・境目の値は、どれも独立に持てる。
+ */
+export type OverheadKind = StepOverheadKind | SideOverheadKind;
+
+export function sideOverheadKind(kind: StrokeStructureKind, side: OverheadSide): SideOverheadKind {
+  return `${kind}-${side}`;
+}
+
+/** 表示と編集の並び順。構造の種類ごとに、分けない値・かなの中・かなの境目の順。 */
+export const OVERHEAD_KINDS: readonly OverheadKind[] = [
+  ...STROKE_STRUCTURE_KINDS.flatMap((kind) => [kind, ...OVERHEAD_SIDES.map((side) => sideOverheadKind(kind, side))]),
+  'repeat',
+  'sfb',
+];
+
+/** ステップごとに決まる差の種類の並び。 */
+export const STEP_OVERHEAD_KINDS: readonly StepOverheadKind[] = [...STROKE_STRUCTURE_KINDS, 'repeat', 'sfb'];
 
 /** 再生へ反映する個人の打鍵・指移動速度。 */
 export interface PlaybackCalibration {
@@ -46,10 +72,10 @@ export interface PlaybackCalibration {
    */
   sameKeyActionsPerSecond?: number;
   /**
-   * 文章を打つ時の打鍵の上乗せ[ms]。差の種類ごとに持つ。
+   * 文章を打つ時の打鍵の上乗せ[ms]。差の種類ごとに持ち、構造の種類はかなの中・かなの境目の値も持てる。
    * 続け打ちと同指連続を除く種類は、基準の時間のうち1打の時間（`normalMs`）の側にだけ足す。
    * 同指連続のステップは、値を持つ時は`max(normalMs, 移動の時間)`の外に足す。
-   * 持たない構造の種類は「その他」の値を使う。
+   * 持たない値は、同じ側の「その他」、分けない値、分けない「その他」の順で代わりの値を使う（`playbackKeystrokeOverheadMs`）。
    */
   keystrokeOverheadMs?: Readonly<Partial<Record<OverheadKind, number>>>;
   measuredAt: number;

@@ -28,7 +28,9 @@ import {
   CALIBRATION_OVERHEAD_MS_MAX,
   CALIBRATION_OVERHEAD_MS_MIN,
   OVERHEAD_KINDS,
+  OVERHEAD_SIDES,
   STROKE_STRUCTURE_KINDS,
+  sideOverheadKind,
   type FingerSpeedSample,
   type HandDirection,
   type OverheadKind,
@@ -354,12 +356,15 @@ function sameKeyRate(results: readonly CalibrationTaskResult[]): number | undefi
 
 /**
  * 測り直した項目を基準に使う、打鍵の上乗せの種類のうち、消す種類。基準が変わると、その基準から求めた差は意味が合わなくなる。
- * 構造の種類と同指連続の基準の1打の時間は、通常速度・方向別・同手・別指の速度のどれかで決まる。
+ * 構造の種類（分けない値、かなの中・かなの境目の値）と同指連続の基準の1打の時間は、通常速度・方向別・同手・別指の速度のどれかで決まる。
  * 同指連続の基準は指の移動の時間も含む。
  * 続け打ちの基準はどのストロークでも同じ1つの値なので、消さずに求め直す（`rebasedRepeatOverheadMs`）。
  */
 function overheadKindsBasedOn(item: CalibrationItem): readonly OverheadKind[] {
-  const normalBased: OverheadKind[] = [...STROKE_STRUCTURE_KINDS, 'sfb'];
+  const normalBased: OverheadKind[] = [
+    ...STROKE_STRUCTURE_KINDS.flatMap((kind) => [kind, ...OVERHEAD_SIDES.map((side) => sideOverheadKind(kind, side))]),
+    'sfb',
+  ];
   switch (item.kind) {
     case 'actions': return normalBased;
     case 'same-key': return [];

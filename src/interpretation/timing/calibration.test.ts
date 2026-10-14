@@ -95,3 +95,35 @@ test('同じキーを続けて打つ速さは0.1から40アクション/秒ま�
   }
   assert.equal(playbackCalibrationProblem({ ...VALID, sameKeyActionsPerSecond: 50 }), '同じキーを続けて打つ速さが範囲外です');
 });
+
+test('かなの中・かなの境目の値は、分けない値を持たなくても、範囲の中なら保存できる', () => {
+  const sides = {
+    'arpeggio-within': -1000, 'arpeggio-boundary': 1000,
+    'chain-within': 0, 'chain-boundary': 12.5,
+    'other-within': 30, 'other-boundary': 90,
+  };
+  assert.equal(isPlaybackCalibration({ ...VALID, keystrokeOverheadMs: sides }), true);
+  assert.equal(isPlaybackCalibration({ ...VALID, keystrokeOverheadMs: { 'other-within': 30 } }), true);
+  assert.equal(isPlaybackCalibration({ ...VALID, keystrokeOverheadMs: { ...sides, other: 80, repeat: 5, sfb: 7 } }), true);
+});
+
+test('かなの中・かなの境目の値が1つでも範囲の外・数でない値・知らない側なら保存できない', () => {
+  for (const bad of [
+    { 'other-within': 1000.1 },
+    { 'other-boundary': -1000.1 },
+    { 'chain-within': Number.NaN },
+    { 'arpeggio-boundary': '5' },
+    // 範囲の中の値があっても、1つでも範囲の外なら全体を保存できない。
+    { other: 80, 'other-within': 30, 'other-boundary': 2000 },
+    { 'repeat-within': 5 },
+    { 'sfb-boundary': 5 },
+    { 'other-middle': 5 },
+    { 'within-other': 5 },
+  ]) {
+    assert.equal(isPlaybackCalibration({ ...VALID, keystrokeOverheadMs: bad }), false, JSON.stringify(bad));
+  }
+  assert.equal(
+    playbackCalibrationProblem({ ...VALID, keystrokeOverheadMs: { 'other-within': 2000 } }),
+    '打鍵の上乗せが正しくありません',
+  );
+});

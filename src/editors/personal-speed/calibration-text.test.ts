@@ -5,11 +5,21 @@ import { SENTENCE_TABLE_NOTES, clearedOverheadsText, measurementEffectText, save
 
 /** 文章の知らせの文だけを検査するための測定結果。表に使う値は持たない。 */
 function measurement(overheadMs: SentenceMeasurement['overheadMs']): SentenceMeasurement {
-  const counts = { arpeggio: 12, chain: 3, other: 100, repeat: 12, sfb: 2 };
+  const counts = {
+    arpeggio: 12, 'arpeggio-within': 5, 'arpeggio-boundary': 7,
+    chain: 3, 'chain-within': 1, 'chain-boundary': 2,
+    other: 100, 'other-within': 40, 'other-boundary': 60,
+    repeat: 12, sfb: 2,
+  };
   return { counts, overheadMs } as unknown as SentenceMeasurement;
 }
 
-const ALL = { arpeggio: 10, chain: 12, other: 20, repeat: 30, sfb: 40 };
+const ALL = {
+  arpeggio: 10, 'arpeggio-within': 1, 'arpeggio-boundary': 2,
+  chain: 12, 'chain-within': 3, 'chain-boundary': 4,
+  other: 20, 'other-within': 5, 'other-boundary': 6,
+  repeat: 30, sfb: 40,
+};
 
 test('下限に届かない種類があって保存した時の知らせに、別の配列で測ることの添え書きが付く', () => {
   const text = sentenceSavedMessage(measurement({ arpeggio: 10, other: 20, repeat: 30 }));
@@ -51,11 +61,11 @@ test('測るボタンの直後の保存値への影響は、置き換わる・�
   );
   assert.equal(
     measurementEffectText('directional', true, ['chain', 'repeat']),
-    '測ると、測った向きの値が置き換わり、打鍵の上乗せのうちChainが消えます（続け打ちは残ります）。',
+    '測ると、測った向きの値が置き換わり、打鍵の上乗せのうちChain全体が消えます（続け打ちは残ります）。',
   );
   assert.equal(
     measurementEffectText('directional', true, ['arpeggio', 'other']),
-    '測ると、測った向きの値が置き換わり、打鍵の上乗せのうちArpeggio・その他が消えます。',
+    '測ると、測った向きの値が置き換わり、打鍵の上乗せのうちArpeggio全体・その他全体が消えます。',
   );
   assert.equal(measurementEffectText('sentence', true, ['sfb']), '測り直して保存すると、前の打鍵の上乗せは全て置き換わります。');
 });
@@ -79,7 +89,7 @@ test('測った後の知らせは、消した種類と置き換えた種類を�
   assert.equal(
     clearedOverheadsText(['other'], ['repeat']),
     '打鍵の上乗せ（続け打ち）は、基準の時間が変わったため、再生の時間が変わらない値に置き換えました。'
-    + '打鍵の上乗せ（その他）は、他の値が変わったため消しました。文章を打つ速さをもう一度測ってください。',
+    + '打鍵の上乗せ（その他全体）は、他の値が変わったため消しました。文章を打つ速さをもう一度測ってください。',
   );
   assert.ok(!clearedOverheadsText([], ['repeat']).includes('消しました'));
   assert.ok(!clearedOverheadsText(['sfb']).includes('置き換えました'));

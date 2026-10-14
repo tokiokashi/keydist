@@ -8,7 +8,7 @@ import {
   type Point,
 } from '#input/shapes/geometry.ts';
 import type { Press, Stroke } from '#trace/generate.ts';
-import type { PlaybackCalibration } from './calibration.ts';
+import type { OverheadKind, PlaybackCalibration } from './calibration.ts';
 import { playbackCrossHandDirection, type PlaybackTimingAnalysis } from './playback.ts';
 import {
   SENTENCE_MIN_SAMPLES,
@@ -58,9 +58,26 @@ function alternating(count: number, chains: ReturnType<typeof range>[] = [], arp
   return { strokes, transitions: [], chains, arpeggioSpans } as unknown as PlaybackTimingAnalysis;
 }
 
+const UNDIVIDED_KINDS: readonly OverheadKind[] = ['arpeggio', 'chain', 'other', 'repeat', 'sfb'];
+
+/** かなの中・かなの境目の値を除き、分けない値と続け打ち・同指連続だけを残す。 */
+function undivided<T>(record: Readonly<Partial<Record<OverheadKind, T>>>): Partial<Record<OverheadKind, T>> {
+  return Object.fromEntries(Object.entries(record).filter(([kind]) => UNDIVIDED_KINDS.includes(kind as OverheadKind)));
+}
+
 /** 1本の文の1回分だけを数える測定。 */
-function measureOne(analysis: PlaybackTimingAnalysis, calibration: PlaybackCalibration, taps: readonly SentenceTap[]) {
+function measureOneRaw(analysis: PlaybackTimingAnalysis, calibration: PlaybackCalibration, taps: readonly SentenceTap[]) {
   return measureSentence([{ sentence: 0, analysis, taps }], calibration);
+}
+
+/** `measureOneRaw`のうち、分けない値と続け打ち・同指連続だけを残した結果。 */
+function measureOne(analysis: PlaybackTimingAnalysis, calibration: PlaybackCalibration, taps: readonly SentenceTap[]) {
+  const result = measureOneRaw(analysis, calibration, taps);
+  return {
+    ...result,
+    counts: undivided(result.counts) as typeof result.counts,
+    overheadMs: undivided(result.overheadMs),
+  };
 }
 
 function applyWithCurrent(base: PlaybackCalibration | undefined, analysis: PlaybackTimingAnalysis, taps: readonly SentenceTap[], nowMs: number, current: PlaybackCalibration | undefined) {
@@ -73,6 +90,7 @@ function applySentenceMeasurement(base: PlaybackCalibration | undefined, analysi
 }
 
 const NO_COUNTS = { arpeggio: 0, chain: 0, other: 0, repeat: 0, sfb: 0 };
+const NO_SIDE_COUNTS = { ...NO_COUNTS, 'arpeggio-within': 0, 'arpeggio-boundary': 0, 'chain-within': 0, 'chain-boundary': 0, 'other-within': 0, 'other-boundary': 0 };
 
 const SAVED: PlaybackCalibration = {
   actionsPerSecond: 5,
@@ -206,7 +224,7 @@ test('反映は打鍵の上乗せだけを置き換え、他の項目と、持�
   const analysis = alternating(20);
   const result = applySentenceMeasurement(base, analysis, tapsFor(20, () => 260), 99);
   assert.ok(result.ok);
-  assert.deepEqual(result.calibration, { ...SAVED, keystrokeOverheadMs: { other: 60 }, measuredAt: 99 });
+  assert.deepEqual(result.calibration, { ...SAVED, keystrokeOverheadMs: { other: 60, 'other-boundary': 60 }, measuredAt: 99 });
 });
 
 test('保存の時の保存値が、測定を始めた時の保存値と違えば、保存せずに測り直させる', () => {
@@ -242,7 +260,7 @@ test('打鍵の上乗せが範囲を外れたら、保存せずに測り直さ�
   // 1000ミリ秒ちょうどは保存できる
   const edge = applySentenceMeasurement(SAVED, alternating(20), tapsFor(20, () => 1200), 1);
   assert.ok(edge.ok);
-  assert.deepEqual(edge.calibration.keystrokeOverheadMs, { other: 1000 });
+  assert.deepEqual(edge.calibration.keystrokeOverheadMs, { other: 1000, 'other-boundary': 1000 });
 });
 
 test('下限の数は、文ごとに数える回のうち最大の回の数で、同じ文の2回目と3回目で数え直さない', () => {
@@ -252,11 +270,12 @@ test('下限の数は、文ごとに数える回のうち最大の回の数で�
   // 1回分で数えるのは9打。同じ文の2回目と3回目を数えても、9打のまま。
   const sameSentence = measureSentence([sample(0), sample(0)], SAVED);
   assert.equal(sameSentence.counts.other, 9);
+  assert.equal(sameSentence.counts['other-boundary'], 9);
   assert.deepEqual(sameSentence.overheadMs, {});
   // 別の文は足す。
   const otherSentence = measureSentence([sample(0), sample(0), sample(1), sample(1)], SAVED);
   assert.equal(otherSentence.counts.other, 18);
-  assert.deepEqual(otherSentence.overheadMs, { other: 60 });
+  assert.deepEqual(otherSentence.overheadMs, { other: 60, 'other-boundary': 60 });
 });
 
 test('文ごとの数は回の最大で、回ごとに数が違えば大きい回の数になる', () => {
@@ -395,7 +414,7 @@ test('下限は差の種類ごとに当てはめ、届いた種類だけを保�
   assert.deepEqual(overheadMs, { other: 60 });
   const result = applySentenceMeasurement(SAVED, analysis, tapsFor(30, () => 260), 7);
   assert.ok(result.ok);
-  assert.deepEqual(result.calibration.keystrokeOverheadMs, { other: 60 });
+  assert.deepEqual(result.calibration.keystrokeOverheadMs, { other: 60, 'other-boundary': 60 });
 });
 
 const emptyRow = (count = 0) => ({ count });
@@ -440,11 +459,17 @@ test('表は、保存した時は届いた種類を「保存した」、届か�
   const result = applySentenceMeasurement(SAVED, alternating(20), tapsFor(20, () => 260), 5);
   const table = sentenceResultTable(result);
   assert.ok(table);
-  assert.equal(table.kinds.length, 5);
+  assert.equal(table.kinds.length, 11);
   assert.deepEqual(table.kinds.map(({ kind, status }) => [kind, status]), [
     ['arpeggio', 'below-minimum'],
+    ['arpeggio-within', 'below-minimum'],
+    ['arpeggio-boundary', 'below-minimum'],
     ['chain', 'below-minimum'],
+    ['chain-within', 'below-minimum'],
+    ['chain-boundary', 'below-minimum'],
     ['other', 'saved'],
+    ['other-within', 'below-minimum'],
+    ['other-boundary', 'saved'],
     ['repeat', 'below-minimum'],
     ['sfb', 'below-minimum'],
   ]);
@@ -455,7 +480,7 @@ test('表は、どの種類も下限に届かず保存しなかった時にも�
   const table = sentenceResultTable(applySentenceMeasurement(SAVED, alternating(6), tapsFor(6, () => 260), 5));
   assert.ok(table);
   assert.ok(table.kinds.every(({ status }) => status === 'below-minimum'));
-  assert.equal(table.kinds[2].stats.intervalMs, 260);
+  assert.equal(table.kinds.find(({ kind }) => kind === 'other')?.stats.intervalMs, 260);
 });
 
 test('表は、範囲の外で保存しなかった時に出て、届いた種類を「範囲の外」、届かない種類を「下限に届かず」とする', () => {
@@ -463,8 +488,11 @@ test('表は、範囲の外で保存しなかった時に出て、届いた種�
   assert.ok(!result.ok && result.reason === 'out-of-range');
   const table = sentenceResultTable(result);
   assert.ok(table);
-  assert.deepEqual(table.kinds.map(({ status }) => status), ['below-minimum', 'below-minimum', 'out-of-range', 'below-minimum', 'below-minimum']);
-  assert.equal(table.kinds[2].stats.differenceMs, 4800);
+  assert.deepEqual(
+    table.kinds.map(({ kind, status }) => [kind, status]).filter(([, status]) => status !== 'below-minimum'),
+    [['other', 'out-of-range'], ['other-boundary', 'out-of-range']],
+  );
+  assert.equal(table.kinds.find(({ kind }) => kind === 'other')?.stats.differenceMs, 4800);
 });
 
 test('表は、保存値が無い時と測定の途中で保存値が変わった時は出さない', () => {
@@ -492,51 +520,109 @@ test('出力の文字の読み方で完了した印が無ければ、数える�
   assert.equal(plain.counts.other, 20);
 });
 
-test('異手と異手でない打鍵を、かなの中と境目で分けた4行に数え、保存する行には影響しない', () => {
-  // LIとRIを交互に打つ異手の遷移。入力単位は2打ずつ（遷移1,3,5…が単位の変わり目）。
-  const cross = custom(Array.from({ length: 21 }, (_, i) => (i % 2 === 0 ? 'LI' : 'RI') as Finger), (i) => `k${i}`, () => 0, String, (i) => Math.floor(i / 2));
-  const { split, counts, overheadMs } = measureOne(cross, SAVED, tapsFor(21, (i) => (i % 2 === 1 ? 300 : 260)));
-  assert.deepEqual(split['cross-within'], { count: 10, baseMs: 200, intervalMs: 300, differenceMs: 100 });
-  assert.deepEqual(split['cross-boundary'], { count: 10, baseMs: 200, intervalMs: 260, differenceMs: 60 });
-  assert.deepEqual(split['other-within'], emptyRow());
-  assert.deepEqual(split['other-boundary'], emptyRow());
-  assert.deepEqual(counts, { ...NO_COUNTS, other: 20 });
-  assert.deepEqual(Object.keys(overheadMs), ['other']);
+/** 入力単位を付け替えた解析結果。構造と指はそのまま。 */
+function withInputIndex(analysis: PlaybackTimingAnalysis, inputIndexOf: (index: number) => number): PlaybackTimingAnalysis {
+  return { ...analysis, strokes: analysis.strokes.map((item, index) => ({ ...item, inputIndex: inputIndexOf(index) })) };
+}
+
+/** 左右の人差し指を交互に打ち、入力単位は2打ずつ（奇数番が前と同じ入力単位）にした列。 */
+const pairedUnits = (count: number, spans: { chains?: ReturnType<typeof range>[]; arpeggioSpans?: ReturnType<typeof range>[] } = {}) =>
+  withInputIndex(alternating(count, spans.chains ?? [], spans.arpeggioSpans ?? []), (index) => Math.floor(index / 2));
+
+test('構造の種類は、かなの中・かなの境目の値を、分けない値に加えて求める', () => {
+  // 遷移1,3,…が直前と同じ入力単位（かなの中）で間隔300、遷移2,4,…が違う入力単位（かなの境目）で間隔260。
+  const { counts, kinds, overheadMs } = measureOneRaw(pairedUnits(21), SAVED, tapsFor(21, (i) => (i % 2 === 1 ? 300 : 260)));
+  assert.deepEqual(counts, { ...NO_SIDE_COUNTS, other: 20, 'other-within': 10, 'other-boundary': 10 });
+  assert.deepEqual(kinds['other-within'], { count: 10, baseMs: 200, intervalMs: 300, differenceMs: 100 });
+  assert.deepEqual(kinds['other-boundary'], { count: 10, baseMs: 200, intervalMs: 260, differenceMs: 60 });
+  // 分けない値は、20個の差（100が10個・60が10個）から5個ずつ除いた平均。
+  assert.deepEqual(overheadMs, { other: 80, 'other-within': 100, 'other-boundary': 60 });
 });
 
-test('同じ手の別の指の打鍵は異手でない行に入り、続け打ちと同指連続は4行に入らない', () => {
-  const same = custom(Array.from({ length: 21 }, (_, i) => (i % 2 === 0 ? 'LI' : 'LM') as Finger), (i) => `k${i}`, () => 0, String, (i) => Math.floor((i + 1) / 2));
-  const { split } = measureOne(same, SAVED, tapsFor(21, () => 260));
-  assert.equal(split['other-within'].count + split['other-boundary'].count, 20);
-  assert.equal(split['cross-within'].count + split['cross-boundary'].count, 0);
-  const repeating = measureOne(REPEATING, SAVED, tapsFor(20, () => 260));
-  const sfb = measureOne(custom(Array.from({ length: 20 }, () => 'LI' as Finger), (i) => (i % 2 === 0 ? 'f' : 'g'), () => 2), SAVED, tapsFor(20, () => 260));
-  for (const result of [repeating, sfb]) {
-    for (const row of Object.values(result.split)) assert.deepEqual(row, emptyRow());
-  }
+test('Arpeggio・Chainもかなの中・かなの境目に分け、続け打ちと同指連続は分けない', () => {
+  const arpeggio = measureOneRaw(pairedUnits(21, { arpeggioSpans: [range(0, 21)] }), SAVED, tapsFor(21, (i) => (i % 2 === 1 ? 300 : 260)));
+  assert.deepEqual(arpeggio.overheadMs, { arpeggio: 80, 'arpeggio-within': 100, 'arpeggio-boundary': 60 });
+  const chain = measureOneRaw(pairedUnits(21, { chains: [range(0, 21)] }), SAVED, tapsFor(21, (i) => (i % 2 === 1 ? 300 : 260)));
+  assert.deepEqual(chain.overheadMs, { chain: 80, 'chain-within': 100, 'chain-boundary': 60 });
+  const repeating = measureOneRaw(withInputIndex(REPEATING, (i) => Math.floor(i / 2)), SAVED, tapsFor(20, () => 260));
+  const sfb = measureOneRaw(
+    withInputIndex(custom(Array.from({ length: 20 }, () => 'LI' as Finger), (i) => (i % 2 === 0 ? 'f' : 'g'), () => 2), (i) => Math.floor(i / 2)),
+    SAVED,
+    tapsFor(20, () => 260),
+  );
+  assert.deepEqual(Object.keys(repeating.overheadMs), ['repeat']);
+  assert.deepEqual(Object.keys(sfb.overheadMs), ['sfb']);
 });
 
-test('4行の打数は、文ごとに数える回の最大を全文で足した数で求め、10未満でも四分位平均を持つ', () => {
-  const analysis = custom(Array.from({ length: 12 }, (_, i) => (i % 2 === 0 ? 'LI' : 'RI') as Finger), (i) => `k${i}`, () => 0, String, (i) => i);
-  const samples: SentenceSample[] = [
-    { sentence: 0, analysis, taps: tapsFor(12, () => 260) },
-    { sentence: 0, analysis, taps: tapsFor(12, () => 260, (i) => i > 5) },
-    { sentence: 1, analysis, taps: tapsFor(12, () => 260) },
-  ];
-  const { split } = measureSentence(samples, SAVED);
-  assert.equal(split['cross-boundary'].count, 22);
-  assert.equal(split['cross-within'].count, 0);
-  const few = measureOne(analysis, SAVED, tapsFor(12, () => 260)).split['cross-boundary'];
-  assert.equal(few.count, 11);
-  const fewer = measureSentence([{ sentence: 0, analysis, taps: tapsFor(12, () => 260, (i) => i > 5) }], SAVED).split['cross-boundary'];
-  assert.equal(fewer.count, 6);
-  assert.equal(fewer.differenceMs, 60);
+test('かなの中・かなの境目は、側ごとに数えた打鍵が10未満なら保存せず、分けない値は分けない打数で決める', () => {
+  // 20打: 遷移19のうち、かなの中が10、かなの境目が9。
+  const analysis = pairedUnits(20);
+  const taps = tapsFor(20, (i) => (i % 2 === 1 ? 300 : 260));
+  const measured = measureOneRaw(analysis, SAVED, taps);
+  assert.equal(measured.counts['other-within'], 10);
+  assert.equal(measured.counts['other-boundary'], 9);
+  assert.deepEqual(Object.keys(measured.overheadMs).sort(), ['other', 'other-within']);
+  assert.equal(measured.kinds['other-boundary'].differenceMs, 60);
+  const result = applySentenceMeasurement(SAVED, analysis, taps, 3);
+  assert.ok(result.ok);
+  assert.deepEqual(Object.keys(result.calibration.keystrokeOverheadMs ?? {}).sort(), ['other', 'other-within']);
 });
 
-test('表は4行を保存しない行として持つ', () => {
-  const analysis = alternating(20);
-  const table = sentenceResultTable(applySentenceMeasurement(SAVED, analysis, tapsFor(20, () => 260), 5));
+test('かなの中が0打の配列でも、分けない値は境目の値と同じになる', () => {
+  const { overheadMs, counts } = measureOneRaw(alternating(20), SAVED, tapsFor(20, () => 260));
+  assert.equal(counts['other-within'], 0);
+  assert.deepEqual(overheadMs, { other: 60, 'other-boundary': 60 });
+});
+
+test('側ごとの打数も、文ごとに数える回の最大を全文で足した数で求める', () => {
+  const analysis = pairedUnits(12);
+  const taps = tapsFor(12, () => 260);
+  const half = tapsFor(12, () => 260, (i) => i > 5);
+  const { counts } = measureSentence([
+    { sentence: 0, analysis, taps },
+    { sentence: 0, analysis, taps: half },
+    { sentence: 1, analysis, taps },
+  ], SAVED);
+  // 1回分は、かなの中が6（遷移1,3,5,7,9,11）、かなの境目が5（遷移2,4,6,8,10）。
+  assert.equal(counts['other-within'], 12);
+  assert.equal(counts['other-boundary'], 10);
+  assert.equal(counts.other, 22);
+});
+
+test('かなの中・かなの境目の値が範囲の外なら、分けない値が範囲の中でも保存値の全部を保存しない', () => {
+  // かなの中の差が1100（範囲の外）、かなの境目は9打で保存しない。分けない値は範囲の中。
+  const analysis = pairedUnits(20);
+  const taps = tapsFor(20, (i) => (i % 2 === 1 ? 1300 : 260));
+  const result = applySentenceMeasurement(SAVED, analysis, taps, 3);
+  assert.ok(!result.ok && result.reason === 'out-of-range');
+  const other = result.measurement.overheadMs.other;
+  assert.ok(other !== undefined && other <= 1000);
+  assert.equal(result.measurement.overheadMs['other-within'], 1100);
+  const table = sentenceResultTable(result);
+  assert.deepEqual(
+    table?.kinds.filter(({ status }) => status === 'out-of-range').map(({ kind }) => kind),
+    ['other', 'other-within'],
+  );
+});
+
+test('表は保存する行の11行を、構造の種類ごとに分けない値・かなの中・かなの境目の順に持ち、手の関係で分けた行を持たない', () => {
+  const table = sentenceResultTable(applySentenceMeasurement(SAVED, pairedUnits(21), tapsFor(21, () => 260), 5));
   assert.ok(table);
-  assert.deepEqual(table.split.map(({ row }) => row), ['cross-within', 'cross-boundary', 'other-within', 'other-boundary']);
-  assert.equal(table.split[1].stats.count, 19);
+  assert.deepEqual(table.kinds.map(({ kind }) => kind), [
+    'arpeggio', 'arpeggio-within', 'arpeggio-boundary',
+    'chain', 'chain-within', 'chain-boundary',
+    'other', 'other-within', 'other-boundary',
+    'repeat', 'sfb',
+  ]);
+  assert.deepEqual(Object.keys(table), ['kinds']);
+  assert.equal(table.kinds.find(({ kind }) => kind === 'other-within')?.stats.count, 10);
+});
+
+test('分けない値と打数は、入力単位の分け方が違っても同じ打鍵の記録から変わらない', () => {
+  const taps = tapsFor(21, (i) => (i % 2 === 1 ? 300 : 260));
+  const allBoundary = measureOne(alternating(21), SAVED, taps);
+  const paired = measureOne(pairedUnits(21), SAVED, taps);
+  assert.deepEqual(paired.counts, allBoundary.counts);
+  assert.deepEqual(paired.kinds.other, allBoundary.kinds.other);
+  assert.equal(paired.overheadMs.other, allBoundary.overheadMs.other);
 });
