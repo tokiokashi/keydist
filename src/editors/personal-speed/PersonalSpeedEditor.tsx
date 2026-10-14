@@ -1,3 +1,4 @@
+import { useHistoryShortcuts } from '#ui/primitives/use-history-shortcuts.ts';
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Layout } from '#input/layouts/types.ts';
 import { FINGERS, type FingerAssignment, type PhysicalShape } from '#input/shapes/geometry.ts';
@@ -319,7 +320,7 @@ function ConfirmDiscard({ onConfirm, onCancel }: { readonly onConfirm: () => voi
   return (
     <dialog ref={ref} className="personal-speed-confirm" aria-labelledby="personal-speed-confirm-title" onCancel={(event) => { event.preventDefault(); onCancel(); }}>
       <h2 id="personal-speed-confirm-title">保存した個人速度を全て破棄しますか</h2>
-      <p>通常の速度、同じキーを続けて打つ速さ、方向別の速度、指の移動速度、同時押しの上乗せ、文章を打つ時の打鍵の上乗せを全て消します。「元に戻す」はこの画面にいる間だけ使えます。</p>
+      <p>通常の速度、同じキーを続けて打つ速さ、方向別の速度、指の移動速度、同時押しの上乗せ、文章を打つ時の打鍵の上乗せを全て消します。「元に戻す」で戻せます。再読み込みやタブを閉じた後は戻せません。</p>
       <div className="personal-speed-confirm-actions">
         <button type="button" autoFocus onClick={onCancel}>キャンセル</button>
         <button type="button" onClick={onConfirm}>破棄する</button>
@@ -455,6 +456,13 @@ export function PersonalSpeedEditor({
   };
   const sentenceRunner = useSentenceRun({ keyLabel, onFinished: sentenceFinished });
   const running = runner.run !== undefined || sentenceRunner.session !== undefined;
+  // キー操作もボタンと同じ処理を通し、測定中（ボタンも押せない間）は動かさない
+  useHistoryShortcuts({
+    canUndo,
+    canRedo,
+    undo: () => { setNotices({}); dropProblems(); onUndo(); },
+    redo: () => { setNotices({}); dropProblems(); onRedo(); },
+  }, !running);
 
   // 測定中は案内にフォーカスを置き（押した測定のボタンは無効になるため）、終わったら押したボタンへ戻す。
   useEffect(() => {

@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useHistoryShortcuts } from '#ui/primitives/use-history-shortcuts.ts';
 import './context-bar.css';
 
 /**
@@ -39,6 +40,8 @@ export interface ContextBarProps {
 export function ContextBar({ children, history, share, disabled = false }: ContextBarProps) {
   const leading = useContext(ContextBarLeadingSlot);
   const barRef = useRef<HTMLElement>(null);
+  // ボタンと同じ処理をキー操作にも結ぶ（読み込み前はバーの操作と同じく効かせない）
+  useHistoryShortcuts(history, !disabled);
 
   // バーの高さが変わる場合がある。その下に固定するペインの見出しが位置を合わせられるよう、
   // 実際の高さをCSS変数で公開する（値が無い間はCSS側の既定＝1行分）。

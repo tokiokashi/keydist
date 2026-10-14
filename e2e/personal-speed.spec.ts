@@ -446,6 +446,44 @@ test('全破棄は確認のあとに保存を消し、元に戻すで戻る', as
   await expect.poll(() => stored(page)).toEqual(SEEDED);
 });
 
+test('キー操作で元に戻す・やり直すができる。測定中と破棄の確認が開いている間は履歴を動かさない', async ({ page }) => {
+  await seed(page, { [STORAGE_KEY]: SEEDED });
+  await open(page);
+  const actions = page.locator('#personal-speed-actions');
+  const storedActions = async () => ((await stored(page)) as { calibration: { actionsPerSecond: number } }).calibration.actionsPerSecond;
+  await actions.fill('7.5');
+  await actions.press('Enter');
+  await expect.poll(storedActions).toBe(7.5);
+
+  // 文字を入力する欄にフォーカスがある間は、資産の履歴を動かさない
+  await page.keyboard.press('Control+z');
+  expect(await storedActions()).toBe(7.5);
+  await actions.blur();
+  await page.keyboard.press('Control+z');
+  await expect.poll(storedActions).toBe(5);
+  await page.keyboard.press('Control+Shift+z');
+  await expect.poll(storedActions).toBe(7.5);
+
+  // 測定中は動かさない
+  await page.locator('[data-personal-speed-start="normal"]').click();
+  await expect(page.locator('[data-personal-speed-run="active"]')).toBeVisible();
+  await page.keyboard.press('Control+z');
+  expect(await storedActions()).toBe(7.5);
+  await page.locator('[data-personal-speed-cancel]').click();
+  await expect(page.locator('[data-personal-speed-run="active"]')).toHaveCount(0);
+
+  // 破棄の確認が開いている間は動かさない
+  await page.locator('[data-personal-speed-discard]').click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press('Control+z');
+  expect(await storedActions()).toBe(7.5);
+  await dialog.getByRole('button', { name: 'キャンセル' }).click();
+  await expect(dialog).toHaveCount(0);
+  await page.keyboard.press('Control+z');
+  await expect.poll(storedActions).toBe(5);
+});
+
 test('項目の測り直しは、その項目だけを入れ替える', async ({ page }) => {
   await seed(page, { [STORAGE_KEY]: SEEDED });
   await open(page);

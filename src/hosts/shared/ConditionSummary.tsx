@@ -9,6 +9,7 @@ import {
 import { resetAllPlan } from './condition-edit.ts';
 import { ConditionEditor, type ConditionEditorContext } from './ConditionEditor.tsx';
 import { PresetSection } from './PresetSection.tsx';
+import { historyShortcutOf, isMacPlatform, isTextEntryTarget } from '#ui/primitives/history-shortcut.ts';
 
 /**
  * 条件の要約（docs/architecture.md「画面の構成 > 条件の要約」）。
@@ -158,6 +159,15 @@ function ConditionModal({ rows, header, targetDiffs, editor, onClose }: Conditio
       className="condition-modal"
       aria-labelledby={titleId}
       onClose={onClose}
+      // モーダルが開いている間の元に戻すのキー操作は、モーダルの中の「元に戻す」と同じ処理（`editor.undo`）を通す。
+      // モーダルの背後の画面のキー操作（`useHistoryShortcuts`）は、`<dialog>`が開いている間は動かない
+      onKeyDown={(event) => {
+        if (event.defaultPrevented || event.nativeEvent.isComposing) return;
+        if (historyShortcutOf(event, isMacPlatform()) !== 'undo') return;
+        if (isTextEntryTarget(event.target instanceof HTMLElement ? event.target : null)) return;
+        event.preventDefault();
+        editor.undo();
+      }}
       // 中身は器いっぱいに広げてあるので、器自身への押下は背後（暗い部分）を押した時だけ。
       onClick={(event) => {
         if (event.target === event.currentTarget) event.currentTarget.close();
