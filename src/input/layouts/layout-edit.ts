@@ -1,5 +1,6 @@
 import { isBuiltin } from '../romaji/rules.ts';
 import { FINGER_LABEL } from '../shapes/finger-names.ts';
+import { physicalKeyDisplayLabel } from '../shapes/key-labels.ts';
 import { FINGERS, keyId, QWERTY_LEGEND, type NonThumb } from '../shapes/geometry.ts';
 import { ROW_LABELS, ROW_LIMITS, toLayout, validate, type UserLayout } from './user-layouts.ts';
 
@@ -80,8 +81,9 @@ const effectiveRows = (rows: readonly string[]): string[] =>
 
 /** 段に置いた文字と、それが載るキーのid・段。 */
 export function placedKeys(rows: readonly string[]): { readonly char: string; readonly keyId: string; readonly row: number }[] {
+  // 段の中の空白はキーを置かない（列の位置だけ進む）。`fromRows`と同じ
   return effectiveRows(rows).flatMap((row, rowIndex) =>
-    [...row].map((char, col) => ({ char, keyId: keyId(rowIndex, col), row: rowIndex })));
+    [...row].flatMap((char, col) => char === ' ' ? [] : [{ char, keyId: keyId(rowIndex, col), row: rowIndex }]));
 }
 
 function definitionOf(id: string, content: UserLayoutContent): UserLayout {
@@ -132,7 +134,7 @@ export function layoutProblems(
       problems.push({
         severity: 'error',
         field: { kind: 'home-key', finger },
-        message: `${FINGER_LABEL[finger]}のホームキー「${key}」は、段に無いキーです`,
+        message: `${FINGER_LABEL[finger]}のホームキー「${physicalKeyDisplayLabel(key)}」は、段に無いキーです`,
       });
     }
   }
@@ -154,7 +156,7 @@ export function layoutProblems(
     problems.push({
       severity: 'warning',
       field: { kind: 'duplicate', char, keyIds },
-      message: `「${char}」が複数のキーに載っています（${keyIds.join('・')}）`,
+      message: `「${char}」が複数のキーに載っています（${keyIds.map((id) => physicalKeyDisplayLabel(id)).join('・')}）`,
     });
   }
 

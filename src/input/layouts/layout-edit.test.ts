@@ -7,6 +7,7 @@ import {
   isEditableUserLayout,
   layoutProblems,
   normalizeContent,
+  placedKeys,
   updateUserLayout,
   type UserLayoutContent,
 } from './layout-edit.ts';
@@ -53,7 +54,7 @@ test('英字の段がすべて空なら、保存できない不備になる。�
 test('ホームキーが段に無いキーを指すなら、その指の保存できない不備になる', () => {
   const problems = errorsOf({ ...DVORAK, rows: ['', 'qwert', 'asdf', 'zxcv'], homeKeys: { RI: 'j', LI: 'f' } });
   assert.deepEqual(problems.map((problem) => problem.field), [{ kind: 'home-key', finger: 'RI' }]);
-  assert.match(problems[0]!.message, /右人差し指のホームキー「j」/);
+  assert.match(problems[0]!.message, /右人差し指のホームキー「J」/);
 });
 
 test('数字段が空の時は、数字段のキーをQWERTYとして数える', () => {
@@ -154,4 +155,24 @@ test('取り込み形式の配列は直せない。段の文字だけで保存�
   }
   assert.equal(isEditableUserLayout(stored()), true);
   assert.equal(isEditableUserLayout(stored({ direct: false })), true);
+});
+
+test('段の中の空白はキーに数えない。重複の注意にも、ホームキーの検査にも使わない', () => {
+  const content: UserLayoutContent = { ...DVORAK, rows: ['', 'q  w', 'as df', 'zxcv'], homeKeys: {} };
+  assert.deepEqual(layoutProblems(content), []);
+  assert.deepEqual(placedKeys(content.rows).filter((entry) => entry.row === 2).map((entry) => entry.keyId), ['a', 's', 'f', 'g']);
+  // 空白の位置のキー（ホーム段の3列目）は「段に無いキー」
+  const problems = layoutProblems({ ...content, homeKeys: { LM: 'd' } });
+  assert.deepEqual(problems.map((problem) => problem.field), [{ kind: 'home-key', finger: 'LM' }]);
+});
+
+test('ホームキーの不備と重複の注意は、内部のidでなくキーの表示名で示す', () => {
+  const [home] = layoutProblems({ ...DVORAK, rows: ['', 'qwerty', "asdfghjkl;'", 'zxcvb'], homeKeys: { RI: 'r2c11' } });
+  assert.doesNotMatch(home!.message, /r2c11/);
+  assert.match(home!.message, /3段目12列/);
+  // 数字段の範囲外のキーに載せた文字が、別のキーと重なる
+  const [dup] = warningsOf({ ...DVORAK, rows: ['1234567890-=r', 'qwerty', 'asdf', 'zxcv'] });
+  assert.deepEqual(dup!.field, { kind: 'duplicate', char: 'r', keyIds: ['r0c12', 'r'] });
+  assert.doesNotMatch(dup!.message, /r0c12/);
+  assert.match(dup!.message, /1段目13列・R/);
 });

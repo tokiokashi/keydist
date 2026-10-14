@@ -13,6 +13,7 @@ import {
 import { ROW_LABELS, ROW_LIMITS, type UserLayout } from '#input/layouts/user-layouts.ts';
 import { allRomajiRules, type UserRomajiRule } from '#input/romaji/rules.ts';
 import { FINGER_LABEL } from '#input/shapes/finger-names.ts';
+import { physicalKeyDisplayLabel } from '#input/shapes/key-labels.ts';
 import { FINGERS, HOME_ROW, QWERTY_LEGEND } from '#input/shapes/geometry.ts';
 import { ROMAJI_LAYOUT_LABEL } from './label.ts';
 import './romaji-layout.css';
@@ -155,9 +156,9 @@ function LayoutForm({ initial, isNew, ruleOptions, onSubmit }: LayoutFormProps) 
                     onChange={(event) => setHomeKey(finger, event.currentTarget.value)}
                   >
                     <option value="">指の割り当ての値</option>
-                    {stale ? <option value={value}>{value}（段に無いキー）</option> : null}
+                    {stale ? <option value={value}>{physicalKeyDisplayLabel(value)}（段に無いキー）</option> : null}
                     {options.map((option) => (
-                      <option key={option.keyId} value={option.keyId}>{option.char}（{option.keyId}のキー）</option>
+                      <option key={option.keyId} value={option.keyId}>{option.char}（{physicalKeyDisplayLabel(option.keyId)}のキー）</option>
                     ))}
                   </select>
                 </label>
