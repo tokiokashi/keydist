@@ -44,6 +44,12 @@ export interface SentenceTap {
   readonly atMs: number;
   /** そのストロークで違うキーを押していなければ真。偽なら、そのストロークの間隔は数えない。 */
   readonly clean: boolean;
+  /**
+   * コンボで打つストロークが、出力の文字の読み方で完了していれば真（無ければ偽）。
+   * 押すキーの読み方が完了したストロークと、両方の読み方が同じ押下で完了したストロークは偽。
+   * 真なら、そのストロークの間隔と直後のストロークの間隔は数えない。
+   */
+  readonly outputCompleted?: boolean;
 }
 
 /**
@@ -165,7 +171,7 @@ function emptyCounts(): Record<OverheadKind, number> {
 
 /**
  * 数える回の記録から、差の種類ごとの打鍵の上乗せを求める。回ごとに、最初のストローク（直前の時刻が無い）、
- * 違うキーを押したストローク、句読点を打つストロークと直後のストロークは数えない。
+ * 違うキーを押したストローク、出力の文字の読み方で完了したストロークとその直後のストローク、句読点を打つストロークと直後のストロークは数えない。
  * 続け打ちの差は間隔から続け打ちの`normalMs`（同じキーを続けて打つ速さ、無ければ通常速度）を引いた値、
  * 同指連続の差は間隔から`max(normalMs, 指の移動の時間)`を引いた値、構造の種類の差は間隔から`normalMs`を引いた値。
  * `sameFingerDelay`は見ない。差の四分位平均は、数えたストロークの全部から取る。
@@ -192,6 +198,8 @@ export function measureSentence(
       const tap = taps[index];
       const previous = taps[index - 1];
       if (tap === undefined || previous === undefined || !tap.clean) continue;
+      // 出力の文字を手で打った時の文字の間の時間と、押すキーと違う手・向きが入るので、前後の間隔を数えない。
+      if (tap.outputCompleted === true || previous.outputCompleted === true) continue;
       if (adjoinsPunctuation(analysis.strokes, index)) continue;
       const normalMs = playbackNormalMs(analysis, index, calibration);
       if (!Number.isFinite(normalMs)) continue;
