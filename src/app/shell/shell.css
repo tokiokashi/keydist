@@ -135,6 +135,63 @@
   letter-spacing: 0.04em;
 }
 
+/* 見出しのまとまりを畳むボタン。見出しの文字をそのままボタンにし、右端に開閉の印を置く。 */
+.sidebar-heading-button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sidebar-heading-button:hover {
+  color: var(--text);
+}
+
+.sidebar-heading-chevron {
+  flex: none;
+  transition: transform 0.15s ease;
+}
+
+.sidebar-group-items {
+  display: grid;
+  gap: 1px;
+}
+
+/*
+ * 畳んだまとまりは `<html data-sidebar-collapsed>` の空白区切りの識別子で決める。
+ * 描画の前にhead scriptが付けるので、事前描画したHTMLが全部開いた状態で出てから畳まれることがない。
+ * まとまりの識別子は `sidebar-preference.ts` の `SIDEBAR_GROUP_IDS` と同じ。
+ */
+:root[data-sidebar-collapsed~="analyze"] [data-sidebar-group="analyze"] > .sidebar-group-items,
+:root[data-sidebar-collapsed~="workspace"] [data-sidebar-group="workspace"] > .sidebar-group-items,
+:root[data-sidebar-collapsed~="assets"] [data-sidebar-group="assets"] > .sidebar-group-items,
+:root[data-sidebar-collapsed~="about"] [data-sidebar-group="about"] > .sidebar-group-items {
+  display: none;
+}
+
+:root[data-sidebar-collapsed~="analyze"] [data-sidebar-group="analyze"] .sidebar-heading-chevron,
+:root[data-sidebar-collapsed~="workspace"] [data-sidebar-group="workspace"] .sidebar-heading-chevron,
+:root[data-sidebar-collapsed~="assets"] [data-sidebar-group="assets"] .sidebar-heading-chevron,
+:root[data-sidebar-collapsed~="about"] [data-sidebar-group="about"] .sidebar-heading-chevron {
+  transform: rotate(-90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-heading-chevron {
+    transition: none;
+  }
+}
+
 .sidebar-subheading {
   margin: 0.3rem 0 0.1rem;
   padding: 0 0.5rem;
