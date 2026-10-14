@@ -14,6 +14,8 @@ export interface PlaybackCalculationNotes {
   readonly personalSpeedInUse: boolean;
   /** 個人速度で計算していて、保存値の、文章を打つ速さで測った打鍵の上乗せを時間に足しているか */
   readonly keystrokeOverheadInUse: boolean;
+  /** 個人速度で計算していて、保存値の、同時押しの上乗せを時間に足しているか */
+  readonly simultaneousOverheadInUse: boolean;
   /** 既定と違い、数値に入っている項目の名前と値 */
   readonly changes: readonly string[];
 }
@@ -32,6 +34,9 @@ export function playbackCalculationNotes(
     && Object.entries(calibration?.keystrokeOverheadMs ?? {}).some(
       ([kind, ms]) => ms !== 0 && (kind !== 'sfb' || options.sameFingerDelay),
     );
+  // 同時押しの上乗せも、再生するテキストの中身は見ず、保存値が0でない値を持つかで決める。
+  const simultaneousOverheadInUse = personalSpeedInUse
+    && Object.values(calibration?.simultaneousOverheadMs ?? {}).some((ms) => ms !== 0);
   const changes: string[] = [];
   if (!personalSpeedInUse && options.stepsPerSecond !== defaults.stepsPerSecond) {
     changes.push(`基準速度: ${options.stepsPerSecond}ステップ/秒`);
@@ -55,5 +60,5 @@ export function playbackCalculationNotes(
   if (options.rateAverage === 'ewma' && options.rateHalfLifeSeconds !== defaults.rateHalfLifeSeconds) {
     changes.push(`平均の半減時間: ${options.rateHalfLifeSeconds}秒`);
   }
-  return { personalSpeedInUse, keystrokeOverheadInUse, changes };
+  return { personalSpeedInUse, keystrokeOverheadInUse, simultaneousOverheadInUse, changes };
 }

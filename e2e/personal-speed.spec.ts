@@ -134,8 +134,8 @@ test('サイドバーのAssetsから開ける。保存が無ければ空の状�
   await waitForHydration(page);
   await page.locator('#app-sidebar').getByRole('link', { name: '個人速度', exact: true }).click();
   await expect(page).toHaveURL(/\/personal-speed$/);
-  // 保存値が無い間は、3つの測定のそれぞれが、まだ測っていないことを示す
-  await expect(page.locator('[data-personal-speed-empty]')).toHaveCount(3);
+  // 保存値が無い間は、4つの測定のそれぞれが、まだ測っていないことを示す
+  await expect(page.locator('[data-personal-speed-empty]')).toHaveCount(4);
   await expect(page.locator('[data-personal-speed-start="normal"]')).toBeEnabled();
   await expect(page.locator('[data-personal-speed-start="directional"]')).toBeDisabled();
   await expect(page.locator('[data-personal-speed-start="sentence"]')).toBeDisabled();
@@ -157,6 +157,10 @@ test('各測定のまとまりに、何を測るか・どこに使うかの説�
     directional: {
       purpose: ['左手と右手の交互打ちと、同じ手の2本の指で打つ時の', '測った向きの1打の時間を、向きを区別しない値の代わりに決めます'],
       howTo: ['→の2打を、つなげて素早く打ってください。'],
+    },
+    simultaneous: {
+      purpose: ['2つのキーを同時に押す時に', '両手・片手・親指との同時押しごとに測ります', '同時押しの1打ごとの時間に足します'],
+      howTo: ['指定された2つのキーを、同時に押してください。', '2つのキーの押下が50ミリ秒以内に揃わなかった時は、その打鍵を数えません。'],
     },
     sentence: {
       purpose: ['覚えた文を考えずに打つ時に', '測った速さから求めた時間と、実際に打った間隔との差（打鍵の上乗せ）', 'Arpeggio・Chain・その他・続け打ち・同指連続の種類ごとに測ります', 'Arpeggio・Chain・その他は、同じかなの中を打つ打鍵と、違うかなへ移る打鍵に分けても測ります', '1打ごとの時間に種類ごとの打鍵の上乗せを足します'],
@@ -198,6 +202,7 @@ test('各測定のまとまりに、何を測るか・どこに使うかの説�
   }
   await expect(page.locator('#personal-speed-group-normal').getByRole('heading', { name: '通常の速度と指の移動', level: 2 })).toBeVisible();
   await expect(page.locator('#personal-speed-group-directional').getByRole('heading', { name: '方向別の速度', level: 2 })).toBeVisible();
+  await expect(page.locator('#personal-speed-group-simultaneous').getByRole('heading', { name: '同時押し', level: 2 })).toBeVisible();
   await expect(page.locator('#personal-speed-group-sentence').getByRole('heading', { name: '文章を打つ速さ', level: 2 })).toBeVisible();
   // 保存値を持たない時は、測るボタンの直後に保存値への影響の文を出さない
   await expect(page.locator('[data-personal-speed-effect]')).toHaveCount(0);
@@ -397,7 +402,7 @@ test('全破棄は確認のあとに保存を消し、元に戻すで戻る', as
 
   await page.locator('[data-personal-speed-discard]').click();
   await page.getByRole('dialog').getByRole('button', { name: '破棄する' }).click();
-  await expect(page.locator('[data-personal-speed-empty]')).toHaveCount(3);
+  await expect(page.locator('[data-personal-speed-empty]')).toHaveCount(4);
   await expect(page.getByText('個人速度を破棄しました。')).toBeVisible();
   await expect.poll(async () => {
     const value = await stored(page) as { calibration?: unknown } | null;
@@ -763,4 +768,78 @@ test('スマートフォンの幅でも横にスクロールせず、測定中�
   await expect(run.locator('[data-personal-speed-next]')).toBeInViewport({ ratio: 1 });
   await expect(run.locator('[data-personal-speed-sentence-cancel]')).toBeInViewport({ ratio: 1 });
   expect(await overflow()).toBeLessThanOrEqual(0);
+});
+
+/** 同時押しの測定で、案内の2つのキーを同時に押すことを、完了まで繰り返す。Spaceの案内は「Space」で出る。 */
+async function typeThroughSimultaneous(page: Page, onTask?: (keys: string[]) => Promise<void>): Promise<void> {
+  const run = page.locator('[data-personal-speed-run="active"]');
+  const instruction = page.locator('[data-personal-speed-instruction]');
+  let lastText = '';
+  for (let step = 0; step < 400; step += 1) {
+    if (!(await run.isVisible())) return;
+    const text = (await instruction.textContent({ timeout: 1000 }).catch(() => null)) ?? '';
+    if (text === '') continue;
+    const keys = [...text.matchAll(/「([^」]+)」/g)].map((match) => (match[1] === 'Space' ? ' ' : (match[1] ?? '').toLowerCase()));
+    if (text !== lastText) {
+      lastText = text;
+      await onTask?.(keys);
+    }
+    for (const key of keys) await page.keyboard.down(key);
+    for (const key of keys) await page.keyboard.up(key);
+    await page.waitForTimeout(45);
+  }
+  throw new Error('同時押しの測定が終わらなかった');
+}
+
+test('同時押しの測定をキー入力で行い、3種類の上乗せが保存される。親指の項目のSpaceはフォーカス中のボタンを押さない', async ({ page }) => {
+  // 3項目の測定を、キーを1つずつ送って最後まで打つので、既定の30秒に収まらないことがある
+  test.setTimeout(90_000);
+  await seed(page, { [STORAGE_KEY]: SEEDED });
+  await open(page);
+  await page.locator('[data-personal-speed-start="simultaneous"]').click();
+  await expect(page.locator('[data-personal-speed-run="active"]')).toBeVisible();
+  const tasks: string[][] = [];
+  await typeThroughSimultaneous(page, async (keys) => {
+    tasks.push(keys);
+    if (!keys.includes(' ')) {
+      // Spaceを測るキーにしない項目では、Spaceを取らない
+      expect(await probe(page, ' ')).toEqual({ prevented: false, reached: true });
+      return;
+    }
+    // 中止のボタンにフォーカスがあってもSpaceで押されない
+    await page.locator('[data-personal-speed-cancel]').focus();
+    await page.keyboard.down(' ');
+    await page.keyboard.up(' ');
+    await expect(page.locator('[data-personal-speed-run="active"]')).toBeVisible();
+  });
+  expect(tasks.length).toBe(3);
+  expect(tasks.filter((keys) => keys.includes(' ')).length).toBe(1);
+  await expect(page.locator('#personal-speed-group-simultaneous').getByText('同時押しを測って保存しました。')).toBeVisible();
+
+  const saved = await stored(page) as { calibration: { simultaneousOverheadMs: Record<string, number> } };
+  expect(Object.keys(saved.calibration.simultaneousOverheadMs).sort()).toEqual(['both-hands', 'one-hand', 'thumb']);
+  for (const value of Object.values(saved.calibration.simultaneousOverheadMs)) {
+    expect(value).toBeGreaterThanOrEqual(-1000);
+    expect(value).toBeLessThanOrEqual(1000);
+  }
+  await expect(page.locator('[id="personal-speed-simultaneous:thumb"]')).not.toHaveValue('');
+  // 測った後は、Spaceを取らない
+  expect(await probe(page, ' ')).toEqual({ prevented: false, reached: true });
+});
+
+test('同時押しの上乗せを数値で直接編集でき、範囲外は保存されない', async ({ page }) => {
+  await seed(page, { [STORAGE_KEY]: SEEDED });
+  await open(page);
+  const group = page.locator('#personal-speed-group-simultaneous');
+  const field = group.locator('[id="personal-speed-simultaneous:thumb"]');
+  await group.locator('summary').first().click();
+  await field.fill('48.5');
+  await field.press('Enter');
+  await expect.poll(async () => ((await stored(page)) as { calibration: { simultaneousOverheadMs?: unknown } }).calibration.simultaneousOverheadMs).toEqual({ thumb: 48.5 });
+  await field.fill('1500');
+  await field.press('Enter');
+  await expect.poll(async () => ((await stored(page)) as { calibration: { simultaneousOverheadMs?: unknown } }).calibration.simultaneousOverheadMs).toEqual({ thumb: 48.5 });
+  await field.fill('');
+  await field.press('Enter');
+  await expect.poll(async () => ((await stored(page)) as { calibration: { simultaneousOverheadMs?: unknown } }).calibration.simultaneousOverheadMs).toBeUndefined();
 });

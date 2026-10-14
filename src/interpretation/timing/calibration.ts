@@ -3,7 +3,9 @@ import {
   ALL_FINGERS,
   FINGERS,
   HOME_ROW,
+  THUMB_KEY,
   dist,
+  resolveKeyId,
   type Finger,
   type Geometry,
   type Key,
@@ -48,6 +50,15 @@ export const OVERHEAD_KINDS: readonly OverheadKind[] = [
   'sfb',
 ];
 
+/**
+ * 同時押しのストローク（押下が2本以上の指にまたがるストローク）の分け方。同時押しの上乗せ（`simultaneousOverheadMs`）を選ぶ。
+ * 親指を含む（`thumb`）、親指を含まず左右の手にまたがる（`both-hands`）、親指を含まず全部同じ手（`one-hand`）の3つ。
+ */
+export type SimultaneousKind = 'both-hands' | 'one-hand' | 'thumb';
+
+/** 表示と編集の並び順。 */
+export const SIMULTANEOUS_KINDS: readonly SimultaneousKind[] = ['both-hands', 'one-hand', 'thumb'];
+
 /** 再生へ反映する個人の打鍵・指移動速度。 */
 export interface PlaybackCalibration {
   /** 通常の連続打鍵速度。 */
@@ -75,6 +86,11 @@ export interface PlaybackCalibration {
    * 持たない値は、同じ側の「その他」、分けない値、分けない「その他」の順で代わりの値を使う（`playbackKeystrokeOverheadMs`）。
    */
   keystrokeOverheadMs?: Readonly<Partial<Record<OverheadKind, number>>>;
+  /**
+   * 同時押しの上乗せ[ms]。同時押しのストロークのステップで、1打の時間（`normalMs`）の側に、打鍵の上乗せと同じ場所へ足す。
+   * 同じ同時押しを続けて打った間隔の中央値から、再生がそのステップに選ぶ1打の時間を引いた差。分け方ごとに持ち、持たない分け方は足さない。
+   */
+  simultaneousOverheadMs?: Readonly<Partial<Record<SimultaneousKind, number>>>;
   measuredAt: number;
 }
 
@@ -246,6 +262,12 @@ export function playbackCalibrationProblem(value: unknown): string | undefined {
     CALIBRATION_OVERHEAD_MS_MIN,
     CALIBRATION_OVERHEAD_MS_MAX,
   )) return '打鍵の上乗せが正しくありません';
+  if (value.simultaneousOverheadMs !== undefined && !isRateRecord(
+    value.simultaneousOverheadMs,
+    (kind) => SIMULTANEOUS_KINDS.includes(kind as SimultaneousKind),
+    CALIBRATION_OVERHEAD_MS_MIN,
+    CALIBRATION_OVERHEAD_MS_MAX,
+  )) return '同時押しの上乗せが正しくありません';
   return undefined;
 }
 
@@ -351,6 +373,8 @@ export function calibrationDirectedSameHandPairs(
 }
 
 export function calibrationKeyMatches(event: { readonly key: string; readonly code: string }, keyId: string, keyLabel = keyId): boolean {
+  // 右手の親指のキーはSpace。物理配列はSpaceを右手の親指のキーとして扱う。
+  if (resolveKeyId(keyId) === THUMB_KEY.RT) return event.code === 'Space' || event.key === ' ';
   const eventKey = event.key.toLowerCase();
   if (eventKey === keyId.toLowerCase() || eventKey === keyLabel.toLowerCase()) return true;
 

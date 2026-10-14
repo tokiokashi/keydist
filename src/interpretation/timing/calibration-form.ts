@@ -3,6 +3,7 @@ import {
   CALIBRATION_OVERHEAD_MS_MAX,
   CALIBRATION_OVERHEAD_MS_MIN,
   OVERHEAD_KINDS,
+  SIMULTANEOUS_KINDS,
   CALIBRATION_ACTIONS_PER_SECOND_MAX,
   CALIBRATION_ACTIONS_PER_SECOND_MIN,
   CALIBRATION_FINGER_SPEED_MAX,
@@ -11,6 +12,7 @@ import {
   type HandDirection,
   type PlaybackCalibration,
   type OverheadKind,
+  type SimultaneousKind,
 } from './calibration.ts';
 import { calibrationItemId } from './calibration-session.ts';
 
@@ -27,6 +29,11 @@ export const CALIBRATION_SAME_KEY_FIELD = 'same-key';
 /** 差の種類ごとの打鍵の上乗せの欄の識別子。 */
 export function calibrationOverheadFieldId(kind: OverheadKind): string {
   return `overhead:${kind}`;
+}
+
+/** 同時押しの上乗せの欄の識別子。`calibrationItemId`の同時押しの項目と同じ。 */
+export function calibrationSimultaneousFieldId(kind: SimultaneousKind): string {
+  return `simultaneous:${kind}`;
 }
 
 export type CalibrationFormValues = Readonly<Record<string, string>>;
@@ -59,6 +66,9 @@ export function calibrationFormValues(calibration: PlaybackCalibration): Calibra
   }
   for (const [kind, overhead] of Object.entries(calibration.keystrokeOverheadMs ?? {})) {
     values[calibrationOverheadFieldId(kind as OverheadKind)] = overhead.toFixed(1);
+  }
+  for (const [kind, overhead] of Object.entries(calibration.simultaneousOverheadMs ?? {})) {
+    values[calibrationSimultaneousFieldId(kind as SimultaneousKind)] = overhead.toFixed(1);
   }
   return values;
 }
@@ -97,6 +107,7 @@ function fieldSpec(fieldId: string): { range: { min: number; max: number }; requ
   const [kind, ...rest] = fieldId.split(':');
   const name = rest.join(':');
   if (kind === 'overhead' && (OVERHEAD_KINDS as readonly string[]).includes(name)) return { range: OVERHEAD_RANGE, required: false };
+  if (kind === 'simultaneous' && (SIMULTANEOUS_KINDS as readonly string[]).includes(name)) return { range: OVERHEAD_RANGE, required: false };
   if (kind === 'direction' && (name === 'L→R' || name === 'R→L')) return { range: RATE_RANGE, required: false };
   if (kind === 'same-hand-pair' || kind === 'directed-pair') return { range: RATE_RANGE, required: false };
   if (kind === 'finger' && ALL_FINGERS.includes(name as Finger)) return { range: SPEED_RANGE, required: false };
@@ -127,6 +138,7 @@ function withField(base: PlaybackCalibration, fieldId: string, value: number | u
   else if (kind === 'direction') setEntry('actionsPerSecondByDirection', true);
   else if (kind === 'directed-pair') setEntry('sameHandDifferentFingerActionsPerDirectedPair', true);
   else if (kind === 'overhead') setEntry('keystrokeOverheadMs', true);
+  else if (kind === 'simultaneous') setEntry('simultaneousOverheadMs', true);
   else if (kind === 'same-hand-pair') setEntry('sameHandDifferentFingerActionsPerSecondByPair', false);
   else setEntry('fingerSpeedUnitsPerSecond', false);
   return next as unknown as PlaybackCalibration;

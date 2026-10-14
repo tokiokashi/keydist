@@ -1,11 +1,12 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Layout } from '#input/layouts/types.ts';
 import { FINGERS, type FingerAssignment, type PhysicalShape } from '#input/shapes/geometry.ts';
-import { OVERHEAD_KINDS, type PlaybackCalibration } from '#interpretation/timing/calibration.ts';
+import { OVERHEAD_KINDS, SIMULTANEOUS_KINDS, type PlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import {
   applyCalibrationField,
   calibrationFormValues,
   calibrationOverheadFieldId,
+  calibrationSimultaneousFieldId,
   CALIBRATION_FALLBACK_FINGER_FIELD,
   CALIBRATION_SAME_HAND_FIELD,
   CALIBRATION_SAME_KEY_FIELD,
@@ -41,12 +42,15 @@ import {
   clearedOverheadsText,
   NEED_NORMAL_FIRST_TEXT,
   NO_DIRECTIONAL_TEXT,
+  NO_SIMULTANEOUS_TEXT,
   NORMAL_DERIVED_HINT,
   UNMEASURABLE_ROW_HINT,
   UNMEASURED_TEXT,
   calibrationFormProblemText,
   calibrationInstruction,
   calibrationProgressText,
+  clearedSimultaneousText,
+  simultaneousWrongKeyText,
   MEASUREMENT_DESCRIPTION,
   MEASUREMENT_HOW_TO,
   MEASUREMENT_OUT_OF_RANGE_TEXT,
@@ -259,7 +263,7 @@ function NoticeLines({ notice }: { readonly notice: Notice | undefined }) {
   );
 }
 
-type GroupId = 'normal' | 'directional' | 'sentence' | 'all';
+type GroupId = 'normal' | 'directional' | 'simultaneous' | 'sentence' | 'all';
 
 interface MeasurementGroupProps {
   readonly id: Exclude<GroupId, 'all'>;
@@ -308,7 +312,7 @@ function ConfirmDiscard({ onConfirm, onCancel }: { readonly onConfirm: () => voi
   return (
     <dialog ref={ref} className="personal-speed-confirm" aria-labelledby="personal-speed-confirm-title" onCancel={(event) => { event.preventDefault(); onCancel(); }}>
       <h2 id="personal-speed-confirm-title">保存した個人速度を全て破棄しますか</h2>
-      <p>通常の速度、同じキーを続けて打つ速さ、方向別の速度、指の移動速度、文章を打つ時の打鍵の上乗せを全て消します。「元に戻す」はこの画面にいる間だけ使えます。</p>
+      <p>通常の速度、同じキーを続けて打つ速さ、方向別の速度、指の移動速度、同時押しの上乗せ、文章を打つ時の打鍵の上乗せを全て消します。「元に戻す」はこの画面にいる間だけ使えます。</p>
       <div className="personal-speed-confirm-actions">
         <button type="button" autoFocus onClick={onCancel}>キャンセル</button>
         <button type="button" onClick={onConfirm}>破棄する</button>
@@ -379,10 +383,11 @@ export function PersonalSpeedEditor({
   /** 保存値を置き換える操作の前に呼ぶ。保存できなかった入力と理由は、置き換わる前の保存値に対するものなので捨てる。 */
   const dropProblems = () => { setFieldErrors({}); };
 
-  /** 測定の範囲が属する欄。1項目の測り直しは、その項目を含む測定（`plan.normal`か`plan.directional`）の欄。 */
-  const groupOfRun = (run: CalibrationRun): 'normal' | 'directional' => {
+  /** 測定の範囲が属する欄。1項目の測り直しは、その項目を含む測定（`plan.normal`・`plan.directional`・`plan.simultaneous`）の欄。 */
+  const groupOfRun = (run: CalibrationRun): 'normal' | 'directional' | 'simultaneous' => {
     if (run.scope !== 'item') return run.scope;
     const task = run.tasks[0];
+    if (task !== undefined && plan?.simultaneous?.includes(task) === true) return 'simultaneous';
     return task !== undefined && plan?.directional?.includes(task) === true ? 'directional' : 'normal';
   };
 
@@ -396,10 +401,14 @@ export function PersonalSpeedEditor({
     dropProblems();
     onSave(result.calibration);
     setNotices({
-      [group]: { kind: 'message', text: savedMessage(run.scope, run.tasks[0]?.item, result.clearedOverheads, result.replacedOverheads) },
+      [group]: { kind: 'message', text: savedMessage(run.scope, run.tasks[0]?.item, result.clearedOverheads, result.replacedOverheads, result.clearedSimultaneous) },
       ...(result.clearedOverheads.length === 0 && result.replacedOverheads.length === 0
         ? {}
         : { sentence: { kind: 'message', text: clearedOverheadsText(result.clearedOverheads, result.replacedOverheads) } }),
+      // 同時押しを測った欄では、保存した知らせの中で消した旨を伝えるので、別の知らせは出さない。
+      ...(result.clearedSimultaneous.length === 0 || group === 'simultaneous'
+        ? {}
+        : { simultaneous: { kind: 'message', text: clearedSimultaneousText(result.clearedSimultaneous) } }),
     });
   };
   const runner = useCalibrationRun({ keyLabel, onFinished: finished });
@@ -562,11 +571,13 @@ export function PersonalSpeedEditor({
   const directions = splitIds('direction:', ['direction:L→R', 'direction:R→L']);
   const directed = splitIds('directed-pair:', plannedIds('directed-pair:'));
   const overheads = splitIds('overhead:', OVERHEAD_KINDS.map(calibrationOverheadFieldId));
+  const simultaneous = splitIds('simultaneous:', SIMULTANEOUS_KINDS.map(calibrationSimultaneousFieldId));
 
   // 測ると置き換わる・消える値は、今の保存値から決まる。保存値を持たない時と、置き換わる値も消える値も無い時は文を出さない。
   const savedOverheads = OVERHEAD_KINDS.filter((kind) => calibration?.keystrokeOverheadMs?.[kind] !== undefined);
-  const effectOf = (group: 'normal' | 'directional' | 'sentence') => {
-    const text = measurementEffectText(group, calibration !== undefined, savedOverheads);
+  const savedSimultaneous = SIMULTANEOUS_KINDS.filter((kind) => calibration?.simultaneousOverheadMs?.[kind] !== undefined);
+  const effectOf = (group: 'normal' | 'directional' | 'simultaneous' | 'sentence') => {
+    const text = measurementEffectText(group, calibration !== undefined, savedOverheads, savedSimultaneous);
     return text === undefined ? null : <p className="personal-speed-note" data-personal-speed-effect={group}>{text}</p>;
   };
 
@@ -576,16 +587,24 @@ export function PersonalSpeedEditor({
     : plan === undefined
       ? NO_BASIS_TEXT
       : plan.directional === undefined ? NO_DIRECTIONAL_TEXT : undefined;
+  const simultaneousReason = calibration === undefined
+    ? NEED_NORMAL_FIRST_TEXT
+    : plan?.simultaneous === undefined ? NO_SIMULTANEOUS_TEXT : undefined;
   const sentenceReason = calibration === undefined ? NEED_NORMAL_FIRST_TEXT : undefined;
   const normalDisabled = running || normalReason !== undefined;
   const directionalDisabled = running || directionalReason !== undefined;
+  const simultaneousDisabled = running || simultaneousReason !== undefined;
   const sentenceDisabled = running || sentence?.ok !== true || calibration === undefined;
 
   const calibrationRegion = (group: GroupId) => (runGroup !== group || runner.run === undefined || currentTask === undefined ? null : (
     <div className="personal-speed-run" ref={regionRef} tabIndex={-1} data-personal-speed-run="active">
       <p className="personal-speed-instruction" data-personal-speed-instruction>{calibrationInstruction(currentTask, keyLabel)}</p>
       <p className="personal-speed-progress" data-personal-speed-progress>{calibrationProgressText(runner.run)}</p>
-      <p className="personal-speed-warning" role="status">{runner.wrongKey === undefined ? '' : wrongKeyText(runner.wrongKey)}</p>
+      <p className="personal-speed-warning" role="status">
+        {runner.wrongKey === undefined
+          ? ''
+          : currentTask.item.kind === 'simultaneous' ? simultaneousWrongKeyText(currentTask, keyLabel) : wrongKeyText(runner.wrongKey)}
+      </p>
       <button type="button" data-personal-speed-cancel onClick={runner.cancel}>中止</button>
     </div>
   ));
@@ -688,6 +707,26 @@ export function PersonalSpeedEditor({
                 <ValueBlock title="異手の方向別" {...directions} emptyText="まだ測っていません。" renderRow={renderRow} />
                 <ValueBlock title="同手・別指の方向別" {...directed} emptyText="まだ測っていません。" renderRow={renderRow} />
               </>
+            )}
+          </MeasurementGroup>
+
+          <MeasurementGroup id="simultaneous" title="同時押し" description={MEASUREMENT_DESCRIPTION.simultaneous} howTo={MEASUREMENT_HOW_TO.simultaneous} specHref={specHref}>
+            <div className="personal-speed-actions">
+              <button type="button" data-personal-speed-start="simultaneous" disabled={simultaneousDisabled} onClick={() => startRun('simultaneous', plan?.simultaneous ?? [])}>
+                同時押しを全て測る
+              </button>
+            </div>
+            {effectOf('simultaneous')}
+            {reasonText(simultaneousReason)}
+            {calibrationRegion('simultaneous')}
+            <NoticeLines notice={notices.simultaneous} />
+            {calibration === undefined ? emptyText(UNMEASURED_TEXT.simultaneous) : (
+              <ValueBlock
+                title="同時押しの上乗せ"
+                {...simultaneous}
+                emptyText="まだ測っていません。"
+                renderRow={renderRow}
+              />
             )}
           </MeasurementGroup>
 

@@ -14,10 +14,18 @@ import {
   sameHandFingerPairKey,
   sideOverheadKind,
   type PlaybackCalibration,
+  type SimultaneousKind,
   type StrokeStructureKind,
 } from './calibration.ts';
 import type { AggregatedAnalysisResult } from '../structure/aggregate.ts';
-import { isRepeatStroke, strokeOverheadKinds, strokeOverheadSide, strokeStructureKinds } from './stroke-structure.ts';
+import {
+  isRepeatStroke,
+  strokeOverheadKinds,
+  strokeOverheadSide,
+  strokeSimultaneousKind,
+  strokeStructureKinds,
+  type StrokePressFingers,
+} from './stroke-structure.ts';
 
 /** 再生速度の入力範囲。実際の打鍵時間や距離モデルとは無関係。 */
 export const PLAYBACK_STEPS_PER_SECOND_MIN = 0.1;
@@ -483,26 +491,10 @@ function normalPlaybackStepMs(stepsPerSecond: PlaybackStepsPerSecond): number {
     : Number.POSITIVE_INFINITY;
 }
 
-function playbackSameHandDifferentFingerPair(
-  stroke: Stroke | undefined,
-  previousStroke: Stroke | undefined,
-): string | undefined {
-  if (!stroke || !previousStroke) return undefined;
-  for (const press of stroke.presses) {
-    for (const previousPress of previousStroke.presses) {
-      if (fingerHand(press.finger) !== fingerHand(previousPress.finger)
-        || press.finger === previousPress.finger) continue;
-      const pair = sameHandFingerPairKey(press.finger, previousPress.finger);
-      if (pair !== undefined) return pair;
-    }
-  }
-  return undefined;
-}
-
 /** ステップ`i`と`i-1`が異手の時の方向（`spec/playback-timing.md` §3.1「異手の判定」）。異手でなければ`undefined`。 */
 export function playbackCrossHandDirection(
-  stroke: Stroke | undefined,
-  previousStroke: Stroke | undefined,
+  stroke: StrokePressFingers | undefined,
+  previousStroke: StrokePressFingers | undefined,
 ): 'L→R' | 'R→L' | undefined {
   if (!stroke || !previousStroke) return undefined;
   for (const press of stroke.presses) {
@@ -514,25 +506,51 @@ export function playbackCrossHandDirection(
   return undefined;
 }
 
-function playbackSameHandDirectedPair(
-  stroke: Stroke | undefined,
-  previousStroke: Stroke | undefined,
-): string | undefined {
-  if (!stroke || !previousStroke) return undefined;
-  for (const press of stroke.presses) {
-    for (const previousPress of previousStroke.presses) {
-      if (fingerHand(press.finger) !== fingerHand(previousPress.finger)
-        || press.finger === previousPress.finger) continue;
-      const pair = sameHandDirectedFingerPairKey(previousPress.finger, press.finger);
-      if (pair !== undefined) return pair;
+/**
+ * 同手・別指の基準の速さ（`spec/playback-timing.md` §3.1「同手・別指の判定」）。
+ * `pairs`は、直前のステップの指から今のステップの指への組。同じ手の別の指の組のうち、指の組の識別子を作れる最初の組の、
+ * 方向別の値、無ければ順序なしの組の値、無ければ代表値を返す。
+ * 親指を含む組は識別子を作れないので、識別子を作れる組が無く親指を含む組がある時は、代表値を返す。同手・別指の組が無ければ`undefined`。
+ */
+function sameHandRate(
+  pairs: Iterable<readonly [Finger, Finger]>,
+  stepsPerSecond: PlaybackStepsPerSecond,
+  calibration?: PlaybackCalibration,
+): number | undefined {
+  let involvesThumb = false;
+  for (const [from, to] of pairs) {
+    if (from === to || fingerHand(from) !== fingerHand(to)) continue;
+    const unorderedPair = sameHandFingerPairKey(from, to);
+    if (unorderedPair === undefined) {
+      involvesThumb = true;
+      continue;
     }
+    const directedPair = sameHandDirectedFingerPairKey(from, to);
+    return (directedPair === undefined
+      ? undefined
+      : calibration?.sameHandDifferentFingerActionsPerDirectedPair?.[directedPair])
+      ?? calibration?.sameHandDifferentFingerActionsPerSecondByPair[unorderedPair]
+      ?? calibration?.sameHandDifferentFingerActionsPerSecond
+      ?? stepsPerSecond;
   }
-  return undefined;
+  return involvesThumb
+    ? calibration?.sameHandDifferentFingerActionsPerSecond ?? stepsPerSecond
+    : undefined;
+}
+
+/** 直前のステップの押下を外側、今のステップの押下を内側に取った、指の組。 */
+function* pressFingerPairs(
+  stroke: StrokePressFingers,
+  previousStroke: StrokePressFingers,
+): Generator<readonly [Finger, Finger]> {
+  for (const previousPress of previousStroke.presses) {
+    for (const press of stroke.presses) yield [previousPress.finger, press.finger];
+  }
 }
 
 function playbackTransitionRate(
-  stroke: Stroke | undefined,
-  previousStroke: Stroke | undefined,
+  stroke: StrokePressFingers | undefined,
+  previousStroke: StrokePressFingers | undefined,
   stepsPerSecond: PlaybackStepsPerSecond,
   calibration?: PlaybackCalibration,
 ): number {
@@ -548,22 +566,23 @@ function playbackTransitionRate(
       ?? stepsPerSecond;
   }
 
-  const sameHandPair = playbackSameHandDifferentFingerPair(stroke, previousStroke);
-  if (sameHandPair !== undefined) {
-    const directedPair = playbackSameHandDirectedPair(stroke, previousStroke);
-    return (directedPair === undefined
-      ? undefined
-      : calibration?.sameHandDifferentFingerActionsPerDirectedPair?.[directedPair])
-      ?? calibration?.sameHandDifferentFingerActionsPerSecondByPair[sameHandPair]
-      ?? calibration?.sameHandDifferentFingerActionsPerSecond
-      ?? stepsPerSecond;
-  }
+  const sameHand = stroke && previousStroke
+    ? sameHandRate(pressFingerPairs(stroke, previousStroke), stepsPerSecond, calibration)
+    : undefined;
+  return sameHand ?? calibration?.actionsPerSecond ?? stepsPerSecond;
+}
 
-  return calibration?.actionsPerSecond ?? stepsPerSecond;
+/** 基準の速さを選ぶのに読む、構造解析の結果の部分。 */
+export interface PlaybackRateInput {
+  readonly strokes: readonly StrokePressFingers[];
+  readonly transitions: readonly {
+    readonly toStrokeIndex: number;
+    readonly candidates: readonly { readonly fromFinger: Finger; readonly toFinger: Finger }[];
+  }[];
 }
 
 function playbackTransitionRateFromAnalysis(
-  analysis: Pick<AggregatedAnalysisResult, 'strokes' | 'transitions'>,
+  analysis: PlaybackRateInput,
   strokeIndex: number,
   stepsPerSecond: PlaybackStepsPerSecond,
   calibration?: PlaybackCalibration,
@@ -584,27 +603,16 @@ function playbackTransitionRateFromAnalysis(
   }
 
   // 同手別指はHandTransitionのcandidateをsource of truthとして有向pairを選ぶ。
-  const transitionCandidates = analysis.transitions
-    .filter((transition) => transition.toStrokeIndex === strokeIndex)
-    .flatMap((transition) => transition.candidates);
-  for (const candidate of transitionCandidates) {
-    if (candidate.fromFinger === candidate.toFinger) continue;
-    const directedPair = sameHandDirectedFingerPairKey(
-      candidate.fromFinger,
-      candidate.toFinger,
-    );
-    const unorderedPair = sameHandFingerPairKey(
-      candidate.fromFinger,
-      candidate.toFinger,
-    );
-    if (unorderedPair === undefined) continue;
-    return (directedPair === undefined
-      ? undefined
-      : calibration?.sameHandDifferentFingerActionsPerDirectedPair?.[directedPair])
-      ?? calibration?.sameHandDifferentFingerActionsPerSecondByPair[unorderedPair]
-      ?? calibration?.sameHandDifferentFingerActionsPerSecond
-      ?? stepsPerSecond;
-  }
+  // candidateは直前のStrokeの押下を外側、今のStrokeの押下を内側に取った組で、`pressFingerPairs`と同じ並び。
+  const sameHand = sameHandRate(
+    analysis.transitions
+      .filter((transition) => transition.toStrokeIndex === strokeIndex)
+      .flatMap((transition) => transition.candidates)
+      .map((candidate) => [candidate.fromFinger, candidate.toFinger] as const),
+    stepsPerSecond,
+    calibration,
+  );
+  if (sameHand !== undefined) return sameHand;
 
   // Chain境界等でHandTransitionが無い場合も、元Strokeの通常fallbackは維持する。
   return playbackTransitionRate(stroke, previousStroke, stepsPerSecond, calibration);
@@ -615,7 +623,7 @@ function playbackTransitionRateFromAnalysis(
  * 文章を打つ測定が、実際の間隔から引く1打の時間を求めるのに使う。
  */
 export function playbackNormalMs(
-  analysis: Pick<AggregatedAnalysisResult, 'strokes' | 'transitions'>,
+  analysis: PlaybackRateInput,
   strokeIndex: number,
   calibration: PlaybackCalibration,
 ): number {
@@ -653,6 +661,38 @@ export function playbackKeystrokeOverheadMs(
     ?? 0;
   if (strokeOverheadKinds(analysis)[strokeIndex] !== 'repeat') return structureMs;
   return overheads.repeat ?? (calibration?.sameKeyActionsPerSecond === undefined ? structureMs : 0);
+}
+
+/**
+ * ステップ`i`のストロークが同時押しの時に、1打の時間（`normalMs`）の側に足す同時押しの上乗せ[ms]（§3.1.2）。
+ * ストロークの同時押しの分け方の値を保存値から取る。同時押しのストロークでない時、その分け方の値を持たない時、個人速度が無い時は0。
+ */
+export function playbackSimultaneousOverheadMs(
+  stroke: StrokePressFingers | undefined,
+  calibration: PlaybackCalibration | undefined,
+): number {
+  const overheads = calibration?.simultaneousOverheadMs;
+  if (overheads === undefined) return 0;
+  const kind = strokeSimultaneousKind(stroke);
+  return kind === undefined ? 0 : overheads[kind] ?? 0;
+}
+
+/** 同時押しの測定が基準の時間を求める、ストロークの押下の指の並び（`spec/playback-timing.md` §6.1.1の表）。 */
+const SIMULTANEOUS_REFERENCE_FINGERS: Readonly<Record<SimultaneousKind, readonly Finger[]>> = {
+  'both-hands': ['LI', 'RI'],
+  'one-hand': ['RI', 'RM'],
+  thumb: ['RT', 'RI'],
+};
+
+/**
+ * 同時押しの測定が、間隔の中央値から引く基準の時間[ms]。同時押しのストロークを続けて打つステップの`normalMs`（倍率1・上乗せを足さない）を、
+ * 再生と同じ`playbackNormalMs`で求める。ステップは、押下の指が`SIMULTANEOUS_REFERENCE_FINGERS`のストロークの後のステップ。
+ */
+export function playbackSimultaneousBaseMs(kind: SimultaneousKind, calibration: PlaybackCalibration): number {
+  const stroke: StrokePressFingers = {
+    presses: SIMULTANEOUS_REFERENCE_FINGERS[kind].map((finger) => ({ finger, keys: [{ id: finger }] })),
+  };
+  return playbackNormalMs({ strokes: [stroke, stroke], transitions: [] }, 1, calibration);
 }
 
 /**
@@ -725,12 +765,14 @@ function playbackStrokeDurationFromNormalMs(
   overheadMs = 0,
   /** 同指連続のステップが`max`の外に足す打鍵の上乗せ。 */
   sameFingerOverheadMs?: number,
+  /** 同時押しのストロークのステップが足す同時押しの上乗せ。 */
+  simultaneousMs = 0,
 ): number {
   const multiplier = Number.isFinite(speedMultiplier) && speedMultiplier > 0
     ? speedMultiplier
     : DEFAULT_PLAYBACK_SPEED_MULTIPLIER;
-  // 打鍵の上乗せは1打の時間の側にだけ足す。指の移動の時間には足さない。
-  const baseMs = Math.max(PLAYBACK_MIN_STEP_MS, normalMs + overheadMs);
+  // 打鍵の上乗せと同時押しの上乗せは1打の時間の側にだけ足す。指の移動の時間には足さない。
+  const baseMs = Math.max(PLAYBACK_MIN_STEP_MS, normalMs + overheadMs + simultaneousMs);
   if (!stroke || !sameFingerDelay) return baseMs / multiplier;
 
   const sfbPresses = stroke.presses.filter((press) => press.sfb);
@@ -741,7 +783,7 @@ function playbackStrokeDurationFromNormalMs(
     const movementMs = playbackSameFingerMovementMs(stroke, calibration) ?? 0;
     // 同指連続の値を持つ時は、1打の時間と指の移動の時間の遅い方の外に足す。
     if (sameFingerOverheadMs !== undefined) {
-      return Math.max(PLAYBACK_MIN_STEP_MS, Math.max(normalMs, movementMs) + sameFingerOverheadMs) / multiplier;
+      return Math.max(PLAYBACK_MIN_STEP_MS, Math.max(normalMs, movementMs) + sameFingerOverheadMs + simultaneousMs) / multiplier;
     }
     return Math.max(baseMs, movementMs) / multiplier;
   }
@@ -776,6 +818,7 @@ export function playbackStepDurationMs(
     speedMultiplier,
     playbackKeystrokeOverheadMs(analysis, strokeIndex, calibration),
     playbackSameFingerOverheadMs(analysis, strokeIndex, calibration),
+    playbackSimultaneousOverheadMs(stroke, calibration),
   );
 }
 
