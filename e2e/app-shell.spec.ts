@@ -377,7 +377,7 @@ test('見出しを押すとまとまりが畳まれ、もう一度押すと開�
   const newWorkspace = sidebar.getByRole('button', { name: '＋ 新しいWorkspace' });
   const tester = sidebar.getByRole('link', { name: 'Tester', exact: true });
 
-  // aria-controls は畳む項目の欄を指す。
+  // aria-controlsは畳む項目の欄を指す。
   const controlled = await groupButton(page, 'Analyze').getAttribute('aria-controls');
   expect(controlled).not.toBeNull();
   await expect(page.locator(`#${controlled}`)).toContainText('Bigram Flow');
@@ -442,7 +442,7 @@ test('畳んだまとまりは、画面を作るスクリプトが動く前の�
   await page.addInitScript(() => {
     localStorage.setItem('keydist:app-state', JSON.stringify({ version: 2, shell: { sidebarPinned: true, sidebarCollapsed: ['assets', 'about'] } }));
   });
-  // 外部のスクリプトを止める。head に埋めた小さなスクリプトは止まらない。
+  // 外部のスクリプトを止める。headに埋めた小さなスクリプトは止まらない。
   await page.route('**/*', (route) => (route.request().resourceType() === 'script' ? route.abort() : route.continue()));
   await page.goto('/standalone/bigram-flow');
   await expect(page.locator('html')).toHaveAttribute('data-sidebar-collapsed', 'assets about');
@@ -531,7 +531,7 @@ test('まとまりを畳んだ状態でも、Tabはサイドバーの中の見�
   expect(names.join('|')).not.toContain('Bigram Flow');
   expect(names.join('|')).not.toContain('計算方法');
   expect(names.join('|')).toContain('Assets');
-  // フォーカスは Analyze の見出しのボタン（見えている先頭側）にある。残りをTabで巡る。
+  // フォーカスはAnalyzeの見出しのボタン（見えている先頭側）にある。残りをTabで巡る。
   const start = (await visible()).index;
   expect(start).toBeGreaterThanOrEqual(0);
   for (let i = 0; i < count - 1 - start; i++) {
