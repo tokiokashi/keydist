@@ -94,7 +94,7 @@ function tapsFor(count: number, intervalOf: (index: number) => number, cleanAt: 
   return taps;
 }
 
-test('間隔からnormalMsを引いた差の四分位平均を、その他の連打との差にする', () => {
+test('間隔からnormalMsを引いた差の四分位平均を、その他の打鍵の上乗せにする', () => {
   const analysis = alternating(20);
   const taps = tapsFor(20, () => 260);
   const { counts, overheadMs } = measureOne(analysis, SAVED, taps);
@@ -116,7 +116,7 @@ test('四分位平均は、小さい方と大きい方からn/4個（切り捨�
   assert.equal(interquartileMean([-900, 0, 10, 20, 30, 40, 50, 60, 70, 5000]), 35);
 });
 
-test('下限に届いた最小の10打でも、四分位平均で連打との差を求める', () => {
+test('下限に届いた最小の10打でも、四分位平均で打鍵の上乗せを求める', () => {
   // 11打から10の遷移。差は5,15,25,35,45,55,65,75の昇順に、-900と5000を足した10個。
   const diffs = [5000, 25, -900, 55, 15, 75, 35, 5, 65, 45];
   const analysis = alternating(11);
@@ -125,7 +125,7 @@ test('下限に届いた最小の10打でも、四分位平均で連打との差
   assert.deepEqual(overheadMs, { other: 40 });
 });
 
-test('大きい方と小さい方の25%に入る値は、より外れた値に替えても連打との差が変わらない', () => {
+test('大きい方と小さい方の25%に入る値は、より外れた値に替えても打鍵の上乗せが変わらない', () => {
   const base = tapsFor(41, (index) => 200 + (index <= 20 ? 10 : 80));
   const replaced = tapsFor(41, (index) => (index === 1 ? 200 - 5000 : index === 40 ? 200 + 9000 : 200 + (index <= 20 ? 10 : 80)));
   const before = measureOne(alternating(41), SAVED, base).overheadMs;
@@ -151,7 +151,7 @@ test('負の値は、平均を取ってから0にする。先に0にした値の
   assert.deepEqual(overheadMs, { other: 20 });
 });
 
-test('構造の種類ごとに別の連打との差を求める', () => {
+test('構造の種類ごとに別の打鍵の上乗せを求める', () => {
   // 遷移1〜13はArpeggio、15〜27はChain、0・14・28〜39はその他。
   const analysis = alternating(40, [range(14, 28)], [range(0, 14)]);
   const interval = (index: number) => (index <= 13 ? 230 : index >= 15 && index <= 27 ? 250 : 300);
@@ -177,7 +177,7 @@ test('normalMsは測定の時点の保存値で求める', () => {
   assert.deepEqual(overheadMs, { other: 50 });
 });
 
-test('数えたストロークが10未満の種類は連打との差を持たない', () => {
+test('数えたストロークが10未満の種類は打鍵の上乗せを持たない', () => {
   const analysis = alternating(30, [], [range(0, 10)]);
   const { counts, overheadMs } = measureOne(analysis, SAVED, tapsFor(30, () => 250));
   assert.equal(counts.arpeggio, 9);
@@ -201,7 +201,7 @@ test('違うキーを押したストロークの間隔は、四分位平均に�
   assert.deepEqual(measureOne(analysis, SAVED, taps).overheadMs, { other: 50 });
 });
 
-test('反映は連打との差だけを置き換え、他の項目と、持たない種類の古い値は残さない', () => {
+test('反映は打鍵の上乗せだけを置き換え、他の項目と、持たない種類の古い値は残さない', () => {
   const base: PlaybackCalibration = { ...SAVED, keystrokeOverheadMs: { chain: 5, other: 5 } };
   const analysis = alternating(20);
   const result = applySentenceMeasurement(base, analysis, tapsFor(20, () => 260), 99);
@@ -236,7 +236,7 @@ test('どの種類も10未満なら、保存せずに測り直させる', () => 
   assert.equal(!result.ok && result.reason === 'too-few' && result.measurement.counts.other, 7);
 });
 
-test('連打との差が範囲を外れたら、保存せずに測り直させる', () => {
+test('打鍵の上乗せが範囲を外れたら、保存せずに測り直させる', () => {
   const result = applySentenceMeasurement(SAVED, alternating(20), tapsFor(20, () => 1300), 1);
   assert.equal(!result.ok && result.reason, 'out-of-range');
   // 1000ミリ秒ちょうどは保存できる
@@ -336,7 +336,7 @@ test('同指連続の差は、間隔からmax(normalMs, 指の移動の時間)�
   const slow = measureOne(analysis, calibration, tapsFor(20, () => 600));
   assert.deepEqual(slow.counts, { ...NO_COUNTS, sfb: 19 });
   assert.deepEqual(slow.overheadMs, { sfb: 100 });
-  // 移動の時間が連打の時間より短ければ、normalMsとの差になる。距離0.5uなら移動の時間は125ms。
+  // 移動の時間が1打の時間より短ければ、normalMsとの差になる。距離0.5uなら移動の時間は125ms。
   const near = custom(
     Array.from({ length: 20 }, () => 'LI' as Finger),
     (index) => (index % 2 === 0 ? 'f' : 'r'),

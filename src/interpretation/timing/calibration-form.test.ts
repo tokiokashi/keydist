@@ -94,14 +94,14 @@ test('保存値の欄でない識別子と、指の組として成り立たな�
 
 const WITH_OVERHEAD: PlaybackCalibration = { ...SAVED, keystrokeOverheadMs: { arpeggio: 12.34, other: 80 } };
 
-test('連打との差は、種類ごとの欄に小数第1位までの文字列で写る', () => {
+test('打鍵の上乗せは、種類ごとの欄に小数第1位までの文字列で写る', () => {
   const values = calibrationFormValues(WITH_OVERHEAD);
   assert.equal(values[calibrationOverheadFieldId('arpeggio')], '12.3');
   assert.equal(values[calibrationOverheadFieldId('other')], '80.0');
   assert.equal(calibrationOverheadFieldId('chain') in values, false);
 });
 
-test('連打との差の欄を編集して保存値に入れられ、空欄にすると項目ごと消える', () => {
+test('打鍵の上乗せの欄を編集して保存値に入れられ、空欄にすると項目ごと消える', () => {
   const added = applyCalibrationField(SAVED, calibrationOverheadFieldId('chain'), '45', 2);
   assert.ok(added.ok);
   assert.deepEqual(added.calibration.keystrokeOverheadMs, { chain: 45 });
@@ -114,7 +114,7 @@ test('連打との差の欄を編集して保存値に入れられ、空欄に�
   assert.equal('keystrokeOverheadMs' in second.calibration, false);
 });
 
-test('連打との差の欄は0から1000までで、範囲の外の欄を返す', () => {
+test('打鍵の上乗せの欄は0から1000までで、範囲の外の欄を返す', () => {
   const field = calibrationOverheadFieldId('other');
   assert.deepEqual(
     applyCalibrationField(WITH_OVERHEAD, field, '1000.1', 2),

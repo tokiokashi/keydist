@@ -24,7 +24,7 @@ const ACTIONS_FIELD = 'actions';
 /** 同じキーを続けて打つ速さの欄の識別子。 */
 export const CALIBRATION_SAME_KEY_FIELD = 'same-key';
 
-/** 差の種類ごとの連打との差の欄の識別子。 */
+/** 差の種類ごとの打鍵の上乗せの欄の識別子。 */
 export function calibrationOverheadFieldId(kind: OverheadKind): string {
   return `overhead:${kind}`;
 }

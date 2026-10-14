@@ -318,7 +318,7 @@ export type ApplyCalibrationResult =
   | {
       readonly ok: true;
       readonly calibration: PlaybackCalibration;
-      /** 保存値が持っていて消した連打との差の種類。文章を打つ測定の測り直しを促す。 */
+      /** 保存値が持っていて消した打鍵の上乗せの種類。文章を打つ測定の測り直しを促す。 */
       readonly clearedOverheads: readonly OverheadKind[];
     }
   /** 方向別・1項目の測定は、保存値が無いと反映先が無い。 */
@@ -349,8 +349,8 @@ function sameKeyRate(results: readonly CalibrationTaskResult[]): number | undefi
 }
 
 /**
- * 測り直した項目を基準に使う、連打との差の種類。基準が変わると、その基準から求めた差は意味が合わなくなる。
- * 構造の種類と同指連続の基準の連打の時間は、通常速度・方向別・同手・別指の速度のどれかで決まる。
+ * 測り直した項目を基準に使う、打鍵の上乗せの種類。基準が変わると、その基準から求めた差は意味が合わなくなる。
+ * 構造の種類と同指連続の基準の1打の時間は、通常速度・方向別・同手・別指の速度のどれかで決まる。
  * 同指連続の基準は指の移動の時間も含む。続け打ちの基準は、同じキーを続けて打つ速さを持てばその値、持たなければ通常速度。
  */
 function overheadKindsBasedOn(item: CalibrationItem, base: PlaybackCalibration): readonly OverheadKind[] {
@@ -434,8 +434,8 @@ function applyNormal(base: PlaybackCalibration | undefined, run: CalibrationRun,
 /**
  * 済んだ測定を保存値へ反映する（`spec/playback-timing.md` §6.3）。
  * 反映した値が保存できる範囲を外れていれば、保存値は作らない。
- * 連打との差は、その時の保存値から求めた差なので、測り直した項目を基準に使う種類だけを消す。
- * 通常速度・移動速度の測定は、保存値の連打との差を全て消す。
+ * 打鍵の上乗せは、その時の保存値から求めた差なので、測り直した項目を基準に使う種類だけを消す。
+ * 通常速度・移動速度の測定は、保存値の打鍵の上乗せを全て消す。
  */
 export function applyCalibrationRun(
   base: PlaybackCalibration | undefined,

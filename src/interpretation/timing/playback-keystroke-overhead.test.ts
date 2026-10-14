@@ -88,7 +88,7 @@ const withOverhead = (keystrokeOverheadMs: PlaybackCalibration['keystrokeOverhea
 const durations = (analysis: PlaybackTimingAnalysis, calibration: PlaybackCalibration, sameFingerDelay = false, multiplier = 1) =>
   analysis.strokes.map((_, index) => playbackStepDurationMs(analysis, index, 1, sameFingerDelay, calibration, multiplier));
 
-test('連打との差を持たない保存値は、連打との差の項目が無くても空でも時間が変わらない', () => {
+test('打鍵の上乗せを持たない保存値は、打鍵の上乗せの項目が無くても空でも時間が変わらない', () => {
   const analysis = alternating(5, [range(0, 5)], [range(1, 4)]);
   const expected = [200, 200, 200, 200, 200];
   assert.deepEqual(durations(analysis, BASE), expected);
@@ -96,14 +96,14 @@ test('連打との差を持たない保存値は、連打との差の項目が�
   assert.deepEqual(durations(analysis, withOverhead({})), expected);
 });
 
-test('連打との差は遷移が属する構造の種類で選ぶ', () => {
+test('打鍵の上乗せは遷移が属する構造の種類で選ぶ', () => {
   // 遷移0→1・1→2はChain、2→3・3→4はArpeggio、最初のステップと4→5はその他。
   const analysis = alternating(6, [range(0, 3)], [range(2, 5)]);
   const calibration = withOverhead({ arpeggio: 10, chain: 30, other: 70 });
   assert.deepEqual(durations(analysis, calibration), [270, 230, 230, 210, 210, 270]);
 });
 
-test('種類の値が無ければ「その他」の値を使い、「その他」も無ければ連打との差を足さない', () => {
+test('種類の値が無ければ「その他」の値を使い、「その他」も無ければ打鍵の上乗せを足さない', () => {
   const analysis = alternating(6, [range(0, 3)], [range(2, 5)]);
   assert.deepEqual(durations(analysis, withOverhead({ other: 70 })), [270, 270, 270, 270, 270, 270]);
   assert.deepEqual(durations(analysis, withOverhead({ arpeggio: 10 })), [200, 200, 200, 210, 210, 200]);
@@ -124,7 +124,7 @@ function withSameFinger(distance: number): PlaybackTimingAnalysis {
   return { strokes: [first, second], transitions: [], chains: [], arpeggioSpans: [] } as unknown as PlaybackTimingAnalysis;
 }
 
-test('同指連続はmax(normalMs + o, movementMs) / multiplierで、移動が律速する時は連打との差の分だけ遅くならない', () => {
+test('同指連続はmax(normalMs + o, movementMs) / multiplierで、移動が律速する時は打鍵の上乗せの分だけ遅くならない', () => {
   // 移動速度10u/秒、距離3uならmovementMsは300で、normalMsにoを足した250より長い。
   const far = withSameFinger(3);
   const calibration = withOverhead({ other: 50 });
@@ -132,19 +132,19 @@ test('同指連続はmax(normalMs + o, movementMs) / multiplierで、移動が�
   assert.equal(playbackStepDurationMs(far, 1, 1, true, calibration, 2), 150);
 });
 
-test('同指連続は、normalMsにoを足した値が移動の時間より長ければ連打との差が入る', () => {
-  // 距離2uならmovementMsは200。連打との差が無ければnormalMs（200）と同じで、連打との差が50なら250になる。
+test('同指連続は、normalMsにoを足した値が移動の時間より長ければ打鍵の上乗せが入る', () => {
+  // 距離2uならmovementMsは200。打鍵の上乗せが無ければnormalMs（200）と同じで、打鍵の上乗せが50なら250になる。
   const near = withSameFinger(2);
   assert.equal(playbackStepDurationMs(near, 1, 1, true, BASE, 2), 100);
   assert.equal(playbackStepDurationMs(near, 1, 1, true, withOverhead({ other: 50 }), 2), 125);
 });
 
-test('同指連続の移動を考慮しない設定でも、連打との差は(normalMs + o) / multiplierで入る', () => {
+test('同指連続の移動を考慮しない設定でも、打鍵の上乗せは(normalMs + o) / multiplierで入る', () => {
   const far = withSameFinger(3);
   assert.equal(playbackStepDurationMs(far, 1, 1, false, withOverhead({ other: 50 }), 2), 125);
 });
 
-test('全指の移動時間（§3.8のmove）には連打との差を足さない', () => {
+test('全指の移動時間（§3.8のmove）には打鍵の上乗せを足さない', () => {
   // 2打目は、1打目と同じ指が3u離れたキーへ動く。移動速度10u/秒なのでmoveは300。
   const strokes = [
     stroke(0, press('LI', at('LI'))),
@@ -157,13 +157,13 @@ test('全指の移動時間（§3.8のmove）には連打との差を足さな�
     return step.endMs - step.startMs;
   };
   assert.equal(lengthOf(BASE), 300);
-  // normalMsにoを足した250はmoveより短いので、2打目はmoveのまま。連打との差がmoveに入るなら350になる。
+  // normalMsにoを足した250はmoveより短いので、2打目はmoveのまま。打鍵の上乗せがmoveに入るなら350になる。
   assert.equal(lengthOf(withOverhead({ other: 50 })), 300);
   // normalMs + o = 350がmoveを超えると、基準の時間が律速する。
   assert.equal(lengthOf(withOverhead({ other: 150 })), 350);
 });
 
-test('連打との差を選ぶ関数と、連打との差を引く側のnormalMsは、連打との差の有無に影響されない', () => {
+test('打鍵の上乗せを選ぶ関数と、打鍵の上乗せを引く側のnormalMsは、打鍵の上乗せの有無に影響されない', () => {
   const analysis = alternating(3, [range(0, 3)], []);
   assert.equal(playbackKeystrokeOverheadMs(analysis, 1, withOverhead({ chain: 12, other: 3 })), 12);
   assert.equal(playbackKeystrokeOverheadMs(analysis, 0, withOverhead({ chain: 12, other: 3 })), 3);

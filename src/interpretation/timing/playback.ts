@@ -603,8 +603,8 @@ function playbackTransitionRateFromAnalysis(
 }
 
 /**
- * ステップ `i` の `normalMs`（倍率1・連打との差を足さない）。個人速度で求める（`spec/playback-timing.md` §3.1）。
- * 文章を打つ測定が、実際の間隔から引く連打の時間を求めるのに使う。
+ * ステップ `i` の `normalMs`（倍率1・打鍵の上乗せを足さない）。個人速度で求める（`spec/playback-timing.md` §3.1）。
+ * 文章を打つ測定が、実際の間隔から引く1打の時間を求めるのに使う。
  */
 export function playbackNormalMs(
   analysis: Pick<AggregatedAnalysisResult, 'strokes' | 'transitions'>,
@@ -621,11 +621,11 @@ export function playbackNormalMs(
 }
 
 /**
- * ステップ `i` の、連打の時間（`normalMs`）の側に足す連打との差[ms]（§3.1.1）。
+ * ステップ `i` の、1打の時間（`normalMs`）の側に足す打鍵の上乗せ[ms]（§3.1.1）。
  * 続け打ちのステップは、続け打ちの値を持つ時はその値、持たず同じキーを続けて打つ速さを持つ時は0、
  * どちらも持たない時は構造の種類の値。それ以外は構造の種類の値で、その種類の値が無ければ「その他」の値、それも無ければ0。
  * 同指連続のステップの同指連続の値は、`max`の外に足すので`playbackSameFingerOverheadMs`が返す。
- * 個人速度が無い時、連打との差を持たない時は0。
+ * 個人速度が無い時、打鍵の上乗せを持たない時は0。
  */
 export function playbackKeystrokeOverheadMs(
   analysis: Pick<AggregatedAnalysisResult, 'strokes' | 'chains' | 'arpeggioSpans'>,
@@ -641,7 +641,7 @@ export function playbackKeystrokeOverheadMs(
 }
 
 /**
- * 同指連続のステップが`max(normalMs, movementMs)`の外に足す連打との差[ms]。
+ * 同指連続のステップが`max(normalMs, movementMs)`の外に足す打鍵の上乗せ[ms]。
  * 同指連続の押下を持つステップで、保存値が同指連続の値を持つ時だけ値を返す。それ以外は`undefined`で、
  * 構造の種類の値を`normalMs`の側に足す（`playbackKeystrokeOverheadMs`）。
  */
@@ -674,9 +674,9 @@ export function playbackSameFingerMovementMs(
 }
 
 /**
- * 1ステップを表示する時間。正規化ディレイは1uを通常の1アクション相当とする。
- * 解析結果を受け取らないので、遷移が属する構造の種類が分からず、連打との差（§3.1.1）は足さない。
- * 連打との差を含む時間は、解析結果を受け取る`playbackStepDurationMs`が求める。
+ * 1ステップを表示する時間。正規化ディレイは1uを1打の時間相当とする。
+ * 解析結果を受け取らないので、遷移が属する構造の種類が分からず、打鍵の上乗せ（§3.1.1）は足さない。
+ * 打鍵の上乗せを含む時間は、解析結果を受け取る`playbackStepDurationMs`が求める。
  */
 export function playbackStrokeDurationMs(
   stroke: Stroke | undefined,
@@ -708,13 +708,13 @@ function playbackStrokeDurationFromNormalMs(
   calibration: PlaybackCalibration | undefined,
   speedMultiplier: number,
   overheadMs = 0,
-  /** 同指連続のステップが`max`の外に足す連打との差。 */
+  /** 同指連続のステップが`max`の外に足す打鍵の上乗せ。 */
   sameFingerOverheadMs?: number,
 ): number {
   const multiplier = Number.isFinite(speedMultiplier) && speedMultiplier > 0
     ? speedMultiplier
     : DEFAULT_PLAYBACK_SPEED_MULTIPLIER;
-  // 連打との差は連打の時間の側にだけ足す。指の移動の時間には足さない。
+  // 打鍵の上乗せは1打の時間の側にだけ足す。指の移動の時間には足さない。
   const baseMs = normalMs + overheadMs;
   if (!stroke || !sameFingerDelay) return baseMs / multiplier;
 
@@ -724,7 +724,7 @@ function playbackStrokeDurationFromNormalMs(
   const sameFingerDistance = Math.max(1, ...sfbPresses.map((press) => press.distance));
   if (calibration) {
     const movementMs = playbackSameFingerMovementMs(stroke, calibration) ?? 0;
-    // 同指連続の値を持つ時は、連打の時間と指の移動の時間の遅い方の外に足す。
+    // 同指連続の値を持つ時は、1打の時間と指の移動の時間の遅い方の外に足す。
     if (sameFingerOverheadMs !== undefined) return (Math.max(normalMs, movementMs) + sameFingerOverheadMs) / multiplier;
     return Math.max(baseMs, movementMs) / multiplier;
   }

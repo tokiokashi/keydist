@@ -10,7 +10,7 @@ import {
 } from '#input/shapes/geometry.ts';
 
 /**
- * 遷移（直前のストロークから今のストロークへ）が属する構造の種類。連打との差（`keystrokeOverheadMs`）を選ぶ。
+ * 遷移（直前のストロークから今のストロークへ）が属する構造の種類。打鍵の上乗せ（`keystrokeOverheadMs`）を選ぶ。
  * Arpeggioの中、Chainの中でArpeggioでないもの、どちらでもないもの（最初のストロークを含む）の3つ。
  */
 export type StrokeStructureKind = 'arpeggio' | 'chain' | 'other';
@@ -18,7 +18,7 @@ export type StrokeStructureKind = 'arpeggio' | 'chain' | 'other';
 export const STROKE_STRUCTURE_KINDS: readonly StrokeStructureKind[] = ['arpeggio', 'chain', 'other'];
 
 /**
- * 連打との差（`keystrokeOverheadMs`）を集める単位「差の種類」。構造の種類の3つに、続け打ち（`repeat`）と
+ * 打鍵の上乗せ（`keystrokeOverheadMs`）を集める単位「差の種類」。構造の種類の3つに、続け打ち（`repeat`）と
  * 同指連続（`sfb`）を足した5つ。ステップごとに1つに決まる（`stroke-structure.ts`）。
  */
 export type OverheadKind = StrokeStructureKind | 'repeat' | 'sfb';
@@ -46,8 +46,8 @@ export interface PlaybackCalibration {
    */
   sameKeyActionsPerSecond?: number;
   /**
-   * 文章を打つ時の連打との差[ms]。差の種類ごとに持つ。
-   * 続け打ちと同指連続を除く種類は、基準の時間のうち連打の時間（`normalMs`）の側にだけ足す。
+   * 文章を打つ時の打鍵の上乗せ[ms]。差の種類ごとに持つ。
+   * 続け打ちと同指連続を除く種類は、基準の時間のうち1打の時間（`normalMs`）の側にだけ足す。
    * 同指連続のステップは、値を持つ時は`max(normalMs, 移動の時間)`の外に足す。
    * 持たない構造の種類は「その他」の値を使う。
    */
@@ -222,7 +222,7 @@ export function playbackCalibrationProblem(value: unknown): string | undefined {
     (kind) => OVERHEAD_KINDS.includes(kind as OverheadKind),
     CALIBRATION_OVERHEAD_MS_MIN,
     CALIBRATION_OVERHEAD_MS_MAX,
-  )) return '連打との差が正しくありません';
+  )) return '打鍵の上乗せが正しくありません';
   return undefined;
 }
 
