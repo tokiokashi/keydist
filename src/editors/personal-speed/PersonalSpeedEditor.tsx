@@ -592,7 +592,7 @@ export function PersonalSpeedEditor({
   const savedOverheads = OVERHEAD_KINDS.filter((kind) => calibration?.keystrokeOverheadMs?.[kind] !== undefined);
   const savedSimultaneous = SIMULTANEOUS_KINDS.filter((kind) => calibration?.simultaneousOverheadMs?.[kind] !== undefined);
   const effectOf = (group: 'normal' | 'directional' | 'simultaneous' | 'sentence') => {
-    const text = measurementEffectText(group, calibration !== undefined, savedOverheads, savedSimultaneous);
+    const text = measurementEffectText(group, calibration !== undefined, savedOverheads, savedSimultaneous, calibration?.sentenceSimultaneousKinds);
     return text === undefined ? null : <p className="personal-speed-note" data-personal-speed-effect={group}>{text}</p>;
   };
 

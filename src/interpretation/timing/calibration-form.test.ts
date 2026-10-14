@@ -251,3 +251,23 @@ test('基準になる値を直接編集しても、同時押しの上乗せと�
   assert.deepEqual(applied.calibration.simultaneousOverheadMs, { 'both-hands': 30 });
   assert.deepEqual(applied.calibration.keystrokeOverheadMs, { other: 12 });
 });
+
+test('打鍵の上乗せの欄を全部空にすると文章に入った同時押しの分け方も消え、それ以外の編集では変わらない', () => {
+  const base: PlaybackCalibration = { ...SAVED, keystrokeOverheadMs: { other: 5, sfb: 8, repeat: 7 }, sentenceSimultaneousKinds: ['thumb'] };
+  const edited = applyCalibrationField(base, calibrationOverheadFieldId('other'), '9', 2);
+  assert.ok(edited.ok);
+  assert.deepEqual(edited.calibration.sentenceSimultaneousKinds, ['thumb']);
+  const unrelated = applyCalibrationField(base, calibrationOverheadFieldId('repeat'), '', 2);
+  assert.ok(unrelated.ok);
+  assert.deepEqual(unrelated.calibration.sentenceSimultaneousKinds, ['thumb']);
+  const one = applyCalibrationField(base, calibrationOverheadFieldId('other'), '', 2);
+  assert.ok(one.ok);
+  const none = applyCalibrationField(one.calibration, calibrationOverheadFieldId('sfb'), '', 3);
+  assert.ok(none.ok);
+  assert.equal('sentenceSimultaneousKinds' in none.calibration, false);
+  assert.deepEqual(none.calibration.keystrokeOverheadMs, { repeat: 7 });
+  // 記録が消えた後に入れた打鍵の上乗せは、記録を持たない。
+  const added = applyCalibrationField(none.calibration, calibrationOverheadFieldId('other'), '4', 4);
+  assert.ok(added.ok);
+  assert.equal('sentenceSimultaneousKinds' in added.calibration, false);
+});

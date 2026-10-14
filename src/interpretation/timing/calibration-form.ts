@@ -9,6 +9,7 @@ import {
   CALIBRATION_FINGER_SPEED_MAX,
   CALIBRATION_FINGER_SPEED_MIN,
   playbackCalibrationProblem,
+  withoutOrphanedSentenceSimultaneous,
   type HandDirection,
   type PlaybackCalibration,
   type OverheadKind,
@@ -164,7 +165,7 @@ export function applyCalibrationField(
     value = parseValue(raw, range);
     if (value === undefined || value < range.min || value > range.max) return { ok: false, fieldId, problem: 'invalid', ...range };
   }
-  const calibration: PlaybackCalibration = { ...withField(base, fieldId, value), measuredAt: measuredAtMs };
+  const calibration = withoutOrphanedSentenceSimultaneous({ ...withField(base, fieldId, value), measuredAt: measuredAtMs });
   // 組のキーが指の組として成り立たない欄などは、保存値の検証で落とす。
   if (playbackCalibrationProblem(calibration) !== undefined) return { ok: false, fieldId, problem: 'invalid', ...range };
   return { ok: true, calibration };

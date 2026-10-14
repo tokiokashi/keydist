@@ -138,3 +138,24 @@ test('消える・置き換わる打鍵の上乗せは、全体・かなの中�
   assert.ok(cleared.includes('打鍵の上乗せ（その他・同指連続）は、他の値が変わったため消しました。'));
   assert.ok(!cleared.includes('かなの'));
 });
+
+test('同時押しを測る前の文は、文章に入った分け方を測る時だけ消えると伝え、記録が無い時は今まで通りに伝える', () => {
+  assert.equal(
+    measurementEffectText('simultaneous', true, ['other', 'repeat']),
+    '測ると、測った同時押しの上乗せが置き換わり、打鍵の上乗せのうちその他が消えます（続け打ちは残ります）。',
+  );
+  assert.equal(
+    measurementEffectText('simultaneous', true, ['other', 'repeat'], [], ['both-hands', 'thumb']),
+    '測ると、測った同時押しの上乗せが置き換わります。打鍵の上乗せのうちその他は、両手の同時押し・親指との同時押しを測ると消えます（続け打ちは残ります）。',
+  );
+  assert.equal(
+    measurementEffectText('simultaneous', true, ['other', 'repeat'], [], []),
+    '測ると、測った同時押しの上乗せが置き換わります。',
+  );
+  assert.equal(measurementEffectText('simultaneous', true, ['repeat'], [], ['thumb']), '測ると、測った同時押しの上乗せが置き換わります。');
+});
+
+test('測った後の知らせは、打鍵の上乗せを消した時だけ出る', () => {
+  assert.equal(clearedOverheadsText([], []), '');
+  assert.notEqual(clearedOverheadsText(['other'], []), '');
+});

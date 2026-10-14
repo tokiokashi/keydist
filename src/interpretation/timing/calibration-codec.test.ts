@@ -153,3 +153,30 @@ test('同時押しの上乗せが範囲外、または知らない分け方の�
     assert.equal(decoded.diagnostics.length, 1);
   }
 });
+
+test('文章に入った同時押しの分け方は、持つ値も空の値も持たない値も、そのまま書き出して読み直せる', () => {
+  for (const kinds of [[], ['both-hands', 'thumb']] as const) {
+    const calibration: PlaybackCalibration = { ...CALIBRATION, keystrokeOverheadMs: { other: 3 }, sentenceSimultaneousKinds: kinds };
+    const encoded = PERSONAL_SPEED_CODEC.encode({ calibration });
+    const decoded = PERSONAL_SPEED_CODEC.decode(JSON.parse(JSON.stringify(encoded)));
+    assert.ok(decoded.ok);
+    assert.deepEqual(decoded.value.calibration, calibration);
+  }
+  const without = PERSONAL_SPEED_CODEC.encode({ calibration: CALIBRATION });
+  assert.equal('sentenceSimultaneousKinds' in (without.calibration as object), false);
+});
+
+test('文章に入った同時押しの分け方は、読み込みで知らない分け方・重複・並びでない値を持つと保存値ごと捨てる', () => {
+  for (const kinds of [['both-hands', 'palm'], ['thumb', 'thumb'], 'thumb', [1]]) {
+    const decoded = PERSONAL_SPEED_CODEC.decode({ version: 1, calibration: { ...CALIBRATION, sentenceSimultaneousKinds: kinds } });
+    assert.ok(decoded.ok);
+    assert.equal(decoded.value.calibration, undefined);
+    assert.equal(decoded.diagnostics.length, 1);
+  }
+});
+
+test('文章に入った同時押しの分け方は、読み込みでは並びを問わず、書き出しは決まった順にする', () => {
+  const decoded = PERSONAL_SPEED_CODEC.decode({ version: 1, calibration: { ...CALIBRATION, sentenceSimultaneousKinds: ['thumb', 'both-hands'] } });
+  assert.ok(decoded.ok);
+  assert.deepEqual(decoded.value.calibration?.sentenceSimultaneousKinds, ['both-hands', 'thumb']);
+});
