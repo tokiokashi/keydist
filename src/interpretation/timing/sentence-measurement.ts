@@ -7,7 +7,7 @@ import {
   type PlaybackCalibration,
 } from './calibration.ts';
 import type { Stroke } from '#trace/generate.ts';
-import { playbackNormalMs, playbackSameFingerMovementMs, type PlaybackTimingAnalysis } from './playback.ts';
+import { playbackCrossHandDirection, playbackNormalMs, playbackSameFingerMovementMs, type PlaybackTimingAnalysis } from './playback.ts';
 import { strokeOverheadKinds } from './stroke-structure.ts';
 
 /**
@@ -81,6 +81,24 @@ export type SentenceAnalysis = PlaybackTimingAnalysis;
 
 export type SentenceCounts = Readonly<Record<OverheadKind, number>>;
 
+/**
+ * Arpeggio・Chain・その他に数えたストロークを、異手か異手でないかと、かなの中か境目かで分けた4行（保存しない）。
+ * 異手かは再生が向きを決める判定（`playbackCrossHandDirection`）と同じもの。
+ * かなの中は直前のストロークと同じ入力単位（`inputIndex`）を打つストローク、境目は違う入力単位を打つストローク。
+ */
+export const SENTENCE_SPLIT_ROWS = ['cross-within', 'cross-boundary', 'other-within', 'other-boundary'] as const;
+export type SentenceSplitRow = (typeof SENTENCE_SPLIT_ROWS)[number];
+
+/** ストローク`index`が入る、手の関係と入力単位で分けた行。直前のストロークが無ければ`undefined`。 */
+export function strokeSplitRow(strokes: readonly Stroke[], index: number): SentenceSplitRow | undefined {
+  const stroke = strokes[index];
+  const previous = strokes[index - 1];
+  if (stroke === undefined || previous === undefined) return undefined;
+  const cross = playbackCrossHandDirection(stroke, previous) !== undefined;
+  const within = stroke.inputIndex === previous.inputIndex;
+  return `${cross ? 'cross' : 'other'}-${within ? 'within' : 'boundary'}`;
+}
+
 /** 表の1行ぶんの値。数えたストロークが無い行は、四分位平均を持たない。 */
 export interface SentenceRowStats {
   /** 数えたストロークの数（下限の判定に使う数）。 */
@@ -98,6 +116,8 @@ export interface SentenceMeasurement {
   readonly counts: SentenceCounts;
   /** 差の種類ごとの、表に示す値。 */
   readonly kinds: Readonly<Record<OverheadKind, SentenceRowStats>>;
+  /** 手の関係と入力単位で分けた表に示す値。保存しない。 */
+  readonly split: Readonly<Record<SentenceSplitRow, SentenceRowStats>>;
   /** 数えたストロークが最小数以上の種類の打鍵の上乗せ[ms]。負の値もそのまま持つ。 */
   readonly overheadMs: Readonly<Partial<Record<OverheadKind, number>>>;
 }
@@ -159,6 +179,10 @@ function rowStats(count: number, values: Collected): SentenceRowStats {
   };
 }
 
+function emptySplitCounts(): Record<SentenceSplitRow, number> {
+  return { 'cross-within': 0, 'cross-boundary': 0, 'other-within': 0, 'other-boundary': 0 };
+}
+
 function emptyCounts(): Record<OverheadKind, number> {
   return { arpeggio: 0, chain: 0, other: 0, repeat: 0, sfb: 0 };
 }
@@ -181,10 +205,14 @@ export function measureSentence(
   const gathered: Record<OverheadKind, Collected> = {
     arpeggio: collected(), chain: collected(), other: collected(), repeat: collected(), sfb: collected(),
   };
+  const gatheredSplit = {} as Record<SentenceSplitRow, Collected>;
+  for (const row of SENTENCE_SPLIT_ROWS) gatheredSplit[row] = collected();
   const maxPerSentence = new Map<number, Record<OverheadKind, number>>();
+  const maxSplitPerSentence = new Map<number, Record<SentenceSplitRow, number>>();
   for (const { sentence, analysis, taps } of samples) {
     const kinds = strokeOverheadKinds(analysis);
     const round = emptyCounts();
+    const splitRound = emptySplitCounts();
     for (let index = 1; index < analysis.strokes.length; index++) {
       const tap = taps[index];
       const previous = taps[index - 1];
@@ -201,10 +229,18 @@ export function measureSentence(
       const intervalMs = tap.atMs - previous.atMs;
       push(gathered[kind], baseMs, intervalMs);
       round[kind] += 1;
+      if (kind === 'arpeggio' || kind === 'chain' || kind === 'other') {
+        const row = strokeSplitRow(analysis.strokes, index) as SentenceSplitRow;
+        push(gatheredSplit[row], baseMs, intervalMs);
+        splitRound[row] += 1;
+      }
     }
     const best = maxPerSentence.get(sentence) ?? emptyCounts();
     for (const kind of OVERHEAD_KINDS) best[kind] = Math.max(best[kind], round[kind]);
     maxPerSentence.set(sentence, best);
+    const splitBest = maxSplitPerSentence.get(sentence) ?? emptySplitCounts();
+    for (const row of SENTENCE_SPLIT_ROWS) splitBest[row] = Math.max(splitBest[row], splitRound[row]);
+    maxSplitPerSentence.set(sentence, splitBest);
   }
 
   const counts = emptyCounts();
@@ -215,7 +251,13 @@ export function measureSentence(
     if (counts[kind] >= SENTENCE_MIN_SAMPLES) overheadMs[kind] = interquartileMean(gathered[kind].differences);
     kinds[kind] = rowStats(counts[kind], gathered[kind]);
   }
-  return { counts, kinds, overheadMs };
+  const split = {} as Record<SentenceSplitRow, SentenceRowStats>;
+  for (const row of SENTENCE_SPLIT_ROWS) {
+    let count = 0;
+    for (const best of maxSplitPerSentence.values()) count += best[row];
+    split[row] = rowStats(count, gatheredSplit[row]);
+  }
+  return { counts, kinds, split, overheadMs };
 }
 
 export type ApplySentenceResult =
@@ -265,6 +307,8 @@ export type SentenceSaveStatus =
 /** 測り終えた時に示す表。 */
 export interface SentenceResultTable {
   readonly kinds: readonly { readonly kind: OverheadKind; readonly stats: SentenceRowStats; readonly status: SentenceSaveStatus }[];
+  /** 保存しない行。 */
+  readonly split: readonly { readonly row: SentenceSplitRow; readonly stats: SentenceRowStats }[];
 }
 
 /**
@@ -281,5 +325,6 @@ export function sentenceResultTable(result: ApplySentenceResult): SentenceResult
       stats: measurement.kinds[kind],
       status: measurement.overheadMs[kind] === undefined ? 'below-minimum' : reachedStatus,
     })),
+    split: SENTENCE_SPLIT_ROWS.map((row) => ({ row, stats: measurement.split[row] })),
   };
 }

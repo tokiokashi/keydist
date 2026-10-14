@@ -491,3 +491,52 @@ test('出力の文字の読み方で完了した印が無ければ、数える�
   assert.deepEqual(marked, plain);
   assert.equal(plain.counts.other, 20);
 });
+
+test('異手と異手でない打鍵を、かなの中と境目で分けた4行に数え、保存する行には影響しない', () => {
+  // LIとRIを交互に打つ異手の遷移。入力単位は2打ずつ（遷移1,3,5…が単位の変わり目）。
+  const cross = custom(Array.from({ length: 21 }, (_, i) => (i % 2 === 0 ? 'LI' : 'RI') as Finger), (i) => `k${i}`, () => 0, String, (i) => Math.floor(i / 2));
+  const { split, counts, overheadMs } = measureOne(cross, SAVED, tapsFor(21, (i) => (i % 2 === 1 ? 300 : 260)));
+  assert.deepEqual(split['cross-within'], { count: 10, baseMs: 200, intervalMs: 300, differenceMs: 100 });
+  assert.deepEqual(split['cross-boundary'], { count: 10, baseMs: 200, intervalMs: 260, differenceMs: 60 });
+  assert.deepEqual(split['other-within'], emptyRow());
+  assert.deepEqual(split['other-boundary'], emptyRow());
+  assert.deepEqual(counts, { ...NO_COUNTS, other: 20 });
+  assert.deepEqual(Object.keys(overheadMs), ['other']);
+});
+
+test('同じ手の別の指の打鍵は異手でない行に入り、続け打ちと同指連続は4行に入らない', () => {
+  const same = custom(Array.from({ length: 21 }, (_, i) => (i % 2 === 0 ? 'LI' : 'LM') as Finger), (i) => `k${i}`, () => 0, String, (i) => Math.floor((i + 1) / 2));
+  const { split } = measureOne(same, SAVED, tapsFor(21, () => 260));
+  assert.equal(split['other-within'].count + split['other-boundary'].count, 20);
+  assert.equal(split['cross-within'].count + split['cross-boundary'].count, 0);
+  const repeating = measureOne(REPEATING, SAVED, tapsFor(20, () => 260));
+  const sfb = measureOne(custom(Array.from({ length: 20 }, () => 'LI' as Finger), (i) => (i % 2 === 0 ? 'f' : 'g'), () => 2), SAVED, tapsFor(20, () => 260));
+  for (const result of [repeating, sfb]) {
+    for (const row of Object.values(result.split)) assert.deepEqual(row, emptyRow());
+  }
+});
+
+test('4行の打数は、文ごとに数える回の最大を全文で足した数で求め、10未満でも四分位平均を持つ', () => {
+  const analysis = custom(Array.from({ length: 12 }, (_, i) => (i % 2 === 0 ? 'LI' : 'RI') as Finger), (i) => `k${i}`, () => 0, String, (i) => i);
+  const samples: SentenceSample[] = [
+    { sentence: 0, analysis, taps: tapsFor(12, () => 260) },
+    { sentence: 0, analysis, taps: tapsFor(12, () => 260, (i) => i > 5) },
+    { sentence: 1, analysis, taps: tapsFor(12, () => 260) },
+  ];
+  const { split } = measureSentence(samples, SAVED);
+  assert.equal(split['cross-boundary'].count, 22);
+  assert.equal(split['cross-within'].count, 0);
+  const few = measureOne(analysis, SAVED, tapsFor(12, () => 260)).split['cross-boundary'];
+  assert.equal(few.count, 11);
+  const fewer = measureSentence([{ sentence: 0, analysis, taps: tapsFor(12, () => 260, (i) => i > 5) }], SAVED).split['cross-boundary'];
+  assert.equal(fewer.count, 6);
+  assert.equal(fewer.differenceMs, 60);
+});
+
+test('表は4行を保存しない行として持つ', () => {
+  const analysis = alternating(20);
+  const table = sentenceResultTable(applySentenceMeasurement(SAVED, analysis, tapsFor(20, () => 260), 5));
+  assert.ok(table);
+  assert.deepEqual(table.split.map(({ row }) => row), ['cross-within', 'cross-boundary', 'other-within', 'other-boundary']);
+  assert.equal(table.split[1].stats.count, 19);
+});
