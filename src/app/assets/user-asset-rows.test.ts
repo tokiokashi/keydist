@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { UserRomajiRule } from '#input/romaji/rules.ts';
-import { userLayoutRows, userRomajiRuleRows } from './user-asset-rows.ts';
+import { DEFAULT_FINGER_ASSIGNMENT } from '#input/shapes/geometry.ts';
+import { userFingerAssignmentRows, userLayoutRows, userRomajiRuleRows } from './user-asset-rows.ts';
 
 const ROWS: UserLayout['rows'] = ['', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'];
 const RULE: UserRomajiRule = { id: 'rule-a', name: '自作の規則', base: 'kunrei', overrides: {}, generateSokuon: true };
@@ -35,4 +36,10 @@ test('規則の行: 推奨に使っている配列を挙げる。使われてい
   ];
   assert.match(userRomajiRuleRows(layouts, [RULE])[0]!.detail!, /^推奨に使っている配列: A。/);
   assert.equal(userRomajiRuleRows([], [RULE])[0]!.detail, undefined);
+});
+
+test('指の割り当ての行: 名前と、削除した時に既定の割り当てで測る旨を出す', () => {
+  const rows = userFingerAssignmentRows([{ ...DEFAULT_FINGER_ASSIGNMENT, id: 'finger-a', name: '自作の運指' }]);
+  assert.deepEqual(rows.map((row) => [row.id, row.name]), [['finger-a', '自作の運指']]);
+  assert.match(rows[0]!.detail!, /既定の割り当てで測ります/);
 });

@@ -7,6 +7,7 @@ import { downloadJson } from '#platform/browser-download.ts';
 import { readTextFile } from '#platform/browser-file.ts';
 import { AddedToWorkspaceNotice } from '../workspace/AddedToWorkspaceNotice.tsx';
 import { DeletedWorkspaceNotice } from '../workspace/DeletedWorkspaceNotice.tsx';
+import { HistoryConflictNotice } from './HistoryConflictNotice.tsx';
 import { Sidebar } from './Sidebar.tsx';
 import {
   getServerSidebarPinnedSnapshot,
@@ -215,6 +216,7 @@ export function AppShell({ children, hasContextBar }: AppShellProps) {
       <div className="shell-notices">
         <DeletedWorkspaceNotice />
         <AddedToWorkspaceNotice />
+        <HistoryConflictNotice />
       </div>
     </div>
   );

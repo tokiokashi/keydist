@@ -192,8 +192,8 @@ export function duplicateWorkspaceCommand(id: string, newId: string): Command<Ke
 }
 
 /**
- * 削除したWorkspaceを元の位置へ戻す。削除した画面が閉じた後（履歴が残らない所）から戻す時に使う。
- * 画面の履歴が残っている間は、削除のUndoが同じ結果になる。
+ * 削除したWorkspaceを元の位置へ戻す。削除したWorkspaceの画面の履歴は捨てるので、
+ * 移った先の画面（履歴を持たない書き込み）から戻す時に使う。
  */
 export function restoreWorkspaceCommand(workspace: Workspace, index: number): Command<KeydistAssets> {
   return workspacesCommand('Workspaceの削除を取り消す', (library) => restoreWorkspace(library, workspace, index));

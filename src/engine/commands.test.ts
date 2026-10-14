@@ -12,6 +12,7 @@ import {
   createFingerAssignmentCommand,
   createSetupCommand,
   createTextCommand,
+  createUserRomajiRuleCommand,
   deleteFingerAssignmentCommand,
   deleteSetupCommand,
   deleteTextCommand,
@@ -20,8 +21,10 @@ import {
   duplicateFingerAssignmentCommand,
   duplicateSetupCommand,
   duplicateTextCommand,
+  duplicateUserRomajiRuleCommand,
   relabelSetupCommand,
   renameFingerAssignmentCommand,
+  renameUserRomajiRuleCommand,
   resetCascadeItemCommand,
   resetCascadeLevelCommand,
   selectTextCommand,
@@ -29,6 +32,7 @@ import {
   setMultiBaselineCommand,
   setMultiSelectionCommand,
   setMultiTargetsCommand,
+  setFingerAssignmentContentCommand,
   setPersonalSpeedCommand,
   setSingleTargetCommand,
   setTargetForSingleAndMultiCommand,
@@ -36,6 +40,7 @@ import {
   setTextContentCommand,
   markTextsSeenCommand,
   setTextLanguageOverrideCommand,
+  setUserRomajiRuleContentCommand,
   type KeydistAssets,
 } from './commands.ts';
 import type { SettingsValueMap } from './settings-items.ts';
@@ -331,6 +336,28 @@ test('deleteFingerAssignmentCommand: 削除後もそれを参照するカスケ�
   assert.equal(deleted.assets.fingerAssignments.length, 0);
   // Setupの上書きと違い、削除してもoverrides側の値はそのまま残る（orphan-cleanupしない）。
   assert.equal(deleted.assets.setupLibrary.overrides.global?.fingerAssignmentId, assignmentId);
+});
+
+test('setFingerAssignmentContentCommand: 中身を書き換え、undoで戻る。存在しないidと同じ中身はno-op', () => {
+  const created = applyCommand(
+    emptyAssets(),
+    emptyCommandHistory<KeydistAssets>(),
+    createFingerAssignmentCommand(generateFingerAssignmentId, DEFAULT_FINGER_ASSIGNMENT, 'マイ運指'),
+  );
+  const target = created.assets.fingerAssignments[0]!;
+  const content = { keyFinger: { ...target.keyFinger, q: 'RP' as const }, homeKey: target.homeKey };
+
+  const missing = applyCommand(created.assets, created.history, setFingerAssignmentContentCommand('no-such-id', content));
+  assert.equal(missing.outcome.kind, 'no-op');
+  const same = applyCommand(created.assets, created.history, setFingerAssignmentContentCommand(target.id, target));
+  assert.equal(same.outcome.kind, 'no-op');
+
+  const step = applyCommand(created.assets, created.history, setFingerAssignmentContentCommand(target.id, content));
+  assert.equal(step.outcome.kind, 'applied');
+  assert.equal(step.assets.fingerAssignments[0]!.keyFinger.q, 'RP');
+  assert.equal(step.assets.fingerAssignments[0]!.name, 'マイ運指');
+  const undone = undo(step.assets, step.history);
+  assert.equal(undone.assets.fingerAssignments[0]!.keyFinger.q, 'LP');
 });
 
 test('renameFingerAssignmentCommand: 同じ名前への変更はno-op', () => {
@@ -1067,4 +1094,34 @@ test('setPersonalSpeedCommand: undefinedで破棄し、undoで保存値に戻る
 
   assert.equal(applyCommand(saved, history, setPersonalSpeedCommand(SAVED_SPEED)).outcome.kind, 'no-op');
   assert.equal(applyCommand(emptyAssets(), history, setPersonalSpeedCommand(undefined)).outcome.kind, 'no-op');
+});
+
+test('自作のローマ字規則のコマンド: 作成・複製・名前・中身を書き換え、undoで戻る。変化が無い書き換えと存在しないidはno-op', () => {
+  const history = emptyCommandHistory<KeydistAssets>();
+  const created = applyCommand(emptyAssets(), history, createUserRomajiRuleCommand(() => 'romaji-1', '私の綴り', 'oonishi'));
+  assert.deepEqual(created.assets.userRomajiRules, [{ id: 'romaji-1', name: '私の綴り', base: 'oonishi', overrides: {}, generateSokuon: true }]);
+
+  const edited = applyCommand(created.assets, created.history, setUserRomajiRuleContentCommand('romaji-1', { base: 'kunrei', overrides: { し: 'shi' }, generateSokuon: false }));
+  assert.deepEqual(edited.assets.userRomajiRules[0], { id: 'romaji-1', name: '私の綴り', base: 'kunrei', overrides: { し: 'shi' }, generateSokuon: false });
+
+  const renamed = applyCommand(edited.assets, edited.history, renameUserRomajiRuleCommand('romaji-1', '改名'));
+  const duplicated = applyCommand(renamed.assets, renamed.history, duplicateUserRomajiRuleCommand('romaji-1', () => 'romaji-2'));
+  assert.deepEqual(duplicated.assets.userRomajiRules.map((rule) => [rule.id, rule.name]), [['romaji-1', '改名'], ['romaji-2', '改名のコピー']]);
+  assert.notEqual(duplicated.assets.userRomajiRules[1]!.overrides, duplicated.assets.userRomajiRules[0]!.overrides);
+
+  const back = undo(duplicated.assets, duplicated.history);
+  assert.deepEqual(back.assets.userRomajiRules.map((rule) => rule.name), ['改名']);
+
+  const same = { base: 'kunrei' as const, overrides: { し: 'shi' }, generateSokuon: false };
+  for (const command of [
+    setUserRomajiRuleContentCommand('romaji-1', same),
+    setUserRomajiRuleContentCommand('none', same),
+    renameUserRomajiRuleCommand('romaji-1', '改名'),
+    renameUserRomajiRuleCommand('none', 'x'),
+    duplicateUserRomajiRuleCommand('none', () => 'romaji-3'),
+  ]) {
+    const step = applyCommand(renamed.assets, renamed.history, command);
+    assert.equal(step.outcome.kind, 'no-op');
+    assert.equal(step.history, renamed.history);
+  }
 });

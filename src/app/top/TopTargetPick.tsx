@@ -25,14 +25,15 @@ import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
  * （`setTargetForSingleAndMultiCommand`）。
  *
  * 選ぶ部品は各画面の見出しと同じ`TargetSelection`（単一選択）。資産の読み書きも各画面と同じ
- * `useKeydistAssets`を通すので、他のタブへの反映は同じ形で乗る。履歴は画面ごとに持ち、
- * トップには元に戻す操作が無いので、画面からこの書き込みを戻す手段は無い（選び直す）。
+ * `useKeydistAssets`を通すので、他のタブへの反映は同じ形で乗る。トップは履歴を持たず、
+ * 元に戻す操作も無いので、この書き込みを戻す手段は無い（選び直す）。他の画面で積んだ項目は、
+ * 対象の選択に触れていれば、戻せない扱いになる。
  * 資産にはこの部品が書き込むまで Single の対象が無い。無い間は各画面と同じく既定の配列を
  * 選択中として見せ、Analyzerへのリンクは「選んだ後」にだけ出す。
  */
 export function TopTargetPick() {
-  const { assets, ready, dispatch } = useKeydistAssets();
-  const catalog = useMemo(() => paneCatalog(assets), [assets.userLayouts, assets.userRomajiRules, assets.personalSpeed]);
+  const { assets, ready, dispatch } = useKeydistAssets({ history: false });
+  const catalog = useMemo(() => paneCatalog(assets), [assets.userLayouts, assets.userRomajiRules, assets.fingerAssignments, assets.personalSpeed]);
   const setups = assets.setupLibrary.setups;
   const target = effectiveSingleTarget(assets.singleTargetSelection);
 

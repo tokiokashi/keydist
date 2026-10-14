@@ -1,0 +1,140 @@
+/* ローマ字配列の画面。読み物の幅は他のエディタと同じに抑えて中央に置く */
+.romaji-layout {
+  max-width: 50rem;
+  margin-inline: auto;
+}
+
+.romaji-layout h1 {
+  margin-bottom: 0.5rem;
+  font-size: clamp(1.5rem, 5vw, 2rem);
+}
+
+.romaji-layout h2 {
+  margin: 1.75rem 0 0.5rem;
+  font-size: 1.1rem;
+}
+
+.romaji-layout-note {
+  margin: 0 0 0.6rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.romaji-layout-toolbar,
+.romaji-layout-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.romaji-layout button {
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.romaji-layout button:hover:not(:disabled) {
+  background: var(--surface-muted);
+}
+
+.romaji-layout button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.romaji-layout label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.romaji-layout select,
+.romaji-layout input[type='text'] {
+  min-width: 0;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+}
+
+.romaji-layout [aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.romaji-layout-form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.romaji-layout-name {
+  max-width: 20rem;
+}
+
+.romaji-layout fieldset {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.6rem 0.8rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.romaji-layout legend {
+  padding-inline: 0.3rem;
+  font-weight: bold;
+  font-size: 0.95rem;
+}
+
+.romaji-layout-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 0.1rem 0.5rem;
+}
+
+.romaji-layout-row input[type='text'] {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.romaji-layout-row > p {
+  grid-column: 1 / -1;
+}
+
+.romaji-layout-count {
+  padding-bottom: 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.romaji-layout-home-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0.5rem 0.75rem;
+}
+
+.romaji-layout-romaji {
+  max-width: 24rem;
+}
+
+.romaji-layout-error,
+.romaji-layout-warning {
+  margin: 0.1rem 0;
+  font-size: 0.85rem;
+}
+
+.romaji-layout-error {
+  color: var(--danger);
+}
+
+.romaji-layout-warning {
+  color: var(--text-muted);
+}

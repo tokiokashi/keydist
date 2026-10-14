@@ -1,0 +1,107 @@
+/* 指の割り当ての画面。読み物の幅は個人速度の画面と同じに抑えて中央に置く */
+.finger-assignment {
+  max-width: 50rem;
+  margin-inline: auto;
+}
+
+.finger-assignment h1 {
+  margin-bottom: 0.5rem;
+  font-size: clamp(1.5rem, 5vw, 2rem);
+}
+
+.finger-assignment h2 {
+  margin: 1.75rem 0 0.5rem;
+  font-size: 1.1rem;
+}
+
+.finger-assignment h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.95rem;
+}
+
+.finger-assignment-note {
+  margin: 0 0 0.6rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.finger-assignment-toolbar,
+.finger-assignment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.finger-assignment button {
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.finger-assignment button:hover:not(:disabled) {
+  background: var(--surface-muted);
+}
+
+.finger-assignment button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.finger-assignment label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.finger-assignment-name,
+.finger-assignment-shape {
+  max-width: 20rem;
+  margin-top: 0.5rem;
+}
+
+.finger-assignment select,
+.finger-assignment input[type='text'] {
+  min-width: 0;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+}
+
+.finger-assignment-problems {
+  display: grid;
+  gap: 0.2rem;
+  margin: 0.5rem 0;
+  padding-left: 1.2rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.finger-assignment-panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 0.75rem;
+}
+
+.finger-assignment-panel {
+  display: grid;
+  align-content: start;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.finger-assignment-panel p {
+  margin: 0;
+  font-size: 0.9rem;
+}

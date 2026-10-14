@@ -36,7 +36,7 @@ export type CommandOutcome<A extends AssetValues> =
   /**
    * 履歴に積まない書き込み（Undoの対象にならない、資産に付く印の更新など）。資産は書くが
    * `undoStack`には積まず、`redoStack`も消さない。`transforms`は資産キーごとの変換で、
-   * 現在値と、履歴の各項目が持つそのキーのbefore/afterへ同じ変換を掛ける。履歴の値へも掛けるのは、
+   * 現在値と、取っておく全部の画面の履歴の各項目が持つそのキーのbefore/afterへ同じ変換を掛ける。履歴の値へも掛けるのは、
    * 掛けないと、後のUndoが変換前の値（印が付いたまま等）を書き戻してしまうため。
    * 結果の`outcome`は`applied`（`changes`は変換後の現在値）として返るので、呼び出し側は区別しなくてよい。
    */
@@ -66,8 +66,9 @@ export interface HistoryEntry<A extends AssetValues> {
 }
 
 /**
- * アプリ全体で1本の履歴（Undoの単位はアプリ全体で1本）。
- * `undoStack` / `redoStack` は末尾が直近の項目。タブごと・メモリのみで、永続化しない
+ * 1つの画面の履歴。`undoStack` / `redoStack` は末尾が直近の項目。
+ * 履歴は画面ごとに持ち（`ScreenHistories`）、その画面でした変更だけをその画面で戻す。
+ * タブを開いている間だけメモリに持ち、保存データには書かない
  * （呼び出し側がこの値をstorageへ保存しない、というだけの約束。ここでは何もしない）。
  */
 export interface CommandHistory<A extends AssetValues> {
@@ -75,10 +76,52 @@ export interface CommandHistory<A extends AssetValues> {
   readonly redoStack: readonly HistoryEntry<A>[];
 }
 
-/** `applyCommand` / `undo` / `redo` に共通の戻り値。 */
+/** 画面の識別子 → その画面の履歴。画面の数に上限は設けない（項目は資産の値への参照を持つだけ）。 */
+export type ScreenHistories<A extends AssetValues> = ReadonlyMap<string, CommandHistory<A>>;
+
+/**
+ * 項目単位で照らし合わせる資産キーの定義。値が「id → 件」の集まりの資産に使う。
+ * 戻す・やり直す時、項目が既にある件の中身だけを変えているなら、変わった件だけを今の値と
+ * 照らし合わせて、その件だけを書き換える。他の件が今変わっていても止めない。
+ */
+export interface ItemScope<V> {
+  /** 件のid → 件の値。並びの順に返す。 */
+  readonly items: (value: V) => ReadonlyMap<string, unknown>;
+  /**
+   * `id`の件を`item`に差し替えた値。`item`が`undefined`なら、その件を外す
+   * （`membership`が`'free'`の資産だけで起きる）。
+   */
+  readonly withItem: (value: V, id: string, item: unknown) => V;
+  /**
+   * `'fixed'`: 件の追加・削除・並べ替えをした項目は項目単位にしない（1件だけ戻すと、戻す位置や番号の重なりなど、
+   * どのコマンドも作らない状態ができうるため）。
+   * `'free'`: 件の有無が位置や他の件に影響しない資産で、件の追加・削除も項目単位で戻す。
+   */
+  readonly membership: 'fixed' | 'free';
+}
+
+/** 資産キーごとの`ItemScope`。挙げないキーは、値の参照が丸ごと同じかで照らし合わせる。 */
+export type ItemScopes<A extends AssetValues> = { readonly [K in keyof A]?: ItemScope<A[K]> };
+
+/**
+ * 戻す・やり直すの結果の種類。`conflict`は、項目を積んだ後に別の画面などで資産が書き換わっていて、
+ * 項目を当てられなかったこと（資産は変えず、その項目は履歴から捨てる）。
+ */
+export type HistoryStepOutcome<A extends AssetValues> =
+  | CommandOutcome<A>
+  | { readonly kind: 'conflict'; readonly label: string };
+
+/** `undo` / `redo` の戻り値。 */
+export interface HistoryStepResult<A extends AssetValues> {
+  readonly assets: A;
+  readonly history: CommandHistory<A>;
+  readonly outcome: HistoryStepOutcome<A>;
+}
+
+/** `applyCommand` に共通の戻り値。 */
 export interface CommandStepResult<A extends AssetValues> {
   readonly assets: A;
   readonly history: CommandHistory<A>;
-  /** 呼び出し側が失敗理由やno-opを見るための、元のoutcome（undo/redoでは合成したものを返す）。 */
+  /** 呼び出し側が失敗理由やno-opを見るための、元のoutcome。 */
   readonly outcome: CommandOutcome<A>;
 }
