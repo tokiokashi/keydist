@@ -10,6 +10,7 @@ import {
 import { ROMAJI_RULES, type BuiltinRomajiRuleId, type UserRomajiRule } from '#input/romaji/rules.ts';
 import { ROMAJI_RULE_LABEL } from './label.ts';
 import './romaji-rule.css';
+import { useHistoryShortcuts } from '#ui/primitives/use-history-shortcuts.ts';
 
 /** 新しく作る規則の名前。 */
 const NEW_RULE_NAME = '新しいローマ字の綴り';
@@ -122,6 +123,7 @@ export function RomajiRuleEditor({
   onRename,
   onUpdate,
 }: RomajiRuleEditorProps) {
+  useHistoryShortcuts({ canUndo, canRedo, undo: onUndo, redo: onRedo });
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
   const [nameDraft, setNameDraft] = useState<string | undefined>(undefined);
 

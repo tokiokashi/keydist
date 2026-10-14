@@ -17,6 +17,7 @@ import { groupShapes } from '#input/shapes/shape-groups.ts';
 import { newId } from '#input/shapes/user-finger-assignments.ts';
 import { FINGER_ASSIGNMENT_LABEL } from './label.ts';
 import './finger-assignment.css';
+import { useHistoryShortcuts } from '#ui/primitives/use-history-shortcuts.ts';
 
 /** 新しく作る割り当ての名前。 */
 const NEW_ASSIGNMENT_NAME = '新しい指の割り当て';
@@ -129,6 +130,7 @@ export function FingerAssignmentEditor({
   onRename,
   onUpdate,
 }: FingerAssignmentEditorProps) {
+  useHistoryShortcuts({ canUndo, canRedo, undo: onUndo, redo: onRedo });
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
   const [shapeId, setShapeId] = useState(shapes[0]?.id ?? '');
   const [selectedKeyId, setSelectedKeyId] = useState<string | undefined>(undefined);

@@ -1,15 +1,16 @@
 import {
-  applyCommand,
-  redo,
-  undo,
+  applyCommandInScreen,
+  stepInScreen,
   type Command,
-  type CommandHistory,
-  type CommandStepResult,
+  type CommandOutcome,
+  type HistoryStepOutcome,
+  type ScreenHistories,
 } from '#input/commands/index.ts';
 import { createAssetTabSync, type AssetTabSync } from '#platform/asset-tab-sync.ts';
 import type { KeyValueStorage } from '#platform/persistence/storage.ts';
 import { notifyKeydistStorageChange, subscribeKeydistStorageChanges } from '#platform/browser-storage-events.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
+import { KEYDIST_ITEM_SCOPES } from '#engine/history-scopes.ts';
 import { ASSET_KEYS, ASSET_STORAGE_SPECS } from './asset-storage-specs.ts';
 
 /**
@@ -117,7 +118,7 @@ export function catchUpAssets(syncs: AssetSyncMap): void {
 
 export interface AssetState {
   readonly assets: KeydistAssets;
-  readonly history: CommandHistory<KeydistAssets>;
+  readonly histories: ScreenHistories<KeydistAssets>;
 }
 
 /**
@@ -126,8 +127,10 @@ export interface AssetState {
  * 資産は1つのstorageキーへ丸ごと書くので、他タブの書き込みの通知がまだ届いていない
  * 古い手持ちへ適用すると、その書き込みを消してしまう。適用の直前に追いつくことで、
  * コマンドは常に最新の資産へ効く。取り込みは通知経由と同じ`onExternalChange`を通るので、
- * 他タブの変更に触れた履歴を捨てる規則（`applyExternalChange`）もそのまま効く。
+ * 他タブの変更に触れた履歴を捨てる規則（`applyExternalChangeToScreens`）もそのまま効く。
  * `readState`は追いついた後の手持ちを返す（`onExternalChange`が書き換えた先を読む）。
+ *
+ * `screen`は履歴に積む画面。`undefined`なら履歴を持たない画面からの書き込みで、どの履歴にも積まない。
  *
  * 2タブがほぼ同時（他タブの書き込みがこのタブのstorageに届くまでの間）に書くと、
  * まだ防げない。Web Locksでタブ間を直列化すれば閉じるが、適用が非同期になり、
@@ -136,11 +139,12 @@ export interface AssetState {
 export function commitCommand(
   syncs: AssetSyncMap,
   readState: () => AssetState,
+  screen: string | undefined,
   command: Command<KeydistAssets>,
-): CommandStepResult<KeydistAssets> {
+): AssetState & { readonly outcome: CommandOutcome<KeydistAssets> } {
   catchUpAssets(syncs);
-  const { assets, history } = readState();
-  const result = applyCommand(assets, history, command);
+  const { assets, histories } = readState();
+  const result = applyCommandInScreen(assets, histories, screen, command);
   if (result.outcome.kind === 'applied') {
     saveChangedAssets(syncs, result.assets, Object.keys(result.outcome.changes) as (keyof KeydistAssets)[]);
   }
@@ -148,20 +152,21 @@ export function commitCommand(
 }
 
 /**
- * Undo / Redoを1段進め、変わった資産だけを書く。
+ * `screen`の履歴を1段戻す・やり直し、変わった資産だけを書く。
  *
  * `commitCommand`と同じく、先に手持ちを今のstorageへ追いつかせる。他タブが書き換えた資産に
- * 触れる履歴は取り込みの時点で捨てられる（`applyExternalChange`）ので、他タブの変更を
- * 古い値で巻き戻すことはない。
+ * 触れる履歴は取り込みの時点で捨てられるので、他タブの変更を古い値で巻き戻すことはない。
+ * 他の画面などで書き換わっていて当てられない項目は、資産を変えず、その画面の履歴から捨てる（`conflict`）。
  */
 export function commitHistoryStep(
   syncs: AssetSyncMap,
   readState: () => AssetState,
+  screen: string,
   direction: 'undo' | 'redo',
-): CommandStepResult<KeydistAssets> {
+): AssetState & { readonly outcome: HistoryStepOutcome<KeydistAssets> } {
   catchUpAssets(syncs);
-  const { assets, history } = readState();
-  const result = direction === 'undo' ? undo(assets, history) : redo(assets, history);
+  const { assets, histories } = readState();
+  const result = stepInScreen(assets, histories, screen, direction, KEYDIST_ITEM_SCOPES);
   if (result.outcome.kind === 'applied') {
     saveChangedAssets(syncs, result.assets, Object.keys(result.outcome.changes) as (keyof KeydistAssets)[]);
   }

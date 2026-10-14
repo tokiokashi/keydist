@@ -17,6 +17,7 @@ import { physicalKeyDisplayLabel } from '#input/shapes/key-labels.ts';
 import { FINGERS, HOME_ROW, QWERTY_LEGEND } from '#input/shapes/geometry.ts';
 import { ROMAJI_LAYOUT_LABEL } from './label.ts';
 import './romaji-layout.css';
+import { useHistoryShortcuts } from '#ui/primitives/use-history-shortcuts.ts';
 
 const NEW = 'new';
 
@@ -209,6 +210,7 @@ export function RomajiLayoutEditor({
   onCreate,
   onUpdate,
 }: RomajiLayoutEditorProps) {
+  useHistoryShortcuts({ canUndo, canRedo, undo: onUndo, redo: onRedo });
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
   const [newCount, setNewCount] = useState(0);
 

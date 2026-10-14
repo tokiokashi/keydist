@@ -8,6 +8,7 @@ import {
   userAssetsFileBody,
   type UserAssetsBundle,
 } from '#engine/user-assets-file.ts';
+import { useHistoryShortcuts } from '#ui/primitives/use-history-shortcuts.ts';
 import { ErrorDetails } from '#hosts/shared/ErrorDetails.tsx';
 import { PresetFileIoContext } from '#hosts/shared/preset-file-io.ts';
 import { exportedText, importEntryText, importSummaryText, userAssetsFileName } from './user-assets-file-text.ts';
@@ -91,7 +92,7 @@ const CONFIRM_IMPACT: Readonly<Record<UserAssetKind, string>> = {
 /** 削除の確認の文。元に戻すが使える範囲と、削除が他へ及ぼす影響を書く。 */
 function confirmText(pending: PendingDelete): readonly string[] {
   const lines = [CONFIRM_IMPACT[pending.kind]];
-  lines.push('「元に戻す」はこの画面にいる間だけ使えます。別の画面へ移ったり開き直したりすると、戻せません。');
+  lines.push('「元に戻す」で戻せます。再読み込みやタブを閉じた後は戻せません。');
   return lines;
 }
 
@@ -119,7 +120,7 @@ function ConfirmDelete({ pending, onConfirm, onCancel }: {
 }
 
 /**
- * 自作の配列・ローマ字規則・指の割り当てを一覧して削除する画面。削除は確認の後に行い、この画面にいる間は元に戻すで戻せる。
+ * 自作の配列・ローマ字規則・指の割り当てを一覧して削除する画面。削除は確認の後に行い、元に戻すで戻せる。
  * 削除した配列を対象にしているペインは、その旨を各画面で出す。
  */
 export function UserAssetsPage({
@@ -158,6 +159,14 @@ export function UserAssetsPage({
     setMessage('');
     setImportResult(undefined);
   };
+
+  // キー操作もボタンと同じ処理を通す
+  useHistoryShortcuts({
+    canUndo,
+    canRedo,
+    undo: () => { clearResults(); onUndo(); },
+    redo: () => { clearResults(); onRedo(); },
+  });
 
   const exportAssets = () => {
     if (fileIo === undefined || !hasAssets) return;
