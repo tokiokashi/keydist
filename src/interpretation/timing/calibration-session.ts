@@ -34,6 +34,7 @@ import {
   STROKE_STRUCTURE_KINDS,
   median,
   sideOverheadKind,
+  withoutOrphanedSentenceSimultaneous,
   type FingerSpeedSample,
   type HandDirection,
   type OverheadKind,
@@ -466,7 +467,7 @@ function sameKeyRate(results: readonly CalibrationTaskResult[]): number | undefi
  * 同指連続の基準は指の移動の時間も含む。
  * 続け打ちの基準はどのストロークでも同じ1つの値なので、消さずに求め直す（`rebasedRepeatOverheadMs`）。
  */
-function overheadKindsBasedOn(item: CalibrationItem): readonly OverheadKind[] {
+function overheadKindsBasedOn(item: CalibrationItem, base: PlaybackCalibration): readonly OverheadKind[] {
   const normalBased: OverheadKind[] = [
     ...STROKE_STRUCTURE_KINDS.flatMap((kind) => [kind, ...OVERHEAD_SIDES.map((side) => sideOverheadKind(kind, side))]),
     'sfb',
@@ -477,10 +478,16 @@ function overheadKindsBasedOn(item: CalibrationItem): readonly OverheadKind[] {
     case 'finger': return ['sfb'];
     case 'direction':
     case 'same-hand-pair':
-    case 'directed-pair':
+    case 'directed-pair': return normalBased;
     // 同時押しのストロークが入りうる種類。続け打ちは同時押しにならないので含まない。
-    case 'simultaneous': return normalBased;
+    // 文章に入った同時押しの分け方の記録があり、測った分け方が入っていなければ、基準の時間の変化は打鍵の上乗せの意味を変えない。
+    case 'simultaneous': return sentenceMayContain(base, item.simultaneous) ? normalBased : [];
   }
+}
+
+/** 保存した打鍵の上乗せを求めたストロークに、同時押しの分け方`kind`のストロークが入っていたか（分からない時も真）。 */
+function sentenceMayContain(calibration: PlaybackCalibration, kind: SimultaneousKind): boolean {
+  return calibration.sentenceSimultaneousKinds === undefined || calibration.sentenceSimultaneousKinds.includes(kind);
 }
 
 /** 続け打ちの基準の1打の時間[ms]。同じキーを続けて打つ速さを持てばその値、持たなければ通常速度から求める。 */
@@ -622,7 +629,7 @@ export function applyCalibrationRun(
     if (base === undefined) return { ok: false, reason: 'no-saved-value' };
     const basedOn = new Set<OverheadKind>();
     for (const result of run.results) {
-      for (const kind of overheadKindsBasedOn(result.task.item)) basedOn.add(kind);
+      for (const kind of overheadKindsBasedOn(result.task.item, base)) basedOn.add(kind);
     }
     const { keystrokeOverheadMs: overheads, ...withoutOverhead } = base;
     cleared = OVERHEAD_KINDS.filter((kind) => basedOn.has(kind) && overheads?.[kind] !== undefined);
@@ -650,7 +657,7 @@ export function applyCalibrationRun(
     return { ok: false, reason: 'invalid-measurement' };
   }
   const stale = withoutStaleSimultaneous(base, next);
-  next = stale.calibration;
+  next = withoutOrphanedSentenceSimultaneous(stale.calibration);
   const hadRepeat = base?.keystrokeOverheadMs?.repeat !== undefined;
   const keepsRepeat = next.keystrokeOverheadMs?.repeat !== undefined;
   const repeatChanged = hadRepeat && keepsRepeat

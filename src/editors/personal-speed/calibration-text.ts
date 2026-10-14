@@ -440,6 +440,8 @@ export function measurementEffectText(
   saved: boolean,
   savedOverheads: readonly OverheadKind[],
   savedSimultaneous: readonly SimultaneousKind[] = [],
+  /** 文章を打つ測定の保存が数えたストロークに入っていた同時押しの分け方。保存値が持たない時は`undefined`（分からない）。 */
+  sentenceSimultaneous: readonly SimultaneousKind[] | undefined = undefined,
 ): string | undefined {
   if (!saved) return undefined;
   // 基準にする速さが変わると、同時押しの上乗せは消える。変わらなければ残る。
@@ -467,9 +469,14 @@ export function measurementEffectText(
       // 同時押しのストロークが入りうる種類を挙げる。続け打ちは同時押しにならないので消えない。
       const cleared = savedOverheads.filter((kind) => kind !== 'repeat');
       const kept = savedOverheads.includes('repeat') ? '（続け打ちは残ります）' : '';
-      return cleared.length === 0
-        ? '測ると、測った同時押しの上乗せが置き換わります。'
-        : `測ると、測った同時押しの上乗せが置き換わり、打鍵の上乗せのうち${overheadFamilyNames(cleared)}が消えます${kept}。`;
+      if (cleared.length === 0) return '測ると、測った同時押しの上乗せが置き換わります。';
+      // 打鍵の上乗せを求めた文章に入っていた分け方を測る時だけ消える。入っていた分け方が無ければ消えない。
+      if (sentenceSimultaneous !== undefined) {
+        return sentenceSimultaneous.length === 0
+          ? '測ると、測った同時押しの上乗せが置き換わります。'
+          : `測ると、測った同時押しの上乗せが置き換わります。打鍵の上乗せのうち${overheadFamilyNames(cleared)}は、${sentenceSimultaneous.map((kind) => SIMULTANEOUS_KIND_LABEL[kind]).join('・')}を測ると消えます${kept}。`;
+      }
+      return `測ると、測った同時押しの上乗せが置き換わり、打鍵の上乗せのうち${overheadFamilyNames(cleared)}が消えます${kept}。`;
     }
     case 'sentence':
       return savedOverheads.length === 0

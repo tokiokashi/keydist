@@ -1,5 +1,5 @@
 import { defineAssetCodec, isRecord, type AssetCodec } from '#input/codec/index.ts';
-import { playbackCalibrationProblem, type PlaybackCalibration } from './calibration.ts';
+import { playbackCalibrationProblem, SIMULTANEOUS_KINDS, type PlaybackCalibration } from './calibration.ts';
 
 /**
  * 個人速度の資産。保存した測定値を1つだけ持つ。配列・物理配列・指の割り当てには紐づけず、
@@ -39,6 +39,9 @@ function copyCalibration(value: PlaybackCalibration): PlaybackCalibration {
     ...(value.simultaneousOverheadMs === undefined
       ? {}
       : { simultaneousOverheadMs: copyRecord(value.simultaneousOverheadMs) }),
+    ...(value.sentenceSimultaneousKinds === undefined
+      ? {}
+      : { sentenceSimultaneousKinds: SIMULTANEOUS_KINDS.filter((kind) => value.sentenceSimultaneousKinds?.includes(kind)) }),
     measuredAt: value.measuredAt,
   };
 }

@@ -239,6 +239,30 @@ test('打鍵の上乗せを保存している時は、その種類だけを挙�
   expect(after).toBe('directional');
 });
 
+const SIMULTANEOUS_EFFECT = '#personal-speed-group-simultaneous [data-personal-speed-effect]';
+
+function seededWith(extra: Record<string, unknown>) {
+  return { [STORAGE_KEY]: { ...SEEDED, calibration: { ...SEEDED.calibration, keystrokeOverheadMs: { chain: 12, repeat: 30 }, ...extra } } };
+}
+
+test('同時押しのまとまりの文は、文章に入った分け方を測る時に消えると伝える', async ({ page }) => {
+  await seed(page, seededWith({ sentenceSimultaneousKinds: ['both-hands', 'thumb'] }));
+  await open(page);
+  await expect(page.locator(SIMULTANEOUS_EFFECT)).toHaveText('測ると、測った同時押しの上乗せが置き換わります。打鍵の上乗せのうちChainは、両手の同時押し・親指との同時押しを測ると消えます（続け打ちは残ります）。');
+});
+
+test('同時押しのまとまりの文は、記録が空なら消えると伝えない', async ({ page }) => {
+  await seed(page, seededWith({ sentenceSimultaneousKinds: [] }));
+  await open(page);
+  await expect(page.locator(SIMULTANEOUS_EFFECT)).toHaveText('測ると、測った同時押しの上乗せが置き換わります。');
+});
+
+test('同時押しのまとまりの文は、記録が無ければどの分け方を測っても消えると伝える', async ({ page }) => {
+  await seed(page, seededWith({}));
+  await open(page);
+  await expect(page.locator(SIMULTANEOUS_EFFECT)).toHaveText('測ると、測った同時押しの上乗せが置き換わり、打鍵の上乗せのうちChainが消えます（続け打ちは残ります）。');
+});
+
 test('通常の測定をキー入力で行い、結果が保存される', async ({ page }) => {
   await open(page);
   await page.locator('[data-personal-speed-start="normal"]').click();

@@ -3,9 +3,12 @@ import {
   CALIBRATION_OVERHEAD_MS_MIN,
   OVERHEAD_KINDS,
   playbackCalibrationProblem,
+  SENTENCE_RECORDED_OVERHEAD_KINDS,
+  SIMULTANEOUS_KINDS,
   sideOverheadKind,
   type OverheadKind,
   type PlaybackCalibration,
+  type SimultaneousKind,
 } from './calibration.ts';
 import type { Stroke } from '#trace/generate.ts';
 import {
@@ -14,7 +17,7 @@ import {
   playbackSimultaneousOverheadMs,
   type PlaybackTimingAnalysis,
 } from './playback.ts';
-import { strokeOverheadKinds, strokeOverheadSide } from './stroke-structure.ts';
+import { strokeOverheadKinds, strokeOverheadSide, strokeSimultaneousKind } from './stroke-structure.ts';
 
 /**
  * 文章を打つ測定（`spec/playback-timing.md` §6.4）の計算。差の種類（構造の種類の3つ・続け打ち・同指連続）ごとに、
@@ -108,6 +111,11 @@ export interface SentenceMeasurement {
   readonly kinds: Readonly<Record<OverheadKind, SentenceRowStats>>;
   /** 数えたストロークが最小数以上の種類の打鍵の上乗せ[ms]。負の値もそのまま持つ。 */
   readonly overheadMs: Readonly<Partial<Record<OverheadKind, number>>>;
+  /**
+   * 保存する行（構造の種類と同指連続）の値を求めるのに数えたストロークに入っていた、同時押しの分け方。
+   * 四分位平均で除いたストロークも含む。保存する行が無ければ空。
+   */
+  readonly simultaneousKinds: readonly SimultaneousKind[];
 }
 
 /** 保存値全体の比較。キーの並びは問わない。 */
@@ -189,6 +197,7 @@ export function measureSentence(
   const collected = (): Collected => ({ bases: [], intervals: [], differences: [] });
   const gathered = Object.fromEntries(OVERHEAD_KINDS.map((kind) => [kind, collected()])) as Record<OverheadKind, Collected>;
   const maxPerSentence = new Map<number, Record<OverheadKind, number>>();
+  const rowSimultaneous = Object.fromEntries(OVERHEAD_KINDS.map((kind) => [kind, new Set<SimultaneousKind>()])) as Record<OverheadKind, Set<SimultaneousKind>>;
   for (const { sentence, analysis, taps } of samples) {
     const kinds = strokeOverheadKinds(analysis);
     const round = emptyCounts();
@@ -212,9 +221,11 @@ export function measureSentence(
       if (kind === 'arpeggio' || kind === 'chain' || kind === 'other') {
         saved.push(sideOverheadKind(kind, strokeOverheadSide(analysis.strokes, index)));
       }
+      const simultaneousKind = strokeSimultaneousKind(analysis.strokes[index]);
       for (const row of saved) {
         push(gathered[row], baseMs, intervalMs);
         round[row] += 1;
+        if (simultaneousKind !== undefined) rowSimultaneous[row].add(simultaneousKind);
       }
     }
     const best = maxPerSentence.get(sentence) ?? emptyCounts();
@@ -230,7 +241,12 @@ export function measureSentence(
     if (counts[kind] >= SENTENCE_MIN_SAMPLES) overheadMs[kind] = interquartileMean(gathered[kind].differences);
     kinds[kind] = rowStats(counts[kind], gathered[kind]);
   }
-  return { counts, kinds, overheadMs };
+  const recorded = new Set<SimultaneousKind>();
+  for (const kind of SENTENCE_RECORDED_OVERHEAD_KINDS) {
+    if (overheadMs[kind] === undefined) continue;
+    for (const simultaneousKind of rowSimultaneous[kind]) recorded.add(simultaneousKind);
+  }
+  return { counts, kinds, overheadMs, simultaneousKinds: SIMULTANEOUS_KINDS.filter((kind) => recorded.has(kind)) };
 }
 
 export type ApplySentenceResult =
@@ -261,7 +277,15 @@ export function applySentenceMeasurement(
   if (Object.keys(measurement.overheadMs).length === 0) return { ok: false, reason: 'too-few', measurement };
   const inRange = Object.values(measurement.overheadMs).every((value) =>
     value >= CALIBRATION_OVERHEAD_MS_MIN && value <= CALIBRATION_OVERHEAD_MS_MAX);
-  const next: PlaybackCalibration = { ...base, keystrokeOverheadMs: measurement.overheadMs, measuredAt: nowMs };
+  // 続け打ちの行だけを保存する時は、同時押しの分け方の記録を持たせない（記録は構造の種類と同指連続の値の根拠）。
+  const { sentenceSimultaneousKinds: _previous, ...withoutRecord } = base;
+  const recordable = SENTENCE_RECORDED_OVERHEAD_KINDS.some((kind) => measurement.overheadMs[kind] !== undefined);
+  const next: PlaybackCalibration = {
+    ...withoutRecord,
+    keystrokeOverheadMs: measurement.overheadMs,
+    ...(recordable ? { sentenceSimultaneousKinds: measurement.simultaneousKinds } : {}),
+    measuredAt: nowMs,
+  };
   if (!inRange || playbackCalibrationProblem(next) !== undefined) {
     return { ok: false, reason: 'out-of-range', measurement };
   }

@@ -311,3 +311,50 @@ test('指の移動速度の測定と、同じキーを続けて打つ速さの�
   assert.deepEqual(sameKey.clearedSimultaneous, []);
   assert.deepEqual(sameKey.calibration.simultaneousOverheadMs, WITH_SIMULTANEOUS.simultaneousOverheadMs);
 });
+
+const SENTENCE_BASE: PlaybackCalibration = { ...SAVED, keystrokeOverheadMs: { other: 5, 'other-boundary': 5, sfb: 8, repeat: 7 } };
+
+test('記録が空なら、同時押しを測っても打鍵の上乗せと記録は消えない', () => {
+  const base: PlaybackCalibration = { ...SENTENCE_BASE, sentenceSimultaneousKinds: [] };
+  const result = applied(base, finishedRun('simultaneous', PLAN.simultaneous ?? [], () => 300));
+  assert.deepEqual(result.calibration.keystrokeOverheadMs, base.keystrokeOverheadMs);
+  assert.deepEqual(result.calibration.sentenceSimultaneousKinds, []);
+  assert.deepEqual(result.clearedOverheads, []);
+});
+
+test('記録に両手が入っていれば、両手を測ると打鍵の上乗せと記録が消え、片手・親指だけを測ると消えない', () => {
+  const base: PlaybackCalibration = { ...SENTENCE_BASE, sentenceSimultaneousKinds: ['both-hands'] };
+  const both = applied(base, finishedRun('item', [taskOf('both-hands')], () => 300));
+  assert.deepEqual(both.calibration.keystrokeOverheadMs, { repeat: 7 });
+  assert.equal('sentenceSimultaneousKinds' in both.calibration, false);
+  assert.deepEqual(both.clearedOverheads, ['other', 'other-boundary', 'sfb']);
+  const others = applied(base, finishedRun('item', [taskOf('one-hand'), taskOf('thumb')], () => 300));
+  assert.deepEqual(others.calibration.keystrokeOverheadMs, base.keystrokeOverheadMs);
+  assert.deepEqual(others.calibration.sentenceSimultaneousKinds, ['both-hands']);
+  assert.deepEqual(others.clearedOverheads, []);
+  // 3つをまとめて測る時は、1つでも記録に入っていれば消える。
+  const all = applied(base, finishedRun('simultaneous', PLAN.simultaneous ?? [], () => 300));
+  assert.deepEqual(all.calibration.keystrokeOverheadMs, { repeat: 7 });
+});
+
+test('記録を持たない保存値では、どの分け方を測っても打鍵の上乗せが消える', () => {
+  for (const kind of SIMULTANEOUS_KINDS) {
+    const result = applied(SENTENCE_BASE, finishedRun('item', [taskOf(kind)], () => 300));
+    assert.deepEqual(result.calibration.keystrokeOverheadMs, { repeat: 7 });
+  }
+});
+
+test('構造の種類と同指連続の差が全部無くなる測定では、記録も消え、一部だけ消える測定では残る', () => {
+  const base: PlaybackCalibration = { ...SENTENCE_BASE, sentenceSimultaneousKinds: ['thumb'] };
+  const normal = applied(base, finishedRun('item', [PLAN.byItem.get('actions')!], () => 100));
+  assert.equal('sentenceSimultaneousKinds' in normal.calibration, false);
+  const full = applied(base, finishedRun('normal', PLAN.normal ?? [], () => 100));
+  assert.equal('sentenceSimultaneousKinds' in full.calibration, false);
+  // 指の移動速度の測り直しは同指連続だけを消すので、残る構造の種類の値の根拠として記録を残す。
+  const finger = applied(base, finishedRun('item', [PLAN.byItem.get('finger:LI')!], () => 100));
+  assert.deepEqual(finger.calibration.sentenceSimultaneousKinds, ['thumb']);
+  assert.equal(finger.calibration.keystrokeOverheadMs?.sfb, undefined);
+  // 同指連続の差だけが残る保存値で、その差を消す測定をすると、記録も消える。
+  const sfbOnly = applied({ ...base, keystrokeOverheadMs: { sfb: 8 } }, finishedRun('item', [PLAN.byItem.get('finger:LI')!], () => 100));
+  assert.equal('sentenceSimultaneousKinds' in sfbOnly.calibration, false);
+});
