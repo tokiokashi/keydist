@@ -100,3 +100,29 @@ test('同じキーを続けて打つ速さが範囲外なら、保存値ごと�
     assert.equal(decoded.diagnostics.length, 1);
   }
 });
+
+test('かなの中・かなの境目の値は、分けない値を持たない保存値でも、書き出して読み直すと同じ値になる', () => {
+  for (const keystrokeOverheadMs of [
+    { 'other-within': 20.5, 'other-boundary': 90, 'chain-boundary': -3 },
+    { arpeggio: 10, 'arpeggio-within': 5, 'arpeggio-boundary': 15, other: 60, 'other-within': 40, 'other-boundary': 80, repeat: 4, sfb: 9 },
+  ]) {
+    const value: PlaybackCalibration = { ...CALIBRATION, keystrokeOverheadMs };
+    const decoded = PERSONAL_SPEED_CODEC.decode(JSON.parse(JSON.stringify(PERSONAL_SPEED_CODEC.encode({ calibration: value }))));
+    assert.ok(decoded.ok);
+    assert.deepEqual(decoded.value, { calibration: value });
+    assert.deepEqual(decoded.diagnostics, []);
+  }
+});
+
+test('かなの中・かなの境目の値が範囲外なら、他の値が範囲の中でも保存値ごと捨てる', () => {
+  for (const keystrokeOverheadMs of [
+    { 'other-within': 1001 },
+    { other: 80, 'other-boundary': -1001 },
+    { 'chain-within': 5, 'arpeggio-boundary': 2000 },
+  ]) {
+    const decoded = PERSONAL_SPEED_CODEC.decode({ version: 1, calibration: { ...CALIBRATION, keystrokeOverheadMs } });
+    assert.ok(decoded.ok);
+    assert.equal(decoded.value.calibration, undefined);
+    assert.equal(decoded.diagnostics.length, 1);
+  }
+});
