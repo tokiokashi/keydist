@@ -30,6 +30,12 @@ function copyCalibration(value: PlaybackCalibration): PlaybackCalibration {
       : { sameHandDifferentFingerActionsPerDirectedPair: copyRecord(value.sameHandDifferentFingerActionsPerDirectedPair) }),
     fingerSpeedUnitsPerSecond: copyRecord(value.fingerSpeedUnitsPerSecond),
     fallbackFingerSpeedUnitsPerSecond: value.fallbackFingerSpeedUnitsPerSecond,
+    ...(value.sameKeyActionsPerSecond === undefined
+      ? {}
+      : { sameKeyActionsPerSecond: value.sameKeyActionsPerSecond }),
+    ...(value.keystrokeOverheadMs === undefined
+      ? {}
+      : { keystrokeOverheadMs: copyRecord(value.keystrokeOverheadMs) }),
     measuredAt: value.measuredAt,
   };
 }

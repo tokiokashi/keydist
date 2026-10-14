@@ -5,6 +5,7 @@ import {
   RATE_CHART_DOT_LIMIT,
   RATE_CHART_MARGIN,
   RATE_CHART_WIDTH,
+  rateChartAxisInsets,
   rateChartModel,
   rateChartPositionAt,
   rateChartReadout,
@@ -82,4 +83,10 @@ test('読み上げ: 値の無い項目は「—」、あれば小数2桁', () =>
     rateChartReadout({ cursor: 0, inputText: '' }),
     '0ステップ目、集計入力「—」、かな/秒は—、アクション/秒は—',
   );
+});
+
+test('横軸の左右の余白の割合は、再生位置0と最後のx座標と一致する', () => {
+  const insets = rateChartAxisInsets();
+  assert.equal(parseFloat(insets.left) / 100 * RATE_CHART_WIDTH, rateChartX(0, 10));
+  assert.equal(RATE_CHART_WIDTH - parseFloat(insets.right) / 100 * RATE_CHART_WIDTH, rateChartX(10, 10));
 });

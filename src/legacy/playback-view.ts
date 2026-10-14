@@ -336,6 +336,8 @@ function updatePlaybackView(): void {
     playbackTrace.strokes,
     cursor,
     windowSize,
+    // 旧画面は入力済みの欄を持たず、数を増やすと現在の入力が右に押し出される
+    10,
   );
   const plan = isRomaji
     ? playbackRomajiPlan(playbackTrace.strokes, cursor)

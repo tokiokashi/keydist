@@ -1,3 +1,4 @@
+import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import { DEFAULT_PLAYBACK_OPTIONS, type PlaybackOptions } from './options.ts';
 import type { PersonalSpeedUse } from './timing-conditions.ts';
 
@@ -11,6 +12,8 @@ import type { PersonalSpeedUse } from './timing-conditions.ts';
 export interface PlaybackCalculationNotes {
   /** 保存した個人速度で計算しているか */
   readonly personalSpeedInUse: boolean;
+  /** 個人速度で計算していて、保存値の、文章を打つ速さで測った打鍵の上乗せを時間に足しているか */
+  readonly keystrokeOverheadInUse: boolean;
   /** 既定と違い、数値に入っている項目の名前と値 */
   readonly changes: readonly string[];
 }
@@ -18,9 +21,17 @@ export interface PlaybackCalculationNotes {
 export function playbackCalculationNotes(
   options: PlaybackOptions,
   personalSpeedUse: PersonalSpeedUse,
+  /** 実際に使う個人速度（`PlaybackTimingConditions.calibration`）。 */
+  calibration?: PlaybackCalibration,
 ): PlaybackCalculationNotes {
   const defaults = DEFAULT_PLAYBACK_OPTIONS;
   const personalSpeedInUse = personalSpeedUse === 'applied';
+  // 時間に入る種類は、続け打ちと構造の種類が常に、同指連続が指の移動速度を考慮する時だけ。
+  // 再生するテキストの中身は見ず、解析設定と保存値の組で決める。
+  const keystrokeOverheadInUse = personalSpeedInUse
+    && Object.entries(calibration?.keystrokeOverheadMs ?? {}).some(
+      ([kind, ms]) => ms !== 0 && (kind !== 'sfb' || options.sameFingerDelay),
+    );
   const changes: string[] = [];
   if (!personalSpeedInUse && options.stepsPerSecond !== defaults.stepsPerSecond) {
     changes.push(`基準速度: ${options.stepsPerSecond}ステップ/秒`);
@@ -44,5 +55,5 @@ export function playbackCalculationNotes(
   if (options.rateAverage === 'ewma' && options.rateHalfLifeSeconds !== defaults.rateHalfLifeSeconds) {
     changes.push(`平均の半減時間: ${options.rateHalfLifeSeconds}秒`);
   }
-  return { personalSpeedInUse, changes };
+  return { personalSpeedInUse, keystrokeOverheadInUse, changes };
 }

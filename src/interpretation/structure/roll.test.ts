@@ -49,6 +49,7 @@ const stroke = (index: number, entries: PressSemantic[]): Stroke => ({
   char: String(index),
   inputChar: String(index),
   inputIndex: index,
+  selectionIndex: index,
   aggregationGroupId: 'single',
   classifications: [],
   triggerKeys: [],
