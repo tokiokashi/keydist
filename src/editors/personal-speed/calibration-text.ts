@@ -155,7 +155,7 @@ export function calibrationInstruction(task: CalibrationTask, keyLabel: (keyId: 
       return `${subject}: ${first}と${second}を、普段の速さで交互に打ってください。`;
     case 'direction':
     case 'directed-pair':
-      return `${subject}: ${first}→${second}の順で、普段の速さで繰り返してください。戻りの打鍵は数えません。`;
+      return `${subject}: ${first}→${second}の2打を、つなげて素早く繰り返してください。戻りの打鍵は数えず、速さも問いません。`;
   }
 }
 
@@ -174,7 +174,7 @@ export function savedMessage(
   item?: CalibrationItem,
   clearedOverheads: readonly OverheadKind[] = [],
 ): string {
-  const notice = clearedOverheads.length > 0 ? ' 文章を打つ速さの打鍵の上乗せが消えました。' : '';
+  const notice = clearedOverheads.length > 0 ? '文章を打つ速さの打鍵の上乗せが消えました。' : '';
   if (scope === 'normal') return `通常の速度、同じキーを続けて打つ速さ、指の移動速度を測って保存しました。${notice}`;
   if (scope === 'directional') return `方向別の速度を測って保存しました。${notice}`;
   return item === undefined ? `保存しました。${notice}` : `${calibrationItemLabel(item)}を測り直して保存しました。${notice}`;
@@ -317,7 +317,7 @@ export const MEASUREMENT_HOW_TO = {
     '同じキーを続けて打ってください。',
   ],
   directional: [
-    '指定されたキーを繰り返し打ってください。',
+    '→の2打を、つなげて素早く打ってください。',
   ],
   sentence: [
     '短い文を1本ずつ3回続けて打ってください。',
