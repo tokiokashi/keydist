@@ -395,3 +395,10 @@ test('出力の文字の読み方で完了したストロークは、次の単�
   const played = play(steps, [['a', 'out'], ['e', 'out'], 's']);
   assert.equal(played.run.taps[0].outputCompleted, true);
 });
+
+test('押すキーの読み方が先に完了し、出力の文字の読み方が後で完了したストロークは、印を持たない', () => {
+  // 押すキーA・Eで押すキーの読み方が完了し、出力a・e・iは途中。Iで出力の読み方も完了する。
+  const played = play([comboStep(['a', 'e'], ['a', 'e', 'i'], 0), step(['s'], 1)], [['a', 'out'], ['e', 'out'], ['i', 'out'], 's']);
+  assert.deepEqual(played.kinds, ['partial', 'partial', 'step-finished', 'run-finished']);
+  assert.deepEqual(played.run.taps.map((tap) => tap.outputCompleted === true), [false, false]);
+});
