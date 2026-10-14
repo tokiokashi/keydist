@@ -127,3 +127,13 @@ test('かなの中・かなの境目の値が1つでも範囲の外・数でな�
     '打鍵の上乗せが正しくありません',
   );
 });
+
+test('同時押しの上乗せは-1000から1000ミリ秒まで保存でき、外側と知らない分け方は保存できない', () => {
+  assert.equal(isPlaybackCalibration({ ...VALID, simultaneousOverheadMs: { 'both-hands': -1000, 'one-hand': 0, thumb: 1000 } }), true);
+  assert.equal(isPlaybackCalibration({ ...VALID, simultaneousOverheadMs: {} }), true);
+  assert.equal(isPlaybackCalibration({ ...VALID, simultaneousOverheadMs: { thumb: 1000.5 } }), false);
+  assert.equal(isPlaybackCalibration({ ...VALID, simultaneousOverheadMs: { thumb: -1000.5 } }), false);
+  assert.equal(isPlaybackCalibration({ ...VALID, simultaneousOverheadMs: { arpeggio: 10 } }), false);
+  assert.equal(isPlaybackCalibration({ ...VALID, simultaneousOverheadMs: 'x' }), false);
+  assert.equal(playbackCalibrationProblem({ ...VALID, simultaneousOverheadMs: { thumb: 5000 } }), '同時押しの上乗せが正しくありません');
+});

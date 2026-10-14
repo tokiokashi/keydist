@@ -1,4 +1,5 @@
 import type { PlaybackRateChartPoint } from '#interpretation/timing/playback.ts';
+import { scaleRangeWithZero, type ScaleRange } from '../shared-scale.ts';
 
 /**
  * 速度グラフの座標の計算。値は抽出が出した点をそのまま使い、ここでは平均も時間も計算しない。
@@ -100,18 +101,35 @@ function bandsOf(points: readonly PlaybackRateChartPoint[], total: number, displ
   return bands;
 }
 
-/** 点の並びが空（打鍵が無い）の時は`undefined`を返す。 */
+function finiteRates(points: readonly PlaybackRateChartPoint[]): number[] {
+  return points
+    .flatMap((point) => [point.kanaPerSecond, point.actionsPerSecond])
+    .filter((value): value is number => value !== undefined && Number.isFinite(value));
+}
+
+/**
+ * このペインが縦軸の共有に報告する範囲（0を含む）。描く値が1つも無ければ`undefined`。
+ * 揃えた範囲には依らない（報告が循環しない）。
+ */
+export function rateChartOwnRange(points: readonly PlaybackRateChartPoint[]): ScaleRange | undefined {
+  const values = finiteRates(points);
+  return values.length === 0 ? undefined : scaleRangeWithZero(values);
+}
+
+/**
+ * 点の並びが空（打鍵が無い）の時は`undefined`を返す。
+ * `sharedRange`は並んだペイン全部を含む範囲で、縦軸の上限はこの最大値（1未満なら1）の1.1倍で決める。
+ * 渡さなければ、このペインの値だけで決める。
+ */
 export function rateChartModel(
   points: readonly PlaybackRateChartPoint[],
   display: RateChartDisplay,
+  sharedRange?: ScaleRange,
 ): RateChartModel | undefined {
   const total = points.at(-1)?.cursor ?? 0;
   if (total === 0) return undefined;
 
-  const finiteValues = points
-    .flatMap((point) => [point.kanaPerSecond, point.actionsPerSecond])
-    .filter((value): value is number => value !== undefined && Number.isFinite(value));
-  const yMax = Math.max(1, ...finiteValues) * 1.1;
+  const yMax = Math.max(1, sharedRange?.max ?? Math.max(0, ...finiteRates(points))) * 1.1;
   const yOf = (value: number) => RATE_CHART_MARGIN.top + (1 - value / yMax) * PLOT_HEIGHT;
 
   const seriesOf = (valueOf: (point: PlaybackRateChartPoint) => number | undefined) => {

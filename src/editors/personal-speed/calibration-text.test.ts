@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { SentenceMeasurement } from '#interpretation/timing/sentence-measurement.ts';
-import { SENTENCE_TABLE_NOTES, clearedOverheadsText, measurementEffectText, savedMessage, SENTENCE_OTHER_LAYOUT_NOTE, sentenceFailureText, sentenceSavedMessage } from './calibration-text.ts';
+import { SENTENCE_TABLE_NOTES, clearedOverheadsText, clearedSimultaneousText, measurementEffectText, savedMessage, SENTENCE_OTHER_LAYOUT_NOTE, sentenceFailureText, sentenceSavedMessage } from './calibration-text.ts';
 
 /** 文章の知らせの文だけを検査するための測定結果。表に使う値は持たない。 */
 function measurement(overheadMs: SentenceMeasurement['overheadMs']): SentenceMeasurement {
@@ -61,11 +61,11 @@ test('測るボタンの直後の保存値への影響は、置き換わる・�
   );
   assert.equal(
     measurementEffectText('directional', true, ['chain', 'repeat']),
-    '測ると、測った向きの値が置き換わり、打鍵の上乗せのうちChain全体が消えます（続け打ちは残ります）。',
+    '測ると、測った向きの値が置き換わり、打鍵の上乗せのうちChainが消えます（続け打ちは残ります）。',
   );
   assert.equal(
     measurementEffectText('directional', true, ['arpeggio', 'other']),
-    '測ると、測った向きの値が置き換わり、打鍵の上乗せのうちArpeggio全体・その他全体が消えます。',
+    '測ると、測った向きの値が置き換わり、打鍵の上乗せのうちArpeggio・その他が消えます。',
   );
   assert.equal(measurementEffectText('sentence', true, ['sfb']), '測り直して保存すると、前の打鍵の上乗せは全て置き換わります。');
 });
@@ -89,7 +89,7 @@ test('測った後の知らせは、消した種類と置き換えた種類を�
   assert.equal(
     clearedOverheadsText(['other'], ['repeat']),
     '打鍵の上乗せ（続け打ち）は、基準の時間が変わったため、再生の時間が変わらない値に置き換えました。'
-    + '打鍵の上乗せ（その他全体）は、他の値が変わったため消しました。文章を打つ速さをもう一度測ってください。',
+    + '打鍵の上乗せ（その他）は、他の値が変わったため消しました。文章を打つ速さをもう一度測ってください。',
   );
   assert.ok(!clearedOverheadsText([], ['repeat']).includes('消しました'));
   assert.ok(!clearedOverheadsText(['sfb']).includes('置き換えました'));
@@ -99,4 +99,63 @@ test('測った後の知らせは、消した種類と置き換えた種類を�
 
 test('結果の表の説明は、負の値を0にすると書かない', () => {
   assert.ok(SENTENCE_TABLE_NOTES.every((note) => !note.includes('0にします')));
+});
+
+test('同時押しの測定の前の注意は、消える打鍵の上乗せを挙げ、続け打ちは残ると伝える', () => {
+  assert.equal(measurementEffectText('simultaneous', false, []), undefined);
+  assert.equal(measurementEffectText('simultaneous', true, ['repeat']), '測ると、測った同時押しの上乗せが置き換わります。');
+  const text = measurementEffectText('simultaneous', true, ['other', 'repeat']) ?? '';
+  assert.ok(text.includes('が消えます（続け打ちは残ります）'));
+});
+
+test('基準の速さの測定の前の注意は、同時押しの上乗せがある時だけ、消えることを足す', () => {
+  const tail = '同時押しの上乗せは、基準にする速さが変わると消えます。';
+  assert.ok(!(measurementEffectText('normal', true, [], []) ?? '').includes(tail));
+  assert.ok((measurementEffectText('normal', true, [], ['thumb']) ?? '').endsWith(tail));
+  assert.ok((measurementEffectText('directional', true, [], ['thumb']) ?? '').endsWith(tail));
+});
+
+test('同時押しを測った後の知らせは、消えた同時押しの上乗せを伝え、測り直しを促す', () => {
+  assert.ok(clearedSimultaneousText(['thumb', 'one-hand']).includes('親指との同時押し・片手の同時押し'));
+  assert.ok(clearedSimultaneousText(['thumb']).endsWith('同時押しをもう一度測ってください。'));
+  assert.equal(savedMessage('simultaneous'), '同時押しを測って保存しました。');
+  assert.ok(savedMessage('normal', undefined, [], [], ['thumb']).includes('同時押しの上乗せが消えました。'));
+});
+
+test('保存した時の知らせは、値と打鍵の数を並べず、保存しなかった種類がある旨だけを伝える', () => {
+  const all = sentenceSavedMessage(measurement(ALL));
+  assert.equal(all, '文章を打つ速さを測って保存しました。値は下の表で読めます。');
+  const partial = sentenceSavedMessage(measurement({ arpeggio: 10, other: 20, repeat: 30 }));
+  assert.ok(partial.includes('数えた打鍵が10打に満たない種類は保存していません。'));
+  assert.ok(!/ミリ秒|\d+打/.test(partial.replace('10打に満たない', '')));
+});
+
+test('消える・置き換わる打鍵の上乗せは、全体・かなの中・かなの境目をまとめて差の種類の名前で並べる', () => {
+  const text = measurementEffectText('directional', true, ['arpeggio', 'arpeggio-within', 'arpeggio-boundary', 'chain-within', 'sfb', 'repeat']) ?? '';
+  assert.ok(text.includes('打鍵の上乗せのうちArpeggio・Chain・同指連続が消えます（続け打ちは残ります）'));
+  assert.ok(!text.includes('かなの'));
+  const cleared = clearedOverheadsText(['other', 'other-within', 'other-boundary', 'sfb'], ['repeat']);
+  assert.ok(cleared.includes('打鍵の上乗せ（その他・同指連続）は、他の値が変わったため消しました。'));
+  assert.ok(!cleared.includes('かなの'));
+});
+
+test('同時押しを測る前の文は、文章に入った分け方を測る時だけ消えると伝え、記録が無い時は今まで通りに伝える', () => {
+  assert.equal(
+    measurementEffectText('simultaneous', true, ['other', 'repeat']),
+    '測ると、測った同時押しの上乗せが置き換わり、打鍵の上乗せのうちその他が消えます（続け打ちは残ります）。',
+  );
+  assert.equal(
+    measurementEffectText('simultaneous', true, ['other', 'repeat'], [], ['both-hands', 'thumb']),
+    '測ると、測った同時押しの上乗せが置き換わります。打鍵の上乗せのうちその他は、両手の同時押し・親指との同時押しを測ると消えます（続け打ちは残ります）。',
+  );
+  assert.equal(
+    measurementEffectText('simultaneous', true, ['other', 'repeat'], [], []),
+    '測ると、測った同時押しの上乗せが置き換わります。',
+  );
+  assert.equal(measurementEffectText('simultaneous', true, ['repeat'], [], ['thumb']), '測ると、測った同時押しの上乗せが置き換わります。');
+});
+
+test('測った後の知らせは、打鍵の上乗せを消した時だけ出る', () => {
+  assert.equal(clearedOverheadsText([], []), '');
+  assert.notEqual(clearedOverheadsText(['other'], []), '');
 });
