@@ -1,15 +1,13 @@
 import type { SentenceResultTable as SentenceResultTableData } from '#interpretation/timing/sentence-measurement.ts';
 import {
   SENTENCE_TABLE_COLUMNS,
-  SENTENCE_TABLE_NOT_SAVED_TEXT,
   SENTENCE_TABLE_NOTES,
-  sentenceTableDirectionLabel,
   sentenceTableKindLabel,
   sentenceTableSavedText,
   sentenceTableValueText,
 } from './calibration-text.ts';
 
-/** 文章を打つ測定を終えた時の、差の種類ごと・異手の方向ごとの値の表。 */
+/** 文章を打つ測定を終えた時の、差の種類ごとの値の表。 */
 export function SentenceResultTable({ table }: { readonly table: SentenceResultTableData }) {
   return (
     <div className="personal-speed-result" data-personal-speed-sentence-result>
@@ -33,16 +31,6 @@ export function SentenceResultTable({ table }: { readonly table: SentenceResultT
               <td>{sentenceTableValueText(stats.intervalMs)}</td>
               <td>{sentenceTableValueText(stats.differenceMs)}</td>
               <td>{sentenceTableSavedText(status)}</td>
-            </tr>
-          ))}
-          {table.crossHand.map(({ direction, stats }) => (
-            <tr key={direction} data-personal-speed-result-row={`cross-hand:${direction}`}>
-              <th scope="row">{sentenceTableDirectionLabel(direction)}</th>
-              <td>{stats.count}</td>
-              <td>{sentenceTableValueText(stats.baseMs)}</td>
-              <td>{sentenceTableValueText(stats.intervalMs)}</td>
-              <td>{sentenceTableValueText(stats.differenceMs)}</td>
-              <td>{SENTENCE_TABLE_NOT_SAVED_TEXT}</td>
             </tr>
           ))}
         </tbody>

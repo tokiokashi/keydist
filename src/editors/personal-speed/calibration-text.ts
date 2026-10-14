@@ -14,7 +14,6 @@ import {
 import {
   SENTENCE_MIN_SAMPLES,
   type ApplySentenceResult,
-  type CrossHandDirection,
   type SentenceMeasurement,
   type SentenceSaveStatus,
 } from '#interpretation/timing/sentence-measurement.ts';
@@ -273,8 +272,6 @@ export const SENTENCE_TABLE_NOTES: readonly string[] = [
   '打鍵の上乗せは、打鍵ごとの差（打った間隔から基準の時間を引いた値）の四分位平均（小さい方と大きい方から4分の1ずつ除いた残りの平均）で、負の値もそのまま保存します。'
   + '打った間隔の四分位平均から基準の時間の四分位平均を引いた値とは、一致しないことがあります。',
   '基準の時間は1打の時間です。同指連続では、1打の時間と指が動く時間の長い方です。続け打ちの1打の時間は、同じキーを続けて打つ速さから求めます。',
-  '左手から右手・右手から左手の行は、「その他」のうち、手が替わる打鍵だけを分けた値です。「その他」の行にも含まれ、保存しません。'
-  + '方向ごとに分けるので打鍵の数が少なく、値が揺れやすくなります。',
 ];
 
 /** 表の行の名前。同指連続と続け打ちは、基準の時間が分かる形にする。 */
@@ -284,10 +281,6 @@ export function sentenceTableKindLabel(kind: OverheadKind): string {
     case 'sfb': return `${OVERHEAD_KIND_LABEL[kind]}（1打の時間と指が動く時間の長い方が基準）`;
     default: return OVERHEAD_KIND_LABEL[kind];
   }
-}
-
-export function sentenceTableDirectionLabel(direction: CrossHandDirection): string {
-  return `その他のうち${direction === 'L→R' ? '左手から右手' : '右手から左手'}`;
 }
 
 /** 表の四分位平均の表示。数えた打鍵が無い行は「なし」。 */
@@ -303,8 +296,6 @@ export function sentenceTableSavedText(status: SentenceSaveStatus): string {
     case 'out-of-range': return '保存していない（範囲を外れた種類があるため）';
   }
 }
-
-export const SENTENCE_TABLE_NOT_SAVED_TEXT = '保存しない';
 
 /** 打った内容から測定の値を求められなかった時の文。 */
 export const SENTENCE_UNMEASURED_TEXT = '打った内容から測定の値を求められなかったため、保存していません。もう一度測ってください。';
