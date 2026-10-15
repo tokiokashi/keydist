@@ -1,11 +1,13 @@
 import { useId, type KeyboardEvent } from 'react';
 import type { Key } from '#input/shapes/geometry.ts';
+import { bandThicknessRatio } from './band-thickness.ts';
 import { drawnKeySpans } from '#input/shapes/drawn-key-spans.ts';
 import { keyboardStandardForGeometryId, physicalKeyDisplayLabel } from '#input/shapes/key-labels.ts';
 
 /**
  * キーの縁に沿う帯。キーを複数の色で示す時に、キー全体の色の上に重ねる。
- * 帯の幅（上下の帯は高さ）はキーの1/4で、同じ縁に並ぶ帯が多い時は、縁から内側へ半分に収まるよう細くする。
+ * 帯の幅（下の帯は高さ）はキーの1/4で、同じ縁に並ぶ帯が多い時は細くする
+ * （左右の縁は合計が3/8まで、下の縁は1/2まで。太さは`bandThicknessRatio`が決める）。
  */
 export interface PhysicalKeyboardKeyBand {
   /** 色の番号（1から8）。`'muted'` は目立たない1色。 */
@@ -177,7 +179,7 @@ export function PhysicalKeyboard({
                   <g clipPath={`url(#${clipId})`}>
                     {bands.map((band) => {
                       const sameEdge = bands.filter((other) => other.edge === band.edge).length;
-                      const ratio = Math.min(1 / 4, 1 / (2 * sameEdge));
+                      const ratio = bandThicknessRatio(band.edge, sameEdge);
                       const thickness = (band.edge === 'bottom' ? keyHeight : keyWidth) * ratio;
                       const left = band.edge === 'left' ? x + band.depth * thickness
                         : band.edge === 'right' ? x + keyWidth - (band.depth + 1) * thickness
