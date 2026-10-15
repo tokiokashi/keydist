@@ -357,8 +357,8 @@ function buildOptions(
 /**
  * `inputs[from]`の打鍵の指を選ぶ。範囲は`inputs[from]`から`from + windowSize`まで。
  *
- * 打鍵を1つ進めるたびに、状態のうち後の打鍵が読まない部分は同じものとして畳む。
- * 畳んでも、後の打鍵の距離・同指連続は変わらないので、求める最小は変わらない。
+ * 打鍵を1つ進めるたびに、状態のうち後の打鍵が読まない部分は区別せず、同じ状態として扱う。
+ * 区別しなくても、後の打鍵の距離・同指連続は変わらないので、求める最小は変わらない。
  * - その指が範囲の最後まで打つ候補に入らない: 位置・入力数・直前の打鍵への参加を持たない
  * - 次に打つ候補に入るのが後の打鍵: 直前の打鍵への参加は持たない
  * - 次に打つ時点で最後の参加から`N`入力を超える: ホームから動くので、位置を持たない
@@ -376,10 +376,10 @@ export function selectFingers(
   const homeIds = ALL_FINGERS.map((finger) => positionId(geometry.homes[finger]));
 
   // 範囲の打鍵を通しで並べる
-  const flat: { stroke: PlannedStroke; input: number; startsInput: boolean }[] = [];
+  const flat: { stroke: PlannedStroke; input: number }[] = [];
   for (let inputIndex = from; inputIndex <= last; inputIndex++) {
-    inputs[inputIndex].strokes.forEach((stroke, position) => {
-      flat.push({ stroke, input: inputIndex, startsInput: position === 0 && inputIndex !== from });
+    inputs[inputIndex].strokes.forEach((stroke) => {
+      flat.push({ stroke, input: inputIndex });
     });
   }
   const total = flat.length;
@@ -398,7 +398,7 @@ export function selectFingers(
     for (const f of prepared[t].readFingers) nextRead[t * FINGER_COUNT + f] = t;
   }
 
-  /** 打鍵`t`の前の状態のうち、`t`以降が読まない部分を畳む。配列は呼び出し側が作ったものを書き換える */
+  /** 打鍵`t`の前の状態のうち、`t`以降が読まない部分を区別しない値にそろえる。配列は呼び出し側が作ったものを書き換える */
   const fold = (pos: Point[], posId: number[], age: number[], adjacent: boolean[], t: number): void => {
     for (let f = 0; f < FINGER_COUNT; f++) {
       const u = nextRead[t * FINGER_COUNT + f];
@@ -450,7 +450,7 @@ export function selectFingers(
     const entry = prepared[t];
     const isFirst = input === from;
     const isLast = t === total - 1;
-    const advances = !isLast && flat[t + 1].startsInput;
+    const advances = !isLast && flat[t + 1].input !== input;
     const next = new Map<string, State>();
     for (const state of layer.values()) {
       let optionKey = '';
@@ -504,8 +504,9 @@ export function selectFingers(
           sequence = { finger: index, parent: sequence, depth: (sequence?.depth ?? 0) + 1 };
         }
         if (advances) {
-          // 入力が進むと、全指の最後に参加した入力からの入力数が1増える
-          for (let i = 0; i < FINGER_COUNT; i++) age[i] = Math.min(cap, age[i] + 1);
+          // 入力が進むと、全指の最後に参加した入力からの入力数が増える。打鍵の無い入力も1入力に数える
+          const step = flat[t + 1].input - input;
+          for (let i = 0; i < FINGER_COUNT; i++) age[i] = Math.min(cap, age[i] + step);
         }
         if (!isLast) fold(pos, posId, age, adjacent, t + 1);
         const successor: State = {
