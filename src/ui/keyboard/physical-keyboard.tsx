@@ -1,7 +1,23 @@
-import type { KeyboardEvent } from 'react';
+import { useId, type KeyboardEvent } from 'react';
 import type { Key } from '#input/shapes/geometry.ts';
+import { bandThicknessRatio } from './band-thickness.ts';
 import { drawnKeySpans } from '#input/shapes/drawn-key-spans.ts';
 import { keyboardStandardForGeometryId, physicalKeyDisplayLabel } from '#input/shapes/key-labels.ts';
+
+/**
+ * キーの縁に沿う帯。キーを複数の色で示す時に、キー全体の色の上に重ねる。
+ * 帯の幅（下の帯は高さ）はキーの1/4で、同じ縁に並ぶ帯が多い時は細くする
+ * （左右の縁は合計が3/8まで、下の縁は1/2まで。太さは`bandThicknessRatio`が決める）。
+ */
+export interface PhysicalKeyboardKeyBand {
+  /** 色の番号（1から8）。`'muted'` は目立たない1色。 */
+  readonly tone: number | 'muted';
+  readonly edge: 'left' | 'right' | 'bottom';
+  /** 縁から数えた並び。0が縁に接する帯。 */
+  readonly depth: number;
+  /** 読み上げとhoverに出す名前。 */
+  readonly label?: string;
+}
 
 export interface PhysicalKeyboardKeyView {
   readonly legend?: string;
@@ -11,6 +27,12 @@ export interface PhysicalKeyboardKeyView {
   readonly trigger?: boolean;
   readonly combo?: boolean;
   readonly accentSlot?: number;
+  /** キー全体を塗る色の番号（1から8）。 */
+  readonly fillTone?: number;
+  /** キーの縁に重ねる帯。 */
+  readonly bands?: readonly PhysicalKeyboardKeyBand[];
+  /** 読み上げとhoverに足す説明。 */
+  readonly description?: string;
   /** レイヤーの色の番号を持たない、目立たない1色の枠（まとめられた側のレイヤーのトリガー）。 */
   readonly accentTone?: 'muted';
   readonly guide?: 'continuation' | 'output' | 'trigger';
@@ -55,6 +77,7 @@ export function PhysicalKeyboard({
   operable = false,
   onEscape,
 }: PhysicalKeyboardProps) {
+  const clipPrefix = useId();
   const standard = geometryId === undefined ? undefined : keyboardStandardForGeometryId(geometryId);
   const gap = unit * GAP_RATIO;
   const pad = unit * PAD_RATIO;
@@ -92,8 +115,10 @@ export function PhysicalKeyboard({
         viewBox={`${viewX} ${viewY} ${width} ${height}`}
         width={width}
       >
-        {positioned.map(({ key, width: keyWidth, height: keyHeight, x, y }) => {
+        {positioned.map(({ key, width: keyWidth, height: keyHeight, x, y }, keyIndex) => {
           const view = keyViews.get(key.id);
+          const bands = view?.bands ?? [];
+          const clipId = `${clipPrefix}-clip-${keyIndex}`;
           const legend = view?.legend ?? key.id;
           const secondary = showSecondary ? view?.secondaryLegend : undefined;
           const legendFontSize = Math.max(7, unit * 0.24);
@@ -108,6 +133,7 @@ export function PhysicalKeyboard({
               data-accent-slot={view?.accentSlot}
               data-accent-tone={view?.accentTone}
               data-combo={view?.combo || undefined}
+              data-fill-tone={view?.fillTone}
               data-guide={view?.guide}
               data-highlighted={view?.highlighted || undefined}
               data-home={view?.home || undefined}
@@ -124,7 +150,7 @@ export function PhysicalKeyboard({
                 role: 'button',
                 tabIndex: 0,
                 'aria-pressed': view?.selected === true,
-                'aria-label': legend === '' ? physicalKeyDisplayLabel(key.id, standard) : `${physicalKeyDisplayLabel(key.id, standard)}（${legend}）`,
+                'aria-label': legend === '' ? physicalKeyDisplayLabel(key.id, standard) : `${physicalKeyDisplayLabel(key.id, standard)}（${legend}${view?.description === undefined ? '' : `。${view.description}`}）`,
                 onKeyDown: (event: KeyboardEvent<SVGGElement>) => {
                   if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault();
@@ -136,6 +162,7 @@ export function PhysicalKeyboard({
                 },
               } : {})}
             >
+              {view?.description === undefined ? null : <title>{view.description}</title>}
               <rect
                 height={keyHeight}
                 rx={6}
@@ -143,6 +170,38 @@ export function PhysicalKeyboard({
                 x={x}
                 y={y}
               />
+              {bands.length === 0 ? null : (
+                <>
+                  {/* 帯がキーの角からはみ出さないよう、枠の内側の角丸で切り抜く */}
+                  <clipPath id={clipId}>
+                    <rect height={keyHeight - 3} rx={4.5} width={keyWidth - 3} x={x + 1.5} y={y + 1.5} />
+                  </clipPath>
+                  <g clipPath={`url(#${clipId})`}>
+                    {bands.map((band) => {
+                      const sameEdge = bands.filter((other) => other.edge === band.edge).length;
+                      const ratio = bandThicknessRatio(band.edge, sameEdge);
+                      const thickness = (band.edge === 'bottom' ? keyHeight : keyWidth) * ratio;
+                      const left = band.edge === 'left' ? x + band.depth * thickness
+                        : band.edge === 'right' ? x + keyWidth - (band.depth + 1) * thickness
+                          : x;
+                      const top = band.edge === 'bottom' ? y + keyHeight - (band.depth + 1) * thickness : y;
+                      const bandWidth = band.edge === 'bottom' ? keyWidth : thickness;
+                      const bandHeight = band.edge === 'bottom' ? thickness : keyHeight;
+                      return (
+                        <path
+                          className="physical-keyboard-band"
+                          d={`M${left} ${top}h${bandWidth}v${bandHeight}h${-bandWidth}z`}
+                          data-band-edge={band.edge}
+                          data-band-tone={band.tone}
+                          key={`${band.edge}-${band.depth}`}
+                        >
+                          {band.label === undefined ? null : <title>{band.label}</title>}
+                        </path>
+                      );
+                    })}
+                  </g>
+                </>
+              )}
               <text
                 className="physical-keyboard-legend"
                 style={{ fontSize: legendFontSize }}
