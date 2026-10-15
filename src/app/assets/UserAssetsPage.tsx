@@ -15,8 +15,8 @@ import { exportedText, importEntryText, importSummaryText, userAssetsFileName } 
 import { userFingerAssignmentRows, userLayoutRows, userRomajiRuleRows, userSetupRows, type UserAssetRow } from './user-asset-rows.ts';
 import type { SetupListItem } from '../setup/setup-view.ts';
 
-/** 自作の配列・規則の画面の名前。サイドバーのリンクも同じ文言を出す。 */
-export const USER_ASSETS_LABEL = '自作の配列・規則';
+/** データの管理の画面の名前。サイドバーのリンクも同じ文言を出す。 */
+export const USER_ASSETS_LABEL = 'データの管理';
 
 export interface UserAssetsPageProps {
   readonly assets: Pick<KeydistAssets, 'userLayouts' | 'userRomajiRules' | 'fingerAssignments' | 'setupLibrary'>;

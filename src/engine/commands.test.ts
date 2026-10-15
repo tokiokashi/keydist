@@ -1044,7 +1044,7 @@ test('deleteUserRomajiRuleCommand: 規則だけを消し、それを推奨に持
   assert.deepEqual(undo(step.assets, step.history).assets.userRomajiRules, [USER_RULE_A]);
 });
 
-test('自作の配列・規則の削除: 存在しないidはno-opで履歴に積まない', () => {
+test('自作の配列・ローマ字規則の削除: 存在しないidはno-opで履歴に積まない', () => {
   const assets: KeydistAssets = { ...emptyAssets(), userLayouts: [USER_LAYOUT_A], userRomajiRules: [USER_RULE_A] };
   const history = emptyCommandHistory<KeydistAssets>();
   for (const command of [deleteUserLayoutCommand('none'), deleteUserRomajiRuleCommand('none')]) {

@@ -280,7 +280,7 @@ export function RomajiLayoutEditor({
           </div>
           {importedCount === 0 ? null : (
             <p className="romaji-layout-note">
-              定義ファイルから取り込んだ配列（{importedCount}件）は、ここでは直せません。削除は「自作の配列・規則」で行えます。
+              定義ファイルから取り込んだ配列（{importedCount}件）は、ここでは直せません。削除は「データの管理」で行えます。
             </p>
           )}
           <h2>{isNew ? '新しい配列' : layout.name}</h2>
