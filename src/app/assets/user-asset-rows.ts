@@ -52,3 +52,12 @@ export function userFingerAssignmentRows(assignments: readonly FingerAssignment[
     detail: '削除すると、この割り当てを選んでいる場所は既定の割り当てで測ります',
   }));
 }
+
+/** Setupの行。名前は手持ちのSetup全部に対して付けた表示名で、補足は配列・物理配列・変えた条件を含むフルの名前。 */
+export function userSetupRows(items: readonly { readonly setup: { readonly id: string }; readonly displayName: string; readonly fullName: string }[]): readonly UserAssetRow[] {
+  return items.map((item) => ({
+    id: item.setup.id,
+    name: item.displayName,
+    detail: item.fullName === item.displayName ? undefined : item.fullName,
+  }));
+}

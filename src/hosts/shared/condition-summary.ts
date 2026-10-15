@@ -82,6 +82,8 @@ export interface ConditionSummaryRow {
   readonly value: unknown;
   /** 配列のレベルの上書きを除いた時の値（`ResolvedItem.layoutBase`）。配列のレベルの編集の「継承する値」。 */
   readonly layoutBase: unknown;
+  /** Setupのレベルの上書きを除いた時の値（`ResolvedItem.setupBase`）。Setupのレベルの編集の「継承する値」。Setupを指定しない解決では無い。 */
+  readonly setupBase?: unknown;
   /** 配列が推奨を持つか（`layoutBase`が推奨か）。配列の値を戻す先の呼び名に使う。 */
   readonly hasLayoutRecommendation: boolean;
   /** 配列の上書きを全体へ移した後の継承値（`ResolvedItem.promotedBase`）。 */
@@ -260,6 +262,7 @@ export function traceConditionSummary(
       valueKey: valueKeyOf(id, resolved.value, displayValue),
       value: resolved.value,
       layoutBase: resolved.layoutBase,
+      ...(resolved.setupBase === undefined ? {} : { setupBase: resolved.setupBase }),
       hasLayoutRecommendation: resolved.hasLayoutRecommendation,
       ...(resolved.promotedBase === undefined ? {} : { promotedBase: resolved.promotedBase }),
       origin: resolved.origin,

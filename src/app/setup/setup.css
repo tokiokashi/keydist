@@ -1,0 +1,136 @@
+/* Setupの画面。読み物の幅は指の割り当ての画面と同じ程度に抑えて中央に置く */
+.setup-page {
+  max-width: 58rem;
+  margin-inline: auto;
+}
+
+.setup-page h1 {
+  margin-bottom: 0.5rem;
+  font-size: clamp(1.5rem, 5vw, 2rem);
+}
+
+.setup-page h2 {
+  margin: 1.75rem 0 0.5rem;
+  font-size: 1.1rem;
+  overflow-wrap: anywhere;
+}
+
+.setup-page h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.setup-note {
+  margin: 0 0 0.6rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.setup-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.setup-page button {
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.setup-page button:hover:not(:disabled) {
+  background: var(--surface-muted);
+}
+
+.setup-page button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.setup-page label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.setup-create {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.6rem;
+}
+
+.setup-list {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.setup-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.setup-row[data-selected] {
+  border-color: var(--accent-strong);
+}
+
+.setup-row-name {
+  display: flex;
+  flex: 1 1 14rem;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-width: 0;
+  border-color: transparent;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.setup-row-tag {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.setup-rename {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.setup-shape {
+  max-width: 24rem;
+  margin-bottom: 0.6rem;
+}
+
+.setup-conditions {
+  container: condition-body / inline-size;
+  margin-top: 1rem;
+  font-size: 0.84rem;
+}
+
+.setup-conditions-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.8rem;
+  margin-bottom: 0.6rem;
+}
+
+.setup-conditions-head .setup-note {
+  flex: 1 1 18rem;
+  margin: 0;
+}

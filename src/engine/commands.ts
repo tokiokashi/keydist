@@ -26,6 +26,7 @@ import {
   deleteSetup,
   duplicateSetup,
   relabelSetup,
+  setSetupShape,
   type SetupIdGenerator,
   type SetupLibrary,
 } from '#input/setup/index.ts';
@@ -395,6 +396,14 @@ export function relabelSetupCommand(setupId: string, label: string | undefined):
   return setupLibraryCommand('Setupのラベルを変更する', (library) => ({
     ok: true,
     library: relabelSetup(library, setupId, label),
+  }));
+}
+
+/** Setupの物理配列を付け替える。対象が存在しない、または既に同じ物理配列なら何もしない。 */
+export function setSetupShapeCommand(setupId: string, shapeId: string): Command<KeydistAssets> {
+  return setupLibraryCommand('Setupの物理配列を変更する', (library) => ({
+    ok: true,
+    library: setSetupShape(library, setupId, shapeId),
   }));
 }
 

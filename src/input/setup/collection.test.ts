@@ -7,7 +7,7 @@ import {
   type CascadeOverrides,
   type ItemRegistry,
 } from '#input/settings/index.ts';
-import { createSetup, duplicateSetup, deleteSetup, relabelSetup, type SetupLibrary } from './collection.ts';
+import { createSetup, duplicateSetup, deleteSetup, relabelSetup, setSetupShape, type SetupLibrary } from './collection.ts';
 
 // Setup固有の上書き（カスケードのsetupレベル）が複製・削除に追従することを検証するための
 // 最小レジストリ。overrides.tsの判断（Setupの上書きはSetupオブジェクトではなくカスケードに
@@ -193,4 +193,21 @@ test('番号: 削除・ラベル変更で他のSetupの番号は変わらず、�
   library = deleteSetup(library, 'setup-4');
   library = createSetup(library, 'qwerty', 'row-staggered', nextId);
   assert.deepEqual(library.setups.map((setup) => setup.number), [1, 3, 4]);
+});
+
+test('setSetupShape: 物理配列だけを付け替え、配列・番号・ラベル・Setupのレベルの上書きは変えない', () => {
+  const created = createSetup<V>({ setups: [], overrides: emptyCascadeOverrides() }, 'qwerty', 'row-staggered', nextId, '練習用');
+  const written = setOverride(ITEMS, created.overrides, { kind: 'setup', setupId: created.setups[0]!.id }, 'windowSize', 5);
+  assert.ok(written.ok);
+  if (!written.ok) return;
+  const library: SetupLibrary<V> = { setups: created.setups, overrides: written.overrides };
+  const changed = setSetupShape(library, library.setups[0]!.id, 'ortho');
+  assert.deepEqual(changed.setups, [{ ...library.setups[0]!, shapeId: 'ortho' }]);
+  assert.equal(changed.overrides, library.overrides);
+});
+
+test('setSetupShape: 同じ物理配列・存在しないidは同じ参照を返す', () => {
+  const library = createSetup<V>({ setups: [], overrides: emptyCascadeOverrides() }, 'qwerty', 'row-staggered', nextId);
+  assert.equal(setSetupShape(library, library.setups[0]!.id, 'row-staggered'), library);
+  assert.equal(setSetupShape(library, 'missing', 'ortho'), library);
 });

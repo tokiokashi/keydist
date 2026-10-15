@@ -38,6 +38,12 @@ export interface ResolvedItem<T> {
    * 検証（`validate`）と適用可否の前の値で、配列・Setupの上書きは含まない。
    */
   readonly layoutBase: T;
+  /**
+   * Setupのレベルの上書きを除いた時の値（`layoutBase`に配列のレベルの上書きを重ねたもの）。
+   * Setupのレベルへ書く操作が「何を継承しているか」を示す。Setupを指定しない解決（`setupId`が無い）では`undefined`。
+   * Workspaceのレベルは、解決に差し込まれた時だけ含む（Setupの編集画面はWorkspaceを差し込まない）。
+   */
+  readonly setupBase?: T;
   /** 配列がこの項目の推奨を持つか（`layoutBase`が推奨になっているか）。 */
   readonly hasLayoutRecommendation: boolean;
   /**
@@ -91,6 +97,7 @@ function resolveItem(
   const lowerApplied: { readonly kind: CascadeLevelKind; readonly value: unknown }[] = [];
   let shadowed: readonly CascadeLevelKind[] = [];
   let layoutBase = value;
+  let setupBase: unknown;
   // Workspaceのレベルを重ねる直前の値（全体の値か既定値）。Workspaceに値が無い時の「継承値」。
   let workspaceInherited: unknown;
   for (const level of levels) {
@@ -124,6 +131,7 @@ function resolveItem(
       origin = { kind: 'default' };
     }
     if (level.kind === 'layout') layoutBase = value;
+    if (level.kind === 'setup') setupBase = value;
     const stored = levelOverrides(overrides, level) as Record<string, unknown> | undefined;
     if (stored === undefined || !(itemId in stored)) continue;
     if (!item.allowedLevels.has(level.kind)) {
@@ -182,6 +190,7 @@ function resolveItem(
     applicable,
     diagnostics,
     layoutBase,
+    ...(setupBase === undefined ? {} : { setupBase }),
     hasLayoutRecommendation: recommended !== undefined,
     ...(promotedBase === undefined ? {} : { promotedBase }),
     ...(shadowed.length > 0 && origin.kind === 'default' ? { recommendationWins: { shadowed } } : {}),

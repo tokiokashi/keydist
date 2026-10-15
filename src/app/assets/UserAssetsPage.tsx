@@ -12,13 +12,16 @@ import { useHistoryShortcuts } from '#ui/primitives/use-history-shortcuts.ts';
 import { ErrorDetails } from '#hosts/shared/ErrorDetails.tsx';
 import { PresetFileIoContext } from '#hosts/shared/preset-file-io.ts';
 import { exportedText, importEntryText, importSummaryText, userAssetsFileName } from './user-assets-file-text.ts';
-import { userFingerAssignmentRows, userLayoutRows, userRomajiRuleRows, type UserAssetRow } from './user-asset-rows.ts';
+import { userFingerAssignmentRows, userLayoutRows, userRomajiRuleRows, userSetupRows, type UserAssetRow } from './user-asset-rows.ts';
+import type { SetupListItem } from '../setup/setup-view.ts';
 
 /** 自作の配列・規則の画面の名前。サイドバーのリンクも同じ文言を出す。 */
 export const USER_ASSETS_LABEL = '自作の配列・規則';
 
 export interface UserAssetsPageProps {
-  readonly assets: Pick<KeydistAssets, 'userLayouts' | 'userRomajiRules' | 'fingerAssignments'>;
+  readonly assets: Pick<KeydistAssets, 'userLayouts' | 'userRomajiRules' | 'fingerAssignments' | 'setupLibrary'>;
+  /** 手持ちのSetup全部に対して付けた名前。 */
+  readonly setupItems: readonly SetupListItem[];
   /** 保存の読み込みが済むまでは、空の一覧を出さない。 */
   readonly ready: boolean;
   readonly canUndo: boolean;
@@ -28,6 +31,7 @@ export interface UserAssetsPageProps {
   readonly onDeleteLayout: (id: string) => void;
   readonly onDeleteRomajiRule: (id: string) => void;
   readonly onDeleteFingerAssignment: (id: string) => void;
+  readonly onDeleteSetup: (id: string) => void;
   /**
    * 読み込んだ資産を手元へ足し、書き込みに使った突き合わせの内訳を返す（書き込めなかった時は`undefined`）。
    * `stamp`は足す時に振る新しいidの元になる、1回の読み込みで固定の値。
@@ -49,7 +53,7 @@ function newStamp(): string {
   return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 }
 
-type UserAssetKind = 'layout' | 'romaji-rule' | 'finger-assignment';
+type UserAssetKind = 'layout' | 'romaji-rule' | 'finger-assignment' | 'setup';
 
 interface AssetSectionProps {
   readonly title: string;
@@ -90,6 +94,7 @@ const CONFIRM_IMPACT: Readonly<Record<UserAssetKind, string>> = {
   layout: 'この配列を対象にしているペインは、「配列が見つかりません」の表示になります。',
   'romaji-rule': 'この規則を推奨にしている配列は、全体の値の規則で打つようになります。',
   'finger-assignment': 'この割り当てを選んでいる場所は、既定の割り当てで測るようになります。',
+  setup: 'このSetupを対象にしているペインは、「削除されたSetup」の表示になります。',
 };
 
 /** 削除の確認の文。元に戻すが使える範囲と、削除が他へ及ぼす影響を書く。 */
@@ -123,11 +128,12 @@ function ConfirmDelete({ pending, onConfirm, onCancel }: {
 }
 
 /**
- * 自作の配列・ローマ字規則・指の割り当てを一覧して削除する画面。削除は確認の後に行い、元に戻すで戻せる。
+ * 自作の配列・ローマ字規則・指の割り当て・Setupを一覧して削除する画面。削除は確認の後に行い、元に戻すで戻せる。
  * 削除した配列を対象にしているペインは、その旨を各画面で出す。
  */
 export function UserAssetsPage({
   assets,
+  setupItems,
   ready,
   canUndo,
   canRedo,
@@ -136,6 +142,7 @@ export function UserAssetsPage({
   onDeleteLayout,
   onDeleteRomajiRule,
   onDeleteFingerAssignment,
+  onDeleteSetup,
   onImport,
 }: UserAssetsPageProps) {
   const [message, setMessage] = useState('');
@@ -148,7 +155,7 @@ export function UserAssetsPage({
   const opener = useRef<HTMLElement | null>(null);
   /** 確認を閉じた後にフォーカスを移す先。削除した行のボタンは消えるので、続けて戻せる「元に戻す」へ移す。 */
   const focusAfterClose = useRef<'opener' | 'undo' | undefined>(undefined);
-  const hasAssets = assets.userLayouts.length + assets.userRomajiRules.length + assets.fingerAssignments.length > 0;
+  const hasAssets = assets.userLayouts.length + assets.userRomajiRules.length + assets.fingerAssignments.length + assets.setupLibrary.setups.length > 0;
 
   useEffect(() => {
     if (pending !== undefined) return;
@@ -175,7 +182,7 @@ export function UserAssetsPage({
     if (fileIo === undefined || !hasAssets) return;
     fileIo.saveJson(userAssetsFileName(new Date()), USER_ASSETS_FILE_FORMAT, userAssetsFileBody(assets));
     clearResults();
-    setMessage(exportedText({ userLayouts: assets.userLayouts, userRomajiRules: assets.userRomajiRules, fingerAssignments: assets.fingerAssignments }));
+    setMessage(exportedText(assets));
   };
 
   const importFile = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -210,6 +217,7 @@ export function UserAssetsPage({
   const layouts = userLayoutRows(assets.userLayouts, assets.userRomajiRules);
   const rules = userRomajiRuleRows(assets.userLayouts, assets.userRomajiRules);
   const fingerAssignments = userFingerAssignmentRows(assets.fingerAssignments);
+  const setups = userSetupRows(setupItems);
 
   return (
     <article className="user-assets" ref={root}>
@@ -265,6 +273,13 @@ export function UserAssetsPage({
             rows={fingerAssignments}
             onDelete={(row, button) => { opener.current = button; setPending({ kind: 'finger-assignment', row }); }}
           />
+          <AssetSection
+            title="Setup"
+            kind="setup"
+            emptyText="Setupはありません。"
+            rows={setups}
+            onDelete={(row, button) => { opener.current = button; setPending({ kind: 'setup', row }); }}
+          />
         </>
       ) : null}
       {pending === undefined ? null : (
@@ -277,7 +292,8 @@ export function UserAssetsPage({
           onConfirm={() => {
             if (pending.kind === 'layout') onDeleteLayout(pending.row.id);
             else if (pending.kind === 'romaji-rule') onDeleteRomajiRule(pending.row.id);
-            else onDeleteFingerAssignment(pending.row.id);
+            else if (pending.kind === 'finger-assignment') onDeleteFingerAssignment(pending.row.id);
+            else onDeleteSetup(pending.row.id);
             clearResults();
             setMessage(`「${pending.row.name}」を削除しました`);
             focusAfterClose.current = 'undo';

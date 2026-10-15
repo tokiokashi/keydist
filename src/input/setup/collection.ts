@@ -107,6 +107,19 @@ export function relabelSetup<V>(
   };
 }
 
+/**
+ * Setupの物理配列を付け替える。配列・ラベル・番号・Setup固有の上書きは変えない。
+ * 対象が存在しない、または既に同じ物理配列なら`library`をそのまま返す（`relabelSetup`と同じ規約）。
+ */
+export function setSetupShape<V>(library: SetupLibrary<V>, setupId: string, shapeId: string): SetupLibrary<V> {
+  const target = library.setups.find((setup) => setup.id === setupId);
+  if (target === undefined || target.shapeId === shapeId) return library;
+  return {
+    setups: library.setups.map((setup) => setup.id === setupId ? { ...setup, shapeId } : setup),
+    overrides: library.overrides,
+  };
+}
+
 function withLabel(setup: Setup, label: string | undefined): Setup {
   if (label === undefined) {
     const { label: _drop, ...rest } = setup;

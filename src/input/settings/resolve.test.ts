@@ -316,3 +316,24 @@ test('promotedBase: 配列の上書きを全体へ移した後の継承値。推
   // 配列の上書きが無ければ持たない
   assert.equal(resolveCascade(RECOMMENDING_ITEMS, emptyCascadeOverrides(), contextFor(naginata)).rule.promotedBase, undefined);
 });
+
+test('setupBase: Setupのレベルの手前までの値（配列のレベルの上書きを含む）を返し、Setupを指定しない解決には無い', () => {
+  const registry = {
+    windowSize: defineItem<number>({ id: 'windowSize', allowedLevels: ANY_LEVEL, defaultValue: 3 }),
+  } as const satisfies ItemRegistry;
+  const overrides: CascadeOverrides<{ windowSize: number }> = {
+    global: { windowSize: 4 },
+    layout: { 'naginata-v18': { windowSize: 6 } },
+    setup: { s: { windowSize: 9 } },
+  };
+  const withSetup = resolveCascade(registry, overrides, contextFor(naginata, { setupId: 's' }));
+  assert.equal(withSetup.windowSize.value, 9);
+  assert.equal(withSetup.windowSize.layoutBase, 4);
+  assert.equal(withSetup.windowSize.setupBase, 6);
+  const withoutSetup = resolveCascade(registry, overrides, contextFor(naginata));
+  assert.equal(withoutSetup.windowSize.value, 6);
+  assert.equal(withoutSetup.windowSize.setupBase, undefined);
+  // 全体の値だけを継承する時
+  const globalOnly = resolveCascade(registry, { global: { windowSize: 4 }, setup: { s: { windowSize: 9 } } }, contextFor(naginata, { setupId: 's' }));
+  assert.equal(globalOnly.windowSize.setupBase, 4);
+});
