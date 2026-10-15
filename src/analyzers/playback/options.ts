@@ -100,7 +100,7 @@ export const playbackOptions = defineOptions({
     default: DEFAULT_PLAYBACK_SAME_FINGER_DELAY,
     affects: 'extract',
     url: booleanUrlCodec('fingerDelay'),
-    label: '指の移動速度を考慮',
+    label: '同じ指の移動時間を考慮',
   }),
   allFingerMovementDelay: defineOption<boolean>({
     schema: v.boolean(),

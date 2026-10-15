@@ -82,7 +82,7 @@ export function usePlaybackFields(
     ),
     sameFingerDelay: (
       <SegmentedOptionField
-        label="指の移動速度を考慮"
+        label="同じ指の移動時間を考慮"
         binding={bindOnOff('sameFingerDelay')}
         choices={ON_OFF}
         hint="同じ指が離れたキーへ移る時間を、ステップの長さに入れます。"

@@ -28,7 +28,7 @@ export function playbackCalculationNotes(
 ): PlaybackCalculationNotes {
   const defaults = DEFAULT_PLAYBACK_OPTIONS;
   const personalSpeedInUse = personalSpeedUse === 'applied';
-  // 時間に入る種類は、続け打ちと構造の種類が常に、同指連続が指の移動速度を考慮する時だけ。
+  // 時間に入る種類は、続け打ちと構造の種類が常に、同指連続が同じ指の移動時間を考慮する時だけ。
   // 再生するテキストの中身は見ず、解析設定と保存値の組で決める。
   const keystrokeOverheadInUse = personalSpeedInUse
     && Object.entries(calibration?.keystrokeOverheadMs ?? {}).some(
@@ -43,7 +43,7 @@ export function playbackCalculationNotes(
   }
   if (options.speedMultiplier !== defaults.speedMultiplier) changes.push(`再生倍率: ${options.speedMultiplier}倍`);
   if (options.sameFingerDelay !== defaults.sameFingerDelay) {
-    changes.push(options.sameFingerDelay ? '指の移動速度を考慮する' : '指の移動速度を考慮しない');
+    changes.push(options.sameFingerDelay ? '同じ指の移動時間を考慮する' : '同じ指の移動時間を考慮しない');
   }
   if (options.allFingerMovementDelay !== defaults.allFingerMovementDelay) {
     changes.push(options.allFingerMovementDelay ? '全指の移動時間で律速する' : '全指の移動時間で律速しない');

@@ -56,7 +56,7 @@ Structural result ───────────→ Timing
 |---|---|---|---|---|
 | 基準速度 `stepsPerSecond` | `stepsPerSecond` | ステップ/秒 | 0.1 〜 20 | 1.25 |
 | 再生倍率 `speedMultiplier` | `speedMultiplier` | 倍 | 0.1 〜 10 | 1 |
-| 指の移動速度を考慮 `sameFingerDelay` | `sameFingerDelay` | — | 真偽 | 真 |
+| 同じ指の移動時間を考慮 `sameFingerDelay` | `sameFingerDelay` | — | 真偽 | 真 |
 | 全指の移動時間で律速 `allFingerMovementDelay` | `allFingerMovementDelay` | — | 真偽 | 真 |
 | 個人速度を適用 | `applyPersonalSpeed` | — | 真偽 | 真 |
 
