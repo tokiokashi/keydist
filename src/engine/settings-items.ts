@@ -176,7 +176,7 @@ export const SETTINGS_ITEMS = {
    * どのレベルでも上書きを許す（`allowedLevels`はwindowSize等と同じ「先回りして足さない」
    * 判断で、今のところ要望が無いinputMethodレベルは持たない）。
    * 組み込みの配列「QWERTY最適化」は、名前どおりの割り当てを組み込みの推奨（`layoutRecommendation`）に持つ。
-   * 優先は ローマ字規則と同じく 配列・Setupの上書き ＞ 配列の推奨 ＞ 全体・Workspace・物理配列の値 ＞ 既定。
+   * 優先はローマ字規則と同じく、配列・Setupの上書き ＞ 配列の推奨 ＞ 全体・Workspace・物理配列の値 ＞ 既定。
    */
   fingerAssignmentId: defineItem<string>({
     id: 'fingerAssignmentId',

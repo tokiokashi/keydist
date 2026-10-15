@@ -262,7 +262,7 @@ export function FingerAssignmentEditor({
     <article className="finger-assignment" data-finger-assignment-editor>
       <h1>{FINGER_ASSIGNMENT_LABEL}</h1>
       <p className="finger-assignment-note">
-        物理配列の上で、指ごとに担当するキーを決めます。1つのキーを複数の指が担当でき、どの指で打つかは測る時に先読みの範囲で選びます。作った割り当ては、条件の指の割り当てから選べます。ここでの物理配列の選択は、他の画面の条件を変えません。
+        物理配列の上で、指ごとに担当するキーを決めます。1つのキーを複数の指が担当でき、どの指で打つかは、測る時に先読みの範囲で自動で選ばれます。作った割り当ては、条件の指の割り当てから選べます。ここでの物理配列の選択は、他の画面の条件を変えません。
       </p>
       <div className="finger-assignment-toolbar">
         <button type="button" disabled={!canUndo} onClick={onUndo}>元に戻す</button>
@@ -441,7 +441,7 @@ export function FingerAssignmentEditor({
                       <p className="finger-assignment-note">指を選ぶと、図のキーを押して、その指が担当するキーを足す・外せます。</p>
                     ) : (
                       <>
-                        <p className="finger-assignment-note">図のキーを押すと、{FINGER_LABEL[editingFinger]}の担当に足す・外します。基本の指の担当は、キー単位で基本の指を変えると外せます。</p>
+                        <p className="finger-assignment-note">図のキーを押すと、そのキーが{FINGER_LABEL[editingFinger]}の担当に加わります（担当していれば外れます）。基本の指の担当は、キー単位で基本の指を変えると外せます。</p>
                         <p data-finger-assignment-finger-keys>
                           {FINGER_LABEL[editingFinger]}が担当するキー: {editingFingerKeys.length === 0 ? 'なし' : editingFingerKeys.map(keyLabelOf).join(' ')}
                         </p>

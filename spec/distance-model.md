@@ -103,7 +103,7 @@ Shiftキーは割り当ての外で、左右の小指に固定する。
 担当する指が1本のキーだけの割り当ては、キーごとに指を1本決める割り当てと同じ意味になる。
 組み込み（既定・JIS・QWERTY最適化・QWERTY最適化（JIS））と自作の
 どちらの指の割り当ても、同じカスケードの項目（`fingerAssignmentId`。`engine/finger-assignment.ts`、
-`engine/settings-items.ts`）として物理配列・配列・Setupのレベルで選べる。同じ物理配列のまま
+`engine/settings-items.ts`）として全体・Workspace・物理配列・配列・Setupのレベルで選べる。同じ物理配列のまま
 組み込みのJIS運指へ差し替える、自作の運指へ差し替える、といった比較ができる。自作の指の割り当ては
 `input/shapes/user-finger-assignments.ts` が資産として持ち、`engine/commands.ts` の
 作成・複製・削除・改名コマンドで手持ちを操作する。idを解決できない（自作割り当てを削除した後に
