@@ -410,7 +410,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
               label="先読みN"
               binding={windowBinding}
               badge={badge}
-              hint="同じ指を残すかホームへ戻すかを決める時に、先の何入力まで見るか"
+              hint="同じ指を残すかホームへ戻すかを決める時に、先の何文字まで見るか"
             >
               {(id) => (
                 <div className="condition-stepper" id={id} role="group" aria-labelledby={`${id}-label`}>

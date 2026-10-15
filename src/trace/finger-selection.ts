@@ -11,7 +11,7 @@ import {
 /**
  * 担当する指が2本以上のキーをどの指で打つかの選択（仕様 §9.1）。
  *
- * 入力を先頭から1つずつ進め、今の入力から`N`入力先までの打鍵について、
+ * 入力を先頭から1つずつ進め、今の入力と、開始から今の入力の終わりを引いた値が`N`以下の入力の打鍵について、
  * 同指連続回数・総移動距離・基本の指で打ったキー数・指の固定の順の順に最小になる指の並びを
  * 動的計画法で厳密に求める。そのうち今の入力の打鍵の指だけを返す。
  */
@@ -27,6 +27,10 @@ export interface PlannedStroke {
 }
 
 export interface PlannedInput {
+  /** 入力が覆うテキストの最初の文字の位置（仕様 §7 R3） */
+  readonly start: number;
+  /** 入力が覆うテキストの最後の文字の位置。その文字を含む */
+  readonly end: number;
   readonly strokes: readonly PlannedStroke[];
   /** 担当する指が2本以上の枠を持つか */
   readonly ambiguous: boolean;
@@ -92,11 +96,12 @@ export function decidePress(
 export interface FingerSelectionStart {
   readonly prev: Readonly<Record<Finger, Point>>;
   readonly last: Readonly<Record<Finger, number>>;
-  readonly lastInputOrdinal: Readonly<Record<Finger, number>>;
+  /** 指が最後に参加した入力の終わりの位置 */
+  readonly lastInputEnd: Readonly<Record<Finger, number>>;
   /** 次の打鍵の通し番号 */
   readonly nextStrokeIndex: number;
-  /** 今の入力の通し番号 */
-  readonly ordinal: number;
+  /** 今の入力の開始の位置 */
+  readonly position: number;
   /** 押さえ続けているキーを押した指 */
   readonly holders: ReadonlyMap<string, Finger>;
 }
@@ -111,7 +116,10 @@ interface State {
   readonly pos: readonly Point[];
   /** `pos`の座標ごとの番号。同じ座標なら同じ番号 */
   readonly posId: readonly number[];
-  /** 最後に参加した入力からの入力数。`N+1`は`N`を超えたことを表す */
+  /**
+   * 最後に参加した入力の終わりから、今の入力の開始までのかな数。`N+1`は`N`を超えたことを表す。
+   * 今の入力の開始より後ろまで覆う入力に参加した指は負の値になる
+   */
   readonly age: readonly number[];
   /** 直前の打鍵に参加したか */
   readonly adjacent: readonly boolean[];
@@ -355,13 +363,13 @@ function buildOptions(
 }
 
 /**
- * `inputs[from]`の打鍵の指を選ぶ。範囲は`inputs[from]`から`from + windowSize`まで。
+ * `inputs[from]`の打鍵の指を選ぶ。範囲は`inputs[from]`と、開始から`inputs[from]`の終わりを引いた値が`windowSize`以下の入力。
  *
  * 打鍵を1つ進めるたびに、状態のうち後の打鍵が読まない部分は区別せず、同じ状態として扱う。
  * 区別しなくても、後の打鍵の距離・同指連続は変わらないので、求める最小は変わらない。
- * - その指が範囲の最後まで打つ候補に入らない: 位置・入力数・直前の打鍵への参加を持たない
+ * - その指が範囲の最後まで打つ候補に入らない: 位置・かな数・直前の打鍵への参加を持たない
  * - 次に打つ候補に入るのが後の打鍵: 直前の打鍵への参加は持たない
- * - 次に打つ時点で最後の参加から`N`入力を超える: ホームから動くので、位置を持たない
+ * - 次に打つ時点で最後の参加の終わりから`N`かなを超える: ホームから動くので、位置を持たない
  */
 export function selectFingers(
   geometry: Geometry,
@@ -371,7 +379,8 @@ export function selectFingers(
   from: number,
 ): SelectedFingers {
   const cap = policy.windowSize + 1;
-  const last = Math.min(inputs.length - 1, from + policy.windowSize);
+  let last = from;
+  while (last + 1 < inputs.length && inputs[last + 1].start - inputs[from].end <= policy.windowSize) last++;
   const cache = cacheOf(geometry);
   const homeIds = ALL_FINGERS.map((finger) => positionId(geometry.homes[finger]));
 
@@ -405,7 +414,7 @@ export function selectFingers(
       let reset = u < 0;
       if (!reset && !(u === t && adjacent[f])) {
         adjacent[f] = false;
-        reset = Math.min(cap, age[f] + flat[u].input - flat[t].input) >= cap;
+        reset = Math.min(cap, age[f] + inputs[flat[u].input].start - inputs[flat[t].input].start) >= cap;
       }
       if (reset) {
         pos[f] = geometry.homes[ALL_FINGERS[f]];
@@ -426,7 +435,7 @@ export function selectFingers(
 
   const initialPos = ALL_FINGERS.map((finger) => start.prev[finger]);
   const initialPosId = initialPos.map(positionId);
-  const initialAge = ALL_FINGERS.map((finger) => Math.min(cap, start.ordinal - start.lastInputOrdinal[finger]));
+  const initialAge = ALL_FINGERS.map((finger) => Math.min(cap, start.position - start.lastInputEnd[finger]));
   const initialAdjacent = ALL_FINGERS.map((finger) => start.last[finger] === start.nextStrokeIndex - 1);
   fold(initialPos, initialPosId, initialAge, initialAdjacent, 0);
   const initial: State = {
@@ -449,6 +458,8 @@ export function selectFingers(
     const { stroke, input } = flat[t];
     const entry = prepared[t];
     const isFirst = input === from;
+    // 今の入力に参加した指の値。開始から終わりを引くので、複数のかなを覆う入力では負になる
+    const joined = inputs[input].start - inputs[input].end;
     const isLast = t === total - 1;
     const advances = !isLast && flat[t + 1].input !== input;
     const next = new Map<string, State>();
@@ -489,13 +500,13 @@ export function selectFingers(
           strokeDistance += decision.distance;
           pos[index] = target;
           posId[index] = press.targetId;
-          age[index] = 0;
+          age[index] = joined;
           adjacent[index] = true;
         }
         for (const held of option.held) {
           pos[held.index] = held.point;
           posId[held.index] = held.pointId;
-          age[held.index] = 0;
+          age[held.index] = joined;
           adjacent[held.index] = true;
         }
 
@@ -504,8 +515,9 @@ export function selectFingers(
           sequence = { finger: index, parent: sequence, depth: (sequence?.depth ?? 0) + 1 };
         }
         if (advances) {
-          // 入力が進むと、全指の最後に参加した入力からの入力数が増える。打鍵の無い入力も1入力に数える
-          const step = flat[t + 1].input - input;
+          // 入力が進むと、全指の最後に参加した入力の終わりからのかな数が、開始の差だけ増える。
+          // 打鍵の無い入力（読み飛ばした文字だけの区間を含む）の分も、開始の差に入っている
+          const step = inputs[flat[t + 1].input].start - inputs[input].start;
           for (let i = 0; i < FINGER_COUNT; i++) age[i] = Math.min(cap, age[i] + step);
         }
         if (!isLast) fold(pos, posId, age, adjacent, t + 1);

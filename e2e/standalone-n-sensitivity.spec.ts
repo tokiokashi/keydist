@@ -550,7 +550,7 @@ test('縦軸の範囲を切り替えると目盛りが変わり、表とツー�
   const base = await shownValues(page);
 
   await settings.getByRole('radio', { name: '値の範囲' }).check();
-  await expect.poll(() => yTickTexts(page)).toEqual(['60%', '70%', '80%', '90%', '100%']);
+  await expect.poll(() => yTickTexts(page)).toEqual(['40%', '60%', '80%', '100%']);
   expect(await shownValues(page)).toEqual(base);
 
   await (await openSettings(page)).getByRole('radio', { name: '粗い区切り' }).check();

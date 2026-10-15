@@ -49,24 +49,39 @@ function withExtra(extra: Record<string, Finger[]>, id = 'test-extra'): FingerAs
 
 // ---- 範囲ごとの全通りの数え上げ（動的計画法と独立に書いた参照実装） ----
 
-interface PlannedStroke { readonly ordinal: number; readonly keys: readonly string[] }
+/** `ordinal`は入力の通し番号、`start`と`end`は入力が覆うテキストの最初と最後の文字の位置 */
+interface PlannedStroke {
+  readonly ordinal: number;
+  readonly start: number;
+  readonly end: number;
+  readonly keys: readonly string[];
+}
 
+/** 1文字が1つの入力で、入力の位置は文字の位置と同じ */
 function planOf(text: string, defs: Record<string, string[][]>): PlannedStroke[] {
   const strokes: PlannedStroke[] = [];
   [...text].forEach((char, ordinal) => {
-    for (const step of defs[char]) strokes.push({ ordinal, keys: step });
+    for (const step of defs[char]) strokes.push({ ordinal, start: ordinal, end: ordinal, keys: step });
   });
   return strokes;
+}
+
+/** 入力ごとに、覆う文字の範囲を渡す。同じ範囲を持つ入力が複数あってよい */
+function planWithSpans(
+  inputs: readonly { readonly keys: readonly (readonly string[])[]; readonly start: number; readonly end: number }[],
+): PlannedStroke[] {
+  return inputs.flatMap((input, ordinal) =>
+    input.keys.map((keys) => ({ ordinal, start: input.start, end: input.end, keys })));
 }
 
 interface RefState {
   prev: Record<Finger, Point>;
   last: Record<Finger, number>;
-  lastInput: Record<Finger, number>;
+  lastEnd: Record<Finger, number>;
 }
 
 function cloneRef(state: RefState): RefState {
-  return { prev: { ...state.prev }, last: { ...state.last }, lastInput: { ...state.lastInput } };
+  return { prev: { ...state.prev }, last: { ...state.last }, lastEnd: { ...state.lastEnd } };
 }
 
 /** 1打鍵を進め、(同指連続, 丸めた距離, 基本の指で打ったキー数) を返す */
@@ -96,7 +111,7 @@ function refStep(
       ...(offThumbKey ? { offThumbKey: true as const } : {}),
     };
     const gap = strokeIndex - state.last[finger] - 1;
-    const inputDistance = stroke.ordinal - state.lastInput[finger];
+    const inputDistance = Math.max(0, stroke.start - state.lastEnd[finger]);
     const stay = refDist(finger, state.prev[finger], target);
     const home = refDist(finger, geometry.homes[finger], target);
     if (gap === 0) {
@@ -109,7 +124,7 @@ function refStep(
   for (const [finger, target] of next) {
     state.prev[finger] = target;
     state.last[finger] = strokeIndex;
-    state.lastInput[finger] = stroke.ordinal;
+    state.lastEnd[finger] = stroke.end;
   }
   const base = stroke.keys.filter((key, slot) => geometry.keys.get(key)!.finger === fingers[slot]).length;
   return { sfb, distance: Math.round(total * 1e6), base };
@@ -132,23 +147,28 @@ function refChoices(geometry: Geometry, stroke: PlannedStroke): Finger[][] {
   return free.length > 0 ? free : combos;
 }
 
-/** 各入力で、その入力からN入力先までの全通りを数え、最小の並びのうち今の入力の指だけを確定していく */
+/**
+ * 各入力で、その入力と、開始から今の入力の終わりを引いた値がN以下の入力の全通りを数え、
+ * 最小の並びのうち今の入力の指だけを確定していく
+ */
 function referenceFingers(
   geometry: Geometry,
   strokes: readonly PlannedStroke[],
   windowSize: number,
 ): Finger[][] {
-  const state: RefState = { prev: {} as RefState['prev'], last: {} as RefState['last'], lastInput: {} as RefState['lastInput'] };
+  const state: RefState = { prev: {} as RefState['prev'], last: {} as RefState['last'], lastEnd: {} as RefState['lastEnd'] };
   for (const finger of ALL_FINGERS) {
     state.prev[finger] = geometry.homes[finger];
     state.last[finger] = Number.NEGATIVE_INFINITY;
-    state.lastInput[finger] = Number.NEGATIVE_INFINITY;
+    state.lastEnd[finger] = Number.NEGATIVE_INFINITY;
   }
   const result: Finger[][] = [];
   let index = 0;
   while (index < strokes.length) {
     const ordinal = strokes[index].ordinal;
-    const end = strokes.findIndex((stroke) => stroke.ordinal > ordinal + windowSize);
+    const currentEnd = strokes[index].end;
+    const end = strokes.findIndex((stroke) =>
+      stroke.ordinal > ordinal && stroke.start - currentEnd > windowSize);
     const windowEnd = end < 0 ? strokes.length : end;
     const firstEnd = strokes.findIndex((stroke) => stroke.ordinal > ordinal);
     const inputEnd = firstEnd < 0 ? strokes.length : firstEnd;
@@ -249,12 +269,12 @@ test('範囲ごとの全通りを数え上げた結果と一致する（1入力�
 });
 
 test('物理配列に無いキーで打鍵が0個になる入力が範囲の中にあっても、全通りを数え上げた結果と一致する', () => {
-  // `-`の段を持たない物理配列では、「ー」の入力は打鍵が無いまま1入力として数えられる
+  // `-`の段を持たない物理配列では、「ー」の入力は打鍵が無いまま、テキストの1文字の位置として数えられる
   const shape = { ...PHYSICAL_SHAPES[SHAPE], rowWidths: [10, 10, 10, 10] };
   const geometry = buildGeometry(shape, QWERTY_OPTIMIZED_FINGER_ASSIGNMENT);
   assert.equal(geometry.keys.has('-'), false);
   const layout = withRomaji(LAYOUT_BY_ID.get('qwerty')!, kunrei());
-  // ローマ字入力では、かなを綴りに展開した1文字ごとが1入力になる
+  // ローマ字入力では、かなを綴りに展開した英字ごとが1入力になり、同じかなの英字は同じ位置を覆う
   const romaji: Record<string, string> = { い: 'i', う: 'u', ふ: 'hu', き: 'ki', く: 'ku', し: 'si', ゆ: 'yu', ー: '-' };
   const defs: Record<string, string[][]> = {
     ...Object.fromEntries([...'iuhkysx'].map((c) => [c, [[c]]])),
@@ -263,7 +283,9 @@ test('物理配列に無いキーで打鍵が0個になる入力が範囲の中�
   for (let seed = 21; seed < 61; seed++) {
     const windowSize = 1 + (seed % 4);
     const text = randomText(seed, 'いうふきくしゆーーー', 14);
-    const expected = referenceFingers(geometry, planOf([...text].map((c) => romaji[c]).join(''), defs), windowSize);
+    const inputs = [...text].flatMap((kana, position) =>
+      [...romaji[kana]].map((letter) => ({ keys: defs[letter], start: position, end: position })));
+    const expected = referenceFingers(geometry, planWithSpans(inputs), windowSize);
     const trace = generateTrace(text, layout, geometry, opts({ windowSize }));
     const actual = fingersOf(trace).map((map, index) => [...map.keys()].map((key) => map.get(key)!).slice(0, expected[index].length));
     assert.deepEqual(actual, expected, `text=${text} N=${windowSize}`);
@@ -308,6 +330,54 @@ test('1つの入力が複数の打鍵になる時も、全通りを数え上げ�
   const [first, second] = fingersOf(trace);
   assert.notEqual(first.get('y'), second.get('u'));
   assert.equal(computeMetrics(trace, geometry).sameFinger, 0);
+});
+
+test('複数のかなを覆う入力と読み飛ばした文字があっても、範囲は開始から今の入力の終わりを引いた値がN以下の入力になる（N=0を含む）', () => {
+  // きゃ・ゆむ は2文字を1つの入力で打つ（ゆむ は2打鍵）。☆ はどの見出しにも当たらず読み飛ばす
+  const defs: Record<string, string[][]> = {
+    ...Object.fromEntries([...'abcdefghijklmnoprstuvwyz'].map((c) => [c, [[c]]])),
+    きゃ: [['q']],
+    ゆむ: [['x'], ['z', 'x']],
+  };
+  const layout = fromKana('spans', 'spans', defs);
+  const geometry = buildGeometry(SHAPE, richAssignment());
+  const tokens = ['きゃ', 'ゆむ', '☆', ...'ykjiubnmhl'];
+  for (const [seed, windowSize] of [[31, 0], [32, 1], [33, 2], [34, 3], [35, 0], [36, 4], [37, 2]] as const) {
+    const random = lcg(seed);
+    const picked = Array.from({ length: 9 }, () => tokens[Math.floor(random() * tokens.length)]);
+    const text = picked.join('');
+    const inputs: { keys: string[][]; start: number; end: number }[] = [];
+    let position = 0;
+    for (const token of picked) {
+      const length = [...token].length;
+      if (token !== '☆') inputs.push({ keys: defs[token], start: position, end: position + length - 1 });
+      position += length;
+    }
+    const strokes = planWithSpans(inputs);
+    const expected = referenceFingers(geometry, strokes, windowSize);
+    const trace = generateTrace(text, layout, geometry, opts({ windowSize }));
+    assert.equal(trace.strokes.length, strokes.length);
+    const actual = fingersOf(trace).map((map, index) => strokes[index].keys.map((key) => map.get(key)!));
+    assert.deepEqual(actual, expected, `text=${text} N=${windowSize}`);
+  }
+});
+
+test('入力の範囲が次の入力の途中まで及ぶ時、はみ出した分を打ち切らずに数え上げた結果と一致する（ローマ字配列）', () => {
+  // しょ(syo)・う・。・こ・の・よ・う・な。綴りの単位ごとに英字が同じ範囲を持つ。
+  // 指の状態で、はみ出した分を0で打ち切ると、次の入力のΔIを実際より大きく数え、この文章では総距離が変わる
+  const romaji = withRomaji(LAYOUT_BY_ID.get('qwerty')!, kunrei());
+  const geometry = buildGeometry(SHAPE, QWERTY_OPTIMIZED_FINGER_ASSIGNMENT);
+  const chunks: [string, number, number][] = [
+    ['syo', 0, 1], ['u', 2, 2], ['.', 3, 3], ['ko', 4, 4], ['no', 5, 5], ['yo', 6, 6], ['u', 7, 7], ['na', 8, 8],
+  ];
+  const inputs = chunks.flatMap(([letters, start, end]) => [...letters].map((c) => ({ keys: [[c]], start, end })));
+  const strokes = planWithSpans(inputs);
+  const expected = referenceFingers(geometry, strokes, 5);
+  const trace = generateTrace('しょう。このような', romaji, geometry, opts({ windowSize: 5 }));
+  assert.equal(trace.strokes.length, strokes.length);
+  const actual = fingersOf(trace).map((map, index) => strokes[index].keys.map((key) => map.get(key)!));
+  assert.deepEqual(actual, expected);
+  near(Math.round(computeMetrics(trace, geometry).totalUnits * 1000) / 1000, 7.226, '総距離');
 });
 
 test('同点の決め方: 基本の指を優先し、それでも同じなら指の固定の順で先の指を選ぶ', () => {

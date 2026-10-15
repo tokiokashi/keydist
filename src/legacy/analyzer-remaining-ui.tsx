@@ -110,7 +110,7 @@ export function AnalyzerSidebarControls({
       </label>
 
       <label className="ctl">
-        <span>先読みN <small>指を残す判断をする入力単位数</small></span>
+        <span>先読みN <small>指を残す判断をする文字数</small></span>
         <span className="range-row">
           <input
             type="range"

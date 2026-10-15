@@ -195,22 +195,43 @@ export function playbackRomajiPlannedOrders(
   return orders;
 }
 
-/** カーソル以降の先読みステップについて、近さに応じた不透明度を返す。 */
+/**
+ * 押下予定の打鍵の範囲 `[start, finish)`。カーソルの次の打鍵から数える。
+ *
+ * 今の入力のまだ打っていない打鍵と、開始から今の入力の終わりを引いた値が `windowSize` 以下の入力の打鍵が入る（指を選ぶ範囲と同じ。
+ * 仕様 §9.1）。今の入力は、直前に打った打鍵の入力で、カーソルが先頭なら最初の入力とする。
+ * 今の入力の残りは、配列やローマ字の綴りの表示の設定によらず入る。
+ */
+function playbackPlannedStrokeRange(
+  strokes: readonly Stroke[],
+  cursor: number,
+  windowSize: number,
+): { start: number; finish: number } | undefined {
+  const start = Math.min(Math.max(0, cursor), strokes.length);
+  if (start >= strokes.length) return undefined;
+  const current = strokes[start > 0 ? start - 1 : 0];
+  let finish = start;
+  while (
+    finish < strokes.length
+    && (strokes[finish].selectionIndex === current.selectionIndex
+      || strokes[finish].kanaStart - current.kanaEnd <= windowSize)
+  ) finish++;
+  return finish > start ? { start, finish } : undefined;
+}
+
+/** これから押すキーに、近さに応じた不透明度を返す。範囲は `playbackPlannedStrokeRange`。 */
 export function playbackPlannedKeys(
   strokes: readonly Stroke[],
   cursor: number,
-  lookahead = 5,
+  windowSize: number,
 ): ReadonlyMap<string, number> {
-  const start = Math.min(Math.max(0, cursor), strokes.length);
   const planned = new Map<string, number>();
-  const span = Math.floor(lookahead);
-  if (start >= strokes.length || span <= 0) return planned;
+  const range = playbackPlannedStrokeRange(strokes, cursor, windowSize);
+  if (!range) return planned;
 
-  const finish = Math.min(strokes.length, start + span);
-  const actualSpan = finish - start;
-
-  for (let index = start; index < finish; index++) {
-    const opacity = (finish - index) / actualSpan;
+  const span = range.finish - range.start;
+  for (let index = range.start; index < range.finish; index++) {
+    const opacity = (range.finish - index) / span;
     for (const press of strokes[index].presses) {
       for (const key of press.keys) {
         planned.set(key.id, Math.max(planned.get(key.id) ?? 0, opacity));
@@ -220,20 +241,18 @@ export function playbackPlannedKeys(
   return planned;
 }
 
-/** 先読み範囲の各キーに、次の打鍵から数えた順番を割り当てる。 */
+/** 押下予定の範囲の各キーに、次の打鍵から数えた順番を割り当てる。 */
 export function playbackPlannedOrders(
   strokes: readonly Stroke[],
   cursor: number,
-  lookahead = 5,
+  windowSize: number,
 ): ReadonlyMap<string, number> {
-  const start = Math.min(Math.max(0, cursor), strokes.length);
   const orders = new Map<string, number>();
-  const span = Math.floor(lookahead);
-  if (start >= strokes.length || span <= 0) return orders;
+  const range = playbackPlannedStrokeRange(strokes, cursor, windowSize);
+  if (!range) return orders;
 
-  const finish = Math.min(strokes.length, start + span);
-  for (let index = start; index < finish; index++) {
-    const order = index - start + 1;
+  for (let index = range.start; index < range.finish; index++) {
+    const order = index - range.start + 1;
     for (const press of strokes[index].presses) {
       for (const key of press.keys) orders.set(key.id, Math.min(orders.get(key.id) ?? Infinity, order));
     }
@@ -355,7 +374,7 @@ interface PlaybackInputGroup {
 function playbackInputGroupsAround(
   strokes: readonly Stroke[],
   cursor: number,
-  lookaheadSteps: number,
+  windowSize: number,
   completedLimit: number,
 ): { end: number; completed: PlaybackInputGroup[]; current: PlaybackInputGroup | undefined; planned: PlaybackInputGroup[] } {
   const end = Math.min(Math.max(0, cursor), strokes.length);
@@ -375,21 +394,21 @@ function playbackInputGroupsAround(
   const completed = currentGroupIndex < 0
     ? []
     : limit === 0 ? [] : groups.slice(0, currentGroupIndex).slice(-limit);
-  const futureEnd = Math.min(strokes.length, end + Math.max(0, Math.floor(lookaheadSteps)));
+  const futureEnd = playbackPlannedStrokeRange(strokes, end, windowSize)?.finish ?? end;
   const planned = groups.filter((group) =>
     group.inputIndex !== currentInputIndex && group.end > end && group.start < futureEnd,
   );
   return { end, completed, current: groups[currentGroupIndex], planned };
 }
 
-/** 入力済み・現在・先読みの入力単位を表示順に返す。先読み値は打鍵ステップ数として扱う。 */
+/** 入力済み・現在・先読みの入力単位を表示順に返す。先読みの範囲は押下予定のキーと同じ（`playbackPlannedStrokeRange`）。 */
 export function playbackInputPreview(
   strokes: readonly Stroke[],
   cursor: number,
-  lookaheadSteps = 0,
+  windowSize = 0,
   completedLimit = PLAYBACK_COMPLETED_INPUT_LIMIT,
 ): PlaybackInputPreviewSegment[] {
-  const { completed, current, planned } = playbackInputGroupsAround(strokes, cursor, lookaheadSteps, completedLimit);
+  const { completed, current, planned } = playbackInputGroupsAround(strokes, cursor, windowSize, completedLimit);
   return [
     ...completed.map((group) => ({ text: strokes[group.end - 1].inputChar, kind: 'completed' as const })),
     ...(current === undefined ? [] : [{ text: strokes[current.end - 1].inputChar, kind: 'current' as const }]),
@@ -445,10 +464,10 @@ function romajiOfInput(strokes: readonly Stroke[], group: PlaybackInputGroup, cu
 export function playbackRomajiInputPreview(
   strokes: readonly Stroke[],
   cursor: number,
-  lookaheadSteps = 0,
+  windowSize = 0,
   completedLimit = PLAYBACK_COMPLETED_INPUT_LIMIT,
 ): PlaybackRomajiInputSegment[] {
-  const { end, completed, current, planned } = playbackInputGroupsAround(strokes, cursor, lookaheadSteps, completedLimit);
+  const { end, completed, current, planned } = playbackInputGroupsAround(strokes, cursor, windowSize, completedLimit);
   const kanaOf = (group: PlaybackInputGroup) => strokes[group.end - 1].inputChar;
   return [
     ...completed.map((group) => ({ kind: 'completed' as const, kana: kanaOf(group) })),

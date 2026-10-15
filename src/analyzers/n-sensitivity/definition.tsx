@@ -330,7 +330,7 @@ function NSensitivityChart({
         y={CHART_HEIGHT - 4}
         textAnchor="middle"
       >
-        N（先読み入力数）
+        N（先読み文字数）
       </text>
 
       {series.map((s) => {

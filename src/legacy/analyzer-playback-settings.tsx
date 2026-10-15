@@ -513,7 +513,7 @@ export function AnalyzerPlaybackSettings({
             押下予定キーを表示
           </label>
           <div className="playback-window-setting" title="選択中の配列に適用される先読みN">
-            N <output data-playback-window>{data.options.windowSize}</output> 入力先
+            N <output data-playback-window>{data.options.windowSize}</output> 文字先
           </div>
           <label className="playback-finger-toggle">
             <input

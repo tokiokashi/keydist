@@ -1009,6 +1009,207 @@
       "analysis": {
         "arpeggio": {
           "coverage": {
+            "rate": 0.3230309072781655,
+            "strokes": 324
+          },
+          "meanSpanLength": 2.069620253164557,
+          "spans": 158
+        },
+        "directionalTransitions": {
+          "empty": 0,
+          "inward": 117,
+          "mixed": 0,
+          "outward": 102,
+          "same": 18,
+          "total": 237
+        },
+        "redirect": {
+          "events": 55,
+          "pivots": {
+            "rate": 0.054835493519441676,
+            "strokes": 55
+          }
+        },
+        "roll": {
+          "anyRoll": {
+            "rate": 0.3230309072781655,
+            "strokes": 324
+          },
+          "longRoll": {
+            "rate": 0.03290129611166501,
+            "strokes": 33
+          },
+          "twoRoll": {
+            "rate": 0.2931206380857428,
+            "strokes": 294
+          }
+        },
+        "sfb": {
+          "events": 18,
+          "involvedStrokes": {
+            "rate": 0.03589232303090728,
+            "strokes": 36
+          }
+        },
+        "strokeCount": 1003
+      },
+      "conditions": {
+        "actionRealizationPolicy": {
+          "triggerActivation": "disabled",
+          "triggerActivationClassOverrides": {},
+          "triggerActivationOverrides": []
+        },
+        "arpeggioInterpretation": {
+          "bridgeSameFinger": false,
+          "includeSingleRedirectTail": false,
+          "includeThumb": false
+        },
+        "chainInterpretation": {
+          "breakOnOppositeHandSimultaneous": false,
+          "breakOnSameFinger": true,
+          "breakOnThumbOnly": true,
+          "breakOnTriggerOnly": false
+        },
+        "fingerAssignmentId": "qwerty-optimized",
+        "geometryShapeId": "row-staggered",
+        "preferOppositeThumb": false,
+        "romajiRuleId": null,
+        "sfbHomeCost": true,
+        "triggerRealizationPolicy": {
+          "useHold": false
+        },
+        "windowSize": 3
+      },
+      "id": "en:qwerty-optimized:default",
+      "language": "en",
+      "layoutId": "qwerty-optimized",
+      "metrics": {
+        "actions": 1003,
+        "adjacent": [
+          {
+            "maxExcess": 0.6007810593582121,
+            "meanExcess": 0.0045870199993601314,
+            "pair": [
+              "LP",
+              "LR"
+            ],
+            "stdDev": 0.036548960682497265
+          },
+          {
+            "maxExcess": 1.9261749776799064,
+            "meanExcess": 0.08340661949975905,
+            "pair": [
+              "LR",
+              "LM"
+            ],
+            "stdDev": 0.2293762123112476
+          },
+          {
+            "maxExcess": 1.9261749776799064,
+            "meanExcess": 0.23843560585201734,
+            "pair": [
+              "LM",
+              "LI"
+            ],
+            "stdDev": 0.4138686026357586
+          },
+          {
+            "maxExcess": 2,
+            "meanExcess": 0.13874590893578143,
+            "pair": [
+              "RI",
+              "RM"
+            ],
+            "stdDev": 0.3209299612479161
+          },
+          {
+            "maxExcess": 1.462214450449026,
+            "meanExcess": 0.07526548520421,
+            "pair": [
+              "RM",
+              "RR"
+            ],
+            "stdDev": 0.20484059589923778
+          },
+          {
+            "maxExcess": 1.462214450449026,
+            "meanExcess": 0.050366456059492706,
+            "pair": [
+              "RR",
+              "RP"
+            ],
+            "stdDev": 0.17307695402028153
+          }
+        ],
+        "comboPresses": 0,
+        "combos": {
+          "definitions": 0,
+          "hits": 0,
+          "matched": 0
+        },
+        "fingerAssignmentId": "qwerty-optimized",
+        "fingerAssignmentName": "QWERTY最適化",
+        "geometryId": "row-staggered",
+        "geometryName": "ロウスタッガード（ANSI）",
+        "inputChars": 1003,
+        "layers": [
+          {
+            "id": "single",
+            "label": "単打",
+            "presses": 1003
+          },
+          {
+            "id": "layer:Shift",
+            "label": "Shift",
+            "presses": 0
+          }
+        ],
+        "meanPerStroke": 0.6239441066288401,
+        "perCharPresses": 1,
+        "perCharSteps": 1,
+        "perCharUnits": 0.6239441066288401,
+        "perFinger": {
+          "LI": 169.86019908667768,
+          "LM": 126.25541769300771,
+          "LP": 1.0307764064044151,
+          "LR": 17.523198908875056,
+          "LT": 1,
+          "RI": 127.4253780452635,
+          "RM": 62.86348806455478,
+          "RP": 10.307764064044152,
+          "RR": 68.54971667989645,
+          "RT": 41
+        },
+        "perFingerPresses": {
+          "LI": 193,
+          "LM": 152,
+          "LP": 56,
+          "LR": 66,
+          "LT": 1,
+          "RI": 124,
+          "RM": 67,
+          "RP": 12,
+          "RR": 106,
+          "RT": 226
+        },
+        "presses": 1003,
+        "sameFinger": 4,
+        "singleKeyRate": 100,
+        "singleTapLayerRate": 100,
+        "singleTapRate": 100,
+        "skipped": 0,
+        "strokes": 1003,
+        "totalMm": 11921.793636973243,
+        "totalUnits": 625.8159389487266
+      },
+      "sampleId": "default",
+      "textLength": 1003,
+      "textSha256": "a2b941518b5a8114218229e15a734f3c15ca7a1b159e0383cad9c74b5f310189"
+    },
+    {
+      "analysis": {
+        "arpeggio": {
+          "coverage": {
             "rate": 0.3300099700897308,
             "strokes": 331
           },
@@ -2747,57 +2948,57 @@
         "adjacent": [
           {
             "maxExcess": 0.25,
-            "meanExcess": 0.005744085305824018,
+            "meanExcess": 0.007887972618930202,
             "pair": [
               "LP",
               "LR"
             ],
-            "stdDev": 0.03495072701609116
+            "stdDev": 0.04046681115979392
           },
           {
             "maxExcess": 0.6007810593582121,
-            "meanExcess": 0.010499086474221183,
+            "meanExcess": 0.013998781965628244,
             "pair": [
               "LR",
               "LM"
             ],
-            "stdDev": 0.07872370340299571
+            "stdDev": 0.09063242886800273
           },
           {
             "maxExcess": 1.0155644370746373,
-            "meanExcess": 0.05300860277307146,
+            "meanExcess": 0.05768496571131609,
             "pair": [
               "LM",
               "LI"
             ],
-            "stdDev": 0.21083069395851778
+            "stdDev": 0.21837126288475722
           },
           {
             "maxExcess": 1.3584952830141508,
-            "meanExcess": 0.11586771583319586,
+            "meanExcess": 0.17159858880861842,
             "pair": [
               "RI",
               "RM"
             ],
-            "stdDev": 0.2729458461599355
+            "stdDev": 0.3272457125928332
           },
           {
             "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.06127118639844662,
+            "meanExcess": 0.08324023313329679,
             "pair": [
               "RM",
               "RR"
             ],
-            "stdDev": 0.1867311368361552
+            "stdDev": 0.21107288402318328
           },
           {
             "maxExcess": 1.3584952830141508,
-            "meanExcess": 0.014337830720245881,
+            "meanExcess": 0.01901419365849051,
             "pair": [
               "RR",
               "RP"
             ],
-            "stdDev": 0.10681772936019679
+            "stdDev": 0.12250767884081148
           }
         ],
         "comboPresses": 0,
@@ -2823,20 +3024,20 @@
             "presses": 0
           }
         ],
-        "meanPerStroke": 0.30773772339957595,
+        "meanPerStroke": 0.2723861746649953,
         "perCharPresses": 1.7758620689655173,
         "perCharSteps": 1.7758620689655173,
-        "perCharUnits": 0.546499750175109,
+        "perCharUnits": 0.4837202756981813,
         "perFinger": {
-          "LI": 33.992645786247984,
+          "LI": 32.87461179749809,
           "LM": 0,
-          "LP": 6.708203932499369,
-          "LR": 9.276987657639737,
+          "LP": 5.5901699437494745,
+          "LR": 8.246211251235321,
           "LT": 0,
-          "RI": 59.36725758374606,
-          "RM": 28.861739379323605,
-          "RP": 4.031128874149275,
-          "RR": 16.246964337175548,
+          "RI": 53.6590536512467,
+          "RM": 22.677080940897124,
+          "RP": 2.0155644370746373,
+          "RR": 15.216187930771131,
           "RT": 0
         },
         "perFingerPresses": {
@@ -2858,8 +3059,8 @@
         "singleTapRate": 0,
         "skipped": 0,
         "strokes": 515,
-        "totalMm": 3019.1378698423896,
-        "totalUnits": 158.4849275507816
+        "totalMm": 2672.3126630946026,
+        "totalUnits": 140.27887995247258
       },
       "sampleId": "legacy",
       "textLength": 290,
@@ -2966,39 +3167,39 @@
           },
           {
             "maxExcess": 1.0155644370746373,
-            "meanExcess": 0.04524530522814718,
+            "meanExcess": 0.0598557448416351,
             "pair": [
               "LM",
               "LI"
             ],
-            "stdDev": 0.1978685973278451
+            "stdDev": 0.22609313175669332
           },
           {
-            "maxExcess": 1.3584952830141508,
-            "meanExcess": 0.16391180398281652,
+            "maxExcess": 1.6925824035672523,
+            "meanExcess": 0.2562688067082419,
             "pair": [
               "RI",
               "RM"
             ],
-            "stdDev": 0.3232063792168554
+            "stdDev": 0.3915131116181661
           },
           {
             "maxExcess": 1.6575364531836625,
-            "meanExcess": 0.08384554909316015,
+            "meanExcess": 0.10659134113741432,
             "pair": [
               "RM",
               "RR"
             ],
-            "stdDev": 0.21074717291739703
+            "stdDev": 0.24019891137166127
           },
           {
             "maxExcess": 1.3584952830141508,
-            "meanExcess": 0.016670039441826462,
+            "meanExcess": 0.023080507564354907,
             "pair": [
               "RR",
               "RP"
             ],
-            "stdDev": 0.0992716232168751
+            "stdDev": 0.11597984045217563
           }
         ],
         "comboPresses": 0,
@@ -3024,20 +3225,20 @@
             "presses": 0
           }
         ],
-        "meanPerStroke": 0.3634506975573727,
+        "meanPerStroke": 0.32885924373232345,
         "perCharPresses": 1.7893794749403342,
         "perCharSteps": 1.7893794749403342,
-        "perCharUnits": 0.6503512183619098,
+        "perCharUnits": 0.5884539808790202,
         "perFinger": {
-          "LI": 158.94487837545535,
+          "LI": 149.39941686061053,
           "LM": 0,
           "LP": 32.42298567374693,
           "LR": 59.78503157145602,
           "LT": 0,
-          "RI": 399.02978342372717,
-          "RM": 303.094913138046,
+          "RI": 348.12808398623173,
+          "RM": 267.01773891389144,
           "RP": 6.046693311223912,
-          "RR": 130.66435648090638,
+          "RR": 123.4489216360755,
           "RT": 0
         },
         "perFingerPresses": {
@@ -3059,8 +3260,8 @@
         "singleTapRate": 0,
         "skipped": 0,
         "strokes": 2999,
-        "totalMm": 20764.283629615384,
-        "totalUnits": 1089.9886419745608
+        "totalMm": 18788.041010709185,
+        "totalUnits": 986.248871953238
       },
       "sampleId": "modern",
       "textLength": 1676,
@@ -3149,57 +3350,57 @@
         "adjacent": [
           {
             "maxExcess": 0.25,
-            "meanExcess": 0.005744085305824018,
+            "meanExcess": 0.007887972618930202,
             "pair": [
               "LP",
               "LR"
             ],
-            "stdDev": 0.03495072701609116
+            "stdDev": 0.04046681115979392
           },
           {
             "maxExcess": 0.6007810593582121,
-            "meanExcess": 0.010499086474221183,
+            "meanExcess": 0.013998781965628244,
             "pair": [
               "LR",
               "LM"
             ],
-            "stdDev": 0.07872370340299571
+            "stdDev": 0.09063242886800273
           },
           {
             "maxExcess": 1.6925824035672523,
-            "meanExcess": 0.06450063523179318,
+            "meanExcess": 0.07032587795023978,
             "pair": [
               "LM",
               "LI"
             ],
-            "stdDev": 0.259702124957832
+            "stdDev": 0.2692304575301492
           },
           {
             "maxExcess": 1.3584952830141508,
-            "meanExcess": 0.12100538191814794,
+            "meanExcess": 0.16861334074893652,
             "pair": [
               "RI",
               "RM"
             ],
-            "stdDev": 0.28111660456300425
+            "stdDev": 0.32530515266112997
           },
           {
             "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.06127118639844662,
+            "meanExcess": 0.08324023313329679,
             "pair": [
               "RM",
               "RR"
             ],
-            "stdDev": 0.1867311368361552
+            "stdDev": 0.21107288402318328
           },
           {
             "maxExcess": 1.3584952830141508,
-            "meanExcess": 0.014337830720245881,
+            "meanExcess": 0.01901419365849051,
             "pair": [
               "RR",
               "RP"
             ],
-            "stdDev": 0.10681772936019679
+            "stdDev": 0.12250767884081148
           }
         ],
         "comboPresses": 0,
@@ -3225,20 +3426,20 @@
             "presses": 0
           }
         ],
-        "meanPerStroke": 0.3118888245295711,
+        "meanPerStroke": 0.27676646800615534,
         "perCharPresses": 1.7758620689655173,
         "perCharSteps": 1.7758620689655173,
-        "perCharUnits": 0.5538715332163073,
+        "perCharUnits": 0.4914990724936896,
         "perFinger": {
-          "LI": 35.658326913195985,
+          "LI": 34.658326913195985,
           "LM": 0,
-          "LP": 6.708203932499369,
-          "LR": 9.276987657639737,
+          "LP": 5.5901699437494745,
+          "LR": 8.246211251235321,
           "LT": 0,
-          "RI": 59.83939353874564,
-          "RM": 28.861739379323605,
-          "RP": 4.031128874149275,
-          "RR": 16.246964337175548,
+          "RI": 54.13118960624628,
+          "RM": 22.677080940897124,
+          "RP": 2.0155644370746373,
+          "RR": 15.216187930771131,
           "RT": 0
         },
         "perFingerPresses": {
@@ -3260,8 +3461,8 @@
         "singleTapRate": 0,
         "skipped": 0,
         "strokes": 515,
-        "totalMm": 3059.86328525349,
-        "totalUnits": 160.62274463272914
+        "totalMm": 2715.2866259913885,
+        "totalUnits": 142.53473102317
       },
       "sampleId": "legacy",
       "textLength": 290,
@@ -3368,39 +3569,39 @@
           },
           {
             "maxExcess": 1.6925824035672523,
-            "meanExcess": 0.057383338444004735,
+            "meanExcess": 0.07387647349496715,
             "pair": [
               "LM",
               "LI"
             ],
-            "stdDev": 0.25723248551914635
+            "stdDev": 0.287143182001202
           },
           {
             "maxExcess": 1.6925824035672523,
-            "meanExcess": 0.14388462203836833,
+            "meanExcess": 0.23659298854174793,
             "pair": [
               "RI",
               "RM"
             ],
-            "stdDev": 0.29536961569692066
+            "stdDev": 0.3672770964603622
           },
           {
             "maxExcess": 1.6575364531836625,
-            "meanExcess": 0.08384554909316015,
+            "meanExcess": 0.10659134113741432,
             "pair": [
               "RM",
               "RR"
             ],
-            "stdDev": 0.21074717291739703
+            "stdDev": 0.24019891137166127
           },
           {
             "maxExcess": 1.3584952830141508,
-            "meanExcess": 0.016670039441826462,
+            "meanExcess": 0.023080507564354907,
             "pair": [
               "RR",
               "RP"
             ],
-            "stdDev": 0.0992716232168751
+            "stdDev": 0.11597984045217563
           }
         ],
         "comboPresses": 0,
@@ -3426,20 +3627,20 @@
             "presses": 0
           }
         ],
-        "meanPerStroke": 0.370762665178015,
+        "meanPerStroke": 0.3344834634898002,
         "perCharPresses": 1.7893794749403342,
         "perCharSteps": 1.7893794749403342,
-        "perCharUnits": 0.6634351031437153,
+        "perCharUnits": 0.5985178442756031,
         "perFinger": {
-          "LI": 174.381599888518,
+          "LI": 163.55167017203502,
           "LM": 0,
           "LP": 32.42298567374693,
           "LR": 59.78503157145602,
           "LT": 0,
-          "RI": 405.52165280497155,
-          "RM": 303.094913138046,
+          "RI": 350.84286572747925,
+          "RM": 267.01773891389144,
           "RP": 6.046693311223912,
-          "RR": 130.66435648090638,
+          "RR": 123.4489216360755,
           "RT": 0
         },
         "perFingerPresses": {
@@ -3461,8 +3662,8 @@
         "singleTapRate": 0,
         "skipped": 0,
         "strokes": 2999,
-        "totalMm": 21182.023286151914,
-        "totalUnits": 1111.917232868867
+        "totalMm": 19109.3580284626,
+        "totalUnits": 1003.1159070059108
       },
       "sampleId": "modern",
       "textLength": 1676,
@@ -3568,40 +3769,40 @@
             "stdDev": 0.03275889867728736
           },
           {
-            "maxExcess": 1.0155644370746373,
-            "meanExcess": 0.1980427421394711,
+            "maxExcess": 1.462214450449026,
+            "meanExcess": 0.27843666009323714,
             "pair": [
               "LM",
               "LI"
             ],
-            "stdDev": 0.3803541982971624
+            "stdDev": 0.43210671249590277
           },
           {
             "maxExcess": 1,
-            "meanExcess": 0.0699940097004972,
+            "meanExcess": 0.09766088935701223,
             "pair": [
               "RI",
               "RM"
             ],
-            "stdDev": 0.23190055573185192
+            "stdDev": 0.27005894562464544
           },
           {
-            "maxExcess": 0.25,
-            "meanExcess": 0.012256904657765154,
+            "maxExcess": 1.0155644370746373,
+            "meanExcess": 0.024004396192469555,
             "pair": [
               "RM",
               "RR"
             ],
-            "stdDev": 0.051398290004615994
+            "stdDev": 0.11216080029219244
           },
           {
             "maxExcess": 1,
-            "meanExcess": 0.03773408946196975,
+            "meanExcess": 0.05640165126527745,
             "pair": [
               "RR",
               "RP"
             ],
-            "stdDev": 0.15711661106149524
+            "stdDev": 0.1934259792696469
           }
         ],
         "comboPresses": 0,
@@ -3627,20 +3828,20 @@
             "presses": 0
           }
         ],
-        "meanPerStroke": 0.35862845709300334,
+        "meanPerStroke": 0.31906756639094935,
         "perCharPresses": 1.7758620689655173,
         "perCharSteps": 1.7758620689655173,
-        "perCharUnits": 0.6368746738030922,
+        "perCharUnits": 0.5666199885908239,
         "perFinger": {
-          "LI": 91.83939353874571,
+          "LI": 82.23529157249602,
           "LM": 9.276987657639737,
           "LP": 0,
           "LR": 0,
           "LT": 0,
-          "RI": 47.28356546638792,
-          "RM": 10.062305898749054,
-          "RP": 8.70820393249937,
-          "RR": 17.523198908875056,
+          "RI": 44.04749748888813,
+          "RM": 6.708203932499369,
+          "RP": 6.5901699437494745,
+          "RR": 15.461646096066229,
           "RT": 0
         },
         "perFingerPresses": {
@@ -3662,8 +3863,8 @@
         "singleTapRate": 0,
         "skipped": 0,
         "strokes": 515,
-        "totalMm": 3518.414135425183,
-        "totalUnits": 184.69365540289672
+        "totalMm": 3130.2921269700064,
+        "totalUnits": 164.31979669133892
       },
       "sampleId": "legacy",
       "textLength": 290,
@@ -3752,57 +3953,57 @@
         "adjacent": [
           {
             "maxExcess": 0.25,
-            "meanExcess": 0.005835278426142047,
+            "meanExcess": 0.006085361787262421,
             "pair": [
               "LP",
               "LR"
             ],
-            "stdDev": 0.03774611413410649
+            "stdDev": 0.038526728627456944
           },
           {
             "maxExcess": 0.6007810593582121,
-            "meanExcess": 0.018024232795956937,
+            "meanExcess": 0.018625214182443978,
             "pair": [
               "LR",
               "LM"
             ],
-            "stdDev": 0.09539472000024234
+            "stdDev": 0.09715546923613753
           },
           {
-            "maxExcess": 1.0155644370746373,
-            "meanExcess": 0.22468948402560557,
+            "maxExcess": 1.462214450449026,
+            "meanExcess": 0.3055331575023866,
             "pair": [
               "LM",
               "LI"
             ],
-            "stdDev": 0.3996890953630983
+            "stdDev": 0.4409595167005136
           },
           {
             "maxExcess": 1,
-            "meanExcess": 0.06328406926322913,
+            "meanExcess": 0.0780287708111613,
             "pair": [
               "RI",
               "RM"
             ],
-            "stdDev": 0.2146373735452136
+            "stdDev": 0.23723605325061717
           },
           {
             "maxExcess": 0.25,
-            "meanExcess": 0.013703224857450432,
+            "meanExcess": 0.01703766967238874,
             "pair": [
               "RM",
               "RR"
             ],
-            "stdDev": 0.0541920866029735
+            "stdDev": 0.06056310459138728
           },
           {
             "maxExcess": 1,
-            "meanExcess": 0.036207902176159705,
+            "meanExcess": 0.045291711754437955,
             "pair": [
               "RR",
               "RP"
             ],
-            "stdDev": 0.14969768047091286
+            "stdDev": 0.16535637222368035
           }
         ],
         "comboPresses": 0,
@@ -3828,20 +4029,20 @@
             "presses": 0
           }
         ],
-        "meanPerStroke": 0.41025730872499866,
+        "meanPerStroke": 0.3803434220699736,
         "perCharPresses": 1.7893794749403342,
         "perCharSteps": 1.7893794749403342,
-        "perCharUnits": 0.7341060076767727,
+        "perCharUnits": 0.6805787128805794,
         "perFinger": {
-          "LI": 589.1492733891613,
+          "LI": 536.726164413995,
           "LM": 49.47726750741188,
           "LP": 0,
-          "LR": 72.15434844830898,
+          "LR": 71.12357204190457,
           "LT": 0,
-          "RI": 288.43399529319686,
+          "RI": 264.6327090555438,
           "RM": 64.84597134749383,
-          "RP": 36.42298567374692,
-          "RR": 129.87782720695614,
+          "RP": 35.30495168499703,
+          "RR": 118.53928673650759,
           "RT": 0
         },
         "perFingerPresses": {
@@ -3863,8 +4064,8 @@
         "singleTapRate": 0,
         "skipped": 0,
         "strokes": 2999,
-        "totalMm": 23438.389791902464,
-        "totalUnits": 1230.361668866271
+        "totalMm": 21729.38102910856,
+        "totalUnits": 1140.649922787851
       },
       "sampleId": "modern",
       "textLength": 1676,
@@ -3971,21 +4172,21 @@
           },
           {
             "maxExcess": 1.6925824035672523,
-            "meanExcess": 0.20289831431740146,
+            "meanExcess": 0.20079747398126704,
             "pair": [
               "LM",
               "LI"
             ],
-            "stdDev": 0.41345532924114065
+            "stdDev": 0.4138456228951221
           },
           {
             "maxExcess": 1.462214450449026,
-            "meanExcess": 0.17853740002988647,
+            "meanExcess": 0.17013403868534863,
             "pair": [
               "RI",
               "RM"
             ],
-            "stdDev": 0.39424592430567423
+            "stdDev": 0.3872421717441711
           },
           {
             "maxExcess": 0.8027756377319948,
@@ -4104,12 +4305,12 @@
             "presses": 4
           }
         ],
-        "meanPerStroke": 0.78096785447136,
+        "meanPerStroke": 0.7852988477755802,
         "perCharPresses": 1.2689655172413794,
         "perCharSteps": 0.8206896551724138,
-        "perCharUnits": 0.6409322391868403,
+        "perCharUnits": 0.6444866405882348,
         "perFinger": {
-          "LI": 50.704528443053334,
+          "LI": 51.73530484945775,
           "LM": 27.114293642338332,
           "LP": 9.800533151712616,
           "LR": 25.760105824201858,
@@ -4139,8 +4340,8 @@
         "singleTapRate": 56.30252100840336,
         "skipped": 0,
         "strokes": 238,
-        "totalMm": 3540.830155387699,
-        "totalUnits": 185.87034936418368
+        "totalMm": 3560.4664459297032,
+        "totalUnits": 186.9011257705881
       },
       "sampleId": "legacy",
       "textLength": 290,
@@ -4229,57 +4430,57 @@
         "adjacent": [
           {
             "maxExcess": 1.6575364531836625,
-            "meanExcess": 0.09423834302669165,
+            "meanExcess": 0.09150975750716495,
             "pair": [
               "LP",
               "LR"
             ],
-            "stdDev": 0.2476991073253816
+            "stdDev": 0.23961265874162818
           },
           {
             "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.12426889018711987,
+            "meanExcess": 0.12333351851233512,
             "pair": [
               "LR",
               "LM"
             ],
-            "stdDev": 0.265833215031649
+            "stdDev": 0.26530208398824107
           },
           {
             "maxExcess": 1.6925824035672523,
-            "meanExcess": 0.15148919127911617,
+            "meanExcess": 0.14427429435183722,
             "pair": [
               "LM",
               "LI"
             ],
-            "stdDev": 0.33147551534865455
+            "stdDev": 0.32386415370640165
           },
           {
             "maxExcess": 2.400367627183861,
-            "meanExcess": 0.20179894448102095,
+            "meanExcess": 0.1952513077232087,
             "pair": [
               "RI",
               "RM"
             ],
-            "stdDev": 0.3894268243924779
+            "stdDev": 0.38303216105739796
           },
           {
             "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.0648912935800681,
+            "meanExcess": 0.06253538561900572,
             "pair": [
               "RM",
               "RR"
             ],
-            "stdDev": 0.19682812066947197
+            "stdDev": 0.19274399886474491
           },
           {
             "maxExcess": 1.0155644370746373,
-            "meanExcess": 0.04035802560122299,
+            "meanExcess": 0.04001163091670386,
             "pair": [
               "RR",
               "RP"
             ],
-            "stdDev": 0.1406188721159125
+            "stdDev": 0.14057247408603846
           }
         ],
         "comboPresses": 591,
@@ -4380,20 +4581,20 @@
             "presses": 28
           }
         ],
-        "meanPerStroke": 0.9295647555010651,
+        "meanPerStroke": 0.9353394776948684,
         "perCharPresses": 1.2893794749403342,
         "perCharSteps": 0.8132458233890215,
-        "perCharUnits": 0.7559646549808782,
+        "perCharUnits": 0.7606609236862205,
         "perFinger": {
-          "LI": 250.1716558753086,
-          "LM": 195.72787298596964,
+          "LI": 251.4216558753086,
+          "LM": 196.84590697471953,
           "LP": 76.43686568971704,
-          "LR": 167.3663542731448,
+          "LR": 169.60242225064457,
           "LT": 0,
-          "RI": 227.68834756314578,
+          "RI": 228.7191239695502,
           "RM": 131.74407663253493,
           "RP": 101.87005497927042,
-          "RR": 115.99153374886595,
+          "RR": 118.22760172636575,
           "RT": 0
         },
         "perFingerPresses": {
@@ -4415,8 +4616,8 @@
         "singleTapRate": 51.94424064563463,
         "skipped": 0,
         "strokes": 1363,
-        "totalMm": 24136.288311298482,
-        "totalUnits": 1266.9967617479517
+        "totalMm": 24286.22983926891,
+        "totalUnits": 1274.8677080981056
       },
       "sampleId": "modern",
       "textLength": 1676,
@@ -5132,8 +5333,8 @@
           "windowSize": 5
         },
         {
-          "totalMm": 20483.327111706683,
-          "totalUnits": 1075.2402683310595,
+          "totalMm": 20502.963402248686,
+          "totalUnits": 1076.2710447374639,
           "windowSize": 7
         }
       ],
@@ -6274,21 +6475,21 @@
           },
           {
             "maxExcess": 1.6575364531836625,
-            "meanExcess": 0.11132381706543786,
+            "meanExcess": 0.10874349182677193,
             "pair": [
               "LR",
               "LM"
             ],
-            "stdDev": 0.24839911127870334
+            "stdDev": 0.2434513971078885
           },
           {
             "maxExcess": 1.6925824035672523,
-            "meanExcess": 0.2177213631768708,
+            "meanExcess": 0.21792126624986496,
             "pair": [
               "LM",
               "LI"
             ],
-            "stdDev": 0.3802773310767626
+            "stdDev": 0.3806306605310138
           },
           {
             "maxExcess": 1.3584952830141508,
@@ -6486,13 +6687,13 @@
             "presses": 0
           }
         ],
-        "meanPerStroke": 0.655904647108876,
+        "meanPerStroke": 0.6565806047804298,
         "perCharPresses": 1.4558472553699284,
         "perCharSteps": 0.986873508353222,
-        "perCharUnits": 0.6472949202375184,
+        "perCharUnits": 0.6479620049563429,
         "perFinger": {
           "LI": 287.9931679622319,
-          "LM": 188.64380877359773,
+          "LM": 189.7618427623476,
           "LP": 8.94427190999916,
           "LR": 55.432782362284605,
           "LT": 0,
@@ -6521,8 +6722,8 @@
         "singleTapRate": 52.78113663845224,
         "skipped": 0,
         "strokes": 1654,
-        "totalMm": 20666.70275435944,
-        "totalUnits": 1084.866286318081
+        "totalMm": 20688.00130184513,
+        "totalUnits": 1085.9843203068308
       },
       "note": "windowSize=6（既定3より広い先読み）",
       "sampleId": "modern",
@@ -7042,39 +7243,39 @@
           },
           {
             "maxExcess": 1.0155644370746373,
-            "meanExcess": 0.09973974106298349,
+            "meanExcess": 0.10010909487645327,
             "pair": [
               "LM",
               "LI"
             ],
-            "stdDev": 0.26223485325821244
+            "stdDev": 0.26127380589591986
           },
           {
             "maxExcess": 1.6575364531836625,
-            "meanExcess": 0.14304798538285116,
+            "meanExcess": 0.1711848876406471,
             "pair": [
               "RI",
               "RM"
             ],
-            "stdDev": 0.31080097121190564
+            "stdDev": 0.3331654638297578
           },
           {
             "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.04841006898616964,
+            "meanExcess": 0.05969613181230123,
             "pair": [
               "RM",
               "RR"
             ],
-            "stdDev": 0.16312523440565585
+            "stdDev": 0.17817709875030358
           },
           {
             "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.0077141852616221624,
+            "meanExcess": 0.00859067527709168,
             "pair": [
               "RR",
               "RP"
             ],
-            "stdDev": 0.07023469870165991
+            "stdDev": 0.07086661743636752
           }
         ],
         "comboPresses": 145,
@@ -7100,20 +7301,20 @@
             "presses": 0
           }
         ],
-        "meanPerStroke": 0.4051918738499435,
+        "meanPerStroke": 0.3835136956363996,
         "perCharPresses": 1.6655172413793105,
         "perCharSteps": 1.393103448275862,
-        "perCharUnits": 0.5644741966737143,
+        "perCharUnits": 0.5342742518520877,
         "perFinger": {
-          "LI": 28.125314892259873,
+          "LI": 27.875314892259873,
           "LM": 21.908077281529152,
           "LP": 4.47213595499958,
           "LR": 3.266844383904205,
           "LT": 0,
-          "RI": 63.80519786131161,
-          "RM": 32.05764076262367,
+          "RI": 60.71286864209837,
+          "RM": 27.760019972315057,
           "RP": 3.3541019662496847,
-          "RR": 6.708203932499369,
+          "RR": 5.5901699437494745,
           "RT": 0
         },
         "perFingerPresses": {
@@ -7135,8 +7336,8 @@
         "singleTapRate": 0,
         "skipped": 0,
         "strokes": 404,
-        "totalMm": 3118.437699523935,
-        "totalUnits": 163.69751703537716
+        "totalMm": 2951.5981043568586,
+        "totalUnits": 154.93953303710543
       },
       "sampleId": "legacy",
       "textLength": 290,
@@ -7234,48 +7435,48 @@
           },
           {
             "maxExcess": 1.0155644370746373,
-            "meanExcess": 0.024707884080584306,
+            "meanExcess": 0.027827505423097226,
             "pair": [
               "LR",
               "LM"
             ],
-            "stdDev": 0.1040829561913443
+            "stdDev": 0.1070012924352972
           },
           {
             "maxExcess": 1.6575364531836625,
-            "meanExcess": 0.08789304533686933,
+            "meanExcess": 0.09655979311967436,
             "pair": [
               "LM",
               "LI"
             ],
-            "stdDev": 0.24203738430591104
+            "stdDev": 0.2472060617800598
           },
           {
-            "maxExcess": 1.0155644370746373,
-            "meanExcess": 0.16312783322734606,
+            "maxExcess": 1.6925824035672523,
+            "meanExcess": 0.19170687857982135,
             "pair": [
               "RI",
               "RM"
             ],
-            "stdDev": 0.321273878785307
+            "stdDev": 0.3470885663062356
           },
           {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.05902830858593807,
+            "maxExcess": 1.0155644370746373,
+            "meanExcess": 0.06872698893321266,
             "pair": [
               "RM",
               "RR"
             ],
-            "stdDev": 0.16904843116196963
+            "stdDev": 0.18130369837135746
           },
           {
             "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.02424448283758964,
+            "meanExcess": 0.02522317437505703,
             "pair": [
               "RR",
               "RP"
             ],
-            "stdDev": 0.12360775141472372
+            "stdDev": 0.1253808945334383
           }
         ],
         "comboPresses": 747,
@@ -7301,20 +7502,20 @@
             "presses": 0
           }
         ],
-        "meanPerStroke": 0.468457814476425,
+        "meanPerStroke": 0.45291599280024986,
         "perCharPresses": 1.6252983293556087,
         "perCharSteps": 1.3866348448687351,
-        "perCharUnits": 0.6495799289040642,
+        "perCharUnits": 0.6280290974151437,
         "perFinger": {
-          "LI": 217.1177346645814,
-          "LM": 129.47416845871152,
+          "LI": 214.0561818517726,
+          "LM": 121.2279572074762,
           "LP": 23.478713763747784,
           "LR": 22.43162277560203,
           "LT": 0,
-          "RI": 314.1254441730839,
-          "RM": 270.92462495413355,
+          "RI": 307.53527422933433,
+          "RM": 254.85217578164887,
           "RP": 34.39728090421028,
-          "RR": 76.74637114913675,
+          "RR": 74.59756075398244,
           "RT": 0
         },
         "perFingerPresses": {
@@ -7336,8 +7537,8 @@
         "singleTapRate": 0,
         "skipped": 0,
         "strokes": 2324,
-        "totalMm": 20739.658054063184,
-        "totalUnits": 1088.6959608432117
+        "totalMm": 20051.587416451224,
+        "totalUnits": 1052.5767672677807
       },
       "sampleId": "modern",
       "textLength": 1676,
@@ -7435,48 +7636,48 @@
           },
           {
             "maxExcess": 1.0155644370746373,
-            "meanExcess": 0.024707884080584306,
+            "meanExcess": 0.027827505423097226,
             "pair": [
               "LR",
               "LM"
             ],
-            "stdDev": 0.1040829561913443
+            "stdDev": 0.1070012924352972
           },
           {
             "maxExcess": 1.6575364531836625,
-            "meanExcess": 0.08789304533686933,
+            "meanExcess": 0.09655979311967436,
             "pair": [
               "LM",
               "LI"
             ],
-            "stdDev": 0.24203738430591104
+            "stdDev": 0.2472060617800598
           },
           {
-            "maxExcess": 1.0155644370746373,
-            "meanExcess": 0.16312783322734606,
+            "maxExcess": 1.6925824035672523,
+            "meanExcess": 0.19170687857982135,
             "pair": [
               "RI",
               "RM"
             ],
-            "stdDev": 0.321273878785307
+            "stdDev": 0.3470885663062356
           },
           {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.05902830858593807,
+            "maxExcess": 1.0155644370746373,
+            "meanExcess": 0.06872698893321266,
             "pair": [
               "RM",
               "RR"
             ],
-            "stdDev": 0.16904843116196963
+            "stdDev": 0.18130369837135746
           },
           {
             "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.02424448283758964,
+            "meanExcess": 0.02522317437505703,
             "pair": [
               "RR",
               "RP"
             ],
-            "stdDev": 0.12360775141472372
+            "stdDev": 0.1253808945334383
           }
         ],
         "comboPresses": 747,
@@ -7502,20 +7703,20 @@
             "presses": 0
           }
         ],
-        "meanPerStroke": 0.468457814476425,
+        "meanPerStroke": 0.45291599280024986,
         "perCharPresses": 1.6252983293556087,
         "perCharSteps": 1.3866348448687351,
-        "perCharUnits": 0.6495799289040642,
+        "perCharUnits": 0.6280290974151437,
         "perFinger": {
-          "LI": 217.1177346645814,
-          "LM": 129.47416845871152,
+          "LI": 214.0561818517726,
+          "LM": 121.2279572074762,
           "LP": 23.478713763747784,
           "LR": 22.43162277560203,
           "LT": 0,
-          "RI": 314.1254441730839,
-          "RM": 270.92462495413355,
+          "RI": 307.53527422933433,
+          "RM": 254.85217578164887,
           "RP": 34.39728090421028,
-          "RR": 76.74637114913675,
+          "RR": 74.59756075398244,
           "RT": 0
         },
         "perFingerPresses": {
@@ -7537,8 +7738,8 @@
         "singleTapRate": 0,
         "skipped": 0,
         "strokes": 2324,
-        "totalMm": 20739.658054063184,
-        "totalUnits": 1088.6959608432117
+        "totalMm": 20051.587416451224,
+        "totalUnits": 1052.5767672677807
       },
       "note": "triggerActivation=semantic（コンボを持つ配列でtrigger activationのgroupingが変わる分岐）",
       "sampleId": "modern",
@@ -7637,48 +7838,48 @@
           },
           {
             "maxExcess": 0.25,
-            "meanExcess": 0.017475728155339806,
+            "meanExcess": 0.020388349514563107,
             "pair": [
               "LR",
               "LM"
             ],
-            "stdDev": 0.06374583095603681
+            "stdDev": 0.06842077595813098
           },
           {
             "maxExcess": 1.0155644370746373,
-            "meanExcess": 0.06362756906906286,
+            "meanExcess": 0.07645220277032358,
             "pair": [
               "LM",
               "LI"
             ],
-            "stdDev": 0.2075803415541334
+            "stdDev": 0.2265468399358045
           },
           {
-            "maxExcess": 1,
-            "meanExcess": 0.13547930466311417,
+            "maxExcess": 1.0155644370746373,
+            "meanExcess": 0.1746445166046318,
             "pair": [
               "RI",
               "RM"
             ],
-            "stdDev": 0.30570204280153596
+            "stdDev": 0.3410670967200447
           },
           {
             "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.03764438493967115,
+            "meanExcess": 0.04818342061055866,
             "pair": [
               "RM",
               "RR"
             ],
-            "stdDev": 0.14276382260204484
+            "stdDev": 0.1576553395148317
           },
           {
             "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.009322019485475914,
+            "meanExcess": 0.013509291610377507,
             "pair": [
               "RR",
               "RP"
             ],
-            "stdDev": 0.07684388922912243
+            "stdDev": 0.08940408590613924
           }
         ],
         "comboPresses": 0,
@@ -7704,20 +7905,20 @@
             "presses": 0
           }
         ],
-        "meanPerStroke": 0.31084571146428164,
+        "meanPerStroke": 0.2844373362846992,
         "perCharPresses": 1.7758620689655173,
         "perCharSteps": 1.7758620689655173,
-        "perCharUnits": 0.5520191082900174,
+        "perCharUnits": 0.5051214765055865,
         "perFinger": {
-          "LI": 13.25,
-          "LM": 30.923292192132433,
+          "LI": 12.25,
+          "LM": 28.861739379323605,
           "LP": 1.118033988749895,
           "LR": 0,
           "LT": 0,
-          "RI": 69.58193934263677,
-          "RM": 33.17567475137356,
+          "RI": 65.48961012342352,
+          "RM": 28.87805396106495,
           "RP": 3.3541019662496847,
-          "RR": 8.68249916296272,
+          "RR": 6.53368876780841,
           "RT": 0
         },
         "perFingerPresses": {
@@ -7739,8 +7940,8 @@
         "singleTapRate": 0,
         "skipped": 0,
         "strokes": 515,
-        "totalMm": 3049.6295637482012,
-        "totalUnits": 160.08554140410504
+        "totalMm": 2790.5435969551127,
+        "totalUnits": 146.48522818662008
       },
       "sampleId": "legacy",
       "textLength": 290,
@@ -7829,57 +8030,57 @@
         "adjacent": [
           {
             "maxExcess": 0.1180339887498949,
-            "meanExcess": 0.0005519291391110651,
+            "meanExcess": 0.0007096231788570836,
             "pair": [
               "LP",
               "LR"
             ],
-            "stdDev": 0.00805243888657207
+            "stdDev": 0.009124477478404327
           },
           {
             "maxExcess": 0.25,
-            "meanExcess": 0.026887107548430194,
+            "meanExcess": 0.03381763527054108,
             "pair": [
               "LR",
               "LM"
             ],
-            "stdDev": 0.07745231006746636
+            "stdDev": 0.08550307808695494
           },
           {
             "maxExcess": 1.462214450449026,
-            "meanExcess": 0.08707781930351334,
+            "meanExcess": 0.10246391612675197,
             "pair": [
               "LM",
               "LI"
             ],
-            "stdDev": 0.22383139219740478
+            "stdDev": 0.23732920310365108
           },
           {
-            "maxExcess": 1,
-            "meanExcess": 0.15004597550018167,
+            "maxExcess": 1.6925824035672523,
+            "meanExcess": 0.19960066147965694,
             "pair": [
               "RI",
               "RM"
             ],
-            "stdDev": 0.31841494187792196
+            "stdDev": 0.36411627877262376
           },
           {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.04210211690398783,
+            "maxExcess": 1.0155644370746373,
+            "meanExcess": 0.05280088055926465,
             "pair": [
               "RM",
               "RR"
             ],
-            "stdDev": 0.14085090062693983
+            "stdDev": 0.15612763034056745
           },
           {
             "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.020474380068470324,
+            "meanExcess": 0.02268165850966616,
             "pair": [
               "RR",
               "RP"
             ],
-            "stdDev": 0.11470726972055355
+            "stdDev": 0.1199524548034856
           }
         ],
         "comboPresses": 0,
@@ -7905,20 +8106,20 @@
             "presses": 0
           }
         ],
-        "meanPerStroke": 0.37314524503578445,
+        "meanPerStroke": 0.3476920527650703,
         "perCharPresses": 1.7863961813842482,
         "perCharSteps": 1.7863961813842482,
-        "perCharUnits": 0.6665852408336149,
+        "perCharUnits": 0.6211157553571721,
         "perFinger": {
-          "LI": 136.40434844830898,
-          "LM": 219.55537456414012,
-          "LP": 16.770509831248425,
+          "LI": 135.37357204190457,
+          "LM": 194.8167408104342,
+          "LP": 15.652475842498529,
           "LR": 0,
           "LT": 0,
-          "RI": 363.532702356445,
-          "RM": 274.1042117556923,
+          "RI": 339.82449842394556,
+          "RM": 251.58533139774468,
           "RP": 34.39728090421028,
-          "RR": 72.43243577708677,
+          "RR": 69.34010655787353,
           "RT": 0
         },
         "perFingerPresses": {
@@ -7940,8 +8141,410 @@
         "singleTapRate": 0,
         "skipped": 0,
         "strokes": 2994,
-        "totalMm": 21282.60025228749,
-        "totalUnits": 1117.1968636371387
+        "totalMm": 19830.85961389272,
+        "totalUnits": 1040.9900059786205
+      },
+      "sampleId": "modern",
+      "textLength": 1676,
+      "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
+    },
+    {
+      "analysis": {
+        "arpeggio": {
+          "coverage": {
+            "rate": 0.5029126213592233,
+            "strokes": 259
+          },
+          "meanSpanLength": 2.1721311475409837,
+          "spans": 122
+        },
+        "directionalTransitions": {
+          "empty": 0,
+          "inward": 89,
+          "mixed": 0,
+          "outward": 98,
+          "same": 10,
+          "total": 197
+        },
+        "redirect": {
+          "events": 52,
+          "pivots": {
+            "rate": 0.10097087378640776,
+            "strokes": 52
+          }
+        },
+        "roll": {
+          "anyRoll": {
+            "rate": 0.5029126213592233,
+            "strokes": 259
+          },
+          "longRoll": {
+            "rate": 0.11844660194174757,
+            "strokes": 61
+          },
+          "twoRoll": {
+            "rate": 0.39611650485436894,
+            "strokes": 204
+          }
+        },
+        "sfb": {
+          "events": 10,
+          "involvedStrokes": {
+            "rate": 0.038834951456310676,
+            "strokes": 20
+          }
+        },
+        "strokeCount": 515
+      },
+      "conditions": {
+        "actionRealizationPolicy": {
+          "triggerActivation": "disabled",
+          "triggerActivationClassOverrides": {},
+          "triggerActivationOverrides": []
+        },
+        "arpeggioInterpretation": {
+          "bridgeSameFinger": false,
+          "includeSingleRedirectTail": false,
+          "includeThumb": false
+        },
+        "chainInterpretation": {
+          "breakOnOppositeHandSimultaneous": false,
+          "breakOnSameFinger": true,
+          "breakOnThumbOnly": true,
+          "breakOnTriggerOnly": false
+        },
+        "fingerAssignmentId": "qwerty-optimized",
+        "geometryShapeId": "row-staggered",
+        "preferOppositeThumb": false,
+        "romajiRuleId": "kunrei",
+        "sfbHomeCost": true,
+        "triggerRealizationPolicy": {
+          "useHold": false
+        },
+        "windowSize": 3
+      },
+      "id": "ja:qwerty-optimized:legacy",
+      "language": "ja",
+      "layoutId": "qwerty-optimized",
+      "metrics": {
+        "actions": 515,
+        "adjacent": [
+          {
+            "maxExcess": 0.25,
+            "meanExcess": 0.010800593978153503,
+            "pair": [
+              "LP",
+              "LR"
+            ],
+            "stdDev": 0.04807582996687959
+          },
+          {
+            "maxExcess": 1.3584952830141508,
+            "meanExcess": 0.07587241441828599,
+            "pair": [
+              "LR",
+              "LM"
+            ],
+            "stdDev": 0.19118563217987977
+          },
+          {
+            "maxExcess": 2,
+            "meanExcess": 0.2965833593101843,
+            "pair": [
+              "LM",
+              "LI"
+            ],
+            "stdDev": 0.4774657412919652
+          },
+          {
+            "maxExcess": 1.462214450449026,
+            "meanExcess": 0.1517169081116055,
+            "pair": [
+              "RI",
+              "RM"
+            ],
+            "stdDev": 0.31120593574613925
+          },
+          {
+            "maxExcess": 1.6575364531836625,
+            "meanExcess": 0.1448464696193184,
+            "pair": [
+              "RM",
+              "RR"
+            ],
+            "stdDev": 0.2881247670515889
+          },
+          {
+            "maxExcess": 1.462214450449026,
+            "meanExcess": 0.21851812130136397,
+            "pair": [
+              "RR",
+              "RP"
+            ],
+            "stdDev": 0.3728270320499646
+          }
+        ],
+        "comboPresses": 0,
+        "combos": {
+          "definitions": 0,
+          "hits": 0,
+          "matched": 0
+        },
+        "fingerAssignmentId": "qwerty-optimized",
+        "fingerAssignmentName": "QWERTY最適化",
+        "geometryId": "row-staggered",
+        "geometryName": "ロウスタッガード（ANSI）",
+        "inputChars": 290,
+        "layers": [
+          {
+            "id": "single",
+            "label": "単打",
+            "presses": 515
+          },
+          {
+            "id": "layer:Shift",
+            "label": "Shift",
+            "presses": 0
+          }
+        ],
+        "meanPerStroke": 0.499729825391011,
+        "perCharPresses": 1.7758620689655173,
+        "perCharSteps": 1.7758620689655173,
+        "perCharUnits": 0.8874512416426574,
+        "perFinger": {
+          "LI": 68.42410956047699,
+          "LM": 31.80018656651478,
+          "LP": 4.47213595499958,
+          "LR": 7.302692427176386,
+          "LT": 0,
+          "RI": 44.94357607569957,
+          "RM": 20.632431808378236,
+          "RP": 2.0155644370746373,
+          "RR": 40.77016324605058,
+          "RT": 37
+        },
+        "perFingerPresses": {
+          "LI": 81,
+          "LM": 53,
+          "LP": 89,
+          "LR": 30,
+          "LT": 0,
+          "RI": 62,
+          "RM": 59,
+          "RP": 2,
+          "RR": 71,
+          "RT": 68
+        },
+        "presses": 515,
+        "sameFinger": 0,
+        "singleKeyRate": 100,
+        "singleTapLayerRate": 0,
+        "singleTapRate": 0,
+        "skipped": 0,
+        "strokes": 515,
+        "totalMm": 4902.724384454861,
+        "totalUnits": 257.36086007637067
+      },
+      "sampleId": "legacy",
+      "textLength": 290,
+      "textSha256": "13032193a6d690c3512871d49b029cf1f04bca30a16c3df6b5f1b3d5d5182fdc"
+    },
+    {
+      "analysis": {
+        "arpeggio": {
+          "coverage": {
+            "rate": 0.48282760920306766,
+            "strokes": 1448
+          },
+          "meanSpanLength": 2.123906705539359,
+          "spans": 686
+        },
+        "directionalTransitions": {
+          "empty": 0,
+          "inward": 576,
+          "mixed": 0,
+          "outward": 500,
+          "same": 56,
+          "total": 1132
+        },
+        "redirect": {
+          "events": 325,
+          "pivots": {
+            "rate": 0.10836945648549516,
+            "strokes": 325
+          }
+        },
+        "roll": {
+          "anyRoll": {
+            "rate": 0.48282760920306766,
+            "strokes": 1448
+          },
+          "longRoll": {
+            "rate": 0.08436145381793932,
+            "strokes": 253
+          },
+          "twoRoll": {
+            "rate": 0.40146715571857283,
+            "strokes": 1204
+          }
+        },
+        "sfb": {
+          "events": 56,
+          "involvedStrokes": {
+            "rate": 0.03701233744581527,
+            "strokes": 111
+          }
+        },
+        "strokeCount": 2999
+      },
+      "conditions": {
+        "actionRealizationPolicy": {
+          "triggerActivation": "disabled",
+          "triggerActivationClassOverrides": {},
+          "triggerActivationOverrides": []
+        },
+        "arpeggioInterpretation": {
+          "bridgeSameFinger": false,
+          "includeSingleRedirectTail": false,
+          "includeThumb": false
+        },
+        "chainInterpretation": {
+          "breakOnOppositeHandSimultaneous": false,
+          "breakOnSameFinger": true,
+          "breakOnThumbOnly": true,
+          "breakOnTriggerOnly": false
+        },
+        "fingerAssignmentId": "qwerty-optimized",
+        "geometryShapeId": "row-staggered",
+        "preferOppositeThumb": false,
+        "romajiRuleId": "kunrei",
+        "sfbHomeCost": true,
+        "triggerRealizationPolicy": {
+          "useHold": false
+        },
+        "windowSize": 3
+      },
+      "id": "ja:qwerty-optimized:modern",
+      "language": "ja",
+      "layoutId": "qwerty-optimized",
+      "metrics": {
+        "actions": 2999,
+        "adjacent": [
+          {
+            "maxExcess": 0.25,
+            "meanExcess": 0.006133751793513348,
+            "pair": [
+              "LP",
+              "LR"
+            ],
+            "stdDev": 0.03639253608872539
+          },
+          {
+            "maxExcess": 2.010398644698074,
+            "meanExcess": 0.09189578061200189,
+            "pair": [
+              "LR",
+              "LM"
+            ],
+            "stdDev": 0.27282930259853605
+          },
+          {
+            "maxExcess": 2,
+            "meanExcess": 0.2977003080012742,
+            "pair": [
+              "LM",
+              "LI"
+            ],
+            "stdDev": 0.4978214486219952
+          },
+          {
+            "maxExcess": 2,
+            "meanExcess": 0.2079287540743647,
+            "pair": [
+              "RI",
+              "RM"
+            ],
+            "stdDev": 0.3724120289121092
+          },
+          {
+            "maxExcess": 2.400367627183861,
+            "meanExcess": 0.19268610192856309,
+            "pair": [
+              "RM",
+              "RR"
+            ],
+            "stdDev": 0.35715292950040156
+          },
+          {
+            "maxExcess": 1.462214450449026,
+            "meanExcess": 0.25273781650700217,
+            "pair": [
+              "RR",
+              "RP"
+            ],
+            "stdDev": 0.4146274059130183
+          }
+        ],
+        "comboPresses": 0,
+        "combos": {
+          "definitions": 0,
+          "hits": 0,
+          "matched": 0
+        },
+        "fingerAssignmentId": "qwerty-optimized",
+        "fingerAssignmentName": "QWERTY最適化",
+        "geometryId": "row-staggered",
+        "geometryName": "ロウスタッガード（ANSI）",
+        "inputChars": 1676,
+        "layers": [
+          {
+            "id": "single",
+            "label": "単打",
+            "presses": 2999
+          },
+          {
+            "id": "layer:Shift",
+            "label": "Shift",
+            "presses": 0
+          }
+        ],
+        "meanPerStroke": 0.5634036351417612,
+        "perCharPresses": 1.7893794749403342,
+        "perCharSteps": 1.7893794749403342,
+        "perCharUnits": 1.00814290082944,
+        "perFinger": {
+          "LI": 371.5893864872933,
+          "LM": 173.4860733309889,
+          "LP": 17.88854381999832,
+          "LR": 73.20143943645475,
+          "LT": 0,
+          "RI": 311.80682939443386,
+          "RM": 220.2896005853437,
+          "RP": 8.241492082112416,
+          "RR": 256.144136653522,
+          "RT": 257
+        },
+        "perFingerPresses": {
+          "LI": 433,
+          "LM": 248,
+          "LP": 430,
+          "LR": 228,
+          "LT": 0,
+          "RI": 413,
+          "RM": 457,
+          "RP": 7,
+          "RR": 435,
+          "RT": 348
+        },
+        "presses": 2999,
+        "sameFinger": 1,
+        "singleKeyRate": 100,
+        "singleTapLayerRate": 0,
+        "singleTapRate": 0,
+        "skipped": 0,
+        "strokes": 2999,
+        "totalMm": 32187.7849091022,
+        "totalUnits": 1689.6475017901416
       },
       "sampleId": "modern",
       "textLength": 1676,
@@ -8030,57 +8633,57 @@
         "adjacent": [
           {
             "maxExcess": 0.25,
-            "meanExcess": 0.005744085305824018,
+            "meanExcess": 0.010800593978153503,
             "pair": [
               "LP",
               "LR"
             ],
-            "stdDev": 0.03495072701609116
+            "stdDev": 0.04807582996687959
           },
           {
             "maxExcess": 0.6007810593582121,
-            "meanExcess": 0.03137287288198817,
+            "meanExcess": 0.049145929653702444,
             "pair": [
               "LR",
               "LM"
             ],
-            "stdDev": 0.102673471468284
+            "stdDev": 0.1232512740035402
           },
           {
             "maxExcess": 1.6925824035672523,
-            "meanExcess": 0.18854791702489646,
+            "meanExcess": 0.3004531911950244,
             "pair": [
               "LM",
               "LI"
             ],
-            "stdDev": 0.37061280190487056
+            "stdDev": 0.4443126495165125
           },
           {
             "maxExcess": 1.462214450449026,
-            "meanExcess": 0.23665335913654698,
+            "meanExcess": 0.2951325479173059,
             "pair": [
               "RI",
               "RM"
             ],
-            "stdDev": 0.3679306121481499
+            "stdDev": 0.3942063845455718
           },
           {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.11129393570014215,
+            "maxExcess": 1.6575364531836625,
+            "meanExcess": 0.13782016733182634,
             "pair": [
               "RM",
               "RR"
             ],
-            "stdDev": 0.21184937433971124
+            "stdDev": 0.22769683646736563
           },
           {
             "maxExcess": 1.3584952830141508,
-            "meanExcess": 0.09483082702260827,
+            "meanExcess": 0.15057356349392703,
             "pair": [
               "RR",
               "RP"
             ],
-            "stdDev": 0.2257905722812368
+            "stdDev": 0.27710516253832473
           }
         ],
         "comboPresses": 0,
@@ -8106,20 +8709,20 @@
             "presses": 0
           }
         ],
-        "meanPerStroke": 0.6358942480272736,
+        "meanPerStroke": 0.533847927726045,
         "perCharPresses": 1.7758620689655173,
         "perCharSteps": 1.7758620689655173,
-        "perCharUnits": 1.1292604749449857,
+        "perCharUnits": 0.9480402854445282,
         "perFinger": {
-          "LI": 76.96230222847544,
-          "LM": 38.13872703696333,
-          "LP": 6.708203932499369,
-          "LR": 9.276987657639737,
+          "LI": 63.55842019645337,
+          "LM": 28.861739379323605,
+          "LP": 5.5901699437494745,
+          "LR": 6.184658438426491,
           "LT": 0,
-          "RI": 106.02842803164305,
-          "RM": 39.169503443367745,
-          "RP": 4.031128874149275,
-          "RR": 47.170256529307956,
+          "RI": 98.87379291368072,
+          "RM": 34.01562141134568,
+          "RP": 2.0155644370746373,
+          "RR": 35.831716058859406,
           "RT": 0
         },
         "perFingerPresses": {
@@ -8141,8 +8744,8 @@
         "singleTapRate": 0,
         "skipped": 0,
         "strokes": 515,
-        "totalMm": 6238.599493833574,
-        "totalUnits": 327.48553773404586
+        "totalMm": 5237.448556938296,
+        "totalUnits": 274.93168277891317
       },
       "sampleId": "legacy",
       "textLength": 290,
@@ -8240,48 +8843,48 @@
           },
           {
             "maxExcess": 0.6007810593582121,
-            "meanExcess": 0.02795775306528053,
+            "meanExcess": 0.03269188338269479,
             "pair": [
               "LR",
               "LM"
             ],
-            "stdDev": 0.10140768281078975
+            "stdDev": 0.10473354067514122
           },
           {
-            "maxExcess": 1.6925824035672523,
-            "meanExcess": 0.17311016966804643,
+            "maxExcess": 2.400367627183861,
+            "meanExcess": 0.27490688522936835,
             "pair": [
               "LM",
               "LI"
             ],
-            "stdDev": 0.36415261638606145
+            "stdDev": 0.4373562506852121
           },
           {
             "maxExcess": 1.6925824035672523,
-            "meanExcess": 0.2610684060889127,
+            "meanExcess": 0.32400408056560226,
             "pair": [
               "RI",
               "RM"
             ],
-            "stdDev": 0.39607094954272576
+            "stdDev": 0.4296470129839166
           },
           {
             "maxExcess": 1.0155644370746373,
-            "meanExcess": 0.12101116351348316,
+            "meanExcess": 0.15172166423907119,
             "pair": [
               "RM",
               "RR"
             ],
-            "stdDev": 0.2175572039718681
+            "stdDev": 0.23264222142037205
           },
           {
             "maxExcess": 1.3584952830141508,
-            "meanExcess": 0.09060690132394177,
+            "meanExcess": 0.13568050531046993,
             "pair": [
               "RR",
               "RP"
             ],
-            "stdDev": 0.21493439352549198
+            "stdDev": 0.25115049695054903
           }
         ],
         "comboPresses": 0,
@@ -8307,20 +8910,20 @@
             "presses": 0
           }
         ],
-        "meanPerStroke": 0.7123175997893275,
+        "meanPerStroke": 0.6385939215399817,
         "perCharPresses": 1.7893794749403342,
         "perCharSteps": 1.7893794749403342,
-        "perCharUnits": 1.274606492701786,
+        "perCharUnits": 1.1426868560253016,
         "perFinger": {
-          "LI": 440.2362281865991,
-          "LM": 180.3858711207724,
+          "LI": 384.2946423013482,
+          "LM": 161.83189580549296,
           "LP": 32.42298567374693,
           "LR": 59.78503157145602,
           "LT": 0,
-          "RI": 749.1510998324524,
-          "RM": 398.90697759184474,
+          "RI": 705.6269906036395,
+          "RM": 356.6451449292636,
           "RP": 8.241492082112416,
-          "RR": 267.1107957092291,
+          "RR": 206.29498773136868,
           "RT": 0
         },
         "perFingerPresses": {
@@ -8342,8 +8945,8 @@
         "singleTapRate": 0,
         "skipped": 0,
         "strokes": 2999,
-        "totalMm": 40695.38117768408,
-        "totalUnits": 2136.240481768193
+        "totalMm": 36483.47740180462,
+        "totalUnits": 1915.1431706984054
       },
       "sampleId": "modern",
       "textLength": 1676,
@@ -9512,21 +10115,21 @@
         "adjacent": [
           {
             "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.037506652369501695,
+            "meanExcess": 0.03720435490880036,
             "pair": [
               "LP",
               "LR"
             ],
-            "stdDev": 0.13546291086085824
+            "stdDev": 0.13526718301757015
           },
           {
-            "maxExcess": 1.6575364531836625,
-            "meanExcess": 0.0793797969469056,
+            "maxExcess": 0.8027756377319948,
+            "meanExcess": 0.07849978372150665,
             "pair": [
               "LR",
               "LM"
             ],
-            "stdDev": 0.2067147091825669
+            "stdDev": 0.20342132597075624
           },
           {
             "maxExcess": 1.0155644370746373,
@@ -9539,12 +10142,12 @@
           },
           {
             "maxExcess": 1.6925824035672523,
-            "meanExcess": 0.11573166759051685,
+            "meanExcess": 0.11558894209021468,
             "pair": [
               "RI",
               "RM"
             ],
-            "stdDev": 0.2636895998424461
+            "stdDev": 0.26372025700487295
           },
           {
             "maxExcess": 0.8027756377319948,
@@ -9663,17 +10266,17 @@
             "presses": 0
           }
         ],
-        "meanPerStroke": 0.6147369095643668,
+        "meanPerStroke": 0.6160360694163343,
         "perCharPresses": 1.373508353221957,
         "perCharSteps": 0.986873508353222,
-        "perCharUnits": 0.606667570656004,
+        "perCharUnits": 0.6079496770970269,
         "perFinger": {
           "LI": 100.63277929010448,
           "LM": 185.42469710207683,
           "LP": 53.862145880065974,
-          "LR": 82.2911024705786,
+          "LR": 83.321878876983,
           "LT": 0,
-          "RI": 177.76018500224237,
+          "RI": 178.87821899099222,
           "RM": 172.0409184005608,
           "RP": 106.69590432457359,
           "RR": 138.06711594925312,
@@ -9698,8 +10301,8 @@
         "singleTapRate": 60.822249093107615,
         "skipped": 0,
         "strokes": 1654,
-        "totalMm": 19369.560862390765,
-        "totalUnits": 1016.7748484194627
+        "totalMm": 19410.495700418454,
+        "totalUnits": 1018.9236588146169
       },
       "sampleId": "modern",
       "textLength": 1676,
@@ -10622,57 +11225,57 @@
         "adjacent": [
           {
             "maxExcess": 0.25,
-            "meanExcess": 0.010598454237862853,
+            "meanExcess": 0.012742341550969037,
             "pair": [
               "LP",
               "LR"
             ],
-            "stdDev": 0.04853671636742186
+            "stdDev": 0.05245005130872212
           },
           {
             "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.05885830285291249,
+            "meanExcess": 0.07657435570839285,
             "pair": [
               "LR",
               "LM"
             ],
-            "stdDev": 0.18350330626854788
+            "stdDev": 0.2083622832882156
           },
           {
             "maxExcess": 1.0155644370746373,
-            "meanExcess": 0.05615470556600888,
+            "meanExcess": 0.0635204618321066,
             "pair": [
               "LM",
               "LI"
             ],
-            "stdDev": 0.19131216560086753
+            "stdDev": 0.19918999585543523
           },
           {
             "maxExcess": 1.3584952830141508,
-            "meanExcess": 0.08680707301676503,
+            "meanExcess": 0.12460383341451804,
             "pair": [
               "RI",
               "RM"
             ],
-            "stdDev": 0.23661426070892103
+            "stdDev": 0.2812061476586546
           },
           {
             "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.05835856503922332,
+            "meanExcess": 0.08052330315146806,
             "pair": [
               "RM",
               "RR"
             ],
-            "stdDev": 0.1857115997819006
+            "stdDev": 0.2114868149555389
           },
           {
             "maxExcess": 1.3584952830141508,
-            "meanExcess": 0.0073384397374317584,
+            "meanExcess": 0.015252004492853995,
             "pair": [
               "RR",
               "RP"
             ],
-            "stdDev": 0.08577089522753724
+            "stdDev": 0.13389703475780015
           }
         ],
         "comboPresses": 0,
@@ -10698,19 +11301,19 @@
             "presses": 0
           }
         ],
-        "meanPerStroke": 0.31625976289158325,
+        "meanPerStroke": 0.27313137602716225,
         "perCharPresses": 1.7758620689655173,
         "perCharSteps": 1.7758620689655173,
-        "perCharUnits": 0.561633716859191,
+        "perCharUnits": 0.485043650530995,
         "perFinger": {
-          "LI": 22.026987657639733,
-          "LM": 33.17567475137356,
-          "LP": 6.708203932499369,
-          "LR": 19.584751721683883,
+          "LI": 18.934658438426492,
+          "LM": 28.87805396106495,
+          "LP": 5.5901699437494745,
+          "LR": 18.55397531527947,
           "LT": 0,
-          "RI": 38.42298567374692,
-          "RM": 28.861739379323605,
-          "RP": 4.031128874149275,
+          "RI": 33.95084971874735,
+          "RM": 22.677080940897124,
+          "RP": 2.0155644370746373,
           "RR": 10.062305898749054,
           "RT": 0
         },
@@ -10733,8 +11336,8 @@
         "singleTapRate": 0,
         "skipped": 0,
         "strokes": 515,
-        "totalMm": 3102.7454687886006,
-        "totalUnits": 162.87377788916538
+        "totalMm": 2679.6236473584822,
+        "totalUnits": 140.66265865398856
       },
       "sampleId": "legacy",
       "textLength": 290,
@@ -10823,48 +11426,48 @@
         "adjacent": [
           {
             "maxExcess": 0.25,
-            "meanExcess": 0.007393459711152696,
+            "meanExcess": 0.008893959877874932,
             "pair": [
               "LP",
               "LR"
             ],
-            "stdDev": 0.04053490946141943
+            "stdDev": 0.04465159180720426
           },
           {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.06659717409525356,
+            "maxExcess": 1.6575364531836625,
+            "meanExcess": 0.0819700659041482,
             "pair": [
               "LR",
               "LM"
             ],
-            "stdDev": 0.19919731736739374
+            "stdDev": 0.218128837215726
           },
           {
-            "maxExcess": 1.0155644370746373,
-            "meanExcess": 0.06269614200334181,
+            "maxExcess": 1.462214450449026,
+            "meanExcess": 0.07883754765017734,
             "pair": [
               "LM",
               "LI"
             ],
-            "stdDev": 0.19786291730885242
+            "stdDev": 0.22129655816070215
           },
           {
             "maxExcess": 1.3584952830141508,
-            "meanExcess": 0.12975313222597226,
+            "meanExcess": 0.19324205321737092,
             "pair": [
               "RI",
               "RM"
             ],
-            "stdDev": 0.2862585467557691
+            "stdDev": 0.3459594011853606
           },
           {
             "maxExcess": 1.6575364531836625,
-            "meanExcess": 0.08029592800484714,
+            "meanExcess": 0.10661530567960503,
             "pair": [
               "RM",
               "RR"
             ],
-            "stdDev": 0.21102424373512735
+            "stdDev": 0.2442621249992009
           },
           {
             "maxExcess": 1.3584952830141508,
@@ -10899,18 +11502,18 @@
             "presses": 0
           }
         ],
-        "meanPerStroke": 0.38322599590384365,
+        "meanPerStroke": 0.34862139986196955,
         "perCharPresses": 1.7893794749403342,
         "perCharSteps": 1.7893794749403342,
-        "perCharUnits": 0.6857367313339064,
+        "perCharUnits": 0.6238159774379753,
         "perFinger": {
-          "LI": 131.7234787586472,
-          "LM": 274.1042117556923,
+          "LI": 129.94270235224275,
+          "LM": 252.79062296884007,
           "LP": 32.42298567374693,
-          "LR": 77.30823048033105,
+          "LR": 71.12357204190457,
           "LT": 0,
-          "RI": 266.71825392998016,
-          "RM": 303.094913138046,
+          "RI": 228.29526825623327,
+          "RM": 267.01773891389144,
           "RP": 6.046693311223912,
           "RR": 57.87599466795803,
           "RT": 0
@@ -10934,14 +11537,14 @@
         "singleTapRate": 0,
         "skipped": 0,
         "strokes": 2999,
-        "totalMm": 21894.065210682696,
-        "totalUnits": 1149.2947617156271
+        "totalMm": 19917.07176444419,
+        "totalUnits": 1045.5155781860467
       },
       "sampleId": "modern",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     }
   ],
-  "sourceCommit": "0e84def23fcad4864d4a3ade5ce02c2236888335",
+  "sourceCommit": "613d25ddc4974a662298f1f49b44d4d937835617",
   "version": 1
 }

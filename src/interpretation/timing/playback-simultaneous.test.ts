@@ -41,6 +41,8 @@ function stroke(index: number, presses: readonly Press[], roles: readonly ('outp
     inputChar: String(index),
     inputIndex: index,
     selectionIndex: index,
+    kanaStart: index,
+    kanaEnd: index,
     aggregationGroupId: 'single',
     classifications: [],
     triggerKeys: [],

@@ -71,6 +71,8 @@ const stroke = (
   inputChar: String(index),
   inputIndex: index,
   selectionIndex: index,
+  kanaStart: index,
+  kanaEnd: index,
   aggregationGroupId: 'single',
   classifications: [],
   triggerKeys: [],
