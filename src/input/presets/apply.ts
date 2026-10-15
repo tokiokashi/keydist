@@ -26,6 +26,10 @@ import {
  * 例外: プリセットに無い項目のうち既定値が文脈で決まるもの（指の割当）は、全体に上書きがあっても既定値を書けない。
  * Workspaceの値は全体のままになるので、`skipped`に入れて返す（黙って残さない）。
  *
+ * Setupのレベルは、全体・物理配列・打ち方・配列の値を継承する。既定値と同じ値でも、継承する値と同じとは限らない
+ * （全体がN=7の時に、既定のN=3を流し込んでSetupをN=3にするため）。継承する値はレジストリからは分からないので、
+ * 既定値と同じ項目も上書きとして書く。
+ *
  * 「既定と同じ」を判定できるのは既定値が文脈に依らない項目だけ（`defaultValue`が関数の項目は
  * 配列・物理配列を知らないと決まらない。例: 指の割当）。そういう項目の値は、既定と同じに
  * 見えても上書きとして残す。ここで既定を推測して消すと、別の文脈で実効値が変わってしまう。
@@ -66,7 +70,7 @@ export function applyPresetValues<R extends ItemRegistry>(
         ? { known: true, value: inherited[itemId] }
         : { known: typeof item.defaultValue !== 'function', value: item.defaultValue };
       if (base.known && sameValue(value, base.value)) continue;
-    } else if (typeof item.defaultValue !== 'function' && sameValue(value, item.defaultValue)) continue;
+    } else if (level.kind !== 'setup' && typeof item.defaultValue !== 'function' && sameValue(value, item.defaultValue)) continue;
     next[itemId] = value;
   }
   if (inherited !== undefined) {

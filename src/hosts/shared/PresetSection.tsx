@@ -10,7 +10,7 @@ import {
   renamePresetCommand,
   savePresetCommand,
 } from '#engine/preset-commands.ts';
-import { GLOBAL_LEVEL, WORKSPACE_LEVEL } from './condition-edit.ts';
+import { GLOBAL_LEVEL, WORKSPACE_LEVEL, setupLevel } from './condition-edit.ts';
 import type { ConditionEditorContext } from './ConditionEditor.tsx';
 import { ErrorDetails } from './ErrorDetails.tsx';
 import { PaneMenu } from './PaneHeaderParts.tsx';
@@ -71,10 +71,13 @@ type FocusTarget =
 
 export function PresetSection({ editor }: { readonly editor: ConditionEditorContext }) {
   const { overrides, presetLibrary, dispatch } = editor;
-  // 保存・流し込みの先は、モーダルが開いた時の編集先と同じレベル（Workspaceのペインは Workspace、単体ページは全体）。
-  // Workspaceの中の操作が、他の画面の全体の値を書き換えないようにする。
-  const level = editor.workspace === undefined ? GLOBAL_LEVEL : WORKSPACE_LEVEL;
-  const scopeLabel = editor.workspace === undefined ? '全体' : 'Workspace';
+  // 保存・流し込みの先は、モーダルが開いた時の編集先と同じレベル（WorkspaceのペインはWorkspace、単体ページは全体、
+  // Setupの編集画面はそのSetup）。Workspaceの中の操作が、他の画面の全体の値を書き換えないようにする。
+  // Setupのレベルでは、Setupのレベルに置ける項目だけを保存・流し込みの対象にする。
+  const level = editor.setup !== undefined
+    ? setupLevel(editor.setup.id)
+    : editor.workspace === undefined ? GLOBAL_LEVEL : WORKSPACE_LEVEL;
+  const scopeLabel = editor.setup !== undefined ? 'Setup' : editor.workspace === undefined ? '全体' : 'Workspace';
   const rows = useMemo(() => presetRows(presetLibrary, overrides, level), [presetLibrary, overrides, level]);
   const [name, setName] = useState('');
   const [renaming, setRenaming] = useState<{ readonly id: string; readonly draft: string } | undefined>();

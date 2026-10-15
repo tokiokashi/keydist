@@ -27,6 +27,7 @@ import {
   ACTION_EXCEPTION_CLASSES,
   actionCountModeOf,
   canEditAtLayout,
+  canEditAtSetup,
   canPromoteLayoutValue,
   classGroupingOf,
   canEditAtWorkspace,
@@ -36,6 +37,8 @@ import {
   promoteWorkspaceToGlobalCommand,
   setGlobalCommand,
   setLayoutCommand,
+  setSetupConditionCommand,
+  setupOverrideOf,
   setWorkspaceCommand,
   staticDefaultOf,
   workspaceOverrideOf,
@@ -82,6 +85,18 @@ export interface ConditionEditorContext {
    * 単体ページは渡さない（Workspaceのレベルを持たず、全体のレベルで開く）。
    */
   readonly workspace?: { readonly id: string };
+  /**
+   * Setupのレベルだけを編集する時に渡す（Setupの編集画面）。渡すと、行の編集先はこのSetupのレベルに固定され、
+   * 全体・Workspace・配列への切り替えは出ない。継承する値は、行の`setupBase`（Setupのレベルの手前までの値）。
+   * `layoutId`は、継承する値が配列の値のとき、戻す先をそう呼ぶために使う。
+   */
+  readonly setup?: { readonly id: string; readonly layoutId: string };
+  /**
+   * 対象にSetupを含むペインが渡す、そのSetup。モーダルに、Setupごとに編集画面を開くリンクを出す
+   * （Setupのレベルの条件はそこで変える。このモーダルは書かない）。`name`は複数のSetupを区別する表示名で、
+   * 単一対象のペインは省く（リンクの文言は「このSetup」になる）。
+   */
+  readonly openSetups?: readonly { readonly id: string; readonly name?: string }[];
   /** 全体で変えても画面が変わらない行の理由（`overrideWinsNotices`）。 */
   readonly notices?: ReadonlyMap<SettingsItemId, string>;
   /** Workspaceのレベルを変えても画面が変わらない行の理由（`overrideWinsNotices`の`'Workspace'`）。 */
@@ -106,13 +121,14 @@ export interface ConditionEditorProps {
 }
 
 /** 行の編集先。 */
-type EditScope = 'workspace' | 'global' | 'layout';
+type EditScope = 'workspace' | 'global' | 'layout' | 'setup';
 
 /** 編集先の名前。ボタンには出さず、開いたメニューの見出しと読み上げ名に使う。 */
 const SCOPE_TEXT: Readonly<Record<EditScope, string>> = {
   workspace: 'Workspace',
   global: '全体',
   layout: 'この配列',
+  setup: 'このSetup',
 };
 
 const ON_OFF = [
@@ -121,7 +137,7 @@ const ON_OFF = [
 ] as const;
 
 export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
-  const { overrides, dispatch, layout, workspace } = editor;
+  const { overrides, dispatch, layout, workspace, setup } = editor;
   const rowOf = (id: SettingsItemId) => rows.find((row) => row.id === id);
 
   // 行ごとに、いま編集しているレベル。選ばなければ開いた時の既定（Workspaceのペインは Workspace、単体ページは全体）。
@@ -129,7 +145,9 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
   const [chosenScope, setChosenScope] = useState<ReadonlyMap<SettingsItemId, EditScope>>(new Map());
   const layoutEditable = (id: SettingsItemId) => layout !== undefined && canEditAtLayout(id) && !editor.hiddenIds?.includes(id);
   const defaultScopeOf = (id: SettingsItemId): EditScope => (workspace !== undefined && canEditAtWorkspace(id) ? 'workspace' : 'global');
+  const setupEditable = (id: SettingsItemId) => setup !== undefined && canEditAtSetup(id) && !editor.hiddenIds?.includes(id);
   const scopeOf = (id: SettingsItemId): EditScope => {
+    if (setup !== undefined) return setupEditable(id) ? 'setup' : 'global';
     const chosen = chosenScope.get(id) ?? defaultScopeOf(id);
     if (chosen === 'layout') return layoutEditable(id) ? 'layout' : defaultScopeOf(id);
     if (chosen === 'workspace') return workspace !== undefined && canEditAtWorkspace(id) ? 'workspace' : 'global';
@@ -140,6 +158,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
   /** 既定と違う値を、いま編集しているレベルで持っているか。行の左線に使う。 */
   const changed = (id: GlobalEditableId) => {
     const scope = scopeOf(id);
+    if (setup !== undefined && scope === 'setup') return setupOverrideOf(overrides, setup.id, id) !== undefined;
     if (layout !== undefined && scope === 'layout') return layoutOverrideOf(overrides, layout.id, id) !== undefined;
     if (scope === 'workspace') return workspaceOverrideOf(overrides, id) !== undefined;
     return globalOverrideOf(overrides, id) !== undefined;
@@ -151,6 +170,19 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
    */
   function scoped<K extends GlobalEditableId>(id: K, globalValue: SettingsValueMap[K], globalDefault: SettingsValueMap[K]): OptionBinding<SettingsValueMap[K]> {
     const scope = scopeOf(id);
+    if (setup !== undefined && scope === 'setup') {
+      const row = rowOf(id);
+      const inherited = (row?.setupBase ?? globalValue) as SettingsValueMap[K];
+      // 継承する値が配列のレベルの値・配列の推奨の時は、戻す先をそう呼ぶ（全体の値へ戻すと言うと事実と合わない）
+      const layoutValue = layoutOverrideOf(overrides, setup.layoutId, id);
+      const fromLayout = layoutValue !== undefined && JSON.stringify(layoutValue) === JSON.stringify(inherited);
+      return {
+        value: setupOverrideOf(overrides, setup.id, id) ?? inherited,
+        defaultValue: inherited,
+        resetTarget: fromLayout ? '配列の値' : row?.hasLayoutRecommendation === true ? '推奨' : '全体の値',
+        onChange: (next) => dispatch(setSetupConditionCommand(setup.id, id, next, inherited)),
+      };
+    }
     if (layout !== undefined && scope === 'layout') {
       const row = rowOf(id);
       const inherited = (row === undefined ? globalValue : row.layoutBase) as SettingsValueMap[K];
@@ -202,6 +234,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
    * 読み上げ名が持つ。
    */
   const scopeMenu = (id: GlobalEditableId, label: string, notApplicable: boolean) => {
+    if (setup !== undefined) return null;
     const scope = scopeOf(id);
     const canWorkspace = workspace !== undefined && canEditAtWorkspace(id);
     const canLayout = layoutEditable(id) && !notApplicable;
@@ -270,7 +303,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
       .filter((text): text is string => text !== undefined);
     // 配列の値を編集している行では、配列の値が勝つ理由は要らない（いま見ているのがその値）。
     const scope = scopeOf(id);
-    const notice = scope === 'layout' ? undefined : (scope === 'workspace' ? editor.workspaceNotices : editor.notices)?.get(id);
+    const notice = scope === 'layout' || scope === 'setup' ? undefined : (scope === 'workspace' ? editor.workspaceNotices : editor.notices)?.get(id);
     return (
       <div
         key={id}

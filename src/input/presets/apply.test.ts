@@ -60,3 +60,13 @@ test('置き換え: レジストリに無い項目・予約名は入れず、入
   assert.deepEqual([...result.skipped].sort(), ['__proto__', 'nothing']);
   assert.equal(({} as Record<string, unknown>).windowSize, undefined);
 });
+
+test('Setupのレベル: 継承する値を知れないので、既定と同じ値も上書きとして書く。許可に無い項目は入れない', () => {
+  const registry = {
+    windowSize: defineItem<number>({ id: 'windowSize', allowedLevels: new Set(['global', 'setup']), defaultValue: 3 }),
+    onlyGlobal: defineItem<boolean>({ id: 'onlyGlobal', allowedLevels: new Set(['global']), defaultValue: false }),
+  };
+  const result = applyPresetValues(registry, { global: { windowSize: 7 } }, { kind: 'setup', setupId: 's' }, { windowSize: 3, onlyGlobal: true });
+  assert.deepEqual(result.overrides.setup?.['s'], { windowSize: 3 });
+  assert.deepEqual(result.skipped, ['onlyGlobal']);
+});

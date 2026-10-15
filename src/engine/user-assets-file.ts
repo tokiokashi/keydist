@@ -7,11 +7,19 @@ import { decodeUserFingerAssignments } from '#input/shapes/user-finger-assignmen
 import type { FingerAssignment } from '#input/shapes/geometry.ts';
 import type { KeydistAssets } from './commands.ts';
 import { FINGER_ASSIGNMENT_REGISTRY } from './finger-assignment.ts';
+import {
+  decodeUserAssetSetups,
+  encodeUserAssetSetups,
+  mergeUserAssetSetups,
+  userAssetSetupsOf,
+  withResolvableReferences,
+  type UserAssetSetup,
+} from './user-assets-setups.ts';
 
 /**
- * 自作の配列・ローマ字規則・指の割り当ての書き出しファイルの形と、読み込み時の突き合わせ（DOMを使わない計算）。
+ * 自作の配列・ローマ字規則・指の割り当て・Setupの書き出しファイルの形と、読み込み時の突き合わせ（DOMを使わない計算）。
  *
- * ファイルは `{ format, version, layouts, romajiRules, fingerAssignments }`。`format` は書く直前に
+ * ファイルは `{ format, version, layouts, romajiRules, fingerAssignments, setups }`。`format` は書く直前に
  * `platform/browser-download.ts` が付け、読む時は `format` を見てからこのcodecへ渡す（プリセットのファイルと同じ封筒）。
  * 自作の物理配列は扱わない。
  */
@@ -28,6 +36,8 @@ export interface UserAssetsBundle {
   readonly layouts: readonly UserLayout[];
   readonly romajiRules: readonly UserRomajiRule[];
   readonly fingerAssignments: readonly FingerAssignment[];
+  /** Setupと、そのSetupのレベルの条件。`setups`の無い古いファイルは空になる。 */
+  readonly setups: readonly UserAssetSetup[];
 }
 
 export const USER_ASSETS_FILE_CODEC: AssetCodec<UserAssetsBundle> = defineAssetCodec({
@@ -42,16 +52,18 @@ export const USER_ASSETS_FILE_CODEC: AssetCodec<UserAssetsBundle> = defineAssetC
       layouts: layouts.value,
       romajiRules: decodeUserRomajiRules(payload.romajiRules, 'romajiRules', diagnostics),
       fingerAssignments: decodeUserFingerAssignments(payload.fingerAssignments, 'fingerAssignments', diagnostics),
+      setups: decodeUserAssetSetups(payload.setups, 'setups', diagnostics),
     };
   },
   encodePayload: (value) => ({
     layouts: value.layouts.map((layout) => structuredClone(layout)),
     romajiRules: value.romajiRules.map((rule) => ({ ...rule, overrides: { ...rule.overrides } })),
     fingerAssignments: value.fingerAssignments.map((assignment) => structuredClone(assignment)),
+    setups: encodeUserAssetSetups(value.setups),
   }),
 });
 
-export type UserAssetsHoldings = Pick<KeydistAssets, 'userLayouts' | 'userRomajiRules' | 'fingerAssignments'>;
+export type UserAssetsHoldings = Pick<KeydistAssets, 'userLayouts' | 'userRomajiRules' | 'fingerAssignments' | 'setupLibrary'>;
 
 /**
  * 推奨の規則を、解決できるものだけ残した配列にする。組み込みでも`resolve`が返す先でもない規則を指す配列は、
@@ -68,6 +80,7 @@ function withResolvableRomaji(layout: UserLayout, resolve: (id: string) => strin
 /**
  * 書き出すファイルの本体（`format`は付けない）。ファイルに入れる規則（手元の自作の規則）に無い規則を
  * 指す配列は、参照を外して書く。読み込む側が手元の同じidの規則に結び付けないようにするため。
+ * Setupのレベルの条件が指す指の割り当て・ローマ字規則も同じで、ファイルに入れない自作の資産への参照は外す。
  */
 export function userAssetsFileBody(assets: UserAssetsHoldings): Record<string, unknown> {
   const ruleIds = new Set(assets.userRomajiRules.map((rule) => rule.id));
@@ -75,10 +88,14 @@ export function userAssetsFileBody(assets: UserAssetsHoldings): Record<string, u
     layouts: assets.userLayouts.map((layout) => withResolvableRomaji(layout, (id) => (ruleIds.has(id) ? id : undefined))),
     romajiRules: assets.userRomajiRules,
     fingerAssignments: assets.fingerAssignments,
+    setups: userAssetSetupsOf(assets.setupLibrary).map((setup) => withResolvableReferences(setup, {
+      ruleIds,
+      fingerAssignmentIds: new Set(assets.fingerAssignments.map((assignment) => assignment.id)),
+    })),
   });
 }
 
-export type UserAssetKind = 'layout' | 'romaji-rule' | 'finger-assignment';
+export type UserAssetKind = 'layout' | 'romaji-rule' | 'finger-assignment' | 'setup';
 
 /** 突き合わせの結果の1件。 */
 export type UserAssetImportOutcome =
@@ -104,7 +121,7 @@ export interface UserAssetImportEntry {
 
 export interface UserAssetsMerge {
   readonly assets: UserAssetsHoldings;
-  /** 配列、規則、指の割り当ての順で、ファイルの並びのまま。 */
+  /** 配列、規則、指の割り当て、Setupの順で、ファイルの並びのまま。 */
   readonly entries: readonly UserAssetImportEntry[];
 }
 
@@ -272,15 +289,28 @@ export function mergeUserAssets(current: UserAssetsHoldings, incoming: UserAsset
     content: fingerContent,
     rebuild: (assignment, id, name) => ({ ...assignment, id, name }),
   }, stamp);
+  // Setupは、突き合わせで別のidになった配列・規則・指の割り当てへ付け替えてから比べる
+  const setups = mergeUserAssetSetups(
+    current.setupLibrary,
+    incoming.setups,
+    { layouts: layouts.idMap, rules: rules.idMap, fingers: fingers.idMap },
+    new Map(layouts.items.map((layout) => [layout.id, layout.name] as const)),
+    stamp,
+  );
   return {
-    assets: { userLayouts: layouts.items, userRomajiRules: rules.items, fingerAssignments: fingers.items },
-    entries: [...layouts.entries, ...rules.entries, ...fingers.entries],
+    assets: { userLayouts: layouts.items, userRomajiRules: rules.items, fingerAssignments: fingers.items, setupLibrary: setups.library },
+    entries: [
+      ...layouts.entries,
+      ...rules.entries,
+      ...fingers.entries,
+      ...setups.entries.map((entry): UserAssetImportEntry => ({ assetKind: 'setup', ...entry })),
+    ],
   };
 }
 
 /**
  * ファイルから読んだ自作の資産を手元へ足す。足すものが無ければ何もしない。
- * 3つの資産を1回の変更で書くので、元に戻すと全部が戻る。
+ * 4つの資産を1回の変更で書くので、元に戻すと全部が戻る。
  */
 export interface UserAssetsImportPlan {
   readonly command: Command<KeydistAssets>;
@@ -301,6 +331,7 @@ export function importUserAssetsCommand(incoming: UserAssetsBundle, stamp: strin
       ...(merged.userLayouts.length === current.userLayouts.length ? {} : { userLayouts: merged.userLayouts }),
       ...(merged.userRomajiRules.length === current.userRomajiRules.length ? {} : { userRomajiRules: merged.userRomajiRules }),
       ...(merged.fingerAssignments.length === current.fingerAssignments.length ? {} : { fingerAssignments: merged.fingerAssignments }),
+      ...(merged.setupLibrary === current.setupLibrary ? {} : { setupLibrary: merged.setupLibrary }),
     };
     if (Object.keys(changes).length === 0) return { kind: 'no-op' };
     return { kind: 'applied', label: '自作の資産を読み込む', changes };
@@ -326,7 +357,7 @@ export function parseUserAssetsFile(text: string): UserAssetsFileReadResult {
   if (!isRecord(parsed) || parsed.format !== USER_ASSETS_FILE_FORMAT) {
     return fail('keydistの自作の資産のファイルではありません', `format: ${JSON.stringify(isRecord(parsed) ? parsed.format : undefined) ?? 'undefined'}`);
   }
-  for (const key of ['layouts', 'romajiRules', 'fingerAssignments']) {
+  for (const key of ['layouts', 'romajiRules', 'fingerAssignments', 'setups']) {
     const list = parsed[key];
     if (Array.isArray(list) && list.length > USER_ASSETS_FILE_MAX_ITEMS) {
       return fail(`件数が多すぎます（${USER_ASSETS_FILE_MAX_ITEMS}件まで）`, `${key}: ${list.length}`);
@@ -340,8 +371,8 @@ export function parseUserAssetsFile(text: string): UserAssetsFileReadResult {
     }
     return fail('ファイルの形式が正しくありません', JSON.stringify(reason));
   }
-  const { layouts, romajiRules, fingerAssignments } = decoded.value;
-  if (layouts.length + romajiRules.length + fingerAssignments.length === 0) {
+  const { layouts, romajiRules, fingerAssignments, setups } = decoded.value;
+  if (layouts.length + romajiRules.length + fingerAssignments.length + setups.length === 0) {
     return fail(
       '読み込める資産がありませんでした',
       ...decoded.diagnostics.map((diagnostic) => `${diagnostic.path}: ${diagnostic.message}`),

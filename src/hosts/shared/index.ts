@@ -46,3 +46,4 @@ export {
 export { TargetSelection, type TargetSelectionProps, type TargetSummaryItem } from './TargetSelection.tsx';
 export { ConditionEditor, type ConditionEditorContext, type ConditionEditorProps } from './ConditionEditor.tsx';
 export { overrideWinsNotices } from './condition-edit.ts';
+export { SetupLink, SetupLinkContext, type SetupLinkProps } from './setup-link.tsx';

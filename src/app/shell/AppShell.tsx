@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router';
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { ContextBarLeadingSlot } from '#hosts/shared/ContextBar.tsx';
 import { PresetFileIoContext, type PresetFileIo } from '#hosts/shared/preset-file-io.ts';
+import { SetupLinkContext, type SetupLinkProps } from '#hosts/shared/setup-link.tsx';
 import { PersonalSpeedLinkContext, type PersonalSpeedLinkProps } from '#ui/primitives/personal-speed-link.tsx';
 import { downloadJson } from '#platform/browser-download.ts';
 import { readTextFile } from '#platform/browser-file.ts';
@@ -38,6 +39,10 @@ function PersonalSpeedRouterLink({ className, children }: PersonalSpeedLinkProps
   return <Link to="/personal-speed" className={className}>{children}</Link>;
 }
 
+/** Setupの編集画面へのリンク。条件のモーダルが、ルーターを知らずにそのSetupを開くリンクを出せるよう、シェルで渡す。 */
+function SetupRouterLink({ setupId, className, children }: SetupLinkProps) {
+  return <Link to="/setup" search={{ setup: setupId }} className={className}>{children}</Link>;
+}
 
 function subscribeMobile(listener: () => void): () => void {
   const query = window.matchMedia(MOBILE_QUERY);
@@ -207,10 +212,12 @@ export function AppShell({ children, hasContextBar }: AppShellProps) {
       <ContextBarLeadingSlot.Provider value={toggle}>
         <PresetFileIoContext.Provider value={PRESET_FILE_IO}>
           <PersonalSpeedLinkContext.Provider value={PersonalSpeedRouterLink}>
-            <div className="shell-body" inert={bodyInert}>
-              {hasContextBar ? null : <div className="shell-bar">{toggle}</div>}
-              <main className="app-shell">{children}</main>
-            </div>
+            <SetupLinkContext.Provider value={SetupRouterLink}>
+              <div className="shell-body" inert={bodyInert}>
+                {hasContextBar ? null : <div className="shell-bar">{toggle}</div>}
+                <main className="app-shell">{children}</main>
+              </div>
+            </SetupLinkContext.Provider>
           </PersonalSpeedLinkContext.Provider>
         </PresetFileIoContext.Provider>
       </ContextBarLeadingSlot.Provider>

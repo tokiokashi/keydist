@@ -9,6 +9,7 @@ import {
 import { resetAllPlan } from './condition-edit.ts';
 import { ConditionEditor, type ConditionEditorContext } from './ConditionEditor.tsx';
 import { PresetSection } from './PresetSection.tsx';
+import { SetupLink } from './setup-link.tsx';
 import { historyShortcutOf, isMacPlatform, isTextEntryTarget } from '#ui/primitives/history-shortcut.ts';
 
 /**
@@ -205,6 +206,13 @@ function ConditionModal({ rows, header, targetDiffs, editor, onClose }: Conditio
               {header.layoutName} / {header.shapeName} · 指の割当: {header.fingerAssignmentName}
             </p>
           ) : null}
+          {editor.openSetups === undefined ? null : editor.openSetups.map((setup) => (
+            <p key={setup.id} className="pane-condition-setup-link">
+              <SetupLink setupId={setup.id}>
+                {setup.name === undefined ? 'このSetupの物理配列と条件を編集' : `「${setup.name}」の物理配列と条件を編集`}
+              </SetupLink>
+            </p>
+          ))}
           <PresetSection editor={editor} />
           <ConditionEditor editor={editor} rows={rows} />
           {targetDiffs.length > 0 ? (

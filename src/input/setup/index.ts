@@ -31,6 +31,8 @@ export {
   duplicateSetup,
   deleteSetup,
   relabelSetup,
+  setSetupShape,
   type SetupLibrary,
 } from './collection.ts';
 export { setupLibraryCodec } from './codec.ts';
+export { setupLibraryItemScope } from './library-scope.ts';

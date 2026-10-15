@@ -186,6 +186,55 @@ export function promoteWorkspaceToGlobalCommand<K extends GlobalEditableId>(
   return promoteCascadeOverrideCommand(WORKSPACE_LEVEL, GLOBAL_LEVEL, id, defaultValue, workspaceId);
 }
 
+/** Setupのレベルを指す。Setupの編集画面（`/setup`）の書き込み先。 */
+export function setupLevel(setupId: string): CascadeLevel {
+  return { kind: 'setup', setupId };
+}
+
+/** Setupのレベルへ書ける項目。`allowedLevels`から引くので、項目の定義を変えれば行の導線も追従する。 */
+export function canEditAtSetup(id: SettingsItemId): boolean {
+  return SETTINGS_ITEMS[id].allowedLevels.has('setup');
+}
+
+/** Setupのレベルの上書き。無ければ`undefined`（配列などの値を継承している）。 */
+export function setupOverrideOf<K extends SettingsItemId>(
+  overrides: SettingsCascadeOverrides,
+  setupId: string,
+  id: K,
+): SettingsValueMap[K] | undefined {
+  return readOverride(overrides, setupLevel(setupId), id);
+}
+
+/**
+ * Setupのレベルに書く。Setupのレベルの手前までの値（`inherited`。全体・物理配列・打ち方・配列の値、配列の推奨など）と
+ * 同じ値を書く時は上書きを消す。同じ値を残すと、継承しているだけなのに「Setupで変更」と出てしまうため。
+ */
+export function setSetupConditionCommand<K extends SettingsItemId>(
+  setupId: string,
+  id: K,
+  next: SettingsValueMap[K],
+  inherited: SettingsValueMap[K],
+): Command<KeydistAssets> {
+  return JSON.stringify(next) === JSON.stringify(inherited)
+    ? resetCascadeItemCommand(setupLevel(setupId), id)
+    : setCascadeOverrideCommand(setupLevel(setupId), id, next);
+}
+
+/** 行を出している項目のうち、Setupのレベルに上書きがあるもの。 */
+export function resettableSetupIds(
+  overrides: SettingsCascadeOverrides,
+  setupId: string,
+  hiddenIds: readonly SettingsItemId[] = [],
+): readonly SettingsItemId[] {
+  return (Object.keys(SETTINGS_ITEMS) as SettingsItemId[]).filter((id) =>
+    !hiddenIds.includes(id) && canEditAtSetup(id) && setupOverrideOf(overrides, setupId, id) !== undefined);
+}
+
+/** Setupのレベルの上書きを、指定した項目ぶんまとめて消す（1コマンド＝元に戻すの1回で全部戻る）。 */
+export function resetSetupConditionsCommand(setupId: string, itemIds: readonly SettingsItemId[]): Command<KeydistAssets> {
+  return resetCascadeItemsAtLevelsCommand([{ level: setupLevel(setupId), itemIds }]);
+}
+
 /** 全体のレベルの上書き。無ければ`undefined`（既定値のまま）。 */
 export function globalOverrideOf<K extends GlobalEditableId>(
   overrides: SettingsCascadeOverrides,

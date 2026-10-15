@@ -10,6 +10,7 @@ const KIND_LABELS: Readonly<Record<UserAssetKind, string>> = {
   layout: '配列',
   'romaji-rule': 'ローマ字規則',
   'finger-assignment': '指の割り当て',
+  setup: 'Setup',
 };
 
 /** 書き出した件数の文。0件の種類は出さない。 */
@@ -18,6 +19,7 @@ export function exportedText(assets: UserAssetsHoldings): string {
     ['layout', assets.userLayouts.length],
     ['romaji-rule', assets.userRomajiRules.length],
     ['finger-assignment', assets.fingerAssignments.length],
+    ['setup', assets.setupLibrary.setups.length],
   ] as const;
   const listed = parts.filter(([, count]) => count > 0).map(([kind, count]) => `${KIND_LABELS[kind]}${count}件`);
   return `${listed.join('、')}を書き出しました`;
@@ -31,6 +33,7 @@ export function importEntryText(entry: UserAssetImportEntry): string {
     case 'added':
       return `${label}「${entry.name}」を足しました`;
     case 'added-renamed':
+      if (entry.assetKind === 'setup') return `${label}「${entry.name}」は、手元の別の${label}と重なり中身が違うため、新しい${label}として足しました`;
       return outcome.overlap.with === 'builtin'
         ? `組み込みの${label}「${outcome.overlap.name}」と重なるため、${label}「${outcome.addedName}」として足しました`
         : `${label}「${entry.name}」は、手元の「${outcome.overlap.name}」と重なり中身が違うため、「${outcome.addedName}」として足しました`;

@@ -909,6 +909,10 @@ h2.pane-frame-title {
   overflow-wrap: anywhere;
 }
 
+.pane-condition-setup-link {
+  margin: 0 0 0.6rem;
+}
+
 /*
  * 狭い幅では対象ごとの差も項目名と値を縦に積む。条件のモーダルの中の並べ方なので、スマホ幅の境目
  * （760px）には合わせない。760pxに合わせると、シートの中身の幅（726px）で縦積みになり、
