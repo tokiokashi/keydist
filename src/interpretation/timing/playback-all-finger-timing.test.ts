@@ -214,8 +214,10 @@ test('held-trigger継続中の指はStroke終了まで空いたとみなさな�
     actionsPerSecond: 10,
     sameHandDifferentFingerActionsPerSecond: 10,
     sameHandDifferentFingerActionsPerSecondByPair: {},
-    fingerSpeedUnitsPerSecond: { LI: 5 },
-    fallbackFingerSpeedUnitsPerSecond: 10,
+    fingerRepeatMs: { LI: 1000 / 10 },
+    fingerMoveMsPerUnit: { LI: 1000 / 5 },
+    fallbackRepeatMs: 1000 / 10,
+    fallbackMoveMsPerUnit: 1000 / 10,
     measuredAt: 1,
   };
 

@@ -20,22 +20,83 @@ import {
   CALIBRATION_ACTIONS_PER_SECOND_MAX,
   CALIBRATION_ACTIONS_PER_SECOND_MIN,
   CALIBRATION_FINGER_SAMPLES,
-  CALIBRATION_FINGER_SPEED_MAX,
-  CALIBRATION_FINGER_SPEED_MIN,
   CALIBRATION_SAME_HAND_SAMPLES,
-  fallbackFingerSpeedFromSamples,
-  fingerSpeedFromSamples,
   handDirection,
+  median,
   sameHandDirectedFingerPairKey,
   sameHandFingerPairKey,
   type CalibrationKeyPair,
-  type FingerSpeedSample,
   type PlaybackCalibration,
 } from '#interpretation/timing/calibration.ts';
 import { clearPlaybackCalibration, savePlaybackCalibration } from './playback-calibration-storage.ts';
 import type { UiPlaybackState, UiStateStorage, UiStateV1 } from './ui-state.ts';
 
 export type CalibrationDirection = 'L→R' | 'R→L';
+
+/** 旧画面が指の移動速度[u/秒]として受け付ける範囲。 */
+export const CALIBRATION_FINGER_SPEED_MIN = 0.1;
+export const CALIBRATION_FINGER_SPEED_MAX = 100;
+
+/** ホームと下段のキーの往復1回ぶんの、指の移動速度の標本。 */
+export interface FingerSpeedSample {
+  finger: Finger;
+  distance: number;
+  durationMs: number;
+}
+
+function speedFromSample(sample: FingerSpeedSample): number | undefined {
+  if (!Number.isFinite(sample.distance) || sample.distance <= 0) return undefined;
+  if (!Number.isFinite(sample.durationMs) || sample.durationMs <= 0) return undefined;
+  return sample.distance / (sample.durationMs / 1000);
+}
+
+/** 指ごとに中央値を取り、指ごとの速度を残す。 */
+export function fingerSpeedFromSamples(samples: readonly FingerSpeedSample[]): ReadonlyMap<Finger, number> {
+  const grouped = new Map<Finger, number[]>();
+  for (const sample of samples) {
+    const speed = speedFromSample(sample);
+    if (speed === undefined) continue;
+    const values = grouped.get(sample.finger) ?? [];
+    values.push(speed);
+    grouped.set(sample.finger, values);
+  }
+  const speeds = new Map<Finger, number>();
+  for (const [finger, values] of grouped) {
+    const value = median(values);
+    if (value !== undefined) speeds.set(finger, value);
+  }
+  return speeds;
+}
+
+/** 測定できなかった指へ適用する全サンプルの中央値。 */
+export function fallbackFingerSpeedFromSamples(samples: readonly FingerSpeedSample[]): number | undefined {
+  return median(samples.map(speedFromSample).filter((value): value is number => value !== undefined));
+}
+
+/**
+ * 旧画面が測った通常速度と指の移動速度を、保存値の形にする。
+ * 旧画面は指ごとに同じキーを続けて打つ時間を測らないので、全ての指の続け打ちの基準を通常速度の逆数にする。
+ * 指の移動の時間は、測った速度の逆数をそのまま1uあたりの時間にする。
+ */
+export function legacyFingerTimes(
+  actionsPerSecond: number,
+  fingerSpeedUnitsPerSecond: Partial<Record<Finger, number>>,
+  fallbackFingerSpeedUnitsPerSecond: number,
+): Pick<PlaybackCalibration, 'fingerRepeatMs' | 'fingerMoveMsPerUnit' | 'fallbackRepeatMs' | 'fallbackMoveMsPerUnit'> {
+  const repeatMs = 1000 / actionsPerSecond;
+  const speeds = Object.entries(fingerSpeedUnitsPerSecond) as [Finger, number][];
+  return {
+    fingerRepeatMs: Object.fromEntries(speeds.map(([finger]) => [finger, repeatMs])),
+    fingerMoveMsPerUnit: Object.fromEntries(speeds.map(([finger, speed]) => [finger, 1000 / speed])),
+    fallbackRepeatMs: repeatMs,
+    fallbackMoveMsPerUnit: 1000 / fallbackFingerSpeedUnitsPerSecond,
+  };
+}
+
+/** 保存値の1uあたりの移動の時間[ms/u]を、旧画面が表示する指の移動速度[u/秒]にする。 */
+function legacySpeedOf(moveMsPerUnit: number): number {
+  return moveMsPerUnit > 0 ? Math.min(CALIBRATION_FINGER_SPEED_MAX, 1000 / moveMsPerUnit) : CALIBRATION_FINGER_SPEED_MAX;
+}
 
 export interface AnalyzerCalibrationValues {
   actions: string;
@@ -298,7 +359,7 @@ export function createAnalyzerCalibrationModel(
       return {
         ...common,
         instruction: calibration
-          ? `保存済み: 通常 ${calibration.actionsPerSecond.toFixed(2)}、同手・別指 ${calibration.sameHandDifferentFingerActionsPerSecond.toFixed(2)} アクション/秒（組別 ${sameHandPairCount} 組）、未測定指の指移動 ${calibration.fallbackFingerSpeedUnitsPerSecond.toFixed(2)} u/秒。`
+          ? `保存済み: 通常 ${calibration.actionsPerSecond.toFixed(2)}、同手・別指 ${calibration.sameHandDifferentFingerActionsPerSecond.toFixed(2)} アクション/秒（組別 ${sameHandPairCount} 組）、未測定指の指移動 ${legacySpeedOf(calibration.fallbackMoveMsPerUnit).toFixed(2)} u/秒。`
           : `${context} 通常の打鍵速度、同じ手の別指の速度、各指の移動速度を測定して再生に反映します。`,
         progress: calibration ? context : '',
       };
@@ -376,7 +437,7 @@ export function createAnalyzerCalibrationModel(
     calibrationDirectionalDraft = currentCalibrationDirectionalDraft();
     values.actions = calibration.actionsPerSecond.toFixed(2);
     values.sameHand = calibration.sameHandDifferentFingerActionsPerSecond.toFixed(2);
-    values.fingerSpeed = calibration.fallbackFingerSpeedUnitsPerSecond.toFixed(2);
+    values.fingerSpeed = legacySpeedOf(calibration.fallbackMoveMsPerUnit).toFixed(2);
     values.directions = {
       'L→R': numberString(calibration.actionsPerSecondByDirection?.['L→R']),
       'R→L': numberString(calibration.actionsPerSecondByDirection?.['R→L']),
@@ -390,8 +451,8 @@ export function createAnalyzerCalibrationModel(
         .map(([pairKey, value]) => [pairKey, value.toFixed(2)]),
     );
     values.fingers = emptyFingerValues();
-    for (const [finger, value] of Object.entries(calibration.fingerSpeedUnitsPerSecond)) {
-      if (value !== undefined) values.fingers[finger as Finger] = value.toFixed(2);
+    for (const [finger, value] of Object.entries(calibration.fingerMoveMsPerUnit)) {
+      if (value !== undefined) values.fingers[finger as Finger] = legacySpeedOf(value).toFixed(2);
     }
   };
 
@@ -1080,8 +1141,7 @@ export function createAnalyzerCalibrationModel(
             sameHandDifferentFingerActionsPerDirectedPair:
               sameHandDifferentFingerActionsPerSecondByDirectedPair,
           }),
-      fingerSpeedUnitsPerSecond,
-      fallbackFingerSpeedUnitsPerSecond,
+      ...legacyFingerTimes(actionsPerSecond, fingerSpeedUnitsPerSecond, fallbackFingerSpeedUnitsPerSecond),
       measuredAt: Date.now(),
     };
 

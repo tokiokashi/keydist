@@ -7,9 +7,9 @@ import {
   applyCalibrationField,
   calibrationFormValues,
   calibrationSimultaneousFieldId,
-  CALIBRATION_FALLBACK_FINGER_FIELD,
+  CALIBRATION_FALLBACK_MOVE_FIELD,
+  CALIBRATION_FALLBACK_REPEAT_FIELD,
   CALIBRATION_SAME_HAND_FIELD,
-  CALIBRATION_SAME_KEY_FIELD,
   type CalibrationFormValues,
 } from '#interpretation/timing/calibration-form.ts';
 import {
@@ -320,7 +320,7 @@ function ConfirmDiscard({ onConfirm, onCancel }: { readonly onConfirm: () => voi
   return (
     <dialog ref={ref} className="personal-speed-confirm" aria-labelledby="personal-speed-confirm-title" onCancel={(event) => { event.preventDefault(); onCancel(); }}>
       <h2 id="personal-speed-confirm-title">保存した個人速度を全て破棄しますか</h2>
-      <p>通常の速度、同じキーを続けて打つ速さ、方向別の速度、指の移動速度、同時押しの上乗せ、文章を打つ時の打鍵の上乗せを全て消します。「元に戻す」で戻せます。再読み込みやタブを閉じた後は戻せません。</p>
+      <p>通常の速度、指ごとの同じキーを続けて打つ速さと移動の時間、方向別の速度、同時押しの上乗せ、文章を打つ時の打鍵の上乗せを全て消します。「元に戻す」で戻せます。再読み込みやタブを閉じた後は戻せません。</p>
       <div className="personal-speed-confirm-actions">
         <button type="button" autoFocus onClick={onCancel}>キャンセル</button>
         <button type="button" onClick={onConfirm}>破棄する</button>
@@ -546,7 +546,7 @@ export function PersonalSpeedEditor({
   };
 
   const rowAction = (fieldId: string): RowAction => {
-    if (fieldId === CALIBRATION_SAME_HAND_FIELD || fieldId === CALIBRATION_FALLBACK_FINGER_FIELD) {
+    if (fieldId === CALIBRATION_SAME_HAND_FIELD || fieldId === CALIBRATION_FALLBACK_REPEAT_FIELD || fieldId === CALIBRATION_FALLBACK_MOVE_FIELD) {
       return { kind: 'hint', text: NORMAL_DERIVED_HINT };
     }
     const tasks = plan?.byField.get(fieldId) ?? [];
@@ -589,12 +589,12 @@ export function PersonalSpeedEditor({
     const missingIds = universe.filter((id) => !(id in savedValues));
     return { measuredIds, missingIds, hasProblem: [...measuredIds, ...missingIds].some((id) => id in fieldErrors) };
   };
-  const main = splitIds('', ['actions', CALIBRATION_SAME_KEY_FIELD, CALIBRATION_SAME_HAND_FIELD, CALIBRATION_FALLBACK_FINGER_FIELD]);
+  const main = splitIds('', ['actions', CALIBRATION_SAME_HAND_FIELD, CALIBRATION_FALLBACK_REPEAT_FIELD, CALIBRATION_FALLBACK_MOVE_FIELD]);
   const fingers = splitIds('finger:', FINGERS.map((finger) => `finger:${finger}`));
   const directions = splitIds('direction:', ['direction:L→R', 'direction:R→L']);
   const simultaneous = splitIds('simultaneous:', SIMULTANEOUS_KINDS.map(calibrationSimultaneousFieldId));
   const hasSavedWith = (...prefixes: string[]) => Object.keys(savedValues).some((id) => prefixes.some((prefix) => id.startsWith(prefix)));
-  const savedInNormal = hasSavedWith('actions', 'same-key', CALIBRATION_SAME_HAND_FIELD, CALIBRATION_FALLBACK_FINGER_FIELD, 'finger:', 'same-hand-pair:');
+  const savedInNormal = hasSavedWith('actions', CALIBRATION_SAME_HAND_FIELD, CALIBRATION_FALLBACK_REPEAT_FIELD, CALIBRATION_FALLBACK_MOVE_FIELD, 'finger:', 'finger-repeat:', 'same-hand-pair:');
 
   // 測ると置き換わる・消える値は、今の保存値から決まる。保存値を持たない時と、置き換わる値も消える値も無い時は文を出さない。
   const savedOverheads = OVERHEAD_KINDS.filter((kind) => calibration?.keystrokeOverheadMs?.[kind] !== undefined);
@@ -709,7 +709,7 @@ export function PersonalSpeedEditor({
             {calibration === undefined ? emptyText(UNMEASURED_TEXT.normal) : (
               <>
                 <ValueBlock {...main} renderRow={renderRow} />
-                <ValueBlock title="指ごとの移動速度" {...fingers} emptyText="まだ測っていません。" renderRow={renderRow} />
+                <ValueBlock title="指ごとの移動の時間" {...fingers} emptyText="まだ測っていません。" renderRow={renderRow} />
                 <div className="personal-speed-value-block">
                   <h3>同手・別指の組ごとの速度</h3>
                   {hasFingerGridFields('same-hand-pair', gridContext) ? <SameHandPairGrids ctx={gridContext} /> : <p className="personal-speed-note">まだ測っていません。</p>}

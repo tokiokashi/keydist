@@ -26,8 +26,10 @@ test('calibration model edits, saves, and discards without DOM ownership', () =>
     sameHandDifferentFingerActionsPerSecond: 4,
     sameHandDifferentFingerActionsPerSecondByPair: { 'LM:LI': 3.5 },
     sameHandDifferentFingerActionsPerDirectedPair: { 'LM>LI': 3.2 },
-    fingerSpeedUnitsPerSecond: { LI: 8 },
-    fallbackFingerSpeedUnitsPerSecond: 7,
+    fingerRepeatMs: { LI: 1000 / 5 },
+    fingerMoveMsPerUnit: { LI: 1000 / 8 },
+    fallbackRepeatMs: 1000 / 5,
+    fallbackMoveMsPerUnit: 1000 / 7,
     measuredAt: 1,
   };
   let playbackCalibration: PlaybackCalibration | undefined = calibration;
@@ -67,7 +69,7 @@ test('calibration model edits, saves, and discards without DOM ownership', () =>
 
   assert.equal(calibration?.actionsPerSecond, 6.25);
   assert.equal(calibration?.actionsPerSecondByDirection?.['L→R'], 6.5);
-  assert.equal(calibration?.fingerSpeedUnitsPerSecond.LI, 9.25);
+  assert.equal(calibration?.fingerMoveMsPerUnit.LI, 1000 / 9.25);
   assert.equal(playbackCalibration?.actionsPerSecond, 6.25);
   assert.equal(useCalibration, true);
   assert.ok(stored.has(PLAYBACK_CALIBRATION_STORAGE_KEY));

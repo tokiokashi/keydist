@@ -6,12 +6,12 @@ import { ALL_FINGERS, type Finger } from '#input/shapes/geometry.ts';
 import {
   CALIBRATION_ACTIONS_PER_SECOND_MAX,
   CALIBRATION_ACTIONS_PER_SECOND_MIN,
+} from '#interpretation/timing/calibration.ts';
+import {
   CALIBRATION_FINGER_SPEED_MAX,
   CALIBRATION_FINGER_SPEED_MIN,
-} from '#interpretation/timing/calibration.ts';
-import type {
-  AnalyzerCalibrationModel,
-  CalibrationDirection,
+  type AnalyzerCalibrationModel,
+  type CalibrationDirection,
 } from './analyzer-calibration-model.ts';
 
 const FINGER_LABEL: Record<Finger, string> = {
