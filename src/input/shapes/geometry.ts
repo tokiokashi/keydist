@@ -172,6 +172,16 @@ export function hasMultiFingerKeys(assignment: FingerAssignment): boolean {
   return false;
 }
 
+/** 配列のホームキーの指定を、この割り当てが採用するか。その指が担当するキーの時だけ採用する（仕様 §3.2）。 */
+export function homeKeyOverrideApplies(assignment: FingerAssignment, finger: NonThumb, key: string): boolean {
+  return assignment.fingerKeys[finger].includes(key);
+}
+
+/** どの指も担当しないキーか。物理配列の違いで割り当てがそのキーを持たない場合にあたる。 */
+export function assignmentHasKey(assignment: FingerAssignment, key: string): boolean {
+  return ALL_FINGERS.some((finger) => assignment.fingerKeys[finger].includes(key));
+}
+
 /**
  * 配列ごとに既定のホームキーだけを上書きした運指設定を作る。
  * 上書きのキーを、その指が担当しない時は使わない（仕様 §3.2）。
@@ -184,7 +194,7 @@ export function assignmentWithHomeKeys(
   const merged = { ...assignment.homeKey };
   for (const finger of FINGERS) {
     const key = homeKeys[finger];
-    if (key !== undefined && assignment.fingerKeys[finger].includes(key)) merged[finger] = key;
+    if (key !== undefined && homeKeyOverrideApplies(assignment, finger, key)) merged[finger] = key;
   }
   return { ...assignment, homeKey: merged };
 }
