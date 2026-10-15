@@ -25,8 +25,8 @@ export interface UserCatalog {
  *
  * - 自作のローマ字規則: 組み込みのidと同じもの・id重複を捨てる
  * - 自作の配列: 組み込みの配列と同じid・id重複・段の列数オーバー・配列として組めないものを捨てる。
- *   `romaji`が指す規則が組み込みにも自作にも無い時は配列は残し、規則の推奨だけ持たせない
- *   （全体の値の規則で打つ）。`direct`の配列はローマ字を経ないので`romaji`を見ない
+ *   `romaji`が指す規則が組み込みにも自作にも無い時と、`romaji`が無い時は配列は残し、
+ *   規則の推奨だけ持たせない（全体の値の規則で打つ）。診断を積むのは前者だけ。`direct`の配列はローマ字を経ないので`romaji`を見ない
  */
 export function buildUserCatalog(
   userLayouts: readonly UserLayout[],
@@ -73,11 +73,12 @@ export function buildUserCatalog(
       diagnostics.push({ path, message: `配列として組めないため捨てました（${reason}）` });
       return;
     }
-    if (definition.direct !== true) {
-      if (isBuiltin(definition.romaji) || ruleIds.has(definition.romaji)) {
-        layout = { ...layout, recommendedRomajiRuleId: definition.romaji };
+    const romaji = definition.romaji;
+    if (definition.direct !== true && romaji !== undefined) {
+      if (isBuiltin(romaji) || ruleIds.has(romaji)) {
+        layout = { ...layout, recommendedRomajiRuleId: romaji };
       } else {
-        diagnostics.push({ path: `${path}.romaji`, message: `ローマ字規則「${definition.romaji}」が見つからないため、全体の値の規則で打ちます` });
+        diagnostics.push({ path: `${path}.romaji`, message: `ローマ字規則「${romaji}」が見つからないため、全体の値の規則で打ちます` });
       }
     }
     definitions.set(definition.id, definition);

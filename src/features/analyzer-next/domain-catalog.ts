@@ -98,7 +98,7 @@ function userLayoutEntry(
     return directEntry(base, revisionSource);
   }
 
-  const ruleId = settings.assignments[definition.id] ?? definition.romaji;
+  const ruleId = settings.assignments[definition.id] ?? definition.romaji ?? defaultRomajiRuleId(definition.id);
   return romajiEntry(base, revisionSource, ruleId, settings.rules);
 }
 

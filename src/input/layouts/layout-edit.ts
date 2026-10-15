@@ -20,7 +20,8 @@ export interface UserLayoutContent {
   readonly name: string;
   /** 数字段・上段・ホーム段・下段。数字段は空文字でもよい */
   readonly rows: readonly [string, string, string, string];
-  readonly romaji: string;
+  /** 推奨のローマ字規則。省略した配列は推奨を持たず、全体の値の規則で打つ */
+  readonly romaji?: string;
   /** 指ごとの任意のホームキー。値は物理キーのid。空文字は未指定 */
   readonly homeKeys: Readonly<Partial<Record<NonThumb, string>>>;
 }
@@ -91,7 +92,7 @@ function definitionOf(id: string, content: UserLayoutContent): UserLayout {
     id,
     name: content.name,
     rows: [content.rows[0], content.rows[1], content.rows[2], content.rows[3]],
-    romaji: content.romaji,
+    ...(content.romaji === undefined ? {} : { romaji: content.romaji }),
   };
   return Object.keys(content.homeKeys).length === 0 ? layout : { ...layout, homeKeys: { ...content.homeKeys } };
 }
@@ -160,7 +161,7 @@ export function layoutProblems(
     });
   }
 
-  if (knownRomajiRuleIds !== undefined && !isBuiltin(normalized.romaji) && !knownRomajiRuleIds.has(normalized.romaji)) {
+  if (knownRomajiRuleIds !== undefined && normalized.romaji !== undefined && !isBuiltin(normalized.romaji) && !knownRomajiRuleIds.has(normalized.romaji)) {
     problems.push({
       severity: 'warning',
       field: { kind: 'romaji' },

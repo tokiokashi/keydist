@@ -53,10 +53,26 @@ export const USER_ASSETS_FILE_CODEC: AssetCodec<UserAssetsBundle> = defineAssetC
 
 export type UserAssetsHoldings = Pick<KeydistAssets, 'userLayouts' | 'userRomajiRules' | 'fingerAssignments'>;
 
-/** 書き出すファイルの本体（`format` は付けない）。 */
+/**
+ * 推奨の規則を、解決できるものだけ残した配列にする。組み込みでも`resolve`が返す先でもない規則を指す配列は、
+ * 参照を外す（手元の規則に結び付かず、全体の値の規則で打つ配列になる。ローマ字を経ない配列は`romaji`を見ないので触らない）。
+ */
+function withResolvableRomaji(layout: UserLayout, resolve: (id: string) => string | undefined): UserLayout {
+  if (layout.direct === true || layout.romaji === undefined) return layout;
+  const resolved = isBuiltin(layout.romaji) ? layout.romaji : resolve(layout.romaji);
+  if (resolved === layout.romaji) return layout;
+  const { romaji: _dropped, ...rest } = layout;
+  return resolved === undefined ? rest : { ...rest, romaji: resolved };
+}
+
+/**
+ * 書き出すファイルの本体（`format`は付けない）。ファイルに入れる規則（手元の自作の規則）に無い規則を
+ * 指す配列は、参照を外して書く。読み込む側が手元の同じidの規則に結び付けないようにするため。
+ */
 export function userAssetsFileBody(assets: UserAssetsHoldings): Record<string, unknown> {
+  const ruleIds = new Set(assets.userRomajiRules.map((rule) => rule.id));
   return USER_ASSETS_FILE_CODEC.encode({
-    layouts: assets.userLayouts,
+    layouts: assets.userLayouts.map((layout) => withResolvableRomaji(layout, (id) => (ruleIds.has(id) ? id : undefined))),
     romajiRules: assets.userRomajiRules,
     fingerAssignments: assets.fingerAssignments,
   });
@@ -215,7 +231,7 @@ function mergeKind<T extends Item>(kind: MergeKind<T>, stamp: string): {
  * - 中身が違うなら手元を残し、読み込んだ側を新しいidと「名前 (2)」の別名で足す。ただし、別のidで同じ中身のものが
  *   既に手元にあれば（前に別名で足したもの）、それと同じとみなして足さない
  * 組み込みと同じidは中身を問わず別のidで足す。ローマ字規則を先に突き合わせ、配列の推奨の規則が別のidになったら
- * 配列の参照も振り直す（振り直した後の参照で配列の中身を比べる）。
+ * 配列の参照も振り直す（振り直した後の参照で配列の中身を比べる）。ファイルの中に無く組み込みでもない規則を指す配列は参照を外す。
  */
 export function mergeUserAssets(current: UserAssetsHoldings, incoming: UserAssetsBundle, stamp: string): UserAssetsMerge {
   const rules = mergeKind<UserRomajiRule>({
@@ -228,14 +244,18 @@ export function mergeUserAssets(current: UserAssetsHoldings, incoming: UserAsset
     content: ruleContent,
     rebuild: (rule, id, name) => ({ ...rule, id, name }),
   }, stamp);
+  // 比べる時だけ、手元の配列の宙に浮いた参照（消した規則を指す）も外す。保存する手元の値は変えない
+  const knownRuleIds = new Set(rules.items.map((rule) => rule.id));
+  const resolveKnown = (id: string): string | undefined => (knownRuleIds.has(id) ? id : undefined);
   const layouts = mergeKind<UserLayout>({
     assetKind: 'layout',
     idPrefix: 'user-',
     current: current.userLayouts,
-    incoming: incoming.layouts.map((layout) => ({ ...layout, romaji: rules.idMap.get(layout.romaji) ?? layout.romaji })),
+    // ファイルの中に無く組み込みでもない規則を指す配列は、手元の同じidの規則に結び付けず、参照を外して全体の値の規則で打つ配列にする
+    incoming: incoming.layouts.map((layout) => withResolvableRomaji(layout, (id) => rules.idMap.get(id))),
     builtinIds: (id) => LAYOUT_BY_ID.has(id),
     builtinName: (id) => LAYOUT_BY_ID.get(id)?.name,
-    content: layoutContent,
+    content: (layout) => layoutContent(withResolvableRomaji(layout, resolveKnown)),
     rebuild: (layout, id, name) => ({ ...layout, id, name }),
   }, stamp);
   const fingers = mergeKind<FingerAssignment>({
@@ -258,9 +278,21 @@ export function mergeUserAssets(current: UserAssetsHoldings, incoming: UserAsset
  * ファイルから読んだ自作の資産を手元へ足す。足すものが無ければ何もしない。
  * 3つの資産を1回の変更で書くので、元に戻すと全部が戻る。
  */
-export function importUserAssetsCommand(incoming: UserAssetsBundle, stamp: string): Command<KeydistAssets> {
-  return (current) => {
-    const merged = mergeUserAssets(current, incoming, stamp).assets;
+export interface UserAssetsImportPlan {
+  readonly command: Command<KeydistAssets>;
+  /**
+   * `command`が最後に適用された時の突き合わせの結果（画面に出す内訳）。書き込みと同じ突き合わせから作るので、
+   * 読み込みの途中で別のタブが資産を書き換えても、出した内訳と書いた中身は食い違わない。適用前は`undefined`。
+   */
+  entries(): readonly UserAssetImportEntry[] | undefined;
+}
+
+export function importUserAssetsCommand(incoming: UserAssetsBundle, stamp: string): UserAssetsImportPlan {
+  let entries: readonly UserAssetImportEntry[] | undefined;
+  const command: Command<KeydistAssets> = (current) => {
+    const merge = mergeUserAssets(current, incoming, stamp);
+    entries = merge.entries;
+    const merged = merge.assets;
     const changes: Partial<KeydistAssets> = {
       ...(merged.userLayouts.length === current.userLayouts.length ? {} : { userLayouts: merged.userLayouts }),
       ...(merged.userRomajiRules.length === current.userRomajiRules.length ? {} : { userRomajiRules: merged.userRomajiRules }),
@@ -269,6 +301,7 @@ export function importUserAssetsCommand(incoming: UserAssetsBundle, stamp: strin
     if (Object.keys(changes).length === 0) return { kind: 'no-op' };
     return { kind: 'applied', label: '自作の資産を読み込む', changes };
   };
+  return { command, entries: () => entries };
 }
 
 /** 読み取り結果。 */

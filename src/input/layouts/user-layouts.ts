@@ -25,7 +25,11 @@ export interface UserLayout {
   name: string;
   /** 数字段・上段・ホーム段・下段。数字段は空文字でもよい */
   rows: [string, string, string, string];
-  romaji: RomajiRuleId;
+  /**
+   * 推奨のローマ字規則。省略した配列は推奨を持たず、全体の値の規則で打つ。
+   * 指す規則が無い配列（読み込んだファイルに規則が無い等）もこの形で持つ。`direct`の配列は見ない
+   */
+  romaji?: RomajiRuleId;
   /** 取り込み形式が持つ、単打の段定義では表せないかな・コンボ */
   sequences?: [string, Sequence][];
   /** keyId → 取り込み元の表示ラベル */
@@ -65,7 +69,7 @@ export const isValidUserLayout = (l: unknown): l is UserLayout => {
   const value = l as Partial<UserLayout>;
   return typeof value.id === 'string' &&
     typeof value.name === 'string' &&
-    typeof value.romaji === 'string' &&
+    (value.romaji === undefined || typeof value.romaji === 'string') &&
     Array.isArray(value.rows) &&
     value.rows.length === 4 &&
     value.rows.every((row) => typeof row === 'string') &&
@@ -190,7 +194,8 @@ export function toLayout(def: UserLayout): Layout {
 
 export function toJapaneseLayout(def: UserLayout, customRules: UserRomajiRule[] = []): Layout {
   const layout = toLayout(def);
-  return def.direct ? layout : withRomaji(layout, tableForRule(def.romaji, customRules));
+  if (def.direct || def.romaji === undefined) return layout;
+  return withRomaji(layout, tableForRule(def.romaji, customRules));
 }
 
 export const newId = () => `user-${Date.now().toString(36)}`;

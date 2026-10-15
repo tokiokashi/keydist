@@ -3,9 +3,9 @@ import type { KeydistAssets } from '#engine/commands.ts';
 import {
   USER_ASSETS_FILE_FORMAT,
   USER_ASSETS_FILE_MAX_BYTES,
-  mergeUserAssets,
   parseUserAssetsFile,
   userAssetsFileBody,
+  type UserAssetImportEntry,
   type UserAssetsBundle,
 } from '#engine/user-assets-file.ts';
 import { useHistoryShortcuts } from '#ui/primitives/use-history-shortcuts.ts';
@@ -28,8 +28,11 @@ export interface UserAssetsPageProps {
   readonly onDeleteLayout: (id: string) => void;
   readonly onDeleteRomajiRule: (id: string) => void;
   readonly onDeleteFingerAssignment: (id: string) => void;
-  /** 読み込んだ資産を手元へ足す。`stamp`は足す時に振る新しいidの元になる、1回の読み込みで固定の値。 */
-  readonly onImport: (bundle: UserAssetsBundle, stamp: string) => void;
+  /**
+   * 読み込んだ資産を手元へ足し、書き込みに使った突き合わせの内訳を返す（書き込めなかった時は`undefined`）。
+   * `stamp`は足す時に振る新しいidの元になる、1回の読み込みで固定の値。
+   */
+  readonly onImport: (bundle: UserAssetsBundle, stamp: string) => readonly UserAssetImportEntry[] | undefined;
 }
 
 const FILE_TOO_LARGE_MESSAGE = 'ファイルが大きすぎます（1MBまで）';
@@ -193,13 +196,16 @@ export function UserAssetsPage({
       return;
     }
     const stamp = newStamp();
-    // 画面に出す結果と書き込みは、同じ手元・同じ`stamp`から同じ突き合わせをする
-    const merged = mergeUserAssets(assets, parsed.bundle, stamp);
-    onImport(parsed.bundle, stamp);
+    // 画面に出す内訳は、書き込みを決めた突き合わせそのものから取る。ファイルを読む間に別のタブが資産を書き換えても食い違わない
+    const entries = onImport(parsed.bundle, stamp);
+    if (entries === undefined) {
+      setMessage('読み込みに失敗しました。もう一度試してください');
+      return;
+    }
     const dropped = parsed.dropped.map((diagnostic) => `${diagnostic.path}: ${diagnostic.message}`);
-    const lines = merged.entries.map(importEntryText);
+    const lines = entries.map(importEntryText);
     if (dropped.length > 0) lines.push(`${dropped.length}件は読み込めませんでした`);
-    setImportResult({ summary: importSummaryText(merged.entries), lines, details: dropped });
+    setImportResult({ summary: importSummaryText(entries), lines, details: dropped });
   };
   const layouts = userLayoutRows(assets.userLayouts, assets.userRomajiRules);
   const rules = userRomajiRuleRows(assets.userLayouts, assets.userRomajiRules);

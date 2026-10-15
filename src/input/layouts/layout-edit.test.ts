@@ -176,3 +176,28 @@ test('ホームキーの不備と重複の注意は、内部のidでなくキー
   assert.doesNotMatch(dup!.message, /r0c12/);
   assert.match(dup!.message, /1段目13列・R/);
 });
+
+const withoutRomaji = (content: UserLayoutContent): UserLayoutContent => {
+  const { romaji: _removed, ...rest } = content;
+  return rest;
+};
+
+test('layoutProblems: 推奨の規則を省いた入力は、既知の規則の集合を渡しても不備を返さない', () => {
+  assert.deepEqual(layoutProblems(withoutRomaji(DVORAK), new Set(['kunrei'])), []);
+});
+
+test('updateUserLayout: 推奨の規則を省いた内容で書き換えると、romajiのキーを持たない配列になる', () => {
+  const layouts = [stored()];
+  const updated = updateUserLayout(layouts, 'user-a', withoutRomaji(DVORAK));
+  assert.equal(updated.ok, true);
+  if (!updated.ok) return;
+  assert.notEqual(updated.layouts, layouts);
+  assert.equal('romaji' in updated.layouts[0]!, false);
+});
+
+test('updateUserLayout: 推奨の規則を持たない配列は、contentOfの結果をそのまま渡しても同じ参照を返す', () => {
+  const { romaji: _removed, ...rest } = stored();
+  const layouts: UserLayout[] = [rest];
+  const same = updateUserLayout(layouts, 'user-a', contentOf(layouts[0]!));
+  assert.equal(same.ok && same.layouts, layouts);
+});

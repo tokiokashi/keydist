@@ -143,7 +143,7 @@ function layoutsOf(mode: ModeId): Layout[] {
   const mine = userLayouts.map((d) => d.direct
     ? toLayout(d)
     : withRomaji(toLayout(d), cachedRomajiTable(
-      conditionState?.conditions.perLayout[d.id]?.romajiRule ?? d.romaji,
+      conditionState?.conditions.perLayout[d.id]?.romajiRule ?? d.romaji ?? defaultRomajiRuleId(d.id),
     )));
   return [...assigned, ...mine];
 }

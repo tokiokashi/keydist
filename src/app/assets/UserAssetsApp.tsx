@@ -17,7 +17,11 @@ export function UserAssetsApp() {
       onDeleteLayout={(id) => dispatch(deleteUserLayoutCommand(id))}
       onDeleteRomajiRule={(id) => dispatch(deleteUserRomajiRuleCommand(id))}
       onDeleteFingerAssignment={(id) => dispatch(deleteFingerAssignmentCommand(id))}
-      onImport={(bundle, stamp) => dispatch(importUserAssetsCommand(bundle, stamp))}
+      onImport={(bundle, stamp) => {
+        const plan = importUserAssetsCommand(bundle, stamp);
+        dispatch(plan.command);
+        return plan.entries();
+      }}
     />
   );
 }

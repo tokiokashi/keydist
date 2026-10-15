@@ -237,6 +237,23 @@ test('手元と重なって別名で足した時、重なった相手の手元�
   assert.deepEqual(outcome.kind === 'added-renamed' ? outcome.overlap : undefined, { with: 'own', name: '手元で名前を変えた配列' });
 });
 
+function emptyAssets(): KeydistAssets {
+  return {
+    setupLibrary: { setups: [], overrides: emptyCascadeOverrides() },
+    fingerAssignments: [],
+    textLibrary: emptyTextLibrary(),
+    standaloneTextSelection: initialTextSelection(),
+    standaloneAnalyzerOptions: {},
+    multiTargetSelection: initialMultiTargetSelection(),
+    singleTargetSelection: initialSingleTargetSelection(),
+    workspaces: [],
+    presetLibrary: { presets: [] },
+    userLayouts: [],
+    userRomajiRules: [],
+    personalSpeed: EMPTY_PERSONAL_SPEED,
+  };
+}
+
 test('コマンド: 1回で3つの資産を足し、元に戻すと全部が戻る。足すものが無ければ履歴に積まない', () => {
   const assets: KeydistAssets = {
     setupLibrary: { setups: [], overrides: emptyCascadeOverrides() },
@@ -253,13 +270,78 @@ test('コマンド: 1回で3つの資産を足し、元に戻すと全部が戻�
     personalSpeed: EMPTY_PERSONAL_SPEED,
   };
   const history = emptyCommandHistory<KeydistAssets>();
-  const step = applyCommand(assets, history, importUserAssetsCommand(read(HOLDINGS), STAMP));
+  const step = applyCommand(assets, history, importUserAssetsCommand(read(HOLDINGS), STAMP).command);
   assert.deepEqual([step.assets.userLayouts, step.assets.userRomajiRules, step.assets.fingerAssignments], [[LAYOUT], [RULE], [FINGER]]);
-  const again = applyCommand(step.assets, step.history, importUserAssetsCommand(read(HOLDINGS), STAMP));
+  const again = applyCommand(step.assets, step.history, importUserAssetsCommand(read(HOLDINGS), STAMP).command);
   assert.equal(again.outcome.kind, 'no-op');
   assert.equal(again.assets, step.assets);
   const undone = undo(step.assets, step.history);
   assert.deepEqual([undone.assets.userLayouts, undone.assets.userRomajiRules, undone.assets.fingerAssignments], [[], [], []]);
+});
+
+test('ファイルに無い規則を指す配列は、手元の同じidの規則に結び付けず、書き出した側と同じ数値で打つ', () => {
+  // 書き出した側: 規則を消した後で、配列だけがその規則のidを指している（全体の値の規則で打つ）
+  const exporter: UserAssetsHoldings = { userLayouts: [LAYOUT], userRomajiRules: [], fingerAssignments: [] };
+  // 読み込む側: 同じidで別の中身の規則（し・ちをshi・chiで打つ）を持っている
+  const importer: UserAssetsHoldings = { userLayouts: [], userRomajiRules: [RULE], fingerAssignments: [] };
+  const text = 'こんにちは、きょうはしゃしんをとりにいきます。ちしきをしる。';
+  const before = measure(exporter, LAYOUT.id, 'ja', text, EMPTY_SETTINGS_OVERRIDES);
+
+  const newForm = fileText(exporter);
+  // 書き出しは参照を外す。この変更より前に書かれたファイルは参照が残っている
+  const oldForm = JSON.stringify({ format: USER_ASSETS_FILE_FORMAT, version: 1, layouts: [LAYOUT], romajiRules: [], fingerAssignments: [] });
+  assert.equal(JSON.parse(newForm).layouts[0].romaji, undefined);
+  assert.equal(JSON.parse(oldForm).layouts[0].romaji, 'rule-a');
+
+  for (const body of [newForm, oldForm]) {
+    const parsed = parseUserAssetsFile(body);
+    assert.ok(parsed.ok);
+    if (!parsed.ok) return;
+    const merged = mergeUserAssets(importer, parsed.bundle, STAMP);
+    assert.deepEqual(merged.entries.map((entry) => entry.outcome.kind), ['added']);
+    assert.equal(merged.assets.userLayouts[0]!.romaji, undefined);
+    assert.deepEqual(merged.assets.userRomajiRules, [RULE]);
+    const after = measure(merged.assets, LAYOUT.id, 'ja', text, EMPTY_SETTINGS_OVERRIDES);
+    assert.ok(before.trace.trace.strokes.length > 0);
+    assert.deepEqual(after.trace.trace.strokes, before.trace.trace.strokes);
+    assert.deepEqual(after.metrics, before.metrics);
+  }
+  // 手元の規則に結び付けると別の数値になる（検査が何かを見ている確認）
+  const bound = measure({ ...importer, userLayouts: [LAYOUT] }, LAYOUT.id, 'ja', text, EMPTY_SETTINGS_OVERRIDES);
+  assert.notDeepEqual(bound.metrics, before.metrics);
+});
+
+test('ファイルに無い規則を指す配列は、手元で規則を指す同じ中身の配列とは別の中身として足す', () => {
+  const dangling: UserAssetsBundle = { layouts: [LAYOUT], romajiRules: [], fingerAssignments: [] };
+  const merged = mergeUserAssets({ ...EMPTY, userLayouts: [LAYOUT], userRomajiRules: [RULE] }, dangling, STAMP);
+  assert.deepEqual(merged.entries.map((entry) => entry.outcome.kind), ['added-renamed']);
+});
+
+test('読み込みの内訳は、書き込みを決めた突き合わせから作られ、読み取りの間に手元が変わっても食い違わない', () => {
+  const bundle = read(HOLDINGS);
+  const plan = importUserAssetsCommand(bundle, STAMP);
+  assert.equal(plan.entries(), undefined);
+  // 読み取りの前に見た手元（空）では3件とも足す。実際に適用する時の手元は、別のタブが同じ資産を足した後
+  const stale = mergeUserAssets(EMPTY, bundle, STAMP);
+  assert.deepEqual(stale.entries.map((entry) => entry.outcome.kind), ['added', 'added', 'added']);
+  const outcome = plan.command({ ...(emptyAssets()), ...HOLDINGS });
+  assert.equal(outcome.kind, 'no-op');
+  assert.deepEqual(plan.entries()!.map((entry) => entry.outcome.kind), ['skipped-same', 'skipped-same', 'skipped-same']);
+  // 手元が空のまま適用すれば、内訳は足す3件で、書き込みの中身もその突き合わせと同じ
+  const applied = plan.command(emptyAssets());
+  assert.equal(applied.kind, 'applied');
+  assert.deepEqual(plan.entries(), stale.entries);
+  if (applied.kind === 'applied') {
+    assert.deepEqual([applied.changes.userLayouts, applied.changes.userRomajiRules, applied.changes.fingerAssignments], [[LAYOUT], [RULE], [FINGER]]);
+  }
+});
+
+test('消した規則を指す手元の配列を書き出して自分へ読み直すと、同じ中身として足さない', () => {
+  const holdings: UserAssetsHoldings = { userLayouts: [LAYOUT], userRomajiRules: [], fingerAssignments: [] };
+  const merged = mergeUserAssets(holdings, read(holdings), STAMP);
+  assert.deepEqual(merged.entries.map((entry) => entry.outcome.kind), ['skipped-same']);
+  assert.equal(merged.assets.userLayouts.length, 1);
+  assert.equal(merged.assets.userLayouts[0], LAYOUT);
 });
 
 test('ファイルの分類: 印の無いもの・別の種類・新しい版・空・多すぎるものを理由つきで断る', () => {

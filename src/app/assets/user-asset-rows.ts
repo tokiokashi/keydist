@@ -18,7 +18,11 @@ export function userLayoutRows(
   const ruleNames = new Map(userRomajiRules.map((rule) => [rule.id, rule.name] as const));
   return userLayouts.map((layout) => {
     if (layout.direct === true) return { id: layout.id, name: layout.name, detail: 'ローマ字を経ずに直接打つ配列' };
-    const ruleName = isBuiltin(layout.romaji) ? ROMAJI_RULES[layout.romaji].name : ruleNames.get(layout.romaji);
+    const { romaji } = layout;
+    if (romaji === undefined) {
+      return { id: layout.id, name: layout.name, detail: '推奨のローマ字規則はありません。全体の値の規則で打ちます' };
+    }
+    const ruleName = isBuiltin(romaji) ? ROMAJI_RULES[romaji].name : ruleNames.get(romaji);
     const detail = ruleName === undefined
       ? '推奨のローマ字規則が見つからないため、全体の値の規則で打ちます'
       : `推奨のローマ字規則: ${ruleName}`;
