@@ -14,7 +14,7 @@ import { ROW_LABELS, ROW_LIMITS, type UserLayout } from '#input/layouts/user-lay
 import { allRomajiRules, type UserRomajiRule } from '#input/romaji/rules.ts';
 import { FINGER_LABEL } from '#input/shapes/finger-names.ts';
 import { physicalKeyDisplayLabel } from '#input/shapes/key-labels.ts';
-import { FINGERS, HOME_ROW, QWERTY_LEGEND } from '#input/shapes/geometry.ts';
+import { FINGERS, HOME_ROW, QWERTY_LEGEND, type FingerAssignment } from '#input/shapes/geometry.ts';
 import { ROMAJI_LAYOUT_LABEL } from './label.ts';
 import './romaji-layout.css';
 import { useHistoryShortcuts } from '#ui/primitives/use-history-shortcuts.ts';
@@ -29,6 +29,8 @@ export interface RomajiLayoutEditorProps {
   readonly layouts: readonly UserLayout[];
   /** 自作のローマ字規則。組み込みの規則と並べて選べる。 */
   readonly rules: readonly UserRomajiRule[];
+  /** 選べる指の割り当て（組み込みと自作）。ホームキーを担当しない割り当てを警告するために照合する。 */
+  readonly fingerAssignments: readonly FingerAssignment[];
   /** 保存の読み込みが済むまでは、配列が無いように見せない。 */
   readonly ready: boolean;
   readonly canUndo: boolean;
@@ -59,15 +61,16 @@ function Problems({ problems }: { readonly problems: readonly LayoutProblem[] })
 interface LayoutFormProps {
   readonly initial: UserLayoutContent;
   readonly isNew: boolean;
+  readonly fingerAssignments: readonly FingerAssignment[];
   readonly ruleOptions: readonly { readonly id: string; readonly name: string }[];
   readonly onSubmit: (content: UserLayoutContent) => void;
 }
 
 /** 入力中の値はこの中だけで持ち、保存を押した時に親へ渡す。 */
-function LayoutForm({ initial, isNew, ruleOptions, onSubmit }: LayoutFormProps) {
+function LayoutForm({ initial, isNew, fingerAssignments, ruleOptions, onSubmit }: LayoutFormProps) {
   const [draft, setDraft] = useState<UserLayoutContent>(initial);
   const knownRuleIds = useMemo(() => new Set(ruleOptions.map((option) => option.id)), [ruleOptions]);
-  const problems = useMemo(() => layoutProblems(draft, knownRuleIds), [draft, knownRuleIds]);
+  const problems = useMemo(() => layoutProblems(draft, knownRuleIds, fingerAssignments), [draft, knownRuleIds, fingerAssignments]);
   const normalized = useMemo(() => normalizeContent(draft), [draft]);
   const dirty = JSON.stringify(normalized) !== JSON.stringify(normalizeContent(initial));
   const blocked = hasBlockingProblem(problems);
@@ -138,7 +141,7 @@ function LayoutForm({ initial, isNew, ruleOptions, onSubmit }: LayoutFormProps) 
       <fieldset className="romaji-layout-home">
         <legend>ホームキー（任意）</legend>
         <p className="romaji-layout-note">
-          指ごとに、この配列が前提とするホームキーを決めます。指定した指は、指の割り当てのホームキーより、ここでの指定が優先されます。指定しない指は、指の割り当ての値を使います。
+          指ごとに、この配列が前提とするホームキーを決めます。指定したキーを指の割り当てがその指の担当にしている時は、割り当てのホームキーより、ここでの指定が優先されます。担当にしていない割り当てでは、指定は使われません。指定しない指は、指の割り当ての値を使います。
         </p>
         <div className="romaji-layout-home-grid">
           {FINGERS.map((finger) => {
@@ -207,6 +210,7 @@ function LayoutForm({ initial, isNew, ruleOptions, onSubmit }: LayoutFormProps) 
 export function RomajiLayoutEditor({
   layouts,
   rules,
+  fingerAssignments,
   ready,
   canUndo,
   canRedo,
@@ -280,7 +284,7 @@ export function RomajiLayoutEditor({
             </p>
           )}
           <h2>{isNew ? '新しい配列' : layout.name}</h2>
-          <LayoutForm key={formKey} initial={initial} isNew={isNew} ruleOptions={ruleOptions} onSubmit={submit} />
+          <LayoutForm key={formKey} initial={initial} isNew={isNew} fingerAssignments={fingerAssignments} ruleOptions={ruleOptions} onSubmit={submit} />
         </>
       )}
     </article>

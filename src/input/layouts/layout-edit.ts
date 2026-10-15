@@ -1,7 +1,7 @@
 import { isBuiltin } from '../romaji/rules.ts';
 import { FINGER_LABEL } from '../shapes/finger-names.ts';
 import { physicalKeyDisplayLabel } from '../shapes/key-labels.ts';
-import { FINGERS, keyId, QWERTY_LEGEND, type NonThumb } from '../shapes/geometry.ts';
+import { assignmentHasKey, FINGERS, homeKeyOverrideApplies, keyId, QWERTY_LEGEND, type FingerAssignment, type NonThumb } from '../shapes/geometry.ts';
 import { ROW_LABELS, ROW_LIMITS, toLayout, validate, type UserLayout } from './user-layouts.ts';
 
 /**
@@ -102,10 +102,14 @@ function definitionOf(id: string, content: UserLayoutContent): UserLayout {
  * 同じ文字が複数のキーに載っているのは、配列のモデルが認めている置き方なので`warning`にとどめる。
  * `knownRomajiRuleIds`が渡された時は、選んだローマ字規則が無ければ`warning`で知らせる
  * （配列は全体の値の規則で打つので、保存はできる）。
+ * `fingerAssignments`が渡された時は、ホームキーをその指が担当しない割り当てを`warning`で知らせる
+ * （その割り当てでは指定が使われず、割り当て自身のホームキーで測る）。
+ * そのキーをどの指も担当しない割り当ては、物理配列の違いなので照合から外す。
  */
 export function layoutProblems(
   content: UserLayoutContent,
   knownRomajiRuleIds?: ReadonlySet<string>,
+  fingerAssignments?: readonly FingerAssignment[],
 ): readonly LayoutProblem[] {
   const normalized = normalizeContent(content);
   const problems: LayoutProblem[] = [];
@@ -137,6 +141,18 @@ export function layoutProblems(
         field: { kind: 'home-key', finger },
         message: `${FINGER_LABEL[finger]}のホームキー「${physicalKeyDisplayLabel(key)}」は、段に無いキーです`,
       });
+    } else if (key !== undefined && fingerAssignments !== undefined) {
+      const ignoring = fingerAssignments.filter(
+        (assignment) => assignmentHasKey(assignment, key) && !homeKeyOverrideApplies(assignment, finger, key),
+      );
+      if (ignoring.length > 0) {
+        const names = ignoring.map((assignment) => `「${assignment.name}」`).join('');
+        problems.push({
+          severity: 'warning',
+          field: { kind: 'home-key', finger },
+          message: `${FINGER_LABEL[finger]}のホームキー「${physicalKeyDisplayLabel(key)}」は、指の割り当て${names}では${FINGER_LABEL[finger]}の担当ではないため使われず、その割り当てのホームキーで測ります。${FINGER_LABEL[finger]}が担当するキーを選んでください`,
+        });
+      }
     }
   }
 

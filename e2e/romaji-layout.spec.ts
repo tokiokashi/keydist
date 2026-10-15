@@ -66,6 +66,25 @@ test('配列を作り、不備を直し、編集して、元に戻せる。作�
   await expect(page.getByRole('dialog', { name: '対象の選択' }).locator(`input[value="layout:${id}"]`)).toHaveCount(1);
 });
 
+test('指が担当しないキーをホームキーにすると警告が出て、担当するキーに直すと消える。保存はできる', async ({ page }) => {
+  await page.goto('/romaji-layout');
+  await waitForHydration(page);
+  await page.getByLabel('名前', { exact: true }).fill('ホームキーの確認');
+  await page.locator('[data-layout-row="1"]').fill("',.pyfgcrl/=");
+  await page.locator('[data-layout-row="2"]').fill('aoeuidhtns-');
+  await page.locator('[data-layout-row="3"]').fill(';qjkxbmwvz');
+
+  const warning = page.locator('[data-layout-home="LI"]').locator('xpath=ancestor::div[contains(@class, "romaji-layout-home-item")]').locator('[data-layout-problem="warning"]');
+  await expect(warning).toHaveCount(0);
+  await page.locator('[data-layout-home="LI"]').selectOption('h');
+  await expect(warning).toContainText('使われず');
+  await expect(page.locator('[data-layout-submit]')).toBeEnabled();
+
+  await page.locator('[data-layout-home="LI"]').selectOption('');
+  await page.locator('[data-layout-home="RI"]').selectOption('h');
+  await expect(page.locator('.romaji-layout-home [data-layout-problem="warning"]')).toHaveCount(0);
+});
+
 test('取り込み形式の配列は開かず、直せない旨を出す', async ({ page }) => {
   await page.addInitScript((key) => {
     if (localStorage.getItem(key) !== null) return;

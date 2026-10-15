@@ -11,6 +11,7 @@ import {
   updateUserLayout,
   type UserLayoutContent,
 } from './layout-edit.ts';
+import { ALL_FINGERS, DEFAULT_FINGER_ASSIGNMENT, QWERTY_OPTIMIZED_FINGER_ASSIGNMENT, type FingerAssignment } from '../shapes/geometry.ts';
 import { validate, type UserLayout } from './user-layouts.ts';
 
 const DVORAK: UserLayoutContent = {
@@ -200,4 +201,44 @@ test('updateUserLayout: 推奨の規則を持たない配列は、contentOfの�
   const layouts: UserLayout[] = [rest];
   const same = updateUserLayout(layouts, 'user-a', contentOf(layouts[0]!));
   assert.equal(same.ok && same.layouts, layouts);
+});
+
+const homeWarnings = (content: UserLayoutContent, assignments: readonly FingerAssignment[]) =>
+  layoutProblems(content, undefined, assignments).filter((problem) => problem.field.kind === 'home-key');
+
+const namedAssignment = (assignment: FingerAssignment, name: string): FingerAssignment => ({ ...assignment, name });
+
+test('layoutProblems: ホームキーをその指が担当しない割り当てを、名前を挙げて警告する', () => {
+  const content = { ...DVORAK, homeKeys: { RI: 'g' } };
+  const problems = homeWarnings(content, [namedAssignment(DEFAULT_FINGER_ASSIGNMENT, '甲'), namedAssignment(DEFAULT_FINGER_ASSIGNMENT, '乙')]);
+  assert.equal(problems.length, 1);
+  assert.equal(problems[0]!.severity, 'warning');
+  assert.deepEqual(problems[0]!.field, { kind: 'home-key', finger: 'RI' });
+  assert.match(problems[0]!.message, /「甲」「乙」/);
+  assert.equal(hasBlockingProblem(layoutProblems(content, undefined, [DEFAULT_FINGER_ASSIGNMENT])), false);
+});
+
+test('layoutProblems: 一部の割り当てだけが担当しないキーは、その割り当ての名前だけを挙げる', () => {
+  const problems = homeWarnings({ ...DVORAK, homeKeys: { LI: 'h' } }, [namedAssignment(DEFAULT_FINGER_ASSIGNMENT, '甲'), namedAssignment(QWERTY_OPTIMIZED_FINGER_ASSIGNMENT, '乙')]);
+  assert.equal(problems.length, 1);
+  assert.match(problems[0]!.message, /「甲」では/);
+  assert.doesNotMatch(problems[0]!.message, /乙/);
+});
+
+test('layoutProblems: その指が担当するキーなら警告しない。割り当てを渡さなければ照合しない', () => {
+  assert.deepEqual(homeWarnings({ ...DVORAK, homeKeys: { RI: 'h' } }, [DEFAULT_FINGER_ASSIGNMENT]), []);
+  assert.deepEqual(homeWarnings({ ...DVORAK, homeKeys: { LI: 'h' } }, []), []);
+  assert.deepEqual(layoutProblems({ ...DVORAK, homeKeys: { LI: 'h' } }), []);
+});
+
+test('layoutProblems: そのキーをどの指も担当しない割り当ては照合から外す', () => {
+  const fingerKeys = { ...DEFAULT_FINGER_ASSIGNMENT.fingerKeys };
+  for (const finger of ALL_FINGERS) fingerKeys[finger] = fingerKeys[finger].filter((key) => key !== 'h');
+  const without: FingerAssignment = { ...DEFAULT_FINGER_ASSIGNMENT, fingerKeys };
+  assert.deepEqual(homeWarnings({ ...DVORAK, homeKeys: { LI: 'h' } }, [without]), []);
+});
+
+test('layoutProblems: 段に無いキーは今ある不備だけを返し、担当の警告を重ねない', () => {
+  const problems = layoutProblems({ ...DVORAK, rows: ['', '', 'aoeu', ''], homeKeys: { LI: 'h' } }, undefined, [DEFAULT_FINGER_ASSIGNMENT]);
+  assert.deepEqual(problems.filter((problem) => problem.field.kind === 'home-key').map((problem) => problem.severity), ['error']);
 });
