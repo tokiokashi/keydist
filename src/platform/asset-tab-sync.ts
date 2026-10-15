@@ -21,6 +21,15 @@ export type AssetLoadResult<T> =
   | { readonly ok: true; readonly value: T; readonly diagnostics: readonly CodecDiagnostic[] }
   | { readonly ok: false; readonly reason: AssetLoadFailure };
 
+/**
+ * storageを1回読んだ結果。`load`は値だけを返すが、こちらは捨てた・直した値の診断と、
+ * decodeに失敗した理由まで残す（利用者に知らせ、直した形を書き戻す側が使う）。
+ */
+export type AssetLoadReport<T> =
+  | { readonly kind: 'absent' }
+  | { readonly kind: 'loaded'; readonly value: T; readonly diagnostics: readonly CodecDiagnostic[] }
+  | { readonly kind: 'failed'; readonly reason: AssetLoadFailure };
+
 export interface AssetTabSyncOptions<T> {
   readonly storageKey: string;
   readonly codec: AssetCodec<T>;
@@ -46,6 +55,11 @@ export interface AssetTabSyncOptions<T> {
 export interface AssetTabSync<T> {
   /** storageから読み込む。無い・decodeできない場合は`undefined`（詳細は`onLoadFailure`）。 */
   load(): T | undefined;
+  /**
+   * `load`と同じ読み込みで、診断と失敗の理由を結果として返す。手持ちの更新と`lastWrittenRaw`の扱いは`load`と同じ。
+   * 失敗でも`onLoadFailure`は呼ばない（結果で受け取るため）。
+   */
+  loadReport(): AssetLoadReport<T>;
   /** storageへ書き込み、他タブ・同タブへ変更を通知する。 */
   save(value: T): void;
   /**
@@ -121,17 +135,20 @@ export function createAssetTabSync<T>(options: AssetTabSyncOptions<T>): AssetTab
     return { ok: true, value: result.value, diagnostics: result.diagnostics };
   }
 
-  function load(): T | undefined {
+  function loadReport(): AssetLoadReport<T> {
     const raw = readRaw();
-    if (raw === null) return undefined;
+    if (raw === null) return { kind: 'absent' };
     const result = decode(raw);
-    if (!result.ok) {
-      options.onLoadFailure?.(result.reason);
-      return undefined;
-    }
+    if (!result.ok) return { kind: 'failed', reason: result.reason };
     // 読み込んだ値は手持ちになるので、直後の`catchUp`がこれを他タブの変更と取り違えないようにする
     lastWrittenRaw = raw;
-    return result.value;
+    return { kind: 'loaded', value: result.value, diagnostics: result.diagnostics };
+  }
+
+  function load(): T | undefined {
+    const report = loadReport();
+    if (report.kind === 'failed') options.onLoadFailure?.(report.reason);
+    return report.kind === 'loaded' ? report.value : undefined;
   }
 
   function save(value: T): void {
@@ -181,5 +198,5 @@ export function createAssetTabSync<T>(options: AssetTabSyncOptions<T>): AssetTab
     });
   }
 
-  return { load, save, start, catchUp };
+  return { load, loadReport, save, start, catchUp };
 }

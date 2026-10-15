@@ -388,14 +388,13 @@
 .shell-notices {
   position: fixed;
   bottom: 1rem;
-  left: 50%;
+  left: 1rem;
+  right: 1rem;
   z-index: 60;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
-  max-width: calc(100vw - 2rem);
-  transform: translateX(-50%);
   /* 知らせの無い所は下の画面を押せるようにする */
   pointer-events: none;
 }
@@ -422,6 +421,25 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 文が長い知らせ。本文は折り返し、閉じるボタンは上に寄せる */
+.shell-notice-detailed {
+  align-items: flex-start;
+  width: min(36rem, 100%);
+}
+
+/* 資産が重なって長くなる分は、知らせの中でスクロールする（閉じるボタンは常に見える） */
+.shell-notice-body {
+  min-width: 0;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.shell-notice-details {
+  margin: 0.3rem 0 0;
+  padding-left: 1.2rem;
+  color: var(--text-muted);
 }
 
 .shell-notice button,

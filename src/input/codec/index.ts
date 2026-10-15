@@ -23,6 +23,11 @@ import type { BaseIssue, BaseSchema } from 'valibot';
  */
 
 export interface CodecDiagnostic {
+  /**
+   * 捨てた・直した値の位置。資産のpayload直下から数え、`payload`は前置しない
+   * （`texts[2].id`・`workspaces[0].panes[1]`・`targets[0]`）。payload直下そのものは空文字。
+   * どの資産のcodecも同じ形にそろえる。
+   */
   readonly path: string;
   readonly message: string;
 }

@@ -14,7 +14,7 @@ export const SINGLE_TARGET_SELECTION_CODEC: AssetCodec<SingleTargetSelection> = 
   decodePayload: (payload, diagnostics) => {
     if (!isRecord(payload)) return undefined;
     if (payload.target === undefined) return { target: undefined };
-    return { target: decodeAnalysisTarget(payload.target, 'payload.target', diagnostics) };
+    return { target: decodeAnalysisTarget(payload.target, 'target', diagnostics) };
   },
   encodePayload: (value) => (value.target === undefined ? {} : { target: { ...value.target } }),
 });

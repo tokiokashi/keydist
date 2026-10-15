@@ -7,6 +7,7 @@ import { downloadJson } from '#platform/browser-download.ts';
 import { readTextFile } from '#platform/browser-file.ts';
 import { AddedToWorkspaceNotice } from '../workspace/AddedToWorkspaceNotice.tsx';
 import { DeletedWorkspaceNotice } from '../workspace/DeletedWorkspaceNotice.tsx';
+import { AssetLoadNotices } from './AssetLoadNotices.tsx';
 import { HistoryConflictNotice } from './HistoryConflictNotice.tsx';
 import { Sidebar } from './Sidebar.tsx';
 import {
@@ -216,6 +217,7 @@ export function AppShell({ children, hasContextBar }: AppShellProps) {
       <div className="shell-notices">
         <DeletedWorkspaceNotice />
         <AddedToWorkspaceNotice />
+        <AssetLoadNotices />
         <HistoryConflictNotice />
       </div>
     </div>

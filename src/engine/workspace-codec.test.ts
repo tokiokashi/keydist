@@ -156,8 +156,8 @@ test('組が壊れていれば壊れた部分だけ空へ戻し、捨てた値�
   const paths = broken.diagnostics.map((d) => d.path);
   assert.ok(paths.some((path) => path.includes('groups[0].target.single')));
   assert.ok(paths.some((path) => path.includes('groups[1].target.set')));
-  assert.ok(paths.some((path) => path === 'payload.workspaces[0].groups[2].id'));
-  assert.ok(paths.some((path) => path === 'payload.workspaces[0].groups[3]'));
+  assert.ok(paths.some((path) => path === 'workspaces[0].groups[2].id'));
+  assert.ok(paths.some((path) => path === 'workspaces[0].groups[3]'));
 });
 
 test('組が1つも読めなければ空の組を1つ作り、診断を出す。従う組が無いペインは先頭の組へ従わせる', () => {
@@ -165,7 +165,7 @@ test('組が1つも読めなければ空の組を1つ作り、診断を出す。
   assert.ok(missing.ok);
   assert.deepEqual(missing.value[0]!.groups.map((g) => g.id), [G]);
   assert.deepEqual(missing.value[0]!.groups[0]!.target.single, { target: undefined });
-  assert.ok(missing.diagnostics.some((d) => d.path === 'payload.workspaces[0].groups'));
+  assert.ok(missing.diagnostics.some((d) => d.path === 'workspaces[0].groups'));
 
   const result = WORKSPACE_LIBRARY_CODEC.decode({
     version: 4,
@@ -335,7 +335,7 @@ test('gridが配列でなければ診断を1件積み、ペインは失わない
   for (const broken of ['abc', { 0: 1 }, 3, null]) {
     const result = decode(broken);
     assert.ok(result.ok);
-    assert.deepEqual(result.diagnostics.map((d) => d.path).filter((path) => path.includes('grid')), ['payload.workspaces[0].grid'], `値: ${JSON.stringify(broken)}`);
+    assert.deepEqual(result.diagnostics.map((d) => d.path).filter((path) => path.includes('grid')), ['workspaces[0].grid'], `値: ${JSON.stringify(broken)}`);
     assert.deepEqual([...gridPaneIds(result.value[0]!.grid)].sort(), ['a', 'b'], '枠が無いペインは空いている場所へ置く');
   }
   const absent = decode(undefined);

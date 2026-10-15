@@ -8,12 +8,13 @@ import {
   type ScreenHistories,
 } from '#input/commands/index.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
+import { reportAssetLoadNotices } from './asset-load-notice.ts';
 import { initialAssets } from './asset-storage-specs.ts';
 import {
   buildAssetSyncs,
   commitCommand,
   commitHistoryStep,
-  loadAssets,
+  loadAssetsAndRepair,
   startAssetSyncs,
   type BuildAssetSyncsOptions,
 } from './asset-syncs.ts';
@@ -45,7 +46,7 @@ export interface AssetStore {
   getNotice(): HistoryNotice | undefined;
   dismissNotice(): void;
   /**
-   * storageから資産を読み、他タブの変更の購読を始める。何度呼んでも1回だけ行う。購読はタブを閉じるまで続ける
+   * storageから資産を読み（直せる値は直して書き戻し、知らせる）、他タブの変更の購読を始める。何度呼んでも1回だけ行う。購読はタブを閉じるまで続ける
    * （画面を移っても資産の値と履歴をタブに1つ持つので、画面ごとに止めない）。
    */
   start(): void;
@@ -99,7 +100,11 @@ export function createAssetStore(options: Omit<BuildAssetSyncsOptions, 'onExtern
   const start = () => {
     if (started) return;
     started = true;
-    const loaded = loadAssets(syncs);
+    // 捨てた・直した値と読めなかった値は、直した形（読めなければ既定値）を書き戻した上で知らせる。
+    // ストアはタブに1つで`start`は1回だけなので、知らせと書き戻しもタブにつき1回になる。
+    // 画面を移るたびに書き戻すと、開いたままの古いタブが、新しい版のアプリが書いた項目を消してしまう。
+    const { assets: loaded, notices } = loadAssetsAndRepair(syncs);
+    reportAssetLoadNotices(notices);
     // 読み込みが空でも`ready`は必ずtrueにする（何も無かった場合の既定値もこの時点で確定した値）。
     setState({ ...state, assets: { ...state.assets, ...loaded }, ready: true });
     startAssetSyncs(syncs);

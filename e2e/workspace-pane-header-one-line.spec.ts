@@ -28,7 +28,7 @@ function rowGrid(...items: readonly (readonly [string, number])[]) {
 }
 
 const workspaceOf = (panes: readonly unknown[], grid: unknown, extra: Record<string, unknown> = {}) => ({
-  id: 'h', name: '見出し', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes, grid, ...extra,
+  id: 'h', name: '見出し', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes, grid, groups: [{ id: 'link-1', target: {} }], ...extra,
 });
 
 async function openWorkspace(page: Page, panes: readonly unknown[], grid: unknown, size: { width: number; height: number }): Promise<void> {

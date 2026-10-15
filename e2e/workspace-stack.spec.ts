@@ -15,7 +15,7 @@ const comparison = {
   analyzerId: 'comparison',
   binding: { mode: 'fixed', target: { kind: 'set', selection: { targets: [QWERTY, { kind: 'layout', layoutId: 'dvorak' }] } } },
 };
-const sensitivity = { id: 'n', analyzerId: 'n-sensitivity', binding: { mode: 'follow' } };
+const sensitivity = { id: 'n', analyzerId: 'n-sensitivity', binding: { mode: 'follow', group: 'link-1' } };
 /** 対象を持つN感度（本体の領域が出る）。 */
 const sensitivityWithTarget = {
   id: 'n',
@@ -38,7 +38,7 @@ async function openWorkspace(page: Page, size: { width: number; height: number }
     if (localStorage.getItem('keydist:workspaces') === null) {
       localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
     }
-  }, { id: 'stack', name, text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes: [flow, comparison, withTarget ? sensitivityWithTarget : sensitivity], grid: GRID });
+  }, { id: 'stack', name, text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes: [flow, comparison, withTarget ? sensitivityWithTarget : sensitivity], grid: GRID, groups: [{ id: 'link-1', target: {} }] });
   await page.goto('/workspace/stack');
   await waitForHydration(page);
   await expect(page.locator('.pane-frame')).toHaveCount(3);
