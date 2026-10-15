@@ -111,3 +111,13 @@ test('計算に使えない配列は、入力の添字ごとに利用者向け�
   assert.match(catalog.unusableLayouts.get(3)!, /計算には使えません（英字の段が空）/);
   for (const reason of catalog.unusableLayouts.values()) assert.doesNotMatch(reason, /捨て/);
 });
+
+test('組み立てで例外が出る配列は、例外の文を出さず固定の理由にする', () => {
+  const catalog = buildUserCatalog([layout('user-empty-seq', { sequences: [['a', []]] })], []);
+  assert.equal(catalog.layouts.size, 0);
+  assert.match(catalog.diagnostics[0]!.message, /step/);
+  assert.equal(
+    catalog.unusableLayouts.get(0),
+    '配列の定義から打鍵を組み立てられないため、計算には使えません。定義を見直してください',
+  );
+});

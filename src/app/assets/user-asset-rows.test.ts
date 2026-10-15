@@ -58,3 +58,8 @@ test('配列の行: 計算に使えない配列は理由を出し、推奨の規
   assert.doesNotMatch(rows[1]!.detail!, /ローマ字規則/);
   assert.equal(rows[2]!.detail, '推奨のローマ字規則: 自作の規則');
 });
+
+test('配列の行: 組み立てで例外が出る配列は、固定の理由を出し、例外の文を漏らさない', () => {
+  const rows = userLayoutRows([{ id: 'seq', name: '空の打鍵列', rows: ROWS, sequences: [['a', []]] }], [RULE]);
+  assert.equal(rows[0]!.detail, '配列の定義から打鍵を組み立てられないため、計算には使えません。定義を見直してください');
+});

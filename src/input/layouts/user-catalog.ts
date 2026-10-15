@@ -80,7 +80,8 @@ export function buildUserCatalog(
     } catch (cause) {
       const reason = cause instanceof Error ? cause.message : String(cause);
       diagnostics.push({ path, message: `配列として組めないため捨てました（${reason}）` });
-      unusableLayouts.set(index, `配列として組めないため、計算には使えません（${reason}）`);
+      // 例外の文は実装の語を含むので画面には出さない。原因は衝突・空の打鍵列など複数あり、特定しない
+      unusableLayouts.set(index, '配列の定義から打鍵を組み立てられないため、計算には使えません。定義を見直してください');
       return;
     }
     const romaji = definition.romaji;
