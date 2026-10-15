@@ -165,23 +165,41 @@ export function fingerAssignmentLabel(assignment: FingerAssignment): string {
   return hasMultiFingerKeys(assignment) ? `${assignment.name}${MULTI_FINGER_NOTE}` : assignment.name;
 }
 
+/**
+ * 値の文言の出し方。要約（`summary`）は自作の指の割当を名前で出さず「自作の指の割当」と畳み、
+ * 手持ちに無い物理配列・ローマ字規則を括弧なしで出す。保存してある上書きの一覧（`list`）は、
+ * 自作の指の割当を名前で出し、手持ちに無いものを条件のモーダルと同じ括弧付きの文言で出す。
+ */
+export type ConditionValueStyle = 'summary' | 'list';
+
+const MISSING_TEXT: Readonly<Record<'shape' | 'romajiRule' | 'fingerAssignment', string>> = {
+  shape: '見つからない物理配列',
+  romajiRule: '見つからないローマ字規則',
+  fingerAssignment: '見つからない指の割当',
+};
+
 function formatValue(
   id: SettingsItemId,
   value: unknown,
   names: ConditionValueNames | undefined,
+  style: ConditionValueStyle = 'summary',
 ): { format: ConditionValueFormat; displayValue: string } {
+  const missing = (kind: keyof typeof MISSING_TEXT) => (style === 'list' ? `（${MISSING_TEXT[kind]}）` : MISSING_TEXT[kind]);
   // 値がidの項目は名前へ引く。引けないid（削除済み・自作で手持ちに無い）もidのままは出さない。
   if (id === 'defaultShapeId' && typeof value === 'string') {
-    return { format: 'primitive', displayValue: names?.shapes.get(value)?.name ?? '見つからない物理配列' };
+    return { format: 'primitive', displayValue: names?.shapes.get(value)?.name ?? missing('shape') };
   }
   if (id === 'romajiRuleId' && typeof value === 'string') {
     const builtin = Object.hasOwn(ROMAJI_RULES, value) ? ROMAJI_RULES[value as keyof typeof ROMAJI_RULES] : undefined;
-    return { format: 'primitive', displayValue: builtin?.name ?? names?.romajiRules?.get(value)?.name ?? '見つからないローマ字規則' };
+    return { format: 'primitive', displayValue: builtin?.name ?? names?.romajiRules?.get(value)?.name ?? missing('romajiRule') };
   }
   if (id === 'fingerAssignmentId' && typeof value === 'string') {
     const builtin = Object.hasOwn(FINGER_ASSIGNMENT_REGISTRY, value) ? FINGER_ASSIGNMENT_REGISTRY[value] : undefined;
     if (builtin !== undefined) return { format: 'primitive', displayValue: fingerAssignmentLabel(builtin) };
     const custom = names?.fingerAssignments?.get(value);
+    if (style === 'list') {
+      return { format: 'primitive', displayValue: custom === undefined ? missing('fingerAssignment') : fingerAssignmentLabel(custom) };
+    }
     const multi = custom !== undefined && hasMultiFingerKeys(custom);
     return { format: 'primitive', displayValue: `自作の指の割当${multi ? MULTI_FINGER_NOTE : ''}` };
   }
@@ -216,6 +234,14 @@ function formatValue(
   }
   // 上で扱っていないオブジェクト値は要約せず「詳細設定」とだけ示す（今のTRACE_AFFECTING_ITEMSには無い）。
   return { format: 'object', displayValue: '（詳細設定）' };
+}
+
+/**
+ * 保存してある上書きの1項目の値を、画面に出す文言にする。名前と値の文言は条件の要約と同じ表（`formatValue`）から出すので、
+ * 項目を足した時に呼び出し側で項目ごとの分岐は要らない。
+ */
+export function conditionOverrideValueText(id: SettingsItemId, value: unknown, names: ConditionValueNames): string {
+  return formatValue(id, value, names, 'list').displayValue;
 }
 
 /** 「動作数の扱い」の2つの選択肢の文言（条件のモーダルと要約で同じ語を使う）。 */

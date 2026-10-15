@@ -126,3 +126,46 @@ test('削除の確認: 文に影響と元に戻せる範囲が出て、キャン
   await page.getByRole('button', { name: 'キャンセル' }).click();
   await expect(rules.locator('[data-user-asset-row]')).toHaveCount(1);
 });
+
+test.describe('条件の上書きの一覧', () => {
+  async function seedOverrides(page: Page): Promise<void> {
+    await seed(page);
+    await page.addInitScript(() => {
+      if (sessionStorage.getItem('seeded-overrides') !== null) return;
+      sessionStorage.setItem('seeded-overrides', '1');
+      localStorage.setItem('keydist:setup-library', JSON.stringify({
+        version: 1,
+        setups: [],
+        overrides: {
+          global: { windowSize: 3 },
+          layout: { 'user-a': { romajiRuleId: 'rule-a' }, 'deleted-layout': { windowSize: 4 } },
+        },
+      }));
+    });
+  }
+
+  test('保存してある上書きが置き場所ごとに出て、消すと一覧から消え、元に戻すと戻る', async ({ page }) => {
+    await seedOverrides(page);
+    await page.goto('/assets');
+    await waitForHydration(page);
+    const section = page.locator('[data-user-assets-section="overrides"]');
+    await expect(section.locator('[data-user-assets-override-group]')).toHaveCount(3);
+    await expect(section.locator('[data-user-assets-override-group="global"]')).toContainText('先読みN: 3');
+    await expect(section.locator('[data-user-assets-override-group="layout:user-a"]')).toContainText('配列「自作A」');
+    await expect(section.locator('[data-user-assets-override-group="layout:user-a"]')).toContainText('ローマ字規則: 自作の規則');
+    await expect(section.locator('[data-user-assets-override-group="layout:deleted-layout"]')).toContainText('（見つからない配列）');
+    await expect(section).not.toContainText('deleted-layout');
+
+    await section.getByRole('button', { name: '配列「自作A」の「ローマ字規則」の上書きを消す' }).click();
+    await expect(section.locator('[data-user-assets-override-group="layout:user-a"]')).toHaveCount(0);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await page.getByRole('button', { name: '元に戻す' }).click();
+    await expect(section.locator('[data-user-assets-override-group="layout:user-a"]')).toContainText('ローマ字規則: 自作の規則');
+  });
+
+  test('上書きが無ければ、無い旨を出す', async ({ page }) => {
+    await page.goto('/assets');
+    await waitForHydration(page);
+    await expect(page.locator('[data-user-assets-section="overrides"]')).toContainText('保存してある上書きはありません。');
+  });
+});
