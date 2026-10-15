@@ -8755,6 +8755,410 @@
       "analysis": {
         "arpeggio": {
           "coverage": {
+            "rate": 0.5631067961165048,
+            "strokes": 290
+          },
+          "meanSpanLength": 2.1142857142857143,
+          "spans": 140
+        },
+        "directionalTransitions": {
+          "empty": 0,
+          "inward": 101,
+          "mixed": 0,
+          "outward": 118,
+          "same": 22,
+          "total": 241
+        },
+        "redirect": {
+          "events": 71,
+          "pivots": {
+            "rate": 0.1378640776699029,
+            "strokes": 71
+          }
+        },
+        "roll": {
+          "anyRoll": {
+            "rate": 0.5631067961165048,
+            "strokes": 290
+          },
+          "longRoll": {
+            "rate": 0.08932038834951456,
+            "strokes": 46
+          },
+          "twoRoll": {
+            "rate": 0.4854368932038835,
+            "strokes": 250
+          }
+        },
+        "sfb": {
+          "events": 22,
+          "involvedStrokes": {
+            "rate": 0.0854368932038835,
+            "strokes": 44
+          }
+        },
+        "strokeCount": 515
+      },
+      "conditions": {
+        "actionRealizationPolicy": {
+          "triggerActivation": "disabled",
+          "triggerActivationClassOverrides": {},
+          "triggerActivationOverrides": []
+        },
+        "arpeggioInterpretation": {
+          "bridgeSameFinger": false,
+          "includeSingleRedirectTail": false,
+          "includeThumb": false
+        },
+        "chainInterpretation": {
+          "breakOnOppositeHandSimultaneous": false,
+          "breakOnSameFinger": true,
+          "breakOnThumbOnly": true,
+          "breakOnTriggerOnly": false
+        },
+        "fingerAssignmentId": "qwerty-optimized",
+        "geometryShapeId": "column-staggered",
+        "preferOppositeThumb": false,
+        "romajiRuleId": "kunrei",
+        "sfbHomeCost": true,
+        "triggerRealizationPolicy": {
+          "useHold": false
+        },
+        "windowSize": 3
+      },
+      "id": "ja:qwerty:legacy:物理配列=column-staggered・fingerAssignment=qwerty-optimized（分割する物理配列で反対側の手の追加の担当を候補から外す分岐）",
+      "language": "ja",
+      "layoutId": "qwerty",
+      "metrics": {
+        "actions": 515,
+        "adjacent": [
+          {
+            "maxExcess": 0.5535522640432631,
+            "meanExcess": 0.027899892827633457,
+            "pair": [
+              "LP",
+              "LR"
+            ],
+            "stdDev": 0.12121245607699586
+          },
+          {
+            "maxExcess": 2.0710719889958167,
+            "meanExcess": 0.08373121549714085,
+            "pair": [
+              "LR",
+              "LM"
+            ],
+            "stdDev": 0.2027705903669254
+          },
+          {
+            "maxExcess": 1.3803845262632237,
+            "meanExcess": 0.26366198656378576,
+            "pair": [
+              "LM",
+              "LI"
+            ],
+            "stdDev": 0.4768058898808626
+          },
+          {
+            "maxExcess": 2.042962568713545,
+            "meanExcess": 0.3274057267257484,
+            "pair": [
+              "RI",
+              "RM"
+            ],
+            "stdDev": 0.5264923012517525
+          },
+          {
+            "maxExcess": 1.237909252416338,
+            "meanExcess": 0.12848488320780915,
+            "pair": [
+              "RM",
+              "RR"
+            ],
+            "stdDev": 0.2743568793350075
+          },
+          {
+            "maxExcess": 1.6534727267613814,
+            "meanExcess": 0.16867370501486237,
+            "pair": [
+              "RR",
+              "RP"
+            ],
+            "stdDev": 0.30820000147591514
+          }
+        ],
+        "comboPresses": 0,
+        "combos": {
+          "definitions": 0,
+          "hits": 0,
+          "matched": 0
+        },
+        "fingerAssignmentId": "qwerty-optimized",
+        "fingerAssignmentName": "QWERTY最適化",
+        "geometryId": "column-staggered",
+        "geometryName": "カラムスタッガード（ANSI・分割）",
+        "inputChars": 290,
+        "layers": [
+          {
+            "id": "single",
+            "label": "単打",
+            "presses": 515
+          },
+          {
+            "id": "layer:Shift",
+            "label": "Shift",
+            "presses": 0
+          }
+        ],
+        "meanPerStroke": 0.5528558472184637,
+        "perCharPresses": 1.7758620689655173,
+        "perCharSteps": 1.7758620689655173,
+        "perCharUnits": 0.9817957286810648,
+        "perFinger": {
+          "LI": 73.3055443615324,
+          "LM": 28.345362404707373,
+          "LP": 4,
+          "LR": 7.577466322936879,
+          "LT": 0,
+          "RI": 81.8103022473527,
+          "RM": 26.381449618829482,
+          "RP": 2.2360679774997894,
+          "RR": 44.06456838465021,
+          "RT": 17
+        },
+        "perFingerPresses": {
+          "LI": 85,
+          "LM": 50,
+          "LP": 89,
+          "LR": 30,
+          "LT": 0,
+          "RI": 104,
+          "RM": 61,
+          "RP": 2,
+          "RR": 74,
+          "RT": 20
+        },
+        "presses": 515,
+        "sameFinger": 0,
+        "singleKeyRate": 100,
+        "singleTapLayerRate": 0,
+        "singleTapRate": 0,
+        "skipped": 0,
+        "strokes": 515,
+        "totalMm": 5124.973703715158,
+        "totalUnits": 284.7207613175088
+      },
+      "note": "物理配列=column-staggered・fingerAssignment=qwerty-optimized（分割する物理配列で反対側の手の追加の担当を候補から外す分岐）",
+      "sampleId": "legacy",
+      "textLength": 290,
+      "textSha256": "13032193a6d690c3512871d49b029cf1f04bca30a16c3df6b5f1b3d5d5182fdc"
+    },
+    {
+      "analysis": {
+        "arpeggio": {
+          "coverage": {
+            "rate": 0.5631067961165048,
+            "strokes": 290
+          },
+          "meanSpanLength": 2.1142857142857143,
+          "spans": 140
+        },
+        "directionalTransitions": {
+          "empty": 0,
+          "inward": 101,
+          "mixed": 0,
+          "outward": 118,
+          "same": 22,
+          "total": 241
+        },
+        "redirect": {
+          "events": 71,
+          "pivots": {
+            "rate": 0.1378640776699029,
+            "strokes": 71
+          }
+        },
+        "roll": {
+          "anyRoll": {
+            "rate": 0.5631067961165048,
+            "strokes": 290
+          },
+          "longRoll": {
+            "rate": 0.08932038834951456,
+            "strokes": 46
+          },
+          "twoRoll": {
+            "rate": 0.4854368932038835,
+            "strokes": 250
+          }
+        },
+        "sfb": {
+          "events": 22,
+          "involvedStrokes": {
+            "rate": 0.0854368932038835,
+            "strokes": 44
+          }
+        },
+        "strokeCount": 515
+      },
+      "conditions": {
+        "actionRealizationPolicy": {
+          "triggerActivation": "disabled",
+          "triggerActivationClassOverrides": {},
+          "triggerActivationOverrides": []
+        },
+        "arpeggioInterpretation": {
+          "bridgeSameFinger": false,
+          "includeSingleRedirectTail": false,
+          "includeThumb": false
+        },
+        "chainInterpretation": {
+          "breakOnOppositeHandSimultaneous": false,
+          "breakOnSameFinger": true,
+          "breakOnThumbOnly": true,
+          "breakOnTriggerOnly": false
+        },
+        "fingerAssignmentId": "qwerty-optimized",
+        "geometryShapeId": "split-ortholinear",
+        "preferOppositeThumb": false,
+        "romajiRuleId": "kunrei",
+        "sfbHomeCost": true,
+        "triggerRealizationPolicy": {
+          "useHold": false
+        },
+        "windowSize": 3
+      },
+      "id": "ja:qwerty:legacy:物理配列=split-ortholinear・fingerAssignment=qwerty-optimized（分割する物理配列で反対側の手の追加の担当を候補から外す分岐）",
+      "language": "ja",
+      "layoutId": "qwerty",
+      "metrics": {
+        "actions": 515,
+        "adjacent": [
+          {
+            "maxExcess": 0.41421356237309515,
+            "meanExcess": 0.02091175266349607,
+            "pair": [
+              "LP",
+              "LR"
+            ],
+            "stdDev": 0.09068974675646943
+          },
+          {
+            "maxExcess": 1.8284271247461903,
+            "meanExcess": 0.08631648114846203,
+            "pair": [
+              "LR",
+              "LM"
+            ],
+            "stdDev": 0.21250699101870896
+          },
+          {
+            "maxExcess": 1.2360679774997898,
+            "meanExcess": 0.32319276071941766,
+            "pair": [
+              "LM",
+              "LI"
+            ],
+            "stdDev": 0.5311973519489621
+          },
+          {
+            "maxExcess": 1.8284271247461903,
+            "meanExcess": 0.3268773830835261,
+            "pair": [
+              "RI",
+              "RM"
+            ],
+            "stdDev": 0.5049063188789974
+          },
+          {
+            "maxExcess": 1.2360679774997898,
+            "meanExcess": 0.16391517631394828,
+            "pair": [
+              "RM",
+              "RR"
+            ],
+            "stdDev": 0.3126158134389383
+          },
+          {
+            "maxExcess": 1.8284271247461903,
+            "meanExcess": 0.14388188506381858,
+            "pair": [
+              "RR",
+              "RP"
+            ],
+            "stdDev": 0.2860515603152097
+          }
+        ],
+        "comboPresses": 0,
+        "combos": {
+          "definitions": 0,
+          "hits": 0,
+          "matched": 0
+        },
+        "fingerAssignmentId": "qwerty-optimized",
+        "fingerAssignmentName": "QWERTY最適化",
+        "geometryId": "split-ortholinear",
+        "geometryName": "オーソリニア（ANSI・分割）",
+        "inputChars": 290,
+        "layers": [
+          {
+            "id": "single",
+            "label": "単打",
+            "presses": 515
+          },
+          {
+            "id": "layer:Shift",
+            "label": "Shift",
+            "presses": 0
+          }
+        ],
+        "meanPerStroke": 0.5528235056486126,
+        "perCharPresses": 1.7758620689655173,
+        "perCharSteps": 1.7758620689655173,
+        "perCharUnits": 0.9817382945139155,
+        "perFinger": {
+          "LI": 75.11269837220806,
+          "LM": 28.414213562373096,
+          "LP": 4,
+          "LR": 7.414213562373095,
+          "LT": 0,
+          "RI": 79.45584412271569,
+          "RM": 26.656854249492383,
+          "RP": 2.23606797749979,
+          "RR": 44.41421356237309,
+          "RT": 17
+        },
+        "perFingerPresses": {
+          "LI": 85,
+          "LM": 50,
+          "LP": 89,
+          "LR": 30,
+          "LT": 0,
+          "RI": 104,
+          "RM": 61,
+          "RP": 2,
+          "RR": 74,
+          "RT": 20
+        },
+        "presses": 515,
+        "sameFinger": 0,
+        "singleKeyRate": 100,
+        "singleTapLayerRate": 0,
+        "singleTapRate": 0,
+        "skipped": 0,
+        "strokes": 515,
+        "totalMm": 5423.613208042127,
+        "totalUnits": 284.7041054090355
+      },
+      "note": "物理配列=split-ortholinear・fingerAssignment=qwerty-optimized（分割する物理配列で反対側の手の追加の担当を候補から外す分岐）",
+      "sampleId": "legacy",
+      "textLength": 290,
+      "textSha256": "13032193a6d690c3512871d49b029cf1f04bca30a16c3df6b5f1b3d5d5182fdc"
+    },
+    {
+      "analysis": {
+        "arpeggio": {
+          "coverage": {
             "rate": 0.4638212737579193,
             "strokes": 1391
           },
