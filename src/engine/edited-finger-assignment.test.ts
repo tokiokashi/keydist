@@ -12,6 +12,7 @@ import {
 import {
   DEFAULT_FINGER_ASSIGNMENT,
   JIS_FINGER_ASSIGNMENT,
+  makeFingerAssignment,
   PHYSICAL_SHAPES,
   type FingerAssignment,
 } from '#input/shapes/geometry.ts';
@@ -85,14 +86,14 @@ test('画面の編集で保存した割り当ては、同じ中身を直接与�
     assignHomeKey(assignColumnFinger(assignKeyFinger(assignment, 'b', 'RI'), shape, 10, 'RR'), 'RR', 'l'));
 
   // 直接与える側は、編集関数を通さず中身を手で書く
-  const keyFinger: FingerAssignment['keyFinger'] = { ...DEFAULT_FINGER_ASSIGNMENT.keyFinger, b: 'RI' };
-  for (const id of ['-', '[', "'"]) keyFinger[id] = 'RR';
-  const direct: FingerAssignment = {
-    id: 'finger-edited',
-    name: '編集した割り当て',
-    keyFinger,
-    homeKey: { ...DEFAULT_FINGER_ASSIGNMENT.homeKey, RR: 'l' },
-  };
+  const baseFinger: FingerAssignment['baseFinger'] = { ...DEFAULT_FINGER_ASSIGNMENT.baseFinger, b: 'RI' };
+  for (const id of ['-', '[', "'"]) baseFinger[id] = 'RR';
+  const direct = makeFingerAssignment(
+    'finger-edited',
+    '編集した割り当て',
+    baseFinger,
+    { ...DEFAULT_FINGER_ASSIGNMENT.homeKey, RR: 'l' },
+  );
   assert.deepEqual(stored, direct);
 
   const viaEditor = measure(stored, shape.id);
@@ -112,7 +113,8 @@ test('既定へ戻すと、物理配列の規格（ANSI・JIS）の既定の割�
     const stored = createAndEdit(DEFAULT_FINGER_ASSIGNMENT, (assignment) =>
       assignKeyFinger(assignKeyFinger(assignColumnFinger(assignment, shape, 3, 'LM'), 'b', 'RI'), 'r9c20', 'RP'));
     const reset = createAndEditAgain(stored, (assignment) => resetToDefaultAssignment(assignment, defaults));
-    assert.deepEqual(reset.keyFinger, defaults.keyFinger, shapeId);
+    assert.deepEqual(reset.baseFinger, defaults.baseFinger, shapeId);
+    assert.deepEqual(reset.fingerKeys, defaults.fingerKeys, shapeId);
     assert.deepEqual(reset.homeKey, defaults.homeKey, shapeId);
     assert.deepEqual(measure(reset, shapeId), measure({ ...defaults, id: reset.id, name: reset.name }, shapeId), shapeId);
   }

@@ -1,4 +1,4 @@
-import { ADJACENT_PAIRS, ALL_FINGERS, dist, type Finger, type Geometry } from '#input/shapes/geometry.ts';
+import { ADJACENT_PAIRS, ALL_FINGERS, dist, hasMultiFingerKeys, type Finger, type Geometry } from '#input/shapes/geometry.ts';
 import type { Stroke, Trace } from '#trace/generate.ts';
 import { DEFAULT_CHAIN_INTERPRETATION, type ChainInterpretation } from './structure/chain.ts';
 import { DEFAULT_ARPEGGIO_INTERPRETATION, type ArpeggioInterpretation } from './structure/arpeggio.ts';
@@ -68,6 +68,11 @@ export interface Metrics {
    */
   fingerAssignmentId: string;
   fingerAssignmentName: string;
+  /**
+   * 使用した指割り当てが、複数の指が担当するキーを持つか。持つ時、担当する指が複数のキーは
+   * 範囲を区切った最小化で選んだ指で打った値になる（仕様 §9.1・§12.1）。
+   */
+  fingerAssignmentHasMultiFingerKeys: boolean;
   /**
    * この数値を算出した測定条件のスナップショット。条件を変えても後から出典を辿れるよう、
    * 表示用の状態ではなく数値と同じ入れ物へ保存する（仕様 §12.3）。
@@ -304,6 +309,7 @@ export function computeMetrics(
     geometryName: geometry.name,
     fingerAssignmentId: geometry.assignment.id,
     fingerAssignmentName: geometry.assignment.name,
+    fingerAssignmentHasMultiFingerKeys: hasMultiFingerKeys(geometry.assignment),
     conditions: {
       ...conditions,
       chainInterpretation: { ...conditions.chainInterpretation },

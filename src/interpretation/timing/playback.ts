@@ -1,4 +1,4 @@
-import { ALL_FINGERS, dist, keyId, resolveKeyId, type Finger, type Geometry, type Point } from '#input/shapes/geometry.ts';
+import { ALL_FINGERS, fingerDist, keyId, resolveKeyId, type Finger, type Geometry, type Point } from '#input/shapes/geometry.ts';
 import {
   classifyPresentationFaces,
   faceCells,
@@ -295,8 +295,10 @@ export function playbackFingerPositionKeys(
 
   for (const finger of ALL_FINGERS) {
     const position = stroke?.positions[finger] ?? geometry.homes[finger];
+    // 指が担当するキーのうち、その位置にあるキー（担当が複数の指のキーを含む）
     const key = [...geometry.keys.values()].find(
-      (candidate) => candidate.finger === finger && candidate.x === position.x && candidate.y === position.y,
+      (candidate) => (geometry.fingerCandidates.get(candidate.id) ?? [candidate.finger]).includes(finger)
+        && candidate.x === position.x && candidate.y === position.y,
     );
     if (key) positionedKeys.set(key.id, finger);
   }
@@ -1039,7 +1041,7 @@ function playbackFingerMoveMs(
   calibration: PlaybackCalibration | undefined,
   speedMultiplier: number,
 ): number {
-  const distance = dist(from, to);
+  const distance = fingerDist(finger, from, to);
   if (distance <= 0) return 0;
   const speed = calibration
     ? calibration.fingerSpeedUnitsPerSecond[finger] ?? calibration.fallbackFingerSpeedUnitsPerSecond

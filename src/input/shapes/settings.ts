@@ -4,6 +4,7 @@ import {
   FINGERS,
   buildGeometry,
   isPresetGeometryKind,
+  makeFingerAssignment,
   keyId,
   PHYSICAL_SHAPES,
   resolveKeyId,
@@ -166,22 +167,41 @@ function fallbackKeyFinger(column: number): Exclude<Finger, 'LT' | 'RT'> {
 
 function sanitizeAssignment(value: unknown, fallback: FingerAssignment, shape: PhysicalShape): FingerAssignment {
   const source = record(value);
-  const sourceKeyFinger = record(source.keyFinger);
-  const fallbackKeyFingerMap = record(fallback.keyFinger);
-  const keyFinger: Record<string, Exclude<Finger, 'LT' | 'RT'>> = {};
+  const sourceBase = record(source.baseFinger);
+  const fallbackBase = record(fallback.baseFinger);
+  const baseFinger: Record<string, Exclude<Finger, 'LT' | 'RT'>> = {};
   shape.rowWidths.forEach((width, row) => {
     for (let col = 0; col < width; col++) {
       const id = keyId(row, col);
-      const candidate = sourceKeyFinger[id] ?? fallbackKeyFingerMap[id];
-      keyFinger[id] = isNonThumb(candidate) ? candidate : fallbackKeyFinger(col);
+      const candidate = sourceBase[id] ?? fallbackBase[id];
+      baseFinger[id] = isNonThumb(candidate) ? candidate : fallbackKeyFinger(col);
     }
   });
   for (const key of shape.extraKeys ?? []) {
-    const candidate = sourceKeyFinger[key.id] ?? fallbackKeyFingerMap[key.id];
-    keyFinger[key.id] = isNonThumb(candidate)
+    const candidate = sourceBase[key.id] ?? fallbackBase[key.id];
+    baseFinger[key.id] = isNonThumb(candidate)
       ? candidate
       : fallbackKeyFinger(Math.max(0, Math.round(key.x)));
   }
+
+  // 担当は、基本の指に加えて、読み込んだ追加の担当のうち物理配列にあるキーだけを残す
+  const sourceFingerKeys = record(source.fingerKeys);
+  const extra: Record<string, Finger[]> = {};
+  for (const finger of ALL_FINGERS) {
+    const keys = sourceFingerKeys[finger];
+    if (!Array.isArray(keys)) continue;
+    for (const key of keys) {
+      if (typeof key !== 'string' || baseFinger[key] === undefined || baseFinger[key] === finger) continue;
+      (extra[key] ??= []).push(finger);
+    }
+  }
+  const assigned = makeFingerAssignment(
+    typeof source.id === 'string' && source.id.length > 0 ? source.id : fallback.id,
+    typeof source.name === 'string' && source.name.length > 0 ? source.name : fallback.name,
+    baseFinger,
+    {} as FingerAssignment['homeKey'],
+    extra,
+  );
 
   const sourceHomeKey = record(source.homeKey);
   const fallbackHomeKey = record(fallback.homeKey);
@@ -190,19 +210,18 @@ function sanitizeAssignment(value: unknown, fallback: FingerAssignment, shape: P
     LP: 0, LR: 1, LM: 2, LI: 3, RI: 6, RM: 7, RR: 8, RP: 9,
   };
   for (const finger of FINGERS) {
+    const owned = (id: unknown): id is string =>
+      typeof id === 'string' && assigned.fingerKeys[finger].includes(id);
     const candidate = sourceHomeKey[finger] ?? fallbackHomeKey[finger];
     const defaultId = keyId(2, Math.min(defaultHomeColumns[finger], (shape.rowWidths[2] ?? 1) - 1));
-    homeKey[finger] = typeof candidate === 'string' && keyFinger[candidate] !== undefined
+    homeKey[finger] = owned(candidate)
       ? candidate
-      : (keyFinger[defaultId] !== undefined ? defaultId : keyId(2, 0));
+      : owned(defaultId)
+        ? defaultId
+        : (assigned.fingerKeys[finger][0] ?? defaultId);
   }
 
-  return {
-    id: typeof source.id === 'string' && source.id.length > 0 ? source.id : fallback.id,
-    name: typeof source.name === 'string' && source.name.length > 0 ? source.name : fallback.name,
-    keyFinger,
-    homeKey,
-  };
+  return { ...assigned, homeKey };
 }
 
 export function cloneGeometrySettings(settings: GeometrySettings): GeometrySettings {

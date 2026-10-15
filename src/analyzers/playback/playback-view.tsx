@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { FINGER_LABEL } from '#input/shapes/finger-names.ts';
 import { keyboardStandardForGeometryId } from '#input/shapes/key-labels.ts';
 import {
   reconcilePlaybackStateAfterAnalysisRefresh,
@@ -319,6 +320,9 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options, onOp
           )}
           <span className="playback-attribution">帰属: <b data-playback-layer>{frame.layerLabel}</b></span>
           <span className="playback-attribution">構造: <b data-playback-structure>{frame.structureLabel}</b></span>
+          <span className="playback-attribution">
+            指: <b data-playback-fingers>{frame.pressedFingers.length === 0 ? '—' : frame.pressedFingers.map((finger) => FINGER_LABEL[finger]).join('、')}</b>
+          </span>
         </div>
         <div className="playback-history" data-playback-history hidden={frame.inputPreview.length === 0}>
           <span className="playback-history-label">入力:</span>

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
-import { DEFAULT_FINGER_ASSIGNMENT, PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
+import { DEFAULT_FINGER_ASSIGNMENT, PHYSICAL_SHAPES, QWERTY_OPTIMIZED_FINGER_ASSIGNMENT, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { Setup } from '#input/setup/index.ts';
 import { EMPTY_SETTINGS_OVERRIDES, resolveSettings, SETTINGS_ITEMS, setSettingsOverride, type SettingsItemId } from '#engine/settings-items.ts';
 import { resolveSetupForText } from '#input/setup/index.ts';
@@ -104,6 +104,48 @@ test('conditionHeaderInfoFromResolvedInput: ResolvedInputのgeometryから名前
   assert.equal(info.layoutName, result.input.layout.name);
   assert.equal(info.shapeName, result.input.geometry.name);
   assert.equal(info.fingerAssignmentName, result.input.geometry.assignment.name);
+});
+
+test('複数の指が担当するキーを持つ指の割当で測った時は、条件の要約と見出しにそのことが出る', () => {
+  const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'fingerAssignmentId', 'qwerty-optimized');
+  assert.ok(written.ok);
+  if (!written.ok) return;
+  const result = resolveEngineInput({
+    target: { kind: 'setup', setupId: setupFor('qwerty').id },
+    setups: new Map([[setupFor('qwerty').id, setupFor('qwerty')]]),
+    catalog: CATALOG,
+    userLayouts: NO_USER_LAYOUTS,
+    overrides: written.overrides,
+    text: 'hello',
+    language: 'en',
+  });
+  assert.ok(result.ok);
+  if (!result.ok) return;
+
+  // 見出し: 実際に使った指の割当の名前に添える
+  const info = conditionHeaderInfoFromResolvedInput(result.input.layout, result.input.geometry);
+  assert.equal(info.fingerAssignmentName, 'QWERTY最適化（複数の指が担当するキーあり）');
+  // 要約の行
+  const row = traceConditionSummary(result.input.cascade, CATALOG).find((candidate) => candidate.id === 'fingerAssignmentId');
+  assert.equal(row?.displayValue, 'QWERTY最適化（複数の指が担当するキーあり）');
+  assert.ok(!`${info.fingerAssignmentName}${row?.displayValue}`.includes('打ち分け'));
+
+  // 自作でも、担当を持つ割当は同じ語を添える。持たない割当は添えない
+  const custom = { ...structuredClone(QWERTY_OPTIMIZED_FINGER_ASSIGNMENT), id: 'finger-custom', name: 'マイ' };
+  const plain = { ...structuredClone(DEFAULT_FINGER_ASSIGNMENT), id: 'finger-plain', name: 'マイ2' };
+  const names = { ...CATALOG, fingerAssignments: new Map([[custom.id, custom], [plain.id, plain]]) };
+  const customRow = (id: string) => {
+    const customWritten = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'fingerAssignmentId', id);
+    assert.ok(customWritten.ok);
+    const resolution = resolveSetupForText(setupFor('qwerty'), CATALOG, NO_USER_LAYOUTS, 'en');
+    assert.ok(resolution.ok);
+    if (!customWritten.ok || !resolution.ok) throw new Error('unreachable');
+    const cascade = resolveSettings(customWritten.overrides, resolution.context);
+    return traceConditionSummary(cascade, names).find((candidate) => candidate.id === 'fingerAssignmentId')?.displayValue;
+  };
+  assert.equal(customRow(custom.id), '自作の指の割当（複数の指が担当するキーあり）');
+  assert.equal(customRow(plain.id), '自作の指の割当');
+  assert.equal(conditionHeaderInfo(LAYOUT_BY_ID.get('qwerty')!, PHYSICAL_SHAPES['row-staggered'], DEFAULT_FINGER_ASSIGNMENT).fingerAssignmentName, DEFAULT_FINGER_ASSIGNMENT.name);
 });
 
 function resolveWith(

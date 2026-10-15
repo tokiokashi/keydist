@@ -954,3 +954,36 @@ test('入力の行のローマ字表示は、ローマ字の配列で既定で�
   assert.equal(frameAt('qwerty', 'fjd', 1).frame.romajiInputPreview, undefined);
   assert.equal(frameAt('qwerty', 'fjd', 1, { showRomajiInput: false }).frame.romajiInputPreview, undefined);
 });
+
+test('複数の指が担当するキー: 押した指を持ち、指の位置は基本の指ではなく実際に押した指のキーに出る', () => {
+  const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'fingerAssignmentId', 'qwerty-optimized');
+  assert.ok(written.ok);
+  if (!written.ok) return;
+  const input = resolve('qwerty', 'minute', 'en', written.overrides);
+  const cache = createEngineCache();
+  const { trace } = cache.getTrace(input);
+  assert.ok(trace);
+  const extracted = cache.getExtraction(input, playbackDefinition, DEFAULT_PLAYBACK_OPTIONS).extracted;
+  const timing = defaultTiming();
+  const frame = derivePlaybackFrame({
+    layout: input.layout,
+    geometry: input.geometry,
+    trace,
+    analysis: extracted.analysis,
+    windowSize: extracted.windowSize,
+    schedule: playbackScheduleOf(extracted.analysis, input.geometry, timing),
+    timing,
+    options: { ...DEFAULT_PLAYBACK_OPTIONS, ...SHOW_ALL_FIGURE },
+    cursor: 1,
+    elapsedMs: 0,
+  });
+  // mの基本の指は右人差し指だが、この入力では右親指が押す
+  assert.equal(input.geometry.keys.get('m')?.finger, 'RI');
+  assert.deepEqual(frame.pressedFingers, ['RT']);
+  assert.equal(frame.fingerPositionKeys.get('m'), 'RT');
+});
+
+test('押した指: 基本の指だけが担当するキーでは、基本の指が出る', () => {
+  const { frame } = frameAt('qwerty', 'fj', 1, SHOW_ALL_FIGURE);
+  assert.deepEqual(frame.pressedFingers, ['LI']);
+});

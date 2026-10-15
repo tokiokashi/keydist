@@ -7,7 +7,7 @@ import {
   type AssetCodec,
   type CodecDiagnostic,
 } from '#input/codec/index.ts';
-import { FINGERS, type FingerAssignment, type NonThumb } from './geometry.ts';
+import { ALL_FINGERS, FINGERS, type Finger, type FingerAssignment, type NonThumb } from './geometry.ts';
 
 /**
  * 自作の指割り当て。
@@ -29,8 +29,13 @@ export const newId = (): string =>
 
 const nonThumbFingerSchema = v.picklist(FINGERS);
 
-/** 物理キーid → 指（親指を除く）。列単位の割り当てとキー単位の上書きの両方をこの1つのrecordで表す（既存`FingerAssignment.keyFinger`と同じ）。 */
-const keyFingerSchema = v.record(v.string(), nonThumbFingerSchema);
+/** 物理キーid → 基本の指（親指を除く）。列単位の割り当てとキー単位の上書きの両方をこの1つのrecordで表す。 */
+const baseFingerSchema = v.record(v.string(), nonThumbFingerSchema);
+
+/** 指ごとの担当キー。親指を含む10本ぶん全部揃っている必要がある。 */
+const fingerKeysSchema = v.strictObject(
+  Object.fromEntries(ALL_FINGERS.map((finger) => [finger, v.array(v.string())])) as Record<Finger, v.ArraySchema<v.StringSchema<undefined>, undefined>>,
+);
 
 const homeKeyFieldSchema = v.pipe(v.string(), v.minLength(1));
 
@@ -39,12 +44,36 @@ const homeKeySchema = v.strictObject(
   Object.fromEntries(FINGERS.map((finger) => [finger, homeKeyFieldSchema])) as Record<NonThumb, typeof homeKeyFieldSchema>,
 );
 
-const userFingerAssignmentSchema = v.strictObject({
-  id: v.pipe(v.string(), v.minLength(1), v.startsWith(USER_FINGER_ASSIGNMENT_ID_PREFIX)),
-  name: v.pipe(v.string(), v.minLength(1)),
-  keyFinger: keyFingerSchema,
-  homeKey: homeKeySchema,
-}) satisfies v.BaseSchema<unknown, FingerAssignment, v.BaseIssue<unknown>>;
+/**
+ * 基本の指と担当キーの整合（仕様 §3.2）。基本の指は、その指が担当するキーの中にあり、
+ * 親指以外の指が担当するキーは基本の指を持つ。整合しない時は、直すべき点を返す。
+ * ホームキーがその指の担当でない割り当ては、編集の途中の状態として保存でき（エディタが警告を出す）、
+ * 物理配列を構築する時に拒否される。
+ */
+export function fingerAssignmentConsistencyProblem(
+  assignment: Pick<FingerAssignment, 'baseFinger' | 'fingerKeys'>,
+): string | undefined {
+  for (const [key, finger] of Object.entries(assignment.baseFinger)) {
+    if (!assignment.fingerKeys[finger].includes(key)) return `キー「${key}」の基本の指が、そのキーを担当していません`;
+  }
+  for (const finger of ALL_FINGERS) {
+    for (const key of assignment.fingerKeys[finger]) {
+      if (assignment.baseFinger[key] === undefined) return `キー「${key}」に基本の指がありません`;
+    }
+  }
+  return undefined;
+}
+
+const userFingerAssignmentSchema = v.pipe(
+  v.strictObject({
+    id: v.pipe(v.string(), v.minLength(1), v.startsWith(USER_FINGER_ASSIGNMENT_ID_PREFIX)),
+    name: v.pipe(v.string(), v.minLength(1)),
+    baseFinger: baseFingerSchema,
+    fingerKeys: fingerKeysSchema,
+    homeKey: homeKeySchema,
+  }),
+  v.check((value) => fingerAssignmentConsistencyProblem(value) === undefined, '指の割り当ての担当と基本の指が合っていません'),
+) satisfies v.BaseSchema<unknown, FingerAssignment, v.BaseIssue<unknown>>;
 
 /**
  * `raw`から自作の指割り当ての配列を読み取る。壊れた要素・id重複は捨てて診断を積む
@@ -65,10 +94,10 @@ export function decodeUserFingerAssignments(
   raw.forEach((candidate, index) => {
     // valibotの`record`は予約名のkeyを黙って落とす。落ちた事実を診断に残す
     // （`input/settings/codec.ts`の上書き読み取りと同じ扱い）。
-    if (isRecord(candidate) && isRecord(candidate.keyFinger)) {
-      for (const key of Object.keys(candidate.keyFinger)) {
+    if (isRecord(candidate) && isRecord(candidate.baseFinger)) {
+      for (const key of Object.keys(candidate.baseFinger)) {
         if (UNSAFE_OBJECT_KEYS.has(key)) {
-          diagnostics.push({ path: `${path}[${index}].keyFinger.${key}`, message: `予約名のキー「${key}」を捨てました` });
+          diagnostics.push({ path: `${path}[${index}].baseFinger.${key}`, message: `予約名のキー「${key}」を捨てました` });
         }
       }
     }
@@ -97,7 +126,7 @@ export const USER_FINGER_ASSIGNMENTS_CODEC: AssetCodec<readonly FingerAssignment
     // `assignments`が配列でなくても資産全体は失敗にせず空扱いにする（捨てた旨の診断は積む）。
     return decodeUserFingerAssignments(payload.assignments, 'assignments', diagnostics);
   },
-  encodePayload: (value) => ({ assignments: value.map((assignment) => ({ ...assignment })) }),
+  encodePayload: (value) => ({ assignments: value.map((assignment) => structuredClone(assignment)) }),
 });
 
 /**
@@ -178,25 +207,34 @@ export function renameUserFingerAssignment(
 }
 
 /**
- * 中身（キーごとの指とホームキー）の書き換え。対象が存在しない、または中身が変わらないなら
+ * 中身（基本の指・指ごとの担当キー・ホームキー）の書き換え。対象が存在しない、または中身が変わらないなら
  * `assignments`をそのまま返す。idと名前は変えない（名前は`renameUserFingerAssignment`）。
  */
 export function updateUserFingerAssignment(
   assignments: readonly FingerAssignment[],
   id: string,
-  content: Pick<FingerAssignment, 'keyFinger' | 'homeKey'>,
+  content: Pick<FingerAssignment, 'baseFinger' | 'fingerKeys' | 'homeKey'>,
 ): readonly FingerAssignment[] {
   const target = assignments.find((assignment) => assignment.id === id);
   if (target === undefined || sameContent(target, content)) return assignments;
-  const keyFinger = { ...content.keyFinger };
-  const homeKey = { ...content.homeKey };
-  return assignments.map((assignment) => assignment.id === id ? { ...assignment, keyFinger, homeKey } : assignment);
+  const cloned = structuredClone(content);
+  return assignments.map((assignment) => assignment.id === id
+    ? { ...assignment, baseFinger: cloned.baseFinger, fingerKeys: cloned.fingerKeys, homeKey: cloned.homeKey }
+    : assignment);
 }
 
-function sameContent(a: Pick<FingerAssignment, 'keyFinger' | 'homeKey'>, b: Pick<FingerAssignment, 'keyFinger' | 'homeKey'>): boolean {
-  const aKeys = Object.keys(a.keyFinger);
-  if (aKeys.length !== Object.keys(b.keyFinger).length) return false;
-  if (aKeys.some((key) => a.keyFinger[key] !== b.keyFinger[key])) return false;
+function sameContent(
+  a: Pick<FingerAssignment, 'baseFinger' | 'fingerKeys' | 'homeKey'>,
+  b: Pick<FingerAssignment, 'baseFinger' | 'fingerKeys' | 'homeKey'>,
+): boolean {
+  const aKeys = Object.keys(a.baseFinger);
+  if (aKeys.length !== Object.keys(b.baseFinger).length) return false;
+  if (aKeys.some((key) => a.baseFinger[key] !== b.baseFinger[key])) return false;
+  for (const finger of ALL_FINGERS) {
+    const left = [...a.fingerKeys[finger]].sort();
+    const right = [...b.fingerKeys[finger]].sort();
+    if (left.length !== right.length || left.some((key, index) => key !== right[index])) return false;
+  }
   return FINGERS.every((finger) => a.homeKey[finger] === b.homeKey[finger]);
 }
 

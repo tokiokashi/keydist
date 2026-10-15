@@ -12,6 +12,7 @@ import {
   DEFAULT_FINGER_ASSIGNMENT,
   PHYSICAL_SHAPES,
   buildGeometry,
+  makeFingerAssignment,
   type FingerAssignment,
   type PhysicalShape,
 } from '../shapes/geometry.ts';
@@ -35,16 +36,16 @@ const shape: PhysicalShape = {
   ],
 };
 
-const assignment: FingerAssignment = {
-  ...structuredClone(DEFAULT_FINGER_ASSIGNMENT),
-  id: 'extra-keys',
-  name: 'grid外キーfixture',
-  keyFinger: {
-    ...DEFAULT_FINGER_ASSIGNMENT.keyFinger,
+const assignment: FingerAssignment = makeFingerAssignment(
+  'extra-keys',
+  'grid外キーfixture',
+  {
+    ...DEFAULT_FINGER_ASSIGNMENT.baseFinger,
     tab: 'LP',
     escape: 'LP',
   },
-};
+  DEFAULT_FINGER_ASSIGNMENT.homeKey,
+);
 
 test('grid外physical keyはshape座標とFingerAssignmentを分離したままgeometryへ入る', () => {
   const geometry = buildGeometry(shape, assignment);
@@ -86,8 +87,8 @@ test('extraKeysとその運指はgeometry settings JSONをround-tripする', () 
 
   const restored = parseGeometrySettings(serializeGeometrySettings(settings));
   assert.deepEqual(restored.shape.extraKeys, shape.extraKeys);
-  assert.equal(restored.assignment.keyFinger.tab, 'LP');
-  assert.equal(restored.assignment.keyFinger.escape, 'LP');
+  assert.equal(restored.assignment.baseFinger.tab, 'LP');
+  assert.equal(restored.assignment.baseFinger.escape, 'LP');
   assert.doesNotThrow(() => buildGeometry(restored.shape, restored.assignment));
 });
 

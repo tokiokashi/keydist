@@ -21,6 +21,20 @@ export const ADJACENT_PAIRS: [NonThumb, NonThumb][] = [
 export interface Point {
   x: number;
   y: number;
+  /**
+   * 親指が親指キー以外のキーを押した位置だけが持つ印（仕様 §3.1）。
+   * 親指キーと親指キー以外のキーの間の距離を座標によらず1uにするために、座標とは別に運ぶ。
+   */
+  offThumbKey?: true;
+}
+
+/**
+ * 指`finger`が`from`から`to`へ動く距離（仕様 §3.1・§9）。座標のユークリッド距離だが、
+ * 親指が親指キーと親指キー以外のキーの間を動く時だけ、座標によらず1uとする。
+ */
+export function fingerDist(finger: Finger, from: Point, to: Point): number {
+  if (isThumb(finger) && (from.offThumbKey === true) !== (to.offThumbKey === true)) return 1;
+  return Math.hypot(from.x - to.x, from.y - to.y);
 }
 
 export interface Key extends Point {
@@ -28,6 +42,7 @@ export interface Key extends Point {
   id: string;
   row: number;
   col: number;
+  /** 基本の指（仕様 §3.2）。担当する指が複数あるキーの候補は`Geometry.fingerCandidates` */
   finger: Finger;
   /** 表示上のキー幅 [u]。通常キーは1。 */
   width?: number;
@@ -44,6 +59,11 @@ export interface Geometry {
   /** 各手のホームとなる親指キー（仕様 §3.1） */
   thumbs: Record<'LT' | 'RT', Key>;
   homes: Record<Finger, Point>;
+  /**
+   * キーid → 担当する指（指の固定の順。基本の指を含む、1本以上）。
+   * 親指キーはその手の親指、Shiftキーは左右の小指だけが担当する
+   */
+  fingerCandidates: Map<string, readonly Finger[]>;
   /** この物理配列の構築に使った指割り当て（仕様 §4.2準拠。出力に併記するため保持する） */
   assignment: FingerAssignment;
 }
@@ -89,24 +109,73 @@ export const THUMB_ROW = 4;
 export const HOME_ROW = 2;
 
 /**
- * 指の割り当て。運指は配列定義の一部であり、評価器が代替の指を探すことはしない
- * （仕様 §4.2）。割り当てを変えると同指連続の数も距離も変わるため、どの割り当てで
- * 測ったかは数値に付随する情報として出力へ併記する（仕様 §12.3）。比較の可否を
- * 決めるのは読み手であってモデルではない。
+ * 指の割り当て（仕様 §3.2）。指（左右の親指を含む10本）ごとに担当するキーの集合を持ち、
+ * どのキーも1本以上の指が担当して、そのうち1本を基本の指とする。担当する指が複数あるキーを
+ * どの指で打つかはモデルが`N`入力先までの範囲で求める（仕様 §9.1）。割り当てを変えると
+ * 同指連続の数も距離も変わるため、どの割り当てで測ったかは数値に付随する情報として
+ * 出力へ併記する（仕様 §12.3）。比較の可否を決めるのは読み手であってモデルではない。
  */
 export interface FingerAssignment {
   id: string;
   name: string;
-  /** 物理キーid → 指。親指キーは含まない（親指の扱いは仕様 §3.1で固定） */
-  keyFinger: Record<string, Finger>;
   /**
-   * 各指のホーム位置となるキーid（仕様 §3のH_f）。
+   * 物理キーid → 基本の指。親指以外の指だけ。親指キーとShiftキーは含まない
+   * （親指キーはその手の親指、Shiftキーは左右の小指に物理配列が固定する。仕様 §3.1）
+   */
+  baseFinger: Record<string, NonThumb>;
+  /**
+   * 指ごとに担当するキーid。基本の指として担当するキーを含む。親指キーは含まず、
+   * 親指の分は親指キー以外のキーだけを持つ。キーの並びは意味を持たない
+   */
+  fingerKeys: Record<Finger, readonly string[]>;
+  /**
+   * 各指のホーム位置となるキーid（仕様 §3のH_f）。その指が担当するキーでなければならない。
    * 座標はここで指した物理キーの実座標から引くため、物理配列（row-staggered等）ごとに解決される。
    */
   homeKey: Record<NonThumb, string>;
 }
 
-/** 配列ごとに既定のホームキーだけを上書きした運指設定を作る。 */
+/** 基本の指と追加の担当から、指ごとの担当キーを含む割り当てを作る。追加の担当は基本の指と重ねて持たない */
+export function makeFingerAssignment(
+  id: string,
+  name: string,
+  baseFinger: Record<string, NonThumb>,
+  homeKey: Record<NonThumb, string>,
+  extra: Readonly<Record<string, readonly Finger[]>> = {},
+): FingerAssignment {
+  const sets = {} as Record<Finger, Set<string>>;
+  for (const finger of ALL_FINGERS) sets[finger] = new Set();
+  for (const [key, finger] of Object.entries(baseFinger)) sets[finger].add(key);
+  for (const [key, fingers] of Object.entries(extra)) {
+    for (const finger of fingers) sets[finger].add(key);
+  }
+  const fingerKeys = {} as Record<Finger, readonly string[]>;
+  for (const finger of ALL_FINGERS) fingerKeys[finger] = [...sets[finger]];
+  return { id, name, baseFinger, fingerKeys, homeKey };
+}
+
+/** キー`key`を担当する指（指の固定の順）。担当が無ければ空 */
+export function keyOwners(assignment: FingerAssignment, key: string): Finger[] {
+  return ALL_FINGERS.filter((finger) => assignment.fingerKeys[finger].includes(key));
+}
+
+/** 担当する指が2本以上のキーを持つか（仕様 §3.2） */
+export function hasMultiFingerKeys(assignment: FingerAssignment): boolean {
+  const counts = new Map<string, number>();
+  for (const finger of ALL_FINGERS) {
+    for (const key of assignment.fingerKeys[finger]) {
+      const count = (counts.get(key) ?? 0) + 1;
+      if (count >= 2) return true;
+      counts.set(key, count);
+    }
+  }
+  return false;
+}
+
+/**
+ * 配列ごとに既定のホームキーだけを上書きした運指設定を作る。
+ * 上書きのキーを、その指が担当しない時は使わない（仕様 §3.2）。
+ */
 export function assignmentWithHomeKeys(
   assignment: FingerAssignment,
   homeKeys?: Partial<Record<NonThumb, string>>,
@@ -115,7 +184,7 @@ export function assignmentWithHomeKeys(
   const merged = { ...assignment.homeKey };
   for (const finger of FINGERS) {
     const key = homeKeys[finger];
-    if (key !== undefined && assignment.keyFinger[key] !== undefined) merged[finger] = key;
+    if (key !== undefined && assignment.fingerKeys[finger].includes(key)) merged[finger] = key;
   }
   return { ...assignment, homeKey: merged };
 }
@@ -123,26 +192,34 @@ export function assignmentWithHomeKeys(
 /**
  * 列を単位に指を割り当てる（既定の割り当てが取る形）。同じ列は全行で同じ指になる。
  * `rowWidths` を渡すと既定（ANSI 12/12/11/10）以外の物理配列にも割り当てを作れる。
+ * `extra`は追加で担当させるキー（キーid → 指）。
  */
 export function columnFingerAssignment(
   id: string,
   name: string,
-  columnFinger: Finger[],
+  columnFinger: NonThumb[],
   homeColumn: Record<NonThumb, number>,
   rowWidths: number[] = ROW_WIDTH,
+  extra: Readonly<Record<string, readonly Finger[]>> = {},
 ): FingerAssignment {
-  const keyFinger: Record<string, Finger> = {};
+  const baseFinger: Record<string, NonThumb> = {};
   rowWidths.forEach((width, row) => {
     for (let col = 0; col < width; col++) {
-      keyFinger[keyId(row, col)] = columnFinger[col];
+      const finger: NonThumb | undefined = columnFinger[col];
+      if (finger !== undefined) baseFinger[keyId(row, col)] = finger;
     }
   });
   const homeKey = {} as Record<NonThumb, string>;
   for (const finger of FINGERS) {
     homeKey[finger] = keyId(HOME_ROW, homeColumn[finger]);
   }
-  return { id, name, keyFinger, homeKey };
+  return makeFingerAssignment(id, name, baseFinger, homeKey, extra);
 }
+
+const DEFAULT_COLUMN_FINGER: NonThumb[] = [
+  'LP', 'LR', 'LM', 'LI', 'LI', 'RI', 'RI', 'RM', 'RR', 'RP', 'RP', 'RP', 'RP',
+];
+const DEFAULT_HOME_COLUMN: Record<NonThumb, number> = { LP: 0, LR: 1, LM: 2, LI: 3, RI: 6, RM: 7, RR: 8, RP: 9 };
 
 /**
  * 既定の指割り当て。10列目より右（`-` `=` `[` `]` `'` など）はすべて小指が担当し、
@@ -151,16 +228,47 @@ export function columnFingerAssignment(
 export const DEFAULT_FINGER_ASSIGNMENT: FingerAssignment = columnFingerAssignment(
   'default',
   '既定（列固定）',
-  ['LP', 'LR', 'LM', 'LI', 'LI', 'RI', 'RI', 'RM', 'RR', 'RP', 'RP', 'RP', 'RP'],
-  { LP: 0, LR: 1, LM: 2, LI: 3, RI: 6, RM: 7, RR: 8, RP: 9 },
+  DEFAULT_COLUMN_FINGER,
+  DEFAULT_HOME_COLUMN,
 );
 
 export const JIS_FINGER_ASSIGNMENT: FingerAssignment = columnFingerAssignment(
   'jis-default',
   'JIS既定（列固定）',
-  ['LP', 'LR', 'LM', 'LI', 'LI', 'RI', 'RI', 'RM', 'RR', 'RP', 'RP', 'RP', 'RP'],
-  { LP: 0, LR: 1, LM: 2, LI: 3, RI: 6, RM: 7, RR: 8, RP: 9 },
+  DEFAULT_COLUMN_FINGER,
+  DEFAULT_HOME_COLUMN,
   [...JIS_ROW_WIDTH],
+);
+
+/**
+ * 既定・JISのそれぞれに、QWERTYのローマ字入力で速く打つ人の打ち方に合わせて、担当するキーを足した割り当て。
+ * 元の割り当ての担当と基本の指はそのまま残す。
+ */
+const QWERTY_OPTIMIZED_EXTRA: Readonly<Record<string, readonly Finger[]>> = {
+  z: ['LR'],
+  r: ['LM'], t: ['LM'], x: ['LM', 'LT'],
+  c: ['LI'], d: ['LI'], y: ['LI', 'RM'], h: ['LI'], n: ['LI', 'RT'],
+  b: ['RT', 'RI'], m: ['RT'],
+  g: ['RI'], k: ['RI', 'RR'], i: ['RI', 'RR'],
+  u: ['RM'], j: ['RM'],
+};
+
+export const QWERTY_OPTIMIZED_FINGER_ASSIGNMENT: FingerAssignment = columnFingerAssignment(
+  'qwerty-optimized',
+  'QWERTY最適化',
+  DEFAULT_COLUMN_FINGER,
+  DEFAULT_HOME_COLUMN,
+  ROW_WIDTH,
+  QWERTY_OPTIMIZED_EXTRA,
+);
+
+export const QWERTY_OPTIMIZED_JIS_FINGER_ASSIGNMENT: FingerAssignment = columnFingerAssignment(
+  'qwerty-optimized-jis',
+  'QWERTY最適化（JIS）',
+  DEFAULT_COLUMN_FINGER,
+  DEFAULT_HOME_COLUMN,
+  [...JIS_ROW_WIDTH],
+  QWERTY_OPTIMIZED_EXTRA,
 );
 
 export type PhysicalKeyboardStandard = 'ansi' | 'jis';
@@ -405,7 +513,7 @@ export function buildGeometry(
     const line: Key[] = [];
     for (let col = 0; col < width; col++) {
       const id = keyId(row, col);
-      const finger = assignment.keyFinger[id];
+      const finger = assignment.baseFinger[id];
       if (!finger) throw new Error(`指割り当て「${assignment.id}」にキー ${id} が無い`);
       const key: Key = { id, row, col, x: xOf(row, col), y: yOf(row, col), finger };
       line.push(key);
@@ -430,10 +538,10 @@ export function buildGeometry(
     ) {
       throw new Error(`物理配列「${s.id}」の追加キー ${spec.id} が既存キーと重複している`);
     }
-    const finger = assignment.keyFinger[canonicalId];
+    const finger = assignment.baseFinger[canonicalId];
     if (!finger) throw new Error(`指割り当て「${assignment.id}」にキー ${spec.id} が無い`);
     if (isThumb(finger)) {
-      throw new Error(`追加キー ${spec.id} に親指 ${finger} は割り当てられない`);
+      throw new Error(`追加キー ${spec.id} の基本の指に親指 ${finger} は割り当てられない`);
     }
     keys.set(canonicalId, {
       id: canonicalId,
@@ -515,12 +623,25 @@ export function buildGeometry(
     if (!homeKey) {
       throw new Error(`指割り当て「${assignment.id}」の指 ${finger} のホームキー ${homeKeyId} が無い`);
     }
+    if (!assignment.fingerKeys[finger].includes(homeKeyId)) {
+      throw new Error(`指割り当て「${assignment.id}」の指 ${finger} のホームキー ${homeKeyId} を、その指が担当していない`);
+    }
     homes[finger] = { x: homeKey.x, y: homeKey.y };
   }
   homes.LT = { x: thumbs.LT.x, y: thumbs.LT.y };
   homes.RT = { x: thumbs.RT.x, y: thumbs.RT.y };
 
-  return { id: s.id, name: s.name, pitchMm: s.pitchMm, keys, grid, thumbs, homes, assignment };
+  // 担当する指（仕様 §3.2）。親指キーはその手の親指、Shiftキーは左右の小指だけが担当する
+  const fingerCandidates = new Map<string, readonly Finger[]>();
+  for (const key of keys.values()) {
+    const fixed = isThumb(key.finger) || key.id === SHIFT_KEY.L || key.id === SHIFT_KEY.R;
+    const owners = fixed ? [key.finger] : keyOwners(assignment, key.id);
+    fingerCandidates.set(key.id, owners.length > 0 ? owners : [key.finger]);
+  }
+
+  return {
+    id: s.id, name: s.name, pitchMm: s.pitchMm, keys, grid, thumbs, homes, fingerCandidates, assignment,
+  };
 }
 
 export const dist = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);

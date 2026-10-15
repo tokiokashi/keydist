@@ -139,7 +139,11 @@ const ruleContent = (rule: UserRomajiRule): string =>
   canonical({ base: rule.base, overrides: rule.overrides, generateSokuon: rule.generateSokuon });
 
 const fingerContent = (assignment: FingerAssignment): string =>
-  canonical({ keyFinger: assignment.keyFinger, homeKey: assignment.homeKey });
+  canonical({
+    baseFinger: assignment.baseFinger,
+    fingerKeys: Object.fromEntries(Object.entries(assignment.fingerKeys).map(([finger, keys]) => [finger, [...keys].sort()])),
+    homeKey: assignment.homeKey,
+  });
 
 interface Item {
   readonly id: string;

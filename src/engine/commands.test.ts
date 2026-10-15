@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import { applyCommand, composeCommands, emptyCommandHistory, redo, undo } from '#input/commands/index.ts';
 import { emptyCascadeOverrides } from '#input/settings/index.ts';
 import type { AnalysisTarget, SetupLibrary } from '#input/setup/index.ts';
+import { assignKeyFinger } from '#input/shapes/finger-assignment-edit.ts';
 import { DEFAULT_FINGER_ASSIGNMENT } from '#input/shapes/geometry.ts';
 import { emptyTextLibrary } from '#input/text/library.ts';
 import { DEFAULT_TEXT_REF, type TextRef } from '#input/text/selection.ts';
@@ -263,7 +264,8 @@ test('createFingerAssignmentCommand: 指割り当てを1件作成する。undo�
   assert.equal(step.outcome.kind, 'applied');
   assert.equal(step.assets.fingerAssignments.length, 1);
   assert.equal(step.assets.fingerAssignments[0]!.name, 'マイ運指');
-  assert.deepEqual(step.assets.fingerAssignments[0]!.keyFinger, DEFAULT_FINGER_ASSIGNMENT.keyFinger);
+  assert.deepEqual(step.assets.fingerAssignments[0]!.baseFinger, DEFAULT_FINGER_ASSIGNMENT.baseFinger);
+  assert.deepEqual(step.assets.fingerAssignments[0]!.fingerKeys, DEFAULT_FINGER_ASSIGNMENT.fingerKeys);
 
   const undone = undo(step.assets, step.history);
   assert.equal(undone.assets.fingerAssignments.length, 0);
@@ -345,7 +347,7 @@ test('setFingerAssignmentContentCommand: 中身を書き換え、undoで戻る�
     createFingerAssignmentCommand(generateFingerAssignmentId, DEFAULT_FINGER_ASSIGNMENT, 'マイ運指'),
   );
   const target = created.assets.fingerAssignments[0]!;
-  const content = { keyFinger: { ...target.keyFinger, q: 'RP' as const }, homeKey: target.homeKey };
+  const content = assignKeyFinger(target, 'q', 'RP');
 
   const missing = applyCommand(created.assets, created.history, setFingerAssignmentContentCommand('no-such-id', content));
   assert.equal(missing.outcome.kind, 'no-op');
@@ -354,10 +356,10 @@ test('setFingerAssignmentContentCommand: 中身を書き換え、undoで戻る�
 
   const step = applyCommand(created.assets, created.history, setFingerAssignmentContentCommand(target.id, content));
   assert.equal(step.outcome.kind, 'applied');
-  assert.equal(step.assets.fingerAssignments[0]!.keyFinger.q, 'RP');
+  assert.equal(step.assets.fingerAssignments[0]!.baseFinger.q, 'RP');
   assert.equal(step.assets.fingerAssignments[0]!.name, 'マイ運指');
   const undone = undo(step.assets, step.history);
-  assert.equal(undone.assets.fingerAssignments[0]!.keyFinger.q, 'LP');
+  assert.equal(undone.assets.fingerAssignments[0]!.baseFinger.q, 'LP');
 });
 
 test('renameFingerAssignmentCommand: 同じ名前への変更はno-op', () => {

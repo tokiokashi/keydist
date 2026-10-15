@@ -1,6 +1,6 @@
 import { readOverride, type CascadeLevel, type Diagnostic, type ResolvedOrigin } from '#input/settings/index.ts';
 import { SETTINGS_ITEMS, type ResolvedSettingsCascade, type SettingsCascadeOverrides, type SettingsItemId } from '#engine/settings-items.ts';
-import { DEFAULT_FINGER_ASSIGNMENT, type FingerAssignment, type Geometry, type PhysicalShape } from '#input/shapes/geometry.ts';
+import { DEFAULT_FINGER_ASSIGNMENT, hasMultiFingerKeys, type FingerAssignment, type Geometry, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { InputMethod } from '#input/settings/levels.ts';
 import { ROMAJI_RULES } from '#input/romaji/rules.ts';
@@ -151,6 +151,16 @@ export interface ConditionValueNames {
   readonly layouts?: ReadonlyMap<string, { readonly name: string }>;
   /** 自作のローマ字規則（組み込みは含めない）。 */
   readonly romajiRules?: ReadonlyMap<string, { readonly name: string }>;
+  /** 自作の指の割当（組み込みは含めない）。複数の指が担当するキーがあるかを、要約に添えるために引く。 */
+  readonly fingerAssignments?: ReadonlyMap<string, FingerAssignment>;
+}
+
+/** 複数の指が担当するキーを持つ指の割当で測った数値に添える語。 */
+export const MULTI_FINGER_NOTE = '（複数の指が担当するキーあり）';
+
+/** 指の割当の名前に、複数の指が担当するキーを持つ時の語を添える。 */
+export function fingerAssignmentLabel(assignment: FingerAssignment): string {
+  return hasMultiFingerKeys(assignment) ? `${assignment.name}${MULTI_FINGER_NOTE}` : assignment.name;
 }
 
 function formatValue(
@@ -168,7 +178,10 @@ function formatValue(
   }
   if (id === 'fingerAssignmentId' && typeof value === 'string') {
     const builtin = Object.hasOwn(FINGER_ASSIGNMENT_REGISTRY, value) ? FINGER_ASSIGNMENT_REGISTRY[value] : undefined;
-    return { format: 'primitive', displayValue: builtin?.name ?? '自作の指の割当' };
+    if (builtin !== undefined) return { format: 'primitive', displayValue: fingerAssignmentLabel(builtin) };
+    const custom = names?.fingerAssignments?.get(value);
+    const multi = custom !== undefined && hasMultiFingerKeys(custom);
+    return { format: 'primitive', displayValue: `自作の指の割当${multi ? MULTI_FINGER_NOTE : ''}` };
   }
   // 実現方式の2項目は、利用者が選べる主な値（する/しない）で出す。例外は中身を並べず、
   // あることだけを示す（例外は打ち方の大分類・キーごとの指定で、短い1行に収まらないため）。
@@ -272,7 +285,7 @@ export function conditionHeaderInfo(
   shape: PhysicalShape,
   fingerAssignment: FingerAssignment,
 ): ConditionHeaderInfo {
-  return { layoutName: layout.name, shapeName: shape.name, fingerAssignmentName: fingerAssignment.name };
+  return { layoutName: layout.name, shapeName: shape.name, fingerAssignmentName: fingerAssignmentLabel(fingerAssignment) };
 }
 
 /**
@@ -282,7 +295,7 @@ export function conditionHeaderInfo(
  * 場面ではこちらを使う（`resolveSetup`直後のPhysicalShapeしか無い場面は上の版を使う）。
  */
 export function conditionHeaderInfoFromResolvedInput(layout: Layout, geometry: Geometry): ConditionHeaderInfo {
-  return { layoutName: layout.name, shapeName: geometry.name, fingerAssignmentName: geometry.assignment.name };
+  return { layoutName: layout.name, shapeName: geometry.name, fingerAssignmentName: fingerAssignmentLabel(geometry.assignment) };
 }
 
 export { formatOrigin, cascadeLevelLabel as conditionLevelLabel };

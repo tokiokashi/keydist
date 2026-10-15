@@ -6,11 +6,11 @@ import {
   DEFAULT_FINGER_ASSIGNMENT,
   JIS_FINGER_ASSIGNMENT,
   keyId,
+  makeFingerAssignment,
   PHYSICAL_SHAPES,
   presetGeometryKind,
   presetGeometryStandard,
   presetGeometryTopology,
-  type Finger,
   type NonThumb,
   type PhysicalShape,
 } from './geometry.ts';
@@ -57,19 +57,26 @@ test('metricsの出力に使用した指割り当てが併記される（仕様 
  * ホームキー自体は変えない（薬指のホームは引き続きs / l）。
  */
 function noPinkyAssignment() {
-  const columnFinger: Finger[] = [
+  const columnFinger: NonThumb[] = [
     'LR', 'LR', 'LM', 'LI', 'LI', 'RI', 'RI', 'RM', 'RR', 'RR', 'RR', 'RR', 'RR',
   ];
   const homeColumn: Record<NonThumb, number> = {
-    LP: 1, LR: 1, LM: 2, LI: 3, RI: 6, RM: 7, RR: 8, RP: 8,
+    LP: 0, LR: 1, LM: 2, LI: 3, RI: 6, RM: 7, RR: 8, RP: 9,
   };
-  return columnFingerAssignment('no-pinky', '小指を使わない', columnFinger, homeColumn);
+  // 小指が担当するのはホームキーだけにする
+  const { baseFinger } = columnFingerAssignment('no-pinky', '小指を使わない', columnFinger, homeColumn);
+  return makeFingerAssignment(
+    'no-pinky',
+    '小指を使わない',
+    { ...baseFinger, a: 'LP', ';': 'RP' },
+    { LP: 'a', LR: 's', LM: 'd', LI: 'f', RI: 'j', RM: 'k', RR: 'l', RP: ';' },
+  );
 }
 
 test('割り当てを差し替えるとキーの担当指が変わる', () => {
   const assignment = noPinkyAssignment();
   const geometry = buildGeometry('row-staggered', assignment);
-  assert.equal(geometry.keys.get('a')!.finger, 'LR');
+  assert.equal(geometry.keys.get('a')!.finger, 'LP');
   assert.equal(geometry.keys.get('q')!.finger, 'LR');
   // 右側の外側列（小指の既定領域）も薬指に回っている
   assert.equal(geometry.keys.get('p')!.finger, 'RR');
@@ -84,31 +91,30 @@ test('ホームキーを変えなければ、列の再割り当てをしても�
 });
 
 test('ホームキーの割り当てを変えるとH_fの座標も連動する（仕様 §3）', () => {
-  // 人差し指のホームを標準のf / jからd / kへ動かす
+  // 人差し指のホームを標準のf / jからg / hへ動かす
   const homeColumn: Record<NonThumb, number> = {
-    LP: 0, LR: 1, LM: 2, LI: 2, RI: 7, RM: 7, RR: 8, RP: 9,
+    LP: 0, LR: 1, LM: 2, LI: 4, RI: 5, RM: 7, RR: 8, RP: 9,
   };
-  const columnFinger: Finger[] = [
+  const columnFinger: NonThumb[] = [
     'LP', 'LR', 'LM', 'LI', 'LI', 'RI', 'RI', 'RM', 'RR', 'RP', 'RP', 'RP', 'RP',
   ];
   const assignment = columnFingerAssignment('shifted-home', 'ホームずらし', columnFinger, homeColumn);
   const geometry = buildGeometry('row-staggered', assignment);
-  const d = geometry.keys.get('d')!;
-  const k = geometry.keys.get('k')!;
-  near(geometry.homes.LI.x, d.x, 'LI home x');
-  near(geometry.homes.LI.y, d.y, 'LI home y');
-  near(geometry.homes.RI.x, k.x, 'RI home x');
-  near(geometry.homes.RI.y, k.y, 'RI home y');
+  const g = geometry.keys.get('g')!;
+  const h = geometry.keys.get('h')!;
+  near(geometry.homes.LI.x, g.x, 'LI home x');
+  near(geometry.homes.LI.y, g.y, 'LI home y');
+  near(geometry.homes.RI.x, h.x, 'RI home x');
+  near(geometry.homes.RI.y, h.y, 'RI home y');
 });
 
 test('割り当てを変えると同指連続の数が変わりうる（測定条件は数値に付随する。仕様 §12.3）', () => {
-  // 'aq' は既定ではLP→LP（同指連続）。no-pinkyではLR→LRで依然として同指連続だが、
-  // 'as' は既定ではLP→LR（異指）、no-pinkyではLR→LR（同指連続）に変わる
+  // 'sq' は既定ではLR→LP（異指）、no-pinkyではLR→LR（同指連続）に変わる
   const defaultGeometry = buildGeometry('row-staggered');
   const noPinkyGeometry = buildGeometry('row-staggered', noPinkyAssignment());
 
-  const defaultMetrics = computeMetrics(generateTrace('as', qwerty, defaultGeometry, opts), defaultGeometry);
-  const noPinkyMetrics = computeMetrics(generateTrace('as', qwerty, noPinkyGeometry, opts), noPinkyGeometry);
+  const defaultMetrics = computeMetrics(generateTrace('sq', qwerty, defaultGeometry, opts), defaultGeometry);
+  const noPinkyMetrics = computeMetrics(generateTrace('sq', qwerty, noPinkyGeometry, opts), noPinkyGeometry);
 
   assert.equal(defaultMetrics.sameFinger, 0);
   assert.equal(noPinkyMetrics.sameFinger, 1);
@@ -125,7 +131,7 @@ test('割り当てに無いキーでgeometryを作ろうとすると例外にな
 });
 
 test('ホームキーが存在しない割り当ては例外になる', () => {
-  const columnFinger: Finger[] = [
+  const columnFinger: NonThumb[] = [
     'LP', 'LR', 'LM', 'LI', 'LI', 'RI', 'RI', 'RM', 'RR', 'RP', 'RP', 'RP', 'RP',
   ];
   const assignment = columnFingerAssignment('broken-home', '不完全なホーム', columnFinger, {
@@ -223,7 +229,7 @@ test('列ごとのyオフセット（column-staggered）は物理配列ごとに
 
 /** 10列 × 4段のコンパクトな物理配列用の割り当て。ホーム位置の考え方は既定と同じ */
 function compactAssignment() {
-  const columnFinger: Finger[] = ['LP', 'LR', 'LM', 'LI', 'LI', 'RI', 'RI', 'RM', 'RR', 'RP'];
+  const columnFinger: NonThumb[] = ['LP', 'LR', 'LM', 'LI', 'LI', 'RI', 'RI', 'RM', 'RR', 'RP'];
   const homeColumn: Record<NonThumb, number> = {
     LP: 0, LR: 1, LM: 2, LI: 3, RI: 6, RM: 7, RR: 8, RP: 9,
   };

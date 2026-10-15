@@ -364,7 +364,7 @@ export function AnalyzerGeometryDialog({
                 .map((width, row) => width > column ? keyId(row, column) : undefined)
                 .filter((id): id is string => id !== undefined);
               if (ids.length === 0) return null;
-              const values = ids.map((id) => assignment.keyFinger[id]);
+              const values = ids.map((id) => assignment.baseFinger[id]);
               const first = values[0];
               const value = values.every((candidate) => candidate === first) ? first : '';
               return (

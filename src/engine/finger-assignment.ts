@@ -4,6 +4,8 @@ import {
   isPresetGeometryKind,
   JIS_FINGER_ASSIGNMENT,
   presetGeometryStandard,
+  QWERTY_OPTIMIZED_FINGER_ASSIGNMENT,
+  QWERTY_OPTIMIZED_JIS_FINGER_ASSIGNMENT,
   type FingerAssignment,
   type PhysicalShape,
 } from '#input/shapes/geometry.ts';
@@ -29,6 +31,8 @@ import {
 export const FINGER_ASSIGNMENT_REGISTRY: Readonly<Record<string, FingerAssignment>> = {
   [DEFAULT_FINGER_ASSIGNMENT.id]: DEFAULT_FINGER_ASSIGNMENT,
   [JIS_FINGER_ASSIGNMENT.id]: JIS_FINGER_ASSIGNMENT,
+  [QWERTY_OPTIMIZED_FINGER_ASSIGNMENT.id]: QWERTY_OPTIMIZED_FINGER_ASSIGNMENT,
+  [QWERTY_OPTIMIZED_JIS_FINGER_ASSIGNMENT.id]: QWERTY_OPTIMIZED_JIS_FINGER_ASSIGNMENT,
 };
 
 export interface ResolvedFingerAssignment {
