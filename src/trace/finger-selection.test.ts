@@ -10,10 +10,12 @@ import {
   QWERTY_OPTIMIZED_FINGER_ASSIGNMENT,
   type Finger,
   type FingerAssignment,
+  PHYSICAL_SHAPES,
   type Geometry,
   type Point,
 } from '#input/shapes/geometry.ts';
-import { faceFromEntries, fromFaces, fromKana, LAYOUTS, LAYOUT_BY_ID, type Layout } from '#input/layouts/index.ts';
+import { faceFromEntries, fromFaces, fromKana, LAYOUTS, LAYOUT_BY_ID, withRomaji, type Layout } from '#input/layouts/index.ts';
+import { kunrei } from '#input/romaji/kunrei.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { analyzeStrokeStructure } from '#interpretation/structure/aggregate.ts';
 import { DEFAULT_CHAIN_INTERPRETATION } from '#interpretation/structure/chain.ts';
@@ -240,6 +242,28 @@ test('範囲ごとの全通りを数え上げた結果と一致する（1入力�
   for (const [seed, windowSize] of [[1, 1], [2, 2], [3, 3], [4, 1], [5, 2], [6, 3], [7, 0]] as const) {
     const text = randomText(seed, 'ykjiubnmgcdhxzrtaseol', 24);
     const expected = referenceFingers(geometry, planOf(text, defs), windowSize);
+    const trace = generateTrace(text, layout, geometry, opts({ windowSize }));
+    const actual = fingersOf(trace).map((map, index) => [...map.keys()].map((key) => map.get(key)!).slice(0, expected[index].length));
+    assert.deepEqual(actual, expected, `text=${text} N=${windowSize}`);
+  }
+});
+
+test('物理配列に無いキーで打鍵が0個になる入力が範囲の中にあっても、全通りを数え上げた結果と一致する', () => {
+  // `-`の段を持たない物理配列では、「ー」の入力は打鍵が無いまま1入力として数えられる
+  const shape = { ...PHYSICAL_SHAPES[SHAPE], rowWidths: [10, 10, 10, 10] };
+  const geometry = buildGeometry(shape, QWERTY_OPTIMIZED_FINGER_ASSIGNMENT);
+  assert.equal(geometry.keys.has('-'), false);
+  const layout = withRomaji(LAYOUT_BY_ID.get('qwerty')!, kunrei());
+  // ローマ字入力では、かなを綴りに展開した1文字ごとが1入力になる
+  const romaji: Record<string, string> = { い: 'i', う: 'u', ふ: 'hu', き: 'ki', く: 'ku', し: 'si', ゆ: 'yu', ー: '-' };
+  const defs: Record<string, string[][]> = {
+    ...Object.fromEntries([...'iuhkysx'].map((c) => [c, [[c]]])),
+    '-': [],
+  };
+  for (let seed = 21; seed < 61; seed++) {
+    const windowSize = 1 + (seed % 4);
+    const text = randomText(seed, 'いうふきくしゆーーー', 14);
+    const expected = referenceFingers(geometry, planOf([...text].map((c) => romaji[c]).join(''), defs), windowSize);
     const trace = generateTrace(text, layout, geometry, opts({ windowSize }));
     const actual = fingersOf(trace).map((map, index) => [...map.keys()].map((key) => map.get(key)!).slice(0, expected[index].length));
     assert.deepEqual(actual, expected, `text=${text} N=${windowSize}`);
