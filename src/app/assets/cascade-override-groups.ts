@@ -67,6 +67,18 @@ function entriesOf(
   return entries;
 }
 
+/** Workspaceの置き場所の名前。同じ名前が複数ある時だけ、並びの順に番号を付けて区別する。 */
+export function workspaceTitles(workspaces: readonly Workspace[]): readonly string[] {
+  const nameCounts = new Map<string, number>();
+  for (const workspace of workspaces) nameCounts.set(workspace.name, (nameCounts.get(workspace.name) ?? 0) + 1);
+  const seen = new Map<string, number>();
+  return workspaces.map((workspace) => {
+    const order = (seen.get(workspace.name) ?? 0) + 1;
+    seen.set(workspace.name, order);
+    return (nameCounts.get(workspace.name) ?? 0) > 1 ? `${workspace.name}（${order}）` : workspace.name;
+  });
+}
+
 /** 手持ちに無い置き場所の名前。同じ種類が複数ある時だけ、一覧の順に番号を付けて区別する。 */
 function missingTitle(base: string, index: number, count: number): string {
   return count > 1 ? `（${base}${index + 1}）` : `（${base}）`;
@@ -107,15 +119,10 @@ export function cascadeOverrideGroups(input: OverrideGroupsInput): readonly Over
 
   push('global', conditionLevelLabel({ kind: 'global' }, names), { kind: 'global' }, overrides.global);
 
-  const nameCounts = new Map<string, number>();
-  for (const workspace of workspaces) nameCounts.set(workspace.name, (nameCounts.get(workspace.name) ?? 0) + 1);
-  const seen = new Map<string, number>();
-  for (const workspace of workspaces) {
-    const order = (seen.get(workspace.name) ?? 0) + 1;
-    seen.set(workspace.name, order);
-    const title = (nameCounts.get(workspace.name) ?? 0) > 1 ? `${workspace.name}（${order}）` : workspace.name;
-    push(`workspace:${workspace.id}`, title, { kind: 'workspace' }, workspace.conditions, { workspaceId: workspace.id });
-  }
+  const workspaceNames = workspaceTitles(workspaces);
+  workspaces.forEach((workspace, index) => {
+    push(`workspace:${workspace.id}`, workspaceNames[index]!, { kind: 'workspace' }, workspace.conditions, { workspaceId: workspace.id });
+  });
 
   const shapeKeys = orderedKeys(overrides.shape, [...names.shapes.keys()]);
   const missingShapes = shapeKeys.filter((entry) => !entry.found).length;

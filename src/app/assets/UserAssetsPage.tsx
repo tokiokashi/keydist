@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useContext, useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import type { KeydistAssets } from '#engine/commands.ts';
 import {
   USER_ASSETS_FILE_FORMAT,
@@ -33,6 +33,8 @@ export interface UserAssetsPageProps {
   readonly onDeleteRomajiRule: (id: string) => void;
   readonly onDeleteFingerAssignment: (id: string) => void;
   readonly onDeleteSetup: (id: string) => void;
+  /** 条件の設定の表。保存してある条件の上書きの一覧の前に出す。 */
+  readonly conditionTable: ReactNode;
   /** 保存してある条件の上書き。置き場所ごとにカスケードの順。 */
   readonly overrideGroups: readonly OverrideGroup[];
   /** 1項目の上書きを消す。消すと、その項目は継承する値に戻る。 */
@@ -186,6 +188,7 @@ export function UserAssetsPage({
   onDeleteRomajiRule,
   onDeleteFingerAssignment,
   onDeleteSetup,
+  conditionTable,
   overrideGroups,
   onResetOverride,
   onImport,
@@ -333,6 +336,7 @@ export function UserAssetsPage({
             rows={setups}
             onDelete={(row, button) => { opener.current = button; setPending({ kind: 'setup', row }); }}
           />
+          {conditionTable}
           <OverrideSection
             groups={overrideGroups}
             onReset={(group, entry, button) => {

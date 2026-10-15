@@ -224,13 +224,15 @@
 
 .condition-row-flag,
 .condition-row-notice,
+.condition-row-others,
 .condition-row-diagnostic {
   margin: 0;
   font-size: 0.72rem;
   line-height: 1.45;
 }
 
-.condition-row-flag {
+.condition-row-flag,
+.condition-row-others {
   color: var(--text-muted);
 }
 
