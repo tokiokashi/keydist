@@ -1,7 +1,7 @@
 import {
   customGeometryKind,
   PHYSICAL_SHAPES,
-  type Finger,
+  type FingerAssignment,
   type NonThumb,
   type PhysicalShape,
 } from '#input/shapes/geometry.ts';
@@ -12,6 +12,7 @@ import {
   parseGeometrySettings,
   serializeGeometrySettings,
 } from '#input/shapes/settings.ts';
+import { assignKeysToFinger } from '#input/shapes/finger-assignment-edit.ts';
 import type { AnalyzerUiStateOwner } from './analyzer-ui-state-owner.ts';
 import { newId as newGeometryId } from '#input/shapes/user-geometries.ts';
 
@@ -55,12 +56,14 @@ function ensureRowStagger(shape: PhysicalShape): void {
 
 function markCustomAssignment(
   stateOwner: AnalyzerUiStateOwner,
-  change: (keyFinger: Record<string, Finger>) => void,
+  change: (assignment: FingerAssignment) => FingerAssignment,
 ): void {
   stateOwner.update((draft) => {
-    draft.conditions.geometrySettings.assignment.id = 'custom';
-    draft.conditions.geometrySettings.assignment.name = 'カスタム運指';
-    change(draft.conditions.geometrySettings.assignment.keyFinger);
+    draft.conditions.geometrySettings.assignment = {
+      ...change(draft.conditions.geometrySettings.assignment),
+      id: 'custom',
+      name: 'カスタム運指',
+    };
   });
 }
 
@@ -114,15 +117,11 @@ export function createAnalyzerGeometryEditorModel(
       context.onGeometryChanged(false);
     },
     assignColumn(keyIds, finger) {
-      markCustomAssignment(context.stateOwner, (keyFinger) => {
-        for (const id of keyIds) keyFinger[id] = finger;
-      });
+      markCustomAssignment(context.stateOwner, (assignment) => assignKeysToFinger(assignment, keyIds, finger));
       context.onGeometryChanged(false);
     },
     assignKey(keyId, finger) {
-      markCustomAssignment(context.stateOwner, (keyFinger) => {
-        keyFinger[keyId] = finger;
-      });
+      markCustomAssignment(context.stateOwner, (assignment) => assignKeysToFinger(assignment, [keyId], finger));
       context.onGeometryChanged(false);
     },
     saveShape(shapeDraft, rawName, asNew) {

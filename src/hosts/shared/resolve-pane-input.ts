@@ -17,7 +17,7 @@ import type { ConditionValueNames } from './condition-summary.ts';
  */
 export interface PaneCatalog {
   /** 配列・物理配列の実体に、条件の要約が規則の名前を引くための自作のローマ字規則を添えたもの。 */
-  readonly setupCatalog: SetupCatalog & Pick<ConditionValueNames, 'romajiRules'>;
+  readonly setupCatalog: SetupCatalog & Pick<ConditionValueNames, 'romajiRules' | 'fingerAssignments'>;
   readonly userLayouts: ReadonlyMap<string, UserLayout>;
   readonly customRomajiRules?: readonly UserRomajiRule[];
   readonly customFingerAssignments?: ReadonlyMap<string, FingerAssignment>;

@@ -460,10 +460,10 @@ export function renameFingerAssignmentCommand(id: string, name: string): Command
   }));
 }
 
-/** 自作の指割り当ての中身（キーごとの指とホームキー）を書き換える。対象が存在しない、または中身が同じなら何もしない。 */
+/** 自作の指割り当ての中身（基本の指・指ごとの担当キー・ホームキー）を書き換える。対象が存在しない、または中身が同じなら何もしない。 */
 export function setFingerAssignmentContentCommand(
   id: string,
-  content: Pick<FingerAssignment, 'keyFinger' | 'homeKey'>,
+  content: Pick<FingerAssignment, 'baseFinger' | 'fingerKeys' | 'homeKey'>,
 ): Command<KeydistAssets> {
   return fingerAssignmentsCommand('指割り当てを編集する', (assignments) => ({
     ok: true,

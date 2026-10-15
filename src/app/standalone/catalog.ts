@@ -24,6 +24,9 @@ export function paneCatalog(
       layouts: new Map([...LAYOUT_BY_ID, ...user.layouts]),
       shapes: BUILTIN_SHAPES,
       romajiRules: new Map(user.romajiRules.map((rule) => [rule.id, rule] as const)),
+      ...(assets.fingerAssignments === undefined
+        ? {}
+        : { fingerAssignments: new Map(assets.fingerAssignments.map((assignment) => [assignment.id, assignment] as const)) }),
     },
     userLayouts: user.userLayouts,
     customRomajiRules: user.romajiRules,

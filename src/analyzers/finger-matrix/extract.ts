@@ -169,6 +169,7 @@ function fixtureMetrics(): Metrics {
     geometryName: 'Row-staggered',
     fingerAssignmentId: 'default',
     fingerAssignmentName: '既定',
+    fingerAssignmentHasMultiFingerKeys: false,
     conditions: DEFAULT_METRIC_CONDITIONS,
     strokes: 2,
     actions: 2,

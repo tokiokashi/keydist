@@ -4,6 +4,7 @@ import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { Setup } from '#input/setup/index.ts';
 import { tableForRule } from '#input/romaji/rules.ts';
+import { assignKeyFinger } from '#input/shapes/finger-assignment-edit.ts';
 import { DEFAULT_FINGER_ASSIGNMENT, JIS_FINGER_ASSIGNMENT } from '#input/shapes/geometry.ts';
 import { EMPTY_SETTINGS_OVERRIDES, setSettingsOverride } from './settings-items.ts';
 import { resolveEngineInput } from './resolved-input.ts';
@@ -200,9 +201,9 @@ test('自作の指割り当て: 存在しないidは既定へfallbackし、診�
 });
 
 test('自作の指割り当て: 中身が変わるとTraceのキーが変わる（Geometryを丸ごとキーにしているため）', () => {
-  const customA = { ...DEFAULT_FINGER_ASSIGNMENT, id: 'finger-x', name: 'A', keyFinger: { ...DEFAULT_FINGER_ASSIGNMENT.keyFinger } };
-  assert.notEqual(customA.keyFinger.q, 'RP', '前提: qは既定でLPを担当する（列固定の既定）');
-  const customB = { ...customA, keyFinger: { ...customA.keyFinger, q: 'RP' as const } };
+  const customA = { ...DEFAULT_FINGER_ASSIGNMENT, id: 'finger-x', name: 'A', baseFinger: { ...DEFAULT_FINGER_ASSIGNMENT.baseFinger } };
+  assert.notEqual(customA.baseFinger.q, 'RP', '前提: qは既定でLPを担当する（列固定の既定）');
+  const customB = assignKeyFinger(customA, 'q', 'RP');
 
   const write = setSettingsOverride(
     EMPTY_SETTINGS_OVERRIDES,

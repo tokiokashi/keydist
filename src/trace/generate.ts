@@ -1,4 +1,12 @@
-import { ALL_FINGERS, dist, resolveKeyId, type Finger, type Geometry, type Key, type Point } from '#input/shapes/geometry.ts';
+import { ALL_FINGERS, resolveKeyId, type Finger, type Geometry, type Key, type Point } from '#input/shapes/geometry.ts';
+import {
+  decidePress,
+  selectFingers,
+  strokeFingerChoices,
+  targetOf,
+  type PlannedInput,
+  type PlannedStroke,
+} from './finger-selection.ts';
 import {
   COMBO_LAYER_ID,
   SINGLE_LAYER_ID,
@@ -19,6 +27,7 @@ import {
   type ActionRealizationPolicy,
   type InputAlternative,
   type InputAlternativeSet,
+  type RealizedSemanticAction,
   type InputClassification,
   type InputContextRequirement,
   type TriggerHoldState,
@@ -213,6 +222,7 @@ export function generateTrace(
   let index = 0;
   let inputOrdinal = 0;
   let triggerHoldState: TriggerHoldState | undefined;
+  const inputs: PlannedGeneratedInput[] = [];
 
   // ローマ字配列はかなテキストを展開してから打つ。コンボの誤命中を防ぐため、
   // 展開前の単位も残しておく。かな配列はそのまま打つ。
@@ -304,8 +314,61 @@ export function generateTrace(
       options.actionRealizationPolicy ?? DEFAULT_ACTION_REALIZATION_POLICY,
     );
 
+    const plannedActions: PlannedAction[] = [];
     for (const action of actions) {
-      const step = action.keys;
+      const keys: Key[] = [];
+      for (const id of action.keys) {
+        const key = geometry.keys.get(resolveKeyId(id));
+        if (!key) {
+          record(errors, seen, `キー ${id} が物理配列に存在しない（文字「${char}」）`);
+          continue;
+        }
+        keys.push(key);
+      }
+      if (keys.length === 0) continue;
+      plannedActions.push({
+        action,
+        stroke: {
+          keys,
+          candidates: keys.map((key) => geometry.fingerCandidates.get(key.id) ?? [key.finger]),
+          heldKeys: action.heldKeys.map(resolveKeyId),
+        },
+      });
+    }
+    inputs.push({
+      char,
+      inputChar,
+      inputIndex,
+      ordinal: currentInputOrdinal,
+      actions: plannedActions,
+      strokes: plannedActions.map((planned) => planned.stroke),
+      ambiguous: plannedActions.some((planned) =>
+        planned.stroke.candidates.some((fingers) => fingers.length > 1)),
+    });
+  }
+
+  // 担当する指が2本以上のキーを含む入力では、N入力先までの範囲で指を選ぶ（仕様 §9.1）。
+  // 指が決まった入力から順に、状態を進めて打鍵を作る。
+  const selectionPolicy = { windowSize: options.windowSize, sfbHomeCost: options.sfbHomeCost };
+  const holders = new Map<string, Finger>();
+  for (let inputPosition = 0; inputPosition < inputs.length; inputPosition++) {
+    const input = inputs[inputPosition];
+    const currentInputOrdinal = input.ordinal;
+    const chosen = input.ambiguous
+      ? selectFingers(
+        geometry,
+        selectionPolicy,
+        { prev, last, lastInputOrdinal, nextStrokeIndex: index, ordinal: currentInputOrdinal, holders },
+        inputs,
+        inputPosition,
+      ).strokes
+      : undefined;
+
+    input.actions.forEach((planned, actionPosition) => {
+      const { action, stroke: plannedStroke } = planned;
+      const { char, inputChar, inputIndex } = input;
+      const fingers = chosen?.[actionPosition]
+        ?? strokeFingerChoices(plannedStroke, holders)[0];
       const triggerKeys = action.triggerKeys;
       const aggregationGroupId = action.input.aggregationGroupId;
       const modifierKeys = new Set(
@@ -313,27 +376,22 @@ export function generateTrace(
           .filter((role) => role.role === 'modifier')
           .map((role) => resolveKeyId(role.key)),
       );
-      const pressedModifierKeys = [...new Set(step.map(resolveKeyId))]
+      const pressedModifierKeys = [...new Set(action.keys.map(resolveKeyId))]
         .filter((key) => modifierKeys.has(key));
       const pairedTriggerKeys = pressedModifierKeys.length >= 2
         ? triggerKeys.filter((key) => modifierKeys.has(resolveKeyId(key)))
         : [];
       const byFinger = new Map<Finger, Key[]>();
-
-      for (const id of step) {
-        const key = geometry.keys.get(resolveKeyId(id));
-        if (!key) {
-          record(errors, seen, `キー ${id} が物理配列に存在しない（文字「${char}」）`);
-          continue;
-        }
-        const group = byFinger.get(key.finger);
+      plannedStroke.keys.forEach((key, slot) => {
+        const finger = fingers[slot];
+        const group = byFinger.get(finger);
         if (group) group.push(key);
-        else byFinger.set(key.finger, [key]);
-      }
+        else byFinger.set(finger, [key]);
+      });
 
       const inputDistanceByFinger = new Map<Finger, number>();
       const presses: Press[] = [...byFinger].map(([finger, keys]) => {
-        const target = centroid(keys);
+        const target = targetOf(finger, keys);
         const gap = index - last[finger] - 1;
         const previousInputOrdinal = lastInputOrdinal[finger];
         const inputDistance = Number.isFinite(previousInputOrdinal)
@@ -348,13 +406,18 @@ export function generateTrace(
           gap,
           inputDistance,
           distance: 0,
-          // 仮の値。pressCostが距離と同時に採用した候補の起点で置き換える
+          // 仮の値。距離と同時に採用した候補の起点で置き換える
           origin: { at: target, from: 'home' as const },
           sfb: gap === 0 && (at.x !== target.x || at.y !== target.y),
         };
       });
 
-      if (presses.length === 0) continue;
+      // 押さえ続けているキーを押した指。この打鍵で押すキーはこの打鍵の指、前から押さえているキーは前に押した指
+      const heldFingerOf = (id: string): Finger | undefined => {
+        const slot = plannedStroke.keys.findIndex((key) => key.id === id);
+        if (slot >= 0) return fingers[slot];
+        return holders.get(id) ?? geometry.keys.get(id)?.finger;
+      };
 
       const participations = normalizeParticipations(
         presses,
@@ -363,21 +426,24 @@ export function generateTrace(
         action.heldKeys,
         action.holdPhase,
         geometry,
+        heldFingerOf,
       );
 
       let total = 0;
       for (const press of presses) {
-        const decision = pressCost(
-          press,
+        const decision = decidePress(
+          press.finger,
+          press.target,
+          prev[press.finger],
+          geometry.homes[press.finger],
+          press.gap === 0,
           inputDistanceByFinger.get(press.finger) ?? Number.POSITIVE_INFINITY,
-          prev,
-          geometry,
-          options,
+          selectionPolicy,
         );
         press.distance = decision.distance;
         press.origin = decision.stay
-          ? { at: { x: prev[press.finger].x, y: prev[press.finger].y }, from: 'previous' }
-          : { at: { x: geometry.homes[press.finger].x, y: geometry.homes[press.finger].y }, from: 'home' };
+          ? { at: { ...prev[press.finger] }, from: 'previous' }
+          : { at: { ...geometry.homes[press.finger] }, from: 'home' };
         if (decision.stay) {
           restoreStaySnapshots(
             strokes,
@@ -395,13 +461,27 @@ export function generateTrace(
         lastInputOrdinal[press.finger] = currentInputOrdinal;
       }
 
+      const heldByFinger = new Map<Finger, Key[]>();
+      const nextHolders = new Map<string, Finger>();
+      for (const heldId of action.heldKeys) {
+        const id = resolveKeyId(heldId);
+        const key = geometry.keys.get(id);
+        const finger = heldFingerOf(id);
+        if (key === undefined || finger === undefined) continue;
+        nextHolders.set(id, finger);
+        const keys = heldByFinger.get(finger);
+        if (keys) keys.push(key);
+        else heldByFinger.set(finger, [key]);
+      }
       const pressedFingers = new Set(presses.map((press) => press.finger));
-      for (const [finger, keys] of heldKeysByFinger(action.heldKeys, geometry)) {
+      for (const [finger, keys] of heldByFinger) {
         if (pressedFingers.has(finger)) continue;
-        prev[finger] = centroid(keys);
+        prev[finger] = targetOf(finger, keys);
         last[finger] = index;
         lastInputOrdinal[finger] = currentInputOrdinal;
       }
+      holders.clear();
+      for (const [id, finger] of nextHolders) holders.set(id, finger);
 
       const positions = snapshot(prev, last, index, geometry);
       strokes.push({
@@ -420,7 +500,7 @@ export function generateTrace(
         positions,
       });
       index++;
-    }
+    });
   }
 
   return {
@@ -434,6 +514,19 @@ export function generateTrace(
   };
 }
 
+interface PlannedAction {
+  readonly action: RealizedSemanticAction;
+  readonly stroke: PlannedStroke;
+}
+
+interface PlannedGeneratedInput extends PlannedInput {
+  readonly char: string;
+  readonly inputChar: string;
+  readonly inputIndex: number;
+  readonly ordinal: number;
+  readonly actions: readonly PlannedAction[];
+}
+
 function normalizeParticipations(
   presses: readonly Press[],
   outputKeys: readonly string[],
@@ -441,6 +534,7 @@ function normalizeParticipations(
   heldTriggerKeys: readonly string[],
   holdPhase: HoldPhase | undefined,
   geometry: Geometry,
+  heldFingerOf: (id: string) => Finger | undefined,
 ): readonly StrokeParticipation[] {
   const outputs = new Set(outputKeys.map(resolveKeyId));
   const triggers = new Set(triggerKeys.map(resolveKeyId));
@@ -467,8 +561,9 @@ function normalizeParticipations(
 
   for (const keyId of held) {
     const key = geometry.keys.get(keyId);
-    if (!key) continue;
-    const current = entry(key.finger);
+    const finger = heldFingerOf(keyId);
+    if (!key || finger === undefined) continue;
+    const current = entry(finger);
     if (!current.keys.some((candidate) => candidate.id === key.id)) current.keys.push(key);
     current.roles.add('held-trigger');
   }
@@ -480,21 +575,6 @@ function normalizeParticipations(
     roles: [...value.roles],
     ...(value.roles.has('held-trigger') && holdPhase !== undefined ? { holdPhase } : {}),
   }));
-}
-
-function heldKeysByFinger(
-  heldTriggerKeys: readonly string[],
-  geometry: Geometry,
-): Map<Finger, Key[]> {
-  const byFinger = new Map<Finger, Key[]>();
-  for (const id of heldTriggerKeys) {
-    const key = geometry.keys.get(resolveKeyId(id));
-    if (!key) continue;
-    const keys = byFinger.get(key.finger);
-    if (keys) keys.push(key);
-    else byFinger.set(key.finger, [key]);
-  }
-  return byFinger;
 }
 
 /**
@@ -678,50 +758,6 @@ const EVALUATION_CHAR_ALIASES: Readonly<Record<string, string>> = {
 
 const normalizeEvaluationChar = (char: string): string =>
   EVALUATION_CHAR_ALIASES[char] ?? char;
-
-interface CostDecision {
-  distance: number;
-  /** gの候補比較でd_stayが選ばれたか */
-  stay: boolean;
-}
-
-function pressCost(
-  press: Press,
-  inputDistance: number,
-  prev: Record<Finger, Point>,
-  geometry: Geometry,
-  options: TracePolicy,
-): CostDecision {
-  const { finger, target, gap } = press;
-  const home = geometry.homes[finger];
-  const dStay = dist(prev[finger], target);
-  const dHome = dist(home, target);
-
-  if (gap === 0) {
-    const onHome = target.x === home.x && target.y === home.y;
-    return {
-      distance: !options.sfbHomeCost && onHome ? 0 : dStay,
-      stay: true,
-    };
-  }
-  if (inputDistance <= options.windowSize) {
-    // Nは選択されたcanonical input単位で数える。realized Stroke分割数には依存しない。
-    // 同値は既存のminの結果を維持し、「残す」側に寄せる。
-    const stay = dStay <= dHome;
-    return { distance: stay ? dStay : dHome, stay };
-  }
-  return { distance: dHome, stay: false };
-}
-
-/** 複数キーを1本の指で押す場合の目標位置。キーの重心を採る */
-function centroid(keys: Key[]): Point {
-  if (keys.length === 1) return { x: keys[0].x, y: keys[0].y };
-  const n = keys.length;
-  return {
-    x: keys.reduce((a, k) => a + k.x, 0) / n,
-    y: keys.reduce((a, k) => a + k.y, 0) / n,
-  };
-}
 
 function record(errors: string[], seen: Set<string>, message: string) {
   if (seen.has(message)) return;

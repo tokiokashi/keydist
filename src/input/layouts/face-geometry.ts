@@ -27,7 +27,7 @@ export function handOfKey(key: string): Hand | undefined {
   const resolved = resolveKeyId(key);
   if (resolved === THUMB_KEY.LT) return 'left';
   if (resolved === THUMB_KEY.RT) return 'right';
-  const finger: Finger | undefined = DEFAULT_FINGER_ASSIGNMENT.keyFinger[resolved];
+  const finger: Finger | undefined = DEFAULT_FINGER_ASSIGNMENT.baseFinger[resolved];
   if (!finger) return undefined;
   return finger.startsWith('L') ? 'left' : 'right';
 }

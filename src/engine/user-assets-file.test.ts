@@ -6,7 +6,8 @@ import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { buildUserCatalog } from '#input/layouts/user-catalog.ts';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { UserRomajiRule } from '#input/romaji/rules.ts';
-import { columnFingerAssignment, PHYSICAL_SHAPES, type FingerAssignment } from '#input/shapes/geometry.ts';
+import { assignKeyFinger } from '#input/shapes/finger-assignment-edit.ts';
+import { columnFingerAssignment, PHYSICAL_SHAPES, QWERTY_OPTIMIZED_FINGER_ASSIGNMENT, type FingerAssignment } from '#input/shapes/geometry.ts';
 import type { TextLanguage } from '#input/text/language.ts';
 import { emptyCascadeOverrides } from '#input/settings/index.ts';
 import { emptyTextLibrary } from '#input/text/library.ts';
@@ -40,7 +41,7 @@ const FINGER: FingerAssignment = columnFingerAssignment(
   'finger-a',
   '自作の指',
   ['RP', 'RR', 'RM', 'RI', 'RI', 'LI', 'LI', 'LM', 'LR', 'LP', 'LP', 'LP', 'LP'],
-  { LP: 0, LR: 1, LM: 2, LI: 3, RI: 6, RM: 7, RR: 8, RP: 9 },
+  { LP: 9, LR: 8, LM: 7, LI: 6, RI: 3, RM: 2, RR: 1, RP: 0 },
 );
 const HOLDINGS: UserAssetsHoldings = { userLayouts: [LAYOUT], userRomajiRules: [RULE], fingerAssignments: [FINGER] };
 
@@ -93,6 +94,28 @@ test('書き出して空の手元へ読み込むと同じ資産が戻り、同�
   assert.notDeepEqual(before.metrics, plain.metrics);
 });
 
+test('複数の指が担当するキーを持つ指の割り当ては、書き出し・読み込みで担当と基本の指が保たれ、同じ数値が出る', () => {
+  const multi: FingerAssignment = { ...structuredClone(QWERTY_OPTIMIZED_FINGER_ASSIGNMENT), id: 'finger-multi', name: '自作の最適化' };
+  const holdings: UserAssetsHoldings = { userLayouts: [LAYOUT], userRomajiRules: [RULE], fingerAssignments: [multi] };
+  const merged = mergeUserAssets(EMPTY, read(holdings), STAMP);
+  assert.deepEqual(merged.assets.fingerAssignments, [multi]);
+  const loaded = merged.assets.fingerAssignments[0]!;
+  assert.deepEqual(loaded.fingerKeys, QWERTY_OPTIMIZED_FINGER_ASSIGNMENT.fingerKeys);
+  assert.deepEqual(loaded.baseFinger, QWERTY_OPTIMIZED_FINGER_ASSIGNMENT.baseFinger);
+
+  const global = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'fingerAssignmentId', multi.id);
+  assert.ok(global.ok);
+  if (!global.ok) return;
+  const text = 'こんにちは、きょうはしゃしんをとりにいきます。ゆうきとむぎ。';
+  const before = measure(holdings, LAYOUT.id, 'ja', text, global.overrides);
+  const after = measure(merged.assets, LAYOUT.id, 'ja', text, global.overrides);
+  assert.deepEqual(after.trace.trace.strokes, before.trace.trace.strokes);
+  assert.equal(after.metrics.fingerAssignmentHasMultiFingerKeys, true);
+  // 追加の担当を持たない元の割り当てで測った値とは別になる
+  const plain = measure(holdings, LAYOUT.id, 'ja', text, EMPTY_SETTINGS_OVERRIDES);
+  assert.notDeepEqual(after.metrics.perFinger, plain.metrics.perFinger);
+});
+
 test('同じファイルを二度読んでも増えず、二度目は全部を足さない', () => {
   const bundle = read(HOLDINGS);
   const first = mergeUserAssets(EMPTY, bundle, STAMP).assets;
@@ -142,7 +165,7 @@ test('中身の比較: 数値に関わる項目はどれが違っても別の中
   const fingerDiffers = (assignment: FingerAssignment) =>
     mergeUserAssets({ ...EMPTY, fingerAssignments: [FINGER] }, { layouts: [], romajiRules: [], fingerAssignments: [assignment] }, STAMP).entries[0]!.outcome.kind === 'added-renamed';
   assert.equal(fingerDiffers({ ...FINGER, homeKey: { ...FINGER.homeKey, LI: 'g' } }), true);
-  assert.equal(fingerDiffers({ ...FINGER, keyFinger: { ...FINGER.keyFinger, q: 'LP' } }), true);
+  assert.equal(fingerDiffers(assignKeyFinger(FINGER, 'q', 'LP')), true);
   assert.equal(fingerDiffers({ ...FINGER, name: '別の名前' }), false);
 });
 

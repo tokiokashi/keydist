@@ -158,8 +158,9 @@ export function PlaybackKeyboard({
     const from = motion ? positions.get(motion.fromKey) : undefined;
     const dx = motion && from ? from.x - item.x : 0;
     const dy = motion && from ? from.y - item.y : 0;
-    const tip = `${keyName(id, label, standard)} · ${FINGER_LABEL[item.finger]}`;
     const fingerPosition = !isMotion ? frame.fingerPositionKeys.get(id) : undefined;
+    // 指の位置を出している時は、そのキーに今いる指。出していない時は基本の指
+    const tip = `${keyName(id, label, standard)} · ${FINGER_LABEL[fingerPosition ?? item.finger]}`;
     return (
       <g
         key={isMotion ? `motion-${frame.cursor}-${motionIndex}` : id}

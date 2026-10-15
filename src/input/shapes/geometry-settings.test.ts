@@ -6,7 +6,8 @@ import {
   sanitizeGeometrySettings,
   serializeGeometrySettings,
 } from './settings.ts';
-import { assignmentWithHomeKeys, buildGeometry } from './geometry.ts';
+import { assignKeyFinger } from './finger-assignment-edit.ts';
+import { assignmentWithHomeKeys, buildGeometry, QWERTY_OPTIMIZED_FINGER_ASSIGNMENT } from './geometry.ts';
 import { fromDisplayUnits, toDisplayUnits } from './units.ts';
 import { toLayout, type UserLayout } from '../layouts/user-layouts.ts';
 
@@ -14,8 +15,10 @@ test('運指と物理配列をJSONへ書き出して復元できる', () => {
   const settings = structuredClone(DEFAULT_GEOMETRY_SETTINGS);
   settings.assignment.id = 'custom';
   settings.assignment.name = '小指を使わない';
-  settings.assignment.keyFinger.a = 'LR';
-  settings.assignment.homeKey.LR = 'a';
+  settings.assignment = {
+    ...assignKeyFinger(settings.assignment, 'a', 'LR'),
+    homeKey: { ...settings.assignment.homeKey, LR: 'a', LP: 'q' },
+  };
   settings.shape.id = 'custom';
   settings.shape.name = '実測キーボード';
   settings.shape.pitchMm = 18.5;
@@ -32,7 +35,7 @@ test('壊れた設定は既定値のうち構築できる範囲へサニタイ�
   const settings = sanitizeGeometrySettings({
     assignment: {
       id: 'broken',
-      keyFinger: { a: 'unknown' },
+      baseFinger: { a: 'unknown' },
       homeKey: { LP: 'not-a-key' },
     },
     shape: {
@@ -80,4 +83,16 @@ test('通常の自作配列でもhomeKeysをLayoutへ保持する', () => {
   };
   const layout = toLayout(def);
   assert.deepEqual(layout.homeKeys, def.homeKeys);
+});
+
+test('複数の指が担当するキーを持つ運指は、JSONの書き出し・読み込みで担当と基本の指が保たれる', () => {
+  const settings = structuredClone(DEFAULT_GEOMETRY_SETTINGS);
+  settings.assignment = structuredClone(QWERTY_OPTIMIZED_FINGER_ASSIGNMENT);
+  const restored = parseGeometrySettings(serializeGeometrySettings(settings));
+  assert.deepEqual(restored.assignment.baseFinger, QWERTY_OPTIMIZED_FINGER_ASSIGNMENT.baseFinger);
+  assert.deepEqual(
+    Object.fromEntries(Object.entries(restored.assignment.fingerKeys).map(([finger, keys]) => [finger, [...keys].sort()])),
+    Object.fromEntries(Object.entries(QWERTY_OPTIMIZED_FINGER_ASSIGNMENT.fingerKeys).map(([finger, keys]) => [finger, [...keys].sort()])),
+  );
+  assert.doesNotThrow(() => buildGeometry(restored.shape, restored.assignment));
 });

@@ -11,7 +11,7 @@ import {
   type AssignmentProblem,
 } from '#input/shapes/finger-assignment-edit.ts';
 import { FINGER_LABEL, FINGER_SHORT_WITH_HAND } from '#input/shapes/finger-names.ts';
-import { buildGeometry, FINGERS, type Finger, type FingerAssignment, type Key, type NonThumb, type PhysicalShape } from '#input/shapes/geometry.ts';
+import { buildGeometry, FINGERS, makeFingerAssignment, type Finger, type FingerAssignment, type Key, type NonThumb, type PhysicalShape } from '#input/shapes/geometry.ts';
 import { keyboardStandardForGeometryId, physicalKeyDisplayLabel } from '#input/shapes/key-labels.ts';
 import { groupShapes } from '#input/shapes/shape-groups.ts';
 import { newId } from '#input/shapes/user-finger-assignments.ts';
@@ -23,7 +23,8 @@ import { useHistoryShortcuts } from '#ui/primitives/use-history-shortcuts.ts';
 const NEW_ASSIGNMENT_NAME = '新しい指の割り当て';
 
 export interface FingerAssignmentContent {
-  readonly keyFinger: FingerAssignment['keyFinger'];
+  readonly baseFinger: FingerAssignment['baseFinger'];
+  readonly fingerKeys: FingerAssignment['fingerKeys'];
   readonly homeKey: FingerAssignment['homeKey'];
 }
 
@@ -54,23 +55,23 @@ function boardOf(
 ): { readonly keys: readonly Key[]; readonly views: ReadonlyMap<string, PhysicalKeyboardKeyView> } {
   // 図の座標を出すためだけの割り当て。決まっていないキーは既定の指で埋め、ホームが物理配列に無い指は既定のホームにする
   const known = new Set(shapeKeyIds(shape));
-  const drawable: FingerAssignment = {
-    ...assignment,
-    keyFinger: { ...fallback.keyFinger, ...assignment.keyFinger },
-    homeKey: Object.fromEntries(
-      FINGERS.map((finger) => [finger, known.has(assignment.homeKey[finger]) ? assignment.homeKey[finger] : fallback.homeKey[finger]]),
-    ) as Record<NonThumb, string>,
-  };
+  const baseFinger = { ...fallback.baseFinger, ...assignment.baseFinger };
+  const homeKey = Object.fromEntries(
+    FINGERS.map((finger) => [finger, known.has(assignment.homeKey[finger]) ? assignment.homeKey[finger] : fallback.homeKey[finger]]),
+  ) as Record<NonThumb, string>;
+  // 図の座標を出すためだけなので、ホームキーはその指の担当に含めて、担当の不整合で図が描けなくなるのを避ける
+  const homeExtra = Object.fromEntries(FINGERS.map((finger) => [homeKey[finger], [finger]]));
+  const drawable = makeFingerAssignment(assignment.id, assignment.name, baseFinger, homeKey, homeExtra);
   const keys = buildGeometry(shape, drawable).grid.flat();
   const homes = new Set<string>(FINGERS.map((finger) => assignment.homeKey[finger]));
   const standard = keyboardStandardForGeometryId(shape.id);
   const views = new Map<string, PhysicalKeyboardKeyView>();
   for (const key of keys) {
-    const finger = assignment.keyFinger[key.id];
+    const finger = assignment.baseFinger[key.id];
     views.set(key.id, {
       legend: finger === undefined ? '？' : FINGER_SHORT_WITH_HAND[finger],
       secondaryLegend: physicalKeyDisplayLabel(key.id, standard),
-      accentSlot: finger === undefined || finger === 'LT' || finger === 'RT' ? undefined : FINGERS.indexOf(finger) + 1,
+      accentSlot: finger === undefined ? undefined : FINGERS.indexOf(finger) + 1,
       home: homes.has(key.id),
       selected: false,
     });
@@ -87,7 +88,7 @@ function problemText(problem: AssignmentProblem, standard: ReturnType<typeof key
     case 'home-missing':
       return `${FINGER_LABEL[problem.finger]}のホームキー（${label(problem.keyId)}）が、この物理配列にありません`;
     case 'home-other-finger':
-      return `${FINGER_LABEL[problem.finger]}のホームキー（${label(problem.keyId)}）は、${FINGER_LABEL[problem.keyFinger]}のキーです`;
+      return `${FINGER_LABEL[problem.finger]}のホームキー（${label(problem.keyId)}）は、${FINGER_LABEL[problem.keyFinger]}のキーです。ホームキーを、その指が担当するキーにするまで測れません`;
   }
 }
 
@@ -170,7 +171,7 @@ export function FingerAssignmentEditor({
 
   const commit = (next: FingerAssignment) => {
     if (assignment === undefined || next === assignment) return;
-    onUpdate(assignment.id, { keyFinger: next.keyFinger, homeKey: next.homeKey });
+    onUpdate(assignment.id, { baseFinger: next.baseFinger, fingerKeys: next.fingerKeys, homeKey: next.homeKey });
   };
 
   const create = () => {
@@ -194,11 +195,11 @@ export function FingerAssignmentEditor({
     if (name !== '' && name !== assignment.name) onRename(assignment.id, name);
   };
 
-  const selectedKeyFinger = assignment !== undefined && selectedKeyId !== undefined ? assignment.keyFinger[selectedKeyId] : undefined;
+  const selectedKeyFinger = assignment !== undefined && selectedKeyId !== undefined ? assignment.baseFinger[selectedKeyId] : undefined;
   const selectedKeyHomeOf = assignment !== undefined && selectedKeyId !== undefined
     ? FINGERS.filter((finger) => assignment.homeKey[finger] === selectedKeyId)
     : [];
-  const homeCandidate = selectedKeyFinger !== undefined && selectedKeyFinger !== 'LT' && selectedKeyFinger !== 'RT' ? selectedKeyFinger : undefined;
+  const homeCandidate = selectedKeyFinger;
 
   return (
     <article className="finger-assignment" data-finger-assignment-editor>

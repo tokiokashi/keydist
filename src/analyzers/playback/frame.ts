@@ -71,6 +71,8 @@ export interface PlaybackFrame {
   readonly keyLabels: ReadonlyMap<string, string>;
   readonly activeKeys: ReadonlySet<string>;
   readonly triggerKeys: ReadonlySet<string>;
+  /** 今の打鍵を打った指（打鍵に記録された、選んだ指）。開始前は空 */
+  readonly pressedFingers: readonly Finger[];
   readonly fingerPositionKeys: ReadonlyMap<string, Finger>;
   readonly trailKeys: ReadonlyMap<string, number>;
   readonly plannedKeys: ReadonlyMap<string, number>;
@@ -212,6 +214,7 @@ export function derivePlaybackFrame(input: PlaybackFrameInput): PlaybackFrame {
     keyLabels: display?.keyLabels ?? new Map<string, string>(),
     activeKeys: new Set(stroke?.presses.flatMap((press) => press.keys.map((key) => key.id)) ?? []),
     triggerKeys: new Set(stroke?.triggerKeys ?? []),
+    pressedFingers: [...new Set(stroke?.presses.map((press) => press.finger) ?? [])],
     fingerPositionKeys: options.showFingerPositions
       ? playbackPreparedFingerPositionKeys(
         analysis,

@@ -112,7 +112,7 @@ test('読み込めなかった要素の詳細を開いても、狭い幅で横�
       format: 'keydist-user-assets',
       version: 1,
       layouts: [{ id: 'user-a', name: '自作A', rows: ['', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'], romaji: 'kunrei' }],
-      fingerAssignments: [{ id: longId, name: '壊れた指', keyFinger: {}, homeKey: {} }],
+      fingerAssignments: [{ id: longId, name: '壊れた指', baseFinger: {}, fingerKeys: {}, homeKey: {} }],
     })),
   });
   const result = page.locator('[data-user-assets-import-result]');

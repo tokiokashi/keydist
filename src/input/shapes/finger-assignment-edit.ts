@@ -1,6 +1,8 @@
 import {
+  ALL_FINGERS,
   FINGERS,
   keyId,
+  makeFingerAssignment,
   type Finger,
   type FingerAssignment,
   type NonThumb,
@@ -28,10 +30,36 @@ export function shapeColumns(shape: PhysicalShape): readonly (readonly string[])
     shape.rowWidths.flatMap((width, row) => col < width ? [keyId(row, col)] : []));
 }
 
-/** 1つのキーの指を決める。 */
+/**
+ * 複数のキーの指を1本に決める。各キーの基本の指をその指にし、そのキーの追加の担当は外す
+ * （そのキーを担当する指は1本になる）。他のキーの担当は変えない。
+ */
+export function assignKeysToFinger(
+  assignment: FingerAssignment,
+  keyIds: readonly string[],
+  finger: NonThumb,
+): FingerAssignment {
+  const changed = keyIds.filter((id) =>
+    assignment.baseFinger[id] !== finger
+    || ALL_FINGERS.some((other) => other !== finger && assignment.fingerKeys[other].includes(id)));
+  if (changed.length === 0) return assignment;
+  const targets = new Set(changed);
+  const baseFinger = { ...assignment.baseFinger };
+  for (const id of changed) baseFinger[id] = finger;
+  // 編集していないキーの追加の担当は保つ
+  const extra: Record<string, Finger[]> = {};
+  for (const owner of ALL_FINGERS) {
+    for (const id of assignment.fingerKeys[owner]) {
+      if (targets.has(id) || assignment.baseFinger[id] === owner) continue;
+      (extra[id] ??= []).push(owner);
+    }
+  }
+  return makeFingerAssignment(assignment.id, assignment.name, baseFinger, assignment.homeKey, extra);
+}
+
+/** 1つのキーの指を決める。基本の指をその指にし、そのキーの追加の担当は外す。 */
 export function assignKeyFinger(assignment: FingerAssignment, keyIdToSet: string, finger: NonThumb): FingerAssignment {
-  if (assignment.keyFinger[keyIdToSet] === finger) return assignment;
-  return { ...assignment, keyFinger: { ...assignment.keyFinger, [keyIdToSet]: finger } };
+  return assignKeysToFinger(assignment, [keyIdToSet], finger);
 }
 
 /** 物理配列の1列のキーすべてに、同じ指を決める。 */
@@ -41,11 +69,7 @@ export function assignColumnFinger(
   column: number,
   finger: NonThumb,
 ): FingerAssignment {
-  const keyIds = shapeColumns(shape)[column] ?? [];
-  if (keyIds.every((id) => assignment.keyFinger[id] === finger)) return assignment;
-  const keyFinger = { ...assignment.keyFinger };
-  for (const id of keyIds) keyFinger[id] = finger;
-  return { ...assignment, keyFinger };
+  return assignKeysToFinger(assignment, shapeColumns(shape)[column] ?? [], finger);
 }
 
 /** 指のホームキーを決める。 */
@@ -59,7 +83,12 @@ export function assignHomeKey(assignment: FingerAssignment, finger: NonThumb, ke
  * idと名前は編集中の割り当てのまま。
  */
 export function resetToDefaultAssignment(assignment: FingerAssignment, defaults: FingerAssignment): FingerAssignment {
-  return { ...assignment, keyFinger: { ...defaults.keyFinger }, homeKey: { ...defaults.homeKey } };
+  return {
+    ...assignment,
+    baseFinger: { ...defaults.baseFinger },
+    fingerKeys: Object.fromEntries(ALL_FINGERS.map((finger) => [finger, [...defaults.fingerKeys[finger]]])) as unknown as Record<Finger, readonly string[]>,
+    homeKey: { ...defaults.homeKey },
+  };
 }
 
 /** 選んだ物理配列でこの割り当てを使う時に、測れなくなる・意図と違う可能性のある点。 */
@@ -71,7 +100,7 @@ export type AssignmentProblem =
 export function assignmentProblems(assignment: FingerAssignment, shape: PhysicalShape): readonly AssignmentProblem[] {
   const keyIds = shapeKeyIds(shape);
   const problems: AssignmentProblem[] = [];
-  const unassigned = keyIds.filter((id) => assignment.keyFinger[id] === undefined);
+  const unassigned = keyIds.filter((id) => assignment.baseFinger[id] === undefined);
   if (unassigned.length > 0) problems.push({ kind: 'unassigned', keyIds: unassigned });
   const known = new Set(keyIds);
   for (const finger of FINGERS) {
@@ -80,8 +109,10 @@ export function assignmentProblems(assignment: FingerAssignment, shape: Physical
       problems.push({ kind: 'home-missing', finger, keyId: home });
       continue;
     }
-    const owner = assignment.keyFinger[home];
-    if (owner !== undefined && owner !== finger) problems.push({ kind: 'home-other-finger', finger, keyId: home, keyFinger: owner });
+    const owner = assignment.baseFinger[home];
+    if (owner !== undefined && !assignment.fingerKeys[finger].includes(home)) {
+      problems.push({ kind: 'home-other-finger', finger, keyId: home, keyFinger: owner });
+    }
   }
   return problems;
 }
