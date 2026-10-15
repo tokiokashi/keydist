@@ -238,7 +238,8 @@ test('保存の時の保存値が、測定を始めた時の保存値と違え�
   assert.ok(same.ok);
   for (const current of [
     { ...SAVED, actionsPerSecond: 6 },
-    { ...SAVED, fingerSpeedUnitsPerSecond: { LI: 9 } },
+    { ...SAVED, fingerMoveMsPerUnit: { LI: 90 } },
+    { ...SAVED, fingerRepeatMs: { LI: 180 } },
     { ...SAVED, keystrokeOverheadMs: { other: 1 } },
     undefined,
   ]) {
