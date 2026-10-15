@@ -68,7 +68,11 @@ export function SetupPage({
   const [renaming, setRenaming] = useState<{ readonly id: string; readonly draft: string } | undefined>(undefined);
 
   const items = useMemo(() => setupListItems(setups, catalog, overrides), [setups, catalog, overrides]);
-  const selected: Setup | undefined = setups.find((setup) => setup.id === selectedId) ?? setups[0];
+  // 指定されたSetupが手持ちに無い時は、先頭のSetupに逃がさない（別のSetupを編集していると気づけなくなるため）。
+  // 資産の読み込み前は手持ちが空に見えるので、判定しない。
+  const selectedFound = setups.find((setup) => setup.id === selectedId);
+  const requestedMissing = ready && selectedId !== undefined && selectedFound === undefined;
+  const selected: Setup | undefined = requestedMissing ? undefined : (selectedFound ?? setups[0]);
 
   const layoutGroups = useMemo(
     () => targetChoiceGroups({
@@ -233,6 +237,9 @@ export function SetupPage({
             )}
           </section>
 
+          {requestedMissing ? (
+            <p className="setup-note" data-setup-problem="missing">指定されたSetupは見つかりません。削除されたSetupの可能性があります。一覧からSetupを選んでください。</p>
+          ) : null}
           {selected === undefined ? null : (
             <section className="setup-section" aria-labelledby="setup-edit-title" data-setup-editor={selected.id}>
               <h2 id="setup-edit-title">

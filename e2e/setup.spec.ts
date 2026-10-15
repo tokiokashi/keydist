@@ -141,3 +141,61 @@ test('Setupを対象にしたペインの条件のモーダルから、そのSet
   await expect(many.getByRole('link', { name: '「一つ目」の物理配列と条件を編集' })).toBeVisible();
   await expect(many.getByRole('link', { name: '「二つ目」の物理配列と条件を編集' })).toBeVisible();
 });
+
+test('見つからないSetupのidで/setupを開くと、どのSetupも選ばれず、見つからないことが出る', async ({ page }) => {
+  await page.goto('/setup');
+  await waitForHydration(page);
+  await createSetup(page, 'ロウスタッガード（ANSI）', '一つ目');
+  await expect(page.locator('[data-setup-row]')).toHaveCount(1);
+
+  await page.goto('/setup?setup=no-such-setup');
+  await waitForHydration(page);
+  await expect(page.locator('[data-setup-problem="missing"]')).toBeVisible();
+  await expect(page.locator('[data-setup-editor]')).toHaveCount(0);
+  await expect(page.locator('[data-setup-row][data-selected]')).toHaveCount(0);
+  // 手持ちが1つでもあるので、Setupが1つも無い時の「Setupはありません。」とは別の表示になる
+  await expect(page.getByText('Setupはありません。')).toHaveCount(0);
+
+  // 一覧から選べば、編集の画面が出て見つからない表示は消える
+  await page.locator('.setup-row-name').first().click();
+  await expect(page.locator('[data-setup-editor]')).toHaveCount(1);
+  await expect(page.locator('[data-setup-problem="missing"]')).toHaveCount(0);
+});
+
+test('削除したSetupは条件のモーダルのリンクに出ず、残っているSetupのリンクは出る', async ({ page }) => {
+  await page.goto('/setup');
+  await waitForHydration(page);
+  await createSetup(page, 'ロウスタッガード（ANSI）', '一つ目');
+  await expect(page.locator('[data-setup-row]')).toHaveCount(1);
+  await createSetup(page, 'オーソリニア（ANSI）', '二つ目');
+  await expect(page.locator('[data-setup-row]')).toHaveCount(2);
+  const setups = (await stored(page)).setups;
+
+  await page.locator('#app-sidebar').getByRole('button', { name: '＋ 新しいWorkspace' }).click();
+  await expect(page).toHaveURL(/\/workspace\/[^/?]+$/);
+  const workspaceUrl = page.url();
+  await page.getByRole('button', { name: /ペインを追加/ }).click();
+  await page.getByRole('menuitem', { name: /比較表/ }).click();
+  const comparison = page.locator('.pane-frame').filter({ has: page.getByRole('heading', { level: 2, name: '比較表', exact: true }) });
+  await comparison.locator('.target-selection-button, .pane-empty-button').first().click();
+  const dialog = page.getByRole('dialog', { name: '対象の選択' });
+  for (const setup of setups) await dialog.locator(`input[value="setup:${setup.id}"]`).click();
+  await page.keyboard.press('Escape');
+
+  // 「二つ目」を/assetsの一覧から削除する。ペインの対象には残ったまま
+  await page.goto('/assets');
+  await waitForHydration(page);
+  await page.getByRole('button', { name: '「二つ目」を削除' }).click();
+  await page.getByRole('button', { name: '削除する' }).click();
+  await expect.poll(async () => (await stored(page)).setups.length).toBe(1);
+
+  await page.goto(workspaceUrl);
+  await waitForHydration(page);
+  const reopened = page.locator('.pane-frame').filter({ has: page.getByRole('heading', { level: 2, name: '比較表', exact: true }) });
+  await reopened.locator('.pane-condition-trigger').click();
+  const many = page.getByRole('dialog', { name: '条件' });
+  await expect(many).toBeVisible();
+  await expect(many.getByRole('link', { name: /の物理配列と条件を編集$/ })).toHaveCount(1);
+  await expect(many.getByRole('link', { name: '「一つ目」の物理配列と条件を編集' })).toBeVisible();
+  await expect(many.getByRole('link', { name: '「二つ目」の物理配列と条件を編集' })).toHaveCount(0);
+});
