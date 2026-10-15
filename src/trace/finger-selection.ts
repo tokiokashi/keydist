@@ -55,7 +55,7 @@ const SAME_X = 1e-9;
 
 /**
  * 指ごとの、同じ手で並びが1つ隣の親指以外の指の番号。親指は横の並びを持たないので、持たない（仕様 §9.1）。
- * `ALL_FINGERS`の並びは、左手・右手とも小指側から人差し指側（外から内）へ向かって横の座標が増える順
+ * `ALL_FINGERS`の並びは、左手の小指から右手の小指へ、左から右に向かって横の座標が増える順
  */
 const NEIGHBORS: readonly (readonly number[])[] = ALL_FINGERS.map((finger, index) => {
   if (isThumb(finger)) return [];

@@ -84,8 +84,8 @@ function cloneRef(state: RefState): RefState {
   return { prev: { ...state.prev }, last: { ...state.last }, lastEnd: { ...state.lastEnd } };
 }
 
-/** 外から内へ並べた、手ごとの親指以外の指。同じ手の隣の指は、この並びで隣り合う指。横の座標は、どちらの手も外から内の順に増える */
-const OUTER_TO_INNER: Finger[][] = [['LP', 'LR', 'LM', 'LI'], ['RI', 'RM', 'RR', 'RP']];
+/** 左から右へ並べた、手ごとの親指以外の指。同じ手の隣の指は、この並びで隣り合う指。横の座標は、この並びの順に増える */
+const LEFT_TO_RIGHT: Finger[][] = [['LP', 'LR', 'LM', 'LI'], ['RI', 'RM', 'RR', 'RP']];
 
 /** 1打鍵を進め、(同指連続, 入れ替わり, 近くに戻る, 丸めた距離, 基本の指で打ったキー数) を返す */
 function refStep(
@@ -121,11 +121,11 @@ function refStep(
     const home = refDist(finger, geometry.homes[finger], target);
     const moved = state.prev[finger].x !== target.x || state.prev[finger].y !== target.y;
     if (gap !== 0 && inputDistance <= 1 && moved) returned = true;
-    for (const hand of OUTER_TO_INNER) {
+    for (const hand of LEFT_TO_RIGHT) {
       const at = hand.indexOf(finger);
       if (at < 0) continue;
       const placed = (other: Finger) => Math.max(0, stroke.start - state.lastEnd[other]) <= 1;
-      // 指の並びと同じ左右の順は、外側の指ほど横の座標が小さい（右手は人差し指を左端として外へ増える）
+      // 指の並びと同じ左右の順は、左隣の指より右、右隣の指より左にあること
       for (const [other, sign] of [[hand[at - 1], -1], [hand[at + 1], 1]] as const) {
         if (other !== undefined && placed(other) && sign * (target.x - state.prev[other].x) >= -1e-9) swapped = true;
       }
