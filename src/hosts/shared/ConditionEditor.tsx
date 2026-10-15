@@ -92,6 +92,15 @@ export interface ConditionEditorContext {
    */
   readonly setup?: { readonly id: string; readonly layoutId: string };
   /**
+   * 編集先を全体・Workspace・配列のどれか1つに固定する時に渡す（データの管理の条件の表）。`setup`と同じく、
+   * 行の編集先は固定のレベルだけで、他のレベルへの切り替えも全体へ移す操作も出ない。そのレベルに置けない項目の行は出さない。
+   * `'workspace'`は`workspace`、`'layout'`は`layout`も渡す。継承する値は`'layout'`なら行の`layoutBase`、
+   * `'workspace'`なら全体の値。
+   */
+  readonly fixedScope?: 'global' | 'workspace' | 'layout';
+  /** 同じ項目を他の置き場所でも上書きしている行の、その旨の文。条件の表が渡す。 */
+  readonly otherScopeNotes?: ReadonlyMap<SettingsItemId, string>;
+  /**
    * 対象にSetupを含むペインが渡す、そのSetup。モーダルに、Setupごとに編集画面を開くリンクを出す
    * （Setupのレベルの条件はそこで変える。このモーダルは書かない）。`name`は複数のSetupを区別する表示名で、
    * 単一対象のペインは省く（リンクの文言は「このSetup」になる）。
@@ -146,8 +155,18 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
   const layoutEditable = (id: SettingsItemId) => layout !== undefined && canEditAtLayout(id) && !editor.hiddenIds?.includes(id);
   const defaultScopeOf = (id: SettingsItemId): EditScope => (workspace !== undefined && canEditAtWorkspace(id) ? 'workspace' : 'global');
   const setupEditable = (id: SettingsItemId) => setup !== undefined && canEditAtSetup(id) && !editor.hiddenIds?.includes(id);
+  const fixedScope = editor.fixedScope;
+  /** 行を出さない項目。固定したレベルに置けない項目も含む。 */
+  const hidden = (id: SettingsItemId) =>
+    editor.hiddenIds?.includes(id) === true
+    || (setup !== undefined && !canEditAtSetup(id))
+    || (fixedScope === 'layout' && !canEditAtLayout(id))
+    || (fixedScope === 'workspace' && !canEditAtWorkspace(id));
   const scopeOf = (id: SettingsItemId): EditScope => {
     if (setup !== undefined) return setupEditable(id) ? 'setup' : 'global';
+    if (fixedScope === 'layout') return layout !== undefined && canEditAtLayout(id) ? 'layout' : 'global';
+    if (fixedScope === 'workspace') return workspace !== undefined && canEditAtWorkspace(id) ? 'workspace' : 'global';
+    if (fixedScope === 'global') return 'global';
     const chosen = chosenScope.get(id) ?? defaultScopeOf(id);
     if (chosen === 'layout') return layoutEditable(id) ? 'layout' : defaultScopeOf(id);
     if (chosen === 'workspace') return workspace !== undefined && canEditAtWorkspace(id) ? 'workspace' : 'global';
@@ -234,7 +253,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
    * 読み上げ名が持つ。
    */
   const scopeMenu = (id: GlobalEditableId, label: string, notApplicable: boolean) => {
-    if (setup !== undefined) return null;
+    if (setup !== undefined || fixedScope !== undefined) return null;
     const scope = scopeOf(id);
     const canWorkspace = workspace !== undefined && canEditAtWorkspace(id);
     const canLayout = layoutEditable(id) && !notApplicable;
@@ -295,7 +314,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
 
   /** 行の外枠。左線（全体で変えた行）・効かない行・下のレベルが勝つ理由をここで共通に持つ。 */
   const row = (id: GlobalEditableId, content: (badge: ReactNode) => ReactNode) => {
-    if (editor.hiddenIds?.includes(id)) return null;
+    if (hidden(id)) return null;
     const summary = rowOf(id);
     const notApplicable = summary !== undefined && !summary.applicable;
     const diagnostics = (summary?.diagnostics ?? [])
@@ -320,6 +339,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
         )}
         {notApplicable ? <p className="condition-row-flag">この配列・Setupでは効きません</p> : null}
         {notice === undefined ? null : <p className="condition-row-notice" data-condition-notice="true">{notice}</p>}
+        {editor.otherScopeNotes?.get(id) === undefined ? null : <p className="condition-row-others" data-condition-others="true">{editor.otherScopeNotes.get(id)}</p>}
         {diagnostics.map((text, index) => <p key={index} className="condition-row-diagnostic">{text}</p>)}
       </div>
     );
@@ -533,43 +553,47 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
           ))}
         </section>
 
-        <section className="condition-group" aria-label="チェーンの区切り">
-          <h3 className="condition-group-title">チェーンの区切り</h3>
-          {row('chainInterpretation', () => (
-            <>
-              {CHAIN_FIELDS.map(({ key, label }) => (
-                <CheckboxOptionField
-                  key={key}
-                  label={label}
-                  binding={{
-                    value: chainBinding.value[key],
-                    defaultValue: chainBinding.defaultValue[key],
-                    onChange: (next) => chainBinding.onChange({ ...chainBinding.value, [key]: next }),
-                  }}
-                />
-              ))}
-            </>
-          ))}
-        </section>
+        {hidden('chainInterpretation') ? null : (
+          <section className="condition-group" aria-label="チェーンの区切り">
+            <h3 className="condition-group-title">チェーンの区切り</h3>
+            {row('chainInterpretation', () => (
+              <>
+                {CHAIN_FIELDS.map(({ key, label }) => (
+                  <CheckboxOptionField
+                    key={key}
+                    label={label}
+                    binding={{
+                      value: chainBinding.value[key],
+                      defaultValue: chainBinding.defaultValue[key],
+                      onChange: (next) => chainBinding.onChange({ ...chainBinding.value, [key]: next }),
+                    }}
+                  />
+                ))}
+              </>
+            ))}
+          </section>
+        )}
 
-        <section className="condition-group" aria-label="アルペジオ">
-          <h3 className="condition-group-title">アルペジオ</h3>
-          {row('arpeggioInterpretation', () => (
-            <>
-              {ARPEGGIO_FIELDS.map(({ key, label }) => (
-                <CheckboxOptionField
-                  key={key}
-                  label={label}
-                  binding={{
-                    value: arpeggioBinding.value[key],
-                    defaultValue: arpeggioBinding.defaultValue[key],
-                    onChange: (next) => arpeggioBinding.onChange({ ...arpeggioBinding.value, [key]: next }),
-                  }}
-                />
-              ))}
-            </>
-          ))}
-        </section>
+        {hidden('arpeggioInterpretation') ? null : (
+          <section className="condition-group" aria-label="アルペジオ">
+            <h3 className="condition-group-title">アルペジオ</h3>
+            {row('arpeggioInterpretation', () => (
+              <>
+                {ARPEGGIO_FIELDS.map(({ key, label }) => (
+                  <CheckboxOptionField
+                    key={key}
+                    label={label}
+                    binding={{
+                      value: arpeggioBinding.value[key],
+                      defaultValue: arpeggioBinding.defaultValue[key],
+                      onChange: (next) => arpeggioBinding.onChange({ ...arpeggioBinding.value, [key]: next }),
+                    }}
+                  />
+                ))}
+              </>
+            ))}
+          </section>
+        )}
       </div>
     </div>
   );

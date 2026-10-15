@@ -2277,3 +2277,46 @@ h1 {
   font-size: 0.95rem;
   overflow-wrap: anywhere;
 }
+
+/* データの管理の条件の設定。置き場所の選択と、その置き場所の条件の行 */
+.conditions-table-select {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.conditions-table-select select {
+  max-width: 100%;
+}
+
+/* 条件の行の段組と文字の大きさは、条件のモーダルの本文と同じにする */
+.conditions-table-body {
+  container: condition-body / inline-size;
+  font-size: 0.84rem;
+  animation: conditions-table-in 0.18s ease-out;
+}
+
+.conditions-table-body .condition-fold[open] > .condition-fold-body {
+  animation: conditions-table-in 0.18s ease-out;
+}
+
+@keyframes conditions-table-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.35rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .conditions-table-body,
+  .conditions-table-body .condition-fold[open] > .condition-fold-body {
+    animation: none;
+  }
+}

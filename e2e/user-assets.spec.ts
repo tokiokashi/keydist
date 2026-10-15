@@ -61,7 +61,7 @@ test('配列を削除すると保存先から消え、その配列を対象に�
   await layouts.getByRole('button', { name: '「自作A」を削除' }).click();
   await page.getByRole('dialog').getByRole('button', { name: '削除する' }).click();
   await expect(layouts.locator('[data-user-asset-row]')).toHaveCount(1);
-  await expect(page.getByRole('status')).toHaveText('「自作A」を削除しました');
+  await expect(page.locator('.user-assets-message')).toHaveText('「自作A」を削除しました');
   await expect
     .poll(() => page.evaluate(() => localStorage.getItem('keydist:user-layouts')))
     .not.toContain('user-a');
