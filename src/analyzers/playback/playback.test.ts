@@ -286,7 +286,7 @@ test('既定と違う計算の知らせ: 使われない項目は挙げず、個
   assert.deepEqual(notes({ stepsPerSecond: 2, speedMultiplier: 3 }, 'applied').changes, ['再生倍率: 3倍']);
   assert.deepEqual(
     notes({ sameFingerDelay: false, allFingerMovementDelay: false, applyPersonalSpeed: false }, 'not-applied').changes,
-    ['指の移動速度を考慮しない', '全指の移動時間で律速しない', '個人速度を適用しない'],
+    ['同じ指の移動時間を考慮しない', '全指の移動時間で律速しない', '個人速度を適用しない'],
   );
   // 平均の方式で使われない側の窓幅・半減時間は挙げない
   assert.deepEqual(notes({ rateWindow: 20, rateHalfLifeSeconds: 2 }, 'missing').changes, ['平均の窓幅: 20打鍵']);
@@ -410,7 +410,7 @@ const CALIBRATION: PlaybackCalibration = {
 
 const STEP_ENDS = (extracted: PlaybackExtracted) => extracted.schedule.map((step) => step.endMs);
 
-test('基準速度・再生倍率・指の移動速度の考慮の設定が、再生の時間表に届く', () => {
+test('基準速度・再生倍率・同じ指の移動時間の考慮の設定が、再生の時間表に届く', () => {
   // 条件: 配列qwerty・物理配列row-staggered・テキスト「fjdk」（どの隣り合うステップも指が違う）。既定は800ms。
   const fjdk = resolve('qwerty', 'fjdk');
   assert.deepEqual(STEP_ENDS(extractionOf(fjdk)), [800, 1600, 2400, 3200]);
@@ -420,7 +420,7 @@ test('基準速度・再生倍率・指の移動速度の考慮の設定が、�
   // 再生倍率2は最後に掛かる → 400ms
   const doubled = extractionOf(fjdk, { speedMultiplier: 2 });
   assert.deepEqual(STEP_ENDS(doubled), [400, 800, 1200, 1600]);
-  // 指の移動速度を考慮しなければ、同指連続のステップも800msになる（テキスト「fv」）
+  // 同じ指の移動時間を考慮しなければ、同指連続のステップも800msになる（テキスト「fv」）
   const fv = resolve('qwerty', 'fv');
   const off = extractionOf(fv, { sameFingerDelay: false, allFingerMovementDelay: false });
   assert.deepEqual(STEP_ENDS(off), [800, 1600]);
@@ -532,10 +532,10 @@ test('既定と違う計算の知らせ: 打鍵の上乗せは、時間に入る
       'applied',
       { ...CALIBRATION, keystrokeOverheadMs },
     ).keystrokeOverheadInUse;
-  // 同指連続の値だけの時は、指の移動速度を考慮する時だけ時間に入る
+  // 同指連続の値だけの時は、同じ指の移動時間を考慮する時だけ時間に入る
   assert.equal(notes(true, { sfb: 40 }), true);
   assert.equal(notes(false, { sfb: 40 }), false);
-  // 他の種類の値は、指の移動速度によらず時間に入る
+  // 他の種類の値は、同じ指の移動時間の考慮によらず時間に入る
   for (const kind of ['arpeggio', 'chain', 'other', 'repeat'] as const) {
     assert.equal(notes(true, { [kind]: 40 }), true, kind);
     assert.equal(notes(false, { [kind]: 40 }), true, kind);

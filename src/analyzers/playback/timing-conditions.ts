@@ -11,7 +11,7 @@ export interface PlaybackTimingConditions {
   readonly stepsPerSecond: number;
   /** 再生倍率 */
   readonly speedMultiplier: number;
-  /** 指の移動速度を考慮するか */
+  /** 同じ指の移動時間を考慮するか */
   readonly sameFingerDelay: boolean;
   /** 全指の移動時間で律速するか */
   readonly allFingerMovementDelay: boolean;
