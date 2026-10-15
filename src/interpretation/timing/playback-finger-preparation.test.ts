@@ -137,10 +137,10 @@ test('held-trigger継続中は前動作が空いたとみなさず、間に合�
 test('親指が親指キーから親指キー以外のキーへ動く移動は、座標によらず1uの時間で到着する', () => {
   // 右親指はホーム(親指キー)からmへ動く。座標上の距離は約1.414uだが、移動は1uとして数える
   const optimized = buildGeometry(PHYSICAL_SHAPES['row-staggered'], QWERTY_OPTIMIZED_FINGER_ASSIGNMENT);
-  const trace = generateTrace('ma ', layout, optimized);
+  const trace = generateTrace('mn ', layout, optimized);
   assert.deepEqual(
     trace.strokes.flatMap((stroke) => stroke.presses.map((press) => `${press.keys.map((key) => key.id).join('')}:${press.finger}`)),
-    ['m:RT', 'a:LP', 'thumb-r:RT'],
+    ['m:RT', 'n:RI', 'thumb-r:RT'],
   );
   const analysis = analyzeStrokeStructure(trace.strokes);
   const schedule = playbackTimingSchedule(analysis, 1, true);
