@@ -23,7 +23,7 @@ import {
   type TriggerRealizationPolicy,
 } from '#input/semantics/index.ts';
 import { DEFAULT_ROMAJI_RULE_ID, recommendedRomajiRuleId } from '#input/romaji/rules.ts';
-import { defaultFingerAssignmentId } from './finger-assignment.ts';
+import { defaultFingerAssignmentId, recommendedFingerAssignmentId } from './finger-assignment.ts';
 import { DEFAULT_CHAIN_INTERPRETATION, type ChainInterpretation } from '#interpretation/structure/chain.ts';
 import { DEFAULT_ARPEGGIO_INTERPRETATION, type ArpeggioInterpretation } from '#interpretation/structure/arpeggio.ts';
 
@@ -175,11 +175,14 @@ export const SETTINGS_ITEMS = {
    * 物理配列を変えずに運指だけ比べる分岐が既存fixtureに実在するため、shape/layout/setupの
    * どのレベルでも上書きを許す（`allowedLevels`はwindowSize等と同じ「先回りして足さない」
    * 判断で、今のところ要望が無いinputMethodレベルは持たない）。
+   * 組み込みの配列「QWERTY最適化」は、名前どおりの割り当てを組み込みの推奨（`layoutRecommendation`）に持つ。
+   * 優先は ローマ字規則と同じく 配列・Setupの上書き ＞ 配列の推奨 ＞ 全体・Workspace・物理配列の値 ＞ 既定。
    */
   fingerAssignmentId: defineItem<string>({
     id: 'fingerAssignmentId',
     allowedLevels: GLOBAL_WORKSPACE_SHAPE_LAYOUT_SETUP,
     defaultValue: (context) => defaultFingerAssignmentId(context.shape),
+    layoutRecommendation: (context) => recommendedFingerAssignmentId(context.layout, context.shape),
   }),
   /**
    * 既定の物理配列。**配列を対象にした時の

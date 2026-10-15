@@ -1104,6 +1104,31 @@ h1 {
   stroke: var(--text-muted);
 }
 
+/*
+ * キー全体を1色で塗る図（指の割り当て）。選んだキーの枠は選択の色のまま、塗りだけを色の番号に合わせる。
+ * 塗りは薄くして、キーの刻印を読めるようにする
+ */
+.physical-keyboard-key[data-fill-tone="1"] rect { fill: color-mix(in srgb, var(--series-1) 30%, var(--surface)); }
+.physical-keyboard-key[data-fill-tone="2"] rect { fill: color-mix(in srgb, var(--series-2) 30%, var(--surface)); }
+.physical-keyboard-key[data-fill-tone="3"] rect { fill: color-mix(in srgb, var(--series-3) 30%, var(--surface)); }
+.physical-keyboard-key[data-fill-tone="4"] rect { fill: color-mix(in srgb, var(--series-4) 30%, var(--surface)); }
+.physical-keyboard-key[data-fill-tone="5"] rect { fill: color-mix(in srgb, var(--series-5) 30%, var(--surface)); }
+.physical-keyboard-key[data-fill-tone="6"] rect { fill: color-mix(in srgb, var(--series-6) 30%, var(--surface)); }
+.physical-keyboard-key[data-fill-tone="7"] rect { fill: color-mix(in srgb, var(--series-7) 30%, var(--surface)); }
+.physical-keyboard-key[data-fill-tone="8"] rect { fill: color-mix(in srgb, var(--series-8) 30%, var(--surface)); }
+
+/* キーの縁に重ねる帯。キー全体の塗りより濃い、その指の色で塗る */
+.physical-keyboard-band { stroke: none; pointer-events: none; }
+.physical-keyboard-band[data-band-tone="1"] { fill: var(--series-1); }
+.physical-keyboard-band[data-band-tone="2"] { fill: var(--series-2); }
+.physical-keyboard-band[data-band-tone="3"] { fill: var(--series-3); }
+.physical-keyboard-band[data-band-tone="4"] { fill: var(--series-4); }
+.physical-keyboard-band[data-band-tone="5"] { fill: var(--series-5); }
+.physical-keyboard-band[data-band-tone="6"] { fill: var(--series-6); }
+.physical-keyboard-band[data-band-tone="7"] { fill: var(--series-7); }
+.physical-keyboard-band[data-band-tone="8"] { fill: var(--series-8); }
+.physical-keyboard-band[data-band-tone="muted"] { fill: var(--text-muted); }
+
 .physical-keyboard-key[role="button"]:focus-visible {
   outline: none;
 }

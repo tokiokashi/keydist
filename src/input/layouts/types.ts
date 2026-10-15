@@ -254,6 +254,11 @@ export interface Layout {
    * 組み込みの推奨（`recommendedRomajiRuleId`）と同じく、カスケードの配列の推奨として読む。
    */
   recommendedRomajiRuleId?: string;
+  /**
+   * この配列が前提とする指の割り当てのid。物理配列の規格（ANSI / JIS）ごとに持つ。
+   * 組み込みの推奨（`recommendedRomajiRuleId`）と同じく、カスケードの配列の推奨として読む。
+   */
+  recommendedFingerAssignmentIds?: { readonly ansi: string; readonly jis: string };
   /** withCombos由来のコンボ定義。物理キーまで解決済みで、配列図等の表示にも使う。 */
   resolvedComboDefinitions?: readonly ResolvedComboDefinition[];
   /** 層・コンボの表示順と種別。 */

@@ -105,3 +105,59 @@
   margin: 0;
   font-size: 0.9rem;
 }
+
+.finger-assignment-problems li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+}
+
+/* 図の色と指の対応 */
+.finger-assignment-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  margin: 0 0 0.25rem;
+  padding: 0;
+  list-style: none;
+  font-size: 0.85rem;
+}
+
+.finger-assignment-legend li::before {
+  content: '';
+  display: inline-block;
+  width: 0.8em;
+  height: 0.8em;
+  margin-right: 0.3em;
+  border-radius: 2px;
+  background: var(--text-muted);
+  vertical-align: -0.05em;
+}
+
+.finger-assignment-legend li[data-tone='1']::before { background: var(--series-1); }
+.finger-assignment-legend li[data-tone='2']::before { background: var(--series-2); }
+.finger-assignment-legend li[data-tone='3']::before { background: var(--series-3); }
+.finger-assignment-legend li[data-tone='4']::before { background: var(--series-4); }
+.finger-assignment-legend li[data-tone='5']::before { background: var(--series-5); }
+.finger-assignment-legend li[data-tone='6']::before { background: var(--series-6); }
+.finger-assignment-legend li[data-tone='7']::before { background: var(--series-7); }
+.finger-assignment-legend li[data-tone='8']::before { background: var(--series-8); }
+
+/* 担当する指のチェック。左手から右手の並びで、画面の幅に合わせて折り返す */
+.finger-assignment-owners {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
+  gap: 0.25rem 0.5rem;
+  margin: 0;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.finger-assignment .finger-assignment-owner {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}

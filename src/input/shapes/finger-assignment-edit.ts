@@ -1,6 +1,7 @@
 import {
   ALL_FINGERS,
   FINGERS,
+  isThumb,
   keyId,
   makeFingerAssignment,
   type Finger,
@@ -70,6 +71,71 @@ export function assignColumnFinger(
   finger: NonThumb,
 ): FingerAssignment {
   return assignKeysToFinger(assignment, shapeColumns(shape)[column] ?? [], finger);
+}
+
+/** 担当と基本の指から割り当てを組み直す。担当の並びは意味を持たないので、集合から作る。 */
+function rebuildAssignment(
+  assignment: FingerAssignment,
+  baseFinger: Record<string, NonThumb>,
+  owners: Readonly<Record<string, ReadonlySet<Finger>>>,
+): FingerAssignment {
+  const extra: Record<string, Finger[]> = {};
+  for (const [id, fingers] of Object.entries(owners)) {
+    const rest = [...fingers].filter((finger) => baseFinger[id] !== finger);
+    if (rest.length > 0) extra[id] = rest;
+  }
+  return makeFingerAssignment(assignment.id, assignment.name, baseFinger, assignment.homeKey, extra);
+}
+
+/** 全てのキーの担当する指の集合（指の固定の順）。 */
+function ownersOfAll(assignment: FingerAssignment): Record<string, Set<Finger>> {
+  const owners: Record<string, Set<Finger>> = {};
+  for (const finger of ALL_FINGERS) {
+    for (const id of assignment.fingerKeys[finger]) (owners[id] ??= new Set()).add(finger);
+  }
+  return owners;
+}
+
+/**
+ * キーの基本の指を決める。その指を担当に加え、前の基本の指は担当に残す
+ * （担当を外すかどうかは別の操作で決める）。
+ */
+export function setBaseFinger(assignment: FingerAssignment, keyIdToSet: string, finger: NonThumb): FingerAssignment {
+  if (assignment.baseFinger[keyIdToSet] === finger) return assignment;
+  const owners = ownersOfAll(assignment);
+  (owners[keyIdToSet] ??= new Set()).add(finger);
+  return rebuildAssignment(assignment, { ...assignment.baseFinger, [keyIdToSet]: finger }, owners);
+}
+
+/**
+ * 指にキーを担当させる。基本の指が無いキーは、親指以外の指ならその指を基本の指にする。
+ * 親指は、基本の指を持つキーだけを追加で担当できる（基本の指は親指以外の指）。
+ */
+export function addKeyToFinger(assignment: FingerAssignment, keyIdToSet: string, finger: Finger): FingerAssignment {
+  if (assignment.fingerKeys[finger].includes(keyIdToSet)) return assignment;
+  const owners = ownersOfAll(assignment);
+  (owners[keyIdToSet] ??= new Set()).add(finger);
+  let baseFinger = assignment.baseFinger;
+  if (baseFinger[keyIdToSet] === undefined) {
+    if (isThumb(finger)) return assignment;
+    baseFinger = { ...baseFinger, [keyIdToSet]: finger as NonThumb };
+  }
+  return rebuildAssignment(assignment, baseFinger, owners);
+}
+
+/** 指のキーの担当を外す。基本の指の担当は外せない（先に基本の指を別の指にする）。 */
+export function removeKeyFromFinger(assignment: FingerAssignment, keyIdToSet: string, finger: Finger): FingerAssignment {
+  if (!assignment.fingerKeys[finger].includes(keyIdToSet) || assignment.baseFinger[keyIdToSet] === finger) return assignment;
+  const owners = ownersOfAll(assignment);
+  owners[keyIdToSet]?.delete(finger);
+  return rebuildAssignment(assignment, assignment.baseFinger, owners);
+}
+
+/** 担当を足す・外すのうち、今の状態から見て逆の側を行う。 */
+export function toggleKeyOfFinger(assignment: FingerAssignment, keyIdToSet: string, finger: Finger): FingerAssignment {
+  return assignment.fingerKeys[finger].includes(keyIdToSet)
+    ? removeKeyFromFinger(assignment, keyIdToSet, finger)
+    : addKeyToFinger(assignment, keyIdToSet, finger);
 }
 
 /** 指のホームキーを決める。 */
