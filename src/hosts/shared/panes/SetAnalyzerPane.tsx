@@ -201,8 +201,11 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
         customRomajiRules: catalog.customRomajiRules,
         ...(env.workspaceId === undefined ? {} : { workspace: { id: env.workspaceId } }),
         hiddenIds: excludeIds,
+        // 手持ちに無いSetup（削除したもの）へは、`/setup` で開いても別のSetupが選ばれるだけなので出さない
         openSetups: targets.flatMap((target) => (
-          target.kind === 'setup' ? [{ id: target.setupId, name: namedByKey.get(analysisTargetKey(target))?.displayName ?? target.setupId }] : []
+          target.kind === 'setup' && setupsById.has(target.setupId)
+            ? [{ id: target.setupId, name: namedByKey.get(analysisTargetKey(target))?.displayName ?? target.setupId }]
+            : []
         )),
       }}
       conditionTargetDiffs={conditionSummary.diffs}

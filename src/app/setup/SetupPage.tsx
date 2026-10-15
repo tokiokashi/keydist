@@ -25,7 +25,10 @@ export interface SetupPageProps {
   /** 保存の読み込みが済むまでは、Setupが無いように見せない。 */
   readonly ready: boolean;
   readonly catalog: PaneCatalog;
-  /** 最初に選ぶSetupのid（手持ちに無ければ先頭）。 */
+  /**
+   * URLで指定された、最初に選ぶSetupのid。手持ちに無ければ、どのSetupも選ばず見つからないことを知らせる。
+   * 画面の中で一覧から選ぶ・作る・複製すると、以後は指定を使わない。
+   */
   readonly initialSetupId?: string;
   readonly canUndo: boolean;
   readonly canRedo: boolean;
@@ -62,13 +65,25 @@ export function SetupPage({
   const { layouts, shapes } = catalog.setupCatalog;
 
   const [selectedId, setSelectedId] = useState<string | undefined>(initialSetupId);
+  // 選んでいるidがURLの指定のまま（画面の中で選び直していない）かどうか。
+  // 画面の中で選んだSetupが後から無くなった時（元に戻す・別のタブでの削除）は、先頭に切り替える。
+  const [fromUrl, setFromUrl] = useState(initialSetupId !== undefined);
   const [layoutId, setLayoutId] = useState<string | undefined>(undefined);
   const [shapeId, setShapeId] = useState<string | undefined>(undefined);
   const [labelDraft, setLabelDraft] = useState('');
   const [renaming, setRenaming] = useState<{ readonly id: string; readonly draft: string } | undefined>(undefined);
 
   const items = useMemo(() => setupListItems(setups, catalog, overrides), [setups, catalog, overrides]);
-  const selected: Setup | undefined = setups.find((setup) => setup.id === selectedId) ?? setups[0];
+  const selectedFound = setups.find((setup) => setup.id === selectedId);
+  // URLで指定されたSetupが手持ちに無い時は、先頭のSetupに逃がさず知らせる（別のSetupを編集していると気づけなくなるため）。
+  // 資産の読み込み前は手持ちが空に見えるので、判定しない。
+  const requestedMissing = ready && fromUrl && selectedId !== undefined && selectedFound === undefined;
+  const selected: Setup | undefined = requestedMissing ? undefined : (selectedFound ?? setups[0]);
+  // 画面の中で選んだSetupを選び直す。URLの指定はここで使い終わる。
+  const choose = (id: string) => {
+    setSelectedId(id);
+    setFromUrl(false);
+  };
 
   const layoutGroups = useMemo(
     () => targetChoiceGroups({
@@ -96,13 +111,13 @@ export function SetupPage({
     if (createLayoutId === undefined || createShapeId === undefined) return;
     const id = generateSetupId();
     dispatch(createSetupCommand(createLayoutId, createShapeId, () => id, labelDraft));
-    setSelectedId(id);
+    choose(id);
     setLabelDraft('');
   };
   const duplicate = (sourceId: string) => {
     const id = generateSetupId();
     dispatch(duplicateSetupCommand(sourceId, () => id));
-    setSelectedId(id);
+    choose(id);
   };
   const commitRename = (event: FormEvent) => {
     event.preventDefault();
@@ -212,7 +227,7 @@ export function SetupPage({
                           className="setup-row-name"
                           title={fullName}
                           aria-pressed={setup.id === selected?.id}
-                          onClick={() => setSelectedId(setup.id)}
+                          onClick={() => choose(setup.id)}
                         >
                           <span>{displayName}</span>
                           <span className="setup-row-tag">Setup {setup.number}</span>
@@ -233,6 +248,9 @@ export function SetupPage({
             )}
           </section>
 
+          {requestedMissing ? (
+            <p className="setup-note" data-setup-problem="missing">指定されたSetupは見つかりません。削除されたSetupの可能性があります。一覧からSetupを選んでください。</p>
+          ) : null}
           {selected === undefined ? null : (
             <section className="setup-section" aria-labelledby="setup-edit-title" data-setup-editor={selected.id}>
               <h2 id="setup-edit-title">
