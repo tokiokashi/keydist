@@ -11,12 +11,12 @@ import {
 /**
  * 担当する指が2本以上のキーをどの指で打つかの選択（仕様 §9.1）。
  *
- * 入力を先頭から1つずつ進め、今の入力から `N` 入力先までの打鍵について、
+ * 入力を先頭から1つずつ進め、今の入力から`N`入力先までの打鍵について、
  * 同指連続回数・総移動距離・基本の指で打ったキー数・指の固定の順の順に最小になる指の並びを
  * 動的計画法で厳密に求める。そのうち今の入力の打鍵の指だけを返す。
  */
 
-/** 打鍵の1回分。キーの並びは打鍵の `keys` の順（指の選び方に依存しない） */
+/** 打鍵の1回分。キーの並びは打鍵の`keys`の順（指の選び方に依存しない） */
 export interface PlannedStroke {
   /** 物理配列にあるキー。1つのキーが1つの枠 */
   readonly keys: readonly Key[];
@@ -37,7 +37,7 @@ export interface FingerSelectionPolicy {
   readonly sfbHomeCost: boolean;
 }
 
-/** 指の固定の順（仕様 §9.1）。`ALL_FINGERS` の並びと同じ */
+/** 指の固定の順（仕様 §9.1）。`ALL_FINGERS`の並びと同じ */
 const FINGER_INDEX = new Map<Finger, number>(ALL_FINGERS.map((finger, index) => [finger, index]));
 const FINGER_COUNT = ALL_FINGERS.length;
 
@@ -64,7 +64,7 @@ export interface PressDecision {
   stay: boolean;
 }
 
-/** 仕様 §9の表。`adjacent` はrealized Stroke gap = 0 */
+/** 仕様 §9の表。`adjacent`はrealized Stroke gap = 0 */
 export function decidePress(
   finger: Finger,
   target: Point,
@@ -109,7 +109,7 @@ interface Sequence {
 
 interface State {
   readonly pos: readonly Point[];
-  /** 最後に参加した入力からの入力数。`N+1` は `N` を超えたことを表す */
+  /** 最後に参加した入力からの入力数。`N+1`は`N`を超えたことを表す */
   readonly age: readonly number[];
   /** 直前の打鍵に参加したか */
   readonly adjacent: readonly boolean[];
@@ -203,7 +203,7 @@ export interface SelectedFingers {
 }
 
 /**
- * `inputs[from]` の打鍵の指を選ぶ。範囲は `inputs[from]` から `from + windowSize` まで。
+ * `inputs[from]`の打鍵の指を選ぶ。範囲は`inputs[from]`から`from + windowSize`まで。
  */
 export function selectFingers(
   geometry: Geometry,

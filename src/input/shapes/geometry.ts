@@ -29,7 +29,7 @@ export interface Point {
 }
 
 /**
- * 指 `finger` が `from` から `to` へ動く距離（仕様 §3.1・§9）。座標のユークリッド距離だが、
+ * 指`finger`が`from`から`to`へ動く距離（仕様 §3.1・§9）。座標のユークリッド距離だが、
  * 親指が親指キーと親指キー以外のキーの間を動く時だけ、座標によらず1uとする。
  */
 export function fingerDist(finger: Finger, from: Point, to: Point): number {
@@ -42,7 +42,7 @@ export interface Key extends Point {
   id: string;
   row: number;
   col: number;
-  /** 基本の指（仕様 §3.2）。担当する指が複数あるキーの候補は `Geometry.fingerCandidates` */
+  /** 基本の指（仕様 §3.2）。担当する指が複数あるキーの候補は`Geometry.fingerCandidates` */
   finger: Finger;
   /** 表示上のキー幅 [u]。通常キーは1。 */
   width?: number;
@@ -111,7 +111,7 @@ export const HOME_ROW = 2;
 /**
  * 指の割り当て（仕様 §3.2）。指（左右の親指を含む10本）ごとに担当するキーの集合を持ち、
  * どのキーも1本以上の指が担当して、そのうち1本を基本の指とする。担当する指が複数あるキーを
- * どの指で打つかはモデルが `N` 入力先までの範囲で求める（仕様 §9.1）。割り当てを変えると
+ * どの指で打つかはモデルが`N`入力先までの範囲で求める（仕様 §9.1）。割り当てを変えると
  * 同指連続の数も距離も変わるため、どの割り当てで測ったかは数値に付随する情報として
  * 出力へ併記する（仕様 §12.3）。比較の可否を決めるのは読み手であってモデルではない。
  */
@@ -154,7 +154,7 @@ export function makeFingerAssignment(
   return { id, name, baseFinger, fingerKeys, homeKey };
 }
 
-/** キー `key` を担当する指（指の固定の順）。担当が無ければ空 */
+/** キー`key`を担当する指（指の固定の順）。担当が無ければ空 */
 export function keyOwners(assignment: FingerAssignment, key: string): Finger[] {
   return ALL_FINGERS.filter((finger) => assignment.fingerKeys[finger].includes(key));
 }
@@ -192,7 +192,7 @@ export function assignmentWithHomeKeys(
 /**
  * 列を単位に指を割り当てる（既定の割り当てが取る形）。同じ列は全行で同じ指になる。
  * `rowWidths` を渡すと既定（ANSI 12/12/11/10）以外の物理配列にも割り当てを作れる。
- * `extra` は追加で担当させるキー（キーid → 指）。
+ * `extra`は追加で担当させるキー（キーid → 指）。
  */
 export function columnFingerAssignment(
   id: string,
