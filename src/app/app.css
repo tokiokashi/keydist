@@ -2266,3 +2266,14 @@ h1 {
   gap: 0.5rem;
   margin-top: 0.75rem;
 }
+
+.user-assets-override-group {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.user-assets-override-title {
+  margin: 0;
+  font-size: 0.95rem;
+  overflow-wrap: anywhere;
+}

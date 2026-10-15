@@ -14,6 +14,7 @@ import { PresetFileIoContext } from '#hosts/shared/preset-file-io.ts';
 import { exportedText, importEntryText, importSummaryText, userAssetsFileName } from './user-assets-file-text.ts';
 import { userFingerAssignmentRows, userLayoutRows, userRomajiRuleRows, userSetupRows, type UserAssetRow } from './user-asset-rows.ts';
 import type { SetupListItem } from '../setup/setup-view.ts';
+import type { OverrideEntry, OverrideGroup } from './cascade-override-groups.ts';
 
 /** データの管理の画面の名前。サイドバーのリンクも同じ文言を出す。 */
 export const USER_ASSETS_LABEL = 'データの管理';
@@ -32,6 +33,10 @@ export interface UserAssetsPageProps {
   readonly onDeleteRomajiRule: (id: string) => void;
   readonly onDeleteFingerAssignment: (id: string) => void;
   readonly onDeleteSetup: (id: string) => void;
+  /** 保存してある条件の上書き。置き場所ごとにカスケードの順。 */
+  readonly overrideGroups: readonly OverrideGroup[];
+  /** 1項目の上書きを消す。消すと、その項目は継承する値に戻る。 */
+  readonly onResetOverride: (group: OverrideGroup, itemId: OverrideEntry['itemId']) => void;
   /**
    * 読み込んだ資産を手元へ足し、書き込みに使った突き合わせの内訳を返す（書き込めなかった時は`undefined`）。
    * `stamp`は足す時に振る新しいidの元になる、1回の読み込みで固定の値。
@@ -86,11 +91,14 @@ function AssetSection({ title, kind, emptyText, rows, onDelete }: AssetSectionPr
 }
 
 interface PendingDelete {
-  readonly kind: UserAssetKind;
+  readonly kind: UserAssetKind | 'missing-setup-override';
   readonly row: UserAssetRow;
+  /** 上書きを消す確認の時だけ。確定した時に消す。 */
+  readonly confirm?: () => void;
 }
 
-const CONFIRM_IMPACT: Readonly<Record<UserAssetKind, string>> = {
+const CONFIRM_IMPACT: Readonly<Record<UserAssetKind | 'missing-setup-override', string>> = {
+  'missing-setup-override': 'このSetupが手持ちに無いため、消した後は「元に戻す」で戻せません。',
   layout: 'この配列を対象にしているペインは、「配列が見つかりません」の表示になります。',
   'romaji-rule': 'この規則を推奨にしている配列は、全体の値の規則で打つようになります。',
   'finger-assignment': 'この割り当てを選んでいる場所は、既定の割り当てで測るようになります。',
@@ -99,9 +107,8 @@ const CONFIRM_IMPACT: Readonly<Record<UserAssetKind, string>> = {
 
 /** 削除の確認の文。元に戻すが使える範囲と、削除が他へ及ぼす影響を書く。 */
 function confirmText(pending: PendingDelete): readonly string[] {
-  const lines = [CONFIRM_IMPACT[pending.kind]];
-  lines.push('「元に戻す」で戻せます。再読み込みやタブを閉じた後は戻せません。');
-  return lines;
+  if (pending.kind === 'missing-setup-override') return [CONFIRM_IMPACT[pending.kind]];
+  return [CONFIRM_IMPACT[pending.kind], '「元に戻す」で戻せます。再読み込みやタブを閉じた後は戻せません。'];
 }
 
 /** 削除の確認。キャンセルにフォーカスを置き、Escでもキャンセルになる。 */
@@ -117,13 +124,49 @@ function ConfirmDelete({ pending, onConfirm, onCancel }: {
   }, []);
   return (
     <dialog ref={ref} className="user-assets-confirm" aria-labelledby="user-assets-confirm-title" onCancel={(event) => { event.preventDefault(); onCancel(); }}>
-      <h2 id="user-assets-confirm-title">「{pending.row.name}」を削除しますか</h2>
+      <h2 id="user-assets-confirm-title">{pending.kind === 'missing-setup-override' ? `「${pending.row.name}」の上書きを消しますか` : `「${pending.row.name}」を削除しますか`}</h2>
       {confirmText(pending).map((line) => <p key={line}>{line}</p>)}
       <div className="user-assets-confirm-actions">
         <button type="button" autoFocus onClick={onCancel}>キャンセル</button>
-        <button type="button" onClick={onConfirm}>削除する</button>
+        <button type="button" onClick={onConfirm}>{pending.kind === 'missing-setup-override' ? '消す' : '削除する'}</button>
       </div>
     </dialog>
+  );
+}
+
+/** 保存してある条件の上書きの一覧。置き場所ごとに、項目の名前と値を並べ、項目ごとに消せる。 */
+function OverrideSection({ groups, onReset }: {
+  readonly groups: readonly OverrideGroup[];
+  readonly onReset: (group: OverrideGroup, entry: OverrideEntry, button: HTMLElement) => void;
+}) {
+  return (
+    <section className="user-assets-section" data-user-assets-section="overrides">
+      <h2>条件の上書き</h2>
+      <p className="user-assets-detail">
+        保存してある上書きをそのまま並べています。継承する値と同じ値や、今の条件では使われない値も含みます。
+        書き出しのファイルに入るのは、Setupの上書きだけです。
+      </p>
+      {groups.length === 0 ? <p className="user-assets-empty">保存してある上書きはありません。</p> : (
+        <ul className="user-assets-list">
+          {groups.map((group) => (
+            <li key={group.key} className="user-assets-override-group" data-user-assets-override-group={group.key}>
+              <h3 className="user-assets-override-title">{group.title}</h3>
+              <ul className="user-assets-list">
+                {group.entries.map((entry) => (
+                  <li key={entry.itemId} className="user-assets-row" data-user-assets-override={`${group.key}/${entry.itemId}`}>
+                    <div className="user-assets-row-text">
+                      <span className="user-assets-name">{entry.label}: {entry.valueText}</span>
+                      {entry.unused ? <span className="user-assets-detail">この置き場所では使われません</span> : null}
+                    </div>
+                    <button type="button" aria-label={`${group.title}の「${entry.label}」の上書きを消す`} onClick={(event) => onReset(group, entry, event.currentTarget)}>消す</button>
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 
@@ -143,6 +186,8 @@ export function UserAssetsPage({
   onDeleteRomajiRule,
   onDeleteFingerAssignment,
   onDeleteSetup,
+  overrideGroups,
+  onResetOverride,
   onImport,
 }: UserAssetsPageProps) {
   const [message, setMessage] = useState('');
@@ -156,6 +201,14 @@ export function UserAssetsPage({
   /** 確認を閉じた後にフォーカスを移す先。削除した行のボタンは消えるので、続けて戻せる「元に戻す」へ移す。 */
   const focusAfterClose = useRef<'opener' | 'undo' | undefined>(undefined);
   const hasAssets = assets.userLayouts.length + assets.userRomajiRules.length + assets.fingerAssignments.length + assets.setupLibrary.setups.length > 0;
+
+  /** 上書きを消した後、一覧が書き換わってからフォーカスを移す。消した項目のボタンは無くなり、「元に戻す」は書き込みの後に押せるようになるため。 */
+  const focusUndoAfterReset = useRef(false);
+  useEffect(() => {
+    if (!focusUndoAfterReset.current) return;
+    focusUndoAfterReset.current = false;
+    root.current?.querySelector<HTMLElement>('[data-user-assets-undo]')?.focus();
+  }, [overrideGroups]);
 
   useEffect(() => {
     if (pending !== undefined) return;
@@ -280,6 +333,24 @@ export function UserAssetsPage({
             rows={setups}
             onDelete={(row, button) => { opener.current = button; setPending({ kind: 'setup', row }); }}
           />
+          <OverrideSection
+            groups={overrideGroups}
+            onReset={(group, entry, button) => {
+              const name = `${group.title}の${entry.label}`;
+              const reset = () => {
+                onResetOverride(group, entry.itemId);
+                clearResults();
+                setMessage(`「${name}」の上書きを消しました`);
+                focusUndoAfterReset.current = true;
+              };
+              if (group.missingSetup) {
+                opener.current = button;
+                setPending({ kind: 'missing-setup-override', row: { id: `${group.key}/${entry.itemId}`, name, detail: undefined }, confirm: reset });
+                return;
+              }
+              reset();
+            }}
+          />
         </>
       ) : null}
       {pending === undefined ? null : (
@@ -290,6 +361,11 @@ export function UserAssetsPage({
             setPending(undefined);
           }}
           onConfirm={() => {
+            if (pending.confirm !== undefined) {
+              pending.confirm();
+              setPending(undefined);
+              return;
+            }
             if (pending.kind === 'layout') onDeleteLayout(pending.row.id);
             else if (pending.kind === 'romaji-rule') onDeleteRomajiRule(pending.row.id);
             else if (pending.kind === 'finger-assignment') onDeleteFingerAssignment(pending.row.id);
