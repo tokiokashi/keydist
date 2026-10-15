@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { waitForHydration } from './hydration-helper.ts';
 
 /**
- * 自作の配列・規則の一覧と削除の画面のE2E。
+ * データの管理の一覧と削除の画面のE2E。
  * 削除そのものの分岐（存在しないid・元に戻す）はunit testが持つので、ここでは画面の配線を見る:
  * サイドバーから開ける、一覧から消せる、保存先に反映される、消した配列を対象にした画面に旨が出る、
  * 元に戻すで戻る。
@@ -36,7 +36,7 @@ test('サイドバーのAssetsから開き、自作の配列と規則を一覧�
   await waitForHydration(page);
   const sidebar = page.locator('#app-sidebar');
   await expect(sidebar.getByRole('heading', { name: 'Assets', exact: true })).toBeVisible();
-  await sidebar.getByRole('link', { name: '自作の配列・規則', exact: true }).click();
+  await sidebar.getByRole('link', { name: 'データの管理', exact: true }).click();
   await expect(page).toHaveURL(/\/assets$/);
 
   const layouts = page.locator('[data-user-assets-section="layout"]');

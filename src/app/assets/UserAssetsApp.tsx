@@ -6,7 +6,7 @@ import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
 import { setupListItems } from '../setup/setup-view.ts';
 import { UserAssetsPage } from './UserAssetsPage.tsx';
 
-/** 自作の配列・規則の画面の組み立て。資産の読み書きと履歴は、個別画面と同じ仕組みに乗せる。 */
+/** データの管理の画面の組み立て。資産の読み書きと履歴は、個別画面と同じ仕組みに乗せる。 */
 export function UserAssetsApp() {
   const { assets, ready, dispatch, canUndo, canRedo, undo, redo } = useKeydistAssets();
   const setupItems = useMemo(

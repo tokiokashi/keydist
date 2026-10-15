@@ -148,7 +148,7 @@ export function SetupPage({
     <article className="setup-page" data-setup-page>
       <h1>{SETUP_LABEL}</h1>
       <p className="setup-note">
-        配列と物理配列の組に、その組だけの条件を足せます。作ったSetupは、Analyzerの対象やWorkspaceのペインから選べます。削除は自作の配列・規則の画面で行います。
+        配列と物理配列の組に、その組だけの条件を足せます。作ったSetupは、Analyzerの対象やWorkspaceのペインから選べます。削除は「データの管理」の画面で行います。
       </p>
       <div className="setup-toolbar">
         <button type="button" disabled={!canUndo} onClick={onUndo}>元に戻す</button>
