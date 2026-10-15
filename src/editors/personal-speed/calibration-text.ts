@@ -169,9 +169,9 @@ export function calibrationInstruction(task: CalibrationTask, keyLabel: (keyId: 
     case 'actions':
       return `${first}と${second}を、普段の速さで交互に打ってください。`;
     case 'finger-repeat':
-      return `${subject}: ${first}を、普段の速さで続けて打ってください。`;
+      return `${subject}: ${first}を、素早く続けて打ってください。`;
     case 'finger':
-      return `${subject}: ${first}と${second}を交互に打ってください。`;
+      return `${subject}: ${first}と${second}を、素早く交互に打ってください。`;
     case 'same-hand-pair':
       return `${subject}: ${first}と${second}を、普段の速さで交互に打ってください。`;
     case 'direction':
@@ -209,6 +209,27 @@ export function savedMessage(
   if (scope === 'normal') return `通常の速度、指ごとの同じキーを続けて打つ速さと移動の時間を測って保存しました。${notice}`;
   if (scope === 'directional') return `方向別の速度を測って保存しました。${notice}`;
   return item === undefined ? `保存しました。${notice}` : `${calibrationItemLabel(item)}を測り直して保存しました。${notice}`;
+}
+
+/** 移動の時間を0にした指を知らせる文。指が複数でも1つの文にする。指がなければ`undefined`。 */
+export function zeroMoveFingersText(fingers: readonly Finger[]): string | undefined {
+  if (fingers.length === 0) return undefined;
+  return `${fingers.map(fingerLabel).join('・')}は、同じキーを続けて打つ間隔が、交互に打つ間隔以上だったため、移動の時間を0にしました。2つとも素早く打って、測り直してください。`;
+}
+
+/** 保存値の移動の時間が0の指の行に出す注記。 */
+export const ZERO_MOVE_ROW_NOTE = '同じキーを続けて打つ間隔が、交互に打つ間隔以上の時は0になります。';
+
+/**
+ * 「指ごとの移動の時間」の行に注記を出すか。`finger:*`の行で、保存済みの値が数値の0の時だけ出す。
+ * 入力途中の値・まだ測っていない行・代表値の行は、保存値が0でないので出さない。
+ */
+export function zeroMoveRowNote(
+  fieldId: string,
+  fingerMoveMsPerUnit: Readonly<Partial<Record<Finger, number>>>,
+): string | undefined {
+  if (!fieldId.startsWith('finger:')) return undefined;
+  return fingerMoveMsPerUnit[fieldId.slice('finger:'.length) as Finger] === 0 ? ZERO_MOVE_ROW_NOTE : undefined;
 }
 
 /**

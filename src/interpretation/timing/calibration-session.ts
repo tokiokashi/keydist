@@ -443,6 +443,8 @@ export type ApplyCalibrationResult =
       readonly replacedOverheads: readonly OverheadKind[];
       /** 基準の時間を求めるのに読む値が変わったため消した、同時押しの上乗せの分け方。同時押しの測定そのものでは消さない。 */
       readonly clearedSimultaneous: readonly SimultaneousKind[];
+      /** 測った間隔で`I(f) ≤ r(f)`だったため、移動の時間を0にした指。測定の順に並ぶ。 */
+      readonly zeroMoveFingers: readonly Finger[];
     }
   /** 方向別・1項目の測定は、保存値が無いと反映先が無い。 */
   | { readonly ok: false; readonly reason: 'no-saved-value' }
@@ -468,6 +470,25 @@ function fingerMeasurementsOf(results: readonly CalibrationTaskResult[]): Readon
     );
   }
   return measurements;
+}
+
+/**
+ * 指ごとの測定項目の2つの間隔の中央値で`I(f) ≤ r(f)`だった指。`m(f)`を求めるのと同じ中央値と距離の条件で判定する。
+ * 片方が測れていない指、距離が正でない指は含まない。
+ */
+export function zeroMoveFingersOf(results: readonly CalibrationTaskResult[]): readonly Finger[] {
+  const fingers: Finger[] = [];
+  for (const result of results) {
+    const item = result.task.item;
+    if (item.kind !== 'finger' || fingers.includes(item.finger)) continue;
+    const repeat = results.find((other) => other.task.item.kind === 'finger-repeat' && other.task.item.finger === item.finger);
+    const distance = result.task.distance;
+    if (repeat === undefined || distance === undefined || !Number.isFinite(distance) || distance <= 0) continue;
+    const repeatMs = median(repeat.intervalsMs);
+    const moveMs = median(result.intervalsMs);
+    if (repeatMs !== undefined && moveMs !== undefined && moveMs <= repeatMs) fingers.push(item.finger);
+  }
+  return fingers;
 }
 
 /**
@@ -682,6 +703,7 @@ export function applyCalibrationRun(
     clearedOverheads: hadRepeat && !keepsRepeat ? [...cleared, 'repeat'] : cleared,
     replacedOverheads: repeatChanged ? ['repeat'] : [],
     clearedSimultaneous: stale.cleared,
+    zeroMoveFingers: zeroMoveFingersOf(run.results),
   };
 }
 
