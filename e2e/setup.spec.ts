@@ -162,6 +162,22 @@ test('見つからないSetupのidで/setupを開くと、どのSetupも選ば�
   await expect(page.locator('[data-setup-problem="missing"]')).toHaveCount(0);
 });
 
+test('画面の中で作ったSetupを元に戻しても、見つからない知らせは出ず、先頭のSetupを選ぶ', async ({ page }) => {
+  await page.goto('/setup');
+  await waitForHydration(page);
+  await createSetup(page, 'ロウスタッガード（ANSI）', '一つ目');
+  await expect(page.locator('[data-setup-row]')).toHaveCount(1);
+  await createSetup(page, 'オーソリニア（ANSI）', '二つ目');
+  await expect(page.locator('[data-setup-row]')).toHaveCount(2);
+
+  // 作った「二つ目」を選んでいる状態で元に戻す。選んでいたSetupが消えても、知らせは出さない
+  await page.getByRole('button', { name: '元に戻す' }).click();
+  await expect(page.locator('[data-setup-row]')).toHaveCount(1);
+  await expect(page.locator('[data-setup-problem="missing"]')).toHaveCount(0);
+  await expect(page.locator('[data-setup-editor]')).toHaveCount(1);
+  await expect(page.locator('.setup-row-name').first()).toHaveAttribute('aria-pressed', 'true');
+});
+
 test('削除したSetupは条件のモーダルのリンクに出ず、残っているSetupのリンクは出る', async ({ page }) => {
   await page.goto('/setup');
   await waitForHydration(page);
