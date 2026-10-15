@@ -959,7 +959,7 @@ test('複数の指が担当するキー: 押した指を持ち、指の位置は
   const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'fingerAssignmentId', 'qwerty-optimized');
   assert.ok(written.ok);
   if (!written.ok) return;
-  const input = resolve('qwerty', 'minute', 'en', written.overrides);
+  const input = resolve('qwerty', 'mn', 'en', written.overrides);
   const cache = createEngineCache();
   const { trace } = cache.getTrace(input);
   assert.ok(trace);

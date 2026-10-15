@@ -12,8 +12,8 @@ import {
  * 担当する指が2本以上のキーをどの指で打つかの選択（仕様 §9.1）。
  *
  * 入力を先頭から1つずつ進め、今の入力と、開始から今の入力の終わりを引いた値が`N`以下の入力の打鍵について、
- * 同指連続回数・総移動距離・基本の指で打ったキー数・指の固定の順の順に最小になる指の並びを
- * 動的計画法で厳密に求める。そのうち今の入力の打鍵の指だけを返す。
+ * 同指連続回数・指の左右の入れ替わりの数・同じ指が近くに戻る打鍵の数・基本の指で打ったキー数・総移動距離・
+ * 指の固定の順の順に最小になる指の並びを動的計画法で厳密に求める。そのうち今の入力の打鍵の指だけを返す。
  */
 
 /** 打鍵の1回分。キーの並びは打鍵の`keys`の順（指の選び方に依存しない） */
@@ -49,6 +49,21 @@ const FINGER_COUNT = ALL_FINGERS.length;
 const DISTANCE_SCALE = 1_000_000;
 
 const isThumbKey = (key: Key): boolean => isThumb(key.finger);
+
+/** 横位置が同じとみなす差。キーの中心の座標の和・差で出る浮動小数点の誤差を吸収する */
+const SAME_X = 1e-9;
+
+/**
+ * 指ごとの、同じ手で並びが1つ隣の親指以外の指の番号。親指は横の並びを持たないので、持たない（仕様 §9.1）。
+ * `ALL_FINGERS`の並びは、左手の小指から右手の小指へ、左から右に向かって横の座標が増える順
+ */
+const NEIGHBORS: readonly (readonly number[])[] = ALL_FINGERS.map((finger, index) => {
+  if (isThumb(finger)) return [];
+  return [index - 1, index + 1].filter((other) => {
+    const neighbor = ALL_FINGERS[other];
+    return neighbor !== undefined && !isThumb(neighbor) && neighbor[0] === finger[0];
+  });
+});
 
 /** 1本の指が押す（または押さえる）キーの目標位置。複数なら重心（仕様 §4.2・§3.1） */
 export function targetOf(finger: Finger, keys: readonly Key[]): Point {
@@ -128,6 +143,10 @@ interface State {
   readonly sfb: number;
   readonly distance: number;
   readonly base: number;
+  /** 指の左右の入れ替わりを数えた打鍵の数 */
+  readonly swaps: number;
+  /** 同じ指が近くに戻る打鍵の数 */
+  readonly returns: number;
   readonly sequence: Sequence | null;
   /** 今の入力の枠ごとの指 */
   readonly first: readonly number[];
@@ -166,8 +185,10 @@ function sequenceCompare(a: Sequence | null, b: Sequence | null): number {
 /** aがbより良いか（小さいほど良い）。目的の順は仕様 §9.1 */
 function better(a: State, b: State): boolean {
   if (a.sfb !== b.sfb) return a.sfb < b.sfb;
-  if (a.distance !== b.distance) return a.distance < b.distance;
+  if (a.swaps !== b.swaps) return a.swaps < b.swaps;
+  if (a.returns !== b.returns) return a.returns < b.returns;
   if (a.base !== b.base) return a.base > b.base;
+  if (a.distance !== b.distance) return a.distance < b.distance;
   return sequenceCompare(a.sequence, b.sequence) < 0;
 }
 
@@ -267,6 +288,8 @@ interface PreparedStroke {
   readonly options: Map<string, readonly StrokeOption[]>;
   /** 状態を読む可能性のある指（候補の指と、候補が全て除かれた時の基本の指） */
   readonly readFingers: readonly number[];
+  /** 位置とかな数だけを読む可能性のある指（読む指の隣の指。指の左右の入れ替わりの判定が読む） */
+  readonly neighborFingers: readonly number[];
 }
 
 interface GeometryCache {
@@ -292,10 +315,13 @@ function prepareStroke(stroke: PlannedStroke): PreparedStroke {
     for (const finger of fingers) read.add(FINGER_INDEX.get(finger)!);
     read.add(FINGER_INDEX.get(stroke.keys[slot].finger)!);
   });
+  const neighbors = new Set<number>();
+  for (const f of read) for (const other of NEIGHBORS[f]) neighbors.add(other);
   return {
     outside: [...new Set(stroke.heldKeys.filter((id) => !inKeys.has(id)))],
     options: new Map(),
     readFingers: [...read],
+    neighborFingers: [...neighbors],
   };
 }
 
@@ -369,7 +395,8 @@ function buildOptions(
  * 区別しなくても、後の打鍵の距離・同指連続は変わらないので、求める最小は変わらない。
  * - その指が範囲の最後まで打つ候補に入らない: 位置・かな数・直前の打鍵への参加を持たない
  * - 次に打つ候補に入るのが後の打鍵: 直前の打鍵への参加は持たない
- * - 次に打つ時点で最後の参加の終わりから`N`かなを超える: ホームから動くので、位置を持たない
+ * - 次に読む時点で最後の参加の終わりから`max(N, 1)`かなを超える: 距離の計算も、指の左右の入れ替わりも、
+ *   同じ指が近くに戻る打鍵も、その指の位置を読まないので、位置を持たない
  */
 export function selectFingers(
   geometry: Geometry,
@@ -378,7 +405,8 @@ export function selectFingers(
   inputs: readonly PlannedInput[],
   from: number,
 ): SelectedFingers {
-  const cap = policy.windowSize + 1;
+  // 距離の計算は`ΔI ≤ N`の指の位置を読み、指の左右の入れ替わりと同じ指が近くに戻る打鍵は`ΔI ≤ 1`の指の位置を読む
+  const cap = Math.max(policy.windowSize, 1) + 1;
   let last = from;
   while (last + 1 < inputs.length && inputs[last + 1].start - inputs[from].end <= policy.windowSize) last++;
   const cache = cacheOf(geometry);
@@ -401,20 +429,30 @@ export function selectFingers(
     return entry;
   });
   // nextRead[t * 指数 + f]: 打鍵t以降で、指fが最初に候補に入る打鍵。無ければ-1
+  // nextReadAny: 候補に入る隣の指の位置を読む打鍵も含めた、最初の打鍵
   const nextRead = new Int32Array((total + 1) * FINGER_COUNT).fill(-1);
+  const nextReadAny = new Int32Array((total + 1) * FINGER_COUNT).fill(-1);
   for (let t = total - 1; t >= 0; t--) {
-    for (let f = 0; f < FINGER_COUNT; f++) nextRead[t * FINGER_COUNT + f] = nextRead[(t + 1) * FINGER_COUNT + f];
-    for (const f of prepared[t].readFingers) nextRead[t * FINGER_COUNT + f] = t;
+    for (let f = 0; f < FINGER_COUNT; f++) {
+      nextRead[t * FINGER_COUNT + f] = nextRead[(t + 1) * FINGER_COUNT + f];
+      nextReadAny[t * FINGER_COUNT + f] = nextReadAny[(t + 1) * FINGER_COUNT + f];
+    }
+    for (const f of prepared[t].readFingers) {
+      nextRead[t * FINGER_COUNT + f] = t;
+      nextReadAny[t * FINGER_COUNT + f] = t;
+    }
+    for (const f of prepared[t].neighborFingers) nextReadAny[t * FINGER_COUNT + f] = t;
   }
 
   /** 打鍵`t`の前の状態のうち、`t`以降が読まない部分を区別しない値にそろえる。配列は呼び出し側が作ったものを書き換える */
   const fold = (pos: Point[], posId: number[], age: number[], adjacent: boolean[], t: number): void => {
     for (let f = 0; f < FINGER_COUNT; f++) {
       const u = nextRead[t * FINGER_COUNT + f];
-      let reset = u < 0;
+      const w = nextReadAny[t * FINGER_COUNT + f];
+      let reset = w < 0;
       if (!reset && !(u === t && adjacent[f])) {
         adjacent[f] = false;
-        reset = Math.min(cap, age[f] + inputs[flat[u].input].start - inputs[flat[t].input].start) >= cap;
+        reset = Math.min(cap, age[f] + inputs[flat[w].input].start - inputs[flat[t].input].start) >= cap;
       }
       if (reset) {
         pos[f] = geometry.homes[ALL_FINGERS[f]];
@@ -447,6 +485,8 @@ export function selectFingers(
     sfb: 0,
     distance: 0,
     base: 0,
+    swaps: 0,
+    returns: 0,
     sequence: null,
     first: [],
   };
@@ -484,9 +524,18 @@ export function selectFingers(
         const adjacent = new Array<boolean>(FINGER_COUNT).fill(false);
         let sfb = 0;
         let strokeDistance = 0;
+        let swapped = false;
+        let returned = false;
         for (const press of option.presses) {
           const { index, finger, target } = press;
           const previous = state.pos[index];
+          const moved = previous.x !== target.x || previous.y !== target.y;
+          // 同じ指が、同じかなかすぐ前のかなで別のキーを打っていた
+          if (!state.adjacent[index] && state.age[index] <= 1 && moved) returned = true;
+          // 隣の指が、同じかなかすぐ前のかなで打ったキーに対して、左右が逆か同じ横位置になる
+          for (const other of NEIGHBORS[index]) {
+            if (state.age[other] <= 1 && (other - index) * (target.x - state.pos[other].x) > -SAME_X) swapped = true;
+          }
           const decision = decidePress(
             finger,
             target,
@@ -496,7 +545,7 @@ export function selectFingers(
             state.age[index],
             policy,
           );
-          if (state.adjacent[index] && (previous.x !== target.x || previous.y !== target.y)) sfb++;
+          if (state.adjacent[index] && moved) sfb++;
           strokeDistance += decision.distance;
           pos[index] = target;
           posId[index] = press.targetId;
@@ -530,6 +579,8 @@ export function selectFingers(
           sfb: state.sfb + sfb,
           distance: state.distance + Math.round(strokeDistance * DISTANCE_SCALE),
           base: state.base + option.base,
+          swaps: state.swaps + (swapped ? 1 : 0),
+          returns: state.returns + (returned ? 1 : 0),
           sequence,
           first: isFirst ? [...state.first, ...option.fingerIndexes] : state.first,
         };
