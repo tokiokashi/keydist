@@ -32,7 +32,7 @@ import {
  */
 export interface PlaybackExtracted {
   readonly analysis: AggregatedAnalysisResult;
-  /** 先読みN入力。これから押すキーと入力の履歴の先読み幅に使う */
+  /** 先読みNかな。これから押すキーと入力の履歴の先読み幅に使う */
   readonly windowSize: number;
   /** 再生の時間を決める条件 */
   readonly timing: PlaybackTimingConditions;

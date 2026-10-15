@@ -12,13 +12,13 @@ test('固定例は標準ローマ字で15打鍵に展開される', () => {
   assert.equal(presses.length, 15);
 });
 
-test('本文が拾う打鍵は同指連続とselected input距離の3分岐に対応する', () => {
+test('本文が拾う打鍵は同指連続とかなの位置の差の分岐に対応する', () => {
   const presses = figurePresses(geometry);
   const at = (n: number) => presses.find((p) => p.number === n)!;
   assert.equal(at(4).gap, 0, 'u → h。同指連続');
   assert.equal(at(12).gap, 0, 'u → m。同指連続');
-  assert.equal(at(15).inputDistance, 3, '3入力先なのでN=3の内側');
-  assert.equal(at(11).inputDistance, 5, '5入力先なのでN=3の外');
+  assert.equal(at(15).inputDistance, 1, '1文字先なのでN=3の内側');
+  assert.equal(at(11).inputDistance, 3, '3文字先なのでN=3の内側');
 });
 
 test('図に出る距離は評価器と幾何から引いた値と一致する', () => {
@@ -30,10 +30,10 @@ test('図に出る距離は評価器と幾何から引いた値と一致する',
   // 同指連続はホームの方が近くても残った側を払う（§8・§9）
   assert.equal(at(4).distance.toFixed(3), '1.250');
   assert.ok(dist(geometry.homes.RI, k('h')) < at(4).distance, 'ホームの方が近い');
-  // 窓の内側は短い方
+  // 範囲の内側は短い方
   assert.equal(at(15).distance.toFixed(3), '1.031');
-  // 窓の外はホームから。残れば0でも払う
-  assert.equal(at(11).distance.toFixed(3), '1.031');
+  // 範囲の内側で前のキーに残る方が近ければ、残る側
+  assert.equal(at(11).distance.toFixed(3), '0.000');
   assert.ok(svg.includes('1.031u') && svg.includes('1.25u') && svg.includes('2.136u'));
 });
 
@@ -45,7 +45,7 @@ test('距離の表記は末尾の0を落とす', () => {
 
 test('打鍵順は丸数字で出す', () => {
   assert.ok(svg.includes('①') && svg.includes('②'), '①② が出る');
-  assert.ok(svg.includes('⑥'), '窓の外の面は6打鍵ぶん振る');
+  assert.ok(svg.includes('⑥'), '「uwoatu」の面は6打鍵ぶん振る');
   assert.ok(!/#\d/.test(svg), '通し番号の #nは使わない');
 });
 
@@ -95,7 +95,7 @@ test('本文の数式にスペースを入れない', () => {
   assert.ok(svg.includes('d(j,u) = '), '盤面のラベルは等号の両側を空ける');
   assert.ok(svg.includes('d(j,u)') && svg.includes('d(u,h)'), '盤面のラベルはd(ab)の形');
   assert.ok(svg.includes('N = 3'), '前提条件の行');
-  assert.ok(svg.includes('5入力先'), 'Nは入力先の距離として説明する');
+  assert.ok(svg.includes('3文字先'), 'Nは文字数の距離として説明する');
 });
 
 test('囲みはnote / important / warningの3種を使う', () => {

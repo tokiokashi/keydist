@@ -159,7 +159,7 @@ export interface Metrics {
 }
 
 export interface MetricConditions {
-  /** 先読みN入力。selected canonical input単位で数える */
+  /** 先読みNかな。テキストのかなの位置で数える（仕様 §7 R3） */
   windowSize: number;
   /** 同指連続でホームキーの移動を計上するか */
   sfbHomeCost: boolean;

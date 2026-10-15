@@ -171,7 +171,7 @@ export function usePlaybackFields(
       <CheckboxOptionField
         label="押下予定キーを表示"
         binding={bind('showPlannedKeys')}
-        hint="これから押すキーを、先読みNで決まる入力先まで配列図に出します。先読みNは条件で変えます。距離の計算にも使う値なので、変えると距離の数値も変わります。"
+        hint="これから押すキーを、今の入力の残りと、先読みNで決まる文字数先までの分だけ配列図に出します。先読みNは条件で変えます。距離の計算にも使う値なので、変えると距離の数値も変わります。"
       />
     ),
     showRomajiInput: (

@@ -35,7 +35,7 @@ import {
 } from '#input/semantics/index.ts';
 
 export interface TracePolicy {
-  /** 先読みN入力。選択されたcanonical inputでN入力先まで残す候補を比較する */
+  /** 先読みNかな。テキストのかなの位置でN文字先まで残す候補を比較する（仕様 §7 R3） */
   windowSize: number;
   /**
    * 同指連続（g=0）で打鍵先がその指のホームキー自身のとき、移動を加算するか。
@@ -84,7 +84,10 @@ export interface Press {
   target: Point;
   /** 前回この指を使ってから挟まったrealized Stroke数。SFB判定用。 */
   gap: number;
-  /** 前回この指が参加したselected inputから何入力先か。N判定用。generateTrace生成時は必ず入る。 */
+  /**
+   * 今の入力の開始が、前回この指が参加した入力の終わりから何かな先か。N判定用。重なる時は0、参加が初めてなら無限大。
+   * generateTrace生成時は必ず入る。
+   */
   inputDistance?: number;
   /** この押下で計上された移動距離 [u] */
   distance: number;
@@ -113,6 +116,10 @@ export interface Stroke {
   inputChar: string;
   /** 展開後の入力列における入力単位の開始位置。同じかなを複数ステップで打つ場合も共有する */
   inputIndex: number;
+  /** この入力が覆うテキストの最初の文字の位置（評価に渡すテキストの文字で数える。仕様 §7 R3） */
+  kanaStart: number;
+  /** この入力が覆うテキストの最後の文字の位置。その文字を含む */
+  kanaEnd: number;
   /**
    * `char`を決めた1回の入力の選択の通し番号。1つの選択が複数のストロークになる時は、それらが共有する。
    * `inputIndex`はローマ字の配列で別の選択（「きょう」の`k`とコンボ`you`）とも共有されるので、選択の区別には使えない。
@@ -177,8 +184,8 @@ function comboFrameHeadingCount(layout: Layout): number {
  * 仕様 §9。テキストを打鍵ステップ列へ展開し、各押下の移動距離を求める。
  *
  * realized Stroke gap = 0 → d_stay（同指連続。戻る時間がない）
- * input distance ≤ N       → min(d_stay, d_home)
- * input distance > N       → d_home
+ * ΔI ≤ N（かなの位置の差） → min(d_stay, d_home)
+ * ΔI > N                   → d_home
  *
  * ホームへの復帰移動そのものは計上しない（§7 R2）。
  * 同時押しステップは1ステップとして数え、距離は各指の単純和を採る。
@@ -200,11 +207,11 @@ export function generateTrace(
   const layout = sourceLayout.romajiTable ? sourceLayout : withoutRomajiOnlyCombos(sourceLayout);
   const prev = {} as Record<Finger, Point>;
   const last = {} as Record<Finger, number>;
-  const lastInputOrdinal = {} as Record<Finger, number>;
+  const lastInputEnd = {} as Record<Finger, number>;
   for (const finger of ALL_FINGERS) {
     prev[finger] = geometry.homes[finger];
     last[finger] = Number.NEGATIVE_INFINITY;
-    lastInputOrdinal[finger] = Number.NEGATIVE_INFINITY;
+    lastInputEnd[finger] = Number.NEGATIVE_INFINITY;
   }
 
   const strokes: Stroke[] = [];
@@ -235,15 +242,18 @@ export function generateTrace(
   const chunkRanges: RomajiChunkRange[] = [];
   if (chunks) {
     let start = 0;
+    let kanaStart = 0;
     for (const chunk of chunks) {
       const length = [...chunk.roman].length;
       chunkRanges.push({
         start,
         end: start + length,
         kana: chunk.kana,
+        kanaStart,
         kanaLength: [...chunk.kana].length,
       });
       start += length;
+      kanaStart += [...chunk.kana].length;
     }
   }
   // 見出し探索のauthorityもcanonicalInputs。legacy Layout.map由来の長さmetadataへ依存しない。
@@ -293,6 +303,18 @@ export function generateTrace(
     const inputIndex = chunks
       ? chunkRanges.find((range) => range.start < inputEnd && inputStart < range.end)?.start ?? inputStart
       : inputStart;
+    // 入力が覆うテキストの範囲。ローマ字配列は、覆う英字を含む綴りの単位のかなの範囲
+    let kanaStart = inputStart;
+    let kanaEnd = inputEnd - 1;
+    if (chunks) {
+      const covered = chunkRanges.filter((range) => range.start < inputEnd && inputStart < range.end);
+      const first = covered[0];
+      const lastCovered = covered[covered.length - 1];
+      if (first && lastCovered) {
+        kanaStart = first.kanaStart;
+        kanaEnd = lastCovered.kanaStart + lastCovered.kanaLength - 1;
+      }
+    }
     cursor += consumed;
 
     const selectedAlternative = selectInputAlternative(
@@ -340,6 +362,8 @@ export function generateTrace(
       inputChar,
       inputIndex,
       ordinal: currentInputOrdinal,
+      start: kanaStart,
+      end: kanaEnd,
       actions: plannedActions,
       strokes: plannedActions.map((planned) => planned.stroke),
       ambiguous: plannedActions.some((planned) =>
@@ -347,7 +371,7 @@ export function generateTrace(
     });
   }
 
-  // 担当する指が2本以上のキーを含む入力では、N入力先までの範囲で指を選ぶ（仕様 §9.1）。
+  // 担当する指が2本以上のキーを含む入力では、Nかな先までの範囲で指を選ぶ（仕様 §9.1）。
   // 指が決まった入力から順に、状態を進めて打鍵を作る。
   const selectionPolicy = { windowSize: options.windowSize, sfbHomeCost: options.sfbHomeCost };
   const holders = new Map<string, Finger>();
@@ -358,7 +382,7 @@ export function generateTrace(
       ? selectFingers(
         geometry,
         selectionPolicy,
-        { prev, last, lastInputOrdinal, nextStrokeIndex: index, ordinal: currentInputOrdinal, holders },
+        { prev, last, lastInputEnd, nextStrokeIndex: index, position: input.start, holders },
         inputs,
         inputPosition,
       ).strokes
@@ -393,9 +417,9 @@ export function generateTrace(
       const presses: Press[] = [...byFinger].map(([finger, keys]) => {
         const target = targetOf(finger, keys);
         const gap = index - last[finger] - 1;
-        const previousInputOrdinal = lastInputOrdinal[finger];
-        const inputDistance = Number.isFinite(previousInputOrdinal)
-          ? currentInputOrdinal - previousInputOrdinal
+        const previousInputEnd = lastInputEnd[finger];
+        const inputDistance = Number.isFinite(previousInputEnd)
+          ? Math.max(0, input.start - previousInputEnd)
           : Number.POSITIVE_INFINITY;
         inputDistanceByFinger.set(finger, inputDistance);
         const at = prev[finger];
@@ -458,7 +482,7 @@ export function generateTrace(
       for (const press of presses) {
         prev[press.finger] = press.target;
         last[press.finger] = index;
-        lastInputOrdinal[press.finger] = currentInputOrdinal;
+        lastInputEnd[press.finger] = input.end;
       }
 
       const heldByFinger = new Map<Finger, Key[]>();
@@ -478,7 +502,7 @@ export function generateTrace(
         if (pressedFingers.has(finger)) continue;
         prev[finger] = targetOf(finger, keys);
         last[finger] = index;
-        lastInputOrdinal[finger] = currentInputOrdinal;
+        lastInputEnd[finger] = input.end;
       }
       holders.clear();
       for (const [id, finger] of nextHolders) holders.set(id, finger);
@@ -489,6 +513,8 @@ export function generateTrace(
         char,
         inputChar,
         inputIndex,
+        kanaStart: input.start,
+        kanaEnd: input.end,
         selectionIndex: currentInputOrdinal,
         aggregationGroupId,
         classifications: action.input.classifications,
@@ -724,6 +750,8 @@ interface RomajiChunkRange {
   start: number;
   end: number;
   kana: string;
+  /** 綴りの単位の最初のかなの、テキストの中の位置 */
+  kanaStart: number;
   kanaLength: number;
 }
 

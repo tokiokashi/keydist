@@ -32,7 +32,7 @@ export interface FigurePress {
   keyId: string;
   finger: Finger;
   gap: number;
-  /** 前回この指が参加したselected inputから何入力先か。 */
+  /** 前回この指が参加した入力の終わりから、何かな先か。 */
   inputDistance: number;
   distance: number;
 }
@@ -287,7 +287,7 @@ export function gapFigure(geometry: Geometry): string {
   });
 
   const boardInside = board(geometry, {
-    caption: '「meru」— 3入力先。窓の内側',
+    caption: `「meru」— ${at(15).inputDistance}文字先。範囲の内側`,
     seq: [at(12), at(13), at(14), at(15)],
     focus: [12, 15],
     arrows: [
@@ -296,14 +296,14 @@ export function gapFigure(geometry: Geometry): string {
     ],
   });
 
-  const boardOutside = board(geometry, {
-    caption: '「uwoatu」— 5入力先。窓の外',
+  const boardStay = board(geometry, {
+    caption: `「uwoatu」— ${at(11).inputDistance}文字先。範囲の内側`,
     seq: [at(6), at(7), at(8), at(9), at(10), at(11)],
     focus: [6, 11],
     arrows: [
-      { fromKey: homeId, toKey: 'u', adopted: true, label: `d(${homeId},u) = ${u(at(11).distance)}` },
+      { fromKey: 'u', toKey: 'u', adopted: true, label: `d(u,u) = ${u(at(11).distance)}（採用）` },
+      { fromKey: homeId, toKey: 'u', adopted: false, label: `d(${homeId},u) = ${u(toHome('u'))}` },
     ],
-    notes: [`残っていれば${u(between('u', 'u'))}だが、入力距離=${at(11).inputDistance}>Nなので候補にならない`],
   });
 
   const boardSfb = board(geometry, {
@@ -343,18 +343,19 @@ export function gapFigure(geometry: Geometry): string {
         ${boardUToM}
       </li>
       <li>
-        ${para(`次のm→uはmから数えて${at(15).inputDistance}入力先で、N=${FIGURE_WINDOW}の範囲内であるため、${homeId}→uの距離とm→uの距離の大小を比較して短い方を移動距離とします。当然ホームからの方が近いのでそちらが採用されますが、これはその入力までの間に人差し指がホームポジションへ戻れている可能性も比較するためです。`)}
+        ${para(`次のm→uは、mを打った「め」から数えて${at(15).inputDistance}文字先で、N=${FIGURE_WINDOW}の範囲内であるため、${homeId}→uの距離とm→uの距離の大小を比較して短い方を移動距離とします。当然ホームからの方が近いのでそちらが採用されますが、これはその入力までの間に人差し指がホームポジションへ戻れている可能性も比較するためです。`)}
         ${boardInside}
       </li>
       <li>
-        ${para(`ここで「jouho<b><i>u</i></b>woat<b><i>u</i></b>meru」の部分にも人差し指の繋がりが見つかります。2つ目の<b><i>u</i></b>は最初の<b><i>u</i></b>から${at(11).inputDistance}入力先で、${at(11).inputDistance}&gt;Nとなるため、指を残す候補は比較せず移動距離は${homeId}→uの距離dとなります。`)}
-        ${para(`仮にこの${at(11).inputDistance}入力先まで先読みできる（${at(11).inputDistance}≤N）のであれば、2つ目の<b><i>u</i></b>にかかる移動距離はd=${u(between('u', 'u'))}となります。`)}
-        ${boardOutside}
+        ${para(`ここで「jouho<b><i>u</i></b>woat<b><i>u</i></b>meru」の部分にも人差し指の繋がりが見つかります。2つ目の<b><i>u</i></b>は、最初の<b><i>u</i></b>を打った「う」から数えて${at(11).inputDistance}文字先で、${at(11).inputDistance}≤Nとなるため、指を残す候補と${homeId}→uの距離を比べます。この場合は前のuに残っている方が近く、移動距離はd=${u(at(11).distance)}になります。`)}
+        ${para(`仮にNが${at(11).inputDistance - 1}以下であれば、${at(11).inputDistance}&gt;Nとなって指を残す候補は比べず、2つ目の<b><i>u</i></b>にかかる移動距離は${homeId}→uの距離d=${u(toHome('u'))}となります。`)}
+        ${boardStay}
       </li>
     </ol>
     ${callout('note', '', [
-      'Nはevaluateが選んだ入力単位で数えます。次の入力は1入力先、5つ先の入力は5入力先です。',
-      '「きゃ」のような複数文字見出しが1入力として選ばれれば1単位です。trigger/outputへ複数Strokeに分かれても入力単位は増えません。',
+      'Nは打つ文章の文字（かな）で数えます。次の文字は1、5文字先は5です。',
+      '同じ文字を打つキーどうし（「か」を打つkとa）は0です。「きゃ」のような複数の文字を1回の入力で打つ場合は、最後の文字から数えます。',
+      '配列に無く打てない文字も1文字と数えるので、どの配列でも同じNが文章の同じ範囲を指します。',
     ])}
 
     <h3>連続打鍵でホームポジションのキーを押す場合</h3>

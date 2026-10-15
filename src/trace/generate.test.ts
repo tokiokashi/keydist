@@ -48,8 +48,8 @@ test('sfbHomeCostはホームキー以外の同指連続を変えない', () => 
   assert.equal(totalOf('hy', { sfbHomeCost: true }), totalOf('hy', { sfbHomeCost: false }));
 });
 
-test('N入力先までは残った場合と戻った場合の小さい方を採る', () => {
-  // y → a → u で、uはyから2入力先。
+test('N文字先までは残った場合と戻った場合の小さい方を採る', () => {
+  // y → a → uで、uはyから2文字先。
   //   d_stay = dist(y, u) = 1
   //   d_home = dist(j, u) = √(0.25² + 1²) ≈ 1.0308
   // N=2なら小さい方のd_stay = 1が採られる
@@ -77,8 +77,8 @@ test('次の同指打鍵で残すと確定しない間は未使用指をホー�
   assert.deepEqual(t.strokes[1].positions.RI, geometry.homes.RI);
 });
 
-test('N入力先を超えると必ずホームからの距離になる', () => {
-  // y → a → s → d → f → u。uはyから5入力先なのでN=4では窓外。
+test('N文字先を超えると必ずホームからの距離になる', () => {
+  // y → a → s → d → f → u。uはyから5文字先なのでN=4では範囲の外。
   const t = generateTrace('yasdfu', qwerty, geometry, opts({ windowSize: 4 }));
   const last = t.strokes[5];
   assert.equal(last.char, 'u');
@@ -93,34 +93,35 @@ test('gは全打鍵を数える（その指の打鍵だけではない）', () =
   assert.equal(t.strokes[3].presses[0].gap, 2);
 });
 
-test('次のinputは距離1、N=1は1入力先までを表す', () => {
+test('次の文字は距離1、N=1は1文字先までを表す', () => {
   const next = generateTrace('yu', qwerty, geometry, opts({ windowSize: 1 }));
   assert.equal(next.strokes[1].presses[0].inputDistance, 1);
 
   const inside = generateTrace('yau', qwerty, geometry, opts({ windowSize: 2 }));
   const outside = generateTrace('yau', qwerty, geometry, opts({ windowSize: 1 }));
   assert.equal(inside.strokes[2].presses[0].inputDistance, 2);
-  near(inside.strokes[2].distance, 1, 'N=2なら2入力先でstay候補を比較する');
+  near(inside.strokes[2].distance, 1, 'N=2なら2文字先でstay候補を比較する');
 
   const home = geometry.homes.RI;
   const u = geometry.keys.get('u')!;
-  near(outside.strokes[2].distance, Math.hypot(home.x - u.x, home.y - u.y), 'N=1では2入力先はhome');
+  near(outside.strokes[2].distance, Math.hypot(home.x - u.x, home.y - u.y), 'N=1では2文字先はhome');
 });
 
-test('複数文字見出しは選択された1入力単位としてNを数える', () => {
+test('複数文字見出しは、覆う最後の文字からNを数える', () => {
   const layout = fromKana('multi-input-unit', 'multi-input-unit', {
     y: [['y']],
     きゃ: [['a']],
     u: [['u']],
   });
-  const inside = generateTrace('yきゃu', layout, geometry, opts({ windowSize: 2 }));
-  const outside = generateTrace('yきゃu', layout, geometry, opts({ windowSize: 1 }));
+  const inside = generateTrace('yきゃu', layout, geometry, opts({ windowSize: 3 }));
+  const outside = generateTrace('yきゃu', layout, geometry, opts({ windowSize: 2 }));
 
   assert.equal(inside.strokes.length, 3, 'きゃは1見出しとして1 Stroke');
-  near(inside.strokes[2].distance, 1, 'yからuは2入力先なのでN=2でstay候補');
+  assert.deepEqual(inside.strokes.map((stroke) => [stroke.kanaStart, stroke.kanaEnd]), [[0, 0], [1, 2], [3, 3]]);
+  near(inside.strokes[2].distance, 1, 'yからuは3文字先なのでN=3でstay候補');
   const home = geometry.homes.RI;
   const u = geometry.keys.get('u')!;
-  near(outside.strokes[2].distance, Math.hypot(home.x - u.x, home.y - u.y), 'N=1では2入力先は窓外');
+  near(outside.strokes[2].distance, Math.hypot(home.x - u.x, home.y - u.y), 'N=2では3文字先は範囲の外');
 });
 
 test('trigger action分離でNの入力距離は変わらない', () => {
@@ -775,4 +776,105 @@ test('selectionIndexは入力の選択ごとに振り、同じ入力単位でも
   const shifted = generateTrace('が', LAYOUT_BY_ID.get('shin-jis-prefix')!, geometry, opts());
   assert.ok(shifted.strokes.length >= 2);
   assert.equal(new Set(shifted.strokes.map((stroke) => stroke.selectionIndex)).size, 1);
+});
+
+/** 打鍵ごとの、指ごとの`Press.inputDistance`。参加が初めての指は無限大 */
+const inputDistances = (trace: ReturnType<typeof generateTrace>) =>
+  trace.strokes.map((stroke) => stroke.presses.map((press) => press.inputDistance));
+
+test('ローマ字配列: 同じかなを打つ入力どうしはΔI=0、隣り合うかなの入力はΔI=1になる', () => {
+  const romaji = withRomaji(qwerty, kunrei());
+  // 「ふ」はh・u（どちらも右人差し指）。続く「ふ」のhは、前のかなのuから1文字先
+  const trace = generateTrace('ふふ', romaji, geometry, opts());
+  assert.deepEqual(trace.strokes.map((stroke) => stroke.char), ['h', 'u', 'h', 'u']);
+  assert.deepEqual(inputDistances(trace), [[Infinity], [0], [1], [0]]);
+});
+
+test('ローマ字配列: kyaの3つの入力は同じかなの範囲を持つ', () => {
+  const romaji = withRomaji(qwerty, kunrei());
+  const trace = generateTrace('あきゃ', romaji, geometry, opts());
+  assert.deepEqual(trace.strokes.map((stroke) => stroke.char), ['a', 'k', 'y', 'a']);
+  assert.deepEqual(trace.strokes.map((stroke) => [stroke.kanaStart, stroke.kanaEnd]), [[0, 0], [1, 2], [1, 2], [1, 2]]);
+  assert.equal(new Set(trace.strokes.map((stroke) => stroke.selectionIndex)).size, 4);
+});
+
+test('ローマ字配列: 促音を含む綴りの単位は、促音とその次のかなの範囲を持つ', () => {
+  const romaji = withRomaji(qwerty, kunrei());
+  const trace = generateTrace('あっか', romaji, geometry, opts());
+  assert.deepEqual(trace.strokes.map((stroke) => stroke.char), ['a', 'k', 'k', 'a']);
+  assert.deepEqual(trace.strokes.map((stroke) => [stroke.kanaStart, stroke.kanaEnd]), [[0, 0], [1, 2], [1, 2], [1, 2]]);
+});
+
+test('コンボが2つの綴りの単位にまたがる時、範囲は両方の単位を覆う。ΔIが負になる所は0にする', () => {
+  const combo = withRomaji(LAYOUT_BY_ID.get('oonishi-custom')!, kunrei());
+  const trace = generateTrace('きょう', combo, geometry, opts());
+  assert.deepEqual(trace.strokes.map((stroke) => stroke.char), ['k', 'you']);
+  // 「きょ」(kyo)と「う」(u)をまたぐyouは0〜2、kは「きょ」の0〜1
+  assert.deepEqual(trace.strokes.map((stroke) => [stroke.kanaStart, stroke.kanaEnd]), [[0, 1], [0, 2]]);
+  for (const stroke of trace.strokes) {
+    for (const press of stroke.presses) assert.ok((press.inputDistance ?? -1) >= 0, 'ΔIは負にならない');
+  }
+});
+
+test('かな配列: 読み飛ばした文字も位置に数える', () => {
+  const layout = fromKana('skip-count', 'skip-count', { a: [['a']], u: [['u']] });
+  const trace = generateTrace('a☆☆u', layout, geometry, opts());
+  assert.equal(trace.skipped, 2);
+  assert.deepEqual(trace.strokes.map((stroke) => [stroke.kanaStart, stroke.kanaEnd]), [[0, 0], [3, 3]]);
+});
+
+test('ローマ字配列: 配列に無く読み飛ばした文字も位置に数える', () => {
+  const romaji = withRomaji(qwerty, kunrei());
+  const trace = generateTrace('あ☆☆い', romaji, geometry, opts());
+  assert.equal(trace.skipped, 2);
+  assert.deepEqual(trace.strokes.map((stroke) => [stroke.kanaStart, stroke.kanaEnd]), [[0, 0], [3, 3]]);
+});
+
+test('読み飛ばした文字は、Nの範囲を狭める位置として数える', () => {
+  // y → uは、間にaだけなら2文字先、読み飛ばす文字が加わると3文字先
+  const layout = fromKana('skip-window', 'skip-window', { y: [['y']], a: [['a']], u: [['u']] });
+  const home = geometry.homes.RI;
+  const u = geometry.keys.get('u')!;
+  const toHome = Math.hypot(home.x - u.x, home.y - u.y);
+  near(generateTrace('yau', layout, geometry, opts({ windowSize: 2 })).strokes[2].distance, 1, '2文字先はN=2の中');
+  near(generateTrace('ya☆u', layout, geometry, opts({ windowSize: 2 })).strokes[2].distance, toHome, '3文字先はN=2の外');
+  near(generateTrace('ya☆u', layout, geometry, opts({ windowSize: 3 })).strokes[2].distance, 1, '3文字先はN=3の中');
+});
+
+test('かな配列: きゃを1つの入力で打つ場合と、きとゃを別々に打つ場合で、ゃを打った指から見た次のかなのΔIが同じになる', () => {
+  // 次のかな「う」は、ゃを打ったのと同じ指（右人差し指）のキー
+  const together = fromKana('kya-together', 'kya-together', { きゃ: [['j']], う: [['u']] });
+  const apart = fromKana('kya-apart', 'kya-apart', { き: [['k']], ゃ: [['j']], う: [['u']] });
+  const a = generateTrace('きゃう', together, geometry, opts());
+  const b = generateTrace('きゃう', apart, geometry, opts());
+  assert.deepEqual(a.strokes.map((stroke) => [stroke.kanaStart, stroke.kanaEnd]), [[0, 1], [2, 2]]);
+  assert.deepEqual(b.strokes.map((stroke) => [stroke.kanaStart, stroke.kanaEnd]), [[0, 0], [1, 1], [2, 2]]);
+  assert.equal(a.strokes[1].presses[0].inputDistance, 1);
+  assert.equal(b.strokes[2].presses[0].inputDistance, 1);
+  // きだけを打った指（右中指）から見た次のかな「う」は、別々に打つ配列の方が1大きい
+  const kiThenU = fromKana('ki-u', 'ki-u', { き: [['k']], ゃ: [['j']], う: [['i']] });
+  assert.equal(generateTrace('きゃう', kiThenU, geometry, opts()).strokes[2].presses[0].inputDistance, 2);
+});
+
+test('英文: 文字1つが1文字で、読み飛ばす文字が無い時はNの範囲が文字数のまま', () => {
+  const trace = generateTrace('hello', qwerty, geometry, opts());
+  assert.deepEqual(trace.strokes.map((stroke) => [stroke.kanaStart, stroke.kanaEnd]), [[0, 0], [1, 1], [2, 2], [3, 3], [4, 4]]);
+});
+
+test('N=0は、同じかなの中だけ指を残す候補を持つ', () => {
+  // 「あ」をu・x・uと打つ表。三つ目のuは、同じかなの中で一つ目のuを打った指（右人差し指）が、間にxを挟んで再び打つ
+  const table = new Map([['あ', 'uxu']]);
+  const layout = withRomaji(qwerty, table);
+  const toHome = (key: string, finger: 'RI' | 'LR') => {
+    const home = geometry.homes[finger];
+    const target = geometry.keys.get(key)!;
+    return Math.hypot(home.x - target.x, home.y - target.y);
+  };
+  const inside = generateTrace('あ', layout, geometry, opts({ windowSize: 0 }));
+  assert.deepEqual(inside.strokes.map((stroke) => stroke.char), ['u', 'x', 'u']);
+  near(inside.strokes[2].distance, 0, '同じかなの中なのでN=0でも残る候補を持つ');
+  // 隣のかなのuは、N=0では範囲の外
+  const outside = generateTrace('いう', withRomaji(qwerty, new Map([['い', 'u'], ['う', 'xu']])), geometry, opts({ windowSize: 0 }));
+  assert.deepEqual(outside.strokes.map((stroke) => stroke.char), ['u', 'x', 'u']);
+  near(outside.strokes[2].distance, toHome('u', 'RI'), '隣のかなはN=0の外なのでホームから');
 });

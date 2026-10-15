@@ -94,8 +94,8 @@ export const CONDITION_DESCRIPTORS = {
   },
   windowSize: {
     label: '先読み N',
-    effect: '同じ指を残すかホームへ戻すかを比べる先読み入力数です。evaluateが選んだcanonical inputを1単位とし、複数Strokeへの分割では増えません。',
-    format: (value) => `${value} 入力先`,
+    effect: '同じ指を残すかホームへ戻すかを比べる先読みの文字数です。打つ文章のかなで数え、配列によらず同じNが文章の同じ範囲を指します。',
+    format: (value) => `${value} 文字先`,
   },
   playbackRateAverage: {
     label: '速度の平均方式',

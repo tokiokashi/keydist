@@ -14,7 +14,7 @@ export const Route = createFileRoute('/standalone/n-sensitivity')({
       { title: `${N_SENSITIVITY_PANE_META.name} | keydist` },
       {
         name: 'description',
-        content: '配列やSetupを選んで、先読みする打鍵数Nを0〜10に変えた時に指の総移動距離がどう変わるかをグラフで比べます。',
+        content: '配列やSetupを選んで、先読みする文字数Nを0〜10に変えた時に指の総移動距離がどう変わるかをグラフで比べます。',
       },
     ],
   }),

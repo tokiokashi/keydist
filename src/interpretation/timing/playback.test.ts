@@ -37,6 +37,7 @@ import { generateTrace } from '#trace/generate.ts';
 import {
   faceFromEntries,
   fromFaces,
+  fromKana,
   LAYOUT_BY_ID,
   withRomaji,
   withThumbShiftAlternatives,
@@ -760,14 +761,15 @@ test('入力プレビューは現在の入力を下線対象にし、先読み�
   const layout = withRomaji(LAYOUT_BY_ID.get('qwerty')!, kunrei());
   const trace = generateTrace('きょうあ', layout, buildGeometry('row-staggered'));
 
-  assert.deepEqual(playbackInputPreview(trace.strokes, 2, 1), [
+  // 先読みNは、現在の入力（きょ）の終わりから数えたかなの数
+  assert.deepEqual(playbackInputPreview(trace.strokes, 2, 0), [
     { text: 'きょ', kind: 'current' },
   ]);
-  assert.deepEqual(playbackInputPreview(trace.strokes, 2, 2), [
+  assert.deepEqual(playbackInputPreview(trace.strokes, 2, 1), [
     { text: 'きょ', kind: 'current' },
     { text: 'う', kind: 'planned' },
   ]);
-  assert.deepEqual(playbackInputPreview(trace.strokes, 2, 3), [
+  assert.deepEqual(playbackInputPreview(trace.strokes, 2, 2), [
     { text: 'きょ', kind: 'current' },
     { text: 'う', kind: 'planned' },
     { text: 'あ', kind: 'planned' },
@@ -794,17 +796,53 @@ test('予定ローマ字は未入力キーを順番付きの予定キーとし�
 test('予定キーは先読み範囲の近いキーほど緑を濃く表示する', () => {
   const layout = withRomaji(LAYOUT_BY_ID.get('qwerty')!, kunrei());
   const trace = generateTrace('きょう', layout, buildGeometry('row-staggered'));
-  const planned = playbackPlannedKeys(trace.strokes, 0, 3);
+  // N=0: 現在の入力（k。きょの範囲）と範囲が重なる入力だけ。うは範囲の外
+  const planned = playbackPlannedKeys(trace.strokes, 0, 0);
 
   assert.equal(planned.get('k'), 1);
   assert.equal(planned.get('y'), 2 / 3);
   assert.equal(planned.get('o'), 1 / 3);
   assert.equal(planned.has('u'), false);
 
-  const orders = playbackPlannedOrders(trace.strokes, 0, 3);
+  const orders = playbackPlannedOrders(trace.strokes, 0, 0);
   assert.equal(orders.get('k'), 1);
   assert.equal(orders.get('y'), 2);
   assert.equal(orders.get('o'), 3);
+  assert.equal(orders.has('u'), false);
+
+  // N=1: 次のかな（う）まで入る
+  const wider = playbackPlannedKeys(trace.strokes, 0, 1);
+  assert.equal(wider.get('k'), 1);
+  assert.equal(wider.get('u'), 1 / 4);
+  assert.equal(playbackPlannedOrders(trace.strokes, 0, 1).get('u'), 4);
+});
+
+test('予定キーは、今の入力の残りの打鍵と、範囲に入る入力のキーを出す', () => {
+  // 前置シフトのかな配列: 「が」はシフトを押してから本体キーgを押す。シフトを押した後も、本体キーが予定に出る
+  const trace = generateTrace('がぎ', LAYOUT_BY_ID.get('shin-jis-prefix')!, buildGeometry('row-staggered'));
+  const first = trace.strokes.filter((stroke) => stroke.selectionIndex === trace.strokes[0].selectionIndex);
+  assert.ok(first.length >= 2, 'がは複数の打鍵');
+  const bodyKeys = first.slice(1).flatMap((stroke) => stroke.presses.flatMap((press) => press.keys.map((key) => key.id)));
+  const plannedAfterShift = playbackPlannedKeys(trace.strokes, 1, 0);
+  for (const id of bodyKeys) assert.ok(plannedAfterShift.has(id), `${id}は今の入力の残りなのでN=0でも出る`);
+  // 次のかな（ぎ）のキーは、N=0では範囲の外、N=1では範囲の中
+  const next = trace.strokes.filter((stroke) => stroke.selectionIndex !== trace.strokes[0].selectionIndex);
+  const nextOnly = next.flatMap((stroke) => stroke.presses.flatMap((press) => press.keys.map((key) => key.id)))
+    .filter((id) => !plannedAfterShift.has(id));
+  assert.ok(nextOnly.length > 0);
+  const wider = playbackPlannedKeys(trace.strokes, 1, 1);
+  for (const id of nextOnly) assert.ok(wider.has(id), `${id}はN=1で出る`);
+});
+
+test('予定キーの範囲は、読み飛ばした文字の分だけ狭くなる', () => {
+  const layout = fromKana('plan-skip', 'plan-skip', { a: [['a']], s: [['s']], d: [['d']] });
+  const geometry = buildGeometry('row-staggered');
+  const plain = generateTrace('asd', layout, geometry);
+  const skipped = generateTrace('as☆d', layout, geometry);
+  // 現在の入力aから、dは2文字先と3文字先
+  assert.equal(playbackPlannedKeys(plain.strokes, 1, 2).has('d'), true);
+  assert.equal(playbackPlannedKeys(skipped.strokes, 1, 2).has('d'), false);
+  assert.equal(playbackPlannedKeys(skipped.strokes, 1, 3).has('d'), true);
 });
 
 test('押下履歴はtauステップ内で新しいほど濃くなる', () => {
@@ -963,6 +1001,8 @@ type RomajiStrokeSource = {
   char: string;
   inputChar: string;
   inputIndex: number;
+  /** 覆うテキストの最初と最後の文字の位置。省略すると`inputIndex`の1文字 */
+  kana?: readonly [number, number];
   selectionIndex: number;
   /** 押すキー。triggerKeysに入れたキーは、文字を出力しないシフトとして扱われる */
   keys: string[];
@@ -974,6 +1014,8 @@ const romajiStrokes = (sources: readonly RomajiStrokeSource[]) =>
     char: source.char,
     inputChar: source.inputChar,
     inputIndex: source.inputIndex,
+    kanaStart: source.kana?.[0] ?? source.inputIndex,
+    kanaEnd: source.kana?.[1] ?? source.inputIndex,
     selectionIndex: source.selectionIndex,
     triggerKeys: source.triggerKeys ?? [],
     presses: [{ keys: source.keys.map((id) => ({ id })) }],
@@ -984,12 +1026,12 @@ const unit = (segment: { kind: string; kana: string; romaji?: { typed: string; r
 test('ローマ字の入力の行: 単位を出す文字は、選択ごとに1回ずつつないだcharになる', () => {
   // 「しゃ」(s,h,a)の後に、シフトを文字の前に置く「が」相当（シフト,g）、シフトを文字の後に置く「ぎ」相当（g,シフト）
   const strokes = romajiStrokes([
-    { char: 's', inputChar: 'し', inputIndex: 0, selectionIndex: 0, keys: ['s'] },
-    { char: 'ya', inputChar: 'し', inputIndex: 0, selectionIndex: 1, keys: ['y', 'a'] },
-    { char: 'G', inputChar: 'が', inputIndex: 1, selectionIndex: 2, keys: ['lshift'], triggerKeys: ['lshift'] },
-    { char: 'G', inputChar: 'が', inputIndex: 1, selectionIndex: 2, keys: ['g'] },
-    { char: 'H', inputChar: 'ぎ', inputIndex: 2, selectionIndex: 3, keys: ['h'] },
-    { char: 'H', inputChar: 'ぎ', inputIndex: 2, selectionIndex: 3, keys: ['rshift'], triggerKeys: ['rshift'] },
+    { char: 's', inputChar: 'し', inputIndex: 0, kana: [0, 0], selectionIndex: 0, keys: ['s'] },
+    { char: 'ya', inputChar: 'し', inputIndex: 0, kana: [0, 0], selectionIndex: 1, keys: ['y', 'a'] },
+    { char: 'G', inputChar: 'が', inputIndex: 1, kana: [1, 1], selectionIndex: 2, keys: ['lshift'], triggerKeys: ['lshift'] },
+    { char: 'G', inputChar: 'が', inputIndex: 1, kana: [1, 1], selectionIndex: 2, keys: ['g'] },
+    { char: 'H', inputChar: 'ぎ', inputIndex: 2, kana: [2, 2], selectionIndex: 3, keys: ['h'] },
+    { char: 'H', inputChar: 'ぎ', inputIndex: 2, kana: [2, 2], selectionIndex: 3, keys: ['rshift'], triggerKeys: ['rshift'] },
   ]);
   assert.deepEqual(playbackRomajiInputPreview(strokes, 0, 6).map(unit), [
     'planned:|sya', 'planned:|G', 'planned:|H',
@@ -1015,8 +1057,8 @@ test('ローマ字の入力の行: 現在の単位の境目は、文字を出力
 test('ローマ字の入力の行: 1つの選択が複数の文字を持つ時、境目は文字の数だけまとめて進む', () => {
   // 「きょう」: kの後にコンボyouが1回で3文字を出力する形ではなく、kとyouの2つの選択
   const strokes = romajiStrokes([
-    { char: 'k', inputChar: 'き', inputIndex: 0, selectionIndex: 0, keys: ['k'] },
-    { char: 'you', inputChar: 'き', inputIndex: 0, selectionIndex: 1, keys: ['y', 'o', 'u'] },
+    { char: 'k', inputChar: 'き', inputIndex: 0, kana: [0, 1], selectionIndex: 0, keys: ['k'] },
+    { char: 'you', inputChar: 'き', inputIndex: 0, kana: [0, 2], selectionIndex: 1, keys: ['y', 'o', 'u'] },
   ]);
   const at = (cursor: number) => playbackRomajiInputPreview(strokes, cursor, 2).map(unit);
   assert.deepEqual(at(0), ['planned:|kyou']);

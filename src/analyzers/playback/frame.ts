@@ -229,7 +229,7 @@ export function derivePlaybackFrame(input: PlaybackFrameInput): PlaybackFrame {
       )
       : none<Finger>(),
     trailKeys: showTrail ? playbackTrailKeys(trace.strokes, cursor, options.trailSteps) : none<number>(),
-    // これから押すキー。ローマ字配列でもそれ以外でも、先読みN入力ぶんを近さに応じた濃さと順番で出す
+    // これから押すキー。ローマ字配列でもそれ以外でも、今の入力の残りと先読みNかな先までの入力を、近さに応じた濃さと順番で出す
     plannedKeys: showPlanned ? playbackPlannedKeys(trace.strokes, cursor, windowSize) : none<number>(),
     plannedOrders: showPlanned && options.showOrderLabels
       ? playbackPlannedOrders(trace.strokes, cursor, windowSize)
