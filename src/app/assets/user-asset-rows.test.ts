@@ -43,3 +43,23 @@ test('指の割り当ての行: 名前と、削除した時に既定の割り当
   assert.deepEqual(rows.map((row) => [row.id, row.name]), [['finger-a', '自作の運指']]);
   assert.match(rows[0]!.detail!, /既定の割り当てで測ります/);
 });
+
+test('配列の行: 計算に使えない配列は理由を出し、推奨の規則の旨は重ねない', () => {
+  const rows = userLayoutRows(
+    [
+      { id: 'qwerty', name: '同じ識別子', rows: ROWS, romaji: 'rule-gone' },
+      { id: 'long', name: '長い段', rows: ['1234567890123456', 'q', 'a', 'z'] },
+      { id: 'ok', name: '使える', rows: ROWS, romaji: 'rule-a' },
+    ],
+    [RULE],
+  );
+  assert.match(rows[0]!.detail!, /^組み込みの配列と識別子が同じため、計算には使えません/);
+  assert.match(rows[1]!.detail!, /^配列として組めないため、計算には使えません/);
+  assert.doesNotMatch(rows[1]!.detail!, /ローマ字規則/);
+  assert.equal(rows[2]!.detail, '推奨のローマ字規則: 自作の規則');
+});
+
+test('配列の行: 組み立てで例外が出る配列は、固定の理由を出し、例外の文を漏らさない', () => {
+  const rows = userLayoutRows([{ id: 'seq', name: '空の打鍵列', rows: ROWS, sequences: [['a', []]] }], [RULE]);
+  assert.equal(rows[0]!.detail, '配列の定義から打鍵を組み立てられないため、計算には使えません。定義を見直してください');
+});

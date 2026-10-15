@@ -1,5 +1,6 @@
 import { isBuiltin, ROMAJI_RULES, type UserRomajiRule } from '#input/romaji/rules.ts';
 import type { FingerAssignment } from '#input/shapes/geometry.ts';
+import { buildUserCatalog } from '#input/layouts/user-catalog.ts';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 
 /** 一覧の1行。種類ごとの違いは`detail`の文に収め、行の形は配列も規則も同じにする。 */
@@ -10,13 +11,19 @@ export interface UserAssetRow {
   readonly detail: string | undefined;
 }
 
-/** 自作の配列の行。補足は、推奨のローマ字規則（見つからなければ全体の値の規則で打つ旨）。 */
+/**
+ * 自作の配列の行。補足は、推奨のローマ字規則（見つからなければ全体の値の規則で打つ旨）。
+ * 計算に使えない配列は、推奨の規則の代わりに使えない理由を出す。
+ */
 export function userLayoutRows(
   userLayouts: readonly UserLayout[],
   userRomajiRules: readonly UserRomajiRule[],
 ): readonly UserAssetRow[] {
   const ruleNames = new Map(userRomajiRules.map((rule) => [rule.id, rule.name] as const));
-  return userLayouts.map((layout) => {
+  const { unusableLayouts } = buildUserCatalog(userLayouts, userRomajiRules);
+  return userLayouts.map((layout, index) => {
+    const unusable = unusableLayouts.get(index);
+    if (unusable !== undefined) return { id: layout.id, name: layout.name, detail: unusable };
     if (layout.direct === true) return { id: layout.id, name: layout.name, detail: 'ローマ字を経ずに直接打つ配列' };
     const { romaji } = layout;
     if (romaji === undefined) {
