@@ -11,6 +11,7 @@ import {
   DEFAULT_FINGER_ASSIGNMENT,
   JIS_FINGER_ASSIGNMENT,
   PHYSICAL_SHAPES,
+  QWERTY_OPTIMIZED_FINGER_ASSIGNMENT,
   type FingerAssignment,
   type PresetGeometryKind,
 } from '#input/shapes/geometry.ts';
@@ -33,6 +34,7 @@ import { sampleText, type TextLanguage } from '#input/text/samples.ts';
 const FINGER_ASSIGNMENTS: Record<string, FingerAssignment> = {
   [DEFAULT_FINGER_ASSIGNMENT.id]: DEFAULT_FINGER_ASSIGNMENT,
   [JIS_FINGER_ASSIGNMENT.id]: JIS_FINGER_ASSIGNMENT,
+  [QWERTY_OPTIMIZED_FINGER_ASSIGNMENT.id]: QWERTY_OPTIMIZED_FINGER_ASSIGNMENT,
 };
 
 function findFingerAssignment(id: string): FingerAssignment {

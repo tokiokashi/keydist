@@ -362,6 +362,24 @@ test('複数のかなを覆う入力と読み飛ばした文字があっても�
   }
 });
 
+test('入力の範囲が次の入力の途中まで及ぶ時、はみ出した分を打ち切らずに数え上げた結果と一致する（ローマ字配列）', () => {
+  // しょ(syo)・う・。・こ・の・よ・う・な。綴りの単位ごとに英字が同じ範囲を持つ。
+  // 指の状態で、はみ出した分を0で打ち切ると、次の入力のΔIを実際より大きく数え、この文章では総距離が変わる
+  const romaji = withRomaji(LAYOUT_BY_ID.get('qwerty')!, kunrei());
+  const geometry = buildGeometry(SHAPE, QWERTY_OPTIMIZED_FINGER_ASSIGNMENT);
+  const chunks: [string, number, number][] = [
+    ['syo', 0, 1], ['u', 2, 2], ['.', 3, 3], ['ko', 4, 4], ['no', 5, 5], ['yo', 6, 6], ['u', 7, 7], ['na', 8, 8],
+  ];
+  const inputs = chunks.flatMap(([letters, start, end]) => [...letters].map((c) => ({ keys: [[c]], start, end })));
+  const strokes = planWithSpans(inputs);
+  const expected = referenceFingers(geometry, strokes, 5);
+  const trace = generateTrace('しょう。このような', romaji, geometry, opts({ windowSize: 5 }));
+  assert.equal(trace.strokes.length, strokes.length);
+  const actual = fingersOf(trace).map((map, index) => strokes[index].keys.map((key) => map.get(key)!));
+  assert.deepEqual(actual, expected);
+  near(Math.round(computeMetrics(trace, geometry).totalUnits * 1000) / 1000, 7.226, '総距離');
+});
+
 test('同点の決め方: 基本の指を優先し、それでも同じなら指の固定の順で先の指を選ぶ', () => {
   // LP・LM・LIがどれもホームをfにする。fを打つ距離は3本とも0で、同指連続も0で同点になる
   const homes = { ...DEFAULT_FINGER_ASSIGNMENT.homeKey, LP: 'f', LM: 'f' };

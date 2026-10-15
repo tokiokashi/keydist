@@ -9,6 +9,7 @@ import {
   buildGeometry,
   DEFAULT_FINGER_ASSIGNMENT,
   JIS_FINGER_ASSIGNMENT,
+  QWERTY_OPTIMIZED_FINGER_ASSIGNMENT,
   PHYSICAL_SHAPES,
   type FingerAssignment,
   type Geometry,
@@ -205,7 +206,11 @@ function runCase(
 ): FixtureCase {
   const text = sampleText(language, sampleId);
   const shapeId = opts.shapeId ?? 'row-staggered';
-  const fingerAssignment = opts.fingerAssignment ?? DEFAULT_FINGER_ASSIGNMENT;
+  // 推奨の指の割り当てを持つ配列は、アプリと同じく推奨で測る（fixtureの物理配列は既定のrow-staggeredで、ANSI用を使う）
+  const recommended = layout.recommendedFingerAssignmentIds?.ansi === QWERTY_OPTIMIZED_FINGER_ASSIGNMENT.id
+    ? QWERTY_OPTIMIZED_FINGER_ASSIGNMENT
+    : undefined;
+  const fingerAssignment = opts.fingerAssignment ?? recommended ?? DEFAULT_FINGER_ASSIGNMENT;
   const geometry: Geometry = buildGeometry(
     PHYSICAL_SHAPES[shapeId],
     assignmentWithHomeKeys(fingerAssignment, layout.homeKeys),
@@ -301,8 +306,7 @@ function generate(): Fixture {
 
   // 1. 既定条件 × 組み込み配列全部 × 適用可能なサンプル全部。
   //    src/legacy/results-view.ts の既定経路（配列別override無し）をそのまま再現する。
-  // 推奨の指の割り当てを持つ配列は、配列を対象にした解決が既定の割り当てと違う値で測るので、このfixtureの範囲に含めない。
-  for (const layout of LAYOUTS.filter((candidate) => candidate.recommendedFingerAssignmentIds === undefined)) {
+  for (const layout of LAYOUTS) {
     for (const sampleId of Object.keys(SAMPLE_TEXTS.en)) {
       cases.push(runCase('en', layout, sampleId, {
         // 窓幅Nの感度は安いので、代表として最初のEN配列にだけ添える
@@ -310,7 +314,7 @@ function generate(): Fixture {
       }));
     }
   }
-  for (const layout of LAYOUTS_JA.filter((candidate) => candidate.recommendedFingerAssignmentIds === undefined)) {
+  for (const layout of LAYOUTS_JA) {
     for (const sampleId of Object.keys(SAMPLE_TEXTS.ja)) {
       cases.push(runCase('ja', layout, sampleId, {
         withNSensitivity: layout.id === 'naginata-v18' && sampleId === 'modern',
