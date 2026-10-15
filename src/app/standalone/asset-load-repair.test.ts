@@ -188,18 +188,26 @@ test('知らせの記憶: 同じ資産は重複せず、新しい版の値は閉
   assert.equal(getAssetLoadNoticesSnapshot().length, 1);
 });
 
-test('ストアは最初に読み込む所で1回だけ知らせ、書き戻す', () => {
+test('ストアは最初に読み込む所で1回だけ知らせ、書き戻す。2回目のstartは読み直さない', () => {
   const key = 'presetLibrary';
+  const storageKey = ASSET_STORAGE_SPECS[key].storageKey;
   const { storage, map, writes } = createFakeStorage();
-  map.set(ASSET_STORAGE_SPECS[key].storageKey, repairableRaw(key));
+  map.set(storageKey, repairableRaw(key));
   const store = createAssetStore({ storage, notify: () => {} });
 
   store.start();
+  assert.equal(getAssetLoadNoticesSnapshot().length, 1);
+  assert.equal(writes.filter((w) => w === storageKey).length, 1);
+
+  // 知らせを閉じ、storageに直せば読める値が入り直った状態で、もう一度startを呼ぶ
+  dismissAssetLoadNotices();
+  map.set(storageKey, repairableRaw(key));
   store.start();
   store.dispatch(undefined, setStandaloneAnalyzerOptionsCommand('heatmap', { n: 1 }));
 
-  assert.equal(getAssetLoadNoticesSnapshot().length, 1);
-  assert.equal(writes.filter((w) => w === ASSET_STORAGE_SPECS[key].storageKey).length, 1);
+  assert.deepEqual(getAssetLoadNoticesSnapshot(), [], '2回目は知らせない');
+  assert.equal(writes.filter((w) => w === storageKey).length, 1, '2回目は書き戻さない');
+  assert.equal(map.get(storageKey), repairableRaw(key), '入り直した値に触らない');
 });
 
 test('知らせの文: 資産の名前と件数だけを出し、codecの診断の文を流さない', () => {
