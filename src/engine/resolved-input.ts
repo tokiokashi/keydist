@@ -10,7 +10,7 @@ import { withoutRomajiOnlyCombos, withRomaji } from '#input/layouts/types.ts';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { TextLanguage } from '#input/text/language.ts';
 import type { AnalysisTarget, Setup, SetupCatalog, SetupReferenceError } from '#input/setup/index.ts';
-import { tableForRule, type UserRomajiRule } from '#input/romaji/rules.ts';
+import { isBuiltin, ROMAJI_RULES, tableForRule, type UserRomajiRule } from '#input/romaji/rules.ts';
 import type { TracePolicy } from '#trace/generate.ts';
 import type { ChainInterpretation } from '#interpretation/structure/chain.ts';
 import type { ArpeggioInterpretation } from '#interpretation/structure/arpeggio.ts';
@@ -154,15 +154,33 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
   // カスケードの実効値・診断へ合流させる（resolve.tsの`invalid-fallback`と同じ形）。
   // customFingerAssignmentsはcontext非依存の別カタログなので、resolveCascade自体には
   // 組み込めない（validateはCascadeContextしか見られない）。ここで後から合成する。
-  const resolvedCascade = assignmentDiagnostic === undefined
+  // Setupのレベルのローマ字規則が解決できない時も、表は既定（訓令式）で打つ。値は変えず、診断だけを足す。
+  const romajiDiagnostic = romajiRuleId !== null
+    && romajiItem.origin.kind === 'setup'
+    && !isBuiltin(romajiRuleId)
+    && !(options.customRomajiRules ?? []).some((rule) => rule.id === romajiRuleId)
+    ? {
+      kind: 'invalid-fallback' as const,
+      message: `選んでいたローマ字規則が見つからないため、既定の「${ROMAJI_RULES.kunrei.name}」で測りました`,
+    }
+    : undefined;
+  const resolvedCascade = assignmentDiagnostic === undefined && romajiDiagnostic === undefined
     ? cascade
     : {
       ...cascade,
-      fingerAssignmentId: {
-        ...cascade.fingerAssignmentId,
-        value: assignment.id,
-        diagnostics: [...cascade.fingerAssignmentId.diagnostics, assignmentDiagnostic],
-      },
+      ...(assignmentDiagnostic === undefined ? {} : {
+        fingerAssignmentId: {
+          ...cascade.fingerAssignmentId,
+          value: assignment.id,
+          diagnostics: [...cascade.fingerAssignmentId.diagnostics, assignmentDiagnostic],
+        },
+      }),
+      ...(romajiDiagnostic === undefined ? {} : {
+        romajiRuleId: {
+          ...cascade.romajiRuleId,
+          diagnostics: [...cascade.romajiRuleId.diagnostics, romajiDiagnostic],
+        },
+      }),
     };
 
   let geometry: Geometry;

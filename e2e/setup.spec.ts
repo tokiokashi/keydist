@@ -103,3 +103,41 @@ test('同じ配列で物理配列の違う2つのSetupを作り、Workspaceの2�
   }
   expect(names[0]).not.toBe(names[1]);
 });
+
+test('Setupを対象にしたペインの条件のモーダルから、そのSetupを/setupで開ける。複数の対象ではSetupごとにリンクが出る', async ({ page }) => {
+  await page.goto('/setup');
+  await waitForHydration(page);
+  await createSetup(page, 'ロウスタッガード（ANSI）', '一つ目');
+  await expect(page.locator('[data-setup-row]')).toHaveCount(1);
+  await createSetup(page, 'オーソリニア（ANSI）', '二つ目');
+  await expect(page.locator('[data-setup-row]')).toHaveCount(2);
+  const setups = (await stored(page)).setups;
+
+  await page.locator('#app-sidebar').getByRole('button', { name: '＋ 新しいWorkspace' }).click();
+  await expect(page).toHaveURL(/\/workspace\/[^/?]+$/);
+  for (const name of ['打鍵再生', '比較表']) {
+    await page.getByRole('button', { name: /ペインを追加/ }).click();
+    await page.getByRole('menuitem', { name: new RegExp(name) }).click();
+  }
+  const paneOf = (name: string) => page.locator('.pane-frame').filter({ has: page.getByRole('heading', { level: 2, name, exact: true }) });
+
+  const playback = paneOf('打鍵再生');
+  await playback.locator('.target-selection-button').click();
+  await page.getByRole('dialog', { name: '対象の選択' }).locator(`input[value="setup:${setups[0]!.id}"]`).click();
+  await page.keyboard.press('Escape');
+  await playback.locator('.pane-condition-trigger').click();
+  const single = page.getByRole('dialog', { name: '条件' });
+  await expect(single.getByRole('link', { name: 'このSetupの物理配列と条件を編集' })).toHaveAttribute('href', new RegExp(`/setup\\?setup=${setups[0]!.id}$`));
+  await page.keyboard.press('Escape');
+
+  const comparison = paneOf('比較表');
+  await comparison.locator('.target-selection-button, .pane-empty-button').first().click();
+  const dialog = page.getByRole('dialog', { name: '対象の選択' });
+  for (const setup of setups) await dialog.locator(`input[value="setup:${setup.id}"]`).click();
+  await page.keyboard.press('Escape');
+  await comparison.locator('.pane-condition-trigger').click();
+  const many = page.getByRole('dialog', { name: '条件' });
+  await expect(many.getByRole('link', { name: /の物理配列と条件を編集$/ })).toHaveCount(2);
+  await expect(many.getByRole('link', { name: '「一つ目」の物理配列と条件を編集' })).toBeVisible();
+  await expect(many.getByRole('link', { name: '「二つ目」の物理配列と条件を編集' })).toBeVisible();
+});

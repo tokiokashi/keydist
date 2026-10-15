@@ -164,14 +164,27 @@ export interface SetupIdMaps {
   readonly fingers: ReadonlyMap<string, string>;
 }
 
-/** ファイルのSetupが指す自作の資産のidを、読み込み後のidへ付け替える。付け替え先の無いid（組み込みなど）はそのまま。 */
+/**
+ * ファイルのSetupが指す自作の資産のidを、読み込み後のidへ付け替える。
+ * ファイルの中に無く組み込みでもない指の割り当て・ローマ字規則を指す参照は外す
+ * （手元の同じidの別の資産に結び付けず、継承する値で解決させるため）。
+ * 中身の比較より前に行うので、外した参照の有無だけで別のSetupと判定されない。
+ */
 function remapSetup(setup: UserAssetSetup, maps: SetupIdMaps): UserAssetSetup {
   const overrides = setup.overrides;
   const mapped: Record<string, unknown> | undefined = overrides === undefined ? undefined : { ...overrides };
   if (mapped !== undefined) {
-    if (typeof mapped.romajiRuleId === 'string') mapped.romajiRuleId = maps.rules.get(mapped.romajiRuleId) ?? mapped.romajiRuleId;
+    if (typeof mapped.romajiRuleId === 'string') {
+      const id = isBuiltin(mapped.romajiRuleId) ? mapped.romajiRuleId : maps.rules.get(mapped.romajiRuleId);
+      if (id === undefined) delete mapped.romajiRuleId;
+      else mapped.romajiRuleId = id;
+    }
     if (typeof mapped.fingerAssignmentId === 'string') {
-      mapped.fingerAssignmentId = maps.fingers.get(mapped.fingerAssignmentId) ?? mapped.fingerAssignmentId;
+      const id = Object.hasOwn(FINGER_ASSIGNMENT_REGISTRY, mapped.fingerAssignmentId)
+        ? mapped.fingerAssignmentId
+        : maps.fingers.get(mapped.fingerAssignmentId);
+      if (id === undefined) delete mapped.fingerAssignmentId;
+      else mapped.fingerAssignmentId = id;
     }
   }
   return {

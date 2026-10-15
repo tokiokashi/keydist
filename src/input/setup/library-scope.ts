@@ -15,6 +15,10 @@ import type { Setup } from './types.ts';
  * - `global` / `shape:<id>` / `inputMethod:<打ち方>` / `layout:<id>` / `override-setup:<id>`:
  *   各レベルの条件の上書き（1レベルで1件。別のレベルの変更とは干渉しない）
  *
+ * Setupのレベルの条件（`override-setup:<id>`）は、そのSetup自身（`setup:<id>`）が今あることも条件にする
+ * （戻す向きでもやり直す向きでも。Setupの無い条件の上書きを残さない）。Setupの削除を戻す時のように、
+ * Setupと条件が同じ操作で一緒に戻る場合は満たす。
+ *
  * 件の追加・削除も項目単位で戻せる（`'free'`）。Setupの番号は作った時に手持ちの最大＋1で固定されるので、
  * 作る操作を戻した後に別のSetupを作ると、同じ番号が付く。戻した操作をやり直す時に、その番号を別のSetupが
  * 使っていれば、`setup-number`の件が食い違い、やり直せなくなる（番号の重なる状態を作らない）。
@@ -51,6 +55,7 @@ export function setupLibraryItemScope<V>(): ItemScope<SetupLibrary<V>> {
       }
     },
     membership: 'free',
+    requires: (id) => (id.startsWith('override-setup:') ? `setup:${id.slice('override-setup:'.length)}` : undefined),
   };
 }
 

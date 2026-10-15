@@ -92,10 +92,11 @@ export interface ConditionEditorContext {
    */
   readonly setup?: { readonly id: string; readonly layoutId: string };
   /**
-   * 対象がSetupの単一対象のペインが渡す、そのSetup。モーダルに、Setupの編集画面を開くリンクを出す
-   * （Setupのレベルの条件はそこで変える。このモーダルは書かない）。
+   * 対象にSetupを含むペインが渡す、そのSetup。モーダルに、Setupごとに編集画面を開くリンクを出す
+   * （Setupのレベルの条件はそこで変える。このモーダルは書かない）。`name`は複数のSetupを区別する表示名で、
+   * 単一対象のペインは省く（リンクの文言は「このSetup」になる）。
    */
-  readonly openSetup?: { readonly id: string };
+  readonly openSetups?: readonly { readonly id: string; readonly name?: string }[];
   /** 全体で変えても画面が変わらない行の理由（`overrideWinsNotices`）。 */
   readonly notices?: ReadonlyMap<SettingsItemId, string>;
   /** Workspaceのレベルを変えても画面が変わらない行の理由（`overrideWinsNotices`の`'Workspace'`）。 */

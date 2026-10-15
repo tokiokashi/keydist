@@ -16,6 +16,7 @@ import {
   deleteSetupCommand,
   duplicateSetupCommand,
   relabelSetupCommand,
+  resetCascadeItemCommand,
   setCascadeOverrideCommand,
   setSetupShapeCommand,
   type KeydistAssets,
@@ -159,4 +160,38 @@ test('物理配列の付け替えは1回の操作で戻る', () => {
   assert.equal(state.assets.setupLibrary.setups[0]!.shapeId, 'ortho');
   const undone = step(state, SETUP_SCREEN, 'undo');
   assert.equal(undone.state.assets.setupLibrary.setups[0]!.shapeId, 'row-staggered');
+});
+
+const SETUP_LEVEL = { kind: 'setup', setupId: 'a' } as const;
+const condition = (windowSize: number) => setCascadeOverrideCommand(SETUP_LEVEL, 'windowSize', windowSize);
+
+test('Setupのレベルの条件を戻した後にSetupを削除すると、条件をやり直せず、Setupの無い上書きを残さない', () => {
+  let state = run(start(), SETUP_SCREEN, create('a'));
+  state = run(state, SETUP_SCREEN, condition(7));
+  const undone = step(state, SETUP_SCREEN, 'undo');
+  assert.equal(undone.outcome.kind, 'applied');
+  state = run(undone.state, '/assets', deleteSetupCommand('a'));
+  const redone = step(state, SETUP_SCREEN, 'redo');
+  assert.equal(redone.outcome.kind, 'conflict');
+  assert.deepEqual(redone.state.assets.setupLibrary, { setups: [], overrides: emptyCascadeOverrides() });
+});
+
+test('Setupのレベルの条件を消した後にSetupを削除すると、消す前に戻せず、Setupの無い上書きを残さない', () => {
+  let state = run(start(), SETUP_SCREEN, create('a'));
+  state = run(state, SETUP_SCREEN, condition(7));
+  state = run(state, SETUP_SCREEN, resetCascadeItemCommand(SETUP_LEVEL, 'windowSize'));
+  state = run(state, '/assets', deleteSetupCommand('a'));
+  const undone = step(state, SETUP_SCREEN, 'undo');
+  assert.equal(undone.outcome.kind, 'conflict');
+  assert.deepEqual(undone.state.assets.setupLibrary, { setups: [], overrides: emptyCascadeOverrides() });
+});
+
+test('Setupの削除を戻すと、Setupとそのレベルの条件が両方戻る', () => {
+  let state = run(start(), SETUP_SCREEN, create('a'));
+  state = run(state, SETUP_SCREEN, condition(7));
+  state = run(state, '/assets', deleteSetupCommand('a'));
+  const undone = step(state, '/assets', 'undo');
+  assert.equal(undone.outcome.kind, 'applied');
+  assert.deepEqual(ids(undone.state), ['a']);
+  assert.equal(undone.state.assets.setupLibrary.overrides.setup?.a?.windowSize, 7);
 });

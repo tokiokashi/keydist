@@ -197,6 +197,16 @@ function reconcile<A extends AssetValues>(
         if (changedIds.length > 0) {
           const currentItems = scope.items(current);
           if (!changedIds.every((id) => Object.is(currentItems.get(id), fromItems.get(id)))) return undefined;
+          if (scope.requires !== undefined) {
+            const changed = new Set(changedIds);
+            const lacksRequired = changedIds.some((id) => {
+              if (toItems.get(id) === undefined) return false;
+              const required = scope.requires!(id);
+              if (required === undefined) return false;
+              return changed.has(required) ? toItems.get(required) === undefined : !currentItems.has(required);
+            });
+            if (lacksRequired) return undefined;
+          }
           patch[key] = changedIds.reduce((value, id) => scope.withItem(value, id, toItems.get(id)), current);
           continue;
         }

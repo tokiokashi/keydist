@@ -98,6 +98,11 @@ export interface ItemScope<V> {
    * `'free'`: 件の有無が位置や他の件に影響しない資産で、件の追加・削除も項目単位で戻す。
    */
   readonly membership: 'fixed' | 'free';
+  /**
+   * `id`の件が値を持つ間、同じ資産の中にあるべき別の件のid。戻す・やり直す結果で`id`の件が値を持つのに、
+   * 挙げた件が（同じ操作で戻る場合を除いて）今無ければ、その項目は当てずに知らせる。
+   */
+  readonly requires?: (id: string) => string | undefined;
 }
 
 /** 資産キーごとの`ItemScope`。挙げないキーは、値の参照が丸ごと同じかで照らし合わせる。 */

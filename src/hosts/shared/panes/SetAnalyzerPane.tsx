@@ -201,6 +201,9 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
         customRomajiRules: catalog.customRomajiRules,
         ...(env.workspaceId === undefined ? {} : { workspace: { id: env.workspaceId } }),
         hiddenIds: excludeIds,
+        openSetups: targets.flatMap((target) => (
+          target.kind === 'setup' ? [{ id: target.setupId, name: namedByKey.get(analysisTargetKey(target))?.displayName ?? target.setupId }] : []
+        )),
       }}
       conditionTargetDiffs={conditionSummary.diffs}
       engineState={extraction}

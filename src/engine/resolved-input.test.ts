@@ -344,3 +344,66 @@ test('英字直接入力: TK音直入力法 + 英語テキストはromajiOnlyの
   const jaTrace = generateTrace(ja.text, ja.layout, ja.geometry, ja.tracePolicy);
   assert.deepEqual(jaTrace.comboHits, ['desu']);
 });
+
+function resolveWithRomajiRule(level: Parameters<typeof setSettingsOverride>[1], ruleId: string) {
+  const write = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, level, 'romajiRuleId', ruleId);
+  assert.ok(write.ok);
+  if (!write.ok) throw new Error('書き込めない');
+  const result = resolveEngineInput({
+    target: { kind: 'setup', setupId: setupFor('qwerty').id },
+    setups: new Map([[setupFor('qwerty').id, setupFor('qwerty')]]),
+    catalog: CATALOG,
+    userLayouts: NO_USER_LAYOUTS,
+    overrides: write.overrides,
+    text: 'あいうえお',
+    language: 'ja',
+  });
+  assert.ok(result.ok);
+  if (!result.ok) throw new Error('解決できない');
+  return result.input;
+}
+
+test('Setupのレベルのローマ字規則が解決できない時は、訓令式の表で打ち、診断を出す。値は変えない', () => {
+  const input = resolveWithRomajiRule({ kind: 'setup', setupId: 'setup-1' }, 'romaji-gone');
+  assert.deepEqual(input.layout.romajiTable, tableForRule('kunrei'));
+  assert.equal(input.romajiRuleId, 'romaji-gone');
+  assert.equal(input.cascade.romajiRuleId.value, 'romaji-gone');
+  assert.deepEqual(input.cascade.romajiRuleId.diagnostics.map((diagnostic) => diagnostic.kind), ['invalid-fallback']);
+});
+
+test('ローマ字規則の診断はSetupのレベルだけ: 他のレベルの解決できない規則では診断を足さない', () => {
+  const input = resolveWithRomajiRule({ kind: 'global' }, 'romaji-gone');
+  assert.deepEqual(input.layout.romajiTable, tableForRule('kunrei'));
+  assert.equal(input.cascade.romajiRuleId.diagnostics.length, 0);
+});
+
+test('Setupのレベルのローマ字規則が組み込みなら診断は無い', () => {
+  const input = resolveWithRomajiRule({ kind: 'setup', setupId: 'setup-1' }, 'azik');
+  assert.deepEqual(input.layout.romajiTable, tableForRule('azik'));
+  assert.equal(input.cascade.romajiRuleId.diagnostics.length, 0);
+});
+
+test('Setupのレベルの指の割り当てとローマ字規則がどちらも解決できなくても、解決は成功し、両方に診断が付く', () => {
+  const level = { kind: 'setup', setupId: 'setup-1' } as const;
+  const first = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, level, 'fingerAssignmentId', 'finger-gone');
+  assert.ok(first.ok);
+  if (!first.ok) return;
+  const second = setSettingsOverride(first.overrides, level, 'romajiRuleId', 'romaji-gone');
+  assert.ok(second.ok);
+  if (!second.ok) return;
+  const result = resolveEngineInput({
+    target: { kind: 'setup', setupId: setupFor('qwerty').id },
+    setups: new Map([[setupFor('qwerty').id, setupFor('qwerty')]]),
+    catalog: CATALOG,
+    userLayouts: NO_USER_LAYOUTS,
+    overrides: second.overrides,
+    text: 'あいうえお',
+    language: 'ja',
+  });
+  assert.ok(result.ok);
+  if (!result.ok) return;
+  assert.equal(result.input.geometry.assignment.id, DEFAULT_FINGER_ASSIGNMENT.id);
+  assert.deepEqual(result.input.layout.romajiTable, tableForRule('kunrei'));
+  assert.equal(result.input.cascade.fingerAssignmentId.diagnostics.length, 1);
+  assert.equal(result.input.cascade.romajiRuleId.diagnostics.length, 1);
+});

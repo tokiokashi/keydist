@@ -587,3 +587,37 @@ test('Setup: コマンドは1回でSetupを足し、元に戻すと戻る。二�
   assert.deepEqual(undone.assets.setupLibrary.setups, []);
   assert.deepEqual(undone.assets.setupLibrary.overrides, {});
 });
+
+test('Setup: ファイルにも組み込みにも無い自作の指の割り当て・ローマ字規則への参照は、手元の同じidの資産に結び付けず外し、Setupは残す', () => {
+  const local: UserAssetsHoldings = {
+    ...EMPTY,
+    userRomajiRules: [RULE],
+    fingerAssignments: [FINGER],
+  };
+  const incoming: UserAssetsBundle = {
+    layouts: [], romajiRules: [], fingerAssignments: [],
+    setups: [{ id: 'x', layoutId: 'qwerty', shapeId: 'row-staggered', overrides: { windowSize: 5, fingerAssignmentId: FINGER.id, romajiRuleId: RULE.id } }],
+  };
+  const merged = mergeUserAssets(local, incoming, STAMP);
+  assert.deepEqual(merged.assets.setupLibrary.setups.map((setup) => setup.id), ['x']);
+  assert.deepEqual(merged.assets.setupLibrary.overrides.setup?.x, { windowSize: 5 });
+  // 組み込みへの参照は残す
+  const builtin = mergeUserAssets(EMPTY, {
+    ...incoming,
+    setups: [{ id: 'y', layoutId: 'qwerty', shapeId: 'row-staggered', overrides: { romajiRuleId: 'kunrei' } }],
+  }, STAMP);
+  assert.deepEqual(builtin.assets.setupLibrary.overrides.setup?.y, { romajiRuleId: 'kunrei' });
+});
+
+test('Setup: 参照を外した結果が手元と同じ中身なら足さず、二度読んでも増えない', () => {
+  const incoming: UserAssetsBundle = {
+    layouts: [], romajiRules: [], fingerAssignments: [],
+    setups: [{ id: 'x', layoutId: 'qwerty', shapeId: 'row-staggered', overrides: { fingerAssignmentId: 'finger-gone', romajiRuleId: 'romaji-gone' } }],
+  };
+  const first = mergeUserAssets(EMPTY, incoming, STAMP);
+  assert.equal(first.assets.setupLibrary.setups.length, 1);
+  assert.equal(first.assets.setupLibrary.overrides.setup, undefined);
+  const second = mergeUserAssets(first.assets, incoming, 'stamp2');
+  assert.equal(second.assets.setupLibrary, first.assets.setupLibrary);
+  assert.deepEqual(second.entries.map((entry) => entry.outcome.kind), ['skipped-same']);
+});

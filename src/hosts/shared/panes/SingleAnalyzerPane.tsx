@@ -228,7 +228,7 @@ export function SingleAnalyzerPane<Options, Extracted>({
           }),
         // 対象が配列でも、Setupでも、書き込む先は配列のレベル（Setupのレベルへ書く導線は別）。
         ...(resolution.ok ? { layout: { id: resolution.input.layout.id, name: resolution.input.layout.name } } : {}),
-        ...(target.kind === 'setup' ? { openSetup: { id: target.setupId } } : {}),
+        ...(target.kind === 'setup' ? { openSetups: [{ id: target.setupId }] } : {}),
       }}
       engineState={combinePaneStates(extraction, pane.trace)}
       traceErrors={traceErrors}
