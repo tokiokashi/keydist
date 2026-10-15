@@ -14,6 +14,11 @@ export interface UserCatalog {
   readonly userLayouts: ReadonlyMap<string, UserLayout>;
   /** 組み込みと衝突しない自作のローマ字規則。 */
   readonly romajiRules: readonly UserRomajiRule[];
+  /**
+   * 計算に使えない配列の理由（入力の`userLayouts`の添字 → 利用者に見せる文）。
+   * 保存データには残っている配列に付けるので、捨てた旨ではなく、使えない状態と理由を書く。
+   */
+  readonly unusableLayouts: ReadonlyMap<number, string>;
   /** 捨てた・読み替えた項目の診断。経路は`userLayouts[i]` / `userRomajiRules[i]`。 */
   readonly diagnostics: readonly CodecDiagnostic[];
 }
@@ -48,21 +53,25 @@ export function buildUserCatalog(
     }
   });
 
+  const unusableLayouts = new Map<number, string>();
   const layouts = new Map<string, Layout>();
   const definitions = new Map<string, UserLayout>();
   userLayouts.forEach((definition, index) => {
     const path = `userLayouts[${index}]`;
     if (LAYOUT_BY_ID.has(definition.id)) {
       diagnostics.push({ path, message: `id「${definition.id}」が組み込みの配列と同じため捨てました` });
+      unusableLayouts.set(index, '組み込みの配列と識別子が同じため、計算には使えません');
       return;
     }
     if (definitions.has(definition.id)) {
       diagnostics.push({ path, message: `id「${definition.id}」が重複しているため捨てました` });
+      unusableLayouts.set(index, '同じ識別子の配列が先にあるため、計算には使えません');
       return;
     }
     const errors = validate(definition.rows);
     if (errors.length > 0) {
       diagnostics.push({ path, message: `配列として組めないため捨てました（${errors.join('、')}）` });
+      unusableLayouts.set(index, `配列として組めないため、計算には使えません（${errors.join('、')}）`);
       return;
     }
     let layout: Layout;
@@ -71,6 +80,7 @@ export function buildUserCatalog(
     } catch (cause) {
       const reason = cause instanceof Error ? cause.message : String(cause);
       diagnostics.push({ path, message: `配列として組めないため捨てました（${reason}）` });
+      unusableLayouts.set(index, `配列として組めないため、計算には使えません（${reason}）`);
       return;
     }
     const romaji = definition.romaji;
@@ -85,5 +95,5 @@ export function buildUserCatalog(
     layouts.set(definition.id, layout);
   });
 
-  return { layouts, userLayouts: definitions, romajiRules, diagnostics };
+  return { layouts, userLayouts: definitions, romajiRules, unusableLayouts, diagnostics };
 }

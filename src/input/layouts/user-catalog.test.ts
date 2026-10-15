@@ -93,3 +93,21 @@ test('directの配列はローマ字を経ないので、romajiが指す規則�
   assert.equal(catalog.layouts.get('user-a')?.recommendedRomajiRuleId, undefined);
   assert.deepEqual(catalog.diagnostics, []);
 });
+
+test('計算に使えない配列は、入力の添字ごとに利用者向けの理由を持つ', () => {
+  const catalog = buildUserCatalog(
+    [
+      layout('qwerty'),
+      layout('user-ok'),
+      layout('user-long', { rows: ['1234567890123456', 'q', 'a', 'z'] }),
+      layout('user-empty', { rows: ['', '', '', ''] }),
+      layout('user-bad', { romaji: 'romaji-gone' }),
+    ],
+    [],
+  );
+  assert.deepEqual([...catalog.unusableLayouts.keys()], [0, 2, 3]);
+  assert.match(catalog.unusableLayouts.get(0)!, /組み込みの配列と識別子が同じため、計算には使えません/);
+  assert.match(catalog.unusableLayouts.get(2)!, /計算には使えません（.*個までしか置けません）/);
+  assert.match(catalog.unusableLayouts.get(3)!, /計算には使えません（英字の段が空）/);
+  for (const reason of catalog.unusableLayouts.values()) assert.doesNotMatch(reason, /捨て/);
+});
