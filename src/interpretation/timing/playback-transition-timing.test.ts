@@ -100,8 +100,10 @@ const calibration = {
     'LR>LM': 5,
     'LM>LI': 10,
   },
-  fingerSpeedUnitsPerSecond: { LI: 8 },
-  fallbackFingerSpeedUnitsPerSecond: 10,
+  fingerRepeatMs: { LI: 1000 / 5 },
+  fingerMoveMsPerUnit: { LI: 1000 / 8 },
+  fallbackRepeatMs: 1000 / 5,
+  fallbackMoveMsPerUnit: 1000 / 10,
   measuredAt: 1,
 };
 
@@ -263,6 +265,7 @@ test('SFBの移動速度による律速はTransition Timing移行後も維持す
 
   assert.equal(
     playbackStepDurationMs(analysis, 1, 1, true, calibration),
-    375,
+    575,
+    '移動の時間は、続け打ちの時間（200）に距離3×125を足した値',
   );
 });

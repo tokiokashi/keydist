@@ -98,8 +98,10 @@ const SAVED: PlaybackCalibration = {
   actionsPerSecond: 5,
   sameHandDifferentFingerActionsPerSecond: 5,
   sameHandDifferentFingerActionsPerSecondByPair: {},
-  fingerSpeedUnitsPerSecond: {},
-  fallbackFingerSpeedUnitsPerSecond: 10,
+  fingerRepeatMs: {},
+  fingerMoveMsPerUnit: {},
+  fallbackRepeatMs: 1000 / 5,
+  fallbackMoveMsPerUnit: 1000 / 10,
   measuredAt: 1,
 };
 
@@ -236,7 +238,8 @@ test('保存の時の保存値が、測定を始めた時の保存値と違え�
   assert.ok(same.ok);
   for (const current of [
     { ...SAVED, actionsPerSecond: 6 },
-    { ...SAVED, fingerSpeedUnitsPerSecond: { LI: 9 } },
+    { ...SAVED, fingerMoveMsPerUnit: { LI: 90 } },
+    { ...SAVED, fingerRepeatMs: { LI: 180 } },
     { ...SAVED, keystrokeOverheadMs: { other: 1 } },
     undefined,
   ]) {
@@ -327,12 +330,16 @@ function custom(
 const REPEATING = custom(Array.from({ length: 20 }, () => 'LI' as Finger), () => 'f');
 
 test('続け打ちの差は、間隔から続け打ちのnormalMsを引いた四分位平均で、構造の種類に混ぜない', () => {
-  // 同じキーを続けて打つ速さを持たない保存値では、続け打ちのnormalMsは通常速度の200ms。
+  // その指の続け打ちの時間を持たない保存値では、続け打ちのnormalMsは代表値の200ms。
   const without = measureOne(REPEATING, SAVED, tapsFor(20, () => 260));
   assert.deepEqual(without.counts, { ...NO_COUNTS, repeat: 19 });
   assert.deepEqual(without.overheadMs, { repeat: 60 });
-  // 8アクション/秒（125ms）を持つ保存値では、そのnormalMsを引く。
-  const withSameKey = measureOne(REPEATING, { ...SAVED, sameKeyActionsPerSecond: 8 }, tapsFor(20, () => 260));
+  // その指の続け打ちの時間が125msの保存値では、そのnormalMsを引く。
+  const withSameKey = measureOne(
+    REPEATING,
+    { ...SAVED, fingerRepeatMs: { LI: 125 }, fingerMoveMsPerUnit: { LI: 100 } },
+    tapsFor(20, () => 260),
+  );
   assert.deepEqual(withSameKey.overheadMs, { repeat: 135 });
 });
 
@@ -347,25 +354,25 @@ test('同じキーを続けて打っても、押下を複数持つストロー�
 });
 
 test('同指連続の差は、間隔からmax(normalMs, 指の移動の時間)を引いた四分位平均になる', () => {
-  // 同じ指が離れた2つのキーを往復する。距離2u、LIの移動速度4u/秒なら移動の時間は500msで、normalMsの200msより長い。
+  // 同じ指が離れた2つのキーを往復する。距離2u、LIの1uあたりの移動の時間250msなら、移動の時間は続け打ちの200msに500msを足した700ms。
   const analysis = custom(
     Array.from({ length: 20 }, () => 'LI' as Finger),
     (index) => (index % 2 === 0 ? 'f' : 'r'),
     (index) => (index === 0 ? 0 : 2),
   );
-  const calibration = { ...SAVED, fingerSpeedUnitsPerSecond: { LI: 4 } };
-  const slow = measureOne(analysis, calibration, tapsFor(20, () => 600));
+  const calibration = { ...SAVED, fingerRepeatMs: { LI: 200 }, fingerMoveMsPerUnit: { LI: 250 } };
+  const slow = measureOne(analysis, calibration, tapsFor(20, () => 800));
   assert.deepEqual(slow.counts, { ...NO_COUNTS, sfb: 19 });
   assert.deepEqual(slow.overheadMs, { sfb: 100 });
-  // 移動の時間が1打の時間より短ければ、normalMsとの差になる。距離0.5uなら移動の時間は125ms。
+  // 距離0.5uなら移動の時間は200 + 125msで、間隔との差になる。
   const near = custom(
     Array.from({ length: 20 }, () => 'LI' as Finger),
     (index) => (index % 2 === 0 ? 'f' : 'r'),
     (index) => (index === 0 ? 0 : 0.5),
   );
-  assert.deepEqual(measureOne(near, calibration, tapsFor(20, () => 260)).overheadMs, { sfb: 60 });
+  assert.deepEqual(measureOne(near, calibration, tapsFor(20, () => 385)).overheadMs, { sfb: 60 });
   // 解析設定のsameFingerDelayは見ない。移動の時間が律速する同指連続も、基準に移動の時間が入るので差を測れる。
-  assert.deepEqual(measureOne(analysis, calibration, tapsFor(20, () => 500)).overheadMs, { sfb: 0 });
+  assert.deepEqual(measureOne(analysis, calibration, tapsFor(20, () => 700)).overheadMs, { sfb: 0 });
 });
 
 test('句読点を打つストロークと、その入力単位の最後のストロークの次のストロークは、数えない', () => {

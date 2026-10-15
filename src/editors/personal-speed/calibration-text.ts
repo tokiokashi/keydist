@@ -8,7 +8,8 @@ import {
   type SimultaneousKind,
 } from '#interpretation/timing/calibration.ts';
 import {
-  CALIBRATION_FALLBACK_FINGER_FIELD,
+  CALIBRATION_FALLBACK_MOVE_FIELD,
+  CALIBRATION_FALLBACK_REPEAT_FIELD,
   CALIBRATION_SAME_HAND_FIELD,
   type ApplyCalibrationFieldResult,
 } from '#interpretation/timing/calibration-form.ts';
@@ -29,7 +30,7 @@ import {
 /** 個人速度の画面に出す文言。 */
 
 export const ACTIONS_UNIT = 'アクション/秒';
-export const SPEED_UNIT = 'u/秒';
+export const MOVE_UNIT = 'ミリ秒/u';
 export const OVERHEAD_UNIT = 'ミリ秒';
 
 /**
@@ -97,8 +98,8 @@ function pairLabel(pair: string, separator: ':' | '>'): string {
 export function calibrationItemLabel(item: CalibrationItem): string {
   switch (item.kind) {
     case 'actions': return '通常の打鍵速度';
-    case 'same-key': return '同じキーを続けて打つ速さ';
     case 'direction': return item.direction === 'L→R' ? '左手から右手' : '右手から左手';
+    case 'finger-repeat':
     case 'finger': return fingerLabel(item.finger);
     case 'same-hand-pair': return pairLabel(item.pair, ':');
     case 'directed-pair': return pairLabel(item.pair, '>');
@@ -109,16 +110,17 @@ export function calibrationItemLabel(item: CalibrationItem): string {
 /** 欄の識別子（`calibrationItemId`か代表値の欄）に対応する名前。 */
 export function calibrationFieldLabel(fieldId: string): string {
   if (fieldId === CALIBRATION_SAME_HAND_FIELD) return '同手・別指の代表の速度';
-  if (fieldId === CALIBRATION_FALLBACK_FINGER_FIELD) return '測定できなかった指の移動速度';
+  if (fieldId === CALIBRATION_FALLBACK_REPEAT_FIELD) return '測定できなかった指の同じキーを続けて打つ速さ';
+  if (fieldId === CALIBRATION_FALLBACK_MOVE_FIELD) return '測定できなかった指の移動の時間';
   const [kind, ...rest] = fieldId.split(':');
   const name = rest.join(':');
   switch (kind) {
     case 'actions': return calibrationItemLabel({ kind: 'actions' });
-    case 'same-key': return calibrationItemLabel({ kind: 'same-key', hand: 'L' });
     case 'direction': return `異手 ${calibrationItemLabel({ kind: 'direction', direction: name === 'L→R' ? 'L→R' : 'R→L' })}`;
     case 'overhead': return `打鍵の上乗せ ${OVERHEAD_KIND_LABEL[name as OverheadKind] ?? name}`;
     case 'simultaneous': return `同時押しの上乗せ ${SIMULTANEOUS_KIND_LABEL[name as SimultaneousKind] ?? name}`;
-    case 'finger': return `${fingerLabel(name)}の移動速度`;
+    case 'finger-repeat': return `${fingerLabel(name)}が同じキーを続けて打つ速さ`;
+    case 'finger': return `${fingerLabel(name)}の移動の時間`;
     case 'same-hand-pair': return `同手・別指 ${pairLabel(name, ':')}`;
     case 'directed-pair': return `同手・別指 ${pairLabel(name, '>')}`;
     default: return fieldId;
@@ -126,7 +128,7 @@ export function calibrationFieldLabel(fieldId: string): string {
 }
 
 /**
- * 見出しの下に並べる行の名前。見出しで分かる語（異手・同手・別指・打鍵の上乗せ・移動速度）は外す。
+ * 見出しの下に並べる行の名前。見出しで分かる語（異手・同手・別指・打鍵の上乗せ・移動の時間）は外す。
  * 行の外で読む名前（入力欄の読み上げ・保存できない理由）は`calibrationFieldLabel`。
  */
 export function calibrationFieldRowLabel(fieldId: string): string {
@@ -136,6 +138,7 @@ export function calibrationFieldRowLabel(fieldId: string): string {
     case 'direction': return calibrationItemLabel({ kind: 'direction', direction: name === 'L→R' ? 'L→R' : 'R→L' });
     case 'overhead': return OVERHEAD_KIND_LABEL[name as OverheadKind] ?? name;
     case 'simultaneous': return SIMULTANEOUS_KIND_LABEL[name as SimultaneousKind] ?? name;
+    case 'finger-repeat':
     case 'finger': return fingerLabel(name);
     case 'same-hand-pair': return pairLabel(name, ':');
     case 'directed-pair': return pairLabel(name, '>');
@@ -143,10 +146,10 @@ export function calibrationFieldRowLabel(fieldId: string): string {
   }
 }
 
-/** 欄の値の単位。指の移動速度は物理キーの距離（u）で、他は1秒あたりの打鍵数。 */
+/** 欄の値の単位。指の移動の時間は物理キーの距離1uあたりのミリ秒で、他は1秒あたりの打鍵数。 */
 export function calibrationFieldUnit(fieldId: string): string {
   if (fieldId.startsWith(OVERHEAD_FIELD_PREFIX) || fieldId.startsWith(SIMULTANEOUS_FIELD_PREFIX)) return OVERHEAD_UNIT;
-  return fieldId === CALIBRATION_FALLBACK_FINGER_FIELD || fieldId.startsWith('finger:') ? SPEED_UNIT : ACTIONS_UNIT;
+  return fieldId === CALIBRATION_FALLBACK_MOVE_FIELD || fieldId.startsWith('finger:') ? MOVE_UNIT : ACTIONS_UNIT;
 }
 
 /** 保存値を編集した欄の値を保存できなかった理由。 */
@@ -165,7 +168,7 @@ export function calibrationInstruction(task: CalibrationTask, keyLabel: (keyId: 
   switch (task.item.kind) {
     case 'actions':
       return `${first}と${second}を、普段の速さで交互に打ってください。`;
-    case 'same-key':
+    case 'finger-repeat':
       return `${subject}: ${first}を、普段の速さで続けて打ってください。`;
     case 'finger':
       return `${subject}: ${first}と${second}を交互に打ってください。`;
@@ -203,7 +206,7 @@ export function savedMessage(
 ): string {
   const notice = `${clearedOverheads.length > 0 ? '文章を打つ速さの打鍵の上乗せが消えました。' : ''}${replacedOverheads.length > 0 ? '続け打ちの打鍵の上乗せは置き換えました。' : ''}${clearedSimultaneous.length > 0 ? '同時押しの上乗せが消えました。' : ''}`;
   if (scope === 'simultaneous') return `同時押しを測って保存しました。${notice}`;
-  if (scope === 'normal') return `通常の速度、同じキーを続けて打つ速さ、指の移動速度を測って保存しました。${notice}`;
+  if (scope === 'normal') return `通常の速度、指ごとの同じキーを続けて打つ速さと移動の時間を測って保存しました。${notice}`;
   if (scope === 'directional') return `方向別の速度を測って保存しました。${notice}`;
   return item === undefined ? `保存しました。${notice}` : `${calibrationItemLabel(item)}を測り直して保存しました。${notice}`;
 }
@@ -348,7 +351,7 @@ export const SENTENCE_TABLE_DETAILS_SUMMARY = '基準の時間と打った間隔
 export const SENTENCE_TABLE_NOTES: readonly string[] = [
   '打鍵の上乗せは、打鍵ごとの差（打った間隔から基準の時間を引いた値）の四分位平均（小さい方と大きい方から4分の1ずつ除いた残りの平均）で、負の値もそのまま保存します。'
   + '打った間隔の四分位平均から基準の時間の四分位平均を引いた値とは、一致しないことがあります。',
-  '基準の時間は1打の時間です。同指連続では、1打の時間と指が動く時間の長い方です。続け打ちの1打の時間は、同じキーを続けて打つ速さから求めます。'
+  '基準の時間は1打の時間です。同指連続では、1打の時間と、続け打ちの時間に指が動く時間を足した時間の長い方です。続け打ちの1打の時間は、その指が同じキーを続けて打つ速さから求めます。'
   + '同時押しの打鍵では、保存した同時押しの上乗せを足した時間です。',
   'かなの中は、前の打鍵と同じ入力の単位（拗音や促音をまとめた単位を含む）を打つ打鍵、かなの境目は、違う入力の単位を打つ打鍵です。Arpeggio・Chain・その他は、全体の値に加えて、かなの中とかなの境目の値も測ります。'
   + 'かなの中・かなの境目の値は、その打鍵の数が少ない行は保存しません。',
@@ -358,7 +361,7 @@ export const SENTENCE_TABLE_NOTES: readonly string[] = [
 export function sentenceTableKindLabel(kind: OverheadKind): string {
   switch (kind) {
     case 'repeat': return `${OVERHEAD_KIND_LABEL[kind]}（同じキーを続けて打つ時間が基準）`;
-    case 'sfb': return `${OVERHEAD_KIND_LABEL[kind]}（1打の時間と指が動く時間の長い方が基準）`;
+    case 'sfb': return `${OVERHEAD_KIND_LABEL[kind]}（1打の時間と、続け打ちの時間に指が動く時間を足した時間の長い方が基準）`;
     default: return OVERHEAD_KIND_LABEL[kind];
   }
 }
@@ -394,7 +397,7 @@ export const SENTENCE_UNMEASURED_TEXT = '打った内容から測定の値を求
  * 計算の詳細は再生時間モデルの仕様書（`spec/playback-timing.md` §3.1.1・§3.2・§3.3・§6）が持つ。
  */
 export const MEASUREMENT_DESCRIPTION = {
-  normal: 'キーを打つ速さ、同じキーを続けて打つ速さ、同じ手の2本の指で打つ速さ、指ごとにキーの間を動く速さを測ります。'
+  normal: 'キーを打つ速さ、同じ手の2本の指で打つ速さ、指ごとに同じキーを続けて打つ速さとキーの間を動く時間を測ります。'
     + '打鍵再生で、1打ごとの時間と、同じ指で別のキーを続けて打つ時に指が動く時間を決めます。',
   directional: '左手と右手の交互打ちと、同じ手の2本の指で打つ時の、打つ向きごとの速さを測ります。'
     + '打鍵再生で、測った向きの1打の時間を、向きを区別しない値の代わりに決めます。',

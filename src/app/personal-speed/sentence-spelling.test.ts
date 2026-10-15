@@ -54,8 +54,10 @@ const SAVED: PlaybackCalibration = {
   actionsPerSecond: 5,
   sameHandDifferentFingerActionsPerSecond: 5,
   sameHandDifferentFingerActionsPerSecondByPair: {},
-  fingerSpeedUnitsPerSecond: {},
-  fallbackFingerSpeedUnitsPerSecond: 10,
+  fingerRepeatMs: {},
+  fingerMoveMsPerUnit: {},
+  fallbackRepeatMs: 1000 / 5,
+  fallbackMoveMsPerUnit: 1000 / 10,
   measuredAt: 1,
 };
 

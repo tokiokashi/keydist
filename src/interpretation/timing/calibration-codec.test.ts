@@ -9,8 +9,10 @@ const CALIBRATION: PlaybackCalibration = {
   sameHandDifferentFingerActionsPerSecond: 4,
   sameHandDifferentFingerActionsPerSecondByPair: { 'LM:LI': 3.5 },
   sameHandDifferentFingerActionsPerDirectedPair: { 'LM>LI': 3.2 },
-  fingerSpeedUnitsPerSecond: { LI: 8 },
-  fallbackFingerSpeedUnitsPerSecond: 7,
+  fingerRepeatMs: { LI: 1000 / 5 },
+  fingerMoveMsPerUnit: { LI: 1000 / 8 },
+  fallbackRepeatMs: 1000 / 5,
+  fallbackMoveMsPerUnit: 1000 / 7,
   measuredAt: 1,
 };
 
@@ -84,21 +86,73 @@ test('打鍵の上乗せだけが範囲外・知らない種類でも、他の�
   }
 });
 
-test('同じキーを続けて打つ速さと、続け打ち・同指連続の差は、書き出して読み直すと同じ値になる', () => {
-  const full: PlaybackCalibration = { ...CALIBRATION, sameKeyActionsPerSecond: 7.5, keystrokeOverheadMs: { repeat: 4, sfb: 33.5, other: -10 } };
+test('指ごとの値と、続け打ち・同指連続の差は、書き出して読み直すと同じ値になる', () => {
+  const full: PlaybackCalibration = { ...CALIBRATION, keystrokeOverheadMs: { repeat: 4, sfb: 33.5, other: -10 } };
   const decoded = PERSONAL_SPEED_CODEC.decode(JSON.parse(JSON.stringify(PERSONAL_SPEED_CODEC.encode({ calibration: full }))));
   assert.ok(decoded.ok);
   assert.deepEqual(decoded.value, { calibration: full });
   assert.equal(PERSONAL_SPEED_CODEC.decode({ version: 1, calibration: CALIBRATION }).ok, true);
 });
 
-test('同じキーを続けて打つ速さが範囲外なら、保存値ごと捨てる', () => {
-  for (const sameKeyActionsPerSecond of [0.05, 41]) {
-    const decoded = PERSONAL_SPEED_CODEC.decode({ version: 1, calibration: { ...CALIBRATION, sameKeyActionsPerSecond } });
+test('同じキーを続けて打つ時間と移動の時間が範囲外なら、保存値ごと捨てる', () => {
+  for (const patch of [
+    { fingerRepeatMs: { LI: 24.9 } },
+    { fingerRepeatMs: { LI: 10001 } },
+    { fallbackRepeatMs: 24.9 },
+    { fallbackRepeatMs: 10001 },
+    { fingerMoveMsPerUnit: { LI: -1 } },
+    { fingerMoveMsPerUnit: { LI: 10001 } },
+    { fallbackMoveMsPerUnit: -0.1 },
+    { fallbackMoveMsPerUnit: 10001 },
+  ]) {
+    const decoded = PERSONAL_SPEED_CODEC.decode({ version: 1, calibration: { ...CALIBRATION, ...patch } });
     assert.ok(decoded.ok);
-    assert.equal(decoded.value.calibration, undefined);
+    assert.equal(decoded.value.calibration, undefined, JSON.stringify(patch));
     assert.equal(decoded.diagnostics.length, 1);
   }
+});
+
+test('移動の時間が0の指と、範囲の端の値は読み込める', () => {
+  const edge: PlaybackCalibration = {
+    ...CALIBRATION,
+    fingerRepeatMs: { LI: 25, RI: 10000 },
+    fingerMoveMsPerUnit: { LI: 0, RI: 10000 },
+    fallbackRepeatMs: 25,
+    fallbackMoveMsPerUnit: 0,
+  };
+  const decoded = PERSONAL_SPEED_CODEC.decode(JSON.parse(JSON.stringify(PERSONAL_SPEED_CODEC.encode({ calibration: edge }))));
+  assert.ok(decoded.ok);
+  assert.deepEqual(decoded.value, { calibration: edge });
+});
+
+test('同じキーを続けて打つ時間と移動の時間で、持つ指の組が違う保存値は捨てる', () => {
+  for (const patch of [
+    { fingerRepeatMs: { LI: 200 }, fingerMoveMsPerUnit: {} },
+    { fingerRepeatMs: { LI: 200 }, fingerMoveMsPerUnit: { RI: 50 } },
+    { fingerRepeatMs: {}, fingerMoveMsPerUnit: { LI: 50 } },
+  ]) {
+    const decoded = PERSONAL_SPEED_CODEC.decode({ version: 1, calibration: { ...CALIBRATION, ...patch } });
+    assert.ok(decoded.ok);
+    assert.equal(decoded.value.calibration, undefined, JSON.stringify(patch));
+    assert.equal(decoded.diagnostics.length, 1);
+  }
+});
+
+test('指ごとの移動速度と同じキーを続けて打つ速さを持つ旧い形の保存値は、変換せず捨てて診断を出す', () => {
+  const old = {
+    actionsPerSecond: 5,
+    sameHandDifferentFingerActionsPerSecond: 4,
+    sameHandDifferentFingerActionsPerSecondByPair: {},
+    fingerSpeedUnitsPerSecond: { LI: 8 },
+    fallbackFingerSpeedUnitsPerSecond: 7,
+    sameKeyActionsPerSecond: 6,
+    measuredAt: 1,
+  };
+  const decoded = PERSONAL_SPEED_CODEC.decode({ version: 1, calibration: old });
+  assert.ok(decoded.ok);
+  assert.equal(decoded.value.calibration, undefined);
+  assert.equal(decoded.diagnostics.length, 1);
+  assert.match(decoded.diagnostics[0].message, /個人速度を捨てました/);
 });
 
 test('かなの中・かなの境目の値は、分けない値を持たない保存値でも、書き出して読み直すと同じ値になる', () => {

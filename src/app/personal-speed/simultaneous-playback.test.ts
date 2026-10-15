@@ -9,12 +9,13 @@ import { personalSpeedSentenceBuilder } from './sentence-source.ts';
 
 const BASE: PlaybackCalibration = {
   actionsPerSecond: 6,
-  sameKeyActionsPerSecond: 5,
   actionsPerSecondByDirection: { 'L→R': 6.5, 'R→L': 5.5 },
   sameHandDifferentFingerActionsPerSecond: 5.2,
   sameHandDifferentFingerActionsPerSecondByPair: {},
-  fingerSpeedUnitsPerSecond: {},
-  fallbackFingerSpeedUnitsPerSecond: 12,
+  fingerRepeatMs: {},
+  fingerMoveMsPerUnit: {},
+  fallbackRepeatMs: 1000 / 5,
+  fallbackMoveMsPerUnit: 1000 / 12,
   measuredAt: 1,
 };
 const WITH_C: PlaybackCalibration = { ...BASE, simultaneousOverheadMs: { 'both-hands': 30, 'one-hand': 40, thumb: 50 } };
@@ -60,6 +61,11 @@ test('同時押しを持つ配列は、同時押しのストロークのステ�
         return;
       }
       chords++;
+      // 同指連続の押下を含むステップは、移動の時間（続け打ちの時間 + 距離 × 1uあたりの時間）が律速してcが入らない。
+      if (stroke.presses.some((press) => press.sfb)) {
+        assert.ok(diff >= -1e-9 && diff <= expected[kind] + 1e-9, `${layoutId} ${index} ${kind}`);
+        return;
+      }
       assert.ok(Math.abs(diff - expected[kind]) < 1e-9, `${layoutId} ${index} ${kind}`);
     });
     assert.ok(chords > 0, layoutId);

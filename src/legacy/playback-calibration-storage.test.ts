@@ -24,8 +24,10 @@ const CALIBRATION: PlaybackCalibration = {
   actionsPerSecond: 40,
   sameHandDifferentFingerActionsPerSecond: 2.5,
   sameHandDifferentFingerActionsPerSecondByPair: { 'LP:LR': 2 },
-  fingerSpeedUnitsPerSecond: { LI: 12 },
-  fallbackFingerSpeedUnitsPerSecond: 12,
+  fingerRepeatMs: { LI: 1000 / 40 },
+  fingerMoveMsPerUnit: { LI: 1000 / 12 },
+  fallbackRepeatMs: 1000 / 40,
+  fallbackMoveMsPerUnit: 1000 / 12,
   measuredAt: 4,
 };
 

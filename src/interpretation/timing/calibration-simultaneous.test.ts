@@ -31,8 +31,10 @@ const SAVED: PlaybackCalibration = {
   sameHandDifferentFingerActionsPerSecond: 4,
   sameHandDifferentFingerActionsPerSecondByPair: { 'RI:RM': 3.5 },
   sameHandDifferentFingerActionsPerDirectedPair: { 'RI>RM': 2.5 },
-  fingerSpeedUnitsPerSecond: { LI: 8, RI: 9 },
-  fallbackFingerSpeedUnitsPerSecond: 7,
+  fingerRepeatMs: { LI: 1000 / 5, RI: 1000 / 5 },
+  fingerMoveMsPerUnit: { LI: 1000 / 8, RI: 1000 / 9 },
+  fallbackRepeatMs: 1000 / 5,
+  fallbackMoveMsPerUnit: 1000 / 7,
   measuredAt: 1,
 };
 
@@ -304,12 +306,10 @@ test('通常速度・移動速度の測定は、基準の時間が変わらな�
   assert.deepEqual(sameValues.calibration.simultaneousOverheadMs, WITH_SIMULTANEOUS.simultaneousOverheadMs);
 });
 
-test('指の移動速度の測定と、同じキーを続けて打つ速さの測定は、同時押しの上乗せを消さない', () => {
-  const finger = applied(WITH_SIMULTANEOUS, finishedRun('item', [PLAN.byItem.get('finger:LI')!], () => 100));
+test('指ごとの測定は、同時押しの上乗せを消さない', () => {
+  const finger = applied(WITH_SIMULTANEOUS, finishedRun('item', PLAN.byField.get('finger:LI') ?? [], () => 100));
   assert.deepEqual(finger.clearedSimultaneous, []);
-  const sameKey = applied(WITH_SIMULTANEOUS, finishedRun('item', PLAN.byField.get('same-key') ?? [], () => 100));
-  assert.deepEqual(sameKey.clearedSimultaneous, []);
-  assert.deepEqual(sameKey.calibration.simultaneousOverheadMs, WITH_SIMULTANEOUS.simultaneousOverheadMs);
+  assert.deepEqual(finger.calibration.simultaneousOverheadMs, WITH_SIMULTANEOUS.simultaneousOverheadMs);
 });
 
 const SENTENCE_BASE: PlaybackCalibration = { ...SAVED, keystrokeOverheadMs: { other: 5, 'other-boundary': 5, sfb: 8, repeat: 7 } };
@@ -350,11 +350,11 @@ test('構造の種類と同指連続の差が全部無くなる測定では、�
   assert.equal('sentenceSimultaneousKinds' in normal.calibration, false);
   const full = applied(base, finishedRun('normal', PLAN.normal ?? [], () => 100));
   assert.equal('sentenceSimultaneousKinds' in full.calibration, false);
-  // 指の移動速度の測り直しは同指連続だけを消すので、残る構造の種類の値の根拠として記録を残す。
-  const finger = applied(base, finishedRun('item', [PLAN.byItem.get('finger:LI')!], () => 100));
+  // 指ごとの測り直しは同指連続だけを消すので、残る構造の種類の値の根拠として記録を残す。
+  const finger = applied(base, finishedRun('item', (PLAN.byField.get('finger:LI') ?? []), () => 100));
   assert.deepEqual(finger.calibration.sentenceSimultaneousKinds, ['thumb']);
   assert.equal(finger.calibration.keystrokeOverheadMs?.sfb, undefined);
   // 同指連続の差だけが残る保存値で、その差を消す測定をすると、記録も消える。
-  const sfbOnly = applied({ ...base, keystrokeOverheadMs: { sfb: 8 } }, finishedRun('item', [PLAN.byItem.get('finger:LI')!], () => 100));
+  const sfbOnly = applied({ ...base, keystrokeOverheadMs: { sfb: 8 } }, finishedRun('item', (PLAN.byField.get('finger:LI') ?? []), () => 100));
   assert.equal('sentenceSimultaneousKinds' in sfbOnly.calibration, false);
 });

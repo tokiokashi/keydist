@@ -73,8 +73,10 @@ const BASE: PlaybackCalibration = {
   actionsPerSecond: 5,
   sameHandDifferentFingerActionsPerSecond: 5,
   sameHandDifferentFingerActionsPerSecondByPair: {},
-  fingerSpeedUnitsPerSecond: {},
-  fallbackFingerSpeedUnitsPerSecond: 10,
+  fingerRepeatMs: {},
+  fingerMoveMsPerUnit: {},
+  fallbackRepeatMs: 1000 / 5,
+  fallbackMoveMsPerUnit: 1000 / 10,
   measuredAt: 1,
 };
 
@@ -159,16 +161,16 @@ test('同時押しの上乗せが負の時も、足した時間は下限に当�
 
 test('同指連続の押下を含む同時押しは、sを持つ時はmaxの外にsとcを足し、持たない時はnormalMsの側にoとcを足す', () => {
   const first = chord(0, 'LI', 'RI');
-  const moved = stroke(1, [press('LI', home('LI', 0, 2), true, 2), press('RI')]);
-  const analysis = analysisOf([first, moved]);
-  // 移動速度10u/秒、距離2uならmovementMsは200。
-  assert.equal(playbackStepDurationMs(analysis, 1, 1, true, withSimultaneous({ 'both-hands': 30 }), 1), 230);
+  const still = analysisOf([first, stroke(1, [press('LI', home('LI'), true, 0), press('RI')])]);
+  // 距離0なら移動の時間はr（200）で、基準の時間（200）と同じ。
+  assert.equal(playbackStepDurationMs(still, 1, 1, true, withSimultaneous({ 'both-hands': 30 }), 1), 230);
   assert.equal(
-    playbackStepDurationMs(analysis, 1, 1, true, withSimultaneous({ 'both-hands': 30 }, { keystrokeOverheadMs: { sfb: 20 } }), 1),
+    playbackStepDurationMs(still, 1, 1, true, withSimultaneous({ 'both-hands': 30 }, { keystrokeOverheadMs: { sfb: 20 } }), 1),
     250,
   );
-  // 移動の時間が律速する時、cは移動の時間に足さない（sを持たない式）。
-  assert.equal(playbackStepDurationMs(analysis, 1, 1, true, withSimultaneous({ 'both-hands': 30 }, { fallbackFingerSpeedUnitsPerSecond: 5 }), 1), 400);
+  // 移動の時間が律速する時、cは移動の時間に足さない（sを持たない式）。移動の時間は200 + 2 × 200。
+  const moved = analysisOf([first, stroke(1, [press('LI', home('LI', 0, 2), true, 2), press('RI')])]);
+  assert.equal(playbackStepDurationMs(moved, 1, 1, true, withSimultaneous({ 'both-hands': 30 }, { fallbackMoveMsPerUnit: 200 }), 1), 600);
 });
 
 test('同時押しの上乗せは§3.8の指の移動時間に足さない', () => {
@@ -227,7 +229,6 @@ test('指の組の識別子を作れる組があれば、親指を含む組よ�
 test('同時押しの基準の時間は、押下の指の並びを持つストロークを続けて打つステップのnormalMsになる', () => {
   const calibration: PlaybackCalibration = {
     ...BASE,
-    sameKeyActionsPerSecond: 9,
     actionsPerSecondByDirection: { 'L→R': 8, 'R→L': 4 },
     sameHandDifferentFingerActionsPerSecond: 2,
     sameHandDifferentFingerActionsPerSecondByPair: { 'RI:RM': 3 },

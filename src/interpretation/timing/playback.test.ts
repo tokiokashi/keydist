@@ -53,8 +53,7 @@ import {
   calibrationKeyPairs,
   calibrationDirectedSameHandPairs,
   calibrationSameHandPairs,
-  fallbackFingerSpeedFromSamples,
-  fingerSpeedFromSamples,
+  fingerMeasurementFromIntervals,
   handDirection,
   sameHandDirectedFingerPairKey,
   sameHandFingerPairKey,
@@ -208,8 +207,10 @@ test('構造解析の再生成ではcursor/playingとStroke内進捗率を維持
     actionsPerSecondByDirection: { 'L→R': 8 },
     sameHandDifferentFingerActionsPerSecond: 2,
     sameHandDifferentFingerActionsPerSecondByPair: {},
-    fingerSpeedUnitsPerSecond: {},
-    fallbackFingerSpeedUnitsPerSecond: 10,
+    fingerRepeatMs: {},
+    fingerMoveMsPerUnit: {},
+    fallbackRepeatMs: 1000 / 4,
+    fallbackMoveMsPerUnit: 1000 / 10,
     measuredAt: 1,
   };
   const previous = timingAnalysis([
@@ -345,8 +346,10 @@ test('再生倍率は基準速度とキャリブレーション後の速度を�
     actionsPerSecond: 4,
     sameHandDifferentFingerActionsPerSecond: 2,
     sameHandDifferentFingerActionsPerSecondByPair: {},
-    fingerSpeedUnitsPerSecond: {},
-    fallbackFingerSpeedUnitsPerSecond: 10,
+    fingerRepeatMs: {},
+    fingerMoveMsPerUnit: {},
+    fallbackRepeatMs: 1000 / 4,
+    fallbackMoveMsPerUnit: 1000 / 10,
     measuredAt: 1,
   };
   assert.equal(playbackStrokeDurationMs(stroke, 1, false, calibration, undefined, 2), 125);
@@ -522,17 +525,19 @@ test('個人キャリブレーションは通常打鍵と指移動を別々の�
     actionsPerSecond: 4,
     sameHandDifferentFingerActionsPerSecond: 2,
     sameHandDifferentFingerActionsPerSecondByPair: { 'LM:LI': 3 },
-    fingerSpeedUnitsPerSecond: { LI: 8 },
-    fallbackFingerSpeedUnitsPerSecond: 12,
+    fingerRepeatMs: { LI: 1000 / 4 },
+    fingerMoveMsPerUnit: { LI: 1000 / 8 },
+    fallbackRepeatMs: 1000 / 4,
+    fallbackMoveMsPerUnit: 1000 / 12,
     measuredAt: 1,
   };
   const stroke = { presses: [{ finger: 'LI', sfb: true, distance: 3 }] } as never;
   assert.equal(playbackStrokeDurationMs(stroke, 1, false, calibration), 250);
-  assert.equal(playbackStrokeDurationMs(stroke, 1, true, calibration), 375);
+  assert.equal(playbackStrokeDurationMs(stroke, 1, true, calibration), 625);
   const state = setPlaybackCalibration(createPlaybackState(), calibration);
-  assert.equal(state.calibration?.fingerSpeedUnitsPerSecond.LI, 8);
+  assert.equal(state.calibration?.fingerMoveMsPerUnit.LI, 125);
   const fallbackStroke = { presses: [{ finger: 'RP', sfb: true, distance: 3 }] } as never;
-  assert.equal(playbackStrokeDurationMs(fallbackStroke, 1, true, calibration), 250);
+  assert.ok(Math.abs(playbackStrokeDurationMs(fallbackStroke, 1, true, calibration) - 500) < 1e-9);
 
   const sameHandPrevious = { presses: [{ finger: 'LM' }] } as never;
   const sameHandStroke = { presses: [{ finger: 'LI', sfb: false, distance: 100 }] } as never;
@@ -550,8 +555,10 @@ test('左右交互の打鍵は通常速度の測定値を使う', () => {
     actionsPerSecond: 5,
     sameHandDifferentFingerActionsPerSecond: 2,
     sameHandDifferentFingerActionsPerSecondByPair: { 'LM:LI': 3 },
-    fingerSpeedUnitsPerSecond: {},
-    fallbackFingerSpeedUnitsPerSecond: 10,
+    fingerRepeatMs: {},
+    fingerMoveMsPerUnit: {},
+    fallbackRepeatMs: 1000 / 5,
+    fallbackMoveMsPerUnit: 1000 / 10,
     measuredAt: 1,
   };
   const previous = { presses: [{ finger: 'LI' }] } as never;
@@ -569,8 +576,10 @@ test('通常再生でも方向別Transition Calibrationを使う', () => {
     sameHandDifferentFingerActionsPerSecond: 2,
     sameHandDifferentFingerActionsPerSecondByPair: { 'LM:LI': 3 },
     sameHandDifferentFingerActionsPerDirectedPair: { 'LM>LI': 6 },
-    fingerSpeedUnitsPerSecond: {},
-    fallbackFingerSpeedUnitsPerSecond: 10,
+    fingerRepeatMs: {},
+    fingerMoveMsPerUnit: {},
+    fallbackRepeatMs: 1000 / 5,
+    fallbackMoveMsPerUnit: 1000 / 10,
     measuredAt: 1,
   };
   const leftToRight = { presses: [{ finger: 'RI' }] } as never;
@@ -587,8 +596,10 @@ test('方向別Transition CalibrationはArpeggio設定に依存せず再生へ�
     actionsPerSecondByDirection: { 'L→R': 20 },
     sameHandDifferentFingerActionsPerSecond: 2,
     sameHandDifferentFingerActionsPerSecondByPair: {},
-    fingerSpeedUnitsPerSecond: {},
-    fallbackFingerSpeedUnitsPerSecond: 10,
+    fingerRepeatMs: {},
+    fingerMoveMsPerUnit: {},
+    fallbackRepeatMs: 1000 / 5,
+    fallbackMoveMsPerUnit: 1000 / 10,
     measuredAt: 1,
   };
   const strokes = [
@@ -606,19 +617,13 @@ test('方向別Transition CalibrationはArpeggio設定に依存せず再生へ�
 
 test('キャリブレーションの中央値は外れ値を抑えて速度を求める', () => {
   assert.equal(actionsPerSecondFromIntervals([250, 250, 1000, 250]), 4);
-  const speeds = fingerSpeedFromSamples([
-    { finger: 'LI', distance: 2, durationMs: 250 },
-    { finger: 'LI', distance: 2, durationMs: 250 },
-    { finger: 'LI', distance: 2, durationMs: 1000 },
-    { finger: 'RI', distance: 2, durationMs: 500 },
-  ]);
-  assert.equal(speeds.get('LI'), 8);
-  assert.equal(speeds.get('RI'), 4);
-  assert.equal(fallbackFingerSpeedFromSamples([
-    { finger: 'LI', distance: 2, durationMs: 250 },
-    { finger: 'LI', distance: 2, durationMs: 250 },
-    { finger: 'RI', distance: 2, durationMs: 500 },
-  ]), 8);
+  assert.deepEqual(fingerMeasurementFromIntervals([250, 250, 1000], [500, 500, 1000], 2), {
+    repeatMs: 250,
+    moveMsPerUnit: 125,
+  });
+  assert.equal(fingerMeasurementFromIntervals([250], [200], 2)?.moveMsPerUnit, 0);
+  assert.equal(fingerMeasurementFromIntervals([], [200], 2), undefined);
+  assert.equal(fingerMeasurementFromIntervals([250], [500], 0), undefined);
 });
 
 test('キャリブレーションの指ペアはホーム段と下段で揃える', () => {
@@ -627,7 +632,7 @@ test('キャリブレーションの指ペアはホーム段と下段で揃え�
   assert.equal(pairs.length, 8);
   assert.deepEqual(calibrationActionPair(geometry), ['f', 'j']);
   assert.equal(pairs.find((pair) => pair.finger === 'LI')?.fromKey, 'f');
-  assert.equal(pairs.find((pair) => pair.finger === 'LI')?.toKey, 'b');
+  assert.equal(pairs.find((pair) => pair.finger === 'LI')?.toKey, 'v');
   assert.equal(pairs.every((pair) => geometry.keys.get(pair.toKey)?.row === 3), true);
 });
 

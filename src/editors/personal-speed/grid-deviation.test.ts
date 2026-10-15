@@ -77,3 +77,9 @@ test('組ごとの表の値で方向別の表の色は変わらない', () => {
   assert.equal(alone.get('directed-pair:LM>LR')?.direction, 'slow');
   assert.equal(gridDeviations('same-hand-pair', directed).size, 0);
 });
+
+test('同手・別指の表の対角（指が同じキーを続けて打つ速さ）は、色の根拠にも色を付ける対象にもしない', () => {
+  const diagonal = Object.fromEntries(['LP', 'LR', 'LM', 'LI'].map((finger, i) => [`finger-repeat:${finger}`, i === 0 ? '0.50' : '30.00']));
+  const result = gridDeviations('same-hand-pair', { ...leftPairs(['3.00', '3.00', '3.00']), ...diagonal });
+  assert.equal(result.size, 0);
+});

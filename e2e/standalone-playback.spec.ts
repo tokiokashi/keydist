@@ -218,8 +218,10 @@ const SAVED_PERSONAL_SPEED = {
     actionsPerSecond: 5,
     sameHandDifferentFingerActionsPerSecond: 4,
     sameHandDifferentFingerActionsPerSecondByPair: { 'LM:LI': 3 },
-    fingerSpeedUnitsPerSecond: { LI: 10 },
-    fallbackFingerSpeedUnitsPerSecond: 8,
+    fingerRepeatMs: { LI: 200 },
+    fingerMoveMsPerUnit: { LI: 100 },
+    fallbackRepeatMs: 200,
+    fallbackMoveMsPerUnit: 125,
     measuredAt: 1767225600000,
   },
 };

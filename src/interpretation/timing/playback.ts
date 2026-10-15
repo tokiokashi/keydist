@@ -10,6 +10,8 @@ import { COMBO_LAYER_ID, type Layout } from '#input/layouts/types.ts';
 import {
   CALIBRATION_ACTIONS_PER_SECOND_MAX,
   handDirection,
+  playbackMoveMsPerUnit,
+  playbackRepeatMs,
   sameHandDirectedFingerPairKey,
   sameHandFingerPairKey,
   sideOverheadKind,
@@ -651,17 +653,25 @@ function* pressFingerPairs(
   }
 }
 
+/**
+ * 続け打ちのステップの`normalMs`[ms]（§3.1）。続け打ちの指の、同じキーを続けて打つ時間`r(f)`。
+ * 個人速度が無い時、続け打ちでないステップは`undefined`。
+ */
+function playbackRepeatNormalMs(
+  stroke: StrokePressFingers | undefined,
+  previousStroke: StrokePressFingers | undefined,
+  calibration: PlaybackCalibration | undefined,
+): number | undefined {
+  if (calibration === undefined || stroke === undefined || !isRepeatStroke(stroke, previousStroke)) return undefined;
+  return playbackRepeatMs(calibration, stroke.presses[0].finger);
+}
+
 function playbackTransitionRate(
   stroke: StrokePressFingers | undefined,
   previousStroke: StrokePressFingers | undefined,
   stepsPerSecond: PlaybackStepsPerSecond,
   calibration?: PlaybackCalibration,
 ): number {
-  // 続け打ちは、同じキーを続けて打つ速さ。測っていなければ通常速度。
-  if (isRepeatStroke(stroke, previousStroke)) {
-    return calibration?.sameKeyActionsPerSecond ?? calibration?.actionsPerSecond ?? stepsPerSecond;
-  }
-
   const crossDirection = playbackCrossHandDirection(stroke, previousStroke);
   if (crossDirection !== undefined) {
     return calibration?.actionsPerSecondByDirection?.[crossDirection]
@@ -693,10 +703,6 @@ function playbackTransitionRateFromAnalysis(
   const stroke = analysis.strokes[strokeIndex];
   const previousStroke = analysis.strokes[strokeIndex - 1];
 
-  if (isRepeatStroke(stroke, previousStroke)) {
-    return calibration?.sameKeyActionsPerSecond ?? calibration?.actionsPerSecond ?? stepsPerSecond;
-  }
-
   // 異手方向はAnalysisResult内の元Strokeから読む。L→R / R→Lは常に方向別Calibration対象。
   const crossDirection = playbackCrossHandDirection(stroke, previousStroke);
   if (crossDirection !== undefined) {
@@ -722,6 +728,31 @@ function playbackTransitionRateFromAnalysis(
 }
 
 /**
+ * ステップの`normalMs`[ms]（倍率1・打鍵の上乗せを足さない）。続け打ちは`r(f)`、それ以外は基準の速さの逆数。
+ * 遷移の指の組は、ストロークの押下の指から作る。
+ */
+function playbackTransitionNormalMs(
+  stroke: StrokePressFingers | undefined,
+  previousStroke: StrokePressFingers | undefined,
+  stepsPerSecond: PlaybackStepsPerSecond,
+  calibration?: PlaybackCalibration,
+): number {
+  return playbackRepeatNormalMs(stroke, previousStroke, calibration)
+    ?? normalPlaybackStepMs(playbackTransitionRate(stroke, previousStroke, stepsPerSecond, calibration));
+}
+
+/** 解析結果の遷移から選ぶ`playbackTransitionNormalMs`。 */
+function playbackTransitionNormalMsFromAnalysis(
+  analysis: PlaybackRateInput,
+  strokeIndex: number,
+  stepsPerSecond: PlaybackStepsPerSecond,
+  calibration?: PlaybackCalibration,
+): number {
+  return playbackRepeatNormalMs(analysis.strokes[strokeIndex], analysis.strokes[strokeIndex - 1], calibration)
+    ?? normalPlaybackStepMs(playbackTransitionRateFromAnalysis(analysis, strokeIndex, stepsPerSecond, calibration));
+}
+
+/**
  * ステップ `i` の `normalMs`（倍率1・打鍵の上乗せを足さない）。個人速度で求める（`spec/playback-timing.md` §3.1）。
  * 文章を打つ測定が、実際の間隔から引く1打の時間を求めるのに使う。
  */
@@ -730,19 +761,18 @@ export function playbackNormalMs(
   strokeIndex: number,
   calibration: PlaybackCalibration,
 ): number {
-  return normalPlaybackStepMs(playbackTransitionRateFromAnalysis(
+  return playbackTransitionNormalMsFromAnalysis(
     analysis,
     strokeIndex,
     // 個人速度が有る時、基準速度は使われない。
     DEFAULT_PLAYBACK_STEPS_PER_SECOND,
     calibration,
-  ));
+  );
 }
 
 /**
  * ステップ `i` の、1打の時間（`normalMs`）の側に足す打鍵の上乗せ[ms]（§3.1.1）。
- * 続け打ちのステップは、続け打ちの値を持つ時はその値、持たず同じキーを続けて打つ速さを持つ時は0、
- * どちらも持たない時は構造の種類の値。
+ * 続け打ちのステップは、続け打ちの値を持つ時はその値、持たない時は0。
  * 構造の種類の値は、ステップがかなの中かかなの境目かで、同じ側のその種類の値、同じ側の「その他」の値、
  * その種類の分けない値、「その他」の分けない値の順に最初に見つかった値で、どれも無ければ0。
  * 同指連続のステップの同指連続の値は、`max`の外に足すので`playbackSameFingerOverheadMs`が返す。
@@ -763,7 +793,7 @@ export function playbackKeystrokeOverheadMs(
     ?? overheads.other
     ?? 0;
   if (strokeOverheadKinds(analysis)[strokeIndex] !== 'repeat') return structureMs;
-  return overheads.repeat ?? (calibration?.sameKeyActionsPerSecond === undefined ? structureMs : 0);
+  return overheads.repeat ?? 0;
 }
 
 /**
@@ -814,7 +844,7 @@ export function playbackSameFingerOverheadMs(
 
 /**
  * 同指連続の押下を持つステップの、指の移動の時間[ms]（倍率1。§3.3）。同指連続の押下が無ければ`undefined`。
- * 指の移動速度は、その指の測定値、無ければ測定できなかった指の代表値。
+ * 指の同じキーを続けて打つ時間`r(f)`と、距離に比例する移動の時間`distance × m(f)`の和。測定値が無い指は代表値。
  */
 export function playbackSameFingerMovementMs(
   stroke: Stroke | undefined,
@@ -824,9 +854,7 @@ export function playbackSameFingerMovementMs(
   if (sfbPresses.length === 0) return undefined;
   return Math.max(
     ...sfbPresses.map((press) => {
-      const speed = calibration.fingerSpeedUnitsPerSecond[press.finger]
-        ?? calibration.fallbackFingerSpeedUnitsPerSecond;
-      return (press.distance / speed) * 1000;
+      return playbackRepeatMs(calibration, press.finger) + press.distance * playbackMoveMsPerUnit(calibration, press.finger);
     }),
   );
 }
@@ -844,12 +872,12 @@ export function playbackStrokeDurationMs(
   previousStroke?: Stroke,
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
 ): number {
-  const normalMs = normalPlaybackStepMs(playbackTransitionRate(
+  const normalMs = playbackTransitionNormalMs(
     stroke,
     previousStroke,
     stepsPerSecond,
     calibration,
-  ));
+  );
   return playbackStrokeDurationFromNormalMs(
     stroke,
     normalMs,
@@ -906,13 +934,12 @@ export function playbackStepDurationMs(
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
 ): number {
   const stroke = analysis.strokes[strokeIndex];
-  const rate = playbackTransitionRateFromAnalysis(
+  const normalMs = playbackTransitionNormalMsFromAnalysis(
     analysis,
     strokeIndex,
     stepsPerSecond,
     calibration,
   );
-  const normalMs = normalPlaybackStepMs(rate);
   return playbackStrokeDurationFromNormalMs(
     stroke,
     normalMs,
@@ -1052,7 +1079,7 @@ function previousFingerOccupancyEndMs(
   return 0;
 }
 
-function playbackFingerMoveMs(
+export function playbackFingerMoveMs(
   from: Point,
   to: Point,
   finger: Finger,
@@ -1062,15 +1089,17 @@ function playbackFingerMoveMs(
 ): number {
   const distance = fingerDist(finger, from, to);
   if (distance <= 0) return 0;
-  const speed = calibration
-    ? calibration.fingerSpeedUnitsPerSecond[finger] ?? calibration.fallbackFingerSpeedUnitsPerSecond
-    : stepsPerSecond;
   const multiplier = Number.isFinite(speedMultiplier) && speedMultiplier > 0
     ? speedMultiplier
     : DEFAULT_PLAYBACK_SPEED_MULTIPLIER;
-  return Number.isFinite(speed) && speed > 0
-    ? (distance / speed) * 1000 / multiplier
-    : Number.POSITIVE_INFINITY;
+  // 個人速度が無い時は、基準速度を[u/秒]の正規化速度として使う。
+  if (calibration === undefined) {
+    return Number.isFinite(stepsPerSecond) && stepsPerSecond > 0
+      ? (distance / stepsPerSecond) * 1000 / multiplier
+      : Number.POSITIVE_INFINITY;
+  }
+  // 指が動く時間だけ。キーを打つ時間は含まない（`spec/playback-timing.md` §3.8）。
+  return distance * playbackMoveMsPerUnit(calibration, finger) / multiplier;
 }
 
 /**

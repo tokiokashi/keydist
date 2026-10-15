@@ -336,9 +336,9 @@ test('時間表と速度の推移が、固定した値になる', () => {
   const personal = extractionOf(resolve('qwerty', 'fv', 'en', EMPTY_SETTINGS_OVERRIDES, CALIBRATION));
   assert.deepEqual(personal.schedule, [
     { strokeIndex: 0, startMs: 0, endMs: 200 },
-    { strokeIndex: 1, startMs: 200, endMs: 400 },
+    { strokeIndex: 1, startMs: 200, endMs: 511.8033988749895 },
   ]);
-  assert.deepEqual(rates(personal), [[0, undefined, undefined], [1, 5, 5], [2, 5, 5]]);
+  assert.deepEqual(rates(personal), [[0, undefined, undefined], [1, 5, 5], [2, 3.907750523728956, 3.907750523728956]]);
 });
 
 test('速度の推移: ChainとArpeggioの区間を点ごとに持つ（表示するかは見る側が決める）', () => {
@@ -401,8 +401,10 @@ const CALIBRATION: PlaybackCalibration = {
   actionsPerSecond: 5,
   sameHandDifferentFingerActionsPerSecond: 5,
   sameHandDifferentFingerActionsPerSecondByPair: {},
-  fingerSpeedUnitsPerSecond: {},
-  fallbackFingerSpeedUnitsPerSecond: 10,
+  fingerRepeatMs: {},
+  fingerMoveMsPerUnit: {},
+  fallbackRepeatMs: 1000 / 5,
+  fallbackMoveMsPerUnit: 1000 / 10,
   measuredAt: 1,
 };
 

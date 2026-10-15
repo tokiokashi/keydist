@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { FINGERS, type NonThumb } from '#input/shapes/geometry.ts';
-import { calibrationOverheadFieldId } from '#interpretation/timing/calibration-form.ts';
+import { calibrationFingerRepeatFieldId, calibrationOverheadFieldId } from '#interpretation/timing/calibration-form.ts';
 import type { CalibrationTask } from '#interpretation/timing/calibration-session.ts';
 import {
   calibrationFieldLabel,
@@ -90,7 +90,7 @@ function ValueCell({ fieldId, ctx, deviation }: { readonly fieldId: string; read
   );
 }
 
-/** 組が成り立たないマス（対角と、三角の使わない側）。 */
+/** 組が成り立たないマス（三角の使わない側と、方向つきの表の対角）。 */
 function BlankCell() {
   return <td className="personal-speed-cell personal-speed-cell-blank" aria-hidden="true" />;
 }
@@ -117,9 +117,14 @@ const HANDS: readonly { readonly hand: 'L' | 'R'; readonly label: string; readon
 /** 行の指と列の指のマスが持つ欄の識別子。組が成り立たないマスは`undefined`。 */
 type PairFieldId = (row: NonThumb, column: NonThumb) => string | undefined;
 
-/** 順序なしの組。`FINGERS`の並びで先の指を行、後の指を列にした時だけ、欄を持つ。 */
-const unorderedPairField: PairFieldId = (row, column) =>
-  FINGERS.indexOf(row) < FINGERS.indexOf(column) ? `same-hand-pair:${row}:${column}` : undefined;
+/**
+ * 順序なしの組。`FINGERS`の並びで先の指を行、後の指を列にした時に、組の欄を持つ。
+ * 対角（同じ指どうし）は、その指が同じキーを続けて打つ速さの欄を持つ。
+ */
+const unorderedPairField: PairFieldId = (row, column) => {
+  if (row === column) return calibrationFingerRepeatFieldId(row);
+  return FINGERS.indexOf(row) < FINGERS.indexOf(column) ? `same-hand-pair:${row}:${column}` : undefined;
+};
 
 /** 方向つきの組。行を前の指、列を次の指にする。同じ指どうしは欄を持たない。 */
 const directedPairField: PairFieldId = (row, column) => (row === column ? undefined : `directed-pair:${row}>${column}`);
@@ -197,9 +202,9 @@ export function hasFingerGridFields(kind: 'same-hand-pair' | 'directed-pair', ct
   })));
 }
 
-/** 同手・別指の組ごとの速度。組に順序は無いので、表の片側の三角だけを使う。 */
+/** 同手・別指の組ごとの速度。組に順序は無いので、表の片側の三角だけを使う。対角は、その指が同じキーを続けて打つ速さ。 */
 export function SameHandPairGrids({ ctx }: { readonly ctx: GridContext }) {
-  return <FingerGrids ctx={ctx} fieldOf={unorderedPairField} unit={calibrationFieldUnit('same-hand-pair:LP:LR')} corner="指" kind="same-hand-pair" />;
+  return <FingerGrids ctx={ctx} fieldOf={unorderedPairField} unit={calibrationFieldUnit('same-hand-pair:LP:LR')} corner="指" axes="対角は、その指が同じキーを続けて打つ速さ" kind="same-hand-pair" />;
 }
 
 /** 同手・別指の方向別の速度。行が前の指、列が次の指。 */

@@ -1071,8 +1071,10 @@ const SAVED_SPEED = {
   actionsPerSecond: 5,
   sameHandDifferentFingerActionsPerSecond: 4,
   sameHandDifferentFingerActionsPerSecondByPair: {},
-  fingerSpeedUnitsPerSecond: {},
-  fallbackFingerSpeedUnitsPerSecond: 7,
+  fingerRepeatMs: {},
+  fingerMoveMsPerUnit: {},
+  fallbackRepeatMs: 1000 / 5,
+  fallbackMoveMsPerUnit: 1000 / 7,
   measuredAt: 1,
 };
 

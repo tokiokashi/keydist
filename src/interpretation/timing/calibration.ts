@@ -59,7 +59,7 @@ export type SimultaneousKind = 'both-hands' | 'one-hand' | 'thumb';
 /** 表示と編集の並び順。 */
 export const SIMULTANEOUS_KINDS: readonly SimultaneousKind[] = ['both-hands', 'one-hand', 'thumb'];
 
-/** 再生へ反映する個人の打鍵・指移動速度。 */
+/** 再生へ反映する個人の打鍵・指の移動の時間。 */
 export interface PlaybackCalibration {
   /** 通常の連続打鍵速度。 */
   actionsPerSecond: number;
@@ -71,14 +71,17 @@ export interface PlaybackCalibration {
   sameHandDifferentFingerActionsPerSecondByPair: Readonly<Record<string, number>>;
   /** 同じ手の別指の方向別測定速度。キーは `LM>LI` 形式。 */
   sameHandDifferentFingerActionsPerDirectedPair?: Readonly<Record<string, number>>;
-  /** 同指連続の指ごとの移動速度。測れなかった指は持たない。 */
-  fingerSpeedUnitsPerSecond: Partial<Record<Finger, number>>;
-  /** 指ごとの速度が無い場合に使う移動速度。単位は物理キーのu/秒。 */
-  fallbackFingerSpeedUnitsPerSecond: number;
   /**
-   * 同じキーを1本の指で続けて打つ速さ（続け打ちの基準）。測っていない時は持たず、続け打ちは通常速度で決める。
+   * 指ごとの、同じキーを続けて打つ時間[ms]（`r(f)`。続け打ちの基準）。測れなかった指は持たない。
+   * 持つ指の組は`fingerMoveMsPerUnit`と同じ。
    */
-  sameKeyActionsPerSecond?: number;
+  fingerRepeatMs: Partial<Record<Finger, number>>;
+  /** 指ごとの、1uあたりの移動の時間[ms/u]（`m(f)`）。測れなかった指は持たない。移動の時間が測れないほど短い指は0。 */
+  fingerMoveMsPerUnit: Partial<Record<Finger, number>>;
+  /** 指ごとの値が無い指に使う、同じキーを続けて打つ時間[ms]。 */
+  fallbackRepeatMs: number;
+  /** 指ごとの値が無い指に使う、1uあたりの移動の時間[ms/u]。 */
+  fallbackMoveMsPerUnit: number;
   /**
    * 文章を打つ時の打鍵の上乗せ[ms]。差の種類ごとに持ち、構造の種類はかなの中・かなの境目の値も持てる。
    * 続け打ちと同指連続を除く種類は、基準の時間のうち1打の時間（`normalMs`）の側にだけ足す。
@@ -109,13 +112,18 @@ export interface CalibrationKeyPair {
 
 export const CALIBRATION_ACTIONS_PER_SECOND_MIN = 0.1;
 export const CALIBRATION_ACTIONS_PER_SECOND_MAX = 40;
-export const CALIBRATION_FINGER_SPEED_MIN = 0.1;
-export const CALIBRATION_FINGER_SPEED_MAX = 100;
+/** 同じキーを続けて打つ時間[ms]の範囲。通常速度の範囲（アクション/秒）の逆数。 */
+export const CALIBRATION_REPEAT_MS_MIN = 1000 / CALIBRATION_ACTIONS_PER_SECOND_MAX;
+export const CALIBRATION_REPEAT_MS_MAX = 1000 / CALIBRATION_ACTIONS_PER_SECOND_MIN;
+/** 1uあたりの移動の時間[ms/u]の範囲。0は移動の時間が測れないほど短い指。 */
+export const CALIBRATION_MOVE_MS_PER_UNIT_MIN = 0;
+export const CALIBRATION_MOVE_MS_PER_UNIT_MAX = 10000;
 export const CALIBRATION_OVERHEAD_MS_MIN = -1000;
 export const CALIBRATION_OVERHEAD_MS_MAX = 1000;
 export const CALIBRATION_ACTION_SAMPLES = 9;
-/** 同じキーを続けて打つ速さを、左右それぞれで取る間隔の数。 */
-export const CALIBRATION_SAME_KEY_SAMPLES = 9;
+/** 指ごとに、同じキーを続けて打つ時間を取る間隔の数。 */
+export const CALIBRATION_REPEAT_SAMPLES = 9;
+/** 指ごとに、ホームと下段のキーを交互に打つ間隔の数。 */
 export const CALIBRATION_FINGER_SAMPLES = 6;
 export const CALIBRATION_SAME_HAND_SAMPLES = 6;
 
@@ -140,43 +148,54 @@ export function actionsPerSecondFromIntervals(intervalsMs: readonly number[]): n
   return typicalMs === undefined ? undefined : 1000 / typicalMs;
 }
 
-export interface FingerSpeedSample {
-  finger: Finger;
-  distance: number;
-  durationMs: number;
+/** 指ごとの測定項目の値。`r(f)`と`I(f)`の中央値と、測った2つのキーの距離[u]から`m(f)`を求める。 */
+export interface FingerMeasurement {
+  /** 同じキーを続けて打つ時間の中央値[ms]（`r(f)`）。 */
+  readonly repeatMs: number;
+  /** 1uあたりの移動の時間[ms/u]（`m(f)`）。 */
+  readonly moveMsPerUnit: number;
 }
 
-function speedFromSample(sample: FingerSpeedSample): number | undefined {
-  if (!Number.isFinite(sample.distance) || sample.distance <= 0) return undefined;
-  if (!Number.isFinite(sample.durationMs) || sample.durationMs <= 0) return undefined;
-  return sample.distance / (sample.durationMs / 1000);
+/**
+ * 指ごとの測定項目の値を求める。`repeatIntervalsMs`はホームキーを続けて打った間隔、`moveIntervalsMs`はホームと下段のキーを交互に打った間隔。
+ * `m(f) = max(0, I(f) − r(f)) / distance`。どちらかが測れていない、距離が正でない時は`undefined`。
+ */
+export function fingerMeasurementFromIntervals(
+  repeatIntervalsMs: readonly number[],
+  moveIntervalsMs: readonly number[],
+  distance: number,
+): FingerMeasurement | undefined {
+  const repeatMs = median(repeatIntervalsMs);
+  const moveMs = median(moveIntervalsMs);
+  if (repeatMs === undefined || moveMs === undefined) return undefined;
+  if (!Number.isFinite(distance) || distance <= 0) return undefined;
+  return { repeatMs, moveMsPerUnit: Math.max(0, moveMs - repeatMs) / distance };
 }
 
-/** 指ごとに中央値を取り、指ごとの速度を残す。 */
-export function fingerSpeedFromSamples(
-  samples: readonly FingerSpeedSample[],
-): ReadonlyMap<Finger, number> {
-  const grouped = new Map<Finger, number[]>();
-  for (const sample of samples) {
-    const speed = speedFromSample(sample);
-    if (speed === undefined) continue;
-    const values = grouped.get(sample.finger) ?? [];
-    values.push(speed);
-    grouped.set(sample.finger, values);
-  }
-  const speeds = new Map<Finger, number>();
-  for (const [finger, values] of grouped) {
-    const value = median(values);
-    if (value !== undefined) speeds.set(finger, value);
-  }
-  return speeds;
+/** 値の中央値。`median`と違って0も値に数える（移動の時間が0の指も代表値の根拠になる）。 */
+export function medianIncludingZero(values: readonly number[]): number | undefined {
+  const sorted = values.filter((value) => Number.isFinite(value) && value >= 0).sort((a, b) => a - b);
+  if (sorted.length === 0) return undefined;
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 1 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
 }
 
-/** 測定できなかった指へ適用する全サンプルの中央値。 */
-export function fallbackFingerSpeedFromSamples(
-  samples: readonly FingerSpeedSample[],
-): number | undefined {
-  return median(samples.map(speedFromSample).filter((value): value is number => value !== undefined));
+/** 指の同じキーを続けて打つ時間[ms]。測れなかった指は代表値。 */
+export function playbackRepeatMs(calibration: Pick<PlaybackCalibration, 'fingerRepeatMs' | 'fallbackRepeatMs'>, finger: Finger): number {
+  return calibration.fingerRepeatMs[finger] ?? calibration.fallbackRepeatMs;
+}
+
+/** 指の1uあたりの移動の時間[ms/u]。測れなかった指は代表値。 */
+export function playbackMoveMsPerUnit(calibration: Pick<PlaybackCalibration, 'fingerMoveMsPerUnit' | 'fallbackMoveMsPerUnit'>, finger: Finger): number {
+  return calibration.fingerMoveMsPerUnit[finger] ?? calibration.fallbackMoveMsPerUnit;
+}
+
+/**
+ * 続け打ちの基準の、親指を除く8本の指の平均[ms]。続け打ちの上乗せは全ての指をまとめた1つの値なので、
+ * `r(f)`を測り直した時に、この平均の変化の分だけずらす（`spec/playback-timing.md` §6.3）。
+ */
+export function meanRepeatMs(calibration: Pick<PlaybackCalibration, 'fingerRepeatMs' | 'fallbackRepeatMs'>): number {
+  return FINGERS.reduce((sum, finger) => sum + playbackRepeatMs(calibration, finger), 0) / FINGERS.length;
 }
 
 /** 同じ手の別指を識別する、順序に依存しないキーを返す。 */
@@ -230,10 +249,10 @@ function isDirectedPairKey(key: string): boolean {
 export function playbackCalibrationProblem(value: unknown): string | undefined {
   if (!isRecord(value)) return '個人速度の形が正しくありません';
   const rateOk = (speed: unknown) => inRange(speed, CALIBRATION_ACTIONS_PER_SECOND_MIN, CALIBRATION_ACTIONS_PER_SECOND_MAX);
-  const fingerSpeedOk = (speed: unknown) => inRange(speed, CALIBRATION_FINGER_SPEED_MIN, CALIBRATION_FINGER_SPEED_MAX);
   if (!rateOk(value.actionsPerSecond)) return '通常の打鍵速度が範囲外です';
   if (!rateOk(value.sameHandDifferentFingerActionsPerSecond)) return '同手・別指の代表の速度が範囲外です';
-  if (!fingerSpeedOk(value.fallbackFingerSpeedUnitsPerSecond)) return '測定できなかった指の移動速度が範囲外です';
+  if (!inRange(value.fallbackRepeatMs, CALIBRATION_REPEAT_MS_MIN, CALIBRATION_REPEAT_MS_MAX)) return '測定できなかった指の同じキーを続けて打つ時間が範囲外です';
+  if (!inRange(value.fallbackMoveMsPerUnit, CALIBRATION_MOVE_MS_PER_UNIT_MIN, CALIBRATION_MOVE_MS_PER_UNIT_MAX)) return '測定できなかった指の移動の時間が範囲外です';
   if (typeof value.measuredAt !== 'number' || !Number.isFinite(value.measuredAt)) return '測定した時刻が正しくありません';
   if (!isRateRecord(
     value.sameHandDifferentFingerActionsPerSecondByPair,
@@ -241,12 +260,19 @@ export function playbackCalibrationProblem(value: unknown): string | undefined {
     CALIBRATION_ACTIONS_PER_SECOND_MIN,
     CALIBRATION_ACTIONS_PER_SECOND_MAX,
   )) return '同手・別指の組ごとの速度が正しくありません';
-  if (!isRateRecord(
-    value.fingerSpeedUnitsPerSecond,
-    (finger) => ALL_FINGERS.includes(finger as Finger),
-    CALIBRATION_FINGER_SPEED_MIN,
-    CALIBRATION_FINGER_SPEED_MAX,
-  )) return '指ごとの移動速度が正しくありません';
+  const fingerKey = (finger: string) => ALL_FINGERS.includes(finger as Finger);
+  if (!isRateRecord(value.fingerRepeatMs, fingerKey, CALIBRATION_REPEAT_MS_MIN, CALIBRATION_REPEAT_MS_MAX)) {
+    return '指ごとの同じキーを続けて打つ時間が正しくありません';
+  }
+  if (!isRateRecord(value.fingerMoveMsPerUnit, fingerKey, CALIBRATION_MOVE_MS_PER_UNIT_MIN, CALIBRATION_MOVE_MS_PER_UNIT_MAX)) {
+    return '指ごとの移動の時間が正しくありません';
+  }
+  // 同じ指の2つで1組の値なので、片方だけを持つ指があれば保存できない値とする。
+  const repeatFingers = Object.keys(value.fingerRepeatMs as object);
+  const moveFingers = Object.keys(value.fingerMoveMsPerUnit as object);
+  if (repeatFingers.length !== moveFingers.length || repeatFingers.some((finger) => !moveFingers.includes(finger))) {
+    return '指ごとの同じキーを続けて打つ時間と移動の時間の指が揃っていません';
+  }
   if (value.actionsPerSecondByDirection !== undefined && !isRateRecord(
     value.actionsPerSecondByDirection,
     (direction) => direction === 'L→R' || direction === 'R→L',
@@ -259,9 +285,6 @@ export function playbackCalibrationProblem(value: unknown): string | undefined {
     CALIBRATION_ACTIONS_PER_SECOND_MIN,
     CALIBRATION_ACTIONS_PER_SECOND_MAX,
   )) return '同手・別指の方向別の速度が正しくありません';
-  if (value.sameKeyActionsPerSecond !== undefined && !rateOk(value.sameKeyActionsPerSecond)) {
-    return '同じキーを続けて打つ速さが範囲外です';
-  }
   if (value.keystrokeOverheadMs !== undefined && !isRateRecord(
     value.keystrokeOverheadMs,
     (kind) => OVERHEAD_KINDS.includes(kind as OverheadKind),
@@ -323,22 +346,26 @@ export function calibrationEligibleKeyIds(
   );
 }
 
-/** 数字段を避け、全指でホーム段から下段のキーを選ぶ。 */
-function farthestKeyFromHome(
+/**
+ * 指のホームキーと同じ列（`col`）の、ホーム段の1つ下の段のキー。数字段は使わない。
+ * キーが無い、刻印が無い、その指の担当でない時は`undefined`。別の下段のキーで代わりにしない。
+ */
+function lowerKeyInHomeColumn(
   geometry: Geometry,
   finger: typeof FINGERS[number],
   home: Key,
   eligibleKeyIds: ReadonlySet<string>,
 ): Key | undefined {
-  return [...geometry.keys.values()]
-    .filter((key) => key.finger === finger
-      && key.id !== home.id
-      && key.row === HOME_ROW + 1
-      && eligibleKeyIds.has(key.id))
-    .sort((a, b) => dist(home, b) - dist(home, a))[0];
+  return [...geometry.keys.values()].find((key) => key.finger === finger
+    && key.row === HOME_ROW + 1
+    && key.col === home.col
+    && eligibleKeyIds.has(key.id));
 }
 
-/** 各指のホームと、同じ指の下段キーを測定用の組にする。 */
+/**
+ * 各指の測定項目に使う、ホームと同じ列の下段のキーの組（`spec/playback-timing.md` §6.1）。
+ * ホームキーか下段のキーが使えない（刻印が無い・その指の担当でない・無い）指、距離が0の指は組を作らない。
+ */
 export function calibrationKeyPairs(
   geometry: Geometry,
   eligibleKeyIds = calibrationEligibleKeyIds(geometry),
@@ -349,7 +376,7 @@ export function calibrationKeyPairs(
     const home = geometry.keys.get(homeId);
     if (!home) continue;
     if (!eligibleKeyIds.has(home.id)) continue;
-    const target = farthestKeyFromHome(geometry, finger, home, eligibleKeyIds);
+    const target = lowerKeyInHomeColumn(geometry, finger, home, eligibleKeyIds);
     if (!target) continue;
     const distance = dist(home, target);
     if (distance <= 0) continue;
