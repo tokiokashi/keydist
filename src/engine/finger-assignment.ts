@@ -1,3 +1,4 @@
+import type { Layout } from '#input/layouts/types.ts';
 import type { Diagnostic } from '#input/settings/index.ts';
 import {
   DEFAULT_FINGER_ASSIGNMENT,
@@ -81,8 +82,19 @@ const EMPTY_CUSTOM_ASSIGNMENTS: ReadonlyMap<string, FingerAssignment> = new Map(
  * それ以外（ANSIプリセット・自作物理配列）は列固定の既定を使う。
  */
 export function defaultFingerAssignmentId(shape: PhysicalShape): string {
-  if (isPresetGeometryKind(shape.id) && presetGeometryStandard(shape.id) === 'jis') {
-    return JIS_FINGER_ASSIGNMENT.id;
-  }
-  return DEFAULT_FINGER_ASSIGNMENT.id;
+  return isJisShape(shape) ? JIS_FINGER_ASSIGNMENT.id : DEFAULT_FINGER_ASSIGNMENT.id;
+}
+
+/**
+ * 配列が持つ指の割り当ての推奨のid。物理配列の規格に合わせて、JISのプリセットならJIS用を、
+ * それ以外（ANSIプリセット・自作物理配列）ならANSI用を返す。推奨を持たない配列は`undefined`。
+ */
+export function recommendedFingerAssignmentId(layout: Layout, shape: PhysicalShape): string | undefined {
+  const ids = layout.recommendedFingerAssignmentIds;
+  if (ids === undefined) return undefined;
+  return isJisShape(shape) ? ids.jis : ids.ansi;
+}
+
+function isJisShape(shape: PhysicalShape): boolean {
+  return isPresetGeometryKind(shape.id) && presetGeometryStandard(shape.id) === 'jis';
 }

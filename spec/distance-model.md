@@ -103,12 +103,20 @@ Shiftキーは割り当ての外で、左右の小指に固定する。
 担当する指が1本のキーだけの割り当ては、キーごとに指を1本決める割り当てと同じ意味になる。
 組み込み（既定・JIS・QWERTY最適化・QWERTY最適化（JIS））と自作の
 どちらの指の割り当ても、同じカスケードの項目（`fingerAssignmentId`。`engine/finger-assignment.ts`、
-`engine/settings-items.ts`）として物理配列・配列・Setupのレベルで選べる。同じ物理配列のまま
+`engine/settings-items.ts`）として全体・Workspace・物理配列・配列・Setupのレベルで選べる。同じ物理配列のまま
 組み込みのJIS運指へ差し替える、自作の運指へ差し替える、といった比較ができる。自作の指の割り当ては
 `input/shapes/user-finger-assignments.ts` が資産として持ち、`engine/commands.ts` の
 作成・複製・削除・改名コマンドで手持ちを操作する。idを解決できない（自作割り当てを削除した後に
 それを指す上書きが残っている等）場合は例外にせず、その物理配列の既定へfallbackした事実を診断として
 残す（`engine/finger-assignment.ts` の `resolveFingerAssignment`）。
+
+配列は、指の割り当ての推奨を持てる。組み込みの配列「QWERTY最適化」だけが持ち、キーの並びはQWERTYと同じで、
+推奨は組み込みの割り当て「QWERTY最適化」（物理配列の規格がJISなら「QWERTY最適化（JIS）」）である。
+`fingerAssignmentId` の優先順は、ローマ字規則の推奨（§4.4）と同じく
+**配列・Setupの上書き ＞ 配列の推奨 ＞ 物理配列・Workspace・全体の値 ＞ 物理配列の規格の既定**で、
+推奨を持つ配列は、全体・Workspace・物理配列のレベルで別の割り当てを選んでいても、推奨の割り当てで測る。
+配列「QWERTY最適化」の数値は、QWERTYを組み込みの割り当て「QWERTY最適化」で測った値と一致する。
+数値の求め方は変わらず、配列を並べて比べる時に、割り当ての違いが全体の設定で崩れないようにするための仕組みである。
 
 配列を対象にした時にどの物理配列で測るかは、カスケードの項目（`defaultShapeId`）として解決する。
 全体・Workspace・配列のレベルに値を置ける（物理配列そのものを決める項目なので、物理配列・打ち方のレベルには置かない。
@@ -1332,7 +1340,7 @@ share_combo = Q_combo / 押下キー数
   同じ配列・同じSetupでも、Workspaceが違えばWorkspaceのレベルの値の分だけ数値が変わりうる。
   そのため画面は、Workspaceのレベルの値が使われている項目に、出どころとして「Workspaceで変更」を示す（本節の「画面は…差分を示す」と同じ要求）
 - Workspaceのレベルに値が無ければ、解決は全体のレベルだけの時と同じ結果になる（Workspaceを持たない時の数値は動かない）
-- 配列の推奨（`romajiRuleId`）は、配列のレベルの手前で、全体・Workspace・物理配列・打ち方のレベルの値に勝つ
+- 配列の推奨（`romajiRuleId`・`fingerAssignmentId`）は、配列のレベルの手前で、全体・Workspace・物理配列・打ち方のレベルの値に勝つ
 - Traceの数値に入らず、配列を比べる時に混ぜない項目のうち、複数のAnalyzerが読むものは、全体とWorkspaceのレベルまでに置き、
   物理配列・打ち方・配列・Setupのレベルには置かない。解釈（`chainInterpretation` / `arpeggioInterpretation`）がこれにあたる
   （Traceは同じまま、数値の定義だけが変わる。Workspaceの中のペインは同じ条件で並ぶ）

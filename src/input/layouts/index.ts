@@ -70,6 +70,16 @@ const ALPHA: Layout[] = [
     "asdfghjkl;'",
     'zxcvbnm,./',
   ])), ['くわーてぃ', 'くぉーてぃ', 'くあーてぃ', 'くうぇるてぃ']),
+  // キーの並びはQWERTYと同じ。指の割り当ての推奨だけが違う
+  withAliases({
+    ...withShiftedOutputs(fromRows('qwerty-optimized', 'QWERTY最適化', [
+      '1234567890-=',
+      'qwertyuiop[]',
+      "asdfghjkl;'",
+      'zxcvbnm,./',
+    ])),
+    recommendedFingerAssignmentIds: { ansi: 'qwerty-optimized', jis: 'qwerty-optimized-jis' },
+  }, ['くわーてぃさいてきか', 'くわーてぃ']),
   withAliases(withShiftedOutputs(fromRows('dvorak', 'Dvorak', [
     '1234567890[]',
     "',.pyfgcrl/=",
