@@ -73,6 +73,11 @@ The playback timing model and the speed-graph average are read only by the playb
 | `sameFingerDelay` | include same-finger movement time |
 | `allFingerMovementDelay` | bound each step by the all-finger movement time |
 | `applyPersonalSpeed` | apply the saved personal speed (boolean; default true) |
+| `sameHandSpeed` | how far the saved same-hand different-finger speeds are used (`directed` / `pair` / `representative`; default `directed`) |
+| `useCrossHandDirection` | use the saved cross-hand per-direction speeds (boolean; default true) |
+| `useFingerValues` | use the saved per-finger repeat and movement values (boolean; default true) |
+| `useSimultaneousOverhead` | use the saved simultaneous-press overhead (boolean; default true) |
+| `useKeystrokeOverhead` | use the saved keystroke overhead (boolean; default true) |
 | `rateAverage` | speed-graph average method |
 | `rateWindow` | SMA window (strokes) |
 | `rateHalfLifeSeconds` | EWMA half-life |

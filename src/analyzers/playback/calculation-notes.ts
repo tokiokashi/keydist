@@ -1,6 +1,11 @@
 import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import { DEFAULT_PLAYBACK_OPTIONS, type PlaybackOptions } from './options.ts';
-import type { PersonalSpeedUse } from './timing-conditions.ts';
+import {
+  calibrationPartChanges,
+  keystrokeOverheadAdds,
+  simultaneousOverheadAdds,
+  type PersonalSpeedUse,
+} from './timing-conditions.ts';
 
 /**
  * 再生の時間と速度グラフが、既定の解析設定と違う計算になっている理由
@@ -25,18 +30,16 @@ export function playbackCalculationNotes(
   personalSpeedUse: PersonalSpeedUse,
   /** 実際に使う個人速度（`PlaybackTimingConditions.calibration`）。 */
   calibration?: PlaybackCalibration,
+  /** 部分の設定で外す前の保存値（`PlaybackExtracted.savedCalibration`）。 */
+  savedCalibration?: PlaybackCalibration,
 ): PlaybackCalculationNotes {
   const defaults = DEFAULT_PLAYBACK_OPTIONS;
   const personalSpeedInUse = personalSpeedUse === 'applied';
   // 時間に入る種類は、続け打ちと構造の種類が常に、同指連続が同じ指の移動時間を考慮する時だけ。
   // 再生するテキストの中身は見ず、解析設定と保存値の組で決める。
-  const keystrokeOverheadInUse = personalSpeedInUse
-    && Object.entries(calibration?.keystrokeOverheadMs ?? {}).some(
-      ([kind, ms]) => ms !== 0 && (kind !== 'sfb' || options.sameFingerDelay),
-    );
+  const keystrokeOverheadInUse = personalSpeedInUse && keystrokeOverheadAdds(calibration, options.sameFingerDelay);
   // 同時押しの上乗せも、再生するテキストの中身は見ず、保存値が0でない値を持つかで決める。
-  const simultaneousOverheadInUse = personalSpeedInUse
-    && Object.values(calibration?.simultaneousOverheadMs ?? {}).some((ms) => ms !== 0);
+  const simultaneousOverheadInUse = personalSpeedInUse && simultaneousOverheadAdds(calibration);
   const changes: string[] = [];
   if (!personalSpeedInUse && options.stepsPerSecond !== defaults.stepsPerSecond) {
     changes.push(`基準速度: ${options.stepsPerSecond}ステップ/秒`);
@@ -51,6 +54,7 @@ export function playbackCalculationNotes(
   if (options.applyPersonalSpeed !== defaults.applyPersonalSpeed) {
     changes.push(options.applyPersonalSpeed ? '個人速度を適用する' : '個人速度を適用しない');
   }
+  changes.push(...calibrationPartChanges(options, savedCalibration));
   if (options.rateAverage !== defaults.rateAverage) {
     changes.push(`平均の方式: ${options.rateAverage === 'ewma' ? 'EWMA' : 'SMA'}`);
   }

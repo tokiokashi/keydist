@@ -30,7 +30,13 @@ import {
   tickPlayback,
 } from './session.ts';
 import { playbackCalculationNotes } from './calculation-notes.ts';
-import { playbackTimingConditions as timingConditionsOf } from './timing-conditions.ts';
+import {
+  calibrationPartChanges,
+  calibrationWithParts,
+  playbackTimingConditions as timingConditionsOf,
+} from './timing-conditions.ts';
+import { sameHandDirectedFingerPairKey, sameHandFingerPairKey } from '#interpretation/timing/calibration.ts';
+import { playbackSimultaneousOverheadMs } from '#interpretation/timing/playback.ts';
 
 /** 既定の解析設定で、個人速度の保存値が無い時の時間の設定。 */
 /** 配列図の4つの表示をすべて出す設定。既定は4つとも非表示。 */
@@ -121,7 +127,7 @@ test('抽出は構造解析の結果をそのまま持ち、打鍵の列とス�
   assert.equal(extracted.windowSize, 3);
 });
 
-test('解析設定は、時間と速度平均の8項目だけが抽出のキーに入り、残りは表示だけが変わる', () => {
+test('解析設定は、時間と速度平均の13項目だけが抽出のキーに入り、残りは表示だけが変わる', () => {
   assert.deepEqual(Object.keys(playbackOptions.items).sort(), [
     'allFingerMovementDelay',
     'applyPersonalSpeed',
@@ -131,6 +137,7 @@ test('解析設定は、時間と速度平均の8項目だけが抽出のキー�
     'rateHalfLifeSeconds',
     'rateWindow',
     'sameFingerDelay',
+    'sameHandSpeed',
     'scale',
     'showArpeggio',
     'showChain',
@@ -144,6 +151,10 @@ test('解析設定は、時間と速度平均の8項目だけが抽出のキー�
     'speedMultiplier',
     'stepsPerSecond',
     'trailSteps',
+    'useCrossHandDirection',
+    'useFingerValues',
+    'useKeystrokeOverhead',
+    'useSimultaneousOverhead',
   ]);
   assert.deepEqual(playbackOptions.extractKeyOf(DEFAULT_PLAYBACK_OPTIONS), {
     stepsPerSecond: 1.25,
@@ -151,6 +162,11 @@ test('解析設定は、時間と速度平均の8項目だけが抽出のキー�
     sameFingerDelay: true,
     allFingerMovementDelay: true,
     applyPersonalSpeed: true,
+    sameHandSpeed: 'directed',
+    useCrossHandDirection: true,
+    useFingerValues: true,
+    useSimultaneousOverhead: true,
+    useKeystrokeOverhead: true,
     rateAverage: 'sma',
     rateWindow: 10,
     rateHalfLifeSeconds: 1,
@@ -240,7 +256,7 @@ test('速度の推移（EWMA）: 時間で減衰させ、最初の有効な値�
   assert.equal(extracted.rateChart[2].actionsPerSecond, 1.1890265225127918);
 });
 
-test('解析設定の共有リンク: 時間と速度平均の8項目は既定と違う時だけ書き、読み戻すと同じ値になる', () => {
+test('解析設定の共有リンク: 時間と速度平均の13項目は既定と違う時だけ書き、読み戻すと同じ値になる', () => {
   assert.equal(playbackOptions.encodeOptionsToUrl(DEFAULT_PLAYBACK_OPTIONS).toString(), '');
   const changed: PlaybackOptions = {
     ...DEFAULT_PLAYBACK_OPTIONS,
@@ -249,12 +265,17 @@ test('解析設定の共有リンク: 時間と速度平均の8項目は既定�
     sameFingerDelay: false,
     allFingerMovementDelay: false,
     applyPersonalSpeed: false,
+    sameHandSpeed: 'pair',
+    useCrossHandDirection: false,
+    useFingerValues: false,
+    useSimultaneousOverhead: false,
+    useKeystrokeOverhead: false,
     rateAverage: 'ewma',
     rateWindow: 20,
     rateHalfLifeSeconds: 2,
   };
   const params = playbackOptions.encodeOptionsToUrl(changed);
-  assert.equal(params.size, 8);
+  assert.equal(params.size, 13);
   const diagnostics: never[] = [];
   const decoded = playbackOptions.decodeOptionsFromUrl(params, diagnostics);
   assert.deepEqual({ ...DEFAULT_PLAYBACK_OPTIONS, ...decoded.values }, changed);
@@ -988,4 +1009,165 @@ test('複数の指が担当するキー: 押した指を持ち、指の位置は
 test('押した指: 基本の指だけが担当するキーでは、基本の指が出る', () => {
   const { frame } = frameAt('qwerty', 'fj', 1, SHOW_ALL_FIGURE);
   assert.deepEqual(frame.pressedFingers, ['LI']);
+});
+
+// ---------------------------------------------------------------------------
+// 保存値の部分ごとに使うかの設定（spec/playback-timing.md §2.1・§2.2）
+// ---------------------------------------------------------------------------
+
+const PAIR_KEY = sameHandFingerPairKey('LI', 'LM') ?? '';
+const DIRECTED_KEY = sameHandDirectedFingerPairKey('LI', 'LM') ?? '';
+
+/** 通常速度5（200ms）に、方向別・組ごと・向きと組ごと・指ごとの値・両方の上乗せを足した保存値。 */
+const FULL_CALIBRATION: PlaybackCalibration = {
+  ...CALIBRATION,
+  actionsPerSecondByDirection: { 'L→R': 10, 'R→L': 20 },
+  sameHandDifferentFingerActionsPerSecondByPair: { [PAIR_KEY]: 10 },
+  sameHandDifferentFingerActionsPerDirectedPair: { [DIRECTED_KEY]: 20 },
+  fingerRepeatMs: { LI: 100 },
+  fingerMoveMsPerUnit: { LI: 400 },
+  keystrokeOverheadMs: { other: 60, sfb: 30 },
+  simultaneousOverheadMs: { thumb: 50 },
+};
+
+test('部分の設定: 全部使う設定は、保存値をそのまま時間の計算に渡す', () => {
+  const timing = timingConditionsOf(DEFAULT_PLAYBACK_OPTIONS, { ...DEFAULT_EXTRACTION_ASSETS, personalSpeed: FULL_CALIBRATION });
+  assert.deepEqual(timing.calibration, FULL_CALIBRATION);
+});
+
+test('部分の設定: 異手の方向別の速度を使わない時、異手のステップは通常速度の時間になる', () => {
+  // 条件: 配列qwerty・テキスト「fjdk」（毎ステップ異手）。通常速度200ms、L→Rは100ms、R→Lは50ms。最初のステップは通常速度。
+  const input = resolve('qwerty', 'fjdk', 'en', EMPTY_SETTINGS_OVERRIDES, FULL_CALIBRATION);
+  const base = { useKeystrokeOverhead: false };
+  assert.deepEqual(STEP_ENDS(extractionOf(input, base)), [200, 300, 350, 450]);
+  assert.deepEqual(STEP_ENDS(extractionOf(input, { ...base, useCrossHandDirection: false })), [200, 400, 600, 800]);
+});
+
+test('部分の設定: 同手・別指の速度は、使う段を組と向きごと・組ごと・代表値だけから選ぶ', () => {
+  // 条件: 配列qwerty・テキスト「fd」（LIからLMへ）。向きと組ごと20、組ごと10、代表値5アクション/秒。
+  const input = resolve('qwerty', 'fd', 'en', EMPTY_SETTINGS_OVERRIDES, FULL_CALIBRATION);
+  const base = { useKeystrokeOverhead: false };
+  assert.deepEqual(STEP_ENDS(extractionOf(input, base)), [200, 250]);
+  assert.deepEqual(STEP_ENDS(extractionOf(input, { ...base, sameHandSpeed: 'pair' })), [200, 300]);
+  assert.deepEqual(STEP_ENDS(extractionOf(input, { ...base, sameHandSpeed: 'representative' })), [200, 400]);
+  // 順序なしの組の値を持たない保存値の「組ごと」は代表値になる
+  const noPair = resolve('qwerty', 'fd', 'en', EMPTY_SETTINGS_OVERRIDES, {
+    ...FULL_CALIBRATION,
+    sameHandDifferentFingerActionsPerSecondByPair: {},
+  });
+  assert.deepEqual(STEP_ENDS(extractionOf(noPair, { ...base, sameHandSpeed: 'pair' })), [200, 400]);
+});
+
+test('部分の設定: 指ごとの値を使わない時、全部の指に代表値の続け打ちと移動の時間を使う', () => {
+  // 条件: 配列qwerty・テキスト「fv」（同指連続）。allFingerMovementDelayは偽で、sameFingerDelayは真。
+  // 指ごとの値はLIがr=100・m=400、代表値はr=200・m=100。移動の時間はr+距離×m。
+  const input = resolve('qwerty', 'fv', 'en', EMPTY_SETTINGS_OVERRIDES, FULL_CALIBRATION);
+  const base = { useKeystrokeOverhead: false, allFingerMovementDelay: false };
+  const used = extractionOf(input, base);
+  const press = used.analysis.strokes[1].presses.find((p) => p.sfb);
+  assert.ok(press);
+  assert.equal(press.finger, 'LI');
+  assert.ok(press.distance > 0.5);
+  assert.deepEqual(STEP_ENDS(used), [200, 200 + Math.max(200, 100 + press.distance * 400)]);
+  const unused = extractionOf(input, { ...base, useFingerValues: false });
+  assert.deepEqual(STEP_ENDS(unused), [200, 200 + Math.max(200, 200 + press.distance * 100)]);
+});
+
+test('部分の設定: 打鍵の上乗せを使わない時、上乗せ無しで、同指連続はsを持たない式になる', () => {
+  // 条件: 配列qwerty・allFingerMovementDelayは偽。「その他」の上乗せ60ms、同指連続の差s=30ms。
+  const fjdk = resolve('qwerty', 'fjdk', 'en', EMPTY_SETTINGS_OVERRIDES, FULL_CALIBRATION);
+  const base = { useCrossHandDirection: false, allFingerMovementDelay: false };
+  assert.deepEqual(STEP_ENDS(extractionOf(fjdk, base)), [260, 520, 780, 1040]);
+  assert.deepEqual(STEP_ENDS(extractionOf(fjdk, { ...base, useKeystrokeOverhead: false })), [200, 400, 600, 800]);
+  // 同指連続: 使う時はmax(normalMs, 移動)+s、使わない時はmax(normalMs+o, 移動)でo=0
+  const fv = resolve('qwerty', 'fv', 'en', EMPTY_SETTINGS_OVERRIDES, FULL_CALIBRATION);
+  const used = extractionOf(fv, base);
+  const press = used.analysis.strokes[1].presses.find((p) => p.sfb);
+  assert.ok(press);
+  const movement = 100 + press.distance * 400;
+  assert.deepEqual(STEP_ENDS(used), [260, 260 + Math.max(200, movement) + 30]);
+  const unused = extractionOf(fv, { ...base, useKeystrokeOverhead: false });
+  assert.deepEqual(STEP_ENDS(unused), [200, 200 + Math.max(200, movement)]);
+});
+
+test('部分の設定: 同時押しの上乗せを使わない時、同時押しのステップに足さない', () => {
+  // 親指を含む同時押しのストローク。使う時はthumbの50ms、使わない時は0。
+  const thumbStroke = { presses: [{ finger: 'RT' as const, keys: [] }, { finger: 'RI' as const, keys: [] }] };
+  const parts = { ...DEFAULT_PLAYBACK_OPTIONS, useSimultaneousOverhead: false };
+  assert.equal(playbackSimultaneousOverheadMs(thumbStroke, FULL_CALIBRATION), 50);
+  assert.equal(playbackSimultaneousOverheadMs(thumbStroke, calibrationWithParts(FULL_CALIBRATION, parts)), 0);
+  assert.equal(calibrationWithParts(FULL_CALIBRATION, parts).simultaneousOverheadMs, undefined);
+});
+
+test('部分の設定: 外す項目は設定ごとに別で、他の項目は残る', () => {
+  const keys = (calibration: PlaybackCalibration) => Object.keys(calibration).sort();
+  const full = keys(FULL_CALIBRATION);
+  const without = (...omit: string[]) => full.filter((key) => !omit.includes(key));
+  const parts = DEFAULT_PLAYBACK_OPTIONS;
+  assert.deepEqual(keys(calibrationWithParts(FULL_CALIBRATION, { ...parts, useCrossHandDirection: false })), without('actionsPerSecondByDirection'));
+  assert.deepEqual(
+    keys(calibrationWithParts(FULL_CALIBRATION, { ...parts, sameHandSpeed: 'pair' })),
+    without('sameHandDifferentFingerActionsPerDirectedPair'),
+  );
+  const representative = calibrationWithParts(FULL_CALIBRATION, { ...parts, sameHandSpeed: 'representative' });
+  assert.deepEqual(keys(representative), without('sameHandDifferentFingerActionsPerDirectedPair'));
+  assert.deepEqual(representative.sameHandDifferentFingerActionsPerSecondByPair, {});
+  const fingers = calibrationWithParts(FULL_CALIBRATION, { ...parts, useFingerValues: false });
+  assert.deepEqual([fingers.fingerRepeatMs, fingers.fingerMoveMsPerUnit], [{}, {}]);
+  assert.deepEqual(keys(fingers), full);
+  assert.deepEqual(keys(calibrationWithParts(FULL_CALIBRATION, { ...parts, useKeystrokeOverhead: false })), without('keystrokeOverheadMs'));
+});
+
+test('部分の設定の示し方: 外す項目を保存値が持つ時だけ、既定と違う設定を名前と値で示す', () => {
+  const changes = (options: Partial<PlaybackOptions>, saved: PlaybackCalibration | undefined) =>
+    calibrationPartChanges({ ...DEFAULT_PLAYBACK_OPTIONS, ...options }, saved);
+  assert.deepEqual(changes({}, FULL_CALIBRATION), []);
+  assert.deepEqual(changes({ sameHandSpeed: 'pair' }, FULL_CALIBRATION), ['同手・別指の速度: 組ごと']);
+  assert.deepEqual(changes({ sameHandSpeed: 'representative' }, FULL_CALIBRATION), ['同手・別指の速度: 代表値だけ']);
+  assert.deepEqual(changes({ useCrossHandDirection: false }, FULL_CALIBRATION), ['異手の方向別の速度を使わない']);
+  assert.deepEqual(changes({ useFingerValues: false }, FULL_CALIBRATION), ['指ごとの値を使わない']);
+  assert.deepEqual(changes({ useSimultaneousOverhead: false }, FULL_CALIBRATION), ['同時押しの上乗せを使わない']);
+  assert.deepEqual(changes({ useKeystrokeOverhead: false }, FULL_CALIBRATION), ['打鍵の上乗せを使わない']);
+  // 個人速度で計算していない時は示さない
+  const all = {
+    sameHandSpeed: 'representative',
+    useCrossHandDirection: false,
+    useFingerValues: false,
+    useSimultaneousOverhead: false,
+    useKeystrokeOverhead: false,
+  } as const;
+  assert.deepEqual(changes({ ...all, applyPersonalSpeed: false }, FULL_CALIBRATION), []);
+  assert.deepEqual(changes(all, undefined), []);
+  // 保存値が外す項目を持たない時は示さない
+  const pairOnly = { ...CALIBRATION, sameHandDifferentFingerActionsPerSecondByPair: { [PAIR_KEY]: 10 } };
+  assert.deepEqual(changes(all, CALIBRATION), []);
+  assert.deepEqual(changes({ sameHandSpeed: 'pair' }, pairOnly), []);
+  assert.deepEqual(changes({ sameHandSpeed: 'representative' }, pairOnly), ['同手・別指の速度: 代表値だけ']);
+  assert.deepEqual(changes({ useCrossHandDirection: false }, { ...CALIBRATION, actionsPerSecondByDirection: {} }), []);
+  assert.deepEqual(changes({ useFingerValues: false }, CALIBRATION), []);
+  // 上乗せは、今の「足している」の判定が足していないとする時は示さない
+  const zero = { ...CALIBRATION, keystrokeOverheadMs: { other: 0 }, simultaneousOverheadMs: { thumb: 0 } };
+  assert.deepEqual(changes({ useKeystrokeOverhead: false, useSimultaneousOverhead: false }, zero), []);
+  const sfbOnly = { ...CALIBRATION, keystrokeOverheadMs: { sfb: 30 } };
+  assert.deepEqual(changes({ useKeystrokeOverhead: false, sameFingerDelay: false }, sfbOnly), []);
+  assert.deepEqual(changes({ useKeystrokeOverhead: false }, sfbOnly), ['打鍵の上乗せを使わない']);
+});
+
+test('部分の設定の示し方: 抽出の結果から、ペインの知らせに名前と値が載り、上乗せを足している表示は出ない', () => {
+  const input = resolve('qwerty', 'fjdk', 'en', EMPTY_SETTINGS_OVERRIDES, FULL_CALIBRATION);
+  const notesOf = (options: Partial<PlaybackOptions>) => {
+    const merged = { ...DEFAULT_PLAYBACK_OPTIONS, ...options };
+    const extracted = extractionOf(input, options);
+    return playbackCalculationNotes(merged, extracted.personalSpeedUse, extracted.timing.calibration, extracted.savedCalibration);
+  };
+  const defaults = notesOf({});
+  assert.deepEqual(defaults.changes, []);
+  assert.equal(defaults.keystrokeOverheadInUse, true);
+  assert.equal(defaults.simultaneousOverheadInUse, true);
+  const off = notesOf({ useKeystrokeOverhead: false, useSimultaneousOverhead: false });
+  assert.deepEqual(off.changes, ['同時押しの上乗せを使わない', '打鍵の上乗せを使わない']);
+  assert.equal(off.keystrokeOverheadInUse, false);
+  assert.equal(off.simultaneousOverheadInUse, false);
+  // 個人速度を適用しない時は示さない
+  assert.deepEqual(notesOf({ applyPersonalSpeed: false, useFingerValues: false }).changes, ['個人速度を適用しない']);
 });

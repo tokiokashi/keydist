@@ -361,8 +361,21 @@ test('個人速度の保存値が打鍵の上乗せを持つ時は、ペイン�
   await openPlayback(page);
   await expect(calculation(page)).toContainText('個人速度で計算しています。');
   await expect(calculation(page).locator('[data-playback-calculation-overhead]')).toContainText('個人速度のうち、文章を打つ速さで測った打鍵の上乗せ（ミリ秒）を足しています。');
-  // 個人速度を適用しない設定にすると、打鍵の上乗せも入らないので、知らせも消える
+  // 打鍵の上乗せを使わない設定にすると、足している知らせが消え、既定と違う設定として出る
   const settings = await openSettings(page);
+  // 項目ごとの設定は畳んであり、開くまで操作できない。既定と違う項目があれば、閉じていても見出しに数が出る
+  const detail = settings.locator('[data-option-disclosure]');
+  await expect(detail).not.toHaveAttribute('open', '');
+  await expect(settings.getByRole('group', { name: '打鍵の上乗せ' })).toBeHidden();
+  await detail.getByText('項目ごとの設定').click();
+  await expect(settings.getByRole('group', { name: '打鍵の上乗せ' })).toBeVisible();
+  await settings.getByRole('group', { name: '打鍵の上乗せ' }).getByRole('button', { name: '使わない' }).click();
+  await expect(detail.locator('summary')).toContainText('1項目が既定と違います');
+  await expect(calculation(page).locator('[data-playback-calculation-overhead]')).toHaveCount(0);
+  await expect(calculation(page)).toContainText('打鍵の上乗せを使わない');
+  await settings.getByRole('group', { name: '打鍵の上乗せ' }).getByRole('button', { name: '使う' }).click();
+  await expect(calculation(page).locator('[data-playback-calculation-overhead]')).toHaveCount(1);
+  // 個人速度を適用しない設定にすると、打鍵の上乗せも入らないので、知らせも消える
   await settings.getByRole('button', { name: '適用しない' }).click();
   await settings.press('Escape');
   await expect(calculation(page).locator('[data-playback-calculation-overhead]')).toHaveCount(0);

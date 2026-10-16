@@ -22,6 +22,8 @@ export interface PlaybackSettingsGroup {
   readonly id: PlaybackSettingsGroupId;
   readonly title: string;
   readonly keys: readonly (keyof PlaybackOptions)[];
+  /** 個別に変えたい人向けに、畳んだ節（既定は閉じた状態）の中へ置く項目 */
+  readonly detail?: { readonly title: string; readonly keys: readonly (keyof PlaybackOptions)[] };
 }
 
 export const PLAYBACK_WINDOW_GROUPS: readonly PlaybackSettingsGroup[] = [
@@ -30,7 +32,15 @@ export const PLAYBACK_WINDOW_GROUPS: readonly PlaybackSettingsGroup[] = [
     title: '再生の時間',
     keys: ['stepsPerSecond', 'speedMultiplier', 'sameFingerDelay', 'allFingerMovementDelay'],
   },
-  { id: 'personalSpeed', title: '個人速度', keys: ['applyPersonalSpeed'] },
+  {
+    id: 'personalSpeed',
+    title: '個人速度',
+    keys: ['applyPersonalSpeed'],
+    detail: {
+      title: '項目ごとの設定',
+      keys: ['sameHandSpeed', 'useCrossHandDirection', 'useFingerValues', 'useSimultaneousOverhead', 'useKeystrokeOverhead'],
+    },
+  },
   { id: 'rateAverage', title: '速度グラフの平均', keys: ['rateAverage', 'rateWindow', 'rateHalfLifeSeconds'] },
 ];
 
