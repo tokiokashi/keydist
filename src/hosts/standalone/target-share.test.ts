@@ -3,12 +3,14 @@ import { test } from 'node:test';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
+import { decodeUserLayouts } from '#input/layouts/user-layouts.ts';
 import type { AnalysisTarget, Setup } from '#input/setup/index.ts';
 import {
   SHARE_MAX_REF_LENGTH,
   SHARE_MAX_TARGETS,
   decodeMultiTargetsFromUrl,
   decodeSingleTargetFromUrl,
+  decodeTargetRef,
   describeSharedTargetsNotice,
   describeShareEncodeNotice,
   encodeMultiTargetsToUrl,
@@ -197,4 +199,65 @@ test('送る側へ示す文は、載らなかった対象と名前だけが載�
   const single = encodeSingleTargetToUrl({ kind: 'setup', setupId: 'uuid-long' }, src);
   assert.equal(single.params.toString(), '');
   assert.equal(single.notice.tooLong.length, 1);
+});
+
+/** 保存データの読み込みは名前の中身を見ない（型だけ）ので、先頭が空白・改行入りの名前の自作の配列とSetupが手持ちに入りうる。 */
+function oddNameSource(): { src: TargetShareSource; targets: AnalysisTarget[] } {
+  const base = LAYOUT_BY_ID.get('qwerty')!;
+  const stored = ['  先頭空白', '改行\nあり', '', '普通'].map((name, i) => ({
+    id: `u${i}`, name, rows: ['1234567890', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'],
+  }));
+  const decoded = decodeUserLayouts(stored);
+  assert.deepEqual(decoded.value.map((l) => l.name), stored.map((l) => l.name));
+  const mine = decoded.value.map((l): Layout => ({ ...base, id: l.id, name: l.name }));
+  const setups: Setup[] = [
+    { id: 's-newline', number: 1, layoutId: 'qwerty', shapeId: 'row-staggered', label: '改行\r\nのSetup' },
+    // ラベル無しのSetupは「配列名/物理配列名」を名前にするので、配列名の先頭が空白だと同じ問題が出る。
+    { id: 's-derived', number: 2, layoutId: 'u0', shapeId: 'row-staggered' },
+    { id: 's-ok', number: 3, layoutId: 'qwerty', shapeId: 'row-staggered', label: '末尾空白 ' },
+  ];
+  return {
+    src: {
+      layouts: new Map([...LAYOUT_BY_ID, ...mine.map((l): [string, Layout] => [l.id, l])]),
+      userLayoutIds: new Set(mine.map((l) => l.id)),
+      shapes,
+      setups,
+    },
+    targets: [
+      ...mine.map((l): AnalysisTarget => ({ kind: 'layout', layoutId: l.id })),
+      ...setups.map((s): AnalysisTarget => ({ kind: 'setup', setupId: s.id })),
+    ],
+  };
+}
+
+test('受け取る側が読めない名前（先頭が空白・改行入り・空）は、載せずに送る側へ示す', () => {
+  const { src, targets } = oddNameSource();
+  const { params, notice } = encodeMultiTargetsToUrl(targets, undefined, src);
+  assert.deepEqual(notice.unreadableNames.map((n) => `${n.kind}:${n.name}`), [
+    'user-layout:  先頭空白',
+    'user-layout:改行\nあり',
+    'user-layout:',
+    'setup:改行\r\nのSetup',
+    `setup:  先頭空白/${shapes.get('row-staggered')!.name}`,
+  ]);
+  assert.equal(notice.tooLong.length, 0);
+  assert.deepEqual(params.getAll('targets'), ['user-layout:普通', 'setup:末尾空白']);
+  assert.deepEqual(describeShareEncodeNotice(notice).slice(0, 1), [
+    'リンクで運べない名前（空・先頭が空白・改行を含む）の自作の配列「 先頭空白」・自作の配列「改行 あり」・自作の配列「」ほか2件はリンクに載りませんでした',
+  ]);
+});
+
+test('送る側が載せた参照は、名前が何であっても受け取る側で必ず読める', () => {
+  const { src, targets } = oddNameSource();
+  for (const target of targets) {
+    const encoded = encodeSingleTargetToUrl(target, src);
+    const ref = encoded.params.get('target');
+    if (ref === null) continue;
+    const diagnostics: { path: string; message: string }[] = [];
+    assert.notEqual(decodeTargetRef(ref, 'target', diagnostics), undefined, ref);
+    assert.deepEqual(diagnostics, []);
+    const decoded = decodeSingleTargetFromUrl(new URLSearchParams(encoded.params.toString()), src, []);
+    assert.equal(decoded.notice.unreadable, 0);
+    assert.deepEqual(decoded.target, target);
+  }
 });
