@@ -178,10 +178,13 @@ test('サンプルのWorkspaceは普通のWorkspaceと同じに扱える。Bigra
 async function openSampleAt(page: Page, size: { width: number; height: number }, sidebar: 'pinned' | 'unpinned'): Promise<void> {
   await page.setViewportSize(size);
   if (sidebar === 'unpinned') {
-    await page.addInitScript(() => localStorage.setItem('keydist:app-state', JSON.stringify({ shell: { sidebarPinned: false } })));
+    await page.addInitScript(() => localStorage.setItem('keydist:app-state', JSON.stringify({ version: 2, shell: { sidebarPinned: false } })));
   }
   await page.goto('/');
   await waitForHydration(page);
+  // 保存した状態が読まれず、名前と違う条件のまま回っていないことを確かめる
+  if (sidebar === 'unpinned') await expect(page.locator('html')).toHaveAttribute('data-sidebar', 'unpinned');
+  else await expect(page.locator('html')).not.toHaveAttribute('data-sidebar', 'unpinned');
   await page.locator('.hero').getByRole('button', { name: '複数の配列を並べたサンプルを作る' }).click();
   await expectSampleWorkspace(page, 'サンプル');
   await expect(page.locator('[data-flow-edge="true"]').first()).toBeAttached({ timeout: 15_000 });
