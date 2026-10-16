@@ -1,7 +1,7 @@
 import { createPortal } from 'react-dom';
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import { analysisTargetKey, type AnalysisTarget } from '#input/setup/index.ts';
-import { filterTargetChoiceGroups, targetSummaryText, type TargetChoiceGroup } from './target-choices.ts';
+import { filterTargetChoiceGroups, targetSummaryText, type TargetChoiceGroup, type TargetKindFilter } from './target-choices.ts';
 import { isStrokeOnlyMark, targetMark, targetMarkPath, type TargetMark } from '#ui/theme/target-marks.ts';
 import './target-selection.css';
 import { MOBILE_QUERY } from '#ui/theme/breakpoints.ts';
@@ -58,6 +58,13 @@ export interface TargetSelectionProps {
 /** スマホ幅（シートで出す幅）。解析設定のシートと同じ境目（`ui/theme/breakpoints.ts`）。 */
 const SHEET_MEDIA = MOBILE_QUERY;
 const EDGE = 8;
+
+/** 種類の切り替え。並びは「すべて」を先頭に置く。 */
+const KIND_FILTERS: readonly { readonly value: TargetKindFilter; readonly label: string }[] = [
+  { value: 'all', label: 'すべて' },
+  { value: 'kana', label: 'かな配列' },
+  { value: 'alpha', label: '英字の配列' },
+];
 
 function isSheet(): boolean {
   return typeof window !== 'undefined' && window.matchMedia(SHEET_MEDIA).matches;
@@ -139,6 +146,7 @@ export function TargetSelection({
   // 自動で開くかを決めたか（読み込みが終わった最初の1回で決め、以後は変えない）。
   const autoOpenDecidedRef = useRef(false);
   const [query, setQuery] = useState('');
+  const [kindFilter, setKindFilter] = useState<TargetKindFilter>('all');
   const [position, setPosition] = useState<Position | undefined>(undefined);
   const [fits, setFits] = useState(true);
   const panelId = useId();
@@ -158,7 +166,7 @@ export function TargetSelection({
   const title = summary.map((item) => item.fullName).filter((name) => name !== '').join('\n');
   const selectedKeys = useMemo(() => new Set(summary.map((item) => item.key)), [summary]);
   const swatchByKey = useMemo(() => new Map(summary.map((item) => [item.key, item] as const)), [summary]);
-  const visibleGroups = filterTargetChoiceGroups(groups, query);
+  const visibleGroups = filterTargetChoiceGroups(groups, query, kindFilter);
 
   // 全部の名前が入るかを実寸で測る。測る用の要素（見えない・全文）と、ボタンが使える幅を比べる。
   // 使える幅 = 見出しの対象の欄の幅 − ボタンの名前以外の部分の幅。
@@ -194,6 +202,7 @@ export function TargetSelection({
   const close = (focusButton: boolean) => {
     setOpen(false);
     setQuery('');
+    setKindFilter('all');
     setPosition(undefined);
     if (focusButton) buttonRef.current?.focus({ preventScroll: true });
   };
@@ -362,6 +371,19 @@ export function TargetSelection({
                 aria-label="配列・Setupを名前で絞り込む"
                 onChange={(event) => setQuery(event.currentTarget.value)}
               />
+              <div className="target-selection-kind" role="group" aria-label="配列の種類で絞り込む">
+                {KIND_FILTERS.map((item) => (
+                  <label key={item.value}>
+                    <input
+                      type="radio"
+                      name={`${panelId}-kind`}
+                      checked={kindFilter === item.value}
+                      onChange={() => setKindFilter(item.value)}
+                    />
+                    <span>{item.label}</span>
+                  </label>
+                ))}
+              </div>
             </div>
             <div className="target-selection-list">
               {visibleGroups.length === 0 ? (

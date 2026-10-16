@@ -1067,7 +1067,7 @@ test('選ばれているラジオから矢印キーで動かしても閉じず�
   await selection.getByRole('radio', { name: 'QWERTY' }).first().focus();
   await page.keyboard.press('ArrowDown');
   await expect(selection).toBeVisible();
-  const moved = selection.locator('input[type="radio"]:checked');
+  const moved = selection.locator('input[type="radio"][name$="-target"]:checked');
   await expect(moved).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(selection).toHaveCount(0);

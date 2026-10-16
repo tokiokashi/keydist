@@ -123,6 +123,54 @@
   font-size: 0.88rem;
 }
 
+.target-selection-kind {
+  display: grid;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+  gap: 0.3rem;
+  margin-top: 0.5rem;
+}
+
+.target-selection-kind label {
+  position: relative;
+  display: flex;
+}
+
+.target-selection-kind input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.target-selection-kind span {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.8rem;
+  padding: 0 0.4rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface-subtle);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.target-selection-kind input:checked + span {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.target-selection-kind input:focus-visible + span {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .target-selection-list {
   min-height: 0;
   overflow-y: auto;
