@@ -229,6 +229,26 @@ test('往復の間隔が続け打ちの間隔以下の指は、移動の時間�
   assert.ok(applied.ok);
   assert.equal(applied.calibration.fingerMoveMsPerUnit.LI, 0);
   assert.equal(applied.calibration.fallbackMoveMsPerUnit, 0);
+  assert.equal(applied.zeroMoveFingers.length, 8);
+});
+
+test('往復の間隔が続け打ちの間隔より長い指は、移動の時間が0になった指に数えない', () => {
+  const run = playAllBy(startCalibrationRun('normal', PLAN.normal!), (task) => {
+    if (task.item.kind === 'finger-repeat') return 200;
+    return task.item.kind === 'finger' ? 450 : 250;
+  });
+  const applied = applyCalibrationRun(undefined, run, 1);
+  assert.ok(applied.ok);
+  assert.deepEqual(applied.zeroMoveFingers, []);
+});
+
+test('往復の間隔が続け打ちの間隔と等しい指も、移動の時間が0になった指に数える', () => {
+  const applied = applyCalibrationRun(SAVED, playFinger('LI', 300, 300), 5);
+  assert.ok(applied.ok);
+  assert.deepEqual(applied.zeroMoveFingers, ['LI']);
+  const longer = applyCalibrationRun(SAVED, playFinger('LI', 300, 301), 5);
+  assert.ok(longer.ok);
+  assert.deepEqual(longer.zeroMoveFingers, []);
 });
 
 test('往復の測定を作れない指は測定項目を持たず、代表値を使う。続け打ちの上乗せは代表値の分も含めた平均でずらす', () => {

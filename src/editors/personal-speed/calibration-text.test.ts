@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { SentenceMeasurement } from '#interpretation/timing/sentence-measurement.ts';
-import { SENTENCE_TABLE_NOTES, clearedOverheadsText, clearedSimultaneousText, measurementEffectText, savedMessage, SENTENCE_OTHER_LAYOUT_NOTE, sentenceFailureText, sentenceSavedMessage } from './calibration-text.ts';
+import type { CalibrationTask } from '#interpretation/timing/calibration-session.ts';
+import { SENTENCE_TABLE_NOTES, ZERO_MOVE_ROW_NOTE, calibrationInstruction, zeroMoveFingersText, zeroMoveRowNote, clearedOverheadsText, clearedSimultaneousText, measurementEffectText, savedMessage, SENTENCE_OTHER_LAYOUT_NOTE, sentenceFailureText, sentenceSavedMessage } from './calibration-text.ts';
 
 /** 文章の知らせの文だけを検査するための測定結果。表に使う値は持たない。 */
 function measurement(overheadMs: SentenceMeasurement['overheadMs']): SentenceMeasurement {
@@ -158,4 +159,42 @@ test('同時押しを測る前の文は、文章に入った分け方を測る�
 test('測った後の知らせは、打鍵の上乗せを消した時だけ出る', () => {
   assert.equal(clearedOverheadsText([], []), '');
   assert.notEqual(clearedOverheadsText(['other'], []), '');
+});
+
+const KEY_LABEL = (keyId: string) => keyId.toUpperCase();
+function taskOf(item: CalibrationTask['item'], keys: readonly [string, string]): CalibrationTask {
+  return { item, keys, required: 1 } as unknown as CalibrationTask;
+}
+
+test('指ごとの測定項目の2つの打ち方の案内は、どちらも素早く打つよう伝える', () => {
+  const repeat = calibrationInstruction(taskOf({ kind: 'finger-repeat', finger: 'LI' }, ['f', 'f']), KEY_LABEL);
+  const alternate = calibrationInstruction(taskOf({ kind: 'finger', finger: 'LI' }, ['f', 'v']), KEY_LABEL);
+  assert.ok(repeat.includes('素早く続けて打ってください。'));
+  assert.ok(alternate.includes('素早く交互に打ってください。'));
+  assert.ok(!repeat.includes('同じ速さ') && !alternate.includes('同じ速さ'));
+});
+
+test('通常速度と同手・別指の案内は、普段の速さのままである', () => {
+  assert.ok(calibrationInstruction(taskOf({ kind: 'actions' }, ['f', 'j']), KEY_LABEL).includes('普段の速さ'));
+  assert.ok(calibrationInstruction(taskOf({ kind: 'same-hand-pair', pair: 'LM:LI' }, ['d', 'f']), KEY_LABEL).includes('普段の速さ'));
+});
+
+test('移動の時間を0にした指の知らせは、指が1本でも複数でも同じ文で、指の名前を・で並べる', () => {
+  assert.equal(zeroMoveFingersText([]), undefined);
+  const one = zeroMoveFingersText(['LI']);
+  const two = zeroMoveFingersText(['LI', 'RI']);
+  assert.ok(one?.endsWith('は、同じキーを続けて打つ間隔が、交互に打つ間隔以上だったため、移動の時間を0にしました。2つとも素早く打って、測り直してください。'));
+  assert.ok(two?.includes('・'));
+  assert.ok(two?.endsWith(one!.slice(one!.indexOf('は、'))));
+});
+
+test('保存値が数値の0の指の行にだけ、移動の時間の注記を出す', () => {
+  const saved = { LI: 0, RI: 12.5 };
+  assert.equal(zeroMoveRowNote('finger:LI', saved), ZERO_MOVE_ROW_NOTE);
+  assert.equal(zeroMoveRowNote('finger:RI', saved), undefined);
+  // まだ測っていない指
+  assert.equal(zeroMoveRowNote('finger:LM', saved), undefined);
+  // 代表値の行・同じキーを続けて打つ速さの行
+  assert.equal(zeroMoveRowNote('fallback-move', { ...saved, LM: 0 }), undefined);
+  assert.equal(zeroMoveRowNote('finger-repeat:LI', saved), undefined);
 });

@@ -48,6 +48,8 @@ import {
   UNMEASURED_TEXT,
   calibrationFormProblemText,
   calibrationInstruction,
+  zeroMoveFingersText,
+  zeroMoveRowNote,
   calibrationProgressText,
   clearedSimultaneousText,
   simultaneousWrongKeyText,
@@ -161,13 +163,15 @@ interface ValueRowProps {
   readonly onChange: (fieldId: string, value: string) => void;
   readonly onCommit: (fieldId: string) => void;
   readonly onMeasure: (tasks: readonly CalibrationTask[]) => void;
+  /** 行の下に出す注記。 */
+  readonly note?: string;
 }
 
 /**
  * 保存値の1項目。数値を直接編集でき、欄を確定した時（欄から離れた時・Enter）に保存する。
  * 行の測るボタンは、その行の値だけを測り直す。
  */
-function ValueRow({ fieldId, value, error, disabled, action, onChange, onCommit, onMeasure }: ValueRowProps) {
+function ValueRow({ fieldId, value, error, disabled, action, onChange, onCommit, onMeasure, note }: ValueRowProps) {
   const fullLabel = calibrationFieldLabel(fieldId);
   const inputId = `personal-speed-${fieldId}`;
   const errorId = `${inputId}-error`;
@@ -204,6 +208,7 @@ function ValueRow({ fieldId, value, error, disabled, action, onChange, onCommit,
       ) : null}
       {action.kind === 'hint' ? <span className="personal-speed-row-hint">{action.text}</span> : null}
       {error === undefined ? null : <p className="personal-speed-field-error" id={errorId} role="alert">{error}</p>}
+      {note === undefined ? null : <p className="personal-speed-note" data-personal-speed-row-note={fieldId}>{note}</p>}
     </div>
   );
 }
@@ -409,7 +414,10 @@ export function PersonalSpeedEditor({
     dropProblems();
     onSave(result.calibration);
     setNotices({
-      [group]: { kind: 'message', text: savedMessage(run.scope, run.tasks[0]?.item, result.clearedOverheads, result.replacedOverheads, result.clearedSimultaneous) },
+      [group]: {
+        kind: 'message',
+        text: `${savedMessage(run.scope, run.tasks[0]?.item, result.clearedOverheads, result.replacedOverheads, result.clearedSimultaneous)}${zeroMoveFingersText(result.zeroMoveFingers) ?? ''}`,
+      },
       ...(result.clearedOverheads.length === 0 && result.replacedOverheads.length === 0
         ? {}
         : { sentence: { kind: 'message', text: clearedOverheadsText(result.clearedOverheads, result.replacedOverheads) } }),
@@ -573,6 +581,7 @@ export function PersonalSpeedEditor({
       onChange={onFieldChange}
       onCommit={commitField}
       onMeasure={(tasks) => startRun('item', tasks)}
+      note={fieldId.startsWith('finger:') ? zeroMoveRowNote(fieldId, calibration?.fingerMoveMsPerUnit ?? {}) : undefined}
     />
   );
 

@@ -76,7 +76,7 @@ export interface PlaybackCalibration {
    * 持つ指の組は`fingerMoveMsPerUnit`と同じ。
    */
   fingerRepeatMs: Partial<Record<Finger, number>>;
-  /** 指ごとの、1uあたりの移動の時間[ms/u]（`m(f)`）。測れなかった指は持たない。移動の時間が測れないほど短い指は0。 */
+  /** 指ごとの、1uあたりの移動の時間[ms/u]（`m(f)`）。測れなかった指は持たない。測った2つの間隔の差が0以下だった指は0。 */
   fingerMoveMsPerUnit: Partial<Record<Finger, number>>;
   /** 指ごとの値が無い指に使う、同じキーを続けて打つ時間[ms]。 */
   fallbackRepeatMs: number;
@@ -115,7 +115,7 @@ export const CALIBRATION_ACTIONS_PER_SECOND_MAX = 40;
 /** 同じキーを続けて打つ時間[ms]の範囲。通常速度の範囲（アクション/秒）の逆数。 */
 export const CALIBRATION_REPEAT_MS_MIN = 1000 / CALIBRATION_ACTIONS_PER_SECOND_MAX;
 export const CALIBRATION_REPEAT_MS_MAX = 1000 / CALIBRATION_ACTIONS_PER_SECOND_MIN;
-/** 1uあたりの移動の時間[ms/u]の範囲。0は移動の時間が測れないほど短い指。 */
+/** 1uあたりの移動の時間[ms/u]の範囲。0は、測った2つの間隔の差が0以下だったことを表す。 */
 export const CALIBRATION_MOVE_MS_PER_UNIT_MIN = 0;
 export const CALIBRATION_MOVE_MS_PER_UNIT_MAX = 10000;
 export const CALIBRATION_OVERHEAD_MS_MIN = -1000;
