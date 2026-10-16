@@ -81,11 +81,147 @@ export const SAMPLE_FINGER_DISTANCE_SIZE: GridSize = { w: 6, h: 9 };
 export const SAMPLE_GRID_COLS = 24;
 const SAMPLE_RANGE: GridColumnRange = { start: 0, end: SAMPLE_GRID_COLS };
 
+/**
+ * 配列の詳細と比較のサンプル。1つの配列の詳細の段を上に、複数の配列の比較の段をその下に置く。
+ * 全部のペインが1つの連動の組に従い、詳細の段は組の単体の対象（1つの配列）、比較の段は組の集合を見る。
+ */
+export const LAYOUT_DETAIL_WORKSPACE_NAME = '配列の詳細と比較';
+export const SAMPLE_FINGER_MATRIX_ANALYZER_ID = 'finger-matrix';
+
+/** 詳細の段が見る配列。比較の段の集合（`SAMPLE_COMPARISON_LAYOUT_IDS`）の中の1つで、層を持つ。 */
+export const LAYOUT_DETAIL_LAYOUT_ID = 'tsuki-2-263';
+
+/**
+ * 並びの大きさ（24列）。詳細の段は、左に打鍵再生（8列）、右上にヒートマップ（レイヤー）（16列）、その下に
+ * ヒートマップと指ごとの距離（移動距離）（8列ずつ）、さらに下に指ごとの距離（標準偏差）（8列）とBigram Flow（16列）。
+ * 比較の段は、比較表とN感度が横に並び（18 + 6列）、その下に配列×指のマトリックス4つが2列で並ぶ（12列ずつ）。
+ * 列の幅は面の幅に依らない固定なので、ペインの画素の幅も画面の幅に依らない（8列は536px、24列の並びは1640px）。
+ * 24列の並びはFHDでサイドバーを固定して開いた面（1680px）に、縦のスクロールバーがあっても横にスクロールせずに収まる。
+ * 高さは升目（1升は行28pxと間8pxで36px）単位。各ペインの中身がペインの中でスクロールせずに収まる最小の高さを、
+ * 画面の幅2560で、その幅・高さのペインを縦に積んで実測して決めた（ペインの幅は画面の幅に依らないので、他の画面の幅でも同じ）。
+ * 実測した最小の幅と高さ（列 × 升）:
+ * - 打鍵再生: 8列で20升（6列では収まらない）。
+ * - ヒートマップ（レイヤー）: 16列で9升（12列以下は図が縦に並ぶので15升）。
+ * - ヒートマップ: 図が小さく、8列で収まる。高さは隣の指ごとの距離に揃えて11升。
+ * - 指ごとの距離: 移動距離は8列で11升、標準偏差は8列で12升（見出し・縦棒・指の名前・左手と右手の見出しまで）。
+ * - Bigram Flow: 16列で10升（Keyboard FlowとRelative vectorsが凡例まで）。段の高さを揃えて12升。
+ * - 比較表: 18列で9升。N感度: 6列の並びで9升（図・凡例・横軸のラベル・畳んだ表の見出しまで）。
+ * - 配列×指のマトリックス: 12列で10升（押下数・移動距離は12列から、指間距離の平均・標準偏差は10列から横にスクロールせず収まる）。
+ * 縦は収めない（詳細の段で32升、全体で61升）ので、下の段を見るにはページを縦にスクロールする。
+ */
+export const LAYOUT_DETAIL_PLAYBACK_SIZE: GridSize = { w: 8, h: 20 };
+export const LAYOUT_DETAIL_HEATMAP_LAYERS_SIZE: GridSize = { w: 16, h: 9 };
+export const LAYOUT_DETAIL_HEATMAP_SIZE: GridSize = { w: 8, h: 11 };
+export const LAYOUT_DETAIL_FINGER_DISTANCE_SIZE: GridSize = { w: 8, h: 11 };
+export const LAYOUT_DETAIL_FINGER_DISTANCE_STD_DEV_SIZE: GridSize = { w: 8, h: 12 };
+export const LAYOUT_DETAIL_BIGRAM_FLOW_SIZE: GridSize = { w: 16, h: 12 };
+export const LAYOUT_DETAIL_COMPARISON_SIZE: GridSize = { w: 18, h: 9 };
+export const LAYOUT_DETAIL_N_SENSITIVITY_SIZE: GridSize = { w: 6, h: 9 };
+export const LAYOUT_DETAIL_FINGER_MATRIX_SIZE: GridSize = { w: 12, h: 10 };
+
+/** 配列の詳細と比較のサンプルが使う列の数。 */
+export const LAYOUT_DETAIL_GRID_COLS = 24;
+const LAYOUT_DETAIL_RANGE: GridColumnRange = { start: 0, end: LAYOUT_DETAIL_GRID_COLS };
+
 const layoutTarget = (layoutId: string): AnalysisTarget => ({ kind: 'layout', layoutId });
 
 function groupId(n: number): string {
   return `link-${n}`;
 }
+
+/** 用意してあるサンプルの種類。 */
+export type SampleKind = 'overview' | 'layout-detail';
+
+/** ペインを置く順番に並べる定義。`group`は`groupId`の番号で、`optionSet`があれば共有の解析設定に従う。 */
+interface SamplePaneSpec {
+  readonly analyzerId: string;
+  /** 共有に従わないペインの、変えた項目だけの解析設定。 */
+  readonly options?: unknown;
+  readonly optionSet?: boolean;
+  readonly group: number;
+  readonly size: GridSize;
+}
+
+interface SampleDefinition {
+  readonly name: string;
+  readonly groups: readonly LinkGroup[];
+  readonly optionSets: readonly OptionSet[];
+  readonly panes: readonly SamplePaneSpec[];
+  readonly range: GridColumnRange;
+  /** 画面に出す名前。「〜を作る」「〜で始める」の前に付く。 */
+  readonly label: string;
+}
+
+const OVERVIEW: SampleDefinition = {
+  name: SAMPLE_WORKSPACE_NAME,
+  label: '複数の配列を並べたサンプル',
+  range: SAMPLE_RANGE,
+  groups: SAMPLE_BIGRAM_FLOW_LAYOUT_IDS.map((layoutId, i) => ({
+    id: groupId(i + 1),
+    target: {
+      single: { target: layoutTarget(layoutId) },
+      set: i === 0
+        ? { targets: SAMPLE_COMPARISON_LAYOUT_IDS.map(layoutTarget), baseline: undefined }
+        : { targets: [], baseline: undefined },
+    },
+  })),
+  // Bigram Flowの4つは1つの共有の設定に従う（2打鍵の取り方を1か所で変えられる）。指ごとの距離の4つも1つの共有の設定
+  // に従い、こちらは既定のまま始める
+  optionSets: [
+    { id: initialOptionSetId(SAMPLE_BIGRAM_FLOW_ANALYZER_ID), analyzerId: SAMPLE_BIGRAM_FLOW_ANALYZER_ID, options: SAMPLE_BIGRAM_FLOW_OPTIONS },
+    { id: initialOptionSetId(SAMPLE_FINGER_DISTANCE_ANALYZER_ID), analyzerId: SAMPLE_FINGER_DISTANCE_ANALYZER_ID, options: undefined },
+  ],
+  // 上の段は比較表とN感度の2つ、中の段はBigram Flowの4つ、下の段は指ごとの距離の4つが左から並ぶ
+  panes: [
+    { analyzerId: SAMPLE_COMPARISON_ANALYZER_ID, group: 1, size: SAMPLE_COMPARISON_SIZE },
+    { analyzerId: SAMPLE_N_SENSITIVITY_ANALYZER_ID, group: 1, size: SAMPLE_N_SENSITIVITY_SIZE },
+    ...SAMPLE_BIGRAM_FLOW_LAYOUT_IDS.map((_, i): SamplePaneSpec => ({ analyzerId: SAMPLE_BIGRAM_FLOW_ANALYZER_ID, optionSet: true, group: i + 1, size: SAMPLE_LOWER_SIZE })),
+    ...SAMPLE_BIGRAM_FLOW_LAYOUT_IDS.map((_, i): SamplePaneSpec => ({ analyzerId: SAMPLE_FINGER_DISTANCE_ANALYZER_ID, optionSet: true, group: i + 1, size: SAMPLE_FINGER_DISTANCE_SIZE })),
+  ],
+};
+
+const LAYOUT_DETAIL: SampleDefinition = {
+  name: LAYOUT_DETAIL_WORKSPACE_NAME,
+  label: '配列の詳細と比較のサンプル',
+  range: LAYOUT_DETAIL_RANGE,
+  // 全部が1つの連動の組に従う。詳細の段のペインは単体の対象、比較の段のペインは集合を見る
+  groups: [
+    {
+      id: groupId(1),
+      target: {
+        single: { target: layoutTarget(LAYOUT_DETAIL_LAYOUT_ID) },
+        set: { targets: SAMPLE_COMPARISON_LAYOUT_IDS.map(layoutTarget), baseline: undefined },
+      },
+    },
+  ],
+  optionSets: [],
+  panes: [
+    { analyzerId: 'playback', group: 1, size: LAYOUT_DETAIL_PLAYBACK_SIZE },
+    { analyzerId: 'heatmap-layers', group: 1, size: LAYOUT_DETAIL_HEATMAP_LAYERS_SIZE },
+    { analyzerId: 'heatmap', group: 1, size: LAYOUT_DETAIL_HEATMAP_SIZE },
+    { analyzerId: SAMPLE_FINGER_DISTANCE_ANALYZER_ID, group: 1, size: LAYOUT_DETAIL_FINGER_DISTANCE_SIZE },
+    { analyzerId: SAMPLE_FINGER_DISTANCE_ANALYZER_ID, options: { chartMetric: 'stdDev' }, group: 1, size: LAYOUT_DETAIL_FINGER_DISTANCE_STD_DEV_SIZE },
+    { analyzerId: SAMPLE_BIGRAM_FLOW_ANALYZER_ID, group: 1, size: LAYOUT_DETAIL_BIGRAM_FLOW_SIZE },
+    { analyzerId: SAMPLE_COMPARISON_ANALYZER_ID, group: 1, size: LAYOUT_DETAIL_COMPARISON_SIZE },
+    { analyzerId: SAMPLE_N_SENSITIVITY_ANALYZER_ID, group: 1, size: LAYOUT_DETAIL_N_SENSITIVITY_SIZE },
+    ...(['presses', 'distance', 'pairMean', 'pairStdDev'] as const).map((surface): SamplePaneSpec => ({
+      analyzerId: SAMPLE_FINGER_MATRIX_ANALYZER_ID,
+      options: { surface },
+      group: 1,
+      size: LAYOUT_DETAIL_FINGER_MATRIX_SIZE,
+    })),
+  ],
+};
+
+const DEFINITIONS: Readonly<Record<SampleKind, SampleDefinition>> = { overview: OVERVIEW, 'layout-detail': LAYOUT_DETAIL };
+
+/** サンプルの種類ごとの、ボタンの文言（「〜を作る」「〜で始める」）の前に付く名前。 */
+export function sampleLabel(kind: SampleKind): string {
+  return DEFINITIONS[kind].label;
+}
+
+/** 画面に出すサンプルの種類の一覧。トップと空のWorkspaceの選ぶ項目は、この順に並べる。 */
+export const SAMPLE_KINDS: readonly SampleKind[] = ['overview', 'layout-detail'];
 
 /**
  * 空のWorkspace（ペインが1つも無い）にサンプルの並びを入れる。連動の組・対象・ペイン・解析設定・Workspaceの条件を
@@ -96,64 +232,30 @@ export function applySampleLayout(
   library: WorkspaceLibrary,
   workspaceId: string,
   generatePaneId: WorkspaceIdGenerator,
+  kind: SampleKind,
 ): WorkspaceLibrary {
   const target = library.find((workspace) => workspace.id === workspaceId);
   if (target === undefined || target.panes.length > 0) return library;
-  const groups: LinkGroup[] = SAMPLE_BIGRAM_FLOW_LAYOUT_IDS.map((layoutId, i) => ({
-    id: groupId(i + 1),
-    target: {
-      single: { target: layoutTarget(layoutId) },
-      set: i === 0
-        ? { targets: SAMPLE_COMPARISON_LAYOUT_IDS.map(layoutTarget), baseline: undefined }
-        : { targets: [], baseline: undefined },
-    },
-  }));
-  // Bigram Flowの4つは1つの共有の設定に従う（2打鍵の取り方を1か所で変えられる）。指ごとの距離の4つも1つの共有の設定
-  // に従い、こちらは既定のまま始める
-  const optionSets: OptionSet[] = [
-    { id: initialOptionSetId(SAMPLE_BIGRAM_FLOW_ANALYZER_ID), analyzerId: SAMPLE_BIGRAM_FLOW_ANALYZER_ID, options: SAMPLE_BIGRAM_FLOW_OPTIONS },
-    { id: initialOptionSetId(SAMPLE_FINGER_DISTANCE_ANALYZER_ID), analyzerId: SAMPLE_FINGER_DISTANCE_ANALYZER_ID, options: undefined },
-  ];
+  const definition = DEFINITIONS[kind];
   const seeded: Workspace = {
     ...target,
-    groups,
-    optionSets,
+    groups: [...definition.groups],
+    optionSets: [...definition.optionSets],
     conditions: { ...target.conditions, defaultShapeId: SAMPLE_DEFAULT_SHAPE_ID },
   };
   let next: WorkspaceLibrary = library.map((workspace) => (workspace.id === workspaceId ? seeded : workspace));
 
-  const panes: { readonly pane: WorkspacePane; readonly size: GridSize }[] = [
-    {
-      pane: { id: generatePaneId(), analyzerId: SAMPLE_COMPARISON_ANALYZER_ID, options: undefined, optionsBinding: OWN_OPTIONS, binding: followBinding(groupId(1)) },
-      size: SAMPLE_COMPARISON_SIZE,
-    },
-    {
-      pane: { id: generatePaneId(), analyzerId: SAMPLE_N_SENSITIVITY_ANALYZER_ID, options: undefined, optionsBinding: OWN_OPTIONS, binding: followBinding(groupId(1)) },
-      size: SAMPLE_N_SENSITIVITY_SIZE,
-    },
-    ...SAMPLE_BIGRAM_FLOW_LAYOUT_IDS.map((_, i) => ({
-      pane: {
-        id: generatePaneId(),
-        analyzerId: SAMPLE_BIGRAM_FLOW_ANALYZER_ID,
-        options: undefined,
-        optionsBinding: sharedOptions(initialOptionSetId(SAMPLE_BIGRAM_FLOW_ANALYZER_ID)),
-        binding: followBinding(groupId(i + 1)),
-      },
-      size: SAMPLE_LOWER_SIZE,
-    })),
-    ...SAMPLE_BIGRAM_FLOW_LAYOUT_IDS.map((_, i) => ({
-      pane: {
-        id: generatePaneId(),
-        analyzerId: SAMPLE_FINGER_DISTANCE_ANALYZER_ID,
-        options: undefined,
-        optionsBinding: sharedOptions(initialOptionSetId(SAMPLE_FINGER_DISTANCE_ANALYZER_ID)),
-        binding: followBinding(groupId(i + 1)),
-      },
-      size: SAMPLE_FINGER_DISTANCE_SIZE,
-    })),
-  ];
-  // 既存のペイン追加と同じ経路で置く。空いている最初の場所に入るので、上の段は比較表とN感度の2つ、下の段はBigram Flowの4つが左から並ぶ
-  for (const { pane, size } of panes) next = addWorkspacePane(next, workspaceId, pane, size, SAMPLE_RANGE);
+  // 既存のペイン追加と同じ経路で置く。空いている最初の場所に入る
+  for (const spec of definition.panes) {
+    const pane: WorkspacePane = {
+      id: generatePaneId(),
+      analyzerId: spec.analyzerId,
+      options: spec.options,
+      optionsBinding: spec.optionSet === true ? sharedOptions(initialOptionSetId(spec.analyzerId)) : OWN_OPTIONS,
+      binding: followBinding(groupId(spec.group)),
+    };
+    next = addWorkspacePane(next, workspaceId, pane, spec.size, definition.range);
+  }
   return next;
 }
 
@@ -162,8 +264,9 @@ export function createSampleWorkspace(
   library: WorkspaceLibrary,
   generateId: WorkspaceIdGenerator,
   generatePaneId: WorkspaceIdGenerator,
+  kind: SampleKind,
 ): { readonly library: WorkspaceLibrary; readonly created: Workspace } {
-  const base = createWorkspace(library, generateId, SAMPLE_WORKSPACE_NAME);
-  const next = applySampleLayout(base.library, base.created.id, generatePaneId);
+  const base = createWorkspace(library, generateId, DEFINITIONS[kind].name);
+  const next = applySampleLayout(base.library, base.created.id, generatePaneId, kind);
   return { library: next, created: next.find((workspace) => workspace.id === base.created.id)! };
 }

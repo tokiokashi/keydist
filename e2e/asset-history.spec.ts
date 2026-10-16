@@ -103,7 +103,7 @@ test('Workspace: サイドバーで別のWorkspaceを作って戻っても、中
   await sidebar.getByRole('button', { name: '＋ 新しいWorkspace' }).click();
   await expect(page.locator('[data-workspace-empty="true"]')).toBeVisible();
   const firstId = new URL(page.url()).pathname.split('/').pop()!;
-  await page.locator('[data-workspace-empty="true"]').getByRole('button', { name: 'サンプルの並びで始める' }).click();
+  await page.locator('[data-workspace-empty="true"]').getByRole('button', { name: '複数の配列を並べたサンプルで始める' }).click();
   await expect(page.locator('.pane-frame')).toHaveCount(10);
 
   // 履歴を持たないサイドバーからの書き込み（別のWorkspaceの作成）の後でも、最初のWorkspaceの変更を戻せる

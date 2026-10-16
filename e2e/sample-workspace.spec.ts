@@ -3,8 +3,8 @@ import { waitForHydration } from './hydration-helper.ts';
 import { settleBy } from './settle-helper.ts';
 
 /**
- * 中身入りのサンプルのWorkspace。トップの「サンプルのWorkspaceを作る」は、比較表・N感度・Bigram Flow・指ごとの距離を並べた
- * Workspaceを新しく作って開く。空のWorkspaceの中の「サンプルの並びで始める」は、新しく作らず今のWorkspaceに同じ並びを入れる。
+ * 中身入りのサンプルのWorkspace。トップの「複数の配列を並べたサンプルを作る」は、比較表・N感度・Bigram Flow・指ごとの距離を並べた
+ * Workspaceを新しく作って開く。空のWorkspaceの中の「複数の配列を並べたサンプルで始める」は、新しく作らず今のWorkspaceに同じ並びを入れる。
  */
 
 const WORKSPACES_KEY = 'keydist:workspaces';
@@ -93,13 +93,13 @@ async function expectSampleLayout(page: Page, id: string): Promise<void> {
   await expect(page.locator('.pane-frame').first().getByRole('heading', { level: 2, name: '比較表', exact: true })).toBeVisible();
 }
 
-test('トップの「サンプルのWorkspaceを作る」で、サンプルのWorkspaceができて開く。全体の条件は変わらない', async ({ page }) => {
+test('トップの「複数の配列を並べたサンプルを作る」で、サンプルのWorkspaceができて開く。全体の条件は変わらない', async ({ page }) => {
   await page.goto('/');
   await waitForHydration(page);
   const before = await globalSnapshot(page);
   expect(await storedWorkspaces(page)).toHaveLength(0);
 
-  await page.locator('.hero').getByRole('button', { name: 'サンプルのWorkspaceを作る' }).click();
+  await page.locator('.hero').getByRole('button', { name: '複数の配列を並べたサンプルを作る' }).click();
   await expectSampleWorkspace(page, 'サンプル');
 
   expect(await globalSnapshot(page)).toEqual(before);
@@ -110,7 +110,7 @@ test('トップの「サンプルのWorkspaceを作る」で、サンプルのWo
   await expect(page.locator('.pane-frame')).toHaveCount(10);
 });
 
-test('空のWorkspaceの「サンプルの並びで始める」で、今のWorkspaceにサンプルの並びが入る。一覧は増えず、元に戻すで空に戻る', async ({ page }) => {
+test('空のWorkspaceの「複数の配列を並べたサンプルで始める」で、今のWorkspaceにサンプルの並びが入る。一覧は増えず、元に戻すで空に戻る', async ({ page }) => {
   await page.goto('/');
   await waitForHydration(page);
   await page.locator('#app-sidebar').getByRole('button', { name: '＋ 新しいWorkspace' }).click();
@@ -119,7 +119,7 @@ test('空のWorkspaceの「サンプルの並びで始める」で、今のWorks
   const emptyId = new URL(url).pathname.split('/').pop()!;
   const before = await globalSnapshot(page);
 
-  await page.locator('[data-workspace-empty="true"]').getByRole('button', { name: 'サンプルの並びで始める' }).click();
+  await page.locator('[data-workspace-empty="true"]').getByRole('button', { name: '複数の配列を並べたサンプルで始める' }).click();
   // 同じ画面のまま、名前も変わらずに並びが入る
   await expect(page.locator('.pane-frame')).toHaveCount(10);
   expect(page.url()).toBe(url);
@@ -143,18 +143,18 @@ test('空のWorkspaceの「サンプルの並びで始める」で、今のWorks
 test('トップから2回作ると、名前は既存のWorkspaceと同じく連番になる', async ({ page }) => {
   await page.goto('/');
   await waitForHydration(page);
-  await page.locator('.hero').getByRole('button', { name: 'サンプルのWorkspaceを作る' }).click();
+  await page.locator('.hero').getByRole('button', { name: '複数の配列を並べたサンプルを作る' }).click();
   await expectSampleWorkspace(page, 'サンプル');
   await page.goto('/');
   await waitForHydration(page);
-  await page.locator('.hero').getByRole('button', { name: 'サンプルのWorkspaceを作る' }).click();
+  await page.locator('.hero').getByRole('button', { name: '複数の配列を並べたサンプルを作る' }).click();
   await expectSampleWorkspace(page, 'サンプル 2');
 });
 
 test('サンプルのWorkspaceは普通のWorkspaceと同じに扱える。Bigram Flowの解析設定は Within-hand、ペインを閉じて元に戻せる', async ({ page }) => {
   await page.goto('/');
   await waitForHydration(page);
-  await page.locator('.hero').getByRole('button', { name: 'サンプルのWorkspaceを作る' }).click();
+  await page.locator('.hero').getByRole('button', { name: '複数の配列を並べたサンプルを作る' }).click();
   await expectSampleWorkspace(page, 'サンプル');
 
   const bigramFlow = page.locator('.pane-frame').nth(2);
@@ -182,7 +182,7 @@ async function openSampleAt(page: Page, size: { width: number; height: number },
   }
   await page.goto('/');
   await waitForHydration(page);
-  await page.locator('.hero').getByRole('button', { name: 'サンプルのWorkspaceを作る' }).click();
+  await page.locator('.hero').getByRole('button', { name: '複数の配列を並べたサンプルを作る' }).click();
   await expectSampleWorkspace(page, 'サンプル');
   await expect(page.locator('[data-flow-edge="true"]').first()).toBeAttached({ timeout: 15_000 });
   await expect(page.locator('[data-n-sensitivity-series]').first()).toBeAttached({ timeout: 15_000 });
@@ -246,3 +246,82 @@ test('1440x900（サイドバー固定）では、24列の並びは面の中で�
   expect(m.panes).toHaveLength(10);
   for (const [scrollHeight, clientHeight] of m.panes) expect(scrollHeight).toBeLessThanOrEqual(clientHeight! + 1);
 });
+
+const LAYOUT_DETAIL_BUTTON = '配列の詳細と比較のサンプルを作る';
+const LAYOUT_DETAIL_ANALYZERS = [
+  'playback', 'heatmap-layers', 'heatmap', 'finger-distance', 'finger-distance', 'bigram-flow',
+  'comparison', 'n-sensitivity', 'finger-matrix', 'finger-matrix', 'finger-matrix', 'finger-matrix',
+];
+
+test('トップの「配列の詳細と比較のサンプルを作る」で、12個のペインを持つWorkspaceができて開く。詳細の段が上、比較の段が下', async ({ page }) => {
+  await page.goto('/');
+  await waitForHydration(page);
+  await page.locator('.hero').getByRole('button', { name: LAYOUT_DETAIL_BUTTON }).click();
+  await expect(page).toHaveURL(/\/workspace\/[^/?]+$/);
+  await expect(page.locator('.context-bar').getByRole('heading', { level: 1, name: '配列の詳細と比較', exact: true })).toBeVisible();
+  await expect(page.locator('.pane-frame')).toHaveCount(12);
+  const workspace = (await storedWorkspaces(page))[0]!;
+  expect(workspace.panes.map((pane) => pane.analyzerId)).toEqual(LAYOUT_DETAIL_ANALYZERS);
+  // 全部が同じ連動の組に従う
+  expect(new Set(workspace.panes.map((pane) => pane.binding.group))).toEqual(new Set(['link-1']));
+  const detailBottom = Math.max(...workspace.grid.slice(0, 6).map((item) => item.y + item.h));
+  expect(Math.min(...workspace.grid.slice(6).map((item) => item.y))).toBeGreaterThanOrEqual(detailBottom);
+});
+
+test('空のWorkspaceの「配列の詳細と比較のサンプルで始める」で、今のWorkspaceに12個のペインが入る', async ({ page }) => {
+  await page.goto('/');
+  await waitForHydration(page);
+  await page.locator('#app-sidebar').getByRole('button', { name: '＋ 新しいWorkspace' }).click();
+  const empty = page.locator('[data-workspace-empty="true"]');
+  await expect(empty).toBeVisible();
+  // 2つのボタンは文言で区別でき、それぞれの文言の部分一致で1つに当たる
+  await expect(empty.getByRole('button', { name: /サンプルで始める$/ })).toHaveCount(2);
+  await expect(empty.getByRole('button', { name: '配列の詳細と比較' })).toHaveCount(1);
+  await expect(empty.getByRole('button', { name: '複数の配列を並べた' })).toHaveCount(1);
+  await empty.getByRole('button', { name: '配列の詳細と比較のサンプルで始める' }).click();
+  await expect(page.locator('.pane-frame')).toHaveCount(12);
+  await page.locator('.context-bar').getByRole('button', { name: '元に戻す' }).click();
+  await expect(empty).toBeVisible();
+});
+
+for (const size of [{ width: 1920, height: 930 }, { width: 1440, height: 900 }]) {
+  test(`配列の詳細と比較のサンプルは、${size.width}x${size.height}で、どのペインも中でスクロールしない`, async ({ page }) => {
+    await page.setViewportSize(size);
+    await page.goto('/');
+    await waitForHydration(page);
+    await page.locator('.hero').getByRole('button', { name: LAYOUT_DETAIL_BUTTON }).click();
+    await expect(page.locator('.pane-frame')).toHaveCount(12);
+    await expect(page.locator('.workspace-grid-item .pane-frame[data-pane-status="ready"]')).toHaveCount(12, { timeout: 30_000 });
+    await settleBy(page, () => page.evaluate(() => [
+      ...[...document.querySelectorAll('.workspace-grid-item')].map((el) => {
+        const r = el.getBoundingClientRect();
+        return `${Math.round(r.x)},${Math.round(r.y)},${Math.round(r.width)},${Math.round(r.height)}`;
+      }),
+      ...[...document.querySelectorAll('.n-sensitivity-svg')].map((svg) => `${Math.round(svg.getBoundingClientRect().width)}:${svg.getAttribute('viewBox')}`),
+    ].join('|')), 8);
+    const m = await page.evaluate(() => ({
+      area: (() => {
+        const area = document.querySelector('.workspace-grid-area')!;
+        return [area.scrollWidth, area.clientWidth];
+      })(),
+      // 本体と、本体の中の要素（表の包みなど）の縦横のスクロール
+      panes: [...document.querySelectorAll('.workspace-grid-item .pane-body')].map((body) => {
+        const inner = [...body.querySelectorAll('*')].filter((el) => {
+          const style = getComputedStyle(el);
+          return (/(auto|scroll)/.test(style.overflowX) && el.scrollWidth > el.clientWidth + 1) || (/(auto|scroll)/.test(style.overflowY) && el.scrollHeight > el.clientHeight + 1);
+        }).length;
+        return [body.scrollHeight, body.clientHeight, body.scrollWidth, body.clientWidth, inner];
+      }),
+    }));
+    expect(m.panes).toHaveLength(12);
+    m.panes.forEach(([scrollHeight, clientHeight, scrollWidth, clientWidth, inner], i) => {
+      expect(scrollHeight, `${LAYOUT_DETAIL_ANALYZERS[i]}の縦`).toBeLessThanOrEqual(clientHeight! + 1);
+      expect(scrollWidth, `${LAYOUT_DETAIL_ANALYZERS[i]}の横`).toBeLessThanOrEqual(clientWidth! + 1);
+      // N感度は畳んだ表の包みが横にスクロールする作りで、他は中でスクロールしない
+      if (LAYOUT_DETAIL_ANALYZERS[i] !== 'n-sensitivity') expect(inner, `${LAYOUT_DETAIL_ANALYZERS[i]}の中のスクロール`).toBe(0);
+    });
+    // 1920pxの面（サイドバー固定）には24列の並びが横にスクロールせず収まり、1440pxの面では面の中で横にスクロールする
+    if (size.width === 1920) expect(m.area[0]).toBeLessThanOrEqual(m.area[1]! + 1);
+    else expect(m.area[0]).toBeGreaterThan(m.area[1]!);
+  });
+}

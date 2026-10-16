@@ -200,8 +200,8 @@ test('空のWorkspaceでは文脈バーに「ペインを追加」を出さず�
   await open(page, { width: 1440, height: 900 }, []);
   await expect(page.locator('.context-bar .workspace-add-pane-button')).toHaveCount(0);
   await expect(page.locator('[data-workspace-empty] .workspace-add-pane-button')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'サンプルの並びで始める' })).toBeVisible();
-  await page.getByRole('button', { name: 'サンプルの並びで始める' }).click();
+  await expect(page.getByRole('button', { name: '複数の配列を並べたサンプルで始める' })).toBeVisible();
+  await page.getByRole('button', { name: '複数の配列を並べたサンプルで始める' }).click();
   // 並びが入ると、文脈バーに出る
   await expect(page.locator('.context-bar .workspace-add-pane-button')).toBeVisible();
 });

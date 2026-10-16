@@ -28,7 +28,7 @@ import {
   type WorkspacePane,
   type WorkspacePaneTarget,
 } from './workspace.ts';
-import { applySampleLayout, createSampleWorkspace } from './sample-workspace.ts';
+import { applySampleLayout, createSampleWorkspace, sampleLabel, type SampleKind } from './sample-workspace.ts';
 import type { GridColumnRange, GridSize, WorkspaceGrid } from './workspace-grid.ts';
 
 /**
@@ -88,20 +88,20 @@ function createWorkspaceFromAssets(
  * 中身入りのサンプルのWorkspaceを作る（中身は`sample-workspace.ts`）。`id`・`generatePaneId`は呼び出し側が発行する。
  * 対象は個別画面の選択を写さず、サンプルの定義どおり。作成は1回の操作で、元に戻すも1回で戻る。
  */
-export function createSampleWorkspaceCommand(id: string, generatePaneId: () => string): Command<KeydistAssets> {
+export function createSampleWorkspaceCommand(id: string, generatePaneId: () => string, kind: SampleKind): Command<KeydistAssets> {
   return (current) => {
     if (current.workspaces.some((workspace) => workspace.id === id)) return { kind: 'no-op' };
-    const created = createSampleWorkspace(current.workspaces, () => id, generatePaneId);
-    return { kind: 'applied', label: 'サンプルのWorkspaceを作成する', changes: { workspaces: created.library } };
+    const created = createSampleWorkspace(current.workspaces, () => id, generatePaneId, kind);
+    return { kind: 'applied', label: `${sampleLabel(kind)}を作成する`, changes: { workspaces: created.library } };
   };
 }
 
 /**
- * 空のWorkspaceにサンプルの並びを入れる（「サンプルの並びで始める」）。新しいWorkspaceは作らず、今のWorkspaceを書き換える。
+ * 空のWorkspaceにサンプルの並びを入れる（「〜のサンプルで始める」）。新しいWorkspaceは作らず、今のWorkspaceを書き換える。
  * 1回の操作で、元に戻すも1回で空に戻る。ペインがある・存在しないWorkspaceは何もしない。
  */
-export function startWorkspaceFromSampleCommand(workspaceId: string, generatePaneId: () => string): Command<KeydistAssets> {
-  return workspacesCommand('サンプルの並びで始める', (library) => applySampleLayout(library, workspaceId, generatePaneId));
+export function startWorkspaceFromSampleCommand(workspaceId: string, generatePaneId: () => string, kind: SampleKind): Command<KeydistAssets> {
+  return workspacesCommand(`${sampleLabel(kind)}で始める`, (library) => applySampleLayout(library, workspaceId, generatePaneId, kind));
 }
 
 /** 個別画面から送るAnalyzer（ペインの素）。idと、個別画面で使っていた解析設定。 */

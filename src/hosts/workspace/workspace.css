@@ -92,7 +92,15 @@
   font-size: 1rem;
 }
 
-/* 空のWorkspaceの「サンプルの並びで始める」。主の操作（ペインを追加）より控えめな文字のボタン。 */
+/* 空のWorkspaceの、サンプルで始めるボタンの並び。狭い幅では折り返す */
+.workspace-sample-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.25rem 1rem;
+}
+
+/* 空のWorkspaceの「〜のサンプルで始める」。主の操作（ペインを追加）より控えめな文字のボタン。 */
 .workspace-sample-button {
   padding: 0.25rem 0.5rem;
   border: 0;
