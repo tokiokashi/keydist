@@ -276,7 +276,7 @@ export function otherPlacementNote(
   if (titles.length === 0) return undefined;
   const shown = titles.slice(0, OTHER_PLACEMENT_NAME_LIMIT).join('、');
   const rest = titles.length - OTHER_PLACEMENT_NAME_LIMIT;
-  return `ほかの適用範囲でも上書きしています: ${shown}${rest > 0 ? `、ほか${rest}件` : ''}`;
+  return `ほかの適用範囲でも変更しています: ${shown}${rest > 0 ? `、ほか${rest}件` : ''}`;
 }
 
 /** 適用範囲の全項目について`otherPlacementNote`を求める。 */
