@@ -29,7 +29,7 @@ test('6桁・7桁・8桁の値は、棒の幅に収まる5文字以内の表示�
   }
 });
 
-test('10万以上は k、100万以上は M で縮める', () => {
+test('10万以上はkで、100万以上はMで縮める', () => {
   assert.equal(valueTextOf(123_456, 'presses'), '123k');
   assert.equal(valueTextOf(1_234_567, 'presses'), '1.2M');
   assert.equal(valueTextOf(12_345_678, 'presses'), '12M');
