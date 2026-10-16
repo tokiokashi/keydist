@@ -31,8 +31,19 @@ export interface ChartSpec {
   readonly title: string;
 }
 
-/** 棒の上の値。桁が多い時は小数を落として棒の幅に収める。 */
-const compact = (value: number, text: string): string => (Math.abs(value) >= 1000 ? value.toFixed(0) : text);
+/**
+ * 棒の上の値。棒の幅は1本ぶんの約33px（幅390px時）しか無いので、桁が増えると隣の値と重なる。
+ * 1000以上は小数を落とし、10万以上は k、100万以上は M の単位で縮める。縮めた値は4〜5文字に収まり、
+ * 桁数によらず上限が一定になる。正確な値はツールチップに出る。
+ */
+const compact = (value: number, plain: string): string => {
+  // 境目は表示する桁で判定する（99999.7 は「100000」と出るので k に寄せる）
+  const abs = Math.round(Math.abs(value));
+  if (abs >= 10_000_000) return `${Math.round(value / 1_000_000)}M`;
+  if (abs >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (abs >= 100_000) return `${Math.round(value / 1_000)}k`;
+  return plain;
+};
 
 export function chartSpecOf(extracted: FingerDistanceExtracted, metric: FingerDistanceChartMetric): ChartSpec {
   if (metric === 'distance' || metric === 'presses') {
@@ -48,7 +59,9 @@ export function chartSpecOf(extracted: FingerDistanceExtracted, metric: FingerDi
           label: SHORT_FINGER[item.finger],
           hand: item.hand,
           value,
-          valueText: isDistance ? compact(value, formatDistance(value)) : String(value),
+          valueText: isDistance
+            ? compact(value, value >= 1000 ? value.toFixed(0) : formatDistance(value))
+            : compact(value, String(value)),
           tip: `${FINGER_LABEL[item.finger]}: ${text}（全体の${formatShare(share)}）`,
         };
       }),
