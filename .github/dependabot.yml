@@ -1,0 +1,53 @@
+# 依存の更新PRを週1回まとめて作る。運用は CONTRIBUTING.md の「依存の自動更新」。
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    # グループは1つが1PRになる。グループ数が既定の5を超えるので引き上げる
+    open-pull-requests-limit: 10
+    # 件名を `build(deps): …` / `build(deps-dev): …` にして、CIのcommit-messagesの検査を通す
+    commit-message:
+      prefix: "build"
+      include: "scope"
+    groups:
+      # 依存は最初に当たったグループに入る。上のグループほど優先される。
+      # @tanstack/react-* は react のグループより先に tanstack に入れるため、tanstack を上に置く
+      tanstack:
+        patterns:
+          - "@tanstack/*"
+      vite:
+        patterns:
+          - "vite"
+          - "@vitejs/*"
+      react:
+        patterns:
+          - "react"
+          - "react-*"
+          - "@types/react"
+          - "@types/react-dom"
+      playwright:
+        patterns:
+          - "@playwright/*"
+      # beta版なので、他の更新に混ぜずに単独のPRにする
+      nitro:
+        patterns:
+          - "nitro"
+      dev:
+        dependency-type: "development"
+        patterns:
+          - "*"
+      app:
+        dependency-type: "production"
+        patterns:
+          - "*"
+      # セキュリティ更新は、グループが無いと依存ごとに別のPRになり、
+      # 件名が依存名の列挙で長くなる。1つにまとめて件名を短く保つ
+      security:
+        applies-to: "security-updates"
+        patterns:
+          - "*"
