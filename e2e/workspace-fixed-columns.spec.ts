@@ -246,3 +246,72 @@ test('横にスクロールした状態から拡大しても、拡大したペ�
   expect(await area(page).evaluate((el) => el.scrollLeft)).toBe(scrollBefore);
   expect(await stored(page)).toEqual(gridBefore);
 });
+
+/** ペインの上端（画面の上からの画素）。縦に動いたかを、スクロールの有無に依らず測る。 */
+const viewportTop = (page: Page, id: string) => item(page, id).evaluate((el) => Math.round(el.getBoundingClientRect().top));
+
+const TALL = [cell('a', 0, 0, 12, 20), cell('b', 12, 0, 12, 20), cell('c', 0, 20, 12, 20)];
+
+/** 24列が収まる幅で縦に長い並びを開き、ページを縦に600px下げる。 */
+async function openScrolledDown(page: Page): Promise<void> {
+  await open(page, ['a', 'b', 'c'], TALL, { width: 1920, height: 700 });
+  expect(await scrollsX(page)).toBe(false);
+  await page.evaluate(() => window.scrollTo(0, 600));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(600);
+}
+
+/** 縦に動かしていないことを、保存した並びで確かめる。 */
+async function expectRowsKept(page: Page): Promise<void> {
+  const rows = await stored(page);
+  expect(rows.find((entry) => entry.id === 'c')!.y).toBe(20);
+  expect(rows.find((entry) => entry.id === 'a')!.y).toBe(0);
+  expect(rows.find((entry) => entry.id === 'b')!.y).toBe(0);
+}
+
+test('縦にスクロールした状態からつかみ所で右端まで動かして列が伸びても、枠はポインタの下に残り、他の枠は縦に動かない', async ({ page }) => {
+  await openScrolledDown(page);
+  const before = await viewportTop(page, 'c');
+  const grab = (await item(page, 'c').locator('.workspace-drag-handle').boundingBox())!;
+  const x = grab.x + grab.width / 2;
+  const y = grab.y + grab.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + 12 * COL_STEP, y, { steps: 12 });
+  // 列が伸びて横にスクロールする状態になっても、枠の高さの位置は変わらない
+  await expect.poll(() => scrollsX(page)).toBe(true);
+  await settle(page);
+  expect(Math.abs((await viewportTop(page, 'c')) - before)).toBeLessThanOrEqual(2);
+  await page.mouse.up();
+  await settle(page);
+  await expectRowsKept(page);
+});
+
+test('縦にスクロールした状態から右の辺で広げて列が伸びても、枠はポインタの下に残り、他の枠は縦に動かない', async ({ page }) => {
+  await openScrolledDown(page);
+  const before = await viewportTop(page, 'c');
+  const east = (await item(page, 'c').locator('.react-resizable-handle-e').boundingBox())!;
+  const x = east.x + east.width / 2;
+  const y = east.y + east.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + 12 * COL_STEP, y, { steps: 12 });
+  await expect.poll(() => scrollsX(page)).toBe(true);
+  await settle(page);
+  expect(Math.abs((await viewportTop(page, 'c')) - before)).toBeLessThanOrEqual(2);
+  await page.mouse.up();
+  await settle(page);
+  await expectRowsKept(page);
+});
+
+test('横にスクロールしない幅と横にスクロールする幅の間で窓の幅を変えても、見えている行は変わらない', async ({ page }) => {
+  await openScrolledDown(page);
+  const before = await viewportTop(page, 'c');
+  await page.setViewportSize({ width: 1500, height: 700 });
+  await settle(page);
+  expect(await scrollsX(page)).toBe(true);
+  expect(Math.abs((await viewportTop(page, 'c')) - before)).toBeLessThanOrEqual(2);
+  await page.setViewportSize({ width: 1920, height: 700 });
+  await settle(page);
+  expect(await scrollsX(page)).toBe(false);
+  expect(Math.abs((await viewportTop(page, 'c')) - before)).toBeLessThanOrEqual(2);
+});

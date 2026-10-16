@@ -66,7 +66,8 @@ export function rightmostCol(grid: WorkspaceGrid): number {
  */
 export function visibleColRange(scrollLeft: number, clientWidth: number): GridColumnRange {
   const start = Math.max(0, Math.ceil((scrollLeft - GRID_PADDING_PX) / GRID_COL_STEP_PX));
-  const end = Math.floor((scrollLeft + clientWidth - GRID_PADDING_PX + GRID_MARGIN_PX) / GRID_COL_STEP_PX);
+  // 右の外周の余白（`GRID_PADDING_PX`）も見えている幅から除く。スクロールしていない面では`colsFitting`と一致する
+  const end = Math.floor((scrollLeft + clientWidth - 2 * GRID_PADDING_PX + GRID_MARGIN_PX) / GRID_COL_STEP_PX);
   return { start, end: Math.max(start + 1, end) };
 }
 

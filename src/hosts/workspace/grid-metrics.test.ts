@@ -60,6 +60,10 @@ test('visibleColRange: 一部しか見えていない端の列は含めない', 
   const first = visibleColRange(0, 1680);
   assert.equal(first.start, 0);
   assert.equal(first.end, colsFitting(1680));
+  // スクロールしていない面では、どの幅でも面に収まる列の数と一致する（超えない）
+  for (let area = 761; area <= 2560; area += 1) {
+    assert.equal(visibleColRange(0, area).end, colsFitting(area), `${area}px`);
+  }
   // 列の途中までスクロールすると、左端の欠けた列を含めない
   const scrolled = visibleColRange(100, 1000);
   const left = GRID_PADDING_PX + scrolled.start * GRID_COL_STEP_PX;

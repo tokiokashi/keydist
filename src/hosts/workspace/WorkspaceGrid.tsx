@@ -93,8 +93,6 @@ function useEdgeScroll(areaRef: { readonly current: HTMLElement | null }, active
  *
  * 面の幅から決まるのは、面に収まる列の数（と、横にスクロールするか）だけで、ペインの画素の幅は変わらない。
  * 縦のスクロールバーが後から出て面が狭くなった時も、観測の通知で測り直す。
- * あわせて、文脈バーの高さを面のCSS変数（`--context-bar-height`）へ書く。横にスクロールする時に、面の高さを
- * 画面の残りに収めて横のスクロールバーを画面の下端に出すために使う。
  */
 function useGridAreaWidth(): { readonly width: number | null; readonly containerRef: RefObject<HTMLDivElement | null> } {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -102,19 +100,56 @@ function useGridAreaWidth(): { readonly width: number | null; readonly container
   useLayoutEffect(() => {
     const node = containerRef.current;
     if (node === null) return undefined;
-    const bar = document.querySelector('.context-bar');
     const measure = () => {
       const next = Math.round(node.clientWidth);
       setWidth((prev) => (prev === next ? prev : next));
-      node.style.setProperty('--context-bar-height', `${bar === null ? 0 : bar.getBoundingClientRect().height}px`);
     };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(node);
-    if (bar !== null) observer.observe(bar);
     return () => observer.disconnect();
   }, []);
   return { width, containerRef };
+}
+
+/**
+ * 面が横にスクロールするかどうかが切り替わる時に、縦の表示位置を引き継ぐ。
+ * 横にスクロールしない間は縦のスクロールがページにあり、横にスクロールする間は面の中にある（`workspace-grid.css`）。
+ * 切り替わった直後はどちらも先頭へ戻るので、直前の位置を、ページ→面、面→ページへ写す。
+ * 同じ列の同じ行がポインタの下に残るので、ドラッグ・大きさの変更の途中に切り替わっても、動かしている枠は別の行へ動かない。
+ * 直前の位置は、スクロールのたびに控えておく（切り替わった後には読めないため）。
+ */
+function useKeepVerticalView(areaRef: { readonly current: HTMLElement | null }, scrollsX: boolean): void {
+  const last = useRef({ pageY: 0, areaY: 0 });
+  const previous = useRef(scrollsX);
+  useEffect(() => {
+    const area = areaRef.current;
+    const onPage = () => {
+      last.current.pageY = window.scrollY;
+    };
+    const onArea = () => {
+      last.current.areaY = area?.scrollTop ?? 0;
+    };
+    window.addEventListener('scroll', onPage, { passive: true });
+    area?.addEventListener('scroll', onArea, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onPage);
+      area?.removeEventListener('scroll', onArea);
+    };
+  }, [areaRef]);
+  useLayoutEffect(() => {
+    if (previous.current === scrollsX) return;
+    previous.current = scrollsX;
+    const area = areaRef.current;
+    if (area === null) return;
+    if (scrollsX) {
+      area.scrollTop = last.current.pageY;
+      window.scrollTo(window.scrollX, 0);
+    } else {
+      window.scrollTo(window.scrollX, last.current.areaY);
+    }
+    last.current = { pageY: window.scrollY, areaY: area.scrollTop };
+  }, [areaRef, scrollsX]);
 }
 
 /**
@@ -190,6 +225,7 @@ export function WorkspaceGrid({ grid, analyzerIdOf, titleOf, descriptionOf, help
   const cols = gridCols(width ?? 0, rightmostCol(displayGrid), reach);
   const canvasWidth = gridWidthPx(cols);
   const scrollsX = width !== null && canvasWidth > width;
+  useKeepVerticalView(containerRef, scrollsX);
   useLayoutEffect(() => {
     if (visibleRangeRef === undefined) return undefined;
     visibleRangeRef.current = () => {
