@@ -1,4 +1,4 @@
-# 依存の更新PRを週1回まとめて作る。運用は CONTRIBUTING.md の「依存の自動更新」。
+# 依存の更新PRを週1回まとめて作る。運用は CONTRIBUTING.mdの「依存の自動更新」。
 version: 2
 updates:
   - package-ecosystem: "npm"
@@ -16,7 +16,7 @@ updates:
       include: "scope"
     groups:
       # 依存は最初に当たったグループに入る。上のグループほど優先される。
-      # @tanstack/react-* は react のグループより先に tanstack に入れるため、tanstack を上に置く
+      # @tanstack/react-*をreactのグループより先にtanstackへ入れるため、tanstackを上に置く
       tanstack:
         patterns:
           - "@tanstack/*"
