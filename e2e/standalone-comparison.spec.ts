@@ -362,7 +362,9 @@ test('絞り込み欄で候補を絞り、キーボードだけで選んで、Es
   await expect(selection.locator('input[type="checkbox"]')).toHaveCount(2);
   await expect(selection.locator('[data-target-group]')).toHaveCount(1);
 
-  // Tabで候補へ移り、Spaceで付けた瞬間に反映される（決定ボタンは無い）。
+  // Tabで種類の切り替えを経て候補へ移り、Spaceで付けた瞬間に反映される（決定ボタンは無い）。
+  await page.keyboard.press('Tab');
+  await expect(selection.getByRole('radio', { name: 'すべて' })).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(selection.locator('input[value="layout:colemak"]')).toBeFocused();
   await page.keyboard.press('Space');
@@ -377,6 +379,26 @@ test('絞り込み欄で候補を絞り、キーボードだけで選んで、Es
   // 閉じて開き直すと絞り込みは空に戻る。
   await button.click();
   await expect(filter).toHaveValue('');
+});
+
+test('種類の切り替えで、かな配列だけ・英字の配列だけに絞れ、開き直すと「すべて」に戻る', async ({ page }) => {
+  await page.goto('/analyzer/comparison');
+  await dismissAutoOpenedSelection(page);
+  const button = page.getByRole('button', { name: /^対象: / });
+  await button.click();
+  const selection = page.getByRole('dialog', { name: '対象の選択' });
+  await selection.getByRole('radio', { name: 'かな配列' }).check();
+  await expect(selection.locator('input[value="layout:naginata-v18"]')).toBeVisible();
+  await expect(selection.locator('input[value="layout:qwerty"]')).toHaveCount(0);
+  await selection.getByRole('radio', { name: '英字の配列' }).check();
+  await expect(selection.locator('input[value="layout:qwerty"]')).toBeVisible();
+  await expect(selection.locator('input[value="layout:naginata-v18"]')).toHaveCount(0);
+  // 名前の絞り込みと同時に使える。
+  await selection.getByRole('searchbox').fill('なぎなた');
+  await expect(selection.locator('input[type="checkbox"]')).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await button.click();
+  await expect(selection.getByRole('radio', { name: 'すべて' })).toBeChecked();
 });
 
 test('絞り込み欄は読みでも探せ、カタカナで打っても同じ候補が出る', async ({ page }) => {

@@ -373,14 +373,15 @@ export function TargetSelection({
               />
               <div className="target-selection-kind" role="group" aria-label="配列の種類で絞り込む">
                 {KIND_FILTERS.map((item) => (
-                  <button
-                    type="button"
-                    key={item.value}
-                    aria-pressed={kindFilter === item.value}
-                    onClick={() => setKindFilter(item.value)}
-                  >
-                    {item.label}
-                  </button>
+                  <label key={item.value}>
+                    <input
+                      type="radio"
+                      name={`${panelId}-kind`}
+                      checked={kindFilter === item.value}
+                      onChange={() => setKindFilter(item.value)}
+                    />
+                    <span>{item.label}</span>
+                  </label>
                 ))}
               </div>
             </div>
