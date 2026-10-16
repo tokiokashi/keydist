@@ -219,6 +219,7 @@ export function PaneFrame({
       title={props.title}
       closeLabel={props.closeLabel}
       kind="figure-settings"
+      titleHeading
       placement="below-start"
       anchor={props.anchor}
       {...(figureWindowPaneName === undefined ? {} : { paneName: figureWindowPaneName })}
@@ -307,6 +308,7 @@ export function PaneFrame({
       <FloatingWindow
         open={settingsOpen}
         onClose={closeSettings}
+        titleHeading
         anchor={settingsButtonRef.current}
         {...(onResetOptions === undefined ? {} : { onReset: onResetOptions })}
         {...(optionsBinding?.shared ? { resetTitle: OPTIONS_SHARED_RESET_TITLE } : {})}

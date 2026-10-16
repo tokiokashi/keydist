@@ -1,6 +1,7 @@
 import { createPortal } from 'react-dom';
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { MOBILE_QUERY } from '#ui/theme/breakpoints.ts';
+import { WindowTitle } from './window-title.ts';
 
 /**
  * ペインの浮かぶ小窓（docs/architecture.md「ペイン」の「解析設定は小窓で開く」「キーの詳細は、図のキーで見せる」）。
@@ -25,6 +26,12 @@ export interface FloatingWindowProps {
   readonly title?: string;
   /** 閉じるボタンの読み上げ名。省略は「解析設定を閉じる」。 */
   readonly closeLabel?: string;
+  /**
+   * 見出しの語を見出し（h2）にするか。省略は文字（span）。
+   * 解析設定と図の表示は、その中のグループの見出し（h3）の1つ上の階層に当たるのでh2にする。
+   * キーの詳細は見出しを持たせず、本文の見出し（h4以下）との並びを変えない。
+   */
+  readonly titleHeading?: boolean;
   /** 小窓の種類。画面の部品を見分ける印になる。省略は解析設定。 */
   readonly kind?: 'settings' | 'key-detail' | 'figure-settings';
   /** Workspaceのペイン名（読み上げ用の名前と同じもの）。個別画面ではページに1枚なので出さない。 */
@@ -106,6 +113,7 @@ export function FloatingWindow({
   onClose,
   title = '解析設定',
   closeLabel = '解析設定を閉じる',
+  titleHeading = false,
   kind = 'settings',
   paneName,
   anchor,
@@ -276,10 +284,7 @@ export function FloatingWindow({
         onPointerUp={isSheet ? onSheetPointerEnd : endDrag}
         onPointerCancel={isSheet ? onSheetPointerEnd : endDrag}
       >
-        <span className="settings-window-title">
-          <span className="settings-window-title-text">{title}</span>
-          {paneName === undefined ? null : <span className="settings-window-pane">{paneName}</span>}
-        </span>
+        <WindowTitle title={title} paneName={paneName} heading={titleHeading} />
         {onReset === undefined ? null : (
           <button
             type="button"
