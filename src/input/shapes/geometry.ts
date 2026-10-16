@@ -641,11 +641,18 @@ export function buildGeometry(
   homes.LT = { x: thumbs.LT.x, y: thumbs.LT.y };
   homes.RT = { x: thumbs.RT.x, y: thumbs.RT.y };
 
-  // 担当する指（仕様 §3.2）。親指キーはその手の親指、Shiftキーは左右の小指だけが担当する
+  // 担当する指（仕様 §3.2）。親指キーはその手の親指、Shiftキーは左右の小指だけが担当する。
+  // 分割する物理配列では、キーと反対側の手の追加の担当を外す（仕様 §9.1）。基本の指は外さない
+  const splits = s.splitAt !== undefined && (s.splitGap ?? 0) > 0;
   const fingerCandidates = new Map<string, readonly Finger[]>();
   for (const key of keys.values()) {
     const fixed = isThumb(key.finger) || key.id === SHIFT_KEY.L || key.id === SHIFT_KEY.R;
-    const owners = fixed ? [key.finger] : keyOwners(assignment, key.id);
+    const side = key.col >= splitAt ? 'R' : 'L';
+    const owners = fixed
+      ? [key.finger]
+      : keyOwners(assignment, key.id).filter(
+        (finger) => !splits || finger === key.finger || finger.startsWith(side),
+      );
     fingerCandidates.set(key.id, owners.length > 0 ? owners : [key.finger]);
   }
 

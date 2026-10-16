@@ -369,6 +369,16 @@ function generate(): Fixture {
     note: 'fingerAssignment=jis-default（既定の列固定割り当てと違う指割り当て。同指連続の判定が変わる分岐）',
   }));
 
+  // 分割する物理配列では、反対側の手の指を担当に持つ割り当てでも、その指を選ばない（仕様 §9.1）
+  const qwertyJa = byId(LAYOUTS_JA, 'qwerty');
+  for (const shapeId of ['split-ortholinear', 'column-staggered'] as const) {
+    cases.push(runCase('ja', qwertyJa, 'legacy', {
+      shapeId,
+      fingerAssignment: QWERTY_OPTIMIZED_FINGER_ASSIGNMENT,
+      note: `物理配列=${shapeId}・fingerAssignment=qwerty-optimized（分割する物理配列で反対側の手の追加の担当を候補から外す分岐）`,
+    }));
+  }
+
   cases.sort((a, b) => a.id.localeCompare(b.id));
 
   return {

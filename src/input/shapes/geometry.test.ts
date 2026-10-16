@@ -9,8 +9,10 @@ import {
   makeFingerAssignment,
   PHYSICAL_SHAPES,
   presetGeometryKind,
+  QWERTY_OPTIMIZED_FINGER_ASSIGNMENT,
   presetGeometryStandard,
   presetGeometryTopology,
+  type Finger,
   type NonThumb,
   type PhysicalShape,
 } from './geometry.ts';
@@ -335,5 +337,69 @@ test('split-ortholinearの既定の指割り当て（列固定）は分割の位
     // 左右のホームの間隔は、分割しない場合より分割の間隔の分だけ広い
     const plain = buildGeometry(kind.replace('split-', '') as 'ortholinear', assignment);
     near(g.homes.RI.x - g.homes.LI.x, plain.homes.RI.x - plain.homes.LI.x + 2);
+  }
+});
+
+/** 基本の指は既定の列固定のまま、指定したキーだけ追加の担当を足した割り当て */
+function withExtra(
+  extra: Record<string, readonly Finger[]>,
+  base: Record<string, NonThumb> = DEFAULT_FINGER_ASSIGNMENT.baseFinger,
+) {
+  return makeFingerAssignment('extra', 'extra', base, DEFAULT_FINGER_ASSIGNMENT.homeKey, extra);
+}
+
+test('分割する物理配列では、キーと反対側の手の追加の担当（親指を含む）が候補から外れる', () => {
+  const assignment = withExtra({
+    b: ['LM', 'RI', 'RT'],
+    h: ['LI', 'RM'],
+    y: ['LI'],
+  });
+  const jisAssignment = withExtra({
+    b: ['LM', 'RI', 'RT'],
+    h: ['LI', 'RM'],
+    y: ['LI'],
+  }, JIS_FINGER_ASSIGNMENT.baseFinger);
+  for (const shape of ['split-ortholinear', 'column-staggered', 'jis-split-ortholinear', 'jis-column-staggered'] as const) {
+    const geometry = buildGeometry(shape, shape.startsWith('jis') ? jisAssignment : assignment);
+    assert.deepEqual(geometry.fingerCandidates.get('b'), ['LM', 'LI'], `${shape} b`);
+    assert.deepEqual(geometry.fingerCandidates.get('h'), ['RI', 'RM'], `${shape} h`);
+    assert.deepEqual(geometry.fingerCandidates.get('y'), ['RI'], `${shape} y`);
+  }
+});
+
+test('分割する物理配列でも、同じ側の手の追加の担当は残る', () => {
+  const geometry = buildGeometry('split-ortholinear', withExtra({ t: ['LM'], j: ['RM'] }));
+  assert.deepEqual(geometry.fingerCandidates.get('t'), ['LM', 'LI']);
+  assert.deepEqual(geometry.fingerCandidates.get('j'), ['RI', 'RM']);
+});
+
+test('基本の指がキーと反対側の手にあっても、分割する物理配列で基本の指は候補に残る', () => {
+  const assignment = withExtra({ y: ['RI'] }, { ...DEFAULT_FINGER_ASSIGNMENT.baseFinger, y: 'LI' });
+  const geometry = buildGeometry('split-ortholinear', assignment);
+  assert.equal(geometry.keys.get('y')!.finger, 'LI');
+  // 反対側の手の基本の指（LI）は残り、同じ側の追加の担当（RI）も残る
+  assert.deepEqual(geometry.fingerCandidates.get('y'), ['LI', 'RI']);
+});
+
+test('分割しない物理配列と、分割の間隔が0の物理配列では、反対側の追加の担当も候補に残る', () => {
+  const assignment = withExtra({ b: ['LM', 'RI', 'RT'], h: ['LI', 'RM'] });
+  const rowStaggered = buildGeometry('row-staggered', assignment);
+  assert.deepEqual(rowStaggered.fingerCandidates.get('b'), ['LM', 'LI', 'RT', 'RI']);
+  assert.deepEqual(rowStaggered.fingerCandidates.get('h'), ['LI', 'RI', 'RM']);
+  const noGap = buildGeometry({ ...PHYSICAL_SHAPES['split-ortholinear'], splitGap: 0 }, assignment);
+  assert.deepEqual(noGap.fingerCandidates.get('b'), ['LM', 'LI', 'RT', 'RI']);
+});
+
+test('組み込みのQWERTY最適化で、分割する物理配列は反対側の手の指を選ばない', () => {
+  const geometry = buildGeometry('split-ortholinear', QWERTY_OPTIMIZED_FINGER_ASSIGNMENT);
+  for (const [id, candidates] of geometry.fingerCandidates) {
+    const key = geometry.keys.get(id)!;
+    if (key.row === 4 || id.startsWith('shift')) continue;
+    const side = key.col >= 5 ? 'R' : 'L';
+    for (const finger of candidates) assert.ok(finger.startsWith(side), `${id}: ${finger}`);
+  }
+  const trace = generateTrace('きょう', qwerty, geometry, opts);
+  for (const stroke of trace.strokes) for (const press of stroke.presses) for (const key of press.keys) {
+    assert.ok(press.finger.startsWith(key.col >= 5 ? 'R' : 'L'), `${key.id}: ${press.finger}`);
   }
 });
