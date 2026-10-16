@@ -1,11 +1,21 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MutableRefObject, type ReactNode, type RefObject } from 'react';
 import ReactGridLayout, { verticalCompactor, type Compactor, type Layout, type LayoutItem } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
-import { compactGrid, GRID_COLS, gridPaneIds, resolveOverlaps, type GridItem, type WorkspaceGrid } from '#engine/workspace-grid.ts';
+import { compactGrid, gridPaneIds, resolveOverlaps, type GridColumnRange, type GridItem, type WorkspaceGrid } from '#engine/workspace-grid.ts';
 import { PaneHeaderLeadContext, PaneNameInLeadContext } from '#hosts/shared/pane-name-in-lead.ts';
 import { InfoButton, type InfoHelp } from '#ui/primitives/info-button.tsx';
-import { GRID_MARGIN_PX, GRID_PADDING_PX, GRID_ROW_HEIGHT_PX, minGridSize } from './grid-metrics.ts';
+import {
+  extendedReach,
+  GRID_MARGIN_PX,
+  GRID_PADDING_PX,
+  GRID_ROW_HEIGHT_PX,
+  gridCols,
+  gridWidthPx,
+  minGridSize,
+  rightmostCol,
+  visibleColRange,
+} from './grid-metrics.ts';
 import './workspace-grid.css';
 
 export interface WorkspaceGridProps {
@@ -30,33 +40,72 @@ export interface WorkspaceGridProps {
   readonly compact: boolean;
   /** 人がドラッグ・大きさの変更を終えた。 */
   readonly onGridChange: (grid: WorkspaceGrid) => void;
+  /**
+   * 面の今見えている列の範囲を読む関数の置き場。ペインを足す・複製する側が、見えている範囲に置くために読む
+   * （横にスクロールした位置を知るのは面だけ）。面が無い間は`null`。
+   */
+  readonly visibleRangeRef?: MutableRefObject<(() => GridColumnRange) | null>;
+}
+
+/** ドラッグ・大きさの変更の間、ポインタが面の左右の端からこの距離（px）以内にあると面を横にスクロールする。 */
+const EDGE_SCROLL_ZONE_PX = 48;
+/** その間に1コマごとにスクロールする量（px）。 */
+const EDGE_SCROLL_STEP_PX = 24;
+
+function pointerOf(event: Event): { readonly x: number; readonly y: number } | null {
+  if ('clientX' in event) return { x: (event as MouseEvent).clientX, y: (event as MouseEvent).clientY };
+  const touch = (event as TouchEvent).touches?.[0];
+  return touch === undefined ? null : { x: touch.clientX, y: touch.clientY };
+}
+
+/**
+ * ドラッグ・大きさの変更の間、ポインタが面の左右の端に近ければ面を横にスクロールする（ライブラリは自動ではスクロールしない）。
+ * スクロールした分だけ枠の位置も動かすため、ポインタが止まっていても動き続けるよう、同じ位置のマウスの移動を流し直す。
+ */
+function useEdgeScroll(areaRef: { readonly current: HTMLElement | null }, active: boolean, pointerRef: { readonly current: { readonly x: number; readonly y: number } | null }): void {
+  useEffect(() => {
+    if (!active) return undefined;
+    let frame = 0;
+    const tick = () => {
+      const area = areaRef.current;
+      const pointer = pointerRef.current;
+      if (area !== null && pointer !== null) {
+        const rect = area.getBoundingClientRect();
+        const delta = pointer.x > rect.right - EDGE_SCROLL_ZONE_PX ? EDGE_SCROLL_STEP_PX : pointer.x < rect.left + EDGE_SCROLL_ZONE_PX ? -EDGE_SCROLL_STEP_PX : 0;
+        if (delta !== 0) {
+          const before = area.scrollLeft;
+          area.scrollLeft = before + delta;
+          if (area.scrollLeft !== before) {
+            document.dispatchEvent(new MouseEvent('mousemove', { clientX: pointer.x, clientY: pointer.y, bubbles: true }));
+          }
+        }
+      }
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [areaRef, active, pointerRef]);
 }
 
 /**
  * 格子を置く面の幅。測るまで`null`で、その間は格子を描かない（ライブラリの既定は幅1280で最初の1コマを描き、
- * 測った後に幅が変わるので、開いた直後にペインが縮んで見える）。
+ * 測った後に幅が変わるので、開いた直後にペインが動いて見える）。
  *
- * 描くたびに、描画の前（layout effect）にも測り直す。縦のスクロールバーが幅を取る環境では、格子を描いて
- * ページが伸びるとスクロールバーが出て面が狭くなる。この測り直しなら、その幅を最初の描画の前に取り込める
- * （`scrollbar-gutter`で右を空けておく方法は、スクロールバーが出ない時にも右が空き、他の配置の幅も変えるので採らない）。
- * 幅が同じなら状態は変わらず、再描画は起きない。
+ * 面の幅から決まるのは、面に収まる列の数（と、横にスクロールするか）だけで、ペインの画素の幅は変わらない。
+ * 縦のスクロールバーが後から出て面が狭くなった時も、観測の通知で測り直す。
  */
 function useGridAreaWidth(): { readonly width: number | null; readonly containerRef: RefObject<HTMLDivElement | null> } {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [width, setWidth] = useState<number | null>(null);
   useLayoutEffect(() => {
     const node = containerRef.current;
-    if (node === null) return;
-    const next = Math.round(node.clientWidth);
-    setWidth((prev) => (prev === next ? prev : next));
-  });
-  useLayoutEffect(() => {
-    const node = containerRef.current;
     if (node === null) return undefined;
-    const observer = new ResizeObserver(() => {
+    const measure = () => {
       const next = Math.round(node.clientWidth);
       setWidth((prev) => (prev === next ? prev : next));
-    });
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
     observer.observe(node);
     return () => observer.disconnect();
   }, []);
@@ -64,9 +113,48 @@ function useGridAreaWidth(): { readonly width: number | null; readonly container
 }
 
 /**
+ * 面が横にスクロールするかどうかが切り替わる時に、縦の表示位置を引き継ぐ。
+ * 横にスクロールしない間は縦のスクロールがページにあり、横にスクロールする間は面の中にある（`workspace-grid.css`）。
+ * 切り替わった直後はどちらも先頭へ戻るので、直前の位置を、ページ→面、面→ページへ写す。
+ * 同じ列の同じ行がポインタの下に残るので、ドラッグ・大きさの変更の途中に切り替わっても、動かしている枠は別の行へ動かない。
+ * 直前の位置は、スクロールのたびに控えておく（切り替わった後には読めないため）。
+ */
+function useKeepVerticalView(areaRef: { readonly current: HTMLElement | null }, scrollsX: boolean): void {
+  const last = useRef({ pageY: 0, areaY: 0 });
+  const previous = useRef(scrollsX);
+  useEffect(() => {
+    const area = areaRef.current;
+    const onPage = () => {
+      last.current.pageY = window.scrollY;
+    };
+    const onArea = () => {
+      last.current.areaY = area?.scrollTop ?? 0;
+    };
+    window.addEventListener('scroll', onPage, { passive: true });
+    area?.addEventListener('scroll', onArea, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onPage);
+      area?.removeEventListener('scroll', onArea);
+    };
+  }, [areaRef]);
+  useLayoutEffect(() => {
+    if (previous.current === scrollsX) return;
+    previous.current = scrollsX;
+    const area = areaRef.current;
+    if (area === null) return;
+    if (scrollsX) {
+      area.scrollTop = last.current.pageY;
+      window.scrollTo(window.scrollX, 0);
+    } else {
+      window.scrollTo(window.scrollX, last.current.areaY);
+    }
+    last.current = { pageY: window.scrollY, areaY: area.scrollTop };
+  }, [areaRef, scrollsX]);
+}
+
+/**
  * 格子を描いて最初の1コマが出た後に`true`。それまでは配置の動き（200ms）を止める（`workspace-grid.css`）。
- * 幅を測り直すために描画の前に配置を測ると、ライブラリの動きがその時点の幅から始まってしまい、
- * 測り直した後の幅へ縮む動きが見える。最初の1コマを出すまでは動かさず、実際の幅のまま現れさせる。
+ * 最初の1コマを出すまでは動かさず、置かれた位置のまま現れさせる。
  */
 function useAfterFirstPaint(ready: boolean): boolean {
   const [done, setDone] = useState(false);
@@ -84,8 +172,8 @@ function useAfterFirstPaint(ready: boolean): boolean {
   return done;
 }
 
-function toLayoutItem(item: GridItem, analyzerId: string, containerWidth: number): LayoutItem {
-  const min = minGridSize(analyzerId, containerWidth);
+function toLayoutItem(item: GridItem, analyzerId: string): LayoutItem {
+  const min = minGridSize(analyzerId);
   // 保存済みの幅・高さが下限より小さくても、他の辺を引いた時に広がらないよう、下限は今の幅・高さまでに留める
   return { i: item.id, x: item.x, y: item.y, w: item.w, h: item.h, minW: Math.min(min.w, item.w), minH: Math.min(min.h, item.h) };
 }
@@ -115,7 +203,7 @@ function fromLayout(layout: Layout): WorkspaceGrid {
  * 正は資産の格子（`grid`）で、ライブラリには毎回その値を渡す。人の操作は、離した時（ドラッグ・大きさの変更の終わり）に
  * 1回だけ資産へ書く。途中の位置は書かないので、Undoは1操作につき1回で戻る。
  */
-export function WorkspaceGrid({ grid, analyzerIdOf, titleOf, descriptionOf, helpOf, renderPane, maximizedId, compact, onGridChange }: WorkspaceGridProps) {
+export function WorkspaceGrid({ grid, analyzerIdOf, titleOf, descriptionOf, helpOf, renderPane, maximizedId, compact, onGridChange, visibleRangeRef }: WorkspaceGridProps) {
   const { width, containerRef } = useGridAreaWidth();
   const mounted = width !== null;
   const animated = useAfterFirstPaint(mounted);
@@ -126,9 +214,38 @@ export function WorkspaceGrid({ grid, analyzerIdOf, titleOf, descriptionOf, help
   // 詰める→詰めないへ戻した時に、詰めた形が内部に残らないよう、渡す並び自体を切り替える（保存した並びは書き換えない）
   const displayGrid = useMemo(() => (compact ? compactGrid(grid) : grid), [compact, grid]);
   const layout = useMemo(
-    () => displayGrid.map((item) => toLayoutItem(item, analyzerIdOf(item.id), width ?? 0)),
-    [displayGrid, analyzerIdOf, width],
+    () => displayGrid.map((item) => toLayoutItem(item, analyzerIdOf(item.id))),
+    [displayGrid, analyzerIdOf],
   );
+  // 列の数は、面に収まる数と並びの右端の大きい方。操作の間は、動かしている枠が右端に届くたびに伸ばす
+  const [reach, setReach] = useState(0);
+  const [interacting, setInteracting] = useState(false);
+  const pointerRef = useRef<{ readonly x: number; readonly y: number } | null>(null);
+  useEdgeScroll(containerRef, interacting, pointerRef);
+  const cols = gridCols(width ?? 0, rightmostCol(displayGrid), reach);
+  const canvasWidth = gridWidthPx(cols);
+  const scrollsX = width !== null && canvasWidth > width;
+  useKeepVerticalView(containerRef, scrollsX);
+  useLayoutEffect(() => {
+    if (visibleRangeRef === undefined) return undefined;
+    visibleRangeRef.current = () => {
+      const area = containerRef.current;
+      return area === null ? { start: 0, end: cols } : visibleColRange(area.scrollLeft, area.clientWidth);
+    };
+    return () => {
+      visibleRangeRef.current = null;
+    };
+  }, [visibleRangeRef, containerRef, cols]);
+  const onMove = useCallback((_layout: Layout, _old: LayoutItem | null, item: LayoutItem | null, _placeholder: LayoutItem | null, event: Event) => {
+    pointerRef.current = pointerOf(event);
+    if (item !== null) setReach((current) => extendedReach(cols, item.x + item.w, current));
+  }, [cols]);
+  const onStart = useCallback(() => setInteracting(true), []);
+  const finishInteraction = useCallback(() => {
+    setInteracting(false);
+    setReach(0);
+    pointerRef.current = null;
+  }, []);
   // 拡大中は、有効・無効だけを切り替える（部品の木が変わらず、ペインが作り直されない）
   const dragConfig = useMemo(
     () => ({ enabled: !maximized, handle: '.workspace-drag-handle', cancel: 'button, a, input, select, textarea' }),
@@ -136,40 +253,58 @@ export function WorkspaceGrid({ grid, analyzerIdOf, titleOf, descriptionOf, help
   );
   const resizeConfig = useMemo(() => ({ enabled: !maximized, handles: ['s', 'e', 'w', 'se'] as const }), [maximized]);
   return (
-    <div ref={containerRef} className="workspace-grid-area" data-maximized={maximized || undefined} data-animated={animated || undefined}>
+    <div
+      ref={containerRef}
+      className="workspace-grid-area"
+      data-maximized={maximized || undefined}
+      data-animated={animated || undefined}
+      data-scrolls-x={scrollsX || undefined}
+    >
       {mounted ? (
-        <ReactGridLayout
-          width={width ?? 0}
-          layout={layout}
-          gridConfig={{
-            cols: GRID_COLS,
-            rowHeight: GRID_ROW_HEIGHT_PX,
-            margin: [GRID_MARGIN_PX, GRID_MARGIN_PX],
-            containerPadding: [GRID_PADDING_PX, GRID_PADDING_PX],
-          }}
-          dragConfig={dragConfig}
-          // 大きさを変えるつかみは下の辺（高さだけ）・右の辺と左の辺（幅だけ）・右下の角（幅と高さ）の4つ
-          resizeConfig={resizeConfig}
-          compactor={compact ? verticalCompactor : resolveOverlapsCompactor}
-          onDragStop={(next) => onGridChange(fromLayout(next))}
-          onResizeStop={(next) => onGridChange(fromLayout(next))}
-        >
-          {/* DOMの順は画面の読み順（上→下・左→右）。Tabと読み上げの順が見た目と合う */}
-          {gridPaneIds(grid).map((id) => (
-            // 拡大中の他のペインは、背面に残したまま操作できなくする（フォーカスも入らない）
-            <div
-              key={id}
-              className="workspace-grid-item"
-              data-pane-id={id}
-              data-maximized={id === maximizedId || undefined}
-              inert={maximized && id !== maximizedId}
-            >
-              <PaneShell paneId={id} title={titleOf(id)} description={descriptionOf(id)} help={helpOf(id)} draggable>
-                {renderPane(id)}
-              </PaneShell>
-            </div>
-          ))}
-        </ReactGridLayout>
+        <div className="workspace-grid-canvas" style={{ width: canvasWidth }}>
+          <ReactGridLayout
+            width={canvasWidth}
+            layout={layout}
+            gridConfig={{
+              cols,
+              rowHeight: GRID_ROW_HEIGHT_PX,
+              margin: [GRID_MARGIN_PX, GRID_MARGIN_PX],
+              containerPadding: [GRID_PADDING_PX, GRID_PADDING_PX],
+            }}
+            dragConfig={dragConfig}
+            // 大きさを変えるつかみは下の辺（高さだけ）・右の辺と左の辺（幅だけ）・右下の角（幅と高さ）の4つ
+            resizeConfig={resizeConfig}
+            compactor={compact ? verticalCompactor : resolveOverlapsCompactor}
+            onDragStart={onStart}
+            onResizeStart={onStart}
+            onDrag={onMove}
+            onResize={onMove}
+            onDragStop={(next) => {
+              finishInteraction();
+              onGridChange(fromLayout(next));
+            }}
+            onResizeStop={(next) => {
+              finishInteraction();
+              onGridChange(fromLayout(next));
+            }}
+          >
+            {/* DOMの順は画面の読み順（上→下・左→右）。Tabと読み上げの順が見た目と合う */}
+            {gridPaneIds(grid).map((id) => (
+              // 拡大中の他のペインは、背面に残したまま操作できなくする（フォーカスも入らない）
+              <div
+                key={id}
+                className="workspace-grid-item"
+                data-pane-id={id}
+                data-maximized={id === maximizedId || undefined}
+                inert={maximized && id !== maximizedId}
+              >
+                <PaneShell paneId={id} title={titleOf(id)} description={descriptionOf(id)} help={helpOf(id)} draggable>
+                  {renderPane(id)}
+                </PaneShell>
+              </div>
+            ))}
+          </ReactGridLayout>
+        </div>
       ) : null}
     </div>
   );

@@ -3,7 +3,7 @@ import test from 'node:test';
 import { createSampleWorkspace, SAMPLE_FINGER_DISTANCE_SIZE } from '#engine/sample-workspace.ts';
 import { initialWorkspaceLibrary } from '#engine/workspace.ts';
 import { findWorkspaceAnalyzer } from './analyzer-registry.ts';
-import { defaultGridSize } from './grid-metrics.ts';
+import { defaultGridSize, gridWidthPx, rightmostCol } from './grid-metrics.ts';
 
 // サンプルのAnalyzerのidは engine が文字列で持つ（engine は analyzers/<name>/ を読めない）。
 // 組み込みのAnalyzerのidが変わったら、ペインが「使えない」ままのサンプルになる前にここで落とす。
@@ -24,4 +24,11 @@ test('サンプルのペインのAnalyzerは、Workspaceに置ける組み込み
 
 test('サンプルの指ごとの距離の高さは、ペインを足した時の既定の高さより低い', () => {
   assert.ok(SAMPLE_FINGER_DISTANCE_SIZE.h < defaultGridSize('finger-distance').h);
+});
+
+// FHD（1920px）でサイドバーを固定して開いた面は1680px。縦のスクロールバー（最大15px）が出ていても、横にスクロールしない
+test('サンプルの並びは、FHDでサイドバーを固定して開いた面に、縦のスクロールバーがあっても横にスクロールせずに収まる', () => {
+  const { created } = createSampleWorkspace(initialWorkspaceLibrary(), () => 'w', (() => { let n = 0; return () => `p${(n += 1)}`; })());
+  const width = gridWidthPx(rightmostCol(created.grid));
+  assert.ok(width <= 1680 - 15, `${width}px`);
 });

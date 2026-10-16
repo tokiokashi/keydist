@@ -1,25 +1,46 @@
 /**
  * Workspaceのペインの並び（格子）。
  *
- * ペインごとに位置（x・y）と大きさ（w・h）を持つ。単位は格子の升目で、画面の画素ではない
- * （画面の幅が変わっても同じ升目で並べ直せるように）。1つのペインの大きさを変えても、他のペインの
- * 大きさは変わらない（兄弟の比で大きさが決まる分割の木と違う点）。
+ * ペインごとに位置（x・y）と大きさ（w・h）を持つ。単位は格子の升目で、画面の画素ではない。
+ * 横の升目（列）は画面の幅に依らない固定の画素の幅を持つので、ペインの画素の幅は持っている列の数だけで決まり、
+ * 画面の幅を変えても変わらない（列の幅は載せる側の`hosts/workspace/grid-metrics.ts`が決める）。
+ * 1つのペインの大きさを変えても、他のペインの大きさは変わらない（兄弟の比で大きさが決まる分割の木と違う点）。
  *
  * 載せるライブラリ（react-grid-layout）の保存形式とは独立に持つ。ライブラリの`{i,x,y,w,h}`は
  * `i`を`id`と呼ぶ以外は同じ形で、変換は載せる側（`hosts/workspace/`）が行う。
  *
  * 不変条件（`normalizeGrid`が保証する）:
  * - 資産に載っているペインは、どれもちょうど1つの枠を持つ。載っていないペインの枠は持たない
- * - 枠は整数で、列の範囲（0 <= x, x + w <= GRID_COLS）に収まり、y >= 0、w >= 1、h >= 1
+ * - 枠は整数で、列の上限（0 <= x, x + w <= GRID_MAX_COLS）に収まり、y >= 0、w >= 1、h >= 1。
+ *   上限は壊れた保存データを防ぐための大きな値で、画面の幅とは関係しない
  * - 枠どうしは重ならない
  * - 「空いた所に詰める」設定（`compact`）の時だけ、上に空きが無い（縦に詰めてある）。ペインを閉じたら下のペインが上がる。
  *   詰めない設定（既定）では、縮めた・閉じた所は空いたまま残し、衝突した時に下へ押すだけにする
  */
+
 /**
- * 列数。12列では荒く、ペインの幅を細かく選べない（Analyzerによって欲しい幅が割れる）ので24列にする。
- * 既定の幅は面の半分（GRID_COLS / 2）で、列数を前提にした値はここから導く。
+ * 列の上限。ペインの右端（x + w）がこれを超える保存データは、この範囲へ収める。
+ * 画面の幅で決まる値ではなく、画面より右へ広がった並びも保てる大きさにしてある。
  */
-export const GRID_COLS = 24;
+export const GRID_MAX_COLS = 240;
+
+/** ペインを足した時の既定の幅（列の数）。 */
+export const DEFAULT_PANE_COLS = 12;
+
+/** 余白のペインなど、空きを埋める小さな枠の既定の幅（列の数）。 */
+export const DEFAULT_SMALL_PANE_COLS = 6;
+
+/**
+ * ペインを足す・複製する時に置く列の範囲（`start`以上`end`未満）。載せる側が、面の見えている範囲から求めて渡す。
+ * 純粋な層は面のスクロールの位置を知らないので、範囲は引数で受け取る。
+ */
+export interface GridColumnRange {
+  readonly start: number;
+  readonly end: number;
+}
+
+/** 範囲を渡さない時の範囲。面を持たない経路（サンプルの生成・個別画面からの追加）が使う。 */
+export const DEFAULT_GRID_RANGE: GridColumnRange = { start: 0, end: 24 };
 
 export interface GridItem {
   readonly id: string;
@@ -38,7 +59,7 @@ export interface GridSize {
 export type WorkspaceGrid = readonly GridItem[];
 
 /** 大きさを知らないペイン（保存データにだけあって枠が無い等）に使う大きさ。 */
-export const FALLBACK_GRID_SIZE: GridSize = { w: GRID_COLS / 2, h: 12 };
+export const FALLBACK_GRID_SIZE: GridSize = { w: DEFAULT_PANE_COLS, h: 12 };
 
 function overlaps(a: GridItem, b: GridItem): boolean {
   return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
@@ -90,21 +111,29 @@ export function resolveOverlaps(grid: WorkspaceGrid): WorkspaceGrid {
 }
 
 /**
- * 空いている最初の場所（上から、同じ高さなら左から）。`fromY`より上は探さない。
- * 縦は際限が無いので、必ず見つかる。
+ * 範囲の中で空いている最初の場所（上から、同じ高さなら左から）。`fromY`より上は探さない。
+ * 幅が範囲に収まらない大きさは、範囲の左端に置く。範囲に空きが無ければ、並びの下の範囲の左端に置く
+ * （縦は際限が無いので、必ず置ける）。
  */
-function firstFreeSlot(grid: WorkspaceGrid, size: GridSize, fromY: number): { readonly x: number; readonly y: number } {
+function firstFreeSlot(
+  grid: WorkspaceGrid,
+  size: GridSize,
+  fromY: number,
+  range: GridColumnRange,
+): { readonly x: number; readonly y: number } {
   const bottom = grid.reduce((max, item) => Math.max(max, item.y + item.h), 0);
+  const start = Math.max(0, Math.min(range.start, GRID_MAX_COLS - size.w));
+  const last = Math.max(start, Math.min(range.end - size.w, GRID_MAX_COLS - size.w));
   for (let y = fromY; y <= bottom; y += 1) {
-    for (let x = 0; x + size.w <= GRID_COLS; x += 1) {
+    for (let x = start; x <= last; x += 1) {
       if (!collidesWithAny({ id: '', x, y, ...size }, grid)) return { x, y };
     }
   }
-  return { x: 0, y: bottom };
+  return { x: start, y: bottom };
 }
 
 function clampSize(size: GridSize): GridSize {
-  return { w: clampInt(size.w, 1, GRID_COLS, FALLBACK_GRID_SIZE.w), h: clampInt(size.h, 1, 1000, FALLBACK_GRID_SIZE.h) };
+  return { w: clampInt(size.w, 1, GRID_MAX_COLS, FALLBACK_GRID_SIZE.w), h: clampInt(size.h, 1, 1000, FALLBACK_GRID_SIZE.h) };
 }
 
 /**
@@ -125,12 +154,12 @@ export function normalizeGrid(
     // 未知のペインと、2回目以降の出現（同じペインを2か所に置かない）は捨てる
     if (!known.has(raw.id) || seen.has(raw.id)) continue;
     seen.add(raw.id);
-    const w = clampInt(raw.w, 1, GRID_COLS, FALLBACK_GRID_SIZE.w);
+    const w = clampInt(raw.w, 1, GRID_MAX_COLS, FALLBACK_GRID_SIZE.w);
     items.push({
       id: raw.id,
       w,
       h: clampInt(raw.h, 1, 1000, FALLBACK_GRID_SIZE.h),
-      x: clampInt(raw.x, 0, GRID_COLS - w, 0),
+      x: clampInt(raw.x, 0, GRID_MAX_COLS - w, 0),
       y: clampInt(raw.y, 0, 100000, 0),
     });
   }
@@ -139,7 +168,7 @@ export function normalizeGrid(
     if (seen.has(id)) continue;
     seen.add(id);
     const size = clampSize(sizeOf(id));
-    result = [...result, { id, ...firstFreeSlot(result, size, 0), ...size }];
+    result = [...result, { id, ...firstFreeSlot(result, size, 0, DEFAULT_GRID_RANGE), ...size }];
   }
   return compact ? compactGrid(result) : result;
 }
@@ -149,17 +178,23 @@ function compactIf(compact: boolean, grid: WorkspaceGrid): WorkspaceGrid {
   return compact ? compactGrid(grid) : grid;
 }
 
-/** ペインを足した枠。空いている最初の場所に`size`で置く。詰めない設定なら、他の枠は動かさない。 */
-export function gridWithPane(grid: WorkspaceGrid, paneId: string, size: GridSize, compact: boolean): WorkspaceGrid {
+/** ペインを足した枠。`range`の中の空いている最初の場所に`size`で置く。詰めない設定なら、他の枠は動かさない。 */
+export function gridWithPane(
+  grid: WorkspaceGrid,
+  paneId: string,
+  size: GridSize,
+  compact: boolean,
+  range: GridColumnRange = DEFAULT_GRID_RANGE,
+): WorkspaceGrid {
   if (grid.some((item) => item.id === paneId)) return grid;
   const fitted = clampSize(size);
-  return compactIf(compact, [...grid, { id: paneId, ...firstFreeSlot(grid, fitted, 0), ...fitted }]);
+  return compactIf(compact, [...grid, { id: paneId, ...firstFreeSlot(grid, fitted, 0, range), ...fitted }]);
 }
 
 /**
- * `referencePaneId`のペインと同じ大きさの枠を、その隣に置く（複製）。右隣が空いていれば右隣、
- * 空いていなければ真下、真下も塞がっていれば、元の枠より下の空いている最初の場所。
- * 元のペインが見つからなければ、`fallbackSize`で空いている最初の場所に置く。
+ * `referencePaneId`のペインと同じ大きさの枠を、その隣に置く（複製）。右隣が空いていて`range`に収まれば右隣、
+ * 空いていなければ真下（`range`に収まる時）、真下も塞がっていれば、元の枠より下の`range`の中の空いている最初の場所。
+ * 元のペインが見つからなければ、`fallbackSize`で`range`の中の空いている最初の場所に置く。
  */
 export function gridWithPaneNextTo(
   grid: WorkspaceGrid,
@@ -167,17 +202,19 @@ export function gridWithPaneNextTo(
   paneId: string,
   compact: boolean,
   fallbackSize: GridSize = FALLBACK_GRID_SIZE,
+  range: GridColumnRange = DEFAULT_GRID_RANGE,
 ): WorkspaceGrid {
   if (grid.some((item) => item.id === paneId)) return grid;
   const source = grid.find((item) => item.id === referencePaneId);
-  if (source === undefined) return gridWithPane(grid, paneId, fallbackSize, compact);
+  if (source === undefined) return gridWithPane(grid, paneId, fallbackSize, compact, range);
   const size: GridSize = { w: source.w, h: source.h };
   const right: GridItem = { id: paneId, x: source.x + source.w, y: source.y, ...size };
   const below: GridItem = { id: paneId, x: source.x, y: source.y + source.h, ...size };
   let placed: GridItem;
-  if (right.x + right.w <= GRID_COLS && !collidesWithAny(right, grid)) placed = right;
-  else if (!collidesWithAny(below, grid)) placed = below;
-  else placed = { id: paneId, ...firstFreeSlot(grid, size, source.y + source.h), ...size };
+  const inRange = (item: GridItem) => item.x >= range.start && item.x + item.w <= Math.min(range.end, GRID_MAX_COLS);
+  if (inRange(right) && !collidesWithAny(right, grid)) placed = right;
+  else if (inRange(below) && !collidesWithAny(below, grid)) placed = below;
+  else placed = { id: paneId, ...firstFreeSlot(grid, size, source.y + source.h, range), ...size };
   return compactIf(compact, [...grid, placed]);
 }
 

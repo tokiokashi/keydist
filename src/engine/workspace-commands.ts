@@ -29,7 +29,7 @@ import {
   type WorkspacePaneTarget,
 } from './workspace.ts';
 import { applySampleLayout, createSampleWorkspace } from './sample-workspace.ts';
-import type { GridSize, WorkspaceGrid } from './workspace-grid.ts';
+import type { GridColumnRange, GridSize, WorkspaceGrid } from './workspace-grid.ts';
 
 /**
  * Workspaceへの書き込み。
@@ -201,10 +201,16 @@ export function restoreWorkspaceCommand(workspace: Workspace, index: number): Co
 
 /**
  * ペインを足す。`pane`（idと初期の対象）と、置く大きさ（`size`。Analyzerごとの既定は呼び出し側が持つ）は
- * 呼び出し側が渡す。置き場所は格子の空いている最初の場所で、他のペインの大きさ・位置は変わらない。
+ * 呼び出し側が渡す。置き場所は`range`（面の見えている列の範囲。省略時は左端から24列）の中の空いている最初の場所で、
+ * 他のペインの大きさ・位置は変わらない。
  */
-export function addWorkspacePaneCommand(workspaceId: string, pane: WorkspacePane, size: GridSize): Command<KeydistAssets> {
-  return workspacesCommand('ペインを追加する', (library) => addWorkspacePane(library, workspaceId, pane, size));
+export function addWorkspacePaneCommand(
+  workspaceId: string,
+  pane: WorkspacePane,
+  size: GridSize,
+  range?: GridColumnRange,
+): Command<KeydistAssets> {
+  return workspacesCommand('ペインを追加する', (library) => addWorkspacePane(library, workspaceId, pane, size, range));
 }
 
 /** ペインを閉じる。他のペインの大きさは変わらない。下のペインが上へ詰まるのは、Workspaceが詰める設定の時だけ。 */
@@ -212,13 +218,14 @@ export function closeWorkspacePaneCommand(workspaceId: string, paneId: string): 
   return workspacesCommand('ペインを閉じる', (library) => closeWorkspacePane(library, workspaceId, paneId));
 }
 
-/** ペインを複製する。解析設定と対象を写し、元のペインと同じ大きさで隣（右、無ければ真下）に置く。 */
+/** ペインを複製する。解析設定と対象を写し、元のペインと同じ大きさで、`range`の中の隣（右、無ければ真下）に置く。 */
 export function duplicateWorkspacePaneCommand(
   workspaceId: string,
   paneId: string,
   newPaneId: string,
+  range?: GridColumnRange,
 ): Command<KeydistAssets> {
-  return workspacesCommand('ペインを複製する', (library) => duplicateWorkspacePane(library, workspaceId, paneId, newPaneId));
+  return workspacesCommand('ペインを複製する', (library) => duplicateWorkspacePane(library, workspaceId, paneId, newPaneId, range));
 }
 
 /** ペインの解析設定を書き換える。`undefined`は一度も変えていない状態（Analyzerの既定値）へ戻す。 */

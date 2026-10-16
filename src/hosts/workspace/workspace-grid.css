@@ -16,6 +16,21 @@
   width: 100%;
 }
 
+/*
+ * 並びを置く幅は列の数で決まり、面の幅とは関係しない（WorkspaceGrid.tsxが画素で指定する）。
+ * 並びが面より広い時だけ、面の中で横にスクロールする。このとき縦も面の中でスクロールさせ、面の高さを画面の残りに収める
+ * （収めないと、格子が画面より高い時に、横のスクロールバーがページの一番下まで行かないと見えない）。
+ * 並びが面に収まる時は何も足さない（ペインのメニューなどが面の外へ広がれる）。
+ */
+.workspace-grid-canvas {
+  position: relative;
+}
+
+.workspace-grid-area[data-scrolls-x] {
+  overflow: auto;
+  max-height: calc(100dvh - var(--context-bar-height, 3.1rem));
+}
+
 /* ライブラリの既定の見た目を、アプリのtoken（明・暗の両方）へ寄せる */
 .workspace-grid-area .react-grid-item.react-grid-placeholder {
   background: var(--accent);

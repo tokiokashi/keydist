@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test';
+import { GRID_COL_STEP_PX } from '../src/hosts/workspace/grid-metrics.ts';
 import { waitForHydration } from './hydration-helper.ts';
 import { settleGrid } from './settle-helper.ts';
 
@@ -11,7 +12,7 @@ export const blank = (id: string) => ({ id, analyzerId: 'blank', binding: { mode
 export interface Cell { readonly id: string; readonly x: number; readonly y: number; readonly w: number; readonly h: number }
 export const cell = (id: string, x: number, y: number, w: number, h: number): Cell => ({ id, x, y, w, h });
 
-export async function open(page: Page, ids: readonly string[], grid: readonly Cell[], size = { width: 1440, height: 1200 }, compact = false): Promise<void> {
+export async function open(page: Page, ids: readonly string[], grid: readonly Cell[], size = { width: 1920, height: 1200 }, compact = false): Promise<void> {
   await page.setViewportSize(size);
   await page.addInitScript((value) => {
     if (localStorage.getItem('keydist:workspaces') === null) {
@@ -37,11 +38,11 @@ export async function stored(page: Page): Promise<Cell[]> {
 
 export const itemOf = async (page: Page, id: string) => (await stored(page)).find((item) => item.id === id)!;
 
-/** 1列ぶんの横の幅（列の幅 + 升の間）。格子の面の実寸から求める。 */
-export async function colStep(page: Page): Promise<number> {
-  const width = (await page.locator('.workspace-grid-area').boundingBox())!.width;
-  return (width - 16 - 23 * 8) / 24 + 8;
-}
+/**
+ * 1列ぶんの横の幅（列の幅 + 升の間）。面の幅に依らない固定の値。
+ * 既定の画面（1920px。サイドバーを固定すると面は1680px）は、24列の並びが横にスクロールせずに収まる幅にしてある。
+ */
+export const COL_STEP = GRID_COL_STEP_PX;
 
 export async function dragHandle(page: Page, id: string, axis: 's' | 'e' | 'w' | 'se', dx: number, dy: number): Promise<void> {
   const box = (await page.locator(`.workspace-grid-item[data-pane-id="${id}"] .react-resizable-handle-${axis}`).boundingBox())!;

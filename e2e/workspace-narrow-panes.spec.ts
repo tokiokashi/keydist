@@ -5,7 +5,7 @@ import { waitForHydration } from './hydration-helper.ts';
 import { holdWorker, installWorkerHold } from './worker-hold-helper.ts';
 
 /**
- * 下限の幅まで縮めたペイン（FHD・左のメニューを開いた状態で24列のうち2列 = 約131px、面が狭い時の100px前後）で、
+ * 下限の幅まで縮めたペイン（2列 = 128px。列の幅は面の幅に依らない固定の値）で、
  * Bigram Flow・比較表・N感度の見出しのボタンが重ならずに押せ、図・凡例が枠からはみ出さないこと。
  * 下限は操作できなくなるのを防ぐためだけに置いたもので、狭くて見づらければ利用者が広げる。
  * ここで確かめるのは「見づらい」ではなく、「重なって押せない」「枠で切れる」「隣のペインへはみ出す」が起きないこと。
@@ -67,8 +67,8 @@ async function open(page: Page, analyzerId: AnalyzerId, size: { width: number; h
       ...(options.conditions === undefined ? {} : { conditions: options.conditions }),
       panes: [paneOf('a', analyzerId, longNames, options.status === 'failed'), paneOf('b', 'comparison', false)],
       grid: [
-        { id: 'a', x: 0, y: 0, w: options.cols ?? 8, h: 20 },
-        { id: 'b', x: 8, y: 0, w: 8, h: 20 },
+        { id: 'a', x: 0, y: 0, w: options.cols ?? 5, h: 20 },
+        { id: 'b', x: Math.max(8, options.cols ?? 5), y: 0, w: 8, h: 20 },
       ],
     },
   });
@@ -365,14 +365,14 @@ async function nameIsClipped(item: Locator): Promise<boolean> {
 }
 
 // 見出しが狭い時の詰め方は、名前を省略（つかみ所とⓘは残す）→ それでも入らない時に段を分ける。
-// 名前を省略する幅（FHD・左のメニューを開いた状態で24列のうち5列 = 約314px）でも、ボタンは1段目に残る
+// 名前を省略する幅（6列 = 400px）でも、ボタンは1段目に残る
 // 見出しの組み立て（PaneFrame）は全Analyzerで共通で、Analyzerごとに違うのは名前の文字だけ（最小幅まで縮む）。
 // 見出しの検査は代表のBigram Flowで1回にする。Analyzerごとの本体は、下限の幅のテストと3列のテストが全Analyzerで調べる
 for (const analyzerId of ['bigram-flow'] as const) {
-  test(`${analyzerId}: 5列のペインでは見出しが1段のまま、⋯と対象の選択に届く`, async ({ page }) => {
-    await open(page, analyzerId, FHD, { cols: 5 });
+  test(`${analyzerId}: 6列のペインでは見出しが1段のまま、⋯と対象の選択に届く`, async ({ page }) => {
+    await open(page, analyzerId, FHD, { cols: 6 });
     const item = itemOf(page, 'a');
-    expect(((await item.locator('.pane-frame').boundingBox())!).width, '5列の幅').toBeLessThan(330);
+    expect(((await item.locator('.pane-frame').boundingBox())!).width, '6列の幅').toBeLessThan(410);
     expect(await headerRowCount(item), '見出しが1段').toBe(1);
     // 1段に収める幅では、対象の選択は押せる最小の幅まで縮む（絵と開閉の印が入る幅）
     await expectHeaderUsable(page, 'a', 44);
@@ -387,10 +387,10 @@ for (const analyzerId of ['bigram-flow'] as const) {
   });
 }
 
-test('Bigram Flow: 5列では名前を省略して1段に収める。名前の全文は見出し（読み上げ）・title・枠の名前に残る', async ({ page }) => {
-  await open(page, 'bigram-flow', FHD, { cols: 5 });
+test('Bigram Flow: 6列では名前を省略して1段に収める。名前の全文は見出し（読み上げ）・title・枠の名前に残る', async ({ page }) => {
+  await open(page, 'bigram-flow', FHD, { cols: 6 });
   const item = itemOf(page, 'a');
-  expect(await nameIsClipped(item), '5列では名前を省略する').toBe(true);
+  expect(await nameIsClipped(item), '6列では名前を省略する').toBe(true);
   const visible = (await item.locator('.workspace-pane-lead-name').boundingBox())!;
   expect(visible.width, '名前は全部を消さず、手がかりの幅を残す').toBeGreaterThanOrEqual(30);
   await expect(item.locator('.workspace-pane-lead-name')).toHaveText('Bigram Flow');
@@ -399,7 +399,7 @@ test('Bigram Flow: 5列では名前を省略して1段に収める。名前の�
   await expect(item.locator('.pane-frame')).toHaveAttribute('aria-label', /^Bigram Flow — /);
 });
 
-for (const cols of [6, 8]) {
+for (const cols of [7, 8]) {
   test(`Bigram Flow: ${cols}列のペインでも見出しが1段のまま、⋯と対象の選択に届く`, async ({ page }) => {
     await open(page, 'bigram-flow', FHD, { cols });
     const item = itemOf(page, 'a');

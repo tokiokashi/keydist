@@ -3,7 +3,7 @@ import { checkFirstFrame } from './workspace-initial-grid-width-check.ts';
 
 /**
  * スクロールバーが幅（15px）を取る環境（Windowsなど）の条件。格子を描いてページが伸びるとスクロールバーが出て、
- * 面の幅が変わる。Playwrightは既定でスクロールバーを隠すので、`--hide-scrollbars`を外して作る。
+ * 面の幅が変わる（面に収まる列の数が変わるだけで、ペインの位置と大きさは変わらない）。Playwrightは既定でスクロールバーを隠すので、`--hide-scrollbars`を外して作る。
  */
 test.use({ launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] } });
 

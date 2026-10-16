@@ -4,7 +4,7 @@ import { settleGrid } from './settle-helper.ts';
 
 /**
  * N感度のグラフがWorkspaceのペインの残りの高さに合わせて伸縮し、実測値の表を、余りが無ければ畳んで始める（余りがある時に開くのは`workspace-n-sensitivity-table-fit.spec.ts`）。
- * ペインの大きさは格子（1升 = 28px、升の間 8px、列は24）で決まる。個別画面（高さが図で決まる）には効かないことも確かめる。
+ * ペインの大きさは格子（1升 = 28px、升の間は8px、1列は68px）で決まる。個別画面（高さが図で決まる）には効かないことも確かめる。
  */
 
 const REM = 16;
@@ -112,7 +112,7 @@ function measureLegend(page: Page) {
 }
 
 test('Workspaceで余りの無いペインでは実測値の表が畳まれて始まり、キーボードで開ける', async ({ page }) => {
-  await openWorkspace(page, [nsens], [cell('n', 0, 0, 24, 22)], { width: 1440, height: 900 });
+  await openWorkspace(page, [nsens], [cell('n', 0, 0, 16, 22)], { width: 1440, height: 900 });
   const summary = page.getByText('各Nの実測値 [u]', { exact: true });
   await expect(summary).toBeVisible();
   expect((await measure(page)).detailsOpen).toBe(false);
@@ -137,7 +137,7 @@ test('個別画面では実測値の表が開いている', async ({ page }) => 
 });
 
 test('グラフはペインの残りの高さに合わせ、領域はスクロールせず、ペインの高さに追従する', async ({ page }) => {
-  await openWorkspace(page, [nsens], [cell('n', 0, 0, 24, 22)], { width: 1440, height: 1300 });
+  await openWorkspace(page, [nsens], [cell('n', 0, 0, 16, 22)], { width: 1440, height: 1300 });
   const tall = await measure(page);
   expect(tall.bodyScrollHeight).toBeLessThanOrEqual(tall.bodyClientHeight + 1);
   expect(tall.paneScrollHeight).toBeLessThanOrEqual(tall.paneClientHeight + 1);
@@ -154,7 +154,7 @@ test('グラフはペインの残りの高さに合わせ、領域はスクロ�
 
 test('最低の窓（12rem）まで縮めても、図は下限より小さくならず、表の見出しまで本体の中に収まる', async ({ page }) => {
   // 7行（244px）にすると、本体が最低の窓（12rem）まで縮む。図の下限（8.5rem）と表の見出しは、この窓に収まる
-  await openWorkspace(page, [nsens], [cell('n', 0, 0, 24, 7)], { width: 1440, height: 900 });
+  await openWorkspace(page, [nsens], [cell('n', 0, 0, 16, 7)], { width: 1440, height: 900 });
   const m = await measure(page);
   expect(m.bodyHeight).toBeLessThan(12 * REM + 4);
   expect(m.svgHeight).toBeGreaterThanOrEqual(CHART_FLOOR - 1);
@@ -174,7 +174,7 @@ test('凡例が図の下に出る組では、領域が下限に当たると図�
 });
 
 test('凡例は、ペインの高さが変わっても線や点に重ならず図の中に収まる', async ({ page }) => {
-  await openWorkspace(page, [nsens], [cell('n', 0, 0, 24, 22)], { width: 1440, height: 1300 });
+  await openWorkspace(page, [nsens], [cell('n', 0, 0, 16, 22)], { width: 1440, height: 1300 });
   // ペインの下の辺を3行（108px）ずつ縮める（22行 → 19 → 16 → 13）
   for (const rows of [22, 19, 16, 13]) {
     if (rows !== 22) await dragCornerBy(page, 'n', -108);
@@ -255,7 +255,7 @@ test('凡例が図の下に出て下限に当たる低いペインでも、描�
 });
 
 test('縦に長いペインでも、図の高さは幅を超えず、表の見出しは図のすぐ下に来る', async ({ page }) => {
-  await openWorkspace(page, [nsens], [cell('n', 0, 0, 24, 36)], { width: 1280, height: 1400 });
+  await openWorkspace(page, [nsens], [cell('n', 0, 0, 15, 36)], { width: 1280, height: 1400 });
   const m = await page.evaluate(() => {
     const feature = document.querySelector('[data-react-feature="n-sensitivity"]')!;
     const svg = feature.querySelector('.n-sensitivity-svg')!.getBoundingClientRect();
