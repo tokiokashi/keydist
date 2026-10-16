@@ -1,3 +1,4 @@
+import type { SampleKind } from '#engine/sample-workspace.ts';
 import type { Workspace } from '#engine/workspace.ts';
 import { createSampleWorkspaceCommand, createWorkspaceCommand, restoreWorkspaceCommand } from '#engine/workspace-commands.ts';
 import type { Command } from '#input/commands/index.ts';
@@ -34,9 +35,9 @@ export function restoreWorkspaceInStorage(workspace: Workspace, index: number): 
 }
 
 /**
- * 中身入りのサンプルのWorkspaceを作って保存する（トップの「サンプルのWorkspaceを作る」。空のWorkspaceの「サンプルの並びで始める」は新しく作らず、画面の履歴に乗る別のコマンドで今のWorkspaceへ入れる）。
+ * 中身入りのサンプルのWorkspaceを作って保存する（トップのサンプルのボタン。空のWorkspaceの「〜のサンプルで始める」は新しく作らず、画面の履歴に乗る別のコマンドで今のWorkspaceへ入れる）。
  * 全体の条件は書かない（サンプルの条件はWorkspaceのレベルに入る）。作ったら`true`。
  */
-export function createSampleWorkspaceInStorage(id: string, generatePaneId: () => string): boolean {
-  return commitWithoutHistory(createSampleWorkspaceCommand(id, generatePaneId));
+export function createSampleWorkspaceInStorage(id: string, generatePaneId: () => string, kind: SampleKind): boolean {
+  return commitWithoutHistory(createSampleWorkspaceCommand(id, generatePaneId, kind));
 }

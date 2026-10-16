@@ -168,9 +168,15 @@ h1 {
   opacity: 0.85;
 }
 
-/* Workspaceの説明の下の「サンプルのWorkspaceを作る」 */
-.hero .top-points .top-sample-workspace {
+/* Workspaceの説明の下のサンプルを作るボタン。狭い幅では折り返す */
+.hero .top-points .top-sample-workspaces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
   margin-top: 0.6rem;
+}
+
+.hero .top-points .top-sample-workspace {
   min-height: 2rem;
   padding: 0 0.85rem;
   border: 1px solid var(--border-strong);

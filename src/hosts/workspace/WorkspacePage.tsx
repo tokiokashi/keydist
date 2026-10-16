@@ -34,6 +34,7 @@ import {
   type WorkspacePane,
   type WorkspacePaneTarget,
 } from '#engine/workspace.ts';
+import { SAMPLE_KINDS, sampleLabel, type SampleKind } from '#engine/sample-workspace.ts';
 import { withWorkspaceConditions } from '#engine/settings-items.ts';
 import type { PresetIdGenerator } from '#input/presets/index.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
@@ -331,10 +332,10 @@ export function WorkspacePage({
   };
 
   // 今開いている空のWorkspaceへサンプルの並びを入れる（新しいWorkspaceは作らない）。元に戻すで空へ戻る
-  const startFromSample = () => {
+  const startFromSample = (kind: SampleKind) => {
     flushPending();
     setMaximizedId(undefined);
-    dispatch(startWorkspaceFromSampleCommand(workspaceId, generateId));
+    dispatch(startWorkspaceFromSampleCommand(workspaceId, generateId, kind));
   };
 
   if (workspace === undefined) {
@@ -414,7 +415,11 @@ export function WorkspacePage({
                 <div className="workspace-empty" data-workspace-empty="true">
                   <p>ペインを追加して、並べて見られます。</p>
                   <AddPaneMenu onAdd={addPane} onAddBlank={addBlankPane} variant="empty" />
-                  <button type="button" className="workspace-sample-button" onClick={startFromSample}>サンプルの並びで始める</button>
+                  <div className="workspace-sample-buttons">
+                    {SAMPLE_KINDS.map((kind) => (
+                      <button key={kind} type="button" className="workspace-sample-button" onClick={() => startFromSample(kind)}>{sampleLabel(kind)}で始める</button>
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <>
