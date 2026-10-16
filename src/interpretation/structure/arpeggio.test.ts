@@ -5,7 +5,6 @@ import type { Press, Stroke, StrokeParticipation } from '#trace/generate.ts';
 import {
   analyzeStrokeArpeggios,
   DEFAULT_ARPEGGIO_INTERPRETATION,
-  sameArpeggioInterpretation,
 } from './arpeggio.ts';
 import { DEFAULT_CHAIN_INTERPRETATION } from './chain.ts';
 
@@ -332,17 +331,6 @@ test('includeSingleRedirectTailはleading redirectを吸収しない', () => {
       && span.direction === 'inward'),
     false,
   );
-});
-
-test('ArpeggioInterpretation比較はobject identityではなく3項目の意味で比較する', () => {
-  assert.equal(sameArpeggioInterpretation(
-    DEFAULT_ARPEGGIO_INTERPRETATION,
-    { ...DEFAULT_ARPEGGIO_INTERPRETATION },
-  ), true);
-  assert.equal(sameArpeggioInterpretation(
-    DEFAULT_ARPEGGIO_INTERPRETATION,
-    { ...DEFAULT_ARPEGGIO_INTERPRETATION, bridgeSameFinger: true },
-  ), false);
 });
 
 test('Arpeggio result / Policy / Spanはimmutable', () => {

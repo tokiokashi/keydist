@@ -43,7 +43,7 @@ async function openWorkspaceModal(
 
 async function openStandaloneModal(page: Page, size: { width: number; height: number }): Promise<Locator> {
   await page.setViewportSize(size);
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 15_000 });
   await page.locator('.pane-frame .pane-condition-trigger').click();
   const modal = page.getByRole('dialog', { name: '条件' });

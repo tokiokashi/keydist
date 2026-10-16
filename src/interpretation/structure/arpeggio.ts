@@ -23,15 +23,6 @@ export const DEFAULT_ARPEGGIO_INTERPRETATION: ArpeggioInterpretation = {
   includeSingleRedirectTail: false,
 };
 
-export function sameArpeggioInterpretation(
-  left: ArpeggioInterpretation,
-  right: ArpeggioInterpretation,
-): boolean {
-  return left.includeThumb === right.includeThumb
-    && left.bridgeSameFinger === right.bridgeSameFinger
-    && left.includeSingleRedirectTail === right.includeSingleRedirectTail;
-}
-
 export type ArpeggioExtension =
   | 'same-finger-bridge'
   | 'single-redirect-tail';

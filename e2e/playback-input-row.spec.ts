@@ -22,7 +22,7 @@ const TEXT = 'きょうabc!?しゅくだい12+3おちゃxyz,きょうabc!?しゅ
 
 async function openWithText(page: Page, width: number, search = '') {
   await page.setViewportSize({ width, height: 900 });
-  await page.goto(`/standalone/playback${search}`);
+  await page.goto(`/analyzer/playback${search}`);
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   const panel = await openTextChip(page);
   await panel.getByLabel('テキスト', { exact: true }).fill(TEXT);

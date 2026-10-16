@@ -9,7 +9,7 @@ import { waitForHydration } from './hydration-helper.ts';
 test.use({ viewport: { width: 390, height: 844 } });
 
 test('スマホ幅でテキストのチップを開くと、欄の近くに本文の文字数が見えて、チップと同じ数になる', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await waitForHydration(page);
   const chip = page.locator('.context-bar button.text-chip');
   await expect(chip).toBeEnabled({ timeout: 10_000 });

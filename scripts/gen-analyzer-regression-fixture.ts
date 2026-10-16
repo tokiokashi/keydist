@@ -43,13 +43,11 @@ import { defaultRomajiRuleId, tableForRule } from '#input/romaji/rules.ts';
 import { nSensitivity } from '#analyzers/n-sensitivity/sensitivity.ts';
 import { sampleText, SAMPLE_TEXTS, type TextLanguage } from '#input/text/samples.ts';
 
-// このスクリプトが再現する経路は src/legacy/results-view.ts の render() 内、
-// resolveConditions → generateTrace → analyzeStrokeStructure → computeMetrics の並び
-// （旧画面が実際に画面へ出す数値と同じ呼び出し）。
+// このスクリプトが再現する経路は、条件の決定 → generateTrace → analyzeStrokeStructure → computeMetrics の並び
+// （配列ごとの上書きが無い既定の条件で、画面に出す数値と同じ呼び出し）。
 // 前処理（空白畳み込み）は #input/text/samples.ts の SAMPLE_TEXTS をそのまま使い、
 // 正規化ルールをここで再実装しない（AGENTS.md「測る時はアプリと同じ前処理を通す」）。
-// この fixture は src/legacy/ が消えた後も新engineの回帰テストとして生き続けるため、
-// generator・fixture・test のいずれも #legacy/* を import しない
+// generator・fixture・test のいずれも #app/* を import しない
 // （サンプルテキストは #input/text/samples.ts から読む）。
 
 const FIXTURE_VERSION = 1;
@@ -230,9 +228,8 @@ function runCase(
     actionRealizationPolicy,
   };
   const romajiRuleId = layout.romajiTable ? defaultRomajiRuleId(layout.id) : null;
-  // src/legacy/main.ts の layoutsOf() は、romajiTableを持つ配列に対して毎回
-  // tableForRule(ruleId, ...) で表を組み直してから差し替える（静的に焼き込まれた
-  // テーブルをそのまま使わない）。ここも同じ経路をinput層の関数だけで再現する。
+  // romajiTableを持つ配列は、毎回 tableForRule(ruleId, ...) で表を組み直してから差し替える
+  // （静的に焼き込まれたテーブルをそのまま使わない）。input層の関数だけでこの経路を再現する。
   const resolvedLayout = romajiRuleId !== null ? withRomaji(layout, tableForRule(romajiRuleId)) : layout;
 
   const trace = generateTrace(text, resolvedLayout, geometry, options);
@@ -278,8 +275,7 @@ function runCase(
     analysis: analysisSummary(analysis),
     ...(opts.withNSensitivity
       ? {
-        // app側（src/legacy/analyzer-metrics-content.tsx）はresult.layout（既にromaji表が
-        // 差し替わったlayout）を渡す。ここも同じくresolvedLayoutを渡す。
+        // 画面側は、romaji表を差し替えた後のlayoutを渡す。ここも同じくresolvedLayoutを渡す。
         nSensitivity: nSensitivity(
           text,
           resolvedLayout,
@@ -305,7 +301,7 @@ function generate(): Fixture {
   const cases: FixtureCase[] = [];
 
   // 1. 既定条件 × 組み込み配列全部 × 適用可能なサンプル全部。
-  //    src/legacy/results-view.ts の既定経路（配列別override無し）をそのまま再現する。
+  //    配列別の上書きが無い既定の経路をそのまま再現する。
   for (const layout of LAYOUTS) {
     for (const sampleId of Object.keys(SAMPLE_TEXTS.en)) {
       cases.push(runCase('en', layout, sampleId, {

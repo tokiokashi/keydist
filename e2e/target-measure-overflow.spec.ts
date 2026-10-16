@@ -21,7 +21,7 @@ for (const width of [390, 761, 900, 1440]) {
       },
       [MULTI_TARGET_SELECTION_KEY, LAYOUT_IDS] as const,
     );
-    await page.goto('/standalone/comparison');
+    await page.goto('/analyzer/comparison');
     await expect(targetButton(page)).toBeVisible();
     await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(8, { timeout: 15_000 });
     const { scroll, inner } = await page.evaluate(() => ({

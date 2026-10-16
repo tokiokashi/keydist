@@ -32,7 +32,7 @@ const tooltipOf = async (key: Locator) => (await key.locator('title').first().te
 
 test('ヒートマップ: ツールチップは押下数・押し方・前の文字を出し、ヒートマップとヒートマップ（レイヤー）で同じキーは同じ値になる', async ({ page }) => {
   await selectLayout(page, 'qwerty');
-  await page.goto('/standalone/heatmap');
+  await page.goto('/analyzer/heatmap');
   const feature = page.locator('[data-react-feature="heatmap"]');
   await expect(feature).toBeVisible({ timeout: 10_000 });
 
@@ -45,7 +45,7 @@ test('ヒートマップ: ツールチップは押下数・押し方・前の文
   expect(await tooltipOf(heatmapKey(feature, 'integrated', '1'))).toBe('1: 0打');
 
   // 層が1つの配列では、ヒートマップ（レイヤー）の図が表す面はヒートマップの図と同じ
-  await page.goto('/standalone/heatmap-layers');
+  await page.goto('/analyzer/heatmap-layers');
   const layers = page.locator('[data-react-feature="heatmap-layers"]');
   await expect(layers).toBeVisible({ timeout: 10_000 });
   expect(await tooltipOf(heatmapKey(layers, 'single', 'e'))).toBe(integrated);
@@ -53,7 +53,7 @@ test('ヒートマップ: ツールチップは押下数・押し方・前の文
 
 test('ヒートマップ: キーを押すと小窓が開き、図で同じキーが選ばれる。Escapeと押し直しで外れる', async ({ page }) => {
   await selectLayout(page, 'qwerty');
-  await page.goto('/standalone/heatmap');
+  await page.goto('/analyzer/heatmap');
   const feature = page.locator('[data-react-feature="heatmap"]');
   await expect(feature).toBeVisible({ timeout: 10_000 });
 
@@ -101,7 +101,7 @@ test('ヒートマップ: キーを押すと小窓が開き、図で同じキー
 
 test('ヒートマップ（レイヤー）: キーを押すと小窓が開き、全部のレイヤーの図で同じキーが選ばれる', async ({ page }) => {
   await selectLayout(page, 'shingeta');
-  await page.goto('/standalone/heatmap-layers');
+  await page.goto('/analyzer/heatmap-layers');
   const feature = page.locator('[data-react-feature="heatmap-layers"]');
   await expect(feature).toBeVisible({ timeout: 10_000 });
 
@@ -115,7 +115,7 @@ test('ヒートマップ（レイヤー）: キーを押すと小窓が開き、
 
 test('ヒートマップ: レイヤーごとの内訳を開くと、そのレイヤーだけの値が読める', async ({ page }) => {
   await selectLayout(page, 'shingeta');
-  await page.goto('/standalone/heatmap-layers');
+  await page.goto('/analyzer/heatmap-layers');
   const feature = page.locator('[data-react-feature="heatmap-layers"]');
   await expect(feature).toBeVisible({ timeout: 10_000 });
 
@@ -137,7 +137,7 @@ test('ヒートマップ: レイヤーごとの内訳を開くと、そのレイ
   expect(shiftTip).toMatch(/\（D\）: \d+打\n押し方: 出力 \d+打・トリガー \d+打|\（D\）: \d+打\n押し方: トリガー \d+打・出力 \d+打/);
   // ヒートマップは、単打の面とシフトの面を合算した値（シフトの面だけの値より大きい）
   const total = (tip: string) => Number(/: (\d+)打/.exec(tip)![1]);
-  await page.goto('/standalone/heatmap');
+  await page.goto('/analyzer/heatmap');
   const integrated = page.locator('[data-react-feature="heatmap"]');
   await expect(integrated).toBeVisible({ timeout: 10_000 });
   const mergedTip = await tooltipOf(heatmapKey(integrated, 'integrated', 'd'));
@@ -146,7 +146,7 @@ test('ヒートマップ: レイヤーごとの内訳を開くと、そのレイ
 
 test('Bigram Flow: ツールチップを足しても、キーに乗せた時の線の強調は残り、キーを押すと小窓が開く', async ({ page }) => {
   await selectLayout(page, 'qwerty');
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const feature = page.locator('[data-react-feature="bigram-flow"]');
   await expect(feature).toBeVisible({ timeout: 10_000 });
 
@@ -266,7 +266,7 @@ test('Workspace: ペインを拡大すると他のペインの小窓は閉じ、
 
 test('小窓を閉じると、フォーカスは押したキーへ戻る（Escapeでも、閉じるボタンでも）', async ({ page }) => {
   await selectLayout(page, 'shingeta');
-  await page.goto('/standalone/heatmap');
+  await page.goto('/analyzer/heatmap');
   const feature = page.locator('[data-react-feature="heatmap"]');
   await expect(feature).toBeVisible({ timeout: 10_000 });
   const key = heatmapKey(feature, 'integrated', 'd');

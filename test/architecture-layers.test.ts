@@ -24,9 +24,7 @@ type Layer =
   | 'ui-domain'
   | 'platform'
   | 'app'
-  | 'routes'
-  | 'legacy'
-  | 'transitional';
+  | 'routes';
 
 interface Placement {
   layer: Layer;
@@ -35,7 +33,6 @@ interface Placement {
 }
 
 const PREFIX_TABLE: readonly [string, Layer][] = [
-  ['features/analyzer-next/', 'transitional'],
   ['ui/primitives/', 'ui-base'],
   ['ui/theme/', 'ui-base'],
   ['ui/keyboard/', 'ui-domain'],
@@ -52,7 +49,6 @@ const PREFIX_TABLE: readonly [string, Layer][] = [
   ['app/', 'app'],
   ['routes/', 'routes'],
   ['router.tsx', 'routes'],
-  ['legacy/', 'legacy'],
 ];
 
 // 重なる接頭辞（`ui/` と `ui/keyboard/` 等）を足した時に、書く順序で結果が変わらないようにする。
@@ -64,7 +60,7 @@ const PURE_LAYERS = new Set<Layer>(['input', 'trace', 'interpretation', 'engine'
 const ALL_LAYERS: readonly Layer[] = PREFIXES.map(([, layer]) => layer);
 const EVERYTHING = new Set<Layer>(ALL_LAYERS);
 
-/** importer層 → import してよい層。legacy と transitional は下の規則で別に絞る。 */
+/** importer層 → import してよい層。 */
 const ALLOWED: Readonly<Record<Layer, ReadonlySet<Layer>>> = {
   input: new Set(['input']),
   trace: new Set(['input', 'trace']),
@@ -82,15 +78,10 @@ const ALLOWED: Readonly<Record<Layer, ReadonlySet<Layer>>> = {
   platform: new Set(['input', 'platform']),
   app: EVERYTHING,
   routes: EVERYTHING,
-  legacy: EVERYTHING,
-  transitional: EVERYTHING,
 };
 
-/** legacy / transitional をimportしてよい層。それ以外の新しいコードは旧実装に依存させない。 */
-const MAY_IMPORT_OLD = new Set<Layer>(['app', 'routes', 'legacy', 'transitional']);
-
 /** storage を直接触ってよい層。保存は app が組み立て、アダプタとして注入する。Testerは当面の例外。 */
-const STORAGE_LAYERS = new Set<Layer>(['platform', 'app', 'legacy', 'transitional', 'tester']);
+const STORAGE_LAYERS = new Set<Layer>(['platform', 'app', 'tester']);
 
 /**
  * 移行中に解消できない既知の違反。`importer -> target` の相対パス（src基準）で書き、理由を添える。
@@ -114,12 +105,12 @@ const RESTRICTED_PACKAGES: readonly { pattern: RegExp; name: string; allowed: Re
   {
     pattern: /^react-grid-layout(?:\/|$)/,
     name: 'react-grid-layout',
-    allowed: new Set<Layer>(['hosts', 'legacy', 'transitional']),
+    allowed: new Set<Layer>(['hosts']),
   },
   {
     pattern: /^@tanstack\/(?:react-router|react-start)(?:\/|$)/,
     name: 'TanStack Router / Start',
-    allowed: new Set<Layer>(['routes', 'app', 'hosts', 'legacy', 'transitional']),
+    allowed: new Set<Layer>(['routes', 'app', 'hosts']),
   },
 ];
 
@@ -293,9 +284,6 @@ export function layerViolation(
 
   if (isPureFile(importer) && !isPureFile(target)) {
     return { key, message: `${key}: 純粋なファイルは純粋なファイルしか import しない` };
-  }
-  if ((to.layer === 'legacy' || to.layer === 'transitional') && !MAY_IMPORT_OLD.has(from.layer)) {
-    return { key, message: `${key}: 新しいコードから ${to.layer} へ依存しない` };
   }
   if (!ALLOWED[from.layer].has(to.layer)) {
     return { key, message: `${key}: ${from.layer} は ${to.layer} を import できない` };
@@ -557,8 +545,6 @@ test('依存規則の判定そのもの', () => {
   assert.equal(layerViolation('hosts/workspace/pane.tsx', 'hosts/shared/chrome.tsx'), undefined);
   assert.ok(layerViolation('ui/primitives/button.tsx', 'input/layouts/types.ts'));
   assert.equal(layerViolation('ui/keyboard/keyboard.tsx', 'input/layouts/types.ts'), undefined);
-  assert.ok(layerViolation('input/layouts/types.ts', 'legacy/ui-state.ts'));
-  assert.equal(layerViolation('app/app-state.ts', 'legacy/ui-state.ts'), undefined);
   assert.ok(layerViolation('platform/storage.ts', 'app/app-state.ts'));
   assert.equal(layerViolation('editors/personal-speed/editor.tsx', 'interpretation/timing/calibration.ts'), undefined);
   assert.equal(layerViolation('editors/personal-speed/editor.tsx', 'input/shapes/geometry.ts'), undefined);

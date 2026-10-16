@@ -6,7 +6,7 @@ import { waitForHydration } from './hydration-helper.ts';
  * ここでは描画（既定の縦棒グラフ・見る量の切り替え・幅390px）だけを見る。
  */
 test('既定では移動距離の縦棒グラフが、左手の小指から右手の小指の順に出る', async ({ page }) => {
-  await page.goto('/standalone/finger-distance');
+  await page.goto('/analyzer/finger-distance');
   await expect(page.getByRole('heading', { name: '指ごとの距離', exact: true, level: 1 })).toBeVisible();
 
   const feature = page.locator('[data-react-feature="finger-distance"]');
@@ -18,7 +18,7 @@ test('既定では移動距離の縦棒グラフが、左手の小指から右�
 
 test('見る量を隣り合う指の組にすると6本の棒になり、幅390pxでもはみ出さない', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 800 });
-  await page.goto('/standalone/finger-distance?metric=stdDev');
+  await page.goto('/analyzer/finger-distance?metric=stdDev');
   const feature = page.locator('[data-react-feature="finger-distance"]');
   await expect(feature.locator('[data-chart-bar]')).toHaveCount(6, { timeout: 10_000 });
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
@@ -53,7 +53,7 @@ test('共有リンクに載らない対象（名前が長すぎるSetup）は、
       JSON.stringify({ version: 1, target: { kind: 'setup', setupId: 'src-long' } }),
     );
   });
-  await page.goto('/standalone/finger-distance');
+  await page.goto('/analyzer/finger-distance');
   await expect(page.locator('[data-react-feature="finger-distance"]')).toBeVisible({ timeout: 10_000 });
 
   await page.getByRole('button', { name: '共有', exact: true }).click();

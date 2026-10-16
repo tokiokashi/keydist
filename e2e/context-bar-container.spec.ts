@@ -8,7 +8,7 @@ import { waitForHydration } from './hydration-helper.ts';
 test.use({ viewport: { width: 1100, height: 900 } });
 
 test('サイドバー固定で761〜1100の幅を20px刻みに動かしても、文脈バーが1行で重ならず横にあふれない', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await waitForHydration(page);
   await expect(page.locator('.context-bar button.text-chip')).toBeEnabled({ timeout: 10_000 });
   // サイドバーは固定が既定（本体の幅がその分だけ狭くなる）。
@@ -34,7 +34,7 @@ test('サイドバー固定で761〜1100の幅を20px刻みに動かしても、
 });
 
 test('アイコン化した幅ではテキストのチップの文字が左寄せで、境目付近でもチップが重ならない', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await waitForHydration(page);
   await expect(page.locator('.context-bar button.text-chip')).toBeEnabled({ timeout: 10_000 });
   await page.setViewportSize({ width: 1100, height: 900 });
@@ -72,7 +72,7 @@ test('アイコン化した幅ではテキストのチップの文字が左寄�
 
 test('暗いテーマで、既定の物理配列の選択肢の背景と文字がテーマの面・文字の色になる', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'dark' });
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await waitForHydration(page);
   await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
   const colors = await page.evaluate(() => {

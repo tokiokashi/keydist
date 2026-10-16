@@ -12,11 +12,10 @@ import { MOBILE_MAX_WIDTH, MOBILE_QUERY } from './breakpoints.ts';
 
 const SRC = fileURLToPath(new URL('../../', import.meta.url));
 
-/** 旧Analyzer（切り替え時に削除）は検査の対象にしない。 */
 function sourceFiles(dir: string, extension: RegExp): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const path = join(dir, entry.name);
-    if (entry.isDirectory()) return entry.name === 'legacy' ? [] : sourceFiles(path, extension);
+    if (entry.isDirectory()) return sourceFiles(path, extension);
     return extension.test(entry.name) && !entry.name.endsWith('.test.ts') ? [path] : [];
   });
 }
@@ -30,7 +29,6 @@ const OTHER_CONDITIONS: ReadonlyArray<{ file: string; condition: string; count: 
   { file: 'app/app.css', condition: 'min-width: 901px', count: 1, reason: '中間幅の並べ方' },
   { file: 'app/app.css', condition: 'max-width: 900px', count: 1, reason: '中間幅の並べ方' },
   { file: 'app/app.css', condition: 'max-width: 1200px', count: 1, reason: '広い幅の並べ方' },
-  { file: 'features/analyzer-next/standalone-view.css', condition: 'max-width: 700px', count: 2, reason: '単体ページの中身の並べ方' },
   { file: 'hosts/shared/pane-frame.css', condition: 'max-width: 640px', count: 1, reason: '条件のモーダルの中の対象ごとの差の並べ方' },
 ];
 

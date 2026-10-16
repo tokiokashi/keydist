@@ -31,15 +31,15 @@ async function readTexts(page: Page): Promise<readonly StoredText[]> {
 
 async function openBoth(pageA: Page, pageB: Page): Promise<void> {
   await Promise.all([
-    pageA.goto('/standalone/bigram-flow', { waitUntil: 'commit' }),
-    pageB.goto('/standalone/bigram-flow', { waitUntil: 'commit' }),
+    pageA.goto('/analyzer/bigram-flow', { waitUntil: 'commit' }),
+    pageB.goto('/analyzer/bigram-flow', { waitUntil: 'commit' }),
   ]);
   await expect(pageA.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   await expect(pageB.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
 }
 
 test('通知が届く前の他タブの追加を、自タブの書き込みで消さない', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   await openTextChip(page);
   const create = page.getByRole('button', { name: '新規作成' });
@@ -185,7 +185,7 @@ test('他タブが同じAnalyzerの解析設定を変えたら、自タブの表
 
 test('通知が届く前の他タブの追加を、Undoで消さない', async ({ page }) => {
   await page.clock.install();
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   await openTextChip(page);
   await page.getByRole('button', { name: '新規作成' }).click();

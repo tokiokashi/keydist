@@ -34,7 +34,7 @@ async function open(context: BrowserContext, width = 1440): Promise<{ pageA: Pag
   await installTimerCapture(pageB);
   for (const page of [pageA, pageB]) {
     await page.setViewportSize({ width, height: 900 });
-    await page.goto('/standalone/bigram-flow');
+    await page.goto('/analyzer/bigram-flow');
     await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   }
   return { pageA, pageB };

@@ -29,7 +29,7 @@ for (const width of pcWidths) {
   for (const route of ['bigram-flow', 'comparison', 'n-sensitivity']) {
     test(`個別画面 ${route} の内容は ${width}px で左右の余白が偏らない`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
-      await page.goto(`/standalone/${route}`);
+      await page.goto(`/analyzer/${route}`);
       await waitForHydration(page);
       const gaps = await sideGaps(page, '.standalone-stage .pane-frame');
       expect(Math.abs(gaps.left - gaps.right)).toBeLessThanOrEqual(2);

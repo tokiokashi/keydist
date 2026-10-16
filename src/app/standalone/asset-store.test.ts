@@ -52,27 +52,27 @@ test('start: storageを読み終えるまでreadyは偽で、読み込みが空�
 
 test('履歴は画面ごと: 離れても残り、別の画面の元に戻すでは動かない', () => {
   const store = newStore();
-  store.dispatch('/standalone/heatmap', setStandaloneAnalyzerOptionsCommand('heatmap', { n: 1 }));
-  store.dispatch('/standalone/keymap', setStandaloneAnalyzerOptionsCommand('keymap', { n: 2 }));
+  store.dispatch('/analyzer/heatmap', setStandaloneAnalyzerOptionsCommand('heatmap', { n: 1 }));
+  store.dispatch('/analyzer/keymap', setStandaloneAnalyzerOptionsCommand('keymap', { n: 2 }));
 
   // 画面の部品が外れても、ストアが履歴と値を持ち続ける
-  assert.equal(store.step('/standalone/heatmap', 'undo').kind, 'applied');
+  assert.equal(store.step('/analyzer/heatmap', 'undo').kind, 'applied');
   assert.deepEqual(store.getAssets().standaloneAnalyzerOptions, { keymap: { n: 2 } });
-  assert.equal(store.step('/standalone/heatmap', 'redo').kind, 'applied');
+  assert.equal(store.step('/analyzer/heatmap', 'redo').kind, 'applied');
   assert.deepEqual(store.getAssets().standaloneAnalyzerOptions, { heatmap: { n: 1 }, keymap: { n: 2 } });
 });
 
 test('別の画面で書き換わった資産に触れる項目は、戻せなかった知らせを出して捨てる', () => {
   const store = newStore();
-  store.dispatch('/standalone/heatmap', selectTextCommand('standalone', { kind: 'builtin', id: 'builtin:ja.modern' }));
-  store.dispatch('/standalone/keymap', selectTextCommand('standalone', { kind: 'builtin', id: 'builtin:ja.legacy' }));
+  store.dispatch('/analyzer/heatmap', selectTextCommand('standalone', { kind: 'builtin', id: 'builtin:ja.modern' }));
+  store.dispatch('/analyzer/keymap', selectTextCommand('standalone', { kind: 'builtin', id: 'builtin:ja.legacy' }));
   const before = store.getAssets();
 
-  const outcome = store.step('/standalone/heatmap', 'undo');
+  const outcome = store.step('/analyzer/heatmap', 'undo');
   assert.equal(outcome.kind, 'conflict');
   assert.equal(store.getAssets(), before);
   assert.match(store.getNotice()?.text ?? '', /元に戻せませんでした/);
-  assert.equal(store.getState().histories.get('/standalone/heatmap')?.undoStack.length, 0);
+  assert.equal(store.getState().histories.get('/analyzer/heatmap')?.undoStack.length, 0);
 
   store.dismissNotice();
   assert.equal(store.getNotice(), undefined);
@@ -115,10 +115,10 @@ test('サイドバーでWorkspaceを作った後も、他の画面で取って�
 test('トップで対象を選んだ後は、その対象の選択に触れる項目が戻せなくなる', () => {
   const store = newStore();
   const target = { kind: 'layout' as const, layoutId: 'qwerty' };
-  store.dispatch('/standalone/heatmap', setTargetForSingleAndMultiCommand(target));
+  store.dispatch('/analyzer/heatmap', setTargetForSingleAndMultiCommand(target));
   store.dispatch(undefined, setTargetForSingleAndMultiCommand({ kind: 'layout', layoutId: 'dvorak' }));
 
-  assert.equal(store.step('/standalone/heatmap', 'undo').kind, 'conflict');
+  assert.equal(store.step('/analyzer/heatmap', 'undo').kind, 'conflict');
 });
 
 test('Workspaceの削除: 画面の履歴を捨て、履歴を持たない書き込みで戻せる', () => {

@@ -22,14 +22,9 @@ import {
   playbackStrokeAt,
   playbackStrokeDurationMs,
   playbackSameFingerKeyMotions,
-  playbackCursorForEquivalentInputPosition,
   reconcilePlaybackStateAfterAnalysisRefresh,
   playbackTrailKeys,
   playbackTrailOrders,
-  setPlaybackCalibration,
-  setPlaybackSameFingerDelay,
-  setPlaybackSpeedMultiplier,
-  setPlaybackStepsPerSecond,
   stepPlayback,
 } from './playback.ts';
 import { buildGeometry } from '#input/shapes/geometry.ts';
@@ -64,6 +59,8 @@ const playing = (cursor = 0) => ({
   cursor,
   playing: true,
 });
+const withStepsPerSecond = <T extends object>(state: T, stepsPerSecond: number): T & { stepsPerSecond: number; elapsedMs: number } =>
+  ({ ...state, stepsPerSecond, elapsedMs: 0 });
 const emptyStrokes = (length: number) => Array.from({ length }, () => ({ presses: [] })) as never[];
 const timingAnalysis = (
   strokes: readonly any[],
@@ -172,34 +169,6 @@ const playbackRateChartData = (
   calibration,
   speedMultiplier,
 );
-
-test('配列切替ではinputIndexと入力内の進捗から対応cursorを求める', () => {
-  const previous = [
-    { inputIndex: 0 },
-    { inputIndex: 1 },
-    { inputIndex: 1 },
-    { inputIndex: 2 },
-  ];
-  const next = [
-    { inputIndex: 0 },
-    { inputIndex: 1 },
-    { inputIndex: 1 },
-    { inputIndex: 1 },
-    { inputIndex: 2 },
-  ];
-
-  assert.equal(playbackCursorForEquivalentInputPosition(previous, next, 0), 0);
-  assert.equal(playbackCursorForEquivalentInputPosition(previous, next, 1), 1);
-  assert.equal(playbackCursorForEquivalentInputPosition(previous, next, 2), 2);
-  assert.equal(playbackCursorForEquivalentInputPosition(previous, next, 4), 5);
-});
-
-test('配列切替先で現在inputIndexが打てない場合は次の入力位置へ進める', () => {
-  const previous = [{ inputIndex: 0 }, { inputIndex: 1 }, { inputIndex: 2 }];
-  const next = [{ inputIndex: 0 }, { inputIndex: 2 }];
-
-  assert.equal(playbackCursorForEquivalentInputPosition(previous, next, 1), 1);
-});
 
 test('構造解析の再生成ではcursor/playingとStroke内進捗率を維持する', () => {
   const calibration = {
@@ -320,16 +289,15 @@ test('経過時間でステップ毎秒に応じて進み、速度変更では�
   state = advancePlayback(state, 100, strokes);
   assert.equal(state.cursor, 1);
 
-  let fast = setPlaybackStepsPerSecond(playing(), 5);
+  let fast = withStepsPerSecond(playing(), 5);
   fast = advancePlayback(fast, 100, strokes);
   fast = advancePlayback(fast, 100, strokes);
   assert.equal(fast.cursor, 1);
-  assert.equal(setPlaybackStepsPerSecond({ ...state, cursor: 2 }, 5).cursor, 2);
 });
 
 test('再生速度は固定候補に限らず任意のステップ毎秒を設定できる', () => {
   const strokes = emptyStrokes(3);
-  let custom = setPlaybackStepsPerSecond(playing(), 3.2);
+  let custom = withStepsPerSecond(playing(), 3.2);
   assert.equal(custom.stepsPerSecond, 3.2);
   custom = advancePlayback(custom, 100, strokes);
   custom = advancePlayback(custom, 100, strokes);
@@ -353,8 +321,6 @@ test('再生倍率は基準速度とキャリブレーション後の速度を�
     measuredAt: 1,
   };
   assert.equal(playbackStrokeDurationMs(stroke, 1, false, calibration, undefined, 2), 125);
-  const state = setPlaybackSpeedMultiplier(createPlaybackState(), 1.5);
-  assert.equal(state.speedMultiplier, 1.5);
 });
 
 test('同指ディレイは移動距離に応じてステップ間隔を延ばす', () => {
@@ -365,7 +331,7 @@ test('同指ディレイは移動距離に応じてステップ間隔を延ば�
   assert.equal(playbackStrokeDurationMs(strokes[0], 2, false), 500);
   assert.equal(playbackStrokeDurationMs(strokes[0], 2, true), 1000);
 
-  let state = setPlaybackStepsPerSecond(setPlaybackSameFingerDelay(playing(), true), 2);
+  let state = withStepsPerSecond({ ...playing(), sameFingerDelay: true }, 2);
   for (let i = 0; i < 9; i++) state = advancePlayback(state, 100, strokes);
   assert.equal(state.cursor, 0);
   state = advancePlayback(state, 100, strokes);
@@ -534,8 +500,6 @@ test('個人キャリブレーションは通常打鍵と指移動を別々の�
   const stroke = { presses: [{ finger: 'LI', sfb: true, distance: 3 }] } as never;
   assert.equal(playbackStrokeDurationMs(stroke, 1, false, calibration), 250);
   assert.equal(playbackStrokeDurationMs(stroke, 1, true, calibration), 625);
-  const state = setPlaybackCalibration(createPlaybackState(), calibration);
-  assert.equal(state.calibration?.fingerMoveMsPerUnit.LI, 125);
   const fallbackStroke = { presses: [{ finger: 'RP', sfb: true, distance: 3 }] } as never;
   assert.ok(Math.abs(playbackStrokeDurationMs(fallbackStroke, 1, true, calibration) - 500) < 1e-9);
 

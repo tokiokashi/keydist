@@ -562,34 +562,6 @@ export function playbackStrokeAt(strokes: readonly Stroke[], cursor: number): St
   return strokes[Math.min(cursor - 1, strokes.length - 1)];
 }
 
-export function setPlaybackStepsPerSecond(
-  state: PlaybackState,
-  stepsPerSecond: PlaybackStepsPerSecond,
-): PlaybackState {
-  return { ...state, stepsPerSecond, elapsedMs: 0 };
-}
-
-export function setPlaybackSpeedMultiplier(
-  state: PlaybackState,
-  speedMultiplier: number,
-): PlaybackState {
-  return { ...state, speedMultiplier, elapsedMs: 0 };
-}
-
-export function setPlaybackSameFingerDelay(
-  state: PlaybackState,
-  sameFingerDelay: boolean,
-): PlaybackState {
-  return { ...state, sameFingerDelay, elapsedMs: 0 };
-}
-
-export function setPlaybackCalibration(
-  state: PlaybackState,
-  calibration: PlaybackCalibration | undefined,
-): PlaybackState {
-  return { ...state, calibration, elapsedMs: 0 };
-}
-
 function normalPlaybackStepMs(stepsPerSecond: PlaybackStepsPerSecond): number {
   return Number.isFinite(stepsPerSecond) && stepsPerSecond > 0
     ? 1000 / stepsPerSecond
@@ -1472,49 +1444,6 @@ export function stepPlayback(
     cursor: clampPlaybackCursor(state.cursor + direction, strokeCount),
     elapsedMs: 0,
   };
-}
-
-/**
- * 配列を切り替えた時、次に再生するStrokeの入力位置を新しいStroke列へ写す。
- * 同じinputIndexが複数Strokeを持つ場合は、その入力内で完了済みのStroke数も維持する。
- */
-export function playbackCursorForEquivalentInputPosition(
-  previousStrokes: readonly Pick<Stroke, 'inputIndex'>[],
-  nextStrokes: readonly Pick<Stroke, 'inputIndex'>[],
-  cursor: number,
-): number {
-  const previousCursor = clampPlaybackCursor(cursor, previousStrokes.length);
-  if (previousCursor === 0) return 0;
-  if (previousCursor >= previousStrokes.length) return nextStrokes.length;
-
-  const targetInputIndex = previousStrokes[previousCursor].inputIndex;
-  let previousGroupStart = previousCursor;
-  while (
-    previousGroupStart > 0
-    && previousStrokes[previousGroupStart - 1].inputIndex === targetInputIndex
-  ) previousGroupStart--;
-  const completedInGroup = previousCursor - previousGroupStart;
-
-  const nextGroupStart = nextStrokes.findIndex(
-    (stroke) => stroke.inputIndex === targetInputIndex,
-  );
-  if (nextGroupStart < 0) {
-    const nextLater = nextStrokes.findIndex(
-      (stroke) => stroke.inputIndex > targetInputIndex,
-    );
-    return nextLater < 0 ? nextStrokes.length : nextLater;
-  }
-
-  let nextGroupEnd = nextGroupStart + 1;
-  while (
-    nextGroupEnd < nextStrokes.length
-    && nextStrokes[nextGroupEnd].inputIndex === targetInputIndex
-  ) nextGroupEnd++;
-
-  return nextGroupStart + Math.min(
-    completedInGroup,
-    nextGroupEnd - nextGroupStart,
-  );
 }
 
 /**

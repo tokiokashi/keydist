@@ -42,11 +42,6 @@ export function sampleText(language: TextLanguage, sampleId: string): string {
     ?? '';
 }
 
-export function isSampleText(text: string): boolean {
-  return Object.values(SAMPLE_TEXTS)
-    .some((samples) => Object.values(samples).includes(text));
-}
-
 /** サンプル選択UI向けに1件ずつ平らにした形（`{language, sampleId}`をUIの選択値に使う）。 */
 export interface SampleTextEntry {
   readonly language: TextLanguage;

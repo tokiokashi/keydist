@@ -9,7 +9,7 @@ import { waitForHydration } from './hydration-helper.ts';
 const PACKAGE_VERSION = (JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string }).version;
 
 test('サイドバーは区分ごとのナビゲーションと、最下端の版表示・テーマ切替を持つ', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await waitForHydration(page);
   const sidebar = page.locator('#app-sidebar');
   await expect(sidebar).toBeVisible();
@@ -24,7 +24,7 @@ test('サイドバーは区分ごとのナビゲーションと、最下端の�
   await expect(sidebar.locator('a[href*="classic"]')).toHaveCount(0);
 
   await sidebar.getByRole('link', { name: '比較表', exact: true }).click();
-  await expect(page).toHaveURL(/\/standalone\/comparison$/);
+  await expect(page).toHaveURL(/\/analyzer\/comparison$/);
   await expect(page.getByRole('heading', { name: '比較表', level: 1 })).toBeVisible();
 
   await sidebar.getByRole('button', { name: '暗', exact: true }).click();
@@ -40,7 +40,7 @@ async function expectSidebarShown(page: Page): Promise<void> {
 }
 
 test('固定を外すとサイドバーは隠れ、ボタンで重ねて出して離れると引っ込む。固定の状態はリロード後も残る', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await waitForHydration(page);
   const sidebar = page.locator('#app-sidebar');
   const toggle = page.getByRole('button', { name: 'サイドバーを開く' });
@@ -92,7 +92,7 @@ test('ボタンで重ねて出している間は、Tabで本体へ抜けない',
   await page.addInitScript(() => {
     localStorage.setItem('keydist:app-state', JSON.stringify({ version: 2, shell: { sidebarPinned: false } }));
   });
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await waitForHydration(page);
   await page.getByRole('button', { name: 'サイドバーを開く' }).click();
   await expectSidebarShown(page);
@@ -157,40 +157,12 @@ test('スマホ幅ではサイドバーは引き出しで、リンクを押す�
   await page.getByRole('button', { name: 'サイドバーを開く' }).click();
   await expect(sidebar).toBeInViewport();
   await sidebar.getByRole('link', { name: 'N感度', exact: true }).click();
-  await expect(page).toHaveURL(/\/standalone\/n-sensitivity$/);
+  await expect(page).toHaveURL(/\/analyzer\/n-sensitivity$/);
   await expect(sidebar).not.toBeInViewport();
 });
 
-test('サイドバー最下端のリンクから旧バージョンへ行ける（パソコン幅）', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
-  await waitForHydration(page);
-  const link = page.locator('#app-sidebar .sidebar-foot').getByRole('link', { name: '旧バージョン', exact: true });
-  await expect(link).toHaveAttribute('href', '/analyzer');
-  await link.click();
-  await expect(page).toHaveURL(/\/analyzer\/?$/);
-  await expect(page.locator('#app-sidebar')).toHaveCount(0);
-  // 反証: 旧Analyzerの画面が実際に出ている（リンクだけ遷移して空白になっていない）
-  await expect(page.locator('main, #root').first()).not.toBeEmpty();
-  await expect(page.getByRole('heading').first()).toBeVisible();
-});
-
-test('サイドバー最下端のリンクから旧バージョンへ行ける（スマホ幅の引き出し）', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/');
-  await waitForHydration(page);
-  await page.getByRole('button', { name: 'サイドバーを開く' }).click();
-  const sidebar = page.locator('#app-sidebar');
-  await expect(sidebar).toBeInViewport();
-  const link = sidebar.getByRole('link', { name: '旧バージョン', exact: true });
-  await expect(link).toBeInViewport();
-  await link.click();
-  await expect(page).toHaveURL(/\/analyzer\/?$/);
-  await expect(page.locator('#app-sidebar')).toHaveCount(0);
-  await expect(page.getByRole('heading').first()).toBeVisible();
-});
-
 test('文脈バー: テキストのチップは閉じた時1行で、開くと選択・編集が出る。Undo / Redoで選択を戻せる', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const bar = page.locator('.context-bar');
   const chip = bar.locator('button.text-chip');
   await expect(chip).toBeEnabled({ timeout: 10_000 });
@@ -218,7 +190,7 @@ test('文脈バー: テキストのチップは閉じた時1行で、開くと�
 
 test('Undoは待ち中の本文の変更を先に書いてから戻す（その前の操作は戻さない）', async ({ page }) => {
   await page.clock.install();
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const bar = page.locator('.context-bar');
   const chip = bar.locator('button.text-chip');
   await expect(chip).toBeEnabled({ timeout: 10_000 });
@@ -250,7 +222,7 @@ test('Undoは待ち中の本文の変更を先に書いてから戻す（その�
 });
 
 test('テキストの名前は、チップの外を押して閉じても書かれ、「元に戻す」はその変更を戻す', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const bar = page.locator('.context-bar');
   const chip = bar.locator('button.text-chip');
   await expect(chip).toBeEnabled({ timeout: 10_000 });
@@ -283,17 +255,15 @@ test('テキストの名前は、チップの外を押して閉じても書か�
     .toContain('名前その2');
 });
 
-test('トップとTesterもシェルに載り、旧Analyzerは載らない', async ({ page }) => {
+test('トップとTesterもシェルに載る', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('#app-sidebar')).toBeVisible();
   await page.goto('/input');
   await expect(page.locator('#app-sidebar')).toBeVisible();
   await expect(page.locator('#app-sidebar').getByRole('link', { name: 'Tester', exact: true })).toHaveAttribute('aria-current', 'page');
-  await page.goto('/analyzer');
-  await expect(page.locator('#app-sidebar')).toHaveCount(0);
 });
 
-test('トップは道具の全体像を説明するページで、旧版への導線は無く、旧バージョンへ行ける', async ({ page }) => {
+test('トップは道具の全体像を説明するページで、旧版への導線は無い', async ({ page }) => {
   await page.goto('/');
   await waitForHydration(page);
   const hero = page.locator('.hero');
@@ -304,17 +274,16 @@ test('トップは道具の全体像を説明するページで、旧版への�
   await expect(hero.locator('a[href*="classic"]')).toHaveCount(0);
   await expect(page.locator('#app-sidebar').locator('a[href*="classic"]')).toHaveCount(0);
   await expect(page.getByRole('link', { name: '旧版' })).toHaveCount(0);
-
-  await hero.getByRole('link', { name: '旧バージョン', exact: true }).click();
-  await expect(page).toHaveURL(/\/analyzer\/?$/);
+  await expect(page.getByRole('link', { name: '旧バージョン' })).toHaveCount(0);
+  await expect(page.locator('a[href$="/analyzer"], a[href$="/analyzer/"]')).toHaveCount(0);
 });
 
 test('トップの画面の名前から各画面に行ける（見本が出るスマホ幅）', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 800 });
   const targets = [
-    ['Bigram Flow', /\/standalone\/bigram-flow$/],
-    ['比較表', /\/standalone\/comparison$/],
-    ['N感度', /\/standalone\/n-sensitivity$/],
+    ['Bigram Flow', /\/analyzer\/bigram-flow$/],
+    ['比較表', /\/analyzer\/comparison$/],
+    ['N感度', /\/analyzer\/n-sensitivity$/],
   ] as const;
   for (const [name, url] of targets) {
     await page.goto('/');
@@ -338,7 +307,7 @@ test('トップのサイドバーの見本は、サイドバーが引き出し�
 });
 
 test('テキストのチップは文字数を出し、本文を編集すると追従する', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const chip = page.locator('.context-bar button.text-chip');
   await expect(chip).toBeEnabled({ timeout: 10_000 });
 
@@ -355,7 +324,7 @@ function groupButton(page: Page, name: string) {
 const COLLAPSIBLE_GROUPS = ['Analyze', 'Workspace', 'Assets', 'About'] as const;
 
 test('サイドバーの見出しのまとまりは、初めて開いた時は全部開いている', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await waitForHydration(page);
   const sidebar = page.locator('#app-sidebar');
   for (const name of COLLAPSIBLE_GROUPS) {
@@ -370,7 +339,7 @@ test('サイドバーの見出しのまとまりは、初めて開いた時は�
 });
 
 test('見出しを押すとまとまりが畳まれ、もう一度押すと開く。今いる画面の項目を含むまとまりも畳める', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await waitForHydration(page);
   const sidebar = page.locator('#app-sidebar');
   const bigramFlow = sidebar.getByRole('link', { name: 'Bigram Flow', exact: true });
@@ -408,7 +377,7 @@ test('見出しを押すとまとまりが畳まれ、もう一度押すと開�
 });
 
 test('畳んだまとまりの中の画面へ、サイドバーの外のリンクやURLで移っても畳まれたまま。読み込み直しても保たれる', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await waitForHydration(page);
   const sidebar = page.locator('#app-sidebar');
   await groupButton(page, 'Analyze').click();
@@ -419,14 +388,14 @@ test('畳んだまとまりの中の画面へ、サイドバーの外のリン�
   await page.setViewportSize({ width: 390, height: 800 });
   await waitForHydration(page);
   await page.locator('.hero').getByRole('link', { name: '比較表', exact: true }).click();
-  await expect(page).toHaveURL(/\/standalone\/comparison$/);
+  await expect(page).toHaveURL(/\/analyzer\/comparison$/);
   await page.getByRole('button', { name: 'サイドバーを開く' }).click();
   await expect(sidebar).toBeInViewport();
   await expect(groupButton(page, 'Analyze')).toHaveAttribute('aria-expanded', 'false');
   await expect(sidebar.getByRole('link', { name: '比較表', exact: true })).toBeHidden();
   await page.setViewportSize({ width: 1440, height: 800 });
 
-  await page.goto('/standalone/heatmap');
+  await page.goto('/analyzer/heatmap');
   await waitForHydration(page);
   await expect(groupButton(page, 'Analyze')).toHaveAttribute('aria-expanded', 'false');
   await expect(sidebar.getByRole('link', { name: 'ヒートマップ', exact: true })).toBeHidden();
@@ -444,7 +413,7 @@ test('畳んだまとまりは、画面を作るスクリプトが動く前の�
   });
   // 外部のスクリプトを止める。headに埋めた小さなスクリプトは止まらない。
   await page.route('**/*', (route) => (route.request().resourceType() === 'script' ? route.abort() : route.continue()));
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('html')).toHaveAttribute('data-sidebar-collapsed', 'assets about');
   const sidebar = page.locator('#app-sidebar');
   await expect(sidebar.getByRole('link', { name: 'Bigram Flow', exact: true })).toBeVisible();
@@ -456,7 +425,7 @@ test('保存した畳み方が壊れている時は全部開いた状態にな�
   await page.addInitScript(() => {
     localStorage.setItem('keydist:app-state', JSON.stringify({ version: 2, shell: { sidebarPinned: true, sidebarCollapsed: 'about' } }));
   });
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await waitForHydration(page);
   await expect(page.locator('html')).not.toHaveAttribute('data-sidebar-collapsed');
   for (const name of COLLAPSIBLE_GROUPS) {
@@ -466,7 +435,7 @@ test('保存した畳み方が壊れている時は全部開いた状態にな�
 });
 
 test('固定の切り替えと畳み方は、互いの保存を消さない', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await waitForHydration(page);
   await groupButton(page, 'About').click();
   await page.locator('#app-sidebar').getByRole('button', { name: 'サイドバーを固定' }).click();
@@ -481,7 +450,7 @@ test('固定を外して重ねて出した時も畳める。今いる画面の�
   await page.addInitScript(() => {
     localStorage.setItem('keydist:app-state', JSON.stringify({ version: 2, shell: { sidebarPinned: false, sidebarCollapsed: ['analyze'] } }));
   });
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await waitForHydration(page);
   await page.getByRole('button', { name: 'サイドバーを開く' }).click();
   await expectSidebarShown(page);
@@ -495,7 +464,7 @@ test('固定を外して重ねて出した時も畳める。今いる画面の�
 
 test('スマホ幅の引き出しでも、まとまりを畳める。開いた時に今いる項目が畳まれていれば見出しのボタンにフォーカスが移る', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await waitForHydration(page);
   const toggle = page.getByRole('button', { name: 'サイドバーを開く' });
   await toggle.click();
@@ -517,7 +486,7 @@ test('まとまりを畳んだ状態でも、Tabはサイドバーの中の見�
   await page.addInitScript(() => {
     localStorage.setItem('keydist:app-state', JSON.stringify({ version: 2, shell: { sidebarPinned: false, sidebarCollapsed: ['analyze', 'about'] } }));
   });
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await waitForHydration(page);
   await page.getByRole('button', { name: 'サイドバーを開く' }).click();
   await expectSidebarShown(page);

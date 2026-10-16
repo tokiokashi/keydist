@@ -41,7 +41,7 @@ async function expectNoLabelOnlyRow(page: Page): Promise<void> {
 
 test('個別画面: 組の数は本文の先頭の行を使わず、見出しの名前として読み上げられる', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 20_000 });
   await expectNoLabelOnlyRow(page);
   await expect(page.getByRole('heading', { level: 3, name: /^Keyboard Flow 2打鍵 [\d,]+組$/ })).toBeVisible();

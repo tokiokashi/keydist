@@ -1,4 +1,3 @@
-import type { Layer } from '#input/layouts/layers.ts';
 import type { LayerPresentationRole } from '#input/layouts/types.ts';
 
 export interface LayerColorData {
@@ -13,14 +12,6 @@ export interface LayerColorData {
 /** 修飾面のトリガーは、詳細表示でも通常の層操作キーとして除外する。 */
 function keepsPairedTriggers(role: LayerPresentationRole | undefined): boolean {
   return role !== 'modifier';
-}
-
-/** ヒートマップ（レイヤー）の色用押下数を作る。実測値は `data.keyCounts` のまま残す。 */
-export function normalizedLayerColors(
-  layer: Layer,
-  data: LayerColorData,
-): Map<string, number> {
-  return normalizedRoleColors(layer.role, data);
 }
 
 /** 層の表示区分から色用押下数を作る。表示用の `Layer` を持たない抽出が使う。 */

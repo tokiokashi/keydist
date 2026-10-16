@@ -154,7 +154,7 @@ test('縦が足りない領域では件数の文と手ごとの要約を隠し�
 
 test('個別画面では効かない: 本体は高さを持たず、図は縦に積み、領域の高さは中身で決まる', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 15_000 });
   const info = await page.evaluate(() => {
     const feature = document.querySelector('[data-react-feature="bigram-flow"]')!;
@@ -180,7 +180,7 @@ test('個別画面では効かない: 本体は高さを持たず、図は縦に
 
 test('左右の手をまたぐ2打鍵の注記は図の下ではなくRelative vectorsのⓘの中にある', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const flowRoot = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flowRoot).toBeVisible({ timeout: 15_000 });
   await expect(flowRoot).not.toContainText('左右の手をまたぐ');
@@ -190,7 +190,7 @@ test('左右の手をまたぐ2打鍵の注記は図の下ではなくRelative v
 
 test('個別画面の外側に高さを測れるcontainerがあっても、Workspace用の規則は漏れない（本体の領域は名前つきで問う）', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 15_000 });
   // 名前の無い問い合わせだと、幅しか測れない本体の領域は飛ばされ、この外側のcontainerの高さを読んでしまう。
   await page.addStyleTag({ content: '.pane-frame { container-type: size; height: 400px; }' });

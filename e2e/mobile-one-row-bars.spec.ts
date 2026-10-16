@@ -12,7 +12,7 @@ test.use({ viewport: { width: 390, height: 844 } });
 const PAGES = ['bigram-flow', 'comparison', 'n-sensitivity'] as const;
 
 async function openReady(page: Page, path: string) {
-  await page.goto(`/standalone/${path}`);
+  await page.goto(`/analyzer/${path}`);
   await waitForHydration(page);
   // 資産の読み込みが済むまでバーの操作は効かない。読み込み後にだけ測る／押す。
   await expect(page.locator('.context-bar button.text-chip')).toBeEnabled({ timeout: 10_000 });
@@ -201,7 +201,7 @@ test('スマホ幅: 文脈バーの元に戻す・やり直す・共有が直接
 
   await share.click();
   await expect(page.getByRole('status').filter({ hasText: 'URLをコピーしました' })).toBeVisible();
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('/standalone/bigram-flow');
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('/analyzer/bigram-flow');
 });
 
 test.describe('パソコン幅', () => {

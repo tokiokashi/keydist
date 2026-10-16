@@ -1,12 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGeometry, DEFAULT_FINGER_ASSIGNMENT, PHYSICAL_SHAPES } from './geometry.ts';
+import { buildGeometry, JIS_FINGER_ASSIGNMENT, PHYSICAL_SHAPES } from './geometry.ts';
 import {
   keyboardStandardForGeometryId,
   physicalKeyDisplayLabel,
   physicalKeyEngraving,
 } from './key-labels.ts';
-import { sanitizeGeometrySettings, sanitizePhysicalShape } from './settings.ts';
 
 test('名前付きの物理キーは内部idではなく表示名になる', () => {
   assert.equal(physicalKeyDisplayLabel('thumb-l'), '左親指');
@@ -39,22 +38,17 @@ test('規格が分からない時は位置で呼ぶ', () => {
   assert.equal(physicalKeyEngraving('backquote'), '`');
 });
 
-test('Testerの経路: 自作物理配列は規格未指定になり、追加キーを位置で呼ぶ', () => {
-  const custom = sanitizePhysicalShape({
+test('組み込みでない物理配列は規格未指定になり、追加キーを位置で呼ぶ', () => {
+  const custom = {
     ...PHYSICAL_SHAPES['jis-row-staggered'],
     id: 'user-jis-sized',
     name: '自作',
-  }, PHYSICAL_SHAPES['jis-row-staggered']);
+  };
   const standard = keyboardStandardForGeometryId(custom.id);
   assert.equal(standard, undefined);
-  // Testerと同じく、自作物理配列は既定の指割り当てとともにsanitizeしてから組み立てる
-  const settings = sanitizeGeometrySettings({
-    shape: custom,
-    assignment: DEFAULT_FINGER_ASSIGNMENT,
-  });
-  const geometry = buildGeometry(settings.shape, settings.assignment);
+  const geometry = buildGeometry(custom, JIS_FINGER_ASSIGNMENT);
   const labels = [...geometry.grid.flat()].map((key) => physicalKeyEngraving(key.id, standard));
-  // JIS大の自作物理配列でも、同じ刻印が2つのキーに出ない
+  // JIS大の物理配列でも、同じ刻印が2つのキーに出ない
   assert.equal(new Set(labels).size, labels.length);
   assert.equal(physicalKeyEngraving('r2c11', standard), '3段目12列');
 

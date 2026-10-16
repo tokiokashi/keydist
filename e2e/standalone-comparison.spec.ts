@@ -39,7 +39,7 @@ async function addTarget(page: import('@playwright/test').Page, key: string) {
 }
 
 test('新規プロファイルで、配列を2つ直接選ぶだけでSetupを作らずに比較できる', async ({ page }) => {
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
   // ページの見出し(h1)とAnalyzer自身の見出し(h2)は同じ文字列。h2は計算が済むと現れるので、
   // 名前だけで探すと一致が1件か2件かが描画の速さで変わる。見出しの段まで指定する。
   await expect(page.getByRole('heading', { name: '比較表', exact: true, level: 1 })).toBeVisible();
@@ -61,7 +61,7 @@ test('新規プロファイルで、配列を2つ直接選ぶだけでSetupを�
 
 test('Setupを2件選ぶと2行表示され、並びは付けた順によらず一覧の順で、基準選択が効く', async ({ page }) => {
   await page.addInitScript(seedTwoSetups());
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
 
   await expect(page.getByRole('heading', { name: '比較表', exact: true, level: 1 })).toBeVisible();
 
@@ -92,7 +92,7 @@ test('Setupを2件選ぶと2行表示され、並びは付けた順によらず�
 
 test('選択・基準はリロードしても残る（資産の読み込み前に消えない）', async ({ page }) => {
   await page.addInitScript(seedTwoSetups());
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
 
   const table = page.locator('.comparison-table');
   await addTarget(page, 'setup:fixed-b');
@@ -155,7 +155,7 @@ test('集合に存在しないSetup idが混ざっていても行は消えず「
       }),
     );
   });
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
 
   const table = page.locator('.comparison-table');
   await expect(table).toBeVisible({ timeout: 10_000 });
@@ -190,7 +190,7 @@ test('既定と違う条件が条件の要約に出る（対象ごとの差は�
       JSON.stringify({ version: 1, targets: [{ kind: 'setup', setupId: 'fixed-a' }] }),
     );
   });
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
 
   const table = page.locator('.comparison-table');
   await expect(table).toBeVisible({ timeout: 10_000 });
@@ -219,7 +219,7 @@ test('既定の物理配列を変えると、配列対象は追従しSetup対象
       }),
     );
   });
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
 
   const table = page.locator('.comparison-table');
   await expect(table).toBeVisible({ timeout: 10_000 });
@@ -252,7 +252,7 @@ test('対象ごとに条件が違う時は、閉じた1行に「対象ごとに�
       JSON.stringify({ version: 1, targets: [{ kind: 'setup', setupId: 'fixed-a' }, { kind: 'setup', setupId: 'fixed-b' }] }),
     );
   });
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
 
   const table = page.locator('.comparison-table');
   await expect(table.locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
@@ -271,7 +271,7 @@ test('対象ごとに条件が違う時は、閉じた1行に「対象ごとに�
 test('全対象の条件が同じなら、対象ごとの差の節も「対象ごとに差あり」も出ない', async ({ page }) => {
   const targets = [{ kind: 'setup', setupId: 'fixed-a' }, { kind: 'setup', setupId: 'fixed-b' }];
   await page.addInitScript(seedSelection, { targets, overrides: {} });
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
 
   await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
   const summary = page.locator('.pane-condition-summary');
@@ -302,7 +302,7 @@ function seedSelection({ targets, overrides }: { targets: readonly unknown[]; ov
 test('Setup対象だけの集合では、既定の物理配列を変えても名前・条件欄に「既定の物理配列」が出ない（M1）', async ({ page }) => {
   const targets = [{ kind: 'setup', setupId: 'fixed-a' }, { kind: 'setup', setupId: 'fixed-b' }];
   await page.addInitScript(seedSelection, { targets, overrides: {} });
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
 
   const table = page.locator('.comparison-table');
   await expect(table.locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
@@ -324,7 +324,7 @@ test('配列と上書きの無いSetupが同名になっても、衝突した2�
     { kind: 'setup', setupId: 'fixed-b' },
   ];
   await page.addInitScript(seedSelection, { targets, overrides: {} });
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
 
   const table = page.locator('.comparison-table');
   await expect(table.locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(3, { timeout: 10_000 });
@@ -336,7 +336,7 @@ test('配列と上書きの無いSetupが同名になっても、衝突した2�
 test('解決に失敗したメンバーにも意味のある名前が付く（L2）', async ({ page }) => {
   const targets = [{ kind: 'setup', setupId: 'fixed-a' }, { kind: 'setup', setupId: 'deleted-setup' }];
   await page.addInitScript(seedSelection, { targets, overrides: {} });
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
 
   const table = page.locator('.comparison-table');
   await expect(table.locator('tbody tr[data-comparison-row="failed"]')).toHaveCount(1, { timeout: 10_000 });
@@ -349,7 +349,7 @@ test('解決に失敗したメンバーにも意味のある名前が付く（L2
 });
 
 test('絞り込み欄で候補を絞り、キーボードだけで選んで、Escapeで閉じるとボタンへ戻る', async ({ page }) => {
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
   const button = page.getByRole('button', { name: /^対象: / });
   await dismissAutoOpenedSelection(page);
   await button.click();
@@ -380,7 +380,7 @@ test('絞り込み欄で候補を絞り、キーボードだけで選んで、Es
 });
 
 test('絞り込み欄は読みでも探せ、カタカナで打っても同じ候補が出る', async ({ page }) => {
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
   await dismissAutoOpenedSelection(page);
   await page.getByRole('button', { name: /^対象: / }).click();
   const selection = page.getByRole('dialog', { name: '対象の選択' });
@@ -394,7 +394,7 @@ test('絞り込み欄は読みでも探せ、カタカナで打っても同じ�
 });
 
 test('Tabで選択の最後から先へ進むと閉じてボタンの次へ、最初から戻るとボタンへ移る', async ({ page }) => {
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
   const button = page.getByRole('button', { name: /^対象: / });
   const selection = page.getByRole('dialog', { name: '対象の選択' });
   await dismissAutoOpenedSelection(page);
@@ -422,7 +422,7 @@ test('ラベル付きのSetupは、候補の2行目にフル名を出す', async
       overrides: {},
     }));
   });
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
   const selection = await openTargetSelection(page);
   const choice = selection.locator('label:has(input[value="setup:fixed-a"])');
   await expect(choice.locator('.target-selection-choice-name')).toHaveText('自宅の分割キーボード');
@@ -433,7 +433,7 @@ test.describe('スマホ幅', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('選択は画面下からのシートで出て、暗い所を押すと閉じて対象ボタンへフォーカスが戻る', async ({ page }) => {
-    await page.goto('/standalone/comparison');
+    await page.goto('/analyzer/comparison');
     const button = page.getByRole('button', { name: /^対象: / });
     const selection = await openTargetSelection(page);
     const box = (await selection.boundingBox())!;
@@ -445,7 +445,7 @@ test.describe('スマホ幅', () => {
 });
 
 test('候補に当てはまる配列・Setupが無い時は、その旨を出す', async ({ page }) => {
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
   const selection = await openTargetSelection(page);
   await selection.getByRole('searchbox').fill('そんな配列は無い');
   await expect(selection).toContainText('当てはまる配列・Setupはありません。');
@@ -453,7 +453,7 @@ test('候補に当てはまる配列・Setupが無い時は、その旨を出す
 
 test('対象の選択は組み込み・英字 / 組み込み・かな / Setupの区分に分かれ、外を押すと閉じる', async ({ page }) => {
   await page.addInitScript(seedTwoSetups());
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
   const selection = await openTargetSelection(page);
   await expect(selection.locator('legend')).toHaveText(['組み込み・英字の配列', '組み込み・かな配列', 'Setup']);
   await expect(selection.locator('[data-target-group="builtin-kana"] input[value="layout:naginata-v18"]')).toHaveCount(1);
@@ -471,7 +471,7 @@ test('対象の選択は組み込み・英字 / 組み込み・かな / Setupの
 });
 
 test('画面の文言に開発の内部（issue番号・Phase・ファイル名・開発用の語）が出ない', async ({ page }) => {
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
   await addTarget(page, 'layout:qwerty');
   await addTarget(page, 'layout:colemak');
   await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
@@ -493,7 +493,7 @@ test('保存済みの表示する列は、操作可能になった瞬間から�
     // 表示する列は解析設定の小窓にあり、小窓を開くボタンは読み込みが済むまで押せない。先頭が「動作数」。
     { selector: '[data-settings-window="true"] input[type="checkbox"]', read: 'checked' },
   );
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
   const firstColumn = (await openSettings(page)).getByRole('checkbox', { name: '動作数', exact: true });
   await expect(firstColumn).toBeEnabled({ timeout: 10_000 });
   await expect(firstColumn).not.toBeChecked();
@@ -501,7 +501,7 @@ test('保存済みの表示する列は、操作可能になった瞬間から�
 });
 
 test('基準にする対象は対象の選択の中にあり、解析設定には無い', async ({ page }) => {
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
   await addTarget(page, 'layout:qwerty');
   await addTarget(page, 'layout:colemak-dh');
   await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
@@ -519,7 +519,7 @@ test('基準にする対象は対象の選択の中にあり、解析設定に�
 });
 
 test('対象が空の時は、ペインに選ぶボタンだけを出し、パソコン幅では選択を自動で開く（フォーカスは奪わない）', async ({ page }) => {
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
   const empty = page.locator('[data-pane-empty="true"]');
   const choose = empty.getByRole('button', { name: '配列・Setupを選ぶ' });
   await expect(choose).toBeVisible();
@@ -549,7 +549,7 @@ test.describe('スマホ幅で対象が空の時', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('選択は自動では開かない', async ({ page }) => {
-    await page.goto('/standalone/comparison');
+    await page.goto('/analyzer/comparison');
     await expect(page.getByRole('button', { name: '配列・Setupを選ぶ' })).toBeEnabled();
     // 「後から自動で開かない」ことが検査の中身なので、猶予の分は実時間で待つ
     await page.waitForTimeout(300);
@@ -568,7 +568,7 @@ function seedQwertySelection() {
 
 test('読み込み時に対象があったペインは、最後の1件を外しても選択を自動で開かず、開き直すと絞り込み欄へフォーカスが入る', async ({ page }) => {
   await page.addInitScript(seedQwertySelection());
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
   await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(1, { timeout: 10_000 });
   const selection = page.getByRole('dialog', { name: '対象の選択' });
   await expect(selection).toHaveCount(0);
@@ -593,8 +593,8 @@ test('別のタブで対象をすべて外されても、今のタブで選択�
   await context.addInitScript(seedQwertySelection());
   const pageA = await context.newPage();
   const pageB = await context.newPage();
-  await pageA.goto('/standalone/comparison');
-  await pageB.goto('/standalone/comparison');
+  await pageA.goto('/analyzer/comparison');
+  await pageB.goto('/analyzer/comparison');
   await expect(pageA.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(1, { timeout: 10_000 });
   await expect(pageB.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(1, { timeout: 10_000 });
 
@@ -615,7 +615,7 @@ test('別のタブで対象をすべて外されても、今のタブで選択�
 // 1本にまとめると6回のページ遷移で単独でも12〜15秒かかり、並列の負荷で30秒の枠を超える。
 // 共有（Multi同士）、穴埋めと独立（Single→Multi）、Singleを選んだ後の不変（Multi→Single）は別の主張なので、3本に分ける。
 test('Multiの集合（並び・色・基準）はN感度と共有される', async ({ page }) => {
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
   await addTarget(page, 'layout:qwerty');
   await addTarget(page, 'layout:colemak-dh');
   await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
@@ -627,7 +627,7 @@ test('Multiの集合（並び・色・基準）はN感度と共有される', as
   const comparisonNames = await targetNames(page);
 
   // N感度は同じ集合をそのまま使う。
-  await page.goto('/standalone/n-sensitivity');
+  await page.goto('/analyzer/n-sensitivity');
   await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(2, { timeout: 10_000 });
   await expectTargetNames(page, comparisonNames);
 });
@@ -635,7 +635,7 @@ test('Multiの集合（並び・色・基準）はN感度と共有される', as
 test('Singleはまだ選んでいなければMultiの基準で埋まり、Singleで選び直してもMultiの集合は変わらない', async ({ page }) => {
   // Singleの穴埋めは、Multiで基準を選んだ時に一度だけ書かれる（保存済みの集合を読んでも起きない）ので、画面で基準を選ぶ。
   const table = page.locator('.comparison-table');
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
   await addTarget(page, 'layout:qwerty');
   await addTarget(page, 'layout:colemak-dh');
   await expect(table.locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
@@ -647,7 +647,7 @@ test('Singleはまだ選んでいなければMultiの基準で埋まり、Single
   const comparisonNames = await targetNames(page);
 
   // Bigram Flowはまだ対象を選んでいないので、Multiの基準（Colemak-DH）で埋まる。
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   await expectChosenTarget(page, 'layout:colemak-dh');
 
@@ -657,14 +657,14 @@ test('Singleはまだ選んでいなければMultiの基準で埋まり、Single
   await expect
     .poll(async () => page.evaluate(() => localStorage.getItem('keydist:single-target-selection')))
     .toContain('dvorak');
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
   await expect(table.locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
   await expectTargetNames(page, comparisonNames);
   await expect(table.locator('tr[data-baseline="true"]')).toContainText('Colemak-DH');
 });
 
 test('Singleで一度選んだ後は、Multiの基準を変えてもSingleは変わらない', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   await toggleTarget(page, 'layout:dvorak');
   await expectChosenTarget(page, 'layout:dvorak');
@@ -672,7 +672,7 @@ test('Singleで一度選んだ後は、Multiの基準を変えてもSingleは変
     .poll(async () => page.evaluate(() => localStorage.getItem('keydist:single-target-selection')))
     .toContain('dvorak');
 
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
   await addTarget(page, 'layout:qwerty');
   await addTarget(page, 'layout:colemak-dh');
   await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
@@ -681,13 +681,13 @@ test('Singleで一度選んだ後は、Multiの基準を変えてもSingleは変
   await expect
     .poll(async () => page.evaluate((key) => localStorage.getItem(key), MULTI_TARGET_SELECTION_KEY))
     .toContain('"baseline":{"kind":"layout","layoutId":"qwerty"}');
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   await expectChosenTarget(page, 'layout:dvorak');
 });
 
 test('基準の配列を外すと基準なしになり、付け直すと基準と表の内容が戻る', async ({ page }) => {
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
   const table = page.locator('.comparison-table');
   await addTarget(page, 'layout:qwerty');
   await addTarget(page, 'layout:dvorak');
@@ -711,7 +711,7 @@ test('基準の配列を外すと基準なしになり、付け直すと基準�
 test('読み込み前のHTMLに空状態のボタンが無く、保存済みの対象があれば読み込み後に表が出る', async ({ page }) => {
   // プリレンダーされたHTML（=ハイドレーション前に見える画面）。保存済みの対象が
   // まだ反映されていないだけの間に、押せない「配列・Setupを選ぶ」を出さない。
-  for (const path of ['/standalone/comparison', '/standalone/n-sensitivity']) {
+  for (const path of ['/analyzer/comparison', '/analyzer/n-sensitivity']) {
     const html = await (await page.request.get(path)).text();
     expect(html, path).not.toContain('配列・Setupを選ぶ');
   }
@@ -726,14 +726,14 @@ test('読み込み前のHTMLに空状態のボタンが無く、保存済みの�
       }),
     );
   }, MULTI_TARGET_SELECTION_KEY);
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
   await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
   await expect(page.getByRole('button', { name: '配列・Setupを選ぶ' })).toHaveCount(0);
 });
 
 test('「共有」でコピーしたURLを新しいページで開くと、解析設定（表示する列）がその値で開く', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
   await addTarget(page, 'layout:qwerty');
   const table = page.locator('.comparison-table');
   await expect(table).toBeVisible({ timeout: 10_000 });
@@ -760,7 +760,7 @@ test('「共有」でコピーしたURLを新しいページで開くと、解�
     await expect(openedTable.locator('thead')).toContainText('距離');
     await expect(openedTable.locator('thead th', { hasText: /^動作数$/ })).toHaveCount(0);
     await expect((await openSettings(opened)).getByRole('checkbox', { name: '動作数', exact: true })).not.toBeChecked();
-    await expect(opened).toHaveURL(/\/standalone\/comparison$/);
+    await expect(opened).toHaveURL(/\/analyzer\/comparison$/);
   } finally {
     await other.close();
   }
@@ -791,7 +791,7 @@ test('共有リンクは集合を並び順・基準ごと運び、自作のSetup
       }),
     );
   });
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
   // 加えた順は Dvorak → 仕事用 → QWERTY（表示の並びは一覧の順で、ここの順とは別）。
   await addTarget(page, 'layout:dvorak');
   await addTarget(page, 'setup:src-1');
@@ -817,7 +817,7 @@ test('共有リンクは集合を並び順・基準ごと運び、自作のSetup
     await expect(same.opened.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(3, { timeout: 10_000 });
     await expect(same.opened.locator('.comparison-table tr[data-baseline="true"]')).toContainText('仕事用');
     await expect(same.opened.locator('[data-pane-link-notice="true"]')).toHaveCount(0);
-    await expect(same.opened).toHaveURL(/\/standalone\/comparison$/);
+    await expect(same.opened).toHaveURL(/\/analyzer\/comparison$/);
     const stored = await same.opened.evaluate((key) => localStorage.getItem(key), MULTI_TARGET_SELECTION_KEY);
     expect(JSON.parse(stored!).targets).toEqual([
       { kind: 'layout', layoutId: 'dvorak' },
@@ -841,19 +841,19 @@ test('共有リンクは集合を並び順・基準ごと運び、自作のSetup
 });
 
 test('共有リンクの対象を1つも引けない時は、今の対象を変えずに名前を示す', async ({ page }) => {
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
   await addTarget(page, 'layout:dvorak');
   await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(1, { timeout: 10_000 });
-  await page.goto('/standalone/comparison?targets=setup%3A%E6%B6%88%E3%81%88%E3%81%9FSetup');
+  await page.goto('/analyzer/comparison?targets=setup%3A%E6%B6%88%E3%81%88%E3%81%9FSetup');
   await expect(page.locator('[data-pane-link-notice="true"]')).toContainText('Setup「消えたSetup」');
   await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(1, { timeout: 10_000 });
-  await expect(page).toHaveURL(/\/standalone\/comparison$/);
+  await expect(page).toHaveURL(/\/analyzer\/comparison$/);
 });
 
 test('手持ちの集合が空で共有リンクの対象を1つも引けない時も、対象の選択を自動で開かない', async ({ page }) => {
-  await page.goto('/standalone/comparison?targets=setup%3A%E6%B6%88%E3%81%88%E3%81%9FSetup');
+  await page.goto('/analyzer/comparison?targets=setup%3A%E6%B6%88%E3%81%88%E3%81%9FSetup');
   await expect(page.locator('[data-pane-link-notice="true"]')).toContainText('Setup「消えたSetup」');
-  await expect(page).toHaveURL(/\/standalone\/comparison$/);
+  await expect(page).toHaveURL(/\/analyzer\/comparison$/);
   // URLからパラメータが消えた後の再描画でも、開く判断へ戻らない
   // 「後から自動で開かない」ことが検査の中身なので、猶予の分は実時間で待つ
   await page.waitForTimeout(800);
@@ -868,7 +868,7 @@ async function openSummaryWith(page: Page, setups: readonly { id: string; layout
       JSON.stringify({ version: 1, targets: list.map((s) => ({ kind: 'setup', setupId: s.id })) }),
     );
   }, { setups });
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
   await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(setups.length, { timeout: 10_000 });
   const summary = page.locator('.pane-condition-summary');
   await summary.locator('.pane-condition-trigger').click();
@@ -921,7 +921,7 @@ test('2件とも同じ値へ上書きしても、共通の行は画面の値の�
     targets: [{ kind: 'setup', setupId: 'fixed-a' }, { kind: 'setup', setupId: 'fixed-b' }],
     overrides: { setup: { 'fixed-a': { windowSize: 2 }, 'fixed-b': { windowSize: 2 } } },
   });
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
   await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
   const summary = page.locator('.pane-condition-summary');
   await expect(summary.locator('.pane-condition-trigger')).toContainText('対象ごとに差あり');
@@ -938,7 +938,7 @@ test('上書きありのSetupを1件だけ選ぶと、条件の要約の「対�
     targets: [{ kind: 'setup', setupId: 'fixed-a' }],
     overrides: { setup: { 'fixed-a': { windowSize: 2 } } },
   });
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
   await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(1, { timeout: 10_000 });
   const summary = page.locator('.pane-condition-summary');
   await expect(summary.locator('.pane-condition-trigger')).toContainText('対象ごとに差あり');
@@ -957,10 +957,10 @@ test('共有リンクで届いた解析設定と対象は、「元に戻す」1�
       JSON.stringify({ version: 1, comparison: { visibleColumns: ['actions', 'totalUnits'] } }),
     );
   });
-  await page.goto('/standalone/comparison?targets=layout%3Advorak&targets=layout%3Aqwerty&columns=totalUnits');
+  await page.goto('/analyzer/comparison?targets=layout%3Advorak&targets=layout%3Aqwerty&columns=totalUnits');
   const rows = page.locator('.comparison-table tbody tr[data-comparison-row="ok"]');
   await expect(rows).toHaveCount(2, { timeout: 10_000 });
-  await expect(page).toHaveURL(/\/standalone\/comparison$/);
+  await expect(page).toHaveURL(/\/analyzer\/comparison$/);
   const firstColumn = async () => (await openSettings(page)).getByRole('checkbox', { name: '動作数', exact: true });
   await expect(await firstColumn()).not.toBeChecked();
   await page.keyboard.press('Escape');
@@ -987,7 +987,7 @@ test('共有リンクに載らない対象（名前が長すぎるSetup）は、
       }),
     );
   }, longLabel);
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
   await addTarget(page, 'layout:dvorak');
   await addTarget(page, 'setup:src-long');
   await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });

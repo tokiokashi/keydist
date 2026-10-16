@@ -85,7 +85,7 @@ async function addTarget(page: import('@playwright/test').Page, key: string) {
 }
 
 test('新規プロファイルで、配列を2つ直接選ぶだけでSetupを作らずに2本の折れ線が出る', async ({ page }) => {
-  await page.goto('/standalone/n-sensitivity');
+  await page.goto('/analyzer/n-sensitivity');
   // ページの見出し(h1)とAnalyzer自身の見出し(h2)は同じ文字列。h2は計算が済むと現れるので、
   // 名前だけで探すと一致が1件か2件かが描画の速さで変わる。見出しの段まで指定する。
   await expect(page.getByRole('heading', { name: 'N感度', exact: true, level: 1 })).toBeVisible();
@@ -102,7 +102,7 @@ test('新規プロファイルで、配列を2つ直接選ぶだけでSetupを�
 });
 
 test('色は加えた順に配り、1つ外しても他の線の色は変わらず、空いた色を次に加えた対象が使う', async ({ page }) => {
-  await page.goto('/standalone/n-sensitivity');
+  await page.goto('/analyzer/n-sensitivity');
   const strokeOf = (key: string) => page.locator(`[data-n-sensitivity-series="${key}"] .n-sensitivity-line`).evaluate((path) => getComputedStyle(path).stroke);
 
   await addTarget(page, 'layout:qwerty');
@@ -128,7 +128,7 @@ test('色は加えた順に配り、1つ外しても他の線の色は変わら�
 
 test('色を除いても、線は点の形と線種で区別でき、凡例の見本が図の線と対応する（7件で線種も使う）', async ({ page }) => {
   await seedLayouts(page, LAYOUT_IDS_8.slice(0, 7));
-  await page.goto('/standalone/n-sensitivity');
+  await page.goto('/analyzer/n-sensitivity');
   await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(7, { timeout: 15_000 });
 
   const read = () => page.locator('.n-sensitivity-svg').evaluate((svg) => {
@@ -163,7 +163,7 @@ test('色を除いても、線は点の形と線種で区別でき、凡例の�
 
 test('Setupを2件選ぶと2本の折れ線が表示される', async ({ page }) => {
   await page.addInitScript(seedTwoSetups());
-  await page.goto('/standalone/n-sensitivity');
+  await page.goto('/analyzer/n-sensitivity');
 
   await expect(page.getByRole('heading', { name: 'N感度', exact: true, level: 1 })).toBeVisible();
 
@@ -186,7 +186,7 @@ test('Setupを2件選ぶと2本の折れ線が表示される', async ({ page })
 
 test('縦軸（相対/実測値）の切り替えはリロードしても残る', async ({ page }) => {
   await page.addInitScript(seedTwoSetups());
-  await page.goto('/standalone/n-sensitivity');
+  await page.goto('/analyzer/n-sensitivity');
 
   await addTarget(page, 'setup:fixed-a');
   await expect(page.locator('.n-sensitivity-svg')).toBeVisible({ timeout: 10_000 });
@@ -212,7 +212,7 @@ test('縦軸（相対/実測値）の切り替えはリロードしても残る'
 
 test('選択はリロードしても残り、資産の読み込み前に上書きされない。並びは付けた順によらず一覧の順', async ({ page }) => {
   await page.addInitScript(seedTwoSetups());
-  await page.goto('/standalone/n-sensitivity');
+  await page.goto('/analyzer/n-sensitivity');
 
   await addTarget(page, 'setup:fixed-b');
   await addTarget(page, 'setup:fixed-a');
@@ -263,7 +263,7 @@ test('集合に存在しないSetup idが混ざっていても消えず「削除
       }),
     );
   });
-  await page.goto('/standalone/n-sensitivity');
+  await page.goto('/analyzer/n-sensitivity');
 
   await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(1, { timeout: 10_000 });
 
@@ -297,7 +297,7 @@ test('条件の要約は先読みNを出さず、対象ごとの差にもNを出
       JSON.stringify({ version: 1, targets: [{ kind: 'setup', setupId: 'fixed-a' }, { kind: 'setup', setupId: 'fixed-b' }] }),
     );
   });
-  await page.goto('/standalone/n-sensitivity');
+  await page.goto('/analyzer/n-sensitivity');
 
   const summary = page.locator('.pane-condition-summary');
   await expect(summary).toBeVisible({ timeout: 10_000 });
@@ -313,7 +313,7 @@ test('条件の要約は先読みNを出さず、対象ごとの差にもNを出
 });
 
 test('画面の文言に開発の内部（issue番号・Phase・ファイル名・開発用の語）が出ない', async ({ page }) => {
-  await page.goto('/standalone/n-sensitivity');
+  await page.goto('/analyzer/n-sensitivity');
   await addTarget(page, 'layout:qwerty');
   await addTarget(page, 'layout:colemak');
   await expect(page.locator('.n-sensitivity-svg')).toBeVisible({ timeout: 10_000 });
@@ -334,7 +334,7 @@ test('保存済みの縦軸は、操作可能になった瞬間から表示さ�
     // 縦軸は解析設定の小窓にあり、小窓を開くボタンは読み込みが済むまで押せない。
     { selector: '[data-settings-window="true"] input[type="radio"][value="absolute"]', read: 'checked' },
   );
-  await page.goto('/standalone/n-sensitivity');
+  await page.goto('/analyzer/n-sensitivity');
   const absolute = (await openSettings(page)).getByRole('radio', { name: '実測値 [u]' });
   await expect(absolute).toBeEnabled({ timeout: 10_000 });
   await expect(absolute).toBeChecked();
@@ -342,7 +342,7 @@ test('保存済みの縦軸は、操作可能になった瞬間から表示さ�
 });
 
 test('対象が空の時はペインに選ぶボタンを出し、全メンバーが失敗した時は失敗の行だけが残る', async ({ page }) => {
-  await page.goto('/standalone/n-sensitivity');
+  await page.goto('/analyzer/n-sensitivity');
   await expect(page.locator('[data-pane-empty="true"]').getByRole('button', { name: '配列・Setupを選ぶ' })).toBeVisible();
 
   await page.addInitScript(() => {
@@ -363,7 +363,7 @@ test('対象が空の時はペインに選ぶボタンを出し、全メンバ�
 
 test('「共有」でコピーしたURLを新しいページで開くと、解析設定（縦軸）がその値で開く', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-  await page.goto('/standalone/n-sensitivity');
+  await page.goto('/analyzer/n-sensitivity');
   await addTarget(page, 'layout:qwerty');
   await expect(page.locator('.n-sensitivity-svg')).toBeVisible({ timeout: 10_000 });
 
@@ -382,7 +382,7 @@ test('「共有」でコピーしたURLを新しいページで開くと、解�
     // 対象もURLで届くので、選び直さなくても図が出る。
     await expect(opened.locator('.n-sensitivity-svg')).toBeVisible({ timeout: 10_000 });
     await expect((await openSettings(opened)).getByRole('radio', { name: '実測値 [u]' })).toBeChecked();
-    await expect(opened).toHaveURL(/\/standalone\/n-sensitivity$/);
+    await expect(opened).toHaveURL(/\/analyzer\/n-sensitivity$/);
   } finally {
     await other.close();
   }
@@ -390,7 +390,7 @@ test('「共有」でコピーしたURLを新しいページで開くと、解�
 
 test('狭い画面（390）でもチャートは置かれた領域の幅で描かれ、横あふれせず、目盛り文字は10pxのまま', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 });
-  await page.goto('/standalone/n-sensitivity');
+  await page.goto('/analyzer/n-sensitivity');
   await addTarget(page, 'layout:qwerty');
   await addTarget(page, 'layout:colemak-dh');
 
@@ -426,7 +426,7 @@ test('上書きありのSetupを1件だけ選ぶと、条件の要約の「対�
     }));
     localStorage.setItem('keydist:multi-target-selection', JSON.stringify({ version: 1, targets: [{ kind: 'setup', setupId: 'fixed-a' }] }));
   });
-  await page.goto('/standalone/n-sensitivity');
+  await page.goto('/analyzer/n-sensitivity');
   const summary = page.locator('.pane-condition-summary');
   await expect(summary.locator('.pane-condition-trigger')).toContainText('対象ごとに差あり', { timeout: 10_000 });
   await summary.locator('.pane-condition-trigger').click();
@@ -434,9 +434,9 @@ test('上書きありのSetupを1件だけ選ぶと、条件の要約の「対�
 });
 
 test('手持ちの集合が空で共有リンクの対象を1つも引けない時も、対象の選択を自動で開かない', async ({ page }) => {
-  await page.goto('/standalone/n-sensitivity?targets=setup%3A%E6%B6%88%E3%81%88%E3%81%9FSetup');
+  await page.goto('/analyzer/n-sensitivity?targets=setup%3A%E6%B6%88%E3%81%88%E3%81%9FSetup');
   await expect(page.locator('[data-pane-link-notice="true"]')).toContainText('Setup「消えたSetup」');
-  await expect(page).toHaveURL(/\/standalone\/n-sensitivity$/);
+  await expect(page).toHaveURL(/\/analyzer\/n-sensitivity$/);
   // URLからパラメータが消えた後の再描画でも、開く判断へ戻らない
   // 「後から自動で開かない」ことが検査の中身なので、猶予の分は実時間で待つ
   await page.waitForTimeout(800);
@@ -461,7 +461,7 @@ for (const scale of ['relative', 'absolute'] as const) {
       }, scale);
       await seedLayouts(page, ids);
       await page.setViewportSize({ width, height: 900 });
-      await page.goto('/standalone/n-sensitivity');
+      await page.goto('/analyzer/n-sensitivity');
       await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(count, { timeout: 20_000 });
       await waitForMeasuredWidth(page.locator('.n-sensitivity-svg'));
 
@@ -481,7 +481,7 @@ for (const scale of ['relative', 'absolute'] as const) {
 
 test('凡例の名前は見出しと同じ表示名で、条件は付かない', async ({ page }) => {
   await seedLayouts(page, ['qwerty', 'colemak-dh']);
-  await page.goto('/standalone/n-sensitivity');
+  await page.goto('/analyzer/n-sensitivity');
   await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(2, { timeout: 20_000 });
   const legend = await measureLegend(page);
   expect(legend.names).toEqual(['QWERTY', 'Colemak-DH']);
@@ -516,7 +516,7 @@ test('Workspaceの狭いペイン（約500px）に3つ並べても、凡例は�
 
 test('軸の目盛りの文字とNの軸の見出しが重ならない', async ({ page }) => {
   await seedLayouts(page, ['qwerty']);
-  await page.goto('/standalone/n-sensitivity');
+  await page.goto('/analyzer/n-sensitivity');
   await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(1, { timeout: 20_000 });
   const gap = await page.locator('.n-sensitivity-svg').evaluate((svg) => {
     const ticks = [...svg.querySelectorAll('.n-sensitivity-axis-label')].map((el) => el.getBoundingClientRect()).filter((r) => r.top > svg.getBoundingClientRect().bottom - 60);
@@ -541,7 +541,7 @@ async function shownValues(page: import('@playwright/test').Page) {
 
 test('縦軸の範囲を切り替えると目盛りが変わり、表とツールチップの値は変わらない。リロードしても残る', async ({ page }) => {
   await seedLayouts(page, ['qwerty', 'dvorak', 'colemak-dh']);
-  await page.goto('/standalone/n-sensitivity');
+  await page.goto('/analyzer/n-sensitivity');
   await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(3, { timeout: 20_000 });
 
   const settings = await openSettings(page);
@@ -574,7 +574,7 @@ for (const yRange of ['fit', 'coarse'] as const) {
       }, yRange);
       await seedLayouts(page, LAYOUT_IDS_8.slice(0, count));
       await page.setViewportSize({ width, height: 900 });
-      await page.goto('/standalone/n-sensitivity');
+      await page.goto('/analyzer/n-sensitivity');
       await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(count, { timeout: 20_000 });
       await waitForMeasuredWidth(page.locator('.n-sensitivity-svg'));
       expect((await yTickTexts(page))[0]).not.toBe('0%');
@@ -619,7 +619,7 @@ for (const { width, yRange, scale } of [
     }, { range: yRange, scaleValue: scale });
     await seedLayouts(page, LAYOUT_IDS_MANY);
     await page.setViewportSize({ width, height: 900 });
-    await page.goto('/standalone/n-sensitivity');
+    await page.goto('/analyzer/n-sensitivity');
     await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(LAYOUT_IDS_MANY.length, { timeout: 30_000 });
     await waitForMeasuredWidth(page.locator('.n-sensitivity-svg'));
     const legend = await measureLegend(page);
@@ -637,7 +637,7 @@ for (const width of [390, 1440]) {
   test(`対象1件でも、名前が凡例の枠からはみ出さない（${width}px）`, async ({ page }) => {
     await seedLayouts(page, ['qwerty']);
     await page.setViewportSize({ width, height: 900 });
-    await page.goto('/standalone/n-sensitivity');
+    await page.goto('/analyzer/n-sensitivity');
     await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(1, { timeout: 20_000 });
     await waitForMeasuredWidth(page.locator('.n-sensitivity-svg'));
     // 描画後に実際の字幅で枠を測り直す（フォントの読み込みが済むまで待つ）
@@ -661,7 +661,7 @@ test('物理配列だけが違うSetupを4件並べても、凡例の名前が�
   });
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 900 });
-    await page.goto('/standalone/n-sensitivity');
+    await page.goto('/analyzer/n-sensitivity');
     await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(4, { timeout: 30_000 });
     await waitForMeasuredWidth(page.locator('.n-sensitivity-svg'));
     const legend = await measureLegend(page);
@@ -707,7 +707,7 @@ test('実測値で縦軸の範囲を粗い区切りにすると、目盛りは�
     localStorage.setItem('keydist:standalone-analyzer-options', JSON.stringify({ version: 1, 'n-sensitivity': { yRange: 'coarse', scale: 'absolute' } }));
   });
   await seedLayouts(page, ['qwerty', 'dvorak', 'colemak-dh']);
-  await page.goto('/standalone/n-sensitivity');
+  await page.goto('/analyzer/n-sensitivity');
   await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(3, { timeout: 20_000 });
   expect(await yTickTexts(page)).toEqual(['100 u', '200 u', '300 u', '400 u']);
 });

@@ -37,9 +37,6 @@ import { computeKeyDetails } from '#interpretation/key-detail.ts';
  * 回帰基準（generateTraceを直接呼ぶ。test/analyzer-regression.test.tsのrecompute()と
  * 同じ組み立て）とで、同じfixture条件から同じBigramFlowExtractedが出ることを確認する。
  *
- * 比べる相手は `src/legacy/` のUIページそのものではない。legacyのBigram Flowページ
- * （`src/legacy/analyzer-bigram-flow.tsx`）は計算済みのTraceを受け取って表示するだけで、
- * Traceを作るのは回帰基準と同じ `generateTrace` なので、その経路を基準にしている。
  * 抽出関数はどちらの経路も同じなので、このテストの実質的な確認内容は
  * 「Setup解決・カスケード解決・engineのキャッシュを経由しても同じTraceに帰着するか」になる。
  * */

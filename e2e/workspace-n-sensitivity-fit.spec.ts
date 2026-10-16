@@ -55,7 +55,7 @@ async function openStandalone(page: Page) {
       JSON.stringify({ version: 1, targets: ['qwerty', 'dvorak'].map((layoutId) => ({ kind: 'layout', layoutId })) }),
     );
   });
-  await page.goto('/standalone/n-sensitivity');
+  await page.goto('/analyzer/n-sensitivity');
   await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(2, { timeout: 15_000 });
 }
 

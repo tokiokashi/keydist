@@ -25,13 +25,6 @@ export const DEFAULT_CHAIN_INTERPRETATION: ChainInterpretation = {
   breakOnOppositeHandSimultaneous: false,
 };
 
-export function sameChainInterpretation(left: ChainInterpretation, right: ChainInterpretation): boolean {
-  return left.breakOnSameFinger === right.breakOnSameFinger
-    && left.breakOnTriggerOnly === right.breakOnTriggerOnly
-    && left.breakOnThumbOnly === right.breakOnThumbOnly
-    && left.breakOnOppositeHandSimultaneous === right.breakOnOppositeHandSimultaneous;
-}
-
 /**
  * 正規化Strokeから得られる、1手・1Strokeぶんの参加fact。
  * Chainを切る判断は含めない。

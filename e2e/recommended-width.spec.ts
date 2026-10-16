@@ -35,7 +35,7 @@ for (const { route, limit } of cases) {
   test(`個別画面 ${route}: 2560pxでも推奨幅（${limit}rem）で止まり、中央に寄る`, async ({ page }) => {
     await seedTargets(page);
     await page.setViewportSize({ width: 2560, height: 900 });
-    await page.goto(`/standalone/${route}`);
+    await page.goto(`/analyzer/${route}`);
     await waitForHydration(page);
     await expect(page.locator('.pane-body')).toBeVisible();
     const frame = await box(page, '.standalone-stage .pane-frame');
@@ -49,7 +49,7 @@ for (const { route, limit } of cases) {
   test(`個別画面 ${route}: 推奨幅より狭い時は横スクロールを出さず、ペインの幅に縮む`, async ({ page }) => {
     await seedTargets(page);
     await page.setViewportSize({ width: 1000, height: 900 });
-    await page.goto(`/standalone/${route}`);
+    await page.goto(`/analyzer/${route}`);
     await waitForHydration(page);
     await expect(page.locator('.pane-body')).toBeVisible();
     const stage = await box(page, '.standalone-stage');

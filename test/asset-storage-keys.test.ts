@@ -9,8 +9,8 @@ import { ASSET_KEYS, ASSET_STORAGE_SPECS } from '#app/standalone/asset-storage-s
  * storageキーの重複検出。
  *
  * `ASSET_STORAGE_SPECS`のキーどうしが重複しないことに加え、
- * リポジトリ内の他の `keydist:*` 定数（layouts / geometry-shapes / romaji-rules /
- * app-state 等。`platform/assets/*-storage.ts` 以外にも `legacy/` `tester/` `app/`に散っている）
+ * リポジトリ内の他の `keydist:*` 定数（user-layouts / user-romaji-rules /
+ * app-state 等。`platform/assets/*-storage.ts` 以外にも `tester/` `app/`に散っている）
  * とも衝突しないことを検査する。ファイルを列挙しない（architecture-layers.test.tsと同じ方針。
  * `keydist:` 定数を足せば自動で検査対象になる）。
  */
@@ -31,7 +31,7 @@ async function sourceFiles(dir: string): Promise<string[]> {
 /**
  * `export const XXX = 'keydist:...'` のような**宣言**だけを拾う。単なる参照
  * （`localStorage.getItem('keydist:app-state')`のような、定数を再exportせず
- * 生の文字列で直接読む書き方。`app/theme/theme.ts`が旧キーをread-onlyで読む時に使う）は
+ * 生の文字列で直接読む書き方。`app/theme/theme.ts`の初期スクリプトが使う）は
  * 対象にしない（宣言と同じ値を意図的に再掲しているだけで、衝突ではないため）。
  */
 function declaredKeydistKeys(source: string): string[] {

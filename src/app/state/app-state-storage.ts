@@ -70,7 +70,7 @@ export function patchAppStateSlice<K extends AppStateSliceKey>(
   return patchAppState(storage, { [key]: value } as Partial<Omit<AppStateV2, 'version'>>);
 }
 
-export function removeStorageKeys(
+function removeStorageKeys(
   storage: KeyValueStorage,
   keys: readonly string[],
 ): void {

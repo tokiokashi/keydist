@@ -2,7 +2,6 @@ import { UNSAFE_OBJECT_KEYS, type CodecDiagnostic, type DecodedWithDiagnostics }
 import { azik } from './azik.ts';
 import { kunrei, addSokuonForms } from './kunrei.ts';
 import { OONISHI_OVERRIDES, oonishiRomaji } from './oonishi.ts';
-import { QWERTY_LEGEND } from '../shapes/geometry.ts';
 
 export type BuiltinRomajiRuleId = 'kunrei' | 'oonishi' | 'azik' | 'qwerty';
 export type RomajiRuleId = string;
@@ -64,8 +63,6 @@ export const ROMAJI_RULES: Record<BuiltinRomajiRuleId, RomajiRuleSpec & {
   },
 };
 
-const QWERTY_KEYS = new Set([...QWERTY_LEGEND.join('')]);
-
 /** 全体のレベルの既定。推奨を持たない配列はこれで打つ。 */
 export const DEFAULT_ROMAJI_RULE_ID: BuiltinRomajiRuleId = 'kunrei';
 
@@ -126,45 +123,6 @@ export function allRomajiRules(customRules: UserRomajiRule[] = []) {
   ];
 }
 
-
-/** 差分欄の `かな = romaji` を読み取る。空行と # コメントは無視する。 */
-export function parseOverrides(text: string): { overrides: Record<string, string>; errors: string[] } {
-  const overrides: Record<string, string> = {};
-  const errors: string[] = [];
-  text.split(/\r?\n/).forEach((raw, i) => {
-    const line = raw.trim();
-    if (!line || line.startsWith('#')) return;
-    const equal = line.indexOf('=');
-    if (equal < 1) {
-      errors.push(`${i + 1} 行目: 「かな = 綴り」の形で書いてください`);
-      return;
-    }
-    const kana = line.slice(0, equal).trim();
-    const roman = line.slice(equal + 1).trim().toLowerCase();
-    if (!kana || !roman || /\s/.test(kana) || /\s/.test(roman)) {
-      errors.push(`${i + 1} 行目: かなと綴りを空白なしで指定してください`);
-      return;
-    }
-    if (!/[ぁ-ゖァ-ヺー]/u.test(kana)) {
-      errors.push(`${i + 1} 行目: 左辺はかなで指定してください`);
-      return;
-    }
-    if ([...roman].some((key) => !QWERTY_KEYS.has(key))) {
-      errors.push(`${i + 1} 行目: 綴りにキーボードに無いキーが含まれています`);
-      return;
-    }
-    if (overrides[kana] !== undefined) {
-      errors.push(`${i + 1} 行目: 「${kana}」が重複しています`);
-      return;
-    }
-    overrides[kana] = roman;
-  });
-  return { overrides, errors };
-}
-
-export function formatOverrides(overrides: Record<string, string>): string {
-  return Object.entries(overrides).map(([kana, roman]) => `${kana} = ${roman}`).join('\n');
-}
 
 export function isUserRomajiRule(value: unknown): value is UserRomajiRule {
   if (!isRecord(value)) return false;
@@ -234,17 +192,6 @@ export function decodeStoredRomajiSettings(value: unknown): DecodedWithDiagnosti
     diagnostics.push({ path: 'assignments', message: '形式が不正なため規則の割り当てを捨てました' });
   }
   return { value: { rules, assignments }, diagnostics };
-}
-
-export function sanitizeRomajiSettings(value: unknown): RomajiSettings {
-  if (!isRecord(value)) return { rules: [], assignments: {} };
-  const rules = Array.isArray(value.rules) ? value.rules.filter(isUserRomajiRule) : [];
-  const assignments = isRecord(value.assignments)
-    ? Object.fromEntries(Object.entries(value.assignments).filter(([, id]) =>
-      typeof id === 'string' && id.length > 0,
-    ))
-    : {};
-  return { rules, assignments };
 }
 
 function isRecord(value: unknown): value is Record<string, any> {

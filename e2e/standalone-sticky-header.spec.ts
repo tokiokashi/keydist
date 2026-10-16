@@ -28,7 +28,7 @@ async function expectHeaderPinnedBelowContextBar(page: Page) {
 test('スクロールしても見出しが文脈バーの下に残り、対象の選択・解析設定が見出しの近くに出る', async ({ page }) => {
   // 図の下の注記をⓘへ移して本体が短くなったので、スクロールできる高さ（閾値200px）が残る低い画面にする。
   await page.setViewportSize({ width: 1440, height: 760 });
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await waitForHydration(page);
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
 
@@ -65,7 +65,7 @@ test('スクロールしても見出しが文脈バーの下に残り、対象�
 
 test('サイドバーを固定できる最小幅（761px）でも、見出しは1行で横にあふれない', async ({ page }) => {
   await page.setViewportSize({ width: 761, height: 900 });
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await waitForHydration(page);
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
   const header = await boxOf(page, '.pane-frame-header');
@@ -81,7 +81,7 @@ test('サイドバーを固定できる最小幅（761px）でも、見出しは
 test('スマホ幅でも見出しは文脈バーの下に残る', async ({ page }) => {
   // 左右の図が横に並んで縦に短くなったので、スクロールできる高さが残る低い画面にする。
   await page.setViewportSize({ width: 390, height: 480 });
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await waitForHydration(page);
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
   await scrollDown(page);

@@ -5,19 +5,17 @@ test('theme authority survives SPA route transitions and reload', async ({ page 
   await page.goto('/');
   // ハイドレーション前に押すとSPA遷移にならず全体の読み込みになり、確かめたい経路を通らない。
   await waitForHydration(page);
-  await page.locator('.hero').getByRole('link', { name: '旧バージョン', exact: true }).click();
 
-  const controls = page.locator('[data-react-feature="theme-controls"]');
-  await expect(controls).toBeVisible();
-  await controls.locator('[data-theme-set="dark"]').click();
+  const sidebar = page.locator('#app-sidebar');
+  await sidebar.locator('[data-theme-set="dark"]').click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+
+  await sidebar.getByRole('link', { name: 'Tester', exact: true }).click();
+  await expect(page).toHaveURL(/\/input$/);
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 
   await page.goBack();
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-
-  await page.getByRole('link', { name: 'Tester', exact: true }).click();
-  await expect(page).toHaveURL(/\/input$/);
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 
   await page.reload();

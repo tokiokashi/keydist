@@ -13,7 +13,6 @@ import { decodeVersionedState } from '#platform/persistence/versioned-state.ts';
  *
  * 次のstorageはUI preferenceではなくdomain/user assetなのでAppStateへ吸収しない。
  * - keydist:input-key-bindings（レガシーキー: keydist:input-thumb-key-bindings）
- * - keydist:geometry-shapes
  *
  * 現在選択中の配列と物理配列はTester全体の状態として保存し、
  * 練習環境は配列ごとに保存する。

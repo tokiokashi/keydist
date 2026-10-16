@@ -18,7 +18,7 @@ test('壊れた保存データで開くと知らせ、開き直すと知らせ�
     },
     [TEXT_LIBRARY_KEY],
   );
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const notice = page.locator('[data-asset-load-notice]');
   await expect(notice).toContainText('テキスト: 読めない部分が1件');
   expect(await page.evaluate((key) => localStorage.getItem(key), TEXT_LIBRARY_KEY)).toBe(
@@ -41,7 +41,7 @@ test('新しい版が書いた保存データは、知らせた上でそのま�
     },
     [PRESET_LIBRARY_KEY, future],
   );
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('[data-asset-load-notice-key="presetLibrary"]')).toContainText('新しい版のアプリで保存された');
   expect(await page.evaluate((key) => localStorage.getItem(key), PRESET_LIBRARY_KEY)).toBe(future);
 });
@@ -66,7 +66,7 @@ test('スマホ幅で全資産が壊れていても、知らせは画面に収�
   await page.addInitScript((keys) => {
     for (const key of keys) localStorage.setItem(key, '{壊れたJSON');
   }, BROKEN_KEYS);
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const notice = page.locator('[data-asset-load-notice]');
   await expect(notice).toBeVisible();
   await expect(notice.locator('li')).toHaveCount(BROKEN_KEYS.length);
@@ -80,7 +80,7 @@ test('スマホ幅で全資産が壊れていても、知らせは画面に収�
 });
 
 test('画面を移っても、書き戻しと知らせは最初の読み込みだけ', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   // 開いたままのタブの裏で、読めない値（直せば読める値）が保存された状態を作る
   const broken = JSON.stringify({ version: 1, texts: 5 });

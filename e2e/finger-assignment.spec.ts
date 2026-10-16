@@ -12,7 +12,7 @@ const STORAGE_KEY = 'keydist:finger-assignments';
 const keyLegend = (page: Page, keyId: string) => page.locator(`.physical-keyboard-key[data-key-id="${keyId}"] .physical-keyboard-legend`);
 
 test('割り当てを作り、キーと列を編集し、既定へ戻せる。条件のモーダルで選べて、/assetsから削除できる', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await waitForHydration(page);
   await page.locator('#app-sidebar').getByRole('link', { name: '指の割り当て', exact: true }).click();
   await expect(page).toHaveURL(/\/finger-assignment$/);

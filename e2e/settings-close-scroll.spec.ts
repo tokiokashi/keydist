@@ -11,7 +11,7 @@ import { openSettings } from './pane-helper.ts';
 async function openBelowFold(page: Page) {
   // 図の下の注記をⓘへ移して本体が短くなったので、スクロールできる高さ（閾値200px）が残る低い画面にする。
   await page.setViewportSize({ width: 1440, height: 760 });
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await waitForHydration(page);
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
   await page.addStyleTag({ content: '.pane-frame-header[data-sticky] { position: static !important; }' });

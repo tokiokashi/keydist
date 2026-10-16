@@ -5,7 +5,6 @@ import {
   calibrationEligibleKeyIds,
   calibrationKeyPairs,
   fingerMeasurementFromIntervals,
-  isPlaybackCalibration,
   meanRepeatMs,
   medianIncludingZero,
   playbackCalibrationProblem,
@@ -13,6 +12,9 @@ import {
   playbackRepeatMs,
   type PlaybackCalibration,
 } from './calibration.ts';
+
+/** 保存値として読める形か。 */
+const isPlaybackCalibration = (value: unknown): boolean => playbackCalibrationProblem(value) === undefined;
 
 const VALID: PlaybackCalibration = {
   actionsPerSecond: 5,

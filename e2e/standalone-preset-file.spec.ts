@@ -29,7 +29,7 @@ const downloadNames = (page: Page) =>
 
 async function openPresets(page: Page): Promise<{ modal: Locator; section: Locator }> {
   await recordDownloadNames(page);
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
   await page.locator('.pane-condition-trigger').click();
   const modal = page.getByRole('dialog', { name: '条件' });

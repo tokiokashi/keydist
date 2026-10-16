@@ -19,7 +19,7 @@ async function readPosition(page: Page): Promise<[number, number]> {
 }
 
 async function openPlayback(page: Page) {
-  await page.goto('/standalone/playback');
+  await page.goto('/analyzer/playback');
   await expect(page.getByRole('heading', { name: '打鍵再生', exact: true, level: 1 })).toBeVisible();
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
 }
@@ -177,7 +177,7 @@ test('対象を替えて抽出が作り直されると、再生位置は先頭�
 
 test('幅390pxでも、倍率を上げてもページは横にはみ出さず、図の領域の中でスクロールできる', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 800 });
-  await page.goto('/standalone/playback?scale=3');
+  await page.goto('/analyzer/playback?scale=3');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(0);
@@ -419,7 +419,7 @@ test('他のタブで個人速度を保存すると、このタブの再生の�
 
 test('解析設定の共有リンクに、時間の設定が載る。開くと同じ設定で計算する', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/standalone/playback?multiplier=2&rateAverage=ewma&rateHalfLife=2');
+  await page.goto('/analyzer/playback?multiplier=2&rateAverage=ewma&rateHalfLife=2');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   await expect(calculation(page)).toContainText('再生倍率: 2倍、平均の方式: EWMA、平均の半減時間: 2秒');
   const settings = await openSettings(page);
@@ -429,7 +429,7 @@ test('解析設定の共有リンクに、時間の設定が載る。開くと�
 test('個人速度を保存していても、再生を読まないペインの条件のモーダルに再生の行は出ない', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await seedPersonalSpeed(page);
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
   const modal = await openConditionModal(page);
   await expect(modal.locator('[data-item="chainInterpretation"]')).toBeVisible();

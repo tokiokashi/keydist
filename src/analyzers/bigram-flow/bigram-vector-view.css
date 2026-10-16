@@ -250,33 +250,6 @@
   color: var(--viz-key-muted);
 }
 
-.flow-analysis-locked {
-  display: grid;
-  gap: 0.25rem;
-  margin-top: 1rem;
-  padding: 1.25rem 1.4rem;
-  border: 1px dashed var(--border-strong);
-  border-radius: 10px;
-  background: var(--surface-subtle);
-  color: var(--text-muted);
-}
-
-.flow-analysis-locked span {
-  font: 650 0.7rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.flow-analysis-locked strong {
-  color: var(--text);
-  font-size: 0.9rem;
-}
-
-.flow-analysis-locked p {
-  margin: 0.1rem 0 0;
-  font-size: 0.82rem;
-}
-
 .flow-two-up {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -502,35 +475,6 @@
   .flow-feature *::after {
     scroll-behavior: auto !important;
   }
-}
-
-/* 旧画面（`bigram-flow-view.tsx`）だけが使う並び。旧画面の削除とともに消す。 */
-.flow-legacy-compat {
-  display: grid;
-  gap: 1rem;
-  container-type: inline-size;
-}
-
-.flow-legacy-settings {
-  padding: 1rem;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface);
-}
-
-.flow-legacy-settings .option-groups {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
-  gap: 1rem;
-}
-
-.flow-legacy-figure-settings {
-  display: grid;
-  gap: 0.75rem;
-  grid-column: 1 / -1;
-  padding: 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
 }
 
 /*

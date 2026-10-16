@@ -9,7 +9,7 @@ import { LAYER_COMBO_PRESSES_PANE_META } from '#analyzers/layer-combo-presses/pa
 import { COMPARISON_PANE_META } from '#analyzers/comparison/pane-meta.ts';
 import { FINGER_MATRIX_PANE_META } from '#analyzers/finger-matrix/pane-meta.ts';
 import { N_SENSITIVITY_PANE_META } from '#analyzers/n-sensitivity/pane-meta.ts';
-import { LEGACY_ANALYZER_LABEL, WORKSPACE_EMPTY_TEXT } from '../app/shell/Sidebar.tsx';
+import { WORKSPACE_EMPTY_TEXT } from '../app/shell/Sidebar.tsx';
 import { TopTargetPick } from '../app/top/TopTargetPick.tsx';
 import { useCreateSampleWorkspace } from '../app/workspace/use-create-sample-workspace.ts';
 
@@ -27,17 +27,17 @@ function SidebarSample() {
       <section className="sidebar-group">
         <p className="sidebar-heading">Analyze</p>
         <p className="sidebar-subheading">Single</p>
-        <Link className="sidebar-link" to="/standalone/bigram-flow">{BIGRAM_FLOW_PANE_META.name}</Link>
-        <Link className="sidebar-link" to="/standalone/finger-distance">{FINGER_DISTANCE_PANE_META.name}</Link>
-        <Link className="sidebar-link" to="/standalone/heatmap">{HEATMAP_PANE_META.name}</Link>
-        <Link className="sidebar-link" to="/standalone/heatmap-layers">{HEATMAP_LAYERS_PANE_META.name}</Link>
-        <Link className="sidebar-link" to="/standalone/layer-combo-presses">{LAYER_COMBO_PRESSES_PANE_META.name}</Link>
-        <Link className="sidebar-link" to="/standalone/keymap">{KEYMAP_PANE_META.name}</Link>
-        <Link className="sidebar-link" to="/standalone/playback">{PLAYBACK_PANE_META.name}</Link>
+        <Link className="sidebar-link" to="/analyzer/bigram-flow">{BIGRAM_FLOW_PANE_META.name}</Link>
+        <Link className="sidebar-link" to="/analyzer/finger-distance">{FINGER_DISTANCE_PANE_META.name}</Link>
+        <Link className="sidebar-link" to="/analyzer/heatmap">{HEATMAP_PANE_META.name}</Link>
+        <Link className="sidebar-link" to="/analyzer/heatmap-layers">{HEATMAP_LAYERS_PANE_META.name}</Link>
+        <Link className="sidebar-link" to="/analyzer/layer-combo-presses">{LAYER_COMBO_PRESSES_PANE_META.name}</Link>
+        <Link className="sidebar-link" to="/analyzer/keymap">{KEYMAP_PANE_META.name}</Link>
+        <Link className="sidebar-link" to="/analyzer/playback">{PLAYBACK_PANE_META.name}</Link>
         <p className="sidebar-subheading">Multi</p>
-        <Link className="sidebar-link" to="/standalone/comparison">{COMPARISON_PANE_META.name}</Link>
-        <Link className="sidebar-link" to="/standalone/finger-matrix">{FINGER_MATRIX_PANE_META.name}</Link>
-        <Link className="sidebar-link" to="/standalone/n-sensitivity">{N_SENSITIVITY_PANE_META.name}</Link>
+        <Link className="sidebar-link" to="/analyzer/comparison">{COMPARISON_PANE_META.name}</Link>
+        <Link className="sidebar-link" to="/analyzer/finger-matrix">{FINGER_MATRIX_PANE_META.name}</Link>
+        <Link className="sidebar-link" to="/analyzer/n-sensitivity">{N_SENSITIVITY_PANE_META.name}</Link>
       </section>
       <section className="sidebar-group">
         <p className="sidebar-heading">Workspace</p>
@@ -90,9 +90,6 @@ function Home() {
         各ペイン・各Analyzerには出さない。
       */}
       <p className="hero-note">数値は観測値であり、配列の優劣を判定するスコアではありません。</p>
-      <p className="hero-legacy">
-        <Link to="/analyzer">{LEGACY_ANALYZER_LABEL}</Link>
-      </p>
     </section>
   );
 }

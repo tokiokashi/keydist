@@ -11,7 +11,7 @@ const seek = (page: Page) => feature(page).locator('[data-playback-seek]');
 
 async function openPlayback(page: Page, width: number) {
   await page.setViewportSize({ width, height: 900 });
-  await page.goto('/standalone/playback');
+  await page.goto('/analyzer/playback');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   await expect(feature(page).locator('[data-playback-rate-cursor-line]')).toBeAttached();
 }

@@ -19,7 +19,7 @@ test('1万字の比較表の計算中も、メインスレッドは止まらな�
       monitor.last = now;
     }, 20);
   });
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
   for (const id of ['qwerty', 'dvorak', 'colemak', 'colemak-dh', 'workman']) {
     await toggleTarget(page, `layout:${id}`);
   }

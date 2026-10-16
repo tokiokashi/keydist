@@ -1,9 +1,7 @@
 /*
  * App-wide semantic theme tokens.
  *
- * Components consume semantic roles only. Analyzer-specific legacy aliases live
- * in style.css while the old Analyzer exists; the new Analyzer can consume these tokens
- * directly without inheriting that compatibility layer.
+ * Components consume semantic roles only.
  */
 :root {
   color-scheme: light;

@@ -100,25 +100,6 @@ export function displayTriggerChords(face: Face): readonly TriggerChord[] {
 }
 
 /**
- * presentation trigger alternative全体から安全に付けられる手ラベルを返す。
- * 左OR右のようにalternative間で手が異なる場合は、両方同時と誤読させないため未指定。
- * 1 alternative内に左右両手を含むchordだけは「両手」とする。
- */
-export function displayTriggerHandLabel(face: Face): '左手' | '右手' | '両手' | undefined {
-  const labels = displayTriggerAlternatives(face).map((alternative) => {
-    const hands = new Set(alternative.map(handOfKey).filter(
-      (hand): hand is Hand => hand !== undefined,
-    ));
-    if (hands.size === 0) return undefined;
-    if (hands.size > 1) return '両手' as const;
-    return hands.has('left') ? '左手' as const : '右手' as const;
-  });
-  if (labels.length === 0 || labels.some((label) => label === undefined)) return undefined;
-  const unique = new Set(labels);
-  return unique.size === 1 ? labels[0] : undefined;
-}
-
-/**
  * layer trigger表示で強調する全physical key。
  * alternative/chordの区別を落としたhighlight用途専用view。
  */

@@ -29,7 +29,7 @@ function seedThreeLayouts() {
 
 async function openComparison(page: Page): Promise<Locator> {
   await page.addInitScript(seedThreeLayouts);
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
   const table = page.locator('.comparison-table');
   await expect(table.locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(3, { timeout: 15_000 });
   return table;
@@ -167,7 +167,7 @@ for (const size of [{ width: 390, height: 600 }, { width: 390, height: 340 }, { 
 }
 
 test('他のAnalyzerのⓘは今の小窓のまま（モーダルを開かない）', async ({ page }) => {
-  for (const [path, name] of [['/standalone/n-sensitivity', 'N感度'], ['/standalone/bigram-flow', 'Bigram Flow']] as const) {
+  for (const [path, name] of [['/analyzer/n-sensitivity', 'N感度'], ['/analyzer/bigram-flow', 'Bigram Flow']] as const) {
     await page.goto(path);
     await waitForHydration(page);
     const info = page.getByRole('button', { name: `${name}の説明` });

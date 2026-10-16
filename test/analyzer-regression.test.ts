@@ -45,9 +45,8 @@ function findFingerAssignment(id: string): FingerAssignment {
 
 // fixture回帰テスト。
 //
-// #legacy/* も #app/* も import しない。このfixtureはsrc/legacy/が消えた後、
-// 新engineに対して「旧実装と同じ数値が出る」ことを確かめ続けるためのものなので、
-// テスト自身が旧実装の生死に依存してはいけない。
+// #app/* は import しない。このfixtureは、記録した条件から今の実装が同じ数値を出すことを
+// 確かめ続けるためのものなので、テスト自身がUIの実装に依存してはいけない。
 // サンプルテキストは #input/text/samples.ts（standalone/Workspace双方が使う置き場）から読む。
 //
 // 置き場について: docs/architecture.md の依存規則は src/ 配下だけを検査する
@@ -115,13 +114,11 @@ function findLayout(language: TextLanguage, layoutId: string): Layout {
  * （windowSize・sfbHomeCost・preferOppositeThumb・triggerRealizationPolicy・
  * actionRealizationPolicy・chainInterpretation・arpeggioInterpretation・romajiRuleId・
  * geometryShapeId・fingerAssignmentId は全てfixture.conditionsから取る）。
- * src/legacy/results-view.ts の render() と同じ並び
- * （generateTrace → analyzeStrokeStructure → computeMetrics）で呼ぶ。
+ * generateTrace → analyzeStrokeStructure → computeMetrics の並びで呼ぶ。
  *
  * romajiTableは配列定義に静的に焼き込まれたものをそのまま使わない。
- * src/legacy/main.ts の layoutsOf() が毎回 tableForRule(ruleId, ...) で組み直してから
- * 差し替えているのと同じく、ここも recorded romajiRuleId から input層の tableForRule で
- * 組み直す（layout.romajiTableの静的値に頼らない）。
+ * recorded romajiRuleId から input層の tableForRule で毎回組み直す
+ * （layout.romajiTableの静的値に頼らない）。
  */
 function recompute(fixtureCase: FixtureCase) {
   const layout = findLayout(fixtureCase.language, fixtureCase.layoutId);

@@ -9,9 +9,9 @@ import {
   subscribeAppearance,
 } from './appearance.ts';
 import { APP_STATE_STORAGE_KEY } from '../state/app-state-storage.ts';
-import type { UiStateStorage } from '#legacy/ui-state.ts';
+import type { KeyValueStorage } from '#platform/persistence/storage.ts';
 
-class MemoryStorage implements UiStateStorage {
+class MemoryStorage implements KeyValueStorage {
   readonly data = new Map<string, string>();
   getItem(key: string): string | null { return this.data.get(key) ?? null; }
   setItem(key: string, value: string): void { this.data.set(key, value); }
@@ -22,32 +22,40 @@ function appState(storage: MemoryStorage) {
   return JSON.parse(storage.getItem(APP_STATE_STORAGE_KEY)!);
 }
 
-test('appearance migrates AppState analyzer.theme and removes the old field after save', () => {
+test('外観の保存が無い時は、渡した既定を返してstorageには書かない', () => {
+  const storage = new MemoryStorage();
+  assert.deepEqual(loadAppearancePreference(storage), { theme: 'system' });
+  assert.deepEqual(loadAppearancePreference(storage, 'dark'), { theme: 'dark' });
+  assert.equal(storage.data.size, 0);
+});
+
+test('外観の保存が不正な値の時は既定を返す', () => {
   const storage = new MemoryStorage();
   storage.setItem(APP_STATE_STORAGE_KEY, JSON.stringify({
     version: APP_STATE_VERSION,
-    analyzer: {
-      theme: 'dark',
-      input: { mode: 'ja' },
-    },
+    appearance: { theme: 'not-a-real-theme' },
   }));
-
-  assert.deepEqual(loadAppearancePreference(storage), { theme: 'dark' });
-  assert.equal(appState(storage).appearance.theme, 'dark');
-  assert.equal('theme' in appState(storage).analyzer, false);
-  assert.equal(appState(storage).analyzer.input.mode, 'ja');
+  assert.deepEqual(loadAppearancePreference(storage), { theme: 'system' });
 });
 
-test('appearance can migrate UiStateV1 theme without consuming the analyzer migration document', () => {
+test('旧画面の保存（keydist:ui-state・keydist:theme・analyzer.theme）はテーマの移行元にしない', () => {
   const storage = new MemoryStorage();
-  storage.setItem('keydist:ui-state', JSON.stringify({
-    version: 1,
-    ui: { theme: 'light' },
+  storage.setItem('keydist:ui-state', JSON.stringify({ version: 1, ui: { theme: 'light' } }));
+  storage.setItem('keydist:theme', 'light');
+  storage.setItem(APP_STATE_STORAGE_KEY, JSON.stringify({
+    version: APP_STATE_VERSION,
+    analyzer: { theme: 'light' },
   }));
 
-  assert.deepEqual(loadAppearancePreference(storage), { theme: 'light' });
-  assert.equal(appState(storage).appearance.theme, 'light');
-  assert.notEqual(storage.getItem('keydist:ui-state'), null);
+  assert.deepEqual(loadAppearancePreference(storage), { theme: 'system' });
+  assert.equal(storage.getItem('keydist:ui-state') !== null, true);
+  assert.equal(storage.getItem('keydist:theme'), 'light');
+});
+
+test('保存した外観の設定を読み戻す', () => {
+  const storage = new MemoryStorage();
+  assert.equal(saveAppearancePreference(storage, 'dark'), true);
+  assert.deepEqual(loadAppearancePreference(storage), { theme: 'dark' });
 });
 
 test('server snapshot never touches storage and always returns the default theme', () => {

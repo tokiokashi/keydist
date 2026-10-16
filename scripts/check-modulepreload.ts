@@ -99,7 +99,7 @@ let checkedPages = 0;
 
 for (const file of (await htmlFiles(PUBLIC_DIR)).sort()) {
   const { entries, preloads } = pageModules(await readFile(file, 'utf8'));
-  if (entries.length === 0) continue; // 転送用の legacy.html 等、モジュールを読まないページ
+  if (entries.length === 0) continue; // モジュールを読まないページは検査の対象外
   checkedPages += 1;
   // エントリのチャンクから静的importを1本も読めないなら、パースが効いていないか出力の形が変わった。
   // その状態で「抜けが無い」と通すと検査が空振りするので、ページごとに失敗にする。

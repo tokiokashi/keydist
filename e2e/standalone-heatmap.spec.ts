@@ -19,7 +19,7 @@ const diagrams = (page: Page) => feature(page).locator('[data-heatmap-diagram]')
 
 test('ヒートマップの図が1枚出て、押したキーにだけヒートが付く。シフトキーの枠は描かない', async ({ page }) => {
   await selectLayout(page, 'shingeta');
-  await page.goto('/standalone/heatmap');
+  await page.goto('/analyzer/heatmap');
   await expect(page.getByRole('heading', { name: 'ヒートマップ', exact: true, level: 1 })).toBeVisible();
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   await expect(diagrams(page)).toHaveCount(1);
@@ -35,7 +35,7 @@ test('ヒートマップの図が1枚出て、押したキーにだけヒート�
 
 test('解析設定に項目は無い', async ({ page }) => {
   await selectLayout(page, 'qwerty');
-  await page.goto('/standalone/heatmap');
+  await page.goto('/analyzer/heatmap');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   await page.getByRole('button', { name: '解析設定', exact: true }).click();
   const settings = page.locator('[data-settings-window="true"]');
@@ -81,7 +81,7 @@ async function keyReadings(figure: Locator) {
 
 test('集合の対象の図が、Singleの対象の下に名前と印付きで並ぶ。Singleの対象と同じ対象は並ばない', async ({ page }) => {
   await seedSelections(page, 'qwerty', ['qwerty', 'dvorak', 'colemak-dh']);
-  await page.goto('/standalone/heatmap');
+  await page.goto('/analyzer/heatmap');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   await expect(cells(page)).toHaveCount(2);
   await expect(cells(page).filter({ has: page.locator('[data-heatmap-diagram]') })).toHaveCount(2, { timeout: 10_000 });
@@ -97,14 +97,14 @@ test('集合の対象の図が、Singleの対象の下に名前と印付きで�
 
 test('集合が空、またはSingleの対象だけなら、図は1つだけ', async ({ page }) => {
   await seedSelections(page, 'qwerty', []);
-  await page.goto('/standalone/heatmap');
+  await page.goto('/analyzer/heatmap');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   await expect(diagrams(page)).toHaveCount(1);
   await expect(cells(page)).toHaveCount(0);
 
   const onlySingle = await page.context().newPage();
   await seedSelections(onlySingle, 'qwerty', ['qwerty']);
-  await onlySingle.goto('/standalone/heatmap');
+  await onlySingle.goto('/analyzer/heatmap');
   await expect(feature(onlySingle)).toBeVisible({ timeout: 10_000 });
   await expect(diagrams(onlySingle)).toHaveCount(1);
   await expect(cells(onlySingle)).toHaveCount(0);
@@ -112,13 +112,13 @@ test('集合が空、またはSingleの対象だけなら、図は1つだけ', a
 
 test('格子の図の押下数は、同じ対象をSingleで選んだ時の図と一致する', async ({ page }) => {
   await seedSelections(page, 'colemak-dh', ['colemak-dh']);
-  await page.goto('/standalone/heatmap');
+  await page.goto('/analyzer/heatmap');
   await expect(diagrams(page)).toHaveCount(1, { timeout: 10_000 });
   const asSingle = await keyReadings(diagrams(page).first());
 
   const grid = await page.context().newPage();
   await seedSelections(grid, 'qwerty', ['qwerty', 'colemak-dh']);
-  await grid.goto('/standalone/heatmap');
+  await grid.goto('/analyzer/heatmap');
   const cell = cells(grid).filter({ has: grid.locator('[data-heatmap-diagram]') });
   await expect(cell).toHaveCount(1, { timeout: 10_000 });
   const inGrid = await keyReadings(cell.locator('[data-heatmap-diagram]'));
@@ -128,7 +128,7 @@ test('格子の図の押下数は、同じ対象をSingleで選んだ時の図�
 test('色の尺度は全部の図の最大で揃う。最大の違う組では、格子の図の濃さが押下数÷全部の図の最大になる', async ({ page }) => {
   // 既定のテキストで、QWERTYの最大は84、新下駄の最大は47
   await seedSelections(page, 'qwerty', ['shingeta']);
-  await page.goto('/standalone/heatmap');
+  await page.goto('/analyzer/heatmap');
   const cell = cells(page).filter({ has: page.locator('[data-heatmap-diagram]') });
   await expect(cell).toHaveCount(1, { timeout: 10_000 });
   const top = await keyReadings(diagrams(page).first());
@@ -146,7 +146,7 @@ test('色の尺度は全部の図の最大で揃う。最大の違う組では�
 test('格子の図は、1列になる幅でも一番上の図より大きくならない', async ({ page }) => {
   await page.setViewportSize({ width: 600, height: 900 });
   await seedSelections(page, 'qwerty', ['dvorak', 'workman']);
-  await page.goto('/standalone/heatmap');
+  await page.goto('/analyzer/heatmap');
   await expect(cells(page).filter({ has: page.locator('[data-heatmap-diagram]') })).toHaveCount(2, { timeout: 10_000 });
   const top = (await diagrams(page).first().boundingBox())!;
   for (const cell of await cells(page).all()) {
@@ -157,7 +157,7 @@ test('格子の図は、1列になる幅でも一番上の図より大きくな�
 
 test('格子の図のツールチップは押下数だけで、キーを押しても小窓は開かない。一番上の図は内訳を出す', async ({ page }) => {
   await seedSelections(page, 'qwerty', ['dvorak']);
-  await page.goto('/standalone/heatmap');
+  await page.goto('/analyzer/heatmap');
   const cell = cells(page).first();
   await expect(cell.locator('[data-heatmap-diagram]')).toBeVisible({ timeout: 10_000 });
   const gridTitles = await cell.locator('[data-heatmap-key] title').allTextContents();
@@ -171,7 +171,7 @@ for (const viewport of [{ name: 'パソコン幅', width: 1440, height: 900 }, {
   test(`${viewport.name}: 格子の図が画面の幅からはみ出さない`, async ({ page }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await seedSelections(page, 'qwerty', ['dvorak', 'colemak-dh', 'workman', 'colemak']);
-    await page.goto('/standalone/heatmap');
+    await page.goto('/analyzer/heatmap');
     await expect(cells(page).filter({ has: page.locator('[data-heatmap-diagram]') }).first()).toBeVisible({ timeout: 10_000 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     for (const figure of await feature(page).locator('[data-heatmap-diagram]').all()) {

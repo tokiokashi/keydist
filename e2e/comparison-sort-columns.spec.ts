@@ -28,7 +28,7 @@ function seedThreeLayouts() {
 
 async function openComparison(page: Page): Promise<Locator> {
   await page.addInitScript(seedThreeLayouts);
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
   const table = page.locator('.comparison-table');
   await expect(table.locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(3, { timeout: 15_000 });
   return table;
@@ -171,7 +171,7 @@ test('並び替えても対象の集合の順は変わらず、N感度の対象�
   await expectTargetNames(page, listOrder);
   expect(await page.evaluate((key) => localStorage.getItem(key), MULTI_TARGET_SELECTION_KEY)).toBe(storedBefore);
 
-  await page.goto('/standalone/n-sensitivity');
+  await page.goto('/analyzer/n-sensitivity');
   await expect(page.getByRole('button', { name: /^対象: / })).toBeVisible({ timeout: 15_000 });
   await expectTargetNames(page, listOrder);
 });
