@@ -31,22 +31,7 @@ test('patchAppStateSlice preserves unrelated slices', () => {
   const initial: AppStateV2 = {
     version: APP_STATE_VERSION,
     appearance: { theme: 'system' },
-    analyzer: {
-      input: { mode: 'ja', geometry: 'row-staggered', selectedSampleByMode: { en: 'default', ja: 'legacy' } },
-      layouts: { selectedByMode: { en: [], ja: [] }, detailByMode: {} },
-      comparison: {
-        baselineByMode: {},
-        chartColumn: 1,
-        sort: null,
-        matrixSorts: { press: null, finger: null, adjacentMean: null, adjacentStdDev: null },
-      },
-      sensitivity: { scale: 'relative' },
-      layers: { view: 'auto', activeTab: 0, colorScale: 'linear', showLayerDetails: false, keyPatternGuide: true },
-      panels: {
-        addLayout: false, text: true, sensitivity: false, playback: false,
-        playbackRateChart: false, layerStats: false, modifierList: false, comboTable: false,
-      },
-    },
+    shell: { sidebarPinned: true, sidebarCollapsed: ['assets'] },
   };
   storage.setItem(APP_STATE_STORAGE_KEY, JSON.stringify(initial));
 
@@ -55,7 +40,26 @@ test('patchAppStateSlice preserves unrelated slices', () => {
 
   const saved = JSON.parse(storage.getItem(APP_STATE_STORAGE_KEY)!);
   assert.deepEqual(saved.workspace, workspace);
-  assert.deepEqual(saved.analyzer, initial.analyzer);
+  assert.deepEqual(saved.appearance, initial.appearance);
+  assert.deepEqual(saved.shell, initial.shell);
+});
+
+test('スキーマに無い項目が保存に残っていても、読み込みは失敗せず、他の項目の保存でもそのまま保たれる', () => {
+  const storage = new MemoryStorage();
+  const extra = { theme: 'dark', input: { mode: 'ja' } };
+  storage.setItem(APP_STATE_STORAGE_KEY, JSON.stringify({
+    version: APP_STATE_VERSION,
+    appearance: { theme: 'light' },
+    analyzer: extra,
+  }));
+
+  const decoded = decodeAppStateDocument(storage.getItem(APP_STATE_STORAGE_KEY));
+  assert.deepEqual(decoded.appearance, { theme: 'light' });
+
+  assert.equal(patchAppStateSlice(storage, 'shell', { sidebarPinned: false }), true);
+  const saved = JSON.parse(storage.getItem(APP_STATE_STORAGE_KEY)!);
+  assert.deepEqual(saved.shell, { sidebarPinned: false });
+  assert.deepEqual(saved.analyzer, extra);
 });
 
 test('slice migration writes AppState before removing the legacy key', () => {
@@ -87,27 +91,11 @@ test('patchAppState updates multiple slices atomically while preserving unrelate
 
   assert.equal(patchAppState(storage, {
     appearance: { theme: 'dark' },
-    analyzer: {
-      input: { mode: 'en', geometry: 'row-staggered', selectedSampleByMode: { en: 'default', ja: 'legacy' } },
-      layouts: { selectedByMode: { en: [], ja: [] }, detailByMode: {} },
-      comparison: {
-        baselineByMode: {},
-        chartColumn: 1,
-        sort: null,
-        matrixSorts: { press: null, finger: null, adjacentMean: null, adjacentStdDev: null },
-      },
-      sensitivity: { scale: 'relative' },
-      layers: { view: 'auto', activeTab: 0, colorScale: 'linear', showLayerDetails: false, keyPatternGuide: true },
-      panels: {
-        addLayout: false, text: true, sensitivity: false, playback: false,
-        playbackRateChart: false, layerStats: false, modifierList: false, comboTable: false,
-      },
-    },
-    conditions: undefined,
+    shell: { sidebarPinned: true },
   }), true);
 
   const saved = JSON.parse(storage.getItem(APP_STATE_STORAGE_KEY)!);
   assert.deepEqual(saved.workspace, workspace);
   assert.equal(saved.appearance.theme, 'dark');
-  assert.equal('theme' in saved.analyzer, false);
+  assert.deepEqual(saved.shell, { sidebarPinned: true });
 });

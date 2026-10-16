@@ -22,7 +22,7 @@ function seedThreeLayouts(targets: readonly unknown[]) {
 async function openStandalone(page: Page): Promise<Locator> {
   await installWorkerHold(page);
   await page.addInitScript(seedThreeLayouts, TARGETS);
-  await page.goto('/standalone/finger-matrix');
+  await page.goto('/analyzer/finger-matrix');
   await waitForHydration(page);
   const table = page.locator('.finger-matrix-table');
   await expect(table.locator('tbody tr[data-finger-matrix-row="ok"]')).toHaveCount(3, { timeout: 15_000 });

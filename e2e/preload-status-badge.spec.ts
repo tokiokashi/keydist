@@ -9,9 +9,9 @@ import { targetButton } from './pane-helper.ts';
  * 計算が済むと戻る。
  */
 const pages = [
-  { name: 'Bigram Flow', path: '/standalone/bigram-flow' },
-  { name: '比較表', path: '/standalone/comparison' },
-  { name: 'N感度', path: '/standalone/n-sensitivity' },
+  { name: 'Bigram Flow', path: '/analyzer/bigram-flow' },
+  { name: '比較表', path: '/analyzer/comparison' },
+  { name: 'N感度', path: '/analyzer/n-sensitivity' },
 ] as const;
 
 for (const width of [390, 1440]) {

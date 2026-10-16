@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { decodeUserLayouts, USER_LAYOUTS_CODEC, type UserLayout } from './user-layouts.ts';
-import { load, loadWithDiagnostics, save, USER_LAYOUTS_STORAGE_KEY } from '#platform/assets/user-layouts-storage.ts';
 
 const layout = (id: string): UserLayout => ({
   id,
@@ -33,35 +32,6 @@ test('壊れた要素とid重複は捨てて、その数だけ診断を積む', 
   const result = decodeUserLayouts([layout('user-a'), { id: 1 }, null, layout('user-a'), layout('user-c')]);
   assert.deepEqual(result.value.map((l) => l.id), ['user-a', 'user-c']);
   assert.deepEqual(result.diagnostics.map((d) => d.path), ['[1]', '[2]', '[3]']);
-});
-
-test('storage: 保存が壊れている時は診断付きの空、往復では値が変わらない', () => {
-  const values = new Map<string, string>();
-  const original = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
-  Object.defineProperty(globalThis, 'localStorage', {
-    configurable: true,
-    value: {
-      getItem: (key: string) => values.get(key) ?? null,
-      setItem: (key: string, value: string) => { values.set(key, value); },
-    },
-  });
-  try {
-    assert.deepEqual(loadWithDiagnostics(), { value: [], diagnostics: [] });
-
-    const layouts = [layout('user-a')];
-    save(layouts);
-    assert.deepEqual(load(), layouts);
-    assert.deepEqual(loadWithDiagnostics().diagnostics, []);
-
-    values.set(USER_LAYOUTS_STORAGE_KEY, 'null');
-    assert.equal(loadWithDiagnostics().diagnostics.length, 1);
-    values.set(USER_LAYOUTS_STORAGE_KEY, '{"oops":');
-    assert.deepEqual(loadWithDiagnostics().value, []);
-    assert.equal(loadWithDiagnostics().diagnostics.length, 1);
-  } finally {
-    if (original) Object.defineProperty(globalThis, 'localStorage', original);
-    else Reflect.deleteProperty(globalThis, 'localStorage');
-  }
 });
 
 test('USER_LAYOUTS_CODEC: 往復で値が変わらず、版1の文書になる', () => {

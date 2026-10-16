@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { waitForHydration } from './hydration-helper.ts';
 
 test('サイドバーから計算方法のページを開け、仕様書とリポジトリへのリンクが出る', async ({ page }) => {
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
   await waitForHydration(page);
 
   const sidebar = page.locator('#app-sidebar');

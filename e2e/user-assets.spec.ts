@@ -32,7 +32,7 @@ async function seed(page: Page): Promise<void> {
 
 test('サイドバーのAssetsから開き、自作の配列と規則を一覧できる', async ({ page }) => {
   await seed(page);
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await waitForHydration(page);
   const sidebar = page.locator('#app-sidebar');
   await expect(sidebar.getByRole('heading', { name: 'Assets', exact: true })).toBeVisible();

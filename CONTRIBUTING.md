@@ -50,7 +50,7 @@
 | `sensitivity` | `src/analyzers/n-sensitivity/` |
 | `layouts` | `src/input/layouts/` |
 | `romaji` | `src/input/romaji/` |
-| `ui` | `src/ui/` `src/app/` `src/routes/` `src/legacy/` |
+| `ui` | `src/ui/` `src/app/` `src/routes/` |
 | `deps` | 依存関係の更新 |
 
 ### body / footer

@@ -170,7 +170,7 @@ UI・配列定義の追加など、モデルに触らない変更は仕様の更
 分け方・依存の向き・用語は `docs/architecture.md` が正。依存の規則は `test/architecture-layers.test.ts` が検査する。
 新しいファイルは必ずその構造の中に置く（src直下などへ増やすとテストが落ちる）。
 
-既存ファイルの配置は、この構造へ移し終えている。移行中なのは `features/analyzer-next/` だけで、置き換え完了時に削除する。
+既存ファイルの配置は、この構造へ移し終えている。
 
 | パス | 中身 |
 |---|---|
@@ -185,8 +185,6 @@ UI・配列定義の追加など、モデルに触らない変更は仕様の更
 | `src/tester/` | Tester。 `engine/` は純粋層 |
 | `src/platform/` | storage・ブラウザAPI |
 | `src/app/` `src/ui/` `src/routes/` | アプリ組み立て・共通UI・ルーティング |
-| `src/legacy/` | 旧Analyzer。切り替え時にディレクトリごと削除 |
-| `src/features/analyzer-next/` | Analyzer Next移行中実装。新構造へ置き換え後に削除 |
 | `src/**/*.test.ts` | ソースの隣に置くunit test |
 | `test/` | architecture・commit-msg等の横断テストとfixture |
 | `spec/` | モデル仕様（距離モデル・再生時間モデル） |

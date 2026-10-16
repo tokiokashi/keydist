@@ -18,7 +18,7 @@ const table = (page: Page) => feature(page).locator('[data-layer-combo-presses-t
 
 test('コンボを持つ配列: 表にコンボの行が出て、押下数の和が合計の行と一致する', async ({ page }) => {
   await selectLayout(page, 'kawasemi-plus');
-  await page.goto('/standalone/layer-combo-presses');
+  await page.goto('/analyzer/layer-combo-presses');
   await expect(page.getByRole('heading', { name: 'レイヤーとコンボの押下数', exact: true, level: 1 })).toBeVisible();
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
 
@@ -33,7 +33,7 @@ test('コンボを持つ配列: 表にコンボの行が出て、押下数の和
 
 test('文字キーの同時押しを層に数える配列: 層の行に載り、コンボの行は無い', async ({ page }) => {
   await selectLayout(page, 'shin-koume');
-  await page.goto('/standalone/layer-combo-presses');
+  await page.goto('/analyzer/layer-combo-presses');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   await expect(table(page).locator('tbody tr')).toHaveCount(17);
   await expect(table(page).locator('[data-attribution-row="combo"]')).toHaveCount(0);
@@ -41,7 +41,7 @@ test('文字キーの同時押しを層に数える配列: 層の行に載り、
 
 test('レイヤーもコンボも持たない配列: 単打を含む行だけが並ぶ', async ({ page }) => {
   await selectLayout(page, 'nicola');
-  await page.goto('/standalone/layer-combo-presses');
+  await page.goto('/analyzer/layer-combo-presses');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   await expect(table(page).locator('tbody tr')).toHaveCount(3);
 });

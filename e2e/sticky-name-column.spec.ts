@@ -37,13 +37,13 @@ async function expectNameColumnStays(page: Page, tableSelector: string) {
 for (const scheme of ['light', 'dark'] as const) {
   test(`比較表: 横スクロールしても対象名の列が左端に残る（${scheme}）`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: scheme });
-    await page.goto('/standalone/comparison');
+    await page.goto('/analyzer/comparison');
     await expectNameColumnStays(page, '.comparison-table');
   });
 
   test(`N感度の表: 横スクロールしても対象名の列が左端に残る（${scheme}）`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: scheme });
-    await page.goto('/standalone/n-sensitivity');
+    await page.goto('/analyzer/n-sensitivity');
     await expectNameColumnStays(page, '.n-sensitivity-table');
   });
 }

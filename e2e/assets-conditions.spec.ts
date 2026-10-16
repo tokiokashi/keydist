@@ -101,7 +101,7 @@ test('全体とSetupを選んだ時も、それぞれのレベルに書ける。
 
 test('Workspaceの適用範囲に書いた値は、そのWorkspaceに保存され、元に戻すと戻る', async ({ page }) => {
   await seed(page);
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await waitForHydration(page);
   await page.locator('#app-sidebar').getByRole('button', { name: '＋ 新しいWorkspace' }).click();
   await expect(page).toHaveURL(/\/workspace\//);

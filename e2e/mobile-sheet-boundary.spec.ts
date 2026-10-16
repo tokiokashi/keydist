@@ -9,7 +9,7 @@ import { dismissAutoOpenedSelection, openSettings, openTargetSelection } from '.
 
 async function open(page: Page, width: number) {
   await page.setViewportSize({ width, height: 844 });
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
   await waitForHydration(page);
 }
 

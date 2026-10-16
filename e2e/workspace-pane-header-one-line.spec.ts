@@ -239,7 +239,7 @@ test('縦積み（320px）: 名前を省略しても1行に入らないので、
 test('個別画面の見出しは今のまま（名前の行・条件の行がある）', async ({ page }) => {
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 });
-    await page.goto('/standalone/bigram-flow');
+    await page.goto('/analyzer/bigram-flow');
     await waitForHydration(page);
     const pane = page.locator('.pane-frame');
     await expect(pane).toHaveAttribute('data-pane-status', 'ready', { timeout: 15_000 });

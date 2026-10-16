@@ -9,28 +9,6 @@ const base = process.env.KEYDIST_BASE_PATH ?? '/';
 // サイドバーの版表示に使う。版番号の正は package.json の version（CONTRIBUTING.md「公開」）。
 const packageVersion = (JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string }).version;
 
-function legacyAnalyzerRedirect(): Plugin {
-  const prefix = base === '/' ? '' : base.replace(/\/$/, '');
-  return {
-    name: 'keydist-legacy-analyzer-redirect',
-    configureServer(server) {
-      server.middlewares.use((req, res, next) => {
-        const [pathname, query] = (req.url ?? '').split('?', 2);
-        if (pathname !== `${prefix}/legacy.html`) {
-          next();
-          return;
-        }
-        res.statusCode = 302;
-        res.setHeader(
-          'Location',
-          `${prefix}/analyzer${query ? `?${query}` : ''}`,
-        );
-        res.end();
-      });
-    },
-  };
-}
-
 // e2eの `globalSetup` が、ポートの先で動いているdev serverが自分のworktreeのものかを確かめるために使う。
 // `/@fs` の200/403は包含関係（祖先のserverも200を返す）しか見られないので、serverのルートそのものを返す。
 // `apply: 'serve'` なので、ビルドとpreviewには入らない。
@@ -56,17 +34,7 @@ export default defineConfig({
   define: {
     __KEYDIST_VERSION__: JSON.stringify(packageVersion),
   },
-  server: {
-    warmup: {
-      clientFiles: [
-        './src/legacy/analyzer-page.tsx',
-        './src/legacy/main.ts',
-        './src/legacy/analyzer-react-shell.tsx',
-      ],
-    },
-  },
   plugins: [
-    legacyAnalyzerRedirect(),
     e2eRootProbe(),
     tanstackStart({
       srcDirectory: 'src',

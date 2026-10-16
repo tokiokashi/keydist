@@ -54,7 +54,7 @@ async function expectToggleCycle(
 
 test('個別画面: 連打の回数バッジを消せて、戻せる。線と凡例は変わらない', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
   // 表示は読み込み前のHTMLにも出るので、操作の前にハイドレーションと資産の読み込みを待つ
@@ -67,7 +67,7 @@ test('個別画面: 連打の回数バッジを消せて、戻せる。線と凡
 });
 
 test('個別画面: 消した設定は再読み込みで保たれ、項目の既定値へ戻すで出る', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
   const figure = await openFigureSettings(page, 'Keyboard Flow');
@@ -91,7 +91,7 @@ test('個別画面: 消した設定は再読み込みで保たれ、項目の既
 });
 
 test('個別画面: 消した操作は文脈バーの元に戻すで戻る', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
   await (await openFigureSettings(page, 'Keyboard Flow')).getByRole('checkbox', { name: LABEL }).uncheck();

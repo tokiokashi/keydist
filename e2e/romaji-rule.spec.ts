@@ -10,7 +10,7 @@ import { waitForHydration } from './hydration-helper.ts';
 const STORAGE_KEY = 'keydist:user-romaji-rules';
 
 test('規則を作り、綴りを書き換えて、基底との違いが一覧に出る。条件のモーダルで選べる', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await waitForHydration(page);
   await page.locator('#app-sidebar').getByRole('link', { name: 'ローマ字の綴り', exact: true }).click();
   await expect(page).toHaveURL(/\/romaji-rule$/);

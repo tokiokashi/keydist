@@ -3,8 +3,6 @@ import assert from 'node:assert/strict';
 import {
   buildRomajiTable,
   defaultRomajiRuleId,
-  formatOverrides,
-  parseOverrides,
   tableForRule,
   type UserRomajiRule,
 } from './rules.ts';
@@ -17,19 +15,6 @@ import { SAMPLE_TEXT_JA } from '../text/sample-ja.ts';
 
 const geometry = buildGeometry('row-staggered');
 const options = { windowSize: 3, sfbHomeCost: true };
-
-test('ローマ字差分を読み取り、複数かなの見出しを保持する', () => {
-  const parsed = parseOverrides('しゃ = sha\nかん = kz\n# コメント\n');
-  assert.deepEqual(parsed.errors, []);
-  assert.deepEqual(parsed.overrides, { しゃ: 'sha', かん: 'kz' });
-  assert.equal(formatOverrides(parsed.overrides), 'しゃ = sha\nかん = kz');
-});
-
-test('ローマ字差分の形式エラーと重複を報告する', () => {
-  const parsed = parseOverrides('しゃ = sha\nしゃ = shi\n壊れた行\nabc = xyz\nし = shi!');
-  assert.equal(parsed.errors.length, 4);
-  assert.deepEqual(parsed.overrides, { しゃ: 'sha' });
-});
 
 test('カスタムルールは基底＋差分で構築でき、促音生成を切り替えられる', () => {
   const rule: UserRomajiRule = {

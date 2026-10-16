@@ -5,7 +5,7 @@ import { expect, test } from '@playwright/test';
  * 開いた人だけが読み方を読める。常には出さない。
  */
 test('Keyboard FlowとRelative vectorsの横のⓘで図の読み方を開ける', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
 

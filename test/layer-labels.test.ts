@@ -211,7 +211,6 @@ test('レイヤーの名前を画面に出すソースは、生の定義の名�
     'src/input/layouts/key-pattern-picker.ts',
     'src/analyzers/key-detail-view.ts',
     'src/analyzers/heatmap-layers/layer-view.ts',
-    'src/legacy/analyzer-heatmap-content.tsx',
     'src/trace/generate.ts',
   ]);
   const root = join(dirname(fileURLToPath(import.meta.url)), '..');

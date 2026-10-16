@@ -71,9 +71,8 @@ jobs:
 
           paths=(
             .output/public/index.html
-            .output/public/analyzer/index.html
+            .output/public/analyzer/heatmap/index.html
             .output/public/input/index.html
-            .output/public/legacy.html
             .output/public/404.html
           )
 

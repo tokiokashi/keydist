@@ -51,7 +51,7 @@ import { PERSONAL_SPEED_STORAGE_KEY } from '#platform/assets/personal-speed-stor
  * ## `app/state/app-state-storage.ts`（`keydist:app-state`の1文書集約）との違い
  *
  * `AppStateV2`はキー1つの下に複数スライスを同居させ、`patchAppStateSlice`で
- * スライス単位に部分書き込みする集中管理（旧Analyzer由来）。この表の資産は**あえて
+ * スライス単位に部分書き込みする集中管理。この表の資産は**あえて
  * 資産ごとに別のstorageキー**へ分ける（`createAssetTabSync`が資産1つにつき1キーを前提に
  * 書かれている。`platform/asset-tab-sync.ts`参照）。理由は2つ:
  * - **版番号・codecを資産ごとに独立させたい。** 1文書に同居させると、1つの資産のmigrationが
@@ -62,8 +62,6 @@ import { PERSONAL_SPEED_STORAGE_KEY } from '#platform/assets/personal-speed-stor
  *   `applyExternalChange`に巻き込まれてしまう（`engine/commands.ts`の`KeydistAssets`
  *   コメント「独立に読み書きできるものは新しいキーとして足す」と同じ判断）
  *
- * `AppStateV2`側の既存スライス（旧Analyzerの状態）をこの表へ合流させる話は
- * 旧データの移行の範囲（このファイルでは行わない）。
  */
 export interface AssetStorageSpec<T> {
   readonly storageKey: string;

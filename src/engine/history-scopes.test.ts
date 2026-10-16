@@ -26,7 +26,7 @@ import { initialMultiTargetSelection } from './multi-target-selection.ts';
 import { initialSingleTargetSelection } from './single-target-selection.ts';
 
 const SETUP_SCREEN = '/setup';
-const OTHER_SCREEN = '/standalone/heatmap';
+const OTHER_SCREEN = '/analyzer/heatmap';
 
 function emptyAssets(): KeydistAssets {
   return {

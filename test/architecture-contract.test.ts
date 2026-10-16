@@ -18,6 +18,16 @@ async function tsFiles(dir: string): Promise<string[]> {
   return nested.flat();
 }
 
+async function sourceFilesIn(dir: string): Promise<string[]> {
+  const entries = await readdir(dir, { withFileTypes: true });
+  const nested = await Promise.all(entries.map(async (entry) => {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) return sourceFilesIn(path);
+    return entry.isFile() && /\.tsx?$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name) ? [path] : [];
+  }));
+  return nested.flat();
+}
+
 function moduleSpecifiers(source: string): readonly string[] {
   const specs = new Set<string>();
   for (const pattern of [
@@ -418,54 +428,28 @@ test('layouts barrelはlegacy Face authoring classifierを公開しない', asyn
   }
 });
 
-test('results viewはFace semantic authoring metadataへ依存しない', async () => {
-  const source = await readFile(join(SRC, 'legacy', 'results-view.ts'), 'utf8');
+test('Analyzerの表示側はFaceのauthoring項目を読まず、compiled presentationを使う', async () => {
+  const dirs = ['analyzers', 'hosts', 'ui'];
+  const sources = (await Promise.all(dirs.map(async (dir) => {
+    const paths = await sourceFilesIn(join(SRC, dir));
+    return Promise.all(paths.map(async (path) => ({ path, source: await readFile(path, 'utf8') })));
+  }))).flat();
+  assert.ok(sources.length > 0);
 
-  assert.doesNotMatch(
-    source,
-    /\binputRole\b/,
-    'results-view must not read or synthesize legacy Face inputRole',
-  );
-  assert.doesNotMatch(
-    source,
-    /\btriggerPersistence\b/,
-    'results-view must not read or synthesize legacy Face triggerPersistence',
-  );
-  assert.doesNotMatch(
-    source,
-    /face\.mode\b/,
-    'results-view must use compiled layer presentation metadata instead of FaceMode',
-  );
-  assert.doesNotMatch(
-    source,
-    /face\.layer\s*===\s*undefined\s*\?\s*`face:/,
-    'results-view must not reconstruct face:<index> aggregation ids',
-  );
-  assert.doesNotMatch(
-    source,
-    /\bclassifyFaces\b/,
-    'results-view must use compiled presentation aggregation instead of authoring Face classification',
-  );
-  assert.doesNotMatch(
-    source,
-    /face\.layer\b/,
-    'results-view must use layerDefinitions.label instead of Face.layer for aggregation labels',
-  );
-  assert.doesNotMatch(
-    source,
-    /\bfaceLayerIds\b|\blayerIdForFace\b/,
-    'results-view must consume presentation Layer.id instead of reverse-looking-up Face attribution',
-  );
-  assert.doesNotMatch(
-    source,
-    /layer\.faces\.some\([^\n]*face\.trigger\.length\s*===\s*0/,
-    'results-view must identify the base aggregation by Layer.id instead of trigger shape',
-  );
-  assert.doesNotMatch(
-    source,
-    /from\s+['"]\.\/layouts\/index\.ts['"]/,
-    'results-view must not runtime-import the built-in layout registry barrel',
-  );
+  const forbidden: readonly [RegExp, string][] = [
+    [/\binputRole\b/, 'legacy Face inputRole'],
+    [/\btriggerPersistence\b/, 'legacy Face triggerPersistence'],
+    [/face\.mode\b/, 'FaceMode（compiled layer presentation metadataを使う）'],
+    [/\bclassifyFaces\b/, 'authoring Face classification（compiled presentation aggregationを使う）'],
+    [/\bfaceLayerIds\b|\blayerIdForFace\b/, 'Face attributionの逆引き（presentation Layer.idを使う）'],
+    [/face\.layer\b/, 'Face.layer（layerDefinitions.labelを使う）'],
+    [/face\.trigger\b/, 'raw Face.trigger（displayTriggerKeysを使う）'],
+  ];
+  for (const { path, source } of sources) {
+    for (const [pattern, what] of forbidden) {
+      assert.doesNotMatch(source, pattern, `${relative(ROOT, path)} must not read ${what}`);
+    }
+  }
 });
 
 test('presentation trigger authoringはnested alternative schemaを使う', async () => {
@@ -532,52 +516,38 @@ test('key pattern pickerの入力成立判定はcanonicalInputsをauthorityに�
 
 test('presentation consumerはLayer.orderの共通helperを使う', async () => {
   const pickerSource = await readFile(join(SRC, 'input/layouts/key-pattern-picker.ts'), 'utf8');
-  const heatmapSource = await readFile(join(SRC, 'legacy', 'analyzer-heatmap-content.tsx'), 'utf8');
+  const guideSource = await readFile(join(SRC, 'analyzers/keymap/trigger-guide.ts'), 'utf8');
+  const figureSource = await readFile(join(SRC, 'analyzers/heatmap-figure.ts'), 'utf8');
 
   assert.match(pickerSource, /orderedPresentationLayers\(groups\)/);
-  assert.match(heatmapSource, /orderedPresentationLayers\(groups\)/);
+  assert.match(figureSource, /orderedPresentationLayers\(/);
   assert.doesNotMatch(
     pickerSource,
     /\[\.\.\.groups\.layers,\s*\.\.\.groups\.modifiers\]/,
     'picker must not give layer-role aggregations implicit priority over modifier-role aggregations',
   );
-
-  const guideStart = heatmapSource.indexOf('function pickerGuideColorMap');
-  const guideEnd = heatmapSource.indexOf('function heatIntensity', guideStart);
-  assert.ok(guideStart >= 0 && guideEnd > guideStart, 'picker guide section must remain discoverable');
-  const guideSource = heatmapSource.slice(guideStart, guideEnd);
   assert.match(
     guideSource,
-    /if \(!colors\.has\(key\)\) colors\.set\(key, stroke\)/,
-    'picker guide must preserve the first Layer.order attribution for duplicate triggers',
+    /presentationLayersOf\(layout\)/,
+    'trigger guide must take layers in Layer.order from the shared helper',
+  );
+  assert.match(
+    guideSource,
+    /if \(!keyTones\.has\(key\)\) keyTones\.set\(key, tone\)/,
+    'trigger guide must preserve the first Layer.order attribution for duplicate triggers',
   );
 });
 
-test('results presentationはraw Face.trigger textを再構成しない', async () => {
-  const source = await readFile(join(SRC, 'legacy', 'analyzer-heatmap-content.tsx'), 'utf8');
+test('トリガーの図はraw Face.trigger textを再構成せず、明示presentation trigger / combo variantsを使う', async () => {
+  const source = await readFile(join(SRC, 'analyzers/keymap/trigger-guide.ts'), 'utf8');
 
   assert.doesNotMatch(
     source,
     /face\.trigger\b/,
-    'results presentation must use normalized display trigger alternatives',
+    'trigger guide must use normalized display trigger alternatives',
   );
-  assert.match(source, /displayTriggerText\(layout, face\)/);
-});
-
-test('results picker guideは明示presentation trigger / combo variantsを使う', async () => {
-  const source = await readFile(join(SRC, 'legacy', 'analyzer-heatmap-content.tsx'), 'utf8');
-  const start = source.indexOf('function pickerGuideColorMap');
-  const end = source.indexOf('function heatIntensity', start);
-  assert.ok(start >= 0 && end > start, 'picker guide section must remain discoverable');
-  const section = source.slice(start, end);
-
-  assert.match(section, /displayTriggerKeys\(face\)/);
-  assert.match(section, /combo\.keyVariants\s*\?\?\s*\[combo\.keys\]/);
-  assert.doesNotMatch(
-    section,
-    /for \(const trigger of face\.trigger\)/,
-    'picker guide must not ignore presentation trigger alternatives',
-  );
+  assert.match(source, /displayTriggerKeys\(face\)/);
+  assert.match(source, /combo\.keyVariants\s*\?\?\s*\[combo\.keys\]/);
 });
 
 test('key pattern pickerはlayouts registryをruntime importしない', async () => {
@@ -661,26 +631,19 @@ test('SandS trigger presentationはlayout IDへ依存しない', async () => {
     'layers presentation helper must use explicit Face metadata instead of layout ID',
   );
 
-  const resultsSource = await readFile(join(SRC, 'legacy', 'analyzer-heatmap-content.tsx'), 'utf8');
-  const start = resultsSource.indexOf('function displayTriggerText');
-  const end = resultsSource.indexOf('function layerDefinitionForId', start);
-  assert.ok(start >= 0 && end > start, 'SandS presentation section must remain discoverable');
-  const presentationSection = resultsSource.slice(start, end);
-  assert.doesNotMatch(
-    presentationSection,
-    /naginata-v18|layout\.id/,
-    'SandS presentation path must not infer built-in layout identity',
-  );
-  assert.doesNotMatch(
-    presentationSection,
-    /isNaginataCenterShift|displayLayerLegend/,
-    'legacy SandS presentation inference helpers must not return',
-  );
-  assert.doesNotMatch(
-    resultsSource,
-    /naginata-v18|naginataDetail|data-naginata-layer-detail/,
-    'results presentation must use explicit layout metadata instead of Naginata-specific branches/state',
-  );
+  for (const file of ['analyzers/keymap/trigger-guide.ts', 'analyzers/keymap/layout-breakdown.ts']) {
+    const source = await readFile(join(SRC, file), 'utf8');
+    assert.doesNotMatch(
+      source,
+      /naginata-v18|naginataDetail|data-naginata-layer-detail|layout\.id/,
+      `${file} must use explicit layout metadata instead of layout identity branches`,
+    );
+    assert.doesNotMatch(
+      source,
+      /isNaginataCenterShift|displayLayerLegend/,
+      `${file}: legacy SandS presentation inference helpers must not return`,
+    );
+  }
 });
 
 test('structural analysisはbuilt-in layoutのID/nameへ依存しない', async () => {
@@ -740,53 +703,17 @@ test('廃止済みのlegacy symbol / production helperをsrcへ再導入しな�
     'holdStartAction',
     'countAsSeparateStep',
     'holdStart',
-  ] as const;
-  const migrationOnly = [
     'arpeggioEnabled',
     'arpeggioDelayMode',
   ] as const;
 
   for (const path of await tsFiles(SRC)) {
     const source = await readFile(path, 'utf8');
-    const relativePath = relative(SRC, path).replaceAll('\\', '/');
-
     for (const symbol of forbiddenEverywhere) {
       assert.equal(
         source.includes(symbol),
         false,
         `${relative(ROOT, path)} reintroduced legacy symbol: ${symbol}`,
-      );
-    }
-
-    if (relativePath !== 'legacy/ui-state.ts') {
-      for (const symbol of migrationOnly) {
-        assert.equal(
-          source.includes(symbol),
-          false,
-          `${relative(ROOT, path)} reintroduced migration-only symbol: ${symbol}`,
-        );
-      }
-    }
-  }
-
-  const uiState = await readFile(join(SRC, 'legacy', 'ui-state.ts'), 'utf8');
-  for (const symbol of migrationOnly) {
-    const occurrencePattern = new RegExp(symbol, 'g');
-    const detectionPattern = new RegExp(
-      `['"]${symbol}['"]\\s+in\\s+(?:override)?playback\\b`,
-      'gi',
-    );
-    const allowedRanges = [...uiState.matchAll(detectionPattern)].map((match) => ({
-      start: match.index,
-      end: match.index + match[0].length,
-    }));
-
-    for (const occurrence of uiState.matchAll(occurrencePattern)) {
-      const index = occurrence.index;
-      assert.equal(
-        allowedRanges.some((range) => range.start <= index && index < range.end),
-        true,
-        `legacy/ui-state.ts may reference ${symbol} only as legacy state detection`,
       );
     }
   }
@@ -797,73 +724,21 @@ test('廃止済みのlegacy symbol / production helperをsrcへ再導入しな�
 });
 
 
-test('Playback surfaceの描画・interaction authorityをimperative側へ戻さない', async () => {
-  const playbackView = await readFile(join(SRC, 'legacy', 'playback-view.ts'), 'utf8');
-  const forbidden = [
-    'querySelector',
-    'addEventListener',
-    'innerHTML',
-    'replaceChildren',
-    'document.createElement',
-    'createElementNS',
-    'cloneNode',
-    'surfaceModel.setHtml',
-    'commitSurface',
-  ] as const;
-
-  for (const token of forbidden) {
-    assert.equal(
-      playbackView.includes(token),
-      false,
-      `playback-view.ts must not regain DOM authority via ${token}`,
-    );
-  }
-
-  const shell = await readFile(join(SRC, 'legacy', 'analyzer-react-shell.tsx'), 'utf8');
-  assert.equal(
-    shell.includes('dangerouslySetInnerHTML'),
-    false,
-    'Analyzer React shell must not host Playback through raw HTML',
-  );
-});
 
 
-test('Analyzer legacy entryをUI本体として復活させない', async () => {
+test('旧画面の入口と転送を復活させない', async () => {
   const rootEntries = await readdir(ROOT);
   for (const path of [
     'legacy.html',
     'vite.legacy.config.ts',
     'playwright.legacy.config.ts',
   ]) {
-    assert.equal(
-      rootEntries.includes(path),
-      false,
-      `${path} must remain retired after the /analyzer route migration`,
-    );
+    assert.equal(rootEntries.includes(path), false, `${path} must remain retired`);
   }
-
-  const route = await readFile(join(SRC, 'routes', 'analyzer.tsx'), 'utf8');
-  assert.match(route, /AnalyzerPage/);
-  assert.doesNotMatch(route, /window\.location\.replace|legacyUrl/);
-
-  const page = await readFile(join(SRC, 'legacy', 'analyzer-page.tsx'), 'utf8');
-  assert.match(page, /useEffect/);
-  assert.match(page, /import \{ mountAnalyzerRuntime \} from '\.\/main\.ts'/);
-  assert.doesNotMatch(page, /import\('\.\/main\.ts'\)/);
-
-  const main = await readFile(join(SRC, 'legacy', 'main.ts'), 'utf8');
-  const mountIndex = main.indexOf('export function mountAnalyzerRuntime');
-  assert.notEqual(mountIndex, -1);
-  const modulePrelude = main.slice(0, mountIndex);
-  assert.doesNotMatch(
-    modulePrelude,
-    /\b(?:window|document|localStorage|sessionStorage)\b/,
-    'Analyzer module import must stay SSR-safe; browser state starts at mount',
-  );
 
   const pkg = JSON.parse(await readFile(join(ROOT, 'package.json'), 'utf8')) as {
     scripts?: Record<string, string>;
   };
   assert.equal(pkg.scripts?.['test:browser:legacy'], undefined);
-  assert.doesNotMatch(pkg.scripts?.build ?? '', /vite\.legacy\.config/);
+  assert.doesNotMatch(pkg.scripts?.build ?? '', /legacy/);
 });

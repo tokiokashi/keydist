@@ -18,14 +18,14 @@ test('トップで選んだ配列が、Bigram Flow と比較表の両方に出�
   await expect(hero.locator('.top-pick-links')).toBeVisible();
 
   await hero.getByRole('link', { name: 'Bigram Flow', exact: true }).click();
-  await expect(page).toHaveURL(/\/standalone\/bigram-flow$/);
+  await expect(page).toHaveURL(/\/analyzer\/bigram-flow$/);
   await expect(page.getByRole('heading', { name: 'Bigram Flow', level: 1, exact: true })).toBeVisible();
   await expectTargetNames(page, ['Colemak-DH']);
 
   await page.goto('/');
   await waitForHydration(page);
   await hero.getByRole('link', { name: '比較表', exact: true }).click();
-  await expect(page).toHaveURL(/\/standalone\/comparison$/);
+  await expect(page).toHaveURL(/\/analyzer\/comparison$/);
   await expect(page.getByRole('heading', { name: '比較表', level: 1, exact: true })).toBeVisible();
   await expectTargetNames(page, ['Colemak-DH']);
 });
@@ -44,11 +44,11 @@ test('Multi にすでにある配列を選んでも重複しない', async ({ pa
   await page.getByRole('dialog', { name: '対象の選択' }).locator('input[value="layout:colemak-dh"]').click();
 
   await page.locator('.hero').getByRole('link', { name: '比較表', exact: true }).click();
-  await expect(page).toHaveURL(/\/standalone\/comparison$/);
+  await expect(page).toHaveURL(/\/analyzer\/comparison$/);
   await expect(page.getByRole('heading', { name: '比較表', level: 1, exact: true })).toBeVisible();
   await expect.poll(async () => (await targetNames(page)).length).toBe(2);
   // 選んだ配列は Single 側にも入っている
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.getByRole('heading', { name: 'Bigram Flow', level: 1, exact: true })).toBeVisible();
   await expectTargetNames(page, ['Colemak-DH']);
   await expect(await targetChoice(page, 'layout:colemak-dh')).toBeChecked();

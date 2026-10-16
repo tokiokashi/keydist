@@ -12,7 +12,6 @@ import { assertKanaLayout, assertKanaLayoutFixture } from '../../../test/kana-la
 import {
   classifyPresentationFaces,
   displayTriggerAlternatives,
-  displayTriggerHandLabel,
   displayTriggerKeys,
   matchesDisplayTriggerAlternative,
   faceCells,
@@ -21,7 +20,7 @@ import {
   layerDefinitionsWithLabels,
   layerShiftStyles,
 } from './layers.ts';
-import { normalizedLayerColors } from '#analyzers/heatmap-layers/layer-heatmap.ts';
+import { normalizedRoleColors } from '#analyzers/heatmap-layers/layer-heatmap.ts';
 
 const faceAtF = (output: string) => ['', '', ['', '', '', output], ''];
 
@@ -648,26 +647,22 @@ test('trigger presentationは明示alternativeとchordを区別して正規化�
   };
   assert.deepEqual(displayTriggerAlternatives(explicit), [['thumb-l'], ['thumb-r']]);
   assert.deepEqual(displayTriggerKeys(explicit), ['thumb-l', 'thumb-r']);
-  assert.equal(displayTriggerHandLabel(explicit), undefined);
   assert.equal(explicit.presentationTriggerText, '任意の両親指表示');
   assert.equal(explicit.presentationLabel, 'Custom Shift');
 
   const ordinary = faceFromEntries(['space'], 'simultaneous', { j: 'あ' });
   assert.deepEqual(displayTriggerAlternatives(ordinary), [['thumb-r']]);
   assert.deepEqual(displayTriggerKeys(ordinary), ['thumb-r']);
-  assert.equal(displayTriggerHandLabel(ordinary), '右手');
 
   const chord = faceFromEntries(['j', 'k'], 'simultaneous', { r: 'い' });
   assert.deepEqual(displayTriggerAlternatives(chord), [['j', 'k']]);
   assert.deepEqual(displayTriggerKeys(chord), ['j', 'k']);
-  assert.equal(displayTriggerHandLabel(chord), '右手');
 
   const twoHandChord: Face = {
     ...ordinary,
     presentationTriggerAlternatives: [['thumb-l', 'thumb-r']],
   };
   assert.deepEqual(displayTriggerAlternatives(twoHandChord), [['thumb-l', 'thumb-r']]);
-  assert.equal(displayTriggerHandLabel(twoHandChord), '両手');
 });
 
 test('presentation trigger matcherはalternative単位のexact matchだけを許可する', () => {
@@ -796,7 +791,7 @@ test('相互同時シフトは両トリガーを1回分の色として残す', (
   const layout = LAYOUT_BY_ID.get('shingeta')!;
   const layers = classifyPresentationFaces(layout).layers;
   for (const [layerIndex, trigger, output] of [[1, 'k', 'd'], [2, 'l', 's']] as const) {
-    const colors = normalizedLayerColors(layers[layerIndex], {
+    const colors = normalizedRoleColors(layers[layerIndex].role, {
       keyCounts: new Map([[trigger, 1], [output, 1]]),
       triggerKeyCounts: new Map([[trigger, 1]]),
       pairedTriggerKeyCounts: new Map([[trigger, 1]]),
@@ -811,7 +806,7 @@ test('相互同時シフトは両トリガーを1回分の色として残す', (
 test('薙刀式の合算表示はスペースなし層のトリガーを単打側の色に残す', () => {
   const layout = LAYOUT_BY_ID.get('naginata-v18')!;
   const base = classifyPresentationFaces(layout).layers[0];
-  const colors = normalizedLayerColors(base, {
+  const colors = normalizedRoleColors(base.role, {
       keyCounts: new Map([['j', 1], ['f', 1]]),
       triggerKeyCounts: new Map([['j', 1]]),
       pairedTriggerKeyCounts: new Map([['j', 1]]),
@@ -825,7 +820,7 @@ test('薙刀式の合算表示はスペースなし層のトリガーを単打�
 test('通常の層トリガーは残さず、薙刀式の濁音詳細も除外する', () => {
   const shingeta = LAYOUT_BY_ID.get('shingeta')!;
   const middle = classifyPresentationFaces(shingeta).layers[1];
-  const normalColors = normalizedLayerColors(middle, {
+  const normalColors = normalizedRoleColors(middle.role, {
     keyCounts: new Map([['k', 1], ['w', 1]]),
     triggerKeyCounts: new Map([['k', 1]]),
     pairedTriggerKeyCounts: new Map(),
@@ -835,7 +830,7 @@ test('通常の層トリガーは残さず、薙刀式の濁音詳細も除外�
   const naginata = LAYOUT_BY_ID.get('naginata-v18')!;
   const modifiers = classifyPresentationFaces(naginata).modifiers;
   const voiced = modifiers.find((layer) => layer.faces.some((face) => face.layer === '濁音'))!;
-  const detailColors = normalizedLayerColors(voiced, {
+  const detailColors = normalizedRoleColors(voiced.role, {
     keyCounts: new Map([['j', 1], ['f', 1]]),
     triggerKeyCounts: new Map([['j', 1]]),
     pairedTriggerKeyCounts: new Map([['j', 1], ['f', 1]]),

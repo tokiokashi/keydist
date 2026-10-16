@@ -20,7 +20,7 @@ const visibleDiagrams = (page: Page) => feature(page).locator('[data-heatmap-dia
 
 test('層が1つの配列: 図が1枚出て、タブも色の決め方の説明の行も出ない', async ({ page }) => {
   await selectLayout(page, 'qwerty');
-  await page.goto('/standalone/heatmap-layers');
+  await page.goto('/analyzer/heatmap-layers');
   await expect(page.getByRole('heading', { name: 'ヒートマップ（レイヤー）', exact: true, level: 1 })).toBeVisible();
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   await expect(diagrams(page)).toHaveCount(1);
@@ -43,14 +43,14 @@ test('層が1つの配列: 図が1枚出て、タブも色の決め方の説明�
 
 test('層が複数の配列: 並置で全部の層が見え、タブにすると1枚だけ見える', async ({ page }) => {
   await selectLayout(page, 'shingeta');
-  await page.goto('/standalone/heatmap-layers?arrange=side-by-side');
+  await page.goto('/analyzer/heatmap-layers?arrange=side-by-side');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   await expect(diagrams(page)).toHaveCount(5);
   await expect(visibleDiagrams(page)).toHaveCount(5);
   // シフトキーの枠色の凡例が出る
   await expect(feature(page).getByLabel('シフトキーの枠色')).toBeVisible();
 
-  await page.goto('/standalone/heatmap-layers?arrange=tabs');
+  await page.goto('/analyzer/heatmap-layers?arrange=tabs');
   await expect(feature(page).getByRole('tab')).toHaveCount(5);
   await expect(visibleDiagrams(page)).toHaveCount(1);
   await feature(page).getByRole('tab', { name: 'レイヤー3' }).click();
@@ -61,7 +61,7 @@ test('層が複数の配列: 並置で全部の層が見え、タブにすると
 
 test('層の名前がトリガーの文字そのものの配列: 図の見出しにトリガーを付けず、凡例は番号と名前の間に「: 」を置く', async ({ page }) => {
   await selectLayout(page, 'shin-koume');
-  await page.goto('/standalone/heatmap-layers?arrange=side-by-side');
+  await page.goto('/analyzer/heatmap-layers?arrange=side-by-side');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   await expect(feature(page).getByLabel('シフトキーの枠色')).toContainText('レイヤー7: つ・に・づ');
   await expect(feature(page).getByLabel('シフトキーの枠色')).toContainText('レイヤー13: み');
@@ -71,7 +71,7 @@ test('層の名前がトリガーの文字そのものの配列: 図の見出し
 
 test('並べ方が自動の時は、5層まで並置', async ({ page }) => {
   await selectLayout(page, 'shingeta');
-  await page.goto('/standalone/heatmap-layers');
+  await page.goto('/analyzer/heatmap-layers');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   await expect(feature(page).getByRole('tab')).toHaveCount(0);
   await expect(visibleDiagrams(page)).toHaveCount(5);
@@ -79,18 +79,18 @@ test('並べ方が自動の時は、5層まで並置', async ({ page }) => {
 
 test('色の尺度を対数にすると、図の色が変わる', async ({ page }) => {
   await selectLayout(page, 'qwerty');
-  await page.goto('/standalone/heatmap-layers');
+  await page.goto('/analyzer/heatmap-layers');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   const heats = () => diagrams(page).first().locator('[data-heatmap-key]').evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-heat')));
   const linear = await heats();
-  await page.goto('/standalone/heatmap-layers?scale=log');
+  await page.goto('/analyzer/heatmap-layers?scale=log');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   expect(await heats()).not.toEqual(linear);
 });
 
 test('層をまとめる配列: まとめと詳細を切り替えられ、層の数が変わる', async ({ page }) => {
   await selectLayout(page, 'naginata-v18');
-  await page.goto('/standalone/heatmap-layers?arrange=side-by-side');
+  await page.goto('/analyzer/heatmap-layers?arrange=side-by-side');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   await expect(diagrams(page)).toHaveCount(2);
   await page.getByRole('button', { name: 'ヒートマップ（レイヤー）の表示', exact: true }).click();
@@ -103,7 +103,7 @@ test('層をまとめる配列: まとめと詳細を切り替えられ、層の
 
 test('層をまとめる宣言が無い配列には、まとめと詳細の切り替えを出さない', async ({ page }) => {
   await selectLayout(page, 'shingeta');
-  await page.goto('/standalone/heatmap-layers');
+  await page.goto('/analyzer/heatmap-layers');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   await expect(page.getByRole('button', { name: 'ヒートマップ（レイヤー）の表示' })).toHaveCount(0);
   await expect(feature(page).getByRole('button', { name: '全レイヤー詳細' })).toHaveCount(0);

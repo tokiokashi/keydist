@@ -36,15 +36,12 @@ import {
 } from './sidebar-preference.ts';
 import { useWorkspaceLinks } from './use-workspace-links.ts';
 
-/** 旧バージョン（`/analyzer`）へのリンクの文言。トップの下端のリンクも同じ文を出す。 */
-export const LEGACY_ANALYZER_LABEL = '旧バージョン';
-
 /** Workspace区分の案内文（保存したWorkspaceが1つも無い時）。トップの見本も同じ文を出す。 */
 export const WORKSPACE_EMPTY_TEXT = 'Analyzerを並べて見る画面。';
 
 /**
  * サイドバーの中身（docs/architecture.md「サイドバー」）。ナビゲーションだけを持ち、
- * 最下端にだけ例外として版表示・旧バージョンへのリンク・テーマ切替を置く。
+ * 最下端にだけ例外として版表示・テーマ切替を置く。
  *
  * 区分見出しは英語（Analyze / Workspace / Assets）。Analyzeの中は対象の数で
  * Single / Multiに分ける。Testerは区分に入れず単独で置く。
@@ -194,17 +191,17 @@ export function Sidebar({ pinned, onPinnedChange, onNavigate }: SidebarProps) {
       <nav className="sidebar-nav" aria-label="主要ナビゲーション">
         <SidebarGroup id="analyze" title="Analyze" collapsed={isCollapsed('analyze')}>
           <h3 className="sidebar-subheading">Single</h3>
-          <NavLink to="/standalone/bigram-flow" onNavigate={onNavigate}>{BIGRAM_FLOW_PANE_META.name}</NavLink>
-          <NavLink to="/standalone/finger-distance" onNavigate={onNavigate}>{FINGER_DISTANCE_PANE_META.name}</NavLink>
-          <NavLink to="/standalone/heatmap" onNavigate={onNavigate}>{HEATMAP_PANE_META.name}</NavLink>
-          <NavLink to="/standalone/heatmap-layers" onNavigate={onNavigate}>{HEATMAP_LAYERS_PANE_META.name}</NavLink>
-          <NavLink to="/standalone/layer-combo-presses" onNavigate={onNavigate}>{LAYER_COMBO_PRESSES_PANE_META.name}</NavLink>
-          <NavLink to="/standalone/keymap" onNavigate={onNavigate}>{KEYMAP_PANE_META.name}</NavLink>
-          <NavLink to="/standalone/playback" onNavigate={onNavigate}>{PLAYBACK_PANE_META.name}</NavLink>
+          <NavLink to="/analyzer/bigram-flow" onNavigate={onNavigate}>{BIGRAM_FLOW_PANE_META.name}</NavLink>
+          <NavLink to="/analyzer/finger-distance" onNavigate={onNavigate}>{FINGER_DISTANCE_PANE_META.name}</NavLink>
+          <NavLink to="/analyzer/heatmap" onNavigate={onNavigate}>{HEATMAP_PANE_META.name}</NavLink>
+          <NavLink to="/analyzer/heatmap-layers" onNavigate={onNavigate}>{HEATMAP_LAYERS_PANE_META.name}</NavLink>
+          <NavLink to="/analyzer/layer-combo-presses" onNavigate={onNavigate}>{LAYER_COMBO_PRESSES_PANE_META.name}</NavLink>
+          <NavLink to="/analyzer/keymap" onNavigate={onNavigate}>{KEYMAP_PANE_META.name}</NavLink>
+          <NavLink to="/analyzer/playback" onNavigate={onNavigate}>{PLAYBACK_PANE_META.name}</NavLink>
           <h3 className="sidebar-subheading">Multi</h3>
-          <NavLink to="/standalone/comparison" onNavigate={onNavigate}>{COMPARISON_PANE_META.name}</NavLink>
-          <NavLink to="/standalone/finger-matrix" onNavigate={onNavigate}>{FINGER_MATRIX_PANE_META.name}</NavLink>
-          <NavLink to="/standalone/n-sensitivity" onNavigate={onNavigate}>{N_SENSITIVITY_PANE_META.name}</NavLink>
+          <NavLink to="/analyzer/comparison" onNavigate={onNavigate}>{COMPARISON_PANE_META.name}</NavLink>
+          <NavLink to="/analyzer/finger-matrix" onNavigate={onNavigate}>{FINGER_MATRIX_PANE_META.name}</NavLink>
+          <NavLink to="/analyzer/n-sensitivity" onNavigate={onNavigate}>{N_SENSITIVITY_PANE_META.name}</NavLink>
         </SidebarGroup>
 
         <SidebarGroup id="workspace" title="Workspace" collapsed={isCollapsed('workspace')}>
@@ -250,8 +247,6 @@ export function Sidebar({ pinned, onPinnedChange, onNavigate }: SidebarProps) {
 
       <div className="sidebar-foot">
         <span className="sidebar-version">v{__KEYDIST_VERSION__}</span>
-        {/* /analyzerはシェルに載らない別ページ。リンクで遷移すると新しい画面に切り替わる */}
-        <Link className="sidebar-legacy" to="/analyzer" onClick={onNavigate}>{LEGACY_ANALYZER_LABEL}</Link>
         <ThemeSwitch />
       </div>
     </>

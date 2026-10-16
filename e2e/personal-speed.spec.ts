@@ -132,7 +132,7 @@ function probe(page: Page, key: string): Promise<{ prevented: boolean; reached: 
 }
 
 test('サイドバーのAssetsから開ける。保存が無ければ空の状態で、方向別と全破棄は使えない', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await waitForHydration(page);
   await page.locator('#app-sidebar').getByRole('link', { name: '個人速度', exact: true }).click();
   await expect(page).toHaveURL(/\/personal-speed$/);

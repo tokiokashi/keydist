@@ -16,7 +16,7 @@ async function openConditionModal(page: Page, pane: Locator = page.locator('.pan
 }
 
 async function openBigramFlowModal(page: Page): Promise<Locator> {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
   return openConditionModal(page);
 }
@@ -231,7 +231,7 @@ test('プリセット: 比較表とN感度の個別画面のモーダルにも�
       }),
     );
   });
-  for (const path of ['/standalone/comparison', '/standalone/n-sensitivity']) {
+  for (const path of ['/analyzer/comparison', '/analyzer/n-sensitivity']) {
     await page.goto(path);
     await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 15_000 });
     const modal = await openConditionModal(page);

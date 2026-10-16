@@ -3,12 +3,6 @@ import assert from 'node:assert/strict';
 import { generateTrace } from '#trace/generate.ts';
 import { TypingInputEngine } from '#tester/engine/index.ts';
 import {
-  DEFAULT_GEOMETRY_SETTINGS,
-  parseGeometrySettings,
-  sanitizePhysicalShape,
-  serializeGeometrySettings,
-} from '../shapes/settings.ts';
-import {
   DEFAULT_FINGER_ASSIGNMENT,
   PHYSICAL_SHAPES,
   buildGeometry,
@@ -80,18 +74,6 @@ test('grid外physical keyを使うdirect inputはgenerateTraceとmetricsへ流�
   assert.equal(metrics.perFingerPresses.LP, 2);
 });
 
-test('extraKeysとその運指はgeometry settings JSONをround-tripする', () => {
-  const settings = structuredClone(DEFAULT_GEOMETRY_SETTINGS);
-  settings.shape = shape;
-  settings.assignment = assignment;
-
-  const restored = parseGeometrySettings(serializeGeometrySettings(settings));
-  assert.deepEqual(restored.shape.extraKeys, shape.extraKeys);
-  assert.equal(restored.assignment.baseFinger.tab, 'LP');
-  assert.equal(restored.assignment.baseFinger.escape, 'LP');
-  assert.doesNotThrow(() => buildGeometry(restored.shape, restored.assignment));
-});
-
 test('browser adapterは周辺physical keyのcodeをstable idへ変換する', () => {
   assert.equal(browserCodeToPhysicalKey('Tab'), 'tab');
   assert.equal(browserCodeToPhysicalKey('Escape'), 'escape');
@@ -133,9 +115,6 @@ test('extra key idはcanonical physical identityでなければならない', ()
     extraKeys: [{ id: 'space', row: 4, col: 5, x: 5.5, y: 4 }],
   };
   assert.throws(() => buildGeometry(aliased, assignment), /canonical physical key id/);
-
-  const sanitized = sanitizePhysicalShape(aliased, PHYSICAL_SHAPES['row-staggered']);
-  assert.equal(sanitized.extraKeys, undefined);
 });
 
 test('extra key idはgrid・thumb・extra内で重複できない', () => {

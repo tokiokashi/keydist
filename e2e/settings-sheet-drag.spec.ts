@@ -13,7 +13,7 @@ const SHEET = '[data-settings-window="true"]';
 const settingsButton = (page: Page) => page.getByRole('button', { name: '解析設定', exact: true });
 
 async function openSheet(page: Page) {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await waitForHydration(page);
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
   await settingsButton(page).click();

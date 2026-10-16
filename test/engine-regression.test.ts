@@ -21,13 +21,12 @@ import { sampleText, type TextLanguage } from '#input/text/samples.ts';
 // engineのfixture回帰テスト。
 //
 // test/analyzer-regression.test.ts は generateTrace / analyzeStrokeStructure / computeMetrics を
-// 直接呼ぶ「旧実装の経路」の再計算だった。このテストは同じfixtureを、Setup + カスケードの
+// 直接呼んで再計算する。このテストは同じfixtureを、Setup + カスケードの
 // 上書き → resolveEngineInput → EngineCache という「engineの経路」で計算し直し、
-// 同じ数値が出ることを確認する（「同じ入力で旧実装と同じ数値が出ることが
-// fixtureで確認されている」をengineに対しても満たす）。
+// 同じ数値が出ることを確認する。
 //
-// #legacy/* も #app/* もimportしない。理由は analyzer-regression.test.ts と同じ
-// （src/legacy/が消えた後もこのテストが生き続けるため）。
+// #app/* はimportしない。理由は analyzer-regression.test.ts と同じ
+// （UIの実装に依存せず、fixtureの数値だけを基準にするため）。
 
 interface ConditionsSnapshot {
   windowSize: number;

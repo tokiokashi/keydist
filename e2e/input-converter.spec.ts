@@ -1190,7 +1190,7 @@ test('Tester keeps browser key lifecycle consistent', async ({ page }) => {
 });
 
 
-test('Tester selects preset and saved custom physical geometry', async ({ page }) => {
+test('Tester selects preset physical geometry and does not offer a saved custom one', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('keydist:geometry-shapes', JSON.stringify([{
       id: 'shape-e2e-grid',
@@ -1242,9 +1242,7 @@ test('Tester selects preset and saved custom physical geometry', async ({ page }
     'オーソリニア（ANSI・分割）',
     'カラムスタッガード（ANSI・分割）',
   ]);
-  await expect(geometry.locator('option[value="shape-e2e-grid"]')).toHaveText('E2E Grid');
-  await geometry.selectOption('shape-e2e-grid');
-  await expect(keyboard).toHaveAttribute('data-geometry-id', 'shape-e2e-grid');
+  await expect(geometry.locator('option[value="shape-e2e-grid"]')).toHaveCount(0);
 });
 
 

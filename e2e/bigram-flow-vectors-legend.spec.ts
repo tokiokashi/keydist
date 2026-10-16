@@ -177,7 +177,7 @@ for (const c of lowPanes) {
 for (const width of [1200, 390]) {
   test(`個別画面（幅${width}px）で縦に積んでも、凡例は左右の図の下に出て枠からはみ出さない`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    await page.goto('/standalone/bigram-flow');
+    await page.goto('/analyzer/bigram-flow');
     await ready(page);
     const m = await measure(page);
     expect(m.legend.top).toBeGreaterThanOrEqual(m.vectorsFigure.bottom - 1);

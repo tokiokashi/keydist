@@ -103,7 +103,7 @@ async function expectNoRevert(page: Page, toggle: Locator): Promise<void> {
 
 test('個別画面: 保存の反響が次の入力の後に届いても、下書きは新しい値のまま', async ({ page }) => {
   await hookSaveTimer(page);
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
   await waitForHydration(page);
@@ -113,7 +113,7 @@ test('個別画面: 保存の反響が次の入力の後に届いても、下書
 
 test('個別画面: 同じ値を入れ直した後の元に戻すで、表示と保存値が一致する', async ({ page }) => {
   await page.clock.install();
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
   await waitForHydration(page);
@@ -134,7 +134,7 @@ test('個別画面: 同じ値を入れ直した後の元に戻すで、表示と
 
 test('個別画面: 保存されなかった入れ直しの後の元に戻すで、表示と保存値が一致する', async ({ page }) => {
   await page.clock.install();
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
   await waitForHydration(page);
@@ -162,7 +162,7 @@ test('個別画面: 保存のtimerが遅れても、書かれなかった入力�
     (window as unknown as { setTimeout: unknown }).setTimeout = (fn: () => void, ms?: number, ...args: unknown[]) =>
       origSet(fn, ms === debounceMs ? 700 : ms, ...args);
   }, DEFAULT_DEBOUNCE_MS);
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
   await waitForHydration(page);
@@ -184,7 +184,7 @@ test('個別画面: 保存のtimerが遅れても、書かれなかった入力�
 
 test('個別画面: 保存を待っている間の元に戻すで、表示と保存値が一致する', async ({ page }) => {
   await page.clock.install();
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
   await waitForHydration(page);

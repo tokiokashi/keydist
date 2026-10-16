@@ -10,7 +10,7 @@ import { waitForHydration } from './hydration-helper.ts';
 const STORAGE_KEY = 'keydist:user-layouts';
 
 test('配列を作り、不備を直し、編集して、元に戻せる。作った配列は対象の選択に並ぶ', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await waitForHydration(page);
   await page.locator('#app-sidebar').getByRole('link', { name: 'ローマ字配列', exact: true }).click();
   await expect(page).toHaveURL(/\/romaji-layout$/);

@@ -10,7 +10,7 @@ import { expectChosenTarget, openSettings, openTargetSelection, targetButton, to
  * 設定変更・テキスト変更に追従することを確認する。
  */
 test('単体ページが開き、Bigram Flowが描画される', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
 
   // ページの見出し(h1)とAnalyzer自身の見出し(h2)は同じ文字列。h2は計算が済むと現れるので、
   // 名前だけで探すと一致が1件か2件かが描画の速さで変わる。見出しの段まで指定する。
@@ -44,7 +44,7 @@ async function openConditionModal(page: Page): Promise<Locator> {
 }
 
 test('条件のモーダル: 全体の値を変えると要約と出どころに出て、文脈バーの元に戻す/やり直すが効く', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const pane = page.locator('.pane-frame');
   await expect(pane).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
   const trigger = page.locator('.pane-condition-trigger');
@@ -74,7 +74,7 @@ test('条件のモーダル: 全体の値を変えると要約と出どころに
 });
 
 test('既定の物理配列にオーソリニア（分割）を選べて、図の物理配列と再読み込み後の選択に反映される', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
   const chip = page.locator('.context-bar').getByLabel('既定の物理配列');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
@@ -91,7 +91,7 @@ test('既定の物理配列にオーソリニア（分割）を選べて、図�
 });
 
 test('条件のモーダル: 既定の物理配列は文脈バーのチップと同じ値を書く', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
   const chip = page.locator('.context-bar').getByLabel('既定の物理配列');
 
@@ -127,7 +127,7 @@ test('条件のモーダル: 配列の値を「全体へ移す」と、編集先
       JSON.stringify({ version: 1, target: { kind: 'layout', layoutId: 'qwerty' } }),
     );
   });
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
   const modal = await openConditionModal(page);
   const row = modal.locator('[data-item="windowSize"]');
@@ -147,7 +147,7 @@ test('条件のモーダル: 配列の値を「全体へ移す」と、編集先
 });
 
 test('条件のモーダル: 動作数の扱いは2動作にした時だけ例外を出し、閉じた1行に「例外あり」と出る', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
   const trigger = page.locator('.pane-condition-trigger');
 
@@ -181,7 +181,7 @@ test('操作系はハイドレーション+資産読み込み完了（assetsRead
   // actionable（有効）になるまで自動的に待つので、ここでは「ネットワークアイドル等の
   // 明示的な待ちを一切挟まずに選んでも、最終的に必ず反映される」ことを確認する
   // （待たずに選んでも消える、が再現しないことの確認）。
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
 
   // 選ぶ前は無効化されていることがある（ハイドレーション未完了の間）。
   // 常に無効化されているとは限らない（読み込みが速いローカル実行では既に有効なことも
@@ -197,7 +197,7 @@ test('操作系はハイドレーション+資産読み込み完了（assetsRead
 });
 
 test('見た目だけの設定を変えても壊れず、抽出設定を変えると表示が変わる', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
@@ -211,7 +211,7 @@ test('見た目だけの設定を変えても壊れず、抽出設定を変え�
 });
 
 test('テキストを変えると条件・可視化が追従する', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
@@ -225,7 +225,7 @@ test('テキストを変えると条件・可視化が追従する', async ({ pa
 });
 
 test('組み込みテキストを選ぶとテキストが置き換わる', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
@@ -252,7 +252,7 @@ test('組み込みテキストを選ぶとテキストが置き換わる', async
  * 画面の保存の配線（スケジューラへ前回の値との比較を渡さない）の側で、unit testからは見えないのでe2eに残す。
  */
 test('同じ組み込みを選び直して同じ本文を打っても保存される（スケジューラが前回の値と比べて捨てない）', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   await openTextChip(page);
   const textarea = page.getByLabel('テキスト', { exact: true });
@@ -275,7 +275,7 @@ test('同じ組み込みを選び直して同じ本文を打っても保存さ�
 });
 
 test('テキストを編集すると自作として保存され、リロードしても残り、削除で既定の組み込みへ戻る', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
@@ -312,7 +312,7 @@ test('テキストを編集すると自作として保存され、リロード�
  */
 test('打ってすぐリロードしても編集が残る（組み込みからのcopy-on-write、debounce完了前）', async ({ page }) => {
   await page.clock.install();
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
   const now = await page.evaluate(() => Date.now());
@@ -334,7 +334,7 @@ test('打ってすぐリロードしても編集が残る（組み込みから�
 });
 
 test('打ってすぐリロードしても編集が残る（既存のユーザーテキストの直接編集、debounce完了前）', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
@@ -371,7 +371,7 @@ test('打ってすぐリロードしても編集が残る（既存のユーザ�
 });
 
 test('解析設定はリロードしても残る（資産として保持する）', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
@@ -400,7 +400,7 @@ test('解析設定はdebounce完了前にリロードしても残る（pagehide�
   // `pauseAt(現在時刻)`で明示的に止める（`fastForward`等を呼ばない限りsetTimeoutは
   // 二度と発火しない。Playwright Clock APIのドキュメント参照）。
   await page.clock.install();
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
   // ブラウザ側で実際に読んだ現在時刻を使っても、往復のRPCの間に実時間が経過し、
@@ -441,7 +441,7 @@ test('保存された解析設定が壊れていたら、既定値へ戻しつ�
       JSON.stringify({ version: 1, 'bigram-flow': { source: 'no-such-source' } }),
     );
   });
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
@@ -457,7 +457,7 @@ test('保存された解析設定が壊れていたら、既定値へ戻しつ�
 test('URLパラメータで開くと解析設定が反映され、資産に残り、URLから消える', async ({ page }) => {
   // 解析設定だけをURLクエリで受け取り、取り込んだら
   // ローカル（資産）が正になる（=URLからは消える）ことを確認する。
-  await page.goto('/standalone/bigram-flow?source=within-hand&fingers=index');
+  await page.goto('/analyzer/bigram-flow?source=within-hand&fingers=index');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
@@ -468,7 +468,7 @@ test('URLパラメータで開くと解析設定が反映され、資産に残�
   await expect(indexFinger).toHaveAttribute('aria-pressed', 'true');
 
   // URLから消える（取り込み後はローカルが正）。
-  await expect(page).toHaveURL(/\/standalone\/bigram-flow$/);
+  await expect(page).toHaveURL(/\/analyzer\/bigram-flow$/);
 
   // 資産（storage）に残る。
   await expect
@@ -483,7 +483,7 @@ test('URLパラメータで開くと解析設定が反映され、資産に残�
 });
 
 test('URLパラメータの壊れた値は既定値へ戻し、診断をペインに表示する', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow?source=diagonal');
+  await page.goto('/analyzer/bigram-flow?source=diagonal');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
@@ -498,12 +498,12 @@ test('URLパラメータの壊れた値は既定値へ戻し、診断をペイ�
   await expect(actual).toHaveAttribute('aria-pressed', 'true');
 
   // 壊れていても消費済みとしてURLからは消える。
-  await expect(page).toHaveURL(/\/standalone\/bigram-flow$/);
+  await expect(page).toHaveURL(/\/analyzer\/bigram-flow$/);
 });
 
 test('URLパラメータは既存の解析設定へ部分マージされる（指定していない項目は保たれる）', async ({ page }) => {
   // 先にlineScaleを'sqrt'へ変更して資産へ保存する。
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
   const lineScale = (await openFigureSettings(page, 'Keyboard Flow')).getByLabel('紐の太さ', { exact: true });
@@ -513,7 +513,7 @@ test('URLパラメータは既存の解析設定へ部分マージされる（�
     .toContain('sqrt');
 
   // sourceだけを指定したURLで開く。lineScaleの指定は無いので、保存済みの'sqrt'が保たれるはず。
-  await page.goto('/standalone/bigram-flow?source=within-hand');
+  await page.goto('/analyzer/bigram-flow?source=within-hand');
   const flowAfter = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flowAfter).toBeVisible({ timeout: 10_000 });
   await expect((await openSettings(page)).getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'true');
@@ -522,7 +522,7 @@ test('URLパラメータは既存の解析設定へ部分マージされる（�
 
 test('文脈バーの「共有」で既定値と違う項目だけを含むURLがクリップボードに入る', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
@@ -541,7 +541,7 @@ test('文脈バーの「共有」で既定値と違う項目だけを含むURL�
 
 test('共有リンクで対象（配列）が届き、取り込み後はURLから消える。Undoで受け取る前へ戻る', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   await toggleTarget(page, 'layout:dvorak');
   await expectChosenTarget(page, 'layout:dvorak');
@@ -556,7 +556,7 @@ test('共有リンクで対象（配列）が届き、取り込み後はURLか�
     await opened.goto(url);
     await expect(opened.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
     await expectChosenTarget(opened, 'layout:dvorak');
-    await expect(opened).toHaveURL(/\/standalone\/bigram-flow$/);
+    await expect(opened).toHaveURL(/\/analyzer\/bigram-flow$/);
     await expect(opened.locator('[data-pane-link-notice="true"]')).toHaveCount(0);
     // 開くだけで選択の自動オープン等が起きず、Undoで受け取る前（未選択＝既定のQWERTY）へ戻る。
     await opened.getByRole('button', { name: '元に戻す' }).click();
@@ -567,17 +567,17 @@ test('共有リンクで対象（配列）が届き、取り込み後はURLか�
 });
 
 test('共有リンクの対象が手持ちに無ければ名前を示し、今の対象を変えない', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow?target=setup%3A%E6%B6%88%E3%81%88%E3%81%9F');
+  await page.goto('/analyzer/bigram-flow?target=setup%3A%E6%B6%88%E3%81%88%E3%81%9F');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   await expect(page.locator('[data-pane-link-notice="true"]')).toContainText('Setup「消えた」');
   await expectChosenTarget(page, 'layout:qwerty');
-  await expect(page).toHaveURL(/\/standalone\/bigram-flow$/);
+  await expect(page).toHaveURL(/\/analyzer\/bigram-flow$/);
 });
 
 test('新規プロファイルでは配列（既定QWERTY）が対象になり、Setupは1件も作られない', async ({ page }) => {
   // 手持ちが空でも初期Setupは自動で作らない。配列は組み込みカタログに最初から入っているので、
   // 手持ちが空でも対象は選べる。
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
@@ -609,7 +609,7 @@ test('保存済みのSetupが2件あっても、開いた時に手を付けず�
       }),
     );
   });
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
@@ -649,8 +649,8 @@ test('タブ間同期: 別タブでのテキスト変更が届き、複数回変
   const pageA = await context.newPage();
   const pageB = await context.newPage();
 
-  await pageA.goto('/standalone/bigram-flow');
-  await pageB.goto('/standalone/bigram-flow');
+  await pageA.goto('/analyzer/bigram-flow');
+  await pageB.goto('/analyzer/bigram-flow');
   await expect(pageA.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   await expect(pageB.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
 
@@ -701,8 +701,8 @@ test('タブ間の競合修正: 他タブの選択切り替えが割り込んで
 
   const pageA = await context.newPage();
   const pageB = await context.newPage();
-  await pageA.goto('/standalone/bigram-flow');
-  await pageB.goto('/standalone/bigram-flow');
+  await pageA.goto('/analyzer/bigram-flow');
+  await pageB.goto('/analyzer/bigram-flow');
   await expect(pageA.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   await expect(pageB.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
 
@@ -748,7 +748,7 @@ test('タブ間の競合修正: 他タブの選択切り替えが割り込んで
 });
 
 test('画面の文言に開発の内部（issue番号・Phase・ファイル名・開発用の語）が出ない', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]').first()).toBeVisible({ timeout: 10_000 });
   await expect(page).toHaveTitle('Bigram Flow | keydist');
   const description = await page.locator('meta[name="description"]').getAttribute('content');
@@ -786,7 +786,7 @@ test('読み込みで操作可能になった瞬間から、テキストのチ�
     };
     requestAnimationFrame(everyFrame);
   });
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const chip = page.locator('.context-bar button.text-chip');
   await expect(chip).toBeEnabled({ timeout: 10_000 });
   await expect(chip).toContainText('u1');
@@ -809,7 +809,7 @@ test('保存済みの解析設定は、操作可能になった瞬間から表�
     // 紐の太さは図の表示の小窓にあり、小窓のボタンは図が描かれてから（読み込みが済んでから）出る。
     { selector: '[data-figure-settings-window] select', read: 'value' },
   );
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const lineScale = (await openFigureSettings(page, 'Keyboard Flow')).getByLabel('紐の太さ', { exact: true });
   await expect(lineScale).toBeEnabled({ timeout: 10_000 });
   await expect(lineScale).toHaveValue('sqrt');
@@ -817,7 +817,7 @@ test('保存済みの解析設定は、操作可能になった瞬間から表�
 });
 
 test('見出しは「名前 ⓘ / 対象 / 解析設定」で、ⓘで短い説明が出る', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
 
   // 本体は見出し・説明段落・観測値の注記を持たない（ペインの見出しとトップが持つ）。
@@ -833,7 +833,7 @@ test('見出しは「名前 ⓘ / 対象 / 解析設定」で、ⓘで短い説�
 });
 
 test('対象は同じ部品をラジオで1つ選び、押すと閉じて見出しに出る。矢印キーで送る間は閉じない', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   await expect(targetButton(page)).toHaveAccessibleName('対象: QWERTY');
 
@@ -858,7 +858,7 @@ test('対象は同じ部品をラジオで1つ選び、押すと閉じて見出�
 });
 
 test('解析設定の小窓は非モーダルで、開いたまま図を操作でき、見出しをドラッグで動かせる', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
 
   const settings = await openSettings(page);
@@ -885,7 +885,7 @@ test('解析設定の小窓は非モーダルで、開いたまま図を操作�
 });
 
 test('ペインの解析設定には両方の図に効く項目だけがあり、図ごとの項目は図の見出しのボタンから開く小窓にある', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   const settings = await openSettings(page);
   await expect(settings.getByRole('button', { name: 'Actual', exact: true })).toBeVisible();
@@ -918,7 +918,7 @@ test('ペインの解析設定には両方の図に効く項目だけがあり�
 test('図の表示の小窓を開いても横にあふれない', async ({ page }) => {
   for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 900 });
-    await page.goto('/standalone/bigram-flow');
+    await page.goto('/analyzer/bigram-flow');
     await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
     await openFigureSettings(page, 'Keyboard Flow');
     await openFigureSettings(page, 'Relative vectors');
@@ -928,7 +928,7 @@ test('図の表示の小窓を開いても横にあふれない', async ({ page 
 });
 
 test('抽出に効く項目（方向の広がり・2打鍵の取り方）を動かしても、図の表示の小窓は開いたまま', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   const vectors = await openFigureSettings(page, 'Relative vectors');
   await vectors.getByLabel('方向の広がり', { exact: true }).fill('12');
@@ -942,7 +942,7 @@ test('抽出に効く項目（方向の広がり・2打鍵の取り方）を動�
 });
 
 test('小窓の開閉は保存しない（再読み込みで閉じ、値は残る）', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   const figure = await openFigureSettings(page, 'Keyboard Flow');
   await figure.getByLabel('紐の太さ', { exact: true }).selectOption('sqrt');
@@ -956,7 +956,7 @@ test('小窓の開閉は保存しない（再読み込みで閉じ、値は残�
 });
 
 test('項目ごとの「既定値へ戻す」は既定と違う項目にだけ出て、その項目だけを戻す', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   const figure = await openFigureSettings(page, 'Keyboard Flow');
 
@@ -983,7 +983,7 @@ test('項目ごとの「既定値へ戻す」は既定と違う項目にだけ�
 });
 
 test('解析設定の小窓のヘッダーの「すべて初期値に戻す」は解析設定だけを既定値へ戻し、対象はそのまま', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   await toggleTarget(page, 'layout:colemak-dh');
 
@@ -1016,7 +1016,7 @@ test('観測値の注記はトップにだけ置く', async ({ page }) => {
 });
 
 test('解析設定の小窓を開くとフォーカスが中へ入り、Escapeで閉じて解析設定ボタンへ戻る', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
 
   const button = page.getByRole('button', { name: '解析設定', exact: true });
@@ -1031,7 +1031,7 @@ test('解析設定の小窓を開くとフォーカスが中へ入り、Escape�
 });
 
 test('未選択の時に表示している既定の対象を押しても「選んだ」になり、選択が閉じる', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   expect(await page.evaluate(() => localStorage.getItem('keydist:single-target-selection'))).toBeNull();
 
@@ -1043,7 +1043,7 @@ test('未選択の時に表示している既定の対象を押しても「選�
 });
 
 test('キーボードで開いて表示中のラジオにSpaceを押すと「選んだ」になって閉じる', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   expect(await page.evaluate(() => localStorage.getItem('keydist:single-target-selection'))).toBeNull();
 
@@ -1060,7 +1060,7 @@ test('キーボードで開いて表示中のラジオにSpaceを押すと「選
 });
 
 test('選ばれているラジオから矢印キーで動かしても閉じず、Enterでは確定して閉じる', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
 
   const selection = await openTargetSelection(page);
@@ -1089,7 +1089,7 @@ test('条件を変えたSetupを選んでも、対象ボタンは名前だけで
       JSON.stringify({ version: 1, target: { kind: 'setup', setupId: 'fixed-a' } }),
     );
   });
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
 
   await expect(targetButton(page)).toHaveAccessibleName('対象: QWERTY');
@@ -1119,7 +1119,7 @@ async function measureAcross(page: Page, kinds: readonly string[]) {
 
 test('Keyboard Flow: 物理配列を切り替えても、エリアの縦横比とキーの画面上の大きさが変わらない', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const [first, ...rest] = await measureAcross(page, ['row-staggered', 'ortholinear', 'jis-column-staggered']);
   if (!first) throw new Error('測れていない');
   for (const m of rest) {
@@ -1132,7 +1132,7 @@ test('Keyboard Flow: 物理配列を切り替えても、エリアの縦横比�
 
 test('Keyboard Flow: スマホ幅（390px）でも横スクロールが出ず、物理配列どうしの縮尺は揃ったまま', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const [a, b] = await measureAcross(page, ['row-staggered', 'ortholinear']);
   if (!a || !b) throw new Error('測れていない');
   const overflow = await page.evaluate(() => {
@@ -1151,7 +1151,7 @@ test('Keyboard Flow: スマホ幅（390px）でも横スクロールが出ず、
 
 test('Keyboard Flow: 縮んでも同キー連打のラベルは読める大きさのまま、線は画面上で見える太さを保つ', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
 
   const badge = page.locator('.flow-repeat-badge text').first();
@@ -1170,7 +1170,7 @@ test('Keyboard Flow: 縮んでも同キー連打のラベルは読める大き�
 
 test('Keyboard Flow: 390pxでホバーした時、行き先件数のバッジは拡大されず、連打ラベルだけが拡大される', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
 
   const repeatTransform = await page.locator('.flow-repeat-badge').first().getAttribute('transform');
@@ -1187,7 +1187,7 @@ test('Keyboard Flow: 390pxでホバーした時、行き先件数のバッジは
 test('Relative vectors: スマホ幅でも左右の図は横に2つ並ぶ', async ({ page }) => {
   // 幅の下限に近い320px。図の並びは画面ではなく置かれた領域の幅で決まる。
   await page.setViewportSize({ width: 320, height: 900 });
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const plots = page.locator('section[aria-label="Relative vectors"] .flow-profile-svg');
   await expect(plots).toHaveCount(2, { timeout: 15_000 });
   await plots.first().scrollIntoViewIfNeeded();
@@ -1202,7 +1202,7 @@ test('Relative vectors: スマホ幅でも左右の図は横に2つ並ぶ', asyn
 });
 
 test('Relative vectors: 内向き・外向きの割合は、読み上げでも向きと値が分かる名前を持つ', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const section = page.locator('section[aria-label="Relative vectors"]');
   await expect(section.locator('.flow-profile-svg')).toHaveCount(2, { timeout: 15_000 });
   // 左右どちらの手でも、内向き・外向きが1つずつ、向きの語と割合を名前に持つ
@@ -1226,7 +1226,7 @@ test('Relative vectors: 内向き・外向きの割合は、読み上げでも�
 
 test('Keyboard Flow: 個別画面の連打ラベルは、縮んだ図でも読める大きさまで広げる（拡大率に上限を置かない）', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   const info = await page.locator('.flow-repeat-badge').first().evaluate((badge) => {
     const svg = document.querySelector('.flow-keyboard-svg') as SVGSVGElement;
@@ -1268,7 +1268,7 @@ test('読み込みが済むまで、保存済みと違う既定の対象名（QW
     await gate;
     await route.continue();
   });
-  await page.goto('/standalone/bigram-flow', { waitUntil: 'commit' });
+  await page.goto('/analyzer/bigram-flow', { waitUntil: 'commit' });
   await expect(targetButton(page)).toBeVisible();
   expect(await targetButton(page).getAttribute('aria-label')).not.toContain('QWERTY');
   // 見出しの「Bigram Flow — 対象名」は section.pane-frame の aria-label にある（.pane-frame-title は Analyzer 名だけ）
@@ -1284,7 +1284,7 @@ test('読み込みが済むまで、保存済みと違う既定の対象名（QW
 
 test('図の表示の小窓はボタンのすぐ下に左端をそろえて開き、ボタン・×・Escapeで閉じ、閉じるとフォーカスがボタンへ戻る', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   const button = page.getByRole('button', { name: 'Keyboard Flowの表示', exact: true });
   const figure = await openFigureSettings(page, 'Keyboard Flow');
@@ -1311,7 +1311,7 @@ test('図の表示の小窓はボタンのすぐ下に左端をそろえて開�
 
 test('Relative vectorsの小窓を動かした後に指を選んで図が作り直されても、小窓は開いたまま同じ位置に残る', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   const figure = await openFigureSettings(page, 'Relative vectors');
   const handleBox = (await figure.locator('.settings-window-handle').boundingBox())!;

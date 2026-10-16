@@ -297,13 +297,6 @@ export type PresetGeometryKind =
   | 'jis-split-ortholinear'
   | 'column-staggered'
   | 'jis-column-staggered';
-export type CustomGeometryKind = `custom:${string}`;
-export type GeometryKind = PresetGeometryKind | 'custom' | CustomGeometryKind;
-
-export const customGeometryKind = (shapeId: string): CustomGeometryKind => `custom:${shapeId}`;
-
-export const isCustomGeometryKind = (value: unknown): value is 'custom' | CustomGeometryKind =>
-  value === 'custom' || (typeof value === 'string' && value.startsWith('custom:'));
 
 /** 親指キー1個の定義。物理配列（`PhysicalShape`）が個数・位置を持つ（仕様 §3.1） */
 export interface ThumbKeySpec {

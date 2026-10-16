@@ -41,7 +41,7 @@ async function expectFoldedDetails(alert: ReturnType<Page['locator']>, withStack
 
 test('計算中の例外: 1文だけ出し、原文は折りたたんだ詳細に入る', async ({ page }) => {
   await breakMathInWorker(page, 'hypot');
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const pane = page.locator('.pane-frame');
   await expect(pane).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
 
@@ -59,7 +59,7 @@ test('計算中の例外: 1文だけ出し、原文は折りたたんだ詳細�
 test('描画中の例外（error boundary）: 1文だけ出し、原文とstackは折りたたんだ詳細に入る', async ({ page }) => {
   // Math.sin は Bigram Flow の描画でしか使われないので、計算は成功したまま描画だけが落ちる。
   await breakMath(page, 'sin');
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   const pane = page.locator('.pane-frame');
   await expect(pane).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
 

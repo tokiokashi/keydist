@@ -8,9 +8,8 @@ import type { UserLayout } from './user-layouts.ts';
  *   （qwerty・dvorak・colemak系・workman・大西系）
  * - `kana`: かなをそのまま打つ配列。ローマ字変換を経ない（なぎ系・NICOLA・新配列系等）
  *
- * **暫定。この対応は現状のAnalyzerの挙動（`src/legacy/main.ts` の `layoutsOf` が
- * モードごとにどの配列一覧・ローマ字表を組み立てているか、`src/input/layouts/index.ts` の
- * `LAYOUTS` / `LAYOUTS_JA` の構成）をそのまま写したもので、正しさは検証していない。**
+ * **暫定。この対応は `src/input/layouts/index.ts` の `LAYOUTS` / `LAYOUTS_JA` の構成を
+ * そのまま写したもので、正しさは検証していない。**
  * 例えば大西配列のTesterは実際にはローマ字入力になっていないまま放置されている等、
  * 配列ごとに対応がおかしい箇所がある。後で見直す前提で、対応表はここ1か所に閉じ込める
  * （`Layout` オブジェクトの形からは決まらない。理由は `#input/setup/types.ts` の
@@ -44,21 +43,13 @@ export function builtInLayoutKind(layoutId: string): LayoutKind {
 
 /**
  * 自作配列（`UserLayout`）の種類。`direct: true` は「かなをローマ字へ変換せず、
- * sequencesを直接使う」（`user-layouts.ts` の `UserLayout.direct` コメント）ことを表す
- * フィールドで、これは今のAnalyzerが日本語モードで
- * 「ローマ字表を挟むか（`romaji`）／挟まないか（`kana`）」を切り替える条件そのもの
- * （`src/legacy/main.ts` の `layoutsOf`）。そのため `direct` を `alpha` / `kana` の
- * 判定にそのまま使う。
+ * sequencesを直接使う」（`user-layouts.ts` の `UserLayout.direct` コメント）ことを表す。
+ * これは日本語テキストで「ローマ字表を挟むか（`romaji`）／挟まないか（`kana`）」を
+ * 切り替える条件そのものなので、`direct` を `alpha` / `kana` の判定にそのまま使う。
  *
- * 英語モードでの現状挙動との食い違いに注意: 現状の `layoutsOf('en')` は
- * `direct` の値によらず全ての自作配列を「ローマ字変換なし」（英語直接入力）として扱う。
- * これは組み込みのかな配列が英語モードの一覧に一切現れない（`LAYOUTS` に含まれない）
- * こととは対応が違う。今回はこの食い違いを解消せず、`deriveInputMethod`
- * （`#input/setup/input-method.ts`）側で「かな配列 + 英語テキストは使えない」という
- * 原則を自作配列にも一律で適用する（＝ `direct: true` の自作配列は
- * 英語テキストには使えない、と判定する）。現状の英語モードの挙動とは変わるが、
- * 「英語テキストにかな配列は使えない」という原則と矛盾する現状の方を保存する理由が
- * ないと判断した。決めきれなかった点として引き継ぐ
+ * 英語テキストには、`deriveInputMethod`（`#input/setup/input-method.ts`）が
+ * 「かな配列は使えない」という原則を自作配列にも一律で適用する
+ * （`direct: true` の自作配列は英語テキストには使えない、と判定する）。
  */
 export function userLayoutKind(layout: UserLayout): LayoutKind {
   return layout.direct === true ? 'kana' : 'alpha';

@@ -37,7 +37,7 @@ async function seekBoxes(page: Page) {
 
 test('数はスライダーのラベルと同じ行にあり、操作の群には無い', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/standalone/playback');
+  await page.goto('/analyzer/playback');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   await expect(controls(page).locator('[data-playback-position]')).toHaveCount(0);
   await expect(seekLabel(page)).toHaveText('再生位置');
@@ -49,7 +49,7 @@ test('数はスライダーのラベルと同じ行にあり、操作の群に�
 
 test('スライダーの読み上げ名は「再生位置」のまま。数が変わっても変わらない', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/standalone/playback');
+  await page.goto('/analyzer/playback');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   await expect(feature(page).getByRole('slider', { name: '再生位置', exact: true })).toBeVisible();
   await feature(page).locator('[data-playback-action="forward"]').click();
@@ -63,7 +63,7 @@ for (const [name, width] of [
 ] as const) {
   test(`${name}（${width}px）で、再生と一時停止を切り替えても、操作の群の折り返しと再生位置の数・スライダーが動かない`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    await page.goto('/standalone/playback');
+    await page.goto('/analyzer/playback');
     await expect(feature(page)).toBeVisible({ timeout: 10_000 });
     // 桁数をそろえるため、先に1ステップ進めてから比べる
     await feature(page).locator('[data-playback-action="forward"]').click();

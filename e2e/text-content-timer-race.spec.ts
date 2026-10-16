@@ -13,7 +13,7 @@ import { installTimerCapture, type RaceWindow } from './text-timer-capture-helpe
 
 async function setup(page: Page): Promise<void> {
   await installTimerCapture(page);
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   await openTextChip(page);
 }
@@ -111,7 +111,7 @@ test('複製ができた直後・描画の前に打った文字は、描画の�
 
 test('他タブが同じ複製の本文を書き換えたら、下書きがそれに揃う', async ({ context }) => {
   const pageA = await context.newPage();
-  await pageA.goto('/standalone/bigram-flow');
+  await pageA.goto('/analyzer/bigram-flow');
   await expect(pageA.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   await openTextChip(pageA);
   const bodyA = pageA.getByLabel('テキスト', { exact: true });
@@ -120,7 +120,7 @@ test('他タブが同じ複製の本文を書き換えたら、下書きがそ�
   const [copy] = await storedTexts(pageA);
 
   const pageB = await context.newPage();
-  await pageB.goto('/standalone/bigram-flow');
+  await pageB.goto('/analyzer/bigram-flow');
   await expect(pageB.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   await openTextChip(pageB);
   await expect(pageB.getByLabel('テキストを選ぶ')).toHaveValue(`user:${copy.id}`);
@@ -134,7 +134,7 @@ test('他タブが作った複製へ選択が移っても、下書きは複製�
   const pageB = await context.newPage();
   await setup(pageB);
   const pageA = await context.newPage();
-  await pageA.goto('/standalone/bigram-flow');
+  await pageA.goto('/analyzer/bigram-flow');
   await expect(pageA.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   await openTextChip(pageA);
   await pageB.evaluate(() => (window as unknown as RaceWindow).__type('m'));

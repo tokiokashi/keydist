@@ -1,113 +1,37 @@
-import type {
-  AnalyzerPreferencesV2,
-  AppearancePreferencesV1,
-  AppStateV2,
-} from '../state/app-state.ts';
+import type { AppearancePreferencesV1 } from '../state/app-state.ts';
 import {
   APP_STATE_STORAGE_KEY,
   loadAppStateDocument,
   patchAppState,
-  removeStorageKeys,
-  saveAppStateDocument,
 } from '../state/app-state-storage.ts';
-import {
-  LEGACY_THEME_KEY,
-  UI_STATE_STORAGE_KEY,
-  type UiStateStorage,
-} from '#legacy/ui-state.ts';
+import type { KeyValueStorage } from '#platform/persistence/storage.ts';
 import { applyTheme, isThemeChoice, type ThemeChoice } from './theme.ts';
 
 export const DEFAULT_APPEARANCE: AppearancePreferencesV1 = { theme: 'system' };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function themeFromLegacyAnalyzer(appState: AppStateV2): ThemeChoice | undefined {
-  const analyzer = appState.analyzer as unknown;
-  if (!isRecord(analyzer)) return undefined;
-  return isThemeChoice(analyzer.theme) ? analyzer.theme : undefined;
-}
-
-function themeFromLegacyUiState(storage: UiStateStorage): ThemeChoice | undefined {
-  try {
-    const raw = storage.getItem(UI_STATE_STORAGE_KEY);
-    if (raw === null) return undefined;
-    const parsed: unknown = JSON.parse(raw);
-    if (!isRecord(parsed) || !isRecord(parsed.ui)) return undefined;
-    return isThemeChoice(parsed.ui.theme) ? parsed.ui.theme : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-function themeFromLegacyKey(storage: UiStateStorage): ThemeChoice | undefined {
-  try {
-    const value = storage.getItem(LEGACY_THEME_KEY);
-    return isThemeChoice(value) ? value : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-function removeLegacyAnalyzerTheme(storage: UiStateStorage): boolean {
-  const current = loadAppStateDocument(storage);
-  const analyzer = current.analyzer as unknown;
-  if (!isRecord(analyzer) || !('theme' in analyzer)) return true;
-
-  const { theme: _theme, ...withoutTheme } = analyzer;
-  return saveAppStateDocument(storage, {
-    ...current,
-    analyzer: withoutTheme as AnalyzerPreferencesV2,
-  });
-}
-
-function cleanupLegacyAppearanceSources(storage: UiStateStorage): void {
-  if (!removeLegacyAnalyzerTheme(storage)) return;
-  removeStorageKeys(storage, [LEGACY_THEME_KEY]);
-}
-
 /**
- * App-level appearance authority.
- *
- * 既存の AppState.analyzer.theme / UiStateV1 / keydist:theme は read-once source として扱い、
- * appearance 保存成功後に Analyzer slice の theme と旧theme keyを掃除する。
- * keydist:ui-state 自体は Analyzer migration が他fieldを読み終えるまで残す。
+ * 外観の設定の読み書き。保存先は `keydist:app-state` の `appearance` だけで、
+ * 保存が無い・値が不正な時は `fallback` を返す（storageには書かない）。
  */
 export function loadAppearancePreference(
-  storage: UiStateStorage,
+  storage: KeyValueStorage,
   fallback: ThemeChoice = DEFAULT_APPEARANCE.theme,
 ): AppearancePreferencesV1 {
-  const current = loadAppStateDocument(storage);
-  const storedTheme = current.appearance?.theme;
-  if (isThemeChoice(storedTheme)) {
-    cleanupLegacyAppearanceSources(storage);
-    return { theme: storedTheme };
-  }
-
-  const theme = themeFromLegacyAnalyzer(current)
-    ?? themeFromLegacyUiState(storage)
-    ?? themeFromLegacyKey(storage)
-    ?? fallback;
-
-  const appearance = { theme };
-  if (patchAppState(storage, { appearance })) cleanupLegacyAppearanceSources(storage);
-  return appearance;
+  const storedTheme = loadAppStateDocument(storage).appearance?.theme;
+  return { theme: isThemeChoice(storedTheme) ? storedTheme : fallback };
 }
 
 export function saveAppearancePreference(
-  storage: UiStateStorage,
+  storage: KeyValueStorage,
   theme: ThemeChoice,
 ): boolean {
-  const saved = patchAppState(storage, { appearance: { theme } });
-  if (saved) cleanupLegacyAppearanceSources(storage);
-  return saved;
+  return patchAppState(storage, { appearance: { theme } });
 }
 
 /**
  * Appearance用の外部store。
  *
- * AnalyzerThemeControlsと（将来の共通ヘッダー等の）他のtheme控件が
+ * サイドバーと（将来の共通ヘッダー等の）他のtheme控件が
  * それぞれ独立にstorageを読むと、片方の更新がもう片方に反映されず
  * ボタンの押下状態がズレる。useSyncExternalStoreからこのstoreを購読させることで、
  * どの控件から変更してもsubscribe中の全controlへ同期する。

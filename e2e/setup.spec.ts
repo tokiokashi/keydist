@@ -23,7 +23,7 @@ async function createSetup(page: Page, shapeName: string, name?: string): Promis
 }
 
 test('Setupを作り、名前の変更・複製・物理配列の選び直しをして、元に戻せる。/assetsの一覧から削除できる', async ({ page }) => {
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await waitForHydration(page);
   await page.locator('#app-sidebar').getByRole('link', { name: 'Setup', exact: true }).click();
   await expect(page).toHaveURL(/\/setup$/);

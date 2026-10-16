@@ -10,9 +10,7 @@
 - 「作る候補」は、オーナーと決めてからissueにする（タイトル案と大きさは後ろの一覧）。「捨てる候補」は、オーナーが決める
 - 新しく機能を足した時にこの表へ行を足す必要は無い。旧画面にあったものだけを載せる
 - 完了条件の「予定あり」は、受け皿のissueがマイルストーン `later` にある行を含まない。`later` の行は切り替えの後に作るもので、完了条件に入れない。該当はG2（#62）とI3（#338）。どちらも「捨てる」側にはしない（作らないとは決まっていない）
-- `later` を除いて残っている「予定あり」の行は、次の2つに分けて読む
-  - #29で消す範囲の行: J1・J2・J6・J7
-  - #29の範囲の外でv1.0.0にある行: C2（#35）・J5（#36）
+- `later` を除いて残っている「予定あり」の行は、v1.0.0にある行: C2（#35）・J5（#36）
 
 ### 状態の語
 
@@ -32,7 +30,7 @@
 | 表示だけ | 旧画面を開き、その項目が表示されることは確かめた。値を変える・保存するなどの操作はしていない |
 | コード | 旧画面のコードで確かめた。画面では操作していない |
 
-新側の「実装済み」は、`/`・`/standalone/*`・`/input`・`/analyzer/flow` を開いて表示を確かめ、場所をコードで確かめた。新側の操作はe2eに任せていて、この棚卸しでは操作していない。
+新側の「実装済み」は、トップ・個別画面・Tester・Bigram Flowの個別画面を開いて表示を確かめ、場所をコードで確かめた。新側の操作はe2eに任せていて、この棚卸しでは操作していない。
 
 ## 調べた範囲と方法
 
@@ -73,8 +71,8 @@
 
 | ID | 機能 | 旧画面での出どころ | 確認 | 状態 | 受け皿・候補 |
 |---|---|---|---|---|---|
-| A1 | 全機能を縦に並べた1ページ（`/analyzer`） | `analyzer-page.tsx` | 操作 | 実装済み | 機能ごとの個別画面（`/standalone/<名前>`）とWorkspace（`/workspace/<id>`）に分けた。個別画面のルートを `/analyzer/<名前>` に揃える作業は、旧画面の削除（J1）と一緒に行う |
-| A2 | Bigram FlowのURL付きページ（`/analyzer/flow`。`mode`・`layout`・`source`・`fingers`・`lineScale`・`layerOrder`・`hoverScale`・`bandwidth`・`gain`） | `analyzer_.flow.tsx`・`features/analyzer-next/bigram-flow-route-state.ts` | 操作 | 実装済み | `/standalone/bigram-flow`。解析設定はURLに載り、共有で運ぶ（`hosts/standalone/use-shared-link.ts`）。`mode`・`layout` の2つのクエリは持ち越さない（A8と同じ理由）。旧URLの転送はX5 |
+| A1 | 全機能を縦に並べた1ページ（`/analyzer`） | `analyzer-page.tsx` | 操作 | 実装済み | 機能ごとの個別画面（`/analyzer/<名前>`）とWorkspace（`/workspace/<id>`）に分けた |
+| A2 | Bigram FlowのURL付きページ（`/analyzer/flow`。`mode`・`layout`・`source`・`fingers`・`lineScale`・`layerOrder`・`hoverScale`・`bandwidth`・`gain`） | `analyzer_.flow.tsx`・`features/analyzer-next/bigram-flow-route-state.ts` | 操作 | 実装済み | `/analyzer/bigram-flow`。解析設定はURLに載り、共有で運ぶ（`hosts/standalone/use-shared-link.ts`）。`mode`・`layout` の2つのクエリは持ち越さない（A8と同じ理由）。旧URLの転送はX5 |
 | A3 | keydistのリンク（トップへ） | `analyzer-page.tsx` | 操作 | 実装済み | `app/shell/Sidebar.tsx` の `keydist` |
 | A4 | テーマの切り替え（ライト・自動・ダーク） | `analyzer-remaining-ui.tsx` の `AnalyzerThemeControls` | 操作 | 実装済み | サイドバー最下端（`app/shell/Sidebar.tsx`・`app/theme/appearance.ts`） |
 | A5 | 情報ボタン（i）の説明 | `analyzer-page.tsx` の `InfoButton` | コード | 実装済み | `ui/primitives/info-button.tsx` |
@@ -199,13 +197,13 @@
 
 | ID | 機能 | 旧画面での出どころ | 確認 | 状態 | 受け皿・候補 |
 |---|---|---|---|---|---|
-| J1 | `/analyzer` と `src/legacy/` と旧画面のe2eの削除 | `src/routes/analyzer.tsx`・`e2e/analyzer-*.spec.ts` | コード | 予定あり | #29。旧画面の削除（切り替えの本体） |
-| J2 | `/analyzer/flow` と `features/analyzer-next/` の削除 | `src/routes/analyzer_.flow.tsx` | コード | 予定あり | #29。旧画面の削除の範囲。`features/analyzer-next/session-app-state.ts:58,72` も `analyzer`・`conditions`・`playback` を読み、一緒に消える |
+| J1 | `/analyzer` と `src/legacy/` と旧画面のe2eの削除 | `src/routes/analyzer.tsx`・`e2e/analyzer-*.spec.ts` | コード | 実装済み | #29。旧画面のルート・コード・e2eを消し、個別画面のルートを `/analyzer/<名前>` にした |
+| J2 | `/analyzer/flow` と `features/analyzer-next/` の削除 | `src/routes/analyzer_.flow.tsx` | コード | 実装済み | #29。`/analyzer/flow` と `features/analyzer-next/` を消した |
 | J3 | 古い画面の入口（トップ・サイドバー） | `app/shell/Sidebar.tsx` | コード | 捨てる（決定済み） | `/classic/` は公開しないので、付け替え先は無い。`/analyzer` と一緒に入口も消す |
 | J4 | 旧い外部リンクの `legacy.html`（`/analyzer` への転送） | `scripts/write-legacy-analyzer-redirect.ts`・`vite build` の後処理 | コード | 捨てる（決定済み） | 旧URLの転送は作らない。`legacy.html` と、一緒に消す箇所（X5の一覧）は #29で消す |
 | J5 | `/analyzer` で作った自作の配列・物理配列・ローマ字規則（`keydist:*`）が、`/analyzer` を消すとどこからも使えなくなること | `keydist:` | コード | 予定あり | #36。リリースノートに書くかを決める（G10） |
-| J6 | 旧画面の外にある `#legacy` への依存 | `src/app/state/app-state.ts:2`（型のimport）・`src/app/theme/appearance.ts:13-17`（定数のimport）・`src/app/theme/theme.ts:26`（`keydist:ui-state` を読む初期スクリプト）・`src/app/theme/theme.ts:22`・`src/app/theme/appearance.ts:27-29`（`analyzer.theme` を読む）・`docs/app-state.md` の該当節（Root schemaの `analyzer`・`conditions`・`playback`、Migration sourcesの表） | コード | 予定あり | #29。旧画面の削除の範囲。`src/legacy/` を消すとtypecheckが落ちる箇所と、テーマの初期値の移行元（`keydist:ui-state`）をどうするかがある |
-| J7 | 旧画面だけが読む保存の項目（`keydist:app-state` の `analyzer`（`analyzer.theme` を含む）・`conditions`・`playback`） | `src/app/state/app-state.ts`・`docs/app-state.md` | コード | 予定あり | #29。旧画面の削除の範囲。旧画面を消した後は誰も読まないので、スキーマから消すかを決める。ただし `analyzer.theme` は、新しい側のテーマのコード（`theme.ts:22`・`appearance.ts:27-29`）が移行元として読むので、消す時はそちらも直す。X4が「捨てる」なら消せる |
+| J6 | 旧画面の外にある `#legacy` への依存 | `src/app/state/app-state.ts:2`（型のimport）・`src/app/theme/appearance.ts:13-17`（定数のimport）・`src/app/theme/theme.ts:26`（`keydist:ui-state` を読む初期スクリプト）・`src/app/theme/theme.ts:22`・`src/app/theme/appearance.ts:27-29`（`analyzer.theme` を読む）・`docs/app-state.md` の該当節（Root schemaの `analyzer`・`conditions`・`playback`、Migration sourcesの表） | コード | 実装済み | #29。型・定数のimportは消えた。テーマの初期値は `keydist:app-state` の `appearance` だけから読み、`keydist:ui-state`・`keydist:theme`・`analyzer.theme` は移行元にしない（X4） |
+| J7 | 旧画面だけが読む保存の項目（`keydist:app-state` の `analyzer`（`analyzer.theme` を含む）・`conditions`・`playback`） | `src/app/state/app-state.ts`・`docs/app-state.md` | コード | 実装済み | #29。`analyzer`・`conditions`・`playback`（と `analyzerWorkspace`）をスキーマから消した。保存に残っていても読まず、他のsliceの保存でも書き換えない |
 
 ## 作ると決めたもの（issue）
 
@@ -249,13 +247,13 @@ N12（物理配列エディタ）は、決定済みの項目X7へ移したので
 
 | キー | 旧画面での中身 | 新しい構成 |
 |---|---|---|
-| `keydist:app-state` | 旧画面の通常の保存先（`analyzer`・`conditions`・`playback`）と、Testerの作業台・入力設定・テーマ | 新しい構成も使う（`appearance`・Testerの分）。`analyzer`・`conditions`・`playback` は旧画面と `features/analyzer-next/session-app-state.ts` だけが読む（J2・J7）。`analyzer.theme` は新しい側のテーマのコードが移行元として読む（J6・J7） |
-| `keydist:ui-state` | 初回に1回だけ読む移行元。`keydist:app-state` にこの3つが無い時に読み、保存に成功すると消す | 読まない（X4）。テーマの初期スクリプト（`app/theme/theme.ts:26`）が移行元として読む（J6） |
+| `keydist:app-state` | 旧画面の通常の保存先（`analyzer`・`conditions`・`playback`）と、Testerの作業台・入力設定・テーマ | 新しい構成は `appearance`・`shell`・Testerの分だけを読む。`analyzer`・`conditions`・`playback` はスキーマに無く、読まない。テーマも `appearance` だけから読む（J2・J6・J7） |
+| `keydist:ui-state` | 初回に1回だけ読む移行元。`keydist:app-state` にこの3つが無い時に読み、保存に成功すると消す | 読まない（X4）。テーマの初期スクリプトも読まない（J6） |
 | `keydist:condition-presets` | 旧画面の条件プリセット（`keydist:app-state` に吸収されない独立した資産） | 読まない。新しい保存先は `keydist:presets` |
-| `keydist:layouts` | 自作配列 | 読むのは `src/legacy/` と `src/features/analyzer-next/` だけ。新しいAnalyzerは読まず、移さない（G10）。新しい構成の資産として作り直す（G9） |
-| `keydist:geometry-shapes` | 自作の物理配列 | 読むのは旧画面・`src/features/analyzer-next/`（`runtime.ts:18`・`browser-runtime.ts:12`）・Testerだけ。新しいAnalyzerは読まず、移さない（G10）。Testerの経路は消す（X7） |
-| `keydist:romaji-rules` | ローマ字規則と配列への割り当て | 読むのは `src/legacy/` と `src/features/analyzer-next/` だけ。新しいAnalyzerは読まず、移さない（G10）。新しい構成の資産として作り直す（G9） |
-| `keydist.playback-calibration.v3` | 個人速度 | 読むのは `src/legacy/` だけ。新しい構成の個人速度は別のキー `keydist:personal-speed`（版付き）に置き、旧キーは読まず、移さない（F8） |
+| `keydist:layouts` | 自作配列 | 読むコードは無い。移さない（G10）。新しい構成の資産として作り直す（G9） |
+| `keydist:geometry-shapes` | 自作の物理配列 | 読むコードは無い（Testerの経路も消した）。移さない（G10、X7） |
+| `keydist:romaji-rules` | ローマ字規則と配列への割り当て | 読むコードは無い。移さない（G10）。新しい構成の資産として作り直す（G9） |
+| `keydist.playback-calibration.v3` | 個人速度 | 読むコードは無い。新しい構成の個人速度は別のキー `keydist:personal-speed`（版付き）に置き、旧キーは移さない（F8） |
 
 ## 関連
 

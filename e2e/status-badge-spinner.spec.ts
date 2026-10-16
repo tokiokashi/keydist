@@ -16,7 +16,7 @@ const STALE_TITLE = '計算中…（直前の結果を表示）';
 async function openReady(page: Page, width: number): Promise<void> {
   await installWorkerHold(page);
   await page.setViewportSize({ width, height: 844 });
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await waitForHydration(page);
   await expect(page.locator('.context-bar button.text-chip')).toBeEnabled({ timeout: 10_000 });
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 20_000 });

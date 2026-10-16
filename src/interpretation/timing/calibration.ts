@@ -325,10 +325,6 @@ export function withoutOrphanedSentenceSimultaneous(calibration: PlaybackCalibra
   return others;
 }
 
-export function isPlaybackCalibration(value: unknown): value is PlaybackCalibration {
-  return playbackCalibrationProblem(value) === undefined;
-}
-
 const CALIBRATION_KEY_LABEL_PATTERN = /\p{L}|\p{P}/u;
 
 /** 選択中の配列で文字・ピリオド・コンマが刻印された物理キーだけを候補にする。 */

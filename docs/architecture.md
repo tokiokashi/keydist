@@ -69,7 +69,7 @@ Traceは同じまま数値の定義を変える項目（解釈）のうち、今
 
 ```text
 シェル
-├─ サイドバー      ナビゲーション（最下端に版表示・旧バージョン・テーマ切替）
+├─ サイドバー      ナビゲーション（最下端に版表示・テーマ切替）
 └─ 本体
    ├─ 文脈バー     （Workspace名・「ペインを追加」）/ テキスト / 既定の物理配列 / Undo・Redo / 共有（個別画面のみ）
    └─ ペイン（個別画面は1枚、Workspaceは複数）
@@ -89,7 +89,7 @@ Traceは同じまま数値の定義を変える項目（解釈）のうち、今
 - テキストは器の値。個別画面は全体で1つの選択、Workspaceは自分の選択を持つ
 - テキストの編集: 組み込みのサンプルを書き換えると、自作のテキストとして新しく保存し、以後はそれを編集する。自作のテキストは、明示的に複製しない限りその場で書き換える
 - **メニューバー（編集 / 表示…）は置かない。** 全操作の目録はコマンドパレット（書き込みはすべてコマンドを通すので、コマンドの一覧から作れる）で持つ。ペインと文脈バーにグローバルな操作が入り切らなくなった時に、メニューバー（かデスクトップアプリ化）を検討する
-- **トップは道具の全体像を説明するページ。** サイドバーの Analyze / Workspace の区分を見本として描き（名前は各Analyzerの`pane-meta`とサイドバーと同じものを使い、各画面へのリンクにする）、Analyzerとは・SingleとMultiの違い・始め方（気になる配列を1つ選ぶ。選んだ配列は Single の対象になり、Multi の組にも入る。選んだ後に各 Analyzer へのリンクを出す。書き込みは`setTargetForSingleAndMultiCommand`の1回の操作）・Workspace（複数のAnalyzerを並べて見る画面。サイドバーの「＋ 新しいWorkspace」から作る）、の4点を短く説明する。あわせて観測値の注記と、旧バージョン（`/analyzer`）への控えめなリンクを置く。操作の細部（元に戻す・共有・条件の要約など）は書かない。画面への入口はサイドバーが持ち、見本のリンクはその写しなので、増やすときは両方そろえる。`/classic/` は公開しないので、導線はトップにもサイドバーにも置かない
+- **トップは道具の全体像を説明するページ。** サイドバーの Analyze / Workspace の区分を見本として描き（名前は各Analyzerの`pane-meta`とサイドバーと同じものを使い、各画面へのリンクにする）、Analyzerとは・SingleとMultiの違い・始め方（気になる配列を1つ選ぶ。選んだ配列は Single の対象になり、Multi の組にも入る。選んだ後に各 Analyzer へのリンクを出す。書き込みは`setTargetForSingleAndMultiCommand`の1回の操作）・Workspace（複数のAnalyzerを並べて見る画面。サイドバーの「＋ 新しいWorkspace」から作る）、の4点を短く説明する。あわせて観測値の注記を置く。操作の細部（元に戻す・共有・条件の要約など）は書かない。画面への入口はサイドバーが持ち、見本のリンクはその写しなので、増やすときは両方そろえる。`/classic/` は公開しないので、導線はトップにもサイドバーにも置かない
 - **「数値は観測値であり、配列の優劣を判定するスコアではない」の注記はトップにだけ置く。** トップは全体像を説明するページという原則の例外。各ペイン・各Analyzerの本体と説明には出さない（ペインごとに繰り返すと、これ見よがしに出しすぎになる）
 - 書体はシステムフォントを使う
 
@@ -105,7 +105,7 @@ Traceは同じまま数値の定義を変える項目（解釈）のうち、今
   - **idの衝突**: 読み込んだ資産と同じidが手元にある時、**中身が同じなら何も足さない**。**中身が違う時だけ**、手元を残し、読み込んだ側を新しいidと「名前 (2)」（使われていれば(3)…）の別名で足す。別のidで同じ中身のものが既に手元にあれば（前に別名で足したもの）、それと同じとみなして足さない。中身の違うものを別名で足した後に同じファイルを読み直しても増えない。同じファイルを二度読んでも増えず、手元の資産を失わない。組み込みと同じidの配列は、中身を問わず別のidで足す（組み込みの規則と同じidはファイルの読み取りで捨てる）。どれを足し、どれを別名で足し、どれを足さなかったかを、読み込みの直後に画面へ1件ずつ出す
   - **Setupの読み込み**: 中身（配列・物理配列・Setupのレベルの条件。ラベルは含めない）が同じSetupは、idが同じでも違っても足さない。同じidで中身が違うSetupは、手元を残し、読み込んだ側を新しいidでラベルのまま足す（表示名が重なれば、表示名の決め方で「Setup n」が添わる）。足したSetupには、手元の番号の最大＋1から順に番号を振る。読み込みで自作の配列・指の割り当て・ローマ字規則が別のidになった時は、その対応表でSetupの配列と、Setupのレベルの条件の指の割り当て・ローマ字規則を付け替えてから比べる。書き出しでは、ファイルに入れない自作の指の割り当て・ローマ字規則を指すSetupのレベルの条件の参照を外す。ファイルにも組み込みにも無い自作の指の割り当て・ローマ字規則を指すSetupのレベルの条件の参照は、配列の`romaji`と同じく外す（手元の同じidの別の資産に結び付けないため。中身を比べる前に外すので、二度読んでも増えない）。配列がファイルにも手元にも無いSetupは落とさず、対象の選択に見つからない配列として出す。Setupのレベルの指の割り当て・ローマ字規則が解決できない時（読み込んだ後に資産を削除した場合など）は、既定（指の割り当ては物理配列の既定、ローマ字規則は訓令式）で測り、条件の値は変えずに診断を出す。Setupのレベルに置けない項目は読み込まない
   - **「中身が同じ」の比べ方**: idと名前は比べず、数値に関わる項目をすべて比べる。名前だけが違うものは同じ中身とみなして足さず、手元の名前を残して結果の行に出す。配列は段・推奨のローマ字規則・単打面以外の出力（sequences）・表示ラベル・直接入力かどうか・ホームキー（`direct` は省略とfalseを同じとみなし、直接入力の配列は推奨の規則を比べない）、ローマ字規則は基の規則・差分・促音の生成、指の割り当てはキーごとの基本の指・指ごとの担当キー・ホームキー。入れ子のキーの並びは比べない。配列の推奨の規則が別のidで足された時は、配列の参照も振り直してから比べ、足す
-- **最下端に版表示・旧バージョン（`/analyzer`）へのリンク・テーマ切替（自動 / 明 / 暗）を置く。** ナビゲーションだけという原則の例外。`/analyzer` はシェルに載らないページで、リンクを押すと画面ごと切り替わる。v1.0.0で消す時は、このリンクも一緒に消す
+- **最下端に版表示・テーマ切替（自動 / 明 / 暗）を置く。** ナビゲーションだけという原則の例外
 - パソコン幅では**固定**（常時表示）と**固定解除**を切り替えられる。固定解除の時は完全に隠れ、左端か文脈バーのボタンで本体の上に重ねて出し、離れると引っ込む
 - スマホ幅では常に引き出しにする（固定は選べない）
 
@@ -123,8 +123,8 @@ Traceは同じまま数値の定義を変える項目（解釈）のうち、今
 
 保存したWorkspaceを開き、Analyzerをペインとして並べる器。個別画面と同じAnalyzerのcomponent（`hosts/shared/panes/`）を載せる。
 
-- **Single（対象を1つ見るAnalyzer）の配線はAnalyzerごとに持たない。** ペイン（`hosts/shared/panes/SingleAnalyzerPane.tsx`）・個別画面（`hosts/standalone/SingleAnalyzerStandalonePage.tsx`、組み立ては`app/standalone/StandaloneSingleAnalyzerApp.tsx`）・Workspaceのペイン（`hosts/workspace/panes/SingleAnalyzerWorkspacePane.tsx`）は、Analyzerの`definition.tsx`がexportする`SingleAnalyzerPaneParts`（`analyzers/pane-parts.tsx`）を引数に取る。Singleを足す時に書くのは、`definition.tsx`、`analyzer-registry.ts`と`single-analyzers.ts`に1行ずつ、個別画面のroute（`routes/standalone.<id>.tsx`。`StandaloneSingleAnalyzerApp`に渡すだけ）、`app/standalone/engine-worker.ts`への登録。本体（`Body`）にはどのSingleにも同じprops（`SingleBodyProps`）を渡し、使わないものは受け取らない。例外は、省略できる宣言を持つAnalyzerにだけ渡す項目で、`keyDetailsOf`（宣言すると`keySelection`を渡す）と`standaloneSetTargets`（宣言すると、単体の画面でだけ`setTargets`を渡す。下の「個別画面どうしで共有する対象」）がある。Workspaceのペインは`setTargets`を渡さず、本体は1つの図を出す
-- **Multi（対象の集合を見るAnalyzer。比較表・指ごとの比較・N感度）の配線もAnalyzerごとに持たない。** ペイン（`hosts/shared/panes/SetAnalyzerPane.tsx`）・個別画面（`hosts/standalone/SetAnalyzerStandalonePage.tsx`、組み立ては`app/standalone/StandaloneSetAnalyzerApp.tsx`）・Workspaceのペイン（`hosts/workspace/panes/SetAnalyzerWorkspacePane.tsx`）は、Analyzerの`definition.tsx`がexportする`SetAnalyzerPaneParts`（`analyzers/pane-parts.tsx`）を引数に取る。Singleとは対象の形（集合・色・基準）と本体のpropsが違うので、別の型にしている。Multiを足す時に書くのは、`definition.tsx`、`analyzer-registry.ts`と`set-analyzers.ts`に1行ずつ（足し忘れは`set-analyzers.test.ts`が落とす）、個別画面のroute（`routes/standalone.<id>.tsx`。`StandaloneSetAnalyzerApp`に渡すだけ）、`app/standalone/engine-worker.ts`の`set:`への登録
+- **Single（対象を1つ見るAnalyzer）の配線はAnalyzerごとに持たない。** ペイン（`hosts/shared/panes/SingleAnalyzerPane.tsx`）・個別画面（`hosts/standalone/SingleAnalyzerStandalonePage.tsx`、組み立ては`app/standalone/StandaloneSingleAnalyzerApp.tsx`）・Workspaceのペイン（`hosts/workspace/panes/SingleAnalyzerWorkspacePane.tsx`）は、Analyzerの`definition.tsx`がexportする`SingleAnalyzerPaneParts`（`analyzers/pane-parts.tsx`）を引数に取る。Singleを足す時に書くのは、`definition.tsx`、`analyzer-registry.ts`と`single-analyzers.ts`に1行ずつ、個別画面のroute（`routes/analyzer.<id>.tsx`。`StandaloneSingleAnalyzerApp`に渡すだけ）、`app/standalone/engine-worker.ts`への登録。本体（`Body`）にはどのSingleにも同じprops（`SingleBodyProps`）を渡し、使わないものは受け取らない。例外は、省略できる宣言を持つAnalyzerにだけ渡す項目で、`keyDetailsOf`（宣言すると`keySelection`を渡す）と`standaloneSetTargets`（宣言すると、単体の画面でだけ`setTargets`を渡す。下の「個別画面どうしで共有する対象」）がある。Workspaceのペインは`setTargets`を渡さず、本体は1つの図を出す
+- **Multi（対象の集合を見るAnalyzer。比較表・指ごとの比較・N感度）の配線もAnalyzerごとに持たない。** ペイン（`hosts/shared/panes/SetAnalyzerPane.tsx`）・個別画面（`hosts/standalone/SetAnalyzerStandalonePage.tsx`、組み立ては`app/standalone/StandaloneSetAnalyzerApp.tsx`）・Workspaceのペイン（`hosts/workspace/panes/SetAnalyzerWorkspacePane.tsx`）は、Analyzerの`definition.tsx`がexportする`SetAnalyzerPaneParts`（`analyzers/pane-parts.tsx`）を引数に取る。Singleとは対象の形（集合・色・基準）と本体のpropsが違うので、別の型にしている。Multiを足す時に書くのは、`definition.tsx`、`analyzer-registry.ts`と`set-analyzers.ts`に1行ずつ（足し忘れは`set-analyzers.test.ts`が落とす）、個別画面のroute（`routes/analyzer.<id>.tsx`。`StandaloneSetAnalyzerApp`に渡すだけ）、`app/standalone/engine-worker.ts`の`set:`への登録
   - 本体（`Body`）にはどのMultiにも同じprops（`SetBodyProps`）を渡し、使わないものは受け取らない。基準を選ぶ部品（`TargetItem`）を持つ定義にだけ、ホストが対象の選択へ基準の選択を差し込む。共有リンクには基準を持たないAnalyzerでも載せる
   - 行ごとの文脈（表示名・色・解決した配列名など）はホストが集合に対して決めた値を`SetRowSource`で定義の`rowContext`へ渡し、定義が本体向けの形にする。ホストはAnalyzer固有の値を知らない
   - 条件の要約・条件の編集・対象の名前の作り分けから除く項目は、定義の`conditionExcludeIds`に挙げる（N感度が振るN）
@@ -412,7 +412,6 @@ src/
   app/               組み立て・シェル・AppState
   routes/            TanStack Startの規約どおり。createFileRouteだけの薄いファイル
   router.tsx
-  legacy/            旧Analyzer。切り替え時に削除
 ```
 
 `src/` の外にある `scripts/` は、ビルドや運用で単体実行する道具。`src/` の層に属さず、依存の規則の検査対象でもない。`src/` から `scripts/` をimportしない。単体実行するファイルの純粋な部分は `scripts/<名前>-core.ts` に分け、`test/` からテストする（例: `scripts/agent-usage.ts`）。
@@ -437,12 +436,10 @@ src/
 | `ui/keyboard` `ui/charts` | ui/primitives, ui/theme, input |
 | `platform` | input |
 | `app` `routes` | すべて |
-| `legacy` | すべて |
 
 - Analyzer同士は import しない。個別のAnalyzerから別のAnalyzerへも、契約から個別のAnalyzerへも向かない
 - host同士は import しない。共有物は `hosts/shared/` に置く。`hosts/` 直下にはファイルを置かない
 
-- `legacy` と移行中の `features/analyzer-next` を import してよいのは app・routes・legacy・`features/analyzer-next` だけ
 - **純粋な層**（input / trace / interpretation / engine、`analyzers/**/*.ts`、`tester/engine/`）は React・描画ライブラリ・Router・react-grid-layout・DOM・storage・ブラウザAPIを使わない。`import type` も含めて使わない
   - **純粋さは推移的に守る。** 純粋なファイルは純粋なファイルしか import できない。抽出が表示用の型を借りたくなったら、その型を input か interpretation に置く
   - unit testの `node --experimental-strip-types` は `.tsx` を読めない。計算がReactのファイルを1つでもimportするとテストできなくなる
@@ -456,14 +453,11 @@ src/
   - 集合対象とN感度の例外向けに、抽出は「Traceを依頼する窓口」（`TraceRequester`、`analyzers/contract.ts`）を受け取れる。窓口の実装（キャッシュ経由でTraceを共有する）は `engine/trace-requester.ts` が持つ
 - **storageを直接触るのは platform と app だけ。** 保存が要る層（hosts・editors等）は、appが組み立てたアダプタを注入して使う。Testerは当面の例外
 - **import の書き方。** 別のトップディレクトリへは `#<dir>/...`（`package.json` の `imports`）、同じトップディレクトリの中は相対パス。ディレクトリを import しない（`index.ts` の暗黙解決はNodeのstrip-typesで動かない）。拡張子を付けて書く
-- 外部ライブラリ: react-grid-layout は `hosts/workspace/` だけ（`WorkspaceGrid.tsx` が読む。`test/architecture-layers.test.ts` が検査する）、TanStack Router / Start は routes・app・`hosts/standalone/` だけ（legacy と `features/analyzer-next/` は旧実装なので除く）。描画ライブラリ（motion等）は純粋な層以外で使ってよい
+- 外部ライブラリ: react-grid-layout は `hosts/workspace/` だけ（`WorkspaceGrid.tsx` が読む。`test/architecture-layers.test.ts` が検査する）、TanStack Router / Start は routes・app・`hosts/standalone/` だけ。描画ライブラリ（motion等）は純粋な層以外で使ってよい
 - 部品は最初は使う場所に置き、2つ目の使い手が現れた時に ui へ下ろす。Analyzer同士で共有したくなったら ui か interpretation へ下ろす
 
-## 移行中の扱い
+## 例外と記録
 
-既存ファイルの配置は完了している。置き換え前の実装については次の扱いを続ける。
-
-- `features/analyzer-next/` は移行中の実装で、engine・Setup・Analyzer契約ができた時点で置き換えて消す。それまで旧実装と同じく何をimportしてもよく、新しいコードからはimportしない。`docs/analyzer-next-state-contract.md` も同時に消す
-- 旧画面の機能と新しい受け皿の対応表は [legacy-inventory.md](legacy-inventory.md)。切り替えの完了条件で、旧画面を消す前に「作る候補」「捨てる候補」の行を無くす
+- 旧画面の機能と新しい受け皿の対応表は [legacy-inventory.md](legacy-inventory.md)。旧画面の機能ごとに、新しい構成のどこで受けるか、または持ち越さないと決めたかを載せている
 - 規則に反するが今は直せないimportは `KNOWN_VIOLATIONS` に理由付きで載せる。解消したら消す（残っているとテストが落ちる）
-- 純粋さの違反（ブラウザAPIの使用）には逃げ道を作らない。移行で当たる箇所は、先に扱いを決めておく
+- 純粋さの違反（ブラウザAPIの使用）には逃げ道を作らない。新しく当たる箇所は、先に扱いを決めておく

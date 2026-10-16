@@ -19,8 +19,7 @@ import {
 /**
  * N感度Analyzerの抽出。
  *
- * 仕様 §11.9。旧実装（`src/analyzers/n-sensitivity/sensitivity.ts`の`nSensitivity`・
- * `src/legacy/analyzer-metrics-content.tsx`の`AnalyzerSensitivityResults`）と同じ範囲
+ * 仕様 §11.9。`src/analyzers/n-sensitivity/sensitivity.ts`の`nSensitivity`と同じ範囲
  * （N=0..10）で`totalUnits`[u]を求める。
  *
  * **`computeMetrics`を呼び直さない。** `totalUnits`は`computeMetrics`の中身を読むと

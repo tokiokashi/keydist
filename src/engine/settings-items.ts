@@ -64,8 +64,7 @@ function shapeHasThumb(context: CascadeContext, finger: 'LT' | 'RT'): boolean {
 
 export const SETTINGS_ITEMS = {
   /**
-   * 先読みN。旧`ConditionDefaults`はグローバルとlayoutの2段しか持たなかった。
-   * shape/inputMethodレベルは今のところ要望が無いので足さない
+   * 先読みN。shape/inputMethodレベルは今のところ要望が無いので足さない
    * （AGENTS.md「設定項目を足すか決める」の3つ目: 先回りして足さない）。
    */
   windowSize: defineItem<number>({
@@ -113,11 +112,8 @@ export const SETTINGS_ITEMS = {
    * 直接指すので、layout/setup以外では中身が意味を持たない。globalは「既定disabled」を置ける
    * ので許す（値そのものはlayoutを選ばない）。
    *
-   * 単位はオブジェクト全体（フィールド単位にしない）。旧実装の
-   * `resolveConditions`（src/engine/condition-resolution.ts）が
-   * `{ ...defaults, ...override }` とトップレベルのキーだけをスプレッドして決めており、
-   * `actionRealization` はキー自体が1つの値として丸ごと置き換わっていた。カスケードの
-   * 項目粒度をそれに合わせることで、解決の意味を変えない。
+   * 単位はオブジェクト全体（フィールド単位にしない）。上のレベルの値を下のレベルが
+   * 丸ごと置き換えるので、レベルをまたいで一部の項目だけが混ざることがない。
    */
   actionRealizationPolicy: defineItem<ActionRealizationPolicy>({
     id: 'actionRealizationPolicy',

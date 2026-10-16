@@ -50,7 +50,7 @@ function seedTwoWorkspaces(page: Page): Promise<void> {
   }, { key: WORKSPACES_KEY, value: [make('w1', '一つ目'), make('w2', '二つ目')] });
 }
 
-async function openStandalone(page: Page, path = '/standalone/n-sensitivity'): Promise<void> {
+async function openStandalone(page: Page, path = '/analyzer/n-sensitivity'): Promise<void> {
   await page.goto(path);
   await waitForHydration(page);
   await expect(addButton(page)).toBeEnabled({ timeout: 15_000 });
@@ -75,7 +75,7 @@ test('既存のWorkspaceへ追加すると、個別画面に留まって知ら�
 
   const notice = page.locator('[data-added-to-workspace-notice]');
   await expect(notice).toContainText('「比較用」に追加しました');
-  await expect(page).toHaveURL(/\/standalone\/n-sensitivity$/);
+  await expect(page).toHaveURL(/\/analyzer\/n-sensitivity$/);
   await expect.poll(async () => (await storedWorkspaces(page))[0]?.panes.map((pane) => pane.analyzerId))
     .toEqual(['bigram-flow', 'n-sensitivity']);
   expect((await storedWorkspaces(page))[0]!.panes[1]!.binding.mode).toBe('follow');
@@ -88,14 +88,14 @@ test('既存のWorkspaceへ追加すると、個別画面に留まって知ら�
 });
 
 test('新しいWorkspaceに追加すると、Workspaceが1つ増えてそのペインが入る', async ({ page }) => {
-  await openStandalone(page, '/standalone/bigram-flow');
+  await openStandalone(page, '/analyzer/bigram-flow');
   await addButton(page).click();
   await expect(page.getByRole('menuitem')).toHaveText(['新しいWorkspaceに追加']);
   await page.getByRole('menuitem', { name: '新しいWorkspaceに追加' }).click();
 
   const notice = page.locator('[data-added-to-workspace-notice]');
   await expect(notice).toContainText('に追加しました');
-  await expect(page).toHaveURL(/\/standalone\/bigram-flow$/);
+  await expect(page).toHaveURL(/\/analyzer\/bigram-flow$/);
   await expect.poll(async () => (await storedWorkspaces(page)).map((workspace) => workspace.panes.map((pane) => pane.analyzerId)))
     .toEqual([['bigram-flow']]);
 
@@ -106,7 +106,7 @@ test('新しいWorkspaceに追加すると、Workspaceが1つ増えてそのペ�
 
 test('キーボードだけで開いて選べ、Escapeで何も追加せずに閉じてボタンへ戻る', async ({ page }) => {
   await seedWorkspace(page);
-  await openStandalone(page, '/standalone/comparison');
+  await openStandalone(page, '/analyzer/comparison');
   const button = addButton(page);
   await button.focus();
   await page.keyboard.press('Enter');
@@ -164,7 +164,7 @@ test('削除の知らせと追加の知らせが同時に出ても重ならず�
 });
 
 test('追加を元に戻すと知らせが消え、やり直すと戻る（「開く」が無いWorkspaceへ移らない）', async ({ page }) => {
-  await openStandalone(page, '/standalone/bigram-flow');
+  await openStandalone(page, '/analyzer/bigram-flow');
   await addButton(page).click();
   await page.getByRole('menuitem', { name: '新しいWorkspaceに追加' }).click();
   const notice = page.locator('[data-added-to-workspace-notice]');
@@ -186,7 +186,7 @@ test('追加を元に戻すと知らせが消え、やり直すと戻る（「�
 test('解析設定の書き込みが間引き待ちの間に追加しても、元に戻す1回で追加が戻る', async ({ page }) => {
   // 間引き（400ms）のタイマーを止めて、待ち中の変更を作る
   await page.clock.install();
-  await openStandalone(page, '/standalone/bigram-flow');
+  await openStandalone(page, '/analyzer/bigram-flow');
   const now = await page.evaluate(() => Date.now());
   await page.clock.pauseAt(now + 60_000);
 
@@ -240,7 +240,7 @@ async function addedPane(page: Page): Promise<{ optionsBinding?: { mode: string;
 
 test('共有の設定がある追加先へ、何も変えていない指ごとの距離を追加すると、共有に従う（保存した形と全項目の下書きは同じ設定として比べる）', async ({ page }) => {
   await seedWorkspaceWithSharedOptions(page);
-  await openStandalone(page, '/standalone/finger-distance');
+  await openStandalone(page, '/analyzer/finger-distance');
   await addButton(page).click();
   await page.getByRole('menuitem', { name: '共有あり' }).click();
   const pane = await addedPane(page);
@@ -250,7 +250,7 @@ test('共有の設定がある追加先へ、何も変えていない指ごと�
 
 test('共有の設定と同じWithin-handを選んだBigram Flowを追加すると共有に従い、違う設定なら共有を書き換えずこのペインだけの設定になる', async ({ page }) => {
   await seedWorkspaceWithSharedOptions(page);
-  await openStandalone(page, '/standalone/bigram-flow');
+  await openStandalone(page, '/analyzer/bigram-flow');
   await page.getByRole('button', { name: '解析設定', exact: true }).click();
   await page.locator('[data-settings-window="true"]').getByRole('button', { name: 'Within-hand' }).click();
   await page.locator('[data-settings-window="true"]').getByRole('button', { name: '解析設定を閉じる' }).click();

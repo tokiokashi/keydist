@@ -529,7 +529,7 @@ test('Workspaceを作ると、個別画面で選んでいる対象が最初の�
   await expect(targetButton(page.locator('.pane-frame').first())).toHaveAttribute('aria-label', COLEMAK_LABEL);
 
   // 個別画面で選び直しても、Workspaceの対象は変わらない
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await waitForHydration(page);
   await chooseLayout(page, targetButton(page.locator('.pane-frame')), 'qwerty');
   await expect(targetButton(page.locator('.pane-frame'))).toHaveAttribute('aria-label', QWERTY_LABEL);
@@ -573,7 +573,7 @@ test('テキストはWorkspace自身が持ち、個別画面のテキストと�
   expect((await storedWorkspaces(page)).workspaces[0]!.text.ref.id).toBe(chosen);
 
   // 個別画面はこれまでどおり既定のテキストを使う
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('.context-bar button.text-chip')).toContainText('吾輩は猫である');
 });
 
@@ -865,7 +865,7 @@ test('Workspaceの文脈バーに共有ボタンは無く、個別画面には�
   await expect(share).toHaveCount(0);
 
   // 個別画面はURLで対象を運べるので、共有が残る
-  await page.goto('/standalone/comparison');
+  await page.goto('/analyzer/comparison');
   await waitForHydration(page);
   await expect(share).toBeVisible();
 });
@@ -920,7 +920,7 @@ test('Workspaceのペインの条件のモーダルはWorkspaceのレベルで�
   expect(await storedGlobalOverrides(page)).toEqual({});
 
   // 個別画面には入らない
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
   await expect(page.locator('.pane-condition-trigger')).toContainText('すべて既定値');
   const standaloneModal = await openPaneConditionModal(page, page.locator('.pane-frame'));
@@ -997,7 +997,7 @@ test('Workspaceの文脈バーの既定の物理配列は、Workspaceのレベ�
   await page.keyboard.press('Escape');
 
   // 個別画面のチップは全体の値のまま
-  await page.goto('/standalone/bigram-flow');
+  await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
   await expect(page.locator('.context-bar').getByLabel('既定の物理配列')).toHaveValue('row-staggered');
 });
@@ -1104,7 +1104,7 @@ test('Workspaceで変えた条件はWorkspaceの元に戻すで戻り、個別�
 
   // 別のタブで開いた個別画面は、Workspaceの値を持たない。その画面の履歴は空（Workspaceの操作は戻せない）
   const other = await context.newPage();
-  await other.goto('/standalone/bigram-flow');
+  await other.goto('/analyzer/bigram-flow');
   await expect(other.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
   await expect(other.locator('.pane-condition-trigger')).toContainText('すべて既定値');
   await expect(other.getByRole('button', { name: '元に戻す' })).toBeDisabled();

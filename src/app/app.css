@@ -38,12 +38,6 @@ a {
   padding: 0;
 }
 
-.app-shell.analyzer-route-shell {
-  width: 100%;
-  margin: 0;
-  padding: 0;
-}
-
 .hero,
 .feature-shell,
 .route-status {
@@ -215,20 +209,6 @@ h1 {
 .top-pick-link {
   color: var(--text);
   text-underline-offset: 3px;
-}
-
-.hero > p.hero-legacy {
-  margin-top: 1.25rem;
-  font-size: 0.85rem;
-}
-
-.hero-legacy a {
-  color: var(--text-muted);
-  text-underline-offset: 3px;
-}
-
-.hero-legacy a:hover {
-  color: var(--text);
 }
 
 .feature-placeholder {

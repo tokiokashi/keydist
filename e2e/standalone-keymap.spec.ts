@@ -17,7 +17,7 @@ const feature = (page: Page) => page.locator('[data-react-feature="keymap"]');
 
 test('コンボを持つ配列: コンボ表と配列図が出て、修飾は無いと分かる', async ({ page }) => {
   await selectLayout(page, 'kawasemi-plus');
-  await page.goto('/standalone/keymap');
+  await page.goto('/analyzer/keymap');
   await expect(page.getByRole('heading', { name: 'キーマップ', exact: true, level: 1 })).toBeVisible();
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   await expect(feature(page).locator('[data-keymap-table="combo"] tbody tr')).toHaveCount(45);
@@ -27,14 +27,14 @@ test('コンボを持つ配列: コンボ表と配列図が出て、修飾は無
 
 test('文字キーの同時押しを層に数える配列: コンボ表は無いと分かる', async ({ page }) => {
   await selectLayout(page, 'shin-koume');
-  await page.goto('/standalone/keymap');
+  await page.goto('/analyzer/keymap');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   await expect(feature(page).getByText('この打ち方で使えるコンボはありません。')).toBeVisible();
 });
 
 test('修飾のレイヤーを持つ配列: 修飾の一覧が出て、コンボは無いと分かる', async ({ page }) => {
   await selectLayout(page, 'naginata-v18');
-  await page.goto('/standalone/keymap');
+  await page.goto('/analyzer/keymap');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   await expect(feature(page).locator('[data-keymap-table="modifier"] tbody tr').first()).toBeVisible();
   await expect(feature(page).getByText('この打ち方で使えるコンボはありません。')).toBeVisible();
@@ -43,7 +43,7 @@ test('修飾のレイヤーを持つ配列: 修飾の一覧が出て、コンボ
 
 test('キーを選んで出る文字を調べる: キーボードでキーを選ぶと出る文字が候補に出て、Escapeで選択が外れる', async ({ page }) => {
   await selectLayout(page, 'qwerty');
-  await page.goto('/standalone/keymap');
+  await page.goto('/analyzer/keymap');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
 
   const pattern = feature(page).locator('[data-keymap-pattern]');
@@ -64,7 +64,7 @@ test('キーを選んで出る文字を調べる: キーボードでキーを選
 
 test('トリガーになるキーの色付け: レイヤーとコンボの両方を持つ配列は、何も選ばない間に色付きの枠と凡例が出る', async ({ page }) => {
   await selectLayout(page, 'kawasemi-plus');
-  await page.goto('/standalone/keymap');
+  await page.goto('/analyzer/keymap');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   const pattern = feature(page).locator('[data-keymap-pattern]');
   await expect(pattern.locator('[data-keymap-trigger-legend]')).toBeVisible();
@@ -76,7 +76,7 @@ test('トリガーになるキーの色付け: レイヤーとコンボの両方
 
 test('トリガーになるキーの色付け: 1キーでレイヤーに切り替わるキーを選ぶと、選んだ枠がそのレイヤーの色になり、トリガーの枠は消える', async ({ page }) => {
   await selectLayout(page, 'nicola');
-  await page.goto('/standalone/keymap');
+  await page.goto('/analyzer/keymap');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   const pattern = feature(page).locator('[data-keymap-pattern]');
   const first = pattern.locator('[data-guide="trigger"][data-accent-slot]').first();
@@ -91,7 +91,7 @@ test('トリガーになるキーの色付け: 1キーでレイヤーに切り�
 
 test('レイヤーをまとめる配列: 既定では凡例が2項目で、まとめられる側のトリガーは目立たない色になり、全レイヤー詳細で全レイヤーの凡例が出る', async ({ page }) => {
   await selectLayout(page, 'naginata-v18');
-  await page.goto('/standalone/keymap');
+  await page.goto('/analyzer/keymap');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   const pattern = feature(page).locator('[data-keymap-pattern]');
   const legend = pattern.locator('[data-keymap-trigger-legend] [data-legend-tone]');
@@ -121,7 +121,7 @@ test('レイヤーをまとめる配列: 既定では凡例が2項目で、ま�
 for (const layoutId of ['kawasemi-plus', 'nicola']) {
   test(`${layoutId}: レイヤーをまとめる宣言が無い配列には、まとめ方の切り替えを出さない`, async ({ page }) => {
     await selectLayout(page, layoutId);
-    await page.goto('/standalone/keymap');
+    await page.goto('/analyzer/keymap');
     await expect(feature(page)).toBeVisible({ timeout: 10_000 });
     await expect(page.getByRole('button', { name: 'キーを選んで出る文字を調べる図の表示' })).toHaveCount(0);
   });
@@ -129,7 +129,7 @@ for (const layoutId of ['kawasemi-plus', 'nicola']) {
 
 test('トリガーになるキーの枠: 実線で、普通のキーの枠より太く、続けて押せるキーの枠より細い。凡例の見本も実線', async ({ page }) => {
   await selectLayout(page, 'kawasemi-plus');
-  await page.goto('/standalone/keymap');
+  await page.goto('/analyzer/keymap');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   const pattern = feature(page).locator('[data-keymap-pattern]');
   const strokeOf = (key: Locator) => key.locator('rect').first().evaluate((rect) => {
@@ -156,7 +156,7 @@ test('トリガーになるキーの枠: 実線で、普通のキーの枠より
 for (const [layoutId, below, belowName] of [['naginata-v18', '[data-keymap-table="modifier"]', '修飾の表'], ['kawasemi-plus', '[data-keymap-diagram]', 'コンボの配列図']] as const) {
   test(`${layoutId}: キーを選んで出る文字を調べる図が、${belowName}より上に出る`, async ({ page }) => {
     await selectLayout(page, layoutId);
-    await page.goto('/standalone/keymap');
+    await page.goto('/analyzer/keymap');
     await expect(feature(page)).toBeVisible({ timeout: 10_000 });
     const [patternBox, belowBox] = await Promise.all([
       feature(page).locator('[data-keymap-pattern]').boundingBox(),
@@ -168,7 +168,7 @@ for (const [layoutId, below, belowName] of [['naginata-v18', '[data-keymap-table
 
 test('トリガーになるキーの色付け: レイヤーもコンボも持たない配列には凡例が出ない', async ({ page }) => {
   await selectLayout(page, 'qwerty');
-  await page.goto('/standalone/keymap');
+  await page.goto('/analyzer/keymap');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   await expect(feature(page).locator('[data-keymap-pattern]')).toBeVisible();
   await expect(feature(page).locator('[data-keymap-trigger-legend]')).toHaveCount(0);
@@ -177,7 +177,7 @@ test('トリガーになるキーの色付け: レイヤーもコンボも持た
 
 test('どちらも持たない配列: 修飾とコンボには無いと分かる', async ({ page }) => {
   await selectLayout(page, 'nicola');
-  await page.goto('/standalone/keymap');
+  await page.goto('/analyzer/keymap');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   await expect(feature(page).getByText('この配列は修飾のレイヤーを持ちません。')).toBeVisible();
   await expect(feature(page).getByText('この打ち方で使えるコンボはありません。')).toBeVisible();
@@ -189,7 +189,7 @@ test.describe('幅390pxの画面', () => {
   for (const [layoutId, diagram] of [['qwerty', 'pattern'], ['naginata-v18', 'pattern'], ['kawasemi-plus', 'combo']] as const) {
     test(`${layoutId}: ${diagram === 'pattern' ? 'キーを選んで出る文字を調べる' : 'コンボ'}の図が枠の幅に収まり、横スクロールにならない`, async ({ page }) => {
       await selectLayout(page, layoutId);
-      await page.goto('/standalone/keymap');
+      await page.goto('/analyzer/keymap');
       await expect(feature(page)).toBeVisible({ timeout: 10_000 });
 
       const frame = feature(page).locator(diagram === 'pattern' ? '[data-keymap-pattern] .physical-keyboard' : '[data-keymap-diagram] .physical-keyboard');

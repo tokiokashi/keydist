@@ -15,12 +15,8 @@ import {
   SHIFT_KEY,
   THUMB_KEY,
   type PhysicalKeyboardStandard,
-  type PhysicalShape,
 } from '#input/shapes/geometry.ts';
 import { groupShapes } from '#input/shapes/shape-groups.ts';
-import {
-  sanitizeGeometrySettings,
-} from '#input/shapes/settings.ts';
 import {
   aggregationLegendMap,
   aggregationTriggerKeys,
@@ -41,7 +37,6 @@ import {
   physicalKeysUsedByLayout,
   visibleGeometryKeys,
 } from '#input/layouts/physical-keys.ts';
-import { load as loadUserGeometryShapes } from '#platform/assets/user-geometries-storage.ts';
 import {
   createWorkspacePanelRegistry,
 } from './panels/panel-registry.ts';
@@ -291,9 +286,8 @@ export function InputConverterView() {
   const [bindingTargetKey, setBindingTargetKey] = useState<string>();
   const [bindingCapturing, setBindingCapturing] = useState(false);
   const bindingCaptureCodeRef = useRef<string | undefined>(undefined);
-  const [userGeometryShapes, setUserGeometryShapes] = useState<PhysicalShape[]>([]);
   const [geometryId, setGeometryId] = useState(PHYSICAL_SHAPES['row-staggered'].id);
-  // 刻印の表示に使う規格。自作物理配列は規格を持たないので未指定にする
+  // 刻印の表示に使う規格
   const keyboardStandard = keyboardStandardForGeometryId(geometryId);
   const keyLabel = (key: string) => physicalKeyDisplayLabel(key, keyboardStandard);
   const codeLabel = (code: string) => browserCodeDisplayLabel(code, keyboardStandard);
@@ -430,20 +424,12 @@ export function InputConverterView() {
   };
 
   useEffect(() => {
-    const shapes = loadUserGeometryShapes();
-    setUserGeometryShapes(shapes);
     setBindingOverrides(loadBrowserKeyBindingOverrides(window.localStorage));
 
-    // geometryIdのカタログはuser-geometriesの内容込みで判定する必要があるため、
-    // useState経由の(まだこのeffect内では反映されていない)userGeometryShapesではなく、
-    // 直前に読んだshapesをそのまま使う。
     const restored = preferences.restoreOnce(
       {
         layoutIds: INPUT_LAYOUTS.map((candidate) => candidate.id),
-        geometryIds: [
-          ...PRESET_GEOMETRY_SHAPES.map((shape) => shape.id),
-          ...shapes.map((shape) => shape.id),
-        ],
+        geometryIds: PRESET_GEOMETRY_SHAPES.map((shape) => shape.id),
       },
       {
         layoutId: layout.id,
@@ -577,11 +563,7 @@ export function InputConverterView() {
     };
   }, [bindingCapturing, bindingOverrides, bindingTargetKey]);
 
-  const geometryShapes = useMemo(
-    () => [...PRESET_GEOMETRY_SHAPES, ...userGeometryShapes],
-    [userGeometryShapes],
-  );
-  const selectedShape = geometryShapes.find((shape) => shape.id === geometryId)
+  const selectedShape = PRESET_GEOMETRY_SHAPES.find((shape) => shape.id === geometryId)
     ?? PHYSICAL_SHAPES['row-staggered'];
   const geometry = useMemo(() => {
     if (isPresetGeometryKind(geometryId)) {
@@ -592,11 +574,7 @@ export function InputConverterView() {
           : DEFAULT_FINGER_ASSIGNMENT,
       );
     }
-    const settings = sanitizeGeometrySettings({
-      shape: selectedShape,
-      assignment: DEFAULT_FINGER_ASSIGNMENT,
-    });
-    return buildGeometry(settings.shape, settings.assignment);
+    return buildGeometry(selectedShape, DEFAULT_FINGER_ASSIGNMENT);
   }, [geometryId, selectedShape]);
   const visibleKeys = useMemo(
     () => visibleGeometryKeys(layout, geometry)
@@ -987,7 +965,7 @@ export function InputConverterView() {
                   value={geometryId}
                   onChange={(event) => setGeometryId(event.target.value)}
                 >
-                  {groupShapes(geometryShapes).map((group) => (
+                  {groupShapes(PRESET_GEOMETRY_SHAPES).map((group) => (
                     <optgroup key={group.key} label={group.label}>
                       {group.shapes.map((shape) => (
                         <option key={shape.id} value={shape.id}>{shape.name}</option>
