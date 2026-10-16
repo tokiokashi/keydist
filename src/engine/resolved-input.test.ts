@@ -371,10 +371,19 @@ test('Setupのレベルのローマ字規則が解決できない時は、訓令
   assert.deepEqual(input.cascade.romajiRuleId.diagnostics.map((diagnostic) => diagnostic.kind), ['invalid-fallback']);
 });
 
-test('ローマ字規則の診断はSetupのレベルだけ: 他のレベルの解決できない規則では診断を足さない', () => {
-  const input = resolveWithRomajiRule({ kind: 'global' }, 'romaji-gone');
-  assert.deepEqual(input.layout.romajiTable, tableForRule('kunrei'));
-  assert.equal(input.cascade.romajiRuleId.diagnostics.length, 0);
+test('ローマ字規則の診断はSetup以外のレベルの値にも付く: 全体・Workspace・打ち方・配列', () => {
+  const levels = [
+    { kind: 'global' },
+    { kind: 'workspace' },
+    { kind: 'inputMethod', inputMethod: 'romaji' },
+    { kind: 'layout', layoutId: 'qwerty' },
+  ] as const;
+  for (const level of levels) {
+    const input = resolveWithRomajiRule(level, 'romaji-gone');
+    assert.deepEqual(input.layout.romajiTable, tableForRule('kunrei'), level.kind);
+    assert.equal(input.cascade.romajiRuleId.value, 'romaji-gone', level.kind);
+    assert.deepEqual(input.cascade.romajiRuleId.diagnostics.map((d) => d.kind), ['invalid-fallback'], level.kind);
+  }
 });
 
 test('Setupのレベルのローマ字規則が組み込みなら診断は無い', () => {
