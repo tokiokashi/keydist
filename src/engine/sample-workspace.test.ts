@@ -84,12 +84,14 @@ test('サンプルの並び: 上に比較表とN感度の横並び（18 + 6列�
     SAMPLE_BIGRAM_FLOW_LAYOUT_IDS.map((layoutId) => ({ kind: 'layout', layoutId })),
   );
   // Bigram Flowの4つは、2打鍵の取り方がWithin-handの共有の設定に従う。指ごとの距離の4つも1つの共有の設定に従う
-  assert.deepEqual(created.optionSets, [
-    { id: 'bigram-flow-1', analyzerId: 'bigram-flow', options: { source: 'within-hand' } },
-    { id: 'finger-distance-1', analyzerId: 'finger-distance', options: undefined },
+  assert.deepEqual(created.optionSets.map(({ analyzerId, options }) => ({ analyzerId, options })), [
+    { analyzerId: 'bigram-flow', options: { source: 'within-hand' } },
+    { analyzerId: 'finger-distance', options: undefined },
   ]);
   for (const pane of created.panes.filter((candidate) => ['bigram-flow', 'finger-distance'].includes(candidate.analyzerId))) {
-    assert.deepEqual(pane.optionsBinding, { mode: 'shared', set: `${pane.analyzerId}-1` });
+    const binding = pane.optionsBinding;
+    const set = binding.mode === 'shared' ? created.optionSets.find((candidate) => candidate.id === binding.set) : undefined;
+    assert.equal(set?.analyzerId, pane.analyzerId);
     assert.equal(resolvePaneOptions(created, pane) === undefined, pane.analyzerId === 'finger-distance');
   }
   assert.deepEqual(created.conditions, { defaultShapeId: 'split-ortholinear' });

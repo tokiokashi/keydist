@@ -84,9 +84,15 @@ export interface OptionSet {
   readonly options: unknown;
 }
 
-/** Analyzerの最初の組のid。画面が作る組はこれ1つだけ。 */
-export function initialOptionSetId(analyzerId: string): string {
-  return `${analyzerId}-1`;
+/**
+ * 新しく作る組のid。そのAnalyzerのidに番号を付け、Workspaceにある全ての組のid（別のAnalyzerの組を含む）と
+ * 重ならない最小の番号を取る。重なると、別のAnalyzerの組へ従わせる指定になり、ペインを足せない。
+ */
+export function newOptionSetId(workspace: Pick<Workspace, 'optionSets'>, analyzerId: string): string {
+  const used = new Set(workspace.optionSets.map((set) => set.id));
+  let n = 1;
+  while (used.has(`${analyzerId}-${n}`)) n += 1;
+  return `${analyzerId}-${n}`;
 }
 
 export function sharedOptions(set: string): PaneOptionsBinding {
@@ -94,7 +100,7 @@ export function sharedOptions(set: string): PaneOptionsBinding {
 }
 
 /**
- * 新しく足すペインの解析設定の持ち方の既定: そのAnalyzerの組があれば先頭の組に従い、無ければ最初の組のidに従う
+ * 新しく足すペインの解析設定の持ち方の既定: そのAnalyzerの組があれば先頭の組に従い、無ければ新しい組のidに従う
  * （組はペインを足す時に作られる。`addWorkspacePane`）。
  */
 export function defaultOptionsBinding(
@@ -102,7 +108,7 @@ export function defaultOptionsBinding(
   analyzerId: string,
 ): PaneOptionsBinding {
   const set = findDefaultOptionSet(workspace, analyzerId);
-  return sharedOptions(set?.id ?? initialOptionSetId(analyzerId));
+  return sharedOptions(set?.id ?? newOptionSetId(workspace, analyzerId));
 }
 
 /** 新しいペインが従う組（そのAnalyzerの先頭の組）。無ければ`undefined`。 */
@@ -112,7 +118,7 @@ export function findDefaultOptionSet(workspace: Pick<Workspace, 'optionSets'>, a
 
 function defaultOptionSetId(workspace: Pick<Workspace, 'optionSets'>, analyzerId: string): string {
   const binding = defaultOptionsBinding(workspace, analyzerId);
-  return binding.mode === 'shared' ? binding.set : initialOptionSetId(analyzerId);
+  return binding.mode === 'shared' ? binding.set : newOptionSetId(workspace, analyzerId);
 }
 
 /**
@@ -506,7 +512,7 @@ export function withWorkspacePaneOptions(
   });
 }
 
-/** 解析設定の持ち方の切り替え。`shared`の`set`を省くと、そのAnalyzerの先頭の組（無ければ最初の組のid）。 */
+/** 解析設定の持ち方の切り替え。`shared`の`set`を省くと、そのAnalyzerの先頭の組（無ければ新しい組のid）。 */
 export type PaneOptionsChoice =
   | { readonly kind: 'own' }
   | { readonly kind: 'shared'; readonly set?: string };

@@ -3,7 +3,7 @@ import {
   addWorkspacePane,
   createWorkspace,
   followBinding,
-  initialOptionSetId,
+  newOptionSetId,
   OWN_OPTIONS,
   sharedOptions,
   type LinkGroup,
@@ -168,8 +168,8 @@ const OVERVIEW: SampleDefinition = {
   // Bigram Flowの4つは1つの共有の設定に従う（2打鍵の取り方を1か所で変えられる）。指ごとの距離の4つも1つの共有の設定
   // に従い、こちらは既定のまま始める
   optionSets: [
-    { id: initialOptionSetId(SAMPLE_BIGRAM_FLOW_ANALYZER_ID), analyzerId: SAMPLE_BIGRAM_FLOW_ANALYZER_ID, options: SAMPLE_BIGRAM_FLOW_OPTIONS },
-    { id: initialOptionSetId(SAMPLE_FINGER_DISTANCE_ANALYZER_ID), analyzerId: SAMPLE_FINGER_DISTANCE_ANALYZER_ID, options: undefined },
+    { id: newOptionSetId({ optionSets: [] }, SAMPLE_BIGRAM_FLOW_ANALYZER_ID), analyzerId: SAMPLE_BIGRAM_FLOW_ANALYZER_ID, options: SAMPLE_BIGRAM_FLOW_OPTIONS },
+    { id: newOptionSetId({ optionSets: [] }, SAMPLE_FINGER_DISTANCE_ANALYZER_ID), analyzerId: SAMPLE_FINGER_DISTANCE_ANALYZER_ID, options: undefined },
   ],
   // 上の段は比較表とN感度の2つ、中の段はBigram Flowの4つ、下の段は指ごとの距離の4つが左から並ぶ
   panes: [
@@ -247,11 +247,12 @@ export function applySampleLayout(
 
   // 既存のペイン追加と同じ経路で置く。空いている最初の場所に入る
   for (const spec of definition.panes) {
+    const set = spec.optionSet === true ? seeded.optionSets.find((candidate) => candidate.analyzerId === spec.analyzerId) : undefined;
     const pane: WorkspacePane = {
       id: generatePaneId(),
       analyzerId: spec.analyzerId,
       options: spec.options,
-      optionsBinding: spec.optionSet === true ? sharedOptions(initialOptionSetId(spec.analyzerId)) : OWN_OPTIONS,
+      optionsBinding: set !== undefined ? sharedOptions(set.id) : OWN_OPTIONS,
       binding: followBinding(groupId(spec.group)),
     };
     next = addWorkspacePane(next, workspaceId, pane, spec.size, definition.range);
