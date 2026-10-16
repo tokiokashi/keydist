@@ -153,7 +153,7 @@ test('計算に使えない配列・見つからないSetupは、行を出さず
   assert.equal(broken.ok, false);
 });
 
-test('適用範囲は全体・Workspace・配列・Setupの順に並び、名前は上書きの一覧と同じ', () => {
+test('適用範囲は全体・Workspace・配列・Setupの順に並び、名前は変更した条件の一覧と同じ', () => {
   const workspaces = [workspaceWith(undefined)];
   const setups = [{ id: 'setup-a', displayName: 'Setupの名前' }];
   const names = conditionValueNames(catalog, [], [], []);
@@ -180,17 +180,17 @@ function groupOf(key: string, title: string, itemIds: readonly SettingsItemId[])
   };
 }
 
-test('他の適用範囲の上書きの名前は3つまで出し、残りは数で出す', () => {
+test('他の適用範囲の変更の名前は3つまで出し、残りは数で出す', () => {
   const groups = ['a', 'b', 'c', 'd', 'e'].map((name) => groupOf(`layout:${name}`, `配列「${name}」`, ['windowSize']));
   const note = otherPlacementNote(groups, 'global', 'windowSize');
-  assert.equal(note, 'ほかの適用範囲でも上書きしています: 配列「a」、配列「b」、配列「c」、ほか2件');
+  assert.equal(note, 'ほかの適用範囲でも変更しています: 配列「a」、配列「b」、配列「c」、ほか2件');
   assert.equal(
     otherPlacementNote(groups.slice(0, 3), 'global', 'windowSize'),
-    'ほかの適用範囲でも上書きしています: 配列「a」、配列「b」、配列「c」',
+    'ほかの適用範囲でも変更しています: 配列「a」、配列「b」、配列「c」',
   );
 });
 
-test('他の適用範囲の上書きは、選んだ適用範囲と別の項目を数えず、物理配列などのレベルも数える', () => {
+test('他の適用範囲の変更は、選んだ適用範囲と別の項目を数えず、物理配列などのレベルも数える', () => {
   const groups = [
     groupOf('global', '全体', ['windowSize']),
     groupOf('shape:row-staggered', '物理配列「x」', ['windowSize', 'sfbHomeCost']),
@@ -199,8 +199,8 @@ test('他の適用範囲の上書きは、選んだ適用範囲と別の項目�
   ];
   assert.equal(
     otherPlacementNote(groups, 'global', 'windowSize'),
-    'ほかの適用範囲でも上書きしています: 物理配列「x」、（見つからない配列）',
+    'ほかの適用範囲でも変更しています: 物理配列「x」、（見つからない配列）',
   );
-  assert.equal(otherPlacementNote(groups, 'setup:s', 'sfbHomeCost'), 'ほかの適用範囲でも上書きしています: 物理配列「x」');
+  assert.equal(otherPlacementNote(groups, 'setup:s', 'sfbHomeCost'), 'ほかの適用範囲でも変更しています: 物理配列「x」');
   assert.equal(otherPlacementNote(groups, 'global', 'romajiRuleId'), undefined);
 });

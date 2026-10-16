@@ -125,7 +125,7 @@ function assetsWith(overrides: SettingsCascadeOverrides, workspaces: readonly Wo
   };
 }
 
-test('一覧の適用範囲の情報で上書きを消すと一覧から消え、元に戻すと戻る。Workspaceのレベルも同じ', () => {
+test('一覧の適用範囲の情報で変更を戻すと一覧から消え、元に戻すと戻る。Workspaceのレベルも同じ', () => {
   const workspace: Workspace = { ...createWorkspace(initialWorkspaceLibrary(), () => 'ws-1', 'W').library[0]!, conditions: { windowSize: 4 } };
   const assets = assetsWith({ layout: { 'user-a': { romajiRuleId: 'rule-a' } } }, [workspace]);
   const listOf = (current: KeydistAssets) => groupsOf(current.setupLibrary.overrides, { workspaces: current.workspaces });
