@@ -6,6 +6,7 @@ import {
   assignHomeKey,
   assignKeyFinger,
   assignmentProblems,
+  ownerChangeBlock,
   removeKeyFromFinger,
   resetToDefaultAssignment,
   setBaseFinger,
@@ -20,6 +21,7 @@ import {
   keyOwners,
   PHYSICAL_SHAPES,
   QWERTY_OPTIMIZED_FINGER_ASSIGNMENT,
+  type Finger,
   type FingerAssignment,
 } from './geometry.ts';
 
@@ -118,22 +120,24 @@ test('キーの指を変えると、そのキーの基本の指がその指に�
   assert.deepEqual(assignmentProblems(homeMoved, ANSI), [{ kind: 'home-other-finger', finger: 'RI', keyId: 'j', keyFinger: 'RM' }]);
 });
 
-test('基本の指を変えると、その指が担当に加わり、前の基本の指は担当に残る。他のキーは変わらない', () => {
-  const changed = setBaseFinger(BASE, 'q', 'RP');
+test('基本の指の選び直しは担当を変えない。担当していない指を渡すと割り当ては変わらない', () => {
+  const owned = addKeyToFinger(BASE, 'q', 'RP');
+  const changed = setBaseFinger(owned, 'q', 'RP');
   assert.equal(changed.baseFinger.q, 'RP');
   assert.deepEqual(keyOwners(changed, 'q'), ['LP', 'RP']);
   assert.deepEqual(keyOwners(changed, 'w'), keyOwners(BASE, 'w'));
-  assert.equal(setBaseFinger(BASE, 'q', 'LP'), BASE);
+  assert.equal(setBaseFinger(owned, 'q', 'LP'), owned);
+  // 担当していない指は基本の指にできない
+  assert.equal(setBaseFinger(BASE, 'q', 'RP'), BASE);
   // 元の割り当ては書き換えない
   assert.equal(BASE.baseFinger.q, 'LP');
-  // 担当している指を基本の指にしても、担当の数は増えない
   const optimized: FingerAssignment = { ...QWERTY_OPTIMIZED_FINGER_ASSIGNMENT, id: 'finger-q', name: '編集用' };
   const moved = setBaseFinger(optimized, 'k', 'RR');
   assert.equal(moved.baseFinger.k, 'RR');
   assert.deepEqual(keyOwners(moved, 'k'), ['RI', 'RM', 'RR']);
 });
 
-test('指に担当するキーを足す・外す。基本の指の担当は外せず、親指も親指以外のキーを担当できる', () => {
+test('指に担当するキーを足す・外す。親指以外の最後の担当は外せず、親指も親指以外のキーを担当できる', () => {
   const added = addKeyToFinger(BASE, 'f', 'RT');
   assert.deepEqual(keyOwners(added, 'f'), ['LI', 'RT']);
   assert.equal(added.baseFinger.f, 'LI');
@@ -141,14 +145,48 @@ test('指に担当するキーを足す・外す。基本の指の担当は外�
 
   const removed = removeKeyFromFinger(added, 'f', 'RT');
   assert.deepEqual(keyOwners(removed, 'f'), ['LI']);
-  // 基本の指の担当は外せない
+  // 親指以外の最後の担当は、親指が担当していても外せない
+  assert.equal(removeKeyFromFinger(added, 'f', 'LI'), added);
   assert.equal(removeKeyFromFinger(BASE, 'f', 'LI'), BASE);
+  assert.equal(ownerChangeBlock(BASE, 'f', 'LI'), 'last-non-thumb');
+  assert.equal(ownerChangeBlock(added, 'f', 'RT'), undefined);
   // 担当していない指の担当を外しても変わらない
   assert.equal(removeKeyFromFinger(BASE, 'f', 'RI'), BASE);
 
   const toggled = toggleKeyOfFinger(BASE, 'f', 'RM');
   assert.deepEqual(keyOwners(toggled, 'f'), ['LI', 'RM']);
   assert.deepEqual(keyOwners(toggleKeyOfFinger(toggled, 'f', 'RM'), 'f'), ['LI']);
+});
+
+test('基本の指を外すと、同じ手の近い指が新しい基本の指になる。同じ近さなら指の固定の順', () => {
+  const withOwners = (owners: Finger[]) => owners.reduce((current, finger) => addKeyToFinger(current, 'f', finger), BASE);
+  // fの基本の指は左人差し指。左小指と左中指が残る時は、近い左中指
+  const near = removeKeyFromFinger(withOwners(['LP', 'LM']), 'f', 'LI');
+  assert.equal(near.baseFinger.f, 'LM');
+  assert.deepEqual(keyOwners(near, 'f'), ['LP', 'LM']);
+  // 左薬指と右人差し指が残る時は、同じ手の左薬指
+  assert.equal(removeKeyFromFinger(withOwners(['LR', 'RI']), 'f', 'LI').baseFinger.f, 'LR');
+  // 左中指を基本の指にして外す時、左薬指と左人差し指は同じ近さ。固定の順の左薬指
+  const middle = setBaseFinger(withOwners(['LR', 'LM']), 'f', 'LM');
+  assert.equal(removeKeyFromFinger(middle, 'f', 'LM').baseFinger.f, 'LR');
+  // 親指は新しい基本の指にならない
+  const thumb = removeKeyFromFinger(withOwners(['LT', 'LP']), 'f', 'LI');
+  assert.equal(thumb.baseFinger.f, 'LP');
+  assert.deepEqual(keyOwners(thumb, 'f'), ['LP', 'LT']);
+});
+
+test('同じ手の指が残らない時は反対の手の指が新しい基本の指になり、同じ規則で近い指を選ぶ', () => {
+  const withOwners = (owners: Finger[]) => owners.reduce((current, finger) => addKeyToFinger(current, 'f', finger), BASE);
+  const moved = removeKeyFromFinger(withOwners(['RP', 'RM']), 'f', 'LI');
+  assert.equal(moved.baseFinger.f, 'RM');
+  assert.deepEqual(keyOwners(moved, 'f'), ['RM', 'RP']);
+});
+
+test('基本でない担当を外しても基本の指は変わらない', () => {
+  const added = addKeyToFinger(BASE, 'f', 'RM');
+  const removed = removeKeyFromFinger(added, 'f', 'RM');
+  assert.equal(removed.baseFinger.f, 'LI');
+  assert.deepEqual(keyOwners(removed, 'f'), ['LI']);
 });
 
 test('基本の指が無いキーは、親指以外の指の担当を足すとその指が基本の指になり、親指の担当だけでは足せない', () => {
@@ -159,6 +197,8 @@ test('基本の指が無いキーは、親指以外の指の担当を足すと�
   };
   assert.deepEqual(keyOwners(sparse, 'z'), []);
   assert.equal(addKeyToFinger(sparse, 'z', 'RT'), sparse);
+  assert.equal(ownerChangeBlock(sparse, 'z', 'RT'), 'thumb-needs-base');
+  assert.equal(ownerChangeBlock(sparse, 'z', 'RM'), undefined);
   const added = addKeyToFinger(sparse, 'z', 'RM');
   assert.equal(added.baseFinger.z, 'RM');
   assert.deepEqual(keyOwners(added, 'z'), ['RM']);
@@ -166,8 +206,9 @@ test('基本の指が無いキーは、親指以外の指の担当を足すと�
 
 test('ホームキーを担当から外すと点検で見つかり、その指の担当に戻すか別のキーをホームにすると消える', () => {
   const optimized: FingerAssignment = { ...QWERTY_OPTIMIZED_FINGER_ASSIGNMENT, id: 'finger-q', name: '編集用' };
-  // jの基本の指を右中指に替えて右人差し指の担当を外す: 右人差し指のホームキーが右人差し指の担当でなくなる
-  const broken = removeKeyFromFinger(setBaseFinger(optimized, 'j', 'RM'), 'j', 'RI');
+  // jの右人差し指の担当を外す: 基本の指は残った担当から決まり、右人差し指のホームキーが右人差し指の担当でなくなる
+  const owned = addKeyToFinger(optimized, 'j', 'RM');
+  const broken = removeKeyFromFinger(owned, 'j', 'RI');
   assert.deepEqual(assignmentProblems(broken, ANSI), [{ kind: 'home-other-finger', finger: 'RI', keyId: 'j', keyFinger: 'RM' }]);
   assert.deepEqual(assignmentProblems(addKeyToFinger(broken, 'j', 'RI'), ANSI), []);
   assert.deepEqual(assignmentProblems(assignHomeKey(broken, 'RI', 'h'), ANSI), []);

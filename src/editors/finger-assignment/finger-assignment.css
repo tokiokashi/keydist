@@ -161,3 +161,9 @@
   align-items: center;
   gap: 0.35rem;
 }
+
+.finger-assignment .finger-assignment-owner-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}

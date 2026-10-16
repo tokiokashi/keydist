@@ -5,6 +5,9 @@ import {
   assignColumnFinger,
   assignHomeKey,
   assignmentProblems,
+  nonThumbOwnersOf,
+  ownerChangeBlock,
+  type OwnerChangeBlock,
   resetToDefaultAssignment,
   setBaseFinger,
   shapeColumns,
@@ -119,8 +122,15 @@ function problemText(problem: AssignmentProblem, standard: ReturnType<typeof key
   }
 }
 
-function FingerSelect({ value, label, onPick, placeholder }: {
+/** 担当を足し外しできない理由の、チェックのそばに出す短い文。 */
+const BLOCK_HINT: Record<OwnerChangeBlock, string> = {
+  'last-non-thumb': '別の指にチェックを入れてから外せます',
+  'thumb-needs-base': '親指は、基本の指のあるキーだけを担当できます',
+};
+
+function FingerSelect({ value, label, onPick, placeholder, options = FINGERS }: {
   readonly value: Finger | undefined;
+  readonly options?: readonly NonThumb[];
   readonly label: string;
   readonly onPick: (finger: NonThumb) => void;
   readonly placeholder: string;
@@ -135,7 +145,7 @@ function FingerSelect({ value, label, onPick, placeholder }: {
       }}
     >
       <option value="" disabled>{placeholder}</option>
-      {FINGERS.map((finger) => <option key={finger} value={finger}>{FINGER_LABEL[finger]}</option>)}
+      {options.map((finger) => <option key={finger} value={finger}>{FINGER_LABEL[finger]}</option>)}
     </select>
   );
 }
@@ -180,6 +190,8 @@ export function FingerAssignmentEditor({
   const [nameDraft, setNameDraft] = useState<string | undefined>(undefined);
   /** 指を選んで担当するキーを足す・外す操作の、選んでいる指。選んでいない間は、図のキーを押すとキーを選ぶ。 */
   const [editingFinger, setEditingFinger] = useState<Finger | undefined>(undefined);
+  /** 指単位で図のキーを押した時に、担当を変えられなかった理由。次の操作か、割り当てが替わると消える。 */
+  const [fingerNotice, setFingerNotice] = useState<string | undefined>(undefined);
 
   const shape = shapes.find((candidate) => candidate.id === shapeId) ?? shapes[0];
   // 選んでいた割り当てが元に戻すなどで無くなった時は、先頭の自作（無ければ先頭の組み込み）に移る
@@ -197,6 +209,8 @@ export function FingerAssignmentEditor({
     if (selectedKeyId !== undefined && !keyIds.has(selectedKeyId)) setSelectedKeyId(undefined);
     if (column >= columns.length) setColumn(0);
   }, [keyIds, columns, selectedKeyId, column]);
+
+  useEffect(() => { setFingerNotice(undefined); }, [assignment, editingFinger]);
 
   const board = useMemo(
     () => (shape === undefined || assignment === undefined ? undefined : boardOf(shape, assignment, defaultAssignmentOf(shape.id))),
@@ -245,13 +259,24 @@ export function FingerAssignmentEditor({
 
   const selectedKeyBase = assignment !== undefined && selectedKeyId !== undefined ? assignment.baseFinger[selectedKeyId] : undefined;
   const selectedKeyOwners = assignment !== undefined && selectedKeyId !== undefined ? keyOwners(assignment, selectedKeyId) : [];
+  const selectedKeyNonThumbOwners = assignment !== undefined && selectedKeyId !== undefined ? nonThumbOwnersOf(assignment, selectedKeyId) : [];
   const keyLabelOf = (id: string) => physicalKeyDisplayLabel(id, standard);
   const editingFingerKeys = assignment !== undefined && editingFinger !== undefined
     ? assignment.fingerKeys[editingFinger].filter((id) => keyIds.has(id))
     : [];
 
+  const blockReason = (block: OwnerChangeBlock, fingerLabel: string) => block === 'last-non-thumb'
+    ? `${fingerLabel}は親指以外の最後の担当です。別の指の担当に加えてから外してください`
+    : '基本の指が決まっていないので、親指は担当できません。親指以外の指の担当に加えてください';
+
   const onKeyClick = (key: Key) => {
     if (assignment !== undefined && editable && editingFinger !== undefined) {
+      const block = ownerChangeBlock(assignment, key.id, editingFinger);
+      if (block !== undefined) {
+        setFingerNotice(`${keyLabelOf(key.id)}: ${blockReason(block, FINGER_LABEL[editingFinger])}`);
+        return;
+      }
+      setFingerNotice(undefined);
       commit(toggleKeyOfFinger(assignment, key.id, editingFinger));
       return;
     }
@@ -332,7 +357,7 @@ export function FingerAssignmentEditor({
               <h2 id="finger-assignment-edit">指の割り当て</h2>
               <p className="finger-assignment-note">
                 {editable
-                  ? 'キーを選ぶと、そのキーの基本の指と担当する指を決められます。'
+                  ? 'キーを選ぶと、そのキーの担当する指を決められます。担当する親指以外の指が複数ある時は、基本の指を選べます。'
                   : 'キーを選ぶと、そのキーの基本の指と担当する指を見られます。'}
                 キーの色は基本の指を表します。複数の指が担当するキーは、追加で担当する指を縁の帯で示します。手の並びで基本の指より左の指は左端、右の指は右端、親指は下端です。下線のあるキーが指のホームキーです。
               </p>
@@ -381,28 +406,52 @@ export function FingerAssignmentEditor({
                   ) : (
                     <>
                       <p>選んだキー: {keyLabelOf(selectedKeyId)}</p>
-                      <label>
-                        基本の指
-                        <FingerSelect
-                          value={selectedKeyBase}
-                          label="選んだキーの基本の指"
-                          placeholder="指を選ぶ"
-                          onPick={(finger) => commit(setBaseFinger(assignment, selectedKeyId, finger))}
-                        />
-                      </label>
+                      {selectedKeyNonThumbOwners.length >= 2 ? (
+                        <label>
+                          基本の指
+                          <FingerSelect
+                            value={selectedKeyBase}
+                            label="選んだキーの基本の指"
+                            placeholder="指を選ぶ"
+                            options={selectedKeyNonThumbOwners}
+                            onPick={(finger) => commit(setBaseFinger(assignment, selectedKeyId, finger))}
+                          />
+                        </label>
+                      ) : selectedKeyNonThumbOwners.length === 1 && selectedKeyBase !== undefined ? (
+                        <p data-finger-assignment-base-note>基本の指: {FINGER_LABEL[selectedKeyBase]}（担当する親指以外の指が1本のため）</p>
+                      ) : (
+                        <label>
+                          基本の指
+                          <FingerSelect
+                            value={selectedKeyBase}
+                            label="選んだキーの基本の指"
+                            placeholder="指を選ぶ"
+                            onPick={(finger) => commit(addKeyToFinger(assignment, selectedKeyId, finger))}
+                          />
+                        </label>
+                      )}
                       <fieldset className="finger-assignment-owners">
                         <legend>担当する指</legend>
-                        {ALL_FINGERS.map((finger) => (
-                          <label key={finger} className="finger-assignment-owner">
-                            <input
-                              type="checkbox"
-                              checked={selectedKeyOwners.includes(finger)}
-                              disabled={selectedKeyBase === finger}
-                              onChange={() => commit(toggleKeyOfFinger(assignment, selectedKeyId, finger))}
-                            />
-                            {FINGER_LABEL[finger]}
-                          </label>
-                        ))}
+                        {ALL_FINGERS.map((finger) => {
+                          const block = ownerChangeBlock(assignment, selectedKeyId, finger);
+                          return (
+                            <span key={finger} className="finger-assignment-owner-row">
+                              <label className="finger-assignment-owner">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedKeyOwners.includes(finger)}
+                                  disabled={block !== undefined}
+                                  aria-describedby={block === undefined ? undefined : `finger-assignment-owner-hint-${finger}`}
+                                  onChange={() => commit(toggleKeyOfFinger(assignment, selectedKeyId, finger))}
+                                />
+                                {FINGER_LABEL[finger]}
+                              </label>
+                              {block === undefined ? null : (
+                                <span id={`finger-assignment-owner-hint-${finger}`} className="finger-assignment-note" data-finger-assignment-owner-hint>（{BLOCK_HINT[block]}）</span>
+                              )}
+                            </span>
+                          );
+                        })}
                       </fieldset>
                       <div className="finger-assignment-actions">
                         {selectedKeyOwners.filter((finger): finger is NonThumb => FINGERS.includes(finger as NonThumb)).map((finger) => (
@@ -441,7 +490,8 @@ export function FingerAssignmentEditor({
                       <p className="finger-assignment-note">指を選ぶと、図のキーを押して、その指が担当するキーを足す・外せます。</p>
                     ) : (
                       <>
-                        <p className="finger-assignment-note">図のキーを押すと、そのキーが{FINGER_LABEL[editingFinger]}の担当に加わります（担当していれば外れます）。基本の指の担当は、キー単位で基本の指を変えると外せます。</p>
+                        <p className="finger-assignment-note">図のキーを押すと、そのキーが{FINGER_LABEL[editingFinger]}の担当に加わります（担当していれば外れます）。基本の指の担当も外せます。親指以外の最後の担当は、別の指の担当に加えてから外してください。</p>
+                        {fingerNotice === undefined ? null : <p role="status" data-finger-assignment-notice>{fingerNotice}</p>}
                         <p data-finger-assignment-finger-keys>
                           {FINGER_LABEL[editingFinger]}が担当するキー: {editingFingerKeys.length === 0 ? 'なし' : editingFingerKeys.map(keyLabelOf).join(' ')}
                         </p>
