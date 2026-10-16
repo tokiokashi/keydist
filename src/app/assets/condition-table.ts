@@ -24,7 +24,7 @@ import { setupConditionRows } from '../setup/setup-view.ts';
 import { workspaceTitles, type OverrideGroup } from './cascade-override-groups.ts';
 
 /**
- * データの管理の条件の表の、純粋な部分。置き場所の一覧・置き場所ごとの行・他の置き場所の上書きの文。
+ * データ・設定の管理の条件の表の、純粋な部分。適用範囲の一覧・適用範囲ごとの行・他の適用範囲の上書きの文。
  * 書き込みは`hosts/shared/condition-edit.ts`のコマンドが行い、解決は`resolveSettings`に任せる。
  */
 
@@ -64,7 +64,7 @@ function unusableUserLayouts(
   userLayouts.forEach((layout, index) => {
     const reason = unusableLayouts.get(index);
     if (reason === undefined) return;
-    // 解決の手持ちにあるidは、その配列と同じ置き場所になる（組み込みと識別子が同じ配列など）
+    // 解決の手持ちにあるidは、その配列と同じ適用範囲になる（組み込みと識別子が同じ配列など）
     if (catalog.setupCatalog.layouts.has(layout.id) || found.some((entry) => entry.id === layout.id)) return;
     found.push({ id: layout.id, name: layout.name, reason });
   });
@@ -103,7 +103,7 @@ export interface PlacementGroupsInput {
   readonly names: ConditionValueNames;
 }
 
-/** 表で選べる置き場所。区分は全体・Workspace・配列・Setupの順で、置き場所の名前は上書きの一覧と同じ。 */
+/** 表で選べる適用範囲。区分は全体・Workspace・配列・Setupの順で、適用範囲の名前は上書きの一覧と同じ。 */
 export function conditionPlacementGroups(input: PlacementGroupsInput): readonly ConditionPlacementGroup[] {
   const { catalog, workspaces, setups, names } = input;
   const layoutPlacement = (layoutId: string, unusableReason?: string): ConditionPlacement => ({
@@ -172,22 +172,22 @@ export type PlacementRows =
     readonly ok: true;
     /** 行の継承する値・出どころ・対象に依る注記の元。 */
     readonly rows: readonly ConditionSummaryRow[];
-    /** 行の入力が読む上書き。Workspaceの置き場所は、そのWorkspaceの条件を差し込んだもの。 */
+    /** 行の入力が読む上書き。Workspaceの適用範囲は、そのWorkspaceの条件を差し込んだもの。 */
     readonly overrides: SettingsCascadeOverrides;
   }
   | { readonly ok: false; readonly message: string; readonly detail?: string };
 
-/** 全体とWorkspaceの置き場所の継承する値を求める時に、対象の代わりに使う配列。ローマ字入力で、推奨を持たない。 */
+/** 全体とWorkspaceの適用範囲の継承する値を求める時に、対象の代わりに使う配列。ローマ字入力で、推奨を持たない。 */
 const REPRESENTATIVE_LAYOUT_ID = 'qwerty';
 
-/** 解釈の2項目は、全体とWorkspaceの置き場所の行にだけ出る。 */
+/** 解釈の2項目は、全体とWorkspaceの適用範囲の行にだけ出る。 */
 const INTERPRETATION_IDS: readonly SettingsItemId[] = ['chainInterpretation', 'arpeggioInterpretation'];
 
 function unavailable(message: string, detail?: string): PlacementRows {
   return detail === undefined ? { ok: false, message } : { ok: false, message, detail };
 }
 
-/** 全体とWorkspaceの置き場所は対象を持たないので、対象に依る注記（効かない・診断）を行から外す。 */
+/** 全体とWorkspaceの適用範囲は対象を持たないので、対象に依る注記（効かない・診断）を行から外す。 */
 function withoutTargetNotes(rows: readonly ConditionSummaryRow[]): readonly ConditionSummaryRow[] {
   return rows.map((row) => ({ ...row, applicable: true, diagnostics: [] }));
 }
@@ -205,7 +205,7 @@ function resolveWithoutTarget(overrides: SettingsCascadeOverrides, catalog: Pane
 }
 
 /**
- * 置き場所の行を求める。解決は`resolveSettings`に任せ、渡す入力だけを置き場所ごとに組む。
+ * 適用範囲の行を求める。解決は`resolveSettings`に任せ、渡す入力だけを適用範囲ごとに組む。
  * - 全体: 全体のレベルだけの上書きで解決する（指の割当の既定は全体の既定の物理配列から決まる）
  * - Workspace: 全体と、そのWorkspaceのレベルの上書きで解決する（指の割当の既定はWorkspaceの既定の物理配列から）
  * - 配列: Workspaceを含めず、全体と配列のレベルから決まる既定の物理配列と、Setupと同じ決め方の打ち方（日本語のテキスト）で解決する
@@ -221,7 +221,7 @@ export function placementRows(placement: ConditionPlacement, input: PlacementRow
         : undefined;
       if (placement.kind === 'workspace' && workspace === undefined) return unavailable('このWorkspaceは見つかりません。');
       const editorOverrides = workspace === undefined ? overrides : withWorkspaceConditions(overrides, workspace.conditions);
-      // 全体より強い物理配列・打ち方・配列・Setupのレベルを除き、置き場所のレベルまでの値だけで解決する
+      // 全体より強い物理配列・打ち方・配列・Setupのレベルを除き、適用範囲のレベルまでの値だけで解決する
       const levels: SettingsCascadeOverrides = {
         ...(overrides.global === undefined ? {} : { global: overrides.global }),
         ...(workspace?.conditions === undefined ? {} : { workspace: workspace.conditions }),
@@ -258,12 +258,12 @@ export function placementRows(placement: ConditionPlacement, input: PlacementRow
   }
 }
 
-/** 行に名前を出す、他の置き場所の数の上限。残りは数で出す。 */
+/** 行に名前を出す、他の適用範囲の数の上限。残りは数で出す。 */
 export const OTHER_PLACEMENT_NAME_LIMIT = 3;
 
 /**
- * 同じ項目を他の置き場所でも上書きしている時の、行に添える文。数えるのは上書きの一覧に出るもの全部で、
- * 名前も一覧の置き場所の名前と同じ。他に無ければ`undefined`。
+ * 同じ項目を他の適用範囲でも上書きしている時の、行に添える文。数えるのは上書きの一覧に出るもの全部で、
+ * 名前も一覧の適用範囲の名前と同じ。他に無ければ`undefined`。
  */
 export function otherPlacementNote(
   groups: readonly OverrideGroup[],
@@ -276,10 +276,10 @@ export function otherPlacementNote(
   if (titles.length === 0) return undefined;
   const shown = titles.slice(0, OTHER_PLACEMENT_NAME_LIMIT).join('、');
   const rest = titles.length - OTHER_PLACEMENT_NAME_LIMIT;
-  return `ほかの置き場所でも上書きしています: ${shown}${rest > 0 ? `、ほか${rest}件` : ''}`;
+  return `ほかの適用範囲でも上書きしています: ${shown}${rest > 0 ? `、ほか${rest}件` : ''}`;
 }
 
-/** 置き場所の全項目について`otherPlacementNote`を求める。 */
+/** 適用範囲の全項目について`otherPlacementNote`を求める。 */
 export function otherPlacementNotes(
   groups: readonly OverrideGroup[],
   placementKey: string,

@@ -92,13 +92,13 @@ export interface ConditionEditorContext {
    */
   readonly setup?: { readonly id: string; readonly layoutId: string };
   /**
-   * 編集先を全体・Workspace・配列のどれか1つに固定する時に渡す（データの管理の条件の表）。`setup`と同じく、
+   * 編集先を全体・Workspace・配列のどれか1つに固定する時に渡す（データ・設定の管理の条件の表）。`setup`と同じく、
    * 行の編集先は固定のレベルだけで、他のレベルへの切り替えも全体へ移す操作も出ない。そのレベルに置けない項目の行は出さない。
    * `'workspace'`は`workspace`、`'layout'`は`layout`も渡す。継承する値は`'layout'`なら行の`layoutBase`、
    * `'workspace'`なら全体の値。
    */
   readonly fixedScope?: 'global' | 'workspace' | 'layout';
-  /** 同じ項目を他の置き場所でも上書きしている行の、その旨の文。条件の表が渡す。 */
+  /** 同じ項目を他の適用範囲でも上書きしている行の、その旨の文。条件の表が渡す。 */
   readonly otherScopeNotes?: ReadonlyMap<SettingsItemId, string>;
   /**
    * 対象にSetupを含むペインが渡す、そのSetup。モーダルに、Setupごとに編集画面を開くリンクを出す

@@ -2,8 +2,8 @@ import { expect, test, type Page } from '@playwright/test';
 import { waitForHydration } from './hydration-helper.ts';
 
 /**
- * データの管理の条件の設定のE2E。値の計算（継承する値・他の置き場所の名前）はunit testが持つので、
- * ここでは画面の配線を見る: 置き場所を選ぶと行が並ぶ、行の中で変えると選んだレベルに保存される、
+ * データ・設定の管理の条件の設定のE2E。値の計算（継承する値・他の適用範囲の名前）はunit testが持つので、
+ * ここでは画面の配線を見る: 適用範囲を選ぶと行が並ぶ、行の中で変えると選んだレベルに保存される、
  * 行のメニューが出ない、元に戻せる（Workspaceのレベルを含む）、動きが切り替わる。
  */
 
@@ -49,7 +49,7 @@ async function open(page: Page): Promise<void> {
 }
 
 const table = (page: Page) => page.locator('[data-user-assets-section="conditions"]');
-const choose = (page: Page, key: string) => table(page).getByLabel('置き場所を選ぶ').selectOption(key);
+const choose = (page: Page, key: string) => table(page).getByLabel('適用範囲を選ぶ').selectOption(key);
 
 test('配列を選び、ローマ字規則を継承する値と違う値にすると配列のレベルに保存され、同じ値へ戻すと消える', async ({ page }) => {
   await seed(page);
@@ -78,7 +78,7 @@ test('全体とSetupを選んだ時も、それぞれのレベルに書ける。
   await seed(page, { setups: true });
   await open(page);
   // 全体に上書きが1つも無くても選べる。解釈の項目の行も出る
-  await expect(table(page).getByLabel('置き場所を選ぶ')).toHaveValue('global');
+  await expect(table(page).getByLabel('適用範囲を選ぶ')).toHaveValue('global');
   await expect(table(page).locator('[data-item="chainInterpretation"]')).toHaveCount(1);
   await table(page).locator('[data-item="windowSize"]').getByRole('button', { name: '先読みNを1増やす' }).click();
   await expect.poll(async () => (await storedOverrides(page)).global?.windowSize).toBe(4);
@@ -91,7 +91,7 @@ test('全体とSetupを選んだ時も、それぞれのレベルに書ける。
   await expect(window.getByRole('status')).toHaveText('4');
   await window.getByRole('button', { name: '先読みNを1増やす' }).click();
   await expect.poll(async () => (await storedOverrides(page)).setup?.['setup-1']?.windowSize).toBe(5);
-  // 他の置き場所の上書きの名前が行に出る
+  // 他の適用範囲の上書きの名前が行に出る
   await expect(window.locator('[data-condition-others]')).toContainText('全体');
 
   await page.goto('/setup?setup=setup-1');
@@ -99,16 +99,16 @@ test('全体とSetupを選んだ時も、それぞれのレベルに書ける。
   await expect(page.locator('[data-item="windowSize"]').getByRole('status')).toHaveText('5');
 });
 
-test('Workspaceの置き場所に書いた値は、そのWorkspaceに保存され、元に戻すと戻る', async ({ page }) => {
+test('Workspaceの適用範囲に書いた値は、そのWorkspaceに保存され、元に戻すと戻る', async ({ page }) => {
   await seed(page);
   await page.goto('/standalone/bigram-flow');
   await waitForHydration(page);
   await page.locator('#app-sidebar').getByRole('button', { name: '＋ 新しいWorkspace' }).click();
   await expect(page).toHaveURL(/\/workspace\//);
-  await page.locator('#app-sidebar').getByRole('link', { name: 'データの管理', exact: true }).click();
+  await page.locator('#app-sidebar').getByRole('link', { name: 'データ・設定の管理', exact: true }).click();
   await expect(page).toHaveURL(/\/assets$/);
 
-  const workspaceKey = await table(page).getByLabel('置き場所を選ぶ').locator('optgroup[label="Workspace"] option').first().getAttribute('value');
+  const workspaceKey = await table(page).getByLabel('適用範囲を選ぶ').locator('optgroup[label="Workspace"] option').first().getAttribute('value');
   expect(workspaceKey).toMatch(/^workspace:/);
   await choose(page, workspaceKey!);
   const window = table(page).locator('[data-item="windowSize"]');
@@ -133,7 +133,7 @@ test('計算に使えない自作の配列を選ぶと、行は出ず、値を�
   await expect(table(page).locator('.condition-row')).toHaveCount(0);
 });
 
-test('置き場所を選び直すと動きを伴って切り替わり、動きを減らす設定では動かない', async ({ page }) => {
+test('適用範囲を選び直すと動きを伴って切り替わり、動きを減らす設定では動かない', async ({ page }) => {
   await seed(page);
   await open(page);
   const animationName = () => table(page).locator('.conditions-table-body').evaluate((node) => getComputedStyle(node).animationName);

@@ -55,7 +55,7 @@ test('指の割当は、自作でも名前で出し、手持ちに無ければ�
   assert.doesNotMatch(JSON.stringify(missing), /gone/);
 });
 
-test('置き場所はカスケードの順に並び、継承する値と同じ値も出る', () => {
+test('適用範囲はカスケードの順に並び、継承する値と同じ値も出る', () => {
   const library = createWorkspace(initialWorkspaceLibrary(), () => 'ws-1', 'ワークスペース').library;
   const workspace: Workspace = { ...library[0]!, conditions: { windowSize: 4 } };
   const groups = groupsOf(
@@ -125,7 +125,7 @@ function assetsWith(overrides: SettingsCascadeOverrides, workspaces: readonly Wo
   };
 }
 
-test('一覧の置き場所の情報で上書きを消すと一覧から消え、元に戻すと戻る。Workspaceのレベルも同じ', () => {
+test('一覧の適用範囲の情報で上書きを消すと一覧から消え、元に戻すと戻る。Workspaceのレベルも同じ', () => {
   const workspace: Workspace = { ...createWorkspace(initialWorkspaceLibrary(), () => 'ws-1', 'W').library[0]!, conditions: { windowSize: 4 } };
   const assets = assetsWith({ layout: { 'user-a': { romajiRuleId: 'rule-a' } } }, [workspace]);
   const listOf = (current: KeydistAssets) => groupsOf(current.setupLibrary.overrides, { workspaces: current.workspaces });

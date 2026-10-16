@@ -126,7 +126,7 @@ const INPUT_METHOD_LABELS: Readonly<Record<InputMethod, string>> = {
   'kana-direct': 'かなを直接打つ配列',
 };
 
-/** 上書きの置き場所。物理配列・配列はidでなく名前で出す（引けなければ「この物理配列」等）。 */
+/** 上書きの適用範囲。物理配列・配列はidでなく名前で出す（引けなければ「この物理配列」等）。 */
 function cascadeLevelLabel(level: CascadeLevel, names: ConditionValueNames | undefined): string {
   switch (level.kind) {
     case 'global': return '全体';

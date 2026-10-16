@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { waitForHydration } from './hydration-helper.ts';
 
 /**
- * データの管理の一覧と削除の画面のE2E。
+ * データ・設定の管理の一覧と削除の画面のE2E。
  * 削除そのものの分岐（存在しないid・元に戻す）はunit testが持つので、ここでは画面の配線を見る:
  * サイドバーから開ける、一覧から消せる、保存先に反映される、消した配列を対象にした画面に旨が出る、
  * 元に戻すで戻る。
@@ -36,7 +36,7 @@ test('サイドバーのAssetsから開き、自作の配列と規則を一覧�
   await waitForHydration(page);
   const sidebar = page.locator('#app-sidebar');
   await expect(sidebar.getByRole('heading', { name: 'Assets', exact: true })).toBeVisible();
-  await sidebar.getByRole('link', { name: 'データの管理', exact: true }).click();
+  await sidebar.getByRole('link', { name: 'データ・設定の管理', exact: true }).click();
   await expect(page).toHaveURL(/\/assets$/);
 
   const layouts = page.locator('[data-user-assets-section="layout"]');
@@ -144,7 +144,7 @@ test.describe('条件の上書きの一覧', () => {
     });
   }
 
-  test('保存してある上書きが置き場所ごとに出て、消すと一覧から消え、元に戻すと戻る', async ({ page }) => {
+  test('保存してある上書きが適用範囲ごとに出て、消すと一覧から消え、元に戻すと戻る', async ({ page }) => {
     await seedOverrides(page);
     await page.goto('/assets');
     await waitForHydration(page);

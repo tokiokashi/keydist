@@ -10,7 +10,7 @@ import { ConditionTable } from './ConditionTable.tsx';
 import { conditionPlacementGroups, conditionValueNames } from './condition-table.ts';
 import { UserAssetsPage } from './UserAssetsPage.tsx';
 
-/** データの管理の画面の組み立て。資産の読み書きと履歴は、個別画面と同じ仕組みに乗せる。 */
+/** データ・設定の管理の画面の組み立て。資産の読み書きと履歴は、個別画面と同じ仕組みに乗せる。 */
 export function UserAssetsApp() {
   const { assets, ready, dispatch, canUndo, canRedo, undo, redo } = useKeydistAssets();
   const setupItems = useMemo(

@@ -16,8 +16,8 @@ import { userFingerAssignmentRows, userLayoutRows, userRomajiRuleRows, userSetup
 import type { SetupListItem } from '../setup/setup-view.ts';
 import type { OverrideEntry, OverrideGroup } from './cascade-override-groups.ts';
 
-/** データの管理の画面の名前。サイドバーのリンクも同じ文言を出す。 */
-export const USER_ASSETS_LABEL = 'データの管理';
+/** データ・設定の管理の画面の名前。サイドバーのリンクも同じ文言を出す。 */
+export const USER_ASSETS_LABEL = 'データ・設定の管理';
 
 export interface UserAssetsPageProps {
   readonly assets: Pick<KeydistAssets, 'userLayouts' | 'userRomajiRules' | 'fingerAssignments' | 'setupLibrary'>;
@@ -35,7 +35,7 @@ export interface UserAssetsPageProps {
   readonly onDeleteSetup: (id: string) => void;
   /** 条件の設定の表。保存してある条件の上書きの一覧の前に出す。 */
   readonly conditionTable: ReactNode;
-  /** 保存してある条件の上書き。置き場所ごとにカスケードの順。 */
+  /** 保存してある条件の上書き。適用範囲ごとにカスケードの順。 */
   readonly overrideGroups: readonly OverrideGroup[];
   /** 1項目の上書きを消す。消すと、その項目は継承する値に戻る。 */
   readonly onResetOverride: (group: OverrideGroup, itemId: OverrideEntry['itemId']) => void;
@@ -136,7 +136,7 @@ function ConfirmDelete({ pending, onConfirm, onCancel }: {
   );
 }
 
-/** 保存してある条件の上書きの一覧。置き場所ごとに、項目の名前と値を並べ、項目ごとに消せる。 */
+/** 保存してある条件の上書きの一覧。適用範囲ごとに、項目の名前と値を並べ、項目ごとに消せる。 */
 function OverrideSection({ groups, onReset }: {
   readonly groups: readonly OverrideGroup[];
   readonly onReset: (group: OverrideGroup, entry: OverrideEntry, button: HTMLElement) => void;
@@ -158,7 +158,7 @@ function OverrideSection({ groups, onReset }: {
                   <li key={entry.itemId} className="user-assets-row" data-user-assets-override={`${group.key}/${entry.itemId}`}>
                     <div className="user-assets-row-text">
                       <span className="user-assets-name">{entry.label}: {entry.valueText}</span>
-                      {entry.unused ? <span className="user-assets-detail">この置き場所では使われません</span> : null}
+                      {entry.unused ? <span className="user-assets-detail">この適用範囲では使われません</span> : null}
                     </div>
                     <button type="button" aria-label={`${group.title}の「${entry.label}」の上書きを消す`} onClick={(event) => onReset(group, entry, event.currentTarget)}>消す</button>
                   </li>
