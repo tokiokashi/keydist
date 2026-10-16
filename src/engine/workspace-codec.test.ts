@@ -21,7 +21,7 @@ import {
   type WorkspacePane,
   OWN_OPTIONS,
 } from './workspace.ts';
-import { gridPaneIds, type GridSize } from './workspace-grid.ts';
+import { GRID_MAX_COLS, gridPaneIds, type GridSize } from './workspace-grid.ts';
 
 const SIZE: GridSize = { w: 6, h: 10 };
 
@@ -231,9 +231,10 @@ test('配置がペインと食い違っていてもペインを失わず、並�
         binding: { mode: 'follow' },
       })),
       grid: [
-        // 列からはみ出す・負の位置・重なり・知らないペイン・数でない値は、範囲に収めるか捨てる
+        // 列の上限からはみ出す・負の位置・重なり・知らないペイン・数でない値は、範囲に収めるか捨てる
         { id: 'a', x: 20, y: 0, w: 8, h: 8 },
         { id: 'a', x: 0, y: 0, w: 6, h: 8 },
+        { id: 'b', x: 100000, y: 0, w: 5000, h: 8 },
         { id: 'ghost', x: 0, y: 0, w: 2, h: 2 },
         { id: 'c', x: -3, y: 0, w: 'wide', h: 8 },
         'broken',
@@ -244,7 +245,7 @@ test('配置がペインと食い違っていてもペインを失わず、並�
   const workspace = findWorkspace(result.value, 'w')!;
   assert.deepEqual([...gridPaneIds(workspace.grid)].sort(), ['a', 'b', 'c']);
   for (const item of workspace.grid) {
-    assert.ok(item.x >= 0 && item.x + item.w <= 24 && item.y >= 0 && item.w >= 1 && item.h >= 1, JSON.stringify(item));
+    assert.ok(item.x >= 0 && item.x + item.w <= GRID_MAX_COLS && item.y >= 0 && item.w >= 1 && item.h >= 1, JSON.stringify(item));
   }
   for (const [i, a] of workspace.grid.entries()) {
     for (const b of workspace.grid.slice(i + 1)) {
@@ -253,6 +254,31 @@ test('配置がペインと食い違っていてもペインを失わず、並�
     }
   }
   assert.ok(result.diagnostics.some((d) => d.path.includes('grid')));
+});
+
+test('保存した列の位置と幅はそのまま読む。面の幅や24列では寄せず、上限だけで収める', () => {
+  const result = WORKSPACE_LIBRARY_CODEC.decode({
+    version: 4,
+    workspaces: [{
+      id: 'w',
+      name: 'n',
+      panes: [singlePane('a'), singlePane('b'), singlePane('c')].map((p) => ({ id: p.id, analyzerId: p.analyzerId, binding: { mode: 'follow' } })),
+      grid: [
+        { id: 'a', x: 0, y: 0, w: 24, h: 8 },
+        { id: 'b', x: 24, y: 0, w: 30, h: 8 },
+        { id: 'c', x: 500, y: 0, w: 5000, h: 8 },
+      ],
+    }],
+  });
+  assert.ok(result.ok);
+  const grid = findWorkspace(result.value, 'w')!.grid;
+  assert.deepEqual(grid.find((item) => item.id === 'a'), { id: 'a', x: 0, y: 0, w: 24, h: 8 });
+  // 24列を越えた位置・幅は保たれる
+  assert.deepEqual(grid.find((item) => item.id === 'b'), { id: 'b', x: 24, y: 0, w: 30, h: 8 });
+  // 上限を超える値だけが上限の中へ収まる
+  const c = grid.find((item) => item.id === 'c')!;
+  assert.equal(c.w, GRID_MAX_COLS);
+  assert.equal(c.x, 0);
 });
 
 test('配置が無くてもペインは並ぶ。ペインが無ければ配置も無い', () => {

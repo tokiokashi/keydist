@@ -176,7 +176,8 @@ async function storedGridItem(page: Page, id: string): Promise<{ x: number; y: n
 const SENTENCE = 'The quick brown fox jumps over the lazy dog while the five boxing wizards jump quickly. ';
 
 test('計算中に別のペインの大きさを変える（資産の保存）と、計算中だったペインの依頼は打ち切られず出し直されない', async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 1000 });
+  // 2つのペイン（12列ずつ）が横にスクロールせず収まる幅
+  await page.setViewportSize({ width: 1920, height: 1000 });
   // 長いテキスト（英文1万字）で、計算が数秒かかるようにする。計算中の依頼が、並びの保存に
   // 伴って打ち切られて出し直されると、依頼の数が倍になる
   await openSeeded(page, {

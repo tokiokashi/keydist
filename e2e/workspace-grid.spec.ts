@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { waitForHydration } from './hydration-helper.ts';
-import { cell, colStep, dragHandle, itemOf, open, ROW_STEP, settle, stored } from './workspace-grid-helper.ts';
+import { cell, COL_STEP, dragHandle, itemOf, open, ROW_STEP, settle, stored } from './workspace-grid-helper.ts';
 
 /**
  * Workspaceの格子（ペインごとに位置と大きさを持つ。列は24、1升の高さ28px、升の間8px）。
@@ -30,7 +30,7 @@ test('下の辺をつかむと高さだけが変わる（幅も位置も変わ�
 
 test('右の辺をつかむと幅だけが変わる（高さも位置も変わらない）。他のペインの大きさは変わらない', async ({ page }) => {
   await open(page, ['a', 'b'], [cell('a', 0, 0, 8, 10), cell('b', 16, 0, 8, 10)]);
-  const step = await colStep(page);
+  const step = COL_STEP;
   await dragHandle(page, 'a', 'e', Math.round(4 * step), 0);
   await expect.poll(async () => (await itemOf(page, 'a')).w).toBe(12);
   expect(await itemOf(page, 'a')).toEqual(cell('a', 0, 0, 12, 10));
@@ -43,7 +43,7 @@ test('右の辺をつかむと幅だけが変わる（高さも位置も変わ�
 
 test('左の辺をつかむと幅だけが変わり、左端が動く（右端と高さは変わらない）', async ({ page }) => {
   await open(page, ['a'], [cell('a', 8, 0, 8, 10)]);
-  const step = await colStep(page);
+  const step = COL_STEP;
   await dragHandle(page, 'a', 'w', -Math.round(4 * step), 0);
   await expect.poll(async () => (await itemOf(page, 'a')).w).toBe(12);
   expect(await itemOf(page, 'a')).toEqual(cell('a', 4, 0, 12, 10));
@@ -54,7 +54,7 @@ test('左の辺をつかむと幅だけが変わり、左端が動く（右端�
 
 test('右下の角をつかむと、幅と高さを別々の量で変えられる（縦横比は固定されない）', async ({ page }) => {
   await open(page, ['a'], [cell('a', 0, 0, 8, 10)]);
-  const step = await colStep(page);
+  const step = COL_STEP;
   // 幅を2列、高さを5行（比が 5:2）
   await dragHandle(page, 'a', 'se', Math.round(2 * step), 5 * ROW_STEP);
   await expect.poll(async () => (await itemOf(page, 'a')).h).toBe(15);
@@ -130,7 +130,7 @@ test('足したペインは、Analyzerごとの既定の大きさで、空いて
   await page.getByRole('menuitem', { name: /Bigram Flow/ }).click();
   await expect.poll(async () => (await stored(page)).length).toBe(2);
   const added = (await stored(page)).find((item) => item.id !== 'a')!;
-  // aの右隣（空いている最初の場所）、幅は列の半分
+  // aの右隣（空いている最初の場所）、幅は既定の12列
   expect(added.x).toBe(12);
   expect(added.y).toBe(0);
   expect(added.w).toBe(12);
@@ -142,7 +142,7 @@ test('足したペインは、Analyzerごとの既定の大きさで、空いて
 test('ペインを動かしても大きさは変わらず、ぶつかったペインは下へ押される', async ({ page }) => {
   await open(page, ['a', 'b'], [cell('a', 0, 0, 10, 8), cell('b', 12, 0, 10, 8)]);
   const grab = (await page.locator('.workspace-grid-item[data-pane-id="a"] .workspace-drag-handle').boundingBox())!;
-  const step = await colStep(page);
+  const step = COL_STEP;
   const x = grab.x + grab.width / 2;
   const y = grab.y + grab.height / 2;
   await page.mouse.move(x, y);

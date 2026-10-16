@@ -13,13 +13,14 @@ import {
   SAMPLE_BIGRAM_FLOW_LAYOUT_IDS,
   SAMPLE_COMPARISON_LAYOUT_IDS,
   SAMPLE_DEFAULT_SHAPE_ID,
+  SAMPLE_GRID_COLS,
   SAMPLE_WORKSPACE_NAME,
   createSampleWorkspace,
 } from './sample-workspace.ts';
 import { initialSingleTargetSelection } from './single-target-selection.ts';
 import { createWorkspaceCommand, createSampleWorkspaceCommand, startWorkspaceFromSampleCommand } from './workspace-commands.ts';
 import { initialWorkspaceLibrary, resolvePaneOptions } from './workspace.ts';
-import { GRID_COLS, normalizeGrid } from './workspace-grid.ts';
+import { normalizeGrid } from './workspace-grid.ts';
 
 function sequence(prefix: string): () => string {
   let n = 0;
@@ -96,16 +97,15 @@ test('サンプルの並び: 上に比較表とN感度の横並び（18 + 6列�
   const [comparison, nSensitivity, ...lower] = created.grid;
   assert.deepEqual([comparison!.x, comparison!.y], [0, 0]);
   assert.deepEqual([nSensitivity!.x, nSensitivity!.y], [comparison!.w, 0]);
-  assert.equal(comparison!.w + nSensitivity!.w, GRID_COLS);
+  assert.equal(comparison!.w + nSensitivity!.w, SAMPLE_GRID_COLS);
   assert.equal(comparison!.h, nSensitivity!.h);
-  // 高さ（升目）: 上の段9・中の段15・下の段10。上の2段は1920x930で1画面に入り、下の段は指ごとの距離がペインの中でスクロールしない最小の高さ
-  // （`e2e/sample-workspace.spec.ts` で実測）。
-  assert.deepEqual([comparison!.h, ...lower.map((item) => item.h)], [9, 15, 15, 15, 15, 10, 10, 10, 10]);
+  // 高さ（升目）: 上の段9・中の段14・下の段9。どれも各ペインが中でスクロールしない最小の高さ（`e2e/sample-workspace.spec.ts` で確かめる）。
+  assert.deepEqual([comparison!.h, ...lower.map((item) => item.h)], [9, 14, 14, 14, 14, 9, 9, 9, 9]);
   assert.equal(lower.length, 8);
   const [middle, bottom] = [lower.slice(0, 4), lower.slice(4)];
-  assert.ok(middle.every((item) => item.y === comparison!.h && item.w === GRID_COLS / 4));
+  assert.ok(middle.every((item) => item.y === comparison!.h && item.w === SAMPLE_GRID_COLS / 4));
   assert.deepEqual(middle.map((item) => item.x), [0, 6, 12, 18]);
-  assert.ok(bottom.every((item) => item.y === comparison!.h + 15 && item.w === GRID_COLS / 4));
+  assert.ok(bottom.every((item) => item.y === comparison!.h + 14 && item.w === SAMPLE_GRID_COLS / 4));
   assert.deepEqual(bottom.map((item) => item.x), [0, 6, 12, 18]);
   // 不変条件を満たした形（正規化しても変わらない）
   assert.deepEqual(normalizeGrid(created.grid, created.panes.map((pane) => pane.id), false), created.grid);

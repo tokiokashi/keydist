@@ -81,11 +81,11 @@ async function expectSampleLayout(page: Page, id: string): Promise<void> {
   expect([nSensitivity!.x, nSensitivity!.y]).toEqual([comparison!.w, 0]);
   expect(comparison!.w + nSensitivity!.w).toBe(24);
   expect(nSensitivity!.h).toBe(comparison!.h);
-  // 高さ（升目）: 上の段9・中の段15・下の段10。上の2段は1920x930で1画面に入り、下の段は指ごとの距離がペインの中でスクロールしない最小の高さ（下のe2eで実測）
-  expect([comparison!.h, ...lower.map((item) => item.h)]).toEqual([9, 15, 15, 15, 15, 10, 10, 10, 10]);
+  // 高さ（升目）: 上の段9・中の段14・下の段9。どれも各ペインが中でスクロールしない最小の高さ（下のe2eで確かめる）
+  expect([comparison!.h, ...lower.map((item) => item.h)]).toEqual([9, 14, 14, 14, 14, 9, 9, 9, 9]);
   expect(lower.map((item) => [item.x, item.y, item.w])).toEqual([
     ...[0, 6, 12, 18].map((x) => [x, comparison!.h, 6]),
-    ...[0, 6, 12, 18].map((x) => [x, comparison!.h + 15, 6]),
+    ...[0, 6, 12, 18].map((x) => [x, comparison!.h + 14, 6]),
   ]);
 
   // 画面にも出る
@@ -205,12 +205,16 @@ async function openSampleAt(page: Page, size: { width: number; height: number },
 const VIEWPORT_1080_MONITOR = { width: 1920, height: 930 };
 
 for (const sidebar of ['pinned', 'unpinned'] as const) {
-  test(`1920x930（サイドバー${sidebar === 'pinned' ? '固定' : '非固定'}）で、サンプルの上の2段が1画面に入り、どのペインも中でスクロールしない`, async ({ page }) => {
+  test(`1920x930（サイドバー${sidebar === 'pinned' ? '固定' : '非固定'}）で、サンプルの上の2段が1画面に入り、どのペインも中でスクロールしない。横にもスクロールしない`, async ({ page }) => {
     await openSampleAt(page, { width: VIEWPORT_1080_MONITOR.width, height: VIEWPORT_1080_MONITOR.height }, sidebar);
     const m = await page.evaluate(() => ({
       viewport: document.documentElement.clientHeight,
       items: [...document.querySelectorAll('.workspace-grid-item')].map((item) => item.getBoundingClientRect().bottom),
       panes: [...document.querySelectorAll('.workspace-grid-item .pane-body')].map((body) => [body.scrollHeight, body.clientHeight]),
+      area: (() => {
+        const area = document.querySelector('.workspace-grid-area')!;
+        return [area.scrollWidth, area.clientWidth];
+      })(),
     }));
     // 比較表・N感度・Bigram Flow 4つは、ページを縦にスクロールせずに全部見える。指ごとの距離の段は、その下
     expect(m.items).toHaveLength(10);
@@ -219,32 +223,26 @@ for (const sidebar of ['pinned', 'unpinned'] as const) {
     // 指ごとの距離は見出し・縦棒・指の名前・左手と右手の見出しまで）
     expect(m.panes).toHaveLength(10);
     for (const [scrollHeight, clientHeight] of m.panes) expect(scrollHeight).toBeLessThanOrEqual(clientHeight! + 1);
+    // 24列の並びが面に収まり、横にスクロールしない
+    expect(m.area[0]).toBeLessThanOrEqual(m.area[1]! + 1);
   });
 }
 
 /**
- * 1440x900のサイドバー固定では、N感度が本体の中でスクロールする（297/210）。実測では、N感度のペインの見出しが折り返して
- * 32px から 72px になり、本体が 250px から 210px に下がる。図（svgのviewBoxは 0 0 264 272）は本体より高く、svgの下端は本体から62px出る。
- * 9升は1080のモニタの普通の窓（1920x930）に1画面で入ることを優先した大きさで、1440幅は実際の利用環境ではなく想定の条件。
- * そのため比較表とBigram Flow 4つは中でスクロールしないことを見て、N感度は図が左・右・上で本体から切れないことだけを見る。
+ * 1440x900（サイドバー固定）の面は1200pxで、24列の並び（1640px）は収まらないので、面の中で横にスクロールする。
+ * ペインの幅は面の幅に依らないので、各ペインの中身は1920pxの面と同じに収まる（どのペインも中でスクロールしない）。
+ * 右端のペインを見るには面を横にスクロールする。
  */
-test('1440x900（サイドバー固定）では、比較表・Bigram Flow・指ごとの距離は中でスクロールしない。N感度の図は横に切れない', async ({ page }) => {
+test('1440x900（サイドバー固定）では、24列の並びは面の中で横にスクロールし、どのペインも中でスクロールしない', async ({ page }) => {
   await openSampleAt(page, { width: 1440, height: 900 }, 'pinned');
   const m = await page.evaluate(() => {
-    const bodies = [...document.querySelectorAll('.workspace-grid-item .pane-body')];
-    const nSensitivity = document.querySelector('.n-sensitivity-chart')!.closest('.pane-body')!;
-    const body = nSensitivity.getBoundingClientRect();
-    const svg = nSensitivity.querySelector('svg')!.getBoundingClientRect();
+    const area = document.querySelector('.workspace-grid-area')!;
     return {
-      panes: bodies.map((el) => [el.scrollHeight, el.clientHeight, el === nSensitivity]),
-      svg: { left: svg.left - body.left, right: body.right - svg.right, top: svg.top - body.top },
+      area: [area.scrollWidth, area.clientWidth],
+      panes: [...document.querySelectorAll('.workspace-grid-item .pane-body')].map((el) => [el.scrollHeight, el.clientHeight]),
     };
   });
+  expect(m.area[0]).toBeGreaterThan(m.area[1]!);
   expect(m.panes).toHaveLength(10);
-  for (const [scrollHeight, clientHeight, isNSensitivity] of m.panes) {
-    if (!isNSensitivity) expect(scrollHeight).toBeLessThanOrEqual((clientHeight as number) + 1);
-  }
-  expect(m.svg.left).toBeGreaterThanOrEqual(-1);
-  expect(m.svg.right).toBeGreaterThanOrEqual(-1);
-  expect(m.svg.top).toBeGreaterThanOrEqual(-1);
+  for (const [scrollHeight, clientHeight] of m.panes) expect(scrollHeight).toBeLessThanOrEqual(clientHeight! + 1);
 });

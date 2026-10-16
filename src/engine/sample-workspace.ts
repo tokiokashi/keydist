@@ -13,7 +13,7 @@ import {
   type WorkspaceLibrary,
   type WorkspacePane,
 } from './workspace.ts';
-import type { GridSize } from './workspace-grid.ts';
+import type { GridColumnRange, GridSize } from './workspace-grid.ts';
 
 /**
  * 中身入りのサンプルのWorkspace。空のWorkspaceでは何ができる画面か伝わりにくいので、
@@ -53,27 +53,33 @@ export const SAMPLE_BIGRAM_FLOW_OPTIONS = { source: 'within-hand' } as const;
 
 /**
  * 並びの大きさ（24列）。上の段は比較表とN感度が横に並び（18 + 6列）、中の段は同じ幅（6列）のBigram Flow 4つ、
- * 下の段は同じ幅の指ごとの距離4つ。
- * 比較表は列が多く広いほど表が収まり、N感度は6列（中の段の1つと同じ幅）で図・凡例・表が縦に収まる。比較表は1440pxでは右の数列が横スクロールになるが、狭い画面でも対象名の列は固定される。
- * 高さは升目（1升は行28pxと間8pxで36px）単位で、上の段は2つで揃える。実測して決めた。
- * - 上の段の9升: 比較表は7行の表全体、N感度は図・凡例・横軸のラベル・畳んだ表の見出しまでが、
- *   1920x930のサイドバー固定・非固定のどちらでもペインの中で収まる。
- * - 中の段の15升: Bigram FlowのKeyboard FlowとRelative vectorsが凡例まで収まる。
- * - 下の段の10升: 指ごとの距離の見出し・縦棒・指の名前・左手と右手の見出しまでが、ペインの中でスクロールせずに収まる最小の高さ。
- *   図が要る本体の高さは幅で変わる（6列の幅が広いほど高い）。8升で溢れた時の本体の中身の高さは、1920x930のサイドバー固定が248px、
- *   非固定が282px、2560x1300のサイドバー固定が319px。1440x900のサイドバー固定は8升（本体192px）で既に収まる。
- *   10升の本体は286pxで、1920x930の固定・非固定の両方を満たす（9升の本体250pxは、固定だけ満たす）。ペインを足した時の既定の高さ（11升）より低い。
- *   2560x1300では10升で溢れ、11升が要る。
- * - 上の段と中の段を合わせて24升で、1920x930のサイドバー固定・非固定のどちらでも、この2段は1画面に入る（2段の高さは922px。1920x930で実測）。
- *   下の段まで含めるとページは34升になり、下の段を見るにはページを縦にスクロールする。
+ * 下の段は同じ幅の指ごとの距離4つ。列の幅は面の幅に依らない固定なので、ペインの画素の幅も画面の幅に依らない
+ * （6列は400px、18列は1216px）。24列の並びは1640pxで、FHDでサイドバーを固定して開いた面（1680px）に、
+ * 縦のスクロールバーがあっても横にスクロールせずに収まる。
+ * 比較表は列が多く広いほど表が収まり、N感度は6列（中の段の1つと同じ幅）で図・凡例・表が縦に収まる。
+ * 高さは升目（1升は行28pxと間8pxで36px）単位で、上の段は2つで揃える。各ペインが中でスクロールせずに収まる最小の高さを、
+ * 画面の幅1440・1920・2560のどれでも同じ値で実測して決めた。
+ * - 上の段の9升: 比較表は7行の表全体、N感度は図・凡例・横軸のラベル・畳んだ表の見出しまでが収まる。
+ * - 中の段の14升: Bigram FlowのKeyboard FlowとRelative vectorsが凡例まで収まる。
+ * - 下の段の9升: 指ごとの距離の見出し・縦棒・指の名前・左手と右手の見出しまでが、ペインの中でスクロールせずに収まる。
+ *   ペインを足した時の既定の高さ（11升）より低い。
+ * - 上の段と中の段を合わせて23升で、1920x930のサイドバー固定・非固定のどちらでも、この2段は1画面に入る。
+ *   下の段まで含めるとページは32升になり、下の段を見るにはページを縦にスクロールする。
  *   930pxは、オーナーの1080のモニタで普通の窓に開いた時の表示領域（約930px）。
- *   全画面表示の1080pxで測ると、普通の窓では中の段が約100px切れる（上の段12升の時に起きた）。
- * - 1440x900のサイドバー固定では、N感度だけペインの中でスクロールする（297/210）。1080のモニタの普通の窓を優先した大きさなので、この割り切りは許容する。
+ *   全画面表示の1080pxで測ると、普通の窓では中の段が切れる。
  */
 export const SAMPLE_COMPARISON_SIZE: GridSize = { w: 18, h: 9 };
 export const SAMPLE_N_SENSITIVITY_SIZE: GridSize = { w: 6, h: 9 };
-export const SAMPLE_LOWER_SIZE: GridSize = { w: 6, h: 15 };
-export const SAMPLE_FINGER_DISTANCE_SIZE: GridSize = { w: 6, h: 10 };
+export const SAMPLE_LOWER_SIZE: GridSize = { w: 6, h: 14 };
+export const SAMPLE_FINGER_DISTANCE_SIZE: GridSize = { w: 6, h: 9 };
+
+/**
+ * サンプルの並びが使う列の数。上の段（18 + 6）と中・下の段（6 × 4）がそろって右端になる幅。
+ * FHDでサイドバーを固定して開いた面に、縦のスクロールバーがあっても横にスクロールせずに収まる
+ * （収まることは`hosts/workspace/sample-workspace.test.ts`が検査する）。
+ */
+export const SAMPLE_GRID_COLS = 24;
+const SAMPLE_RANGE: GridColumnRange = { start: 0, end: SAMPLE_GRID_COLS };
 
 const layoutTarget = (layoutId: string): AnalysisTarget => ({ kind: 'layout', layoutId });
 
@@ -147,7 +153,7 @@ export function applySampleLayout(
     })),
   ];
   // 既存のペイン追加と同じ経路で置く。空いている最初の場所に入るので、上の段は比較表とN感度の2つ、下の段はBigram Flowの4つが左から並ぶ
-  for (const { pane, size } of panes) next = addWorkspacePane(next, workspaceId, pane, size);
+  for (const { pane, size } of panes) next = addWorkspacePane(next, workspaceId, pane, size, SAMPLE_RANGE);
   return next;
 }
 

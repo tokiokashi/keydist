@@ -4,8 +4,9 @@ import { settleGrid } from './settle-helper.ts';
 
 /**
  * （`workspace-initial-grid-width*.spec.ts`の共通部）
- * Workspaceを開いた直後の1コマ目から、格子が落ち着いた後と同じ幅で描かれる。
- * 最初の幅が実際より広いと、ライブラリの配置の動き（200ms）でペインが縮んで見える。
+ * Workspaceを開いた直後の1コマ目から、格子が落ち着いた後と同じ矩形で描かれる。
+ * 列の幅は固定なので幅は面の幅で決まらないが、最初の1コマで置き場所が違うと、ライブラリの配置の動き（200ms）でペインが動いて見える。
+ * 縦のスクロールバーが後から幅を取る条件でも、位置と大きさが変わらないことを確かめる。
  */
 
 const blank = (id: string) => ({ id, analyzerId: 'blank', binding: { mode: 'none' } });
@@ -13,7 +14,8 @@ const blank = (id: string) => ({ id, analyzerId: 'blank', binding: { mode: 'none
 type Rect = readonly [number, number, number, number];
 
 export async function checkFirstFrame(page: Page, scrollbarTakesWidth: boolean): Promise<void> {
-  await page.setViewportSize({ width: 1440, height: 800 });
+  // 24列がサイドバーを固定した面に、縦のスクロールバーがあっても収まる幅（FHD）
+  await page.setViewportSize({ width: 1920, height: 800 });
   const grid = [
     { id: 'a', x: 0, y: 0, w: 12, h: 12 },
     { id: 'b', x: 12, y: 0, w: 12, h: 12 },

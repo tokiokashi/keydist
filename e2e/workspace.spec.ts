@@ -122,6 +122,8 @@ test('名前はh1を押してその場で変えられ、Undoで戻る。Escape�
 });
 
 test('ペインを追加して並べる。個別画面と同じcomponentが載り、再読み込みしても並びが戻る', async ({ page }) => {
+  // 見えている範囲に置くので、12列のペインが2つ横に並ぶ幅（24列が収まる幅）にする
+  await page.setViewportSize({ width: 1920, height: 1000 });
   const id = await createWorkspace(page);
   await expect(page.locator('[data-workspace-empty]')).toContainText('ペインを追加');
   await page.locator('[data-workspace-empty]').getByRole('button', { name: /ペインを追加/ }).click();
@@ -793,7 +795,7 @@ test('ドラッグの途中で止まっても1回の操作として書き、Undo
   await expect.poll(() => storedGridOf(page, 'n-sensitivity')).toEqual(before);
 });
 
-test('窓の大きさを変えても、並びは書き換わらない（格子は升目で持ち、窓の幅に合わせて描き直すだけ）', async ({ page }) => {
+test('窓の大きさを変えても、ペインの画素の幅と面に対する位置は変わらず、並びは書き換わらない（列の幅は固定）', async ({ page }) => {
   const set = (id: string) => ({ id, analyzerId: 'n-sensitivity', binding: { mode: 'follow' } });
   await page.clock.install();
   await seedWorkspace(page, {
@@ -806,25 +808,29 @@ test('窓の大きさを変えても、並びは書き換わらない（格子�
       { id: 'c', x: 18, y: 0, w: 6, h: 12 },
     ],
   });
-  await page.setViewportSize({ width: 1500, height: 900 });
+  await page.setViewportSize({ width: 2000, height: 900 });
   await page.goto('/workspace/resize');
   await waitForHydration(page);
   await expect(page.locator('.pane-frame')).toHaveCount(3);
-  const widths = () => page.$$eval('.workspace-grid-item', (elements) => elements.map((element) => Math.round(element.getBoundingClientRect().width)));
-  // ライブラリの配置の動き（200ms）が済み、幅が落ち着いてから基準を測る
-  await settleBy(page, async () => JSON.stringify(await widths()));
-  const wide = await widths();
+  // 面に対する位置（スクロールの分を含む）と幅。ライブラリの配置の動き（200ms）が済み、落ち着いてから測る
+  const places = () => page.$$eval('.workspace-grid-item', (elements) => elements.map((element) => {
+    const area = element.closest('.workspace-grid-area')!;
+    const rect = element.getBoundingClientRect();
+    return [Math.round(rect.left - area.getBoundingClientRect().left + area.scrollLeft), Math.round(rect.width)];
+  }));
+  await settleBy(page, async () => JSON.stringify(await places()));
+  const wide = await places();
   const gridBefore = JSON.stringify((await storedWorkspaces(page)).workspaces[0]!.grid);
+  // 列の幅は68px（升の間を含む）。幅は（列の数 × 68 - 8）、位置は（8 + 左端の列 × 68）
+  expect(wide).toEqual([[8, 6 * 68 - 8], [8 + 6 * 68, 12 * 68 - 8], [8 + 18 * 68, 6 * 68 - 8]]);
 
-  await page.setViewportSize({ width: 1000, height: 900 });
-  // 幅が狭まれば、升目の幅も狭まる（同じ比で並ぶ）
-  await expect.poll(async () => (await widths())[1]!).toBeLessThan(wide[1]! - 100);
-  await advance(page, 900);
-  expect(JSON.stringify((await storedWorkspaces(page)).workspaces[0]!.grid)).toBe(gridBefore);
-
-  await page.setViewportSize({ width: 1500, height: 900 });
-  await expect.poll(async () => (await widths()).every((width, index) => Math.abs(width - wide[index]!) < 6)).toBe(true);
-  expect(JSON.stringify((await storedWorkspaces(page)).workspaces[0]!.grid)).toBe(gridBefore);
+  for (const width of [1000, 2560, 2000]) {
+    await page.setViewportSize({ width, height: 900 });
+    await settleBy(page, async () => JSON.stringify(await places()));
+    await advance(page, 900);
+    expect(await places(), `${width}px`).toEqual(wide);
+    expect(JSON.stringify((await storedWorkspaces(page)).workspaces[0]!.grid), `${width}px`).toBe(gridBefore);
+  }
 });
 
 test('ペインに題の帯（タブ）は無く、見出しの先頭に、つかみ所・名前・ⓘがある', async ({ page }) => {

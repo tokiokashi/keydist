@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createScaleRegistry } from '#analyzers/shared-scale.ts';
 import { createPlaybackBroadcast } from '#analyzers/playback/playback-broadcast.ts';
 import { PlaybackBroadcastProvider } from '#analyzers/playback/playback-broadcast.tsx';
@@ -51,7 +51,7 @@ import { AddPaneMenu } from './AddPaneMenu.tsx';
 import { findWorkspaceAnalyzer, findWorkspacePaneMeta, type WorkspaceAnalyzerEntry } from './analyzer-registry.ts';
 import type { PaneBindingChoice, WorkspacePaneRuntime } from './pane-runtime.ts';
 import { summarizeLinkGroups } from './group-summary.ts';
-import { gridPaneIds } from '#engine/workspace-grid.ts';
+import { gridPaneIds, type GridColumnRange } from '#engine/workspace-grid.ts';
 import { defaultGridSize } from './grid-metrics.ts';
 import { useMaximizeKeys } from './use-maximize-keys.ts';
 import { useFocusAfterClose } from './use-focus-after-close.ts';
@@ -136,6 +136,10 @@ export function WorkspacePage({
     if (maximizedId !== undefined) closeKeyWindowsExcept(maximizedId);
   }, [maximizedId, closeKeyWindowsExcept]);
   if (stacked && maximizedId !== undefined) setMaximizedId(undefined);
+  // 面の今見えている列の範囲を読む関数（面が持つ）。ペインを足す・複製する時に、見えている範囲へ置くために読む。
+  // 縦積みでは面が無いので、`undefined`のまま（既定の範囲に置く）
+  const visibleRangeRef = useRef<(() => GridColumnRange) | null>(null);
+  const visibleRange = useCallback((): GridColumnRange | undefined => visibleRangeRef.current?.(), []);
 
   // 待っている変更（解析設定）を先に資産へ書いてから、ペインを増減する・戻す。待ち中の値を
   // 残したまま操作すると、操作の後にその値が書かれて、操作の結果を上書きする。
@@ -258,7 +262,7 @@ export function WorkspacePage({
       flushPending();
       // 写したペインが隣に現れるので、拡大は解いて見えるようにする
       setMaximizedId(undefined);
-      dispatch(duplicateWorkspacePaneCommand(workspaceId, paneId, generateId()));
+      dispatch(duplicateWorkspacePaneCommand(workspaceId, paneId, generateId(), visibleRange()));
     },
     closePane: (paneId: string) => {
       flushPending();
@@ -267,7 +271,7 @@ export function WorkspacePage({
     },
     // 縦積みは格子を使わず拡大できないので、渡さない（⋯に項目を出さない）
     ...(stacked ? {} : { maximizedPaneId: maximizedId, maximizePane: setMaximizedId }),
-  }), [stacked, maximizedId, env, onPaneOptionsCommit, dispatch, workspaceId, generateId, flushPending, panesById, groups, optionSets, groupSummaries, colorSlots]);
+  }), [stacked, maximizedId, env, onPaneOptionsCommit, dispatch, workspaceId, generateId, flushPending, visibleRange, panesById, groups, optionSets, groupSummaries, colorSlots]);
 
   const titleOf = useCallback(
     (paneId: string) => {
@@ -317,13 +321,13 @@ export function WorkspacePage({
       // 新しいペインは最初の組に従う（比較中に黙って別の対象を映さない）。
       binding: followBinding(workspace!.groups[0]!.id),
     };
-    dispatch(addWorkspacePaneCommand(workspaceId, pane, defaultGridSize(entry.id)));
+    dispatch(addWorkspacePaneCommand(workspaceId, pane, defaultGridSize(entry.id), visibleRange()));
   };
 
   const addBlankPane = () => {
     flushPending();
     setMaximizedId(undefined);
-    dispatch(addWorkspacePaneCommand(workspaceId, { id: generateId(), analyzerId: BLANK_PANE_ID, options: undefined, optionsBinding: OWN_OPTIONS, binding: NO_BINDING }, defaultGridSize(BLANK_PANE_ID)));
+    dispatch(addWorkspacePaneCommand(workspaceId, { id: generateId(), analyzerId: BLANK_PANE_ID, options: undefined, optionsBinding: OWN_OPTIONS, binding: NO_BINDING }, defaultGridSize(BLANK_PANE_ID), visibleRange()));
   };
 
   // 今開いている空のWorkspaceへサンプルの並びを入れる（新しいWorkspaceは作らない）。元に戻すで空へ戻る
@@ -426,6 +430,7 @@ export function WorkspacePage({
                         helpOf={helpOf}
                         renderPane={renderPane}
                         compact={workspace.compactPanes === true}
+                        visibleRangeRef={visibleRangeRef}
                         maximizedId={maximizedId !== undefined && panesById.has(maximizedId) ? maximizedId : undefined}
                         onGridChange={(grid) => dispatch(setWorkspaceGridCommand(workspaceId, grid))}
                       />

@@ -1,9 +1,11 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { GRID_COL_STEP_PX } from '../src/hosts/workspace/grid-metrics.ts';
 import { waitForHydration } from './hydration-helper.ts';
 import { settleGrid } from './settle-helper.ts';
 
 /**
- * Workspaceのペインの横幅の下限（24列のうち2列）。下限は見やすさのためではなく、操作できなくなるのを防ぐためだけに置く。
+ * Workspaceのペインの横幅の下限（2列）。下限は見やすさのためではなく、操作できなくなるのを防ぐためだけに置く。
+ * 列の幅は面の幅に依らない固定の値なので、2列は常に同じ画素の幅（128px）で、面が狭くても下限は変わらない。
  * FHD（1920x1080、左のメニューを開いた状態）で、2列まで縮められること、その幅でも⋯・大きさを変えるつまみ・
  * ドラッグのつかみに届き、操作できることを確かめる。
  */
@@ -78,16 +80,14 @@ async function topmostIsWithin(target: Locator, point: { x: number; y: number })
 
 test('FHDで、ペインを2列まで縮められる。それ以上は縮まらない', async ({ page }) => {
   await open(page);
-  const grid = await page.locator('.workspace-grid-area').boundingBox();
   const handle = (await itemLocator(page, 'a').locator('.react-resizable-handle-e').boundingBox())!;
   // 右の辺を、ペインの幅より大きく左へ引く
   await dragBy(page, center(handle), -1000, 0);
   await expect.poll(async () => (await itemOf(page, 'a')).w).toBe(2);
   expect(await itemOf(page, 'a')).toEqual({ id: 'a', x: 0, y: 0, w: 2, h: 16 });
-  // 2列は面の1/12。ペインの外形で測っても同じになる（列の数が下限で止まっている）
+  // 2列は128px。ペインの外形で測っても同じになる（列の数が下限で止まっている）
   const box = (await itemLocator(page, 'a').boundingBox())!;
-  const colStep = (grid!.width - 16 - 23 * 8) / 24 + 8;
-  expect(Math.abs(box.width - (2 * colStep - 8))).toBeLessThanOrEqual(1);
+  expect(Math.abs(box.width - (2 * GRID_COL_STEP_PX - 8))).toBeLessThanOrEqual(1);
   // 他のペインの大きさは変わらない
   expect((await itemOf(page, 'b')).w).toBe(8);
 });
@@ -122,7 +122,7 @@ test('FHDで2列のペインでも、⋯のメニュー・大きさを変える�
   expect(inside(grabBox)).toBe(true);
   expect(grabBox.width).toBeGreaterThan(16);
   expect(await topmostIsWithin(grab, { x: grabBox.x + 8, y: grabBox.y + grabBox.height / 2 })).toBe(true);
-  const colStep = ((await page.locator('.workspace-grid-area').boundingBox())!.width - 16 - 23 * 8) / 24 + 8;
+  const colStep = GRID_COL_STEP_PX;
   await dragBy(page, { x: grabBox.x + 8, y: grabBox.y + grabBox.height / 2 }, Math.round(2 * colStep), 0);
   await expect.poll(async () => (await itemOf(page, 'a')).x).toBeGreaterThan(0);
   expect((await itemOf(page, 'a')).w).toBe(2);
@@ -142,15 +142,19 @@ test('FHDで2列のペインでも、⋯のメニュー・大きさを変える�
   expect((await item.boundingBox())!.width).toBeGreaterThan(moved.width);
 });
 
-test('面が狭い時（縦積みに切り替わる760pxの直上）は、2列では⋯に届かないので、届く幅の列数で止まる', async ({ page }) => {
-  await open(page, 'light', { width: 761, height: 900 });
+test('面が狭い時（縦積みに切り替わる760pxの直上）でも、2列は128pxで⋯に届くので、2列まで縮められる', async ({ page }) => {
+  // 面は521px。右の辺が面の中に見えるよう、aは5列にする
+  await open(page, 'light', { width: 761, height: 900 }, [
+    { id: 'a', x: 0, y: 0, w: 5, h: 16 },
+    { id: 'b', x: 5, y: 0, w: 8, h: 16 },
+    { id: 'c', x: 13, y: 0, w: 8, h: 16 },
+  ]);
   const handle = (await itemLocator(page, 'a').locator('.react-resizable-handle-e').boundingBox())!;
   await dragBy(page, center(handle), -1000, 0);
   const item = itemLocator(page, 'a');
   const frame = (await item.boundingBox())!;
-  // 2列（35px前後）ではなく、100px以上で止まる
-  expect((await itemOf(page, 'a')).w).toBeGreaterThan(2);
-  expect(frame.width).toBeGreaterThanOrEqual(100);
+  expect((await itemOf(page, 'a')).w).toBe(2);
+  expect(Math.abs(frame.width - (2 * GRID_COL_STEP_PX - 8))).toBeLessThanOrEqual(1);
   // ⋯は枠の中にあり、右の辺のつまみ（6px）に重ならず、押してメニューが開く
   const menu = item.getByRole('button', { name: /の操作$/ });
   const menuBox = (await menu.boundingBox())!;
@@ -177,23 +181,24 @@ test('保存した幅が今の下限より狭くても、下の辺を引くと�
   expect(await itemOf(page, 'a')).toMatchObject({ x: 0, w: 2 });
 });
 
-test('下限の列数は、面の幅が変わると計算し直される（左のメニューの固定・固定を外す）', async ({ page }) => {
+test('下限は面の幅が変わっても2列のまま（左のメニューの固定・固定を外す）', async ({ page }) => {
   await open(page, 'light', { width: 1500, height: 900 });
   const pin = page.getByRole('button', { name: 'サイドバーを固定' });
   const shrink = async () => {
     const handle = (await itemLocator(page, 'a').locator('.react-resizable-handle-e').boundingBox())!;
     await dragBy(page, center(handle), -1000, 0);
   };
-  // 左のメニューを固定している間は面が1260px。2列は96pxで足りないので3列で止まる
+  // 左のメニューを固定している間は面が狭いが、2列で止まる
   await expect(pin).toHaveAttribute('aria-pressed', 'true');
   await shrink();
-  await expect.poll(async () => (await itemOf(page, 'a')).w).toBe(3);
-  // 固定を外すと面が広がり、2列で足りる
+  await expect.poll(async () => (await itemOf(page, 'a')).w).toBe(2);
+  expect(Math.abs((await itemLocator(page, 'a').boundingBox())!.width - (2 * GRID_COL_STEP_PX - 8))).toBeLessThanOrEqual(1);
+  // 固定を外して面が広がっても、広げ直した2列の幅は変わらない
   await pin.click();
   await expect(pin).toHaveAttribute('aria-pressed', 'false');
   await settle(page);
-  await shrink();
-  await expect.poll(async () => (await itemOf(page, 'a')).w).toBe(2);
+  expect(Math.abs((await itemLocator(page, 'a').boundingBox())!.width - (2 * GRID_COL_STEP_PX - 8))).toBeLessThanOrEqual(1);
+  expect((await itemOf(page, 'a')).w).toBe(2);
 });
 
 test('保存した高さが今の下限より低くても、右の辺を引くと幅だけが変わる（高さは広がらない）', async ({ page }) => {

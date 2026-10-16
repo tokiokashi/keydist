@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { waitForHydration } from './hydration-helper.ts';
-import { cell, colStep, dragHandle, dragPane, drawnTop, itemOf, open, ROW_STEP, settle, stored, WORKSPACES_KEY } from './workspace-grid-helper.ts';
+import { cell, COL_STEP, dragHandle, dragPane, drawnTop, itemOf, open, ROW_STEP, settle, stored, WORKSPACES_KEY } from './workspace-grid-helper.ts';
 
 /**
  * 「空いた所に詰める」の設定。Workspaceごとに持ち、既定は詰めない。
@@ -47,7 +47,7 @@ test('詰めない（既定）: 閉じた所は空いたまま残り、元に戻
 
 test('詰めない（既定）: ペインを動かすと、ぶつかった相手は下へ押される。大きさは変わらない', async ({ page }) => {
   await open(page, ['a', 'b'], [cell('a', 0, 0, 10, 8), cell('b', 12, 0, 10, 8)]);
-  const step = await colStep(page);
+  const step = COL_STEP;
   await dragPane(page, 'a', Math.round(12 * step), 4);
   await expect.poll(async () => (await itemOf(page, 'a')).x).toBeGreaterThanOrEqual(10);
   const a = await itemOf(page, 'a');
@@ -256,7 +256,7 @@ test('詰めない（既定）: 大きさを変える途中でペインが重な
 test('詰めない（既定）: 動かす途中でペインが重ならず、離しても位置が飛ばない', async ({ page }) => {
   await open(page, ['a', 'b', 'd'], [cell('a', 0, 0, 8, 12), cell('b', 12, 0, 8, 3), cell('d', 12, 3, 8, 3)]);
   const grab = (await page.locator('.workspace-grid-item[data-pane-id="a"] .workspace-drag-handle').boundingBox())!;
-  const step = await colStep(page);
+  const step = COL_STEP;
   await dragWhileChecking(page, { x: grab.x + grab.width / 2, y: grab.y + grab.height / 2 }, Math.round(12 * step), 0, 'a');
 });
 

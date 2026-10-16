@@ -44,9 +44,9 @@ async function openWorkspace(page: Page, panes: readonly unknown[], grid: unknow
   await expect(page.locator('.pane-frame').first()).toHaveAttribute('data-pane-status', 'ready', { timeout: 15_000 });
 }
 
-/** 画面幅1440では、24列のうち1升はおよそ45px。3つ並べる（各8升 = 約390px）と狭く、2つ並べる（各12升 = 約590px）と広い。 */
+/** 1列は68px（面の幅に依らない）。3つ並べる（各6列 = 400px）と狭く、2つ並べる（各9列 = 604px）と広い。 */
 const THREE = [flow('f'), comparison('c'), nSens('n')];
-const THREE_GRID = rowGrid(['f', 8], ['c', 8], ['n', 8]);
+const THREE_GRID = rowGrid(['f', 6], ['c', 6], ['n', 6]);
 
 /** 見出しの行の箱と、その中の操作（先頭・対象・条件・解析設定・⋯）の縦の位置。 */
 async function headerGeometry(pane: Locator) {
@@ -67,7 +67,7 @@ async function headerGeometry(pane: Locator) {
 }
 
 test('見出しは、広いペインでは1行、30rem以下でも名前を省略して1行のまま、19rem以下で先頭が1段目・操作が2段目', async ({ page }) => {
-  await openWorkspace(page, THREE, THREE_GRID, { width: 1440, height: 900 });
+  await openWorkspace(page, THREE, THREE_GRID, { width: 1920, height: 900 });
   const middle = await headerGeometry(page.locator('.pane-frame').first());
   expect(middle.width).toBeLessThan(30 * 16);
   expect(middle.width).toBeGreaterThan(19 * 16);
@@ -75,21 +75,21 @@ test('見出しは、広いペインでは1行、30rem以下でも名前を省�
   for (const top of [middle.targetTop, middle.settingsTop, middle.menuTop]) expect(Math.abs(top - middle.leadTop)).toBeLessThan(10);
   expect(middle.targetSelect).toBeGreaterThan(44);
 
-  // 4つ並べる（各6升 = 約290px）と、名前を省略しても1行に入らない。先頭が上、対象・解析設定・⋯が同じ下の段
+  // 4つ並べる（各5列 = 332px。ペインの本体の幅は306px）と、名前を省略しても1行に入らない（1行になるのは19.4remより広い時）。先頭が上、対象・解析設定・⋯が同じ下の段
   const four = ['a', 'b', 'c', 'd'].map(flow);
-  await page.evaluate((value) => localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] })), workspaceOf(four, rowGrid(['a', 6], ['b', 6], ['c', 6], ['d', 6])));
+  await page.evaluate((value) => localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] })), workspaceOf(four, rowGrid(['a', 5], ['b', 5], ['c', 5], ['d', 5])));
   await page.reload();
   await waitForHydration(page);
   await expect(page.locator('.workspace-grid-item')).toHaveCount(4);
   await expect(page.locator('.pane-frame').first()).toHaveAttribute('data-pane-status', 'ready', { timeout: 15_000 });
   const narrow = await headerGeometry(page.locator('.pane-frame').first());
-  expect(narrow.width).toBeLessThan(19 * 16);
+  expect(narrow.width).toBeLessThan(19.4 * 16);
   expect(narrow.targetTop).toBeGreaterThan(narrow.leadTop + 10);
   expect(Math.abs(narrow.settingsTop - narrow.targetTop)).toBeLessThan(10);
   expect(Math.abs(narrow.menuTop - narrow.targetTop)).toBeLessThan(10);
   expect(narrow.targetSelect).toBeGreaterThan(80);
 
-  await page.evaluate((value) => localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] })), workspaceOf(THREE.slice(0, 2), rowGrid(['f', 12], ['c', 12])));
+  await page.evaluate((value) => localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] })), workspaceOf(THREE.slice(0, 2), rowGrid(['f', 9], ['c', 9])));
   await page.reload();
   await waitForHydration(page);
   await expect(page.locator('.workspace-grid-item')).toHaveCount(2);
@@ -103,7 +103,7 @@ test('見出しは、広いペインでは1行、30rem以下でも名前を省�
 });
 
 test('名前とⓘは見出しの先頭にあり、ペインの中に名前の行は無い。読み上げ用のh2は残る', async ({ page }) => {
-  await openWorkspace(page, THREE, rowGrid(['f', 12], ['c', 12], ['n', 12]).map((item, i) => ({ ...item, x: (i % 2) * 12, y: Math.floor(i / 2) * 16 })), { width: 1440, height: 900 });
+  await openWorkspace(page, THREE, rowGrid(['f', 9], ['c', 9], ['n', 9]).map((item, i) => ({ ...item, x: (i % 2) * 9, y: Math.floor(i / 2) * 16 })), { width: 1920, height: 900 });
   const flowPane = page.locator('.pane-frame').filter({ has: page.locator('[data-react-feature="bigram-flow"]') });
   const lead = flowPane.locator('.pane-frame-lead');
   await expect(lead).toContainText('Bigram Flow');
@@ -122,9 +122,9 @@ test('名前とⓘは見出しの先頭にあり、ペインの中に名前の�
 });
 
 test('条件: 広い時は文字のchip、狭い時は絵と変更の点。どちらも押すと条件のモーダルが開く', async ({ page }) => {
-  await openWorkspace(page, THREE, THREE_GRID, { width: 1440, height: 900 });
+  await openWorkspace(page, THREE, THREE_GRID, { width: 1920, height: 900 });
   const narrowTrigger = page.locator('.pane-frame').first().locator('.pane-condition-trigger');
-  // 狭い（約390px）: 文字は隠れ（読み上げには残る）、2rem四方の絵のボタン
+  // 狭い（400px）: 文字は隠れ（読み上げには残る）、2rem四方の絵のボタン
   const narrowBox = (await narrowTrigger.boundingBox())!;
   expect(narrowBox.width).toBeLessThanOrEqual(34);
   expect(narrowBox.height).toBeGreaterThanOrEqual(30);
@@ -149,10 +149,10 @@ test('条件: 広い時は文字のchip、狭い時は絵と変更の点。ど�
   }));
   expect(icons.condition).not.toBe(icons.settings);
 
-  // 広い（約590px、34remより広い）: 文字のchip
+  // 広い（604px、34remより広い）: 文字のchip
   await page.evaluate((value) => localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] })), workspaceOf(
     THREE.slice(0, 2),
-    rowGrid(['f', 12], ['c', 12]),
+    rowGrid(['f', 9], ['c', 9]),
     // 条件のモーダルで変えた値はWorkspaceの条件に入る。保存先を書き直すので、同じ値を持たせる
     { conditions: { windowSize: 4 } },
   ));
@@ -168,7 +168,7 @@ test('条件: 広い時は文字のchip、狭い時は絵と変更の点。ど�
 });
 
 test('ⓘの説明は見出しの先頭から出て、キーボードで届き、Escapeで閉じる', async ({ page }) => {
-  await openWorkspace(page, THREE, THREE_GRID, { width: 1440, height: 900 });
+  await openWorkspace(page, THREE, THREE_GRID, { width: 1920, height: 900 });
   const info = page.locator('.pane-frame-lead').first().getByRole('button', { name: 'Bigram Flowの説明' });
   await info.hover();
   const tip = page.getByRole('tooltip');
@@ -197,7 +197,7 @@ test('ⓘの説明は見出しの先頭から出て、キーボードで届き�
 });
 
 test('見出しの先頭のつかみ所は、ⓘと操作のボタンを含まない（押してもペインが動かない）', async ({ page }) => {
-  await openWorkspace(page, THREE, THREE_GRID, { width: 1440, height: 900 });
+  await openWorkspace(page, THREE, THREE_GRID, { width: 1920, height: 900 });
   const first = page.locator('.workspace-grid-item').first();
   await settleGrid(page);
   const before = await first.boundingBox();
@@ -250,9 +250,9 @@ test('個別画面の見出しは今のまま（名前の行・条件の行が�
 });
 
 test('狭いペインでも、連動のメニューはペインの枠からはみ出して切れない', async ({ page }) => {
-  // 4列（1ペインが約290px）。連動のボタンが枠の左寄りに来るので、右端揃えのままだと左へはみ出して切れる
+  // 5列（1ペインが332px）。連動のボタンが枠の左寄りに来るので、右端揃えのままだと左へはみ出して切れる
   const four = ['a', 'b', 'c', 'd'].map(flow);
-  await openWorkspace(page, four, rowGrid(['a', 6], ['b', 6], ['c', 6], ['d', 6]), { width: 1440, height: 900 });
+  await openWorkspace(page, four, rowGrid(['a', 5], ['b', 5], ['c', 5], ['d', 5]), { width: 1920, height: 900 });
   const frame = page.locator('.pane-frame').nth(2);
   await frame.locator('.pane-target-binding .pane-menu-button').click();
   const list = page.getByRole('menu').first();

@@ -68,9 +68,9 @@ test('条件のモーダルのプリセットの⋯は、左端の列でも右�
   }
 });
 
-/** ペインを縦に3つ並べる（ページがスクロールする）。 */
+/** ペインを縦に3つ並べる（ページがスクロールする）。幅は、1440pxの面（サイドバー固定で1200px）に横にスクロールせず収まる16列。 */
 async function openTall(page: Page): Promise<void> {
-  await openWorkspace(page, ['a', 'b', 'c'].map(flow), ['a', 'b', 'c'].map((id, i) => ({ id, x: 0, y: i * 30, w: 24, h: 30 })), { width: 1440, height: 600 });
+  await openWorkspace(page, ['a', 'b', 'c'].map(flow), ['a', 'b', 'c'].map((id, i) => ({ id, x: 0, y: i * 30, w: 16, h: 30 })), { width: 1440, height: 600 });
   await expect(page.locator('.workspace-grid-item')).toHaveCount(3);
 }
 

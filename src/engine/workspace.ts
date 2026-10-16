@@ -17,6 +17,7 @@ import {
   gridWithoutPane,
   normalizeGrid,
   sameGrid,
+  type GridColumnRange,
   type GridSize,
   type WorkspaceGrid,
 } from './workspace-grid.ts';
@@ -407,11 +408,18 @@ function pruneLinkGroups(workspace: Workspace): Workspace {
 }
 
 /**
- * ペインを足す。`size`の大きさで、格子の空いている最初の場所に置く。同じidのペインが既にあれば何もしない。
+ * ペインを足す。`size`の大きさで、格子の`range`（省略時は`DEFAULT_GRID_RANGE`）の中の空いている最初の場所に置く。
+ * 同じidのペインが既にあれば何もしない。
  * 共有に従うペインで、従う先の組がまだ無ければ、渡された`options`を値にして組を作る（最初のペインの設定が共有の設定になる）。
  * 組が既にあれば共有の値が勝つので、ペインの`options`は捨てる。
  */
-export function addWorkspacePane(library: WorkspaceLibrary, workspaceId: string, pane: WorkspacePane, size: GridSize): WorkspaceLibrary {
+export function addWorkspacePane(
+  library: WorkspaceLibrary,
+  workspaceId: string,
+  pane: WorkspacePane,
+  size: GridSize,
+  range?: GridColumnRange,
+): WorkspaceLibrary {
   return updateWorkspace(library, workspaceId, (workspace) => {
     if (workspace.panes.some((existing) => existing.id === pane.id)) return workspace;
     let optionSets = workspace.optionSets;
@@ -427,7 +435,7 @@ export function addWorkspacePane(library: WorkspaceLibrary, workspaceId: string,
       ...workspace,
       optionSets,
       panes: [...workspace.panes, added],
-      grid: gridWithPane(workspace.grid, pane.id, size, workspace.compactPanes === true),
+      grid: gridWithPane(workspace.grid, pane.id, size, workspace.compactPanes === true, range),
     };
   });
 }
@@ -445,7 +453,7 @@ export function closeWorkspacePane(library: WorkspaceLibrary, workspaceId: strin
 }
 
 /**
- * ペインを複製する。解析設定と対象の持ち方（従う / 固定）を写し、元のペインと同じ大きさの枠を、右隣（無ければ真下）に置く。
+ * ペインを複製する。解析設定と対象の持ち方（従う / 固定）を写し、元のペインと同じ大きさの枠を、`range`の中の右隣（無ければ真下）に置く。
  * 元のペインが無い、または新しいidが既に使われていれば何もしない。
  */
 export function duplicateWorkspacePane(
@@ -453,6 +461,7 @@ export function duplicateWorkspacePane(
   workspaceId: string,
   paneId: string,
   newPaneId: string,
+  range?: GridColumnRange,
 ): WorkspaceLibrary {
   return updateWorkspace(library, workspaceId, (workspace) => {
     const source = workspace.panes.find((pane) => pane.id === paneId);
@@ -460,7 +469,7 @@ export function duplicateWorkspacePane(
     return {
       ...workspace,
       panes: [...workspace.panes, { ...source, id: newPaneId }],
-      grid: gridWithPaneNextTo(workspace.grid, paneId, newPaneId, workspace.compactPanes === true),
+      grid: gridWithPaneNextTo(workspace.grid, paneId, newPaneId, workspace.compactPanes === true, undefined, range),
     };
   });
 }

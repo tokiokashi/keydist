@@ -91,6 +91,28 @@ function withWorkspace(): State {
   );
 }
 
+test('ペインの追加と複製は、渡された見えている列の範囲の中に置く（24列より右を含む）。範囲を渡さなければ左端から24列', () => {
+  const start = { assets: emptyAssets(), history: emptyCommandHistory<KeydistAssets>() };
+  const created = run(start, createWorkspaceCommand('w1'));
+  const range = { start: 40, end: 70 };
+  const added = run(created, addWorkspacePaneCommand('w1', pane('a'), SIZE, range));
+  const itemOf = (state: State, id: string) => findWorkspace(state.assets.workspaces, 'w1')!.grid.find((item) => item.id === id)!;
+  assert.equal(itemOf(added, 'a').x, 40);
+  // 複製も、元の右隣が範囲に収まれば右隣、範囲の外なら範囲の中に置く
+  const duplicated = run(added, duplicateWorkspacePaneCommand('w1', 'a', 'a2', range));
+  assert.equal(itemOf(duplicated, 'a2').x, 40 + SIZE.w);
+  const narrow = run(added, duplicateWorkspacePaneCommand('w1', 'a', 'a3', { start: 40, end: 40 + SIZE.w }));
+  assert.deepEqual([itemOf(narrow, 'a3').x, itemOf(narrow, 'a3').y], [40, SIZE.h]);
+  // 範囲を渡さなければ、左端から24列の中
+  const unranged = run(created, addWorkspacePaneCommand('w1', pane('b'), SIZE));
+  assert.equal(itemOf(unranged, 'b').x, 0);
+  const second = run(unranged, addWorkspacePaneCommand('w1', pane('c'), { w: 20, h: 4 }));
+  assert.ok(itemOf(second, 'c').x + 20 <= 24 || itemOf(second, 'c').y > 0);
+  // 範囲を渡して足した後にUndoで戻る
+  const undone = undo(added.assets, added.history);
+  assert.deepEqual(undone.assets.workspaces[0]!.grid, []);
+});
+
 test('作成・ペインの追加/複製/閉じる・名前の変更がUndo / Redoで往復する', () => {
   const start = { assets: emptyAssets(), history: emptyCommandHistory<KeydistAssets>() };
   const created = run(start, createWorkspaceCommand('w1'));
