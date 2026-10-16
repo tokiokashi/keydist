@@ -28,9 +28,10 @@ test('割り当てを作り、キーと列を編集し、既定へ戻せる。�
   // 新規作成の元は、選んでいる物理配列（ANSI）の既定の割り当て
   await expect(keyLegend(page, 'q')).toHaveText('左小');
 
-  // キー単位: Qを右小指にする
+  // キー単位: Qを右小指だけの担当にする（右小指を足してから、前の左小指を外す）
   await page.locator('.physical-keyboard-key[data-key-id="q"]').click();
-  await page.getByLabel('選んだキーの基本の指').selectOption('RP');
+  await page.getByRole('checkbox', { name: '右小指', exact: true }).check();
+  await page.getByRole('checkbox', { name: '左小指', exact: true }).uncheck();
   await expect(keyLegend(page, 'q')).toHaveText('右小');
 
   // 列の一括: 2列目（W・S・Xの列）を左小指にする
@@ -117,14 +118,20 @@ test('指ごとに担当するキーを足す・外せ、キーごとに基本�
   await keyBox(page, 'f').click();
   await page.getByRole('checkbox', { name: '右中指', exact: true }).check();
   await expect(keyBox(page, 'f').locator('.physical-keyboard-band[data-band-edge="right"]')).toHaveCount(1);
-  // 基本の指は担当から外せない
-  await expect(page.getByRole('checkbox', { name: '左人差し指', exact: true })).toBeDisabled();
-  // 基本の指を変えても、前の基本の指は担当に残る
+  // 基本の指を選ぶ欄は、担当する親指以外の指が2本の間だけ出て、その2本から選べる。選び直しで担当は変わらない
   await page.getByLabel('選んだキーの基本の指').selectOption('RM');
   await expect(keyLegend(page, 'f')).toHaveText('右中');
   await expect(keyBox(page, 'f').locator('.physical-keyboard-band[data-band-edge="left"]')).toHaveCount(1);
+  await page.getByLabel('選んだキーの基本の指').selectOption('LI');
+  await expect(keyLegend(page, 'f')).toHaveText('左人');
+  // 基本の指のチェックも外せる。残った右中指が基本の指になり、欄は消える
   await page.getByRole('checkbox', { name: '左人差し指', exact: true }).uncheck();
+  await expect(keyLegend(page, 'f')).toHaveText('右中');
   await expect(keyBox(page, 'f').locator('.physical-keyboard-band')).toHaveCount(0);
+  await expect(page.getByLabel('選んだキーの基本の指')).toHaveCount(0);
+  // 親指以外の最後の担当は外せず、そばに理由が出る
+  await expect(page.getByRole('checkbox', { name: '右中指', exact: true })).toBeDisabled();
+  await expect(page.locator('[data-finger-assignment-owner-hint]')).toContainText('別の指にチェックを入れてから外せます');
 
   // 指単位: 右親指を選んで、図のキーを押して担当に足す・外す
   await page.getByLabel('担当を編集する指').selectOption('RT');
@@ -135,6 +142,14 @@ test('指ごとに担当するキーを足す・外せ、キーごとに基本�
   await keyBox(page, 'n').click();
   await expect(page.locator('[data-finger-assignment-finger-keys]')).toContainText('M');
   await expect(keyBox(page, 'n').locator('.physical-keyboard-band')).toHaveCount(0);
+
+  // 親指以外の最後の担当のキーを押しても外れず、指単位の欄に理由が出る。指を選び直すと消える
+  await page.getByLabel('担当を編集する指').selectOption('RM');
+  await keyBox(page, 'f').click();
+  await expect(page.locator('[data-finger-assignment-notice]')).toContainText('右中指は親指以外の最後の担当です');
+  await expect(keyBox(page, 'f').locator('.physical-keyboard-band')).toHaveCount(0);
+  await page.getByLabel('担当を編集する指').selectOption('RI');
+  await expect(page.locator('[data-finger-assignment-notice]')).toHaveCount(0);
 
   const stored = await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY);
   const assignment = JSON.parse(stored!).assignments[0];
@@ -152,9 +167,9 @@ test('ホームキーがその指の担当でない割り当ては警告が出�
   await page.locator('[data-finger-assignment-duplicate]').click();
   await expect(page.locator('[data-finger-assignment-problems]')).toHaveCount(0);
 
-  // jは右人差し指のホームキー。基本の指を右中指にして、右人差し指の担当を外す
+  // jは右人差し指のホームキー。右中指も担当に加えて、右人差し指の担当を外す
   await keyBox(page, 'j').click();
-  await page.getByLabel('選んだキーの基本の指').selectOption('RM');
+  await page.getByRole('checkbox', { name: '右中指', exact: true }).check();
   await page.getByRole('checkbox', { name: '右人差し指', exact: true }).uncheck();
   const problems = page.locator('[data-finger-assignment-problems]');
   await expect(problems).toContainText('右人差し指のホームキー（J）は、右人差し指の担当ではありません');
