@@ -1060,7 +1060,7 @@ test('部分の設定: 同手・別指の速度は、使う段を組と向きご
 
 test('部分の設定: 指ごとの値を使わない時、全部の指に代表値の続け打ちと移動の時間を使う', () => {
   // 条件: 配列qwerty・テキスト「fv」（同指連続）。allFingerMovementDelayは偽で、sameFingerDelayは真。
-  // 指ごとの値はLIが r=100・m=400、代表値は r=200・m=100。移動の時間 = r + 距離 × m。
+  // 指ごとの値はLIがr=100・m=400、代表値はr=200・m=100。移動の時間はr+距離×m。
   const input = resolve('qwerty', 'fv', 'en', EMPTY_SETTINGS_OVERRIDES, FULL_CALIBRATION);
   const base = { useKeystrokeOverhead: false, allFingerMovementDelay: false };
   const used = extractionOf(input, base);
@@ -1073,13 +1073,13 @@ test('部分の設定: 指ごとの値を使わない時、全部の指に代表
   assert.deepEqual(STEP_ENDS(unused), [200, 200 + Math.max(200, 200 + press.distance * 100)]);
 });
 
-test('部分の設定: 打鍵の上乗せを使わない時、上乗せ無しで、同指連続は s を持たない式になる', () => {
-  // 条件: 配列qwerty・allFingerMovementDelayは偽。「その他」の上乗せ60ms、同指連続の差 s=30ms。
+test('部分の設定: 打鍵の上乗せを使わない時、上乗せ無しで、同指連続はsを持たない式になる', () => {
+  // 条件: 配列qwerty・allFingerMovementDelayは偽。「その他」の上乗せ60ms、同指連続の差s=30ms。
   const fjdk = resolve('qwerty', 'fjdk', 'en', EMPTY_SETTINGS_OVERRIDES, FULL_CALIBRATION);
   const base = { useCrossHandDirection: false, allFingerMovementDelay: false };
   assert.deepEqual(STEP_ENDS(extractionOf(fjdk, base)), [260, 520, 780, 1040]);
   assert.deepEqual(STEP_ENDS(extractionOf(fjdk, { ...base, useKeystrokeOverhead: false })), [200, 400, 600, 800]);
-  // 同指連続: 使う時は max(normalMs, 移動) + s、使わない時は max(normalMs + o, 移動) で o = 0
+  // 同指連続: 使う時はmax(normalMs, 移動)+s、使わない時はmax(normalMs+o, 移動)でo=0
   const fv = resolve('qwerty', 'fv', 'en', EMPTY_SETTINGS_OVERRIDES, FULL_CALIBRATION);
   const used = extractionOf(fv, base);
   const press = used.analysis.strokes[1].presses.find((p) => p.sfb);
@@ -1091,7 +1091,7 @@ test('部分の設定: 打鍵の上乗せを使わない時、上乗せ無しで
 });
 
 test('部分の設定: 同時押しの上乗せを使わない時、同時押しのステップに足さない', () => {
-  // 親指を含む同時押しのストローク。使う時は thumb の50ms、使わない時は0。
+  // 親指を含む同時押しのストローク。使う時はthumbの50ms、使わない時は0。
   const thumbStroke = { presses: [{ finger: 'RT' as const, keys: [] }, { finger: 'RI' as const, keys: [] }] };
   const parts = { ...DEFAULT_PLAYBACK_OPTIONS, useSimultaneousOverhead: false };
   assert.equal(playbackSimultaneousOverheadMs(thumbStroke, FULL_CALIBRATION), 50);
