@@ -42,11 +42,18 @@ export interface TargetShareSource {
   readonly setups: readonly Setup[];
 }
 
-const refSchema = v.pipe(
-  v.string(),
-  v.maxLength(SHARE_MAX_REF_LENGTH),
-  v.regex(/^(?:layout|user-layout|setup):\S.*$/),
-);
+/**
+ * 受け取る側が読める参照の形。名前は先頭が空白でなく、改行を含まない（`.`は改行に一致しない）。
+ * 送る側も同じ判定で載せるかを決めるので、受け取る側が読めない参照はリンクに載らない。
+ */
+const REF_PATTERN = /^(?:layout|user-layout|setup):\S.*$/;
+
+const refSchema = v.pipe(v.string(), v.maxLength(SHARE_MAX_REF_LENGTH), v.regex(REF_PATTERN));
+
+/** 参照が、受け取る側で読み取れる形か（長さの上限と名前の形）。 */
+export function isReadableTargetRef(ref: string): boolean {
+  return ref.length <= SHARE_MAX_REF_LENGTH && REF_PATTERN.test(ref);
+}
 
 /** 壊れていれば`undefined`（診断を積んで、その参照だけを捨てる）。 */
 export function decodeTargetRef(raw: string, path: string, diagnostics: CodecDiagnostic[]): TargetRef | undefined {
@@ -71,7 +78,9 @@ export type TargetRefEncoding =
   /** 手持ちに無い対象（削除されたSetup・配列）。載せる名前が無い。 */
   | { readonly ok: false; readonly reason: 'missing' }
   /** 参照が長さの上限を超える。受け取った側が読めないので載せない。`name`は画面に出す名前。 */
-  | { readonly ok: false; readonly reason: 'too-long'; readonly kind: 'user-layout' | 'setup'; readonly name: string };
+  | { readonly ok: false; readonly reason: 'too-long'; readonly kind: 'user-layout' | 'setup'; readonly name: string }
+  /** 名前が空・先頭が空白・改行を含むのいずれかで、受け取った側が読めない。 */
+  | { readonly ok: false; readonly reason: 'unreadable-name'; readonly kind: 'user-layout' | 'setup'; readonly name: string };
 
 /** 対象を参照へ。載せられない時は理由を返す。 */
 export function encodeTargetRef(target: AnalysisTarget, source: TargetShareSource): TargetRefEncoding {
@@ -96,7 +105,11 @@ export function encodeTargetRef(target: AnalysisTarget, source: TargetShareSourc
     name = setupShareName(setup, source);
     ref = `setup:${name}`;
   }
-  if (ref.length > SHARE_MAX_REF_LENGTH && kind !== 'layout') return { ok: false, reason: 'too-long', kind, name };
+  if (kind !== 'layout' && !isReadableTargetRef(ref)) {
+    return ref.length > SHARE_MAX_REF_LENGTH
+      ? { ok: false, reason: 'too-long', kind, name }
+      : { ok: false, reason: 'unreadable-name', kind, name };
+  }
   return { ok: true, ref };
 }
 
@@ -133,6 +146,8 @@ export interface ShareEncodeNotice {
   readonly missing: number;
   /** 名前が長すぎて載せられなかった自作の配列・Setupの名前。 */
   readonly tooLong: readonly { readonly kind: 'user-layout' | 'setup'; readonly name: string }[];
+  /** 名前が空・先頭が空白・改行を含むため載せられなかった自作の配列・Setupの名前。 */
+  readonly unreadableNames: readonly { readonly kind: 'user-layout' | 'setup'; readonly name: string }[];
   /** 件数の上限を超えて載せられなかった対象の件数。 */
   readonly overLimit: number;
   /** 名前だけを載せた自作の配列の名前。受け取った側に同じ名前の配列が無いと開けない。 */
@@ -147,12 +162,13 @@ export interface EncodedTargetShare {
 interface EncodeNoticeBuilder {
   missing: number;
   tooLong: { kind: 'user-layout' | 'setup'; name: string }[];
+  unreadableNames: { kind: 'user-layout' | 'setup'; name: string }[];
   overLimit: number;
   nameOnlyLayouts: string[];
 }
 
 function newEncodeNotice(): EncodeNoticeBuilder {
-  return { missing: 0, tooLong: [], overLimit: 0, nameOnlyLayouts: [] };
+  return { missing: 0, tooLong: [], unreadableNames: [], overLimit: 0, nameOnlyLayouts: [] };
 }
 
 /** 参照を足す。載らない時は理由を`notice`へ積み、`undefined`を返す。 */
@@ -163,7 +179,8 @@ function encodeInto(target: AnalysisTarget, source: TargetShareSource, notice: E
     return encoded.ref;
   }
   if (encoded.reason === 'missing') notice.missing += 1;
-  else notice.tooLong.push({ kind: encoded.kind, name: encoded.name });
+  else if (encoded.reason === 'too-long') notice.tooLong.push({ kind: encoded.kind, name: encoded.name });
+  else notice.unreadableNames.push({ kind: encoded.kind, name: encoded.name });
   return undefined;
 }
 
@@ -337,7 +354,8 @@ export function describeSharedTargetsNotice(notice: SharedTargetsNotice): readon
 const MAX_NAME_CHARS = 20;
 
 function quoteName(item: { readonly kind: 'user-layout' | 'setup'; readonly name: string }): string {
-  const name = item.name.length > MAX_NAME_CHARS ? `${item.name.slice(0, MAX_NAME_CHARS)}…` : item.name;
+  const flat = item.name.replace(/\s+/g, ' ');
+  const name = flat.length > MAX_NAME_CHARS ? `${flat.slice(0, MAX_NAME_CHARS)}…` : flat;
   return item.kind === 'setup' ? `Setup「${name}」` : `自作の配列「${name}」`;
 }
 
@@ -354,6 +372,11 @@ export function describeShareEncodeNotice(notice: ShareEncodeNotice): readonly s
     const names = notice.tooLong.slice(0, MAX_NAMES_SHOWN).map(quoteName);
     const rest = notice.tooLong.length - names.length;
     lines.push(`名前が長すぎる${names.join('・')}${rest > 0 ? `ほか${rest}件` : ''}はリンクに載りませんでした`);
+  }
+  if (notice.unreadableNames.length > 0) {
+    const names = notice.unreadableNames.slice(0, MAX_NAMES_SHOWN).map(quoteName);
+    const rest = notice.unreadableNames.length - names.length;
+    lines.push(`リンクで運べない名前（空・先頭が空白・改行を含む）の${names.join('・')}${rest > 0 ? `ほか${rest}件` : ''}はリンクに載りませんでした`);
   }
   if (notice.overLimit > 0) {
     lines.push(`対象は${SHARE_MAX_TARGETS}件までのため、超えた分（${notice.overLimit}件）はリンクに載りませんでした`);
