@@ -5,8 +5,7 @@ import { COMPARISON_PANE_META } from './pane-meta.ts';
 
 /**
  * 列ごとの表示形式（一律ルールではなく列の宣言に持たせる）。
- * 旧実装（`src/legacy/analyzer-metrics-content.tsx`の`COMPARE_FORMATS`）と同じ桁数・
- * %表記になっていることを確認する。列の並びは`COMPARE_HEADERS`と同じ順（`options.ts`の
+ * 個数・距離の列は整数、率の列は小数第1位と%の表記になっていることを確認する。列の並びは`COMPARE_HEADERS`と同じ順（`options.ts`の
  * コメント参照）。
  */
 

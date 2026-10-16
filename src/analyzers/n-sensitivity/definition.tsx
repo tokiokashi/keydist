@@ -28,8 +28,7 @@ import './n-sensitivity-view.css';
  * `extracted`（`extract.ts`の計算結果）をそのまま描くだけで、`Metrics`の再計算はしない
  * （docs/architecture.md「可視化は計算しない」）。**優劣を示す色・強調・並び替えによる
  * 順位表示・傾きスコアはしない**（AGENTS.md「優劣の判定・順位付け・合成スコアを作らない」。
- * 旧実装（`src/legacy/analyzer-metrics-content.tsx`）のコメントが「傾きが小さい配列ほど
- * 指を残したまま打てる配列」と書いていた評価的な言い回しはここでは引き継がない）。
+ * 「傾きが小さい配列ほど指を残したまま打てる配列」のような評価的な言い回しも書かない）。
  * 系列の色はhostが集合の中で配った色（`rowContext`の`color`）をそのまま使い、値の大小で強調しない。
  */
 

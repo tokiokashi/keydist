@@ -7,11 +7,8 @@ export { COMPARISON_COLUMN_IDS, COMPARISON_UNIT_NOTE, type ComparisonColumnId } 
 /**
  * 比較表Analyzerの列。
  *
- * 旧実装（`src/legacy/analyzer-metrics-content.tsx`の`compareMetricValues`・
- * `results-view.ts`の`COMPARE_HEADERS`）が並べていた13列に、右手の割合の2列を足した範囲にする（13列は同じ式）
- * （AGENTS.md「作り直しの範囲は新しい構成に残るかで決める」: 列の中身・式そのものは
- * `interpretation/metrics.ts`の`Metrics`から機械的に読める値で、旧実装固有の事情に
- * 依存しないため、そのまま引き継ぐ）。列の値は`interpretation/metrics.ts`の
+ * 並べる列は13列に、右手の割合の2列を足した範囲にする。列の中身・式そのものは
+ * `interpretation/metrics.ts`の`Metrics`から機械的に読める値。列の値は`interpretation/metrics.ts`の
  * `computeMetrics`が返す`Metrics`から`extract.ts`（`computeComparisonRowValues`）が
  * 読み出すだけの単純な写像で、独自の派生指標・合成スコアは作らない
  * （AGENTS.md「優劣の判定・順位付け・合成スコアを作らない」）。
@@ -21,9 +18,7 @@ export { COMPARISON_COLUMN_IDS, COMPARISON_UNIT_NOTE, type ComparisonColumnId } 
 /**
  * 列ごとの表示形式（一律ルールではなく列の宣言に持たせる）。
  *
- * 桁数・%表記は旧実装（`src/legacy/analyzer-metrics-content.tsx`の`COMPARE_FORMATS`）と
- * 同じ丸めに揃える。ここで揃えたいのは「旧側に合わせること」自体ではなく、
- * **率（rate）は率として読める表示にする**こと（個数・距離の列に小数第1位+%を
+ * **率（rate）は率として読める表示にする**（個数・距離の列に小数第1位+%を
  * 付けたり、率の列を整数で丸めて情報を削ったりしない）。列の値の式自体は
  * `extract.ts`の`computeComparisonRowValues`が持ち、ここは表示の丸めだけを持つ
  * （値そのものを変えない）。

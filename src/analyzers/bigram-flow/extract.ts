@@ -78,9 +78,8 @@ export type BigramFlowFigures = Omit<BigramFlowExtracted, 'keyDetails'>;
 /**
  * `SingleAnalyzerDefinition.extract`の中身。engineの`SingleAnalyzerExtractContext`からは
  * `trace`と`options`しか使わない（`analysis` `metrics` `requestTrace`は現状のBigram Flowには
- * 不要）ので、legacy側（engineを経由しない`src/legacy/analyzer-bigram-flow.tsx`・
- * `src/features/analyzer-next/`）もこの関数を直接呼べるよう、契約の型を経由せず
- * `Trace`と`options`だけを引数に取る形で外へ公開する。
+ * 不要）ので、契約の型を経由せず`Trace`と`options`だけを引数に取る形で外へ公開する
+ * （engineを経由しない呼び出しとテストが直接呼べる）。
  */
 export function computeBigramFlowExtraction(
   trace: Trace,

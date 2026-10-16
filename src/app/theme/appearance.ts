@@ -31,7 +31,7 @@ export function saveAppearancePreference(
 /**
  * Appearance用の外部store。
  *
- * AnalyzerThemeControlsと（将来の共通ヘッダー等の）他のtheme控件が
+ * サイドバーと（将来の共通ヘッダー等の）他のtheme控件が
  * それぞれ独立にstorageを読むと、片方の更新がもう片方に反映されず
  * ボタンの押下状態がズレる。useSyncExternalStoreからこのstoreを購読させることで、
  * どの控件から変更してもsubscribe中の全controlへ同期する。

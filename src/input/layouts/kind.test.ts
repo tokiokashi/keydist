@@ -4,8 +4,8 @@ import { builtInLayoutKind, layoutKind, userLayoutKind, type LayoutKind } from '
 import type { Layout } from './types.ts';
 import type { UserLayout } from './user-layouts.ts';
 
-// test/analyzer-regression.test.ts のfixture（旧Analyzerの実測値）に記録された
-// romajiRuleId の有無から逆算した「現状のAnalyzerが各配列をどう扱っているか」の表。
+// test/analyzer-regression.test.tsのfixtureに記録された
+// romajiRuleIdの有無から逆算した「各配列がどう扱われているか」の表。
 // alpha配列はja条件でromajiRuleIdを持ち、kana配列は持たない
 // （test/fixtures/analyzer-regression.json を参照して確認済み）。
 const EXPECTED: Record<string, LayoutKind> = {

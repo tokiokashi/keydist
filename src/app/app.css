@@ -38,12 +38,6 @@ a {
   padding: 0;
 }
 
-.app-shell.analyzer-route-shell {
-  width: 100%;
-  margin: 0;
-  padding: 0;
-}
-
 .hero,
 .feature-shell,
 .route-status {

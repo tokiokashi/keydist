@@ -33,8 +33,8 @@ function AppearanceAuthority() {
   // hydrationが失敗してReactが<html>を作り直すと、bootstrapが付けたdata-themeが消える。
   // paint前に付け直すためuseLayoutEffectで適用する。
   useLayoutEffect(() => {
-    // getAppearanceSnapshotがstore初期化（loadAppearancePreferenceによるmigration含む）を担う。
-    // 他のtheme控件（AnalyzerThemeControls等）と同じstoreを共有するため、ここでも
+    // getAppearanceSnapshotがstoreの初期化（保存の読み込み）を担う。
+    // サイドバーのテーマ切替と同じstoreを共有するため、ここでも
     // 個別にstorageを読まずstore経由で取得する。
     applyTheme(getAppearanceSnapshot());
   }, []);
@@ -45,10 +45,8 @@ function RootDocument({ children }: { children: ReactNode }) {
   // pathnameの文字列比較だと、GitHub Pagesが付ける末尾スラッシュ（/analyzer/）で外れ、
   // prerender済みHTMLとの不一致でhydrationが失敗する。matchしたrouteの宣言で判定する。
   const layout = useRouterState({
-    select: (state): 'bare' | 'context-bar' | 'plain' => {
-      if (state.matches.some((match) => match.staticData.shell === 'none')) return 'bare';
-      return state.matches.some((match) => match.staticData.contextBar === true) ? 'context-bar' : 'plain';
-    },
+    select: (state): 'context-bar' | 'plain' =>
+      state.matches.some((match) => match.staticData.contextBar === true) ? 'context-bar' : 'plain',
   });
 
   return (
@@ -60,11 +58,7 @@ function RootDocument({ children }: { children: ReactNode }) {
       </head>
       <body>
         <AppearanceAuthority />
-        {layout === 'bare' ? (
-          <main className="app-shell analyzer-route-shell">{children}</main>
-        ) : (
-          <AppShell hasContextBar={layout === 'context-bar'}>{children}</AppShell>
-        )}
+        <AppShell hasContextBar={layout === 'context-bar'}>{children}</AppShell>
         <Scripts />
       </body>
     </html>

@@ -550,6 +550,79 @@ test('トリガーの図はraw Face.trigger textを再構成せず、明示prese
   assert.match(source, /combo\.keyVariants\s*\?\?\s*\[combo\.keys\]/);
 });
 
+test('key pattern pickerはlayouts registryをruntime importしない', async () => {
+  const source = await readFile(join(SRC, 'input/layouts/key-pattern-picker.ts'), 'utf8');
+
+  assert.doesNotMatch(
+    source,
+    /(?:from|import)\s+['"]\.\/layouts\/index\.ts['"]/,
+    'key-pattern-picker must depend on layouts/types.ts instead of the built-in registry barrel',
+  );
+});
+
+test('playbackはFace classificationからpresentation layer帰属を再構成しない', async () => {
+  const source = await readFile(join(SRC, 'interpretation/timing/playback.ts'), 'utf8');
+
+  assert.doesNotMatch(
+    source,
+    /\bclassifyFaces\b/,
+    'playback must group presentation faces directly by faceLayerIds',
+  );
+  assert.doesNotMatch(
+    source,
+    /face\.inputRole\b/,
+    'playback must not use legacy inputRole for presentation layer membership',
+  );
+  assert.doesNotMatch(
+    source,
+    /\bfaceLayerIds\b/,
+    'playback must consume compiled presentation Layer.id instead of raw faceLayerIds',
+  );
+  assert.doesNotMatch(
+    source,
+    /face\.trigger\b/,
+    'playback presentation matching must not reinterpret raw Face.trigger',
+  );
+  assert.match(
+    source,
+    /matchesDisplayTriggerAlternative\(face, triggerKeys\)/,
+    'playback must match realized trigger keys through presentation alternatives',
+  );
+});
+
+test('Strokeはlegacy Face semanticを再投影しない', async () => {
+  const path = join(SRC, 'trace', 'generate.ts');
+  const source = await readFile(path, 'utf8');
+
+  for (const symbol of ['InputRole', 'inputRole', 'TriggerPersistence', 'triggerPersistence']) {
+    assert.equal(
+      source.includes(symbol),
+      false,
+      `generate.ts must not project legacy Face semantic onto Stroke: ${symbol}`,
+    );
+  }
+});
+
+test('Metricsはlegacy inputRoleへ依存しない', async () => {
+  const path = join(SRC, 'interpretation/metrics.ts');
+  const source = await readFile(path, 'utf8');
+
+  assert.doesNotMatch(
+    source,
+    /\binputRole\b/,
+    'metrics.ts must use canonical / realized facts instead of legacy inputRole',
+  );
+});
+
+test('PlaybackCalibrationはstructural analysisへ依存しない', async () => {
+  const path = join(SRC, 'interpretation/timing/calibration.ts');
+  const source = await readFile(path, 'utf8');
+  const structuralImports = moduleSpecifiers(source)
+    .filter((specifier) => /(?:^|\/)analysis-/.test(specifier));
+
+  assert.deepEqual(structuralImports, []);
+});
+
 test('SandS trigger presentationはlayout IDへ依存しない', async () => {
   const layersSource = await readFile(join(SRC, 'input', 'layouts', 'layers.ts'), 'utf8');
   assert.doesNotMatch(

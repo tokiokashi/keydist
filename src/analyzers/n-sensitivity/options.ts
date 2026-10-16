@@ -10,8 +10,7 @@ import { defineOption, defineOptions, picklistUrlCodec } from '#analyzers/option
  * （`definition.tsx`）側で行う（AGENTS.md「表示だけが変わるなら`ui`、出力される
  * 数値が動くなら`conditions`」の帰結。抽出は変えない）ため`affects: 'view'`。
  *
- * Nの範囲（0〜10）は旧実装（`src/legacy/analyzer-metrics-content.tsx`の
- * `AnalyzerSensitivityResults`）に合わせて固定にし、設定にはしない
+ * Nの範囲（0〜10）は固定にし、設定にはしない
  * （AGENTS.md「割れる人を想像できるが実例が無いものは今は設定にしない」・
  * 「先回りして足さない」）。
  */

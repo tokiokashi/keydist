@@ -247,13 +247,13 @@ N12（物理配列エディタ）は、決定済みの項目X7へ移したので
 
 | キー | 旧画面での中身 | 新しい構成 |
 |---|---|---|
-| `keydist:app-state` | 旧画面の通常の保存先（`analyzer`・`conditions`・`playback`）と、Testerの作業台・入力設定・テーマ | 新しい構成も使う（`appearance`・Testerの分）。`analyzer`・`conditions`・`playback` は旧画面と `features/analyzer-next/session-app-state.ts` だけが読む（J2・J7）。`analyzer.theme` は新しい側のテーマのコードが移行元として読む（J6・J7） |
-| `keydist:ui-state` | 初回に1回だけ読む移行元。`keydist:app-state` にこの3つが無い時に読み、保存に成功すると消す | 読まない（X4）。テーマの初期スクリプト（`app/theme/theme.ts:26`）が移行元として読む（J6） |
+| `keydist:app-state` | 旧画面の通常の保存先（`analyzer`・`conditions`・`playback`）と、Testerの作業台・入力設定・テーマ | 新しい構成は `appearance`・`shell`・Testerの分だけを読む。`analyzer`・`conditions`・`playback` はスキーマに無く、読まない。テーマも `appearance` だけから読む（J2・J6・J7） |
+| `keydist:ui-state` | 初回に1回だけ読む移行元。`keydist:app-state` にこの3つが無い時に読み、保存に成功すると消す | 読まない（X4）。テーマの初期スクリプトも読まない（J6） |
 | `keydist:condition-presets` | 旧画面の条件プリセット（`keydist:app-state` に吸収されない独立した資産） | 読まない。新しい保存先は `keydist:presets` |
-| `keydist:layouts` | 自作配列 | 読むのは `src/legacy/` と `src/features/analyzer-next/` だけ。新しいAnalyzerは読まず、移さない（G10）。新しい構成の資産として作り直す（G9） |
-| `keydist:geometry-shapes` | 自作の物理配列 | 読むのは旧画面・`src/features/analyzer-next/`（`runtime.ts:18`・`browser-runtime.ts:12`）・Testerだけ。新しいAnalyzerは読まず、移さない（G10）。Testerの経路は消す（X7） |
-| `keydist:romaji-rules` | ローマ字規則と配列への割り当て | 読むのは `src/legacy/` と `src/features/analyzer-next/` だけ。新しいAnalyzerは読まず、移さない（G10）。新しい構成の資産として作り直す（G9） |
-| `keydist.playback-calibration.v3` | 個人速度 | 読むのは `src/legacy/` だけ。新しい構成の個人速度は別のキー `keydist:personal-speed`（版付き）に置き、旧キーは読まず、移さない（F8） |
+| `keydist:layouts` | 自作配列 | 読むコードは無い。移さない（G10）。新しい構成の資産として作り直す（G9） |
+| `keydist:geometry-shapes` | 自作の物理配列 | 読むコードは無い（Testerの経路も消した）。移さない（G10、X7） |
+| `keydist:romaji-rules` | ローマ字規則と配列への割り当て | 読むコードは無い。移さない（G10）。新しい構成の資産として作り直す（G9） |
+| `keydist.playback-calibration.v3` | 個人速度 | 読むコードは無い。新しい構成の個人速度は別のキー `keydist:personal-speed`（版付き）に置き、旧キーは移さない（F8） |
 
 ## 関連
 
