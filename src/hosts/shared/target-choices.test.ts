@@ -3,13 +3,16 @@ import test from 'node:test';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import { filterTargetChoiceGroups, normalizeSearchText, sortTargetsByChoices, targetChoiceGroups, targetSummaryText, type TargetChoiceSource } from './target-choices.ts';
+import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import { analysisTargetKey, type AnalysisTarget, type Setup } from '#input/setup/index.ts';
 
 const SHAPES = new Map<string, PhysicalShape>(Object.values(PHYSICAL_SHAPES).map((shape) => [shape.id, shape]));
 
 function source(overrides: Partial<TargetChoiceSource> = {}): TargetChoiceSource {
-  return { layouts: LAYOUT_BY_ID, userLayoutIds: new Set(), shapes: SHAPES, setups: [], selected: [], ...overrides };
+  return { layouts: LAYOUT_BY_ID, userLayouts: new Map(), shapes: SHAPES, setups: [], selected: [], ...overrides };
 }
+
+const USER_ALPHA: UserLayout = { id: 'dvorak', name: 'Dvorak', rows: ['', '', '', ''] };
 
 const SETUPS: readonly Setup[] = [
   { id: 'a', number: 1, layoutId: 'qwerty', shapeId: 'row-staggered' },
@@ -27,7 +30,7 @@ test('組み込みの配列を英字とかなに分け、空の区分は出さ�
 });
 
 test('自作の配列とSetupはそれぞれの区分に入り、Setupには番号を添える', () => {
-  const groups = targetChoiceGroups(source({ userLayoutIds: new Set(['dvorak']), setups: SETUPS }));
+  const groups = targetChoiceGroups(source({ userLayouts: new Map([['dvorak', USER_ALPHA]]), setups: SETUPS }));
   assert.deepEqual(groups.map((group) => group.id), ['builtin-alphabet', 'builtin-kana', 'user', 'setup']);
   assert.deepEqual(groups[2]!.choices.map((choice) => choice.key), ['layout:dvorak']);
   assert.ok(!groups[0]!.choices.some((choice) => choice.key === 'layout:dvorak'));
@@ -126,4 +129,45 @@ test('別名は絞り込みにだけ効き、名前や区分の並びは変え�
   const naginata = groups.flatMap((group) => group.choices).find((choice) => choice.key === 'layout:naginata-v18')!;
   assert.equal(naginata.name, '薙刀式v18');
   assert.equal(naginata.fullName, undefined);
+});
+
+test('種類の切り替えは名前の絞り込みと同時に使え、自作の配列・Setupも種類で分かれる', () => {
+  const kanaMine = { ...USER_ALPHA, id: 'mine-kana', direct: true };
+  const layouts = new Map(LAYOUT_BY_ID);
+  layouts.set('mine-kana', { ...LAYOUT_BY_ID.get('qwerty')!, id: 'mine-kana', name: '自作かな' });
+  const setups: Setup[] = [
+    ...SETUPS,
+    { id: 'c', number: 3, layoutId: 'mine-kana', shapeId: 'row-staggered' },
+    { id: 'd', number: 4, layoutId: 'no-such-layout', shapeId: 'row-staggered' },
+  ];
+  const groups = targetChoiceGroups(source({
+    layouts,
+    userLayouts: new Map([['dvorak', USER_ALPHA], ['mine-kana', kanaMine]]),
+    setups,
+    selected: [{ kind: 'setup', setupId: 'gone' }],
+  }));
+  const keys = (query: string, kind: 'all' | 'alpha' | 'kana') =>
+    filterTargetChoiceGroups(groups, query, kind).flatMap((group) => group.choices.map((choice) => choice.key));
+
+  const kana = keys('', 'kana');
+  assert.ok(kana.includes('layout:naginata-v18') && kana.includes('layout:mine-kana') && kana.includes('setup:b') && kana.includes('setup:c'));
+  assert.ok(!kana.includes('layout:qwerty') && !kana.includes('layout:dvorak') && !kana.includes('setup:a'));
+
+  const alpha = keys('', 'alpha');
+  assert.ok(alpha.includes('layout:qwerty') && alpha.includes('layout:dvorak') && alpha.includes('setup:a'));
+  assert.ok(!alpha.includes('layout:naginata-v18') && !alpha.includes('layout:mine-kana') && !alpha.includes('setup:b') && !alpha.includes('setup:c'));
+
+  // 種類を決められない候補（配列が見つからないSetup・見つからない対象）はどの種類でも残る。
+  for (const kind of ['all', 'alpha', 'kana'] as const) {
+    assert.ok(keys('', kind).includes('setup:d'));
+    assert.ok(keys('', kind).includes('setup:gone'));
+  }
+
+  // 名前の語とは両方を満たすものだけ残る。
+  assert.deepEqual(keys('自作', 'kana'), ['layout:mine-kana', 'setup:c']);
+  assert.deepEqual(keys('自作', 'alpha'), []);
+  assert.deepEqual(keys('会社', 'kana'), ['setup:b']);
+  assert.deepEqual(keys('会社', 'alpha'), []);
+  // 「すべて」は種類を問わない。
+  assert.equal(filterTargetChoiceGroups(groups, '', 'all'), groups);
 });

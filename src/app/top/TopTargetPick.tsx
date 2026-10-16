@@ -51,7 +51,7 @@ export function TopTargetPick() {
 
   const groups = useMemo(() => targetChoiceGroups({
     layouts: catalog.setupCatalog.layouts,
-    userLayoutIds: new Set(catalog.userLayouts.keys()),
+    userLayouts: catalog.userLayouts,
     shapes: catalog.setupCatalog.shapes,
     setups,
     selected: [target],

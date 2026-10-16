@@ -18,7 +18,7 @@ export function useMultiColorSlots(selection: MultiTargetSelection): ColorSlotsB
 export function useSetTargetSelection(selection: TargetSet, colorSlots: ColorSlotsByKey, setups: readonly Setup[], catalog: PaneCatalog) {
   const choiceGroups = useMemo(() => targetChoiceGroups({
     layouts: catalog.setupCatalog.layouts,
-    userLayoutIds: new Set(catalog.userLayouts.keys()),
+    userLayouts: catalog.userLayouts,
     shapes: catalog.setupCatalog.shapes,
     setups,
     selected: selection.targets,

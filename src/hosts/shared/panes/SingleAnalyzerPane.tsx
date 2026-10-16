@@ -133,7 +133,7 @@ export function SingleAnalyzerPane<Options, Extracted>({
 
   const choiceGroups = useMemo(() => targetChoiceGroups({
     layouts: catalog.setupCatalog.layouts,
-    userLayoutIds: new Set(catalog.userLayouts.keys()),
+    userLayouts: catalog.userLayouts,
     shapes: catalog.setupCatalog.shapes,
     setups,
     selected: [target],

@@ -88,7 +88,7 @@ export function SetupPage({
   const layoutGroups = useMemo(
     () => targetChoiceGroups({
       layouts,
-      userLayoutIds: new Set(catalog.userLayouts.keys()),
+      userLayouts: catalog.userLayouts,
       shapes,
       setups: [],
       selected: [],

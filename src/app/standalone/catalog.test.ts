@@ -37,7 +37,7 @@ test('資産に自作の配列があれば、対象の選択の「自作の配�
   const catalog = paneCatalog({ userLayouts: [LAYOUT], userRomajiRules: [RULE] });
   const groups = targetChoiceGroups({
     layouts: catalog.setupCatalog.layouts,
-    userLayoutIds: new Set(catalog.userLayouts.keys()),
+    userLayouts: catalog.userLayouts,
     shapes: catalog.setupCatalog.shapes,
     setups: [],
     selected: [],

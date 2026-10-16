@@ -123,6 +123,33 @@
   font-size: 0.88rem;
 }
 
+.target-selection-kind {
+  display: grid;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+  gap: 0.3rem;
+  margin-top: 0.5rem;
+}
+
+.target-selection-kind button {
+  min-height: 1.8rem;
+  padding: 0 0.4rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface-subtle);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.target-selection-kind button[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
 .target-selection-list {
   min-height: 0;
   overflow-y: auto;

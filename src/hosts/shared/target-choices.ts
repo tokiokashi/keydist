@@ -1,5 +1,6 @@
-import { builtInLayoutKind } from '#input/layouts/kind.ts';
+import { layoutKind, type LayoutKind } from '#input/layouts/kind.ts';
 import type { Layout } from '#input/layouts/types.ts';
+import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { PhysicalShape } from '#input/shapes/geometry.ts';
 import { analysisTargetKey, effectiveLabel, nameTargets, type AnalysisTarget, type Setup } from '#input/setup/index.ts';
 
@@ -27,6 +28,8 @@ export interface TargetChoice {
   readonly fullName?: string;
   /** 名前の右に小さく添える種類（`Setup n`）。 */
   readonly tag?: string;
+  /** 配列の種類。種類で絞り込む時に使う。配列が見つからない候補は決められないので持たない。 */
+  readonly kind?: LayoutKind;
   /** 絞り込みだけに効く読み・別名（`Layout.aliases`）。画面には出さない。 */
   readonly aliases?: readonly string[];
 }
@@ -39,8 +42,8 @@ export interface TargetChoiceGroup {
 
 export interface TargetChoiceSource {
   readonly layouts: ReadonlyMap<string, Layout>;
-  /** `layouts`のうち自作の配列のid。 */
-  readonly userLayoutIds: ReadonlySet<string>;
+  /** `layouts`のうち自作の配列（idから元の定義）。区分と種類の決定に使う。 */
+  readonly userLayouts: ReadonlyMap<string, UserLayout>;
   readonly shapes: ReadonlyMap<string, PhysicalShape>;
   readonly setups: readonly Setup[];
   /**
@@ -54,7 +57,7 @@ function missingName(target: AnalysisTarget): string {
   return target.kind === 'setup' ? '削除されたSetup' : '見つからない配列';
 }
 
-export function targetChoiceGroups({ layouts, userLayoutIds, shapes, setups, selected }: TargetChoiceSource): readonly TargetChoiceGroup[] {
+export function targetChoiceGroups({ layouts, userLayouts, shapes, setups, selected }: TargetChoiceSource): readonly TargetChoiceGroup[] {
   const alphabet: TargetChoice[] = [];
   const kana: TargetChoice[] = [];
   const user: TargetChoice[] = [];
@@ -65,11 +68,12 @@ export function targetChoiceGroups({ layouts, userLayoutIds, shapes, setups, sel
       key: analysisTargetKey(target),
       target,
       name: layout.name,
+      kind: layoutKind(layout, userLayouts),
       ...(layout.aliases === undefined || layout.aliases.length === 0 ? {} : { aliases: layout.aliases }),
     };
-    if (userLayoutIds.has(layout.id)) user.push(choice);
+    if (userLayouts.has(layout.id)) user.push(choice);
     // 英字とかなの区分は配列の種類の対応表（`input/layouts/kind.ts`）に従う。`Layout`の形からは決まらない。
-    else if (builtInLayoutKind(layout.id) === 'kana') kana.push(choice);
+    else if (choice.kind === 'kana') kana.push(choice);
     else alphabet.push(choice);
   }
 
@@ -86,12 +90,14 @@ export function targetChoiceGroups({ layouts, userLayoutIds, shapes, setups, sel
     const target: AnalysisTarget = { kind: 'setup', setupId: setup.id };
     const fullName = namedSetups[index]!.fullName;
     const label = effectiveLabel(setup.label);
+    const layout = layouts.get(setup.layoutId);
     return {
       key: analysisTargetKey(target),
       target,
       name: label ?? fullName,
       ...(label === undefined ? {} : { fullName }),
       tag: `Setup ${setupNumbers.get(setup.id)!}`,
+      ...(layout === undefined ? {} : { kind: layoutKind(layout, userLayouts) }),
     };
   });
 
@@ -121,17 +127,28 @@ export function normalizeSearchText(text: string): string {
     .replace(/[\u30A1-\u30F6]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0x60));
 }
 
+/** 配列の種類での絞り込み。`all`は絞らない。 */
+export type TargetKindFilter = 'all' | LayoutKind;
+
 /**
- * 絞り込み欄の語で候補を絞る。空白で区切った語をすべて含む候補を残す（名前・フル名・種類・読みや別名のどれかに）。
+ * 種類の切り替えと絞り込み欄の語で候補を絞る。
+ * 種類は`kind`が一致する候補を残す。種類を決められない候補（見つからない配列・Setup、配列が見つからないSetup）は
+ * 今選んでいる対象を外せるよう、どの種類でも残す。
+ * 語は空白で区切り、すべて含む候補を残す（名前・フル名・種類・読みや別名のどれかに）。
  * 候補が無くなった区分は落とす。
  */
-export function filterTargetChoiceGroups(groups: readonly TargetChoiceGroup[], query: string): readonly TargetChoiceGroup[] {
+export function filterTargetChoiceGroups(
+  groups: readonly TargetChoiceGroup[],
+  query: string,
+  kind: TargetKindFilter = 'all',
+): readonly TargetChoiceGroup[] {
   const words = normalizeSearchText(query).split(/\s+/).filter((word) => word !== '');
-  if (words.length === 0) return groups;
+  if (words.length === 0 && kind === 'all') return groups;
   return groups
     .map((group) => ({
       ...group,
       choices: group.choices.filter((choice) => {
+        if (kind !== 'all' && choice.kind !== undefined && choice.kind !== kind) return false;
         const haystack = normalizeSearchText([choice.name, choice.fullName ?? '', choice.tag ?? '', ...(choice.aliases ?? [])].join(' '));
         return words.every((word) => haystack.includes(word));
       }),
