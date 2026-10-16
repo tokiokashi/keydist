@@ -15,20 +15,20 @@ export interface OverrideEntry {
   readonly label: string;
   /** 条件の要約と同じ値の文言。 */
   readonly valueText: string;
-  /** この置き場所には項目が置けず、解決では使われない値。 */
+  /** この適用範囲には項目が置けず、解決では使われない値。 */
   readonly unused: boolean;
 }
 
-/** 同じ置き場所にある上書きのまとまり。 */
+/** 同じ適用範囲にある上書きのまとまり。 */
 export interface OverrideGroup {
   /** 一覧の中で一意なキー。 */
   readonly key: string;
-  /** 置き場所の名前。手持ちに無いものは「（見つからない配列1）」の形。 */
+  /** 適用範囲の名前。手持ちに無いものは「（見つからない配列1）」の形。 */
   readonly title: string;
   readonly level: CascadeLevel;
   /** Workspaceのレベルの時だけ。消す操作に渡す。 */
   readonly workspaceId?: string;
-  /** 置き場所のSetupが手持ちに無い。元に戻す時にSetupの存在も照らすので、消すと戻せない。 */
+  /** 適用範囲のSetupが手持ちに無い。元に戻す時にSetupの存在も照らすので、消すと戻せない。 */
   readonly missingSetup: boolean;
   readonly entries: readonly OverrideEntry[];
 }
@@ -67,7 +67,7 @@ function entriesOf(
   return entries;
 }
 
-/** Workspaceの置き場所の名前。同じ名前が複数ある時だけ、並びの順に番号を付けて区別する。 */
+/** Workspaceの適用範囲の名前。同じ名前が複数ある時だけ、並びの順に番号を付けて区別する。 */
 export function workspaceTitles(workspaces: readonly Workspace[]): readonly string[] {
   const nameCounts = new Map<string, number>();
   for (const workspace of workspaces) nameCounts.set(workspace.name, (nameCounts.get(workspace.name) ?? 0) + 1);
@@ -79,7 +79,7 @@ export function workspaceTitles(workspaces: readonly Workspace[]): readonly stri
   });
 }
 
-/** 手持ちに無い置き場所の名前。同じ種類が複数ある時だけ、一覧の順に番号を付けて区別する。 */
+/** 手持ちに無い適用範囲の名前。同じ種類が複数ある時だけ、一覧の順に番号を付けて区別する。 */
 function missingTitle(base: string, index: number, count: number): string {
   return count > 1 ? `（${base}${index + 1}）` : `（${base}）`;
 }
@@ -99,7 +99,7 @@ function orderedKeys(
 }
 
 /**
- * 保存してある上書きを、置き場所ごとにカスケードの順（全体・Workspace・物理配列・打ち方・配列・Setup）にまとめる。
+ * 保存してある上書きを、適用範囲ごとにカスケードの順（全体・Workspace・物理配列・打ち方・配列・Setup）にまとめる。
  * 上書きそのものを並べるので、継承する値と同じ値や、今の条件で使われない値も含む。
  */
 export function cascadeOverrideGroups(input: OverrideGroupsInput): readonly OverrideGroup[] {

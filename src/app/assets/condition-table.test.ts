@@ -46,7 +46,7 @@ function rowOf(rows: ReturnType<typeof rowsOf>['rows'], id: SettingsItemId) {
   return row!;
 }
 
-test('配列の置き場所で既定の物理配列の行を変えると、物理配列に依る行の継承する値も変わる', () => {
+test('配列の適用範囲で既定の物理配列の行を変えると、物理配列に依る行の継承する値も変わる', () => {
   const before = rowsOf(layoutPlacement('qwerty'), {});
   assert.equal(rowOf(before.rows, 'fingerAssignmentId').layoutBase, ANSI_FINGER);
   const afterLayout = rowsOf(layoutPlacement('qwerty'), { layout: { qwerty: { defaultShapeId: 'jis-row-staggered' } } });
@@ -56,7 +56,7 @@ test('配列の置き場所で既定の物理配列の行を変えると、物�
   assert.equal(rowOf(afterGlobal.rows, 'fingerAssignmentId').layoutBase, JIS_FINGER);
 });
 
-test('配列の置き場所の継承する値は、Workspaceに上書きがあっても変わらない', () => {
+test('配列の適用範囲の継承する値は、Workspaceに上書きがあっても変わらない', () => {
   const workspace = workspaceWith({ windowSize: 7, romajiRuleId: 'azik', defaultShapeId: 'jis-row-staggered' });
   const without = rowsOf(layoutPlacement('qwerty'), { global: { windowSize: 5 } });
   const withWorkspace = rowsOf(layoutPlacement('qwerty'), { global: { windowSize: 5 } }, [workspace]);
@@ -67,14 +67,14 @@ test('配列の置き場所の継承する値は、Workspaceに上書きがあ�
   assert.equal(withWorkspace.overrides.workspace, undefined);
 });
 
-test('配列の置き場所の継承する値は、配列の推奨と全体の値から決まる', () => {
+test('配列の適用範囲の継承する値は、配列の推奨と全体の値から決まる', () => {
   const result = rowsOf(layoutPlacement('oonishi'), { global: { romajiRuleId: 'azik' } });
   const romaji = rowOf(result.rows, 'romajiRuleId');
   assert.equal(romaji.hasLayoutRecommendation, true);
   assert.equal(romaji.layoutBase, 'oonishi');
 });
 
-test('全体の置き場所は全体のレベルだけで解決し、指の割当の既定は全体の既定の物理配列から決まる', () => {
+test('全体の適用範囲は全体のレベルだけで解決し、指の割当の既定は全体の既定の物理配列から決まる', () => {
   const overrides: SettingsCascadeOverrides = {
     global: { defaultShapeId: 'jis-row-staggered' },
     layout: { qwerty: { windowSize: 9, defaultShapeId: 'row-staggered' } },
@@ -90,7 +90,7 @@ test('全体の置き場所は全体のレベルだけで解決し、指の割�
   assert.deepEqual(rowOf(result.rows, 'defaultShapeId').origin, { kind: 'global' });
 });
 
-test('Workspaceの置き場所は、そのWorkspaceの条件を差し込み、指の割当の既定はWorkspaceの既定の物理配列から決まる', () => {
+test('Workspaceの適用範囲は、そのWorkspaceの条件を差し込み、指の割当の既定はWorkspaceの既定の物理配列から決まる', () => {
   const workspace = workspaceWith({ defaultShapeId: 'jis-row-staggered', windowSize: 6 });
   const result = rowsOf(
     { kind: 'workspace', key: 'workspace:ws-1', title: 'ワークスペース', workspaceId: 'ws-1' },
@@ -106,7 +106,7 @@ test('Workspaceの置き場所は、そのWorkspaceの条件を差し込み、�
   assert.equal(rowOf(result.rows, 'chainInterpretation').origin.kind, 'default');
 });
 
-test('全体とWorkspaceの置き場所の行は、対象に依る注記（効かない・診断）を持たない', () => {
+test('全体とWorkspaceの適用範囲の行は、対象に依る注記（効かない・診断）を持たない', () => {
   const result = rowsOf(GLOBAL, { global: { defaultShapeId: 'shape-gone', preferOppositeThumb: true } });
   for (const row of result.rows) {
     assert.equal(row.applicable, true, row.id);
@@ -114,7 +114,7 @@ test('全体とWorkspaceの置き場所の行は、対象に依る注記（効�
   }
 });
 
-test('配列とSetupの置き場所は、対象に依る注記を持つ', () => {
+test('配列とSetupの適用範囲は、対象に依る注記を持つ', () => {
   const layout = rowsOf(layoutPlacement('qwerty'), {});
   assert.equal(rowOf(layout.rows, 'preferOppositeThumb').applicable, false);
   const setup: Setup = { id: 'setup-a', number: 1, layoutId: 'qwerty', shapeId: 'row-staggered' };
@@ -122,7 +122,7 @@ test('配列とSetupの置き場所は、対象に依る注記を持つ', () => 
   assert.equal(rowOf(setupResult.rows, 'preferOppositeThumb').applicable, false);
 });
 
-test('Setupの置き場所は、Setupのレベルの手前までの値を持つ', () => {
+test('Setupの適用範囲は、Setupのレベルの手前までの値を持つ', () => {
   const setup: Setup = { id: 'setup-a', number: 1, layoutId: 'qwerty', shapeId: 'jis-row-staggered' };
   const result = rowsOf(
     { kind: 'setup', key: 'setup:setup-a', title: 'Setup', setupId: 'setup-a' },
@@ -153,7 +153,7 @@ test('計算に使えない配列・見つからないSetupは、行を出さず
   assert.equal(broken.ok, false);
 });
 
-test('置き場所は全体・Workspace・配列・Setupの順に並び、名前は上書きの一覧と同じ', () => {
+test('適用範囲は全体・Workspace・配列・Setupの順に並び、名前は上書きの一覧と同じ', () => {
   const workspaces = [workspaceWith(undefined)];
   const setups = [{ id: 'setup-a', displayName: 'Setupの名前' }];
   const names = conditionValueNames(catalog, [], [], []);
@@ -180,17 +180,17 @@ function groupOf(key: string, title: string, itemIds: readonly SettingsItemId[])
   };
 }
 
-test('他の置き場所の上書きの名前は3つまで出し、残りは数で出す', () => {
+test('他の適用範囲の上書きの名前は3つまで出し、残りは数で出す', () => {
   const groups = ['a', 'b', 'c', 'd', 'e'].map((name) => groupOf(`layout:${name}`, `配列「${name}」`, ['windowSize']));
   const note = otherPlacementNote(groups, 'global', 'windowSize');
-  assert.equal(note, 'ほかの置き場所でも上書きしています: 配列「a」、配列「b」、配列「c」、ほか2件');
+  assert.equal(note, 'ほかの適用範囲でも上書きしています: 配列「a」、配列「b」、配列「c」、ほか2件');
   assert.equal(
     otherPlacementNote(groups.slice(0, 3), 'global', 'windowSize'),
-    'ほかの置き場所でも上書きしています: 配列「a」、配列「b」、配列「c」',
+    'ほかの適用範囲でも上書きしています: 配列「a」、配列「b」、配列「c」',
   );
 });
 
-test('他の置き場所の上書きは、選んだ置き場所と別の項目を数えず、物理配列などのレベルも数える', () => {
+test('他の適用範囲の上書きは、選んだ適用範囲と別の項目を数えず、物理配列などのレベルも数える', () => {
   const groups = [
     groupOf('global', '全体', ['windowSize']),
     groupOf('shape:row-staggered', '物理配列「x」', ['windowSize', 'sfbHomeCost']),
@@ -199,8 +199,8 @@ test('他の置き場所の上書きは、選んだ置き場所と別の項目�
   ];
   assert.equal(
     otherPlacementNote(groups, 'global', 'windowSize'),
-    'ほかの置き場所でも上書きしています: 物理配列「x」、（見つからない配列）',
+    'ほかの適用範囲でも上書きしています: 物理配列「x」、（見つからない配列）',
   );
-  assert.equal(otherPlacementNote(groups, 'setup:s', 'sfbHomeCost'), 'ほかの置き場所でも上書きしています: 物理配列「x」');
+  assert.equal(otherPlacementNote(groups, 'setup:s', 'sfbHomeCost'), 'ほかの適用範囲でも上書きしています: 物理配列「x」');
   assert.equal(otherPlacementNote(groups, 'global', 'romajiRuleId'), undefined);
 });

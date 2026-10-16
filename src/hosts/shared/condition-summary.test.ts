@@ -200,7 +200,7 @@ test('nonDefaultConditionRows: 既定の物理配列は物理配列名として�
   assert.deepEqual(rows.map((row) => row.id), []);
 });
 
-test('traceConditionSummary: 値・上書きの置き場所のidは名前へ引き、引けないidも画面に出さない', () => {
+test('traceConditionSummary: 値・上書きの適用範囲のidは名前へ引き、引けないidも画面に出さない', () => {
   let overrides = EMPTY_SETTINGS_OVERRIDES;
   for (const [level, id, value] of [
     [{ kind: 'layout', layoutId: 'qwerty' }, 'romajiRuleId', 'kunrei'],

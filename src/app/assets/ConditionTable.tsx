@@ -23,7 +23,7 @@ export interface ConditionTableProps {
   readonly workspaces: readonly Workspace[];
   readonly setups: readonly Setup[];
   readonly catalog: PaneCatalog;
-  /** 上書きの一覧と同じ集合。他の置き場所の上書きの名前に使う。 */
+  /** 上書きの一覧と同じ集合。他の適用範囲の上書きの名前に使う。 */
   readonly overrideGroups: readonly OverrideGroup[];
   readonly presetLibrary: PresetLibrary<SettingsValueMap>;
   readonly generatePresetId: PresetIdGenerator;
@@ -33,7 +33,7 @@ export interface ConditionTableProps {
 
 const DEFAULT_PLACEMENT_KEY = 'global';
 
-/** 編集先を置き場所に固定した、条件の行の表。置き場所を選ぶと、その置き場所に置ける項目が行で並ぶ。 */
+/** 編集先を適用範囲に固定した、条件の行の表。適用範囲を選ぶと、その適用範囲で変えられる項目が行で並ぶ。 */
 export function ConditionTable({
   placementGroups,
   overrides,
@@ -48,7 +48,7 @@ export function ConditionTable({
 }: ConditionTableProps) {
   const [chosenKey, setChosenKey] = useState(DEFAULT_PLACEMENT_KEY);
   const placements = useMemo(() => placementGroups.flatMap((group) => group.placements), [placementGroups]);
-  // 選んでいた置き場所が無くなった時（削除・元に戻す）は、いつも選べる全体に戻す
+  // 選んでいた適用範囲が無くなった時（削除・元に戻す）は、いつも選べる全体に戻す
   const placement: ConditionPlacement = placements.find((candidate) => candidate.key === chosenKey) ?? placements[0]!;
   const resolved = useMemo(
     () => placementRows(placement, { overrides, workspaces, catalog, setups }),
@@ -72,12 +72,12 @@ export function ConditionTable({
     <section className="user-assets-section" data-user-assets-section="conditions">
       <h2>条件の設定</h2>
       <p className="user-assets-detail">
-        置き場所を選ぶと、その置き場所に置ける項目が並びます。値を変えるとその置き場所に保存し、継承する値と同じ値にすると上書きは消えます。
+        適用範囲を選ぶと、その適用範囲で変えられる項目が並びます。値を変えるとその適用範囲に保存し、継承する値と同じ値にすると上書きは消えます。
       </p>
       <label className="conditions-table-select">
-        置き場所
+        適用範囲
         <select
-          aria-label="置き場所を選ぶ"
+          aria-label="適用範囲を選ぶ"
           data-conditions-placement-select="true"
           value={placement.key}
           onChange={(event) => setChosenKey(event.currentTarget.value)}
@@ -91,7 +91,7 @@ export function ConditionTable({
           ))}
         </select>
       </label>
-      {/* 置き場所を選び直すと別の要素になり、入れ替わりの動きが最初から流れる */}
+      {/* 適用範囲を選び直すと別の要素になり、入れ替わりの動きが最初から流れる */}
       <div className="conditions-table-body" key={placement.key} data-conditions-placement={placement.key}>
         {resolved.ok && editor !== undefined ? (
           <ConditionEditor editor={editor} rows={resolved.rows} />
@@ -106,7 +106,7 @@ export function ConditionTable({
   );
 }
 
-/** 置き場所に固定した編集先と、その書き込みに要る対象。 */
+/** 適用範囲に固定した編集先と、その書き込みに要る対象。 */
 function fixedTarget(
   placement: ConditionPlacement,
   setups: readonly Setup[],

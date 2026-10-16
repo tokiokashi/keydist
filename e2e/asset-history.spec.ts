@@ -46,8 +46,8 @@ test('画面を離れても履歴は残り、戻ってきて元に戻す・や�
 test('別の画面で同じ資産が書き換わっていたら戻さず、知らせが出て、その項目は履歴から消える', async ({ page }) => {
   await createRule(page);
 
-  // 別の画面（データの管理）で、作った規則を削除する
-  await openFromSidebar(page, 'データの管理');
+  // 別の画面（データ・設定の管理）で、作った規則を削除する
+  await openFromSidebar(page, 'データ・設定の管理');
   await expect(page).toHaveURL(/\/assets$/);
   await page.locator('[data-user-assets-section="romaji-rule"]').getByRole('button', { name: /を削除$/ }).click();
   await page.getByRole('dialog').getByRole('button', { name: '削除する' }).click();
