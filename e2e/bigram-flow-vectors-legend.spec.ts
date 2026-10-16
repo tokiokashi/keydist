@@ -65,8 +65,11 @@ interface SideCase {
   readonly name: string;
   readonly w: number;
   readonly h: number;
-  /** 画面の幅。ペインの本体の幅を狭い側へ寄せる（本体の幅は検査の中で確かめる）。 */
-  readonly viewport?: number;
+  /**
+   * ペインの枠の幅 [px]。列の幅は固定で、本体の幅は列の数の刻み（68px）でしか変えられないので、
+   * 下限付近の細かい幅は、枠の幅を直接指定して作る（本体の幅は検査の中で確かめる）。
+   */
+  readonly frameWidth?: number;
   readonly fingers?: readonly string[];
   readonly rootFontSize?: string;
   readonly openSettings?: 'Keyboard Flow' | 'Relative vectors';
@@ -76,7 +79,7 @@ interface SideCase {
 
 /** 保存先へWorkspaceを直接書いて開く。 */
 async function openWorkspace(page: Page, c: SideCase): Promise<void> {
-  await page.setViewportSize({ width: c.viewport ?? 1440, height: 1100 });
+  await page.setViewportSize({ width: 1440, height: 1100 });
   await page.addInitScript((value) => {
     localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
   }, {
@@ -89,6 +92,13 @@ async function openWorkspace(page: Page, c: SideCase): Promise<void> {
   await page.goto('/workspace/legend');
   await waitForHydration(page);
   await ready(page);
+  if (c.frameWidth !== undefined) {
+    await page.locator('.pane-frame').evaluate((el, width) => {
+      el.style.width = `${width}px`;
+      el.style.maxWidth = `${width}px`;
+    }, c.frameWidth);
+    await settle(page);
+  }
   if (c.rootFontSize !== undefined) {
     // 利用者のブラウザの文字サイズ設定（rem の基準）を大きくした状態。読み込み後に変えて、組み直しを待つ。
     await page.evaluate((size) => { document.documentElement.style.fontSize = size; }, c.rootFontSize);
@@ -103,22 +113,22 @@ async function openWorkspace(page: Page, c: SideCase): Promise<void> {
 
 /** 横に並ぶ範囲の狭い側から広い側、行が低い・高いペイン、見出し・文字・設定の違いで、2つの図の上端・下端が揃う。 */
 const sideBySide: SideCase[] = [
-  { name: '広い（24列 x 19行）', w: 24, h: 19 },
-  { name: '広くて低い（24列 x 12行）', w: 24, h: 12 },
-  { name: '中ぐらい（16列 x 14行）', w: 16, h: 14 },
-  { name: '狭い側（12列 x 10行）', w: 12, h: 10 },
-  { name: '下限付近（本体520〜560px）', w: 24, h: 10, viewport: 840, bodyWidth: [520, 560] },
-  { name: '下限付近で指を2つ選ぶ', w: 24, h: 10, viewport: 840, bodyWidth: [520, 560], fingers: ['ring', 'pinky'] },
-  { name: '12列で指を2つ選ぶ', w: 12, h: 10, fingers: ['ring', 'pinky'] },
-  { name: '文字サイズ24px・下限付近', w: 24, h: 10, viewport: 940, bodyWidth: [520, 560], rootFontSize: '24px' },
-  { name: '文字サイズ24px・やや広い', w: 24, h: 10, viewport: 960, bodyWidth: [520, 600], rootFontSize: '24px', fingers: ['ring', 'pinky'] },
-  { name: 'Relative vectorsの表示の小窓だけ開く', w: 24, h: 19, openSettings: 'Relative vectors' },
-  { name: 'Keyboard Flowの表示の小窓だけ開く', w: 24, h: 19, openSettings: 'Keyboard Flow' },
+  { name: '広い（16列×19行）', w: 16, h: 19 },
+  { name: '広くて低い（16列×12行）', w: 16, h: 12 },
+  { name: '中ぐらい（12列×14行）', w: 12, h: 14 },
+  { name: '狭い側（9列×10行）', w: 9, h: 10 },
+  { name: '下限付近（本体520〜560px）', w: 10, h: 10, frameWidth: 540, bodyWidth: [520, 560] },
+  { name: '下限付近で指を2つ選ぶ', w: 10, h: 10, frameWidth: 540, bodyWidth: [520, 560], fingers: ['ring', 'pinky'] },
+  { name: '9列で指を2つ選ぶ', w: 9, h: 10, fingers: ['ring', 'pinky'] },
+  { name: '文字サイズ24px・下限付近', w: 10, h: 10, frameWidth: 540, bodyWidth: [520, 560], rootFontSize: '24px' },
+  { name: '文字サイズ24px・やや広い', w: 10, h: 10, frameWidth: 580, bodyWidth: [520, 600], rootFontSize: '24px', fingers: ['ring', 'pinky'] },
+  { name: 'Relative vectorsの表示の小窓だけ開く', w: 16, h: 19, openSettings: 'Relative vectors' },
+  { name: 'Keyboard Flowの表示の小窓だけ開く', w: 16, h: 19, openSettings: 'Keyboard Flow' },
 ];
 
 // 文字サイズ24pxで、横に並ぶ下限付近の幅を細かく動かしても、横スクロールが出ず、上端・下端が揃う。
-for (let viewport = 940; viewport <= 990; viewport += 10) {
-  sideBySide.push({ name: `文字サイズ24px・画面${viewport}px`, w: 24, h: 10, viewport, rootFontSize: '24px', fingers: ['ring', 'pinky'] });
+for (let frameWidth = 540; frameWidth <= 590; frameWidth += 10) {
+  sideBySide.push({ name: `文字サイズ24px・枠の幅${frameWidth}px`, w: 10, h: 10, frameWidth, rootFontSize: '24px', fingers: ['ring', 'pinky'] });
 }
 
 for (const c of sideBySide) {
@@ -146,10 +156,10 @@ for (const c of sideBySide) {
 
 // 低いペインで図の表示の小窓を開いても、図は押し出されず、大きさも位置も変わらない。
 const lowPanes: readonly SideCase[] = [
-  { name: '24列 x 12行', w: 24, h: 12, fingers: ['ring', 'pinky'] },
-  { name: '24列 x 10行（本体520〜560px）', w: 24, h: 10, viewport: 840, bodyWidth: [520, 560], fingers: ['ring', 'pinky'] },
-  { name: '12列 x 10行', w: 12, h: 10, fingers: ['ring', 'pinky'] },
-  { name: '16列 x 14行・文字サイズ24px', w: 16, h: 14, rootFontSize: '24px', fingers: ['ring', 'pinky'] },
+  { name: '16列×12行', w: 16, h: 12, fingers: ['ring', 'pinky'] },
+  { name: '10列×10行（本体520〜560px）', w: 10, h: 10, frameWidth: 540, bodyWidth: [520, 560], fingers: ['ring', 'pinky'] },
+  { name: '9列×10行', w: 9, h: 10, fingers: ['ring', 'pinky'] },
+  { name: '12列×14行・文字サイズ24px', w: 12, h: 14, rootFontSize: '24px', fingers: ['ring', 'pinky'] },
 ];
 
 for (const c of lowPanes) {
