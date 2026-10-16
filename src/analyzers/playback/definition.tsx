@@ -1,5 +1,5 @@
 import { Fragment, useContext, type ReactNode } from 'react';
-import { OptionGroup } from '#ui/primitives/option-fields.tsx';
+import { OptionDisclosure, OptionGroup } from '#ui/primitives/option-fields.tsx';
 import { PersonalSpeedLink, PersonalSpeedSavedContext } from '#ui/primitives/personal-speed-link.tsx';
 import type { AnalyzerSettingsProps, SingleAnalyzerPaneParts } from '../pane-parts.tsx';
 import { playbackDefinition, type PlaybackExtracted } from './extract.ts';
@@ -37,6 +37,16 @@ export function PlaybackSettings({ options, onOptionsChange }: AnalyzerSettingsP
           {group.keys.map((key) => (
             <Fragment key={key}>{fields[key]}</Fragment>
           ))}
+          {group.detail === undefined ? null : (
+            <OptionDisclosure
+              title={group.detail.title}
+              changedCount={group.detail.keys.filter((key) => options[key] !== DEFAULT_PLAYBACK_OPTIONS[key]).length}
+            >
+              {group.detail.keys.map((key) => (
+                <Fragment key={key}>{fields[key]}</Fragment>
+              ))}
+            </OptionDisclosure>
+          )}
           {groupFooters[group.id]}
         </OptionGroup>
       ))}

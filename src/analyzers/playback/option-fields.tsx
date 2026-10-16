@@ -35,6 +35,11 @@ const ON_OFF = [
   { value: 'off', label: 'OFF' },
 ] as const;
 
+const USE_NOT_USE = [
+  { value: 'on', label: '使う' },
+  { value: 'off', label: '使わない' },
+] as const;
+
 /**
  * 打鍵再生の設定項目の入力欄。解析設定の小窓（計算の項目）と配列図の表示の小窓（見た目の項目）が、
  * どちらもここから同じ入力欄を取る。どの項目をどちらに置くかは`settings-sections.ts`の表が決める。
@@ -45,7 +50,7 @@ export function usePlaybackFields(
 ): Record<keyof PlaybackOptions, ReactNode> {
   const bind = <K extends keyof PlaybackOptions>(key: K) =>
     bindOption(options, DEFAULT_PLAYBACK_OPTIONS, onOptionsChange, key);
-  const bindOnOff = (key: 'sameFingerDelay' | 'allFingerMovementDelay' | 'applyPersonalSpeed'): OptionBinding<'on' | 'off'> => {
+  const bindOnOff = (key: 'sameFingerDelay' | 'allFingerMovementDelay' | 'applyPersonalSpeed' | 'useCrossHandDirection' | 'useFingerValues' | 'useSimultaneousOverhead' | 'useKeystrokeOverhead'): OptionBinding<'on' | 'off'> => {
     const inner = bind(key);
     return {
       value: inner.value ? 'on' : 'off',
@@ -55,6 +60,10 @@ export function usePlaybackFields(
   };
   const personalSpeedSaved = useContext(PersonalSpeedSavedContext);
   const personalSpeedInUse = personalSpeedSaved && options.applyPersonalSpeed;
+  // 保存値の部分の設定は、個人速度を適用しない間は読まれない
+  const partHint = (text: string) => (options.applyPersonalSpeed
+    ? text
+    : `${text}個人速度を適用しないため、この設定は使われません。`);
   const fields: Record<keyof PlaybackOptions, ReactNode> = {
     stepsPerSecond: (
       <NumberOptionField
@@ -102,6 +111,50 @@ export function usePlaybackFields(
         binding={bindOnOff('applyPersonalSpeed')}
         choices={[{ value: 'on', label: '適用する' }, { value: 'off', label: '適用しない' }]}
         hint="個人速度の画面で測った速さで、再生の時間を求めます。"
+      />
+    ),
+    sameHandSpeed: (
+      <SegmentedOptionField
+        label="同手・別指の速度"
+        binding={bind('sameHandSpeed')}
+        choices={[
+          { value: 'directed', label: '組と向きごと' },
+          { value: 'pair', label: '組ごと' },
+          { value: 'representative', label: '代表値だけ' },
+        ]}
+        hint={partHint('同じ手の別の指へ移る速さに、測った値のどこまで使うかです。組ごとは向きを分けず、代表値だけは指の組の違いも使いません。')}
+      />
+    ),
+    useCrossHandDirection: (
+      <SegmentedOptionField
+        label="異手の方向別の速度"
+        binding={bindOnOff('useCrossHandDirection')}
+        choices={USE_NOT_USE}
+        hint={partHint('左右の手をまたぐ時に、向きごとに測った速さを使います。使わない時は通常速度を使います。')}
+      />
+    ),
+    useFingerValues: (
+      <SegmentedOptionField
+        label="指ごとの値"
+        binding={bindOnOff('useFingerValues')}
+        choices={USE_NOT_USE}
+        hint={partHint('指ごとに測った、同じキーを続けて打つ時間と移動の時間を使います。使わない時は全部の指に代表値を使います。')}
+      />
+    ),
+    useSimultaneousOverhead: (
+      <SegmentedOptionField
+        label="同時押しの上乗せ"
+        binding={bindOnOff('useSimultaneousOverhead')}
+        choices={USE_NOT_USE}
+        hint={partHint('同時押しのステップに足す上乗せを使います。使わない時は足しません。')}
+      />
+    ),
+    useKeystrokeOverhead: (
+      <SegmentedOptionField
+        label="打鍵の上乗せ"
+        binding={bindOnOff('useKeystrokeOverhead')}
+        choices={USE_NOT_USE}
+        hint={partHint('文章を打つ速さで測った、ステップに足す上乗せを使います。使わない時は足しません。')}
       />
     ),
     rateAverage: (

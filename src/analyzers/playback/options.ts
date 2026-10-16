@@ -30,7 +30,7 @@ import {
 /**
  * 打鍵再生Analyzerの解析設定。
  *
- * - 再生の時間と速度グラフの数値を変える8項目（`stepsPerSecond`ほか。`spec/playback-timing.md` §2・§5）は
+ * - 再生の時間と速度グラフの数値を変える13項目（`stepsPerSecond`ほか。`spec/playback-timing.md` §2・§5）は
  *   抽出の結果を変える（`affects: 'extract'`）。変えると抽出だけを作り直し、Traceと構造解析は作り直さない。
  *   個人速度の保存値は解析設定に入らず、`applyPersonalSpeed`が真の時だけ抽出の入力になる（`playbackAssetsKeyOf`）
  * - それ以外は表示だけが変わる項目で、Traceも抽出も作り直さない（`affects: 'view'`）
@@ -40,6 +40,9 @@ import {
  * - `sameFingerDelay`: 同じ指が続く時の移動時間を再生の時間に反映するか
  * - `allFingerMovementDelay`: 全指の移動時間で律速するか
  * - `applyPersonalSpeed`: 個人速度の保存値を適用するか
+ * - `sameHandSpeed` / `useCrossHandDirection` / `useFingerValues` / `useSimultaneousOverhead` / `useKeystrokeOverhead`:
+ *   個人速度で計算している間に、保存値の部分ごとに時間へ使うか。使わない部分は、時間の計算へ渡す保存値から外す
+ *   （`timing-conditions.ts`）。個人速度を適用しない時は読まれない
  * - `rateAverage` / `rateWindow` / `rateHalfLifeSeconds`: 速度グラフの平均の方式・SMAの直近Stroke数・EWMAの半減時間 [秒]
  * - `showChain` / `showArpeggio` / `showSameFingerMotion`: 構造の動的表示。Chain・Arpeggioの区間の中で、
  *   今のステップの押下へ向かうキーの動きと順番を配列図に重ねる
@@ -55,6 +58,10 @@ import {
  * - `fingerPreparationSeconds`: 指の位置を、次の押下より前に動かして見せる時間 [秒]。0なら押下の瞬間に切り替える
  * - `scale`: 配列図の倍率
  */
+/** 同手・別指の速度に、保存値のどの段まで使うか。向きと組ごと・順序なしの組ごと・代表値だけ。 */
+export const SAME_HAND_SPEED_PARTS = ['directed', 'pair', 'representative'] as const;
+export type PlaybackSameHandSpeed = (typeof SAME_HAND_SPEED_PARTS)[number];
+
 export const KEY_FEEDBACK_STYLES = ['off', 'fade', 'pulse', 'bounce'] as const;
 export type PlaybackKeyFeedbackStyle = (typeof KEY_FEEDBACK_STYLES)[number];
 
@@ -115,6 +122,41 @@ export const playbackOptions = defineOptions({
     affects: 'extract',
     url: booleanUrlCodec('personalSpeed'),
     label: '個人速度',
+  }),
+  sameHandSpeed: defineOption<PlaybackSameHandSpeed>({
+    schema: v.picklist(SAME_HAND_SPEED_PARTS),
+    default: 'directed',
+    affects: 'extract',
+    url: picklistUrlCodec('sameHandSpeed', SAME_HAND_SPEED_PARTS),
+    label: '同手・別指の速度',
+  }),
+  useCrossHandDirection: defineOption<boolean>({
+    schema: v.boolean(),
+    default: true,
+    affects: 'extract',
+    url: booleanUrlCodec('crossHandDirection'),
+    label: '異手の方向別の速度',
+  }),
+  useFingerValues: defineOption<boolean>({
+    schema: v.boolean(),
+    default: true,
+    affects: 'extract',
+    url: booleanUrlCodec('fingerValues'),
+    label: '指ごとの値',
+  }),
+  useSimultaneousOverhead: defineOption<boolean>({
+    schema: v.boolean(),
+    default: true,
+    affects: 'extract',
+    url: booleanUrlCodec('simultaneousOverhead'),
+    label: '同時押しの上乗せ',
+  }),
+  useKeystrokeOverhead: defineOption<boolean>({
+    schema: v.boolean(),
+    default: true,
+    affects: 'extract',
+    url: booleanUrlCodec('keystrokeOverhead'),
+    label: '打鍵の上乗せ',
   }),
   rateAverage: defineOption<PlaybackRateAverage>({
     schema: v.picklist(['sma', 'ewma']),
@@ -243,6 +285,11 @@ export const ALTERNATE_PLAYBACK_OPTIONS: PlaybackOptions = {
   sameFingerDelay: false,
   allFingerMovementDelay: false,
   applyPersonalSpeed: false,
+  sameHandSpeed: 'representative',
+  useCrossHandDirection: false,
+  useFingerValues: false,
+  useSimultaneousOverhead: false,
+  useKeystrokeOverhead: false,
   rateAverage: 'ewma',
   rateWindow: 20,
   rateHalfLifeSeconds: 2,

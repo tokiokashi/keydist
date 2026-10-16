@@ -47,6 +47,42 @@
   gap: 0.7rem;
 }
 
+.option-disclosure {
+  interpolate-size: allow-keywords;
+}
+
+.option-disclosure-summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.option-disclosure-changed {
+  margin-left: 0.4rem;
+  color: var(--text);
+}
+
+.option-disclosure-body {
+  padding-top: 0.6rem;
+}
+
+.option-disclosure::details-content {
+  block-size: 0;
+  overflow: clip;
+  transition: block-size 0.18s ease, content-visibility 0.18s allow-discrete;
+}
+
+.option-disclosure[open]::details-content {
+  block-size: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .option-disclosure::details-content {
+    transition: none;
+  }
+}
+
 .option-field {
   display: grid;
   gap: 0.35rem;

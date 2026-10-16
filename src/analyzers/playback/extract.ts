@@ -7,6 +7,7 @@ import {
 import { plainDisciplineContext } from '#analyzers/discipline-material.ts';
 import type { Geometry } from '#input/shapes/geometry.ts';
 import type { AggregatedAnalysisResult } from '#interpretation/structure/aggregate.ts';
+import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import type { Metrics } from '#interpretation/metrics.ts';
 import {
   playbackRateChartData,
@@ -36,6 +37,8 @@ export interface PlaybackExtracted {
   readonly windowSize: number;
   /** 再生の時間を決める条件 */
   readonly timing: PlaybackTimingConditions;
+  /** 部分の設定で項目を外す前の保存値。適用する設定の時だけ持つ。既定と違う部分の設定を示す判定に使う */
+  readonly savedCalibration: PlaybackCalibration | undefined;
   /** 個人速度の扱い。適用する設定で保存値が無い（`missing`）時、再生のペインがそのことを知らせる */
   readonly personalSpeedUse: PersonalSpeedUse;
   /** 各ステップの開始・終了時刻（確定した時間表） */
@@ -74,6 +77,7 @@ export function computePlaybackExtraction({ analysis, metrics, geometry, options
     analysis,
     windowSize: metrics.conditions.windowSize,
     timing,
+    savedCalibration: options.applyPersonalSpeed ? assets.personalSpeed : undefined,
     personalSpeedUse: personalSpeedUseOf(options, assets),
     schedule,
     rateChart,

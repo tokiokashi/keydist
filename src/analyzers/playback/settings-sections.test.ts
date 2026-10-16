@@ -12,7 +12,7 @@ function placements(tables: Readonly<Record<Place, readonly PlaybackSettingsGrou
   const placed = new Map<string, Place[]>();
   for (const place of ['window', 'figure'] as const) {
     for (const group of tables[place]) {
-      for (const key of group.keys) placed.set(key, [...(placed.get(key) ?? []), place]);
+      for (const key of [...group.keys, ...(group.detail?.keys ?? [])]) placed.set(key, [...(placed.get(key) ?? []), place]);
     }
   }
   return placed;
@@ -63,4 +63,16 @@ test('小窓のグループは再生の時間・個人速度・速度グラフ�
 
 test('配列図の表示の小窓のグループは入力の行と状態の行・構造の動的表示・キーと指・配列図の順に並ぶ', () => {
   assert.deepEqual(PLAYBACK_FIGURE_GROUPS.map((group) => group.title), ['入力の行と状態の行', '構造の動的表示', 'キーと指', '配列図']);
+});
+
+test('個人速度のグループは、項目ごとの5つの設定を畳んだ節に置く', () => {
+  const group = PLAYBACK_WINDOW_GROUPS.find((candidate) => candidate.id === 'personalSpeed');
+  assert.deepEqual(group?.keys, ['applyPersonalSpeed']);
+  assert.deepEqual(group?.detail?.keys, [
+    'sameHandSpeed',
+    'useCrossHandDirection',
+    'useFingerValues',
+    'useSimultaneousOverhead',
+    'useKeystrokeOverhead',
+  ]);
 });

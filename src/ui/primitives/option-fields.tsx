@@ -362,6 +362,26 @@ export function OptionGroup({ title, children }: { readonly title: string; reado
 }
 
 /**
+ * 個別に変えたい人向けの項目を畳んでおく節。既定は閉じた状態で、開閉は短い動きで切り替える（動きは`option-fields.css`）。
+ * 閉じていても、既定と違う項目がある時は見出しに数を出す。
+ */
+export function OptionDisclosure({ title, changedCount, children }: {
+  readonly title: string;
+  readonly changedCount: number;
+  readonly children: ReactNode;
+}) {
+  return (
+    <details className="option-disclosure" data-option-disclosure>
+      <summary className="option-disclosure-summary">
+        {title}
+        {changedCount > 0 ? <span className="option-disclosure-changed">{`（${changedCount}項目が既定と違います）`}</span> : null}
+      </summary>
+      <div className="option-group-body option-disclosure-body">{children}</div>
+    </details>
+  );
+}
+
+/**
  * 数値の入力。打っている途中の値（空欄・範囲の外）は書かず、確定した時（Enter・フォーカスが外れた時）に
  * 範囲へ丸めて書く。入力のたびに書くと、元に戻す履歴が1文字ごとに増える。
  * 矢印のボタンで増減した時は`inputType`の無い入力イベントになるので、その場で書く。
