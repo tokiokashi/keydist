@@ -44,6 +44,7 @@ export function nSensitivity(
         ...(options.actionRealizationPolicy ?? DEFAULT_ACTION_REALIZATION_POLICY),
       },
       romajiRuleId,
+      keepSymbols: false,
     });
     return { windowSize, totalUnits: m.totalUnits, totalMm: m.totalMm };
   });

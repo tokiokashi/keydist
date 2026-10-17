@@ -17,8 +17,10 @@ const seek = (page: Page) => feature(page).locator('[data-playback-seek]');
 const current = (page: Page) => feature(page).locator('.playback-input-current');
 const row = (page: Page) => feature(page).locator('[data-playback-history]');
 
-// 拗音（1単位が2文字）と、英字・数字・半角記号を混ぜる。欄に入る数を超える長さにする
-const TEXT = 'きょうabc!?しゅくだい12+3おちゃxyz,きょうabc!?しゅくだい45-6おちゃxyz.'.repeat(2);
+// 拗音（1単位が2文字）と、英字・数字・半角の , . を混ぜる。欄に入る数を超える長さにする。
+// 日本語のテキストは既定で、かな・英数字・、。以外の記号を評価の前に取り除く（配列が持つ , . は残る）ので、
+// 取り除かれる記号は入れない。再生の表示は取り除いた後のテキストで並ぶ
+const TEXT = 'きょうabcしゅくだい123おちゃxyz,ちゃちゅちょきょうabcしゅくだい456おちゃxyz.'.repeat(3);
 
 async function openWithText(page: Page, width: number, search = '') {
   await page.setViewportSize({ width, height: 900 });
@@ -159,7 +161,12 @@ test('ローマ字で出す表示: 行が狭くても、今の入力は省略記
     expect(box.width / [...text].length).toBeGreaterThan((wide / 3) * 0.9);
   }
   // この後の入力は、残りの幅で省略記号に切れる
-  await goTo(page, 12);
   const ahead = feature(page).locator('.playback-history-ahead');
-  expect(await ahead.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
+  // 「ちゃちゅちょ」の手前では、この後の入力のローマ字が欄より長くなる
+  let overflowed = false;
+  for (let position = 1; position <= 40 && !overflowed; position++) {
+    await goTo(page, position);
+    overflowed = await ahead.evaluate((element) => element.scrollWidth > element.clientWidth);
+  }
+  expect(overflowed).toBe(true);
 });

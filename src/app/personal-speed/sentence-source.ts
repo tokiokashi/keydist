@@ -91,6 +91,7 @@ export function personalSpeedSentenceBuilder(
         overrides,
         text,
         language: 'ja',
+        verbatimText: true,
       });
       if (!resolved.ok) return { ok: false, message: UNBUILDABLE_TEXT };
       const traceResult = generateEngineTrace(resolved.input);

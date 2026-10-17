@@ -46,6 +46,7 @@ test('Metricsは数値を算出した測定条件をスナップショットで�
     triggerRealizationPolicy: { useHold: true },
     actionRealizationPolicy: { triggerActivation: 'semantic', triggerActivationClassOverrides: { 'order-free': 'separate' } },
     romajiRuleId: 'qwerty',
+    keepSymbols: true,
   });
 
   assert.deepEqual(metrics.conditions, {
@@ -63,6 +64,7 @@ test('Metricsは数値を算出した測定条件をスナップショットで�
     triggerRealizationPolicy: { useHold: true },
     actionRealizationPolicy: { triggerActivation: 'semantic', triggerActivationClassOverrides: { 'order-free': 'separate' } },
     romajiRuleId: 'qwerty',
+    keepSymbols: true,
   });
 });
 

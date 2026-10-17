@@ -137,6 +137,16 @@ export const SETTINGS_ITEMS = {
     defaultValue: { ...DEFAULT_ARPEGGIO_INTERPRETATION },
   }),
   /**
+   * 日本語のテキストで、かなと `、` `。` 以外の記号も評価に渡すか（仕様 §4.6）。既定は渡さない。
+   * Traceの入力そのものを変え、全部のAnalyzerが読む。配列ごとに入力文字数（分母）が変わると比べられないので、
+   * 解釈の項目と同じく全体とWorkspaceにだけ置く。
+   */
+  keepSymbols: defineItem<boolean>({
+    id: 'keepSymbols',
+    allowedLevels: GLOBAL_WORKSPACE,
+    defaultValue: false,
+  }),
+  /**
    * ローマ字規則id。全体の既定は訓令式で、大西配列（大西式）・TK音直入力法（訓令式）のように
    * 綴りを前提に組まれた配列は組み込みの推奨（`layoutRecommendation`）を持つ。
    * 優先は 配列・Setupの上書き ＞ 配列の推奨 ＞ 全体・打ち方・物理配列の値 ＞ 既定。

@@ -158,7 +158,7 @@ for (const [name, size, columnCount] of [
   test(`群は列ごとに上から詰めて積む（${name}）。DOMの順が列ごとの上から下・左から右の順と一致する`, async ({ page }) => {
     const modal = await openWorkspaceModal(page, size);
     const boxes = await groupBoxes(modal);
-    expect(boxes).toHaveLength(6);
+    expect(boxes).toHaveLength(7);
     const columns = columnsOf(boxes);
     expect(columns).toHaveLength(columnCount);
 

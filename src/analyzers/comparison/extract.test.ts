@@ -50,6 +50,7 @@ test('computeComparisonRowValues: interpretation/metrics.tsを同条件で直接
     triggerRealizationPolicy: resolution.input.tracePolicy.triggerRealizationPolicy!,
     actionRealizationPolicy: resolution.input.tracePolicy.actionRealizationPolicy!,
     romajiRuleId: resolution.input.romajiRuleId,
+    keepSymbols: resolution.input.keepSymbols,
   });
 
   const engineMetrics = cache.getInterpretation(resolution.input).metrics;

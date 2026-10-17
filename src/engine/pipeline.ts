@@ -65,6 +65,7 @@ export function interpretEngineTrace(
     triggerRealizationPolicy: input.tracePolicy.triggerRealizationPolicy!,
     actionRealizationPolicy: input.tracePolicy.actionRealizationPolicy!,
     romajiRuleId: input.romajiRuleId,
+    keepSymbols: input.keepSymbols,
   });
   return { modelVersion: MODEL_VERSION, analysis, metrics };
 }

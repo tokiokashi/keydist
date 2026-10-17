@@ -237,7 +237,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
   }
 
   const boolBinding = (
-    id: 'sfbHomeCost' | 'preferOppositeThumb',
+    id: 'sfbHomeCost' | 'preferOppositeThumb' | 'keepSymbols',
   ): OptionBinding<'on' | 'off'> => {
     const inner = bind(id);
     return {
@@ -553,6 +553,21 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
             />
           ))}
         </section>
+
+        {hidden('keepSymbols') ? null : (
+          <section className="condition-group" aria-label="日本語の記号">
+            <h3 className="condition-group-title">日本語の記号</h3>
+            {row('keepSymbols', (badge) => (
+              <SegmentedOptionField
+                label="日本語の記号の評価"
+                binding={boolBinding('keepSymbols')}
+                choices={ON_OFF}
+                badge={badge}
+                hint="日本語のテキストで、「、」「。」以外の記号も評価に入れます。OFFでは、かなと英数字と「、」「。」だけを評価します。英語のテキストには影響しません"
+              />
+            ))}
+          </section>
+        )}
 
         {hidden('chainInterpretation') ? null : (
           <section className="condition-group" aria-label="チェーンの区切り">

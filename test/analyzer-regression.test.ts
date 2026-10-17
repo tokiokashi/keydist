@@ -169,6 +169,7 @@ function recompute(fixtureCase: FixtureCase) {
     triggerRealizationPolicy: fixtureCase.conditions.triggerRealizationPolicy,
     actionRealizationPolicy: fixtureCase.conditions.actionRealizationPolicy,
     romajiRuleId: fixtureCase.conditions.romajiRuleId,
+    keepSymbols: false,
   });
 
   return { trace, analysis, metrics, geometry, options };

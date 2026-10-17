@@ -23,6 +23,7 @@ import {
   type ResolvedSettingsCascade,
   type SettingsCascadeOverrides,
 } from './settings-items.ts';
+import { prepareEvaluationText } from '#input/text/evaluation-text.ts';
 import { resolveTargetForText } from './target-resolution.ts';
 
 /**
@@ -31,7 +32,9 @@ import { resolveTargetForText } from './target-resolution.ts';
  * （中身をキーにしたキャッシュのキーからそれらを自然に除外するため。`keys.ts`参照）。
  */
 export interface ResolvedInput {
-  /** 打つ文章。原文のまま（ローマ字展開はTrace生成時に行う）。 */
+  /**
+   * 打つ文章。評価対象の記号の範囲の前処理（仕様 §4.6）を通した後の値。ローマ字展開はTrace生成時に行う。
+   */
   readonly text: string;
   /** ローマ字入力なら、実効ローマ字規則で組み直した表を持つ最終形。持たなければ配列側のまま。 */
   readonly layout: Layout;
@@ -40,6 +43,8 @@ export interface ResolvedInput {
   /** 解釈（Traceの読み方）。全体からWorkspaceまで置ける（配列・Setupのレベルには置かない）。 */
   readonly chainInterpretation: ChainInterpretation;
   readonly arpeggioInterpretation: ArpeggioInterpretation;
+  /** 日本語のテキストで、かなと `、` `。` 以外の記号も評価に渡したか。`text` は既にこの値で前処理済み。 */
+  readonly keepSymbols: boolean;
   /**
    * 抽出が読む資産の値。Traceと解釈のキーには入れず、抽出のキーにだけ、各Analyzerが決めた分を入れる
    * （`keys.ts`の`singleExtractionKeyOf`）。
@@ -97,6 +102,10 @@ export interface ResolveEngineInputOptions {
   readonly personalSpeed?: PlaybackCalibration;
   readonly text: string;
   readonly language: TextLanguage;
+  /**
+   * 前処理を通さず、`text` をそのまま評価に渡す。画面に出した文を利用者がそのまま打つ場面（個人速度の示す文）が使う。
+   */
+  readonly verbatimText?: boolean;
 }
 
 /**
@@ -231,12 +240,19 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
   return {
     ok: true,
     input: {
-      text: options.text,
+      text: options.verbatimText === true
+        ? options.text
+        : prepareEvaluationText(options.text, {
+          language: options.language,
+          keepSymbols: cascade.keepSymbols.value,
+          layoutHasChar: (char) => layout.canonicalInputs.has(char),
+        }),
       layout,
       geometry,
       tracePolicy,
       chainInterpretation: cascade.chainInterpretation.value,
       arpeggioInterpretation: cascade.arpeggioInterpretation.value,
+      keepSymbols: cascade.keepSymbols.value,
       extractionAssets: { personalSpeed: options.personalSpeed },
       romajiRuleId,
       cascade: resolvedCascade,
