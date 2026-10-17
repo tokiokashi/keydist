@@ -1,5 +1,6 @@
 import { ADJACENT_PAIRS, ALL_FINGERS, dist, hasMultiFingerKeys, type Finger, type Geometry } from '#input/shapes/geometry.ts';
 import type { Stroke, Trace } from '#trace/generate.ts';
+import { countStates, type StateCounts } from './excess-distribution.ts';
 import { DEFAULT_CHAIN_INTERPRETATION, type ChainInterpretation } from './structure/chain.ts';
 import { DEFAULT_ARPEGGIO_INTERPRETATION, type ArpeggioInterpretation } from './structure/arpeggio.ts';
 import { COMBO_LAYER_ID, SINGLE_LAYER_ID } from '#input/layouts/types.ts';
@@ -27,6 +28,15 @@ export interface PairStat {
   stdDev: number;
   /** 超過の実測最大値 [u] */
   maxExcess: number;
+}
+
+export interface PairDistribution {
+  pair: [Finger, Finger];
+  /**
+   * ホーム間隔からの超過の状態別の頻度（状態の値 [u] → 打鍵数）。
+   * 母集団は `PairStat` と同じ、スナップショットを取った全打鍵（仕様 §11.6）。
+   */
+  counts: StateCounts;
 }
 
 export interface ComboStats {
@@ -138,6 +148,8 @@ export interface Metrics {
   singleKeyRate: number;
   /** 隣接指間距離の統計。ホーム間隔からの超過で持つ（仕様 §11.6） */
   adjacent: PairStat[];
+  /** 隣接指間距離の超過の分布。`adjacent` と同じ並び・同じ母集団（仕様 §11.6） */
+  adjacentDistribution: PairDistribution[];
   /** 同指連続回数。同じ指で異なる位置を続けて打った数 */
   sameFinger: number;
   /** 指ごとの同指連続回数。Press単位で数え、合計は `sameFinger` に一致する（仕様 §11.7） */
@@ -271,6 +283,11 @@ export function computeMetrics(
     return { pair, meanExcess: mean, stdDev, maxExcess: max };
   });
 
+  const adjacentDistribution = ADJACENT_PAIRS.map((pair, i): PairDistribution => ({
+    pair,
+    counts: countStates(pairSamples[i]),
+  }));
+
   const combos = {
     definitions: trace.comboDefinitions,
     matched: new Set(trace.comboHits).size,
@@ -310,6 +327,7 @@ export function computeMetrics(
     singleTapRate: scalars.singleTapRate,
     singleKeyRate: scalars.singleKeyRate,
     adjacent,
+    adjacentDistribution,
     sameFinger: scalars.sameFinger,
     perFingerSameFinger,
     combos,

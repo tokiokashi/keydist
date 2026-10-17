@@ -1,5 +1,6 @@
 import { defineSingleAnalyzer, type SingleAnalyzerDefinition, type SingleAnalyzerExtractContext } from '#analyzers/contract.ts';
 import { plainDisciplineContext } from '#analyzers/discipline-material.ts';
+import { stateShares, type StateShare } from '#interpretation/excess-distribution.ts';
 import type { Metrics } from '#interpretation/metrics.ts';
 import { ALL_FINGERS, type Finger } from '#input/shapes/geometry.ts';
 import {
@@ -51,6 +52,11 @@ export interface FingerDistanceAdjacent {
   readonly meanExcess: number;
   /** 超過の実測最大値 [u] */
   readonly maxExcess: number;
+  /**
+   * 超過の状態別の割合（状態の値の昇順）。母集団は平均・標準偏差と同じ全打鍵で、
+   * その組の指がホームにある打鍵も含む（仕様 §11.6）。打鍵が無い時は空。
+   */
+  readonly distribution: readonly StateShare[];
 }
 
 export interface FingerDistanceExtracted {
@@ -92,12 +98,13 @@ export function computeFingerDistanceExtraction(metrics: Metrics): FingerDistanc
     hands: { left: handTotal('left'), right: handTotal('right') },
     totalDistance,
     totalPresses,
-    adjacent: metrics.adjacent.map((item) => ({
+    adjacent: metrics.adjacent.map((item, i) => ({
       pair: item.pair,
       hand: handOf(item.pair[0]),
       stdDev: item.stdDev,
       meanExcess: item.meanExcess,
       maxExcess: item.maxExcess,
+      distribution: stateShares(metrics.adjacentDistribution[i]?.counts ?? new Map()),
     })),
   };
 }

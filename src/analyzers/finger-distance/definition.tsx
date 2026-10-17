@@ -2,7 +2,8 @@ import { bindOption, SelectOptionField } from '#ui/primitives/option-fields.tsx'
 import { fingerDistanceDefinition, type FingerDistanceExtracted } from './extract.ts';
 import { DEFAULT_FINGER_DISTANCE_OPTIONS, fingerDistanceOptions, type FingerDistanceOptions } from './options.ts';
 import { FINGER_DISTANCE_PANE_META } from './pane-meta.ts';
-import { chartSpecOf } from './chart-data.ts';
+import { chartSpecOf, distributionSpecsOf } from './chart-data.ts';
+import { FingerDistanceDistribution } from './finger-distance-distribution.tsx';
 import { FingerDistanceChart } from './finger-distance-chart.tsx';
 import type { AnalyzerSettingsProps, SingleAnalyzerPaneParts } from '../pane-parts.tsx';
 import './finger-distance-view.css';
@@ -30,6 +31,17 @@ export function FingerDistanceBody({ extracted, options }: FingerDistanceBodyPro
       <FingerDistanceChart spec={spec} scaleKey={`finger-distance:${options.chartMetric}`} />
       {isAdjacent
         ? <p className="finger-distance-note">間隔は、2本の指がホームに並んだ時の間隔からの超過。</p>
+        : null}
+      {isAdjacent
+        ? (
+          <>
+            <h3 className="finger-distance-heading">隣り合う指の間隔の分布 [%]</h3>
+            <FingerDistanceDistribution specs={distributionSpecsOf(extracted)} />
+            <p className="finger-distance-note">
+              各行は指間距離の超過 [u] の1つの値で、棒と右の数字がその値の打鍵が全打鍵に占める割合です。割合の分母は、平均・標準偏差と同じ全打鍵です。その組の指がホームにある打鍵も含みます。
+            </p>
+          </>
+        )
         : null}
     </section>
   );
