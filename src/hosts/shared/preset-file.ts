@@ -1,7 +1,7 @@
 import { isRecord, type CodecDiagnostic } from '#input/codec/index.ts';
-import type { PresetLibrary } from '#input/presets/index.ts';
 import type { LevelOverrides } from '#input/settings/index.ts';
-import { PRESET_LIBRARY_CODEC } from '#engine/preset-codec.ts';
+import { PRESET_FILE_CODEC, type PresetFileContents } from '#engine/preset-file-codec.ts';
+import type { Workspace } from '#engine/workspace.ts';
 import { SETTINGS_ITEMS, type SettingsValueMap } from '#engine/settings-items.ts';
 import { conditionItemLabel } from './condition-summary.ts';
 
@@ -9,11 +9,14 @@ import { conditionItemLabel } from './condition-summary.ts';
  * プリセットの書き出しファイルの形と、読み込みの分類・文言（DOMを使わない計算。
  * ファイルの保存・読み取りは`platform/`で、`PresetFileIo`として注入される）。
  *
- * ファイルは`{ format, version, presets }`。`version`と`presets`は資産のcodecの出力そのままで、
- * `format`だけを書く直前に付ける（`platform/browser-download.ts`）。読む時は`format`を見てから
- * codecへ渡す。旧画面の条件ファイルも`version: 4`を持つので、印が無いと新しい版と取り違える。
- * 同じ封筒に`workspaces`を足して`version`を上げる余地を残す（古いアプリはcodecが
- * 新しい版として断る）。
+ * ファイルは`{ format, version, presets?, workspaces? }`。`version`・`presets`・`workspaces`は封筒のcodec
+ * （`engine/preset-file-codec.ts`）の出力そのままで、`format`だけを書く直前に付ける（`platform/browser-download.ts`）。
+ * どちらか一方だけを持つファイルも読める。読む時は`format`を見てからcodecへ渡す。
+ * 旧画面の条件ファイルも`version: 4`を持つので、印が無いと新しい版と取り違える。
+ *
+ * 最上位とプリセットの中の未知のキーは、読まずに捨てる。捨てたことは不具合報告用の原文にだけ残し、
+ * 結果の行の件数の文には数えない（新しい版が足した項目を、古い版が読めなかった失敗として見せないため）。
+ * 読めた部分は読み込む。
  */
 
 export const PRESET_FILE_FORMAT = 'keydist-presets';
@@ -29,21 +32,35 @@ export const PRESET_FILE_MAX_BYTES = 1024 * 1024;
 /** 1つのファイルから読み込めるプリセットの件数。人が手で管理できる量を大きく超えたら、取り違えとみなして断る。 */
 export const PRESET_FILE_MAX_PRESETS = 100;
 
-/** 書き出すファイルの本体（`format`は付けない）。 */
-export function presetFileBody(library: PresetLibrary<SettingsValueMap>): Record<string, unknown> {
-  return PRESET_LIBRARY_CODEC.encode(library);
+/** 1つのファイルから読み込めるWorkspaceの件数。理由はプリセットと同じ。 */
+export const PRESET_FILE_MAX_WORKSPACES = 100;
+
+/** 書き出すファイルの本体（`format`は付けない）。渡さない側、または空の側はファイルに出さない。 */
+export function presetFileBody(contents: Partial<PresetFileContents>): Record<string, unknown> {
+  return PRESET_FILE_CODEC.encode({ presets: contents.presets ?? [], workspaces: contents.workspaces ?? [] });
 }
 
 /** ファイル名に使えない文字（OSごとに違うものの和集合）と制御文字。 */
 const UNSAFE_FILENAME_CHARS = /[\\/:*?"<>|\u0000-\u001f]/g;
 
+/** ファイル名に入れる名前。使えない文字は`_`にし、長すぎる名前は切る。 */
+function cleanedForFilename(name: string): string {
+  return name.replace(UNSAFE_FILENAME_CHARS, '_').trim().slice(0, 40);
+}
+
+/** Workspaceの書き出しのファイル名。ダウンロード先で見分けられるよう、Workspaceの名前を入れる。 */
+export function workspaceFileName(name: string): string {
+  const cleaned = cleanedForFilename(name);
+  return `keydist-Workspace-${cleaned === '' ? '名前なし' : cleaned}.json`;
+}
+
 /**
- * 書き出しのファイル名。全件は日付、1件はプリセット名を入れて、ダウンロード先で見分けられるようにする。
+ * プリセットの書き出しのファイル名。全件は日付、1件はプリセット名を入れて、ダウンロード先で見分けられるようにする。
  * 名前に使えない文字は`_`にし、長すぎる名前は切る。
  */
 export function presetFileName(scope: { readonly kind: 'all'; readonly date: Date } | { readonly kind: 'one'; readonly name: string }): string {
   if (scope.kind === 'one') {
-    const cleaned = scope.name.replace(UNSAFE_FILENAME_CHARS, '_').trim().slice(0, 40);
+    const cleaned = cleanedForFilename(scope.name);
     return `keydist-プリセット-${cleaned === '' ? '名前なし' : cleaned}.json`;
   }
   const { date } = scope;
@@ -84,7 +101,7 @@ export interface MissingReference {
 export const PRESET_FILE_TOO_LARGE_MESSAGE = 'ファイルが大きすぎます（1MBまで）';
 export const PRESET_FILE_UNREADABLE_MESSAGE = 'ファイルを読み取れませんでした';
 
-function failure(message: string, ...details: string[]): PresetFileReadResult {
+function failure(message: string, ...details: string[]): { readonly ok: false; readonly message: string; readonly details: readonly string[] } {
   return { ok: false, message, details };
 }
 
@@ -173,11 +190,52 @@ export function importResultMessage(
   return [message, ...notes].join('。');
 }
 
-/**
- * ファイルの中身を分類し、読めるプリセットを取り出す。大きさは読む前に`platform`が断るので、ここでは
- * 件数だけを見る。壊れた値・未知の項目は捨てて残りを読み、捨てたものは文と原文で伝える。
- */
-export function parsePresetFile(text: string, references: PresetReferences): PresetFileReadResult {
+const ENVELOPE_KEYS: ReadonlySet<string> = new Set(['format', 'version', 'presets', 'workspaces']);
+const PRESET_KEYS: ReadonlySet<string> = new Set(['id', 'name', 'values']);
+
+/** 読まずに捨てる未知のキー（最上位とプリセットの中）。不具合報告用の原文にだけ出す。 */
+function unknownKeyLines(parsed: Record<string, unknown>): readonly string[] {
+  const lines = Object.keys(parsed)
+    .filter((key) => !ENVELOPE_KEYS.has(key))
+    .map((key) => `${key}: 未知のキーのため読み込みませんでした`);
+  if (Array.isArray(parsed.presets)) {
+    parsed.presets.forEach((preset: unknown, index: number) => {
+      if (!isRecord(preset)) return;
+      for (const key of Object.keys(preset)) {
+        if (!PRESET_KEYS.has(key)) lines.push(`presets[${index}].${key}: 未知のキーのため読み込みませんでした`);
+      }
+    });
+  }
+  return lines;
+}
+
+const diagnosticLine = (diagnostic: CodecDiagnostic): string => `${diagnostic.path}: ${diagnostic.message}`;
+
+/** Workspaceごと捨てた診断（配列でない・object形式でない・idが読めない/重複）。ペインなど一部を直した診断は含めない。 */
+const WORKSPACE_DROP_PATH = /^workspaces(\[\d+\](\.id)?)?$/;
+
+/** 捨てたWorkspaceの数と、ペインなど一部を読めなかった数を、文にする。 */
+function workspaceDroppedTexts(diagnostics: readonly CodecDiagnostic[]): readonly string[] {
+  const dropped = diagnostics.filter((diagnostic) => WORKSPACE_DROP_PATH.test(diagnostic.path)).length;
+  const partial = diagnostics.length - dropped;
+  return [
+    ...(dropped > 0 ? [`${dropped}件のWorkspaceは読み込めませんでした`] : []),
+    ...(partial > 0 ? [`${partial}件のペインや設定は読み込めませんでした`] : []),
+  ];
+}
+
+type EnvelopeRead =
+  | { readonly ok: false; readonly message: string; readonly details: readonly string[] }
+  | {
+      readonly ok: true;
+      readonly contents: PresetFileContents;
+      readonly presetDiagnostics: readonly CodecDiagnostic[];
+      readonly workspaceDiagnostics: readonly CodecDiagnostic[];
+      readonly unknownKeys: readonly string[];
+    };
+
+/** ファイルの封筒を読む。プリセットとWorkspaceのどちらを使うかは呼び出し側が決める。 */
+function readEnvelope(text: string): EnvelopeRead {
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
@@ -193,7 +251,10 @@ export function parsePresetFile(text: string, references: PresetReferences): Pre
   if (Array.isArray(parsed.presets) && parsed.presets.length > PRESET_FILE_MAX_PRESETS) {
     return failure(`プリセットが多すぎます（${PRESET_FILE_MAX_PRESETS}件まで）`, `presets: ${parsed.presets.length}`);
   }
-  const decoded = PRESET_LIBRARY_CODEC.decode(parsed);
+  if (Array.isArray(parsed.workspaces) && parsed.workspaces.length > PRESET_FILE_MAX_WORKSPACES) {
+    return failure(`Workspaceが多すぎます（${PRESET_FILE_MAX_WORKSPACES}件まで）`, `workspaces: ${parsed.workspaces.length}`);
+  }
+  const decoded = PRESET_FILE_CODEC.decode(parsed);
   if (!decoded.ok) {
     const { reason } = decoded;
     if (reason.kind === 'future-version') {
@@ -204,15 +265,63 @@ export function parsePresetFile(text: string, references: PresetReferences): Pre
     }
     return failure('ファイルの形式が正しくありません', JSON.stringify(reason));
   }
-  const details = decoded.diagnostics.map((diagnostic) => `${diagnostic.path}: ${diagnostic.message}`);
-  const presets = decoded.value.presets.map((preset) => ({ name: preset.name, values: preset.values }));
+  return {
+    ok: true,
+    contents: decoded.value,
+    presetDiagnostics: decoded.diagnostics.filter((diagnostic) => diagnostic.path.startsWith('presets')),
+    workspaceDiagnostics: decoded.diagnostics.filter((diagnostic) => diagnostic.path.startsWith('workspaces')),
+    unknownKeys: unknownKeyLines(parsed),
+  };
+}
+
+/**
+ * ファイルの中身を分類し、読めるプリセットを取り出す。大きさは読む前に`platform`が断るので、ここでは
+ * 件数だけを見る。壊れた値・未知の項目は捨てて残りを読み、捨てたものは文と原文で伝える。
+ * Workspaceは扱わない（同じファイルのWorkspaceは`parseWorkspaceFile`が読む）。
+ */
+export function parsePresetFile(text: string, references: PresetReferences): PresetFileReadResult {
+  const envelope = readEnvelope(text);
+  if (!envelope.ok) return envelope;
+  const details = [...envelope.presetDiagnostics.map(diagnosticLine), ...envelope.unknownKeys];
+  const presets = envelope.contents.presets.map((preset) => ({ name: preset.name, values: preset.values }));
   if (presets.length === 0) {
     return failure(
-      '読み込めるプリセットがありませんでした',
+      envelope.contents.workspaces.length > 0 ? 'このファイルにプリセットは含まれていません' : '読み込めるプリセットがありませんでした',
       ...details,
       ...(details.length === 0 ? ['presets: 0'] : []),
     );
   }
-  const message = [`${presets.length}件のプリセットを読み込みました`, ...droppedTexts(decoded.diagnostics)].join('。');
+  const message = [`${presets.length}件のプリセットを読み込みました`, ...droppedTexts(envelope.presetDiagnostics)].join('。');
   return { ok: true, presets, message, missingReferences: missingReferences(presets, references), details };
+}
+
+export type WorkspaceFileReadResult =
+  | { readonly ok: false; readonly message: string; readonly details: readonly string[] }
+  | {
+      readonly ok: true;
+      readonly workspaces: readonly Workspace[];
+      /** 読めなかった部分の文（捨てたWorkspaceの数など）。無ければ空。 */
+      readonly dropped: readonly string[];
+      /** 不具合報告用の原文（捨てた要素の診断と、読まなかった未知のキー）。 */
+      readonly details: readonly string[];
+    };
+
+/**
+ * ファイルの中身を分類し、読めるWorkspaceを取り出す。壊れた要素は捨てて残りを読む。
+ * 参照先の資産が手元にあるかは、手元に足す時に調べる（`engine/workspace-import.ts`）。
+ * プリセットは扱わない（同じファイルのプリセットは`parsePresetFile`が読む）。
+ */
+export function parseWorkspaceFile(text: string): WorkspaceFileReadResult {
+  const envelope = readEnvelope(text);
+  if (!envelope.ok) return envelope;
+  const details = [...envelope.workspaceDiagnostics.map(diagnosticLine), ...envelope.unknownKeys];
+  const { workspaces } = envelope.contents;
+  if (workspaces.length === 0) {
+    return failure(
+      envelope.contents.presets.length > 0 ? 'このファイルにWorkspaceは含まれていません' : '読み込めるWorkspaceがありませんでした',
+      ...details,
+      ...(details.length === 0 ? ['workspaces: 0'] : []),
+    );
+  }
+  return { ok: true, workspaces, dropped: workspaceDroppedTexts(envelope.workspaceDiagnostics), details };
 }

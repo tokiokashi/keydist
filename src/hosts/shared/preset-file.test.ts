@@ -50,7 +50,7 @@ test('封筒: 書き出して読み直すと、名前と値が往復する（id�
 test('封筒: 本体はcodecの出力そのままで、format以外の印を足さない', () => {
   const body = presetFileBody(LIBRARY);
   assert.deepEqual(Object.keys(body), ['version', 'presets']);
-  assert.equal(body.version, 1);
+  assert.equal(body.version, 2);
 });
 
 test('診断: JSONとして読めない', () => {
@@ -73,9 +73,9 @@ test('診断: 旧画面の条件ファイル（conditionsとversion 4）', () =>
 });
 
 test('診断: 新しい版', () => {
-  const result = failed(fileText({ version: 2, presets: [] }));
+  const result = failed(fileText({ version: 3, presets: [] }));
   assert.equal(result.message, '新しい形式のファイルです。keydistを更新してから読み込んでください');
-  assert.deepEqual(result.details, ['version: 2 (対応: 1)']);
+  assert.deepEqual(result.details, ['version: 3 (対応: 2)']);
 });
 
 test('診断: 形が正しくない（版が無い・版が不正・presetsがオブジェクトでない）', () => {

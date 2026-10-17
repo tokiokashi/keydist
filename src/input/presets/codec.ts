@@ -15,7 +15,7 @@ import type { Preset, PresetLibrary } from './types.ts';
  * レベルの許可（`allowedLevels`）は検査しない。流し込む時に先のレベルで絞る
  * （`decodeCascadeOverrides`と同じ方針。判断を1箇所に置く）。
  */
-function decodePresets<V>(
+export function decodePresets<V>(
   itemSchemas: ItemSchemaMap<V>,
   raw: unknown,
   path: string,
@@ -58,6 +58,15 @@ function decodePresets<V>(
   return presets;
 }
 
+/** プリセットの配列を保存形（`id`・`name`・`values`）にする。`values`は参照を共有しないよう複製する。 */
+export function encodePresets<V>(presets: readonly Preset<V>[]): Record<string, unknown>[] {
+  return presets.map((preset) => ({
+    id: preset.id,
+    name: preset.name,
+    values: JSON.parse(JSON.stringify(preset.values)) as Record<string, unknown>,
+  }));
+}
+
 export function presetLibraryCodec<V>(
   itemSchemas: ItemSchemaMap<V>,
   currentVersion: number,
@@ -68,12 +77,6 @@ export function presetLibraryCodec<V>(
       if (!isRecord(payload)) return undefined;
       return { presets: decodePresets(itemSchemas, payload.presets, 'presets', diagnostics) };
     },
-    encodePayload: (value) => ({
-      presets: value.presets.map((preset) => ({
-        id: preset.id,
-        name: preset.name,
-        values: JSON.parse(JSON.stringify(preset.values)) as Record<string, unknown>,
-      })),
-    }),
+    encodePayload: (value) => ({ presets: encodePresets(value.presets) }),
   });
 }
