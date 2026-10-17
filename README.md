@@ -239,7 +239,7 @@ TK音直入力法のコンボのヤ行19件で、拗音のローマ字塊の内�
 | 親指シフト（NICOLA） | [NICOLA配列規格書](http://nicola.sunicom.co.jp/spec/kikaku.htm)を仕様根拠として実装。専用キーボードの配置をANSIに写しているため、距離の絶対値は参考値 |
 | 新下駄 | [考案者kouy氏の公開配列表](https://kouy.exblog.jp/13627994/)を仕様根拠として実装した7面の同時打鍵配列 |
 | 月配列2-263式 | [成立時の2-263式配列表](https://jisx6004.client.jp/data/2chlog/1055763380.html)と[月配列の解説](https://jisx6004.client.jp/tsuki.html)を仕様根拠として実装した中指前置シフト配列 |
-| JISかな配列 | [JIS X 6002](https://ja.wikipedia.org/wiki/%E3%81%8B%E3%81%AA%E5%85%A5%E5%8A%9B)で策定された、一般のJISキーボードに刻印されたかな配列。Shiftで小書きのかな・`を`・`「」`・句読点を打ち、濁点・半濁点はかなの後に打つ。JISの物理配列が要る |
+| JISかな配列 | JIS X 6002で策定されたかな配列。キーの割り当ては、xkeyboard-configの `symbols/jp` の `kana` と照合して一致を確かめた。Shiftで小書きのかな・`を`・`「」`・句読点を打ち、濁点・半濁点はかなの後に打つ。JISの物理配列が要る |
 | かわせみ配列+ | [公式Kikyo定義](https://github.com/semialt/kawasemi/blob/911bb8f/Kikyo/%E3%81%8B%E3%82%8F%E3%81%9B%E3%81%BF%E9%85%8D%E5%88%97%2B.kky)から移植（コミット `911bb8f`、blob `220851f`）。二重母音・くき・つち・左手コンボ拡張を含む |
 
 コンボは「出力する文字列 → その文字を出すキーの集合」で書きます。
