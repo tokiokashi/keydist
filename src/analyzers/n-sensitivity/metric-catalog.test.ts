@@ -25,7 +25,7 @@ const CATALOG = {
 
 /**
  * 選択肢の一覧が、組み込みの配列・サンプルテキストでNによって値が変わる指標と一致することを、
- * 実行して確かめる。条件は、物理配列row-staggered・指割当は既定・設定は既定、テキストは英文の既定と
+ * 実行して確かめる。条件は、物理配列はrow-staggered（JISの物理配列が要る配列はjis-row-staggered）・指割当は既定・設定は既定、テキストは英文の既定と
  * 旧文「吾輩は猫である」（前処理はアプリと同じ`sampleText`）。
  */
 test('選択肢の指標は、組み込みの配列でNによって値が変わる指標と一致する', () => {
@@ -35,7 +35,7 @@ test('選択肢の指標は、組み込みの配列でNによって値が変わ�
     ...LAYOUTS_JA.map((layout) => ({ layoutId: layout.id, language: 'ja' as const, text: sampleText('ja', 'legacy') })),
   ];
   for (const { layoutId, language, text } of cases) {
-    const setup: Setup = { id: 'setup-a', number: 1, layoutId, shapeId: 'row-staggered' };
+    const setup: Setup = { id: 'setup-a', number: 1, layoutId, shapeId: CATALOG.layouts.get(layoutId)?.requiresJisShape === true ? 'jis-row-staggered' : 'row-staggered' };
     const resolved = resolveEngineInput({
       target: { kind: 'setup', setupId: 'setup-a' },
       setups: new Map([[setup.id, setup]]),

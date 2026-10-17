@@ -7,6 +7,7 @@ import {
 import type { Layout } from '#input/layouts/types.ts';
 import type { ExtractionAssets } from '#analyzers/contract.ts';
 import { withoutRomajiOnlyCombos, withRomaji } from '#input/layouts/types.ts';
+import { physicalKeysUsedByLayout } from '#input/layouts/physical-keys.ts';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { TextLanguage } from '#input/text/language.ts';
 import type { AnalysisTarget, Setup, SetupCatalog, SetupReferenceError } from '#input/setup/index.ts';
@@ -57,6 +58,11 @@ export type ResolvedInputError =
   | { readonly kind: 'incompatible-text'; readonly layout: Layout; readonly language: TextLanguage }
   /** `buildGeometry`が投げた例外を値へ変換したもの（例: 自作物理配列の行数と指割り当てが噛み合わない）。 */
   | { readonly kind: 'geometry'; readonly message: string }
+  /**
+   * 配列が打鍵に使うキーを、物理配列が全部は持たない（例: JISかな配列をJISのキーが無い物理配列で測る）。
+   * 黙って差し替えず、計算をしない。
+   */
+  | { readonly kind: 'keys-missing'; readonly layout: Layout }
   /**
    * 対象そのものの実体が手持ちから消えている（`setup-missing`を一般化）。Setup対象ならそのidが`SetupLibrary.setups`に
    * 無い、配列対象ならそのidが`SetupCatalog.layouts`に無い、のどちらか。`reference`
@@ -163,10 +169,27 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
       message: `選んでいたローマ字規則が見つからないため、既定の「${ROMAJI_RULES.kunrei.name}」で測りました`,
     }
     : undefined;
-  const resolvedCascade = assignmentDiagnostic === undefined && romajiDiagnostic === undefined
+  // JISの物理配列が要る配列の既定の物理配列は、値を入力にして物理配列を導くので、`validate`は食い違いを見ない。
+  // 値が手持ちに無い物理配列を指す時の診断は、手持ち（catalog）を持つここで、他の配列と同じ文で足す。
+  const shapeValue = cascade.defaultShapeId.value;
+  const shapeDiagnostic = textResolution.context.targetKind === 'layout'
+    && layout.requiresJisShape === true
+    && !options.catalog.shapes.has(shapeValue)
+    ? {
+      kind: 'invalid-fallback' as const,
+      message: `既定に選んでいた物理配列が見つからないため、「${textResolution.shape.name}」で測りました`,
+    }
+    : undefined;
+  const resolvedCascade = assignmentDiagnostic === undefined && romajiDiagnostic === undefined && shapeDiagnostic === undefined
     ? cascade
     : {
       ...cascade,
+      ...(shapeDiagnostic === undefined ? {} : {
+        defaultShapeId: {
+          ...cascade.defaultShapeId,
+          diagnostics: [...cascade.defaultShapeId.diagnostics, shapeDiagnostic],
+        },
+      }),
       ...(assignmentDiagnostic === undefined ? {} : {
         fingerAssignmentId: {
           ...cascade.fingerAssignmentId,
@@ -188,6 +211,12 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
   } catch (cause) {
     const message = cause instanceof Error ? cause.message : String(cause);
     return { ok: false, error: { kind: 'geometry', message } };
+  }
+
+  // 配列が使うキーを物理配列が持たなければ、打てない文字が出るので計算をしない。
+  const geometryKeys = geometry.keys;
+  for (const key of physicalKeysUsedByLayout(layout)) {
+    if (!geometryKeys.has(key)) return { ok: false, error: { kind: 'keys-missing', layout } };
   }
 
   const tracePolicy: TracePolicy = {

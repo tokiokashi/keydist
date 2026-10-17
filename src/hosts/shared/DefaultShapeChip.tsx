@@ -17,7 +17,7 @@ import './context-bar.css';
  * そのWorkspaceのレベル（Workspaceのペインの条件のモーダルがWorkspaceのレベルで開くため）。
  * 配列のレベルの値（上書き）は読まず、書かない。配列だけ変えたい時はモーダルの
  * 「この配列だけ別に」。そのため、この画面に出ている配列（`layoutIds`）に配列のレベルの値があれば、
- * ここで変えてもその配列は変わらない。その理由をチップを操作している間（フォーカス中）だけ添える。
+ * ここで変えてもその配列は変わらない。JISの物理配列が要る配列（JISかな配列）は、変えた物理配列と同じ形のJISの物理配列で測る。その理由をチップを操作している間（フォーカス中）だけ添える。
  *
  * 選べる物理配列は、呼び出し側が持つカタログから引く（自作の物理配列が増えた時に、
  * ここだけ組み込みに取り残されないように）。
@@ -32,7 +32,7 @@ export interface DefaultShapeChipProps {
   /** この画面に出ている配列。配列のレベルの値が勝つ配列の理由を出すのに使う。 */
   readonly layoutIds?: readonly string[];
   /** 理由に出す配列の名前（引けなければ「この配列」）。 */
-  readonly layouts?: ReadonlyMap<string, { readonly name: string }>;
+  readonly layouts?: ReadonlyMap<string, { readonly name: string; readonly requiresJisShape?: true }>;
 }
 
 export function DefaultShapeChip({ overrides, workspaceId, dispatch, shapes, layoutIds = [], layouts }: DefaultShapeChipProps) {

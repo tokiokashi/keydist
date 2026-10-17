@@ -18,6 +18,7 @@ import { SHIN_JIS_PREFIX, SHIN_JIS_SIMULTANEOUS } from './shin-jis.ts';
 import { SHINGETA } from './shingeta.ts';
 import { TSUKI_2_263 } from './tsuki-2-263.ts';
 import { KAWASEMI_PLUS } from './kawasemi-plus.ts';
+import { JIS_KANA } from './jis-kana.ts';
 
 export type {
   ComboCondition,
@@ -154,6 +155,7 @@ export const LAYOUTS_JA: Layout[] = [
   SHINGETA,
   TSUKI_2_263,
   KAWASEMI_PLUS,
+  JIS_KANA,
 ];
 
 export const LAYOUT_BY_ID = new Map([...LAYOUTS, ...LAYOUTS_JA].map((l) => [l.id, l]));

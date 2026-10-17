@@ -222,6 +222,19 @@ test('ローマ字規則の理由: 大西配列は全体未設定でも推奨の
   assert.equal(viewOf(session, 'oonishi-custom').notices.has('romajiRuleId'), false);
 });
 
+test('既定の物理配列: JISかな配列は全体の値と同じ形のJISの物理配列で測り、全体の値を負けた値として示さない', () => {
+  const session = newSession();
+  assert.equal(viewOf(session, 'jis-kana').geometryId, 'jis-row-staggered');
+  dispatch(session, defaultShapeCommand('split-ortholinear'));
+  const view = viewOf(session, 'jis-kana');
+  assert.equal(view.geometryId, 'jis-split-ortholinear');
+  assert.equal(view.rowOf('defaultShapeId').originLabel, '上書き: 全体');
+  assert.equal(view.notices.has('defaultShapeId'), false);
+  assert.equal(view.rowOf('defaultShapeId').hasLayoutRecommendation, false);
+  // JISでない配列は、全体の値のまま測る
+  assert.equal(viewOf(session, 'qwerty').geometryId, 'split-ortholinear');
+});
+
 test('この配列だけ別にする: 配列のレベルへ書き、全体は既定のまま。全体へ移すと全体の値になり、配列の値を消すと継承へ戻る', () => {
   const session = newSession();
   const base = windowDefault;

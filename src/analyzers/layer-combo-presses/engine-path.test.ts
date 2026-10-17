@@ -11,7 +11,7 @@ import { computeMetrics } from '#interpretation/metrics.ts';
 import { computeLayerComboPressesExtraction } from './extract.ts';
 
 /**
- * 押下数の表の材料を、実際のengine経路（解決 → Trace → Metrics）で検証する。物理配列はrow-staggered。
+ * 押下数の表の材料を、実際のengine経路（解決 → Trace → Metrics）で検証する。物理配列は、JISの物理配列が要る配列ではjis-row-staggered、それ以外はrow-staggered。
  * テキストは組み込みのサンプル（日本語は `legacy`、英文は `default`）。
  */
 
@@ -21,7 +21,9 @@ const CATALOG = {
 };
 
 function tryResolve(layoutId: string, language: 'ja' | 'en', text: string) {
-  const setup: Setup = { id: 'setup-layer-combo-presses', number: 1, layoutId, shapeId: 'row-staggered' };
+  // JISの物理配列が要る配列（JISかな配列）は、JISの物理配列で測る
+  const shapeId = LAYOUT_BY_ID.get(layoutId)?.requiresJisShape === true ? 'jis-row-staggered' : 'row-staggered';
+  const setup: Setup = { id: 'setup-layer-combo-presses', number: 1, layoutId, shapeId };
   return resolveEngineInput({
     target: { kind: 'setup', setupId: setup.id },
     setups: new Map([[setup.id, setup]]),
