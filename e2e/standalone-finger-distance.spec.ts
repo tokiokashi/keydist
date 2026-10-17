@@ -152,7 +152,7 @@ for (const width of [1280, 390]) {
     await page.goto('/analyzer/finger-distance?metric=stdDev');
     const feature = page.locator('[data-react-feature="finger-distance"]');
     await expect(feature.locator('[data-distribution-pair]')).toHaveCount(6, { timeout: 10_000 });
-    // 既定の条件で、状態が7つ以上の組が出る（以前は読めなかった組）
+    // 既定の条件で、状態が7つ以上の組が出る
     const counts = await feature.locator('[data-distribution-pair]').evaluateAll((nodes) => nodes.map((node) => node.querySelectorAll('[data-distribution-bar]').length));
     expect(Math.max(...counts)).toBeGreaterThanOrEqual(7);
     // 全部の行に、状態の値と割合の文字が出ている
