@@ -210,6 +210,30 @@ test('縦軸（相対/実測値）の切り替えはリロードしても残る'
   await expect((await openSettings(page)).getByRole('radio', { name: '相対（N=0を100%）' })).not.toBeChecked();
 });
 
+test('指標を選ぶと縦軸の見出しと単位が変わり、リロードしても残る', async ({ page }) => {
+  await page.addInitScript(seedTwoSetups());
+  await page.goto('/analyzer/n-sensitivity');
+
+  await addTarget(page, 'setup:fixed-a');
+  await expect(page.locator('.n-sensitivity-svg')).toBeVisible({ timeout: 10_000 });
+  const title = page.locator('[data-n-sensitivity-y-title]');
+  await expect(title).toHaveText('距離（N=0を100%）');
+
+  await (await openSettings(page)).getByLabel('指標').selectOption({ label: '同指率' });
+  await expect(title).toHaveText('同指率（N=0との差 [pt]）');
+  await expect((await openSettings(page)).getByRole('radio', { name: '相対（N=0との差 [pt]）' })).toBeChecked();
+  await expect(page.locator('.n-sensitivity-table-details > summary')).toHaveText('各Nの実測値（同指率 [%]）');
+
+  await (await openSettings(page)).getByRole('radio', { name: '実測値 [%]' }).check();
+  await expect(title).toHaveText('同指率 [%]');
+
+  await expect
+    .poll(async () => page.evaluate((key) => localStorage.getItem(key), STANDALONE_ANALYZER_OPTIONS_KEY))
+    .toContain('sameFingerRate');
+  await page.reload();
+  await expect(page.locator('[data-n-sensitivity-y-title]')).toHaveText('同指率 [%]', { timeout: 10_000 });
+});
+
 test('選択はリロードしても残り、資産の読み込み前に上書きされない。並びは付けた順によらず一覧の順', async ({ page }) => {
   await page.addInitScript(seedTwoSetups());
   await page.goto('/analyzer/n-sensitivity');

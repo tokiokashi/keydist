@@ -5,7 +5,7 @@ import {
   type SetAnalyzerDefinition,
   type SetAnalyzerExtractContext,
 } from '#analyzers/contract.ts';
-import { DEFAULT_METRIC_CONDITIONS, type Metrics } from '#interpretation/metrics.ts';
+import { DEFAULT_METRIC_CONDITIONS, rightHandShare, sameFingerRate, type Metrics } from '#interpretation/metrics.ts';
 import { analysisTargetKey, type AnalysisTarget } from '#input/setup/index.ts';
 import { ALL_FINGERS, type Finger, type Key } from '#input/shapes/geometry.ts';
 import type { Press, Stroke, StrokeParticipation, Trace } from '#trace/generate.ts';
@@ -65,17 +65,6 @@ export interface ComparisonExtracted {
   readonly rows: readonly ComparisonRow[];
 }
 
-/**
- * 右手（親指を含む5本。指の頭文字がR）の割合（%）。分母が0なら0。
- * 指ごとの距離のAnalyzerの右手の小計（`distanceShare`・`pressShare`）と同じ値を、百分率で返す（仕様 §11）。
- */
-function rightHandShare(byFinger: Readonly<Record<Finger, number>>): number {
-  const total = ALL_FINGERS.reduce((sum, finger) => sum + byFinger[finger], 0);
-  if (total === 0) return 0;
-  const right = ALL_FINGERS.filter((finger) => finger.startsWith('R')).reduce((sum, finger) => sum + byFinger[finger], 0);
-  return (right / total) * 100;
-}
-
 /** `Metrics`から全列を読み出す純関数。`options.ts`のコメント参照。 */
 export function computeComparisonRowValues(metrics: Metrics): ComparisonRowValues {
   const adjacentCount = metrics.adjacent.length || 1;
@@ -92,7 +81,7 @@ export function computeComparisonRowValues(metrics: Metrics): ComparisonRowValue
     singleTapRate: metrics.singleTapRate,
     singleKeyRate: metrics.singleKeyRate,
     sameFinger: metrics.sameFinger,
-    sameFingerRate: (metrics.sameFinger / Math.max(1, metrics.strokes)) * 100,
+    sameFingerRate: sameFingerRate(metrics.sameFinger, metrics.strokes),
     adjacentMean,
     adjacentStdDev,
     rightHandDistanceShare: rightHandShare(metrics.perFinger),

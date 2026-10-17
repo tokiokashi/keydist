@@ -193,19 +193,7 @@ export function computeMetrics(
   geometry: Geometry,
   conditions: MetricConditions = DEFAULT_METRIC_CONDITIONS,
 ): Metrics {
-  const perFinger = {} as Record<Finger, number>;
-  const perFingerPresses = {} as Record<Finger, number>;
-  const perFingerPressEvents = {} as Record<Finger, number>;
-  const perFingerSameFinger = {} as Record<Finger, number>;
-  for (const finger of ALL_FINGERS) {
-    perFinger[finger] = 0;
-    perFingerPresses[finger] = 0;
-    perFingerPressEvents[finger] = 0;
-    perFingerSameFinger[finger] = 0;
-  }
-
-  let totalUnits = 0;
-  let sameFinger = 0;
+  const tally = tallyPresses(trace);
   const keyCounts = new Map<string, number>();
   const keyDistance = new Map<string, number>();
   const layerStats = trace.layerDefinitions
@@ -242,20 +230,10 @@ export function computeMetrics(
   const pairSamples: number[][] = ADJACENT_PAIRS.map(() => []);
   const homeSpacings = ADJACENT_PAIRS.map((pair) => homeSpacing(geometry, pair));
 
-  let presses = 0;
   for (const stroke of trace.strokes) {
     const triggerKeys = new Set(stroke.triggerKeys);
     const pairedTriggerKeys = new Set(stroke.pairedTriggerKeys);
-    totalUnits += stroke.distance;
     for (const press of stroke.presses) {
-      presses += press.keys.length;
-      perFinger[press.finger] += press.distance;
-      perFingerPresses[press.finger] += press.keys.length;
-      perFingerPressEvents[press.finger]++;
-      if (press.sfb) {
-        sameFinger++;
-        perFingerSameFinger[press.finger]++;
-      }
       // 1本の指で複数キーを押した場合、距離はキーへ均等に按分する
       const share = press.distance / press.keys.length;
       for (const key of press.keys) {
@@ -299,11 +277,8 @@ export function computeMetrics(
     hits: trace.comboHits.length,
   };
 
-  const strokes = trace.strokes.length;
-  // ActionRealizationPolicyはgenerateTraceでStroke生成前に適用済み。
-  // Metrics側ではvirtual actionを足さず、共通realized streamをそのまま数える。
-  const actions = strokes;
-  const { inputChars } = trace;
+  const { perFinger, perFingerPresses, perFingerPressEvents, perFingerSameFinger } = tally;
+  const scalars = computeTraceScalars(trace, tally);
   return {
     geometryId: geometry.id,
     geometryName: geometry.name,
@@ -317,25 +292,25 @@ export function computeMetrics(
       triggerRealizationPolicy: { ...conditions.triggerRealizationPolicy },
       actionRealizationPolicy: { ...conditions.actionRealizationPolicy },
     },
-    strokes,
-    actions,
-    presses,
-    skipped: trace.skipped,
-    inputChars,
+    strokes: scalars.actions,
+    actions: scalars.actions,
+    presses: scalars.presses,
+    skipped: scalars.skipped,
+    inputChars: scalars.inputChars,
     perFinger,
     perFingerPresses,
     perFingerPressEvents,
-    totalUnits,
-    totalMm: totalUnits * geometry.pitchMm,
-    meanPerStroke: strokes ? totalUnits / strokes : 0,
-    perCharUnits: inputChars ? totalUnits / inputChars : 0,
-    perCharSteps: inputChars ? actions / inputChars : 0,
-    perCharPresses: inputChars ? presses / inputChars : 0,
-    singleTapLayerRate: singleTapLayerRate(trace),
-    singleTapRate: singleTapRate(trace, actions),
-    singleKeyRate: singleKeyRate(trace, actions),
+    totalUnits: scalars.totalUnits,
+    totalMm: scalars.totalUnits * geometry.pitchMm,
+    meanPerStroke: scalars.meanPerStroke,
+    perCharUnits: scalars.perCharUnits,
+    perCharSteps: scalars.perCharSteps,
+    perCharPresses: scalars.perCharPresses,
+    singleTapLayerRate: scalars.singleTapLayerRate,
+    singleTapRate: scalars.singleTapRate,
+    singleKeyRate: scalars.singleKeyRate,
     adjacent,
-    sameFinger,
+    sameFinger: scalars.sameFinger,
     perFingerSameFinger,
     combos,
     layers: layerStats,
@@ -344,6 +319,114 @@ export function computeMetrics(
     comboKeyDistance,
     keyCounts,
     keyDistance,
+  };
+}
+
+/** 指ごとの押下の集計。Geometryを要らず、Traceだけから求まる。 */
+interface PressTally {
+  readonly totalUnits: number;
+  readonly presses: number;
+  readonly sameFinger: number;
+  readonly perFinger: Record<Finger, number>;
+  readonly perFingerPresses: Record<Finger, number>;
+  readonly perFingerPressEvents: Record<Finger, number>;
+  readonly perFingerSameFinger: Record<Finger, number>;
+}
+
+function tallyPresses(trace: Trace): PressTally {
+  const perFinger = {} as Record<Finger, number>;
+  const perFingerPresses = {} as Record<Finger, number>;
+  const perFingerPressEvents = {} as Record<Finger, number>;
+  const perFingerSameFinger = {} as Record<Finger, number>;
+  for (const finger of ALL_FINGERS) {
+    perFinger[finger] = 0;
+    perFingerPresses[finger] = 0;
+    perFingerPressEvents[finger] = 0;
+    perFingerSameFinger[finger] = 0;
+  }
+  let totalUnits = 0;
+  let presses = 0;
+  let sameFinger = 0;
+  for (const stroke of trace.strokes) {
+    totalUnits += stroke.distance;
+    for (const press of stroke.presses) {
+      presses += press.keys.length;
+      perFinger[press.finger] += press.distance;
+      perFingerPresses[press.finger] += press.keys.length;
+      perFingerPressEvents[press.finger]++;
+      if (press.sfb) {
+        sameFinger++;
+        perFingerSameFinger[press.finger]++;
+      }
+    }
+  }
+  return { totalUnits, presses, sameFinger, perFinger, perFingerPresses, perFingerPressEvents, perFingerSameFinger };
+}
+
+/** 右手（親指を含む5本。指の頭文字がR）の割合 [%]。分母が0なら0（仕様 §11）。 */
+export function rightHandShare(byFinger: Readonly<Record<Finger, number>>): number {
+  const total = ALL_FINGERS.reduce((sum, finger) => sum + byFinger[finger], 0);
+  if (total === 0) return 0;
+  const right = ALL_FINGERS.filter((finger) => finger.startsWith('R')).reduce((sum, finger) => sum + byFinger[finger], 0);
+  return (right / total) * 100;
+}
+
+/** 同指連続回数を打鍵数で割った割合 [%]。打鍵数が0なら分母を1として扱う。 */
+export function sameFingerRate(sameFinger: number, strokes: number): number {
+  return (sameFinger / Math.max(1, strokes)) * 100;
+}
+
+/**
+ * Traceだけから求まるスカラー指標の一覧。Geometryを要らないので、Nごとに生成したTraceからも
+ * `computeMetrics`と同じ定義で求められる。
+ */
+export const TRACE_SCALAR_IDS = [
+  'actions',
+  'presses',
+  'skipped',
+  'inputChars',
+  'totalUnits',
+  'meanPerStroke',
+  'perCharUnits',
+  'perCharSteps',
+  'perCharPresses',
+  'singleTapLayerRate',
+  'singleTapRate',
+  'singleKeyRate',
+  'sameFinger',
+  'sameFingerRate',
+  'rightHandDistanceShare',
+  'rightHandPressShare',
+] as const;
+
+export type TraceScalarId = (typeof TRACE_SCALAR_IDS)[number];
+export type TraceScalars = Readonly<Record<TraceScalarId, number>>;
+
+/** `computeMetrics`のスカラー欄の定義そのもの。`computeMetrics`もここから値を取る。 */
+export function computeTraceScalars(trace: Trace, tally: PressTally = tallyPresses(trace)): TraceScalars {
+  const strokes = trace.strokes.length;
+  // ActionRealizationPolicyはgenerateTraceでStroke生成前に適用済み。
+  // Metrics側ではvirtual actionを足さず、共通realized streamをそのまま数える。
+  const actions = strokes;
+  const { inputChars } = trace;
+  const { totalUnits, presses } = tally;
+  return {
+    actions,
+    presses,
+    skipped: trace.skipped,
+    inputChars,
+    totalUnits,
+    meanPerStroke: strokes ? totalUnits / strokes : 0,
+    perCharUnits: inputChars ? totalUnits / inputChars : 0,
+    perCharSteps: inputChars ? actions / inputChars : 0,
+    perCharPresses: inputChars ? presses / inputChars : 0,
+    singleTapLayerRate: singleTapLayerRate(trace),
+    singleTapRate: singleTapRate(trace, actions),
+    singleKeyRate: singleKeyRate(trace, actions),
+    sameFinger: tally.sameFinger,
+    sameFingerRate: sameFingerRate(tally.sameFinger, strokes),
+    rightHandDistanceShare: rightHandShare(tally.perFinger),
+    rightHandPressShare: rightHandShare(tally.perFingerPresses),
   };
 }
 
