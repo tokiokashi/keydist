@@ -23,7 +23,7 @@ const widgetSchema = v.strictObject({
 function widgetCodec(migrations?: readonly MigrationStep[], currentVersion = 2) {
   return defineAssetCodec<Widget>({
     currentVersion,
-    migrations,
+    ...(migrations === undefined ? {} : { migrations }),
     decodePayload: (payload, diagnostics) => {
       const result = v.safeParse(widgetSchema, payload);
       if (result.success) return result.output;

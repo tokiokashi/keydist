@@ -22,7 +22,7 @@ import type { EngineSetMemberInput } from './request.ts';
  *
  * `extract.test.ts`（Analyzerユニット側）のテストは`AnalyzerSetMember.requestTrace`を
  * 手組みのスタブで渡していたため、`engine/cache.ts`の`getSetExtraction`が実際に
- * `createTraceRequesterFor`をどう組み立てているか（部分マージ・undefined値の扱い等）は
+ * `createTraceRequesterFor`をどう組み立てているか（部分マージ等）は
  * 検証していなかった。ここでは`cache.getSetExtraction`をそのまま呼び、その結果を
  * 旧`nSensitivity()`と突き合わせる。
  */

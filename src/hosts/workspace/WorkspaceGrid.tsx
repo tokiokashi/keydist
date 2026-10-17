@@ -447,10 +447,10 @@ export function PaneShell({
   readonly paneId: string;
   readonly title: string;
   readonly description: string;
-  readonly help?: InfoHelp;
+  readonly help?: InfoHelp | undefined;
   readonly draggable: boolean;
   /** つかみ所にフォーカスがある時のキー入力。渡すと、つかみ所がTabで届き、矢印キーで動かす・大きさを変える。 */
-  readonly onHandleKeyDown?: (paneId: string, event: ReactKeyboardEvent<HTMLElement>) => void;
+  readonly onHandleKeyDown?: ((paneId: string, event: ReactKeyboardEvent<HTMLElement>) => void) | undefined;
   readonly children: ReactNode;
 }) {
   const hintId = useId();

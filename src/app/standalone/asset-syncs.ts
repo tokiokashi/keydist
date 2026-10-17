@@ -122,10 +122,10 @@ function loadAndRepairOne<K extends keyof KeydistAssets>(
   const notice = reportToNotice(key, report);
   if (report.kind === 'loaded') {
     if (notice !== undefined) syncs[key].save(report.value);
-    return { entry: [key, report.value], notice };
+    return notice === undefined ? { entry: [key, report.value] } : { entry: [key, report.value], notice };
   }
   if (notice !== undefined && notice.kind === 'reset') syncs[key].save(ASSET_STORAGE_SPECS[key].initial());
-  return { notice };
+  return notice === undefined ? {} : { notice };
 }
 
 /**

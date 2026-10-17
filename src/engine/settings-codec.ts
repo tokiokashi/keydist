@@ -27,17 +27,17 @@ const triggerActivationGroupingSchema = v.picklist(['combined', 'separate']);
 
 const actionRealizationPolicySchema = v.strictObject({
   triggerActivation: v.picklist(['disabled', 'semantic']),
-  triggerActivationClassOverrides: v.optional(
-    v.partial(v.strictObject({
-      'prepress-required': triggerActivationGroupingSchema,
-      'order-free': triggerActivationGroupingSchema,
-      'postpress-required': triggerActivationGroupingSchema,
-    })),
+  triggerActivationClassOverrides: v.exactOptional(
+    v.strictObject({
+      'prepress-required': v.exactOptional(triggerActivationGroupingSchema),
+      'order-free': v.exactOptional(triggerActivationGroupingSchema),
+      'postpress-required': v.exactOptional(triggerActivationGroupingSchema),
+    }),
   ),
-  triggerActivationOverrides: v.optional(v.array(v.strictObject({
+  triggerActivationOverrides: v.exactOptional(v.array(v.strictObject({
     selector: v.strictObject({
-      modifierGroupIds: v.optional(v.array(v.string())),
-      triggerKeys: v.optional(v.array(v.string())),
+      modifierGroupIds: v.exactOptional(v.array(v.string())),
+      triggerKeys: v.exactOptional(v.array(v.string())),
     }),
     grouping: triggerActivationGroupingSchema,
   }))),

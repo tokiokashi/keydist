@@ -71,7 +71,7 @@ test('薙刀式v18のヒートマップ（レイヤー）の見出しは、ト�
 
 test('意味を書いていないキーは刻印を出し、層の名前と同じでも物理キーの名前に置き換えない', () => {
   const legends = new Map([['j', 'あ'], ['f', 'か'], ['h', 'く']]);
-  const layout = { thumbShiftKeys: undefined, legends };
+  const layout = { legends };
   const groups = new Map([['j', '濁音'], ['f', '濁音']]);
   assert.equal(
     triggerChordsDisplayText(layout, [{ keys: ['j'], groups }, { keys: ['f'], groups }], undefined, '濁音'),
@@ -83,7 +83,6 @@ test('意味を書いていないキーは刻印を出し、層の名前と同�
 test('意味はキーと修飾の組で決まり、同じキーでも組が違えば別の意味になる', () => {
   const legends = new Map([['j', 'あ'], ['h', 'く']]);
   const layout = {
-    thumbShiftKeys: undefined,
     legends,
     triggerMeanings: {
       拗音: { h: { kind: 'char', text: 'や' } },

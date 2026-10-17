@@ -83,7 +83,7 @@ const BASE: PlaybackCalibration = {
 const withSimultaneous = (
   simultaneousOverheadMs: PlaybackCalibration['simultaneousOverheadMs'],
   more: Partial<PlaybackCalibration> = {},
-): PlaybackCalibration => ({ ...BASE, ...more, simultaneousOverheadMs });
+): PlaybackCalibration => ({ ...BASE, ...more, ...(simultaneousOverheadMs === undefined ? {} : { simultaneousOverheadMs }) });
 
 const durations = (analysis: PlaybackTimingAnalysis, calibration: PlaybackCalibration, sameFingerDelay = false, multiplier = 1) =>
   analysis.strokes.map((_, index) => playbackStepDurationMs(analysis, index, 1, sameFingerDelay, calibration, multiplier));
@@ -241,7 +241,11 @@ test('同時押しの基準の時間は、押下の指の並びを持つスト�
   // 親指: 同手・別指の代表値
   assert.equal(playbackSimultaneousBaseMs('thumb', calibration), 500);
   // 方向別の値が無ければ、順序なしの組の値、代表値、通常速度の順に落ちる。
-  const withoutDirected = { ...calibration, sameHandDifferentFingerActionsPerDirectedPair: undefined, actionsPerSecondByDirection: undefined };
+  const {
+    sameHandDifferentFingerActionsPerDirectedPair: _directedPair,
+    actionsPerSecondByDirection: _byDirection,
+    ...withoutDirected
+  } = calibration;
   assert.equal(playbackSimultaneousBaseMs('both-hands', withoutDirected), 200);
   assert.equal(playbackSimultaneousBaseMs('one-hand', withoutDirected), 1000 / 3);
   const withoutPair = { ...withoutDirected, sameHandDifferentFingerActionsPerSecondByPair: {} };

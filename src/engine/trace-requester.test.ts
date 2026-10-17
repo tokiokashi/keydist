@@ -95,30 +95,3 @@ test('createTraceRequesterFor: N=baseInput自身のwindowSizeを要求すると�
   assert.equal(cache.size.trace, 1, '新しいキャッシュエントリは作られない');
 });
 
-test('createTraceRequesterFor: フィールドがundefined値で渡ってもクラッシュせず「省略」として扱う（exactOptionalPropertyTypes無し対策）', () => {
-  const cache = createEngineCache();
-  const baseInput = resolve('hello world');
-  const requester = createTraceRequesterFor({ getTrace: (input) => cache.getTrace(input) }, baseInput);
-
-  // トップレベルのundefined値（layout: undefined等）はクラッシュせず、baseInputの値を使う。
-  assert.doesNotThrow(() => {
-    requester.requestTrace({ layout: undefined, geometry: undefined, text: undefined });
-  });
-  const withUndefinedTopLevel = requester.requestTrace({ layout: undefined });
-  const withoutThatKey = requester.requestTrace({});
-  assert.equal(withUndefinedTopLevel, withoutThatKey, 'layout:undefinedは省略と同じ結果になる');
-});
-
-test('createTraceRequesterFor: tracePolicy内のundefined値も「省略」扱いになり、省略時と同じキャッシュキーになる', () => {
-  const cache = createEngineCache();
-  const baseInput = resolve('hello world', { global: { windowSize: 5 } });
-  const requester = createTraceRequesterFor({ getTrace: (input) => cache.getTrace(input) }, baseInput);
-
-  const withUndefinedWindowSize = requester.requestTrace({ tracePolicy: { windowSize: undefined } });
-  const withoutWindowSizeKey = requester.requestTrace({ tracePolicy: {} });
-  const omittedEntirely = requester.requestTrace({});
-
-  assert.equal(withUndefinedWindowSize, withoutWindowSizeKey, '{windowSize: undefined}は{}と同じTraceを返す');
-  assert.equal(withUndefinedWindowSize, omittedEntirely, 'tracePolicy自体を省略した場合とも同じTraceを返す');
-  assert.equal(cache.size.trace, 1, '3通りとも同じキャッシュキーに当たり、新しいエントリは増えない');
-});

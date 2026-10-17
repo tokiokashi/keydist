@@ -131,9 +131,10 @@ test('Tester用の配列は、自作のローマ字規則の表で変換する',
 });
 
 test('Tester用の配列は、直接入力・規則なし・規則が見つからない配列に表を持たせず、使えない配列を除く', () => {
+  const { romaji: _noRule, ...withoutRule } = layout('user-none');
   const layouts = userInputLayouts([
     layout('user-direct', { direct: true }),
-    layout('user-none', { romaji: undefined }),
+    withoutRule,
     layout('user-missing', { romaji: 'romaji-none' }),
     layout('qwerty'),
   ], []);

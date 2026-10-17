@@ -28,7 +28,7 @@ const layerFace = (
 ): Face => face(trigger, entries, trigger.length === 0 ? {
   inputRole: 'layer',
 } : {
-  layer,
+  ...(layer === undefined ? {} : { layer }),
   inputRole: 'layer',
   triggerPersistence: 'single',
 });

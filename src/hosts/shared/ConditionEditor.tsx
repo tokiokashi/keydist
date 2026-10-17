@@ -73,9 +73,9 @@ export interface ConditionEditorContext {
   /** 既定の物理配列に選べるもの。 */
   readonly shapes: ReadonlyMap<string, PhysicalShape>;
   /** 自作の指の割当（組み込みの2つに足して選べる）。 */
-  readonly customFingerAssignments?: ReadonlyMap<string, FingerAssignment>;
+  readonly customFingerAssignments?: ReadonlyMap<string, FingerAssignment> | undefined;
   /** 自作のローマ字規則（組み込みに足して選べる）。 */
-  readonly customRomajiRules?: readonly UserRomajiRule[];
+  readonly customRomajiRules?: readonly UserRomajiRule[] | undefined;
   /**
    * 配列のレベルへ書く先。対象が配列、またはSetupの時に渡す（Setupなら、その配列）。
    * 複数の対象を持つペインは渡さない（行が全体とWorkspaceのレベルだけになる）。

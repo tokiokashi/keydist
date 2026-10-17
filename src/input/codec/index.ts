@@ -67,7 +67,7 @@ export interface MigrationStep {
 export interface AssetCodecOptions<T> {
   readonly currentVersion: number;
   /** `fromVersion`昇順である必要は無い（Mapに積むだけ）。version同士の欠番はunmigratable-versionにする。 */
-  readonly migrations?: readonly MigrationStep[];
+  readonly migrations?: readonly MigrationStep[] | undefined;
   /** 現行版まで引き上げた後のpayloadをTへdecodeする。決められない・壊れすぎている場合は`undefined`を返す（資産全体の失敗）。 */
   readonly decodePayload: (payload: unknown, diagnostics: CodecDiagnostic[]) => T | undefined;
   /** Tを現行版のpayloadへ戻す（versionフィールドは`encode`が付ける）。 */

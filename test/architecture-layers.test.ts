@@ -163,7 +163,7 @@ export function placementOf(srcPath: string): Placement | undefined {
         const rest = srcPath.slice(prefix.length);
         const slash = rest.indexOf('/');
         // analyzers/contract.ts のような直下のファイルはどのunitにも属さない共有物。
-        return { layer, unit: slash === -1 ? undefined : rest.slice(0, slash) };
+        return slash === -1 ? { layer } : { layer, unit: rest.slice(0, slash) };
       }
       return { layer };
     }

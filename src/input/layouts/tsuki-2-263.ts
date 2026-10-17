@@ -20,7 +20,7 @@ import {
 
 const face = (trigger: string[], entries: Record<string, string>, layer?: string): Face => ({
   ...faceFromEntries(trigger, 'prefix', entries),
-  layer,
+  ...(layer === undefined ? {} : { layer }),
   inputRole: trigger.length > 0 ? 'modifier' : 'layer',
   ...(trigger.length > 0 ? { triggerPersistence: 'single' as const } : {}),
 });
