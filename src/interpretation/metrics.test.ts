@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry, ALL_FINGERS } from '#input/shapes/geometry.ts';
 import { generateTrace, type TracePolicy } from '#trace/generate.ts';
-import { computeMetrics, DEFAULT_METRIC_CONDITIONS, homeSpacing } from './metrics.ts';
+import { computeMetrics, DEFAULT_METRIC_CONDITIONS, homeSpacing, meanStdDevMax } from './metrics.ts';
 import { faceFromEntries, fromFaces, fromKana, LAYOUTS_JA, LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { dist } from '#input/shapes/geometry.ts';
 import { SAMPLE_TEXT_JA, SAMPLE_TEXT_JA_LEGACY } from '#input/text/sample-ja.ts';
@@ -540,4 +540,19 @@ test('1本の指が2キーを同時に押してもPressは1回で、押下数は
   assert.equal(m.perFingerPressEvents.LM, 4, 'Pressの回数: 2×2');
   assert.ok(m.perFingerSameFinger.LM > 0 && m.perFingerSameFinger.LM <= m.perFingerPressEvents.LM);
   assert.equal(m.perFingerSameFinger.LM, m.sameFinger);
+});
+
+test('meanStdDevMax は引数の上限を超える要素数でも最大値を返す', () => {
+  const n = 200_000;
+  const values = new Array<number>(n).fill(1);
+  values[n - 1] = 7;
+  values[12] = -3;
+  const { mean, max } = meanStdDevMax(values);
+  assert.equal(max, 7);
+  assert.ok(Math.abs(mean - (n - 2 + 7 - 3) / n) < 1e-9);
+});
+
+test('meanStdDevMax は空配列で0、負の値だけの配列で負の最大値を返す', () => {
+  assert.deepEqual(meanStdDevMax([]), { mean: 0, stdDev: 0, max: 0 });
+  assert.equal(meanStdDevMax([-5, -2, -9]).max, -2);
 });
