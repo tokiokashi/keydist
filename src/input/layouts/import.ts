@@ -246,7 +246,6 @@ function dvorakJHeader(header: string, aliases: Map<string, string>): string[] |
   return undefined;
 }
 
-/** DvorakJの配列表ブロックだけを読む。コメント・option-inputの設定・ファイル名は判定材料にしない。 */
 /**
  * `-f-j` のように、先頭が `-` で、`-` 以外の並びを `-` で区切った見出しか。
  * 連続する `-` は許さず、末尾の `-` は1つまで許す。
@@ -256,6 +255,7 @@ export function isDashSeparatedHeader(header: string): boolean {
   return /^-[^-]+(?:-[^-]+)*-?$/.test(header);
 }
 
+/** DvorakJの配列表ブロックだけを読む。コメント・option-inputの設定・ファイル名は判定材料にしない。 */
 export function importDvorakJ(source: string, name = 'DvorakJ取り込み'): ImportedLayout {
   const text = source.replace(/^\uFEFF/, '').replace(/\/\*[\s\S]*?\*\//g, '');
   const lines = text.split(/\r?\n/);
