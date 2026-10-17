@@ -840,7 +840,8 @@ test('ペインに題の帯（タブ）は無く、見出しの先頭に、つ�
   await expect(target).toBeVisible();
   const grab = target.locator('.workspace-drag-handle');
   await expect(grab).toContainText('Bigram Flow');
-  await expect(target.locator('.pane-frame-lead').getByRole('button', { name: /Bigram Flow/ })).toBeVisible();
+  // つかみ所もキーボード操作のためボタンの役割を持つので、ⓘは見出しの先頭の中のⓘのクラスで指す
+  await expect(target.locator('.pane-frame-lead .info-button')).toBeVisible();
   // 名前の行は、ペインの中に重ねて置かない（h2は読み上げ用に視覚的に隠してある）
   await expect(target.locator('h2.pane-frame-title')).toHaveClass(/pane-visually-hidden/);
 });

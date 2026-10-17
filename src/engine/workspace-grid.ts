@@ -111,6 +111,51 @@ export function resolveOverlaps(grid: WorkspaceGrid): WorkspaceGrid {
 }
 
 /**
+ * `firstId`の枠を先に置き、残りを読み順に置いて重なりを解く。`firstId`の枠は動かさず、重なった相手を下へ押す。
+ * キーボードでの移動・大きさの変更の結果に使う（動かした枠が相手に押し戻されないように）。
+ */
+function resolveOverlapsKeeping(grid: WorkspaceGrid, firstId: string): WorkspaceGrid {
+  const first = grid.find((item) => item.id === firstId);
+  if (first === undefined) return resolveOverlaps(grid);
+  const placed: GridItem[] = [first];
+  for (const item of inReadingOrder(grid)) {
+    if (item.id === firstId) continue;
+    let next = item;
+    while (collidesWithAny(next, placed)) next = { ...next, y: next.y + 1 };
+    placed.push(next);
+  }
+  const byId = new Map(placed.map((item) => [item.id, item] as const));
+  return grid.map((item) => byId.get(item.id)!);
+}
+
+/**
+ * ペインを`dx`列・`dy`行だけ動かした枠。列は0から`GRID_MAX_COLS`の範囲、行は0以上に収める。
+ * 動かした先で重なった相手は下へ押し、詰める設定なら上に詰める。動かせない（範囲の端）時は、同じ並びを返す。
+ */
+export function gridWithMovedPane(grid: WorkspaceGrid, paneId: string, dx: number, dy: number, compact: boolean): WorkspaceGrid {
+  const item = grid.find((candidate) => candidate.id === paneId);
+  if (item === undefined) return grid;
+  const x = Math.min(GRID_MAX_COLS - item.w, Math.max(0, item.x + dx));
+  const y = Math.max(0, item.y + dy);
+  if (x === item.x && y === item.y) return grid;
+  return compactIf(compact, resolveOverlapsKeeping(grid.map((candidate) => (candidate.id === paneId ? { ...candidate, x, y } : candidate)), paneId));
+}
+
+/**
+ * ペインの右下の角を`dw`列・`dh`行だけ動かして大きさを変えた枠（左端・上端は動かさない）。
+ * 幅・高さは`min`以上、幅は右端が`GRID_MAX_COLS`に収まる範囲にする。今の幅・高さが`min`を下回る枠は、縮める操作では変えない
+ * （広げる操作にだけ従う）。変わらない時は同じ並びを返す。重なった相手は下へ押し、詰める設定なら上に詰める。
+ */
+export function gridWithResizedPane(grid: WorkspaceGrid, paneId: string, dw: number, dh: number, min: GridSize, compact: boolean): WorkspaceGrid {
+  const item = grid.find((candidate) => candidate.id === paneId);
+  if (item === undefined) return grid;
+  const w = Math.min(GRID_MAX_COLS - item.x, Math.max(Math.min(min.w, item.w), item.w + dw));
+  const h = Math.max(Math.min(min.h, item.h), item.h + dh);
+  if (w === item.w && h === item.h) return grid;
+  return compactIf(compact, resolveOverlapsKeeping(grid.map((candidate) => (candidate.id === paneId ? { ...candidate, w, h } : candidate)), paneId));
+}
+
+/**
  * 範囲の中で空いている最初の場所（上から、同じ高さなら左から）。`fromY`より上は探さない。
  * 幅が範囲に収まらない大きさは、範囲の左端に置く。範囲に空きが無ければ、並びの下の範囲の左端に置く
  * （縦は際限が無いので、必ず置ける）。
