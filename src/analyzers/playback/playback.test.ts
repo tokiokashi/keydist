@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
+import { builtinTextById } from '#input/text/builtin.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { Setup } from '#input/setup/index.ts';
 import { EMPTY_SETTINGS_OVERRIDES, setSettingsOverride, type SettingsCascadeOverrides } from '#engine/settings-items.ts';
@@ -1343,6 +1344,22 @@ test('待機: かな/秒・アクション/秒の推移は、SMAでもEWMAでも
     const waited = extractionOf(input, { ...average, ...WAIT_OPTIONS });
     assert.notEqual(waited.timeTotals.totalMs, plain.timeTotals.totalMs);
     assert.deepEqual(waited.rateChart, plain.rateChart);
+  }
+});
+
+test('待機: 既定のサンプルの長いテキストでも、打鍵時間と速度の推移は待機0の時と完全に一致する', () => {
+  // 条件: 組み込みのサンプル「ja.legacy」・配列qwertyとcolemak・SMA窓幅10とEWMA半減時間1秒。浮動小数の誤差も許さない。
+  const sample = builtinTextById('builtin:ja.legacy');
+  assert.ok(sample);
+  for (const layoutId of ['qwerty', 'colemak']) {
+    const input = resolve(layoutId, sample.text, 'ja');
+    for (const average of [{ rateAverage: 'sma' }, { rateAverage: 'ewma' }] as const) {
+      const plain = extractionOf(input, average);
+      const waited = extractionOf(input, { ...average, ...WAIT_OPTIONS });
+      assert.notEqual(waited.timeTotals.totalMs, plain.timeTotals.totalMs);
+      assert.equal(waited.timeTotals.typingMs, plain.timeTotals.typingMs);
+      assert.deepEqual(waited.rateChart, plain.rateChart);
+    }
   }
 });
 

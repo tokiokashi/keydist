@@ -962,9 +962,14 @@ export interface PlaybackTimingStep {
   endMs: number;
   /**
    * `startMs`から始まる待機の長さ（読点・句点の前後の待機。`spec/playback-timing.md` §3.9）。
-   * 打鍵の時間は`endMs - startMs - waitMs`。待機を足さないステップは持たない。
+   * 待機を足さないステップは持たない。
    */
   waitMs?: number;
+  /**
+   * 待機を挿入する前に求めた打鍵の時間。待機を挿入したscheduleの全ステップが持つ。
+   * 時刻をずらした後の差から計算し直すと浮動小数の誤差が出るので、値として持つ。持たない時は`endMs - startMs - waitMs`。
+   */
+  typingMs?: number;
 }
 
 export interface PlaybackTimingOptions {
@@ -993,7 +998,8 @@ export function playbackTimingStepTypingMs(
   strokeIndex: number,
 ): number | undefined {
   const step = schedule?.[strokeIndex];
-  return step ? Math.max(0, step.endMs - step.startMs - (step.waitMs ?? 0)) : undefined;
+  if (!step) return undefined;
+  return step.typingMs ?? Math.max(0, step.endMs - step.startMs - (step.waitMs ?? 0));
 }
 
 export interface PlaybackTimeTotals {
@@ -1128,7 +1134,10 @@ function insertWaits(
     const startMs = step.startMs + shiftMs;
     shiftMs += waitMs;
     const endMs = step.endMs + shiftMs;
-    return waitMs > 0 ? { strokeIndex: step.strokeIndex, startMs, endMs, waitMs } : { strokeIndex: step.strokeIndex, startMs, endMs };
+    const typingMs = Math.max(0, step.endMs - step.startMs);
+    return waitMs > 0
+      ? { strokeIndex: step.strokeIndex, startMs, endMs, waitMs, typingMs }
+      : { strokeIndex: step.strokeIndex, startMs, endMs, typingMs };
   });
 }
 
