@@ -38,7 +38,7 @@ export function FingerDistanceBody({ extracted, options }: FingerDistanceBodyPro
             <h3 className="finger-distance-heading">隣り合う指の間隔の分布 [%]</h3>
             <FingerDistanceDistribution specs={distributionSpecsOf(extracted)} />
             <p className="finger-distance-note">
-              横軸は超過 [u]、縦軸は全打鍵に対する割合です。その組の指がホームにある打鍵も含み、平均・標準偏差と同じ打鍵を数えます。
+              各行は指間距離の超過 [u] の1つの値で、棒と右の数字がその値の打鍵が全打鍵に占める割合です。割合の分母は、平均・標準偏差と同じ全打鍵です。その組の指がホームにある打鍵も含みます。
             </p>
           </>
         )

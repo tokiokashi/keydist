@@ -119,3 +119,66 @@ test.describe('タッチ端末', () => {
     await expect(feature.locator('[data-chart-readout]')).toHaveText('');
   });
 });
+
+/** 分布の各行の、状態の値・棒・割合の外接矩形が、行の中でも行どうしでも重ならず、組の枠から切れていないかを数える。 */
+const distributionLayoutProblems = () => {
+  const rect = (el: Element) => el.getBoundingClientRect();
+  const overlaps = (a: DOMRect, b: DOMRect) => a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5;
+  const problems: string[] = [];
+  for (const figure of document.querySelectorAll('[data-distribution-pair]')) {
+    const name = figure.getAttribute('data-distribution-pair');
+    const frame = rect(figure);
+    const rows = [...figure.querySelectorAll('[data-distribution-bar]')];
+    rows.forEach((row, i) => {
+      // 文字が自分の枠からあふれる（隣の部品へはみ出す・切れる）場合も数える
+      for (const child of row.children) {
+        if (child.scrollWidth > child.clientWidth + 1) problems.push(`${name} 行${i}の文字が枠からあふれる`);
+      }
+      const parts = [...row.children].map((child) => rect(child));
+      parts.forEach((part, j) => {
+        if (part.left < frame.left - 0.5 || part.right > frame.right + 0.5) problems.push(`${name} 行${i} 部品${j}が枠から出る`);
+        for (const other of parts.slice(j + 1)) if (overlaps(part, other)) problems.push(`${name} 行${i}の部品が重なる`);
+      });
+      const next = rows[i + 1];
+      if (next && overlaps(rect(row), rect(next))) problems.push(`${name} 行${i}と次の行が重なる`);
+    });
+  }
+  return problems;
+};
+
+for (const width of [1280, 390]) {
+  test(`分布は、状態が多い組でも、幅${width}pxで状態の値と割合が重ならず切れずに全部出る`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1200 });
+    await page.goto('/analyzer/finger-distance?metric=stdDev');
+    const feature = page.locator('[data-react-feature="finger-distance"]');
+    await expect(feature.locator('[data-distribution-pair]')).toHaveCount(6, { timeout: 10_000 });
+    // 既定の条件で、状態が7つ以上の組が出る（以前は読めなかった組）
+    const counts = await feature.locator('[data-distribution-pair]').evaluateAll((nodes) => nodes.map((node) => node.querySelectorAll('[data-distribution-bar]').length));
+    expect(Math.max(...counts)).toBeGreaterThanOrEqual(7);
+    // 全部の行に、状態の値と割合の文字が出ている
+    const texts = await feature.locator('[data-distribution-bar]').evaluateAll((nodes) => nodes.map((node) => [node.children[0]!.textContent, node.children[2]!.textContent]));
+    for (const [state, share] of texts) {
+      expect(state).toMatch(/^-?\d+\.\d{3}$/);
+      expect(share).toMatch(/^\d+\.\d%$/);
+    }
+    expect(await page.evaluate(distributionLayoutProblems)).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+  });
+}
+
+test('分布の行は、クリックとキーボードで選べて、選んだ行の打鍵数を読める。Escapeで外れる', async ({ page }) => {
+  await page.goto('/analyzer/finger-distance?metric=stdDev');
+  const feature = page.locator('[data-react-feature="finger-distance"]');
+  const readout = feature.locator('[data-distribution-readout]');
+  const row = feature.locator('[data-distribution-pair] [data-distribution-bar]').first();
+  await expect(row).toBeVisible({ timeout: 10_000 });
+  await row.click();
+  await expect(readout).toHaveText(/超過.+uの打鍵が.+%（\d+打鍵）/);
+  await row.click();
+  await expect(readout).toHaveText('');
+  await row.focus();
+  await page.keyboard.press('Enter');
+  await expect(readout).toHaveText(/打鍵）/);
+  await page.keyboard.press('Escape');
+  await expect(readout).toHaveText('');
+});
