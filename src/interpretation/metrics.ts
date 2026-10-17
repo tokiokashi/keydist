@@ -535,9 +535,10 @@ function singleKeyRate(
   return (singleKeyActions / actions) * 100;
 }
 
-function meanStdDevMax(values: number[]): { mean: number; stdDev: number; max: number } {
+/** 平均・標準偏差・最大値。最大値は引数展開を使わずに求める（要素数が引数の上限を超えても止まらない） */
+export function meanStdDevMax(values: number[]): { mean: number; stdDev: number; max: number } {
   if (values.length === 0) return { mean: 0, stdDev: 0, max: 0 };
   const mean = values.reduce((a, b) => a + b, 0) / values.length;
   const variance = values.reduce((a, b) => a + (b - mean) ** 2, 0) / values.length;
-  return { mean, stdDev: Math.sqrt(variance), max: Math.max(...values) };
+  return { mean, stdDev: Math.sqrt(variance), max: values.reduce((a, b) => Math.max(a, b)) };
 }
