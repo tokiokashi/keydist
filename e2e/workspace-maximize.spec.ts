@@ -387,3 +387,41 @@ test('縦積み（スマホ幅）の⋯には「拡大表示」が出ない', as
   await expect(page.getByRole('menuitem', { name: '複製' })).toBeVisible();
   await expect(page.getByRole('menuitem', { name: /拡大表示|元の大きさに戻す/ })).toHaveCount(0);
 });
+
+test('拡大中にテキストの選択を開いたら、Escapeは選択を閉じるだけで拡大は残る。閉じた後のEscapeで拡大が戻る', async ({ page }) => {
+  await openReady(page);
+  await maximize(page, 'a');
+  const panel = page.getByRole('dialog', { name: 'テキストの選択と編集' });
+  const chip = page.locator('.context-bar button.text-chip');
+  await chip.click();
+  await expect(panel).toBeVisible();
+  // 開いた直後のフォーカスは欄の中にあり、入力欄では拡大のEscapeを見ない。ボタンへ移して、選択が開いている判定で決まることを確かめる
+  await chip.focus();
+  await page.keyboard.press('Escape');
+  await expect(panel).toHaveCount(0);
+  expect(await isMaximized(page, 'a')).toBe(true);
+
+  await page.keyboard.press('Escape');
+  await expect.poll(() => isMaximized(page, 'a')).toBe(false);
+});
+
+test('固定を外して重ねて出したサイドバーを拡大中に開いたら、Escapeはサイドバーを閉じるだけで拡大は残る。閉じた後のEscapeで拡大が戻る', async ({ page }) => {
+  // 既定の固定を外し、サイドバーを重ねて出せる状態で始める
+  await page.addInitScript(() => {
+    if (localStorage.getItem('keydist:app-state') === null) {
+      localStorage.setItem('keydist:app-state', JSON.stringify({ version: 2, shell: { sidebarPinned: false } }));
+    }
+  });
+  await openReady(page);
+  await maximize(page, 'a');
+  const shell = page.locator('.shell');
+  await page.locator('.context-bar').getByRole('button', { name: 'サイドバーを開く' }).click();
+  await expect(shell).toHaveAttribute('data-sidebar-open', 'true');
+  // 開いた直後のフォーカスはサイドバーの中の項目にある。そのままEscapeを押して、サイドバーが開いている判定で決まることを確かめる
+  await page.keyboard.press('Escape');
+  await expect(shell).not.toHaveAttribute('data-sidebar-open');
+  expect(await isMaximized(page, 'a')).toBe(true);
+
+  await page.keyboard.press('Escape');
+  await expect.poll(() => isMaximized(page, 'a')).toBe(false);
+});
