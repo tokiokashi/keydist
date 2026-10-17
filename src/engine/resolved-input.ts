@@ -4,6 +4,7 @@ import {
   type FingerAssignment,
   type Geometry,
 } from '#input/shapes/geometry.ts';
+import { describeShapeFallback } from '#input/setup/index.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { ExtractionAssets } from '#analyzers/contract.ts';
 import { withoutRomajiOnlyCombos, withRomaji } from '#input/layouts/types.ts';
@@ -177,7 +178,7 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
     && !options.catalog.shapes.has(shapeValue)
     ? {
       kind: 'invalid-fallback' as const,
-      message: `既定に選んでいた物理配列が見つからないため、「${textResolution.shape.name}」で測りました`,
+      message: describeShapeFallback(textResolution.shape.name),
     }
     : undefined;
   const resolvedCascade = assignmentDiagnostic === undefined && romajiDiagnostic === undefined && shapeDiagnostic === undefined

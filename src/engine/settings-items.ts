@@ -16,6 +16,7 @@ import {
   type ResolvedCascade,
   type WriteResult,
 } from '#input/settings/index.ts';
+import { describeShapeFallback } from '#input/setup/index.ts';
 import {
   DEFAULT_ACTION_REALIZATION_POLICY,
   DEFAULT_TRIGGER_REALIZATION_POLICY,
@@ -226,7 +227,7 @@ export const SETTINGS_ITEMS = {
         : {
           ok: false,
           fallback: context.shapeId,
-          reason: `既定に選んでいた物理配列が見つからないため、「${context.shape.name}」で測りました`,
+          reason: describeShapeFallback(context.shape.name),
         };
     },
   }),

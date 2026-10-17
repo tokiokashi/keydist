@@ -100,6 +100,8 @@ export interface MissingReference {
 
 export const PRESET_FILE_TOO_LARGE_MESSAGE = 'ファイルが大きすぎます（1MBまで）';
 export const PRESET_FILE_UNREADABLE_MESSAGE = 'ファイルを読み取れませんでした';
+/** 読み込んだ内容を保存できなかった時の文。 */
+export const PRESET_FILE_IMPORT_FAILED_MESSAGE = '読み込みに失敗しました。もう一度試してください';
 
 function failure(message: string, ...details: string[]): { readonly ok: false; readonly message: string; readonly details: readonly string[] } {
   return { ok: false, message, details };

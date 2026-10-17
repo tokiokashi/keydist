@@ -12,6 +12,7 @@ import {
 import { useHistoryShortcuts } from '#ui/primitives/use-history-shortcuts.ts';
 import { ErrorDetails } from '#hosts/shared/ErrorDetails.tsx';
 import { PresetFileIoContext } from '#hosts/shared/preset-file-io.ts';
+import { PRESET_FILE_IMPORT_FAILED_MESSAGE } from '#hosts/shared/preset-file.ts';
 import { exportedText, importEntryText, importSummaryText, userAssetsFileName } from './user-assets-file-text.ts';
 import { userFingerAssignmentRows, userLayoutRows, userRomajiRuleRows, userSetupRows, type UserAssetRow } from './user-asset-rows.ts';
 import type { SetupListItem } from '../setup/setup-view.ts';
@@ -263,7 +264,7 @@ export function UserAssetsPage({
     // 画面に出す内訳は、書き込みを決めた突き合わせそのものから取る。ファイルを読む間に別のタブが資産を書き換えても食い違わない
     const entries = onImport(parsed.bundle, stamp);
     if (entries === undefined) {
-      setMessage('読み込みに失敗しました。もう一度試してください');
+      setMessage(PRESET_FILE_IMPORT_FAILED_MESSAGE);
       return;
     }
     const dropped = parsed.dropped.map((diagnostic) => `${diagnostic.path}: ${diagnostic.message}`);

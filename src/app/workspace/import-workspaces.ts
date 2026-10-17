@@ -1,4 +1,4 @@
-import { PRESET_FILE_MAX_BYTES, PRESET_FILE_TOO_LARGE_MESSAGE, PRESET_FILE_UNREADABLE_MESSAGE, parseWorkspaceFile } from '#hosts/shared/preset-file.ts';
+import { PRESET_FILE_IMPORT_FAILED_MESSAGE, PRESET_FILE_MAX_BYTES, PRESET_FILE_TOO_LARGE_MESSAGE, PRESET_FILE_UNREADABLE_MESSAGE, parseWorkspaceFile } from '#hosts/shared/preset-file.ts';
 import { workspaceImportResultText } from '#hosts/shared/workspace-import-result.ts';
 import { importWorkspacesCommand } from '#engine/workspace-import.ts';
 import { PRESET_FILE_IO } from '../shell/preset-file-io.ts';
@@ -32,7 +32,7 @@ export async function importWorkspaceFile(file: Blob): Promise<string | undefine
   // 内訳は書き込みを決めた突き合わせそのものから取る。ファイルを読む間に別のタブが資産を書き換えても食い違わない
   const entries = plan.entries();
   if (entries === undefined || outcome.kind === 'rejected') {
-    setImportedWorkspaces({ summary: '読み込みに失敗しました。もう一度試してください', lines: [], details: [] });
+    setImportedWorkspaces({ summary: PRESET_FILE_IMPORT_FAILED_MESSAGE, lines: [], details: [] });
     return undefined;
   }
   const result = workspaceImportResultText(entries, parsed.dropped);

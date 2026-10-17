@@ -17,3 +17,12 @@ export const MISSING_LAYOUT_NAME = '見つからない配列';
 export const MISSING_SHAPE_NAME = '見つからない物理配列';
 /** 見つからないSetupの、名前の代わり。 */
 export const MISSING_SETUP_NAME = '削除されたSetup';
+/** 見つからないローマ字規則の、名前の代わり。 */
+export const MISSING_ROMAJI_RULE_NAME = '見つからないローマ字規則';
+/** 見つからない指の割当の、名前の代わり。 */
+export const MISSING_FINGER_ASSIGNMENT_NAME = '見つからない指の割当';
+
+/** 既定に選んでいた物理配列が手持ちに無く、代わりの物理配列で測った時の知らせ。 */
+export function describeShapeFallback(usedShapeName: string): string {
+  return `既定に選んでいた物理配列が見つからないため、「${usedShapeName}」で測りました`;
+}

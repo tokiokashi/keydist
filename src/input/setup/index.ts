@@ -43,4 +43,7 @@ export {
   MISSING_LAYOUT_NAME,
   MISSING_SHAPE_NAME,
   MISSING_SETUP_NAME,
+  MISSING_ROMAJI_RULE_NAME,
+  MISSING_FINGER_ASSIGNMENT_NAME,
+  describeShapeFallback,
 } from './missing-text.ts';

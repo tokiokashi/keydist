@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { MISSING_SHAPE_NAME } from '#input/setup/index.ts';
+import { MISSING_FINGER_ASSIGNMENT_NAME, MISSING_ROMAJI_RULE_NAME, MISSING_SHAPE_NAME } from '#input/setup/index.ts';
 import type { Command } from '#input/commands/index.ts';
 import type { FingerAssignment, PhysicalShape } from '#input/shapes/geometry.ts';
 import { groupShapes } from '#input/shapes/shape-groups.ts';
@@ -373,7 +373,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
     derivedFingerId,
   );
   if (!fingerChoices.some((choice) => choice.value === fingerBinding.value)) {
-    fingerChoices.unshift({ value: fingerBinding.value, label: '（見つからない指の割当）' });
+    fingerChoices.unshift({ value: fingerBinding.value, label: `（${MISSING_FINGER_ASSIGNMENT_NAME}）` });
   }
   /** 全体のレベルでの既定値。配列・Workspaceの値を全体へ移す時、これと同じなら全体の上書きは持たない。 */
   const globalDefaultOf = (id: GlobalEditableId): unknown =>
@@ -398,7 +398,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
     ...(editor.customRomajiRules ?? []).map((rule) => ({ value: rule.id, label: rule.name })),
   ];
   if (!romajiChoices.some((choice) => choice.value === romajiBinding.value)) {
-    romajiChoices.unshift({ value: romajiBinding.value, label: '（見つからないローマ字規則）' });
+    romajiChoices.unshift({ value: romajiBinding.value, label: `（${MISSING_ROMAJI_RULE_NAME}）` });
   }
 
   return (
