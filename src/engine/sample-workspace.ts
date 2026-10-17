@@ -103,18 +103,18 @@ export const LAYOUT_DETAIL_LAYOUT_ID = 'tsuki-2-263';
  * - 打鍵再生: 8列で20升（6列では収まらない）。右隣の段の高さ（9 + 12）に揃えて21升。
  * - ヒートマップ（レイヤー）: 16列で9升（12列以下は図が縦に並ぶので15升）。
  * - ヒートマップ: 図が小さく、8列で収まる。高さは隣の指ごとの距離に揃えて12升。
- * - 指ごとの距離: 移動距離は8列で12升、標準偏差は8列で13升（見出し・縦棒・指の名前・左手と右手の見出し・選んだ棒の文を出す欄まで）。
- * - Bigram Flow: 16列で10升（Keyboard FlowとRelative vectorsが凡例まで）。段の高さを揃えて13升。
+ * - 指ごとの距離: 移動距離は8列で12升、標準偏差は8列で23升（見出し・縦棒・指の名前・左手と右手の見出し・選んだ棒の文を出す欄に加えて、6組の分布の図まで）。
+ * - Bigram Flow: 16列で10升（Keyboard FlowとRelative vectorsが凡例まで）。左隣の指ごとの距離（標準偏差）の高さに揃えて23升。
  * - 比較表: 18列で9升。N感度: 6列の並びで9升（図・凡例・横軸のラベル・畳んだ表の見出しまで）。
  * - 配列×指のマトリックス: 12列で10升（押下数・移動距離は12列から、指間距離の平均・標準偏差は10列から横にスクロールせず収まる）。
- * 縦は収めない（詳細の段で34升、全体で63升）ので、下の段を見るにはページを縦にスクロールする。
+ * 縦は収めない（詳細の段で44升、全体で73升）ので、下の段を見るにはページを縦にスクロールする。
  */
 export const LAYOUT_DETAIL_PLAYBACK_SIZE: GridSize = { w: 8, h: 21 };
 export const LAYOUT_DETAIL_HEATMAP_LAYERS_SIZE: GridSize = { w: 16, h: 9 };
 export const LAYOUT_DETAIL_HEATMAP_SIZE: GridSize = { w: 8, h: 12 };
 export const LAYOUT_DETAIL_FINGER_DISTANCE_SIZE: GridSize = { w: 8, h: 12 };
-export const LAYOUT_DETAIL_FINGER_DISTANCE_STD_DEV_SIZE: GridSize = { w: 8, h: 13 };
-export const LAYOUT_DETAIL_BIGRAM_FLOW_SIZE: GridSize = { w: 16, h: 13 };
+export const LAYOUT_DETAIL_FINGER_DISTANCE_STD_DEV_SIZE: GridSize = { w: 8, h: 23 };
+export const LAYOUT_DETAIL_BIGRAM_FLOW_SIZE: GridSize = { w: 16, h: 23 };
 export const LAYOUT_DETAIL_COMPARISON_SIZE: GridSize = { w: 18, h: 9 };
 export const LAYOUT_DETAIL_N_SENSITIVITY_SIZE: GridSize = { w: 6, h: 9 };
 export const LAYOUT_DETAIL_FINGER_MATRIX_SIZE: GridSize = { w: 12, h: 10 };
