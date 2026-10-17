@@ -238,6 +238,40 @@ test('romajiOnlyのコンボはローマ字表を持たない配列のTraceで�
   assert.equal(romaji.comboDefinitions, 73);
 });
 
+test('romajiOnlyのコンボは、かなから展開した綴りの区間だけで成立する（仕様 §4.3）', () => {
+  const ja = LAYOUTS_JA.find((entry) => entry.id === 'oonishi-custom')!;
+  const geometry = buildGeometry('row-staggered');
+  const hits = (text: string) => generateTrace(text, ja, geometry, DEFAULT_TRACE_POLICY).comboHits;
+
+  // 英字の区間にsiteのコンボは成立せず、かなの区間のdesuは成立する
+  assert.deepEqual(hits('これはwebsiteです'), ['desu']);
+  assert.deepEqual(hits('Wi-Fiのsiteへ'), []);
+  assert.deepEqual(hits('website'), []);
+  // かな由来の塊と英字の塊をまたぐ範囲では成立しない
+  assert.deepEqual(hits('でsu'), []);
+  assert.deepEqual(hits('deす'), []);
+  assert.deepEqual(hits('しte'), []);
+  assert.deepEqual(hits('siて'), []);
+  // 句読点・長音を挟んだかなの連結では、今と同じく成立する
+  assert.deepEqual(hits('から、です'), ['kara', 'desu']);
+  assert.deepEqual(hits('からーです'), ['kara', 'desu']);
+  assert.deepEqual(hits('からです。'), ['kara', 'desu']);
+});
+
+test('romajiOnlyのコンボの成立は、呼び出し側が渡す綴りの列でも塊の由来で決まる', () => {
+  const ja = LAYOUTS_JA.find((entry) => entry.id === 'oonishi-custom')!;
+  const geometry = buildGeometry('row-staggered');
+  const run = (chunks: { kana: string; roman: string; fromTable: boolean }[]) =>
+    generateTrace(chunks.map((chunk) => chunk.kana).join(''), ja, geometry, DEFAULT_TRACE_POLICY, chunks).comboHits;
+  const desu = [
+    { kana: 'で', roman: 'de', fromTable: true },
+    { kana: 'す', roman: 'su', fromTable: true },
+  ];
+  assert.deepEqual(run(desu), ['desu']);
+  // 表に当たらずそのまま写した文字は、綴りが同じでもかな由来にならない
+  assert.deepEqual(run(desu.map((chunk) => ({ ...chunk, fromTable: false }))), []);
+});
+
 test('日本語の配列一覧にDvorakを含める', () => {
   const dvorak = LAYOUTS_JA.find((layout) => layout.id === 'dvorak');
 

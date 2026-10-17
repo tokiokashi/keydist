@@ -56,7 +56,8 @@ function contextSatisfied(
   romajiInput: boolean,
 ): boolean {
   return requirements.every((requirement) => {
-    // queryをローマ字表で展開して照合する時だけ成立する（仕様 §4.3）。
+    // queryをローマ字表で展開して照合する時だけ成立とする。
+    // TODO: Traceと同じく、かな由来の塊に限る。https://github.com/tokiokashi/keydist/issues/379
     if (requirement.kind === 'romaji-input') return romajiInput;
     if (requirement.kind !== 'youon-only') return false;
     if (cursor <= 0) return false;

@@ -249,6 +249,7 @@ export function generateTrace(
         start,
         end: start + length,
         kana: chunk.kana,
+        fromTable: chunk.fromTable,
         kanaStart,
         kanaLength: [...chunk.kana].length,
       });
@@ -274,6 +275,7 @@ export function generateTrace(
         alternativeContextSatisfied(
           alternative.contextRequirements,
           cursor,
+          cursor + len,
           chars,
           chunkRanges,
           chunks !== undefined,
@@ -750,6 +752,8 @@ interface RomajiChunkRange {
   start: number;
   end: number;
   kana: string;
+  /** ローマ字テーブルの見出しに当たって展開された塊か（かな由来） */
+  fromTable: boolean;
   /** 綴りの単位の最初のかなの、テキストの中の位置 */
   kanaStart: number;
   kanaLength: number;
@@ -758,6 +762,7 @@ interface RomajiChunkRange {
 function alternativeContextSatisfied(
   requirements: readonly InputContextRequirement[],
   cursor: number,
+  end: number,
   chars: string[],
   chunks: RomajiChunkRange[],
   romajiInput: boolean,
@@ -767,11 +772,18 @@ function alternativeContextSatisfied(
       return canFireYouonOnlyCombo(cursor, chars, chunks);
     }
     if (requirement.kind === 'romaji-input') {
-      // 配列ごと外すのが主経路。ここはかなをローマ字へ展開した時だけ成立させる二重の守り。
-      return romajiInput;
+      // 入力が覆う塊がすべてかな由来の時だけ成立する（仕様 §4.3）。
+      // ローマ字を経ない打ち方では配列ごと外すのが主経路で、ここは二重の守り。
+      return romajiInput && coveredByKana(cursor, end, chunks);
     }
     return false;
   });
+}
+
+function coveredByKana(start: number, end: number, chunks: RomajiChunkRange[]): boolean {
+  return chunks
+    .filter((chunk) => chunk.start < end && start < chunk.end)
+    .every((chunk) => chunk.fromTable);
 }
 
 function canFireYouonOnlyCombo(cursor: number, chars: string[], chunks: RomajiChunkRange[]): boolean {

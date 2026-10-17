@@ -45,7 +45,7 @@ function spellingSourceOf(input: ResolvedInput): SentenceSpellingSource | undefi
   if (table === undefined || hasRomajiOnlyCombos(input.layout)) return undefined;
   const units = romajiSpellingUnits(input.text, table);
   if (units === undefined) return undefined;
-  const chunksOf = (spellings: readonly string[]) => units.map((unit, index) => ({ kana: unit.kana, roman: spellings[index] }));
+  const chunksOf = (spellings: readonly string[]) => units.map((unit, index) => ({ kana: unit.kana, roman: spellings[index], fromTable: table.has(unit.kana) }));
   return {
     units,
     strokes(spellings) {
