@@ -248,3 +248,26 @@ test('グラフの棒は左手の小指から右手の小指の順で、値は�
   assert.deepEqual(chartSpecOf(extracted, 'max').bars.map((bar) => bar.value), pairs.map((item) => item.maxExcess));
   assert.deepEqual(chartSpecOf(extracted, 'max').bars.map((bar) => bar.hand), ['left', 'left', 'left', 'right', 'right', 'right']);
 });
+
+test('指間距離の分布: 「ae」は左薬指–左中指が超過0と0.25に半分ずつ分かれ、ホームにある打鍵も母集団に入る', () => {
+  // QWERTY / row-staggered / 既定の指割り当て / N=3 / 前処理なし。
+  const extracted = extract(resolve('qwerty', 'row-staggered', 'ae'));
+  const pair = extracted.adjacent.find((item) => item.pair[0] === 'LR' && item.pair[1] === 'LM');
+  assert.ok(pair);
+  assert.deepEqual(pair.distribution.map((item) => [item.state, item.count, item.share]), [[0, 1, 50], [0.25, 1, 50]]);
+  // 一度も動かない組は、全打鍵が状態0
+  const idle = extracted.adjacent.find((item) => item.pair[0] === 'RI');
+  assert.deepEqual(idle?.distribution.map((item) => [item.state, item.count, item.share]), [[0, 2, 100]]);
+});
+
+test('指間距離の分布: 割合の総和が100%で、状態から求めた平均・最大値が同じ組の平均・最大値と一致する', () => {
+  const extracted = extract(resolve('qwerty', 'column-staggered', 'the quick brown fox jumps over the lazy dog'));
+  for (const item of extracted.adjacent) {
+    near(item.distribution.reduce((sum, entry) => sum + entry.share, 0), 100, 'share total');
+    // 状態の値は小数第6位に丸めているので、丸めの幅の範囲で一致する
+    const mean = item.distribution.reduce((sum, entry) => sum + entry.state * entry.share, 0) / 100;
+    assert.ok(Math.abs(mean - item.meanExcess) < 1e-6, `${item.pair.join('-')} mean ${mean} vs ${item.meanExcess}`);
+    const max = item.distribution[item.distribution.length - 1]!.state;
+    assert.ok(Math.abs(max - item.maxExcess) < 1e-6, `${item.pair.join('-')} max`);
+  }
+});

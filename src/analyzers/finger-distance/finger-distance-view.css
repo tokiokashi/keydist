@@ -85,3 +85,26 @@
   color: var(--text-muted);
   font-size: 0.75rem;
 }
+
+/* 組ごとの小さな分布。幅が足りない時は折り返す */
+.finger-distance-distribution {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.5rem;
+  max-width: 32rem;
+}
+
+.finger-distance-distribution-item {
+  margin: 0;
+  min-width: 0;
+}
+
+.finger-distance-distribution-item figcaption {
+  font-size: 0.8rem;
+}
+
+.finger-distance-distribution-item svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}

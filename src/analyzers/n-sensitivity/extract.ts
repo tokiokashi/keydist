@@ -174,6 +174,7 @@ function fixtureMetrics(totalUnits: number): Metrics {
     singleTapRate: 100,
     singleKeyRate: 100,
     adjacent: [],
+    adjacentDistribution: [],
     sameFinger: 0,
     perFingerSameFinger: {} as Metrics['perFingerSameFinger'],
     combos: { definitions: 0, matched: 0, hits: 0 },

@@ -189,6 +189,7 @@ function fixtureMetrics(): Metrics {
     singleTapRate: 100,
     singleKeyRate: 100,
     adjacent: ADJACENT_PAIRS.map((pair, i) => ({ pair, meanExcess: i * 0.1, stdDev: i * 0.05, maxExcess: i * 0.2 })),
+    adjacentDistribution: [],
     sameFinger: 1,
     perFingerSameFinger,
     combos: { definitions: 0, matched: 0, hits: 0 },

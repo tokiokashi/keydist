@@ -23,8 +23,14 @@ test('見る量を隣り合う指の組にすると6本の棒になり、幅390p
   await expect(feature.locator('[data-chart-bar]')).toHaveCount(6, { timeout: 10_000 });
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(0);
-  const box = await feature.locator('svg').boundingBox();
+  const box = await feature.locator('svg').first().boundingBox();
   expect(box!.x + box!.width).toBeLessThanOrEqual(390);
+  // 6組それぞれの分布も、幅390pxでペインの中に収まる
+  const distributions = feature.locator('[data-distribution-pair]');
+  await expect(distributions).toHaveCount(6);
+  for (const box of await distributions.evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().right))) {
+    expect(box).toBeLessThanOrEqual(390);
+  }
 });
 
 test('Workspaceにペインとして追加できる', async ({ page }) => {

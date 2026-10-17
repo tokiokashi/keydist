@@ -84,3 +84,46 @@ export function chartSpecOf(extracted: FingerDistanceExtracted, metric: FingerDi
     }),
   };
 }
+
+export interface DistributionBar {
+  /** 状態の値 [u] */
+  readonly state: number;
+  /** 全打鍵に対する割合 [%] */
+  readonly share: number;
+  readonly tip: string;
+}
+
+export interface DistributionSpec {
+  readonly key: string;
+  readonly hand: FingerDistanceHand;
+  /** 組の名前（例: 「中–人」） */
+  readonly label: string;
+  readonly bars: readonly DistributionBar[];
+}
+
+/** 分布の割合の表示。分布の割合は[%]の値で持つので、0〜1を受ける `formatShare` とは別に書式を持つ。 */
+export const formatPercent = (value: number): string => `${value.toFixed(1)}%`;
+
+/** 状態の値の表示 [u]。丸めの桁（小数第6位）のうち、読み取りに足りる3桁まで出す。 */
+export const formatState = (value: number): string => value.toFixed(3);
+
+/**
+ * 隣り合う指6組の、指間距離（ホーム間隔からの超過）の分布。値は抽出結果をそのまま写すだけ。
+ * 割合は全打鍵に対するもので、平均・標準偏差と同じ母集団。
+ */
+export function distributionSpecsOf(extracted: FingerDistanceExtracted): readonly DistributionSpec[] {
+  return extracted.adjacent.map((item) => {
+    const [a, b] = item.pair;
+    const label = `${SHORT_FINGER[a]}–${SHORT_FINGER[b]}`;
+    return {
+      key: `${a}-${b}`,
+      hand: item.hand,
+      label,
+      bars: item.distribution.map((entry) => ({
+        state: entry.state,
+        share: entry.share,
+        tip: `${HAND_LABEL[item.hand]} ${label}: 超過 ${formatState(entry.state)} u が${formatPercent(entry.share)}（${entry.count}打鍵）`,
+      })),
+    };
+  });
+}
