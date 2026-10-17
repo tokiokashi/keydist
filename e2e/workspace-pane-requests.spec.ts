@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openTextChip } from './context-bar-helper.ts';
 import { waitForHydration } from './hydration-helper.ts';
 import { advance, settleGrid } from './settle-helper.ts';
+import { holdWorker, installWorkerHold, releaseWorker } from './worker-hold-helper.ts';
 
 /**
  * Workspaceで、入力が変わっていないペインは計算の依頼を出し直さず、「計算中」にもならないことの確認。
@@ -173,13 +173,12 @@ async function storedGridItem(page: Page, id: string): Promise<{ x: number; y: n
   return (JSON.parse(raw!).workspaces[0].grid as { id: string; x: number; y: number; w: number; h: number }[]).find((item) => item.id === id)!;
 }
 
-const SENTENCE = 'The quick brown fox jumps over the lazy dog while the five boxing wizards jump quickly. ';
-
 test('計算中に別のペインの大きさを変える（資産の保存）と、計算中だったペインの依頼は打ち切られず出し直されない', async ({ page }) => {
   // 2つのペイン（12列ずつ）が横にスクロールせず収まる幅
   await page.setViewportSize({ width: 1920, height: 1000 });
-  // 長いテキスト（英文1万字）で、計算が数秒かかるようにする。計算中の依頼が、並びの保存に
+  // 計算中の状態は、Workerへの依頼を保留して作る（計算の速さに依らない）。計算中の依頼が、並びの保存に
   // 伴って打ち切られて出し直されると、依頼の数が倍になる
+  await installWorkerHold(page);
   await openSeeded(page, {
     ...WORKSPACE_BASE,
     groups: [groupOf('g1', 'qwerty')],
@@ -188,15 +187,11 @@ test('計算中に別のペインの大きさを変える（資産の保存）�
   });
   await expect(page.locator('.pane-frame[data-pane-status="ready"]')).toHaveCount(2, { timeout: 15_000 });
 
-  const body = (await openTextChip(page)).getByLabel('テキスト', { exact: true });
-  await body.fill(SENTENCE.repeat(120));
-  await page.keyboard.press('Escape');
-  await expect(page.locator('.pane-frame').first()).toHaveAttribute('data-pane-status', 'stale', { timeout: 10_000 });
-  await expect(page.locator('.pane-frame[data-pane-status="ready"]')).toHaveCount(2, { timeout: 30_000 });
   await waitForInitialCompute(page);
 
-  // aを、まだ計算していない配列に選び直す。計算中（stale）のうちに、bの下の辺で大きさを変える
+  // aを、まだ計算していない配列に選び直す。依頼を保留して計算中（stale）のままにし、bの下の辺で大きさを変える
   await resetLog(page);
+  await holdWorker(page);
   const pane = page.locator('.pane-frame').first();
   await pane.getByRole('button', { name: /^対象: / }).click();
   await page.getByRole('dialog', { name: '対象の選択' }).locator('input[value="layout:workman"]').click();
@@ -211,6 +206,7 @@ test('計算中に別のペインの大きさを変える（資産の保存）�
   await expect.poll(async () => (await storedGridItem(page, 'b')).h).toBeGreaterThan(before.h);
   // 保存が起きた時点でaは計算中のまま（保存が計算の終わりの後ろに回っていない）
   await expect(pane).toHaveAttribute('data-pane-status', 'stale');
+  await releaseWorker(page);
   await expect(pane).toHaveAttribute('data-pane-status', 'ready', { timeout: 30_000 });
 
   const log = await readLog(page);

@@ -99,12 +99,57 @@ export function transitionsForStrokeSpan(
   endStrokeIndex: number,
 ): readonly HandTransition[] {
   if (endStrokeIndex <= startStrokeIndex + 1) return Object.freeze([]);
-  return Object.freeze(analysis.transitions.filter(
-    (transition) =>
-      transition.chainIndex === chainIndex
-      && transition.fromStrokeIndex >= startStrokeIndex
-      && transition.toStrokeIndex < endStrokeIndex,
-  ));
+  const transitions = analysis.transitionsByChain[chainIndex] ?? [];
+  const found: HandTransition[] = [];
+  for (
+    let index = firstTransitionFrom(transitions, startStrokeIndex);
+    index < transitions.length && transitions[index].toStrokeIndex < endStrokeIndex;
+    index++
+  ) found.push(transitions[index]);
+  return Object.freeze(found);
+}
+
+/**
+ * Chain内のTransition（fromStrokeIndex昇順）のうち、fromStrokeIndexが`strokeIndex`以上になる最初の位置。
+ * 無ければ長さを返す。
+ */
+function firstTransitionFrom(
+  transitions: readonly HandTransition[],
+  strokeIndex: number,
+): number {
+  let low = 0;
+  let high = transitions.length;
+  while (low < high) {
+    const middle = (low + high) >>> 1;
+    if (transitions[middle].fromStrokeIndex < strokeIndex) low = middle + 1;
+    else high = middle;
+  }
+  return low;
+}
+
+/** Chain内で、`strokeIndex`のStrokeへ入るTransition。無ければundefined。 */
+export function transitionEndingAt(
+  analysis: RedirectAnalysisResult,
+  chainIndex: number,
+  strokeIndex: number,
+): HandTransition | undefined {
+  const transitions = analysis.transitionsByChain[chainIndex];
+  if (!transitions) return undefined;
+  const index = firstTransitionFrom(transitions, strokeIndex - 1);
+  const transition = transitions[index];
+  return transition?.toStrokeIndex === strokeIndex ? transition : undefined;
+}
+
+/** Chain内で、`strokeIndex`のStrokeから出るTransition。無ければundefined。 */
+export function transitionStartingAt(
+  analysis: RedirectAnalysisResult,
+  chainIndex: number,
+  strokeIndex: number,
+): HandTransition | undefined {
+  const transitions = analysis.transitionsByChain[chainIndex];
+  if (!transitions) return undefined;
+  const transition = transitions[firstTransitionFrom(transitions, strokeIndex)];
+  return transition?.fromStrokeIndex === strokeIndex ? transition : undefined;
 }
 
 function pureDirectionalCandidate(
@@ -131,9 +176,7 @@ export function buildLongRolls(
   const rolls: RollElement[] = [];
 
   for (const chain of analysis.chains) {
-    const transitions = analysis.transitions.filter(
-      (transition) => transition.chainIndex === chain.chainIndex,
-    );
+    const transitions = analysis.transitionsByChain[chain.chainIndex];
 
     let startStrokeIndex: number | undefined;
     let direction: RollDirection | undefined;
@@ -203,16 +246,21 @@ export function buildLongRolls(
   return Object.freeze(rolls);
 }
 
-function transitionCoveredByLongRoll(
-  transition: HandTransition,
+/** いずれかのLongRollに含まれるTransitionの`transitionIndex`の集合。 */
+function transitionIndexesCoveredByLongRolls(
+  analysis: RedirectAnalysisResult,
   longRolls: readonly RollElement[],
-): boolean {
-  return longRolls.some(
-    (roll) =>
-      roll.chainIndex === transition.chainIndex
-      && roll.startStrokeIndex <= transition.fromStrokeIndex
-      && transition.toStrokeIndex < roll.endStrokeIndex,
-  );
+): ReadonlySet<number> {
+  const covered = new Set<number>();
+  for (const roll of longRolls) {
+    for (const transition of transitionsForStrokeSpan(
+      analysis,
+      roll.chainIndex,
+      roll.startStrokeIndex,
+      roll.endStrokeIndex,
+    )) covered.add(transition.transitionIndex);
+  }
+  return covered;
 }
 
 /**
@@ -231,11 +279,13 @@ export function buildTwoRolls(
     ),
   );
 
+  const coveredByLongRoll = transitionIndexesCoveredByLongRolls(analysis, longRolls);
+
   const rolls: TwoRoll[] = [];
   for (const transition of analysis.transitions) {
     const candidate = pureDirectionalCandidate(analysis, transition);
     if (!candidate) continue;
-    if (transitionCoveredByLongRoll(transition, longRolls)) continue;
+    if (coveredByLongRoll.has(transition.transitionIndex)) continue;
     if (redirectPivots.has(
       `${transition.chainIndex}:${transition.toStrokeIndex}`,
     )) continue;

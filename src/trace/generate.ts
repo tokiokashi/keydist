@@ -824,7 +824,10 @@ function snapshot(
   return out;
 }
 
-/** 後続の同指打鍵で残留が確定した区間を、前回キー位置へ戻す。 */
+/**
+ * 後続の同指打鍵で残留が確定した区間を、前回キー位置へ戻す。
+ * `strokes[i].index === i` を前提に、区間 (previousIndex, currentIndex) だけを直接引く。
+ */
 function restoreStaySnapshots(
   strokes: Stroke[],
   previousIndex: number,
@@ -833,9 +836,8 @@ function restoreStaySnapshots(
   position: Point,
 ): void {
   if (!Number.isFinite(previousIndex)) return;
-  for (const stroke of strokes) {
-    if (stroke.index <= previousIndex) continue;
-    if (stroke.index >= currentIndex) break;
-    stroke.positions[finger] = position;
+  const end = Math.min(currentIndex, strokes.length);
+  for (let i = previousIndex + 1; i < end; i++) {
+    strokes[i].positions[finger] = position;
   }
 }

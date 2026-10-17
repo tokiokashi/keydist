@@ -199,6 +199,7 @@ test('before/afterで別pivot Pressしか成立しない場合は架空のRedire
       endStrokeIndex: 3,
     }],
     transitions,
+    transitionsByChain: [transitions],
   } as unknown as TransitionAnalysisResult;
 
   assert.deepEqual(buildRedirectEvents(analysis), []);

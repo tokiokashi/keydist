@@ -6,6 +6,8 @@ import type { RedirectEvent } from './redirect.ts';
 import {
   analyzeStrokeRolls,
   isRollEligibleStroke,
+  transitionEndingAt,
+  transitionStartingAt,
   transitionsForStrokeSpan,
   type RollAnalysisResult,
   type RollDirection,
@@ -49,7 +51,7 @@ function chainHand(
   analysis: RollAnalysisResult,
   chainIndex: number,
 ): Hand {
-  const chain = analysis.chains.find((candidate) => candidate.chainIndex === chainIndex);
+  const chain = analysis.chains[chainIndex];
   if (!chain) throw new Error(`Unknown chainIndex: ${chainIndex}`);
   return chain.hand;
 }
@@ -136,30 +138,6 @@ function bridgeTransitionDirection(
   if (!policy.includeThumb
     && (isThumb(candidate.fromFinger) || isThumb(candidate.toFinger))) return undefined;
   return candidate.fingerDirection;
-}
-
-function transitionEndingAt(
-  analysis: RollAnalysisResult,
-  chainIndex: number,
-  strokeIndex: number,
-): HandTransition | undefined {
-  return analysis.transitions.find(
-    (transition) =>
-      transition.chainIndex === chainIndex
-      && transition.toStrokeIndex === strokeIndex,
-  );
-}
-
-function transitionStartingAt(
-  analysis: RollAnalysisResult,
-  chainIndex: number,
-  strokeIndex: number,
-): HandTransition | undefined {
-  return analysis.transitions.find(
-    (transition) =>
-      transition.chainIndex === chainIndex
-      && transition.fromStrokeIndex === strokeIndex,
-  );
 }
 
 function expandSeedForBridge(
@@ -288,16 +266,25 @@ function applySameFingerBridge(
   );
 }
 
+/** `chainIndex:pivotStrokeIndex` からRedirectEventを引く索引。同じ組が複数あれば先に現れた方を残す。 */
+function redirectsByPivot(
+  analysis: RollAnalysisResult,
+): ReadonlyMap<string, RedirectEvent> {
+  const byPivot = new Map<string, RedirectEvent>();
+  for (const redirect of analysis.redirects) {
+    const key = `${redirect.chainIndex}:${redirect.pivotStrokeIndex}`;
+    if (!byPivot.has(key)) byPivot.set(key, redirect);
+  }
+  return byPivot;
+}
+
 function redirectTailFor(
   analysis: RollAnalysisResult,
   seed: SpanSeed,
+  redirects: ReadonlyMap<string, RedirectEvent>,
 ): { redirect: RedirectEvent; endStrokeIndex: number } | undefined {
   const pivotStrokeIndex = seed.endStrokeIndex - 1;
-  const redirect = analysis.redirects.find(
-    (candidate) =>
-      candidate.chainIndex === seed.chainIndex
-      && candidate.pivotStrokeIndex === pivotStrokeIndex,
-  );
+  const redirect = redirects.get(`${seed.chainIndex}:${pivotStrokeIndex}`);
   if (!redirect) return undefined;
 
   const before = analysis.transitions[redirect.beforeTransitionIndex];
@@ -330,8 +317,9 @@ function applyRedirectTail(
 ): readonly SpanSeed[] {
   if (!enabled) return Object.freeze([...seeds]);
 
+  const redirects = redirectsByPivot(analysis);
   return Object.freeze(seeds.map((seed) => {
-    const tail = redirectTailFor(analysis, seed);
+    const tail = redirectTailFor(analysis, seed, redirects);
     if (!tail) return seed;
     return {
       ...seed,
