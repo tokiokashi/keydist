@@ -112,10 +112,20 @@ CIは同じスクリプトを一時ファイルに掛けるので、この行は
 フック自身の挙動は `test/commit-msg.test.ts` で検証している（`npm test` に含まれる）。
 CIもPRの各コミットに同じスクリプトを掛けるため、フックを有効化し忘れてもPRで落ちる。
 
+## 書式とlint
+
+書式と一般的な誤りの検査は Biome（設定は `biome.json`）が受け持つ。依存の向きの検査は `test/architecture-layers.test.ts` が持つ。
+
+- `npm run lint`: 検査だけ（書き換えない）。CIの `verify` ジョブも同じ検査を回す
+- `npm run format`: 書式を書き換える
+- 対象は `src`・`test`・`e2e`・`scripts` とルートの設定ファイルの `.ts`・`.tsx`・`.js`・`.mjs`・`.cjs`。CSS・JSON・`.gitignore` にあるもの・`test/fixtures/`・`patches/` は対象外
+- 切っている規則は `biome.json` の `linter.rules` にある。直す単位を別のissueにして順に入れ、直したら `off` を外す
+- 書式だけを変えたコミットは `.git-blame-ignore-revs` に載せる。手元の `git blame` で読み飛ばすには、clone直後に1度 `git config blame.ignoreRevsFile .git-blame-ignore-revs` を打つ（GitHubの画面は、このファイルを自動で読む）
+
 ## ブランチとPR
 
 - `main` に直接pushしない。`<type>/<短い説明>` のブランチを切る（例: `feat/kana-layout-form`）
-- push前に `npm run typecheck`・`npm test`・`npm run build` を通す。ブラウザe2eは手元で全件を回さず、CIの結果を読む（「ブラウザe2e」）
+- push前に `npm run lint`・`npm run typecheck`・`npm test`・`npm run build` を通す。ブラウザe2eは手元で全件を回さず、CIの結果を読む（「ブラウザe2e」）
 - 開発に使う npm は `package.json` の `packageManager` に書いた版（npm 11）。Node 22 付属の npm 10 は `package-lock.json` のフラグの行（`dev`・`devOptional`）の書き方が違い、更新のたびに行が行き来する。
   npm 10 で `npm install`・`npm ci` を打つと `devEngines` の検査で失敗する。`npm install --global npm@11` で入れ替える。CIの `npm ci` を回すジョブも同じ版に入れ替えてから回す
 - `main` へのマージは、リリースPRを除いて公開しない（「公開」）。CI（test / typecheck / build / browser-e2e）は通る状態を保つ
@@ -138,7 +148,7 @@ CIもPRの各コミットに同じスクリプトを掛けるため、フック�
 - 実装者と別のレビュアー（レビュー役のエージェント）が、**現在のhead**を承認している。スタックなら全PRのheadについて。
   レビュー後に修正コミットを足したら、その修正も含めて再レビューを受けてからマージする
 - headのCIが緑。このリポジトリはCIをマージの必須条件にしていないので、赤くてもマージ自体はできてしまう。`gh pr checks` で自分で確かめる（クラウドのセッションではGraphQLが使えず失敗するので、`gh api repos/tokiokashi/keydist/commits/<sha>/check-runs` を使う）
-- PRのheadが今の `origin/main` を祖先に含まない時は、今の `main` と合わせた状態で `npm run typecheck`・`npm test`・`npm run build` が通る。
+- PRのheadが今の `origin/main` を祖先に含まない時は、今の `main` と合わせた状態で `npm run lint`・`npm run typecheck`・`npm test`・`npm run build` が通る。
   headのCIは、PRを開いた・pushした時点の `main` と合わせて走るので、その後に `main` が進むと結果が古くなる。
   GitHubの衝突の判定は同じ行の書き換えしか見ないため、先に入ったPRが変えた関数を後のPRが古い形で使っていても、衝突は出ずに `main` で型検査とビルドが落ちる。
   リードがマージの直前に次の手順で確かめる。e2eは見ない（CIを回し直さない）。待ち時間とCIの使用量が増えるわりに、型とビルドの食い違いは3つで見つかるため

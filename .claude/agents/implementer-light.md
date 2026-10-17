@@ -66,7 +66,7 @@ keydist の作業単位を1つ実装する。**自分の変更を自分で承認
 ## push の前に必ず
 
 ```bash
-npm run typecheck && npm test && npm run build
+npm run lint && npm run typecheck && npm test && npm run build
 ```
 
 落ちたまま push しない。ブラウザ e2e は触った spec だけを `npx playwright test e2e/<spec> --workers=1` で回し、全件は CI に任せる。
@@ -142,4 +142,4 @@ Angular 形式。1行目 72 **文字**以内、末尾に 。を付けない。�
 - 決めきれなかった点（無ければ「無し」）
 - 後続として issue にしたもの（番号）
 - headのCIを見たか・見た結果（見ていなければ「見ていない」。実行中なら「実行中」）
-- `npm run typecheck` / `npm test` / `npm run build` の結果
+- `npm run lint` / `npm run typecheck` / `npm test` / `npm run build` の結果
