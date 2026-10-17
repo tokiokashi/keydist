@@ -7,9 +7,14 @@ import type {
   Stroke,
   StrokeParticipation,
 } from '#trace/generate.ts';
+import { buildGeometry } from '#input/shapes/geometry.ts';
+import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
+import { generateTrace } from '#trace/generate.ts';
 import {
   analyzeStrokeRolls,
   isRollEligibleStroke,
+  transitionEndingAt,
+  transitionStartingAt,
   transitionsForStrokeSpan,
 } from './roll.ts';
 import { DEFAULT_CHAIN_INTERPRETATION } from './chain.ts';
@@ -286,5 +291,44 @@ test('Roll resultはimmutableでLongRollとTwoRollが排他的', () => {
       longRoll.chainIndex === twoRoll.chainIndex
       && longRoll.startStrokeIndex <= twoRoll.startStrokeIndex
       && twoRoll.endStrokeIndex <= longRoll.endStrokeIndex), false);
+  }
+});
+
+test('Chain別の遷移の索引は、全遷移を走査した結果と同じ遷移を返す', () => {
+  const geometry = buildGeometry('row-staggered');
+  const qwerty = LAYOUT_BY_ID.get('qwerty')!;
+  const trace = generateTrace(
+    'asdf jkl; the quick brown fox jumps over the lazy dog asdfjkl; qwer poiu',
+    qwerty,
+    geometry,
+    { windowSize: 3, sfbHomeCost: true },
+  );
+  const result = analyzeStrokeRolls(trace.strokes);
+  assert.ok(result.chains.length > 3);
+
+  for (const chain of result.chains) {
+    const own = result.transitions.filter((transition) => transition.chainIndex === chain.chainIndex);
+    assert.deepEqual(result.transitionsByChain[chain.chainIndex], own);
+
+    for (let start = chain.startStrokeIndex; start <= chain.endStrokeIndex; start++) {
+      for (let end = start; end <= chain.endStrokeIndex + 1; end++) {
+        const expected = end <= start + 1
+          ? []
+          : own.filter(
+            (transition) => transition.fromStrokeIndex >= start && transition.toStrokeIndex < end,
+          );
+        assert.deepEqual(transitionsForStrokeSpan(result, chain.chainIndex, start, end), expected);
+      }
+    }
+    for (let stroke = chain.startStrokeIndex - 1; stroke <= chain.endStrokeIndex + 1; stroke++) {
+      assert.equal(
+        transitionEndingAt(result, chain.chainIndex, stroke),
+        own.find((transition) => transition.toStrokeIndex === stroke),
+      );
+      assert.equal(
+        transitionStartingAt(result, chain.chainIndex, stroke),
+        own.find((transition) => transition.fromStrokeIndex === stroke),
+      );
+    }
   }
 });

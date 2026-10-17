@@ -58,6 +58,11 @@ export interface SfbEvent {
 
 export interface TransitionAnalysisResult extends ChainAnalysisResult {
   readonly transitions: readonly HandTransition[];
+  /**
+   * Chainごとに分けたTransition。添字は`chainIndex`で、各Chain内は`transitions`の並び（fromStrokeIndex昇順）のまま。
+   * Roll・Redirect・Arpeggioがチェーン内の遷移だけを引く時に、全Transitionを走査しないための共有の索引。
+   */
+  readonly transitionsByChain: readonly (readonly HandTransition[])[];
   readonly sfbEvents: readonly SfbEvent[];
   /** SFB eventの両端Strokeをunionした、重複なしのindex集合。 */
   readonly sfbStrokeIndexes: readonly number[];
@@ -173,6 +178,16 @@ export function buildHandTransitions(
   return Object.freeze(transitions);
 }
 
+/** Transitionを`chainIndex`の添字でChainごとに分ける。各Chain内の並びは入力の並びを保つ。 */
+export function groupTransitionsByChain(
+  chains: readonly { readonly chainIndex: number }[],
+  transitions: readonly HandTransition[],
+): readonly (readonly HandTransition[])[] {
+  const groups: HandTransition[][] = chains.map(() => []);
+  for (const transition of transitions) groups[transition.chainIndex].push(transition);
+  return Object.freeze(groups.map((group) => Object.freeze(group)));
+}
+
 /** same候補を持つTransitionだけをSFB eventとして抽出する。 */
 export function buildSfbEvents(
   transitions: readonly HandTransition[],
@@ -219,6 +234,7 @@ export function analyzeTransitions(
   return Object.freeze({
     ...chainAnalysis,
     transitions,
+    transitionsByChain: groupTransitionsByChain(chainAnalysis.chains, transitions),
     sfbEvents,
     sfbStrokeIndexes,
   });

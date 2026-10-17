@@ -118,9 +118,7 @@ export function buildRedirectEvents(
   const events: RedirectEvent[] = [];
 
   for (const chain of analysis.chains) {
-    const transitions = analysis.transitions.filter(
-      (transition) => transition.chainIndex === chain.chainIndex,
-    );
+    const transitions = analysis.transitionsByChain[chain.chainIndex];
 
     for (let index = 0; index + 1 < transitions.length; index++) {
       const before = transitions[index];
