@@ -60,6 +60,8 @@ const NOT_FAILURE_TEXT: ReadonlySet<string> = new Set([
   "「${definition.label}」を元に戻す",
   "${name}の表示",
   "${name}の説明",
+  "外向き ${(outwardRate * 100).toFixed(1)}%",
+  "内向き ${(inwardRate * 100).toFixed(1)}%",
 ]);
 
 async function sourceFiles(dir: string): Promise<string[]> {

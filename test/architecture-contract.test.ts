@@ -330,7 +330,7 @@ test('composed outputのsemantic availabilityはcanonicalInputsをauthorityに�
 test('CanonicalInputMap validationはempty alternative setを許可しない', async () => {
   const source = await readFile(join(SRC, 'input/semantics/compiler.ts'), 'utf8');
   const start = source.indexOf('export function validateCanonicalInputMap');
-  const end = source.indexOf('\n}\n\n\ntype AlternativeIdentityProjection', start);
+  const end = source.indexOf('\n}\n', start);
 
   assert.notEqual(start, -1);
   assert.notEqual(end, -1);
