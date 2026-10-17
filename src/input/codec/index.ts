@@ -199,3 +199,11 @@ function describeIssues(issues: readonly BaseIssue<unknown>[]): string {
 export function encodedSizeBytes(value: unknown): number {
   return new TextEncoder().encode(JSON.stringify(value)).length;
 }
+
+export {
+  describeFileDecodeFailure,
+  droppedDuplicateId,
+  droppedNotArray,
+  droppedNotObject,
+  droppedReservedKey,
+} from './diagnostic-text.ts';

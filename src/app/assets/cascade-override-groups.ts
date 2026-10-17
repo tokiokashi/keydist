@@ -1,4 +1,5 @@
 import type { CascadeLevel, InputMethod } from '#input/settings/index.ts';
+import { MISSING_LAYOUT_NAME, MISSING_SETUP_NAME, MISSING_SHAPE_NAME } from '#input/setup/index.ts';
 import { SETTINGS_ITEMS, type SettingsCascadeOverrides, type SettingsItemId } from '#engine/settings-items.ts';
 import type { Workspace } from '#engine/workspace.ts';
 import {
@@ -129,7 +130,7 @@ export function cascadeOverrideGroups(input: OverrideGroupsInput): readonly Over
   let missingShapeIndex = 0;
   for (const { key, found } of shapeKeys) {
     const level: CascadeLevel = { kind: 'shape', shapeId: key };
-    const title = found ? conditionLevelLabel(level, names) : missingTitle('見つからない物理配列', missingShapeIndex++, missingShapes);
+    const title = found ? conditionLevelLabel(level, names) : missingTitle(MISSING_SHAPE_NAME, missingShapeIndex++, missingShapes);
     push(`shape:${key}`, title, level, overrides.shape?.[key]);
   }
 
@@ -143,7 +144,7 @@ export function cascadeOverrideGroups(input: OverrideGroupsInput): readonly Over
   let missingLayoutIndex = 0;
   for (const { key, found } of layoutKeys) {
     const level: CascadeLevel = { kind: 'layout', layoutId: key };
-    const title = found ? conditionLevelLabel(level, names) : missingTitle('見つからない配列', missingLayoutIndex++, missingLayouts);
+    const title = found ? conditionLevelLabel(level, names) : missingTitle(MISSING_LAYOUT_NAME, missingLayoutIndex++, missingLayouts);
     push(`layout:${key}`, title, level, overrides.layout?.[key]);
   }
 
@@ -152,7 +153,7 @@ export function cascadeOverrideGroups(input: OverrideGroupsInput): readonly Over
   const missingSetups = setupKeys.filter((entry) => !entry.found).length;
   let missingSetupIndex = 0;
   for (const { key, found } of setupKeys) {
-    const title = found ? setupNames.get(key)! : missingTitle('見つからないSetup', missingSetupIndex++, missingSetups);
+    const title = found ? setupNames.get(key)! : missingTitle(MISSING_SETUP_NAME, missingSetupIndex++, missingSetups);
     push(`setup:${key}`, title, { kind: 'setup', setupId: key }, overrides.setup?.[key], { missingSetup: !found });
   }
   return groups;

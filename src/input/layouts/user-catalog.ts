@@ -1,4 +1,5 @@
 import type { CodecDiagnostic } from '../codec/index.ts';
+import { droppedDuplicateId } from '#input/codec/index.ts';
 import { isBuiltin, type UserRomajiRule } from '../romaji/rules.ts';
 import { LAYOUT_BY_ID } from './index.ts';
 import type { Layout } from './types.ts';
@@ -46,7 +47,7 @@ export function buildUserCatalog(
     if (isBuiltin(rule.id)) {
       diagnostics.push({ path, message: `id「${rule.id}」が組み込みの規則と同じため捨てました` });
     } else if (ruleIds.has(rule.id)) {
-      diagnostics.push({ path, message: `id「${rule.id}」が重複しているため捨てました` });
+      diagnostics.push({ path, message: droppedDuplicateId(rule.id) });
     } else {
       ruleIds.add(rule.id);
       romajiRules.push(rule);
@@ -64,7 +65,7 @@ export function buildUserCatalog(
       return;
     }
     if (definitions.has(definition.id)) {
-      diagnostics.push({ path, message: `id「${definition.id}」が重複しているため捨てました` });
+      diagnostics.push({ path, message: droppedDuplicateId(definition.id) });
       unusableLayouts.set(index, '同じ識別子の配列が先にあるため、計算には使えません');
       return;
     }

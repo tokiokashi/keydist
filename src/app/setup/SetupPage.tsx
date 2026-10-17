@@ -9,7 +9,7 @@ import {
 } from '#engine/commands.ts';
 import { resolveShapeForLayout } from '#engine/target-resolution.ts';
 import { groupShapes } from '#input/shapes/shape-groups.ts';
-import type { Setup } from '#input/setup/index.ts';
+import { MISSING_SHAPE_NAME, type Setup } from '#input/setup/index.ts';
 import { ConditionEditor, type ConditionEditorContext } from '#hosts/shared/ConditionEditor.tsx';
 import { PresetSection } from '#hosts/shared/PresetSection.tsx';
 import { resettableSetupIds, resetSetupConditionsCommand } from '#hosts/shared/condition-edit.ts';
@@ -267,7 +267,7 @@ export function SetupPage({
                   value={selected.shapeId}
                   onChange={(event) => dispatch(setSetupShapeCommand(selected.id, event.currentTarget.value))}
                 >
-                  {selectedShapeMissing ? <option value={selected.shapeId}>（見つからない物理配列）</option> : null}
+                  {selectedShapeMissing ? <option value={selected.shapeId}>（{MISSING_SHAPE_NAME}）</option> : null}
                   {shapeGroups.map((group) => (
                     <optgroup key={group.key} label={group.label}>
                       {group.shapes.map((shape) => <option key={shape.id} value={shape.id}>{shape.name}</option>)}

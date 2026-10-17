@@ -1,4 +1,4 @@
-import { isRecord, type CodecDiagnostic } from '#input/codec/index.ts';
+import { isRecord, type CodecDiagnostic, droppedDuplicateId, droppedNotArray } from '#input/codec/index.ts';
 import {
   decodeLevelOverrides,
   levelOverrides,
@@ -12,6 +12,7 @@ import { effectiveLabel, nextSetupNumber, type Setup, type SetupLibrary } from '
 import { FINGER_ASSIGNMENT_REGISTRY } from './finger-assignment.ts';
 import { SETTINGS_ITEM_SCHEMAS } from './settings-codec.ts';
 import { SETTINGS_ITEMS, type SettingsValueMap } from './settings-items.ts';
+import { MISSING_LAYOUT_NAME, MISSING_SHAPE_NAME } from '#input/setup/index.ts';
 
 /**
  * 資産のファイルに入れるSetupと、読み込み時の突き合わせ。ファイルが運ぶのは、Setupの配列・物理配列・ラベルと、
@@ -36,7 +37,7 @@ const nonEmptyString = (value: unknown): value is string => typeof value === 'st
 export function decodeUserAssetSetups(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): readonly UserAssetSetup[] {
   if (raw === undefined) return [];
   if (!Array.isArray(raw)) {
-    diagnostics.push({ path, message: '配列形式でないためSetupを捨てました' });
+    diagnostics.push({ path, message: droppedNotArray('Setup') });
     return [];
   }
   const seen = new Set<string>();
@@ -48,7 +49,7 @@ export function decodeUserAssetSetups(raw: unknown, path: string, diagnostics: C
       return;
     }
     if (seen.has(candidate.id)) {
-      diagnostics.push({ path: where, message: `id「${candidate.id}」が重複しているため捨てました` });
+      diagnostics.push({ path: where, message: droppedDuplicateId(candidate.id) });
       return;
     }
     seen.add(candidate.id);
@@ -133,10 +134,10 @@ function setupName(
 ): string {
   const label = effectiveLabel(setup.label);
   if (label !== undefined) return label;
-  const layoutName = layoutNames.get(setup.layoutId) ?? LAYOUT_BY_ID.get(setup.layoutId)?.name ?? '見つからない配列';
+  const layoutName = layoutNames.get(setup.layoutId) ?? LAYOUT_BY_ID.get(setup.layoutId)?.name ?? MISSING_LAYOUT_NAME;
   const shapeName = Object.hasOwn(PHYSICAL_SHAPES, setup.shapeId)
     ? PHYSICAL_SHAPES[setup.shapeId as keyof typeof PHYSICAL_SHAPES].name
-    : '見つからない物理配列';
+    : MISSING_SHAPE_NAME;
   return `${layoutName}/${shapeName}`;
 }
 

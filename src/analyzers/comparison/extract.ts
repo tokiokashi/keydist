@@ -17,6 +17,7 @@ import {
   type ComparisonColumnId,
   type ComparisonOptions,
 } from './options.ts';
+import { LAYOUT_MISSING_REASON } from '#input/setup/index.ts';
 
 /**
  * 比較表Analyzerの抽出。
@@ -223,7 +224,7 @@ const FIXTURE_MEMBERS: readonly AnalyzerSetMember[] = [
 ];
 
 const FIXTURE_FAILURES: readonly AnalyzerSetMemberFailure[] = [
-  { target: FIXTURE_TARGET_MISSING, kind: 'reference', message: '配列が見つかりません（削除された可能性があります）' },
+  { target: FIXTURE_TARGET_MISSING, kind: 'reference', message: LAYOUT_MISSING_REASON },
 ];
 
 /**

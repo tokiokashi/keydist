@@ -28,6 +28,8 @@ interface MutableSemanticInput {
   faceMemberships: FaceMembership[];
 }
 
+const REQUIREMENT_OUT_OF_KEYS = 'RequirementがphysicalKeys外のkeyを参照している';
+
 const compareString = (left: string, right: string): number =>
   left < right ? -1 : left > right ? 1 : 0;
 
@@ -207,7 +209,7 @@ const assertCanonicalInput = (input: Pick<
         throw new Error('overlap Requirementのkeysは非空である必要がある');
       }
       if (!isSubset(requirement.keys, physicalKeys)) {
-        throw new Error('RequirementがphysicalKeys外のkeyを参照している');
+        throw new Error(REQUIREMENT_OUT_OF_KEYS);
       }
       continue;
     }
@@ -220,7 +222,7 @@ const assertCanonicalInput = (input: Pick<
       throw new Error('order Requirementのbefore / afterは互いに素である必要がある');
     }
     if (!isSubset(requirement.before, physicalKeys) || !isSubset(requirement.after, physicalKeys)) {
-      throw new Error('RequirementがphysicalKeys外のkeyを参照している');
+      throw new Error(REQUIREMENT_OUT_OF_KEYS);
     }
   }
 

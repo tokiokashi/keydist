@@ -1,5 +1,5 @@
 import * as v from 'valibot';
-import { decodeDroppingInvalid, decodeField, defineAssetCodec, isRecord, type AssetCodec, type CodecDiagnostic } from '#input/codec/index.ts';
+import { decodeDroppingInvalid, decodeField, defineAssetCodec, isRecord, type AssetCodec, type CodecDiagnostic, droppedDuplicateId, droppedNotArray } from '#input/codec/index.ts';
 import type { TextLibrary, UserText } from './library.ts';
 
 /**
@@ -34,7 +34,7 @@ const KNOWN_USER_TEXT_KEYS: ReadonlySet<string> = new Set(['id', 'name', 'text',
 function decodeUserTexts(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): UserText[] {
   if (!Array.isArray(raw)) {
     // 値があって配列でない時は、全件が消えることを診断で示す（無い時は空の手持ちで正しい）
-    if (raw !== undefined) diagnostics.push({ path, message: '配列形式でないためテキストを捨てました' });
+    if (raw !== undefined) diagnostics.push({ path, message: droppedNotArray('テキスト') });
     return [];
   }
   const seen = new Set<string>();
@@ -44,7 +44,7 @@ function decodeUserTexts(raw: unknown, path: string, diagnostics: CodecDiagnosti
     const decoded = decodeDroppingInvalid(requiredFieldsSchema, candidate, elementPath, diagnostics);
     if (decoded === undefined) return;
     if (seen.has(decoded.id)) {
-      diagnostics.push({ path: elementPath, message: `id「${decoded.id}」が重複しているため捨てました` });
+      diagnostics.push({ path: elementPath, message: droppedDuplicateId(decoded.id) });
       return;
     }
     seen.add(decoded.id);

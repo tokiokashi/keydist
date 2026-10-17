@@ -1,6 +1,7 @@
 import type { ResolvedInputError } from './resolved-input.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { SetupReferenceError } from '#input/setup/index.ts';
+import { LAYOUT_MISSING_REASON, SETUP_MISSING_REASON, SHAPE_MISSING_REASON } from '#input/setup/index.ts';
 
 /**
  * `ResolvedInputError`を日本語の説明文へ変換する（残る例外表示は、Setup・配列・
@@ -18,8 +19,8 @@ import type { SetupReferenceError } from '#input/setup/index.ts';
 // どの対象の失敗かは、行・見出しに並ぶ対象の名前で分かる。
 function describeSetupReferenceError(error: SetupReferenceError): string {
   switch (error.kind) {
-    case 'layout-missing': return '配列が見つかりません（削除された可能性があります）';
-    case 'shape-missing': return '物理配列が見つかりません（削除された可能性があります）';
+    case 'layout-missing': return LAYOUT_MISSING_REASON;
+    case 'shape-missing': return SHAPE_MISSING_REASON;
   }
 }
 
@@ -42,6 +43,6 @@ export function describeResolvedInputError(error: ResolvedInputError): string {
     case 'keys-missing':
       return `「${error.layout.name}」が使うキーが物理配列に足りません。${keysMissingHint(error.layout)}`;
     case 'target-missing':
-      return error.target.kind === 'setup' ? 'Setupが削除されました' : '配列が見つかりません（削除された可能性があります）';
+      return error.target.kind === 'setup' ? SETUP_MISSING_REASON : LAYOUT_MISSING_REASON;
   }
 }

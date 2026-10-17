@@ -2,7 +2,7 @@ import { layoutKind, type LayoutKind } from '#input/layouts/kind.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { PhysicalShape } from '#input/shapes/geometry.ts';
-import { analysisTargetKey, effectiveLabel, nameTargets, type AnalysisTarget, type Setup } from '#input/setup/index.ts';
+import { analysisTargetKey, effectiveLabel, MISSING_LAYOUT_NAME, MISSING_SETUP_NAME, MISSING_SHAPE_NAME, nameTargets, type AnalysisTarget, type Setup } from '#input/setup/index.ts';
 
 /**
  * 対象の選択（docs/architecture.md「対象の選択」）に並べる候補。
@@ -54,7 +54,7 @@ export interface TargetChoiceSource {
 }
 
 function missingName(target: AnalysisTarget): string {
-  return target.kind === 'setup' ? '削除されたSetup' : '見つからない配列';
+  return target.kind === 'setup' ? MISSING_SETUP_NAME : MISSING_LAYOUT_NAME;
 }
 
 export function targetChoiceGroups({ layouts, userLayouts, shapes, setups, selected }: TargetChoiceSource): readonly TargetChoiceGroup[] {
@@ -83,8 +83,8 @@ export function targetChoiceGroups({ layouts, userLayouts, shapes, setups, selec
   const namedSetups = nameTargets(setups.map((setup) => ({
     key: setup.id,
     kind: 'setup' as const,
-    layoutName: layouts.get(setup.layoutId)?.name ?? '見つからない配列',
-    shapeName: shapes.get(setup.shapeId)?.name ?? '見つからない物理配列',
+    layoutName: layouts.get(setup.layoutId)?.name ?? MISSING_LAYOUT_NAME,
+    shapeName: shapes.get(setup.shapeId)?.name ?? MISSING_SHAPE_NAME,
   })));
   const setupChoices: TargetChoice[] = setups.map((setup, index) => {
     const target: AnalysisTarget = { kind: 'setup', setupId: setup.id };

@@ -1,5 +1,5 @@
 import * as v from 'valibot';
-import { decodeDroppingInvalid, defineAssetCodec, isRecord, type AssetCodec, type CodecDiagnostic } from '#input/codec/index.ts';
+import { decodeDroppingInvalid, defineAssetCodec, isRecord, type AssetCodec, type CodecDiagnostic, droppedDuplicateId, droppedNotArray } from '#input/codec/index.ts';
 import { decodeCascadeOverrides, encodeCascadeOverrides, type CascadeOverrides, type ItemSchemaMap } from '#input/settings/index.ts';
 import { dropSetupOverrides } from './overrides.ts';
 import type { Setup } from './types.ts';
@@ -72,7 +72,7 @@ function assignMissingNumbers(indexed: readonly IndexedRawSetup[], path: string,
 function decodeSetups(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): Setup[] {
   if (!Array.isArray(raw)) {
     // 値があって配列でない時は、全件が消えることを診断で示す（無い時は空の手持ちで正しい）
-    if (raw !== undefined) diagnostics.push({ path, message: '配列形式でないためSetupを捨てました' });
+    if (raw !== undefined) diagnostics.push({ path, message: droppedNotArray('Setup') });
     return [];
   }
   const seen = new Set<string>();
@@ -81,7 +81,7 @@ function decodeSetups(raw: unknown, path: string, diagnostics: CodecDiagnostic[]
     const decoded = decodeDroppingInvalid(setupSchema, candidate, `${path}[${index}]`, diagnostics);
     if (decoded === undefined) return;
     if (seen.has(decoded.id)) {
-      diagnostics.push({ path: `${path}[${index}]`, message: `id「${decoded.id}」が重複しているため捨てました` });
+      diagnostics.push({ path: `${path}[${index}]`, message: droppedDuplicateId(decoded.id) });
       return;
     }
     seen.add(decoded.id);

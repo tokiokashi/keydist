@@ -1,4 +1,5 @@
 import { useContext, useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
+import { LAYOUT_MISSING_REASON, MISSING_SETUP_NAME } from '#input/setup/index.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
 import {
   USER_ASSETS_FILE_FORMAT,
@@ -11,6 +12,7 @@ import {
 import { useHistoryShortcuts } from '#ui/primitives/use-history-shortcuts.ts';
 import { ErrorDetails } from '#hosts/shared/ErrorDetails.tsx';
 import { PresetFileIoContext } from '#hosts/shared/preset-file-io.ts';
+import { PRESET_FILE_IMPORT_FAILED_MESSAGE, PRESET_FILE_TOO_LARGE_MESSAGE, PRESET_FILE_UNREADABLE_MESSAGE } from '#hosts/shared/preset-file.ts';
 import { exportedText, importEntryText, importSummaryText, userAssetsFileName } from './user-assets-file-text.ts';
 import { userFingerAssignmentRows, userLayoutRows, userRomajiRuleRows, userSetupRows, type UserAssetRow } from './user-asset-rows.ts';
 import type { SetupListItem } from '../setup/setup-view.ts';
@@ -46,8 +48,6 @@ export interface UserAssetsPageProps {
   readonly onImport: (bundle: UserAssetsBundle, stamp: string) => readonly UserAssetImportEntry[] | undefined;
 }
 
-const FILE_TOO_LARGE_MESSAGE = 'ファイルが大きすぎます（1MBまで）';
-const FILE_UNREADABLE_MESSAGE = 'ファイルを読み取れませんでした';
 
 interface ImportResult {
   readonly summary: string;
@@ -101,10 +101,10 @@ interface PendingDelete {
 
 const CONFIRM_IMPACT: Readonly<Record<UserAssetKind | 'missing-setup-override', string>> = {
   'missing-setup-override': 'このSetupが手持ちに無いため、変更を戻した後は「元に戻す」で戻せません。',
-  layout: 'この配列を対象にしているペインは、「配列が見つかりません」の表示になります。',
+  layout: `この配列を対象にしているペインは、「${LAYOUT_MISSING_REASON}」の表示になります。`,
   'romaji-rule': 'この規則を推奨にしている配列は、全体の値の規則で打つようになります。',
   'finger-assignment': 'この割り当てを選んでいる場所は、既定の割り当てで測るようになります。',
-  setup: 'このSetupを対象にしているペインは、「削除されたSetup」の表示になります。',
+  setup: `このSetupを対象にしているペインは、「${MISSING_SETUP_NAME}」の表示になります。`,
 };
 
 /** 削除の確認の文。元に戻すが使える範囲と、削除が他へ及ぼす影響を書く。 */
@@ -250,7 +250,7 @@ export function UserAssetsPage({
     clearResults();
     const read = await fileIo.readText(file, USER_ASSETS_FILE_MAX_BYTES);
     if (read.kind !== 'ok') {
-      setMessage(read.kind === 'too-large' ? FILE_TOO_LARGE_MESSAGE : FILE_UNREADABLE_MESSAGE);
+      setMessage(read.kind === 'too-large' ? PRESET_FILE_TOO_LARGE_MESSAGE : PRESET_FILE_UNREADABLE_MESSAGE);
       return;
     }
     const parsed = parseUserAssetsFile(read.text);
@@ -262,7 +262,7 @@ export function UserAssetsPage({
     // 画面に出す内訳は、書き込みを決めた突き合わせそのものから取る。ファイルを読む間に別のタブが資産を書き換えても食い違わない
     const entries = onImport(parsed.bundle, stamp);
     if (entries === undefined) {
-      setMessage('読み込みに失敗しました。もう一度試してください');
+      setMessage(PRESET_FILE_IMPORT_FAILED_MESSAGE);
       return;
     }
     const dropped = parsed.dropped.map((diagnostic) => `${diagnostic.path}: ${diagnostic.message}`);

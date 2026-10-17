@@ -36,3 +36,14 @@ export {
 } from './collection.ts';
 export { setupLibraryCodec } from './codec.ts';
 export { setupLibraryItemScope } from './library-scope.ts';
+export {
+  LAYOUT_MISSING_REASON,
+  SHAPE_MISSING_REASON,
+  SETUP_MISSING_REASON,
+  MISSING_LAYOUT_NAME,
+  MISSING_SHAPE_NAME,
+  MISSING_SETUP_NAME,
+  MISSING_ROMAJI_RULE_NAME,
+  MISSING_FINGER_ASSIGNMENT_NAME,
+  describeShapeFallback,
+} from './missing-text.ts';

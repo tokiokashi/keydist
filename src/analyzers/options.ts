@@ -227,13 +227,18 @@ export function defineOptions<R extends OptionsRegistry>(items: R): OptionsDefin
 // ---------------------------------------------------------------------------
 
 /** 選択肢（picklist）のURL codec。値をそのまま文字列として読み書きする。 */
+/** URLパラメータの値が許す値のどれでもなかった時の診断。 */
+function unknownUrlValueText(raw: string): string {
+  return `URLパラメータの値「${raw}」は未知のため捨てました`;
+}
+
 export function picklistUrlCodec<T extends string>(name: string, allowed: readonly T[]): OptionUrlCodec<T> {
   return {
     name,
     encode: (value) => value,
     decode: (raw, path, diagnostics) => {
       if ((allowed as readonly string[]).includes(raw)) return raw as T;
-      diagnostics.push({ path, message: `URLパラメータの値「${raw}」は未知のため捨てました` });
+      diagnostics.push({ path, message: unknownUrlValueText(raw) });
       return undefined;
     },
   };
@@ -247,7 +252,7 @@ export function booleanUrlCodec(name: string): OptionUrlCodec<boolean> {
     decode: (raw, path, diagnostics) => {
       if (raw === 'true') return true;
       if (raw === 'false') return false;
-      diagnostics.push({ path, message: `URLパラメータの値「${raw}」は未知のため捨てました` });
+      diagnostics.push({ path, message: unknownUrlValueText(raw) });
       return undefined;
     },
   };
@@ -335,7 +340,7 @@ export function columnSortOption<Column extends string>(urlName: string, columns
         ) {
           return { column: column as Column, direction: direction as 'asc' | 'desc' };
         }
-        diagnostics.push({ path, message: `URLパラメータの値「${raw}」は未知のため捨てました` });
+        diagnostics.push({ path, message: unknownUrlValueText(raw) });
         return undefined;
       },
     },

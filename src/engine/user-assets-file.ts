@@ -1,4 +1,4 @@
-import { defineAssetCodec, isRecord, type AssetCodec, type CodecDiagnostic } from '#input/codec/index.ts';
+import { defineAssetCodec, describeFileDecodeFailure, isRecord, type AssetCodec, type CodecDiagnostic } from '#input/codec/index.ts';
 import type { Command } from '#input/commands/index.ts';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { decodeUserLayouts, type UserLayout } from '#input/layouts/user-layouts.ts';
@@ -365,11 +365,8 @@ export function parseUserAssetsFile(text: string): UserAssetsFileReadResult {
   }
   const decoded = USER_ASSETS_FILE_CODEC.decode(parsed);
   if (!decoded.ok) {
-    const { reason } = decoded;
-    if (reason.kind === 'future-version') {
-      return fail('新しい形式のファイルです。keydistを更新してから読み込んでください', `version: ${reason.version} (対応: ${reason.currentVersion})`);
-    }
-    return fail('ファイルの形式が正しくありません', JSON.stringify(reason));
+    const failure = describeFileDecodeFailure(decoded.reason);
+    return fail(failure.message, failure.detail);
   }
   const { layouts, romajiRules, fingerAssignments, setups } = decoded.value;
   if (layouts.length + romajiRules.length + fingerAssignments.length + setups.length === 0) {

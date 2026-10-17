@@ -90,16 +90,6 @@ function seriesFor(series: readonly NSensitivitySeries[], targetKey: string): NS
   return series.find((item) => item.targetKey === targetKey);
 }
 
-function failureLabel(kind: NSensitivitySeriesFailed['failureKind']): string {
-  switch (kind) {
-    case 'reference': return '配列・物理配列が見つかりません（削除された可能性があります）';
-    case 'incompatible-text': return 'このテキストには使えません';
-    case 'geometry': return 'キーボードを組み立てられません';
-    case 'keys-missing': return '物理配列に必要なキーがありません';
-    case 'target-missing': return '削除されたか、見つかりません';
-  }
-}
-
 /** 点の吹き出しに出す、縦軸の値の文字。 */
 function formatY(kind: NSensitivityAxisKind, metric: NSensitivityMetricId, value: number): string {
   if (kind === 'ratio') return `${value.toFixed(0)}%`;
@@ -559,7 +549,7 @@ export function NSensitivityBody({
           {failedRows.map(({ targetKey, entry, context }) => (
             <li key={targetKey} data-n-sensitivity-row="failed">
               <span title={context?.fullName}>{context?.label ?? '—'}</span>
-              <span role="alert">{entry.message || failureLabel(entry.failureKind)}</span>
+              <span role="alert">{entry.message}</span>
             </li>
           ))}
         </ul>

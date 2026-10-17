@@ -183,6 +183,8 @@ const REPRESENTATIVE_LAYOUT_ID = 'qwerty';
 /** 解釈の2項目は、全体とWorkspaceの適用範囲の行にだけ出る。 */
 const INTERPRETATION_IDS: readonly SettingsItemId[] = ['chainInterpretation', 'arpeggioInterpretation'];
 
+const UNUSABLE_LAYOUT_TEXT = 'この配列は計算に使えないため、値を出せません。';
+
 function unavailable(message: string, detail?: string): PlacementRows {
   return detail === undefined ? { ok: false, message } : { ok: false, message, detail };
 }
@@ -233,7 +235,7 @@ export function placementRows(placement: ConditionPlacement, input: PlacementRow
     }
     case 'layout': {
       if (placement.unusableReason !== undefined) {
-        return unavailable('この配列は計算に使えないため、値を出せません。', placement.unusableReason);
+        return unavailable(UNUSABLE_LAYOUT_TEXT, placement.unusableReason);
       }
       const resolution = resolveTargetForText(
         { kind: 'layout', layoutId: placement.layoutId },
@@ -243,7 +245,7 @@ export function placementRows(placement: ConditionPlacement, input: PlacementRow
         overrides,
         'ja',
       );
-      if (!resolution.ok) return unavailable('この配列は計算に使えないため、値を出せません。');
+      if (!resolution.ok) return unavailable(UNUSABLE_LAYOUT_TEXT);
       const rows = traceConditionSummary(resolveSettings(overrides, resolution.context), catalog.setupCatalog);
       return { ok: true, rows, overrides };
     }

@@ -10,7 +10,6 @@ import {
   fingerMatrixDefinition,
   type FingerMatrixColumn,
   type FingerMatrixExtracted,
-  type FingerMatrixFailedRow,
   type FingerMatrixRow,
 } from './extract.ts';
 import {
@@ -49,16 +48,6 @@ function columnNames(column: FingerMatrixColumn): { readonly short: string; read
   const short = column.fingers.map((finger) => FINGER_SHORT_WITH_HAND[finger]).join('-');
   const full = column.fingers.map((finger) => FINGER_LABEL[finger]);
   return { short, full: full.length === 1 ? full[0]! : `${full[0]}と${full[1]}の間` };
-}
-
-function failureLabel(kind: FingerMatrixFailedRow['failureKind']): string {
-  switch (kind) {
-    case 'reference': return '配列・物理配列が見つかりません（削除された可能性があります）';
-    case 'incompatible-text': return 'このテキストには使えません';
-    case 'geometry': return 'キーボードを組み立てられません';
-    case 'keys-missing': return '物理配列に必要なキーがありません';
-    case 'target-missing': return '削除されたか、見つかりません';
-  }
 }
 
 function rowFor(rows: readonly FingerMatrixRow[], targetKey: string): FingerMatrixRow | undefined {
@@ -129,7 +118,7 @@ export function FingerMatrixBody({ extracted, order, rowContext, options, onOpti
                   <tr key={targetKey} data-finger-matrix-row="failed">
                     <th scope="row" title={fullName}>{label}</th>
                     <td colSpan={surface.columns.length} role="alert">
-                      {row.message || failureLabel(row.failureKind)}
+                      {row.message}
                     </td>
                   </tr>
                 );

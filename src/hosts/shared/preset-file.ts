@@ -1,4 +1,4 @@
-import { isRecord, type CodecDiagnostic } from '#input/codec/index.ts';
+import { describeFileDecodeFailure, isRecord, type CodecDiagnostic } from '#input/codec/index.ts';
 import type { LevelOverrides } from '#input/settings/index.ts';
 import { PRESET_FILE_CODEC, type PresetFileContents } from '#engine/preset-file-codec.ts';
 import type { Workspace } from '#engine/workspace.ts';
@@ -100,6 +100,8 @@ export interface MissingReference {
 
 export const PRESET_FILE_TOO_LARGE_MESSAGE = 'ファイルが大きすぎます（1MBまで）';
 export const PRESET_FILE_UNREADABLE_MESSAGE = 'ファイルを読み取れませんでした';
+/** 読み込んだ内容を保存できなかった時の文。 */
+export const PRESET_FILE_IMPORT_FAILED_MESSAGE = '読み込みに失敗しました。もう一度試してください';
 
 function failure(message: string, ...details: string[]): { readonly ok: false; readonly message: string; readonly details: readonly string[] } {
   return { ok: false, message, details };
@@ -256,14 +258,8 @@ function readEnvelope(text: string): EnvelopeRead {
   }
   const decoded = PRESET_FILE_CODEC.decode(parsed);
   if (!decoded.ok) {
-    const { reason } = decoded;
-    if (reason.kind === 'future-version') {
-      return failure(
-        '新しい形式のファイルです。keydistを更新してから読み込んでください',
-        `version: ${reason.version} (対応: ${reason.currentVersion})`,
-      );
-    }
-    return failure('ファイルの形式が正しくありません', JSON.stringify(reason));
+    const decodeFailure = describeFileDecodeFailure(decoded.reason);
+    return failure(decodeFailure.message, decodeFailure.detail);
   }
   return {
     ok: true,
