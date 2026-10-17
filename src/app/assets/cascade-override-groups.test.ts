@@ -98,7 +98,7 @@ test('手持ちに無い配列・物理配列・Setupは見つからない旨で
     },
     { setups: [] },
   );
-  assert.deepEqual(groups.map((group) => group.title), ['（見つからない物理配列）', `配列「${LAYOUT_BY_ID.get('qwerty')!.name}」`, '（見つからない配列1）', '（見つからない配列2）', '（見つからないSetup）']);
+  assert.deepEqual(groups.map((group) => group.title), ['（見つからない物理配列）', `配列「${LAYOUT_BY_ID.get('qwerty')!.name}」`, '（見つからない配列1）', '（見つからない配列2）', '（削除されたSetup）']);
   assert.deepEqual(groups.map((group) => group.missingSetup), [false, false, false, false, true]);
   assert.doesNotMatch(groups.map((group) => group.title).join(), /gone|shape-x/);
 });

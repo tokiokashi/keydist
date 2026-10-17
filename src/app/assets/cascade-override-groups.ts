@@ -1,5 +1,5 @@
 import type { CascadeLevel, InputMethod } from '#input/settings/index.ts';
-import { MISSING_LAYOUT_NAME, MISSING_SHAPE_NAME } from '#input/setup/index.ts';
+import { MISSING_LAYOUT_NAME, MISSING_SETUP_NAME, MISSING_SHAPE_NAME } from '#input/setup/index.ts';
 import { SETTINGS_ITEMS, type SettingsCascadeOverrides, type SettingsItemId } from '#engine/settings-items.ts';
 import type { Workspace } from '#engine/workspace.ts';
 import {
@@ -153,7 +153,7 @@ export function cascadeOverrideGroups(input: OverrideGroupsInput): readonly Over
   const missingSetups = setupKeys.filter((entry) => !entry.found).length;
   let missingSetupIndex = 0;
   for (const { key, found } of setupKeys) {
-    const title = found ? setupNames.get(key)! : missingTitle('見つからないSetup', missingSetupIndex++, missingSetups);
+    const title = found ? setupNames.get(key)! : missingTitle(MISSING_SETUP_NAME, missingSetupIndex++, missingSetups);
     push(`setup:${key}`, title, { kind: 'setup', setupId: key }, overrides.setup?.[key], { missingSetup: !found });
   }
   return groups;
