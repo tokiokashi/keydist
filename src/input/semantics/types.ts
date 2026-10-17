@@ -20,8 +20,8 @@ export type SemanticRole = 'modifier';
 
 export type InputContextRequirement =
   | { kind: 'youon-only' }
-  // 日本語テキストをローマ字へ展開して打つ時だけ成立する（仕様 §4.3）。
-  // ローマ字綴りを出すコンボが英文の途中で誤発火しないよう、打ち方でpathを絞る。
+  // 入力が覆う綴りの塊がすべて、かなをローマ字表で展開したものである時だけ成立する（仕様 §4.3）。
+  // ローマ字綴りを出すコンボが英字の区間で誤発火しないよう、かな由来の区間にpathを絞る。
   | { kind: 'romaji-input' };
 
 export type InputAlternativeOrigin =

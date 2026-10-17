@@ -247,8 +247,11 @@ test('romajiOnlyのコンボは、かなから展開した綴りの区間だけ�
   assert.deepEqual(hits('これはwebsiteです'), ['desu']);
   assert.deepEqual(hits('Wi-Fiのsiteへ'), []);
   assert.deepEqual(hits('website'), []);
-  // かな由来と英字をまたぐ範囲では成立しない
-  assert.deepEqual(hits('ですsite'), ['desu']);
+  // かな由来の塊と英字の塊をまたぐ範囲では成立しない
+  assert.deepEqual(hits('でsu'), []);
+  assert.deepEqual(hits('deす'), []);
+  assert.deepEqual(hits('しte'), []);
+  assert.deepEqual(hits('siて'), []);
   // 句読点・長音を挟んだかなの連結では、今と同じく成立する
   assert.deepEqual(hits('から、です'), ['kara', 'desu']);
   assert.deepEqual(hits('からーです'), ['kara', 'desu']);
