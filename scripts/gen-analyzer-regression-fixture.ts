@@ -11,7 +11,6 @@ import {
   JIS_FINGER_ASSIGNMENT,
   QWERTY_OPTIMIZED_FINGER_ASSIGNMENT,
   PHYSICAL_SHAPES,
-  isPresetGeometryKind,
   presetGeometryStandard,
   type FingerAssignment,
   type Geometry,
@@ -41,6 +40,8 @@ import {
   type ActionRealizationPolicy,
   type TriggerRealizationPolicy,
 } from '#input/semantics/index.ts';
+import { physicalKeysUsedByLayout } from '#input/layouts/physical-keys.ts';
+import { jisShapeIdFor } from '#input/shapes/jis-shape.ts';
 import { defaultRomajiRuleId, tableForRule } from '#input/romaji/rules.ts';
 import { nSensitivity } from '#analyzers/n-sensitivity/sensitivity.ts';
 import { sampleText, SAMPLE_TEXTS, type TextLanguage } from '#input/text/samples.ts';
@@ -205,9 +206,11 @@ function runCase(
   opts: RunOptions = {},
 ): FixtureCase {
   const text = sampleText(language, sampleId);
-  // 推奨の物理配列を持つ配列（JISかな配列）は、アプリと同じく推奨で測る。持たない配列は既定のrow-staggered
-  const recommendedShapeId = isPresetGeometryKind(layout.recommendedShapeId) ? layout.recommendedShapeId : undefined;
-  const shapeId = opts.shapeId ?? recommendedShapeId ?? 'row-staggered';
+  // JISの物理配列が要る配列（JISかな配列）は、アプリと同じく、選んだ物理配列（既定のrow-staggered）と同じ形のJISの物理配列で測る
+  const baseShapeId = opts.shapeId ?? 'row-staggered';
+  const shapeId = layout.requiresJisShape === true
+    ? jisShapeIdFor(PHYSICAL_SHAPES[baseShapeId], physicalKeysUsedByLayout(layout)) as PresetGeometryKind
+    : baseShapeId;
   // 推奨の指の割り当てを持つ配列は、アプリと同じく推奨で測る（物理配列の規格に合わせる）。
   // 持たない配列は、物理配列の規格の既定（JISならjis-default、ANSIなら列固定の既定）
   const jisShape = presetGeometryStandard(shapeId) === 'jis';

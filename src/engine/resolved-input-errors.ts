@@ -1,6 +1,5 @@
 import type { ResolvedInputError } from './resolved-input.ts';
 import type { Layout } from '#input/layouts/types.ts';
-import { isPresetGeometryKind, presetGeometryStandard } from '#input/shapes/geometry.ts';
 import type { SetupReferenceError } from '#input/setup/index.ts';
 
 /**
@@ -24,10 +23,9 @@ function describeSetupReferenceError(error: SetupReferenceError): string {
   }
 }
 
-// 配列が前提とする物理配列がJISなら、選び直す先を具体に示す。
+// JISの物理配列が要る配列なら、選び直す先を具体に示す。
 function keysMissingHint(layout: Layout): string {
-  const recommended = layout.recommendedShapeId;
-  return recommended !== undefined && isPresetGeometryKind(recommended) && presetGeometryStandard(recommended) === 'jis'
+  return layout.requiresJisShape === true
     ? 'JISの物理配列を選んでください'
     : 'キーが足りる物理配列を選んでください';
 }

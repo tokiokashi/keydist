@@ -7,7 +7,7 @@ import {
   setSetupShapeCommand,
   type KeydistAssets,
 } from '#engine/commands.ts';
-import { resolveDefaultShapeId } from '#engine/settings-items.ts';
+import { resolveShapeForLayout } from '#engine/target-resolution.ts';
 import { groupShapes } from '#input/shapes/shape-groups.ts';
 import type { Setup } from '#input/setup/index.ts';
 import { ConditionEditor, type ConditionEditorContext } from '#hosts/shared/ConditionEditor.tsx';
@@ -101,7 +101,8 @@ export function SetupPage({
     ? layoutId
     : layouts.has(DEFAULT_LAYOUT_ID) ? DEFAULT_LAYOUT_ID : [...layouts.keys()][0];
   // 物理配列を選んでいない間は、その配列で使う既定の物理配列にする
-  const defaultShapeId = createLayoutId === undefined ? undefined : resolveDefaultShapeId(overrides, createLayoutId, layouts.get(createLayoutId)?.recommendedShapeId);
+  const createLayout = createLayoutId === undefined ? undefined : layouts.get(createLayoutId);
+  const defaultShapeId = createLayout === undefined ? undefined : resolveShapeForLayout(overrides, createLayout, shapes)?.id;
   const createShapeId = shapeId !== undefined && shapes.has(shapeId)
     ? shapeId
     : defaultShapeId !== undefined && shapes.has(defaultShapeId) ? defaultShapeId : [...shapes.keys()][0];

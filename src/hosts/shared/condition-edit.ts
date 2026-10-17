@@ -336,21 +336,21 @@ export function defaultShapeWorkspaceCommand(workspaceId: string, next: string, 
 export function defaultShapeChipNotice(
   overrides: SettingsCascadeOverrides,
   layoutIds: readonly string[],
-  layoutNames?: ReadonlyMap<string, { readonly name: string; readonly recommendedShapeId?: string }>,
+  layoutNames?: ReadonlyMap<string, { readonly name: string; readonly requiresJisShape?: true }>,
 ): string | undefined {
   const unique = [...new Set(layoutIds)];
   const nameOf = (layoutId: string) => layoutNames?.get(layoutId)?.name ?? 'この配列';
   const own = unique
     .filter((layoutId) => layoutOverrideOf(overrides, layoutId, 'defaultShapeId') !== undefined)
     .map(nameOf);
-  // 推奨の物理配列を持つ配列は、配列の上書きが無くても全体・Workspaceの値より推奨が優先される。
-  const recommended = unique
+  // JISの物理配列が要る配列は、配列の上書きが無ければ、選んだ物理配列と同じ形のJISの物理配列で測る。
+  const jis = unique
     .filter((layoutId) => layoutOverrideOf(overrides, layoutId, 'defaultShapeId') === undefined
-      && layoutNames?.get(layoutId)?.recommendedShapeId !== undefined)
+      && layoutNames?.get(layoutId)?.requiresJisShape === true)
     .map(nameOf);
   const sentences = [
     ...(own.length === 0 ? [] : [`配列${own.map((name) => `「${name}」`).join('')}は物理配列を別に決めているため、ここで変えても変わりません`]),
-    ...(recommended.length === 0 ? [] : [`配列${recommended.map((name) => `「${name}」`).join('')}は専用の物理配列で測るため、ここで変えても変わりません`]),
+    ...(jis.length === 0 ? [] : [`配列${jis.map((name) => `「${name}」`).join('')}はJISの物理配列が必要なため、選んだ物理配列と同じ形のJISの物理配列で測ります`]),
   ];
   return sentences.length === 0 ? undefined : sentences.join('。');
 }

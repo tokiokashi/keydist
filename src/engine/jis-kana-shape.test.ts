@@ -50,40 +50,75 @@ function geometryIdOf(result: ResolvedInputResult): string {
   return result.ok ? result.input.geometry.id : '';
 }
 
-test('JISかな配列を対象にして何も上書きしない時は、JIS系の物理配列と既定のJIS運指で測る', () => {
+test('JISかな配列を対象にして何も上書きしない時は、既定の形のJISの物理配列と既定のJIS運指で測る', () => {
   const result = resolve(JIS_KANA_TARGET, EMPTY_SETTINGS_OVERRIDES);
   assert.equal(geometryIdOf(result), 'jis-row-staggered');
   assert.ok(result.ok);
   if (!result.ok) return;
   assert.equal(result.input.geometry.assignment.id, 'jis-default');
-  assert.equal(result.input.cascade.defaultShapeId.hasLayoutRecommendation, true);
 });
 
-test('全体の物理配列がANSIでも、JISかな配列はJIS系の物理配列で測り、全体が負けていることを持つ', () => {
-  const overrides = withShape(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'row-staggered');
-  const result = resolve(JIS_KANA_TARGET, overrides);
-  assert.equal(geometryIdOf(result), 'jis-row-staggered');
-  assert.ok(result.ok);
-  if (!result.ok) return;
-  assert.ok(result.input.cascade.defaultShapeId.recommendationWins?.shadowed.includes('global'));
-  assert.equal(result.input.cascade.defaultShapeId.diagnostics.length, 0);
+test('全体の物理配列がANSIの各形の時、JISかな配列は同じ形のJISの物理配列で測る。全体の値は負けた値として扱わない', () => {
+  const pairs = [
+    ['row-staggered', 'jis-row-staggered'],
+    ['ortholinear', 'jis-ortholinear'],
+    ['split-ortholinear', 'jis-split-ortholinear'],
+    ['column-staggered', 'jis-column-staggered'],
+  ] as const;
+  for (const [ansi, jis] of pairs) {
+    const result = resolve(JIS_KANA_TARGET, withShape(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, ansi));
+    assert.equal(geometryIdOf(result), jis, ansi);
+    assert.ok(result.ok);
+    if (!result.ok) continue;
+    // 導いたJISの物理配列に合う指の割り当てになる
+    assert.equal(result.input.geometry.assignment.id, 'jis-default', ansi);
+    const item = result.input.cascade.defaultShapeId;
+    assert.equal(item.recommendationWins, undefined, ansi);
+    assert.equal(item.hasLayoutRecommendation, false, ansi);
+    assert.equal(item.diagnostics.length, 0, ansi);
+  }
 });
 
-test('Workspaceの物理配列がANSIでも、JISかな配列は推奨のJIS系の物理配列で測る', () => {
-  const overrides = withWorkspaceConditions(
-    EMPTY_SETTINGS_OVERRIDES,
-    { defaultShapeId: 'ortholinear' },
-  );
-  const result = resolve(JIS_KANA_TARGET, overrides);
-  assert.equal(geometryIdOf(result), 'jis-row-staggered');
-  assert.ok(result.ok);
-  if (!result.ok) return;
-  assert.ok(result.input.cascade.defaultShapeId.recommendationWins?.shadowed.includes('workspace'));
+test('全体の物理配列が既にJISの時は、そのまま使う', () => {
+  for (const jis of ['jis-row-staggered', 'jis-ortholinear', 'jis-split-ortholinear', 'jis-column-staggered']) {
+    assert.equal(geometryIdOf(resolve(JIS_KANA_TARGET, withShape(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, jis))), jis);
+  }
 });
 
-test('配列のレベルで置いたJIS系の物理配列は、推奨に勝つ', () => {
-  const overrides = withShape(EMPTY_SETTINGS_OVERRIDES, { kind: 'layout', layoutId: 'jis-kana' }, 'jis-column-staggered');
+test('Workspaceの値がANSIのオーソリニアで全体の値が別の形の時は、JISのオーソリニアで測る', () => {
+  const global = withShape(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'column-staggered');
+  const overrides = withWorkspaceConditions(global, { defaultShapeId: 'ortholinear' });
+  assert.equal(geometryIdOf(resolve(JIS_KANA_TARGET, overrides)), 'jis-ortholinear');
+});
+
+test('配列のレベルで置いたJIS系の物理配列は、全体の値から導く物理配列に勝つ', () => {
+  const global = withShape(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'ortholinear');
+  const overrides = withShape(global, { kind: 'layout', layoutId: 'jis-kana' }, 'jis-column-staggered');
   assert.equal(geometryIdOf(resolve(JIS_KANA_TARGET, overrides)), 'jis-column-staggered');
+});
+
+test('配列のレベルの上書きが手持ちに無い物理配列を指す時は、全体の値から導いた物理配列で測る', () => {
+  const global = withShape(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'ortholinear');
+  const overrides = withShape(global, { kind: 'layout', layoutId: 'jis-kana' }, 'shape-deleted');
+  assert.equal(geometryIdOf(resolve(JIS_KANA_TARGET, overrides)), 'jis-ortholinear');
+});
+
+test('全体の値が自作の物理配列の時は、配列が使うキーを全部持てばそのまま使い、足りなければロウスタッガード（JIS）で測る', () => {
+  const full: PhysicalShape = { ...PHYSICAL_SHAPES['jis-ortholinear'], id: 'shape-full', name: '自作（足りる）' };
+  const short: PhysicalShape = { ...PHYSICAL_SHAPES['jis-ortholinear'], id: 'shape-short', name: '自作（足りない）', rowWidths: [12, 11, 11, 10] };
+  const catalog = { ...CATALOG, shapes: new Map([...CATALOG.shapes, [full.id, full], [short.id, short]]) };
+  // 自作の物理配列は規格を持たないので、指の割り当てはJIS用を明示する
+  const jisAssignment = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'fingerAssignmentId', 'jis-default');
+  assert.ok(jisAssignment.ok);
+  const base = jisAssignment.ok ? jisAssignment.overrides : EMPTY_SETTINGS_OVERRIDES;
+  assert.equal(
+    geometryIdOf(resolve(JIS_KANA_TARGET, withShape(base, { kind: 'global' }, full.id), [], catalog)),
+    'shape-full',
+  );
+  assert.equal(
+    geometryIdOf(resolve(JIS_KANA_TARGET, withShape(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, short.id), [], catalog)),
+    'jis-row-staggered',
+  );
 });
 
 test('配列のレベルでキーの足りない物理配列を置くと、計算せずJISの物理配列が要る理由を返す', () => {
@@ -105,7 +140,7 @@ test('Setupに、キーの足りない物理配列を置くと、計算せず理
     assert.equal(failed.error.kind, 'keys-missing');
     assert.match(describeResolvedInputError(failed.error), /JISの物理配列/);
   }
-  // Setupは自分の物理配列を持つので、全体の値や配列の推奨は読まない
+  // Setupは自分の物理配列を持つので、全体の値からJISの物理配列を導かない
   assert.equal(geometryIdOf(resolve({ kind: 'setup', setupId: jis.id }, EMPTY_SETTINGS_OVERRIDES, setups)), 'jis-ortholinear');
 });
 
@@ -118,7 +153,7 @@ test('自作の物理配列でも、配列が使うキーが足りなければ�
   if (!result.ok) assert.equal(result.error.kind, 'keys-missing');
 });
 
-test('推奨を持たない配列は、これまでどおり全体の物理配列で測る', () => {
+test('JISの物理配列が要らない配列は、これまでどおり全体の物理配列で測る', () => {
   const overrides = withShape(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'jis-ortholinear');
   const result = resolve({ kind: 'layout', layoutId: 'naginata-v18' }, overrides);
   assert.equal(geometryIdOf(result), 'jis-ortholinear');

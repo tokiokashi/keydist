@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGeometry, isPresetGeometryKind, JIS_FINGER_ASSIGNMENT, QWERTY_LEGEND } from '../shapes/geometry.ts';
+import { buildGeometry, JIS_FINGER_ASSIGNMENT, QWERTY_LEGEND } from '../shapes/geometry.ts';
 import { generateTrace } from '#trace/generate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { LAYOUTS, LAYOUTS_JA, withRomaji } from '../layouts/index.ts';
@@ -92,12 +92,10 @@ test('同じテーブルを使う英字配列はステップ数が揃う', () =>
 test('日本語の全配列が評価でき、未対応の文字を残さない', () => {
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
   for (const layout of LAYOUTS_JA) {
-    // 推奨の物理配列を持つ配列（JISかな配列）は、その物理配列で測る
-    const recommended = layout.recommendedShapeId;
-    if (recommended !== undefined) assert.ok(isPresetGeometryKind(recommended), `${layout.name}: 推奨の物理配列が組み込みに無い`);
-    const layoutGeometry = recommended === undefined || !isPresetGeometryKind(recommended)
-      ? geometry
-      : buildGeometry(recommended, JIS_FINGER_ASSIGNMENT);
+    // JISの物理配列が要る配列（JISかな配列）は、JISの物理配列で測る
+    const layoutGeometry = layout.requiresJisShape === true
+      ? buildGeometry('jis-row-staggered', JIS_FINGER_ASSIGNMENT)
+      : geometry;
     const t = generateTrace(text, layout, layoutGeometry, opts);
     assert.equal(t.errors.length, 0, `${layout.name}: ${t.errors.join(' / ')}`);
     assert.equal(t.skipped, 0, `${layout.name} で ${t.skipped} 文字が打てない`);

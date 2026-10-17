@@ -378,15 +378,15 @@ test('既定の物理配列: 配列の上書きがある行は、全体を変え
   assert.match(notices.get('defaultShapeId')!, /^配列「薙刀式」の値が優先されるため/);
 });
 
-test('defaultShapeChipNotice: 専用の物理配列を持つ配列を、全体を変えても変わらないと伝える。配列の上書きがあれば上書きの理由を先に出す', () => {
-  const layouts = new Map([
-    ['jis-kana', { name: 'JISかな配列', recommendedShapeId: 'jis-row-staggered' }],
+test('defaultShapeChipNotice: JISの物理配列が要る配列は、選んだ物理配列と同じ形のJISの物理配列で測ると伝える。配列の上書きがあれば上書きの理由を先に出す', () => {
+  const layouts = new Map<string, { name: string; requiresJisShape?: true }>([
+    ['jis-kana', { name: 'JISかな配列', requiresJisShape: true }],
     ['naginata-v18', { name: '薙刀式' }],
   ]);
   const empty = emptyAssets().setupLibrary.overrides;
   assert.equal(
     defaultShapeChipNotice(empty, ['jis-kana', 'naginata-v18'], layouts),
-    '配列「JISかな配列」は専用の物理配列で測るため、ここで変えても変わりません',
+    '配列「JISかな配列」はJISの物理配列が必要なため、選んだ物理配列と同じ形のJISの物理配列で測ります',
   );
   assert.equal(defaultShapeChipNotice(empty, ['naginata-v18'], layouts), undefined);
   const own = applyCommand(
@@ -396,7 +396,7 @@ test('defaultShapeChipNotice: 専用の物理配列を持つ配列を、全体�
   );
   assert.equal(
     defaultShapeChipNotice(own.assets.setupLibrary.overrides, ['jis-kana', 'naginata-v18'], layouts),
-    '配列「薙刀式」は物理配列を別に決めているため、ここで変えても変わりません。配列「JISかな配列」は専用の物理配列で測るため、ここで変えても変わりません',
+    '配列「薙刀式」は物理配列を別に決めているため、ここで変えても変わりません。配列「JISかな配列」はJISの物理配列が必要なため、選んだ物理配列と同じ形のJISの物理配列で測ります',
   );
 });
 

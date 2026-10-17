@@ -260,11 +260,11 @@ export interface Layout {
    */
   recommendedFingerAssignmentIds?: { readonly ansi: string; readonly jis: string };
   /**
-   * この配列が前提とする物理配列のid。配列を対象にした時の物理配列として、カスケードの配列の推奨で読む
-   * （全体・Workspaceの値より優先し、配列・Setupの上書きには負ける）。配列が打鍵に使うキーを
-   * 一般のANSIの物理配列が持たない配列（JISかな配列）だけが持つ。
+   * JISの規格の物理配列を前提とする配列（配列が打鍵に使うキーを、ANSIの物理配列が持たない）。
+   * 配列を対象にした時の物理配列は、Workspace・全体の値などで選ばれた物理配列と同じ形のJISの物理配列になる
+   * （`input/shapes/jis-shape.ts`）。配列・Setupのレベルで明示した物理配列は、そのまま使う。
    */
-  recommendedShapeId?: string;
+  requiresJisShape?: true;
   /** withCombos由来のコンボ定義。物理キーまで解決済みで、配列図等の表示にも使う。 */
   resolvedComboDefinitions?: readonly ResolvedComboDefinition[];
   /** 層・コンボの表示順と種別。 */
