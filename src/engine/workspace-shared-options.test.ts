@@ -22,7 +22,6 @@ import {
   duplicateWorkspacePane,
   findWorkspace,
   followBinding,
-  initialOptionSetId,
   initialWorkspaceLibrary,
   OWN_OPTIONS,
   resolvePaneOptions,
@@ -44,7 +43,7 @@ function pane(id: string, analyzerId: string, options: unknown = undefined, own 
     id,
     analyzerId,
     options,
-    optionsBinding: own ? OWN_OPTIONS : sharedOptions(initialOptionSetId(analyzerId)),
+    optionsBinding: own ? OWN_OPTIONS : sharedOptions(`${analyzerId}-1`),
     binding: followBinding(G),
   };
 }
@@ -97,6 +96,25 @@ test('defaultOptionsBinding: Analyzerの組があればそれに、無ければ�
   const workspace = findWorkspace(sample(), 'w')!;
   assert.deepEqual(defaultOptionsBinding(workspace, FLOW), sharedOptions('bigram-flow-1'));
   assert.deepEqual(defaultOptionsBinding(workspace, 'comparison'), sharedOptions('comparison-1'));
+});
+
+test('別のAnalyzerの組が同じidを持っていても、ペインを足すと重ならないidで組が作られる', () => {
+  let library = createWorkspace(initialWorkspaceLibrary(), () => 'w').library;
+  library = library.map((workspace) => ({
+    ...workspace,
+    optionSets: [{ id: 'bigram-flow-1', analyzerId: FINGER, options: undefined }],
+  }));
+  const workspace = findWorkspace(library, 'w')!;
+  const binding = defaultOptionsBinding(workspace, FLOW);
+  assert.deepEqual(binding, sharedOptions('bigram-flow-2'));
+  const next = addWorkspacePane(library, 'w', { ...pane('a', FLOW, { source: 'within-hand' }), optionsBinding: binding }, SIZE);
+  const after = findWorkspace(next, 'w')!;
+  assert.deepEqual(after.panes.map((p) => p.id), ['a']);
+  assert.deepEqual(after.optionSets, [
+    { id: 'bigram-flow-1', analyzerId: FINGER, options: undefined },
+    { id: 'bigram-flow-2', analyzerId: FLOW, options: { source: 'within-hand' } },
+  ]);
+  assert.deepEqual(optionsOf(next, 'a'), { source: 'within-hand' });
 });
 
 test('共有に従う片方の設定を変えると、もう片方も変わる。このペインだけのペインと、違うAnalyzerは変わらない', () => {
