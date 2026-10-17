@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, type CSSProperties } from 'react';
 import { comparisonDefinition, type ComparisonExtracted, type ComparisonFailedRow, type ComparisonRow } from './extract.ts';
 import {
   COMPARISON_COLUMN_IDS,
@@ -12,6 +12,13 @@ import { bindOption, CheckboxGroupOptionField, CheckboxOptionField, OptionField 
 import { sortOrderByColumn } from '#ui/primitives/column-sort.ts';
 import { SortColumnHeader } from '#ui/primitives/sort-column-header.tsx';
 import { COMPARISON_PANE_META } from './pane-meta.ts';
+import {
+  COMPARISON_BAR_SCALE,
+  COMPARISON_RELATIVE_BAR_NOTE,
+  comparisonBarFraction,
+  comparisonBarRange,
+  type ComparisonBarRange,
+} from './data-bar.ts';
 import type { AnalyzerSettingsProps, AnalyzerTargetItemProps, SetAnalyzerPaneParts, SetBodyProps } from '../pane-parts.tsx';
 import './comparison-view.css';
 
@@ -24,7 +31,9 @@ import './comparison-view.css';
  * ない（`options.ts`のコメントの通り、baselineの選択自体が`affects: 'view'`）。
  *
  * **優劣を示す色・強調・順位の表示はしない**（AGENTS.md「優劣の判定・順位付け・合成スコアを
- * 作らない」）。行の並びの既定は呼び出し側（ホスト）が渡す`order`の順のまま。列の値で並べるのは、
+ * 作らない」）。数値セルの背景のバー（`data-bar.ts`）は値の大きさだけを表す1色の中立色で、
+ * 指標の好ましい方向によらず「大きいほど長い」で揃える。バーの長さの基準は列ごとに独立で、
+ * 並び替えや基準の選択では変わらない。行の並びの既定は呼び出し側（ホスト）が渡す`order`の順のまま。列の値で並べるのは、
  * 利用者が見出しを押して選ぶ表示の操作（解析設定`sort`）であり、ツールが順位を決めるものではない。
  * 並べ替えるのはこの表の表示だけで、`order`（N感度と共有している対象の集合の順）は変えない。
  * 最小の行を太字にするなどの強調もしない。
@@ -95,6 +104,15 @@ export function ComparisonBody({
       return row?.kind === 'ok' ? row.values[column] : undefined;
     }, sort);
   }, [order, extracted.rows, sort]);
+  // バーの長さの基準は、列ごとに、値が数になっている行だけから取る（並び替えや基準の選択では変えない）。
+  const barRanges = useMemo(() => {
+    const ranges = new Map<ComparisonColumnId, ComparisonBarRange | undefined>();
+    for (const column of visibleColumns) {
+      const values = extracted.rows.flatMap((row) => (row.kind === 'ok' ? [row.values[column]] : []));
+      ranges.set(column, comparisonBarRange(COMPARISON_BAR_SCALE[column], values));
+    }
+    return ranges;
+  }, [extracted.rows, visibleColumns]);
   // 基準に選んだ対象が集合から外れていたら（削除・選択解除）「基準なし」として扱う。
   // 存在しないidを指したままの表示にしない。
   const baselineRow = baselineTargetKey === undefined ? undefined : rowFor(extracted.rows, baselineTargetKey);
@@ -157,8 +175,15 @@ export function ComparisonBody({
                     const showRatio = showBaselineRatio
                       && effectiveBaseline !== undefined
                       && effectiveBaseline.targetKey !== targetKey;
+                    const fraction = comparisonBarFraction(value, barRanges.get(column));
                     return (
-                      <td key={column} className="comparison-value-cell">
+                      <td
+                        key={column}
+                        className="comparison-value-cell"
+                        data-bar={fraction === undefined ? undefined : COMPARISON_BAR_SCALE[column]}
+                        style={fraction === undefined ? undefined : ({ '--bar-length': `${(fraction * 100).toFixed(1)}%` } as CSSProperties)}
+                        title={fraction !== undefined && COMPARISON_BAR_SCALE[column] === 'relative' ? COMPARISON_RELATIVE_BAR_NOTE : undefined}
+                      >
                         <span className="comparison-value">{formatValue(column, value)}</span>
                         {showRatio ? (
                           <span className="comparison-ratio">

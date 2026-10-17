@@ -61,17 +61,17 @@ export const SAMPLE_BIGRAM_FLOW_OPTIONS = { source: 'within-hand' } as const;
  * 画面の幅1440・1920・2560のどれでも同じ値で実測して決めた。
  * - 上の段の9升: 比較表は7行の表全体、N感度は図・凡例・横軸のラベル・畳んだ表の見出しまでが収まる。
  * - 中の段の14升: Bigram FlowのKeyboard FlowとRelative vectorsが凡例まで収まる。
- * - 下の段の9升: 指ごとの距離の見出し・縦棒・指の名前・左手と右手の見出しまでが、ペインの中でスクロールせずに収まる。
+ * - 下の段の10升: 指ごとの距離の見出し・縦棒・指の名前・左手と右手の見出し・選んだ棒の文を出す欄までが、ペインの中でスクロールせずに収まる。
  *   ペインを足した時の既定の高さ（11升）より低い。
  * - 上の段と中の段を合わせて23升で、1920x930のサイドバー固定・非固定のどちらでも、この2段は1画面に入る。
- *   下の段まで含めるとページは32升になり、下の段を見るにはページを縦にスクロールする。
+ *   下の段まで含めるとページは33升になり、下の段を見るにはページを縦にスクロールする。
  *   930pxは、オーナーの1080のモニタで普通の窓に開いた時の表示領域（約930px）。
  *   全画面表示の1080pxで測ると、普通の窓では中の段が切れる。
  */
 export const SAMPLE_COMPARISON_SIZE: GridSize = { w: 18, h: 9 };
 export const SAMPLE_N_SENSITIVITY_SIZE: GridSize = { w: 6, h: 9 };
 export const SAMPLE_LOWER_SIZE: GridSize = { w: 6, h: 14 };
-export const SAMPLE_FINGER_DISTANCE_SIZE: GridSize = { w: 6, h: 9 };
+export const SAMPLE_FINGER_DISTANCE_SIZE: GridSize = { w: 6, h: 10 };
 
 /**
  * サンプルの並びが使う列の数。上の段（18 + 6）と中・下の段（6 × 4）がそろって右端になる幅。
@@ -100,21 +100,21 @@ export const LAYOUT_DETAIL_LAYOUT_ID = 'tsuki-2-263';
  * 高さは升目（1升は行28pxと間8pxで36px）単位。各ペインの中身がペインの中でスクロールせずに収まる最小の高さを、
  * 画面の幅2560で、その幅・高さのペインを縦に積んで実測して決めた（ペインの幅は画面の幅に依らないので、他の画面の幅でも同じ）。
  * 実測した最小の幅と高さ（列 × 升）:
- * - 打鍵再生: 8列で20升（6列では収まらない）。
+ * - 打鍵再生: 8列で20升（6列では収まらない）。右隣の段の高さ（9 + 12）に揃えて21升。
  * - ヒートマップ（レイヤー）: 16列で9升（12列以下は図が縦に並ぶので15升）。
- * - ヒートマップ: 図が小さく、8列で収まる。高さは隣の指ごとの距離に揃えて11升。
- * - 指ごとの距離: 移動距離は8列で11升、標準偏差は8列で12升（見出し・縦棒・指の名前・左手と右手の見出しまで）。
- * - Bigram Flow: 16列で10升（Keyboard FlowとRelative vectorsが凡例まで）。段の高さを揃えて12升。
+ * - ヒートマップ: 図が小さく、8列で収まる。高さは隣の指ごとの距離に揃えて12升。
+ * - 指ごとの距離: 移動距離は8列で12升、標準偏差は8列で13升（見出し・縦棒・指の名前・左手と右手の見出し・選んだ棒の文を出す欄まで）。
+ * - Bigram Flow: 16列で10升（Keyboard FlowとRelative vectorsが凡例まで）。段の高さを揃えて13升。
  * - 比較表: 18列で9升。N感度: 6列の並びで9升（図・凡例・横軸のラベル・畳んだ表の見出しまで）。
  * - 配列×指のマトリックス: 12列で10升（押下数・移動距離は12列から、指間距離の平均・標準偏差は10列から横にスクロールせず収まる）。
- * 縦は収めない（詳細の段で32升、全体で61升）ので、下の段を見るにはページを縦にスクロールする。
+ * 縦は収めない（詳細の段で34升、全体で63升）ので、下の段を見るにはページを縦にスクロールする。
  */
-export const LAYOUT_DETAIL_PLAYBACK_SIZE: GridSize = { w: 8, h: 20 };
+export const LAYOUT_DETAIL_PLAYBACK_SIZE: GridSize = { w: 8, h: 21 };
 export const LAYOUT_DETAIL_HEATMAP_LAYERS_SIZE: GridSize = { w: 16, h: 9 };
-export const LAYOUT_DETAIL_HEATMAP_SIZE: GridSize = { w: 8, h: 11 };
-export const LAYOUT_DETAIL_FINGER_DISTANCE_SIZE: GridSize = { w: 8, h: 11 };
-export const LAYOUT_DETAIL_FINGER_DISTANCE_STD_DEV_SIZE: GridSize = { w: 8, h: 12 };
-export const LAYOUT_DETAIL_BIGRAM_FLOW_SIZE: GridSize = { w: 16, h: 12 };
+export const LAYOUT_DETAIL_HEATMAP_SIZE: GridSize = { w: 8, h: 12 };
+export const LAYOUT_DETAIL_FINGER_DISTANCE_SIZE: GridSize = { w: 8, h: 12 };
+export const LAYOUT_DETAIL_FINGER_DISTANCE_STD_DEV_SIZE: GridSize = { w: 8, h: 13 };
+export const LAYOUT_DETAIL_BIGRAM_FLOW_SIZE: GridSize = { w: 16, h: 13 };
 export const LAYOUT_DETAIL_COMPARISON_SIZE: GridSize = { w: 18, h: 9 };
 export const LAYOUT_DETAIL_N_SENSITIVITY_SIZE: GridSize = { w: 6, h: 9 };
 export const LAYOUT_DETAIL_FINGER_MATRIX_SIZE: GridSize = { w: 12, h: 10 };

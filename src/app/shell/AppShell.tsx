@@ -1,15 +1,15 @@
 import { Link } from '@tanstack/react-router';
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { ContextBarLeadingSlot } from '#hosts/shared/ContextBar.tsx';
-import { PresetFileIoContext, type PresetFileIo } from '#hosts/shared/preset-file-io.ts';
+import { PresetFileIoContext } from '#hosts/shared/preset-file-io.ts';
 import { SetupLinkContext, type SetupLinkProps } from '#hosts/shared/setup-link.tsx';
 import { PersonalSpeedLinkContext, type PersonalSpeedLinkProps } from '#ui/primitives/personal-speed-link.tsx';
-import { downloadJson } from '#platform/browser-download.ts';
-import { readTextFile } from '#platform/browser-file.ts';
 import { AddedToWorkspaceNotice } from '../workspace/AddedToWorkspaceNotice.tsx';
 import { DeletedWorkspaceNotice } from '../workspace/DeletedWorkspaceNotice.tsx';
+import { ImportedWorkspacesNotice } from '../workspace/ImportedWorkspacesNotice.tsx';
 import { AssetLoadNotices } from './AssetLoadNotices.tsx';
 import { HistoryConflictNotice } from './HistoryConflictNotice.tsx';
+import { PRESET_FILE_IO } from './preset-file-io.ts';
 import { Sidebar } from './Sidebar.tsx';
 import {
   getServerSidebarPinnedSnapshot,
@@ -30,9 +30,6 @@ import { MOBILE_QUERY } from '#ui/theme/breakpoints.ts';
  * 見た目の切り替えは `<html data-sidebar>`（固定）とこのcomponentの `data-sidebar-open`（重ねて
  * 出しているか）でCSSが行う。固定の状態はプリレンダーの前から効くようhead scriptが付ける。
  */
-
-/** プリセットの書き出し・読み込みのブラウザ実装。条件のモーダルがどの画面でも使えるよう、シェルで渡す。 */
-const PRESET_FILE_IO: PresetFileIo = { saveJson: downloadJson, readText: readTextFile };
 
 /** 個人速度の画面へのリンク。条件のモーダルと再生のペインが、ルーターを知らずに同じリンクを出せるよう、シェルで渡す。 */
 function PersonalSpeedRouterLink({ className, children }: PersonalSpeedLinkProps) {
@@ -223,6 +220,7 @@ export function AppShell({ children, hasContextBar }: AppShellProps) {
       </ContextBarLeadingSlot.Provider>
       <div className="shell-notices">
         <DeletedWorkspaceNotice />
+        <ImportedWorkspacesNotice />
         <AddedToWorkspaceNotice />
         <AssetLoadNotices />
         <HistoryConflictNotice />

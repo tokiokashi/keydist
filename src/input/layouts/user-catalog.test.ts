@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { UserRomajiRule } from '../romaji/rules.ts';
-import { buildUserCatalog } from './user-catalog.ts';
+import { buildUserCatalog, userInputLayouts } from './user-catalog.ts';
 import type { UserLayout } from './user-layouts.ts';
 
 const layout = (id: string, overrides: Partial<UserLayout> = {}): UserLayout => ({
@@ -120,4 +120,23 @@ test('組み立てで例外が出る配列は、例外の文を出さず固定�
     catalog.unusableLayouts.get(0),
     '配列の定義から打鍵を組み立てられないため、計算には使えません。定義を見直してください',
   );
+});
+
+test('Tester用の配列は、自作のローマ字規則の表で変換する', () => {
+  const layouts = userInputLayouts([layout('user-a', { romaji: 'romaji-a' })], [rule('romaji-a')]);
+  assert.deepEqual(layouts.map((l) => l.id), ['user-a']);
+  assert.equal(layouts[0]!.romajiTable?.get('し'), 'shi');
+  const builtin = userInputLayouts([layout('user-b', { romaji: 'kunrei' })], []);
+  assert.equal(builtin[0]!.romajiTable?.get('し'), 'si');
+});
+
+test('Tester用の配列は、直接入力・規則なし・規則が見つからない配列に表を持たせず、使えない配列を除く', () => {
+  const layouts = userInputLayouts([
+    layout('user-direct', { direct: true }),
+    layout('user-none', { romaji: undefined }),
+    layout('user-missing', { romaji: 'romaji-none' }),
+    layout('qwerty'),
+  ], []);
+  assert.deepEqual(layouts.map((l) => l.id), ['user-direct', 'user-none', 'user-missing']);
+  assert.ok(layouts.every((l) => l.romajiTable === undefined));
 });

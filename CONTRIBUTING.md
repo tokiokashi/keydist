@@ -51,7 +51,7 @@
 | `layouts` | `src/input/layouts/` |
 | `romaji` | `src/input/romaji/` |
 | `ui` | `src/ui/` `src/app/` `src/routes/` |
-| `deps` | 依存関係の更新 |
+| `deps` | 依存関係の更新（`deps-dev` は開発用の依存の更新。Dependabotが付ける） |
 
 ### body / footer
 
@@ -116,6 +116,8 @@ CIもPRの各コミットに同じスクリプトを掛けるため、フック�
 
 - `main` に直接pushしない。`<type>/<短い説明>` のブランチを切る（例: `feat/kana-layout-form`）
 - push前に `npm run typecheck`・`npm test`・`npm run build` を通す。ブラウザe2eは手元で全件を回さず、CIの結果を読む（「ブラウザe2e」）
+- 開発に使う npm は `package.json` の `packageManager` に書いた版（npm 11）。Node 22 付属の npm 10 は `package-lock.json` のフラグの行（`dev`・`devOptional`）の書き方が違い、更新のたびに行が行き来する。
+  npm 10 で `npm install`・`npm ci` を打つと `devEngines` の検査で失敗する。`npm install --global npm@11` で入れ替える。CIの `npm ci` を回すジョブも同じ版に入れ替えてから回す
 - `main` へのマージは、リリースPRを除いて公開しない（「公開」）。CI（test / typecheck / build / browser-e2e）は通る状態を保つ
 
 ### 作業単位の切り方
@@ -259,6 +261,29 @@ CIもPRの各コミットに同じスクリプトを掛けるため、フック�
 
 同じファイルを触るPRでは、そのファイルにかかる小さいissueをついでに直してよい。PR本文に `Closes #XX` を書く。
 PRの目的と関係の無い変更が増えてレビューしにくくなるなら、別のPRに分ける。
+
+## 依存の自動更新
+
+`.github/dependabot.yml` のDependabotが、毎週月曜の朝（日本時間）に依存の更新PRを作る。CIは通常のPRと同じように回る。
+
+- 更新は次のグループごとに1つのPRになる: `tanstack`（`@tanstack/*`）・`vite`（`vite`・`@vitejs/*`）・`react`（`react`・`react-*`・`@types/react*`）・`playwright`・`nitro`・`dev`（その他の開発用の依存）・`app`（その他の実行時の依存）。
+  依存は設定の上から最初に当たったグループに入る
+- `nitro` はbeta版なので、他の更新に混ぜずに単独のPRにする。破壊的な変更が入りやすいので、他のグループより厳しく見る
+- セキュリティ更新は、`security` グループの1つのPRにまとまる
+- 更新PRのコミットの件名は `build(deps): …` / `build(deps-dev): …` になる。`commit-messages` の検査（72文字以内）を通る。
+  Dependabotが件名を72文字以内に切り詰める。通らない件名のPRが来たら、`dependabot.yml` のグループ名を短くする
+- 更新PRも、通常のPRと同じ条件（独立したレビューの承認・CIの緑）でマージする
+
+### patchの当たらない更新
+
+`patches/` のpatchは、`package.json` に無い推移的依存（今は `@tanstack/start-plugin-core`）に当たっている。この依存は設定の対象に直接入れず、
+直接依存（`@tanstack/react-start`）の更新に任せる。`postinstall` の `patch-package --error-on-fail` の挙動は次の通り。
+
+- patchのファイル名の版と入った版が違っても、patchが当たれば警告だけで通る
+- patchが当たらなければinstallが失敗する。更新PRのCIが落ちて気づく
+
+patchが当たらなくなった更新PRは、そのままマージしない。同じPRのブランチに、新しい版へ作り直したpatchを足してからマージする（古いpatchは消す）。
+上流で直ってpatchが不要になった時も同じで、patchを消す。
 
 ## 公開（GitHub Pages）
 

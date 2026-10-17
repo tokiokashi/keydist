@@ -5,7 +5,7 @@ import { waitForHydration } from './hydration-helper.ts';
  * 指ごとの距離のE2E。値の正しさは抽出のunit testで固定しているので、
  * ここでは描画（既定の縦棒グラフ・見る量の切り替え・幅390px）だけを見る。
  */
-test('既定では移動距離の縦棒グラフが、左手の小指から右手の小指の順に出る', async ({ page }) => {
+test('既定では移動距離の縦棒グラフが、左小指から右手の小指の順に出る', async ({ page }) => {
   await page.goto('/analyzer/finger-distance');
   await expect(page.getByRole('heading', { name: '指ごとの距離', exact: true, level: 1 })).toBeVisible();
 
@@ -63,4 +63,53 @@ test('共有リンクに載らない対象（名前が長すぎるSetup）は、
   await expect(notice).toContainText('リンクに載りませんでした');
   const url = await page.evaluate(() => navigator.clipboard.readText());
   expect(new URL(url).searchParams.has('target')).toBe(false);
+});
+
+test.describe('タッチ端末', () => {
+  test.use({ viewport: { width: 390, height: 800 }, hasTouch: true });
+
+  test('棒をタップすると値と割合が図の下に出て、もう1度タップすると消える', async ({ page }) => {
+    await page.goto('/analyzer/finger-distance');
+    const feature = page.locator('[data-react-feature="finger-distance"]');
+    const bar = feature.locator('[data-chart-bar="RI"]');
+    await expect(bar).toBeVisible({ timeout: 10_000 });
+    const readout = feature.locator('[data-chart-readout]');
+    await expect(readout).toHaveText('');
+
+    await bar.tap();
+    await expect(readout).toHaveText(/右人差し指: .+ u（全体の\d+\.\d%）/);
+    const svgBox = (await feature.locator('svg').boundingBox())!;
+    const readoutBox = (await readout.boundingBox())!;
+    expect(readoutBox.y).toBeGreaterThanOrEqual(svgBox.y + svgBox.height);
+
+    await feature.locator('[data-chart-bar="LP"]').tap();
+    await expect(readout).toHaveText(/左小指/);
+
+    await feature.locator('[data-chart-bar="LP"]').tap();
+    await expect(readout).toHaveText('');
+  });
+
+  test('押下数の図でも、隣り合う指の組の図でも、棒をタップして読める', async ({ page }) => {
+    await page.goto('/analyzer/finger-distance?metric=presses');
+    const feature = page.locator('[data-react-feature="finger-distance"]');
+    await feature.locator('[data-chart-bar="RM"]').tap();
+    await expect(feature.locator('[data-chart-readout]')).toHaveText(/右中指: \d+（全体の/);
+
+    await page.goto('/analyzer/finger-distance?metric=stdDev');
+    await expect(feature.locator('[data-chart-bar]')).toHaveCount(6, { timeout: 10_000 });
+    await feature.locator('[data-chart-bar]').first().tap();
+    await expect(feature.locator('[data-chart-readout]')).toHaveText(/標準偏差: .+ u/);
+  });
+
+  test('キーボードで棒を選べて、Escapeで外れる', async ({ page }) => {
+    await page.goto('/analyzer/finger-distance');
+    const feature = page.locator('[data-react-feature="finger-distance"]');
+    const bar = feature.locator('[data-chart-bar="LM"]');
+    await expect(bar).toBeVisible({ timeout: 10_000 });
+    await bar.focus();
+    await page.keyboard.press('Enter');
+    await expect(feature.locator('[data-chart-readout]')).toHaveText(/左中指/);
+    await page.keyboard.press('Escape');
+    await expect(feature.locator('[data-chart-readout]')).toHaveText('');
+  });
 });

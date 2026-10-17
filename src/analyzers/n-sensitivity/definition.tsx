@@ -2,9 +2,20 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { flushSync } from 'react-dom';
 import { N_SENSITIVITY_RANGE, nSensitivityDefinition, type NSensitivityExtracted, type NSensitivitySeries, type NSensitivitySeriesFailed } from './extract.ts';
 import { DEFAULT_N_SENSITIVITY_OPTIONS, nSensitivityOptions, type NSensitivityOptions } from './options.ts';
-import { bindOption, RadioOptionField } from '#ui/primitives/option-fields.tsx';
+import { bindOption, RadioOptionField, SelectOptionField } from '#ui/primitives/option-fields.tsx';
 import { N_SENSITIVITY_PANE_META } from './pane-meta.ts';
 import { computeYRange, formatYTicks, yValuesRange } from './y-range.ts';
+import {
+  axisKindOf,
+  axisTitle,
+  axisValue,
+  DEFAULT_N_SENSITIVITY_METRIC,
+  formatMetricValue,
+  N_SENSITIVITY_METRIC_IDS,
+  N_SENSITIVITY_METRICS,
+  type NSensitivityAxisKind,
+  type NSensitivityMetricId,
+} from './metric-catalog.ts';
 import { useSharedScale } from '../shared-scale.tsx';
 import {
   estimateTextWidth,
@@ -89,14 +100,11 @@ function failureLabel(kind: NSensitivitySeriesFailed['failureKind']): string {
   }
 }
 
-/** relative: N=0を100%とした相対値。absolute: 実測値[u]をそのまま使う。 */
-function yValueOf(scale: NSensitivityOptions['scale'], base: number, totalUnits: number): number {
-  if (scale === 'absolute') return totalUnits;
-  return base === 0 ? 0 : (totalUnits / base) * 100;
-}
-
-function formatY(scale: NSensitivityOptions['scale'], value: number): string {
-  return scale === 'relative' ? `${value.toFixed(0)}%` : `${value.toFixed(0)} u`;
+/** 点の吹き出しに出す、縦軸の値の文字。 */
+function formatY(kind: NSensitivityAxisKind, metric: NSensitivityMetricId, value: number): string {
+  if (kind === 'ratio') return `${value.toFixed(0)}%`;
+  if (kind === 'delta') return `${value > 0 ? '+' : ''}${value.toFixed(1)} pt`;
+  return formatMetricValue(metric, value, N_SENSITIVITY_METRICS[metric].tickDigits);
 }
 
 /** 点の半径。形が変わっても外接がこの前後に収まる（`target-marks.ts`）。線との間隔は凡例の配置が見る。 */
@@ -133,7 +141,10 @@ interface PlottedSeries {
   readonly fullName: string;
   readonly color: string;
   readonly mark: TargetMark;
-  readonly points: readonly { readonly windowSize: number; readonly y: number; readonly totalUnits: number }[];
+  /** 縦軸に描く値を決められた点だけ。N=0の値が0で比を取れない系列は空になる。 */
+  readonly points: readonly { readonly windowSize: number; readonly y: number }[];
+  /** Nごとの実測値（選んだ指標）。表と吹き出しに出す。 */
+  readonly actuals: readonly { readonly windowSize: number; readonly value: number }[];
 }
 
 /**
@@ -201,12 +212,14 @@ function useLegendMeasure(ref: React.RefObject<HTMLElement | null>): MeasureText
 /** 折れ線チャート本体。 */
 function NSensitivityChart({
   series,
-  scale,
+  metric,
+  kind,
   yRangeMode,
   onMeasured,
 }: {
   series: readonly PlottedSeries[];
-  scale: NSensitivityOptions['scale'];
+  metric: NSensitivityMetricId;
+  kind: NSensitivityAxisKind;
   yRangeMode: NSensitivityOptions['yRange'];
   /** 領域が初めて大きさを持って測れた時に呼ぶ（表の開閉の判定を、図の高さの上限が決まった後に行うため）。 */
   onMeasured: (ready: boolean) => void;
@@ -231,15 +244,16 @@ function NSensitivityChart({
   const xMax = N_SENSITIVITY_RANGE[N_SENSITIVITY_RANGE.length - 1]!;
   const xScale = (n: number) => MARGIN.left + ((n - xMin) / (xMax - xMin)) * plotWidth;
 
-  // 縦軸の範囲は決め方を`y-range.ts`に閉じている（既定は0から）。相対は上限100%固定
+  // 縦軸の範囲は決め方を`y-range.ts`に閉じている（既定は0から）。比は上限100%固定
   // （N=0が100%で、Nを増やしても距離は増えないため）。実測は系列の最大値に合わせる。
-  // 並んだ同じ見せ方・同じ決め方のペイン全部の値を含む範囲で決める（配るものが無ければ自分の値だけ）
+  // 並んだ同じ指標・同じ見せ方・同じ決め方のペイン全部の値を含む範囲で決める（配るものが無ければ自分の値だけ）。
+  // 指標が違えば単位も値の大きさも違うので、指標ごとに分ける
   const ys = series.flatMap((s) => s.points.map((p) => p.y));
   const sharedRange = useSharedScale(
-    `n-sensitivity:${scale}:${yRangeMode}`,
+    `n-sensitivity:${metric}:${kind}:${yRangeMode}`,
     yValuesRange(ys),
   );
-  const yRange = computeYRange(yRangeMode, scale === 'relative', sharedRange === undefined ? [] : [sharedRange.min, sharedRange.max]);
+  const yRange = computeYRange(yRangeMode, kind, sharedRange === undefined ? [] : [sharedRange.min, sharedRange.max]);
   const ySpan = yRange.hi - yRange.lo || 1;
   const yTickValues = yRange.ticks;
 
@@ -288,7 +302,7 @@ function NSensitivityChart({
       minHeight: floor.legend?.corner === 'below' ? floor.svgHeight : undefined,
     };
   }
-  const yTickLabels = formatYTicks(scale === 'relative', yTickValues);
+  const yTickLabels = formatYTicks(kind, yTickValues, metric);
 
   return (
     <>
@@ -297,7 +311,7 @@ function NSensitivityChart({
       className="n-sensitivity-svg"
       viewBox={`0 0 ${CHART_WIDTH} ${svgHeight}`}
       role="img"
-      aria-label={`N感度チャート: ${series.map((s) => s.label).join('、')}`}
+      aria-label={`N感度チャート（${axisTitle(metric, kind)}）: ${series.map((s) => s.label).join('、')}`}
     >
       {yTickValues.map((value, i) => (
         <g key={value}>
@@ -324,6 +338,9 @@ function NSensitivityChart({
           {n}
         </text>
       ))}
+      <text className="n-sensitivity-y-title" x={MARGIN.left} y={MARGIN.top - 5} textAnchor="start" data-n-sensitivity-y-title="">
+        {axisTitle(metric, kind)}
+      </text>
       <text
         className="n-sensitivity-axis-title"
         x={MARGIN.left + plotWidth / 2}
@@ -355,7 +372,7 @@ function NSensitivityChart({
                 x={xScale(p.windowSize)}
                 y={yScale(p.y)}
               >
-                <title>{`${s.label} N=${p.windowSize}: ${formatY(scale, p.y)}（実測 ${p.totalUnits.toFixed(1)} u）`}</title>
+                <title>{`${s.label} N=${p.windowSize}: ${formatY(kind, metric, p.y)}（実測 ${formatMetricValue(metric, s.actuals.find((a) => a.windowSize === p.windowSize)!.value)}）`}</title>
               </SeriesMark>
             ))}
           </g>
@@ -435,7 +452,10 @@ function NSensitivityChart({
  * 図は上限（幅）で止まっているので、余りは図が使わない分になる）と、開いた時に表が増やす高さを比べる。
  * 開いた後の余りは見ない（開くと余りが減るので、見ると畳む側に倒れて行き来する）。
  */
-function NSensitivityTable({ plotted, chartReady }: { plotted: readonly PlottedSeries[]; chartReady: boolean }) {
+function NSensitivityTable({ plotted, metric, chartReady }: { plotted: readonly PlottedSeries[]; metric: NSensitivityMetricId; chartReady: boolean }) {
+  const def = N_SENSITIVITY_METRICS[metric];
+  // 既定の指標（距離）は単位だけ。ほかの指標は、表だけを見ても何の値か分かるよう指標名を添える
+  const caption = metric === DEFAULT_N_SENSITIVITY_METRIC ? `各Nの実測値 [${def.unit}]` : `各Nの実測値（${def.label} [${def.unit}]）`;
   const ref = useRef<HTMLDetailsElement | null>(null);
   const decided = useRef(false);
   useLayoutEffect(() => {
@@ -456,9 +476,9 @@ function NSensitivityTable({ plotted, chartReady }: { plotted: readonly PlottedS
   }, [chartReady]);
   return (
     <details className="n-sensitivity-table-details" ref={ref} open>
-      <summary>各Nの実測値 [u]</summary>
+      <summary>{caption}</summary>
       <div className="n-sensitivity-table-scroll">
-        <table className="n-sensitivity-table" aria-label="各Nの実測値 [u]">
+        <table className="n-sensitivity-table" aria-label={caption}>
           <thead>
             <tr>
               <th scope="col">対象</th>
@@ -469,8 +489,8 @@ function NSensitivityTable({ plotted, chartReady }: { plotted: readonly PlottedS
             {plotted.map((s) => (
               <tr key={s.targetKey}>
                 <th scope="row" title={s.fullName}>{s.label}</th>
-                {s.points.map((p) => (
-                  <td key={p.windowSize}>{p.totalUnits.toFixed(1)} u</td>
+                {s.actuals.map((a) => (
+                  <td key={a.windowSize}>{formatMetricValue(metric, a.value)}</td>
                 ))}
               </tr>
             ))}
@@ -497,24 +517,28 @@ export function NSensitivityBody({
     .map((targetKey) => ({ targetKey, entry: seriesFor(extracted.series, targetKey), context: rowContext.get(targetKey) }))
     .filter((row): row is { targetKey: string; entry: NSensitivitySeries; context: NSensitivityRowContext | undefined } => row.entry !== undefined);
 
+  const metric = options.metric;
+  const kind = axisKindOf(metric, options.scale);
   const plotted: PlottedSeries[] = okRows
     .filter((row) => row.entry.kind === 'ok')
     .map((row) => {
       const okEntry = row.entry as Extract<NSensitivitySeries, { kind: 'ok' }>;
-      const base = okEntry.points[0]?.totalUnits ?? 0;
+      const base = okEntry.points[0]?.values[metric] ?? 0;
       return {
         targetKey: row.targetKey,
         label: row.context?.label ?? '—',
         fullName: row.context?.fullName ?? '',
         color: row.context?.color ?? '#666',
         mark: row.context?.mark ?? targetMark(0),
-        points: okEntry.points.map((point) => ({
-          windowSize: point.windowSize,
-          y: yValueOf(options.scale, base, point.totalUnits),
-          totalUnits: point.totalUnits,
-        })),
+        points: okEntry.points.flatMap((point) => {
+          const y = axisValue(kind, base, point.values[metric]);
+          return y === null ? [] : [{ windowSize: point.windowSize, y }];
+        }),
+        actuals: okEntry.points.map((point) => ({ windowSize: point.windowSize, value: point.values[metric] })),
       };
     });
+  // 比はN=0の値が0だと決まらない。黙って0に置かず、描けない対象を知らせる
+  const undrawn = plotted.filter((s) => s.points.length === 0);
 
   const failedRows = okRows.filter(
     (row): row is typeof row & { entry: NSensitivitySeriesFailed } => row.entry.kind === 'failed',
@@ -522,7 +546,13 @@ export function NSensitivityBody({
 
   return (
     <section className="n-sensitivity-feature" data-react-feature="n-sensitivity">
-      {plotted.length > 0 ? <NSensitivityChart series={plotted} scale={options.scale} yRangeMode={options.yRange} onMeasured={markChartReady} /> : null}
+      {plotted.length > 0 ? <NSensitivityChart series={plotted} metric={metric} kind={kind} yRangeMode={options.yRange} onMeasured={markChartReady} /> : null}
+
+      {undrawn.length > 0 ? (
+        <p className="n-sensitivity-undrawn" role="note">
+          N=0の値が0のため、相対では描けません: {undrawn.map((s) => s.label).join('、')}
+        </p>
+      ) : null}
 
       {failedRows.length > 0 ? (
         <ul className="n-sensitivity-failures">
@@ -535,21 +565,27 @@ export function NSensitivityBody({
         </ul>
       ) : null}
 
-      {plotted.length > 0 ? <NSensitivityTable plotted={plotted} chartReady={chartReady} /> : null}
+      {plotted.length > 0 ? <NSensitivityTable plotted={plotted} metric={metric} chartReady={chartReady} /> : null}
     </section>
   );
 }
 
-/** N感度の解析設定（縦軸の見せ方）。 */
+/** N感度の解析設定（縦軸の指標と見せ方）。 */
 export function NSensitivitySettings({ options, onOptionsChange }: AnalyzerSettingsProps<NSensitivityOptions>) {
+  const def = N_SENSITIVITY_METRICS[options.metric];
   return (
     <div className="option-groups">
+      <SelectOptionField
+        label="指標"
+        binding={bindOption(options, DEFAULT_N_SENSITIVITY_OPTIONS, onOptionsChange, 'metric')}
+        choices={N_SENSITIVITY_METRIC_IDS.map((id) => ({ value: id, label: N_SENSITIVITY_METRICS[id].label }))}
+      />
       <RadioOptionField
         label="縦軸"
         binding={bindOption(options, DEFAULT_N_SENSITIVITY_OPTIONS, onOptionsChange, 'scale')}
         choices={[
-          { value: 'relative', label: '相対（N=0を100%）' },
-          { value: 'absolute', label: '実測値 [u]' },
+          { value: 'relative', label: def.percent ? '相対（N=0との差 [pt]）' : '相対（N=0を100%）' },
+          { value: 'absolute', label: `実測値 [${def.unit}]` },
         ]}
       />
       <RadioOptionField

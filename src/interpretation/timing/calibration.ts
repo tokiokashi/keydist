@@ -84,7 +84,7 @@ export interface PlaybackCalibration {
   fallbackMoveMsPerUnit: number;
   /**
    * 文章を打つ時の打鍵の上乗せ[ms]。差の種類ごとに持ち、構造の種類はかなの中・かなの境目の値も持てる。
-   * 続け打ちと同指連続を除く種類は、基準の時間のうち1打の時間（`normalMs`）の側にだけ足す。
+   * 続け打ちと同指連続を除く種類は、ステップの時間のうち1打の時間（`normalMs`）の側にだけ足す。
    * 同指連続のステップは、値を持つ時は`max(normalMs, 移動の時間)`の外に足す。
    * 持たない値は、同じ側の「その他」、分けない値、分けない「その他」の順で代わりの値を使う（`playbackKeystrokeOverheadMs`）。
    */

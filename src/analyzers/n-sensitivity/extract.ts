@@ -6,7 +6,7 @@ import {
   type SetAnalyzerExtractContext,
 } from '#analyzers/contract.ts';
 import type { Finger, Key } from '#input/shapes/geometry.ts';
-import { DEFAULT_METRIC_CONDITIONS, type Metrics } from '#interpretation/metrics.ts';
+import { computeTraceScalars, DEFAULT_METRIC_CONDITIONS, type Metrics } from '#interpretation/metrics.ts';
 import { analysisTargetKey, type AnalysisTarget } from '#input/setup/index.ts';
 import type { Press, Stroke, StrokeParticipation, Trace } from '#trace/generate.ts';
 import {
@@ -15,19 +15,20 @@ import {
   nSensitivityOptions,
   type NSensitivityOptions,
 } from './options.ts';
+import { N_SENSITIVITY_METRIC_IDS, type NSensitivityMetricId } from './metric-catalog.ts';
 
 /**
  * N感度Analyzerの抽出。
  *
  * 仕様 §11.9。`src/analyzers/n-sensitivity/sensitivity.ts`の`nSensitivity`と同じ範囲
- * （N=0..10）で`totalUnits`[u]を求める。
+ * （N=0..10）で、`metric-catalog.ts`の一覧の指標をすべて求める。縦軸にどれを描くかは
+ * 可視化の側が選ぶので、抽出は指標の選択を知らない。
  *
- * **`computeMetrics`を呼び直さない。** `totalUnits`は`computeMetrics`の中身を読むと
- * `trace.strokes`の`distance`を単純合計したものそのもの（Geometry・Nは`generateTrace`の
- * 時点で既にstrokeへ焼き込まれている。`interpretation/metrics.ts`の`computeMetrics`参照）で、
- * Metrics固有の他の計算（同指率・指間統計等）はどれもGeometryの実体（`AnalyzerSetMember`には
- * 無い）を要求するがN感度には要らない。この1点により、`AnalyzerSetMember`にGeometry・
- * `computeMetrics`の入力一式を追加で持たせずに済む（契約を膨らませない）。
+ * **`computeMetrics`を呼び直さない。** 一覧の指標はどれもGeometryを要らず、Nごとに生成した
+ * Traceだけから`computeTraceScalars`（`computeMetrics`のスカラー欄と同じ定義）で求まる
+ * （Geometry・Nは`generateTrace`の時点で既にstrokeへ焼き込まれている）。指間の平均のように
+ * Geometryの実体（`AnalyzerSetMember`には無い）を要る指標は一覧に入れず、契約に
+ * Geometryを足さずに済ませる。
  *
  * **`totalMm`は持たない。** `totalUnits × (member.metrics.totalMm / member.metrics.totalUnits)`
  * で`pitchMm`を逆算する方法は取れない。`totalMm`は`computeMetrics`側で
@@ -38,15 +39,18 @@ import {
  * 新22691.038468072355 vs 旧22691.03846807235）。ビット一致を主張できない値は
  * 出さない方がよい（AGENTS.md「数値は必ず実行して出す」の裏側）。View側も`totalMm`を
  * 表示していないので、`pitchMm`を契約へ足す（`AnalyzerSetMember`にGeometryを持たせる等）
- * ことはせず、`totalUnits`だけを持つ。
+ * ことはせず、Traceだけで求まる値を持つ。
  */
 
 const N_RANGE = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
 export { N_RANGE as N_SENSITIVITY_RANGE };
 
+export type NSensitivityValues = Readonly<Record<NSensitivityMetricId, number>>;
+
 export interface NSensitivityPoint {
   readonly windowSize: number;
-  readonly totalUnits: number;
+  /** このNでの、一覧の指標ごとの生の値。 */
+  readonly values: NSensitivityValues;
 }
 
 export interface NSensitivitySeriesOk {
@@ -69,16 +73,16 @@ export interface NSensitivityExtracted {
   readonly series: readonly NSensitivitySeries[];
 }
 
-function totalUnitsOf(trace: Trace): number {
-  return trace.strokes.reduce((sum, stroke) => sum + stroke.distance, 0);
+function valuesOf(trace: Trace): NSensitivityValues {
+  const scalars = computeTraceScalars(trace);
+  return Object.fromEntries(N_SENSITIVITY_METRIC_IDS.map((id) => [id, scalars[id]])) as NSensitivityValues;
 }
 
 /** メンバー1件ぶんの、N=0..10の系列を求める。 */
 export function computeMemberSeries(member: AnalyzerSetMember): NSensitivitySeriesOk {
   const points = N_RANGE.map((windowSize) => {
     const trace = member.requestTrace.requestTrace({ tracePolicy: { windowSize } });
-    const totalUnits = totalUnitsOf(trace);
-    return { windowSize, totalUnits };
+    return { windowSize, values: valuesOf(trace) };
   });
   return { kind: 'ok', targetKey: analysisTargetKey(member.target), points };
 }

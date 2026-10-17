@@ -2,9 +2,11 @@ import { useNavigate } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import { deleteWorkspaceCommand, duplicateWorkspaceCommand } from '#engine/workspace-commands.ts';
 import { findWorkspace } from '#engine/workspace.ts';
+import { PRESET_FILE_FORMAT, presetFileBody, workspaceFileName } from '#hosts/shared/preset-file.ts';
 import type { ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { WorkspacePage } from '#hosts/workspace/index.ts';
 import { paneCatalog } from '../standalone/catalog.ts';
+import { PRESET_FILE_IO } from '../shell/preset-file-io.ts';
 import { sharedEngineComputer } from '../standalone/engine-computer.ts';
 import { generatePresetId, generateTextId } from '../standalone/id-generator.ts';
 import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
@@ -62,6 +64,15 @@ export function WorkspaceApp({ workspaceId }: { readonly workspaceId: string }) 
     void navigate({ to: '/workspace/$id', params: { id: newId } });
   };
 
+  // 今のWorkspaceをファイルへ書き出す。待っている変更を先に書いてから、最新の中身を書き出す。
+  const exportToFile = () => {
+    commitTextContent.flush();
+    commitPaneOptions.flush();
+    const workspace = findWorkspace(getAssets().workspaces, workspaceId);
+    if (workspace === undefined) return;
+    PRESET_FILE_IO.saveJson(workspaceFileName(workspace.name), PRESET_FILE_FORMAT, presetFileBody({ workspaces: [workspace] }));
+  };
+
   // 削除したら、一覧で次のWorkspace（最後だったら1つ前）へ移る。1つも残らなければトップへ移る。
   // 空のWorkspaceを黙って作って開くことはしない。元に戻すは、移った先に出す知らせから行う。
   const remove = () => {
@@ -96,6 +107,7 @@ export function WorkspaceApp({ workspaceId }: { readonly workspaceId: string }) 
         onPaneOptionsCommit={commitPaneOptions}
         onDuplicate={duplicate}
         onDelete={remove}
+        onExport={exportToFile}
       />
     </OptionsWriteLogsProvider>
   );

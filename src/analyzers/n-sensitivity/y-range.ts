@@ -1,3 +1,5 @@
+import { N_SENSITIVITY_METRICS, withUnit, type NSensitivityAxisKind, type NSensitivityMetricId } from './metric-catalog.ts';
+
 /**
  * N感度の縦軸の範囲の決め方。
  *
@@ -11,9 +13,12 @@
  *   データの最小値を含む一番高い区切りを下限にする。
  *   fitより下限が粗く、軸が0から始まらないことが目盛りから読み取りやすい
  *
- * 上限は、相対ではN=0が必ず100%（=最大）なので、どの決め方でも100%。実測では最大値
-（fit・coarseは、目盛りがきりのよい値になるよう上へ丸める）。
- * 「0を含めて上だけ詰める」は、相対では上限が最初から最大なので詰める余地が無く、fullと同じになる。
+ * 上限は、N=0を100%とする比（ratio）ではN=0が必ず100%（=最大）なので、どの決め方でも100%。実測（value）では
+ * 最大値（fit・coarseは、目盛りがきりのよい値になるよう上へ丸める）。
+ * 「0を含めて上だけ詰める」は、比では上限が最初から最大なので詰める余地が無く、fullと同じになる。
+ *
+ * N=0との差[pt]（delta）は負にもなり、N=0の点が必ず0なので範囲はいつも0を含む。そのため「0から」と
+ * 「値の範囲」でデータの範囲は変わらず、違いは余白と目盛りの粗さになる（`computeDeltaRange`）。
  */
 export type YRangeMode = 'full' | 'fit' | 'coarse';
 
@@ -27,6 +32,8 @@ export interface YRange {
 const FULL_TICK_INTERVALS = 5;
 /** 詰める時の目盛りの目安の区間数。 */
 const FIT_TICK_INTERVALS = 4;
+/** 差[pt]を粗い区切りにする時の目盛りの目安の区間数。 */
+const COARSE_TICK_INTERVALS = 2;
 /** fitで、データの最小値より下に空ける余白（値の幅に対する割合）。 */
 const FIT_PADDING = 0.05;
 
@@ -53,17 +60,44 @@ function decimalsFor(ticks: readonly number[]): number {
   return 4;
 }
 
-/** 縦軸の目盛りの文字。相対は%、実測は[u]。実測値は大きさが一定でないので、整数で丸める。 */
-export function formatYTicks(relative: boolean, ticks: readonly number[]): string[] {
-  const digits = relative ? decimalsFor(ticks) : 0;
-  return ticks.map((tick) => (relative ? `${tick.toFixed(digits)}%` : `${tick.toFixed(0)} u`));
+/**
+ * 縦軸の目盛りの文字。比は%、差はpt、実測は指標の単位。比と差は刻みで桁が決まり、
+ * 実測は大きさが指標ごとに違うので、指標ごとに決めた桁で丸める。
+ */
+export function formatYTicks(kind: NSensitivityAxisKind, ticks: readonly number[], metric: NSensitivityMetricId): string[] {
+  if (kind === 'ratio') {
+    const digits = decimalsFor(ticks);
+    return ticks.map((tick) => `${tick.toFixed(digits)}%`);
+  }
+  if (kind === 'delta') {
+    const digits = decimalsFor(ticks);
+    return ticks.map((tick) => `${tick.toFixed(digits)} pt`);
+  }
+  const def = N_SENSITIVITY_METRICS[metric];
+  return ticks.map((tick) => withUnit(tick.toFixed(def.tickDigits), def.unit));
+}
+
+/** 差[pt]の範囲。N=0の点が0なので、データの範囲はいつも0を含む。 */
+function computeDeltaRange(mode: YRangeMode, values: readonly number[]): YRange {
+  const dataMin = Math.min(0, ...values);
+  const dataMax = Math.max(0, ...values);
+  // 差がすべて0の時は、目盛りが作れるよう1ptの幅を取る
+  const span = dataMax - dataMin || 1;
+  const pad = mode === 'fit' ? span * FIT_PADDING : 0;
+  const intervals = mode === 'full' ? FULL_TICK_INTERVALS : mode === 'fit' ? FIT_TICK_INTERVALS : COARSE_TICK_INTERVALS;
+  const step = niceStep(span + pad * 2, intervals);
+  const lo = Math.floor((dataMin - pad) / step) * step;
+  const hi = Math.max(Math.ceil((dataMax + pad) / step) * step, lo + step);
+  return { lo, hi, ticks: ticksBetween(lo, hi, step) };
 }
 
 /**
- * `values`は描く全点のy（相対なら%、実測なら[u]）。空なら0〜1を返す。
- * `relative`は上限を100に固定する（N=0が100%で、Nを増やしても距離は増えないため）。
+ * `values`は描く全点のy（比なら%、差ならpt、実測なら指標の単位）。空なら0〜1を返す。
+ * `ratio`は上限を100に固定する（N=0が100%で、Nを増やしても距離は増えないため）。
  */
-export function computeYRange(mode: YRangeMode, relative: boolean, values: readonly number[]): YRange {
+export function computeYRange(mode: YRangeMode, kind: NSensitivityAxisKind, values: readonly number[]): YRange {
+  if (kind === 'delta') return computeDeltaRange(mode, values);
+  const relative = kind === 'ratio';
   const dataMax = values.length > 0 ? Math.max(...values) : 1;
   const dataMin = values.length > 0 ? Math.min(...values) : 0;
   const hi = relative ? 100 : Math.max(1, dataMax);

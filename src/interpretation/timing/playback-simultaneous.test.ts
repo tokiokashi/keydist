@@ -162,7 +162,7 @@ test('同時押しの上乗せが負の時も、足した時間は下限に当�
 test('同指連続の押下を含む同時押しは、sを持つ時はmaxの外にsとcを足し、持たない時はnormalMsの側にoとcを足す', () => {
   const first = chord(0, 'LI', 'RI');
   const still = analysisOf([first, stroke(1, [press('LI', home('LI'), true, 0), press('RI')])]);
-  // 距離0なら移動の時間はr（200）で、基準の時間（200）と同じ。
+  // 距離0なら移動の時間はr（200）で、1打の時間（200）と同じ。
   assert.equal(playbackStepDurationMs(still, 1, 1, true, withSimultaneous({ 'both-hands': 30 }), 1), 230);
   assert.equal(
     playbackStepDurationMs(still, 1, 1, true, withSimultaneous({ 'both-hands': 30 }, { keystrokeOverheadMs: { sfb: 20 } }), 1),
@@ -179,12 +179,12 @@ test('同時押しの上乗せは§3.8の指の移動時間に足さない', () 
     const step = playbackTimingSchedule(analysis, 1, false, calibration, 1, options)[1];
     return step.endMs - step.startMs;
   };
-  // 右の人差し指が遠いキーへ動く同時押し。移動に400ミリ秒かかり、基準の時間（200 + c）より長い。
+  // 右の人差し指が遠いキーへ動く同時押し。移動に400ミリ秒かかり、ステップの時間（200 + c）より長い。
   const far = analysisOf([chord(0, 'LI', 'RI'), stroke(1, [press('LI'), press('RI', home('RI', 0, 4), false, 4)])]);
-  // 移動の時間が律速するので、cの有無で変わらない（cを移動の時間に足さず、基準の時間と足し合わせもしない）。
+  // 移動の時間が律速するので、cの有無で変わらない（cを移動の時間に足さず、ステップの時間と足し合わせもしない）。
   assert.equal(stepMs(far, BASE), 400);
   assert.equal(stepMs(far, withSimultaneous({ 'both-hands': 50 })), 400);
-  // 移動が基準の時間に収まる時は、cの分だけ長くなる。
+  // 移動がステップの時間に収まる時は、cの分だけ長くなる。
   const near = analysisOf([chord(0, 'LI', 'RI'), chord(1, 'LI', 'RI')]);
   assert.equal(stepMs(near, BASE), 200);
   assert.equal(stepMs(near, withSimultaneous({ 'both-hands': 50 })), 250);

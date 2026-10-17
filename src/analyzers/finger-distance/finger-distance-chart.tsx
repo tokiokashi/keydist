@@ -1,3 +1,4 @@
+import { useState, type KeyboardEvent } from 'react';
 import { scaleRangeWithZero } from '../shared-scale.ts';
 import { useSharedScale } from '../shared-scale.tsx';
 import { HAND_LABEL, type ChartSpec } from './chart-data.ts';
@@ -6,6 +7,9 @@ import { HAND_LABEL, type ChartSpec } from './chart-data.ts';
  * 指ごと・指の組ごとの縦棒グラフ。横軸は物理的な並びで、左手と右手の間にすき間を空けて区切る。
  * 棒は1色で、最大や最小を強調しない。座標系は幅360固定で、置かれた幅に合わせて等比に縮む
  * （幅390pxのペインでも、はみ出さない）。
+ *
+ * 棒は押して（Enter・Spaceでも）選べ、選んだ棒のツールチップと同じ文を図の下に出す（hoverの無い
+ * タッチ端末でも値と割合を読める）。選んだ棒をもう1度押す・Escapeで外す。選択は保存しない。
  */
 const WIDTH = 360;
 const HEIGHT = 200;
@@ -17,6 +21,17 @@ const HAND_GAP_SLOTS = 0.6;
 
 export function FingerDistanceChart({ spec, scaleKey }: { readonly spec: ChartSpec; readonly scaleKey: string }) {
   const { bars } = spec;
+  const [selectedKey, setSelectedKey] = useState<string | undefined>(undefined);
+  // 見る量が変わって棒が無くなった時は、選択が無い扱いにする
+  const selected = bars.find((bar) => bar.key === selectedKey);
+  const onKeyDown = (event: KeyboardEvent, key: string) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      setSelectedKey((current) => (current === key ? undefined : key));
+    } else if (event.key === 'Escape') {
+      setSelectedKey(undefined);
+    }
+  };
   const plotH = HEIGHT - TOP - BOTTOM;
   // 縦軸は、同じ見る量で並んだペイン全部を含む範囲（置かれた場所に配るものが無ければ自分の範囲）
   const { min: low, max: high } = useSharedScale(scaleKey, scaleRangeWithZero(bars.map((bar) => bar.value)));
@@ -55,9 +70,27 @@ export function FingerDistanceChart({ spec, scaleKey }: { readonly spec: ChartSp
           const barH = Math.abs(valueY - baseline);
           const labelY = bar.value < 0 ? valueY + 12 : valueY - 4;
           return (
-            <g key={bar.key} data-chart-bar={bar.key} data-hand={bar.hand}>
+            <g
+              key={bar.key}
+              data-chart-bar={bar.key}
+              data-hand={bar.hand}
+              className="finger-distance-chart-item"
+              role="button"
+              tabIndex={0}
+              aria-pressed={selected?.key === bar.key}
+              aria-label={bar.tip}
+              onClick={() => setSelectedKey((current) => (current === bar.key ? undefined : bar.key))}
+              onKeyDown={(event) => onKeyDown(event, bar.key)}
+            >
               <title>{bar.tip}</title>
-              <rect x={left} y={0} width={slot} height={HEIGHT} fill="transparent" />
+              <rect
+                className="finger-distance-chart-hit"
+                x={left}
+                y={0}
+                width={slot}
+                height={HEIGHT}
+                data-selected={selected?.key === bar.key || undefined}
+              />
               {barH > 0.5 ? (
                 <rect
                   className="finger-distance-chart-bar"
@@ -89,6 +122,9 @@ export function FingerDistanceChart({ spec, scaleKey }: { readonly spec: ChartSp
           </text>
         ))}
       </svg>
+      <p className="finger-distance-chart-readout" aria-live="polite" data-chart-readout>
+        {selected?.tip}
+      </p>
     </div>
   );
 }

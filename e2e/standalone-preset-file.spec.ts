@@ -81,7 +81,7 @@ test('書き出したファイルを読み込み直すと、同名は番号付�
   expect((await downloadNames(page))[0]).toMatch(/^keydist-プリセット-\d{4}-\d{2}-\d{2}\.json$/);
   const text = await readFile((await download.path())!, 'utf8');
   const file = JSON.parse(text);
-  expect(file).toMatchObject({ format: 'keydist-presets', version: 1 });
+  expect(file).toMatchObject({ format: 'keydist-presets', version: 2 });
   expect(file.presets.map((preset: { name: string }) => preset.name)).toEqual(['自分用メモ', '比較用（N=5）']);
   await expect(result(section)).toContainText('2件のプリセットを書き出しました');
 
@@ -133,7 +133,7 @@ test('読み込めないファイルは、理由を文で伝え、プリセッ�
     ['壊れたJSON', '{ 壊れた', '条件ファイルとして読めませんでした'],
     ['印が無い', '{"version":1,"presets":[]}', 'keydist の条件ファイルではありません'],
     ['旧画面の形式', '{"version":4,"conditions":{"defaults":{}}}', '旧画面の条件ファイルは読み込めません'],
-    ['新しい版', '{"format":"keydist-presets","version":2,"presets":[]}', '新しい形式のファイルです。keydistを更新してから読み込んでください'],
+    ['新しい版', '{"format":"keydist-presets","version":3,"presets":[]}', '新しい形式のファイルです。keydistを更新してから読み込んでください'],
     ['形が正しくない', '{"format":"keydist-presets","presets":[]}', 'ファイルの形式が正しくありません'],
     ['大きすぎる', Buffer.alloc(1024 * 1024 + 1, 32), 'ファイルが大きすぎます'],
   ];

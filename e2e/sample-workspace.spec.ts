@@ -82,7 +82,7 @@ async function expectSampleLayout(page: Page, id: string): Promise<void> {
   expect(comparison!.w + nSensitivity!.w).toBe(24);
   expect(nSensitivity!.h).toBe(comparison!.h);
   // 高さ（升目）: 上の段9・中の段14・下の段9。どれも各ペインが中でスクロールしない最小の高さ（下のe2eで確かめる）
-  expect([comparison!.h, ...lower.map((item) => item.h)]).toEqual([9, 14, 14, 14, 14, 9, 9, 9, 9]);
+  expect([comparison!.h, ...lower.map((item) => item.h)]).toEqual([9, 14, 14, 14, 14, 10, 10, 10, 10]);
   expect(lower.map((item) => [item.x, item.y, item.w])).toEqual([
     ...[0, 6, 12, 18].map((x) => [x, comparison!.h, 6]),
     ...[0, 6, 12, 18].map((x) => [x, comparison!.h + 14, 6]),

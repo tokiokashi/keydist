@@ -88,11 +88,12 @@ export interface WorkspacePageProps {
   readonly onTextContentCommit: TextContentCommit;
   readonly onPaneOptionsCommit: PaneOptionsCommit;
   /**
-   * このWorkspaceを複製する・削除する。書き込みと、その後どの画面へ移るかは組み立て側（`app`）が決める
+   * このWorkspaceを複製する・削除する・ファイルへ書き出す。書き込みと、その後どの画面へ移るかは組み立て側（`app`）が決める
    * （削除すると画面ごとの履歴が使えなくなるため。移り先と元に戻す手段もそちらが持つ）。
    */
   readonly onDuplicate: () => void;
   readonly onDelete: () => void;
+  readonly onExport: () => void;
 }
 
 /**
@@ -118,6 +119,7 @@ export function WorkspacePage({
   onPaneOptionsCommit,
   onDuplicate,
   onDelete,
+  onExport,
 }: WorkspacePageProps) {
   const workspace = findWorkspace(assets.workspaces, workspaceId);
   // スマホ幅では格子を外し、ペインを縦に積む。資産の格子は読むだけなので、戻ると元の並びで描き直される
@@ -365,7 +367,7 @@ export function WorkspacePage({
                 name={workspace.name}
                 onRename={(next) => dispatch(renameWorkspaceCommand(workspaceId, next))}
               />
-              {/* 待っている変更（並び・解析設定）を先に書いてから複製・削除する。写す・戻す中身が古くならないように */}
+              {/* 待っている変更（並び・解析設定）を先に書いてから複製・書き出し・削除する。写す・書き出す・戻す中身が古くならないように */}
               <PaneMenu
                 paneName={workspace.name}
                 label="Workspaceの操作"
@@ -379,6 +381,7 @@ export function WorkspacePage({
                     onSelect: () => dispatch(setWorkspaceCompactPanesCommand(workspaceId, workspace.compactPanes !== true)),
                   },
                   { id: 'duplicate', label: '複製', onSelect: () => { flushPending(); onDuplicate(); } },
+                  { id: 'export', label: '書き出す', onSelect: () => { flushPending(); onExport(); } },
                   { id: 'delete', label: '削除', onSelect: () => { flushPending(); onDelete(); } },
                 ]}
               />

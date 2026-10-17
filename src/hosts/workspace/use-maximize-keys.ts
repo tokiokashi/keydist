@@ -8,17 +8,16 @@ function isTypingTarget(target: EventTarget | null): boolean {
 /**
  * Escapeで先に閉じるべき浮いた部品が開いているか。開閉の状態は各部品が持つので、画面に出ているものをDOMで見る。
  * 数えるのはEscapeで閉じるものだけ: モーダル・浮かぶ小窓（解析設定・図の表示・キーの詳細）・ⓘの説明・
- * メニューや選択（`aria-haspopup`）・テキストの選択（`aria-controls`）。
+ * メニューや選択（`aria-haspopup`）・重ねて出したサイドバー（`.shell` の `data-sidebar-open`）。
  * `aria-expanded="true"`を全部数えると、Escapeで閉じない開閉まで数えてしまい、Escapeで拡大が解けなくなる。
- * サイドバーの見出しのまとまりを畳むボタンも`aria-controls`と`aria-expanded`を持つが、
- * 開いているのが常態でEscapeでは閉じないので数えない。
+ * `aria-controls`は開いている部品との対応を示すだけで、Escapeで閉じるかは示さないので使わない。
  */
 const OVERLAY_SELECTOR = [
   'dialog[open]',
   '.settings-window',
   '.info-popover',
   '[aria-haspopup][aria-expanded="true"]',
-  '[aria-controls][aria-expanded="true"]:not(.sidebar-heading-button)',
+  '.shell[data-sidebar-open="true"]',
 ].join(', ');
 
 /**

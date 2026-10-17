@@ -10,7 +10,9 @@ import type { AggregatedAnalysisResult } from '#interpretation/structure/aggrega
 import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import type { Metrics } from '#interpretation/metrics.ts';
 import {
+  playbackOverheadUse,
   playbackRateChartData,
+  type PlaybackOverheadUse,
   type PlaybackRateChartPoint,
   type PlaybackTimingStep,
 } from '#interpretation/timing/playback.ts';
@@ -41,6 +43,8 @@ export interface PlaybackExtracted {
   readonly savedCalibration: PlaybackCalibration | undefined;
   /** 個人速度の扱い。適用する設定で保存値が無い（`missing`）時、再生のペインがそのことを知らせる */
   readonly personalSpeedUse: PersonalSpeedUse;
+  /** 再生するステップの列に、0でない打鍵の上乗せ・同時押しの上乗せを入れるステップがあるか。「足している」旨を示す判定に使う */
+  readonly overheadUse: PlaybackOverheadUse;
   /** 各ステップの開始・終了時刻（確定した時間表） */
   readonly schedule: readonly PlaybackTimingStep[];
   /** 再生位置ごとの、かな毎秒・アクション毎秒の平均と、ChainとArpeggioの区間。先頭（位置0）を含む */
@@ -77,6 +81,7 @@ export function computePlaybackExtraction({ analysis, metrics, geometry, options
     analysis,
     windowSize: metrics.conditions.windowSize,
     timing,
+    overheadUse: playbackOverheadUse(analysis, timing.sameFingerDelay, timing.calibration),
     savedCalibration: options.applyPersonalSpeed ? assets.personalSpeed : undefined,
     personalSpeedUse: personalSpeedUseOf(options, assets),
     schedule,

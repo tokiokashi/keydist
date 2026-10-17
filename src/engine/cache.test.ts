@@ -404,3 +404,29 @@ test('キーの詳細: テキストが違えば別の計算になる', () => {
   assert.equal(b.merged.get('b')?.presses, 3);
   assert.equal(cache.size.keyDetails, 2);
 });
+
+test('getSetExtraction: 同じ枠・同じ種類で文言だけが違う失敗は、新しい文言の結果を返す', () => {
+  const cache = createEngineCache();
+  const definition = defineSetAnalyzer({
+    id: 'fixture-set-failure-messages',
+    options: setFixtureOptions,
+    extract: (context) => context.failures.map((failure) => failure.message),
+    optionsDiscipline: {
+      sample: setFixtureOptions.defaultOptions,
+      alternates: { scale: 2, highlightColor: 'blue' },
+      context: unusedDisciplineContext,
+    },
+  });
+  const target = { kind: 'setup', setupId: 'setup-x' } as const;
+  const layoutMissing: Setup = { id: 'setup-x', number: 1, layoutId: 'no-such-layout', shapeId: 'row-staggered' };
+  const shapeMissing: Setup = { id: 'setup-x', number: 1, layoutId: 'qwerty', shapeId: 'no-such-shape' };
+  const first = resolveResult(layoutMissing);
+  const second = resolveResult(shapeMissing);
+  assert.ok(!first.ok && !second.ok, 'テストの前提: どちらも解決に失敗する');
+  assert.equal(first.error.kind, second.error.kind, 'テストの前提: 失敗の種類は同じ');
+
+  const a = cache.getSetExtraction([{ target, resolution: first }], definition, setFixtureOptions.defaultOptions);
+  const b = cache.getSetExtraction([{ target, resolution: second }], definition, setFixtureOptions.defaultOptions);
+  assert.deepEqual(a.extracted, ['配列が見つかりません（削除された可能性があります）']);
+  assert.deepEqual(b.extracted, ['物理配列が見つかりません（削除された可能性があります）']);
+});

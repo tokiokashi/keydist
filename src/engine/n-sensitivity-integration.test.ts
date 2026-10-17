@@ -85,7 +85,7 @@ function assertSeriesMatchesLegacy(series: NSensitivitySeries | undefined, input
       `windowSize[${i}]`,
     );
     assert.equal(
-      series!.points[i]!.totalUnits,
+      series!.points[i]!.values.totalUnits,
       legacyPoints[i]!.totalUnits,
       `totalUnits[${i}] (N=${legacyPoints[i]!.windowSize})`,
     );

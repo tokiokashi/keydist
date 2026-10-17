@@ -100,14 +100,30 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 22
-          cache: npm
+          package-manager-cache: false
+
+      # setup-node のキャッシュ（packageManager 欄から自動で有効になる）は、プロジェクトの中で Node 付属の npm（10）を呼ぶ。
+      # devEngines の検査で止まるので、npm のキャッシュは自前で持つ
+      - name: Cache npm
+        uses: actions/cache@v6
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: npm-${{ runner.os }}-
 
       - name: Install dependencies
         id: install
         shell: bash
         run: |
           set -o pipefail
-          npm ci 2>&1 | tee "$RUNNER_TEMP/npm-ci.log"
+          # package.json の packageManager に書いた版へ npm を揃える。Node 22 付属の npm とは lockfile の書き方が違う
+          npm_version="$(node -p "require('./package.json').packageManager.replace(/^npm@/, '')")"
+          {
+            # devEngines の検査はプロジェクトの中で走るので、入れ替えは外で打つ
+            (cd "$RUNNER_TEMP" && npm install --global "npm@$npm_version")
+            npm --version
+            npm ci
+          } 2>&1 | tee "$RUNNER_TEMP/npm-ci.log"
 
       # ブラウザのキャッシュ（~/.cache/ms-playwright）は試して外した。実測では、当たってもrestoreの2秒を足してinstallが約1秒短くなるだけで
       # （install-depsのapt分が残る）、短縮が無かった。Playwrightの公式文書もキャッシュを勧めていない
