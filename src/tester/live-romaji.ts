@@ -101,7 +101,7 @@ export function liveRomajiContextSatisfied(
   romajiInput: boolean,
 ): boolean {
   return requirements.every((requirement) => {
-    // 打った綴りにはかな由来かどうかの情報が無いので、仕様 §4.3 の綴りの塊ごとの判定はできない。
+    // 打った綴りにはかな由来かどうかの情報が無いので、仕様 §4.3の綴りの塊ごとの判定はできない。
     // ローマ字表を持つ配列で打っている時だけ成立とする。
     if (requirement.kind === 'romaji-input') return romajiInput;
     if (requirement.kind !== 'youon-only') return false;
