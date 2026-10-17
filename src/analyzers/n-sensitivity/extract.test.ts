@@ -7,6 +7,7 @@ import { EMPTY_SETTINGS_OVERRIDES } from '#engine/settings-items.ts';
 import { resolveEngineInput, type ResolvedInput } from '#engine/resolved-input.ts';
 import { createEngineCache } from '#engine/cache.ts';
 import { findOptionsKeyDisciplineViolations, findViewOptionsExtractionViolations } from '#analyzers/options.ts';
+import { rightHandShare, sameFingerRate } from '#interpretation/metrics.ts';
 import { nSensitivity } from './sensitivity.ts';
 import { N_SENSITIVITY_RANGE, computeMemberSeries, computeNSensitivityExtraction } from './extract.ts';
 import { ALTERNATE_N_SENSITIVITY_OPTIONS, DEFAULT_N_SENSITIVITY_OPTIONS, nSensitivityOptions } from './options.ts';
@@ -79,7 +80,7 @@ function checkLayout(layoutId: string, text: string): void {
   assert.equal(series.points.length, legacyPoints.length);
   for (let i = 0; i < legacyPoints.length; i++) {
     assert.equal(series.points[i]!.windowSize, legacyPoints[i]!.windowSize, `windowSize[${i}]`);
-    assert.equal(series.points[i]!.totalUnits, legacyPoints[i]!.totalUnits, `totalUnits[${i}] (N=${legacyPoints[i]!.windowSize})`);
+    assert.equal(series.points[i]!.values.totalUnits, legacyPoints[i]!.totalUnits, `totalUnits[${i}] (N=${legacyPoints[i]!.windowSize})`);
   }
 }
 
@@ -111,7 +112,38 @@ test('computeMemberSeries: N=既定の点は、メンバー自身のMetrics（to
   const series = computeMemberSeries(member);
   const basePoint = series.points.find((point) => point.windowSize === input.tracePolicy.windowSize);
   assert.ok(basePoint);
-  assert.equal(basePoint!.totalUnits, interpretationResult.metrics.totalUnits);
+  assert.equal(basePoint!.values.totalUnits, interpretationResult.metrics.totalUnits);
+});
+
+test('computeMemberSeries: 既定のNの点は、一覧の全指標でメンバー自身のMetricsと一致する', () => {
+  for (const [layoutId, text] of [['qwerty', 'hello world'], ['colemak-dh', 'the quick brown fox jumps over the lazy dog']] as const) {
+    const input = resolve(layoutId, text);
+    const cache = createEngineCache();
+    const traceResult = cache.getTrace(input);
+    const metrics = cache.getInterpretation(input).metrics;
+    const series = computeMemberSeries({
+      target: TARGET_A,
+      trace: traceResult.trace,
+      analysis: cache.getInterpretation(input).analysis,
+      metrics,
+      requestTrace: {
+        requestTrace: (request: { tracePolicy?: { windowSize?: number } }) => cache.getTrace({
+          ...input,
+          tracePolicy: { ...input.tracePolicy, ...request.tracePolicy },
+        }).trace,
+      },
+    });
+    const values = series.points.find((point) => point.windowSize === input.tracePolicy.windowSize)!.values;
+    assert.deepEqual(values, {
+      totalUnits: metrics.totalUnits,
+      meanPerStroke: metrics.meanPerStroke,
+      perCharUnits: metrics.perCharUnits,
+      sameFinger: metrics.sameFinger,
+      sameFingerRate: sameFingerRate(metrics.sameFinger, metrics.strokes),
+      rightHandDistanceShare: rightHandShare(metrics.perFinger),
+      rightHandPressShare: rightHandShare(metrics.perFingerPresses),
+    }, layoutId);
+  }
 });
 
 test('computeNSensitivityExtraction: 解決できたメンバーはok系列、失敗はfailed系列になる（行を消さない）', () => {
