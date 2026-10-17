@@ -187,6 +187,8 @@ export interface MetricConditions {
   actionRealizationPolicy: ActionRealizationPolicy;
   /** ローマ字入力に使った綴り規則の識別子。かな直接入力はnull */
   romajiRuleId: string | null;
+  /** 日本語のテキストで、かなと `、` `。` 以外の記号も評価に渡したか（仕様 §4.6）。 */
+  keepSymbols: boolean;
 }
 
 export const DEFAULT_METRIC_CONDITIONS: MetricConditions = {
@@ -198,6 +200,7 @@ export const DEFAULT_METRIC_CONDITIONS: MetricConditions = {
   triggerRealizationPolicy: { ...DEFAULT_TRIGGER_REALIZATION_POLICY },
   actionRealizationPolicy: { ...DEFAULT_ACTION_REALIZATION_POLICY },
   romajiRuleId: null,
+  keepSymbols: false,
 };
 
 export function computeMetrics(

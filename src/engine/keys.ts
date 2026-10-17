@@ -61,6 +61,8 @@ export function interpretationKeyOf(input: ResolvedInput, traceKey: string): str
     traceKey,
     chainInterpretation: input.chainInterpretation,
     arpeggioInterpretation: input.arpeggioInterpretation,
+    // テキストは前処理の後の値でTraceのキーに入る。同じ前処理後のテキストでも、記号の範囲の条件は数値の出どころとして運ぶ
+    keepSymbols: input.keepSymbols,
   });
 }
 

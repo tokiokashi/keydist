@@ -32,6 +32,8 @@ const TRACE_AFFECTING_ITEMS: readonly { readonly id: SettingsItemId; readonly la
    * 返す）。
    */
   { id: 'defaultShapeId', label: '既定の物理配列' },
+  // 日本語のテキストで、かなと「、」「。」以外の記号も評価に入れるか。入力文字数が変わる
+  { id: 'keepSymbols', label: '日本語の記号の評価' },
 ];
 
 /**
