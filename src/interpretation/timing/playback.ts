@@ -924,6 +924,38 @@ export function playbackStepDurationMs(
   );
 }
 
+/** 再生するステップの列の中に、0でない上乗せを式に入れるステップがあるか（`spec/playback-timing.md` §2.2）。 */
+export interface PlaybackOverheadUse {
+  readonly keystroke: boolean;
+  readonly simultaneous: boolean;
+}
+
+/**
+ * 各ステップに§3.1.1・§3.1.2の選び方で入る上乗せが0でないステップが、再生する列に1つ以上あるか。
+ * 同指連続のステップは、同指連続の値を使う時（`sameFingerDelay`が真で保存値が持つ時）はその値、使わない時は構造の種類の値で判定する。
+ * 下限や指の移動の時間で結果の時間が変わらないステップも、式に入れたステップに数える。
+ */
+export function playbackOverheadUse(
+  analysis: PlaybackTimingAnalysis,
+  sameFingerDelay: boolean,
+  calibration: PlaybackCalibration | undefined,
+): PlaybackOverheadUse {
+  let keystroke = false;
+  let simultaneous = false;
+  for (let strokeIndex = 0; strokeIndex < analysis.strokes.length; strokeIndex += 1) {
+    if (!keystroke) {
+      const sameFingerMs = sameFingerDelay ? playbackSameFingerOverheadMs(analysis, strokeIndex, calibration) : undefined;
+      const ms = sameFingerMs ?? playbackKeystrokeOverheadMs(analysis, strokeIndex, calibration);
+      keystroke = ms !== 0;
+    }
+    if (!simultaneous) {
+      simultaneous = playbackSimultaneousOverheadMs(analysis.strokes[strokeIndex], calibration) !== 0;
+    }
+    if (keystroke && simultaneous) break;
+  }
+  return { keystroke, simultaneous };
+}
+
 export interface PlaybackTimingStep {
   strokeIndex: number;
   startMs: number;

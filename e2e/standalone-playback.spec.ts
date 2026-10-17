@@ -381,7 +381,7 @@ test('個人速度の保存値が打鍵の上乗せを持つ時は、ペイン�
   await expect(calculation(page).locator('[data-playback-calculation-overhead]')).toHaveCount(0);
 });
 
-test('個人速度の保存値が同時押しの上乗せを持つ時は、ペインの中に足していることも出て、適用しない設定では消える', async ({ page }) => {
+test('個人速度の保存値が同時押しの上乗せを持っていても、同時押しの打鍵が無い再生では足していることを出さない', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.addInitScript(({ key, value }) => {
     if (sessionStorage.getItem('seeded') !== null) return;
@@ -395,12 +395,9 @@ test('個人速度の保存値が同時押しの上乗せを持つ時は、ペ�
     },
   });
   await openPlayback(page);
-  await expect(calculation(page).locator('[data-playback-calculation-simultaneous]')).toContainText('個人速度のうち、同時押しの上乗せ（ミリ秒）を足しています。');
-  await expect(calculation(page).locator('[data-playback-calculation-overhead]')).toHaveCount(0);
-  const settings = await openSettings(page);
-  await settings.getByRole('button', { name: '適用しない' }).click();
-  await settings.press('Escape');
+  await expect(calculation(page)).toContainText('個人速度で計算しています。');
   await expect(calculation(page).locator('[data-playback-calculation-simultaneous]')).toHaveCount(0);
+  await expect(calculation(page).locator('[data-playback-calculation-overhead]')).toHaveCount(0);
 });
 
 test('他のタブで個人速度を保存すると、このタブの再生のペインに届く', async ({ page, context }) => {

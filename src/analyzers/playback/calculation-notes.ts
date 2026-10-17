@@ -1,4 +1,5 @@
 import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
+import type { PlaybackOverheadUse } from '#interpretation/timing/playback.ts';
 import { DEFAULT_PLAYBACK_OPTIONS, type PlaybackOptions } from './options.ts';
 import {
   calibrationPartChanges,
@@ -29,17 +30,20 @@ export function playbackCalculationNotes(
   options: PlaybackOptions,
   personalSpeedUse: PersonalSpeedUse,
   /** 実際に使う個人速度（`PlaybackTimingConditions.calibration`）。 */
-  calibration?: PlaybackCalibration,
+  calibration: PlaybackCalibration | undefined,
   /** 部分の設定で外す前の保存値（`PlaybackExtracted.savedCalibration`）。 */
-  savedCalibration?: PlaybackCalibration,
+  savedCalibration: PlaybackCalibration | undefined,
+  /** 再生するステップの列に上乗せを入れるステップがあるか（`PlaybackExtracted.overheadUse`）。 */
+  overheadUse: PlaybackOverheadUse,
 ): PlaybackCalculationNotes {
   const defaults = DEFAULT_PLAYBACK_OPTIONS;
   const personalSpeedInUse = personalSpeedUse === 'applied';
+  // 「足している」は、保存値が0でない上乗せを持ち、かつ再生するステップの中にその上乗せを式に入れるステップがある時。
   // 時間に入る種類は、続け打ちと構造の種類が常に、同指連続が同じ指の移動時間を考慮する時だけ。
-  // 再生するテキストの中身は見ず、解析設定と保存値の組で決める。
-  const keystrokeOverheadInUse = personalSpeedInUse && keystrokeOverheadAdds(calibration, options.sameFingerDelay);
-  // 同時押しの上乗せも、再生するテキストの中身は見ず、保存値が0でない値を持つかで決める。
-  const simultaneousOverheadInUse = personalSpeedInUse && simultaneousOverheadAdds(calibration);
+  const keystrokeOverheadInUse = personalSpeedInUse
+    && keystrokeOverheadAdds(calibration, options.sameFingerDelay)
+    && overheadUse.keystroke;
+  const simultaneousOverheadInUse = personalSpeedInUse && simultaneousOverheadAdds(calibration) && overheadUse.simultaneous;
   const changes: string[] = [];
   if (!personalSpeedInUse && options.stepsPerSecond !== defaults.stepsPerSecond) {
     changes.push(`基準速度: ${options.stepsPerSecond}ステップ/秒`);
