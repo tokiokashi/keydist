@@ -68,11 +68,12 @@
   font-size: 0.76rem;
 }
 
-/* 再生位置の数はラベルと同じ行に置く。行の高さはラベルの文字で決まり、数の桁が増えても行の高さは変わらない */
+/* 再生位置の数と打鍵時間・総時間はラベルと同じ行に置く。幅が足りない時は折り返す */
 .playback-seek-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.6rem;
+  gap: 0 0.6rem;
   min-width: 0;
 }
 

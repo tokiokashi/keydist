@@ -58,6 +58,11 @@ interface Session {
 const NO_KEYS: ReadonlySet<string> = new Set();
 const axisInsets = rateChartAxisInsets();
 
+/** 時間を秒で、小数1桁まで出す。 */
+function formatSeconds(ms: number): string {
+  return `${(ms / 1000).toFixed(1)}秒`;
+}
+
 function freshSession(basisId: string, schedule: readonly PlaybackTimingStep[], state: PlaybackState): Session {
   return { basisId, schedule, state, feedback: { revision: 0, keys: NO_KEYS } };
 }
@@ -82,9 +87,9 @@ function PlaybackFigureSettings({ options, onOptionsChange }: {
 }
 
 export function PlaybackBody({ layout, geometry, trace, extracted, options, onOptionsChange }: SingleBodyProps<PlaybackExtracted, PlaybackOptions>) {
-  const { analysis, windowSize, timing, savedCalibration, overheadUse, personalSpeedUse, schedule, rateChart, basisId } = extracted;
+  const { analysis, windowSize, timing, savedCalibration, overheadUse, personalSpeedUse, schedule, rateChart, basisId, timeTotals, waitUse } = extracted;
   const total = trace.strokes.length;
-  const calculation = playbackCalculationNotes(options, personalSpeedUse, timing.calibration, savedCalibration, overheadUse);
+  const calculation = playbackCalculationNotes(options, personalSpeedUse, timing.calibration, savedCalibration, overheadUse, waitUse);
   const figureSettings = useFigureSettings('配列図');
 
   const [session, setSession] = useState<Session>(() => freshSession(basisId, schedule, initialPlaybackState(timing)));
@@ -281,6 +286,10 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options, onOp
           <span className="playback-position" aria-live="polite" data-playback-position>
             {state.cursor} / {total}ステップ
           </span>
+          <span className="playback-position" data-playback-times>
+            打鍵時間 <span data-playback-typing-time>{formatSeconds(timeTotals.typingMs)}</span>
+            {' / '}総時間 <span data-playback-total-time>{formatSeconds(timeTotals.totalMs)}</span>
+          </span>
         </div>
         <input
           id={seekId}
@@ -397,7 +406,7 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options, onOp
       </div>
 
       <div className="playback-rate-panel">
-        <h3 className="playback-rate-heading">かな/秒・アクション/秒の平均推移</h3>
+        <h3 className="playback-rate-heading">かな/秒・アクション/秒の平均推移（打鍵時間で計算）</h3>
         <PlaybackRateChart
           points={rateChart}
           cursor={state.cursor}

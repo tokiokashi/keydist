@@ -18,6 +18,7 @@ import {
   PLAYBACK_STEPS_PER_SECOND_MIN,
   type PlaybackRateAverage,
 } from '#interpretation/timing/playback.ts';
+import { PUNCTUATION_WAIT_MS_MAX, PUNCTUATION_WAIT_MS_MIN } from '#interpretation/timing/punctuation-wait.ts';
 import {
   booleanUrlCodec,
   defineOption,
@@ -30,7 +31,7 @@ import {
 /**
  * 打鍵再生Analyzerの解析設定。
  *
- * - 再生の時間と速度グラフの数値を変える13項目（`stepsPerSecond`ほか。`spec/playback-timing.md` §2・§5）は
+ * - 再生の時間と速度グラフの数値を変える17項目（`stepsPerSecond`ほか。`spec/playback-timing.md` §2・§5）は
  *   抽出の結果を変える（`affects: 'extract'`）。変えると抽出だけを作り直し、Traceと構造解析は作り直さない。
  *   個人速度の保存値は解析設定に入らず、`applyPersonalSpeed`が真の時だけ抽出の入力になる（`playbackAssetsKeyOf`）
  * - それ以外は表示だけが変わる項目で、Traceも抽出も作り直さない（`affects: 'view'`）
@@ -43,6 +44,8 @@ import {
  * - `sameHandSpeed` / `useCrossHandDirection` / `useFingerValues` / `useSimultaneousOverhead` / `useKeystrokeOverhead`:
  *   個人速度で計算している間に、保存値の部分ごとに時間へ使うか。使わない部分は、時間の計算へ渡す保存値から外す
  *   （`timing-conditions.ts`）。個人速度を適用しない時は読まれない
+ * - `commaBeforeMs` / `commaAfterMs` / `periodBeforeMs` / `periodAfterMs`: 日本語のテキストの読点・句点の前後に足す待機 [ミリ秒]。
+ *   打鍵の時間とは別に持ち、速度グラフの値は変えない（`spec/playback-timing.md` §3.9）
  * - `rateAverage` / `rateWindow` / `rateHalfLifeSeconds`: 速度グラフの平均の方式・SMAの直近Stroke数・EWMAの半減時間 [秒]
  * - `showChain` / `showArpeggio` / `showSameFingerMotion`: 構造の動的表示。Chain・Arpeggioの区間の中で、
  *   今のステップの押下へ向かうキーの動きと順番を配列図に重ねる
@@ -157,6 +160,34 @@ export const playbackOptions = defineOptions({
     affects: 'extract',
     url: booleanUrlCodec('keystrokeOverhead'),
     label: '打鍵の上乗せ',
+  }),
+  commaBeforeMs: defineOption<number>({
+    schema: v.pipe(v.number(), v.integer(), v.minValue(PUNCTUATION_WAIT_MS_MIN), v.maxValue(PUNCTUATION_WAIT_MS_MAX)),
+    default: 0,
+    affects: 'extract',
+    url: integerUrlCodec('commaBefore', PUNCTUATION_WAIT_MS_MIN, PUNCTUATION_WAIT_MS_MAX),
+    label: '読点の前の待機',
+  }),
+  commaAfterMs: defineOption<number>({
+    schema: v.pipe(v.number(), v.integer(), v.minValue(PUNCTUATION_WAIT_MS_MIN), v.maxValue(PUNCTUATION_WAIT_MS_MAX)),
+    default: 0,
+    affects: 'extract',
+    url: integerUrlCodec('commaAfter', PUNCTUATION_WAIT_MS_MIN, PUNCTUATION_WAIT_MS_MAX),
+    label: '読点の後の待機',
+  }),
+  periodBeforeMs: defineOption<number>({
+    schema: v.pipe(v.number(), v.integer(), v.minValue(PUNCTUATION_WAIT_MS_MIN), v.maxValue(PUNCTUATION_WAIT_MS_MAX)),
+    default: 0,
+    affects: 'extract',
+    url: integerUrlCodec('periodBefore', PUNCTUATION_WAIT_MS_MIN, PUNCTUATION_WAIT_MS_MAX),
+    label: '句点の前の待機',
+  }),
+  periodAfterMs: defineOption<number>({
+    schema: v.pipe(v.number(), v.integer(), v.minValue(PUNCTUATION_WAIT_MS_MIN), v.maxValue(PUNCTUATION_WAIT_MS_MAX)),
+    default: 0,
+    affects: 'extract',
+    url: integerUrlCodec('periodAfter', PUNCTUATION_WAIT_MS_MIN, PUNCTUATION_WAIT_MS_MAX),
+    label: '句点の後の待機',
   }),
   rateAverage: defineOption<PlaybackRateAverage>({
     schema: v.picklist(['sma', 'ewma']),
@@ -290,6 +321,10 @@ export const ALTERNATE_PLAYBACK_OPTIONS: PlaybackOptions = {
   useFingerValues: false,
   useSimultaneousOverhead: false,
   useKeystrokeOverhead: false,
+  commaBeforeMs: 300,
+  commaAfterMs: 200,
+  periodBeforeMs: 100,
+  periodAfterMs: 500,
   rateAverage: 'ewma',
   rateWindow: 20,
   rateHalfLifeSeconds: 2,

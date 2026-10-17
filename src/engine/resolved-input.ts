@@ -253,7 +253,7 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
       chainInterpretation: cascade.chainInterpretation.value,
       arpeggioInterpretation: cascade.arpeggioInterpretation.value,
       keepSymbols: cascade.keepSymbols.value,
-      extractionAssets: { personalSpeed: options.personalSpeed },
+      extractionAssets: { personalSpeed: options.personalSpeed, textLanguage: options.language },
       romajiRuleId,
       cascade: resolvedCascade,
     },

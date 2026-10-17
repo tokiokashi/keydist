@@ -12,6 +12,7 @@ import type { PlaybackOptions } from './options.ts';
 export type PlaybackSettingsGroupId =
   | 'timing'
   | 'personalSpeed'
+  | 'punctuationWait'
   | 'rateAverage'
   | 'inputRow'
   | 'structure'
@@ -40,6 +41,11 @@ export const PLAYBACK_WINDOW_GROUPS: readonly PlaybackSettingsGroup[] = [
       title: '項目ごとの設定',
       keys: ['sameHandSpeed', 'useCrossHandDirection', 'useFingerValues', 'useSimultaneousOverhead', 'useKeystrokeOverhead'],
     },
+  },
+  {
+    id: 'punctuationWait',
+    title: '読点・句点の待機',
+    keys: ['commaBeforeMs', 'commaAfterMs', 'periodBeforeMs', 'periodAfterMs'],
   },
   { id: 'rateAverage', title: '速度グラフの平均', keys: ['rateAverage', 'rateWindow', 'rateHalfLifeSeconds'] },
 ];

@@ -6,6 +6,7 @@ import type { Trace, TracePolicy } from '#trace/generate.ts';
 import type { AggregatedAnalysisResult } from '#interpretation/structure/aggregate.ts';
 import type { KeyDetails } from '#interpretation/key-detail.ts';
 import type { Metrics } from '#interpretation/metrics.ts';
+import type { TextLanguage } from '#input/text/language.ts';
 import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import type {
   OptionsDefinition,
@@ -79,15 +80,20 @@ export interface TraceRequester {
 export interface ExtractionAssets {
   /** 個人速度の画面の保存値。保存値が無ければ`undefined` */
   readonly personalSpeed: PlaybackCalibration | undefined;
+  /** 評価に渡したテキストの言語。テキストを同じに保ったまま言語の指定だけが変わる場合があるので、Traceのキーとは別に持つ */
+  readonly textLanguage: TextLanguage;
 }
 
 export const DEFAULT_EXTRACTION_ASSETS: ExtractionAssets = {
   personalSpeed: undefined,
+  textLanguage: 'ja',
 };
 
 /** 単一Setup対象の抽出に渡す値。 */
 export interface SingleAnalyzerExtractContext<Options> {
   readonly trace: Trace;
+  /** Traceを生成した、評価に渡すテキスト（前処理の後）。打てずに読み飛ばした文字の位置を知るために読む */
+  readonly text: string;
   readonly analysis: AggregatedAnalysisResult;
   readonly metrics: Metrics;
   readonly options: Options;

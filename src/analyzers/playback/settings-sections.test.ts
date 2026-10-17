@@ -57,8 +57,8 @@ test('項目をどこにも置かない時・違う所に置いた時・2回置�
   assert.equal(mismatches(twice).length, 1);
 });
 
-test('小窓のグループは再生の時間・個人速度・速度グラフの平均の順に並ぶ', () => {
-  assert.deepEqual(PLAYBACK_WINDOW_GROUPS.map((group) => group.title), ['再生の時間', '個人速度', '速度グラフの平均']);
+test('小窓のグループは再生の時間・個人速度・読点・句点の待機・速度グラフの平均の順に並ぶ', () => {
+  assert.deepEqual(PLAYBACK_WINDOW_GROUPS.map((group) => group.title), ['再生の時間', '個人速度', '読点・句点の待機', '速度グラフの平均']);
 });
 
 test('配列図の表示の小窓のグループは入力の行と状態の行・構造の動的表示・キーと指・配列図の順に並ぶ', () => {

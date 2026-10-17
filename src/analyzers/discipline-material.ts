@@ -24,6 +24,7 @@ export function singleDisciplineContext(
   const trace = generateTrace(text, layout, geometry, DEFAULT_TRACE_POLICY);
   return {
     trace,
+    text,
     analysis: analyzeStrokeStructure(trace.strokes),
     metrics: computeMetrics(trace, geometry),
     geometry,
