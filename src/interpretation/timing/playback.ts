@@ -960,6 +960,16 @@ export interface PlaybackTimingStep {
   strokeIndex: number;
   startMs: number;
   endMs: number;
+  /**
+   * `startMs`から始まる待機の長さ（読点・句点の前後の待機。`spec/playback-timing.md` §3.9）。
+   * 待機を足さないステップは持たない。
+   */
+  waitMs?: number;
+  /**
+   * 待機を挿入する前に求めた打鍵の時間。待機を挿入したscheduleの全ステップが持つ。
+   * 時刻をずらした後の差から計算し直すと浮動小数の誤差が出るので、値として持つ。持たない時は`endMs - startMs - waitMs`。
+   */
+  typingMs?: number;
 }
 
 export interface PlaybackTimingOptions {
@@ -967,6 +977,11 @@ export interface PlaybackTimingOptions {
   allFingerMovementDelay?: boolean;
   /** allFingerMovementDelay=trueの時にホーム位置を得るため必須。 */
   geometry?: Geometry;
+  /**
+   * ステップの間ごとの待機 [ミリ秒]（`planPunctuationWaits`の`gapMs`）。長さはステップ数+1で、`i`番目はステップ`i`の前。
+   * 打鍵の時間を求めた後に挿入するので、各ステップの打鍵の時間は変わらない。
+   */
+  waitGapsMs?: readonly number[];
 }
 
 export function playbackTimingStepDurationMs(
@@ -975,6 +990,37 @@ export function playbackTimingStepDurationMs(
 ): number | undefined {
   const step = schedule?.[strokeIndex];
   return step ? Math.max(0, step.endMs - step.startMs) : undefined;
+}
+
+/** ステップの打鍵の時間（待機を除く表示時間）。かな/秒・アクション/秒の平均は、この時間で求める。 */
+export function playbackTimingStepTypingMs(
+  schedule: readonly PlaybackTimingStep[] | undefined,
+  strokeIndex: number,
+): number | undefined {
+  const step = schedule?.[strokeIndex];
+  if (!step) return undefined;
+  return step.typingMs ?? Math.max(0, step.endMs - step.startMs - (step.waitMs ?? 0));
+}
+
+export interface PlaybackTimeTotals {
+  /** 全ステップの打鍵の時間の合計（待機を含まない） */
+  typingMs: number;
+  /** 打鍵時間に、足した待機をすべて（最後のステップより後の待機を含む）加えた時間 */
+  totalMs: number;
+}
+
+/** 打鍵時間と総時間（`spec/playback-timing.md` §3.9）。`trailingWaitMs`は最後のステップより後の待機。 */
+export function playbackTimeTotals(
+  schedule: readonly PlaybackTimingStep[],
+  trailingWaitMs = 0,
+): PlaybackTimeTotals {
+  let typingMs = 0;
+  let waitMs = Math.max(0, trailingWaitMs);
+  for (let index = 0; index < schedule.length; index++) {
+    typingMs += playbackTimingStepTypingMs(schedule, index) ?? 0;
+    waitMs += schedule[index].waitMs ?? 0;
+  }
+  return { typingMs, totalMs: typingMs + waitMs };
 }
 
 /**
@@ -988,6 +1034,19 @@ export function playbackTimingSchedule(
   calibration?: PlaybackCalibration,
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
   options: PlaybackTimingOptions = {},
+): PlaybackTimingStep[] {
+  const typing = playbackTypingSchedule(analysis, stepsPerSecond, sameFingerDelay, calibration, speedMultiplier, options);
+  return insertWaits(typing, options.waitGapsMs);
+}
+
+/** 打鍵の時間だけを累積したschedule。待機は含まない。 */
+function playbackTypingSchedule(
+  analysis: PlaybackTimingAnalysis,
+  stepsPerSecond: PlaybackStepsPerSecond,
+  sameFingerDelay: boolean,
+  calibration: PlaybackCalibration | undefined,
+  speedMultiplier: number,
+  options: PlaybackTimingOptions,
 ): PlaybackTimingStep[] {
   const baseDurations = analysis.strokes.map((_stroke, strokeIndex) =>
     playbackStepDurationMs(
@@ -1058,6 +1117,28 @@ export function playbackTimingSchedule(
   }
 
   return schedule;
+}
+
+/**
+ * 打鍵の時間のscheduleに、ステップの間の待機を挿入する。待機のあるステップは、先頭の`waitMs`が待機になり、
+ * 以降のステップの時刻は待機の合計だけ後ろへずれる。待機が無ければ、渡したscheduleをそのまま返す。
+ */
+function insertWaits(
+  typing: PlaybackTimingStep[],
+  gapsMs: readonly number[] | undefined,
+): PlaybackTimingStep[] {
+  if (gapsMs === undefined || !typing.some((_step, index) => (gapsMs[index] ?? 0) > 0)) return typing;
+  let shiftMs = 0;
+  return typing.map((step, index) => {
+    const waitMs = Math.max(0, gapsMs[index] ?? 0);
+    const startMs = step.startMs + shiftMs;
+    shiftMs += waitMs;
+    const endMs = step.endMs + shiftMs;
+    const typingMs = Math.max(0, step.endMs - step.startMs);
+    return waitMs > 0
+      ? { strokeIndex: step.strokeIndex, startMs, endMs, waitMs, typingMs }
+      : { strokeIndex: step.strokeIndex, startMs, endMs, typingMs };
+  });
 }
 
 function isActualPressParticipation(
@@ -1209,7 +1290,7 @@ function playbackRecentRateWindow(
     { length: end - start },
     (_, offset) => start + offset,
   ).reduce((total, index) => total + (
-    playbackTimingStepDurationMs(schedule, index)
+    playbackTimingStepTypingMs(schedule, index)
       ?? playbackStepDurationMs(
         analysis,
         index,
@@ -1263,7 +1344,7 @@ function playbackEwmaRate(
   const completedInputs: string[] = [];
 
   for (let index = 0; index < end; index++) {
-    const durationMs = playbackTimingStepDurationMs(schedule, index)
+    const durationMs = playbackTimingStepTypingMs(schedule, index)
       ?? playbackStepDurationMs(
         analysis,
         index,

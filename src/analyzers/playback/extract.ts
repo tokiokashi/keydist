@@ -12,10 +12,13 @@ import type { Metrics } from '#interpretation/metrics.ts';
 import {
   playbackOverheadUse,
   playbackRateChartData,
+  playbackTimeTotals,
   type PlaybackOverheadUse,
   type PlaybackRateChartPoint,
+  type PlaybackTimeTotals,
   type PlaybackTimingStep,
 } from '#interpretation/timing/playback.ts';
+import { planPunctuationWaits, type PunctuationWaitUse } from '#interpretation/timing/punctuation-wait.ts';
 import { ALTERNATE_PLAYBACK_OPTIONS, DEFAULT_PLAYBACK_OPTIONS, playbackOptions, type PlaybackOptions } from './options.ts';
 import { playbackScheduleOf } from './session.ts';
 import {
@@ -45,8 +48,12 @@ export interface PlaybackExtracted {
   readonly personalSpeedUse: PersonalSpeedUse;
   /** 再生するステップの列に、0でない打鍵の上乗せ・同時押しの上乗せを入れるステップがあるか。「足している」旨を示す判定に使う */
   readonly overheadUse: PlaybackOverheadUse;
-  /** 各ステップの開始・終了時刻（確定した時間表） */
+  /** 各ステップの開始・終了時刻（確定した時間表）。読点・句点の前後の待機を含む */
   readonly schedule: readonly PlaybackTimingStep[];
+  /** 打鍵時間（待機を除く）と総時間（待機を含む）。テキスト全体の値 */
+  readonly timeTotals: PlaybackTimeTotals;
+  /** 読点・句点の前後の待機のうち、0でなく、テキストに足す位置がある項目。「既定と違う設定」の知らせの判定に使う */
+  readonly waitUse: PunctuationWaitUse;
   /** 再生位置ごとの、かな毎秒・アクション毎秒の平均と、ChainとArpeggioの区間。先頭（位置0）を含む */
   readonly rateChart: readonly PlaybackRateChartPoint[];
   /**
@@ -56,8 +63,10 @@ export interface PlaybackExtracted {
   readonly basisId: string;
 }
 
-export function computePlaybackExtraction({ analysis, metrics, geometry, options, assets, basisId }: {
+export function computePlaybackExtraction({ analysis, metrics, geometry, options, assets, basisId, text }: {
   readonly analysis: AggregatedAnalysisResult;
+  /** 評価に渡したテキスト。読み飛ばした読点・句点の位置を知るために読む */
+  readonly text: string;
   readonly metrics: Metrics;
   readonly geometry: Geometry;
   readonly options: PlaybackOptions;
@@ -65,7 +74,8 @@ export function computePlaybackExtraction({ analysis, metrics, geometry, options
   readonly basisId: string;
 }): PlaybackExtracted {
   const timing = playbackTimingConditions(options, assets);
-  const schedule = playbackScheduleOf(analysis, geometry, timing);
+  const waitPlan = planPunctuationWaits(text, analysis.strokes, options, assets.textLanguage === 'ja');
+  const schedule = playbackScheduleOf(analysis, geometry, timing, waitPlan.gapMs);
   const rateChart = playbackRateChartData(
     analysis,
     timing.stepsPerSecond,
@@ -85,6 +95,8 @@ export function computePlaybackExtraction({ analysis, metrics, geometry, options
     savedCalibration: options.applyPersonalSpeed ? assets.personalSpeed : undefined,
     personalSpeedUse: personalSpeedUseOf(options, assets),
     schedule,
+    timeTotals: playbackTimeTotals(schedule, waitPlan.gapMs[waitPlan.gapMs.length - 1]),
+    waitUse: waitPlan.use,
     rateChart,
     basisId,
   };
@@ -98,6 +110,7 @@ export const playbackDefinition: SingleAnalyzerDefinition<PlaybackOptions, Playb
   extract(context: SingleAnalyzerExtractContext<PlaybackOptions>): PlaybackExtracted {
     return computePlaybackExtraction({
       analysis: context.analysis,
+      text: context.text,
       metrics: context.metrics,
       geometry: context.geometry,
       options: context.options,

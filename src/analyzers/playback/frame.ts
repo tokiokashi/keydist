@@ -15,7 +15,7 @@ import {
   playbackStepDurationMs,
   playbackStrokeAt,
   playbackStrokeDisplay,
-  playbackTimingStepDurationMs,
+  playbackTimingStepTypingMs,
   playbackTrailKeys,
   playbackTrailOrders,
   clampPlaybackCursor,
@@ -156,7 +156,8 @@ function motionsOf(input: PlaybackFrameInput, cursor: number): PlaybackMotion[] 
   ];
 
   const durationIndex = Math.max(0, cursor - 1);
-  const stepMs = playbackTimingStepDurationMs(schedule, durationIndex)
+  // キーの動きの長さは打鍵の時間に合わせる。動きは次のステップの区間の先頭から始まるので、待機があればその間に再生される
+  const stepMs = playbackTimingStepTypingMs(schedule, durationIndex)
     ?? playbackStepDurationMs(
       analysis,
       durationIndex,

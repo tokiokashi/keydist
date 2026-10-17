@@ -133,5 +133,9 @@ export function personalSpeedUseOf(options: Pick<PlaybackOptions, 'applyPersonal
  * 適用しない設定の時は保存値を読まないので、保存値が変わっても抽出を作り直さない。
  */
 export function playbackAssetsKeyOf(options: Pick<PlaybackOptions, 'applyPersonalSpeed'>, assets: ExtractionAssets): unknown {
-  return options.applyPersonalSpeed ? { personalSpeed: assets.personalSpeed ?? null } : null;
+  // 読点・句点の待機は日本語のテキストにだけ足すので、テキストの言語はいつもキーに入れる
+  return {
+    textLanguage: assets.textLanguage,
+    ...(options.applyPersonalSpeed ? { personalSpeed: assets.personalSpeed ?? null } : {}),
+  };
 }

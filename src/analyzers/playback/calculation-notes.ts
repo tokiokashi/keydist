@@ -1,5 +1,6 @@
 import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import type { PlaybackOverheadUse } from '#interpretation/timing/playback.ts';
+import type { PunctuationWaitUse } from '#interpretation/timing/punctuation-wait.ts';
 import { DEFAULT_PLAYBACK_OPTIONS, type PlaybackOptions } from './options.ts';
 import {
   calibrationPartChanges,
@@ -26,6 +27,13 @@ export interface PlaybackCalculationNotes {
   readonly changes: readonly string[];
 }
 
+const NO_WAIT_USE: PunctuationWaitUse = {
+  commaBeforeMs: false,
+  commaAfterMs: false,
+  periodBeforeMs: false,
+  periodAfterMs: false,
+};
+
 export function playbackCalculationNotes(
   options: PlaybackOptions,
   personalSpeedUse: PersonalSpeedUse,
@@ -35,6 +43,8 @@ export function playbackCalculationNotes(
   savedCalibration: PlaybackCalibration | undefined,
   /** 再生するステップの列に上乗せを入れるステップがあるか（`PlaybackExtracted.overheadUse`）。 */
   overheadUse: PlaybackOverheadUse,
+  /** 読点・句点の前後の待機のうち、0でなくテキストに足す位置がある項目（`PlaybackExtracted.waitUse`）。省略した時はどれも足さない。 */
+  waitUse: PunctuationWaitUse = NO_WAIT_USE,
 ): PlaybackCalculationNotes {
   const defaults = DEFAULT_PLAYBACK_OPTIONS;
   const personalSpeedInUse = personalSpeedUse === 'applied';
@@ -59,6 +69,10 @@ export function playbackCalculationNotes(
     changes.push(options.applyPersonalSpeed ? '個人速度を適用する' : '個人速度を適用しない');
   }
   changes.push(...calibrationPartChanges(options, savedCalibration));
+  if (waitUse.commaBeforeMs) changes.push(`読点の前の待機: ${options.commaBeforeMs}ミリ秒`);
+  if (waitUse.commaAfterMs) changes.push(`読点の後の待機: ${options.commaAfterMs}ミリ秒`);
+  if (waitUse.periodBeforeMs) changes.push(`句点の前の待機: ${options.periodBeforeMs}ミリ秒`);
+  if (waitUse.periodAfterMs) changes.push(`句点の後の待機: ${options.periodAfterMs}ミリ秒`);
   if (options.rateAverage !== defaults.rateAverage) {
     changes.push(`平均の方式: ${options.rateAverage === 'ewma' ? 'EWMA' : 'SMA'}`);
   }

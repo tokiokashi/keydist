@@ -43,6 +43,7 @@ const DEFAULT_OPTIONS = fixtureOptions.defaultOptions;
 function fixtureContext() {
   return {
     trace: { strokes: [], errors: [], skipped: 0 } as never,
+    text: '',
     analysis: { aggregate: { strokeCount: 0 } } as never,
     metrics: { totalUnits: 100, strokes: 0 } as never,
     geometry: {} as never,
@@ -73,6 +74,7 @@ test('SingleAnalyzerDefinition: extractは Trace結果 + 解釈結果 + options 
   const definition = createFixtureDefinition();
   const result = definition.extract({
     trace: { strokes: [], errors: [], skipped: 0 } as never,
+    text: '',
     analysis: { aggregate: { strokeCount: 0 } } as never,
     metrics: { totalUnits: 12, strokes: 0 } as never,
     options: DEFAULT_OPTIONS,

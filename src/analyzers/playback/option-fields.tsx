@@ -9,6 +9,7 @@ import {
   PLAYBACK_STEPS_PER_SECOND_MAX,
   PLAYBACK_STEPS_PER_SECOND_MIN,
 } from '#interpretation/timing/playback.ts';
+import { PUNCTUATION_WAIT_MS_MAX, PUNCTUATION_WAIT_MS_MIN } from '#interpretation/timing/punctuation-wait.ts';
 import {
   bindOption,
   CheckboxOptionField,
@@ -155,6 +156,54 @@ export function usePlaybackFields(
         binding={bindOnOff('useKeystrokeOverhead')}
         choices={USE_NOT_USE}
         hint={partHint('文章を打つ速さで測った、ステップに足す上乗せを使います。使わない時は足しません。')}
+      />
+    ),
+    commaBeforeMs: (
+      <NumberOptionField
+        label="読点の前の待機"
+        binding={bind('commaBeforeMs')}
+        min={PUNCTUATION_WAIT_MS_MIN}
+        max={PUNCTUATION_WAIT_MS_MAX}
+        step={50}
+        integer
+        unit="ミリ秒"
+        hint="日本語のテキストの「、」「，」「,」を打つ前に置く間です。打鍵の速さの平均には入りません。"
+      />
+    ),
+    commaAfterMs: (
+      <NumberOptionField
+        label="読点の後の待機"
+        binding={bind('commaAfterMs')}
+        min={PUNCTUATION_WAIT_MS_MIN}
+        max={PUNCTUATION_WAIT_MS_MAX}
+        step={50}
+        integer
+        unit="ミリ秒"
+        hint="日本語のテキストの「、」「，」「,」を打った後に置く間です。"
+      />
+    ),
+    periodBeforeMs: (
+      <NumberOptionField
+        label="句点の前の待機"
+        binding={bind('periodBeforeMs')}
+        min={PUNCTUATION_WAIT_MS_MIN}
+        max={PUNCTUATION_WAIT_MS_MAX}
+        step={50}
+        integer
+        unit="ミリ秒"
+        hint="日本語のテキストの「。」「．」「.」を打つ前に置く間です。"
+      />
+    ),
+    periodAfterMs: (
+      <NumberOptionField
+        label="句点の後の待機"
+        binding={bind('periodAfterMs')}
+        min={PUNCTUATION_WAIT_MS_MIN}
+        max={PUNCTUATION_WAIT_MS_MAX}
+        step={50}
+        integer
+        unit="ミリ秒"
+        hint="日本語のテキストの「。」「．」「.」を打った後に置く間です。配列がその文字を打てない時も、テキストのその位置に置きます。"
       />
     ),
     rateAverage: (

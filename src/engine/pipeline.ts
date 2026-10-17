@@ -107,6 +107,7 @@ export function extractSingle<Options, Extracted>(
 ): EngineExtractionResult<Extracted> {
   const extracted = definition.extract({
     trace: traceResult.trace,
+    text: input.text,
     analysis: interpretationResult.analysis,
     metrics: interpretationResult.metrics,
     options,

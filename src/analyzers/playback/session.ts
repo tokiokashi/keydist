@@ -29,6 +29,8 @@ export function playbackScheduleOf(
   analysis: AggregatedAnalysisResult,
   geometry: Geometry,
   timing: PlaybackTimingConditions,
+  /** 読点・句点の前後の待機（`planPunctuationWaits`の`gapMs`）。省略した時は待機を足さない */
+  waitGapsMs?: readonly number[],
 ): PlaybackTimingStep[] {
   return playbackTimingSchedule(
     analysis,
@@ -36,7 +38,7 @@ export function playbackScheduleOf(
     timing.sameFingerDelay,
     timing.calibration,
     timing.speedMultiplier,
-    { allFingerMovementDelay: timing.allFingerMovementDelay, geometry },
+    { allFingerMovementDelay: timing.allFingerMovementDelay, geometry, waitGapsMs },
   );
 }
 
