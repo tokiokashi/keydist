@@ -188,11 +188,11 @@ export function resolveWorkspacePaneTarget(
 }
 
 /**
- * Workspaceのペインが映しうる配列のid（重複なし）。従うペインは組の対象（1つ・集合の両方）、固定のペインは
- * 自分の対象を読む。ペインのAnalyzerが1つ・集合のどちらを見るかはここでは引かないので、従う組の両方を含む
- * （文脈バーの既定の物理配列のチップが、配列のレベルの値が勝つ配列を示すのに使う）。
+ * Workspaceのペインが映しうる対象。従うペインは組の対象（1つ・集合の両方）、固定のペインは自分の対象を読む。
+ * ペインのAnalyzerが1つ・集合のどちらを見るかはここでは引かないので、従う組の両方を含む。
+ * どのペインも従わない組の対象は含めない（見えない対象なので）。
  */
-export function workspaceLayoutIds(workspace: Pick<Workspace, 'groups' | 'panes'>): readonly string[] {
+export function workspaceTargets(workspace: Pick<Workspace, 'groups' | 'panes'>): readonly AnalysisTarget[] {
   const targets: AnalysisTarget[] = [];
   const followed = new Set<string>();
   for (const pane of workspace.panes) {
@@ -210,7 +210,15 @@ export function workspaceLayoutIds(workspace: Pick<Workspace, 'groups' | 'panes'
     if (!followed.has(group.id)) continue;
     targets.push(effectiveSingleTarget(group.target.single), ...group.target.set.targets);
   }
-  return layoutIdsOfTargets(targets);
+  return targets;
+}
+
+/**
+ * Workspaceのペインが映しうる配列のid（重複なし）。文脈バーの既定の物理配列のチップが、
+ * 配列のレベルの値が勝つ配列を示すのに使う。
+ */
+export function workspaceLayoutIds(workspace: Pick<Workspace, 'groups' | 'panes'>): readonly string[] {
+  return layoutIdsOfTargets(workspaceTargets(workspace));
 }
 
 export interface WorkspacePane {

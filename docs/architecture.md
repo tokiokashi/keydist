@@ -354,8 +354,11 @@ Workspaceで並べたペインは、同じキー（Analyzerと見る量。例: `
   - 外から来る値なので、資産と同じcodecの境界（valibot）を通し、対象は40件まで・1件200文字までに絞る（共有リンクのサイズ上限）
   - 取り込めなかったものは、保存済みの設定の読み直し（「既定値へ戻した」）とは別の文でペインに出す（`PaneFrame`の`linkNotices`）。URLでは、集合の要素を落とした時は残りを取り込み、値全体を捨てた時は今の値が残るので、どちらにも当てはまる「取り込まなかった」と書く。
 - **プリセットは条件のモーダルの上部**（閉じたまま開く折りたたみ）で、保存・流し込み・名前の変更・削除をする。保存・流し込みの先は、モーダルが開く編集先と同じレベル（単体ページは全体、Workspaceのペインはそのレベル。Workspaceの中の操作で全体の値を書き換えない）。Workspaceでは保存が全体にWorkspaceを重ねた値、「今の値と同じ」は解決した値で比べる。モーダルは背後の文脈バーを操作できなくするので、保存・流し込み・削除の直後の結果の行に「元に戻す」を置く（`ConditionEditorContext`の`undo`。文脈バーと同じ履歴で、モーダルが開いている間の元に戻すのキー操作もこれを通す）。書き出し・読み込みも同じ節にある（`hosts/shared/PresetSection.tsx`）。
-  - ファイルは`{ format: 'keydist-presets', version, presets }`。`version`と`presets`は資産のcodecの出力そのままで、`format`だけを`platform/browser-download.ts`が書く直前に付ける。読む時は`format`を見てからcodecへ渡す（旧画面の条件ファイルも`version: 4`を持ち、印が無いと新しい版と取り違えるため）。同じ封筒に`workspaces`を足して`version`を上げられる
-  - 読み込みは追加だけ（常に新しいid、同名は「名前 2」）で、読み込んだだけでは条件は変わらない。上限は1MB・100件。分類と文言は純粋な`hosts/shared/preset-file.ts`、ファイルの保存・読み取りは`platform/`で、`app/shell/AppShell.tsx`が`PresetFileIoContext`で渡す。参照先の資産（自作の指の割当等）は同梱せず、この端末に無いものを指す値は残して注記する
+  - ファイルは`{ format: 'keydist-presets', version, presets?, workspaces? }`。`version`・`presets`・`workspaces`は封筒のcodec（`engine/preset-file-codec.ts`）の出力そのままで、`format`だけを`platform/browser-download.ts`が書く直前に付ける。読む時は`format`を見てからcodecへ渡す（旧画面の条件ファイルも`version: 4`を持ち、印が無いと新しい版と取り違えるため）。`presets`と`workspaces`はどちらか一方だけでもよい。プリセットの読み手はプリセットだけを、Workspaceの読み手（`parseWorkspaceFile`）はWorkspaceだけを読む。最上位とプリセットの中の未知のキーは読まずに捨て、不具合報告用の原文にだけ残す（結果の行の件数の文には数えない）。読める部分は読み込む
+  - 読み込みは追加だけ（常に新しいid、同名は「名前 2」）で、読み込んだだけでは条件は変わらない。上限は1MB・100件。分類と文言は純粋な`hosts/shared/preset-file.ts`、ファイルの保存・読み取りは`platform/`で、`app/shell/preset-file-io.ts`のブラウザ実装を`app/shell/AppShell.tsx`が`PresetFileIoContext`で渡す。参照先の資産（自作の指の割当等）は同梱せず、この端末に無いものを指す値は残して注記する
+- **Workspaceの書き出し・読み込み**は、Workspaceを他の人に渡す手段で、共有ボタンは出さない。書き出しはWorkspaceの画面の「Workspaceの操作」メニューの「書き出す」で、今のWorkspace1件を、プリセットと同じ封筒（`workspaces`だけを持つファイル）で保存する（ペインの並び・連動の組・固定の対象・解析設定・Workspaceの条件・テキストの選択を含む）。読み込みはサイドバーのWorkspace区分の「ファイルから読み込む…」で、手元に足すWorkspaceの画面へ移り、結果をシェルの知らせに出す
+  - 参照先の資産（Setup・自作の配列・指の割当・ローマ字規則・自作のテキスト）はファイルに入れない。この端末に無い資産を指すWorkspaceも読み込み、指している種類を結果の行に注記する（資産は`/assets`の書き出しで別に渡す）。自作のテキストは、無いと既定のテキストで測るので注記の対象に入れる
+  - 突き合わせは自作の資産の読み込みと同じ決め方（`engine/workspace-import.ts`）。手元に同じidが無ければそのまま足す。同じidがあり中身が同じなら何も足さない。同じidがあり中身が違えば、手元を残し、読み込んだ側を新しいidと「名前 (2)」の別名で足す。ただし、別のidで同じ中身のもの（前に別名で足したもの）が手元にあれば、それと同じとみなして足さない。中身にidと名前と色の番号（対象から配り直せる表示だけの値）は含めない。同じファイルを二度読んでも増えない
 - 保存したWorkspaceは `/workspace/<id>` で、URLは識別子だけ
 
 ### 元に戻す・やり直す

@@ -9,4 +9,4 @@ export {
   uniquePresetName,
 } from './library.ts';
 export { applyPresetValues, type PresetApplication } from './apply.ts';
-export { presetLibraryCodec } from './codec.ts';
+export { decodePresets, encodePresets, presetLibraryCodec } from './codec.ts';

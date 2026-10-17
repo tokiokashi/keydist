@@ -330,45 +330,56 @@ function encodePane(pane: WorkspacePane): Record<string, unknown> {
   };
 }
 
+/** 手持ちを保存形のWorkspaceの配列にする。ファイルの書き出しも同じものを使う。 */
+export function encodeWorkspaces(library: WorkspaceLibrary): Record<string, unknown>[] {
+  return library.map((workspace) => ({
+    id: workspace.id,
+    name: workspace.name,
+    text: encodeTextSelectionState(workspace.text),
+    groups: workspace.groups.map((group) => ({
+      id: group.id,
+      target: {
+        ...(group.target.single.target === undefined ? {} : { single: encodeAnalysisTarget(group.target.single.target) }),
+        set: encodeTargetSet(group.target.set),
+      },
+    })),
+    optionSets: workspace.optionSets.map((set) => ({
+      id: set.id,
+      analyzerId: set.analyzerId,
+      ...(set.options === undefined ? {} : { options: set.options }),
+    })),
+    panes: workspace.panes.map(encodePane),
+    colorSlots: { ...workspace.colorSlots },
+    grid: workspace.grid.map((item) => ({ id: item.id, x: item.x, y: item.y, w: item.w, h: item.h })),
+    ...(workspace.compactPanes === true ? { compactPanes: true } : {}),
+    ...(workspace.conditions === undefined ? {} : { conditions: { ...workspace.conditions } }),
+  }));
+}
+
+/**
+ * 保存形のWorkspaceの配列を読む。配列でなければ全件を捨てて診断を積む（無い時は空）。
+ * 診断のpathは`path`から数える（`workspaces[0].panes[1]`）。
+ */
+export function decodeWorkspaces(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): WorkspaceLibrary {
+  const items: readonly unknown[] = Array.isArray(raw) ? raw : [];
+  if (raw !== undefined && !Array.isArray(raw)) {
+    diagnostics.push({ path, message: '配列形式でないためWorkspaceを捨てました' });
+  }
+  const seenIds = new Set<string>();
+  const workspaces: Workspace[] = [];
+  items.forEach((item, index) => {
+    const workspace = decodeWorkspace(item, `${path}[${index}]`, seenIds, diagnostics);
+    if (workspace !== undefined) workspaces.push(workspace);
+  });
+  return workspaces;
+}
+
 export const WORKSPACE_LIBRARY_CODEC: AssetCodec<WorkspaceLibrary> = defineAssetCodec({
   currentVersion: 4,
   migrations: [{ fromVersion: 3, toVersion: 4, migrate: (payload) => payload }],
   decodePayload: (payload, diagnostics) => {
     if (!isRecord(payload)) return undefined;
-    const raw: readonly unknown[] = Array.isArray(payload.workspaces) ? payload.workspaces : [];
-    if (payload.workspaces !== undefined && !Array.isArray(payload.workspaces)) {
-      diagnostics.push({ path: 'workspaces', message: '配列形式でないためWorkspaceを捨てました' });
-    }
-    const seenIds = new Set<string>();
-    const workspaces: Workspace[] = [];
-    raw.forEach((item, index) => {
-      const workspace = decodeWorkspace(item, `workspaces[${index}]`, seenIds, diagnostics);
-      if (workspace !== undefined) workspaces.push(workspace);
-    });
-    return workspaces;
+    return decodeWorkspaces(payload.workspaces, 'workspaces', diagnostics);
   },
-  encodePayload: (library) => ({
-    workspaces: library.map((workspace) => ({
-      id: workspace.id,
-      name: workspace.name,
-      text: encodeTextSelectionState(workspace.text),
-      groups: workspace.groups.map((group) => ({
-        id: group.id,
-        target: {
-          ...(group.target.single.target === undefined ? {} : { single: encodeAnalysisTarget(group.target.single.target) }),
-          set: encodeTargetSet(group.target.set),
-        },
-      })),
-      optionSets: workspace.optionSets.map((set) => ({
-        id: set.id,
-        analyzerId: set.analyzerId,
-        ...(set.options === undefined ? {} : { options: set.options }),
-      })),
-      panes: workspace.panes.map(encodePane),
-      colorSlots: { ...workspace.colorSlots },
-      grid: workspace.grid.map((item) => ({ id: item.id, x: item.x, y: item.y, w: item.w, h: item.h })),
-      ...(workspace.compactPanes === true ? { compactPanes: true } : {}),
-      ...(workspace.conditions === undefined ? {} : { conditions: { ...workspace.conditions } }),
-    })),
-  }),
+  encodePayload: (library) => ({ workspaces: encodeWorkspaces(library) }),
 });

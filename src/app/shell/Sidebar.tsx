@@ -1,5 +1,5 @@
 import { Link, useNavigate } from '@tanstack/react-router';
-import { useSyncExternalStore, type ReactNode } from 'react';
+import { useRef, useSyncExternalStore, type ChangeEvent, type ReactNode } from 'react';
 import { BIGRAM_FLOW_PANE_META } from '#analyzers/bigram-flow/pane-meta.ts';
 import { FINGER_DISTANCE_PANE_META } from '#analyzers/finger-distance/pane-meta.ts';
 import { HEATMAP_PANE_META } from '#analyzers/heatmap/pane-meta.ts';
@@ -26,6 +26,7 @@ import { PERSONAL_SPEED_LABEL } from '#editors/personal-speed/label.ts';
 import { USER_ASSETS_LABEL } from '../assets/UserAssetsPage.tsx';
 import { REPOSITORY_URL, SPEC_LINKS } from '../about/links.ts';
 import { createWorkspaceInStorage } from '../workspace/create-workspace.ts';
+import { importWorkspaceFile } from '../workspace/import-workspaces.ts';
 import { generateWorkspaceId } from '../workspace/id-generator.ts';
 import {
   getServerSidebarCollapsedSnapshot,
@@ -169,6 +170,19 @@ export function Sidebar({ pinned, onPinnedChange, onNavigate }: SidebarProps) {
     void navigate({ to: '/workspace/$id', params: { id } });
   };
 
+  const fileInput = useRef<HTMLInputElement>(null);
+  const importWorkspaces = async (event: ChangeEvent<HTMLInputElement>) => {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    // 同じファイルをもう一度選んでも変更として届くよう、選択を空へ戻す
+    input.value = '';
+    if (file === undefined) return;
+    const id = await importWorkspaceFile(file);
+    if (id === undefined) return;
+    onNavigate();
+    void navigate({ to: '/workspace/$id', params: { id } });
+  };
+
   return (
     <>
       <div className="sidebar-top">
@@ -221,6 +235,17 @@ export function Sidebar({ pinned, onPinnedChange, onNavigate }: SidebarProps) {
           <button type="button" className="sidebar-link sidebar-new-workspace" onClick={createWorkspace}>
             ＋ 新しいWorkspace
           </button>
+          <button type="button" className="sidebar-link sidebar-new-workspace" onClick={() => fileInput.current?.click()}>
+            ファイルから読み込む…
+          </button>
+          <input
+            ref={fileInput}
+            type="file"
+            accept=".json,application/json"
+            hidden
+            aria-label="読み込むWorkspaceのファイル"
+            onChange={(event) => void importWorkspaces(event)}
+          />
         </SidebarGroup>
 
         <section className="sidebar-group">
