@@ -6,7 +6,7 @@ import { createContext, useContext, type ComponentType, type ReactNode } from 'r
  * 渡されなければ（テスト等）、リンクは出さない。
  */
 export interface PersonalSpeedLinkProps {
-  readonly className?: string;
+  readonly className?: string | undefined;
   readonly children: ReactNode;
 }
 

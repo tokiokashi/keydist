@@ -387,7 +387,7 @@ test('層操作キーと出力キーを同時押しの中で分離する', () =>
     assert.deepEqual(trace.strokes[0].triggerKeys, [trigger], `${layoutId} のトリガー`);
     assert.deepEqual(trace.strokes[0].pairedTriggerKeys, [trigger], `${layoutId} の対向トリガー`);
 
-    const withoutFaceMetadata = { ...layout, faces: undefined, faceLayerIds: undefined };
+    const { faces: _faces, faceLayerIds: _faceLayerIds, ...withoutFaceMetadata } = layout;
     const canonicalOnlyTrace = generateTrace(text, withoutFaceMetadata, geometry, opts());
     assert.deepEqual(
       canonicalOnlyTrace.strokes[0].pairedTriggerKeys,
@@ -410,7 +410,7 @@ test('2-key explicit modifierはcanonical roleからpaired triggerとして扱�
     triggerPersistence: 'single',
   }]);
 
-  const withoutFaceMetadata = { ...layout, faces: undefined, faceLayerIds: undefined };
+  const { faces: _faces, faceLayerIds: _faceLayerIds, ...withoutFaceMetadata } = layout;
   const trace = generateTrace('x', withoutFaceMetadata, geometry, opts());
 
   assert.equal(trace.strokes.length, 1);

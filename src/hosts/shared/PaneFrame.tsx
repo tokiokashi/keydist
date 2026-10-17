@@ -39,82 +39,82 @@ export interface PaneFrameProps {
   /** Analyzerの短い説明。見出しのⓘで出す。 */
   readonly description: string;
   /** 短い説明に収まらない説明。あれば見出しのⓘはモーダルを開く。 */
-  readonly help?: InfoHelp;
+  readonly help?: InfoHelp | undefined;
   /**
    * 本体の推奨幅 [rem]（`analyzers/recommended-width.ts`）。ペインがこれより広い時、本体はここで止まって中央に寄る。
    * 狭い時は効かず、ペインの幅に縮む。
    */
   readonly recommendedWidthRem: number;
   /** 個別画面ではペインのAnalyzer名がページのh1になる。Workspaceでは2。 */
-  readonly headingLevel?: 1 | 2;
+  readonly headingLevel?: 1 | 2 | undefined;
   /**
    * 読み上げ用の名前に添える対象の名前（「Bigram Flow — QWERTY」）。Workspaceでは
    * 解析設定の小窓にも出す（どのペインの設定か分かるように）。
    */
-  readonly targetName?: string;
+  readonly targetName?: string | undefined;
   /**
    * 見出しを文脈バーの下に固定する（個別画面）。図を下までスクロールしても対象と解析設定を変えられる。
    * Workspaceのペインは自分の枠の中でスクロールするので固定しない。
    */
-  readonly stickyHeader?: boolean;
+  readonly stickyHeader?: boolean | undefined;
   /** 見出しの対象の欄（単一対象の選択、集合の要約とその選択）。 */
   readonly target: ReactNode;
   /** 対象が連動の組に従っているか固定かの表示と選択。Workspaceのペインだけが渡す。 */
-  readonly targetBinding?: PaneTargetBindingControl;
+  readonly targetBinding?: PaneTargetBindingControl | undefined;
   /** 解析設定が共有に従っているか、このペインだけかの表示と切り替え。小窓の先頭に出す。Workspaceのペインだけが渡す。 */
-  readonly optionsBinding?: PaneOptionsBindingControl;
+  readonly optionsBinding?: PaneOptionsBindingControl | undefined;
   /** 解析設定のcomponent（Analyzerの`Settings`をホストが値と結んだもの）。 */
   readonly settings: ReactNode;
   /** Workspaceのペインでは、小窓にペイン名を出す。個別画面ではページに1枚なので出さない。 */
-  readonly showPaneNameInSettings?: boolean;
+  readonly showPaneNameInSettings?: boolean | undefined;
   /**
    * 本体の操作で開く小窓（キーの詳細）。解析設定の小窓と同じく、ペイン名を受け取って出す（Workspaceだけ名前が渡る）。
    * 本体を呼べる間だけ`undefined`以外を返す。
    */
-  readonly floating?: (paneName: string | undefined) => ReactNode;
+  readonly floating?: ((paneName: string | undefined) => ReactNode) | undefined;
   /** ⋯のメニュー。空なら⋯を出さない（個別画面は出さない。Workspaceのペインが使う）。 */
-  readonly menuItems?: readonly PaneMenuItem[];
+  readonly menuItems?: readonly PaneMenuItem[] | undefined;
   /** 見出しの右端に置く操作（個別画面の「Workspaceに追加」）。⋯と同じ位置に出す。 */
-  readonly headerAction?: ReactNode;
+  readonly headerAction?: ReactNode | undefined;
   /**
    * 解析設定をAnalyzerの既定値（`defaultOptions`）へ戻す。解析設定の小窓のヘッダーに「すべて初期値に戻す」を出す。
    * 戻す先は個別画面でもWorkspaceでも既定値で、URLで開いた時の値や保存した値へは戻さない。
    */
-  readonly onResetOptions?: () => void;
+  readonly onResetOptions?: (() => void) | undefined;
   /**
    * 資産（保存済みの配列・Setup）の読み込みが済んでいるか。省略はtrue。falseの間は状態のバッジを出さない。
    * 読み込み前の状態は保存済みの結果が無いだけなので、「未計算」と出すと誤解を招く。
    * 読み込み後にバッジが消えて見出しの並びが動くこともなくなる（済むまで出さない）。
    */
-  readonly assetsReady?: boolean;
+  readonly assetsReady?: boolean | undefined;
   /** 対象の実体（配列・物理配列・指の割当）の名前。解決前（読み込み中）は省略する。 */
-  readonly header?: ConditionHeaderInfo;
+  readonly header?: ConditionHeaderInfo | undefined;
   /** Traceに効く条件の一覧。 */
   readonly conditionRows: readonly ConditionSummaryRow[];
   /** 条件のモーダルが全体のレベルの条件を書き換えるための手持ち。 */
   readonly conditionEditor: ConditionEditorContext;
   /** 複数の対象を持つペインの、対象ごとの差（`conditionRows`は共通の条件）。 */
-  readonly conditionTargetDiffs?: readonly ConditionTargetDiff[];
+  readonly conditionTargetDiffs?: readonly ConditionTargetDiff[] | undefined;
   /** 抽出の依頼の現在の状態。値そのもの（`value`）は本体側で使うので、ここでは見ない。 */
   readonly engineState: EngineRequestState<unknown>;
   /** Trace生成段の診断（配列定義の不備等）。値として表示する。 */
-  readonly traceErrors?: readonly string[];
+  readonly traceErrors?: readonly string[] | undefined;
   /**
    * 保存済みの解析設定を読み直した時の診断（壊れた値・未知の値を既定値へ戻したという報告）。
    * `traceErrors`とは出どころが違うので混ぜない。共有リンクの取り込みは事実が違うので`linkNotices`で出す。
    */
-  readonly settingsDiagnostics?: readonly CodecDiagnostic[];
+  readonly settingsDiagnostics?: readonly CodecDiagnostic[] | undefined;
   /** 共有リンクを開いた時に、取り込めなかったものを伝える文（解析設定・対象）。 */
-  readonly linkNotices?: readonly string[];
+  readonly linkNotices?: readonly string[] | undefined;
   /**
    * ペイン全体で対象が空の時に出すもの（対象を選ぶボタン等）。これがある間は本体を呼ばない。
    * 選べば分かる結果（「選ぶと表が出る」等）の説明は置かない。
    */
-  readonly emptyContent?: ReactNode;
+  readonly emptyContent?: ReactNode | undefined;
   /**
    * 本体。描ける値がそろってから渡す。`undefined`の間（計算中で前の結果も無い）は枠が計算中と出す。
    */
-  readonly children?: ReactNode;
+  readonly children?: ReactNode | undefined;
 }
 
 /**

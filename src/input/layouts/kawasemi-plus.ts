@@ -49,7 +49,7 @@ function sourceFace(
   entries: Readonly<Record<string, string>>,
   options?: SourceFace['options'],
 ): SourceFace {
-  return { trigger, entries, options };
+  return options === undefined ? { trigger, entries } : { trigger, entries, options };
 }
 
 function selectShortestFaces(sources: readonly SourceFace[]): Face[] {

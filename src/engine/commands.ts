@@ -674,7 +674,11 @@ export function duplicateTextCommand(
     const { library: nextLibrary, created } = appendCopiedUserText(
       library,
       generateId,
-      { text: resolved.text, name: resolved.name, languageOverride: resolved.languageOverride },
+      {
+        text: resolved.text,
+        name: resolved.name,
+        ...(resolved.languageOverride === undefined ? {} : { languageOverride: resolved.languageOverride }),
+      },
       uniqueName,
     );
     return { library: nextLibrary, selection: { ref: { kind: 'user', id: created.id } } };

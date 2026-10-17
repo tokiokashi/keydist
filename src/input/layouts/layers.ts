@@ -93,10 +93,10 @@ export interface TriggerChord {
 /** 面のtrigger alternativeを、キーが属する組（`modifierGroups` と `triggerMeaningGroups`）を添えたchord列にする。 */
 export function displayTriggerChords(face: Face): readonly TriggerChord[] {
   const entries = Object.entries({ ...face.modifierGroups, ...face.triggerMeaningGroups });
-  const groups = entries.length === 0
-    ? undefined
-    : new Map(entries.map(([key, group]) => [resolveKeyId(key), group] as const));
-  return displayTriggerAlternatives(face).map((keys) => ({ keys, groups }));
+  const groupsField = entries.length === 0
+    ? {}
+    : { groups: new Map(entries.map(([key, group]) => [resolveKeyId(key), group] as const)) };
+  return displayTriggerAlternatives(face).map((keys) => ({ keys, ...groupsField }));
 }
 
 /**
@@ -546,13 +546,13 @@ function aggregationTriggerChords(
             groups.set(resolveKeyId(role.key), role.modifierGroupId);
           }
         }
-        const groupsOrUndefined = groups.size === 0 ? undefined : groups;
+        const groupsField = groups.size === 0 ? {} : { groups };
         chords.push({
           keys: (realization?.defaultTriggerKeys ?? []).map(resolveKeyId),
-          groups: groupsOrUndefined,
+          ...groupsField,
         });
         for (const view of realization?.alternateParticipations ?? []) {
-          chords.push({ keys: view.triggerKeys.map(resolveKeyId), groups: groupsOrUndefined });
+          chords.push({ keys: view.triggerKeys.map(resolveKeyId), ...groupsField });
         }
       });
     }

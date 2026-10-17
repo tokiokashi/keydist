@@ -19,7 +19,7 @@ const face = (
   presentationCells?: Readonly<Record<string, string>>,
 ): Face => ({
   ...faceFromEntries(trigger, 'simultaneous', entries),
-  layer,
+  ...(layer === undefined ? {} : { layer }),
   inputRole,
   ...(presentationCells === undefined ? {} : { presentationCells }),
   ...(trigger.length > 0 ? { triggerPersistence: 'single' as const } : {}),

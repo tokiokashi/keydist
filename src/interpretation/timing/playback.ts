@@ -532,7 +532,7 @@ export function playbackStrokeDisplay(layout: Layout, stroke: Stroke): PlaybackS
     .map((key) => keyLabels.get(key))
     .filter((label): label is string => label !== undefined && label !== '')
     .join(' / ');
-  return { character: character || undefined, keyLabels };
+  return character === '' ? { keyLabels } : { character, keyLabels };
 }
 
 export function createPlaybackState(
@@ -546,7 +546,7 @@ export function createPlaybackState(
     stepsPerSecond,
     speedMultiplier,
     sameFingerDelay,
-    calibration,
+    ...(calibration === undefined ? {} : { calibration }),
     playing: false,
     elapsedMs: 0,
   };
@@ -1381,8 +1381,8 @@ function playbackEwmaRate(
 
   return {
     inputText: completedInputs.slice(-6).join(''),
-    kanaPerSecond: kanaRate,
-    actionsPerSecond: actionRate,
+    ...(kanaRate === undefined ? {} : { kanaPerSecond: kanaRate }),
+    ...(actionRate === undefined ? {} : { actionsPerSecond: actionRate }),
   };
 }
 
@@ -1517,26 +1517,28 @@ export function playbackRateChartData(
         schedule,
       )
       : undefined;
+    const kanaPerSecond = average === 'ewma'
+      ? ewma?.kanaPerSecond
+      : playbackRecentKanaPerSecond(
+        analysis,
+        cursor,
+        stepsPerSecond,
+        sameFingerDelay,
+        limit,
+        calibration,
+        speedMultiplier,
+        schedule,
+      );
+    const actionsPerSecond = average === 'ewma'
+      ? ewma?.actionsPerSecond
+      : recent && recent.durationMs > 0
+        ? ((recent.end - recent.start) * 1000) / recent.durationMs
+        : undefined;
     points.push({
       cursor,
       inputText: ewma?.inputText ?? (recent ? playbackRateWindowInputText(strokes, recent) : ''),
-      kanaPerSecond: average === 'ewma'
-        ? ewma?.kanaPerSecond
-        : playbackRecentKanaPerSecond(
-          analysis,
-          cursor,
-          stepsPerSecond,
-          sameFingerDelay,
-          limit,
-          calibration,
-          speedMultiplier,
-          schedule,
-        ),
-      actionsPerSecond: average === 'ewma'
-        ? ewma?.actionsPerSecond
-        : recent && recent.durationMs > 0
-          ? ((recent.end - recent.start) * 1000) / recent.durationMs
-          : undefined,
+      ...(kanaPerSecond === undefined ? {} : { kanaPerSecond }),
+      ...(actionsPerSecond === undefined ? {} : { actionsPerSecond }),
       chain: analysis.chains.some((chain) =>
         cursor - 1 >= chain.startStrokeIndex && cursor - 1 < chain.endStrokeIndex),
       arpeggio: analysis.annotations[cursor - 1]?.inArpeggio ?? false,

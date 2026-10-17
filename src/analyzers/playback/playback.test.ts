@@ -565,7 +565,7 @@ test('既定と違う計算の知らせ: 個人速度で計算していて同時
 });
 
 test('既定と違う計算の知らせ: 打鍵の上乗せは、時間に入る種類が0以外の値を持つ時だけ足していると示す', () => {
-  const notes = (sameFingerDelay: boolean, keystrokeOverheadMs: PlaybackCalibration['keystrokeOverheadMs']) =>
+  const notes = (sameFingerDelay: boolean, keystrokeOverheadMs: NonNullable<PlaybackCalibration['keystrokeOverheadMs']>) =>
     playbackCalculationNotes(
       { ...DEFAULT_PLAYBACK_OPTIONS, sameFingerDelay },
       'applied',
@@ -1227,7 +1227,7 @@ test('既定と違う計算の知らせ: 同時押しの上乗せは、再生す
 
 test('既定と違う計算の知らせ: 打鍵の上乗せは、再生するステップに入る種類の値が0でない時だけ足していると示す', () => {
   // 条件: 配列qwerty・既定の解析設定。「fjdk」は同指連続を持たず、全ステップが「その他」。「edc」は同じ指で違う位置を続けて打つ（同指連続）。
-  const notesOf = (text: string, keystrokeOverheadMs: PlaybackCalibration['keystrokeOverheadMs'], options: Partial<PlaybackOptions> = {}) => {
+  const notesOf = (text: string, keystrokeOverheadMs: NonNullable<PlaybackCalibration['keystrokeOverheadMs']>, options: Partial<PlaybackOptions> = {}) => {
     const extracted = extractionOf(resolve('qwerty', text, 'en', EMPTY_SETTINGS_OVERRIDES, { ...CALIBRATION, keystrokeOverheadMs }), options);
     return playbackCalculationNotes(
       { ...DEFAULT_PLAYBACK_OPTIONS, ...options },

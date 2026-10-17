@@ -89,7 +89,7 @@ const BASE: PlaybackCalibration = {
 };
 
 const withOverhead = (keystrokeOverheadMs: PlaybackCalibration['keystrokeOverheadMs']): PlaybackCalibration =>
-  ({ ...BASE, keystrokeOverheadMs });
+  ({ ...BASE, ...(keystrokeOverheadMs === undefined ? {} : { keystrokeOverheadMs }) });
 
 const durations = (analysis: PlaybackTimingAnalysis, calibration: PlaybackCalibration, sameFingerDelay = false, multiplier = 1) =>
   analysis.strokes.map((_, index) => playbackStepDurationMs(analysis, index, 1, sameFingerDelay, calibration, multiplier));

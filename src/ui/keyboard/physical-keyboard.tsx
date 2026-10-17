@@ -20,44 +20,44 @@ export interface PhysicalKeyboardKeyBand {
 }
 
 export interface PhysicalKeyboardKeyView {
-  readonly legend?: string;
-  readonly secondaryLegend?: string;
-  readonly pressed?: boolean;
-  readonly highlighted?: boolean;
-  readonly trigger?: boolean;
-  readonly combo?: boolean;
-  readonly accentSlot?: number;
+  readonly legend?: string | undefined;
+  readonly secondaryLegend?: string | undefined;
+  readonly pressed?: boolean | undefined;
+  readonly highlighted?: boolean | undefined;
+  readonly trigger?: boolean | undefined;
+  readonly combo?: boolean | undefined;
+  readonly accentSlot?: number | undefined;
   /** キー全体を塗る色の番号（1から8）。 */
-  readonly fillTone?: number;
+  readonly fillTone?: number | undefined;
   /** キーの縁に重ねる帯。 */
-  readonly bands?: readonly PhysicalKeyboardKeyBand[];
+  readonly bands?: readonly PhysicalKeyboardKeyBand[] | undefined;
   /** 読み上げとhoverに足す説明。 */
-  readonly description?: string;
+  readonly description?: string | undefined;
   /** レイヤーの色の番号を持たない、目立たない1色の枠（まとめられた側のレイヤーのトリガー）。 */
-  readonly accentTone?: 'muted';
-  readonly guide?: 'continuation' | 'output' | 'trigger';
-  readonly lookup?: boolean;
+  readonly accentTone?: 'muted' | undefined;
+  readonly guide?: 'continuation' | 'output' | 'trigger' | undefined;
+  readonly lookup?: boolean | undefined;
   /** キーを選んでいく操作で、選択中のキー。 */
-  readonly selected?: boolean;
-  readonly home?: boolean;
+  readonly selected?: boolean | undefined;
+  readonly home?: boolean | undefined;
 }
 
 export interface PhysicalKeyboardProps {
   readonly keys: readonly Key[];
-  readonly keyViews?: ReadonlyMap<string, PhysicalKeyboardKeyView>;
-  readonly ariaLabel?: string;
-  readonly geometryId?: string;
-  readonly unit?: number;
-  readonly showSecondary?: boolean;
-  readonly horizontalAlign?: 'left' | 'center';
-  readonly selectedKeyId?: string;
-  readonly onKeyClick?: (key: Key) => void;
+  readonly keyViews?: ReadonlyMap<string, PhysicalKeyboardKeyView> | undefined;
+  readonly ariaLabel?: string | undefined;
+  readonly geometryId?: string | undefined;
+  readonly unit?: number | undefined;
+  readonly showSecondary?: boolean | undefined;
+  readonly horizontalAlign?: 'left' | 'center' | undefined;
+  readonly selectedKeyId?: string | undefined;
+  readonly onKeyClick?: ((key: Key) => void) | undefined;
   /**
    * キーをボタンとして扱い、Tabで移れてEnter・Spaceで押せるようにする（`onKeyClick` と一緒に使う）。
    * 各キーの `selected` が押された状態になる。Escapeは `onEscape` を呼ぶ。
    */
-  readonly operable?: boolean;
-  readonly onEscape?: () => void;
+  readonly operable?: boolean | undefined;
+  readonly onEscape?: (() => void) | undefined;
 }
 
 const DEFAULT_UNIT = 54;

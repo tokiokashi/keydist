@@ -88,7 +88,6 @@ test('既定の名前は、出る文字の種類と共通する小書き、重�
 test('文字の種類で呼べない面と、並べても重なる面の名前', () => {
   const layer = (trigger: readonly string[], outputs: Record<string, string>): Face => ({
     ...faceFromEntries(trigger, 'simultaneous', outputs),
-    layer: undefined,
     role: 'modifier',
     inputRole: 'modifier',
     triggerPersistence: 'hold-capable',
@@ -116,7 +115,6 @@ test('文字の種類で呼べない面と、並べても重なる面の名前',
 test('配列が付けた名前と重なる既定の名前は、出る文字を並べて区別する', () => {
   const layer = (trigger: readonly string[], outputs: Record<string, string>, label?: string): Face => ({
     ...faceFromEntries(trigger, 'simultaneous', outputs),
-    layer: undefined,
     ...(label === undefined ? {} : { presentationLabel: label }),
     role: 'modifier',
     inputRole: 'modifier',
@@ -136,7 +134,6 @@ test('配列が付けた名前と重なる既定の名前は、出る文字を�
 test('トリガーの表示だけの名前が、配列が付けた名前・種類の名前・出る文字を並べた名前と重なる時の名前', () => {
   const layer = (trigger: readonly string[], outputs: Record<string, string>, label?: string): Face => ({
     ...faceFromEntries(trigger, 'simultaneous', outputs),
-    layer: undefined,
     ...(label === undefined ? {} : { presentationLabel: label }),
     role: 'modifier',
     inputRole: 'modifier',

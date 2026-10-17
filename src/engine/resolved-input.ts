@@ -87,19 +87,19 @@ export interface ResolveEngineInputOptions {
   readonly setups: ReadonlyMap<string, Setup>;
   readonly catalog: SetupCatalog;
   readonly userLayouts: ReadonlyMap<string, UserLayout>;
-  readonly customRomajiRules?: readonly UserRomajiRule[];
+  readonly customRomajiRules?: readonly UserRomajiRule[] | undefined;
   /**
    * 自作の指割り当ての手持ち（`input/shapes/user-finger-assignments.ts`）。id →実体。
    * `customRomajiRules`と同じ理由（SetupCatalogのような固定カタログを持たず、
    * 呼び出し側がその時点の手持ちを都度渡す）で省略可能にし、既定は空。
    */
-  readonly customFingerAssignments?: ReadonlyMap<string, FingerAssignment>;
+  readonly customFingerAssignments?: ReadonlyMap<string, FingerAssignment> | undefined;
   readonly overrides: SettingsCascadeOverrides;
   /**
    * 個人速度の画面の保存値（資産`personalSpeed`）。条件のカスケードの外にある値なので、ここで受ける。
    * 無ければ個人速度の保存値は無い。読むAnalyzerが適用する設定の時だけ、抽出のキーに入る。
    */
-  readonly personalSpeed?: PlaybackCalibration;
+  readonly personalSpeed?: PlaybackCalibration | undefined;
   readonly text: string;
   readonly language: TextLanguage;
   /**

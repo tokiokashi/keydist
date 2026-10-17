@@ -42,7 +42,7 @@ export interface InfoButtonProps {
   readonly floating?: boolean;
   /** 親が移動の規則（ロービング）を持つ時だけ渡す。省略はブラウザの既定（Tabで届く）。 */
   readonly tabIndex?: number;
-  readonly help?: InfoHelp;
+  readonly help?: InfoHelp | undefined;
 }
 
 export function InfoButton({ help, ...rest }: InfoButtonProps) {

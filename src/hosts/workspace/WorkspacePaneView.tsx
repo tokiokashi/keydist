@@ -56,7 +56,7 @@ function PaneNotice({
   onClose,
 }: {
   readonly message: string;
-  readonly details?: readonly string[];
+  readonly details?: readonly string[] | undefined;
   readonly onClose: () => void;
 }) {
   return (
