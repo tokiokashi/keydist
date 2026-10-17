@@ -22,6 +22,33 @@
   height: auto;
 }
 
+.finger-distance-chart-item {
+  cursor: pointer;
+  outline: none;
+}
+
+.finger-distance-chart-hit {
+  fill: transparent;
+}
+
+.finger-distance-chart-hit[data-selected] {
+  fill: var(--accent);
+  fill-opacity: 0.12;
+}
+
+.finger-distance-chart-item:focus-visible .finger-distance-chart-hit {
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+
+/* 選んだ棒の文を出す欄。選択の有無で図が動かないよう、2行ぶんの高さを確保する */
+.finger-distance-chart-readout {
+  margin: 0.3rem 0 0;
+  min-height: 2.8em;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
 .finger-distance-chart-bar {
   fill: var(--accent);
 }
