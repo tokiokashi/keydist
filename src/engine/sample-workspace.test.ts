@@ -103,7 +103,7 @@ test('サンプルの並び: 上に比較表とN感度の横並び（18 + 6列�
   assert.equal(comparison!.w + nSensitivity!.w, SAMPLE_GRID_COLS);
   assert.equal(comparison!.h, nSensitivity!.h);
   // 高さ（升目）: 上の段9・中の段14・下の段9。どれも各ペインが中でスクロールしない最小の高さ（`e2e/sample-workspace.spec.ts` で確かめる）。
-  assert.deepEqual([comparison!.h, ...lower.map((item) => item.h)], [9, 14, 14, 14, 14, 9, 9, 9, 9]);
+  assert.deepEqual([comparison!.h, ...lower.map((item) => item.h)], [9, 14, 14, 14, 14, 10, 10, 10, 10]);
   assert.equal(lower.length, 8);
   const [middle, bottom] = [lower.slice(0, 4), lower.slice(4)];
   assert.ok(middle.every((item) => item.y === comparison!.h && item.w === SAMPLE_GRID_COLS / 4));
@@ -199,9 +199,9 @@ test('配列の詳細と比較のサンプル: 詳細の段が上、比較の段
   assert.deepEqual(normalizeGrid(created.grid, created.panes.map((pane) => pane.id), false), created.grid);
   // 並び（x, y, w, h）。高さは各ペインが中でスクロールしない最小の高さ（`e2e/sample-workspace.spec.ts` で確かめる）
   assert.deepEqual(created.grid.map(({ x, y, w, h }) => [x, y, w, h]), [
-    [0, 0, 8, 20], [8, 0, 16, 9], [8, 9, 8, 11], [16, 9, 8, 11], [0, 20, 8, 12], [8, 20, 16, 12],
-    [0, 32, 18, 9], [18, 32, 6, 9],
-    [0, 41, 12, 10], [12, 41, 12, 10], [0, 51, 12, 10], [12, 51, 12, 10],
+    [0, 0, 8, 21], [8, 0, 16, 9], [8, 9, 8, 12], [16, 9, 8, 12], [0, 21, 8, 13], [8, 21, 16, 13],
+    [0, 34, 18, 9], [18, 34, 6, 9],
+    [0, 43, 12, 10], [12, 43, 12, 10], [0, 53, 12, 10], [12, 53, 12, 10],
   ]);
 });
 
