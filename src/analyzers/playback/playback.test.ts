@@ -37,6 +37,7 @@ import {
 } from './timing-conditions.ts';
 import { sameHandDirectedFingerPairKey, sameHandFingerPairKey } from '#interpretation/timing/calibration.ts';
 import { playbackSimultaneousOverheadMs } from '#interpretation/timing/playback.ts';
+import { strokeSimultaneousKind } from '#interpretation/timing/stroke-structure.ts';
 
 /** 既定の解析設定で、個人速度の保存値が無い時の時間の設定。 */
 /** 配列図の4つの表示をすべて出す設定。既定は4つとも非表示。 */
@@ -297,9 +298,12 @@ test('別のAnalyzerの抽出のキーは、個人速度の保存値が変わっ
   );
 });
 
+/** 保存値の判定だけを確かめるテストで、再生するステップの列の判定を通す値。 */
+const ALL_OVERHEAD_USE = { keystroke: true, simultaneous: true } as const;
+
 test('既定と違う計算の知らせ: 使われない項目は挙げず、個人速度で計算している時は基準速度を挙げない', () => {
   const notes = (options: Partial<PlaybackOptions>, use: 'applied' | 'not-applied' | 'missing') =>
-    playbackCalculationNotes({ ...DEFAULT_PLAYBACK_OPTIONS, ...options }, use);
+    playbackCalculationNotes({ ...DEFAULT_PLAYBACK_OPTIONS, ...options }, use, undefined, undefined, ALL_OVERHEAD_USE);
   assert.deepEqual(notes({}, 'missing'), { personalSpeedInUse: false, keystrokeOverheadInUse: false, simultaneousOverheadInUse: false, changes: [] });
   assert.deepEqual(notes({}, 'applied'), { personalSpeedInUse: true, keystrokeOverheadInUse: false, simultaneousOverheadInUse: false, changes: [] });
   assert.deepEqual(notes({ stepsPerSecond: 2, speedMultiplier: 3 }, 'missing').changes, ['基準速度: 2ステップ/秒', '再生倍率: 3倍']);
@@ -525,7 +529,7 @@ test('個人速度: 打鍵の上乗せは構造の種類で選ばれて時間表
 
 test('既定と違う計算の知らせ: 個人速度で計算していて打鍵の上乗せを足している時だけ、そのことを挙げる', () => {
   const notes = (use: 'applied' | 'not-applied' | 'missing', calibration?: PlaybackCalibration) =>
-    playbackCalculationNotes(DEFAULT_PLAYBACK_OPTIONS, use, calibration);
+    playbackCalculationNotes(DEFAULT_PLAYBACK_OPTIONS, use, calibration, undefined, ALL_OVERHEAD_USE);
   const withOverhead = { ...CALIBRATION, keystrokeOverheadMs: { other: 60 } };
   assert.equal(notes('applied', withOverhead).keystrokeOverheadInUse, true);
   assert.equal(notes('applied', CALIBRATION).keystrokeOverheadInUse, false);
@@ -537,7 +541,7 @@ test('既定と違う計算の知らせ: 個人速度で計算していて打鍵
 
 test('既定と違う計算の知らせ: 個人速度で計算していて同時押しの上乗せが0以外の時だけ、そのことを挙げる', () => {
   const notes = (use: 'applied' | 'not-applied' | 'missing', calibration?: PlaybackCalibration) =>
-    playbackCalculationNotes(DEFAULT_PLAYBACK_OPTIONS, use, calibration);
+    playbackCalculationNotes(DEFAULT_PLAYBACK_OPTIONS, use, calibration, undefined, ALL_OVERHEAD_USE);
   const withC = { ...CALIBRATION, simultaneousOverheadMs: { thumb: 50 } };
   assert.equal(notes('applied', withC).simultaneousOverheadInUse, true);
   assert.equal(notes('applied', { ...CALIBRATION, simultaneousOverheadMs: { thumb: 0 } }).simultaneousOverheadInUse, false);
@@ -552,6 +556,8 @@ test('既定と違う計算の知らせ: 打鍵の上乗せは、時間に入る
       { ...DEFAULT_PLAYBACK_OPTIONS, sameFingerDelay },
       'applied',
       { ...CALIBRATION, keystrokeOverheadMs },
+      undefined,
+      ALL_OVERHEAD_USE,
     ).keystrokeOverheadInUse;
   // 同指連続の値だけの時は、同じ指の移動時間を考慮する時だけ時間に入る
   assert.equal(notes(true, { sfb: 40 }), true);
@@ -1158,16 +1164,77 @@ test('部分の設定の示し方: 抽出の結果から、ペインの知らせ
   const notesOf = (options: Partial<PlaybackOptions>) => {
     const merged = { ...DEFAULT_PLAYBACK_OPTIONS, ...options };
     const extracted = extractionOf(input, options);
-    return playbackCalculationNotes(merged, extracted.personalSpeedUse, extracted.timing.calibration, extracted.savedCalibration);
+    return playbackCalculationNotes(merged, extracted.personalSpeedUse, extracted.timing.calibration, extracted.savedCalibration, extracted.overheadUse);
   };
   const defaults = notesOf({});
   assert.deepEqual(defaults.changes, []);
   assert.equal(defaults.keystrokeOverheadInUse, true);
-  assert.equal(defaults.simultaneousOverheadInUse, true);
+  // 「fjdk」は同時押しのストロークを持たないので、同時押しの上乗せを保存していても足していない
+  assert.equal(defaults.simultaneousOverheadInUse, false);
   const off = notesOf({ useKeystrokeOverhead: false, useSimultaneousOverhead: false });
   assert.deepEqual(off.changes, ['同時押しの上乗せを使わない', '打鍵の上乗せを使わない']);
   assert.equal(off.keystrokeOverheadInUse, false);
   assert.equal(off.simultaneousOverheadInUse, false);
   // 個人速度を適用しない時は示さない
   assert.deepEqual(notesOf({ applyPersonalSpeed: false, useFingerValues: false }).changes, ['個人速度を適用しない']);
+});
+
+test('既定と違う計算の知らせ: 同時押しの上乗せは、再生するステップに同時押しのストロークがある時だけ足していると示す', () => {
+  // 条件: 保存値は親指・両手・片手の同時押しの上乗せ50msを持つ。既定の解析設定。
+  // QWERTYの「fjdk」は単打だけ。NICOLAの「が」は同時押しのストローク（親指との同時押し）を含む。
+  const saved = { ...CALIBRATION, simultaneousOverheadMs: { thumb: 50, 'both-hands': 50, 'one-hand': 50 } };
+  const simultaneousOf = (layoutId: string, text: string, calibration: PlaybackCalibration = saved) => {
+    const extracted = extractionOf(resolve(layoutId, text, 'ja', EMPTY_SETTINGS_OVERRIDES, calibration));
+    return {
+      hasSimultaneousStroke: extracted.analysis.strokes.some((stroke) => strokeSimultaneousKind(stroke) !== undefined),
+      notes: playbackCalculationNotes(
+        DEFAULT_PLAYBACK_OPTIONS,
+        extracted.personalSpeedUse,
+        extracted.timing.calibration,
+        extracted.savedCalibration,
+        extracted.overheadUse,
+      ),
+    };
+  };
+  const qwerty = simultaneousOf('qwerty', 'fjdk');
+  assert.equal(qwerty.hasSimultaneousStroke, false);
+  assert.equal(qwerty.notes.simultaneousOverheadInUse, false);
+  const nicola = simultaneousOf('nicola', 'が');
+  assert.equal(nicola.hasSimultaneousStroke, true);
+  assert.equal(nicola.notes.simultaneousOverheadInUse, true);
+  // 同時押しのストロークがあっても、そのストロークの分け方の値が0なら足していない
+  const zero = simultaneousOf('nicola', 'が', { ...CALIBRATION, simultaneousOverheadMs: { thumb: 0, 'both-hands': 0, 'one-hand': 0 } });
+  assert.equal(zero.notes.simultaneousOverheadInUse, false);
+  // 別の分け方の値だけを持つ時は、代わりに使わないので足していない
+  const otherKind = simultaneousOf('nicola', 'が', { ...CALIBRATION, simultaneousOverheadMs: { thumb: 0, 'one-hand': 50 } });
+  assert.equal(otherKind.hasSimultaneousStroke, true);
+  assert.equal(otherKind.notes.simultaneousOverheadInUse, false);
+});
+
+test('既定と違う計算の知らせ: 打鍵の上乗せは、再生するステップに入る種類の値が0でない時だけ足していると示す', () => {
+  // 条件: 配列qwerty・既定の解析設定。「fjdk」は同指連続を持たず、全ステップが「その他」。「edc」は同じ指で違う位置を続けて打つ（同指連続）。
+  const notesOf = (text: string, keystrokeOverheadMs: PlaybackCalibration['keystrokeOverheadMs'], options: Partial<PlaybackOptions> = {}) => {
+    const extracted = extractionOf(resolve('qwerty', text, 'en', EMPTY_SETTINGS_OVERRIDES, { ...CALIBRATION, keystrokeOverheadMs }), options);
+    return playbackCalculationNotes(
+      { ...DEFAULT_PLAYBACK_OPTIONS, ...options },
+      extracted.personalSpeedUse,
+      extracted.timing.calibration,
+      extracted.savedCalibration,
+      extracted.overheadUse,
+    ).keystrokeOverheadInUse;
+  };
+  assert.ok(extractionOf(resolve('qwerty', 'edc')).analysis.strokes.some((stroke) => stroke.presses.some((press) => press.sfb)));
+  // 同指連続の値だけを持ち、再生に同指連続のステップが無い時は足していない
+  assert.equal(notesOf('fjdk', { sfb: 40 }), false);
+  assert.equal(notesOf('edc', { sfb: 40 }), true);
+  // 同指連続のステップが無い再生でも、入る種類の値が0でなければ足している
+  assert.equal(notesOf('fjdk', { other: 40 }), true);
+  // 入る種類の値が0で、他の種類だけが0でない時は足していない（種類をまたいで判定しない）
+  assert.equal(notesOf('fjdk', { other: 0, chain: 40, arpeggio: 40 }), false);
+  // 続け打ちの値は、続け打ちのステップがある時だけ入る
+  assert.equal(notesOf('fjdk', { repeat: 40 }), false);
+  assert.equal(notesOf('ff', { repeat: 40 }), true);
+  // 同じ指の移動時間を考慮しない時、同指連続のステップは構造の種類の値で判定する
+  assert.equal(notesOf('edc', { sfb: 40 }, { sameFingerDelay: false }), false);
+  assert.equal(notesOf('edc', { sfb: 40, other: 10 }, { sameFingerDelay: false }), true);
 });

@@ -82,9 +82,9 @@ function PlaybackFigureSettings({ options, onOptionsChange }: {
 }
 
 export function PlaybackBody({ layout, geometry, trace, extracted, options, onOptionsChange }: SingleBodyProps<PlaybackExtracted, PlaybackOptions>) {
-  const { analysis, windowSize, timing, savedCalibration, personalSpeedUse, schedule, rateChart, basisId } = extracted;
+  const { analysis, windowSize, timing, savedCalibration, overheadUse, personalSpeedUse, schedule, rateChart, basisId } = extracted;
   const total = trace.strokes.length;
-  const calculation = playbackCalculationNotes(options, personalSpeedUse, timing.calibration, savedCalibration);
+  const calculation = playbackCalculationNotes(options, personalSpeedUse, timing.calibration, savedCalibration, overheadUse);
   const figureSettings = useFigureSettings('配列図');
 
   const [session, setSession] = useState<Session>(() => freshSession(basisId, schedule, initialPlaybackState(timing)));
