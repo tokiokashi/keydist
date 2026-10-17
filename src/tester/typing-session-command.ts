@@ -1,4 +1,4 @@
-import { TypingInputEngine, type RecognizedTypingInput } from './engine/index.ts';
+import type { TypingInputEngine, RecognizedTypingInput } from './engine/index.ts';
 
 export type TypingEditCommand = 'backspace' | 'enter';
 

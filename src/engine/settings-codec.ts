@@ -1,7 +1,7 @@
 import * as v from 'valibot';
 import { decodeCascadeOverrides, encodeCascadeOverrides, type ItemSchemaMap } from '#input/settings/index.ts';
 import { defineAssetCodec, type AssetCodec } from '#input/codec/index.ts';
-import { SETTINGS_ITEMS, type SettingsCascadeOverrides, type SettingsValueMap } from './settings-items.ts';
+import type { SETTINGS_ITEMS, SettingsCascadeOverrides, SettingsValueMap } from './settings-items.ts';
 
 /**
  * カスケードの上書きのcodec。項目ごとの値schemaは、値の型を二重に

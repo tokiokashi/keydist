@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import type { Finger, Key, Point } from '#input/shapes/geometry.ts';
 import type { Press, Stroke, StrokeParticipation } from '#trace/generate.ts';
 import { analyzeStrokeRedirects, buildRedirectEvents, redirectGeometryQualities } from './redirect.ts';
-import { type FingerTransition, type HandTransition, type TransitionAnalysisResult } from './transition.ts';
+import type { FingerTransition, HandTransition, TransitionAnalysisResult } from './transition.ts';
 import { DEFAULT_CHAIN_INTERPRETATION } from './chain.ts';
 
 const key = (id: string, finger: Finger, x: number, y: number, row = 2): Key => ({

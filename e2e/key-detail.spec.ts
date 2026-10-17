@@ -133,7 +133,7 @@ test('ヒートマップ: レイヤーごとの内訳を開くと、そのレイ
   await expect(faces.filter({ hasText: '中指シフト' }).locator('tbody tr').first()).toContainText('トリガー');
   // レイヤー別の図のツールチップは、そのレイヤーの値
   const shiftTip = await tooltipOf(heatmapKey(feature, 'layer:中指シフト', 'd'));
-  expect(shiftTip).toMatch(/\（D\）: \d+打\n押し方: 出力 \d+打・トリガー \d+打|\（D\）: \d+打\n押し方: トリガー \d+打・出力 \d+打/);
+  expect(shiftTip).toMatch(/（D）: \d+打\n押し方: 出力 \d+打・トリガー \d+打|（D）: \d+打\n押し方: トリガー \d+打・出力 \d+打/);
   // ヒートマップは、単打の面とシフトの面を合算した値（シフトの面だけの値より大きい）
   const total = (tip: string) => Number(/: (\d+)打/.exec(tip)![1]);
   await page.goto('/analyzer/heatmap');

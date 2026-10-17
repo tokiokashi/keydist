@@ -9,7 +9,7 @@ import {
 import { createAssetTabSync, type AssetLoadReport, type AssetTabSync } from '#platform/asset-tab-sync.ts';
 import type { CodecDiagnostic } from '#input/codec/index.ts';
 import type { KeyValueStorage } from '#platform/persistence/storage.ts';
-import { notifyKeydistStorageChange, subscribeKeydistStorageChanges } from '#platform/browser-storage-events.ts';
+import type { notifyKeydistStorageChange, subscribeKeydistStorageChanges } from '#platform/browser-storage-events.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
 import { KEYDIST_ITEM_SCOPES } from '#engine/history-scopes.ts';
 import { ASSET_KEYS, ASSET_STORAGE_SPECS } from './asset-storage-specs.ts';

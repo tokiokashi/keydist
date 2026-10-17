@@ -145,7 +145,7 @@ test('ローマ字で出す表示: 打ち終えた入力はかな、今の入力
   expect(segments.find((segment) => segment.kind === 'current')!.text).toBe('う');
   const planned = segments.filter((segment) => segment.kind === 'planned');
   expect(planned.length).toBeGreaterThan(0);
-  expect(planned.every((segment) => /^[A-Za-z0-9!?+,.\-]+$/.test(segment.text))).toBe(true);
+  expect(planned.every((segment) => /^[A-Za-z0-9!?+,.-]+$/.test(segment.text))).toBe(true);
 });
 
 test('かなで出す表示: 状態の行に打鍵と予定が出て、入力の行はかなで出る', async ({ page }) => {

@@ -72,7 +72,7 @@ export function browserCodeToPhysicalKey(
   code: string,
   overrides: BrowserKeyBindingOverrides = EMPTY_BROWSER_KEY_BINDING_OVERRIDES,
 ): PhysicalKeyEvent['key'] | undefined {
-  if (Object.prototype.hasOwnProperty.call(overrides, code)) {
+  if (Object.hasOwn(overrides, code)) {
     return overrides[code] ?? undefined;
   }
   if (/^Key[A-Z]$/.test(code)) return code.slice(3).toLowerCase();

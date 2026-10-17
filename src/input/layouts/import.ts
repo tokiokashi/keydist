@@ -335,7 +335,7 @@ function qmkChar(value: unknown): string | undefined {
   if (QMK_NOOP.has(code)) return undefined;
   if (/^KC_[A-Z]$/.test(code)) return code.at(-1)!.toLowerCase();
   if (/^KC_[0-9]$/.test(code)) return code.at(-1)!;
-  if (Object.prototype.hasOwnProperty.call(QMK_PRINTABLE, code)) return QMK_PRINTABLE[code];
+  if (Object.hasOwn(QMK_PRINTABLE, code)) return QMK_PRINTABLE[code];
 
   // Home-row modやlayer-tapは、タップ側が単純な文字ならその文字を表示・逆引きする。
   const inner = code.match(/\((?:[^,()]+,\s*)?(KC_[A-Z0-9_]+)\)$/)?.[1];
@@ -346,7 +346,7 @@ function qmkLabel(value: unknown): string | undefined {
   if (typeof value === 'number' || value === null || value === undefined) return undefined;
   if (typeof value !== 'string' || QMK_NOOP.has(value.toUpperCase())) return undefined;
   const code = value.toUpperCase();
-  const simple = /^KC_[A-Z0-9]$/.test(code) || Object.prototype.hasOwnProperty.call(QMK_PRINTABLE, code);
+  const simple = /^KC_[A-Z0-9]$/.test(code) || Object.hasOwn(QMK_PRINTABLE, code);
   return simple ? (qmkChar(value) ?? value) : value;
 }
 
