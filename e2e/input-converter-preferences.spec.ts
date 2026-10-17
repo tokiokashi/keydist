@@ -310,7 +310,7 @@ test('自作の配列を選んで開き直すと、その配列と練習環境�
   await layoutSelect.selectOption('user-a');
   await expect(feature).toHaveAttribute('data-input-ready', 'user-a');
 
-  // 自作のローマ字規則の綴り（shi の3打鍵）で打ち方が出る。
+  // 自作のローマ字規則の綴り（shiの3打鍵）で打ち方が出る。
   await practice.fill('し');
   await expect(page.getByLabel('入力順ガイド')).toContainText('1 / 3');
 
