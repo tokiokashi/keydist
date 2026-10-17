@@ -80,6 +80,26 @@ test('reverseLookupはTK音直のyouon-only comboを前置子音がある場合�
   );
 });
 
+test('reverseLookupはTK音直のコンボを英字の綴りには使わない', () => {
+  const layout = LAYOUT_BY_ID.get('oonishi-custom');
+  assert.ok(layout);
+  const top = reverseLookup(layout, 'これはwebsiteです', 1)[0];
+  assert.ok(top);
+  const comboOutputs = top.steps.filter((step) => step.origin === 'combo').map((step) => step.output);
+  assert.ok(comboOutputs.includes('desu'));
+  assert.equal(comboOutputs.some((output) => 'website'.includes(output) && output.length > 1), false);
+  const outputs = top.steps.map((step) => step.output);
+  for (const char of ['s', 'i', 't', 'e']) assert.ok(outputs.includes(char));
+});
+
+test('reverseLookupはかなだけの文では句読点をまたいでもコンボを使う', () => {
+  const layout = LAYOUT_BY_ID.get('oonishi-custom');
+  assert.ok(layout);
+  const top = reverseLookup(layout, 'から、です', 1)[0];
+  assert.ok(top);
+  assert.ok(top.steps.some((step) => step.output === 'desu' && step.origin === 'combo'));
+});
+
 test('reverseLookupRouteLabelはchordとsequenceを区別して表示する', () => {
   const layout = LAYOUT_BY_ID.get('naginata-v18');
   assert.ok(layout);

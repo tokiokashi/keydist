@@ -6,7 +6,7 @@ import {
 import { resolveKeyId, type PhysicalKeyboardStandard } from '#input/shapes/geometry.ts';
 import { physicalKeyDisplayLabel } from '#input/shapes/key-labels.ts';
 import type { Layout } from '#input/layouts/index.ts';
-import { kanaToRomaji } from '#input/romaji/kunrei.ts';
+import { kanaToRomajiChunks } from '#input/romaji/kunrei.ts';
 import { romajiToKana } from './live-romaji.ts';
 
 export interface ReverseLookupActionParticipation {
@@ -53,12 +53,12 @@ function contextSatisfied(
   requirements: readonly InputContextRequirement[],
   logicalText: string,
   cursor: number,
-  romajiInput: boolean,
+  /** この出力が覆う範囲がローマ字表に当たってできた塊だけか。ローマ字を経ない配列では常に偽。 */
+  coveredByKana: boolean,
 ): boolean {
   return requirements.every((requirement) => {
-    // queryをローマ字表で展開して照合する時だけ成立とする。
-    // TODO: Traceと同じく、かな由来の塊に限る。https://github.com/tokiokashi/keydist/issues/379
-    if (requirement.kind === 'romaji-input') return romajiInput;
+    // 覆う塊がすべてかな由来（ローマ字表に当たった塊）の時だけ成立する。英字などの素通しは含めない。
+    if (requirement.kind === 'romaji-input') return coveredByKana;
     if (requirement.kind !== 'youon-only') return false;
     if (cursor <= 0) return false;
     return /[bcdfghjklmnpqrstvwxyz]/i.test(logicalText[cursor - 1] ?? '');
@@ -275,9 +275,15 @@ export function reverseLookup(
 ): readonly ReverseLookupRoute[] {
   if (query.length === 0 || limit <= 0) return [];
 
-  const logicalText = layout.romajiTable === undefined
-    ? query
-    : kanaToRomaji(query, layout.romajiTable);
+  const chunks = layout.romajiTable === undefined
+    ? undefined
+    : kanaToRomajiChunks(query, layout.romajiTable);
+  const logicalText = chunks === undefined ? query : chunks.map((chunk) => chunk.roman).join('');
+  // logicalTextの各文字が、ローマ字表に当たった塊の一部かどうか。
+  const fromTableAt: boolean[] = [];
+  for (const chunk of chunks ?? []) {
+    for (let i = 0; i < chunk.roman.length; i++) fromTableAt.push(chunk.fromTable);
+  }
   const outputs = [...layout.canonicalInputs.keys()]
     .filter((output) => output.length > 0)
     .sort((left, right) =>
@@ -302,7 +308,7 @@ export function reverseLookup(
           alternative.contextRequirements,
           logicalText,
           cursor,
-          layout.romajiTable !== undefined,
+          chunks !== undefined && fromTableAt.slice(cursor, nextCursor).every(Boolean),
         )) continue;
         const step = stepFromAlternative(output, alternative);
         if (step.actions.length === 0) continue;
