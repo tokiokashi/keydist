@@ -9,7 +9,7 @@ import { pickAfterClose } from './focus-after-close.ts';
  * 閉じる経路ごとに処理を書くと、経路が増えた時に抜ける。そこで経路を問わず、次の2つだけを見る:
  * - フォーカスが入ったペインと、その時のペインの並び（読み順）を覚える
  * - 覚えたペインが資産から無くなり、フォーカスが`body`へ落ちていたら、読み順で次（無ければ前）のペインの
- *   ⋯のボタンへ、それも無ければ「追加」のボタンへ置く
+ *   ⋯のボタンへ（使えないAnalyzerの案内になっているペインは、案内の「閉じる」ボタンへ）、それも無ければ「追加」のボタンへ置く
  * フォーカスが別の場所（開いている小窓など）へ移っていたら奪わない。
  */
 
@@ -52,7 +52,8 @@ export function useFocusAfterClose(paneIds: readonly string[]): RefCallback<HTML
         ? undefined
         : root.querySelector<HTMLElement>(
           // ペインの操作の⋯（連動の切り替えのボタンも同じ部品なので、見出しの右端の⋯に絞る）
-          `[data-pane-id="${CSS.escape(next)}"] .pane-frame-menu .pane-menu-button, [data-pane-id="${CSS.escape(next)}"] .pane-blank-header .pane-menu-button`,
+          // 案内のペインは⋯を持たず、操作できるのが「閉じる」だけなので、そのボタンへ置く
+          `[data-pane-id="${CSS.escape(next)}"] .pane-frame-menu .pane-menu-button, [data-pane-id="${CSS.escape(next)}"] .pane-blank-header .pane-menu-button, [data-pane-id="${CSS.escape(next)}"] [data-workspace-pane-notice] .pane-empty-button`,
         );
       (target ?? root.querySelector<HTMLElement>('.workspace-add-pane-button'))?.focus({ preventScroll: true });
     };

@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MutableRefObject, type ReactNode, type RefObject } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MutableRefObject, type ReactNode, type RefObject } from 'react';
 import ReactGridLayout, { verticalCompactor, type Compactor, type Layout, type LayoutItem } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
-import { compactGrid, gridPaneIds, resolveOverlaps, type GridColumnRange, type GridItem, type WorkspaceGrid } from '#engine/workspace-grid.ts';
+import { compactGrid, gridPaneIds, gridWithMovedPane, gridWithResizedPane, resolveOverlaps, type GridColumnRange, type GridItem, type WorkspaceGrid } from '#engine/workspace-grid.ts';
 import { PaneHeaderLeadContext, PaneNameInLeadContext } from '#hosts/shared/pane-name-in-lead.ts';
 import { InfoButton, type InfoHelp } from '#ui/primitives/info-button.tsx';
 import {
@@ -192,6 +192,37 @@ const resolveOverlapsCompactor: Compactor = {
   },
 };
 
+/** つかみ所をキーボードで操作する説明。つかみ所の読み上げと、ホバーの題に使う。 */
+const KEYBOARD_HINT = '矢印キーで1マスずつ動かし、Shiftを押しながら矢印キーで大きさを変えます。';
+
+const ARROW_STEP: Readonly<Record<string, { readonly dx: number; readonly dy: number }>> = {
+  ArrowLeft: { dx: -1, dy: 0 },
+  ArrowRight: { dx: 1, dy: 0 },
+  ArrowUp: { dx: 0, dy: -1 },
+  ArrowDown: { dx: 0, dy: 1 },
+};
+
+/**
+ * つかみ所にフォーカスがある時の矢印キーで、並びを1マス分変えた結果。矢印キー以外・修飾キー（Shift以外）つきは`undefined`。
+ * 矢印キーは動かす、Shift+矢印キーは右下の角を動かして大きさを変える（右・下が広げる、左・上が縮める）。
+ */
+function gridAfterArrowKey(
+  grid: WorkspaceGrid,
+  paneId: string,
+  event: { readonly key: string; readonly shiftKey: boolean; readonly altKey: boolean; readonly ctrlKey: boolean; readonly metaKey: boolean },
+  min: { readonly w: number; readonly h: number },
+  compact: boolean,
+): WorkspaceGrid | undefined {
+  const step = ARROW_STEP[event.key];
+  if (step === undefined || event.altKey || event.ctrlKey || event.metaKey) return undefined;
+  return event.shiftKey ? gridWithResizedPane(grid, paneId, step.dx, step.dy, min, compact) : gridWithMovedPane(grid, paneId, step.dx, step.dy, compact);
+}
+
+/** 操作の結果を読み上げる文。列と行は1から数える。 */
+function describeItem(title: string, item: GridItem): string {
+  return `${title}: 左から${item.x + 1}列目、上から${item.y + 1}行目、幅${item.w}、高さ${item.h}`;
+}
+
 function fromLayout(layout: Layout): WorkspaceGrid {
   return layout.map((item) => ({ id: item.i, x: item.x, y: item.y, w: item.w, h: item.h }));
 }
@@ -251,6 +282,30 @@ export function WorkspaceGrid({ grid, analyzerIdOf, titleOf, descriptionOf, help
     () => ({ enabled: !maximized, handle: '.workspace-drag-handle', cancel: 'button, a, input, select, textarea' }),
     [maximized],
   );
+  const [announcement, setAnnouncement] = useState('');
+  const onPaneKeyDown = useCallback((paneId: string, event: ReactKeyboardEvent<HTMLElement>) => {
+    if (event.nativeEvent.isComposing) return;
+    const next = gridAfterArrowKey(grid, paneId, event, minGridSize(analyzerIdOf(paneId)), compact);
+    if (next === undefined) return;
+    // 矢印キーでページがスクロールしないようにする（端で動かせない時も同じ）
+    event.preventDefault();
+    if (next === grid) return;
+    keyboardPaneRef.current = paneId;
+    onGridChange(next);
+    const item = next.find((candidate) => candidate.id === paneId);
+    if (item !== undefined) setAnnouncement(describeItem(titleOf(paneId), item));
+  }, [grid, analyzerIdOf, compact, onGridChange, titleOf]);
+  const keyboardPaneRef = useRef<string | undefined>(undefined);
+  // キーボードで並びを変えた直後は、ペインの並び（読み順）が入れ替わってつかみ所からフォーカスが外れることがある。外れていれば戻し、見える位置へ寄せる
+  useLayoutEffect(() => {
+    const paneId = keyboardPaneRef.current;
+    if (paneId === undefined) return;
+    keyboardPaneRef.current = undefined;
+    const handle = containerRef.current?.querySelector<HTMLElement>(`.workspace-grid-item[data-pane-id="${CSS.escape(paneId)}"] .workspace-drag-handle`);
+    if (handle === null || handle === undefined) return;
+    if (document.activeElement !== handle) handle.focus({ preventScroll: true });
+    handle.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [grid, containerRef]);
   const resizeConfig = useMemo(() => ({ enabled: !maximized, handles: ['s', 'e', 'w', 'se'] as const }), [maximized]);
   return (
     <div
@@ -298,7 +353,14 @@ export function WorkspaceGrid({ grid, analyzerIdOf, titleOf, descriptionOf, help
                 data-maximized={id === maximizedId || undefined}
                 inert={maximized && id !== maximizedId}
               >
-                <PaneShell paneId={id} title={titleOf(id)} description={descriptionOf(id)} help={helpOf(id)} draggable>
+                <PaneShell
+                  paneId={id}
+                  title={titleOf(id)}
+                  description={descriptionOf(id)}
+                  help={helpOf(id)}
+                  draggable
+                  onHandleKeyDown={maximized ? undefined : onPaneKeyDown}
+                >
                   {renderPane(id)}
                 </PaneShell>
               </div>
@@ -306,6 +368,7 @@ export function WorkspaceGrid({ grid, analyzerIdOf, titleOf, descriptionOf, help
           </ReactGridLayout>
         </div>
       ) : null}
+      <div className="workspace-visually-hidden" role="status" aria-live="polite">{announcement}</div>
     </div>
   );
 }
@@ -379,6 +442,7 @@ export function PaneShell({
   description,
   help,
   draggable,
+  onHandleKeyDown,
   children,
 }: {
   readonly paneId: string;
@@ -386,13 +450,29 @@ export function PaneShell({
   readonly description: string;
   readonly help?: InfoHelp;
   readonly draggable: boolean;
+  /** つかみ所にフォーカスがある時のキー入力。渡すと、つかみ所がTabで届き、矢印キーで動かす・大きさを変える。 */
+  readonly onHandleKeyDown?: (paneId: string, event: ReactKeyboardEvent<HTMLElement>) => void;
   readonly children: ReactNode;
 }) {
+  const hintId = useId();
   const lead = (
     <div className="workspace-pane-lead">
-      <div className={`workspace-pane-grab ${draggable ? 'workspace-drag-handle' : 'workspace-drag-static'}`} title={draggable ? `${title}（つかんで動かす）` : title}>
+      <div
+        className={`workspace-pane-grab ${draggable ? 'workspace-drag-handle' : 'workspace-drag-static'}`}
+        title={draggable ? `${title}（つかんで動かす）${onHandleKeyDown === undefined ? '' : `。${KEYBOARD_HINT}`}` : title}
+        {...(draggable && onHandleKeyDown !== undefined
+          ? {
+            role: 'button',
+            tabIndex: 0,
+            'aria-label': `${title}の位置と大きさ`,
+            'aria-describedby': hintId,
+            onKeyDown: (event: ReactKeyboardEvent<HTMLElement>) => onHandleKeyDown(paneId, event),
+          }
+          : {})}
+      >
         {draggable ? <GripIcon /> : null}
         <span className="workspace-pane-lead-name">{title}</span>
+        {draggable && onHandleKeyDown !== undefined ? <span id={hintId} className="workspace-visually-hidden">{KEYBOARD_HINT}</span> : null}
       </div>
       {description === '' ? null : <InfoButton name={title} description={description} help={help} floating />}
     </div>

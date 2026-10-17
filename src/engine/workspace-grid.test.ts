@@ -10,7 +10,9 @@ import {
   gridPaneIds,
   gridWithPane,
   gridWithPaneNextTo,
+  gridWithMovedPane,
   gridWithoutPane,
+  gridWithResizedPane,
   normalizeGrid,
   sameGrid,
   type GridItem,
@@ -156,4 +158,46 @@ test('normalizeGrid: 詰めない設定は上の空きを残し、重なりだ�
   assert.deepEqual(normalizeGrid(gapped, ['a', 'b'], true), [item('a', 0, 0, 12, 4), item('b', 0, 4, 12, 4)]);
   const overlapped: WorkspaceGrid = [item('a', 0, 5, 12, 4), item('b', 0, 6, 12, 4)];
   assert.deepEqual(normalizeGrid(overlapped, ['a', 'b'], false), [item('a', 0, 5, 12, 4), item('b', 0, 9, 12, 4)]);
+});
+
+test('gridWithMovedPane: 1列・1行ずつ動かし、列と行の端で止まる', () => {
+  const grid: WorkspaceGrid = [item('a', 0, 0, 12, 4), item('b', 20, 8, 12, 4)];
+  assert.deepEqual(gridWithMovedPane(grid, 'b', 1, 0, false), [grid[0], item('b', 21, 8, 12, 4)]);
+  assert.deepEqual(gridWithMovedPane(grid, 'b', 0, -1, false), [grid[0], item('b', 20, 7, 12, 4)]);
+  assert.equal(gridWithMovedPane(grid, 'a', -1, 0, false), grid);
+  assert.equal(gridWithMovedPane(grid, 'a', 0, -1, false), grid);
+  const edge: WorkspaceGrid = [item('a', GRID_MAX_COLS - 12, 0, 12, 4)];
+  assert.equal(gridWithMovedPane(edge, 'a', 1, 0, false), edge);
+  assert.equal(gridWithMovedPane(grid, 'none', 1, 0, false), grid);
+});
+
+test('gridWithMovedPane: 動かした先で重なった相手は下へ押し、動かした枠は動かさない', () => {
+  const grid: WorkspaceGrid = [item('a', 0, 0, 12, 4), item('b', 12, 0, 12, 4)];
+  const moved = gridWithMovedPane(grid, 'a', 1, 0, false);
+  assert.deepEqual(moved, [item('a', 1, 0, 12, 4), item('b', 12, 4, 12, 4)]);
+  assert.ok(noOverlap(moved));
+});
+
+test('gridWithMovedPane: 詰める設定では押した後に上へ詰める', () => {
+  const grid: WorkspaceGrid = [item('a', 0, 0, 12, 4), item('b', 12, 0, 12, 4)];
+  assert.deepEqual(gridWithMovedPane(grid, 'b', 0, 1, true), [item('a', 0, 0, 12, 4), item('b', 12, 0, 12, 4)]);
+});
+
+test('gridWithResizedPane: 右下の角を動かし、下限と列の上限で止まる', () => {
+  const min = { w: 2, h: 3 };
+  const grid: WorkspaceGrid = [item('a', 0, 0, 12, 4), item('b', GRID_MAX_COLS - 3, 10, 3, 4)];
+  assert.deepEqual(gridWithResizedPane(grid, 'a', 1, 0, min, false), [item('a', 0, 0, 13, 4), grid[1]]);
+  assert.deepEqual(gridWithResizedPane(grid, 'a', 0, -1, min, false), [item('a', 0, 0, 12, 3), grid[1]]);
+  assert.equal(gridWithResizedPane([item('a', 0, 0, 2, 3)], 'a', -1, -1, min, false)[0]!.w, 2);
+  assert.equal(gridWithResizedPane(grid, 'b', 1, 0, min, false), grid);
+});
+
+test('gridWithResizedPane: 下限を下回る枠は縮めず、広げる操作には従う。広げて重なった相手は下へ押す', () => {
+  const min = { w: 4, h: 6 };
+  const small: WorkspaceGrid = [item('a', 0, 0, 2, 3)];
+  assert.equal(gridWithResizedPane(small, 'a', -1, -1, min, false), small);
+  assert.deepEqual(gridWithResizedPane(small, 'a', 1, 0, min, false), [item('a', 0, 0, 3, 3)]);
+  const grid: WorkspaceGrid = [item('a', 0, 0, 12, 4), item('b', 12, 0, 12, 4)];
+  const grown = gridWithResizedPane(grid, 'a', 1, 0, min, false);
+  assert.deepEqual(grown, [item('a', 0, 0, 13, 4), item('b', 12, 4, 12, 4)]);
 });
