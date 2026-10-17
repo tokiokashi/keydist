@@ -2,7 +2,7 @@ import type { CodecDiagnostic } from '../codec/index.ts';
 import { isBuiltin, type UserRomajiRule } from '../romaji/rules.ts';
 import { LAYOUT_BY_ID } from './index.ts';
 import type { Layout } from './types.ts';
-import { toLayout, validate, type UserLayout } from './user-layouts.ts';
+import { toJapaneseLayout, toLayout, validate, type UserLayout } from './user-layouts.ts';
 
 /**
  * 資産に入っている自作の配列・ローマ字規則を、組み込みと並べて引ける形にしたもの。
@@ -97,4 +97,23 @@ export function buildUserCatalog(
   });
 
   return { layouts, userLayouts: definitions, romajiRules, unusableLayouts, diagnostics };
+}
+
+/**
+ * 自作の配列を、実際に打って試す画面（Tester）が使う形にする。
+ * 使える配列の選び方は`buildUserCatalog`と同じ。違うのは、`romaji`が指す規則（組み込み・自作）で
+ * ローマ字の表を持たせる点。`direct`の配列と、`romaji`が無い・指す規則が見つからない配列は表を持たず、
+ * 打ったキーの出力をそのまま使う。
+ */
+export function userInputLayouts(
+  userLayouts: readonly UserLayout[],
+  userRomajiRules: readonly UserRomajiRule[],
+): readonly Layout[] {
+  const catalog = buildUserCatalog(userLayouts, userRomajiRules);
+  const ruleIds = new Set(catalog.romajiRules.map((rule) => rule.id));
+  return [...catalog.userLayouts.values()].map((definition) => {
+    const { romaji, ...rest } = definition;
+    const resolvable = romaji !== undefined && (isBuiltin(romaji) || ruleIds.has(romaji));
+    return toJapaneseLayout(resolvable ? definition : rest, [...catalog.romajiRules]);
+  });
 }
