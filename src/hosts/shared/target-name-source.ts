@@ -3,6 +3,9 @@ import type { SettingsItemId } from '#engine/settings-items.ts';
 import {
   analysisTargetKey,
   effectiveLabel,
+  MISSING_LAYOUT_NAME,
+  MISSING_SETUP_NAME,
+  MISSING_SHAPE_NAME,
   type AnalysisTarget,
   type Setup,
   type SetupCatalog,
@@ -23,10 +26,10 @@ import {
  * 読者には意味を持たないため）。同じ説明が並んだ時の区別は`nameTargets`の段階上げに任せる。
  */
 function failedDescription(target: AnalysisTarget, setup: Setup | undefined, catalog: SetupCatalog): string {
-  const layoutLabel = (layoutId: string) => catalog.layouts.get(layoutId)?.name ?? '見つからない配列';
+  const layoutLabel = (layoutId: string) => catalog.layouts.get(layoutId)?.name ?? MISSING_LAYOUT_NAME;
   if (target.kind === 'layout') return layoutLabel(target.layoutId);
-  if (setup === undefined) return '削除されたSetup';
-  const shapeLabel = catalog.shapes.get(setup.shapeId)?.name ?? '見つからない物理配列';
+  if (setup === undefined) return MISSING_SETUP_NAME;
+  const shapeLabel = catalog.shapes.get(setup.shapeId)?.name ?? MISSING_SHAPE_NAME;
   return `${layoutLabel(setup.layoutId)}/${shapeLabel}`;
 }
 

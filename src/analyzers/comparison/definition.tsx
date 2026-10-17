@@ -1,5 +1,5 @@
 import { useMemo, type CSSProperties } from 'react';
-import { comparisonDefinition, type ComparisonExtracted, type ComparisonFailedRow, type ComparisonRow } from './extract.ts';
+import { comparisonDefinition, type ComparisonExtracted, type ComparisonRow } from './extract.ts';
 import {
   COMPARISON_COLUMN_IDS,
   COMPARISON_COLUMNS,
@@ -71,16 +71,6 @@ function formatRatio(value: number, baseline: number): string {
 
 function rowFor(rows: readonly ComparisonRow[], targetKey: string): ComparisonRow | undefined {
   return rows.find((row) => row.targetKey === targetKey);
-}
-
-function failureLabel(kind: ComparisonFailedRow['failureKind']): string {
-  switch (kind) {
-    case 'reference': return '配列・物理配列が見つかりません（削除された可能性があります）';
-    case 'incompatible-text': return 'このテキストには使えません';
-    case 'geometry': return 'キーボードを組み立てられません';
-    case 'keys-missing': return '物理配列に必要なキーがありません';
-    case 'target-missing': return '削除されたか、見つかりません';
-  }
 }
 
 /**
@@ -158,7 +148,7 @@ export function ComparisonBody({
                   <tr key={targetKey} data-comparison-row="failed">
                     <th scope="row" title={fullName}>{label}</th>
                     <td colSpan={visibleColumns.length} role="alert">
-                      {row.message || failureLabel(row.failureKind)}
+                      {row.message}
                     </td>
                   </tr>
                 );

@@ -12,6 +12,7 @@ import { effectiveLabel, nextSetupNumber, type Setup, type SetupLibrary } from '
 import { FINGER_ASSIGNMENT_REGISTRY } from './finger-assignment.ts';
 import { SETTINGS_ITEM_SCHEMAS } from './settings-codec.ts';
 import { SETTINGS_ITEMS, type SettingsValueMap } from './settings-items.ts';
+import { MISSING_LAYOUT_NAME, MISSING_SHAPE_NAME } from '#input/setup/index.ts';
 
 /**
  * 資産のファイルに入れるSetupと、読み込み時の突き合わせ。ファイルが運ぶのは、Setupの配列・物理配列・ラベルと、
@@ -133,10 +134,10 @@ function setupName(
 ): string {
   const label = effectiveLabel(setup.label);
   if (label !== undefined) return label;
-  const layoutName = layoutNames.get(setup.layoutId) ?? LAYOUT_BY_ID.get(setup.layoutId)?.name ?? '見つからない配列';
+  const layoutName = layoutNames.get(setup.layoutId) ?? LAYOUT_BY_ID.get(setup.layoutId)?.name ?? MISSING_LAYOUT_NAME;
   const shapeName = Object.hasOwn(PHYSICAL_SHAPES, setup.shapeId)
     ? PHYSICAL_SHAPES[setup.shapeId as keyof typeof PHYSICAL_SHAPES].name
-    : '見つからない物理配列';
+    : MISSING_SHAPE_NAME;
   return `${layoutName}/${shapeName}`;
 }
 

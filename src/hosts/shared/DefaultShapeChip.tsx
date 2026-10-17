@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import { MISSING_SHAPE_NAME } from '#input/setup/index.ts';
 import type { Command } from '#input/commands/index.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
 import { resolveGlobalDefaultShapeId, resolveWorkspaceDefaultShapeId } from '#engine/settings-items.ts';
@@ -63,7 +64,7 @@ export function DefaultShapeChip({ overrides, workspaceId, dispatch, shapes, lay
             : defaultShapeWorkspaceCommand(workspaceId, event.currentTarget.value, resolveGlobalDefaultShapeId(overrides)))}
         >
           {/* 選ばれているidがカタログに無い時も、実際の状態をそのまま見せる（選び直せるが、このoptionは選べない）。 */}
-          {currentIsKnown ? null : <option value={current} disabled>（見つからない物理配列）</option>}
+          {currentIsKnown ? null : <option value={current} disabled>（{MISSING_SHAPE_NAME}）</option>}
           {groupShapes(shapes.values()).map((group) => (
             <optgroup key={group.key} label={group.label}>
               {group.shapes.map((shape) => (

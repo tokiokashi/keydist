@@ -1,4 +1,5 @@
 import { readOverride, type CascadeLevel, type Diagnostic, type ResolvedOrigin } from '#input/settings/index.ts';
+import { MISSING_SHAPE_NAME } from '#input/setup/index.ts';
 import { SETTINGS_ITEMS, type ResolvedSettingsCascade, type SettingsCascadeOverrides, type SettingsItemId } from '#engine/settings-items.ts';
 import { DEFAULT_FINGER_ASSIGNMENT, hasMultiFingerKeys, type FingerAssignment, type Geometry, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
@@ -173,7 +174,7 @@ export function fingerAssignmentLabel(assignment: FingerAssignment): string {
 export type ConditionValueStyle = 'summary' | 'list';
 
 const MISSING_TEXT: Readonly<Record<'shape' | 'romajiRule' | 'fingerAssignment', string>> = {
-  shape: '見つからない物理配列',
+  shape: MISSING_SHAPE_NAME,
   romajiRule: '見つからないローマ字規則',
   fingerAssignment: '見つからない指の割当',
 };

@@ -3,6 +3,8 @@ import { layoutKind } from '#input/layouts/kind.ts';
 import {
   deriveInputMethod,
   effectiveLabel,
+  MISSING_LAYOUT_NAME,
+  MISSING_SHAPE_NAME,
   nameTargets,
   resolveSetup,
   type Setup,
@@ -49,8 +51,8 @@ export function setupConditionRows(
 }
 
 function failedDescription(setup: Setup, catalog: SetupCatalog): string {
-  const layoutName = catalog.layouts.get(setup.layoutId)?.name ?? '見つからない配列';
-  const shapeName = catalog.shapes.get(setup.shapeId)?.name ?? '見つからない物理配列';
+  const layoutName = catalog.layouts.get(setup.layoutId)?.name ?? MISSING_LAYOUT_NAME;
+  const shapeName = catalog.shapes.get(setup.shapeId)?.name ?? MISSING_SHAPE_NAME;
   return `${layoutName}/${shapeName}`;
 }
 

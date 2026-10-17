@@ -36,3 +36,11 @@ export {
 } from './collection.ts';
 export { setupLibraryCodec } from './codec.ts';
 export { setupLibraryItemScope } from './library-scope.ts';
+export {
+  LAYOUT_MISSING_REASON,
+  SHAPE_MISSING_REASON,
+  SETUP_MISSING_REASON,
+  MISSING_LAYOUT_NAME,
+  MISSING_SHAPE_NAME,
+  MISSING_SETUP_NAME,
+} from './missing-text.ts';

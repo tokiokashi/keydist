@@ -1,4 +1,5 @@
 import { useContext, useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
+import { LAYOUT_MISSING_REASON, MISSING_SETUP_NAME } from '#input/setup/index.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
 import {
   USER_ASSETS_FILE_FORMAT,
@@ -101,10 +102,10 @@ interface PendingDelete {
 
 const CONFIRM_IMPACT: Readonly<Record<UserAssetKind | 'missing-setup-override', string>> = {
   'missing-setup-override': 'このSetupが手持ちに無いため、変更を戻した後は「元に戻す」で戻せません。',
-  layout: 'この配列を対象にしているペインは、「配列が見つかりません」の表示になります。',
+  layout: `この配列を対象にしているペインは、「${LAYOUT_MISSING_REASON}」の表示になります。`,
   'romaji-rule': 'この規則を推奨にしている配列は、全体の値の規則で打つようになります。',
   'finger-assignment': 'この割り当てを選んでいる場所は、既定の割り当てで測るようになります。',
-  setup: 'このSetupを対象にしているペインは、「削除されたSetup」の表示になります。',
+  setup: `このSetupを対象にしているペインは、「${MISSING_SETUP_NAME}」の表示になります。`,
 };
 
 /** 削除の確認の文。元に戻すが使える範囲と、削除が他へ及ぼす影響を書く。 */

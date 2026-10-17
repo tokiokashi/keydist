@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { MISSING_SHAPE_NAME } from '#input/setup/index.ts';
 import type { Command } from '#input/commands/index.ts';
 import type { FingerAssignment, PhysicalShape } from '#input/shapes/geometry.ts';
 import { groupShapes } from '#input/shapes/shape-groups.ts';
@@ -350,7 +351,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
   const shapeBinding = bind('defaultShapeId');
   if (!editor.shapes.has(shapeBinding.value)) {
     // 選ばれているidが手持ちに無い時も、実際の状態をそのまま見せる。
-    shapeChoices.unshift({ value: shapeBinding.value, label: '（見つからない物理配列）' });
+    shapeChoices.unshift({ value: shapeBinding.value, label: `（${MISSING_SHAPE_NAME}）` });
   }
 
   const fingerChoices = [

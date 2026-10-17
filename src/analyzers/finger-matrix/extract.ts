@@ -17,6 +17,7 @@ import {
   type FingerMatrixOptions,
   type FingerMatrixSurfaceId,
 } from './options.ts';
+import { LAYOUT_MISSING_REASON } from '#input/setup/index.ts';
 
 /**
  * 配列×指のマトリックスの抽出（仕様 §11.1・§11.2・§11.6）。
@@ -225,7 +226,7 @@ const FIXTURE_MEMBERS: readonly AnalyzerSetMember[] = [
 ];
 
 const FIXTURE_FAILURES: readonly AnalyzerSetMemberFailure[] = [
-  { target: FIXTURE_MISSING, kind: 'reference', message: '配列が見つかりません（削除された可能性があります）' },
+  { target: FIXTURE_MISSING, kind: 'reference', message: LAYOUT_MISSING_REASON },
 ];
 
 /**
