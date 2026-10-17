@@ -542,7 +542,7 @@ test('1本の指が2キーを同時に押してもPressは1回で、押下数は
   assert.equal(m.perFingerSameFinger.LM, m.sameFinger);
 });
 
-test('meanStdDevMax は引数の上限を超える要素数でも最大値を返す', () => {
+test('meanStdDevMaxは引数の上限を超える要素数でも最大値を返す', () => {
   const n = 200_000;
   const values = new Array<number>(n).fill(1);
   values[n - 1] = 7;
@@ -552,7 +552,7 @@ test('meanStdDevMax は引数の上限を超える要素数でも最大値を返
   assert.ok(Math.abs(mean - (n - 2 + 7 - 3) / n) < 1e-9);
 });
 
-test('meanStdDevMax は空配列で0、負の値だけの配列で負の最大値を返す', () => {
+test('meanStdDevMaxは空配列で0、負の値だけの配列で負の最大値を返す', () => {
   assert.deepEqual(meanStdDevMax([]), { mean: 0, stdDev: 0, max: 0 });
   assert.equal(meanStdDevMax([-5, -2, -9]).max, -2);
 });
