@@ -21,6 +21,7 @@ import { KeyDetailWindow } from '../KeyDetailWindow.tsx';
 import { keySelectionTargetOf } from '../key-selection.ts';
 import { usePaneKeySelection } from '../key-selection-store.tsx';
 import { useAnalyzerPane } from '../use-analyzer-pane.ts';
+import { useCoherentPaneValues } from '../coherent-pane-values.ts';
 import { useTargetExtractions } from '../use-target-extractions.ts';
 import { useSetTargetSelection } from '../use-set-target-selection.ts';
 import { setTargetFigureState, setTargetsBesideSingle } from '../set-target-figures.ts';
@@ -88,9 +89,9 @@ export function SingleAnalyzerPane<Options, Extracted>({
   const header = resolution.ok
     ? conditionHeaderInfoFromResolvedInput(resolution.input.layout, resolution.input.geometry)
     : undefined;
-  const traceErrors = pane.trace.status === 'ready' || pane.trace.status === 'stale'
-    ? pane.trace.value.trace.errors
-    : [];
+  // Traceと抽出は別々に解決する。図と一緒に出すTrace由来の値（飛ばした文字・エラー）は、図と同じ入力の組から読む
+  const coherent = useCoherentPaneValues(pane.extraction, pane.trace);
+  const traceErrors = coherent?.trace.trace.errors ?? [];
 
   // 対象の名前（読み上げ用の名前と、見出しの対象・hoverに出すフル名）。単一対象なので集合は自分1つ。
   const setupNumbers = useMemo(() => setupNumbersOf(setups), [setups]);
@@ -153,8 +154,6 @@ export function SingleAnalyzerPane<Options, Extracted>({
   }, [selectedKeyId, selectedGeometry, clearKeySelection]);
 
   const extraction = pane.extraction;
-  const hasExtraction = extraction.status === 'ready' || extraction.status === 'stale';
-  const hasTrace = pane.trace.status === 'ready' || pane.trace.status === 'stale';
 
   return (
     <PaneFrame
@@ -174,14 +173,14 @@ export function SingleAnalyzerPane<Options, Extracted>({
       optionsBinding={chrome.optionsBinding}
       showPaneNameInSettings={chrome.showPaneNameInSettings}
       floating={(paneName) => (
-        keyDetailsOf !== undefined && keySelection.windowKeyId !== undefined && resolution.ok && hasExtraction && hasTrace
+        keyDetailsOf !== undefined && keySelection.windowKeyId !== undefined && resolution.ok && coherent !== undefined
           && resolution.input.geometry.keys.has(keySelection.windowKeyId) ? (
             <KeyDetailWindow
               keyId={keySelection.windowKeyId}
               layout={resolution.input.layout}
               geometry={resolution.input.geometry}
-              trace={pane.trace.value.trace}
-              keyDetails={keyDetailsOf(extraction.value.extracted)}
+              trace={coherent.trace.trace}
+              keyDetails={keyDetailsOf(coherent.extraction.extracted)}
               anchor={keySelection.anchor}
               onClose={keySelection.clear}
               {...(paneName === undefined ? {} : { paneName })}
@@ -235,12 +234,12 @@ export function SingleAnalyzerPane<Options, Extracted>({
       settingsDiagnostics={settingsDiagnostics}
       linkNotices={linkNotices}
     >
-      {resolution.ok && hasExtraction && hasTrace ? (
+      {resolution.ok && coherent !== undefined ? (
         <Body
           layout={resolution.input.layout}
           geometry={resolution.input.geometry}
-          trace={pane.trace.value.trace}
-          extracted={extraction.value.extracted}
+          trace={coherent.trace.trace}
+          extracted={coherent.extraction.extracted}
           options={options}
           onOptionsChange={onOptionsChange}
           {...(setTargetFigures.length === 0 ? {} : { setTargets: setTargetFigures })}

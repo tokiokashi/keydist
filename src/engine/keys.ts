@@ -4,6 +4,7 @@ import type { SingleAnalyzerDefinition, TraceRequestInput } from '#analyzers/con
 import type { AnalysisTarget } from '#input/setup/index.ts';
 import type { EngineSetMemberInput } from './request.ts';
 import type { ResolvedInput } from './resolved-input.ts';
+import { describeResolvedInputError } from './resolved-input-errors.ts';
 
 /**
  * Traceを決める中身だけを持つキー。
@@ -107,8 +108,9 @@ export function analyzerExtractionKeyOf(
  *
  * 各メンバーは `{ target, memberKey }` の組で表す。`memberKey`は解決できたメンバーなら
  * そのメンバーの解釈キー、解決に失敗したメンバーなら失敗の種類（`kind`）を含む印
- * （`AnalyzerSetMemberFailure`の`kind`。`message`はUI文言でしかなく再計算の要否には
- * 関わらないため含めない）にする。`target`（`AnalysisTarget`）を含めるのは、同じ中身の
+ * （`AnalyzerSetMemberFailure`の`kind`と`message`）にする。同じ枠・同じ`kind`でも、失敗の中身
+ * （どの参照が切れたか、どのテキストに使えないか）で`message`が変わり、抽出はそれを結果に載せて返す。
+ * `message`を含めないと、文言だけが違う失敗が前の文言の結果を引いてしまう。`target`（`AnalysisTarget`）を含めるのは、同じ中身の
  * 対象が集合の複数枠に並ぶ場合（同一Setupを重ねて基準比較する等）でも枠ごとに区別するため
  * （`traceKeyOf`がSetupのidをキーから意図的に除くのとは逆に、ここでは「集合の中の
  * どの枠か」を区別する必要がある）。
@@ -162,11 +164,11 @@ export function basisIdOf(input: ResolvedInput): string {
   return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
 }
 
-/** 集合のメンバー1枠のキー。解決できた枠は解釈キー、失敗した枠は失敗の種類の印（`setAnalyzerExtractionKeyOf`参照）。 */
+/** 集合のメンバー1枠のキー。解決できた枠は解釈キー、失敗した枠は失敗の種類と文言の印（`setAnalyzerExtractionKeyOf`参照）。 */
 export function setMemberKeyOf(member: EngineSetMemberInput): unknown {
   return member.resolution.ok
     ? interpretationKeyOf(member.resolution.input, traceKeyOf(member.resolution.input))
-    : { failed: member.resolution.error.kind };
+    : { failed: member.resolution.error.kind, message: describeResolvedInputError(member.resolution.error) };
 }
 
 /** 集合対象の抽出キーを、メンバー（表示順）から一気に作る。`singleExtractionKeyOf`と同じ理由で共通の入口にする。 */
