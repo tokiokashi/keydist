@@ -219,6 +219,7 @@ export const SETTINGS_ITEMS = {
       // shapeIdと値が食い違っていても検証しない（毎回誤ってfallback診断が出る事故を避ける）。
       if (context.targetKind !== 'layout') return { ok: true };
       // JISの物理配列が要る配列は、この値を入力にして同じ形のJISの物理配列を導くので、食い違いは正常。
+      // 値が手持ちに無い場合の診断は、手持ちを持つ`resolveEngineInput`が足す。
       if (context.layout.requiresJisShape === true) return { ok: true };
       return value === context.shapeId
         ? { ok: true }

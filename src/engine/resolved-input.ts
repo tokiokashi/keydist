@@ -169,10 +169,27 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
       message: `選んでいたローマ字規則が見つからないため、既定の「${ROMAJI_RULES.kunrei.name}」で測りました`,
     }
     : undefined;
-  const resolvedCascade = assignmentDiagnostic === undefined && romajiDiagnostic === undefined
+  // JISの物理配列が要る配列の既定の物理配列は、値を入力にして物理配列を導くので、`validate`は食い違いを見ない。
+  // 値が手持ちに無い物理配列を指す時の診断は、手持ち（catalog）を持つここで、他の配列と同じ文で足す。
+  const shapeValue = cascade.defaultShapeId.value;
+  const shapeDiagnostic = textResolution.context.targetKind === 'layout'
+    && layout.requiresJisShape === true
+    && !options.catalog.shapes.has(shapeValue)
+    ? {
+      kind: 'invalid-fallback' as const,
+      message: `既定に選んでいた物理配列が見つからないため、「${textResolution.shape.name}」で測りました`,
+    }
+    : undefined;
+  const resolvedCascade = assignmentDiagnostic === undefined && romajiDiagnostic === undefined && shapeDiagnostic === undefined
     ? cascade
     : {
       ...cascade,
+      ...(shapeDiagnostic === undefined ? {} : {
+        defaultShapeId: {
+          ...cascade.defaultShapeId,
+          diagnostics: [...cascade.defaultShapeId.diagnostics, shapeDiagnostic],
+        },
+      }),
       ...(assignmentDiagnostic === undefined ? {} : {
         fingerAssignmentId: {
           ...cascade.fingerAssignmentId,

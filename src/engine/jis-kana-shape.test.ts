@@ -97,10 +97,34 @@ test('配列のレベルで置いたJIS系の物理配列は、全体の値か�
   assert.equal(geometryIdOf(resolve(JIS_KANA_TARGET, overrides)), 'jis-column-staggered');
 });
 
-test('配列のレベルの上書きが手持ちに無い物理配列を指す時は、全体の値から導いた物理配列で測る', () => {
+test('配列のレベルの上書きが手持ちに無い物理配列を指す時は、全体の値から導いた物理配列で測り、他の配列と同じ診断を出す', () => {
   const global = withShape(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'ortholinear');
   const overrides = withShape(global, { kind: 'layout', layoutId: 'jis-kana' }, 'shape-deleted');
-  assert.equal(geometryIdOf(resolve(JIS_KANA_TARGET, overrides)), 'jis-ortholinear');
+  const result = resolve(JIS_KANA_TARGET, overrides);
+  assert.equal(geometryIdOf(result), 'jis-ortholinear');
+  assert.ok(result.ok);
+  if (!result.ok) return;
+  assert.deepEqual(result.input.cascade.defaultShapeId.diagnostics.map((d) => d.message), [
+    '既定に選んでいた物理配列が見つからないため、「オーソリニア（JIS）」で測りました',
+  ]);
+});
+
+test('全体の値が手持ちに無い物理配列を指す時も、JISかな配列は既定の形から導き、診断を出す。導出でidが変わるだけなら出さない', () => {
+  const missing = resolve(JIS_KANA_TARGET, withShape(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'shape-deleted'));
+  assert.equal(geometryIdOf(missing), 'jis-row-staggered');
+  assert.ok(missing.ok);
+  if (missing.ok) assert.equal(missing.input.cascade.defaultShapeId.diagnostics.length, 1);
+  // 他の配列と同じ診断（文も同じ）
+  const other = resolve({ kind: 'layout', layoutId: 'naginata-v18' }, withShape(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'shape-deleted'));
+  assert.ok(other.ok);
+  if (missing.ok && other.ok) {
+    assert.equal(other.input.cascade.defaultShapeId.diagnostics.length, 1);
+    assert.equal(other.input.cascade.defaultShapeId.diagnostics[0]!.kind, missing.input.cascade.defaultShapeId.diagnostics[0]!.kind);
+  }
+  // ortholinearからjis-ortholinearへ変わるだけの時は出さない（上のテストでも確かめている）
+  const derived = resolve(JIS_KANA_TARGET, withShape(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'ortholinear'));
+  assert.ok(derived.ok);
+  if (derived.ok) assert.equal(derived.input.cascade.defaultShapeId.diagnostics.length, 0);
 });
 
 test('全体の値が自作の物理配列の時は、配列が使うキーを全部持てばそのまま使い、足りなければロウスタッガード（JIS）で測る', () => {
