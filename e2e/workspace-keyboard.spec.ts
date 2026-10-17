@@ -41,16 +41,24 @@ test('矢印キーで1マスずつ動かし、Shift+矢印キーで大きさを�
   await expect(page.locator('.workspace-grid-area [role="status"]')).toContainText('左から1列目、上から1行目、幅6、高さ4');
 });
 
-test('動かした先で重なった相手は下へ押され、ペインの順が入れ替わってもフォーカスはつかみ所に残る', async ({ page }) => {
+test('動かした先で重なった相手は下へ押される', async ({ page }) => {
   await open(page, ['a', 'b'], [cell('a', 0, 0, 6, 4), cell('b', 6, 0, 6, 4)]);
-  const handle = handleOf(page, 'a');
-  await handle.focus();
+  await handleOf(page, 'a').focus();
   await page.keyboard.press('ArrowRight');
   await expect.poll(() => itemOf(page, 'b')).toMatchObject({ x: 6, y: 4 });
   expect(await itemOf(page, 'a')).toMatchObject({ x: 1, y: 0 });
-  // bの下端より下まで動かして、読み順をaが後になる側へ入れ替える
-  for (let i = 0; i < 6; i += 1) await page.keyboard.press('ArrowDown');
-  await expect.poll(() => itemOf(page, 'a')).toMatchObject({ y: 6 });
+});
+
+test('読み順が入れ替わってもフォーカスはつかみ所に残る', async ({ page }) => {
+  // aは先（上）、bは右下。aをbより下まで動かすと読み順がb、aに入れ替わる
+  await open(page, ['a', 'b'], [cell('a', 0, 0, 4, 4), cell('b', 8, 2, 4, 4)]);
+  const order = () => page.locator('.workspace-grid-item').evaluateAll((items) => items.map((el) => el.getAttribute('data-pane-id')));
+  expect(await order()).toEqual(['a', 'b']);
+  const handle = handleOf(page, 'a');
+  await handle.focus();
+  for (let i = 0; i < 4; i += 1) await page.keyboard.press('ArrowDown');
+  await expect.poll(() => itemOf(page, 'a')).toMatchObject({ y: 4 });
+  await expect.poll(order).toEqual(['b', 'a']);
   await settle(page);
   await expect(handle).toBeFocused();
 });

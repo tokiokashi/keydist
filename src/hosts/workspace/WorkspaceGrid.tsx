@@ -296,14 +296,13 @@ export function WorkspaceGrid({ grid, analyzerIdOf, titleOf, descriptionOf, help
     if (item !== undefined) setAnnouncement(describeItem(titleOf(paneId), item));
   }, [grid, analyzerIdOf, compact, onGridChange, titleOf]);
   const keyboardPaneRef = useRef<string | undefined>(undefined);
-  // キーボードで並びを変えた直後は、ペインの並び（読み順）が入れ替わってつかみ所からフォーカスが外れることがある。外れていれば戻し、見える位置へ寄せる
+  // キーボードで並びを変えた直後は、動かしたペインのつかみ所を見える位置へ寄せる（フォーカスはつかみ所に残っている）
   useLayoutEffect(() => {
     const paneId = keyboardPaneRef.current;
     if (paneId === undefined) return;
     keyboardPaneRef.current = undefined;
     const handle = containerRef.current?.querySelector<HTMLElement>(`.workspace-grid-item[data-pane-id="${CSS.escape(paneId)}"] .workspace-drag-handle`);
     if (handle === null || handle === undefined) return;
-    if (document.activeElement !== handle) handle.focus({ preventScroll: true });
     handle.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }, [grid, containerRef]);
   const resizeConfig = useMemo(() => ({ enabled: !maximized, handles: ['s', 'e', 'w', 'se'] as const }), [maximized]);
