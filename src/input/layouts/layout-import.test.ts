@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { decodeLayoutFile, formatForFileName, importBenizara, importDvorakJ, importVial } from './import.ts';
+import { decodeLayoutFile, formatForFileName, importBenizara, importDvorakJ, importVial, isDashSeparatedHeader } from './import.ts';
 import { CUSTOM_COMBOS } from './combos-custom.ts';
 import { toLayout, type UserLayout } from './user-layouts.ts';
 
@@ -214,4 +214,29 @@ test('拡張子から取り込み形式を選ぶ', () => {
 test('対象の配列表がないファイルはエラーにする', () => {
   assert.throws(() => importDvorakJ('-option-input[\n{x} | -20\n]'), /配列表/);
   assert.throws(() => importVial('{}'), /layout/);
+});
+
+test('見出しの区切り判定は、元の正規表現と同じ文字列に一致する', () => {
+  const original = /^-(?:[^-]+-?)+$/;
+  const samples = ['-', '--', '-a', '-a-', '-a--', '--a', '-a-b', '-f-j', '-f-j-', '-,-,', '-a-b-c', 'a-b', '', '-a b', '-\n', '-a-\n-', '- -'];
+  for (const sample of samples) {
+    assert.equal(isDashSeparatedHeader(sample), original.test(sample), JSON.stringify(sample));
+  }
+  // 短い文字列を全部試す
+  const alphabet = ['-', 'a', ','];
+  const walk = (prefix: string, depth: number): void => {
+    assert.equal(isDashSeparatedHeader(prefix), original.test(prefix), JSON.stringify(prefix));
+    if (depth === 0) return;
+    for (const c of alphabet) walk(prefix + c, depth - 1);
+  };
+  walk('', 8);
+});
+
+test('見出しの区切り判定は、長い攻撃文字列でもすぐに終わる', () => {
+  const started = performance.now();
+  assert.equal(isDashSeparatedHeader(`-${',-'.repeat(50000)}-`), false);
+  assert.equal(isDashSeparatedHeader(`-${','.repeat(50000)}!-`), true);
+  assert.equal(isDashSeparatedHeader(`-${',-'.repeat(50000)}-x--`), false);
+  assert.equal(isDashSeparatedHeader(`-${'a-'.repeat(50000)}-`), false);
+  assert.ok(performance.now() - started < 1000);
 });

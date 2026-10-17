@@ -236,7 +236,7 @@ function dvorakJHeader(header: string, aliases: Map<string, string>): string[] |
   }
 
   // 一部のDvorakJ配布物は -f-jを、次行の [ と組み合わせて使う。
-  if (/^-(?:[^-]+-?)+$/.test(header)) {
+  if (isDashSeparatedHeader(header)) {
     const triggers = header
       .split('-')
       .filter(Boolean)
@@ -247,6 +247,15 @@ function dvorakJHeader(header: string, aliases: Map<string, string>): string[] |
 }
 
 /** DvorakJの配列表ブロックだけを読む。コメント・option-inputの設定・ファイル名は判定材料にしない。 */
+/**
+ * `-f-j` のように、先頭が `-` で、`-` 以外の並びを `-` で区切った見出しか。
+ * 連続する `-` は許さず、末尾の `-` は1つまで許す。
+ * 利用者のファイルが通る経路なので、バックトラックが入力の長さに対して線形で済む形で書く。
+ */
+export function isDashSeparatedHeader(header: string): boolean {
+  return /^-[^-]+(?:-[^-]+)*-?$/.test(header);
+}
+
 export function importDvorakJ(source: string, name = 'DvorakJ取り込み'): ImportedLayout {
   const text = source.replace(/^\uFEFF/, '').replace(/\/\*[\s\S]*?\*\//g, '');
   const lines = text.split(/\r?\n/);
@@ -262,12 +271,12 @@ export function importDvorakJ(source: string, name = 'DvorakJ取り込み'): Imp
     if (!header || header.startsWith('-option-input')) continue;
     let triggers = dvorakJHeader(header, aliases);
     let bodyStart = i;
-    if (/^-(?:[^-]+-?)+$/.test(header) && lines[i + 1]?.trim() === '[') {
+    if (isDashSeparatedHeader(header) && lines[i + 1]?.trim() === '[') {
       bodyStart = i + 1;
     }
     const openingBracketIsOnHeader = header.endsWith('[');
     if (!triggers || (!openingBracketIsOnHeader && lines[bodyStart]?.trim() !== '[')) {
-      if (header !== '-option-input[' && (header.endsWith('[') || (/^-(?:[^-]+-?)+$/.test(header) && lines[i + 1]?.trim() === '['))) {
+      if (header !== '-option-input[' && (header.endsWith('[') || (isDashSeparatedHeader(header) && lines[i + 1]?.trim() === '['))) {
         addWarning(warnings, `DvorakJの面ヘッダ「${header}」を解釈できないため無視しました`);
       }
       continue;
