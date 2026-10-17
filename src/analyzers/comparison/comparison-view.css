@@ -56,6 +56,18 @@
   display: table-cell;
 }
 
+/*
+ * 数値セルの背景のバー。値の大きさだけを表す1色の中立色で、良し悪しの色は使わない。
+ * 長さは--bar-length（セルの幅に対する割合）。
+ */
+.comparison-value-cell[data-bar] {
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--text-muted) 28%, transparent) var(--bar-length),
+    transparent var(--bar-length)
+  );
+}
+
 .comparison-value {
   display: block;
 }
