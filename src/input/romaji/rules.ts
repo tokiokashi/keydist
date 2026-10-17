@@ -1,4 +1,5 @@
 import { UNSAFE_OBJECT_KEYS, type CodecDiagnostic, type DecodedWithDiagnostics } from '../codec/index.ts';
+import { droppedDuplicateId, droppedNotArray, droppedReservedKey } from '#input/codec/index.ts';
 import { azik } from './azik.ts';
 import { kunrei, addSokuonForms } from './kunrei.ts';
 import { OONISHI_OVERRIDES, oonishiRomaji } from './oonishi.ts';
@@ -144,7 +145,7 @@ export function decodeUserRomajiRules(
   diagnostics: CodecDiagnostic[],
 ): UserRomajiRule[] {
   if (!Array.isArray(raw)) {
-    if (raw !== undefined) diagnostics.push({ path, message: '配列形式でないためローマ字規則を捨てました' });
+    if (raw !== undefined) diagnostics.push({ path, message: droppedNotArray('ローマ字規則') });
     return [];
   }
   const seen = new Set<string>();
@@ -160,7 +161,7 @@ export function decodeUserRomajiRules(
       return;
     }
     if (seen.has(candidate.id)) {
-      diagnostics.push({ path: `${path}[${index}]`, message: `id「${candidate.id}」が重複しているため捨てました` });
+      diagnostics.push({ path: `${path}[${index}]`, message: droppedDuplicateId(candidate.id) });
       return;
     }
     seen.add(candidate.id);
@@ -184,7 +185,7 @@ export function decodeStoredRomajiSettings(value: unknown): DecodedWithDiagnosti
   if (isRecord(value.assignments)) {
     for (const [key, id] of Object.entries(value.assignments)) {
       // 予約名のキーは代入で自分のプロパティにならず黙って消えるので、捨てる旨を診断に残す
-      if (UNSAFE_OBJECT_KEYS.has(key)) diagnostics.push({ path: `assignments.${key}`, message: `予約名のキー「${key}」を捨てました` });
+      if (UNSAFE_OBJECT_KEYS.has(key)) diagnostics.push({ path: `assignments.${key}`, message: droppedReservedKey(key) });
       else if (typeof id === 'string') assignments[key] = id;
       else diagnostics.push({ path: `assignments.${key}`, message: '文字列でないため規則の割り当てを捨てました' });
     }

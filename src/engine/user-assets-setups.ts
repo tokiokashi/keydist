@@ -1,4 +1,4 @@
-import { isRecord, type CodecDiagnostic } from '#input/codec/index.ts';
+import { isRecord, type CodecDiagnostic, droppedDuplicateId, droppedNotArray } from '#input/codec/index.ts';
 import {
   decodeLevelOverrides,
   levelOverrides,
@@ -37,7 +37,7 @@ const nonEmptyString = (value: unknown): value is string => typeof value === 'st
 export function decodeUserAssetSetups(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): readonly UserAssetSetup[] {
   if (raw === undefined) return [];
   if (!Array.isArray(raw)) {
-    diagnostics.push({ path, message: '配列形式でないためSetupを捨てました' });
+    diagnostics.push({ path, message: droppedNotArray('Setup') });
     return [];
   }
   const seen = new Set<string>();
@@ -49,7 +49,7 @@ export function decodeUserAssetSetups(raw: unknown, path: string, diagnostics: C
       return;
     }
     if (seen.has(candidate.id)) {
-      diagnostics.push({ path: where, message: `id「${candidate.id}」が重複しているため捨てました` });
+      diagnostics.push({ path: where, message: droppedDuplicateId(candidate.id) });
       return;
     }
     seen.add(candidate.id);

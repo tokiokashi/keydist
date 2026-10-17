@@ -1,4 +1,4 @@
-import { defineAssetCodec, isRecord, type AssetCodec, type CodecDiagnostic } from '#input/codec/index.ts';
+import { defineAssetCodec, isRecord, type AssetCodec, type CodecDiagnostic, droppedNotArray, droppedNotObject } from '#input/codec/index.ts';
 import { analysisTargetKey, decodeAnalysisTarget, type AnalysisTarget } from '#input/setup/index.ts';
 import { assignColorSlots, type MultiTargetSelection, type TargetSet } from './multi-target-selection.ts';
 
@@ -35,12 +35,12 @@ function childPath(path: string, key: string): string {
 
 function decodeSetParts(payload: unknown, path: string, diagnostics: CodecDiagnostic[], readSlots: boolean): DecodedSet | undefined {
   if (!isRecord(payload)) {
-    diagnostics.push({ path, message: 'object形式でないため選択を捨てました' });
+    diagnostics.push({ path, message: droppedNotObject('選択') });
     return undefined;
   }
   const rawTargets: readonly unknown[] = Array.isArray(payload.targets) ? payload.targets : [];
   if (payload.targets !== undefined && !Array.isArray(payload.targets)) {
-    diagnostics.push({ path: childPath(path, 'targets'), message: '配列形式でないため選択を捨てました' });
+    diagnostics.push({ path: childPath(path, 'targets'), message: droppedNotArray('選択') });
   }
   const seen = new Set<string>();
   const targets: AnalysisTarget[] = [];

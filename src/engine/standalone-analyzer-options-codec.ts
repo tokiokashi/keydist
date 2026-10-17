@@ -1,4 +1,4 @@
-import { defineAssetCodec, isRecord, UNSAFE_OBJECT_KEYS, type AssetCodec } from '#input/codec/index.ts';
+import { defineAssetCodec, isRecord, UNSAFE_OBJECT_KEYS, type AssetCodec, droppedNotObject } from '#input/codec/index.ts';
 import type { StandaloneAnalyzerOptionsState } from './standalone-analyzer-options.ts';
 
 /**
@@ -42,7 +42,7 @@ export const STANDALONE_ANALYZER_OPTIONS_CODEC: AssetCodec<StandaloneAnalyzerOpt
         continue;
       }
       if (!isRecord(raw)) {
-        diagnostics.push({ path: analyzerId, message: 'object形式でないため設定を捨てました' });
+        diagnostics.push({ path: analyzerId, message: droppedNotObject('設定') });
         continue;
       }
       // `analyzerId`はここまでで`UNSAFE_OBJECT_KEYS`を通過済み（予約名ではない）ので、

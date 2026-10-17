@@ -2,6 +2,10 @@ import type { SetAnalyzerDefinition, SingleAnalyzerDefinition } from '#analyzers
 import type { EngineCache } from './cache.ts';
 import type { EngineWorkerRequest, EngineWorkerResponse } from './worker-protocol.ts';
 
+function unregisteredAnalyzerError(definitionId: string): Error {
+  return new Error(`未登録のAnalyzerです: ${definitionId}`);
+}
+
 /**
  * Worker側が持つAnalyzerの定義（関数を含むのでメッセージでは送れない）。
  * どの定義を載せるかは、Workerの入口を書く`app`が決める（Analyzerの登録はapp）。
@@ -30,12 +34,12 @@ export function createEngineWorkerHandler(
         return cache.getTrace(request.input);
       case 'extraction': {
         const definition = single.get(request.definitionId);
-        if (definition === undefined) throw new Error(`未登録のAnalyzerです: ${request.definitionId}`);
+        if (definition === undefined) throw unregisteredAnalyzerError(request.definitionId);
         return cache.getExtraction(request.input, definition, request.options);
       }
       case 'set-extraction': {
         const definition = set.get(request.definitionId);
-        if (definition === undefined) throw new Error(`未登録のAnalyzerです: ${request.definitionId}`);
+        if (definition === undefined) throw unregisteredAnalyzerError(request.definitionId);
         return cache.getSetExtraction(request.members, definition, request.options);
       }
     }

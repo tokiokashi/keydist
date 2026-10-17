@@ -1,12 +1,5 @@
 import * as v from 'valibot';
-import {
-  decodeDroppingInvalid,
-  defineAssetCodec,
-  isRecord,
-  UNSAFE_OBJECT_KEYS,
-  type AssetCodec,
-  type CodecDiagnostic,
-} from '#input/codec/index.ts';
+import { decodeDroppingInvalid, defineAssetCodec, isRecord, UNSAFE_OBJECT_KEYS, type AssetCodec, type CodecDiagnostic, droppedDuplicateId, droppedNotArray, droppedReservedKey } from '#input/codec/index.ts';
 import { ALL_FINGERS, FINGERS, type Finger, type FingerAssignment, type NonThumb } from './geometry.ts';
 
 /**
@@ -86,7 +79,7 @@ export function decodeUserFingerAssignments(
 ): FingerAssignment[] {
   if (!Array.isArray(raw)) {
     // 値があって配列でない時は、全件が消えることを診断で示す（無い時は空の手持ちで正しい）
-    if (raw !== undefined) diagnostics.push({ path, message: '配列形式でないため指の割り当てを捨てました' });
+    if (raw !== undefined) diagnostics.push({ path, message: droppedNotArray('指の割り当て') });
     return [];
   }
   const seen = new Set<string>();
@@ -97,14 +90,14 @@ export function decodeUserFingerAssignments(
     if (isRecord(candidate) && isRecord(candidate.baseFinger)) {
       for (const key of Object.keys(candidate.baseFinger)) {
         if (UNSAFE_OBJECT_KEYS.has(key)) {
-          diagnostics.push({ path: `${path}[${index}].baseFinger.${key}`, message: `予約名のキー「${key}」を捨てました` });
+          diagnostics.push({ path: `${path}[${index}].baseFinger.${key}`, message: droppedReservedKey(key) });
         }
       }
     }
     const decoded = decodeDroppingInvalid(userFingerAssignmentSchema, candidate, `${path}[${index}]`, diagnostics);
     if (decoded === undefined) return;
     if (seen.has(decoded.id)) {
-      diagnostics.push({ path: `${path}[${index}]`, message: `id「${decoded.id}」が重複しているため捨てました` });
+      diagnostics.push({ path: `${path}[${index}]`, message: droppedDuplicateId(decoded.id) });
       return;
     }
     seen.add(decoded.id);

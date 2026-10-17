@@ -12,7 +12,7 @@ import {
 import { useHistoryShortcuts } from '#ui/primitives/use-history-shortcuts.ts';
 import { ErrorDetails } from '#hosts/shared/ErrorDetails.tsx';
 import { PresetFileIoContext } from '#hosts/shared/preset-file-io.ts';
-import { PRESET_FILE_IMPORT_FAILED_MESSAGE } from '#hosts/shared/preset-file.ts';
+import { PRESET_FILE_IMPORT_FAILED_MESSAGE, PRESET_FILE_TOO_LARGE_MESSAGE, PRESET_FILE_UNREADABLE_MESSAGE } from '#hosts/shared/preset-file.ts';
 import { exportedText, importEntryText, importSummaryText, userAssetsFileName } from './user-assets-file-text.ts';
 import { userFingerAssignmentRows, userLayoutRows, userRomajiRuleRows, userSetupRows, type UserAssetRow } from './user-asset-rows.ts';
 import type { SetupListItem } from '../setup/setup-view.ts';
@@ -48,8 +48,6 @@ export interface UserAssetsPageProps {
   readonly onImport: (bundle: UserAssetsBundle, stamp: string) => readonly UserAssetImportEntry[] | undefined;
 }
 
-const FILE_TOO_LARGE_MESSAGE = 'ファイルが大きすぎます（1MBまで）';
-const FILE_UNREADABLE_MESSAGE = 'ファイルを読み取れませんでした';
 
 interface ImportResult {
   readonly summary: string;
@@ -252,7 +250,7 @@ export function UserAssetsPage({
     clearResults();
     const read = await fileIo.readText(file, USER_ASSETS_FILE_MAX_BYTES);
     if (read.kind !== 'ok') {
-      setMessage(read.kind === 'too-large' ? FILE_TOO_LARGE_MESSAGE : FILE_UNREADABLE_MESSAGE);
+      setMessage(read.kind === 'too-large' ? PRESET_FILE_TOO_LARGE_MESSAGE : PRESET_FILE_UNREADABLE_MESSAGE);
       return;
     }
     const parsed = parseUserAssetsFile(read.text);

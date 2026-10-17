@@ -5,6 +5,7 @@ import {
   type CodecDiagnostic,
   type DecodedWithDiagnostics,
 } from '../codec/index.ts';
+import { droppedDuplicateId, droppedNotArray } from '#input/codec/index.ts';
 import {
   canonicalInputAlternativeIdentity,
   compileSequenceInputAlternative,
@@ -89,7 +90,7 @@ export function decodeUserLayouts(value: unknown): DecodedWithDiagnostics<UserLa
   if (!Array.isArray(value)) {
     const diagnostics = value === undefined
       ? []
-      : [{ path: '', message: '配列形式でないため自作の配列を捨てました' }];
+      : [{ path: '', message: droppedNotArray('自作の配列') }];
     return { value: [], diagnostics };
   }
   const diagnostics: CodecDiagnostic[] = [];
@@ -102,7 +103,7 @@ export function decodeUserLayouts(value: unknown): DecodedWithDiagnostics<UserLa
       return;
     }
     if (seen.has(candidate.id)) {
-      diagnostics.push({ path, message: `id「${candidate.id}」が重複しているため捨てました` });
+      diagnostics.push({ path, message: droppedDuplicateId(candidate.id) });
       return;
     }
     seen.add(candidate.id);

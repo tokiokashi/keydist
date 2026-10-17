@@ -1,4 +1,4 @@
-import { defineAssetCodec, isRecord, type AssetCodec, type CodecDiagnostic } from '#input/codec/index.ts';
+import { defineAssetCodec, isRecord, type AssetCodec, type CodecDiagnostic, droppedDuplicateId, droppedNotArray } from '#input/codec/index.ts';
 import { decodeLevelOverrides, type ItemSchemaMap, type LevelOverrides } from '#input/settings/index.ts';
 import type { Preset, PresetLibrary } from './types.ts';
 
@@ -23,7 +23,7 @@ export function decodePresets<V>(
 ): Preset<V>[] {
   if (!Array.isArray(raw)) {
     // 値があって配列でない時は、全件が消えることを診断で示す（無い時は空の手持ちで正しい）
-    if (raw !== undefined) diagnostics.push({ path, message: '配列形式でないためプリセットを捨てました' });
+    if (raw !== undefined) diagnostics.push({ path, message: droppedNotArray('プリセット') });
     return [];
   }
   const seen = new Set<string>();
@@ -48,7 +48,7 @@ export function decodePresets<V>(
       return;
     }
     if (seen.has(id)) {
-      diagnostics.push({ path: at, message: `id「${id}」が重複しているため捨てました` });
+      diagnostics.push({ path: at, message: droppedDuplicateId(id) });
       return;
     }
     seen.add(id);

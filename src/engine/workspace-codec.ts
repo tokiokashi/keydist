@@ -1,9 +1,4 @@
-import {
-  defineAssetCodec,
-  isRecord,
-  type AssetCodec,
-  type CodecDiagnostic,
-} from '#input/codec/index.ts';
+import { defineAssetCodec, isRecord, type AssetCodec, type CodecDiagnostic, droppedNotArray, droppedNotObject } from '#input/codec/index.ts';
 import { decodeLevelOverrides } from '#input/settings/index.ts';
 import { decodeAnalysisTarget, encodeAnalysisTarget } from '#input/setup/index.ts';
 import { initialTextSelection } from '#input/text/selection.ts';
@@ -58,7 +53,7 @@ function decodeGridItem(raw: unknown, path: string, diagnostics: CodecDiagnostic
 
 function decodePaneTarget(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): WorkspacePaneTarget | undefined {
   if (!isRecord(raw)) {
-    diagnostics.push({ path, message: 'object形式でないためペインを捨てました' });
+    diagnostics.push({ path, message: droppedNotObject('ペイン') });
     return undefined;
   }
   if (raw.kind === 'single') {
@@ -151,7 +146,7 @@ function decodeGroups(raw: unknown, path: string, diagnostics: CodecDiagnostic[]
 function decodeOptionSets(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): readonly OptionSet[] {
   if (raw === undefined) return [];
   if (!Array.isArray(raw)) {
-    diagnostics.push({ path, message: '配列形式でないため解析設定の組を捨てました' });
+    diagnostics.push({ path, message: droppedNotArray('解析設定の組') });
     return [];
   }
   const sets: OptionSet[] = [];
@@ -206,7 +201,7 @@ function decodePane(
   diagnostics: CodecDiagnostic[],
 ): WorkspacePane | undefined {
   if (!isRecord(raw)) {
-    diagnostics.push({ path, message: 'object形式でないためペインを捨てました' });
+    diagnostics.push({ path, message: droppedNotObject('ペイン') });
     return undefined;
   }
   if (typeof raw.id !== 'string' || raw.id === '' || typeof raw.analyzerId !== 'string' || raw.analyzerId === '') {
@@ -235,7 +230,7 @@ function decodePane(
 
 function decodeWorkspace(raw: unknown, path: string, seenIds: Set<string>, diagnostics: CodecDiagnostic[]): Workspace | undefined {
   if (!isRecord(raw)) {
-    diagnostics.push({ path, message: 'object形式でないためWorkspaceを捨てました' });
+    diagnostics.push({ path, message: droppedNotObject('Workspace') });
     return undefined;
   }
   if (typeof raw.id !== 'string' || raw.id === '') {
@@ -266,7 +261,7 @@ function decodeWorkspace(raw: unknown, path: string, seenIds: Set<string>, diagn
 
   const rawPanes: readonly unknown[] = Array.isArray(raw.panes) ? raw.panes : [];
   if (raw.panes !== undefined && !Array.isArray(raw.panes)) {
-    diagnostics.push({ path: `${path}.panes`, message: '配列形式でないためペインを捨てました' });
+    diagnostics.push({ path: `${path}.panes`, message: droppedNotArray('ペイン') });
   }
   const seenPaneIds = new Set<string>();
   const panes: WorkspacePane[] = [];
@@ -277,7 +272,7 @@ function decodeWorkspace(raw: unknown, path: string, seenIds: Set<string>, diagn
 
   const rawGrid: GridItem[] = [];
   if (raw.grid !== undefined && !Array.isArray(raw.grid)) {
-    diagnostics.push({ path: `${path}.grid`, message: '配列形式でないため配置を捨てました' });
+    diagnostics.push({ path: `${path}.grid`, message: droppedNotArray('配置') });
   }
   (Array.isArray(raw.grid) ? raw.grid : []).forEach((item: unknown, index: number) => {
     const decoded = decodeGridItem(item, `${path}.grid[${index}]`, diagnostics);
@@ -363,7 +358,7 @@ export function encodeWorkspaces(library: WorkspaceLibrary): Record<string, unkn
 export function decodeWorkspaces(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): WorkspaceLibrary {
   const items: readonly unknown[] = Array.isArray(raw) ? raw : [];
   if (raw !== undefined && !Array.isArray(raw)) {
-    diagnostics.push({ path, message: '配列形式でないためWorkspaceを捨てました' });
+    diagnostics.push({ path, message: droppedNotArray('Workspace') });
   }
   const seenIds = new Set<string>();
   const workspaces: Workspace[] = [];
