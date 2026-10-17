@@ -76,6 +76,8 @@ export interface RomajiChunk {
   kana: string;
   /** そのかな見出しに対応するローマ字 */
   roman: string;
+  /** ローマ字テーブルの見出しに当たって展開された塊か。表に当たらずそのまま写した文字は偽 */
+  fromTable: boolean;
 }
 
 /**
@@ -102,7 +104,7 @@ export function kanaToRomajiChunks(text: string, table: Map<string, string>): Ro
         break;
       }
     }
-    chunks.push({ kana, roman: hit ?? chars[i] });
+    chunks.push({ kana, roman: hit ?? chars[i], fromTable: hit !== undefined });
     i += len;
   }
   return chunks;

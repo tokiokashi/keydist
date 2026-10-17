@@ -111,7 +111,7 @@ const ALPHA: Layout[] = [
     'eiao-ktnsh',
     'zxcv;gdmjb',
   ])), ['おおにし', 'おおにしはいれつ']),
-  // コンボはどれもromajiOnly（仕様 §4.3）。日本語はコンボ込み、英文は単打配置だけで打つ。
+  // コンボはどれもromajiOnly（仕様 §4.3）。かなから展開した綴りの区間はコンボ込み、英文や英字の区間は単打配置だけで打つ。
   withAliases(withCombos(
     'oonishi-custom',
     'TK音直入力法',

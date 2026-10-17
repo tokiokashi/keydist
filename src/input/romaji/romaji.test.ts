@@ -63,8 +63,17 @@ test('かな → ローマ字は最長一致で展開する', () => {
 
 test('かな → ローマ字の展開単位を保持する', () => {
   assert.deepEqual(kanaToRomajiChunks('きゃや', table), [
-    { kana: 'きゃ', roman: 'kya' },
-    { kana: 'や', roman: 'ya' },
+    { kana: 'きゃ', roman: 'kya', fromTable: true },
+    { kana: 'や', roman: 'ya', fromTable: true },
+  ]);
+});
+
+test('表に当たらない文字は、そのまま写した塊として印を付ける', () => {
+  assert.deepEqual(kanaToRomajiChunks('かWー、', table), [
+    { kana: 'か', roman: 'ka', fromTable: true },
+    { kana: 'W', roman: 'W', fromTable: false },
+    { kana: 'ー', roman: '-', fromTable: true },
+    { kana: '、', roman: ',', fromTable: true },
   ]);
 });
 
