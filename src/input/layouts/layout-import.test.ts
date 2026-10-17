@@ -216,16 +216,23 @@ test('対象の配列表がないファイルはエラーにする', () => {
   assert.throws(() => importVial('{}'), /layout/);
 });
 
-test('見出しの区切り判定は、元の正規表現と同じ文字列に一致する', () => {
-  const original = /^-(?:[^-]+-?)+$/;
+test('見出しの区切り判定は、正規表現を使わない参照の実装と同じ文字列に一致する', () => {
+  // 正規表現を使わない参照の実装。先頭が - で、残りを - で分けた区切りのうち、最後以外が空でなく、
+  // 区切りが1つだけなら空でないこと
+  const reference = (text: string): boolean => {
+    if (!text.startsWith('-')) return false;
+    const parts = text.slice(1).split('-');
+    const last = parts.pop() ?? '';
+    return parts.every((part) => part !== '') && (parts.length > 0 || last !== '');
+  };
   const samples = ['-', '--', '-a', '-a-', '-a--', '--a', '-a-b', '-f-j', '-f-j-', '-,-,', '-a-b-c', 'a-b', '', '-a b', '-\n', '-a-\n-', '- -'];
   for (const sample of samples) {
-    assert.equal(isDashSeparatedHeader(sample), original.test(sample), JSON.stringify(sample));
+    assert.equal(isDashSeparatedHeader(sample), reference(sample), JSON.stringify(sample));
   }
   // 短い文字列を全部試す
   const alphabet = ['-', 'a', ','];
   const walk = (prefix: string, depth: number): void => {
-    assert.equal(isDashSeparatedHeader(prefix), original.test(prefix), JSON.stringify(prefix));
+    assert.equal(isDashSeparatedHeader(prefix), reference(prefix), JSON.stringify(prefix));
     if (depth === 0) return;
     for (const c of alphabet) walk(prefix + c, depth - 1);
   };
