@@ -107,7 +107,13 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          npm ci 2>&1 | tee "$RUNNER_TEMP/npm-ci.log"
+          # package.json の packageManager に書いた版へ npm を揃える。Node 22 付属の npm とは lockfile の書き方が違う
+          npm_version="$(node -p "require('./package.json').packageManager.replace(/^npm@/, '')")"
+          {
+            npm install --global "npm@$npm_version"
+            npm --version
+            npm ci
+          } 2>&1 | tee "$RUNNER_TEMP/npm-ci.log"
 
       # ブラウザのキャッシュ（~/.cache/ms-playwright）は試して外した。実測では、当たってもrestoreの2秒を足してinstallが約1秒短くなるだけで
       # （install-depsのapt分が残る）、短縮が無かった。Playwrightの公式文書もキャッシュを勧めていない

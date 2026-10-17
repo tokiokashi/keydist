@@ -116,6 +116,8 @@ CIもPRの各コミットに同じスクリプトを掛けるため、フック�
 
 - `main` に直接pushしない。`<type>/<短い説明>` のブランチを切る（例: `feat/kana-layout-form`）
 - push前に `npm run typecheck`・`npm test`・`npm run build` を通す。ブラウザe2eは手元で全件を回さず、CIの結果を読む（「ブラウザe2e」）
+- 開発に使う npm は `package.json` の `packageManager` に書いた版（npm 11）。Node 22 付属の npm 10 は `package-lock.json` のフラグの行（`dev`・`devOptional`）の書き方が違い、更新のたびに行が行き来する。
+  npm 10 で `npm install`・`npm ci` を打つと `devEngines` の検査で失敗する。`npm install --global npm@11` で入れ替える。CIの `npm ci` を回すジョブも同じ版に入れ替えてから回す
 - `main` へのマージは、リリースPRを除いて公開しない（「公開」）。CI（test / typecheck / build / browser-e2e）は通る状態を保つ
 
 ### 作業単位の切り方
