@@ -56,6 +56,7 @@ function failureLabel(kind: FingerMatrixFailedRow['failureKind']): string {
     case 'reference': return '配列・物理配列が見つかりません（削除された可能性があります）';
     case 'incompatible-text': return 'このテキストには使えません';
     case 'geometry': return 'キーボードを組み立てられません';
+    case 'keys-missing': return '物理配列に必要なキーがありません';
     case 'target-missing': return '削除されたか、見つかりません';
   }
 }

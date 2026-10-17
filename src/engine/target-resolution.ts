@@ -63,8 +63,10 @@ export function resolveTargetForText(
   // だけの軽い検査。settings-items.tsのコメント参照）ので、ここでは値の選定だけを行う。
   // `DEFAULT_SHAPE_ID`自体もcatalogに無い場合（自作カタログが極端に小さい等）だけ、
   // 本当に解決できないので`reference`エラーにする。
-  const requestedShapeId = resolveDefaultShapeId(overrides, target.layoutId);
-  const shape: PhysicalShape | undefined = catalog.shapes.get(requestedShapeId) ?? catalog.shapes.get(DEFAULT_SHAPE_ID);
+  const requestedShapeId = resolveDefaultShapeId(overrides, target.layoutId, layout.recommendedShapeId);
+  const shape: PhysicalShape | undefined = catalog.shapes.get(requestedShapeId)
+    ?? catalog.shapes.get(layout.recommendedShapeId ?? DEFAULT_SHAPE_ID)
+    ?? catalog.shapes.get(DEFAULT_SHAPE_ID);
   if (shape === undefined) {
     const errors: SetupReferenceError[] = [{ kind: 'shape-missing', shapeId: requestedShapeId }];
     return { ok: false, kind: 'reference', errors };

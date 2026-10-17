@@ -139,7 +139,7 @@ export interface AnalyzerSetMember {
  */
 export interface AnalyzerSetMemberFailure {
   readonly target: AnalysisTarget;
-  readonly kind: 'reference' | 'incompatible-text' | 'geometry' | 'target-missing';
+  readonly kind: 'reference' | 'incompatible-text' | 'geometry' | 'keys-missing' | 'target-missing';
   readonly message: string;
 }
 

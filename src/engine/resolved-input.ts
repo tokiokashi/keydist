@@ -7,6 +7,7 @@ import {
 import type { Layout } from '#input/layouts/types.ts';
 import type { ExtractionAssets } from '#analyzers/contract.ts';
 import { withoutRomajiOnlyCombos, withRomaji } from '#input/layouts/types.ts';
+import { physicalKeysUsedByLayout } from '#input/layouts/physical-keys.ts';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { TextLanguage } from '#input/text/language.ts';
 import type { AnalysisTarget, Setup, SetupCatalog, SetupReferenceError } from '#input/setup/index.ts';
@@ -57,6 +58,11 @@ export type ResolvedInputError =
   | { readonly kind: 'incompatible-text'; readonly layout: Layout; readonly language: TextLanguage }
   /** `buildGeometry`が投げた例外を値へ変換したもの（例: 自作物理配列の行数と指割り当てが噛み合わない）。 */
   | { readonly kind: 'geometry'; readonly message: string }
+  /**
+   * 配列が打鍵に使うキーを、物理配列が全部は持たない（例: JISかな配列をJISのキーが無い物理配列で測る）。
+   * 黙って差し替えず、計算をしない。
+   */
+  | { readonly kind: 'keys-missing'; readonly layout: Layout }
   /**
    * 対象そのものの実体が手持ちから消えている（`setup-missing`を一般化）。Setup対象ならそのidが`SetupLibrary.setups`に
    * 無い、配列対象ならそのidが`SetupCatalog.layouts`に無い、のどちらか。`reference`
@@ -188,6 +194,12 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
   } catch (cause) {
     const message = cause instanceof Error ? cause.message : String(cause);
     return { ok: false, error: { kind: 'geometry', message } };
+  }
+
+  // 配列が使うキーを物理配列が持たなければ、打てない文字が出るので計算をしない。
+  const geometryKeys = geometry.keys;
+  for (const key of physicalKeysUsedByLayout(layout)) {
+    if (!geometryKeys.has(key)) return { ok: false, error: { kind: 'keys-missing', layout } };
   }
 
   const tracePolicy: TracePolicy = {

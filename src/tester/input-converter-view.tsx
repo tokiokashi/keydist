@@ -31,7 +31,6 @@ import {
   matchKeyPatterns,
   summarizeCandidateMatches,
 } from '#input/layouts/key-pattern-picker.ts';
-import { JIS_KANA } from '#input/layouts/jis-kana.ts';
 import { LAYOUTS, LAYOUTS_JA, type Layout } from '#input/layouts/index.ts';
 import {
   physicalKeysUsedByLayout,
@@ -96,7 +95,6 @@ const INPUT_LAYOUTS = [
   ...LAYOUTS.filter((layout) => layout.id !== 'oonishi-custom'),
   ...(TK_DIRECT_JA_LAYOUT === undefined ? [] : [TK_DIRECT_JA_LAYOUT]),
   ...DIRECT_JA_INPUT_LAYOUTS,
-  JIS_KANA,
 ];
 
 // 組み込みの物理配列は定義の登録順（グループ内はロウ → オーソ → オーソ分割 → カラム）のまま全部使う。

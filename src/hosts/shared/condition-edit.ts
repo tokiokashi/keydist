@@ -336,13 +336,23 @@ export function defaultShapeWorkspaceCommand(workspaceId: string, next: string, 
 export function defaultShapeChipNotice(
   overrides: SettingsCascadeOverrides,
   layoutIds: readonly string[],
-  layoutNames?: ReadonlyMap<string, { readonly name: string }>,
+  layoutNames?: ReadonlyMap<string, { readonly name: string; readonly recommendedShapeId?: string }>,
 ): string | undefined {
-  const own = [...new Set(layoutIds)]
+  const unique = [...new Set(layoutIds)];
+  const nameOf = (layoutId: string) => layoutNames?.get(layoutId)?.name ?? 'この配列';
+  const own = unique
     .filter((layoutId) => layoutOverrideOf(overrides, layoutId, 'defaultShapeId') !== undefined)
-    .map((layoutId) => layoutNames?.get(layoutId)?.name ?? 'この配列');
-  if (own.length === 0) return undefined;
-  return `配列${own.map((name) => `「${name}」`).join('')}は物理配列を別に決めているため、ここで変えても変わりません`;
+    .map(nameOf);
+  // 推奨の物理配列を持つ配列は、配列の上書きが無くても全体・Workspaceの値より推奨が優先される。
+  const recommended = unique
+    .filter((layoutId) => layoutOverrideOf(overrides, layoutId, 'defaultShapeId') === undefined
+      && layoutNames?.get(layoutId)?.recommendedShapeId !== undefined)
+    .map(nameOf);
+  const sentences = [
+    ...(own.length === 0 ? [] : [`配列${own.map((name) => `「${name}」`).join('')}は物理配列を別に決めているため、ここで変えても変わりません`]),
+    ...(recommended.length === 0 ? [] : [`配列${recommended.map((name) => `「${name}」`).join('')}は専用の物理配列で測るため、ここで変えても変わりません`]),
+  ];
+  return sentences.length === 0 ? undefined : sentences.join('。');
 }
 
 /** 既定値が文脈に依らない項目の既定値。 */

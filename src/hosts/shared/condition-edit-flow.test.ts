@@ -222,6 +222,24 @@ test('ローマ字規則の理由: 大西配列は全体未設定でも推奨の
   assert.equal(viewOf(session, 'oonishi-custom').notices.has('romajiRuleId'), false);
 });
 
+test('既定の物理配列: JISかな配列は全体がANSIでも推奨のJIS系の物理配列で測り、全体が負けている理由を出す', () => {
+  const session = newSession();
+  const initial = viewOf(session, 'jis-kana');
+  assert.equal(initial.geometryId, 'jis-row-staggered');
+  assert.equal(initial.rowOf('defaultShapeId').originLabel, '既定値');
+  dispatch(session, defaultShapeCommand('split-ortholinear'));
+  const view = viewOf(session, 'jis-kana');
+  assert.equal(view.geometryId, 'jis-row-staggered');
+  assert.match(
+    view.notices.get('defaultShapeId')!,
+    /^この配列の推奨（ロウスタッガード（JIS））が優先されるため、全体を変えてもこの画面は変わりません/,
+  );
+  // 効いている値は推奨のままなので、変えた項目には数えない
+  assert.equal(view.triggerText, 'すべて既定値');
+  // 推奨を持たない配列は、全体の値で測る
+  assert.equal(viewOf(session, 'qwerty').geometryId, 'split-ortholinear');
+});
+
 test('この配列だけ別にする: 配列のレベルへ書き、全体は既定のまま。全体へ移すと全体の値になり、配列の値を消すと継承へ戻る', () => {
   const session = newSession();
   const base = windowDefault;

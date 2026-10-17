@@ -101,7 +101,7 @@ export function SetupPage({
     ? layoutId
     : layouts.has(DEFAULT_LAYOUT_ID) ? DEFAULT_LAYOUT_ID : [...layouts.keys()][0];
   // 物理配列を選んでいない間は、その配列で使う既定の物理配列にする
-  const defaultShapeId = createLayoutId === undefined ? undefined : resolveDefaultShapeId(overrides, createLayoutId);
+  const defaultShapeId = createLayoutId === undefined ? undefined : resolveDefaultShapeId(overrides, createLayoutId, layouts.get(createLayoutId)?.recommendedShapeId);
   const createShapeId = shapeId !== undefined && shapes.has(shapeId)
     ? shapeId
     : defaultShapeId !== undefined && shapes.has(defaultShapeId) ? defaultShapeId : [...shapes.keys()][0];

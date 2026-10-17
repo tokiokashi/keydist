@@ -34,6 +34,7 @@ const BUILT_IN_KANA_LAYOUT_IDS: ReadonlySet<string> = new Set([
   'shingeta',
   'tsuki-2-263',
   'kawasemi-plus',
+  'jis-kana',
 ]);
 
 /** 組み込み配列のidから種類を引く。未知のidは`alpha`にする（英字系がほとんどのため）。 */

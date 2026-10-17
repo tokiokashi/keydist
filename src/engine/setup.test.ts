@@ -121,7 +121,7 @@ test('resolveSetup: 配列が削除されたSetupは値としてエラーを返�
 // 「同じ入力で旧実装と同じ数値が出る」という基準を、配列を対象
 // （`AnalysisTarget`）にした解決結果についても
 // 満たすことを確認する。fixtureの「上書き無しシナリオ」（id末尾が default/legacy/modern）は
-// すべて`row-staggered`（＝`defaultShapeId`の既定値）を使う条件なので、Setupという器を
+// `row-staggered`（＝`defaultShapeId`の既定値）か、配列が推奨で持つ物理配列を使う条件なので、Setupという器を
 // 経由しない配列対象の解決と1対1に対応する。
 test('配列を対象にした解決は、実カタログではfixtureの既定条件（default/legacy/modern）と一致する', () => {
   const fixturePath = join(ROOT, 'test', 'fixtures', 'analyzer-regression.json');
@@ -144,10 +144,13 @@ test('配列を対象にした解決は、実カタログではfixtureの既定�
   assert.ok(defaultScenarios.length > 0);
 
   for (const scenario of defaultScenarios) {
-    assert.equal(scenario.conditions.geometryShapeId, DEFAULT_SHAPE_ID, `${scenario.id}: 既定シナリオは常にDEFAULT_SHAPE_ID`);
-
     const list = scenario.language === 'en' ? LAYOUTS : LAYOUTS_JA;
     const layout = findLayout(list, scenario.layoutId);
+    assert.equal(
+      scenario.conditions.geometryShapeId,
+      layout.recommendedShapeId ?? DEFAULT_SHAPE_ID,
+      `${scenario.id}: 既定シナリオは配列の推奨の物理配列か、持たなければDEFAULT_SHAPE_ID`,
+    );
     const catalog = catalogFor(layout, scenario.conditions.geometryShapeId as PresetGeometryKind);
     const target: AnalysisTarget = { kind: 'layout', layoutId: layout.id };
 
@@ -182,6 +185,8 @@ test('配列を対象にした解決は、実カタログではfixtureの既定�
     assert.equal(resolved.defaultShapeId.applicable, true, `${scenario.id}: 配列対象ではdefaultShapeIdが効く`);
     assert.equal(resolvedViaSetup.defaultShapeId.applicable, false, `${scenario.id}: Setup対象ではdefaultShapeIdは効かない`);
     for (const itemId of Object.keys(resolved) as (keyof typeof resolved)[]) {
+      // 推奨の物理配列を持つ配列は、配列対象では推奨が実効値になるが、Setup対象では読まない（効かない項目なので既定のまま）。
+      if (itemId === 'defaultShapeId' && layout.recommendedShapeId !== undefined) continue;
       assert.deepEqual(resolved[itemId].value, resolvedViaSetup[itemId].value, `${scenario.id}: ${itemId}`);
       assert.equal(resolved[itemId].origin.kind, resolvedViaSetup[itemId].origin.kind, `${scenario.id}: ${itemId}.origin`);
       // defaultShapeIdだけは例外: 配列対象では意味を持つ（applicable=true）が、

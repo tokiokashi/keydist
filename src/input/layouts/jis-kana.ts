@@ -59,6 +59,7 @@ let layout: Layout = fromFaces(
 layout = {
   ...layout,
   shiftKeys: [SHIFT_KEY.L, SHIFT_KEY.R],
+  recommendedShapeId: 'jis-row-staggered',
 };
 layout.legends.set(SHIFT_KEY.L, 'Shift');
 layout.legends.set(SHIFT_KEY.R, 'Shift');

@@ -1,4 +1,6 @@
 import type { ResolvedInputError } from './resolved-input.ts';
+import type { Layout } from '#input/layouts/types.ts';
+import { isPresetGeometryKind, presetGeometryStandard } from '#input/shapes/geometry.ts';
 import type { SetupReferenceError } from '#input/setup/index.ts';
 
 /**
@@ -22,6 +24,14 @@ function describeSetupReferenceError(error: SetupReferenceError): string {
   }
 }
 
+// 配列が前提とする物理配列がJISなら、選び直す先を具体に示す。
+function keysMissingHint(layout: Layout): string {
+  const recommended = layout.recommendedShapeId;
+  return recommended !== undefined && isPresetGeometryKind(recommended) && presetGeometryStandard(recommended) === 'jis'
+    ? 'JISの物理配列を選んでください'
+    : 'キーが足りる物理配列を選んでください';
+}
+
 export function describeResolvedInputError(error: ResolvedInputError): string {
   switch (error.kind) {
     case 'reference':
@@ -31,6 +41,8 @@ export function describeResolvedInputError(error: ResolvedInputError): string {
     case 'geometry':
       // 例外の文（`error.message`）は定義の内部を指す開発者向けの文なので出さない。
       return '物理配列と指の割当が噛み合わず、キーボードを組み立てられません';
+    case 'keys-missing':
+      return `「${error.layout.name}」が使うキーが物理配列に足りません。${keysMissingHint(error.layout)}`;
     case 'target-missing':
       return error.target.kind === 'setup' ? 'Setupが削除されました' : '配列が見つかりません（削除された可能性があります）';
   }

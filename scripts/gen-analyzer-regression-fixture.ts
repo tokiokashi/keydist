@@ -11,6 +11,8 @@ import {
   JIS_FINGER_ASSIGNMENT,
   QWERTY_OPTIMIZED_FINGER_ASSIGNMENT,
   PHYSICAL_SHAPES,
+  isPresetGeometryKind,
+  presetGeometryStandard,
   type FingerAssignment,
   type Geometry,
   type PresetGeometryKind,
@@ -203,12 +205,18 @@ function runCase(
   opts: RunOptions = {},
 ): FixtureCase {
   const text = sampleText(language, sampleId);
-  const shapeId = opts.shapeId ?? 'row-staggered';
-  // 推奨の指の割り当てを持つ配列は、アプリと同じく推奨で測る（fixtureの物理配列は既定のrow-staggeredで、ANSI用を使う）
+  // 推奨の物理配列を持つ配列（JISかな配列）は、アプリと同じく推奨で測る。持たない配列は既定のrow-staggered
+  const recommendedShapeId = isPresetGeometryKind(layout.recommendedShapeId) ? layout.recommendedShapeId : undefined;
+  const shapeId = opts.shapeId ?? recommendedShapeId ?? 'row-staggered';
+  // 推奨の指の割り当てを持つ配列は、アプリと同じく推奨で測る（物理配列の規格に合わせる）。
+  // 持たない配列は、物理配列の規格の既定（JISならjis-default、ANSIなら列固定の既定）
+  const jisShape = presetGeometryStandard(shapeId) === 'jis';
   const recommended = layout.recommendedFingerAssignmentIds?.ansi === QWERTY_OPTIMIZED_FINGER_ASSIGNMENT.id
     ? QWERTY_OPTIMIZED_FINGER_ASSIGNMENT
     : undefined;
-  const fingerAssignment = opts.fingerAssignment ?? recommended ?? DEFAULT_FINGER_ASSIGNMENT;
+  const fingerAssignment = opts.fingerAssignment
+    ?? recommended
+    ?? (jisShape ? JIS_FINGER_ASSIGNMENT : DEFAULT_FINGER_ASSIGNMENT);
   const geometry: Geometry = buildGeometry(
     PHYSICAL_SHAPES[shapeId],
     assignmentWithHomeKeys(fingerAssignment, layout.homeKeys),

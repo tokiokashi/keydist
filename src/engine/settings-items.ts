@@ -192,8 +192,9 @@ export const SETTINGS_ITEMS = {
    *
    * `allowedLevels`はglobal・workspace・layout。物理配列はカスケードの順で配列より前に決まる（物理配列のレベルは
    * 物理配列そのものを決める項目には置けず、打ち方も物理配列とは独立なので、どちらも許さない）。
-   * 優先は 配列の上書き ＞ Workspaceの値 ＞ 全体の値 ＞ 既定。配列が組み込みの推奨の物理配列を持つことはなく、
-   * 配列ごとに変えたい人が、条件のモーダルの「この配列だけ別に」で自分で指定する。
+   * 優先は 配列の上書き ＞ 配列の推奨 ＞ Workspaceの値 ＞ 全体の値 ＞ 既定。配列の推奨は、配列が前提とする物理配列を持つ
+   * 配列（JISかな配列）だけが持つ。持つ配列は、全体・Workspaceを変えても推奨の物理配列で測る。
+   * それ以外の配列は推奨を持たず、配列ごとに変えたい人が、条件のモーダルの「この配列だけ別に」で自分で指定する。
    * Setupのレベルは、Setupが自分の物理配列を持つので許さない。
    *
    * `isApplicable`: Setup対象はSetup自身の`shapeId`で物理配列が決まるので、この項目は
@@ -212,6 +213,8 @@ export const SETTINGS_ITEMS = {
     id: 'defaultShapeId',
     allowedLevels: GLOBAL_WORKSPACE_LAYOUT,
     defaultValue: DEFAULT_SHAPE_ID,
+    // Setup対象はSetup自身の物理配列で決まるので、配列の推奨は配列対象のときだけ読む。
+    layoutRecommendation: (context) => context.targetKind === 'layout' ? context.layout.recommendedShapeId : undefined,
     isApplicable: (context) => context.targetKind === 'layout',
     validate: (value, context) => {
       // Setup対象ではこの項目自体が無関係（isApplicable=false）なので、Setup自身の
@@ -266,12 +269,18 @@ export function resetSettingsItem(
  * 経由しない理由は`SETTINGS_ITEMS.defaultShapeId`のコメント参照: 配列を対象にした時の物理配列そのものを
  * 決める値なので、`CascadeContext`（物理配列が既に決まっている前提）を組み立てる前に必要になる。
  * 許可レベルはglobal・workspace・layoutだけで、`defaultValue`もcontext非依存の固定値なので、
- * `resolveCascade`と同じ「配列の上書き ＞ Workspaceの値 ＞ 全体の値 ＞ 既定」をここで直接重ねれば結果は一致する。
+ * `resolveCascade`と同じ「配列の上書き ＞ 配列の推奨（`recommendedShapeId`。配列が持つ時だけ） ＞ Workspaceの値 ＞ 全体の値 ＞ 既定」
+ * をここで直接重ねれば結果は一致する。
  * Workspaceの値は`overrides.workspace`（`withWorkspaceConditions`で差し込んだ時だけ）から読むので、
  * 単体ページ（差し込まない）は全体の値だけを見る。
  */
-export function resolveDefaultShapeId(overrides: SettingsCascadeOverrides, layoutId: string): string {
+export function resolveDefaultShapeId(
+  overrides: SettingsCascadeOverrides,
+  layoutId: string,
+  recommendedShapeId?: string,
+): string {
   return readOverride(overrides, { kind: 'layout', layoutId }, 'defaultShapeId')
+    ?? recommendedShapeId
     ?? resolveWorkspaceDefaultShapeId(overrides);
 }
 
