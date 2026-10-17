@@ -4,10 +4,7 @@ import type { Geometry } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/index.ts';
 import { DEFAULT_CHAIN_INTERPRETATION, type ChainInterpretation } from '#interpretation/structure/chain.ts';
 import { DEFAULT_ARPEGGIO_INTERPRETATION, type ArpeggioInterpretation } from '#interpretation/structure/arpeggio.ts';
-import {
-  DEFAULT_ACTION_REALIZATION_POLICY,
-  DEFAULT_TRIGGER_REALIZATION_POLICY,
-} from '#input/semantics/index.ts';
+import { DEFAULT_ACTION_REALIZATION_POLICY, DEFAULT_TRIGGER_REALIZATION_POLICY } from '#input/semantics/index.ts';
 
 export interface SensitivityPoint {
   windowSize: number;

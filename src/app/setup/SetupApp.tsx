@@ -12,10 +12,7 @@ import { SetupPage } from './SetupPage.tsx';
 export function SetupApp() {
   const { assets, ready, dispatch, canUndo, canRedo, undo, redo } = useKeydistAssets();
   const search = useSearch({ from: '/setup' });
-  const catalog = useMemo(
-    () => paneCatalog(assets),
-    [assets.userLayouts, assets.userRomajiRules, assets.fingerAssignments, assets.personalSpeed],
-  );
+  const catalog = useMemo(() => paneCatalog(assets), [assets.userLayouts, assets.userRomajiRules, assets.fingerAssignments, assets.personalSpeed]);
   return (
     <SetupPage
       assets={assets}

@@ -49,10 +49,13 @@ test('かな配列: 同じキーを繰り返すと、起点は先頭だけホー
   assert.deepEqual(entries(d.distances), [[0, 3]]);
   assert.equal(d.origins.length, 1);
   const [origin] = d.origins;
-  assert.deepEqual({ x: origin.x, y: origin.y }, {
-    x: Math.round(geometry.homes.LM.x * 1000) / 1000,
-    y: Math.round(geometry.homes.LM.y * 1000) / 1000,
-  });
+  assert.deepEqual(
+    { x: origin.x, y: origin.y },
+    {
+      x: Math.round(geometry.homes.LM.x * 1000) / 1000,
+      y: Math.round(geometry.homes.LM.y * 1000) / 1000,
+    },
+  );
   assert.deepEqual(origin.keyIds, ['d']);
   assert.equal(origin.fromHome, 1);
   assert.equal(origin.fromPrevious, 2);
@@ -88,7 +91,10 @@ test('面ごとの値と、面をまたいだ合算', () => {
   assert.deepEqual([...shift.keys()].sort(), ['d', 'u']);
   const merged = detailOf(details, 'd');
   assert.equal(merged.presses, 2);
-  assert.deepEqual(entries(merged.roles), [['output', 1], ['trigger', 1]]);
+  assert.deepEqual(entries(merged.roles), [
+    ['output', 1],
+    ['trigger', 1],
+  ]);
   assert.deepEqual(entries(merged.previousChars), [['か', 1]]);
   assert.equal(merged.noPreviousChar, 1);
 });
@@ -144,9 +150,17 @@ test('AZIK: 複数のかなを1つの見出しにした綴りは1つの入力単
   assert.equal(trace.skipped, 0);
   assert.deepEqual(
     trace.strokes.map((stroke) => [stroke.inputIndex, stroke.inputChar]),
-    [[0, 'かん'], [0, 'かん'], [2, 'か'], [2, 'か']],
+    [
+      [0, 'かん'],
+      [0, 'かん'],
+      [2, 'か'],
+      [2, 'か'],
+    ],
   );
-  assert.deepEqual(trace.strokes.map((stroke) => stroke.presses[0].keys[0].id), ['k', 'z', 'k', 'a']);
+  assert.deepEqual(
+    trace.strokes.map((stroke) => stroke.presses[0].keys[0].id),
+    ['k', 'z', 'k', 'a'],
+  );
   const details = computeKeyDetails(trace, geometry);
   const k = detailOf(details, 'k');
   assert.equal(k.presses, 2);
@@ -176,7 +190,14 @@ test('1つの押下が複数のキーを持つ時は、各キーに1回ずつ数
     const detail = detailOf(details, id);
     assert.equal(detail.presses, 2, id);
     assert.deepEqual(entries(detail.roles), [['output', 2]], id);
-    assert.deepEqual(entries(detail.distances), [[rounded(first.distance), 1], [rounded(second.distance), 1]].sort((x, y) => x[0] - y[0]), id);
+    assert.deepEqual(
+      entries(detail.distances),
+      [
+        [rounded(first.distance), 1],
+        [rounded(second.distance), 1],
+      ].sort((x, y) => x[0] - y[0]),
+      id,
+    );
     assert.equal(sum(detail.origins.map((o) => o.fromPrevious + o.fromHome)), 2, id);
   }
   // 2回目は重心に残ったままなので距離0、1回目はホームから
@@ -235,10 +256,7 @@ test('Traceが記録した起点から求めた距離はpress.distanceと一致�
     for (const stroke of traceFor(layoutId, text, rule).strokes) {
       for (const press of stroke.presses) {
         assert.ok(press.origin, `${layoutId}:${press.keys.map((key) => key.id).join('+')}`);
-        assert.ok(
-          Math.abs(dist(press.origin.at, press.target) - press.distance) < 1e-9,
-          `${layoutId}:${press.keys.map((key) => key.id).join('+')}`,
-        );
+        assert.ok(Math.abs(dist(press.origin.at, press.target) - press.distance) < 1e-9, `${layoutId}:${press.keys.map((key) => key.id).join('+')}`);
       }
     }
   }
@@ -268,7 +286,10 @@ test('sfbHomeCostが偽でホームキーへ同指連続すると、起点は直
   assert.ok(dist(press.origin.at, press.target) > 0);
   const a = detailOf(computeKeyDetails(trace, geometry), 'a');
   assert.deepEqual(entries(a.distances), [[0, 1]]);
-  assert.deepEqual(a.origins.map((origin) => [origin.keyIds, origin.fromPrevious]), [[['q'], 1]]);
+  assert.deepEqual(
+    a.origins.map((origin) => [origin.keyIds, origin.fromPrevious]),
+    [[['q'], 1]],
+  );
 });
 
 test('同時押しの後の起点は重心になり、どのキーとも一致しなければidが空になる', () => {
@@ -308,7 +329,10 @@ test('面の詳細を足した値は、全部の面なら面をまたいだ合�
   const shift = details.faces.get('layer:中指シフト')!.get('d')!;
   const both = mergeKeyDetails([single, shift]);
   assert.equal(both.presses, 2);
-  assert.deepEqual(entries(both.roles), [['output', 1], ['trigger', 1]]);
+  assert.deepEqual(entries(both.roles), [
+    ['output', 1],
+    ['trigger', 1],
+  ]);
   assert.deepEqual(mergeKeyDetails([single]).presses, 1);
   assert.equal(mergeKeyDetails([]).presses, 0);
   assert.deepEqual(mergeKeyDetails([]).origins, []);

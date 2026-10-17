@@ -76,11 +76,7 @@ export function ConditionSummary({ rows, header, targetDiffs = [], editor, compa
   });
 
   return (
-    <div
-      className="pane-condition-summary"
-      data-changed-count={line.changedCount}
-      data-compact={compact || undefined}
-    >
+    <div className="pane-condition-summary" data-changed-count={line.changedCount} data-compact={compact || undefined}>
       <button
         ref={buttonRef}
         type="button"
@@ -114,9 +110,7 @@ export function ConditionSummary({ rows, header, targetDiffs = [], editor, compa
               <span className="pane-condition-default">すべて既定値</span>
             ) : (
               <>
-                <span className="pane-condition-items">
-                  {line.shown.map((row) => `${row.label}: ${row.displayValue}`).join(' · ')}
-                </span>
+                <span className="pane-condition-items">{line.shown.map((row) => `${row.label}: ${row.displayValue}`).join(' · ')}</span>
                 {line.restCount > 0 ? <span className="pane-condition-more">他{line.restCount}件</span> : null}
               </>
             )}
@@ -179,19 +173,14 @@ function ConditionModal({ rows, header, targetDiffs, editor, onClose }: Conditio
           <h2 id={titleId}>条件</h2>
           <span className="condition-modal-scope">
             {inWorkspace
-              ? (editor.layout === undefined
+              ? editor.layout === undefined
                 ? 'このWorkspaceの値を変えます。他の画面には反映されません'
-                : `このWorkspaceの値を変えます。行ごとに全体や「${editor.layout.name}」だけの値にもできます`)
-              : (editor.layout === undefined
+                : `このWorkspaceの値を変えます。行ごとに全体や「${editor.layout.name}」だけの値にもできます`
+              : editor.layout === undefined
                 ? '全体の値を変えます。すべての画面に反映されます'
-                : `全体の値を変えます。行ごとに「${editor.layout.name}」だけの値にもできます`)}
+                : `全体の値を変えます。行ごとに「${editor.layout.name}」だけの値にもできます`}
           </span>
-          <button
-            type="button"
-            className="condition-modal-reset-all"
-            disabled={resetPlan.disabled}
-            onClick={() => editor.dispatch(resetPlan.command)}
-          >
+          <button type="button" className="condition-modal-reset-all" disabled={resetPlan.disabled} onClick={() => editor.dispatch(resetPlan.command)}>
             {inWorkspace ? 'Workspaceの変更をすべて戻す' : 'すべて既定値に戻す'}
           </button>
           <button type="button" className="condition-modal-close" aria-label="閉じる" onClick={() => dialogRef.current?.close()}>
@@ -206,13 +195,15 @@ function ConditionModal({ rows, header, targetDiffs, editor, onClose }: Conditio
               {header.layoutName} / {header.shapeName} · 指の割当: {header.fingerAssignmentName}
             </p>
           ) : null}
-          {editor.openSetups === undefined ? null : editor.openSetups.map((setup) => (
-            <p key={setup.id} className="pane-condition-setup-link">
-              <SetupLink setupId={setup.id}>
-                {setup.name === undefined ? 'このSetupの物理配列と条件を編集' : `「${setup.name}」の物理配列と条件を編集`}
-              </SetupLink>
-            </p>
-          ))}
+          {editor.openSetups === undefined
+            ? null
+            : editor.openSetups.map((setup) => (
+                <p key={setup.id} className="pane-condition-setup-link">
+                  <SetupLink setupId={setup.id}>
+                    {setup.name === undefined ? 'このSetupの物理配列と条件を編集' : `「${setup.name}」の物理配列と条件を編集`}
+                  </SetupLink>
+                </p>
+              ))}
           <PresetSection editor={editor} />
           <ConditionEditor editor={editor} rows={rows} />
           {targetDiffs.length > 0 ? (

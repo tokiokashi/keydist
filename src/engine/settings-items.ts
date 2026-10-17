@@ -87,8 +87,7 @@ export const SETTINGS_ITEMS = {
     id: 'preferOppositeThumb',
     allowedLevels: ANY_LEVEL,
     defaultValue: false,
-    isApplicable: (context) =>
-      context.layout.thumbShiftKeys !== undefined && context.layout.thumbShiftKeys.length > 0,
+    isApplicable: (context) => context.layout.thumbShiftKeys !== undefined && context.layout.thumbShiftKeys.length > 0,
     validate: (value, context) => {
       if (!value) return { ok: true };
       // 「振り替え先」は出力キー側の反対の手なので、判定には両方の親指キーの有無を見る。
@@ -235,10 +234,10 @@ export const SETTINGS_ITEMS = {
       return value === context.shapeId
         ? { ok: true }
         : {
-          ok: false,
-          fallback: context.shapeId,
-          reason: describeShapeFallback(context.shape.name),
-        };
+            ok: false,
+            fallback: context.shapeId,
+            reason: describeShapeFallback(context.shape.name),
+          };
     },
   }),
 } as const satisfies ItemRegistry;
@@ -251,10 +250,7 @@ export type ResolvedSettingsCascade = ResolvedCascade<SettingsValueMap>;
 export const EMPTY_SETTINGS_OVERRIDES: SettingsCascadeOverrides = emptyCascadeOverrides();
 
 /** `resolveCascade` をこのリポジトリの項目レジストリへ束縛した便利関数。 */
-export function resolveSettings(
-  overrides: SettingsCascadeOverrides,
-  context: CascadeContext,
-): ResolvedSettingsCascade {
+export function resolveSettings(overrides: SettingsCascadeOverrides, context: CascadeContext): ResolvedSettingsCascade {
   return resolveCascade(SETTINGS_ITEMS, overrides, context);
 }
 
@@ -268,11 +264,7 @@ export function setSettingsOverride<K extends SettingsItemId>(
   return setOverrideGeneric(SETTINGS_ITEMS, overrides, level, itemId, value);
 }
 
-export function resetSettingsItem(
-  overrides: SettingsCascadeOverrides,
-  level: CascadeLevel,
-  itemId: SettingsItemId,
-): SettingsCascadeOverrides {
+export function resetSettingsItem(overrides: SettingsCascadeOverrides, level: CascadeLevel, itemId: SettingsItemId): SettingsCascadeOverrides {
   return resetItemGeneric(overrides, level, itemId);
 }
 
@@ -287,8 +279,7 @@ export function resetSettingsItem(
  * 単体ページ（差し込まない）は全体の値だけを見る。
  */
 export function resolveDefaultShapeId(overrides: SettingsCascadeOverrides, layoutId: string): string {
-  return readOverride(overrides, { kind: 'layout', layoutId }, 'defaultShapeId')
-    ?? resolveWorkspaceDefaultShapeId(overrides);
+  return readOverride(overrides, { kind: 'layout', layoutId }, 'defaultShapeId') ?? resolveWorkspaceDefaultShapeId(overrides);
 }
 
 /** 全体のレベルの「既定の物理配列」（Workspace・配列のレベルの値は見ない）。単体ページの文脈バーのチップが読み書きする値。 */
@@ -324,9 +315,6 @@ export function withWorkspaceConditions(
   return withLevelOverrides(overrides, { kind: 'workspace' }, conditions);
 }
 
-export function resetSettingsLevel(
-  overrides: SettingsCascadeOverrides,
-  level: CascadeLevel,
-): SettingsCascadeOverrides {
+export function resetSettingsLevel(overrides: SettingsCascadeOverrides, level: CascadeLevel): SettingsCascadeOverrides {
   return resetLevelGeneric(overrides, level);
 }

@@ -25,18 +25,30 @@ export interface RomajiSettings {
   assignments: Record<string, RomajiRuleId>;
 }
 
-export const ROMAJI_RULES: Record<BuiltinRomajiRuleId, RomajiRuleSpec & {
-  name: string;
-  table: () => Map<string, string>;
-}> = {
+export const ROMAJI_RULES: Record<
+  BuiltinRomajiRuleId,
+  RomajiRuleSpec & {
+    name: string;
+    table: () => Map<string, string>;
+  }
+> = {
   qwerty: {
     name: '標準（j / sh / ch）',
     base: 'kunrei',
     overrides: {
       じ: 'ji',
-      じゃ: 'ja', じゅ: 'ju', じょ: 'jo', じぇ: 'je',
-      しゃ: 'sha', しゅ: 'shu', しょ: 'sho', しぇ: 'she',
-      ちゃ: 'cha', ちゅ: 'chu', ちょ: 'cho', ちぇ: 'che',
+      じゃ: 'ja',
+      じゅ: 'ju',
+      じょ: 'jo',
+      じぇ: 'je',
+      しゃ: 'sha',
+      しゅ: 'shu',
+      しょ: 'sho',
+      しぇ: 'she',
+      ちゃ: 'cha',
+      ちゅ: 'chu',
+      ちょ: 'cho',
+      ちぇ: 'che',
     },
     generateSokuon: true,
     table: () => kunrei(ROMAJI_RULES.qwerty.overrides),
@@ -93,10 +105,7 @@ export function buildRomajiTable(rule: UserRomajiRule): Map<string, string> {
   return base;
 }
 
-export function tableForRule(
-  id: RomajiRuleId,
-  customRules: UserRomajiRule[] = [],
-): Map<string, string> {
+export function tableForRule(id: RomajiRuleId, customRules: UserRomajiRule[] = []): Map<string, string> {
   const builtin = isBuiltin(id) ? ROMAJI_RULES[id] : undefined;
   if (builtin) return builtin.table();
   const custom = customRules.find((rule) => rule.id === id);
@@ -105,10 +114,14 @@ export function tableForRule(
 
 function baseTable(base: BuiltinRomajiRuleId, generateSokuon: boolean): Map<string, string> {
   switch (base) {
-    case 'qwerty': return kunrei(ROMAJI_RULES.qwerty.overrides, generateSokuon);
-    case 'oonishi': return oonishiRomaji({}, generateSokuon);
-    case 'azik': return azik({}, generateSokuon);
-    case 'kunrei': return kunrei({}, generateSokuon);
+    case 'qwerty':
+      return kunrei(ROMAJI_RULES.qwerty.overrides, generateSokuon);
+    case 'oonishi':
+      return oonishiRomaji({}, generateSokuon);
+    case 'azik':
+      return azik({}, generateSokuon);
+    case 'kunrei':
+      return kunrei({}, generateSokuon);
   }
 }
 
@@ -118,32 +131,28 @@ export function isBuiltin(id: string): id is BuiltinRomajiRuleId {
 
 export function allRomajiRules(customRules: UserRomajiRule[] = []) {
   const builtinIds: BuiltinRomajiRuleId[] = ['kunrei', 'oonishi', 'azik', 'qwerty'];
-  return [
-    ...builtinIds.map((id) => ({ id, name: ROMAJI_RULES[id].name })),
-    ...customRules.map(({ id, name }) => ({ id, name })),
-  ];
+  return [...builtinIds.map((id) => ({ id, name: ROMAJI_RULES[id].name })), ...customRules.map(({ id, name }) => ({ id, name }))];
 }
-
 
 export function isUserRomajiRule(value: unknown): value is UserRomajiRule {
   if (!isRecord(value)) return false;
-  return typeof value.id === 'string' && value.id.length > 0 &&
-    typeof value.name === 'string' && value.name.length > 0 &&
-    isBuiltin(value.base) && isRecord(value.overrides) &&
-    Object.entries(value.overrides).every(([kana, roman]) =>
-      kana.length > 0 && typeof roman === 'string' && roman.length > 0,
-    ) && typeof value.generateSokuon === 'boolean';
+  return (
+    typeof value.id === 'string' &&
+    value.id.length > 0 &&
+    typeof value.name === 'string' &&
+    value.name.length > 0 &&
+    isBuiltin(value.base) &&
+    isRecord(value.overrides) &&
+    Object.entries(value.overrides).every(([kana, roman]) => kana.length > 0 && typeof roman === 'string' && roman.length > 0) &&
+    typeof value.generateSokuon === 'boolean'
+  );
 }
 
 /**
  * 自作のローマ字規則の一覧を読む。壊れた要素とid重複は捨てて診断を積む（`decodeUserLayouts`と同じ方針）。
  * 値があって配列でない時は全件が消えるので診断を積み、`undefined`（項目が無い）は空で正しいので積まない。
  */
-export function decodeUserRomajiRules(
-  raw: unknown,
-  path: string,
-  diagnostics: CodecDiagnostic[],
-): UserRomajiRule[] {
+export function decodeUserRomajiRules(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): UserRomajiRule[] {
   if (!Array.isArray(raw)) {
     if (raw !== undefined) diagnostics.push({ path, message: droppedNotArray('ローマ字規則') });
     return [];

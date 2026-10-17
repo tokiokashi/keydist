@@ -1,11 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { SAMPLE_TEXT_JA } from '#input/text/sample-ja.ts';
-import {
-  buildJapaneseInputSamplePools,
-  COMMON_WORD_SAMPLES_JA,
-  pickRandomSample,
-} from './random-samples.ts';
+import { buildJapaneseInputSamplePools, COMMON_WORD_SAMPLES_JA, pickRandomSample } from './random-samples.ts';
 
 const codePointLength = (value: string): number => [...value].length;
 
@@ -31,7 +27,16 @@ test('日本語入力サンプルは既定本文中の単語と5〜15文字の�
 });
 
 test('pickRandomSampleは候補が複数なら現在値を避ける', () => {
-  assert.equal(pickRandomSample(['あさ', 'ひる'], 'あさ', () => 0), 'ひる');
-  assert.equal(pickRandomSample(['あさ'], 'あさ', () => 0.5), 'あさ');
-  assert.equal(pickRandomSample([], 'あさ', () => 0.5), '');
+  assert.equal(
+    pickRandomSample(['あさ', 'ひる'], 'あさ', () => 0),
+    'ひる',
+  );
+  assert.equal(
+    pickRandomSample(['あさ'], 'あさ', () => 0.5),
+    'あさ',
+  );
+  assert.equal(
+    pickRandomSample([], 'あさ', () => 0.5),
+    '',
+  );
 });

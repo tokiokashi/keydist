@@ -2,24 +2,51 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { SentenceMeasurement } from '#interpretation/timing/sentence-measurement.ts';
 import type { CalibrationTask } from '#interpretation/timing/calibration-session.ts';
-import { SENTENCE_TABLE_NOTES, ZERO_MOVE_ROW_NOTE, calibrationInstruction, zeroMoveFingersText, zeroMoveRowNote, clearedOverheadsText, clearedSimultaneousText, measurementEffectText, savedMessage, SENTENCE_OTHER_LAYOUT_NOTE, sentenceFailureText, sentenceSavedMessage } from './calibration-text.ts';
+import {
+  SENTENCE_TABLE_NOTES,
+  ZERO_MOVE_ROW_NOTE,
+  calibrationInstruction,
+  zeroMoveFingersText,
+  zeroMoveRowNote,
+  clearedOverheadsText,
+  clearedSimultaneousText,
+  measurementEffectText,
+  savedMessage,
+  SENTENCE_OTHER_LAYOUT_NOTE,
+  sentenceFailureText,
+  sentenceSavedMessage,
+} from './calibration-text.ts';
 
 /** 文章の知らせの文だけを検査するための測定結果。表に使う値は持たない。 */
 function measurement(overheadMs: SentenceMeasurement['overheadMs']): SentenceMeasurement {
   const counts = {
-    arpeggio: 12, 'arpeggio-within': 5, 'arpeggio-boundary': 7,
-    chain: 3, 'chain-within': 1, 'chain-boundary': 2,
-    other: 100, 'other-within': 40, 'other-boundary': 60,
-    repeat: 12, sfb: 2,
+    arpeggio: 12,
+    'arpeggio-within': 5,
+    'arpeggio-boundary': 7,
+    chain: 3,
+    'chain-within': 1,
+    'chain-boundary': 2,
+    other: 100,
+    'other-within': 40,
+    'other-boundary': 60,
+    repeat: 12,
+    sfb: 2,
   };
   return { counts, overheadMs } as unknown as SentenceMeasurement;
 }
 
 const ALL = {
-  arpeggio: 10, 'arpeggio-within': 1, 'arpeggio-boundary': 2,
-  chain: 12, 'chain-within': 3, 'chain-boundary': 4,
-  other: 20, 'other-within': 5, 'other-boundary': 6,
-  repeat: 30, sfb: 40,
+  arpeggio: 10,
+  'arpeggio-within': 1,
+  'arpeggio-boundary': 2,
+  chain: 12,
+  'chain-within': 3,
+  'chain-boundary': 4,
+  other: 20,
+  'other-within': 5,
+  'other-boundary': 6,
+  repeat: 30,
+  sfb: 40,
 };
 
 test('下限に届かない種類があって保存した時の知らせに、別の配列で測ることの添え書きが付く', () => {
@@ -89,8 +116,8 @@ test('通常速度・移動速度の測定の前の注意は、続け打ちの�
 test('測った後の知らせは、消した種類と置き換えた種類を分けて伝える', () => {
   assert.equal(
     clearedOverheadsText(['other'], ['repeat']),
-    '打鍵の上乗せ（続け打ち）は、基準の時間が変わったため、再生の時間が変わらない値に置き換えました。'
-    + '打鍵の上乗せ（その他）は、他の値が変わったため消しました。文章を打つ速さをもう一度測ってください。',
+    '打鍵の上乗せ（続け打ち）は、基準の時間が変わったため、再生の時間が変わらない値に置き換えました。' +
+      '打鍵の上乗せ（その他）は、他の値が変わったため消しました。文章を打つ速さをもう一度測ってください。',
   );
   assert.ok(!clearedOverheadsText([], ['repeat']).includes('消しました'));
   assert.ok(!clearedOverheadsText(['sfb']).includes('置き換えました'));
@@ -149,10 +176,7 @@ test('同時押しを測る前の文は、文章に入った分け方を測る�
     measurementEffectText('simultaneous', true, ['other', 'repeat'], [], ['both-hands', 'thumb']),
     '測ると、測った同時押しの上乗せが置き換わります。打鍵の上乗せのうちその他は、両手の同時押し・親指との同時押しを測ると消えます（続け打ちは残ります）。',
   );
-  assert.equal(
-    measurementEffectText('simultaneous', true, ['other', 'repeat'], [], []),
-    '測ると、測った同時押しの上乗せが置き換わります。',
-  );
+  assert.equal(measurementEffectText('simultaneous', true, ['other', 'repeat'], [], []), '測ると、測った同時押しの上乗せが置き換わります。');
   assert.equal(measurementEffectText('simultaneous', true, ['repeat'], [], ['thumb']), '測ると、測った同時押しの上乗せが置き換わります。');
 });
 
@@ -183,7 +207,9 @@ test('移動の時間を0にした指の知らせは、指が1本でも複数で
   assert.equal(zeroMoveFingersText([]), undefined);
   const one = zeroMoveFingersText(['LI']);
   const two = zeroMoveFingersText(['LI', 'RI']);
-  assert.ok(one?.endsWith('は、同じキーを続けて打つ間隔が、交互に打つ間隔以上だったため、移動の時間を0にしました。2つとも素早く打って、測り直してください。'));
+  assert.ok(
+    one?.endsWith('は、同じキーを続けて打つ間隔が、交互に打つ間隔以上だったため、移動の時間を0にしました。2つとも素早く打って、測り直してください。'),
+  );
   assert.ok(two?.includes('・'));
   assert.ok(two?.endsWith(one!.slice(one!.indexOf('は、'))));
 });

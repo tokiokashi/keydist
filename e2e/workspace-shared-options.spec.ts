@@ -22,21 +22,24 @@ const panes = [
 
 async function openWorkspace(page: Page): Promise<void> {
   await page.setViewportSize({ width: 1600, height: 1000 });
-  await page.addInitScript((value) => {
-    if (localStorage.getItem('keydist:workspaces') === null) {
-      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
-    }
-  }, {
-    id: 's',
-    name: '共有',
-    text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
-    optionSets: [
-      { id: 'bigram-flow-1', analyzerId: 'bigram-flow' },
-      { id: 'finger-distance-1', analyzerId: 'finger-distance' },
-    ],
-    panes,
-    grid: panes.map((pane, i) => ({ id: pane.id, x: (i % 2) * 12, y: Math.floor(i / 2) * 20, w: 12, h: 20 })),
-  });
+  await page.addInitScript(
+    (value) => {
+      if (localStorage.getItem('keydist:workspaces') === null) {
+        localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
+      }
+    },
+    {
+      id: 's',
+      name: '共有',
+      text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+      optionSets: [
+        { id: 'bigram-flow-1', analyzerId: 'bigram-flow' },
+        { id: 'finger-distance-1', analyzerId: 'finger-distance' },
+      ],
+      panes,
+      grid: panes.map((pane, i) => ({ id: pane.id, x: (i % 2) * 12, y: Math.floor(i / 2) * 20, w: 12, h: 20 })),
+    },
+  );
   await page.goto('/workspace/s');
   await waitForHydration(page);
   await expect(page.locator('.workspace-grid-item')).toHaveCount(panes.length);
@@ -67,11 +70,13 @@ async function isWithinHand(page: Page, id: string): Promise<boolean> {
 }
 
 async function expectWithinHand(page: Page, expected: Record<string, boolean>): Promise<void> {
-  await expect.poll(async () => {
-    const actual: Record<string, boolean> = {};
-    for (const id of Object.keys(expected)) actual[id] = await isWithinHand(page, id);
-    return actual;
-  }).toEqual(expected);
+  await expect
+    .poll(async () => {
+      const actual: Record<string, boolean> = {};
+      for (const id of Object.keys(expected)) actual[id] = await isWithinHand(page, id);
+      return actual;
+    })
+    .toEqual(expected);
 }
 
 async function setWithinHand(page: Page, id: string): Promise<void> {
@@ -80,7 +85,9 @@ async function setWithinHand(page: Page, id: string): Promise<void> {
   await closeSettings(page);
 }
 
-async function storedWorkspace(page: Page): Promise<{ optionSets: { id: string; options?: unknown }[]; panes: { id: string; options?: unknown; optionsBinding: { mode: string } }[] }> {
+async function storedWorkspace(
+  page: Page,
+): Promise<{ optionSets: { id: string; options?: unknown }[]; panes: { id: string; options?: unknown; optionsBinding: { mode: string } }[] }> {
   const raw = await page.evaluate(() => localStorage.getItem('keydist:workspaces'));
   return (JSON.parse(raw!) as { workspaces: never[] }).workspaces[0]!;
 }
@@ -91,7 +98,9 @@ test('共有に従う2つ: 片方を変えるともう片方も変わり、元�
 
   await setWithinHand(page, 'a');
   await expectWithinHand(page, { a: true, b: true, c: false });
-  await expect.poll(async () => (await storedWorkspace(page)).optionSets.find((set) => set.id === 'bigram-flow-1')?.options).toEqual(expect.objectContaining({ source: 'within-hand' }));
+  await expect
+    .poll(async () => (await storedWorkspace(page)).optionSets.find((set) => set.id === 'bigram-flow-1')?.options)
+    .toEqual(expect.objectContaining({ source: 'within-hand' }));
   const stored = await storedWorkspace(page);
   // 共有の設定だけが書き換わり、ペインの欄・違うAnalyzerの共有の設定は変わらない
   expect(stored.optionSets.find((set) => set.id === 'finger-distance-1')?.options).toBeUndefined();
@@ -141,7 +150,10 @@ test('「解析設定を初期値に戻す」は、共有に従うペインで�
   const settings = await openSettings(page, 'b');
   await expect(settings.getByRole('button', { name: 'すべて初期値に戻す' })).toHaveAttribute('title', /共有の設定を戻します/);
   await closeSettings(page);
-  await pane(page, 'b').locator('.pane-frame-menu').getByRole('button', { name: /の操作$/ }).click();
+  await pane(page, 'b')
+    .locator('.pane-frame-menu')
+    .getByRole('button', { name: /の操作$/ })
+    .click();
   const item = page.getByRole('menuitem', { name: /解析設定を初期値に戻す/ });
   await expect(item).toContainText('共有の設定を戻します');
   await item.click();

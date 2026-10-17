@@ -1,10 +1,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGeometry, JIS_FINGER_ASSIGNMENT, PHYSICAL_SHAPES, presetGeometryStandard, THUMB_ROW, type Key, type PresetGeometryKind } from './geometry.ts';
+import {
+  buildGeometry,
+  JIS_FINGER_ASSIGNMENT,
+  PHYSICAL_SHAPES,
+  presetGeometryStandard,
+  THUMB_ROW,
+  type Key,
+  type PresetGeometryKind,
+} from './geometry.ts';
 import { drawnKeySpans } from './drawn-key-spans.ts';
 
-const near = (a: number, b: number, msg: string) =>
-  assert.ok(Math.abs(a - b) < 1e-9, `${msg}: expected ${b}, got ${a}`);
+const near = (a: number, b: number, msg: string) => assert.ok(Math.abs(a - b) < 1e-9, `${msg}: expected ${b}, got ${a}`);
 
 const kinds = Object.keys(PHYSICAL_SHAPES) as PresetGeometryKind[];
 
@@ -43,7 +50,13 @@ for (const kind of kinds) {
 }
 
 const key = (id: string, row: number, x: number, width?: number): Key => ({
-  id, row, col: 0, x, y: row, finger: 'LP', ...(width === undefined ? {} : { width }),
+  id,
+  row,
+  col: 0,
+  x,
+  y: row,
+  finger: 'LP',
+  ...(width === undefined ? {} : { width }),
 });
 
 test('自作の物理配列: 段の端のTabとBackspaceも1uで詰め、端でない位置の幅の広いキーは実寸のまま', () => {

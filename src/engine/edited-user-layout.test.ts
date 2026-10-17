@@ -101,11 +101,7 @@ test('保存した配列を編集して段の文字を変えると、数値も�
     emptyCommandHistory<KeydistAssets>(),
     createUserLayoutCommand(() => 'user-edited', contentOfBuiltin('qwerty', '私の配列', 'kunrei')),
   );
-  const edited = applyCommand(
-    created.assets,
-    created.history,
-    updateUserLayoutCommand('user-edited', contentOfBuiltin('dvorak', '私の配列', 'kunrei')),
-  );
+  const edited = applyCommand(created.assets, created.history, updateUserLayoutCommand('user-edited', contentOfBuiltin('dvorak', '私の配列', 'kunrei')));
   assert.equal(edited.outcome.kind, 'applied');
   const before = measure(created.assets, 'user-edited');
   const after = measure(edited.assets, 'user-edited');

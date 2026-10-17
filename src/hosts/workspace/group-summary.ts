@@ -27,13 +27,12 @@ function namer(env: PaneEnvironment): (targets: readonly AnalysisTarget[]) => st
   const { setups, overrides, catalog, resolvedText } = env;
   const setupsById = new Map(setups.map((setup) => [setup.id, setup] as const));
   const setupNumbers = setupNumbersOf(setups);
-  return (targets) => nameTargets(targets.map((target) => targetNameSource(
-    target,
-    resolvePaneInput(target, setupsById, catalog, overrides, resolvedText),
-    setupsById,
-    setupNumbers,
-    catalog.setupCatalog,
-  ))).map((named) => named.displayName);
+  return (targets) =>
+    nameTargets(
+      targets.map((target) =>
+        targetNameSource(target, resolvePaneInput(target, setupsById, catalog, overrides, resolvedText), setupsById, setupNumbers, catalog.setupCatalog),
+      ),
+    ).map((named) => named.displayName);
 }
 
 /** 組ごとの対象を要約する。連動のメニューで、どの連動がどの対象かを見分けるのに使う。 */

@@ -9,9 +9,7 @@ import { paneCatalog } from '../standalone/catalog.ts';
 const FALLBACK_LAYOUT_ID = 'qwerty';
 
 /** 測るキーを選ぶ候補。組み込みに、自作の配列と指の割り当てを足す。 */
-export function personalSpeedCatalog(
-  assets: Pick<KeydistAssets, 'userLayouts' | 'userRomajiRules' | 'fingerAssignments'>,
-): PersonalSpeedCatalog {
+export function personalSpeedCatalog(assets: Pick<KeydistAssets, 'userLayouts' | 'userRomajiRules' | 'fingerAssignments'>): PersonalSpeedCatalog {
   const { setupCatalog } = paneCatalog(assets);
   return {
     layouts: [...setupCatalog.layouts.values()],
@@ -29,22 +27,20 @@ export function initialPersonalSpeedSelection(
   catalog: PersonalSpeedCatalog,
 ): PersonalSpeedSelection {
   const target = effectiveSingleTarget(assets.singleTargetSelection);
-  const targetLayoutId = target.kind === 'layout'
-    ? target.layoutId
-    : assets.setupLibrary.setups.find((setup) => setup.id === target.setupId)?.layoutId;
+  const targetLayoutId = target.kind === 'layout' ? target.layoutId : assets.setupLibrary.setups.find((setup) => setup.id === target.setupId)?.layoutId;
   const layoutId = catalog.layouts.some((layout) => layout.id === targetLayoutId)
     ? targetLayoutId!
-    : (catalog.layouts.find((layout) => layout.id === FALLBACK_LAYOUT_ID) ?? catalog.layouts[0])?.id ?? FALLBACK_LAYOUT_ID;
+    : ((catalog.layouts.find((layout) => layout.id === FALLBACK_LAYOUT_ID) ?? catalog.layouts[0])?.id ?? FALLBACK_LAYOUT_ID);
 
   const overrides = assets.setupLibrary.overrides;
   const globalShapeId = resolveGlobalDefaultShapeId(overrides);
   const shapeId = catalog.shapes.some((shape) => shape.id === globalShapeId) ? globalShapeId : DEFAULT_SHAPE_ID;
 
   const globalAssignmentId = readGlobalFingerAssignmentId(overrides);
-  const fingerAssignmentId = globalAssignmentId !== undefined
-    && catalog.fingerAssignments.some((assignment) => assignment.id === globalAssignmentId)
-    ? globalAssignmentId
-    : defaultFingerAssignmentIdOf(shapeId, catalog);
+  const fingerAssignmentId =
+    globalAssignmentId !== undefined && catalog.fingerAssignments.some((assignment) => assignment.id === globalAssignmentId)
+      ? globalAssignmentId
+      : defaultFingerAssignmentIdOf(shapeId, catalog);
   return { layoutId, shapeId, fingerAssignmentId };
 }
 

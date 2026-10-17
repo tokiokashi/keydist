@@ -57,10 +57,11 @@ function checkLayout(layoutId: string, text: string): void {
     analysis: interpretationResult.analysis,
     metrics: interpretationResult.metrics,
     requestTrace: {
-      requestTrace: (request: { tracePolicy?: { windowSize?: number } }) => cache.getTrace({
-        ...input,
-        tracePolicy: { ...input.tracePolicy, ...request.tracePolicy },
-      }).trace,
+      requestTrace: (request: { tracePolicy?: { windowSize?: number } }) =>
+        cache.getTrace({
+          ...input,
+          tracePolicy: { ...input.tracePolicy, ...request.tracePolicy },
+        }).trace,
     },
   };
 
@@ -103,10 +104,11 @@ test('computeMemberSeries: N=既定の点は、メンバー自身のMetrics（to
     analysis: interpretationResult.analysis,
     metrics: interpretationResult.metrics,
     requestTrace: {
-      requestTrace: (request: { tracePolicy?: { windowSize?: number } }) => cache.getTrace({
-        ...input,
-        tracePolicy: { ...input.tracePolicy, ...request.tracePolicy },
-      }).trace,
+      requestTrace: (request: { tracePolicy?: { windowSize?: number } }) =>
+        cache.getTrace({
+          ...input,
+          tracePolicy: { ...input.tracePolicy, ...request.tracePolicy },
+        }).trace,
     },
   };
   const series = computeMemberSeries(member);
@@ -116,7 +118,10 @@ test('computeMemberSeries: N=既定の点は、メンバー自身のMetrics（to
 });
 
 test('computeMemberSeries: 既定のNの点は、一覧の全指標でメンバー自身のMetricsと一致する', () => {
-  for (const [layoutId, text] of [['qwerty', 'hello world'], ['colemak-dh', 'the quick brown fox jumps over the lazy dog']] as const) {
+  for (const [layoutId, text] of [
+    ['qwerty', 'hello world'],
+    ['colemak-dh', 'the quick brown fox jumps over the lazy dog'],
+  ] as const) {
     const input = resolve(layoutId, text);
     const cache = createEngineCache();
     const traceResult = cache.getTrace(input);
@@ -127,22 +132,27 @@ test('computeMemberSeries: 既定のNの点は、一覧の全指標でメンバ�
       analysis: cache.getInterpretation(input).analysis,
       metrics,
       requestTrace: {
-        requestTrace: (request: { tracePolicy?: { windowSize?: number } }) => cache.getTrace({
-          ...input,
-          tracePolicy: { ...input.tracePolicy, ...request.tracePolicy },
-        }).trace,
+        requestTrace: (request: { tracePolicy?: { windowSize?: number } }) =>
+          cache.getTrace({
+            ...input,
+            tracePolicy: { ...input.tracePolicy, ...request.tracePolicy },
+          }).trace,
       },
     });
     const values = series.points.find((point) => point.windowSize === input.tracePolicy.windowSize)!.values;
-    assert.deepEqual(values, {
-      totalUnits: metrics.totalUnits,
-      meanPerStroke: metrics.meanPerStroke,
-      perCharUnits: metrics.perCharUnits,
-      sameFinger: metrics.sameFinger,
-      sameFingerRate: sameFingerRate(metrics.sameFinger, metrics.strokes),
-      rightHandDistanceShare: rightHandShare(metrics.perFinger),
-      rightHandPressShare: rightHandShare(metrics.perFingerPresses),
-    }, layoutId);
+    assert.deepEqual(
+      values,
+      {
+        totalUnits: metrics.totalUnits,
+        meanPerStroke: metrics.meanPerStroke,
+        perCharUnits: metrics.perCharUnits,
+        sameFinger: metrics.sameFinger,
+        sameFingerRate: sameFingerRate(metrics.sameFinger, metrics.strokes),
+        rightHandDistanceShare: rightHandShare(metrics.perFinger),
+        rightHandPressShare: rightHandShare(metrics.perFingerPresses),
+      },
+      layoutId,
+    );
   }
 });
 
@@ -154,13 +164,15 @@ test('computeNSensitivityExtraction: 解決できたメンバーはok系列、�
 
   const targetDeleted: AnalysisTarget = { kind: 'setup', setupId: 'setup-deleted' };
   const extracted = computeNSensitivityExtraction(
-    [{
-      target: TARGET_A,
-      trace: traceResult.trace,
-      analysis: interpretationResult.analysis,
-      metrics: interpretationResult.metrics,
-      requestTrace: { requestTrace: () => traceResult.trace },
-    }],
+    [
+      {
+        target: TARGET_A,
+        trace: traceResult.trace,
+        analysis: interpretationResult.analysis,
+        metrics: interpretationResult.metrics,
+        requestTrace: { requestTrace: () => traceResult.trace },
+      },
+    ],
     [{ target: targetDeleted, kind: 'reference', message: '配列が見つかりません（削除された可能性があります）' }],
   );
 
@@ -176,18 +188,11 @@ test('computeNSensitivityExtraction: 解決できたメンバーはok系列、�
 });
 
 test('optionsDiscipline: affectsの宣言どおりの入れ忘れが無い（N感度は全項目がview）', () => {
-  const keyViolations = findOptionsKeyDisciplineViolations(
-    nSensitivityOptions,
-    DEFAULT_N_SENSITIVITY_OPTIONS,
-    ALTERNATE_N_SENSITIVITY_OPTIONS,
-  );
+  const keyViolations = findOptionsKeyDisciplineViolations(nSensitivityOptions, DEFAULT_N_SENSITIVITY_OPTIONS, ALTERNATE_N_SENSITIVITY_OPTIONS);
   assert.deepEqual(keyViolations, []);
 
-  const viewViolations = findViewOptionsExtractionViolations(
-    nSensitivityOptions,
-    DEFAULT_N_SENSITIVITY_OPTIONS,
-    ALTERNATE_N_SENSITIVITY_OPTIONS,
-    () => computeNSensitivityExtraction([], []),
+  const viewViolations = findViewOptionsExtractionViolations(nSensitivityOptions, DEFAULT_N_SENSITIVITY_OPTIONS, ALTERNATE_N_SENSITIVITY_OPTIONS, () =>
+    computeNSensitivityExtraction([], []),
   );
   assert.deepEqual(viewViolations, []);
 });

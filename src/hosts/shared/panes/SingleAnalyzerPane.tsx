@@ -3,12 +3,7 @@ import type { CodecDiagnostic } from '#input/codec/index.ts';
 import { analysisTargetKey, nameTargets, type AnalysisTarget } from '#input/setup/index.ts';
 import type { ColorSlotsByKey, TargetSet } from '#engine/multi-target-selection.ts';
 import type { SetTargetFigure, SingleAnalyzerPaneParts } from '#analyzers/pane-parts.tsx';
-import {
-  conditionHeaderInfoFromResolvedInput,
-  settingsItemIds,
-  traceConditionSummary,
-  type ConditionSummaryScope,
-} from '../condition-summary.ts';
+import { conditionHeaderInfoFromResolvedInput, settingsItemIds, traceConditionSummary, type ConditionSummaryScope } from '../condition-summary.ts';
 import { combinePaneStates } from '../pane-status.ts';
 import { recommendedWidthRemOf } from '#analyzers/recommended-width.ts';
 import { PaneFrame } from '../PaneFrame.tsx';
@@ -82,13 +77,14 @@ export function SingleAnalyzerPane<Options, Extracted>({
   const pane = useAnalyzerPane(cache, analyzer.definition, options, resolution);
 
   // このAnalyzerが読む条件だけを、要約と対象名に足して数える（読まない条件を数えると、その条件で測ったように読めるため）
-  const summaryScope = useMemo((): ConditionSummaryScope => ({
-    extraIds: settingsItemIds(analyzer.conditionExtraIds),
-  }), [analyzer]);
+  const summaryScope = useMemo(
+    (): ConditionSummaryScope => ({
+      extraIds: settingsItemIds(analyzer.conditionExtraIds),
+    }),
+    [analyzer],
+  );
   const conditionRows = resolution.ok ? traceConditionSummary(resolution.input.cascade, catalog.setupCatalog, summaryScope) : [];
-  const header = resolution.ok
-    ? conditionHeaderInfoFromResolvedInput(resolution.input.layout, resolution.input.geometry)
-    : undefined;
+  const header = resolution.ok ? conditionHeaderInfoFromResolvedInput(resolution.input.layout, resolution.input.geometry) : undefined;
   // Traceと抽出は別々に解決する。図と一緒に出すTrace由来の値（飛ばした文字・エラー）は、図と同じ入力の組から読む
   const coherent = useCoherentPaneValues(pane.extraction, pane.trace);
   const traceErrors = coherent?.trace.trace.errors ?? [];
@@ -106,11 +102,12 @@ export function SingleAnalyzerPane<Options, Extracted>({
   const setSelection = useSetTargetSelection(setSource?.selection ?? NO_SET_TARGETS, setSource?.colorSlots ?? {}, setups, catalog);
   const besideTargets = useMemo(() => setTargetsBesideSingle(setSelection.targets, target), [setSelection.targets, target]);
   const besideMembers = useMemo(
-    () => besideTargets.map((beside) => ({
-      key: analysisTargetKey(beside),
-      target: beside,
-      resolution: resolvePaneInput(beside, setupsById, catalog, overrides, resolvedText),
-    })),
+    () =>
+      besideTargets.map((beside) => ({
+        key: analysisTargetKey(beside),
+        target: beside,
+        resolution: resolvePaneInput(beside, setupsById, catalog, overrides, resolvedText),
+      })),
     [besideTargets, setupsById, catalog, overrides, resolvedText],
   );
   const besideExtractions = useTargetExtractions(cache, analyzer.definition, options, besideMembers);
@@ -119,32 +116,41 @@ export function SingleAnalyzerPane<Options, Extracted>({
     if (besideMembers.length === 0) return new Map<string, ReturnType<typeof nameTargets>[number]>();
     const sources = [
       targetNameSource(target, resolution, setupsById, setupNumbers, catalog.setupCatalog, [], summaryScope),
-      ...besideMembers.map((member) => targetNameSource(member.target, member.resolution, setupsById, setupNumbers, catalog.setupCatalog, [], summaryScope)),
+      ...besideMembers.map((member) =>
+        targetNameSource(member.target, member.resolution, setupsById, setupNumbers, catalog.setupCatalog, [], summaryScope),
+      ),
     ];
     return new Map(nameTargets(sources).map((item) => [item.key, item] as const));
   }, [besideMembers, target, resolution, setupsById, setupNumbers, catalog.setupCatalog, summaryScope]);
-  const setTargetFigures = useMemo((): readonly SetTargetFigure<Extracted>[] => besideMembers.map((member) => ({
-    key: member.key,
-    label: besideNamed.get(member.key)?.displayName ?? member.key,
-    fullName: besideNamed.get(member.key)?.fullName ?? '',
-    color: setSelection.colorByKey.get(member.key),
-    mark: setSelection.markByKey.get(member.key),
-    state: setTargetFigureState(member.resolution, besideExtractions.get(member.key)),
-  })), [besideMembers, besideNamed, setSelection.colorByKey, setSelection.markByKey, besideExtractions]);
+  const setTargetFigures = useMemo(
+    (): readonly SetTargetFigure<Extracted>[] =>
+      besideMembers.map((member) => ({
+        key: member.key,
+        label: besideNamed.get(member.key)?.displayName ?? member.key,
+        fullName: besideNamed.get(member.key)?.fullName ?? '',
+        color: setSelection.colorByKey.get(member.key),
+        mark: setSelection.markByKey.get(member.key),
+        state: setTargetFigureState(member.resolution, besideExtractions.get(member.key)),
+      })),
+    [besideMembers, besideNamed, setSelection.colorByKey, setSelection.markByKey, besideExtractions],
+  );
 
-  const choiceGroups = useMemo(() => targetChoiceGroups({
-    layouts: catalog.setupCatalog.layouts,
-    userLayouts: catalog.userLayouts,
-    shapes: catalog.setupCatalog.shapes,
-    setups,
-    selected: [target],
-  }), [catalog, setups, target]);
+  const choiceGroups = useMemo(
+    () =>
+      targetChoiceGroups({
+        layouts: catalog.setupCatalog.layouts,
+        userLayouts: catalog.userLayouts,
+        shapes: catalog.setupCatalog.shapes,
+        setups,
+        selected: [target],
+      }),
+    [catalog, setups, target],
+  );
 
   // 図のキーの選択。同じ配列・物理配列のペインどうしで共有し、キーの詳細を持つAnalyzerだけが使う
   const { Body, Settings, keyDetailsOf } = analyzer;
-  const selectionTarget = keyDetailsOf !== undefined && resolution.ok
-    ? keySelectionTargetOf(resolution.input.layout.id, resolution.input.geometry.id)
-    : undefined;
+  const selectionTarget =
+    keyDetailsOf !== undefined && resolution.ok ? keySelectionTargetOf(resolution.input.layout.id, resolution.input.geometry.id) : undefined;
   const keySelection = usePaneKeySelection(chrome.paneKey, selectionTarget);
   const selectedGeometry = resolution.ok ? resolution.input.geometry : undefined;
   const { selectedKeyId, clear: clearKeySelection } = keySelection;
@@ -161,9 +167,7 @@ export function SingleAnalyzerPane<Options, Extracted>({
       name={analyzer.name}
       description={analyzer.description}
       recommendedWidthRem={
-        standaloneSetTargets !== undefined && setTargetFigures.length > 0
-          ? standaloneSetTargets.recommendedWidthRem
-          : recommendedWidthRemOf(analyzer)
+        standaloneSetTargets !== undefined && setTargetFigures.length > 0 ? standaloneSetTargets.recommendedWidthRem : recommendedWidthRemOf(analyzer)
       }
       headingLevel={chrome.headingLevel}
       stickyHeader={chrome.stickyHeader}
@@ -172,23 +176,26 @@ export function SingleAnalyzerPane<Options, Extracted>({
       targetBinding={chrome.targetBinding}
       optionsBinding={chrome.optionsBinding}
       showPaneNameInSettings={chrome.showPaneNameInSettings}
-      floating={(paneName) => (
-        keyDetailsOf !== undefined && keySelection.windowKeyId !== undefined && resolution.ok && coherent !== undefined
-          && resolution.input.geometry.keys.has(keySelection.windowKeyId) ? (
-            <KeyDetailWindow
-              keyId={keySelection.windowKeyId}
-              layout={resolution.input.layout}
-              geometry={resolution.input.geometry}
-              trace={coherent.trace.trace}
-              keyDetails={keyDetailsOf(coherent.extraction.extracted)}
-              anchor={keySelection.anchor}
-              onClose={keySelection.clear}
-              {...(paneName === undefined ? {} : { paneName })}
-            />
-          ) : null
-      )}
+      floating={(paneName) =>
+        keyDetailsOf !== undefined &&
+        keySelection.windowKeyId !== undefined &&
+        resolution.ok &&
+        coherent !== undefined &&
+        resolution.input.geometry.keys.has(keySelection.windowKeyId) ? (
+          <KeyDetailWindow
+            keyId={keySelection.windowKeyId}
+            layout={resolution.input.layout}
+            geometry={resolution.input.geometry}
+            trace={coherent.trace.trace}
+            keyDetails={keyDetailsOf(coherent.extraction.extracted)}
+            anchor={keySelection.anchor}
+            onClose={keySelection.clear}
+            {...(paneName === undefined ? {} : { paneName })}
+          />
+        ) : null
+      }
       {...(named === undefined || !assetsReady ? {} : { targetName: named.displayName })}
-      target={(
+      target={
         <TargetSelection
           mode="single"
           groups={choiceGroups}
@@ -200,12 +207,12 @@ export function SingleAnalyzerPane<Options, Extracted>({
             if (next[0] !== undefined) onTargetChange(next[0]);
           }}
         />
-      )}
-      settings={(
+      }
+      settings={
         <PersonalSpeedSavedContext.Provider value={catalog.personalSpeed !== undefined}>
           <Settings options={options} onOptionsChange={onOptionsChange} />
         </PersonalSpeedSavedContext.Provider>
-      )}
+      }
       onResetOptions={() => onOptionsChange(analyzer.defaultOptions)}
       header={header}
       conditionRows={conditionRows}
@@ -222,9 +229,9 @@ export function SingleAnalyzerPane<Options, Extracted>({
         ...(env.workspaceId === undefined
           ? {}
           : {
-            workspace: { id: env.workspaceId },
-            workspaceNotices: overrideWinsNotices(conditionRows, catalog.setupCatalog, 'Workspace'),
-          }),
+              workspace: { id: env.workspaceId },
+              workspaceNotices: overrideWinsNotices(conditionRows, catalog.setupCatalog, 'Workspace'),
+            }),
         // 対象が配列でも、Setupでも、書き込む先は配列のレベル（Setupのレベルへ書く導線は別）。
         ...(resolution.ok ? { layout: { id: resolution.input.layout.id, name: resolution.input.layout.name } } : {}),
         ...(target.kind === 'setup' ? { openSetups: [{ id: target.setupId }] } : {}),
@@ -243,9 +250,11 @@ export function SingleAnalyzerPane<Options, Extracted>({
           options={options}
           onOptionsChange={onOptionsChange}
           {...(setTargetFigures.length === 0 ? {} : { setTargets: setTargetFigures })}
-          {...(keyDetailsOf === undefined ? {} : {
-            keySelection: { selectedKeyId, onKeyPress: keySelection.press, onClear: keySelection.clear },
-          })}
+          {...(keyDetailsOf === undefined
+            ? {}
+            : {
+                keySelection: { selectedKeyId, onKeyPress: keySelection.press, onClear: keySelection.clear },
+              })}
         />
       ) : undefined}
     </PaneFrame>

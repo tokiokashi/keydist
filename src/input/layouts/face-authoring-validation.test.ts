@@ -4,21 +4,14 @@ import { faceFromEntries, type Face } from './index.ts';
 import { validateFaceAuthoring } from './face-authoring-validation.ts';
 import { fromFaces } from './types.ts';
 
-const face = (
-  trigger: readonly string[],
-  target: string,
-  options: Partial<Face> = {},
-): Face => ({
+const face = (trigger: readonly string[], target: string, options: Partial<Face> = {}): Face => ({
   ...faceFromEntries(trigger, 'simultaneous', { [target]: 'あ' }),
   layer: '相互',
   ...options,
 });
 
 test('Face authoring layer validationは合法なreciprocal foldを許可する', () => {
-  assert.doesNotThrow(() => validateFaceAuthoring([
-    face(['k'], 'd'),
-    face(['d'], 'k'),
-  ]));
+  assert.doesNotThrow(() => validateFaceAuthoring([face(['k'], 'd'), face(['d'], 'k')]));
 });
 
 test('Face authoring layer validationは各authoring invariantを個別に検証する', () => {
@@ -34,84 +27,60 @@ test('Face authoring layer validationは各authoring invariantを個別に検証
     },
     {
       name: 'presentation role混在',
-      faces: [
-        face(['k'], 'd', { role: 'modifier' }),
-        face(['d'], 'k'),
-      ],
+      faces: [face(['k'], 'd', { role: 'modifier' }), face(['d'], 'k')],
       expected: /異なる役割の面を混在させられない/,
     },
     {
       name: 'triggerが単一キーでない',
-      faces: [
-        face(['k', 'l'], 'd'),
-        face(['d'], 'k'),
-      ],
+      faces: [face(['k', 'l'], 'd'), face(['d'], 'k')],
       expected: /triggerは単一キーである必要がある/,
     },
     {
       name: 'mode不一致',
-      faces: [
-        face(['k'], 'd'),
-        face(['d'], 'k', { mode: 'prefix' }),
-      ],
+      faces: [face(['k'], 'd'), face(['d'], 'k', { mode: 'prefix' })],
       expected: /modeが異なる/,
     },
     {
       name: 'triggerOrder不一致',
-      faces: [
-        face(['k'], 'd', { triggerOrder: 'prefix' }),
-        face(['d'], 'k'),
-      ],
+      faces: [face(['k'], 'd', { triggerOrder: 'prefix' }), face(['d'], 'k')],
       expected: /triggerOrderが異なる/,
     },
     {
       name: 'triggerが逆手でない',
-      faces: [
-        face(['k'], 'd'),
-        face(['l'], 'f'),
-      ],
+      faces: [face(['k'], 'd'), face(['l'], 'f')],
       expected: /triggerが逆手でない/,
     },
     {
       name: '対象セル重複',
-      faces: [
-        face(['k'], 'd'),
-        face(['d'], 'd'),
-      ],
+      faces: [face(['k'], 'd'), face(['d'], 'd')],
       expected: /対象セルが重複している/,
     },
     {
       name: '対象セルが逆手でない',
-      faces: [
-        face(['k'], 'd'),
-        face(['d'], 'f'),
-      ],
+      faces: [face(['k'], 'd'), face(['d'], 'f')],
       expected: /対象セルが逆手でない/,
     },
   ];
 
   for (const entry of cases) {
-    assert.throws(
-      () => validateFaceAuthoring(entry.faces),
-      entry.expected,
-      entry.name,
-    );
+    assert.throws(() => validateFaceAuthoring(entry.faces), entry.expected, entry.name);
   }
 });
 
 test('layer未指定Faceはfolding validation対象にしない', () => {
-  assert.doesNotThrow(() => validateFaceAuthoring([
-    {
-      ...faceFromEntries(['k', 'l'], 'simultaneous', { d: 'あ' }),
-      inputRole: 'layer',
-    },
-    {
-      ...faceFromEntries(['d'], 'prefix', { k: 'い' }),
-      inputRole: 'layer',
-    },
-  ]));
+  assert.doesNotThrow(() =>
+    validateFaceAuthoring([
+      {
+        ...faceFromEntries(['k', 'l'], 'simultaneous', { d: 'あ' }),
+        inputRole: 'layer',
+      },
+      {
+        ...faceFromEntries(['d'], 'prefix', { k: 'い' }),
+        inputRole: 'layer',
+      },
+    ]),
+  );
 });
-
 
 test('presentation trigger metadataの不正はfromFaces constructor境界でrejectする', () => {
   const base: Face = {
@@ -121,20 +90,24 @@ test('presentation trigger metadataの不正はfromFaces constructor境界でrej
   };
 
   assert.throws(
-    () => fromFaces('invalid-empty-alternatives', 'invalid-empty-alternatives', [{
-      ...base,
-      presentationTriggerAlternatives:
-        [] as unknown as NonNullable<Face['presentationTriggerAlternatives']>,
-    }]),
+    () =>
+      fromFaces('invalid-empty-alternatives', 'invalid-empty-alternatives', [
+        {
+          ...base,
+          presentationTriggerAlternatives: [] as unknown as NonNullable<Face['presentationTriggerAlternatives']>,
+        },
+      ]),
     /presentationTriggerAlternativesは空にできない（face:0）/,
   );
 
   assert.throws(
-    () => fromFaces('invalid-empty-chord', 'invalid-empty-chord', [{
-      ...base,
-      presentationTriggerAlternatives:
-        [[]] as unknown as NonNullable<Face['presentationTriggerAlternatives']>,
-    }]),
+    () =>
+      fromFaces('invalid-empty-chord', 'invalid-empty-chord', [
+        {
+          ...base,
+          presentationTriggerAlternatives: [[]] as unknown as NonNullable<Face['presentationTriggerAlternatives']>,
+        },
+      ]),
     /presentationTriggerAlternatives\[0\]は空にできない（face:0）/,
   );
 });

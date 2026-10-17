@@ -12,17 +12,20 @@ const TEXT = { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } };
 
 async function open(page: Page, size: { width: number; height: number }, panes: readonly unknown[] = [flow], name = '並べて見る'): Promise<void> {
   await page.setViewportSize(size);
-  await page.addInitScript((value) => {
-    if (localStorage.getItem('keydist:workspaces') === null) {
-      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
-    }
-  }, {
-    id: 'w',
-    name,
-    text: TEXT,
-    panes,
-    grid: panes.length === 0 ? [] : [{ id: 'f', x: 0, y: 0, w: 24, h: 16 }],
-  });
+  await page.addInitScript(
+    (value) => {
+      if (localStorage.getItem('keydist:workspaces') === null) {
+        localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
+      }
+    },
+    {
+      id: 'w',
+      name,
+      text: TEXT,
+      panes,
+      grid: panes.length === 0 ? [] : [{ id: 'f', x: 0, y: 0, w: 24, h: 16 }],
+    },
+  );
   await page.goto('/workspace/w');
   await waitForHydration(page);
   await expect(page.locator('.context-bar button.text-chip')).toBeEnabled({ timeout: 10_000 });
@@ -88,10 +91,11 @@ test('1行の幅で足りない時は、長い名前が先に最小幅まで縮�
   await open(page, { width: 1600, height: 900 }, [flow], LONG_NAME);
   await page.locator('#app-sidebar').getByRole('button', { name: 'サイドバーを固定' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-sidebar', 'unpinned');
-  const measure = () => page.evaluate(() => {
-    const width = (selector: string) => document.querySelector(selector)!.getBoundingClientRect().width;
-    return { name: width('.workspace-name'), shape: width('.context-select-chip'), text: width('.context-bar button.text-chip') };
-  });
+  const measure = () =>
+    page.evaluate(() => {
+      const width = (selector: string) => document.querySelector(selector)!.getBoundingClientRect().width;
+      return { name: width('.workspace-name'), shape: width('.context-select-chip'), text: width('.context-bar button.text-chip') };
+    });
   const reference = await measure();
   let shrunk = 0;
   for (const width of [1500, 1400, 1300, 1200, 1100, 1060, 1030, 1000, 960, 930, 900]) {
@@ -107,7 +111,10 @@ test('1行の幅で足りない時は、長い名前が先に最小幅まで縮�
   expect(shrunk).toBeGreaterThan(3);
 });
 
-for (const [label, name] of [['5文字', '並べて見る'], [`${LONG_NAME.length}文字`, LONG_NAME]] as const) {
+for (const [label, name] of [
+  ['5文字', '並べて見る'],
+  [`${LONG_NAME.length}文字`, LONG_NAME],
+] as const) {
   test(`${label}の名前は、画面幅を狭めていく間に単調に縮み、広がり直さない（サイドバー非固定）`, async ({ page }) => {
     await open(page, { width: 1600, height: 900 }, [flow], name);
     await page.locator('#app-sidebar').getByRole('button', { name: 'サイドバーを固定' }).click();
@@ -138,7 +145,12 @@ test('サイドバーを固定した画面幅1100でバーが2段になっても
   await open(page, { width: 1100, height: 900 });
   const layout = await page.evaluate(() => {
     const rect = (selector: string) => document.querySelector(selector)!.getBoundingClientRect();
-    return { barWidth: rect('.context-bar').width, addTop: rect('.workspace-add-pane-button').top, nameTop: rect('.workspace-name').top, textTop: rect('.context-bar button.text-chip').top };
+    return {
+      barWidth: rect('.context-bar').width,
+      addTop: rect('.workspace-add-pane-button').top,
+      nameTop: rect('.workspace-name').top,
+      textTop: rect('.context-bar button.text-chip').top,
+    };
   });
   // この幅では、サイドバーの分だけバーが狭く、2段になる
   expect(layout.barWidth).toBeLessThan(856 + 40);

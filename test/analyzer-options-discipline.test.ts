@@ -62,12 +62,14 @@ function looksLikeAnalyzerDefinition(value: unknown): value is AnalyzerDefinitio
   if (typeof value !== 'object' || value === null) return false;
   const candidate = value as Record<string, unknown>;
   return (
-    (candidate.cardinality === 'single' || candidate.cardinality === 'set')
-    && typeof candidate.id === 'string'
-    && typeof candidate.extractKeyOf === 'function'
-    && typeof candidate.extract === 'function'
-    && typeof candidate.optionsDiscipline === 'object' && candidate.optionsDiscipline !== null
-    && typeof candidate.optionsItems === 'object' && candidate.optionsItems !== null
+    (candidate.cardinality === 'single' || candidate.cardinality === 'set') &&
+    typeof candidate.id === 'string' &&
+    typeof candidate.extractKeyOf === 'function' &&
+    typeof candidate.extract === 'function' &&
+    typeof candidate.optionsDiscipline === 'object' &&
+    candidate.optionsDiscipline !== null &&
+    typeof candidate.optionsItems === 'object' &&
+    candidate.optionsItems !== null
   );
 }
 
@@ -81,13 +83,11 @@ async function discoverAnalyzerDefinitions(): Promise<{
   readonly definitions: readonly DiscoveredDefinition[];
   readonly candidateFiles: readonly string[];
 }> {
-  const candidateFiles = listAnalyzerTsFiles().filter((file) =>
-    DEFINITION_CALL_PATTERN.test(readFileSync(file, 'utf8')),
-  );
+  const candidateFiles = listAnalyzerTsFiles().filter((file) => DEFINITION_CALL_PATTERN.test(readFileSync(file, 'utf8')));
 
   const definitions: DiscoveredDefinition[] = [];
   for (const file of candidateFiles) {
-    const module = await import(pathToFileURL(file).href) as Record<string, unknown>;
+    const module = (await import(pathToFileURL(file).href)) as Record<string, unknown>;
     for (const [exportName, value] of Object.entries(module)) {
       if (looksLikeAnalyzerDefinition(value)) {
         definitions.push({ file, exportName, definition: value });
@@ -102,10 +102,7 @@ test('全Analyzerの解析設定に入れ忘れが無い（宣言から機械的
 
   // 列挙そのものが機能しているかの確認（0件だとテストが「何も検査していないのに green」
   // という静かな壊れ方をする。最低でもBigram Flowの1件がある）。
-  assert.ok(
-    definitions.length > 0,
-    'AnalyzerDefinitionが1件も見つからなかった（列挙ロジックが壊れている可能性）',
-  );
+  assert.ok(definitions.length > 0, 'AnalyzerDefinitionが1件も見つからなかった（列挙ロジックが壊れている可能性）');
 
   // `defineSingleAnalyzer`/`defineSetAnalyzer`の呼び出しがあるファイルは、必ず
   // 実際にexportされたAnalyzerDefinitionを1件以上持つはず。呼び出しはあるのにexportに
@@ -132,11 +129,7 @@ test('全Analyzerの解析設定に入れ忘れが無い（宣言から機械的
       definition.optionsDiscipline as never,
     );
 
-    assert.deepEqual(
-      result.keyViolations,
-      [],
-      `${label}: affectsの宣言とextractKeyOfの実装が食い違う項目がある: ${result.keyViolations.join(', ')}`,
-    );
+    assert.deepEqual(result.keyViolations, [], `${label}: affectsの宣言とextractKeyOfの実装が食い違う項目がある: ${result.keyViolations.join(', ')}`);
     assert.deepEqual(
       result.viewExtractionViolations,
       [],

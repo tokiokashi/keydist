@@ -92,9 +92,7 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export function defineAssetCodec<T>(options: AssetCodecOptions<T>): AssetCodec<T> {
-  const migrationsByFromVersion = new Map(
-    (options.migrations ?? []).map((step) => [step.fromVersion, step] as const),
-  );
+  const migrationsByFromVersion = new Map((options.migrations ?? []).map((step) => [step.fromVersion, step] as const));
 
   return {
     currentVersion: options.currentVersion,

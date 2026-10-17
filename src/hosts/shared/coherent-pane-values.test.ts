@@ -52,8 +52,5 @@ test('組が無い間と、どちらかが表示できない間は何も返さ�
   assert.equal(settleCoherentValues<string>(undefined, stale(A.extraction), ready(B.trace)), undefined);
   assert.equal(settleCoherentValues(pairA, { status: 'computing' }, ready(B.trace)), undefined);
   assert.equal(settleCoherentValues(pairA, ready(B.extraction), { status: 'idle' }), undefined);
-  assert.equal(
-    settleCoherentValues(pairA, ready(B.extraction), { status: 'failed', error: { kind: 'exception', error: new Error('x') } }),
-    undefined,
-  );
+  assert.equal(settleCoherentValues(pairA, ready(B.extraction), { status: 'failed', error: { kind: 'exception', error: new Error('x') } }), undefined);
 });

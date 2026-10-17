@@ -17,16 +17,10 @@ export const analysisTargetSchema: BaseSchema<unknown, AnalysisTarget, BaseIssue
 ]);
 
 /** 壊れていれば`undefined`（呼び出し側が既定値へ戻すか、要素ごと捨てるかを決める）。 */
-export function decodeAnalysisTarget(
-  raw: unknown,
-  path: string,
-  diagnostics: CodecDiagnostic[],
-): AnalysisTarget | undefined {
+export function decodeAnalysisTarget(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): AnalysisTarget | undefined {
   return decodeDroppingInvalid(analysisTargetSchema, raw, path, diagnostics);
 }
 
 export function encodeAnalysisTarget(target: AnalysisTarget): AnalysisTarget {
-  return target.kind === 'layout'
-    ? { kind: 'layout', layoutId: target.layoutId }
-    : { kind: 'setup', setupId: target.setupId };
+  return target.kind === 'layout' ? { kind: 'layout', layoutId: target.layoutId } : { kind: 'setup', setupId: target.setupId };
 }

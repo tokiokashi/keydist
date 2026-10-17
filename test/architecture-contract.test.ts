@@ -10,31 +10,31 @@ const SRC = join(ROOT, 'src');
 
 async function tsFiles(dir: string): Promise<string[]> {
   const entries = await readdir(dir, { withFileTypes: true });
-  const nested = await Promise.all(entries.map(async (entry) => {
-    const path = join(dir, entry.name);
-    if (entry.isDirectory()) return tsFiles(path);
-    return entry.isFile() && entry.name.endsWith('.ts') && !entry.name.endsWith('.test.ts') ? [path] : [];
-  }));
+  const nested = await Promise.all(
+    entries.map(async (entry) => {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) return tsFiles(path);
+      return entry.isFile() && entry.name.endsWith('.ts') && !entry.name.endsWith('.test.ts') ? [path] : [];
+    }),
+  );
   return nested.flat();
 }
 
 async function sourceFilesIn(dir: string): Promise<string[]> {
   const entries = await readdir(dir, { withFileTypes: true });
-  const nested = await Promise.all(entries.map(async (entry) => {
-    const path = join(dir, entry.name);
-    if (entry.isDirectory()) return sourceFilesIn(path);
-    return entry.isFile() && /\.tsx?$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name) ? [path] : [];
-  }));
+  const nested = await Promise.all(
+    entries.map(async (entry) => {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) return sourceFilesIn(path);
+      return entry.isFile() && /\.tsx?$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name) ? [path] : [];
+    }),
+  );
   return nested.flat();
 }
 
 function moduleSpecifiers(source: string): readonly string[] {
   const specs = new Set<string>();
-  for (const pattern of [
-    /\bfrom\s+['"]([^'"]+)['"]/g,
-    /\bimport\s+['"]([^'"]+)['"]/g,
-    /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
-  ]) {
+  for (const pattern of [/\bfrom\s+['"]([^'"]+)['"]/g, /\bimport\s+['"]([^'"]+)['"]/g, /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g]) {
     for (const match of source.matchAll(pattern)) specs.add(match[1]);
   }
   return [...specs];
@@ -42,34 +42,38 @@ function moduleSpecifiers(source: string): readonly string[] {
 
 async function sourcesIn(...segments: string[]) {
   const paths = await tsFiles(join(SRC, ...segments));
-  return Promise.all(paths.map(async (path) => ({
-    path,
-    source: await readFile(path, 'utf8'),
-  })));
+  return Promise.all(
+    paths.map(async (path) => ({
+      path,
+      source: await readFile(path, 'utf8'),
+    })),
+  );
 }
 
 // 以下3つは architecture-layers.test.ts の層の表より細かい、層の中の制限。
 // 層の表は input 内・interpretation 内の import を全部許すので、ここで別に絞る。
 
 function isAllowedInputConverterCoreModule(specifier: string): boolean {
-  return /^\.\/[^/]+\.ts$/.test(specifier)
-    || specifier === '#input/semantics/index.ts'
-    || specifier === '#input/shapes/geometry.ts';
+  return /^\.\/[^/]+\.ts$/.test(specifier) || specifier === '#input/semantics/index.ts' || specifier === '#input/shapes/geometry.ts';
 }
 
 function isAllowedStructuralAnalysisModule(specifier: string): boolean {
-  return /^\.\/[^/]+\.ts$/.test(specifier)
-    || specifier.startsWith('#input/semantics/')
-    || specifier.startsWith('#input/shapes/')
-    || specifier.startsWith('#trace/')
-    || specifier.startsWith('#interpretation/structure/');
+  return (
+    /^\.\/[^/]+\.ts$/.test(specifier) ||
+    specifier.startsWith('#input/semantics/') ||
+    specifier.startsWith('#input/shapes/') ||
+    specifier.startsWith('#trace/') ||
+    specifier.startsWith('#interpretation/structure/')
+  );
 }
 
 function isAllowedSemanticCoreModule(specifier: string): boolean {
-  return /^\.\/[^/]+\.ts$/.test(specifier)
-    || specifier === '../shapes/geometry.ts'
-    || specifier === '../layouts/types.ts'
-    || specifier === '../layouts/index.ts';
+  return (
+    /^\.\/[^/]+\.ts$/.test(specifier) ||
+    specifier === '../shapes/geometry.ts' ||
+    specifier === '../layouts/types.ts' ||
+    specifier === '../layouts/index.ts'
+  );
 }
 
 const LEGACY_TRIGGER_REALIZATION_MODULE = join(SRC, 'trigger-realization.ts');
@@ -83,18 +87,11 @@ function resolveRelativeModule(importerPath: string, specifier: string): string 
   return resolve(dirname(importerPath), specifier);
 }
 
-function isForbiddenRealizationConsumerImport(
-  importerPath: string,
-  specifier: string,
-): boolean {
-  if (
-    specifier === '#input/semantics/action-realization.ts'
-    || specifier === '#input/semantics/trigger-realization.ts'
-  ) return true;
+function isForbiddenRealizationConsumerImport(importerPath: string, specifier: string): boolean {
+  if (specifier === '#input/semantics/action-realization.ts' || specifier === '#input/semantics/trigger-realization.ts') return true;
   const target = resolveRelativeModule(importerPath, specifier);
   if (target === undefined) return false;
-  return target === LEGACY_TRIGGER_REALIZATION_MODULE
-    || REALIZATION_INTERNAL_MODULES.has(target);
+  return target === LEGACY_TRIGGER_REALIZATION_MODULE || REALIZATION_INTERNAL_MODULES.has(target);
 }
 
 test('semantic coreのimport先をshapes / layout型へ限定する', async () => {
@@ -126,26 +123,16 @@ test('structural analysisのimport先をsemantic / structural layerへ限定す�
 
 test('realization policy consumerはsemantic core public entryをauthorityにする', async () => {
   const rootFiles = await readdir(SRC);
-  assert.equal(
-    rootFiles.includes('trigger-realization.ts'),
-    false,
-    'legacy root trigger-realization re-export must not return',
-  );
+  assert.equal(rootFiles.includes('trigger-realization.ts'), false, 'legacy root trigger-realization re-export must not return');
 
   const nestedConsumer = join(SRC, 'feature', 'nested-consumer.ts');
   assert.equal(
-    isForbiddenRealizationConsumerImport(
-      nestedConsumer,
-      '#input/semantics/action-realization.ts',
-    ),
+    isForbiddenRealizationConsumerImport(nestedConsumer, '#input/semantics/action-realization.ts'),
     true,
     'nested consumer must not bypass the semantic core public entry',
   );
   assert.equal(
-    isForbiddenRealizationConsumerImport(
-      nestedConsumer,
-      '#input/semantics/trigger-realization.ts',
-    ),
+    isForbiddenRealizationConsumerImport(nestedConsumer, '#input/semantics/trigger-realization.ts'),
     true,
     'nested consumer must not import trigger realization internals directly',
   );
@@ -176,41 +163,18 @@ test('Input Converter coreはSemanticInput public APIを再利用する', async 
     }
   }
 
-  const engineSource = await readFile(
-    join(SRC, 'tester', 'engine', 'typing-input-engine.ts'),
-    'utf8',
-  );
-  assert.match(
-    engineSource,
-    /from ['"]#input\/semantics\/index\.ts['"]/,
-    'Input Converter must reuse the SemanticInput / realization public entry',
-  );
-  assert.doesNotMatch(
-    engineSource,
-    /layouts\//,
-    'Input Converter core must not reinterpret Layout Face authoring metadata',
-  );
+  const engineSource = await readFile(join(SRC, 'tester', 'engine', 'typing-input-engine.ts'), 'utf8');
+  assert.match(engineSource, /from ['"]#input\/semantics\/index\.ts['"]/, 'Input Converter must reuse the SemanticInput / realization public entry');
+  assert.doesNotMatch(engineSource, /layouts\//, 'Input Converter core must not reinterpret Layout Face authoring metadata');
 });
 
 test('Face semanticをpresentation roleやtrigger数から推測しない', async () => {
   const layoutTypes = await readFile(join(SRC, 'input', 'layouts', 'types.ts'), 'utf8');
   const layers = await readFile(join(SRC, 'input', 'layouts', 'layers.ts'), 'utf8');
 
-  assert.doesNotMatch(
-    layoutTypes,
-    /inputRole\s*\?\?/,
-    'fromFaces must not infer canonical inputRole from presentation metadata',
-  );
-  assert.doesNotMatch(
-    layoutTypes,
-    /trigger\.length\s*>\s*1[^\n]*composition/,
-    'fromFaces must not infer composition from trigger count',
-  );
-  assert.doesNotMatch(
-    layers,
-    /inputRole[^\n]*\|\|[^\n]*trigger\.length\s*>\s*1/,
-    'presentation grouping must not infer combo from trigger count',
-  );
+  assert.doesNotMatch(layoutTypes, /inputRole\s*\?\?/, 'fromFaces must not infer canonical inputRole from presentation metadata');
+  assert.doesNotMatch(layoutTypes, /trigger\.length\s*>\s*1[^\n]*composition/, 'fromFaces must not infer composition from trigger count');
+  assert.doesNotMatch(layers, /inputRole[^\n]*\|\|[^\n]*trigger\.length\s*>\s*1/, 'presentation grouping must not infer combo from trigger count');
 });
 
 test('alternative selection identityはcore helperをauthorityにする', async () => {
@@ -240,11 +204,7 @@ test('alternative selection identityはcore helperをauthorityにする', async 
     assert.notEqual(start, -1);
     assert.notEqual(end, -1);
     const projectionSource = traceSource.slice(start, end);
-    for (const pattern of [
-      /JSON\.stringify/,
-      /\.semanticInputs\b/,
-      /\.baseRealizations\b/,
-    ]) {
+    for (const pattern of [/JSON\.stringify/, /\.semanticInputs\b/, /\.baseRealizations\b/]) {
       assert.doesNotMatch(
         projectionSource,
         pattern,
@@ -257,11 +217,7 @@ test('alternative selection identityはcore helperをauthorityにする', async 
 test('user layout alternative dedupeはcore canonical identityをauthorityにする', async () => {
   const source = await readFile(join(SRC, 'input', 'layouts', 'user-layouts.ts'), 'utf8');
 
-  assert.match(
-    source,
-    /canonicalInputAlternativeIdentity\(/,
-    'user layout import must reuse the canonical alternative identity helper',
-  );
+  assert.match(source, /canonicalInputAlternativeIdentity\(/, 'user layout import must reuse the canonical alternative identity helper');
   assert.doesNotMatch(
     source,
     /JSON\.stringify\([^\n]*baseRealizations|baseRealizations[^\n]*JSON\.stringify/,
@@ -280,11 +236,7 @@ test('legacy comboConditionsをsemantic/runtime authorityへ戻さない', async
     /const comboDefinitions = comboFrameHeadingCount\(layout\)/,
     'combo-frame headings must be the combo definition-count authority',
   );
-  assert.match(
-    traceSource,
-    /layout\.resolvedComboDefinitions/,
-    'resolved combo definitions must stay in the combo definition-count authority',
-  );
+  assert.match(traceSource, /layout\.resolvedComboDefinitions/, 'resolved combo definitions must stay in the combo definition-count authority');
 });
 
 test('combo fold presentation provenanceはcanonicalInputsをauthorityにする', async () => {
@@ -297,11 +249,7 @@ test('combo fold presentation provenanceはcanonicalInputsをauthorityにする'
   const comboSource = source.slice(start, end + 2);
 
   assert.match(comboSource, /layout\.canonicalInputs\.get\(input\)/);
-  assert.doesNotMatch(
-    comboSource,
-    /layout\.map\.get\(/,
-    'combo presentation provenance must not resolve physical keys from the legacy default map',
-  );
+  assert.doesNotMatch(comboSource, /layout\.map\.get\(/, 'combo presentation provenance must not resolve physical keys from the legacy default map');
 });
 
 test('composed outputのsemantic availabilityはcanonicalInputsをauthorityにする', async () => {
@@ -315,11 +263,7 @@ test('composed outputのsemantic availabilityはcanonicalInputsをauthorityに�
 
   assert.match(composedSource, /const markAlternatives = layout\.canonicalInputs\.get\(mark\)/);
   assert.match(composedSource, /const sourceAlternatives = layout\.canonicalInputs\.get\(source\)/);
-  assert.doesNotMatch(
-    composedSource,
-    /if \(!markSequence \|\| !markAlternatives\)/,
-    'legacy map sequence must not gate canonical mark availability',
-  );
+  assert.doesNotMatch(composedSource, /if \(!markSequence \|\| !markAlternatives\)/, 'legacy map sequence must not gate canonical mark availability');
   assert.doesNotMatch(
     composedSource,
     /if \(!sourceSequence \|\| !sourceAlternatives\)/,
@@ -346,48 +290,24 @@ test('logical output matching lengthはcanonicalInputsをauthorityにする', as
 
   assert.doesNotMatch(layoutTypesSource, /\bmaxCharLength\b/);
   assert.doesNotMatch(userLayoutsSource, /\bmaxCharLength\b/);
-  assert.doesNotMatch(
-    traceSource,
-    /layout\.maxCharLength\b/,
-    'generateTrace must derive the longest-match bound from canonicalInputs',
-  );
-  assert.match(
-    traceSource,
-    /layout\.canonicalInputs\.keys\(\)/,
-    'canonicalInputs must be the authority for logical output match length',
-  );
+  assert.doesNotMatch(traceSource, /layout\.maxCharLength\b/, 'generateTrace must derive the longest-match bound from canonicalInputs');
+  assert.match(traceSource, /layout\.canonicalInputs\.keys\(\)/, 'canonicalInputs must be the authority for logical output match length');
 });
 
 test('generateTrace realized factはFace authoring metadataへ依存しない', async () => {
   const source = await readFile(join(SRC, 'trace', 'generate.ts'), 'utf8');
 
-  assert.doesNotMatch(
-    source,
-    /layout\.faces\b/,
-    'generate.ts must not derive realized facts from Layout.faces',
-  );
-  assert.doesNotMatch(
-    source,
-    /\bfaceLayerIds\b/,
-    'generate.ts must not derive realized facts from presentation faceLayerIds',
-  );
+  assert.doesNotMatch(source, /layout\.faces\b/, 'generate.ts must not derive realized facts from Layout.faces');
+  assert.doesNotMatch(source, /\bfaceLayerIds\b/, 'generate.ts must not derive realized facts from presentation faceLayerIds');
 });
 
 test('Face authoring validationはruntime presentation moduleへ依存しない', async () => {
   const validationSource = await readFile(join(SRC, 'input/layouts/face-authoring-validation.ts'), 'utf8');
   const geometrySource = await readFile(join(SRC, 'input/layouts/face-geometry.ts'), 'utf8');
 
-  assert.doesNotMatch(
-    validationSource,
-    /\.\.\/layers\.ts/,
-    'authoring validation must depend on neutral Face geometry helpers, not runtime layers.ts',
-  );
+  assert.doesNotMatch(validationSource, /\.\.\/layers\.ts/, 'authoring validation must depend on neutral Face geometry helpers, not runtime layers.ts');
   assert.match(validationSource, /\.\/face-geometry\.ts/);
-  assert.doesNotMatch(
-    geometrySource,
-    /layers\.ts/,
-    'neutral Face geometry helpers must not depend on runtime presentation',
-  );
+  assert.doesNotMatch(geometrySource, /layers\.ts/, 'neutral Face geometry helpers must not depend on runtime presentation');
 });
 
 test('runtime layers moduleはFace authoring semanticを解釈しない', async () => {
@@ -403,37 +323,29 @@ test('runtime layers moduleはFace authoring semanticを解釈しない', async 
     /\bclassifyFaces\b/,
     /\bgroupFacesIntoLayers\b/,
   ]) {
-    assert.doesNotMatch(
-      source,
-      pattern,
-      'runtime layers.ts must only consume compiled presentation attribution',
-    );
+    assert.doesNotMatch(source, pattern, 'runtime layers.ts must only consume compiled presentation attribution');
   }
-  assert.match(
-    source,
-    /definition\.presentationRole/,
-    'runtime layers.ts must consume compiled LayerDefinition.presentationRole',
-  );
+  assert.match(source, /definition\.presentationRole/, 'runtime layers.ts must consume compiled LayerDefinition.presentationRole');
 });
 
 test('layouts barrelはlegacy Face authoring classifierを公開しない', async () => {
   const source = await readFile(join(SRC, 'input/layouts/index.ts'), 'utf8');
 
   for (const symbol of ['canFoldFaces', 'classifyFaces', 'groupFacesIntoLayers']) {
-    assert.equal(
-      source.includes(symbol),
-      false,
-      `layouts/index.ts must not export legacy authoring classifier: ${symbol}`,
-    );
+    assert.equal(source.includes(symbol), false, `layouts/index.ts must not export legacy authoring classifier: ${symbol}`);
   }
 });
 
 test('Analyzerの表示側はFaceのauthoring項目を読まず、compiled presentationを使う', async () => {
   const dirs = ['analyzers', 'hosts', 'ui'];
-  const sources = (await Promise.all(dirs.map(async (dir) => {
-    const paths = await sourceFilesIn(join(SRC, dir));
-    return Promise.all(paths.map(async (path) => ({ path, source: await readFile(path, 'utf8') })));
-  }))).flat();
+  const sources = (
+    await Promise.all(
+      dirs.map(async (dir) => {
+        const paths = await sourceFilesIn(join(SRC, dir));
+        return Promise.all(paths.map(async (path) => ({ path, source: await readFile(path, 'utf8') })));
+      }),
+    )
+  ).flat();
   assert.ok(sources.length > 0);
 
   const forbidden: readonly [RegExp, string][] = [
@@ -458,19 +370,10 @@ test('presentation trigger authoringはnested alternative schemaを使う', asyn
 
   assert.doesNotMatch(typesSource, /presentationTriggerKeys/);
   assert.doesNotMatch(layersSource, /presentationTriggerKeys/);
-  assert.match(
-    typesSource,
-    /PresentationTriggerChord = readonly \[string, \.\.\.string\[\]\]/,
-  );
-  assert.match(
-    typesSource,
-    /presentationTriggerAlternatives\?: PresentationTriggerAlternatives/,
-  );
+  assert.match(typesSource, /PresentationTriggerChord = readonly \[string, \.\.\.string\[\]\]/);
+  assert.match(typesSource, /presentationTriggerAlternatives\?: PresentationTriggerAlternatives/);
   assert.match(layersSource, /face\.presentationTriggerAlternatives/);
-  assert.match(
-    layersSource,
-    /authored\.length === 0[\s\S]*presentationTriggerAlternativesは空にできない/,
-  );
+  assert.match(layersSource, /authored\.length === 0[\s\S]*presentationTriggerAlternativesは空にできない/);
 });
 
 test('key pattern pickerの入力成立判定はcanonicalInputsをauthorityにする', async () => {
@@ -486,32 +389,12 @@ test('key pattern pickerの入力成立判定はcanonicalInputsをauthorityに�
     /layout\.map\b|layout\.faces\b|face\.mode\b|face\.triggerOrder\b|\bfaceCells\b/,
     'key-pattern matching must use canonicalInputs instead of reconstructing activation from authoring Face/map',
   );
-  assert.match(
-    matrixSource,
-    /layout\.canonicalInputs/,
-    'key-pattern matching must read canonicalInputs',
-  );
+  assert.match(matrixSource, /layout\.canonicalInputs/, 'key-pattern matching must read canonicalInputs');
 
-  assert.doesNotMatch(
-    source,
-    /face\.inputRole\b/,
-    'key-pattern picker must not use legacy inputRole for presentation layer membership',
-  );
-  assert.doesNotMatch(
-    source,
-    /\bfaceLayerIds\b/,
-    'key-pattern picker must consume classifyPresentationFaces instead of raw faceLayerIds',
-  );
-  assert.doesNotMatch(
-    source,
-    /face\.trigger(?:\.length)?\b/,
-    'active layer presentation attribution must not reinterpret semantic Face.trigger shape',
-  );
-  assert.match(
-    source,
-    /matchesDisplayTriggerAlternative\(face, selected\)/,
-    'active layer attribution must use the shared presentation trigger matcher',
-  );
+  assert.doesNotMatch(source, /face\.inputRole\b/, 'key-pattern picker must not use legacy inputRole for presentation layer membership');
+  assert.doesNotMatch(source, /\bfaceLayerIds\b/, 'key-pattern picker must consume classifyPresentationFaces instead of raw faceLayerIds');
+  assert.doesNotMatch(source, /face\.trigger(?:\.length)?\b/, 'active layer presentation attribution must not reinterpret semantic Face.trigger shape');
+  assert.match(source, /matchesDisplayTriggerAlternative\(face, selected\)/, 'active layer attribution must use the shared presentation trigger matcher');
 });
 
 test('presentation consumerはLayer.orderの共通helperを使う', async () => {
@@ -526,11 +409,7 @@ test('presentation consumerはLayer.orderの共通helperを使う', async () => 
     /\[\.\.\.groups\.layers,\s*\.\.\.groups\.modifiers\]/,
     'picker must not give layer-role aggregations implicit priority over modifier-role aggregations',
   );
-  assert.match(
-    guideSource,
-    /presentationLayersOf\(layout\)/,
-    'trigger guide must take layers in Layer.order from the shared helper',
-  );
+  assert.match(guideSource, /presentationLayersOf\(layout\)/, 'trigger guide must take layers in Layer.order from the shared helper');
   assert.match(
     guideSource,
     /if \(!keyTones\.has\(key\)\) keyTones\.set\(key, tone\)/,
@@ -541,11 +420,7 @@ test('presentation consumerはLayer.orderの共通helperを使う', async () => 
 test('トリガーの図はraw Face.trigger textを再構成せず、明示presentation trigger / combo variantsを使う', async () => {
   const source = await readFile(join(SRC, 'analyzers/keymap/trigger-guide.ts'), 'utf8');
 
-  assert.doesNotMatch(
-    source,
-    /face\.trigger\b/,
-    'trigger guide must use normalized display trigger alternatives',
-  );
+  assert.doesNotMatch(source, /face\.trigger\b/, 'trigger guide must use normalized display trigger alternatives');
   assert.match(source, /displayTriggerKeys\(face\)/);
   assert.match(source, /combo\.keyVariants\s*\?\?\s*\[combo\.keys\]/);
 });
@@ -563,26 +438,10 @@ test('key pattern pickerはlayouts registryをruntime importしない', async ()
 test('playbackはFace classificationからpresentation layer帰属を再構成しない', async () => {
   const source = await readFile(join(SRC, 'interpretation/timing/playback.ts'), 'utf8');
 
-  assert.doesNotMatch(
-    source,
-    /\bclassifyFaces\b/,
-    'playback must group presentation faces directly by faceLayerIds',
-  );
-  assert.doesNotMatch(
-    source,
-    /face\.inputRole\b/,
-    'playback must not use legacy inputRole for presentation layer membership',
-  );
-  assert.doesNotMatch(
-    source,
-    /\bfaceLayerIds\b/,
-    'playback must consume compiled presentation Layer.id instead of raw faceLayerIds',
-  );
-  assert.doesNotMatch(
-    source,
-    /face\.trigger\b/,
-    'playback presentation matching must not reinterpret raw Face.trigger',
-  );
+  assert.doesNotMatch(source, /\bclassifyFaces\b/, 'playback must group presentation faces directly by faceLayerIds');
+  assert.doesNotMatch(source, /face\.inputRole\b/, 'playback must not use legacy inputRole for presentation layer membership');
+  assert.doesNotMatch(source, /\bfaceLayerIds\b/, 'playback must consume compiled presentation Layer.id instead of raw faceLayerIds');
+  assert.doesNotMatch(source, /face\.trigger\b/, 'playback presentation matching must not reinterpret raw Face.trigger');
   assert.match(
     source,
     /matchesDisplayTriggerAlternative\(face, triggerKeys\)/,
@@ -595,11 +454,7 @@ test('Strokeはlegacy Face semanticを再投影しない', async () => {
   const source = await readFile(path, 'utf8');
 
   for (const symbol of ['InputRole', 'inputRole', 'TriggerPersistence', 'triggerPersistence']) {
-    assert.equal(
-      source.includes(symbol),
-      false,
-      `generate.ts must not project legacy Face semantic onto Stroke: ${symbol}`,
-    );
+    assert.equal(source.includes(symbol), false, `generate.ts must not project legacy Face semantic onto Stroke: ${symbol}`);
   }
 });
 
@@ -607,29 +462,20 @@ test('Metricsはlegacy inputRoleへ依存しない', async () => {
   const path = join(SRC, 'interpretation/metrics.ts');
   const source = await readFile(path, 'utf8');
 
-  assert.doesNotMatch(
-    source,
-    /\binputRole\b/,
-    'metrics.ts must use canonical / realized facts instead of legacy inputRole',
-  );
+  assert.doesNotMatch(source, /\binputRole\b/, 'metrics.ts must use canonical / realized facts instead of legacy inputRole');
 });
 
 test('PlaybackCalibrationはstructural analysisへ依存しない', async () => {
   const path = join(SRC, 'interpretation/timing/calibration.ts');
   const source = await readFile(path, 'utf8');
-  const structuralImports = moduleSpecifiers(source)
-    .filter((specifier) => /(?:^|\/)analysis-/.test(specifier));
+  const structuralImports = moduleSpecifiers(source).filter((specifier) => /(?:^|\/)analysis-/.test(specifier));
 
   assert.deepEqual(structuralImports, []);
 });
 
 test('SandS trigger presentationはlayout IDへ依存しない', async () => {
   const layersSource = await readFile(join(SRC, 'input', 'layouts', 'layers.ts'), 'utf8');
-  assert.doesNotMatch(
-    layersSource,
-    /layout\.id\s*===/,
-    'layers presentation helper must use explicit Face metadata instead of layout ID',
-  );
+  assert.doesNotMatch(layersSource, /layout\.id\s*===/, 'layers presentation helper must use explicit Face metadata instead of layout ID');
 
   for (const file of ['analyzers/keymap/trigger-guide.ts', 'analyzers/keymap/layout-breakdown.ts']) {
     const source = await readFile(join(SRC, file), 'utf8');
@@ -638,52 +484,27 @@ test('SandS trigger presentationはlayout IDへ依存しない', async () => {
       /naginata-v18|naginataDetail|data-naginata-layer-detail|layout\.id/,
       `${file} must use explicit layout metadata instead of layout identity branches`,
     );
-    assert.doesNotMatch(
-      source,
-      /isNaginataCenterShift|displayLayerLegend/,
-      `${file}: legacy SandS presentation inference helpers must not return`,
-    );
+    assert.doesNotMatch(source, /isNaginataCenterShift|displayLayerLegend/, `${file}: legacy SandS presentation inference helpers must not return`);
   }
 });
 
 test('structural analysisはbuilt-in layoutのID/nameへ依存しない', async () => {
-  const builtInLayoutLiterals = new Set(
-    [...LAYOUTS, ...LAYOUTS_JA]
-      .flatMap((layout) => [layout.id, layout.name]),
-  );
+  const builtInLayoutLiterals = new Set([...LAYOUTS, ...LAYOUTS_JA].flatMap((layout) => [layout.id, layout.name]));
 
   for (const { path, source } of await sourcesIn('interpretation', 'structure')) {
     for (const specifier of moduleSpecifiers(source)) {
-      assert.equal(
-        specifier.startsWith('./layouts/'),
-        false,
-        `${relative(ROOT, path)} must not import layout authoring modules: ${specifier}`,
-      );
+      assert.equal(specifier.startsWith('./layouts/'), false, `${relative(ROOT, path)} must not import layout authoring modules: ${specifier}`);
     }
 
-    assert.doesNotMatch(
-      source,
-      /\binputRole\b/,
-      `${relative(ROOT, path)} must not depend on legacy inputRole`,
-    );
+    assert.doesNotMatch(source, /\binputRole\b/, `${relative(ROOT, path)} must not depend on legacy inputRole`);
 
-    assert.doesNotMatch(
-      source,
-      /\blayout(?:Id|Name)\b|\blayout\s*\.\s*(?:id|name)\b/,
-      `${relative(ROOT, path)} must not branch on layout ID/name`,
-    );
+    assert.doesNotMatch(source, /\blayout(?:Id|Name)\b|\blayout\s*\.\s*(?:id|name)\b/, `${relative(ROOT, path)} must not branch on layout ID/name`);
 
-    const stringLiterals = new Set([
-      ...source.matchAll(/'([^'\r\n]+)'/g),
-      ...source.matchAll(/"([^"\r\n]+)"/g),
-      ...source.matchAll(/`([^`\r\n]+)`/g),
-    ].map((match) => match[1]));
+    const stringLiterals = new Set(
+      [...source.matchAll(/'([^'\r\n]+)'/g), ...source.matchAll(/"([^"\r\n]+)"/g), ...source.matchAll(/`([^`\r\n]+)`/g)].map((match) => match[1]),
+    );
     for (const literal of builtInLayoutLiterals) {
-      assert.equal(
-        stringLiterals.has(literal),
-        false,
-        `${relative(ROOT, path)} must not hard-code built-in layout ID/name: ${literal}`,
-      );
+      assert.equal(stringLiterals.has(literal), false, `${relative(ROOT, path)} must not hard-code built-in layout ID/name: ${literal}`);
     }
   }
 });
@@ -710,11 +531,7 @@ test('廃止済みのlegacy symbol / production helperをsrcへ再導入しな�
   for (const path of await tsFiles(SRC)) {
     const source = await readFile(path, 'utf8');
     for (const symbol of forbiddenEverywhere) {
-      assert.equal(
-        source.includes(symbol),
-        false,
-        `${relative(ROOT, path)} reintroduced legacy symbol: ${symbol}`,
-      );
+      assert.equal(source.includes(symbol), false, `${relative(ROOT, path)} reintroduced legacy symbol: ${symbol}`);
     }
   }
 
@@ -723,16 +540,9 @@ test('廃止済みのlegacy symbol / production helperをsrcへ再導入しな�
   assert.equal(sourcePaths.includes('hold-start-action.ts'), false);
 });
 
-
-
-
 test('旧画面の入口と転送を復活させない', async () => {
   const rootEntries = await readdir(ROOT);
-  for (const path of [
-    'legacy.html',
-    'vite.legacy.config.ts',
-    'playwright.legacy.config.ts',
-  ]) {
+  for (const path of ['legacy.html', 'vite.legacy.config.ts', 'playwright.legacy.config.ts']) {
     assert.equal(rootEntries.includes(path), false, `${path} must remain retired`);
   }
 

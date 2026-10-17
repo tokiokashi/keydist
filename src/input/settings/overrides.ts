@@ -51,33 +51,29 @@ export function emptyCascadeOverrides<V>(): CascadeOverrides<V> {
  * は逆に外部データの境界として`__proto__`等を診断付きで積極的に捨てる。使い分けは
  * `input/settings/codec.ts`参照）。
  */
-function readBucketEntry<V>(
-  bucket: Readonly<Record<string, LevelOverrides<V>>> | undefined,
-  instanceKey: string,
-): LevelOverrides<V> | undefined {
+function readBucketEntry<V>(bucket: Readonly<Record<string, LevelOverrides<V>>> | undefined, instanceKey: string): LevelOverrides<V> | undefined {
   return bucket !== undefined && Object.hasOwn(bucket, instanceKey) ? bucket[instanceKey] : undefined;
 }
 
-function writeBucketEntry<V>(
-  bucket: Record<string, LevelOverrides<V>>,
-  instanceKey: string,
-  value: LevelOverrides<V>,
-): void {
+function writeBucketEntry<V>(bucket: Record<string, LevelOverrides<V>>, instanceKey: string, value: LevelOverrides<V>): void {
   Object.defineProperty(bucket, instanceKey, { value, writable: true, enumerable: true, configurable: true });
 }
 
 /** 指定レベルに保存されている上書き（無ければundefined）。 */
-export function levelOverrides<V>(
-  overrides: CascadeOverrides<V>,
-  level: CascadeLevel,
-): LevelOverrides<V> | undefined {
+export function levelOverrides<V>(overrides: CascadeOverrides<V>, level: CascadeLevel): LevelOverrides<V> | undefined {
   switch (level.kind) {
-    case 'global': return overrides.global;
-    case 'workspace': return overrides.workspace;
-    case 'shape': return readBucketEntry(overrides.shape, level.shapeId);
-    case 'inputMethod': return readBucketEntry(overrides.inputMethod, level.inputMethod);
-    case 'layout': return readBucketEntry(overrides.layout, level.layoutId);
-    case 'setup': return readBucketEntry(overrides.setup, level.setupId);
+    case 'global':
+      return overrides.global;
+    case 'workspace':
+      return overrides.workspace;
+    case 'shape':
+      return readBucketEntry(overrides.shape, level.shapeId);
+    case 'inputMethod':
+      return readBucketEntry(overrides.inputMethod, level.inputMethod);
+    case 'layout':
+      return readBucketEntry(overrides.layout, level.layoutId);
+    case 'setup':
+      return readBucketEntry(overrides.setup, level.setupId);
   }
 }
 
@@ -89,11 +85,7 @@ export function levelOverrides<V>(
  * `resolveDefaultShapeId`）では、その前段として「特定の1レベルに書かれた生の値」だけが
  * 要ることがある。`levelOverrides`を1項目ぶんに絞るだけの薄いヘルパー。
  */
-export function readOverride<V, K extends keyof V>(
-  overrides: CascadeOverrides<V>,
-  level: CascadeLevel,
-  itemId: K,
-): V[K] | undefined {
+export function readOverride<V, K extends keyof V>(overrides: CascadeOverrides<V>, level: CascadeLevel, itemId: K): V[K] | undefined {
   const stored = levelOverrides(overrides, level);
   return stored === undefined ? undefined : stored[itemId];
 }
@@ -102,11 +94,7 @@ export function readOverride<V, K extends keyof V>(
  * 指定レベルの上書きを丸ごと置き換えた新しいCascadeOverridesを返す（イミュータブル）。
  * `next` が `undefined` ならそのレベルのエントリごと消す（空オブジェクトを残さない）。
  */
-export function withLevelOverrides<V>(
-  overrides: CascadeOverrides<V>,
-  level: CascadeLevel,
-  next: LevelOverrides<V> | undefined,
-): CascadeOverrides<V> {
+export function withLevelOverrides<V>(overrides: CascadeOverrides<V>, level: CascadeLevel, next: LevelOverrides<V> | undefined): CascadeOverrides<V> {
   if (level.kind === 'global') {
     if (next === undefined) {
       const { global: _drop, ...rest } = overrides;
@@ -129,13 +117,8 @@ export function withLevelOverrides<V>(
   // sourceが（`writeBucketEntry`経由で）own property "__proto__" を持っていても
   // 正しくコピーされる（bracket代入の[[Set]]経路ではないのでexotic setterを踏まない）。
   const bucket = { ...(overrides[bucketKey] as Record<string, LevelOverrides<V>> | undefined) };
-  const instanceKey = level.kind === 'shape'
-    ? level.shapeId
-    : level.kind === 'inputMethod'
-      ? level.inputMethod
-      : level.kind === 'layout'
-        ? level.layoutId
-        : level.setupId;
+  const instanceKey =
+    level.kind === 'shape' ? level.shapeId : level.kind === 'inputMethod' ? level.inputMethod : level.kind === 'layout' ? level.layoutId : level.setupId;
 
   if (next === undefined) {
     // deleteは対象のown propertyしか消さない。bucketがinstanceKeyをown propertyとして

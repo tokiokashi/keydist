@@ -39,14 +39,23 @@ test('母音で始まるかなには促音形を作らない', () => {
 test('合成した配列は1かなを複数ステップへ展開する', () => {
   const t = generateTrace('し', ja, geometry, opts);
   assert.equal(t.strokes.length, 2);
-  assert.deepEqual(t.strokes.map((s) => s.presses[0].keys[0].id), ['s', 'i']);
+  assert.deepEqual(
+    t.strokes.map((s) => s.presses[0].keys[0].id),
+    ['s', 'i'],
+  );
 });
 
 test('ローマ字の各打鍵は展開前のかな単位を保持する', () => {
   const t = generateTrace('かし', ja, geometry, opts);
-  assert.deepEqual(t.strokes.map((s) => [s.inputChar, s.char]), [
-    ['か', 'k'], ['か', 'a'], ['し', 's'], ['し', 'i'],
-  ]);
+  assert.deepEqual(
+    t.strokes.map((s) => [s.inputChar, s.char]),
+    [
+      ['か', 'k'],
+      ['か', 'a'],
+      ['し', 's'],
+      ['し', 'i'],
+    ],
+  );
 });
 
 test('ローマ字テーブルを付けても刻印は英字配列のまま', () => {
@@ -92,9 +101,7 @@ test('日本語サンプルは全文字が打鍵列に入る', () => {
 
 test('同じテーブルを使う英字配列はステップ数が揃う', () => {
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
-  const counts = LAYOUTS.map(
-    (base) => computeMetrics(generateTrace(text, withRomaji(base, table), geometry, opts), geometry).strokes,
-  );
+  const counts = LAYOUTS.map((base) => computeMetrics(generateTrace(text, withRomaji(base, table), geometry, opts), geometry).strokes);
   assert.equal(new Set(counts).size, 1, `ステップ数が配列で異なる: ${counts}`);
 });
 
@@ -102,9 +109,7 @@ test('日本語の全配列が評価でき、未対応の文字を残さない',
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
   for (const layout of LAYOUTS_JA) {
     // JISの物理配列が要る配列（JISかな配列）は、JISの物理配列で測る
-    const layoutGeometry = layout.requiresJisShape === true
-      ? buildGeometry('jis-row-staggered', JIS_FINGER_ASSIGNMENT)
-      : geometry;
+    const layoutGeometry = layout.requiresJisShape === true ? buildGeometry('jis-row-staggered', JIS_FINGER_ASSIGNMENT) : geometry;
     const t = generateTrace(text, layout, layoutGeometry, opts);
     assert.equal(t.errors.length, 0, `${layout.name}: ${t.errors.join(' / ')}`);
     assert.equal(t.skipped, 0, `${layout.name} で ${t.skipped} 文字が打てない`);

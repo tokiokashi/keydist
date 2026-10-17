@@ -5,13 +5,7 @@ import { levelOverrides } from '#input/settings/index.ts';
 import { SETTINGS_ITEMS } from '#engine/settings-items.ts';
 import type { SettingsCascadeOverrides, SettingsValueMap } from '#engine/settings-items.ts';
 import { conditionItemLabel } from './condition-summary.ts';
-import {
-  applyResultText,
-  changedGlobalItemCount,
-  isSavableName,
-  presetRows,
-  skippedItemsText,
-} from './preset-panel.ts';
+import { applyResultText, changedGlobalItemCount, isSavableName, presetRows, skippedItemsText } from './preset-panel.ts';
 
 const LIBRARY: PresetLibrary<SettingsValueMap> = {
   presets: [
@@ -24,16 +18,22 @@ const LIBRARY: PresetLibrary<SettingsValueMap> = {
 test('presetRows: 全体の上書きが流し込み後と同じ行にだけ「今の値と同じ」が付く', () => {
   const overrides: SettingsCascadeOverrides = { global: { windowSize: 5, sfbHomeCost: false } };
   const rows = presetRows(LIBRARY, overrides);
-  assert.deepEqual(rows.map((row) => [row.name, row.sameAsCurrent]), [
-    ['厳しめ', true],
-    ['全部既定', false],
-    ['既定と同じ値を含む', false],
-  ]);
+  assert.deepEqual(
+    rows.map((row) => [row.name, row.sameAsCurrent]),
+    [
+      ['厳しめ', true],
+      ['全部既定', false],
+      ['既定と同じ値を含む', false],
+    ],
+  );
 });
 
 test('presetRows: 上書きが無ければ、空の値と、既定と同じ値だけのプリセットが同じになる', () => {
   const rows = presetRows(LIBRARY, {});
-  assert.deepEqual(rows.map((row) => row.sameAsCurrent), [false, true, true]);
+  assert.deepEqual(
+    rows.map((row) => row.sameAsCurrent),
+    [false, true, true],
+  );
 });
 
 test('presetRows: キーの並びが違っても同じ値なら同じとみなす', () => {
@@ -74,10 +74,7 @@ test('skippedItemsText: 行の名前へ写し、写せない項目は件数に�
 });
 
 test('applyResultText: 入れなかった項目があれば結果の行に添える', () => {
-  assert.equal(
-    applyResultText('厳しめ', 2, ['windowSize']).text,
-    '「厳しめ」の値にしました（2項目が変わりました）。入れなかった項目: 先読みN',
-  );
+  assert.equal(applyResultText('厳しめ', 2, ['windowSize']).text, '「厳しめ」の値にしました（2項目が変わりました）。入れなかった項目: 先読みN');
 });
 
 test('conditionItemLabel: モーダルの行の名前と一致する', () => {
@@ -99,12 +96,21 @@ test('presetRows: Workspaceは解決した値で比べる。全体N=7の画面�
   const view: SettingsCascadeOverrides = { global: { windowSize: 7 } };
   const rows = presetRows(LIBRARY, view, WORKSPACE);
   // 厳しめ(N=5・sfbHomeCost=false)・全部既定・N=3のどれも、今の値（N=7）とは違う
-  assert.deepEqual(rows.map((row) => row.sameAsCurrent), [false, false, false]);
+  assert.deepEqual(
+    rows.map((row) => row.sameAsCurrent),
+    [false, false, false],
+  );
   // 全体がN=7、WorkspaceがN=3の時は、N=3の既定と同じ値のプリセットが同じ
   const withWorkspace: SettingsCascadeOverrides = { global: { windowSize: 7 }, workspace: { windowSize: 3 } };
-  assert.deepEqual(presetRows(LIBRARY, withWorkspace, WORKSPACE).map((row) => row.sameAsCurrent), [false, true, true]);
+  assert.deepEqual(
+    presetRows(LIBRARY, withWorkspace, WORKSPACE).map((row) => row.sameAsCurrent),
+    [false, true, true],
+  );
   // Workspaceに値が無く全体が既定なら、既定のプリセットは同じ
-  assert.deepEqual(presetRows(LIBRARY, {}, WORKSPACE).map((row) => row.sameAsCurrent), [false, true, true]);
+  assert.deepEqual(
+    presetRows(LIBRARY, {}, WORKSPACE).map((row) => row.sameAsCurrent),
+    [false, true, true],
+  );
 });
 
 test('changedGlobalItemCount: Workspaceは継承した値で比べ、全体と同じ値の上書きの有無は数えない', () => {
@@ -127,5 +133,8 @@ test('Workspaceへ流し込む: プリセットに無い指の割当は、全体
   assert.equal(presetRows(library, { global: { fingerAssignmentId: 'X-custom' } }, WORKSPACE)[0]?.sameAsCurrent, false);
   // 全体に指の割当の上書きが無ければ入れなかった項目は無く、同じになる
   assert.equal(presetRows(library, {}, WORKSPACE)[0]?.sameAsCurrent, true);
-  assert.deepEqual(applyResultText('空', 0, ['fingerAssignmentId']), { text: '「空」で変わった項目はありませんでした。入れなかった項目: 指の割当', undoable: false });
+  assert.deepEqual(applyResultText('空', 0, ['fingerAssignmentId']), {
+    text: '「空」で変わった項目はありませんでした。入れなかった項目: 指の割当',
+    undoable: false,
+  });
 });

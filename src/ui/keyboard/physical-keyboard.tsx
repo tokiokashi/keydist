@@ -146,30 +146,29 @@ export function PhysicalKeyboard({
               key={key.id}
               data-selected={view?.selected || undefined}
               onClick={onKeyClick === undefined ? undefined : () => onKeyClick(key)}
-              {...(operable && onKeyClick !== undefined ? {
-                role: 'button',
-                tabIndex: 0,
-                'aria-pressed': view?.selected === true,
-                'aria-label': legend === '' ? physicalKeyDisplayLabel(key.id, standard) : `${physicalKeyDisplayLabel(key.id, standard)}（${legend}${view?.description === undefined ? '' : `。${view.description}`}）`,
-                onKeyDown: (event: KeyboardEvent<SVGGElement>) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    onKeyClick(key);
-                  } else if (event.key === 'Escape' && onEscape !== undefined) {
-                    event.stopPropagation();
-                    onEscape();
+              {...(operable && onKeyClick !== undefined
+                ? {
+                    role: 'button',
+                    tabIndex: 0,
+                    'aria-pressed': view?.selected === true,
+                    'aria-label':
+                      legend === ''
+                        ? physicalKeyDisplayLabel(key.id, standard)
+                        : `${physicalKeyDisplayLabel(key.id, standard)}（${legend}${view?.description === undefined ? '' : `。${view.description}`}）`,
+                    onKeyDown: (event: KeyboardEvent<SVGGElement>) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        onKeyClick(key);
+                      } else if (event.key === 'Escape' && onEscape !== undefined) {
+                        event.stopPropagation();
+                        onEscape();
+                      }
+                    },
                   }
-                },
-              } : {})}
+                : {})}
             >
               {view?.description === undefined ? null : <title>{view.description}</title>}
-              <rect
-                height={keyHeight}
-                rx={6}
-                width={keyWidth}
-                x={x}
-                y={y}
-              />
+              <rect height={keyHeight} rx={6} width={keyWidth} x={x} y={y} />
               {bands.length === 0 ? null : (
                 <>
                   {/* 帯がキーの角からはみ出さないよう、枠の内側の角丸で切り抜く */}
@@ -181,9 +180,8 @@ export function PhysicalKeyboard({
                       const sameEdge = bands.filter((other) => other.edge === band.edge).length;
                       const ratio = bandThicknessRatio(band.edge, sameEdge);
                       const thickness = (band.edge === 'bottom' ? keyHeight : keyWidth) * ratio;
-                      const left = band.edge === 'left' ? x + band.depth * thickness
-                        : band.edge === 'right' ? x + keyWidth - (band.depth + 1) * thickness
-                          : x;
+                      const left =
+                        band.edge === 'left' ? x + band.depth * thickness : band.edge === 'right' ? x + keyWidth - (band.depth + 1) * thickness : x;
                       const top = band.edge === 'bottom' ? y + keyHeight - (band.depth + 1) * thickness : y;
                       const bandWidth = band.edge === 'bottom' ? keyWidth : thickness;
                       const bandHeight = band.edge === 'bottom' ? thickness : keyHeight;
@@ -202,13 +200,7 @@ export function PhysicalKeyboard({
                   </g>
                 </>
               )}
-              <text
-                className="physical-keyboard-legend"
-                style={{ fontSize: legendFontSize }}
-                textAnchor="middle"
-                x={legendX}
-                y={legendY}
-              >
+              <text className="physical-keyboard-legend" style={{ fontSize: legendFontSize }} textAnchor="middle" x={legendX} y={legendY}>
                 {legend}
               </text>
               {view?.home ? (

@@ -37,7 +37,10 @@ test('座標: 位置0は左端、最後の位置は右端で、位置から座�
 test('縦軸は最大値の1.1倍（下限は1.1）で、値の無い点は線に含めない', () => {
   const model = rateChartModel(points([{ actionsPerSecond: 2 }, { kanaPerSecond: 1, actionsPerSecond: 3 }]), NONE)!;
   assert.equal(model.yMax, 3 * 1.1);
-  assert.deepEqual(model.yTicks.map((tick) => tick.value), [0, 3 * 1.1 * 0.5, 3 * 1.1]);
+  assert.deepEqual(
+    model.yTicks.map((tick) => tick.value),
+    [0, 3 * 1.1 * 0.5, 3 * 1.1],
+  );
   // かな/秒は位置2の1点だけ、アクション/秒は位置1・2の2点
   assert.equal(model.kanaDots.length, 1);
   assert.equal(model.actionDots.length, 2);
@@ -57,8 +60,14 @@ test('帯: 連続する区間を1本にまとめ、表示を選んだ種類だ�
     { kind: 'chain', ...span(4, 6) },
     { kind: 'arpeggio', ...span(3, 4) },
   ]);
-  assert.deepEqual(rateChartModel(data, { chain: true, arpeggio: false })!.bands.map((band) => band.kind), ['chain', 'chain']);
-  assert.deepEqual(rateChartModel(data, { chain: false, arpeggio: true })!.bands.map((band) => band.kind), ['arpeggio']);
+  assert.deepEqual(
+    rateChartModel(data, { chain: true, arpeggio: false })!.bands.map((band) => band.kind),
+    ['chain', 'chain'],
+  );
+  assert.deepEqual(
+    rateChartModel(data, { chain: false, arpeggio: true })!.bands.map((band) => band.kind),
+    ['arpeggio'],
+  );
   assert.deepEqual(rateChartModel(data, NONE)!.bands, []);
 });
 
@@ -71,8 +80,14 @@ test('点の丸は、点が多い時は描かない', () => {
 });
 
 test('横軸の目盛りは先頭・中央・末尾で、打鍵が1つなら重ならない', () => {
-  assert.deepEqual(rateChartModel(points([{}, {}, {}, {}]), NONE)!.xTicks.map((tick) => tick.value), [0, 2, 4]);
-  assert.deepEqual(rateChartModel(points([{}]), NONE)!.xTicks.map((tick) => tick.value), [0, 1]);
+  assert.deepEqual(
+    rateChartModel(points([{}, {}, {}, {}]), NONE)!.xTicks.map((tick) => tick.value),
+    [0, 2, 4],
+  );
+  assert.deepEqual(
+    rateChartModel(points([{}]), NONE)!.xTicks.map((tick) => tick.value),
+    [0, 1],
+  );
 });
 
 test('読み上げ: 値の無い項目は「—」、あれば小数2桁', () => {
@@ -80,16 +95,13 @@ test('読み上げ: 値の無い項目は「—」、あれば小数2桁', () =>
     rateChartReadout({ cursor: 2, inputText: 'かあ', kanaPerSecond: 1 / 1.2, actionsPerSecond: 1.25 }),
     '2ステップ目、集計入力「かあ」、かな/秒は0.83、アクション/秒は1.25',
   );
-  assert.equal(
-    rateChartReadout({ cursor: 0, inputText: '' }),
-    '0ステップ目、集計入力「—」、かな/秒は—、アクション/秒は—',
-  );
+  assert.equal(rateChartReadout({ cursor: 0, inputText: '' }), '0ステップ目、集計入力「—」、かな/秒は—、アクション/秒は—');
 });
 
 test('横軸の左右の余白の割合は、再生位置0と最後のx座標と一致する', () => {
   const insets = rateChartAxisInsets();
-  assert.equal(parseFloat(insets.left) / 100 * RATE_CHART_WIDTH, rateChartX(0, 10));
-  assert.equal(RATE_CHART_WIDTH - parseFloat(insets.right) / 100 * RATE_CHART_WIDTH, rateChartX(10, 10));
+  assert.equal((parseFloat(insets.left) / 100) * RATE_CHART_WIDTH, rateChartX(0, 10));
+  assert.equal(RATE_CHART_WIDTH - (parseFloat(insets.right) / 100) * RATE_CHART_WIDTH, rateChartX(10, 10));
 });
 
 test('揃える範囲: 報告は0を含む値の範囲で、値が無ければ報告しない', () => {

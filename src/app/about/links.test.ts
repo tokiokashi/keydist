@@ -20,7 +20,10 @@ test('アンカー付きのリンクは、仕様書に実在する見出しを�
   assert.ok(anchored.length > 0);
   for (const link of anchored) {
     const lines = readFileSync(join(ROOT, link.path), 'utf8').split('\n');
-    assert.ok(lines.some((line) => /^#{1,6} /.test(line) && line.replace(/^#+ /, '') === link.heading), `${link.path} に見出し「${link.heading}」が無い`);
+    assert.ok(
+      lines.some((line) => /^#{1,6} /.test(line) && line.replace(/^#+ /, '') === link.heading),
+      `${link.path} に見出し「${link.heading}」が無い`,
+    );
   }
 });
 

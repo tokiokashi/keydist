@@ -222,13 +222,15 @@ const FIXTURE_MEMBERS: readonly AnalyzerSetMember[] = [
     trace: FIXTURE_TRACE,
     analysis: { chains: [], arpeggios: [] } as unknown as AnalyzerSetMember['analysis'],
     metrics: fixtureMetrics(),
-    requestTrace: { requestTrace: () => { throw new Error('unused'); } },
+    requestTrace: {
+      requestTrace: () => {
+        throw new Error('unused');
+      },
+    },
   },
 ];
 
-const FIXTURE_FAILURES: readonly AnalyzerSetMemberFailure[] = [
-  { target: FIXTURE_MISSING, kind: 'reference', message: LAYOUT_MISSING_REASON },
-];
+const FIXTURE_FAILURES: readonly AnalyzerSetMemberFailure[] = [{ target: FIXTURE_MISSING, kind: 'reference', message: LAYOUT_MISSING_REASON }];
 
 /**
  * engine（`engine/cache.ts` の `getSetExtraction`）が呼ぶ、Analyzer契約の実体。

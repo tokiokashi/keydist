@@ -53,12 +53,7 @@ test('traceConditionSummary: setupレベルで上書きすると出どころが�
   const resolution = resolveSetupForText(setupFor('qwerty'), CATALOG, NO_USER_LAYOUTS, 'en');
   assert.ok(resolution.ok);
   if (!resolution.ok) return;
-  const written = setSettingsOverride(
-    EMPTY_SETTINGS_OVERRIDES,
-    { kind: 'setup', setupId: 'setup-1' },
-    'windowSize',
-    5,
-  );
+  const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'setup', setupId: 'setup-1' }, 'windowSize', 5);
   assert.ok(written.ok);
   const cascade = resolveSettings(written.ok ? written.overrides : EMPTY_SETTINGS_OVERRIDES, resolution.context);
   const rows = traceConditionSummary(cascade);
@@ -90,8 +85,8 @@ test('conditionHeaderInfo: 配列・物理配列・指割当の名前を集め�
 
 test('conditionHeaderInfoFromResolvedInput: ResolvedInputのgeometryから名前を集める', () => {
   const result = resolveEngineInput({
-    target: { kind: 'setup', setupId: (setupFor('qwerty')).id },
-    setups: new Map([[(setupFor('qwerty')).id, setupFor('qwerty')]]),
+    target: { kind: 'setup', setupId: setupFor('qwerty').id },
+    setups: new Map([[setupFor('qwerty').id, setupFor('qwerty')]]),
     catalog: CATALOG,
     userLayouts: NO_USER_LAYOUTS,
     overrides: EMPTY_SETTINGS_OVERRIDES,
@@ -133,7 +128,13 @@ test('複数の指が担当するキーを持つ指の割当で測った時は�
   // 自作でも、担当を持つ割当は同じ語を添える。持たない割当は添えない
   const custom = { ...structuredClone(QWERTY_OPTIMIZED_FINGER_ASSIGNMENT), id: 'finger-custom', name: 'マイ' };
   const plain = { ...structuredClone(DEFAULT_FINGER_ASSIGNMENT), id: 'finger-plain', name: 'マイ2' };
-  const names = { ...CATALOG, fingerAssignments: new Map([[custom.id, custom], [plain.id, plain]]) };
+  const names = {
+    ...CATALOG,
+    fingerAssignments: new Map([
+      [custom.id, custom],
+      [plain.id, plain],
+    ]),
+  };
   const customRow = (id: string) => {
     const customWritten = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'fingerAssignmentId', id);
     assert.ok(customWritten.ok);
@@ -145,7 +146,10 @@ test('複数の指が担当するキーを持つ指の割当で測った時は�
   };
   assert.equal(customRow(custom.id), '自作の指の割当（複数の指が担当するキーあり）');
   assert.equal(customRow(plain.id), '自作の指の割当');
-  assert.equal(conditionHeaderInfo(LAYOUT_BY_ID.get('qwerty')!, PHYSICAL_SHAPES['row-staggered'], DEFAULT_FINGER_ASSIGNMENT).fingerAssignmentName, DEFAULT_FINGER_ASSIGNMENT.name);
+  assert.equal(
+    conditionHeaderInfo(LAYOUT_BY_ID.get('qwerty')!, PHYSICAL_SHAPES['row-staggered'], DEFAULT_FINGER_ASSIGNMENT).fingerAssignmentName,
+    DEFAULT_FINGER_ASSIGNMENT.name,
+  );
 });
 
 function resolveWith(
@@ -176,7 +180,10 @@ test('nonDefaultConditionRows: 効かない行（Setup対象の既定の物理�
   for (const setup of setups) {
     const input = resolveWith({ kind: 'setup', setupId: setup.id }, setups, written.overrides, 'en');
     const rows = nonDefaultConditionRows(traceConditionSummary(input.cascade, { shapes: CATALOG.shapes }));
-    assert.deepEqual(rows.map((row) => row.id), []);
+    assert.deepEqual(
+      rows.map((row) => row.id),
+      [],
+    );
     assert.equal(summarizeNonDefaultConditions(rows), undefined);
   }
 });
@@ -197,7 +204,10 @@ test('nonDefaultConditionRows: 既定の物理配列は物理配列名として�
   if (!written.ok) return;
   const input = resolveWith({ kind: 'layout', layoutId: 'qwerty' }, [], written.overrides, 'en');
   const rows = nonDefaultConditionRows(traceConditionSummary(input.cascade, CATALOG));
-  assert.deepEqual(rows.map((row) => row.id), []);
+  assert.deepEqual(
+    rows.map((row) => row.id),
+    [],
+  );
 });
 
 test('traceConditionSummary: 値・上書きの適用範囲のidは名前へ引き、引けないidも画面に出さない', () => {
@@ -233,18 +243,16 @@ test('conditionDiagnosticText: 項目id・レベル名を含む診断文は出�
 });
 
 test('nonDefaultConditionRows: かな直接の配列ではローマ字規則の上書きを併記しない', () => {
-  const written = setSettingsOverride(
-    EMPTY_SETTINGS_OVERRIDES,
-    { kind: 'layout', layoutId: 'nicola' },
-    'romajiRuleId',
-    'hepburn',
-  );
+  const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'layout', layoutId: 'nicola' }, 'romajiRuleId', 'hepburn');
   assert.ok(written.ok);
   if (!written.ok) return;
   const input = resolveWith({ kind: 'layout', layoutId: 'nicola' }, [], written.overrides, 'ja');
   const summary = traceConditionSummary(input.cascade);
   assert.equal(summary.find((row) => row.id === 'romajiRuleId')?.origin.kind, 'layout');
-  assert.deepEqual(nonDefaultConditionRows(summary).map((row) => row.id), []);
+  assert.deepEqual(
+    nonDefaultConditionRows(summary).map((row) => row.id),
+    [],
+  );
 });
 
 function withGlobalRomaji(ruleId: string) {
@@ -256,12 +264,12 @@ function withGlobalRomaji(ruleId: string) {
 
 test('全体のローマ字規則: 推奨の無いローマ字入力の配列だけが変えた項目に数える。大西配列・かな配列は数えない', () => {
   const overrides = withGlobalRomaji('azik');
-  const rowsOf = (layoutId: string) => traceConditionSummary(
-    resolveWith({ kind: 'layout', layoutId }, [], overrides, 'ja').cascade,
-    CATALOG,
-  );
+  const rowsOf = (layoutId: string) => traceConditionSummary(resolveWith({ kind: 'layout', layoutId }, [], overrides, 'ja').cascade, CATALOG);
   const qwerty = rowsOf('qwerty');
-  assert.deepEqual(nonDefaultConditionRows(qwerty).map((row) => row.id), ['romajiRuleId']);
+  assert.deepEqual(
+    nonDefaultConditionRows(qwerty).map((row) => row.id),
+    ['romajiRuleId'],
+  );
   assert.equal(qwerty.find((row) => row.id === 'romajiRuleId')!.originLabel, '上書き: 全体');
 
   // 大西配列・TK音直入力法は推奨のまま（数えない）。負けた全体は行の印から分かる
@@ -277,10 +285,10 @@ test('全体のローマ字規則: 推奨の無いローマ字入力の配列だ
 });
 
 test('全体未設定でも、大西配列は推奨が全体の既定に勝つので理由の印が立つ。TK音直入力法と QWERTY は立たない', () => {
-  const flagOf = (layoutId: string) => traceConditionSummary(
-    resolveWith({ kind: 'layout', layoutId }, [], EMPTY_SETTINGS_OVERRIDES, 'ja').cascade,
-    CATALOG,
-  ).find((row) => row.id === 'romajiRuleId')!;
+  const flagOf = (layoutId: string) =>
+    traceConditionSummary(resolveWith({ kind: 'layout', layoutId }, [], EMPTY_SETTINGS_OVERRIDES, 'ja').cascade, CATALOG).find(
+      (row) => row.id === 'romajiRuleId',
+    )!;
   const oonishi = flagOf('oonishi');
   assert.equal(oonishi.recommendationWinsOverGlobal, true);
   assert.equal(oonishi.origin.kind, 'default');
@@ -290,15 +298,24 @@ test('全体未設定でも、大西配列は推奨が全体の既定に勝つ�
 
 test('全体のローマ字規則: 共通の行は全体の値で、推奨を持つ対象だけが差に出る（効かない対象は数えない）', () => {
   const overrides = withGlobalRomaji('azik');
-  const summary = summarize(setupTargets([
-    { layoutId: 'qwerty', shapeId: 'row-staggered' },
-    { layoutId: 'oonishi', shapeId: 'row-staggered' },
-    { layoutId: 'nicola', shapeId: 'row-staggered' },
-  ], 'ja', overrides));
+  const summary = summarize(
+    setupTargets(
+      [
+        { layoutId: 'qwerty', shapeId: 'row-staggered' },
+        { layoutId: 'oonishi', shapeId: 'row-staggered' },
+        { layoutId: 'nicola', shapeId: 'row-staggered' },
+      ],
+      'ja',
+      overrides,
+    ),
+  );
   const common = summary.rows.find((row) => row.id === 'romajiRuleId')!;
   assert.equal(common.originLabel, '上書き: 全体');
   assert.equal(common.displayValue.startsWith('AZIK'), true);
-  assert.deepEqual(diffValue(summary, 'romajiRuleId').map(([key]) => key), ['t2']);
+  assert.deepEqual(
+    diffValue(summary, 'romajiRuleId').map(([key]) => key),
+    ['t2'],
+  );
 });
 
 test('traceConditionSummary: シフト系キーの2項目は選べる主な値で出す（「(詳細設定)」にしない）', () => {
@@ -313,11 +330,14 @@ test('traceConditionSummary: シフト系キーの2項目は選べる主な値�
   let overrides = EMPTY_SETTINGS_OVERRIDES;
   for (const [id, value] of [
     ['triggerRealizationPolicy', { useHold: true }],
-    ['actionRealizationPolicy', {
-      triggerActivation: 'semantic',
-      triggerActivationClassOverrides: { 'order-free': 'separate' },
-      triggerActivationOverrides: [],
-    }],
+    [
+      'actionRealizationPolicy',
+      {
+        triggerActivation: 'semantic',
+        triggerActivationClassOverrides: { 'order-free': 'separate' },
+        triggerActivationOverrides: [],
+      },
+    ],
   ] as const) {
     const written = setSettingsOverride(overrides, { kind: 'global' }, id, value as never);
     assert.ok(written.ok, id);
@@ -347,7 +367,10 @@ test('チェーン・アルペジオを全体で変えても、宣言しない�
     ['chainInterpretation', { ...DEFAULT_CHAIN_INTERPRETATION, breakOnTriggerOnly: true }],
     ['arpeggioInterpretation', { ...DEFAULT_ARPEGGIO_INTERPRETATION, includeThumb: true }],
   ]);
-  assert.equal(rows.some((row) => row.id === 'chainInterpretation' || row.id === 'arpeggioInterpretation'), false);
+  assert.equal(
+    rows.some((row) => row.id === 'chainInterpretation' || row.id === 'arpeggioInterpretation'),
+    false,
+  );
   assert.equal(conditionSummaryLine(rows).changedCount, 0);
   assert.equal(summarizeNonDefaultConditions(nonDefaultConditionRows(rows)), undefined);
 });
@@ -379,48 +402,61 @@ test('conditionSummaryLine: 変えた項目の先頭2件（項目の定義順）
   ]);
   const line = conditionSummaryLine(rows);
   assert.equal(line.changedCount, 3);
-  assert.deepEqual(line.shown.map((row) => row.id), ['windowSize', 'sfbHomeCost']);
+  assert.deepEqual(
+    line.shown.map((row) => row.id),
+    ['windowSize', 'sfbHomeCost'],
+  );
   assert.equal(line.restCount, 1);
 });
 
 test('conditionSummaryLine: 効かない上書きは変えた項目に数えない', () => {
-  const rows = overrideRows([['windowSize', 5]]).map((row) => (
-    row.id === 'windowSize' ? { ...row, applicable: false } : row
-  ));
+  const rows = overrideRows([['windowSize', 5]]).map((row) => (row.id === 'windowSize' ? { ...row, applicable: false } : row));
   assert.equal(conditionSummaryLine(rows).changedCount, 0);
 });
 
 test('数えない時に例外だけ違う上書きは、変えた項目にも対象名の差分にも入れない', () => {
-  const rows = overrideRows([['actionRealizationPolicy', {
-    triggerActivation: 'disabled',
-    triggerActivationClassOverrides: { 'order-free': 'separate' },
-    triggerActivationOverrides: [],
-  }]]);
+  const rows = overrideRows([
+    [
+      'actionRealizationPolicy',
+      {
+        triggerActivation: 'disabled',
+        triggerActivationClassOverrides: { 'order-free': 'separate' },
+        triggerActivationOverrides: [],
+      },
+    ],
+  ]);
   const action = rows.find((row) => row.id === 'actionRealizationPolicy')!;
   assert.equal(action.origin.kind, 'global');
   assert.equal(conditionSummaryLine(rows).changedCount, 0);
-  assert.deepEqual(nonDefaultConditionRows(rows).map((row) => row.id), []);
+  assert.deepEqual(
+    nonDefaultConditionRows(rows).map((row) => row.id),
+    [],
+  );
   assert.equal(summarizeNonDefaultConditions(nonDefaultConditionRows(rows)), undefined);
 });
 
 test('数える時の上書きは、変えた項目にも対象名の差分にも入る', () => {
-  const rows = overrideRows([['actionRealizationPolicy', {
-    triggerActivation: 'semantic',
-    triggerActivationClassOverrides: {},
-    triggerActivationOverrides: [],
-  }]]);
+  const rows = overrideRows([
+    [
+      'actionRealizationPolicy',
+      {
+        triggerActivation: 'semantic',
+        triggerActivationClassOverrides: {},
+        triggerActivationOverrides: [],
+      },
+    ],
+  ]);
   assert.equal(conditionSummaryLine(rows).changedCount, 1);
-  assert.deepEqual(nonDefaultConditionRows(rows).map((row) => row.id), ['actionRealizationPolicy']);
+  assert.deepEqual(
+    nonDefaultConditionRows(rows).map((row) => row.id),
+    ['actionRealizationPolicy'],
+  );
 });
 
 type SettingWrite = readonly [string, 'windowSize' | 'sfbHomeCost' | 'preferOppositeThumb', number | boolean];
 
 /** setup-1..n（すべてqwerty）へ、Setupのレベルで上書きを書いた状態の、対象ごとの条件。 */
-function targetsWith(
-  global: readonly SettingWrite[],
-  bySetup: readonly (readonly SettingWrite[])[],
-  language: 'en' | 'ja' = 'en',
-) {
+function targetsWith(global: readonly SettingWrite[], bySetup: readonly (readonly SettingWrite[])[], language: 'en' | 'ja' = 'en') {
   let overrides = EMPTY_SETTINGS_OVERRIDES;
   const write = (level: Parameters<typeof setSettingsOverride>[1], id: SettingWrite[1], value: number | boolean) => {
     const written = setSettingsOverride(overrides, level, id, value as never);
@@ -432,10 +468,13 @@ function targetsWith(
   bySetup.forEach((writes, i) => {
     for (const [, id, value] of writes) write({ kind: 'setup', setupId: `s${i + 1}` }, id, value);
   });
-  return withOverrides(setups.map((setup) => {
-    const input = resolveWith({ kind: 'setup', setupId: setup.id }, setups, overrides, language);
-    return { key: setup.id, label: `Setup ${setup.id}`, rows: traceConditionSummary(input.cascade, CATALOG) };
-  }), overrides);
+  return withOverrides(
+    setups.map((setup) => {
+      const input = resolveWith({ kind: 'setup', setupId: setup.id }, setups, overrides, language);
+      return { key: setup.id, label: `Setup ${setup.id}`, rows: traceConditionSummary(input.cascade, CATALOG) };
+    }),
+    overrides,
+  );
 }
 
 /** 対象ごとの条件に、それを解決した上書きを添える（共通の行は全体のレベルの値から作るため）。 */
@@ -461,22 +500,31 @@ test('multiTargetConditionSummary: 1つだけNが違う時、共通のNは画面
   const n = summary.rows.find((row) => row.id === 'windowSize')!;
   assert.equal(n.displayValue, '3');
   assert.equal(n.originLabel, '既定値');
-  assert.deepEqual(summary.diffs, [
-    { key: 's2', label: 'Setup s2', items: [{ id: 'windowSize', label: '先読みN', displayValue: '2' }] },
-  ]);
+  assert.deepEqual(summary.diffs, [{ key: 's2', label: 'Setup s2', items: [{ id: 'windowSize', label: '先読みN', displayValue: '2' }] }]);
   assert.equal(conditionSummaryLine(summary.rows).changedCount, 0);
 });
 
 test('multiTargetConditionSummary: 別々の項目で違えば、それぞれ違う項目だけを持つ。効かない上書き（親指キーの無い配列の親指シフト振り替え）は数えない', () => {
-  const summary = summarize(targetsWith([], [
-    [['s', 'windowSize', 2], ['s', 'preferOppositeThumb', true]],
-    [['s', 'sfbHomeCost', false]],
-    [],
-  ]));
-  assert.deepEqual(summary.diffs.map((d) => [d.key, d.items.map((i) => i.id)]), [
-    ['s1', ['windowSize']],
-    ['s2', ['sfbHomeCost']],
-  ]);
+  const summary = summarize(
+    targetsWith(
+      [],
+      [
+        [
+          ['s', 'windowSize', 2],
+          ['s', 'preferOppositeThumb', true],
+        ],
+        [['s', 'sfbHomeCost', false]],
+        [],
+      ],
+    ),
+  );
+  assert.deepEqual(
+    summary.diffs.map((d) => [d.key, d.items.map((i) => i.id)]),
+    [
+      ['s1', ['windowSize']],
+      ['s2', ['sfbHomeCost']],
+    ],
+  );
 });
 
 test('multiTargetConditionSummary: 全体の上書きと同じ値を対象ごとに書いても差にしない', () => {
@@ -490,7 +538,13 @@ test('multiTargetConditionSummary: 全対象が同じ値へ上書きしても、
   const n = summary.rows.find((row) => row.id === 'windowSize')!;
   assert.equal(n.displayValue, '3');
   assert.equal(n.originLabel, '既定値');
-  assert.deepEqual(summary.diffs.map((d) => [d.key, d.items.map((i) => i.displayValue)]), [['s1', ['2']], ['s2', ['2']]]);
+  assert.deepEqual(
+    summary.diffs.map((d) => [d.key, d.items.map((i) => i.displayValue)]),
+    [
+      ['s1', ['2']],
+      ['s2', ['2']],
+    ],
+  );
 });
 
 /** Setup（配列 + 物理配列）を並べた時の、対象ごとの条件。 */
@@ -500,10 +554,13 @@ function setupTargets(
   overrides: typeof EMPTY_SETTINGS_OVERRIDES = EMPTY_SETTINGS_OVERRIDES,
 ) {
   const setups = specs.map((spec, i) => ({ id: `t${i + 1}`, number: i + 1, ...spec }));
-  return withOverrides(setups.map((setup) => {
-    const input = resolveWith({ kind: 'setup', setupId: setup.id }, setups, overrides, language);
-    return { key: setup.id, label: setup.id, rows: traceConditionSummary(input.cascade, CATALOG) };
-  }), overrides);
+  return withOverrides(
+    setups.map((setup) => {
+      const input = resolveWith({ kind: 'setup', setupId: setup.id }, setups, overrides, language);
+      return { key: setup.id, label: setup.id, rows: traceConditionSummary(input.cascade, CATALOG) };
+    }),
+    overrides,
+  );
 }
 
 function diffValue(summary: ReturnType<typeof multiTargetConditionSummary>, id: SettingsItemId) {
@@ -511,16 +568,24 @@ function diffValue(summary: ReturnType<typeof multiTargetConditionSummary>, id: 
 }
 
 test('multiTargetConditionSummary: ANSIとJISのQWERTYは、共通の指の割当は列固定で、JISだけが差に出る', () => {
-  const summary = summarize(setupTargets([
-    { layoutId: 'qwerty', shapeId: 'row-staggered' },
-    { layoutId: 'qwerty', shapeId: 'jis-row-staggered' },
-  ], 'en'));
+  const summary = summarize(
+    setupTargets(
+      [
+        { layoutId: 'qwerty', shapeId: 'row-staggered' },
+        { layoutId: 'qwerty', shapeId: 'jis-row-staggered' },
+      ],
+      'en',
+    ),
+  );
   assert.equal(summary.rows.find((row) => row.id === 'fingerAssignmentId')!.displayValue, '既定（列固定）');
   assert.deepEqual(diffValue(summary, 'fingerAssignmentId'), [['t2', 'JIS既定（列固定）']]);
 });
 
 test('multiTargetConditionSummary: QWERTYと大西配列は、並びによらず共通は訓令式で、大西配列だけが差に出る', () => {
-  const specs = [{ layoutId: 'qwerty', shapeId: 'row-staggered' }, { layoutId: 'oonishi', shapeId: 'row-staggered' }];
+  const specs = [
+    { layoutId: 'qwerty', shapeId: 'row-staggered' },
+    { layoutId: 'oonishi', shapeId: 'row-staggered' },
+  ];
   for (const ordered of [specs, [...specs].reverse()]) {
     const summary = summarize(setupTargets(ordered, 'ja'));
     const common = summary.rows.find((row) => row.id === 'romajiRuleId')!;
@@ -535,10 +600,16 @@ test('multiTargetConditionSummary: 物理配列のレベルの上書きが片方
   const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'shape', shapeId: 'ortholinear' }, 'fingerAssignmentId', 'jis-default');
   assert.ok(written.ok);
   if (!written.ok) return;
-  const summary = summarize(setupTargets([
-    { layoutId: 'qwerty', shapeId: 'row-staggered' },
-    { layoutId: 'qwerty', shapeId: 'ortholinear' },
-  ], 'en', written.overrides));
+  const summary = summarize(
+    setupTargets(
+      [
+        { layoutId: 'qwerty', shapeId: 'row-staggered' },
+        { layoutId: 'qwerty', shapeId: 'ortholinear' },
+      ],
+      'en',
+      written.overrides,
+    ),
+  );
   assert.equal(summary.rows.find((row) => row.id === 'fingerAssignmentId')!.displayValue, '既定（列固定）');
   assert.deepEqual(diffValue(summary, 'fingerAssignmentId'), [['t2', 'JIS既定（列固定）']]);
 });
@@ -553,23 +624,47 @@ test('multiTargetConditionSummary: 全体で指の割当を変え、全対象が
   write({ kind: 'global' }, 'jis-default');
   write({ kind: 'setup', setupId: 't1' }, 'default');
   write({ kind: 'setup', setupId: 't2' }, 'default');
-  const summary = summarize(setupTargets([
-    { layoutId: 'qwerty', shapeId: 'row-staggered' },
-    { layoutId: 'qwerty', shapeId: 'row-staggered' },
-  ], 'en', overrides));
+  const summary = summarize(
+    setupTargets(
+      [
+        { layoutId: 'qwerty', shapeId: 'row-staggered' },
+        { layoutId: 'qwerty', shapeId: 'row-staggered' },
+      ],
+      'en',
+      overrides,
+    ),
+  );
   const common = summary.rows.find((row) => row.id === 'fingerAssignmentId')!;
   assert.equal(common.displayValue, 'JIS既定（列固定）');
   assert.equal(common.origin.kind, 'global');
-  assert.deepEqual(diffValue(summary, 'fingerAssignmentId'), [['t1', '既定（列固定）'], ['t2', '既定（列固定）']]);
+  assert.deepEqual(diffValue(summary, 'fingerAssignmentId'), [
+    ['t1', '既定（列固定）'],
+    ['t2', '既定（列固定）'],
+  ]);
 });
 
 test('multiTargetConditionSummary: excludeIdsの項目は共通の行にも差にも出ない', () => {
   const summary = summarize(
-    targetsWith([], [[['s', 'windowSize', 2], ['s', 'sfbHomeCost', false]], []]),
+    targetsWith(
+      [],
+      [
+        [
+          ['s', 'windowSize', 2],
+          ['s', 'sfbHomeCost', false],
+        ],
+        [],
+      ],
+    ),
     { excludeIds: ['windowSize'] },
   );
-  assert.equal(summary.rows.some((row) => row.id === 'windowSize'), false);
-  assert.deepEqual(summary.diffs[0]!.items.map((i) => i.id), ['sfbHomeCost']);
+  assert.equal(
+    summary.rows.some((row) => row.id === 'windowSize'),
+    false,
+  );
+  assert.deepEqual(
+    summary.diffs[0]!.items.map((i) => i.id),
+    ['sfbHomeCost'],
+  );
 });
 
 test('multiTargetConditionSummary: 対象が無ければ空', () => {
@@ -582,10 +677,7 @@ test('multiTargetConditionSummary: 対象が無ければ空', () => {
 
 const PLAYBACK_SCOPE: ConditionSummaryScope = { extraIds: ['chainInterpretation', 'arpeggioInterpretation'] };
 
-function interpretationRows(
-  entries: readonly (readonly [string, unknown])[],
-  scope: ConditionSummaryScope,
-): readonly ConditionSummaryRow[] {
+function interpretationRows(entries: readonly (readonly [string, unknown])[], scope: ConditionSummaryScope): readonly ConditionSummaryRow[] {
   let overrides = EMPTY_SETTINGS_OVERRIDES;
   for (const [id, value] of entries) {
     const written = setSettingsOverride(overrides, { kind: 'global' }, id as never, value as never);
@@ -603,7 +695,10 @@ const INTERPRETATION_ENTRIES = [
 
 test('チェーンの区切り・アルペジオの数え方は、宣言しないペインの要約の数にも対象名の差分にも出ない', () => {
   const rows = interpretationRows(INTERPRETATION_ENTRIES, {});
-  assert.equal(rows.some((row) => row.id === 'chainInterpretation' || row.id === 'arpeggioInterpretation'), false);
+  assert.equal(
+    rows.some((row) => row.id === 'chainInterpretation' || row.id === 'arpeggioInterpretation'),
+    false,
+  );
   assert.equal(conditionSummaryLine(rows).changedCount, 0);
   assert.equal(summarizeNonDefaultConditions(nonDefaultConditionRows(rows)), undefined);
 });
@@ -614,13 +709,19 @@ test('打鍵再生のペインは、宣言した項目を定義順に要約へ�
   assert.deepEqual(ids, ['chainInterpretation', 'arpeggioInterpretation']);
   const line = conditionSummaryLine(rows);
   assert.equal(line.changedCount, 2);
-  assert.deepEqual(line.shown.map((row) => `${row.label}: ${row.displayValue}`), ['チェーンの区切り: 1項目を変更', 'アルペジオ: 1項目を変更']);
+  assert.deepEqual(
+    line.shown.map((row) => `${row.label}: ${row.displayValue}`),
+    ['チェーンの区切り: 1項目を変更', 'アルペジオ: 1項目を変更'],
+  );
   assert.equal(summarizeNonDefaultConditions(nonDefaultConditionRows(rows)), 'チェーンの区切り: 1項目を変更 ・ アルペジオ: 1項目を変更');
 });
 
 test('時間モデルと速度平均の項目は条件の項目に無い（打鍵再生の解析設定にある）', () => {
   const ids = Object.keys(SETTINGS_ITEMS);
-  assert.deepEqual(ids.filter((id) => id.startsWith('playback')), []);
+  assert.deepEqual(
+    ids.filter((id) => id.startsWith('playback')),
+    [],
+  );
 });
 
 test('conditionTriggerTitle: 単体の画面は条件の例を先に挙げ、今の「条件を見る・変える」で終える', () => {
@@ -631,10 +732,7 @@ test('conditionTriggerTitle: 単体の画面は条件の例を先に挙げ、今
     line: conditionSummaryLine(overrideRows([])),
     hasTargetDiffs: false,
   });
-  assert.equal(
-    title,
-    '条件は、結果に影響する設定をまとめたものです。例: 先読みN・同指連続のホーム復帰距離・親指シフトの振り替え。条件を見る・変える',
-  );
+  assert.equal(title, '条件は、結果に影響する設定をまとめたものです。例: 先読みN・同指連続のホーム復帰距離・親指シフトの振り替え。条件を見る・変える');
 });
 
 test('conditionTriggerTitle: 先読みNを隠すペイン（N感度）は、単体の画面もWorkspaceも先読みNを挙げない', () => {
@@ -665,7 +763,10 @@ test('conditionTriggerTitle: 先読みNを隠すペイン（N感度）は、単�
 });
 
 test('conditionTriggerTitle: Workspaceのペインは、例のあとに変えた項目の一覧を今と同じ形で続ける', () => {
-  const rows = overrideRows([['windowSize', 5], ['sfbHomeCost', false]]);
+  const rows = overrideRows([
+    ['windowSize', 5],
+    ['sfbHomeCost', false],
+  ]);
   assert.equal(
     conditionTriggerTitle({ rows, hiddenIds: [], compact: true, line: conditionSummaryLine(rows), hasTargetDiffs: false }),
     '条件は、結果に影響する設定をまとめたものです。例: 先読みN・同指連続のホーム復帰距離・親指シフトの振り替え。条件: 先読みN: 5 · 同指連続のホーム復帰距離: OFF',

@@ -12,7 +12,9 @@ export function HistoryConflictNotice() {
   return (
     <div className="shell-notice" role="status" data-history-conflict-notice="true" key={notice.serial}>
       <span className="shell-notice-text">{notice.text}</span>
-      <button type="button" aria-label="閉じる" title="閉じる" onClick={() => store.dismissNotice()}>×</button>
+      <button type="button" aria-label="閉じる" title="閉じる" onClick={() => store.dismissNotice()}>
+        ×
+      </button>
     </div>
   );
 }

@@ -81,14 +81,9 @@ function floatingRoot(): HTMLElement | null {
   return root;
 }
 
-function isInteractiveTarget(
-  target: EventTarget | null,
-  surface: HTMLElement,
-): boolean {
+function isInteractiveTarget(target: EventTarget | null, surface: HTMLElement): boolean {
   if (!(target instanceof HTMLElement)) return false;
-  const interactive = target.closest<HTMLElement>(
-    'button, input, select, textarea, a, [role="button"]',
-  );
+  const interactive = target.closest<HTMLElement>('button, input, select, textarea, a, [role="button"]');
   return interactive !== null && interactive !== surface;
 }
 
@@ -111,13 +106,7 @@ export function WorkspacePanel({
   const panel = state.panels[id];
   // registryをcapability / min size / floating既定サイズのauthorityにする。
   // consumer側propsで同じ値を重複指定しない。
-  const {
-    canFloat,
-    minWidth,
-    minHeight,
-    defaultFloatingWidth,
-    defaultFloatingHeight,
-  } = resolvePanelLayout(registry.get(id));
+  const { canFloat, minWidth, minHeight, defaultFloatingWidth, defaultFloatingHeight } = resolvePanelLayout(registry.get(id));
   const panelRef = useRef<HTMLElement>(null);
   const operationRef = useRef<PointerOperation | undefined>(undefined);
   // setPointerCaptureを呼んだ要素そのもの（header or resize handle）。
@@ -153,14 +142,15 @@ export function WorkspacePanel({
   const activateFromOwnTree = (event: { currentTarget: Element; target: EventTarget }) => {
     if (event.target instanceof Node && event.currentTarget.contains(event.target)) activate();
   };
-  const clamp = (rect: PanelRect) => clampPanelRectToViewport(
-    rect,
-    {
-      width: typeof window === 'undefined' ? rect.width : window.innerWidth,
-      height: typeof window === 'undefined' ? rect.height : window.innerHeight,
-    },
-    { minWidth, minHeight },
-  );
+  const clamp = (rect: PanelRect) =>
+    clampPanelRectToViewport(
+      rect,
+      {
+        width: typeof window === 'undefined' ? rect.width : window.innerWidth,
+        height: typeof window === 'undefined' ? rect.height : window.innerHeight,
+      },
+      { minWidth, minHeight },
+    );
 
   // pointermoveのhot pathではWorkspace stateを更新しない。
   // fixed panelのstyleへ直接反映し、pointer終了時だけstateへcommitすることで、
@@ -215,7 +205,6 @@ export function WorkspacePanel({
     setDragging(false);
     dispatch({ type: 'dock', id });
   };
-
 
   const controls: WorkspacePanelControls = { mode, float, dock, activate };
   const startDockedDetach = (event: ReactPointerEvent<HTMLElement>) => {
@@ -279,11 +268,7 @@ export function WorkspacePanel({
     };
     const finish = (pointerEvent?: PointerEvent) => {
       const current = detachOperationRef.current;
-      if (
-        pointerEvent !== undefined
-        && current !== undefined
-        && current.pointerId !== pointerEvent.pointerId
-      ) return;
+      if (pointerEvent !== undefined && current !== undefined && current.pointerId !== pointerEvent.pointerId) return;
       const finalRect = current?.detached ? current.latestRect : undefined;
       if (current?.detached) setDragging(false);
       clearDetachOperation();
@@ -304,10 +289,7 @@ export function WorkspacePanel({
     };
   };
 
-  const startPointerOperation = (
-    kind: PointerOperation['kind'],
-    event: ReactPointerEvent<HTMLElement>,
-  ) => {
+  const startPointerOperation = (kind: PointerOperation['kind'], event: ReactPointerEvent<HTMLElement>) => {
     if (kind === 'move' && isInteractiveTarget(event.target, event.currentTarget)) return;
     const rect = panel.rect;
     if (rect === undefined) return;
@@ -329,17 +311,19 @@ export function WorkspacePanel({
     if (operation?.pointerId !== event.pointerId) return;
     const dx = event.clientX - operation.startX;
     const dy = event.clientY - operation.startY;
-    const next = clamp(operation.kind === 'move'
-      ? {
-          ...operation.startRect,
-          x: operation.startRect.x + dx,
-          y: operation.startRect.y + dy,
-        }
-      : {
-          ...operation.startRect,
-          width: operation.startRect.width + dx,
-          height: operation.startRect.height + dy,
-        });
+    const next = clamp(
+      operation.kind === 'move'
+        ? {
+            ...operation.startRect,
+            x: operation.startRect.x + dx,
+            y: operation.startRect.y + dy,
+          }
+        : {
+            ...operation.startRect,
+            width: operation.startRect.width + dx,
+            height: operation.startRect.height + dy,
+          },
+    );
     operation.latestRect = next;
     applyTransientRect(next);
   };
@@ -409,22 +393,23 @@ export function WorkspacePanel({
   };
 
   const shellClassName = ['workspace-panel', className].filter(Boolean).join(' ');
-  const shellStyle: MotionStyle | undefined = mode === 'floating' && panel.rect !== undefined
-    ? {
-        left: panel.rect.x,
-        top: panel.rect.y,
-        width: panel.rect.width,
-        height: panel.rect.height,
-        zIndex,
-      }
-    : undefined;
+  const shellStyle: MotionStyle | undefined =
+    mode === 'floating' && panel.rect !== undefined
+      ? {
+          left: panel.rect.x,
+          top: panel.rect.y,
+          width: panel.rect.width,
+          height: panel.rect.height,
+          zIndex,
+        }
+      : undefined;
 
   const content = (
     <motion.section
       aria-label={ariaLabel}
       animate={{ scale: mode === 'floating' && dragging ? 1.012 : 1 }}
       className={shellClassName}
-      data-active={mode === 'floating' && active || undefined}
+      data-active={(mode === 'floating' && active) || undefined}
       data-dragging={dragging || undefined}
       data-floating={mode === 'floating' || undefined}
       data-restoring={restoring || undefined}
@@ -460,28 +445,19 @@ export function WorkspacePanel({
         data-floating={mode === 'floating' || undefined}
         onClick={mode === 'docked' ? onDockedHeaderClick : undefined}
         onKeyDown={mode === 'docked' ? onDockedHeaderKeyDown : undefined}
-        onPointerDown={mode === 'floating'
-          ? (event) => startPointerOperation('move', event)
-          : canFloat
-            ? startDockedDetach
-            : undefined}
+        onPointerDown={mode === 'floating' ? (event) => startPointerOperation('move', event) : canFloat ? startDockedDetach : undefined}
         onPointerMove={mode === 'floating' ? movePointerOperation : undefined}
         onPointerUp={mode === 'floating' ? endPointerOperation : undefined}
         onPointerCancel={mode === 'floating' ? endPointerOperation : undefined}
         onLostPointerCapture={mode === 'floating' ? losePointerOperation : undefined}
-        data-detachable={mode === 'docked' && canFloat || undefined}
+        data-detachable={(mode === 'docked' && canFloat) || undefined}
         role={mode === 'docked' && canFloat ? 'button' : undefined}
         tabIndex={mode === 'docked' && canFloat ? 0 : undefined}
       >
         {renderHeader(controls)}
         {mode === 'docked' ? renderDockedActions?.(controls) : null}
         {mode === 'floating' ? (
-          <button
-            aria-label={dockAriaLabel ?? `${ariaLabel}を元に戻す`}
-            className={dockClassName}
-            onClick={dock}
-            type="button"
-          >
+          <button aria-label={dockAriaLabel ?? `${ariaLabel}を元に戻す`} className={dockClassName} onClick={dock} type="button">
             戻す
           </button>
         ) : null}

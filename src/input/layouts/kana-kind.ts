@@ -62,7 +62,9 @@ export function classifyKanaOutput(output: string): KanaKind | undefined {
     ? '拗音'
     : FOREIGN_SMALL.includes(small)
       ? '外来音'
-      : small === WA_SMALL ? '合拗音' : undefined;
+      : small === WA_SMALL
+        ? '合拗音'
+        : undefined;
   if (family === undefined) return undefined;
   const prefix = VOICED.has(base) ? '濁音の' : SEMI_VOICED.has(base) ? '半濁音の' : '';
   return { name: `${prefix}${family}`, family, small };

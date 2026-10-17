@@ -17,8 +17,7 @@ import {
  * 隣接ホームの2次元距離が1uをわずかに超えるが、それは指の長さを補正した
  * 姿勢であって「開き」ではないため、超過の0点はそちらに置く。
  */
-export const homeSpacing = (geometry: Geometry, pair: [Finger, Finger]) =>
-  dist(geometry.homes[pair[0]], geometry.homes[pair[1]]);
+export const homeSpacing = (geometry: Geometry, pair: [Finger, Finger]) => dist(geometry.homes[pair[0]], geometry.homes[pair[1]]);
 
 export interface PairStat {
   pair: [Finger, Finger];
@@ -203,25 +202,23 @@ export const DEFAULT_METRIC_CONDITIONS: MetricConditions = {
   keepSymbols: false,
 };
 
-export function computeMetrics(
-  trace: Trace,
-  geometry: Geometry,
-  conditions: MetricConditions = DEFAULT_METRIC_CONDITIONS,
-): Metrics {
+export function computeMetrics(trace: Trace, geometry: Geometry, conditions: MetricConditions = DEFAULT_METRIC_CONDITIONS): Metrics {
   const tally = tallyPresses(trace);
   const keyCounts = new Map<string, number>();
   const keyDistance = new Map<string, number>();
   const layerStats = trace.layerDefinitions
     .filter((definition) => definition.kind === 'layer')
-    .map((definition): LayerStat => ({
-      id: definition.id,
-      label: definition.label,
-      presses: 0,
-      keyCounts: new Map(),
-      keyDistance: new Map(),
-      triggerKeyCounts: new Map(),
-      pairedTriggerKeyCounts: new Map(),
-    }));
+    .map(
+      (definition): LayerStat => ({
+        id: definition.id,
+        label: definition.label,
+        presses: 0,
+        keyCounts: new Map(),
+        keyDistance: new Map(),
+        triggerKeyCounts: new Map(),
+        pairedTriggerKeyCounts: new Map(),
+      }),
+    );
   const layerById = new Map(layerStats.map((stat) => [stat.id, stat]));
   const ensureLayer = (id: string): LayerStat => {
     const existing = layerById.get(id);
@@ -275,9 +272,7 @@ export function computeMetrics(
 
     ADJACENT_PAIRS.forEach((pair, i) => {
       // そのペアのホーム間隔を引いた超過で溜める（仕様 §11.6）。0でクランプはしない
-      pairSamples[i].push(
-        dist(stroke.positions[pair[0]], stroke.positions[pair[1]]) - homeSpacings[i],
-      );
+      pairSamples[i].push(dist(stroke.positions[pair[0]], stroke.positions[pair[1]]) - homeSpacings[i]);
     });
   }
 
@@ -286,10 +281,12 @@ export function computeMetrics(
     return { pair, meanExcess: mean, stdDev, maxExcess: max };
   });
 
-  const adjacentDistribution = ADJACENT_PAIRS.map((pair, i): PairDistribution => ({
-    pair,
-    counts: countStates(pairSamples[i]),
-  }));
+  const adjacentDistribution = ADJACENT_PAIRS.map(
+    (pair, i): PairDistribution => ({
+      pair,
+      counts: countStates(pairSamples[i]),
+    }),
+  );
 
   const combos = {
     definitions: trace.comboDefinitions,
@@ -459,8 +456,7 @@ const isDirectSingleTapInput = (strokes: readonly Stroke[]): boolean => {
   if (stroke.char !== stroke.inputChar) return false;
 
   const keyCount = stroke.presses.reduce((sum, press) => sum + press.keys.length, 0);
-  const hasOutput = stroke.participations.some((participation) =>
-    participation.roles.includes('output'));
+  const hasOutput = stroke.participations.some((participation) => participation.roles.includes('output'));
   return keyCount === 1 && hasOutput;
 };
 
@@ -520,10 +516,7 @@ function singleTapRate(trace: Trace, actions: number): number {
  * ActionRealizationPolicy適用後のrealized Stroke列に対して、そのStrokeで新規押下した
  * physical key数だけを数える。
  */
-function singleKeyRate(
-  trace: Trace,
-  actions: number,
-): number {
+function singleKeyRate(trace: Trace, actions: number): number {
   if (actions === 0) return 0;
 
   let singleKeyActions = 0;

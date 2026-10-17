@@ -1,7 +1,5 @@
 /** 指の識別子。L/R + P(小指) R(薬指) M(中指) I(人差し指) T(親指) */
-export type Finger =
-  | 'LP' | 'LR' | 'LM' | 'LI' | 'LT'
-  | 'RT' | 'RI' | 'RM' | 'RR' | 'RP';
+export type Finger = 'LP' | 'LR' | 'LM' | 'LI' | 'LT' | 'RT' | 'RI' | 'RM' | 'RR' | 'RP';
 
 /** 親指を除く8本。隣接指間距離（§11.6）はこの範囲で見る */
 export type NonThumb = Exclude<Finger, 'LT' | 'RT'>;
@@ -14,8 +12,12 @@ export const isThumb = (finger: Finger) => finger === 'LT' || finger === 'RT';
 
 /** 同じ手の隣接ペア（§11.6） */
 export const ADJACENT_PAIRS: [NonThumb, NonThumb][] = [
-  ['LP', 'LR'], ['LR', 'LM'], ['LM', 'LI'],
-  ['RI', 'RM'], ['RM', 'RR'], ['RR', 'RP'],
+  ['LP', 'LR'],
+  ['LR', 'LM'],
+  ['LM', 'LI'],
+  ['RI', 'RM'],
+  ['RM', 'RR'],
+  ['RR', 'RP'],
 ];
 
 export interface Point {
@@ -72,12 +74,7 @@ export interface Geometry {
  * 物理キーの正式名はQWERTY刻印とする。行列インデックスより読めるうえ、
  * 公開されているかな配列の定義がそのまま写せる。
  */
-export const QWERTY_LEGEND = [
-  '1234567890-=',
-  'qwertyuiop[]',
-  "asdfghjkl;'",
-  'zxcvbnm,./',
-] as const;
+export const QWERTY_LEGEND = ['1234567890-=', 'qwertyuiop[]', "asdfghjkl;'", 'zxcvbnm,./'] as const;
 
 /**
  * 物理キーのid。QWERTY刻印の範囲内（既定の物理配列の行・列数以内）ならその文字を使い、
@@ -96,7 +93,7 @@ export const THUMB_KEY = { LT: 'thumb-l', RT: 'thumb-r' } as const;
 export const SHIFT_KEY = { L: 'shift-l', R: 'shift-r' } as const;
 
 /** 旧定義やlocalStorageに残る親指キーidを正式名へ解決する。 */
-export const resolveKeyId = (id: string): string => id === 'space' ? THUMB_KEY.RT : id;
+export const resolveKeyId = (id: string): string => (id === 'space' ? THUMB_KEY.RT : id);
 
 /** 各行の列数は刻印の長さで決まる（12 / 12 / 11 / 10）。既定の物理配列のrowWidthsに使う */
 const ROW_WIDTH = QWERTY_LEGEND.map((row) => row.length);
@@ -186,10 +183,7 @@ export function assignmentHasKey(assignment: FingerAssignment, key: string): boo
  * 配列ごとに既定のホームキーだけを上書きした運指設定を作る。
  * 上書きのキーを、その指が担当しない時は使わない（仕様 §3.2）。
  */
-export function assignmentWithHomeKeys(
-  assignment: FingerAssignment,
-  homeKeys?: Partial<Record<NonThumb, string>>,
-): FingerAssignment {
+export function assignmentWithHomeKeys(assignment: FingerAssignment, homeKeys?: Partial<Record<NonThumb, string>>): FingerAssignment {
   if (!homeKeys) return assignment;
   const merged = { ...assignment.homeKey };
   for (const finger of FINGERS) {
@@ -226,9 +220,7 @@ export function columnFingerAssignment(
   return makeFingerAssignment(id, name, baseFinger, homeKey, extra);
 }
 
-const DEFAULT_COLUMN_FINGER: NonThumb[] = [
-  'LP', 'LR', 'LM', 'LI', 'LI', 'RI', 'RI', 'RM', 'RR', 'RP', 'RP', 'RP', 'RP',
-];
+const DEFAULT_COLUMN_FINGER: NonThumb[] = ['LP', 'LR', 'LM', 'LI', 'LI', 'RI', 'RI', 'RM', 'RR', 'RP', 'RP', 'RP', 'RP'];
 const DEFAULT_HOME_COLUMN: Record<NonThumb, number> = { LP: 0, LR: 1, LM: 2, LI: 3, RI: 6, RM: 7, RR: 8, RP: 9 };
 
 /**
@@ -256,11 +248,21 @@ export const JIS_FINGER_ASSIGNMENT: FingerAssignment = columnFingerAssignment(
  */
 const QWERTY_OPTIMIZED_EXTRA: Readonly<Record<string, readonly Finger[]>> = {
   z: ['LR'],
-  r: ['LM'], t: ['LM'], x: ['LM', 'LT'],
-  c: ['LI'], d: ['LI'], y: ['LI', 'RM'], h: ['LI'], n: ['LI', 'RT'],
-  b: ['RT', 'RI'], m: ['RT'],
-  g: ['RI'], k: ['RI', 'RR'], i: ['RI', 'RR'],
-  u: ['RM'], j: ['RM'],
+  r: ['LM'],
+  t: ['LM'],
+  x: ['LM', 'LT'],
+  c: ['LI'],
+  d: ['LI'],
+  y: ['LI', 'RM'],
+  h: ['LI'],
+  n: ['LI', 'RT'],
+  b: ['RT', 'RI'],
+  m: ['RT'],
+  g: ['RI'],
+  k: ['RI', 'RR'],
+  i: ['RI', 'RR'],
+  u: ['RM'],
+  j: ['RM'],
 };
 
 export const QWERTY_OPTIMIZED_FINGER_ASSIGNMENT: FingerAssignment = columnFingerAssignment(
@@ -282,11 +284,7 @@ export const QWERTY_OPTIMIZED_JIS_FINGER_ASSIGNMENT: FingerAssignment = columnFi
 );
 
 export type PhysicalKeyboardStandard = 'ansi' | 'jis';
-export type PhysicalTopology =
-  | 'row-staggered'
-  | 'ortholinear'
-  | 'split-ortholinear'
-  | 'column-staggered';
+export type PhysicalTopology = 'row-staggered' | 'ortholinear' | 'split-ortholinear' | 'column-staggered';
 
 export type PresetGeometryKind =
   | 'row-staggered'
@@ -464,51 +462,36 @@ export const PHYSICAL_SHAPES: Record<PresetGeometryKind, PhysicalShape> = {
 };
 
 export const isPresetGeometryKind = (value: unknown): value is PresetGeometryKind =>
-  value === 'row-staggered'
-  || value === 'jis-row-staggered'
-  || value === 'ortholinear'
-  || value === 'jis-ortholinear'
-  || value === 'split-ortholinear'
-  || value === 'jis-split-ortholinear'
-  || value === 'column-staggered'
-  || value === 'jis-column-staggered';
+  value === 'row-staggered' ||
+  value === 'jis-row-staggered' ||
+  value === 'ortholinear' ||
+  value === 'jis-ortholinear' ||
+  value === 'split-ortholinear' ||
+  value === 'jis-split-ortholinear' ||
+  value === 'column-staggered' ||
+  value === 'jis-column-staggered';
 
-export const presetGeometryStandard = (
-  kind: PresetGeometryKind,
-): PhysicalKeyboardStandard => kind.startsWith('jis-') ? 'jis' : 'ansi';
+export const presetGeometryStandard = (kind: PresetGeometryKind): PhysicalKeyboardStandard => (kind.startsWith('jis-') ? 'jis' : 'ansi');
 
-export const presetGeometryTopology = (
-  kind: PresetGeometryKind,
-): PhysicalTopology => {
+export const presetGeometryTopology = (kind: PresetGeometryKind): PhysicalTopology => {
   if (kind.endsWith('column-staggered')) return 'column-staggered';
   if (kind.endsWith('split-ortholinear')) return 'split-ortholinear';
   if (kind.endsWith('ortholinear')) return 'ortholinear';
   return 'row-staggered';
 };
 
-export const presetGeometryKind = (
-  standard: PhysicalKeyboardStandard,
-  topology: PhysicalTopology,
-): PresetGeometryKind => standard === 'jis'
-  ? topology === 'row-staggered'
-    ? 'jis-row-staggered'
-    : `jis-${topology}`
-  : topology;
+export const presetGeometryKind = (standard: PhysicalKeyboardStandard, topology: PhysicalTopology): PresetGeometryKind =>
+  standard === 'jis' ? (topology === 'row-staggered' ? 'jis-row-staggered' : `jis-${topology}`) : topology;
 
-export function buildGeometry(
-  shape: PhysicalShape | PresetGeometryKind,
-  assignment: FingerAssignment = DEFAULT_FINGER_ASSIGNMENT,
-): Geometry {
+export function buildGeometry(shape: PhysicalShape | PresetGeometryKind, assignment: FingerAssignment = DEFAULT_FINGER_ASSIGNMENT): Geometry {
   const s = typeof shape === 'string' ? PHYSICAL_SHAPES[shape] : shape;
   const rowStagger = s.rowStagger ?? [];
   const columnStagger = s.columnStagger;
   const splitAt = s.splitAt ?? Infinity;
   const splitGap = s.splitGap ?? 0;
 
-  const xOf = (row: number, col: number) =>
-    col + (rowStagger[row] ?? 0) + (col >= splitAt ? splitGap : 0);
-  const yOf = (row: number, col: number) =>
-    row + (columnStagger ? columnStagger[Math.min(col, columnStagger.length - 1)] : 0);
+  const xOf = (row: number, col: number) => col + (rowStagger[row] ?? 0) + (col >= splitAt ? splitGap : 0);
+  const yOf = (row: number, col: number) => row + (columnStagger ? columnStagger[Math.min(col, columnStagger.length - 1)] : 0);
 
   const grid: Key[][] = [];
   const keys = new Map<string, Key>();
@@ -529,15 +512,13 @@ export function buildGeometry(
   for (const spec of s.extraKeys ?? []) {
     const canonicalId = resolveKeyId(spec.id);
     if (canonicalId !== spec.id) {
-      throw new Error(
-        `物理配列「${s.id}」の追加キー ${spec.id} はcanonical physical key idではない（${canonicalId}）`,
-      );
+      throw new Error(`物理配列「${s.id}」の追加キー ${spec.id} はcanonical physical key idではない（${canonicalId}）`);
     }
     if (
-      keys.has(canonicalId)
-      || canonicalId === SHIFT_KEY.L
-      || canonicalId === SHIFT_KEY.R
-      || s.thumbs.some((thumb) => resolveKeyId(thumb.id) === canonicalId)
+      keys.has(canonicalId) ||
+      canonicalId === SHIFT_KEY.L ||
+      canonicalId === SHIFT_KEY.R ||
+      s.thumbs.some((thumb) => resolveKeyId(thumb.id) === canonicalId)
     ) {
       throw new Error(`物理配列「${s.id}」の追加キー ${spec.id} が既存キーと重複している`);
     }
@@ -607,11 +588,7 @@ export function buildGeometry(
       throw new Error(`物理配列「${s.id}」に ${finger} の親指キーが無い`);
     }
     const homeId = s.thumbHome?.[finger];
-    const home = homeId
-      ? candidates.find((k) => k.id === homeId)
-      : candidates.length === 1
-        ? candidates[0]
-        : undefined;
+    const home = homeId ? candidates.find((k) => k.id === homeId) : candidates.length === 1 ? candidates[0] : undefined;
     if (!home) {
       throw new Error(`物理配列「${s.id}」の ${finger} は親指キーが複数あるためthumbHomeで明示する`);
     }
@@ -641,16 +618,20 @@ export function buildGeometry(
   for (const key of keys.values()) {
     const fixed = isThumb(key.finger) || key.id === SHIFT_KEY.L || key.id === SHIFT_KEY.R;
     const side = key.col >= splitAt ? 'R' : 'L';
-    const owners = fixed
-      ? [key.finger]
-      : keyOwners(assignment, key.id).filter(
-        (finger) => !splits || finger === key.finger || finger.startsWith(side),
-      );
+    const owners = fixed ? [key.finger] : keyOwners(assignment, key.id).filter((finger) => !splits || finger === key.finger || finger.startsWith(side));
     fingerCandidates.set(key.id, owners.length > 0 ? owners : [key.finger]);
   }
 
   return {
-    id: s.id, name: s.name, pitchMm: s.pitchMm, keys, grid, thumbs, homes, fingerCandidates, assignment,
+    id: s.id,
+    name: s.name,
+    pitchMm: s.pitchMm,
+    keys,
+    grid,
+    thumbs,
+    homes,
+    fingerCandidates,
+    assignment,
   };
 }
 

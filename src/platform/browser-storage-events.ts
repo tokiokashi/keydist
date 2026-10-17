@@ -11,16 +11,10 @@ export interface KeydistStorageChangeDetail {
  */
 export function notifyKeydistStorageChange(key: string): void {
   if (typeof window === 'undefined') return;
-  window.dispatchEvent(new CustomEvent<KeydistStorageChangeDetail>(
-    KEYDIST_STORAGE_CHANGE_EVENT,
-    { detail: { key } },
-  ));
+  window.dispatchEvent(new CustomEvent<KeydistStorageChangeDetail>(KEYDIST_STORAGE_CHANGE_EVENT, { detail: { key } }));
 }
 
-export function subscribeKeydistStorageChanges(
-  keys: readonly string[],
-  listener: (key: string) => void,
-): () => void {
+export function subscribeKeydistStorageChanges(keys: readonly string[], listener: (key: string) => void): () => void {
   if (typeof window === 'undefined') return () => {};
 
   const watched = new Set(keys);

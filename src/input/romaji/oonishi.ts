@@ -23,7 +23,5 @@ export const OONISHI_OVERRIDES: Record<string, string> = {
   じぇ: 'je',
 };
 
-export const oonishiRomaji = (
-  overrides: Record<string, string> = {},
-  generateSokuon = true,
-) => kunrei({ ...OONISHI_OVERRIDES, ...overrides }, generateSokuon);
+export const oonishiRomaji = (overrides: Record<string, string> = {}, generateSokuon = true) =>
+  kunrei({ ...OONISHI_OVERRIDES, ...overrides }, generateSokuon);

@@ -61,7 +61,10 @@ test('PRESET_LIBRARY_CODEC: id が無い・重複・values が壊れたプリセ
       'ゴミ',
     ],
   });
-  assert.deepEqual(result.value.presets.map((preset) => preset.name), ['1つめ']);
+  assert.deepEqual(
+    result.value.presets.map((preset) => preset.name),
+    ['1つめ'],
+  );
   assert.equal(result.diagnostics.length, 4);
 });
 
@@ -81,9 +84,7 @@ test('PRESET_LIBRARY_CODEC: 不正な値・未知の項目は捨てて診断を�
 });
 
 test('PRESET_LIBRARY_CODEC: __proto__ などの予約名は値に入らず、診断を積む', () => {
-  const raw = JSON.parse(
-    '{"version":1,"presets":[{"id":"a","name":"悪意","values":{"__proto__":{"windowSize":9},"constructor":1,"windowSize":4}}]}',
-  );
+  const raw = JSON.parse('{"version":1,"presets":[{"id":"a","name":"悪意","values":{"__proto__":{"windowSize":9},"constructor":1,"windowSize":4}}]}');
   const result = decodeOk(raw);
   const values = result.value.presets[0].values;
   assert.deepEqual(values, { windowSize: 4 });

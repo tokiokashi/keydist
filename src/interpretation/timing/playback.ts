@@ -1,10 +1,5 @@
 import { ALL_FINGERS, fingerDist, keyId, resolveKeyId, type Finger, type Geometry, type Point } from '#input/shapes/geometry.ts';
-import {
-  classifyPresentationFaces,
-  faceCells,
-  faceDisplayCells,
-  matchesDisplayTriggerAlternative,
-} from '#input/layouts/layers.ts';
+import { classifyPresentationFaces, faceCells, faceDisplayCells, matchesDisplayTriggerAlternative } from '#input/layouts/layers.ts';
 import type { Stroke } from '#trace/generate.ts';
 import { COMBO_LAYER_ID, type Layout } from '#input/layouts/types.ts';
 import {
@@ -99,10 +94,7 @@ export interface PlaybackKeyMotion {
 }
 
 /** 直近の同指連続をキー移動として描画するための起点・終点を返す。 */
-export function playbackSameFingerKeyMotions(
-  strokes: readonly Stroke[],
-  cursor: number,
-): PlaybackKeyMotion[] {
+export function playbackSameFingerKeyMotions(strokes: readonly Stroke[], cursor: number): PlaybackKeyMotion[] {
   const index = Math.min(Math.max(0, cursor), strokes.length) - 1;
   if (index <= 0) return [];
 
@@ -132,10 +124,7 @@ export function playbackOrderLabel(order: number): string {
   return order >= 1 && order <= 20 ? String.fromCharCode(0x245f + order) : `(${order})`;
 }
 
-function playbackCurrentInputRange(
-  strokes: readonly Stroke[],
-  cursor: number,
-): { start: number; end: number } | undefined {
+function playbackCurrentInputRange(strokes: readonly Stroke[], cursor: number): { start: number; end: number } | undefined {
   const end = Math.min(Math.max(0, cursor), strokes.length);
   if (end === 0) return undefined;
   const inputIndex = strokes[end - 1].inputIndex;
@@ -147,24 +136,24 @@ function playbackCurrentInputRange(
 }
 
 /** 現在の入力単位について、予定綴りと打鍵済みの接頭辞を返す。 */
-export function playbackRomajiPlan(
-  strokes: readonly Stroke[],
-  cursor: number,
-): PlaybackRomajiPlan | undefined {
+export function playbackRomajiPlan(strokes: readonly Stroke[], cursor: number): PlaybackRomajiPlan | undefined {
   const end = Math.min(Math.max(0, cursor), strokes.length);
   const range = playbackCurrentInputRange(strokes, end);
   if (!range) return undefined;
   return {
-    planned: strokes.slice(range.start, range.end).map((stroke) => stroke.char).join(''),
-    typed: strokes.slice(range.start, end).map((stroke) => stroke.char).join(''),
+    planned: strokes
+      .slice(range.start, range.end)
+      .map((stroke) => stroke.char)
+      .join(''),
+    typed: strokes
+      .slice(range.start, end)
+      .map((stroke) => stroke.char)
+      .join(''),
   };
 }
 
 /** 現在のローマ字入力単位で、まだ押していないキーを緑色表示するための不透明度を返す。 */
-export function playbackRomajiPlannedKeys(
-  strokes: readonly Stroke[],
-  cursor: number,
-): ReadonlyMap<string, number> {
+export function playbackRomajiPlannedKeys(strokes: readonly Stroke[], cursor: number): ReadonlyMap<string, number> {
   const end = Math.min(Math.max(0, cursor), strokes.length);
   const range = playbackCurrentInputRange(strokes, end);
   const planned = new Map<string, number>();
@@ -179,10 +168,7 @@ export function playbackRomajiPlannedKeys(
 }
 
 /** 現在のローマ字入力単位で、まだ押していないキーに順番を割り当てる。 */
-export function playbackRomajiPlannedOrders(
-  strokes: readonly Stroke[],
-  cursor: number,
-): ReadonlyMap<string, number> {
+export function playbackRomajiPlannedOrders(strokes: readonly Stroke[], cursor: number): ReadonlyMap<string, number> {
   const end = Math.min(Math.max(0, cursor), strokes.length);
   const range = playbackCurrentInputRange(strokes, end);
   const orders = new Map<string, number>();
@@ -204,29 +190,21 @@ export function playbackRomajiPlannedOrders(
  * 仕様 §9.1）。今の入力は、直前に打った打鍵の入力で、カーソルが先頭なら最初の入力とする。
  * 今の入力の残りは、配列やローマ字の綴りの表示の設定によらず入る。
  */
-function playbackPlannedStrokeRange(
-  strokes: readonly Stroke[],
-  cursor: number,
-  windowSize: number,
-): { start: number; finish: number } | undefined {
+function playbackPlannedStrokeRange(strokes: readonly Stroke[], cursor: number, windowSize: number): { start: number; finish: number } | undefined {
   const start = Math.min(Math.max(0, cursor), strokes.length);
   if (start >= strokes.length) return undefined;
   const current = strokes[start > 0 ? start - 1 : 0];
   let finish = start;
   while (
-    finish < strokes.length
-    && (strokes[finish].selectionIndex === current.selectionIndex
-      || strokes[finish].kanaStart - current.kanaEnd <= windowSize)
-  ) finish++;
+    finish < strokes.length &&
+    (strokes[finish].selectionIndex === current.selectionIndex || strokes[finish].kanaStart - current.kanaEnd <= windowSize)
+  )
+    finish++;
   return finish > start ? { start, finish } : undefined;
 }
 
 /** これから押すキーに、近さに応じた不透明度を返す。範囲は `playbackPlannedStrokeRange`。 */
-export function playbackPlannedKeys(
-  strokes: readonly Stroke[],
-  cursor: number,
-  windowSize: number,
-): ReadonlyMap<string, number> {
+export function playbackPlannedKeys(strokes: readonly Stroke[], cursor: number, windowSize: number): ReadonlyMap<string, number> {
   const planned = new Map<string, number>();
   const range = playbackPlannedStrokeRange(strokes, cursor, windowSize);
   if (!range) return planned;
@@ -244,11 +222,7 @@ export function playbackPlannedKeys(
 }
 
 /** 押下予定の範囲の各キーに、次の打鍵から数えた順番を割り当てる。 */
-export function playbackPlannedOrders(
-  strokes: readonly Stroke[],
-  cursor: number,
-  windowSize: number,
-): ReadonlyMap<string, number> {
+export function playbackPlannedOrders(strokes: readonly Stroke[], cursor: number, windowSize: number): ReadonlyMap<string, number> {
   const orders = new Map<string, number>();
   const range = playbackPlannedStrokeRange(strokes, cursor, windowSize);
   if (!range) return orders;
@@ -263,11 +237,7 @@ export function playbackPlannedOrders(
 }
 
 /** 直近tauステップの押下キーと、残留表示に使う不透明度を返す。 */
-export function playbackTrailKeys(
-  strokes: readonly Stroke[],
-  cursor: number,
-  tau: number,
-): ReadonlyMap<string, number> {
+export function playbackTrailKeys(strokes: readonly Stroke[], cursor: number, tau: number): ReadonlyMap<string, number> {
   const end = Math.min(Math.max(0, cursor), strokes.length);
   const span = Math.floor(tau);
   const trail = new Map<string, number>();
@@ -287,11 +257,7 @@ export function playbackTrailKeys(
 }
 
 /** 履歴範囲の各キーに、直近の打鍵から数えた順番を割り当てる。 */
-export function playbackTrailOrders(
-  strokes: readonly Stroke[],
-  cursor: number,
-  tau: number,
-): ReadonlyMap<string, number> {
+export function playbackTrailOrders(strokes: readonly Stroke[], cursor: number, tau: number): ReadonlyMap<string, number> {
   const end = Math.min(Math.max(0, cursor), strokes.length);
   const span = Math.floor(tau);
   const orders = new Map<string, number>();
@@ -308,18 +274,15 @@ export function playbackTrailOrders(
 }
 
 /** 再生中の各指の位置に対応するキーと指を返す。 */
-export function playbackFingerPositionKeys(
-  stroke: Stroke | undefined,
-  geometry: Geometry,
-): ReadonlyMap<string, Finger> {
+export function playbackFingerPositionKeys(stroke: Stroke | undefined, geometry: Geometry): ReadonlyMap<string, Finger> {
   const positionedKeys = new Map<string, Finger>();
 
   for (const finger of ALL_FINGERS) {
     const position = stroke?.positions[finger] ?? geometry.homes[finger];
     // 指が担当するキーのうち、その位置にあるキー（担当が複数の指のキーを含む）
     const key = [...geometry.keys.values()].find(
-      (candidate) => (geometry.fingerCandidates.get(candidate.id) ?? [candidate.finger]).includes(finger)
-        && candidate.x === position.x && candidate.y === position.y,
+      (candidate) =>
+        (geometry.fingerCandidates.get(candidate.id) ?? [candidate.finger]).includes(finger) && candidate.x === position.x && candidate.y === position.y,
     );
     if (key) positionedKeys.set(key.id, finger);
   }
@@ -333,11 +296,7 @@ export function playbackFingerPositionKeys(
 }
 
 /** 現在のステップより前に入力し終えた単位を、直近から指定数だけ返す。 */
-export function playbackCompletedInputs(
-  strokes: readonly Stroke[],
-  cursor: number,
-  limit = DEFAULT_PLAYBACK_RATE_WINDOW,
-): string[] {
+export function playbackCompletedInputs(strokes: readonly Stroke[], cursor: number, limit = DEFAULT_PLAYBACK_RATE_WINDOW): string[] {
   const end = Math.min(Math.max(0, cursor), strokes.length);
   if (end === 0 || limit <= 0) return [];
   const currentInputIndex = strokes[end - 1].inputIndex;
@@ -393,13 +352,9 @@ function playbackInputGroupsAround(
   const currentInputIndex = end > 0 ? strokes[end - 1].inputIndex : undefined;
   const currentGroupIndex = groups.findIndex((group) => group.inputIndex === currentInputIndex);
   const limit = Math.max(0, Math.floor(completedLimit));
-  const completed = currentGroupIndex < 0
-    ? []
-    : limit === 0 ? [] : groups.slice(0, currentGroupIndex).slice(-limit);
+  const completed = currentGroupIndex < 0 ? [] : limit === 0 ? [] : groups.slice(0, currentGroupIndex).slice(-limit);
   const futureEnd = playbackPlannedStrokeRange(strokes, end, windowSize)?.finish ?? end;
-  const planned = groups.filter((group) =>
-    group.inputIndex !== currentInputIndex && group.end > end && group.start < futureEnd,
-  );
+  const planned = groups.filter((group) => group.inputIndex !== currentInputIndex && group.end > end && group.start < futureEnd);
   return { end, completed, current: groups[currentGroupIndex], planned };
 }
 
@@ -449,7 +404,10 @@ function romajiOfInput(strokes: readonly Stroke[], group: PlaybackInputGroup, cu
     // 出力するステップが無い選択（想定外）は、最後のステップで出力したものとして扱い、境目が進まなくならないようにする
     let outputAt = finish - 1;
     for (let at = start; at < finish; at++) {
-      if (strokeOutputs(strokes[at])) { outputAt = at; break; }
+      if (strokeOutputs(strokes[at])) {
+        outputAt = at;
+        break;
+      }
     }
     if (outputAt < cursor) typed += strokes[start].char;
     else remaining += strokes[start].char;
@@ -473,11 +431,13 @@ export function playbackRomajiInputPreview(
   const kanaOf = (group: PlaybackInputGroup) => strokes[group.end - 1].inputChar;
   return [
     ...completed.map((group) => ({ kind: 'completed' as const, kana: kanaOf(group) })),
-    ...(current === undefined ? [] : [
-      end >= current.end
-        ? { kind: 'current' as const, kana: kanaOf(current) }
-        : { kind: 'current' as const, kana: kanaOf(current), romaji: romajiOfInput(strokes, current, end) },
-    ]),
+    ...(current === undefined
+      ? []
+      : [
+          end >= current.end
+            ? { kind: 'current' as const, kana: kanaOf(current) }
+            : { kind: 'current' as const, kana: kanaOf(current), romaji: romajiOfInput(strokes, current, end) },
+        ]),
     ...planned.map((group) => ({
       kind: 'planned' as const,
       kana: kanaOf(group),
@@ -493,20 +453,19 @@ export function playbackStrokeDisplay(layout: Layout, stroke: Stroke): PlaybackS
   }
   const groups = classifyPresentationFaces(layout);
   const triggerKeys = new Set(stroke.triggerKeys.map(resolveKeyId));
-  const layerFaces = stroke.aggregationGroupId === COMBO_LAYER_ID
-    ? [...groups.combos]
-    : [...groups.layers, ...groups.modifiers]
-      .find((layer) => layer.id === stroke.aggregationGroupId)?.faces ?? [];
-  const triggeredFaces = triggerKeys.size === 0
-    ? layerFaces
-    : layerFaces.filter((face) => matchesDisplayTriggerAlternative(face, triggerKeys));
+  const layerFaces =
+    stroke.aggregationGroupId === COMBO_LAYER_ID
+      ? [...groups.combos]
+      : ([...groups.layers, ...groups.modifiers].find((layer) => layer.id === stroke.aggregationGroupId)?.faces ?? []);
+  const triggeredFaces = triggerKeys.size === 0 ? layerFaces : layerFaces.filter((face) => matchesDisplayTriggerAlternative(face, triggerKeys));
   const pressedKeys = [...new Set(stroke.presses.flatMap((press) => press.keys.map((key) => key.id)))];
   const outputKeys = pressedKeys.filter((key) => !triggerKeys.has(key));
   // prefix/suffixの出力ステップではtriggerが空になるため、出力文字から元の面を絞る。
   // 同じlayerに複数のシフト面がある場合も、別面の刻印を混ぜない。
-  const outputFaces = triggerKeys.size === 0 && outputKeys.length > 0
-    ? layerFaces.filter((face) => outputKeys.some((key) => faceCells(face).get(key) === stroke.char))
-    : [];
+  const outputFaces =
+    triggerKeys.size === 0 && outputKeys.length > 0
+      ? layerFaces.filter((face) => outputKeys.some((key) => faceCells(face).get(key) === stroke.char))
+      : [];
   const faces = outputFaces.length > 0 ? outputFaces : triggeredFaces;
   // 通常layerは同じaggregation帰属のFaceをまとめて表示する。
   // comboは従来どおり、実際に発火した個別Faceだけを表示する。
@@ -563,9 +522,7 @@ export function playbackStrokeAt(strokes: readonly Stroke[], cursor: number): St
 }
 
 function normalPlaybackStepMs(stepsPerSecond: PlaybackStepsPerSecond): number {
-  return Number.isFinite(stepsPerSecond) && stepsPerSecond > 0
-    ? 1000 / stepsPerSecond
-    : Number.POSITIVE_INFINITY;
+  return Number.isFinite(stepsPerSecond) && stepsPerSecond > 0 ? 1000 / stepsPerSecond : Number.POSITIVE_INFINITY;
 }
 
 /** ステップ`i`と`i-1`が異手の時の方向（`spec/playback-timing.md` §3.1「異手の判定」）。異手でなければ`undefined`。 */
@@ -603,23 +560,18 @@ function sameHandRate(
       continue;
     }
     const directedPair = sameHandDirectedFingerPairKey(from, to);
-    return (directedPair === undefined
-      ? undefined
-      : calibration?.sameHandDifferentFingerActionsPerDirectedPair?.[directedPair])
-      ?? calibration?.sameHandDifferentFingerActionsPerSecondByPair[unorderedPair]
-      ?? calibration?.sameHandDifferentFingerActionsPerSecond
-      ?? stepsPerSecond;
+    return (
+      (directedPair === undefined ? undefined : calibration?.sameHandDifferentFingerActionsPerDirectedPair?.[directedPair]) ??
+      calibration?.sameHandDifferentFingerActionsPerSecondByPair[unorderedPair] ??
+      calibration?.sameHandDifferentFingerActionsPerSecond ??
+      stepsPerSecond
+    );
   }
-  return involvesThumb
-    ? calibration?.sameHandDifferentFingerActionsPerSecond ?? stepsPerSecond
-    : undefined;
+  return involvesThumb ? (calibration?.sameHandDifferentFingerActionsPerSecond ?? stepsPerSecond) : undefined;
 }
 
 /** 直前のステップの押下を外側、今のステップの押下を内側に取った、指の組。 */
-function* pressFingerPairs(
-  stroke: StrokePressFingers,
-  previousStroke: StrokePressFingers,
-): Generator<readonly [Finger, Finger]> {
+function* pressFingerPairs(stroke: StrokePressFingers, previousStroke: StrokePressFingers): Generator<readonly [Finger, Finger]> {
   for (const previousPress of previousStroke.presses) {
     for (const press of stroke.presses) yield [previousPress.finger, press.finger];
   }
@@ -646,14 +598,10 @@ function playbackTransitionRate(
 ): number {
   const crossDirection = playbackCrossHandDirection(stroke, previousStroke);
   if (crossDirection !== undefined) {
-    return calibration?.actionsPerSecondByDirection?.[crossDirection]
-      ?? calibration?.actionsPerSecond
-      ?? stepsPerSecond;
+    return calibration?.actionsPerSecondByDirection?.[crossDirection] ?? calibration?.actionsPerSecond ?? stepsPerSecond;
   }
 
-  const sameHand = stroke && previousStroke
-    ? sameHandRate(pressFingerPairs(stroke, previousStroke), stepsPerSecond, calibration)
-    : undefined;
+  const sameHand = stroke && previousStroke ? sameHandRate(pressFingerPairs(stroke, previousStroke), stepsPerSecond, calibration) : undefined;
   return sameHand ?? calibration?.actionsPerSecond ?? stepsPerSecond;
 }
 
@@ -675,9 +623,7 @@ const transitionsByToStrokeCache = new WeakMap<object, ReadonlyMap<number, reado
  * 同じ`transitions`の配列には同じ索引を返すので、全ステップの時間を求める間に作るのは1回だけ。
  * 手のまたがる打鍵は左右両方のChainに入りうるため、Chainごとではなく全遷移から作る。
  */
-function transitionsByToStroke(
-  transitions: PlaybackRateInput['transitions'],
-): ReadonlyMap<number, readonly RateTransition[]> {
+function transitionsByToStroke(transitions: PlaybackRateInput['transitions']): ReadonlyMap<number, readonly RateTransition[]> {
   const cached = transitionsByToStrokeCache.get(transitions);
   if (cached !== undefined) return cached;
   const byToStroke = new Map<number, RateTransition[]>();
@@ -702,9 +648,7 @@ function playbackTransitionRateFromAnalysis(
   // 異手方向はAnalysisResult内の元Strokeから読む。L→R / R→Lは常に方向別Calibration対象。
   const crossDirection = playbackCrossHandDirection(stroke, previousStroke);
   if (crossDirection !== undefined) {
-    return calibration?.actionsPerSecondByDirection?.[crossDirection]
-      ?? calibration?.actionsPerSecond
-      ?? stepsPerSecond;
+    return calibration?.actionsPerSecondByDirection?.[crossDirection] ?? calibration?.actionsPerSecond ?? stepsPerSecond;
   }
 
   // 同手別指はHandTransitionのcandidateをsource of truthとして有向pairを選ぶ。
@@ -732,8 +676,10 @@ function playbackTransitionNormalMs(
   stepsPerSecond: PlaybackStepsPerSecond,
   calibration?: PlaybackCalibration,
 ): number {
-  return playbackRepeatNormalMs(stroke, previousStroke, calibration)
-    ?? normalPlaybackStepMs(playbackTransitionRate(stroke, previousStroke, stepsPerSecond, calibration));
+  return (
+    playbackRepeatNormalMs(stroke, previousStroke, calibration) ??
+    normalPlaybackStepMs(playbackTransitionRate(stroke, previousStroke, stepsPerSecond, calibration))
+  );
 }
 
 /** 解析結果の遷移から選ぶ`playbackTransitionNormalMs`。 */
@@ -743,19 +689,17 @@ function playbackTransitionNormalMsFromAnalysis(
   stepsPerSecond: PlaybackStepsPerSecond,
   calibration?: PlaybackCalibration,
 ): number {
-  return playbackRepeatNormalMs(analysis.strokes[strokeIndex], analysis.strokes[strokeIndex - 1], calibration)
-    ?? normalPlaybackStepMs(playbackTransitionRateFromAnalysis(analysis, strokeIndex, stepsPerSecond, calibration));
+  return (
+    playbackRepeatNormalMs(analysis.strokes[strokeIndex], analysis.strokes[strokeIndex - 1], calibration) ??
+    normalPlaybackStepMs(playbackTransitionRateFromAnalysis(analysis, strokeIndex, stepsPerSecond, calibration))
+  );
 }
 
 /**
  * ステップ `i` の `normalMs`（倍率1・打鍵の上乗せを足さない）。個人速度で求める（`spec/playback-timing.md` §3.1）。
  * 文章を打つ測定が、実際の間隔から引く1打の時間を求めるのに使う。
  */
-export function playbackNormalMs(
-  analysis: PlaybackRateInput,
-  strokeIndex: number,
-  calibration: PlaybackCalibration,
-): number {
+export function playbackNormalMs(analysis: PlaybackRateInput, strokeIndex: number, calibration: PlaybackCalibration): number {
   return playbackTransitionNormalMsFromAnalysis(
     analysis,
     strokeIndex,
@@ -782,11 +726,8 @@ export function playbackKeystrokeOverheadMs(
   if (overheads === undefined) return 0;
   const structure: StrokeStructureKind = strokeStructureKinds(analysis)[strokeIndex] ?? 'other';
   const side = strokeOverheadSide(analysis.strokes, strokeIndex);
-  const structureMs = overheads[sideOverheadKind(structure, side)]
-    ?? overheads[sideOverheadKind('other', side)]
-    ?? overheads[structure]
-    ?? overheads.other
-    ?? 0;
+  const structureMs =
+    overheads[sideOverheadKind(structure, side)] ?? overheads[sideOverheadKind('other', side)] ?? overheads[structure] ?? overheads.other ?? 0;
   if (strokeOverheadKinds(analysis)[strokeIndex] !== 'repeat') return structureMs;
   return overheads.repeat ?? 0;
 }
@@ -795,14 +736,11 @@ export function playbackKeystrokeOverheadMs(
  * ステップ`i`のストロークが同時押しの時に、1打の時間（`normalMs`）の側に足す同時押しの上乗せ[ms]（§3.1.2）。
  * ストロークの同時押しの分け方の値を保存値から取る。同時押しのストロークでない時、その分け方の値を持たない時、個人速度が無い時は0。
  */
-export function playbackSimultaneousOverheadMs(
-  stroke: StrokePressFingers | undefined,
-  calibration: PlaybackCalibration | undefined,
-): number {
+export function playbackSimultaneousOverheadMs(stroke: StrokePressFingers | undefined, calibration: PlaybackCalibration | undefined): number {
   const overheads = calibration?.simultaneousOverheadMs;
   if (overheads === undefined) return 0;
   const kind = strokeSimultaneousKind(stroke);
-  return kind === undefined ? 0 : overheads[kind] ?? 0;
+  return kind === undefined ? 0 : (overheads[kind] ?? 0);
 }
 
 /** 同時押しの測定が基準の時間を求める、ストロークの押下の指の並び（`spec/playback-timing.md` §6.1.1の表）。 */
@@ -841,10 +779,7 @@ export function playbackSameFingerOverheadMs(
  * 同指連続の押下を持つステップの、指の移動の時間[ms]（倍率1。§3.3）。同指連続の押下が無ければ`undefined`。
  * 指の同じキーを続けて打つ時間`r(f)`と、距離に比例する移動の時間`distance × m(f)`の和。測定値が無い指は代表値。
  */
-export function playbackSameFingerMovementMs(
-  stroke: Stroke | undefined,
-  calibration: PlaybackCalibration,
-): number | undefined {
+export function playbackSameFingerMovementMs(stroke: Stroke | undefined, calibration: PlaybackCalibration): number | undefined {
   const sfbPresses = stroke?.presses.filter((press) => press.sfb) ?? [];
   if (sfbPresses.length === 0) return undefined;
   return Math.max(
@@ -867,19 +802,8 @@ export function playbackStrokeDurationMs(
   previousStroke?: Stroke,
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
 ): number {
-  const normalMs = playbackTransitionNormalMs(
-    stroke,
-    previousStroke,
-    stepsPerSecond,
-    calibration,
-  );
-  return playbackStrokeDurationFromNormalMs(
-    stroke,
-    normalMs,
-    sameFingerDelay,
-    calibration,
-    speedMultiplier,
-  );
+  const normalMs = playbackTransitionNormalMs(stroke, previousStroke, stepsPerSecond, calibration);
+  return playbackStrokeDurationFromNormalMs(stroke, normalMs, sameFingerDelay, calibration, speedMultiplier);
 }
 
 function playbackStrokeDurationFromNormalMs(
@@ -894,9 +818,7 @@ function playbackStrokeDurationFromNormalMs(
   /** 同時押しのストロークのステップが足す同時押しの上乗せ。 */
   simultaneousMs = 0,
 ): number {
-  const multiplier = Number.isFinite(speedMultiplier) && speedMultiplier > 0
-    ? speedMultiplier
-    : DEFAULT_PLAYBACK_SPEED_MULTIPLIER;
+  const multiplier = Number.isFinite(speedMultiplier) && speedMultiplier > 0 ? speedMultiplier : DEFAULT_PLAYBACK_SPEED_MULTIPLIER;
   // 打鍵の上乗せと同時押しの上乗せは1打の時間の側にだけ足す。指の移動の時間には足さない。
   const baseMs = Math.max(PLAYBACK_MIN_STEP_MS, normalMs + overheadMs + simultaneousMs);
   if (!stroke || !sameFingerDelay) return baseMs / multiplier;
@@ -929,12 +851,7 @@ export function playbackStepDurationMs(
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
 ): number {
   const stroke = analysis.strokes[strokeIndex];
-  const normalMs = playbackTransitionNormalMsFromAnalysis(
-    analysis,
-    strokeIndex,
-    stepsPerSecond,
-    calibration,
-  );
+  const normalMs = playbackTransitionNormalMsFromAnalysis(analysis, strokeIndex, stepsPerSecond, calibration);
   return playbackStrokeDurationFromNormalMs(
     stroke,
     normalMs,
@@ -1007,19 +924,13 @@ export interface PlaybackTimingOptions {
   waitGapsMs?: readonly number[];
 }
 
-export function playbackTimingStepDurationMs(
-  schedule: readonly PlaybackTimingStep[] | undefined,
-  strokeIndex: number,
-): number | undefined {
+export function playbackTimingStepDurationMs(schedule: readonly PlaybackTimingStep[] | undefined, strokeIndex: number): number | undefined {
   const step = schedule?.[strokeIndex];
   return step ? Math.max(0, step.endMs - step.startMs) : undefined;
 }
 
 /** ステップの打鍵の時間（待機を除く表示時間）。かな/秒・アクション/秒の平均は、この時間で求める。 */
-export function playbackTimingStepTypingMs(
-  schedule: readonly PlaybackTimingStep[] | undefined,
-  strokeIndex: number,
-): number | undefined {
+export function playbackTimingStepTypingMs(schedule: readonly PlaybackTimingStep[] | undefined, strokeIndex: number): number | undefined {
   const step = schedule?.[strokeIndex];
   if (!step) return undefined;
   return step.typingMs ?? Math.max(0, step.endMs - step.startMs - (step.waitMs ?? 0));
@@ -1033,10 +944,7 @@ export interface PlaybackTimeTotals {
 }
 
 /** 打鍵時間と総時間（`spec/playback-timing.md` §3.9）。`trailingWaitMs`は最後のステップより後の待機。 */
-export function playbackTimeTotals(
-  schedule: readonly PlaybackTimingStep[],
-  trailingWaitMs = 0,
-): PlaybackTimeTotals {
+export function playbackTimeTotals(schedule: readonly PlaybackTimingStep[], trailingWaitMs = 0): PlaybackTimeTotals {
   let typingMs = 0;
   let waitMs = Math.max(0, trailingWaitMs);
   for (let index = 0; index < schedule.length; index++) {
@@ -1072,14 +980,8 @@ function playbackTypingSchedule(
   options: PlaybackTimingOptions,
 ): PlaybackTimingStep[] {
   const baseDurations = analysis.strokes.map((_stroke, strokeIndex) =>
-    playbackStepDurationMs(
-      analysis,
-      strokeIndex,
-      stepsPerSecond,
-      sameFingerDelay,
-      calibration,
-      speedMultiplier,
-    ));
+    playbackStepDurationMs(analysis, strokeIndex, stepsPerSecond, sameFingerDelay, calibration, speedMultiplier),
+  );
 
   if (!options.allFingerMovementDelay) {
     let atMs = 0;
@@ -1109,14 +1011,7 @@ function playbackTypingSchedule(
 
     // actual Pressだけが新しい移動要求。held-trigger/continueは後段で占有時間だけ延ばす。
     for (const press of stroke.presses) {
-      const moveMs = playbackFingerMoveMs(
-        lastPosition[press.finger],
-        press.target,
-        press.finger,
-        stepsPerSecond,
-        calibration,
-        speedMultiplier,
-      );
+      const moveMs = playbackFingerMoveMs(lastPosition[press.finger], press.target, press.finger, stepsPerSecond, calibration, speedMultiplier);
       endMs = Math.max(endMs, freeAtMs[press.finger] + moveMs);
     }
 
@@ -1133,8 +1028,7 @@ function playbackTypingSchedule(
     for (const participation of stroke.participations) {
       if (pressedFingers.has(participation.finger)) continue;
       if (!participation.roles.includes('held-trigger')) continue;
-      lastPosition[participation.finger] = stroke.positions[participation.finger]
-        ?? lastPosition[participation.finger];
+      lastPosition[participation.finger] = stroke.positions[participation.finger] ?? lastPosition[participation.finger];
       freeAtMs[participation.finger] = endMs;
     }
   }
@@ -1146,10 +1040,7 @@ function playbackTypingSchedule(
  * 打鍵の時間のscheduleに、ステップの間の待機を挿入する。待機のあるステップは、先頭の`waitMs`が待機になり、
  * 以降のステップの時刻は待機の合計だけ後ろへずれる。待機が無ければ、渡したscheduleをそのまま返す。
  */
-function insertWaits(
-  typing: PlaybackTimingStep[],
-  gapsMs: readonly number[] | undefined,
-): PlaybackTimingStep[] {
+function insertWaits(typing: PlaybackTimingStep[], gapsMs: readonly number[] | undefined): PlaybackTimingStep[] {
   if (gapsMs === undefined || !typing.some((_step, index) => (gapsMs[index] ?? 0) > 0)) return typing;
   let shiftMs = 0;
   return typing.map((step, index) => {
@@ -1158,15 +1049,11 @@ function insertWaits(
     shiftMs += waitMs;
     const endMs = step.endMs + shiftMs;
     const typingMs = Math.max(0, step.endMs - step.startMs);
-    return waitMs > 0
-      ? { strokeIndex: step.strokeIndex, startMs, endMs, waitMs, typingMs }
-      : { strokeIndex: step.strokeIndex, startMs, endMs, typingMs };
+    return waitMs > 0 ? { strokeIndex: step.strokeIndex, startMs, endMs, waitMs, typingMs } : { strokeIndex: step.strokeIndex, startMs, endMs, typingMs };
   });
 }
 
-function isActualPressParticipation(
-  participation: Stroke['participations'][number],
-): boolean {
+function isActualPressParticipation(participation: Stroke['participations'][number]): boolean {
   return participation.roles.includes('output') || participation.roles.includes('trigger');
 }
 
@@ -1179,8 +1066,7 @@ function previousFingerOccupancyEndMs(
   for (let index = beforeStrokeIndex - 1; index >= 0; index--) {
     // held-trigger/continue は次のPressではないが、その指は保持中で移動できない。
     // 実Pressだけでなくparticipation全体を見て、最後に指が塞がるStrokeの終了までclampする。
-    if (strokes[index].participations.some((participation) =>
-      participation.finger === finger)) {
+    if (strokes[index].participations.some((participation) => participation.finger === finger)) {
       return schedule[index]?.endMs ?? 0;
     }
   }
@@ -1197,17 +1083,13 @@ export function playbackFingerMoveMs(
 ): number {
   const distance = fingerDist(finger, from, to);
   if (distance <= 0) return 0;
-  const multiplier = Number.isFinite(speedMultiplier) && speedMultiplier > 0
-    ? speedMultiplier
-    : DEFAULT_PLAYBACK_SPEED_MULTIPLIER;
+  const multiplier = Number.isFinite(speedMultiplier) && speedMultiplier > 0 ? speedMultiplier : DEFAULT_PLAYBACK_SPEED_MULTIPLIER;
   // 個人速度が無い時は、基準速度を[u/秒]の正規化速度として使う。
   if (calibration === undefined) {
-    return Number.isFinite(stepsPerSecond) && stepsPerSecond > 0
-      ? (distance / stepsPerSecond) * 1000 / multiplier
-      : Number.POSITIVE_INFINITY;
+    return Number.isFinite(stepsPerSecond) && stepsPerSecond > 0 ? ((distance / stepsPerSecond) * 1000) / multiplier : Number.POSITIVE_INFINITY;
   }
   // 指が動く時間だけ。キーを打つ時間は含まない（`spec/playback-timing.md` §3.8）。
-  return distance * playbackMoveMsPerUnit(calibration, finger) / multiplier;
+  return (distance * playbackMoveMsPerUnit(calibration, finger)) / multiplier;
 }
 
 /**
@@ -1229,18 +1111,15 @@ export function playbackPreparedFingerPositionKeys(
   const end = clampPlaybackCursor(cursor, strokes.length);
   const displayedStroke = end > 0 ? strokes[end - 1] : undefined;
   const positionedKeys = new Map(playbackFingerPositionKeys(displayedStroke, geometry));
-  const preparationMs = Number.isFinite(preparationSeconds) && preparationSeconds > 0
-    ? preparationSeconds * 1000
-    : 0;
+  const preparationMs = Number.isFinite(preparationSeconds) && preparationSeconds > 0 ? preparationSeconds * 1000 : 0;
   if (preparationMs === 0 || end >= strokes.length) return positionedKeys;
 
-  const nowMs = (end > 0 ? schedule[end - 1]?.endMs ?? 0 : 0) + Math.max(0, elapsedMs);
+  const nowMs = (end > 0 ? (schedule[end - 1]?.endMs ?? 0) : 0) + Math.max(0, elapsedMs);
 
   for (const finger of ALL_FINGERS) {
     let targetIndex = -1;
     for (let index = end; index < strokes.length; index++) {
-      if (strokes[index].participations.some((participation) =>
-        participation.finger === finger && isActualPressParticipation(participation))) {
+      if (strokes[index].participations.some((participation) => participation.finger === finger && isActualPressParticipation(participation))) {
         targetIndex = index;
         break;
       }
@@ -1250,21 +1129,11 @@ export function playbackPreparedFingerPositionKeys(
     const press = strokes[targetIndex].presses.find((candidate) => candidate.finger === finger);
     if (!press) continue;
     const currentPosition = displayedStroke?.positions[finger] ?? geometry.homes[finger];
-    const moveMs = playbackFingerMoveMs(
-      currentPosition,
-      press.target,
-      finger,
-      stepsPerSecond,
-      calibration,
-      speedMultiplier,
-    );
+    const moveMs = playbackFingerMoveMs(currentPosition, press.target, finger, stepsPerSecond, calibration, speedMultiplier);
     const pressTimeMs = schedule[targetIndex]?.endMs;
     if (pressTimeMs === undefined) continue;
     const idealStartMs = pressTimeMs - preparationMs - moveMs;
-    const actualStartMs = Math.max(
-      idealStartMs,
-      previousFingerOccupancyEndMs(strokes, schedule, targetIndex, finger),
-    );
+    const actualStartMs = Math.max(idealStartMs, previousFingerOccupancyEndMs(strokes, schedule, targetIndex, finger));
     const arrivalMs = Math.min(pressTimeMs, actualStartMs + moveMs);
     if (nowMs < arrivalMs) continue;
 
@@ -1309,27 +1178,17 @@ function playbackRecentRateWindow(
   const start = Math.max(0, end - span);
   if (start === end) return undefined;
 
-  const durationMs = Array.from(
-    { length: end - start },
-    (_, offset) => start + offset,
-  ).reduce((total, index) => total + (
-    playbackTimingStepTypingMs(schedule, index)
-      ?? playbackStepDurationMs(
-        analysis,
-        index,
-        stepsPerSecond,
-        sameFingerDelay,
-        calibration,
-        speedMultiplier,
-      )
-  ), 0);
+  const durationMs = Array.from({ length: end - start }, (_, offset) => start + offset).reduce(
+    (total, index) =>
+      total +
+      (playbackTimingStepTypingMs(schedule, index) ??
+        playbackStepDurationMs(analysis, index, stepsPerSecond, sameFingerDelay, calibration, speedMultiplier)),
+    0,
+  );
   return { start, end, durationMs };
 }
 
-function playbackRateWindowInputText(
-  strokes: readonly Stroke[],
-  recent: PlaybackRateWindow,
-): string {
+function playbackRateWindowInputText(strokes: readonly Stroke[], recent: PlaybackRateWindow): string {
   const inputs: string[] = [];
   for (let at = recent.start; at < recent.end; ) {
     const inputIndex = strokes[at].inputIndex;
@@ -1374,34 +1233,21 @@ function playbackEwmaState(
 
   return {
     advance(index) {
-      const durationMs = playbackTimingStepTypingMs(schedule, index)
-        ?? playbackStepDurationMs(
-          analysis,
-          index,
-          stepsPerSecond,
-          sameFingerDelay,
-          calibration,
-          speedMultiplier,
-        );
+      const durationMs =
+        playbackTimingStepTypingMs(schedule, index) ??
+        playbackStepDurationMs(analysis, index, stepsPerSecond, sameFingerDelay, calibration, speedMultiplier);
       if (!(durationMs > 0)) return;
 
       const decay = 2 ** (-(durationMs / 1000) / halfLifeSeconds);
       const actionInstant = 1000 / durationMs;
-      actionRate = actionRate === undefined
-        ? actionInstant
-        : decay * actionRate + (1 - decay) * actionInstant;
+      actionRate = actionRate === undefined ? actionInstant : decay * actionRate + (1 - decay) * actionInstant;
 
       const inputIndex = strokes[index].inputIndex;
-      const nextStartsNewInput = index + 1 >= strokes.length
-        || strokes[index + 1].inputIndex !== inputIndex;
-      const completedHere = nextStartsNewInput
-        ? Array.from(strokes[index].inputChar).length
-        : 0;
+      const nextStartsNewInput = index + 1 >= strokes.length || strokes[index + 1].inputIndex !== inputIndex;
+      const completedHere = nextStartsNewInput ? Array.from(strokes[index].inputChar).length : 0;
       if (completedHere > 0) {
         const kanaInstant = (completedHere * 1000) / durationMs;
-        kanaRate = kanaRate === undefined
-          ? kanaInstant
-          : decay * kanaRate + (1 - decay) * kanaInstant;
+        kanaRate = kanaRate === undefined ? kanaInstant : decay * kanaRate + (1 - decay) * kanaInstant;
         recentInputs.push(strokes[index].inputChar);
         if (recentInputs.length > 6) recentInputs.shift();
       } else if (kanaRate !== undefined) {
@@ -1432,15 +1278,7 @@ function playbackEwmaRate(
   const end = clampPlaybackCursor(cursor, analysis.strokes.length);
   if (end === 0 || halfLifeSeconds <= 0) return undefined;
 
-  const state = playbackEwmaState(
-    analysis,
-    stepsPerSecond,
-    sameFingerDelay,
-    halfLifeSeconds,
-    calibration,
-    speedMultiplier,
-    schedule,
-  );
+  const state = playbackEwmaState(analysis, stepsPerSecond, sameFingerDelay, halfLifeSeconds, calibration, speedMultiplier, schedule);
   for (let index = 0; index < end; index++) state.advance(index);
   return state.snapshot();
 }
@@ -1459,30 +1297,10 @@ export function playbackRecentActionsPerSecond(
   halfLifeSeconds = DEFAULT_PLAYBACK_RATE_HALF_LIFE_SECONDS,
 ): number | undefined {
   if (average === 'ewma') {
-    return playbackEwmaRate(
-      analysis,
-      cursor,
-      stepsPerSecond,
-      sameFingerDelay,
-      halfLifeSeconds,
-      calibration,
-      speedMultiplier,
-      schedule,
-    )?.actionsPerSecond;
+    return playbackEwmaRate(analysis, cursor, stepsPerSecond, sameFingerDelay, halfLifeSeconds, calibration, speedMultiplier, schedule)?.actionsPerSecond;
   }
-  const recent = playbackRecentRateWindow(
-    analysis,
-    cursor,
-    stepsPerSecond,
-    sameFingerDelay,
-    limit,
-    calibration,
-    speedMultiplier,
-    schedule,
-  );
-  return recent && recent.durationMs > 0
-    ? ((recent.end - recent.start) * 1000) / recent.durationMs
-    : undefined;
+  const recent = playbackRecentRateWindow(analysis, cursor, stepsPerSecond, sameFingerDelay, limit, calibration, speedMultiplier, schedule);
+  return recent && recent.durationMs > 0 ? ((recent.end - recent.start) * 1000) / recent.durationMs : undefined;
 }
 
 /** 直近の入力単位に含まれるかな文字数を、同じTransition Timingで割る。 */
@@ -1499,28 +1317,10 @@ export function playbackRecentKanaPerSecond(
   halfLifeSeconds = DEFAULT_PLAYBACK_RATE_HALF_LIFE_SECONDS,
 ): number | undefined {
   if (average === 'ewma') {
-    return playbackEwmaRate(
-      analysis,
-      cursor,
-      stepsPerSecond,
-      sameFingerDelay,
-      halfLifeSeconds,
-      calibration,
-      speedMultiplier,
-      schedule,
-    )?.kanaPerSecond;
+    return playbackEwmaRate(analysis, cursor, stepsPerSecond, sameFingerDelay, halfLifeSeconds, calibration, speedMultiplier, schedule)?.kanaPerSecond;
   }
   const strokes = analysis.strokes;
-  const recent = playbackRecentRateWindow(
-    analysis,
-    cursor,
-    stepsPerSecond,
-    sameFingerDelay,
-    limit,
-    calibration,
-    speedMultiplier,
-    schedule,
-  );
+  const recent = playbackRecentRateWindow(analysis, cursor, stepsPerSecond, sameFingerDelay, limit, calibration, speedMultiplier, schedule);
   if (!recent || recent.durationMs <= 0) return undefined;
 
   let kanaCount = 0;
@@ -1558,49 +1358,27 @@ export function playbackRateChartData(
     for (let at = Math.max(0, chain.startStrokeIndex); at < to; at++) inChain[at] = 1;
   }
   // EWMAはカーソルを1つ進めるたびに、前のカーソルの状態から続ける
-  const ewmaState = average === 'ewma' && halfLifeSeconds > 0
-    ? playbackEwmaState(
-      analysis,
-      stepsPerSecond,
-      sameFingerDelay,
-      halfLifeSeconds,
-      calibration,
-      speedMultiplier,
-      schedule,
-    )
-    : undefined;
-  for (let cursor = 1; cursor <= strokes.length; cursor++) {
-    const recent = average === 'sma'
-      ? playbackRecentRateWindow(
-        analysis,
-        cursor,
-        stepsPerSecond,
-        sameFingerDelay,
-        limit,
-        calibration,
-        speedMultiplier,
-        schedule,
-      )
+  const ewmaState =
+    average === 'ewma' && halfLifeSeconds > 0
+      ? playbackEwmaState(analysis, stepsPerSecond, sameFingerDelay, halfLifeSeconds, calibration, speedMultiplier, schedule)
       : undefined;
+  for (let cursor = 1; cursor <= strokes.length; cursor++) {
+    const recent =
+      average === 'sma'
+        ? playbackRecentRateWindow(analysis, cursor, stepsPerSecond, sameFingerDelay, limit, calibration, speedMultiplier, schedule)
+        : undefined;
     ewmaState?.advance(cursor - 1);
     const ewma = ewmaState?.snapshot();
-    const kanaPerSecond = average === 'ewma'
-      ? ewma?.kanaPerSecond
-      : playbackRecentKanaPerSecond(
-        analysis,
-        cursor,
-        stepsPerSecond,
-        sameFingerDelay,
-        limit,
-        calibration,
-        speedMultiplier,
-        schedule,
-      );
-    const actionsPerSecond = average === 'ewma'
-      ? ewma?.actionsPerSecond
-      : recent && recent.durationMs > 0
-        ? ((recent.end - recent.start) * 1000) / recent.durationMs
-        : undefined;
+    const kanaPerSecond =
+      average === 'ewma'
+        ? ewma?.kanaPerSecond
+        : playbackRecentKanaPerSecond(analysis, cursor, stepsPerSecond, sameFingerDelay, limit, calibration, speedMultiplier, schedule);
+    const actionsPerSecond =
+      average === 'ewma'
+        ? ewma?.actionsPerSecond
+        : recent && recent.durationMs > 0
+          ? ((recent.end - recent.start) * 1000) / recent.durationMs
+          : undefined;
     points.push({
       cursor,
       inputText: ewma?.inputText ?? (recent ? playbackRateWindowInputText(strokes, recent) : ''),
@@ -1614,11 +1392,7 @@ export function playbackRateChartData(
 }
 
 /** 停止・一時停止中の1打鍵送り。再生中はカーソルを動かさない。 */
-export function stepPlayback(
-  state: PlaybackState,
-  direction: -1 | 1,
-  strokeCount: number,
-): PlaybackState {
+export function stepPlayback(state: PlaybackState, direction: -1 | 1, strokeCount: number): PlaybackState {
   if (state.playing) return state;
   return {
     ...state,
@@ -1646,10 +1420,7 @@ export function reconcilePlaybackStateAfterAnalysisRefresh(
     return { ...nextBaseState, cursor, playing: false, elapsedMs: 0 };
   }
 
-  const previousCursor = clampPlaybackCursor(
-    previousState.cursor,
-    previousAnalysis.strokes.length,
-  );
+  const previousCursor = clampPlaybackCursor(previousState.cursor, previousAnalysis.strokes.length);
   if (previousCursor >= previousAnalysis.strokes.length) {
     return {
       ...nextBaseState,
@@ -1659,8 +1430,9 @@ export function reconcilePlaybackStateAfterAnalysisRefresh(
     };
   }
 
-  const previousStepMs = playbackTimingStepDurationMs(previousSchedule, previousCursor)
-    ?? playbackStepDurationMs(
+  const previousStepMs =
+    playbackTimingStepDurationMs(previousSchedule, previousCursor) ??
+    playbackStepDurationMs(
       previousAnalysis,
       previousCursor,
       previousState.stepsPerSecond,
@@ -1668,8 +1440,9 @@ export function reconcilePlaybackStateAfterAnalysisRefresh(
       previousState.calibration,
       previousState.speedMultiplier,
     );
-  const nextStepMs = playbackTimingStepDurationMs(nextSchedule, cursor)
-    ?? playbackStepDurationMs(
+  const nextStepMs =
+    playbackTimingStepDurationMs(nextSchedule, cursor) ??
+    playbackStepDurationMs(
       nextAnalysis,
       cursor,
       nextBaseState.stepsPerSecond,
@@ -1677,9 +1450,7 @@ export function reconcilePlaybackStateAfterAnalysisRefresh(
       nextBaseState.calibration,
       nextBaseState.speedMultiplier,
     );
-  const progress = previousStepMs > 0
-    ? Math.min(1, Math.max(0, previousState.elapsedMs / previousStepMs))
-    : 0;
+  const progress = previousStepMs > 0 ? Math.min(1, Math.max(0, previousState.elapsedMs / previousStepMs)) : 0;
 
   return {
     ...nextBaseState,
@@ -1705,15 +1476,9 @@ export function advancePlayback(
   let remaining = state.elapsedMs + Math.min(Math.max(0, elapsedMs), MAX_FRAME_MS);
   let nextCursor = cursor;
   while (nextCursor < strokeCount) {
-    const stepMs = playbackTimingStepDurationMs(schedule, nextCursor)
-      ?? playbackStepDurationMs(
-        analysis,
-        nextCursor,
-        state.stepsPerSecond,
-        state.sameFingerDelay,
-        state.calibration,
-        state.speedMultiplier,
-      );
+    const stepMs =
+      playbackTimingStepDurationMs(schedule, nextCursor) ??
+      playbackStepDurationMs(analysis, nextCursor, state.stepsPerSecond, state.sameFingerDelay, state.calibration, state.speedMultiplier);
     if (remaining < stepMs) break;
     remaining -= stepMs;
     nextCursor++;

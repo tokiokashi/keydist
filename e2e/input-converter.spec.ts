@@ -31,9 +31,7 @@ test('Tester uses a resizable wide FHD workspace without test-mode scrolling', a
   expect(guideBox!.x).toBeLessThan(keyboardBox!.x);
   expect(guideBox!.y).toBeGreaterThan(settingsBox!.y);
   expect(keyboardBox!.y).toBeGreaterThan(captureBox!.y);
-  expect(Math.abs(
-    (guideBox!.y + guideBox!.height) - (keyboardBox!.y + keyboardBox!.height),
-  )).toBeLessThanOrEqual(2);
+  expect(Math.abs(guideBox!.y + guideBox!.height - (keyboardBox!.y + keyboardBox!.height))).toBeLessThanOrEqual(2);
 
   await expect(splitter).toHaveAttribute('aria-valuenow', '50');
   await splitter.focus();
@@ -44,19 +42,12 @@ test('Tester uses a resizable wide FHD workspace without test-mode scrolling', a
   await settings.getByRole('button', { name: '設定を閉じる' }).click();
   await expect(settings.locator('.input-settings-body')).toHaveCount(0);
 
-  const [collapsedGuideBox, collapsedKeyboardBox] = await Promise.all([
-    guide.boundingBox(),
-    keyboardPanel.boundingBox(),
-  ]);
+  const [collapsedGuideBox, collapsedKeyboardBox] = await Promise.all([guide.boundingBox(), keyboardPanel.boundingBox()]);
   expect(collapsedGuideBox).not.toBeNull();
   expect(collapsedKeyboardBox).not.toBeNull();
-  expect(Math.abs(
-    (collapsedGuideBox!.y + collapsedGuideBox!.height)
-      - (collapsedKeyboardBox!.y + collapsedKeyboardBox!.height),
-  )).toBeLessThanOrEqual(2);
+  expect(Math.abs(collapsedGuideBox!.y + collapsedGuideBox!.height - (collapsedKeyboardBox!.y + collapsedKeyboardBox!.height))).toBeLessThanOrEqual(2);
 
-  const guideOverflowY = await guide.locator('.input-layer-guide-grid')
-    .evaluate((element) => getComputedStyle(element).overflowY);
+  const guideOverflowY = await guide.locator('.input-layer-guide-grid').evaluate((element) => getComputedStyle(element).overflowY);
   expect(guideOverflowY).toBe('auto');
 
   const viewportMetrics = await page.evaluate(() => ({
@@ -115,18 +106,11 @@ test('打ち方逆引きpanelはcontrolsを保ったまま独立小窓化でき�
   await lookup.fill('かな');
   await expect(panel.locator('.input-lookup-results')).not.toContainText(emptyHint);
 
-  await page
-    .getByLabel('Practice Textをクリックまたはドラッグして小窓表示')
-    .getByText('Practice Text', { exact: true })
-    .click();
+  await page.getByLabel('Practice Textをクリックまたはドラッグして小窓表示').getByText('Practice Text', { exact: true }).click();
   const title = panel.getByText('Practice Text', { exact: true });
   const assist = panel.getByRole('button', { name: /入力アシストを/ });
   const randomWord = panel.getByLabel('ランダムな単語');
-  const [titleBox, assistBox, randomBox] = await Promise.all([
-    title.boundingBox(),
-    assist.boundingBox(),
-    randomWord.boundingBox(),
-  ]);
+  const [titleBox, assistBox, randomBox] = await Promise.all([title.boundingBox(), assist.boundingBox(), randomWord.boundingBox()]);
   expect(titleBox).not.toBeNull();
   expect(assistBox).not.toBeNull();
   expect(randomBox).not.toBeNull();
@@ -159,14 +143,12 @@ test('打ち方逆引きpanelはcontrolsを保ったまま独立小窓化でき�
   expect(floatingTitleBox).not.toBeNull();
   expect(floatingAssistBox).not.toBeNull();
   expect(floatingRandomBox).not.toBeNull();
-  expect(floatingAssistBox!.x - (floatingTitleBox!.x + floatingTitleBox!.width))
-    .toBeLessThanOrEqual(56);
+  expect(floatingAssistBox!.x - (floatingTitleBox!.x + floatingTitleBox!.width)).toBeLessThanOrEqual(56);
   expect(floatingAssistBox!.x).toBeLessThan(floatingRandomBox!.x);
   const backBox = await backButton.boundingBox();
   expect(panelBox).not.toBeNull();
   expect(backBox).not.toBeNull();
-  expect(panelBox!.x + panelBox!.width - (backBox!.x + backBox!.width))
-    .toBeLessThanOrEqual(20);
+  expect(panelBox!.x + panelBox!.width - (backBox!.x + backBox!.width)).toBeLessThanOrEqual(20);
 
   const resizeHandle = page.getByLabel('Practice Textのサイズを変更');
   const beforeResize = await panel.boundingBox();
@@ -177,20 +159,15 @@ test('打ち方逆引きpanelはcontrolsを保ったまま独立小窓化でき�
   await page.mouse.down();
   await page.mouse.move(resizeBox!.x + 100, resizeBox!.y + 60);
   await page.mouse.up();
-  await expect.poll(async () => (await panel.boundingBox())?.width ?? 0)
-    .toBeGreaterThan(beforeResize!.width + 50);
+  await expect.poll(async () => (await panel.boundingBox())?.width ?? 0).toBeGreaterThan(beforeResize!.width + 50);
 
   const shrinkHandleBox = await resizeHandle.boundingBox();
   expect(shrinkHandleBox).not.toBeNull();
-  await page.mouse.move(
-    shrinkHandleBox!.x + shrinkHandleBox!.width / 2,
-    shrinkHandleBox!.y + shrinkHandleBox!.height / 2,
-  );
+  await page.mouse.move(shrinkHandleBox!.x + shrinkHandleBox!.width / 2, shrinkHandleBox!.y + shrinkHandleBox!.height / 2);
   await page.mouse.down();
   await page.mouse.move(shrinkHandleBox!.x, shrinkHandleBox!.y - 500);
   await page.mouse.up();
-  await expect.poll(async () => Math.round((await panel.boundingBox())?.height ?? -1))
-    .toBeGreaterThanOrEqual(103);
+  await expect.poll(async () => Math.round((await panel.boundingBox())?.height ?? -1)).toBeGreaterThanOrEqual(103);
 
   await backButton.click();
   await expect(panel).not.toHaveAttribute('data-floating');
@@ -213,28 +190,16 @@ test('Practice Textはdocked/floating共通でpanel自身の横幅に応じてst
 
   await expect.poll(placement).toBe('side');
 
-  await page
-    .getByLabel('Practice Textをクリックまたはドラッグして小窓表示')
-    .getByText('Practice Text', { exact: true })
-    .click();
+  await page.getByLabel('Practice Textをクリックまたはドラッグして小窓表示').getByText('Practice Text', { exact: true }).click();
   await expect(panel).toHaveAttribute('data-floating', 'true');
 
   const resizeTo = async (width: number, height: number) => {
-    const [panelBox, handleBox] = await Promise.all([
-      panel.boundingBox(),
-      page.getByLabel('Practice Textのサイズを変更').boundingBox(),
-    ]);
+    const [panelBox, handleBox] = await Promise.all([panel.boundingBox(), page.getByLabel('Practice Textのサイズを変更').boundingBox()]);
     expect(panelBox).not.toBeNull();
     expect(handleBox).not.toBeNull();
-    await page.mouse.move(
-      handleBox!.x + handleBox!.width / 2,
-      handleBox!.y + handleBox!.height / 2,
-    );
+    await page.mouse.move(handleBox!.x + handleBox!.width / 2, handleBox!.y + handleBox!.height / 2);
     await page.mouse.down();
-    await page.mouse.move(
-      handleBox!.x + width - panelBox!.width,
-      handleBox!.y + height - panelBox!.height,
-    );
+    await page.mouse.move(handleBox!.x + width - panelBox!.width, handleBox!.y + height - panelBox!.height);
     await page.mouse.up();
   };
 
@@ -262,9 +227,7 @@ test('設定panelは開閉controlを誤detachせず小窓化できる', async ({
   await expect(panel.locator('.input-settings-body')).toHaveCount(0);
   await panel.getByRole('button', { name: '設定を開く' }).click();
 
-  await page.getByLabel('Settingsをクリックまたはドラッグして小窓表示')
-    .getByText('Settings', { exact: true })
-    .click();
+  await page.getByLabel('Settingsをクリックまたはドラッグして小窓表示').getByText('Settings', { exact: true }).click();
   await expect(panel).toHaveAttribute('data-floating', 'true');
   await expect(page.getByLabel('配列', { exact: true })).toBeVisible();
 
@@ -273,15 +236,11 @@ test('設定panelは開閉controlを誤detachせず小窓化できる', async ({
   const resizeBox = await resizeHandle.boundingBox();
   expect(beforeResize).not.toBeNull();
   expect(resizeBox).not.toBeNull();
-  await page.mouse.move(
-    resizeBox!.x + resizeBox!.width / 2,
-    resizeBox!.y + resizeBox!.height / 2,
-  );
+  await page.mouse.move(resizeBox!.x + resizeBox!.width / 2, resizeBox!.y + resizeBox!.height / 2);
   await page.mouse.down();
   await page.mouse.move(resizeBox!.x + 80, resizeBox!.y + 50);
   await page.mouse.up();
-  await expect.poll(async () => (await panel.boundingBox())?.width ?? 0)
-    .toBeGreaterThan(beforeResize!.width + 40);
+  await expect.poll(async () => (await panel.boundingBox())?.width ?? 0).toBeGreaterThan(beforeResize!.width + 40);
 
   await panel.getByRole('button', { name: 'Settingsを元に戻す' }).click();
   await expect(panel).not.toHaveAttribute('data-floating');
@@ -318,17 +277,12 @@ test('Keyboard View keeps Pressed and Recognized together while floating', async
   const status = page.getByLabel('キーの状態');
   const sections = status.locator('section');
 
-  await page.getByLabel('Keyboard Viewをクリックまたはドラッグして小窓表示')
-    .getByText('Keyboard View', { exact: true })
-    .click();
+  await page.getByLabel('Keyboard Viewをクリックまたはドラッグして小窓表示').getByText('Keyboard View', { exact: true }).click();
   await expect(panel).toHaveAttribute('data-floating', 'true');
   await expect(sections).toHaveCount(2);
 
   const sameRow = async () => {
-    const [first, second] = await Promise.all([
-      sections.nth(0).boundingBox(),
-      sections.nth(1).boundingBox(),
-    ]);
+    const [first, second] = await Promise.all([sections.nth(0).boundingBox(), sections.nth(1).boundingBox()]);
     if (first === null || second === null) return false;
     return Math.abs(first.y - second.y) <= 2;
   };
@@ -337,10 +291,7 @@ test('Keyboard View keeps Pressed and Recognized together while floating', async
   const resizeHandle = page.getByLabel('Keyboard Viewのサイズを変更');
   const resizeBox = await resizeHandle.boundingBox();
   expect(resizeBox).not.toBeNull();
-  await page.mouse.move(
-    resizeBox!.x + resizeBox!.width / 2,
-    resizeBox!.y + resizeBox!.height / 2,
-  );
+  await page.mouse.move(resizeBox!.x + resizeBox!.width / 2, resizeBox!.y + resizeBox!.height / 2);
   await page.mouse.down();
   await page.mouse.move(resizeBox!.x - 240, resizeBox!.y);
   await page.mouse.up();
@@ -365,16 +316,12 @@ test('入力panelのresize handleはtextareaより前面で操作できる', asy
   expect(before).not.toBeNull();
   expect(handleBox).not.toBeNull();
 
-  await page.mouse.move(
-    handleBox!.x + handleBox!.width / 2,
-    handleBox!.y + handleBox!.height / 2,
-  );
+  await page.mouse.move(handleBox!.x + handleBox!.width / 2, handleBox!.y + handleBox!.height / 2);
   await page.mouse.down();
   await page.mouse.move(handleBox!.x + 90, handleBox!.y + 50);
   await page.mouse.up();
 
-  await expect.poll(async () => (await panel.boundingBox())?.width ?? 0)
-    .toBeGreaterThan(before!.width + 40);
+  await expect.poll(async () => (await panel.boundingBox())?.width ?? 0).toBeGreaterThan(before!.width + 40);
 });
 
 test('Keyboard panelは表示controlsを保ったまま小窓化できる', async ({ page }) => {
@@ -396,10 +343,7 @@ test('Keyboard panelは表示controlsを保ったまま小窓化できる', asyn
   const headerHelp = keyboardHeader.locator('.input-keyboard-help');
   await expect(headerHelp).toContainText('実キーの割り当て');
 
-  const [displayBox, layerBox] = await Promise.all([
-    displayHeader.boundingBox(),
-    panel.locator('.input-active-layer').boundingBox(),
-  ]);
+  const [displayBox, layerBox] = await Promise.all([displayHeader.boundingBox(), panel.locator('.input-active-layer').boundingBox()]);
   expect(displayBox).not.toBeNull();
   expect(layerBox).not.toBeNull();
   expect(Math.abs(displayBox!.y - layerBox!.y)).toBeLessThanOrEqual(6);
@@ -413,8 +357,7 @@ test('Keyboard panelは表示controlsを保ったまま小窓化できる', asyn
   const backBox = await backButton.boundingBox();
   expect(floatingBox).not.toBeNull();
   expect(backBox).not.toBeNull();
-  expect(floatingBox!.x + floatingBox!.width - (backBox!.x + backBox!.width))
-    .toBeLessThanOrEqual(20);
+  expect(floatingBox!.x + floatingBox!.width - (backBox!.x + backBox!.width)).toBeLessThanOrEqual(20);
 
   const output = page.getByLabel('自由入力テキスト');
   await output.click();
@@ -435,8 +378,7 @@ test('docked panel headerは閾値drag・cancel・keyboardを区別する', asyn
   const dockedHeader = page.getByLabel('Layer Guideを小窓表示');
   const headerBox = await dockedHeader.boundingBox();
   expect(headerBox).not.toBeNull();
-  expect(await dockedHeader.evaluate((element) => getComputedStyle(element).touchAction))
-    .toBe('none');
+  expect(await dockedHeader.evaluate((element) => getComputedStyle(element).touchAction)).toBe('none');
 
   const startX = headerBox!.x + Math.min(100, headerBox!.width / 2);
   const startY = headerBox!.y + headerBox!.height / 2;
@@ -511,10 +453,7 @@ test('レイヤーカンペはWorkspace overlayで移動・リサイズしなが
   const resizeBox = await resizeHandle.boundingBox();
   expect(beforeResize).not.toBeNull();
   expect(resizeBox).not.toBeNull();
-  await page.mouse.move(
-    resizeBox!.x + resizeBox!.width / 2,
-    resizeBox!.y + resizeBox!.height / 2,
-  );
+  await page.mouse.move(resizeBox!.x + resizeBox!.width / 2, resizeBox!.y + resizeBox!.height / 2);
   await page.mouse.down();
   await page.mouse.move(resizeBox!.x + 120, resizeBox!.y + 90);
   await page.mouse.up();
@@ -545,14 +484,17 @@ test('floating panel dragはpointer中のrectを永続stateへ連打せず終了
   await page.getByLabel('Layer Guideを小窓表示').click();
   await expect(guide).toHaveAttribute('data-floating', 'true');
 
-  const persistedRect = async () => page.evaluate(() => {
-    const raw = localStorage.getItem('keydist:app-state');
-    if (raw === null) return null;
-    const state = JSON.parse(raw).workspace as {
-      panels?: Record<string, { rect?: { x: number; y: number; width: number; height: number } }>;
-    } | undefined;
-    return state?.panels?.['input.layer-guide']?.rect ?? null;
-  });
+  const persistedRect = async () =>
+    page.evaluate(() => {
+      const raw = localStorage.getItem('keydist:app-state');
+      if (raw === null) return null;
+      const state = JSON.parse(raw).workspace as
+        | {
+            panels?: Record<string, { rect?: { x: number; y: number; width: number; height: number } }>;
+          }
+        | undefined;
+      return state?.panels?.['input.layer-guide']?.rect ?? null;
+    });
 
   await expect.poll(persistedRect).not.toBeNull();
   const beforePersisted = await persistedRect();
@@ -579,8 +521,7 @@ test('floating panel dragはpointer中のrectを永続stateへ連打せず終了
 
   await page.mouse.up();
 
-  await expect.poll(async () => (await persistedRect())?.x ?? -1)
-    .toBeGreaterThan((beforePersisted?.x ?? 0) + 80);
+  await expect.poll(async () => (await persistedRect())?.x ?? -1).toBeGreaterThan((beforePersisted?.x ?? 0) + 80);
 });
 
 test('Workspace animationはreduced-motionを尊重する', async ({ page }) => {
@@ -616,20 +557,12 @@ test('新下駄レイヤーカンペはpresentation-only交点を表示する', 
   const ring = page.getByLabel('「薬指シフト」個別カンペ');
 
   // semantic所属は別レイヤーでも、authoringでpresentationCellsとして明示した交点を表示する。
-  await expect(
-    middle.locator('[data-key-id="l"] .physical-keyboard-legend'),
-  ).toHaveText('お');
-  await expect(
-    ring.locator('[data-key-id="k"] .physical-keyboard-legend'),
-  ).toHaveText('じ');
+  await expect(middle.locator('[data-key-id="l"] .physical-keyboard-legend')).toHaveText('お');
+  await expect(ring.locator('[data-key-id="k"] .physical-keyboard-legend')).toHaveText('じ');
 
   // reciprocal faceの通常セルも同じpresentation viewに残る。
-  await expect(
-    middle.locator('[data-key-id="d"] .physical-keyboard-legend'),
-  ).toHaveText('れ');
-  await expect(
-    middle.locator('[data-key-id="k"] .physical-keyboard-legend'),
-  ).toHaveText('れ');
+  await expect(middle.locator('[data-key-id="d"] .physical-keyboard-legend')).toHaveText('れ');
+  await expect(middle.locator('[data-key-id="k"] .physical-keyboard-legend')).toHaveText('れ');
 
   // 切り替えキーは配列図の枠が示すので、カードに文字の行は出さない。小窓にしても同じ。
   await expect(middle).not.toContainText('切り替えキー');
@@ -695,15 +628,11 @@ test('レイヤーカンペは盤面ごとに独立して複数小窓表示で�
   const secondResizeBox = await secondResizeHandle.boundingBox();
   expect(secondBeforeResize).not.toBeNull();
   expect(secondResizeBox).not.toBeNull();
-  await page.mouse.move(
-    secondResizeBox!.x + secondResizeBox!.width / 2,
-    secondResizeBox!.y + secondResizeBox!.height / 2,
-  );
+  await page.mouse.move(secondResizeBox!.x + secondResizeBox!.width / 2, secondResizeBox!.y + secondResizeBox!.height / 2);
   await page.mouse.down();
   await page.mouse.move(secondResizeBox!.x + 80, secondResizeBox!.y + 50);
   await page.mouse.up();
-  await expect.poll(async () => (await second.boundingBox())?.width ?? 0)
-    .toBeGreaterThan(secondBeforeResize!.width + 40);
+  await expect.poll(async () => (await second.boundingBox())?.width ?? 0).toBeGreaterThan(secondBeforeResize!.width + 40);
 
   const firstMoveHandle = first.locator('> header');
   const beforeFirst = await first.boundingBox();
@@ -786,9 +715,7 @@ test('#regression レイヤーカンペ本体を浮かせた状態でも入れ�
   // Bも同様に、浮いた直後(=Bがまだガイドより前面にいる)のうちに退避させる。
   await dragBy(cardB.locator('> header'), -700, 400);
 
-  const zIndexOf = (locator: typeof cardA) => locator.evaluate(
-    (element) => Number.parseInt(getComputedStyle(element).zIndex, 10),
-  );
+  const zIndexOf = (locator: typeof cardA) => locator.evaluate((element) => Number.parseInt(getComputedStyle(element).zIndex, 10));
 
   // Aのbody(ボタンでない場所)をpointerdown + clickして前面化する。
   const cardABody = cardA.locator('.physical-keyboard');
@@ -798,11 +725,7 @@ test('#regression レイヤーカンペ本体を浮かせた状態でも入れ�
   await page.mouse.down();
   await page.mouse.up();
 
-  const [guideZAfterClick, aZAfterClick, bZAfterClick] = await Promise.all([
-    zIndexOf(guide),
-    zIndexOf(cardA),
-    zIndexOf(cardB),
-  ]);
+  const [guideZAfterClick, aZAfterClick, bZAfterClick] = await Promise.all([zIndexOf(guide), zIndexOf(cardA), zIndexOf(cardB)]);
   // 修正前はここでガイドがAより上に来た(guide=3, A=4, B=2 の実測あり)。
   expect(guideZAfterClick).toBeLessThan(bZAfterClick);
   expect(bZAfterClick).toBeLessThan(aZAfterClick);
@@ -811,11 +734,7 @@ test('#regression レイヤーカンペ本体を浮かせた状態でも入れ�
   // Bの内部要素へフォーカスするとBが前面化する。
   await cardB.getByRole('button', { name: /を元に戻す$/ }).focus();
 
-  const [guideZAfterFocus, aZAfterFocus, bZAfterFocus] = await Promise.all([
-    zIndexOf(guide),
-    zIndexOf(cardA),
-    zIndexOf(cardB),
-  ]);
+  const [guideZAfterFocus, aZAfterFocus, bZAfterFocus] = await Promise.all([zIndexOf(guide), zIndexOf(cardA), zIndexOf(cardB)]);
   expect(guideZAfterFocus).toBeLessThan(aZAfterFocus);
   expect(aZAfterFocus).toBeLessThan(bZAfterFocus);
   await expect(cardB).toHaveAttribute('data-active', 'true');
@@ -905,8 +824,7 @@ test('Recognized detail stays one row when one event realizes multiple inputs', 
   await expect(recognizedRows.nth(0)).toContainText('し');
   await expect(recognizedRows.nth(1)).toContainText('ん');
 
-  const boxes = await recognizedRows.evaluateAll((elements) =>
-    elements.map((element) => element.getBoundingClientRect()));
+  const boxes = await recognizedRows.evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect()));
   expect(Math.abs(boxes[0]!.top - boxes[1]!.top)).toBeLessThanOrEqual(1);
 
   await page.keyboard.up(',');
@@ -936,8 +854,7 @@ test('Recognized detail stays one row for the reported k/j re-press sequence', a
 
   await expect.poll(async () => recognizedRows.count()).toBeGreaterThan(1);
 
-  const boxes = await recognizedRows.evaluateAll((elements) =>
-    elements.map((element) => element.getBoundingClientRect()));
+  const boxes = await recognizedRows.evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect()));
   expect(new Set(boxes.map((box) => Math.round(box.top))).size).toBe(1);
 
   const actionCode = recognizedRows.first().locator('code').first();
@@ -970,9 +887,7 @@ test('Recognized detail keeps the same typography and height before and after in
   await expect(recognizedSection.getByRole('heading', { name: 'Recognized' })).toBeVisible();
 
   const beforeBox = await recognizedSection.boundingBox();
-  const emptyFontSize = await empty.evaluate(
-    (element) => getComputedStyle(element).fontSize,
-  );
+  const emptyFontSize = await empty.evaluate((element) => getComputedStyle(element).fontSize);
   expect(beforeBox).not.toBeNull();
 
   const output = page.getByLabel('自由入力テキスト');
@@ -982,9 +897,7 @@ test('Recognized detail keeps the same typography and height before and after in
 
   const recognized = recognizedSection.locator('.input-recognized strong');
   const afterBox = await recognizedSection.boundingBox();
-  const recognizedFontSize = await recognized.evaluate(
-    (element) => getComputedStyle(element).fontSize,
-  );
+  const recognizedFontSize = await recognized.evaluate((element) => getComputedStyle(element).fontSize);
   expect(afterBox).not.toBeNull();
   expect(recognizedFontSize).toBe(emptyFontSize);
   expect(afterBox!.height).toBe(beforeBox!.height);
@@ -1007,10 +920,7 @@ test('Tester keeps desktop Y bounded and lets cheatsheets scroll when width caus
   await splitter.focus();
   await page.keyboard.press('Home');
 
-  const [displayBox, keyboardBox] = await Promise.all([
-    displaySettings.boundingBox(),
-    keyboardPanel.boundingBox(),
-  ]);
+  const [displayBox, keyboardBox] = await Promise.all([displaySettings.boundingBox(), keyboardPanel.boundingBox()]);
   expect(displayBox).not.toBeNull();
   expect(keyboardBox).not.toBeNull();
   expect(displayBox!.x).toBeGreaterThanOrEqual(keyboardBox!.x);
@@ -1041,13 +951,15 @@ test('Tester chooses the cheatsheet grid that maximizes readable card size', asy
   const settings = page.locator('.input-settings-panel');
   const layoutSelect = page.getByLabel('配列', { exact: true });
   const grid = page.locator('.input-layer-guide-grid');
-  const columns = async () => grid.evaluate((element) =>
-    getComputedStyle(element).gridTemplateColumns
-      .split(' ')
-      .filter((track) => track.length > 0)
-      .length);
+  const columns = async () =>
+    grid.evaluate(
+      (element) =>
+        getComputedStyle(element)
+          .gridTemplateColumns.split(' ')
+          .filter((track) => track.length > 0).length,
+    );
   const setLayoutWithSettingsCollapsed = async (value: string) => {
-    if (await settings.locator('.input-settings-body').count() === 0) {
+    if ((await settings.locator('.input-settings-body').count()) === 0) {
       await settings.getByRole('button', { name: '設定を開く' }).click();
       await expect(settings.locator('.input-settings-body')).toBeVisible();
     }
@@ -1089,11 +1001,13 @@ test('レイヤーカンペ全体を小窓化して戻してもdocked gridの詰
 
   const guide = page.getByLabel('Layer Guide', { exact: true });
   const grid = guide.locator('.input-layer-guide-grid');
-  const columns = async () => grid.evaluate((element) =>
-    getComputedStyle(element).gridTemplateColumns
-      .split(' ')
-      .filter((track) => track.length > 0)
-      .length);
+  const columns = async () =>
+    grid.evaluate(
+      (element) =>
+        getComputedStyle(element)
+          .gridTemplateColumns.split(' ')
+          .filter((track) => track.length > 0).length,
+    );
 
   await expect(page.locator('.input-layer-card')).toHaveCount(4);
   await expect.poll(columns).toBe(2);
@@ -1104,10 +1018,7 @@ test('レイヤーカンペ全体を小窓化して戻してもdocked gridの詰
   const resizeHandle = page.getByLabel('Layer Guideのサイズを変更');
   const resizeBox = await resizeHandle.boundingBox();
   expect(resizeBox).not.toBeNull();
-  await page.mouse.move(
-    resizeBox!.x + resizeBox!.width / 2,
-    resizeBox!.y + resizeBox!.height / 2,
-  );
+  await page.mouse.move(resizeBox!.x + resizeBox!.width / 2, resizeBox!.y + resizeBox!.height / 2);
   await page.mouse.down();
   await page.mouse.move(resizeBox!.x - 420, resizeBox!.y);
   await page.mouse.up();
@@ -1189,19 +1100,23 @@ test('Tester keeps browser key lifecycle consistent', async ({ page }) => {
   await expect(output).toHaveValue('A');
 });
 
-
 test('Tester selects preset physical geometry and does not offer a saved custom one', async ({ page }) => {
   await page.addInitScript(() => {
-    localStorage.setItem('keydist:geometry-shapes', JSON.stringify([{
-      id: 'shape-e2e-grid',
-      name: 'E2E Grid',
-      pitchMm: 19.05,
-      rowWidths: [12, 12, 11, 10],
-      thumbs: [
-        { id: 'thumb-l', finger: 'LT', col: 3.5, y: 4 },
-        { id: 'thumb-r', finger: 'RT', col: 5.5, y: 4 },
-      ],
-    }]));
+    localStorage.setItem(
+      'keydist:geometry-shapes',
+      JSON.stringify([
+        {
+          id: 'shape-e2e-grid',
+          name: 'E2E Grid',
+          pitchMm: 19.05,
+          rowWidths: [12, 12, 11, 10],
+          thumbs: [
+            { id: 'thumb-l', finger: 'LT', col: 3.5, y: 4 },
+            { id: 'thumb-r', finger: 'RT', col: 5.5, y: 4 },
+          ],
+        },
+      ]),
+    );
   });
   await page.goto('/input');
 
@@ -1214,9 +1129,7 @@ test('Tester selects preset physical geometry and does not offer a saved custom 
   await expect(keyboard).toHaveAttribute('data-geometry-id', 'row-staggered');
   await expect(keyboard).toHaveAttribute('preserveAspectRatio', 'xMinYMid meet');
   const keyboardHeading = page.locator('.input-keyboard-panel-heading');
-  await expect(keyboardHeading).toContainText(
-    'キーをクリックすると実キーの割り当てを変更できます。',
-  );
+  await expect(keyboardHeading).toContainText('キーをクリックすると実キーの割り当てを変更できます。');
   await expect(page.getByLabel('物理キー割当')).toHaveCount(0);
 
   for (const id of [
@@ -1244,7 +1157,6 @@ test('Tester selects preset physical geometry and does not offer a saved custom 
   ]);
   await expect(geometry.locator('option[value="shape-e2e-grid"]')).toHaveCount(0);
 });
-
 
 test('Tester shows stable active layer, dynamic next-key guide and display toggles', async ({ page }) => {
   await page.goto('/input');
@@ -1510,8 +1422,7 @@ test('Practice Textはdocked既定の50:50 splitで候補rowとguideがcontent�
   expect(itemBox).not.toBeNull();
   expect(panelBox!.height).toBeGreaterThanOrEqual(103);
   expect(guideBox!.y).toBeGreaterThanOrEqual(contentBox!.y - 1);
-  expect(itemBox!.y + itemBox!.height)
-    .toBeLessThanOrEqual(contentBox!.y + contentBox!.height + 1);
+  expect(itemBox!.y + itemBox!.height).toBeLessThanOrEqual(contentBox!.y + contentBox!.height + 1);
 });
 
 test('Practice Textは最長候補を1件だけ表示し、他の打ち方はhover/focusで開く', async ({ page }) => {
@@ -1582,18 +1493,14 @@ test('ランダム練習はモードを保持し別停止ボタンで終了で�
   await wordButton.click();
   await expect(wordButton).toHaveAttribute('aria-pressed', 'true');
   await expect(wordButton).toHaveAttribute('data-active', 'true');
-  await expect(assist.locator('.input-lookup-field-body'))
-    .toHaveAttribute('data-random-practice-mode', 'word');
+  await expect(assist.locator('.input-lookup-field-body')).toHaveAttribute('data-random-practice-mode', 'word');
   await expect(lookup).toHaveValue('あさ');
   await expect(page.getByRole('button', { name: 'ランダム練習を停止' })).toBeVisible();
 
   const lookupHeading = assist.locator('.input-lookup-field-heading');
   const lookupTitle = lookupHeading.locator('> span').first();
   const randomControls = lookupHeading.locator('.input-random-samples');
-  const [lookupTitleBox, randomControlsBox] = await Promise.all([
-    lookupTitle.boundingBox(),
-    randomControls.boundingBox(),
-  ]);
+  const [lookupTitleBox, randomControlsBox] = await Promise.all([lookupTitle.boundingBox(), randomControls.boundingBox()]);
   expect(lookupTitleBox).not.toBeNull();
   expect(randomControlsBox).not.toBeNull();
   const lookupTitleCenterY = lookupTitleBox!.y + lookupTitleBox!.height / 2;
@@ -1606,8 +1513,7 @@ test('ランダム練習はモードを保持し別停止ボタンで終了で�
   await expect(wordButton).toHaveAttribute('aria-pressed', 'true');
 
   await page.getByRole('button', { name: 'ランダム練習を停止' }).click();
-  await expect(assist.locator('.input-lookup-field-body'))
-    .not.toHaveAttribute('data-random-practice-mode');
+  await expect(assist.locator('.input-lookup-field-body')).not.toHaveAttribute('data-random-practice-mode');
   await expect(wordButton).toHaveAttribute('aria-pressed', 'false');
   await expect(lookup).toHaveValue('まど');
   await expect(page.getByRole('button', { name: 'ランダム練習を停止' })).toHaveCount(0);
@@ -1658,9 +1564,7 @@ test('ランダム練習は完全一致後も結果を残しEnterで次題へ進
   await page.keyboard.press('Enter');
   await expect(output).toHaveValue('');
   await expect(lookup).toHaveValue('まど');
-  await expect(
-    page.getByLabel('Practice Text').locator('.input-lookup-field-body'),
-  ).toHaveAttribute('data-random-practice-mode', 'word');
+  await expect(page.getByLabel('Practice Text').locator('.input-lookup-field-body')).toHaveAttribute('data-random-practice-mode', 'word');
   await expect(status).not.toHaveAttribute('data-complete');
   await expect(output).toBeFocused();
 });
@@ -1701,10 +1605,7 @@ test('入力欄はお題を薄く表示し正解・誤入力を位置ごとに�
 
   await lookup.fill('');
   await expect(target).toHaveCount(0);
-  await expect(output).toHaveAttribute(
-    'placeholder',
-    'ここをクリックして、そのまま打鍵してください。',
-  );
+  await expect(output).toHaveAttribute('placeholder', 'ここをクリックして、そのまま打鍵してください。');
   await expect(output).toHaveValue('か');
 });
 
@@ -1721,16 +1622,12 @@ test('逆引き強調はレイヤーキーの枠色を保持する', async ({ pa
   await expect(layerKey).toHaveAttribute('data-trigger', 'true');
   await expect(layerKey).toHaveAttribute('data-accent-slot', /[1-8]/);
 
-  const strokeBefore = await layerKey.locator('rect').evaluate(
-    (element) => getComputedStyle(element).stroke,
-  );
+  const strokeBefore = await layerKey.locator('rect').evaluate((element) => getComputedStyle(element).stroke);
 
   await page.getByLabel('打ちたい文字').fill('にゅ');
   await expect(layerKey).toHaveAttribute('data-lookup', 'true');
 
-  const strokeDuringLookup = await layerKey.locator('rect').evaluate(
-    (element) => getComputedStyle(element).stroke,
-  );
+  const strokeDuringLookup = await layerKey.locator('rect').evaluate((element) => getComputedStyle(element).stroke);
   expect(strokeDuringLookup).toBe(strokeBefore);
 
   const outputKey = keyboard.locator('[data-key-id="t"]');
@@ -1803,11 +1700,7 @@ test('打ち方逆引きは配列ごとのcanonical inputを表示する', async
   const previousButton = page.getByRole('button', { name: '前の入力単位' });
   const nextButton = page.getByRole('button', { name: '次の入力単位' });
   const progress = guide.locator('.input-lookup-progress');
-  const [previousBox, nextBox, progressBox] = await Promise.all([
-    previousButton.boundingBox(),
-    nextButton.boundingBox(),
-    progress.boundingBox(),
-  ]);
+  const [previousBox, nextBox, progressBox] = await Promise.all([previousButton.boundingBox(), nextButton.boundingBox(), progress.boundingBox()]);
   expect(previousBox).not.toBeNull();
   expect(nextBox).not.toBeNull();
   expect(progressBox).not.toBeNull();
@@ -1863,15 +1756,13 @@ test('打ち方逆引きは配列ごとのcanonical inputを表示する', async
 
   await lookup.fill('せ');
   await expect(guide).toContainText('せ');
-  await expect(keyboard.locator('[data-key-id="a"] .physical-keyboard-legend'))
-    .toHaveText('せ');
+  await expect(keyboard.locator('[data-key-id="a"] .physical-keyboard-legend')).toHaveText('せ');
 
   await lookup.fill('ぎゃ');
   await expect(results).toContainText('H + J + W');
   await expect(results).not.toContainText('ガイド中');
   for (const key of ['h', 'j', 'w']) {
-    await expect(keyboard.locator(`[data-key-id="${key}"]`))
-      .toHaveAttribute('data-lookup', 'true');
+    await expect(keyboard.locator(`[data-key-id="${key}"]`)).toHaveAttribute('data-lookup', 'true');
   }
 
   // 月配列のprefixは文字単位ではなくaction単位でguideする。
@@ -1899,10 +1790,8 @@ test('打ち方逆引きは配列ごとのcanonical inputを表示する', async
   await expect(keyboard.locator('[data-key-id="f"]')).toHaveAttribute('data-lookup', 'true');
   await expect(keyboard.locator('[data-key-id="thumb-l"]')).toHaveAttribute('data-lookup', 'true');
   await expect(keyboard.locator('[data-key-id="thumb-r"]')).toHaveAttribute('data-lookup', 'true');
-  const naginataLeftSlot = await keyboard.locator('[data-key-id="thumb-l"]')
-    .getAttribute('data-accent-slot');
-  const naginataRightSlot = await keyboard.locator('[data-key-id="thumb-r"]')
-    .getAttribute('data-accent-slot');
+  const naginataLeftSlot = await keyboard.locator('[data-key-id="thumb-l"]').getAttribute('data-accent-slot');
+  const naginataRightSlot = await keyboard.locator('[data-key-id="thumb-r"]').getAttribute('data-accent-slot');
   expect(naginataLeftSlot).not.toBeNull();
   expect(naginataLeftSlot).toBe(naginataRightSlot);
   await expect(page.locator('.input-layer-card').first()).toBeVisible();
@@ -1918,10 +1807,8 @@ test('打ち方逆引きは配列ごとのcanonical inputを表示する', async
   await expect(keyboard.locator('[data-key-id="j"]')).toHaveAttribute('data-lookup', 'true');
   await expect(keyboard.locator('[data-key-id="thumb-l"]')).toHaveAttribute('data-lookup', 'true');
   await expect(keyboard.locator('[data-key-id="thumb-r"]')).toHaveAttribute('data-lookup', 'true');
-  const shinJisLeftSlot = await keyboard.locator('[data-key-id="thumb-l"]')
-    .getAttribute('data-accent-slot');
-  const shinJisRightSlot = await keyboard.locator('[data-key-id="thumb-r"]')
-    .getAttribute('data-accent-slot');
+  const shinJisLeftSlot = await keyboard.locator('[data-key-id="thumb-l"]').getAttribute('data-accent-slot');
+  const shinJisRightSlot = await keyboard.locator('[data-key-id="thumb-r"]').getAttribute('data-accent-slot');
   expect(shinJisLeftSlot).not.toBeNull();
   expect(shinJisLeftSlot).toBe(shinJisRightSlot);
   await expect(page.locator('.input-layer-card').first()).toBeVisible();
@@ -1951,7 +1838,6 @@ test('かわせみ配列+の同時押しをbrowser lifecycleでも認識する',
   await page.keyboard.up('d');
 });
 
-
 test('月配列one-shot guideは対象外単打をbase kanaで示し未定義physical idを主legendへ出さない', async ({ page }) => {
   await page.goto('/input');
   const feature = page.locator('.input-feature');
@@ -1972,7 +1858,6 @@ test('月配列one-shot guideは対象外単打をbase kanaで示し未定義phy
   await expect(keyboard.locator('[data-key-id="1"] .physical-keyboard-legend')).toHaveText('');
 });
 
-
 test('月配列は未定義の標準文字keyをQWERTYとして貫通させない', async ({ page }) => {
   await page.goto('/input');
   const feature = page.locator('.input-feature');
@@ -1991,7 +1876,6 @@ test('月配列は未定義の標準文字keyをQWERTYとして貫通させな�
   await page.keyboard.press('f');
   await expect(output).toHaveValue('と');
 });
-
 
 test('Esc全削除・hold中Backspace・JISかな・仮想Shift表示を扱う', async ({ page }) => {
   await page.goto('/input');
@@ -2045,12 +1929,14 @@ test('Esc全削除・hold中Backspace・JISかな・仮想Shift表示を扱う',
   await output.click();
   await output.evaluate((element) => {
     for (const type of ['keydown', 'keyup'] as const) {
-      element.dispatchEvent(new KeyboardEvent(type, {
-        key: 'ろ',
-        code: 'IntlRo',
-        bubbles: true,
-        cancelable: true,
-      }));
+      element.dispatchEvent(
+        new KeyboardEvent(type, {
+          key: 'ろ',
+          code: 'IntlRo',
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
     }
   });
   await expect(output).toHaveValue('ろ');

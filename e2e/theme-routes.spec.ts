@@ -26,34 +26,42 @@ test('explicit light overrides a dark OS preference and system follows it', asyn
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.goto('/input');
   await page.evaluate(() => {
-    localStorage.setItem('keydist:app-state', JSON.stringify({
-      version: 2,
-      appearance: { theme: 'light' },
-    }));
+    localStorage.setItem(
+      'keydist:app-state',
+      JSON.stringify({
+        version: 2,
+        appearance: { theme: 'light' },
+      }),
+    );
   });
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-  await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).colorScheme))
-    .toBe('light');
+  await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).colorScheme)).toBe('light');
 
   await page.evaluate(() => {
-    localStorage.setItem('keydist:app-state', JSON.stringify({
-      version: 2,
-      appearance: { theme: 'system' },
-    }));
+    localStorage.setItem(
+      'keydist:app-state',
+      JSON.stringify({
+        version: 2,
+        appearance: { theme: 'system' },
+      }),
+    );
   });
   await page.reload();
 
   await expect(page.locator('html')).not.toHaveAttribute('data-theme');
-  await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).colorScheme))
-    .toBe('dark');
+  await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).colorScheme)).toBe('dark');
   // light-dark()を含むtokenはgetPropertyValueでは未解決の文字列が返るため、要素に当てて解決値を見る。
-  await expect.poll(() => page.evaluate(() => {
-    const probe = document.createElement('div');
-    document.body.appendChild(probe);
-    probe.style.color = 'var(--surface)';
-    const resolved = getComputedStyle(probe).color;
-    probe.remove();
-    return resolved;
-  })).toBe('rgb(28, 28, 26)');
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const probe = document.createElement('div');
+        document.body.appendChild(probe);
+        probe.style.color = 'var(--surface)';
+        const resolved = getComputedStyle(probe).color;
+        probe.remove();
+        return resolved;
+      }),
+    )
+    .toBe('rgb(28, 28, 26)');
 });

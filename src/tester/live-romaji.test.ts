@@ -1,11 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { kunrei } from '#input/romaji/kunrei.ts';
-import {
-  liveRomajiContextSatisfied,
-  romajiToKana,
-  romajiTypingCorrectness,
-} from './live-romaji.ts';
+import { liveRomajiContextSatisfied, romajiToKana, romajiTypingCorrectness } from './live-romaji.ts';
 
 const table = kunrei();
 
@@ -39,7 +35,6 @@ test('romaji-input live contextはローマ字表を持つ配列で打つ時だ�
   assert.equal(liveRomajiContextSatisfied(requirement, 'k', true), true);
   assert.equal(liveRomajiContextSatisfied(requirement, 'k', false), false);
 });
-
 
 test('romajiTypingCorrectnessは正しい未確定子音を誤入力扱いしない', () => {
   assert.deepEqual(romajiTypingCorrectness('k', 'か', table), [true]);

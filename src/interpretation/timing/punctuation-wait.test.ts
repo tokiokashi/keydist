@@ -17,12 +17,17 @@ test('打てる読点・句点: 前の待機は入力単位の最初のステッ
 });
 
 test('複数のステップで打つ読点: 前の待機は最初のステップの前、後の待機は最後のステップの後に入る', () => {
-  const plan = planPunctuationWaits('あ、い', [
-    { kanaStart: 0, kanaEnd: 0 },
-    { kanaStart: 1, kanaEnd: 1 },
-    { kanaStart: 1, kanaEnd: 1 },
-    { kanaStart: 2, kanaEnd: 2 },
-  ], WAITS, true);
+  const plan = planPunctuationWaits(
+    'あ、い',
+    [
+      { kanaStart: 0, kanaEnd: 0 },
+      { kanaStart: 1, kanaEnd: 1 },
+      { kanaStart: 1, kanaEnd: 1 },
+      { kanaStart: 2, kanaEnd: 2 },
+    ],
+    WAITS,
+    true,
+  );
   assert.deepEqual(plan.gapMs, [0, 300, 0, 200, 0]);
 });
 

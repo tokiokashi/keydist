@@ -20,27 +20,34 @@ const storedOverrides = async (page: Page): Promise<StoredOverrides> =>
   JSON.parse((await page.evaluate((key) => localStorage.getItem(key), SETUP_KEY)) ?? '{}').overrides ?? {};
 
 async function seed(page: Page, options: { overrides?: StoredOverrides; setups?: boolean } = {}): Promise<void> {
-  await page.addInitScript((seedOptions) => {
-    if (sessionStorage.getItem('seeded') !== null) return;
-    sessionStorage.setItem('seeded', '1');
-    const rows = ['', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'];
-    localStorage.setItem('keydist:user-layouts', JSON.stringify({
-      version: 1,
-      layouts: [
-        { id: 'user-a', name: '自作A', rows, romaji: 'rule-a' },
-        { id: 'user-b', name: '自作B', rows, romaji: 'kunrei' },
-        { id: 'user-broken', name: '使えない自作', rows: ['', '', '', ''] },
-      ],
-    }));
-    localStorage.setItem('keydist:user-romaji-rules', JSON.stringify({
-      version: 1,
-      rules: [{ id: 'rule-a', name: '自作の規則', base: 'kunrei', overrides: { し: 'shi' }, generateSokuon: true }],
-    }));
-    const setups = seedOptions.setups
-      ? [{ id: 'setup-1', number: 1, layoutId: 'qwerty', shapeId: 'row-staggered', label: '練習用' }]
-      : [];
-    localStorage.setItem('keydist:setup-library', JSON.stringify({ version: 1, setups, overrides: seedOptions.overrides ?? {} }));
-  }, { overrides: options.overrides, setups: options.setups === true });
+  await page.addInitScript(
+    (seedOptions) => {
+      if (sessionStorage.getItem('seeded') !== null) return;
+      sessionStorage.setItem('seeded', '1');
+      const rows = ['', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'];
+      localStorage.setItem(
+        'keydist:user-layouts',
+        JSON.stringify({
+          version: 1,
+          layouts: [
+            { id: 'user-a', name: '自作A', rows, romaji: 'rule-a' },
+            { id: 'user-b', name: '自作B', rows, romaji: 'kunrei' },
+            { id: 'user-broken', name: '使えない自作', rows: ['', '', '', ''] },
+          ],
+        }),
+      );
+      localStorage.setItem(
+        'keydist:user-romaji-rules',
+        JSON.stringify({
+          version: 1,
+          rules: [{ id: 'rule-a', name: '自作の規則', base: 'kunrei', overrides: { し: 'shi' }, generateSokuon: true }],
+        }),
+      );
+      const setups = seedOptions.setups ? [{ id: 'setup-1', number: 1, layoutId: 'qwerty', shapeId: 'row-staggered', label: '練習用' }] : [];
+      localStorage.setItem('keydist:setup-library', JSON.stringify({ version: 1, setups, overrides: seedOptions.overrides ?? {} }));
+    },
+    { overrides: options.overrides, setups: options.setups === true },
+  );
 }
 
 async function open(page: Page): Promise<void> {
@@ -113,7 +120,8 @@ test('Workspaceの適用範囲に書いた値は、そのWorkspaceに保存さ�
   await choose(page, workspaceKey!);
   const window = table(page).locator('[data-item="windowSize"]');
   await window.getByRole('button', { name: '先読みNを1増やす' }).click();
-  const workspaceConditions = async () => (await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? '{}').workspaces?.[0]?.conditions, WORKSPACES_KEY));
+  const workspaceConditions = async () =>
+    await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? '{}').workspaces?.[0]?.conditions, WORKSPACES_KEY);
   await expect.poll(workspaceConditions).toEqual({ windowSize: 4 });
   // 全体には入らない
   expect((await storedOverrides(page)).global?.windowSize).toBeUndefined();
@@ -136,7 +144,10 @@ test('計算に使えない自作の配列を選ぶと、行は出ず、値を�
 test('適用範囲を選び直すと動きを伴って切り替わり、動きを減らす設定では動かない', async ({ page }) => {
   await seed(page);
   await open(page);
-  const animationName = () => table(page).locator('.conditions-table-body').evaluate((node) => getComputedStyle(node).animationName);
+  const animationName = () =>
+    table(page)
+      .locator('.conditions-table-body')
+      .evaluate((node) => getComputedStyle(node).animationName);
   await choose(page, 'layout:user-a');
   expect(await animationName()).not.toBe('none');
   await page.emulateMedia({ reducedMotion: 'reduce' });

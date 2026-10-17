@@ -16,12 +16,7 @@ import {
 import { readOverride } from '#input/settings/index.ts';
 import { physicalKeysUsedByLayout } from '#input/layouts/physical-keys.ts';
 import { FALLBACK_JIS_SHAPE_ID, jisShapeIdFor } from '#input/shapes/jis-shape.ts';
-import {
-  DEFAULT_SHAPE_ID,
-  resolveDefaultShapeId,
-  resolveWorkspaceDefaultShapeId,
-  type SettingsCascadeOverrides,
-} from './settings-items.ts';
+import { DEFAULT_SHAPE_ID, resolveDefaultShapeId, resolveWorkspaceDefaultShapeId, type SettingsCascadeOverrides } from './settings-items.ts';
 
 /**
  * `AnalysisTarget`の解決。
@@ -43,9 +38,7 @@ import {
  * （ひいては`traceKeyOf`が使うTraceキー）は同一になる（Setupのid・ラベル・色は
  * キーに含めない。`engine/keys.ts`のコメント参照）。
  */
-export type TargetTextResolution =
-  | SetupTextResolution
-  | { readonly ok: false; readonly kind: 'target-missing'; readonly target: AnalysisTarget };
+export type TargetTextResolution = SetupTextResolution | { readonly ok: false; readonly kind: 'target-missing'; readonly target: AnalysisTarget };
 
 /**
  * 配列を対象にした時に測る物理配列。配列のレベルの上書き ＞ Workspace・全体の値 ＞ 既定の順で選ぶ。

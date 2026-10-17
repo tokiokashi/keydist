@@ -19,8 +19,7 @@ const opts = (o: Partial<TracePolicy> = {}): TracePolicy => ({
   ...o,
 });
 
-const near = (a: number, b: number, msg?: string) =>
-  assert.ok(Math.abs(a - b) < 1e-9, `${msg ?? ''} expected ${b}, got ${a}`);
+const near = (a: number, b: number, msg?: string) => assert.ok(Math.abs(a - b) < 1e-9, `${msg ?? ''} expected ${b}, got ${a}`);
 
 test('入力文字数はローマ字展開前の文字数になる', () => {
   // 「し」はsiに展開されて2打鍵になるが、入力文字数は展開前の1
@@ -106,10 +105,7 @@ test('コンボ相当（複数文字を1見出しで打つ）でも入力文字�
     き: [['d']],
     ゃ: [['k']],
   });
-  const split = computeMetrics(
-    generateTrace('きゃ', splitLayout, geometry, opts()),
-    geometry,
-  );
+  const split = computeMetrics(generateTrace('きゃ', splitLayout, geometry, opts()), geometry);
   assert.equal(split.strokes, 2);
   assert.equal(split.inputChars, 2);
 
@@ -159,11 +155,7 @@ test('単打面率はlegacy inputRoleではなくcanonical classificationをauth
       classifications: [],
     })),
   };
-  near(
-    computeMetrics(legacyCompositionOnly, geometry).singleTapLayerRate,
-    100,
-    'legacy inputRole=compositionだけでは単打面から除外しない',
-  );
+  near(computeMetrics(legacyCompositionOnly, geometry).singleTapLayerRate, 100, 'legacy inputRole=compositionだけでは単打面から除外しない');
 
   const canonicalComposition = {
     ...trace,
@@ -228,14 +220,24 @@ test('単打率はかなを1キーで直接出す独立actionだけを数える'
 
 test('1キー率はActionRealizationPolicy適用後の共通Stroke streamを数える', () => {
   const asuka = LAYOUT_BY_ID.get('asuka')!;
-  const combinedTrace = generateTrace('あだ', asuka, geometry, opts({
-    triggerRealizationPolicy: { useHold: true },
-    actionRealizationPolicy: { triggerActivation: 'disabled' },
-  }));
-  const separateTrace = generateTrace('あだ', asuka, geometry, opts({
-    triggerRealizationPolicy: { useHold: true },
-    actionRealizationPolicy: { triggerActivation: 'semantic', triggerActivationClassOverrides: { 'order-free': 'separate' } },
-  }));
+  const combinedTrace = generateTrace(
+    'あだ',
+    asuka,
+    geometry,
+    opts({
+      triggerRealizationPolicy: { useHold: true },
+      actionRealizationPolicy: { triggerActivation: 'disabled' },
+    }),
+  );
+  const separateTrace = generateTrace(
+    'あだ',
+    asuka,
+    geometry,
+    opts({
+      triggerRealizationPolicy: { useHold: true },
+      actionRealizationPolicy: { triggerActivation: 'semantic', triggerActivationClassOverrides: { 'order-free': 'separate' } },
+    }),
+  );
   const baseConditions = {
     ...DEFAULT_METRIC_CONDITIONS,
     triggerRealizationPolicy: { useHold: true },
@@ -260,17 +262,25 @@ test('1キー率はActionRealizationPolicy適用後の共通Stroke streamを数�
 
 test('1キー率はsemanticを見ずrealized Strokeのfresh key数だけ数える', () => {
   const asuka = LAYOUT_BY_ID.get('asuka')!;
-  const trace = generateTrace('あだ', asuka, geometry, opts({
-    triggerRealizationPolicy: { useHold: true },
-    actionRealizationPolicy: {
-      triggerActivation: 'semantic',
-      triggerActivationClassOverrides: { 'order-free': 'separate' },
-    },
-  }));
+  const trace = generateTrace(
+    'あだ',
+    asuka,
+    geometry,
+    opts({
+      triggerRealizationPolicy: { useHold: true },
+      actionRealizationPolicy: {
+        triggerActivation: 'semantic',
+        triggerActivationClassOverrides: { 'order-free': 'separate' },
+      },
+    }),
+  );
   const metrics = computeMetrics(trace, geometry);
 
   assert.equal(trace.strokes.length, 3);
-  assert.equal(trace.strokes[0].participations.some((p) => p.roles.includes('output')), false);
+  assert.equal(
+    trace.strokes[0].participations.some((p) => p.roles.includes('output')),
+    false,
+  );
   assert.ok(trace.strokes[2].participations.some((p) => p.roles.includes('held-trigger')));
   for (const stroke of trace.strokes) {
     const keys = new Set(stroke.presses.flatMap((press) => press.keys.map((key) => key.id)));
@@ -300,9 +310,14 @@ test('複数文字の単打見出しは単打面率では文字数、単打率�
 
 test('単打率はhold継続中の1キー入力を単打に含めない', () => {
   const asuka = LAYOUT_BY_ID.get('asuka')!;
-  const trace = generateTrace('あだ', asuka, geometry, opts({
-    triggerRealizationPolicy: { useHold: true },
-  }));
+  const trace = generateTrace(
+    'あだ',
+    asuka,
+    geometry,
+    opts({
+      triggerRealizationPolicy: { useHold: true },
+    }),
+  );
   const metrics = computeMetrics(trace, geometry);
 
   assert.equal(trace.strokes.length, 2);
@@ -313,13 +328,17 @@ test('単打率はhold継続中の1キー入力を単打に含めない', () => 
 
 test('単打面率はhold継続中のシフト文字を単打面扱いしない', () => {
   const asuka = LAYOUT_BY_ID.get('asuka')!;
-  const trace = generateTrace('あだ', asuka, geometry, opts({
-    triggerRealizationPolicy: { useHold: true },
-  }));
+  const trace = generateTrace(
+    'あだ',
+    asuka,
+    geometry,
+    opts({
+      triggerRealizationPolicy: { useHold: true },
+    }),
+  );
   const metrics = computeMetrics(trace, geometry);
   near(metrics.singleTapLayerRate, 0);
-  assert.ok(trace.strokes.some((stroke) =>
-    stroke.participations.some((p) => p.roles.includes('held-trigger'))));
+  assert.ok(trace.strokes.some((stroke) => stroke.participations.some((p) => p.roles.includes('held-trigger'))));
 });
 
 test('コンボはアクション/文字を下げるが、押下/文字は下げない', () => {
@@ -404,11 +423,13 @@ test('層操作キーと出力キーを同時押しの中で分離する', () =>
 });
 
 test('2-key explicit modifierはcanonical roleからpaired triggerとして扱う', () => {
-  const layout = fromFaces('paired-explicit-modifier', 'paired-explicit-modifier', [{
-    ...faceFromEntries(['d', 'k'], 'simultaneous', { f: 'x' }),
-    inputRole: 'modifier',
-    triggerPersistence: 'single',
-  }]);
+  const layout = fromFaces('paired-explicit-modifier', 'paired-explicit-modifier', [
+    {
+      ...faceFromEntries(['d', 'k'], 'simultaneous', { f: 'x' }),
+      inputRole: 'modifier',
+      triggerPersistence: 'single',
+    },
+  ]);
 
   const { faces: _faces, faceLayerIds: _faceLayerIds, ...withoutFaceMetadata } = layout;
   const trace = generateTrace('x', withoutFaceMetadata, geometry, opts());
@@ -492,11 +513,7 @@ test('隣接指の標準偏差は打鍵ごとのスナップショットから�
 
   for (const stat of m.adjacent) {
     // metrics.tsとは独立に、Trace.strokesの位置スナップショットから直接計算する
-    const samples = trace.strokes.map(
-      (s) =>
-        dist(s.positions[stat.pair[0]], s.positions[stat.pair[1]]) -
-        homeSpacing(geometry, stat.pair),
-    );
+    const samples = trace.strokes.map((s) => dist(s.positions[stat.pair[0]], s.positions[stat.pair[1]]) - homeSpacing(geometry, stat.pair));
     const mean = samples.reduce((a, b) => a + b, 0) / samples.length;
     const variance = samples.reduce((a, b) => a + (b - mean) ** 2, 0) / samples.length;
     near(stat.meanExcess, mean, `${stat.pair.join('-')} mean`);

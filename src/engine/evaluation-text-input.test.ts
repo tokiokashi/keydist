@@ -42,7 +42,10 @@ function measure(layoutId: string, text: string, language: TextLanguage, keepSym
 test('半角の , . を持たない配列では 、 。 として打ち、持つ配列ではそのまま打つ', () => {
   const kana = measure('nicola', 'あ,い.', 'ja');
   assert.equal(kana.input.text, 'あ、い。');
-  assert.deepEqual(kana.trace.strokes.map((stroke) => stroke.inputChar), ['あ', '、', 'い', '。']);
+  assert.deepEqual(
+    kana.trace.strokes.map((stroke) => stroke.inputChar),
+    ['あ', '、', 'い', '。'],
+  );
   assert.equal(kana.trace.skipped, 0);
 
   const direct = measure('qwerty', 'あ,い.', 'ja');

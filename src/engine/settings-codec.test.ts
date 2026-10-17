@@ -37,7 +37,10 @@ test('decode: 妥当な上書きはそのまま読める', () => {
       windowSize: 4,
       sfbHomeCost: false,
       chainInterpretation: {
-        breakOnSameFinger: true, breakOnTriggerOnly: false, breakOnThumbOnly: true, breakOnOppositeHandSimultaneous: false,
+        breakOnSameFinger: true,
+        breakOnTriggerOnly: false,
+        breakOnThumbOnly: true,
+        breakOnOppositeHandSimultaneous: false,
       },
       arpeggioInterpretation: { includeThumb: true, bridgeSameFinger: false, includeSingleRedirectTail: true },
     },
@@ -114,7 +117,10 @@ test('decode: 許可されていないレベルの値も型さえ合えば保持
     layout: {
       [LAYOUTS[0].id]: {
         chainInterpretation: {
-          breakOnSameFinger: false, breakOnTriggerOnly: false, breakOnThumbOnly: false, breakOnOppositeHandSimultaneous: false,
+          breakOnSameFinger: false,
+          breakOnTriggerOnly: false,
+          breakOnThumbOnly: false,
+          breakOnOppositeHandSimultaneous: false,
         },
       },
     },
@@ -127,9 +133,7 @@ test('decode: 許可されていないレベルの値も型さえ合えば保持
   const resolved = resolveSettings(result.value, context);
   // resolveCascadeが許可外レベルとして無視し、実効値は既定値のまま・診断が付く。
   assert.equal(resolved.chainInterpretation.value.breakOnSameFinger, true); // DEFAULT_CHAIN_INTERPRETATION
-  assert.ok(
-    resolved.chainInterpretation.diagnostics.some((diagnostic) => diagnostic.kind === 'ignored-disallowed-level'),
-  );
+  assert.ok(resolved.chainInterpretation.diagnostics.some((diagnostic) => diagnostic.kind === 'ignored-disallowed-level'));
 });
 
 test('encode→decode: 往復で同じ上書きに戻る（roundtrip）', () => {

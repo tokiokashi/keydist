@@ -11,5 +11,4 @@ import type { SettingsValueMap } from './settings-items.ts';
  * カスケード項目のレジストリが変わった時だけだから。版が分かれていても実害は無いが、
  * 同じ理由で同時に変わるものを別の数として管理する意味が無いので揃えておく。
  */
-export const SETUP_LIBRARY_CODEC: AssetCodec<SetupLibrary<SettingsValueMap>> =
-  setupLibraryCodec(SETTINGS_ITEM_SCHEMAS, 1);
+export const SETUP_LIBRARY_CODEC: AssetCodec<SetupLibrary<SettingsValueMap>> = setupLibraryCodec(SETTINGS_ITEM_SCHEMAS, 1);

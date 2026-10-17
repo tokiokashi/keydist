@@ -43,7 +43,10 @@ test('資産に自作の配列があれば、対象の選択の「自作の配�
     selected: [],
   });
   const user = groups.find((group) => group.id === 'user');
-  assert.deepEqual(user?.choices.map((choice) => choice.name), ['自作の配列']);
+  assert.deepEqual(
+    user?.choices.map((choice) => choice.name),
+    ['自作の配列'],
+  );
 });
 
 test('資産が空なら、組み込みだけのカタログになる', () => {
@@ -55,13 +58,7 @@ test('資産が空なら、組み込みだけのカタログになる', () => {
 
 test('自作の配列を対象に解決でき、条件の要約に自作のローマ字規則の名前が出る', () => {
   const catalog = paneCatalog({ userLayouts: [LAYOUT], userRomajiRules: [RULE] });
-  const result = resolvePaneInput(
-    { kind: 'layout', layoutId: LAYOUT.id },
-    new Map(),
-    catalog,
-    EMPTY_SETTINGS_OVERRIDES,
-    TEXT,
-  );
+  const result = resolvePaneInput({ kind: 'layout', layoutId: LAYOUT.id }, new Map(), catalog, EMPTY_SETTINGS_OVERRIDES, TEXT);
   assert.ok(result.ok, result.ok ? '' : JSON.stringify(result.error));
   if (!result.ok) return;
   assert.equal(result.input.romajiRuleId, RULE.id);
@@ -72,13 +69,7 @@ test('自作の配列を対象に解決でき、条件の要約に自作のロ�
 
 test('規則が手持ちに無い時、条件の要約は規則のidを出さない', () => {
   const catalog = paneCatalog({ userLayouts: [LAYOUT], userRomajiRules: [RULE] });
-  const result = resolvePaneInput(
-    { kind: 'layout', layoutId: LAYOUT.id },
-    new Map(),
-    catalog,
-    EMPTY_SETTINGS_OVERRIDES,
-    TEXT,
-  );
+  const result = resolvePaneInput({ kind: 'layout', layoutId: LAYOUT.id }, new Map(), catalog, EMPTY_SETTINGS_OVERRIDES, TEXT);
   assert.ok(result.ok);
   if (!result.ok) return;
   const rows = traceConditionSummary(result.input.cascade, { shapes: catalog.setupCatalog.shapes });

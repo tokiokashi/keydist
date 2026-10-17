@@ -12,13 +12,7 @@ import { bindOption, CheckboxGroupOptionField, CheckboxOptionField, OptionField 
 import { sortOrderByColumn } from '#ui/primitives/column-sort.ts';
 import { SortColumnHeader } from '#ui/primitives/sort-column-header.tsx';
 import { COMPARISON_PANE_META } from './pane-meta.ts';
-import {
-  COMPARISON_BAR_SCALE,
-  COMPARISON_RELATIVE_BAR_NOTE,
-  comparisonBarFraction,
-  comparisonBarRange,
-  type ComparisonBarRange,
-} from './data-bar.ts';
+import { COMPARISON_BAR_SCALE, COMPARISON_RELATIVE_BAR_NOTE, comparisonBarFraction, comparisonBarRange, type ComparisonBarRange } from './data-bar.ts';
 import type { AnalyzerSettingsProps, AnalyzerTargetItemProps, SetAnalyzerPaneParts, SetBodyProps } from '../pane-parts.tsx';
 import './comparison-view.css';
 
@@ -77,22 +71,19 @@ function rowFor(rows: readonly ComparisonRow[], targetKey: string): ComparisonRo
  * 比較表の本体（表）。行ごとの失敗・計算中（抽出の値として届くメンバー単位の状態）は行に出す。
  * ペイン全体の計算中・失敗・対象が空の時はホストが出し、本体は呼ばれない。
  */
-export function ComparisonBody({
-  extracted,
-  order,
-  rowContext,
-  baselineTargetKey,
-  options,
-  onOptionsChange,
-}: ComparisonBodyProps) {
+export function ComparisonBody({ extracted, order, rowContext, baselineTargetKey, options, onOptionsChange }: ComparisonBodyProps) {
   const { visibleColumns, showBaselineRatio, sort } = options;
   // 並び替えは表の表示だけ。集合の順（order）はそのまま、描く順だけを並べ直す。
   const displayOrder = useMemo(() => {
     const valueOf = new Map<string, ComparisonRow>(extracted.rows.map((row) => [row.targetKey, row]));
-    return sortOrderByColumn<ComparisonColumnId>(order, (targetKey, column) => {
-      const row = valueOf.get(targetKey);
-      return row?.kind === 'ok' ? row.values[column] : undefined;
-    }, sort);
+    return sortOrderByColumn<ComparisonColumnId>(
+      order,
+      (targetKey, column) => {
+        const row = valueOf.get(targetKey);
+        return row?.kind === 'ok' ? row.values[column] : undefined;
+      },
+      sort,
+    );
   }, [order, extracted.rows, sort]);
   // バーの長さの基準は、列ごとに、値が数になっている行だけから取る（並び替えや基準の選択では変えない）。
   const barRanges = useMemo(() => {
@@ -137,8 +128,12 @@ export function ComparisonBody({
                 // extractedにまだ無いtargetKey（依頼の作り直し途中の一瞬）。値の欠落を偽らず、行の中で計算中と出す。
                 return (
                   <tr key={targetKey} data-comparison-row="pending">
-                    <th scope="row" title={fullName}>{label}</th>
-                    <td colSpan={visibleColumns.length} aria-busy="true">計算中…</td>
+                    <th scope="row" title={fullName}>
+                      {label}
+                    </th>
+                    <td colSpan={visibleColumns.length} aria-busy="true">
+                      計算中…
+                    </td>
                   </tr>
                 );
               }
@@ -146,7 +141,9 @@ export function ComparisonBody({
               if (row.kind === 'failed') {
                 return (
                   <tr key={targetKey} data-comparison-row="failed">
-                    <th scope="row" title={fullName}>{label}</th>
+                    <th scope="row" title={fullName}>
+                      {label}
+                    </th>
                     <td colSpan={visibleColumns.length} role="alert">
                       {row.message}
                     </td>
@@ -162,9 +159,7 @@ export function ComparisonBody({
                   </th>
                   {visibleColumns.map((column) => {
                     const value = row.values[column];
-                    const showRatio = showBaselineRatio
-                      && effectiveBaseline !== undefined
-                      && effectiveBaseline.targetKey !== targetKey;
+                    const showRatio = showBaselineRatio && effectiveBaseline !== undefined && effectiveBaseline.targetKey !== targetKey;
                     const fraction = comparisonBarFraction(value, barRanges.get(column));
                     return (
                       <td
@@ -175,11 +170,7 @@ export function ComparisonBody({
                         title={fraction !== undefined && COMPARISON_BAR_SCALE[column] === 'relative' ? COMPARISON_RELATIVE_BAR_NOTE : undefined}
                       >
                         <span className="comparison-value">{formatValue(column, value)}</span>
-                        {showRatio ? (
-                          <span className="comparison-ratio">
-                            {formatRatio(value, effectiveBaseline!.values[column])}
-                          </span>
-                        ) : null}
+                        {showRatio ? <span className="comparison-ratio">{formatRatio(value, effectiveBaseline!.values[column])}</span> : null}
                       </td>
                     );
                   })}
@@ -199,30 +190,19 @@ const SORT_DIRECTION_TEXT = { asc: '昇順', desc: '降順' } as const;
 
 /** 比較表の解析設定（列の表示・基準比の表示・並び替え）。 */
 export function ComparisonSettings({ options, onOptionsChange }: AnalyzerSettingsProps<ComparisonOptions>) {
-  const bind = <K extends keyof ComparisonOptions>(key: K) =>
-    bindOption(options, DEFAULT_COMPARISON_OPTIONS, onOptionsChange, key);
+  const bind = <K extends keyof ComparisonOptions>(key: K) => bindOption(options, DEFAULT_COMPARISON_OPTIONS, onOptionsChange, key);
   return (
     <div className="option-groups">
-      <CheckboxGroupOptionField<ComparisonColumnId>
-        label="表示する列"
-        binding={bind('visibleColumns')}
-        choices={COLUMN_CHOICES}
-      />
+      <CheckboxGroupOptionField<ComparisonColumnId> label="表示する列" binding={bind('visibleColumns')} choices={COLUMN_CHOICES} />
       <CheckboxOptionField
         label="基準比（%）も表示する"
         binding={bind('showBaselineRatio')}
         hint="対象の選択で基準を選んだ時に、各値の横に基準に対する割合を出します。"
       />
-      <OptionField
-        label="並び替え"
-        binding={bind('sort')}
-        hint="列の見出しを押すと切り替わります。"
-      >
+      <OptionField label="並び替え" binding={bind('sort')} hint="列の見出しを押すと切り替わります。">
         {(id) => (
           <span id={id}>
-            {options.sort === null
-              ? 'なし'
-              : `${COMPARISON_COLUMNS[options.sort.column].label}（${SORT_DIRECTION_TEXT[options.sort.direction]}）`}
+            {options.sort === null ? 'なし' : `${COMPARISON_COLUMNS[options.sort.column].label}（${SORT_DIRECTION_TEXT[options.sort.direction]}）`}
           </span>
         )}
       </OptionField>

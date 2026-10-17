@@ -3,11 +3,7 @@ import type { CascadeOverrides } from './overrides.ts';
 import { levelOverrides, withLevelOverrides } from './overrides.ts';
 
 /** 1項目・1レベルの上書きだけを消す。 */
-export function resetItem<V>(
-  overrides: CascadeOverrides<V>,
-  level: CascadeLevel,
-  itemId: keyof V & string,
-): CascadeOverrides<V> {
+export function resetItem<V>(overrides: CascadeOverrides<V>, level: CascadeLevel, itemId: keyof V & string): CascadeOverrides<V> {
   const current = levelOverrides(overrides, level);
   if (current === undefined || !(itemId in current)) return overrides;
   const { [itemId]: _drop, ...rest } = current;

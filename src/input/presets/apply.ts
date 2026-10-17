@@ -49,9 +49,7 @@ export function applyPresetValues<R extends ItemRegistry>(
   const next: Record<string, unknown> = {};
   const skipped: string[] = [];
   // Workspaceのレベルだけ、全体の値を継承値として持つ
-  const inherited = level.kind === 'workspace'
-    ? ((levelOverrides(overrides, { kind: 'global' }) ?? {}) as Record<string, unknown>)
-    : undefined;
+  const inherited = level.kind === 'workspace' ? ((levelOverrides(overrides, { kind: 'global' }) ?? {}) as Record<string, unknown>) : undefined;
   for (const [itemId, value] of Object.entries(values)) {
     // 未知の項目は入れない。codecを通した値には現れないが、手で組んだ値でも
     // `registry[itemId]`が未定義で落ちないようにする

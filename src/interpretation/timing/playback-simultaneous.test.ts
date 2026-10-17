@@ -1,12 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {
-  ALL_FINGERS,
-  buildGeometry,
-  type Finger,
-  type Key,
-  type Point,
-} from '#input/shapes/geometry.ts';
+import { ALL_FINGERS, buildGeometry, type Finger, type Key, type Point } from '#input/shapes/geometry.ts';
 import type { Press, Stroke } from '#trace/generate.ts';
 import { SIMULTANEOUS_KINDS, median, type PlaybackCalibration, type SimultaneousKind } from './calibration.ts';
 import {
@@ -62,7 +56,11 @@ function stroke(index: number, presses: readonly Press[], roles: readonly ('outp
 }
 
 const single = (index: number, finger: Finger) => stroke(index, [press(finger)]);
-const chord = (index: number, ...fingers: Finger[]) => stroke(index, fingers.map((finger) => press(finger)));
+const chord = (index: number, ...fingers: Finger[]) =>
+  stroke(
+    index,
+    fingers.map((finger) => press(finger)),
+  );
 
 function analysisOf(strokes: readonly Stroke[]): PlaybackTimingAnalysis {
   return { strokes, transitions: [], chains: [], arpeggioSpans: [] } as unknown as PlaybackTimingAnalysis;
@@ -164,10 +162,7 @@ test('同指連続の押下を含む同時押しは、sを持つ時はmaxの外�
   const still = analysisOf([first, stroke(1, [press('LI', home('LI'), true, 0), press('RI')])]);
   // 距離0なら移動の時間はr（200）で、1打の時間（200）と同じ。
   assert.equal(playbackStepDurationMs(still, 1, 1, true, withSimultaneous({ 'both-hands': 30 }), 1), 230);
-  assert.equal(
-    playbackStepDurationMs(still, 1, 1, true, withSimultaneous({ 'both-hands': 30 }, { keystrokeOverheadMs: { sfb: 20 } }), 1),
-    250,
-  );
+  assert.equal(playbackStepDurationMs(still, 1, 1, true, withSimultaneous({ 'both-hands': 30 }, { keystrokeOverheadMs: { sfb: 20 } }), 1), 250);
   // 移動の時間が律速する時、cは移動の時間に足さない（sを持たない式）。移動の時間は200 + 2 × 200。
   const moved = analysisOf([first, stroke(1, [press('LI', home('LI', 0, 2), true, 2), press('RI')])]);
   assert.equal(playbackStepDurationMs(moved, 1, 1, true, withSimultaneous({ 'both-hands': 30 }, { fallbackMoveMsPerUnit: 200 }), 1), 600);
@@ -241,11 +236,7 @@ test('同時押しの基準の時間は、押下の指の並びを持つスト�
   // 親指: 同手・別指の代表値
   assert.equal(playbackSimultaneousBaseMs('thumb', calibration), 500);
   // 方向別の値が無ければ、順序なしの組の値、代表値、通常速度の順に落ちる。
-  const {
-    sameHandDifferentFingerActionsPerDirectedPair: _directedPair,
-    actionsPerSecondByDirection: _byDirection,
-    ...withoutDirected
-  } = calibration;
+  const { sameHandDifferentFingerActionsPerDirectedPair: _directedPair, actionsPerSecondByDirection: _byDirection, ...withoutDirected } = calibration;
   assert.equal(playbackSimultaneousBaseMs('both-hands', withoutDirected), 200);
   assert.equal(playbackSimultaneousBaseMs('one-hand', withoutDirected), 1000 / 3);
   const withoutPair = { ...withoutDirected, sameHandDifferentFingerActionsPerSecondByPair: {} };
@@ -295,7 +286,7 @@ test('打鍵の上乗せが0・倍率1で、指の移動で延びず下限に当
     // 全指の移動時間で律速する再生でも、同じ位置を押す同時押しは移動で延びないので、一致する。
     const schedule = playbackTimingSchedule(analysis, 1, true, measured, 1, { allFingerMovementDelay: true, geometry });
     for (let index = 1; index < 6; index++) {
-      assert.ok(Math.abs((schedule[index].endMs - schedule[index].startMs) - (middle ?? 0)) < 1e-9, `${kind} schedule ${index}`);
+      assert.ok(Math.abs(schedule[index].endMs - schedule[index].startMs - (middle ?? 0)) < 1e-9, `${kind} schedule ${index}`);
     }
   }
 });

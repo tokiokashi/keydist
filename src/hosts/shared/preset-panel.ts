@@ -36,7 +36,11 @@ function resolvedLevelValue(overrides: SettingsCascadeOverrides, level: CascadeL
 }
 
 /** 流し込んでも値が変わらず、入れられなかった項目も無い（入れなかった項目があれば、今の値とは言えない）。 */
-function sameAfterApply(overrides: SettingsCascadeOverrides, level: CascadeLevel, values: PresetLibrary<SettingsValueMap>['presets'][number]['values']): boolean {
+function sameAfterApply(
+  overrides: SettingsCascadeOverrides,
+  level: CascadeLevel,
+  values: PresetLibrary<SettingsValueMap>['presets'][number]['values'],
+): boolean {
   const applied = applyPresetValues(SETTINGS_ITEMS, overrides, level, values);
   return applied.skipped.length === 0 && changedGlobalItemCount(overrides, applied.overrides, level) === 0;
 }
@@ -66,11 +70,7 @@ export function presetRows(
  * 流し込み先のレベル（既定は全体）で、解決した値が変わった（増えた・消えた・違う値になった）項目の数。
  * Workspaceのレベルは全体の値を継承した値で比べる。
  */
-export function changedGlobalItemCount(
-  before: SettingsCascadeOverrides,
-  after: SettingsCascadeOverrides,
-  level: CascadeLevel = GLOBAL_LEVEL,
-): number {
+export function changedGlobalItemCount(before: SettingsCascadeOverrides, after: SettingsCascadeOverrides, level: CascadeLevel = GLOBAL_LEVEL): number {
   const left = (levelOverrides(before, level) ?? {}) as Record<string, unknown>;
   const right = (levelOverrides(after, level) ?? {}) as Record<string, unknown>;
   const ids = new Set([...Object.keys(left), ...Object.keys(right)]);
@@ -94,11 +94,7 @@ export function skippedItemsText(skipped: readonly string[]): string | undefined
 }
 
 /** 流し込みの結果の1行。変わる項目が無ければ、その旨を言う（元に戻すは付けない）。 */
-export function applyResultText(
-  name: string,
-  changedCount: number,
-  skipped: readonly string[],
-): { readonly text: string; readonly undoable: boolean } {
+export function applyResultText(name: string, changedCount: number, skipped: readonly string[]): { readonly text: string; readonly undoable: boolean } {
   const skippedText = skippedItemsText(skipped);
   const tail = skippedText === undefined ? '' : `。${skippedText}`;
   if (changedCount === 0 && skippedText !== undefined) return { text: `「${name}」で変わった項目はありませんでした${tail}`, undoable: false };

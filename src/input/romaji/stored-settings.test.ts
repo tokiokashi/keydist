@@ -21,8 +21,14 @@ test('undefinedは診断なしの空', () => {
 
 test('項目が無い時は診断なし、あって形が違う時は診断1件', () => {
   assert.deepEqual(decodeStoredRomajiSettings({}).diagnostics, []);
-  assert.deepEqual(decodeStoredRomajiSettings({ rules: 'x' }).diagnostics.map((d) => d.path), ['rules']);
-  assert.deepEqual(decodeStoredRomajiSettings({ assignments: null }).diagnostics.map((d) => d.path), ['assignments']);
+  assert.deepEqual(
+    decodeStoredRomajiSettings({ rules: 'x' }).diagnostics.map((d) => d.path),
+    ['rules'],
+  );
+  assert.deepEqual(
+    decodeStoredRomajiSettings({ assignments: null }).diagnostics.map((d) => d.path),
+    ['assignments'],
+  );
 });
 
 test('正常な値は変わらず診断も無い', () => {
@@ -38,7 +44,10 @@ test('予約名のキーの割り当ては診断付きで捨て、ほかは読�
   const result = decodeStoredRomajiSettings(raw);
   assert.deepEqual(Object.keys(result.value.assignments), ['x']);
   assert.equal(Object.getPrototypeOf(result.value.assignments), Object.prototype);
-  assert.deepEqual(result.diagnostics.map((d) => d.path), ['assignments.__proto__', 'assignments.constructor']);
+  assert.deepEqual(
+    result.diagnostics.map((d) => d.path),
+    ['assignments.__proto__', 'assignments.constructor'],
+  );
 });
 
 test('壊れた規則・割り当ては捨てて診断を積み、残りは読む', () => {
@@ -46,7 +55,13 @@ test('壊れた規則・割り当ては捨てて診断を積み、残りは読�
     rules: [rule, { id: 'bad' }, null],
     assignments: { ok: 'rule-a', broken: 5 },
   });
-  assert.deepEqual(result.value.rules.map((r) => r.id), ['rule-a']);
+  assert.deepEqual(
+    result.value.rules.map((r) => r.id),
+    ['rule-a'],
+  );
   assert.deepEqual(result.value.assignments, { ok: 'rule-a' });
-  assert.deepEqual(result.diagnostics.map((d) => d.path), ['rules[1]', 'rules[2]', 'assignments.broken']);
+  assert.deepEqual(
+    result.diagnostics.map((d) => d.path),
+    ['rules[1]', 'rules[2]', 'assignments.broken'],
+  );
 });

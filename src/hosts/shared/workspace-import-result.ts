@@ -28,14 +28,9 @@ function missingLine(name: string, kinds: readonly WorkspaceMissingKind[]): stri
 /**
  * 結果の文を組む。`dropped`はファイルから読めなかった部分の文（`parseWorkspaceFile`）。
  */
-export function workspaceImportResultText(
-  entries: readonly WorkspaceImportEntry[],
-  dropped: readonly string[],
-): WorkspaceImportResultText {
+export function workspaceImportResultText(entries: readonly WorkspaceImportEntry[], dropped: readonly string[]): WorkspaceImportResultText {
   const added = entries.filter((entry) => entry.outcome.kind !== 'skipped-same').length;
-  const head = added > 0
-    ? `${added}件のWorkspaceを読み込みました`
-    : '読み込んだWorkspaceはありません。同じ中身のものが既にあります';
+  const head = added > 0 ? `${added}件のWorkspaceを読み込みました` : '読み込んだWorkspaceはありません。同じ中身のものが既にあります';
   const lines: string[] = [];
   for (const entry of entries) {
     const { outcome } = entry;

@@ -49,13 +49,17 @@ export function TopTargetPick() {
     return nameTargets([targetNameSource(target, resolution, setupsById, setupNumbersOf(setups), catalog.setupCatalog)])[0];
   }, [target, setups, catalog, assets.setupLibrary.overrides, resolvedText]);
 
-  const groups = useMemo(() => targetChoiceGroups({
-    layouts: catalog.setupCatalog.layouts,
-    userLayouts: catalog.userLayouts,
-    shapes: catalog.setupCatalog.shapes,
-    setups,
-    selected: [target],
-  }), [catalog, setups, target]);
+  const groups = useMemo(
+    () =>
+      targetChoiceGroups({
+        layouts: catalog.setupCatalog.layouts,
+        userLayouts: catalog.userLayouts,
+        shapes: catalog.setupCatalog.shapes,
+        setups,
+        selected: [target],
+      }),
+    [catalog, setups, target],
+  );
 
   const picked = assets.singleTargetSelection.target !== undefined;
 
@@ -75,16 +79,36 @@ export function TopTargetPick() {
       </fieldset>
       {picked ? (
         <p className="top-pick-links">
-          <Link className="top-pick-link" to="/analyzer/bigram-flow">{BIGRAM_FLOW_PANE_META.name}</Link>
-          <Link className="top-pick-link" to="/analyzer/finger-distance">{FINGER_DISTANCE_PANE_META.name}</Link>
-          <Link className="top-pick-link" to="/analyzer/heatmap">{HEATMAP_PANE_META.name}</Link>
-          <Link className="top-pick-link" to="/analyzer/heatmap-layers">{HEATMAP_LAYERS_PANE_META.name}</Link>
-          <Link className="top-pick-link" to="/analyzer/layer-combo-presses">{LAYER_COMBO_PRESSES_PANE_META.name}</Link>
-          <Link className="top-pick-link" to="/analyzer/keymap">{KEYMAP_PANE_META.name}</Link>
-          <Link className="top-pick-link" to="/analyzer/playback">{PLAYBACK_PANE_META.name}</Link>
-          <Link className="top-pick-link" to="/analyzer/comparison">{COMPARISON_PANE_META.name}</Link>
-          <Link className="top-pick-link" to="/analyzer/finger-matrix">{FINGER_MATRIX_PANE_META.name}</Link>
-          <Link className="top-pick-link" to="/analyzer/n-sensitivity">{N_SENSITIVITY_PANE_META.name}</Link>
+          <Link className="top-pick-link" to="/analyzer/bigram-flow">
+            {BIGRAM_FLOW_PANE_META.name}
+          </Link>
+          <Link className="top-pick-link" to="/analyzer/finger-distance">
+            {FINGER_DISTANCE_PANE_META.name}
+          </Link>
+          <Link className="top-pick-link" to="/analyzer/heatmap">
+            {HEATMAP_PANE_META.name}
+          </Link>
+          <Link className="top-pick-link" to="/analyzer/heatmap-layers">
+            {HEATMAP_LAYERS_PANE_META.name}
+          </Link>
+          <Link className="top-pick-link" to="/analyzer/layer-combo-presses">
+            {LAYER_COMBO_PRESSES_PANE_META.name}
+          </Link>
+          <Link className="top-pick-link" to="/analyzer/keymap">
+            {KEYMAP_PANE_META.name}
+          </Link>
+          <Link className="top-pick-link" to="/analyzer/playback">
+            {PLAYBACK_PANE_META.name}
+          </Link>
+          <Link className="top-pick-link" to="/analyzer/comparison">
+            {COMPARISON_PANE_META.name}
+          </Link>
+          <Link className="top-pick-link" to="/analyzer/finger-matrix">
+            {FINGER_MATRIX_PANE_META.name}
+          </Link>
+          <Link className="top-pick-link" to="/analyzer/n-sensitivity">
+            {N_SENSITIVITY_PANE_META.name}
+          </Link>
         </p>
       ) : null}
     </div>

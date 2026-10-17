@@ -4,8 +4,7 @@ import { SAMPLE_TEXT_NAMES, SAMPLE_TEXTS, sampleText, sampleTextEntries, type Te
 
 test('sampleTextEntries: SAMPLE_TEXTSの全件を1件ずつ平らにする', () => {
   const entries = sampleTextEntries();
-  const expectedCount = (Object.keys(SAMPLE_TEXTS) as TextLanguage[])
-    .reduce((sum, language) => sum + Object.keys(SAMPLE_TEXTS[language]).length, 0);
+  const expectedCount = (Object.keys(SAMPLE_TEXTS) as TextLanguage[]).reduce((sum, language) => sum + Object.keys(SAMPLE_TEXTS[language]).length, 0);
   assert.equal(entries.length, expectedCount);
 });
 

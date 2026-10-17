@@ -20,8 +20,7 @@ import { generateTrace } from '#trace/generate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { fromKana, LAYOUT_BY_ID } from '../layouts/index.ts';
 
-const near = (a: number, b: number, msg?: string) =>
-  assert.ok(Math.abs(a - b) < 1e-9, `${msg ?? ''} expected ${b}, got ${a}`);
+const near = (a: number, b: number, msg?: string) => assert.ok(Math.abs(a - b) < 1e-9, `${msg ?? ''} expected ${b}, got ${a}`);
 
 const opts = { windowSize: 3, sfbHomeCost: true };
 const qwerty = LAYOUT_BY_ID.get('qwerty')!;
@@ -59,11 +58,16 @@ test('metricsの出力に使用した指割り当てが併記される（仕様 
  * ホームキー自体は変えない（薬指のホームは引き続きs / l）。
  */
 function noPinkyAssignment() {
-  const columnFinger: NonThumb[] = [
-    'LR', 'LR', 'LM', 'LI', 'LI', 'RI', 'RI', 'RM', 'RR', 'RR', 'RR', 'RR', 'RR',
-  ];
+  const columnFinger: NonThumb[] = ['LR', 'LR', 'LM', 'LI', 'LI', 'RI', 'RI', 'RM', 'RR', 'RR', 'RR', 'RR', 'RR'];
   const homeColumn: Record<NonThumb, number> = {
-    LP: 0, LR: 1, LM: 2, LI: 3, RI: 6, RM: 7, RR: 8, RP: 9,
+    LP: 0,
+    LR: 1,
+    LM: 2,
+    LI: 3,
+    RI: 6,
+    RM: 7,
+    RR: 8,
+    RP: 9,
   };
   // 小指が担当するのはホームキーだけにする
   const { baseFinger } = columnFingerAssignment('no-pinky', '小指を使わない', columnFinger, homeColumn);
@@ -95,11 +99,16 @@ test('ホームキーを変えなければ、列の再割り当てをしても�
 test('ホームキーの割り当てを変えるとH_fの座標も連動する（仕様 §3）', () => {
   // 人差し指のホームを標準のf / jからg / hへ動かす
   const homeColumn: Record<NonThumb, number> = {
-    LP: 0, LR: 1, LM: 2, LI: 4, RI: 5, RM: 7, RR: 8, RP: 9,
+    LP: 0,
+    LR: 1,
+    LM: 2,
+    LI: 4,
+    RI: 5,
+    RM: 7,
+    RR: 8,
+    RP: 9,
   };
-  const columnFinger: NonThumb[] = [
-    'LP', 'LR', 'LM', 'LI', 'LI', 'RI', 'RI', 'RM', 'RR', 'RP', 'RP', 'RP', 'RP',
-  ];
+  const columnFinger: NonThumb[] = ['LP', 'LR', 'LM', 'LI', 'LI', 'RI', 'RI', 'RM', 'RR', 'RP', 'RP', 'RP', 'RP'];
   const assignment = columnFingerAssignment('shifted-home', 'ホームずらし', columnFinger, homeColumn);
   const geometry = buildGeometry('row-staggered', assignment);
   const g = geometry.keys.get('g')!;
@@ -133,11 +142,16 @@ test('割り当てに無いキーでgeometryを作ろうとすると例外にな
 });
 
 test('ホームキーが存在しない割り当ては例外になる', () => {
-  const columnFinger: NonThumb[] = [
-    'LP', 'LR', 'LM', 'LI', 'LI', 'RI', 'RI', 'RM', 'RR', 'RP', 'RP', 'RP', 'RP',
-  ];
+  const columnFinger: NonThumb[] = ['LP', 'LR', 'LM', 'LI', 'LI', 'RI', 'RI', 'RM', 'RR', 'RP', 'RP', 'RP', 'RP'];
   const assignment = columnFingerAssignment('broken-home', '不完全なホーム', columnFinger, {
-    LP: 0, LR: 1, LM: 2, LI: 3, RI: 6, RM: 7, RR: 8, RP: 99, // 存在しない列
+    LP: 0,
+    LR: 1,
+    LM: 2,
+    LI: 3,
+    RI: 6,
+    RM: 7,
+    RR: 8,
+    RP: 99, // 存在しない列
   });
   assert.throws(() => buildGeometry('row-staggered', assignment), /ホームキー/);
 });
@@ -160,12 +174,7 @@ test('GeometryKind文字列はPHYSICAL_SHAPESから解決される。直接渡�
 });
 
 test('US/JIS × row/column/ortho/split-orthoの8 presetを相互変換できる', () => {
-  const topologies = [
-    'row-staggered',
-    'column-staggered',
-    'ortholinear',
-    'split-ortholinear',
-  ] as const;
+  const topologies = ['row-staggered', 'column-staggered', 'ortholinear', 'split-ortholinear'] as const;
 
   for (const topology of topologies) {
     const ansi = presetGeometryKind('ansi', topology);
@@ -177,14 +186,23 @@ test('US/JIS × row/column/ortho/split-orthoの8 presetを相互変換できる'
 
     const ansiGeometry = buildGeometry(ansi, DEFAULT_FINGER_ASSIGNMENT);
     const jisGeometry = buildGeometry(jis, JIS_FINGER_ASSIGNMENT);
-    assert.deepEqual(ansiGeometry.grid.map((row) => row.length), [12, 12, 11, 10]);
-    assert.deepEqual(jisGeometry.grid.map((row) => row.length), [13, 12, 12, 11]);
+    assert.deepEqual(
+      ansiGeometry.grid.map((row) => row.length),
+      [12, 12, 11, 10],
+    );
+    assert.deepEqual(
+      jisGeometry.grid.map((row) => row.length),
+      [13, 12, 12, 11],
+    );
   }
 });
 
 test('JIS 109 presetはANSI外の3キー位置を持つ', () => {
   const geometry = buildGeometry('jis-row-staggered', JIS_FINGER_ASSIGNMENT);
-  assert.deepEqual(geometry.grid.map((row) => row.length), [13, 12, 12, 11]);
+  assert.deepEqual(
+    geometry.grid.map((row) => row.length),
+    [13, 12, 12, 11],
+  );
   assert.equal(geometry.keys.has('r0c12'), true);
   assert.equal(geometry.keys.has('r2c11'), true);
   assert.equal(geometry.keys.has('r3c10'), true);
@@ -233,7 +251,14 @@ test('列ごとのyオフセット（column-staggered）は物理配列ごとに
 function compactAssignment() {
   const columnFinger: NonThumb[] = ['LP', 'LR', 'LM', 'LI', 'LI', 'RI', 'RI', 'RM', 'RR', 'RP'];
   const homeColumn: Record<NonThumb, number> = {
-    LP: 0, LR: 1, LM: 2, LI: 3, RI: 6, RM: 7, RR: 8, RP: 9,
+    LP: 0,
+    LR: 1,
+    LM: 2,
+    LI: 3,
+    RI: 6,
+    RM: 7,
+    RR: 8,
+    RP: 9,
   };
   return columnFingerAssignment('compact', 'コンパクト', columnFinger, homeColumn, [10, 10, 10, 10]);
 }
@@ -310,8 +335,7 @@ test('split-ortholinearはortholinearに分割だけを足した座標になり�
       near(moved.x, key.x + (isRight ? 2 : 0), `${id}.x`);
     }
     // 左手どうし・右手どうしのキー間隔は変わらない
-    const dist = (g: typeof a, p: string, q: string) =>
-      Math.hypot(g.keys.get(p)!.x - g.keys.get(q)!.x, g.keys.get(p)!.y - g.keys.get(q)!.y);
+    const dist = (g: typeof a, p: string, q: string) => Math.hypot(g.keys.get(p)!.x - g.keys.get(q)!.x, g.keys.get(p)!.y - g.keys.get(q)!.y);
     near(dist(b, 'f', 'g'), dist(a, 'f', 'g'));
     near(dist(b, 'j', 'k'), dist(a, 'j', 'k'));
     // 左右の境目（列4と列5）だけが2u開く
@@ -341,10 +365,7 @@ test('split-ortholinearの既定の指割り当て（列固定）は分割の位
 });
 
 /** 基本の指は既定の列固定のまま、指定したキーだけ追加の担当を足した割り当て */
-function withExtra(
-  extra: Record<string, readonly Finger[]>,
-  base: Record<string, NonThumb> = DEFAULT_FINGER_ASSIGNMENT.baseFinger,
-) {
+function withExtra(extra: Record<string, readonly Finger[]>, base: Record<string, NonThumb> = DEFAULT_FINGER_ASSIGNMENT.baseFinger) {
   return makeFingerAssignment('extra', 'extra', base, DEFAULT_FINGER_ASSIGNMENT.homeKey, extra);
 }
 
@@ -354,11 +375,14 @@ test('分割する物理配列では、キーと反対側の手の追加の担�
     h: ['LI', 'RM'],
     y: ['LI'],
   });
-  const jisAssignment = withExtra({
-    b: ['LM', 'RI', 'RT'],
-    h: ['LI', 'RM'],
-    y: ['LI'],
-  }, JIS_FINGER_ASSIGNMENT.baseFinger);
+  const jisAssignment = withExtra(
+    {
+      b: ['LM', 'RI', 'RT'],
+      h: ['LI', 'RM'],
+      y: ['LI'],
+    },
+    JIS_FINGER_ASSIGNMENT.baseFinger,
+  );
   for (const shape of ['split-ortholinear', 'column-staggered', 'jis-split-ortholinear', 'jis-column-staggered'] as const) {
     const geometry = buildGeometry(shape, shape.startsWith('jis') ? jisAssignment : assignment);
     assert.deepEqual(geometry.fingerCandidates.get('b'), ['LM', 'LI'], `${shape} b`);
@@ -399,7 +423,9 @@ test('組み込みのQWERTY最適化で、分割する物理配列は反対側�
     for (const finger of candidates) assert.ok(finger.startsWith(side), `${id}: ${finger}`);
   }
   const trace = generateTrace('きょう', qwerty, geometry, opts);
-  for (const stroke of trace.strokes) for (const press of stroke.presses) for (const key of press.keys) {
-    assert.ok(press.finger.startsWith(key.col >= 5 ? 'R' : 'L'), `${key.id}: ${press.finger}`);
-  }
+  for (const stroke of trace.strokes)
+    for (const press of stroke.presses)
+      for (const key of press.keys) {
+        assert.ok(press.finger.startsWith(key.col >= 5 ? 'R' : 'L'), `${key.id}: ${press.finger}`);
+      }
 });

@@ -25,13 +25,7 @@ const key = (id: string, finger: Finger, x: number, y = 2): Key => ({
   col: 0,
 });
 
-const press = (
-  finger: Finger,
-  id: string,
-  x: number,
-  y = 2,
-  target?: Point,
-): Press => ({
+const press = (finger: Finger, id: string, x: number, y = 2, target?: Point): Press => ({
   finger,
   keys: [key(id, finger, x, y)],
   target: target ?? { x, y },
@@ -67,11 +61,7 @@ const stroke = (index: number, presses: Press[]): Stroke => ({
 });
 
 test('Actualは隣接Strokeだけ、Within-handは反対手を飛ばした手内bigramを作る', () => {
-  const strokes = [
-    stroke(0, [press('LI', 'f', 4)]),
-    stroke(1, [press('RI', 'j', 7)]),
-    stroke(2, [press('LM', 'd', 3)]),
-  ];
+  const strokes = [stroke(0, [press('LI', 'f', 4)]), stroke(1, [press('RI', 'j', 7)]), stroke(2, [press('LM', 'd', 3)])];
 
   const actual = buildBigramVectors(strokes, 'actual');
   assert.deepEqual(
@@ -84,13 +74,7 @@ test('Actualは隣接Strokeだけ、Within-handは反対手を飛ばした手内
 
   const withinHand = buildBigramVectors(strokes, 'within-hand');
   assert.deepEqual(
-    withinHand.map((vector) => [
-      vector.fromStrokeIndex,
-      vector.toStrokeIndex,
-      vector.fromFinger,
-      vector.toFinger,
-      vector.hand,
-    ]),
+    withinHand.map((vector) => [vector.fromStrokeIndex, vector.toStrokeIndex, vector.fromFinger, vector.toFinger, vector.hand]),
     [[0, 2, 'LI', 'LM', 'left']],
   );
   assert.equal(withinHand[0].dx, -1);
@@ -98,28 +82,19 @@ test('Actualは隣接Strokeだけ、Within-handは反対手を飛ばした手内
 });
 
 test('Within-handは同じ手の親指Strokeを飛び越えない', () => {
-  const strokes = [
-    stroke(0, [press('LI', 'f', 4)]),
-    stroke(1, [press('LT', 'thumb-l', 4.5, 4)]),
-    stroke(2, [press('LM', 'd', 3)]),
-  ];
+  const strokes = [stroke(0, [press('LI', 'f', 4)]), stroke(1, [press('LT', 'thumb-l', 4.5, 4)]), stroke(2, [press('LM', 'd', 3)])];
 
   assert.deepEqual(buildBigramVectors(strokes, 'within-hand'), []);
 });
 
 test('1指選択は関与vector、2指選択は押し順によらない指ペアだけを残す', () => {
-  const vectors = buildBigramVectors([
-    stroke(0, [press('LP', 'a', 1)]),
-    stroke(1, [press('LM', 'd', 3)]),
-    stroke(2, [press('LI', 'f', 4)]),
-    stroke(3, [press('LM', 'd', 3)]),
-  ], 'actual');
+  const vectors = buildBigramVectors(
+    [stroke(0, [press('LP', 'a', 1)]), stroke(1, [press('LM', 'd', 3)]), stroke(2, [press('LI', 'f', 4)]), stroke(3, [press('LM', 'd', 3)])],
+    'actual',
+  );
 
   assert.deepEqual(
-    filterBigramVectors(vectors, ['middle']).map((vector) => [
-      vector.fromFingerClass,
-      vector.toFingerClass,
-    ]),
+    filterBigramVectors(vectors, ['middle']).map((vector) => [vector.fromFingerClass, vector.toFingerClass]),
     [
       ['pinky', 'middle'],
       ['middle', 'index'],
@@ -128,10 +103,7 @@ test('1指選択は関与vector、2指選択は押し順によらない指ペア
   );
 
   assert.deepEqual(
-    filterBigramVectors(vectors, ['middle', 'index']).map((vector) => [
-      vector.fromFingerClass,
-      vector.toFingerClass,
-    ]),
+    filterBigramVectors(vectors, ['middle', 'index']).map((vector) => [vector.fromFingerClass, vector.toFingerClass]),
     [
       ['middle', 'index'],
       ['index', 'middle'],
@@ -140,17 +112,13 @@ test('1指選択は関与vector、2指選択は押し順によらない指ペア
 });
 
 test('同一物理vectorはweightへ集約する', () => {
-  const vectors = buildBigramVectors([
-    stroke(0, [press('LI', 'f', 4)]),
-    stroke(1, [press('LM', 'd', 3)]),
-    stroke(2, [press('LI', 'f', 4)]),
-    stroke(3, [press('LM', 'd', 3)]),
-  ], 'actual');
+  const vectors = buildBigramVectors(
+    [stroke(0, [press('LI', 'f', 4)]), stroke(1, [press('LM', 'd', 3)]), stroke(2, [press('LI', 'f', 4)]), stroke(3, [press('LM', 'd', 3)])],
+    'actual',
+  );
 
   const aggregated = aggregateBigramVectors(vectors);
-  const outward = aggregated.find(
-    (vector) => vector.fromFinger === 'LI' && vector.toFinger === 'LM',
-  );
+  const outward = aggregated.find((vector) => vector.fromFinger === 'LI' && vector.toFinger === 'LM');
   assert.equal(outward?.weight, 2);
 });
 
@@ -180,10 +148,7 @@ function vector(overrides: Partial<BigramVector>): BigramVector {
 }
 
 test('mean resultantは距離ではなく単位方向をfrequency-weightedで合成する', () => {
-  const summary = directionSummary([
-    vector({ dx: 10, distance: 10, weight: 1 }),
-    vector({ dx: 1, distance: 1, weight: 1, id: 'v2' }),
-  ], 'left');
+  const summary = directionSummary([vector({ dx: 10, distance: 10, weight: 1 }), vector({ dx: 1, distance: 1, weight: 1, id: 'v2' })], 'left');
 
   assert.equal(summary.x, 1);
   assert.equal(summary.y, 0);
@@ -192,32 +157,34 @@ test('mean resultantは距離ではなく単位方向をfrequency-weightedで合
 });
 
 test('逆方向が同数ならmean resultantの集中度は0になる', () => {
-  const summary = directionSummary([
-    vector({ id: 'right', dx: 1, distance: 1, angle: 0 }),
-    vector({
-      id: 'left',
-      fromFinger: 'LI',
-      toFinger: 'LP',
-      fromFingerClass: 'index',
-      toFingerClass: 'pinky',
-      fingerDirection: 'outward',
-      dx: -1,
-      distance: 1,
-      angle: Math.PI,
-    }),
-  ], 'left');
+  const summary = directionSummary(
+    [
+      vector({ id: 'right', dx: 1, distance: 1, angle: 0 }),
+      vector({
+        id: 'left',
+        fromFinger: 'LI',
+        toFinger: 'LP',
+        fromFingerClass: 'index',
+        toFingerClass: 'pinky',
+        fingerDirection: 'outward',
+        dx: -1,
+        distance: 1,
+        angle: Math.PI,
+      }),
+    ],
+    'left',
+  );
 
   assert.ok(summary.magnitude < 1e-12);
   assert.equal(summary.inwardWeight, 1);
   assert.equal(summary.outwardWeight, 1);
 });
 
-
 test('mean displacementは距離を保持してfrequency-weighted平均する', () => {
-  const mean = meanDisplacement([
-    vector({ id: 'far', dx: 3, dy: 0, distance: 3, angle: 0, weight: 1 }),
-    vector({ id: 'near', dx: 1, dy: 0, distance: 1, angle: 0, weight: 3 }),
-  ], 'left');
+  const mean = meanDisplacement(
+    [vector({ id: 'far', dx: 3, dy: 0, distance: 3, angle: 0, weight: 1 }), vector({ id: 'near', dx: 1, dy: 0, distance: 1, angle: 0, weight: 3 })],
+    'left',
+  );
 
   assert.equal(mean.x, 1.5);
   assert.equal(mean.y, 0);
@@ -227,10 +194,10 @@ test('mean displacementは距離を保持してfrequency-weighted平均する', 
 });
 
 test('mean displacementは対向移動の相殺をそのまま保持する', () => {
-  const mean = meanDisplacement([
-    vector({ id: 'right', dx: 2, dy: 0, distance: 2, angle: 0 }),
-    vector({ id: 'left', dx: -2, dy: 0, distance: 2, angle: Math.PI }),
-  ], 'left');
+  const mean = meanDisplacement(
+    [vector({ id: 'right', dx: 2, dy: 0, distance: 2, angle: 0 }), vector({ id: 'left', dx: -2, dy: 0, distance: 2, angle: Math.PI })],
+    'left',
+  );
 
   assert.ok(mean.distance < 1e-12);
   assert.equal(mean.angle, undefined);
@@ -238,31 +205,37 @@ test('mean displacementは対向移動の相殺をそのまま保持する', () 
 
 test('direction distributionは隣接binへ角度補間し構成比の総和を1にする', () => {
   const halfBin = Math.PI / 16;
-  const distribution = directionDistribution([
-    vector({
-      id: 'half-bin',
-      dx: Math.cos(halfBin),
-      dy: Math.sin(halfBin),
-      distance: 1,
-      angle: halfBin,
-    }),
-  ], 'left', 16);
+  const distribution = directionDistribution(
+    [
+      vector({
+        id: 'half-bin',
+        dx: Math.cos(halfBin),
+        dy: Math.sin(halfBin),
+        distance: 1,
+        angle: halfBin,
+      }),
+    ],
+    'left',
+    16,
+  );
 
   assert.ok(Math.abs(distribution.bins[0].proportion - 0.5) < 1e-12);
   assert.ok(Math.abs(distribution.bins[1].proportion - 0.5) < 1e-12);
-  assert.ok(Math.abs(
-    distribution.bins.reduce((sum, bin) => sum + bin.proportion, 0) - 1,
-  ) < 1e-12);
+  assert.ok(Math.abs(distribution.bins.reduce((sum, bin) => sum + bin.proportion, 0) - 1) < 1e-12);
 });
 
 test('direction distributionは対向2方向集中と一様分布を区別できる', () => {
-  const opposing = directionDistribution([
-    vector({ id: 'east', dx: 1, dy: 0, distance: 1, angle: 0, weight: 8 }),
-    vector({ id: 'west', dx: -1, dy: 0, distance: 1, angle: Math.PI, weight: 8 }),
-  ], 'left', 16);
+  const opposing = directionDistribution(
+    [
+      vector({ id: 'east', dx: 1, dy: 0, distance: 1, angle: 0, weight: 8 }),
+      vector({ id: 'west', dx: -1, dy: 0, distance: 1, angle: Math.PI, weight: 8 }),
+    ],
+    'left',
+    16,
+  );
 
   const uniformVectors = Array.from({ length: 16 }, (_, index) => {
-    const angle = index * Math.PI * 2 / 16;
+    const angle = (index * Math.PI * 2) / 16;
     return vector({
       id: `uniform-${index}`,
       dx: Math.cos(angle),
@@ -280,7 +253,6 @@ test('direction distributionは対向2方向集中と一様分布を区別でき
     uniform.bins.map((bin) => bin.proportion),
   );
 });
-
 
 test('isStationaryBigramVectorは同一キーへ戻る（物理移動が無い）vectorだけを真にする', () => {
   assert.equal(isStationaryBigramVector(vector({ distance: 0 })), true);
@@ -300,13 +272,16 @@ test('repeatCountsByKeyは同一キーへ戻るvectorのweightだけをキーご
 });
 
 test('relativeVectorsは移動量（dx/dy）と指の組が同じvectorを合算し、絶対位置は持たない', () => {
-  const grouped = relativeVectors([
-    vector({ id: 'a', hand: 'left', dx: 1, dy: 0, distance: 1, weight: 2, fromFingerClass: 'index', toFingerClass: 'middle' }),
-    vector({ id: 'b', hand: 'left', dx: 1, dy: 0, distance: 1, weight: 3, fromFingerClass: 'index', toFingerClass: 'middle' }),
-    vector({ id: 'c', hand: 'left', dx: 2, dy: 0, distance: 2, weight: 1, fromFingerClass: 'index', toFingerClass: 'middle' }),
-    vector({ id: 'd', hand: 'right', dx: 1, dy: 0, distance: 1, weight: 5 }),
-    vector({ id: 'e', hand: 'left', dx: 0, dy: 0, distance: 0, weight: 9 }),
-  ], 'left');
+  const grouped = relativeVectors(
+    [
+      vector({ id: 'a', hand: 'left', dx: 1, dy: 0, distance: 1, weight: 2, fromFingerClass: 'index', toFingerClass: 'middle' }),
+      vector({ id: 'b', hand: 'left', dx: 1, dy: 0, distance: 1, weight: 3, fromFingerClass: 'index', toFingerClass: 'middle' }),
+      vector({ id: 'c', hand: 'left', dx: 2, dy: 0, distance: 2, weight: 1, fromFingerClass: 'index', toFingerClass: 'middle' }),
+      vector({ id: 'd', hand: 'right', dx: 1, dy: 0, distance: 1, weight: 5 }),
+      vector({ id: 'e', hand: 'left', dx: 0, dy: 0, distance: 0, weight: 9 }),
+    ],
+    'left',
+  );
 
   assert.equal(grouped.length, 2, 'dx/dyと指の組が違えば別グループ、同じキーへ戻るvector(distance=0)は除く');
   const merged = grouped.find((g) => g.dx === 1 && g.dy === 0);
@@ -315,26 +290,28 @@ test('relativeVectorsは移動量（dx/dy）と指の組が同じvectorを合算
 });
 
 function circularIntegral(samples: readonly { density: number }[]): number {
-  return samples.reduce((sum, sample) => sum + sample.density, 0)
-    * (Math.PI * 2 / samples.length);
+  return samples.reduce((sum, sample) => sum + sample.density, 0) * ((Math.PI * 2) / samples.length);
 }
 
 test('direction densityは実角度を中心にpeakを作る', () => {
-  const angle = 17 * Math.PI / 180;
-  const density = directionDensity([
-    vector({
-      id: 'seventeen-deg',
-      dx: Math.cos(angle),
-      dy: Math.sin(angle),
-      distance: 1,
-      angle,
-      weight: 4,
-    }),
-  ], 'left', 12, 720);
-
-  const peak = density.samples.reduce((best, sample) =>
-    sample.density > best.density ? sample : best
+  const angle = (17 * Math.PI) / 180;
+  const density = directionDensity(
+    [
+      vector({
+        id: 'seventeen-deg',
+        dx: Math.cos(angle),
+        dy: Math.sin(angle),
+        distance: 1,
+        angle,
+        weight: 4,
+      }),
+    ],
+    'left',
+    12,
+    720,
   );
+
+  const peak = density.samples.reduce((best, sample) => (sample.density > best.density ? sample : best));
   assert.ok(Math.abs(peak.angle - angle) < Math.PI / 180 + 1e-12);
 });
 
@@ -359,9 +336,7 @@ test('direction densityはbandwidthによらず円周積分が1になる', () =>
 
 test('direction densityのbandwidthはHWHMとして定義される', () => {
   const bandwidth = 20;
-  const density = directionDensity([
-    vector({ id: 'east', angle: 0, dx: 1, dy: 0, distance: 1 }),
-  ], 'left', bandwidth, 3600);
+  const density = directionDensity([vector({ id: 'east', angle: 0, dx: 1, dy: 0, distance: 1 })], 'left', bandwidth, 3600);
 
   const stepDegrees = 360 / density.samples.length;
   const center = density.samples[0].density;
@@ -372,9 +347,7 @@ test('direction densityのbandwidthはHWHMとして定義される', () => {
 });
 
 test('direction densityはbandwidthを広げても面積を保存しpeakだけ低く広くなる', () => {
-  const vectors = [
-    vector({ id: 'east', angle: 0, dx: 1, dy: 0, distance: 1 }),
-  ];
+  const vectors = [vector({ id: 'east', angle: 0, dx: 1, dy: 0, distance: 1 })];
   const narrow = directionDensity(vectors, 'left', 6, 1440);
   const wide = directionDensity(vectors, 'left', 30, 1440);
 

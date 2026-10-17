@@ -12,19 +12,14 @@ export interface WorkspacePanelDefinition {
   readonly canHide: boolean;
 }
 
-export type WorkspacePanelDefinitionInput = Omit<
-  WorkspacePanelDefinition,
-  'canFloat' | 'canHide'
-> & {
+export type WorkspacePanelDefinitionInput = Omit<WorkspacePanelDefinition, 'canFloat' | 'canHide'> & {
   readonly canFloat?: boolean;
   readonly canHide?: boolean;
 };
 
 export type WorkspacePanelRegistry = ReadonlyMap<PanelId, WorkspacePanelDefinition>;
 
-export function createWorkspacePanelRegistry(
-  definitions: readonly WorkspacePanelDefinitionInput[],
-): WorkspacePanelRegistry {
+export function createWorkspacePanelRegistry(definitions: readonly WorkspacePanelDefinitionInput[]): WorkspacePanelRegistry {
   const registry = new Map<PanelId, WorkspacePanelDefinition>();
 
   for (const definition of definitions) {
@@ -64,9 +59,7 @@ export const DEFAULT_PANEL_MIN_HEIGHT = 240;
 export const DEFAULT_PANEL_FLOATING_WIDTH = 560;
 export const DEFAULT_PANEL_FLOATING_HEIGHT = 480;
 
-export function resolvePanelLayout(
-  definition: WorkspacePanelDefinition | undefined,
-): ResolvedPanelLayout {
+export function resolvePanelLayout(definition: WorkspacePanelDefinition | undefined): ResolvedPanelLayout {
   return {
     canFloat: definition?.canFloat ?? true,
     minWidth: definition?.minWidth ?? DEFAULT_PANEL_MIN_WIDTH,

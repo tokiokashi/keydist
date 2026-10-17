@@ -47,10 +47,7 @@ test('withMultiTargets: 重複した対象は先に出た方だけ残して1つ�
 });
 
 test('withMultiTargets: 基準の対象を外すと効く基準はなしになり、記録は残る。付け直すと戻る', () => {
-  const withBaseline = withMultiBaseline(
-    withMultiTargets(initialMultiTargetSelection(), [A, B]),
-    A,
-  );
+  const withBaseline = withMultiBaseline(withMultiTargets(initialMultiTargetSelection(), [A, B]), A);
   assert.equal(effectiveMultiBaseline(withBaseline), A);
 
   const removed = withMultiTargets(withBaseline, [B]);
@@ -72,10 +69,7 @@ test('withMultiBaseline: 外している間に別の基準を選ぶと記録が�
 });
 
 test('withMultiTargets: 基準に選んでいた対象が選択に残っていれば、基準は保たれる', () => {
-  const withBaseline = withMultiBaseline(
-    withMultiTargets(initialMultiTargetSelection(), [A, B]),
-    A,
-  );
+  const withBaseline = withMultiBaseline(withMultiTargets(initialMultiTargetSelection(), [A, B]), A);
   const reordered = withMultiTargets(withBaseline, [B, A]);
   assert.equal(effectiveMultiBaseline(reordered), A);
 });
@@ -132,7 +126,11 @@ test('withMultiTargets: 外して加え直した対象は、その時点で空�
 });
 
 test('assignColorSlots: 重複・不正な番号は持っていないものとして配り直す', () => {
-  const known = new Map([['setup:a', 1], ['setup:b', 1], ['layout:c', -1]]);
+  const known = new Map([
+    ['setup:a', 1],
+    ['setup:b', 1],
+    ['layout:c', -1],
+  ]);
   assert.deepEqual(assignColorSlots([A, B, C], known), [1, 0, 2]);
 });
 
@@ -157,11 +155,17 @@ test('withMultiTargets: 13件並べてから7件に減らすと色が全部異�
 test('withMultiTargets: 13件から12件へ減らしても重なりは残らない', () => {
   const all = layouts(13);
   const state = withMultiTargets(initialMultiTargetSelection(), all);
-  const reduced = withMultiTargets(state, all.filter((_, i) => i !== 5));
+  const reduced = withMultiTargets(
+    state,
+    all.filter((_, i) => i !== 5),
+  );
   assert.equal(new Set(reduced.colorSlots).size, 12);
 });
 
 test('assignColorSlots: 範囲外の番号は持っていないものとして配り直す', () => {
-  const known = new Map([['setup:a', 0], ['setup:b', COLOR_SLOT_COUNT]]);
+  const known = new Map([
+    ['setup:a', 0],
+    ['setup:b', COLOR_SLOT_COUNT],
+  ]);
   assert.deepEqual(assignColorSlots([A, B], known), [0, 1]);
 });

@@ -48,13 +48,14 @@ export function useFocusAfterClose(paneIds: readonly string[]): RefCallback<HTML
       // 別の場所へ移っている（小窓・メニューなど）なら、そこを尊重する
       if (active !== null && active !== document.body) return;
       const next = pickAfterClose(last.order, last.paneId, paneIds);
-      const target = next === undefined
-        ? undefined
-        : root.querySelector<HTMLElement>(
-          // ペインの操作の⋯（連動の切り替えのボタンも同じ部品なので、見出しの右端の⋯に絞る）
-          // 案内のペインは⋯を持たず、操作できるのが「閉じる」だけなので、そのボタンへ置く
-          `[data-pane-id="${CSS.escape(next)}"] .pane-frame-menu .pane-menu-button, [data-pane-id="${CSS.escape(next)}"] .pane-blank-header .pane-menu-button, [data-pane-id="${CSS.escape(next)}"] [data-workspace-pane-notice] .pane-empty-button`,
-        );
+      const target =
+        next === undefined
+          ? undefined
+          : root.querySelector<HTMLElement>(
+              // ペインの操作の⋯（連動の切り替えのボタンも同じ部品なので、見出しの右端の⋯に絞る）
+              // 案内のペインは⋯を持たず、操作できるのが「閉じる」だけなので、そのボタンへ置く
+              `[data-pane-id="${CSS.escape(next)}"] .pane-frame-menu .pane-menu-button, [data-pane-id="${CSS.escape(next)}"] .pane-blank-header .pane-menu-button, [data-pane-id="${CSS.escape(next)}"] [data-workspace-pane-notice] .pane-empty-button`,
+            );
       (target ?? root.querySelector<HTMLElement>('.workspace-add-pane-button'))?.focus({ preventScroll: true });
     };
     // ペインの部品・メニューの片付けが終わってから落ちるフォーカスもあるので、1フレーム後にもう一度見る

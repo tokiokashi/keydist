@@ -4,12 +4,7 @@ import type { KeyValueStorage } from '#platform/persistence/storage.ts';
 import { setStandaloneAnalyzerOptionsCommand, type KeydistAssets } from '#engine/commands.ts';
 import { ASSET_KEYS, ASSET_STORAGE_SPECS, type AssetStorageSpec } from './asset-storage-specs.ts';
 import { buildAssetSyncs, loadAssetsAndRepair, startAssetSyncs } from './asset-syncs.ts';
-import {
-  dismissAssetLoadNotices,
-  getAssetLoadNoticesSnapshot,
-  reportAssetLoadNotices,
-  resetAssetLoadNoticesForTest,
-} from './asset-load-notice.ts';
+import { dismissAssetLoadNotices, getAssetLoadNoticesSnapshot, reportAssetLoadNotices, resetAssetLoadNoticesForTest } from './asset-load-notice.ts';
 import { createAssetStore } from './asset-store.ts';
 import { assetNoticeText } from './asset-load-notice-text.ts';
 
@@ -23,7 +18,9 @@ function createFakeStorage(options: { readonly failWrites?: boolean } = {}) {
       writes.push(key);
       map.set(key, value);
     },
-    removeItem: (key) => { map.delete(key); },
+    removeItem: (key) => {
+      map.delete(key);
+    },
   };
   return { storage, map, writes };
 }
@@ -162,7 +159,9 @@ test('他のタブの変更を取り込んでも、知らせの材料は出ず�
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
-    onExternalChange: (changed, value) => { received.push([changed, value]); },
+    onExternalChange: (changed, value) => {
+      received.push([changed, value]);
+    },
   });
   const stop = startAssetSyncs(syncs);
   // 他のタブが、直せば読める値を書いた

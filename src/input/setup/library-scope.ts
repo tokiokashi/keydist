@@ -45,8 +45,10 @@ export function setupLibraryItemScope<V>(): ItemScope<SetupLibrary<V>> {
       const kind = separator < 0 ? id : id.slice(0, separator);
       const key = separator < 0 ? '' : id.slice(separator + 1);
       switch (kind) {
-        case 'setup': return { ...library, setups: withSetup(library.setups, key, item as Setup | undefined) };
-        case 'setup-number': return library;
+        case 'setup':
+          return { ...library, setups: withSetup(library.setups, key, item as Setup | undefined) };
+        case 'setup-number':
+          return library;
         default: {
           const level = levelOf(kind, key);
           if (level === undefined) return library;
@@ -61,12 +63,18 @@ export function setupLibraryItemScope<V>(): ItemScope<SetupLibrary<V>> {
 
 function levelOf(kind: string, key: string): CascadeLevel | undefined {
   switch (kind) {
-    case 'global': return { kind: 'global' };
-    case 'shape': return { kind: 'shape', shapeId: key };
-    case 'inputMethod': return { kind: 'inputMethod', inputMethod: key as never };
-    case 'layout': return { kind: 'layout', layoutId: key };
-    case 'override-setup': return { kind: 'setup', setupId: key };
-    default: return undefined;
+    case 'global':
+      return { kind: 'global' };
+    case 'shape':
+      return { kind: 'shape', shapeId: key };
+    case 'inputMethod':
+      return { kind: 'inputMethod', inputMethod: key as never };
+    case 'layout':
+      return { kind: 'layout', layoutId: key };
+    case 'override-setup':
+      return { kind: 'setup', setupId: key };
+    default:
+      return undefined;
   }
 }
 

@@ -24,9 +24,7 @@ const AUTHORING_DERIVATIONS: Readonly<Record<string, readonly AuthoringDerivatio
     { faceIndex: 2, row: 2, column: 7, value: 'れ', reason: 'reciprocal Face membership' },
     { faceIndex: 4, row: 2, column: 8, value: 'さ', reason: 'reciprocal Face membership' },
   ],
-  'naginata-v18': [
-    { faceIndex: 4, row: 2, column: 6, value: 'が', reason: 'reciprocal Face membership' },
-  ],
+  'naginata-v18': [{ faceIndex: 4, row: 2, column: 6, value: 'が', reason: 'reciprocal Face membership' }],
 };
 
 type KanaLayoutFixture = {
@@ -43,12 +41,28 @@ type KanaLayoutFixture = {
 };
 
 /** かな配列が持つべき標準的な入力文字。配列固有の欠落は呼び出し側で明示する。 */
-const EXPECTED_KANA = [...[
-  'あいうえお', 'かきくけこ', 'さしすせそ', 'たちつてと', 'なにぬねの',
-  'はひふへほ', 'まみむめも', 'やゆよ', 'らりるれろ', 'わをん',
-  'がぎぐげご', 'ざじずぜぞ', 'だぢづでど', 'ばびぶべぼ', 'ぱぴぷぺぽ',
-  'ぁぃぅぇぉゃゅょっゎ', 'ヴ', 'ー',
-].join('')];
+const EXPECTED_KANA = [
+  ...[
+    'あいうえお',
+    'かきくけこ',
+    'さしすせそ',
+    'たちつてと',
+    'なにぬねの',
+    'はひふへほ',
+    'まみむめも',
+    'やゆよ',
+    'らりるれろ',
+    'わをん',
+    'がぎぐげご',
+    'ざじずぜぞ',
+    'だぢづでど',
+    'ばびぶべぼ',
+    'ぱぴぷぺぽ',
+    'ぁぃぅぇぉゃゅょっゎ',
+    'ヴ',
+    'ー',
+  ].join(''),
+];
 
 /** かな配列の定義を、配列追加時にも使い回せる形で検証する。 */
 export function assertKanaLayout(layout: Layout, missing: readonly string[] = []) {
@@ -81,9 +95,7 @@ export function assertKanaLayout(layout: Layout, missing: readonly string[] = []
 
 /** 出典から生成した面フィクスチャと、実装の全セルを照合する。 */
 export function assertKanaLayoutFixture(layout: Layout) {
-  const fixture = JSON.parse(
-    readFileSync(new URL(`./fixtures/${layout.id}.json`, import.meta.url), 'utf8'),
-  ) as KanaLayoutFixture;
+  const fixture = JSON.parse(readFileSync(new URL(`./fixtures/${layout.id}.json`, import.meta.url), 'utf8')) as KanaLayoutFixture;
   assert.equal(fixture.version, 1);
   assert.equal(fixture.layoutId, layout.id);
   assert.ok(layout.faces, `${layout.id} は面定義を持つ`);
@@ -98,24 +110,13 @@ export function assertKanaLayoutFixture(layout: Layout) {
     derivationsByFace.set(derivation.faceIndex, group);
   }
 
-  for (const [faceIndex, [actual, expected]] of layout.faces.map((face, index) => [
-    face,
-    fixture.faces[index],
-  ] as const).entries()) {
+  for (const [faceIndex, [actual, expected]] of layout.faces.map((face, index) => [face, fixture.faces[index]] as const).entries()) {
     assert.ok(expected, `${layout.id} の face ${faceIndex} のフィクスチャが無い`);
     const actualCells = actual.rows.map((row) => [...row]);
 
     for (const derivation of derivationsByFace.get(faceIndex) ?? []) {
-      assert.equal(
-        expected.cells[derivation.row]?.[derivation.column],
-        '',
-        `${layout.id} face ${faceIndex} の派生セル元は出典上空である必要がある`,
-      );
-      assert.equal(
-        actualCells[derivation.row]?.[derivation.column],
-        derivation.value,
-        `${layout.id} face ${faceIndex} のauthoring派生セルが違う`,
-      );
+      assert.equal(expected.cells[derivation.row]?.[derivation.column], '', `${layout.id} face ${faceIndex} の派生セル元は出典上空である必要がある`);
+      assert.equal(actualCells[derivation.row]?.[derivation.column], derivation.value, `${layout.id} face ${faceIndex} のauthoring派生セルが違う`);
       actualCells[derivation.row][derivation.column] = '';
     }
 

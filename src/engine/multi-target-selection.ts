@@ -87,10 +87,7 @@ export const COLOR_SLOT_COUNT = 12;
  * （13件から12件以下へ減らすと、重なっていた後の方を空いた番号へ配り直す）。範囲外・整数でない
  * 番号も持っていないものとして配り直す（codecが外部由来のデータを読む時のため）。
  */
-export function assignColorSlots(
-  targets: readonly AnalysisTarget[],
-  known: ReadonlyMap<string, number>,
-): readonly number[] {
+export function assignColorSlots(targets: readonly AnalysisTarget[], known: ReadonlyMap<string, number>): readonly number[] {
   const counts = new Array<number>(COLOR_SLOT_COUNT).fill(0);
   const cap = Math.max(1, Math.ceil(targets.length / COLOR_SLOT_COUNT));
   const slots: (number | undefined)[] = targets.map((target) => {
@@ -140,10 +137,7 @@ export function effectiveMultiBaseline(selection: TargetSet): AnalysisTarget | u
  * 基準の記録（`baseline`）は集合の変更で触らない。外した対象は効く基準から外れるだけで、
  * 付け直せば戻る（`effectiveMultiBaseline`）。
  */
-export function withMultiTargets(
-  current: MultiTargetSelection,
-  targets: readonly AnalysisTarget[],
-): MultiTargetSelection {
+export function withMultiTargets(current: MultiTargetSelection, targets: readonly AnalysisTarget[]): MultiTargetSelection {
   const deduped = dedupeTargets(targets);
   if (sameTargets(current.targets, deduped)) return current;
   // 残った対象は色を持ち越す。並び替えでも色は対象に付いて動く（色は並べた位置ではなく、
@@ -165,10 +159,7 @@ export function withTargetSetTargets(current: TargetSet, targets: readonly Analy
  * 基準を差し替える（記録も上書きする）。`undefined`は「基準なし」で、記録も消す。
  * 選択に含まれない対象を基準にしようとした場合は無視する（no-op。選べるのは集合の中だけ）。
  */
-export function withMultiBaseline<T extends TargetSet>(
-  current: T,
-  baseline: AnalysisTarget | undefined,
-): T {
+export function withMultiBaseline<T extends TargetSet>(current: T, baseline: AnalysisTarget | undefined): T {
   if (current.baseline === baseline) return current;
   if (current.baseline !== undefined && baseline !== undefined && sameAnalysisTarget(current.baseline, baseline)) {
     return current;

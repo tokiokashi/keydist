@@ -32,10 +32,22 @@ test('丸めの桁（小数第6位）より細かい差は同じ状態、粗い�
 
 test('割合は状態の昇順で、総和が100%になる', () => {
   const shares = stateShares(countStates([0.25, 0, 0, -0.5, 0.25, 0, 0, 0]));
-  assert.deepEqual(shares.map((item) => item.state), [-0.5, 0, 0.25]);
-  assert.deepEqual(shares.map((item) => item.count), [1, 5, 2]);
-  assert.deepEqual(shares.map((item) => item.share), [12.5, 62.5, 25]);
-  assert.equal(shares.reduce((sum, item) => sum + item.share, 0), 100);
+  assert.deepEqual(
+    shares.map((item) => item.state),
+    [-0.5, 0, 0.25],
+  );
+  assert.deepEqual(
+    shares.map((item) => item.count),
+    [1, 5, 2],
+  );
+  assert.deepEqual(
+    shares.map((item) => item.share),
+    [12.5, 62.5, 25],
+  );
+  assert.equal(
+    shares.reduce((sum, item) => sum + item.share, 0),
+    100,
+  );
 });
 
 test('打鍵が0件なら状態は無い', () => {

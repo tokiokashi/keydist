@@ -184,7 +184,11 @@ export function createWorkerEngineComputer(spawn: () => WorkerLike): WorkerEngin
 
   return {
     getTrace(input: ResolvedInput, signal?: AbortSignal): Promise<EngineTraceResult> {
-      return remember(traceMirror, traceKeyOf(input), enqueue((id) => ({ id, kind: 'trace', input }), signal));
+      return remember(
+        traceMirror,
+        traceKeyOf(input),
+        enqueue((id) => ({ id, kind: 'trace', input }), signal),
+      );
     },
     peekTrace(input: ResolvedInput): EngineTraceResult | undefined {
       return traceMirror.get(traceKeyOf(input));
@@ -194,8 +198,7 @@ export function createWorkerEngineComputer(spawn: () => WorkerLike): WorkerEngin
       definition: SingleAnalyzerDefinition<Options, Extracted>,
       options: Options,
     ): EngineExtractionResult<Extracted> | undefined {
-      return extractionMirror.get(singleExtractionKeyOf(input, definition, options)) as
-        EngineExtractionResult<Extracted> | undefined;
+      return extractionMirror.get(singleExtractionKeyOf(input, definition, options)) as EngineExtractionResult<Extracted> | undefined;
     },
     peekSetExtraction<Options, Extracted>(
       members: readonly EngineSetMemberInput[],
@@ -203,7 +206,8 @@ export function createWorkerEngineComputer(spawn: () => WorkerLike): WorkerEngin
       options: Options,
     ): EngineExtractionResult<Extracted> | undefined {
       return extractionMirror.get(setExtractionKeyOf(members, definition.id, definition.extractKeyOf(options))) as
-        EngineExtractionResult<Extracted> | undefined;
+        | EngineExtractionResult<Extracted>
+        | undefined;
     },
     getExtraction<Options, Extracted>(
       input: ResolvedInput,

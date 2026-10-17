@@ -1,13 +1,8 @@
-import {
-  TypingInputEngine,
-  type RecognizedTypingInput,
-} from './engine/index.ts';
+import { TypingInputEngine, type RecognizedTypingInput } from './engine/index.ts';
 
 export type TypingEditCommand = 'backspace' | 'enter';
 
-export type TypingTextEdit =
-  | { readonly kind: 'delete-last' }
-  | { readonly kind: 'append'; readonly value: string };
+export type TypingTextEdit = { readonly kind: 'delete-last' } | { readonly kind: 'append'; readonly value: string };
 
 export interface TypingEditCommandResult {
   readonly recognized: readonly RecognizedTypingInput[];
@@ -20,10 +15,7 @@ const withoutLastCodePoint = (value: string): string => {
   return codePoints.join('');
 };
 
-export function applyRecognizedTypingInputs(
-  current: string,
-  recognized: readonly RecognizedTypingInput[],
-): string {
+export function applyRecognizedTypingInputs(current: string, recognized: readonly RecognizedTypingInput[]): string {
   let next = current;
   for (const entry of recognized) {
     const replaced = entry.replacePreviousText;
@@ -39,10 +31,7 @@ export function applyRecognizedTypingInputs(
  * 編集commandは文字列だけでなくrecognition stateの境界でもある。
  * Backspaceはhistoryを破棄し、Enterはpending physical operationをflushしてからresetする。
  */
-export function executeTypingEditCommand(
-  engine: TypingInputEngine,
-  command: TypingEditCommand,
-): TypingEditCommandResult {
+export function executeTypingEditCommand(engine: TypingInputEngine, command: TypingEditCommand): TypingEditCommandResult {
   if (command === 'backspace') {
     engine.reset();
     return {
@@ -62,10 +51,7 @@ export function executeTypingEditCommand(
   };
 }
 
-export function applyTypingTextEdit(
-  current: string,
-  edit: TypingTextEdit,
-): string {
+export function applyTypingTextEdit(current: string, edit: TypingTextEdit): string {
   if (edit.kind === 'delete-last') return withoutLastCodePoint(current);
   return current + edit.value;
 }

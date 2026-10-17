@@ -15,7 +15,10 @@ test('列のidは指10本と指間6組で、重ならない', () => {
 });
 
 test('並び替えは列id:向きでURLに読み書きできる。指の組の列も読める', () => {
-  for (const sort of [{ column: 'LI', direction: 'desc' }, { column: 'LP-LR', direction: 'asc' }] as const) {
+  for (const sort of [
+    { column: 'LI', direction: 'desc' },
+    { column: 'LP-LR', direction: 'asc' },
+  ] as const) {
     const params = fingerMatrixOptions.encodeOptionsToUrl({ ...fingerMatrixOptions.defaultOptions, sort });
     assert.equal(params.get('sort'), `${sort.column}:${sort.direction}`);
     const decoded = fingerMatrixOptions.decodeOptionsFromUrl(params, []);

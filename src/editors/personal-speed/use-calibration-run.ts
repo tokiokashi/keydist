@@ -41,32 +41,36 @@ export function useCalibrationRun(options: CalibrationRunOptions): CalibrationRu
 
   useEffect(() => {
     if (!active) return undefined;
-    const stop = captureCalibrationKeys(document, (event) => {
-      const current = runRef.current;
-      if (current === undefined) return;
-      const { keyLabel, onFinished } = optionsRef.current;
-      const pressed = pressCalibrationKey(current, event, event.timeStamp, keyLabel);
-      if (pressed.outcome.kind === 'wrong-key') {
-        setWrongKey(keyLabel(pressed.outcome.expectedKey));
-        return;
-      }
-      // 次に打つキーだった。ブラウザの検索などの働きと、他の層のキー操作へ渡さない。
-      event.preventDefault();
-      event.stopPropagation();
-      if (pressed.outcome.kind === 'ignored') return;
-      setWrongKey(undefined);
-      if (pressed.outcome.kind === 'run-finished') {
-        runRef.current = undefined;
-        setRun(undefined);
-        onFinished(pressed.run);
-        return;
-      }
-      runRef.current = pressed.run;
-      setRun(pressed.run);
-    }, {
-      // 親指との同時押しを測る間だけSpaceを受け付ける。その間のSpaceは、スクロールとボタンの押下へ渡さない。
-      acceptsSpace: () => runRef.current !== undefined && calibrationTaskAcceptsSpace(currentCalibrationTask(runRef.current)),
-    });
+    const stop = captureCalibrationKeys(
+      document,
+      (event) => {
+        const current = runRef.current;
+        if (current === undefined) return;
+        const { keyLabel, onFinished } = optionsRef.current;
+        const pressed = pressCalibrationKey(current, event, event.timeStamp, keyLabel);
+        if (pressed.outcome.kind === 'wrong-key') {
+          setWrongKey(keyLabel(pressed.outcome.expectedKey));
+          return;
+        }
+        // 次に打つキーだった。ブラウザの検索などの働きと、他の層のキー操作へ渡さない。
+        event.preventDefault();
+        event.stopPropagation();
+        if (pressed.outcome.kind === 'ignored') return;
+        setWrongKey(undefined);
+        if (pressed.outcome.kind === 'run-finished') {
+          runRef.current = undefined;
+          setRun(undefined);
+          onFinished(pressed.run);
+          return;
+        }
+        runRef.current = pressed.run;
+        setRun(pressed.run);
+      },
+      {
+        // 親指との同時押しを測る間だけSpaceを受け付ける。その間のSpaceは、スクロールとボタンの押下へ渡さない。
+        acceptsSpace: () => runRef.current !== undefined && calibrationTaskAcceptsSpace(currentCalibrationTask(runRef.current)),
+      },
+    );
     return stop;
   }, [active]);
 

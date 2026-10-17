@@ -7,13 +7,7 @@ import { heatmapLayersDefinition, type HeatmapLayersExtracted } from './extract.
 import { HeatmapDiagram, type HeatmapShiftStyle } from '../heatmap-diagram.tsx';
 import { layerLegends, presentationLayersOf } from '../heatmap-figure.ts';
 import { LayerDetailHeading } from '../layer-detail-heading.tsx';
-import {
-  activeEntryIndex,
-  buildLayerEntries,
-  entryKeyDetail,
-  resolveArrangement,
-  sharedMaxCount,
-} from './layer-view.ts';
+import { activeEntryIndex, buildLayerEntries, entryKeyDetail, resolveArrangement, sharedMaxCount } from './layer-view.ts';
 import { DEFAULT_HEATMAP_LAYERS_OPTIONS, heatmapLayersOptions, type HeatmapLayersOptions } from './options.ts';
 import { HEATMAP_LAYERS_PANE_META } from './pane-meta.ts';
 import type { Face } from '#input/layouts/types.ts';
@@ -45,7 +39,14 @@ function shiftStylesByKey(faces: readonly Face[], styles: ReadonlyMap<Face, Heat
   return byKey;
 }
 
-export function HeatmapLayersBody({ layout, geometry, extracted, options, onOptionsChange, keySelection }: SingleBodyProps<HeatmapLayersExtracted, HeatmapLayersOptions>) {
+export function HeatmapLayersBody({
+  layout,
+  geometry,
+  extracted,
+  options,
+  onOptionsChange,
+  keySelection,
+}: SingleBodyProps<HeatmapLayersExtracted, HeatmapLayersOptions>) {
   const standard = keyboardStandardForGeometryId(geometry.id);
   const view = useMemo(() => {
     const entries = buildLayerEntries(layout, extracted, options.layerDetail);
@@ -135,8 +136,7 @@ export function HeatmapLayersBody({ layout, geometry, extracted, options, onOpti
 
 /** 色の尺度とレイヤーの並べ方。 */
 export function HeatmapLayersSettings({ options, onOptionsChange }: AnalyzerSettingsProps<HeatmapLayersOptions>) {
-  const bind = <K extends keyof HeatmapLayersOptions>(key: K) =>
-    bindOption(options, DEFAULT_HEATMAP_LAYERS_OPTIONS, onOptionsChange, key);
+  const bind = <K extends keyof HeatmapLayersOptions>(key: K) => bindOption(options, DEFAULT_HEATMAP_LAYERS_OPTIONS, onOptionsChange, key);
   return (
     <div className="option-groups">
       <SegmentedOptionField

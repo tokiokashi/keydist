@@ -1,46 +1,41 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  DEFAULT_CHAIN_INTERPRETATION,
-  analyzeChains,
-  buildRawHandRuns,
-} from './chain.ts';
+import { DEFAULT_CHAIN_INTERPRETATION, analyzeChains, buildRawHandRuns } from './chain.ts';
 import type { Stroke, StrokeParticipation } from '#trace/generate.ts';
 
-const participation = (
-  hand: 'left' | 'right',
-  finger: StrokeParticipation['finger'],
-  roles: StrokeParticipation['roles'],
-): StrokeParticipation => ({ hand, finger, keys: [], roles });
+const participation = (hand: 'left' | 'right', finger: StrokeParticipation['finger'], roles: StrokeParticipation['roles']): StrokeParticipation => ({
+  hand,
+  finger,
+  keys: [],
+  roles,
+});
 
 const stroke = (
   index: number,
   participations: readonly StrokeParticipation[],
   presses: Array<{ finger: StrokeParticipation['finger']; sfb: boolean }> = [],
   classifications: Stroke['classifications'] = [],
-): Stroke => ({
-  index,
-  inputIndex: index,
-  inputChar: String(index),
-  char: String(index),
-  classifications,
-  triggerKeys: [],
-  pairedTriggerKeys: [],
-  participations,
-  presses,
-  positions: {},
-  distance: 0,
-  aggregationGroupId: 'single',
-}) as unknown as Stroke;
+): Stroke =>
+  ({
+    index,
+    inputIndex: index,
+    inputChar: String(index),
+    char: String(index),
+    classifications,
+    triggerKeys: [],
+    pairedTriggerKeys: [],
+    participations,
+    presses,
+    positions: {},
+    distance: 0,
+    aggregationGroupId: 'single',
+  }) as unknown as Stroke;
 
 test('Raw hand runは参加factを保持し、trigger/thumb/逆手同時から境界を決めない', () => {
   const strokes = [
     stroke(0, [participation('left', 'LI', ['output'])]),
     stroke(1, [participation('left', 'LM', ['trigger'])]),
-    stroke(2, [
-      participation('left', 'LR', ['output']),
-      participation('right', 'RI', ['output']),
-    ]),
+    stroke(2, [participation('left', 'LR', ['output']), participation('right', 'RI', ['output'])]),
     stroke(3, [participation('left', 'LT', ['trigger'])], [{ finger: 'LT', sfb: true }]),
   ];
 
@@ -59,8 +54,7 @@ test('Raw hand runは参加factを保持し、trigger/thumb/逆手同時から�
 
   const analysis = analyzeChains(strokes);
   assert.deepEqual(
-    analysis.chains.filter((chain) => chain.hand === 'left')
-      .map((chain) => [chain.startStrokeIndex, chain.endStrokeIndex]),
+    analysis.chains.filter((chain) => chain.hand === 'left').map((chain) => [chain.startStrokeIndex, chain.endStrokeIndex]),
     [[0, 3]],
     '既定では親指only StrokeをChain境界にする',
   );
@@ -70,8 +64,7 @@ test('Raw hand runは参加factを保持し、trigger/thumb/逆手同時から�
     breakOnThumbOnly: false,
   });
   assert.deepEqual(
-    keepThumb.chains.filter((chain) => chain.hand === 'left')
-      .map((chain) => [chain.startStrokeIndex, chain.endStrokeIndex]),
+    keepThumb.chains.filter((chain) => chain.hand === 'left').map((chain) => [chain.startStrokeIndex, chain.endStrokeIndex]),
     [[0, 4]],
     'breakOnThumbOnly=falseなら親指only StrokeをまたいでChainを維持する',
   );
@@ -81,10 +74,7 @@ test('ChainInterpretationはsame-finger / trigger-only / 逆手同時を独立�
   const strokes = [
     stroke(0, [participation('left', 'LI', ['output'])]),
     stroke(1, [participation('left', 'LM', ['trigger'])]),
-    stroke(2, [
-      participation('left', 'LR', ['output']),
-      participation('right', 'RI', ['output']),
-    ]),
+    stroke(2, [participation('left', 'LR', ['output']), participation('right', 'RI', ['output'])]),
     stroke(3, [participation('left', 'LI', ['output'])], [{ finger: 'LI', sfb: true }]),
     stroke(4, [participation('left', 'LM', ['output'])]),
   ];
@@ -95,10 +85,13 @@ test('ChainInterpretationはsame-finger / trigger-only / 逆手同時を独立�
     breakOnTriggerOnly: true,
   };
   assert.deepEqual(
-    analyzeChains(strokes, triggerPolicy).chains
-      .filter((chain) => chain.hand === 'left')
+    analyzeChains(strokes, triggerPolicy)
+      .chains.filter((chain) => chain.hand === 'left')
       .map((chain) => [chain.startStrokeIndex, chain.endStrokeIndex]),
-    [[0, 1], [2, 5]],
+    [
+      [0, 1],
+      [2, 5],
+    ],
   );
 
   const oppositePolicy = {
@@ -107,28 +100,29 @@ test('ChainInterpretationはsame-finger / trigger-only / 逆手同時を独立�
     breakOnOppositeHandSimultaneous: true,
   };
   assert.deepEqual(
-    analyzeChains(strokes, oppositePolicy).chains
-      .filter((chain) => chain.hand === 'left')
+    analyzeChains(strokes, oppositePolicy)
+      .chains.filter((chain) => chain.hand === 'left')
       .map((chain) => [chain.startStrokeIndex, chain.endStrokeIndex]),
-    [[0, 2], [3, 5]],
+    [
+      [0, 2],
+      [3, 5],
+    ],
   );
 
   assert.deepEqual(
-    analyzeChains(strokes, DEFAULT_CHAIN_INTERPRETATION).chains
-      .filter((chain) => chain.hand === 'left')
+    analyzeChains(strokes, DEFAULT_CHAIN_INTERPRETATION)
+      .chains.filter((chain) => chain.hand === 'left')
       .map((chain) => [chain.startStrokeIndex, chain.endStrokeIndex]),
-    [[0, 3], [4, 5]],
+    [
+      [0, 3],
+      [4, 5],
+    ],
     '既定ではsame-finger境界Strokeを従来どおりChainから外す',
   );
 });
 
 test('breakOnTriggerOnlyはcanonical composition classificationをshift扱いで除外しない', () => {
-  const strokes = [
-    stroke(0, [
-      participation('left', 'LI', ['output']),
-      participation('right', 'RI', ['trigger']),
-    ], [], ['composition']),
-  ];
+  const strokes = [stroke(0, [participation('left', 'LI', ['output']), participation('right', 'RI', ['trigger'])], [], ['composition'])];
   const policy = {
     ...DEFAULT_CHAIN_INTERPRETATION,
     breakOnSameFinger: false,
@@ -141,11 +135,7 @@ test('breakOnTriggerOnlyはcanonical composition classificationをshift扱いで
   assert.equal(right.isComposition, true);
 
   assert.deepEqual(
-    analyzeChains(strokes, policy).chains.map((chain) => [
-      chain.hand,
-      chain.startStrokeIndex,
-      chain.endStrokeIndex,
-    ]),
+    analyzeChains(strokes, policy).chains.map((chain) => [chain.hand, chain.startStrokeIndex, chain.endStrokeIndex]),
     [
       ['left', 0, 1],
       ['right', 0, 1],
@@ -154,12 +144,7 @@ test('breakOnTriggerOnlyはcanonical composition classificationをshift扱いで
 });
 
 test('composition classificationなしのtrigger-onlyは通常のChain境界にする', () => {
-  const strokes = [
-    stroke(0, [
-      participation('left', 'LI', ['output']),
-      participation('right', 'RI', ['trigger']),
-    ]),
-  ];
+  const strokes = [stroke(0, [participation('left', 'LI', ['output']), participation('right', 'RI', ['trigger'])])];
   const policy = {
     ...DEFAULT_CHAIN_INTERPRETATION,
     breakOnSameFinger: false,
@@ -173,14 +158,8 @@ test('composition classificationなしのtrigger-onlyは通常のChain境界に�
   assert.equal(right.isComposition, false);
 
   assert.deepEqual(
-    analyzeChains(strokes, policy).chains.map((chain) => [
-      chain.hand,
-      chain.startStrokeIndex,
-      chain.endStrokeIndex,
-    ]),
-    [
-      ['left', 0, 1],
-    ],
+    analyzeChains(strokes, policy).chains.map((chain) => [chain.hand, chain.startStrokeIndex, chain.endStrokeIndex]),
+    [['left', 0, 1]],
   );
 });
 
@@ -200,10 +179,13 @@ test('親指only境界とtrigger-only境界は独立に適用する', () => {
     breakOnThumbOnly: true,
   };
   assert.deepEqual(
-    analyzeChains(strokes, thumbOnly).chains
-      .filter((chain) => chain.hand === 'left')
+    analyzeChains(strokes, thumbOnly)
+      .chains.filter((chain) => chain.hand === 'left')
       .map((chain) => [chain.startStrokeIndex, chain.endStrokeIndex]),
-    [[0, 3], [4, 5]],
+    [
+      [0, 3],
+      [4, 5],
+    ],
     '非親指trigger-onlyでは切らず、親指onlyだけで切る',
   );
 
@@ -214,20 +196,23 @@ test('親指only境界とtrigger-only境界は独立に適用する', () => {
     breakOnThumbOnly: false,
   };
   assert.deepEqual(
-    analyzeChains(strokes, triggerOnly).chains
-      .filter((chain) => chain.hand === 'left')
+    analyzeChains(strokes, triggerOnly)
+      .chains.filter((chain) => chain.hand === 'left')
       .map((chain) => [chain.startStrokeIndex, chain.endStrokeIndex]),
-    [[0, 1], [2, 5]],
+    [
+      [0, 1],
+      [2, 5],
+    ],
     'trigger-onlyで切っても親指outputだけでは切らない',
   );
 });
 
 test('AnalysisResultはstable IDを作らず、result内indexとimmutable spanを返す', () => {
-  const analysis = analyzeChains([
-    stroke(0, [participation('left', 'LI', ['output'])]),
-    stroke(1, [participation('left', 'LM', ['output'])]),
-  ]);
-  assert.deepEqual(analysis.chains.map((chain) => chain.chainIndex), [0]);
+  const analysis = analyzeChains([stroke(0, [participation('left', 'LI', ['output'])]), stroke(1, [participation('left', 'LM', ['output'])])]);
+  assert.deepEqual(
+    analysis.chains.map((chain) => chain.chainIndex),
+    [0],
+  );
   assert.equal(analysis.chains[0].rawRunIndex, 0);
   assert.equal(Object.isFrozen(analysis), true);
   assert.equal(Object.isFrozen(analysis.rawHandRuns), true);

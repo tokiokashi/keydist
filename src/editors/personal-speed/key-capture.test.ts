@@ -11,8 +11,13 @@ function fakeSource() {
   const listeners = new Set<(event: KeyboardEvent) => void>();
   const captures: boolean[] = [];
   const source: KeyEventSource = {
-    addEventListener: (_type, listener, capture) => { listeners.add(listener); captures.push(capture); },
-    removeEventListener: (_type, listener) => { listeners.delete(listener); },
+    addEventListener: (_type, listener, capture) => {
+      listeners.add(listener);
+      captures.push(capture);
+    },
+    removeEventListener: (_type, listener) => {
+      listeners.delete(listener);
+    },
   };
   const dispatch = (event: Partial<KeyboardEvent> & PressLike) => {
     for (const listener of [...listeners]) listener(event as KeyboardEvent);
@@ -61,7 +66,9 @@ test('取得の開始前は何も登録せず、開始から停止までの間�
 test('取得の間は測定の打鍵だけが渡り、停止後は何も渡らない', () => {
   const { source, dispatch } = fakeSource();
   const received: string[] = [];
-  const stop = captureCalibrationKeys(source, (event) => { received.push(event.key); });
+  const stop = captureCalibrationKeys(source, (event) => {
+    received.push(event.key);
+  });
   for (const key of ['f', 'Escape', ' ', 'Tab', 'j']) dispatch({ ...press(key), target: null });
   dispatch({ ...press('k'), target: { tagName: 'INPUT' } as unknown as EventTarget });
   dispatch({ ...press('l', { ctrlKey: true }), target: null });
@@ -75,16 +82,24 @@ test('取得の間は測定の打鍵だけが渡り、停止後は何も渡ら�
 function typedSource() {
   const listeners: Record<'keydown' | 'keyup', Set<(event: KeyboardEvent) => void>> = { keydown: new Set(), keyup: new Set() };
   const source: KeyEventSource = {
-    addEventListener: (type, listener) => { listeners[type].add(listener); },
-    removeEventListener: (type, listener) => { listeners[type].delete(listener); },
+    addEventListener: (type, listener) => {
+      listeners[type].add(listener);
+    },
+    removeEventListener: (type, listener) => {
+      listeners[type].delete(listener);
+    },
   };
   const dispatch = (type: 'keydown' | 'keyup', overrides: Partial<PressLike> = {}) => {
     const calls = { prevented: 0, stopped: 0 };
     const event = {
       ...press(' ', { code: 'Space', ...overrides }),
       target: null,
-      preventDefault: () => { calls.prevented += 1; },
-      stopPropagation: () => { calls.stopped += 1; },
+      preventDefault: () => {
+        calls.prevented += 1;
+      },
+      stopPropagation: () => {
+        calls.stopped += 1;
+      },
     };
     for (const listener of [...listeners[type]]) listener(event as unknown as KeyboardEvent);
     return calls;
@@ -96,7 +111,13 @@ test('Spaceを受け付ける間だけ、Spaceの押下を渡し、押下と繰�
   const { source, dispatch } = typedSource();
   let accepts = false;
   const received: string[] = [];
-  captureCalibrationKeys(source, (event) => { received.push(event.key); }, { acceptsSpace: () => accepts });
+  captureCalibrationKeys(
+    source,
+    (event) => {
+      received.push(event.key);
+    },
+    { acceptsSpace: () => accepts },
+  );
   assert.deepEqual(dispatch('keydown'), { prevented: 0, stopped: 0 });
   assert.deepEqual(dispatch('keyup'), { prevented: 0, stopped: 0 });
   assert.deepEqual(received, []);
@@ -111,7 +132,13 @@ test('Spaceを受け付ける間だけ、Spaceの押下を渡し、押下と繰�
 test('Spaceを受け付ける間も、修飾キーつきのSpaceは取らない', () => {
   const { source, dispatch } = typedSource();
   const received: string[] = [];
-  captureCalibrationKeys(source, (event) => { received.push(event.key); }, { acceptsSpace: () => true });
+  captureCalibrationKeys(
+    source,
+    (event) => {
+      received.push(event.key);
+    },
+    { acceptsSpace: () => true },
+  );
   assert.deepEqual(dispatch('keydown', { ctrlKey: true }), { prevented: 0, stopped: 0 });
   assert.deepEqual(received, []);
 });

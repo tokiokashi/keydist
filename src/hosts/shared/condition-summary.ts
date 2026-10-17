@@ -124,26 +124,30 @@ function formatOrigin(origin: ResolvedOrigin, names?: ConditionValueNames): stri
 }
 
 const INPUT_METHOD_LABELS: Readonly<Record<InputMethod, string>> = {
-  'direct': '英字を直接打つ配列',
-  'romaji': 'ローマ字入力',
+  direct: '英字を直接打つ配列',
+  romaji: 'ローマ字入力',
   'kana-direct': 'かなを直接打つ配列',
 };
 
 /** 上書きの適用範囲。物理配列・配列はidでなく名前で出す（引けなければ「この物理配列」等）。 */
 function cascadeLevelLabel(level: CascadeLevel, names: ConditionValueNames | undefined): string {
   switch (level.kind) {
-    case 'global': return '全体';
-    case 'workspace': return 'Workspace';
+    case 'global':
+      return '全体';
+    case 'workspace':
+      return 'Workspace';
     case 'shape': {
       const name = names?.shapes.get(level.shapeId)?.name;
       return name === undefined ? 'この物理配列' : `物理配列「${name}」`;
     }
-    case 'inputMethod': return INPUT_METHOD_LABELS[level.inputMethod];
+    case 'inputMethod':
+      return INPUT_METHOD_LABELS[level.inputMethod];
     case 'layout': {
       const name = names?.layouts?.get(level.layoutId)?.name;
       return name === undefined ? 'この配列' : `配列「${name}」`;
     }
-    case 'setup': return 'このSetup';
+    case 'setup':
+      return 'このSetup';
   }
 }
 
@@ -215,9 +219,7 @@ function formatValue(
     // Shift+Aを1動作にする時は例外を一切読まない（`input/semantics/action-realization.ts`）ので、
     // 例外が残っていても出さない。出すと効いていない例外で測ったように読めてしまう。
     if (value['triggerActivation'] !== 'semantic') return { format: 'primitive', displayValue: ACTION_COUNT_TEXT.combined };
-    const classOverrides = isRecord(value['triggerActivationClassOverrides'])
-      ? Object.keys(value['triggerActivationClassOverrides']).length
-      : 0;
+    const classOverrides = isRecord(value['triggerActivationClassOverrides']) ? Object.keys(value['triggerActivationClassOverrides']).length : 0;
     const overrides = Array.isArray(value['triggerActivationOverrides']) ? value['triggerActivationOverrides'].length : 0;
     return {
       format: 'primitive',
@@ -276,10 +278,7 @@ export function traceConditionSummary(
   scope: ConditionSummaryScope = {},
 ): readonly ConditionSummaryRow[] {
   const extraIds = scope.extraIds ?? [];
-  const items = [
-    ...TRACE_AFFECTING_ITEMS,
-    ...PANE_CONDITION_ITEMS.filter((item) => extraIds.includes(item.id)),
-  ];
+  const items = [...TRACE_AFFECTING_ITEMS, ...PANE_CONDITION_ITEMS.filter((item) => extraIds.includes(item.id))];
   return items.map(({ id, label }) => {
     const resolved = cascade[id];
     const { format, displayValue } = formatValue(id, resolved.value, names);
@@ -312,11 +311,7 @@ export interface ConditionHeaderInfo {
   readonly fingerAssignmentName: string;
 }
 
-export function conditionHeaderInfo(
-  layout: Layout,
-  shape: PhysicalShape,
-  fingerAssignment: FingerAssignment,
-): ConditionHeaderInfo {
+export function conditionHeaderInfo(layout: Layout, shape: PhysicalShape, fingerAssignment: FingerAssignment): ConditionHeaderInfo {
   return { layoutName: layout.name, shapeName: shape.name, fingerAssignmentName: fingerAssignmentLabel(fingerAssignment) };
 }
 
@@ -339,9 +334,12 @@ export { formatOrigin, cascadeLevelLabel as conditionLevelLabel };
  */
 export function conditionDiagnosticText(row: ConditionSummaryRow, diagnostic: Diagnostic): string | undefined {
   switch (diagnostic.kind) {
-    case 'not-applicable': return undefined;
-    case 'ignored-disallowed-level': return `「${row.label}」の変更のうち、置けない場所にあった値を無視しました`;
-    case 'invalid-fallback': return diagnostic.message;
+    case 'not-applicable':
+      return undefined;
+    case 'ignored-disallowed-level':
+      return `「${row.label}」の変更のうち、置けない場所にあった値を無視しました`;
+    case 'invalid-fallback':
+      return diagnostic.message;
   }
 }
 
@@ -370,9 +368,7 @@ export function nonDefaultConditionRows(
   rows: readonly ConditionSummaryRow[],
   excludeIds: readonly SettingsItemId[] = [],
 ): readonly ConditionSummaryRow[] {
-  return rows.filter((row) => isChangedConditionRow(row)
-    && !SHOWN_AS_SHAPE_NAME.includes(row.id)
-    && !excludeIds.includes(row.id));
+  return rows.filter((row) => isChangedConditionRow(row) && !SHOWN_AS_SHAPE_NAME.includes(row.id) && !excludeIds.includes(row.id));
 }
 
 /**
@@ -433,14 +429,16 @@ export function conditionTriggerTitle(input: {
     .filter((row) => !input.hiddenIds.includes(row.id))
     .slice(0, TITLE_EXAMPLE_COUNT)
     .map((row) => row.label);
-  const intro = examples.length === 0
-    ? '条件は、結果に影響する設定をまとめたものです。'
-    : `条件は、結果に影響する設定をまとめたものです。例: ${examples.join('・')}。`;
+  const intro =
+    examples.length === 0
+      ? '条件は、結果に影響する設定をまとめたものです。'
+      : `条件は、結果に影響する設定をまとめたものです。例: ${examples.join('・')}。`;
   if (!input.compact) return `${intro}条件を見る・変える`;
   const { line } = input;
-  const detail = line.changedCount === 0
-    ? 'すべて既定値'
-    : `${line.shown.map((row) => `${row.label}: ${row.displayValue}`).join(' · ')}${line.restCount > 0 ? ` 他${line.restCount}件` : ''}`;
+  const detail =
+    line.changedCount === 0
+      ? 'すべて既定値'
+      : `${line.shown.map((row) => `${row.label}: ${row.displayValue}`).join(' · ')}${line.restCount > 0 ? ` 他${line.restCount}件` : ''}`;
   return `${intro}条件: ${detail}${input.hasTargetDiffs ? '（対象ごとに差あり）' : ''}`;
 }
 
@@ -582,15 +580,9 @@ function screenRow(
   levels?: GlobalConditionLevels,
 ): ConditionSummaryRow {
   const globalValue = globalValues[template.id];
-  const origin: ResolvedOrigin = globalValue === undefined
-    ? { kind: 'default' }
-    : { kind: levels?.[template.id] ?? 'global' };
+  const origin: ResolvedOrigin = globalValue === undefined ? { kind: 'default' } : { kind: levels?.[template.id] ?? 'global' };
   const rawDefault: unknown = SETTINGS_ITEMS[template.id].defaultValue;
-  const value = globalValue !== undefined
-    ? globalValue
-    : template.id === 'fingerAssignmentId'
-      ? DEFAULT_FINGER_ASSIGNMENT.id
-      : rawDefault;
+  const value = globalValue !== undefined ? globalValue : template.id === 'fingerAssignmentId' ? DEFAULT_FINGER_ASSIGNMENT.id : rawDefault;
   const { format, displayValue } = formatValue(template.id, value, names);
   return {
     ...template,

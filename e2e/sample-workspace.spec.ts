@@ -15,7 +15,13 @@ interface StoredWorkspace {
   readonly name: string;
   readonly groups: readonly { id: string; target: { single?: { layoutId?: string }; set?: { targets: { layoutId: string }[] } } }[];
   readonly optionSets: readonly { id: string; analyzerId: string; options?: unknown }[];
-  readonly panes: readonly { id: string; analyzerId: string; options?: unknown; optionsBinding: { mode: string; set?: string }; binding: { mode: string; group?: string } }[];
+  readonly panes: readonly {
+    id: string;
+    analyzerId: string;
+    options?: unknown;
+    optionsBinding: { mode: string; set?: string };
+    binding: { mode: string; group?: string };
+  }[];
   readonly grid: readonly { id: string; x: number; y: number; w: number; h: number }[];
   readonly conditions?: Record<string, unknown>;
 }
@@ -42,9 +48,16 @@ async function expectSampleLayout(page: Page, id: string): Promise<void> {
 
   // 並び: 上の段は比較表とN感度、中の段はBigram Flow 4つ、下の段は指ごとの距離4つ
   expect(workspace.panes.map((pane) => pane.analyzerId)).toEqual([
-    'comparison', 'n-sensitivity',
-    'bigram-flow', 'bigram-flow', 'bigram-flow', 'bigram-flow',
-    'finger-distance', 'finger-distance', 'finger-distance', 'finger-distance',
+    'comparison',
+    'n-sensitivity',
+    'bigram-flow',
+    'bigram-flow',
+    'bigram-flow',
+    'bigram-flow',
+    'finger-distance',
+    'finger-distance',
+    'finger-distance',
+    'finger-distance',
   ]);
   // 連動: 比較表・N感度・1つ目のBigram Flow・1つ目の指ごとの距離が連動1、残りが連動2〜4
   expect(workspace.panes.map((pane) => pane.binding)).toEqual([
@@ -61,7 +74,13 @@ async function expectSampleLayout(page: Page, id: string): Promise<void> {
   ]);
   // 対象
   expect(workspace.groups[0]!.target.set!.targets.map((target) => target.layoutId)).toEqual([
-    'qwerty', 'dvorak', 'oonishi', 'naginata-v18', 'shin-jis-prefix', 'shingeta', 'tsuki-2-263',
+    'qwerty',
+    'dvorak',
+    'oonishi',
+    'naginata-v18',
+    'shin-jis-prefix',
+    'shingeta',
+    'tsuki-2-263',
   ]);
   expect(workspace.groups.map((group) => group.target.single?.layoutId)).toEqual(['qwerty', 'oonishi', 'tsuki-2-263', 'naginata-v18']);
   // 解析設定: Bigram Flowの4つは、2打鍵の取り方がWithin-handの共有の設定に従う。指ごとの距離の4つも1つの共有の設定に従う
@@ -110,7 +129,9 @@ test('トップの「複数の配列を並べたサンプルを作る」で、�
   await expect(page.locator('.pane-frame')).toHaveCount(10);
 });
 
-test('空のWorkspaceの「複数の配列を並べたサンプルで始める」で、今のWorkspaceにサンプルの並びが入る。一覧は増えず、元に戻すで空に戻る', async ({ page }) => {
+test('空のWorkspaceの「複数の配列を並べたサンプルで始める」で、今のWorkspaceにサンプルの並びが入る。一覧は増えず、元に戻すで空に戻る', async ({
+  page,
+}) => {
   await page.goto('/');
   await waitForHydration(page);
   await page.locator('#app-sidebar').getByRole('button', { name: '＋ 新しいWorkspace' }).click();
@@ -192,13 +213,22 @@ async function openSampleAt(page: Page, size: { width: number; height: number },
   await expect(page.locator('.workspace-grid-item .pane-frame[data-pane-status="ready"]')).toHaveCount(10, { timeout: 30_000 });
   // 図の描画（N感度は領域の実寸に合わせて描き直す）が落ち着くまで待つ。
   // ペインの寸法と、N感度の図の大きさ・viewBox（実寸に合わせた描き直しの結果）が変わらなくなるのを見る
-  await settleBy(page, () => page.evaluate(() => [
-    ...[...document.querySelectorAll('.workspace-grid-item')].map((el) => {
-      const r = el.getBoundingClientRect();
-      return `${Math.round(r.x)},${Math.round(r.y)},${Math.round(r.width)},${Math.round(r.height)}`;
-    }),
-    ...[...document.querySelectorAll('.n-sensitivity-svg')].map((svg) => `${Math.round(svg.getBoundingClientRect().width)}:${svg.getAttribute('viewBox')}`),
-  ].join('|')), 8);
+  await settleBy(
+    page,
+    () =>
+      page.evaluate(() =>
+        [
+          ...[...document.querySelectorAll('.workspace-grid-item')].map((el) => {
+            const r = el.getBoundingClientRect();
+            return `${Math.round(r.x)},${Math.round(r.y)},${Math.round(r.width)},${Math.round(r.height)}`;
+          }),
+          ...[...document.querySelectorAll('.n-sensitivity-svg')].map(
+            (svg) => `${Math.round(svg.getBoundingClientRect().width)}:${svg.getAttribute('viewBox')}`,
+          ),
+        ].join('|'),
+      ),
+    8,
+  );
 }
 
 /**
@@ -208,7 +238,9 @@ async function openSampleAt(page: Page, size: { width: number; height: number },
 const VIEWPORT_1080_MONITOR = { width: 1920, height: 930 };
 
 for (const sidebar of ['pinned', 'unpinned'] as const) {
-  test(`1920x930（サイドバー${sidebar === 'pinned' ? '固定' : '非固定'}）で、サンプルの上の2段が1画面に入り、どのペインも中でスクロールしない。横にもスクロールしない`, async ({ page }) => {
+  test(`1920x930（サイドバー${sidebar === 'pinned' ? '固定' : '非固定'}）で、サンプルの上の2段が1画面に入り、どのペインも中でスクロールしない。横にもスクロールしない`, async ({
+    page,
+  }) => {
     await openSampleAt(page, { width: VIEWPORT_1080_MONITOR.width, height: VIEWPORT_1080_MONITOR.height }, sidebar);
     const m = await page.evaluate(() => ({
       viewport: document.documentElement.clientHeight,
@@ -252,8 +284,18 @@ test('1440x900（サイドバー固定）では、24列の並びは面の中で�
 
 const LAYOUT_DETAIL_BUTTON = '配列の詳細と比較のサンプルを作る';
 const LAYOUT_DETAIL_ANALYZERS = [
-  'playback', 'heatmap-layers', 'heatmap', 'finger-distance', 'finger-distance', 'bigram-flow',
-  'comparison', 'n-sensitivity', 'finger-matrix', 'finger-matrix', 'finger-matrix', 'finger-matrix',
+  'playback',
+  'heatmap-layers',
+  'heatmap',
+  'finger-distance',
+  'finger-distance',
+  'bigram-flow',
+  'comparison',
+  'n-sensitivity',
+  'finger-matrix',
+  'finger-matrix',
+  'finger-matrix',
+  'finger-matrix',
 ];
 
 test('トップの「配列の詳細と比較のサンプルを作る」で、12個のペインを持つWorkspaceができて開く。詳細の段が上、比較の段が下', async ({ page }) => {
@@ -287,7 +329,10 @@ test('空のWorkspaceの「配列の詳細と比較のサンプルで始める�
   await expect(empty).toBeVisible();
 });
 
-for (const size of [{ width: 1920, height: 930 }, { width: 1440, height: 900 }]) {
+for (const size of [
+  { width: 1920, height: 930 },
+  { width: 1440, height: 900 },
+]) {
   test(`配列の詳細と比較のサンプルは、${size.width}x${size.height}で、どのペインも中でスクロールしない`, async ({ page }) => {
     await page.setViewportSize(size);
     await page.goto('/');
@@ -295,13 +340,22 @@ for (const size of [{ width: 1920, height: 930 }, { width: 1440, height: 900 }])
     await page.locator('.hero').getByRole('button', { name: LAYOUT_DETAIL_BUTTON }).click();
     await expect(page.locator('.pane-frame')).toHaveCount(12);
     await expect(page.locator('.workspace-grid-item .pane-frame[data-pane-status="ready"]')).toHaveCount(12, { timeout: 30_000 });
-    await settleBy(page, () => page.evaluate(() => [
-      ...[...document.querySelectorAll('.workspace-grid-item')].map((el) => {
-        const r = el.getBoundingClientRect();
-        return `${Math.round(r.x)},${Math.round(r.y)},${Math.round(r.width)},${Math.round(r.height)}`;
-      }),
-      ...[...document.querySelectorAll('.n-sensitivity-svg')].map((svg) => `${Math.round(svg.getBoundingClientRect().width)}:${svg.getAttribute('viewBox')}`),
-    ].join('|')), 8);
+    await settleBy(
+      page,
+      () =>
+        page.evaluate(() =>
+          [
+            ...[...document.querySelectorAll('.workspace-grid-item')].map((el) => {
+              const r = el.getBoundingClientRect();
+              return `${Math.round(r.x)},${Math.round(r.y)},${Math.round(r.width)},${Math.round(r.height)}`;
+            }),
+            ...[...document.querySelectorAll('.n-sensitivity-svg')].map(
+              (svg) => `${Math.round(svg.getBoundingClientRect().width)}:${svg.getAttribute('viewBox')}`,
+            ),
+          ].join('|'),
+        ),
+      8,
+    );
     const m = await page.evaluate(() => ({
       area: (() => {
         const area = document.querySelector('.workspace-grid-area')!;
@@ -311,7 +365,10 @@ for (const size of [{ width: 1920, height: 930 }, { width: 1440, height: 900 }])
       panes: [...document.querySelectorAll('.workspace-grid-item .pane-body')].map((body) => {
         const inner = [...body.querySelectorAll('*')].filter((el) => {
           const style = getComputedStyle(el);
-          return (/(auto|scroll)/.test(style.overflowX) && el.scrollWidth > el.clientWidth + 1) || (/(auto|scroll)/.test(style.overflowY) && el.scrollHeight > el.clientHeight + 1);
+          return (
+            (/(auto|scroll)/.test(style.overflowX) && el.scrollWidth > el.clientWidth + 1) ||
+            (/(auto|scroll)/.test(style.overflowY) && el.scrollHeight > el.clientHeight + 1)
+          );
         }).length;
         return [body.scrollHeight, body.clientHeight, body.scrollWidth, body.clientWidth, inner];
       }),

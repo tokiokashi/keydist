@@ -11,14 +11,7 @@ import {
   presentationTriggerColorSlots,
   semanticCombinationLabels,
 } from './layers.ts';
-import {
-  faceFromEntries,
-  fromFaces,
-  fromRows,
-  LAYOUT_BY_ID,
-  withShiftedOutputs,
-  type Face,
-} from './index.ts';
+import { faceFromEntries, fromFaces, fromRows, LAYOUT_BY_ID, withShiftedOutputs, type Face } from './index.ts';
 import { NAGINATA_V18 } from './naginata.ts';
 import { SHIN_JIS_PREFIX, SHIN_JIS_SIMULTANEOUS } from './shin-jis.ts';
 import { TSUKI_2_263 } from './tsuki-2-263.ts';
@@ -77,12 +70,7 @@ test('presentation layer guideはFaceのpresentationCellsを含む表示面をau
 });
 
 test('Faceを持たない通常Shiftもcanonical aggregationからlegendを表示できる', () => {
-  const base = fromRows('alpha', 'alpha', [
-    '1234567890-=',
-    'qwertyuiop[]',
-    "asdfghjkl;'",
-    'zxcvbnm,./',
-  ], {});
+  const base = fromRows('alpha', 'alpha', ['1234567890-=', 'qwertyuiop[]', "asdfghjkl;'", 'zxcvbnm,./'], {});
   const layout = withShiftedOutputs(base);
 
   assert.deepEqual(activeModifierAggregationGroupIds(layout, ['shift-l']), ['layer:Shift']);
@@ -94,7 +82,6 @@ test('Faceを持たない通常Shiftもcanonical aggregationからlegendを表�
   assert.equal(guide.legends.get('a'), 'A');
   assert.deepEqual(guide.triggerKeys, ['shift-l', 'shift-r']);
 });
-
 
 test('compact layer guideはlayout presentation policyに従い薙刀式ではSandS 1面だけ出す', () => {
   assert.deepEqual(
@@ -109,7 +96,6 @@ test('presentation trigger colorはlegacy layer series順を再利用する', ()
   assert.equal(typeof colors.get('d'), 'number');
   assert.ok((colors.get('d') ?? 0) >= 1);
 });
-
 
 test('薙刀式のcompactカンペはSandS 1面とsemantic group labelへ畳む', () => {
   assert.deepEqual(
@@ -129,15 +115,13 @@ test('月配列の起点triggerは同じsemantic layer色を共有する', () =>
   assert.notEqual(colors.get('d'), undefined);
 });
 
-
 test('左右等価な親指shiftは同じ色とside-neutralなtrigger文言を使う', () => {
   for (const layout of [NAGINATA_V18, SHIN_JIS_PREFIX, SHIN_JIS_SIMULTANEOUS]) {
     const colors = presentationTriggerColorSlots(layout);
     assert.equal(colors.get('thumb-l'), colors.get('thumb-r'), layout.id);
     assert.equal(typeof colors.get('thumb-l'), 'number', layout.id);
 
-    const definition = layout.layerDefinitions?.find((candidate) =>
-      candidate.id !== 'single' && candidate.kind === 'layer');
+    const definition = layout.layerDefinitions?.find((candidate) => candidate.id !== 'single' && candidate.kind === 'layer');
     assert.ok(definition, layout.id);
     assert.equal(aggregationTriggerDisplayText(layout, definition.id), 'Space');
   }
@@ -156,8 +140,7 @@ test('どれか1つで足りるtriggerは「/」、刻印の無いキーは表�
   const { TSUKI_2_263 } = await import('./tsuki-2-263.ts');
   const { SHINGETA } = await import('./shingeta.ts');
   const text = (layout: typeof TSUKI_2_263, label: string) => {
-    const definition = compactLayerGuideDefinitions(layout)
-      .find((candidate) => candidate.label === label);
+    const definition = compactLayerGuideDefinitions(layout).find((candidate) => candidate.label === label);
     assert.ok(definition);
     return aggregationTriggerDisplayText(layout, definition.id);
   };

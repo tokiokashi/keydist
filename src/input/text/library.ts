@@ -56,9 +56,10 @@ export function appendCopiedUserText(
 ): { readonly library: TextLibrary; readonly created: UserText } {
   const id = generateId();
   const entryName = name ?? source.name;
-  const base: UserText = source.languageOverride === undefined
-    ? { id, name: entryName, text: source.text }
-    : { id, name: entryName, text: source.text, languageOverride: source.languageOverride };
+  const base: UserText =
+    source.languageOverride === undefined
+      ? { id, name: entryName, text: source.text }
+      : { id, name: entryName, text: source.text, languageOverride: source.languageOverride };
   const created: UserText = source.unseen === true ? { ...base, unseen: true } : base;
   return { library: { texts: [...library.texts, created] }, created };
 }
@@ -80,7 +81,7 @@ export function deleteUserText(library: TextLibrary, id: string): TextLibrary {
 export function renameUserText(library: TextLibrary, id: string, name: string): TextLibrary {
   const target = library.texts.find((text) => text.id === id);
   if (target === undefined || target.name === name) return library;
-  return { texts: library.texts.map((text) => text.id === id ? { ...text, name } : text) };
+  return { texts: library.texts.map((text) => (text.id === id ? { ...text, name } : text)) };
 }
 
 /**
@@ -91,21 +92,15 @@ export function renameUserText(library: TextLibrary, id: string, name: string): 
 export function editUserTextContent(library: TextLibrary, id: string, text: string): TextLibrary {
   const target = library.texts.find((entry) => entry.id === id);
   if (target === undefined || target.text === text) return library;
-  return { texts: library.texts.map((entry) => entry.id === id ? { ...entry, text } : entry) };
+  return { texts: library.texts.map((entry) => (entry.id === id ? { ...entry, text } : entry)) };
 }
 
 /** 言語判定の手動上書きを設定・解除する。`undefined`で自動判定へ戻す。 */
-export function setUserTextLanguageOverride(
-  library: TextLibrary,
-  id: string,
-  override: TextLanguage | undefined,
-): TextLibrary {
+export function setUserTextLanguageOverride(library: TextLibrary, id: string, override: TextLanguage | undefined): TextLibrary {
   const target = library.texts.find((text) => text.id === id);
   if (target === undefined || target.languageOverride === override) return library;
-  const next: UserText = override === undefined
-    ? withoutLanguageOverride(target)
-    : { ...target, languageOverride: override };
-  return { texts: library.texts.map((text) => text.id === id ? next : text) };
+  const next: UserText = override === undefined ? withoutLanguageOverride(target) : { ...target, languageOverride: override };
+  return { texts: library.texts.map((text) => (text.id === id ? next : text)) };
 }
 
 /**

@@ -126,14 +126,8 @@ test('打鍵の上乗せの欄を編集して保存値に入れられ、空欄�
 
 test('打鍵の上乗せの欄は-1000から1000までで、範囲の外の欄を返す', () => {
   const field = calibrationOverheadFieldId('other');
-  assert.deepEqual(
-    applyCalibrationField(WITH_OVERHEAD, field, '1000.1', 2),
-    { ok: false, fieldId: field, problem: 'invalid', min: -1000, max: 1000 },
-  );
-  assert.deepEqual(
-    applyCalibrationField(WITH_OVERHEAD, field, '-1000.1', 2),
-    { ok: false, fieldId: field, problem: 'invalid', min: -1000, max: 1000 },
-  );
+  assert.deepEqual(applyCalibrationField(WITH_OVERHEAD, field, '1000.1', 2), { ok: false, fieldId: field, problem: 'invalid', min: -1000, max: 1000 });
+  assert.deepEqual(applyCalibrationField(WITH_OVERHEAD, field, '-1000.1', 2), { ok: false, fieldId: field, problem: 'invalid', min: -1000, max: 1000 });
   assert.ok(applyCalibrationField(WITH_OVERHEAD, field, '0', 2).ok);
   assert.ok(applyCalibrationField(WITH_OVERHEAD, field, '1000', 2).ok);
   assert.ok(applyCalibrationField(WITH_OVERHEAD, field, '-1000', 2).ok);
@@ -141,7 +135,13 @@ test('打鍵の上乗せの欄は-1000から1000までで、範囲の外の欄�
 
 test('打鍵の上乗せの欄は、マイナス記号を含む入力を負の値として保存できる', () => {
   const field = calibrationOverheadFieldId('other');
-  for (const [raw, expected] of [['-1', -1], ['-19.6', -19.6], ['−20', -20], [' -0.5 ', -0.5], ['-.5', -0.5]] as const) {
+  for (const [raw, expected] of [
+    ['-1', -1],
+    ['-19.6', -19.6],
+    ['−20', -20],
+    [' -0.5 ', -0.5],
+    ['-.5', -0.5],
+  ] as const) {
     const applied = applyCalibrationField(WITH_OVERHEAD, field, raw, 2);
     assert.ok(applied.ok, raw);
     assert.equal(applied.calibration.keystrokeOverheadMs?.other, expected, raw);
@@ -195,16 +195,16 @@ test('移動の時間の欄は0を受け付け、0から10000ミリ秒/uの外�
   const zero = applyCalibrationField(SAVED, 'finger:LI', '0', 2);
   assert.ok(zero.ok);
   assert.equal(zero.calibration.fingerMoveMsPerUnit.LI, 0);
-  assert.deepEqual(
-    applyCalibrationField(SAVED, 'finger:LI', '10000.1', 2),
-    { ok: false, fieldId: 'finger:LI', problem: 'invalid', min: 0, max: 10000 },
-  );
+  assert.deepEqual(applyCalibrationField(SAVED, 'finger:LI', '10000.1', 2), { ok: false, fieldId: 'finger:LI', problem: 'invalid', min: 0, max: 10000 });
   assert.ok(applyCalibrationField(SAVED, 'finger:LI', '10000', 2).ok);
   for (const bad of ['0.09', '40.1', 'x']) {
-    assert.deepEqual(
-      applyCalibrationField(SAVED, calibrationFingerRepeatFieldId('LI'), bad, 2),
-      { ok: false, fieldId: calibrationFingerRepeatFieldId('LI'), problem: 'invalid', min: 0.1, max: 40 },
-    );
+    assert.deepEqual(applyCalibrationField(SAVED, calibrationFingerRepeatFieldId('LI'), bad, 2), {
+      ok: false,
+      fieldId: calibrationFingerRepeatFieldId('LI'),
+      problem: 'invalid',
+      min: 0.1,
+      max: 40,
+    });
   }
   assert.ok(applyCalibrationField(SAVED, calibrationFingerRepeatFieldId('LI'), '0.1', 2).ok);
   assert.ok(applyCalibrationField(SAVED, calibrationFingerRepeatFieldId('LI'), '40', 2).ok);
@@ -242,10 +242,7 @@ test('かなの中・かなの境目の欄は、分けない値を持たない�
 test('かなの中・かなの境目の欄は-1000から1000までで、範囲の外の欄を返す', () => {
   for (const kind of ['arpeggio-within', 'chain-boundary', 'other-within'] as const) {
     const field = calibrationOverheadFieldId(kind);
-    assert.deepEqual(
-      applyCalibrationField(WITH_OVERHEAD, field, '1000.1', 2),
-      { ok: false, fieldId: field, problem: 'invalid', min: -1000, max: 1000 },
-    );
+    assert.deepEqual(applyCalibrationField(WITH_OVERHEAD, field, '1000.1', 2), { ok: false, fieldId: field, problem: 'invalid', min: -1000, max: 1000 });
     assert.ok(applyCalibrationField(WITH_OVERHEAD, field, '1000', 2).ok);
     assert.ok(applyCalibrationField(WITH_OVERHEAD, field, '-1000', 2).ok);
   }

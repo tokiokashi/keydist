@@ -5,9 +5,7 @@ import { DEFAULT_BUILTIN_TEXT_ID } from './builtin.ts';
  * 区別する（idの文字列だけでは、将来ユーザーテキストのid生成規則が変わった時に
  * 組み込みのid空間と衝突しないという保証が持てないため）。
  */
-export type TextRef =
-  | { readonly kind: 'builtin'; readonly id: string }
-  | { readonly kind: 'user'; readonly id: string };
+export type TextRef = { readonly kind: 'builtin'; readonly id: string } | { readonly kind: 'user'; readonly id: string };
 
 export function textRefEquals(a: TextRef, b: TextRef): boolean {
   return a.kind === b.kind && a.id === b.id;

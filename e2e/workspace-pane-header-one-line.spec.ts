@@ -28,19 +28,30 @@ function rowGrid(...items: readonly (readonly [string, number])[]) {
 }
 
 const workspaceOf = (panes: readonly unknown[], grid: unknown, extra: Record<string, unknown> = {}) => ({
-  id: 'h', name: '見出し', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes, grid, groups: [{ id: 'link-1', target: {} }], ...extra,
+  id: 'h',
+  name: '見出し',
+  text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+  panes,
+  grid,
+  groups: [{ id: 'link-1', target: {} }],
+  ...extra,
 });
 
 async function openWorkspace(page: Page, panes: readonly unknown[], grid: unknown, size: { width: number; height: number }): Promise<void> {
   await page.setViewportSize(size);
-  await page.addInitScript((value) => {
-    if (localStorage.getItem('keydist:workspaces') === null) {
-      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
-    }
-  }, workspaceOf(panes, grid));
+  await page.addInitScript(
+    (value) => {
+      if (localStorage.getItem('keydist:workspaces') === null) {
+        localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
+      }
+    },
+    workspaceOf(panes, grid),
+  );
   await page.goto('/workspace/h');
   await waitForHydration(page);
-  await expect(size.width <= 760 ? page.locator('.workspace-stack-pane').first() : page.locator('.workspace-grid-item').first()).toBeVisible({ timeout: 15_000 });
+  await expect(size.width <= 760 ? page.locator('.workspace-stack-pane').first() : page.locator('.workspace-grid-item').first()).toBeVisible({
+    timeout: 15_000,
+  });
   await expect(page.locator('.pane-frame').first()).toHaveAttribute('data-pane-status', 'ready', { timeout: 15_000 });
 }
 
@@ -77,7 +88,10 @@ test('見出しは、広いペインでは1行、30rem以下でも名前を省�
 
   // 4つ並べる（各5列 = 332px。ペインの本体の幅は306px）と、名前を省略しても1行に入らない（1行になるのは19.4remより広い時）。先頭が上、対象・解析設定・⋯が同じ下の段
   const four = ['a', 'b', 'c', 'd'].map(flow);
-  await page.evaluate((value) => localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] })), workspaceOf(four, rowGrid(['a', 5], ['b', 5], ['c', 5], ['d', 5])));
+  await page.evaluate(
+    (value) => localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] })),
+    workspaceOf(four, rowGrid(['a', 5], ['b', 5], ['c', 5], ['d', 5])),
+  );
   await page.reload();
   await waitForHydration(page);
   await expect(page.locator('.workspace-grid-item')).toHaveCount(4);
@@ -89,7 +103,10 @@ test('見出しは、広いペインでは1行、30rem以下でも名前を省�
   expect(Math.abs(narrow.menuTop - narrow.targetTop)).toBeLessThan(10);
   expect(narrow.targetSelect).toBeGreaterThan(80);
 
-  await page.evaluate((value) => localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] })), workspaceOf(THREE.slice(0, 2), rowGrid(['f', 9], ['c', 9])));
+  await page.evaluate(
+    (value) => localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] })),
+    workspaceOf(THREE.slice(0, 2), rowGrid(['f', 9], ['c', 9])),
+  );
   await page.reload();
   await waitForHydration(page);
   await expect(page.locator('.workspace-grid-item')).toHaveCount(2);
@@ -103,7 +120,12 @@ test('見出しは、広いペインでは1行、30rem以下でも名前を省�
 });
 
 test('名前とⓘは見出しの先頭にあり、ペインの中に名前の行は無い。読み上げ用のh2は残る', async ({ page }) => {
-  await openWorkspace(page, THREE, rowGrid(['f', 9], ['c', 9], ['n', 9]).map((item, i) => ({ ...item, x: (i % 2) * 9, y: Math.floor(i / 2) * 16 })), { width: 1920, height: 900 });
+  await openWorkspace(
+    page,
+    THREE,
+    rowGrid(['f', 9], ['c', 9], ['n', 9]).map((item, i) => ({ ...item, x: (i % 2) * 9, y: Math.floor(i / 2) * 16 })),
+    { width: 1920, height: 900 },
+  );
   const flowPane = page.locator('.pane-frame').filter({ has: page.locator('[data-react-feature="bigram-flow"]') });
   const lead = flowPane.locator('.pane-frame-lead');
   await expect(lead).toContainText('Bigram Flow');
@@ -143,19 +165,25 @@ test('条件: 広い時は文字のchip、狭い時は絵と変更の点。ど�
   await expect(narrowTrigger.locator('.pane-condition-dot')).toBeVisible();
   await expect(page.locator('.pane-frame').first().getByRole('button', { name: '条件: 1件変更' })).toHaveCount(1);
   // 条件の絵は、解析設定（スライダー）の絵と別の形
-  const icons = await page.locator('.pane-frame').first().evaluate((frame) => ({
-    condition: frame.querySelector('.pane-condition-trigger svg')!.innerHTML,
-    settings: frame.querySelector('.pane-settings-button svg')!.innerHTML,
-  }));
+  const icons = await page
+    .locator('.pane-frame')
+    .first()
+    .evaluate((frame) => ({
+      condition: frame.querySelector('.pane-condition-trigger svg')!.innerHTML,
+      settings: frame.querySelector('.pane-settings-button svg')!.innerHTML,
+    }));
   expect(icons.condition).not.toBe(icons.settings);
 
   // 広い（604px、34remより広い）: 文字のchip
-  await page.evaluate((value) => localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] })), workspaceOf(
-    THREE.slice(0, 2),
-    rowGrid(['f', 9], ['c', 9]),
-    // 条件のモーダルで変えた値はWorkspaceの条件に入る。保存先を書き直すので、同じ値を持たせる
-    { conditions: { windowSize: 4 } },
-  ));
+  await page.evaluate(
+    (value) => localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] })),
+    workspaceOf(
+      THREE.slice(0, 2),
+      rowGrid(['f', 9], ['c', 9]),
+      // 条件のモーダルで変えた値はWorkspaceの条件に入る。保存先を書き直すので、同じ値を持たせる
+      { conditions: { windowSize: 4 } },
+    ),
+  );
   await page.reload();
   await waitForHydration(page);
   await expect(page.locator('.workspace-grid-item')).toHaveCount(2);
@@ -180,7 +208,12 @@ test('ⓘの説明は見出しの先頭から出て、キーボードで届き�
   const infoBox = (await info.boundingBox())!;
   expect(box.y).toBeGreaterThanOrEqual(infoBox.y + infoBox.height);
   expect(box.height).toBeGreaterThan(20);
-  expect(await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest('[role="tooltip"]') !== null, { x: box.x + box.width / 2, y: box.y + box.height / 2 })).toBe(true);
+  expect(
+    await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest('[role="tooltip"]') !== null, {
+      x: box.x + box.width / 2,
+      y: box.y + box.height / 2,
+    }),
+  ).toBe(true);
 
   // キーボードだけで届く（ⓘに順にフォーカスが移る）
   await page.mouse.move(0, 0);

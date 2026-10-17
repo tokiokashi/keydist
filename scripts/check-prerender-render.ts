@@ -11,18 +11,22 @@ const PUBLIC_DIR = resolve('.output/public');
 
 async function htmlFiles(dir: string): Promise<string[]> {
   const entries = await readdir(dir, { withFileTypes: true });
-  const nested = await Promise.all(entries.map(async (entry) => {
-    const path = join(dir, entry.name);
-    if (entry.isDirectory()) return htmlFiles(path);
-    return entry.name.endsWith('.html') ? [path] : [];
-  }));
+  const nested = await Promise.all(
+    entries.map(async (entry) => {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) return htmlFiles(path);
+      return entry.name.endsWith('.html') ? [path] : [];
+    }),
+  );
   return nested.flat();
 }
 
-const pages = await Promise.all((await htmlFiles(PUBLIC_DIR)).map(async (file) => ({
-  path: relative(PUBLIC_DIR, file),
-  html: await readFile(file, 'utf8'),
-})));
+const pages = await Promise.all(
+  (await htmlFiles(PUBLIC_DIR)).map(async (file) => ({
+    path: relative(PUBLIC_DIR, file),
+    html: await readFile(file, 'utf8'),
+  })),
+);
 
 const failed = renderErrorPages(pages);
 if (failed.length > 0) {

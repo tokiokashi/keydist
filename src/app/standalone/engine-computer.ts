@@ -22,9 +22,7 @@ let instance: EngineComputer | undefined;
 function create(): EngineComputer {
   if (typeof Worker === 'undefined') return createEngineCache();
   // `new Worker(new URL(...))`の形はViteが静的に見つけて別チャンクにする。書き分けない。
-  return createWorkerEngineComputer(
-    () => new Worker(new URL('./engine-worker.ts', import.meta.url), { type: 'module' }) as unknown as WorkerLike,
-  );
+  return createWorkerEngineComputer(() => new Worker(new URL('./engine-worker.ts', import.meta.url), { type: 'module' }) as unknown as WorkerLike);
 }
 
 function computer(): EngineComputer {
@@ -56,11 +54,7 @@ export const sharedEngineComputer: EngineComputer = {
   peekTrace(input: ResolvedInput) {
     return instance?.peekTrace?.(input);
   },
-  peekExtraction<Options, Extracted>(
-    input: ResolvedInput,
-    definition: SingleAnalyzerDefinition<Options, Extracted>,
-    options: Options,
-  ) {
+  peekExtraction<Options, Extracted>(input: ResolvedInput, definition: SingleAnalyzerDefinition<Options, Extracted>, options: Options) {
     return instance?.peekExtraction?.(input, definition, options);
   },
   peekSetExtraction<Options, Extracted>(

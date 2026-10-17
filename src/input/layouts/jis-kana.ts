@@ -1,10 +1,5 @@
 import { SHIFT_KEY } from '../shapes/geometry.ts';
-import {
-  fromFaces,
-  withComposedOutputs,
-  type Face,
-  type Layout,
-} from './types.ts';
+import { fromFaces, withComposedOutputs, type Face, type Layout } from './types.ts';
 
 const BASE_ROWS = [
   ['ぬ', 'ふ', 'あ', 'う', 'え', 'お', 'や', 'ゆ', 'よ', 'わ', 'ほ', 'へ', 'ー'],
@@ -34,14 +29,34 @@ const shiftFace = (key: string): Face => ({
 
 const DAKUTEN: Readonly<Record<string, string>> = {
   う: 'ゔ',
-  か: 'が', き: 'ぎ', く: 'ぐ', け: 'げ', こ: 'ご',
-  さ: 'ざ', し: 'じ', す: 'ず', せ: 'ぜ', そ: 'ぞ',
-  た: 'だ', ち: 'ぢ', つ: 'づ', て: 'で', と: 'ど',
-  は: 'ば', ひ: 'び', ふ: 'ぶ', へ: 'べ', ほ: 'ぼ',
+  か: 'が',
+  き: 'ぎ',
+  く: 'ぐ',
+  け: 'げ',
+  こ: 'ご',
+  さ: 'ざ',
+  し: 'じ',
+  す: 'ず',
+  せ: 'ぜ',
+  そ: 'ぞ',
+  た: 'だ',
+  ち: 'ぢ',
+  つ: 'づ',
+  て: 'で',
+  と: 'ど',
+  は: 'ば',
+  ひ: 'び',
+  ふ: 'ぶ',
+  へ: 'べ',
+  ほ: 'ぼ',
 };
 
 const HANDAKUTEN: Readonly<Record<string, string>> = {
-  は: 'ぱ', ひ: 'ぴ', ふ: 'ぷ', へ: 'ぺ', ほ: 'ぽ',
+  は: 'ぱ',
+  ひ: 'ぴ',
+  ふ: 'ぷ',
+  へ: 'ぺ',
+  ほ: 'ぽ',
 };
 
 const base: Face = {
@@ -51,11 +66,7 @@ const base: Face = {
   inputRole: 'layer',
 };
 
-let layout: Layout = fromFaces(
-  'jis-kana',
-  'JISかな配列',
-  [base, shiftFace(SHIFT_KEY.L), shiftFace(SHIFT_KEY.R)],
-);
+let layout: Layout = fromFaces('jis-kana', 'JISかな配列', [base, shiftFace(SHIFT_KEY.L), shiftFace(SHIFT_KEY.R)]);
 layout = {
   ...layout,
   shiftKeys: [SHIFT_KEY.L, SHIFT_KEY.R],

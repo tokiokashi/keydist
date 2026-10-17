@@ -31,15 +31,18 @@ async function openStandalone(page: Page): Promise<Locator> {
 
 async function openInWorkspace(page: Page): Promise<Locator> {
   await installWorkerHold(page);
-  await page.addInitScript((value) => {
-    localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
-  }, {
-    id: 'w',
-    name: '指の比較',
-    text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
-    panes: [{ id: 'p', analyzerId: 'finger-matrix', binding: { mode: 'fixed', target: { kind: 'set', selection: { targets: TARGETS } } } }],
-    grid: [{ id: 'p', x: 0, y: 0, w: 24, h: 16 }],
-  });
+  await page.addInitScript(
+    (value) => {
+      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
+    },
+    {
+      id: 'w',
+      name: '指の比較',
+      text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+      panes: [{ id: 'p', analyzerId: 'finger-matrix', binding: { mode: 'fixed', target: { kind: 'set', selection: { targets: TARGETS } } } }],
+      grid: [{ id: 'p', x: 0, y: 0, w: 24, h: 16 }],
+    },
+  );
   await page.goto('/workspace/w');
   await waitForHydration(page);
   const table = page.locator('.finger-matrix-table');

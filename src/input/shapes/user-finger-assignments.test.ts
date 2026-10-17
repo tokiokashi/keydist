@@ -84,10 +84,7 @@ test('codec: keyFingerの予約名キー（JSON由来の__proto__等）は捨て
   assert.equal(result.ok, true);
   if (result.ok) {
     assert.deepEqual(result.value, [CUSTOM]);
-    assert.deepEqual(
-      result.diagnostics.map((d) => d.path).sort(),
-      ['assignments[0].baseFinger.__proto__', 'assignments[0].baseFinger.constructor'],
-    );
+    assert.deepEqual(result.diagnostics.map((d) => d.path).sort(), ['assignments[0].baseFinger.__proto__', 'assignments[0].baseFinger.constructor']);
     assert.equal(Object.getPrototypeOf(result.value[0]!.baseFinger), Object.prototype);
   }
 });
@@ -108,7 +105,10 @@ test('createUserFingerAssignment: name省略時は「◯◯のコピー」にな
 
 test('duplicateUserFingerAssignment: 複製元が存在しなければ同一参照を返す（no-op判定用）', () => {
   const assignments = [CUSTOM];
-  assert.equal(duplicateUserFingerAssignment(assignments, 'no-such-id', () => 'finger-x'), assignments);
+  assert.equal(
+    duplicateUserFingerAssignment(assignments, 'no-such-id', () => 'finger-x'),
+    assignments,
+  );
 });
 
 test('duplicateUserFingerAssignment: 複製元が存在すれば新しいidで複製する', () => {
@@ -176,7 +176,9 @@ test('updateUserFingerAssignment: 中身だけを書き換え、idと名前は�
   assert.notEqual(updateUserFingerAssignment(list, CUSTOM.id, withExtra), list);
   // キーが減る変更（既定へ戻す操作で起きる）も変更として扱う
   const { q: _q, ...fewer } = CUSTOM.baseFinger;
-  const fewerKeys = Object.fromEntries(ALL_FINGERS.map((finger) => [finger, CUSTOM.fingerKeys[finger].filter((id) => id !== 'q')])) as unknown as FingerAssignment["fingerKeys"];
+  const fewerKeys = Object.fromEntries(
+    ALL_FINGERS.map((finger) => [finger, CUSTOM.fingerKeys[finger].filter((id) => id !== 'q')]),
+  ) as unknown as FingerAssignment['fingerKeys'];
   assert.notEqual(updateUserFingerAssignment(list, CUSTOM.id, { baseFinger: fewer, fingerKeys: fewerKeys, homeKey: CUSTOM.homeKey }), list);
 });
 
@@ -197,15 +199,34 @@ test('codec: 基本の指がそのキーを担当していない・基本の指�
     change(value);
     return USER_FINGER_ASSIGNMENTS_CODEC.decode(USER_FINGER_ASSIGNMENTS_CODEC.encode([value]));
   };
-  const dropped = (result: ReturnType<typeof mutate>) =>
-    result.ok && result.value.length === 0 && result.diagnostics.length > 0;
+  const dropped = (result: ReturnType<typeof mutate>) => result.ok && result.value.length === 0 && result.diagnostics.length > 0;
   // 基本の指(LP)の担当からqが外れている
-  assert.ok(dropped(mutate((v) => { v.fingerKeys = { ...v.fingerKeys, LP: v.fingerKeys.LP.filter((key) => key !== 'q') }; })));
+  assert.ok(
+    dropped(
+      mutate((v) => {
+        v.fingerKeys = { ...v.fingerKeys, LP: v.fingerKeys.LP.filter((key) => key !== 'q') };
+      }),
+    ),
+  );
   // 担当するキーに基本の指が無い
-  assert.ok(dropped(mutate((v) => { delete v.baseFinger.q; })));
+  assert.ok(
+    dropped(
+      mutate((v) => {
+        delete v.baseFinger.q;
+      }),
+    ),
+  );
   // ホームキーを、その指が担当していない状態は、編集の途中として保存できる
-  const kept = mutate((v) => { v.homeKey = { ...v.homeKey, LP: 'j' }; });
+  const kept = mutate((v) => {
+    v.homeKey = { ...v.homeKey, LP: 'j' };
+  });
   assert.ok(kept.ok && kept.value.length === 1 && kept.value[0]!.homeKey.LP === 'j');
   // 指ごとの担当キーが10本ぶん揃っていない
-  assert.ok(dropped(mutate((v) => { delete (v.fingerKeys as Record<string, unknown>).RT; })));
+  assert.ok(
+    dropped(
+      mutate((v) => {
+        delete (v.fingerKeys as Record<string, unknown>).RT;
+      }),
+    ),
+  );
 });

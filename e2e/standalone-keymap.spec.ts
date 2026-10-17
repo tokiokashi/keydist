@@ -89,7 +89,9 @@ test('トリガーになるキーの色付け: 1キーでレイヤーに切り�
   await expect(pattern.locator('[data-guide="trigger"]')).toHaveCount(0);
 });
 
-test('レイヤーをまとめる配列: 既定では凡例が2項目で、まとめられる側のトリガーは目立たない色になり、全レイヤー詳細で全レイヤーの凡例が出る', async ({ page }) => {
+test('レイヤーをまとめる配列: 既定では凡例が2項目で、まとめられる側のトリガーは目立たない色になり、全レイヤー詳細で全レイヤーの凡例が出る', async ({
+  page,
+}) => {
   await selectLayout(page, 'naginata-v18');
   await page.goto('/analyzer/keymap');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
@@ -100,7 +102,11 @@ test('レイヤーをまとめる配列: 既定では凡例が2項目で、ま�
 
   const q = pattern.locator('[data-key-id="q"]');
   await expect(q).toHaveAttribute('data-accent-tone', 'muted');
-  const strokeOf = (key: Locator) => key.locator('rect').first().evaluate((rect) => getComputedStyle(rect).stroke);
+  const strokeOf = (key: Locator) =>
+    key
+      .locator('rect')
+      .first()
+      .evaluate((rect) => getComputedStyle(rect).stroke);
   const plain = await strokeOf(pattern.locator('.physical-keyboard-key:not([data-guide]):not([data-accent-tone]):not([data-accent-slot])').first());
   expect(await strokeOf(q)).not.toBe(plain);
   await q.click();
@@ -132,19 +138,28 @@ test('トリガーになるキーの枠: 実線で、普通のキーの枠より
   await page.goto('/analyzer/keymap');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   const pattern = feature(page).locator('[data-keymap-pattern]');
-  const strokeOf = (key: Locator) => key.locator('rect').first().evaluate((rect) => {
-    const style = getComputedStyle(rect);
-    return { width: parseFloat(style.strokeWidth), dash: style.strokeDasharray };
-  });
+  const strokeOf = (key: Locator) =>
+    key
+      .locator('rect')
+      .first()
+      .evaluate((rect) => {
+        const style = getComputedStyle(rect);
+        return { width: parseFloat(style.strokeWidth), dash: style.strokeDasharray };
+      });
 
-  const plain = await strokeOf(pattern.locator('.physical-keyboard-key:not([data-guide]):not([data-trigger]):not([data-combo]):not([data-accent-slot])').first());
+  const plain = await strokeOf(
+    pattern.locator('.physical-keyboard-key:not([data-guide]):not([data-trigger]):not([data-combo]):not([data-accent-slot])').first(),
+  );
   for (const selector of ['[data-guide="trigger"][data-accent-slot]', '[data-guide="trigger"]:not([data-accent-slot])']) {
     const trigger = await strokeOf(pattern.locator(selector).first());
     expect(trigger.dash).toBe('none');
     expect(trigger.width).toBeGreaterThan(plain.width);
     expect(trigger.width).toBeLessThan(2.5);
   }
-  const swatchStyle = await pattern.locator('[data-keymap-trigger-legend] [data-legend-slot]').first().evaluate((element) => getComputedStyle(element).borderTopStyle);
+  const swatchStyle = await pattern
+    .locator('[data-keymap-trigger-legend] [data-legend-slot]')
+    .first()
+    .evaluate((element) => getComputedStyle(element).borderTopStyle);
   expect(swatchStyle).toBe('solid');
 
   await pattern.locator('[data-guide="trigger"]:not([data-accent-slot])').first().click();
@@ -153,7 +168,10 @@ test('トリガーになるキーの枠: 実線で、普通のキーの枠より
   expect((await strokeOf(continuation)).width).toBe(2.5);
 });
 
-for (const [layoutId, below, belowName] of [['naginata-v18', '[data-keymap-table="modifier"]', '修飾の表'], ['kawasemi-plus', '[data-keymap-diagram]', 'コンボの配列図']] as const) {
+for (const [layoutId, below, belowName] of [
+  ['naginata-v18', '[data-keymap-table="modifier"]', '修飾の表'],
+  ['kawasemi-plus', '[data-keymap-diagram]', 'コンボの配列図'],
+] as const) {
   test(`${layoutId}: キーを選んで出る文字を調べる図が、${belowName}より上に出る`, async ({ page }) => {
     await selectLayout(page, layoutId);
     await page.goto('/analyzer/keymap');
@@ -186,13 +204,21 @@ test('どちらも持たない配列: 修飾とコンボには無いと分かる
 test.describe('幅390pxの画面', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  for (const [layoutId, diagram] of [['qwerty', 'pattern'], ['naginata-v18', 'pattern'], ['kawasemi-plus', 'combo']] as const) {
-    test(`${layoutId}: ${diagram === 'pattern' ? 'キーを選んで出る文字を調べる' : 'コンボ'}の図が枠の幅に収まり、横スクロールにならない`, async ({ page }) => {
+  for (const [layoutId, diagram] of [
+    ['qwerty', 'pattern'],
+    ['naginata-v18', 'pattern'],
+    ['kawasemi-plus', 'combo'],
+  ] as const) {
+    test(`${layoutId}: ${diagram === 'pattern' ? 'キーを選んで出る文字を調べる' : 'コンボ'}の図が枠の幅に収まり、横スクロールにならない`, async ({
+      page,
+    }) => {
       await selectLayout(page, layoutId);
       await page.goto('/analyzer/keymap');
       await expect(feature(page)).toBeVisible({ timeout: 10_000 });
 
-      const frame = feature(page).locator(diagram === 'pattern' ? '[data-keymap-pattern] .physical-keyboard' : '[data-keymap-diagram] .physical-keyboard');
+      const frame = feature(page).locator(
+        diagram === 'pattern' ? '[data-keymap-pattern] .physical-keyboard' : '[data-keymap-diagram] .physical-keyboard',
+      );
       await expect(frame.locator('svg')).toBeVisible();
       const [frameBox, svgBox] = await Promise.all([frame.boundingBox(), frame.locator('svg').boundingBox()]);
       expect(svgBox!.x + svgBox!.width).toBeLessThanOrEqual(frameBox!.x + frameBox!.width + 0.5);

@@ -1,9 +1,6 @@
 import type { PhysicalKeyboardStandard } from '#input/shapes/geometry.ts';
 import type { PhysicalKeyEvent } from './engine/index.ts';
-import {
-  EMPTY_BROWSER_KEY_BINDING_OVERRIDES,
-  type BrowserKeyBindingOverrides,
-} from './browser-keyboard-bindings.ts';
+import { EMPTY_BROWSER_KEY_BINDING_OVERRIDES, type BrowserKeyBindingOverrides } from './browser-keyboard-bindings.ts';
 
 export interface BrowserKeyboardEventLike {
   readonly type: string;
@@ -37,35 +34,23 @@ const CODE_TO_KEY: Readonly<Record<string, PhysicalKeyEvent['key']>> = {
   ShiftRight: 'shift-r',
 };
 
-
-const LETTER_CODES = Array.from({ length: 26 }, (_, index) =>
-  `Key${String.fromCharCode(65 + index)}`);
+const LETTER_CODES = Array.from({ length: 26 }, (_, index) => `Key${String.fromCharCode(65 + index)}`);
 const DIGIT_CODES = Array.from({ length: 10 }, (_, index) => `Digit${index}`);
-const KNOWN_BROWSER_CODES = [
-  ...LETTER_CODES,
-  ...DIGIT_CODES,
-  ...Object.keys(CODE_TO_KEY),
-  'IntlYen',
-  'IntlRo',
-] as const;
+const KNOWN_BROWSER_CODES = [...LETTER_CODES, ...DIGIT_CODES, ...Object.keys(CODE_TO_KEY), 'IntlYen', 'IntlRo'] as const;
 
 export function browserCodesForPhysicalKey(
   key: PhysicalKeyEvent['key'],
   overrides: BrowserKeyBindingOverrides = EMPTY_BROWSER_KEY_BINDING_OVERRIDES,
 ): readonly string[] {
-  const codes = new Set<string>([
-    ...KNOWN_BROWSER_CODES,
-    ...Object.keys(overrides),
-  ]);
-  return [...codes]
-    .filter((code) => browserCodeToPhysicalKey(code, overrides) === key)
-    .sort();
+  const codes = new Set<string>([...KNOWN_BROWSER_CODES, ...Object.keys(overrides)]);
+  return [...codes].filter((code) => browserCodeToPhysicalKey(code, overrides) === key).sort();
 }
 
 export function isBrowserTextInputCode(code: string): boolean {
-  return /^Key[A-Z]$/.test(code)
-    || /^Digit[0-9]$/.test(code)
-    || [
+  return (
+    /^Key[A-Z]$/.test(code) ||
+    /^Digit[0-9]$/.test(code) ||
+    [
       'Minus',
       'Equal',
       'BracketLeft',
@@ -79,7 +64,8 @@ export function isBrowserTextInputCode(code: string): boolean {
       'Comma',
       'Period',
       'Slash',
-    ].includes(code);
+    ].includes(code)
+  );
 }
 
 export function browserCodeToPhysicalKey(
@@ -109,8 +95,7 @@ export function shouldCaptureBrowserKeyDown(
   if (event.type !== 'keydown' || event.isComposing) return false;
   if (event.ctrlKey || event.altKey || event.metaKey) return false;
   const key = browserCodeToPhysicalKey(event.code, overrides);
-  return key !== undefined
-    && (ownedPhysicalKeys.has(key) || isBrowserTextInputCode(event.code));
+  return key !== undefined && (ownedPhysicalKeys.has(key) || isBrowserTextInputCode(event.code));
 }
 
 /**
@@ -126,10 +111,7 @@ export function browserKeyboardEventToPhysicalKeyEvent(
 ): PhysicalKeyEvent | undefined {
   if (event.type !== 'keydown' && event.type !== 'keyup') return undefined;
   if (event.isComposing) return undefined;
-  if (
-    event.type === 'keydown'
-    && (event.ctrlKey || event.altKey || event.metaKey)
-  ) return undefined;
+  if (event.type === 'keydown' && (event.ctrlKey || event.altKey || event.metaKey)) return undefined;
   if (event.type === 'keydown' && event.repeat) return undefined;
 
   const key = browserCodeToPhysicalKey(event.code, overrides);
@@ -194,10 +176,7 @@ const JIS_CODE_LABELS: Readonly<Record<string, string>> = {
 };
 
 /** ブラウザのキーcodeを、利用者が手元のキーボードで見る刻印に直す。 */
-export function browserCodeDisplayLabel(
-  code: string,
-  standard?: PhysicalKeyboardStandard,
-): string {
+export function browserCodeDisplayLabel(code: string, standard?: PhysicalKeyboardStandard): string {
   if (/^Key[A-Z]$/.test(code)) return code.slice(3);
   if (/^Digit[0-9]$/.test(code)) return code.slice(5);
   if (/^Numpad[0-9]$/.test(code)) return `テンキー${code.slice(6)}`;

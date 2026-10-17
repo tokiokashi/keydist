@@ -8,13 +8,7 @@ import type { KeyDetails } from '#interpretation/key-detail.ts';
 import type { Metrics } from '#interpretation/metrics.ts';
 import type { TextLanguage } from '#input/text/language.ts';
 import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
-import type {
-  OptionsDefinition,
-  OptionsDisciplineCheck,
-  OptionsDisciplineFixture,
-  OptionsRegistry,
-  OptionsValueMap,
-} from './options.ts';
+import type { OptionsDefinition, OptionsDisciplineCheck, OptionsDisciplineFixture, OptionsRegistry, OptionsValueMap } from './options.ts';
 
 // `OptionsRegistry`はこのファイルの型なので再exportして、横断テスト
 // （`test/analyzer-options-discipline.test.ts`）が`optionsItems`の型を書けるようにする。
@@ -166,10 +160,8 @@ export interface SetAnalyzerExtractContext<Options> {
 }
 
 /** 入れ忘れ防止テストの材料（`options`以外の`extract`の引数 + 基準のOptions値）。 */
-export type SingleOptionsDisciplineFixture<Options> =
-  OptionsDisciplineFixture<Options, Omit<SingleAnalyzerExtractContext<Options>, 'options'>>;
-export type SetOptionsDisciplineFixture<Options> =
-  OptionsDisciplineFixture<Options, Omit<SetAnalyzerExtractContext<Options>, 'options'>>;
+export type SingleOptionsDisciplineFixture<Options> = OptionsDisciplineFixture<Options, Omit<SingleAnalyzerExtractContext<Options>, 'options'>>;
+export type SetOptionsDisciplineFixture<Options> = OptionsDisciplineFixture<Options, Omit<SetAnalyzerExtractContext<Options>, 'options'>>;
 
 // ---------------------------------------------------------------------------
 // AnalyzerDefinition

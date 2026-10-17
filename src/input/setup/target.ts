@@ -10,9 +10,7 @@
  *
  * Setupは「上書きを持ちたい時にだけ作る」資産のまま（用語表参照）。
  */
-export type AnalysisTarget =
-  | { readonly kind: 'layout'; readonly layoutId: string }
-  | { readonly kind: 'setup'; readonly setupId: string };
+export type AnalysisTarget = { readonly kind: 'layout'; readonly layoutId: string } | { readonly kind: 'setup'; readonly setupId: string };
 
 /** 対象の同一性。Map/Reactのkeyにも使える文字列。 */
 export function analysisTargetKey(target: AnalysisTarget): string {

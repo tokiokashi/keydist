@@ -41,10 +41,10 @@ export type CommandOutcome<A extends AssetValues> =
    * 結果の`outcome`は`applied`（`changes`は変換後の現在値）として返るので、呼び出し側は区別しなくてよい。
    */
   | {
-    readonly kind: 'quiet';
-    readonly label: string;
-    readonly transforms: { readonly [K in keyof A]?: (value: A[K]) => A[K] };
-  }
+      readonly kind: 'quiet';
+      readonly label: string;
+      readonly transforms: { readonly [K in keyof A]?: (value: A[K]) => A[K] };
+    }
   | { readonly kind: 'no-op' }
   | { readonly kind: 'rejected'; readonly reason: unknown };
 
@@ -112,9 +112,7 @@ export type ItemScopes<A extends AssetValues> = { readonly [K in keyof A]?: Item
  * 戻す・やり直すの結果の種類。`conflict`は、項目を積んだ後に別の画面などで資産が書き換わっていて、
  * 項目を当てられなかったこと（資産は変えず、その項目は履歴から捨てる）。
  */
-export type HistoryStepOutcome<A extends AssetValues> =
-  | CommandOutcome<A>
-  | { readonly kind: 'conflict'; readonly label: string };
+export type HistoryStepOutcome<A extends AssetValues> = CommandOutcome<A> | { readonly kind: 'conflict'; readonly label: string };
 
 /** `undo` / `redo` の戻り値。 */
 export interface HistoryStepResult<A extends AssetValues> {

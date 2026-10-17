@@ -1,10 +1,6 @@
 import type { Stroke } from '#trace/generate.ts';
 import type { ChainInterpretation } from './chain.ts';
-import {
-  analyzeStrokeArpeggios,
-  type ArpeggioAnalysisResult,
-  type ArpeggioInterpretation,
-} from './arpeggio.ts';
+import { analyzeStrokeArpeggios, type ArpeggioAnalysisResult, type ArpeggioInterpretation } from './arpeggio.ts';
 import type { FingerDirection, HandTransition } from './transition.ts';
 import {
   DEFAULT_ACTION_REALIZATION_POLICY,
@@ -94,12 +90,7 @@ const emptyAnnotation = (): StrokeAnnotation => ({
   inSfb: false,
 });
 
-function annotateRange(
-  annotations: StrokeAnnotation[],
-  start: number,
-  end: number,
-  key: keyof StrokeAnnotation,
-): void {
+function annotateRange(annotations: StrokeAnnotation[], start: number, end: number, key: keyof StrokeAnnotation): void {
   const from = Math.max(0, start);
   const to = Math.min(annotations.length, end);
   for (let index = from; index < to; index++) {
@@ -110,53 +101,25 @@ function annotateRange(
   }
 }
 
-function annotateIndex(
-  annotations: StrokeAnnotation[],
-  index: number,
-  key: keyof StrokeAnnotation,
-): void {
+function annotateIndex(annotations: StrokeAnnotation[], index: number, key: keyof StrokeAnnotation): void {
   annotateRange(annotations, index, index + 1, key);
 }
 
 /** Structural factsのunionから非排他的なStrokeAnnotationを派生する。 */
-export function buildStrokeAnnotations(
-  analysis: ArpeggioAnalysisResult,
-): readonly StrokeAnnotation[] {
-  const annotations = Array.from(
-    { length: analysis.strokes.length },
-    () => Object.freeze(emptyAnnotation()),
-  );
+export function buildStrokeAnnotations(analysis: ArpeggioAnalysisResult): readonly StrokeAnnotation[] {
+  const annotations = Array.from({ length: analysis.strokes.length }, () => Object.freeze(emptyAnnotation()));
 
   for (const roll of analysis.longRolls) {
-    annotateRange(
-      annotations,
-      roll.startStrokeIndex,
-      roll.endStrokeIndex,
-      'inLongRoll',
-    );
+    annotateRange(annotations, roll.startStrokeIndex, roll.endStrokeIndex, 'inLongRoll');
   }
   for (const roll of analysis.twoRolls) {
-    annotateRange(
-      annotations,
-      roll.startStrokeIndex,
-      roll.endStrokeIndex,
-      'inTwoRoll',
-    );
+    annotateRange(annotations, roll.startStrokeIndex, roll.endStrokeIndex, 'inTwoRoll');
   }
   for (const span of analysis.arpeggioSpans) {
-    annotateRange(
-      annotations,
-      span.startStrokeIndex,
-      span.endStrokeIndex,
-      'inArpeggio',
-    );
+    annotateRange(annotations, span.startStrokeIndex, span.endStrokeIndex, 'inArpeggio');
   }
   for (const redirect of analysis.redirects) {
-    annotateIndex(
-      annotations,
-      redirect.pivotStrokeIndex,
-      'inRedirect',
-    );
+    annotateIndex(annotations, redirect.pivotStrokeIndex, 'inRedirect');
   }
   for (const index of analysis.sfbStrokeIndexes) {
     annotateIndex(annotations, index, 'inSfb');
@@ -165,34 +128,22 @@ export function buildStrokeAnnotations(
   return Object.freeze(annotations);
 }
 
-function coverage(
-  annotations: readonly StrokeAnnotation[],
-  predicate: (annotation: StrokeAnnotation) => boolean,
-): CoverageMetric {
-  const strokes = annotations.reduce(
-    (count, annotation) => count + (predicate(annotation) ? 1 : 0),
-    0,
-  );
+function coverage(annotations: readonly StrokeAnnotation[], predicate: (annotation: StrokeAnnotation) => boolean): CoverageMetric {
+  const strokes = annotations.reduce((count, annotation) => count + (predicate(annotation) ? 1 : 0), 0);
   return Object.freeze({
     strokes,
     rate: annotations.length === 0 ? 0 : strokes / annotations.length,
   });
 }
 
-function transitionDirection(
-  transition: HandTransition,
-): FingerDirection | 'mixed' | 'empty' {
-  const directions = new Set(
-    transition.candidates.map((candidate) => candidate.fingerDirection),
-  );
+function transitionDirection(transition: HandTransition): FingerDirection | 'mixed' | 'empty' {
+  const directions = new Set(transition.candidates.map((candidate) => candidate.fingerDirection));
   if (directions.size === 0) return 'empty';
   if (directions.size > 1) return 'mixed';
   return [...directions][0];
 }
 
-function directionalTransitionAggregate(
-  transitions: readonly HandTransition[],
-): DirectionalTransitionAggregate {
+function directionalTransitionAggregate(transitions: readonly HandTransition[]): DirectionalTransitionAggregate {
   const counts = {
     total: transitions.length,
     inward: 0,
@@ -215,25 +166,17 @@ export function aggregateStructuralAnalysis(
   triggerRealizationPolicy: TriggerRealizationPolicy = DEFAULT_TRIGGER_REALIZATION_POLICY,
   actionRealizationPolicy: ActionRealizationPolicy = DEFAULT_ACTION_REALIZATION_POLICY,
 ): StructuralAggregate {
-  const arpeggioLengths = analysis.arpeggioSpans.map(
-    (span) => span.endStrokeIndex - span.startStrokeIndex,
-  );
+  const arpeggioLengths = analysis.arpeggioSpans.map((span) => span.endStrokeIndex - span.startStrokeIndex);
 
   const longRoll = coverage(annotations, (annotation) => annotation.inLongRoll);
   const twoRoll = coverage(annotations, (annotation) => annotation.inTwoRoll);
-  const anyRoll = coverage(
-    annotations,
-    (annotation) => annotation.inLongRoll || annotation.inTwoRoll,
-  );
+  const anyRoll = coverage(annotations, (annotation) => annotation.inLongRoll || annotation.inTwoRoll);
 
   return Object.freeze({
     strokeCount: analysis.strokes.length,
     arpeggio: Object.freeze({
       spans: analysis.arpeggioSpans.length,
-      meanSpanLength: arpeggioLengths.length === 0
-        ? 0
-        : arpeggioLengths.reduce((sum, length) => sum + length, 0)
-          / arpeggioLengths.length,
+      meanSpanLength: arpeggioLengths.length === 0 ? 0 : arpeggioLengths.reduce((sum, length) => sum + length, 0) / arpeggioLengths.length,
       coverage: coverage(annotations, (annotation) => annotation.inArpeggio),
     }),
     roll: Object.freeze({
@@ -265,12 +208,7 @@ export function aggregateAnalysis(
   actionRealizationPolicy: ActionRealizationPolicy = DEFAULT_ACTION_REALIZATION_POLICY,
 ): AggregatedAnalysisResult {
   const annotations = buildStrokeAnnotations(analysis);
-  const aggregate = aggregateStructuralAnalysis(
-    analysis,
-    annotations,
-    triggerRealizationPolicy,
-    actionRealizationPolicy,
-  );
+  const aggregate = aggregateStructuralAnalysis(analysis, annotations, triggerRealizationPolicy, actionRealizationPolicy);
   return Object.freeze({
     ...analysis,
     annotations,

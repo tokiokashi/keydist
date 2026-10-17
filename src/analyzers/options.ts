@@ -129,9 +129,7 @@ const OPTIONS_PATH_ROOT = 'options';
  */
 export function defineOptions<R extends OptionsRegistry>(items: R): OptionsDefinition<R> {
   const keys = Object.keys(items) as (keyof R & string)[];
-  const defaultOptions = Object.fromEntries(
-    keys.map((key) => [key, items[key]!.default] as const),
-  ) as OptionsValueMap<R>;
+  const defaultOptions = Object.fromEntries(keys.map((key) => [key, items[key]!.default] as const)) as OptionsValueMap<R>;
 
   function decodeOptions(raw: unknown, diagnostics: CodecDiagnostic[]): OptionsValueMap<R> {
     if (!isRecord(raw)) {
@@ -199,10 +197,7 @@ export function defineOptions<R extends OptionsRegistry>(items: R): OptionsDefin
     return params;
   }
 
-  function decodeOptionsFromUrl(
-    params: URLSearchParams,
-    diagnostics: CodecDiagnostic[],
-  ): OptionsUrlDecodeResult<OptionsValueMap<R>> {
+  function decodeOptionsFromUrl(params: URLSearchParams, diagnostics: CodecDiagnostic[]): OptionsUrlDecodeResult<OptionsValueMap<R>> {
     const values: Record<string, unknown> = {};
     const consumedParamNames: string[] = [];
     for (const key of keys) {
@@ -278,11 +273,7 @@ export function numberUrlCodec(name: string, min: number, max: number): OptionUr
  * 文字列の集合（順序を持たない・最大件数あり）のURL codec。カンマ区切り。
  * 壊れた要素だけを落として残りは読む（`schema`単体では表現できない集合系項目向け）。
  */
-export function stringSetUrlCodec<T extends string>(
-  name: string,
-  allowed: readonly T[],
-  maxCount: number,
-): OptionUrlCodec<readonly T[]> {
+export function stringSetUrlCodec<T extends string>(name: string, allowed: readonly T[], maxCount: number): OptionUrlCodec<readonly T[]> {
   return {
     name,
     encode: (value) => (value.length === 0 ? undefined : [...value].join(',')),
@@ -310,9 +301,7 @@ export function stringSetUrlCodec<T extends string>(
  * 表の列の並び替えの状態。`null`は並び替えなし。`ui/primitives/column-sort.ts`の`ColumnSort`と同じ形
  * （純粋なファイルは`ui/`を読めないので、形だけをここにも持つ）。
  */
-export type ColumnSortOptionValue<Column extends string> =
-  | { readonly column: Column; readonly direction: 'asc' | 'desc' }
-  | null;
+export type ColumnSortOptionValue<Column extends string> = { readonly column: Column; readonly direction: 'asc' | 'desc' } | null;
 
 /**
  * 表の列の並び替え（`ui/primitives/column-sort.ts`の`ColumnSort`）の解析設定項目。
@@ -322,10 +311,12 @@ export type ColumnSortOptionValue<Column extends string> =
 export function columnSortOption<Column extends string>(urlName: string, columns: readonly Column[]): OptionDef<ColumnSortOptionValue<Column>> {
   const directions = ['asc', 'desc'] as const;
   return defineOption<ColumnSortOptionValue<Column>>({
-    schema: v.nullable(v.object({
-      column: v.picklist(columns as readonly [Column, ...Column[]]),
-      direction: v.picklist(directions),
-    })) as BaseSchema<unknown, ColumnSortOptionValue<Column>, BaseIssue<unknown>>,
+    schema: v.nullable(
+      v.object({
+        column: v.picklist(columns as readonly [Column, ...Column[]]),
+        direction: v.picklist(directions),
+      }),
+    ) as BaseSchema<unknown, ColumnSortOptionValue<Column>, BaseIssue<unknown>>,
     default: null,
     affects: 'view',
     url: {
@@ -334,9 +325,11 @@ export function columnSortOption<Column extends string>(urlName: string, columns
       decode: (raw, path, diagnostics) => {
         const [column, direction, ...rest] = raw.split(':');
         if (
-          rest.length === 0
-          && column !== undefined && (columns as readonly string[]).includes(column)
-          && direction !== undefined && (directions as readonly string[]).includes(direction)
+          rest.length === 0 &&
+          column !== undefined &&
+          (columns as readonly string[]).includes(column) &&
+          direction !== undefined &&
+          (directions as readonly string[]).includes(direction)
         ) {
           return { column: column as Column, direction: direction as 'asc' | 'desc' };
         }
@@ -476,11 +469,6 @@ export function checkOptionsDiscipline<R extends OptionsRegistry, Extracted>(
 } {
   return {
     keyViolations: findOptionsKeyDisciplineViolations(optionsDef, check.sample, check.alternates),
-    viewExtractionViolations: findViewOptionsExtractionViolations(
-      optionsDef,
-      check.sample,
-      check.alternates,
-      check.extract,
-    ),
+    viewExtractionViolations: findViewOptionsExtractionViolations(optionsDef, check.sample, check.alternates, check.extract),
   };
 }

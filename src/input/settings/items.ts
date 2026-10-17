@@ -2,9 +2,7 @@ import type { CascadeLevelKind } from './levels.ts';
 import type { CascadeContext } from './context.ts';
 
 /** 項目の値を検証した結果。妥当ならok、そうでなければ実現可能な値へのfallbackを添える。 */
-export type ValidateResult<T> =
-  | { readonly ok: true }
-  | { readonly ok: false; readonly fallback: T; readonly reason: string };
+export type ValidateResult<T> = { readonly ok: true } | { readonly ok: false; readonly fallback: T; readonly reason: string };
 
 /**
  * カスケードの1項目の定義（VS Codeの設定項目の `scope` に相当）。
@@ -41,9 +39,7 @@ export function defineItem<T>(item: SettingItem<T>): SettingItem<T> {
 
 /** `defaultValue` を解決する（固定値ならそのまま、関数ならcontextを渡して呼ぶ）。 */
 export function resolveDefaultValue<T>(item: SettingItem<T>, context: CascadeContext): T {
-  return typeof item.defaultValue === 'function'
-    ? (item.defaultValue as (context: CascadeContext) => T)(context)
-    : item.defaultValue;
+  return typeof item.defaultValue === 'function' ? (item.defaultValue as (context: CascadeContext) => T)(context) : item.defaultValue;
 }
 
 /**

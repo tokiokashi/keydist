@@ -1,9 +1,5 @@
 import type { AppearancePreferencesV1 } from '../state/app-state.ts';
-import {
-  APP_STATE_STORAGE_KEY,
-  loadAppStateDocument,
-  patchAppState,
-} from '../state/app-state-storage.ts';
+import { APP_STATE_STORAGE_KEY, loadAppStateDocument, patchAppState } from '../state/app-state-storage.ts';
 import type { KeyValueStorage } from '#platform/persistence/storage.ts';
 import { applyTheme, isThemeChoice, type ThemeChoice } from './theme.ts';
 
@@ -13,18 +9,12 @@ export const DEFAULT_APPEARANCE: AppearancePreferencesV1 = { theme: 'system' };
  * 外観の設定の読み書き。保存先は `keydist:app-state` の `appearance` だけで、
  * 保存が無い・値が不正な時は `fallback` を返す（storageには書かない）。
  */
-export function loadAppearancePreference(
-  storage: KeyValueStorage,
-  fallback: ThemeChoice = DEFAULT_APPEARANCE.theme,
-): AppearancePreferencesV1 {
+export function loadAppearancePreference(storage: KeyValueStorage, fallback: ThemeChoice = DEFAULT_APPEARANCE.theme): AppearancePreferencesV1 {
   const storedTheme = loadAppStateDocument(storage).appearance?.theme;
   return { theme: isThemeChoice(storedTheme) ? storedTheme : fallback };
 }
 
-export function saveAppearancePreference(
-  storage: KeyValueStorage,
-  theme: ThemeChoice,
-): boolean {
+export function saveAppearancePreference(storage: KeyValueStorage, theme: ThemeChoice): boolean {
   return patchAppState(storage, { appearance: { theme } });
 }
 
@@ -74,7 +64,9 @@ export function getAppearanceSnapshot(): ThemeChoice {
 export function subscribeAppearance(listener: () => void): () => void {
   ensureAppearanceStoreInitialized();
   appearanceListeners.add(listener);
-  return () => { appearanceListeners.delete(listener); };
+  return () => {
+    appearanceListeners.delete(listener);
+  };
 }
 
 export function setAppearanceTheme(theme: ThemeChoice): void {

@@ -21,15 +21,7 @@ import {
 import type { BuiltinRomajiRuleId, UserRomajiRule } from '#input/romaji/rules.ts';
 import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import type { PersonalSpeed } from '#interpretation/timing/calibration-codec.ts';
-import {
-  createSetup,
-  deleteSetup,
-  duplicateSetup,
-  relabelSetup,
-  setSetupShape,
-  type SetupIdGenerator,
-  type SetupLibrary,
-} from '#input/setup/index.ts';
+import { createSetup, deleteSetup, duplicateSetup, relabelSetup, setSetupShape, type SetupIdGenerator, type SetupLibrary } from '#input/setup/index.ts';
 import {
   appendCopiedUserText,
   deleteUserText,
@@ -45,15 +37,8 @@ import { builtinTextById, deriveEditedTextName } from '#input/text/builtin.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
 import { DEFAULT_TEXT_REF, withTextSelection, type TextRef, type TextSelectionState } from '#input/text/selection.ts';
 import type { TextLanguage } from '#input/text/language.ts';
-import {
-  withStandaloneAnalyzerOptions,
-  type StandaloneAnalyzerOptionsState,
-} from './standalone-analyzer-options.ts';
-import {
-  withMultiBaseline,
-  withMultiTargets,
-  type MultiTargetSelection,
-} from './multi-target-selection.ts';
+import { withStandaloneAnalyzerOptions, type StandaloneAnalyzerOptionsState } from './standalone-analyzer-options.ts';
+import { withMultiBaseline, withMultiTargets, type MultiTargetSelection } from './multi-target-selection.ts';
 import { withSingleTarget, type SingleTargetSelection } from './single-target-selection.ts';
 import { findWorkspace, withWorkspaceConditionOverrides, withWorkspaceText, type WorkspaceLibrary } from './workspace.ts';
 import type { AnalysisTarget } from '#input/setup/index.ts';
@@ -166,9 +151,7 @@ export interface KeydistAssets {
   readonly personalSpeed: PersonalSpeed;
 }
 
-type SetupLibraryComputation =
-  | { readonly ok: true; readonly library: SetupLibrary<SettingsValueMap> }
-  | { readonly ok: false; readonly reason: unknown };
+type SetupLibraryComputation = { readonly ok: true; readonly library: SetupLibrary<SettingsValueMap> } | { readonly ok: false; readonly reason: unknown };
 
 /**
  * `setupLibrary` だけに触れるコマンドの共通の骨組み。`compute` が失敗を報告したら
@@ -177,10 +160,7 @@ type SetupLibraryComputation =
  * `applyCommand` 側（`input/commands/history.ts`）が担うので、ここでは「呼び出した
  * 純関数が何と言ったか」だけを`CommandOutcome`の形に写す。
  */
-function setupLibraryCommand(
-  label: string,
-  compute: (library: SetupLibrary<SettingsValueMap>) => SetupLibraryComputation,
-): Command<KeydistAssets> {
+function setupLibraryCommand(label: string, compute: (library: SetupLibrary<SettingsValueMap>) => SetupLibraryComputation): Command<KeydistAssets> {
   return (current) => {
     const result = compute(current.setupLibrary);
     if (!result.ok) return { kind: 'rejected', reason: result.reason };
@@ -190,9 +170,7 @@ function setupLibraryCommand(
 }
 
 /** 条件の書き込みの結果。`ok`なら書き換えた後の上書き（Workspaceの条件を差し込んだ形。`workspace`を含みうる）。 */
-type CascadeComputation =
-  | { readonly ok: true; readonly overrides: SettingsCascadeOverrides }
-  | { readonly ok: false; readonly reason: unknown };
+type CascadeComputation = { readonly ok: true; readonly overrides: SettingsCascadeOverrides } | { readonly ok: false; readonly reason: unknown };
 
 /** Workspaceのレベルへ書こうとしたが、書き先のWorkspaceが無い（単体ページ・削除済み）時の`rejected`の理由。 */
 export interface WorkspaceLevelUnavailableError {
@@ -296,9 +274,10 @@ export function promoteCascadeOverrideCommand<K extends SettingsItemId>(
   return cascadeCommand(`設定を上のレベルへ移す: ${itemId}`, workspaceId, (overrides) => {
     const value = readOverride(overrides, from, itemId);
     if (value === undefined) return { ok: true, overrides };
-    const written = JSON.stringify(value) === JSON.stringify(targetDefault)
-      ? { ok: true as const, overrides: resetSettingsItem(overrides, to, itemId) }
-      : setSettingsOverride(overrides, to, itemId, value);
+    const written =
+      JSON.stringify(value) === JSON.stringify(targetDefault)
+        ? { ok: true as const, overrides: resetSettingsItem(overrides, to, itemId) }
+        : setSettingsOverride(overrides, to, itemId, value);
     if (!written.ok) return { ok: false, reason: written.error };
     return { ok: true, overrides: resetSettingsItem(written.overrides, from, itemId) };
   });
@@ -319,11 +298,7 @@ export function resetCascadeItemCommand(level: CascadeLevel, itemId: SettingsIte
  * 1レベルの、指定した項目の上書きだけをまとめて消す（1コマンド＝元に戻すの1回で全部戻る）。
  * 指定に無い項目の上書きは残す。
  */
-export function resetCascadeItemsCommand(
-  level: CascadeLevel,
-  itemIds: readonly SettingsItemId[],
-  workspaceId?: string,
-): Command<KeydistAssets> {
+export function resetCascadeItemsCommand(level: CascadeLevel, itemIds: readonly SettingsItemId[], workspaceId?: string): Command<KeydistAssets> {
   return cascadeCommand('指定した項目の設定をまとめてリセットする', workspaceId, (overrides) => ({
     ok: true,
     overrides: itemIds.reduce((current, id) => resetSettingsItem(current, level, id), overrides),
@@ -340,10 +315,7 @@ export function resetCascadeItemsAtLevelsCommand(
 ): Command<KeydistAssets> {
   return cascadeCommand('複数のレベルの設定をまとめてリセットする', workspaceId, (overrides) => ({
     ok: true,
-    overrides: targets.reduce(
-      (current, { level, itemIds }) => itemIds.reduce((inner, id) => resetSettingsItem(inner, level, id), current),
-      overrides,
-    ),
+    overrides: targets.reduce((current, { level, itemIds }) => itemIds.reduce((inner, id) => resetSettingsItem(inner, level, id), current), overrides),
   }));
 }
 
@@ -356,12 +328,7 @@ export function resetCascadeLevelCommand(level: CascadeLevel, workspaceId?: stri
 }
 
 /** Setupを新規作成する。 */
-export function createSetupCommand(
-  layoutId: string,
-  shapeId: string,
-  generateId: SetupIdGenerator,
-  label?: string,
-): Command<KeydistAssets> {
+export function createSetupCommand(layoutId: string, shapeId: string, generateId: SetupIdGenerator, label?: string): Command<KeydistAssets> {
   return setupLibraryCommand('Setupを作成する', (library) => ({
     ok: true,
     library: createSetup(library, layoutId, shapeId, generateId, label),
@@ -369,11 +336,7 @@ export function createSetupCommand(
 }
 
 /** Setupを複製する。複製元が存在しない場合は何もしない（`duplicateSetup` 自身の方針）。 */
-export function duplicateSetupCommand(
-  sourceSetupId: string,
-  generateId: SetupIdGenerator,
-  label?: string,
-): Command<KeydistAssets> {
+export function duplicateSetupCommand(sourceSetupId: string, generateId: SetupIdGenerator, label?: string): Command<KeydistAssets> {
   return setupLibraryCommand('Setupを複製する', (library) => ({
     ok: true,
     library: duplicateSetup(library, sourceSetupId, generateId, label),
@@ -437,11 +400,7 @@ export function createFingerAssignmentCommand(
 }
 
 /** 自作の指割り当てを複製する。複製元が存在しない場合は何もしない（`duplicateUserFingerAssignment`自身の方針）。 */
-export function duplicateFingerAssignmentCommand(
-  sourceId: string,
-  generateId: () => string,
-  name?: string,
-): Command<KeydistAssets> {
+export function duplicateFingerAssignmentCommand(sourceId: string, generateId: () => string, name?: string): Command<KeydistAssets> {
   return fingerAssignmentsCommand('指割り当てを複製する', (assignments) => ({
     ok: true,
     assignments: duplicateUserFingerAssignment(assignments, sourceId, generateId, name),
@@ -494,10 +453,7 @@ export function deleteUserLayoutCommand(id: string): Command<KeydistAssets> {
 }
 
 /** `userLayouts`だけに触れる書き込みの共通の骨組み。変化が無ければ（参照が同じなら）何もしない。保存できない入力は拒否する。 */
-function userLayoutsCommand(
-  label: string,
-  compute: (layouts: readonly UserLayout[]) => UserLayoutEditResult,
-): Command<KeydistAssets> {
+function userLayoutsCommand(label: string, compute: (layouts: readonly UserLayout[]) => UserLayoutEditResult): Command<KeydistAssets> {
   return (current) => {
     const result = compute(current.userLayouts);
     if (!result.ok) return { kind: 'rejected', reason: result.reason };
@@ -533,10 +489,7 @@ export function deleteUserRomajiRuleCommand(id: string): Command<KeydistAssets> 
 }
 
 /** `userRomajiRules`だけに触れるコマンドの共通の骨組み。変化が無ければ（参照が同じなら）何もしない。 */
-function userRomajiRulesCommand(
-  label: string,
-  compute: (rules: readonly UserRomajiRule[]) => readonly UserRomajiRule[],
-): Command<KeydistAssets> {
+function userRomajiRulesCommand(label: string, compute: (rules: readonly UserRomajiRule[]) => readonly UserRomajiRule[]): Command<KeydistAssets> {
   return (current) => {
     const next = compute(current.userRomajiRules);
     if (next === current.userRomajiRules) return { kind: 'no-op' };
@@ -545,20 +498,12 @@ function userRomajiRulesCommand(
 }
 
 /** 自作のローマ字規則を新規作成する。差分を持たない、`base`だけの規則から始める。 */
-export function createUserRomajiRuleCommand(
-  generateId: () => string,
-  name: string,
-  base: BuiltinRomajiRuleId,
-): Command<KeydistAssets> {
+export function createUserRomajiRuleCommand(generateId: () => string, name: string, base: BuiltinRomajiRuleId): Command<KeydistAssets> {
   return userRomajiRulesCommand('自作のローマ字規則を作成する', (rules) => createUserRomajiRule(rules, generateId, name, base));
 }
 
 /** 自作のローマ字規則を複製する。複製元が存在しない場合は何もしない。 */
-export function duplicateUserRomajiRuleCommand(
-  sourceId: string,
-  generateId: () => string,
-  name?: string,
-): Command<KeydistAssets> {
+export function duplicateUserRomajiRuleCommand(sourceId: string, generateId: () => string, name?: string): Command<KeydistAssets> {
   return userRomajiRulesCommand('自作のローマ字規則を複製する', (rules) => duplicateUserRomajiRule(rules, sourceId, generateId, name));
 }
 
@@ -580,21 +525,12 @@ export function setUserRomajiRuleContentCommand(id: string, content: RomajiRuleC
 export type TextSelectionHolder = 'standalone' | { readonly workspaceId: string };
 
 /** 持ち主が今持っている選択。Workspaceが（他タブでの削除等で）無ければ`undefined`。 */
-export function textSelectionOf(
-  assets: Readonly<KeydistAssets>,
-  holder: TextSelectionHolder,
-): TextSelectionState | undefined {
-  return holder === 'standalone'
-    ? assets.standaloneTextSelection
-    : findWorkspace(assets.workspaces, holder.workspaceId)?.text;
+export function textSelectionOf(assets: Readonly<KeydistAssets>, holder: TextSelectionHolder): TextSelectionState | undefined {
+  return holder === 'standalone' ? assets.standaloneTextSelection : findWorkspace(assets.workspaces, holder.workspaceId)?.text;
 }
 
 /** 持ち主の選択を書き換える`changes`の断片。値が同じ参照なら、その資産は変わらない（`applyCommand`が判定する）。 */
-function withTextSelectionOf(
-  assets: Readonly<KeydistAssets>,
-  holder: TextSelectionHolder,
-  selection: TextSelectionState,
-): Partial<KeydistAssets> {
+function withTextSelectionOf(assets: Readonly<KeydistAssets>, holder: TextSelectionHolder, selection: TextSelectionState): Partial<KeydistAssets> {
   return holder === 'standalone'
     ? { standaloneTextSelection: selection }
     : { workspaces: withWorkspaceText(assets.workspaces, holder.workspaceId, selection) };
@@ -610,8 +546,10 @@ function withTextSelectionOf(
 function currentTextCommand(
   holder: TextSelectionHolder,
   label: string,
-  compute: (current: { readonly library: TextLibrary; readonly selection: TextSelectionState }) =>
-    { readonly library: TextLibrary; readonly selection: TextSelectionState },
+  compute: (current: { readonly library: TextLibrary; readonly selection: TextSelectionState }) => {
+    readonly library: TextLibrary;
+    readonly selection: TextSelectionState;
+  },
 ): Command<KeydistAssets> {
   return (current) => {
     const selection = textSelectionOf(current, holder);
@@ -630,10 +568,7 @@ function currentTextCommand(
 }
 
 /** `textLibrary`だけに触れるコマンドの共通の骨組み。`setupLibraryCommand`と同じ形。 */
-function textLibraryCommand(
-  label: string,
-  compute: (library: TextLibrary) => TextLibrary,
-): Command<KeydistAssets> {
+function textLibraryCommand(label: string, compute: (library: TextLibrary) => TextLibrary): Command<KeydistAssets> {
   return (current) => {
     const next = compute(current.textLibrary);
     if (next === current.textLibrary) return { kind: 'no-op' };
@@ -646,11 +581,7 @@ function textLibraryCommand(
  * 自動生成名（未指定なら「新しいテキスト」）が既に使われていれば連番を振る
  * （`uniqueAutoTextName`。自動生成名は見分けが付くようにする）。
  */
-export function createTextCommand(
-  holder: TextSelectionHolder,
-  generateId: TextIdGenerator,
-  name?: string,
-): Command<KeydistAssets> {
+export function createTextCommand(holder: TextSelectionHolder, generateId: TextIdGenerator, name?: string): Command<KeydistAssets> {
   return currentTextCommand(holder, 'テキストを作成する', ({ library }) => {
     const uniqueName = uniqueAutoTextName(library, name ?? '新しいテキスト');
     const { library: nextLibrary, created } = appendCopiedUserText(library, generateId, { text: '', name: uniqueName });
@@ -663,11 +594,7 @@ export function createTextCommand(
  * 選択する。自動生成名（「元の名前」のコピー）が既に使われていれば連番を振る
  * （`createTextCommand`と同じ理由）。
  */
-export function duplicateTextCommand(
-  holder: TextSelectionHolder,
-  generateId: TextIdGenerator,
-  name?: string,
-): Command<KeydistAssets> {
+export function duplicateTextCommand(holder: TextSelectionHolder, generateId: TextIdGenerator, name?: string): Command<KeydistAssets> {
   return currentTextCommand(holder, 'テキストを複製する', ({ library, selection }) => {
     const resolved = resolveTextSelection(selection, library);
     const uniqueName = name ?? uniqueAutoTextName(library, `${resolved.name}のコピー`);
@@ -698,9 +625,7 @@ export function deleteTextCommand(holder: TextSelectionHolder, id: string): Comm
   return currentTextCommand(holder, 'テキストを削除する', ({ library, selection }) => {
     const nextLibrary = deleteUserText(library, id);
     if (nextLibrary === library) return { library, selection };
-    const nextSelection = selection.ref.kind === 'user' && selection.ref.id === id
-      ? { ref: DEFAULT_TEXT_REF }
-      : selection;
+    const nextSelection = selection.ref.kind === 'user' && selection.ref.id === id ? { ref: DEFAULT_TEXT_REF } : selection;
     return { library: nextLibrary, selection: nextSelection };
   });
 }
@@ -721,16 +646,15 @@ export function selectTextCommand(holder: TextSelectionHolder, ref: TextRef): Co
     }
     const next = withTextSelection(selection, ref);
     // 開いたコピーの「新しい」印はここで外す
-    const nextLibrary = ref.kind === 'user'
-      ? markUserTextsSeen(current.textLibrary, [ref.id])
-      : current.textLibrary;
+    const nextLibrary = ref.kind === 'user' ? markUserTextsSeen(current.textLibrary, [ref.id]) : current.textLibrary;
     if (next === selection && nextLibrary === current.textLibrary) return { kind: 'no-op' };
     return {
       kind: 'applied',
       label: 'テキストを選ぶ',
-      changes: nextLibrary === current.textLibrary
-        ? withTextSelectionOf(current, holder, next)
-        : { ...withTextSelectionOf(current, holder, next), textLibrary: nextLibrary },
+      changes:
+        nextLibrary === current.textLibrary
+          ? withTextSelectionOf(current, holder, next)
+          : { ...withTextSelectionOf(current, holder, next), textLibrary: nextLibrary },
     };
   };
 }
@@ -770,12 +694,7 @@ export function markTextsSeenCommand(ids: readonly string[]): Command<KeydistAss
  *   内容を自作テキストとして残すだけにする。何もしないと、2タブが同じ組み込みを同時に
  *   書き換えた時に後のタブの入力が消える
  */
-export function setTextContentCommand(
-  holder: TextSelectionHolder,
-  ref: TextRef,
-  text: string,
-  generateId: TextIdGenerator,
-): Command<KeydistAssets> {
+export function setTextContentCommand(holder: TextSelectionHolder, ref: TextRef, text: string, generateId: TextIdGenerator): Command<KeydistAssets> {
   return (current) => {
     const library = current.textLibrary;
 
@@ -800,11 +719,7 @@ export function setTextContentCommand(
     const notSelected = resolvedRef.kind !== 'builtin' || resolvedRef.id !== ref.id;
     // 選ばれないコピーは、打った本人の画面から本文が消えたように見える。文脈バーのチップに
     // 印を付けて知らせるため、まだ見ていない印を付けて残す
-    const { library: nextLibrary, created } = appendCopiedUserText(
-      library,
-      generateId,
-      notSelected ? { text, name, unseen: true } : { text, name },
-    );
+    const { library: nextLibrary, created } = appendCopiedUserText(library, generateId, notSelected ? { text, name, unseen: true } : { text, name });
     if (notSelected) {
       return { kind: 'applied', label: 'テキストを変更する', changes: { textLibrary: nextLibrary } };
     }
@@ -824,10 +739,7 @@ export function setTextContentCommand(
  * ボタン操作による即時反映（debounceを挟まない）なので、`setTextContentCommand`と違い
  * 適用時点の選択を読んでよい（打鍵からの遅延が競合を生む余地が無いため）。
  */
-export function setTextLanguageOverrideCommand(
-  holder: TextSelectionHolder,
-  override: TextLanguage | undefined,
-): Command<KeydistAssets> {
+export function setTextLanguageOverrideCommand(holder: TextSelectionHolder, override: TextLanguage | undefined): Command<KeydistAssets> {
   return currentTextCommand(holder, '言語判定を変更する', ({ library, selection }) => {
     const resolved = resolveTextSelection(selection, library);
     if (resolved.isBuiltin) return { library, selection };
@@ -841,10 +753,7 @@ export function setTextLanguageOverrideCommand(
  * そのまま渡す（`engine`は個別Analyzerの型を知らないので`unknown`として受け取る。
  * `standalone-analyzer-options.ts`冒頭コメント参照）。
  */
-export function setStandaloneAnalyzerOptionsCommand(
-  analyzerId: string,
-  options: unknown,
-): Command<KeydistAssets> {
+export function setStandaloneAnalyzerOptionsCommand(analyzerId: string, options: unknown): Command<KeydistAssets> {
   return (current) => {
     const next = withStandaloneAnalyzerOptions(current.standaloneAnalyzerOptions, analyzerId, options);
     if (next === current.standaloneAnalyzerOptions) return { kind: 'no-op' };
@@ -861,10 +770,7 @@ export function setStandaloneAnalyzerOptionsCommand(
  * 集合を受け取り、次の集合を返す（不変条件の保証は`compute`側が呼ぶ
  * `withMultiTargets`/`withMultiBaseline`が持つ。`multi-target-selection.ts`のコメント参照）。
  */
-function multiTargetSelectionCommand(
-  label: string,
-  compute: (current: MultiTargetSelection) => MultiTargetSelection,
-): Command<KeydistAssets> {
+function multiTargetSelectionCommand(label: string, compute: (current: MultiTargetSelection) => MultiTargetSelection): Command<KeydistAssets> {
   return (current) => {
     const next = compute(current.multiTargetSelection);
     if (next === current.multiTargetSelection) return { kind: 'no-op' };
@@ -909,12 +815,8 @@ export function setMultiBaselineCommand(baseline: AnalysisTarget | undefined): C
  * （`setMultiBaselineCommand`）と違い、Singleの対象は書かない（リンクが運ぶのはMultiの集合だけ）。
  * `baseline`が`undefined`なら基準の記録も消す（リンクが基準を運ばないなら「基準なし」で開く）。
  */
-export function setMultiSelectionCommand(
-  targets: readonly AnalysisTarget[],
-  baseline: AnalysisTarget | undefined,
-): Command<KeydistAssets> {
-  return multiTargetSelectionCommand('共有された対象の集合を取り込む', (current) =>
-    withMultiBaseline(withMultiTargets(current, targets), baseline));
+export function setMultiSelectionCommand(targets: readonly AnalysisTarget[], baseline: AnalysisTarget | undefined): Command<KeydistAssets> {
+  return multiTargetSelectionCommand('共有された対象の集合を取り込む', (current) => withMultiBaseline(withMultiTargets(current, targets), baseline));
 }
 
 /**

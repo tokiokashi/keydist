@@ -19,10 +19,7 @@ export interface InputConverterPreferencesHook {
    * mount後の副作用から一度だけ呼ぶ。呼んだ時点のcatalogs/defaultsでstorageから復元する。
    * 2回目以降の呼び出し（開発時のeffect二重実行等）は最初の結果をそのまま返し、再読込はしない。
    */
-  restoreOnce(
-    catalogs: InputConverterPreferencesCatalogs,
-    defaults: InputConverterPreferencesDefaults,
-  ): InputConverterPreferencesV2;
+  restoreOnce(catalogs: InputConverterPreferencesCatalogs, defaults: InputConverterPreferencesDefaults): InputConverterPreferencesV2;
   /**
    * 復元後の状態変化をdebounceでまとめて書く。呼び出し側は restoreOnce が返した値を
    * 適用する前にこれを呼ばないこと（復元前のdefault値で上書きしてしまうため）。
@@ -39,25 +36,20 @@ export interface InputConverterPreferencesHook {
  * レンダー中にstorageを読まない、復元は副作用で一度だけ、書き込みはdebounceでまとめ、
  * pagehide / visibilitychange(hidden) で確実にflushする。
  */
-export function useInputConverterPreferences(
-  options: UseInputConverterPreferencesOptions = {},
-): InputConverterPreferencesHook {
+export function useInputConverterPreferences(options: UseInputConverterPreferencesOptions = {}): InputConverterPreferencesHook {
   const storageOverride = options.storage;
-  const resolveStorage = useCallback(
-    (): KeyValueStorage => storageOverride ?? window.localStorage,
-    [storageOverride],
-  );
+  const resolveStorage = useCallback((): KeyValueStorage => storageOverride ?? window.localStorage, [storageOverride]);
 
   const restoredRef = useRef<InputConverterPreferencesV2 | null>(null);
-  const restoreOnce = useCallback((
-    catalogs: InputConverterPreferencesCatalogs,
-    defaults: InputConverterPreferencesDefaults,
-  ): InputConverterPreferencesV2 => {
-    if (restoredRef.current !== null) return restoredRef.current;
-    const restored = loadInputConverterPreferences(resolveStorage(), catalogs, defaults);
-    restoredRef.current = restored;
-    return restored;
-  }, [resolveStorage]);
+  const restoreOnce = useCallback(
+    (catalogs: InputConverterPreferencesCatalogs, defaults: InputConverterPreferencesDefaults): InputConverterPreferencesV2 => {
+      if (restoredRef.current !== null) return restoredRef.current;
+      const restored = loadInputConverterPreferences(resolveStorage(), catalogs, defaults);
+      restoredRef.current = restored;
+      return restored;
+    },
+    [resolveStorage],
+  );
 
   const schedulerRef = useRef<InputConverterPreferencesScheduler | null>(null);
   const getScheduler = useCallback((): InputConverterPreferencesScheduler => {
@@ -69,9 +61,12 @@ export function useInputConverterPreferences(
     return schedulerRef.current;
   }, [resolveStorage]);
 
-  const save = useCallback((prefs: InputConverterPreferencesV2) => {
-    getScheduler().notify(prefs);
-  }, [getScheduler]);
+  const save = useCallback(
+    (prefs: InputConverterPreferencesV2) => {
+      getScheduler().notify(prefs);
+    },
+    [getScheduler],
+  );
 
   useEffect(() => {
     const scheduler = getScheduler();

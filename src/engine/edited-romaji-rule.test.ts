@@ -64,12 +64,25 @@ function measure(rule: UserRomajiRule) {
 
 /** 画面の操作と同じく、作成→綴りの書き換えをコマンドで通し、保存された規則を返す。 */
 function createAndEdit(): UserRomajiRule {
-  let step = applyCommand(emptyAssets(), emptyCommandHistory<KeydistAssets>(), createUserRomajiRuleCommand(() => 'romaji-edited', '私の綴り', 'kunrei'));
-  for (const [kana, roman] of [['し', 'shi'], ['ち', 'chi'], ['じゃ', 'ja'], ['きょ', 'kyo']] as const) {
+  let step = applyCommand(
+    emptyAssets(),
+    emptyCommandHistory<KeydistAssets>(),
+    createUserRomajiRuleCommand(() => 'romaji-edited', '私の綴り', 'kunrei'),
+  );
+  for (const [kana, roman] of [
+    ['し', 'shi'],
+    ['ち', 'chi'],
+    ['じゃ', 'ja'],
+    ['きょ', 'kyo'],
+  ] as const) {
     const stored = step.assets.userRomajiRules[0]!;
     const overrides = withSpelling(stored.overrides, kana, roman);
     assert.ok(overrides);
-    step = applyCommand(step.assets, step.history, setUserRomajiRuleContentCommand(stored.id, { base: stored.base, generateSokuon: stored.generateSokuon, overrides }));
+    step = applyCommand(
+      step.assets,
+      step.history,
+      setUserRomajiRuleContentCommand(stored.id, { base: stored.base, generateSokuon: stored.generateSokuon, overrides }),
+    );
   }
   return step.assets.userRomajiRules[0]!;
 }
@@ -98,8 +111,16 @@ test('画面の編集で保存した規則は、同じ規則を直接与えた�
 });
 
 test('基底と促音の生成を書き換えた規則も、同じ規則を直接与えた時と同じ数値になる', () => {
-  const created = applyCommand(emptyAssets(), emptyCommandHistory<KeydistAssets>(), createUserRomajiRuleCommand(() => 'romaji-azik', 'AZIK風', 'kunrei'));
-  const step = applyCommand(created.assets, created.history, setUserRomajiRuleContentCommand('romaji-azik', { base: 'azik', overrides: { し: 'si' }, generateSokuon: false }));
+  const created = applyCommand(
+    emptyAssets(),
+    emptyCommandHistory<KeydistAssets>(),
+    createUserRomajiRuleCommand(() => 'romaji-azik', 'AZIK風', 'kunrei'),
+  );
+  const step = applyCommand(
+    created.assets,
+    created.history,
+    setUserRomajiRuleContentCommand('romaji-azik', { base: 'azik', overrides: { し: 'si' }, generateSokuon: false }),
+  );
   const stored = step.assets.userRomajiRules[0]!;
   const direct: UserRomajiRule = { id: 'romaji-azik', name: 'AZIK風', base: 'azik', overrides: { し: 'si' }, generateSokuon: false };
   assert.deepEqual(stored, direct);

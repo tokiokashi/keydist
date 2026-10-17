@@ -33,12 +33,20 @@ import { MOBILE_QUERY } from '#ui/theme/breakpoints.ts';
 
 /** 個人速度の画面へのリンク。条件のモーダルと再生のペインが、ルーターを知らずに同じリンクを出せるよう、シェルで渡す。 */
 function PersonalSpeedRouterLink({ className, children }: PersonalSpeedLinkProps) {
-  return <Link to="/personal-speed" className={className}>{children}</Link>;
+  return (
+    <Link to="/personal-speed" className={className}>
+      {children}
+    </Link>
+  );
 }
 
 /** Setupの編集画面へのリンク。条件のモーダルが、ルーターを知らずにそのSetupを開くリンクを出せるよう、シェルで渡す。 */
 function SetupRouterLink({ setupId, className, children }: SetupLinkProps) {
-  return <Link to="/setup" search={{ setup: setupId }} className={className}>{children}</Link>;
+  return (
+    <Link to="/setup" search={{ setup: setupId }} className={className}>
+      {children}
+    </Link>
+  );
 }
 
 function subscribeMobile(listener: () => void): () => void {
@@ -137,7 +145,9 @@ export function AppShell({ children, hasContextBar }: AppShellProps) {
 
   const toggle = (
     <button
-      ref={(element) => { toggleRef.current = element; }}
+      ref={(element) => {
+        toggleRef.current = element;
+      }}
       type="button"
       className="shell-sidebar-toggle"
       aria-label="サイドバーを開く"
@@ -202,9 +212,7 @@ export function AppShell({ children, hasContextBar }: AppShellProps) {
       {/* pointerdownで閉じると、暗幕が消えた後にmousedownの既定動作がフォーカスをBODYへ落とし、
           開くボタンへ戻したフォーカスを上書きする。そのため暗幕はclickで閉じ、mousedownでは
           フォーカスを動かさない（サイドバー内にあったフォーカスがcloseで開くボタンへ戻る）。 */}
-      {mobile && open ? (
-        <div className="shell-scrim" aria-hidden="true" onMouseDown={(event) => event.preventDefault()} onClick={close} />
-      ) : null}
+      {mobile && open ? <div className="shell-scrim" aria-hidden="true" onMouseDown={(event) => event.preventDefault()} onClick={close} /> : null}
 
       <ContextBarLeadingSlot.Provider value={toggle}>
         <PresetFileIoContext.Provider value={PRESET_FILE_IO}>

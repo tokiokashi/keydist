@@ -102,8 +102,7 @@ export interface PlaybackFrameInput {
 
 function layerLabelOf(trace: Pick<Trace, 'layerDefinitions'>, stroke: Stroke | undefined): string {
   if (!stroke) return '開始前';
-  return trace.layerDefinitions.find((definition) => definition.id === stroke.aggregationGroupId)?.label
-    ?? stroke.aggregationGroupId;
+  return trace.layerDefinitions.find((definition) => definition.id === stroke.aggregationGroupId)?.label ?? stroke.aggregationGroupId;
 }
 
 /** 同じキーに複数の区間の順番が付く時は、先に見つかった区間の順番を使う。 */
@@ -135,20 +134,14 @@ function structureLabelOf(analysis: AggregatedAnalysisResult, cursor: number): s
  */
 function motionsOf(input: PlaybackFrameInput, cursor: number): PlaybackMotion[] {
   const { analysis, options, timing, schedule, trace } = input;
-  const sameFingerMotions = timing.sameFingerDelay && options.showSameFingerMotion
-    ? playbackSameFingerKeyMotions(trace.strokes, cursor)
-    : [];
+  const sameFingerMotions = timing.sameFingerDelay && options.showSameFingerMotion ? playbackSameFingerKeyMotions(trace.strokes, cursor) : [];
   const sameFingerTargets = new Set(sameFingerMotions.flatMap((motion) => motion.toKeys));
   const withoutSameFinger = <M extends { readonly toKeys: readonly string[] }>(motion: M): M[] => {
     const toKeys = motion.toKeys.filter((key) => !sameFingerTargets.has(key));
     return toKeys.length === 0 ? [] : [{ ...motion, toKeys }];
   };
-  const chainMotions = options.showChain
-    ? playbackAnalysisChainMotions(analysis, cursor).flatMap(withoutSameFinger)
-    : [];
-  const arpeggioMotions = options.showArpeggio
-    ? playbackAnalysisArpeggioMotions(analysis, cursor).flatMap(withoutSameFinger)
-    : [];
+  const chainMotions = options.showChain ? playbackAnalysisChainMotions(analysis, cursor).flatMap(withoutSameFinger) : [];
+  const arpeggioMotions = options.showArpeggio ? playbackAnalysisArpeggioMotions(analysis, cursor).flatMap(withoutSameFinger) : [];
   const abstractMotions = [
     ...sameFingerMotions.map((motion) => ({ ...motion, kind: 'sameFinger' as const })),
     ...chainMotions.map((motion) => ({ ...motion, kind: 'chain' as const })),
@@ -157,20 +150,13 @@ function motionsOf(input: PlaybackFrameInput, cursor: number): PlaybackMotion[] 
 
   const durationIndex = Math.max(0, cursor - 1);
   // キーの動きの長さは打鍵の時間に合わせる。動きは次のステップの区間の先頭から始まるので、待機があればその間に再生される
-  const stepMs = playbackTimingStepTypingMs(schedule, durationIndex)
-    ?? playbackStepDurationMs(
-      analysis,
-      durationIndex,
-      timing.stepsPerSecond,
-      timing.sameFingerDelay,
-      timing.calibration,
-      timing.speedMultiplier,
-    );
+  const stepMs =
+    playbackTimingStepTypingMs(schedule, durationIndex) ??
+    playbackStepDurationMs(analysis, durationIndex, timing.stepsPerSecond, timing.sameFingerDelay, timing.calibration, timing.speedMultiplier);
   const durationMs = Math.max(MOTION_DURATION_MIN_MS, Math.min(MOTION_DURATION_MAX_MS, stepMs));
   const motions = abstractMotions.flatMap((motion) =>
-    motion.toKeys
-      .filter((key) => key !== motion.fromKey)
-      .map((toKey) => ({ fromKey: motion.fromKey, toKey, kind: motion.kind, durationMs })));
+    motion.toKeys.filter((key) => key !== motion.fromKey).map((toKey) => ({ fromKey: motion.fromKey, toKey, kind: motion.kind, durationMs })),
+  );
   // 動かない動き（行き先と出発位置が同じ）を除いた後で重なりを見る。先に見ると、Arpeggioの動きが消えた時にChainの動きも消えてしまう
   const arpeggioTargets = new Set(motions.filter((motion) => motion.kind === 'arpeggio').map((motion) => motion.toKey));
   return motions.filter((motion) => motion.kind !== 'chain' || !arpeggioTargets.has(motion.toKey));
@@ -185,9 +171,7 @@ export function derivePlaybackFrame(input: PlaybackFrameInput): PlaybackFrame {
   const isRomaji = layout.romajiTable !== undefined;
 
   const inputPreview = playbackInputPreview(trace.strokes, cursor, windowSize);
-  const romajiInputPreview = isRomaji && options.showRomajiInput
-    ? playbackRomajiInputPreview(trace.strokes, cursor, windowSize)
-    : undefined;
+  const romajiInputPreview = isRomaji && options.showRomajiInput ? playbackRomajiInputPreview(trace.strokes, cursor, windowSize) : undefined;
   const plan = isRomaji ? playbackRomajiPlan(trace.strokes, cursor) : undefined;
 
   const none = <V>() => new Map<string, V>();
@@ -200,12 +184,8 @@ export function derivePlaybackFrame(input: PlaybackFrameInput): PlaybackFrame {
     total,
     cursor,
     isRomaji,
-    currentText: stroke
-      ? display?.character ?? (stroke.triggerKeys.length > 0 ? '⇧' : stroke.char)
-      : '—',
-    kanaText: isRomaji
-      ? inputPreview.find((segment) => segment.kind === 'current')?.text ?? '—'
-      : stroke?.inputChar ?? '—',
+    currentText: stroke ? (display?.character ?? (stroke.triggerKeys.length > 0 ? '⇧' : stroke.char)) : '—',
+    kanaText: isRomaji ? (inputPreview.find((segment) => segment.kind === 'current')?.text ?? '—') : (stroke?.inputChar ?? '—'),
     typedText: stroke?.char ?? '—',
     plannedText: plan?.planned,
     inputPreview,
@@ -218,30 +198,24 @@ export function derivePlaybackFrame(input: PlaybackFrameInput): PlaybackFrame {
     pressedFingers: [...new Set(stroke?.presses.map((press) => press.finger) ?? [])],
     fingerPositionKeys: options.showFingerPositions
       ? playbackPreparedFingerPositionKeys(
-        analysis,
-        schedule,
-        cursor,
-        input.elapsedMs,
-        geometry,
-        options.fingerPreparationSeconds,
-        timing.stepsPerSecond,
-        timing.calibration,
-        timing.speedMultiplier,
-      )
+          analysis,
+          schedule,
+          cursor,
+          input.elapsedMs,
+          geometry,
+          options.fingerPreparationSeconds,
+          timing.stepsPerSecond,
+          timing.calibration,
+          timing.speedMultiplier,
+        )
       : none<Finger>(),
     trailKeys: showTrail ? playbackTrailKeys(trace.strokes, cursor, options.trailSteps) : none<number>(),
     // これから押すキー。ローマ字配列でもそれ以外でも、今の入力の残りと先読みNかな先までの入力を、近さに応じた濃さと順番で出す
     plannedKeys: showPlanned ? playbackPlannedKeys(trace.strokes, cursor, windowSize) : none<number>(),
-    plannedOrders: showPlanned && options.showOrderLabels
-      ? playbackPlannedOrders(trace.strokes, cursor, windowSize)
-      : none<number>(),
+    plannedOrders: showPlanned && options.showOrderLabels ? playbackPlannedOrders(trace.strokes, cursor, windowSize) : none<number>(),
     romajiPlannedKeys: showRomaji ? playbackRomajiPlannedKeys(trace.strokes, cursor) : none<number>(),
-    romajiPlannedOrders: showRomaji && options.showOrderLabels
-      ? playbackRomajiPlannedOrders(trace.strokes, cursor)
-      : none<number>(),
-    trailOrders: showTrail && options.showOrderLabels
-      ? playbackTrailOrders(trace.strokes, cursor, options.trailSteps)
-      : none<number>(),
+    romajiPlannedOrders: showRomaji && options.showOrderLabels ? playbackRomajiPlannedOrders(trace.strokes, cursor) : none<number>(),
+    trailOrders: showTrail && options.showOrderLabels ? playbackTrailOrders(trace.strokes, cursor, options.trailSteps) : none<number>(),
     chainOrders: options.showChain ? firstOrders(playbackAnalysisChainOrders(analysis, cursor)) : new Map<string, number>(),
     arpeggioOrders: options.showArpeggio ? firstOrders(playbackAnalysisArpeggioOrders(analysis, cursor)) : new Map<string, number>(),
     motions: motionsOf(input, cursor),

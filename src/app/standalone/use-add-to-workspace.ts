@@ -1,10 +1,7 @@
 import { useCallback } from 'react';
 import type { Command } from '#input/commands/index.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
-import {
-  addStandalonePaneToNewWorkspaceCommand,
-  addStandalonePaneToWorkspaceCommand,
-} from '#engine/workspace-commands.ts';
+import { addStandalonePaneToNewWorkspaceCommand, addStandalonePaneToWorkspaceCommand } from '#engine/workspace-commands.ts';
 import { findDefaultOptionSet, findWorkspace } from '#engine/workspace.ts';
 import type { AddToWorkspaceDestination } from '#hosts/shared/AddToWorkspaceMenu.tsx';
 import { defaultGridSize } from '#hosts/workspace/grid-metrics.ts';
@@ -31,25 +28,29 @@ export function useAddToWorkspace(
    */
   flushPending: () => void,
 ) {
-  return useCallback((destination: AddToWorkspaceDestination, options: unknown) => {
-    flushPending();
-    // 追加先の共有の設定と同じ値か。保存した形（変えた項目だけ）と下書き（全項目）は、decodeを通した形で比べる
-    const workspace = destination.kind === 'existing' ? findWorkspace(getAssets().workspaces, destination.workspaceId) : undefined;
-    const shared = workspace === undefined ? undefined : findDefaultOptionSet(workspace, analyzerId);
-    const matchesShared = shared !== undefined && sameAsSharedOptions(decodeOptions, shared.options, options);
-    const source = { paneId: generatePaneId(), analyzerId, options, matchesShared };
-    const size = defaultGridSize(analyzerId);
-    if (destination.kind === 'existing') {
-      dispatch(addStandalonePaneToWorkspaceCommand(destination.workspaceId, source, size));
-    } else {
-      dispatch(addStandalonePaneToNewWorkspaceCommand(generateWorkspaceId(), source, size));
-    }
-    // 追加できたかは、書き込み後の手持ちにそのペインがあるかで確かめる（無いWorkspaceへの追加は何もしない）
-    const workspaces = getAssets().workspaces;
-    const target = destination.kind === 'existing'
-      ? findWorkspace(workspaces, destination.workspaceId)
-      : workspaces.find((workspace) => workspace.panes.some((pane) => pane.id === source.paneId));
-    if (target === undefined || !target.panes.some((pane) => pane.id === source.paneId)) return;
-    setAddedToWorkspace({ workspaceId: target.id, paneId: source.paneId });
-  }, [analyzerId, decodeOptions, dispatch, getAssets, flushPending]);
+  return useCallback(
+    (destination: AddToWorkspaceDestination, options: unknown) => {
+      flushPending();
+      // 追加先の共有の設定と同じ値か。保存した形（変えた項目だけ）と下書き（全項目）は、decodeを通した形で比べる
+      const workspace = destination.kind === 'existing' ? findWorkspace(getAssets().workspaces, destination.workspaceId) : undefined;
+      const shared = workspace === undefined ? undefined : findDefaultOptionSet(workspace, analyzerId);
+      const matchesShared = shared !== undefined && sameAsSharedOptions(decodeOptions, shared.options, options);
+      const source = { paneId: generatePaneId(), analyzerId, options, matchesShared };
+      const size = defaultGridSize(analyzerId);
+      if (destination.kind === 'existing') {
+        dispatch(addStandalonePaneToWorkspaceCommand(destination.workspaceId, source, size));
+      } else {
+        dispatch(addStandalonePaneToNewWorkspaceCommand(generateWorkspaceId(), source, size));
+      }
+      // 追加できたかは、書き込み後の手持ちにそのペインがあるかで確かめる（無いWorkspaceへの追加は何もしない）
+      const workspaces = getAssets().workspaces;
+      const target =
+        destination.kind === 'existing'
+          ? findWorkspace(workspaces, destination.workspaceId)
+          : workspaces.find((workspace) => workspace.panes.some((pane) => pane.id === source.paneId));
+      if (target === undefined || !target.panes.some((pane) => pane.id === source.paneId)) return;
+      setAddedToWorkspace({ workspaceId: target.id, paneId: source.paneId });
+    },
+    [analyzerId, decodeOptions, dispatch, getAssets, flushPending],
+  );
 }

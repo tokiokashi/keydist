@@ -28,19 +28,12 @@ import { levelOverrides, withLevelOverrides, type CascadeOverrides } from '#inpu
  * 操作する必要がある。下の2関数がそれを行う（collection.ts の `deleteSetup` /
  * `duplicateSetup` から呼ぶ）。
  */
-export function copySetupOverrides<V>(
-  overrides: CascadeOverrides<V>,
-  fromSetupId: string,
-  toSetupId: string,
-): CascadeOverrides<V> {
+export function copySetupOverrides<V>(overrides: CascadeOverrides<V>, fromSetupId: string, toSetupId: string): CascadeOverrides<V> {
   const source = levelOverrides(overrides, { kind: 'setup', setupId: fromSetupId });
   if (source === undefined) return overrides;
   return withLevelOverrides(overrides, { kind: 'setup', setupId: toSetupId }, { ...source });
 }
 
-export function dropSetupOverrides<V>(
-  overrides: CascadeOverrides<V>,
-  setupId: string,
-): CascadeOverrides<V> {
+export function dropSetupOverrides<V>(overrides: CascadeOverrides<V>, setupId: string): CascadeOverrides<V> {
   return withLevelOverrides(overrides, { kind: 'setup', setupId }, undefined);
 }

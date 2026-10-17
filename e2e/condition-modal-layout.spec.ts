@@ -13,24 +13,23 @@ const QWERTY = { kind: 'layout', layoutId: 'qwerty' };
 const GROUP_GAP_PX = 0.9 * 16;
 const WORKSPACE_CHANGED = { sfbHomeCost: false, defaultShapeId: 'ortholinear' };
 
-async function openWorkspaceModal(
-  page: Page,
-  size: { width: number; height: number },
-  conditions: Record<string, unknown> = {},
-): Promise<Locator> {
+async function openWorkspaceModal(page: Page, size: { width: number; height: number }, conditions: Record<string, unknown> = {}): Promise<Locator> {
   await page.setViewportSize(size);
-  await page.addInitScript((value) => {
-    if (localStorage.getItem('keydist:workspaces') === null) {
-      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
-    }
-  }, {
-    id: 'm',
-    name: '配置',
-    text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
-    conditions,
-    panes: [{ id: 'p1', analyzerId: 'bigram-flow', binding: { mode: 'fixed', target: { kind: 'single', target: QWERTY } } }],
-    grid: [{ id: 'p1', x: 0, y: 0, w: 24, h: 24 }],
-  });
+  await page.addInitScript(
+    (value) => {
+      if (localStorage.getItem('keydist:workspaces') === null) {
+        localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
+      }
+    },
+    {
+      id: 'm',
+      name: '配置',
+      text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+      conditions,
+      panes: [{ id: 'p1', analyzerId: 'bigram-flow', binding: { mode: 'fixed', target: { kind: 'single', target: QWERTY } } }],
+      grid: [{ id: 'p1', x: 0, y: 0, w: 24, h: 24 }],
+    },
+  );
   await page.goto('/workspace/m');
   await waitForHydration(page);
   const pane = page.locator('.pane-frame').first();
@@ -81,7 +80,9 @@ for (const [name, size] of [
 
     const heading = modal.locator('.condition-modal-head h2');
     const before = await heading.boundingBox();
-    await body.evaluate((el) => { el.scrollTop = el.scrollHeight; });
+    await body.evaluate((el) => {
+      el.scrollTop = el.scrollHeight;
+    });
     // 最後の群の最後の要素まで届き、モーダルの外へはみ出さない
     const last = modal.locator('.condition-group').last().locator('input, select, button').last();
     await expect(last).toBeInViewport();
@@ -130,13 +131,20 @@ for (const [name, size, conditions] of [
   });
 }
 
-interface GroupBox { readonly index: number; readonly x: number; readonly top: number; readonly bottom: number }
+interface GroupBox {
+  readonly index: number;
+  readonly x: number;
+  readonly top: number;
+  readonly bottom: number;
+}
 
 async function groupBoxes(modal: Locator): Promise<GroupBox[]> {
-  return modal.locator('.condition-group').evaluateAll((groups) => groups.map((group, index) => {
-    const rect = group.getBoundingClientRect();
-    return { index, x: Math.round(rect.x), top: rect.top, bottom: rect.bottom };
-  }));
+  return modal.locator('.condition-group').evaluateAll((groups) =>
+    groups.map((group, index) => {
+      const rect = group.getBoundingClientRect();
+      return { index, x: Math.round(rect.x), top: rect.top, bottom: rect.bottom };
+    }),
+  );
 }
 
 /** 左端のx座標が近い群を1つの列にまとめる。 */
@@ -250,17 +258,22 @@ for (const { state, size } of MENU_CASES) {
         const children = [...list.children].map((child) => child.getBoundingClientRect().height);
         const frame = list.closest('dialog')!.getBoundingClientRect();
         // 項目（とメニューの見出し）の中心に、その項目自身が当たるか
-        const unreachable = [...list.children].filter((child) => {
-          const box = child.getBoundingClientRect();
-          const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
-          return hit === null || !child.contains(hit);
-        }).map((child) => (child.textContent ?? '').trim());
+        const unreachable = [...list.children]
+          .filter((child) => {
+            const box = child.getBoundingClientRect();
+            const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+            return hit === null || !child.contains(hit);
+          })
+          .map((child) => (child.textContent ?? '').trim());
         return {
           rect: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, height: rect.height },
           frame: { left: frame.left, top: frame.top, right: frame.right, bottom: frame.bottom },
-          expectedHeight: children.reduce((sum, h) => sum + h, 0)
-            + parseFloat(style.paddingTop) + parseFloat(style.paddingBottom)
-            + parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth),
+          expectedHeight:
+            children.reduce((sum, h) => sum + h, 0) +
+            parseFloat(style.paddingTop) +
+            parseFloat(style.paddingBottom) +
+            parseFloat(style.borderTopWidth) +
+            parseFloat(style.borderBottomWidth),
           unreachable,
           innerWidth,
           innerHeight,
@@ -301,7 +314,9 @@ const MENU_CLOSING_PATHS = [
   {
     path: 'scrollTopの変更',
     close: async (_page: Page, modal: Locator) => {
-      await modal.locator('.condition-modal-body').evaluate((el) => { el.scrollTop = 300; });
+      await modal.locator('.condition-modal-body').evaluate((el) => {
+        el.scrollTop = 300;
+      });
     },
     scrolls: true,
   },

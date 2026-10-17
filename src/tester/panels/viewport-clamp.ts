@@ -14,11 +14,7 @@ function finiteNonNegative(value: number): number {
   return Number.isFinite(value) ? Math.max(0, value) : 0;
 }
 
-export function clampPanelRectToViewport(
-  rect: PanelRect,
-  viewport: ViewportSize,
-  constraints: PanelSizeConstraints = {},
-): PanelRect {
+export function clampPanelRectToViewport(rect: PanelRect, viewport: ViewportSize, constraints: PanelSizeConstraints = {}): PanelRect {
   const viewportWidth = finiteNonNegative(viewport.width);
   const viewportHeight = finiteNonNegative(viewport.height);
   const minWidth = Math.min(finiteNonNegative(constraints.minWidth ?? 0), viewportWidth);

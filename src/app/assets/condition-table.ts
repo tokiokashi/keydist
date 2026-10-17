@@ -14,12 +14,7 @@ import type { FingerAssignment } from '#input/shapes/geometry.ts';
 import type { Workspace } from '#engine/workspace.ts';
 import type { PaneCatalog } from '#hosts/shared/resolve-pane-input.ts';
 import { targetChoiceGroups } from '#hosts/shared/target-choices.ts';
-import {
-  conditionLevelLabel,
-  traceConditionSummary,
-  type ConditionSummaryRow,
-  type ConditionValueNames,
-} from '#hosts/shared/condition-summary.ts';
+import { conditionLevelLabel, traceConditionSummary, type ConditionSummaryRow, type ConditionValueNames } from '#hosts/shared/condition-summary.ts';
 import { setupConditionRows } from '../setup/setup-view.ts';
 import { workspaceTitles, type OverrideGroup } from './cascade-override-groups.ts';
 
@@ -32,13 +27,13 @@ export type ConditionPlacement =
   | { readonly kind: 'global'; readonly key: 'global'; readonly title: string }
   | { readonly kind: 'workspace'; readonly key: string; readonly title: string; readonly workspaceId: string }
   | {
-    readonly kind: 'layout';
-    readonly key: string;
-    readonly title: string;
-    readonly layoutId: string;
-    /** 計算に使えない自作の配列の、使えない理由。使える配列は持たない。 */
-    readonly unusableReason?: string;
-  }
+      readonly kind: 'layout';
+      readonly key: string;
+      readonly title: string;
+      readonly layoutId: string;
+      /** 計算に使えない自作の配列の、使えない理由。使える配列は持たない。 */
+      readonly unusableReason?: string;
+    }
   | { readonly kind: 'setup'; readonly key: string; readonly title: string; readonly setupId: string };
 
 export interface ConditionPlacementGroup {
@@ -138,8 +133,7 @@ export function conditionPlacementGroups(input: PlacementGroupsInput): readonly 
     setups: [],
     selected: [],
   }).filter((group) => group.id !== 'setup' && group.id !== 'missing');
-  const unusable = unusableUserLayouts(catalog, input.userLayouts, input.userRomajiRules)
-    .map((layout) => layoutPlacement(layout.id, layout.reason));
+  const unusable = unusableUserLayouts(catalog, input.userLayouts, input.userRomajiRules).map((layout) => layoutPlacement(layout.id, layout.reason));
   const userGroup = layoutGroups.find((group) => group.id === 'user');
   for (const group of layoutGroups) {
     const placements = group.choices.flatMap((choice) => (choice.target.kind === 'layout' ? [layoutPlacement(choice.target.layoutId)] : []));
@@ -169,12 +163,12 @@ export interface PlacementRowsInput {
 
 export type PlacementRows =
   | {
-    readonly ok: true;
-    /** 行の継承する値・出どころ・対象に依る注記の元。 */
-    readonly rows: readonly ConditionSummaryRow[];
-    /** 行の入力が読む上書き。Workspaceの適用範囲は、そのWorkspaceの条件を差し込んだもの。 */
-    readonly overrides: SettingsCascadeOverrides;
-  }
+      readonly ok: true;
+      /** 行の継承する値・出どころ・対象に依る注記の元。 */
+      readonly rows: readonly ConditionSummaryRow[];
+      /** 行の入力が読む上書き。Workspaceの適用範囲は、そのWorkspaceの条件を差し込んだもの。 */
+      readonly overrides: SettingsCascadeOverrides;
+    }
   | { readonly ok: false; readonly message: string; readonly detail?: string };
 
 /** 全体とWorkspaceの適用範囲の継承する値を求める時に、対象の代わりに使う配列。ローマ字入力で、推奨を持たない。 */
@@ -218,9 +212,7 @@ export function placementRows(placement: ConditionPlacement, input: PlacementRow
   switch (placement.kind) {
     case 'global':
     case 'workspace': {
-      const workspace = placement.kind === 'workspace'
-        ? input.workspaces.find((candidate) => candidate.id === placement.workspaceId)
-        : undefined;
+      const workspace = placement.kind === 'workspace' ? input.workspaces.find((candidate) => candidate.id === placement.workspaceId) : undefined;
       if (placement.kind === 'workspace' && workspace === undefined) return unavailable('このWorkspaceは見つかりません。');
       const editorOverrides = workspace === undefined ? overrides : withWorkspaceConditions(overrides, workspace.conditions);
       // 全体より強い物理配列・打ち方・配列・Setupのレベルを除き、適用範囲のレベルまでの値だけで解決する
@@ -267,11 +259,7 @@ export const OTHER_PLACEMENT_NAME_LIMIT = 3;
  * 同じ項目を他の適用範囲でも上書きしている時の、行に添える文。数えるのは上書きの一覧に出るもの全部で、
  * 名前も一覧の適用範囲の名前と同じ。他に無ければ`undefined`。
  */
-export function otherPlacementNote(
-  groups: readonly OverrideGroup[],
-  placementKey: string,
-  itemId: SettingsItemId,
-): string | undefined {
+export function otherPlacementNote(groups: readonly OverrideGroup[], placementKey: string, itemId: SettingsItemId): string | undefined {
   const titles = groups
     .filter((group) => group.key !== placementKey && group.entries.some((entry) => entry.itemId === itemId))
     .map((group) => group.title);

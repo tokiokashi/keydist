@@ -15,12 +15,7 @@ import type { Preset, PresetLibrary } from './types.ts';
  * レベルの許可（`allowedLevels`）は検査しない。流し込む時に先のレベルで絞る
  * （`decodeCascadeOverrides`と同じ方針。判断を1箇所に置く）。
  */
-export function decodePresets<V>(
-  itemSchemas: ItemSchemaMap<V>,
-  raw: unknown,
-  path: string,
-  diagnostics: CodecDiagnostic[],
-): Preset<V>[] {
+export function decodePresets<V>(itemSchemas: ItemSchemaMap<V>, raw: unknown, path: string, diagnostics: CodecDiagnostic[]): Preset<V>[] {
   if (!Array.isArray(raw)) {
     // 値があって配列でない時は、全件が消えることを診断で示す（無い時は空の手持ちで正しい）
     if (raw !== undefined) diagnostics.push({ path, message: droppedNotArray('プリセット') });
@@ -67,10 +62,7 @@ export function encodePresets<V>(presets: readonly Preset<V>[]): Record<string, 
   }));
 }
 
-export function presetLibraryCodec<V>(
-  itemSchemas: ItemSchemaMap<V>,
-  currentVersion: number,
-): AssetCodec<PresetLibrary<V>> {
+export function presetLibraryCodec<V>(itemSchemas: ItemSchemaMap<V>, currentVersion: number): AssetCodec<PresetLibrary<V>> {
   return defineAssetCodec<PresetLibrary<V>>({
     currentVersion,
     decodePayload: (payload, diagnostics) => {

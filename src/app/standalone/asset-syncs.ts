@@ -42,10 +42,7 @@ export interface BuildAssetSyncsOptions {
  * `AssetTabSync<A> | AssetTabSync<B> | ...`という緩い合併に潰れ、`Object.fromEntries`の
  * 戻り値が`AssetSyncMap`と噛み合わなくなる）。
  */
-function buildOne<K extends keyof KeydistAssets>(
-  key: K,
-  options: BuildAssetSyncsOptions,
-): readonly [K, AssetTabSync<KeydistAssets[K]>] {
+function buildOne<K extends keyof KeydistAssets>(key: K, options: BuildAssetSyncsOptions): readonly [K, AssetTabSync<KeydistAssets[K]>] {
   const spec = ASSET_STORAGE_SPECS[key];
   const sync = createAssetTabSync({
     storageKey: spec.storageKey,
@@ -67,19 +64,14 @@ export function buildAssetSyncs(options: BuildAssetSyncsOptions): AssetSyncMap {
   return Object.fromEntries(entries) as unknown as AssetSyncMap;
 }
 
-function loadOne<K extends keyof KeydistAssets>(
-  syncs: AssetSyncMap,
-  key: K,
-): readonly [K, KeydistAssets[K]] | undefined {
+function loadOne<K extends keyof KeydistAssets>(syncs: AssetSyncMap, key: K): readonly [K, KeydistAssets[K]] | undefined {
   const value = syncs[key].load();
   return value === undefined ? undefined : [key, value];
 }
 
 /** storageに何かあった資産キーだけを返す（無ければキーごと省く。呼び出し側は`{...current, ...loaded}`で合成する）。 */
 export function loadAssets(syncs: AssetSyncMap): Partial<KeydistAssets> {
-  const entries = ASSET_KEYS
-    .map((key) => loadOne(syncs, key))
-    .filter((entry) => entry !== undefined);
+  const entries = ASSET_KEYS.map((key) => loadOne(syncs, key)).filter((entry) => entry !== undefined);
   return Object.fromEntries(entries) as unknown as Partial<KeydistAssets>;
 }
 
@@ -145,11 +137,7 @@ function saveOne<K extends keyof KeydistAssets>(syncs: AssetSyncMap, assets: Key
 }
 
 /** `applyCommand`が返した`changes`のキーだけをstorageへ書く。 */
-export function saveChangedAssets(
-  syncs: AssetSyncMap,
-  assets: KeydistAssets,
-  changedKeys: readonly (keyof KeydistAssets)[],
-): void {
+export function saveChangedAssets(syncs: AssetSyncMap, assets: KeydistAssets, changedKeys: readonly (keyof KeydistAssets)[]): void {
   for (const key of changedKeys) saveOne(syncs, assets, key);
 }
 

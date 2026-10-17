@@ -80,16 +80,13 @@ export function useTextContentCommit(
   // 参照を変えない。`flush`は元のものをそのまま使う。
   const stableRef = useRef<(DebouncedCommit<TextContentValue> & TextContentCommit) | undefined>(undefined);
   if (stableRef.current === undefined) {
-    stableRef.current = Object.assign(
-      (value: TextContentValue) => commit(retargetRef.current(value)),
-      {
-        flush: commit.flush,
-        wasRedirected: (from: TextRef, to: TextRef) => {
-          const redirect = redirectRef.current;
-          return redirect !== undefined && sameRef(redirect.from, from) && sameRef(redirect.to, to);
-        },
+    stableRef.current = Object.assign((value: TextContentValue) => commit(retargetRef.current(value)), {
+      flush: commit.flush,
+      wasRedirected: (from: TextRef, to: TextRef) => {
+        const redirect = redirectRef.current;
+        return redirect !== undefined && sameRef(redirect.from, from) && sameRef(redirect.to, to);
       },
-    );
+    });
   }
   return stableRef.current;
 }

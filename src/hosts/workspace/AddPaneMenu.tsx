@@ -59,7 +59,9 @@ export function AddPaneMenu({
         title="ペインを追加"
         onClick={() => setOpen((current) => !current)}
       >
-        <span className="workspace-add-pane-plus" aria-hidden="true">＋</span>
+        <span className="workspace-add-pane-plus" aria-hidden="true">
+          ＋
+        </span>
         <span className="workspace-add-pane-label">ペインを追加</span>
       </button>
       {open ? (

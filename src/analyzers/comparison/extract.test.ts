@@ -161,13 +161,19 @@ test('computeComparisonExtraction: 解決できたメンバーはok行、失敗�
   const targetA: AnalysisTarget = { kind: 'setup', setupId: 'setup-a' };
   const targetDeleted: AnalysisTarget = { kind: 'setup', setupId: 'setup-deleted' };
   const extracted = computeComparisonExtraction(
-    [{
-      target: targetA,
-      trace: traceResult.trace,
-      analysis: interpretationResult.analysis,
-      metrics: interpretationResult.metrics,
-      requestTrace: { requestTrace: () => { throw new Error('unused'); } },
-    }],
+    [
+      {
+        target: targetA,
+        trace: traceResult.trace,
+        analysis: interpretationResult.analysis,
+        metrics: interpretationResult.metrics,
+        requestTrace: {
+          requestTrace: () => {
+            throw new Error('unused');
+          },
+        },
+      },
+    ],
     [{ target: targetDeleted, kind: 'reference', message: '配列が見つかりません（削除された可能性があります）' }],
   );
 
@@ -183,20 +189,11 @@ test('computeComparisonExtraction: 解決できたメンバーはok行、失敗�
 });
 
 test('optionsDiscipline: affectsの宣言どおりの入れ忘れが無い（比較表は全項目がview）', () => {
-  const keyViolations = findOptionsKeyDisciplineViolations(
-    comparisonOptions,
-    DEFAULT_COMPARISON_OPTIONS,
-    ALTERNATE_COMPARISON_OPTIONS,
-  );
+  const keyViolations = findOptionsKeyDisciplineViolations(comparisonOptions, DEFAULT_COMPARISON_OPTIONS, ALTERNATE_COMPARISON_OPTIONS);
   assert.deepEqual(keyViolations, []);
 
   // 比較表は全項目がaffects:'view'なので、抽出を呼ぶ関数はoptionsを無視した
   // ダミー関数でよい（定義の`extract`を通す検査は`comparisonDefinition.optionsDiscipline`側）。
-  const viewViolations = findViewOptionsExtractionViolations(
-    comparisonOptions,
-    DEFAULT_COMPARISON_OPTIONS,
-    ALTERNATE_COMPARISON_OPTIONS,
-    () => 'dummy',
-  );
+  const viewViolations = findViewOptionsExtractionViolations(comparisonOptions, DEFAULT_COMPARISON_OPTIONS, ALTERNATE_COMPARISON_OPTIONS, () => 'dummy');
   assert.deepEqual(viewViolations, []);
 });

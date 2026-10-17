@@ -27,22 +27,17 @@ export function shapeKeyIds(shape: PhysicalShape): readonly string[] {
 /** 物理配列の列ごとのキーid（上の段から）。段によって列数が違う時は、最も長い段に合わせた列数になる。 */
 export function shapeColumns(shape: PhysicalShape): readonly (readonly string[])[] {
   const count = Math.max(0, ...shape.rowWidths);
-  return Array.from({ length: count }, (_, col) =>
-    shape.rowWidths.flatMap((width, row) => col < width ? [keyId(row, col)] : []));
+  return Array.from({ length: count }, (_, col) => shape.rowWidths.flatMap((width, row) => (col < width ? [keyId(row, col)] : [])));
 }
 
 /**
  * 複数のキーの指を1本に決める。各キーの基本の指をその指にし、そのキーの追加の担当は外す
  * （そのキーを担当する指は1本になる）。他のキーの担当は変えない。
  */
-export function assignKeysToFinger(
-  assignment: FingerAssignment,
-  keyIds: readonly string[],
-  finger: NonThumb,
-): FingerAssignment {
-  const changed = keyIds.filter((id) =>
-    assignment.baseFinger[id] !== finger
-    || ALL_FINGERS.some((other) => other !== finger && assignment.fingerKeys[other].includes(id)));
+export function assignKeysToFinger(assignment: FingerAssignment, keyIds: readonly string[], finger: NonThumb): FingerAssignment {
+  const changed = keyIds.filter(
+    (id) => assignment.baseFinger[id] !== finger || ALL_FINGERS.some((other) => other !== finger && assignment.fingerKeys[other].includes(id)),
+  );
   if (changed.length === 0) return assignment;
   const targets = new Set(changed);
   const baseFinger = { ...assignment.baseFinger };
@@ -64,12 +59,7 @@ export function assignKeyFinger(assignment: FingerAssignment, keyIdToSet: string
 }
 
 /** 物理配列の1列のキーすべてに、同じ指を決める。 */
-export function assignColumnFinger(
-  assignment: FingerAssignment,
-  shape: PhysicalShape,
-  column: number,
-  finger: NonThumb,
-): FingerAssignment {
+export function assignColumnFinger(assignment: FingerAssignment, shape: PhysicalShape, column: number, finger: NonThumb): FingerAssignment {
   return assignKeysToFinger(assignment, shapeColumns(shape)[column] ?? [], finger);
 }
 
@@ -125,9 +115,7 @@ function rankFromThumb(finger: NonThumb): number {
  */
 function nextBaseFinger(removed: NonThumb, candidates: readonly NonThumb[]): NonThumb | undefined {
   const order = (finger: NonThumb) =>
-    (finger[0] === removed[0] ? 0 : 1) * 1000
-    + Math.abs(rankFromThumb(finger) - rankFromThumb(removed)) * 100
-    + ALL_FINGERS.indexOf(finger);
+    (finger[0] === removed[0] ? 0 : 1) * 1000 + Math.abs(rankFromThumb(finger) - rankFromThumb(removed)) * 100 + ALL_FINGERS.indexOf(finger);
   return [...candidates].sort((a, b) => order(a) - order(b))[0];
 }
 
@@ -166,7 +154,10 @@ export function removeKeyFromFinger(assignment: FingerAssignment, keyIdToSet: st
   owners[keyIdToSet]?.delete(finger);
   let baseFinger = assignment.baseFinger;
   if (baseFinger[keyIdToSet] === finger) {
-    const next = nextBaseFinger(finger as NonThumb, nonThumbOwnersOf(assignment, keyIdToSet).filter((other) => other !== finger));
+    const next = nextBaseFinger(
+      finger as NonThumb,
+      nonThumbOwnersOf(assignment, keyIdToSet).filter((other) => other !== finger),
+    );
     if (next === undefined) return assignment;
     baseFinger = { ...baseFinger, [keyIdToSet]: next };
   }
@@ -194,7 +185,10 @@ export function resetToDefaultAssignment(assignment: FingerAssignment, defaults:
   return {
     ...assignment,
     baseFinger: { ...defaults.baseFinger },
-    fingerKeys: Object.fromEntries(ALL_FINGERS.map((finger) => [finger, [...defaults.fingerKeys[finger]]])) as unknown as Record<Finger, readonly string[]>,
+    fingerKeys: Object.fromEntries(ALL_FINGERS.map((finger) => [finger, [...defaults.fingerKeys[finger]]])) as unknown as Record<
+      Finger,
+      readonly string[]
+    >,
     homeKey: { ...defaults.homeKey },
   };
 }

@@ -9,7 +9,21 @@ import { waitForHydration } from './hydration-helper.ts';
 
 const FORBIDDEN_WORDS = ['Policy', 'fresh', 'Stroke', 'physical', 'mean'];
 const COLUMN_LABELS = [
-  '動作数', '距離', 'u/打鍵', 'u/文字', '動作数/文字', '押下/文字', '単打面率', '単打率', '1キー率', '同指', '同指率', '指間平均', '指間σ', '右手距離率', '右手押下率',
+  '動作数',
+  '距離',
+  'u/打鍵',
+  'u/文字',
+  '動作数/文字',
+  '押下/文字',
+  '単打面率',
+  '単打率',
+  '1キー率',
+  '同指',
+  '同指率',
+  '指間平均',
+  '指間σ',
+  '右手距離率',
+  '右手押下率',
 ];
 
 function seedThreeLayouts() {
@@ -80,9 +94,15 @@ test('見出しのⓘでモーダルが開き、比較表の説明・単位・�
   await expect(dialog.locator('dd')).toHaveCount(15);
   await expect(dialog).toContainText('ホームに置いた時の間隔');
   // dlの直下はdt / ddを包むdivだけ。
-  const badChildren = await dialog.locator('dl').evaluateAll((lists) =>
-    lists.flatMap((dl) => [...dl.children].filter((child) =>
-      !(child.tagName === 'DIV' && [...child.children].every((c) => c.tagName === 'DT' || c.tagName === 'DD'))).map((c) => c.tagName)));
+  const badChildren = await dialog
+    .locator('dl')
+    .evaluateAll((lists) =>
+      lists.flatMap((dl) =>
+        [...dl.children]
+          .filter((child) => !(child.tagName === 'DIV' && [...child.children].every((c) => c.tagName === 'DT' || c.tagName === 'DD')))
+          .map((c) => c.tagName),
+      ),
+    );
   expect(badChildren).toEqual([]);
   for (const word of FORBIDDEN_WORDS) await expect(dialog).not.toContainText(word);
 
@@ -130,8 +150,14 @@ test('キーボードで開閉でき、Escape・閉じるボタン・背後を�
   await expect(info).toBeFocused();
 });
 
-for (const size of [{ width: 390, height: 600 }, { width: 390, height: 340 }, { width: 1440, height: 900 }]) {
-  test(`画面に収まり、dialogは自分ではスクロールせず本文だけがスクロールする。キーボードだけで最後の列まで読める（${size.width}x${size.height}）`, async ({ page }) => {
+for (const size of [
+  { width: 390, height: 600 },
+  { width: 390, height: 340 },
+  { width: 1440, height: 900 },
+]) {
+  test(`画面に収まり、dialogは自分ではスクロールせず本文だけがスクロールする。キーボードだけで最後の列まで読める（${size.width}x${size.height}）`, async ({
+    page,
+  }) => {
     await page.setViewportSize(size);
     await openComparison(page);
     await infoButton(page).click();
@@ -167,7 +193,10 @@ for (const size of [{ width: 390, height: 600 }, { width: 390, height: 340 }, { 
 }
 
 test('他のAnalyzerのⓘは今の小窓のまま（モーダルを開かない）', async ({ page }) => {
-  for (const [path, name] of [['/analyzer/n-sensitivity', 'N感度'], ['/analyzer/bigram-flow', 'Bigram Flow']] as const) {
+  for (const [path, name] of [
+    ['/analyzer/n-sensitivity', 'N感度'],
+    ['/analyzer/bigram-flow', 'Bigram Flow'],
+  ] as const) {
     await page.goto(path);
     await waitForHydration(page);
     const info = page.getByRole('button', { name: `${name}の説明` });

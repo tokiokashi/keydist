@@ -27,9 +27,12 @@ const cell = (id: string, x: number, y: number, w: number, h: number) => ({ id, 
 /** 保存先へWorkspaceを直接書いて開く。 */
 async function openWorkspace(page: Page, panes: readonly unknown[], grid: unknown, size: { width: number; height: number }) {
   await page.setViewportSize(size);
-  await page.addInitScript((value) => {
-    localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
-  }, { id: 'fit', name: '収まりの確認', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes, grid });
+  await page.addInitScript(
+    (value) => {
+      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
+    },
+    { id: 'fit', name: '収まりの確認', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes, grid },
+  );
   await page.goto('/workspace/fit');
   await waitForHydration(page);
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 15_000 });
@@ -99,19 +102,23 @@ test('領域が横長なら図は左右に並び、縦長なら縦に積む。�
 
   // 画面の幅はそのまま、ペインの下の辺を伸ばして領域を縦長に近づける（幅 / 高さ < 1.5）と、縦に積む。
   await dragCorner(page, 'f', 0, 144);
-  await expect.poll(async () => {
-    const next = await measure(page);
-    return next.body.width / next.body.height < 1.5;
-  }).toBe(true);
+  await expect
+    .poll(async () => {
+      const next = await measure(page);
+      return next.body.width / next.body.height < 1.5;
+    })
+    .toBe(true);
   m = await measure(page);
   expect(m.relative.top).toBeGreaterThanOrEqual(m.keyboard.bottom - 1);
 
   // 縮めて領域が再び横長になると、また左右に並ぶ。
   await dragCorner(page, 'f', 0, -144);
-  await expect.poll(async () => {
-    const next = await measure(page);
-    return next.keyboard.right <= next.relative.left + 1;
-  }).toBe(true);
+  await expect
+    .poll(async () => {
+      const next = await measure(page);
+      return next.keyboard.right <= next.relative.left + 1;
+    })
+    .toBe(true);
 });
 
 test('下限より低いペインでは本体の領域の中でスクロールに戻り、図は下限より小さくならない', async ({ page }) => {
@@ -309,7 +316,9 @@ async function resizeFlowTo(page: Page, cols: number): Promise<void> {
   await page.mouse.down();
   await page.mouse.move(x + (cols - current) * COL_STEP, y, { steps: 8 });
   await page.mouse.up();
-  await expect.poll(async () => Math.round((await page.locator('.workspace-grid-item[data-pane-id="f"]').boundingBox())!.width)).toBe(cols * COL_STEP - 8);
+  await expect
+    .poll(async () => Math.round((await page.locator('.workspace-grid-item[data-pane-id="f"]').boundingBox())!.width))
+    .toBe(cols * COL_STEP - 8);
   await settleGrid(page);
 }
 
@@ -336,13 +345,14 @@ test('境目の前後で並びが行き来しても振動せず、同じ幅な�
   // 縦が低く、縦に積むと領域の中でスクロールが出る高さ（スクロールバーが幅を狭めて境目を行き来しないことの確認）
   await openWorkspace(page, [flow, comparison], rowWithFlowCols(7), { width: 1920, height: 900 });
   // 本体の幅と並びを1回の往復で読む
-  const readSignature = () => page.evaluate(() => {
-    const feature = document.querySelector('[data-react-feature="bigram-flow"]')!;
-    const body = feature.closest('.pane-body')!.getBoundingClientRect();
-    const keyboard = feature.querySelector('[aria-label="Keyboard Flow"]')!.getBoundingClientRect();
-    const relative = feature.querySelector('[aria-label="Relative vectors"]')!.getBoundingClientRect();
-    return `${body.width}|${keyboard.right <= relative.left + 1 ? 'side' : 'stack'}`;
-  });
+  const readSignature = () =>
+    page.evaluate(() => {
+      const feature = document.querySelector('[data-react-feature="bigram-flow"]')!;
+      const body = feature.closest('.pane-body')!.getBoundingClientRect();
+      const keyboard = feature.querySelector('[aria-label="Keyboard Flow"]')!.getBoundingClientRect();
+      const relative = feature.querySelector('[aria-label="Relative vectors"]')!.getBoundingClientRect();
+      return `${body.width}|${keyboard.right <= relative.left + 1 ? 'side' : 'stack'}`;
+    });
   const record = async (cols: number) => {
     await resizeFlowTo(page, cols);
     await expect.poll(async () => (await measure(page)).body.height).toBeLessThan(330);
@@ -373,15 +383,17 @@ test('Relative vectorsの図は、枠が図より広くてもカードの中央�
   ];
   for (const [name, panes, layout, size] of cases) {
     await openWorkspace(page, panes, layout, size);
-    const gaps = await page.evaluate(() => [...document.querySelectorAll('[data-react-feature="bigram-flow"] .flow-mini-panel')].map((panel) => {
-      const card = panel.getBoundingClientRect();
-      const svg = panel.querySelector('.flow-profile-svg')!.getBoundingClientRect();
-      // 描かれる正方形（縦横比を保って枠の中に収まる）の左右の余白
-      const side = Math.min(svg.width, svg.height);
-      const left = svg.left + (svg.width - side) / 2 - card.left;
-      const right = card.right - (svg.left + (svg.width + side) / 2);
-      return { left, right, side, card: card.width };
-    }));
+    const gaps = await page.evaluate(() =>
+      [...document.querySelectorAll('[data-react-feature="bigram-flow"] .flow-mini-panel')].map((panel) => {
+        const card = panel.getBoundingClientRect();
+        const svg = panel.querySelector('.flow-profile-svg')!.getBoundingClientRect();
+        // 描かれる正方形（縦横比を保って枠の中に収まる）の左右の余白
+        const side = Math.min(svg.width, svg.height);
+        const left = svg.left + (svg.width - side) / 2 - card.left;
+        const right = card.right - (svg.left + (svg.width + side) / 2);
+        return { left, right, side, card: card.width };
+      }),
+    );
     expect(gaps.length, name).toBe(2);
     for (const gap of gaps) {
       expect(gap.side, name).toBeGreaterThan(60);

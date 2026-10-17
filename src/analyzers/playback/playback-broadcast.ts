@@ -1,8 +1,4 @@
-import {
-  playbackBroadcastAvailability,
-  type PlaybackBroadcastAction,
-  type PlaybackPaneStatus,
-} from './session.ts';
+import { playbackBroadcastAvailability, type PlaybackBroadcastAction, type PlaybackPaneStatus } from './session.ts';
 
 /**
  * Workspaceの打鍵再生のペインどうしで、再生・一時停止・停止を伝える所。Reactを知らない。
@@ -38,7 +34,9 @@ export function createPlaybackBroadcast(): PlaybackBroadcast {
   return {
     subscribe(listener) {
       listeners.add(listener);
-      return () => { listeners.delete(listener); };
+      return () => {
+        listeners.delete(listener);
+      };
     },
     command: () => command,
     canPlay: () => availability.canPlay,
@@ -53,8 +51,8 @@ export function createPlaybackBroadcast(): PlaybackBroadcast {
         if (previous === undefined) return;
         statuses.delete(owner);
       } else {
-        if (previous !== undefined && previous.atStart === status.atStart
-          && previous.playing === status.playing && previous.atEnd === status.atEnd) return;
+        if (previous !== undefined && previous.atStart === status.atStart && previous.playing === status.playing && previous.atEnd === status.atEnd)
+          return;
         statuses.set(owner, status);
       }
       availability = playbackBroadcastAvailability(statuses.values());

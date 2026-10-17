@@ -12,7 +12,9 @@ import { cell, COL_STEP, dragHandle, itemOf, open, ROW_STEP, settle, stored } fr
 
 test('つかみは下の辺・右の辺・左の辺・右下の角の4つだけで、上の辺と他の角には無い', async ({ page }) => {
   await open(page, ['a'], [cell('a', 4, 0, 12, 10)]);
-  const classes = await page.locator('.workspace-grid-item .react-resizable-handle').evaluateAll((els) => els.map((el) => [...el.classList].find((c) => /^react-resizable-handle-/.test(c))));
+  const classes = await page
+    .locator('.workspace-grid-item .react-resizable-handle')
+    .evaluateAll((els) => els.map((el) => [...el.classList].find((c) => /^react-resizable-handle-/.test(c))));
   expect([...classes].sort()).toEqual(['react-resizable-handle-e', 'react-resizable-handle-s', 'react-resizable-handle-se', 'react-resizable-handle-w']);
 });
 
@@ -76,10 +78,13 @@ test('大きさの変更はUndo / Redoで1手ずつ戻り、再読み込みし�
   await expect.poll(async () => (await itemOf(page, 'a')).h).toBe(12);
 
   const before = await stored(page);
-  const boxes = () => page.locator('.workspace-grid-item').evaluateAll((els) => els.map((el) => {
-    const r = el.getBoundingClientRect();
-    return [el.getAttribute('data-pane-id'), Math.round(r.x), Math.round(r.y + scrollY), Math.round(r.width), Math.round(r.height)];
-  }));
+  const boxes = () =>
+    page.locator('.workspace-grid-item').evaluateAll((els) =>
+      els.map((el) => {
+        const r = el.getBoundingClientRect();
+        return [el.getAttribute('data-pane-id'), Math.round(r.x), Math.round(r.y + scrollY), Math.round(r.width), Math.round(r.height)];
+      }),
+    );
   // 大きさの変化にはライブラリの短い動き（200ms）が付くので、落ち着いてから測る
   await settle(page);
   const drawn = await boxes();
@@ -93,7 +98,10 @@ test('大きさの変更はUndo / Redoで1手ずつ戻り、再読み込みし�
 test('複製は元と同じ大きさで右隣に置く。右が塞がっていれば真下に置く', async ({ page }) => {
   await open(page, ['a', 'b'], [cell('a', 0, 0, 8, 12), cell('b', 8, 0, 8, 8)]);
   // aの右隣はbで塞がっている。aと同じ8 x 12を、aの真下へ
-  await page.locator('.workspace-grid-item[data-pane-id="a"]').getByRole('button', { name: /の操作$/ }).click();
+  await page
+    .locator('.workspace-grid-item[data-pane-id="a"]')
+    .getByRole('button', { name: /の操作$/ })
+    .click();
   await page.getByRole('menuitem', { name: /複製/ }).click();
   await expect.poll(async () => (await stored(page)).length).toBe(3);
   const afterFirst = await stored(page);
@@ -101,10 +109,13 @@ test('複製は元と同じ大きさで右隣に置く。右が塞がってい�
   expect(below).toEqual({ ...cell(below.id, 0, 12, 8, 12) });
 
   // bの右隣（x 16〜24）は空いているので、bと同じ8 x 8を右隣へ
-  await page.locator('.workspace-grid-item[data-pane-id="b"]').getByRole('button', { name: /の操作$/ }).click();
+  await page
+    .locator('.workspace-grid-item[data-pane-id="b"]')
+    .getByRole('button', { name: /の操作$/ })
+    .click();
   await page.getByRole('menuitem', { name: /複製/ }).click();
   await expect.poll(async () => (await stored(page)).length).toBe(4);
-  const right = (await stored(page)).find((item) => ![ 'a', 'b', below.id ].includes(item.id))!;
+  const right = (await stored(page)).find((item) => !['a', 'b', below.id].includes(item.id))!;
   expect(right).toEqual(cell(right.id, 16, 0, 8, 8));
   // 元のペインは動かない
   expect(await itemOf(page, 'a')).toEqual(cell('a', 0, 0, 8, 12));
@@ -113,7 +124,10 @@ test('複製は元と同じ大きさで右隣に置く。右が塞がってい�
 
 test('詰める設定: ペインを閉じると、下のペインが上へ詰まる。どのペインの大きさも変わらない', async ({ page }) => {
   await open(page, ['a', 'b', 'c'], [cell('a', 0, 0, 12, 8), cell('b', 0, 8, 12, 10), cell('c', 0, 18, 12, 6)], undefined, true);
-  await page.locator('.workspace-grid-item[data-pane-id="b"]').getByRole('button', { name: /の操作$/ }).click();
+  await page
+    .locator('.workspace-grid-item[data-pane-id="b"]')
+    .getByRole('button', { name: /の操作$/ })
+    .click();
   await page.getByRole('menuitem', { name: /閉じる/ }).click();
   await expect(page.locator('.workspace-grid-item')).toHaveCount(2);
   await expect.poll(async () => (await itemOf(page, 'c')).y).toBe(8);

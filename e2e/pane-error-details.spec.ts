@@ -8,14 +8,17 @@ const BREAK_MESSAGE = 'キー k_99 の座標が壊れている';
 
 /** 指定した Math の関数を、`__break` が立っている間だけ例外にする。 */
 async function breakMath(page: Page, name: 'hypot' | 'sin') {
-  await page.addInitScript(({ message, fn }) => {
-    const target = Math as unknown as Record<string, (...values: number[]) => number>;
-    const original = target[fn]!;
-    target[fn] = (...values: number[]) => {
-      if ((window as unknown as { __break?: boolean }).__break) throw new Error(message);
-      return original(...values);
-    };
-  }, { message: BREAK_MESSAGE, fn: name });
+  await page.addInitScript(
+    ({ message, fn }) => {
+      const target = Math as unknown as Record<string, (...values: number[]) => number>;
+      const original = target[fn]!;
+      target[fn] = (...values: number[]) => {
+        if ((window as unknown as { __break?: boolean }).__break) throw new Error(message);
+        return original(...values);
+      };
+    },
+    { message: BREAK_MESSAGE, fn: name },
+  );
 }
 
 /**
@@ -46,7 +49,13 @@ test('計算中の例外: 1文だけ出し、原文は折りたたんだ詳細�
   await expect(pane).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
 
   expect(page.workers()).toHaveLength(1);
-  await Promise.all(page.workers().map((worker) => worker.evaluate(() => { (self as unknown as { __break: boolean }).__break = true; })));
+  await Promise.all(
+    page.workers().map((worker) =>
+      worker.evaluate(() => {
+        (self as unknown as { __break: boolean }).__break = true;
+      }),
+    ),
+  );
   await page.getByLabel('既定の物理配列').selectOption('ortholinear');
 
   const alert = pane.locator('[data-pane-error]');
@@ -63,7 +72,9 @@ test('描画中の例外（error boundary）: 1文だけ出し、原文とstack�
   const pane = page.locator('.pane-frame');
   await expect(pane).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
 
-  await page.evaluate(() => { (window as unknown as { __break: boolean }).__break = true; });
+  await page.evaluate(() => {
+    (window as unknown as { __break: boolean }).__break = true;
+  });
   await page.getByLabel('既定の物理配列').selectOption('ortholinear');
 
   const alert = pane.locator('[data-pane-crashed]');

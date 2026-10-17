@@ -9,10 +9,7 @@ const source = readFileSync(new URL('./single-analyzers.ts', import.meta.url), '
 
 test('Workspaceに載せるSingleは、どれもペインに渡すものを登録している', () => {
   for (const entry of WORKSPACE_ANALYZERS.filter((candidate) => candidate.cardinality === 'single')) {
-    assert.ok(
-      source.includes(`'#analyzers/${entry.id}/definition.tsx'`),
-      `${entry.id}のペインに渡すものがsingle-analyzers.tsに無い`,
-    );
+    assert.ok(source.includes(`'#analyzers/${entry.id}/definition.tsx'`), `${entry.id}のペインに渡すものがsingle-analyzers.tsに無い`);
   }
 });
 

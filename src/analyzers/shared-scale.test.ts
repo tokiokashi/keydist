@@ -4,7 +4,11 @@ import { createScaleRegistry, mergeScaleRanges, scaleRangeWithZero } from './sha
 
 test('mergeScaleRangesは全部の範囲を含む最小と最大を返す', () => {
   assert.deepEqual(
-    mergeScaleRanges([{ min: 0, max: 69.7 }, { min: -2, max: 110.5 }, { min: 0, max: 40 }]),
+    mergeScaleRanges([
+      { min: 0, max: 69.7 },
+      { min: -2, max: 110.5 },
+      { min: 0, max: 40 },
+    ]),
     { min: -2, max: 110.5 },
   );
 });
@@ -50,7 +54,9 @@ test('レジストリは全体の範囲が変わらない報告では通知せ�
   registry.report('k', 'a', { min: 0, max: 110 });
   const before = registry.rangeOf('k');
   let calls = 0;
-  registry.subscribe(() => { calls += 1; });
+  registry.subscribe(() => {
+    calls += 1;
+  });
   registry.report('k', 'b', { min: 0, max: 70 });
   registry.report('k', 'a', { min: 0, max: 110 });
   registry.report('k', 'c', undefined);
@@ -63,7 +69,9 @@ test('レジストリは全体の範囲が変わらない報告では通知せ�
 test('レジストリは購読を外すと通知しない', () => {
   const registry = createScaleRegistry();
   let calls = 0;
-  const off = registry.subscribe(() => { calls += 1; });
+  const off = registry.subscribe(() => {
+    calls += 1;
+  });
   off();
   registry.report('k', 'a', { min: 0, max: 1 });
   assert.equal(calls, 0);

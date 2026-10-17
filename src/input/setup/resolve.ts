@@ -44,11 +44,7 @@ export type SetupResolution =
  * （resolveCascade側は `setupId` 省略時にSetupレベルの上書きを見ない仕様。ここで返す
  * contextは常にそのSetup自身のidを持つ、確定したSetupの解決結果を表す）。
  */
-export function resolveSetup(
-  setup: Setup,
-  catalog: SetupCatalog,
-  inputMethod: InputMethod,
-): SetupResolution {
+export function resolveSetup(setup: Setup, catalog: SetupCatalog, inputMethod: InputMethod): SetupResolution {
   const layout = catalog.layouts.get(setup.layoutId);
   const shape = catalog.shapes.get(setup.shapeId);
 

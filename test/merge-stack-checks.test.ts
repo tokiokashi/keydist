@@ -7,12 +7,17 @@ const { evaluateChecks, movedHeads } = require('../.github/scripts/merge-stack-c
 
 const required = ['verify', 'browser-e2e', 'commit-messages'];
 const run = (name: string, event: string, conclusion: string | null, t: string, status = 'completed') => ({
-  name, event, conclusion, status, started_at: t,
+  name,
+  event,
+  conclusion,
+  status,
+  started_at: t,
 });
 const check = (runs: unknown[]): string[] => evaluateChecks({ runs, required, selfJob: 'merge-stack', prNumber: 1 });
 
 const green = [
-  run('verify', 'push', 'success', '1'), run('verify', 'pull_request', 'success', '2'),
+  run('verify', 'push', 'success', '1'),
+  run('verify', 'pull_request', 'success', '2'),
   run('browser-e2e', 'pull_request', 'success', '2'),
   run('commit-messages', 'pull_request', 'success', '2'),
 ];
@@ -45,15 +50,13 @@ describe('evaluateChecks', () => {
     assert.match(p[0], /browser-e2e-shard.*failure/);
   });
   test('古い push 側の failure を新しい pull_request 側の success が隠さない', () => {
-    const runs = [...green.filter((r) => !(r.name === 'verify' && r.event === 'push')),
-      run('verify', 'push', 'failure', '1')];
+    const runs = [...green.filter((r) => !(r.name === 'verify' && r.event === 'push')), run('verify', 'push', 'failure', '1')];
     const p = check(runs);
     assert.equal(p.length, 1);
     assert.match(p[0], /verify.*push.*failure/);
   });
   test('片方が in_progress なら通らない', () => {
-    const runs = [...green.filter((r) => !(r.name === 'verify' && r.event === 'push')),
-      run('verify', 'push', null, '1', 'in_progress')];
+    const runs = [...green.filter((r) => !(r.name === 'verify' && r.event === 'push')), run('verify', 'push', null, '1', 'in_progress')];
     assert.match(check(runs)[0], /終わっていない/);
   });
   test('同じ event 内の再実行は新しい方を見る', () => {

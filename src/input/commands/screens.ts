@@ -1,21 +1,5 @@
-import {
-  applyOutcome,
-  applyQuietlyToAll,
-  DEFAULT_MAX_HISTORY_ENTRIES,
-  emptyCommandHistory,
-  redo,
-  undo,
-  withoutEntriesTouching,
-} from './history.ts';
-import type {
-  AssetValues,
-  Command,
-  CommandHistory,
-  CommandOutcome,
-  HistoryStepOutcome,
-  ItemScopes,
-  ScreenHistories,
-} from './types.ts';
+import { applyOutcome, applyQuietlyToAll, DEFAULT_MAX_HISTORY_ENTRIES, emptyCommandHistory, redo, undo, withoutEntriesTouching } from './history.ts';
+import type { AssetValues, Command, CommandHistory, CommandOutcome, HistoryStepOutcome, ItemScopes, ScreenHistories } from './types.ts';
 
 /**
  * 画面ごとの履歴を持つ側（`ScreenHistories`）の操作。履歴は画面ごとに分かれていて、
@@ -26,11 +10,7 @@ export function emptyScreenHistories<A extends AssetValues>(): ScreenHistories<A
   return new Map();
 }
 
-function withHistory<A extends AssetValues>(
-  histories: ScreenHistories<A>,
-  screen: string,
-  history: CommandHistory<A>,
-): ScreenHistories<A> {
+function withHistory<A extends AssetValues>(histories: ScreenHistories<A>, screen: string, history: CommandHistory<A>): ScreenHistories<A> {
   return new Map(histories).set(screen, history);
 }
 
@@ -51,7 +31,11 @@ export function applyCommandInScreen<A extends AssetValues>(
   const outcome = command(assets);
   if (outcome.kind === 'quiet') {
     const screens = [...histories.keys()];
-    const result = applyQuietlyToAll(assets, screens.map((key) => histories.get(key)!), outcome);
+    const result = applyQuietlyToAll(
+      assets,
+      screens.map((key) => histories.get(key)!),
+      outcome,
+    );
     if (result.outcome.kind !== 'applied') return { assets, histories, outcome: result.outcome };
     return {
       assets: result.assets,
@@ -94,17 +78,12 @@ export function applyExternalChangeToScreens<A extends AssetValues, K extends ke
 ): { readonly assets: A; readonly histories: ScreenHistories<A> } {
   return {
     assets: { ...assets, [assetKey]: value },
-    histories: new Map(
-      [...histories].map(([screen, history]) => [screen, withoutEntriesTouching(history, assetKey)] as const),
-    ),
+    histories: new Map([...histories].map(([screen, history]) => [screen, withoutEntriesTouching(history, assetKey)] as const)),
   };
 }
 
 /** `screen`の履歴を捨てる（画面そのものが無くなった時）。 */
-export function discardScreenHistory<A extends AssetValues>(
-  histories: ScreenHistories<A>,
-  screen: string,
-): ScreenHistories<A> {
+export function discardScreenHistory<A extends AssetValues>(histories: ScreenHistories<A>, screen: string): ScreenHistories<A> {
   if (!histories.has(screen)) return histories;
   const next = new Map(histories);
   next.delete(screen);

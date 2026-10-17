@@ -13,8 +13,9 @@ const OPTIONS_KEY = 'keydist:standalone-analyzer-options';
 /** 図の見た目の要点。バッジの個数以外が動かないことを比べる。 */
 async function snapshot(flow: Locator) {
   return {
-    edges: await flow.locator('[data-flow-edge="true"]').evaluateAll((els) =>
-      els.map((el) => `${el.getAttribute('data-flow-weight')}:${el.getAttribute('stroke-width')}`)),
+    edges: await flow
+      .locator('[data-flow-edge="true"]')
+      .evaluateAll((els) => els.map((el) => `${el.getAttribute('data-flow-weight')}:${el.getAttribute('stroke-width')}`)),
     legend: await flow.locator('.flow-legend').innerText(),
   };
 }
@@ -59,11 +60,13 @@ test('個別画面: 連打の回数バッジを消せて、戻せる。線と凡
   await expect(flow).toBeVisible({ timeout: 10_000 });
   // 表示は読み込み前のHTMLにも出るので、操作の前にハイドレーションと資産の読み込みを待つ
   await waitForHydration(page);
-  await expectToggleCycle(flow, () => openFigureSettings(page, 'Keyboard Flow'), async () => {
-    await expect
-      .poll(async () => page.evaluate((key) => localStorage.getItem(key), OPTIONS_KEY))
-      .toContain('"repeatBadge":false');
-  });
+  await expectToggleCycle(
+    flow,
+    () => openFigureSettings(page, 'Keyboard Flow'),
+    async () => {
+      await expect.poll(async () => page.evaluate((key) => localStorage.getItem(key), OPTIONS_KEY)).toContain('"repeatBadge":false');
+    },
+  );
 });
 
 test('個別画面: 消した設定は再読み込みで保たれ、項目の既定値へ戻すで出る', async ({ page }) => {
@@ -74,9 +77,7 @@ test('個別画面: 消した設定は再読み込みで保たれ、項目の既
   await expect(figure.locator('[data-option-reset="true"]')).toHaveCount(0);
   await figure.getByRole('checkbox', { name: LABEL }).uncheck();
   await expect(figure.locator('[data-option-reset="true"]')).toHaveCount(1);
-  await expect
-    .poll(async () => page.evaluate((key) => localStorage.getItem(key), OPTIONS_KEY))
-    .toContain('"repeatBadge":false');
+  await expect.poll(async () => page.evaluate((key) => localStorage.getItem(key), OPTIONS_KEY)).toContain('"repeatBadge":false');
 
   await page.reload();
   await expect(flow).toBeVisible({ timeout: 10_000 });
@@ -96,9 +97,7 @@ test('個別画面: 消した操作は文脈バーの元に戻すで戻る', asy
   await expect(flow).toBeVisible({ timeout: 10_000 });
   await (await openFigureSettings(page, 'Keyboard Flow')).getByRole('checkbox', { name: LABEL }).uncheck();
   await expect(flow).toHaveAttribute('data-repeat-badge', 'false');
-  await expect
-    .poll(async () => page.evaluate((key) => localStorage.getItem(key), OPTIONS_KEY))
-    .toContain('"repeatBadge":false');
+  await expect.poll(async () => page.evaluate((key) => localStorage.getItem(key), OPTIONS_KEY)).toContain('"repeatBadge":false');
   await page.getByRole('button', { name: '元に戻す' }).click();
   await expect(flow).toHaveAttribute('data-repeat-badge', 'true');
   await expect(flow.locator('.flow-repeat-badge').first()).toBeAttached();
@@ -108,20 +107,27 @@ test('Workspace のペイン: 連打の回数バッジを消せて、戻せる�
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.addInitScript(() => {
     if (localStorage.getItem('keydist:workspaces') === null) {
-      localStorage.setItem('keydist:workspaces', JSON.stringify({
-        version: 4,
-        workspaces: [{
-          id: 'badge',
-          name: 'バッジ',
-          text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
-          panes: [{
-            id: 'a',
-            analyzerId: 'bigram-flow',
-            binding: { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } } },
-          }],
-          grid: [{ id: 'a', x: 0, y: 0, w: 12, h: 20 }],
-        }],
-      }));
+      localStorage.setItem(
+        'keydist:workspaces',
+        JSON.stringify({
+          version: 4,
+          workspaces: [
+            {
+              id: 'badge',
+              name: 'バッジ',
+              text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+              panes: [
+                {
+                  id: 'a',
+                  analyzerId: 'bigram-flow',
+                  binding: { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } } },
+                },
+              ],
+              grid: [{ id: 'a', x: 0, y: 0, w: 12, h: 20 }],
+            },
+          ],
+        }),
+      );
     }
   });
   await page.goto('/workspace/badge');

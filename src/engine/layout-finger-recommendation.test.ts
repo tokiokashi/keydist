@@ -5,12 +5,7 @@ import { PHYSICAL_SHAPES } from '#input/shapes/geometry.ts';
 import type { TextLanguage } from '#input/text/language.ts';
 import { generateEngineTrace, interpretEngineTrace } from './pipeline.ts';
 import { resolveEngineInput } from './resolved-input.ts';
-import {
-  EMPTY_SETTINGS_OVERRIDES,
-  resolveSettings,
-  setSettingsOverride,
-  type SettingsCascadeOverrides,
-} from './settings-items.ts';
+import { EMPTY_SETTINGS_OVERRIDES, resolveSettings, setSettingsOverride, type SettingsCascadeOverrides } from './settings-items.ts';
 
 const SHAPES = new Map(Object.values(PHYSICAL_SHAPES).map((shape) => [shape.id, shape] as const));
 
@@ -36,11 +31,7 @@ function measure(layoutId: string, overrides: SettingsCascadeOverrides, language
   return { input: result.input, trace, interpretation };
 }
 
-function override(
-  base: SettingsCascadeOverrides,
-  level: Parameters<typeof setSettingsOverride>[1],
-  assignmentId: string,
-): SettingsCascadeOverrides {
+function override(base: SettingsCascadeOverrides, level: Parameters<typeof setSettingsOverride>[1], assignmentId: string): SettingsCascadeOverrides {
   const written = setSettingsOverride(base, level, 'fingerAssignmentId', assignmentId);
   assert.ok(written.ok);
   if (!written.ok) throw new Error('unreachable');
@@ -79,11 +70,7 @@ test('配列「QWERTY最適化」の数値は、QWERTYを「QWERTY最適化」�
 });
 
 test('配列「QWERTY最適化」の推奨は、全体・Workspace・物理配列のレベルで選んだ割り当てより強い', () => {
-  for (const level of [
-    { kind: 'global' },
-    { kind: 'workspace' },
-    { kind: 'shape', shapeId: 'row-staggered' },
-  ] as const) {
+  for (const level of [{ kind: 'global' }, { kind: 'workspace' }, { kind: 'shape', shapeId: 'row-staggered' }] as const) {
     const resolved = measure('qwerty-optimized', override(EMPTY_SETTINGS_OVERRIDES, level, 'jis-default'), 'en', 'abc');
     assert.equal(resolved.input.geometry.assignment.id, 'qwerty-optimized', level.kind);
   }

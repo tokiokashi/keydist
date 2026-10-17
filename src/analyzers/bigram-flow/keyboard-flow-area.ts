@@ -35,11 +35,7 @@ export function fitKeyboardToArea(spanX: number, spanY: number): KeyboardFlowFit
   const contentH = spanY * KEY_PITCH;
   const availW = AREA_WIDTH - AREA_PAD * 2;
   const availH = AREA_HEIGHT - AREA_PAD * 2;
-  const shrink = Math.min(
-    1,
-    contentW > 0 ? availW / contentW : 1,
-    contentH > 0 ? availH / contentH : 1,
-  );
+  const shrink = Math.min(1, contentW > 0 ? availW / contentW : 1, contentH > 0 ? availH / contentH : 1);
   return {
     originX: (AREA_WIDTH - contentW) / 2,
     originY: (AREA_HEIGHT - contentH) / 2,

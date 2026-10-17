@@ -2,20 +2,18 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { KeyValueStorage } from '#platform/persistence/storage.ts';
 import { APP_STATE_STORAGE_KEY } from '../state/app-state-storage.ts';
-import {
-  SIDEBAR_BOOTSTRAP_SCRIPT,
-  loadSidebarCollapsed,
-  loadSidebarPinned,
-  saveSidebarCollapsed,
-  saveSidebarPinned,
-} from './sidebar-preference.ts';
+import { SIDEBAR_BOOTSTRAP_SCRIPT, loadSidebarCollapsed, loadSidebarPinned, saveSidebarCollapsed, saveSidebarPinned } from './sidebar-preference.ts';
 
 function createFakeStorage(initial: Record<string, string> = {}): KeyValueStorage {
   const map = new Map(Object.entries(initial));
   return {
     getItem: (key) => map.get(key) ?? null,
-    setItem: (key, value) => { map.set(key, value); },
-    removeItem: (key) => { map.delete(key); },
+    setItem: (key, value) => {
+      map.set(key, value);
+    },
+    removeItem: (key) => {
+      map.delete(key);
+    },
   };
 }
 
@@ -38,8 +36,12 @@ test('サイドバーの固定: 外したことを覚え、他の項目を消さ
 
 test('サイドバーの固定: storageが例外を投げても固定として読む', () => {
   const storage: KeyValueStorage = {
-    getItem: () => { throw new Error('blocked'); },
-    setItem: () => { throw new Error('blocked'); },
+    getItem: () => {
+      throw new Error('blocked');
+    },
+    setItem: () => {
+      throw new Error('blocked');
+    },
     removeItem: () => {},
   };
   assert.equal(loadSidebarPinned(storage), true);
@@ -92,7 +94,13 @@ test('固定と畳んだまとまりは同じshellに置き、片方の保存が
 /** head scriptを、与えた保存値で走らせた後の `<html>` の属性を返す。 */
 function runBootstrap(stored: string | null): Record<string, string> {
   const attributes: Record<string, string> = {};
-  const document = { documentElement: { setAttribute: (name: string, value: string) => { attributes[name] = value; } } };
+  const document = {
+    documentElement: {
+      setAttribute: (name: string, value: string) => {
+        attributes[name] = value;
+      },
+    },
+  };
   const localStorage = { getItem: () => stored };
   new Function('localStorage', 'document', SIDEBAR_BOOTSTRAP_SCRIPT)(localStorage, document);
   return attributes;
@@ -102,10 +110,10 @@ test('描画の前のスクリプト: 畳んだまとまりと固定の解除を
   assert.deepEqual(runBootstrap(null), {});
   assert.deepEqual(runBootstrap('{broken'), {});
   assert.deepEqual(runBootstrap(JSON.stringify({ version: 2, shell: { sidebarCollapsed: 'about' } })), {});
-  assert.deepEqual(
-    runBootstrap(JSON.stringify({ version: 2, shell: { sidebarPinned: false, sidebarCollapsed: ['about', 'nope', 'assets'] } })),
-    { 'data-sidebar': 'unpinned', 'data-sidebar-collapsed': 'assets about' },
-  );
+  assert.deepEqual(runBootstrap(JSON.stringify({ version: 2, shell: { sidebarPinned: false, sidebarCollapsed: ['about', 'nope', 'assets'] } })), {
+    'data-sidebar': 'unpinned',
+    'data-sidebar-collapsed': 'assets about',
+  });
 });
 
 test('描画の前のスクリプトと読み込みは、同じ保存値から同じ畳んだまとまりと固定を取り出す', () => {

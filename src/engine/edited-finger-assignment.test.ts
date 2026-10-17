@@ -3,12 +3,7 @@ import test from 'node:test';
 import { applyCommand, emptyCommandHistory } from '#input/commands/index.ts';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { emptyCascadeOverrides } from '#input/settings/index.ts';
-import {
-  assignColumnFinger,
-  assignHomeKey,
-  assignKeyFinger,
-  resetToDefaultAssignment,
-} from '#input/shapes/finger-assignment-edit.ts';
+import { assignColumnFinger, assignHomeKey, assignKeyFinger, resetToDefaultAssignment } from '#input/shapes/finger-assignment-edit.ts';
 import {
   DEFAULT_FINGER_ASSIGNMENT,
   JIS_FINGER_ASSIGNMENT,
@@ -18,11 +13,7 @@ import {
 } from '#input/shapes/geometry.ts';
 import { emptyTextLibrary } from '#input/text/library.ts';
 import { initialTextSelection } from '#input/text/selection.ts';
-import {
-  createFingerAssignmentCommand,
-  setFingerAssignmentContentCommand,
-  type KeydistAssets,
-} from './commands.ts';
+import { createFingerAssignmentCommand, setFingerAssignmentContentCommand, type KeydistAssets } from './commands.ts';
 import { initialMultiTargetSelection } from './multi-target-selection.ts';
 import { generateEngineTrace, interpretEngineTrace } from './pipeline.ts';
 import { resolveEngineInput } from './resolved-input.ts';
@@ -73,7 +64,11 @@ function measure(assignment: FingerAssignment, shapeId: string) {
 
 /** 画面の操作と同じく、作成→中身の書き換えをコマンドで通し、保存された割り当てを返す。 */
 function createAndEdit(base: FingerAssignment, edit: (assignment: FingerAssignment) => FingerAssignment): FingerAssignment {
-  const created = applyCommand(emptyAssets(), emptyCommandHistory<KeydistAssets>(), createFingerAssignmentCommand(() => 'finger-edited', base, '編集した割り当て'));
+  const created = applyCommand(
+    emptyAssets(),
+    emptyCommandHistory<KeydistAssets>(),
+    createFingerAssignmentCommand(() => 'finger-edited', base, '編集した割り当て'),
+  );
   const stored = created.assets.fingerAssignments[0]!;
   const edited = edit(stored);
   const step = applyCommand(created.assets, created.history, setFingerAssignmentContentCommand(stored.id, edited));
@@ -83,17 +78,13 @@ function createAndEdit(base: FingerAssignment, edit: (assignment: FingerAssignme
 test('画面の編集で保存した割り当ては、同じ中身を直接与えた時と同じ数値になる', () => {
   const shape = PHYSICAL_SHAPES['row-staggered'];
   const stored = createAndEdit(DEFAULT_FINGER_ASSIGNMENT, (assignment) =>
-    assignHomeKey(assignColumnFinger(assignKeyFinger(assignment, 'b', 'RI'), shape, 10, 'RR'), 'RR', 'l'));
+    assignHomeKey(assignColumnFinger(assignKeyFinger(assignment, 'b', 'RI'), shape, 10, 'RR'), 'RR', 'l'),
+  );
 
   // 直接与える側は、編集関数を通さず中身を手で書く
   const baseFinger: FingerAssignment['baseFinger'] = { ...DEFAULT_FINGER_ASSIGNMENT.baseFinger, b: 'RI' };
   for (const id of ['-', '[', "'"]) baseFinger[id] = 'RR';
-  const direct = makeFingerAssignment(
-    'finger-edited',
-    '編集した割り当て',
-    baseFinger,
-    { ...DEFAULT_FINGER_ASSIGNMENT.homeKey, RR: 'l' },
-  );
+  const direct = makeFingerAssignment('finger-edited', '編集した割り当て', baseFinger, { ...DEFAULT_FINGER_ASSIGNMENT.homeKey, RR: 'l' });
   assert.deepEqual(stored, direct);
 
   const viaEditor = measure(stored, shape.id);
@@ -111,7 +102,8 @@ test('既定へ戻すと、物理配列の規格（ANSI・JIS）の既定の割�
     const shape = PHYSICAL_SHAPES[shapeId as keyof typeof PHYSICAL_SHAPES];
     // 既定に無いキーの割り当てを足し、列とキーを書き換えた状態から戻す
     const stored = createAndEdit(DEFAULT_FINGER_ASSIGNMENT, (assignment) =>
-      assignKeyFinger(assignKeyFinger(assignColumnFinger(assignment, shape, 3, 'LM'), 'b', 'RI'), 'r9c20', 'RP'));
+      assignKeyFinger(assignKeyFinger(assignColumnFinger(assignment, shape, 3, 'LM'), 'b', 'RI'), 'r9c20', 'RP'),
+    );
     const reset = createAndEditAgain(stored, (assignment) => resetToDefaultAssignment(assignment, defaults));
     assert.deepEqual(reset.baseFinger, defaults.baseFinger, shapeId);
     assert.deepEqual(reset.fingerKeys, defaults.fingerKeys, shapeId);

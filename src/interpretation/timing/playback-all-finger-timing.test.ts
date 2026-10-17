@@ -1,20 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  ALL_FINGERS,
-  buildGeometry,
-  type Finger,
-  type Key,
-  type Point,
-} from '#input/shapes/geometry.ts';
+import { ALL_FINGERS, buildGeometry, type Finger, type Key, type Point } from '#input/shapes/geometry.ts';
 import type { Press, Stroke, StrokeParticipation } from '#trace/generate.ts';
 import { analyzeStrokeStructure } from '../structure/aggregate.ts';
-import {
-  advancePlayback,
-  createPlaybackState,
-  playbackRecentActionsPerSecond,
-  playbackTimingSchedule,
-} from './playback.ts';
+import { advancePlayback, createPlaybackState, playbackRecentActionsPerSecond, playbackTimingSchedule } from './playback.ts';
 
 const geometry = buildGeometry('row-staggered');
 
@@ -32,11 +21,7 @@ const key = (id: string, finger: Finger, point: Point): Key => ({
   col: 0,
 });
 
-const press = (
-  finger: Finger,
-  point: Point,
-  options: { id?: string; sfb?: boolean; distance?: number } = {},
-): Press => ({
+const press = (finger: Finger, point: Point, options: { id?: string; sfb?: boolean; distance?: number } = {}): Press => ({
   finger,
   keys: [key(options.id ?? `k-${finger}`, finger, point)],
   target: point,
@@ -46,13 +31,8 @@ const press = (
   sfb: options.sfb ?? false,
 });
 
-const positions = (
-  presses: readonly Press[],
-  extra: readonly StrokeParticipation[] = [],
-): Stroke['positions'] => {
-  const result = Object.fromEntries(
-    ALL_FINGERS.map((finger) => [finger, { ...geometry.homes[finger] }]),
-  ) as Stroke['positions'];
+const positions = (presses: readonly Press[], extra: readonly StrokeParticipation[] = []): Stroke['positions'] => {
+  const result = Object.fromEntries(ALL_FINGERS.map((finger) => [finger, { ...geometry.homes[finger] }])) as Stroke['positions'];
   for (const p of presses) result[p.finger] = { ...p.target };
   for (const participation of extra) {
     const first = participation.keys[0];
@@ -61,11 +41,7 @@ const positions = (
   return result;
 };
 
-const stroke = (
-  index: number,
-  presses: Press[],
-  extra: StrokeParticipation[] = [],
-): Stroke => ({
+const stroke = (index: number, presses: Press[], extra: StrokeParticipation[] = []): Stroke => ({
   index,
   char: String(index),
   inputChar: String(index),
@@ -78,12 +54,14 @@ const stroke = (
   triggerKeys: [],
   pairedTriggerKeys: [],
   participations: [
-    ...presses.map((p): StrokeParticipation => ({
-      hand: p.finger.startsWith('L') ? 'left' : 'right',
-      finger: p.finger,
-      keys: p.keys,
-      roles: ['output'],
-    })),
+    ...presses.map(
+      (p): StrokeParticipation => ({
+        hand: p.finger.startsWith('L') ? 'left' : 'right',
+        finger: p.finger,
+        keys: p.keys,
+        roles: ['output'],
+      }),
+    ),
     ...extra,
   ],
   presses,
@@ -91,8 +69,7 @@ const stroke = (
   positions: positions(presses, extra),
 });
 
-const ends = (schedule: ReturnType<typeof playbackTimingSchedule>) =>
-  schedule.map((step) => Math.round(step.endMs));
+const ends = (schedule: ReturnType<typeof playbackTimingSchedule>) => schedule.map((step) => Math.round(step.endMs));
 
 test('全指律速OFFは従来のbase scheduleと完全一致する', () => {
   const analysis = analyzeStrokeStructure([
@@ -102,14 +79,7 @@ test('全指律速OFFは従来のbase scheduleと完全一致する', () => {
   ]);
 
   const base = playbackTimingSchedule(analysis, 10, false);
-  const explicitOff = playbackTimingSchedule(
-    analysis,
-    10,
-    false,
-    undefined,
-    1,
-    { allFingerMovementDelay: false, geometry },
-  );
+  const explicitOff = playbackTimingSchedule(analysis, 10, false, undefined, 1, { allFingerMovementDelay: false, geometry });
 
   assert.deepEqual(explicitOff, base);
   assert.deepEqual(ends(base), [100, 200, 300]);
@@ -122,22 +92,12 @@ test('全指律速ONは物理的に間に合わない移動だけ必要量を延
     stroke(2, [press('LI', at('LI', 3))]),
   ]);
 
-  const schedule = playbackTimingSchedule(
-    analysis,
-    10,
-    false,
-    undefined,
-    1,
-    { allFingerMovementDelay: true, geometry },
-  );
+  const schedule = playbackTimingSchedule(analysis, 10, false, undefined, 1, { allFingerMovementDelay: true, geometry });
 
   // baseは各100ms。LIは1打目終了(100ms)から3uを10u/sで移動するため、
   // 3打目は300msでは間に合わず400msまで延びる。
   assert.deepEqual(ends(schedule), [100, 200, 400]);
-  assert.equal(
-    playbackRecentActionsPerSecond(analysis, 3, 10, false, 3, undefined, 1, schedule),
-    7.5,
-  );
+  assert.equal(playbackRecentActionsPerSecond(analysis, 3, 10, false, 3, undefined, 1, schedule), 7.5);
 
   const state = {
     ...createPlaybackState(10, false),
@@ -150,41 +110,19 @@ test('全指律速ONは物理的に間に合わない移動だけ必要量を延
 });
 
 test('同時押しの複数指移動は直列加算せず最も遅い指だけで律速する', () => {
-  const analysis = analyzeStrokeStructure([
-    stroke(0, [
-      press('LI', at('LI', 3)),
-      press('RI', at('RI', 2)),
-    ]),
-  ]);
+  const analysis = analyzeStrokeStructure([stroke(0, [press('LI', at('LI', 3)), press('RI', at('RI', 2))])]);
 
-  const schedule = playbackTimingSchedule(
-    analysis,
-    10,
-    false,
-    undefined,
-    1,
-    { allFingerMovementDelay: true, geometry },
-  );
+  const schedule = playbackTimingSchedule(analysis, 10, false, undefined, 1, { allFingerMovementDelay: true, geometry });
 
   // 3u=300ms と 2u=200ms は並列移動。合計500msではなくmaxの300ms。
   assert.deepEqual(ends(schedule), [300]);
 });
 
 test('sameFingerDelayと全指律速は加算せず同じ移動制約のmaxを取る', () => {
-  const analysis = analyzeStrokeStructure([
-    stroke(0, [press('LI', at('LI'))]),
-    stroke(1, [press('LI', at('LI', 3), { sfb: true, distance: 3 })]),
-  ]);
+  const analysis = analyzeStrokeStructure([stroke(0, [press('LI', at('LI'))]), stroke(1, [press('LI', at('LI', 3), { sfb: true, distance: 3 })])]);
 
   const base = playbackTimingSchedule(analysis, 10, true);
-  const constrained = playbackTimingSchedule(
-    analysis,
-    10,
-    true,
-    undefined,
-    1,
-    { allFingerMovementDelay: true, geometry },
-  );
+  const constrained = playbackTimingSchedule(analysis, 10, true, undefined, 1, { allFingerMovementDelay: true, geometry });
 
   // 2打目は既存sameFingerDelayだけで300ms必要。全指制約を足し算しない。
   assert.deepEqual(ends(base), [100, 400]);
@@ -221,22 +159,8 @@ test('held-trigger継続中の指はStroke終了まで空いたとみなさな�
     measuredAt: 1,
   };
 
-  const heldSchedule = playbackTimingSchedule(
-    analysis,
-    10,
-    false,
-    calibration,
-    1,
-    { allFingerMovementDelay: true, geometry },
-  );
-  const freeSchedule = playbackTimingSchedule(
-    withoutHoldAnalysis,
-    10,
-    false,
-    calibration,
-    1,
-    { allFingerMovementDelay: true, geometry },
-  );
+  const heldSchedule = playbackTimingSchedule(analysis, 10, false, calibration, 1, { allFingerMovementDelay: true, geometry });
+  const freeSchedule = playbackTimingSchedule(withoutHoldAnalysis, 10, false, calibration, 1, { allFingerMovementDelay: true, geometry });
 
   // LIが2打目まで保持される場合、1u/5u/s=200msの移動開始は200ms以降。
   assert.deepEqual(ends(freeSchedule), [100, 200, 300]);

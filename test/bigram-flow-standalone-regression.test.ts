@@ -18,12 +18,7 @@ import { generateTrace, type TracePolicy } from '#trace/generate.ts';
 import { tableForRule } from '#input/romaji/rules.ts';
 import { sampleText, type TextLanguage } from '#input/text/samples.ts';
 import type { Setup } from '#input/setup/index.ts';
-import {
-  EMPTY_SETTINGS_OVERRIDES,
-  setSettingsOverride,
-  type SettingsCascadeOverrides,
-  type SettingsItemId,
-} from '#engine/settings-items.ts';
+import { EMPTY_SETTINGS_OVERRIDES, setSettingsOverride, type SettingsCascadeOverrides, type SettingsItemId } from '#engine/settings-items.ts';
 import { resolveEngineInput } from '#engine/resolved-input.ts';
 import { createEngineCache } from '#engine/cache.ts';
 import { bigramFlowDefinition } from '#analyzers/bigram-flow/extract.ts';
@@ -96,17 +91,12 @@ function directTrace(fixtureCase: FixtureCase) {
   assert.ok(layout);
   const text = sampleText(fixtureCase.language, fixtureCase.sampleId);
 
-  const resolvedLayout = fixtureCase.conditions.romajiRuleId !== null
-    ? withRomaji(layout!, tableForRule(fixtureCase.conditions.romajiRuleId))
-    : layout!;
+  const resolvedLayout = fixtureCase.conditions.romajiRuleId !== null ? withRomaji(layout!, tableForRule(fixtureCase.conditions.romajiRuleId)) : layout!;
 
   const shapeId = fixtureCase.conditions.geometryShapeId as PresetGeometryKind;
   const fingerAssignment = FINGER_ASSIGNMENTS[fixtureCase.conditions.fingerAssignmentId];
   assert.ok(fingerAssignment);
-  const geometry = buildGeometry(
-    PHYSICAL_SHAPES[shapeId],
-    assignmentWithHomeKeys(fingerAssignment, layout!.homeKeys),
-  );
+  const geometry = buildGeometry(PHYSICAL_SHAPES[shapeId], assignmentWithHomeKeys(fingerAssignment, layout!.homeKeys));
   const tracePolicy: TracePolicy = {
     windowSize: fixtureCase.conditions.windowSize,
     sfbHomeCost: fixtureCase.conditions.sfbHomeCost,

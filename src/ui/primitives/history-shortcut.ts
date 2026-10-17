@@ -39,9 +39,7 @@ export interface ShortcutTarget {
 }
 
 /** 文字を入れない`input`の種類。これらは欄そのものに元に戻すが無い。 */
-const NON_TEXT_INPUT_TYPES: ReadonlySet<string> = new Set([
-  'checkbox', 'radio', 'range', 'button', 'submit', 'reset', 'image', 'file', 'color',
-]);
+const NON_TEXT_INPUT_TYPES: ReadonlySet<string> = new Set(['checkbox', 'radio', 'range', 'button', 'submit', 'reset', 'image', 'file', 'color']);
 
 /**
  * 文字を入力する欄（文字を入れる種類の`input`・`textarea`・`contenteditable`）か。ここにフォーカスがある間は、

@@ -1,20 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {
-  createWorkspacePanelRegistry,
-  resolvePanelLayout,
-  type WorkspacePanelDefinitionInput,
-} from './panel-registry.ts';
-import {
-  createWorkspaceState,
-  reconcileWorkspaceState,
-} from './workspace-state.ts';
-import {
-  workspaceReducer,
-} from './workspace-reducer.ts';
-import {
-  clampPanelRectToViewport,
-} from './viewport-clamp.ts';
+import { createWorkspacePanelRegistry, resolvePanelLayout, type WorkspacePanelDefinitionInput } from './panel-registry.ts';
+import { createWorkspaceState, reconcileWorkspaceState } from './workspace-state.ts';
+import { workspaceReducer } from './workspace-reducer.ts';
+import { clampPanelRectToViewport } from './viewport-clamp.ts';
 
 const definitionInputs: WorkspacePanelDefinitionInput[] = [
   { id: 'input.keyboard', title: 'Keyboard', defaultDockSlot: 'main', minWidth: 240 },
@@ -26,14 +15,8 @@ const registry = createWorkspacePanelRegistry(definitionInputs);
 const definitions = [...registry.values()];
 
 test('workspace registry rejects invalid ids and normalizes capabilities', () => {
-  assert.throws(
-    () => createWorkspacePanelRegistry([{ ...definitionInputs[0]!, id: '' }]),
-    /must not be empty/,
-  );
-  assert.throws(
-    () => createWorkspacePanelRegistry([definitionInputs[0]!, definitionInputs[0]!]),
-    /Duplicate workspace panel id/,
-  );
+  assert.throws(() => createWorkspacePanelRegistry([{ ...definitionInputs[0]!, id: '' }]), /must not be empty/);
+  assert.throws(() => createWorkspacePanelRegistry([definitionInputs[0]!, definitionInputs[0]!]), /Duplicate workspace panel id/);
 
   assert.equal(registry.get('input.keyboard')?.canFloat, true);
   assert.equal(registry.get('input.keyboard')?.canHide, false);
@@ -69,7 +52,10 @@ test('workspace state starts docked and keeps bottom-to-top registration order',
   const state = createWorkspaceState(definitions);
 
   assert.equal(state.version, 1);
-  assert.deepEqual(state.zOrder, definitions.map(({ id }) => id));
+  assert.deepEqual(
+    state.zOrder,
+    definitions.map(({ id }) => id),
+  );
   assert.deepEqual(state.panels['input.keyboard'], {
     visible: true,
     mode: 'docked',
@@ -99,11 +85,7 @@ test('workspace reducer handles float, move, resize, activate, visibility and do
   });
 
   state = workspaceReducer(state, { type: 'activate', id: 'input.details' });
-  assert.deepEqual(state.zOrder, [
-    'input.layer:thumb-l',
-    'input.keyboard',
-    'input.details',
-  ]);
+  assert.deepEqual(state.zOrder, ['input.layer:thumb-l', 'input.keyboard', 'input.details']);
 
   state = workspaceReducer(state, { type: 'set-visible', id: 'input.details', visible: false });
   assert.equal(state.panels['input.details']?.visible, false);
@@ -121,30 +103,19 @@ test('workspace reducer handles float, move, resize, activate, visibility and do
 test('workspace reducer ignores unknown panel ids', () => {
   const state = createWorkspaceState(definitions);
   assert.equal(workspaceReducer(state, { type: 'activate', id: 'missing' }), state);
-  assert.equal(
-    workspaceReducer(state, { type: 'set-visible', id: 'missing', visible: false }),
-    state,
-  );
+  assert.equal(workspaceReducer(state, { type: 'set-visible', id: 'missing', visible: false }), state);
 });
 
 test('viewport clamp restores a panel fully inside the current viewport', () => {
   assert.deepEqual(
-    clampPanelRectToViewport(
-      { x: 1800, y: 1000, width: 700, height: 500 },
-      { width: 1280, height: 720 },
-      { minWidth: 320, minHeight: 180 },
-    ),
+    clampPanelRectToViewport({ x: 1800, y: 1000, width: 700, height: 500 }, { width: 1280, height: 720 }, { minWidth: 320, minHeight: 180 }),
     { x: 580, y: 220, width: 700, height: 500 },
   );
 });
 
 test('viewport clamp respects minimum size but never exceeds the viewport', () => {
   assert.deepEqual(
-    clampPanelRectToViewport(
-      { x: -20, y: Number.NaN, width: 10, height: 10 },
-      { width: 200, height: 100 },
-      { minWidth: 320, minHeight: 180 },
-    ),
+    clampPanelRectToViewport({ x: -20, y: Number.NaN, width: 10, height: 10 }, { width: 200, height: 100 }, { minWidth: 320, minHeight: 180 }),
     { x: 0, y: 0, width: 200, height: 100 },
   );
 });
@@ -158,10 +129,7 @@ test('workspace state reconciles dynamic definitions without losing surviving pa
   });
   state = workspaceReducer(state, { type: 'activate', id: 'input.details' });
 
-  const nextRegistry = createWorkspacePanelRegistry([
-    definitionInputs[0]!,
-    { id: 'input.layer:new', title: 'New layer', defaultDockSlot: 'guide' },
-  ]);
+  const nextRegistry = createWorkspacePanelRegistry([definitionInputs[0]!, { id: 'input.layer:new', title: 'New layer', defaultDockSlot: 'guide' }]);
   const reconciled = reconcileWorkspaceState(state, [...nextRegistry.values()]);
 
   assert.deepEqual(reconciled.panels['input.keyboard'], state.panels['input.keyboard']);
@@ -187,10 +155,7 @@ test('workspace state restores dormant floating rect when a definition reappears
   const floatedLayerCard = state.panels['input.layer:thumb-l'];
 
   // layout B: レイヤーカンペのdefinitionが消える
-  const layoutBRegistry = createWorkspacePanelRegistry([
-    definitionInputs[0]!,
-    definitionInputs[1]!,
-  ]);
+  const layoutBRegistry = createWorkspacePanelRegistry([definitionInputs[0]!, definitionInputs[1]!]);
   const afterB = reconcileWorkspaceState(state, [...layoutBRegistry.values()]);
   assert.equal(afterB.zOrder.includes('input.layer:thumb-l'), false);
   // dormant状態でも内部には残っている（レンダリングされないだけ）
@@ -203,10 +168,7 @@ test('workspace state restores dormant floating rect when a definition reappears
 });
 
 test('workspace state re-applies canHide invariant when a dormant dynamic panel reappears', () => {
-  const hideableRegistry = createWorkspacePanelRegistry([
-    definitionInputs[0]!,
-    { ...definitionInputs[2]!, canHide: true },
-  ]);
+  const hideableRegistry = createWorkspacePanelRegistry([definitionInputs[0]!, { ...definitionInputs[2]!, canHide: true }]);
   let state = createWorkspaceState([...hideableRegistry.values()]);
   state = workspaceReducer(state, {
     type: 'set-visible',

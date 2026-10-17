@@ -29,11 +29,15 @@ for (const [layoutId, text, rule] of cases) {
     const layout = rule ? withRomaji(base, tableForRule(rule)) : base;
     const trace = generateTrace(text, layout, geometry, DEFAULT_TRACE_POLICY);
     const details = computeKeyDetails(trace, geometry);
-    const extracted = computeHeatmapLayersExtraction({ trace, metrics: computeMetrics(trace, geometry), keyDetails: details, options: DEFAULT_HEATMAP_LAYERS_OPTIONS });
+    const extracted = computeHeatmapLayersExtraction({
+      trace,
+      metrics: computeMetrics(trace, geometry),
+      keyDetails: details,
+      options: DEFAULT_HEATMAP_LAYERS_OPTIONS,
+    });
 
     // 面ごと: 層は層別図、コンボの面はコンボ枠と一致する
-    const faceCounts = (faceId: string) =>
-      new Map([...(details.faces.get(faceId) ?? [])].map(([id, detail]) => [id, detail.presses]));
+    const faceCounts = (faceId: string) => new Map([...(details.faces.get(faceId) ?? [])].map(([id, detail]) => [id, detail.presses]));
     for (const layer of extracted.layers) {
       assert.deepEqual(faceCounts(layer.id), new Map(layer.keyCounts), layer.id);
     }

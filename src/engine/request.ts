@@ -204,11 +204,7 @@ export function createEngineRequest<T>(
       runner.run(myRevision, (signal) => compute(input, signal));
     });
 
-    emit(
-      hasLastReadyValue
-        ? { status: 'stale', value: lastReadyValue as T }
-        : { status: 'computing' },
-    );
+    emit(hasLastReadyValue ? { status: 'stale', value: lastReadyValue as T } : { status: 'computing' });
   }
 
   function unsubscribe(): void {
@@ -305,11 +301,7 @@ export function createEngineSetRequest<T>(
       runner.run(myRevision, (signal) => compute(members, signal));
     });
 
-    emit(
-      hasLastReadyValue
-        ? { status: 'stale', value: lastReadyValue as T }
-        : { status: 'computing' },
-    );
+    emit(hasLastReadyValue ? { status: 'stale', value: lastReadyValue as T } : { status: 'computing' });
   }
 
   function unsubscribe(): void {

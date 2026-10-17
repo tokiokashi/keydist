@@ -71,13 +71,20 @@ export type CalibrationItem =
 /** 項目の識別子。画面の行や`Map`のキーに使う。 */
 export function calibrationItemId(item: CalibrationItem): string {
   switch (item.kind) {
-    case 'actions': return 'actions';
-    case 'direction': return `direction:${item.direction}`;
-    case 'finger-repeat': return `finger-repeat:${item.finger}`;
-    case 'finger': return `finger:${item.finger}`;
-    case 'same-hand-pair': return `same-hand-pair:${item.pair}`;
-    case 'directed-pair': return `directed-pair:${item.pair}`;
-    case 'simultaneous': return `simultaneous:${item.simultaneous}`;
+    case 'actions':
+      return 'actions';
+    case 'direction':
+      return `direction:${item.direction}`;
+    case 'finger-repeat':
+      return `finger-repeat:${item.finger}`;
+    case 'finger':
+      return `finger:${item.finger}`;
+    case 'same-hand-pair':
+      return `same-hand-pair:${item.pair}`;
+    case 'directed-pair':
+      return `directed-pair:${item.pair}`;
+    case 'simultaneous':
+      return `simultaneous:${item.simultaneous}`;
   }
 }
 
@@ -85,9 +92,7 @@ export function calibrationItemId(item: CalibrationItem): string {
  * 項目が書き込む保存値の欄の識別子。指ごとの測定項目は、①②のどちらも`r(f)`の欄と`m(f)`の欄の両方を書くので、2つの欄を返す。
  */
 export function calibrationItemFieldIds(item: CalibrationItem): readonly string[] {
-  return item.kind === 'finger' || item.kind === 'finger-repeat'
-    ? [`finger-repeat:${item.finger}`, `finger:${item.finger}`]
-    : [calibrationItemId(item)];
+  return item.kind === 'finger' || item.kind === 'finger-repeat' ? [`finger-repeat:${item.finger}`, `finger:${item.finger}`] : [calibrationItemId(item)];
 }
 
 /** 1項目を測るために打つキーと、必要な間隔の数。 */
@@ -141,9 +146,7 @@ export interface CalibrationBasis {
   readonly legends: ReadonlyMap<string, string>;
 }
 
-export type CalibrationBasisResult =
-  | { readonly ok: true; readonly basis: CalibrationBasis }
-  | { readonly ok: false; readonly message: string };
+export type CalibrationBasisResult = { readonly ok: true; readonly basis: CalibrationBasis } | { readonly ok: false; readonly message: string };
 
 /** 選んだ配列・物理配列・指の割り当てから、測定に使うキーの土台を作る。 */
 export function calibrationBasis(
@@ -222,13 +225,15 @@ export function planCalibration(basis: CalibrationBasis): CalibrationPlan {
     });
   }
 
-  const actionsTask: CalibrationTask | undefined = actionKeys === undefined
-    ? undefined
-    : { item: { kind: 'actions' }, keys: actionKeys, required: CALIBRATION_ACTION_SAMPLES, oneWay: false };
-  const directionTasks: CalibrationTask[] = actionKeys === undefined ? [] : [
-    { item: { kind: 'direction', direction: 'L→R' }, keys: actionKeys, required: CALIBRATION_ACTION_SAMPLES, oneWay: true },
-    { item: { kind: 'direction', direction: 'R→L' }, keys: [actionKeys[1], actionKeys[0]], required: CALIBRATION_ACTION_SAMPLES, oneWay: true },
-  ];
+  const actionsTask: CalibrationTask | undefined =
+    actionKeys === undefined ? undefined : { item: { kind: 'actions' }, keys: actionKeys, required: CALIBRATION_ACTION_SAMPLES, oneWay: false };
+  const directionTasks: CalibrationTask[] =
+    actionKeys === undefined
+      ? []
+      : [
+          { item: { kind: 'direction', direction: 'L→R' }, keys: actionKeys, required: CALIBRATION_ACTION_SAMPLES, oneWay: true },
+          { item: { kind: 'direction', direction: 'R→L' }, keys: [actionKeys[1], actionKeys[0]], required: CALIBRATION_ACTION_SAMPLES, oneWay: true },
+        ];
 
   // 同時押しの測定。キーは、両手が左右の人差し指のホーム、片手が右手の人差し指と中指のホーム、親指との同時押しが右手の親指のキー（Space）と右手の人差し指のホーム。
   const rightIndex = geometry.assignment.homeKey.RI;
@@ -236,10 +241,10 @@ export function planCalibration(basis: CalibrationBasis): CalibrationPlan {
   const rightThumb = geometry.thumbs.RT.id;
   const simultaneousKeys: Readonly<Record<SimultaneousKind, readonly [string, string] | undefined>> = {
     'both-hands': actionKeys,
-    'one-hand': rightIndex !== undefined && rightMiddle !== undefined && rightIndex !== rightMiddle
-      && eligible.has(rightIndex) && eligible.has(rightMiddle)
-      ? [rightIndex, rightMiddle]
-      : undefined,
+    'one-hand':
+      rightIndex !== undefined && rightMiddle !== undefined && rightIndex !== rightMiddle && eligible.has(rightIndex) && eligible.has(rightMiddle)
+        ? [rightIndex, rightMiddle]
+        : undefined,
     thumb: rightIndex !== undefined && eligible.has(rightIndex) ? [rightThumb, rightIndex] : undefined,
   };
   const simultaneousTasks: CalibrationTask[] = SIMULTANEOUS_KINDS.flatMap((simultaneous) => {
@@ -249,12 +254,9 @@ export function planCalibration(basis: CalibrationBasis): CalibrationPlan {
       : [{ item: { kind: 'simultaneous', simultaneous }, keys, required: CALIBRATION_ACTION_SAMPLES, oneWay: false } satisfies CalibrationTask];
   });
 
-  const normal = actionsTask !== undefined && fingerTasks.length > 0 && sameHandTasks.length > 0
-    ? [actionsTask, ...fingerTasks, ...sameHandTasks]
-    : undefined;
-  const directional = directionTasks.length > 0 && directedTasks.length > 0
-    ? [...directionTasks, ...directedTasks]
-    : undefined;
+  const normal =
+    actionsTask !== undefined && fingerTasks.length > 0 && sameHandTasks.length > 0 ? [actionsTask, ...fingerTasks, ...sameHandTasks] : undefined;
+  const directional = directionTasks.length > 0 && directedTasks.length > 0 ? [...directionTasks, ...directedTasks] : undefined;
 
   const byItem = new Map<string, CalibrationTask>();
   const byField = new Map<string, CalibrationTask[]>();
@@ -503,16 +505,20 @@ function overheadKindsBasedOn(item: CalibrationItem, base: PlaybackCalibration):
     'sfb',
   ];
   switch (item.kind) {
-    case 'actions': return normalBased;
+    case 'actions':
+      return normalBased;
     // 同指連続の基準の`movementMs`は、`r(f)`と`m(f)`の両方で決まる。
     case 'finger-repeat':
-    case 'finger': return ['sfb'];
+    case 'finger':
+      return ['sfb'];
     case 'direction':
     case 'same-hand-pair':
-    case 'directed-pair': return normalBased;
+    case 'directed-pair':
+      return normalBased;
     // 同時押しのストロークが入りうる種類。続け打ちは同時押しにならないので含まない。
     // 文章に入った同時押しの分け方の記録があり、測った分け方が入っていなければ、基準の時間の変化は打鍵の上乗せの意味を変えない。
-    case 'simultaneous': return sentenceMayContain(base, item.simultaneous) ? normalBased : [];
+    case 'simultaneous':
+      return sentenceMayContain(base, item.simultaneous) ? normalBased : [];
   }
 }
 
@@ -544,9 +550,9 @@ function withMeasuredItem(
     return middle === undefined
       ? undefined
       : {
-        ...base,
-        simultaneousOverheadMs: { ...base.simultaneousOverheadMs, [item.simultaneous]: middle - playbackSimultaneousBaseMs(item.simultaneous, base) },
-      };
+          ...base,
+          simultaneousOverheadMs: { ...base.simultaneousOverheadMs, [item.simultaneous]: middle - playbackSimultaneousBaseMs(item.simultaneous, base) },
+        };
   }
   if (item.kind === 'finger-repeat') {
     // ①と②の2つで1組の値なので、②の項目が反映する。
@@ -557,10 +563,10 @@ function withMeasuredItem(
     return measurement === undefined
       ? undefined
       : {
-        ...base,
-        fingerRepeatMs: { ...base.fingerRepeatMs, [item.finger]: measurement.repeatMs },
-        fingerMoveMsPerUnit: { ...base.fingerMoveMsPerUnit, [item.finger]: measurement.moveMsPerUnit },
-      };
+          ...base,
+          fingerRepeatMs: { ...base.fingerRepeatMs, [item.finger]: measurement.repeatMs },
+          fingerMoveMsPerUnit: { ...base.fingerMoveMsPerUnit, [item.finger]: measurement.moveMsPerUnit },
+        };
   }
   const rate = rateOf(result);
   if (rate === undefined) return undefined;
@@ -593,8 +599,11 @@ function applyNormal(base: PlaybackCalibration | undefined, run: CalibrationRun,
   const fallbackRepeatMs = median(measured.map(([, value]) => value.repeatMs));
   const fallbackMoveMsPerUnit = medianIncludingZero(measured.map(([, value]) => value.moveMsPerUnit));
   if (
-    actionsPerSecond === undefined || sameHand === undefined || fallbackRepeatMs === undefined
-    || fallbackMoveMsPerUnit === undefined || measured.length !== fingers.size
+    actionsPerSecond === undefined ||
+    sameHand === undefined ||
+    fallbackRepeatMs === undefined ||
+    fallbackMoveMsPerUnit === undefined ||
+    measured.length !== fingers.size
   ) {
     return undefined;
   }
@@ -631,12 +640,13 @@ function withoutStaleSimultaneous(
 ): { readonly calibration: PlaybackCalibration; readonly cleared: readonly SimultaneousKind[] } {
   const overheads = after.simultaneousOverheadMs;
   if (before === undefined || overheads === undefined) return { calibration: after, cleared: [] };
-  const cleared = SIMULTANEOUS_KINDS.filter((kind) =>
-    overheads[kind] !== undefined && playbackSimultaneousBaseMs(kind, before) !== playbackSimultaneousBaseMs(kind, after));
+  const cleared = SIMULTANEOUS_KINDS.filter(
+    (kind) => overheads[kind] !== undefined && playbackSimultaneousBaseMs(kind, before) !== playbackSimultaneousBaseMs(kind, after),
+  );
   if (cleared.length === 0) return { calibration: after, cleared };
-  const kept = Object.fromEntries(
-    Object.entries(overheads).filter(([kind]) => !cleared.includes(kind as SimultaneousKind)),
-  ) as Partial<Record<SimultaneousKind, number>>;
+  const kept = Object.fromEntries(Object.entries(overheads).filter(([kind]) => !cleared.includes(kind as SimultaneousKind))) as Partial<
+    Record<SimultaneousKind, number>
+  >;
   const { simultaneousOverheadMs: _overheads, ...others } = after;
   return {
     calibration: Object.keys(kept).length === 0 ? others : { ...others, simultaneousOverheadMs: kept },
@@ -651,11 +661,7 @@ function withoutStaleSimultaneous(
  * 通常の測定は、続け打ちを除く打鍵の上乗せを全て消す。
  * 続け打ちの上乗せは、続け打ちの基準の平均の変化の分だけずらした値へ置き換える。
  */
-export function applyCalibrationRun(
-  base: PlaybackCalibration | undefined,
-  run: CalibrationRun,
-  nowMs: number,
-): ApplyCalibrationResult {
+export function applyCalibrationRun(base: PlaybackCalibration | undefined, run: CalibrationRun, nowMs: number): ApplyCalibrationResult {
   let next: PlaybackCalibration | undefined;
   let cleared: readonly OverheadKind[];
   if (run.scope === 'normal') {
@@ -672,9 +678,9 @@ export function applyCalibrationRun(
     }
     const { keystrokeOverheadMs: overheads, ...withoutOverhead } = base;
     cleared = OVERHEAD_KINDS.filter((kind) => basedOn.has(kind) && overheads?.[kind] !== undefined);
-    const kept = Object.fromEntries(
-      Object.entries(overheads ?? {}).filter(([kind]) => !basedOn.has(kind as OverheadKind)),
-    ) as Partial<Record<OverheadKind, number>>;
+    const kept = Object.fromEntries(Object.entries(overheads ?? {}).filter(([kind]) => !basedOn.has(kind as OverheadKind))) as Partial<
+      Record<OverheadKind, number>
+    >;
     let current: PlaybackCalibration = {
       ...withoutOverhead,
       ...(Object.keys(kept).length === 0 ? {} : { keystrokeOverheadMs: kept }),
@@ -695,8 +701,7 @@ export function applyCalibrationRun(
   next = withoutOrphanedSentenceSimultaneous(stale.calibration);
   const hadRepeat = base?.keystrokeOverheadMs?.repeat !== undefined;
   const keepsRepeat = next.keystrokeOverheadMs?.repeat !== undefined;
-  const repeatChanged = hadRepeat && keepsRepeat
-    && base !== undefined && meanRepeatMs(base) !== meanRepeatMs(next);
+  const repeatChanged = hadRepeat && keepsRepeat && base !== undefined && meanRepeatMs(base) !== meanRepeatMs(next);
   return {
     ok: true,
     calibration: next,

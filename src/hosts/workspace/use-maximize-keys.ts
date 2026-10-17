@@ -48,6 +48,8 @@ export function useMaximizeKeys(maximizedId: string | undefined, restore: () => 
     if (before === undefined || maximizedId !== undefined) return;
     const active = document.activeElement;
     if (active !== null && active !== document.body) return;
-    document.querySelector<HTMLElement>(`.workspace-grid-item[data-pane-id="${CSS.escape(before)}"] .pane-menu-button[aria-label$="の操作"]`)?.focus({ preventScroll: true });
+    document
+      .querySelector<HTMLElement>(`.workspace-grid-item[data-pane-id="${CSS.escape(before)}"] .pane-menu-button[aria-label$="の操作"]`)
+      ?.focus({ preventScroll: true });
   }, [maximizedId]);
 }

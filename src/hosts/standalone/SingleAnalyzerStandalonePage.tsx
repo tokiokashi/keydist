@@ -93,19 +93,15 @@ export function SingleAnalyzerStandalonePage<Options, Extracted>({
 
   // テキストは資産（textLibrary + standaloneTextSelection）が正。編集・選択・複製・削除は
   // すべて共有部品`TextChip`（文脈バーのテキストのチップ。比較表・N感度と3ページで同じ操作を持つため）。
-  const resolvedText = useStableResolvedText(useMemo(
-    () => resolveTextSelection(assets.standaloneTextSelection, assets.textLibrary),
-    [assets.standaloneTextSelection, assets.textLibrary],
-  ));
+  const resolvedText = useStableResolvedText(
+    useMemo(() => resolveTextSelection(assets.standaloneTextSelection, assets.textLibrary), [assets.standaloneTextSelection, assets.textLibrary]),
+  );
 
   // 解析設定は資産（assets.standaloneAnalyzerOptions）が正で、ページはローカルには持たない。`optionsDraft`はtextDraftと同じ形の
   // UI用の一時状態: 見た目は即座に反映しつつ（controlled）、資産への書き込みは
   // `onOptionsCommit`（呼び出し元がdebounceする）経由にする。
   const storedOptionsRaw = assets.standaloneAnalyzerOptions[analyzerId];
-  const decoded = useMemo(
-    () => decodeStoredAnalyzerOptions(analyzer.definition, storedOptionsRaw),
-    [storedOptionsRaw],
-  );
+  const decoded = useMemo(() => decodeStoredAnalyzerOptions(analyzer.definition, storedOptionsRaw), [storedOptionsRaw]);
   const [optionsDraft, setOptionsDraft] = useOptionsDraft<Options>(decoded.options, STANDALONE_WRITE_LOG_KEY);
 
   // URL経由で解析設定と対象を受け取る（共有リンク。`use-shared-link.ts`）。書き込みは1つのコマンドで、Undo 1回で戻る。
@@ -122,18 +118,21 @@ export function SingleAnalyzerStandalonePage<Options, Extracted>({
   });
 
   const undo = useLatestCallback(history.undo);
-  const env: PaneEnvironment = useMemo(() => ({
-    setups: assets.setupLibrary.setups,
-    overrides: assets.setupLibrary.overrides,
-    catalog,
-    resolvedText,
-    cache,
-    dispatch,
-    presetLibrary: assets.presetLibrary,
-    generatePresetId,
-    undo,
-    assetsReady,
-  }), [assets.setupLibrary, assets.presetLibrary, catalog, resolvedText, cache, dispatch, generatePresetId, undo, assetsReady]);
+  const env: PaneEnvironment = useMemo(
+    () => ({
+      setups: assets.setupLibrary.setups,
+      overrides: assets.setupLibrary.overrides,
+      catalog,
+      resolvedText,
+      cache,
+      dispatch,
+      presetLibrary: assets.presetLibrary,
+      generatePresetId,
+      undo,
+      assetsReady,
+    }),
+    [assets.setupLibrary, assets.presetLibrary, catalog, resolvedText, cache, dispatch, generatePresetId, undo, assetsReady],
+  );
 
   // Multiの集合は読むだけ（Singleの対象の図の下に並べる宣言をしたAnalyzerにだけ渡す）
   const multiColorSlots = useMultiColorSlots(assets.multiTargetSelection);
@@ -149,9 +148,7 @@ export function SingleAnalyzerStandalonePage<Options, Extracted>({
 
   const chrome: PaneChrome = {
     ...STANDALONE_CHROME,
-    headerAction: (
-      <AddToWorkspaceMenu workspaces={assets.workspaces} onAdd={(destination) => onAddToWorkspace(destination, optionsDraft)} />
-    ),
+    headerAction: <AddToWorkspaceMenu workspaces={assets.workspaces} onAdd={(destination) => onAddToWorkspace(destination, optionsDraft)} />,
   };
 
   return (
@@ -194,10 +191,7 @@ export function SingleAnalyzerStandalonePage<Options, Extracted>({
        * それまでは操作系を丸ごと`disabled`にして「触れるが効かない」状態を作らない。
        * `display:contents`でレイアウトへの影響を無くす（fieldsetは既定でblock）。
        */}
-      <fieldset
-        disabled={!assetsReady}
-        style={{ display: 'contents', border: 0, padding: 0, margin: 0, minWidth: 0 }}
-      >
+      <fieldset disabled={!assetsReady} style={{ display: 'contents', border: 0, padding: 0, margin: 0, minWidth: 0 }}>
         <div className="standalone-stage">
           <SingleAnalyzerPane
             analyzer={analyzer}

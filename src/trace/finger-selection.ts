@@ -1,12 +1,4 @@
-import {
-  ALL_FINGERS,
-  fingerDist,
-  isThumb,
-  type Finger,
-  type Geometry,
-  type Key,
-  type Point,
-} from '#input/shapes/geometry.ts';
+import { ALL_FINGERS, fingerDist, isThumb, type Finger, type Geometry, type Key, type Point } from '#input/shapes/geometry.ts';
 
 /**
  * 担当する指が2本以上のキーをどの指で打つかの選択（仕様 §9.1）。
@@ -68,12 +60,13 @@ const NEIGHBORS: readonly (readonly number[])[] = ALL_FINGERS.map((finger, index
 /** 1本の指が押す（または押さえる）キーの目標位置。複数なら重心（仕様 §4.2・§3.1） */
 export function targetOf(finger: Finger, keys: readonly Key[]): Point {
   const offThumbKey = isThumb(finger) && keys.some((key) => !isThumbKey(key));
-  const base = keys.length === 1
-    ? { x: keys[0].x, y: keys[0].y }
-    : {
-      x: keys.reduce((sum, key) => sum + key.x, 0) / keys.length,
-      y: keys.reduce((sum, key) => sum + key.y, 0) / keys.length,
-    };
+  const base =
+    keys.length === 1
+      ? { x: keys[0].x, y: keys[0].y }
+      : {
+          x: keys.reduce((sum, key) => sum + key.x, 0) / keys.length,
+          y: keys.reduce((sum, key) => sum + key.y, 0) / keys.length,
+        };
   return offThumbKey ? { ...base, offThumbKey: true } : base;
 }
 
@@ -140,10 +133,7 @@ function* products(candidates: readonly (readonly number[])[]): Generator<number
  * 打鍵ごとの指の選び方。状態（§6）を進める時に使う。
  * 押さえ続けている指を除いた候補と、1本の指が複数のキーを打つ選び方の除外を含む。
  */
-export function strokeFingerChoices(
-  stroke: PlannedStroke,
-  holders: ReadonlyMap<string, Finger>,
-): Finger[][] {
+export function strokeFingerChoices(stroke: PlannedStroke, holders: ReadonlyMap<string, Finger>): Finger[][] {
   const inKeys = new Set(stroke.keys.map((key) => key.id));
   const excluded = new Set<Finger>();
   for (const id of stroke.heldKeys) {
@@ -208,7 +198,7 @@ const holderSets: HolderSet[] = [];
 const holderIds = new Map<string, number>();
 
 function holderIdOf(entries: readonly (readonly [string, number])[]): number {
-  const sorted = entries.slice().sort((a, b) => a[0] < b[0] ? -1 : 1);
+  const sorted = entries.slice().sort((a, b) => (a[0] < b[0] ? -1 : 1));
   const key = sorted.map(([id, finger]) => `${id}:${finger};`).join('');
   let id = holderIds.get(key);
   if (id === undefined) {
@@ -298,12 +288,7 @@ function prepareStroke(stroke: PlannedStroke): PreparedStroke {
   };
 }
 
-function buildOptions(
-  geometry: Geometry,
-  cache: GeometryCache,
-  stroke: PlannedStroke,
-  holders: ReadonlyMap<string, Finger>,
-): StrokeOption[] {
+function buildOptions(geometry: Geometry, cache: GeometryCache, stroke: PlannedStroke, holders: ReadonlyMap<string, Finger>): StrokeOption[] {
   const target = (finger: Finger, keys: readonly Key[]): Point => {
     const cacheKey = `${finger}|${keys.map((key) => key.id).join(',')}`;
     let point = cache.targets.get(cacheKey);
@@ -561,15 +546,7 @@ function fold(c: SearchContext, t: number): void {
 }
 
 /** 候補が層の状態`j`より良いかを返す。負なら候補が良く、0なら目的の値が同じ */
-function compareCost(
-  layer: Layer,
-  j: number,
-  sfb: number,
-  swaps: number,
-  returns: number,
-  base: number,
-  distance: number,
-): number {
+function compareCost(layer: Layer, j: number, sfb: number, swaps: number, returns: number, base: number, distance: number): number {
   if (sfb !== layer.sfb[j]) return sfb < layer.sfb[j] ? -1 : 1;
   if (swaps !== layer.swaps[j]) return swaps < layer.swaps[j] ? -1 : 1;
   if (returns !== layer.returns[j]) return returns < layer.returns[j] ? -1 : 1;
@@ -672,8 +649,7 @@ function search(c: SearchContext, bound: Bound | null, guide: boolean): SearchRe
           const neighbors = NEIGHBORS[index];
           for (let k = 0; k < neighbors.length; k++) {
             const other = neighbors[k];
-            if (cur.age[sBase + other] <= 1
-              && (other - index) * (press.x - pointX[cur.pos[sBase + other]]) > -SAME_X) swapped = true;
+            if (cur.age[sBase + other] <= 1 && (other - index) * (press.x - pointX[cur.pos[sBase + other]]) > -SAME_X) swapped = true;
           }
           if (adjacent && moved) sfb++;
         }
@@ -690,9 +666,7 @@ function search(c: SearchContext, bound: Bound | null, guide: boolean): SearchRe
           const index = press.index;
           const age = cur.age[sBase + index];
           if (cur.adj[sBase + index] !== 0) {
-            strokeDistance += !sfbHomeCost && press.onHome
-              ? 0
-              : fingerDist(press.finger, registry[cur.pos[sBase + index]], press.target);
+            strokeDistance += !sfbHomeCost && press.onHome ? 0 : fingerDist(press.finger, registry[cur.pos[sBase + index]], press.target);
           } else if (age <= windowSize) {
             const dStay = fingerDist(press.finger, registry[cur.pos[sBase + index]], press.target);
             strokeDistance += dStay <= press.dHome ? dStay : press.dHome;
@@ -777,9 +751,7 @@ function search(c: SearchContext, bound: Bound | null, guide: boolean): SearchRe
             const jBase = j * F;
             let same = true;
             for (let f = 0; f < F; f++) {
-              if (nxt.pos[jBase + f] !== scratchPos[f]
-                || nxt.age[jBase + f] !== scratchAge[f]
-                || nxt.adj[jBase + f] !== scratchAdj[f]) {
+              if (nxt.pos[jBase + f] !== scratchPos[f] || nxt.age[jBase + f] !== scratchAge[f] || nxt.adj[jBase + f] !== scratchAdj[f]) {
                 same = false;
                 break;
               }
@@ -865,9 +837,7 @@ function keepOne(layer: Layer, preferred: readonly number[] | undefined): void {
   if (chosen < 0) {
     chosen = 0;
     for (let j = 1; j < layer.count; j++) {
-      const order = compareCost(
-        layer, chosen, layer.sfb[j], layer.swaps[j], layer.returns[j], layer.base[j], layer.distance[j],
-      );
+      const order = compareCost(layer, chosen, layer.sfb[j], layer.swaps[j], layer.returns[j], layer.base[j], layer.distance[j]);
       if (order < 0 || (order === 0 && sequenceCompare(layer.sequence[j], layer.sequence[chosen]) < 0)) chosen = j;
     }
   }
@@ -967,8 +937,22 @@ export function selectFingers(
   }
   const initialHolders = holderIdOf([...start.holders].map(([id, finger]) => [id, FINGER_INDEX.get(finger)!] as const));
   const context: SearchContext = {
-    policy, geometry, cache, cap, total, flat, prepared, inputs, startAt, nextRead, nextReadAny, homeIds,
-    initialPos, initialAge, initialAdj, initialHolders,
+    policy,
+    geometry,
+    cache,
+    cap,
+    total,
+    flat,
+    prepared,
+    inputs,
+    startAt,
+    nextRead,
+    nextReadAny,
+    homeIds,
+    initialPos,
+    initialAge,
+    initialAdj,
+    initialHolders,
   };
   scratchPos.set(initialPos);
   scratchAge.set(initialAge);

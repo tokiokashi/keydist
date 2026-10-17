@@ -2,15 +2,7 @@ import { kunrei } from '#input/romaji/kunrei.ts';
 import { oonishiRomaji } from '#input/romaji/oonishi.ts';
 import { NAGINATA_V18 } from './naginata.ts';
 import { CUSTOM_COMBOS } from './combos-custom.ts';
-import {
-  fromRows,
-  withAliases,
-  withCombos,
-  withoutRomajiOnlyCombos,
-  withRomaji,
-  withShiftedOutputs,
-  type Layout,
-} from './types.ts';
+import { fromRows, withAliases, withCombos, withoutRomajiOnlyCombos, withRomaji, withShiftedOutputs, type Layout } from './types.ts';
 import { NICOLA } from './nicola.ts';
 import { ASUKA } from './asuka.ts';
 import { SHIN_KOUME } from './shin-koume.ts';
@@ -65,64 +57,44 @@ const ROMAJI_OONISHI = oonishiRomaji();
  * 大西配列は `-` をホーム段に置くため、数字段には `-` を入れない。
  */
 const ALPHA: Layout[] = [
-  withAliases(withShiftedOutputs(fromRows('qwerty', 'QWERTY', [
-    '1234567890-=',
-    'qwertyuiop[]',
-    "asdfghjkl;'",
-    'zxcvbnm,./',
-  ])), ['くわーてぃ', 'くぉーてぃ', 'くあーてぃ', 'くうぇるてぃ']),
+  withAliases(withShiftedOutputs(fromRows('qwerty', 'QWERTY', ['1234567890-=', 'qwertyuiop[]', "asdfghjkl;'", 'zxcvbnm,./'])), [
+    'くわーてぃ',
+    'くぉーてぃ',
+    'くあーてぃ',
+    'くうぇるてぃ',
+  ]),
   // キーの並びはQWERTYと同じ。指の割り当ての推奨だけが違う
-  withAliases({
-    ...withShiftedOutputs(fromRows('qwerty-optimized', 'QWERTY最適化', [
-      '1234567890-=',
-      'qwertyuiop[]',
-      "asdfghjkl;'",
-      'zxcvbnm,./',
-    ])),
-    recommendedFingerAssignmentIds: { ansi: 'qwerty-optimized', jis: 'qwerty-optimized-jis' },
-  }, ['くわーてぃさいてきか', 'くわーてぃ']),
-  withAliases(withShiftedOutputs(fromRows('dvorak', 'Dvorak', [
-    '1234567890[]',
-    "',.pyfgcrl/=",
-    'aoeuidhtns-',
-    ';qjkxbmwvz',
-  ])), ['どゔぉらっく', 'どぼらっく']),
-  withAliases(withShiftedOutputs(fromRows('colemak', 'Colemak', [
-    '1234567890-=',
-    'qwfpgjluy;[]',
-    "arstdhneio'",
-    'zxcvbkm,./',
-  ])), ['こーるまっく']),
-  withAliases(withShiftedOutputs(fromRows('colemak-dh', 'Colemak-DH', [
-    '1234567890-=',
-    'qwfpbjluy;[]',
-    "arstgmneio'",
-    'zxcdvkh,./',
-  ])), ['こーるまっくでぃーえいち', 'こーるまっくdh']),
-  withAliases(withShiftedOutputs(fromRows('workman', 'Workman', [
-    '1234567890-=',
-    'qdrwbjfup;[]',
-    "ashtgyneoi'",
-    'zxmcvkl,./',
-  ])), ['わーくまん']),
-  withAliases(withShiftedOutputs(fromRows('oonishi', '大西配列', [
-    '1234567890',
-    'qlu,.fwryp',
-    'eiao-ktnsh',
-    'zxcv;gdmjb',
-  ])), ['おおにし', 'おおにしはいれつ']),
+  withAliases(
+    {
+      ...withShiftedOutputs(fromRows('qwerty-optimized', 'QWERTY最適化', ['1234567890-=', 'qwertyuiop[]', "asdfghjkl;'", 'zxcvbnm,./'])),
+      recommendedFingerAssignmentIds: { ansi: 'qwerty-optimized', jis: 'qwerty-optimized-jis' },
+    },
+    ['くわーてぃさいてきか', 'くわーてぃ'],
+  ),
+  withAliases(withShiftedOutputs(fromRows('dvorak', 'Dvorak', ['1234567890[]', "',.pyfgcrl/=", 'aoeuidhtns-', ';qjkxbmwvz'])), [
+    'どゔぉらっく',
+    'どぼらっく',
+  ]),
+  withAliases(withShiftedOutputs(fromRows('colemak', 'Colemak', ['1234567890-=', 'qwfpgjluy;[]', "arstdhneio'", 'zxcvbkm,./'])), ['こーるまっく']),
+  withAliases(withShiftedOutputs(fromRows('colemak-dh', 'Colemak-DH', ['1234567890-=', 'qwfpbjluy;[]', "arstgmneio'", 'zxcdvkh,./'])), [
+    'こーるまっくでぃーえいち',
+    'こーるまっくdh',
+  ]),
+  withAliases(withShiftedOutputs(fromRows('workman', 'Workman', ['1234567890-=', 'qdrwbjfup;[]', "ashtgyneoi'", 'zxmcvkl,./'])), ['わーくまん']),
+  withAliases(withShiftedOutputs(fromRows('oonishi', '大西配列', ['1234567890', 'qlu,.fwryp', 'eiao-ktnsh', 'zxcv;gdmjb'])), [
+    'おおにし',
+    'おおにしはいれつ',
+  ]),
   // コンボはどれもromajiOnly（仕様 §4.3）。かなから展開した綴りの区間はコンボ込み、英文や英字の区間は単打配置だけで打つ。
-  withAliases(withCombos(
-    'oonishi-custom',
-    'TK音直入力法',
-    withShiftedOutputs(fromRows('oonishi-custom', 'TK音直入力法', [
-      '1234567890',
-      'qlu,.fwryp',
-      'eiao-ktnsh',
-      'xjcv/gdmzb',
-    ])),
-    CUSTOM_COMBOS,
-  ), ['てぃーけーおんちょくにゅうりょくほう', 'てぃーけー', 'tk']),
+  withAliases(
+    withCombos(
+      'oonishi-custom',
+      'TK音直入力法',
+      withShiftedOutputs(fromRows('oonishi-custom', 'TK音直入力法', ['1234567890', 'qlu,.fwryp', 'eiao-ktnsh', 'xjcv/gdmzb'])),
+      CUSTOM_COMBOS,
+    ),
+    ['てぃーけーおんちょくにゅうりょくほう', 'てぃーけー', 'tk'],
+  ),
 ];
 
 const ALPHA_BY_ID = new Map(ALPHA.map((l) => [l.id, l]));
@@ -139,9 +111,7 @@ export const LAYOUTS: Layout[] = ALPHA.map(withoutRomajiOnlyCombos);
  * 最終形はどちらも打鍵ステップ列なので、同じテキストで比較できる。
  */
 export const LAYOUTS_JA: Layout[] = [
-  ...ALPHA.filter((l) => l.id.startsWith('oonishi') === false).map((l) =>
-    withRomaji(l, ROMAJI),
-  ),
+  ...ALPHA.filter((l) => l.id.startsWith('oonishi') === false).map((l) => withRomaji(l, ROMAJI)),
   // 大西配列は公式が前提とする綴り（シャ行sh / じji / じゃ行j）で打つ
   withRomaji(ALPHA_BY_ID.get('oonishi')!, ROMAJI_OONISHI),
   // TK音直入力法のコンボは訓令式（sya / zya）の綴りを前提に組まれている

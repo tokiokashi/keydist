@@ -21,9 +21,10 @@ test('結果の文: 読めなかった部分は見出しに続ける', () => {
 });
 
 test('結果の文: 別名で足したものは追加後の名前で、理由を添える', () => {
-  const result = workspaceImportResultText([
-    { name: '比較', outcome: { kind: 'added-renamed', addedName: '比較 (2)', addedId: 'x' }, missing: ['layout', 'setup'] },
-  ], []);
+  const result = workspaceImportResultText(
+    [{ name: '比較', outcome: { kind: 'added-renamed', addedName: '比較 (2)', addedId: 'x' }, missing: ['layout', 'setup'] }],
+    [],
+  );
   assert.equal(result.summary, '1件のWorkspaceを読み込みました');
   assert.deepEqual(result.lines, [
     '「比較 (2)」は、同じWorkspaceで中身の違うものが既にあるため、別の名前で追加しました',
@@ -37,9 +38,7 @@ test('結果の文: 参照先が自作のテキストなら、既定のテキス
 });
 
 test('結果の文: 全部が同じ中身で足さなかった時は、足したと言わない', () => {
-  const result = workspaceImportResultText([
-    { name: 'A', outcome: { kind: 'skipped-same', existingName: 'A' }, missing: [] },
-  ], []);
+  const result = workspaceImportResultText([{ name: 'A', outcome: { kind: 'skipped-same', existingName: 'A' }, missing: [] }], []);
   assert.equal(result.summary, '読み込んだWorkspaceはありません。同じ中身のものが既にあります');
   assert.deepEqual(result.lines, ['「A」は同じ中身のものが既にあるため、追加しませんでした']);
 });

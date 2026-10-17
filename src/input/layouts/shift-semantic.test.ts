@@ -13,30 +13,38 @@ test('alpha layoutは大文字を左右Shiftのcanonical alternativeとして持
   assert.ok(alternatives);
   assert.equal(alternatives.length, 2);
 
-  const byShift = new Map(alternatives.map((alternative) => {
-    const input = alternative.semanticInputs[0];
-    const shift = input.roles.find((role) => role.role === 'modifier')?.key;
-    return [shift, alternative] as const;
-  }));
+  const byShift = new Map(
+    alternatives.map((alternative) => {
+      const input = alternative.semanticInputs[0];
+      const shift = input.roles.find((role) => role.role === 'modifier')?.key;
+      return [shift, alternative] as const;
+    }),
+  );
 
   for (const shift of [SHIFT_KEY.L, SHIFT_KEY.R]) {
     const alternative = byShift.get(shift);
     assert.ok(alternative, shift);
     const input = alternative.semanticInputs[0];
     assert.equal(input.output, 'A');
-    assert.deepEqual(input.requirements, [{
-      kind: 'overlap',
-      keys: ['a', shift].sort(),
-    }]);
-    assert.deepEqual(input.capabilities, [{
-      kind: 'while-held',
-      keys: [shift],
-    }]);
-    assert.deepEqual(input.roles, [{
-      key: shift,
-      role: 'modifier',
-      modifierGroupId: 'Shift',
-    }]);
+    assert.deepEqual(input.requirements, [
+      {
+        kind: 'overlap',
+        keys: ['a', shift].sort(),
+      },
+    ]);
+    assert.deepEqual(input.capabilities, [
+      {
+        kind: 'while-held',
+        keys: [shift],
+      },
+    ]);
+    assert.deepEqual(input.roles, [
+      {
+        key: shift,
+        role: 'modifier',
+        modifierGroupId: 'Shift',
+      },
+    ]);
     assert.equal(input.aggregationGroupId, 'layer:Shift');
 
     const realization = alternative.baseRealizations[0];
@@ -51,8 +59,7 @@ test('Shift記号もbase outputと同じphysical keyへcompileする', () => {
   const question = qwerty.canonicalInputs.get('?');
   assert.ok(question);
   assert.equal(question.length, 2);
-  assert.ok(question.every((alternative) =>
-    alternative.semanticInputs[0].physicalKeys.includes('/')));
+  assert.ok(question.every((alternative) => alternative.semanticInputs[0].physicalKeys.includes('/')));
 });
 
 test('generateTraceは通常Shiftで出力キーと反対手のShift alternativeを選ぶ', () => {
@@ -89,28 +96,38 @@ test('Shift holdはInput Converterでstart/continueとして実現できる', ()
   assert.deepEqual(engine.handle({ type: 'down', key: SHIFT_KEY.R }).recognized, []);
   const first = engine.handle({ type: 'down', key: 'a' }).recognized[0];
   assert.equal(first.output, 'A');
-  assert.deepEqual(first.actions.map((action) => ({
-    keys: action.keys,
-    heldKeys: action.heldKeys,
-    holdPhase: action.holdPhase,
-  })), [{
-    keys: [SHIFT_KEY.R, 'a'],
-    heldKeys: [SHIFT_KEY.R],
-    holdPhase: 'start',
-  }]);
+  assert.deepEqual(
+    first.actions.map((action) => ({
+      keys: action.keys,
+      heldKeys: action.heldKeys,
+      holdPhase: action.holdPhase,
+    })),
+    [
+      {
+        keys: [SHIFT_KEY.R, 'a'],
+        heldKeys: [SHIFT_KEY.R],
+        holdPhase: 'start',
+      },
+    ],
+  );
 
   engine.handle({ type: 'up', key: 'a' });
   const second = engine.handle({ type: 'down', key: 'b' }).recognized[0];
   assert.equal(second.output, 'B');
-  assert.deepEqual(second.actions.map((action) => ({
-    keys: action.keys,
-    heldKeys: action.heldKeys,
-    holdPhase: action.holdPhase,
-  })), [{
-    keys: ['b'],
-    heldKeys: [SHIFT_KEY.R],
-    holdPhase: 'continue',
-  }]);
+  assert.deepEqual(
+    second.actions.map((action) => ({
+      keys: action.keys,
+      heldKeys: action.heldKeys,
+      holdPhase: action.holdPhase,
+    })),
+    [
+      {
+        keys: ['b'],
+        heldKeys: [SHIFT_KEY.R],
+        holdPhase: 'continue',
+      },
+    ],
+  );
 });
 
 test('既定geometryは左右Shiftを小指のphysical keyとして持つ', () => {
@@ -141,7 +158,6 @@ test('row-staggeredのShift座標をbottom row基準で固定する', () => {
   );
 });
 
-
 test('全角！／？は半角Shift記号と同じphysical inputとして評価する', () => {
   const geometry = buildGeometry('row-staggered');
   const halfwidth = generateTrace('!?', qwerty, geometry, DEFAULT_TRACE_POLICY);
@@ -158,7 +174,10 @@ test('全角！／？は半角Shift記号と同じphysical inputとして評価�
       triggerKeys: stroke.triggerKeys,
     })),
   );
-  assert.deepEqual(fullwidth.strokes.map((stroke) => stroke.inputChar), ['！', '？']);
+  assert.deepEqual(
+    fullwidth.strokes.map((stroke) => stroke.inputChar),
+    ['！', '？'],
+  );
 });
 
 test('小文字入力はShift semantic追加後も単打のまま', () => {
@@ -179,9 +198,18 @@ test('while-held Capabilityだけでは既定評価をheld-triggerへ変えな�
   assert.equal(trace.skipped, 0);
   assert.equal(trace.strokes.length, 2);
   for (const stroke of trace.strokes) {
-    assert.equal(stroke.participations.some((part) => part.roles.includes('held-trigger')), false);
-    assert.equal(stroke.participations.some((part) => part.roles.includes('trigger')), true);
-    assert.equal(stroke.participations.some((part) => part.holdPhase !== undefined), false);
+    assert.equal(
+      stroke.participations.some((part) => part.roles.includes('held-trigger')),
+      false,
+    );
+    assert.equal(
+      stroke.participations.some((part) => part.roles.includes('trigger')),
+      true,
+    );
+    assert.equal(
+      stroke.participations.some((part) => part.holdPhase !== undefined),
+      false,
+    );
   }
 });
 
@@ -192,11 +220,13 @@ test('通常Shiftはcompositionではなくmodifier semanticとして残る', ()
   for (const alternative of alternatives) {
     const input = alternative.semanticInputs[0];
     assert.deepEqual(input.classifications, []);
-    assert.equal(input.roles.some((role) => role.role === 'modifier'), true);
+    assert.equal(
+      input.roles.some((role) => role.role === 'modifier'),
+      true,
+    );
     assert.equal(alternative.origin, 'sequence');
   }
 });
-
 
 test('Shift pressは通常のmetrics pipelineへそのまま計上される', () => {
   const geometry = buildGeometry('row-staggered');

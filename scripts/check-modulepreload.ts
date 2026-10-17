@@ -15,11 +15,13 @@ const PUBLIC_DIR = resolve('.output/public');
 
 async function htmlFiles(dir: string): Promise<string[]> {
   const entries = await readdir(dir, { withFileTypes: true });
-  const nested = await Promise.all(entries.map(async (entry) => {
-    const path = join(dir, entry.name);
-    if (entry.isDirectory()) return entry.name === 'assets' ? [] : htmlFiles(path);
-    return entry.name.endsWith('.html') ? [path] : [];
-  }));
+  const nested = await Promise.all(
+    entries.map(async (entry) => {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) return entry.name === 'assets' ? [] : htmlFiles(path);
+      return entry.name.endsWith('.html') ? [path] : [];
+    }),
+  );
   return nested.flat();
 }
 
@@ -88,8 +90,8 @@ async function closure(entries: readonly string[]): Promise<Set<string>> {
 // package.json の engines は npm の警告にしかならないため、ここでも止める。
 if (!Array.isArray((new vm.SourceTextModule('') as { moduleRequests?: unknown }).moduleRequests)) {
   console.error(
-    `[modulepreload] この検査には Node.js 22.20以上（24系なら24.4以上）が要る（今は ${process.version}）。`
-      + 'vm.SourceTextModule の moduleRequests が無い',
+    `[modulepreload] この検査には Node.js 22.20以上（24系なら24.4以上）が要る（今は ${process.version}）。` +
+      'vm.SourceTextModule の moduleRequests が無い',
   );
   process.exit(1);
 }
@@ -109,7 +111,7 @@ for (const file of (await htmlFiles(PUBLIC_DIR)).sort()) {
       failures.push(`${relative(PUBLIC_DIR, file)}: エントリ ${entry} から静的importを1本も読めなかった`);
     }
   }
-  const missing = [...await closure([...roots])].filter((path) => !preloads.has(path) && !entries.includes(path));
+  const missing = [...(await closure([...roots]))].filter((path) => !preloads.has(path) && !entries.includes(path));
   if (missing.length > 0) {
     failures.push(`${relative(PUBLIC_DIR, file)}: modulepreload に無い静的import ${missing.join(', ')}`);
   }

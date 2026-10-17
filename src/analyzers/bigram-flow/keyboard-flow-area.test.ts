@@ -1,11 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  buildGeometry,
-  JIS_FINGER_ASSIGNMENT,
-  PHYSICAL_SHAPES,
-  type PresetGeometryKind,
-} from '#input/shapes/geometry.ts';
+import { buildGeometry, JIS_FINGER_ASSIGNMENT, PHYSICAL_SHAPES, type PresetGeometryKind } from '#input/shapes/geometry.ts';
 import {
   AREA_HEIGHT,
   AREA_PAD,
@@ -78,5 +73,5 @@ test('同キー連打のラベルの拡大率に上限がある時は、縮ん�
   assert.equal(repeatLabelScale(0.8, 2), repeatLabelScale(0.8));
   assert.equal(repeatLabelScale(2, 2), 1);
   // 上限があっても画面上のラベルは図より速く縮まない（倍率 × 拡大率が倍率に比例する）
-  assert.ok(Math.abs(0.2 * repeatLabelScale(0.2, 2) / (0.4 * repeatLabelScale(0.4, 2)) - 0.5) < 1e-9);
+  assert.ok(Math.abs((0.2 * repeatLabelScale(0.2, 2)) / (0.4 * repeatLabelScale(0.4, 2)) - 0.5) < 1e-9);
 });

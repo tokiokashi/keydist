@@ -6,18 +6,8 @@ import { sortOrderByColumn, type ColumnSort } from '#ui/primitives/column-sort.t
 import { SortColumnHeader } from '#ui/primitives/sort-column-header.tsx';
 import type { AnalyzerSettingsProps, SetAnalyzerPaneParts, SetBodyProps } from '../pane-parts.tsx';
 import { EMPTY_CELL_TEXT, fingerMatrixCell } from './display.ts';
-import {
-  fingerMatrixDefinition,
-  type FingerMatrixColumn,
-  type FingerMatrixExtracted,
-  type FingerMatrixRow,
-} from './extract.ts';
-import {
-  DEFAULT_FINGER_MATRIX_OPTIONS,
-  FINGER_MATRIX_SURFACE_IDS,
-  fingerMatrixOptions,
-  type FingerMatrixOptions,
-} from './options.ts';
+import { fingerMatrixDefinition, type FingerMatrixColumn, type FingerMatrixExtracted, type FingerMatrixRow } from './extract.ts';
+import { DEFAULT_FINGER_MATRIX_OPTIONS, FINGER_MATRIX_SURFACE_IDS, fingerMatrixOptions, type FingerMatrixOptions } from './options.ts';
 import { FINGER_MATRIX_PANE_META } from './pane-meta.ts';
 import { FINGER_MATRIX_SURFACE_TEXT } from './surface-text.ts';
 import './finger-matrix-view.css';
@@ -65,19 +55,25 @@ export function FingerMatrixBody({ extracted, order, rowContext, options, onOpti
   const displayOrder = useMemo(() => {
     const byKey = new Map<string, FingerMatrixRow>(extracted.rows.map((row) => [row.targetKey, row]));
     const indexOf = new Map<string, number>(surface.columns.map((column, index) => [column.id, index]));
-    return sortOrderByColumn<string>(order, (targetKey, column) => {
-      const row = byKey.get(targetKey);
-      const index = indexOf.get(column);
-      if (row?.kind !== 'ok' || index === undefined) return undefined;
-      return fingerMatrixCell(surface.id, row, index).value;
-    }, effectiveSort);
+    return sortOrderByColumn<string>(
+      order,
+      (targetKey, column) => {
+        const row = byKey.get(targetKey);
+        const index = indexOf.get(column);
+        if (row?.kind !== 'ok' || index === undefined) return undefined;
+        return fingerMatrixCell(surface.id, row, index).value;
+      },
+      effectiveSort,
+    );
   }, [order, extracted.rows, surface, effectiveSort]);
 
   return (
     <section className="finger-matrix-feature" data-react-feature="finger-matrix">
       <div className="finger-matrix-scroll">
         <table className="finger-matrix-table" data-surface={surface.id}>
-          <caption>{text.label}（{text.unit}）</caption>
+          <caption>
+            {text.label}（{text.unit}）
+          </caption>
           <thead>
             <tr>
               <th scope="col">対象</th>
@@ -107,8 +103,12 @@ export function FingerMatrixBody({ extracted, order, rowContext, options, onOpti
                 // extractedにまだ無いtargetKey（依頼の作り直し途中の一瞬）。値の欠落を偽らず、行の中で計算中と出す。
                 return (
                   <tr key={targetKey} data-finger-matrix-row="pending">
-                    <th scope="row" title={fullName}>{label}</th>
-                    <td colSpan={surface.columns.length} aria-busy="true">計算中…</td>
+                    <th scope="row" title={fullName}>
+                      {label}
+                    </th>
+                    <td colSpan={surface.columns.length} aria-busy="true">
+                      計算中…
+                    </td>
                   </tr>
                 );
               }
@@ -116,7 +116,9 @@ export function FingerMatrixBody({ extracted, order, rowContext, options, onOpti
               if (row.kind === 'failed') {
                 return (
                   <tr key={targetKey} data-finger-matrix-row="failed">
-                    <th scope="row" title={fullName}>{label}</th>
+                    <th scope="row" title={fullName}>
+                      {label}
+                    </th>
                     <td colSpan={surface.columns.length} role="alert">
                       {row.message}
                     </td>
@@ -126,15 +128,13 @@ export function FingerMatrixBody({ extracted, order, rowContext, options, onOpti
 
               return (
                 <tr key={targetKey} data-finger-matrix-row="ok">
-                  <th scope="row" title={fullName}>{label}</th>
+                  <th scope="row" title={fullName}>
+                    {label}
+                  </th>
                   {surface.columns.map((column, index) => {
                     const cell = fingerMatrixCell(surface.id, row, index);
                     return (
-                      <td
-                        key={column.id}
-                        title={`${columnNames(column).full}：${cell.tip}`}
-                        data-empty={cell.text === EMPTY_CELL_TEXT || undefined}
-                      >
+                      <td key={column.id} title={`${columnNames(column).full}：${cell.tip}`} data-empty={cell.text === EMPTY_CELL_TEXT || undefined}>
                         {cell.text}
                       </td>
                     );
@@ -155,13 +155,15 @@ const SORT_DIRECTION_TEXT = { asc: '昇順', desc: '降順' } as const;
 
 /** 並び替えの欄に出す列の名前（列のidは指のid、または`-`でつないだ2本の指のid）。 */
 function sortColumnName(column: string): string {
-  return column.split('-').map((id) => FINGER_SHORT_WITH_HAND[id as Finger] ?? id).join('-');
+  return column
+    .split('-')
+    .map((id) => FINGER_SHORT_WITH_HAND[id as Finger] ?? id)
+    .join('-');
 }
 
 /** 配列×指のマトリックスの解析設定（見る量・並び替え）。 */
 export function FingerMatrixSettings({ options, onOptionsChange }: AnalyzerSettingsProps<FingerMatrixOptions>) {
-  const bind = <K extends keyof FingerMatrixOptions>(key: K) =>
-    bindOption(options, DEFAULT_FINGER_MATRIX_OPTIONS, onOptionsChange, key);
+  const bind = <K extends keyof FingerMatrixOptions>(key: K) => bindOption(options, DEFAULT_FINGER_MATRIX_OPTIONS, onOptionsChange, key);
   return (
     <div className="option-groups">
       <SelectOptionField
@@ -170,16 +172,10 @@ export function FingerMatrixSettings({ options, onOptionsChange }: AnalyzerSetti
         choices={SURFACE_CHOICES}
         hint="同指連続の比率は、その指で押した回数に対する割合です。"
       />
-      <OptionField
-        label="並び替え"
-        binding={bind('sort')}
-        hint="列の見出しを押すと切り替わります。"
-      >
+      <OptionField label="並び替え" binding={bind('sort')} hint="列の見出しを押すと切り替わります。">
         {(id) => (
           <span id={id}>
-            {options.sort === null
-              ? 'なし'
-              : `${sortColumnName(options.sort.column)}（${SORT_DIRECTION_TEXT[options.sort.direction]}）`}
+            {options.sort === null ? 'なし' : `${sortColumnName(options.sort.column)}（${SORT_DIRECTION_TEXT[options.sort.direction]}）`}
           </span>
         )}
       </OptionField>

@@ -20,11 +20,13 @@ const SRC = join(ROOT, 'src');
 
 async function sourceFiles(dir: string): Promise<string[]> {
   const entries = await readdir(dir, { withFileTypes: true });
-  const nested = await Promise.all(entries.map(async (entry) => {
-    const path = join(dir, entry.name);
-    if (entry.isDirectory()) return sourceFiles(path);
-    return entry.isFile() ? [path] : [];
-  }));
+  const nested = await Promise.all(
+    entries.map(async (entry) => {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) return sourceFiles(path);
+      return entry.isFile() ? [path] : [];
+    }),
+  );
   return nested.flat();
 }
 
@@ -66,8 +68,6 @@ test('リポジトリ全体の keydist:* 定数が重複しない（storage key�
 
 test('ASSET_STORAGE_SPECS のstorageKeyはリポジトリ全体の宣言と一致する（表が古いキーを指していないか）', async () => {
   const declared = new Set(await allDeclaredKeydistKeys());
-  const missing = ASSET_KEYS
-    .map((key) => ASSET_STORAGE_SPECS[key].storageKey)
-    .filter((storageKey) => !declared.has(storageKey));
+  const missing = ASSET_KEYS.map((key) => ASSET_STORAGE_SPECS[key].storageKey).filter((storageKey) => !declared.has(storageKey));
   assert.deepEqual(missing, []);
 });

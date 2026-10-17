@@ -139,9 +139,7 @@ export function rateChartModel(
       if (value === undefined || !Number.isFinite(value)) continue;
       dots.push({ x: rateChartX(point.cursor, total), y: yOf(value) });
     }
-    const path = dots
-      .map((dot, index) => `${index === 0 ? 'M' : 'L'}${formatCoordinate(dot.x)},${formatCoordinate(dot.y)}`)
-      .join(' ');
+    const path = dots.map((dot, index) => `${index === 0 ? 'M' : 'L'}${formatCoordinate(dot.x)},${formatCoordinate(dot.y)}`).join(' ');
     return { path, dots: points.length <= RATE_CHART_DOT_LIMIT ? dots : [] };
   };
   const kana = seriesOf((point) => point.kanaPerSecond);

@@ -13,9 +13,15 @@ import type { KeyValueStorage } from '#platform/persistence/storage.ts';
 
 class MemoryStorage implements KeyValueStorage {
   readonly data = new Map<string, string>();
-  getItem(key: string): string | null { return this.data.get(key) ?? null; }
-  setItem(key: string, value: string): void { this.data.set(key, value); }
-  removeItem(key: string): void { this.data.delete(key); }
+  getItem(key: string): string | null {
+    return this.data.get(key) ?? null;
+  }
+  setItem(key: string, value: string): void {
+    this.data.set(key, value);
+  }
+  removeItem(key: string): void {
+    this.data.delete(key);
+  }
 }
 
 function appState(storage: MemoryStorage) {
@@ -31,10 +37,13 @@ test('外観の保存が無い時は、渡した既定を返してstorageには�
 
 test('外観の保存が不正な値の時は既定を返す', () => {
   const storage = new MemoryStorage();
-  storage.setItem(APP_STATE_STORAGE_KEY, JSON.stringify({
-    version: APP_STATE_VERSION,
-    appearance: { theme: 'not-a-real-theme' },
-  }));
+  storage.setItem(
+    APP_STATE_STORAGE_KEY,
+    JSON.stringify({
+      version: APP_STATE_VERSION,
+      appearance: { theme: 'not-a-real-theme' },
+    }),
+  );
   assert.deepEqual(loadAppearancePreference(storage), { theme: 'system' });
 });
 
@@ -42,10 +51,13 @@ test('旧画面の保存（keydist:ui-state・keydist:theme・analyzer.theme）�
   const storage = new MemoryStorage();
   storage.setItem('keydist:ui-state', JSON.stringify({ version: 1, ui: { theme: 'light' } }));
   storage.setItem('keydist:theme', 'light');
-  storage.setItem(APP_STATE_STORAGE_KEY, JSON.stringify({
-    version: APP_STATE_VERSION,
-    analyzer: { theme: 'light' },
-  }));
+  storage.setItem(
+    APP_STATE_STORAGE_KEY,
+    JSON.stringify({
+      version: APP_STATE_VERSION,
+      analyzer: { theme: 'light' },
+    }),
+  );
 
   assert.deepEqual(loadAppearancePreference(storage), { theme: 'system' });
   assert.equal(storage.getItem('keydist:ui-state') !== null, true);
@@ -73,10 +85,13 @@ test('the appearance store is a no-op outside a browser (window undefined)', () 
 
 test('appearance writer updates only its AppState slice', () => {
   const storage = new MemoryStorage();
-  storage.setItem(APP_STATE_STORAGE_KEY, JSON.stringify({
-    version: APP_STATE_VERSION,
-    workspace: { version: 1, panels: {}, zOrder: [] },
-  }));
+  storage.setItem(
+    APP_STATE_STORAGE_KEY,
+    JSON.stringify({
+      version: APP_STATE_VERSION,
+      workspace: { version: 1, panels: {}, zOrder: [] },
+    }),
+  );
 
   assert.equal(saveAppearancePreference(storage, 'dark'), true);
   assert.equal(appState(storage).appearance.theme, 'dark');

@@ -15,8 +15,7 @@ async function selectLayout(page: Page, layoutId: string) {
   }, layoutId);
 }
 
-const heatmapKey = (scope: Locator, diagram: string, keyId: string) =>
-  scope.locator(`[data-heatmap-diagram="${diagram}"] [data-heatmap-key="${keyId}"]`);
+const heatmapKey = (scope: Locator, diagram: string, keyId: string) => scope.locator(`[data-heatmap-diagram="${diagram}"] [data-heatmap-key="${keyId}"]`);
 const flowKey = (scope: Locator, keyId: string) => scope.locator(`.flow-key[data-key-id="${keyId}"]`);
 const detailWindow = (page: Page) => page.locator('[data-key-detail-window]');
 
@@ -178,31 +177,34 @@ const fixed = (id: string, analyzerId: string, layoutId: string) => ({
 
 async function openWorkspace(page: Page): Promise<void> {
   await page.setViewportSize({ width: 1440, height: 1200 });
-  await page.addInitScript(({ key, value }) => {
-    if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 4, workspaces: [value] }));
-  }, {
-    key: WORKSPACES_KEY,
-    value: {
-      id: 'k',
-      name: 'キー',
-      text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
-      // a: ヒートマップ(QWERTY) / b: Bigram Flow(QWERTY) / c: ヒートマップ(Dvorak) / d: ヒートマップ（レイヤー）(QWERTY)。
-      // a・b・dは配列と物理配列が同じ
-      panes: [
-        fixed('a', 'heatmap', 'qwerty'),
-        fixed('b', 'bigram-flow', 'qwerty'),
-        fixed('c', 'heatmap', 'dvorak'),
-        fixed('d', 'heatmap-layers', 'qwerty'),
-      ],
-      grid: [
-        { id: 'a', x: 0, y: 0, w: 12, h: 18 },
-        { id: 'b', x: 12, y: 0, w: 12, h: 18 },
-        { id: 'c', x: 0, y: 18, w: 12, h: 18 },
-        { id: 'd', x: 12, y: 18, w: 12, h: 18 },
-      ],
-      groups: [{ id: 'g1', target: { single: { kind: 'layout', layoutId: 'qwerty' } } }],
+  await page.addInitScript(
+    ({ key, value }) => {
+      if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 4, workspaces: [value] }));
     },
-  });
+    {
+      key: WORKSPACES_KEY,
+      value: {
+        id: 'k',
+        name: 'キー',
+        text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+        // a: ヒートマップ(QWERTY) / b: Bigram Flow(QWERTY) / c: ヒートマップ(Dvorak) / d: ヒートマップ（レイヤー）(QWERTY)。
+        // a・b・dは配列と物理配列が同じ
+        panes: [
+          fixed('a', 'heatmap', 'qwerty'),
+          fixed('b', 'bigram-flow', 'qwerty'),
+          fixed('c', 'heatmap', 'dvorak'),
+          fixed('d', 'heatmap-layers', 'qwerty'),
+        ],
+        grid: [
+          { id: 'a', x: 0, y: 0, w: 12, h: 18 },
+          { id: 'b', x: 12, y: 0, w: 12, h: 18 },
+          { id: 'c', x: 0, y: 18, w: 12, h: 18 },
+          { id: 'd', x: 12, y: 18, w: 12, h: 18 },
+        ],
+        groups: [{ id: 'g1', target: { single: { kind: 'layout', layoutId: 'qwerty' } } }],
+      },
+    },
+  );
   await page.goto('/workspace/k');
   await waitForHydration(page);
   await expect(page.locator('.pane-frame[data-pane-status="ready"]')).toHaveCount(4, { timeout: 20_000 });

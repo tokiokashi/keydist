@@ -160,23 +160,29 @@ const OVERVIEW: SampleDefinition = {
     id: groupId(i + 1),
     target: {
       single: { target: layoutTarget(layoutId) },
-      set: i === 0
-        ? { targets: SAMPLE_COMPARISON_LAYOUT_IDS.map(layoutTarget), baseline: undefined }
-        : { targets: [], baseline: undefined },
+      set: i === 0 ? { targets: SAMPLE_COMPARISON_LAYOUT_IDS.map(layoutTarget), baseline: undefined } : { targets: [], baseline: undefined },
     },
   })),
   // Bigram Flowの4つは1つの共有の設定に従う（2打鍵の取り方を1か所で変えられる）。指ごとの距離の4つも1つの共有の設定
   // に従い、こちらは既定のまま始める
   optionSets: [
-    { id: newOptionSetId({ optionSets: [] }, SAMPLE_BIGRAM_FLOW_ANALYZER_ID), analyzerId: SAMPLE_BIGRAM_FLOW_ANALYZER_ID, options: SAMPLE_BIGRAM_FLOW_OPTIONS },
+    {
+      id: newOptionSetId({ optionSets: [] }, SAMPLE_BIGRAM_FLOW_ANALYZER_ID),
+      analyzerId: SAMPLE_BIGRAM_FLOW_ANALYZER_ID,
+      options: SAMPLE_BIGRAM_FLOW_OPTIONS,
+    },
     { id: newOptionSetId({ optionSets: [] }, SAMPLE_FINGER_DISTANCE_ANALYZER_ID), analyzerId: SAMPLE_FINGER_DISTANCE_ANALYZER_ID, options: undefined },
   ],
   // 上の段は比較表とN感度の2つ、中の段はBigram Flowの4つ、下の段は指ごとの距離の4つが左から並ぶ
   panes: [
     { analyzerId: SAMPLE_COMPARISON_ANALYZER_ID, group: 1, size: SAMPLE_COMPARISON_SIZE },
     { analyzerId: SAMPLE_N_SENSITIVITY_ANALYZER_ID, group: 1, size: SAMPLE_N_SENSITIVITY_SIZE },
-    ...SAMPLE_BIGRAM_FLOW_LAYOUT_IDS.map((_, i): SamplePaneSpec => ({ analyzerId: SAMPLE_BIGRAM_FLOW_ANALYZER_ID, optionSet: true, group: i + 1, size: SAMPLE_LOWER_SIZE })),
-    ...SAMPLE_BIGRAM_FLOW_LAYOUT_IDS.map((_, i): SamplePaneSpec => ({ analyzerId: SAMPLE_FINGER_DISTANCE_ANALYZER_ID, optionSet: true, group: i + 1, size: SAMPLE_FINGER_DISTANCE_SIZE })),
+    ...SAMPLE_BIGRAM_FLOW_LAYOUT_IDS.map(
+      (_, i): SamplePaneSpec => ({ analyzerId: SAMPLE_BIGRAM_FLOW_ANALYZER_ID, optionSet: true, group: i + 1, size: SAMPLE_LOWER_SIZE }),
+    ),
+    ...SAMPLE_BIGRAM_FLOW_LAYOUT_IDS.map(
+      (_, i): SamplePaneSpec => ({ analyzerId: SAMPLE_FINGER_DISTANCE_ANALYZER_ID, optionSet: true, group: i + 1, size: SAMPLE_FINGER_DISTANCE_SIZE }),
+    ),
   ],
 };
 
@@ -204,12 +210,14 @@ const LAYOUT_DETAIL: SampleDefinition = {
     { analyzerId: SAMPLE_BIGRAM_FLOW_ANALYZER_ID, group: 1, size: LAYOUT_DETAIL_BIGRAM_FLOW_SIZE },
     { analyzerId: SAMPLE_COMPARISON_ANALYZER_ID, group: 1, size: LAYOUT_DETAIL_COMPARISON_SIZE },
     { analyzerId: SAMPLE_N_SENSITIVITY_ANALYZER_ID, group: 1, size: LAYOUT_DETAIL_N_SENSITIVITY_SIZE },
-    ...(['presses', 'distance', 'pairMean', 'pairStdDev'] as const).map((surface): SamplePaneSpec => ({
-      analyzerId: SAMPLE_FINGER_MATRIX_ANALYZER_ID,
-      options: { surface },
-      group: 1,
-      size: LAYOUT_DETAIL_FINGER_MATRIX_SIZE,
-    })),
+    ...(['presses', 'distance', 'pairMean', 'pairStdDev'] as const).map(
+      (surface): SamplePaneSpec => ({
+        analyzerId: SAMPLE_FINGER_MATRIX_ANALYZER_ID,
+        options: { surface },
+        group: 1,
+        size: LAYOUT_DETAIL_FINGER_MATRIX_SIZE,
+      }),
+    ),
   ],
 };
 

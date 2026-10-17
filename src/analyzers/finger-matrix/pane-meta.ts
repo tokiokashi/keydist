@@ -14,10 +14,7 @@ export const FINGER_MATRIX_PANE_META = {
    * 解析設定に依らない固定の文なので、Workspaceのペインの見出しからも開ける）。
    */
   help: {
-    notes: [
-      '距離の単位uは、キーの幅を1とした距離。',
-      '押下数と移動距離は、入力1文字あたりに直した値を表に出します。',
-    ],
+    notes: ['距離の単位uは、キーの幅を1とした距離。', '押下数と移動距離は、入力1文字あたりに直した値を表に出します。'],
     listLabel: '見る量の説明',
     items: FINGER_MATRIX_SURFACE_IDS.map((id) => ({
       name: FINGER_MATRIX_SURFACE_TEXT[id].label,

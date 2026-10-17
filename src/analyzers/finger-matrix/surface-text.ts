@@ -19,7 +19,8 @@ export const FINGER_MATRIX_SURFACE_TEXT: Readonly<Record<FingerMatrixSurfaceId, 
   presses: {
     label: '押下数',
     unit: '押下/文字',
-    description: '指ごとに押したキーの数を、入力1文字あたりで出します。同時押しで1本の指が複数のキーを押した時は、押したキーの数だけ数えます。マウスを乗せると、1文字あたりに直す前の押下回数が出ます。',
+    description:
+      '指ごとに押したキーの数を、入力1文字あたりで出します。同時押しで1本の指が複数のキーを押した時は、押したキーの数だけ数えます。マウスを乗せると、1文字あたりに直す前の押下回数が出ます。',
   },
   distance: {
     label: '移動距離',
@@ -29,7 +30,8 @@ export const FINGER_MATRIX_SURFACE_TEXT: Readonly<Record<FingerMatrixSurfaceId, 
   pairMean: {
     label: '指間距離の平均',
     unit: 'u',
-    description: '同じ手で隣り合う2本の指の距離が、ホームに置いた時の間隔よりどれだけ開いたかの平均です。親指は含みません。ホームより近いと負になります。',
+    description:
+      '同じ手で隣り合う2本の指の距離が、ホームに置いた時の間隔よりどれだけ開いたかの平均です。親指は含みません。ホームより近いと負になります。',
   },
   pairStdDev: {
     label: '指間距離の標準偏差',
@@ -44,7 +46,8 @@ export const FINGER_MATRIX_SURFACE_TEXT: Readonly<Record<FingerMatrixSurfaceId, 
   sfbRate: {
     label: '同指連続の比率',
     unit: '%',
-    description: 'その指で押した回数のうち、同指連続だった割合です。分母は「その指で押した回数」で、同時押しで1本の指が複数のキーを押しても1回と数えます。そのため、押下数の面の分母（押したキーの数）とは違う数です。',
+    description:
+      'その指で押した回数のうち、同指連続だった割合です。分母は「その指で押した回数」で、同時押しで1本の指が複数のキーを押しても1回と数えます。そのため、押下数の面の分母（押したキーの数）とは違う数です。',
   },
   sfbShare: {
     label: '同指連続の割合',

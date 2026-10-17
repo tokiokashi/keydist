@@ -68,8 +68,7 @@ export function decodeTargetRef(raw: string, path: string, diagnostics: CodecDia
 
 /** Setupを名前で指す時の名前。ユーザーが付けたラベルがあればそれ、無ければ「配列名/物理配列名」。 */
 function setupShareName(setup: Setup, source: TargetShareSource): string {
-  return effectiveLabel(setup.label)
-    ?? `${source.layouts.get(setup.layoutId)?.name ?? ''}/${source.shapes.get(setup.shapeId)?.name ?? ''}`;
+  return effectiveLabel(setup.label) ?? `${source.layouts.get(setup.layoutId)?.name ?? ''}/${source.shapes.get(setup.shapeId)?.name ?? ''}`;
 }
 
 /** 対象が参照として載るか。載らない理由を持つ。 */
@@ -106,9 +105,7 @@ export function encodeTargetRef(target: AnalysisTarget, source: TargetShareSourc
     ref = `setup:${name}`;
   }
   if (kind !== 'layout' && !isReadableTargetRef(ref)) {
-    return ref.length > SHARE_MAX_REF_LENGTH
-      ? { ok: false, reason: 'too-long', kind, name }
-      : { ok: false, reason: 'unreadable-name', kind, name };
+    return ref.length > SHARE_MAX_REF_LENGTH ? { ok: false, reason: 'too-long', kind, name } : { ok: false, reason: 'unreadable-name', kind, name };
   }
   return { ok: true, ref };
 }
@@ -122,9 +119,7 @@ export type TargetRefResolution =
 export function resolveTargetRef(ref: TargetRef, source: TargetShareSource): TargetRefResolution {
   if (ref.kind === 'layout') {
     const found = source.layouts.has(ref.layoutId) && !source.userLayoutIds.has(ref.layoutId);
-    return found
-      ? { ok: true, target: { kind: 'layout', layoutId: ref.layoutId } }
-      : { ok: false, kind: 'layout', name: undefined };
+    return found ? { ok: true, target: { kind: 'layout', layoutId: ref.layoutId } } : { ok: false, kind: 'layout', name: undefined };
   }
   if (ref.kind === 'user-layout') {
     for (const layout of source.layouts.values()) {
@@ -135,9 +130,7 @@ export function resolveTargetRef(ref: TargetRef, source: TargetShareSource): Tar
     return { ok: false, kind: 'user-layout', name: ref.name };
   }
   const setup = source.setups.find((s) => setupShareName(s, source) === ref.name);
-  return setup === undefined
-    ? { ok: false, kind: 'setup', name: ref.name }
-    : { ok: true, target: { kind: 'setup', setupId: setup.id } };
+  return setup === undefined ? { ok: false, kind: 'setup', name: ref.name } : { ok: true, target: { kind: 'setup', setupId: setup.id } };
 }
 
 /** 共有URLを作った時に、送る側へ伝えること。 */
@@ -277,11 +270,7 @@ export interface DecodedSingleTarget {
   readonly notice: SharedTargetsNotice;
 }
 
-export function decodeSingleTargetFromUrl(
-  params: URLSearchParams,
-  source: TargetShareSource,
-  diagnostics: CodecDiagnostic[],
-): DecodedSingleTarget {
+export function decodeSingleTargetFromUrl(params: URLSearchParams, source: TargetShareSource, diagnostics: CodecDiagnostic[]): DecodedSingleTarget {
   const notice: NoticeBuilder = { notFound: [], unreadable: 0 };
   const raw = params.get(SHARE_TARGET_PARAM);
   if (raw === null) return { present: false, target: undefined, notice };
@@ -298,11 +287,7 @@ export interface DecodedMultiTargets {
   readonly notice: SharedTargetsNotice;
 }
 
-export function decodeMultiTargetsFromUrl(
-  params: URLSearchParams,
-  source: TargetShareSource,
-  diagnostics: CodecDiagnostic[],
-): DecodedMultiTargets {
+export function decodeMultiTargetsFromUrl(params: URLSearchParams, source: TargetShareSource, diagnostics: CodecDiagnostic[]): DecodedMultiTargets {
   const notice: NoticeBuilder = { notFound: [], unreadable: 0 };
   const rawTargets = params.getAll(SHARE_TARGETS_PARAM);
   const rawBaseline = params.get(SHARE_BASELINE_PARAM);
@@ -339,8 +324,9 @@ const MAX_NAMES_SHOWN = 3;
 export function describeSharedTargetsNotice(notice: SharedTargetsNotice): readonly string[] {
   const lines: string[] = [];
   if (notice.notFound.length > 0) {
-    const names = notice.notFound.slice(0, MAX_NAMES_SHOWN).map((item) =>
-      item.kind === 'setup' ? `Setup「${item.name}」` : `自作の配列「${item.name}」`);
+    const names = notice.notFound
+      .slice(0, MAX_NAMES_SHOWN)
+      .map((item) => (item.kind === 'setup' ? `Setup「${item.name}」` : `自作の配列「${item.name}」`));
     const rest = notice.notFound.length - names.length;
     lines.push(`共有された${names.join('・')}${rest > 0 ? `ほか${rest}件` : ''}は、この端末に見つかりませんでした`);
   }
@@ -382,8 +368,7 @@ export function describeShareEncodeNotice(notice: ShareEncodeNotice): readonly s
     lines.push(`対象は${SHARE_MAX_TARGETS}件までのため、超えた分（${notice.overLimit}件）はリンクに載りませんでした`);
   }
   if (notice.nameOnlyLayouts.length > 0) {
-    const names = notice.nameOnlyLayouts.slice(0, MAX_NAMES_SHOWN).map((name) =>
-      quoteName({ kind: 'user-layout', name }));
+    const names = notice.nameOnlyLayouts.slice(0, MAX_NAMES_SHOWN).map((name) => quoteName({ kind: 'user-layout', name }));
     const rest = notice.nameOnlyLayouts.length - names.length;
     lines.push(`${names.join('・')}${rest > 0 ? `ほか${rest}件` : ''}は名前だけがリンクに載ります。受け取った側に同じ名前の配列が無いと開けません`);
   }

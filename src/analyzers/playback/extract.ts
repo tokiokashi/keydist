@@ -1,9 +1,4 @@
-import {
-  defineSingleAnalyzer,
-  type ExtractionAssets,
-  type SingleAnalyzerDefinition,
-  type SingleAnalyzerExtractContext,
-} from '#analyzers/contract.ts';
+import { defineSingleAnalyzer, type ExtractionAssets, type SingleAnalyzerDefinition, type SingleAnalyzerExtractContext } from '#analyzers/contract.ts';
 import { plainDisciplineContext } from '#analyzers/discipline-material.ts';
 import type { Geometry } from '#input/shapes/geometry.ts';
 import type { AggregatedAnalysisResult } from '#interpretation/structure/aggregate.ts';
@@ -63,7 +58,15 @@ export interface PlaybackExtracted {
   readonly basisId: string;
 }
 
-export function computePlaybackExtraction({ analysis, metrics, geometry, options, assets, basisId, text }: {
+export function computePlaybackExtraction({
+  analysis,
+  metrics,
+  geometry,
+  options,
+  assets,
+  basisId,
+  text,
+}: {
   readonly analysis: AggregatedAnalysisResult;
   /** 評価に渡したテキスト。読み飛ばした読点・句点の位置を知るために読む */
   readonly text: string;

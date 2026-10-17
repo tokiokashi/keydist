@@ -20,9 +20,7 @@ function copyRecord<T>(record: Readonly<Record<string, T>>): Record<string, T> {
 function copyCalibration(value: PlaybackCalibration): PlaybackCalibration {
   return {
     actionsPerSecond: value.actionsPerSecond,
-    ...(value.actionsPerSecondByDirection === undefined
-      ? {}
-      : { actionsPerSecondByDirection: copyRecord(value.actionsPerSecondByDirection) }),
+    ...(value.actionsPerSecondByDirection === undefined ? {} : { actionsPerSecondByDirection: copyRecord(value.actionsPerSecondByDirection) }),
     sameHandDifferentFingerActionsPerSecond: value.sameHandDifferentFingerActionsPerSecond,
     sameHandDifferentFingerActionsPerSecondByPair: copyRecord(value.sameHandDifferentFingerActionsPerSecondByPair),
     ...(value.sameHandDifferentFingerActionsPerDirectedPair === undefined
@@ -32,12 +30,8 @@ function copyCalibration(value: PlaybackCalibration): PlaybackCalibration {
     fingerMoveMsPerUnit: copyRecord(value.fingerMoveMsPerUnit),
     fallbackRepeatMs: value.fallbackRepeatMs,
     fallbackMoveMsPerUnit: value.fallbackMoveMsPerUnit,
-    ...(value.keystrokeOverheadMs === undefined
-      ? {}
-      : { keystrokeOverheadMs: copyRecord(value.keystrokeOverheadMs) }),
-    ...(value.simultaneousOverheadMs === undefined
-      ? {}
-      : { simultaneousOverheadMs: copyRecord(value.simultaneousOverheadMs) }),
+    ...(value.keystrokeOverheadMs === undefined ? {} : { keystrokeOverheadMs: copyRecord(value.keystrokeOverheadMs) }),
+    ...(value.simultaneousOverheadMs === undefined ? {} : { simultaneousOverheadMs: copyRecord(value.simultaneousOverheadMs) }),
     ...(value.sentenceSimultaneousKinds === undefined
       ? {}
       : { sentenceSimultaneousKinds: SIMULTANEOUS_KINDS.filter((kind) => value.sentenceSimultaneousKinds?.includes(kind)) }),
@@ -65,7 +59,5 @@ export const PERSONAL_SPEED_CODEC: AssetCodec<PersonalSpeed> = defineAssetCodec(
     }
     return { calibration: copyCalibration(payload.calibration as PlaybackCalibration) };
   },
-  encodePayload: (value) => (
-    value.calibration === undefined ? {} : { calibration: copyCalibration(value.calibration) }
-  ),
+  encodePayload: (value) => (value.calibration === undefined ? {} : { calibration: copyCalibration(value.calibration) }),
 });

@@ -19,7 +19,11 @@ function PressesTable({ extracted }: { readonly extracted: LayerComboPressesExtr
       <div className="layer-combo-presses-table-scroll">
         <table className="layer-combo-presses-table" data-layer-combo-presses-table>
           <thead>
-            <tr><th scope="col">レイヤー・コンボ</th><th scope="col">押下数</th><th scope="col">割合</th></tr>
+            <tr>
+              <th scope="col">レイヤー・コンボ</th>
+              <th scope="col">押下数</th>
+              <th scope="col">割合</th>
+            </tr>
           </thead>
           <tbody>
             {extracted.rows.map((row) => (

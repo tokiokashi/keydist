@@ -29,28 +29,24 @@ export function FingerDistanceBody({ extracted, options }: FingerDistanceBodyPro
     <section className="finger-distance-feature" data-react-feature="finger-distance">
       <h3 className="finger-distance-heading">{spec.title}</h3>
       <FingerDistanceChart spec={spec} scaleKey={`finger-distance:${options.chartMetric}`} />
-      {isAdjacent
-        ? <p className="finger-distance-note">間隔は、2本の指がホームに並んだ時の間隔からの超過。</p>
-        : null}
-      {isAdjacent
-        ? (
-          <>
-            <h3 className="finger-distance-heading">隣り合う指の間隔の分布 [%]</h3>
-            <FingerDistanceDistribution specs={distributionSpecsOf(extracted)} />
-            <p className="finger-distance-note">
-              各行は指間距離の超過 [u] の1つの値で、棒と右の数字がその値の打鍵が全打鍵に占める割合です。割合の分母は、平均・標準偏差と同じ全打鍵です。その組の指がホームにある打鍵も含みます。
-            </p>
-          </>
-        )
-        : null}
+      {isAdjacent ? <p className="finger-distance-note">間隔は、2本の指がホームに並んだ時の間隔からの超過。</p> : null}
+      {isAdjacent ? (
+        <>
+          <h3 className="finger-distance-heading">隣り合う指の間隔の分布 [%]</h3>
+          <FingerDistanceDistribution specs={distributionSpecsOf(extracted)} />
+          <p className="finger-distance-note">
+            各行は指間距離の超過 [u]
+            の1つの値で、棒と右の数字がその値の打鍵が全打鍵に占める割合です。割合の分母は、平均・標準偏差と同じ全打鍵です。その組の指がホームにある打鍵も含みます。
+          </p>
+        </>
+      ) : null}
     </section>
   );
 }
 
 /** グラフで見る量。 */
 export function FingerDistanceSettings({ options, onOptionsChange }: AnalyzerSettingsProps<FingerDistanceOptions>) {
-  const bind = <K extends keyof FingerDistanceOptions>(key: K) =>
-    bindOption(options, DEFAULT_FINGER_DISTANCE_OPTIONS, onOptionsChange, key);
+  const bind = <K extends keyof FingerDistanceOptions>(key: K) => bindOption(options, DEFAULT_FINGER_DISTANCE_OPTIONS, onOptionsChange, key);
   return (
     <div className="option-groups">
       <SelectOptionField

@@ -70,10 +70,12 @@ export interface HeatmapLayersExtractInput {
 
 export function computeHeatmapLayersExtraction({ trace, metrics, keyDetails }: HeatmapLayersExtractInput): HeatmapLayersExtracted {
   const attribution = attributeMetrics(trace.layerDefinitions, metrics);
-  const layers = attribution.layers.map((layer): HeatmapLayer => ({
-    ...layer,
-    colorCounts: normalizedRoleColors(layer.role, layer),
-  }));
+  const layers = attribution.layers.map(
+    (layer): HeatmapLayer => ({
+      ...layer,
+      colorCounts: normalizedRoleColors(layer.role, layer),
+    }),
+  );
   return {
     layers,
     combo: attribution.combo !== undefined && attribution.combo.presses > 0 ? attribution.combo : undefined,

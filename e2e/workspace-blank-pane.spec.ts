@@ -26,7 +26,10 @@ async function storedPanes(page: Page): Promise<{ analyzerId: string; binding: {
 test('余白を足すと、名前と⋯だけが出て本文は空。保存して再読み込みしても残り、複製・閉じるが他のペインと同じに動く', async ({ page }) => {
   await createWorkspace(page);
   // 最初のペインは空の状態の案内から足す
-  await page.locator('[data-workspace-empty]').getByRole('button', { name: /ペインを追加/ }).click();
+  await page
+    .locator('[data-workspace-empty]')
+    .getByRole('button', { name: /ペインを追加/ })
+    .click();
   await page.getByRole('menuitem', { name: /Bigram Flow/ }).click();
   await addPane(page, '余白');
 
@@ -38,28 +41,47 @@ test('余白を足すと、名前と⋯だけが出て本文は空。保存し�
   await expect(blank.getByRole('button', { name: /の操作$/ })).toHaveCount(1);
   await expect(blank.locator('p, table, img, canvas')).toHaveCount(0);
 
-  await expect.poll(async () => (await storedPanes(page)).map((p) => [p.analyzerId, p.binding.mode]))
-    .toEqual([['bigram-flow', 'follow'], ['blank', 'none']]);
+  await expect
+    .poll(async () => (await storedPanes(page)).map((p) => [p.analyzerId, p.binding.mode]))
+    .toEqual([
+      ['bigram-flow', 'follow'],
+      ['blank', 'none'],
+    ]);
 
   await page.reload();
   await waitForHydration(page);
   await expect(page.locator('[data-blank-pane="true"]')).toHaveCount(1);
 
   // 複製は元と同じ大きさ。⋯のメニューに拡大表示は無い
-  await page.locator('[data-blank-pane="true"]').getByRole('button', { name: /の操作$/ }).click();
+  await page
+    .locator('[data-blank-pane="true"]')
+    .getByRole('button', { name: /の操作$/ })
+    .click();
   await expect(page.getByRole('menuitem')).toHaveText([/複製/, /閉じる/]);
   await page.getByRole('menuitem', { name: /複製/ }).click();
   await expect(page.locator('[data-blank-pane="true"]')).toHaveCount(2);
-  const sizes = await page.locator('.workspace-pane').filter({ has: page.locator('[data-blank-pane="true"]') }).evaluateAll((els) => els.map((el) => {
-    const r = el.getBoundingClientRect();
-    return [Math.round(r.width), Math.round(r.height)];
-  }));
+  const sizes = await page
+    .locator('.workspace-pane')
+    .filter({ has: page.locator('[data-blank-pane="true"]') })
+    .evaluateAll((els) =>
+      els.map((el) => {
+        const r = el.getBoundingClientRect();
+        return [Math.round(r.width), Math.round(r.height)];
+      }),
+    );
   expect(sizes[0]).toEqual(sizes[1]);
 
   // ⋯で閉じる。Bigram Flowは残る
-  await page.locator('[data-blank-pane="true"]').nth(1).getByRole('button', { name: /の操作$/ }).click();
+  await page
+    .locator('[data-blank-pane="true"]')
+    .nth(1)
+    .getByRole('button', { name: /の操作$/ })
+    .click();
   await page.getByRole('menuitem', { name: /閉じる/ }).click();
-  await page.locator('[data-blank-pane="true"]').getByRole('button', { name: /の操作$/ }).click();
+  await page
+    .locator('[data-blank-pane="true"]')
+    .getByRole('button', { name: /の操作$/ })
+    .click();
   await page.getByRole('menuitem', { name: /閉じる/ }).click();
   await expect(page.locator('[data-blank-pane="true"]')).toHaveCount(0);
   await expect.poll(async () => (await storedPanes(page)).map((p) => p.analyzerId)).toEqual(['bigram-flow']);

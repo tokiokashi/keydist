@@ -16,7 +16,10 @@ function strokesFor(text: string): Stroke[] {
 
 /** ステップで押したキー（Shiftを除く）。 */
 function keysOf(stroke: Stroke): string[] {
-  return stroke.presses.flatMap((press) => press.keys.map((key) => key.id)).filter((key) => !SHIFTS.includes(key)).sort();
+  return stroke.presses
+    .flatMap((press) => press.keys.map((key) => key.id))
+    .filter((key) => !SHIFTS.includes(key))
+    .sort();
 }
 
 /** ステップで押したShiftキーの数。 */
@@ -29,7 +32,13 @@ test('濁点: 元のかなの後に濁点のキーを別のステップで打つ
   assert.deepEqual(strokes.map(keysOf), [['t'], ['[']]);
   assert.deepEqual(strokes.map(shiftCountOf), [0, 0]);
   // 1文字の入力が2ステップになる。覆うかなは同じ1文字
-  assert.deepEqual(strokes.map((stroke) => [stroke.kanaStart, stroke.kanaEnd]), [[0, 0], [0, 0]]);
+  assert.deepEqual(
+    strokes.map((stroke) => [stroke.kanaStart, stroke.kanaEnd]),
+    [
+      [0, 0],
+      [0, 0],
+    ],
+  );
 });
 
 test('半濁点: 元のかなの後に半濁点のキーを別のステップで打つ（ぱははのキー、半濁点のキーの順に打つ2ステップ）', () => {

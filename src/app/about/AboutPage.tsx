@@ -29,9 +29,15 @@ export function AboutPage() {
         <h2>距離の決め方</h2>
         <p>打つキーkを担当する指fについて、次の3通りに分けます。距離はキーの間隔uを単位に、キーの中心どうしの直線で測ります。</p>
         <ol>
-          <li><strong>同じ指が直前の打鍵でも使われています</strong>: 前に打ったキーからkまでの距離を足します。ホームへ戻る時間が無いためです。</li>
-          <li><strong>同じ指の前の打鍵がN文字以内</strong>: 前のキーに残っていた場合と、ホームに戻っていた場合の距離を比べ、短い方を足します。</li>
-          <li><strong>同じ指の前の打鍵がN文字より前</strong>: ホームに戻っていたものとして、ホームからkまでの距離を足します。</li>
+          <li>
+            <strong>同じ指が直前の打鍵でも使われています</strong>: 前に打ったキーからkまでの距離を足します。ホームへ戻る時間が無いためです。
+          </li>
+          <li>
+            <strong>同じ指の前の打鍵がN文字以内</strong>: 前のキーに残っていた場合と、ホームに戻っていた場合の距離を比べ、短い方を足します。
+          </li>
+          <li>
+            <strong>同じ指の前の打鍵がN文字より前</strong>: ホームに戻っていたものとして、ホームからkまでの距離を足します。
+          </li>
         </ol>
         <p>
           Nは先読みする文字の数です。打つ文章の文字で数え、次の文字は1、5文字先は5です。同じ文字を打つキーどうしは0で、配列によらず同じNが文章の同じ範囲を指します。配列に無く打てない文字も1文字と数えます。担当する指が1本のキーだけの割り当てでは、Nを増やすと比べられる候補が増えるので、総距離は減る方向に動きます。担当する指が2本以上のキーを持つ割り当てでは、Nを増やすと指の選び方も変わるので、総距離が増えることもあります。ホームへ戻る移動そのものは距離に含めません。
@@ -43,7 +49,9 @@ export function AboutPage() {
         <h2>距離モデルが落とした次元</h2>
         <p>このモデルは配列の性質を数値で眺めるためのもので、実際のタイピングの再現ではありません。次のものは数値に入っていません。</p>
         <ul>
-          {DROPPED_DIMENSIONS.map((text) => <li key={text}>{text}</li>)}
+          {DROPPED_DIMENSIONS.map((text) => (
+            <li key={text}>{text}</li>
+          ))}
         </ul>
       </section>
 
@@ -53,11 +61,15 @@ export function AboutPage() {
         <ul>
           {SPEC_LINKS.map((link) => (
             <li key={link.url}>
-              <a href={link.url} target="_blank" rel="noopener noreferrer">{link.label}</a>
+              <a href={link.url} target="_blank" rel="noopener noreferrer">
+                {link.label}
+              </a>
             </li>
           ))}
           <li>
-            <a href={REPOSITORY_URL} target="_blank" rel="noopener noreferrer">GitHubのリポジトリ</a>
+            <a href={REPOSITORY_URL} target="_blank" rel="noopener noreferrer">
+              GitHubのリポジトリ
+            </a>
           </li>
         </ul>
       </section>

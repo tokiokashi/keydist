@@ -56,28 +56,31 @@ async function readRow(page: Page) {
   });
 }
 
-for (const [name, search] of [['ローマ字で出す表示', ''], ['かなで出す表示', KANA_ONLY]] as const) {
-test(`今の入力の1文字目の横の位置が、打ち終えた入力の有無・多さによらず同じ（${name}）`, async ({ page }) => {
-  // 1打鍵ごとに測るので、打鍵の数に比例して時間がかかる
-  test.setTimeout(120_000);
-  await openWithText(page, 1200, search);
-  const last = await total(page);
-  expect(last).toBeGreaterThan(100);
+for (const [name, search] of [
+  ['ローマ字で出す表示', ''],
+  ['かなで出す表示', KANA_ONLY],
+] as const) {
+  test(`今の入力の1文字目の横の位置が、打ち終えた入力の有無・多さによらず同じ（${name}）`, async ({ page }) => {
+    // 1打鍵ごとに測るので、打鍵の数に比例して時間がかかる
+    test.setTimeout(120_000);
+    await openWithText(page, 1200, search);
+    const last = await total(page);
+    expect(last).toBeGreaterThan(100);
 
-  const xs: number[] = [];
-  const counts: number[] = [];
-  // 1打鍵目（打ち終えた入力が無い）から、欄が埋まって溢れる先まで、1打鍵ごとに測る
-  for (let position = 1; position <= last; position++) {
-    await goTo(page, position);
-    xs.push((await current(page).boundingBox())!.x);
-    counts.push((await readRow(page)).filter((segment) => segment.kind === 'completed').length);
-  }
-  console.log(`MEASURE x=${Math.min(...xs).toFixed(2)}..${Math.max(...xs).toFixed(2)} completedMax=${Math.max(...counts)}`);
-  // 打ち終えた入力が無い・欄に満たない・欄から溢れる、のすべてを通っている
-  expect(counts[0]).toBe(0);
-  expect(Math.max(...counts)).toBeGreaterThanOrEqual(20);
-  expect(Math.max(...xs) - Math.min(...xs)).toBeLessThanOrEqual(0.5);
-});
+    const xs: number[] = [];
+    const counts: number[] = [];
+    // 1打鍵目（打ち終えた入力が無い）から、欄が埋まって溢れる先まで、1打鍵ごとに測る
+    for (let position = 1; position <= last; position++) {
+      await goTo(page, position);
+      xs.push((await current(page).boundingBox())!.x);
+      counts.push((await readRow(page)).filter((segment) => segment.kind === 'completed').length);
+    }
+    console.log(`MEASURE x=${Math.min(...xs).toFixed(2)}..${Math.max(...xs).toFixed(2)} completedMax=${Math.max(...counts)}`);
+    // 打ち終えた入力が無い・欄に満たない・欄から溢れる、のすべてを通っている
+    expect(counts[0]).toBe(0);
+    expect(Math.max(...counts)).toBeGreaterThanOrEqual(20);
+    expect(Math.max(...xs) - Math.min(...xs)).toBeLessThanOrEqual(0.5);
+  });
 }
 
 test('かなで出す表示: 打ち終えた入力・今の入力・この後の入力が、テキストの順に並ぶ', async ({ page }) => {
@@ -97,7 +100,9 @@ test('かなで出す表示: 行が狭くて欄が縮む時も、今の入力が
   await openWithText(page, 1200, KANA_ONLY);
   const last = await total(page);
   // ペインの幅はこれ以上縮まないので、行そのものに狭い幅を与えて、欄が縮む状況を作る
-  await row(page).evaluate((element) => { (element as HTMLElement).style.width = '150px'; });
+  await row(page).evaluate((element) => {
+    (element as HTMLElement).style.width = '150px';
+  });
   const done = feature(page).locator('.playback-history-done');
   const rest = feature(page).locator('.playback-history-rest');
   for (const position of [1, 12, 30, last]) {
@@ -130,7 +135,12 @@ test('ローマ字で出す表示: 打ち終えた入力はかな、今の入力
   // 次の単位に進むと、前の単位は打ち終えた入力としてかなで出る
   await goTo(page, 4);
   const segments = await readRow(page);
-  expect(segments.filter((segment) => segment.kind === 'completed').map((segment) => segment.text).join('')).toBe('きょ');
+  expect(
+    segments
+      .filter((segment) => segment.kind === 'completed')
+      .map((segment) => segment.text)
+      .join(''),
+  ).toBe('きょ');
   // 「う」は1打鍵で打ち終えるので、かなに戻っている
   expect(segments.find((segment) => segment.kind === 'current')!.text).toBe('う');
   const planned = segments.filter((segment) => segment.kind === 'planned');
@@ -152,7 +162,9 @@ test('ローマ字で出す表示: 行が狭くても、今の入力は省略記
   await openWithText(page, 1200);
   await goTo(page, 1);
   const wide = (await current(page).boundingBox())!.width;
-  await row(page).evaluate((element) => { (element as HTMLElement).style.width = '150px'; });
+  await row(page).evaluate((element) => {
+    (element as HTMLElement).style.width = '150px';
+  });
   for (const position of [1, 12, 30]) {
     await goTo(page, position);
     const text = (await current(page).textContent()) ?? '';

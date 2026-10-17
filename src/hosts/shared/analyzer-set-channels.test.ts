@@ -11,11 +11,7 @@ import type { EngineScheduler } from '#engine/scheduler.ts';
 import type { EngineSetMemberInput } from '#engine/request.ts';
 import { comparisonDefinition, type ComparisonExtracted } from '#analyzers/comparison/extract.ts';
 import { DEFAULT_COMPARISON_OPTIONS, type ComparisonOptions } from '#analyzers/comparison/options.ts';
-import {
-  closeAnalyzerSetPaneChannels,
-  syncAnalyzerSetPaneChannels,
-  type AnalyzerSetPaneChannels,
-} from './analyzer-set-channels.ts';
+import { closeAnalyzerSetPaneChannels, syncAnalyzerSetPaneChannels, type AnalyzerSetPaneChannels } from './analyzer-set-channels.ts';
 
 /** `request.test.ts`と同じ、flush()するまで実行しない決定的なスケジューラ。 */
 function createManualScheduler(): EngineScheduler & { flush(): void } {
@@ -24,7 +20,9 @@ function createManualScheduler(): EngineScheduler & { flush(): void } {
     schedule(task) {
       const entry = { cancelled: false, task };
       queue.push(entry);
-      return () => { entry.cancelled = true; };
+      return () => {
+        entry.cancelled = true;
+      };
     },
     flush() {
       const toRun = queue;

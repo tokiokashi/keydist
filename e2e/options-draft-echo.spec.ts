@@ -39,14 +39,18 @@ async function hookSaveTimer(page: Page): Promise<void> {
     };
     (window as unknown as { setTimeout: unknown }).setTimeout = (fn: () => void, ms?: number, ...args: unknown[]) => {
       if (ms !== debounceMs) return origSet(fn, ms, ...args);
-      const id: number = origSet(() => {
-        pending.delete(id);
-        w.__pendingSaves = pending.size;
-        fn();
-        const after = w.__afterSave;
-        w.__afterSave = undefined;
-        after?.();
-      }, ms, ...args);
+      const id: number = origSet(
+        () => {
+          pending.delete(id);
+          w.__pendingSaves = pending.size;
+          fn();
+          const after = w.__afterSave;
+          w.__afterSave = undefined;
+          after?.();
+        },
+        ms,
+        ...args,
+      );
       pending.add(id);
       w.__pendingSaves = pending.size;
       return id;
@@ -197,9 +201,7 @@ test('個別画面: 保存を待っている間の元に戻すで、表示と保
   await page.getByRole('button', { name: '元に戻す' }).click();
   await expect(toggle).not.toBeChecked();
   await expect(flow).toHaveAttribute('data-repeat-badge', 'false');
-  await expect
-    .poll(async () => page.evaluate(() => localStorage.getItem('keydist:standalone-analyzer-options') ?? ''))
-    .toContain('"repeatBadge":false');
+  await expect.poll(async () => page.evaluate(() => localStorage.getItem('keydist:standalone-analyzer-options') ?? '')).toContain('"repeatBadge":false');
 });
 
 test('Workspace のペイン: 保存の反響が次の入力の後に届いても、下書きは新しい値のまま', async ({ page }) => {
@@ -207,20 +209,27 @@ test('Workspace のペイン: 保存の反響が次の入力の後に届いて�
   await hookSaveTimer(page);
   await page.addInitScript(() => {
     if (localStorage.getItem('keydist:workspaces') === null) {
-      localStorage.setItem('keydist:workspaces', JSON.stringify({
-        version: 4,
-        workspaces: [{
-          id: 'echo',
-          name: 'echo',
-          text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
-          panes: [{
-            id: 'a',
-            analyzerId: 'bigram-flow',
-            binding: { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } } },
-          }],
-          grid: [{ id: 'a', x: 0, y: 0, w: 12, h: 20 }],
-        }],
-      }));
+      localStorage.setItem(
+        'keydist:workspaces',
+        JSON.stringify({
+          version: 4,
+          workspaces: [
+            {
+              id: 'echo',
+              name: 'echo',
+              text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+              panes: [
+                {
+                  id: 'a',
+                  analyzerId: 'bigram-flow',
+                  binding: { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } } },
+                },
+              ],
+              grid: [{ id: 'a', x: 0, y: 0, w: 12, h: 20 }],
+            },
+          ],
+        }),
+      );
     }
   });
   await page.goto('/workspace/echo');

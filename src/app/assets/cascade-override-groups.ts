@@ -2,12 +2,7 @@ import type { CascadeLevel, InputMethod } from '#input/settings/index.ts';
 import { MISSING_LAYOUT_NAME, MISSING_SETUP_NAME, MISSING_SHAPE_NAME } from '#input/setup/index.ts';
 import { SETTINGS_ITEMS, type SettingsCascadeOverrides, type SettingsItemId } from '#engine/settings-items.ts';
 import type { Workspace } from '#engine/workspace.ts';
-import {
-  conditionItemLabel,
-  conditionLevelLabel,
-  conditionOverrideValueText,
-  type ConditionValueNames,
-} from '#hosts/shared/condition-summary.ts';
+import { conditionItemLabel, conditionLevelLabel, conditionOverrideValueText, type ConditionValueNames } from '#hosts/shared/condition-summary.ts';
 
 /** 保存してある上書きの1項目。 */
 export interface OverrideEntry {
@@ -49,11 +44,7 @@ const INPUT_METHOD_ORDER: readonly InputMethod[] = ['kana-direct', 'romaji', 'di
 
 const SETTINGS_ITEM_IDS = Object.keys(SETTINGS_ITEMS) as SettingsItemId[];
 
-function entriesOf(
-  stored: Readonly<Record<string, unknown>> | undefined,
-  level: CascadeLevel,
-  names: ConditionValueNames,
-): readonly OverrideEntry[] {
+function entriesOf(stored: Readonly<Record<string, unknown>> | undefined, level: CascadeLevel, names: ConditionValueNames): readonly OverrideEntry[] {
   if (stored === undefined) return [];
   const entries: OverrideEntry[] = [];
   for (const itemId of SETTINGS_ITEM_IDS) {
@@ -95,7 +86,9 @@ function orderedKeys(
   const foundSet = new Set(found);
   return [
     ...found.map((key) => ({ key, found: true })),
-    ...Object.keys(bucket).filter((key) => !foundSet.has(key)).map((key) => ({ key, found: false })),
+    ...Object.keys(bucket)
+      .filter((key) => !foundSet.has(key))
+      .map((key) => ({ key, found: false })),
   ];
 }
 
@@ -148,7 +141,10 @@ export function cascadeOverrideGroups(input: OverrideGroupsInput): readonly Over
     push(`layout:${key}`, title, level, overrides.layout?.[key]);
   }
 
-  const setupKeys = orderedKeys(overrides.setup, setups.map((setup) => setup.id));
+  const setupKeys = orderedKeys(
+    overrides.setup,
+    setups.map((setup) => setup.id),
+  );
   const setupNames = new Map(setups.map((setup) => [setup.id, setup.displayName] as const));
   const missingSetups = setupKeys.filter((entry) => !entry.found).length;
   let missingSetupIndex = 0;

@@ -19,10 +19,7 @@ export function initialStandaloneAnalyzerOptions(): StandaloneAnalyzerOptionsSta
 }
 
 /** 1 Analyzerぶんの設定を読む。保存が無ければ`undefined`（呼び出し側が既定値へ decode する）。 */
-export function standaloneAnalyzerOptionsFor(
-  state: StandaloneAnalyzerOptionsState,
-  analyzerId: string,
-): unknown {
+export function standaloneAnalyzerOptionsFor(state: StandaloneAnalyzerOptionsState, analyzerId: string): unknown {
   return Object.hasOwn(state, analyzerId) ? state[analyzerId] : undefined;
 }
 

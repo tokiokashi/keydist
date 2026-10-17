@@ -42,26 +42,28 @@ export interface Attribution {
 
 export function attributeMetrics(layerDefinitions: readonly LayerDefinition[], metrics: Metrics): Attribution {
   const definitions = new Map(layerDefinitions.map((definition) => [definition.id, definition]));
-  const layers = metrics.layers.map((stat): LayerAttribution => ({
-    id: stat.id,
-    label: stat.label,
-    role: definitions.get(stat.id)?.presentationRole,
-    presses: stat.presses,
-    keyCounts: stat.keyCounts,
-    triggerKeyCounts: stat.triggerKeyCounts,
-    pairedTriggerKeyCounts: stat.pairedTriggerKeyCounts,
-  }));
+  const layers = metrics.layers.map(
+    (stat): LayerAttribution => ({
+      id: stat.id,
+      label: stat.label,
+      role: definitions.get(stat.id)?.presentationRole,
+      presses: stat.presses,
+      keyCounts: stat.keyCounts,
+      triggerKeyCounts: stat.triggerKeyCounts,
+      pairedTriggerKeyCounts: stat.pairedTriggerKeyCounts,
+    }),
+  );
   const comboDefinition = layerDefinitions.find((definition) => definition.kind === 'combo');
   const hasCombo = comboDefinition !== undefined || metrics.comboPresses > 0;
   return {
     layers,
     combo: hasCombo
       ? {
-        id: COMBO_LAYER_ID,
-        label: definitions.get(COMBO_LAYER_ID)?.label ?? COMBO_LAYER_ID,
-        presses: metrics.comboPresses,
-        keyCounts: metrics.comboKeyCounts,
-      }
+          id: COMBO_LAYER_ID,
+          label: definitions.get(COMBO_LAYER_ID)?.label ?? COMBO_LAYER_ID,
+          presses: metrics.comboPresses,
+          keyCounts: metrics.comboKeyCounts,
+        }
       : undefined,
   };
 }

@@ -7,12 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { Setup } from '#input/setup/index.ts';
-import {
-  EMPTY_SETTINGS_OVERRIDES,
-  setSettingsOverride,
-  type SettingsCascadeOverrides,
-  type SettingsItemId,
-} from '#engine/settings-items.ts';
+import { EMPTY_SETTINGS_OVERRIDES, setSettingsOverride, type SettingsCascadeOverrides, type SettingsItemId } from '#engine/settings-items.ts';
 import { resolveEngineInput } from '#engine/resolved-input.ts';
 import { createEngineCache } from '#engine/cache.ts';
 import { createInterpretationRequest, type InterpretationRequestState } from '#engine/engine-requests.ts';
@@ -104,12 +99,7 @@ function overridesFor(setupId: string, conditions: ConditionsSnapshot): Settings
   const chain = setSettingsOverride(overrides, global, 'chainInterpretation', conditions.chainInterpretation as never);
   assert.ok(chain.ok);
   overrides = chain.ok ? chain.overrides : overrides;
-  const arpeggio = setSettingsOverride(
-    overrides,
-    global,
-    'arpeggioInterpretation',
-    conditions.arpeggioInterpretation as never,
-  );
+  const arpeggio = setSettingsOverride(overrides, global, 'arpeggioInterpretation', conditions.arpeggioInterpretation as never);
   assert.ok(arpeggio.ok);
   overrides = arpeggio.ok ? arpeggio.overrides : overrides;
 
@@ -165,16 +155,12 @@ function analysisSummary(a: ReturnType<typeof computeFor>['analysis']) {
  */
 function computeFor(fixtureCase: FixtureCase, cache = createEngineCache()) {
   const text = sampleText(fixtureCase.language, fixtureCase.sampleId);
-  assert.equal(
-    sha256(text),
-    fixtureCase.textSha256,
-    `${fixtureCase.id}: サンプルテキストのハッシュがfixture生成時と違う`,
-  );
+  assert.equal(sha256(text), fixtureCase.textSha256, `${fixtureCase.id}: サンプルテキストのハッシュがfixture生成時と違う`);
   assert.equal([...text].length, fixtureCase.textLength, `${fixtureCase.id}: サンプルテキストの文字数が違う`);
 
   const setupId = `setup:${fixtureCase.id}`;
   const setup: Setup = {
-      number: 1,
+    number: 1,
     id: setupId,
     layoutId: fixtureCase.layoutId,
     shapeId: fixtureCase.conditions.geometryShapeId,
@@ -207,7 +193,7 @@ async function computeForAsync(fixtureCase: FixtureCase, cache = createEngineCac
   const text = sampleText(fixtureCase.language, fixtureCase.sampleId);
   const setupId = `setup-async:${fixtureCase.id}`;
   const setup: Setup = {
-      number: 1,
+    number: 1,
     id: setupId,
     layoutId: fixtureCase.layoutId,
     shapeId: fixtureCase.conditions.geometryShapeId,
@@ -251,11 +237,7 @@ for (const fixtureCase of fixture.cases) {
   test(`engine回帰: ${fixtureCase.id}`, () => {
     const { metrics, analysis } = computeFor(fixtureCase);
     assert.deepEqual(metricsSummary(metrics), fixtureCase.metrics, `${fixtureCase.id}: metricsがfixtureと食い違う`);
-    assert.deepEqual(
-      analysisSummary(analysis),
-      fixtureCase.analysis,
-      `${fixtureCase.id}: analysis集計がfixtureと食い違う`,
-    );
+    assert.deepEqual(analysisSummary(analysis), fixtureCase.analysis, `${fixtureCase.id}: analysis集計がfixtureと食い違う`);
     matched++;
   });
 }
@@ -272,11 +254,7 @@ for (const index of ASYNC_SAMPLE_INDICES) {
   test(`非同期API経由でも同じ数値になる: ${fixtureCase.id}`, async () => {
     const { metrics, analysis } = await computeForAsync(fixtureCase);
     assert.deepEqual(metricsSummary(metrics), fixtureCase.metrics, `${fixtureCase.id}: 非同期経路のmetricsがfixtureと食い違う`);
-    assert.deepEqual(
-      analysisSummary(analysis),
-      fixtureCase.analysis,
-      `${fixtureCase.id}: 非同期経路のanalysis集計がfixtureと食い違う`,
-    );
+    assert.deepEqual(analysisSummary(analysis), fixtureCase.analysis, `${fixtureCase.id}: 非同期経路のanalysis集計がfixtureと食い違う`);
   });
 }
 
@@ -329,11 +307,7 @@ for (const fixtureCase of DEFAULT_SCENARIOS) {
   test(`配列対象での既定条件: ${fixtureCase.id}`, () => {
     const { metrics, analysis } = computeForLayoutTarget(fixtureCase);
     assert.deepEqual(metricsSummary(metrics), fixtureCase.metrics, `${fixtureCase.id}: 配列対象のmetricsがfixtureと食い違う`);
-    assert.deepEqual(
-      analysisSummary(analysis),
-      fixtureCase.analysis,
-      `${fixtureCase.id}: 配列対象のanalysis集計がfixtureと食い違う`,
-    );
+    assert.deepEqual(analysisSummary(analysis), fixtureCase.analysis, `${fixtureCase.id}: 配列対象のanalysis集計がfixtureと食い違う`);
     layoutTargetMatched++;
   });
 }

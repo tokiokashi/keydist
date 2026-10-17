@@ -1,12 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {
-  ALL_FINGERS,
-  buildGeometry,
-  type Finger,
-  type Key,
-  type Point,
-} from '#input/shapes/geometry.ts';
+import { ALL_FINGERS, buildGeometry, type Finger, type Key, type Point } from '#input/shapes/geometry.ts';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { generateTrace, type Press, type Stroke } from '#trace/generate.ts';
 import type { PlaybackCalibration } from './calibration.ts';
@@ -51,12 +45,14 @@ const stroke = (index: number, p: Press): Stroke => ({
   classifications: [],
   triggerKeys: [],
   pairedTriggerKeys: [],
-  participations: [{
-    hand: p.finger.startsWith('L') ? 'left' : 'right',
-    finger: p.finger,
-    keys: p.keys,
-    roles: ['output'],
-  }],
+  participations: [
+    {
+      hand: p.finger.startsWith('L') ? 'left' : 'right',
+      finger: p.finger,
+      keys: p.keys,
+      roles: ['output'],
+    },
+  ],
   presses: [p],
   distance: p.distance,
   positions: Object.fromEntries(
@@ -72,8 +68,7 @@ function alternating(
   chains: readonly ReturnType<typeof range>[] = [],
   arpeggioSpans: readonly ReturnType<typeof range>[] = [],
 ): PlaybackTimingAnalysis {
-  const strokes = Array.from({ length: count }, (_, index) =>
-    stroke(index, press(index % 2 === 0 ? 'LI' : 'RI', at(index % 2 === 0 ? 'LI' : 'RI'))));
+  const strokes = Array.from({ length: count }, (_, index) => stroke(index, press(index % 2 === 0 ? 'LI' : 'RI', at(index % 2 === 0 ? 'LI' : 'RI'))));
   return { strokes, transitions: [], chains, arpeggioSpans } as unknown as PlaybackTimingAnalysis;
 }
 
@@ -88,8 +83,10 @@ const BASE: PlaybackCalibration = {
   measuredAt: 1,
 };
 
-const withOverhead = (keystrokeOverheadMs: PlaybackCalibration['keystrokeOverheadMs']): PlaybackCalibration =>
-  ({ ...BASE, ...(keystrokeOverheadMs === undefined ? {} : { keystrokeOverheadMs }) });
+const withOverhead = (keystrokeOverheadMs: PlaybackCalibration['keystrokeOverheadMs']): PlaybackCalibration => ({
+  ...BASE,
+  ...(keystrokeOverheadMs === undefined ? {} : { keystrokeOverheadMs }),
+});
 
 const durations = (analysis: PlaybackTimingAnalysis, calibration: PlaybackCalibration, sameFingerDelay = false, multiplier = 1) =>
   analysis.strokes.map((_, index) => playbackStepDurationMs(analysis, index, 1, sameFingerDelay, calibration, multiplier));
@@ -156,10 +153,13 @@ test('全指の移動時間（§3.8のmove）には打鍵の上乗せを足さ�
   const strokes = [
     stroke(0, press('LI', at('LI'))),
     // 別のキーを打つ（同じキーなら続け打ちになり、構造の種類の値を使わない）。
-    stroke(1, (() => {
-      const moved = press('LI', at('LI', 3));
-      return { ...moved, keys: [{ ...moved.keys[0], id: 'k-LI-moved' }] };
-    })()),
+    stroke(
+      1,
+      (() => {
+        const moved = press('LI', at('LI', 3));
+        return { ...moved, keys: [{ ...moved.keys[0], id: 'k-LI-moved' }] };
+      })(),
+    ),
   ];
   const analysis = { strokes, transitions: [], chains: [], arpeggioSpans: [] } as unknown as PlaybackTimingAnalysis;
   const options = { allFingerMovementDelay: true, geometry };
@@ -189,13 +189,12 @@ function repeating(count: number, chains: readonly ReturnType<typeof range>[] = 
   return { strokes, transitions: [], chains, arpeggioSpans: [] } as unknown as PlaybackTimingAnalysis;
 }
 
-const withRepeat = (repeatMs: number, keystrokeOverheadMs?: PlaybackCalibration['keystrokeOverheadMs']): PlaybackCalibration =>
-  ({
-    ...BASE,
-    fingerRepeatMs: { LI: repeatMs },
-    fingerMoveMsPerUnit: { LI: 100 },
-    ...(keystrokeOverheadMs === undefined ? {} : { keystrokeOverheadMs }),
-  });
+const withRepeat = (repeatMs: number, keystrokeOverheadMs?: PlaybackCalibration['keystrokeOverheadMs']): PlaybackCalibration => ({
+  ...BASE,
+  fingerRepeatMs: { LI: repeatMs },
+  fingerMoveMsPerUnit: { LI: 100 },
+  ...(keystrokeOverheadMs === undefined ? {} : { keystrokeOverheadMs }),
+});
 
 test('続け打ちの基準は、その指の続け打ちの時間。測っていない指は代表値', () => {
   const analysis = repeating(3);
@@ -210,7 +209,10 @@ test('続け打ちの基準は、その指の続け打ちの時間。測って�
 
 test('個人速度が無い時は、続け打ちの時間があっても基準速度で決まる', () => {
   const analysis = repeating(3);
-  assert.deepEqual(analysis.strokes.map((_, index) => playbackStepDurationMs(analysis, index, 4, false, undefined, 1)), [250, 250, 250]);
+  assert.deepEqual(
+    analysis.strokes.map((_, index) => playbackStepDurationMs(analysis, index, 4, false, undefined, 1)),
+    [250, 250, 250],
+  );
 });
 
 test('異手・同手別指の遷移と、押下を複数持つストロークの同じ形の繰り返しは、続け打ちの時間を使わない', () => {
@@ -220,7 +222,10 @@ test('異手・同手別指の遷移と、押下を複数持つストローク�
     sameHandDifferentFingerActionsPerSecond: 2.5,
   };
   // 異手の交互打鍵: L→Rは100ms、R→Lは50ms。
-  assert.deepEqual(durations(alternating(3), calibration), [200, 100, 50].map((ms, index) => (index === 0 ? 200 : ms)));
+  assert.deepEqual(
+    durations(alternating(3), calibration),
+    [200, 100, 50].map((ms, index) => (index === 0 ? 200 : ms)),
+  );
   // 左右の人差し指を同時に押すストロークを続ける。押下を複数持つので続け打ちにならず、異手の判定のまま。
   const both = (index: number) => ({
     ...stroke(index, press('LI', at('LI'))),
@@ -299,10 +304,7 @@ test('個人速度が無い時は、同指連続の値があっても使わな�
 });
 
 test('全指の移動時間（§3.8のmove）には同指連続の値も足さない', () => {
-  const strokes = [
-    stroke(0, press('LI', at('LI'))),
-    stroke(1, press('LI', at('LI', 3), true, 3)),
-  ];
+  const strokes = [stroke(0, press('LI', at('LI'))), stroke(1, press('LI', at('LI', 3), true, 3))];
   const analysis = { strokes, transitions: [], chains: [], arpeggioSpans: [] } as unknown as PlaybackTimingAnalysis;
   const options = { allFingerMovementDelay: true, geometry };
   const lengthOf = (calibration: PlaybackCalibration) => {
@@ -391,8 +393,13 @@ test('値が無い時は、同じ側のその他、その種類の分けない�
   const overheadAt = (index: number, values: NonNullable<PlaybackCalibration['keystrokeOverheadMs']>) =>
     playbackKeystrokeOverheadMs(analysis, index, withOverhead(values));
   const all = {
-    'chain-within': 1, 'chain-boundary': 2, 'other-within': 3, 'other-boundary': 4,
-    chain: 5, arpeggio: 6, other: 7,
+    'chain-within': 1,
+    'chain-boundary': 2,
+    'other-within': 3,
+    'other-boundary': 4,
+    chain: 5,
+    arpeggio: 6,
+    other: 7,
   };
   // 同じ側のその種類の値が最優先。
   assert.equal(overheadAt(1, all), 1);
@@ -426,7 +433,13 @@ test('かなの中・かなの境目の値を持たない保存値の時間は�
   const expected = [270, 230, 230, 210, 210, 270];
   assert.deepEqual(durations(plain, calibration), expected);
   assert.deepEqual(durations(pairedUnits(plain), calibration), expected);
-  assert.deepEqual(durations(withInputIndex(plain, () => 0), calibration), expected);
+  assert.deepEqual(
+    durations(
+      withInputIndex(plain, () => 0),
+      calibration,
+    ),
+    expected,
+  );
 });
 
 test('続け打ちのステップは、かなの中・かなの境目の値も使わず、続け打ちの値か0になる', () => {
@@ -466,7 +479,10 @@ test('配列に無い文字を読み飛ばした所の前後のステップは�
   assert.equal(trace.skipped, 1);
   const analysis = { strokes: trace.strokes, transitions: [], chains: [], arpeggioSpans: [] } as unknown as PlaybackTimingAnalysis;
   const calibration = withOverhead({ 'other-within': 10, 'other-boundary': 70 });
-  assert.deepEqual(trace.strokes.map((_, index) => playbackKeystrokeOverheadMs(analysis, index, calibration)), [70, 10, 70, 10]);
+  assert.deepEqual(
+    trace.strokes.map((_, index) => playbackKeystrokeOverheadMs(analysis, index, calibration)),
+    [70, 10, 70, 10],
+  );
 });
 
 test('同指連続の再生時間は、測った往復の間隔I(f)になる（s・o・cが0、倍率1）', () => {

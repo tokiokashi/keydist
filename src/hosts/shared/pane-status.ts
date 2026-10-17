@@ -20,10 +20,7 @@ export type PaneEngineState<T> = EngineRequestState<T>;
  * 「ready なのに本文は計算中」という食い違いが出るため、両方が揃うまでは揃っていない側に合わせる。
  * 失敗はどちらのものでもそのまま出す（同じ解決済み入力なので、原因は通常同じ）。
  */
-export function combinePaneStates<T>(
-  primary: PaneEngineState<T>,
-  companion: PaneEngineState<unknown>,
-): PaneEngineState<T> {
+export function combinePaneStates<T>(primary: PaneEngineState<T>, companion: PaneEngineState<unknown>): PaneEngineState<T> {
   if (primary.status === 'failed') return primary;
   if (companion.status === 'failed') return companion;
   if (primary.status === 'idle' || primary.status === 'computing') return primary;
@@ -37,11 +34,16 @@ export function paneStatusLabel(status: PaneEngineState<unknown>['status']): str
   switch (status) {
     // idleは最初のeffectが依頼を出すまでの描画にしかならない。依頼が出る前の状態を「未計算」と出しても、
     // 利用者が見て取れる意味が無い
-    case 'idle': return '';
-    case 'computing': return '計算中…';
-    case 'stale': return '計算中…（直前の結果を表示）';
-    case 'ready': return '';
-    case 'failed': return '失敗';
+    case 'idle':
+      return '';
+    case 'computing':
+      return '計算中…';
+    case 'stale':
+      return '計算中…（直前の結果を表示）';
+    case 'ready':
+      return '';
+    case 'failed':
+      return '失敗';
   }
 }
 

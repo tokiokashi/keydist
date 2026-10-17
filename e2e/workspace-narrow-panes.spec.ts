@@ -38,40 +38,56 @@ function paneOf(id: string, analyzerId: AnalyzerId, longNames: boolean, missingT
   return {
     id,
     analyzerId,
-    binding: analyzerId === 'bigram-flow'
-      ? { mode: 'fixed', target: { kind: 'single', target: missingTarget ? { kind: 'setup', setupId: 'no-such-setup' } : QWERTY } }
-      : { mode: 'fixed', target: set },
+    binding:
+      analyzerId === 'bigram-flow'
+        ? { mode: 'fixed', target: { kind: 'single', target: missingTarget ? { kind: 'setup', setupId: 'no-such-setup' } : QWERTY } }
+        : { mode: 'fixed', target: set },
   };
 }
 
 /** 対象のペイン（x=0）と、その右の隣のペイン（はみ出しの検査用）を置く。 */
-async function open(page: Page, analyzerId: AnalyzerId, size: { width: number; height: number }, options: { longNames?: boolean; theme?: 'light' | 'dark'; cols?: number; status?: 'ready' | 'failed'; conditions?: Record<string, unknown>; overrides?: Record<string, unknown> } = {}): Promise<void> {
+async function open(
+  page: Page,
+  analyzerId: AnalyzerId,
+  size: { width: number; height: number },
+  options: {
+    longNames?: boolean;
+    theme?: 'light' | 'dark';
+    cols?: number;
+    status?: 'ready' | 'failed';
+    conditions?: Record<string, unknown>;
+    overrides?: Record<string, unknown>;
+  } = {},
+): Promise<void> {
   const longNames = options.longNames === true;
   await page.setViewportSize(size);
-  await page.addInitScript(({ key, setupKey, setups, overrides, theme, value }) => {
-    if (localStorage.getItem(key) === null) {
-      localStorage.setItem(key, JSON.stringify({ version: 4, workspaces: [value] }));
-      localStorage.setItem(setupKey, JSON.stringify({ version: 1, setups, overrides }));
-      localStorage.setItem('keydist:app-state', JSON.stringify({ version: 2, appearance: { theme } }));
-    }
-  }, {
-    key: WORKSPACES_KEY,
-    setupKey: SETUP_LIBRARY_KEY,
-    setups: LONG_SETUPS,
-    overrides: options.overrides ?? {},
-    theme: options.theme ?? 'light',
-    value: {
-      id: 'narrow',
-      name: '細いペイン',
-      text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
-      ...(options.conditions === undefined ? {} : { conditions: options.conditions }),
-      panes: [paneOf('a', analyzerId, longNames, options.status === 'failed'), paneOf('b', 'comparison', false)],
-      grid: [
-        { id: 'a', x: 0, y: 0, w: options.cols ?? 5, h: 20 },
-        { id: 'b', x: Math.max(8, options.cols ?? 5), y: 0, w: 8, h: 20 },
-      ],
+  await page.addInitScript(
+    ({ key, setupKey, setups, overrides, theme, value }) => {
+      if (localStorage.getItem(key) === null) {
+        localStorage.setItem(key, JSON.stringify({ version: 4, workspaces: [value] }));
+        localStorage.setItem(setupKey, JSON.stringify({ version: 1, setups, overrides }));
+        localStorage.setItem('keydist:app-state', JSON.stringify({ version: 2, appearance: { theme } }));
+      }
     },
-  });
+    {
+      key: WORKSPACES_KEY,
+      setupKey: SETUP_LIBRARY_KEY,
+      setups: LONG_SETUPS,
+      overrides: options.overrides ?? {},
+      theme: options.theme ?? 'light',
+      value: {
+        id: 'narrow',
+        name: '細いペイン',
+        text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+        ...(options.conditions === undefined ? {} : { conditions: options.conditions }),
+        panes: [paneOf('a', analyzerId, longNames, options.status === 'failed'), paneOf('b', 'comparison', false)],
+        grid: [
+          { id: 'a', x: 0, y: 0, w: options.cols ?? 5, h: 20 },
+          { id: 'b', x: Math.max(8, options.cols ?? 5), y: 0, w: 8, h: 20 },
+        ],
+      },
+    },
+  );
   await page.goto('/workspace/narrow');
   await waitForHydration(page);
   await expect(page.locator('.workspace-grid-item')).toHaveCount(2);
@@ -82,23 +98,34 @@ async function open(page: Page, analyzerId: AnalyzerId, size: { width: number; h
 const itemOf = (page: Page, id: string): Locator => page.locator(`.workspace-grid-item[data-pane-id="${id}"]`);
 
 /** 描画と見出しの測り直し（ResizeObserverの通知の次のフレーム）が済むまで待つ。 */
-const afterFrames = (page: Page) => page.evaluate(() => new Promise<void>((resolve) => {
-  requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-}));
+const afterFrames = (page: Page) =>
+  page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+      }),
+  );
 
 /**
  * ライブラリの配置の動き（200ms）と図の測り直しが済むまで待つ。
  * 時間では待たず、フレームを3つ進めるたびに寸法を測り、8回続けて同じになるまで繰り返す（約24フレーム = 約400ms分）。
  */
 async function settle(page: Page): Promise<void> {
-  const signature = () => page.locator('.workspace-grid-item').evaluateAll((els) => els.map((el) => {
-    const r = el.getBoundingClientRect();
-    const inner = [...el.querySelectorAll('.n-sensitivity-svg, .flow-two-up, .comparison-table')].map((e) => {
-      const b = e.getBoundingClientRect();
-      return `${Math.round(b.width)}x${Math.round(b.height)}`;
-    }).join(',');
-    return `${Math.round(r.x)},${Math.round(r.y)},${Math.round(r.width)},${Math.round(r.height)}:${inner}`;
-  }).join('|'));
+  const signature = () =>
+    page.locator('.workspace-grid-item').evaluateAll((els) =>
+      els
+        .map((el) => {
+          const r = el.getBoundingClientRect();
+          const inner = [...el.querySelectorAll('.n-sensitivity-svg, .flow-two-up, .comparison-table')]
+            .map((e) => {
+              const b = e.getBoundingClientRect();
+              return `${Math.round(b.width)}x${Math.round(b.height)}`;
+            })
+            .join(',');
+          return `${Math.round(r.x)},${Math.round(r.y)},${Math.round(r.width)},${Math.round(r.height)}:${inner}`;
+        })
+        .join('|'),
+    );
   let last = await signature();
   let stable = 0;
   while (stable < 8) {
@@ -141,7 +168,14 @@ async function headerReport(item: Locator): Promise<HeaderReport> {
     const rects = els.map((el) => ({ el, rect: el.getBoundingClientRect() }));
     const controls = rects.map(({ el, rect }) => {
       const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
-      return { name: nameOf(el), left: rect.left - frame.left, right: rect.right - frame.left, width: rect.width, height: rect.height, topmost: hit !== null && el.contains(hit) };
+      return {
+        name: nameOf(el),
+        left: rect.left - frame.left,
+        right: rect.right - frame.left,
+        width: rect.width,
+        height: rect.height,
+        topmost: hit !== null && el.contains(hit),
+      };
     });
     const overlaps: string[] = [];
     for (let i = 0; i < rects.length; i += 1) {
@@ -179,7 +213,10 @@ async function spillingOutOf(root: Locator, scope: 'x' | 'both' = 'x'): Promise<
       if (clipped) continue;
       const spillX = r.left < box.left - 1 || r.right > box.right + 1;
       const spillY = scopeValue === 'both' && (r.top < box.top - 1 || r.bottom > box.bottom + 1);
-      if (spillX || spillY) out.push(`${el.tagName.toLowerCase()}.${(el.getAttribute('class') ?? '').split(' ')[0]} ${Math.round(r.left - box.left)}..${Math.round(r.right - box.left)} / ${Math.round(box.width)}`);
+      if (spillX || spillY)
+        out.push(
+          `${el.tagName.toLowerCase()}.${(el.getAttribute('class') ?? '').split(' ')[0]} ${Math.round(r.left - box.left)}..${Math.round(r.right - box.left)} / ${Math.round(box.width)}`,
+        );
     }
     return out;
   });
@@ -199,7 +236,7 @@ async function expectHeaderUsable(page: Page, id: string, minTargetWidth = 60): 
   // ⋯と対象の選択には必ず届く。押してメニュー・選択が開く
   const menu = item.getByRole('button', { name: /の操作$/ });
   const target = item.locator('.target-selection-button');
-  expect(((await target.boundingBox())!).width, '対象の選択が潰れない').toBeGreaterThanOrEqual(minTargetWidth);
+  expect((await target.boundingBox())!.width, '対象の選択が潰れない').toBeGreaterThanOrEqual(minTargetWidth);
   await menu.click();
   const close = page.getByRole('menuitem', { name: /閉じる/ });
   await expect(close).toBeVisible();
@@ -233,7 +270,7 @@ for (const analyzerId of ANALYZERS) {
     test(`${analyzerId}: ${c.name}のペインで、見出しのボタンが重ならず押せる。隣のペインへはみ出さない`, async ({ page }) => {
       await open(page, analyzerId, c.size);
       await shrinkToMin(page, 'a');
-      expect(((await itemOf(page, 'a').boundingBox())!).width, '下限まで縮んでいる').toBeLessThan(140);
+      expect((await itemOf(page, 'a').boundingBox())!.width, '下限まで縮んでいる').toBeLessThan(140);
       await expectHeaderUsable(page, 'a');
       await expectNoSpillOutsidePane(page, 'a');
     });
@@ -265,10 +302,12 @@ for (const c of cases) {
       expect(svg.y + svg.height, `図${i}の描画の下`).toBeLessThanOrEqual(cardBox.y + cardBox.height + 0.5);
     }
     // 左右のカードで、図の上端・下端が揃う
-    const tops = await cards.evaluateAll((els) => els.map((el) => {
-      const v = el.querySelector('.flow-profile-viewport')!.getBoundingClientRect();
-      return [Math.round(v.top), Math.round(v.bottom)];
-    }));
+    const tops = await cards.evaluateAll((els) =>
+      els.map((el) => {
+        const v = el.querySelector('.flow-profile-viewport')!.getBoundingClientRect();
+        return [Math.round(v.top), Math.round(v.bottom)];
+      }),
+    );
     expect(tops[0]).toEqual(tops[1]);
     // 凡例（内向き・外向き）が本体の幅の中にある
     const legend = (await item.locator('.flow-roll-legend').boundingBox())!;
@@ -306,17 +345,21 @@ async function readLegend(item: Locator) {
       names: items.map((li) => li.querySelector('.n-sensitivity-legend-name')?.textContent ?? ''),
       frameInsideFigure: true,
       labelsInsideFrame: true,
-      insideBody: list !== null && items.every((li) => {
-        const b = li.getBoundingClientRect();
-        return b.left >= body.left - 0.5 && b.right <= body.right + 0.5;
-      }),
+      insideBody:
+        list !== null &&
+        items.every((li) => {
+          const b = li.getBoundingClientRect();
+          return b.left >= body.left - 0.5 && b.right <= body.right + 0.5;
+        }),
     };
   });
 }
 
 for (const c of cases) {
   for (const longNames of [false, true]) {
-    test(`N感度: ${c.name}のペインで、${longNames ? '長いSetup名を6つ並べても' : '配列2つでも'}凡例が図からはみ出さず、名前を見分けられる`, async ({ page }) => {
+    test(`N感度: ${c.name}のペインで、${longNames ? '長いSetup名を6つ並べても' : '配列2つでも'}凡例が図からはみ出さず、名前を見分けられる`, async ({
+      page,
+    }) => {
       await open(page, 'n-sensitivity', c.size, { longNames });
       await shrinkToMin(page, 'a');
       const count = longNames ? LONG_SETUPS.length : 2;
@@ -343,12 +386,15 @@ for (const c of cases) {
  */
 async function headerRowCount(item: Locator): Promise<number> {
   return item.evaluate((root) => {
-    const els = [...root.querySelectorAll<HTMLElement>('.pane-frame-header button, .pane-frame-header .workspace-drag-handle')]
-      .filter((el) => el.getBoundingClientRect().width > 0);
-    const centers = els.map((el) => {
-      const r = el.getBoundingClientRect();
-      return r.top + r.height / 2;
-    }).sort((a, b) => a - b);
+    const els = [...root.querySelectorAll<HTMLElement>('.pane-frame-header button, .pane-frame-header .workspace-drag-handle')].filter(
+      (el) => el.getBoundingClientRect().width > 0,
+    );
+    const centers = els
+      .map((el) => {
+        const r = el.getBoundingClientRect();
+        return r.top + r.height / 2;
+      })
+      .sort((a, b) => a - b);
     let rows = 0;
     let last = Number.NEGATIVE_INFINITY;
     for (const c of centers) {
@@ -372,7 +418,7 @@ for (const analyzerId of ['bigram-flow'] as const) {
   test(`${analyzerId}: 6列のペインでは見出しが1段のまま、⋯と対象の選択に届く`, async ({ page }) => {
     await open(page, analyzerId, FHD, { cols: 6 });
     const item = itemOf(page, 'a');
-    expect(((await item.locator('.pane-frame').boundingBox())!).width, '6列の幅').toBeLessThan(410);
+    expect((await item.locator('.pane-frame').boundingBox())!.width, '6列の幅').toBeLessThan(410);
     expect(await headerRowCount(item), '見出しが1段').toBe(1);
     // 1段に収める幅では、対象の選択は押せる最小の幅まで縮む（絵と開閉の印が入る幅）
     await expectHeaderUsable(page, 'a', 44);
@@ -427,15 +473,16 @@ for (const analyzerId of ANALYZERS) {
 test('Bigram Flow: 見出しが狭まると、先に名前が最小幅まで縮み、その間は対象の選択の幅が変わらない。その後で対象の選択が縮む', async ({ page }) => {
   await open(page, 'bigram-flow', FHD, { cols: 8 });
   const item = itemOf(page, 'a');
-  const measure = async (width: number) => item.evaluate((root, w) => {
-    const frame = root.querySelector<HTMLElement>('.pane-frame')!;
-    frame.style.width = `${w}px`;
-    frame.style.maxWidth = `${w}px`;
-    return {
-      name: root.querySelector('.workspace-pane-lead-name')!.getBoundingClientRect().width,
-      target: root.querySelector('.target-selection-button')!.getBoundingClientRect().width,
-    };
-  }, width);
+  const measure = async (width: number) =>
+    item.evaluate((root, w) => {
+      const frame = root.querySelector<HTMLElement>('.pane-frame')!;
+      frame.style.width = `${w}px`;
+      frame.style.maxWidth = `${w}px`;
+      return {
+        name: root.querySelector('.workspace-pane-lead-name')!.getBoundingClientRect().width,
+        target: root.querySelector('.target-selection-button')!.getBoundingClientRect().width,
+      };
+    }, width);
   const full = await measure(480);
   expect(full.name, '広い時は名前の全文').toBeGreaterThan(80);
   const shrinkingName = [];
@@ -481,7 +528,12 @@ const CHIPS: readonly Chip[] = [
  */
 async function openWithBadge(page: Page, analyzerId: AnalyzerId, status: BadgeStatus, cols: number, chip: Chip): Promise<void> {
   if (status === 'stale') await installWorkerHold(page);
-  await open(page, analyzerId, FHD, { cols, status: status === 'failed' ? 'failed' : 'ready', ...(chip.conditions === undefined ? {} : { conditions: chip.conditions }), ...(chip.overrides === undefined ? {} : { overrides: chip.overrides }) });
+  await open(page, analyzerId, FHD, {
+    cols,
+    status: status === 'failed' ? 'failed' : 'ready',
+    ...(chip.conditions === undefined ? {} : { conditions: chip.conditions }),
+    ...(chip.overrides === undefined ? {} : { overrides: chip.overrides }),
+  });
   if (status === 'stale') {
     await holdWorker(page);
     const panel = await openTextChip(page);
@@ -514,7 +566,9 @@ async function badgeReport(item: Locator): Promise<BadgeReport> {
     const others = [...root.querySelectorAll('.pane-frame-header button, .pane-frame-header .workspace-drag-handle')]
       .filter((el) => el.getBoundingClientRect().width > 0)
       .map((el) => el.getBoundingClientRect());
-    const overlaps = others.filter((r) => Math.min(r.right, br.right) - Math.max(r.left, br.left) > 1 && Math.min(r.bottom, br.bottom) - Math.max(r.top, br.top) > 1).length;
+    const overlaps = others.filter(
+      (r) => Math.min(r.right, br.right) - Math.max(r.left, br.left) > 1 && Math.min(r.bottom, br.bottom) - Math.max(r.top, br.top) > 1,
+    ).length;
     // 文字で出ているかは見た目（文字の要素の幅）で決める。点の時は文字が1px四方に隠れる
     const asText = tr.width > 4;
     return {
@@ -594,9 +648,10 @@ interface Sweep {
 const SWEEP_EDGES = [250, 900] as const;
 // 環境変数 `SWEEP_FULL=1` で、250〜900pxを1px刻みで全部回し、状態が変わる幅を出力する（境目の測り直し用。CIの既定では回さない）。
 const SWEEP_FULL = process.env['SWEEP_FULL'] === '1';
-const widthsOf = (boundaries: readonly number[]): number[] => SWEEP_FULL
-  ? Array.from({ length: 900 - 250 + 1 }, (_, i) => 250 + i)
-  : [...new Set([...SWEEP_EDGES, ...boundaries.flatMap((b) => [b - 1, b])])].sort((a, b) => a - b);
+const widthsOf = (boundaries: readonly number[]): number[] =>
+  SWEEP_FULL
+    ? Array.from({ length: 900 - 250 + 1 }, (_, i) => 250 + i)
+    : [...new Set([...SWEEP_EDGES, ...boundaries.flatMap((b) => [b - 1, b])])].sort((a, b) => a - b);
 
 const [CHIP_DEFAULT, CHIP_CHANGED, CHIP_DIFF] = CHIPS as readonly [Chip, Chip, Chip];
 const SWEEPS: readonly Sweep[] = [
@@ -611,7 +666,9 @@ const SWEEPS: readonly Sweep[] = [
 ];
 
 for (const { analyzerId, status, chip, boundaries } of SWEEPS) {
-  test(`${analyzerId}: 条件が「${chip.name}」で、枠の幅を掃引しても、実際の状態「${BADGE_TEXT[status]}」のバッジがボタンと重ならず、判定が往復しない`, async ({ page }) => {
+  test(`${analyzerId}: 条件が「${chip.name}」で、枠の幅を掃引しても、実際の状態「${BADGE_TEXT[status]}」のバッジがボタンと重ならず、判定が往復しない`, async ({
+    page,
+  }) => {
     if (SWEEP_FULL) test.setTimeout(300_000);
     const browserErrors = await collectBrowserErrors(page);
     await openWithBadge(page, analyzerId, status, 8, chip);
@@ -629,7 +686,10 @@ for (const { analyzerId, status, chip, boundaries } of SWEEPS) {
       const first = await badgeReport(item);
       await afterFrames(page);
       const second = await badgeReport(item);
-      seen.set(width, [second.asText ? '文字' : '点', `${await headerRowCount(item)}段`, (await nameIsClipped(item)) ? '名前を省略' : '名前が全文'].join('/'));
+      seen.set(
+        width,
+        [second.asText ? '文字' : '点', `${await headerRowCount(item)}段`, (await nameIsClipped(item)) ? '名前を省略' : '名前が全文'].join('/'),
+      );
       if (first.asText !== second.asText) bad.push(`${width}px: 判定が往復する`);
       if (second.overlaps > 0) bad.push(`${width}px: 重なり ${second.overlaps}件（${second.asText ? '文字' : '点'}）`);
       if (!second.badgeInsideFrame) bad.push(`${width}px: 枠からはみ出す`);
@@ -667,7 +727,10 @@ for (const { analyzerId, status, chip, boundaries } of SWEEPS) {
     } else {
       // 境目の前後で状態が変わっていること。変わっていなければ、CSSの変更で境目が動いている
       for (const boundary of boundaries) {
-        expect(seen.get(boundary - 1), `境目が動いた: ${boundary}px付近で見出しの状態が変わらない。SWEEP_FULL=1で全幅を回して測り直す。境目を書き換える前に、全幅の掃引で \`bad\` が空なことを確かめる`).not.toBe(seen.get(boundary));
+        expect(
+          seen.get(boundary - 1),
+          `境目が動いた: ${boundary}px付近で見出しの状態が変わらない。SWEEP_FULL=1で全幅を回して測り直す。境目を書き換える前に、全幅の掃引で \`bad\` が空なことを確かめる`,
+        ).not.toBe(seen.get(boundary));
       }
     }
     expect(bad, 'バッジの不具合がある幅').toEqual([]);

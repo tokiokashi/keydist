@@ -51,11 +51,7 @@ const CATALOG = {
   shapes: new Map<string, PhysicalShape>(Object.values(PHYSICAL_SHAPES).map((shape) => [shape.id, shape])),
 };
 
-function resolveResult(
-  setup: Setup,
-  overrides: SettingsCascadeOverrides = EMPTY_SETTINGS_OVERRIDES,
-  text = 'hello world',
-): ResolvedInputResult {
+function resolveResult(setup: Setup, overrides: SettingsCascadeOverrides = EMPTY_SETTINGS_OVERRIDES, text = 'hello world'): ResolvedInputResult {
   return resolveEngineInput({
     target: { kind: 'setup', setupId: setup.id },
     setups: new Map([[setup.id, setup]]),
@@ -67,11 +63,7 @@ function resolveResult(
   });
 }
 
-function resolve(
-  setup: Setup,
-  overrides: SettingsCascadeOverrides = EMPTY_SETTINGS_OVERRIDES,
-  text = 'hello world',
-): ResolvedInput {
+function resolve(setup: Setup, overrides: SettingsCascadeOverrides = EMPTY_SETTINGS_OVERRIDES, text = 'hello world'): ResolvedInput {
   const result = resolveResult(setup, overrides, text);
   assert.ok(result.ok, result.ok ? '' : JSON.stringify(result.error));
   if (!result.ok) throw new Error('unreachable');

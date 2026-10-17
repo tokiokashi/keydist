@@ -26,7 +26,12 @@ export interface FigureSettingsWindowProps {
 export const FigureSettingsWindowContext = createContext<((props: FigureSettingsWindowProps) => ReactNode) | undefined>(undefined);
 
 /** 図の見出し行の右に置く、その図の表示を調整するボタン。ペインの解析設定のボタンとは別の目のアイコンにする。 */
-function FigureSettingsToggle({ name, open, onToggle, buttonRef }: {
+function FigureSettingsToggle({
+  name,
+  open,
+  onToggle,
+  buttonRef,
+}: {
   /** 図の名前。読み上げ名は「<名前>の表示」になる */
   readonly name: string;
   readonly open: boolean;
@@ -85,13 +90,14 @@ export function useFigureSettings(name: string): FigureSettings {
   }, []);
   return {
     toggle: <FigureSettingsToggle name={name} open={open} onToggle={() => (open ? close() : setOpen(true))} buttonRef={setButton} />,
-    renderWindow: (children) => renderWindow?.({
-      open,
-      onClose: close,
-      title: `${name}の表示`,
-      closeLabel: `${name}の表示を閉じる`,
-      anchor: buttonRef.current,
-      children,
-    }) ?? null,
+    renderWindow: (children) =>
+      renderWindow?.({
+        open,
+        onClose: close,
+        title: `${name}の表示`,
+        closeLabel: `${name}の表示を閉じる`,
+        anchor: buttonRef.current,
+        children,
+      }) ?? null,
   };
 }

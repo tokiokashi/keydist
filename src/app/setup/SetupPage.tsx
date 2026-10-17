@@ -1,12 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import type { Command } from '#input/commands/index.ts';
-import {
-  createSetupCommand,
-  duplicateSetupCommand,
-  relabelSetupCommand,
-  setSetupShapeCommand,
-  type KeydistAssets,
-} from '#engine/commands.ts';
+import { createSetupCommand, duplicateSetupCommand, relabelSetupCommand, setSetupShapeCommand, type KeydistAssets } from '#engine/commands.ts';
 import { resolveShapeForLayout } from '#engine/target-resolution.ts';
 import { groupShapes } from '#input/shapes/shape-groups.ts';
 import { MISSING_SHAPE_NAME, type Setup } from '#input/setup/index.ts';
@@ -86,26 +80,29 @@ export function SetupPage({
   };
 
   const layoutGroups = useMemo(
-    () => targetChoiceGroups({
-      layouts,
-      userLayouts: catalog.userLayouts,
-      shapes,
-      setups: [],
-      selected: [],
-    }).filter((group) => group.id !== 'setup'),
+    () =>
+      targetChoiceGroups({
+        layouts,
+        userLayouts: catalog.userLayouts,
+        shapes,
+        setups: [],
+        selected: [],
+      }).filter((group) => group.id !== 'setup'),
     [layouts, shapes, catalog.userLayouts],
   );
   const shapeGroups = useMemo(() => groupShapes(shapes.values()), [shapes]);
 
-  const createLayoutId = layoutId !== undefined && layouts.has(layoutId)
-    ? layoutId
-    : layouts.has(DEFAULT_LAYOUT_ID) ? DEFAULT_LAYOUT_ID : [...layouts.keys()][0];
+  const createLayoutId =
+    layoutId !== undefined && layouts.has(layoutId) ? layoutId : layouts.has(DEFAULT_LAYOUT_ID) ? DEFAULT_LAYOUT_ID : [...layouts.keys()][0];
   // 物理配列を選んでいない間は、その配列で使う既定の物理配列にする
   const createLayout = createLayoutId === undefined ? undefined : layouts.get(createLayoutId);
   const defaultShapeId = createLayout === undefined ? undefined : resolveShapeForLayout(overrides, createLayout, shapes)?.id;
-  const createShapeId = shapeId !== undefined && shapes.has(shapeId)
-    ? shapeId
-    : defaultShapeId !== undefined && shapes.has(defaultShapeId) ? defaultShapeId : [...shapes.keys()][0];
+  const createShapeId =
+    shapeId !== undefined && shapes.has(shapeId)
+      ? shapeId
+      : defaultShapeId !== undefined && shapes.has(defaultShapeId)
+        ? defaultShapeId
+        : [...shapes.keys()][0];
 
   const create = (event: FormEvent) => {
     event.preventDefault();
@@ -132,18 +129,21 @@ export function SetupPage({
   const selectedShapeMissing = selected !== undefined && !shapes.has(selected.shapeId);
   const resettable = selected === undefined ? [] : resettableSetupIds(overrides, selected.id, SETUP_HIDDEN_ITEM_IDS);
 
-  const editor: ConditionEditorContext | undefined = selected === undefined ? undefined : {
-    overrides,
-    dispatch,
-    shapes,
-    ...(catalog.customFingerAssignments === undefined ? {} : { customFingerAssignments: catalog.customFingerAssignments }),
-    ...(catalog.customRomajiRules === undefined ? {} : { customRomajiRules: catalog.customRomajiRules }),
-    setup: { id: selected.id, layoutId: selected.layoutId },
-    hiddenIds: SETUP_HIDDEN_ITEM_IDS,
-    presetLibrary: assets.presetLibrary,
-    generatePresetId,
-    undo: onUndo,
-  };
+  const editor: ConditionEditorContext | undefined =
+    selected === undefined
+      ? undefined
+      : {
+          overrides,
+          dispatch,
+          shapes,
+          ...(catalog.customFingerAssignments === undefined ? {} : { customFingerAssignments: catalog.customFingerAssignments }),
+          ...(catalog.customRomajiRules === undefined ? {} : { customRomajiRules: catalog.customRomajiRules }),
+          setup: { id: selected.id, layoutId: selected.layoutId },
+          hiddenIds: SETUP_HIDDEN_ITEM_IDS,
+          presetLibrary: assets.presetLibrary,
+          generatePresetId,
+          undo: onUndo,
+        };
 
   return (
     <article className="setup-page" data-setup-page>
@@ -152,8 +152,12 @@ export function SetupPage({
         配列と物理配列の組に、その組だけの条件を足せます。作ったSetupは、Analyzerの対象やWorkspaceのペインから選べます。削除は「データ・設定の管理」の画面で行います。
       </p>
       <div className="setup-toolbar">
-        <button type="button" disabled={!canUndo} onClick={onUndo}>元に戻す</button>
-        <button type="button" disabled={!canRedo} onClick={onRedo}>やり直す</button>
+        <button type="button" disabled={!canUndo} onClick={onUndo}>
+          元に戻す
+        </button>
+        <button type="button" disabled={!canRedo} onClick={onRedo}>
+          やり直す
+        </button>
       </div>
 
       {!ready ? null : (
@@ -163,11 +167,20 @@ export function SetupPage({
             <form className="setup-create" onSubmit={create}>
               <label>
                 配列
-                <select aria-label="配列を選ぶ" value={createLayoutId ?? ''} onChange={(event) => { setLayoutId(event.currentTarget.value); setShapeId(undefined); }}>
+                <select
+                  aria-label="配列を選ぶ"
+                  value={createLayoutId ?? ''}
+                  onChange={(event) => {
+                    setLayoutId(event.currentTarget.value);
+                    setShapeId(undefined);
+                  }}
+                >
                   {layoutGroups.map((group) => (
                     <optgroup key={group.id} label={group.label}>
                       {group.choices.map((choice) => (
-                        <option key={choice.key} value={choice.target.kind === 'layout' ? choice.target.layoutId : ''}>{choice.name}</option>
+                        <option key={choice.key} value={choice.target.kind === 'layout' ? choice.target.layoutId : ''}>
+                          {choice.name}
+                        </option>
                       ))}
                     </optgroup>
                   ))}
@@ -178,7 +191,11 @@ export function SetupPage({
                 <select aria-label="作るSetupの物理配列を選ぶ" value={createShapeId ?? ''} onChange={(event) => setShapeId(event.currentTarget.value)}>
                   {shapeGroups.map((group) => (
                     <optgroup key={group.key} label={group.label}>
-                      {group.shapes.map((shape) => <option key={shape.id} value={shape.id}>{shape.name}</option>)}
+                      {group.shapes.map((shape) => (
+                        <option key={shape.id} value={shape.id}>
+                          {shape.name}
+                        </option>
+                      ))}
                     </optgroup>
                   ))}
                 </select>
@@ -193,14 +210,18 @@ export function SetupPage({
                   onChange={(event) => setLabelDraft(event.currentTarget.value)}
                 />
               </label>
-              <button type="submit" data-setup-create disabled={createLayoutId === undefined || createShapeId === undefined}>作る</button>
+              <button type="submit" data-setup-create disabled={createLayoutId === undefined || createShapeId === undefined}>
+                作る
+              </button>
             </form>
             <p className="setup-note">名前を入れなければ、配列と物理配列から自動で付きます。</p>
           </section>
 
           <section className="setup-section" aria-labelledby="setup-list-title">
             <h2 id="setup-list-title">Setup（{items.length}）</h2>
-            {items.length === 0 ? <p className="setup-note">Setupはありません。</p> : (
+            {items.length === 0 ? (
+              <p className="setup-note">Setupはありません。</p>
+            ) : (
               <ul className="setup-list">
                 {items.map(({ setup, displayName, fullName }) => (
                   <li key={setup.id} className="setup-row" data-setup-row={setup.id} data-selected={setup.id === selected?.id || undefined}>
@@ -219,7 +240,9 @@ export function SetupPage({
                           }}
                         />
                         <button type="submit">変更</button>
-                        <button type="button" onClick={() => setRenaming(undefined)}>やめる</button>
+                        <button type="button" onClick={() => setRenaming(undefined)}>
+                          やめる
+                        </button>
                       </form>
                     ) : (
                       <>
@@ -233,7 +256,9 @@ export function SetupPage({
                           <span>{displayName}</span>
                           <span className="setup-row-tag">Setup {setup.number}</span>
                         </button>
-                        <button type="button" aria-label={`「${displayName}」を複製`} onClick={() => duplicate(setup.id)}>複製</button>
+                        <button type="button" aria-label={`「${displayName}」を複製`} onClick={() => duplicate(setup.id)}>
+                          複製
+                        </button>
                         <button
                           type="button"
                           aria-label={`「${displayName}」の名前を変更`}
@@ -250,15 +275,17 @@ export function SetupPage({
           </section>
 
           {requestedMissing ? (
-            <p className="setup-note" data-setup-problem="missing">指定されたSetupは見つかりません。削除されたSetupの可能性があります。一覧からSetupを選んでください。</p>
+            <p className="setup-note" data-setup-problem="missing">
+              指定されたSetupは見つかりません。削除されたSetupの可能性があります。一覧からSetupを選んでください。
+            </p>
           ) : null}
           {selected === undefined ? null : (
             <section className="setup-section" aria-labelledby="setup-edit-title" data-setup-editor={selected.id}>
-              <h2 id="setup-edit-title">
-                {items.find((item) => item.setup.id === selected.id)?.displayName ?? SETUP_LABEL}
-              </h2>
+              <h2 id="setup-edit-title">{items.find((item) => item.setup.id === selected.id)?.displayName ?? SETUP_LABEL}</h2>
               {selectedLayout === undefined ? (
-                <p className="setup-note" data-setup-problem="layout">このSetupの配列が見つかりません。配列は変えられないので、新しいSetupを作ってください。</p>
+                <p className="setup-note" data-setup-problem="layout">
+                  このSetupの配列が見つかりません。配列は変えられないので、新しいSetupを作ってください。
+                </p>
               ) : null}
               <label className="setup-shape">
                 物理配列
@@ -270,13 +297,19 @@ export function SetupPage({
                   {selectedShapeMissing ? <option value={selected.shapeId}>（{MISSING_SHAPE_NAME}）</option> : null}
                   {shapeGroups.map((group) => (
                     <optgroup key={group.key} label={group.label}>
-                      {group.shapes.map((shape) => <option key={shape.id} value={shape.id}>{shape.name}</option>)}
+                      {group.shapes.map((shape) => (
+                        <option key={shape.id} value={shape.id}>
+                          {shape.name}
+                        </option>
+                      ))}
                     </optgroup>
                   ))}
                 </select>
               </label>
               {selectedShapeMissing ? (
-                <p className="setup-note" data-setup-problem="shape">このSetupの物理配列が見つかりません。物理配列を選び直してください。</p>
+                <p className="setup-note" data-setup-problem="shape">
+                  このSetupの物理配列が見つかりません。物理配列を選び直してください。
+                </p>
               ) : null}
 
               {rows === undefined || editor === undefined ? null : (

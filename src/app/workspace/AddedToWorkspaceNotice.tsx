@@ -1,10 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import { useSyncExternalStore } from 'react';
-import {
-  getAddedToWorkspaceSnapshot,
-  setAddedToWorkspace,
-  subscribeAddedToWorkspace,
-} from './added-to-workspace-notice.ts';
+import { getAddedToWorkspaceSnapshot, setAddedToWorkspace, subscribeAddedToWorkspace } from './added-to-workspace-notice.ts';
 import { useWorkspaceLibrary } from './use-workspace-library.ts';
 
 /**
@@ -23,15 +19,12 @@ export function AddedToWorkspaceNotice() {
   return (
     <div className="shell-notice" role="status" data-added-to-workspace-notice="true" key={added.serial}>
       <span className="shell-notice-text">「{workspace.name}」に追加しました</span>
-      <Link
-        className="shell-notice-link"
-        to="/workspace/$id"
-        params={{ id: added.workspaceId }}
-        onClick={() => setAddedToWorkspace(undefined)}
-      >
+      <Link className="shell-notice-link" to="/workspace/$id" params={{ id: added.workspaceId }} onClick={() => setAddedToWorkspace(undefined)}>
         開く
       </Link>
-      <button type="button" aria-label="閉じる" title="閉じる" onClick={() => setAddedToWorkspace(undefined)}>×</button>
+      <button type="button" aria-label="閉じる" title="閉じる" onClick={() => setAddedToWorkspace(undefined)}>
+        ×
+      </button>
     </div>
   );
 }

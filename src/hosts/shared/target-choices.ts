@@ -2,7 +2,16 @@ import { layoutKind, type LayoutKind } from '#input/layouts/kind.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { PhysicalShape } from '#input/shapes/geometry.ts';
-import { analysisTargetKey, effectiveLabel, MISSING_LAYOUT_NAME, MISSING_SETUP_NAME, MISSING_SHAPE_NAME, nameTargets, type AnalysisTarget, type Setup } from '#input/setup/index.ts';
+import {
+  analysisTargetKey,
+  effectiveLabel,
+  MISSING_LAYOUT_NAME,
+  MISSING_SETUP_NAME,
+  MISSING_SHAPE_NAME,
+  nameTargets,
+  type AnalysisTarget,
+  type Setup,
+} from '#input/setup/index.ts';
 
 /**
  * 対象の選択（docs/architecture.md「対象の選択」）に並べる候補。
@@ -80,12 +89,14 @@ export function targetChoiceGroups({ layouts, userLayouts, shapes, setups, selec
   // Setupのフル名は`nameTargets`のfullName（集合によらない全部を含む名前）。一覧は「取りうる全部から
   // 探す」場なので、集合の中の共通部分を落とすdisplayNameは使わない。
   const setupNumbers = setupNumbersOf(setups);
-  const namedSetups = nameTargets(setups.map((setup) => ({
-    key: setup.id,
-    kind: 'setup' as const,
-    layoutName: layouts.get(setup.layoutId)?.name ?? MISSING_LAYOUT_NAME,
-    shapeName: shapes.get(setup.shapeId)?.name ?? MISSING_SHAPE_NAME,
-  })));
+  const namedSetups = nameTargets(
+    setups.map((setup) => ({
+      key: setup.id,
+      kind: 'setup' as const,
+      layoutName: layouts.get(setup.layoutId)?.name ?? MISSING_LAYOUT_NAME,
+      shapeName: shapes.get(setup.shapeId)?.name ?? MISSING_SHAPE_NAME,
+    })),
+  );
   const setupChoices: TargetChoice[] = setups.map((setup, index) => {
     const target: AnalysisTarget = { kind: 'setup', setupId: setup.id };
     const fullName = namedSetups[index]!.fullName;
@@ -142,7 +153,9 @@ export function filterTargetChoiceGroups(
   query: string,
   kind: TargetKindFilter = 'all',
 ): readonly TargetChoiceGroup[] {
-  const words = normalizeSearchText(query).split(/\s+/).filter((word) => word !== '');
+  const words = normalizeSearchText(query)
+    .split(/\s+/)
+    .filter((word) => word !== '');
   if (words.length === 0 && kind === 'all') return groups;
   return groups
     .map((group) => ({
@@ -172,10 +185,7 @@ export function targetSummaryText(names: readonly string[], fits: boolean): { re
  * 色は並びと別で、画面の器が加えた順に配ったもの（`colorSlots`。個別画面は集合、Workspaceは全ペインの和）を対象に付けたまま使う。
  * 候補に無い対象（削除されたSetup等）は末尾へ、元の並びのまま置く。
  */
-export function sortTargetsByChoices(
-  targets: readonly AnalysisTarget[],
-  groups: readonly TargetChoiceGroup[],
-): readonly AnalysisTarget[] {
+export function sortTargetsByChoices(targets: readonly AnalysisTarget[], groups: readonly TargetChoiceGroup[]): readonly AnalysisTarget[] {
   const rank = new Map<string, number>();
   for (const group of groups) {
     if (group.id === 'missing') continue;

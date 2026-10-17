@@ -27,9 +27,7 @@ const input = (
   faceMemberships: [],
 });
 
-const action = (
-  extra: Partial<RealizedSemanticAction> = {},
-): RealizedSemanticAction => ({
+const action = (extra: Partial<RealizedSemanticAction> = {}): RealizedSemanticAction => ({
   keys: ['thumb-r', 'j'],
   input: input(),
   outputKeys: ['j'],
@@ -47,10 +45,11 @@ const semantic = (
   triggerActivationOverrides,
 });
 
-const forceSeparate = (): ActionRealizationPolicy => semantic({
-  'prepress-required': 'separate',
-  'order-free': 'separate',
-});
+const forceSeparate = (): ActionRealizationPolicy =>
+  semantic({
+    'prepress-required': 'separate',
+    'order-free': 'separate',
+  });
 
 test('ActionRealizationPolicyの既定は独立action化disabled', () => {
   const actions = [action()];
@@ -59,10 +58,7 @@ test('ActionRealizationPolicyの既定は独立action化disabled', () => {
     triggerActivationClassOverrides: {},
     triggerActivationOverrides: [],
   });
-  assert.equal(
-    applyActionRealizationPolicy(actions, DEFAULT_ACTION_REALIZATION_POLICY),
-    actions,
-  );
+  assert.equal(applyActionRealizationPolicy(actions, DEFAULT_ACTION_REALIZATION_POLICY), actions);
 });
 
 test('semantic既定値は先押し必須だけseparate、押し順不問はcombined', () => {
@@ -73,9 +69,7 @@ test('semantic既定値は先押し必須だけseparate、押し順不問はcomb
   });
 
   const orderFree = action({
-    input: input([], 'layer:test', [
-      { kind: 'overlap', keys: ['j', 'thumb-r'] },
-    ]),
+    input: input([], 'layer:test', [{ kind: 'overlap', keys: ['j', 'thumb-r'] }]),
   });
   const prepress = action({
     input: input([], 'layer:test', [
@@ -91,10 +85,7 @@ test('semantic既定値は先押し必須だけseparate、押し順不問はcomb
 });
 
 test('holdなしでもclass overrideでorder-free triggerを分離できる', () => {
-  const [trigger, output] = applyActionRealizationPolicy(
-    [action()],
-    forceSeparate(),
-  );
+  const [trigger, output] = applyActionRealizationPolicy([action()], forceSeparate());
 
   assert.deepEqual(trigger.keys, ['thumb-r']);
   assert.deepEqual(trigger.triggerKeys, ['thumb-r']);
@@ -110,10 +101,7 @@ test('holdなしでもclass overrideでorder-free triggerを分離できる', ()
 });
 
 test('hold startでも同じtrigger activation分離を使いoutput側だけcontinueになる', () => {
-  const [trigger, output] = applyActionRealizationPolicy(
-    [action({ heldKeys: ['thumb-r'], holdPhase: 'start' })],
-    forceSeparate(),
-  );
+  const [trigger, output] = applyActionRealizationPolicy([action({ heldKeys: ['thumb-r'], holdPhase: 'start' })], forceSeparate());
 
   assert.equal(trigger.holdPhase, 'start');
   assert.deepEqual(trigger.heldKeys, ['thumb-r']);
@@ -127,14 +115,8 @@ test('order(output -> trigger)はpostpress-requiredでtrigger-firstへ反転し�
     { kind: 'order', before: ['j'], after: ['thumb-r'] },
   ]);
   const original = action({ input: semanticInput });
-  assert.equal(
-    classifyTriggerActivation(semanticInput, original.triggerKeys, original.outputKeys),
-    'postpress-required',
-  );
-  const result = applyActionRealizationPolicy(
-    [original],
-    semantic({ 'postpress-required': 'separate' }),
-  );
+  assert.equal(classifyTriggerActivation(semanticInput, original.triggerKeys, original.outputKeys), 'postpress-required');
+  const result = applyActionRealizationPolicy([original], semantic({ 'postpress-required': 'separate' }));
   assert.equal(result.length, 1);
   assert.equal(result[0], original);
 });
@@ -143,11 +125,13 @@ test('trigger/output groupがorder境界を跨る場合はcombinedを維持す�
   const semanticInput: SemanticInput = {
     ...input(),
     physicalKeys: ['j', 'k', 'q', 'thumb-r'],
-    requirements: [{
-      kind: 'order',
-      before: ['j', 'thumb-r'],
-      after: ['k', 'q'],
-    }],
+    requirements: [
+      {
+        kind: 'order',
+        before: ['j', 'thumb-r'],
+        after: ['k', 'q'],
+      },
+    ],
     roles: [
       { key: 'q', role: 'modifier' },
       { key: 'thumb-r', role: 'modifier' },
@@ -165,13 +149,18 @@ test('trigger/output groupがorder境界を跨る場合はcombinedを維持す�
 });
 
 test('複数fresh triggerはhold対象かどうかに関係なくtrigger groupとして分離する', () => {
-  const [trigger, output] = applyActionRealizationPolicy([action({
-    keys: ['thumb-r', 'd', 'j'],
-    outputKeys: ['j'],
-    triggerKeys: ['thumb-r', 'd'],
-    heldKeys: ['thumb-r'],
-    holdPhase: 'start',
-  })], forceSeparate());
+  const [trigger, output] = applyActionRealizationPolicy(
+    [
+      action({
+        keys: ['thumb-r', 'd', 'j'],
+        outputKeys: ['j'],
+        triggerKeys: ['thumb-r', 'd'],
+        heldKeys: ['thumb-r'],
+        holdPhase: 'start',
+      }),
+    ],
+    forceSeparate(),
+  );
 
   assert.deepEqual(trigger.keys, ['thumb-r', 'd']);
   assert.deepEqual(trigger.triggerKeys, ['thumb-r', 'd']);
@@ -207,17 +196,12 @@ test('hold continueはfresh triggerが無いので分割しない', () => {
 
 test('compositionはsemantic policyやoverrideに関係なく1 actionのまま保つ', () => {
   const composition = action({ input: input(['composition']) });
-  assert.deepEqual(
-    applyActionRealizationPolicy([composition], forceSeparate()),
-    [composition],
-  );
+  assert.deepEqual(applyActionRealizationPolicy([composition], forceSeparate()), [composition]);
 });
 
 test('concrete overrideはclass defaultより優先される', () => {
   const sandS = action({
-    input: input([], 'layer:SandS', [
-      { kind: 'order', before: ['thumb-r'], after: ['j'] },
-    ], 'SandS'),
+    input: input([], 'layer:SandS', [{ kind: 'order', before: ['thumb-r'], after: ['j'] }], 'SandS'),
   });
   const dakuten = action({
     input: {
@@ -229,16 +213,16 @@ test('concrete overrideはclass defaultより優先される', () => {
     outputKeys: ['f'],
     triggerKeys: ['j'],
   });
-  const policy = semantic(
-    { 'prepress-required': 'combined', 'order-free': 'separate' },
-    [{
+  const policy = semantic({ 'prepress-required': 'combined', 'order-free': 'separate' }, [
+    {
       selector: { modifierGroupIds: ['SandS'] },
       grouping: 'separate',
-    }, {
+    },
+    {
       selector: { modifierGroupIds: ['濁音'] },
       grouping: 'combined',
-    }],
-  );
+    },
+  ]);
 
   assert.equal(applyActionRealizationPolicy([sandS], policy).length, 2);
   assert.equal(applyActionRealizationPolicy([dakuten], policy).length, 1);
@@ -251,13 +235,12 @@ test('aggregationGroupIdが違っても同じmodifier semantic selectorが適用
   const second = action({
     input: input([], 'aggregation:B', [], 'SandS'),
   });
-  const policy = semantic(
-    { 'order-free': 'combined' },
-    [{
+  const policy = semantic({ 'order-free': 'combined' }, [
+    {
       selector: { modifierGroupIds: ['SandS'] },
       grouping: 'separate',
-    }],
-  );
+    },
+  ]);
 
   assert.equal(applyActionRealizationPolicy([first], policy).length, 2);
   assert.equal(applyActionRealizationPolicy([second], policy).length, 2);
@@ -277,20 +260,18 @@ test('複数modifier group selectorは集合の完全一致だけに適用する
     outputKeys: ['w'],
     triggerKeys: ['j', 'h'],
   });
-  const exact = semantic(
-    { 'order-free': 'combined' },
-    [{
+  const exact = semantic({ 'order-free': 'combined' }, [
+    {
       selector: { modifierGroupIds: ['濁音', '拗音'] },
       grouping: 'separate',
-    }],
-  );
-  const partial = semantic(
-    { 'order-free': 'combined' },
-    [{
+    },
+  ]);
+  const partial = semantic({ 'order-free': 'combined' }, [
+    {
       selector: { modifierGroupIds: ['濁音'] },
       grouping: 'separate',
-    }],
-  );
+    },
+  ]);
 
   assert.equal(applyActionRealizationPolicy([multiModifier], exact).length, 2);
   assert.equal(applyActionRealizationPolicy([multiModifier], partial).length, 1);
@@ -303,13 +284,19 @@ test('physical selectorはmodifier group selectorより優先されkey順に依�
     outputKeys: ['j'],
     triggerKeys: ['q', 'thumb-r'],
   });
-  const result = applyActionRealizationPolicy([multi], semantic({}, [{
-    selector: { modifierGroupIds: ['X'] },
-    grouping: 'combined',
-  }, {
-    selector: { modifierGroupIds: ['X'], triggerKeys: ['thumb-r', 'q'] },
-    grouping: 'separate',
-  }]));
+  const result = applyActionRealizationPolicy(
+    [multi],
+    semantic({}, [
+      {
+        selector: { modifierGroupIds: ['X'] },
+        grouping: 'combined',
+      },
+      {
+        selector: { modifierGroupIds: ['X'], triggerKeys: ['thumb-r', 'q'] },
+        grouping: 'separate',
+      },
+    ]),
+  );
   assert.equal(result.length, 2);
 });
 
@@ -319,10 +306,12 @@ test('disabledでは保存済みoverrideがあってもstreamを変更しない'
     applyActionRealizationPolicy([original], {
       triggerActivation: 'disabled',
       triggerActivationClassOverrides: { 'order-free': 'separate' },
-      triggerActivationOverrides: [{
-        selector: { modifierGroupIds: ['test'] },
-        grouping: 'separate',
-      }],
+      triggerActivationOverrides: [
+        {
+          selector: { modifierGroupIds: ['test'] },
+          grouping: 'separate',
+        },
+      ],
     })[0],
     original,
   );
@@ -340,13 +329,7 @@ test('ActionRealizationPolicy比較はmode・class override・concrete override�
     ),
     true,
   );
-  assert.equal(
-    sameActionRealizationPolicy(
-      { triggerActivation: 'disabled' },
-      { triggerActivation: 'semantic' },
-    ),
-    false,
-  );
+  assert.equal(sameActionRealizationPolicy({ triggerActivation: 'disabled' }, { triggerActivation: 'semantic' }), false);
   assert.equal(
     sameActionRealizationPolicy(
       {
@@ -361,10 +344,12 @@ test('ActionRealizationPolicy比較はmode・class override・concrete override�
     sameActionRealizationPolicy(
       {
         triggerActivation: 'semantic',
-        triggerActivationOverrides: [{
-          selector: { modifierGroupIds: ['SandS'] },
-          grouping: 'separate',
-        }],
+        triggerActivationOverrides: [
+          {
+            selector: { modifierGroupIds: ['SandS'] },
+            grouping: 'separate',
+          },
+        ],
       },
       { triggerActivation: 'semantic' },
     ),

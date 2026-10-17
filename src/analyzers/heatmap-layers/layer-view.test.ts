@@ -8,13 +8,7 @@ import { computeKeyDetails } from '#interpretation/key-detail.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { computeHeatmapLayersExtraction } from './extract.ts';
 import { DEFAULT_HEATMAP_LAYERS_OPTIONS } from './options.ts';
-import {
-  activeEntryIndex,
-  buildLayerEntries,
-  entryKeyDetail,
-    resolveArrangement,
-  sharedMaxCount,
-} from './layer-view.ts';
+import { activeEntryIndex, buildLayerEntries, entryKeyDetail, resolveArrangement, sharedMaxCount } from './layer-view.ts';
 import { canToggleLayerDetail } from '../layer-detail.ts';
 
 /**
@@ -29,7 +23,15 @@ function extractionFor(layoutId: string, text: string) {
   assert.ok(layout, layoutId);
   const trace = generateTrace(text, layout, geometry, DEFAULT_TRACE_POLICY);
   assert.equal(trace.skipped, 0);
-  return { layout, extracted: computeHeatmapLayersExtraction({ trace, metrics: computeMetrics(trace, geometry), keyDetails: computeKeyDetails(trace, geometry), options: DEFAULT_HEATMAP_LAYERS_OPTIONS }) };
+  return {
+    layout,
+    extracted: computeHeatmapLayersExtraction({
+      trace,
+      metrics: computeMetrics(trace, geometry),
+      keyDetails: computeKeyDetails(trace, geometry),
+      options: DEFAULT_HEATMAP_LAYERS_OPTIONS,
+    }),
+  };
 }
 
 const total = (counts: ReadonlyMap<string, number>) => [...counts.values()].reduce((sum, count) => sum + count, 0);
@@ -37,7 +39,10 @@ const total = (counts: ReadonlyMap<string, number>) => [...counts.values()].redu
 test('薙刀式(吾輩は猫である): まとめは層を足してから色用の押下数を求める。jは13で、層別に足した8や7ではない', () => {
   const { layout, extracted } = extractionFor('naginata-v18', sampleText('ja', 'legacy'));
   const compact = buildLayerEntries(layout, extracted, 'compact');
-  assert.deepEqual(compact.map((entry) => entry.id), ['single', 'layer:SandS']);
+  assert.deepEqual(
+    compact.map((entry) => entry.id),
+    ['single', 'layer:SandS'],
+  );
   assert.equal(compact[0]!.colorCounts.get('j'), 13);
   assert.equal(compact[1]!.colorCounts.get('j'), 7);
   assert.equal(compact[0]!.title, 'レイヤー1: 単打（レイヤー3以降を合算）');
@@ -80,12 +85,21 @@ test('層をまとめる宣言が無い配列は、まとめと詳細で同じ�
 
 test('英字配列: 面として宣言していないShiftの層は、使われた時だけ図に足す', () => {
   const plain = extractionFor('qwerty', 'aa');
-  assert.deepEqual(buildLayerEntries(plain.layout, plain.extracted, 'compact').map((entry) => entry.id), ['single']);
+  assert.deepEqual(
+    buildLayerEntries(plain.layout, plain.extracted, 'compact').map((entry) => entry.id),
+    ['single'],
+  );
 
   const shifted = extractionFor('qwerty', 'aAa');
   const entries = buildLayerEntries(shifted.layout, shifted.extracted, 'compact');
-  assert.deepEqual(entries.map((entry) => entry.id), ['single', 'layer:Shift']);
-  assert.deepEqual([...entries[1]!.keyCounts].sort(), [['a', 1], ['shift-r', 1]]);
+  assert.deepEqual(
+    entries.map((entry) => entry.id),
+    ['single', 'layer:Shift'],
+  );
+  assert.deepEqual([...entries[1]!.keyCounts].sort(), [
+    ['a', 1],
+    ['shift-r', 1],
+  ]);
   assert.deepEqual([...entries[1]!.colorCounts], [['a', 1]]);
 });
 
@@ -95,7 +109,12 @@ test('全配列: 層別図の押下数の合計とコンボ枠は、ヒートマ
     const trace = generateTrace(text, layout, geometry, DEFAULT_TRACE_POLICY);
     if (trace.skipped > 0) continue;
     const metrics = computeMetrics(trace, geometry);
-    const extracted = computeHeatmapLayersExtraction({ trace, metrics, keyDetails: computeKeyDetails(trace, geometry), options: DEFAULT_HEATMAP_LAYERS_OPTIONS });
+    const extracted = computeHeatmapLayersExtraction({
+      trace,
+      metrics,
+      keyDetails: computeKeyDetails(trace, geometry),
+      options: DEFAULT_HEATMAP_LAYERS_OPTIONS,
+    });
     for (const detail of ['compact', 'detail'] as const) {
       const entries = buildLayerEntries(layout, extracted, detail);
       const layered = entries.reduce((sum, entry) => sum + total(entry.keyCounts), 0);
@@ -123,13 +142,7 @@ test('レイヤーの見出しは、押し方の区分を番号の後ろの括�
   const shingeta = extractionFor('shingeta', 'あいがぱ');
   assert.deepEqual(
     buildLayerEntries(shingeta.layout, shingeta.extracted, 'detail').map((entry) => entry.title),
-    [
-      'レイヤー1: 単打',
-      'レイヤー2（同時）: 中指シフト',
-      'レイヤー3（同時）: 薬指シフト',
-      'レイヤー4（同時）: 拗音1',
-      'レイヤー5（同時）: 拗音2',
-    ],
+    ['レイヤー1: 単打', 'レイヤー2（同時）: 中指シフト', 'レイヤー3（同時）: 薬指シフト', 'レイヤー4（同時）: 拗音1', 'レイヤー5（同時）: 拗音2'],
   );
   const naginata = extractionFor('naginata-v18', 'あ');
   const titles = (detail: 'compact' | 'detail') => buildLayerEntries(naginata.layout, naginata.extracted, detail).map((entry) => entry.title);
@@ -169,10 +182,17 @@ test('図ごとのキーの詳細: まとめた図は合算した面の和、ヒ
   assert.deepEqual(compact[1]!.faceIds, ['layer:SandS']);
   // jの押し方: まとめた図の内訳は、合算した面の内訳の和
   const merged = entryKeyDetail(extracted.keyDetails, compact[0]!.faceIds, 'j')!;
-  const parts = detail.filter((entry) => compact[0]!.faceIds.includes(entry.id))
+  const parts = detail
+    .filter((entry) => compact[0]!.faceIds.includes(entry.id))
     .flatMap((entry) => entryKeyDetail(extracted.keyDetails, entry.faceIds, 'j') ?? []);
-  assert.equal(merged.presses, parts.reduce((sum, part) => sum + part.presses, 0));
-  assert.equal([...merged.roles.values()].reduce((sum, count) => sum + count, 0), merged.presses);
+  assert.equal(
+    merged.presses,
+    parts.reduce((sum, part) => sum + part.presses, 0),
+  );
+  assert.equal(
+    [...merged.roles.values()].reduce((sum, count) => sum + count, 0),
+    merged.presses,
+  );
   // 全部の面を合わせると、ヒートマップの図と同じ
   const everyFace = [...extracted.keyDetails.faces.keys()];
   assert.equal(entryKeyDetail(extracted.keyDetails, everyFace, 'j')!.presses, extracted.keyDetails.merged.get('j')!.presses);

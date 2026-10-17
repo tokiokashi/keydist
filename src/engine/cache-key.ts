@@ -34,8 +34,7 @@ function compareCanonical(a: Canonical, b: Canonical): number {
 /** 任意の値をキー順に依存しない、JSON化できる形へ正規化する。 */
 export function canonicalize(value: unknown): Canonical {
   if (value instanceof Map) {
-    const entries = [...value.entries()]
-      .map(([k, v]) => [canonicalize(k), canonicalize(v)] as const);
+    const entries = [...value.entries()].map(([k, v]) => [canonicalize(k), canonicalize(v)] as const);
     entries.sort((a, b) => compareCanonical(a[0], b[0]));
     return { $map: entries.map(([k, v]) => [k, v]) };
   }

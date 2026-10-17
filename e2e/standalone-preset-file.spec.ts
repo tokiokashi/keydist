@@ -24,8 +24,7 @@ async function recordDownloadNames(page: Page) {
   });
 }
 
-const downloadNames = (page: Page) =>
-  page.evaluate(() => (window as unknown as { __downloadNames: string[] }).__downloadNames);
+const downloadNames = (page: Page) => page.evaluate(() => (window as unknown as { __downloadNames: string[] }).__downloadNames);
 
 async function openPresets(page: Page): Promise<{ modal: Locator; section: Locator }> {
   await recordDownloadNames(page);
@@ -107,7 +106,11 @@ test('書き出したファイルを読み込み直すと、同名は番号付�
   await expect(section.locator('summary')).toHaveText('プリセット（4）');
 
   // 読み込んだプリセットは、流し込んで初めて条件になる
-  await section.locator('.condition-preset-row').filter({ hasText: '自分用メモ 2' }).getByRole('button', { name: /を流し込む$/ }).click();
+  await section
+    .locator('.condition-preset-row')
+    .filter({ hasText: '自分用メモ 2' })
+    .getByRole('button', { name: /を流し込む$/ })
+    .click();
   await expect(modal.locator('[data-item="windowSize"] output')).toHaveText('5');
 });
 
@@ -117,7 +120,11 @@ test('1件だけ書き出せる。ファイル名にプリセット名が入る'
   await savePreset(section, '比較用（N=5）');
 
   const downloading = page.waitForEvent('download');
-  await section.locator('.condition-preset-row').filter({ hasText: '比較用' }).getByRole('button', { name: /の操作$/ }).click();
+  await section
+    .locator('.condition-preset-row')
+    .filter({ hasText: '比較用' })
+    .getByRole('button', { name: /の操作$/ })
+    .click();
   await page.getByRole('menuitem', { name: '書き出す' }).click();
   const download = await downloading;
   expect(await downloadNames(page)).toEqual(['keydist-プリセット-比較用（N=5）.json']);
@@ -150,9 +157,7 @@ test('一部の値だけ読めない時は、読める分を読み込み、項�
   const file = {
     format: 'keydist-presets',
     version: 1,
-    presets: [
-      { id: 'x', name: '自分用メモ', values: { windowSize: 4, sfbHomeCost: 'yes', futureItem: 1, fingerAssignmentId: 'from-elsewhere' } },
-    ],
+    presets: [{ id: 'x', name: '自分用メモ', values: { windowSize: 4, sfbHomeCost: 'yes', futureItem: 1, fingerAssignmentId: 'from-elsewhere' } }],
   };
   await importText(section, JSON.stringify(file));
   const row = result(section);

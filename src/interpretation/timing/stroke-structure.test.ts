@@ -44,15 +44,16 @@ test('同じ解析結果には同じ配列を返す', () => {
   assert.equal(strokeStructureKinds(analysis), strokeStructureKinds(analysis));
 });
 
-const press = (finger: Finger, keyIds: readonly string[], sfb = false): Press => ({
-  finger,
-  keys: keyIds.map((id) => ({ id, finger, x: 0, y: 0, row: 2, col: 0 })),
-  target: { x: 0, y: 0 },
-  origin: { at: { x: 0, y: 0 }, from: 'home' },
-  gap: 0,
-  distance: sfb ? 1 : 0,
-  sfb,
-}) as Press;
+const press = (finger: Finger, keyIds: readonly string[], sfb = false): Press =>
+  ({
+    finger,
+    keys: keyIds.map((id) => ({ id, finger, x: 0, y: 0, row: 2, col: 0 })),
+    target: { x: 0, y: 0 },
+    origin: { at: { x: 0, y: 0 }, from: 'home' },
+    gap: 0,
+    distance: sfb ? 1 : 0,
+    sfb,
+  }) as Press;
 
 const strokeOf = (...presses: Press[]) => ({ presses }) as unknown as Stroke;
 
@@ -96,8 +97,14 @@ test('保持を始めたストロークとその次のストロークは続け�
   const geometry = buildGeometry('row-staggered');
   const held = generateTrace('あああ', layout, geometry, { ...DEFAULT_TRACE_POLICY, triggerRealizationPolicy: { useHold: true } });
   // 1打目は親指のキーと文字のキーの2つの押下、2打目は保持を続けるので文字のキーだけ。
-  assert.deepEqual(held.strokes.map((stroke) => stroke.presses.length), [2, 1, 1]);
-  assert.deepEqual(held.strokes.map((stroke, index) => isRepeatStroke(stroke, held.strokes[index - 1])), [false, false, true]);
+  assert.deepEqual(
+    held.strokes.map((stroke) => stroke.presses.length),
+    [2, 1, 1],
+  );
+  assert.deepEqual(
+    held.strokes.map((stroke, index) => isRepeatStroke(stroke, held.strokes[index - 1])),
+    [false, false, true],
+  );
   // 保持を使わなければ、毎回親指のキーも押すので、押下を複数持つストロークは続け打ちにならない。
   const released = generateTrace('あああ', layout, geometry, DEFAULT_TRACE_POLICY);
   assert.ok(released.strokes.every((stroke) => stroke.presses.length === 2));

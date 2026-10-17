@@ -30,10 +30,7 @@ async function readTexts(page: Page): Promise<readonly StoredText[]> {
 }
 
 async function openBoth(pageA: Page, pageB: Page): Promise<void> {
-  await Promise.all([
-    pageA.goto('/analyzer/bigram-flow', { waitUntil: 'commit' }),
-    pageB.goto('/analyzer/bigram-flow', { waitUntil: 'commit' }),
-  ]);
+  await Promise.all([pageA.goto('/analyzer/bigram-flow', { waitUntil: 'commit' }), pageB.goto('/analyzer/bigram-flow', { waitUntil: 'commit' })]);
   await expect(pageA.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   await expect(pageB.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
 }
@@ -78,9 +75,7 @@ test('2タブが同じ組み込みテキストを続けて書き換えても、�
   const textB = 'tab-B';
   await pageB.evaluate((s) => (window as unknown as RaceWindow).__type(s), textB);
   await pageA.getByLabel('テキスト', { exact: true }).fill(textA);
-  await expect
-    .poll(async () => (await readTexts(pageA)).map((entry) => entry.text))
-    .toContain(textA);
+  await expect.poll(async () => (await readTexts(pageA)).map((entry) => entry.text)).toContain(textA);
   const [copy] = await readTexts(pageA);
   // Aの書き込みがBへ届き、選択が複製へ移るまで待つ。それからBの保留を撃つ
   await expect(pageB.getByLabel('テキストを選ぶ')).toHaveValue(`user:${copy!.id}`);
@@ -113,9 +108,7 @@ test('他タブが別のAnalyzerの解析設定を書いても、自タブの未
 
   // 自分のAnalyzerの設定が保存済みの状態にする（未保存だと他タブの書き込みで参照が変わらない）
   await lineScale.selectOption('linear');
-  await expect
-    .poll(async () => pageA.evaluate((k) => localStorage.getItem(k), key))
-    .toContain('linear');
+  await expect.poll(async () => pageA.evaluate((k) => localStorage.getItem(k), key)).toContain('linear');
 
   const now = await pageA.evaluate(() => Date.now());
   await pageA.clock.pauseAt(now + 60_000);
@@ -147,10 +140,14 @@ test('他タブが別のAnalyzerの解析設定を書いても、自タブの未
   await pageA.clock.runFor(1_000);
 
   await expect
-    .poll(async () => pageA.evaluate((k) => {
-      const flow = (JSON.parse(localStorage.getItem(k) ?? '{}') as Record<string, Record<string, unknown> | undefined>)['bigram-flow'];
-      return `${String(flow?.source)}/${String(flow?.lineScale)}`;
-    }, key), { timeout: 5_000 })
+    .poll(
+      async () =>
+        pageA.evaluate((k) => {
+          const flow = (JSON.parse(localStorage.getItem(k) ?? '{}') as Record<string, Record<string, unknown> | undefined>)['bigram-flow'];
+          return `${String(flow?.source)}/${String(flow?.lineScale)}`;
+        }, key),
+      { timeout: 5_000 },
+    )
     .toBe('within-hand/log');
 });
 
@@ -167,15 +164,17 @@ test('他タブが同じAnalyzerの解析設定を変えたら、自タブの表
   const lineScale = (await openFigureSettings(pageA, 'Keyboard Flow')).getByLabel('紐の太さ', { exact: true });
 
   await lineScale.selectOption('linear');
-  await expect
-    .poll(async () => pageA.evaluate((k) => localStorage.getItem(k), key))
-    .toContain('linear');
+  await expect.poll(async () => pageA.evaluate((k) => localStorage.getItem(k), key)).toContain('linear');
 
-  const setFromOtherTab = (value: string) => pageB.evaluate(({ k, v }) => {
-    const record = JSON.parse(localStorage.getItem(k)!) as Record<string, Record<string, unknown>>;
-    record['bigram-flow'] = { ...record['bigram-flow'], lineScale: v };
-    localStorage.setItem(k, JSON.stringify(record));
-  }, { k: key, v: value });
+  const setFromOtherTab = (value: string) =>
+    pageB.evaluate(
+      ({ k, v }) => {
+        const record = JSON.parse(localStorage.getItem(k)!) as Record<string, Record<string, unknown>>;
+        record['bigram-flow'] = { ...record['bigram-flow'], lineScale: v };
+        localStorage.setItem(k, JSON.stringify(record));
+      },
+      { k: key, v: value },
+    );
 
   await setFromOtherTab('sqrt');
   await expect(lineScale).toHaveValue('sqrt');

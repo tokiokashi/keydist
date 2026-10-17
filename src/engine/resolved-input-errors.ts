@@ -19,16 +19,16 @@ import { LAYOUT_MISSING_REASON, SETUP_MISSING_REASON, SHAPE_MISSING_REASON } fro
 // どの対象の失敗かは、行・見出しに並ぶ対象の名前で分かる。
 function describeSetupReferenceError(error: SetupReferenceError): string {
   switch (error.kind) {
-    case 'layout-missing': return LAYOUT_MISSING_REASON;
-    case 'shape-missing': return SHAPE_MISSING_REASON;
+    case 'layout-missing':
+      return LAYOUT_MISSING_REASON;
+    case 'shape-missing':
+      return SHAPE_MISSING_REASON;
   }
 }
 
 // JISの物理配列が要る配列なら、選び直す先を具体に示す。
 function keysMissingHint(layout: Layout): string {
-  return layout.requiresJisShape === true
-    ? 'JISの物理配列を選んでください'
-    : 'キーが足りる物理配列を選んでください';
+  return layout.requiresJisShape === true ? 'JISの物理配列を選んでください' : 'キーが足りる物理配列を選んでください';
 }
 
 export function describeResolvedInputError(error: ResolvedInputError): string {

@@ -19,14 +19,7 @@ import {
   type PlaybackRateAverage,
 } from '#interpretation/timing/playback.ts';
 import { PUNCTUATION_WAIT_MS_MAX, PUNCTUATION_WAIT_MS_MIN } from '#interpretation/timing/punctuation-wait.ts';
-import {
-  booleanUrlCodec,
-  defineOption,
-  defineOptions,
-  numberUrlCodec,
-  picklistUrlCodec,
-  type OptionUrlCodec,
-} from '#analyzers/options.ts';
+import { booleanUrlCodec, defineOption, defineOptions, numberUrlCodec, picklistUrlCodec, type OptionUrlCodec } from '#analyzers/options.ts';
 
 /**
  * 打鍵再生Analyzerの解析設定。
@@ -204,9 +197,7 @@ export const playbackOptions = defineOptions({
     label: '平均の窓幅',
   }),
   rateHalfLifeSeconds: defineOption<number>({
-    schema: v.pipe(
-      v.number(), v.minValue(PLAYBACK_RATE_HALF_LIFE_SECONDS_MIN), v.maxValue(PLAYBACK_RATE_HALF_LIFE_SECONDS_MAX),
-    ),
+    schema: v.pipe(v.number(), v.minValue(PLAYBACK_RATE_HALF_LIFE_SECONDS_MIN), v.maxValue(PLAYBACK_RATE_HALF_LIFE_SECONDS_MAX)),
     default: DEFAULT_PLAYBACK_RATE_HALF_LIFE_SECONDS,
     affects: 'extract',
     url: numberUrlCodec('rateHalfLife', PLAYBACK_RATE_HALF_LIFE_SECONDS_MIN, PLAYBACK_RATE_HALF_LIFE_SECONDS_MAX),

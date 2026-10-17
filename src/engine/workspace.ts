@@ -4,12 +4,7 @@ import { initialTextSelection, type TextSelectionState } from '#input/text/selec
 import { stableStringify } from './cache-key.ts';
 import type { SettingsValueMap } from './settings-items.ts';
 import { initialTargetSet, type TargetSet } from './multi-target-selection.ts';
-import {
-  effectiveSingleTarget,
-  initialSingleTargetSelection,
-  withSingleTarget,
-  type SingleTargetSelection,
-} from './single-target-selection.ts';
+import { effectiveSingleTarget, initialSingleTargetSelection, withSingleTarget, type SingleTargetSelection } from './single-target-selection.ts';
 import { initialWorkspaceColorSlots, withWorkspaceColors, type WorkspaceColorSlots } from './workspace-colors.ts';
 import {
   gridWithPane,
@@ -65,9 +60,7 @@ export const NO_BINDING: PaneTargetBinding = { mode: 'none' };
  * 対象の持ち方（`PaneTargetBinding`）とは独立で、連動の組とも別の仕組み（対象を分けて設定を揃える用途に連動の組は使えない）。
  * 余白のペインは設定を持たないので`own`。
  */
-export type PaneOptionsBinding =
-  | { readonly mode: 'shared'; readonly set: string }
-  | { readonly mode: 'own' };
+export type PaneOptionsBinding = { readonly mode: 'shared'; readonly set: string } | { readonly mode: 'own' };
 
 export const OWN_OPTIONS: PaneOptionsBinding = { mode: 'own' };
 
@@ -103,10 +96,7 @@ export function sharedOptions(set: string): PaneOptionsBinding {
  * 新しく足すペインの解析設定の持ち方の既定: そのAnalyzerの組があれば先頭の組に従い、無ければ新しい組のidに従う
  * （組はペインを足す時に作られる。`addWorkspacePane`）。
  */
-export function defaultOptionsBinding(
-  workspace: Pick<Workspace, 'optionSets'>,
-  analyzerId: string,
-): PaneOptionsBinding {
+export function defaultOptionsBinding(workspace: Pick<Workspace, 'optionSets'>, analyzerId: string): PaneOptionsBinding {
   const set = findDefaultOptionSet(workspace, analyzerId);
   return sharedOptions(set?.id ?? newOptionSetId(workspace, analyzerId));
 }
@@ -130,10 +120,7 @@ export function paneOptionsOwnerKey(pane: Pick<WorkspacePane, 'id' | 'optionsBin
 }
 
 /** ペインの解析設定として今効いている値（保存した形）。共有ならその組の値、自分だけならペインの値。 */
-export function resolvePaneOptions(
-  workspace: Pick<Workspace, 'optionSets'>,
-  pane: Pick<WorkspacePane, 'options' | 'optionsBinding'>,
-): unknown {
+export function resolvePaneOptions(workspace: Pick<Workspace, 'optionSets'>, pane: Pick<WorkspacePane, 'options' | 'optionsBinding'>): unknown {
   if (pane.optionsBinding.mode === 'own') return pane.options;
   const id = pane.optionsBinding.set;
   return workspace.optionSets.find((set) => set.id === id)?.options;
@@ -182,9 +169,7 @@ export function resolveWorkspacePaneTarget(
   if (binding.mode === 'fixed') return binding.target.kind === kind ? binding.target : undefined;
   const group = groups.find((candidate) => candidate.id === binding.group);
   if (group === undefined) return undefined;
-  return kind === 'single'
-    ? { kind: 'single', target: effectiveSingleTarget(group.target.single) }
-    : { kind: 'set', selection: group.target.set };
+  return kind === 'single' ? { kind: 'single', target: effectiveSingleTarget(group.target.single) } : { kind: 'set', selection: group.target.set };
 }
 
 /**
@@ -307,25 +292,24 @@ export function createWorkspace(
   /** 写し元（個別画面）で配っていた色の番号。見ていた対象の色を引き継ぐため。 */
   knownColors?: ReadonlyMap<string, number>,
 ): { readonly library: WorkspaceLibrary; readonly created: Workspace } {
-  const created: Workspace = withWorkspaceColors({
-    id: generateId(),
-    name: uniqueWorkspaceName(library, name?.trim() || DEFAULT_WORKSPACE_NAME),
-    text: initialTextSelection(),
-    groups: [{ id: INITIAL_LINK_GROUP_ID, target }],
-    optionSets: [],
-    panes: [],
-    grid: [],
-    colorSlots: initialWorkspaceColorSlots(),
-  }, knownColors);
+  const created: Workspace = withWorkspaceColors(
+    {
+      id: generateId(),
+      name: uniqueWorkspaceName(library, name?.trim() || DEFAULT_WORKSPACE_NAME),
+      text: initialTextSelection(),
+      groups: [{ id: INITIAL_LINK_GROUP_ID, target }],
+      optionSets: [],
+      panes: [],
+      grid: [],
+      colorSlots: initialWorkspaceColorSlots(),
+    },
+    knownColors,
+  );
   return { library: [...library, created], created };
 }
 
 /** 1件だけ書き換える。`update` が同じ参照を返せば（何もしなければ）手持ちの参照も変えない。 */
-function updateWorkspace(
-  library: WorkspaceLibrary,
-  id: string,
-  update: (workspace: Workspace) => Workspace,
-): WorkspaceLibrary {
+function updateWorkspace(library: WorkspaceLibrary, id: string, update: (workspace: Workspace) => Workspace): WorkspaceLibrary {
   const index = library.findIndex((workspace) => workspace.id === id);
   if (index === -1) return library;
   const current = library[index]!;
@@ -344,9 +328,7 @@ export function renameWorkspace(library: WorkspaceLibrary, id: string, name: str
 }
 
 export function deleteWorkspace(library: WorkspaceLibrary, id: string): WorkspaceLibrary {
-  return library.some((workspace) => workspace.id === id)
-    ? library.filter((workspace) => workspace.id !== id)
-    : library;
+  return library.some((workspace) => workspace.id === id) ? library.filter((workspace) => workspace.id !== id) : library;
 }
 
 /** 複製の名前に付ける語尾（「〜 のコピー」）。 */
@@ -378,21 +360,14 @@ export function restoreWorkspace(library: WorkspaceLibrary, workspace: Workspace
 
 /** このWorkspaceのテキストの選択を書き換える。値が変わらなければ同じ参照を返す。 */
 export function withWorkspaceText(library: WorkspaceLibrary, id: string, selection: TextSelectionState): WorkspaceLibrary {
-  return updateWorkspace(library, id, (workspace) => (
-    selection === workspace.text ? workspace : { ...workspace, text: selection }
-  ));
+  return updateWorkspace(library, id, (workspace) => (selection === workspace.text ? workspace : { ...workspace, text: selection }));
 }
 
 /**
  * 組の対象を書き換える。`target.kind`が、単体用（`single`）と集合用（`set`）のどちらを
  * 書くかを決める。値が変わらなければ同じ参照を返す。
  */
-export function withWorkspaceTarget(
-  library: WorkspaceLibrary,
-  id: string,
-  groupId: string,
-  target: WorkspacePaneTarget,
-): WorkspaceLibrary {
+export function withWorkspaceTarget(library: WorkspaceLibrary, id: string, groupId: string, target: WorkspacePaneTarget): WorkspaceLibrary {
   return updateWorkspace(library, id, (workspace) => {
     const index = workspace.groups.findIndex((group) => group.id === groupId);
     if (index === -1) return workspace;
@@ -497,12 +472,7 @@ function sameOptions(a: unknown, b: unknown): boolean {
  * 共有に従うペインなら、ペインではなく従う組の値を書き換える（同じ組に従う他のペインも一緒に変わる）。
  * 中身が同じなら何もしない（`stableStringify`。キーの並びに依らない）。
  */
-export function withWorkspacePaneOptions(
-  library: WorkspaceLibrary,
-  workspaceId: string,
-  paneId: string,
-  options: unknown,
-): WorkspaceLibrary {
+export function withWorkspacePaneOptions(library: WorkspaceLibrary, workspaceId: string, paneId: string, options: unknown): WorkspaceLibrary {
   return updateWorkspace(library, workspaceId, (workspace) => {
     const index = workspace.panes.findIndex((pane) => pane.id === paneId);
     if (index === -1) return workspace;
@@ -521,9 +491,7 @@ export function withWorkspacePaneOptions(
 }
 
 /** 解析設定の持ち方の切り替え。`shared`の`set`を省くと、そのAnalyzerの先頭の組（無ければ新しい組のid）。 */
-export type PaneOptionsChoice =
-  | { readonly kind: 'own' }
-  | { readonly kind: 'shared'; readonly set?: string };
+export type PaneOptionsChoice = { readonly kind: 'own' } | { readonly kind: 'shared'; readonly set?: string };
 
 /**
  * ペインの解析設定の持ち方を切り替える。押した瞬間の見た目が変わらないよう、`own`にする時は今効いている設定
@@ -554,9 +522,10 @@ export function withWorkspacePaneOptionsBinding(
     if (pane.optionsBinding.mode === 'shared' && pane.optionsBinding.set === id) return workspace;
     const existing = workspace.optionSets.find((set) => set.id === id);
     if (existing !== undefined && existing.analyzerId !== pane.analyzerId) return workspace;
-    const optionSets = existing === undefined
-      ? [...workspace.optionSets, { id, analyzerId: pane.analyzerId, options: resolvePaneOptions(workspace, pane) }]
-      : workspace.optionSets;
+    const optionSets =
+      existing === undefined
+        ? [...workspace.optionSets, { id, analyzerId: pane.analyzerId, options: resolvePaneOptions(workspace, pane) }]
+        : workspace.optionSets;
     return replace({ ...pane, options: undefined, optionsBinding: sharedOptions(id) }, optionSets);
   });
 }
@@ -565,12 +534,7 @@ export function withWorkspacePaneOptionsBinding(
  * ペインの対象の持ち方（従う組 / 固定とその対象）を書き換える。中身が同じなら何もしない。
  * 誰も従わなくなった組は消える。存在しない組へ従わせる指定は何もしない。
  */
-export function withWorkspacePaneBinding(
-  library: WorkspaceLibrary,
-  workspaceId: string,
-  paneId: string,
-  binding: PaneTargetBinding,
-): WorkspaceLibrary {
+export function withWorkspacePaneBinding(library: WorkspaceLibrary, workspaceId: string, paneId: string, binding: PaneTargetBinding): WorkspaceLibrary {
   return updateWorkspace(library, workspaceId, (workspace) => {
     if (binding.mode === 'follow' && !workspace.groups.some((group) => group.id === binding.group)) return workspace;
     const index = workspace.panes.findIndex((pane) => pane.id === paneId);
@@ -599,19 +563,14 @@ export function withPaneInNewLinkGroup(
   return updateWorkspace(library, workspaceId, (workspace) => {
     const pane = workspace.panes.find((candidate) => candidate.id === paneId);
     if (pane === undefined || workspace.groups.some((group) => group.id === newGroupId)) return workspace;
-    const previous = pane.binding.mode === 'follow'
-      ? workspace.groups.find((group) => group.id === (pane.binding as { group: string }).group)
-      : undefined;
+    const previous =
+      pane.binding.mode === 'follow' ? workspace.groups.find((group) => group.id === (pane.binding as { group: string }).group) : undefined;
     const base = previous?.target ?? initialWorkspaceTarget();
-    const target: WorkspaceTarget = current.kind === 'single'
-      ? { ...base, single: { target: current.target } }
-      : { ...base, set: current.selection };
+    const target: WorkspaceTarget = current.kind === 'single' ? { ...base, single: { target: current.target } } : { ...base, set: current.selection };
     return pruneLinkGroups({
       ...workspace,
       groups: [...workspace.groups, { id: newGroupId, target }],
-      panes: workspace.panes.map((candidate) => (
-        candidate.id === paneId ? { ...candidate, binding: followBinding(newGroupId) } : candidate
-      )),
+      panes: workspace.panes.map((candidate) => (candidate.id === paneId ? { ...candidate, binding: followBinding(newGroupId) } : candidate)),
     });
   });
 }
@@ -640,7 +599,11 @@ export function withWorkspaceConditionOverrides(
  */
 export function withWorkspaceGrid(library: WorkspaceLibrary, workspaceId: string, grid: WorkspaceGrid): WorkspaceLibrary {
   return updateWorkspace(library, workspaceId, (workspace) => {
-    const normalized = normalizeGrid(grid, workspace.panes.map((pane) => pane.id), workspace.compactPanes === true);
+    const normalized = normalizeGrid(
+      grid,
+      workspace.panes.map((pane) => pane.id),
+      workspace.compactPanes === true,
+    );
     return sameGrid(normalized, workspace.grid) ? workspace : { ...workspace, grid: normalized };
   });
 }

@@ -104,17 +104,11 @@ export interface EngineCache {
  */
 export function createEngineCache(options: EngineCacheOptions = {}): EngineCache {
   const traceCache = new LruCache<string, EngineTraceResult>(options.maxTraceEntries ?? DEFAULT_MAX_ENTRIES);
-  const interpretationCache = new LruCache<string, EngineInterpretationResult>(
-    options.maxInterpretationEntries ?? DEFAULT_MAX_ENTRIES,
-  );
-  const keyDetailsCache = new LruCache<string, EngineKeyDetailsResult>(
-    options.maxKeyDetailsEntries ?? DEFAULT_MAX_ENTRIES,
-  );
+  const interpretationCache = new LruCache<string, EngineInterpretationResult>(options.maxInterpretationEntries ?? DEFAULT_MAX_ENTRIES);
+  const keyDetailsCache = new LruCache<string, EngineKeyDetailsResult>(options.maxKeyDetailsEntries ?? DEFAULT_MAX_ENTRIES);
   // 値の型はAnalyzerごとに違うので`unknown`で持ち、`getExtraction`の呼び出し側の
   // ジェネリックで絞り込む（このファイル内では中身の型を知らないまま扱う）。
-  const extractionCache = new LruCache<string, EngineExtractionResult<unknown>>(
-    options.maxExtractionEntries ?? DEFAULT_MAX_ENTRIES,
-  );
+  const extractionCache = new LruCache<string, EngineExtractionResult<unknown>>(options.maxExtractionEntries ?? DEFAULT_MAX_ENTRIES);
 
   function getTrace(input: ResolvedInput): EngineTraceResult {
     const key = traceKeyOf(input);

@@ -52,16 +52,10 @@ export interface WorkspacePaneRuntime {
   readonly maximizePane?: (paneId: string | undefined) => void;
 }
 
-export type PaneBindingChoice =
-  | { readonly kind: 'fixed' }
-  | { readonly kind: 'group'; readonly id: string }
-  | { readonly kind: 'new-group' };
+export type PaneBindingChoice = { readonly kind: 'fixed' } | { readonly kind: 'group'; readonly id: string } | { readonly kind: 'new-group' };
 
 /** 余白のペインの⋯。解析設定も対象も持たないので、複製・閉じるだけ。 */
-export function blankPaneMenuItems(
-  runtime: Pick<WorkspacePaneRuntime, 'duplicatePane' | 'closePane'>,
-  paneId: string,
-): readonly PaneMenuItem[] {
+export function blankPaneMenuItems(runtime: Pick<WorkspacePaneRuntime, 'duplicatePane' | 'closePane'>, paneId: string): readonly PaneMenuItem[] {
   return [
     { id: 'duplicate', label: '複製', description: '同じ大きさで隣に並べます', onSelect: () => runtime.duplicatePane(paneId) },
     { id: 'close', label: '閉じる', onSelect: () => runtime.closePane(paneId) },
@@ -79,12 +73,16 @@ export function paneMenuItems(
 ): readonly PaneMenuItem[] {
   const maximized = runtime.maximizedPaneId === paneId;
   return [
-    ...(runtime.maximizePane === undefined ? [] : [{
-      id: 'maximize',
-      label: maximized ? '元の大きさに戻す' : '拡大表示',
-      description: maximized ? '並びは変えずに、元の大きさへ戻ります' : 'このペインをWorkspaceいっぱいに広げます',
-      onSelect: () => runtime.maximizePane?.(maximized ? undefined : paneId),
-    }]),
+    ...(runtime.maximizePane === undefined
+      ? []
+      : [
+          {
+            id: 'maximize',
+            label: maximized ? '元の大きさに戻す' : '拡大表示',
+            description: maximized ? '並びは変えずに、元の大きさへ戻ります' : 'このペインをWorkspaceいっぱいに広げます',
+            onSelect: () => runtime.maximizePane?.(maximized ? undefined : paneId),
+          },
+        ]),
     { id: 'duplicate', label: '複製', description: '解析設定と対象を写して、同じ大きさで隣に並べます', onSelect: () => runtime.duplicatePane(paneId) },
     {
       id: 'reset-options',
@@ -97,11 +95,7 @@ export function paneMenuItems(
 }
 
 /** Workspaceのペインの枠まわり。h2で、見出しは固定せず、⋯と「従う / 固定」の切り替えを持つ。 */
-export function workspacePaneChrome(
-  runtime: WorkspacePaneRuntime,
-  pane: WorkspacePane,
-  resetOptions: () => void,
-): PaneChrome {
+export function workspacePaneChrome(runtime: WorkspacePaneRuntime, pane: WorkspacePane, resetOptions: () => void): PaneChrome {
   return {
     paneKey: pane.id,
     headingLevel: 2,
@@ -128,9 +122,7 @@ function bindingControl(runtime: WorkspacePaneRuntime, pane: WorkspacePane): Pan
   const index = runtime.groups.findIndex((group) => group.id === followed);
   return {
     follows: followed !== undefined,
-    summary: pane.binding.mode === 'fixed'
-      ? summarizePaneTarget(runtime.env, pane.binding.target)
-      : index === -1 ? '' : summaryOf(runtime, index, pane),
+    summary: pane.binding.mode === 'fixed' ? summarizePaneTarget(runtime.env, pane.binding.target) : index === -1 ? '' : summaryOf(runtime, index, pane),
     ...(index === -1 ? {} : { groupNumber: linkGroupNumber(index) }),
     items: [
       {

@@ -8,20 +8,13 @@ import { SHIN_JIS_SIMULTANEOUS } from '#input/layouts/shin-jis.ts';
 import { faceFromEntries, fromFaces, fromKana, withCombos, type Face } from '#input/layouts/index.ts';
 import { TSUKI_2_263 } from '#input/layouts/tsuki-2-263.ts';
 
-const browserPhysical = (
-  type: 'keydown' | 'keyup',
-  code: string,
-) => {
+const browserPhysical = (type: 'keydown' | 'keyup', code: string) => {
   const event = browserKeyboardEventToPhysicalKeyEvent({ type, code });
   assert.ok(event !== undefined);
   return event;
 };
 
-const orderedFace = (
-  trigger: string[],
-  mode: 'prefix' | 'suffix',
-  entries: Record<string, string>,
-): Face => ({
+const orderedFace = (trigger: string[], mode: 'prefix' | 'suffix', entries: Record<string, string>): Face => ({
   ...faceFromEntries(trigger, mode, entries),
   inputRole: 'modifier',
   triggerPersistence: 'single',
@@ -33,8 +26,14 @@ test('built-in新下駄の2-key chordをbrowser adapter経由で認識する', (
   assert.deepEqual(engine.handle(browserPhysical('keydown', 'KeyK')).recognized, []);
   const result = engine.handle(browserPhysical('keydown', 'KeyW'));
 
-  assert.deepEqual(result.recognized.map((entry) => entry.output), ['ご']);
-  assert.deepEqual(result.recognized[0].actions.map((action) => action.keys), [['k', 'w']]);
+  assert.deepEqual(
+    result.recognized.map((entry) => entry.output),
+    ['ご'],
+  );
+  assert.deepEqual(
+    result.recognized[0].actions.map((action) => action.keys),
+    [['k', 'w']],
+  );
 });
 
 test('built-in薙刀式の3-key chordは単打候補よりlongest matchを優先する', () => {
@@ -44,8 +43,14 @@ test('built-in薙刀式の3-key chordは単打候補よりlongest matchを優先
   assert.deepEqual(engine.handle(browserPhysical('keydown', 'KeyJ')).recognized, []);
   const result = engine.handle(browserPhysical('keydown', 'KeyW'));
 
-  assert.deepEqual(result.recognized.map((entry) => entry.output), ['ぎゃ']);
-  assert.deepEqual(result.recognized[0].actions.map((action) => action.keys), [['h', 'j', 'w']]);
+  assert.deepEqual(
+    result.recognized.map((entry) => entry.output),
+    ['ぎゃ'],
+  );
+  assert.deepEqual(
+    result.recognized[0].actions.map((action) => action.keys),
+    [['h', 'j', 'w']],
+  );
 });
 
 test('built-in薙刀式はmulti-key trigger groupを保持して次のtargetへ継続できる', () => {
@@ -58,33 +63,39 @@ test('built-in薙刀式はmulti-key trigger groupを保持して次のtargetへ�
   const first = engine.handle(browserPhysical('keydown', 'KeyW')).recognized[0];
 
   assert.equal(first.output, 'ぎゃ');
-  assert.deepEqual(first.actions.map((action) => ({
-    keys: action.keys,
-    heldKeys: action.heldKeys,
-    holdPhase: action.holdPhase,
-  })), [
-    {
-      keys: ['h', 'j', 'w'],
-      heldKeys: ['h', 'j'],
-      holdPhase: 'start',
-    },
-  ]);
+  assert.deepEqual(
+    first.actions.map((action) => ({
+      keys: action.keys,
+      heldKeys: action.heldKeys,
+      holdPhase: action.holdPhase,
+    })),
+    [
+      {
+        keys: ['h', 'j', 'w'],
+        heldKeys: ['h', 'j'],
+        holdPhase: 'start',
+      },
+    ],
+  );
 
   engine.handle(browserPhysical('keyup', 'KeyW'));
   const continued = engine.handle(browserPhysical('keydown', 'KeyR')).recognized[0];
 
   assert.equal(continued.output, 'じゃ');
-  assert.deepEqual(continued.actions.map((action) => ({
-    keys: action.keys,
-    heldKeys: action.heldKeys,
-    holdPhase: action.holdPhase,
-  })), [
-    {
-      keys: ['r'],
-      heldKeys: ['h', 'j'],
-      holdPhase: 'continue',
-    },
-  ]);
+  assert.deepEqual(
+    continued.actions.map((action) => ({
+      keys: action.keys,
+      heldKeys: action.heldKeys,
+      holdPhase: action.holdPhase,
+    })),
+    [
+      {
+        keys: ['r'],
+        heldKeys: ['h', 'j'],
+        holdPhase: 'continue',
+      },
+    ],
+  );
 });
 
 test('built-in薙刀式のthumb shift alternativeは左右physical identityを保持する', () => {
@@ -100,19 +111,23 @@ test('built-in薙刀式のthumb shift alternativeは左右physical identityを�
     const recognized = engine.handle(browserPhysical('keydown', 'KeyF')).recognized[0];
 
     assert.equal(recognized.output, 'ま', thumbCode);
-    assert.deepEqual(recognized.actions.map((action) => ({
-      keys: action.keys,
-      triggerKeys: action.triggerKeys,
-      heldKeys: action.heldKeys,
-      holdPhase: action.holdPhase,
-    })), [
-      {
-        keys: [thumbKey, 'f'],
-        triggerKeys: [thumbKey],
-        heldKeys: [thumbKey],
-        holdPhase: 'start',
-      },
-    ], thumbCode);
+    assert.deepEqual(
+      recognized.actions.map((action) => ({
+        keys: action.keys,
+        triggerKeys: action.triggerKeys,
+        heldKeys: action.heldKeys,
+        holdPhase: action.holdPhase,
+      })),
+      [
+        {
+          keys: [thumbKey, 'f'],
+          triggerKeys: [thumbKey],
+          heldKeys: [thumbKey],
+          holdPhase: 'start',
+        },
+      ],
+      thumbCode,
+    );
   }
 });
 
@@ -130,8 +145,14 @@ test('suffix orderはtarget release後のtriggerでも成立する', () => {
   assert.deepEqual(engine.handle({ type: 'up', key: 'h' }).recognized, []);
   const result = engine.handle({ type: 'down', key: 'd' });
 
-  assert.deepEqual(result.recognized.map((entry) => entry.output), ['X']);
-  assert.deepEqual(result.recognized[0].actions.map((action) => action.keys), [['h'], ['d']]);
+  assert.deepEqual(
+    result.recognized.map((entry) => entry.output),
+    ['X'],
+  );
+  assert.deepEqual(
+    result.recognized[0].actions.map((action) => action.keys),
+    [['h'], ['d']],
+  );
 });
 
 test('同じphysical pairのprefix / suffix alternativeを押下順で選択できる', () => {
@@ -160,7 +181,6 @@ test('同じphysical pairのprefix / suffix alternativeを押下順で選択で�
     [['h'], ['d']],
   );
 });
-
 
 test('multi-step sequenceはintermediate outputがなくても最後まで認識する', () => {
   const layout = fromKana('converter-multi-step', 'converter-multi-step', {
@@ -200,17 +220,13 @@ test('built-in月配列の濁音は清音即時出力を後続markで置換す�
 test('composed prefixと無関係な次入力は通常の即時出力を維持する', () => {
   const engine = new TypingInputEngine(TSUKI_2_263.canonicalInputs);
 
-  assert.equal(
-    engine.handle(browserPhysical('keydown', 'KeyS')).recognized[0].output,
-    'か',
-  );
+  assert.equal(engine.handle(browserPhysical('keydown', 'KeyS')).recognized[0].output, 'か');
   engine.handle(browserPhysical('keyup', 'KeyS'));
 
   const next = engine.handle(browserPhysical('keydown', 'KeyH')).recognized[0];
   assert.equal(next.output, 'く');
   assert.equal(next.replacePreviousText, undefined);
 });
-
 
 test('multi-step再realizeはsequence開始前のholdなしを有効なbaselineとして保持する', () => {
   const engine = new TypingInputEngine(SHIN_JIS_SIMULTANEOUS.canonicalInputs, {
@@ -220,39 +236,45 @@ test('multi-step再realizeはsequence開始前のholdなしを有効なbaseline�
   assert.deepEqual(engine.handle(browserPhysical('keydown', 'Space')).recognized, []);
   const source = engine.handle(browserPhysical('keydown', 'KeyY')).recognized[0];
   assert.equal(source.output, 'ひ');
-  assert.deepEqual(source.actions.map((action) => ({
-    keys: action.keys,
-    heldKeys: action.heldKeys,
-    holdPhase: action.holdPhase,
-  })), [
-    {
-      keys: ['thumb-r', 'y'],
-      heldKeys: ['thumb-r'],
-      holdPhase: 'start',
-    },
-  ]);
+  assert.deepEqual(
+    source.actions.map((action) => ({
+      keys: action.keys,
+      heldKeys: action.heldKeys,
+      holdPhase: action.holdPhase,
+    })),
+    [
+      {
+        keys: ['thumb-r', 'y'],
+        heldKeys: ['thumb-r'],
+        holdPhase: 'start',
+      },
+    ],
+  );
 
   engine.handle(browserPhysical('keyup', 'KeyY'));
   const composed = engine.handle(browserPhysical('keydown', 'KeyW')).recognized[0];
 
   assert.equal(composed.output, 'ぴ');
   assert.equal(composed.replacePreviousText, 'ひ');
-  assert.deepEqual(composed.actions.map((action) => ({
-    keys: action.keys,
-    heldKeys: action.heldKeys,
-    holdPhase: action.holdPhase,
-  })), [
-    {
-      keys: ['thumb-r', 'y'],
-      heldKeys: ['thumb-r'],
-      holdPhase: 'start',
-    },
-    {
-      keys: ['w'],
-      heldKeys: ['thumb-r'],
-      holdPhase: 'continue',
-    },
-  ]);
+  assert.deepEqual(
+    composed.actions.map((action) => ({
+      keys: action.keys,
+      heldKeys: action.heldKeys,
+      holdPhase: action.holdPhase,
+    })),
+    [
+      {
+        keys: ['thumb-r', 'y'],
+        heldKeys: ['thumb-r'],
+        holdPhase: 'start',
+      },
+      {
+        keys: ['w'],
+        heldKeys: ['thumb-r'],
+        holdPhase: 'continue',
+      },
+    ],
+  );
 });
 
 test('longest multi-step sequenceはshorter composition成立後もreplacement chainingできる', () => {
@@ -286,7 +308,6 @@ test('longest multi-step sequenceはshorter composition成立後もreplacement c
   );
 });
 
-
 test('multi-step final actionsは途中のhold release/restart境界を保持する', () => {
   const engine = new TypingInputEngine(SHIN_JIS_SIMULTANEOUS.canonicalInputs, {
     triggerRealizationPolicy: { useHold: true },
@@ -303,24 +324,26 @@ test('multi-step final actionsは途中のhold release/restart境界を保持す
 
   assert.equal(composed.output, 'ぴ');
   assert.equal(composed.replacePreviousText, 'ひ');
-  assert.deepEqual(composed.actions.map((action) => ({
-    keys: action.keys,
-    heldKeys: action.heldKeys,
-    holdPhase: action.holdPhase,
-  })), [
-    {
-      keys: ['thumb-r', 'y'],
-      heldKeys: ['thumb-r'],
-      holdPhase: 'start',
-    },
-    {
-      keys: ['thumb-r', 'w'],
-      heldKeys: ['thumb-r'],
-      holdPhase: 'start',
-    },
-  ]);
+  assert.deepEqual(
+    composed.actions.map((action) => ({
+      keys: action.keys,
+      heldKeys: action.heldKeys,
+      holdPhase: action.holdPhase,
+    })),
+    [
+      {
+        keys: ['thumb-r', 'y'],
+        heldKeys: ['thumb-r'],
+        holdPhase: 'start',
+      },
+      {
+        keys: ['thumb-r', 'w'],
+        heldKeys: ['thumb-r'],
+        holdPhase: 'start',
+      },
+    ],
+  );
 });
-
 
 test('built-in薙刀式のreciprocal濁音はactive hold側をtriggerとして継続する', () => {
   const cases = [
@@ -354,27 +377,26 @@ test('built-in薙刀式のreciprocal濁音はactive hold側をtriggerとして�
     assert.deepEqual(start.actions[0].heldKeys, [testCase.heldKey]);
 
     engine.handle(browserPhysical('keyup', testCase.startCode));
-    assert.deepEqual(
-      engine.handle(browserPhysical('keydown', testCase.reciprocalCode)).recognized,
-      [],
-    );
-    const reciprocal =
-      engine.handle(browserPhysical('keyup', testCase.reciprocalCode)).recognized[0];
+    assert.deepEqual(engine.handle(browserPhysical('keydown', testCase.reciprocalCode)).recognized, []);
+    const reciprocal = engine.handle(browserPhysical('keyup', testCase.reciprocalCode)).recognized[0];
 
     assert.equal(reciprocal.output, 'が');
-    assert.deepEqual(reciprocal.actions.map((action) => ({
-      keys: action.keys,
-      outputKeys: action.outputKeys,
-      heldKeys: action.heldKeys,
-      holdPhase: action.holdPhase,
-    })), [
-      {
-        keys: [testCase.freshOutputKey],
-        outputKeys: [testCase.freshOutputKey],
-        heldKeys: [testCase.heldKey],
-        holdPhase: 'continue',
-      },
-    ]);
+    assert.deepEqual(
+      reciprocal.actions.map((action) => ({
+        keys: action.keys,
+        outputKeys: action.outputKeys,
+        heldKeys: action.heldKeys,
+        holdPhase: action.holdPhase,
+      })),
+      [
+        {
+          keys: [testCase.freshOutputKey],
+          outputKeys: [testCase.freshOutputKey],
+          heldKeys: [testCase.heldKey],
+          holdPhase: 'continue',
+        },
+      ],
+    );
   }
 });
 
@@ -384,12 +406,7 @@ test('withCombos由来の3-key comboをoriginごとInput Converterで認識す�
     B: [['j']],
     C: [['k']],
   });
-  const layout = withCombos(
-    'converter-combo',
-    'converter-combo',
-    base,
-    [['X', ['A', 'B', 'C']]],
-  );
+  const layout = withCombos('converter-combo', 'converter-combo', base, [['X', ['A', 'B', 'C']]]);
   const engine = new TypingInputEngine(layout.canonicalInputs);
 
   assert.deepEqual(engine.handle({ type: 'down', key: 'f' }).recognized, []);
@@ -398,5 +415,8 @@ test('withCombos由来の3-key comboをoriginごとInput Converterで認識す�
 
   assert.equal(result.output, 'X');
   assert.equal(result.alternative.origin, 'combo');
-  assert.deepEqual(result.actions.map((action) => action.keys), [['f', 'j', 'k']]);
+  assert.deepEqual(
+    result.actions.map((action) => action.keys),
+    [['f', 'j', 'k']],
+  );
 });

@@ -30,10 +30,7 @@ type PresetLibraryComputation =
   | { readonly ok: true; readonly library: PresetLibrary<SettingsValueMap> }
   | { readonly ok: false; readonly reason: unknown };
 
-function presetLibraryCommand(
-  label: string,
-  compute: (library: PresetLibrary<SettingsValueMap>) => PresetLibraryComputation,
-): Command<KeydistAssets> {
+function presetLibraryCommand(label: string, compute: (library: PresetLibrary<SettingsValueMap>) => PresetLibraryComputation): Command<KeydistAssets> {
   return (current) => {
     const result = compute(current.presetLibrary);
     if (!result.ok) return { kind: 'rejected', reason: result.reason };
@@ -49,10 +46,7 @@ const INVALID_NAME: InvalidPresetNameError = { kind: 'invalid-preset-name' };
  * （全体がN=7の画面の保存が空になる）。画面で見ている値を保存するため、全体にWorkspaceを重ねた値を使う。
  * Workspaceに置けない項目は、流し込みで入れられないので含めない。
  */
-export function presetValuesAt(
-  view: SettingsCascadeOverrides,
-  level: CascadeLevel,
-): LevelOverrides<SettingsValueMap> | undefined {
+export function presetValuesAt(view: SettingsCascadeOverrides, level: CascadeLevel): LevelOverrides<SettingsValueMap> | undefined {
   if (level.kind !== 'workspace') return levelOverrides(view, level);
   const merged: Record<string, unknown> = {};
   const globalValues = (levelOverrides(view, { kind: 'global' }) ?? {}) as Record<string, unknown>;
@@ -66,12 +60,7 @@ export function presetValuesAt(
 }
 
 /** 指定レベルの今の上書きを、名前を付けてプリセットに保存する（末尾に追加）。 */
-export function savePresetCommand(
-  name: string,
-  level: CascadeLevel,
-  generateId: PresetIdGenerator,
-  workspaceId?: string,
-): Command<KeydistAssets> {
+export function savePresetCommand(name: string, level: CascadeLevel, generateId: PresetIdGenerator, workspaceId?: string): Command<KeydistAssets> {
   return (current) => {
     const view = cascadeOverridesView(current, workspaceId);
     if (view === undefined) return { kind: 'rejected', reason: { kind: 'workspace-level-unavailable', workspaceId } };
@@ -122,9 +111,7 @@ export function planPresetApplication(
   if (preset === undefined) return { kind: 'not-found' };
   const applied = applyPresetValues(SETTINGS_ITEMS, assets.setupLibrary.overrides, level, preset.values);
   // 上書きが変わらなければ参照も据え置く（no-op判定）
-  const library = applied.overrides === assets.setupLibrary.overrides
-    ? assets.setupLibrary
-    : { ...assets.setupLibrary, overrides: applied.overrides };
+  const library = applied.overrides === assets.setupLibrary.overrides ? assets.setupLibrary : { ...assets.setupLibrary, overrides: applied.overrides };
   return { kind: 'ready', library, skipped: applied.skipped };
 }
 

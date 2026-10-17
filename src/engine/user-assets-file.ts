@@ -88,10 +88,12 @@ export function userAssetsFileBody(assets: UserAssetsHoldings): Record<string, u
     layouts: assets.userLayouts.map((layout) => withResolvableRomaji(layout, (id) => (ruleIds.has(id) ? id : undefined))),
     romajiRules: assets.userRomajiRules,
     fingerAssignments: assets.fingerAssignments,
-    setups: userAssetSetupsOf(assets.setupLibrary).map((setup) => withResolvableReferences(setup, {
-      ruleIds,
-      fingerAssignmentIds: new Set(assets.fingerAssignments.map((assignment) => assignment.id)),
-    })),
+    setups: userAssetSetupsOf(assets.setupLibrary).map((setup) =>
+      withResolvableReferences(setup, {
+        ruleIds,
+        fingerAssignmentIds: new Set(assets.fingerAssignments.map((assignment) => assignment.id)),
+      }),
+    ),
   });
 }
 
@@ -103,12 +105,12 @@ export type UserAssetImportOutcome =
   | { readonly kind: 'added' }
   /** 手元に同じidで中身の違うものがあり（または組み込みと同じidで）、別のidと別名で足した。 */
   | {
-    readonly kind: 'added-renamed';
-    readonly addedName: string;
-    readonly addedId: string;
-    /** 重なった相手。手元の自作か、組み込みか。名前は相手の名前。 */
-    readonly overlap: { readonly with: 'own' | 'builtin'; readonly name: string };
-  }
+      readonly kind: 'added-renamed';
+      readonly addedName: string;
+      readonly addedId: string;
+      /** 重なった相手。手元の自作か、組み込みか。名前は相手の名前。 */
+      readonly overlap: { readonly with: 'own' | 'builtin'; readonly name: string };
+    }
   /** 手元に同じidで中身が同じものがあり、何も足さなかった。`existingName` は手元の名前（ファイルの名前と違いうる）。 */
   | { readonly kind: 'skipped-same'; readonly existingName: string };
 
@@ -129,7 +131,9 @@ export interface UserAssetsMerge {
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
   if (isRecord(value)) {
-    const keys = Object.keys(value).sort().filter((key) => value[key] !== undefined);
+    const keys = Object.keys(value)
+      .sort()
+      .filter((key) => value[key] !== undefined);
     return `{${keys.map((key) => `${JSON.stringify(key)}:${canonical(value[key])}`).join(',')}}`;
   }
   return JSON.stringify(value) ?? 'undefined';
@@ -152,8 +156,7 @@ function layoutContent(layout: UserLayout): string {
   });
 }
 
-const ruleContent = (rule: UserRomajiRule): string =>
-  canonical({ base: rule.base, overrides: rule.overrides, generateSokuon: rule.generateSokuon });
+const ruleContent = (rule: UserRomajiRule): string => canonical({ base: rule.base, overrides: rule.overrides, generateSokuon: rule.generateSokuon });
 
 const fingerContent = (assignment: FingerAssignment): string =>
   canonical({
@@ -197,7 +200,10 @@ function freshName(name: string, used: ReadonlySet<string>): string {
   }
 }
 
-function mergeKind<T extends Item>(kind: MergeKind<T>, stamp: string): {
+function mergeKind<T extends Item>(
+  kind: MergeKind<T>,
+  stamp: string,
+): {
   readonly items: readonly T[];
   readonly entries: readonly UserAssetImportEntry[];
   /** ファイルのid → 読み込み後に指すid（足さなかったものは手元のid、別名で足したものは新しいid）。 */
@@ -221,18 +227,15 @@ function mergeKind<T extends Item>(kind: MergeKind<T>, stamp: string): {
     // idが衝突している時は、同じidのものに加えて、別のidで足し済みの同じ中身（前に別名で足したもの）も同じとみなす。
     // 探さないと、中身の違うものを別名で足した後に同じファイルを読み直すたびに、また別名で足してしまう
     const content = kind.content(incoming);
-    const same = existing !== undefined && kind.content(existing) === content
-      ? existing
-      : items.find((item) => kind.content(item) === content);
+    const same = existing !== undefined && kind.content(existing) === content ? existing : items.find((item) => kind.content(item) === content);
     if (same !== undefined) {
       idMap.set(incoming.id, same.id);
       entries.push({ assetKind: kind.assetKind, name: incoming.name, outcome: { kind: 'skipped-same', existingName: same.name } });
       continue;
     }
     const builtinName = kind.builtinIds(incoming.id) ? kind.builtinName(incoming.id) : undefined;
-    const overlap = builtinName !== undefined
-      ? { with: 'builtin', name: builtinName } as const
-      : { with: 'own', name: existing?.name ?? incoming.name } as const;
+    const overlap =
+      builtinName !== undefined ? ({ with: 'builtin', name: builtinName } as const) : ({ with: 'own', name: existing?.name ?? incoming.name } as const);
     const addedId = freshId(kind.idPrefix, stamp, new Set(byId.keys()), kind.builtinIds);
     const addedName = freshName(incoming.name, names);
     const added = kind.rebuild(incoming, addedId, addedName);
@@ -255,40 +258,49 @@ function mergeKind<T extends Item>(kind: MergeKind<T>, stamp: string): {
  * 配列の参照も振り直す（振り直した後の参照で配列の中身を比べる）。ファイルの中に無く組み込みでもない規則を指す配列は参照を外す。
  */
 export function mergeUserAssets(current: UserAssetsHoldings, incoming: UserAssetsBundle, stamp: string): UserAssetsMerge {
-  const rules = mergeKind<UserRomajiRule>({
-    assetKind: 'romaji-rule',
-    idPrefix: 'romaji-',
-    current: current.userRomajiRules,
-    incoming: incoming.romajiRules,
-    builtinIds: isBuiltin,
-    builtinName: (id) => (isBuiltin(id) ? ROMAJI_RULES[id].name : undefined),
-    content: ruleContent,
-    rebuild: (rule, id, name) => ({ ...rule, id, name }),
-  }, stamp);
+  const rules = mergeKind<UserRomajiRule>(
+    {
+      assetKind: 'romaji-rule',
+      idPrefix: 'romaji-',
+      current: current.userRomajiRules,
+      incoming: incoming.romajiRules,
+      builtinIds: isBuiltin,
+      builtinName: (id) => (isBuiltin(id) ? ROMAJI_RULES[id].name : undefined),
+      content: ruleContent,
+      rebuild: (rule, id, name) => ({ ...rule, id, name }),
+    },
+    stamp,
+  );
   // 比べる時だけ、手元の配列の宙に浮いた参照（消した規則を指す）も外す。保存する手元の値は変えない
   const knownRuleIds = new Set(rules.items.map((rule) => rule.id));
   const resolveKnown = (id: string): string | undefined => (knownRuleIds.has(id) ? id : undefined);
-  const layouts = mergeKind<UserLayout>({
-    assetKind: 'layout',
-    idPrefix: 'user-',
-    current: current.userLayouts,
-    // ファイルの中に無く組み込みでもない規則を指す配列は、手元の同じidの規則に結び付けず、参照を外して全体の値の規則で打つ配列にする
-    incoming: incoming.layouts.map((layout) => withResolvableRomaji(layout, (id) => rules.idMap.get(id))),
-    builtinIds: (id) => LAYOUT_BY_ID.has(id),
-    builtinName: (id) => LAYOUT_BY_ID.get(id)?.name,
-    content: (layout) => layoutContent(withResolvableRomaji(layout, resolveKnown)),
-    rebuild: (layout, id, name) => ({ ...layout, id, name }),
-  }, stamp);
-  const fingers = mergeKind<FingerAssignment>({
-    assetKind: 'finger-assignment',
-    idPrefix: 'finger-',
-    current: current.fingerAssignments,
-    incoming: incoming.fingerAssignments,
-    builtinIds: (id) => Object.hasOwn(FINGER_ASSIGNMENT_REGISTRY, id),
-    builtinName: (id) => FINGER_ASSIGNMENT_REGISTRY[id]?.name,
-    content: fingerContent,
-    rebuild: (assignment, id, name) => ({ ...assignment, id, name }),
-  }, stamp);
+  const layouts = mergeKind<UserLayout>(
+    {
+      assetKind: 'layout',
+      idPrefix: 'user-',
+      current: current.userLayouts,
+      // ファイルの中に無く組み込みでもない規則を指す配列は、手元の同じidの規則に結び付けず、参照を外して全体の値の規則で打つ配列にする
+      incoming: incoming.layouts.map((layout) => withResolvableRomaji(layout, (id) => rules.idMap.get(id))),
+      builtinIds: (id) => LAYOUT_BY_ID.has(id),
+      builtinName: (id) => LAYOUT_BY_ID.get(id)?.name,
+      content: (layout) => layoutContent(withResolvableRomaji(layout, resolveKnown)),
+      rebuild: (layout, id, name) => ({ ...layout, id, name }),
+    },
+    stamp,
+  );
+  const fingers = mergeKind<FingerAssignment>(
+    {
+      assetKind: 'finger-assignment',
+      idPrefix: 'finger-',
+      current: current.fingerAssignments,
+      incoming: incoming.fingerAssignments,
+      builtinIds: (id) => Object.hasOwn(FINGER_ASSIGNMENT_REGISTRY, id),
+      builtinName: (id) => FINGER_ASSIGNMENT_REGISTRY[id]?.name,
+      content: fingerContent,
+      rebuild: (assignment, id, name) => ({ ...assignment, id, name }),
+    },
+    stamp,
+  );
   // Setupは、突き合わせで別のidになった配列・規則・指の割り当てへ付け替えてから比べる
   const setups = mergeUserAssetSetups(
     current.setupLibrary,
@@ -370,10 +382,7 @@ export function parseUserAssetsFile(text: string): UserAssetsFileReadResult {
   }
   const { layouts, romajiRules, fingerAssignments, setups } = decoded.value;
   if (layouts.length + romajiRules.length + fingerAssignments.length + setups.length === 0) {
-    return fail(
-      '読み込める資産がありませんでした',
-      ...decoded.diagnostics.map((diagnostic) => `${diagnostic.path}: ${diagnostic.message}`),
-    );
+    return fail('読み込める資産がありませんでした', ...decoded.diagnostics.map((diagnostic) => `${diagnostic.path}: ${diagnostic.message}`));
   }
   return { ok: true, bundle: decoded.value, dropped: decoded.diagnostics };
 }

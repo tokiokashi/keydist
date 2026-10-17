@@ -84,8 +84,14 @@ for (const [name, matrix] of Object.entries(SIMULATIONS)) {
       const fast = oklab(simulate(linearRgb(mixHex(FAST[theme], SURFACE[theme])), matrix));
       const surface = oklab(simulate(linearRgb(SURFACE[theme]), matrix));
       assert.ok(distance(slow, fast) >= MIN_DISTANCE, `${name} ${theme === 0 ? '明' : '暗'}: 遅い側と速い側の距離 ${distance(slow, fast).toFixed(3)}`);
-      assert.ok(distance(slow, surface) >= MIN_DISTANCE / 2, `${name} ${theme === 0 ? '明' : '暗'}: 遅い側と面の距離 ${distance(slow, surface).toFixed(3)}`);
-      assert.ok(distance(fast, surface) >= MIN_DISTANCE / 2, `${name} ${theme === 0 ? '明' : '暗'}: 速い側と面の距離 ${distance(fast, surface).toFixed(3)}`);
+      assert.ok(
+        distance(slow, surface) >= MIN_DISTANCE / 2,
+        `${name} ${theme === 0 ? '明' : '暗'}: 遅い側と面の距離 ${distance(slow, surface).toFixed(3)}`,
+      );
+      assert.ok(
+        distance(fast, surface) >= MIN_DISTANCE / 2,
+        `${name} ${theme === 0 ? '明' : '暗'}: 速い側と面の距離 ${distance(fast, surface).toFixed(3)}`,
+      );
     }
   });
 }

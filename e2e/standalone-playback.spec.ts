@@ -68,7 +68,9 @@ test('再生すると位置が進み、一時停止で止まり、停止で先�
   await expect(feature(page).locator('[data-playback-action="stop"]')).toBeDisabled();
 });
 
-test('見た目の項目は配列図の見出しのボタンから開く小窓にあり、変えると表示だけが変わって再生位置は保たれる。解析設定の小窓はEscapeで閉じる', async ({ page }) => {
+test('見た目の項目は配列図の見出しのボタンから開く小窓にあり、変えると表示だけが変わって再生位置は保たれる。解析設定の小窓はEscapeで閉じる', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await openPlayback(page);
   await feature(page).locator('[data-playback-action="forward"]').click();
@@ -236,11 +238,14 @@ async function openConditionModal(page: Page): Promise<Locator> {
 }
 
 async function seedPersonalSpeed(page: Page): Promise<void> {
-  await page.addInitScript(({ key, value }) => {
-    if (sessionStorage.getItem('seeded') !== null) return;
-    sessionStorage.setItem('seeded', '1');
-    localStorage.setItem(key, JSON.stringify(value));
-  }, { key: PERSONAL_SPEED_KEY, value: SAVED_PERSONAL_SPEED });
+  await page.addInitScript(
+    ({ key, value }) => {
+      if (sessionStorage.getItem('seeded') !== null) return;
+      sessionStorage.setItem('seeded', '1');
+      localStorage.setItem(key, JSON.stringify(value));
+    },
+    { key: PERSONAL_SPEED_KEY, value: SAVED_PERSONAL_SPEED },
+  );
 }
 
 test('条件のモーダルに、再生の時間・速度グラフの平均・個人速度の行は無く、チェーンの区切りとアルペジオの数え方の行は残る', async ({ page }) => {
@@ -266,7 +271,9 @@ test('条件のモーダルに、再生の時間・速度グラフの平均・�
   }
 });
 
-test('解析設定で再生倍率を変えると、ペインの中に既定と違う設定が出て、再生位置は保たれる。保存値が無い間は再生のペインと個人速度の行がそれを知らせる', async ({ page }) => {
+test('解析設定で再生倍率を変えると、ペインの中に既定と違う設定が出て、再生位置は保たれる。保存値が無い間は再生のペインと個人速度の行がそれを知らせる', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await openPlayback(page);
   for (let i = 0; i < 3; i++) await feature(page).locator('[data-playback-action="forward"]').click();
@@ -319,7 +326,9 @@ test('再生中に時間の設定を変えても、再生は止まらず新し�
   await expect.poll(async () => (await readPosition(page))[0], { timeout: 10_000 }).toBeGreaterThan(changedAt + 3);
 });
 
-test('個人速度の保存値がある時は、ペインの中に個人速度で計算していることを出し、基準速度は使われない理由が付く。適用しない設定にすると、既定と違う設定として出る', async ({ page }) => {
+test('個人速度の保存値がある時は、ペインの中に個人速度で計算していることを出し、基準速度は使われない理由が付く。適用しない設定にすると、既定と違う設定として出る', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await seedPersonalSpeed(page);
   await openPlayback(page);
@@ -347,20 +356,25 @@ test('個人速度の保存値がある時は、ペインの中に個人速度�
 
 test('個人速度の保存値が打鍵の上乗せを持つ時は、ペインの中に足していることも出る', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.addInitScript(({ key, value }) => {
-    if (sessionStorage.getItem('seeded') !== null) return;
-    sessionStorage.setItem('seeded', '1');
-    localStorage.setItem(key, JSON.stringify(value));
-  }, {
-    key: PERSONAL_SPEED_KEY,
-    value: {
-      ...SAVED_PERSONAL_SPEED,
-      calibration: { ...SAVED_PERSONAL_SPEED.calibration, keystrokeOverheadMs: { other: 60 } },
+  await page.addInitScript(
+    ({ key, value }) => {
+      if (sessionStorage.getItem('seeded') !== null) return;
+      sessionStorage.setItem('seeded', '1');
+      localStorage.setItem(key, JSON.stringify(value));
     },
-  });
+    {
+      key: PERSONAL_SPEED_KEY,
+      value: {
+        ...SAVED_PERSONAL_SPEED,
+        calibration: { ...SAVED_PERSONAL_SPEED.calibration, keystrokeOverheadMs: { other: 60 } },
+      },
+    },
+  );
   await openPlayback(page);
   await expect(calculation(page)).toContainText('個人速度で計算しています。');
-  await expect(calculation(page).locator('[data-playback-calculation-overhead]')).toContainText('個人速度のうち、文章を打つ速さで測った打鍵の上乗せ（ミリ秒）を足しています。');
+  await expect(calculation(page).locator('[data-playback-calculation-overhead]')).toContainText(
+    '個人速度のうち、文章を打つ速さで測った打鍵の上乗せ（ミリ秒）を足しています。',
+  );
   // 打鍵の上乗せを使わない設定にすると、足している知らせが消え、既定と違う設定として出る
   const settings = await openSettings(page);
   // 項目ごとの設定は畳んであり、開くまで操作できない。既定と違う項目があれば、閉じていても見出しに数が出る
@@ -383,17 +397,20 @@ test('個人速度の保存値が打鍵の上乗せを持つ時は、ペイン�
 
 test('個人速度の保存値が同時押しの上乗せを持っていても、同時押しの打鍵が無い再生では足していることを出さない', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.addInitScript(({ key, value }) => {
-    if (sessionStorage.getItem('seeded') !== null) return;
-    sessionStorage.setItem('seeded', '1');
-    localStorage.setItem(key, JSON.stringify(value));
-  }, {
-    key: PERSONAL_SPEED_KEY,
-    value: {
-      ...SAVED_PERSONAL_SPEED,
-      calibration: { ...SAVED_PERSONAL_SPEED.calibration, simultaneousOverheadMs: { thumb: 50 } },
+  await page.addInitScript(
+    ({ key, value }) => {
+      if (sessionStorage.getItem('seeded') !== null) return;
+      sessionStorage.setItem('seeded', '1');
+      localStorage.setItem(key, JSON.stringify(value));
     },
-  });
+    {
+      key: PERSONAL_SPEED_KEY,
+      value: {
+        ...SAVED_PERSONAL_SPEED,
+        calibration: { ...SAVED_PERSONAL_SPEED.calibration, simultaneousOverheadMs: { thumb: 50 } },
+      },
+    },
+  );
   await openPlayback(page);
   await expect(calculation(page)).toContainText('個人速度で計算しています。');
   await expect(calculation(page).locator('[data-playback-calculation-simultaneous]')).toHaveCount(0);
@@ -444,18 +461,21 @@ test('Workspaceで、共有に従う打鍵再生のペインは時間の設定�
     { id: 'b', analyzerId: 'playback', optionsBinding: { mode: 'shared', set: 'playback-1' }, binding: layoutTarget('dvorak') },
     { id: 'c', analyzerId: 'playback', optionsBinding: { mode: 'own' }, binding: layoutTarget('qwerty') },
   ];
-  await page.addInitScript((value) => {
-    if (localStorage.getItem('keydist:workspaces') === null) {
-      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
-    }
-  }, {
-    id: 's',
-    name: '共有',
-    text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
-    optionSets: [{ id: 'playback-1', analyzerId: 'playback' }],
-    panes,
-    grid: panes.map((pane, i) => ({ id: pane.id, x: i * 8, y: 0, w: 8, h: 30 })),
-  });
+  await page.addInitScript(
+    (value) => {
+      if (localStorage.getItem('keydist:workspaces') === null) {
+        localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
+      }
+    },
+    {
+      id: 's',
+      name: '共有',
+      text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+      optionSets: [{ id: 'playback-1', analyzerId: 'playback' }],
+      panes,
+      grid: panes.map((pane, i) => ({ id: pane.id, x: i * 8, y: 0, w: 8, h: 30 })),
+    },
+  );
   await page.goto('/workspace/s');
   await waitForHydration(page);
   await expect(page.locator('.pane-frame[data-pane-status="ready"]')).toHaveCount(panes.length, { timeout: 30_000 });
@@ -497,22 +517,30 @@ test('押下中のキー・動くキー・濃い予定のキーの上のChain・
   await page.keyboard.press('Escape');
 
   // 押下中のキーの上に順番の数字が出るステップまで進める
-  const activeOrder = feature(page).locator('[data-playback-active="true"] :is(.playback-order-chain, .playback-order-arpeggio)').filter({ hasText: /\d/ });
+  const activeOrder = feature(page)
+    .locator('[data-playback-active="true"] :is(.playback-order-chain, .playback-order-arpeggio)')
+    .filter({ hasText: /\d/ });
   for (let step = 1; step <= total && (await activeOrder.count()) === 0; step++) {
     await feature(page).locator('[data-playback-seek]').fill(String(step));
   }
   await expect(activeOrder.first()).toBeVisible();
 
   // 表示中のすべての順番の数字について、面の状態と縁取りの有無の組を見る
-  const strokes = await feature(page).locator('.playback-order-chain, .playback-order-arpeggio').evaluateAll((els) =>
-    els
-      .filter((el) => /\d/.test(el.textContent ?? ''))
-      .map((el) => {
-        const key = el.closest('g[data-playback-key], g[data-playback-motion-key]');
-        const coloredFace = Boolean(key?.hasAttribute('data-playback-motion-key') || key?.getAttribute('data-playback-active') === 'true' || key?.getAttribute('data-playback-plan-strong') === 'true');
-        return { coloredFace, stroke: getComputedStyle(el).stroke };
-      }),
-  );
+  const strokes = await feature(page)
+    .locator('.playback-order-chain, .playback-order-arpeggio')
+    .evaluateAll((els) =>
+      els
+        .filter((el) => /\d/.test(el.textContent ?? ''))
+        .map((el) => {
+          const key = el.closest('g[data-playback-key], g[data-playback-motion-key]');
+          const coloredFace = Boolean(
+            key?.hasAttribute('data-playback-motion-key') ||
+              key?.getAttribute('data-playback-active') === 'true' ||
+              key?.getAttribute('data-playback-plan-strong') === 'true',
+          );
+          return { coloredFace, stroke: getComputedStyle(el).stroke };
+        }),
+    );
   expect(strokes.length).toBeGreaterThan(0);
   for (const { coloredFace, stroke } of strokes) {
     expect(stroke === 'none', JSON.stringify({ coloredFace, stroke })).toBe(coloredFace);

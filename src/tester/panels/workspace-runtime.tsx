@@ -1,29 +1,9 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type Dispatch,
-  type ReactNode,
-} from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type Dispatch, type ReactNode } from 'react';
 import { LayoutGroup, MotionConfig } from 'motion/react';
 import type { KeyValueStorage } from '#platform/persistence/storage.ts';
-import type {
-  WorkspacePanelDefinition,
-  WorkspacePanelRegistry,
-} from './panel-registry.ts';
-import {
-  createWorkspaceState,
-  reconcileWorkspaceState,
-  type WorkspaceStateV1,
-} from './workspace-state.ts';
-import {
-  workspaceReducer,
-  type WorkspaceAction,
-} from './workspace-reducer.ts';
+import type { WorkspacePanelDefinition, WorkspacePanelRegistry } from './panel-registry.ts';
+import { createWorkspaceState, reconcileWorkspaceState, type WorkspaceStateV1 } from './workspace-state.ts';
+import { workspaceReducer, type WorkspaceAction } from './workspace-reducer.ts';
 import {
   clampAllFloatingPanels,
   createWorkspacePersistenceScheduler,
@@ -59,9 +39,7 @@ export function useWorkspace(
   registry: WorkspacePanelRegistry,
   options: UseWorkspaceOptions = {},
 ): WorkspaceRuntime {
-  const [state, setState] = useState<WorkspaceStateV1>(
-    () => createWorkspaceState(definitions),
-  );
+  const [state, setState] = useState<WorkspaceStateV1>(() => createWorkspaceState(definitions));
 
   const [reconciledDefinitions, setReconciledDefinitions] = useState(definitions);
   if (reconciledDefinitions !== definitions) {
@@ -74,10 +52,7 @@ export function useWorkspace(
   }, []);
 
   const storageOverride = options.storage;
-  const resolveStorage = useCallback(
-    (): KeyValueStorage => storageOverride ?? window.localStorage,
-    [storageOverride],
-  );
+  const resolveStorage = useCallback((): KeyValueStorage => storageOverride ?? window.localStorage, [storageOverride]);
 
   // レンダー中にstorageを読まない。復元はmount後の副作用で一度だけ行う。
   const [restoring, setRestoring] = useState(true);
@@ -105,10 +80,12 @@ export function useWorkspace(
   // 現在のdefinitionのmin sizeで全floatingパネルを再クランプする。
   useEffect(() => {
     const clampToViewport = () => {
-      setState((current) => clampAllFloatingPanels(current, registry, {
-        width: window.innerWidth,
-        height: window.innerHeight,
-      }));
+      setState((current) =>
+        clampAllFloatingPanels(current, registry, {
+          width: window.innerWidth,
+          height: window.innerHeight,
+        }),
+      );
     };
     clampToViewport();
     window.addEventListener('resize', clampToViewport);
@@ -151,25 +128,14 @@ export function useWorkspace(
     };
   }, [getScheduler]);
 
-  return useMemo(
-    () => ({ state, dispatch, restoring, registry }),
-    [dispatch, state, restoring, registry],
-  );
+  return useMemo(() => ({ state, dispatch, restoring, registry }), [dispatch, state, restoring, registry]);
 }
 
-export function WorkspaceProvider({
-  runtime,
-  children,
-}: {
-  runtime: WorkspaceRuntime;
-  children: ReactNode;
-}) {
+export function WorkspaceProvider({ runtime, children }: { runtime: WorkspaceRuntime; children: ReactNode }) {
   return (
     <MotionConfig reducedMotion="user">
       <LayoutGroup id="workspace">
-        <WorkspaceContext.Provider value={runtime}>
-          {children}
-        </WorkspaceContext.Provider>
+        <WorkspaceContext.Provider value={runtime}>{children}</WorkspaceContext.Provider>
       </LayoutGroup>
     </MotionConfig>
   );

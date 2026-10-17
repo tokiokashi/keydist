@@ -94,4 +94,3 @@ test('createTraceRequesterFor: N=baseInput自身のwindowSizeを要求すると�
   assert.equal(requested, baseTrace, 'baseInput自身のNを部分形で要求すると、既存のキャッシュエントリと同じTraceオブジェクトを再利用する');
   assert.equal(cache.size.trace, 1, '新しいキャッシュエントリは作られない');
 });
-

@@ -15,17 +15,23 @@ async function seed(page: Page): Promise<void> {
     if (sessionStorage.getItem('seeded') !== null) return;
     sessionStorage.setItem('seeded', '1');
     const rows = ['', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'];
-    localStorage.setItem('keydist:user-layouts', JSON.stringify({
-      version: 1,
-      layouts: [
-        { id: 'user-a', name: '自作A', rows, romaji: 'rule-a' },
-        { id: 'user-b', name: '自作B', rows, romaji: 'kunrei' },
-      ],
-    }));
-    localStorage.setItem('keydist:user-romaji-rules', JSON.stringify({
-      version: 1,
-      rules: [{ id: 'rule-a', name: '自作の規則', base: 'kunrei', overrides: { し: 'shi' }, generateSokuon: true }],
-    }));
+    localStorage.setItem(
+      'keydist:user-layouts',
+      JSON.stringify({
+        version: 1,
+        layouts: [
+          { id: 'user-a', name: '自作A', rows, romaji: 'rule-a' },
+          { id: 'user-b', name: '自作B', rows, romaji: 'kunrei' },
+        ],
+      }),
+    );
+    localStorage.setItem(
+      'keydist:user-romaji-rules',
+      JSON.stringify({
+        version: 1,
+        rules: [{ id: 'rule-a', name: '自作の規則', base: 'kunrei', overrides: { し: 'shi' }, generateSokuon: true }],
+      }),
+    );
     localStorage.setItem('keydist:single-target-selection', JSON.stringify({ version: 1, target: { kind: 'layout', layoutId: 'user-a' } }));
   });
 }
@@ -62,9 +68,7 @@ test('配列を削除すると保存先から消え、その配列を対象に�
   await page.getByRole('dialog').getByRole('button', { name: '削除する' }).click();
   await expect(layouts.locator('[data-user-asset-row]')).toHaveCount(1);
   await expect(page.locator('.user-assets-message')).toHaveText('「自作A」を削除しました');
-  await expect
-    .poll(() => page.evaluate(() => localStorage.getItem('keydist:user-layouts')))
-    .not.toContain('user-a');
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('keydist:user-layouts'))).not.toContain('user-a');
 
   // 対象にしていた画面へ移ると、配列が見つからない旨が出る
   await page.locator('#app-sidebar').getByRole('link', { name: 'Bigram Flow', exact: true }).click();
@@ -85,9 +89,7 @@ test('削除した直後は元に戻すで一覧と保存先が戻り、やり�
   await page.getByRole('button', { name: '元に戻す' }).click();
   await expect(rules.locator('[data-user-asset-row]')).toHaveCount(1);
   await expect(page.locator('[data-user-asset-row="user-a"]')).toContainText('推奨のローマ字規則: 自作の規則');
-  await expect
-    .poll(() => page.evaluate(() => localStorage.getItem('keydist:user-romaji-rules')))
-    .toContain('rule-a');
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('keydist:user-romaji-rules'))).toContain('rule-a');
 
   await page.getByRole('button', { name: 'やり直す' }).click();
   await expect(rules.locator('[data-user-asset-row]')).toHaveCount(0);
@@ -133,14 +135,17 @@ test.describe('変更した条件の一覧', () => {
     await page.addInitScript(() => {
       if (sessionStorage.getItem('seeded-overrides') !== null) return;
       sessionStorage.setItem('seeded-overrides', '1');
-      localStorage.setItem('keydist:setup-library', JSON.stringify({
-        version: 1,
-        setups: [],
-        overrides: {
-          global: { windowSize: 3 },
-          layout: { 'user-a': { romajiRuleId: 'rule-a' }, 'deleted-layout': { windowSize: 4 } },
-        },
-      }));
+      localStorage.setItem(
+        'keydist:setup-library',
+        JSON.stringify({
+          version: 1,
+          setups: [],
+          overrides: {
+            global: { windowSize: 3 },
+            layout: { 'user-a': { romajiRuleId: 'rule-a' }, 'deleted-layout': { windowSize: 4 } },
+          },
+        }),
+      );
     });
   }
 

@@ -49,7 +49,10 @@ async function columnValues(table: Locator, header: string): Promise<readonly nu
 }
 
 function sortButton(table: Locator, label: string): Locator {
-  return table.locator('thead th').filter({ has: table.page().getByRole('button', { name: label, exact: true }) }).getByRole('button', { name: label, exact: true });
+  return table
+    .locator('thead th')
+    .filter({ has: table.page().getByRole('button', { name: label, exact: true }) })
+    .getByRole('button', { name: label, exact: true });
 }
 
 function headerOf(table: Locator, label: string): Locator {
@@ -225,7 +228,11 @@ for (const width of [1500, 390]) {
       const desc = await headerWidths(table);
       await button.click();
       const cleared = await headerWidths(table);
-      for (const [state, widths] of [['昇順', asc], ['降順', desc], ['解除', cleared]] as const) {
+      for (const [state, widths] of [
+        ['昇順', asc],
+        ['降順', desc],
+        ['解除', cleared],
+      ] as const) {
         widths.forEach((w, index) => {
           expect(Math.abs(w - none[index]!), `${label} ${state} 列${index}`).toBeLessThanOrEqual(1);
         });
@@ -247,7 +254,11 @@ async function openTwoComparisons(page: Page): Promise<void> {
   }
   await expect(page.locator('.pane-frame')).toHaveCount(2);
   // 先頭のペインで対象を選ぶ。2つ目は同じ連動に従う。
-  await page.locator('.pane-frame').nth(0).getByRole('button', { name: /^対象: / }).click();
+  await page
+    .locator('.pane-frame')
+    .nth(0)
+    .getByRole('button', { name: /^対象: / })
+    .click();
   const dialog = page.getByRole('dialog', { name: '対象の選択' });
   for (const id of ['qwerty', 'dvorak', 'colemak-dh']) await dialog.locator(`input[value="layout:${id}"]`).click();
   await page.keyboard.press('Escape');
@@ -289,7 +300,11 @@ test('Workspace: 共有に従う2つの比較表では、片方を並べると�
   }
 
   // ⋯の「解析設定を初期値に戻す」で共有の並び替えが解除され、もう片方も解除される。
-  await page.locator('.pane-frame').nth(0).getByRole('button', { name: /の操作$/ }).click();
+  await page
+    .locator('.pane-frame')
+    .nth(0)
+    .getByRole('button', { name: /の操作$/ })
+    .click();
   await page.getByRole('menuitem', { name: /解析設定を初期値に戻す/ }).click();
   for (let n = 0; n < 2; n += 1) {
     await expect(headerOf(page.locator('.comparison-table').nth(n), '距離')).not.toHaveAttribute('aria-sort', /.+/);
@@ -315,10 +330,12 @@ test('Workspace: 「このペインだけ」にしたペインは並び替えを
   expect(await rowNames(tables.nth(1))).toEqual(original);
 
   // 並び替えは先頭のペインが従う共有の設定にだけ保存され、再読み込みしても先頭のペインだけ並んでいる。
-  await expect.poll(async () => {
-    const state = await storedSortState(page);
-    return [hasSort(state?.optionSets?.map((set) => set.options)), ...(state?.panes.map((p) => hasSort(p.options)) ?? [])];
-  }).toEqual([true, false, false]);
+  await expect
+    .poll(async () => {
+      const state = await storedSortState(page);
+      return [hasSort(state?.optionSets?.map((set) => set.options)), ...(state?.panes.map((p) => hasSort(p.options)) ?? [])];
+    })
+    .toEqual([true, false, false]);
   expect((await storedSortState(page))?.panes.map((p) => p.optionsBinding?.mode)).toEqual(['shared', 'own']);
   await page.reload();
   await waitForHydration(page);
@@ -327,7 +344,11 @@ test('Workspace: 「このペインだけ」にしたペインは並び替えを
   await expect(headerOf(page.locator('.comparison-table').nth(1), '距離')).not.toHaveAttribute('aria-sort', /.+/);
 
   // ⋯の「解析設定を初期値に戻す」で、そのペインの並び替えが解除される。
-  await page.locator('.pane-frame').nth(0).getByRole('button', { name: /の操作$/ }).click();
+  await page
+    .locator('.pane-frame')
+    .nth(0)
+    .getByRole('button', { name: /の操作$/ })
+    .click();
   await page.getByRole('menuitem', { name: /解析設定を初期値に戻す/ }).click();
   await expect(headerOf(page.locator('.comparison-table').nth(0), '距離')).not.toHaveAttribute('aria-sort', /.+/);
 });

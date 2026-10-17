@@ -11,17 +11,25 @@ const QWERTY = { kind: 'layout', layoutId: 'qwerty' };
 const pane = (id: string) => ({ id, analyzerId: 'bigram-flow', binding: { mode: 'fixed', target: { kind: 'single', target: QWERTY } } });
 
 async function openWorkspace(page: Page, theme: 'light' | 'dark'): Promise<void> {
-  await page.addInitScript(({ workspace, theme }) => {
-    localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [workspace] }));
-    localStorage.setItem('keydist:app-state', JSON.stringify({ version: 2, appearance: { theme } }));
-  }, {
-    theme,
-    workspace: {
-      id: 'header', name: '見出しの余白', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
-      panes: [pane('a'), pane('b')],
-      grid: [{ id: 'a', x: 0, y: 0, w: 12, h: 16 }, { id: 'b', x: 12, y: 0, w: 12, h: 16 }],
+  await page.addInitScript(
+    ({ workspace, theme }) => {
+      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [workspace] }));
+      localStorage.setItem('keydist:app-state', JSON.stringify({ version: 2, appearance: { theme } }));
     },
-  });
+    {
+      theme,
+      workspace: {
+        id: 'header',
+        name: '見出しの余白',
+        text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+        panes: [pane('a'), pane('b')],
+        grid: [
+          { id: 'a', x: 0, y: 0, w: 12, h: 16 },
+          { id: 'b', x: 12, y: 0, w: 12, h: 16 },
+        ],
+      },
+    },
+  );
   await page.goto('/workspace/header');
   await waitForHydration(page);
   await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
@@ -32,13 +40,15 @@ async function openWorkspace(page: Page, theme: 'light' | 'dark'): Promise<void>
 
 /** ペインごとに、見出しの先頭の左端と、本文の左端を測る。 */
 async function measure(page: Page) {
-  return page.evaluate(() => [...document.querySelectorAll('.workspace-pane')].map((paneElement) => {
-    const grip = paneElement.querySelector('.workspace-grip-icon')!.getBoundingClientRect();
-    const body = paneElement.querySelector('.pane-body')!.getBoundingClientRect();
-    const frame = paneElement.querySelector('.pane-frame')!.getBoundingClientRect();
-    const target = paneElement.querySelector('.pane-frame-target')!.getBoundingClientRect();
-    return { gripLeft: grip.left, bodyLeft: body.left, frameLeft: frame.left, targetLeft: target.left, gripRight: grip.right };
-  }));
+  return page.evaluate(() =>
+    [...document.querySelectorAll('.workspace-pane')].map((paneElement) => {
+      const grip = paneElement.querySelector('.workspace-grip-icon')!.getBoundingClientRect();
+      const body = paneElement.querySelector('.pane-body')!.getBoundingClientRect();
+      const frame = paneElement.querySelector('.pane-frame')!.getBoundingClientRect();
+      const target = paneElement.querySelector('.pane-frame-target')!.getBoundingClientRect();
+      return { gripLeft: grip.left, bodyLeft: body.left, frameLeft: frame.left, targetLeft: target.left, gripRight: grip.right };
+    }),
+  );
 }
 
 const CASES = [

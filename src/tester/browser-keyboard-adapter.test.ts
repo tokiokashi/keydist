@@ -34,48 +34,61 @@ test('browser adapterはJIS tester overrideで追加3キーをgrid位置へ割�
   assert.equal(browserCodeToPhysicalKey('IntlRo', overrides), 'r3c10');
 
   for (const code of ['Backslash', 'IntlYen', 'IntlRo']) {
-    assert.equal(
-      shouldCaptureBrowserKeyDown({ type: 'keydown', code }, new Set(), overrides),
-      true,
-      code,
-    );
+    assert.equal(shouldCaptureBrowserKeyDown({ type: 'keydown', code }, new Set(), overrides), true, code);
   }
 });
 
 test('browser adapterはrepeat / composition / OS shortcutをcoreへ渡さない', () => {
-  assert.equal(browserKeyboardEventToPhysicalKeyEvent({
-    type: 'keydown',
-    code: 'KeyA',
-    repeat: true,
-  }), undefined);
-  assert.equal(browserKeyboardEventToPhysicalKeyEvent({
-    type: 'keydown',
-    code: 'KeyA',
-    isComposing: true,
-  }), undefined);
-  assert.equal(browserKeyboardEventToPhysicalKeyEvent({
-    type: 'keydown',
-    code: 'KeyA',
-    ctrlKey: true,
-  }), undefined);
+  assert.equal(
+    browserKeyboardEventToPhysicalKeyEvent({
+      type: 'keydown',
+      code: 'KeyA',
+      repeat: true,
+    }),
+    undefined,
+  );
+  assert.equal(
+    browserKeyboardEventToPhysicalKeyEvent({
+      type: 'keydown',
+      code: 'KeyA',
+      isComposing: true,
+    }),
+    undefined,
+  );
+  assert.equal(
+    browserKeyboardEventToPhysicalKeyEvent({
+      type: 'keydown',
+      code: 'KeyA',
+      ctrlKey: true,
+    }),
+    undefined,
+  );
 
-  assert.deepEqual(browserKeyboardEventToPhysicalKeyEvent({
-    type: 'keyup',
-    code: 'KeyA',
-    repeat: true,
-  }), { type: 'up', key: 'a' });
-  assert.deepEqual(browserKeyboardEventToPhysicalKeyEvent({
-    type: 'keyup',
-    code: 'KeyH',
-    ctrlKey: true,
-  }), { type: 'up', key: 'h' });
-  assert.deepEqual(browserKeyboardEventToPhysicalKeyEvent({
-    type: 'keyup',
-    code: 'KeyH',
-    metaKey: true,
-  }), { type: 'up', key: 'h' });
+  assert.deepEqual(
+    browserKeyboardEventToPhysicalKeyEvent({
+      type: 'keyup',
+      code: 'KeyA',
+      repeat: true,
+    }),
+    { type: 'up', key: 'a' },
+  );
+  assert.deepEqual(
+    browserKeyboardEventToPhysicalKeyEvent({
+      type: 'keyup',
+      code: 'KeyH',
+      ctrlKey: true,
+    }),
+    { type: 'up', key: 'h' },
+  );
+  assert.deepEqual(
+    browserKeyboardEventToPhysicalKeyEvent({
+      type: 'keyup',
+      code: 'KeyH',
+      metaKey: true,
+    }),
+    { type: 'up', key: 'h' },
+  );
 });
-
 
 test('layout所有Tabはrepeatでもbrowser既定動作をcaptureし、domain eventにはrepeatを流さない', () => {
   const owned = new Set(['tab']);
@@ -89,22 +102,39 @@ test('layout所有Tabはrepeatでもbrowser既定動作をcaptureし、domain ev
   assert.equal(shouldCaptureBrowserKeyDown(repeatTab, owned), true);
   assert.equal(browserKeyboardEventToPhysicalKeyEvent(repeatTab), undefined);
 
-  assert.equal(shouldCaptureBrowserKeyDown({
-    type: 'keydown',
-    code: 'Tab',
-    ctrlKey: true,
-  }, owned), false);
-  assert.equal(shouldCaptureBrowserKeyDown({
-    type: 'keydown',
-    code: 'Tab',
-    isComposing: true,
-  }, owned), false);
-  assert.equal(shouldCaptureBrowserKeyDown({
-    type: 'keydown',
-    code: 'Tab',
-  }, new Set()), false);
+  assert.equal(
+    shouldCaptureBrowserKeyDown(
+      {
+        type: 'keydown',
+        code: 'Tab',
+        ctrlKey: true,
+      },
+      owned,
+    ),
+    false,
+  );
+  assert.equal(
+    shouldCaptureBrowserKeyDown(
+      {
+        type: 'keydown',
+        code: 'Tab',
+        isComposing: true,
+      },
+      owned,
+    ),
+    false,
+  );
+  assert.equal(
+    shouldCaptureBrowserKeyDown(
+      {
+        type: 'keydown',
+        code: 'Tab',
+      },
+      new Set(),
+    ),
+    false,
+  );
 });
-
 
 test('layout所有Spaceはrepeatでもbrowser scrollをcaptureする', () => {
   const owned = new Set(['thumb-r']);
@@ -118,33 +148,51 @@ test('layout所有Spaceはrepeatでもbrowser scrollをcaptureする', () => {
   assert.equal(browserKeyboardEventToPhysicalKeyEvent(repeatSpace), undefined);
 });
 
-
 test('未所有の標準文字keyはbrowser文字入力をcaptureし、navigation keyは残す', () => {
   const owned = new Set<string>();
 
   for (const code of ['KeyQ', 'Digit1', 'Minus', 'Backquote', 'Backslash']) {
     assert.equal(isBrowserTextInputCode(code), true, code);
-    assert.equal(shouldCaptureBrowserKeyDown({
-      type: 'keydown',
+    assert.equal(
+      shouldCaptureBrowserKeyDown(
+        {
+          type: 'keydown',
+          code,
+        },
+        owned,
+      ),
+      true,
       code,
-    }, owned), true, code);
+    );
   }
 
   for (const code of ['Tab', 'Escape', 'CapsLock', 'Space']) {
     assert.equal(isBrowserTextInputCode(code), false, code);
-    assert.equal(shouldCaptureBrowserKeyDown({
-      type: 'keydown',
+    assert.equal(
+      shouldCaptureBrowserKeyDown(
+        {
+          type: 'keydown',
+          code,
+        },
+        owned,
+      ),
+      false,
       code,
-    }, owned), false, code);
+    );
   }
 
-  assert.equal(shouldCaptureBrowserKeyDown({
-    type: 'keydown',
-    code: 'KeyQ',
-    ctrlKey: true,
-  }, owned), false);
+  assert.equal(
+    shouldCaptureBrowserKeyDown(
+      {
+        type: 'keydown',
+        code: 'KeyQ',
+        ctrlKey: true,
+      },
+      owned,
+    ),
+    false,
+  );
 });
-
 
 test('browser adapterは任意code overrideで通常keyを親指physical keyへ再割当できる', () => {
   const overrides = {
@@ -154,21 +202,8 @@ test('browser adapterは任意code overrideで通常keyを親指physical keyへ�
 
   assert.equal(browserCodeToPhysicalKey('KeyQ', overrides), 'thumb-l');
   assert.equal(browserCodeToPhysicalKey('Space', overrides), undefined);
-  assert.equal(
-    shouldCaptureBrowserKeyDown(
-      { type: 'keydown', code: 'KeyQ' },
-      new Set(['thumb-l']),
-      overrides,
-    ),
-    true,
-  );
-  assert.deepEqual(
-    browserKeyboardEventToPhysicalKeyEvent(
-      { type: 'keydown', code: 'KeyQ' },
-      overrides,
-    ),
-    { type: 'down', key: 'thumb-l' },
-  );
+  assert.equal(shouldCaptureBrowserKeyDown({ type: 'keydown', code: 'KeyQ' }, new Set(['thumb-l']), overrides), true);
+  assert.deepEqual(browserKeyboardEventToPhysicalKeyEvent({ type: 'keydown', code: 'KeyQ' }, overrides), { type: 'down', key: 'thumb-l' });
 });
 
 test('ブラウザのキーcodeは刻印で表示する', () => {

@@ -28,20 +28,14 @@ const EN_TEXT: ResolvedText = {
 };
 
 /** 比較表・N感度のページと同じ経路（解決→名前の材料→nameTargets）で表示名を求める。 */
-function displayNames(
-  targets: readonly AnalysisTarget[],
-  setups: readonly Setup[],
-  overrides: SettingsCascadeOverrides = EMPTY_SETTINGS_OVERRIDES,
-) {
+function displayNames(targets: readonly AnalysisTarget[], setups: readonly Setup[], overrides: SettingsCascadeOverrides = EMPTY_SETTINGS_OVERRIDES) {
   const setupsById = new Map(setups.map((setup) => [setup.id, setup] as const));
   const numbers = setupNumbersOf(setups);
-  return nameTargets(targets.map((target) => targetNameSource(
-    target,
-    resolvePaneInput(target, setupsById, CATALOG, overrides, EN_TEXT),
-    setupsById,
-    numbers,
-    CATALOG.setupCatalog,
-  )));
+  return nameTargets(
+    targets.map((target) =>
+      targetNameSource(target, resolvePaneInput(target, setupsById, CATALOG, overrides, EN_TEXT), setupsById, numbers, CATALOG.setupCatalog),
+    ),
+  );
 }
 
 const fixedA: Setup = { id: '0d6f2c8e-aaaa-4bbb-8ccc-111111111111', number: 1, layoutId: 'qwerty', shapeId: 'row-staggered' };
@@ -49,12 +43,19 @@ const fixedB: Setup = { id: '0d6f2c8e-aaaa-4bbb-8ccc-222222222222', number: 2, l
 
 test('配列 + 上書きの無い同じ配列のSetup + 別配列のSetup: 衝突した2つだけ種類で区別し、UUIDは出さない（M3）', () => {
   const named = displayNames(
-    [{ kind: 'layout', layoutId: 'qwerty' }, { kind: 'setup', setupId: fixedA.id }, { kind: 'setup', setupId: fixedB.id }],
+    [
+      { kind: 'layout', layoutId: 'qwerty' },
+      { kind: 'setup', setupId: fixedA.id },
+      { kind: 'setup', setupId: fixedB.id },
+    ],
     [fixedA, fixedB],
   );
   const qwerty = LAYOUT_BY_ID.get('qwerty')!.name;
   const colemakDh = LAYOUT_BY_ID.get('colemak-dh')!.name;
-  assert.deepEqual(named.map((n) => n.displayName), [`${qwerty}（配列）`, `${qwerty}（Setup 1）`, colemakDh]);
+  assert.deepEqual(
+    named.map((n) => n.displayName),
+    [`${qwerty}（配列）`, `${qwerty}（Setup 1）`, colemakDh],
+  );
   for (const n of named) assert.doesNotMatch(`${n.displayName} ${n.fullName}`, /0d6f2c8e|layout:|setup:/);
 });
 
@@ -63,7 +64,10 @@ test('Setup対象だけの集合で既定の物理配列を変えても、名前
   assert.ok(written.ok);
   if (!written.ok) return;
   const named = displayNames(
-    [{ kind: 'setup', setupId: fixedA.id }, { kind: 'setup', setupId: fixedB.id }],
+    [
+      { kind: 'setup', setupId: fixedA.id },
+      { kind: 'setup', setupId: fixedB.id },
+    ],
     [fixedA, fixedB],
     written.overrides,
   );
@@ -82,11 +86,10 @@ test('解決に失敗したメンバーにも意味のある名前を付ける�
     [fixedA, brokenShape],
   );
   const dvorak = LAYOUT_BY_ID.get('dvorak')!.name;
-  assert.deepEqual(named.slice(1).map((n) => n.displayName), [
-    '削除されたSetup',
-    `${dvorak}/見つからない物理配列`,
-    '見つからない配列',
-  ]);
+  assert.deepEqual(
+    named.slice(1).map((n) => n.displayName),
+    ['削除されたSetup', `${dvorak}/見つからない物理配列`, '見つからない配列'],
+  );
   for (const n of named) {
     assert.notEqual(n.displayName.replace(/[—\s]/g, ''), '');
     assert.doesNotMatch(`${n.displayName} ${n.fullName}`, /deleted-|broken/);
@@ -94,13 +97,25 @@ test('解決に失敗したメンバーにも意味のある名前を付ける�
 });
 
 test('このテキストに使えない配列の失敗メンバーは配列名で呼ぶ', () => {
-  const named = displayNames([{ kind: 'layout', layoutId: 'qwerty' }, { kind: 'layout', layoutId: 'nicola' }], []);
+  const named = displayNames(
+    [
+      { kind: 'layout', layoutId: 'qwerty' },
+      { kind: 'layout', layoutId: 'nicola' },
+    ],
+    [],
+  );
   assert.equal(named[1]!.displayName, LAYOUT_BY_ID.get('nicola')!.name);
 });
 
 test('空白だけのラベルはラベル無しとして自動命名に戻る（L3）', () => {
   const blank: Setup = { ...fixedB, label: '   ' };
-  const named = displayNames([{ kind: 'setup', setupId: fixedA.id }, { kind: 'setup', setupId: blank.id }], [fixedA, blank]);
+  const named = displayNames(
+    [
+      { kind: 'setup', setupId: fixedA.id },
+      { kind: 'setup', setupId: blank.id },
+    ],
+    [fixedA, blank],
+  );
   assert.equal(named[1]!.displayName, LAYOUT_BY_ID.get('colemak-dh')!.name);
 });
 
@@ -109,7 +124,10 @@ test('既定の物理配列を変えた配列対象の名前に、物理配列�
   assert.ok(written.ok);
   if (!written.ok) return;
   const named = displayNames(
-    [{ kind: 'layout', layoutId: 'qwerty' }, { kind: 'setup', setupId: fixedB.id }],
+    [
+      { kind: 'layout', layoutId: 'qwerty' },
+      { kind: 'setup', setupId: fixedB.id },
+    ],
     [fixedA, fixedB],
     written.overrides,
   );
@@ -122,7 +140,10 @@ test('既定の物理配列を変えた配列対象の名前に、物理配列�
 
 test('TK音直入力法は言語によらず1つの配列で、並べる時は他の配列と名前だけで見分けられる', () => {
   const named = displayNames(
-    [{ kind: 'layout', layoutId: 'oonishi-custom' }, { kind: 'layout', layoutId: 'oonishi' }],
+    [
+      { kind: 'layout', layoutId: 'oonishi-custom' },
+      { kind: 'layout', layoutId: 'oonishi' },
+    ],
     [],
   );
   assert.match(named[0]!.displayName, /^TK音直入力法/);
@@ -133,11 +154,20 @@ test('TK音直入力法は言語によらず1つの配列で、並べる時は�
 
 test('Setupを削除しても、残ったSetupの衝突時の番号は変わらない', () => {
   const dup: Setup = { ...fixedA, id: '0d6f2c8e-aaaa-4bbb-8ccc-333333333333', number: 3 };
-  const targets: AnalysisTarget[] = [{ kind: 'setup', setupId: dup.id }, { kind: 'layout', layoutId: 'qwerty' }];
+  const targets: AnalysisTarget[] = [
+    { kind: 'setup', setupId: dup.id },
+    { kind: 'layout', layoutId: 'qwerty' },
+  ];
   const qwerty = LAYOUT_BY_ID.get('qwerty')!.name;
   // fixedB（番号2）を消した後の手持ち。dupは並びが2番目になるが、番号は作成時の3のまま
-  assert.deepEqual(displayNames(targets, [fixedA, fixedB, dup]).map((n) => n.displayName), [`${qwerty}（Setup 3）`, `${qwerty}（配列）`]);
-  assert.deepEqual(displayNames(targets, [fixedA, dup]).map((n) => n.displayName), [`${qwerty}（Setup 3）`, `${qwerty}（配列）`]);
+  assert.deepEqual(
+    displayNames(targets, [fixedA, fixedB, dup]).map((n) => n.displayName),
+    [`${qwerty}（Setup 3）`, `${qwerty}（配列）`],
+  );
+  assert.deepEqual(
+    displayNames(targets, [fixedA, dup]).map((n) => n.displayName),
+    [`${qwerty}（Setup 3）`, `${qwerty}（配列）`],
+  );
 });
 
 test('対象名の条件の併記: 再生のペインが宣言した時だけ、チェーンの区切りを入れる', () => {

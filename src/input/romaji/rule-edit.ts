@@ -12,8 +12,7 @@ import { ROMAJI_VARIANTS } from './spelling-variations.ts';
 /** 自作のローマ字規則のidの接頭辞。組み込みの規則のid（kunrei・oonishi・azik・qwerty）と衝突しない。 */
 export const USER_ROMAJI_RULE_ID_PREFIX = 'romaji-';
 
-export const newRomajiRuleId = (): string =>
-  `${USER_ROMAJI_RULE_ID_PREFIX}${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+export const newRomajiRuleId = (): string => `${USER_ROMAJI_RULE_ID_PREFIX}${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
 /** 規則の中身（名前とid以外）。 */
 export type RomajiRuleContent = Pick<UserRomajiRule, 'base' | 'overrides' | 'generateSokuon'>;
@@ -41,28 +40,18 @@ export function duplicateUserRomajiRule(
 }
 
 /** 改名。対象が存在しない、または既に同じ名前なら何もしない。 */
-export function renameUserRomajiRule(
-  rules: readonly UserRomajiRule[],
-  id: string,
-  name: string,
-): readonly UserRomajiRule[] {
+export function renameUserRomajiRule(rules: readonly UserRomajiRule[], id: string, name: string): readonly UserRomajiRule[] {
   const target = rules.find((rule) => rule.id === id);
   if (target === undefined || target.name === name) return rules;
-  return rules.map((rule) => rule.id === id ? { ...rule, name } : rule);
+  return rules.map((rule) => (rule.id === id ? { ...rule, name } : rule));
 }
 
 /** 中身の書き換え。対象が存在しない、または中身が変わらないなら何もしない。idと名前は変えない。 */
-export function updateUserRomajiRule(
-  rules: readonly UserRomajiRule[],
-  id: string,
-  content: RomajiRuleContent,
-): readonly UserRomajiRule[] {
+export function updateUserRomajiRule(rules: readonly UserRomajiRule[], id: string, content: RomajiRuleContent): readonly UserRomajiRule[] {
   const target = rules.find((rule) => rule.id === id);
   if (target === undefined || sameContent(target, content)) return rules;
   const overrides = { ...content.overrides };
-  return rules.map((rule) => rule.id === id
-    ? { ...rule, base: content.base, generateSokuon: content.generateSokuon, overrides }
-    : rule);
+  return rules.map((rule) => (rule.id === id ? { ...rule, base: content.base, generateSokuon: content.generateSokuon, overrides } : rule));
 }
 
 function sameContent(a: RomajiRuleContent, b: RomajiRuleContent): boolean {
@@ -88,11 +77,7 @@ export function isKanaKey(kana: string): boolean {
  * 綴りが置けない文字列の時は`undefined`を返す（呼び出し側が入力の誤りとして示す）。
  * 小文字として扱う。
  */
-export function withSpelling(
-  overrides: Readonly<Record<string, string>>,
-  kana: string,
-  roman: string,
-): Record<string, string> | undefined {
+export function withSpelling(overrides: Readonly<Record<string, string>>, kana: string, roman: string): Record<string, string> | undefined {
   const next = { ...overrides };
   const spelling = roman.trim().toLowerCase();
   if (spelling === '') {

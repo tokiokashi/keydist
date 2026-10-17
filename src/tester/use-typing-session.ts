@@ -1,17 +1,5 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type RefCallback,
-  type RefObject,
-} from 'react';
-import {
-  TypingInputEngine,
-  type RecognizedTypingInput,
-  type TypingInputResult,
-} from './engine/index.ts';
+import { useCallback, useEffect, useMemo, useRef, useState, type RefCallback, type RefObject } from 'react';
+import { TypingInputEngine, type RecognizedTypingInput, type TypingInputResult } from './engine/index.ts';
 import type { Layout } from '#input/layouts/index.ts';
 import { kanaToRomaji } from '#input/romaji/kunrei.ts';
 import { physicalKeysUsedByLayout } from '#input/layouts/physical-keys.ts';
@@ -20,24 +8,10 @@ import {
   EMPTY_KEY_PATTERN_PRESENTATION_STATE,
   type KeyPatternPresentationState,
 } from '#input/layouts/key-pattern-picker.ts';
-import {
-  browserKeyboardEventToPhysicalKeyEvent,
-  isBrowserTextInputCode,
-  shouldCaptureBrowserKeyDown,
-} from './browser-keyboard-adapter.ts';
-import {
-  EMPTY_BROWSER_KEY_BINDING_OVERRIDES,
-  type BrowserKeyBindingOverrides,
-} from './browser-keyboard-bindings.ts';
-import {
-  liveRomajiContextSatisfied,
-  romajiToKana,
-} from './live-romaji.ts';
-import {
-  applyRecognizedTypingInputs,
-  applyTypingTextEdit,
-  executeTypingEditCommand,
-} from './typing-session-command.ts';
+import { browserKeyboardEventToPhysicalKeyEvent, isBrowserTextInputCode, shouldCaptureBrowserKeyDown } from './browser-keyboard-adapter.ts';
+import { EMPTY_BROWSER_KEY_BINDING_OVERRIDES, type BrowserKeyBindingOverrides } from './browser-keyboard-bindings.ts';
+import { liveRomajiContextSatisfied, romajiToKana } from './live-romaji.ts';
+import { applyRecognizedTypingInputs, applyTypingTextEdit, executeTypingEditCommand } from './typing-session-command.ts';
 
 export interface TypingSession {
   readonly captureRef: RefObject<HTMLTextAreaElement | null>;
@@ -54,10 +28,7 @@ export interface TypingSession {
   clear(): void;
 }
 
-export function useTypingSession(
-  layout: Layout,
-  browserBindings: BrowserKeyBindingOverrides = EMPTY_BROWSER_KEY_BINDING_OVERRIDES,
-): TypingSession {
+export function useTypingSession(layout: Layout, browserBindings: BrowserKeyBindingOverrides = EMPTY_BROWSER_KEY_BINDING_OVERRIDES): TypingSession {
   const captureRef = useRef<HTMLTextAreaElement>(null);
   const [captureTarget, setCaptureTarget] = useState<HTMLTextAreaElement | null>(null);
   const captureRefCallback = useCallback<RefCallback<HTMLTextAreaElement>>((element) => {
@@ -67,19 +38,13 @@ export function useTypingSession(
   const rawTextRef = useRef('');
   const pressedKeysRef = useRef<readonly string[]>([]);
   const recognitionKeysRef = useRef<readonly string[]>([]);
-  const presentationRef = useRef<KeyPatternPresentationState>(
-    EMPTY_KEY_PATTERN_PRESENTATION_STATE,
-  );
+  const presentationRef = useRef<KeyPatternPresentationState>(EMPTY_KEY_PATTERN_PRESENTATION_STATE);
   const engine = useMemo(
-    () => new TypingInputEngine(layout.canonicalInputs, {
-      triggerRealizationPolicy: { useHold: true },
-      contextSatisfied: (requirements) =>
-        liveRomajiContextSatisfied(
-          requirements,
-          rawTextRef.current,
-          layout.romajiTable !== undefined,
-        ),
-    }),
+    () =>
+      new TypingInputEngine(layout.canonicalInputs, {
+        triggerRealizationPolicy: { useHold: true },
+        contextSatisfied: (requirements) => liveRomajiContextSatisfied(requirements, rawTextRef.current, layout.romajiTable !== undefined),
+      }),
     [layout],
   );
   const ownedPhysicalKeys = useMemo(() => physicalKeysUsedByLayout(layout), [layout]);
@@ -87,23 +52,15 @@ export function useTypingSession(
   const [text, setText] = useState('');
   const [pressedKeys, setPressedKeys] = useState<readonly string[]>([]);
   const [recognitionKeys, setRecognitionKeys] = useState<readonly string[]>([]);
-  const [presentation, setPresentation] = useState<KeyPatternPresentationState>(
-    EMPTY_KEY_PATTERN_PRESENTATION_STATE,
-  );
+  const [presentation, setPresentation] = useState<KeyPatternPresentationState>(EMPTY_KEY_PATTERN_PRESENTATION_STATE);
   const [lastRecognized, setLastRecognized] = useState<readonly RecognizedTypingInput[]>([]);
   const [active, setActive] = useState(false);
   const [composing, setComposing] = useState(false);
   const [readyLayoutId, setReadyLayoutId] = useState<string>();
 
-  const displayFromRaw = (raw: string): string =>
-    layout.romajiTable === undefined
-      ? raw
-      : romajiToKana(raw, layout.romajiTable);
+  const displayFromRaw = (raw: string): string => (layout.romajiTable === undefined ? raw : romajiToKana(raw, layout.romajiTable));
 
-  const rawFromDisplay = (display: string): string =>
-    layout.romajiTable === undefined
-      ? display
-      : kanaToRomaji(display, layout.romajiTable);
+  const rawFromDisplay = (display: string): string => (layout.romajiTable === undefined ? display : kanaToRomaji(display, layout.romajiTable));
 
   useEffect(() => {
     rawTextRef.current = rawFromDisplay(text);
@@ -115,16 +72,8 @@ export function useTypingSession(
 
     let isComposing = false;
 
-    const applyResult = (
-      result: TypingInputResult,
-      physical: { type: 'down' | 'up'; key: string },
-    ) => {
-      const nextPresentation = advanceKeyPatternPresentation(
-        layout,
-        presentationRef.current,
-        physical,
-        result,
-      );
+    const applyResult = (result: TypingInputResult, physical: { type: 'down' | 'up'; key: string }) => {
+      const nextPresentation = advanceKeyPatternPresentation(layout, presentationRef.current, physical, result);
       pressedKeysRef.current = result.pressedKeys;
       recognitionKeysRef.current = result.recognitionKeys;
       presentationRef.current = nextPresentation;
@@ -134,10 +83,7 @@ export function useTypingSession(
       if (result.recognized.length === 0) return;
 
       setLastRecognized(result.recognized);
-      const nextRaw = applyRecognizedTypingInputs(
-        rawTextRef.current,
-        result.recognized,
-      );
+      const nextRaw = applyRecognizedTypingInputs(rawTextRef.current, result.recognized);
       rawTextRef.current = nextRaw;
       setText(displayFromRaw(nextRaw));
     };
@@ -164,12 +110,7 @@ export function useTypingSession(
       for (const key of keys) {
         const physical = { type: 'down' as const, key };
         latest = engine.handle(physical);
-        nextPresentation = advanceKeyPatternPresentation(
-          layout,
-          nextPresentation,
-          physical,
-          latest,
-        );
+        nextPresentation = advanceKeyPatternPresentation(layout, nextPresentation, physical, latest);
       }
 
       pressedKeysRef.current = latest.pressedKeys;
@@ -181,11 +122,7 @@ export function useTypingSession(
     };
 
     const onKeyDown = (event: KeyboardEvent) => {
-      const capturesPhysicalKey = shouldCaptureBrowserKeyDown(
-        event,
-        ownedPhysicalKeys,
-        browserBindings,
-      );
+      const capturesPhysicalKey = shouldCaptureBrowserKeyDown(event, ownedPhysicalKeys, browserBindings);
 
       if (event.key === 'Escape' && !capturesPhysicalKey) {
         event.preventDefault();
@@ -197,20 +134,10 @@ export function useTypingSession(
       }
 
       if (!isComposing && !event.ctrlKey && !event.altKey && !event.metaKey) {
-        if (
-          event.key === 'Backspace'
-          || (event.key === 'Enter' && !event.repeat)
-        ) {
+        if (event.key === 'Backspace' || (event.key === 'Enter' && !event.repeat)) {
           event.preventDefault();
-          const preservingKeys = event.key === 'Backspace'
-            ? recognitionKeysRef.current.filter(
-              (key) => pressedKeysRef.current.includes(key),
-            )
-            : [];
-          const command = executeTypingEditCommand(
-            engine,
-            event.key === 'Backspace' ? 'backspace' : 'enter',
-          );
+          const preservingKeys = event.key === 'Backspace' ? recognitionKeysRef.current.filter((key) => pressedKeysRef.current.includes(key)) : [];
+          const command = executeTypingEditCommand(engine, event.key === 'Backspace' ? 'backspace' : 'enter');
           if (event.key === 'Backspace') {
             reseedRecognition(preservingKeys);
           } else {
@@ -231,10 +158,7 @@ export function useTypingSession(
               return nextDisplay;
             });
           } else {
-            const recognizedRaw = applyRecognizedTypingInputs(
-              rawTextRef.current,
-              command.recognized,
-            );
+            const recognizedRaw = applyRecognizedTypingInputs(rawTextRef.current, command.recognized);
             const nextRaw = applyTypingTextEdit(recognizedRaw, command.textEdit);
             rawTextRef.current = nextRaw;
             setText(displayFromRaw(nextRaw));
@@ -254,10 +178,7 @@ export function useTypingSession(
     const onKeyUp = (event: KeyboardEvent) => {
       const physical = browserKeyboardEventToPhysicalKeyEvent(event, browserBindings);
       if (physical === undefined) return;
-      if (
-        !ownedPhysicalKeys.has(physical.key)
-        && !isBrowserTextInputCode(event.code)
-      ) return;
+      if (!ownedPhysicalKeys.has(physical.key) && !isBrowserTextInputCode(event.code)) return;
 
       event.preventDefault();
       applyResult(engine.handle(physical), physical);

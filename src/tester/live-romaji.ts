@@ -10,29 +10,21 @@ interface RomanKanaEntry {
  * かな->ローマ字tableを逆向きに最長一致して、実入力のraw roman streamを表示かなへ戻す。
  * 未完成の綴りやtable外文字はそのまま残すので、入力途中でも文字を失わない。
  */
-export function romajiToKana(
-  text: string,
-  table: ReadonlyMap<string, string>,
-): string {
+export function romajiToKana(text: string, table: ReadonlyMap<string, string>): string {
   const entries: RomanKanaEntry[] = [...table]
     .map(([kana, roman]) => ({ kana, roman }))
     .filter((entry) => entry.roman.length > 0)
-    .sort((left, right) =>
-      [...right.roman].length - [...left.roman].length
-      || [...right.kana].length - [...left.kana].length);
+    .sort((left, right) => [...right.roman].length - [...left.roman].length || [...right.kana].length - [...left.kana].length);
 
   const chars = [...text];
   const hatsuonRoman = table.get('ん');
   const hatsuonChars = hatsuonRoman === undefined ? [] : [...hatsuonRoman];
   let result = '';
-  for (let cursor = 0; cursor < chars.length;) {
+  for (let cursor = 0; cursor < chars.length; ) {
     // 促音自動生成には n 始まりも含まれるため、単純な最長一致だと
     // "onnya" を o + "nnya"(っにゃ) と誤分割する。
     // 明示された撥音綴りを先に確定し、「おん」+「や」の境界を守る。
-    if (
-      hatsuonChars.length > 0
-      && hatsuonChars.every((char, offset) => chars[cursor + offset] === char)
-    ) {
+    if (hatsuonChars.length > 0 && hatsuonChars.every((char, offset) => chars[cursor + offset] === char)) {
       result += 'ん';
       cursor += hatsuonChars.length;
       continue;
@@ -67,11 +59,7 @@ export function romajiToKana(
  * かな文字との単純な位置比較では正しい子音まで誤入力扱いになる。
  * 既存romaji tableをauthorityにしてraw roman列へ戻し、chunk単位で比較する。
  */
-export function romajiTypingCorrectness(
-  typedDisplay: string,
-  target: string,
-  table: Map<string, string>,
-): boolean[] {
+export function romajiTypingCorrectness(typedDisplay: string, target: string, table: Map<string, string>): boolean[] {
   const targetRoman = [...kanaToRomaji(target, table)];
   const typedChunks = kanaToRomajiChunks(typedDisplay, table);
   const correctness: boolean[] = [];
@@ -79,9 +67,7 @@ export function romajiTypingCorrectness(
 
   for (const chunk of typedChunks) {
     const roman = [...chunk.roman];
-    const matches = roman.every(
-      (char, offset) => targetRoman[romanOffset + offset] === char,
-    );
+    const matches = roman.every((char, offset) => targetRoman[romanOffset + offset] === char);
     for (const _ of chunk.kana) correctness.push(matches);
     romanOffset += roman.length;
   }
@@ -95,11 +81,7 @@ export function romajiTypingCorrectness(
  * これで standalone の ya/yu/yo comboは奪わず、k + (ya combo) -> kya のような
  * 実入力だけを許可する。
  */
-export function liveRomajiContextSatisfied(
-  requirements: readonly InputContextRequirement[],
-  rawRomanText: string,
-  romajiInput: boolean,
-): boolean {
+export function liveRomajiContextSatisfied(requirements: readonly InputContextRequirement[], rawRomanText: string, romajiInput: boolean): boolean {
   return requirements.every((requirement) => {
     // 打った綴りにはかな由来かどうかの情報が無いので、仕様 §4.3の綴りの塊ごとの判定はできない。
     // ローマ字表を持つ配列で打っている時だけ成立とする。

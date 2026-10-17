@@ -92,33 +92,33 @@ test('Practice Text assist can be hidden without clearing the practice text and 
   await expect(assistToggle).toHaveAttribute('aria-pressed', 'true');
 
   await assistToggle.click();
-  await expect(page.getByRole('button', { name: '入力アシストを表示' }))
-    .toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByRole('button', { name: '入力アシストを表示' })).toHaveAttribute('aria-pressed', 'false');
   await expect(practice).toHaveValue('にゅ');
   await expect(keyboard.locator('[data-lookup="true"]')).toHaveCount(0);
   await expect(page.getByLabel('入力順ガイド')).toBeVisible();
 
   // 配列ごとの練習環境なので、別配列では既定ON。
   await layoutSelect.selectOption('naginata-v18');
-  await expect(page.getByRole('button', { name: '入力アシストを非表示' }))
-    .toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: '入力アシストを非表示' })).toHaveAttribute('aria-pressed', 'true');
 
   await layoutSelect.selectOption('shingeta');
-  await expect(page.getByRole('button', { name: '入力アシストを表示' }))
-    .toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByRole('button', { name: '入力アシストを表示' })).toHaveAttribute('aria-pressed', 'false');
   await expect(practice).toHaveValue('にゅ');
   await expect(keyboard.locator('[data-lookup="true"]')).toHaveCount(0);
 
-  await expect.poll(async () => page.evaluate((key) => {
-    const raw = localStorage.getItem(key);
-    if (raw === null) return null;
-    return JSON.parse(raw).inputConverter?.layouts?.shingeta?.showPracticeAssist ?? null;
-  }, STORAGE_KEY)).toBe(false);
+  await expect
+    .poll(async () =>
+      page.evaluate((key) => {
+        const raw = localStorage.getItem(key);
+        if (raw === null) return null;
+        return JSON.parse(raw).inputConverter?.layouts?.shingeta?.showPracticeAssist ?? null;
+      }, STORAGE_KEY),
+    )
+    .toBe(false);
 
   await page.reload();
   await expect(feature).toHaveAttribute('data-input-ready', 'shingeta');
-  await expect(page.getByRole('button', { name: '入力アシストを表示' }))
-    .toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByRole('button', { name: '入力アシストを表示' })).toHaveAttribute('aria-pressed', 'false');
   await expect(practice).toHaveValue('にゅ');
   await expect(keyboard.locator('[data-lookup="true"]')).toHaveCount(0);
 });
@@ -129,25 +129,28 @@ test('random practice mode restores the same current challenge per layout and re
     // addInitScriptはreload時にも再実行されるため、初回だけseedする。
     // 無条件setItemするとreload直前に保存したchallengeをテスト自身が消してしまう。
     if (localStorage.getItem(key) !== null) return;
-    localStorage.setItem(key, JSON.stringify({
-      version: 2,
-      inputConverter: {
+    localStorage.setItem(
+      key,
+      JSON.stringify({
         version: 2,
-        layoutId: 'shingeta',
-        geometryId: 'row-staggered',
-        layouts: {
-          shingeta: {
-            showDynamicGuide: true,
-            showLayerGuide: true,
-            showLayerKeys: true,
-            showShiftKeys: false,
-            inputText: '',
-            practiceText: '',
-            randomPracticeMode: null,
+        inputConverter: {
+          version: 2,
+          layoutId: 'shingeta',
+          geometryId: 'row-staggered',
+          layouts: {
+            shingeta: {
+              showDynamicGuide: true,
+              showLayerGuide: true,
+              showLayerKeys: true,
+              showShiftKeys: false,
+              inputText: '',
+              practiceText: '',
+              randomPracticeMode: null,
+            },
           },
         },
-      },
-    }));
+      }),
+    );
   }, STORAGE_KEY);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/input');
@@ -171,21 +174,25 @@ test('random practice mode restores the same current challenge per layout and re
 
   // preference書き込みは既存schedulerの400ms debounceを使うため、
   // reload検証の前に現在のお題とmodeがstorageへ到達したことを確認する。
-  await expect.poll(async () => page.evaluate((key) => {
-    const raw = localStorage.getItem(key);
-    if (raw === null) return null;
-    const value = JSON.parse(raw).inputConverter;
-    const layout = value?.layouts?.shingeta;
-    return layout === undefined
-      ? null
-      : {
-          practiceText: layout.practiceText,
-          randomPracticeMode: layout.randomPracticeMode,
-        };
-  }, STORAGE_KEY)).toEqual({
-    practiceText: challenge,
-    randomPracticeMode: 'word',
-  });
+  await expect
+    .poll(async () =>
+      page.evaluate((key) => {
+        const raw = localStorage.getItem(key);
+        if (raw === null) return null;
+        const value = JSON.parse(raw).inputConverter;
+        const layout = value?.layouts?.shingeta;
+        return layout === undefined
+          ? null
+          : {
+              practiceText: layout.practiceText,
+              randomPracticeMode: layout.randomPracticeMode,
+            };
+      }, STORAGE_KEY),
+    )
+    .toEqual({
+      practiceText: challenge,
+      randomPracticeMode: 'word',
+    });
 
   await page.reload();
   await expect(feature).toHaveAttribute('data-input-ready', 'shingeta');
@@ -218,11 +225,14 @@ test('an unsupported version value also falls back to defaults with no console e
   const browserErrors = await collectBrowserErrors(page);
 
   await page.addInitScript((key) => {
-    localStorage.setItem(key, JSON.stringify({
-      version: 999,
-      layoutId: 'shingeta',
-      geometryId: 'column-staggered',
-    }));
+    localStorage.setItem(
+      key,
+      JSON.stringify({
+        version: 999,
+        layoutId: 'shingeta',
+        geometryId: 'column-staggered',
+      }),
+    );
   }, STORAGE_KEY);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/input');
@@ -290,14 +300,20 @@ test('自作の配列を選んで開き直すと、その配列と練習環境�
     if (sessionStorage.getItem('seeded') !== null) return;
     sessionStorage.setItem('seeded', '1');
     const rows = ['', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'];
-    localStorage.setItem('keydist:user-layouts', JSON.stringify({
-      version: 1,
-      layouts: [{ id: 'user-a', name: '自作A', rows, romaji: 'rule-a' }],
-    }));
-    localStorage.setItem('keydist:user-romaji-rules', JSON.stringify({
-      version: 1,
-      rules: [{ id: 'rule-a', name: '自作の規則', base: 'kunrei', overrides: { し: 'shi' }, generateSokuon: true }],
-    }));
+    localStorage.setItem(
+      'keydist:user-layouts',
+      JSON.stringify({
+        version: 1,
+        layouts: [{ id: 'user-a', name: '自作A', rows, romaji: 'rule-a' }],
+      }),
+    );
+    localStorage.setItem(
+      'keydist:user-romaji-rules',
+      JSON.stringify({
+        version: 1,
+        rules: [{ id: 'rule-a', name: '自作の規則', base: 'kunrei', overrides: { し: 'shi' }, generateSokuon: true }],
+      }),
+    );
   });
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/input');

@@ -15,10 +15,7 @@ export interface UserAssetRow {
  * 自作の配列の行。補足は、推奨のローマ字規則（見つからなければ全体の値の規則で打つ旨）。
  * 計算に使えない配列は、推奨の規則の代わりに使えない理由を出す。
  */
-export function userLayoutRows(
-  userLayouts: readonly UserLayout[],
-  userRomajiRules: readonly UserRomajiRule[],
-): readonly UserAssetRow[] {
+export function userLayoutRows(userLayouts: readonly UserLayout[], userRomajiRules: readonly UserRomajiRule[]): readonly UserAssetRow[] {
   const ruleNames = new Map(userRomajiRules.map((rule) => [rule.id, rule.name] as const));
   const { unusableLayouts } = buildUserCatalog(userLayouts, userRomajiRules);
   return userLayouts.map((layout, index) => {
@@ -30,23 +27,19 @@ export function userLayoutRows(
       return { id: layout.id, name: layout.name, detail: '推奨のローマ字規則はありません。全体の値の規則で打ちます' };
     }
     const ruleName = isBuiltin(romaji) ? ROMAJI_RULES[romaji].name : ruleNames.get(romaji);
-    const detail = ruleName === undefined
-      ? '推奨のローマ字規則が見つからないため、全体の値の規則で打ちます'
-      : `推奨のローマ字規則: ${ruleName}`;
+    const detail = ruleName === undefined ? '推奨のローマ字規則が見つからないため、全体の値の規則で打ちます' : `推奨のローマ字規則: ${ruleName}`;
     return { id: layout.id, name: layout.name, detail };
   });
 }
 
 /** 自作のローマ字規則の行。補足は、その規則を推奨に使っている自作の配列（削除すると全体の値の規則に変わる旨）。 */
-export function userRomajiRuleRows(
-  userLayouts: readonly UserLayout[],
-  userRomajiRules: readonly UserRomajiRule[],
-): readonly UserAssetRow[] {
+export function userRomajiRuleRows(userLayouts: readonly UserLayout[], userRomajiRules: readonly UserRomajiRule[]): readonly UserAssetRow[] {
   return userRomajiRules.map((rule) => {
     const users = userLayouts.filter((layout) => layout.direct !== true && layout.romaji === rule.id);
-    const detail = users.length === 0
-      ? undefined
-      : `推奨に使っている配列: ${users.map((layout) => layout.name).join('、')}。削除すると、その配列は全体の値の規則で打ちます`;
+    const detail =
+      users.length === 0
+        ? undefined
+        : `推奨に使っている配列: ${users.map((layout) => layout.name).join('、')}。削除すると、その配列は全体の値の規則で打ちます`;
     return { id: rule.id, name: rule.name, detail };
   });
 }
@@ -61,7 +54,9 @@ export function userFingerAssignmentRows(assignments: readonly FingerAssignment[
 }
 
 /** Setupの行。名前は手持ちのSetup全部に対して付けた表示名で、補足は配列・物理配列・変えた条件を含むフルの名前。 */
-export function userSetupRows(items: readonly { readonly setup: { readonly id: string }; readonly displayName: string; readonly fullName: string }[]): readonly UserAssetRow[] {
+export function userSetupRows(
+  items: readonly { readonly setup: { readonly id: string }; readonly displayName: string; readonly fullName: string }[],
+): readonly UserAssetRow[] {
   return items.map((item) => ({
     id: item.setup.id,
     name: item.displayName,

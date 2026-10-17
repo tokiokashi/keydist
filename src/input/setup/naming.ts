@@ -30,29 +30,30 @@ interface TargetNameSourceBase {
   readonly setupNumber?: number;
 }
 
-export type TargetNameSource = TargetNameSourceBase & (
-  | {
-    readonly failed?: false;
-    readonly layoutName: string;
-    /** 実効の物理配列名。配列対象は常にカスケードの「既定の物理配列」の名前になる。 */
-    readonly shapeName: string;
-    /**
-     * 既定値と違う条件の短い併記（`hosts/shared/condition-summary.ts`の
-     * `summarizeNonDefaultConditions`と同じ形式の1行）。無ければ省略。
-     */
-    readonly overrideSummary?: string;
-  }
-  | {
-    /**
-     * 対象の解決自体が失敗している（Setup削除・このテキストに使えない等）。
-     * 失敗メンバーは「集合の中で何が共通か」を決める母集団から除き、表示名には
-     * 呼び出し側が分かる範囲で作った説明（`description`）をそのまま使う。
-     * 実効の物理配列・条件が決まっていないので、差分計算に混ぜると不自然な差分が出るため。
-     */
-    readonly failed: true;
-    readonly description: string;
-  }
-);
+export type TargetNameSource = TargetNameSourceBase &
+  (
+    | {
+        readonly failed?: false;
+        readonly layoutName: string;
+        /** 実効の物理配列名。配列対象は常にカスケードの「既定の物理配列」の名前になる。 */
+        readonly shapeName: string;
+        /**
+         * 既定値と違う条件の短い併記（`hosts/shared/condition-summary.ts`の
+         * `summarizeNonDefaultConditions`と同じ形式の1行）。無ければ省略。
+         */
+        readonly overrideSummary?: string;
+      }
+    | {
+        /**
+         * 対象の解決自体が失敗している（Setup削除・このテキストに使えない等）。
+         * 失敗メンバーは「集合の中で何が共通か」を決める母集団から除き、表示名には
+         * 呼び出し側が分かる範囲で作った説明（`description`）をそのまま使う。
+         * 実効の物理配列・条件が決まっていないので、差分計算に混ぜると不自然な差分が出るため。
+         */
+        readonly failed: true;
+        readonly description: string;
+      }
+  );
 
 type ResolvedSource = Extract<TargetNameSource, { layoutName: string }>;
 
@@ -147,14 +148,10 @@ const MAX_LEVEL = 2;
  */
 export function nameTargets(sources: readonly TargetNameSource[]): readonly NamedTarget[] {
   const labels = sources.map((s) => effectiveLabel(s.label));
-  const commonalityBasis = sources.filter(
-    (s, i): s is ResolvedSource => labels[i] === undefined && isResolved(s),
-  );
+  const commonalityBasis = sources.filter((s, i): s is ResolvedSource => labels[i] === undefined && isResolved(s));
   // 集合が1件なら共通部分は全部なので、名前だけにする（条件の差分は直下の条件の要約で見る）。
   // 2件以上で他がラベル付き・失敗のため基準が1件以下になる場合は、区別のために従来どおり差を含める。
-  const bases = sources.map((s, i) => labels[i] ?? (sources.length === 1 && isResolved(s)
-    ? s.layoutName
-    : differenceName(s, commonalityBasis)));
+  const bases = sources.map((s, i) => labels[i] ?? (sources.length === 1 && isResolved(s) ? s.layoutName : differenceName(s, commonalityBasis)));
   const levels = sources.map(() => 0);
 
   const namesNow = () => sources.map((s, i) => escalatedName(bases[i]!, s, i, levels[i]!));

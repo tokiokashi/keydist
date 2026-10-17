@@ -40,9 +40,7 @@ export function physicalShapeKeyIds(shape: PhysicalShape): ReadonlySet<string> {
  */
 export function jisShapeIdFor(base: PhysicalShape, requiredKeys: ReadonlySet<string>): string {
   if (isPresetGeometryKind(base.id)) {
-    return presetGeometryStandard(base.id) === 'jis'
-      ? base.id
-      : presetGeometryKind('jis', presetGeometryTopology(base.id));
+    return presetGeometryStandard(base.id) === 'jis' ? base.id : presetGeometryKind('jis', presetGeometryTopology(base.id));
   }
   const keys = physicalShapeKeyIds(base);
   for (const key of requiredKeys) {

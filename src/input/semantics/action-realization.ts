@@ -4,14 +4,9 @@ import type { RealizedSemanticAction } from './trigger-realization.ts';
 
 export type TriggerActivationGrouping = 'combined' | 'separate';
 export type TriggerActivationMode = 'disabled' | 'semantic';
-export type TriggerActivationClass =
-  | 'prepress-required'
-  | 'order-free'
-  | 'postpress-required';
+export type TriggerActivationClass = 'prepress-required' | 'order-free' | 'postpress-required';
 
-export const DEFAULT_TRIGGER_ACTIVATION_GROUPINGS: Readonly<
-  Record<TriggerActivationClass, TriggerActivationGrouping>
-> = {
+export const DEFAULT_TRIGGER_ACTIVATION_GROUPINGS: Readonly<Record<TriggerActivationClass, TriggerActivationGrouping>> = {
   'prepress-required': 'separate',
   'order-free': 'combined',
   'postpress-required': 'combined',
@@ -39,9 +34,7 @@ export interface ActionRealizationPolicy {
    * semantic既定値への大分類override。
    * concrete selector overrideより優先度は低い。
    */
-  readonly triggerActivationClassOverrides?: Readonly<
-    Partial<Record<TriggerActivationClass, TriggerActivationGrouping>>
-  >;
+  readonly triggerActivationClassOverrides?: Readonly<Partial<Record<TriggerActivationClass, TriggerActivationGrouping>>>;
   /** layout内のtrigger groupごとの例外。physical selectorほど優先する。 */
   readonly triggerActivationOverrides?: readonly TriggerActivationOverride[];
 }
@@ -52,40 +45,22 @@ export const DEFAULT_ACTION_REALIZATION_POLICY: ActionRealizationPolicy = {
   triggerActivationOverrides: [],
 };
 
-const canonicalKeys = (keys: readonly PhysicalKeyId[]): PhysicalKeyId[] =>
-  [...new Set(keys.map(resolveKeyId))];
+const canonicalKeys = (keys: readonly PhysicalKeyId[]): PhysicalKeyId[] => [...new Set(keys.map(resolveKeyId))];
 
-const canonicalKeyIdentity = (keys: readonly PhysicalKeyId[]): string =>
-  [...canonicalKeys(keys)].sort().join('\u0000');
+const canonicalKeyIdentity = (keys: readonly PhysicalKeyId[]): string => [...canonicalKeys(keys)].sort().join('\u0000');
 
-const sameOptionalKeys = (
-  left: readonly PhysicalKeyId[] | undefined,
-  right: readonly PhysicalKeyId[] | undefined,
-): boolean => left === undefined
-  ? right === undefined
-  : right !== undefined && canonicalKeyIdentity(left) === canonicalKeyIdentity(right);
+const sameOptionalKeys = (left: readonly PhysicalKeyId[] | undefined, right: readonly PhysicalKeyId[] | undefined): boolean =>
+  left === undefined ? right === undefined : right !== undefined && canonicalKeyIdentity(left) === canonicalKeyIdentity(right);
 
-const canonicalStringIdentity = (values: readonly string[]): string =>
-  [...new Set(values)].sort().join('\u0000');
+const canonicalStringIdentity = (values: readonly string[]): string => [...new Set(values)].sort().join('\u0000');
 
-const sameOptionalStrings = (
-  left: readonly string[] | undefined,
-  right: readonly string[] | undefined,
-): boolean => left === undefined
-  ? right === undefined
-  : right !== undefined && canonicalStringIdentity(left) === canonicalStringIdentity(right);
+const sameOptionalStrings = (left: readonly string[] | undefined, right: readonly string[] | undefined): boolean =>
+  left === undefined ? right === undefined : right !== undefined && canonicalStringIdentity(left) === canonicalStringIdentity(right);
 
-const sameSelector = (
-  left: TriggerActivationSelector,
-  right: TriggerActivationSelector,
-): boolean => sameOptionalStrings(left.modifierGroupIds, right.modifierGroupIds)
-  && sameOptionalKeys(left.triggerKeys, right.triggerKeys);
+const sameSelector = (left: TriggerActivationSelector, right: TriggerActivationSelector): boolean =>
+  sameOptionalStrings(left.modifierGroupIds, right.modifierGroupIds) && sameOptionalKeys(left.triggerKeys, right.triggerKeys);
 
-const ACTIVATION_CLASSES: readonly TriggerActivationClass[] = [
-  'prepress-required',
-  'order-free',
-  'postpress-required',
-];
+const ACTIVATION_CLASSES: readonly TriggerActivationClass[] = ['prepress-required', 'order-free', 'postpress-required'];
 
 function sameClassOverrides(
   left: ActionRealizationPolicy['triggerActivationClassOverrides'],
@@ -94,36 +69,23 @@ function sameClassOverrides(
   return ACTIVATION_CLASSES.every((key) => left?.[key] === right?.[key]);
 }
 
-export function sameActionRealizationPolicy(
-  left: ActionRealizationPolicy,
-  right: ActionRealizationPolicy,
-): boolean {
+export function sameActionRealizationPolicy(left: ActionRealizationPolicy, right: ActionRealizationPolicy): boolean {
   if (left.triggerActivation !== right.triggerActivation) return false;
-  if (!sameClassOverrides(
-    left.triggerActivationClassOverrides,
-    right.triggerActivationClassOverrides,
-  )) return false;
+  if (!sameClassOverrides(left.triggerActivationClassOverrides, right.triggerActivationClassOverrides)) return false;
   const leftOverrides = left.triggerActivationOverrides ?? [];
   const rightOverrides = right.triggerActivationOverrides ?? [];
   if (leftOverrides.length !== rightOverrides.length) return false;
   return leftOverrides.every((override, index) => {
     const candidate = rightOverrides[index];
-    return candidate !== undefined
-      && override.grouping === candidate.grouping
-      && sameSelector(override.selector, candidate.selector);
+    return candidate !== undefined && override.grouping === candidate.grouping && sameSelector(override.selector, candidate.selector);
   });
 }
 
-const selectKeys = (
-  keys: readonly PhysicalKeyId[],
-  selected: ReadonlySet<PhysicalKeyId>,
-): PhysicalKeyId[] =>
+const selectKeys = (keys: readonly PhysicalKeyId[], selected: ReadonlySet<PhysicalKeyId>): PhysicalKeyId[] =>
   canonicalKeys(keys).filter((key) => selected.has(key));
 
-const intersects = (
-  keys: readonly PhysicalKeyId[],
-  selected: ReadonlySet<PhysicalKeyId>,
-): boolean => canonicalKeys(keys).some((key) => selected.has(key));
+const intersects = (keys: readonly PhysicalKeyId[], selected: ReadonlySet<PhysicalKeyId>): boolean =>
+  canonicalKeys(keys).some((key) => selected.has(key));
 
 /**
  * trigger/output間のcanonical orderだけを分類する。
@@ -154,72 +116,54 @@ export function classifyTriggerActivation(
   return 'order-free';
 }
 
-const modifierGroupIdsForAction = (
-  action: RealizedSemanticAction,
-): string[] => {
+const modifierGroupIdsForAction = (action: RealizedSemanticAction): string[] => {
   const trigger = new Set(canonicalKeys(action.triggerKeys));
-  return [...new Set(action.input.roles.flatMap((role) =>
-    role.role === 'modifier'
-      && role.modifierGroupId !== undefined
-      && trigger.has(resolveKeyId(role.key))
-      ? [role.modifierGroupId]
-      : []))].sort();
+  return [
+    ...new Set(
+      action.input.roles.flatMap((role) =>
+        role.role === 'modifier' && role.modifierGroupId !== undefined && trigger.has(resolveKeyId(role.key)) ? [role.modifierGroupId] : [],
+      ),
+    ),
+  ].sort();
 };
 
-const selectorMatches = (
-  selector: TriggerActivationSelector,
-  action: RealizedSemanticAction,
-): boolean => {
-  if (selector.modifierGroupIds !== undefined
-    && canonicalStringIdentity(selector.modifierGroupIds)
-      !== canonicalStringIdentity(modifierGroupIdsForAction(action))) {
+const selectorMatches = (selector: TriggerActivationSelector, action: RealizedSemanticAction): boolean => {
+  if (
+    selector.modifierGroupIds !== undefined &&
+    canonicalStringIdentity(selector.modifierGroupIds) !== canonicalStringIdentity(modifierGroupIdsForAction(action))
+  ) {
     return false;
   }
-  if (selector.triggerKeys !== undefined
-    && canonicalKeyIdentity(selector.triggerKeys) !== canonicalKeyIdentity(action.triggerKeys)) {
+  if (selector.triggerKeys !== undefined && canonicalKeyIdentity(selector.triggerKeys) !== canonicalKeyIdentity(action.triggerKeys)) {
     return false;
   }
   return selector.modifierGroupIds !== undefined || selector.triggerKeys !== undefined;
 };
 
-function concreteOverrideFor(
-  action: RealizedSemanticAction,
-  policy: ActionRealizationPolicy,
-): TriggerActivationGrouping | undefined {
-  const matches = (policy.triggerActivationOverrides ?? [])
-    .filter((override) => selectorMatches(override.selector, action));
-  return matches.find((override) => override.selector.triggerKeys !== undefined)?.grouping
-    ?? matches.find((override) => override.selector.modifierGroupIds !== undefined)?.grouping;
+function concreteOverrideFor(action: RealizedSemanticAction, policy: ActionRealizationPolicy): TriggerActivationGrouping | undefined {
+  const matches = (policy.triggerActivationOverrides ?? []).filter((override) => selectorMatches(override.selector, action));
+  return (
+    matches.find((override) => override.selector.triggerKeys !== undefined)?.grouping ??
+    matches.find((override) => override.selector.modifierGroupIds !== undefined)?.grouping
+  );
 }
 
-const groupingFor = (
-  action: RealizedSemanticAction,
-  policy: ActionRealizationPolicy,
-): TriggerActivationGrouping => {
+const groupingFor = (action: RealizedSemanticAction, policy: ActionRealizationPolicy): TriggerActivationGrouping => {
   if (policy.triggerActivation === 'disabled') return 'combined';
   if (action.input.classifications.includes('composition')) return 'combined';
 
   const concrete = concreteOverrideFor(action, policy);
   if (concrete !== undefined) return concrete;
 
-  const activationClass = classifyTriggerActivation(
-    action.input,
-    action.triggerKeys,
-    action.outputKeys,
-  );
-  return policy.triggerActivationClassOverrides?.[activationClass]
-    ?? DEFAULT_TRIGGER_ACTIVATION_GROUPINGS[activationClass];
+  const activationClass = classifyTriggerActivation(action.input, action.triggerKeys, action.outputKeys);
+  return policy.triggerActivationClassOverrides?.[activationClass] ?? DEFAULT_TRIGGER_ACTIVATION_GROUPINGS[activationClass];
 };
 
 /**
  * trigger groupをremaining groupより先のanalytic actionへ分けても、
  * canonical order Requirementを壊さない場合だけtrue。
  */
-function allowsTriggerFirstSplit(
-  action: RealizedSemanticAction,
-  trigger: ReadonlySet<PhysicalKeyId>,
-  remaining: ReadonlySet<PhysicalKeyId>,
-): boolean {
+function allowsTriggerFirstSplit(action: RealizedSemanticAction, trigger: ReadonlySet<PhysicalKeyId>, remaining: ReadonlySet<PhysicalKeyId>): boolean {
   return action.input.requirements.every((requirement) => {
     if (requirement.kind !== 'order') return true;
 
@@ -247,9 +191,7 @@ function allowsTriggerFirstSplit(
  *
  * hold状態は別軸。hold startなら後続outputへcontinueを引き継ぐ。
  */
-function separateTriggerActivation(
-  action: RealizedSemanticAction,
-): readonly RealizedSemanticAction[] {
+function separateTriggerActivation(action: RealizedSemanticAction): readonly RealizedSemanticAction[] {
   if (action.input.classifications.includes('composition')) return [action];
 
   const pressed = new Set(canonicalKeys(action.keys));
@@ -301,8 +243,5 @@ export function applyActionRealizationPolicy(
   policy: ActionRealizationPolicy = DEFAULT_ACTION_REALIZATION_POLICY,
 ): readonly RealizedSemanticAction[] {
   if (policy.triggerActivation === 'disabled') return actions;
-  return actions.flatMap((action) =>
-    groupingFor(action, policy) === 'separate'
-      ? separateTriggerActivation(action)
-      : [action]);
+  return actions.flatMap((action) => (groupingFor(action, policy) === 'separate' ? separateTriggerActivation(action) : [action]));
 }

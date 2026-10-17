@@ -28,23 +28,26 @@ async function open(page: Page, size = { width: 1440, height: 900 }): Promise<vo
   // 保存の間引き（400ms）が切れるまでの時間を、実時間で待たずに `advance` で進める
   await page.clock.install();
   await page.setViewportSize(size);
-  await page.addInitScript(({ key, value }) => {
-    if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 4, workspaces: [value] }));
-    const log = { requests: 0, stale: 0 };
-    (window as unknown as { __log: typeof log }).__log = log;
-    const Original = window.Worker;
-    window.Worker = class extends Original {
-      override postMessage(message: unknown, ...rest: unknown[]) {
-        log.requests += 1;
-        return (super.postMessage as (...args: unknown[]) => void)(message, ...rest);
-      }
-    } as typeof Worker;
-    new MutationObserver((records) => {
-      for (const record of records) {
-        if ((record.target as Element).getAttribute('data-pane-status') === 'stale') log.stale += 1;
-      }
-    }).observe(document, { subtree: true, attributes: true, attributeFilter: ['data-pane-status'] });
-  }, { key: WORKSPACES_KEY, value: { id: 'm', name: '拡大', text: TEXT, panes: PANES, grid: GRID, groups: [{ id: 'g1', target: { single: QWERTY } }] } });
+  await page.addInitScript(
+    ({ key, value }) => {
+      if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 4, workspaces: [value] }));
+      const log = { requests: 0, stale: 0 };
+      (window as unknown as { __log: typeof log }).__log = log;
+      const Original = window.Worker;
+      window.Worker = class extends Original {
+        override postMessage(message: unknown, ...rest: unknown[]) {
+          log.requests += 1;
+          return (super.postMessage as (...args: unknown[]) => void)(message, ...rest);
+        }
+      } as typeof Worker;
+      new MutationObserver((records) => {
+        for (const record of records) {
+          if ((record.target as Element).getAttribute('data-pane-status') === 'stale') log.stale += 1;
+        }
+      }).observe(document, { subtree: true, attributes: true, attributeFilter: ['data-pane-status'] });
+    },
+    { key: WORKSPACES_KEY, value: { id: 'm', name: '拡大', text: TEXT, panes: PANES, grid: GRID, groups: [{ id: 'g1', target: { single: QWERTY } }] } },
+  );
   await page.goto('/workspace/m');
   await waitForHydration(page);
 }
@@ -59,14 +62,16 @@ async function openReady(page: Page, size?: { width: number; height: number }): 
 /** 開いた直後の計算（見えていないペインのぶんも含む）が済むまで待つ。依頼の数が600ms動かなければ済んだとみなす。 */
 async function waitForRequestsQuiet(page: Page): Promise<void> {
   let previous = -1;
-  await expect.poll(async () => {
-    const current = await page.evaluate(() => (window as unknown as { __log: { requests: number } }).__log.requests);
-    const quiet = current === previous;
-    previous = current;
-    // 依頼が出ない時間そのものが条件（600ms動かなければ済んだとみなす）なので、実時間で待つ
-    if (!quiet) await page.waitForTimeout(600);
-    return quiet;
-  }).toBe(true);
+  await expect
+    .poll(async () => {
+      const current = await page.evaluate(() => (window as unknown as { __log: { requests: number } }).__log.requests);
+      const quiet = current === previous;
+      previous = current;
+      // 依頼が出ない時間そのものが条件（600ms動かなければ済んだとみなす）なので、実時間で待つ
+      if (!quiet) await page.waitForTimeout(600);
+      return quiet;
+    })
+    .toBe(true);
 }
 
 /** ペインの位置・大きさが落ち着くまで待つ（ライブラリの配置の動き 200ms と、拡大の出入りの後）。 */
@@ -76,14 +81,17 @@ async function settle(page: Page): Promise<void> {
 
 /** 各ペインの枠の矩形（整数に丸めた文字列）。 */
 function rects(page: Page): Promise<string[]> {
-  return page.locator('.workspace-grid-item').evaluateAll((els) => els.map((el) => {
-    const r = el.getBoundingClientRect();
-    return `${el.getAttribute('data-pane-id')}:${Math.round(r.x)},${Math.round(r.y)},${Math.round(r.width)},${Math.round(r.height)}`;
-  }));
+  return page.locator('.workspace-grid-item').evaluateAll((els) =>
+    els.map((el) => {
+      const r = el.getBoundingClientRect();
+      return `${el.getAttribute('data-pane-id')}:${Math.round(r.x)},${Math.round(r.y)},${Math.round(r.width)},${Math.round(r.height)}`;
+    }),
+  );
 }
 
 const menuButton = (page: Page, id: string) => page.locator(`.workspace-grid-item[data-pane-id="${id}"] .pane-menu-button[aria-label$="の操作"]`);
-const isMaximized = (page: Page, id: string) => page.locator(`.workspace-grid-item[data-pane-id="${id}"]`).evaluate((el) => el.hasAttribute('data-maximized'));
+const isMaximized = (page: Page, id: string) =>
+  page.locator(`.workspace-grid-item[data-pane-id="${id}"]`).evaluate((el) => el.hasAttribute('data-maximized'));
 const stored = (page: Page) => page.evaluate((key) => localStorage.getItem(key), WORKSPACES_KEY);
 const log = (page: Page) => page.evaluate(() => (window as unknown as { __log: { requests: number; stale: number } }).__log);
 
@@ -405,7 +413,9 @@ test('拡大中にテキストの選択を開いたら、Escapeは選択を閉�
   await expect.poll(() => isMaximized(page, 'a')).toBe(false);
 });
 
-test('固定を外して重ねて出したサイドバーを拡大中に開いたら、Escapeはサイドバーを閉じるだけで拡大は残る。閉じた後のEscapeで拡大が戻る', async ({ page }) => {
+test('固定を外して重ねて出したサイドバーを拡大中に開いたら、Escapeはサイドバーを閉じるだけで拡大は残る。閉じた後のEscapeで拡大が戻る', async ({
+  page,
+}) => {
   // 既定の固定を外し、サイドバーを重ねて出せる状態で始める
   await page.addInitScript(() => {
     if (localStorage.getItem('keydist:app-state') === null) {

@@ -25,7 +25,11 @@ for (const workspace of library.workspaces) {
     await expect(page.locator('[data-pane-crashed]')).toHaveCount(0);
     await expect(page.locator('[data-workspace-pane-notice]')).toHaveCount(0);
     // どのペインも、解析設定はそのペインだけのものとして開く
-    await page.locator('.pane-frame').first().getByRole('button', { name: /解析設定/ }).click();
+    await page
+      .locator('.pane-frame')
+      .first()
+      .getByRole('button', { name: /解析設定/ })
+      .click();
     await expect(page.locator('[data-options-binding="own"]')).toBeVisible();
   });
 }

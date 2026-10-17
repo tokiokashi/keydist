@@ -1,18 +1,11 @@
-import {
-  layerDefinitionsWithLabels,
-  type Layer,
-} from '#input/layouts/layers.ts';
+import { layerDefinitionsWithLabels, type Layer } from '#input/layouts/layers.ts';
 import { SINGLE_LAYER_ID, type Layout } from '#input/layouts/types.ts';
 import { mergeKeyDetails, type KeyDetail, type KeyDetails } from '#interpretation/key-detail.ts';
 import { presentationLayersOf } from '../heatmap-figure.ts';
 import { compactPresentationOf } from '../layer-detail.ts';
 import type { HeatmapLayersExtracted, HeatmapLayer } from './extract.ts';
 import { normalizedRoleColors } from './layer-heatmap.ts';
-import {
-  AUTO_SIDE_BY_SIDE_MAX_LAYERS,
-  type HeatmapLayerArrangement,
-  type HeatmapLayerDetail,
-} from './options.ts';
+import { AUTO_SIDE_BY_SIDE_MAX_LAYERS, type HeatmapLayerArrangement, type HeatmapLayerDetail } from './options.ts';
 
 /**
  * ヒートマップ（レイヤー）の図を並べるための、表示側の組み立て（純粋な計算）。
@@ -40,9 +33,10 @@ export interface HeatmapLayerEntry {
 
 function layerTitle(layer: Layer, index: number, label: string, layout: Layout): string {
   // 押し方の区分は番号の後ろに括弧で置く。名前が括弧を使う（「外来音（ぅ）」）ので、名前の後ろには続けない
-  const modeLabel = layer.faces.length === 0 || layer.id === SINGLE_LAYER_ID
-    ? undefined
-    : layout.layerDefinitions?.find((definition) => definition.id === layer.id)?.presentationModeLabel;
+  const modeLabel =
+    layer.faces.length === 0 || layer.id === SINGLE_LAYER_ID
+      ? undefined
+      : layout.layerDefinitions?.find((definition) => definition.id === layer.id)?.presentationModeLabel;
   return `レイヤー${index + 1}${modeLabel === undefined ? '' : `（${modeLabel}）`}: ${label}`;
 }
 
@@ -72,11 +66,7 @@ function sumCounts(parts: readonly ReadonlyMap<string, number>[]): Map<string, n
  * 合算先の役割で色用の押下数を求め直す（各層の色用の押下数を足すと、修飾の層で外した
  * 同時押下のトリガーが戻ってしまう）。
  */
-export function buildLayerEntries(
-  layout: Layout,
-  extracted: HeatmapLayersExtracted,
-  detail: HeatmapLayerDetail,
-): HeatmapLayerEntry[] {
+export function buildLayerEntries(layout: Layout, extracted: HeatmapLayersExtracted, detail: HeatmapLayerDetail): HeatmapLayerEntry[] {
   const stats = new Map(extracted.layers.map((layer) => [layer.id, layer]));
   const presentation = presentationLayersOf(layout);
   // 配列が面として宣言していない層（英字配列のShiftなど）にも押下は帰属する。押下が無い間は図を足さず、
@@ -89,7 +79,18 @@ export function buildLayerEntries(
   const entries = [...presentation, ...undeclared].map((layer, index) => {
     const label = definitions.find((definition) => definition.id === layer.id)?.label ?? layer.id;
     const stat = stats.get(layer.id) ?? emptyLayer(layer.id, label);
-    return { stat, entry: { id: layer.id, faceIds: [layer.id], title: layerTitle(layer, index, stat.label, layout), label: stat.label, layer, keyCounts: stat.keyCounts, colorCounts: stat.colorCounts } };
+    return {
+      stat,
+      entry: {
+        id: layer.id,
+        faceIds: [layer.id],
+        title: layerTitle(layer, index, stat.label, layout),
+        label: stat.label,
+        layer,
+        keyCounts: stat.keyCounts,
+        colorCounts: stat.colorCounts,
+      },
+    };
   });
 
   const compact = compactPresentationOf(layout);

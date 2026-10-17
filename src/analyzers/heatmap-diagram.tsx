@@ -102,31 +102,37 @@ export function HeatmapDiagram({
   const caption = title === undefined ? '打鍵頻度' : `${title}・打鍵頻度`;
 
   return (
-    <figure className="heatmap-diagram" data-heatmap-diagram={diagramId} style={fill ? { width: '100%', maxWidth: width } : { width, maxWidth: '100%' }} hidden={hidden}>
+    <figure
+      className="heatmap-diagram"
+      data-heatmap-diagram={diagramId}
+      style={fill ? { width: '100%', maxWidth: width } : { width, maxWidth: '100%' }}
+      hidden={hidden}
+    >
       <figcaption>{caption}</figcaption>
       <svg viewBox={`${viewX} ${viewY} ${width} ${height}`} role={keySelection === undefined ? 'img' : 'group'} aria-label={`${caption}${ariaSuffix}`}>
         {keys.map((item) => {
           const name = keyName(item.key.id, item.label, standard);
-          const tooltip = countOnlyTooltip
-            ? `${name}: ${item.detail?.presses ?? 0}打`
-            : keyDetailTooltip(name, item.detail);
+          const tooltip = countOnlyTooltip ? `${name}: ${item.detail?.presses ?? 0}打` : keyDetailTooltip(name, item.detail);
           const selected = keySelection?.selectedKeyId === item.key.id;
-          const interactive = keySelection === undefined ? {} : {
-            role: 'button',
-            tabIndex: 0,
-            'aria-pressed': selected,
-            'aria-label': tooltip.split('\n')[0],
-            onClick: (event: MouseEvent<SVGGElement>) => keySelection.onKeyPress(item.key.id, event.currentTarget),
-            onKeyDown: (event: KeyboardEvent<SVGGElement>) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                keySelection.onKeyPress(item.key.id, event.currentTarget);
-              } else if (event.key === 'Escape' && keySelection.selectedKeyId !== undefined) {
-                event.stopPropagation();
-                keySelection.onClear();
-              }
-            },
-          };
+          const interactive =
+            keySelection === undefined
+              ? {}
+              : {
+                  role: 'button',
+                  tabIndex: 0,
+                  'aria-pressed': selected,
+                  'aria-label': tooltip.split('\n')[0],
+                  onClick: (event: MouseEvent<SVGGElement>) => keySelection.onKeyPress(item.key.id, event.currentTarget),
+                  onKeyDown: (event: KeyboardEvent<SVGGElement>) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      keySelection.onKeyPress(item.key.id, event.currentTarget);
+                    } else if (event.key === 'Escape' && keySelection.selectedKeyId !== undefined) {
+                      event.stopPropagation();
+                      keySelection.onClear();
+                    }
+                  },
+                };
           return (
             <g
               key={item.key.id}

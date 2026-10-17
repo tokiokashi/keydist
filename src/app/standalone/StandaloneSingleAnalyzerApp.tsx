@@ -19,11 +19,7 @@ import { useTextContentCommit } from './use-text-content-commit.ts';
  *
  * 計算の窓口は他の単体ページと共有する（`engine-computer.ts`。ブラウザではWorker）。
  */
-export function StandaloneSingleAnalyzerApp<Options, Extracted>({
-  analyzer,
-}: {
-  readonly analyzer: SingleAnalyzerPaneParts<Options, Extracted>;
-}) {
+export function StandaloneSingleAnalyzerApp<Options, Extracted>({ analyzer }: { readonly analyzer: SingleAnalyzerPaneParts<Options, Extracted> }) {
   const decodeOptions = (raw: unknown) => analyzer.definition.decodeOptions(raw, []);
   const { assets, ready, dispatch, getAssets, canUndo, canRedo, undo, redo } = useKeydistAssets();
   const catalog = useMemo(() => paneCatalog(assets), [assets.userLayouts, assets.userRomajiRules, assets.fingerAssignments, assets.personalSpeed]);

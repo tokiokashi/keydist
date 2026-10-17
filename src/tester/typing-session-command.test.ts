@@ -1,11 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { TypingInputEngine } from './engine/index.ts';
-import {
-  applyRecognizedTypingInputs,
-  applyTypingTextEdit,
-  executeTypingEditCommand,
-} from './typing-session-command.ts';
+import { applyRecognizedTypingInputs, applyTypingTextEdit, executeTypingEditCommand } from './typing-session-command.ts';
 import { TSUKI_2_263 } from '#input/layouts/tsuki-2-263.ts';
 
 const prefixD = (engine: TypingInputEngine) => {
@@ -21,7 +17,10 @@ test('Backspaceはprefix recognition windowをcancelしてから文字を削除�
   assert.equal(applyTypingTextEdit('あい', command.textEdit), 'あ');
 
   const result = engine.handle({ type: 'down', key: 'h' });
-  assert.deepEqual(result.recognized.map((entry) => entry.output), ['く']);
+  assert.deepEqual(
+    result.recognized.map((entry) => entry.output),
+    ['く'],
+  );
 });
 
 test('Enterはpendingをflushした後にrecognitionをresetして改行する', () => {
@@ -29,18 +28,14 @@ test('Enterはpendingをflushした後にrecognitionをresetして改行する',
   prefixD(engine);
 
   const command = executeTypingEditCommand(engine, 'enter');
-  assert.equal(
-    applyTypingTextEdit(
-      applyRecognizedTypingInputs('あ', command.recognized),
-      command.textEdit,
-    ),
-    'あ\n',
-  );
+  assert.equal(applyTypingTextEdit(applyRecognizedTypingInputs('あ', command.recognized), command.textEdit), 'あ\n');
 
   const result = engine.handle({ type: 'down', key: 'h' });
-  assert.deepEqual(result.recognized.map((entry) => entry.output), ['く']);
+  assert.deepEqual(
+    result.recognized.map((entry) => entry.output),
+    ['く'],
+  );
 });
-
 
 test('recognized composed outputは直前component textを置換する', () => {
   const engine = new TypingInputEngine(TSUKI_2_263.canonicalInputs);

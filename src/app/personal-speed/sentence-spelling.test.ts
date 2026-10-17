@@ -21,7 +21,10 @@ const BASE = { userLayouts: [], userRomajiRules: [], fingerAssignments: [] };
 const SELECTION: PersonalSpeedSelection = { layoutId: 'qwerty', shapeId: 'row-staggered', fingerAssignmentId: 'default' };
 const label = (id: string) => id.toUpperCase();
 
-function written(overrides: SettingsCascadeOverrides, ...args: Parameters<typeof setSettingsOverride> extends [unknown, ...infer R] ? R : never): SettingsCascadeOverrides {
+function written(
+  overrides: SettingsCascadeOverrides,
+  ...args: Parameters<typeof setSettingsOverride> extends [unknown, ...infer R] ? R : never
+): SettingsCascadeOverrides {
   const result = setSettingsOverride(overrides, ...args);
   assert.ok(result.ok);
   return result.overrides;
@@ -86,7 +89,12 @@ test('訓令式の条件のQWERTYで、shi・chi・tsu・shaと子音の前のn1
   assert.equal(analysis.strokes.map((stroke) => stroke.char).join(''), keys);
   assert.notEqual(result.analysis.strokes.length, run.taps.length);
 
-  const saved = applySentenceMeasurement(SAVED, [{ sentence: 0, analysis, taps: run.taps.map((tap, index) => ({ ...tap, atMs: index * 300 })) }], 2, SAVED);
+  const saved = applySentenceMeasurement(
+    SAVED,
+    [{ sentence: 0, analysis, taps: run.taps.map((tap, index) => ({ ...tap, atMs: index * 300 })) }],
+    2,
+    SAVED,
+  );
   assert.ok(saved.ok);
   assert.ok(Object.values(saved.measurement.counts).reduce((a, b) => a + b, 0) > 0);
 });
@@ -128,7 +136,11 @@ test('子音の前の「ん」はn1打で次のかなへ進む。母音・y・n�
   // nnも受け付ける。
   assert.deepEqual(type(planOf('かんた').plan, 'kannta').run.typed, ['ka', 'nn', 'ta']);
   // 母音・y・nの前はn 1打を受け付けず、nnの後に次のかなの最初のキーが続かなければ違うキーになる。
-  for (const [text, keys] of [['かんあ', 'kana'], ['かんや', 'kanya'], ['かんな', 'kanna']] as const) {
+  for (const [text, keys] of [
+    ['かんあ', 'kana'],
+    ['かんや', 'kanya'],
+    ['かんな', 'kanna'],
+  ] as const) {
     assert.ok(type(planOf(text).plan, keys).kinds.includes('wrong-key'), text);
   }
   // 記号の前。
@@ -149,7 +161,10 @@ test('母音・y・nの前の「ん」のn 1打の後の押下は違うキーに
   // 続けてnを押せばnnで確定し、次のaで終わる。「ん」のストロークは間隔を数えない印が付く。
   const second = type(wrong.run, 'na', 1100);
   assert.equal(second.kinds.at(-1), 'run-finished');
-  assert.deepEqual(second.run.taps.map((tap) => tap.clean), [true, true, true, false, true]);
+  assert.deepEqual(
+    second.run.taps.map((tap) => tap.clean),
+    [true, true, true, false, true],
+  );
 });
 
 test('綴りを途中で切り替えた押下は違うキーになり、その後は残った綴りの続きで進める', () => {
@@ -159,7 +174,10 @@ test('綴りを途中で切り替えた押下は違うキーになり、その�
   assert.deepEqual(played.kinds, ['step-finished', 'step-finished', 'wrong-key', 'run-finished']);
   assert.deepEqual(played.run.typed, ['sha']);
   // 違うキーだったのは3打目（a）のストロークなので、そのストロークの間隔は数えない。
-  assert.deepEqual(played.run.taps.map((tap) => tap.clean), [true, true, false]);
+  assert.deepEqual(
+    played.run.taps.map((tap) => tap.clean),
+    [true, true, false],
+  );
   // sの後のyならsyaだけが残り、hが違うキーになる。
   const other = type(plan, 'syha');
   assert.deepEqual(other.kinds, ['step-finished', 'step-finished', 'wrong-key', 'run-finished']);
@@ -193,7 +211,10 @@ test('別の綴りで打ち始めたかなは、次に打つキー・この後�
   const ch = type(sh, 'irac', 1000).run;
   assert.deepEqual(remainingSentenceKeys(ch), ['h']);
   assert.equal(remainingSentenceStrokes(ch), 2 + 2);
-  assert.deepEqual(upcomingSentenceSteps(ch, 8).map((step) => step.keys.join('+')), ['i', 'k', 'a']);
+  assert.deepEqual(
+    upcomingSentenceSteps(ch, 8).map((step) => step.keys.join('+')),
+    ['i', 'k', 'a'],
+  );
 });
 
 test('ローマ字だけで成立するコンボを持つ配列（TK音直入力法）と、まとめた綴りを持つ規則（AZIK）は、規則の綴りだけを受け付ける', () => {
@@ -229,7 +250,12 @@ test('回ごとに綴りが違っても、文ごと・構造の種類ごとの�
       sampleOf((spellings, kana) => (kana === 'つ' ? 'tsu' : kana === 'ん' ? 'nn' : spellings[0])),
       sampleOf((spellings) => spellings[Math.min(1, spellings.length - 1)]),
     ];
-    for (const mix of [[rule, variants[0]], [variants[1], variants[2]], [variants[3], rule], [variants[2], variants[1], rule]]) {
+    for (const mix of [
+      [rule, variants[0]],
+      [variants[1], variants[2]],
+      [variants[3], rule],
+      [variants[2], variants[1], rule],
+    ]) {
       const counts = measureSentence(mix, SAVED).counts;
       const each = mix.map((sample) => measureSentence([sample], SAVED).counts);
       for (const kind of kinds) {

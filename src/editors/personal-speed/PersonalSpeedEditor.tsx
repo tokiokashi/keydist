@@ -22,7 +22,12 @@ import {
   type CalibrationScope,
   type CalibrationTask,
 } from '#interpretation/timing/calibration-session.ts';
-import { applySentenceMeasurement, sentenceResultTable, type SentenceBuildResult, type SentenceResultTable as SentenceResultTableData } from '#interpretation/timing/sentence-measurement.ts';
+import {
+  applySentenceMeasurement,
+  sentenceResultTable,
+  type SentenceBuildResult,
+  type SentenceResultTable as SentenceResultTableData,
+} from '#interpretation/timing/sentence-measurement.ts';
 import {
   remainingSentenceKeys,
   remainingSentenceStrokes,
@@ -114,9 +119,7 @@ export interface PersonalSpeedEditorProps {
 }
 
 /** 文章を打つ測定の準備。打てる時は文ごとの測定の計画を持ち、打てない時は理由の文を持つ。 */
-type SentenceSetup =
-  | { readonly ok: true; readonly plans: readonly SentencePlan[] }
-  | { readonly ok: false; readonly message: string };
+type SentenceSetup = { readonly ok: true; readonly plans: readonly SentencePlan[] } | { readonly ok: false; readonly message: string };
 
 /** 示す文の全部が打てる時だけ、測れる。1本でも作れない・測れない文があれば、その理由を返す。 */
 function sentenceSetupOf(builds: readonly SentenceBuildResult[]): SentenceSetup {
@@ -136,7 +139,11 @@ function SentenceText({ plan, run }: { readonly plan: SentencePlan; readonly run
     <p className="personal-speed-sentence" data-personal-speed-sentence>
       {plan.units.map((unit, index) => {
         const state = run === undefined ? 'rest' : run.unit > index ? 'done' : run.unit === index ? 'current' : 'rest';
-        return <span key={index} data-sentence-unit={state}>{unit.text}</span>;
+        return (
+          <span key={index} data-sentence-unit={state}>
+            {unit.text}
+          </span>
+        );
       })}
     </p>
   );
@@ -178,7 +185,9 @@ function ValueRow({ fieldId, value, error, disabled, action, onChange, onCommit,
   const measured = value.trim() !== '';
   return (
     <div className="personal-speed-row" data-personal-speed-row={fieldId}>
-      <label htmlFor={inputId} className="personal-speed-row-label">{calibrationFieldRowLabel(fieldId)}</label>
+      <label htmlFor={inputId} className="personal-speed-row-label">
+        {calibrationFieldRowLabel(fieldId)}
+      </label>
       <input
         id={inputId}
         type="text"
@@ -207,8 +216,16 @@ function ValueRow({ fieldId, value, error, disabled, action, onChange, onCommit,
         </button>
       ) : null}
       {action.kind === 'hint' ? <span className="personal-speed-row-hint">{action.text}</span> : null}
-      {error === undefined ? null : <p className="personal-speed-field-error" id={errorId} role="alert">{error}</p>}
-      {note === undefined ? null : <p className="personal-speed-note" data-personal-speed-row-note={fieldId}>{note}</p>}
+      {error === undefined ? null : (
+        <p className="personal-speed-field-error" id={errorId} role="alert">
+          {error}
+        </p>
+      )}
+      {note === undefined ? null : (
+        <p className="personal-speed-note" data-personal-speed-row-note={fieldId}>
+          {note}
+        </p>
+      )}
     </div>
   );
 }
@@ -233,12 +250,22 @@ function ValueBlock({ title, measuredIds, missingIds, note, emptyText, hasProble
       {title === undefined ? null : <h3>{title}</h3>}
       {note === undefined ? null : <p className="personal-speed-note">{note}</p>}
       {measuredIds.length > 0 ? (
-        <div className="personal-speed-rows">{measuredIds.map((id) => <Fragment key={id}>{renderRow(id)}</Fragment>)}</div>
-      ) : emptyText === undefined ? null : <p className="personal-speed-note">{emptyText}</p>}
+        <div className="personal-speed-rows">
+          {measuredIds.map((id) => (
+            <Fragment key={id}>{renderRow(id)}</Fragment>
+          ))}
+        </div>
+      ) : emptyText === undefined ? null : (
+        <p className="personal-speed-note">{emptyText}</p>
+      )}
       {missingIds.length === 0 ? null : (
         <details className="personal-speed-details" open={hasProblem ? true : undefined}>
           <summary>測っていない項目（{missingIds.length}）</summary>
-          <div className="personal-speed-rows">{missingIds.map((id) => <Fragment key={id}>{renderRow(id)}</Fragment>)}</div>
+          <div className="personal-speed-rows">
+            {missingIds.map((id) => (
+              <Fragment key={id}>{renderRow(id)}</Fragment>
+            ))}
+          </div>
         </details>
       )}
     </div>
@@ -256,8 +283,12 @@ interface Notice {
 function NoticeLines({ notice }: { readonly notice: Notice | undefined }) {
   return (
     <>
-      <p className="personal-speed-message" role="status">{notice?.kind === 'message' ? notice.text : ''}</p>
-      <p className="personal-speed-error" role="alert">{notice?.kind === 'error' ? notice.text : ''}</p>
+      <p className="personal-speed-message" role="status">
+        {notice?.kind === 'message' ? notice.text : ''}
+      </p>
+      <p className="personal-speed-error" role="alert">
+        {notice?.kind === 'error' ? notice.text : ''}
+      </p>
       {notice?.table === undefined ? null : <SentenceResultTable table={notice.table} />}
     </>
   );
@@ -295,19 +326,27 @@ function MeasurementGroup({ id, title, description, howTo, specHref, hasSavedVal
         onToggle={(event) => setExplanationOpen(event.currentTarget.open)}
       >
         <summary>説明と測り方</summary>
-        <p className="personal-speed-note" data-personal-speed-description={id}>{description}</p>
+        <p className="personal-speed-note" data-personal-speed-description={id}>
+          {description}
+        </p>
         {howTo.length === 0 ? null : (
           <div className="personal-speed-howto" data-personal-speed-howto={id}>
             <h3>測り方</h3>
             <ul>
-              {howTo.map((line) => <li key={line}>{line}</li>)}
+              {howTo.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
             </ul>
           </div>
         )}
       </details>
       {specHref === undefined ? null : (
         <p className="personal-speed-note" data-personal-speed-spec={id}>
-          計算の詳細は<a href={specHref} target="_blank" rel="noreferrer">再生時間モデルの仕様書</a>にあります。
+          計算の詳細は
+          <a href={specHref} target="_blank" rel="noreferrer">
+            再生時間モデルの仕様書
+          </a>
+          にあります。
         </p>
       )}
       {children}
@@ -323,12 +362,26 @@ function ConfirmDiscard({ onConfirm, onCancel }: { readonly onConfirm: () => voi
     if (dialog !== null && !dialog.open) dialog.showModal();
   }, []);
   return (
-    <dialog ref={ref} className="personal-speed-confirm" aria-labelledby="personal-speed-confirm-title" onCancel={(event) => { event.preventDefault(); onCancel(); }}>
+    <dialog
+      ref={ref}
+      className="personal-speed-confirm"
+      aria-labelledby="personal-speed-confirm-title"
+      onCancel={(event) => {
+        event.preventDefault();
+        onCancel();
+      }}
+    >
       <h2 id="personal-speed-confirm-title">保存した個人速度を全て破棄しますか</h2>
-      <p>通常の速度、指ごとの同じキーを続けて打つ速さと移動の時間、方向別の速度、同時押しの上乗せ、文章を打つ時の打鍵の上乗せを全て消します。「元に戻す」で戻せます。再読み込みやタブを閉じた後は戻せません。</p>
+      <p>
+        通常の速度、指ごとの同じキーを続けて打つ速さと移動の時間、方向別の速度、同時押しの上乗せ、文章を打つ時の打鍵の上乗せを全て消します。「元に戻す」で戻せます。再読み込みやタブを閉じた後は戻せません。
+      </p>
       <div className="personal-speed-confirm-actions">
-        <button type="button" autoFocus onClick={onCancel}>キャンセル</button>
-        <button type="button" onClick={onConfirm}>破棄する</button>
+        <button type="button" autoFocus onClick={onCancel}>
+          キャンセル
+        </button>
+        <button type="button" onClick={onConfirm}>
+          破棄する
+        </button>
       </div>
     </dialog>
   );
@@ -375,15 +428,10 @@ export function PersonalSpeedEditor({
   const shape = firstOf(catalog.shapes, selection.shapeId);
   const assignment = firstOf(catalog.fingerAssignments, selection.fingerAssignmentId);
   const basis = useMemo(
-    () => (layout === undefined || shape === undefined || assignment === undefined
-      ? undefined
-      : calibrationBasis(layout, shape, assignment)),
+    () => (layout === undefined || shape === undefined || assignment === undefined ? undefined : calibrationBasis(layout, shape, assignment)),
     [layout, shape, assignment],
   );
-  const plan: CalibrationPlan | undefined = useMemo(
-    () => (basis?.ok ? planCalibration(basis.basis) : undefined),
-    [basis],
-  );
+  const plan: CalibrationPlan | undefined = useMemo(() => (basis?.ok ? planCalibration(basis.basis) : undefined), [basis]);
   const keyLabel = useMemo(() => {
     const legends = basis?.ok ? basis.basis.legends : new Map<string, string>();
     return (keyId: string) => calibrationKeyLabel(legends, keyId);
@@ -394,7 +442,9 @@ export function PersonalSpeedEditor({
   const sentenceRegionRef = useRef<HTMLDivElement>(null);
 
   /** 保存値を置き換える操作の前に呼ぶ。保存できなかった入力と理由は、置き換わる前の保存値に対するものなので捨てる。 */
-  const dropProblems = () => { setFieldErrors({}); };
+  const dropProblems = () => {
+    setFieldErrors({});
+  };
 
   /** 測定の範囲が属する欄。1項目の測り直しは、その項目を含む測定（`plan.normal`・`plan.directional`・`plan.simultaneous`）の欄。 */
   const groupOfRun = (run: CalibrationRun): 'normal' | 'directional' | 'simultaneous' => {
@@ -430,12 +480,12 @@ export function PersonalSpeedEditor({
   const runner = useCalibrationRun({ keyLabel, onFinished: finished });
 
   const sentence: SentenceSetup | undefined = useMemo(
-    () => (!ready || layout === undefined || shape === undefined || assignment === undefined
-      ? undefined
-      : sentenceSetupOf(MEASUREMENT_SENTENCES.map((text) => buildSentence(
-        { layoutId: layout.id, shapeId: shape.id, fingerAssignmentId: assignment.id },
-        text,
-      )))),
+    () =>
+      !ready || layout === undefined || shape === undefined || assignment === undefined
+        ? undefined
+        : sentenceSetupOf(
+            MEASUREMENT_SENTENCES.map((text) => buildSentence({ layoutId: layout.id, shapeId: shape.id, fingerAssignmentId: assignment.id }, text)),
+          ),
     [ready, buildSentence, layout, shape, assignment],
   );
   // 測定を始めた時の示す文・打鍵の列と構造・保存値。別のタブで条件や保存値が変わっても、終わりまでこれを使う。
@@ -465,12 +515,23 @@ export function PersonalSpeedEditor({
   const sentenceRunner = useSentenceRun({ keyLabel, onFinished: sentenceFinished });
   const running = runner.run !== undefined || sentenceRunner.session !== undefined;
   // キー操作もボタンと同じ処理を通し、測定中（ボタンも押せない間）は動かさない
-  useHistoryShortcuts({
-    canUndo,
-    canRedo,
-    undo: () => { setNotices({}); dropProblems(); onUndo(); },
-    redo: () => { setNotices({}); dropProblems(); onRedo(); },
-  }, !running);
+  useHistoryShortcuts(
+    {
+      canUndo,
+      canRedo,
+      undo: () => {
+        setNotices({});
+        dropProblems();
+        onUndo();
+      },
+      redo: () => {
+        setNotices({});
+        dropProblems();
+        onRedo();
+      },
+    },
+    !running,
+  );
 
   // 測定中は案内にフォーカスを置き（押した測定のボタンは無効になるため）、終わったら押したボタンへ戻す。
   useEffect(() => {
@@ -512,9 +573,7 @@ export function PersonalSpeedEditor({
   const sentenceRun = sentenceSession?.run;
   const runningSentence = sentenceStart?.setup;
   const nextSentenceKeys = sentenceRun === undefined ? [] : remainingSentenceKeys(sentenceRun);
-  const upcomingSentenceKeys = sentenceRun === undefined
-    ? []
-    : upcomingSentenceSteps(sentenceRun, 8).map((step) => step.keys.map(keyLabel).join('+'));
+  const upcomingSentenceKeys = sentenceRun === undefined ? [] : upcomingSentenceSteps(sentenceRun, 8).map((step) => step.keys.map(keyLabel).join('+'));
 
   const dropFieldError = (fieldId: string) => {
     setFieldErrors((current) => {
@@ -591,66 +650,125 @@ export function PersonalSpeedEditor({
    */
   const splitIds = (prefix: string, universe: readonly string[]) => {
     const known = universe.filter((id) => id in savedValues);
-    const extra = prefix === ''
-      ? []
-      : Object.keys(savedValues).filter((id) => id.startsWith(prefix) && !universe.includes(id)).sort();
+    const extra =
+      prefix === ''
+        ? []
+        : Object.keys(savedValues)
+            .filter((id) => id.startsWith(prefix) && !universe.includes(id))
+            .sort();
     const measuredIds = [...known, ...extra];
     const missingIds = universe.filter((id) => !(id in savedValues));
     return { measuredIds, missingIds, hasProblem: [...measuredIds, ...missingIds].some((id) => id in fieldErrors) };
   };
   const main = splitIds('', ['actions', CALIBRATION_SAME_HAND_FIELD, CALIBRATION_FALLBACK_REPEAT_FIELD, CALIBRATION_FALLBACK_MOVE_FIELD]);
-  const fingers = splitIds('finger:', FINGERS.map((finger) => `finger:${finger}`));
+  const fingers = splitIds(
+    'finger:',
+    FINGERS.map((finger) => `finger:${finger}`),
+  );
   const directions = splitIds('direction:', ['direction:L→R', 'direction:R→L']);
   const simultaneous = splitIds('simultaneous:', SIMULTANEOUS_KINDS.map(calibrationSimultaneousFieldId));
   const hasSavedWith = (...prefixes: string[]) => Object.keys(savedValues).some((id) => prefixes.some((prefix) => id.startsWith(prefix)));
-  const savedInNormal = hasSavedWith('actions', CALIBRATION_SAME_HAND_FIELD, CALIBRATION_FALLBACK_REPEAT_FIELD, CALIBRATION_FALLBACK_MOVE_FIELD, 'finger:', 'finger-repeat:', 'same-hand-pair:');
+  const savedInNormal = hasSavedWith(
+    'actions',
+    CALIBRATION_SAME_HAND_FIELD,
+    CALIBRATION_FALLBACK_REPEAT_FIELD,
+    CALIBRATION_FALLBACK_MOVE_FIELD,
+    'finger:',
+    'finger-repeat:',
+    'same-hand-pair:',
+  );
 
   // 測ると置き換わる・消える値は、今の保存値から決まる。保存値を持たない時と、置き換わる値も消える値も無い時は文を出さない。
   const savedOverheads = OVERHEAD_KINDS.filter((kind) => calibration?.keystrokeOverheadMs?.[kind] !== undefined);
   const savedSimultaneous = SIMULTANEOUS_KINDS.filter((kind) => calibration?.simultaneousOverheadMs?.[kind] !== undefined);
   const effectOf = (group: 'normal' | 'directional' | 'simultaneous' | 'sentence') => {
     const text = measurementEffectText(group, calibration !== undefined, savedOverheads, savedSimultaneous, calibration?.sentenceSimultaneousKinds);
-    return text === undefined ? null : <p className="personal-speed-note" data-personal-speed-effect={group}>{text}</p>;
+    return text === undefined ? null : (
+      <p className="personal-speed-note" data-personal-speed-effect={group}>
+        {text}
+      </p>
+    );
   };
 
   const normalReason = plan?.normal === undefined ? NO_BASIS_TEXT : undefined;
-  const directionalReason = calibration === undefined
-    ? NEED_NORMAL_FIRST_TEXT
-    : plan === undefined
-      ? NO_BASIS_TEXT
-      : plan.directional === undefined ? NO_DIRECTIONAL_TEXT : undefined;
-  const simultaneousReason = calibration === undefined
-    ? NEED_NORMAL_FIRST_TEXT
-    : plan?.simultaneous === undefined ? NO_SIMULTANEOUS_TEXT : undefined;
+  const directionalReason =
+    calibration === undefined
+      ? NEED_NORMAL_FIRST_TEXT
+      : plan === undefined
+        ? NO_BASIS_TEXT
+        : plan.directional === undefined
+          ? NO_DIRECTIONAL_TEXT
+          : undefined;
+  const simultaneousReason = calibration === undefined ? NEED_NORMAL_FIRST_TEXT : plan?.simultaneous === undefined ? NO_SIMULTANEOUS_TEXT : undefined;
   const sentenceReason = calibration === undefined ? NEED_NORMAL_FIRST_TEXT : undefined;
   const normalDisabled = running || normalReason !== undefined;
   const directionalDisabled = running || directionalReason !== undefined;
   const simultaneousDisabled = running || simultaneousReason !== undefined;
   const sentenceDisabled = running || sentence?.ok !== true || calibration === undefined;
 
-  const calibrationRegion = (group: GroupId) => (runGroup !== group || runner.run === undefined || currentTask === undefined ? null : (
-    <div className="personal-speed-run" ref={regionRef} tabIndex={-1} data-personal-speed-run="active">
-      <p className="personal-speed-instruction" data-personal-speed-instruction>{calibrationInstruction(currentTask, keyLabel)}</p>
-      <p className="personal-speed-progress" data-personal-speed-progress>{calibrationProgressText(runner.run)}</p>
-      <p className="personal-speed-warning" role="status">
-        {runner.wrongKey === undefined
-          ? ''
-          : currentTask.item.kind === 'simultaneous' ? simultaneousWrongKeyText(currentTask, keyLabel) : wrongKeyText(runner.wrongKey)}
+  const calibrationRegion = (group: GroupId) =>
+    runGroup !== group || runner.run === undefined || currentTask === undefined ? null : (
+      <div className="personal-speed-run" ref={regionRef} tabIndex={-1} data-personal-speed-run="active">
+        <p className="personal-speed-instruction" data-personal-speed-instruction>
+          {calibrationInstruction(currentTask, keyLabel)}
+        </p>
+        <p className="personal-speed-progress" data-personal-speed-progress>
+          {calibrationProgressText(runner.run)}
+        </p>
+        <p className="personal-speed-warning" role="status">
+          {runner.wrongKey === undefined
+            ? ''
+            : currentTask.item.kind === 'simultaneous'
+              ? simultaneousWrongKeyText(currentTask, keyLabel)
+              : wrongKeyText(runner.wrongKey)}
+        </p>
+        <button type="button" data-personal-speed-cancel onClick={runner.cancel}>
+          中止
+        </button>
+      </div>
+    );
+  const reasonText = (text: string | undefined) =>
+    text === undefined ? null : (
+      <p className="personal-speed-reason" data-personal-speed-reason>
+        {text}
       </p>
-      <button type="button" data-personal-speed-cancel onClick={runner.cancel}>中止</button>
-    </div>
-  ));
-  const reasonText = (text: string | undefined) => (text === undefined ? null : <p className="personal-speed-reason" data-personal-speed-reason>{text}</p>);
-  const emptyText = (text: string) => <p className="personal-speed-note" data-personal-speed-empty>{text}</p>;
+    );
+  const emptyText = (text: string) => (
+    <p className="personal-speed-note" data-personal-speed-empty>
+      {text}
+    </p>
+  );
 
   return (
     <article className="personal-speed">
       <h1>{PERSONAL_SPEED_LABEL}</h1>
       <p className="personal-speed-lead">打鍵と指の移動の速さを測って保存します。</p>
-      <p className="personal-speed-note" data-personal-speed-purpose>{PERSONAL_SPEED_PURPOSE}</p>
+      <p className="personal-speed-note" data-personal-speed-purpose>
+        {PERSONAL_SPEED_PURPOSE}
+      </p>
       <div className="personal-speed-toolbar">
-        <button type="button" disabled={!canUndo || running} onClick={() => { setNotices({}); dropProblems(); onUndo(); }}>元に戻す</button>
-        <button type="button" disabled={!canRedo || running} onClick={() => { setNotices({}); dropProblems(); onRedo(); }}>やり直す</button>
+        <button
+          type="button"
+          disabled={!canUndo || running}
+          onClick={() => {
+            setNotices({});
+            dropProblems();
+            onUndo();
+          }}
+        >
+          元に戻す
+        </button>
+        <button
+          type="button"
+          disabled={!canRedo || running}
+          onClick={() => {
+            setNotices({});
+            dropProblems();
+            onRedo();
+          }}
+        >
+          やり直す
+        </button>
         <button type="button" data-personal-speed-discard disabled={calibration === undefined || running} onClick={() => setConfirming(true)}>
           全て破棄
         </button>
@@ -659,11 +777,15 @@ export function PersonalSpeedEditor({
       {ready ? (
         <>
           {calibration === undefined ? null : (
-            <p className="personal-speed-note">保存した数値は直接書き換えられます。欄から離れると保存され、「元に戻す」で戻せます。任意の項目は空にすると消えます。</p>
+            <p className="personal-speed-note">
+              保存した数値は直接書き換えられます。欄から離れると保存され、「元に戻す」で戻せます。任意の項目は空にすると消えます。
+            </p>
           )}
           <section className="personal-speed-section" aria-labelledby="personal-speed-basis">
             <h2 id="personal-speed-basis">測るキー</h2>
-            <p className="personal-speed-note">選んだ配列の刻印のキーを、物理配列と指の割り当てに沿って打ちます。ここでの選択は、他の画面の対象や条件を変えません。</p>
+            <p className="personal-speed-note">
+              選んだ配列の刻印のキーを、物理配列と指の割り当てに沿って打ちます。ここでの選択は、他の画面の対象や条件を変えません。
+            </p>
             <div className="personal-speed-select-grid">
               <label>
                 配列
@@ -672,7 +794,11 @@ export function PersonalSpeedEditor({
                   disabled={running}
                   onChange={(event) => setSelection({ ...selection, layoutId: event.currentTarget.value })}
                 >
-                  {catalog.layouts.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                  {catalog.layouts.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label>
@@ -683,13 +809,15 @@ export function PersonalSpeedEditor({
                   onChange={(event) => {
                     const shapeId = event.currentTarget.value;
                     const preferred = defaultFingerAssignmentId(shapeId);
-                    const fingerAssignmentId = catalog.fingerAssignments.some((item) => item.id === preferred)
-                      ? preferred
-                      : selection.fingerAssignmentId;
+                    const fingerAssignmentId = catalog.fingerAssignments.some((item) => item.id === preferred) ? preferred : selection.fingerAssignmentId;
                     setSelection({ ...selection, shapeId, fingerAssignmentId });
                   }}
                 >
-                  {catalog.shapes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                  {catalog.shapes.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label>
@@ -699,13 +827,24 @@ export function PersonalSpeedEditor({
                   disabled={running}
                   onChange={(event) => setSelection({ ...selection, fingerAssignmentId: event.currentTarget.value })}
                 >
-                  {catalog.fingerAssignments.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                  {catalog.fingerAssignments.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
                 </select>
               </label>
             </div>
           </section>
 
-          <MeasurementGroup id="normal" title="通常の速度と指の移動" description={MEASUREMENT_DESCRIPTION.normal} howTo={MEASUREMENT_HOW_TO.normal} specHref={specHref} hasSavedValues={savedInNormal}>
+          <MeasurementGroup
+            id="normal"
+            title="通常の速度と指の移動"
+            description={MEASUREMENT_DESCRIPTION.normal}
+            howTo={MEASUREMENT_HOW_TO.normal}
+            specHref={specHref}
+            hasSavedValues={savedInNormal}
+          >
             <div className="personal-speed-actions">
               <button type="button" data-personal-speed-start="normal" disabled={normalDisabled} onClick={() => startRun('normal', plan?.normal ?? [])}>
                 通常の速度と指の移動を全て測る
@@ -715,21 +854,39 @@ export function PersonalSpeedEditor({
             {reasonText(normalReason)}
             {calibrationRegion('normal')}
             <NoticeLines notice={notices.normal} />
-            {calibration === undefined ? emptyText(UNMEASURED_TEXT.normal) : (
+            {calibration === undefined ? (
+              emptyText(UNMEASURED_TEXT.normal)
+            ) : (
               <>
                 <ValueBlock {...main} renderRow={renderRow} />
                 <ValueBlock title="指ごとの移動の時間" {...fingers} emptyText="まだ測っていません。" renderRow={renderRow} />
                 <div className="personal-speed-value-block">
                   <h3>同手・別指の組ごとの速度</h3>
-                  {hasFingerGridFields('same-hand-pair', gridContext) ? <SameHandPairGrids ctx={gridContext} /> : <p className="personal-speed-note">まだ測っていません。</p>}
+                  {hasFingerGridFields('same-hand-pair', gridContext) ? (
+                    <SameHandPairGrids ctx={gridContext} />
+                  ) : (
+                    <p className="personal-speed-note">まだ測っていません。</p>
+                  )}
                 </div>
               </>
             )}
           </MeasurementGroup>
 
-          <MeasurementGroup id="directional" title="方向別の速度" description={MEASUREMENT_DESCRIPTION.directional} howTo={MEASUREMENT_HOW_TO.directional} specHref={specHref} hasSavedValues={hasSavedWith('direction:', 'directed-pair:')}>
+          <MeasurementGroup
+            id="directional"
+            title="方向別の速度"
+            description={MEASUREMENT_DESCRIPTION.directional}
+            howTo={MEASUREMENT_HOW_TO.directional}
+            specHref={specHref}
+            hasSavedValues={hasSavedWith('direction:', 'directed-pair:')}
+          >
             <div className="personal-speed-actions">
-              <button type="button" data-personal-speed-start="directional" disabled={directionalDisabled} onClick={() => startRun('directional', plan?.directional ?? [])}>
+              <button
+                type="button"
+                data-personal-speed-start="directional"
+                disabled={directionalDisabled}
+                onClick={() => startRun('directional', plan?.directional ?? [])}
+              >
                 方向別の速度を全て測る
               </button>
             </div>
@@ -737,20 +894,38 @@ export function PersonalSpeedEditor({
             {reasonText(directionalReason)}
             {calibrationRegion('directional')}
             <NoticeLines notice={notices.directional} />
-            {calibration === undefined ? emptyText(UNMEASURED_TEXT.directional) : (
+            {calibration === undefined ? (
+              emptyText(UNMEASURED_TEXT.directional)
+            ) : (
               <>
                 <ValueBlock title="異手の方向別" {...directions} emptyText="まだ測っていません。" renderRow={renderRow} />
                 <div className="personal-speed-value-block">
                   <h3>同手・別指の方向別</h3>
-                  {hasFingerGridFields('directed-pair', gridContext) ? <DirectedPairGrids ctx={gridContext} /> : <p className="personal-speed-note">まだ測っていません。</p>}
+                  {hasFingerGridFields('directed-pair', gridContext) ? (
+                    <DirectedPairGrids ctx={gridContext} />
+                  ) : (
+                    <p className="personal-speed-note">まだ測っていません。</p>
+                  )}
                 </div>
               </>
             )}
           </MeasurementGroup>
 
-          <MeasurementGroup id="simultaneous" title="同時押し" description={MEASUREMENT_DESCRIPTION.simultaneous} howTo={MEASUREMENT_HOW_TO.simultaneous} specHref={specHref} hasSavedValues={hasSavedWith('simultaneous:')}>
+          <MeasurementGroup
+            id="simultaneous"
+            title="同時押し"
+            description={MEASUREMENT_DESCRIPTION.simultaneous}
+            howTo={MEASUREMENT_HOW_TO.simultaneous}
+            specHref={specHref}
+            hasSavedValues={hasSavedWith('simultaneous:')}
+          >
             <div className="personal-speed-actions">
-              <button type="button" data-personal-speed-start="simultaneous" disabled={simultaneousDisabled} onClick={() => startRun('simultaneous', plan?.simultaneous ?? [])}>
+              <button
+                type="button"
+                data-personal-speed-start="simultaneous"
+                disabled={simultaneousDisabled}
+                onClick={() => startRun('simultaneous', plan?.simultaneous ?? [])}
+              >
                 同時押しを全て測る
               </button>
             </div>
@@ -758,17 +933,21 @@ export function PersonalSpeedEditor({
             {reasonText(simultaneousReason)}
             {calibrationRegion('simultaneous')}
             <NoticeLines notice={notices.simultaneous} />
-            {calibration === undefined ? emptyText(UNMEASURED_TEXT.simultaneous) : (
-              <ValueBlock
-                title="同時押しの上乗せ"
-                {...simultaneous}
-                emptyText="まだ測っていません。"
-                renderRow={renderRow}
-              />
+            {calibration === undefined ? (
+              emptyText(UNMEASURED_TEXT.simultaneous)
+            ) : (
+              <ValueBlock title="同時押しの上乗せ" {...simultaneous} emptyText="まだ測っていません。" renderRow={renderRow} />
             )}
           </MeasurementGroup>
 
-          <MeasurementGroup id="sentence" title="文章を打つ速さ" description={MEASUREMENT_DESCRIPTION.sentence} howTo={MEASUREMENT_HOW_TO.sentence} specHref={specHref} hasSavedValues={hasSavedWith('overhead:')}>
+          <MeasurementGroup
+            id="sentence"
+            title="文章を打つ速さ"
+            description={MEASUREMENT_DESCRIPTION.sentence}
+            howTo={MEASUREMENT_HOW_TO.sentence}
+            specHref={specHref}
+            hasSavedValues={hasSavedWith('overhead:')}
+          >
             <div className="personal-speed-actions">
               <button type="button" data-personal-speed-start="sentence" disabled={sentenceDisabled} onClick={startSentence}>
                 文章を打つ速さを測る
@@ -776,25 +955,30 @@ export function PersonalSpeedEditor({
             </div>
             {effectOf('sentence')}
             {reasonText(sentenceReason)}
-            {sentence?.ok === false ? <p className="personal-speed-warning" role="alert" data-personal-speed-sentence-unavailable>{sentence.message}</p> : null}
+            {sentence?.ok === false ? (
+              <p className="personal-speed-warning" role="alert" data-personal-speed-sentence-unavailable>
+                {sentence.message}
+              </p>
+            ) : null}
             {sentenceSession === undefined ? null : (
-              <div
-                className="personal-speed-run"
-                ref={sentenceRegionRef}
-                tabIndex={-1}
-                data-personal-speed-sentence-run="active"
-              >
+              <div className="personal-speed-run" ref={sentenceRegionRef} tabIndex={-1} data-personal-speed-sentence-run="active">
                 {sentenceRun === undefined || runningSentence === undefined ? null : (
                   <>
                     <p className="personal-speed-progress" data-personal-speed-sentence-position>
                       {sentenceProgressText(sentenceSession.sentence, sentenceSession.plans.length, sentenceSession.round, sentenceSession.rounds)}
                     </p>
-                    {sentenceSession.round === 0 ? <p className="personal-speed-note" data-personal-speed-sentence-learning>{SENTENCE_LEARNING_ROUND_TEXT}</p> : null}
+                    {sentenceSession.round === 0 ? (
+                      <p className="personal-speed-note" data-personal-speed-sentence-learning>
+                        {SENTENCE_LEARNING_ROUND_TEXT}
+                      </p>
+                    ) : null}
                     <SentenceText plan={sentenceSession.plans[sentenceSession.sentence]} run={sentenceRun} />
                     <p className="personal-speed-instruction">
                       次に打つキー:{' '}
                       <span data-personal-speed-next>
-                        {nextSentenceKeys.map((key) => <kbd key={key}>{keyLabel(key)}</kbd>)}
+                        {nextSentenceKeys.map((key) => (
+                          <kbd key={key}>{keyLabel(key)}</kbd>
+                        ))}
                       </span>
                     </p>
                     <p className="personal-speed-progress" data-personal-speed-upcoming>
@@ -803,14 +987,20 @@ export function PersonalSpeedEditor({
                     <p className="personal-speed-progress" data-personal-speed-sentence-progress>
                       あと{remainingSentenceStrokes(sentenceRun)}打
                     </p>
-                    <p className="personal-speed-warning" role="status">{sentenceRunner.wrongKey === undefined ? '' : wrongKeyText(sentenceRunner.wrongKey)}</p>
-                    <button type="button" data-personal-speed-sentence-cancel onClick={cancelSentence}>中止</button>
+                    <p className="personal-speed-warning" role="status">
+                      {sentenceRunner.wrongKey === undefined ? '' : wrongKeyText(sentenceRunner.wrongKey)}
+                    </p>
+                    <button type="button" data-personal-speed-sentence-cancel onClick={cancelSentence}>
+                      中止
+                    </button>
                   </>
                 )}
               </div>
             )}
             <NoticeLines notice={notices.sentence} />
-            {calibration === undefined ? emptyText(UNMEASURED_TEXT.sentence) : (
+            {calibration === undefined ? (
+              emptyText(UNMEASURED_TEXT.sentence)
+            ) : (
               <div className="personal-speed-value-block">
                 <h3>打鍵の上乗せ</h3>
                 <p className="personal-speed-note">文章を打つ速さの測定で求まります。</p>

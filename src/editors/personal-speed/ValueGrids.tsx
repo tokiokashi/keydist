@@ -64,7 +64,10 @@ function ValueCell({ fieldId, ctx, deviation }: { readonly fieldId: string; read
         autoComplete="off"
         aria-label={fullLabel}
         aria-invalid={error === undefined ? undefined : true}
-        aria-describedby={[deviation === undefined ? undefined : deviationId, error === undefined ? undefined : errorId].filter((id) => id !== undefined).join(' ') || undefined}
+        aria-describedby={
+          [deviation === undefined ? undefined : deviationId, error === undefined ? undefined : errorId].filter((id) => id !== undefined).join(' ') ||
+          undefined
+        }
         value={value}
         disabled={ctx.disabled}
         onChange={(event) => ctx.onChange(fieldId, event.currentTarget.value)}
@@ -73,7 +76,11 @@ function ValueCell({ fieldId, ctx, deviation }: { readonly fieldId: string; read
           if (event.key === 'Enter' && !event.nativeEvent.isComposing) ctx.onCommit(fieldId);
         }}
       />
-      {deviation === undefined ? null : <span className="personal-speed-visually-hidden" id={deviationId}>{DEVIATION_READING[deviation.direction]}</span>}
+      {deviation === undefined ? null : (
+        <span className="personal-speed-visually-hidden" id={deviationId}>
+          {DEVIATION_READING[deviation.direction]}
+        </span>
+      )}
       {action.kind === 'measure' ? (
         <button
           type="button"
@@ -85,7 +92,11 @@ function ValueCell({ fieldId, ctx, deviation }: { readonly fieldId: string; read
         </button>
       ) : null}
       {action.kind === 'hint' ? <span className="personal-speed-row-hint">{action.text}</span> : null}
-      {error === undefined ? null : <p className="personal-speed-field-error" id={errorId} role="alert">{error}</p>}
+      {error === undefined ? null : (
+        <p className="personal-speed-field-error" id={errorId} role="alert">
+          {error}
+        </p>
+      )}
     </td>
   );
 }
@@ -99,7 +110,9 @@ function BlankCell() {
 function UnavailableCell({ fieldId }: { readonly fieldId: string }) {
   return (
     <td className="personal-speed-cell personal-speed-cell-unavailable" data-personal-speed-unavailable={fieldId}>
-      <span role="img" aria-label={`${calibrationFieldLabel(fieldId)}: ${UNMEASURABLE_ROW_HINT}`}>―</span>
+      <span role="img" aria-label={`${calibrationFieldLabel(fieldId)}: ${UNMEASURABLE_ROW_HINT}`}>
+        ―
+      </span>
     </td>
   );
 }
@@ -144,20 +157,33 @@ interface FingerGridsProps {
  * 選んだキーでは測れないマスが表にあれば、凡例を添える。
  */
 function FingerGrids({ ctx, fieldOf, unit, corner, axes, kind }: FingerGridsProps) {
-  const shown = HANDS.filter(({ fingers }) => fingers.some((row) => fingers.some((column) => {
-    const fieldId = fieldOf(row, column);
-    return fieldId !== undefined && cellHasField(fieldId, ctx);
-  })));
+  const shown = HANDS.filter(({ fingers }) =>
+    fingers.some((row) =>
+      fingers.some((column) => {
+        const fieldId = fieldOf(row, column);
+        return fieldId !== undefined && cellHasField(fieldId, ctx);
+      }),
+    ),
+  );
   let hasUnavailable = false;
   const deviations = gridDeviations(kind, ctx.saved);
   const tables = shown.map(({ hand, label, fingers }) => (
     <div className="personal-speed-grid-wrap" key={hand}>
       <table className="personal-speed-grid" data-personal-speed-grid={`${kind}:${hand}`}>
-        <caption>{label}（単位: {unit}{axes === undefined ? '' : `。${axes}`}）</caption>
+        <caption>
+          {label}（単位: {unit}
+          {axes === undefined ? '' : `。${axes}`}）
+        </caption>
         <thead>
           <tr>
-            <th scope="col"><span className="personal-speed-visually-hidden">{corner}</span></th>
-            {fingers.map((column) => <th key={column} scope="col">{fingerHeading(column)}</th>)}
+            <th scope="col">
+              <span className="personal-speed-visually-hidden">{corner}</span>
+            </th>
+            {fingers.map((column) => (
+              <th key={column} scope="col">
+                {fingerHeading(column)}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
@@ -196,20 +222,42 @@ function FingerGrids({ ctx, fieldOf, unit, corner, axes, kind }: FingerGridsProp
 /** 指×指の表を出せる欄（測れる組か、保存している組）が1つでもあるか。無ければ表を出さず、まだ測っていない旨を出す。 */
 export function hasFingerGridFields(kind: 'same-hand-pair' | 'directed-pair', ctx: GridContext): boolean {
   const fieldOf = kind === 'same-hand-pair' ? unorderedPairField : directedPairField;
-  return HANDS.some(({ fingers }) => fingers.some((row) => fingers.some((column) => {
-    const fieldId = fieldOf(row, column);
-    return fieldId !== undefined && cellHasField(fieldId, ctx);
-  })));
+  return HANDS.some(({ fingers }) =>
+    fingers.some((row) =>
+      fingers.some((column) => {
+        const fieldId = fieldOf(row, column);
+        return fieldId !== undefined && cellHasField(fieldId, ctx);
+      }),
+    ),
+  );
 }
 
 /** 同手・別指の組ごとの速度。組に順序は無いので、表の片側の三角だけを使う。対角は、その指が同じキーを続けて打つ速さ。 */
 export function SameHandPairGrids({ ctx }: { readonly ctx: GridContext }) {
-  return <FingerGrids ctx={ctx} fieldOf={unorderedPairField} unit={calibrationFieldUnit('same-hand-pair:LP:LR')} corner="指" axes="対角は、その指が同じキーを続けて打つ速さ" kind="same-hand-pair" />;
+  return (
+    <FingerGrids
+      ctx={ctx}
+      fieldOf={unorderedPairField}
+      unit={calibrationFieldUnit('same-hand-pair:LP:LR')}
+      corner="指"
+      axes="対角は、その指が同じキーを続けて打つ速さ"
+      kind="same-hand-pair"
+    />
+  );
 }
 
 /** 同手・別指の方向別の速度。行が前の指、列が次の指。 */
 export function DirectedPairGrids({ ctx }: { readonly ctx: GridContext }) {
-  return <FingerGrids ctx={ctx} fieldOf={directedPairField} unit={calibrationFieldUnit('directed-pair:LP>LR')} corner="前の指（行）と次の指（列）" axes="行が前の指、列が次の指" kind="directed-pair" />;
+  return (
+    <FingerGrids
+      ctx={ctx}
+      fieldOf={directedPairField}
+      unit={calibrationFieldUnit('directed-pair:LP>LR')}
+      corner="前の指（行）と次の指（列）"
+      axes="行が前の指、列が次の指"
+      kind="directed-pair"
+    />
+  );
 }
 
 /** 保存した打鍵の上乗せ。行が差の種類、列が全体・かなの中・かなの境目。保存していない種類も、空の欄から値を足せる。 */
@@ -220,8 +268,14 @@ export function OverheadGrid({ ctx }: { readonly ctx: GridContext }) {
         <caption>単位: {calibrationFieldUnit('overhead:arpeggio')}</caption>
         <thead>
           <tr>
-            <th scope="col"><span className="personal-speed-visually-hidden">種類</span></th>
-            {OVERHEAD_TABLE_COLUMNS.map(({ part, label }) => <th key={part} scope="col">{label}</th>)}
+            <th scope="col">
+              <span className="personal-speed-visually-hidden">種類</span>
+            </th>
+            {OVERHEAD_TABLE_COLUMNS.map(({ part, label }) => (
+              <th key={part} scope="col">
+                {label}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
@@ -230,9 +284,7 @@ export function OverheadGrid({ ctx }: { readonly ctx: GridContext }) {
               <th scope="row">{label}</th>
               {OVERHEAD_TABLE_COLUMNS.map(({ part }) => {
                 const kind = kinds[part];
-                return kind === undefined
-                  ? <BlankCell key={part} />
-                  : <ValueCell key={part} fieldId={calibrationOverheadFieldId(kind)} ctx={ctx} />;
+                return kind === undefined ? <BlankCell key={part} /> : <ValueCell key={part} fieldId={calibrationOverheadFieldId(kind)} ctx={ctx} />;
               })}
             </tr>
           ))}

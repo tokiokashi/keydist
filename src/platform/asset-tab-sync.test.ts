@@ -24,8 +24,12 @@ function createFakeStorage(): KeyValueStorage {
   const map = new Map<string, string>();
   return {
     getItem: (key) => map.get(key) ?? null,
-    setItem: (key, value) => { map.set(key, value); },
-    removeItem: (key) => { map.delete(key); },
+    setItem: (key, value) => {
+      map.set(key, value);
+    },
+    removeItem: (key) => {
+      map.delete(key);
+    },
   };
 }
 
@@ -40,9 +44,13 @@ function createFakeBus() {
   return {
     subscribe: (keys: readonly string[], listener: (key: string) => void) => {
       const watched = new Set(keys);
-      const wrapped = (key: string) => { if (watched.has(key)) listener(key); };
+      const wrapped = (key: string) => {
+        if (watched.has(key)) listener(key);
+      };
       listeners.add(wrapped);
-      return () => { listeners.delete(wrapped); };
+      return () => {
+        listeners.delete(wrapped);
+      };
     },
     notify: (key: string) => {
       for (const listener of listeners) listener(key);
@@ -79,7 +87,9 @@ test('自タブの書き込みの反響（同一タブへのnotify）はonExtern
     storage,
     subscribe: bus.subscribe,
     notify: bus.notify,
-    onExternalChange: () => { externalCalls++; },
+    onExternalChange: () => {
+      externalCalls++;
+    },
   });
   const stop = sync.start();
 
@@ -98,7 +108,9 @@ test('他タブの書き込みはonExternalChangeへ渡る', () => {
     storage,
     subscribe: bus.subscribe,
     notify: bus.notify,
-    onExternalChange: (value) => { changes.push(value); },
+    onExternalChange: (value) => {
+      changes.push(value);
+    },
   });
   const stop = sync.start();
 
@@ -120,7 +132,9 @@ test('自分がsaveした後でも、他タブが別の値を書き込めば外�
     storage,
     subscribe: bus.subscribe,
     notify: bus.notify,
-    onExternalChange: (value) => { changes.push(value); },
+    onExternalChange: (value) => {
+      changes.push(value);
+    },
   });
   const stop = sync.start();
 
@@ -142,7 +156,9 @@ test('自分がA→他タブがB→他タブがAに戻す、の3手目も外部�
     storage,
     subscribe: bus.subscribe,
     notify: bus.notify,
-    onExternalChange: (value) => { changes.push(value); },
+    onExternalChange: (value) => {
+      changes.push(value);
+    },
   });
   const stop = sync.start();
 
@@ -172,7 +188,9 @@ test('無効なJSONの通知はonExternalChangeを呼ばず、onLoadFailureへin
     subscribe: bus.subscribe,
     notify: bus.notify,
     onExternalChange: () => assert.fail('decode失敗時は呼ばれない'),
-    onLoadFailure: (reason) => { failures.push(reason); },
+    onLoadFailure: (reason) => {
+      failures.push(reason);
+    },
   });
   const stop = sync.start();
 
@@ -195,7 +213,9 @@ test('同じ壊れたrawの通知が2回続けば、onLoadFailureも2回呼ば�
     subscribe: bus.subscribe,
     notify: bus.notify,
     onExternalChange: () => assert.fail('decode失敗時は呼ばれない'),
-    onLoadFailure: (reason) => { failures.push(reason); },
+    onLoadFailure: (reason) => {
+      failures.push(reason);
+    },
   });
   const stop = sync.start();
 
@@ -218,7 +238,9 @@ test('codecがdecodeできない形式（未来バージョン）はonLoadFailur
     subscribe: bus.subscribe,
     notify: bus.notify,
     onExternalChange: () => assert.fail('decode失敗時は呼ばれない'),
-    onLoadFailure: (reason) => { failures.push(reason); },
+    onLoadFailure: (reason) => {
+      failures.push(reason);
+    },
   });
   const stop = sync.start();
 
@@ -243,7 +265,9 @@ test('load: storageに壊れた値がある場合はundefinedを返し、onLoadF
     subscribe: bus.subscribe,
     notify: bus.notify,
     onExternalChange: () => assert.fail('loadはonExternalChangeを呼ばない'),
-    onLoadFailure: (reason) => { failures.push(reason); },
+    onLoadFailure: (reason) => {
+      failures.push(reason);
+    },
   });
 
   assert.equal(sync.load(), undefined);
@@ -261,7 +285,9 @@ test('start()が返す停止関数を呼ぶと、以後notifyが届いてもonEx
     storage,
     subscribe: bus.subscribe,
     notify: bus.notify,
-    onExternalChange: () => { calls++; },
+    onExternalChange: () => {
+      calls++;
+    },
   });
   const stop = sync.start();
   stop();
@@ -288,7 +314,9 @@ test('start→stop→start（StrictModeの二重実行を模す）しても、2�
     storage,
     subscribe: bus.subscribe,
     notify: bus.notify,
-    onExternalChange: (value) => { changes.push(value); },
+    onExternalChange: (value) => {
+      changes.push(value);
+    },
   });
 
   const stop1 = sync.start(); // 1回目のmount
@@ -314,7 +342,9 @@ test('catchUp: 通知が届く前でも、他タブがstorageへ書いた値を�
     storage,
     subscribe: createFakeBus().subscribe,
     notify: () => {},
-    onExternalChange: (value) => { changes.push(value); },
+    onExternalChange: (value) => {
+      changes.push(value);
+    },
   });
   sync.save({ count: 1 });
   sync.catchUp();
@@ -351,7 +381,9 @@ test('catchUp: decodeできない値は取り込まずonLoadFailureへ渡す', (
     subscribe: createFakeBus().subscribe,
     notify: () => {},
     onExternalChange: () => assert.fail('壊れた値を取り込んだ'),
-    onLoadFailure: (reason) => { failures.push(reason); },
+    onLoadFailure: (reason) => {
+      failures.push(reason);
+    },
   });
   storage.setItem('test:counter', '{not json');
   sync.catchUp();

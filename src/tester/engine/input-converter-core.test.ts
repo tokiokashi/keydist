@@ -25,8 +25,14 @@ test('Input Converter coreはcanonical simultaneous inputを物理eventから認
   assert.deepEqual(engine.handle({ type: 'down', key: 'd' }).recognized, []);
   const result = engine.handle({ type: 'down', key: 'h' });
 
-  assert.deepEqual(result.recognized.map((entry) => entry.output), ['へ']);
-  assert.deepEqual(result.recognized[0].actions.map((action) => action.keys), [['d', 'h']]);
+  assert.deepEqual(
+    result.recognized.map((entry) => entry.output),
+    ['へ'],
+  );
+  assert.deepEqual(
+    result.recognized[0].actions.map((action) => action.keys),
+    [['d', 'h']],
+  );
 });
 
 test('拡張候補を持つ単打はkeyupまで保留し単打として確定できる', () => {
@@ -39,14 +45,18 @@ test('拡張候補を持つ単打はkeyupまで保留し単打として確定で
   assert.deepEqual(engine.handle({ type: 'down', key: 'h' }).recognized, []);
   const result = engine.handle({ type: 'up', key: 'h' });
 
-  assert.deepEqual(result.recognized.map((entry) => entry.output), ['ほ']);
-  assert.deepEqual(result.recognized[0].actions.map((action) => action.keys), [['h']]);
+  assert.deepEqual(
+    result.recognized.map((entry) => entry.output),
+    ['ほ'],
+  );
+  assert.deepEqual(
+    result.recognized[0].actions.map((action) => action.keys),
+    [['h']],
+  );
 });
 
 test('確定済み単打をreleaseする前でも次の単打を取りこぼさない', () => {
-  const layout = fromFaces('converter-overlapping-singles', 'converter-overlapping-singles', [
-    face([], 'simultaneous', { h: 'A', j: 'B' }),
-  ]);
+  const layout = fromFaces('converter-overlapping-singles', 'converter-overlapping-singles', [face([], 'simultaneous', { h: 'A', j: 'B' })]);
   const engine = new TypingInputEngine(layout.canonicalInputs);
 
   assert.deepEqual(
@@ -125,17 +135,28 @@ test('prefix Requirementはtrigger release後もpress順を使って認識する
   assert.deepEqual(engine.handle({ type: 'up', key: 'd' }).recognized, []);
   const result = engine.handle({ type: 'down', key: 'h' });
 
-  assert.deepEqual(result.recognized.map((entry) => entry.output), ['へ']);
-  assert.deepEqual(result.recognized[0].actions.map((action) => action.keys), [['d'], ['h']]);
+  assert.deepEqual(
+    result.recognized.map((entry) => entry.output),
+    ['へ'],
+  );
+  assert.deepEqual(
+    result.recognized[0].actions.map((action) => action.keys),
+    [['d'], ['h']],
+  );
 });
 
 test('Input Converter coreは既存Trigger/Action realizationでhold start/continueを共有する', () => {
   const layout = fromFaces('converter-hold', 'converter-hold', [
     face([], 'simultaneous', { x: 'く', y: 'け' }),
-    face(['q'], 'simultaneous', { x: 'ぐ', y: 'げ' }, {
-      layer: '濁音',
-      triggerPersistence: 'hold-capable',
-    }),
+    face(
+      ['q'],
+      'simultaneous',
+      { x: 'ぐ', y: 'げ' },
+      {
+        layer: '濁音',
+        triggerPersistence: 'hold-capable',
+      },
+    ),
   ]);
   const engine = new TypingInputEngine(layout.canonicalInputs, {
     triggerRealizationPolicy: { useHold: true },
@@ -145,27 +166,30 @@ test('Input Converter coreは既存Trigger/Action realizationでhold start/conti
   assert.deepEqual(engine.handle({ type: 'down', key: 'q' }).recognized, []);
   const first = engine.handle({ type: 'down', key: 'x' }).recognized[0];
   assert.equal(first.output, 'ぐ');
-  assert.deepEqual(first.actions.map((action) => ({
-    keys: action.keys,
-    heldKeys: action.heldKeys,
-    holdPhase: action.holdPhase,
-  })), [
-    { keys: ['q'], heldKeys: ['q'], holdPhase: 'start' },
-    { keys: ['x'], heldKeys: ['q'], holdPhase: 'continue' },
-  ]);
+  assert.deepEqual(
+    first.actions.map((action) => ({
+      keys: action.keys,
+      heldKeys: action.heldKeys,
+      holdPhase: action.holdPhase,
+    })),
+    [
+      { keys: ['q'], heldKeys: ['q'], holdPhase: 'start' },
+      { keys: ['x'], heldKeys: ['q'], holdPhase: 'continue' },
+    ],
+  );
 
   engine.handle({ type: 'up', key: 'x' });
   const second = engine.handle({ type: 'down', key: 'y' }).recognized[0];
   assert.equal(second.output, 'げ');
-  assert.deepEqual(second.actions.map((action) => ({
-    keys: action.keys,
-    heldKeys: action.heldKeys,
-    holdPhase: action.holdPhase,
-  })), [
-    { keys: ['y'], heldKeys: ['q'], holdPhase: 'continue' },
-  ]);
+  assert.deepEqual(
+    second.actions.map((action) => ({
+      keys: action.keys,
+      heldKeys: action.heldKeys,
+      holdPhase: action.holdPhase,
+    })),
+    [{ keys: ['y'], heldKeys: ['q'], holdPhase: 'continue' }],
+  );
 });
-
 
 test('3-key候補の途中まで重なっても未定義2-keyなら両単打を保持する', () => {
   const layout = fromKana('converter-unconsumed-overlap', 'converter-unconsumed-overlap', [
@@ -230,7 +254,6 @@ test('定義済み2-key chordは単打fallbackへ二重展開しない', () => {
   assert.deepEqual(outputs, ['AB']);
 });
 
-
 test('recognitionKeysはprefix trigger release後も次の入力まで保持される', () => {
   const layout = fromFaces('converter-recognition-keys', 'converter-recognition-keys', [
     face([], 'simultaneous', { h: 'H' }),
@@ -241,6 +264,9 @@ test('recognitionKeysはprefix trigger release後も次の入力まで保持さ�
   assert.deepEqual(engine.handle({ type: 'down', key: 'd' }).recognitionKeys, ['d']);
   assert.deepEqual(engine.handle({ type: 'up', key: 'd' }).recognitionKeys, ['d']);
   const completed = engine.handle({ type: 'down', key: 'h' });
-  assert.deepEqual(completed.recognized.map((entry) => entry.output), ['X']);
+  assert.deepEqual(
+    completed.recognized.map((entry) => entry.output),
+    ['X'],
+  );
   assert.deepEqual(completed.recognitionKeys, []);
 });

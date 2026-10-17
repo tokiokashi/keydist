@@ -19,7 +19,13 @@ const SORT_HINT = '押すたびに昇順・降順・並び替えなしへ切り�
  * 見出しの文字を短くした列には`fullName`（正式な名前）を渡す。マウスを乗せた時の説明（`title`）と
  * 読み上げの名前（`aria-label`）に出し、並び替えの操作の説明は`title`に残す。
  */
-export function SortColumnHeader<Column extends string>({ column, label, fullName, sort, onSortChange }: {
+export function SortColumnHeader<Column extends string>({
+  column,
+  label,
+  fullName,
+  sort,
+  onSortChange,
+}: {
   readonly column: Column;
   /** 見出しに出す文字。 */
   readonly label: ReactNode;

@@ -12,8 +12,18 @@ test('既定では移動距離の縦棒グラフが、左小指から右手の�
   const feature = page.locator('[data-react-feature="finger-distance"]');
   await expect(feature).toBeVisible({ timeout: 10_000 });
   await expect(feature.locator('[data-chart-bar]')).toHaveCount(10);
-  expect(await feature.locator('[data-chart-bar]').evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-chart-bar'))))
-    .toEqual(['LP', 'LR', 'LM', 'LI', 'LT', 'RT', 'RI', 'RM', 'RR', 'RP']);
+  expect(await feature.locator('[data-chart-bar]').evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-chart-bar')))).toEqual([
+    'LP',
+    'LR',
+    'LM',
+    'LI',
+    'LT',
+    'RT',
+    'RI',
+    'RM',
+    'RR',
+    'RP',
+  ]);
 });
 
 test('見る量を隣り合う指の組にすると6本の棒になり、幅390pxでもはみ出さない', async ({ page }) => {
@@ -54,10 +64,7 @@ test('共有リンクに載らない対象（名前が長すぎるSetup）は、
         overrides: {},
       }),
     );
-    localStorage.setItem(
-      'keydist:single-target-selection',
-      JSON.stringify({ version: 1, target: { kind: 'setup', setupId: 'src-long' } }),
-    );
+    localStorage.setItem('keydist:single-target-selection', JSON.stringify({ version: 1, target: { kind: 'setup', setupId: 'src-long' } }));
   });
   await page.goto('/analyzer/finger-distance');
   await expect(page.locator('[data-react-feature="finger-distance"]')).toBeVisible({ timeout: 10_000 });
@@ -153,10 +160,14 @@ for (const width of [1280, 390]) {
     const feature = page.locator('[data-react-feature="finger-distance"]');
     await expect(feature.locator('[data-distribution-pair]')).toHaveCount(6, { timeout: 10_000 });
     // 既定の条件で、状態が7つ以上の組が出る
-    const counts = await feature.locator('[data-distribution-pair]').evaluateAll((nodes) => nodes.map((node) => node.querySelectorAll('[data-distribution-bar]').length));
+    const counts = await feature
+      .locator('[data-distribution-pair]')
+      .evaluateAll((nodes) => nodes.map((node) => node.querySelectorAll('[data-distribution-bar]').length));
     expect(Math.max(...counts)).toBeGreaterThanOrEqual(7);
     // 全部の行に、状態の値と割合の文字が出ている
-    const texts = await feature.locator('[data-distribution-bar]').evaluateAll((nodes) => nodes.map((node) => [node.children[0]!.textContent, node.children[2]!.textContent]));
+    const texts = await feature
+      .locator('[data-distribution-bar]')
+      .evaluateAll((nodes) => nodes.map((node) => [node.children[0]!.textContent, node.children[2]!.textContent]));
     for (const [state, share] of texts) {
       expect(state).toMatch(/^-?\d+\.\d{3}$/);
       expect(share).toMatch(/^\d+\.\d%$/);

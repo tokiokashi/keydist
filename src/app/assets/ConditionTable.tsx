@@ -9,12 +9,7 @@ import { ConditionEditor, type ConditionEditorContext } from '#hosts/shared/Cond
 import { GLOBAL_EDITABLE_IDS } from '#hosts/shared/condition-edit.ts';
 import type { PaneCatalog } from '#hosts/shared/resolve-pane-input.ts';
 import type { OverrideGroup } from './cascade-override-groups.ts';
-import {
-  otherPlacementNotes,
-  placementRows,
-  type ConditionPlacement,
-  type ConditionPlacementGroup,
-} from './condition-table.ts';
+import { otherPlacementNotes, placementRows, type ConditionPlacement, type ConditionPlacementGroup } from './condition-table.ts';
 
 export interface ConditionTableProps {
   readonly placementGroups: readonly ConditionPlacementGroup[];
@@ -55,18 +50,20 @@ export function ConditionTable({
     [placement, overrides, workspaces, catalog, setups],
   );
 
-  const editor: ConditionEditorContext | undefined = !resolved.ok ? undefined : {
-    overrides: resolved.overrides,
-    dispatch,
-    shapes: catalog.setupCatalog.shapes,
-    ...(catalog.customFingerAssignments === undefined ? {} : { customFingerAssignments: catalog.customFingerAssignments }),
-    ...(catalog.customRomajiRules === undefined ? {} : { customRomajiRules: catalog.customRomajiRules }),
-    ...fixedTarget(placement, setups),
-    otherScopeNotes: otherPlacementNotes(overrideGroups, placement.key, GLOBAL_EDITABLE_IDS),
-    presetLibrary,
-    generatePresetId,
-    undo,
-  };
+  const editor: ConditionEditorContext | undefined = !resolved.ok
+    ? undefined
+    : {
+        overrides: resolved.overrides,
+        dispatch,
+        shapes: catalog.setupCatalog.shapes,
+        ...(catalog.customFingerAssignments === undefined ? {} : { customFingerAssignments: catalog.customFingerAssignments }),
+        ...(catalog.customRomajiRules === undefined ? {} : { customRomajiRules: catalog.customRomajiRules }),
+        ...fixedTarget(placement, setups),
+        otherScopeNotes: otherPlacementNotes(overrideGroups, placement.key, GLOBAL_EDITABLE_IDS),
+        presetLibrary,
+        generatePresetId,
+        undo,
+      };
 
   return (
     <section className="user-assets-section" data-user-assets-section="conditions">
@@ -85,7 +82,9 @@ export function ConditionTable({
           {placementGroups.map((group) => (
             <optgroup key={group.id} label={group.label}>
               {group.placements.map((candidate) => (
-                <option key={candidate.key} value={candidate.key}>{candidate.title}</option>
+                <option key={candidate.key} value={candidate.key}>
+                  {candidate.title}
+                </option>
               ))}
             </optgroup>
           ))}
@@ -112,9 +111,12 @@ function fixedTarget(
   setups: readonly Setup[],
 ): Pick<ConditionEditorContext, 'fixedScope' | 'layout' | 'workspace' | 'setup'> {
   switch (placement.kind) {
-    case 'global': return { fixedScope: 'global' };
-    case 'workspace': return { fixedScope: 'workspace', workspace: { id: placement.workspaceId } };
-    case 'layout': return { fixedScope: 'layout', layout: { id: placement.layoutId, name: placement.title } };
+    case 'global':
+      return { fixedScope: 'global' };
+    case 'workspace':
+      return { fixedScope: 'workspace', workspace: { id: placement.workspaceId } };
+    case 'layout':
+      return { fixedScope: 'layout', layout: { id: placement.layoutId, name: placement.title } };
     case 'setup': {
       const layoutId = setups.find((setup) => setup.id === placement.setupId)?.layoutId ?? '';
       return { setup: { id: placement.setupId, layoutId } };

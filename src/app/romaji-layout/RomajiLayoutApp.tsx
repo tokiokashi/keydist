@@ -10,10 +10,7 @@ import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
  */
 export function RomajiLayoutApp() {
   const { assets, ready, dispatch, canUndo, canRedo, undo, redo } = useKeydistAssets();
-  const fingerAssignments = useMemo(
-    () => [...Object.values(FINGER_ASSIGNMENT_REGISTRY), ...assets.fingerAssignments],
-    [assets.fingerAssignments],
-  );
+  const fingerAssignments = useMemo(() => [...Object.values(FINGER_ASSIGNMENT_REGISTRY), ...assets.fingerAssignments], [assets.fingerAssignments]);
   return (
     <RomajiLayoutEditor
       layouts={assets.userLayouts}

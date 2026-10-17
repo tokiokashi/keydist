@@ -2,12 +2,7 @@ import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts'
 import type { PlaybackOverheadUse } from '#interpretation/timing/playback.ts';
 import type { PunctuationWaitUse } from '#interpretation/timing/punctuation-wait.ts';
 import { DEFAULT_PLAYBACK_OPTIONS, type PlaybackOptions } from './options.ts';
-import {
-  calibrationPartChanges,
-  keystrokeOverheadAdds,
-  simultaneousOverheadAdds,
-  type PersonalSpeedUse,
-} from './timing-conditions.ts';
+import { calibrationPartChanges, keystrokeOverheadAdds, simultaneousOverheadAdds, type PersonalSpeedUse } from './timing-conditions.ts';
 
 /**
  * 再生の時間と速度グラフが、既定の解析設定と違う計算になっている理由
@@ -50,9 +45,7 @@ export function playbackCalculationNotes(
   const personalSpeedInUse = personalSpeedUse === 'applied';
   // 「足している」は、保存値が0でない上乗せを持ち、かつ再生するステップの中にその上乗せを式に入れるステップがある時。
   // 時間に入る種類は、続け打ちと構造の種類が常に、同指連続が同じ指の移動時間を考慮する時だけ。
-  const keystrokeOverheadInUse = personalSpeedInUse
-    && keystrokeOverheadAdds(calibration, options.sameFingerDelay)
-    && overheadUse.keystroke;
+  const keystrokeOverheadInUse = personalSpeedInUse && keystrokeOverheadAdds(calibration, options.sameFingerDelay) && overheadUse.keystroke;
   const simultaneousOverheadInUse = personalSpeedInUse && simultaneousOverheadAdds(calibration) && overheadUse.simultaneous;
   const changes: string[] = [];
   if (!personalSpeedInUse && options.stepsPerSecond !== defaults.stepsPerSecond) {

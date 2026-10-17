@@ -39,7 +39,10 @@ test('宣言のある配列の全レイヤー詳細: トリガーはレイヤー
   const tones = [...guide.keyTones.values()];
   assert.ok(tones.every((tone) => tone.kind === 'layer' && tone.slot >= 1 && tone.slot <= 8));
   assert.equal(guide.legend.length, 30);
-  assert.equal(guide.legend.some((item) => item.id === 'combo' || item.id === 'other-layers'), false);
+  assert.equal(
+    guide.legend.some((item) => item.id === 'combo' || item.id === 'other-layers'),
+    false,
+  );
   assert.match(guide.legend[0]!.label, /^レイヤー\d+: /);
 });
 
@@ -52,7 +55,10 @@ test('凡例は「レイヤー<番号>: <名前>」で、名前そのものが�
 test('宣言のある配列のまとめる表示: 凡例は残すレイヤーと「それ以外のレイヤー」だけになり、まとめられる側は中立の色になる', () => {
   const layout = resolvedLayout('naginata-v18');
   const guide = triggerGuide(layout, 'compact');
-  assert.deepEqual(guide.legend.map((item) => item.id), ['layer:SandS', 'other-layers']);
+  assert.deepEqual(
+    guide.legend.map((item) => item.id),
+    ['layer:SandS', 'other-layers'],
+  );
   assert.equal(guide.legend[1]!.label, 'それ以外のレイヤー');
   assert.deepEqual(guide.legend[1]!.tone, { kind: 'others' });
   const detail = triggerGuide(layout, 'detail');
@@ -101,7 +107,10 @@ test('宣言の無い配列: まとめる設定でも全レイヤー詳細と同
   const comboKeys = [...guide.keyTones].filter(([, tone]) => tone.kind === 'selection');
   assert.ok(comboKeys.length > 0);
   assert.equal(guide.legend.at(-1)?.id, 'combo');
-  assert.equal(guide.legend.some((item) => item.id === 'other-layers'), false);
+  assert.equal(
+    guide.legend.some((item) => item.id === 'other-layers'),
+    false,
+  );
 });
 
 test('レイヤーもコンボも持たない配列: トリガーのキーも凡例も無い', () => {

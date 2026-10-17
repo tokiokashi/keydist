@@ -1,14 +1,5 @@
 import { useEffect, useMemo, useRef, type ReactNode } from 'react';
-import {
-  distanceRows,
-  faceRows,
-  keyName,
-  keyPatternGroups,
-  originRows,
-  rankedCounts,
-  roleSetLabel,
-  shareText,
-} from '#analyzers/key-detail-view.ts';
+import { distanceRows, faceRows, keyName, keyPatternGroups, originRows, rankedCounts, roleSetLabel, shareText } from '#analyzers/key-detail-view.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { Geometry } from '#input/shapes/geometry.ts';
 import { keyboardStandardForGeometryId } from '#input/shapes/key-labels.ts';
@@ -56,14 +47,28 @@ function CountTable({
   return (
     <table className="key-detail-table">
       <thead>
-        <tr>{head.map((label, index) => <th key={label} scope="col" data-numeric={index > 0 || undefined}>{label}</th>)}</tr>
+        <tr>
+          {head.map((label, index) => (
+            <th key={label} scope="col" data-numeric={index > 0 || undefined}>
+              {label}
+            </th>
+          ))}
+        </tr>
       </thead>
       <tbody>
         {rows.map((row) => (
           <tr key={row.key}>
-            {row.cells.map((cell, index) => (index === 0
-              ? <th key={index} scope="row">{cell}</th>
-              : <td key={index} data-numeric>{cell}</td>))}
+            {row.cells.map((cell, index) =>
+              index === 0 ? (
+                <th key={index} scope="row">
+                  {cell}
+                </th>
+              ) : (
+                <td key={index} data-numeric>
+                  {cell}
+                </td>
+              ),
+            )}
           </tr>
         ))}
       </tbody>
@@ -158,7 +163,9 @@ export function KeyDetailWindow({ keyId, layout, geometry, trace, keyDetails, pa
           <p className="key-detail-empty">このテキストでは、このキーを打ちません。</p>
         ) : (
           <>
-            <p className="key-detail-presses" data-key-detail-presses>{merged.presses}打</p>
+            <p className="key-detail-presses" data-key-detail-presses>
+              {merged.presses}打
+            </p>
             {faces.length > 1 ? (
               <Section title="レイヤー・コンボ別">
                 <p className="key-detail-note">押下数の内訳です。名前を押すと、そのレイヤーやコンボだけの詳細を読めます。</p>
@@ -168,7 +175,9 @@ export function KeyDetailWindow({ keyId, layout, geometry, trace, keyDetails, pa
                       <details>
                         <summary>
                           <span className="key-detail-face-name">{face.label}</span>
-                          <span className="key-detail-face-count">{face.detail.presses}打 {shareText(face.detail.presses, merged.presses)}</span>
+                          <span className="key-detail-face-count">
+                            {face.detail.presses}打 {shareText(face.detail.presses, merged.presses)}
+                          </span>
                         </summary>
                         <DetailTables detail={face.detail} standard={standard} />
                       </details>
@@ -183,28 +192,30 @@ export function KeyDetailWindow({ keyId, layout, geometry, trace, keyDetails, pa
         <Section title="入力方法">
           {patterns.length === 0 ? (
             <p className="key-detail-empty">このキーを使う入力方法はありません。</p>
-          ) : patterns.map((group) => (
-            <div key={group.faceId} className="key-detail-pattern-group" data-pattern-face={group.faceId}>
-              <h6>{group.label}</h6>
-              {group.triggers.length === 0 ? null : (
-                <p className="key-detail-triggers">
-                  トリガー: {group.triggers.map((trigger) => `${trigger.keyNames.join('+')}${trigger.held ? '（押したまま）' : ''}`).join(' / ')}
-                  {group.selfTrigger ? '。このキーはトリガーに使われます' : ''}
-                </p>
-              )}
-              <ul className="key-detail-patterns">
-                {group.rows.map((row, index) => (
-                  <li key={index}>
-                    <span className="key-detail-pattern-keys">{row.keyNames.join(' + ')}</span>
-                    <span aria-hidden="true">→</span>
-                    <span className="key-detail-pattern-output">{row.output}</span>
-                    {row.group === undefined ? null : <span className="key-detail-pattern-note">{row.group}</span>}
-                    {row.ordered ? <span className="key-detail-pattern-note">押す順あり</span> : null}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          ) : (
+            patterns.map((group) => (
+              <div key={group.faceId} className="key-detail-pattern-group" data-pattern-face={group.faceId}>
+                <h6>{group.label}</h6>
+                {group.triggers.length === 0 ? null : (
+                  <p className="key-detail-triggers">
+                    トリガー: {group.triggers.map((trigger) => `${trigger.keyNames.join('+')}${trigger.held ? '（押したまま）' : ''}`).join(' / ')}
+                    {group.selfTrigger ? '。このキーはトリガーに使われます' : ''}
+                  </p>
+                )}
+                <ul className="key-detail-patterns">
+                  {group.rows.map((row, index) => (
+                    <li key={index}>
+                      <span className="key-detail-pattern-keys">{row.keyNames.join(' + ')}</span>
+                      <span aria-hidden="true">→</span>
+                      <span className="key-detail-pattern-output">{row.output}</span>
+                      {row.group === undefined ? null : <span className="key-detail-pattern-note">{row.group}</span>}
+                      {row.ordered ? <span className="key-detail-pattern-note">押す順あり</span> : null}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))
+          )}
         </Section>
       </div>
     </FloatingWindow>

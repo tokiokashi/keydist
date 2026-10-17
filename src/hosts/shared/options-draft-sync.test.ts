@@ -3,7 +3,10 @@ import { test } from 'node:test';
 import { applyDraftInput, initialDraftSync, syncDraftWithStored } from './options-draft-sync.ts';
 import { createOptionsWriteLog, createOptionsWriteLogs, type OptionsWriteLog } from './options-write-log.ts';
 
-interface Opts { readonly on: boolean; readonly n: number }
+interface Opts {
+  readonly on: boolean;
+  readonly n: number;
+}
 const X: Opts = { on: true, n: 1 };
 const A: Opts = { on: false, n: 1 };
 const B: Opts = { on: true, n: 2 };
@@ -14,13 +17,21 @@ function harness(initial: Opts, log: OptionsWriteLog = createOptionsWriteLog()) 
   return {
     log,
     /** 利用者の入力 */
-    input: (next: Opts) => { state = applyDraftInput(state, next); },
+    input: (next: Opts) => {
+      state = applyDraftInput(state, next);
+    },
     /** 保存先へ書いた（debounceのtimer・元に戻す前のflush）。保存先の変化は`stored`で別に届く */
-    write: (value: Opts) => { log.record(value); },
+    write: (value: Opts) => {
+      log.record(value);
+    },
     /** 保存先の値の変化が描画に届いた */
-    stored: (value: Opts) => { state = syncDraftWithStored(state, { ...value }, log.entries(), log.latestSeq()); },
+    stored: (value: Opts) => {
+      state = syncDraftWithStored(state, { ...value }, log.entries(), log.latestSeq());
+    },
     /** 保存先が最後に見た値と同じ参照のまま描画された（元に戻すは以前の資産の値へ戻すので、参照も同じになる） */
-    storedAgain: () => { state = syncDraftWithStored(state, state.source, log.entries(), log.latestSeq()); },
+    storedAgain: () => {
+      state = syncDraftWithStored(state, state.source, log.entries(), log.latestSeq());
+    },
     draft: () => state.draft,
   };
 }

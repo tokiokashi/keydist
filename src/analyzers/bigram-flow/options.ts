@@ -10,10 +10,7 @@ import {
   type OptionsValueMap,
 } from '#analyzers/options.ts';
 import type { BigramSource, FingerClass } from './bigram-vectors.ts';
-import {
-  MAX_POLAR_DISPLAY_GAIN,
-  MIN_POLAR_BANDWIDTH_DEGREES,
-} from './movement-profile-scale.ts';
+import { MAX_POLAR_DISPLAY_GAIN, MIN_POLAR_BANDWIDTH_DEGREES } from './movement-profile-scale.ts';
 
 export type KeyboardFlowWeightScale = 'linear' | 'sqrt' | 'log';
 export type KeyboardFlowLayerOrder = 'weight' | 'same-hand-top' | 'cross-hand-top';
@@ -35,11 +32,7 @@ const MAX_SELECTED_FINGERS = 2;
  * `UNSAFE_OBJECT_KEYS`（`#input/codec`）は対象外（`__proto__`等はarray要素として
  * 渡ってきても文字列比較で弾かれるだけで、プロトタイプ汚染の経路にならない）。
  */
-function decodeSelectedFingers(
-  raw: unknown,
-  path: string,
-  diagnostics: CodecDiagnostic[],
-): readonly FingerClass[] {
+function decodeSelectedFingers(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): readonly FingerClass[] {
   if (raw === undefined) return [];
   if (!Array.isArray(raw)) {
     diagnostics.push({ path, message: '配列でないため既定値へ戻しました' });
@@ -187,10 +180,7 @@ export interface KeyboardFlowOutgoingVectorLike {
  * hoveredKeyId始点のedgeに限定した最大weightを求める。
  * ホバー中の太さ基準を「そのキーだけ」にする時の分母になる。
  */
-export function computeOutgoingMaxWeight(
-  vectors: readonly KeyboardFlowOutgoingVectorLike[],
-  hoveredKeyId: string | null,
-): number {
+export function computeOutgoingMaxWeight(vectors: readonly KeyboardFlowOutgoingVectorLike[], hoveredKeyId: string | null): number {
   if (hoveredKeyId === null) return 0;
   let max = 0;
   for (const vector of vectors) {
@@ -217,11 +207,7 @@ export function resolveKeyboardFlowMaxWeight(
   return keyMaxWeight;
 }
 
-export function scaleKeyboardFlowWeight(
-  weight: number,
-  maxWeight: number,
-  scale: KeyboardFlowWeightScale,
-): number {
+export function scaleKeyboardFlowWeight(weight: number, maxWeight: number, scale: KeyboardFlowWeightScale): number {
   if (maxWeight <= 0 || weight <= 0) return 0;
   const ratio = Math.min(1, weight / maxWeight);
   if (scale === 'sqrt') return Math.sqrt(ratio);
@@ -229,19 +215,14 @@ export function scaleKeyboardFlowWeight(
   return ratio;
 }
 
-function layerRank(
-  hand: KeyboardFlowVectorLike['hand'],
-  order: KeyboardFlowLayerOrder,
-): number {
+function layerRank(hand: KeyboardFlowVectorLike['hand'], order: KeyboardFlowLayerOrder): number {
   if (order === 'same-hand-top') return hand === 'cross' ? 0 : 1;
   if (order === 'cross-hand-top') return hand === 'cross' ? 1 : 0;
   return 0;
 }
 
 /** 同一キーへ戻るrepeat（物理移動が無い）vectorを除く。KeyboardFlowの線・最大weightはこの集合だけを見る。 */
-export function nonStationaryVectors<T extends KeyboardFlowVectorLike>(
-  vectors: readonly T[],
-): readonly T[] {
+export function nonStationaryVectors<T extends KeyboardFlowVectorLike>(vectors: readonly T[]): readonly T[] {
   return vectors.filter((vector) => vector.distance >= 1e-6);
 }
 
@@ -250,13 +231,8 @@ export function nonStationaryVectors<T extends KeyboardFlowVectorLike>(
  * group priority -> weight降順 -> stable id の順で並べ、各group内は太い線を先に描き、
  * 細い線を最後（最前面）に描く。太いedgeが細いedgeを覆い隠さないようにするため。
  */
-export function orderKeyboardFlowVectors<T extends KeyboardFlowVectorLike>(
-  vectors: readonly T[],
-  order: KeyboardFlowLayerOrder,
-): readonly T[] {
-  return [...nonStationaryVectors(vectors)]
-    .sort((a, b) =>
-      layerRank(a.hand, order) - layerRank(b.hand, order)
-      || b.weight - a.weight
-      || a.id.localeCompare(b.id));
+export function orderKeyboardFlowVectors<T extends KeyboardFlowVectorLike>(vectors: readonly T[], order: KeyboardFlowLayerOrder): readonly T[] {
+  return [...nonStationaryVectors(vectors)].sort(
+    (a, b) => layerRank(a.hand, order) - layerRank(b.hand, order) || b.weight - a.weight || a.id.localeCompare(b.id),
+  );
 }

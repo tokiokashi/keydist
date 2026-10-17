@@ -136,7 +136,7 @@ export function PaneMenu({
     document.addEventListener('pointerdown', onPointerDown);
     // 開いたら、選ばれている項目（択一のメニューの時）、無ければ先頭の項目へフォーカスを移す（キーボードでそのまま選べるように）。
     const items = rootRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"]');
-    const target = items === undefined ? undefined : [...items].find((item) => item.getAttribute('aria-checked') === 'true') ?? items[0];
+    const target = items === undefined ? undefined : ([...items].find((item) => item.getAttribute('aria-checked') === 'true') ?? items[0]);
     target?.focus();
     return () => document.removeEventListener('pointerdown', onPointerDown);
   }, [open]);
@@ -193,7 +193,11 @@ export function PaneMenu({
           aria-label={accessibleName}
           style={shift === 0 ? undefined : { transform: `translateX(${shift}px)` }}
         >
-          {caption === undefined ? null : <div className="pane-menu-caption" aria-hidden="true">{caption}</div>}
+          {caption === undefined ? null : (
+            <div className="pane-menu-caption" aria-hidden="true">
+              {caption}
+            </div>
+          )}
           {items.map((item) => (
             <button
               type="button"
@@ -212,9 +216,7 @@ export function PaneMenu({
             >
               {item.glyph === undefined ? null : <BindingGlyph kind={item.glyph.kind} number={item.glyph.number} />}
               <span className="pane-menu-item-label">{item.label}</span>
-              {item.description === undefined ? null : (
-                <span className="pane-menu-item-description">{item.description}</span>
-              )}
+              {item.description === undefined ? null : <span className="pane-menu-item-description">{item.description}</span>}
             </button>
           ))}
         </div>
@@ -298,9 +300,7 @@ export function BindingGlyph({ kind, number }: { readonly kind: BindingGlyphKind
           <g transform={kind === 'link-new' ? 'translate(-1 -1) scale(.85)' : undefined}>
             <path d={CHAIN_PATH} fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
           </g>
-          {kind === 'link-new' ? (
-            <path d="M12.5 9.8v5M10 12.3h5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-          ) : null}
+          {kind === 'link-new' ? <path d="M12.5 9.8v5M10 12.3h5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /> : null}
         </svg>
       )}
       {number === undefined ? null : <span className="pane-binding-icon-number">{number}</span>}

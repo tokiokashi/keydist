@@ -1,14 +1,7 @@
 import type { Finger } from '#input/shapes/geometry.ts';
 import type { Stroke, StrokeParticipation } from '#trace/generate.ts';
-import {
-  analyzeStrokeRedirects,
-  type RedirectAnalysisResult,
-} from './redirect.ts';
-import type {
-  FingerDirection,
-  FingerTransition,
-  HandTransition,
-} from './transition.ts';
+import { analyzeStrokeRedirects, type RedirectAnalysisResult } from './redirect.ts';
+import type { FingerDirection, FingerTransition, HandTransition } from './transition.ts';
 import type { ChainInterpretation, Hand } from './chain.ts';
 
 export type RollDirection = Exclude<FingerDirection, 'same'>;
@@ -45,14 +38,8 @@ function handOf(finger: Finger): Hand {
   return finger.startsWith('L') ? 'left' : 'right';
 }
 
-function participationForFinger(
-  stroke: Stroke,
-  hand: Hand,
-  finger: Finger,
-): StrokeParticipation | undefined {
-  return stroke.participations.find(
-    (participation) => participation.hand === hand && participation.finger === finger,
-  );
+function participationForFinger(stroke: Stroke, hand: Hand, finger: Finger): StrokeParticipation | undefined {
+  return stroke.participations.find((participation) => participation.hand === hand && participation.finger === finger);
 }
 
 /**
@@ -64,26 +51,15 @@ function participationForFinger(
  *
  * held-triggerだけでは除外しない。holdPhase=start/releaseの未決事項もここで推測しない。
  */
-export function isRollEligibleStroke(
-  stroke: Stroke,
-  hand: Hand,
-): boolean {
+export function isRollEligibleStroke(stroke: Stroke, hand: Hand): boolean {
   const targetPresses = stroke.presses.filter((press) => handOf(press.finger) === hand);
   if (targetPresses.length !== 1) return false;
 
-  const targetParticipation = participationForFinger(
-    stroke,
-    hand,
-    targetPresses[0].finger,
-  );
+  const targetParticipation = participationForFinger(stroke, hand, targetPresses[0].finger);
   if (!targetParticipation?.roles.includes('output')) return false;
 
   const oppositeHand = hand === 'left' ? 'right' : 'left';
-  if (stroke.participations.some(
-    (participation) =>
-      participation.hand === oppositeHand
-      && participation.roles.includes('trigger'),
-  )) return false;
+  if (stroke.participations.some((participation) => participation.hand === oppositeHand && participation.roles.includes('trigger'))) return false;
 
   return true;
 }
@@ -105,7 +81,8 @@ export function transitionsForStrokeSpan(
     let index = firstTransitionFrom(transitions, startStrokeIndex);
     index < transitions.length && transitions[index].toStrokeIndex < endStrokeIndex;
     index++
-  ) found.push(transitions[index]);
+  )
+    found.push(transitions[index]);
   return Object.freeze(found);
 }
 
@@ -113,10 +90,7 @@ export function transitionsForStrokeSpan(
  * Chain内のTransition（fromStrokeIndex昇順）のうち、fromStrokeIndexが`strokeIndex`以上になる最初の位置。
  * 無ければ長さを返す。
  */
-function firstTransitionFrom(
-  transitions: readonly HandTransition[],
-  strokeIndex: number,
-): number {
+function firstTransitionFrom(transitions: readonly HandTransition[], strokeIndex: number): number {
   let low = 0;
   let high = transitions.length;
   while (low < high) {
@@ -128,11 +102,7 @@ function firstTransitionFrom(
 }
 
 /** Chain内で、`strokeIndex`のStrokeへ入るTransition。無ければundefined。 */
-export function transitionEndingAt(
-  analysis: RedirectAnalysisResult,
-  chainIndex: number,
-  strokeIndex: number,
-): HandTransition | undefined {
+export function transitionEndingAt(analysis: RedirectAnalysisResult, chainIndex: number, strokeIndex: number): HandTransition | undefined {
   const transitions = analysis.transitionsByChain[chainIndex];
   if (!transitions) return undefined;
   const index = firstTransitionFrom(transitions, strokeIndex - 1);
@@ -141,26 +111,18 @@ export function transitionEndingAt(
 }
 
 /** Chain内で、`strokeIndex`のStrokeから出るTransition。無ければundefined。 */
-export function transitionStartingAt(
-  analysis: RedirectAnalysisResult,
-  chainIndex: number,
-  strokeIndex: number,
-): HandTransition | undefined {
+export function transitionStartingAt(analysis: RedirectAnalysisResult, chainIndex: number, strokeIndex: number): HandTransition | undefined {
   const transitions = analysis.transitionsByChain[chainIndex];
   if (!transitions) return undefined;
   const transition = transitions[firstTransitionFrom(transitions, strokeIndex)];
   return transition?.fromStrokeIndex === strokeIndex ? transition : undefined;
 }
 
-function pureDirectionalCandidate(
-  analysis: RedirectAnalysisResult,
-  transition: HandTransition,
-): FingerTransition | undefined {
+function pureDirectionalCandidate(analysis: RedirectAnalysisResult, transition: HandTransition): FingerTransition | undefined {
   const fromStroke = analysis.strokes[transition.fromStrokeIndex];
   const toStroke = analysis.strokes[transition.toStrokeIndex];
 
-  if (!isRollEligibleStroke(fromStroke, transition.hand)
-    || !isRollEligibleStroke(toStroke, transition.hand)) return undefined;
+  if (!isRollEligibleStroke(fromStroke, transition.hand) || !isRollEligibleStroke(toStroke, transition.hand)) return undefined;
 
   // eligibilityがtarget hand 1 Pressを保証するため、candidateも1件だけになる。
   if (transition.candidates.length !== 1) return undefined;
@@ -170,9 +132,7 @@ function pureDirectionalCandidate(
 }
 
 /** 3 Stroke以上・同一directionのmaximal区間だけをLongRollとして返す。 */
-export function buildLongRolls(
-  analysis: RedirectAnalysisResult,
-): readonly RollElement[] {
+export function buildLongRolls(analysis: RedirectAnalysisResult): readonly RollElement[] {
   const rolls: RollElement[] = [];
 
   for (const chain of analysis.chains) {
@@ -184,18 +144,15 @@ export function buildLongRolls(
     let transitionCount = 0;
 
     const flush = () => {
-      if (
-        startStrokeIndex !== undefined
-        && lastToStrokeIndex !== undefined
-        && direction !== undefined
-        && transitionCount >= 2
-      ) {
-        rolls.push(Object.freeze({
-          chainIndex: chain.chainIndex,
-          startStrokeIndex,
-          endStrokeIndex: lastToStrokeIndex + 1,
-          direction,
-        }));
+      if (startStrokeIndex !== undefined && lastToStrokeIndex !== undefined && direction !== undefined && transitionCount >= 2) {
+        rolls.push(
+          Object.freeze({
+            chainIndex: chain.chainIndex,
+            startStrokeIndex,
+            endStrokeIndex: lastToStrokeIndex + 1,
+            direction,
+          }),
+        );
       }
       startStrokeIndex = undefined;
       direction = undefined;
@@ -211,14 +168,9 @@ export function buildLongRolls(
       }
 
       const nextDirection = candidate.fingerDirection as RollDirection;
-      const contiguous = lastToStrokeIndex === undefined
-        || transition.fromStrokeIndex === lastToStrokeIndex;
+      const contiguous = lastToStrokeIndex === undefined || transition.fromStrokeIndex === lastToStrokeIndex;
 
-      if (
-        startStrokeIndex === undefined
-        || direction === undefined
-        || !contiguous
-      ) {
+      if (startStrokeIndex === undefined || direction === undefined || !contiguous) {
         flush();
         startStrokeIndex = transition.fromStrokeIndex;
         direction = nextDirection;
@@ -247,18 +199,11 @@ export function buildLongRolls(
 }
 
 /** いずれかのLongRollに含まれるTransitionの`transitionIndex`の集合。 */
-function transitionIndexesCoveredByLongRolls(
-  analysis: RedirectAnalysisResult,
-  longRolls: readonly RollElement[],
-): ReadonlySet<number> {
+function transitionIndexesCoveredByLongRolls(analysis: RedirectAnalysisResult, longRolls: readonly RollElement[]): ReadonlySet<number> {
   const covered = new Set<number>();
   for (const roll of longRolls) {
-    for (const transition of transitionsForStrokeSpan(
-      analysis,
-      roll.chainIndex,
-      roll.startStrokeIndex,
-      roll.endStrokeIndex,
-    )) covered.add(transition.transitionIndex);
+    for (const transition of transitionsForStrokeSpan(analysis, roll.chainIndex, roll.startStrokeIndex, roll.endStrokeIndex))
+      covered.add(transition.transitionIndex);
   }
   return covered;
 }
@@ -269,15 +214,8 @@ function transitionIndexesCoveredByLongRolls(
  * Redirect pivotの除外はend側だけ。start側pivotは意図的に許容する。
  * この非対称はstructural classification contract（docs/analysis-model.md）。
  */
-export function buildTwoRolls(
-  analysis: RedirectAnalysisResult,
-  longRolls: readonly RollElement[],
-): readonly TwoRoll[] {
-  const redirectPivots = new Set(
-    analysis.redirects.map(
-      (redirect) => `${redirect.chainIndex}:${redirect.pivotStrokeIndex}`,
-    ),
-  );
+export function buildTwoRolls(analysis: RedirectAnalysisResult, longRolls: readonly RollElement[]): readonly TwoRoll[] {
+  const redirectPivots = new Set(analysis.redirects.map((redirect) => `${redirect.chainIndex}:${redirect.pivotStrokeIndex}`));
 
   const coveredByLongRoll = transitionIndexesCoveredByLongRolls(analysis, longRolls);
 
@@ -286,24 +224,22 @@ export function buildTwoRolls(
     const candidate = pureDirectionalCandidate(analysis, transition);
     if (!candidate) continue;
     if (coveredByLongRoll.has(transition.transitionIndex)) continue;
-    if (redirectPivots.has(
-      `${transition.chainIndex}:${transition.toStrokeIndex}`,
-    )) continue;
+    if (redirectPivots.has(`${transition.chainIndex}:${transition.toStrokeIndex}`)) continue;
 
-    rolls.push(Object.freeze({
-      chainIndex: transition.chainIndex,
-      startStrokeIndex: transition.fromStrokeIndex,
-      endStrokeIndex: transition.toStrokeIndex + 1,
-      direction: candidate.fingerDirection as RollDirection,
-    }));
+    rolls.push(
+      Object.freeze({
+        chainIndex: transition.chainIndex,
+        startStrokeIndex: transition.fromStrokeIndex,
+        endStrokeIndex: transition.toStrokeIndex + 1,
+        direction: candidate.fingerDirection as RollDirection,
+      }),
+    );
   }
 
   return Object.freeze(rolls);
 }
 
-export function analyzeRolls(
-  redirectAnalysis: RedirectAnalysisResult,
-): RollAnalysisResult {
+export function analyzeRolls(redirectAnalysis: RedirectAnalysisResult): RollAnalysisResult {
   const longRolls = buildLongRolls(redirectAnalysis);
   const twoRolls = buildTwoRolls(redirectAnalysis, longRolls);
 
@@ -315,9 +251,6 @@ export function analyzeRolls(
 }
 
 /** 呼び出し側向けの合成入口。 */
-export function analyzeStrokeRolls(
-  strokes: readonly Stroke[],
-  policy?: ChainInterpretation,
-): RollAnalysisResult {
+export function analyzeStrokeRolls(strokes: readonly Stroke[], policy?: ChainInterpretation): RollAnalysisResult {
   return analyzeRolls(analyzeStrokeRedirects(strokes, policy));
 }

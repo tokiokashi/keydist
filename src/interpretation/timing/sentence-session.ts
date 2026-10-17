@@ -46,10 +46,11 @@ export function sentenceSteps(analysis: { readonly strokes: readonly SentenceStr
   }
   return analysis.strokes.map((stroke) => {
     const outputChars = [...stroke.char];
-    const comboOutput = stroke.aggregationGroupId === 'combo'
-      && strokesPerSelection.get(stroke.selectionIndex) === 1
-      && outputChars.length > 0
-      && outputChars.every(capturableKey);
+    const comboOutput =
+      stroke.aggregationGroupId === 'combo' &&
+      strokesPerSelection.get(stroke.selectionIndex) === 1 &&
+      outputChars.length > 0 &&
+      outputChars.every(capturableKey);
     return {
       keys: [...new Set(stroke.presses.flatMap((press) => press.keys.map((key) => key.id)))],
       inputIndex: stroke.inputIndex,
@@ -65,11 +66,8 @@ export type SentenceUnmeasurable = 'empty' | 'uncapturable-key';
 /** 示す文を打つのに取れないキーが要る、または打つ列が空なら、測れない。 */
 export function sentenceUnmeasurable(steps: readonly SentenceStep[]): SentenceUnmeasurable | undefined {
   if (steps.length === 0) return 'empty';
-  return steps.some((step) => step.keys.length === 0 || step.keys.some((key) => !capturableKey(key)))
-    ? 'uncapturable-key'
-    : undefined;
+  return steps.some((step) => step.keys.length === 0 || step.keys.some((key) => !capturableKey(key))) ? 'uncapturable-key' : undefined;
 }
-
 
 /** 打つキーの列を、同じ入力単位を打つ連続したステップごとの組に分ける。 */
 function groupSteps(steps: readonly SentenceStep[]): SentenceStep[][] {
@@ -124,9 +122,10 @@ export function stepsSentencePlan(steps: readonly SentenceStep[], analyze: () =>
  */
 export function sentencePlan(analysis: SentenceAnalysis, spelling?: SentenceSpellingSource): SentencePlan {
   const groups = groupSteps(sentenceSteps(analysis));
-  const aligned = spelling !== undefined
-    && spelling.units.length === groups.length
-    && spelling.units.every((unit, index) => groups[index][groups[index].length - 1].inputChar === unit.kana);
+  const aligned =
+    spelling !== undefined &&
+    spelling.units.length === groups.length &&
+    spelling.units.every((unit, index) => groups[index][groups[index].length - 1].inputChar === unit.kana);
   if (!aligned) return stepsSentencePlan(sentenceSteps(analysis), () => analysis);
   const baseSpellings = spelling.units.map((unit) => unit.spellings[0]);
   return {
@@ -277,11 +276,9 @@ function pressStep(
   const pressDone = run.pressReadingAlive && run.pressed.length >= step.keys.length;
   const outputDone = run.outputReadingAlive && output !== undefined && run.outputCount >= output.length;
 
-  const pressMatch = run.pressReadingAlive && !pressDone
-    ? remainingStepKeys(run).find((key) => calibrationKeyMatches(event, key, keyLabel(key)))
-    : undefined;
-  const outputMatches = run.outputReadingAlive && output !== undefined && !outputDone
-    && outputCharMatches(event, output[run.outputCount]);
+  const pressMatch =
+    run.pressReadingAlive && !pressDone ? remainingStepKeys(run).find((key) => calibrationKeyMatches(event, key, keyLabel(key))) : undefined;
+  const outputMatches = run.outputReadingAlive && output !== undefined && !outputDone && outputCharMatches(event, output[run.outputCount]);
 
   if (pressMatch === undefined && !outputMatches) {
     if (pressDone || outputDone) {
@@ -302,9 +299,10 @@ function pressStep(
       }
       return pressStep(finishStep(run, firstAt, undefined, byOutput), event, atMs, keyLabel, final);
     }
-    const expected = run.pressReadingAlive || output === undefined
-      ? { expectedKey: remainingStepKeys(run)[0], expectedIsOutput: false }
-      : { expectedKey: output[run.outputCount], expectedIsOutput: true };
+    const expected =
+      run.pressReadingAlive || output === undefined
+        ? { expectedKey: remainingStepKeys(run)[0], expectedIsOutput: false }
+        : { expectedKey: output[run.outputCount], expectedIsOutput: true };
     return { run: { ...run, clean: false }, outcome: { kind: 'wrong-key', ...expected } };
   }
 
@@ -330,9 +328,14 @@ function pressStep(
   if ((pressComplete || outputComplete) && (!otherPending || lastStep)) {
     // もう一方の読み方が、完了せずに外れていれば、完了した読み方に決まる。
     // 入った時点で既に完了していた読み方は、この押下で外れても決めない。
-    const decided = output === undefined ? undefined
-      : pressComplete && !advanced.outputReadingAlive && !outputDone ? 'press'
-        : outputComplete && !advanced.pressReadingAlive && !pressDone ? 'output' : undefined;
+    const decided =
+      output === undefined
+        ? undefined
+        : pressComplete && !advanced.outputReadingAlive && !outputDone
+          ? 'press'
+          : outputComplete && !advanced.pressReadingAlive && !pressDone
+            ? 'output'
+            : undefined;
     // 押すキーの読み方が完了しない（前の押下で完了済みでもない）まま出力の文字の読み方が完了したなら、出力の文字の読み方で完了したステップ。
     const byOutput = outputComplete && !pressComplete && !pressDone;
     const next = finishStep(advanced, firstAtMs, decided, byOutput);
@@ -463,11 +466,15 @@ export function pressSentenceKey(
   if (open.length === 0 && held.length === 0) return { run, outcome: { kind: 'ignored' } };
   const results = open.map((thread) => ({ thread, ...pressStep(thread.run, event, atMs, keyLabel, final) }));
   const matched = results.flatMap((result) =>
-    result.outcome.kind === 'wrong-key' || result.outcome.kind === 'overflow' ? [] : [{ ...result, outcome: result.outcome }]);
+    result.outcome.kind === 'wrong-key' || result.outcome.kind === 'overflow' ? [] : [{ ...result, outcome: result.outcome }],
+  );
 
   if (matched.length === 0) {
     // 押下の途中だった綴りが、この押下で確定して綴りを打ち終えることもある。
-    const finished = [...held, ...results.filter((result) => result.outcome.kind === 'overflow').map(({ thread, run: stepRun }) => ({ spelling: thread.spelling, run: stepRun }))];
+    const finished = [
+      ...held,
+      ...results.filter((result) => result.outcome.kind === 'overflow').map(({ thread, run: stepRun }) => ({ spelling: thread.spelling, run: stepRun })),
+    ];
     if (finished.length > 0) {
       // 打ち終えた綴りで確定し、この押下を次の単位の最初の押下にする。
       const pending = finished[0].run.pendingReading;
@@ -554,10 +561,7 @@ export function pressSentenceSessionKey(
   const pressed = pressSentenceKey(session.run, event, atMs, keyLabel);
   if (pressed.outcome.kind !== 'run-finished') return { session: { ...session, run: pressed.run }, outcome: pressed.outcome };
 
-  const records = [
-    ...session.records,
-    { sentence: session.sentence, round: session.round, typed: pressed.run.typed, taps: pressed.run.taps },
-  ];
+  const records = [...session.records, { sentence: session.sentence, round: session.round, typed: pressed.run.typed, taps: pressed.run.taps }];
   const last = session.sentence === session.plans.length - 1 && session.round === session.rounds - 1;
   if (last) return { session: { ...session, run: pressed.run, records }, outcome: pressed.outcome };
   const sentence = session.round === session.rounds - 1 ? session.sentence + 1 : session.sentence;
@@ -572,10 +576,7 @@ export function pressSentenceSessionKey(
  * 打ち終えた回の記録から、数える回（2回目以降）の標本を作る。各文の1回目は文を覚える回なので数えない。
  * 標本の打鍵の列と構造は、回ごとに、打った綴りから作る。作れない回、または打鍵の列のストロークの数が記録と合わない回があれば、無い。
  */
-export function sentenceSamples(
-  plans: readonly SentencePlan[],
-  records: readonly SentenceRoundRecord[],
-): SentenceSample[] | undefined {
+export function sentenceSamples(plans: readonly SentencePlan[], records: readonly SentenceRoundRecord[]): SentenceSample[] | undefined {
   const samples: SentenceSample[] = [];
   for (const record of records) {
     if (record.round === 0) continue;

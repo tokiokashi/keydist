@@ -20,7 +20,9 @@ async function expectNameColumnStays(page: Page, tableSelector: string) {
 
   const cell = table.locator('tbody th[scope="row"]').first();
   const before = (await cell.boundingBox())!.x;
-  await scroller.evaluate((el) => { el.scrollLeft = el.scrollWidth; });
+  await scroller.evaluate((el) => {
+    el.scrollLeft = el.scrollWidth;
+  });
   expect(await scroller.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
   const after = (await cell.boundingBox())!.x;
   expect(after).toBeCloseTo(before, 0);

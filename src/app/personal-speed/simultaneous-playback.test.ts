@@ -41,7 +41,10 @@ function stepDurations(layoutId: string, calibration: PlaybackCalibration): numb
 test('同時押しを持たない配列は、同時押しの上乗せを保存しても再生の時間が変わらない', () => {
   for (const layoutId of ['qwerty', 'tsuki-2-263']) {
     const analysis = analysisOf(layoutId);
-    assert.ok(analysis.strokes.every((stroke) => strokeSimultaneousKind(stroke) === undefined), layoutId);
+    assert.ok(
+      analysis.strokes.every((stroke) => strokeSimultaneousKind(stroke) === undefined),
+      layoutId,
+    );
     assert.deepEqual(stepDurations(layoutId, WITH_C), stepDurations(layoutId, BASE), layoutId);
   }
 });
@@ -77,10 +80,7 @@ test('解析の遷移から選ぶ基準の時間は、ストロークの指か�
     const analysis = analysisOf(layoutId);
     const fromStrokes = { strokes: analysis.strokes, transitions: [] };
     analysis.strokes.forEach((_, index) => {
-      assert.ok(
-        Math.abs(playbackNormalMs(analysis, index, BASE) - playbackNormalMs(fromStrokes, index, BASE)) < 1e-9,
-        `${layoutId} ${index}`,
-      );
+      assert.ok(Math.abs(playbackNormalMs(analysis, index, BASE) - playbackNormalMs(fromStrokes, index, BASE)) < 1e-9, `${layoutId} ${index}`);
     });
   }
 });

@@ -8,13 +8,7 @@ import type { SettingsCascadeOverrides, SettingsItemId } from '#engine/settings-
 import { createWorkspace, initialWorkspaceLibrary, type Workspace } from '#engine/workspace.ts';
 import { paneCatalog } from '../standalone/catalog.ts';
 import { cascadeOverrideGroups, type OverrideGroup } from './cascade-override-groups.ts';
-import {
-  conditionPlacementGroups,
-  conditionValueNames,
-  otherPlacementNote,
-  placementRows,
-  type ConditionPlacement,
-} from './condition-table.ts';
+import { conditionPlacementGroups, conditionValueNames, otherPlacementNote, placementRows, type ConditionPlacement } from './condition-table.ts';
 
 const ANSI_SHAPE = PHYSICAL_SHAPES['row-staggered'];
 const JIS_SHAPE = PHYSICAL_SHAPES['jis-row-staggered'];
@@ -30,7 +24,12 @@ function workspaceWith(conditions: Workspace['conditions']): Workspace {
   return conditions === undefined ? created : { ...created, conditions };
 }
 
-function rowsOf(placement: ConditionPlacement, overrides: SettingsCascadeOverrides, workspaces: readonly Workspace[] = [], setups: readonly Setup[] = []) {
+function rowsOf(
+  placement: ConditionPlacement,
+  overrides: SettingsCascadeOverrides,
+  workspaces: readonly Workspace[] = [],
+  setups: readonly Setup[] = [],
+) {
   const result = placementRows(placement, { overrides, workspaces, catalog, setups });
   assert.equal(result.ok, true);
   if (!result.ok) throw new Error('rows');
@@ -149,7 +148,10 @@ test('計算に使えない配列・見つからないSetupは、行を出さず
   const missing = placementRows({ kind: 'setup', key: 'setup:x', title: 'x', setupId: 'x' }, { overrides: {}, workspaces: [], catalog, setups: [] });
   assert.equal(missing.ok, false);
   const brokenSetup: Setup = { id: 'setup-b', number: 2, layoutId: 'qwerty', shapeId: 'shape-gone' };
-  const broken = placementRows({ kind: 'setup', key: 'setup:setup-b', title: 'b', setupId: 'setup-b' }, { overrides: {}, workspaces: [], catalog, setups: [brokenSetup] });
+  const broken = placementRows(
+    { kind: 'setup', key: 'setup:setup-b', title: 'b', setupId: 'setup-b' },
+    { overrides: {}, workspaces: [], catalog, setups: [brokenSetup] },
+  );
   assert.equal(broken.ok, false);
 });
 
@@ -158,7 +160,10 @@ test('適用範囲は全体・Workspace・配列・Setupの順に並び、名前
   const setups = [{ id: 'setup-a', displayName: 'Setupの名前' }];
   const names = conditionValueNames(catalog, [], [], []);
   const groups = conditionPlacementGroups({ catalog, userLayouts: [], userRomajiRules: [], workspaces, setups, names });
-  assert.deepEqual(groups.map((group) => group.id), ['global', 'workspace', 'builtin-alphabet', 'builtin-kana', 'setup']);
+  assert.deepEqual(
+    groups.map((group) => group.id),
+    ['global', 'workspace', 'builtin-alphabet', 'builtin-kana', 'setup'],
+  );
   const titles = new Map(groups.flatMap((group) => group.placements).map((placement) => [placement.key, placement.title] as const));
   const listed = cascadeOverrideGroups({
     overrides: { global: { windowSize: 4 }, layout: { qwerty: { windowSize: 4 } }, setup: { 'setup-a': { windowSize: 4 } } },
@@ -166,7 +171,10 @@ test('適用範囲は全体・Workspace・配列・Setupの順に並び、名前
     setups,
     names,
   });
-  assert.deepEqual(listed.map((group) => group.key), ['global', 'workspace:ws-1', 'layout:qwerty', 'setup:setup-a']);
+  assert.deepEqual(
+    listed.map((group) => group.key),
+    ['global', 'workspace:ws-1', 'layout:qwerty', 'setup:setup-a'],
+  );
   for (const group of listed) assert.equal(titles.get(group.key), group.title, group.key);
 });
 
@@ -184,10 +192,7 @@ test('他の適用範囲の変更の名前は3つまで出し、残りは数で�
   const groups = ['a', 'b', 'c', 'd', 'e'].map((name) => groupOf(`layout:${name}`, `配列「${name}」`, ['windowSize']));
   const note = otherPlacementNote(groups, 'global', 'windowSize');
   assert.equal(note, 'ほかの適用範囲でも変更しています: 配列「a」、配列「b」、配列「c」、ほか2件');
-  assert.equal(
-    otherPlacementNote(groups.slice(0, 3), 'global', 'windowSize'),
-    'ほかの適用範囲でも変更しています: 配列「a」、配列「b」、配列「c」',
-  );
+  assert.equal(otherPlacementNote(groups.slice(0, 3), 'global', 'windowSize'), 'ほかの適用範囲でも変更しています: 配列「a」、配列「b」、配列「c」');
 });
 
 test('他の適用範囲の変更は、選んだ適用範囲と別の項目を数えず、物理配列などのレベルも数える', () => {
@@ -197,10 +202,7 @@ test('他の適用範囲の変更は、選んだ適用範囲と別の項目を�
     groupOf('layout:gone', '（見つからない配列）', ['windowSize']),
     groupOf('setup:s', 'Setup', ['sfbHomeCost']),
   ];
-  assert.equal(
-    otherPlacementNote(groups, 'global', 'windowSize'),
-    'ほかの適用範囲でも変更しています: 物理配列「x」、（見つからない配列）',
-  );
+  assert.equal(otherPlacementNote(groups, 'global', 'windowSize'), 'ほかの適用範囲でも変更しています: 物理配列「x」、（見つからない配列）');
   assert.equal(otherPlacementNote(groups, 'setup:s', 'sfbHomeCost'), 'ほかの適用範囲でも変更しています: 物理配列「x」');
   assert.equal(otherPlacementNote(groups, 'global', 'romajiRuleId'), undefined);
 });

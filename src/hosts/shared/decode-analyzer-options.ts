@@ -25,10 +25,7 @@ export interface DecodableAnalyzerDefinition<Options> {
  * 診断（壊れていた・未知の値だった等）は捨てず`diagnostics`として返す。呼び出し側
  * （`hosts/standalone`のページ）が`PaneFrame`の`settingsDiagnostics`へ渡して画面に出す。
  */
-export function decodeStoredAnalyzerOptions<Options>(
-  definition: DecodableAnalyzerDefinition<Options>,
-  raw: unknown,
-): DecodedAnalyzerOptions<Options> {
+export function decodeStoredAnalyzerOptions<Options>(definition: DecodableAnalyzerDefinition<Options>, raw: unknown): DecodedAnalyzerOptions<Options> {
   const diagnostics: CodecDiagnostic[] = [];
   const options = definition.decodeOptions(raw, diagnostics);
   return { options, diagnostics };

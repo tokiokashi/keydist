@@ -10,9 +10,6 @@ import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
  */
 export function TesterApp() {
   const { assets, ready } = useKeydistAssets({ history: false });
-  const userLayouts = useMemo(
-    () => userInputLayouts(assets.userLayouts, assets.userRomajiRules),
-    [assets.userLayouts, assets.userRomajiRules],
-  );
+  const userLayouts = useMemo(() => userInputLayouts(assets.userLayouts, assets.userRomajiRules), [assets.userLayouts, assets.userRomajiRules]);
   return <InputConverterView userLayouts={userLayouts} userLayoutsReady={ready} />;
 }

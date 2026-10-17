@@ -34,20 +34,28 @@ const PHONE = { width: 390, height: 844 };
 
 async function openWorkspace(page: Page, size: { width: number; height: number }, name = '新しいWorkspace', withTarget = false) {
   await page.setViewportSize(size);
-  await page.addInitScript((value) => {
-    if (localStorage.getItem('keydist:workspaces') === null) {
-      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
-    }
-  }, { id: 'stack', name, text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes: [flow, comparison, withTarget ? sensitivityWithTarget : sensitivity], grid: GRID, groups: [{ id: 'link-1', target: {} }] });
+  await page.addInitScript(
+    (value) => {
+      if (localStorage.getItem('keydist:workspaces') === null) {
+        localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
+      }
+    },
+    {
+      id: 'stack',
+      name,
+      text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+      panes: [flow, comparison, withTarget ? sensitivityWithTarget : sensitivity],
+      grid: GRID,
+      groups: [{ id: 'link-1', target: {} }],
+    },
+  );
   await page.goto('/workspace/stack');
   await waitForHydration(page);
   await expect(page.locator('.pane-frame')).toHaveCount(3);
 }
 
-const storedGrid = async (page: Page) => page.evaluate(
-  (key) => JSON.stringify(JSON.parse(localStorage.getItem(key) ?? '{}').workspaces?.[0]?.grid),
-  WORKSPACES_KEY,
-);
+const storedGrid = async (page: Page) =>
+  page.evaluate((key) => JSON.stringify(JSON.parse(localStorage.getItem(key) ?? '{}').workspaces?.[0]?.grid), WORKSPACES_KEY);
 
 const box = async (locator: Locator) => {
   const rect = await locator.boundingBox();
@@ -93,10 +101,12 @@ test('積んだペインの本体は高さ0に潰れず、幅だけを測るcont
   await openWorkspace(page, PHONE, '新しいWorkspace', true);
   await expect(page.locator('[data-react-feature="bigram-flow"] [data-flow-edge="true"]').first()).toBeAttached({ timeout: 15_000 });
   await expect(page.locator('.workspace-stack-pane .pane-body')).toHaveCount(3, { timeout: 15_000 });
-  const bodies = await page.locator('.workspace-stack-pane .pane-body').evaluateAll((els) => els.map((el) => {
-    const style = getComputedStyle(el);
-    return { type: style.containerType, name: style.containerName, height: el.getBoundingClientRect().height };
-  }));
+  const bodies = await page.locator('.workspace-stack-pane .pane-body').evaluateAll((els) =>
+    els.map((el) => {
+      const style = getComputedStyle(el);
+      return { type: style.containerType, name: style.containerName, height: el.getBoundingClientRect().height };
+    }),
+  );
   expect(bodies).toHaveLength(3);
   for (const body of bodies) {
     expect(body.name).toBe('pane-body');
@@ -118,7 +128,11 @@ test('パソコン幅では本体は幅と高さのcontainerで、縦に積ま�
   expect(types).toEqual(['size', 'size', 'size']);
 });
 
-for (const [width, name] of [[390, '新しいWorkspace'], [360, '新しいWorkspace'], [390, 'とても長いWorkspaceの名前'.repeat(5)]] as const) {
+for (const [width, name] of [
+  [390, '新しいWorkspace'],
+  [360, '新しいWorkspace'],
+  [390, 'とても長いWorkspaceの名前'.repeat(5)],
+] as const) {
   test(`${width}px・名前${name.length}文字: 文脈バーは2段で、テキストのチップが24px以上あり▾が見える`, async ({ page }) => {
     await openWorkspace(page, { width, height: 844 }, name);
     const bar = page.locator('.context-bar');
@@ -143,7 +157,7 @@ for (const [width, name] of [[390, '新しいWorkspace'], [360, '新しいWorksp
     const shapeBox = await box(bar.locator('.context-select-chip'));
     const toggleBox = await box(bar.locator('.shell-sidebar-toggle'));
     for (const first of [nameBox, menuBox, undoBox, redoBox, toggleBox]) {
-      expect(Math.abs((first.y + first.height / 2) - (nameBox.y + nameBox.height / 2))).toBeLessThan(6);
+      expect(Math.abs(first.y + first.height / 2 - (nameBox.y + nameBox.height / 2))).toBeLessThan(6);
       expect(first.y + first.height).toBeLessThanOrEqual(chipBox.y + 1);
     }
     expect(Math.abs(shapeBox.y - chipBox.y)).toBeLessThan(6);
@@ -171,10 +185,13 @@ test('境目をまたいで狭めて戻しても、格子の位置・大きさ�
   await page.clock.install();
   await openWorkspace(page, DESKTOP);
   await expect(page.locator('.workspace-grid-item')).toHaveCount(3);
-  const rects = () => page.locator('.workspace-grid-item').evaluateAll((els) => els.map((el) => {
-    const r = el.getBoundingClientRect();
-    return [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)];
-  }));
+  const rects = () =>
+    page.locator('.workspace-grid-item').evaluateAll((els) =>
+      els.map((el) => {
+        const r = el.getBoundingClientRect();
+        return [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)];
+      }),
+    );
   // ライブラリの配置の動き（200ms）が済んでから測る（動いている最中の寸法を基準にしない）
   const settled = () => settleBy(page, async () => JSON.stringify(await rects()));
   await settled();
@@ -220,7 +237,10 @@ test('スマホ幅でも、ペインの追加・複製・閉じる・連動・�
   await expect(titles).toHaveText(['Bigram Flow', '比較表', 'N感度', 'Bigram Flow', '比較表']);
 
   // ⋯: 閉じる（複製した方）
-  await comparisonPane.nth(1).getByRole('button', { name: /の操作$/ }).click();
+  await comparisonPane
+    .nth(1)
+    .getByRole('button', { name: /の操作$/ })
+    .click();
   await page.getByRole('menuitem', { name: /閉じる/ }).click();
   await expect(titles).toHaveText(['Bigram Flow', '比較表', 'N感度', 'Bigram Flow']);
 

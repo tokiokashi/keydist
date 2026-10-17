@@ -3,12 +3,7 @@ import type { SingleAnalyzerDefinition } from '#analyzers/contract.ts';
 import type { EngineComputer } from '#engine/computer.ts';
 import type { ExtractionRequestState, TraceRequestState } from '#engine/engine-requests.ts';
 import type { ResolvedInputResult } from '#engine/resolved-input.ts';
-import {
-  closeAnalyzerPaneChannels,
-  foldExtractionState,
-  syncAnalyzerPaneChannels,
-  type AnalyzerPaneChannels,
-} from './analyzer-channels.ts';
+import { closeAnalyzerPaneChannels, foldExtractionState, syncAnalyzerPaneChannels, type AnalyzerPaneChannels } from './analyzer-channels.ts';
 
 export interface UseAnalyzerPaneResult<Extracted> {
   readonly extraction: ExtractionRequestState<Extracted>;
@@ -30,9 +25,7 @@ export function useAnalyzerPane<Options, Extracted>(
   options: Options,
   resolution: ResolvedInputResult,
 ): UseAnalyzerPaneResult<Extracted> {
-  const [extraction, setExtraction] = useState<ExtractionRequestState<Extracted>>(
-    IDLE_EXTRACTION as ExtractionRequestState<Extracted>,
-  );
+  const [extraction, setExtraction] = useState<ExtractionRequestState<Extracted>>(IDLE_EXTRACTION as ExtractionRequestState<Extracted>);
   const [trace, setTrace] = useState<TraceRequestState>(IDLE_TRACE);
   const channelsRef = useRef<AnalyzerPaneChannels<Options> | undefined>(undefined);
 
@@ -54,10 +47,13 @@ export function useAnalyzerPane<Options, Extracted>(
 
   // アンマウント時だけ購読を止める（cacheが変わることはこの単体ページでは無いが、
   // 念のため依存に含める）。
-  useEffect(() => () => {
-    closeAnalyzerPaneChannels(channelsRef.current);
-    channelsRef.current = undefined;
-  }, [cache]);
+  useEffect(
+    () => () => {
+      closeAnalyzerPaneChannels(channelsRef.current);
+      channelsRef.current = undefined;
+    },
+    [cache],
+  );
 
   return { extraction, trace };
 }

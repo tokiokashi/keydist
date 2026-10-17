@@ -9,13 +9,7 @@ import { blankPaneMenuItems, type WorkspacePaneRuntime } from '../pane-runtime.t
  * 余白のペイン。何も表示せず、並びの空きを埋めるだけ。
  * 名前とつかみ所は、他のペインと同じく器（`PaneShell`）が出す。複製・閉じるを見出しの右端の⋯に置く。
  */
-export function BlankWorkspacePane({
-  pane,
-  runtime,
-}: {
-  readonly pane: WorkspacePane;
-  readonly runtime: WorkspacePaneRuntime;
-}) {
+export function BlankWorkspacePane({ pane, runtime }: { readonly pane: WorkspacePane; readonly runtime: WorkspacePaneRuntime }) {
   const lead = useContext(PaneHeaderLeadContext);
   return (
     <section className="pane-blank" aria-label={BLANK_PANE_META.name} data-blank-pane="true">

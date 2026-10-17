@@ -47,10 +47,7 @@ const NAGINATA_MODIFIER_TRIGGERS: Record<string, string> = {
 test('薙刀式v18の修飾の表は、キーが修飾の中で持つ意味の文字で押し方を出す', () => {
   const layout = LAYOUT_BY_ID.get('naginata-v18')!;
   const rows = modifierRows(layout).filter((row) => row.label !== 'SandS');
-  assert.deepEqual(
-    Object.fromEntries(rows.map((row) => [row.label, row.trigger])),
-    NAGINATA_MODIFIER_TRIGGERS,
-  );
+  assert.deepEqual(Object.fromEntries(rows.map((row) => [row.label, row.trigger])), NAGINATA_MODIFIER_TRIGGERS);
 });
 
 test('薙刀式v18のヒートマップ（レイヤー）の見出しは、トリガーを出さず、押し方の区分を番号の後ろに置く', () => {
@@ -66,22 +63,43 @@ test('薙刀式v18のヒートマップ（レイヤー）の見出しは、ト�
   const titles = buildLayerEntries(layout, extracted, 'detail').map((entry) => entry.title);
   assert.ok(titles.includes('レイヤー6（同時）: 拗音（ゃ）'), titles.join('\n'));
   assert.ok(titles.includes('レイヤー4（同時）: 濁音'), titles.join('\n'));
-  assert.ok(titles.every((title) => !title.includes('[')), titles.join('\n'));
+  assert.ok(
+    titles.every((title) => !title.includes('[')),
+    titles.join('\n'),
+  );
 });
 
 test('意味を書いていないキーは刻印を出し、層の名前と同じでも物理キーの名前に置き換えない', () => {
-  const legends = new Map([['j', 'あ'], ['f', 'か'], ['h', 'く']]);
+  const legends = new Map([
+    ['j', 'あ'],
+    ['f', 'か'],
+    ['h', 'く'],
+  ]);
   const layout = { legends };
-  const groups = new Map([['j', '濁音'], ['f', '濁音']]);
+  const groups = new Map([
+    ['j', '濁音'],
+    ['f', '濁音'],
+  ]);
   assert.equal(
-    triggerChordsDisplayText(layout, [{ keys: ['j'], groups }, { keys: ['f'], groups }], undefined, '濁音'),
+    triggerChordsDisplayText(
+      layout,
+      [
+        { keys: ['j'], groups },
+        { keys: ['f'], groups },
+      ],
+      undefined,
+      '濁音',
+    ),
     'あ / か',
   );
   assert.equal(triggerChordsDisplayText(layout, [['h']], undefined, 'く'), 'く');
 });
 
 test('意味はキーと修飾の組で決まり、同じキーでも組が違えば別の意味になる', () => {
-  const legends = new Map([['j', 'あ'], ['h', 'く']]);
+  const legends = new Map([
+    ['j', 'あ'],
+    ['h', 'く'],
+  ]);
   const layout = {
     legends,
     triggerMeanings: {
@@ -90,11 +108,14 @@ test('意味はキーと修飾の組で決まり、同じキーでも組が違�
       濁音: { j: { kind: 'modifierKey', text: '濁音' } },
     },
   } as const;
-  const text = (groups: [string, string][]) => triggerChordsDisplayText(
-    layout,
-    [{ keys: groups.map(([key]) => key), groups: new Map(groups) }],
+  const text = (groups: [string, string][]) => triggerChordsDisplayText(layout, [{ keys: groups.map(([key]) => key), groups: new Map(groups) }]);
+  assert.equal(
+    text([
+      ['h', '拗音'],
+      ['j', '濁音'],
+    ]),
+    'や + 濁音（J）',
   );
-  assert.equal(text([['h', '拗音'], ['j', '濁音']]), 'や + 濁音（J）');
   assert.equal(text([['j', '外来音']]), 'あ');
   assert.equal(text([['j', '濁音']]), '濁音（J）');
   assert.equal(text([['j', '組なし']]), 'あ');
@@ -148,8 +169,18 @@ test('かわせみ配列+の見出しは、トリガーのキーを出さず、�
   assert.deepEqual(titles.slice(15), ['レイヤー16（同時）: 右親指', 'レイヤー17（同時）: 左親指']);
 
   const layout = LAYOUT_BY_ID.get('kawasemi-plus')!;
-  assert.deepEqual(comboRows(layout, undefined).slice(0, 5).map((row) => row.trigger), ['し', 'と', 'る', 'ま', 'で']);
-  assert.deepEqual(comboDiagramItems(layout, undefined).slice(0, 5).map((item) => item.label), ['し', 'と', 'る', 'ま', 'で']);
+  assert.deepEqual(
+    comboRows(layout, undefined)
+      .slice(0, 5)
+      .map((row) => row.trigger),
+    ['し', 'と', 'る', 'ま', 'で'],
+  );
+  assert.deepEqual(
+    comboDiagramItems(layout, undefined)
+      .slice(0, 5)
+      .map((item) => item.label),
+    ['し', 'と', 'る', 'ま', 'で'],
+  );
 });
 
 test('シン蜂蜜小梅の文字キー同時押しの層は、出るかなの1文字目を名前に出し、トリガーを重ねない', () => {

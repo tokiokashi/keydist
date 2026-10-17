@@ -69,9 +69,7 @@ export function createExtractRequest<Options, Extracted>(
     (input, signal) => cache.getExtraction(input, definition, analyzerOptions, signal),
     listener,
     options,
-    cache.peekExtraction === undefined
-      ? undefined
-      : (input) => cache.peekExtraction!(input, definition, analyzerOptions),
+    cache.peekExtraction === undefined ? undefined : (input) => cache.peekExtraction!(input, definition, analyzerOptions),
   );
 }
 
@@ -91,12 +89,9 @@ export function createSetExtractRequest<Options, Extracted>(
   options?: EngineRequestOptions,
 ): EngineSetRequestChannel {
   return createEngineSetRequest(
-    (members: readonly EngineSetMemberInput[], signal) =>
-      cache.getSetExtraction(members, definition, analyzerOptions, signal),
+    (members: readonly EngineSetMemberInput[], signal) => cache.getSetExtraction(members, definition, analyzerOptions, signal),
     listener,
     options,
-    cache.peekSetExtraction === undefined
-      ? undefined
-      : (members) => cache.peekSetExtraction!(members, definition, analyzerOptions),
+    cache.peekSetExtraction === undefined ? undefined : (members) => cache.peekSetExtraction!(members, definition, analyzerOptions),
   );
 }

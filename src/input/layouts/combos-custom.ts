@@ -85,16 +85,27 @@ const RAW_CUSTOM_COMBOS: ComboDefinition[] = [
   ['yu', ['i', 'u'], YOUON_ONLY],
 ];
 
-
 const VOCABULARY_OUTPUTS = new Set([
-  'desita', 'masita', 'siteha', 'deha', 'desu', 'kara', 'koto', 'masu', 'mono',
-  'nado', 'niha', 'sika', 'sita', 'site', 'suru', 'tame', 'toha',
+  'desita',
+  'masita',
+  'siteha',
+  'deha',
+  'desu',
+  'kara',
+  'koto',
+  'masu',
+  'mono',
+  'nado',
+  'niha',
+  'sika',
+  'sita',
+  'site',
+  'suru',
+  'tame',
+  'toha',
 ]);
 
-function comboClassification(
-  output: string,
-  condition: ComboCondition | undefined,
-): InputClassification {
+function comboClassification(output: string, condition: ComboCondition | undefined): InputClassification {
   if (VOCABULARY_OUTPUTS.has(output)) return 'vocabulary-extension';
   if (condition?.youonOnly) return 'youon-extension';
   if (/^[-aeiou]nn$/.test(output) || output === 'nn') return 'hatsuon-extension';
@@ -102,20 +113,21 @@ function comboClassification(
   return 'diphthong-extension';
 }
 
-function comboPresentation(
-  output: string,
-  condition: ComboCondition | undefined,
-): ComboPresentation {
+function comboPresentation(output: string, condition: ComboCondition | undefined): ComboPresentation {
   if (VOCABULARY_OUTPUTS.has(output)) return { group: '語彙拡張' };
 
   if (condition?.youonOnly) {
-    const foldTriggerInputs =
-      ['ya', 'ye', 'yo', 'yu'].includes(output) ? ['i']
-      : ['yaku', 'yann', 'yatu', 'yau', 'you'].includes(output) ? ['i', 'a']
-      : ['yenn', 'yetu'].includes(output) ? ['i', 'e']
-      : ['yoku', 'yonn', 'yotu'].includes(output) ? ['i', 'o']
-      : ['yuku', 'yunn', 'yutu', 'yuu'].includes(output) ? ['i', 'u']
-      : undefined;
+    const foldTriggerInputs = ['ya', 'ye', 'yo', 'yu'].includes(output)
+      ? ['i']
+      : ['yaku', 'yann', 'yatu', 'yau', 'you'].includes(output)
+        ? ['i', 'a']
+        : ['yenn', 'yetu'].includes(output)
+          ? ['i', 'e']
+          : ['yoku', 'yonn', 'yotu'].includes(output)
+            ? ['i', 'o']
+            : ['yuku', 'yunn', 'yutu', 'yuu'].includes(output)
+              ? ['i', 'u']
+              : undefined;
     return { group: '拗音拡張', ...(foldTriggerInputs ? { foldTriggerInputs } : {}) };
   }
 
@@ -128,12 +140,15 @@ function comboPresentation(
   }
 
   if (/^[aeiou](ki|ku|ti|tu)$/.test(output)) {
-    const foldTriggerInputs =
-      /^(eki|iki|oki)$/.test(output) ? ['c']
-      : /^(aku|iku|oku|uku)$/.test(output) ? ['x']
-      : /^(ati|eti|oti|uti)$/.test(output) ? ['l']
-      : /^[aeiou]tu$/.test(output) ? [',']
-      : undefined;
+    const foldTriggerInputs = /^(eki|iki|oki)$/.test(output)
+      ? ['c']
+      : /^(aku|iku|oku|uku)$/.test(output)
+        ? ['x']
+        : /^(ati|eti|oti|uti)$/.test(output)
+          ? ['l']
+          : /^[aeiou]tu$/.test(output)
+            ? [',']
+            : undefined;
     return {
       group: '入声拡張',
       ...(foldTriggerInputs ? { foldTriggerInputs } : {}),
@@ -153,11 +168,12 @@ function comboPresentation(
  * 英文や英字の区間では同じ配列の単打配置だけで打つ。
  */
 export const CUSTOM_COMBOS: ComboDefinition[] = RAW_CUSTOM_COMBOS.map(
-  ([output, inputs, condition]) => [
-    output,
-    inputs,
-    { ...condition, romajiOnly: true },
-    comboPresentation(output, condition),
-    [comboClassification(output, condition)],
-  ] as ComboDefinition,
+  ([output, inputs, condition]) =>
+    [
+      output,
+      inputs,
+      { ...condition, romajiOnly: true },
+      comboPresentation(output, condition),
+      [comboClassification(output, condition)],
+    ] as ComboDefinition,
 );

@@ -9,11 +9,7 @@ import type { KeydistAssets } from './commands.ts';
 import { initialMultiTargetSelection } from './multi-target-selection.ts';
 import { initialSingleTargetSelection } from './single-target-selection.ts';
 import { WORKSPACE_LIBRARY_CODEC } from './workspace-codec.ts';
-import {
-  addStandalonePaneToWorkspaceCommand,
-  setWorkspacePaneOptionsBindingCommand,
-  setWorkspacePaneOptionsCommand,
-} from './workspace-commands.ts';
+import { addStandalonePaneToWorkspaceCommand, setWorkspacePaneOptionsBindingCommand, setWorkspacePaneOptionsCommand } from './workspace-commands.ts';
 import {
   addWorkspacePane,
   closeWorkspacePane,
@@ -109,7 +105,10 @@ test('別のAnalyzerの組が同じidを持っていても、ペインを足す�
   assert.deepEqual(binding, sharedOptions('bigram-flow-2'));
   const next = addWorkspacePane(library, 'w', { ...pane('a', FLOW, { source: 'within-hand' }), optionsBinding: binding }, SIZE);
   const after = findWorkspace(next, 'w')!;
-  assert.deepEqual(after.panes.map((p) => p.id), ['a']);
+  assert.deepEqual(
+    after.panes.map((p) => p.id),
+    ['a'],
+  );
   assert.deepEqual(after.optionSets, [
     { id: 'bigram-flow-1', analyzerId: FINGER, options: undefined },
     { id: 'bigram-flow-2', analyzerId: FLOW, options: { source: 'within-hand' } },
@@ -196,9 +195,21 @@ test('コマンド: 共有の設定の変更も持ち方の切り替えも、元
 test('個別画面から足す: 共有と同じ設定なら共有に従い、違えば共有を書き換えずこのペインだけの設定にする。組が無ければ作る', () => {
   const assets = assetsWith(sample());
   const history = emptyCommandHistory<KeydistAssets>();
-  const same = applyCommand(assets, history, addStandalonePaneToWorkspaceCommand('w', { paneId: 'same', analyzerId: FLOW, options: { source: 'within-hand' }, matchesShared: true }, SIZE));
-  const different = applyCommand(same.assets, same.history, addStandalonePaneToWorkspaceCommand('w', { paneId: 'diff', analyzerId: FLOW, options: { source: 'all' } }, SIZE));
-  const created = applyCommand(different.assets, different.history, addStandalonePaneToWorkspaceCommand('w', { paneId: 'new', analyzerId: 'comparison', options: { visible: ['a'] } }, SIZE));
+  const same = applyCommand(
+    assets,
+    history,
+    addStandalonePaneToWorkspaceCommand('w', { paneId: 'same', analyzerId: FLOW, options: { source: 'within-hand' }, matchesShared: true }, SIZE),
+  );
+  const different = applyCommand(
+    same.assets,
+    same.history,
+    addStandalonePaneToWorkspaceCommand('w', { paneId: 'diff', analyzerId: FLOW, options: { source: 'all' } }, SIZE),
+  );
+  const created = applyCommand(
+    different.assets,
+    different.history,
+    addStandalonePaneToWorkspaceCommand('w', { paneId: 'new', analyzerId: 'comparison', options: { visible: ['a'] } }, SIZE),
+  );
   const workspace = findWorkspace(created.assets.workspaces, 'w')!;
   const byId = (id: string) => workspace.panes.find((p) => p.id === id)!;
   assert.deepEqual(byId('same').optionsBinding, sharedOptions('bigram-flow-1'));

@@ -14,9 +14,7 @@ export interface ScaleRange {
 export function mergeScaleRanges(ranges: Iterable<ScaleRange>): ScaleRange | undefined {
   let merged: ScaleRange | undefined;
   for (const range of ranges) {
-    merged = merged === undefined
-      ? range
-      : { min: Math.min(merged.min, range.min), max: Math.max(merged.max, range.max) };
+    merged = merged === undefined ? range : { min: Math.min(merged.min, range.min), max: Math.max(merged.max, range.max) };
   }
   return merged;
 }

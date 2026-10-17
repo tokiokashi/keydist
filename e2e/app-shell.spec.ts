@@ -206,7 +206,7 @@ test('Undoは待ち中の本文の変更を先に書いてから戻す（その�
   const now = await page.evaluate(() => Date.now());
   await page.clock.pauseAt(now + 60_000);
   await textarea.fill('すぐに戻す編集');
-  expect(await page.evaluate(() => localStorage.getItem('keydist:text-library')) ?? '').not.toContain('すぐに戻す編集');
+  expect((await page.evaluate(() => localStorage.getItem('keydist:text-library'))) ?? '').not.toContain('すぐに戻す編集');
 
   // 戻すと、待ち中の本文（組み込みの書き換え＝自作のコピー）だけが戻り、英文の選択は残る。
   await bar.getByRole('button', { name: '元に戻す' }).click();
@@ -250,9 +250,7 @@ test('テキストの名前は、チップの外を押して閉じても書か�
   await bar.getByRole('button', { name: 'やり直す' }).click();
   await expect(chip).toContainText('名前その2');
 
-  await expect
-    .poll(async () => page.evaluate(() => localStorage.getItem('keydist:text-library')))
-    .toContain('名前その2');
+  await expect.poll(async () => page.evaluate(() => localStorage.getItem('keydist:text-library'))).toContain('名前その2');
 });
 
 test('トップとTesterもシェルに載る', async ({ page }) => {
@@ -493,7 +491,9 @@ test('まとまりを畳んだ状態でも、Tabはサイドバーの中の見�
   // 畳んだ項目は数えない。
   const visible = () =>
     page.evaluate(() => {
-      const items = [...document.querySelectorAll<HTMLElement>('#app-sidebar a[href], #app-sidebar button:not([disabled])')].filter((item) => item.checkVisibility());
+      const items = [...document.querySelectorAll<HTMLElement>('#app-sidebar a[href], #app-sidebar button:not([disabled])')].filter((item) =>
+        item.checkVisibility(),
+      );
       return { count: items.length, index: items.indexOf(document.activeElement as HTMLElement), names: items.map((item) => item.textContent ?? '') };
     });
   const { count, names } = await visible();

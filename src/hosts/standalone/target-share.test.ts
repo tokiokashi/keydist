@@ -40,12 +40,13 @@ const setupB: Setup = { id: 'uuid-b', number: 2, layoutId: 'dvorak', shapeId: 'r
 
 test('組み込みの配列はidで、自作の配列とSetupは名前だけで載せる（内部のidを運ばない）', () => {
   const src = source([setupA, setupB]);
-  const { params } = encodeMultiTargetsToUrl(
-    [DVORAK, MINE, { kind: 'setup', setupId: 'uuid-a' }, { kind: 'setup', setupId: 'uuid-b' }],
-    undefined,
-    src,
-  );
-  assert.deepEqual(params.getAll('targets'), ['layout:dvorak', 'user-layout:自作,配列', 'setup:仕事用', `setup:Dvorak/${shapes.get('row-staggered')!.name}`]);
+  const { params } = encodeMultiTargetsToUrl([DVORAK, MINE, { kind: 'setup', setupId: 'uuid-a' }, { kind: 'setup', setupId: 'uuid-b' }], undefined, src);
+  assert.deepEqual(params.getAll('targets'), [
+    'layout:dvorak',
+    'user-layout:自作,配列',
+    'setup:仕事用',
+    `setup:Dvorak/${shapes.get('row-staggered')!.name}`,
+  ]);
   assert.ok(!params.toString().includes('uuid'));
   assert.ok(!params.toString().includes('user-1'));
 });
@@ -62,7 +63,10 @@ test('Multiは並び順ごと往復し、基準は集合に含まれる時だけ
   assert.deepEqual(decoded.notice, { notFound: [], unreadable: 0 });
 
   // 集合に含まれない基準は効かないので捨てる。
-  const outside = new URLSearchParams([['targets', 'layout:dvorak'], ['baseline', 'layout:qwerty']]);
+  const outside = new URLSearchParams([
+    ['targets', 'layout:dvorak'],
+    ['baseline', 'layout:qwerty'],
+  ]);
   assert.equal(decodeMultiTargetsFromUrl(outside, src, []).baseline, undefined);
 });
 
@@ -140,7 +144,13 @@ test('見つからない名前が多い時は先頭の数件だけ名前を出�
 
 test('載らない対象（削除済み・名前が長すぎる・件数超過）は理由ごとに返し、載る対象だけをURLに置く', () => {
   const longSetup: Setup = { id: 'uuid-long', number: 3, layoutId: 'qwerty', shapeId: 'row-staggered', label: 'あ'.repeat(SHARE_MAX_REF_LENGTH) };
-  const justFits: Setup = { id: 'uuid-fit', number: 4, layoutId: 'qwerty', shapeId: 'row-staggered', label: 'い'.repeat(SHARE_MAX_REF_LENGTH - 'setup:'.length) };
+  const justFits: Setup = {
+    id: 'uuid-fit',
+    number: 4,
+    layoutId: 'qwerty',
+    shapeId: 'row-staggered',
+    label: 'い'.repeat(SHARE_MAX_REF_LENGTH - 'setup:'.length),
+  };
   const src = source([setupA, longSetup, justFits]);
   const { params, notice } = encodeMultiTargetsToUrl(
     [
@@ -186,11 +196,7 @@ test('載らない対象が無い時は、送る側へ示す文が出ない（�
 test('送る側へ示す文は、載らなかった対象と名前だけが載る自作の配列を分けて書き、長い名前は切る', () => {
   const longSetup: Setup = { id: 'uuid-long', number: 3, layoutId: 'qwerty', shapeId: 'row-staggered', label: 'あ'.repeat(SHARE_MAX_REF_LENGTH) };
   const src = source([longSetup]);
-  const { notice } = encodeMultiTargetsToUrl(
-    [{ kind: 'setup', setupId: 'gone' }, { kind: 'setup', setupId: 'uuid-long' }, MINE],
-    undefined,
-    src,
-  );
+  const { notice } = encodeMultiTargetsToUrl([{ kind: 'setup', setupId: 'gone' }, { kind: 'setup', setupId: 'uuid-long' }, MINE], undefined, src);
   assert.deepEqual(describeShareEncodeNotice(notice), [
     '削除済みの対象（1件）はリンクに載りませんでした',
     `名前が長すぎるSetup「${'あ'.repeat(20)}…」はリンクに載りませんでした`,
@@ -205,10 +211,15 @@ test('送る側へ示す文は、載らなかった対象と名前だけが載�
 function oddNameSource(): { src: TargetShareSource; targets: AnalysisTarget[] } {
   const base = LAYOUT_BY_ID.get('qwerty')!;
   const stored = ['  先頭空白', '改行\nあり', '', '普通'].map((name, i) => ({
-    id: `u${i}`, name, rows: ['1234567890', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'],
+    id: `u${i}`,
+    name,
+    rows: ['1234567890', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'],
   }));
   const decoded = decodeUserLayouts(stored);
-  assert.deepEqual(decoded.value.map((l) => l.name), stored.map((l) => l.name));
+  assert.deepEqual(
+    decoded.value.map((l) => l.name),
+    stored.map((l) => l.name),
+  );
   const mine = decoded.value.map((l): Layout => ({ ...base, id: l.id, name: l.name }));
   const setups: Setup[] = [
     { id: 's-newline', number: 1, layoutId: 'qwerty', shapeId: 'row-staggered', label: '改行\r\nのSetup' },
@@ -233,13 +244,16 @@ function oddNameSource(): { src: TargetShareSource; targets: AnalysisTarget[] } 
 test('受け取る側が読めない名前（先頭が空白・改行入り・空）は、載せずに送る側へ示す', () => {
   const { src, targets } = oddNameSource();
   const { params, notice } = encodeMultiTargetsToUrl(targets, undefined, src);
-  assert.deepEqual(notice.unreadableNames.map((n) => `${n.kind}:${n.name}`), [
-    'user-layout:  先頭空白',
-    'user-layout:改行\nあり',
-    'user-layout:',
-    'setup:改行\r\nのSetup',
-    `setup:  先頭空白/${shapes.get('row-staggered')!.name}`,
-  ]);
+  assert.deepEqual(
+    notice.unreadableNames.map((n) => `${n.kind}:${n.name}`),
+    [
+      'user-layout:  先頭空白',
+      'user-layout:改行\nあり',
+      'user-layout:',
+      'setup:改行\r\nのSetup',
+      `setup:  先頭空白/${shapes.get('row-staggered')!.name}`,
+    ],
+  );
   assert.equal(notice.tooLong.length, 0);
   assert.deepEqual(params.getAll('targets'), ['user-layout:普通', 'setup:末尾空白']);
   assert.deepEqual(describeShareEncodeNotice(notice).slice(0, 1), [

@@ -1,9 +1,5 @@
 import type { PanelId } from './panel-registry.ts';
-import type {
-  PanelRect,
-  WorkspacePanelState,
-  WorkspaceStateV1,
-} from './workspace-state.ts';
+import type { PanelRect, WorkspacePanelState, WorkspaceStateV1 } from './workspace-state.ts';
 
 export type WorkspaceAction =
   | { type: 'float'; id: PanelId; rect?: PanelRect }
@@ -13,11 +9,7 @@ export type WorkspaceAction =
   | { type: 'activate'; id: PanelId }
   | { type: 'set-visible'; id: PanelId; visible: boolean };
 
-function updatePanel(
-  state: WorkspaceStateV1,
-  id: PanelId,
-  update: (panel: WorkspacePanelState) => WorkspacePanelState,
-): WorkspaceStateV1 {
+function updatePanel(state: WorkspaceStateV1, id: PanelId, update: (panel: WorkspacePanelState) => WorkspacePanelState): WorkspaceStateV1 {
   const panel = state.panels[id];
   if (panel === undefined) return state;
   return {
@@ -34,10 +26,7 @@ export function activatePanel(state: WorkspaceStateV1, id: PanelId): WorkspaceSt
   return { ...state, zOrder: nextOrder };
 }
 
-export function workspaceReducer(
-  state: WorkspaceStateV1,
-  action: WorkspaceAction,
-): WorkspaceStateV1 {
+export function workspaceReducer(state: WorkspaceStateV1, action: WorkspaceAction): WorkspaceStateV1 {
   switch (action.type) {
     case 'float': {
       const floated = updatePanel(state, action.id, (panel) => ({
@@ -54,13 +43,13 @@ export function workspaceReducer(
         ...(action.dockSlot === undefined ? {} : { dockSlot: action.dockSlot }),
       }));
     case 'move':
-      return updatePanel(state, action.id, (panel) => panel.rect === undefined
-        ? panel
-        : { ...panel, rect: { ...panel.rect, x: action.x, y: action.y } });
+      return updatePanel(state, action.id, (panel) =>
+        panel.rect === undefined ? panel : { ...panel, rect: { ...panel.rect, x: action.x, y: action.y } },
+      );
     case 'resize':
-      return updatePanel(state, action.id, (panel) => panel.rect === undefined
-        ? panel
-        : { ...panel, rect: { ...panel.rect, width: action.width, height: action.height } });
+      return updatePanel(state, action.id, (panel) =>
+        panel.rect === undefined ? panel : { ...panel, rect: { ...panel.rect, width: action.width, height: action.height } },
+      );
     case 'activate':
       return activatePanel(state, action.id);
     case 'set-visible':

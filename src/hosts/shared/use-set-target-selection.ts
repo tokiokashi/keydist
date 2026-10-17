@@ -16,28 +16,38 @@ export function useMultiColorSlots(selection: MultiTargetSelection): ColorSlotsB
  * 表示順は候補の一覧の順に固定し、色は器が配った番号（加えた順。個別画面は集合が、Workspaceは全ペインの和に対して配る）から引く（並びと色は別）。
  */
 export function useSetTargetSelection(selection: TargetSet, colorSlots: ColorSlotsByKey, setups: readonly Setup[], catalog: PaneCatalog) {
-  const choiceGroups = useMemo(() => targetChoiceGroups({
-    layouts: catalog.setupCatalog.layouts,
-    userLayouts: catalog.userLayouts,
-    shapes: catalog.setupCatalog.shapes,
-    setups,
-    selected: selection.targets,
-  }), [catalog, setups, selection.targets]);
+  const choiceGroups = useMemo(
+    () =>
+      targetChoiceGroups({
+        layouts: catalog.setupCatalog.layouts,
+        userLayouts: catalog.userLayouts,
+        shapes: catalog.setupCatalog.shapes,
+        setups,
+        selected: selection.targets,
+      }),
+    [catalog, setups, selection.targets],
+  );
   const targets = useMemo(() => sortTargetsByChoices(selection.targets, choiceGroups), [selection.targets, choiceGroups]);
   const colorByKey = useMemo(
-    () => new Map(selection.targets.map((target) => {
-      const key = analysisTargetKey(target);
-      // 器は集合の全対象に番号を配っている。無い時（想定外）も例外にせず先頭の色にする
-      return [key, targetPaletteColor(colorSlots[key] ?? 0)] as const;
-    })),
+    () =>
+      new Map(
+        selection.targets.map((target) => {
+          const key = analysisTargetKey(target);
+          // 器は集合の全対象に番号を配っている。無い時（想定外）も例外にせず先頭の色にする
+          return [key, targetPaletteColor(colorSlots[key] ?? 0)] as const;
+        }),
+      ),
     [selection.targets, colorSlots],
   );
   // 色以外の手がかり。色と同じ番号から決めるので、同じ対象はどのペインでも同じ形・線種になる。
   const markByKey = useMemo(
-    () => new Map(selection.targets.map((target) => {
-      const key = analysisTargetKey(target);
-      return [key, targetMark(colorSlots[key] ?? 0)] as const;
-    })),
+    () =>
+      new Map(
+        selection.targets.map((target) => {
+          const key = analysisTargetKey(target);
+          return [key, targetMark(colorSlots[key] ?? 0)] as const;
+        }),
+      ),
     [selection.targets, colorSlots],
   );
   return { choiceGroups, targets, colorByKey, markByKey };

@@ -14,7 +14,11 @@ export interface SpecLink {
 
 /** GitHubの見出しのアンカー: 小文字にし、記号を除き、空白を `-` にする。 */
 const headingAnchor = (heading: string): string =>
-  heading.toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu, '').trim().replace(/\s/g, '-');
+  heading
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s_-]/gu, '')
+    .trim()
+    .replace(/\s/g, '-');
 
 const specLink = (label: string, path: string, heading?: string): SpecLink => {
   const base = `${REPOSITORY_URL}/blob/main/${path}`;

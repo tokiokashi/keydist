@@ -5,19 +5,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { LAYOUTS, LAYOUTS_JA, type Layout } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES, type PresetGeometryKind } from '#input/shapes/geometry.ts';
-import {
-  resolveSetup,
-  type AnalysisTarget,
-  type Setup,
-  type SetupCatalog,
-} from '#input/setup/index.ts';
-import {
-  DEFAULT_SHAPE_ID,
-  EMPTY_SETTINGS_OVERRIDES,
-  resolveSettings,
-  setSettingsOverride,
-  type SettingsCascadeOverrides,
-} from './settings-items.ts';
+import { resolveSetup, type AnalysisTarget, type Setup, type SetupCatalog } from '#input/setup/index.ts';
+import { DEFAULT_SHAPE_ID, EMPTY_SETTINGS_OVERRIDES, resolveSettings, setSettingsOverride, type SettingsCascadeOverrides } from './settings-items.ts';
 import { resolveTargetForText } from './target-resolution.ts';
 
 // Setup（src/input/setup/）が、engineが持つ具体のカスケード項目（SETTINGS_ITEMS）と
@@ -54,12 +43,7 @@ test('カスケードの追従: 上書きの無いSetupはグローバルの変�
   let overrides: SettingsCascadeOverrides = globalWritten.overrides;
 
   // overridingSetupだけにSetupレベルの上書きを足す。
-  const setupWritten = setSettingsOverride(
-    overrides,
-    { kind: 'setup', setupId: overridingSetup.id },
-    'windowSize',
-    9,
-  );
+  const setupWritten = setSettingsOverride(overrides, { kind: 'setup', setupId: overridingSetup.id }, 'windowSize', 9);
   assert.ok(setupWritten.ok);
   overrides = setupWritten.overrides;
 
@@ -87,12 +71,7 @@ test('配列・物理配列が同じ2つのSetupはポリシーだけ変えて�
   const setupA: Setup = { id: 'setup-a', number: 1, layoutId: asuka.id, shapeId: 'row-staggered' };
   const setupB: Setup = { id: 'setup-b', number: 1, layoutId: asuka.id, shapeId: 'row-staggered' };
 
-  const written = setSettingsOverride(
-    EMPTY_SETTINGS_OVERRIDES,
-    { kind: 'setup', setupId: setupB.id },
-    'windowSize',
-    6,
-  );
+  const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'setup', setupId: setupB.id }, 'windowSize', 6);
   assert.ok(written.ok);
   const overrides = written.overrides;
 

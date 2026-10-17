@@ -27,8 +27,7 @@ test('シン蜂蜜小梅は作者定義の代表配字を保持する', () => {
 });
 
 test('親指shiftはlayer + single、文字キーの同時押しはcomposition + singleとして区別する', () => {
-  const shifted = layout.faces!.filter((face) =>
-    face.trigger.includes('thumb-l') || face.trigger.includes('thumb-r'));
+  const shifted = layout.faces!.filter((face) => face.trigger.includes('thumb-l') || face.trigger.includes('thumb-r'));
   assert.equal(shifted.length, 2);
   for (const face of shifted) {
     assert.equal(face.mode, 'simultaneous');
@@ -54,7 +53,10 @@ test('文字compositionは表示・集計でも、コンボ枠ではなくトリ
   const layerIds = compositionFaces.map((face) => layout.faceLayerIds!.get(face));
   assert.equal(new Set(layerIds).size, 14);
   assert.ok(layerIds.every((id) => id !== undefined && id !== COMBO_LAYER_ID));
-  assert.equal(layout.layerDefinitions?.some((definition) => definition.kind === 'combo'), false);
+  assert.equal(
+    layout.layerDefinitions?.some((definition) => definition.kind === 'combo'),
+    false,
+  );
   // 同じ「ぱ」でも、帰属先はトリガーhの面の層になる
   const aggregation = layout.canonicalInputs.get('ぱ')?.[0]?.semanticInputs[0].aggregationGroupId;
   assert.notEqual(aggregation, COMBO_LAYER_ID);
@@ -86,7 +88,9 @@ test('文字compositionはhold利用ONでもheld-triggerへ昇格しない', () 
   });
 
   assert.equal(trace.strokes.length, 2);
-  assert.deepEqual(trace.strokes.map((stroke) => stroke.triggerKeys), [['h'], ['h']]);
-  assert.ok(trace.strokes.every((stroke) =>
-    stroke.participations.every((p) => !p.roles.includes('held-trigger'))));
+  assert.deepEqual(
+    trace.strokes.map((stroke) => stroke.triggerKeys),
+    [['h'], ['h']],
+  );
+  assert.ok(trace.strokes.every((stroke) => stroke.participations.every((p) => !p.roles.includes('held-trigger'))));
 });

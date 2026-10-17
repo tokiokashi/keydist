@@ -86,14 +86,18 @@ export function DistanceFigure() {
                 width={KEY - 2}
                 height={KEY - 2}
                 rx={4}
-                className={pressed ? (key.id === OTHER_FINGER ? 'distance-figure-key is-other' : 'distance-figure-key is-pressed') : 'distance-figure-key'}
+                className={
+                  pressed ? (key.id === OTHER_FINGER ? 'distance-figure-key is-other' : 'distance-figure-key is-pressed') : 'distance-figure-key'
+                }
                 strokeDasharray={key.id === HOME_KEY ? '3 2' : undefined}
               />
               <text x={x + KEY / 2} y={y + KEY / 2 + 6} textAnchor="middle" className="distance-figure-legend">
                 {key.id}
               </text>
               {pressed ? (
-                <text x={x + 4} y={y + 14} className="distance-figure-order">{CIRCLED[order]}</text>
+                <text x={x + 4} y={y + 14} className="distance-figure-order">
+                  {CIRCLED[order]}
+                </text>
               ) : null}
             </g>
           );
@@ -103,10 +107,18 @@ export function DistanceFigure() {
         <Arrow from={center(HOME_KEY)} to={center('u')} adopted={false} />
       </svg>
       <figcaption>
-        <p>「ぬいぐるみ」を訓令式のローマ字（nuigurumi）で、QWERTYのロウスタッガードで打つ時の、右手人差し指の動きです（1uはキー1つ分の間隔）。破線で囲んだ {HOME_KEY} がこの指のホームです。</p>
+        <p>
+          「ぬいぐるみ」を訓令式のローマ字（nuigurumi）で、QWERTYのロウスタッガードで打つ時の、右手人差し指の動きです（1uはキー1つ分の間隔）。破線で囲んだ{' '}
+          {HOME_KEY} がこの指のホームです。
+        </p>
         <ul>
-          <li>①: ホームの {HOME_KEY} からnへ動きます。指は最初ホームにあるので、距離は {fmt(homeToN)} です。</li>
-          <li>②: nの直後に、同じ指でuを打ちます。ホームへ戻る時間が無いので、nからuへの {fmt(nToU)} を足します。ホームからuへの {fmt(homeToU)} の方が短くても候補になりません（破線の矢印）。</li>
+          <li>
+            ①: ホームの {HOME_KEY} からnへ動きます。指は最初ホームにあるので、距離は {fmt(homeToN)} です。
+          </li>
+          <li>
+            ②: nの直後に、同じ指でuを打ちます。ホームへ戻る時間が無いので、nからuへの {fmt(nToU)} を足します。ホームからuへの {fmt(homeToU)}{' '}
+            の方が短くても候補になりません（破線の矢印）。
+          </li>
           <li>③: iは右手の中指が打つので、人差し指の距離には入りません（色を変えたキー）。</li>
         </ul>
       </figcaption>

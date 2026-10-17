@@ -5,12 +5,7 @@ import { PHYSICAL_SHAPES } from '#input/shapes/geometry.ts';
 import type { KeydistAssets } from './commands.ts';
 import { stableStringify } from './cache-key.ts';
 import { FINGER_ASSIGNMENT_REGISTRY } from './finger-assignment.ts';
-import {
-  workspaceTargets,
-  type Workspace,
-  type WorkspaceIdGenerator,
-  type WorkspaceLibrary,
-} from './workspace.ts';
+import { workspaceTargets, type Workspace, type WorkspaceIdGenerator, type WorkspaceLibrary } from './workspace.ts';
 
 /**
  * ファイルから読んだWorkspaceを手元へ足す計算（DOMを使わない）。
@@ -51,10 +46,7 @@ export interface WorkspaceImportMerge {
 }
 
 /** 参照先の有無を調べる手持ち。 */
-export type WorkspaceReferenceHoldings = Pick<
-  KeydistAssets,
-  'setupLibrary' | 'userLayouts' | 'fingerAssignments' | 'userRomajiRules' | 'textLibrary'
->;
+export type WorkspaceReferenceHoldings = Pick<KeydistAssets, 'setupLibrary' | 'userLayouts' | 'fingerAssignments' | 'userRomajiRules' | 'textLibrary'>;
 
 /**
  * 「中身が同じ」の判定に使う値。idと名前は比べない（idは突き合わせの鍵で、名前は数値に関わらない）。
@@ -87,12 +79,15 @@ export function missingWorkspaceReferences(workspace: Workspace, holdings: Works
   }
   const conditions = (workspace.conditions ?? {}) as Record<string, unknown>;
   const absent = (id: unknown, known: (id: string) => boolean) => typeof id === 'string' && !known(id);
-  if (absent(conditions.fingerAssignmentId, (id) => Object.hasOwn(FINGER_ASSIGNMENT_REGISTRY, id)
-    || holdings.fingerAssignments.some((assignment) => assignment.id === id))) {
+  if (
+    absent(
+      conditions.fingerAssignmentId,
+      (id) => Object.hasOwn(FINGER_ASSIGNMENT_REGISTRY, id) || holdings.fingerAssignments.some((assignment) => assignment.id === id),
+    )
+  ) {
     missing.add('finger-assignment');
   }
-  if (absent(conditions.romajiRuleId, (id) => Object.hasOwn(ROMAJI_RULES, id)
-    || holdings.userRomajiRules.some((rule) => rule.id === id))) {
+  if (absent(conditions.romajiRuleId, (id) => Object.hasOwn(ROMAJI_RULES, id) || holdings.userRomajiRules.some((rule) => rule.id === id))) {
     missing.add('romaji-rule');
   }
   if (absent(conditions.defaultShapeId, (id) => Object.values(PHYSICAL_SHAPES).some((shape) => shape.id === id))) {
@@ -125,8 +120,9 @@ export function mergeWorkspaces(
       continue;
     }
     const content = workspaceContent(workspace);
-    const same = library.find((candidate) => candidate.id === workspace.id && workspaceContent(candidate) === content)
-      ?? library.find((candidate) => workspaceContent(candidate) === content);
+    const same =
+      library.find((candidate) => candidate.id === workspace.id && workspaceContent(candidate) === content) ??
+      library.find((candidate) => workspaceContent(candidate) === content);
     if (same !== undefined) {
       entries.push({ name: workspace.name, outcome: { kind: 'skipped-same', existingName: same.name }, missing: [] });
       continue;

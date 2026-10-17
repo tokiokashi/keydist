@@ -37,18 +37,32 @@ const CONTENT = {
 
 test('自作の配列のコマンド: 作成と編集を書き込み、undoで戻せる', () => {
   const history = emptyCommandHistory<KeydistAssets>();
-  const created = applyCommand(emptyAssets(), history, createUserLayoutCommand(() => 'user-1', CONTENT));
+  const created = applyCommand(
+    emptyAssets(),
+    history,
+    createUserLayoutCommand(() => 'user-1', CONTENT),
+  );
   assert.equal(created.outcome.kind, 'applied');
-  assert.deepEqual(created.assets.userLayouts.map((layout) => [layout.id, layout.name]), [['user-1', '私のDvorak']]);
+  assert.deepEqual(
+    created.assets.userLayouts.map((layout) => [layout.id, layout.name]),
+    [['user-1', '私のDvorak']],
+  );
 
   const edited = applyCommand(created.assets, created.history, updateUserLayoutCommand('user-1', { ...CONTENT, name: '改名', homeKeys: { RI: 'h' } }));
   assert.equal(edited.outcome.kind, 'applied');
   assert.deepEqual(edited.assets.userLayouts[0]!.homeKeys, { RI: 'h' });
-  assert.deepEqual(undo(edited.assets, edited.history).assets.userLayouts.map((layout) => layout.name), ['私のDvorak']);
+  assert.deepEqual(
+    undo(edited.assets, edited.history).assets.userLayouts.map((layout) => layout.name),
+    ['私のDvorak'],
+  );
 });
 
 test('自作の配列のコマンド: 変化が無い編集と存在しないidはno-opで、履歴に積まない', () => {
-  const created = applyCommand(emptyAssets(), emptyCommandHistory<KeydistAssets>(), createUserLayoutCommand(() => 'user-1', CONTENT));
+  const created = applyCommand(
+    emptyAssets(),
+    emptyCommandHistory<KeydistAssets>(),
+    createUserLayoutCommand(() => 'user-1', CONTENT),
+  );
   for (const command of [updateUserLayoutCommand('user-1', CONTENT), updateUserLayoutCommand('none', CONTENT)]) {
     const step = applyCommand(created.assets, created.history, command);
     assert.equal(step.outcome.kind, 'no-op');
@@ -57,7 +71,11 @@ test('自作の配列のコマンド: 変化が無い編集と存在しないid�
 });
 
 test('自作の配列のコマンド: 保存できない入力と取り込み形式の配列は拒否し、履歴に積まない', () => {
-  const created = applyCommand(emptyAssets(), emptyCommandHistory<KeydistAssets>(), createUserLayoutCommand(() => 'user-1', CONTENT));
+  const created = applyCommand(
+    emptyAssets(),
+    emptyCommandHistory<KeydistAssets>(),
+    createUserLayoutCommand(() => 'user-1', CONTENT),
+  );
   const imported: KeydistAssets = { ...created.assets, userLayouts: [{ ...created.assets.userLayouts[0]!, id: 'user-imp', direct: true }] };
   const cases = [
     { assets: created.assets, command: createUserLayoutCommand(() => 'user-2', { ...CONTENT, name: '' }) },

@@ -96,10 +96,11 @@ export function PlaybackKeyboard({
       const dy = Number(node.dataset.motionDy ?? 0);
       const duration = Number(node.dataset.motionDuration ?? 0);
       node.getAnimations().forEach((animation) => animation.cancel());
-      node.animate(
-        [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'translate(0px, 0px)' }],
-        { duration, easing: 'ease-out', fill: 'forwards' },
-      );
+      node.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'translate(0px, 0px)' }], {
+        duration,
+        easing: 'ease-out',
+        fill: 'forwards',
+      });
     }
     // 動きの描き直しは、ステップが変わった時だけ。同じステップの間にフレームごとに作り直さない
   }, [frame.cursor]);
@@ -128,10 +129,7 @@ export function PlaybackKeyboard({
       } else if (feedbackStyle === 'pulse') {
         overlay.animate([{ opacity: 0.62 }, { opacity: 0 }], { duration: 220, easing: 'ease-out' });
       } else {
-        key.animate(
-          [{ transform: 'scale(1)' }, { transform: 'scale(1.065)' }, { transform: 'scale(1)' }],
-          { duration: 160, easing: 'ease-out' },
-        );
+        key.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.065)' }, { transform: 'scale(1)' }], { duration: 160, easing: 'ease-out' });
       }
     }
   }, [feedback, feedbackStyle]);
@@ -144,9 +142,8 @@ export function PlaybackKeyboard({
     const plannedOpacity = frame.plannedKeys.get(id);
     const romajiPlannedOpacity = frame.romajiPlannedKeys.get(id);
     // 押下予定キーと今のかなの残りキーの両方に入るキーは、濃さの大きい方で1つの塗りにする
-    const planFillOpacity = plannedOpacity === undefined && romajiPlannedOpacity === undefined
-      ? undefined
-      : Math.max(plannedOpacity ?? 0, romajiPlannedOpacity ?? 0);
+    const planFillOpacity =
+      plannedOpacity === undefined && romajiPlannedOpacity === undefined ? undefined : Math.max(plannedOpacity ?? 0, romajiPlannedOpacity ?? 0);
     // 緑の塗りの上の文字は、濃さが高い時だけ暗い色にする（濃さが低い時は、暗い色だと暗いテーマで面の上の対比が落ちる）
     const planLabelStrong = planFillOpacity !== undefined && planFillOpacity >= PLAN_LABEL_STRONG_FROM;
     // 押下予定キーと今のかなの残りキーの順番はどちらも再生位置から数えるので、両方に入るキーでは同じ番号になり、ラベルは1つにまとめる
@@ -205,16 +202,40 @@ export function PlaybackKeyboard({
           opacity={0}
           pointerEvents="none"
         />
-        <text className="playback-order playback-order-plan" x={item.x + 7} y={item.y + 10} textAnchor="middle" visibility={planOrder === undefined ? 'hidden' : 'visible'}>
+        <text
+          className="playback-order playback-order-plan"
+          x={item.x + 7}
+          y={item.y + 10}
+          textAnchor="middle"
+          visibility={planOrder === undefined ? 'hidden' : 'visible'}
+        >
           {planOrder === undefined ? '' : playbackOrderLabel(planOrder)}
         </text>
-        <text className="playback-order playback-order-trail" x={item.x + item.width - 7} y={item.y + 10} textAnchor="middle" visibility={trailOrder === undefined ? 'hidden' : 'visible'}>
+        <text
+          className="playback-order playback-order-trail"
+          x={item.x + item.width - 7}
+          y={item.y + 10}
+          textAnchor="middle"
+          visibility={trailOrder === undefined ? 'hidden' : 'visible'}
+        >
           {trailOrder === undefined ? '' : playbackOrderLabel(trailOrder)}
         </text>
-        <text className="playback-order playback-order-chain" x={item.x + item.width / 2} y={item.y + KEY_SIZE - 5} textAnchor="middle" visibility={chainOrder === undefined ? 'hidden' : 'visible'}>
+        <text
+          className="playback-order playback-order-chain"
+          x={item.x + item.width / 2}
+          y={item.y + KEY_SIZE - 5}
+          textAnchor="middle"
+          visibility={chainOrder === undefined ? 'hidden' : 'visible'}
+        >
           {chainOrder ?? ''}
         </text>
-        <text className="playback-order playback-order-arpeggio" x={item.x + item.width / 2} y={item.y + 11} textAnchor="middle" visibility={arpeggioOrder === undefined ? 'hidden' : 'visible'}>
+        <text
+          className="playback-order playback-order-arpeggio"
+          x={item.x + item.width / 2}
+          y={item.y + 11}
+          textAnchor="middle"
+          visibility={arpeggioOrder === undefined ? 'hidden' : 'visible'}
+        >
           {arpeggioOrder ?? ''}
         </text>
         <text

@@ -47,12 +47,7 @@ type StrokeRange = Pick<Stroke, 'kanaStart' | 'kanaEnd'>;
  * `applies`が偽（日本語でないテキスト）の時は何も足さない。
  * 配列がその文字を打てるかには依らず、打てない文字はテキストの位置に前後の待機を続けて足す。
  */
-export function planPunctuationWaits(
-  text: string,
-  strokes: readonly StrokeRange[],
-  waits: PunctuationWaitMs,
-  applies: boolean,
-): PunctuationWaitPlan {
+export function planPunctuationWaits(text: string, strokes: readonly StrokeRange[], waits: PunctuationWaitMs, applies: boolean): PunctuationWaitPlan {
   const gapMs = new Array<number>(strokes.length + 1).fill(0);
   const use = { commaBeforeMs: false, commaAfterMs: false, periodBeforeMs: false, periodAfterMs: false };
   if (!applies) return { gapMs, use };

@@ -6,11 +6,7 @@ import {
 } from '#app/state/app-state-storage.ts';
 import type { KeyValueStorage } from '#platform/persistence/storage.ts';
 import { decodeVersionedState } from '#platform/persistence/versioned-state.ts';
-import type {
-  PanelId,
-  WorkspacePanelDefinition,
-  WorkspacePanelRegistry,
-} from './panel-registry.ts';
+import type { PanelId, WorkspacePanelDefinition, WorkspacePanelRegistry } from './panel-registry.ts';
 import { clampPanelRectToViewport, type ViewportSize } from './viewport-clamp.ts';
 import {
   compactWorkspacePanels,
@@ -29,8 +25,7 @@ export const WORKSPACE_STORAGE_KEY = 'keydist:workspace-state';
 function isPanelRect(value: unknown): value is PanelRect {
   if (typeof value !== 'object' || value === null) return false;
   const rect = value as Partial<PanelRect>;
-  return typeof rect.x === 'number' && typeof rect.y === 'number'
-    && typeof rect.width === 'number' && typeof rect.height === 'number';
+  return typeof rect.x === 'number' && typeof rect.y === 'number' && typeof rect.width === 'number' && typeof rect.height === 'number';
 }
 
 function isPanelMode(value: unknown): value is PanelMode {
@@ -66,8 +61,7 @@ interface SavedWorkspaceShape {
 function isSavedWorkspaceShape(value: unknown): value is SavedWorkspaceShape {
   if (typeof value !== 'object' || value === null) return false;
   const raw = value as Record<string, unknown>;
-  return typeof raw.panels === 'object' && raw.panels !== null && !Array.isArray(raw.panels)
-    && Array.isArray(raw.zOrder);
+  return typeof raw.panels === 'object' && raw.panels !== null && !Array.isArray(raw.panels) && Array.isArray(raw.zOrder);
 }
 
 /**
@@ -175,11 +169,7 @@ export function saveWorkspaceState(storage: KeyValueStorage, state: WorkspaceSta
  * window resize時に全floatingパネルをviewport内へ再クランプする。
  * 変化が無ければ同一参照を返し、無駄な再レンダーを避ける。
  */
-export function clampAllFloatingPanels(
-  state: WorkspaceStateV1,
-  registry: WorkspacePanelRegistry,
-  viewport: ViewportSize,
-): WorkspaceStateV1 {
+export function clampAllFloatingPanels(state: WorkspaceStateV1, registry: WorkspacePanelRegistry, viewport: ViewportSize): WorkspaceStateV1 {
   let changed = false;
   const panels: WorkspacePanels = { ...state.panels };
 
@@ -191,10 +181,7 @@ export function clampAllFloatingPanels(
       minHeight: definition?.minHeight,
     });
     const rect = panel.rect;
-    if (
-      clamped.x !== rect.x || clamped.y !== rect.y
-      || clamped.width !== rect.width || clamped.height !== rect.height
-    ) {
+    if (clamped.x !== rect.x || clamped.y !== rect.y || clamped.width !== rect.width || clamped.height !== rect.height) {
       panels[id as PanelId] = { ...panel, rect: clamped };
       changed = true;
     }
@@ -217,13 +204,6 @@ export interface WorkspacePersistenceSchedulerOptions {
  * 直列化した値が前回と同じなら書かない（drag終了後の同一位置への再通知等）。
  * debounce本体は汎用スケジューラ（src/persistence/debounced-scheduler.ts）に括り出してある。
  */
-export function createWorkspacePersistenceScheduler(
-  options: WorkspacePersistenceSchedulerOptions,
-): WorkspacePersistenceScheduler {
-  return createAppStateSliceScheduler(
-    options.storage,
-    'workspace',
-    serializeWorkspaceState,
-    options.debounceMs,
-  );
+export function createWorkspacePersistenceScheduler(options: WorkspacePersistenceSchedulerOptions): WorkspacePersistenceScheduler {
+  return createAppStateSliceScheduler(options.storage, 'workspace', serializeWorkspaceState, options.debounceMs);
 }

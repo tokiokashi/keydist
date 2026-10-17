@@ -1,5 +1,13 @@
 import * as v from 'valibot';
-import { booleanUrlCodec, columnSortOption, type ColumnSortOptionValue, defineOption, defineOptions, stringSetUrlCodec, type OptionUrlCodec } from '#analyzers/options.ts';
+import {
+  booleanUrlCodec,
+  columnSortOption,
+  type ColumnSortOptionValue,
+  defineOption,
+  defineOptions,
+  stringSetUrlCodec,
+  type OptionUrlCodec,
+} from '#analyzers/options.ts';
 import { COMPARISON_COLUMN_IDS, COMPARISON_COLUMN_TEXT, type ComparisonColumnId } from './column-text.ts';
 
 export { COMPARISON_COLUMN_IDS, COMPARISON_UNIT_NOTE, type ComparisonColumnId } from './column-text.ts';
@@ -32,7 +40,10 @@ export interface ComparisonColumnDef {
   readonly format: (value: number) => string;
 }
 
-const fixed = (digits: number) => (value: number): string => value.toFixed(digits);
+const fixed =
+  (digits: number) =>
+  (value: number): string =>
+    value.toFixed(digits);
 const percent = (value: number): string => `${value.toFixed(1)}%`;
 const count = (value: number): string => `${value}`;
 

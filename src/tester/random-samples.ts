@@ -75,34 +75,26 @@ export function buildJapaneseInputSamplePools(text: string): JapaneseInputSample
 
   // 「文章」は長文を機械的に途中で切らず、元テキストの句読点・改行境界だけを使う。
   // 5〜15文字に収まる節だけでも既定サンプルから十分な候補数を得られる。
-  const phrases = [...new Set(
-    text
-      .split(/[。！？!?、，,\n]+/u)
-      .map((phrase) => phrase.replace(/\s+/gu, '').trim())
-      .filter((phrase) => {
-        const length = codePointLength(phrase);
-        return length >= PHRASE_MIN_LENGTH && length <= PHRASE_MAX_LENGTH;
-      }),
-  )];
+  const phrases = [
+    ...new Set(
+      text
+        .split(/[。！？!?、，,\n]+/u)
+        .map((phrase) => phrase.replace(/\s+/gu, '').trim())
+        .filter((phrase) => {
+          const length = codePointLength(phrase);
+          return length >= PHRASE_MIN_LENGTH && length <= PHRASE_MAX_LENGTH;
+        }),
+    ),
+  ];
 
   return { words, phrases };
 }
 
-export function pickRandomSample(
-  samples: readonly string[],
-  current = '',
-  random: () => number = Math.random,
-): string {
+export function pickRandomSample(samples: readonly string[], current = '', random: () => number = Math.random): string {
   if (samples.length === 0) return '';
-  const candidates = samples.length > 1
-    ? samples.filter((sample) => sample !== current)
-    : [...samples];
-  const index = Math.min(
-    candidates.length - 1,
-    Math.floor(Math.max(0, random()) * candidates.length),
-  );
+  const candidates = samples.length > 1 ? samples.filter((sample) => sample !== current) : [...samples];
+  const index = Math.min(candidates.length - 1, Math.floor(Math.max(0, random()) * candidates.length));
   return candidates[index] ?? '';
 }
 
-export const JAPANESE_INPUT_SAMPLE_POOLS =
-  buildJapaneseInputSamplePools(SAMPLE_TEXT_JA);
+export const JAPANESE_INPUT_SAMPLE_POOLS = buildJapaneseInputSamplePools(SAMPLE_TEXT_JA);

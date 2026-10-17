@@ -56,11 +56,7 @@ export interface CaptureOptions {
  * 次に打つキーだった時だけ`preventDefault`と`stopPropagation`を呼ぶ（他の押下の働きは変えない）。
  * `acceptsSpace`が真の間のSpaceは、この関数が`preventDefault`と`stopPropagation`を呼んで`onPress`へ渡す。
  */
-export function captureCalibrationKeys(
-  source: KeyEventSource,
-  onPress: (event: KeyboardEvent) => void,
-  options: CaptureOptions = {},
-): () => void {
+export function captureCalibrationKeys(source: KeyEventSource, onPress: (event: KeyboardEvent) => void, options: CaptureOptions = {}): () => void {
   const { acceptsSpace } = options;
   // 取得の間にSpaceを押して、まだ離していない。止めた後に離された時の操作も渡さない。
   let spaceDown = false;

@@ -1,10 +1,5 @@
 import { isRecord, type CodecDiagnostic, droppedDuplicateId, droppedNotArray } from '#input/codec/index.ts';
-import {
-  decodeLevelOverrides,
-  levelOverrides,
-  withLevelOverrides,
-  type LevelOverrides,
-} from '#input/settings/index.ts';
+import { decodeLevelOverrides, levelOverrides, withLevelOverrides, type LevelOverrides } from '#input/settings/index.ts';
 import { PHYSICAL_SHAPES } from '#input/shapes/geometry.ts';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { isBuiltin } from '#input/romaji/rules.ts';
@@ -109,8 +104,8 @@ export function withResolvableReferences(
   const kept: Record<string, unknown> = { ...rest };
   if (romajiRuleId !== undefined && (isBuiltin(romajiRuleId) || known.ruleIds.has(romajiRuleId))) kept.romajiRuleId = romajiRuleId;
   if (
-    fingerAssignmentId !== undefined
-    && (Object.hasOwn(FINGER_ASSIGNMENT_REGISTRY, fingerAssignmentId) || known.fingerAssignmentIds.has(fingerAssignmentId))
+    fingerAssignmentId !== undefined &&
+    (Object.hasOwn(FINGER_ASSIGNMENT_REGISTRY, fingerAssignmentId) || known.fingerAssignmentIds.has(fingerAssignmentId))
   ) {
     kept.fingerAssignmentId = fingerAssignmentId;
   }
@@ -123,7 +118,12 @@ export interface SetupImportEntry {
   readonly name: string;
   readonly outcome:
     | { readonly kind: 'added' }
-    | { readonly kind: 'added-renamed'; readonly addedName: string; readonly addedId: string; readonly overlap: { readonly with: 'own'; readonly name: string } }
+    | {
+        readonly kind: 'added-renamed';
+        readonly addedName: string;
+        readonly addedId: string;
+        readonly overlap: { readonly with: 'own'; readonly name: string };
+      }
     | { readonly kind: 'skipped-same'; readonly existingName: string };
 }
 
@@ -144,7 +144,9 @@ function setupName(
 function canonicalValue(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonicalValue).join(',')}]`;
   if (isRecord(value)) {
-    const keys = Object.keys(value).sort().filter((key) => value[key] !== undefined);
+    const keys = Object.keys(value)
+      .sort()
+      .filter((key) => value[key] !== undefined);
     return `{${keys.map((key) => `${JSON.stringify(key)}:${canonicalValue(value[key])}`).join(',')}}`;
   }
   return JSON.stringify(value) ?? 'undefined';
@@ -218,10 +220,9 @@ export function mergeUserAssetSetups(
 ): { readonly library: SetupLibraryOfSettings; readonly entries: readonly SetupImportEntry[] } {
   const setups: Setup[] = [...current.setups];
   let overrides = current.overrides;
-  const contents = new Map(setups.map((setup) => [
-    setup.id,
-    setupContent(setup, levelOverrides(overrides, { kind: 'setup', setupId: setup.id })),
-  ] as const));
+  const contents = new Map(
+    setups.map((setup) => [setup.id, setupContent(setup, levelOverrides(overrides, { kind: 'setup', setupId: setup.id }))] as const),
+  );
   const entries: SetupImportEntry[] = [];
   for (const file of incoming) {
     const remapped = remapSetup(file, maps);
@@ -248,9 +249,10 @@ export function mergeUserAssetSetups(
     }
     entries.push({
       name,
-      outcome: collision === undefined
-        ? { kind: 'added' }
-        : { kind: 'added-renamed', addedName: name, addedId: id, overlap: { with: 'own', name: setupName(collision, layoutNames) } },
+      outcome:
+        collision === undefined
+          ? { kind: 'added' }
+          : { kind: 'added-renamed', addedName: name, addedId: id, overlap: { with: 'own', name: setupName(collision, layoutNames) } },
     });
   }
   if (setups.length === current.setups.length) return { library: current, entries };

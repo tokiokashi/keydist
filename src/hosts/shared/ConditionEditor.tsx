@@ -10,12 +10,7 @@ import { ROMAJI_RULES, type UserRomajiRule } from '#input/romaji/rules.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
 import type { PresetIdGenerator, PresetLibrary } from '#input/presets/index.ts';
 import { FINGER_ASSIGNMENT_REGISTRY, defaultFingerAssignmentId } from '#engine/finger-assignment.ts';
-import {
-  DEFAULT_SHAPE_ID,
-  type SettingsCascadeOverrides,
-  type SettingsItemId,
-  type SettingsValueMap,
-} from '#engine/settings-items.ts';
+import { DEFAULT_SHAPE_ID, type SettingsCascadeOverrides, type SettingsItemId, type SettingsValueMap } from '#engine/settings-items.ts';
 import {
   CheckboxOptionField,
   OptionField,
@@ -48,12 +43,7 @@ import {
   type ActionCountMode,
   type GlobalEditableId,
 } from './condition-edit.ts';
-import {
-  ACTION_COUNT_TEXT,
-  conditionDiagnosticText,
-  conditionItemLabel,
-  type ConditionSummaryRow,
-} from './condition-summary.ts';
+import { ACTION_COUNT_TEXT, conditionDiagnosticText, conditionItemLabel, type ConditionSummaryRow } from './condition-summary.ts';
 import { PaneMenu, type PaneMenuItem } from './PaneHeaderParts.tsx';
 import './condition-editor.css';
 
@@ -159,10 +149,10 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
   const fixedScope = editor.fixedScope;
   /** 行を出さない項目。固定したレベルに置けない項目も含む。 */
   const hidden = (id: SettingsItemId) =>
-    editor.hiddenIds?.includes(id) === true
-    || (setup !== undefined && !canEditAtSetup(id))
-    || (fixedScope === 'layout' && !canEditAtLayout(id))
-    || (fixedScope === 'workspace' && !canEditAtWorkspace(id));
+    editor.hiddenIds?.includes(id) === true ||
+    (setup !== undefined && !canEditAtSetup(id)) ||
+    (fixedScope === 'layout' && !canEditAtLayout(id)) ||
+    (fixedScope === 'workspace' && !canEditAtWorkspace(id));
   const scopeOf = (id: SettingsItemId): EditScope => {
     if (setup !== undefined) return setupEditable(id) ? 'setup' : 'global';
     if (fixedScope === 'layout') return layout !== undefined && canEditAtLayout(id) ? 'layout' : 'global';
@@ -188,7 +178,11 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
    * 行の入力と結ぶ。編集しているレベルが配列なら、値は配列の上書き（無ければ継承する値）で、
    * 継承する値と同じ値へ戻せば配列の上書きが消える。全体なら全体の上書き（無ければ既定値）。
    */
-  function scoped<K extends GlobalEditableId>(id: K, globalValue: SettingsValueMap[K], globalDefault: SettingsValueMap[K]): OptionBinding<SettingsValueMap[K]> {
+  function scoped<K extends GlobalEditableId>(
+    id: K,
+    globalValue: SettingsValueMap[K],
+    globalDefault: SettingsValueMap[K],
+  ): OptionBinding<SettingsValueMap[K]> {
     const scope = scopeOf(id);
     if (setup !== undefined && scope === 'setup') {
       const row = rowOf(id);
@@ -236,9 +230,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
     return scoped(id, globalOverrideOf(overrides, id) ?? defaultValue, defaultValue);
   }
 
-  const boolBinding = (
-    id: 'sfbHomeCost' | 'preferOppositeThumb' | 'keepSymbols',
-  ): OptionBinding<'on' | 'off'> => {
+  const boolBinding = (id: 'sfbHomeCost' | 'preferOppositeThumb' | 'keepSymbols'): OptionBinding<'on' | 'off'> => {
     const inner = bind(id);
     return {
       value: inner.value ? 'on' : 'off',
@@ -303,7 +295,13 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
       <PaneMenu
         paneName={label}
         label={`${label}の編集先: ${text}`}
-        title={scope === 'layout' ? `「${layout?.name ?? 'この配列'}」の値を編集しています` : scope === 'workspace' ? 'このWorkspaceの値を編集しています' : '全体の値を編集しています'}
+        title={
+          scope === 'layout'
+            ? `「${layout?.name ?? 'この配列'}」の値を編集しています`
+            : scope === 'workspace'
+              ? 'このWorkspaceの値を編集しています'
+              : '全体の値を編集しています'
+        }
         caption={`編集中: ${text}`}
         align="start"
         className="condition-scope-menu"
@@ -325,13 +323,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
     const scope = scopeOf(id);
     const notice = scope === 'layout' || scope === 'setup' ? undefined : (scope === 'workspace' ? editor.workspaceNotices : editor.notices)?.get(id);
     return (
-      <div
-        key={id}
-        className="condition-row"
-        data-item={id}
-        data-changed={changed(id) || undefined}
-        data-not-applicable={notApplicable || undefined}
-      >
+      <div key={id} className="condition-row" data-item={id} data-changed={changed(id) || undefined} data-not-applicable={notApplicable || undefined}>
         {content(
           <>
             <OriginBadge id={id} row={summary} changedHere={changed(id) || summary?.origin.kind === 'global'} />
@@ -339,45 +331,58 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
           </>,
         )}
         {notApplicable ? <p className="condition-row-flag">この配列・Setupでは効きません</p> : null}
-        {notice === undefined ? null : <p className="condition-row-notice" data-condition-notice="true">{notice}</p>}
-        {editor.otherScopeNotes?.get(id) === undefined ? null : <p className="condition-row-others" data-condition-others="true">{editor.otherScopeNotes.get(id)}</p>}
-        {diagnostics.map((text, index) => <p key={index} className="condition-row-diagnostic">{text}</p>)}
+        {notice === undefined ? null : (
+          <p className="condition-row-notice" data-condition-notice="true">
+            {notice}
+          </p>
+        )}
+        {editor.otherScopeNotes?.get(id) === undefined ? null : (
+          <p className="condition-row-others" data-condition-others="true">
+            {editor.otherScopeNotes.get(id)}
+          </p>
+        )}
+        {diagnostics.map((text, index) => (
+          <p key={index} className="condition-row-diagnostic">
+            {text}
+          </p>
+        ))}
       </div>
     );
   };
 
   const shapeChoices: OptionChoice<string>[] = groupShapes(editor.shapes.values()).flatMap((group) =>
-    group.shapes.map((shape) => ({ value: shape.id, label: shape.name, group: group.label })));
+    group.shapes.map((shape) => ({ value: shape.id, label: shape.name, group: group.label })),
+  );
   const shapeBinding = bind('defaultShapeId');
   if (!editor.shapes.has(shapeBinding.value)) {
     // 選ばれているidが手持ちに無い時も、実際の状態をそのまま見せる。
     shapeChoices.unshift({ value: shapeBinding.value, label: `（${MISSING_SHAPE_NAME}）` });
   }
 
-  const fingerChoices = [
-    ...Object.values(FINGER_ASSIGNMENT_REGISTRY),
-    ...(editor.customFingerAssignments?.values() ?? []),
-  ].map((assignment) => ({ value: assignment.id, label: assignment.name }));
+  const fingerChoices = [...Object.values(FINGER_ASSIGNMENT_REGISTRY), ...(editor.customFingerAssignments?.values() ?? [])].map((assignment) => ({
+    value: assignment.id,
+    label: assignment.name,
+  }));
   // 指の割当の既定は物理配列で決まる。ここで見せる既定は、編集しているレベルから見た既定の物理配列で決まる値
   // （全体の行は全体の物理配列、Workspaceの行はWorkspaceの物理配列。配列の値で決めない）。
   const globalShapeId = globalOverrideOf(overrides, 'defaultShapeId') ?? DEFAULT_SHAPE_ID;
   const workspaceShapeId = workspaceOverrideOf(overrides, 'defaultShapeId') ?? globalShapeId;
   const derivedFingerIdFor = (shapeId: string) => {
     const shape = editor.shapes.get(shapeId) ?? editor.shapes.get(DEFAULT_SHAPE_ID);
-    return shape === undefined ? fingerChoices[0]?.value ?? '' : defaultFingerAssignmentId(shape);
+    return shape === undefined ? (fingerChoices[0]?.value ?? '') : defaultFingerAssignmentId(shape);
   };
   const derivedFingerId = derivedFingerIdFor(globalShapeId);
   const fingerBinding = scoped(
     'fingerAssignmentId',
-    globalOverrideOf(overrides, 'fingerAssignmentId') ?? (scopeOf('fingerAssignmentId') === 'workspace' ? derivedFingerIdFor(workspaceShapeId) : derivedFingerId),
+    globalOverrideOf(overrides, 'fingerAssignmentId') ??
+      (scopeOf('fingerAssignmentId') === 'workspace' ? derivedFingerIdFor(workspaceShapeId) : derivedFingerId),
     derivedFingerId,
   );
   if (!fingerChoices.some((choice) => choice.value === fingerBinding.value)) {
     fingerChoices.unshift({ value: fingerBinding.value, label: `（${MISSING_FINGER_ASSIGNMENT_NAME}）` });
   }
   /** 全体のレベルでの既定値。配列・Workspaceの値を全体へ移す時、これと同じなら全体の上書きは持たない。 */
-  const globalDefaultOf = (id: GlobalEditableId): unknown =>
-    id === 'fingerAssignmentId' ? derivedFingerId : staticDefaultOf(id);
+  const globalDefaultOf = (id: GlobalEditableId): unknown => (id === 'fingerAssignmentId' ? derivedFingerId : staticDefaultOf(id));
 
   const windowBinding = bind('windowSize');
   const holdBinding = bind('triggerRealizationPolicy');
@@ -385,11 +390,10 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
   const chainBinding = bind('chainInterpretation');
   const arpeggioBinding = bind('arpeggioInterpretation');
 
-
   const actionMode = actionCountModeOf(actionBinding.value);
-  const exceptionCount = ACTION_EXCEPTION_CLASSES
-    .filter(({ key }) => classGroupingOf(actionBinding.value, key) !== DEFAULT_TRIGGER_ACTIVATION_GROUPINGS[key])
-    .length;
+  const exceptionCount = ACTION_EXCEPTION_CLASSES.filter(
+    ({ key }) => classGroupingOf(actionBinding.value, key) !== DEFAULT_TRIGGER_ACTIVATION_GROUPINGS[key],
+  ).length;
 
   const romajiRow = rowOf('romajiRuleId');
   const romajiBinding = bind('romajiRuleId');
@@ -407,12 +411,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
         <section className="condition-group" aria-label="距離の測り方">
           <h3 className="condition-group-title">距離の測り方</h3>
           {row('windowSize', (badge) => (
-            <OptionField
-              label="先読みN"
-              binding={windowBinding}
-              badge={badge}
-              hint="同じ指を残すかホームへ戻すかを決める時に、先の何文字まで見るか"
-            >
+            <OptionField label="先読みN" binding={windowBinding} badge={badge} hint="同じ指を残すかホームへ戻すかを決める時に、先の何文字まで見るか">
               {(id) => (
                 <div className="condition-stepper" id={id} role="group" aria-labelledby={`${id}-label`}>
                   <button
@@ -462,7 +461,10 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
                 ...(holdBinding.resetTarget === undefined ? {} : { resetTarget: holdBinding.resetTarget }),
                 onChange: (next) => holdBinding.onChange({ useHold: next === 'on' }),
               }}
-              choices={[{ value: 'on', label: 'する' }, { value: 'off', label: 'しない' }]}
+              choices={[
+                { value: 'on', label: 'する' },
+                { value: 'off', label: 'しない' },
+              ]}
               badge={badge}
               hint="押し続けられるシフト系キーを、続けて打つ間は押したままにします"
             />
@@ -476,9 +478,13 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
                   defaultValue: actionCountModeOf(actionBinding.defaultValue),
                   ...(actionBinding.resetTarget === undefined ? {} : { resetTarget: actionBinding.resetTarget }),
                   // 既定（配列の値の編集中は継承する値）へ戻す操作は、例外ごと戻るよう、戻す先の値から組み直す。
-                  onChange: (next) => actionBinding.onChange(
-                    withActionCountMode(next === actionCountModeOf(actionBinding.defaultValue) ? actionBinding.defaultValue : actionBinding.value, next),
-                  ),
+                  onChange: (next) =>
+                    actionBinding.onChange(
+                      withActionCountMode(
+                        next === actionCountModeOf(actionBinding.defaultValue) ? actionBinding.defaultValue : actionBinding.value,
+                        next,
+                      ),
+                    ),
                 }}
                 choices={[
                   { value: 'combined', label: ACTION_COUNT_TEXT.combined },
@@ -635,9 +641,18 @@ const ARPEGGIO_FIELDS: readonly { readonly key: keyof ArpeggioInterpretation; re
 function OriginBadge({ id, row, changedHere }: { id: GlobalEditableId; row: ConditionSummaryRow | undefined; changedHere: boolean }) {
   const lower = row !== undefined && row.origin.kind !== 'default' && row.origin.kind !== 'global';
   if (lower) {
-    return <span className="condition-origin" data-origin="lower">{row.originLabel.replace(/^上書き: /, '')}で変更</span>;
+    return (
+      <span className="condition-origin" data-origin="lower">
+        {row.originLabel.replace(/^上書き: /, '')}で変更
+      </span>
+    );
   }
-  if (changedHere) return <span className="condition-origin" data-origin="global">全体で変更</span>;
+  if (changedHere)
+    return (
+      <span className="condition-origin" data-origin="global">
+        全体で変更
+      </span>
+    );
   return (
     <span className="condition-origin" data-origin="default">
       {id === 'fingerAssignmentId' ? '既定値（物理配列から）' : '既定値'}

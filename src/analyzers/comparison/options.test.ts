@@ -91,10 +91,18 @@ test('見出し: 全列に説明があり、内部の語や英語のmeanを使�
 
 test('見出しのⓘの説明: 全列を列の定義と同じ名前・説明で並べ、単位の説明を添え、内部の語を使わない', () => {
   const { help } = COMPARISON_PANE_META;
-  assert.deepEqual(help.items.map((item) => item.name), COMPARISON_COLUMN_IDS.map((id) => COMPARISON_COLUMNS[id].label));
-  assert.deepEqual(help.items.map((item) => item.description), COMPARISON_COLUMN_IDS.map((id) => COMPARISON_COLUMNS[id].description));
+  assert.deepEqual(
+    help.items.map((item) => item.name),
+    COMPARISON_COLUMN_IDS.map((id) => COMPARISON_COLUMNS[id].label),
+  );
+  assert.deepEqual(
+    help.items.map((item) => item.description),
+    COMPARISON_COLUMN_IDS.map((id) => COMPARISON_COLUMNS[id].description),
+  );
   assert.deepEqual(help.notes, [COMPARISON_UNIT_NOTE]);
-  const all = [COMPARISON_PANE_META.description, ...help.notes, help.listLabel, ...help.items.flatMap((item) => [item.name, item.description])].join('\n');
+  const all = [COMPARISON_PANE_META.description, ...help.notes, help.listLabel, ...help.items.flatMap((item) => [item.name, item.description])].join(
+    '\n',
+  );
   for (const word of ['Policy', 'fresh', 'Stroke', 'physical', 'mean']) assert.ok(!all.includes(word), word);
 });
 

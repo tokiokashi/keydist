@@ -21,26 +21,29 @@ const pane = (id: string, analyzerId = 'bigram-flow') => ({
 
 async function open(page: Page, theme: 'light' | 'dark' = 'light', size = FHD, grid?: readonly object[]): Promise<void> {
   await page.setViewportSize(size);
-  await page.addInitScript(({ key, value, theme }) => {
-    if (localStorage.getItem(key) === null) {
-      localStorage.setItem(key, JSON.stringify({ version: 4, workspaces: [value] }));
-      localStorage.setItem('keydist:app-state', JSON.stringify({ version: 2, appearance: { theme } }));
-    }
-  }, {
-    key: WORKSPACES_KEY,
-    theme,
-    value: {
-      id: 'narrow',
-      name: '細いペイン',
-      text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
-      panes: [pane('a'), pane('b'), pane('c')],
-      grid: grid ?? [
-        { id: 'a', x: 0, y: 0, w: 8, h: 16 },
-        { id: 'b', x: 8, y: 0, w: 8, h: 16 },
-        { id: 'c', x: 16, y: 0, w: 8, h: 16 },
-      ],
+  await page.addInitScript(
+    ({ key, value, theme }) => {
+      if (localStorage.getItem(key) === null) {
+        localStorage.setItem(key, JSON.stringify({ version: 4, workspaces: [value] }));
+        localStorage.setItem('keydist:app-state', JSON.stringify({ version: 2, appearance: { theme } }));
+      }
     },
-  });
+    {
+      key: WORKSPACES_KEY,
+      theme,
+      value: {
+        id: 'narrow',
+        name: '細いペイン',
+        text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+        panes: [pane('a'), pane('b'), pane('c')],
+        grid: grid ?? [
+          { id: 'a', x: 0, y: 0, w: 8, h: 16 },
+          { id: 'b', x: 8, y: 0, w: 8, h: 16 },
+          { id: 'c', x: 16, y: 0, w: 8, h: 16 },
+        ],
+      },
+    },
+  );
   await page.goto('/workspace/narrow');
   await waitForHydration(page);
   await expect(page.locator('.workspace-grid-item')).toHaveCount(3);

@@ -251,13 +251,15 @@ export function FloatingWindow({
       data-figure-settings-window={kind === 'figure-settings' || undefined}
       data-sheet={isSheet || undefined}
       data-sheet-dragging={sheetDragging || undefined}
-      style={position === undefined
-        ? { visibility: 'hidden' }
-        : {
-            ['--settings-window-x' as string]: `${position.x}px`,
-            ['--settings-window-y' as string]: `${position.y}px`,
-            ...(isSheet && sheetY !== undefined ? { ['--settings-sheet-y' as string]: `${sheetY}px` } : {}),
-          }}
+      style={
+        position === undefined
+          ? { visibility: 'hidden' }
+          : {
+              ['--settings-window-x' as string]: `${position.x}px`,
+              ['--settings-window-y' as string]: `${position.y}px`,
+              ...(isSheet && sheetY !== undefined ? { ['--settings-sheet-y' as string]: `${sheetY}px` } : {}),
+            }
+      }
       onKeyDown={(event) => {
         if (event.key === 'Escape') {
           event.stopPropagation();
@@ -286,12 +288,7 @@ export function FloatingWindow({
       >
         <WindowTitle title={title} paneName={paneName} heading={titleHeading} />
         {onReset === undefined ? null : (
-          <button
-            type="button"
-            className="settings-window-reset-all"
-            title={resetTitle}
-            onClick={onReset}
-          >
+          <button type="button" className="settings-window-reset-all" title={resetTitle} onClick={onReset}>
             すべて初期値に戻す
           </button>
         )}

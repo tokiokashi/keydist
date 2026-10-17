@@ -1,11 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  buildRomajiTable,
-  defaultRomajiRuleId,
-  tableForRule,
-  type UserRomajiRule,
-} from './rules.ts';
+import { buildRomajiTable, defaultRomajiRuleId, tableForRule, type UserRomajiRule } from './rules.ts';
 import { kanaToRomaji } from './kunrei.ts';
 import { buildGeometry } from '../shapes/geometry.ts';
 import { generateTrace } from '#trace/generate.ts';
@@ -76,9 +71,6 @@ test('QWERTYにAZIKを割り当てると短縮綴りが打鍵数へ反映され�
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
   const qwerty = LAYOUTS_JA.find((layout) => layout.id === 'qwerty')!;
   const normal = computeMetrics(generateTrace(text, qwerty, geometry, options), geometry);
-  const azik = computeMetrics(
-    generateTrace(text, withRomaji(qwerty, tableForRule('azik')), geometry, options),
-    geometry,
-  );
+  const azik = computeMetrics(generateTrace(text, withRomaji(qwerty, tableForRule('azik')), geometry, options), geometry);
   assert.ok(azik.strokes < normal.strokes, `AZIK: ${azik.strokes} 通常: ${normal.strokes}`);
 });

@@ -39,22 +39,81 @@ const face = (
   ...(trigger.length > 0 && triggerOrder !== undefined ? { triggerOrder } : {}),
 });
 
-function shinJisFaces(
-  mode: FaceMode,
-  triggerPersistence: NonNullable<Face['triggerPersistence']>,
-  triggerOrder?: Face['triggerOrder'],
-): Face[] {
-  const shifted = face([THUMB_KEY.RT], mode, {
-    q: 'ぁ', w: '゜', e: 'ほ', r: 'ふ', t: 'め', y: 'ひ', u: 'え', i: 'み', o: 'や', p: 'ぬ', '[': '「',
-    a: 'ぃ', s: 'へ', d: 'ら', f: 'ゅ', g: 'よ', h: 'ま', j: 'お', k: 'も', l: 'わ', ';': 'ゆ', "'": '」',
-    z: 'ぅ', x: 'ぇ', c: 'ぉ', v: 'ね', b: 'ゃ', n: 'む', m: 'ろ', ',': '・', '.': 'ー',
-  }, triggerPersistence, triggerOrder);
+function shinJisFaces(mode: FaceMode, triggerPersistence: NonNullable<Face['triggerPersistence']>, triggerOrder?: Face['triggerOrder']): Face[] {
+  const shifted = face(
+    [THUMB_KEY.RT],
+    mode,
+    {
+      q: 'ぁ',
+      w: '゜',
+      e: 'ほ',
+      r: 'ふ',
+      t: 'め',
+      y: 'ひ',
+      u: 'え',
+      i: 'み',
+      o: 'や',
+      p: 'ぬ',
+      '[': '「',
+      a: 'ぃ',
+      s: 'へ',
+      d: 'ら',
+      f: 'ゅ',
+      g: 'よ',
+      h: 'ま',
+      j: 'お',
+      k: 'も',
+      l: 'わ',
+      ';': 'ゆ',
+      "'": '」',
+      z: 'ぅ',
+      x: 'ぇ',
+      c: 'ぉ',
+      v: 'ね',
+      b: 'ゃ',
+      n: 'む',
+      m: 'ろ',
+      ',': '・',
+      '.': 'ー',
+    },
+    triggerPersistence,
+    triggerOrder,
+  );
 
   return [
     face([], mode, {
-      q: 'そ', w: 'け', e: 'せ', r: 'て', t: 'ょ', y: 'つ', u: 'ん', i: 'の', o: 'を', p: 'り', '[': 'ち',
-      a: 'は', s: 'か', d: 'し', f: 'と', g: 'た', h: 'く', j: 'う', k: 'い', l: '゛', ';': 'き', "'": 'な',
-      z: 'す', x: 'こ', c: 'に', v: 'さ', b: 'あ', n: 'っ', m: 'る', ',': '、', '.': '。', '/': 'れ',
+      q: 'そ',
+      w: 'け',
+      e: 'せ',
+      r: 'て',
+      t: 'ょ',
+      y: 'つ',
+      u: 'ん',
+      i: 'の',
+      o: 'を',
+      p: 'り',
+      '[': 'ち',
+      a: 'は',
+      s: 'か',
+      d: 'し',
+      f: 'と',
+      g: 'た',
+      h: 'く',
+      j: 'う',
+      k: 'い',
+      l: '゛',
+      ';': 'き',
+      "'": 'な',
+      z: 'す',
+      x: 'こ',
+      c: 'に',
+      v: 'さ',
+      b: 'あ',
+      n: 'っ',
+      m: 'る',
+      ',': '、',
+      '.': '。',
+      '/': 'れ',
     }),
     {
       ...shifted,
@@ -66,23 +125,38 @@ function shinJisFaces(
 }
 
 const VOICED: Record<string, string> = {
-  か: 'が', き: 'ぎ', く: 'ぐ', け: 'げ', こ: 'ご',
-  さ: 'ざ', し: 'じ', す: 'ず', せ: 'ぜ', そ: 'ぞ',
-  た: 'だ', ち: 'ぢ', つ: 'づ', て: 'で', と: 'ど',
-  は: 'ば', ひ: 'び', ふ: 'ぶ', へ: 'べ', ほ: 'ぼ',
+  か: 'が',
+  き: 'ぎ',
+  く: 'ぐ',
+  け: 'げ',
+  こ: 'ご',
+  さ: 'ざ',
+  し: 'じ',
+  す: 'ず',
+  せ: 'ぜ',
+  そ: 'ぞ',
+  た: 'だ',
+  ち: 'ぢ',
+  つ: 'づ',
+  て: 'で',
+  と: 'ど',
+  は: 'ば',
+  ひ: 'び',
+  ふ: 'ぶ',
+  へ: 'べ',
+  ほ: 'ぼ',
   う: 'ゔ',
 };
 
 const SEMI_VOICED: Record<string, string> = {
-  は: 'ぱ', ひ: 'ぴ', ふ: 'ぷ', へ: 'ぺ', ほ: 'ぽ',
+  は: 'ぱ',
+  ひ: 'ぴ',
+  ふ: 'ぷ',
+  へ: 'ぺ',
+  ほ: 'ぽ',
 };
 
-function makeLayout(
-  id: string,
-  name: string,
-  mode: FaceMode,
-  triggerPersistence: NonNullable<Face['triggerPersistence']>,
-): Layout {
+function makeLayout(id: string, name: string, mode: FaceMode, triggerPersistence: NonNullable<Face['triggerPersistence']>): Layout {
   const layout = withThumbShiftAlternatives(
     withComposedOutputs(
       withComposedOutputs(
@@ -104,9 +178,4 @@ function makeLayout(
 }
 
 export const SHIN_JIS_PREFIX = makeLayout('shin-jis-prefix', '新JIS（逐次シフト）', 'prefix', 'single');
-export const SHIN_JIS_SIMULTANEOUS = makeLayout(
-  'shin-jis-simultaneous',
-  '新JIS（通常シフト）',
-  'simultaneous',
-  'hold-capable',
-);
+export const SHIN_JIS_SIMULTANEOUS = makeLayout('shin-jis-simultaneous', '新JIS（通常シフト）', 'simultaneous', 'hold-capable');

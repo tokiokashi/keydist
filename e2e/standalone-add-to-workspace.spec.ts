@@ -22,18 +22,27 @@ async function storedWorkspaces(page: Page): Promise<StoredWorkspace[]> {
 
 /** 既存のWorkspace（Bigram Flowのペインを1つ持つ）を保存先へ直接書く。 */
 function seedWorkspace(page: Page, id = 'w1', name = '比較用'): Promise<void> {
-  return page.addInitScript(({ key, value }) => {
-    if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 4, workspaces: [value] }));
-  }, {
-    key: WORKSPACES_KEY,
-    value: {
-      id,
-      name,
-      text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
-      panes: [{ id: 'existing', analyzerId: 'bigram-flow', binding: { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } } } }],
-      grid: [{ id: 'existing', x: 0, y: 0, w: 12, h: 15 }],
+  return page.addInitScript(
+    ({ key, value }) => {
+      if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 4, workspaces: [value] }));
     },
-  });
+    {
+      key: WORKSPACES_KEY,
+      value: {
+        id,
+        name,
+        text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+        panes: [
+          {
+            id: 'existing',
+            analyzerId: 'bigram-flow',
+            binding: { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } } },
+          },
+        ],
+        grid: [{ id: 'existing', x: 0, y: 0, w: 12, h: 15 }],
+      },
+    },
+  );
 }
 
 /** 保存先へ、Workspaceを2つ（どちらもBigram Flowのペインを1つ持つ）直接書く。 */
@@ -42,12 +51,21 @@ function seedTwoWorkspaces(page: Page): Promise<void> {
     id,
     name,
     text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
-    panes: [{ id: `${id}-pane`, analyzerId: 'bigram-flow', binding: { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } } } }],
+    panes: [
+      {
+        id: `${id}-pane`,
+        analyzerId: 'bigram-flow',
+        binding: { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } } },
+      },
+    ],
     grid: [{ id: `${id}-pane`, x: 0, y: 0, w: 12, h: 15 }],
   });
-  return page.addInitScript(({ key, value }) => {
-    if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 4, workspaces: value }));
-  }, { key: WORKSPACES_KEY, value: [make('w1', '一つ目'), make('w2', '二つ目')] });
+  return page.addInitScript(
+    ({ key, value }) => {
+      if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 4, workspaces: value }));
+    },
+    { key: WORKSPACES_KEY, value: [make('w1', '一つ目'), make('w2', '二つ目')] },
+  );
 }
 
 async function openStandalone(page: Page, path = '/analyzer/n-sensitivity'): Promise<void> {
@@ -76,13 +94,14 @@ test('既存のWorkspaceへ追加すると、個別画面に留まって知ら�
   const notice = page.locator('[data-added-to-workspace-notice]');
   await expect(notice).toContainText('「比較用」に追加しました');
   await expect(page).toHaveURL(/\/analyzer\/n-sensitivity$/);
-  await expect.poll(async () => (await storedWorkspaces(page))[0]?.panes.map((pane) => pane.analyzerId))
-    .toEqual(['bigram-flow', 'n-sensitivity']);
+  await expect.poll(async () => (await storedWorkspaces(page))[0]?.panes.map((pane) => pane.analyzerId)).toEqual(['bigram-flow', 'n-sensitivity']);
   expect((await storedWorkspaces(page))[0]!.panes[1]!.binding.mode).toBe('follow');
 
   await notice.getByRole('link', { name: '開く' }).click();
   await expect(page).toHaveURL(/\/workspace\/w1$/);
-  await expect(page.locator('.pane-frame').filter({ has: page.getByRole('heading', { level: 2, name: 'N感度', exact: true }) })).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('.pane-frame').filter({ has: page.getByRole('heading', { level: 2, name: 'N感度', exact: true }) })).toBeVisible({
+    timeout: 15_000,
+  });
   // Workspaceの中のペインには置かない
   await expect(addButton(page)).toHaveCount(0);
 });
@@ -96,12 +115,15 @@ test('新しいWorkspaceに追加すると、Workspaceが1つ増えてそのペ�
   const notice = page.locator('[data-added-to-workspace-notice]');
   await expect(notice).toContainText('に追加しました');
   await expect(page).toHaveURL(/\/analyzer\/bigram-flow$/);
-  await expect.poll(async () => (await storedWorkspaces(page)).map((workspace) => workspace.panes.map((pane) => pane.analyzerId)))
+  await expect
+    .poll(async () => (await storedWorkspaces(page)).map((workspace) => workspace.panes.map((pane) => pane.analyzerId)))
     .toEqual([['bigram-flow']]);
 
   await notice.getByRole('link', { name: '開く' }).click();
   await expect(page).toHaveURL(/\/workspace\/[^/]+$/);
-  await expect(page.locator('.pane-frame').filter({ has: page.getByRole('heading', { level: 2, name: 'Bigram Flow', exact: true }) })).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('.pane-frame').filter({ has: page.getByRole('heading', { level: 2, name: 'Bigram Flow', exact: true }) })).toBeVisible({
+    timeout: 15_000,
+  });
 });
 
 test('キーボードだけで開いて選べ、Escapeで何も追加せずに閉じてボタンへ戻る', async ({ page }) => {
@@ -128,8 +150,7 @@ test('キーボードだけで開いて選べ、Escapeで何も追加せずに�
   await page.keyboard.press('Shift+Tab');
   await page.keyboard.press('Enter');
   await expect(page.locator('[data-added-to-workspace-notice]')).toContainText('「比較用」に追加しました');
-  await expect.poll(async () => (await storedWorkspaces(page))[0]?.panes.map((pane) => pane.analyzerId))
-    .toEqual(['bigram-flow', 'comparison']);
+  await expect.poll(async () => (await storedWorkspaces(page))[0]?.panes.map((pane) => pane.analyzerId)).toEqual(['bigram-flow', 'comparison']);
   expect(await storedWorkspaces(page)).toHaveLength(1);
 });
 
@@ -180,7 +201,9 @@ test('追加を元に戻すと知らせが消え、やり直すと戻る（「�
   await expect(notice).toContainText('に追加しました');
   expect(await storedWorkspaces(page)).toHaveLength(1);
   await notice.getByRole('link', { name: '開く' }).click();
-  await expect(page.locator('.pane-frame').filter({ has: page.getByRole('heading', { level: 2, name: 'Bigram Flow', exact: true }) })).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('.pane-frame').filter({ has: page.getByRole('heading', { level: 2, name: 'Bigram Flow', exact: true }) })).toBeVisible({
+    timeout: 15_000,
+  });
 });
 
 test('解析設定の書き込みが間引き待ちの間に追加しても、元に戻す1回で追加が戻る', async ({ page }) => {
@@ -196,13 +219,13 @@ test('解析設定の書き込みが間引き待ちの間に追加しても、�
   await settings.getByRole('button', { name: 'Within-hand' }).click();
   await settings.getByRole('button', { name: '解析設定を閉じる' }).click();
   // まだ書かれていない（待ち中）
-  expect(await page.evaluate(() => localStorage.getItem('keydist:standalone-analyzer-options')) ?? '').not.toContain('bigram-flow');
+  expect((await page.evaluate(() => localStorage.getItem('keydist:standalone-analyzer-options'))) ?? '').not.toContain('bigram-flow');
 
   await addButton(page).click();
   await page.getByRole('menuitem', { name: '新しいWorkspaceに追加' }).click();
   await expect(page.locator('[data-added-to-workspace-notice]')).toContainText('に追加しました');
   // 追加の前に、待っていた解析設定が書かれている
-  expect(await page.evaluate(() => localStorage.getItem('keydist:standalone-analyzer-options')) ?? '').toContain('bigram-flow');
+  expect((await page.evaluate(() => localStorage.getItem('keydist:standalone-analyzer-options'))) ?? '').toContain('bigram-flow');
 
   await page.locator('.context-bar').getByRole('button', { name: '元に戻す' }).click();
   expect(await storedWorkspaces(page)).toHaveLength(0);
@@ -211,34 +234,46 @@ test('解析設定の書き込みが間引き待ちの間に追加しても、�
 /** 共有の設定（Bigram FlowはWithin-hand、指ごとの距離は何も変えていない）を持つWorkspaceを保存先へ直接書く。 */
 function seedWorkspaceWithSharedOptions(page: Page): Promise<void> {
   const fixedQwerty = { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } } };
-  return page.addInitScript(({ key, value }) => {
-    if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 4, workspaces: [value] }));
-  }, {
-    key: WORKSPACES_KEY,
-    value: {
-      id: 'w1',
-      name: '共有あり',
-      text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
-      optionSets: [
-        { id: 'bigram-flow-1', analyzerId: 'bigram-flow', options: { source: 'within-hand' } },
-        { id: 'finger-distance-1', analyzerId: 'finger-distance' },
-      ],
-      panes: [
-        { id: 'flow', analyzerId: 'bigram-flow', optionsBinding: { mode: 'shared', set: 'bigram-flow-1' }, binding: fixedQwerty },
-        { id: 'finger', analyzerId: 'finger-distance', optionsBinding: { mode: 'shared', set: 'finger-distance-1' }, binding: fixedQwerty },
-      ],
-      grid: [{ id: 'flow', x: 0, y: 0, w: 12, h: 15 }, { id: 'finger', x: 12, y: 0, w: 12, h: 15 }],
+  return page.addInitScript(
+    ({ key, value }) => {
+      if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 4, workspaces: [value] }));
     },
-  });
+    {
+      key: WORKSPACES_KEY,
+      value: {
+        id: 'w1',
+        name: '共有あり',
+        text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+        optionSets: [
+          { id: 'bigram-flow-1', analyzerId: 'bigram-flow', options: { source: 'within-hand' } },
+          { id: 'finger-distance-1', analyzerId: 'finger-distance' },
+        ],
+        panes: [
+          { id: 'flow', analyzerId: 'bigram-flow', optionsBinding: { mode: 'shared', set: 'bigram-flow-1' }, binding: fixedQwerty },
+          { id: 'finger', analyzerId: 'finger-distance', optionsBinding: { mode: 'shared', set: 'finger-distance-1' }, binding: fixedQwerty },
+        ],
+        grid: [
+          { id: 'flow', x: 0, y: 0, w: 12, h: 15 },
+          { id: 'finger', x: 12, y: 0, w: 12, h: 15 },
+        ],
+      },
+    },
+  );
 }
 
 async function addedPane(page: Page): Promise<{ optionsBinding?: { mode: string; set?: string }; options?: unknown }> {
   await page.locator('[data-added-to-workspace-notice]').waitFor();
-  const panes = (await storedWorkspaces(page))[0]!.panes as unknown as { id: string; optionsBinding?: { mode: string; set?: string }; options?: unknown }[];
+  const panes = (await storedWorkspaces(page))[0]!.panes as unknown as {
+    id: string;
+    optionsBinding?: { mode: string; set?: string };
+    options?: unknown;
+  }[];
   return panes[2]!;
 }
 
-test('共有の設定がある追加先へ、何も変えていない指ごとの距離を追加すると、共有に従う（保存した形と全項目の下書きは同じ設定として比べる）', async ({ page }) => {
+test('共有の設定がある追加先へ、何も変えていない指ごとの距離を追加すると、共有に従う（保存した形と全項目の下書きは同じ設定として比べる）', async ({
+  page,
+}) => {
   await seedWorkspaceWithSharedOptions(page);
   await openStandalone(page, '/analyzer/finger-distance');
   await addButton(page).click();

@@ -36,11 +36,7 @@ export interface SetupListItem {
 }
 
 /** 配列と物理配列が手持ちにあれば、そのSetupの条件の行。無ければ`undefined`。 */
-export function setupConditionRows(
-  setup: Setup,
-  catalog: PaneCatalog,
-  overrides: SettingsCascadeOverrides,
-): readonly ConditionSummaryRow[] | undefined {
+export function setupConditionRows(setup: Setup, catalog: PaneCatalog, overrides: SettingsCascadeOverrides): readonly ConditionSummaryRow[] | undefined {
   const layout = catalog.setupCatalog.layouts.get(setup.layoutId);
   if (layout === undefined) return undefined;
   const derivation = deriveInputMethod('ja', layoutKind(layout, catalog.userLayouts));
@@ -57,11 +53,7 @@ function failedDescription(setup: Setup, catalog: SetupCatalog): string {
 }
 
 /** 手持ちのSetup全部を同じ画面に並ぶ集合として名前を付ける。 */
-export function setupListItems(
-  setups: readonly Setup[],
-  catalog: PaneCatalog,
-  overrides: SettingsCascadeOverrides,
-): readonly SetupListItem[] {
+export function setupListItems(setups: readonly Setup[], catalog: PaneCatalog, overrides: SettingsCascadeOverrides): readonly SetupListItem[] {
   const sources = setups.map((setup): TargetNameSource => {
     const label = effectiveLabel(setup.label);
     const base = {

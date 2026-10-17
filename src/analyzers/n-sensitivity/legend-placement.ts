@@ -29,9 +29,7 @@ export interface Rect {
   readonly height: number;
 }
 
-export type LegendAnchor =
-  | 'bottom-left' | 'top-right' | 'bottom-right' | 'top-left'
-  | 'right-middle' | 'left-middle' | 'top-center' | 'bottom-center';
+export type LegendAnchor = 'bottom-left' | 'top-right' | 'bottom-right' | 'top-left' | 'right-middle' | 'left-middle' | 'top-center' | 'bottom-center';
 export type LegendCorner = LegendAnchor | 'below';
 
 const CORNERS: readonly LegendAnchor[] = ['bottom-left', 'top-right', 'bottom-right', 'top-left'];
@@ -171,9 +169,8 @@ export function fitLegendLabels(
   const wanted = new Set(labels).size;
   for (const cap of caps) {
     const fitted = labels.map((label, i) => shortenLabel(label, cap, measure, regions[i]!));
-    const distinct = new Set(fitted).size === wanted
-      && fitted.every((text, i) => text.includes(regions[i]!.text))
-      && fitted.every((text) => measure(text) <= hardMax);
+    const distinct =
+      new Set(fitted).size === wanted && fitted.every((text, i) => text.includes(regions[i]!.text)) && fitted.every((text) => measure(text) <= hardMax);
     if (distinct) return { labels: fitted, distinct: true };
   }
   return { labels: labels.map((label, i) => shortenLabel(label, hardMax, measure, regions[i]!)), distinct: false };
@@ -249,14 +246,22 @@ function anchorRect(anchor: LegendAnchor, plot: Rect, width: number, height: num
   const centerX = plot.x + (plot.width - width) / 2;
   const centerY = plot.y + (plot.height - height) / 2;
   switch (anchor) {
-    case 'bottom-left': return { x: left, y: bottom, width, height };
-    case 'top-right': return { x: right, y: top, width, height };
-    case 'bottom-right': return { x: right, y: bottom, width, height };
-    case 'top-left': return { x: left, y: top, width, height };
-    case 'right-middle': return { x: right, y: centerY, width, height };
-    case 'left-middle': return { x: left, y: centerY, width, height };
-    case 'top-center': return { x: centerX, y: top, width, height };
-    case 'bottom-center': return { x: centerX, y: bottom, width, height };
+    case 'bottom-left':
+      return { x: left, y: bottom, width, height };
+    case 'top-right':
+      return { x: right, y: top, width, height };
+    case 'bottom-right':
+      return { x: right, y: bottom, width, height };
+    case 'top-left':
+      return { x: left, y: top, width, height };
+    case 'right-middle':
+      return { x: right, y: centerY, width, height };
+    case 'left-middle':
+      return { x: left, y: centerY, width, height };
+    case 'top-center':
+      return { x: centerX, y: top, width, height };
+    case 'bottom-center':
+      return { x: centerX, y: bottom, width, height };
   }
 }
 
@@ -278,8 +283,7 @@ export function placeLegend(
   measure: MeasureText,
   below: BelowArea,
 ): LegendPlacement {
-  const itemWidth = LEGEND_SWATCH_WIDTH + LEGEND_SWATCH_GAP
-    + Math.max(0, ...labels.map((label) => measure(label))) + LEGEND_MEASURE_SLACK;
+  const itemWidth = LEGEND_SWATCH_WIDTH + LEGEND_SWATCH_GAP + Math.max(0, ...labels.map((label) => measure(label))) + LEGEND_MEASURE_SLACK;
   const boxWidth = (columns: number) => LEGEND_PADDING * 2 + columns * itemWidth + (columns - 1) * LEGEND_COLUMN_GAP;
 
   for (const anchors of [CORNERS, MIDDLES]) {
@@ -297,10 +301,10 @@ export function placeLegend(
     }
   }
 
-  const columns = Math.max(1, Math.min(
-    labels.length,
-    Math.floor((below.width - LEGEND_PADDING * 2 + LEGEND_COLUMN_GAP) / (itemWidth + LEGEND_COLUMN_GAP)),
-  ));
+  const columns = Math.max(
+    1,
+    Math.min(labels.length, Math.floor((below.width - LEGEND_PADDING * 2 + LEGEND_COLUMN_GAP) / (itemWidth + LEGEND_COLUMN_GAP))),
+  );
   const rows = Math.ceil(labels.length / columns);
   const rect = { x: below.x, y: below.y, width: boxWidth(columns), height: LEGEND_PADDING * 2 + rows * LEGEND_ROW_HEIGHT };
   return { corner: 'below', columns, rows, columnWidth: itemWidth, rect, overlaps: 0 };
