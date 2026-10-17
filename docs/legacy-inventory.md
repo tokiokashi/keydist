@@ -9,7 +9,7 @@
 - 状態が「作る候補」「捨てる候補」の行が残っている間は、切り替えを始めない。すべての行が「実装済み」「予定あり」「捨てる（決定済み）」のどれかになり、「予定あり」の作業が終わっていることが完了条件になる
 - 「作る候補」は、オーナーと決めてからissueにする（タイトル案と大きさは後ろの一覧）。「捨てる候補」は、オーナーが決める
 - 新しく機能を足した時にこの表へ行を足す必要は無い。旧画面にあったものだけを載せる
-- 完了条件の「予定あり」は、受け皿のissueがマイルストーン `later` にある行を含まない。`later` の行は切り替えの後に作るもので、完了条件に入れない。該当はG2（#62）とI3（#338）。どちらも「捨てる」側にはしない（作らないとは決まっていない）
+- 完了条件の「予定あり」は、受け皿のissueがマイルストーン `later` にある行を含まない。`later` の行は切り替えの後に作るもので、完了条件に入れない。該当はG2（#62）。「捨てる」側にはしない（作らないとは決まっていない）
 - `later` を除いて残っている「予定あり」の行は、v1.0.0にある行: C2（#35）・J5（#36）
 
 ### 状態の語
@@ -172,7 +172,7 @@
 | G6 | 物理配列設定の書き出し・読み込み（JSON） | 「打ち手と機材」の「設定を書き出す」「設定を読み込む」 | 操作（書き出しだけ。読み込みはコード） | 捨てる（決定済み） | 物理配列エディタを作らず、自作の物理配列を扱わないため、物理配列設定の書き出し・読み込みも作らない。決定は #29・#39（#39は自作の物理配列を扱わない） |
 | G7 | 自作の配列・ローマ字規則の書き出し・読み込み | 条件ファイルに同梱 | コード | 実装済み | #39。自作の指の割り当てを含め、`/assets`の画面で書き出し・読み込みする（`engine/user-assets-file.ts`）。条件ファイルには同梱しない |
 | G8 | 旧画面の保存データの読み込み（保存先の `keydist:app-state` の `analyzer`・`conditions`・`playback` と、初回だけの移行元の `keydist:ui-state`・`keydist:condition-presets`） | `analyzer-ui-state-owner.ts:53-78`・`docs/app-state.md` | コード | 捨てる（決定済み） | X4。通常の保存先は `keydist:app-state` の `analyzer`・`conditions`・`playback`。`keydist:ui-state` は、`keydist:app-state` にこの3つが無い時に1回だけ読む移行元で、移行に成功すると消す。AGENTS.mdは保存データの互換を求めない |
-| G9 | 新しい画面で、自作の配列・ローマ字規則を持ち、Analyzerで選べること | `platform/assets/*-storage.ts`・`interpretation/timing/calibration.ts` | コード | 実装済み | 新しいAnalyzer（単体の画面・Workspace・Setup）は、自作の配列・ローマ字規則を組み込みに足して読む（`app/standalone/catalog.ts` の `paneCatalog()`）。保存は `keydist:user-layouts`・`keydist:user-romaji-rules`（`platform/assets/`、版付き）。個人速度は `keydist:personal-speed`（F8）。自作の物理配列は扱わない（X7）。Testerは組み込みの配列だけ（I3）（N15） |
+| G9 | 新しい画面で、自作の配列・ローマ字規則を持ち、Analyzerで選べること | `platform/assets/*-storage.ts`・`interpretation/timing/calibration.ts` | コード | 実装済み | 新しいAnalyzer（単体の画面・Workspace・Setup）は、自作の配列・ローマ字規則を組み込みに足して読む（`app/standalone/catalog.ts` の `paneCatalog()`）。保存は `keydist:user-layouts`・`keydist:user-romaji-rules`（`platform/assets/`、版付き）。個人速度は `keydist:personal-speed`（F8）。自作の物理配列は扱わない（X7）。Testerも自作の配列を選べる（I3）（N15） |
 | G10 | 旧画面で作った自作の配列・物理配列・ローマ字規則を、新しい側へ移す・読む処理 | `keydist:layouts`・`keydist:geometry-shapes`・`keydist:romaji-rules` | コード | 捨てる（決定済み） | オーナーの方針（2026-10-04）。「旧画面で作ったものを持っていく構造がプログラムを歪めていなければいい。作り直したほうが速いなら新画面で作るほうがいい」。AGENTS.mdの「利用者の保存データの互換は守らない」に合う。新しい構成の資産として新しい画面で作り直す（N15）。**`/analyzer` を消すと、`/analyzer` で作った `keydist:*` の資産はどこからも使えなくなる。** X4（旧保存データの移行）と同じ扱い。リリースノートに書くかの判断（J5）につなぐ |
 
 ### H. 共有・キーボード
@@ -191,7 +191,7 @@
 |---|---|---|---|---|---|
 | I1 | 旧画面からTesterへの導線 | `analyzer-page.tsx` のリンクはkeydistのトップだけ | 操作 | 実装済み | 導線は元から無い。新側のサイドバーにTesterがある |
 | I2 | Testerが読む自作の物理配列 | `tester/input-converter-view.tsx` が `keydist:geometry-shapes` を読む | コード | 捨てる（決定済み） | 物理配列エディタを作らないので、Testerが `keydist:geometry-shapes` を読む経路は消す。決定は #29 |
-| I3 | 自作の配列を読む画面 | `tester/input-converter-view.tsx` のimport（`LAYOUTS`・`LAYOUTS_JA`だけ） | コード | 予定あり | #338（Testerで自作の配列を選べるようにする。#50の範囲に入れなかったため、ここで受ける）。Testerは組み込みの配列だけを並べる（`tester/input-converter-view.tsx`）。Analyzer・Setupは自作の配列を読む（G9） |
+| I3 | 自作の配列を読む画面 | `tester/input-converter-view.tsx` のimport（`LAYOUTS`・`LAYOUTS_JA`だけ） | コード | 実装済み | #338。Testerの配列の選択は、組み込みの配列の後ろに「自作の配列」の区分で自作の配列を並べる。`app/tester/TesterApp.tsx` が資産の自作の配列・ローマ字規則を読み、`userInputLayouts()`（`input/layouts/user-catalog.ts`）でローマ字の表まで組んだ配列を `tester/input-converter-view.tsx` に渡す。保存した選択の復元は読み込みが終わってから行う。Analyzer・Setupは自作の配列を読む（G9） |
 
 ### J. 切り替えの作業
 
@@ -224,7 +224,7 @@
 | N11 | 自作の配列・ローマ字規則を一覧して削除する画面を作る | 小 | C6 | 実装済み。#63（`/assets`）。資産の保存形式の整理と同時に扱える |
 | N13 | 指の割り当てエディタを作る | 中 | G4 | 実装済み。#64（`/finger-assignment`） |
 | N14 | ローマ字の綴りエディタを作る | 中 | G5 | 実装済み。#65（`/romaji-rule`） |
-| N15 | 自作の配列・ローマ字規則を新しい構成の資産として作り、Analyzerで選べるようにする | 中 | G9 | 実装済み。#50。自作の配列・ローマ字規則は `KeydistAssets` と版付きのcodecとして持つ。Analyzerのカタログ（`app/standalone/catalog.ts` の `paneCatalog()`）が読む。旧画面の保存キー（`keydist:layouts`・`keydist:romaji-rules`）は新しい側では読まず、移さない（G10）。Testerの分は#50の範囲に入れずに閉じたので、I3（#338）で受ける。物理配列はX7に含める |
+| N15 | 自作の配列・ローマ字規則を新しい構成の資産として作り、Analyzerで選べるようにする | 中 | G9 | 実装済み。#50。自作の配列・ローマ字規則は `KeydistAssets` と版付きのcodecとして持つ。Analyzerのカタログ（`app/standalone/catalog.ts` の `paneCatalog()`）が読む。旧画面の保存キー（`keydist:layouts`・`keydist:romaji-rules`）は新しい側では読まず、移さない（G10）。Testerの分は#50の範囲に入れずに閉じ、I3（#338）で実装した。物理配列はX7に含める |
 
 
 N12（物理配列エディタ）は、決定済みの項目X7へ移したので欠番にした。

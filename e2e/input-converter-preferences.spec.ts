@@ -283,3 +283,47 @@ test('layout B restore also revives a floating layer card of B without a visible
   expect(Math.round(settledBox!.x)).toBe(Math.round(firstBox!.x));
   expect(Math.round(settledBox!.y)).toBe(Math.round(firstBox!.y));
 });
+
+test('自作の配列を選んで開き直すと、その配列と練習環境が残り、消えると既定の配列で開く', async ({ page }) => {
+  await page.addInitScript(() => {
+    // リロードのたびに種まきし直すと、消した後の状態が巻き戻る。最初の1回だけ書く。
+    if (sessionStorage.getItem('seeded') !== null) return;
+    sessionStorage.setItem('seeded', '1');
+    const rows = ['', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'];
+    localStorage.setItem('keydist:user-layouts', JSON.stringify({
+      version: 1,
+      layouts: [{ id: 'user-a', name: '自作A', rows, romaji: 'rule-a' }],
+    }));
+    localStorage.setItem('keydist:user-romaji-rules', JSON.stringify({
+      version: 1,
+      rules: [{ id: 'rule-a', name: '自作の規則', base: 'kunrei', overrides: { し: 'shi' }, generateSokuon: true }],
+    }));
+  });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  const layoutSelect = page.getByLabel('配列', { exact: true });
+  const practice = page.getByLabel('打ちたい文字');
+
+  await expect(layoutSelect.locator('optgroup[label="自作の配列"] option')).toHaveText(['自作A']);
+  await layoutSelect.selectOption('user-a');
+  await expect(feature).toHaveAttribute('data-input-ready', 'user-a');
+
+  // 自作のローマ字規則の綴り（shi の3打鍵）で打ち方が出る。
+  await practice.fill('し');
+  await expect(page.getByLabel('入力順ガイド')).toContainText('1 / 3');
+
+  await page.reload();
+  await expect(feature).toHaveAttribute('data-input-ready', 'user-a');
+  await expect(layoutSelect).toHaveValue('user-a');
+  await expect(practice).toHaveValue('し');
+
+  // 自作の配列が消えていると、既定の配列で開く。
+  await page.evaluate(() => {
+    localStorage.setItem('keydist:user-layouts', JSON.stringify({ version: 1, layouts: [] }));
+  });
+  await page.reload();
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  await expect(layoutSelect.locator('optgroup[label="自作の配列"]')).toHaveCount(0);
+});

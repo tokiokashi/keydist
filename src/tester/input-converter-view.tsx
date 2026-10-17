@@ -99,6 +99,11 @@ const INPUT_LAYOUTS = [
   JIS_KANA,
 ];
 
+const DEFAULT_INPUT_LAYOUT = DIRECT_JA_INPUT_LAYOUTS[0] ?? INPUT_LAYOUTS[0];
+const DEFAULT_GEOMETRY_ID = PHYSICAL_SHAPES['row-staggered'].id;
+const USER_LAYOUT_GROUP_LABEL = '自作の配列';
+const NO_USER_LAYOUTS: readonly Layout[] = [];
+
 // 組み込みの物理配列は定義の登録順（グループ内はロウ → オーソ → オーソ分割 → カラム）のまま全部使う。
 // ANSI・JISの振り分けは選択欄の側で groupShapes が行うので、ここに id を手で並べない。
 const PRESET_GEOMETRY_SHAPES = Object.values(PHYSICAL_SHAPES);
@@ -277,16 +282,35 @@ function RecognizedDetail({
   );
 }
 
-export function InputConverterView() {
-  const [layout, setLayout] = useState<Layout>(
-    () => DIRECT_JA_INPUT_LAYOUTS[0] ?? INPUT_LAYOUTS[0],
+export interface InputConverterViewProps {
+  /** 選べる自作の配列（ローマ字の表まで組み立て済みのもの）。組み込みの配列とidが重なるものは選択肢に出さない */
+  userLayouts?: readonly Layout[];
+  /**
+   * 自作の配列の読み込みが終わったか。終わるまでは保存した選択を復元しない
+   * （読み込み中に保存した自作の配列を既定へ戻さないため）。
+   */
+  userLayoutsReady?: boolean;
+}
+
+export function InputConverterView({
+  userLayouts: userLayoutsProp = NO_USER_LAYOUTS,
+  userLayoutsReady = true,
+}: InputConverterViewProps = {}) {
+  const [layout, setLayout] = useState<Layout>(DEFAULT_INPUT_LAYOUT);
+  const userLayouts = useMemo(() => {
+    const builtInIds = new Set(INPUT_LAYOUTS.map((candidate) => candidate.id));
+    return userLayoutsProp.filter((candidate) => !builtInIds.has(candidate.id));
+  }, [userLayoutsProp]);
+  const selectableLayouts = useMemo(
+    () => [...INPUT_LAYOUTS, ...userLayouts],
+    [userLayouts],
   );
   const [bindingOverrides, setBindingOverrides] =
     useState<BrowserKeyBindingOverrides>({});
   const [bindingTargetKey, setBindingTargetKey] = useState<string>();
   const [bindingCapturing, setBindingCapturing] = useState(false);
   const bindingCaptureCodeRef = useRef<string | undefined>(undefined);
-  const [geometryId, setGeometryId] = useState(PHYSICAL_SHAPES['row-staggered'].id);
+  const [geometryId, setGeometryId] = useState(DEFAULT_GEOMETRY_ID);
   // 刻印の表示に使う規格
   const keyboardStandard = keyboardStandardForGeometryId(geometryId);
   const keyLabel = (key: string) => physicalKeyDisplayLabel(key, keyboardStandard);
@@ -425,21 +449,27 @@ export function InputConverterView() {
 
   useEffect(() => {
     setBindingOverrides(loadBrowserKeyBindingOverrides(window.localStorage));
+  }, []);
+
+  // 保存した選択の復元は、自作の配列の読み込みが終わってから一度だけ行う。
+  // 読み込み前に復元すると、保存した自作の配列が選べる配列に無いものとして既定へ戻る。
+  useEffect(() => {
+    if (!userLayoutsReady || persistedPreferencesRef.current !== null) return;
 
     const restored = preferences.restoreOnce(
       {
-        layoutIds: INPUT_LAYOUTS.map((candidate) => candidate.id),
+        layoutIds: selectableLayouts.map((candidate) => candidate.id),
         geometryIds: PRESET_GEOMETRY_SHAPES.map((shape) => shape.id),
       },
       {
-        layoutId: layout.id,
-        geometryId,
+        layoutId: DEFAULT_INPUT_LAYOUT.id,
+        geometryId: DEFAULT_GEOMETRY_ID,
         layout: DEFAULT_LAYOUT_PREFERENCES,
       },
     );
     persistedPreferencesRef.current = restored;
 
-    const restoredLayout = INPUT_LAYOUTS.find((candidate) => candidate.id === restored.layoutId);
+    const restoredLayout = selectableLayouts.find((candidate) => candidate.id === restored.layoutId);
     if (restoredLayout !== undefined) setLayout(restoredLayout);
     setGeometryId(restored.geometryId);
     applyLayoutPreferences(
@@ -449,8 +479,19 @@ export function InputConverterView() {
         DEFAULT_LAYOUT_PREFERENCES,
       ),
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount後に一度だけ復元する
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 自作の配列の読み込みが終わった時に一度だけ復元する
+  }, [userLayoutsReady]);
+
+  // 復元後に自作の配列が変わった時（別タブでの編集・削除）は、選んでいる配列を追従させる。
+  // 消えていたら既定の配列へ戻す。
+  useEffect(() => {
+    if (!userLayoutsReady || persistedPreferencesRef.current === null) return;
+    if (INPUT_LAYOUTS.some((candidate) => candidate.id === layout.id)) return;
+    const latest = userLayouts.find((candidate) => candidate.id === layout.id);
+    if (latest === undefined) switchLayout(DEFAULT_INPUT_LAYOUT);
+    else if (latest !== layout) setLayout(latest);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 自作の配列の一覧が変わった時だけ照らす
+  }, [userLayouts, userLayoutsReady]);
 
   // 書き込みのcoalescingはpreferences側が持つ。復元済みのV2全体へ現在配列の
   // 練習環境だけをmergeし、他配列の環境を落とさない。物理配列はglobalのまま。
@@ -946,7 +987,7 @@ export function InputConverterView() {
                   aria-label="配列"
                   value={layout.id}
                   onChange={(event) => {
-                    const next = INPUT_LAYOUTS.find((candidate) => candidate.id === event.target.value);
+                    const next = selectableLayouts.find((candidate) => candidate.id === event.target.value);
                     if (next === undefined) return;
                     switchLayout(next);
                   }}
@@ -956,6 +997,15 @@ export function InputConverterView() {
                       {candidate.name}
                     </option>
                   ))}
+                  {userLayouts.length > 0 && (
+                    <optgroup label={USER_LAYOUT_GROUP_LABEL}>
+                      {userLayouts.map((candidate) => (
+                        <option key={candidate.id} value={candidate.id}>
+                          {candidate.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
                 </select>
               </label>
               <label>

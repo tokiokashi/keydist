@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { InputConverterView } from '#tester/input-converter-view.tsx';
+import { TesterApp } from '#app/tester/TesterApp.tsx';
 
 export const Route = createFileRoute('/input')({
   head: () => ({
@@ -11,5 +11,5 @@ export const Route = createFileRoute('/input')({
       },
     ],
   }),
-  component: InputConverterView,
+  component: TesterApp,
 });
