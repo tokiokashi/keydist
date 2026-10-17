@@ -946,7 +946,7 @@ export function playbackTimingStepDurationMs(
 }
 
 /**
- * §3で確定したbase durationを累積したTiming schedule。
+ * §3で確定したbase duration（ステップの時間）を累積したTiming schedule。
  * allFingerMovementDelay=trueでは、各指の到達可能時刻を追加max制約として適用する。
  */
 export function playbackTimingSchedule(

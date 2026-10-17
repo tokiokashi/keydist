@@ -170,7 +170,7 @@ test('全指の移動時間（§3.8のmove）には打鍵の上乗せを足さ�
   assert.equal(lengthOf(BASE), 300);
   // normalMsにoを足した250はmoveより短いので、2打目はmoveのまま。打鍵の上乗せがmoveに入るなら350になる。
   assert.equal(lengthOf(withOverhead({ other: 50 })), 300);
-  // normalMs + o = 350がmoveを超えると、基準の時間が律速する。
+  // normalMs + o = 350がmoveを超えると、ステップの時間が律速する。
   assert.equal(lengthOf(withOverhead({ other: 150 })), 350);
 });
 
@@ -309,7 +309,7 @@ test('全指の移動時間（§3.8のmove）には同指連続の値も足さ�
     const step = playbackTimingSchedule(analysis, 1, true, calibration, 1, options)[1];
     return step.endMs - step.startMs;
   };
-  // 基準の時間はmax(200, 500) + s。moveは300（続け打ちの時間を含まない）なので、基準の時間が律速する。
+  // ステップの時間はmax(200, 500) + s。moveは300（続け打ちの時間を含まない）なので、ステップの時間が律速する。
   assert.equal(lengthOf(BASE), 500);
   assert.equal(lengthOf(withOverhead({ sfb: 40 })), 540);
 });

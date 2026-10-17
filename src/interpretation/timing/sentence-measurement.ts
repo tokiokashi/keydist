@@ -96,7 +96,7 @@ export type SentenceCounts = Readonly<Record<OverheadKind, number>>;
 export interface SentenceRowStats {
   /** 数えたストロークの数（下限の判定に使う数）。 */
   readonly count: number;
-  /** 差を求める元の時間の四分位平均[ms]。 */
+  /** 基準の時間の四分位平均[ms]。 */
   readonly baseMs?: number;
   /** 文章を打った間隔の四分位平均[ms]。 */
   readonly intervalMs?: number;
@@ -308,7 +308,7 @@ export interface SentenceResultTable {
 
 /**
  * 測り終えた時に示す表（`spec/playback-timing.md` §6.4「測り終えた時に示す表」）。
- * 保存値が無い時と、測定の途中で保存値が変わった時は、差を求める元の時間の保存値が決まらないので表を作らない。
+ * 保存値が無い時と、測定の途中で保存値が変わった時は、基準の時間を求める保存値が決まらないので表を作らない。
  */
 export function sentenceResultTable(result: ApplySentenceResult): SentenceResultTable | undefined {
   if (!result.ok && (result.reason === 'no-saved-value' || result.reason === 'changed')) return undefined;
