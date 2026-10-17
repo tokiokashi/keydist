@@ -49,8 +49,14 @@ function fixtureContext() {
     geometry: {} as never,
     assets: DEFAULT_EXTRACTION_ASSETS,
     basisId: 'fixture',
-    requestTrace: { requestTrace: () => { throw new Error('unused'); } },
-    keyDetails: () => { throw new Error('unused'); },
+    requestTrace: {
+      requestTrace: () => {
+        throw new Error('unused');
+      },
+    },
+    keyDetails: () => {
+      throw new Error('unused');
+    },
   };
 }
 
@@ -81,8 +87,14 @@ test('SingleAnalyzerDefinition: extractは Trace結果 + 解釈結果 + options 
     geometry: {} as never,
     assets: DEFAULT_EXTRACTION_ASSETS,
     basisId: 'fixture',
-    requestTrace: { requestTrace: () => { throw new Error('unused'); } },
-    keyDetails: () => { throw new Error('unused'); },
+    requestTrace: {
+      requestTrace: () => {
+        throw new Error('unused');
+      },
+    },
+    keyDetails: () => {
+      throw new Error('unused');
+    },
   });
   assert.equal(result, 3);
 });
@@ -95,16 +107,11 @@ test('optionsDiscipline.extract: 材料の文脈とoptionsから引数を組み�
 
 /** 見た目だけの項目（highlightColor）を、抽出の側が読んでしまう定義。`extract`の中で読む版と、計算の関数の中で読む版。 */
 function createViewReadingDefinition(readIn: 'extract' | 'compute') {
-  const compute = (totalUnits: number, options: typeof DEFAULT_OPTIONS) =>
-    (readIn === 'compute' && options.highlightColor === 'blue' ? 0 : totalUnits);
+  const compute = (totalUnits: number, options: typeof DEFAULT_OPTIONS) => (readIn === 'compute' && options.highlightColor === 'blue' ? 0 : totalUnits);
   return defineSingleAnalyzer({
     id: `view-reading-${readIn}`,
     options: fixtureOptions,
-    extract: (context) => (
-      readIn === 'extract' && context.options.highlightColor === 'blue'
-        ? 0
-        : compute(context.metrics.totalUnits, context.options)
-    ),
+    extract: (context) => (readIn === 'extract' && context.options.highlightColor === 'blue' ? 0 : compute(context.metrics.totalUnits, context.options)),
     optionsDiscipline: {
       sample: DEFAULT_OPTIONS,
       alternates: { bucketSize: 8, highlightColor: 'blue' },
@@ -171,7 +178,10 @@ test('AnalyzerTarget: 単一対象(single) / 集合対象(set)の2形だけを�
   const single: AnalyzerTarget = { kind: 'single', target: { kind: 'setup', setupId: 'setup-1' } };
   const set: AnalyzerTarget = {
     kind: 'set',
-    targets: [{ kind: 'setup', setupId: 'setup-1' }, { kind: 'layout', layoutId: 'qwerty' }],
+    targets: [
+      { kind: 'setup', setupId: 'setup-1' },
+      { kind: 'layout', layoutId: 'qwerty' },
+    ],
   };
   assert.equal(single.kind, 'single');
   assert.equal(set.kind, 'set');

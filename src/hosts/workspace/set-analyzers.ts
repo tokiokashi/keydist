@@ -14,11 +14,7 @@ import type { SetAnalyzerPaneParts } from '#analyzers/pane-parts.tsx';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyPaneParts = SetAnalyzerPaneParts<any, any, any>;
 
-export const SET_ANALYZER_PANE_PARTS: readonly AnyPaneParts[] = [
-  comparisonAnalyzer,
-  fingerMatrixAnalyzer,
-  nSensitivityAnalyzer,
-];
+export const SET_ANALYZER_PANE_PARTS: readonly AnyPaneParts[] = [comparisonAnalyzer, fingerMatrixAnalyzer, nSensitivityAnalyzer];
 
 export function findSetAnalyzer(analyzerId: string): AnyPaneParts | undefined {
   return SET_ANALYZER_PANE_PARTS.find((entry) => entry.definition.id === analyzerId);

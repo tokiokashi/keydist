@@ -15,12 +15,7 @@ import {
   type Workspace,
   type WorkspacePaneTarget,
 } from './workspace.ts';
-import {
-  importWorkspacesCommand,
-  mergeWorkspaces,
-  missingWorkspaceReferences,
-  type WorkspaceReferenceHoldings,
-} from './workspace-import.ts';
+import { importWorkspacesCommand, mergeWorkspaces, missingWorkspaceReferences, type WorkspaceReferenceHoldings } from './workspace-import.ts';
 
 const HOLDINGS: WorkspaceReferenceHoldings = {
   setupLibrary: { setups: [], overrides: emptyCascadeOverrides() },
@@ -36,9 +31,18 @@ function workspace(id: string, name = id): Workspace {
 
 /** 組の対象を差し替えたWorkspace。ペインを1つ足して、組が従われている状態にする（従われない組は見えない対象として数えない）。 */
 function withGroupTarget(base: Workspace, target: WorkspacePaneTarget): Workspace {
-  let library = addWorkspacePane([base], base.id, {
-    id: 'p1', analyzerId: 'bigram-flow', options: undefined, optionsBinding: OWN_OPTIONS, binding: followBinding(INITIAL_LINK_GROUP_ID),
-  }, { w: 6, h: 10 });
+  let library = addWorkspacePane(
+    [base],
+    base.id,
+    {
+      id: 'p1',
+      analyzerId: 'bigram-flow',
+      options: undefined,
+      optionsBinding: OWN_OPTIONS,
+      binding: followBinding(INITIAL_LINK_GROUP_ID),
+    },
+    { w: 6, h: 10 },
+  );
   library = withWorkspaceTarget(library, base.id, INITIAL_LINK_GROUP_ID, target);
   return library[0]!;
 }
@@ -61,7 +65,10 @@ test('参照先: この端末に無い配列・Setupを、種類ごとに1度ず
     },
   });
   assert.deepEqual([...missingWorkspaceReferences(used, HOLDINGS)].sort(), ['layout', 'setup']);
-  const setups = { ...HOLDINGS, setupLibrary: { ...HOLDINGS.setupLibrary, setups: [{ id: 'gone-setup', number: 1, layoutId: 'qwerty', shapeId: 'row-staggered' }] } };
+  const setups = {
+    ...HOLDINGS,
+    setupLibrary: { ...HOLDINGS.setupLibrary, setups: [{ id: 'gone-setup', number: 1, layoutId: 'qwerty', shapeId: 'row-staggered' }] },
+  };
   assert.deepEqual(missingWorkspaceReferences(used, setups), ['layout']);
 });
 
@@ -71,10 +78,7 @@ test('参照先: Workspaceの条件が指す指の割当・ローマ字規則・
     conditions: { fingerAssignmentId: 'mine', romajiRuleId: 'mine', defaultShapeId: 'mine', windowSize: 4 },
     text: { ref: { kind: 'user', id: 'text-1' } },
   };
-  assert.deepEqual(
-    [...missingWorkspaceReferences(used, HOLDINGS)].sort(),
-    ['finger-assignment', 'romaji-rule', 'shape', 'text'],
-  );
+  assert.deepEqual([...missingWorkspaceReferences(used, HOLDINGS)].sort(), ['finger-assignment', 'romaji-rule', 'shape', 'text']);
   const known: Workspace = {
     ...workspace('w2'),
     conditions: { fingerAssignmentId: DEFAULT_FINGER_ASSIGNMENT.id, romajiRuleId: 'qwerty', defaultShapeId: PHYSICAL_SHAPES['row-staggered'].id },
@@ -95,7 +99,10 @@ test('読み込み: 新しいidが手元のidと重なったら、重ならな�
   const incoming: Workspace = { ...workspace('w1', '比較'), conditions: { windowSize: 6 } };
   const ids = ['taken', 'fresh'];
   const result = mergeWorkspaces(local, [incoming], HOLDINGS, () => ids.shift()!);
-  assert.deepEqual(result.library.map((item) => item.id), ['w1', 'taken', 'fresh']);
+  assert.deepEqual(
+    result.library.map((item) => item.id),
+    ['w1', 'taken', 'fresh'],
+  );
   assert.equal(result.library[2]!.name, '比較 (2)');
 });
 
@@ -115,7 +122,10 @@ test('コマンド: 足すものがあれば手持ちを書き、内訳は適用
   assert.equal(plan.entries(), undefined);
   const outcome = plan.command(assetsWith([]));
   assert.ok(outcome.kind === 'applied');
-  assert.deepEqual((outcome.changes.workspaces ?? []).map((item) => item.id), ['w1']);
+  assert.deepEqual(
+    (outcome.changes.workspaces ?? []).map((item) => item.id),
+    ['w1'],
+  );
   assert.equal(plan.entries()?.[0]?.outcome.kind, 'added');
 });
 

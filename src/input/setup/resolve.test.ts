@@ -49,11 +49,7 @@ test('resolveSetup: 物理配列が削除されていればshape-missingエラ�
 });
 
 test('resolveSetup: 配列・物理配列の両方が削除されていれば両方のエラーをまとめて返す', () => {
-  const result = resolveSetup(
-    setup({ layoutId: 'deleted-layout', shapeId: 'deleted-shape' }),
-    CATALOG,
-    'romaji',
-  );
+  const result = resolveSetup(setup({ layoutId: 'deleted-layout', shapeId: 'deleted-shape' }), CATALOG, 'romaji');
   assert.equal(result.ok, false);
   if (result.ok) return;
   assert.deepEqual(result.errors, [

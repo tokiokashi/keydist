@@ -1,13 +1,7 @@
 import { EMPTY_PERSONAL_SPEED } from '#interpretation/timing/calibration-codec.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import {
-  applyCommandInScreen,
-  emptyScreenHistories,
-  stepInScreen,
-  type Command,
-  type ScreenHistories,
-} from '#input/commands/index.ts';
+import { applyCommandInScreen, emptyScreenHistories, stepInScreen, type Command, type ScreenHistories } from '#input/commands/index.ts';
 import { emptyCascadeOverrides } from '#input/settings/index.ts';
 import { emptyTextLibrary } from '#input/text/library.ts';
 import { initialTextSelection } from '#input/text/selection.ts';
@@ -112,7 +106,11 @@ test('Setupのレベルの条件を変えた操作は、別のSetupの変更に�
 test('複製の取り消しは、複製した分のSetupとそのSetupのレベルの条件だけを除く', () => {
   let state = run(start(), SETUP_SCREEN, create('a'));
   state = run(state, SETUP_SCREEN, setCascadeOverrideCommand({ kind: 'setup', setupId: 'a' }, 'windowSize', 7));
-  state = run(state, SETUP_SCREEN, duplicateSetupCommand('a', () => 'copy'));
+  state = run(
+    state,
+    SETUP_SCREEN,
+    duplicateSetupCommand('a', () => 'copy'),
+  );
   state = run(state, OTHER_SCREEN, global(4));
   assert.equal(state.assets.setupLibrary.overrides.setup?.['copy']?.windowSize, 7);
   const undone = step(state, SETUP_SCREEN, 'undo');
@@ -126,11 +124,20 @@ test('複製の取り消しは、複製した分のSetupとそのSetupのレベ�
 test('作る操作を戻した後に別のSetupを作ると、番号は手持ちの最大＋1で決まる', () => {
   let state = run(start(), SETUP_SCREEN, create('a'));
   state = run(state, SETUP_SCREEN, create('b'));
-  assert.deepEqual(state.assets.setupLibrary.setups.map((setup) => setup.number), [1, 2]);
+  assert.deepEqual(
+    state.assets.setupLibrary.setups.map((setup) => setup.number),
+    [1, 2],
+  );
   state = step(state, SETUP_SCREEN, 'undo').state;
   assert.deepEqual(ids(state), ['a']);
   state = run(state, SETUP_SCREEN, create('c'));
-  assert.deepEqual(state.assets.setupLibrary.setups.map((setup) => [setup.id, setup.number]), [['a', 1], ['c', 2]]);
+  assert.deepEqual(
+    state.assets.setupLibrary.setups.map((setup) => [setup.id, setup.number]),
+    [
+      ['a', 1],
+      ['c', 2],
+    ],
+  );
 });
 
 test('戻した作成を、同じ番号を別のSetupが使っている間はやり直せない', () => {

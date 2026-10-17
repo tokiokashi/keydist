@@ -11,14 +11,7 @@ export type CascadeLevelKind = 'global' | 'workspace' | 'shape' | 'inputMethod' 
  * workspaceはそのWorkspaceが自分の条件として持つ1レベル（idを持たない。解決は「今開いているWorkspace」の値だけを
  * 見る）。単体ページの解決はこのレベルに値を持たない（`CascadeOverrides.workspace`が無い）。
  */
-export const CASCADE_LEVEL_ORDER: readonly CascadeLevelKind[] = [
-  'global',
-  'workspace',
-  'shape',
-  'inputMethod',
-  'layout',
-  'setup',
-];
+export const CASCADE_LEVEL_ORDER: readonly CascadeLevelKind[] = ['global', 'workspace', 'shape', 'inputMethod', 'layout', 'setup'];
 
 /**
  * 打ち方。テキストの言語 × 配列の種類から導く値で、ユーザーが選ぶものではない。導出そのものはここでは行わないので、
@@ -38,12 +31,18 @@ export type CascadeLevel =
 /** そのレベルの中で上書きを束ねるキー。global・workspaceは単一なので固定文字列を使う。 */
 export function cascadeLevelStoreKey(level: CascadeLevel): string {
   switch (level.kind) {
-    case 'global': return 'global';
-    case 'workspace': return 'workspace';
-    case 'shape': return level.shapeId;
-    case 'inputMethod': return level.inputMethod;
-    case 'layout': return level.layoutId;
-    case 'setup': return level.setupId;
+    case 'global':
+      return 'global';
+    case 'workspace':
+      return 'workspace';
+    case 'shape':
+      return level.shapeId;
+    case 'inputMethod':
+      return level.inputMethod;
+    case 'layout':
+      return level.layoutId;
+    case 'setup':
+      return level.setupId;
   }
 }
 

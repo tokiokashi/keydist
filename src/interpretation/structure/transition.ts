@@ -1,11 +1,6 @@
 import type { Finger, Key } from '#input/shapes/geometry.ts';
 import type { Stroke } from '#trace/generate.ts';
-import {
-  analyzeChains,
-  type ChainAnalysisResult,
-  type ChainInterpretation,
-  type Hand,
-} from './chain.ts';
+import { analyzeChains, type ChainAnalysisResult, type ChainInterpretation, type Hand } from './chain.ts';
 
 export type FingerDirection = 'inward' | 'outward' | 'same';
 
@@ -78,11 +73,16 @@ function handOf(finger: Finger): Hand {
  */
 export function fingerRank(finger: Finger): number {
   switch (finger[1]) {
-    case 'P': return 0;
-    case 'R': return 1;
-    case 'M': return 2;
-    case 'I': return 3;
-    case 'T': return 4;
+    case 'P':
+      return 0;
+    case 'R':
+      return 1;
+    case 'M':
+      return 2;
+    case 'I':
+      return 3;
+    case 'T':
+      return 4;
     default: {
       const exhaustive: never = finger[1] as never;
       return exhaustive;
@@ -90,7 +90,10 @@ export function fingerRank(finger: Finger): number {
   }
 }
 
-export function fingerRelation(from: Finger, to: Finger): {
+export function fingerRelation(
+  from: Finger,
+  to: Finger,
+): {
   direction: FingerDirection;
   step: number;
 } {
@@ -102,43 +105,35 @@ export function fingerRelation(from: Finger, to: Finger): {
 }
 
 function participationIndex(stroke: Stroke, hand: Hand, finger: Finger): number | undefined {
-  const index = stroke.participations.findIndex(
-    (participation) => participation.hand === hand && participation.finger === finger,
-  );
+  const index = stroke.participations.findIndex((participation) => participation.hand === hand && participation.finger === finger);
   return index < 0 ? undefined : index;
 }
 
-function candidatesFor(
-  fromStroke: Stroke,
-  toStroke: Stroke,
-  hand: Hand,
-): readonly FingerTransition[] {
-  const fromPresses = fromStroke.presses
-    .map((press, index) => ({ press, index }))
-    .filter(({ press }) => handOf(press.finger) === hand);
-  const toPresses = toStroke.presses
-    .map((press, index) => ({ press, index }))
-    .filter(({ press }) => handOf(press.finger) === hand);
+function candidatesFor(fromStroke: Stroke, toStroke: Stroke, hand: Hand): readonly FingerTransition[] {
+  const fromPresses = fromStroke.presses.map((press, index) => ({ press, index })).filter(({ press }) => handOf(press.finger) === hand);
+  const toPresses = toStroke.presses.map((press, index) => ({ press, index })).filter(({ press }) => handOf(press.finger) === hand);
 
   const candidates: FingerTransition[] = [];
   for (const from of fromPresses) {
     for (const to of toPresses) {
       const relation = fingerRelation(from.press.finger, to.press.finger);
-      candidates.push(Object.freeze({
-        candidateIndex: candidates.length,
-        fromPressIndex: from.index,
-        toPressIndex: to.index,
-        fromParticipationIndex: participationIndex(fromStroke, hand, from.press.finger),
-        toParticipationIndex: participationIndex(toStroke, hand, to.press.finger),
-        fromFinger: from.press.finger,
-        toFinger: to.press.finger,
-        fromKeys: from.press.keys,
-        toKeys: to.press.keys,
-        fingerDirection: relation.direction,
-        fingerStep: relation.step,
-        dx: to.press.target.x - from.press.target.x,
-        dy: to.press.target.y - from.press.target.y,
-      }));
+      candidates.push(
+        Object.freeze({
+          candidateIndex: candidates.length,
+          fromPressIndex: from.index,
+          toPressIndex: to.index,
+          fromParticipationIndex: participationIndex(fromStroke, hand, from.press.finger),
+          toParticipationIndex: participationIndex(toStroke, hand, to.press.finger),
+          fromFinger: from.press.finger,
+          toFinger: to.press.finger,
+          fromKeys: from.press.keys,
+          toKeys: to.press.keys,
+          fingerDirection: relation.direction,
+          fingerStep: relation.step,
+          dx: to.press.target.x - from.press.target.x,
+          dy: to.press.target.y - from.press.target.y,
+        }),
+      );
     }
   }
   return Object.freeze(candidates);
@@ -148,30 +143,22 @@ function candidatesFor(
  * Analysis Chain内の隣接Stroke pairからTransition factsを作る。
  * candidate削減・Roll/Redirect/Arpeggio判定・Timing/Calibration参照はしない。
  */
-export function buildHandTransitions(
-  analysis: ChainAnalysisResult,
-): readonly HandTransition[] {
+export function buildHandTransitions(analysis: ChainAnalysisResult): readonly HandTransition[] {
   const transitions: HandTransition[] = [];
 
   for (const chain of analysis.chains) {
-    for (
-      let fromStrokeIndex = chain.startStrokeIndex;
-      fromStrokeIndex + 1 < chain.endStrokeIndex;
-      fromStrokeIndex++
-    ) {
+    for (let fromStrokeIndex = chain.startStrokeIndex; fromStrokeIndex + 1 < chain.endStrokeIndex; fromStrokeIndex++) {
       const toStrokeIndex = fromStrokeIndex + 1;
-      transitions.push(Object.freeze({
-        transitionIndex: transitions.length,
-        chainIndex: chain.chainIndex,
-        hand: chain.hand,
-        fromStrokeIndex,
-        toStrokeIndex,
-        candidates: candidatesFor(
-          analysis.strokes[fromStrokeIndex],
-          analysis.strokes[toStrokeIndex],
-          chain.hand,
-        ),
-      }));
+      transitions.push(
+        Object.freeze({
+          transitionIndex: transitions.length,
+          chainIndex: chain.chainIndex,
+          hand: chain.hand,
+          fromStrokeIndex,
+          toStrokeIndex,
+          candidates: candidatesFor(analysis.strokes[fromStrokeIndex], analysis.strokes[toStrokeIndex], chain.hand),
+        }),
+      );
     }
   }
 
@@ -189,28 +176,27 @@ export function groupTransitionsByChain(
 }
 
 /** same候補を持つTransitionだけをSFB eventとして抽出する。 */
-export function buildSfbEvents(
-  transitions: readonly HandTransition[],
-): readonly SfbEvent[] {
-  return Object.freeze(transitions.flatMap((transition) => {
-    const candidateIndexes = transition.candidates
-      .filter((candidate) => candidate.fingerDirection === 'same')
-      .map((candidate) => candidate.candidateIndex);
-    if (candidateIndexes.length === 0) return [];
-    return [Object.freeze({
-      transitionIndex: transition.transitionIndex,
-      chainIndex: transition.chainIndex,
-      hand: transition.hand,
-      candidateIndexes: Object.freeze(candidateIndexes),
-    })];
-  }));
+export function buildSfbEvents(transitions: readonly HandTransition[]): readonly SfbEvent[] {
+  return Object.freeze(
+    transitions.flatMap((transition) => {
+      const candidateIndexes = transition.candidates
+        .filter((candidate) => candidate.fingerDirection === 'same')
+        .map((candidate) => candidate.candidateIndex);
+      if (candidateIndexes.length === 0) return [];
+      return [
+        Object.freeze({
+          transitionIndex: transition.transitionIndex,
+          chainIndex: transition.chainIndex,
+          hand: transition.hand,
+          candidateIndexes: Object.freeze(candidateIndexes),
+        }),
+      ];
+    }),
+  );
 }
 
 /** SFB eventの両端Strokeをunionし、coverage用の重複なしindex列を返す。 */
-export function sfbStrokeIndexUnion(
-  transitions: readonly HandTransition[],
-  events: readonly SfbEvent[],
-): readonly number[] {
+export function sfbStrokeIndexUnion(transitions: readonly HandTransition[], events: readonly SfbEvent[]): readonly number[] {
   const indexes = new Set<number>();
   for (const event of events) {
     const transition = transitions[event.transitionIndex];
@@ -225,9 +211,7 @@ export function sfbStrokeIndexUnion(
  * Chain解析結果へTransition/SFB factsを追加する。
  * 既存のStroke / Raw hand run / Chainは参照をそのまま共有する。
  */
-export function analyzeTransitions(
-  chainAnalysis: ChainAnalysisResult,
-): TransitionAnalysisResult {
+export function analyzeTransitions(chainAnalysis: ChainAnalysisResult): TransitionAnalysisResult {
   const transitions = buildHandTransitions(chainAnalysis);
   const sfbEvents = buildSfbEvents(transitions);
   const sfbStrokeIndexes = sfbStrokeIndexUnion(transitions, sfbEvents);
@@ -241,9 +225,6 @@ export function analyzeTransitions(
 }
 
 /** 呼び出し側向けの合成入口。 */
-export function analyzeStrokeTransitions(
-  strokes: readonly Stroke[],
-  policy?: ChainInterpretation,
-): TransitionAnalysisResult {
+export function analyzeStrokeTransitions(strokes: readonly Stroke[], policy?: ChainInterpretation): TransitionAnalysisResult {
   return analyzeTransitions(analyzeChains(strokes, policy));
 }

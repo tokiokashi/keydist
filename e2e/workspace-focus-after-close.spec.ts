@@ -23,11 +23,14 @@ const GRID = [
 
 async function openWorkspace(page: Page): Promise<void> {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.addInitScript((value) => {
-    if (localStorage.getItem('keydist:workspaces') === null) {
-      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
-    }
-  }, { id: 'k', name: 'キーボード', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes: PANES, grid: GRID });
+  await page.addInitScript(
+    (value) => {
+      if (localStorage.getItem('keydist:workspaces') === null) {
+        localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
+      }
+    },
+    { id: 'k', name: 'キーボード', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes: PANES, grid: GRID },
+  );
   await page.goto('/workspace/k');
   await waitForHydration(page);
   await expect(page.locator('.workspace-grid-item')).toHaveCount(3);
@@ -35,12 +38,13 @@ async function openWorkspace(page: Page): Promise<void> {
 }
 
 /** フォーカスのある要素が、どのペインの⋯か（それ以外なら要素の種類）。 */
-const focused = (page: Page) => page.evaluate(() => {
-  const el = document.activeElement;
-  if (el === null || el === document.body) return 'body';
-  const pane = el.closest('[data-pane-id]')?.getAttribute('data-pane-id');
-  return `${pane ?? '-'}:${el.getAttribute('aria-label') ?? el.textContent?.trim() ?? ''}`;
-});
+const focused = (page: Page) =>
+  page.evaluate(() => {
+    const el = document.activeElement;
+    if (el === null || el === document.body) return 'body';
+    const pane = el.closest('[data-pane-id]')?.getAttribute('data-pane-id');
+    return `${pane ?? '-'}:${el.getAttribute('aria-label') ?? el.textContent?.trim() ?? ''}`;
+  });
 
 /** ペインの⋯を開き、メニューの「閉じる」をキーボードだけで選ぶ。 */
 async function closeByKeyboard(page: Page, id: string): Promise<void> {

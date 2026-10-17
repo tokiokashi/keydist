@@ -16,24 +16,11 @@ import {
   type Geometry,
   type PresetGeometryKind,
 } from '#input/shapes/geometry.ts';
-import {
-  DEFAULT_TRACE_POLICY,
-  generateTrace,
-  type TracePolicy,
-} from '#trace/generate.ts';
-import {
-  analyzeStrokeStructure,
-  type AggregatedAnalysisResult,
-} from '#interpretation/structure/aggregate.ts';
+import { DEFAULT_TRACE_POLICY, generateTrace, type TracePolicy } from '#trace/generate.ts';
+import { analyzeStrokeStructure, type AggregatedAnalysisResult } from '#interpretation/structure/aggregate.ts';
 import { computeMetrics, type Metrics } from '#interpretation/metrics.ts';
-import {
-  DEFAULT_CHAIN_INTERPRETATION,
-  type ChainInterpretation,
-} from '#interpretation/structure/chain.ts';
-import {
-  DEFAULT_ARPEGGIO_INTERPRETATION,
-  type ArpeggioInterpretation,
-} from '#interpretation/structure/arpeggio.ts';
+import { DEFAULT_CHAIN_INTERPRETATION, type ChainInterpretation } from '#interpretation/structure/chain.ts';
+import { DEFAULT_ARPEGGIO_INTERPRETATION, type ArpeggioInterpretation } from '#interpretation/structure/arpeggio.ts';
 import {
   DEFAULT_ACTION_REALIZATION_POLICY,
   DEFAULT_TRIGGER_REALIZATION_POLICY,
@@ -199,35 +186,23 @@ function sha256(text: string): string {
   return createHash('sha256').update(text, 'utf8').digest('hex');
 }
 
-function runCase(
-  language: TextLanguage,
-  layout: Layout,
-  sampleId: string,
-  opts: RunOptions = {},
-): FixtureCase {
+function runCase(language: TextLanguage, layout: Layout, sampleId: string, opts: RunOptions = {}): FixtureCase {
   const text = sampleText(language, sampleId);
   // JISの物理配列が要る配列（JISかな配列）は、アプリと同じく、選んだ物理配列（既定のrow-staggered）と同じ形のJISの物理配列で測る
   const baseShapeId = opts.shapeId ?? 'row-staggered';
-  const shapeId = layout.requiresJisShape === true
-    ? jisShapeIdFor(PHYSICAL_SHAPES[baseShapeId], physicalKeysUsedByLayout(layout)) as PresetGeometryKind
-    : baseShapeId;
+  const shapeId =
+    layout.requiresJisShape === true
+      ? (jisShapeIdFor(PHYSICAL_SHAPES[baseShapeId], physicalKeysUsedByLayout(layout)) as PresetGeometryKind)
+      : baseShapeId;
   // 推奨の指の割り当てを持つ配列は、アプリと同じく推奨で測る（物理配列の規格に合わせる）。
   // 持たない配列は、物理配列の規格の既定（JISならjis-default、ANSIなら列固定の既定）
   const jisShape = presetGeometryStandard(shapeId) === 'jis';
-  const recommended = layout.recommendedFingerAssignmentIds?.ansi === QWERTY_OPTIMIZED_FINGER_ASSIGNMENT.id
-    ? QWERTY_OPTIMIZED_FINGER_ASSIGNMENT
-    : undefined;
-  const fingerAssignment = opts.fingerAssignment
-    ?? recommended
-    ?? (jisShape ? JIS_FINGER_ASSIGNMENT : DEFAULT_FINGER_ASSIGNMENT);
-  const geometry: Geometry = buildGeometry(
-    PHYSICAL_SHAPES[shapeId],
-    assignmentWithHomeKeys(fingerAssignment, layout.homeKeys),
-  );
-  const triggerRealizationPolicy = opts.triggerRealizationPolicy
-    ?? { ...DEFAULT_TRIGGER_REALIZATION_POLICY };
-  const actionRealizationPolicy = opts.actionRealizationPolicy
-    ?? { ...DEFAULT_ACTION_REALIZATION_POLICY };
+  const recommended =
+    layout.recommendedFingerAssignmentIds?.ansi === QWERTY_OPTIMIZED_FINGER_ASSIGNMENT.id ? QWERTY_OPTIMIZED_FINGER_ASSIGNMENT : undefined;
+  const fingerAssignment = opts.fingerAssignment ?? recommended ?? (jisShape ? JIS_FINGER_ASSIGNMENT : DEFAULT_FINGER_ASSIGNMENT);
+  const geometry: Geometry = buildGeometry(PHYSICAL_SHAPES[shapeId], assignmentWithHomeKeys(fingerAssignment, layout.homeKeys));
+  const triggerRealizationPolicy = opts.triggerRealizationPolicy ?? { ...DEFAULT_TRIGGER_REALIZATION_POLICY };
+  const actionRealizationPolicy = opts.actionRealizationPolicy ?? { ...DEFAULT_ACTION_REALIZATION_POLICY };
   const chainInterpretation = opts.chainInterpretation ?? { ...DEFAULT_CHAIN_INTERPRETATION };
   const arpeggioInterpretation = opts.arpeggioInterpretation ?? { ...DEFAULT_ARPEGGIO_INTERPRETATION };
   const options: TracePolicy = {
@@ -244,13 +219,7 @@ function runCase(
   const resolvedLayout = romajiRuleId !== null ? withRomaji(layout, tableForRule(romajiRuleId)) : layout;
 
   const trace = generateTrace(text, resolvedLayout, geometry, options);
-  const analysis = analyzeStrokeStructure(
-    trace.strokes,
-    chainInterpretation,
-    arpeggioInterpretation,
-    triggerRealizationPolicy,
-    actionRealizationPolicy,
-  );
+  const analysis = analyzeStrokeStructure(trace.strokes, chainInterpretation, arpeggioInterpretation, triggerRealizationPolicy, actionRealizationPolicy);
   const metrics = computeMetrics(trace, geometry, {
     windowSize: options.windowSize,
     sfbHomeCost: options.sfbHomeCost,
@@ -286,18 +255,9 @@ function runCase(
     analysis: analysisSummary(analysis),
     ...(opts.withNSensitivity
       ? {
-        // 画面側は、romaji表を差し替えた後のlayoutを渡す。ここも同じくresolvedLayoutを渡す。
-        nSensitivity: nSensitivity(
-          text,
-          resolvedLayout,
-          geometry,
-          options,
-          [1, 2, 3, 5, 7],
-          romajiRuleId,
-          chainInterpretation,
-          arpeggioInterpretation,
-        ),
-      }
+          // 画面側は、romaji表を差し替えた後のlayoutを渡す。ここも同じくresolvedLayoutを渡す。
+          nSensitivity: nSensitivity(text, resolvedLayout, geometry, options, [1, 2, 3, 5, 7], romajiRuleId, chainInterpretation, arpeggioInterpretation),
+        }
       : {}),
   };
 }
@@ -315,17 +275,21 @@ function generate(): Fixture {
   //    配列別の上書きが無い既定の経路をそのまま再現する。
   for (const layout of LAYOUTS) {
     for (const sampleId of Object.keys(SAMPLE_TEXTS.en)) {
-      cases.push(runCase('en', layout, sampleId, {
-        // 窓幅Nの感度は安いので、代表として最初のEN配列にだけ添える
-        withNSensitivity: layout.id === LAYOUTS[0]!.id,
-      }));
+      cases.push(
+        runCase('en', layout, sampleId, {
+          // 窓幅Nの感度は安いので、代表として最初のEN配列にだけ添える
+          withNSensitivity: layout.id === LAYOUTS[0]!.id,
+        }),
+      );
     }
   }
   for (const layout of LAYOUTS_JA) {
     for (const sampleId of Object.keys(SAMPLE_TEXTS.ja)) {
-      cases.push(runCase('ja', layout, sampleId, {
-        withNSensitivity: layout.id === 'naginata-v18' && sampleId === 'modern',
-      }));
+      cases.push(
+        runCase('ja', layout, sampleId, {
+          withNSensitivity: layout.id === 'naginata-v18' && sampleId === 'modern',
+        }),
+      );
     }
   }
 
@@ -335,55 +299,75 @@ function generate(): Fixture {
   const oonishiCombo = byId(LAYOUTS_JA, 'oonishi-custom'); // コンボを持つ数少ない組み込み配列（TK音直入力法の日本語側）
   const asuka = byId(LAYOUTS_JA, 'asuka'); // hold-capable trigger + 親指シフトを持つ
 
-  cases.push(runCase('ja', naginata, 'modern', {
-    windowSize: 1,
-    note: 'windowSize=1（既定3より狭い先読み。同指連続の判定が変わる分岐）',
-  }));
-  cases.push(runCase('ja', naginata, 'modern', {
-    windowSize: 6,
-    note: 'windowSize=6（既定3より広い先読み）',
-  }));
-  cases.push(runCase('en', qwertyEn, 'default', {
-    shapeId: 'ortholinear',
-    note: '物理配列=ortholinear（既定row-staggeredと段差モデルが違う分岐）',
-  }));
-  cases.push(runCase('ja', naginata, 'modern', {
-    preferOppositeThumb: true,
-    note: 'preferOppositeThumb=true（親指シフトを出力キーと反対側の親指へ振り替えるSandS分岐。naginataは交代打鍵を使うので効果が出る）',
-  }));
-  cases.push(runCase('ja', naginata, 'modern', {
-    triggerRealizationPolicy: { useHold: true },
-    note: 'triggerRealizationPolicy.useHold=true（hold-capable triggerを連続保持として実現する分岐）',
-  }));
-  cases.push(runCase('ja', oonishiCombo, 'modern', {
-    actionRealizationPolicy: {
-      triggerActivation: 'semantic',
-      triggerActivationClassOverrides: {},
-      triggerActivationOverrides: [],
-    },
-    note: 'triggerActivation=semantic（コンボを持つ配列でtrigger activationのgroupingが変わる分岐）',
-  }));
-  cases.push(runCase('ja', asuka, 'modern', {
-    chainInterpretation: { ...DEFAULT_CHAIN_INTERPRETATION, breakOnSameFinger: false },
-    note: 'chainInterpretation.breakOnSameFinger=false（Analysis Chainの区切り方が変わる分岐）',
-  }));
-  cases.push(runCase('ja', asuka, 'modern', {
-    arpeggioInterpretation: { ...DEFAULT_ARPEGGIO_INTERPRETATION, includeThumb: true },
-    note: 'arpeggioInterpretation.includeThumb=true（ArpeggioSpanに親指を含める分岐）',
-  }));
-  cases.push(runCase('en', qwertyEn, 'default', {
-    fingerAssignment: JIS_FINGER_ASSIGNMENT,
-    note: 'fingerAssignment=jis-default（既定の列固定割り当てと違う指割り当て。同指連続の判定が変わる分岐）',
-  }));
+  cases.push(
+    runCase('ja', naginata, 'modern', {
+      windowSize: 1,
+      note: 'windowSize=1（既定3より狭い先読み。同指連続の判定が変わる分岐）',
+    }),
+  );
+  cases.push(
+    runCase('ja', naginata, 'modern', {
+      windowSize: 6,
+      note: 'windowSize=6（既定3より広い先読み）',
+    }),
+  );
+  cases.push(
+    runCase('en', qwertyEn, 'default', {
+      shapeId: 'ortholinear',
+      note: '物理配列=ortholinear（既定row-staggeredと段差モデルが違う分岐）',
+    }),
+  );
+  cases.push(
+    runCase('ja', naginata, 'modern', {
+      preferOppositeThumb: true,
+      note: 'preferOppositeThumb=true（親指シフトを出力キーと反対側の親指へ振り替えるSandS分岐。naginataは交代打鍵を使うので効果が出る）',
+    }),
+  );
+  cases.push(
+    runCase('ja', naginata, 'modern', {
+      triggerRealizationPolicy: { useHold: true },
+      note: 'triggerRealizationPolicy.useHold=true（hold-capable triggerを連続保持として実現する分岐）',
+    }),
+  );
+  cases.push(
+    runCase('ja', oonishiCombo, 'modern', {
+      actionRealizationPolicy: {
+        triggerActivation: 'semantic',
+        triggerActivationClassOverrides: {},
+        triggerActivationOverrides: [],
+      },
+      note: 'triggerActivation=semantic（コンボを持つ配列でtrigger activationのgroupingが変わる分岐）',
+    }),
+  );
+  cases.push(
+    runCase('ja', asuka, 'modern', {
+      chainInterpretation: { ...DEFAULT_CHAIN_INTERPRETATION, breakOnSameFinger: false },
+      note: 'chainInterpretation.breakOnSameFinger=false（Analysis Chainの区切り方が変わる分岐）',
+    }),
+  );
+  cases.push(
+    runCase('ja', asuka, 'modern', {
+      arpeggioInterpretation: { ...DEFAULT_ARPEGGIO_INTERPRETATION, includeThumb: true },
+      note: 'arpeggioInterpretation.includeThumb=true（ArpeggioSpanに親指を含める分岐）',
+    }),
+  );
+  cases.push(
+    runCase('en', qwertyEn, 'default', {
+      fingerAssignment: JIS_FINGER_ASSIGNMENT,
+      note: 'fingerAssignment=jis-default（既定の列固定割り当てと違う指割り当て。同指連続の判定が変わる分岐）',
+    }),
+  );
 
   // 分割する物理配列では、反対側の手の指を担当に持つ割り当てでも、その指を選ばない（仕様 §9.1）
   const qwertyJa = byId(LAYOUTS_JA, 'qwerty');
   for (const shapeId of ['split-ortholinear', 'column-staggered'] as const) {
-    cases.push(runCase('ja', qwertyJa, 'legacy', {
-      shapeId,
-      fingerAssignment: QWERTY_OPTIMIZED_FINGER_ASSIGNMENT,
-      note: `物理配列=${shapeId}・fingerAssignment=qwerty-optimized（分割する物理配列で反対側の手の追加の担当を候補から外す分岐）`,
-    }));
+    cases.push(
+      runCase('ja', qwertyJa, 'legacy', {
+        shapeId,
+        fingerAssignment: QWERTY_OPTIMIZED_FINGER_ASSIGNMENT,
+        note: `物理配列=${shapeId}・fingerAssignment=qwerty-optimized（分割する物理配列で反対側の手の追加の担当を候補から外す分岐）`,
+      }),
+    );
   }
 
   cases.sort((a, b) => a.id.localeCompare(b.id));

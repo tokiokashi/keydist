@@ -43,18 +43,16 @@ test('飛鳥はhold利用ON/OFFで同じ親指triggerの連続保持を比較で
     triggerRealizationPolicy: { useHold: true },
   });
 
-  assert.deepEqual(off.strokes.map((stroke) => stroke.triggerKeys), [
-    ['thumb-l'],
-    ['thumb-l'],
-  ]);
-  assert.deepEqual(on.strokes.map((stroke) => stroke.triggerKeys), [
-    ['thumb-l'],
-    [],
-  ]);
   assert.deepEqual(
-    on.strokes.map((stroke) => stroke.participations
-      .filter((p) => p.roles.includes('held-trigger'))
-      .map((p) => p.holdPhase)),
+    off.strokes.map((stroke) => stroke.triggerKeys),
+    [['thumb-l'], ['thumb-l']],
+  );
+  assert.deepEqual(
+    on.strokes.map((stroke) => stroke.triggerKeys),
+    [['thumb-l'], []],
+  );
+  assert.deepEqual(
+    on.strokes.map((stroke) => stroke.participations.filter((p) => p.roles.includes('held-trigger')).map((p) => p.holdPhase)),
     [['start'], ['continue']],
   );
 });

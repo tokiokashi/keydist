@@ -1,9 +1,4 @@
-import {
-  resolveDefaultValue,
-  type ItemRegistry,
-  type RegistryValueMap,
-  type SettingItem,
-} from './items.ts';
+import { resolveDefaultValue, type ItemRegistry, type RegistryValueMap, type SettingItem } from './items.ts';
 import type { CascadeLevel, CascadeLevelKind } from './levels.ts';
 import { CASCADE_LEVEL_ORDER } from './levels.ts';
 import type { CascadeContext } from './context.ts';
@@ -68,14 +63,18 @@ function levelsForContext(context: CascadeContext): readonly CascadeLevel[] {
 
 function levelFor(kind: CascadeLevelKind, context: CascadeContext): CascadeLevel | undefined {
   switch (kind) {
-    case 'global': return { kind: 'global' };
-    case 'workspace': return { kind: 'workspace' };
-    case 'shape': return { kind: 'shape', shapeId: context.shapeId };
-    case 'inputMethod': return { kind: 'inputMethod', inputMethod: context.inputMethod };
-    case 'layout': return { kind: 'layout', layoutId: context.layoutId };
-    case 'setup': return context.setupId === undefined
-      ? undefined
-      : { kind: 'setup', setupId: context.setupId };
+    case 'global':
+      return { kind: 'global' };
+    case 'workspace':
+      return { kind: 'workspace' };
+    case 'shape':
+      return { kind: 'shape', shapeId: context.shapeId };
+    case 'inputMethod':
+      return { kind: 'inputMethod', inputMethod: context.inputMethod };
+    case 'layout':
+      return { kind: 'layout', layoutId: context.layoutId };
+    case 'setup':
+      return context.setupId === undefined ? undefined : { kind: 'setup', setupId: context.setupId };
   }
 }
 
@@ -110,9 +109,9 @@ function resolveItem(
       // 全体の既定の訓令式に勝つ）。理由を出す側は保存の有無を問わず「全体の値」で比べたいので、
       // 既定値が負けた時も全体として記録する。
       if (
-        !lowerApplied.some((applied) => applied.kind === 'global')
-        && item.allowedLevels.has('global')
-        && resolveDefaultValue(item, context) !== recommended
+        !lowerApplied.some((applied) => applied.kind === 'global') &&
+        item.allowedLevels.has('global') &&
+        resolveDefaultValue(item, context) !== recommended
       ) {
         shadowed = ['global', ...shadowed];
       }
@@ -120,10 +119,10 @@ function resolveItem(
       // （Workspaceで大西配列を開いた時に、Workspaceを変えても変わらない理由を出すため）。
       // 単体ページはWorkspaceのレベルを編集しないので、この記録は読まれない。
       if (
-        !lowerApplied.some((applied) => applied.kind === 'workspace')
-        && item.allowedLevels.has('workspace')
-        && workspaceInherited !== undefined
-        && workspaceInherited !== recommended
+        !lowerApplied.some((applied) => applied.kind === 'workspace') &&
+        item.allowedLevels.has('workspace') &&
+        workspaceInherited !== undefined &&
+        workspaceInherited !== recommended
       ) {
         shadowed = [...shadowed.filter((kind) => kind !== 'workspace'), 'workspace'];
       }
@@ -148,7 +147,7 @@ function resolveItem(
 
   // 配列の上書きを全体へ移した時の継承値。全体の位置にその値を置いて、配列の手前まで重ね直す。
   const layoutLevel = levels.find((level) => level.kind === 'layout');
-  const layoutStored = layoutLevel === undefined ? undefined : levelOverrides(overrides, layoutLevel) as Record<string, unknown> | undefined;
+  const layoutStored = layoutLevel === undefined ? undefined : (levelOverrides(overrides, layoutLevel) as Record<string, unknown> | undefined);
   let promotedBase: unknown;
   if (layoutStored !== undefined && itemId in layoutStored && item.allowedLevels.has('global')) {
     promotedBase = resolveDefaultValue(item, context);
@@ -210,13 +209,7 @@ export function resolveCascade<R extends ItemRegistry>(
   const levels = levelsForContext(context);
   const result: Record<string, ResolvedItem<unknown>> = {};
   for (const itemId of Object.keys(registry)) {
-    result[itemId] = resolveItem(
-      itemId,
-      registry[itemId],
-      overrides as CascadeOverrides<unknown>,
-      levels,
-      context,
-    );
+    result[itemId] = resolveItem(itemId, registry[itemId], overrides as CascadeOverrides<unknown>, levels, context);
   }
   return result as ResolvedCascade<RegistryValueMap<R>>;
 }

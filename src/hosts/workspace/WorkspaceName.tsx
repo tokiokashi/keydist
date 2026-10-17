@@ -5,13 +5,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
  * 押すとその場で書き換えられる。Enterかフォーカスが外れると確定し、Escapeで取り消す。
  * 空の名前は確定せず元に戻す（`renameWorkspace`が空を拒む）。
  */
-export function WorkspaceName({
-  name,
-  onRename,
-}: {
-  readonly name: string;
-  readonly onRename: (next: string) => void;
-}) {
+export function WorkspaceName({ name, onRename }: { readonly name: string; readonly onRename: (next: string) => void }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(name);
   const inputRef = useRef<HTMLInputElement>(null);

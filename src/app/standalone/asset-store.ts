@@ -10,14 +10,7 @@ import {
 import type { KeydistAssets } from '#engine/commands.ts';
 import { reportAssetLoadNotices } from './asset-load-notice.ts';
 import { initialAssets } from './asset-storage-specs.ts';
-import {
-  buildAssetSyncs,
-  commitCommand,
-  commitHistoryStep,
-  loadAssetsAndRepair,
-  startAssetSyncs,
-  type BuildAssetSyncsOptions,
-} from './asset-syncs.ts';
+import { buildAssetSyncs, commitCommand, commitHistoryStep, loadAssetsAndRepair, startAssetSyncs, type BuildAssetSyncsOptions } from './asset-syncs.ts';
 
 /** ストアの中身。変わるたびに新しいオブジェクトになる（`useSyncExternalStore`が参照の同一性で変化を見る）。 */
 export interface AssetStoreState {

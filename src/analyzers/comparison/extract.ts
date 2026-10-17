@@ -98,10 +98,7 @@ function failureToRow(failure: AnalyzerSetMemberFailure): ComparisonFailedRow {
   return { kind: 'failed', targetKey: analysisTargetKey(failure.target), failureKind: failure.kind, message: failure.message };
 }
 
-export function computeComparisonExtraction(
-  members: readonly AnalyzerSetMember[],
-  failures: readonly AnalyzerSetMemberFailure[],
-): ComparisonExtracted {
+export function computeComparisonExtraction(members: readonly AnalyzerSetMember[], failures: readonly AnalyzerSetMemberFailure[]): ComparisonExtracted {
   return {
     rows: [...members.map(memberToRow), ...failures.map(failureToRow)],
   };
@@ -201,7 +198,11 @@ function fixtureMetrics(totalUnits: number): Metrics {
 }
 
 // 比較表はTraceRequesterを使わないので、フィクスチャでは「呼ばれたら気づく」スタブにする。
-const UNUSED_REQUEST_TRACE = { requestTrace: () => { throw new Error('unused'); } };
+const UNUSED_REQUEST_TRACE = {
+  requestTrace: () => {
+    throw new Error('unused');
+  },
+};
 
 const FIXTURE_TARGET_A: AnalysisTarget = { kind: 'setup', setupId: 'fixture-a' };
 const FIXTURE_TARGET_B: AnalysisTarget = { kind: 'setup', setupId: 'fixture-b' };
@@ -224,9 +225,7 @@ const FIXTURE_MEMBERS: readonly AnalyzerSetMember[] = [
   },
 ];
 
-const FIXTURE_FAILURES: readonly AnalyzerSetMemberFailure[] = [
-  { target: FIXTURE_TARGET_MISSING, kind: 'reference', message: LAYOUT_MISSING_REASON },
-];
+const FIXTURE_FAILURES: readonly AnalyzerSetMemberFailure[] = [{ target: FIXTURE_TARGET_MISSING, kind: 'reference', message: LAYOUT_MISSING_REASON }];
 
 /**
  * engine（`engine/cache.ts`の`getSetExtraction`）が呼ぶ、Analyzer契約の実体。

@@ -43,25 +43,36 @@ test('面の展開後も各ステップの層帰属を保持する', () => {
     { trigger: [], mode: 'simultaneous', rows: faceAtF('あ'), inputRole: 'layer' },
     { trigger: ['d'], mode: 'prefix', rows: faceAtF('か'), layer: '中指', inputRole: 'modifier', triggerPersistence: 'single' },
     { trigger: ['j'], mode: 'prefix', rows: faceAtF('さ'), layer: '人差指', inputRole: 'modifier', triggerPersistence: 'single' },
-    { trigger: ['k', 'l'], mode: 'simultaneous', rows: faceAtF('た'), inputRole: 'composition', compositionAggregation: 'combo', triggerPersistence: 'single' },
+    {
+      trigger: ['k', 'l'],
+      mode: 'simultaneous',
+      rows: faceAtF('た'),
+      inputRole: 'composition',
+      compositionAggregation: 'combo',
+      triggerPersistence: 'single',
+    },
   ]);
   const trace = generateTrace('あかさた', layout, buildGeometry('row-staggered'), DEFAULT_TRACE_POLICY);
 
-  assert.deepEqual(trace.strokes.map((stroke) => stroke.aggregationGroupId), [
-    'single', 'layer:中指', 'layer:中指', 'layer:人差指', 'layer:人差指', 'combo',
-  ]);
+  assert.deepEqual(
+    trace.strokes.map((stroke) => stroke.aggregationGroupId),
+    ['single', 'layer:中指', 'layer:中指', 'layer:人差指', 'layer:人差指', 'combo'],
+  );
   const metrics = computeMetrics(trace, buildGeometry('row-staggered'));
-  assert.deepEqual(metrics.layers.map((layer) => [layer.id, layer.presses]), [
-    ['single', 1], ['layer:中指', 2], ['layer:人差指', 2],
-  ]);
+  assert.deepEqual(
+    metrics.layers.map((layer) => [layer.id, layer.presses]),
+    [
+      ['single', 1],
+      ['layer:中指', 2],
+      ['layer:人差指', 2],
+    ],
+  );
   assert.equal(metrics.comboPresses, 3);
 });
 
 test('Face semanticは推測せず明示を要求する', () => {
   assert.throws(
-    () => fromFaces('missing-role', 'missing-role', [
-      { trigger: [], mode: 'simultaneous', rows: faceAtF('あ') },
-    ]),
+    () => fromFaces('missing-role', 'missing-role', [{ trigger: [], mode: 'simultaneous', rows: faceAtF('あ') }]),
     /inputRoleを明示する必要がある/,
   );
 
@@ -75,7 +86,10 @@ test('Face semanticは推測せず明示を要求する', () => {
   };
   const layout = fromFaces('multi-trigger-modifier', 'multi-trigger-modifier', [face]);
   assert.equal(layout.faceLayerIds?.get(face), 'face:0');
-  assert.equal(layout.layerDefinitions?.some((definition) => definition.kind === 'combo'), false);
+  assert.equal(
+    layout.layerDefinitions?.some((definition) => definition.kind === 'combo'),
+    false,
+  );
   assert.deepEqual(classifyPresentationFaces(layout).combos, []);
 });
 
@@ -97,16 +111,10 @@ test('compiled presentation Layerはaggregation identity / role / orderを保持
     inputRole: 'layer',
     triggerPersistence: 'single',
   };
-  const layout = fromFaces('presentation-layer-id', 'presentation-layer-id', [
-    base,
-    modifier,
-    shifted,
-  ]);
+  const layout = fromFaces('presentation-layer-id', 'presentation-layer-id', [base, modifier, shifted]);
 
   assert.deepEqual(
-    layout.layerDefinitions
-      ?.filter((definition) => definition.kind === 'layer')
-      .map((definition) => [definition.id, definition.presentationRole]),
+    layout.layerDefinitions?.filter((definition) => definition.kind === 'layer').map((definition) => [definition.id, definition.presentationRole]),
     [
       ['single', 'layer'],
       ['layer:中指', 'modifier'],
@@ -116,9 +124,7 @@ test('compiled presentation Layerはaggregation identity / role / orderを保持
 
   const groups = classifyPresentationFaces(layout);
   assert.deepEqual(
-    [...groups.layers, ...groups.modifiers]
-      .sort((left, right) => left.order - right.order)
-      .map((layer) => [layer.id, layer.role, layer.order]),
+    [...groups.layers, ...groups.modifiers].sort((left, right) => left.order - right.order).map((layer) => [layer.id, layer.role, layer.order]),
     [
       ['single', 'layer', 0],
       ['layer:中指', 'modifier', 1],
@@ -151,22 +157,15 @@ test('triggerless compositionはcanonicalとpresentationの両方でcomboへ帰�
 
 test('出力を持つtrigger FaceはtriggerPersistence必須、空placeholderは許容する', () => {
   assert.throws(
-    () => fromFaces('invalid-persistence', 'invalid-persistence', [
-      { trigger: ['d'], mode: 'prefix', rows: faceAtF('か'), inputRole: 'modifier' },
-    ]),
+    () => fromFaces('invalid-persistence', 'invalid-persistence', [{ trigger: ['d'], mode: 'prefix', rows: faceAtF('か'), inputRole: 'modifier' }]),
     /triggerを持つFaceはtriggerPersistenceを明示する必要がある/,
   );
 
-  assert.doesNotThrow(() => fromFaces('empty-placeholder', 'empty-placeholder', [
-    { trigger: ['d'], mode: 'prefix', rows: ['', '', '', ''] },
-  ]));
+  assert.doesNotThrow(() => fromFaces('empty-placeholder', 'empty-placeholder', [{ trigger: ['d'], mode: 'prefix', rows: ['', '', '', ''] }]));
 });
 
 test('面定義の未知のキーは空欄にせずエラーにする', () => {
-  assert.throws(
-    () => faceFromEntries([], 'simultaneous', { typo: 'あ' }),
-    /面に未知のキーがある: typo/,
-  );
+  assert.throws(() => faceFromEntries([], 'simultaneous', { typo: 'あ' }), /面に未知のキーがある: typo/);
 });
 
 test('JISかな配列はJIS専用列・Shift面・濁点合成を持つ', () => {
@@ -175,10 +174,11 @@ test('JISかな配列はJIS専用列・Shift面・濁点合成を持つ', () => 
   assert.deepEqual(layout.map.get('ー'), [['r0c12']]);
   assert.deepEqual(layout.map.get('む'), [['r2c11']]);
   assert.deepEqual(layout.map.get('ろ'), [['r3c10']]);
-  assert.ok(layout.canonicalInputs.get('ぁ')?.some((alternative) =>
-    alternative.semanticInputs.some((input) =>
-      input.physicalKeys.includes('shift-l')
-      && input.physicalKeys.includes('3'))));
+  assert.ok(
+    layout.canonicalInputs
+      .get('ぁ')
+      ?.some((alternative) => alternative.semanticInputs.some((input) => input.physicalKeys.includes('shift-l') && input.physicalKeys.includes('3'))),
+  );
   assert.ok(layout.canonicalInputs.has('が'));
   assert.ok(layout.canonicalInputs.has('ぱ'));
 });
@@ -200,22 +200,18 @@ test('TK音直入力法は英文でも同じidで選べ、英文ではコンボ�
     [...en.canonicalInputs.keys()],
     [...ja.canonicalInputs.keys()].filter((output) => en.canonicalInputs.has(output)),
   );
-  assert.ok([...en.canonicalInputs.keys()].every((output) =>
-    ja.canonicalInputs.get(output)?.length === en.canonicalInputs.get(output)?.length));
+  assert.ok([...en.canonicalInputs.keys()].every((output) => ja.canonicalInputs.get(output)?.length === en.canonicalInputs.get(output)?.length));
 });
 
 test('TK音直入力法のコンボは全件ローマ字入力だけに適用する（仕様 §4.3）', () => {
   const ja = LAYOUTS_JA.find((entry) => entry.id === 'oonishi-custom');
   assert.ok(ja?.romajiTable);
   assert.ok((ja.resolvedComboDefinitions ?? []).every((combo) => combo.condition?.romajiOnly === true));
-  const comboAlternatives = [...ja.canonicalInputs.values()].flat()
-    .filter((alternative) => alternative.origin === 'combo');
+  const comboAlternatives = [...ja.canonicalInputs.values()].flat().filter((alternative) => alternative.origin === 'combo');
   assert.equal(comboAlternatives.length > 0, true);
-  assert.ok(comboAlternatives.every((alternative) =>
-    alternative.contextRequirements.some((requirement) => requirement.kind === 'romaji-input')));
+  assert.ok(comboAlternatives.every((alternative) => alternative.contextRequirements.some((requirement) => requirement.kind === 'romaji-input')));
   assert.equal(
-    [...LAYOUTS, ...LAYOUTS_JA].filter((entry) => entry.name === 'TK音直入力法')
-      .every((entry) => entry.id === 'oonishi-custom'),
+    [...LAYOUTS, ...LAYOUTS_JA].filter((entry) => entry.name === 'TK音直入力法').every((entry) => entry.id === 'oonishi-custom'),
     true,
   );
 });
@@ -308,11 +304,11 @@ test('TK音直入力法は正式名称を表示する', () => {
     if (definition.group) groupCounts.set(definition.group, (groupCounts.get(definition.group) ?? 0) + 1);
   }
   assert.deepEqual(Object.fromEntries(groupCounts), {
-    '語彙拡張': 17,
-    '拗音拡張': 19,
-    '入声拡張': 20,
-    '撥音拡張': 7,
-    '二重母音拡張': 10,
+    語彙拡張: 17,
+    拗音拡張: 19,
+    入声拡張: 20,
+    撥音拡張: 7,
+    二重母音拡張: 10,
   });
   assert.equal(combo?.resolvedComboDefinitions?.length, 73);
   assert.ok(LAYOUTS_JA.some((layout) => layout.id === 'oonishi-custom'));
@@ -322,24 +318,11 @@ test('TK音直入力法は正式名称を表示する', () => {
 });
 
 test('combo fold presentation provenanceはcanonical inputから解決する', () => {
-  const base = fromRows(
-    'canonical-fold-source',
-    'canonical-fold-source',
-    ['あい', '', '', ''],
-    {},
-  );
+  const base = fromRows('canonical-fold-source', 'canonical-fold-source', ['あい', '', '', ''], {});
   const canonicalOnly = { ...base, map: new Map<string, string[][]>() };
-  const layout = withCombos(
-    'canonical-fold-combo',
-    'canonical-fold-combo',
-    canonicalOnly,
-    [[
-      '愛',
-      ['あ', 'い'],
-      undefined,
-      { foldTriggerInputs: ['あ'] },
-    ]],
-  );
+  const layout = withCombos('canonical-fold-combo', 'canonical-fold-combo', canonicalOnly, [
+    ['愛', ['あ', 'い'], undefined, { foldTriggerInputs: ['あ'] }],
+  ]);
 
   const definition = layout.resolvedComboDefinitions?.find((entry) => entry.output === '愛');
   assert.ok(definition);
@@ -349,38 +332,19 @@ test('combo fold presentation provenanceはcanonical inputから解決する', (
 });
 
 test('combo fold provenanceは先頭default pathを使いkeyVariantsは全pathを保持する', () => {
-  const base = fromRows(
-    'canonical-fold-variants',
-    'canonical-fold-variants',
-    ['あい', '', '', ''],
-    {},
-  );
+  const base = fromRows('canonical-fold-variants', 'canonical-fold-variants', ['あい', '', '', ''], {});
   const canonicalInputs = new Map(base.canonicalInputs);
   const defaultAlternative = canonicalInputs.get('あ')?.[0];
   assert.ok(defaultAlternative);
-  canonicalInputs.set('あ', [
-    defaultAlternative,
-    mapInputAlternativePhysicalKeys(
-      defaultAlternative,
-      (key) => key === '1' ? '3' : key,
-    ),
-  ]);
+  canonicalInputs.set('あ', [defaultAlternative, mapInputAlternativePhysicalKeys(defaultAlternative, (key) => (key === '1' ? '3' : key))]);
   const canonicalOnly = {
     ...base,
     map: new Map<string, string[][]>(),
     canonicalInputs,
   };
-  const layout = withCombos(
-    'canonical-fold-variants-combo',
-    'canonical-fold-variants-combo',
-    canonicalOnly,
-    [[
-      '愛',
-      ['あ', 'い'],
-      undefined,
-      { foldTriggerInputs: ['あ'] },
-    ]],
-  );
+  const layout = withCombos('canonical-fold-variants-combo', 'canonical-fold-variants-combo', canonicalOnly, [
+    ['愛', ['あ', 'い'], undefined, { foldTriggerInputs: ['あ'] }],
+  ]);
 
   const definition = layout.resolvedComboDefinitions?.find((entry) => entry.output === '愛');
   assert.ok(definition);
@@ -394,9 +358,7 @@ test('combo fold provenanceは先頭default pathを使いkeyVariantsは全path�
 });
 
 test('面のセル配列は複数文字の見出しを1キーへ置ける', () => {
-  const layout = fromFaces('multi', 'multi', [
-    { trigger: [], mode: 'simultaneous', rows: ['', '', ['', '', '', 'きゃ'], ''], inputRole: 'layer' },
-  ]);
+  const layout = fromFaces('multi', 'multi', [{ trigger: [], mode: 'simultaneous', rows: ['', '', ['', '', '', 'きゃ'], ''], inputRole: 'layer' }]);
 
   assert.deepEqual(layout.map.get('きゃ'), [['f']]);
 });
@@ -411,16 +373,21 @@ test('presentation分類はcompiled aggregation metadataをauthorityにする', 
   const mappedLayer = {
     faces: [semanticCompositionMappedAsLayer],
     faceLayerIds: new Map([[semanticCompositionMappedAsLayer, 'face:0']]),
-    layerDefinitions: [{
-      id: 'face:0',
-      kind: 'layer' as const,
-      label: '面 1',
-      presentationRole: 'layer' as const,
-    }],
+    layerDefinitions: [
+      {
+        id: 'face:0',
+        kind: 'layer' as const,
+        label: '面 1',
+        presentationRole: 'layer' as const,
+      },
+    ],
   };
   const layerGroups = classifyPresentationFaces(mappedLayer);
   assert.deepEqual(layerGroups.combos, []);
-  assert.deepEqual(layerGroups.layers.flatMap((group) => group.faces), [semanticCompositionMappedAsLayer]);
+  assert.deepEqual(
+    layerGroups.layers.flatMap((group) => group.faces),
+    [semanticCompositionMappedAsLayer],
+  );
   assert.deepEqual(layerGroups.modifiers, []);
 
   const semanticLayerMappedAsModifier: Face = {
@@ -430,12 +397,14 @@ test('presentation分類はcompiled aggregation metadataをauthorityにする', 
   const mappedModifier = {
     faces: [semanticLayerMappedAsModifier],
     faceLayerIds: new Map([[semanticLayerMappedAsModifier, 'face:1']]),
-    layerDefinitions: [{
-      id: 'face:1',
-      kind: 'layer' as const,
-      label: '面 2',
-      presentationRole: 'modifier' as const,
-    }],
+    layerDefinitions: [
+      {
+        id: 'face:1',
+        kind: 'layer' as const,
+        label: '面 2',
+        presentationRole: 'modifier' as const,
+      },
+    ],
   };
   const modifierGroups = classifyPresentationFaces(mappedModifier);
   assert.deepEqual(modifierGroups.layers, []);
@@ -473,11 +442,12 @@ test('組み込み配列の層の名前は「面」を出さず、名前の無�
 test('layer aggregationのpresentationRole欠落は表示契約違反としてerrorにする', () => {
   const face = faceFromEntries(['f'], 'simultaneous', { j: 'あ' });
   assert.throws(
-    () => classifyPresentationFaces({
-      faces: [face],
-      faceLayerIds: new Map([[face, 'face:0']]),
-      layerDefinitions: [{ id: 'face:0', kind: 'layer', label: '面 1' }],
-    }),
+    () =>
+      classifyPresentationFaces({
+        faces: [face],
+        faceLayerIds: new Map([[face, 'face:0']]),
+        layerDefinitions: [{ id: 'face:0', kind: 'layer', label: '面 1' }],
+      }),
     /presentationRole明示が必要/,
   );
 });
@@ -487,11 +457,7 @@ test('Faceを持つLayoutは全FaceのfaceLayerIdsを明示する', () => {
     if (!layout.faces) continue;
     assert.ok(layout.faceLayerIds, `${layout.id}: faceLayerIds`);
     for (const face of layout.faces) {
-      assert.notEqual(
-        layout.faceLayerIds.get(face),
-        undefined,
-        `${layout.id}: Face layerId`,
-      );
+      assert.notEqual(layout.faceLayerIds.get(face), undefined, `${layout.id}: Face layerId`);
     }
   }
 });
@@ -557,10 +523,7 @@ test('宣言された面だけを逆手の条件でレイヤーへ集約する',
       triggerPersistence: 'single',
     },
   ];
-  assert.throws(
-    () => fromFaces('invalid-fold', 'invalid-fold', invalidFaces),
-    /レイヤー「不正」の面が畳み条件を満たさない/,
-  );
+  assert.throws(() => fromFaces('invalid-fold', 'invalid-fold', invalidFaces), /レイヤー「不正」の面が畳み条件を満たさない/);
 });
 
 test('畳んだレイヤーはauthoringで明示したpresentation membershipだけを表示する', () => {
@@ -631,7 +594,10 @@ test('薙刀式の装飾triggerはcanonical logical groupを保持する', () =>
       .filter((role) => role.role === 'modifier')
       .map((role) => [role.key, role.modifierGroupId])
       .sort(),
-    [['.', '外来音'], ['f', '濁音']],
+    [
+      ['.', '外来音'],
+      ['f', '濁音'],
+    ],
   );
 });
 
@@ -661,10 +627,7 @@ test('新JISの親指shift presentationは左右を同じSpaceとして扱う', 
     const layout = LAYOUT_BY_ID.get(id)!;
     const shifted = classifyPresentationFaces(layout).layers[1]?.faces[0];
     assert.ok(shifted);
-    assert.deepEqual(
-      shifted.presentationTriggerAlternatives,
-      [['thumb-l'], ['thumb-r']],
-    );
+    assert.deepEqual(shifted.presentationTriggerAlternatives, [['thumb-l'], ['thumb-r']]);
     assert.equal(shifted.presentationTriggerText, 'Space');
     assert.equal(shifted.presentationLabel, 'Shift');
     assert.equal(layout.legends.get('thumb-l'), 'Space');
@@ -702,11 +665,7 @@ test('trigger presentationは明示alternativeとchordを区別して正規化�
 test('presentation trigger matcherはalternative単位のexact matchだけを許可する', () => {
   const face: Face = {
     ...faceFromEntries(['space'], 'simultaneous', { j: 'あ' }),
-    presentationTriggerAlternatives: [
-      ['thumb-l'],
-      ['thumb-r'],
-      ['j', 'k'],
-    ],
+    presentationTriggerAlternatives: [['thumb-l'], ['thumb-r'], ['j', 'k']],
   };
   assert.equal(matchesDisplayTriggerAlternative(face, new Set(['thumb-l'])), true);
   assert.equal(matchesDisplayTriggerAlternative(face, new Set(['thumb-r'])), true);
@@ -718,25 +677,24 @@ test('presentation trigger matcherはalternative単位のexact matchだけを許
 test('presentation trigger alternativesはalias・重複を正規化し空authoringを拒否する', () => {
   const face: Face = {
     ...faceFromEntries(['space'], 'simultaneous', { j: 'あ' }),
-    presentationTriggerAlternatives: [
-      ['space', 'thumb-r'],
-      ['thumb-r'],
-    ],
+    presentationTriggerAlternatives: [['space', 'thumb-r'], ['thumb-r']],
   };
   assert.deepEqual(displayTriggerAlternatives(face), [['thumb-r']]);
 
   assert.throws(
-    () => displayTriggerAlternatives({
-      ...face,
-      presentationTriggerAlternatives: [[]] as unknown as NonNullable<Face['presentationTriggerAlternatives']>,
-    }),
+    () =>
+      displayTriggerAlternatives({
+        ...face,
+        presentationTriggerAlternatives: [[]] as unknown as NonNullable<Face['presentationTriggerAlternatives']>,
+      }),
     /空にできない/,
   );
   assert.throws(
-    () => displayTriggerAlternatives({
-      ...face,
-      presentationTriggerAlternatives: [] as unknown as NonNullable<Face['presentationTriggerAlternatives']>,
-    }),
+    () =>
+      displayTriggerAlternatives({
+        ...face,
+        presentationTriggerAlternatives: [] as unknown as NonNullable<Face['presentationTriggerAlternatives']>,
+      }),
     /presentationTriggerAlternativesは空にできない/,
   );
 });
@@ -760,28 +718,12 @@ test('fromFacesはFaceModeをaggregation presentation metadataへcompileする',
     inputRole: 'layer',
     triggerPersistence: 'single',
   };
-  const layout = fromFaces('mode-presentation', 'mode-presentation', [
-    simultaneous,
-    prefix,
-    suffix,
-  ]);
+  const layout = fromFaces('mode-presentation', 'mode-presentation', [simultaneous, prefix, suffix]);
 
-  assert.equal(
-    layout.layerDefinitions?.find((definition) => definition.id === 'layer:同時層')?.presentationModeLabel,
-    '同時',
-  );
-  assert.equal(
-    layout.layerDefinitions?.find((definition) => definition.id === 'layer:前置層')?.presentationModeLabel,
-    '前置',
-  );
-  assert.equal(
-    layout.layerDefinitions?.find((definition) => definition.id === 'layer:後置層')?.presentationModeLabel,
-    '後置',
-  );
-  assert.equal(
-    layout.layerDefinitions?.find((definition) => definition.id === 'single')?.presentationModeLabel,
-    undefined,
-  );
+  assert.equal(layout.layerDefinitions?.find((definition) => definition.id === 'layer:同時層')?.presentationModeLabel, '同時');
+  assert.equal(layout.layerDefinitions?.find((definition) => definition.id === 'layer:前置層')?.presentationModeLabel, '前置');
+  assert.equal(layout.layerDefinitions?.find((definition) => definition.id === 'layer:後置層')?.presentationModeLabel, '後置');
+  assert.equal(layout.layerDefinitions?.find((definition) => definition.id === 'single')?.presentationModeLabel, undefined);
 });
 
 test('triggerOrderが異なるFaceは同じレイヤーへ畳まない', () => {
@@ -799,10 +741,11 @@ test('triggerOrderが異なるFaceは同じレイヤーへ畳まない', () => {
   };
 
   assert.throws(
-    () => fromFaces('invalid-trigger-order', 'invalid-trigger-order', [
-      { ...first, inputRole: 'layer' },
-      { ...second, inputRole: 'layer' },
-    ]),
+    () =>
+      fromFaces('invalid-trigger-order', 'invalid-trigger-order', [
+        { ...first, inputRole: 'layer' },
+        { ...second, inputRole: 'layer' },
+      ]),
     /triggerOrderが異なる/,
   );
 });
@@ -824,9 +767,15 @@ test('シフトの表示色は手ではなく所属aggregationで揃え、single
 test('相互同時シフトは両トリガーを1回分の色として残す', () => {
   const layout = LAYOUT_BY_ID.get('shingeta')!;
   const layers = classifyPresentationFaces(layout).layers;
-  for (const [layerIndex, trigger, output] of [[1, 'k', 'd'], [2, 'l', 's']] as const) {
+  for (const [layerIndex, trigger, output] of [
+    [1, 'k', 'd'],
+    [2, 'l', 's'],
+  ] as const) {
     const colors = normalizedRoleColors(layers[layerIndex].role, {
-      keyCounts: new Map([[trigger, 1], [output, 1]]),
+      keyCounts: new Map([
+        [trigger, 1],
+        [output, 1],
+      ]),
       triggerKeyCounts: new Map([[trigger, 1]]),
       pairedTriggerKeyCounts: new Map([[trigger, 1]]),
     });
@@ -841,9 +790,12 @@ test('薙刀式の合算表示はスペースなし層のトリガーを単打�
   const layout = LAYOUT_BY_ID.get('naginata-v18')!;
   const base = classifyPresentationFaces(layout).layers[0];
   const colors = normalizedRoleColors(base.role, {
-      keyCounts: new Map([['j', 1], ['f', 1]]),
-      triggerKeyCounts: new Map([['j', 1]]),
-      pairedTriggerKeyCounts: new Map([['j', 1]]),
+    keyCounts: new Map([
+      ['j', 1],
+      ['f', 1],
+    ]),
+    triggerKeyCounts: new Map([['j', 1]]),
+    pairedTriggerKeyCounts: new Map([['j', 1]]),
   });
 
   assert.equal(colors.size, 2);
@@ -855,7 +807,10 @@ test('通常の層トリガーは残さず、薙刀式の濁音詳細も除外�
   const shingeta = LAYOUT_BY_ID.get('shingeta')!;
   const middle = classifyPresentationFaces(shingeta).layers[1];
   const normalColors = normalizedRoleColors(middle.role, {
-    keyCounts: new Map([['k', 1], ['w', 1]]),
+    keyCounts: new Map([
+      ['k', 1],
+      ['w', 1],
+    ]),
     triggerKeyCounts: new Map([['k', 1]]),
     pairedTriggerKeyCounts: new Map(),
   });
@@ -865,9 +820,15 @@ test('通常の層トリガーは残さず、薙刀式の濁音詳細も除外�
   const modifiers = classifyPresentationFaces(naginata).modifiers;
   const voiced = modifiers.find((layer) => layer.faces.some((face) => face.layer === '濁音'))!;
   const detailColors = normalizedRoleColors(voiced.role, {
-    keyCounts: new Map([['j', 1], ['f', 1]]),
+    keyCounts: new Map([
+      ['j', 1],
+      ['f', 1],
+    ]),
     triggerKeyCounts: new Map([['j', 1]]),
-    pairedTriggerKeyCounts: new Map([['j', 1], ['f', 1]]),
+    pairedTriggerKeyCounts: new Map([
+      ['j', 1],
+      ['f', 1],
+    ]),
   });
   assert.deepEqual([...detailColors], [['f', 1]]);
 });
@@ -928,25 +889,14 @@ test('かわせみ配列+はKikyo版の4拡張を同時打鍵として保持す�
 
   // 現行schemaでは複合triggerの一部（親指だけ）を保持対象にできないため、
   // 親指 + 行指定の3キーコンボはwhole-trigger holdに誤解されないようsingleとする。
-  const rightThumbSa = layout.faces?.find((face) =>
-    face.trigger.includes('thumb-r') && face.trigger.includes('d')
-  );
+  const rightThumbSa = layout.faces?.find((face) => face.trigger.includes('thumb-r') && face.trigger.includes('d'));
   assert.equal(rightThumbSa?.triggerPersistence, 'single');
   for (const sequence of layout.map.values()) assert.equal(sequence.length, 1);
   assertKanaLayout(layout);
 });
 
 test('面定義を出典フィクスチャの全セルと照合する', () => {
-  for (const id of [
-    'naginata-v18',
-    'nicola',
-    'asuka',
-    'shin-jis-prefix',
-    'shin-jis-simultaneous',
-    'shingeta',
-    'shin-koume',
-    'tsuki-2-263',
-  ]) {
+  for (const id of ['naginata-v18', 'nicola', 'asuka', 'shin-jis-prefix', 'shin-jis-simultaneous', 'shingeta', 'shin-koume', 'tsuki-2-263']) {
     assertKanaLayoutFixture(LAYOUT_BY_ID.get(id)!);
   }
 });
@@ -973,9 +923,7 @@ test('新JISは同じかな配置を逐次シフトと通常シフトで共有�
   assertKanaLayout(prefix, ['ゎ', 'ヴ']);
   assertKanaLayout(simultaneous, ['ゎ', 'ヴ']);
 
-  const faceCells = (layout: typeof prefix) => layout.faces!.map((face) =>
-    face.rows.map((row) => typeof row === 'string' ? [...row] : [...row]),
-  );
+  const faceCells = (layout: typeof prefix) => layout.faces!.map((face) => face.rows.map((row) => (typeof row === 'string' ? [...row] : [...row])));
   assert.deepEqual(faceCells(prefix), faceCells(simultaneous));
   assert.deepEqual([...prefix.map.keys()].sort(), [...simultaneous.map.keys()].sort());
 
@@ -1013,9 +961,7 @@ test('imported user Sequenceもcanonical SemanticInput列へ同期する', () =>
   assert.ok(inputs);
   assert.equal(inputs.length, 2);
   assert.deepEqual(inputs[0].physicalKeys, ['j', 'thumb-r']);
-  assert.deepEqual(inputs[0].requirements, [
-    { kind: 'overlap', keys: ['j', 'thumb-r'] },
-  ]);
+  assert.deepEqual(inputs[0].requirements, [{ kind: 'overlap', keys: ['j', 'thumb-r'] }]);
   assert.equal(inputs[0].output, '');
   assert.deepEqual(inputs[1].physicalKeys, ['j']);
   assert.equal(inputs[1].output, 'x');
@@ -1068,7 +1014,6 @@ test('薙刀式v18の面移行で入力可能範囲とphysical action数を維�
   assert.ok(Number.isFinite(metrics.totalUnits) && metrics.totalUnits > 0);
 });
 
-
 test('custom combo classificationはpresentation groupと独立してcanonicalへ保持する', () => {
   const layout = LAYOUT_BY_ID.get('oonishi-custom')!;
   const vocabulary = layout.canonicalInputs.get('desita')?.[0]?.semanticInputs[0];
@@ -1078,7 +1023,6 @@ test('custom combo classificationはpresentation groupと独立してcanonical�
   assert.deepEqual(vocabulary.classifications, ['composition', 'vocabulary-extension']);
   assert.deepEqual(youon.classifications, ['composition', 'youon-extension']);
 });
-
 
 test('presentationLabelはcompiled layerDefinition labelへ保持される', () => {
   const face: Face = {
@@ -1090,12 +1034,8 @@ test('presentationLabelはcompiled layerDefinition labelへ保持される', () 
   const layout = fromFaces('presentation-label', 'presentation-label', [face]);
   const layerId = layout.faceLayerIds?.get(face);
   assert.ok(layerId);
-  assert.equal(
-    layout.layerDefinitions?.find((definition) => definition.id === layerId)?.label,
-    'Custom Shift',
-  );
+  assert.equal(layout.layerDefinitions?.find((definition) => definition.id === layerId)?.label, 'Custom Shift');
 });
-
 
 test('同一aggregationのpresentationLabel conflictはFace順によらずrejectする', () => {
   const left: Face = {
@@ -1115,11 +1055,11 @@ test('同一aggregationのpresentationLabel conflictはFace順によらずreject
     presentationLabel: 'Beta',
   };
 
-  for (const faces of [[left, right], [right, left]] as const) {
-    assert.throws(
-      () => fromFaces('presentation-label-conflict', 'presentation-label-conflict', faces),
-      /presentationLabelが競合している/,
-    );
+  for (const faces of [
+    [left, right],
+    [right, left],
+  ] as const) {
+    assert.throws(() => fromFaces('presentation-label-conflict', 'presentation-label-conflict', faces), /presentationLabelが競合している/);
   }
 });
 
@@ -1140,7 +1080,10 @@ test('同一aggregationで片側だけpresentationLabelなら順序によらずc
     triggerPersistence: 'single',
   };
 
-  for (const faces of [[explicit, implicit], [implicit, explicit]] as const) {
+  for (const faces of [
+    [explicit, implicit],
+    [implicit, explicit],
+  ] as const) {
     const layout = fromFaces('presentation-label-merge', 'presentation-label-merge', faces);
     const definition = layout.layerDefinitions?.find((entry) => entry.id === 'layer:X');
     assert.equal(definition?.label, 'Custom X');
@@ -1148,7 +1091,6 @@ test('同一aggregationで片側だけpresentationLabelなら順序によらずc
     assert.equal(definition?.presentationModeLabel, '同時');
   }
 });
-
 
 test('コンボ枠に計上するcomposition FaceのpresentationLabelはsilent ignoreせずrejectする', () => {
   const face: Face = {
@@ -1191,29 +1133,35 @@ test('composition Faceは層とコンボ枠のどちらに計上するかを明�
   assert.ok(comboInput?.classifications.includes('composition'));
   assert.equal(layerInput?.aggregationGroupId, 'face:0');
   assert.equal(comboInput?.aggregationGroupId, COMBO_LAYER_ID);
-  assert.equal(layerLayout.layerDefinitions?.some((definition) => definition.kind === 'combo'), false);
+  assert.equal(
+    layerLayout.layerDefinitions?.some((definition) => definition.kind === 'combo'),
+    false,
+  );
 
   const { compositionAggregation: _omitted, ...undeclared } = layerFace;
+  assert.throws(() => fromFaces('composition-undeclared', 'composition-undeclared', [undeclared]), /compositionAggregationを明示する必要がある/);
   assert.throws(
-    () => fromFaces('composition-undeclared', 'composition-undeclared', [undeclared]),
-    /compositionAggregationを明示する必要がある/,
-  );
-  assert.throws(
-    () => fromFaces('layer-with-aggregation', 'layer-with-aggregation', [{
-      ...base,
-      inputRole: 'layer',
-      compositionAggregation: 'layer',
-      triggerPersistence: 'single',
-    }]),
+    () =>
+      fromFaces('layer-with-aggregation', 'layer-with-aggregation', [
+        {
+          ...base,
+          inputRole: 'layer',
+          compositionAggregation: 'layer',
+          triggerPersistence: 'single',
+        },
+      ]),
     /inputRoleがcompositionの面だけが持てる/,
   );
   assert.throws(
-    () => fromFaces('multi-trigger-layer', 'multi-trigger-layer', [{
-      ...faceFromEntries(['d', 'k'], 'simultaneous', { j: '甲' }),
-      inputRole: 'composition',
-      compositionAggregation: 'layer',
-      triggerPersistence: 'single',
-    }]),
+    () =>
+      fromFaces('multi-trigger-layer', 'multi-trigger-layer', [
+        {
+          ...faceFromEntries(['d', 'k'], 'simultaneous', { j: '甲' }),
+          inputRole: 'composition',
+          compositionAggregation: 'layer',
+          triggerPersistence: 'single',
+        },
+      ]),
     /triggerが1キーの面だけ/,
   );
 });

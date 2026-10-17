@@ -55,11 +55,10 @@ function press(run: CalibrationRun, first: string, second: string, atMs: number,
 }
 
 test('row-staggeredでは、同時押しの測定は両手・片手・親指の3項目で、どれも9間隔', () => {
-  assert.deepEqual(PLAN.simultaneous?.map((task) => calibrationItemId(task.item)), [
-    'simultaneous:both-hands',
-    'simultaneous:one-hand',
-    'simultaneous:thumb',
-  ]);
+  assert.deepEqual(
+    PLAN.simultaneous?.map((task) => calibrationItemId(task.item)),
+    ['simultaneous:both-hands', 'simultaneous:one-hand', 'simultaneous:thumb'],
+  );
   for (const task of PLAN.simultaneous ?? []) {
     assert.equal(task.required, 9);
     assert.equal(task.oneWay, false);
@@ -83,8 +82,17 @@ test('Spaceは右手の親指のキーで、親指との同時押しの項目だ
 
 test('測るキーを組めない項目は、同時押しの測定に入らない', () => {
   // 刻印がFとJだけの配列。片手の同時押しのKに刻印が無い。
-  const sparse = planCalibration({ geometry: GEOMETRY, legends: new Map([['f', 'F'], ['j', 'J']]) });
-  assert.deepEqual(sparse.simultaneous?.map((task) => calibrationItemId(task.item)), ['simultaneous:both-hands', 'simultaneous:thumb']);
+  const sparse = planCalibration({
+    geometry: GEOMETRY,
+    legends: new Map([
+      ['f', 'F'],
+      ['j', 'J'],
+    ]),
+  });
+  assert.deepEqual(
+    sparse.simultaneous?.map((task) => calibrationItemId(task.item)),
+    ['simultaneous:both-hands', 'simultaneous:thumb'],
+  );
   // 刻印が1つも無ければ測れない。
   assert.equal(planCalibration({ geometry: GEOMETRY, legends: new Map() }).simultaneous, undefined);
 });
@@ -111,7 +119,10 @@ test('受け付ける時間を超えて揃った押下の組は、ストロー�
   run = press(run, 'f', 'j', 1100, SIMULTANEOUS_PRESS_WINDOW_MS + 1);
   assert.deepEqual(run.intervalsMs, []);
   assert.equal(run.lastAtMs, undefined);
-  assert.deepEqual(run.pending.map((pending) => pending.key), ['j']);
+  assert.deepEqual(
+    run.pending.map((pending) => pending.key),
+    ['j'],
+  );
   // jを待たせたまま、fが揃うと、そのストロークは受け付けるが、直前のストロークとの間隔は数えない。
   run = pressCalibrationKey(run, event('f'), 1100 + SIMULTANEOUS_PRESS_WINDOW_MS + 1 + 20, label).run;
   assert.deepEqual(run.intervalsMs, []);
@@ -165,11 +176,16 @@ function finishedRun(scope: CalibrationRun['scope'], tasks: readonly Calibration
 }
 
 test('同時押しの上乗せは、間隔の中央値から、再生がそのステップに選ぶ基準の時間を引いた差になる', () => {
-  const run = finishedRun('simultaneous', PLAN.simultaneous ?? [], (task) => ({
-    'simultaneous:both-hands': 330,
-    'simultaneous:one-hand': 520,
-    'simultaneous:thumb': 190,
-  })[calibrationItemId(task.item)] ?? 0);
+  const run = finishedRun(
+    'simultaneous',
+    PLAN.simultaneous ?? [],
+    (task) =>
+      ({
+        'simultaneous:both-hands': 330,
+        'simultaneous:one-hand': 520,
+        'simultaneous:thumb': 190,
+      })[calibrationItemId(task.item)] ?? 0,
+  );
   const result = applyCalibrationRun(SAVED, run, 10);
   assert.ok(result.ok);
   // 両手: R→Lの方向別の値4/秒で250。片手: 右手の人差し指から中指の方向別の値2.5/秒で400。親指: 代表値4/秒で250。
@@ -215,7 +231,11 @@ test('同時押しの測定は、同時押しのストロークが入りうる�
     ...SAVED,
     keystrokeOverheadMs: { arpeggio: 1, 'arpeggio-within': 2, chain: 3, 'chain-boundary': 4, other: 5, 'other-within': 6, repeat: 7, sfb: 8 },
   };
-  const result = applyCalibrationRun(base, finishedRun('simultaneous', PLAN.simultaneous ?? [], () => 300), 10);
+  const result = applyCalibrationRun(
+    base,
+    finishedRun('simultaneous', PLAN.simultaneous ?? [], () => 300),
+    10,
+  );
   assert.ok(result.ok);
   assert.deepEqual(result.calibration.keystrokeOverheadMs, { repeat: 7 });
   assert.deepEqual(result.clearedOverheads, ['arpeggio', 'arpeggio-within', 'chain', 'chain-boundary', 'other', 'other-within', 'sfb']);
@@ -224,14 +244,22 @@ test('同時押しの測定は、同時押しのストロークが入りうる�
 
 test('1つの分け方だけを測り直しても、打鍵の上乗せを消す', () => {
   const base: PlaybackCalibration = { ...SAVED, keystrokeOverheadMs: { other: 5, repeat: 7 } };
-  const result = applyCalibrationRun(base, finishedRun('item', [taskOf('thumb')], () => 300), 10);
+  const result = applyCalibrationRun(
+    base,
+    finishedRun('item', [taskOf('thumb')], () => 300),
+    10,
+  );
   assert.ok(result.ok);
   assert.deepEqual(result.calibration.keystrokeOverheadMs, { repeat: 7 });
 });
 
 test('保存値が無ければ、同時押しの測定は反映先が無い', () => {
   assert.deepEqual(
-    applyCalibrationRun(undefined, finishedRun('simultaneous', PLAN.simultaneous ?? [], () => 300), 10),
+    applyCalibrationRun(
+      undefined,
+      finishedRun('simultaneous', PLAN.simultaneous ?? [], () => 300),
+      10,
+    ),
     { ok: false, reason: 'no-saved-value' },
   );
 });
@@ -239,12 +267,20 @@ test('保存値が無ければ、同時押しの測定は反映先が無い', ()
 test('測った上乗せが保存できる範囲を外れたら、保存せずにやり直させる', () => {
   // 基準の時間250に対して、間隔が1500ミリ秒なら上乗せは1250。
   assert.deepEqual(
-    applyCalibrationRun(SAVED, finishedRun('item', [taskOf('thumb')], () => 1500), 10),
+    applyCalibrationRun(
+      SAVED,
+      finishedRun('item', [taskOf('thumb')], () => 1500),
+      10,
+    ),
     { ok: false, reason: 'invalid-measurement' },
   );
   // 負の側も範囲を外れる。
   assert.deepEqual(
-    applyCalibrationRun({ ...SAVED, sameHandDifferentFingerActionsPerSecond: 0.5 }, finishedRun('item', [taskOf('thumb')], () => 10), 10),
+    applyCalibrationRun(
+      { ...SAVED, sameHandDifferentFingerActionsPerSecond: 0.5 },
+      finishedRun('item', [taskOf('thumb')], () => 10),
+      10,
+    ),
     { ok: false, reason: 'invalid-measurement' },
   );
 });
@@ -259,27 +295,45 @@ function applied(base: PlaybackCalibration, run: CalibrationRun) {
 
 test('基準の時間を求めるのに読む値が変わると、その分け方の同時押しの上乗せを消す', () => {
   // 異手のR→Lの値は両手の同時押しの基準。L→Rの値は読まない。
-  const rl = applied(WITH_SIMULTANEOUS, finishedRun('item', [PLAN.byItem.get('direction:R→L')!], () => 500));
+  const rl = applied(
+    WITH_SIMULTANEOUS,
+    finishedRun('item', [PLAN.byItem.get('direction:R→L')!], () => 500),
+  );
   assert.deepEqual(rl.calibration.simultaneousOverheadMs, { 'one-hand': 20, thumb: 30 });
   assert.deepEqual(rl.clearedSimultaneous, ['both-hands']);
-  const lr = applied(WITH_SIMULTANEOUS, finishedRun('item', [PLAN.byItem.get('direction:L→R')!], () => 500));
+  const lr = applied(
+    WITH_SIMULTANEOUS,
+    finishedRun('item', [PLAN.byItem.get('direction:L→R')!], () => 500),
+  );
   assert.deepEqual(lr.calibration.simultaneousOverheadMs, WITH_SIMULTANEOUS.simultaneousOverheadMs);
   assert.deepEqual(lr.clearedSimultaneous, []);
   // 右手の人差し指から中指の方向別の値は片手の同時押しの基準。
-  const directed = applied(WITH_SIMULTANEOUS, finishedRun('item', [PLAN.byItem.get('directed-pair:RI>RM')!], () => 500));
+  const directed = applied(
+    WITH_SIMULTANEOUS,
+    finishedRun('item', [PLAN.byItem.get('directed-pair:RI>RM')!], () => 500),
+  );
   assert.deepEqual(directed.calibration.simultaneousOverheadMs, { 'both-hands': 10, thumb: 30 });
   // 読まない方向別の値を測っても残る。
-  const other = applied(WITH_SIMULTANEOUS, finishedRun('item', [PLAN.byItem.get('directed-pair:LM>LI')!], () => 500));
+  const other = applied(
+    WITH_SIMULTANEOUS,
+    finishedRun('item', [PLAN.byItem.get('directed-pair:LM>LI')!], () => 500),
+  );
   assert.deepEqual(other.clearedSimultaneous, []);
 });
 
 test('通常速度が変わると、通常速度を基準にしていない同時押しの上乗せは残る', () => {
   // SAVEDは両手の基準がR→Lの値、片手の基準が方向別の値、親指の基準が代表値。通常速度は読まれない。
-  const normal = applied(WITH_SIMULTANEOUS, finishedRun('item', [PLAN.byItem.get('actions')!], () => 100));
+  const normal = applied(
+    WITH_SIMULTANEOUS,
+    finishedRun('item', [PLAN.byItem.get('actions')!], () => 100),
+  );
   assert.deepEqual(normal.calibration.simultaneousOverheadMs, WITH_SIMULTANEOUS.simultaneousOverheadMs);
   // 方向別の値が無い保存値では、両手の同時押しの基準が通常速度になる。
   const { actionsPerSecondByDirection: _directions, ...withoutDirections } = WITH_SIMULTANEOUS;
-  const changed = applied(withoutDirections, finishedRun('item', [PLAN.byItem.get('actions')!], () => 100));
+  const changed = applied(
+    withoutDirections,
+    finishedRun('item', [PLAN.byItem.get('actions')!], () => 100),
+  );
   assert.deepEqual(changed.calibration.simultaneousOverheadMs, { 'one-hand': 20, thumb: 30 });
   assert.deepEqual(changed.clearedSimultaneous, ['both-hands']);
 });
@@ -307,7 +361,10 @@ test('通常速度・移動速度の測定は、基準の時間が変わらな�
 });
 
 test('指ごとの測定は、同時押しの上乗せを消さない', () => {
-  const finger = applied(WITH_SIMULTANEOUS, finishedRun('item', PLAN.byField.get('finger:LI') ?? [], () => 100));
+  const finger = applied(
+    WITH_SIMULTANEOUS,
+    finishedRun('item', PLAN.byField.get('finger:LI') ?? [], () => 100),
+  );
   assert.deepEqual(finger.clearedSimultaneous, []);
   assert.deepEqual(finger.calibration.simultaneousOverheadMs, WITH_SIMULTANEOUS.simultaneousOverheadMs);
 });
@@ -316,7 +373,10 @@ const SENTENCE_BASE: PlaybackCalibration = { ...SAVED, keystrokeOverheadMs: { ot
 
 test('記録が空なら、同時押しを測っても打鍵の上乗せと記録は消えない', () => {
   const base: PlaybackCalibration = { ...SENTENCE_BASE, sentenceSimultaneousKinds: [] };
-  const result = applied(base, finishedRun('simultaneous', PLAN.simultaneous ?? [], () => 300));
+  const result = applied(
+    base,
+    finishedRun('simultaneous', PLAN.simultaneous ?? [], () => 300),
+  );
   assert.deepEqual(result.calibration.keystrokeOverheadMs, base.keystrokeOverheadMs);
   assert.deepEqual(result.calibration.sentenceSimultaneousKinds, []);
   assert.deepEqual(result.clearedOverheads, []);
@@ -324,37 +384,61 @@ test('記録が空なら、同時押しを測っても打鍵の上乗せと記�
 
 test('記録に両手が入っていれば、両手を測ると打鍵の上乗せと記録が消え、片手・親指だけを測ると消えない', () => {
   const base: PlaybackCalibration = { ...SENTENCE_BASE, sentenceSimultaneousKinds: ['both-hands'] };
-  const both = applied(base, finishedRun('item', [taskOf('both-hands')], () => 300));
+  const both = applied(
+    base,
+    finishedRun('item', [taskOf('both-hands')], () => 300),
+  );
   assert.deepEqual(both.calibration.keystrokeOverheadMs, { repeat: 7 });
   assert.equal('sentenceSimultaneousKinds' in both.calibration, false);
   assert.deepEqual(both.clearedOverheads, ['other', 'other-boundary', 'sfb']);
-  const others = applied(base, finishedRun('item', [taskOf('one-hand'), taskOf('thumb')], () => 300));
+  const others = applied(
+    base,
+    finishedRun('item', [taskOf('one-hand'), taskOf('thumb')], () => 300),
+  );
   assert.deepEqual(others.calibration.keystrokeOverheadMs, base.keystrokeOverheadMs);
   assert.deepEqual(others.calibration.sentenceSimultaneousKinds, ['both-hands']);
   assert.deepEqual(others.clearedOverheads, []);
   // 3つをまとめて測る時は、1つでも記録に入っていれば消える。
-  const all = applied(base, finishedRun('simultaneous', PLAN.simultaneous ?? [], () => 300));
+  const all = applied(
+    base,
+    finishedRun('simultaneous', PLAN.simultaneous ?? [], () => 300),
+  );
   assert.deepEqual(all.calibration.keystrokeOverheadMs, { repeat: 7 });
 });
 
 test('記録を持たない保存値では、どの分け方を測っても打鍵の上乗せが消える', () => {
   for (const kind of SIMULTANEOUS_KINDS) {
-    const result = applied(SENTENCE_BASE, finishedRun('item', [taskOf(kind)], () => 300));
+    const result = applied(
+      SENTENCE_BASE,
+      finishedRun('item', [taskOf(kind)], () => 300),
+    );
     assert.deepEqual(result.calibration.keystrokeOverheadMs, { repeat: 7 });
   }
 });
 
 test('構造の種類と同指連続の差が全部無くなる測定では、記録も消え、一部だけ消える測定では残る', () => {
   const base: PlaybackCalibration = { ...SENTENCE_BASE, sentenceSimultaneousKinds: ['thumb'] };
-  const normal = applied(base, finishedRun('item', [PLAN.byItem.get('actions')!], () => 100));
+  const normal = applied(
+    base,
+    finishedRun('item', [PLAN.byItem.get('actions')!], () => 100),
+  );
   assert.equal('sentenceSimultaneousKinds' in normal.calibration, false);
-  const full = applied(base, finishedRun('normal', PLAN.normal ?? [], () => 100));
+  const full = applied(
+    base,
+    finishedRun('normal', PLAN.normal ?? [], () => 100),
+  );
   assert.equal('sentenceSimultaneousKinds' in full.calibration, false);
   // 指ごとの測り直しは同指連続だけを消すので、残る構造の種類の値の根拠として記録を残す。
-  const finger = applied(base, finishedRun('item', (PLAN.byField.get('finger:LI') ?? []), () => 100));
+  const finger = applied(
+    base,
+    finishedRun('item', PLAN.byField.get('finger:LI') ?? [], () => 100),
+  );
   assert.deepEqual(finger.calibration.sentenceSimultaneousKinds, ['thumb']);
   assert.equal(finger.calibration.keystrokeOverheadMs?.sfb, undefined);
   // 同指連続の差だけが残る保存値で、その差を消す測定をすると、記録も消える。
-  const sfbOnly = applied({ ...base, keystrokeOverheadMs: { sfb: 8 } }, finishedRun('item', (PLAN.byField.get('finger:LI') ?? []), () => 100));
+  const sfbOnly = applied(
+    { ...base, keystrokeOverheadMs: { sfb: 8 } },
+    finishedRun('item', PLAN.byField.get('finger:LI') ?? [], () => 100),
+  );
   assert.equal('sentenceSimultaneousKinds' in sfbOnly.calibration, false);
 });

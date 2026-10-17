@@ -40,13 +40,7 @@ function resolvedTextOf(text: string, languageOverride?: 'en' | 'ja'): ResolvedT
 test('resolvePaneInput: 日本語テキスト + QWERTYはローマ字入力として解決する', () => {
   const setup = setupFor('qwerty');
   const text = resolvedTextOf('あいうえお');
-  const result = resolvePaneInput(
-    { kind: 'setup', setupId: setup.id },
-    setupsMap(setup),
-    CATALOG,
-    EMPTY_SETTINGS_OVERRIDES,
-    text,
-  );
+  const result = resolvePaneInput({ kind: 'setup', setupId: setup.id }, setupsMap(setup), CATALOG, EMPTY_SETTINGS_OVERRIDES, text);
   assert.ok(result.ok);
   if (!result.ok) return;
   assert.equal(result.input.romajiRuleId, 'kunrei');
@@ -55,13 +49,7 @@ test('resolvePaneInput: 日本語テキスト + QWERTYはローマ字入力と�
 test('resolvePaneInput: 英語テキスト + かな配列は「このテキストには使えない」失敗になる', () => {
   const setup = setupFor('nicola');
   const text = resolvedTextOf('hello world');
-  const result = resolvePaneInput(
-    { kind: 'setup', setupId: setup.id },
-    setupsMap(setup),
-    CATALOG,
-    EMPTY_SETTINGS_OVERRIDES,
-    text,
-  );
+  const result = resolvePaneInput({ kind: 'setup', setupId: setup.id }, setupsMap(setup), CATALOG, EMPTY_SETTINGS_OVERRIDES, text);
   assert.equal(result.ok, false);
   if (result.ok) return;
   assert.equal(result.error.kind, 'incompatible-text');
@@ -72,13 +60,7 @@ test('resolvePaneInput: 言語の手動上書きが自動判定より優先さ�
   // かなを含むが、英語として扱うよう手動指定する。
   const text = resolvedTextOf('テスト test', 'en');
   assert.equal(detectTextLanguage('テスト test'), 'ja');
-  const result = resolvePaneInput(
-    { kind: 'setup', setupId: setup.id },
-    setupsMap(setup),
-    CATALOG,
-    EMPTY_SETTINGS_OVERRIDES,
-    text,
-  );
+  const result = resolvePaneInput({ kind: 'setup', setupId: setup.id }, setupsMap(setup), CATALOG, EMPTY_SETTINGS_OVERRIDES, text);
   assert.ok(result.ok);
   if (!result.ok) return;
   assert.equal(result.input.romajiRuleId, null);
@@ -87,13 +69,7 @@ test('resolvePaneInput: 言語の手動上書きが自動判定より優先さ�
 test('resolvePaneInput: 参照が壊れたSetup（配列が存在しない）はreferenceエラー', () => {
   const setup = setupFor('ghost-layout');
   const text = resolvedTextOf('吾輩は猫である');
-  const result = resolvePaneInput(
-    { kind: 'setup', setupId: setup.id },
-    setupsMap(setup),
-    CATALOG,
-    EMPTY_SETTINGS_OVERRIDES,
-    text,
-  );
+  const result = resolvePaneInput({ kind: 'setup', setupId: setup.id }, setupsMap(setup), CATALOG, EMPTY_SETTINGS_OVERRIDES, text);
   assert.equal(result.ok, false);
   if (result.ok) return;
   assert.equal(result.error.kind, 'reference');

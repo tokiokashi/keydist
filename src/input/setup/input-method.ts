@@ -21,19 +21,12 @@ export type InputMethodDerivation =
   | { readonly ok: true; readonly inputMethod: InputMethod }
   | { readonly ok: false; readonly reason: 'text-language-mismatch' };
 
-export function deriveInputMethod(
-  language: TextLanguage,
-  kind: LayoutKind,
-): InputMethodDerivation {
+export function deriveInputMethod(language: TextLanguage, kind: LayoutKind): InputMethodDerivation {
   if (kind === 'kana') {
-    return language === 'ja'
-      ? { ok: true, inputMethod: 'kana-direct' }
-      : { ok: false, reason: 'text-language-mismatch' };
+    return language === 'ja' ? { ok: true, inputMethod: 'kana-direct' } : { ok: false, reason: 'text-language-mismatch' };
   }
   // kind === 'alpha': 英字を直接打つ配列。日本語はローマ字変換を介す
-  return language === 'ja'
-    ? { ok: true, inputMethod: 'romaji' }
-    : { ok: true, inputMethod: 'direct' };
+  return language === 'ja' ? { ok: true, inputMethod: 'romaji' } : { ok: true, inputMethod: 'direct' };
 }
 
 export type SetupTextResolution =

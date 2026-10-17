@@ -88,8 +88,14 @@ test('パレット: 1色目は、入れ替えても距離の変わらない2色�
   // 1色だけの集合では1色目しか使わない。先頭2色の入れ替えは先頭k色（k≥2）の距離を変えないので、
   // 明・暗それぞれの色をそれぞれの theme の全ての面に当てた最小値が高い方を先にする。
   // theme ごとに比べると、暗では青紫が橙より下がる（青紫は暗の面の明度の下限に近い）ので、theme をまたいだ最悪値で見る。
-  const worst = (slot: number) => Math.min(...THEMES.flatMap((theme) =>
-    Object.entries(BACKGROUNDS).filter(([name]) => name.startsWith(theme)).map(([, background]) => contrast(PALETTES[theme][slot]!, background))));
+  const worst = (slot: number) =>
+    Math.min(
+      ...THEMES.flatMap((theme) =>
+        Object.entries(BACKGROUNDS)
+          .filter(([name]) => name.startsWith(theme))
+          .map(([, background]) => contrast(PALETTES[theme][slot]!, background)),
+      ),
+    );
   const [first, second] = [worst(0), worst(1)];
   assert.ok(first >= second, `1色目 ${first.toFixed(3)}、2色目 ${second.toFixed(3)}`);
 });

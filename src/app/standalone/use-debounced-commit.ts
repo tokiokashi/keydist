@@ -1,8 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import {
-  createDebouncedPersistenceScheduler,
-  type DebouncedPersistenceScheduler,
-} from '#platform/persistence/debounced-scheduler.ts';
+import { createDebouncedPersistenceScheduler, type DebouncedPersistenceScheduler } from '#platform/persistence/debounced-scheduler.ts';
 import type { Command } from '#input/commands/index.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
 
@@ -33,10 +30,7 @@ export interface UseDebouncedCommitOptions<T> {
  * 見た目の即時反映（draft state）と、この関数呼び出しによる資産への反映を分けて持つ
  * （`SingleAnalyzerStandalonePage.tsx`の`optionsDraft`参照。既存の`textDraft`と同じ形）。
  */
-export function useDebouncedCommit<T>(
-  dispatch: (command: Command<KeydistAssets>) => void,
-  options: UseDebouncedCommitOptions<T>,
-): DebouncedCommit<T> {
+export function useDebouncedCommit<T>(dispatch: (command: Command<KeydistAssets>) => void, options: UseDebouncedCommitOptions<T>): DebouncedCommit<T> {
   // `options`（コールバック含む）はレンダーのたびに新しい参照で渡ってくるので、
   // scheduler自体は初回だけ作り、中身の読み出しはrefで最新化する
   // （`useAssetSyncs`のuseRef遅延初期化と同じ理由）。
@@ -82,8 +76,5 @@ export function useDebouncedCommit<T>(
     };
   }, []);
 
-  return useMemo(() => Object.assign(
-    (value: T) => schedulerRef.current!.notify(value),
-    { flush: () => schedulerRef.current!.flush() },
-  ), []);
+  return useMemo(() => Object.assign((value: T) => schedulerRef.current!.notify(value), { flush: () => schedulerRef.current!.flush() }), []);
 }

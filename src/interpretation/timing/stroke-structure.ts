@@ -8,10 +8,7 @@ export type StrokeStructureInput = Pick<AggregatedAnalysisResult, 'strokes' | 'c
 
 const kindsCache = new WeakMap<object, readonly StrokeStructureKind[]>();
 
-function markTransitions(
-  covered: Uint8Array,
-  ranges: readonly { readonly startStrokeIndex: number; readonly endStrokeIndex: number }[],
-): void {
+function markTransitions(covered: Uint8Array, ranges: readonly { readonly startStrokeIndex: number; readonly endStrokeIndex: number }[]): void {
   for (const { startStrokeIndex, endStrokeIndex } of ranges) {
     // 範囲は半開区間。遷移i-1 → iは、両端のストロークが同じ範囲に入る時だけ範囲の中にある。
     for (let index = Math.max(1, startStrokeIndex + 1); index < Math.min(endStrokeIndex, covered.length); index++) {
@@ -34,8 +31,10 @@ export function strokeStructureKinds(analysis: StrokeStructureInput): readonly S
   const inChain = new Uint8Array(count);
   markTransitions(inArpeggio, analysis.arpeggioSpans);
   markTransitions(inChain, analysis.chains);
-  const kinds = Array.from({ length: count }, (_, index): StrokeStructureKind =>
-    inArpeggio[index] === 1 ? 'arpeggio' : inChain[index] === 1 ? 'chain' : 'other');
+  const kinds = Array.from(
+    { length: count },
+    (_, index): StrokeStructureKind => (inArpeggio[index] === 1 ? 'arpeggio' : inChain[index] === 1 ? 'chain' : 'other'),
+  );
   kindsCache.set(analysis, kinds);
   return kinds;
 }
@@ -58,9 +57,11 @@ export function isRepeatStroke(stroke: StrokePressFingers | undefined, previous:
   if (stroke.presses.length !== 1 || previous.presses.length !== 1) return false;
   const [press] = stroke.presses;
   const [before] = previous.presses;
-  return press.finger === before.finger
-    && press.keys.length === before.keys.length
-    && press.keys.every((key) => before.keys.some((other) => other.id === key.id));
+  return (
+    press.finger === before.finger &&
+    press.keys.length === before.keys.length &&
+    press.keys.every((key) => before.keys.some((other) => other.id === key.id))
+  );
 }
 
 /**
@@ -98,10 +99,10 @@ export function strokeOverheadKinds(analysis: StrokeStructureInput): readonly St
   const cached = overheadKindsCache.get(analysis);
   if (cached !== undefined) return cached;
   const structure = strokeStructureKinds(analysis);
-  const kinds = analysis.strokes.map((stroke, index): StepOverheadKind =>
-    stroke.presses.some((press) => press.sfb)
-      ? 'sfb'
-      : isRepeatStroke(stroke, analysis.strokes[index - 1]) ? 'repeat' : structure[index]);
+  const kinds = analysis.strokes.map(
+    (stroke, index): StepOverheadKind =>
+      stroke.presses.some((press) => press.sfb) ? 'sfb' : isRepeatStroke(stroke, analysis.strokes[index - 1]) ? 'repeat' : structure[index],
+  );
   overheadKindsCache.set(analysis, kinds);
   return kinds;
 }

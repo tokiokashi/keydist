@@ -39,10 +39,7 @@ import type { GridColumnRange, GridSize, WorkspaceGrid } from './workspace-grid.
  * idの発行は純関数のコマンドの外（呼び出し側）で行い、値として渡す（`createSetupCommand`と違い、
  * 作った後に開く画面が新しいidを知る必要があるため）。
  */
-function workspacesCommand(
-  label: string,
-  compute: (library: WorkspaceLibrary) => WorkspaceLibrary,
-): Command<KeydistAssets> {
+function workspacesCommand(label: string, compute: (library: WorkspaceLibrary) => WorkspaceLibrary): Command<KeydistAssets> {
   return (current) => {
     const next = compute(current.workspaces);
     if (next === current.workspaces) return { kind: 'no-op' };
@@ -68,11 +65,7 @@ export function createWorkspaceCommand(id: string, name?: string): Command<Keydi
  * 対象の組み立て（個別画面の選択のどこをWorkspaceの最初の組へ写すか）を1か所に持つ。
  * 同じidのWorkspaceが既にあれば`undefined`。
  */
-function createWorkspaceFromAssets(
-  current: KeydistAssets,
-  id: string,
-  name?: string,
-): ReturnType<typeof createWorkspace> | undefined {
+function createWorkspaceFromAssets(current: KeydistAssets, id: string, name?: string): ReturnType<typeof createWorkspace> | undefined {
   const library = current.workspaces;
   if (library.some((workspace) => workspace.id === id)) return undefined;
   const selection = current.multiTargetSelection;
@@ -140,11 +133,7 @@ function standalonePane(workspace: Workspace, source: PaneFromStandalone, groupI
  * 解析設定は個別画面のものを写す。対象は写さず、Workspaceの「ペインを追加」と同じく最初の連動の組に従わせる
  * （そのWorkspaceで比べている対象を、追加で黙って書き換えないため）。Workspaceが無ければ何もしない。
  */
-export function addStandalonePaneToWorkspaceCommand(
-  workspaceId: string,
-  source: PaneFromStandalone,
-  size: GridSize,
-): Command<KeydistAssets> {
+export function addStandalonePaneToWorkspaceCommand(workspaceId: string, source: PaneFromStandalone, size: GridSize): Command<KeydistAssets> {
   return (current) => {
     const workspace = current.workspaces.find((candidate) => candidate.id === workspaceId);
     const group = workspace?.groups[0];
@@ -160,11 +149,7 @@ export function addStandalonePaneToWorkspaceCommand(
  * 新しいWorkspaceを作り、個別画面で見ていたAnalyzerをペインとして足す。作成と追加は1回の操作で、Undoも1回で戻る。
  * Workspaceの最初の対象は、`createWorkspaceCommand`と同じく個別画面で今選んでいる対象を写す。
  */
-export function addStandalonePaneToNewWorkspaceCommand(
-  workspaceId: string,
-  source: PaneFromStandalone,
-  size: GridSize,
-): Command<KeydistAssets> {
+export function addStandalonePaneToNewWorkspaceCommand(workspaceId: string, source: PaneFromStandalone, size: GridSize): Command<KeydistAssets> {
   return (current) => {
     const created = createWorkspaceFromAssets(current, workspaceId);
     if (created === undefined) return { kind: 'no-op' };
@@ -204,12 +189,7 @@ export function restoreWorkspaceCommand(workspace: Workspace, index: number): Co
  * 呼び出し側が渡す。置き場所は`range`（面の見えている列の範囲。省略時は左端から24列）の中の空いている最初の場所で、
  * 他のペインの大きさ・位置は変わらない。
  */
-export function addWorkspacePaneCommand(
-  workspaceId: string,
-  pane: WorkspacePane,
-  size: GridSize,
-  range?: GridColumnRange,
-): Command<KeydistAssets> {
+export function addWorkspacePaneCommand(workspaceId: string, pane: WorkspacePane, size: GridSize, range?: GridColumnRange): Command<KeydistAssets> {
   return workspacesCommand('ペインを追加する', (library) => addWorkspacePane(library, workspaceId, pane, size, range));
 }
 
@@ -219,46 +199,25 @@ export function closeWorkspacePaneCommand(workspaceId: string, paneId: string): 
 }
 
 /** ペインを複製する。解析設定と対象を写し、元のペインと同じ大きさで、`range`の中の隣（右、無ければ真下）に置く。 */
-export function duplicateWorkspacePaneCommand(
-  workspaceId: string,
-  paneId: string,
-  newPaneId: string,
-  range?: GridColumnRange,
-): Command<KeydistAssets> {
+export function duplicateWorkspacePaneCommand(workspaceId: string, paneId: string, newPaneId: string, range?: GridColumnRange): Command<KeydistAssets> {
   return workspacesCommand('ペインを複製する', (library) => duplicateWorkspacePane(library, workspaceId, paneId, newPaneId, range));
 }
 
 /** ペインの解析設定を書き換える。`undefined`は一度も変えていない状態（Analyzerの既定値）へ戻す。 */
-export function setWorkspacePaneOptionsCommand(
-  workspaceId: string,
-  paneId: string,
-  options: unknown,
-): Command<KeydistAssets> {
-  return workspacesCommand('解析設定を変更する', (library) => (
-    withWorkspacePaneOptions(library, workspaceId, paneId, options)
-  ));
+export function setWorkspacePaneOptionsCommand(workspaceId: string, paneId: string, options: unknown): Command<KeydistAssets> {
+  return workspacesCommand('解析設定を変更する', (library) => withWorkspacePaneOptions(library, workspaceId, paneId, options));
 }
 
 /**
  * ペインの解析設定の持ち方（共有に従う / このペインだけ）を切り替える。切り替えは1回の操作で、Undoも1回で戻る。
  * 中身の写し方は`withWorkspacePaneOptionsBinding`。
  */
-export function setWorkspacePaneOptionsBindingCommand(
-  workspaceId: string,
-  paneId: string,
-  choice: PaneOptionsChoice,
-): Command<KeydistAssets> {
-  return workspacesCommand('解析設定の持ち方を切り替える', (library) => (
-    withWorkspacePaneOptionsBinding(library, workspaceId, paneId, choice)
-  ));
+export function setWorkspacePaneOptionsBindingCommand(workspaceId: string, paneId: string, choice: PaneOptionsChoice): Command<KeydistAssets> {
+  return workspacesCommand('解析設定の持ち方を切り替える', (library) => withWorkspacePaneOptionsBinding(library, workspaceId, paneId, choice));
 }
 
 /** ペインの対象の持ち方（従う / 固定とその対象）を書き換える。 */
-export function setWorkspacePaneBindingCommand(
-  workspaceId: string,
-  paneId: string,
-  binding: PaneTargetBinding,
-): Command<KeydistAssets> {
+export function setWorkspacePaneBindingCommand(workspaceId: string, paneId: string, binding: PaneTargetBinding): Command<KeydistAssets> {
   return workspacesCommand('対象を選ぶ', (library) => withWorkspacePaneBinding(library, workspaceId, paneId, binding));
 }
 
@@ -280,9 +239,7 @@ export function linkWorkspacePaneToNewGroupCommand(
   newGroupId: string,
   current: WorkspacePaneTarget,
 ): Command<KeydistAssets> {
-  return workspacesCommand('新しい連動の組へ移す', (library) => (
-    withPaneInNewLinkGroup(library, workspaceId, paneId, newGroupId, current)
-  ));
+  return workspacesCommand('新しい連動の組へ移す', (library) => withPaneInNewLinkGroup(library, workspaceId, paneId, newGroupId, current));
 }
 
 /** ペインの並び（ドラッグ・大きさの変更の結果）を書き換える。 */
@@ -292,8 +249,5 @@ export function setWorkspaceGridCommand(workspaceId: string, grid: WorkspaceGrid
 
 /** 「空いた所に詰める」を切り替える。並びは書き換えない（`withWorkspaceCompactPanes`）。元に戻すも1回で戻る。 */
 export function setWorkspaceCompactPanesCommand(workspaceId: string, compact: boolean): Command<KeydistAssets> {
-  return workspacesCommand(
-    compact ? '空いた所に詰める' : '空いた所を詰めない',
-    (library) => withWorkspaceCompactPanes(library, workspaceId, compact),
-  );
+  return workspacesCommand(compact ? '空いた所に詰める' : '空いた所を詰めない', (library) => withWorkspaceCompactPanes(library, workspaceId, compact));
 }

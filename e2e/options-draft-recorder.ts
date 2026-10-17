@@ -11,24 +11,27 @@ export async function recordControlStates(
   seed: { readonly storageKey: string; readonly storageValue: string },
   control: { readonly selector: string; readonly read: 'value' | 'checked' },
 ): Promise<void> {
-  await page.addInitScript(({ seed, control }) => {
-    localStorage.setItem(seed.storageKey, seed.storageValue);
-    const states: string[] = [];
-    (window as unknown as { __controlStates: string[] }).__controlStates = states;
-    const record = () => {
-      const element = document.querySelector<HTMLInputElement | HTMLSelectElement>(control.selector);
-      if (element === null) return;
-      const value = control.read === 'checked' ? String((element as HTMLInputElement).checked) : element.value;
-      const state = `${element.matches(':disabled') ? 'disabled' : 'enabled'}:${value}`;
-      if (states[states.length - 1] !== state) states.push(state);
-    };
-    new MutationObserver(record).observe(document, { subtree: true, childList: true, attributes: true, characterData: true });
-    const everyFrame = () => {
-      record();
+  await page.addInitScript(
+    ({ seed, control }) => {
+      localStorage.setItem(seed.storageKey, seed.storageValue);
+      const states: string[] = [];
+      (window as unknown as { __controlStates: string[] }).__controlStates = states;
+      const record = () => {
+        const element = document.querySelector<HTMLInputElement | HTMLSelectElement>(control.selector);
+        if (element === null) return;
+        const value = control.read === 'checked' ? String((element as HTMLInputElement).checked) : element.value;
+        const state = `${element.matches(':disabled') ? 'disabled' : 'enabled'}:${value}`;
+        if (states[states.length - 1] !== state) states.push(state);
+      };
+      new MutationObserver(record).observe(document, { subtree: true, childList: true, attributes: true, characterData: true });
+      const everyFrame = () => {
+        record();
+        requestAnimationFrame(everyFrame);
+      };
       requestAnimationFrame(everyFrame);
-    };
-    requestAnimationFrame(everyFrame);
-  }, { seed, control });
+    },
+    { seed, control },
+  );
 }
 
 /** 記録のうち、操作可能だった間に表示された値だけを順に返す。 */

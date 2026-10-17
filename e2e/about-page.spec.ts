@@ -13,15 +13,19 @@ test('サイドバーから計算方法のページを開け、仕様書とリ�
   await expect(page.getByRole('img', { name: /「ぬいぐるみ」（訓令式のnuigurumi）の最初の3打鍵/ })).toBeVisible();
 
   // 外部リンクは別タブで開くので、遷移せずリンク先だけ確かめる
-  await expect(sidebar.getByRole('link', { name: '距離モデルの仕様書' }))
-    .toHaveAttribute('href', 'https://github.com/tokiokashi/keydist/blob/main/spec/distance-model.md');
-  await expect(sidebar.getByRole('link', { name: '再生時間モデルの仕様書' }))
-    .toHaveAttribute('href', 'https://github.com/tokiokashi/keydist/blob/main/spec/playback-timing.md');
-  await expect(sidebar.getByRole('link', { name: '構造解析モデルの仕様' }))
-    .toHaveAttribute('href', 'https://github.com/tokiokashi/keydist/blob/main/spec/distance-model.md#10-任意時点の指位置');
+  await expect(sidebar.getByRole('link', { name: '距離モデルの仕様書' })).toHaveAttribute(
+    'href',
+    'https://github.com/tokiokashi/keydist/blob/main/spec/distance-model.md',
+  );
+  await expect(sidebar.getByRole('link', { name: '再生時間モデルの仕様書' })).toHaveAttribute(
+    'href',
+    'https://github.com/tokiokashi/keydist/blob/main/spec/playback-timing.md',
+  );
+  await expect(sidebar.getByRole('link', { name: '構造解析モデルの仕様' })).toHaveAttribute(
+    'href',
+    'https://github.com/tokiokashi/keydist/blob/main/spec/distance-model.md#10-任意時点の指位置',
+  );
   await expect(page.locator('.about').getByRole('link', { name: '構造解析モデルの仕様' })).toBeVisible();
-  await expect(sidebar.getByRole('link', { name: 'GitHub', exact: true }))
-    .toHaveAttribute('href', 'https://github.com/tokiokashi/keydist');
-  await expect(page.locator('.about').getByRole('link', { name: 'GitHubのリポジトリ' }))
-    .toHaveAttribute('href', 'https://github.com/tokiokashi/keydist');
+  await expect(sidebar.getByRole('link', { name: 'GitHub', exact: true })).toHaveAttribute('href', 'https://github.com/tokiokashi/keydist');
+  await expect(page.locator('.about').getByRole('link', { name: 'GitHubのリポジトリ' })).toHaveAttribute('href', 'https://github.com/tokiokashi/keydist');
 });

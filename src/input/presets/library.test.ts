@@ -1,14 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import {
-  addPreset,
-  appendImportedPresets,
-  deletePreset,
-  emptyPresetLibrary,
-  renamePreset,
-  uniquePresetName,
-  type PresetLibrary,
-} from './index.ts';
+import { addPreset, appendImportedPresets, deletePreset, emptyPresetLibrary, renamePreset, uniquePresetName, type PresetLibrary } from './index.ts';
 
 type V = { readonly a: number; readonly b: boolean };
 
@@ -75,7 +67,10 @@ test('appendImportedPresets: 新しいidで足し、同名は番号を付ける�
     ],
     generateId,
   );
-  assert.deepEqual(result.presets.map((preset) => preset.name), ['厳しめ', '厳しめ 2', '厳しめ 3', '緩め']);
+  assert.deepEqual(
+    result.presets.map((preset) => preset.name),
+    ['厳しめ', '厳しめ 2', '厳しめ 3', '緩め'],
+  );
   // 既存は上書きしない
   assert.deepEqual(result.presets[0], existing.presets[0]);
   // idは付け直す（重ならない）

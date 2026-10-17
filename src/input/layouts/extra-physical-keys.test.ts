@@ -12,13 +12,8 @@ import {
 } from '../shapes/geometry.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { fromKana, LAYOUT_BY_ID } from './index.ts';
-import {
-  browserCodeToPhysicalKey,
-} from '#tester/browser-keyboard-adapter.ts';
-import {
-  physicalKeysUsedByLayout,
-  visibleGeometryKeys,
-} from './physical-keys.ts';
+import { browserCodeToPhysicalKey } from '#tester/browser-keyboard-adapter.ts';
+import { physicalKeysUsedByLayout, visibleGeometryKeys } from './physical-keys.ts';
 
 const shape: PhysicalShape = {
   ...structuredClone(PHYSICAL_SHAPES['row-staggered']),
@@ -44,15 +39,12 @@ const assignment: FingerAssignment = makeFingerAssignment(
 test('grid外physical keyはshape座標とFingerAssignmentを分離したままgeometryへ入る', () => {
   const geometry = buildGeometry(shape, assignment);
 
-  assert.deepEqual(
-    geometry.keys.get('tab'),
-    { id: 'tab', row: 1, col: -1, x: -1, y: 1, finger: 'LP', width: 1.5 },
+  assert.deepEqual(geometry.keys.get('tab'), { id: 'tab', row: 1, col: -1, x: -1, y: 1, finger: 'LP', width: 1.5 });
+  assert.deepEqual(geometry.keys.get('escape'), { id: 'escape', row: 0, col: -1, x: -1, y: 0, finger: 'LP' });
+  assert.equal(
+    geometry.grid.flat().some((key) => key.id === 'tab'),
+    false,
   );
-  assert.deepEqual(
-    geometry.keys.get('escape'),
-    { id: 'escape', row: 0, col: -1, x: -1, y: 0, finger: 'LP' },
-  );
-  assert.equal(geometry.grid.flat().some((key) => key.id === 'tab'), false);
 });
 
 test('grid外physical keyを使うdirect inputはgenerateTraceとmetricsへ流れる', () => {
@@ -95,7 +87,6 @@ test('layout ownershipはcanonical inputに実際に含まれるphysical keyか�
   assert.equal(physicalKeysUsedByLayout(extra).has('escape'), true);
 });
 
-
 test('grid外physical keyは使うlayoutだけheatmap/playback表示対象になる', () => {
   const geometry = buildGeometry(shape, assignment);
   const regular = LAYOUT_BY_ID.get('qwerty')!;
@@ -103,10 +94,22 @@ test('grid外physical keyは使うlayoutだけheatmap/playback表示対象にな
     よ: [['tab']],
   });
 
-  assert.equal(visibleGeometryKeys(regular, geometry).some((key) => key.id === 'tab'), false);
-  assert.equal(visibleGeometryKeys(regular, geometry).some((key) => key.id === 'escape'), false);
-  assert.equal(visibleGeometryKeys(extra, geometry).some((key) => key.id === 'tab'), true);
-  assert.equal(visibleGeometryKeys(extra, geometry).some((key) => key.id === 'escape'), false);
+  assert.equal(
+    visibleGeometryKeys(regular, geometry).some((key) => key.id === 'tab'),
+    false,
+  );
+  assert.equal(
+    visibleGeometryKeys(regular, geometry).some((key) => key.id === 'escape'),
+    false,
+  );
+  assert.equal(
+    visibleGeometryKeys(extra, geometry).some((key) => key.id === 'tab'),
+    true,
+  );
+  assert.equal(
+    visibleGeometryKeys(extra, geometry).some((key) => key.id === 'escape'),
+    false,
+  );
 });
 
 test('extra key idはcanonical physical identityでなければならない', () => {
@@ -130,7 +133,6 @@ test('extra key idはgrid・thumb・extra内で重複できない', () => {
   };
   assert.throws(() => buildGeometry(duplicateThumb, assignment), /重複/);
 });
-
 
 test('browser physical keyをTypingInputEngineまで通してgrid外direct inputを認識できる', () => {
   const layout = fromKana('extra-key-runtime', 'Extra key runtime', {

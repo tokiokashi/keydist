@@ -23,7 +23,5 @@ interface CascadeContextBase {
  * `setupId` 省略時はSetupレベルの上書きを一切見ない。配列対象はSetupレベルを持たないので、
  * 型の上でも `setupId` を持てない。
  */
-export type CascadeContext = CascadeContextBase & (
-  | { readonly targetKind: 'layout'; readonly setupId?: undefined }
-  | { readonly targetKind: 'setup'; readonly setupId?: string }
-);
+export type CascadeContext = CascadeContextBase &
+  ({ readonly targetKind: 'layout'; readonly setupId?: undefined } | { readonly targetKind: 'setup'; readonly setupId?: string });

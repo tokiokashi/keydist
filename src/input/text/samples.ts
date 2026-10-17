@@ -37,9 +37,7 @@ const FALLBACK_SAMPLE_ID: Record<TextLanguage, string> = {
 };
 
 export function sampleText(language: TextLanguage, sampleId: string): string {
-  return SAMPLE_TEXTS[language][sampleId]
-    ?? SAMPLE_TEXTS[language][FALLBACK_SAMPLE_ID[language]]
-    ?? '';
+  return SAMPLE_TEXTS[language][sampleId] ?? SAMPLE_TEXTS[language][FALLBACK_SAMPLE_ID[language]] ?? '';
 }
 
 /** サンプル選択UI向けに1件ずつ平らにした形（`{language, sampleId}`をUIの選択値に使う）。 */
@@ -63,5 +61,6 @@ export function sampleTextEntries(): readonly SampleTextEntry[] {
       sampleId,
       name: SAMPLE_TEXT_NAMES[language][sampleId] ?? sampleId,
       text: SAMPLE_TEXTS[language][sampleId]!,
-    })));
+    })),
+  );
 }

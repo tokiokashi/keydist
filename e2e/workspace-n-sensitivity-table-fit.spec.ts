@@ -10,8 +10,22 @@ import { settleGrid } from './settle-helper.ts';
 
 const QWERTY = { kind: 'layout', layoutId: 'qwerty' };
 const LAYOUT_IDS_MANY = [
-  'qwerty', 'dvorak', 'colemak', 'colemak-dh', 'workman', 'oonishi', 'naginata-v18', 'nicola', 'shin-koume', 'asuka',
-  'shin-jis-prefix', 'shin-jis-simultaneous', 'shingeta', 'tsuki-2-263', 'kawasemi-plus', 'oonishi-custom',
+  'qwerty',
+  'dvorak',
+  'colemak',
+  'colemak-dh',
+  'workman',
+  'oonishi',
+  'naginata-v18',
+  'nicola',
+  'shin-koume',
+  'asuka',
+  'shin-jis-prefix',
+  'shin-jis-simultaneous',
+  'shingeta',
+  'tsuki-2-263',
+  'kawasemi-plus',
+  'oonishi-custom',
 ];
 const setOf = (ids: readonly string[]) => ({
   kind: 'set',
@@ -30,9 +44,12 @@ const threePanes = (nsensPane: unknown, rows = 22) => ({
 });
 
 async function seed(page: Page, panes: readonly unknown[], grid: unknown) {
-  await page.addInitScript((value) => {
-    localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
-  }, { id: 'fit', name: '収まりの確認', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes, grid });
+  await page.addInitScript(
+    (value) => {
+      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
+    },
+    { id: 'fit', name: '収まりの確認', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes, grid },
+  );
 }
 
 async function openWorkspace(page: Page, panes: readonly unknown[], grid: unknown, size: { width: number; height: number }, seriesCount = 2) {
@@ -42,11 +59,18 @@ async function openWorkspace(page: Page, panes: readonly unknown[], grid: unknow
   await waitForHydration(page);
   await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(seriesCount, { timeout: 15_000 });
   // 図の大きさが領域の実寸に合うまで待つ
-  await expect.poll(() => page.locator('.n-sensitivity-svg').first().evaluate((svg) => {
-    const box = svg.getBoundingClientRect();
-    const [, , w, h] = svg.getAttribute('viewBox')!.split(' ').map(Number);
-    return Math.abs(box.width - w!) < 1.5 && Math.abs(box.height - h!) < 1.5;
-  })).toBe(true);
+  await expect
+    .poll(() =>
+      page
+        .locator('.n-sensitivity-svg')
+        .first()
+        .evaluate((svg) => {
+          const box = svg.getBoundingClientRect();
+          const [, , w, h] = svg.getAttribute('viewBox')!.split(' ').map(Number);
+          return Math.abs(box.width - w!) < 1.5 && Math.abs(box.height - h!) < 1.5;
+        }),
+    )
+    .toBe(true);
 }
 
 /** N感度のペインの右下の角をつかんで、`dy`（画素）だけ縦に動かす。 */
@@ -107,17 +131,20 @@ test('判定の境目の高さでも、開閉と図の描画は振動せず、�
   for (let rows = 22; rows >= 11; rows -= 1) {
     const { panes, grid } = threePanes(nsens2, rows);
     await openWorkspace(page, panes, grid, { width: 1440, height: 900 });
-    const frames = await page.evaluate(() => new Promise<string[]>((resolve) => {
-      const out: string[] = [];
-      const tick = () => {
-        const svg = document.querySelector('.n-sensitivity-svg')!;
-        const details = document.querySelector('details.n-sensitivity-table-details') as HTMLDetailsElement;
-        out.push(`${details.open}|${svg.getAttribute('viewBox')}|${(svg.parentElement as HTMLElement).clientHeight}`);
-        if (out.length >= 30) resolve(out);
-        else setTimeout(tick, 16);
-      };
-      setTimeout(tick, 16);
-    }));
+    const frames = await page.evaluate(
+      () =>
+        new Promise<string[]>((resolve) => {
+          const out: string[] = [];
+          const tick = () => {
+            const svg = document.querySelector('.n-sensitivity-svg')!;
+            const details = document.querySelector('details.n-sensitivity-table-details') as HTMLDetailsElement;
+            out.push(`${details.open}|${svg.getAttribute('viewBox')}|${(svg.parentElement as HTMLElement).clientHeight}`);
+            if (out.length >= 30) resolve(out);
+            else setTimeout(tick, 16);
+          };
+          setTimeout(tick, 16);
+        }),
+    );
     expect(new Set(frames).size, `${rows}行: ${frames[0]} / ${frames[frames.length - 1]}`).toBe(1);
     const open = frames[0]!.startsWith('true');
     states.add(open);

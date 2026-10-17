@@ -24,8 +24,8 @@ function measure(layout: Layout, text: string) {
 
 const shiftPathsOf = (layout: Layout, output: string) =>
   (layout.canonicalInputs.get(output) ?? []).filter((alternative) =>
-    alternative.baseRealizations.some((realization) =>
-      (realization.defaultTriggerKeys?.length ?? 0) > 0));
+    alternative.baseRealizations.some((realization) => (realization.defaultTriggerKeys?.length ?? 0) > 0),
+  );
 
 test('組み込みのqwertyと同じ段の自作配列は、大文字と記号を含む文でも組み込みと同じ数値になる', () => {
   const builtin = measure(ENGLISH_QWERTY, SAMPLE);

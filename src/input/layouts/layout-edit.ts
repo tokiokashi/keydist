@@ -12,8 +12,7 @@ import { ROW_LABELS, ROW_LIMITS, toLayout, validate, type UserLayout } from './u
 
 export const USER_LAYOUT_ID_PREFIX = 'user-';
 
-export const newUserLayoutId = (): string =>
-  `${USER_LAYOUT_ID_PREFIX}${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+export const newUserLayoutId = (): string => `${USER_LAYOUT_ID_PREFIX}${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
 /** 配列の中身（idを除く）。画面の入力欄がそのまま持つ形。 */
 export interface UserLayoutContent {
@@ -77,14 +76,14 @@ export interface LayoutProblem {
 }
 
 /** 数字段が空ならQWERTYのものを使う（`toLayout`と同じ）。 */
-const effectiveRows = (rows: readonly string[]): string[] =>
-  rows.map((row, index) => (row === '' ? QWERTY_LEGEND[index] : row));
+const effectiveRows = (rows: readonly string[]): string[] => rows.map((row, index) => (row === '' ? QWERTY_LEGEND[index] : row));
 
 /** 段に置いた文字と、それが載るキーのid・段。 */
 export function placedKeys(rows: readonly string[]): { readonly char: string; readonly keyId: string; readonly row: number }[] {
   // 段の中の空白はキーを置かない（列の位置だけ進む）。`fromRows`と同じ
   return effectiveRows(rows).flatMap((row, rowIndex) =>
-    [...row].flatMap((char, col) => char === ' ' ? [] : [{ char, keyId: keyId(rowIndex, col), row: rowIndex }]));
+    [...row].flatMap((char, col) => (char === ' ' ? [] : [{ char, keyId: keyId(rowIndex, col), row: rowIndex }])),
+  );
 }
 
 function definitionOf(id: string, content: UserLayoutContent): UserLayout {
@@ -142,9 +141,7 @@ export function layoutProblems(
         message: `${FINGER_LABEL[finger]}のホームキー「${physicalKeyDisplayLabel(key)}」は、段に無いキーです`,
       });
     } else if (key !== undefined && fingerAssignments !== undefined) {
-      const ignoring = fingerAssignments.filter(
-        (assignment) => assignmentHasKey(assignment, key) && !homeKeyOverrideApplies(assignment, finger, key),
-      );
+      const ignoring = fingerAssignments.filter((assignment) => assignmentHasKey(assignment, key) && !homeKeyOverrideApplies(assignment, finger, key));
       if (ignoring.length > 0) {
         const names = ignoring.map((assignment) => `「${assignment.name}」`).join('');
         problems.push({
@@ -177,7 +174,12 @@ export function layoutProblems(
     });
   }
 
-  if (knownRomajiRuleIds !== undefined && normalized.romaji !== undefined && !isBuiltin(normalized.romaji) && !knownRomajiRuleIds.has(normalized.romaji)) {
+  if (
+    knownRomajiRuleIds !== undefined &&
+    normalized.romaji !== undefined &&
+    !isBuiltin(normalized.romaji) &&
+    !knownRomajiRuleIds.has(normalized.romaji)
+  ) {
     problems.push({
       severity: 'warning',
       field: { kind: 'romaji' },
@@ -188,12 +190,9 @@ export function layoutProblems(
 }
 
 /** 保存できない不備があるか。 */
-export const hasBlockingProblem = (problems: readonly LayoutProblem[]): boolean =>
-  problems.some((problem) => problem.severity === 'error');
+export const hasBlockingProblem = (problems: readonly LayoutProblem[]): boolean => problems.some((problem) => problem.severity === 'error');
 
-export type UserLayoutEditResult =
-  | { readonly ok: true; readonly layouts: readonly UserLayout[] }
-  | { readonly ok: false; readonly reason: string };
+export type UserLayoutEditResult = { readonly ok: true; readonly layouts: readonly UserLayout[] } | { readonly ok: false; readonly reason: string };
 
 /** 保存できない不備の文。`validate()`が弾くものは`layoutProblems`も弾くが、保存の入口で二重に守る。 */
 function blockingReason(content: UserLayoutContent): string | undefined {
@@ -206,11 +205,7 @@ function blockingReason(content: UserLayoutContent): string | undefined {
 }
 
 /** 新規作成。保存できない不備があれば何もせず理由を返す。 */
-export function createUserLayout(
-  layouts: readonly UserLayout[],
-  generateId: () => string,
-  content: UserLayoutContent,
-): UserLayoutEditResult {
+export function createUserLayout(layouts: readonly UserLayout[], generateId: () => string, content: UserLayoutContent): UserLayoutEditResult {
   const reason = blockingReason(content);
   if (reason !== undefined) return { ok: false, reason };
   return { ok: true, layouts: [...layouts, definitionOf(generateId(), normalizeContent(content))] };
@@ -220,11 +215,7 @@ export function createUserLayout(
  * 中身の書き換え。idは変えない。対象が無い、または中身が変わらない時は同じ参照を返す。
  * 取り込み形式の配列と、保存できない不備のある入力は理由を返す。
  */
-export function updateUserLayout(
-  layouts: readonly UserLayout[],
-  id: string,
-  content: UserLayoutContent,
-): UserLayoutEditResult {
+export function updateUserLayout(layouts: readonly UserLayout[], id: string, content: UserLayoutContent): UserLayoutEditResult {
   const target = layouts.find((layout) => layout.id === id);
   if (target === undefined) return { ok: true, layouts };
   if (!isEditableUserLayout(target)) return { ok: false, reason: '取り込み形式の配列は、段の文字だけでは直せません' };
@@ -232,5 +223,5 @@ export function updateUserLayout(
   if (reason !== undefined) return { ok: false, reason };
   const next = definitionOf(id, normalizeContent(content));
   if (JSON.stringify(next) === JSON.stringify(target)) return { ok: true, layouts };
-  return { ok: true, layouts: layouts.map((layout) => layout.id === id ? next : layout) };
+  return { ok: true, layouts: layouts.map((layout) => (layout.id === id ? next : layout)) };
 }

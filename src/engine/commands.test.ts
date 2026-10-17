@@ -102,11 +102,7 @@ test('setCascadeOverrideCommand: 既に同じ値が入っているレベルへ�
   assert.equal(first.outcome.kind, 'applied');
   assert.equal(first.history.undoStack.length, 1);
 
-  const second = applyCommand(
-    first.assets,
-    first.history,
-    setCascadeOverrideCommand({ kind: 'global' }, 'windowSize', 5),
-  );
+  const second = applyCommand(first.assets, first.history, setCascadeOverrideCommand({ kind: 'global' }, 'windowSize', 5));
   assert.equal(second.outcome.kind, 'no-op');
   assert.equal(second.history.undoStack.length, 1, '2回目の同じ値の書き込みは履歴に積まれない');
   assert.equal(second.assets, first.assets);
@@ -153,11 +149,7 @@ test('resetCascadeItemCommand / resetCascadeLevelCommand: 実際に上書きが�
   const step1 = applyCommand(assets, history, setCascadeOverrideCommand({ kind: 'global' }, 'windowSize', 5));
   assets = step1.assets;
   history = step1.history;
-  const step2 = applyCommand(
-    assets,
-    history,
-    setCascadeOverrideCommand({ kind: 'global' }, 'sfbHomeCost', false),
-  );
+  const step2 = applyCommand(assets, history, setCascadeOverrideCommand({ kind: 'global' }, 'sfbHomeCost', false));
   assets = step2.assets;
   history = step2.history;
 
@@ -202,11 +194,7 @@ test('deleteSetupCommand: Setup削除はSetup本体とそのSetup固有の上書
   history = created.history;
   const setupId = assets.setupLibrary.setups[0]!.id;
 
-  const overridden = applyCommand(
-    assets,
-    history,
-    setCascadeOverrideCommand({ kind: 'setup', setupId }, 'windowSize', 4),
-  );
+  const overridden = applyCommand(assets, history, setCascadeOverrideCommand({ kind: 'setup', setupId }, 'windowSize', 4));
   assets = overridden.assets;
   history = overridden.history;
   assert.equal(assets.setupLibrary.overrides.setup?.[setupId]?.windowSize, 4);
@@ -243,11 +231,7 @@ test('relabelSetupCommand: 同じラベルへの付け直しはno-op', () => {
   const relabeledSame = applyCommand(created.assets, created.history, relabelSetupCommand(setupId, 'メイン'));
   assert.equal(relabeledSame.outcome.kind, 'no-op');
 
-  const relabeledDifferent = applyCommand(
-    created.assets,
-    created.history,
-    relabelSetupCommand(setupId, '別名'),
-  );
+  const relabeledDifferent = applyCommand(created.assets, created.history, relabelSetupCommand(setupId, '別名'));
   assert.equal(relabeledDifferent.outcome.kind, 'applied');
   assert.equal(relabeledDifferent.assets.setupLibrary.setups[0]!.label, '別名');
 });
@@ -256,11 +240,7 @@ test('createFingerAssignmentCommand: 指割り当てを1件作成する。undo�
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();
 
-  const step = applyCommand(
-    assets,
-    history,
-    createFingerAssignmentCommand(generateFingerAssignmentId, DEFAULT_FINGER_ASSIGNMENT, 'マイ運指'),
-  );
+  const step = applyCommand(assets, history, createFingerAssignmentCommand(generateFingerAssignmentId, DEFAULT_FINGER_ASSIGNMENT, 'マイ運指'));
   assert.equal(step.outcome.kind, 'applied');
   assert.equal(step.assets.fingerAssignments.length, 1);
   assert.equal(step.assets.fingerAssignments[0]!.name, 'マイ運指');
@@ -284,18 +264,10 @@ test('duplicateFingerAssignmentCommand: 実在する指割り当てを複製す�
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();
 
-  const created = applyCommand(
-    assets,
-    history,
-    createFingerAssignmentCommand(generateFingerAssignmentId, DEFAULT_FINGER_ASSIGNMENT, '元'),
-  );
+  const created = applyCommand(assets, history, createFingerAssignmentCommand(generateFingerAssignmentId, DEFAULT_FINGER_ASSIGNMENT, '元'));
   const sourceId = created.assets.fingerAssignments[0]!.id;
 
-  const duplicated = applyCommand(
-    created.assets,
-    created.history,
-    duplicateFingerAssignmentCommand(sourceId, generateFingerAssignmentId),
-  );
+  const duplicated = applyCommand(created.assets, created.history, duplicateFingerAssignmentCommand(sourceId, generateFingerAssignmentId));
   assert.equal(duplicated.outcome.kind, 'applied');
   assert.equal(duplicated.assets.fingerAssignments.length, 2);
   assert.equal(duplicated.assets.fingerAssignments[1]!.name, '元のコピー');
@@ -316,20 +288,12 @@ test('deleteFingerAssignmentCommand: 削除後もそれを参照するカスケ�
   let assets = emptyAssets();
   let history = emptyCommandHistory<KeydistAssets>();
 
-  const created = applyCommand(
-    assets,
-    history,
-    createFingerAssignmentCommand(generateFingerAssignmentId, DEFAULT_FINGER_ASSIGNMENT),
-  );
+  const created = applyCommand(assets, history, createFingerAssignmentCommand(generateFingerAssignmentId, DEFAULT_FINGER_ASSIGNMENT));
   assets = created.assets;
   history = created.history;
   const assignmentId = assets.fingerAssignments[0]!.id;
 
-  const overridden = applyCommand(
-    assets,
-    history,
-    setCascadeOverrideCommand({ kind: 'global' }, 'fingerAssignmentId', assignmentId),
-  );
+  const overridden = applyCommand(assets, history, setCascadeOverrideCommand({ kind: 'global' }, 'fingerAssignmentId', assignmentId));
   assets = overridden.assets;
   history = overridden.history;
 
@@ -366,25 +330,13 @@ test('renameFingerAssignmentCommand: 同じ名前への変更はno-op', () => {
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();
 
-  const created = applyCommand(
-    assets,
-    history,
-    createFingerAssignmentCommand(generateFingerAssignmentId, DEFAULT_FINGER_ASSIGNMENT, 'マイ運指'),
-  );
+  const created = applyCommand(assets, history, createFingerAssignmentCommand(generateFingerAssignmentId, DEFAULT_FINGER_ASSIGNMENT, 'マイ運指'));
   const assignmentId = created.assets.fingerAssignments[0]!.id;
 
-  const renamedSame = applyCommand(
-    created.assets,
-    created.history,
-    renameFingerAssignmentCommand(assignmentId, 'マイ運指'),
-  );
+  const renamedSame = applyCommand(created.assets, created.history, renameFingerAssignmentCommand(assignmentId, 'マイ運指'));
   assert.equal(renamedSame.outcome.kind, 'no-op');
 
-  const renamedDifferent = applyCommand(
-    created.assets,
-    created.history,
-    renameFingerAssignmentCommand(assignmentId, '別名'),
-  );
+  const renamedDifferent = applyCommand(created.assets, created.history, renameFingerAssignmentCommand(assignmentId, '別名'));
   assert.equal(renamedDifferent.outcome.kind, 'applied');
   assert.equal(renamedDifferent.assets.fingerAssignments[0]!.name, '別名');
 });
@@ -482,11 +434,7 @@ test('setTextContentCommand: 同じテキストならno-op', () => {
   const history = emptyCommandHistory<KeydistAssets>();
   const initial = applyCommand(assets, history, setTextContentCommand('standalone', DEFAULT_TEXT_REF, 'hello world', generateTextId));
   const createdRef = initial.assets.standaloneTextSelection.ref;
-  const step = applyCommand(
-    initial.assets,
-    initial.history,
-    setTextContentCommand('standalone', createdRef, 'hello world', generateTextId),
-  );
+  const step = applyCommand(initial.assets, initial.history, setTextContentCommand('standalone', createdRef, 'hello world', generateTextId));
   assert.equal(step.outcome.kind, 'no-op');
 });
 
@@ -531,11 +479,7 @@ test('setTextContentCommand: ユーザーテキストへの書き込みは、適
   assert.deepEqual(selectedU2.assets.standaloneTextSelection.ref, u2Ref);
 
   // タブBのdebounce書き込みが今ここで適用される。選択は既にu2だが、渡すrefはu1のまま。
-  const step = applyCommand(
-    selectedU2.assets,
-    selectedU2.history,
-    setTextContentCommand('standalone', u1Ref, 'typed-in-B-for-u1', generateTextId),
-  );
+  const step = applyCommand(selectedU2.assets, selectedU2.history, setTextContentCommand('standalone', u1Ref, 'typed-in-B-for-u1', generateTextId));
 
   const u1 = step.assets.textLibrary.texts.find((text) => text.id === u1Ref.id)!;
   const u2 = step.assets.textLibrary.texts.find((text) => text.id === u2Ref.id)!;
@@ -565,18 +509,28 @@ test('setTextContentCommand: 組み込みを編集し、組み込みを選び直
   assert.deepEqual(reselected.assets.standaloneTextSelection.ref, DEFAULT_TEXT_REF);
   const second = applyCommand(reselected.assets, reselected.history, setTextContentCommand('standalone', DEFAULT_TEXT_REF, '同じ本文', generateTextId));
   assert.equal(second.outcome.kind, 'applied');
-  assert.deepEqual(second.assets.textLibrary.texts.map((entry) => entry.text), ['同じ本文', '同じ本文']);
+  assert.deepEqual(
+    second.assets.textLibrary.texts.map((entry) => entry.text),
+    ['同じ本文', '同じ本文'],
+  );
   assert.notEqual(second.assets.textLibrary.texts[0]!.id, second.assets.textLibrary.texts[1]!.id);
   assert.equal(second.assets.standaloneTextSelection.ref.id, second.assets.textLibrary.texts[1]!.id);
 });
 
 test('setTextContentCommand: 組み込みから自作へ移った後に3回続けて編集しても、自作テキストは1件のまま最後の本文になる', () => {
   nextTextId = 0;
-  let step = applyCommand(emptyAssets(), emptyCommandHistory<KeydistAssets>(), setTextContentCommand('standalone', DEFAULT_TEXT_REF, '1回目', generateTextId));
+  let step = applyCommand(
+    emptyAssets(),
+    emptyCommandHistory<KeydistAssets>(),
+    setTextContentCommand('standalone', DEFAULT_TEXT_REF, '1回目', generateTextId),
+  );
   for (const text of ['2回目', '3回目']) {
     step = applyCommand(step.assets, step.history, setTextContentCommand('standalone', step.assets.standaloneTextSelection.ref, text, generateTextId));
   }
-  assert.deepEqual(step.assets.textLibrary.texts.map((entry) => entry.text), ['3回目']);
+  assert.deepEqual(
+    step.assets.textLibrary.texts.map((entry) => entry.text),
+    ['3回目'],
+  );
   assert.deepEqual(step.assets.standaloneTextSelection.ref, { kind: 'user', id: step.assets.textLibrary.texts[0]!.id });
 });
 
@@ -592,13 +546,20 @@ test('duplicateTextCommand: 複製元と同じ本文で始まる自作テキス�
 
 test('deleteTextCommand: 編集して作られた自作テキストを削除すると、既定の組み込みへ戻り、元に戻すで本文ごと戻る', () => {
   nextTextId = 0;
-  const edited = applyCommand(emptyAssets(), emptyCommandHistory<KeydistAssets>(), setTextContentCommand('standalone', DEFAULT_TEXT_REF, '削除される予定のテキスト', generateTextId));
+  const edited = applyCommand(
+    emptyAssets(),
+    emptyCommandHistory<KeydistAssets>(),
+    setTextContentCommand('standalone', DEFAULT_TEXT_REF, '削除される予定のテキスト', generateTextId),
+  );
   const ref = edited.assets.standaloneTextSelection.ref;
   const deleted = applyCommand(edited.assets, edited.history, deleteTextCommand('standalone', ref.id));
   assert.equal(deleted.assets.textLibrary.texts.length, 0);
   assert.deepEqual(deleted.assets.standaloneTextSelection.ref, DEFAULT_TEXT_REF);
   const back = undo(deleted.assets, deleted.history);
-  assert.deepEqual(back.assets.textLibrary.texts.map((entry) => entry.text), ['削除される予定のテキスト']);
+  assert.deepEqual(
+    back.assets.textLibrary.texts.map((entry) => entry.text),
+    ['削除される予定のテキスト'],
+  );
   assert.deepEqual(back.assets.standaloneTextSelection.ref, ref);
 });
 
@@ -634,11 +595,7 @@ test('setTextLanguageOverrideCommand: ユーザーテキストへ手動上書き
   assert.equal(overridden.outcome.kind, 'applied');
   assert.equal(overridden.assets.textLibrary.texts[0]!.languageOverride, 'ja');
 
-  const retyped = applyCommand(
-    overridden.assets,
-    overridden.history,
-    setTextContentCommand('standalone', createdRef, '新しいテキスト', generateTextId),
-  );
+  const retyped = applyCommand(overridden.assets, overridden.history, setTextContentCommand('standalone', createdRef, '新しいテキスト', generateTextId));
   // ユーザーテキストの本文をその場で編集する場合、手動上書きはテキストに紐づいたまま残る
   // （組み込みからのcopy-on-writeとは違い、同じユーザーテキストを編集し続けているため）。
   assert.equal(retyped.assets.textLibrary.texts[0]!.languageOverride, 'ja');
@@ -665,11 +622,7 @@ test('setStandaloneAnalyzerOptionsCommand: 構造的に同じ値の書き込み�
   const history = emptyCommandHistory<KeydistAssets>();
 
   const step = applyCommand(assets, history, setStandaloneAnalyzerOptionsCommand('bigram-flow', { source: 'actual' }));
-  const again = applyCommand(
-    step.assets,
-    step.history,
-    setStandaloneAnalyzerOptionsCommand('bigram-flow', { source: 'actual' }),
-  );
+  const again = applyCommand(step.assets, step.history, setStandaloneAnalyzerOptionsCommand('bigram-flow', { source: 'actual' }));
   assert.equal(again.outcome.kind, 'no-op');
   assert.equal(again.history.undoStack.length, 1);
   assert.equal(again.assets, step.assets);
@@ -679,16 +632,8 @@ test('setStandaloneAnalyzerOptionsCommand: 別のAnalyzer idの設定は道連�
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();
 
-  const withHeatmap = applyCommand(
-    assets,
-    history,
-    setStandaloneAnalyzerOptionsCommand('heatmap', { colorScale: 'linear' }),
-  );
-  const withBoth = applyCommand(
-    withHeatmap.assets,
-    withHeatmap.history,
-    setStandaloneAnalyzerOptionsCommand('bigram-flow', { source: 'actual' }),
-  );
+  const withHeatmap = applyCommand(assets, history, setStandaloneAnalyzerOptionsCommand('heatmap', { colorScale: 'linear' }));
+  const withBoth = applyCommand(withHeatmap.assets, withHeatmap.history, setStandaloneAnalyzerOptionsCommand('bigram-flow', { source: 'actual' }));
   assert.deepEqual(withBoth.assets.standaloneAnalyzerOptions, {
     heatmap: { colorScale: 'linear' },
     'bigram-flow': { source: 'actual' },
@@ -733,18 +678,10 @@ test('setMultiBaselineCommand: 基準の設定・解除を書き込める（選�
   const history = emptyCommandHistory<KeydistAssets>();
 
   const withSelection = applyCommand(assets, history, setMultiTargetsCommand([TARGET_A, TARGET_B]));
-  const withBaseline = applyCommand(
-    withSelection.assets,
-    withSelection.history,
-    setMultiBaselineCommand(TARGET_A),
-  );
+  const withBaseline = applyCommand(withSelection.assets, withSelection.history, setMultiBaselineCommand(TARGET_A));
   assert.equal(withBaseline.assets.multiTargetSelection.baseline, TARGET_A);
 
-  const cleared = applyCommand(
-    withBaseline.assets,
-    withBaseline.history,
-    setMultiBaselineCommand(undefined),
-  );
+  const cleared = applyCommand(withBaseline.assets, withBaseline.history, setMultiBaselineCommand(undefined));
   assert.equal(cleared.assets.multiTargetSelection.baseline, undefined);
 });
 
@@ -753,11 +690,7 @@ test('setMultiBaselineCommand: 選択に含まれないSetupを基準にしよ�
   const history = emptyCommandHistory<KeydistAssets>();
 
   const withSelection = applyCommand(assets, history, setMultiTargetsCommand([TARGET_A, TARGET_B]));
-  const attempt = applyCommand(
-    withSelection.assets,
-    withSelection.history,
-    setMultiBaselineCommand(TARGET_NOT_SELECTED),
-  );
+  const attempt = applyCommand(withSelection.assets, withSelection.history, setMultiBaselineCommand(TARGET_NOT_SELECTED));
   assert.equal(attempt.outcome.kind, 'no-op');
 });
 
@@ -766,16 +699,8 @@ test('setMultiTargetsCommand: 基準に選んでいたSetupが選択から外れ
   const history = emptyCommandHistory<KeydistAssets>();
 
   const withSelection = applyCommand(assets, history, setMultiTargetsCommand([TARGET_A, TARGET_B]));
-  const withBaseline = applyCommand(
-    withSelection.assets,
-    withSelection.history,
-    setMultiBaselineCommand(TARGET_A),
-  );
-  const removed = applyCommand(
-    withBaseline.assets,
-    withBaseline.history,
-    setMultiTargetsCommand([TARGET_B]),
-  );
+  const withBaseline = applyCommand(withSelection.assets, withSelection.history, setMultiBaselineCommand(TARGET_A));
+  const removed = applyCommand(withBaseline.assets, withBaseline.history, setMultiTargetsCommand([TARGET_B]));
   assert.deepEqual(removed.assets.multiTargetSelection.targets, [TARGET_B]);
   assert.equal(effectiveMultiBaseline(removed.assets.multiTargetSelection), undefined);
   assert.equal(removed.assets.multiTargetSelection.baseline, TARGET_A);
@@ -826,11 +751,7 @@ test('setSingleTargetCommand: 同じ対象の書き込みはno-op', () => {
   const target: AnalysisTarget = { kind: 'layout', layoutId: 'colemak-dh' };
 
   const step = applyCommand(assets, history, setSingleTargetCommand(target));
-  const again = applyCommand(
-    step.assets,
-    step.history,
-    setSingleTargetCommand({ kind: 'layout', layoutId: 'colemak-dh' }),
-  );
+  const again = applyCommand(step.assets, step.history, setSingleTargetCommand({ kind: 'layout', layoutId: 'colemak-dh' }));
   assert.equal(again.outcome.kind, 'no-op');
   assert.equal(again.assets, step.assets);
 });
@@ -1000,20 +921,24 @@ test('共有リンクの取り込み: 片方が変化なしでも、もう片方
   const history = emptyCommandHistory<KeydistAssets>();
   const first = applyCommand(assets, history, setStandaloneAnalyzerOptionsCommand('comparison', { columns: 'x' }));
 
-  const onlyTargets = applyCommand(first.assets, first.history, composeCommands('取り込み', [
-    setStandaloneAnalyzerOptionsCommand('comparison', { columns: 'x' }),
-    setSingleTargetCommand(TARGET_A),
-  ]));
+  const onlyTargets = applyCommand(
+    first.assets,
+    first.history,
+    composeCommands('取り込み', [setStandaloneAnalyzerOptionsCommand('comparison', { columns: 'x' }), setSingleTargetCommand(TARGET_A)]),
+  );
   assert.equal(onlyTargets.history.undoStack.length, 2);
 
-  const nothing = applyCommand(onlyTargets.assets, onlyTargets.history, composeCommands('取り込み', [
-    setSingleTargetCommand(TARGET_A),
-  ]));
+  const nothing = applyCommand(onlyTargets.assets, onlyTargets.history, composeCommands('取り込み', [setSingleTargetCommand(TARGET_A)]));
   assert.equal(nothing.outcome.kind, 'no-op');
   assert.equal(nothing.history, onlyTargets.history);
 });
 
-const USER_LAYOUT_A = { id: 'user-a', name: 'A', rows: ['', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'] as [string, string, string, string], romaji: 'rule-a' };
+const USER_LAYOUT_A = {
+  id: 'user-a',
+  name: 'A',
+  rows: ['', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'] as [string, string, string, string],
+  romaji: 'rule-a',
+};
 const USER_LAYOUT_B = { ...USER_LAYOUT_A, id: 'user-b', name: 'B' };
 const USER_RULE_A = { id: 'rule-a', name: 'R', base: 'kunrei' as const, overrides: {}, generateSokuon: true };
 
@@ -1102,19 +1027,46 @@ test('setPersonalSpeedCommand: undefinedで破棄し、undoで保存値に戻る
 
 test('自作のローマ字規則のコマンド: 作成・複製・名前・中身を書き換え、undoで戻る。変化が無い書き換えと存在しないidはno-op', () => {
   const history = emptyCommandHistory<KeydistAssets>();
-  const created = applyCommand(emptyAssets(), history, createUserRomajiRuleCommand(() => 'romaji-1', '私の綴り', 'oonishi'));
+  const created = applyCommand(
+    emptyAssets(),
+    history,
+    createUserRomajiRuleCommand(() => 'romaji-1', '私の綴り', 'oonishi'),
+  );
   assert.deepEqual(created.assets.userRomajiRules, [{ id: 'romaji-1', name: '私の綴り', base: 'oonishi', overrides: {}, generateSokuon: true }]);
 
-  const edited = applyCommand(created.assets, created.history, setUserRomajiRuleContentCommand('romaji-1', { base: 'kunrei', overrides: { し: 'shi' }, generateSokuon: false }));
-  assert.deepEqual(edited.assets.userRomajiRules[0], { id: 'romaji-1', name: '私の綴り', base: 'kunrei', overrides: { し: 'shi' }, generateSokuon: false });
+  const edited = applyCommand(
+    created.assets,
+    created.history,
+    setUserRomajiRuleContentCommand('romaji-1', { base: 'kunrei', overrides: { し: 'shi' }, generateSokuon: false }),
+  );
+  assert.deepEqual(edited.assets.userRomajiRules[0], {
+    id: 'romaji-1',
+    name: '私の綴り',
+    base: 'kunrei',
+    overrides: { し: 'shi' },
+    generateSokuon: false,
+  });
 
   const renamed = applyCommand(edited.assets, edited.history, renameUserRomajiRuleCommand('romaji-1', '改名'));
-  const duplicated = applyCommand(renamed.assets, renamed.history, duplicateUserRomajiRuleCommand('romaji-1', () => 'romaji-2'));
-  assert.deepEqual(duplicated.assets.userRomajiRules.map((rule) => [rule.id, rule.name]), [['romaji-1', '改名'], ['romaji-2', '改名のコピー']]);
+  const duplicated = applyCommand(
+    renamed.assets,
+    renamed.history,
+    duplicateUserRomajiRuleCommand('romaji-1', () => 'romaji-2'),
+  );
+  assert.deepEqual(
+    duplicated.assets.userRomajiRules.map((rule) => [rule.id, rule.name]),
+    [
+      ['romaji-1', '改名'],
+      ['romaji-2', '改名のコピー'],
+    ],
+  );
   assert.notEqual(duplicated.assets.userRomajiRules[1]!.overrides, duplicated.assets.userRomajiRules[0]!.overrides);
 
   const back = undo(duplicated.assets, duplicated.history);
-  assert.deepEqual(back.assets.userRomajiRules.map((rule) => rule.name), ['改名']);
+  assert.deepEqual(
+    back.assets.userRomajiRules.map((rule) => rule.name),
+    ['改名'],
+  );
 
   const same = { base: 'kunrei' as const, overrides: { し: 'shi' }, generateSokuon: false };
   for (const command of [

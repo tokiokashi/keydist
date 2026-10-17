@@ -1,10 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  pressSentenceSessionKey,
-  startSentenceSession,
-  type SentenceSession,
-  type SentencePlan,
-} from '#interpretation/timing/sentence-session.ts';
+import { pressSentenceSessionKey, startSentenceSession, type SentenceSession, type SentencePlan } from '#interpretation/timing/sentence-session.ts';
 import { captureCalibrationKeys } from './key-capture.ts';
 
 export interface SentenceRunOptions {

@@ -20,10 +20,13 @@ function seedTargets(page: Page) {
 }
 
 async function box(page: Page, selector: string) {
-  return page.locator(selector).first().evaluate((el) => {
-    const b = el.getBoundingClientRect();
-    return { left: b.left, right: b.right, width: b.width };
-  });
+  return page
+    .locator(selector)
+    .first()
+    .evaluate((el) => {
+      const b = el.getBoundingClientRect();
+      return { left: b.left, right: b.right, width: b.width };
+    });
 }
 
 const cases = [
@@ -43,7 +46,7 @@ for (const { route, limit } of cases) {
     const body = await box(page, '.pane-body');
     expect(body.width).toBeLessThanOrEqual(limit * REM);
     const stage = await box(page, '.standalone-stage');
-    expect(Math.abs((frame.left - stage.left) - (stage.right - frame.right))).toBeLessThanOrEqual(2);
+    expect(Math.abs(frame.left - stage.left - (stage.right - frame.right))).toBeLessThanOrEqual(2);
   });
 
   test(`個別画面 ${route}: 推奨幅より狭い時は横スクロールを出さず、ペインの幅に縮む`, async ({ page }) => {
@@ -63,16 +66,21 @@ for (const { route, limit } of cases) {
 test('Workspaceのペイン: 広いペインでも中身は推奨幅で止まり、見出しは幅いっぱい', async ({ page }) => {
   await page.addInitScript((ids) => {
     const targets = ids.map((layoutId) => ({ kind: 'layout', layoutId }));
-    localStorage.setItem('keydist:workspaces', JSON.stringify({
-      version: 4,
-      workspaces: [{
-        id: 'seeded',
-        name: '幅の確認',
-        text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
-        panes: [{ id: 'p1', analyzerId: 'n-sensitivity', binding: { mode: 'fixed', target: { kind: 'set', selection: { targets } } } }],
-        grid: [{ id: 'p1', x: 0, y: 0, w: 24, h: 20 }],
-      }],
-    }));
+    localStorage.setItem(
+      'keydist:workspaces',
+      JSON.stringify({
+        version: 4,
+        workspaces: [
+          {
+            id: 'seeded',
+            name: '幅の確認',
+            text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+            panes: [{ id: 'p1', analyzerId: 'n-sensitivity', binding: { mode: 'fixed', target: { kind: 'set', selection: { targets } } } }],
+            grid: [{ id: 'p1', x: 0, y: 0, w: 24, h: 20 }],
+          },
+        ],
+      }),
+    );
   }, LAYOUTS);
   await page.setViewportSize({ width: 2560, height: 900 });
   await page.goto('/workspace/seeded');
@@ -84,5 +92,5 @@ test('Workspaceのペイン: 広いペインでも中身は推奨幅で止まり
   expect(frame.width).toBeGreaterThan(64 * REM + 200);
   expect(Math.round(body.width)).toBe(64 * REM);
   expect(Math.abs(header.width - frame.width)).toBeLessThanOrEqual(2);
-  expect(Math.abs((body.left - frame.left) - (frame.right - body.right))).toBeLessThanOrEqual(2);
+  expect(Math.abs(body.left - frame.left - (frame.right - body.right))).toBeLessThanOrEqual(2);
 });

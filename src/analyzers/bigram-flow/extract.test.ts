@@ -21,12 +21,7 @@ import {
 } from './bigram-vectors.ts';
 import { findOptionsKeyDisciplineViolations, findViewOptionsExtractionViolations } from '#analyzers/options.ts';
 import { nonStationaryVectors } from './options.ts';
-import {
-  bigramFlowDefinition,
-  computeBigramFlowExtraction,
-  type BigramFlowExtracted,
-  type BigramFlowFigures,
-} from './extract.ts';
+import { bigramFlowDefinition, computeBigramFlowExtraction, type BigramFlowExtracted, type BigramFlowFigures } from './extract.ts';
 import {
   ALTERNATE_BIGRAM_FLOW_OPTIONS,
   DEFAULT_BIGRAM_FLOW_OPTIONS,
@@ -51,13 +46,7 @@ const key = (id: string, finger: Finger, x: number, y = 2): Key => ({
   col: 0,
 });
 
-const press = (
-  finger: Finger,
-  id: string,
-  x: number,
-  y = 2,
-  target?: Point,
-): Press => ({
+const press = (finger: Finger, id: string, x: number, y = 2, target?: Point): Press => ({
   finger,
   keys: [key(id, finger, x, y)],
   target: target ?? { x, y },
@@ -120,11 +109,12 @@ function referenceExtraction(trace: Trace, options: BigramFlowOptions): BigramFl
   const vectors = buildBigramVectors(trace.strokes, options.source);
   const filtered = filterBigramVectors(vectors, options.selectedFingers);
   const aggregated = aggregateBigramVectors(filtered);
-  const analysisVectors = options.selectedFingers.length === 1
-    ? aggregateBigramVectors(vectors.filter((vector) =>
-      vector.fromFingerClass === options.selectedFingers[0]
-      && vector.toFingerClass === options.selectedFingers[0]))
-    : aggregated;
+  const analysisVectors =
+    options.selectedFingers.length === 1
+      ? aggregateBigramVectors(
+          vectors.filter((vector) => vector.fromFingerClass === options.selectedFingers[0] && vector.toFingerClass === options.selectedFingers[0]),
+        )
+      : aggregated;
 
   const leftRelative = relativeVectors(analysisVectors, 'left');
   const rightRelative = relativeVectors(analysisVectors, 'right');
@@ -211,10 +201,7 @@ test('extractKeyOf: 見た目だけの設定（lineScale等）を変えても抽
     hoverScale: 'global',
     polarGain: 2.5,
   };
-  assert.deepEqual(
-    bigramFlowDefinition.extractKeyOf(base),
-    bigramFlowDefinition.extractKeyOf(changedView),
-  );
+  assert.deepEqual(bigramFlowDefinition.extractKeyOf(base), bigramFlowDefinition.extractKeyOf(changedView));
 });
 
 test('extractKeyOf: 抽出に効く設定（source / selectedFingers / polarBandwidth）を変えると抽出キーが変わる', () => {
@@ -236,13 +223,16 @@ test('extractKeyOf: selectedFingersは選んだ順ではなく集合として効
 
 test('decodeBigramFlowOptions: 壊れた値は既定値へ戻し診断を積む', () => {
   const diagnostics: { path: string; message: string }[] = [];
-  const decoded = decodeBigramFlowOptions({
-    source: 'diagonal', // 未知の値
-    selectedFingers: ['thumb', 'index', 'middle', 'ring'], // 未知の値混入 + 3件超過
-    lineScale: 42, // 型違い
-    polarBandwidth: 999, // 範囲外
-    polarGain: 'huge', // 型違い
-  }, diagnostics);
+  const decoded = decodeBigramFlowOptions(
+    {
+      source: 'diagonal', // 未知の値
+      selectedFingers: ['thumb', 'index', 'middle', 'ring'], // 未知の値混入 + 3件超過
+      lineScale: 42, // 型違い
+      polarBandwidth: 999, // 範囲外
+      polarGain: 'huge', // 型違い
+    },
+    diagnostics,
+  );
 
   assert.equal(decoded.source, DEFAULT_BIGRAM_FLOW_OPTIONS.source);
   assert.deepEqual(decoded.selectedFingers, ['index', 'middle']);
@@ -317,15 +307,11 @@ test('engineのgetExtraction経由でBigram Flowを回すと、同じ抽出キ�
   // 見た目だけの設定変更ではextractが増えない。
   // ここから`Options`を推論に任せると型が広がってしまう（`lineScale`等がリテラル型では
   // なく`string`に推論される）ため、明示的に型引数を渡して`definition`と揃える。
-  cache.getExtraction<BigramFlowOptions, BigramFlowExtracted>(
-    input, definition, { ...DEFAULT_BIGRAM_FLOW_OPTIONS, lineScale: 'log' },
-  );
+  cache.getExtraction<BigramFlowOptions, BigramFlowExtracted>(input, definition, { ...DEFAULT_BIGRAM_FLOW_OPTIONS, lineScale: 'log' });
   assert.equal(counter.calls, 1, '見た目だけの設定変更でextractが走った');
 
   // 抽出に効く設定変更では増える。
-  cache.getExtraction<BigramFlowOptions, BigramFlowExtracted>(
-    input, definition, { ...DEFAULT_BIGRAM_FLOW_OPTIONS, source: 'within-hand' },
-  );
+  cache.getExtraction<BigramFlowOptions, BigramFlowExtracted>(input, definition, { ...DEFAULT_BIGRAM_FLOW_OPTIONS, source: 'within-hand' });
   assert.equal(counter.calls, 2, '抽出に効く設定変更でextractが走らなかった');
 });
 
@@ -334,21 +320,14 @@ test('engineのgetExtraction経由でBigram Flowを回すと、同じ抽出キ�
 // ---------------------------------------------------------------------------
 
 test('入れ忘れ防止: 抽出キーはaffects:extractの項目だけで変わる（8項目全部を宣言から機械的に回す）', () => {
-  const violations = findOptionsKeyDisciplineViolations(
-    bigramFlowOptions,
-    DEFAULT_BIGRAM_FLOW_OPTIONS,
-    ALTERNATE_BIGRAM_FLOW_OPTIONS,
-  );
+  const violations = findOptionsKeyDisciplineViolations(bigramFlowOptions, DEFAULT_BIGRAM_FLOW_OPTIONS, ALTERNATE_BIGRAM_FLOW_OPTIONS);
   assert.deepEqual(violations, []);
 });
 
 test('入れ忘れ防止: affects:viewの項目を変えても実際のextract結果は変わらない（誤分類の検出）', () => {
   const trace = fixtureTrace();
-  const violations = findViewOptionsExtractionViolations(
-    bigramFlowOptions,
-    DEFAULT_BIGRAM_FLOW_OPTIONS,
-    ALTERNATE_BIGRAM_FLOW_OPTIONS,
-    (options) => computeBigramFlowExtraction(trace, options),
+  const violations = findViewOptionsExtractionViolations(bigramFlowOptions, DEFAULT_BIGRAM_FLOW_OPTIONS, ALTERNATE_BIGRAM_FLOW_OPTIONS, (options) =>
+    computeBigramFlowExtraction(trace, options),
   );
   assert.deepEqual(violations, []);
 });

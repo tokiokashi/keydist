@@ -9,16 +9,38 @@ export const WORKSPACES_KEY = 'keydist:workspaces';
 export const ROW_STEP = 28 + 8;
 export const blank = (id: string) => ({ id, analyzerId: 'blank', binding: { mode: 'none' } });
 
-export interface Cell { readonly id: string; readonly x: number; readonly y: number; readonly w: number; readonly h: number }
+export interface Cell {
+  readonly id: string;
+  readonly x: number;
+  readonly y: number;
+  readonly w: number;
+  readonly h: number;
+}
 export const cell = (id: string, x: number, y: number, w: number, h: number): Cell => ({ id, x, y, w, h });
 
-export async function open(page: Page, ids: readonly string[], grid: readonly Cell[], size = { width: 1920, height: 1200 }, compact = false): Promise<void> {
+export async function open(
+  page: Page,
+  ids: readonly string[],
+  grid: readonly Cell[],
+  size = { width: 1920, height: 1200 },
+  compact = false,
+): Promise<void> {
   await page.setViewportSize(size);
-  await page.addInitScript((value) => {
-    if (localStorage.getItem('keydist:workspaces') === null) {
-      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
-    }
-  }, { id: 'g', name: '格子', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes: ids.map(blank), grid, ...(compact ? { compactPanes: true } : {}) });
+  await page.addInitScript(
+    (value) => {
+      if (localStorage.getItem('keydist:workspaces') === null) {
+        localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
+      }
+    },
+    {
+      id: 'g',
+      name: '格子',
+      text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+      panes: ids.map(blank),
+      grid,
+      ...(compact ? { compactPanes: true } : {}),
+    },
+  );
   await page.goto('/workspace/g');
   await waitForHydration(page);
   await expect(page.locator('.workspace-grid-item')).toHaveCount(ids.length);
@@ -71,4 +93,3 @@ export async function dragPane(page: Page, id: string, dx: number, dy: number): 
 export async function drawnTop(page: Page, id: string): Promise<number> {
   return page.locator(`.workspace-grid-item[data-pane-id="${id}"]`).evaluate((el) => Math.round(el.getBoundingClientRect().y + scrollY));
 }
-

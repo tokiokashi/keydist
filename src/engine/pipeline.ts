@@ -44,10 +44,7 @@ export interface EngineInterpretationResult {
 }
 
 /** 解釈段（構造 + 共通指標）。Traceは変えず、数値の定義（解釈）だけを適用する。 */
-export function interpretEngineTrace(
-  traceResult: EngineTraceResult,
-  input: ResolvedInput,
-): EngineInterpretationResult {
+export function interpretEngineTrace(traceResult: EngineTraceResult, input: ResolvedInput): EngineInterpretationResult {
   const { trace } = traceResult;
   const analysis = analyzeStrokeStructure(
     trace.strokes,

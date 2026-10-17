@@ -54,7 +54,10 @@ test('値の幅がごく狭い時、目盛りは小数で書き分け、同じ�
   const range = computeYRange('fit', 'ratio', [100, 100, 99.9, 99.7, 99.55]);
   const labels = formatYTicks('ratio', range.ticks, 'totalUnits');
   assert.equal(new Set(labels).size, labels.length);
-  assert.ok(labels.some((label) => /\.\d%$/.test(label)), labels.join(' '));
+  assert.ok(
+    labels.some((label) => /\.\d%$/.test(label)),
+    labels.join(' '),
+  );
   assert.ok(range.ticks.every((tick) => Number.isFinite(tick)));
 });
 

@@ -1,5 +1,13 @@
 import * as v from 'valibot';
-import { decodeDroppingInvalid, defineAssetCodec, isRecord, type AssetCodec, type CodecDiagnostic, droppedDuplicateId, droppedNotArray } from '#input/codec/index.ts';
+import {
+  decodeDroppingInvalid,
+  defineAssetCodec,
+  isRecord,
+  type AssetCodec,
+  type CodecDiagnostic,
+  droppedDuplicateId,
+  droppedNotArray,
+} from '#input/codec/index.ts';
 import { decodeCascadeOverrides, encodeCascadeOverrides, type CascadeOverrides, type ItemSchemaMap } from '#input/settings/index.ts';
 import { dropSetupOverrides } from './overrides.ts';
 import type { Setup } from './types.ts';
@@ -116,10 +124,7 @@ function dropOrphanSetupOverrides<V>(
   return result;
 }
 
-export function setupLibraryCodec<V>(
-  itemSchemas: ItemSchemaMap<V>,
-  currentVersion: number,
-): AssetCodec<SetupLibrary<V>> {
+export function setupLibraryCodec<V>(itemSchemas: ItemSchemaMap<V>, currentVersion: number): AssetCodec<SetupLibrary<V>> {
   return defineAssetCodec<SetupLibrary<V>>({
     currentVersion,
     decodePayload: (payload, diagnostics) => {

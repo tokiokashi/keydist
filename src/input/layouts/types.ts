@@ -43,10 +43,7 @@ export type FaceRow = string | readonly string[];
 
 /** triggerで発火するキー面。rowsはQWERTY刻印の4行に対応する。 */
 export type PresentationTriggerChord = readonly [string, ...string[]];
-export type PresentationTriggerAlternatives = readonly [
-  PresentationTriggerChord,
-  ...PresentationTriggerChord[],
-];
+export type PresentationTriggerAlternatives = readonly [PresentationTriggerChord, ...PresentationTriggerChord[]];
 
 export interface Face {
   trigger: readonly string[];
@@ -193,9 +190,7 @@ export interface ResolvedComboDefinition {
  * `char` は刻印ではなく押している意味の文字（や・え等）で、そのまま出す。
  * `modifierKey` は文字を持たない修飾のキー（濁音・半濁音等）で、押すキーが読めるよう物理キーの名前を添えて出す。
  */
-export type TriggerMeaning =
-  | { readonly kind: 'char'; readonly text: string }
-  | { readonly kind: 'modifierKey'; readonly text: string };
+export type TriggerMeaning = { readonly kind: 'char'; readonly text: string } | { readonly kind: 'modifierKey'; readonly text: string };
 
 export const charMeaning = (text: string): TriggerMeaning => ({ kind: 'char', text });
 export const modifierKeyMeaning = (text: string): TriggerMeaning => ({ kind: 'modifierKey', text });
@@ -283,11 +278,7 @@ export interface Layout {
 const QWERTY_KEYS = new Set([...QWERTY_LEGEND.join('')]);
 
 /** QWERTY刻印のキーidで面を作る。未知のキーは空欄にせず定義ミスとして弾く。 */
-export function faceFromEntries(
-  trigger: readonly string[],
-  mode: FaceMode,
-  entries: Record<string, string>,
-): Face {
+export function faceFromEntries(trigger: readonly string[], mode: FaceMode, entries: Record<string, string>): Face {
   const invalidKeys = Object.keys(entries).filter((key) => !QWERTY_KEYS.has(key));
   if (invalidKeys.length > 0) throw new Error(`面に未知のキーがある: ${invalidKeys.join(', ')}`);
   return {
@@ -297,59 +288,35 @@ export function faceFromEntries(
   };
 }
 
-const appendCanonicalAlternative = (
-  map: Map<string, InputAlternative[]>,
-  output: string,
-  alternative: InputAlternative,
-): void => {
+const appendCanonicalAlternative = (map: Map<string, InputAlternative[]>, output: string, alternative: InputAlternative): void => {
   const current = map.get(output);
   if (current) current.push(alternative);
   else map.set(output, [alternative]);
 };
 
-const cloneCanonicalInputs = (
-  inputs: CanonicalInputMap,
-): Map<string, InputAlternative[]> =>
+const cloneCanonicalInputs = (inputs: CanonicalInputMap): Map<string, InputAlternative[]> =>
   new Map([...inputs].map(([output, alternatives]) => [output, [...alternatives]]));
 
-const mergeContextRequirements = (
-  ...groups: readonly (readonly InputContextRequirement[])[]
-): InputContextRequirement[] => {
-  const byKind = new Map(
-    groups.flat().map((requirement) => [requirement.kind, requirement] as const),
-  );
-  return [...byKind.values()].sort((left, right) =>
-    left.kind < right.kind ? -1 : left.kind > right.kind ? 1 : 0);
+const mergeContextRequirements = (...groups: readonly (readonly InputContextRequirement[])[]): InputContextRequirement[] => {
+  const byKind = new Map(groups.flat().map((requirement) => [requirement.kind, requirement] as const));
+  return [...byKind.values()].sort((left, right) => (left.kind < right.kind ? -1 : left.kind > right.kind ? 1 : 0));
 };
 
-const sameCanonicalAlternative = (
-  left: InputAlternative,
-  right: InputAlternative,
-): boolean =>
+const sameCanonicalAlternative = (left: InputAlternative, right: InputAlternative): boolean =>
   canonicalInputAlternativeIdentity(left) === canonicalInputAlternativeIdentity(right);
-
 
 /**
  * 4行 × N列のグリッドに文字を並べた配列。
  * 単打のみの配列（QWERTY・大西配列など）はこの形で書ける。
  */
-export function fromRows(
-  id: string,
-  name: string,
-  rows: string[],
-  thumbs: { LT?: string; RT?: string } = { RT: ' ' },
-): Layout {
+export function fromRows(id: string, name: string, rows: string[], thumbs: { LT?: string; RT?: string } = { RT: ' ' }): Layout {
   const map = new Map<string, Sequence>();
   const canonicalInputs = new Map<string, InputAlternative[]>();
   const legends = new Map<string, string>();
 
   const addDirect = (output: string, key: string) => {
     const sequence: Sequence = [[key]];
-    appendCanonicalAlternative(
-      canonicalInputs,
-      output,
-      compileSequenceInputAlternative(output, sequence, SINGLE_LAYER_ID),
-    );
+    appendCanonicalAlternative(canonicalInputs, output, compileSequenceInputAlternative(output, sequence, SINGLE_LAYER_ID));
     if (map.has(output)) return;
     map.set(output, sequence);
   };
@@ -387,20 +354,12 @@ function faceHasOutput(face: Face): boolean {
 }
 
 /** 面の集合を、評価器が使うかな → 打鍵ステップ列へ展開する。 */
-export function fromFaces(
-  id: string,
-  name: string,
-  faces: readonly Face[],
-  thumbs: { LT?: string; RT?: string } = {},
-): Layout {
+export function fromFaces(id: string, name: string, faces: readonly Face[], thumbs: { LT?: string; RT?: string } = {}): Layout {
   const semanticInputs = compileFaceSemanticInputs(faces);
   const semanticByMembership = new Map<string, SemanticInput>();
   for (const input of semanticInputs) {
     for (const membership of input.faceMemberships) {
-      semanticByMembership.set(
-        `${membership.faceIndex}\u0000${membership.cellKey}`,
-        input,
-      );
+      semanticByMembership.set(`${membership.faceIndex}\u0000${membership.cellKey}`, input);
     }
   }
 
@@ -428,13 +387,12 @@ export function fromFaces(
 
     let merged = existing;
     if (
-      existing.presentationRole !== undefined
-      && definition.presentationRole !== undefined
-      && existing.presentationRole !== definition.presentationRole
+      existing.presentationRole !== undefined &&
+      definition.presentationRole !== undefined &&
+      existing.presentationRole !== definition.presentationRole
     ) {
       throw new Error(
-        `aggregation「${definition.id}」のpresentation roleが競合している: `
-        + `${existing.presentationRole} / ${definition.presentationRole}`,
+        `aggregation「${definition.id}」のpresentation roleが競合している: ` + `${existing.presentationRole} / ${definition.presentationRole}`,
       );
     }
     if (existing.presentationRole === undefined && definition.presentationRole !== undefined) {
@@ -442,28 +400,22 @@ export function fromFaces(
     }
 
     if (
-      existing.presentationModeLabel !== undefined
-      && definition.presentationModeLabel !== undefined
-      && existing.presentationModeLabel !== definition.presentationModeLabel
+      existing.presentationModeLabel !== undefined &&
+      definition.presentationModeLabel !== undefined &&
+      existing.presentationModeLabel !== definition.presentationModeLabel
     ) {
       throw new Error(
-        `aggregation「${definition.id}」のpresentation modeが競合している: `
-        + `${existing.presentationModeLabel} / ${definition.presentationModeLabel}`,
+        `aggregation「${definition.id}」のpresentation modeが競合している: ` + `${existing.presentationModeLabel} / ${definition.presentationModeLabel}`,
       );
     }
-    if (
-      existing.presentationModeLabel === undefined
-      && definition.presentationModeLabel !== undefined
-    ) {
+    if (existing.presentationModeLabel === undefined && definition.presentationModeLabel !== undefined) {
       merged = { ...merged, presentationModeLabel: definition.presentationModeLabel };
     }
 
     const previousExplicit = explicitLayerLabels.get(definition.id);
     if (explicitLabel !== undefined) {
       if (previousExplicit !== undefined && previousExplicit !== explicitLabel) {
-        throw new Error(
-          `aggregation「${definition.id}」のpresentationLabelが競合している: ${previousExplicit} / ${explicitLabel}`,
-        );
+        throw new Error(`aggregation「${definition.id}」のpresentationLabelが競合している: ${previousExplicit} / ${explicitLabel}`);
       }
       if (previousExplicit === undefined) {
         explicitLayerLabels.set(definition.id, explicitLabel);
@@ -477,50 +429,43 @@ export function fromFaces(
   for (const [faceIndex, face] of faces.entries()) {
     const trigger = [...new Set(face.trigger)];
     if (trigger.length > 0 && faceHasOutput(face) && face.triggerPersistence === undefined) {
-      throw new Error(
-        `triggerを持つFaceはtriggerPersistenceを明示する必要がある（face:${faceIndex}）`,
-      );
+      throw new Error(`triggerを持つFaceはtriggerPersistenceを明示する必要がある（face:${faceIndex}）`);
     }
     const isCombo = faceAggregatesAsCombo(face);
     if (isCombo && face.presentationLabel !== undefined) {
-      throw new Error(
-        `コンボ枠に計上するFaceにはpresentationLabelを指定できない（face:${faceIndex}）`,
-      );
+      throw new Error(`コンボ枠に計上するFaceにはpresentationLabelを指定できない（face:${faceIndex}）`);
     }
     const layerId = isCombo
       ? COMBO_LAYER_ID
       : trigger.length === 0
         ? SINGLE_LAYER_ID
-        : face.layer === undefined ? `face:${faceIndex}` : `layer:${face.layer}`;
+        : face.layer === undefined
+          ? `face:${faceIndex}`
+          : `layer:${face.layer}`;
     faceLayerIds.set(face, layerId);
-    const presentationRole: LayerPresentationRole | undefined = isCombo
-      ? undefined
-      : face.role === 'modifier' ? 'modifier' : 'layer';
-    const presentationModeLabel = trigger.length === 0 || isCombo
-      ? undefined
-      : face.mode === 'simultaneous' ? '同時' : face.mode === 'prefix' ? '前置' : '後置';
+    const presentationRole: LayerPresentationRole | undefined = isCombo ? undefined : face.role === 'modifier' ? 'modifier' : 'layer';
+    const presentationModeLabel =
+      trigger.length === 0 || isCombo ? undefined : face.mode === 'simultaneous' ? '同時' : face.mode === 'prefix' ? '前置' : '後置';
     // 名前が無いトリガー付きの面は、名前を後で作る（labelIsDefault）
-    const unnamedTriggerLayer = !isCombo && face.presentationLabel === undefined
-      && face.layer === undefined && trigger.length > 0;
-    addDefinition({
-      id: layerId,
-      kind: isCombo ? 'combo' : 'layer',
-      label: isCombo
-        ? 'コンボ'
-        : face.presentationLabel ?? face.layer ?? (trigger.length === 0 ? '単打' : ''),
-      ...(unnamedTriggerLayer ? { labelIsDefault: true as const } : {}),
-      ...(presentationRole === undefined ? {} : { presentationRole }),
-      ...(presentationModeLabel === undefined ? {} : { presentationModeLabel }),
-    }, isCombo ? undefined : face.presentationLabel);
+    const unnamedTriggerLayer = !isCombo && face.presentationLabel === undefined && face.layer === undefined && trigger.length > 0;
+    addDefinition(
+      {
+        id: layerId,
+        kind: isCombo ? 'combo' : 'layer',
+        label: isCombo ? 'コンボ' : (face.presentationLabel ?? face.layer ?? (trigger.length === 0 ? '単打' : '')),
+        ...(unnamedTriggerLayer ? { labelIsDefault: true as const } : {}),
+        ...(presentationRole === undefined ? {} : { presentationRole }),
+        ...(presentationModeLabel === undefined ? {} : { presentationModeLabel }),
+      },
+      isCombo ? undefined : face.presentationLabel,
+    );
     face.rows.forEach((row, r) => {
       const cells = typeof row === 'string' ? [...row] : [...row];
       cells.forEach((output, c) => {
         if (output === '' || output === ' ') return;
 
         const key = keyId(r, c);
-        const semanticInput = semanticByMembership.get(
-          `${faceIndex}\u0000${resolveKeyId(key)}`,
-        );
+        const semanticInput = semanticByMembership.get(`${faceIndex}\u0000${resolveKeyId(key)}`);
         if (!semanticInput) {
           throw new Error(`Face compilerのmembershipが見つからない（face:${faceIndex}, key:${key}）`);
         }
@@ -528,15 +473,13 @@ export function fromFaces(
         const participationView = {
           outputKeys: [resolveKeyId(key)],
           triggerKeys: trigger.map(resolveKeyId),
-          ...(face.triggerPersistence === 'hold-capable' && trigger.length > 0
-            ? { holdKeys: trigger.map(resolveKeyId) }
-            : {}),
+          ...(face.triggerPersistence === 'hold-capable' && trigger.length > 0 ? { holdKeys: trigger.map(resolveKeyId) } : {}),
         };
 
         const alternatives = canonicalInputs.get(output) ?? [];
-        const sameSemanticIndex = alternatives.findIndex((alternative) =>
-          alternative.semanticInputs.length === 1
-          && alternative.semanticInputs[0] === semanticInput);
+        const sameSemanticIndex = alternatives.findIndex(
+          (alternative) => alternative.semanticInputs.length === 1 && alternative.semanticInputs[0] === semanticInput,
+        );
 
         if (sameSemanticIndex >= 0) {
           const existingAlternative = alternatives[sameSemanticIndex];
@@ -545,20 +488,15 @@ export function fromFaces(
             throw new Error(`面の出力「${output}」のBaseActionRealizationが見つからない`);
           }
           if (!sameActionGrouping(existing.actions, sequence)) {
-            throw new Error(
-              `同一SemanticInputのreciprocal Faceでaction groupingが一致しない: ${output}`,
-            );
+            throw new Error(`同一SemanticInputのreciprocal Faceでaction groupingが一致しない: ${output}`);
           }
           const defaultView = {
             outputKeys: existing.defaultOutputKeys,
             triggerKeys: existing.defaultTriggerKeys ?? [],
-            ...(existing.defaultHoldKeys !== undefined
-              ? { holdKeys: existing.defaultHoldKeys }
-              : {}),
+            ...(existing.defaultHoldKeys !== undefined ? { holdKeys: existing.defaultHoldKeys } : {}),
           };
           const alternates = existing.alternateParticipations ?? [];
-          if (!sameParticipationView(defaultView, participationView)
-            && !alternates.some((view) => sameParticipationView(view, participationView))) {
+          if (!sameParticipationView(defaultView, participationView) && !alternates.some((view) => sameParticipationView(view, participationView))) {
             const updated = {
               ...existing,
               alternateParticipations: [...alternates, participationView],
@@ -578,12 +516,8 @@ export function fromFaces(
           input: semanticInput,
           actions: sequence.map((step) => step.map(resolveKeyId)),
           defaultOutputKeys: participationView.outputKeys,
-          ...(participationView.triggerKeys.length > 0
-            ? { defaultTriggerKeys: participationView.triggerKeys }
-            : {}),
-          ...(participationView.holdKeys !== undefined
-            ? { defaultHoldKeys: participationView.holdKeys }
-            : {}),
+          ...(participationView.triggerKeys.length > 0 ? { defaultTriggerKeys: participationView.triggerKeys } : {}),
+          ...(participationView.holdKeys !== undefined ? { defaultHoldKeys: participationView.holdKeys } : {}),
         };
         validateBaseActionRealization(baseRealization);
         appendCanonicalAlternative(canonicalInputs, output, {
@@ -611,20 +545,12 @@ export function fromFaces(
   if (thumbs.LT) {
     const sequence: Sequence = [[THUMB_KEY.LT]];
     map.set(thumbs.LT, sequence);
-    appendCanonicalAlternative(
-      canonicalInputs,
-      thumbs.LT,
-      compileSequenceInputAlternative(thumbs.LT, sequence, SINGLE_LAYER_ID),
-    );
+    appendCanonicalAlternative(canonicalInputs, thumbs.LT, compileSequenceInputAlternative(thumbs.LT, sequence, SINGLE_LAYER_ID));
   }
   if (thumbs.RT) {
     const sequence: Sequence = [[THUMB_KEY.RT]];
     map.set(thumbs.RT, sequence);
-    appendCanonicalAlternative(
-      canonicalInputs,
-      thumbs.RT,
-      compileSequenceInputAlternative(thumbs.RT, sequence, SINGLE_LAYER_ID),
-    );
+    appendCanonicalAlternative(canonicalInputs, thumbs.RT, compileSequenceInputAlternative(thumbs.RT, sequence, SINGLE_LAYER_ID));
   }
   validateCanonicalInputMap(canonicalInputs);
   return {
@@ -639,10 +565,7 @@ export function fromFaces(
   };
 }
 
-function sameActionGrouping(
-  left: readonly (readonly string[])[],
-  right: readonly (readonly string[])[],
-): boolean {
+function sameActionGrouping(left: readonly (readonly string[])[], right: readonly (readonly string[])[]): boolean {
   if (left.length !== right.length) return false;
   return left.every((step, index) => {
     const l = [...new Set(step.map(resolveKeyId))].sort();
@@ -660,9 +583,7 @@ function sameParticipationView(
     const bb = [...new Set((b ?? []).map(resolveKeyId))].sort();
     return aa.length === bb.length && aa.every((key, index) => key === bb[index]);
   };
-  return same(left.outputKeys, right.outputKeys)
-    && same(left.triggerKeys, right.triggerKeys)
-    && same(left.holdKeys, right.holdKeys);
+  return same(left.outputKeys, right.outputKeys) && same(left.triggerKeys, right.triggerKeys) && same(left.holdKeys, right.holdKeys);
 }
 
 function expandFace(trigger: string[], mode: FaceMode, key: string): Sequence {
@@ -673,22 +594,15 @@ function expandFace(trigger: string[], mode: FaceMode, key: string): Sequence {
 }
 
 /** かな → 打鍵ステップ列を直接書いた配列（薙刀式など） */
-export type KanaDefinition =
-  | Record<string, string[][]>
-  | readonly (readonly [string, string[][]])[];
+export type KanaDefinition = Record<string, string[][]> | readonly (readonly [string, string[][]])[];
 
 export function fromKana(id: string, name: string, def: KanaDefinition): Layout {
-  const entries: readonly (readonly [string, string[][]])[] =
-    Array.isArray(def) ? def : Object.entries(def);
+  const entries: readonly (readonly [string, string[][]])[] = Array.isArray(def) ? def : Object.entries(def);
   const map = new Map<string, Sequence>();
   const canonicalInputs = new Map<string, InputAlternative[]>();
 
   for (const [output, sequence] of entries) {
-    appendCanonicalAlternative(
-      canonicalInputs,
-      output,
-      compileSequenceInputAlternative(output, sequence, SINGLE_LAYER_ID),
-    );
+    appendCanonicalAlternative(canonicalInputs, output, compileSequenceInputAlternative(output, sequence, SINGLE_LAYER_ID));
     if (map.has(output)) continue;
     map.set(output, sequence);
   }
@@ -717,11 +631,7 @@ export function fromKana(id: string, name: string, def: KanaDefinition): Layout 
  * 既存のauthoring default thumb shift pathから、同じsemanticを成立させる合法な
  * physical thumb alternativeをcanonical pathとして派生する。
  */
-export function withThumbShiftAlternatives(
-  layout: Layout,
-  defaultKey: string,
-  legalKeys: readonly string[],
-): Layout {
+export function withThumbShiftAlternatives(layout: Layout, defaultKey: string, legalKeys: readonly string[]): Layout {
   const source = resolveKeyId(defaultKey);
   const legal = [...new Set(legalKeys.map(resolveKeyId))];
   if (!legal.includes(source)) {
@@ -732,18 +642,16 @@ export function withThumbShiftAlternatives(
   for (const [output, alternatives] of canonicalInputs) {
     const next = [...alternatives];
     for (const alternative of alternatives) {
-      const usesSourceAsTrigger = alternative.baseRealizations.some((realization) =>
-        (realization.defaultTriggerKeys ?? []).map(resolveKeyId).includes(source)
-        || (realization.alternateParticipations ?? []).some((view) =>
-          view.triggerKeys.map(resolveKeyId).includes(source)));
+      const usesSourceAsTrigger = alternative.baseRealizations.some(
+        (realization) =>
+          (realization.defaultTriggerKeys ?? []).map(resolveKeyId).includes(source) ||
+          (realization.alternateParticipations ?? []).some((view) => view.triggerKeys.map(resolveKeyId).includes(source)),
+      );
       if (!usesSourceAsTrigger) continue;
 
       for (const target of legal) {
         if (target === source) continue;
-        const mapped = mapInputAlternativePhysicalKeys(
-          alternative,
-          (key) => resolveKeyId(key) === source ? target : resolveKeyId(key),
-        );
+        const mapped = mapInputAlternativePhysicalKeys(alternative, (key) => (resolveKeyId(key) === source ? target : resolveKeyId(key)));
         if (!next.some((candidate) => sameCanonicalAlternative(candidate, mapped))) {
           next.push(mapped);
         }
@@ -765,12 +673,7 @@ export function withThumbShiftAlternatives(
  * 既存outputと合成記号の入力列を連結し、新しいlogical outputを追加する。
  * canonical側は既存SemanticInput列を再利用し、Requirement等を再推測しない。
  */
-export function withComposedOutputs(
-  layout: Layout,
-  entries: Readonly<Record<string, string>>,
-  mark: string,
-  context = '合成出力',
-): Layout {
+export function withComposedOutputs(layout: Layout, entries: Readonly<Record<string, string>>, mark: string, context = '合成出力'): Layout {
   const markAlternatives = layout.canonicalInputs.get(mark);
   if (!markAlternatives) {
     throw new Error(`${context}の合成記号「${mark}」が未定義`);
@@ -789,20 +692,12 @@ export function withComposedOutputs(
 
     const generated = sourceAlternatives.flatMap((sourceAlternative) =>
       markAlternatives.map((markAlternative) => ({
-        semanticInputs: [
-          ...sourceAlternative.semanticInputs,
-          ...markAlternative.semanticInputs,
-        ],
-        baseRealizations: [
-          ...sourceAlternative.baseRealizations,
-          ...markAlternative.baseRealizations,
-        ],
-        contextRequirements: mergeContextRequirements(
-          sourceAlternative.contextRequirements,
-          markAlternative.contextRequirements,
-        ),
+        semanticInputs: [...sourceAlternative.semanticInputs, ...markAlternative.semanticInputs],
+        baseRealizations: [...sourceAlternative.baseRealizations, ...markAlternative.baseRealizations],
+        contextRequirements: mergeContextRequirements(sourceAlternative.contextRequirements, markAlternative.contextRequirements),
         origin: 'composed' as const,
-      })));
+      })),
+    );
     for (const alternative of generated) {
       appendCanonicalAlternative(canonicalInputs, output, alternative);
     }
@@ -811,12 +706,8 @@ export function withComposedOutputs(
     // canonical composition自体の成立条件には使わない。
     if (map.has(output) || !sourceSequence || !markSequence) continue;
 
-    const sequence: Sequence = [
-      ...sourceSequence.map((step) => [...step]),
-      ...markSequence.map((step) => [...step]),
-    ];
+    const sequence: Sequence = [...sourceSequence.map((step) => [...step]), ...markSequence.map((step) => [...step])];
     map.set(output, sequence);
-
   }
 
   validateCanonicalInputMap(canonicalInputs);
@@ -827,14 +718,28 @@ export function withComposedOutputs(
   };
 }
 
-
 const SHIFT_LAYER_ID = 'layer:Shift';
 const SHIFT_MODIFIER_GROUP_ID = 'Shift';
 const SHIFTED_ASCII: Readonly<Record<string, string>> = {
-  '1': '!', '2': '@', '3': '#', '4': '$', '5': '%',
-  '6': '^', '7': '&', '8': '*', '9': '(', '0': ')',
-  '-': '_', '=': '+', '[': '{', ']': '}',
-  ';': ':', "'": '"', ',': '<', '.': '>', '/': '?',
+  '1': '!',
+  '2': '@',
+  '3': '#',
+  '4': '$',
+  '5': '%',
+  '6': '^',
+  '7': '&',
+  '8': '*',
+  '9': '(',
+  '0': ')',
+  '-': '_',
+  '=': '+',
+  '[': '{',
+  ']': '}',
+  ';': ':',
+  "'": '"',
+  ',': '<',
+  '.': '>',
+  '/': '?',
 };
 
 const shiftedOutputFor = (output: string): string | undefined => {
@@ -849,10 +754,7 @@ const shiftedOutputFor = (output: string): string | undefined => {
  * geometryを見て選べるようauthoring段階では潰さない。
  * 配列が既に単打などで置いている文字（大文字・記号）には、Shift経路を足さない。
  */
-export function withShiftedOutputs(
-  layout: Layout,
-  shiftKeys: readonly string[] = [SHIFT_KEY.L, SHIFT_KEY.R],
-): Layout {
+export function withShiftedOutputs(layout: Layout, shiftKeys: readonly string[] = [SHIFT_KEY.L, SHIFT_KEY.R]): Layout {
   const canonicalShiftKeys = [...new Set(shiftKeys.map(resolveKeyId))];
   if (canonicalShiftKeys.length === 0) {
     throw new Error('shiftKeysは1キー以上必要');
@@ -869,20 +771,18 @@ export function withShiftedOutputs(
     if (layout.canonicalInputs.has(shiftedOutput)) continue;
 
     for (const alternative of alternatives) {
-      if (
-        alternative.semanticInputs.length !== 1
-        || alternative.baseRealizations.length !== 1
-      ) continue;
+      if (alternative.semanticInputs.length !== 1 || alternative.baseRealizations.length !== 1) continue;
 
       const sourceInput = alternative.semanticInputs[0];
       const sourceRealization = alternative.baseRealizations[0];
       if (
-        sourceInput.physicalKeys.length !== 1
-        || sourceRealization.actions.length !== 1
-        || sourceRealization.actions[0].length !== 1
-        || sourceRealization.defaultOutputKeys.length !== 1
-        || (sourceRealization.defaultTriggerKeys?.length ?? 0) > 0
-      ) continue;
+        sourceInput.physicalKeys.length !== 1 ||
+        sourceRealization.actions.length !== 1 ||
+        sourceRealization.actions[0].length !== 1 ||
+        sourceRealization.defaultOutputKeys.length !== 1 ||
+        (sourceRealization.defaultTriggerKeys?.length ?? 0) > 0
+      )
+        continue;
 
       const outputKey = resolveKeyId(sourceRealization.defaultOutputKeys[0]);
 
@@ -895,22 +795,26 @@ export function withShiftedOutputs(
           capabilities: [{ kind: 'while-held', keys: [shiftKey] }],
           aggregationGroupId: SHIFT_LAYER_ID,
           classifications: [],
-          roles: [{
-            key: shiftKey,
-            role: 'modifier',
-            modifierGroupId: SHIFT_MODIFIER_GROUP_ID,
-          }],
+          roles: [
+            {
+              key: shiftKey,
+              role: 'modifier',
+              modifierGroupId: SHIFT_MODIFIER_GROUP_ID,
+            },
+          ],
           faceMemberships: [],
         };
         const shiftedAlternative: InputAlternative = {
           semanticInputs: [input],
-          baseRealizations: [{
-            input,
-            actions: [[shiftKey, outputKey]],
-            defaultOutputKeys: [outputKey],
-            defaultTriggerKeys: [shiftKey],
-            defaultHoldKeys: [shiftKey],
-          }],
+          baseRealizations: [
+            {
+              input,
+              actions: [[shiftKey, outputKey]],
+              defaultOutputKeys: [outputKey],
+              defaultTriggerKeys: [shiftKey],
+              defaultHoldKeys: [shiftKey],
+            },
+          ],
           contextRequirements: [...alternative.contextRequirements],
           origin: 'sequence',
         };
@@ -965,12 +869,7 @@ export function withRomaji(layout: Layout, table: Map<string, string>): Layout {
  * コンボを足す。入力は「その文字を出すキー」で指定する。
  * 物理位置ではなく文字で指すので、同じ定義を別の英字配列にも適用できる。
  */
-export function withCombos(
-  id: string,
-  name: string,
-  layout: Layout,
-  combos: ComboDefinition[],
-): Layout {
+export function withCombos(id: string, name: string, layout: Layout, combos: ComboDefinition[]): Layout {
   const map = new Map(layout.map);
   const canonicalInputs = cloneCanonicalInputs(layout.canonicalInputs);
   const layerDefinitions = [...(layout.layerDefinitions ?? [])];
@@ -981,51 +880,48 @@ export function withCombos(
       if (alternative.baseRealizations.length !== 1) return [];
       const realization = alternative.baseRealizations[0];
       if (realization.actions.length !== 1 || realization.actions[0].length !== 1) return [];
-      return [{
-        key: resolveKeyId(realization.actions[0][0]),
-        contextRequirements: alternative.contextRequirements,
-      }];
+      return [
+        {
+          key: resolveKeyId(realization.actions[0][0]),
+          contextRequirements: alternative.contextRequirements,
+        },
+      ];
     });
   for (const [output, inputs, condition, presentation, classifications = []] of combos) {
     const keyChoices = inputs.map(singleActionKeyChoices);
     if (keyChoices.some((choices) => choices.length === 0)) continue;
 
-    const combinations = keyChoices.reduce<
-      { keys: string[]; contextRequirements: InputContextRequirement[] }[]
-    >(
-      (acc, choices) => acc.flatMap((prefix) =>
-        choices.map((choice) => ({
-          keys: [...prefix.keys, choice.key],
-          contextRequirements: mergeContextRequirements(
-            prefix.contextRequirements,
-            choice.contextRequirements,
-          ),
-        }))),
+    const combinations = keyChoices.reduce<{ keys: string[]; contextRequirements: InputContextRequirement[] }[]>(
+      (acc, choices) =>
+        acc.flatMap((prefix) =>
+          choices.map((choice) => ({
+            keys: [...prefix.keys, choice.key],
+            contextRequirements: mergeContextRequirements(prefix.contextRequirements, choice.contextRequirements),
+          })),
+        ),
       [{ keys: [], contextRequirements: [] }],
     );
-    const uniqueCombinations = [...new Map(
-      combinations.map((combination) => [
-        [
-          combination.keys.join('\u0000'),
-          combination.contextRequirements.map((requirement) => requirement.kind).join('\u0001'),
-        ].join('\u0002'),
-        combination,
-      ] as const),
-    ).values()];
+    const uniqueCombinations = [
+      ...new Map(
+        combinations.map(
+          (combination) =>
+            [
+              [combination.keys.join('\u0000'), combination.contextRequirements.map((requirement) => requirement.kind).join('\u0001')].join('\u0002'),
+              combination,
+            ] as const,
+        ),
+      ).values(),
+    ];
     const keys = uniqueCombinations[0].keys;
     const resolvedKeys = keys.map(resolveKeyId);
-    const resolvedKeyVariants = uniqueCombinations.map((combination) =>
-      combination.keys.map(resolveKeyId));
+    const resolvedKeyVariants = uniqueCombinations.map((combination) => combination.keys.map(resolveKeyId));
     const foldTriggerInputs = presentation?.foldTriggerInputs;
-    const foldTriggerKeys = foldTriggerInputs?.map((input) =>
-      singleActionKeyChoices(input)[0]?.key)
-      .filter((key): key is string => key !== undefined);
+    const foldTriggerKeys = foldTriggerInputs?.map((input) => singleActionKeyChoices(input)[0]?.key).filter((key): key is string => key !== undefined);
     const foldTriggerSet = new Set(foldTriggerKeys ?? []);
-    const foldTargets = foldTriggerKeys !== undefined
-      && foldTriggerInputs !== undefined
-      && foldTriggerKeys.length === foldTriggerInputs.length
-      ? resolvedKeys.filter((key) => !foldTriggerSet.has(key))
-      : [];
+    const foldTargets =
+      foldTriggerKeys !== undefined && foldTriggerInputs !== undefined && foldTriggerKeys.length === foldTriggerInputs.length
+        ? resolvedKeys.filter((key) => !foldTriggerSet.has(key))
+        : [];
     resolvedComboDefinitions.push({
       output,
       inputs: [...inputs],
@@ -1047,12 +943,10 @@ export function withCombos(
         [combination.keys],
         COMBO_LAYER_ID,
         ['composition', ...classifications],
-        mergeContextRequirements(
-          combination.contextRequirements,
-          comboContextRequirements,
-        ),
+        mergeContextRequirements(combination.contextRequirements, comboContextRequirements),
         'combo',
-      ));
+      ),
+    );
     for (const alternative of generatedAlternatives) {
       appendCanonicalAlternative(canonicalInputs, output, alternative);
     }
@@ -1093,14 +987,12 @@ export function hasRomajiOnlyCombos(layout: Layout): boolean {
  * 外す対象は条件付きalternativeだけで、同じ見出しに別のpathがあればそれは残る。
  */
 export function withoutRomajiOnlyCombos(layout: Layout): Layout {
-  const scoped = (layout.resolvedComboDefinitions ?? [])
-    .filter((combo) => combo.condition?.romajiOnly === true);
+  const scoped = (layout.resolvedComboDefinitions ?? []).filter((combo) => combo.condition?.romajiOnly === true);
   if (scoped.length === 0) return layout;
 
   const canonicalInputs = new Map<string, InputAlternative[]>();
   for (const [output, alternatives] of layout.canonicalInputs) {
-    const kept = alternatives.filter((alternative) =>
-      !alternative.contextRequirements.some((requirement) => requirement.kind === 'romaji-input'));
+    const kept = alternatives.filter((alternative) => !alternative.contextRequirements.some((requirement) => requirement.kind === 'romaji-input'));
     if (kept.length > 0) canonicalInputs.set(output, kept);
   }
   // legacy mapはwithCombosが見出しを足しただけなので、canonicalから消えた見出しだけを落とす。
@@ -1108,15 +1000,15 @@ export function withoutRomajiOnlyCombos(layout: Layout): Layout {
   for (const combo of scoped) {
     if (!canonicalInputs.has(combo.output)) map.delete(combo.output);
   }
-  const resolvedComboDefinitions = (layout.resolvedComboDefinitions ?? [])
-    .filter((combo) => combo.condition?.romajiOnly !== true);
+  const resolvedComboDefinitions = (layout.resolvedComboDefinitions ?? []).filter((combo) => combo.condition?.romajiOnly !== true);
   // コンボ枠は、残るコンボ定義も面由来のコンボpathも無ければ層一覧から外す。
   // 残すと英文の層別集計にだけ空のコンボ枠が現れ、単打配置と数値の形が変わる。
-  const comboLayerUsed = resolvedComboDefinitions.length > 0
-    || [...canonicalInputs.values()].some((alternatives) => alternatives.some((alternative) =>
-      alternative.semanticInputs.some((input) => input.aggregationGroupId === COMBO_LAYER_ID)));
-  const layerDefinitions = layout.layerDefinitions?.filter((definition) =>
-    comboLayerUsed || definition.id !== COMBO_LAYER_ID);
+  const comboLayerUsed =
+    resolvedComboDefinitions.length > 0 ||
+    [...canonicalInputs.values()].some((alternatives) =>
+      alternatives.some((alternative) => alternative.semanticInputs.some((input) => input.aggregationGroupId === COMBO_LAYER_ID)),
+    );
+  const layerDefinitions = layout.layerDefinitions?.filter((definition) => comboLayerUsed || definition.id !== COMBO_LAYER_ID);
 
   const { resolvedComboDefinitions: _dropped, layerDefinitions: _layers, ...rest } = layout;
   validateCanonicalInputMap(canonicalInputs);

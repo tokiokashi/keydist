@@ -12,14 +12,20 @@ const flow = { id: 'a', analyzerId: 'bigram-flow', binding: { mode: 'fixed', tar
 
 async function openWorkspace(page: Page, cols: number): Promise<void> {
   await page.setViewportSize({ width: 1920, height: 1080 });
-  await page.addInitScript((value) => {
-    if (localStorage.getItem('keydist:workspaces') === null) {
-      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
-    }
-  }, {
-    id: 'c', name: '組の数', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes: [flow],
-    grid: [{ id: 'a', x: 0, y: 0, w: cols, h: 22 }],
-  });
+  await page.addInitScript(
+    (value) => {
+      if (localStorage.getItem('keydist:workspaces') === null) {
+        localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
+      }
+    },
+    {
+      id: 'c',
+      name: '組の数',
+      text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+      panes: [flow],
+      grid: [{ id: 'a', x: 0, y: 0, w: cols, h: 22 }],
+    },
+  );
   await page.goto('/workspace/c');
   await waitForHydration(page);
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 20_000 });

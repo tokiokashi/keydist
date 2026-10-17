@@ -2,12 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { composeCommands, type Command } from '#input/commands/index.ts';
 import type { CodecDiagnostic } from '#input/codec/index.ts';
 import type { Setup } from '#input/setup/index.ts';
-import {
-  setMultiSelectionCommand,
-  setSingleTargetCommand,
-  setStandaloneAnalyzerOptionsCommand,
-  type KeydistAssets,
-} from '#engine/commands.ts';
+import { setMultiSelectionCommand, setSingleTargetCommand, setStandaloneAnalyzerOptionsCommand, type KeydistAssets } from '#engine/commands.ts';
 import type { OptionsUrlDecodeResult } from '#analyzers/options.ts';
 import type { PaneCatalog } from '#hosts/shared/resolve-pane-input.ts';
 import {
@@ -21,10 +16,7 @@ import {
 
 /** URLから読む側だけを要求する最小形（`defineOptions`の戻り値がこれを満たす）。 */
 export interface UrlDecodableOptions<Options> {
-  decodeOptionsFromUrl(
-    params: URLSearchParams,
-    diagnostics: CodecDiagnostic[],
-  ): OptionsUrlDecodeResult<Options>;
+  decodeOptionsFromUrl(params: URLSearchParams, diagnostics: CodecDiagnostic[]): OptionsUrlDecodeResult<Options>;
 }
 
 export interface UseSharedLinkInput<Options> {
@@ -144,10 +136,13 @@ export function useSharedLink<Options>({
 
 /** 共有リンクの対象を名前で引く・作るための手持ち。ページの再描画ごとに作り直さない。 */
 export function useTargetShareSource(catalog: PaneCatalog, setups: readonly Setup[]): TargetShareSource {
-  return useMemo(() => ({
-    layouts: catalog.setupCatalog.layouts,
-    userLayoutIds: new Set(catalog.userLayouts.keys()),
-    shapes: catalog.setupCatalog.shapes,
-    setups,
-  }), [catalog, setups]);
+  return useMemo(
+    () => ({
+      layouts: catalog.setupCatalog.layouts,
+      userLayoutIds: new Set(catalog.userLayouts.keys()),
+      shapes: catalog.setupCatalog.shapes,
+      setups,
+    }),
+    [catalog, setups],
+  );
 }

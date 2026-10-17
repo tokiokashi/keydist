@@ -18,17 +18,20 @@ const bigramFlow = (id: string, layoutId: string) => ({ id, analyzerId: 'bigram-
 
 async function openWorkspace(page: Page, panes: readonly { readonly id: string }[]): Promise<void> {
   await page.setViewportSize({ width: 1600, height: 1000 });
-  await page.addInitScript((value) => {
-    if (localStorage.getItem('keydist:workspaces') === null) {
-      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
-    }
-  }, {
-    id: 's',
-    name: '目盛り',
-    text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
-    panes,
-    grid: panes.map((pane, i) => ({ id: pane.id, x: (i % 2) * 12, y: Math.floor(i / 2) * 20, w: 12, h: 20 })),
-  });
+  await page.addInitScript(
+    (value) => {
+      if (localStorage.getItem('keydist:workspaces') === null) {
+        localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
+      }
+    },
+    {
+      id: 's',
+      name: '目盛り',
+      text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+      panes,
+      grid: panes.map((pane, i) => ({ id: pane.id, x: (i % 2) * 12, y: Math.floor(i / 2) * 20, w: 12, h: 20 })),
+    },
+  );
   await page.goto('/workspace/s');
   await waitForHydration(page);
   await expect(page.locator('.workspace-grid-item')).toHaveCount(panes.length);
@@ -39,13 +42,15 @@ const pane = (page: Page, id: string): Locator => page.locator(`.workspace-grid-
 
 /** 棒のうち一番高いものの高さ（SVGの座標系の値。ペインの幅に依らない）。 */
 async function tallestBar(item: Locator): Promise<number> {
-  const heights = await item.locator('.finger-distance-chart-bar').evaluateAll((bars) =>
-    bars.map((bar) => Number(bar.getAttribute('height'))));
+  const heights = await item.locator('.finger-distance-chart-bar').evaluateAll((bars) => bars.map((bar) => Number(bar.getAttribute('height'))));
   return Math.max(...heights);
 }
 
 async function closePane(page: Page, id: string): Promise<void> {
-  await pane(page, id).locator('.pane-frame-menu').getByRole('button', { name: /の操作$/ }).click();
+  await pane(page, id)
+    .locator('.pane-frame-menu')
+    .getByRole('button', { name: /の操作$/ })
+    .click();
   await page.getByRole('menuitem', { name: /閉じる/ }).click();
   await expect(pane(page, id)).toHaveCount(0);
 }

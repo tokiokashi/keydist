@@ -26,11 +26,7 @@ const textRefSchema = v.variant('kind', [
  * 選択1件のdecode。資産の中に選択を抱える別の資産（Workspaceが自分のテキストの選択を持つ）も
  * 同じ規則で読めるよう、codecの外へ出してある。`path`は診断に載せる位置（空なら資産の直下）。
  */
-export function decodeTextSelectionState(
-  raw: unknown,
-  path: string,
-  diagnostics: CodecDiagnostic[],
-): TextSelectionState | undefined {
+export function decodeTextSelectionState(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): TextSelectionState | undefined {
   if (!isRecord(raw)) return undefined;
   const refPath = path === '' ? 'ref' : `${path}.ref`;
   const ref = decodeField<TextRef>(textRefSchema, raw.ref, DEFAULT_TEXT_REF, refPath, diagnostics);

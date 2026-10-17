@@ -51,7 +51,10 @@ async function dotState(page: Page) {
       asText: element.hasAttribute('data-text'),
       title: element.getAttribute('title'),
       text: element.querySelector('.pane-status-badge-text')?.textContent ?? null,
-      running: element.getAnimations().filter((a) => a.playState === 'running').map((a) => (a as CSSAnimation).animationName),
+      running: element
+        .getAnimations()
+        .filter((a) => a.playState === 'running')
+        .map((a) => (a as CSSAnimation).animationName),
       borderStyle: style.borderRightStyle,
       borderTop: style.borderTopColor,
       borderRight: style.borderRightColor,

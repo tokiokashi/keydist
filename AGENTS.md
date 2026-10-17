@@ -59,7 +59,7 @@ Claude Code は `CLAUDE.md` が無いプロジェクトでは `AGENTS.md` を読
 | 役 | 定義 | やること | やらないこと |
 |---|---|---|---|
 | リード | （セッション本体） | 作業単位の切り出し・区分の決定・委任・作られたPRへの区分と使用量の記録・マージ判断・オーナーへの確認 | 実装を自分で書く（リリースPRの作成は除く）。レビュー修正も実装役に戻す |
-| implementer | `.claude/agents/implementer.md` | standard・strict区分の1単位の実装、`npm run typecheck` / `npm test` / `npm run build`、PRの作成と本文（区分・実装したモデルとeffort・判断と理由・確かめた範囲を含む） | 自分の変更の承認、`main` へのpush、マージ |
+| implementer | `.claude/agents/implementer.md` | standard・strict区分の1単位の実装、`npm run lint` / `npm run typecheck` / `npm test` / `npm run build`、PRの作成と本文（区分・実装したモデルとeffort・判断と理由・確かめた範囲を含む） | 自分の変更の承認、`main` へのpush、マージ |
 | implementer-light | `.claude/agents/implementer-light.md` | light区分の1単位の実装と、implementerと同じ検査・PRの作成と本文。`spec/`・数値・codec・保存形式に触る必要が出たら止めてリードに戻す | implementerと同じ。light区分の外の単位を受けること |
 | reviewer | `.claude/agents/reviewer.md` | light・standard区分の、headのshaに対する承認/差し戻し。数値と生成物を測り直す。検証用の一時ファイルはWriteで書き、追跡ファイルを書き換えたら戻す | 修正のコミット・push（指摘として返す） |
 | reviewer-strict | `.claude/agents/reviewer-strict.md` | strict区分の、reviewerと同じ手順での承認/差し戻し | reviewerと同じ |
@@ -90,7 +90,7 @@ Claude Code は `CLAUDE.md` が無いプロジェクトでは `AGENTS.md` を読
   - スクリプトの金額は出力tokensを含まない（transcriptには各リクエストの最初の数tokens分しか記録されない）。出力にもその旨が付く
 - **実装役にはCIを待たせない。** 待つと時間がかかる。代わりに、実装役の報告には「headのCIを見たか・見た結果」を必ず書かせる。
   リードはレビューに出す前に、headのshaのcheck run（`CONTRIBUTING.md`「ブラウザe2e」）を確かめる。落ちていれば実装役に戻す
-- **リードはマージの直前に、今の `main` と合わせた状態で `npm run typecheck`・`npm test`・`npm run build` を回す。**
+- **リードはマージの直前に、今の `main` と合わせた状態で `npm run lint`・`npm run typecheck`・`npm test`・`npm run build` を回す。**
   PRのheadが今の `origin/main` を祖先に含まない時は、CIが緑でも一時の作業ツリー（`.claude/worktrees/` の下）で回し、通ってからマージする。
   落ちたら実装役に `main` をマージさせる（rebaseはしない）。e2eは見ない。判定と手順は `CONTRIBUTING.md`「マージ」
 - **サブエージェントが規約から外れた動きをしたら、禁止を足す前にtranscriptで理由を確かめる。**
@@ -195,12 +195,14 @@ UI・配列定義の追加など、モデルに触らない変更は仕様の更
 npm install
 npm run dev        # 開発サーバー
 npm test           # モデルの分岐を検証
+npm run lint       # 書式と一般的な誤りの検査（書き換えない）
+npm run format     # 書式を整える（書き換える）
 npm run typecheck  # 型検査のみ。ビルドは型検査をしないので別に回す
 npm run build      # ビルドのみ（型検査はしない）
 npm run test:browser  # ブラウザe2e（Playwright）。手元では全件を回さない
 ```
 
-**pushする前に `npm run typecheck`・`npm test`・`npm run build` を通す。** CIも同じものを別々に回す。
+**pushする前に `npm run lint`・`npm run typecheck`・`npm test`・`npm run build` を通す。** CIも同じものを別々に回す。
 **ブラウザe2eの全件は手元で回さず、CIの結果を読む。** CIの `browser-e2e` は `pull_request`（draftを含む）・`main` へのpush・`workflow_dispatch` で走り、
 差分が全部 `*.md` のPRでは飛ばされる。`main` 以外のブランチへのpushでは走らない。PRを開く前に全件を見たい時は、draft PRを開くか `workflow_dispatch` で回す。
 headのSHAのcheck run（`https://api.github.com/repos/tokiokashi/keydist/commits/<sha>/check-runs`）で

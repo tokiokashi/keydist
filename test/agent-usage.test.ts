@@ -14,7 +14,10 @@ test('同じ(message.id, requestId)は最後の行だけを数える', () => {
   ].join('\n');
   const reqs = extractRequests(jsonl);
   assert.equal(reqs.length, 2);
-  assert.deepEqual(reqs.map((r) => r.read), [20, 30]);
+  assert.deepEqual(
+    reqs.map((r) => r.read),
+    [20, 30],
+  );
 });
 
 test('キャッシュ書き込みは5分と1時間を分け、内訳が無ければ全部5分', () => {

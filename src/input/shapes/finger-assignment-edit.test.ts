@@ -92,7 +92,10 @@ test('点検: 既定の割り当ては、対応する物理配列で問題が無
 test('点検: 指の決まっていないキー・物理配列に無いホームキー・別の指のホームキーを見つける', () => {
   // ANSI由来の割り当てをJISの物理配列で使うと、JISにだけあるキーに指が無い
   const unassigned = assignmentProblems(DEFAULT_FINGER_ASSIGNMENT, JIS);
-  assert.deepEqual(unassigned.map((problem) => problem.kind), ['unassigned']);
+  assert.deepEqual(
+    unassigned.map((problem) => problem.kind),
+    ['unassigned'],
+  );
   assert.deepEqual(unassigned[0], { kind: 'unassigned', keyIds: ['r0c12', 'r2c11', 'r3c10'] });
 
   const missingHome = assignHomeKey(BASE, 'LP', 'r9c9');
@@ -193,7 +196,9 @@ test('基本の指が無いキーは、親指以外の指の担当を足すと�
   const sparse: FingerAssignment = {
     ...BASE,
     baseFinger: Object.fromEntries(Object.entries(BASE.baseFinger).filter(([id]) => id !== 'z')),
-    fingerKeys: Object.fromEntries(ALL_FINGERS.map((finger) => [finger, BASE.fingerKeys[finger].filter((id) => id !== 'z')])) as unknown as FingerAssignment['fingerKeys'],
+    fingerKeys: Object.fromEntries(
+      ALL_FINGERS.map((finger) => [finger, BASE.fingerKeys[finger].filter((id) => id !== 'z')]),
+    ) as unknown as FingerAssignment['fingerKeys'],
   };
   assert.deepEqual(keyOwners(sparse, 'z'), []);
   assert.equal(addKeyToFinger(sparse, 'z', 'RT'), sparse);

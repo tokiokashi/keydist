@@ -71,9 +71,12 @@ export function useKeydistAssets(options: UseKeydistAssetsOptions = {}): Keydist
     store.start();
   }, [store]);
 
-  const dispatch = useCallback((command: Command<KeydistAssets>) => {
-    store.dispatch(screen, command);
-  }, [store, screen]);
+  const dispatch = useCallback(
+    (command: Command<KeydistAssets>) => {
+      store.dispatch(screen, command);
+    },
+    [store, screen],
+  );
   const getAssets = useCallback(() => store.getAssets(), [store]);
   const undo = useCallback(() => {
     if (screen !== undefined) store.step(screen, 'undo');
@@ -86,15 +89,18 @@ export function useKeydistAssets(options: UseKeydistAssetsOptions = {}): Keydist
   }, [store, screen]);
 
   const history = screen === undefined ? undefined : state.histories.get(screen);
-  return useMemo(() => ({
-    assets: state.assets,
-    ready: state.ready,
-    dispatch,
-    getAssets,
-    canUndo: (history?.undoStack.length ?? 0) > 0,
-    canRedo: (history?.redoStack.length ?? 0) > 0,
-    undo,
-    redo,
-    discardHistory,
-  }), [state.assets, state.ready, dispatch, getAssets, history, undo, redo, discardHistory]);
+  return useMemo(
+    () => ({
+      assets: state.assets,
+      ready: state.ready,
+      dispatch,
+      getAssets,
+      canUndo: (history?.undoStack.length ?? 0) > 0,
+      canRedo: (history?.redoStack.length ?? 0) > 0,
+      undo,
+      redo,
+      discardHistory,
+    }),
+    [state.assets, state.ready, dispatch, getAssets, history, undo, redo, discardHistory],
+  );
 }

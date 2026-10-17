@@ -38,8 +38,7 @@ const MOBILE_CONDITION = `max-width: ${MOBILE_MAX_WIDTH}px`;
 function cssWidthConditions(source: string): string[] {
   const withoutComments = source.replace(/\/\*[\s\S]*?\*\//g, '');
   const preludes = [...withoutComments.matchAll(/@media([^{]*)\{/gi)].map((match) => match[1] ?? '');
-  return preludes.flatMap((prelude) =>
-    [...prelude.matchAll(/\(([^()]*)\)/g)].map((match) => match[1] ?? '').filter((inner) => /width/i.test(inner)));
+  return preludes.flatMap((prelude) => [...prelude.matchAll(/\(([^()]*)\)/g)].map((match) => match[1] ?? '').filter((inner) => /width/i.test(inner)));
 }
 
 /** TSの中の、幅の問い合わせを組み立てている箇所（テンプレート・連結・range構文を含む）。 */
@@ -55,14 +54,31 @@ test('スマホ幅の問い合わせは定数から作る', () => {
 
 test('検査自体: 素通りしやすい書き方を拾う', () => {
   const css = (query: string) => cssWidthConditions(`@media ${query} { a { color: red } }`);
-  for (const query of ['(width <= 640px)', '(max-width: 40rem)', '(max-width : 640px)', '(MAX-WIDTH: 640px)', '(min-width: 641px)', '(640px <= width)', '(max-width:640px)']) {
+  for (const query of [
+    '(width <= 640px)',
+    '(max-width: 40rem)',
+    '(max-width : 640px)',
+    '(MAX-WIDTH: 640px)',
+    '(min-width: 641px)',
+    '(640px <= width)',
+    '(max-width:640px)',
+  ]) {
     const conditions = css(query);
     assert.equal(conditions.length, 1, query);
     assert.ok(conditions[0] !== MOBILE_CONDITION && !OTHER_CONDITIONS.some((other) => other.condition === conditions[0]), `${query} は正規形でない`);
   }
   assert.deepEqual(css('(max-width: 760px) and (prefers-reduced-motion: reduce)'), [MOBILE_CONDITION]);
   assert.deepEqual(css('(prefers-reduced-motion: reduce)'), []);
-  for (const literal of ["'(width <= 640px)'", '`(max-width: ${640}px)`', "'(max-width:' + 640 + 'px)'", "'(max-width : 640px)'", "'(MIN-WIDTH: 641px)'", "'(640px <= width)'", "'(orientation: portrait), (max-width: 640px)'", "'screen and(max-width: 640px)'"]) {
+  for (const literal of [
+    "'(width <= 640px)'",
+    '`(max-width: ${640}px)`',
+    "'(max-width:' + 640 + 'px)'",
+    "'(max-width : 640px)'",
+    "'(MIN-WIDTH: 641px)'",
+    "'(640px <= width)'",
+    "'(orientation: portrait), (max-width: 640px)'",
+    "'screen and(max-width: 640px)'",
+  ]) {
     assert.notEqual(tsWidthQueries(literal).length, 0, literal);
   }
   assert.deepEqual(tsWidthQueries('const style = `width: ${w}px`;'), []);
@@ -83,7 +99,11 @@ test('CSSの@mediaの幅の条件は、スマホ幅の境目か、理由を書�
   for (const { file, condition, count } of OTHER_CONDITIONS) {
     if (!found.get(file)?.includes(condition)) stray.push(`${file}: 許可した (${condition}) が無い（${count} 件のはず）`);
   }
-  assert.deepEqual(stray, [], `スマホ幅の境目は (${MOBILE_CONDITION})（ui/theme/breakpoints.ts）。別の幅にする理由があれば、ファイルと件数を OTHER_CONDITIONS に足す`);
+  assert.deepEqual(
+    stray,
+    [],
+    `スマホ幅の境目は (${MOBILE_CONDITION})（ui/theme/breakpoints.ts）。別の幅にする理由があれば、ファイルと件数を OTHER_CONDITIONS に足す`,
+  );
   const mobileFiles = [...found].filter(([, conditions]) => conditions.includes(MOBILE_CONDITION)).map(([file]) => file);
   // スマホ幅の出し方を持つCSSが定数の値で書かれていること（定数だけ変えて取り残されたCSSを拾う）。
   for (const expected of [

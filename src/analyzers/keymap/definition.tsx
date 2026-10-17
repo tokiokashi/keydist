@@ -23,9 +23,12 @@ import './keymap-view.css';
 /** 凡例の見本の枠の色。図のトリガーの枠（`app.css`）と同じ色にする。 */
 function triggerToneColor(tone: TriggerTone): string {
   switch (tone.kind) {
-    case 'layer': return `var(--series-${tone.slot})`;
-    case 'others': return 'var(--text-muted)';
-    case 'selection': return 'var(--picker-selected)';
+    case 'layer':
+      return `var(--series-${tone.slot})`;
+    case 'others':
+      return 'var(--text-muted)';
+    case 'selection':
+      return 'var(--picker-selected)';
   }
 }
 
@@ -40,7 +43,11 @@ function ModifierSection({ layout }: { readonly layout: Layout }) {
         <div className="keymap-table-scroll">
           <table className="keymap-table" data-keymap-table="modifier">
             <thead>
-              <tr><th scope="col">レイヤー</th><th scope="col">押し方</th><th scope="col">出る文字</th></tr>
+              <tr>
+                <th scope="col">レイヤー</th>
+                <th scope="col">押し方</th>
+                <th scope="col">出る文字</th>
+              </tr>
             </thead>
             <tbody>
               {rows.map((row) => (
@@ -62,15 +69,20 @@ function ComboDiagram({ layout, geometry, item }: { readonly layout: Layout; rea
   const keys = useMemo(() => visibleGeometryKeys(layout, geometry), [layout, geometry]);
   const views = useMemo(() => {
     const triggers = new Set(item.triggerKeys);
-    return new Map<string, PhysicalKeyboardKeyView>(keys.map((key) => {
-      const trigger = triggers.has(key.id);
-      return [key.id, {
-        legend: item.outputs.get(key.id) ?? (trigger ? layout.legends.get(key.id) ?? '' : ''),
-        trigger,
-        combo: trigger,
-        highlighted: trigger,
-      }];
-    }));
+    return new Map<string, PhysicalKeyboardKeyView>(
+      keys.map((key) => {
+        const trigger = triggers.has(key.id);
+        return [
+          key.id,
+          {
+            legend: item.outputs.get(key.id) ?? (trigger ? (layout.legends.get(key.id) ?? '') : ''),
+            trigger,
+            combo: trigger,
+            highlighted: trigger,
+          },
+        ];
+      }),
+    );
   }, [keys, item, layout]);
   return (
     <PhysicalKeyboard
@@ -105,7 +117,9 @@ function ComboSection({ layout, geometry }: { readonly layout: Layout; readonly 
                 コンボの配列図
                 <select id={selectId} value={items.indexOf(current)} onChange={(event) => setSelected(Number(event.currentTarget.value))}>
                   {items.map((item, index) => (
-                    <option key={`${item.label}-${index}`} value={index}>{item.label}</option>
+                    <option key={`${item.label}-${index}`} value={index}>
+                      {item.label}
+                    </option>
                   ))}
                 </select>
               </label>
@@ -115,7 +129,10 @@ function ComboSection({ layout, geometry }: { readonly layout: Layout; readonly 
           <div className="keymap-table-scroll">
             <table className="keymap-table" data-keymap-table="combo">
               <thead>
-                <tr><th scope="col">押し方</th><th scope="col">出力</th></tr>
+                <tr>
+                  <th scope="col">押し方</th>
+                  <th scope="col">出力</th>
+                </tr>
               </thead>
               <tbody>
                 {rows.map((row, index) => (
@@ -141,7 +158,12 @@ function ComboSection({ layout, geometry }: { readonly layout: Layout; readonly 
  * 普通のキーの枠より太く、続けて押せるキーの枠・選んだキーの枠より細くして、選んだ後の枠と見た目を分ける。
  * 凡例は図のそばに置く。
  */
-function KeyPatternSection({ layout, geometry, options, onOptionsChange }: {
+function KeyPatternSection({
+  layout,
+  geometry,
+  options,
+  onOptionsChange,
+}: {
   readonly layout: Layout;
   readonly geometry: Geometry;
   readonly options: KeymapOptions;
@@ -155,20 +177,30 @@ function KeyPatternSection({ layout, geometry, options, onOptionsChange }: {
   const views = useMemo(() => {
     const chosen = new Set(selected);
     const showTriggers = selected.length === 0;
-    return new Map<string, PhysicalKeyboardKeyView>(keys.map((key) => {
-      const candidate = view.candidateLegends.get(key.id);
-      const isTrigger = showTriggers && triggers.keyTones.has(key.id);
-      const guide = candidate !== undefined
-        ? 'output' as const
-        : view.continuationKeys.has(key.id) ? 'continuation' as const : isTrigger ? 'trigger' as const : undefined;
-      const tone = isTrigger ? triggers.keyTones.get(key.id) : chosen.has(key.id) ? selectedTone : undefined;
-      return [key.id, {
-        legend: candidate ?? layout.legends.get(key.id) ?? '',
-        selected: chosen.has(key.id),
-        guide,
-        ...(tone?.kind === 'layer' ? { accentSlot: tone.slot } : tone?.kind === 'others' ? { accentTone: 'muted' as const } : {}),
-      }];
-    }));
+    return new Map<string, PhysicalKeyboardKeyView>(
+      keys.map((key) => {
+        const candidate = view.candidateLegends.get(key.id);
+        const isTrigger = showTriggers && triggers.keyTones.has(key.id);
+        const guide =
+          candidate !== undefined
+            ? ('output' as const)
+            : view.continuationKeys.has(key.id)
+              ? ('continuation' as const)
+              : isTrigger
+                ? ('trigger' as const)
+                : undefined;
+        const tone = isTrigger ? triggers.keyTones.get(key.id) : chosen.has(key.id) ? selectedTone : undefined;
+        return [
+          key.id,
+          {
+            legend: candidate ?? layout.legends.get(key.id) ?? '',
+            selected: chosen.has(key.id),
+            guide,
+            ...(tone?.kind === 'layer' ? { accentSlot: tone.slot } : tone?.kind === 'others' ? { accentTone: 'muted' as const } : {}),
+          },
+        ];
+      }),
+    );
   }, [keys, layout, selected, view, triggers, selectedTone]);
   const clear = () => setSelected([]);
   return (
@@ -183,8 +215,12 @@ function KeyPatternSection({ layout, geometry, options, onOptionsChange }: {
       </LayerDetailHeading>
       <div className="keymap-pattern" data-keymap-pattern>
         <div className="keymap-pattern-controls">
-          <p className="keymap-pattern-result" role="status" data-keymap-pattern-result>{view.message}</p>
-          <button type="button" onClick={clear} disabled={selected.length === 0}>選択を外す</button>
+          <p className="keymap-pattern-result" role="status" data-keymap-pattern-result>
+            {view.message}
+          </p>
+          <button type="button" onClick={clear} disabled={selected.length === 0}>
+            選択を外す
+          </button>
         </div>
         {triggers.legend.length > 0 ? (
           <div className="keymap-trigger-legend" aria-label="トリガーになるキーの枠" data-keymap-trigger-legend>

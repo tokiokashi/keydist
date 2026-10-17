@@ -108,9 +108,7 @@ function LayoutForm({ initial, isNew, fingerAssignments, ruleOptions, onSubmit }
 
       <fieldset className="romaji-layout-rows">
         <legend>段の文字</legend>
-        <p className="romaji-layout-note">
-          キーに置く文字を、左から順に続けて入力します。数字段は空にすると、QWERTYと同じ数字段になります。
-        </p>
+        <p className="romaji-layout-note">キーに置く文字を、左から順に続けて入力します。数字段は空にすると、QWERTYと同じ数字段になります。</p>
         {ROW_LABELS.map((label, index) => {
           const own = problemsAt((problem) => problem.field.kind === 'row' && problem.field.index === index);
           const length = [...normalized.rows[index]!].length;
@@ -129,7 +127,9 @@ function LayoutForm({ initial, isNew, fingerAssignments, ruleOptions, onSubmit }
                   onChange={(event) => setRow(index, event.currentTarget.value)}
                 />
               </label>
-              <span className="romaji-layout-count">{length} / {ROW_LIMITS[index]}</span>
+              <span className="romaji-layout-count">
+                {length} / {ROW_LIMITS[index]}
+              </span>
               <Problems problems={own} />
             </div>
           );
@@ -162,7 +162,9 @@ function LayoutForm({ initial, isNew, fingerAssignments, ruleOptions, onSubmit }
                     <option value="">指の割り当ての値</option>
                     {stale ? <option value={value}>{physicalKeyDisplayLabel(value)}（段に無いキー）</option> : null}
                     {options.map((option) => (
-                      <option key={option.keyId} value={option.keyId}>{option.char}（{physicalKeyDisplayLabel(option.keyId)}のキー）</option>
+                      <option key={option.keyId} value={option.keyId}>
+                        {option.char}（{physicalKeyDisplayLabel(option.keyId)}のキー）
+                      </option>
                     ))}
                   </select>
                 </label>
@@ -186,7 +188,11 @@ function LayoutForm({ initial, isNew, fingerAssignments, ruleOptions, onSubmit }
         >
           <option value="">指定しない</option>
           {draft.romaji === undefined || knownRuleIds.has(draft.romaji) ? null : <option value={draft.romaji}>見つからない規則</option>}
-          {ruleOptions.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
+          {ruleOptions.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.name}
+            </option>
+          ))}
         </select>
       </label>
       <p className="romaji-layout-note">
@@ -196,7 +202,9 @@ function LayoutForm({ initial, isNew, fingerAssignments, ruleOptions, onSubmit }
       <Problems problems={problemsAt((problem) => problem.field.kind === 'build')} />
 
       <div className="romaji-layout-actions">
-        <button type="submit" data-layout-submit disabled={blocked || (!isNew && !dirty)}>{isNew ? '追加する' : '保存する'}</button>
+        <button type="submit" data-layout-submit disabled={blocked || (!isNew && !dirty)}>
+          {isNew ? '追加する' : '保存する'}
+        </button>
         {blocked ? <span className="romaji-layout-note">保存できない入力があります</span> : null}
       </div>
     </form>
@@ -228,7 +236,7 @@ export function RomajiLayoutEditor({
   const ruleOptions = useMemo(() => allRomajiRules([...rules]), [rules]);
 
   // 選んでいた配列が元に戻すなどで無くなった時は、先頭の配列（無ければ新規作成）に移る
-  const layout = selectedId === NEW ? undefined : editable.find((candidate) => candidate.id === selectedId) ?? editable[0];
+  const layout = selectedId === NEW ? undefined : (editable.find((candidate) => candidate.id === selectedId) ?? editable[0]);
   const isNew = layout === undefined;
 
   const initial = layout === undefined ? blankContent(ruleOptions[0]?.id ?? 'kunrei') : contentOf(layout);
@@ -247,12 +255,14 @@ export function RomajiLayoutEditor({
   return (
     <article className="romaji-layout" data-romaji-layout-editor>
       <h1>{ROMAJI_LAYOUT_LABEL}</h1>
-      <p className="romaji-layout-note">
-        名前と4段の文字を入力して、ローマ字配列を自作します。作った配列は、Analyzerの対象に選べます。
-      </p>
+      <p className="romaji-layout-note">名前と4段の文字を入力して、ローマ字配列を自作します。作った配列は、Analyzerの対象に選べます。</p>
       <div className="romaji-layout-toolbar">
-        <button type="button" disabled={!canUndo} onClick={onUndo}>元に戻す</button>
-        <button type="button" disabled={!canRedo} onClick={onRedo}>やり直す</button>
+        <button type="button" disabled={!canUndo} onClick={onUndo}>
+          元に戻す
+        </button>
+        <button type="button" disabled={!canRedo} onClick={onRedo}>
+          やり直す
+        </button>
       </div>
       {!ready ? null : (
         <>
@@ -260,12 +270,12 @@ export function RomajiLayoutEditor({
             {editable.length === 0 ? null : (
               <label>
                 編集する配列
-                <select
-                  value={layout?.id ?? NEW}
-                  data-layout-pick
-                  onChange={(event) => setSelectedId(event.currentTarget.value)}
-                >
-                  {editable.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                <select value={layout?.id ?? NEW} data-layout-pick onChange={(event) => setSelectedId(event.currentTarget.value)}>
+                  {editable.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
                   {isNew ? <option value={NEW}>新しい配列</option> : null}
                 </select>
               </label>
@@ -273,7 +283,10 @@ export function RomajiLayoutEditor({
             <button
               type="button"
               data-layout-create
-              onClick={() => { setSelectedId(NEW); setNewCount((count) => count + 1); }}
+              onClick={() => {
+                setSelectedId(NEW);
+                setNewCount((count) => count + 1);
+              }}
             >
               新規作成
             </button>

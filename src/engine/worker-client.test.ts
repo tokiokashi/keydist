@@ -86,7 +86,10 @@ function createFakeWorker(options: { manual?: boolean } = {}) {
 }
 
 test('Worker越しのTrace・抽出は、メインスレッドの計算と完全に一致する（英文・日本語のローマ字入力）', async () => {
-  for (const [language, sample] of [['en', 'default'], ['ja', 'legacy']] as const) {
+  for (const [language, sample] of [
+    ['en', 'default'],
+    ['ja', 'legacy'],
+  ] as const) {
     const entries = resolveAll(sampleText(language, sample), language);
     const local = createEngineCache();
     const remote = createWorkerEngineComputer(() => createFakeWorker().worker);
@@ -190,15 +193,12 @@ test('Worker内の例外（未登録のAnalyzer等）は、メッセージ付き
   const [entry] = resolveAll('hello', 'en');
   const remote = createWorkerEngineComputer(() => createFakeWorker().worker);
   const unknown = { ...bigramFlowDefinition, id: 'unknown-analyzer' };
-  await assert.rejects(
-    remote.getExtraction(entry!.input, unknown, DEFAULT_BIGRAM_FLOW_OPTIONS),
-    (error: Error) => {
-      assert.match(error.message, /未登録のAnalyzerです: unknown-analyzer/);
-      // 不具合報告に使う原文のstackも、Workerの中のものが届く。
-      assert.match(error.stack ?? '', /worker-handler/);
-      return true;
-    },
-  );
+  await assert.rejects(remote.getExtraction(entry!.input, unknown, DEFAULT_BIGRAM_FLOW_OPTIONS), (error: Error) => {
+    assert.match(error.message, /未登録のAnalyzerです: unknown-analyzer/);
+    // 不具合報告に使う原文のstackも、Workerの中のものが届く。
+    assert.match(error.stack ?? '', /worker-handler/);
+    return true;
+  });
   // 失敗の後も、同じWorkerで次の依頼を受けられる。
   assert.ok(await remote.getTrace(entry!.input));
   remote.dispose();

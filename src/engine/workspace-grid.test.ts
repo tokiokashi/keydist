@@ -38,13 +38,22 @@ test('gridWithPaneNextTo: 元と同じ大きさで右隣に置く。右が塞が
   const grid = gridWithPane(gridWithPane([], 'a', { w: 12, h: 10 }, true), 'b', { w: 8, h: 6 }, true);
   // aの右隣はbで塞がっている。真下に同じ大きさで置く
   const below = gridWithPaneNextTo(grid, 'a', 'a2', true);
-  assert.deepEqual(below.find((i) => i.id === 'a2'), item('a2', 0, 10, 12, 10));
+  assert.deepEqual(
+    below.find((i) => i.id === 'a2'),
+    item('a2', 0, 10, 12, 10),
+  );
   // bの右隣は範囲（既定は24列）に収まらない（12 + 8 + 8 > 24）ので、bの真下
   const bBelow = gridWithPaneNextTo(grid, 'b', 'b2', true);
-  assert.deepEqual(bBelow.find((i) => i.id === 'b2'), item('b2', 12, 6, 8, 6));
+  assert.deepEqual(
+    bBelow.find((i) => i.id === 'b2'),
+    item('b2', 12, 6, 8, 6),
+  );
   // 空いている右隣があれば右隣
   const narrow = gridWithPane([], 'n', { w: 8, h: 6 }, true);
-  assert.deepEqual(gridWithPaneNextTo(narrow, 'n', 'n2', true).find((i) => i.id === 'n2'), item('n2', 8, 0, 8, 6));
+  assert.deepEqual(
+    gridWithPaneNextTo(narrow, 'n', 'n2', true).find((i) => i.id === 'n2'),
+    item('n2', 8, 0, 8, 6),
+  );
 });
 
 test('gridWithPaneNextTo: 右隣が範囲に収まらなければ、範囲の外へは置かない', () => {
@@ -70,13 +79,22 @@ test('既定の幅と列の上限: ペインの既定の幅は12列、余白の�
 test('gridWithPane: 範囲を渡すと、その範囲の中の空いている最初の場所に置く（24列より右を含む）', () => {
   const grid: WorkspaceGrid = [item('a', 0, 0, 12, 6)];
   // 範囲が左端から離れていれば、その左端に置く
-  assert.deepEqual(gridWithPane(grid, 'n', { w: 12, h: 4 }, false, { start: 30, end: 60 }).find((i) => i.id === 'n'), item('n', 30, 0, 12, 4));
+  assert.deepEqual(
+    gridWithPane(grid, 'n', { w: 12, h: 4 }, false, { start: 30, end: 60 }).find((i) => i.id === 'n'),
+    item('n', 30, 0, 12, 4),
+  );
   // 範囲の中が塞がっていれば、次の空き（右へ）。範囲の外の空きは使わない
   const filled: WorkspaceGrid = [item('a', 30, 0, 12, 6)];
-  assert.deepEqual(gridWithPane(filled, 'n', { w: 12, h: 4 }, false, { start: 30, end: 60 }).find((i) => i.id === 'n'), item('n', 42, 0, 12, 4));
+  assert.deepEqual(
+    gridWithPane(filled, 'n', { w: 12, h: 4 }, false, { start: 30, end: 60 }).find((i) => i.id === 'n'),
+    item('n', 42, 0, 12, 4),
+  );
   // 範囲に空きが無ければ、並びの下の範囲の左端
   const full: WorkspaceGrid = [item('a', 30, 0, 15, 6), item('b', 45, 0, 15, 6)];
-  assert.deepEqual(gridWithPane(full, 'n', { w: 12, h: 4 }, false, { start: 30, end: 60 }).find((i) => i.id === 'n'), item('n', 30, 6, 12, 4));
+  assert.deepEqual(
+    gridWithPane(full, 'n', { w: 12, h: 4 }, false, { start: 30, end: 60 }).find((i) => i.id === 'n'),
+    item('n', 30, 6, 12, 4),
+  );
   // 上限は越えない
   const edge = gridWithPane([], 'n', { w: 12, h: 4 }, false, { start: GRID_MAX_COLS - 2, end: GRID_MAX_COLS + 20 }).find((i) => i.id === 'n')!;
   assert.equal(edge.x + edge.w, GRID_MAX_COLS);
@@ -86,12 +104,21 @@ test('gridWithPaneNextTo: 右隣が範囲の外なら、範囲の中（真下、
   const grid: WorkspaceGrid = [item('a', 30, 0, 12, 6)];
   const range = { start: 30, end: 42 };
   // aの右隣（42〜54）は範囲の外。範囲の中の真下に置く
-  assert.deepEqual(gridWithPaneNextTo(grid, 'a', 'a2', false, undefined, range).find((i) => i.id === 'a2'), item('a2', 30, 6, 12, 6));
+  assert.deepEqual(
+    gridWithPaneNextTo(grid, 'a', 'a2', false, undefined, range).find((i) => i.id === 'a2'),
+    item('a2', 30, 6, 12, 6),
+  );
   // 範囲が広ければ右隣
-  assert.deepEqual(gridWithPaneNextTo(grid, 'a', 'a2', false, undefined, { start: 30, end: 60 }).find((i) => i.id === 'a2'), item('a2', 42, 0, 12, 6));
+  assert.deepEqual(
+    gridWithPaneNextTo(grid, 'a', 'a2', false, undefined, { start: 30, end: 60 }).find((i) => i.id === 'a2'),
+    item('a2', 42, 0, 12, 6),
+  );
   // 元のペインが範囲の左に隠れていて、真下も範囲の外なら、範囲の中の空いている最初の場所
   const hidden: WorkspaceGrid = [item('a', 0, 0, 12, 6)];
-  assert.deepEqual(gridWithPaneNextTo(hidden, 'a', 'a2', false, undefined, { start: 30, end: 60 }).find((i) => i.id === 'a2'), item('a2', 30, 6, 12, 6));
+  assert.deepEqual(
+    gridWithPaneNextTo(hidden, 'a', 'a2', false, undefined, { start: 30, end: 60 }).find((i) => i.id === 'a2'),
+    item('a2', 30, 6, 12, 6),
+  );
 });
 
 test('gridWithoutPane: 下のペインは上へ詰まる。他のペインの大きさは変わらない', () => {
@@ -111,21 +138,24 @@ test('compactGrid: 上に空きがあれば詰め、詰まっていれば内容�
 test('normalizeGrid: 24列より右の位置と幅は保ち、列の上限だけで収める', () => {
   const wide: WorkspaceGrid = [item('a', 30, 0, 12, 4), item('b', 0, 0, 28, 4), item('c', 1000, 0, 12, 4), item('d', 0, 4, 9999, 4)];
   const fixed = normalizeGrid(wide, ['a', 'b', 'c', 'd'], false);
-  assert.deepEqual(fixed.find((i) => i.id === 'a'), item('a', 30, 0, 12, 4));
-  assert.deepEqual(fixed.find((i) => i.id === 'b'), item('b', 0, 0, 28, 4));
-  assert.deepEqual(fixed.find((i) => i.id === 'c'), item('c', GRID_MAX_COLS - 12, 0, 12, 4));
+  assert.deepEqual(
+    fixed.find((i) => i.id === 'a'),
+    item('a', 30, 0, 12, 4),
+  );
+  assert.deepEqual(
+    fixed.find((i) => i.id === 'b'),
+    item('b', 0, 0, 28, 4),
+  );
+  assert.deepEqual(
+    fixed.find((i) => i.id === 'c'),
+    item('c', GRID_MAX_COLS - 12, 0, 12, 4),
+  );
   assert.equal(fixed.find((i) => i.id === 'd')!.w, GRID_MAX_COLS);
   assert.ok(noOverlap(fixed));
 });
 
 test('normalizeGrid: 範囲外・重なり・知らないペイン・重複を直し、枠の無いペインは足す', () => {
-  const dirty: WorkspaceGrid = [
-    item('a', 18, 0, 12, 5),
-    item('a', 0, 0, 2, 2),
-    item('ghost', 0, 0, 1, 1),
-    item('b', 0, 0, 12, 5),
-    item('c', 0, 0, 0, 0),
-  ];
+  const dirty: WorkspaceGrid = [item('a', 18, 0, 12, 5), item('a', 0, 0, 2, 2), item('ghost', 0, 0, 1, 1), item('b', 0, 0, 12, 5), item('c', 0, 0, 0, 0)];
   const fixed = normalizeGrid(dirty, ['a', 'b', 'c', 'd'], true);
   assert.deepEqual([...gridPaneIds(fixed)].sort(), ['a', 'b', 'c', 'd']);
   assert.ok(noOverlap(fixed));

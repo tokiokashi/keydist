@@ -9,10 +9,7 @@ const source = readFileSync(new URL('./set-analyzers.ts', import.meta.url), 'utf
 
 test('Workspaceに載せるSetは、どれもペインに渡すものを登録している', () => {
   for (const entry of WORKSPACE_ANALYZERS.filter((candidate) => candidate.cardinality === 'set')) {
-    assert.ok(
-      source.includes(`'#analyzers/${entry.id}/definition.tsx'`),
-      `${entry.id}のペインに渡すものがset-analyzers.tsに無い`,
-    );
+    assert.ok(source.includes(`'#analyzers/${entry.id}/definition.tsx'`), `${entry.id}のペインに渡すものがset-analyzers.tsに無い`);
   }
 });
 

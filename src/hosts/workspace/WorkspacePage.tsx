@@ -151,28 +151,30 @@ export function WorkspacePage({
     onPaneOptionsCommit.flush();
   }, [onPaneOptionsCommit]);
 
-  const pageHistory: ContextBarHistory = useMemo(() => ({
-    canUndo: history.canUndo,
-    canRedo: history.canRedo,
-    // 戻す・やり直すでペインが増減する。新しく現れるペインが隠れないよう、拡大は解く
-    undo: () => {
-      flushPending();
-      setMaximizedId(undefined);
-      history.undo();
-    },
-    redo: () => {
-      flushPending();
-      setMaximizedId(undefined);
-      history.redo();
-    },
-  }), [history, flushPending]);
+  const pageHistory: ContextBarHistory = useMemo(
+    () => ({
+      canUndo: history.canUndo,
+      canRedo: history.canRedo,
+      // 戻す・やり直すでペインが増減する。新しく現れるペインが隠れないよう、拡大は解く
+      undo: () => {
+        flushPending();
+        setMaximizedId(undefined);
+        history.undo();
+      },
+      redo: () => {
+        flushPending();
+        setMaximizedId(undefined);
+        history.redo();
+      },
+    }),
+    [history, flushPending],
+  );
 
   // Workspaceの保存はどれも`workspace`を作り直す。中身が同じテキストは同じ参照のまま渡して、
   // テキストと関係の無い保存（並び・連動の組の対象）で全ペインが依頼を出し直さないようにする。
-  const resolvedText = useStableResolvedText(useMemo(
-    () => (workspace === undefined ? undefined : resolveTextSelection(workspace.text, assets.textLibrary)),
-    [workspace, assets.textLibrary],
-  ));
+  const resolvedText = useStableResolvedText(
+    useMemo(() => (workspace === undefined ? undefined : resolveTextSelection(workspace.text, assets.textLibrary)), [workspace, assets.textLibrary]),
+  );
 
   // 条件のモーダルの元に戻すも、文脈バーと同じく待っている書き込みを先に反映してから戻す
   const undo = useLatestCallback(pageHistory.undo);
@@ -185,19 +187,37 @@ export function WorkspacePage({
     [assets.setupLibrary.overrides, workspaceConditions],
   );
 
-  const env: PaneEnvironment | undefined = useMemo(() => (resolvedText === undefined ? undefined : {
-    setups: assets.setupLibrary.setups,
-    overrides,
-    workspaceId,
-    catalog,
-    resolvedText,
-    cache,
-    dispatch,
-    presetLibrary: assets.presetLibrary,
-    generatePresetId,
-    undo,
-    assetsReady,
-  }), [assets.setupLibrary.setups, overrides, workspaceId, assets.presetLibrary, catalog, resolvedText, cache, dispatch, generatePresetId, undo, assetsReady]);
+  const env: PaneEnvironment | undefined = useMemo(
+    () =>
+      resolvedText === undefined
+        ? undefined
+        : {
+            setups: assets.setupLibrary.setups,
+            overrides,
+            workspaceId,
+            catalog,
+            resolvedText,
+            cache,
+            dispatch,
+            presetLibrary: assets.presetLibrary,
+            generatePresetId,
+            undo,
+            assetsReady,
+          },
+    [
+      assets.setupLibrary.setups,
+      overrides,
+      workspaceId,
+      assets.presetLibrary,
+      catalog,
+      resolvedText,
+      cache,
+      dispatch,
+      generatePresetId,
+      undo,
+      assetsReady,
+    ],
+  );
 
   const panes = workspace?.panes;
   const panesById = useMemo(() => new Map((panes ?? []).map((pane) => [pane.id, pane] as const)), [panes]);
@@ -211,70 +231,87 @@ export function WorkspacePage({
   const groups = workspace?.groups;
   const optionSets = workspace?.optionSets;
   const colorSlots = workspace?.colorSlots ?? initialWorkspaceColorSlots();
-  const groupSummaries = useMemo(
-    () => (env === undefined || groups === undefined ? [] : summarizeLinkGroups(env, groups)),
-    [env, groups],
-  );
+  const groupSummaries = useMemo(() => (env === undefined || groups === undefined ? [] : summarizeLinkGroups(env, groups)), [env, groups]);
 
-  const runtime: WorkspacePaneRuntime | undefined = useMemo(() => (env === undefined ? undefined : {
-    env,
-    paneOptions: (pane: WorkspacePane) => (
-      optionSets === undefined ? pane.options : resolvePaneOptions({ optionSets }, pane)
-    ),
-    setPaneOptionsShared: (paneId: string, shared: boolean) => {
-      // 待っている設定の書き込みを先に反映する。持ち方を替えた後にその値が書かれると、切り替えの結果を上書きする
-      flushPending();
-      dispatch(setWorkspacePaneOptionsBindingCommand(workspaceId, paneId, { kind: shared ? 'shared' : 'own' }));
-    },
-    paneOptionsKey: (pane: WorkspacePane) => paneOptionsOwnerKey(pane),
-    commitPaneOptions: (paneId: string, options: unknown) => {
-      const pane = panesById.get(paneId);
-      if (pane !== undefined) onPaneOptionsCommit(paneOptionsOwnerKey(pane), paneId, options);
-    },
-    paneTarget: (pane: WorkspacePane, kind: WorkspacePaneTarget['kind']) => (
-      groups === undefined ? undefined : resolveWorkspacePaneTarget(pane.binding, groups, kind)
-    ),
-    setPaneTarget: (paneId: string, target: WorkspacePaneTarget) => {
-      // 従うペインで対象を選ぶと、その組の対象を書き換える（同じ組の他のペインも一緒に変わる）。
-      const binding = panesById.get(paneId)?.binding;
-      if (binding?.mode === 'follow') {
-        dispatch(setWorkspaceTargetCommand(workspaceId, binding.group, target));
-      } else {
-        dispatch(setWorkspacePaneBindingCommand(workspaceId, paneId, { mode: 'fixed', target }));
-      }
-    },
-    colorSlots,
-    groups: groups ?? [],
-    groupSummaries,
-    bindPane: (paneId: string, choice: PaneBindingChoice) => {
-      const pane = panesById.get(paneId);
-      if (pane === undefined || groups === undefined) return;
-      if (choice.kind === 'group') {
-        dispatch(setWorkspacePaneBindingCommand(workspaceId, paneId, followBinding(choice.id)));
-        return;
-      }
-      // 固定・新しい組は、今映している対象をそのまま持つ（押した瞬間に見た目が変わらないように）。
-      const kind = findWorkspaceAnalyzer(pane.analyzerId)?.cardinality;
-      const current = kind === undefined ? undefined : resolveWorkspacePaneTarget(pane.binding, groups, kind);
-      if (current === undefined) return;
-      dispatch(choice.kind === 'fixed'
-        ? setWorkspacePaneBindingCommand(workspaceId, paneId, { mode: 'fixed', target: current })
-        : linkWorkspacePaneToNewGroupCommand(workspaceId, paneId, generateId(), current));
-    },
-    duplicatePane: (paneId: string) => {
-      flushPending();
-      // 写したペインが隣に現れるので、拡大は解いて見えるようにする
-      setMaximizedId(undefined);
-      dispatch(duplicateWorkspacePaneCommand(workspaceId, paneId, generateId(), visibleRange()));
-    },
-    closePane: (paneId: string) => {
-      flushPending();
-      setMaximizedId((current) => (current === paneId ? undefined : current));
-      dispatch(closeWorkspacePaneCommand(workspaceId, paneId));
-    },
-    // 縦積みは格子を使わず拡大できないので、渡さない（⋯に項目を出さない）
-    ...(stacked ? {} : { maximizedPaneId: maximizedId, maximizePane: setMaximizedId }),
-  }), [stacked, maximizedId, env, onPaneOptionsCommit, dispatch, workspaceId, generateId, flushPending, visibleRange, panesById, groups, optionSets, groupSummaries, colorSlots]);
+  const runtime: WorkspacePaneRuntime | undefined = useMemo(
+    () =>
+      env === undefined
+        ? undefined
+        : {
+            env,
+            paneOptions: (pane: WorkspacePane) => (optionSets === undefined ? pane.options : resolvePaneOptions({ optionSets }, pane)),
+            setPaneOptionsShared: (paneId: string, shared: boolean) => {
+              // 待っている設定の書き込みを先に反映する。持ち方を替えた後にその値が書かれると、切り替えの結果を上書きする
+              flushPending();
+              dispatch(setWorkspacePaneOptionsBindingCommand(workspaceId, paneId, { kind: shared ? 'shared' : 'own' }));
+            },
+            paneOptionsKey: (pane: WorkspacePane) => paneOptionsOwnerKey(pane),
+            commitPaneOptions: (paneId: string, options: unknown) => {
+              const pane = panesById.get(paneId);
+              if (pane !== undefined) onPaneOptionsCommit(paneOptionsOwnerKey(pane), paneId, options);
+            },
+            paneTarget: (pane: WorkspacePane, kind: WorkspacePaneTarget['kind']) =>
+              groups === undefined ? undefined : resolveWorkspacePaneTarget(pane.binding, groups, kind),
+            setPaneTarget: (paneId: string, target: WorkspacePaneTarget) => {
+              // 従うペインで対象を選ぶと、その組の対象を書き換える（同じ組の他のペインも一緒に変わる）。
+              const binding = panesById.get(paneId)?.binding;
+              if (binding?.mode === 'follow') {
+                dispatch(setWorkspaceTargetCommand(workspaceId, binding.group, target));
+              } else {
+                dispatch(setWorkspacePaneBindingCommand(workspaceId, paneId, { mode: 'fixed', target }));
+              }
+            },
+            colorSlots,
+            groups: groups ?? [],
+            groupSummaries,
+            bindPane: (paneId: string, choice: PaneBindingChoice) => {
+              const pane = panesById.get(paneId);
+              if (pane === undefined || groups === undefined) return;
+              if (choice.kind === 'group') {
+                dispatch(setWorkspacePaneBindingCommand(workspaceId, paneId, followBinding(choice.id)));
+                return;
+              }
+              // 固定・新しい組は、今映している対象をそのまま持つ（押した瞬間に見た目が変わらないように）。
+              const kind = findWorkspaceAnalyzer(pane.analyzerId)?.cardinality;
+              const current = kind === undefined ? undefined : resolveWorkspacePaneTarget(pane.binding, groups, kind);
+              if (current === undefined) return;
+              dispatch(
+                choice.kind === 'fixed'
+                  ? setWorkspacePaneBindingCommand(workspaceId, paneId, { mode: 'fixed', target: current })
+                  : linkWorkspacePaneToNewGroupCommand(workspaceId, paneId, generateId(), current),
+              );
+            },
+            duplicatePane: (paneId: string) => {
+              flushPending();
+              // 写したペインが隣に現れるので、拡大は解いて見えるようにする
+              setMaximizedId(undefined);
+              dispatch(duplicateWorkspacePaneCommand(workspaceId, paneId, generateId(), visibleRange()));
+            },
+            closePane: (paneId: string) => {
+              flushPending();
+              setMaximizedId((current) => (current === paneId ? undefined : current));
+              dispatch(closeWorkspacePaneCommand(workspaceId, paneId));
+            },
+            // 縦積みは格子を使わず拡大できないので、渡さない（⋯に項目を出さない）
+            ...(stacked ? {} : { maximizedPaneId: maximizedId, maximizePane: setMaximizedId }),
+          },
+    [
+      stacked,
+      maximizedId,
+      env,
+      onPaneOptionsCommit,
+      dispatch,
+      workspaceId,
+      generateId,
+      flushPending,
+      visibleRange,
+      panesById,
+      groups,
+      optionSets,
+      groupSummaries,
+      colorSlots,
+    ],
+  );
 
   const titleOf = useCallback(
     (paneId: string) => {
@@ -284,10 +321,7 @@ export function WorkspacePage({
     [panesById],
   );
 
-  const analyzerIdOf = useCallback(
-    (paneId: string) => panesById.get(paneId)?.analyzerId ?? '',
-    [panesById],
-  );
+  const analyzerIdOf = useCallback((paneId: string) => panesById.get(paneId)?.analyzerId ?? '', [panesById]);
 
   const descriptionOf = useCallback(
     (paneId: string) => {
@@ -305,11 +339,14 @@ export function WorkspacePage({
     [panesById],
   );
 
-  const renderPane = useCallback((paneId: string) => {
-    const pane = panesById.get(paneId);
-    if (pane === undefined || runtime === undefined) return null;
-    return <WorkspacePaneView pane={pane} runtime={runtime} />;
-  }, [panesById, runtime]);
+  const renderPane = useCallback(
+    (paneId: string) => {
+      const pane = panesById.get(paneId);
+      if (pane === undefined || runtime === undefined) return null;
+      return <WorkspacePaneView pane={pane} runtime={runtime} />;
+    },
+    [panesById, runtime],
+  );
 
   const addPane = (entry: WorkspaceAnalyzerEntry) => {
     flushPending();
@@ -330,7 +367,14 @@ export function WorkspacePage({
   const addBlankPane = () => {
     flushPending();
     setMaximizedId(undefined);
-    dispatch(addWorkspacePaneCommand(workspaceId, { id: generateId(), analyzerId: BLANK_PANE_ID, options: undefined, optionsBinding: OWN_OPTIONS, binding: NO_BINDING }, defaultGridSize(BLANK_PANE_ID), visibleRange()));
+    dispatch(
+      addWorkspacePaneCommand(
+        workspaceId,
+        { id: generateId(), analyzerId: BLANK_PANE_ID, options: undefined, optionsBinding: OWN_OPTIONS, binding: NO_BINDING },
+        defaultGridSize(BLANK_PANE_ID),
+        visibleRange(),
+      ),
+    );
   };
 
   // 今開いている空のWorkspaceへサンプルの並びを入れる（新しいWorkspaceは作らない）。元に戻すで空へ戻る
@@ -343,7 +387,9 @@ export function WorkspacePage({
   if (workspace === undefined) {
     return (
       <div className="workspace-page">
-        <ContextBar disabled history={pageHistory}>{null}</ContextBar>
+        <ContextBar disabled history={pageHistory}>
+          {null}
+        </ContextBar>
         {assetsReady ? (
           <div className="workspace-missing" data-workspace-missing="true">
             <h1>Workspaceが見つからない</h1>
@@ -359,14 +405,8 @@ export function WorkspacePage({
       <PlaybackBroadcastProvider value={playbackBroadcast}>
         <KeySelectionContext.Provider value={keySelection}>
           <div ref={pageRef} className="workspace-page" data-stacked={stacked || undefined}>
-            <ContextBar
-              disabled={!assetsReady}
-              history={pageHistory}
-            >
-              <WorkspaceName
-                name={workspace.name}
-                onRename={(next) => dispatch(renameWorkspaceCommand(workspaceId, next))}
-              />
+            <ContextBar disabled={!assetsReady} history={pageHistory}>
+              <WorkspaceName name={workspace.name} onRename={(next) => dispatch(renameWorkspaceCommand(workspaceId, next))} />
               {/* 待っている変更（並び・解析設定）を先に書いてから複製・書き出し・削除する。写す・書き出す・戻す中身が古くならないように */}
               <PaneMenu
                 paneName={workspace.name}
@@ -380,9 +420,30 @@ export function WorkspacePage({
                     checked: workspace.compactPanes === true,
                     onSelect: () => dispatch(setWorkspaceCompactPanesCommand(workspaceId, workspace.compactPanes !== true)),
                   },
-                  { id: 'duplicate', label: '複製', onSelect: () => { flushPending(); onDuplicate(); } },
-                  { id: 'export', label: '書き出す', onSelect: () => { flushPending(); onExport(); } },
-                  { id: 'delete', label: '削除', onSelect: () => { flushPending(); onDelete(); } },
+                  {
+                    id: 'duplicate',
+                    label: '複製',
+                    onSelect: () => {
+                      flushPending();
+                      onDuplicate();
+                    },
+                  },
+                  {
+                    id: 'export',
+                    label: '書き出す',
+                    onSelect: () => {
+                      flushPending();
+                      onExport();
+                    },
+                  },
+                  {
+                    id: 'delete',
+                    label: '削除',
+                    onSelect: () => {
+                      flushPending();
+                      onDelete();
+                    },
+                  },
                 ]}
               />
               {/* 空の間は、中央の大きい「ペインを追加」を使う（同じ操作を2つ出さない）。
@@ -410,17 +471,16 @@ export function WorkspacePage({
               />
             </ContextBar>
             {/* プリレンダーやハイドレーション前は操作を効かせない（個別画面と同じ扱い）。 */}
-            <fieldset
-              disabled={!assetsReady}
-              style={{ display: 'contents', border: 0, padding: 0, margin: 0, minWidth: 0 }}
-            >
+            <fieldset disabled={!assetsReady} style={{ display: 'contents', border: 0, padding: 0, margin: 0, minWidth: 0 }}>
               {workspace.panes.length === 0 ? (
                 <div className="workspace-empty" data-workspace-empty="true">
                   <p>ペインを追加して、並べて見られます。</p>
                   <AddPaneMenu onAdd={addPane} onAddBlank={addBlankPane} variant="empty" />
                   <div className="workspace-sample-buttons">
                     {SAMPLE_KINDS.map((kind) => (
-                      <button key={kind} type="button" className="workspace-sample-button" onClick={() => startFromSample(kind)}>{sampleLabel(kind)}で始める</button>
+                      <button key={kind} type="button" className="workspace-sample-button" onClick={() => startFromSample(kind)}>
+                        {sampleLabel(kind)}で始める
+                      </button>
                     ))}
                   </div>
                 </div>

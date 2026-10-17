@@ -7,10 +7,7 @@ import type { KeyDetails } from '#interpretation/key-detail.ts';
 import type { Trace } from '#trace/generate.ts';
 import type { BigramVector, FingerClass, RelativeVector } from './bigram-vectors.ts';
 import { bigramFlowDefinition, type BigramFlowExtracted, type BigramFlowHandProfile } from './extract.ts';
-import {
-  MIN_POLAR_BANDWIDTH_DEGREES,
-  movementPlotScale,
-} from './movement-profile-scale.ts';
+import { MIN_POLAR_BANDWIDTH_DEGREES, movementPlotScale } from './movement-profile-scale.ts';
 import {
   computeOutgoingMaxWeight,
   bigramFlowOptions,
@@ -35,14 +32,7 @@ import {
 } from '#ui/primitives/option-fields.tsx';
 import { useFigureSettings } from '#ui/primitives/figure-settings.tsx';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
-import {
-  AREA_HEIGHT,
-  AREA_WIDTH,
-  fitKeyboardToArea,
-  flowLineWidth,
-  KEY_PITCH,
-  repeatLabelScale,
-} from './keyboard-flow-area.ts';
+import { AREA_HEIGHT, AREA_WIDTH, fitKeyboardToArea, flowLineWidth, KEY_PITCH, repeatLabelScale } from './keyboard-flow-area.ts';
 import { BIGRAM_FLOW_PANE_META } from './pane-meta.ts';
 import { keyDetailTooltip, keyName } from '../key-detail-view.ts';
 import type { AnalyzerSettingsProps, KeySelectionProps, SingleAnalyzerPaneParts } from '../pane-parts.tsx';
@@ -133,10 +123,7 @@ function edgePath(vector: BigramVector, minX: number, minY: number): string {
   return `M ${start.x} ${start.y} Q ${control.x} ${control.y} ${end.x} ${end.y}`;
 }
 
-function edgeKind(
-  vector: BigramVector,
-  showRollDirection: boolean,
-): keyof typeof FLOW_COLORS {
+function edgeKind(vector: BigramVector, showRollDirection: boolean): keyof typeof FLOW_COLORS {
   if (showRollDirection && vector.fingerDirection !== undefined) return vector.fingerDirection;
   return vector.hand;
 }
@@ -232,10 +219,7 @@ function KeyboardFlow({
   const keyBounds = useMemo(() => bounds(keys), [keys]);
   const [hoveredKeyId, setHoveredKeyId] = useState<string | null>(null);
   // 描画エリアは物理配列によらず固定。キーボードは中央に置き、自作の物理配列が収まらない時だけ縮める。
-  const fit = useMemo(
-    () => fitKeyboardToArea(keyBounds.maxX - keyBounds.minX, keyBounds.maxY - keyBounds.minY),
-    [keyBounds],
-  );
+  const fit = useMemo(() => fitKeyboardToArea(keyBounds.maxX - keyBounds.minX, keyBounds.maxY - keyBounds.minY), [keyBounds]);
   const origin = useMemo(
     () => ({
       minX: keyBounds.minX - fit.originX / KEY_PITCH,
@@ -250,27 +234,15 @@ function KeyboardFlow({
   const areaCenterX = AREA_WIDTH / 2;
   const areaCenterY = AREA_HEIGHT / 2;
   // 重ね順（layerOrder）は見た目だけの設定なので、抽出済みvectorをここで並べ替える。
-  const allFlowVectors = useMemo(
-    () => orderKeyboardFlowVectors(vectors, layerOrder),
-    [vectors, layerOrder],
-  );
-  const hoverCounts = useMemo(
-    () => outgoingCounts(allFlowVectors, hoveredKeyId),
-    [allFlowVectors, hoveredKeyId],
-  );
-  const keyMaxWeight = useMemo(
-    () => computeOutgoingMaxWeight(allFlowVectors, hoveredKeyId),
-    [allFlowVectors, hoveredKeyId],
-  );
+  const allFlowVectors = useMemo(() => orderKeyboardFlowVectors(vectors, layerOrder), [vectors, layerOrder]);
+  const hoverCounts = useMemo(() => outgoingCounts(allFlowVectors, hoveredKeyId), [allFlowVectors, hoveredKeyId]);
+  const keyMaxWeight = useMemo(() => computeOutgoingMaxWeight(allFlowVectors, hoveredKeyId), [allFlowVectors, hoveredKeyId]);
   // グラデーションのidは文書全体で一意でなければならない。Workspaceで同じ図を複数並べると、
   // 固定のid（`flow-gradient-0`等）では後のペインの線が先頭のペインの定義を参照してしまい、
   // 別の配列の色と座標で塗られる。useIdの`:`はurl(#...)で扱いにくいので落とす。
   const gradientScope = useId().replace(/:/g, '');
   const gradientId = (index: number) => `flow-gradient-${gradientScope}-${index}`;
-  const gradientIndexById = useMemo(
-    () => new Map(allFlowVectors.map((vector, index) => [vector.id, index] as const)),
-    [allFlowVectors],
-  );
+  const gradientIndexById = useMemo(() => new Map(allFlowVectors.map((vector, index) => [vector.id, index] as const)), [allFlowVectors]);
   const showRollDirection = selectedFingers.length === 2;
   const standard = keyboardStandardForGeometryId(geometry.id);
 
@@ -286,174 +258,178 @@ function KeyboardFlow({
         {/* 自作の物理配列がエリアに収まらない時だけshrinkが1未満。エリアの中心を軸に縮める。 */}
         <g
           data-flow-shrink={fit.shrink}
-          transform={fit.shrink === 1
-            ? undefined
-            : `translate(${areaCenterX} ${areaCenterY}) scale(${fit.shrink}) translate(${-areaCenterX} ${-areaCenterY})`}
+          transform={
+            fit.shrink === 1 ? undefined : `translate(${areaCenterX} ${areaCenterY}) scale(${fit.shrink}) translate(${-areaCenterX} ${-areaCenterY})`
+          }
         >
-        <g className="flow-key-layer">
-          {keys.map((key) => {
-            const point = chartPoint(key, origin.minX, origin.minY);
-            const keyClass = key.finger[1] === 'P'
-              ? 'pinky'
-              : key.finger[1] === 'R'
-                ? 'ring'
-                : key.finger[1] === 'M'
-                  ? 'middle'
-                  : key.finger[1] === 'I'
-                    ? 'index'
-                    : undefined;
-            const selected = keyClass !== undefined && selectedFingers.includes(keyClass);
-            const label = layout.legends.get(key.id) ?? key.id;
-            const tooltip = keyDetailTooltip(keyName(key.id, layout.legends.get(key.id), standard), keyDetails.merged.get(key.id));
-            const chosen = keySelection?.selectedKeyId === key.id;
-            const interactive = keySelection === undefined ? {} : {
-              role: 'button',
-              tabIndex: 0,
-              'aria-pressed': chosen,
-              'aria-label': tooltip.split('\n')[0],
-              onClick: (event: MouseEvent<SVGGElement>) => keySelection.onKeyPress(key.id, event.currentTarget),
-              onKeyDown: (event: KeyboardEvent<SVGGElement>) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault();
-                  keySelection.onKeyPress(key.id, event.currentTarget);
-                } else if (event.key === 'Escape' && keySelection.selectedKeyId !== undefined) {
-                  event.stopPropagation();
-                  keySelection.onClear();
-                }
-              },
-            };
-            return (
-              <g
-                className="flow-key"
-                data-key-id={key.id}
-                data-selected={selected || undefined}
-                data-key-selected={chosen || undefined}
-                data-hovered={hoveredKeyId === key.id || undefined}
-                key={key.id}
-                transform={`translate(${point.x} ${point.y})`}
-                onPointerEnter={() => setHoveredKeyId(key.id)}
-                onPointerLeave={() => setHoveredKeyId((current) => current === key.id ? null : current)}
-                {...interactive}
-              >
-                <title>{tooltip}</title>
-                <rect x="-21" y="-19" width="42" height="38" rx="8" />
-                <text y="1" textAnchor="middle" dominantBaseline="middle">
-                  {label.length > 3 ? label.slice(0, 3) : label}
-                </text>
-                <text className="flow-key-id" y="13" textAnchor="middle">
-                  {key.id}
-                </text>
-              </g>
-            );
-          })}
-        </g>
-
-        <defs>
-          {allFlowVectors.map((vector, index) => {
-            const from = chartPoint(vector.from, origin.minX, origin.minY);
-            const to = chartPoint(vector.to, origin.minX, origin.minY);
-            const color = FLOW_COLORS[edgeKind(vector, showRollDirection)];
-            return (
-              <linearGradient
-                id={gradientId(index)}
-                key={`gradient-${vector.id}`}
-                gradientUnits="userSpaceOnUse"
-                x1={from.x}
-                y1={from.y}
-                x2={to.x}
-                y2={to.y}
-              >
-                <stop offset="0%" stopColor={color} stopOpacity="0.16" />
-                <stop offset="100%" stopColor={color} stopOpacity="0.96" />
-              </linearGradient>
-            );
-          })}
-        </defs>
-
-        <g className="flow-vector-layer">
-          <AnimatePresence initial={false}>
-            {allFlowVectors.map((vector) => {
-              const effectiveMaxWeight = resolveKeyboardFlowMaxWeight(
-                vector,
-                maxWeight,
-                keyMaxWeight,
-                hoverScale,
-                hoveredKeyId,
-              );
-              const strength = scaleKeyboardFlowWeight(vector.weight, effectiveMaxWeight, lineScale);
-              const gradientIndex = gradientIndexById.get(vector.id);
-              const hoverVisible = hoveredKeyId === null || vector.fromKeyIds.includes(hoveredKeyId);
+          <g className="flow-key-layer">
+            {keys.map((key) => {
+              const point = chartPoint(key, origin.minX, origin.minY);
+              const keyClass =
+                key.finger[1] === 'P'
+                  ? 'pinky'
+                  : key.finger[1] === 'R'
+                    ? 'ring'
+                    : key.finger[1] === 'M'
+                      ? 'middle'
+                      : key.finger[1] === 'I'
+                        ? 'index'
+                        : undefined;
+              const selected = keyClass !== undefined && selectedFingers.includes(keyClass);
+              const label = layout.legends.get(key.id) ?? key.id;
+              const tooltip = keyDetailTooltip(keyName(key.id, layout.legends.get(key.id), standard), keyDetails.merged.get(key.id));
+              const chosen = keySelection?.selectedKeyId === key.id;
+              const interactive =
+                keySelection === undefined
+                  ? {}
+                  : {
+                      role: 'button',
+                      tabIndex: 0,
+                      'aria-pressed': chosen,
+                      'aria-label': tooltip.split('\n')[0],
+                      onClick: (event: MouseEvent<SVGGElement>) => keySelection.onKeyPress(key.id, event.currentTarget),
+                      onKeyDown: (event: KeyboardEvent<SVGGElement>) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          keySelection.onKeyPress(key.id, event.currentTarget);
+                        } else if (event.key === 'Escape' && keySelection.selectedKeyId !== undefined) {
+                          event.stopPropagation();
+                          keySelection.onClear();
+                        }
+                      },
+                    };
               return (
-                <motion.path
-                  key={vector.id}
-                  className="flow-edge"
-                  data-flow-edge="true"
-                  data-flow-hand={vector.hand}
-                  data-flow-weight={vector.weight}
-                  data-from-keys={vector.fromKeyIds.join('+')}
-                  data-to-keys={vector.toKeyIds.join('+')}
-                  d={edgePath(vector, origin.minX, origin.minY)}
-                  fill="none"
-                  stroke={gradientIndex === undefined ? FLOW_COLORS.cross : `url(#${gradientId(gradientIndex)})`}
-                  strokeWidth={flowLineWidth((0.45 + 6.1 * strength), zoom)}
-                  initial={reduceMotion ? false : { opacity: 0, pathLength: 0 }}
-                  animate={{ opacity: hoverVisible ? (hoveredKeyId === null ? 0.72 : 0.96) : 0.035, pathLength: 1 }}
-                  transition={reduceMotion
-                    ? { duration: 0 }
-                    : { type: 'spring', stiffness: 210, damping: 28, mass: 0.7 }}
+                <g
+                  className="flow-key"
+                  data-key-id={key.id}
+                  data-selected={selected || undefined}
+                  data-key-selected={chosen || undefined}
+                  data-hovered={hoveredKeyId === key.id || undefined}
+                  key={key.id}
+                  transform={`translate(${point.x} ${point.y})`}
+                  onPointerEnter={() => setHoveredKeyId(key.id)}
+                  onPointerLeave={() => setHoveredKeyId((current) => (current === key.id ? null : current))}
+                  {...interactive}
                 >
-                  <title>
-                    {`${vector.fromKeyIds.join('+')} → ${vector.toKeyIds.join('+')} · ${vector.weight}回`}
-                  </title>
-                </motion.path>
+                  <title>{tooltip}</title>
+                  <rect x="-21" y="-19" width="42" height="38" rx="8" />
+                  <text y="1" textAnchor="middle" dominantBaseline="middle">
+                    {label.length > 3 ? label.slice(0, 3) : label}
+                  </text>
+                  <text className="flow-key-id" y="13" textAnchor="middle">
+                    {key.id}
+                  </text>
+                </g>
               );
             })}
-          </AnimatePresence>
-        </g>
+          </g>
 
-        <g className="flow-overlay-layer" aria-hidden="true">
-          {keys.map((key) => {
-            const point = chartPoint(key, origin.minX, origin.minY);
-            // 数字の意味は常に「ホバー元 → そのキー」の回数に揃える。
-            // ホバー元自身は線が無い（repeatは線から除外済み）ので、repeat回数を出す。
-            // 出発の合計はここに出さず、下部の「このキーから出る打鍵」で読ませる。
-            const repeatCount = showRepeatBadge ? repeatCounts.get(key.id) : undefined;
-            const count = hoveredKeyId === null || hoveredKeyId === key.id
-              ? repeatCount
-              : hoverCounts.destinations.get(key.id);
-            const isRepeatBadge = hoveredKeyId === null || hoveredKeyId === key.id;
-            const badgeText = count === undefined || count === 0 ? undefined : String(count);
-            if (badgeText === undefined) return null;
-            const width = badgeWidth(badgeText);
-            return (
-              <g
-                className={hoveredKeyId === null || hoveredKeyId === key.id ? 'flow-key-badge flow-repeat-badge' : 'flow-key-badge'}
-                key={`badge-${key.id}`}
-                // 縮んでも読めるまま残すのは同キー連打のラベルだけ。行き先の件数は拡大せず、線と行き先のキーを覆わない。
-                transform={`translate(${point.x + 15} ${point.y - 18}) scale(${isRepeatBadge ? badgeScale : 1}) translate(${-width / 2} 0)`}
-              >
-                <rect x="0" y="-8" width={width} height="15" rx="7.5" />
-                <text x={width / 2} y="0" dominantBaseline="middle" textAnchor="middle">
-                  {badgeText}
-                </text>
-              </g>
-            );
-          })}
-        </g>
+          <defs>
+            {allFlowVectors.map((vector, index) => {
+              const from = chartPoint(vector.from, origin.minX, origin.minY);
+              const to = chartPoint(vector.to, origin.minX, origin.minY);
+              const color = FLOW_COLORS[edgeKind(vector, showRollDirection)];
+              return (
+                <linearGradient
+                  id={gradientId(index)}
+                  key={`gradient-${vector.id}`}
+                  gradientUnits="userSpaceOnUse"
+                  x1={from.x}
+                  y1={from.y}
+                  x2={to.x}
+                  y2={to.y}
+                >
+                  <stop offset="0%" stopColor={color} stopOpacity="0.16" />
+                  <stop offset="100%" stopColor={color} stopOpacity="0.96" />
+                </linearGradient>
+              );
+            })}
+          </defs>
+
+          <g className="flow-vector-layer">
+            <AnimatePresence initial={false}>
+              {allFlowVectors.map((vector) => {
+                const effectiveMaxWeight = resolveKeyboardFlowMaxWeight(vector, maxWeight, keyMaxWeight, hoverScale, hoveredKeyId);
+                const strength = scaleKeyboardFlowWeight(vector.weight, effectiveMaxWeight, lineScale);
+                const gradientIndex = gradientIndexById.get(vector.id);
+                const hoverVisible = hoveredKeyId === null || vector.fromKeyIds.includes(hoveredKeyId);
+                return (
+                  <motion.path
+                    key={vector.id}
+                    className="flow-edge"
+                    data-flow-edge="true"
+                    data-flow-hand={vector.hand}
+                    data-flow-weight={vector.weight}
+                    data-from-keys={vector.fromKeyIds.join('+')}
+                    data-to-keys={vector.toKeyIds.join('+')}
+                    d={edgePath(vector, origin.minX, origin.minY)}
+                    fill="none"
+                    stroke={gradientIndex === undefined ? FLOW_COLORS.cross : `url(#${gradientId(gradientIndex)})`}
+                    strokeWidth={flowLineWidth(0.45 + 6.1 * strength, zoom)}
+                    initial={reduceMotion ? false : { opacity: 0, pathLength: 0 }}
+                    animate={{ opacity: hoverVisible ? (hoveredKeyId === null ? 0.72 : 0.96) : 0.035, pathLength: 1 }}
+                    transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 210, damping: 28, mass: 0.7 }}
+                  >
+                    <title>{`${vector.fromKeyIds.join('+')} → ${vector.toKeyIds.join('+')} · ${vector.weight}回`}</title>
+                  </motion.path>
+                );
+              })}
+            </AnimatePresence>
+          </g>
+
+          <g className="flow-overlay-layer" aria-hidden="true">
+            {keys.map((key) => {
+              const point = chartPoint(key, origin.minX, origin.minY);
+              // 数字の意味は常に「ホバー元 → そのキー」の回数に揃える。
+              // ホバー元自身は線が無い（repeatは線から除外済み）ので、repeat回数を出す。
+              // 出発の合計はここに出さず、下部の「このキーから出る打鍵」で読ませる。
+              const repeatCount = showRepeatBadge ? repeatCounts.get(key.id) : undefined;
+              const count = hoveredKeyId === null || hoveredKeyId === key.id ? repeatCount : hoverCounts.destinations.get(key.id);
+              const isRepeatBadge = hoveredKeyId === null || hoveredKeyId === key.id;
+              const badgeText = count === undefined || count === 0 ? undefined : String(count);
+              if (badgeText === undefined) return null;
+              const width = badgeWidth(badgeText);
+              return (
+                <g
+                  className={hoveredKeyId === null || hoveredKeyId === key.id ? 'flow-key-badge flow-repeat-badge' : 'flow-key-badge'}
+                  key={`badge-${key.id}`}
+                  // 縮んでも読めるまま残すのは同キー連打のラベルだけ。行き先の件数は拡大せず、線と行き先のキーを覆わない。
+                  transform={`translate(${point.x + 15} ${point.y - 18}) scale(${isRepeatBadge ? badgeScale : 1}) translate(${-width / 2} 0)`}
+                >
+                  <rect x="0" y="-8" width={width} height="15" rx="7.5" />
+                  <text x={width / 2} y="0" dominantBaseline="middle" textAnchor="middle">
+                    {badgeText}
+                  </text>
+                </g>
+              );
+            })}
+          </g>
         </g>
       </svg>
       <div className="flow-legend" aria-hidden="true">
         {showRollDirection ? (
           <>
-            <span><i className="flow-dot flow-dot-inward" /> inward</span>
-            <span><i className="flow-dot flow-dot-outward" /> outward</span>
-            <span><i className="flow-dot flow-dot-cross" /> Cross-hand</span>
+            <span>
+              <i className="flow-dot flow-dot-inward" /> inward
+            </span>
+            <span>
+              <i className="flow-dot flow-dot-outward" /> outward
+            </span>
+            <span>
+              <i className="flow-dot flow-dot-cross" /> Cross-hand
+            </span>
           </>
         ) : (
           <>
-            <span><i className="flow-dot flow-dot-left" /> Left</span>
-            <span><i className="flow-dot flow-dot-right" /> Right</span>
-            <span><i className="flow-dot flow-dot-cross" /> Cross-hand</span>
+            <span>
+              <i className="flow-dot flow-dot-left" /> Left
+            </span>
+            <span>
+              <i className="flow-dot flow-dot-right" /> Right
+            </span>
+            <span>
+              <i className="flow-dot flow-dot-cross" /> Cross-hand
+            </span>
           </>
         )}
         <span className="flow-coverage">
@@ -512,13 +488,7 @@ function MovementProfilePlot({
   const reduceMotion = useReducedMotion();
   const { relative, summary, mean, density } = profile;
   const scale = movementPlotScale(maxDistance);
-  const {
-    scaleMax,
-    unitsPerSvgUnit,
-    plotRadius,
-    polarBaseRadius,
-    polarAmplitude,
-  } = scale;
+  const { scaleMax, unitsPerSvgUnit, plotRadius, polarBaseRadius, polarAmplitude } = scale;
   const halfSize = scale.halfSize;
   const viewSize = halfSize * 2;
   const originX = 0;
@@ -528,12 +498,7 @@ function MovementProfilePlot({
     y: mean.y * unitsPerSvgUnit,
   };
   const polarPoints = density.samples.map((sample) =>
-    polarPoint(
-      originX,
-      originY,
-      polarBaseRadius + sample.density * polarAmplitude * polarGain,
-      sample.angle,
-    )
+    polarPoint(originX, originY, polarBaseRadius + sample.density * polarAmplitude * polarGain, sample.angle),
   );
   const polarPath = smoothClosedPath(polarPoints);
   const rollTotal = summary.inwardWeight + summary.outwardWeight;
@@ -551,115 +516,85 @@ function MovementProfilePlot({
         </span>
       </header>
       <div className="flow-profile-viewport">
-        <div
-          className="flow-profile-stage"
-          style={{ maxWidth: viewSize }}
-        >
-        <svg
-          className="flow-profile-svg"
-          width={viewSize}
-          height={viewSize}
-          viewBox={`${-halfSize} ${-halfSize} ${viewSize} ${viewSize}`}
-          role="img"
-          aria-label={`${hand === 'left' ? '左手' : '右手'}の移動の向きと距離`}
-        >
-        <circle
-          className="direction-polar-baseline"
-          cx={originX}
-          cy={originY}
-          r={polarBaseRadius}
-        />
-        {polarPath ? <path className="direction-polar-shape" d={polarPath} /> : null}
+        <div className="flow-profile-stage" style={{ maxWidth: viewSize }}>
+          <svg
+            className="flow-profile-svg"
+            width={viewSize}
+            height={viewSize}
+            viewBox={`${-halfSize} ${-halfSize} ${viewSize} ${viewSize}`}
+            role="img"
+            aria-label={`${hand === 'left' ? '左手' : '右手'}の移動の向きと距離`}
+          >
+            <circle className="direction-polar-baseline" cx={originX} cy={originY} r={polarBaseRadius} />
+            {polarPath ? <path className="direction-polar-shape" d={polarPath} /> : null}
 
-        {Array.from({ length: scaleMax }, (_, index) => index + 1).map((unit) => {
-          const ringRadius = unit * unitsPerSvgUnit;
-          return (
-            <g key={unit}>
-              <circle className="flow-axis-ring" cx={originX} cy={originY} r={ringRadius} />
-              <text
-                className="flow-axis-ring-label"
-                x={originX + 4}
-                y={originY - ringRadius + 11}
-              >
-                {unit}u
-              </text>
-            </g>
-          );
-        })}
-        <line
-          className="flow-axis"
-          x1={originX - plotRadius - 12}
-          y1={originY}
-          x2={originX + plotRadius + 12}
-          y2={originY}
-        />
-        <line
-          className="flow-axis"
-          x1={originX}
-          y1={originY - plotRadius - 12}
-          x2={originX}
-          y2={originY + plotRadius + 12}
-        />
-
-        <g className="actual-vector-layer">
-          <AnimatePresence initial={false}>
-            {relative.map((vector: RelativeVector) => {
-              const direction = vector.fingerDirection ?? 'same';
-              const strength = weightScale(vector.weight, maxVectorWeight);
+            {Array.from({ length: scaleMax }, (_, index) => index + 1).map((unit) => {
+              const ringRadius = unit * unitsPerSvgUnit;
               return (
-                <motion.line
-                  key={vector.id}
-                  className={`relative-vector relative-vector-${direction}`}
-                  x1={originX}
-                  y1={originY}
-                  initial={reduceMotion ? false : { x2: originX, y2: originY, opacity: 0 }}
-                  animate={{
-                    x2: vector.dx * unitsPerSvgUnit,
-                    y2: vector.dy * unitsPerSvgUnit,
-                    opacity: 0.24 + 0.7 * strength,
-                  }}
-                  {...(reduceMotion ? {} : { exit: { opacity: 0 } })}
-                  strokeWidth={0.85 + 2.45 * strength}
-                  transition={reduceMotion
-                    ? { duration: 0 }
-                    : { type: 'spring', stiffness: 240, damping: 27 }}
-                >
-                  <title>
-                    {`${vector.fromFingerClass} → ${vector.toFingerClass} · ${direction} · dx ${vector.dx.toFixed(2)}, dy ${vector.dy.toFixed(2)} · ${vector.weight}回`}
-                  </title>
-                </motion.line>
+                <g key={unit}>
+                  <circle className="flow-axis-ring" cx={originX} cy={originY} r={ringRadius} />
+                  <text className="flow-axis-ring-label" x={originX + 4} y={originY - ringRadius + 11}>
+                    {unit}u
+                  </text>
+                </g>
               );
             })}
-          </AnimatePresence>
-        </g>
+            <line className="flow-axis" x1={originX - plotRadius - 12} y1={originY} x2={originX + plotRadius + 12} y2={originY} />
+            <line className="flow-axis" x1={originX} y1={originY - plotRadius - 12} x2={originX} y2={originY + plotRadius + 12} />
 
-        <motion.line
-          className="mean-displacement"
-          x1={originX}
-          y1={originY}
-          animate={{
-            x2: meanEnd.x,
-            y2: meanEnd.y,
-            opacity: mean.totalWeight === 0 ? 0 : 1,
-          }}
-          transition={reduceMotion
-            ? { duration: 0 }
-            : { type: 'spring', stiffness: 170, damping: 22 }}
-        />
-        <motion.circle
-          className="mean-endpoint"
-          r="3.2"
-          animate={{
-            cx: meanEnd.x,
-            cy: meanEnd.y,
-            opacity: mean.totalWeight === 0 ? 0 : 1,
-          }}
-          transition={reduceMotion
-            ? { duration: 0 }
-            : { type: 'spring', stiffness: 170, damping: 22 }}
-        />
-          <circle className="flow-origin" cx={originX} cy={originY} r="4" />
-        </svg>
+            <g className="actual-vector-layer">
+              <AnimatePresence initial={false}>
+                {relative.map((vector: RelativeVector) => {
+                  const direction = vector.fingerDirection ?? 'same';
+                  const strength = weightScale(vector.weight, maxVectorWeight);
+                  return (
+                    <motion.line
+                      key={vector.id}
+                      className={`relative-vector relative-vector-${direction}`}
+                      x1={originX}
+                      y1={originY}
+                      initial={reduceMotion ? false : { x2: originX, y2: originY, opacity: 0 }}
+                      animate={{
+                        x2: vector.dx * unitsPerSvgUnit,
+                        y2: vector.dy * unitsPerSvgUnit,
+                        opacity: 0.24 + 0.7 * strength,
+                      }}
+                      {...(reduceMotion ? {} : { exit: { opacity: 0 } })}
+                      strokeWidth={0.85 + 2.45 * strength}
+                      transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 240, damping: 27 }}
+                    >
+                      <title>
+                        {`${vector.fromFingerClass} → ${vector.toFingerClass} · ${direction} · dx ${vector.dx.toFixed(2)}, dy ${vector.dy.toFixed(2)} · ${vector.weight}回`}
+                      </title>
+                    </motion.line>
+                  );
+                })}
+              </AnimatePresence>
+            </g>
+
+            <motion.line
+              className="mean-displacement"
+              x1={originX}
+              y1={originY}
+              animate={{
+                x2: meanEnd.x,
+                y2: meanEnd.y,
+                opacity: mean.totalWeight === 0 ? 0 : 1,
+              }}
+              transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 170, damping: 22 }}
+            />
+            <motion.circle
+              className="mean-endpoint"
+              r="3.2"
+              animate={{
+                cx: meanEnd.x,
+                cy: meanEnd.y,
+                opacity: mean.totalWeight === 0 ? 0 : 1,
+              }}
+              transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 170, damping: 22 }}
+            />
+            <circle className="flow-origin" cx={originX} cy={originY} r="4" />
+          </svg>
         </div>
       </div>
 
@@ -696,13 +631,21 @@ function MovementProfilePlot({
         <div>
           {hand === 'left' ? (
             <>
-              <span role="img" aria-label={`外向き ${(outwardRate * 100).toFixed(1)}%`}><i className="flow-dot flow-dot-outward" /> {(outwardRate * 100).toFixed(1)}%</span>
-              <span role="img" aria-label={`内向き ${(inwardRate * 100).toFixed(1)}%`}><i className="flow-dot flow-dot-inward" /> {(inwardRate * 100).toFixed(1)}%</span>
+              <span role="img" aria-label={`外向き ${(outwardRate * 100).toFixed(1)}%`}>
+                <i className="flow-dot flow-dot-outward" /> {(outwardRate * 100).toFixed(1)}%
+              </span>
+              <span role="img" aria-label={`内向き ${(inwardRate * 100).toFixed(1)}%`}>
+                <i className="flow-dot flow-dot-inward" /> {(inwardRate * 100).toFixed(1)}%
+              </span>
             </>
           ) : (
             <>
-              <span role="img" aria-label={`内向き ${(inwardRate * 100).toFixed(1)}%`}><i className="flow-dot flow-dot-inward" /> {(inwardRate * 100).toFixed(1)}%</span>
-              <span role="img" aria-label={`外向き ${(outwardRate * 100).toFixed(1)}%`}><i className="flow-dot flow-dot-outward" /> {(outwardRate * 100).toFixed(1)}%</span>
+              <span role="img" aria-label={`内向き ${(inwardRate * 100).toFixed(1)}%`}>
+                <i className="flow-dot flow-dot-inward" /> {(inwardRate * 100).toFixed(1)}%
+              </span>
+              <span role="img" aria-label={`外向き ${(outwardRate * 100).toFixed(1)}%`}>
+                <i className="flow-dot flow-dot-outward" /> {(outwardRate * 100).toFixed(1)}%
+              </span>
             </>
           )}
         </div>
@@ -710,7 +653,6 @@ function MovementProfilePlot({
     </div>
   );
 }
-
 
 const FINGER_SET_HINTS = {
   0: '同じ指の移動と、指をまたいだ打鍵位置の移動をまとめて描きます。大半は後者なので、手の中で打鍵位置がどう流れるかを見る図になります。',
@@ -720,9 +662,7 @@ const FINGER_SET_HINTS = {
 
 function fingerSetLabel(selectedFingers: readonly FingerClass[]): string {
   if (selectedFingers.length === 0) return '全指';
-  return selectedFingers
-    .map((selected) => FINGER_OPTIONS.find((finger) => finger.id === selected)?.label)
-    .join(' + ');
+  return selectedFingers.map((selected) => FINGER_OPTIONS.find((finger) => finger.id === selected)?.label).join(' + ');
 }
 
 export interface BigramFlowBodyProps {
@@ -745,7 +685,8 @@ export interface BigramFlowBodyProps {
  * 操作すれば分かること（キーにポインタを乗せると線を強調する等）は書かない。
  */
 const KEYBOARD_FLOW_READING = 'キーからキーへの移動を線で描きます。太さが回数で、線は始点が薄く終点が濃いです。';
-const RELATIVE_VECTORS_READING = '打鍵ごとの移動の向きと距離を、打ち始めのキーを中心に重ねて描きます。外周は移動方向の分布、白い線は平均の移動を表します。点線の円は1uごとの距離。件数は描いた線の数（指の組と移動が同じものはまとめて1本）、平均移動は平均の移動の長さ、まとまりは0に近いほど方向が分散し1に近いほど同じ方向へ集中します。下の割合は内向きと外向きの比。';
+const RELATIVE_VECTORS_READING =
+  '打鍵ごとの移動の向きと距離を、打ち始めのキーを中心に重ねて描きます。外周は移動方向の分布、白い線は平均の移動を表します。点線の円は1uごとの距離。件数は描いた線の数（指の組と移動が同じものはまとめて1本）、平均移動は平均の移動の長さ、まとまりは0に近いほど方向が分散し1に近いほど同じ方向へ集中します。下の割合は内向きと外向きの比。';
 
 /**
  * 左右の手をまたぐ2打鍵の扱い。図の下に常に置くと縦の高さを取るので、該当する時だけⓘの読み方に足す
@@ -758,35 +699,15 @@ const CROSS_HAND_NOTE = '左右の手をまたぐ2打鍵は、Keyboard Flowに�
  * Trace・vectorそのものからの再計算はしない。両方の図に効く解析設定の入力部品は持たない
  * （`BigramFlowSettings`）。図ごとにしか効かない項目だけは、図の見出し行のボタンから小窓で開く。
  */
-export function BigramFlowBody({
-  layout,
-  geometry,
-  trace,
-  extracted,
-  options,
-  onOptionsChange,
-  keySelection,
-}: BigramFlowBodyProps) {
-  const {
-    source,
-    selectedFingers,
-    lineScale,
-    layerOrder,
-    hoverScale,
-    repeatBadge,
-    polarBandwidth,
-    polarGain,
-  } = options;
+export function BigramFlowBody({ layout, geometry, trace, extracted, options, onOptionsChange, keySelection }: BigramFlowBodyProps) {
+  const { source, selectedFingers, lineScale, layerOrder, hoverScale, repeatBadge, polarBandwidth, polarGain } = options;
 
   // 小窓の開閉は保存しない（再読み込みで閉じる）。閉じるまで開いたまま。小窓は指の選択で作り直される
   // 図のブロックの外に置くので、指を選んでも閉じず、動かした位置も保たれる
   const keyboardFlowSettings = useFigureSettings('Keyboard Flow');
   const relativeVectorsSettings = useFigureSettings('Relative vectors');
   // Relative vectorsの半径は、並んだペイン全部の最長ベクトルまで（配るものが無ければ自分の最長）
-  const relativeMaxDistance = useSharedScale(
-    'bigram-flow:relative-radius',
-    { min: 0, max: extracted.relativeMaxDistance },
-  ).max;
+  const relativeMaxDistance = useSharedScale('bigram-flow:relative-radius', { min: 0, max: extracted.relativeMaxDistance }).max;
 
   return (
     <section
@@ -852,9 +773,9 @@ export function BigramFlowBody({
             </h3>
             <InfoButton
               name="Relative vectors"
-              description={source === 'actual' && extracted.hasCrossHandInAnalysis
-                ? `${RELATIVE_VECTORS_READING}${CROSS_HAND_NOTE}`
-                : RELATIVE_VECTORS_READING}
+              description={
+                source === 'actual' && extracted.hasCrossHandInAnalysis ? `${RELATIVE_VECTORS_READING}${CROSS_HAND_NOTE}` : RELATIVE_VECTORS_READING
+              }
             />
             {onOptionsChange !== undefined ? relativeVectorsSettings.toggle : null}
           </div>
@@ -875,8 +796,12 @@ export function BigramFlowBody({
             />
           </div>
           <div className="flow-roll-legend" aria-hidden="true">
-            <span><i className="flow-dot flow-dot-inward" /> 内向き</span>
-            <span><i className="flow-dot flow-dot-outward" /> 外向き</span>
+            <span>
+              <i className="flow-dot flow-dot-inward" /> 内向き
+            </span>
+            <span>
+              <i className="flow-dot flow-dot-outward" /> 外向き
+            </span>
             <span className="flow-profile-scale-summary">
               最大{movementPlotScale(relativeMaxDistance).scaleMax}u · ±{polarBandwidth}°
             </span>
@@ -910,13 +835,7 @@ function FingerOptionField({ binding }: { binding: OptionBinding<readonly Finger
           {FINGER_OPTIONS.map((finger) => {
             const active = selected.includes(finger.id);
             return (
-              <button
-                type="button"
-                key={finger.id}
-                aria-pressed={active}
-                disabled={selected.length >= 2 && !active}
-                onClick={() => toggle(finger.id)}
-              >
+              <button type="button" key={finger.id} aria-pressed={active} disabled={selected.length >= 2 && !active} onClick={() => toggle(finger.id)}>
                 {finger.label}
               </button>
             );
@@ -949,9 +868,7 @@ export function BigramFlowSettings({ options, onOptionsChange }: AnalyzerSetting
             { value: 'actual', label: 'Actual' },
             { value: 'within-hand', label: 'Within-hand' },
           ]}
-          hint={options.source === 'actual'
-            ? '実際に続けて打った2打鍵'
-            : '反対の手の打鍵を飛ばして、同じ手で続けた2打鍵'}
+          hint={options.source === 'actual' ? '実際に続けて打った2打鍵' : '反対の手の打鍵を飛ばして、同じ手で続けた2打鍵'}
         />
         <FingerOptionField binding={bind('selectedFingers')} />
       </OptionGroup>

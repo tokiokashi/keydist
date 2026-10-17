@@ -19,7 +19,7 @@ export function useOptionsWriteLog(key: string): OptionsWriteLog {
   if (logs === undefined) {
     throw new Error(
       `解析設定の下書き（key: ${key}）がOptionsWriteLogsProviderの外で使われている。` +
-      'ページを組み立てる側（app）でOptionsWriteLogsProviderで包み、保存先へ書く側と同じ記録を渡すこと。',
+        'ページを組み立てる側（app）でOptionsWriteLogsProviderで包み、保存先へ書く側と同じ記録を渡すこと。',
     );
   }
   return logs.forKey(key);

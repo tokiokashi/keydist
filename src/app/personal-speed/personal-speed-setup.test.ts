@@ -16,7 +16,10 @@ const CATALOG = personalSpeedCatalog(BASE);
 
 function overridesWith(shapeId?: string, fingerAssignmentId?: string): SettingsCascadeOverrides {
   let overrides = EMPTY_SETTINGS_OVERRIDES;
-  for (const [item, value] of [['defaultShapeId', shapeId], ['fingerAssignmentId', fingerAssignmentId]] as const) {
+  for (const [item, value] of [
+    ['defaultShapeId', shapeId],
+    ['fingerAssignmentId', fingerAssignmentId],
+  ] as const) {
     if (value === undefined) continue;
     const written = setSettingsOverride(overrides, { kind: 'global' }, item, value);
     assert.ok(written.ok);

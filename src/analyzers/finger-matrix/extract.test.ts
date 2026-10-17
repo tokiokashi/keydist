@@ -15,12 +15,7 @@ import {
   type FingerMatrixExtracted,
   type FingerMatrixOkRow,
 } from './extract.ts';
-import {
-  ALTERNATE_FINGER_MATRIX_OPTIONS,
-  DEFAULT_FINGER_MATRIX_OPTIONS,
-  FINGER_MATRIX_SURFACE_IDS,
-  type FingerMatrixSurfaceId,
-} from './options.ts';
+import { ALTERNATE_FINGER_MATRIX_OPTIONS, DEFAULT_FINGER_MATRIX_OPTIONS, FINGER_MATRIX_SURFACE_IDS, type FingerMatrixSurfaceId } from './options.ts';
 
 /**
  * 配列×指のマトリックスの抽出（仕様 §11.1・§11.2・§11.6）を、実際のengine経路で検証する。
@@ -109,12 +104,17 @@ test('全ての面の値: 配列qwerty・dvorak、テキスト "hello world" で
 
 test('面の列: 指の面は親指を含む10本、指間の面は仕様 §11.6の6組で、値の並びと列が揃う', () => {
   const { extracted } = createEngineCache().getSetExtraction(MEMBERS, fingerMatrixDefinition, DEFAULT_FINGER_MATRIX_OPTIONS);
-  assert.deepEqual(extracted.surfaces.map((surface) => surface.id), [...FINGER_MATRIX_SURFACE_IDS]);
+  assert.deepEqual(
+    extracted.surfaces.map((surface) => surface.id),
+    [...FINGER_MATRIX_SURFACE_IDS],
+  );
   for (const surface of extracted.surfaces) {
-    const expectedIds = COLUMN_KIND[surface.id] === 'finger'
-      ? [...ALL_FINGERS]
-      : ADJACENT_PAIRS.map((pair) => `${pair[0]}-${pair[1]}`);
-    assert.deepEqual(surface.columns.map((column) => column.id), expectedIds, surface.id);
+    const expectedIds = COLUMN_KIND[surface.id] === 'finger' ? [...ALL_FINGERS] : ADJACENT_PAIRS.map((pair) => `${pair[0]}-${pair[1]}`);
+    assert.deepEqual(
+      surface.columns.map((column) => column.id),
+      expectedIds,
+      surface.id,
+    );
     for (const row of extracted.rows) {
       if (row.kind === 'ok') assert.equal(row.surfaces[surface.id].length, surface.columns.length, surface.id);
     }
@@ -125,17 +125,35 @@ test('面の列: 指の面は親指を含む10本、指間の面は仕様 §11.6
 test('既存の抽出と同じ量: 指ごとの押下数・距離は指ごとの距離の抽出、全体の和は`Metrics`と一致する', () => {
   const cache = createEngineCache();
   const { extracted } = cache.getSetExtraction(MEMBERS, fingerMatrixDefinition, DEFAULT_FINGER_MATRIX_OPTIONS);
-  for (const [layoutId, member] of [['qwerty', MEMBERS[0]!], ['dvorak', MEMBERS[1]!]] as const) {
+  for (const [layoutId, member] of [
+    ['qwerty', MEMBERS[0]!],
+    ['dvorak', MEMBERS[1]!],
+  ] as const) {
     assert.ok(member.resolution.ok);
     if (!member.resolution.ok) return;
     const { metrics } = cache.getInterpretation(member.resolution.input);
     const fingerDistance = computeFingerDistanceExtraction(metrics);
     const row = okRow(extracted, layoutId);
-    assert.deepEqual(row.surfaces.presses, fingerDistance.fingers.map((item) => item.presses));
-    assert.deepEqual(row.surfaces.distance, fingerDistance.fingers.map((item) => item.distance));
-    assert.deepEqual(row.surfaces.pairMean, fingerDistance.adjacent.map((item) => item.meanExcess));
-    assert.deepEqual(row.surfaces.pairStdDev, fingerDistance.adjacent.map((item) => item.stdDev));
-    assert.equal(row.surfaces.presses.reduce((sum, value) => sum + value, 0), metrics.presses);
+    assert.deepEqual(
+      row.surfaces.presses,
+      fingerDistance.fingers.map((item) => item.presses),
+    );
+    assert.deepEqual(
+      row.surfaces.distance,
+      fingerDistance.fingers.map((item) => item.distance),
+    );
+    assert.deepEqual(
+      row.surfaces.pairMean,
+      fingerDistance.adjacent.map((item) => item.meanExcess),
+    );
+    assert.deepEqual(
+      row.surfaces.pairStdDev,
+      fingerDistance.adjacent.map((item) => item.stdDev),
+    );
+    assert.equal(
+      row.surfaces.presses.reduce((sum, value) => sum + value, 0),
+      metrics.presses,
+    );
     assert.ok(Math.abs(row.surfaces.distance.reduce((sum, value) => sum + value, 0) - metrics.totalUnits) < 1e-9);
   }
 });
@@ -174,31 +192,37 @@ test('解決に失敗したメンバーは `failed`行になり、行を消さ�
 test('同指連続の面: 同指連続が出るテキストで、回数・比率・割合が固定した値と一致する', () => {
   // 条件: 配列qwerty・物理配列row-staggered・テキスト "ecikikec"（左中指のe・c、右中指のi・k）。
   // 分母のPressの回数は左中指4・右中指4。同指連続は左中指2・右中指3
-  const { extracted } = createEngineCache().getSetExtraction(
-    [memberFor('qwerty', 'ecikikec')],
-    fingerMatrixDefinition,
-    DEFAULT_FINGER_MATRIX_OPTIONS,
-  );
+  const { extracted } = createEngineCache().getSetExtraction([memberFor('qwerty', 'ecikikec')], fingerMatrixDefinition, DEFAULT_FINGER_MATRIX_OPTIONS);
   const row = okRow(extracted, 'qwerty');
   assert.deepEqual(row.surfaces.sfbCount, [0, 0, 2, 0, 0, 0, 0, 3, 0, 0]);
   assertCloseArray(row.surfaces.sfbRate, [0, 0, 50, 0, 0, 0, 0, 75, 0, 0], 'sfbRate');
   assertCloseArray(row.surfaces.sfbShare, [0, 0, 40, 0, 0, 0, 0, 60, 0, 0], 'sfbShare');
   assert.deepEqual(row.fingerPressEvents, [0, 0, 4, 0, 0, 0, 0, 4, 0, 0]);
-  assert.equal(row.surfaces.sfbShare.reduce((sum, value) => sum + value, 0), 100);
+  assert.equal(
+    row.surfaces.sfbShare.reduce((sum, value) => sum + value, 0),
+    100,
+  );
 });
 
 test('同指連続の面: 回数の合計は`Metrics`の同指連続回数と一致する', () => {
   const cache = createEngineCache();
   const members = [memberFor('qwerty', 'ecikikec'), ...MEMBERS];
   const { extracted } = cache.getSetExtraction(members, fingerMatrixDefinition, DEFAULT_FINGER_MATRIX_OPTIONS);
-  for (const [layoutId, member] of [['qwerty', members[0]!], ['dvorak', MEMBERS[1]!]] as const) {
+  for (const [layoutId, member] of [
+    ['qwerty', members[0]!],
+    ['dvorak', MEMBERS[1]!],
+  ] as const) {
     assert.ok(member.resolution.ok);
     if (!member.resolution.ok) return;
     const { metrics } = cache.getInterpretation(member.resolution.input);
     const row = extracted.rows.find((candidate) => candidate.targetKey === `setup:setup-${layoutId}`);
     assert.equal(row?.kind, 'ok');
     if (row?.kind !== 'ok') return;
-    assert.equal(row.surfaces.sfbCount.reduce((sum, value) => sum + value, 0), metrics.sameFinger, layoutId);
+    assert.equal(
+      row.surfaces.sfbCount.reduce((sum, value) => sum + value, 0),
+      metrics.sameFinger,
+      layoutId,
+    );
   }
 });
 

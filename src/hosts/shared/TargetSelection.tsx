@@ -163,7 +163,10 @@ export function TargetSelection({
   const names = summary.map((item) => item.label);
   const fullText = names.join('、');
   const summaryText = targetSummaryText(names, fits);
-  const title = summary.map((item) => item.fullName).filter((name) => name !== '').join('\n');
+  const title = summary
+    .map((item) => item.fullName)
+    .filter((name) => name !== '')
+    .join('\n');
   const selectedKeys = useMemo(() => new Set(summary.map((item) => item.key)), [summary]);
   const swatchByKey = useMemo(() => new Map(summary.map((item) => [item.key, item] as const)), [summary]);
   const visibleGroups = filterTargetChoiceGroups(groups, query, kindFilter);
@@ -323,136 +326,148 @@ export function TargetSelection({
             ))}
           </span>
         ) : null}
-        <span ref={summaryRef} className="target-selection-summary">{summaryText.text}</span>
-        {summaryText.more !== undefined ? <span ref={moreRef} className="target-selection-more">{summaryText.more}</span> : null}
-        <span ref={measureRef} className="target-selection-measure" aria-hidden="true">{fullText}</span>
+        <span ref={summaryRef} className="target-selection-summary">
+          {summaryText.text}
+        </span>
+        {summaryText.more !== undefined ? (
+          <span ref={moreRef} className="target-selection-more">
+            {summaryText.more}
+          </span>
+        ) : null}
+        <span ref={measureRef} className="target-selection-measure" aria-hidden="true">
+          {fullText}
+        </span>
         <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true" className="target-selection-chevron">
           <path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
         </svg>
       </button>
-      {open ? createPortal(
-        <>
-          <div ref={scrimRef} className="target-selection-scrim" aria-hidden="true" onClick={() => close(true)} />
-          <div
-            ref={panelRef}
-            id={panelId}
-            className="target-selection-panel"
-            role="dialog"
-            aria-modal="false"
-            aria-label="対象の選択"
-            tabIndex={-1}
-            data-target-selection="true"
-            style={position === undefined
-              ? { visibility: 'hidden' }
-              : {
-                ['--target-selection-x' as string]: `${position.x}px`,
-                ['--target-selection-y' as string]: `${position.y}px`,
-                ...(position.maxHeight === undefined ? {} : { ['--target-selection-max-height' as string]: `${position.maxHeight}px` }),
-              }}
-            onKeyDown={(event) => {
-              pointerRef.current = false;
-              if (event.key === 'Tab') leaveByTab(event);
-            }}
-            onBlur={(event) => {
-              // Tab以外でフォーカスが選択の外へ出た時（ブラウザの操作等）も、開いたまま取り残さない。
-              const next = event.relatedTarget as Node | null;
-              if (next !== null && !panelRef.current?.contains(next) && !buttonRef.current?.contains(next)) close(false);
-            }}
-            onPointerDown={() => {
-              pointerRef.current = true;
-            }}
-          >
-            <div className="target-selection-filter">
-              <input
-                ref={filterRef}
-                type="search"
-                value={query}
-                placeholder="配列・Setupを名前で絞り込む"
-                aria-label="配列・Setupを名前で絞り込む"
-                onChange={(event) => setQuery(event.currentTarget.value)}
-              />
-              <div className="target-selection-kind" role="group" aria-label="配列の種類で絞り込む">
-                {KIND_FILTERS.map((item) => (
-                  <label key={item.value}>
-                    <input
-                      type="radio"
-                      name={`${panelId}-kind`}
-                      checked={kindFilter === item.value}
-                      onChange={() => setKindFilter(item.value)}
-                    />
-                    <span>{item.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-            <div className="target-selection-list">
-              {visibleGroups.length === 0 ? (
-                <p className="target-selection-empty">当てはまる配列・Setupはありません。</p>
-              ) : visibleGroups.map((group) => (
-                <fieldset key={group.id} className="target-selection-group" data-target-group={group.id}>
-                  <legend>{group.label}</legend>
-                  {group.choices.map((choice) => {
-                    const checked = selectedKeys.has(choice.key);
-                    const swatch = swatchByKey.get(choice.key);
-                    return (
-                      <label key={choice.key} className="target-selection-choice" title={choice.fullName ?? choice.name}>
-                        <input
-                          type={mode === 'single' ? 'radio' : 'checkbox'}
-                          name={mode === 'single' ? `${panelId}-target` : undefined}
-                          value={choice.key}
-                          checked={checked}
-                          onChange={(event) => toggle(choice.target, choice.key, event.currentTarget.checked)}
-                          // 選ばれているラジオを押してもchangeは起きない。ホストが既定の対象を表示しているだけの時も
-                          // 「選んだ」として書き込み、押したら閉じる動きも揃える（描画時点で選ばれていたものだけ。
-                          // 矢印キーで別のラジオへ移る時のclickは、移り先がまだ選ばれていないので対象にならない）。
-                          onClick={mode === 'single' && checked ? () => confirmChecked(choice.target, choice.key) : undefined}
-                          // Chromeでは選ばれているラジオでSpaceを押してもclickが起きないので、キーボードでも同じ確定を通す。
-                          // 矢印キーはここでは扱わず、これまでどおりchangeで書いて閉じない。
-                          onKeyDown={mode === 'single' && checked ? (event) => {
-                            if (event.key !== ' ' && event.key !== 'Enter') return;
-                            // Enterのフォーム送信・Spaceのスクロールやclick（ブラウザによっては二重に走る）を止める。
-                            event.preventDefault();
-                            confirmChecked(choice.target, choice.key);
-                          } : undefined}
-                        />
-                        {mode === 'multiple' ? (
-                          <TargetSwatch
-                            color={checked ? swatch?.color : undefined}
-                            mark={checked ? swatch?.mark : undefined}
-                          />
-                        ) : null}
-                        <span className="target-selection-choice-text">
-                          <span className="target-selection-choice-name">{choice.name}</span>
-                          {/* ラベル付きのSetupは、何の配列・物理配列かを2行目に出す（hoverの無いタッチでも見えるように）。 */}
-                          {choice.fullName !== undefined ? (
-                            <span className="target-selection-choice-detail">{choice.fullName}</span>
-                          ) : null}
-                        </span>
-                        {choice.tag !== undefined ? <span className="target-selection-choice-tag">{choice.tag}</span> : null}
+      {open
+        ? createPortal(
+            <>
+              <div ref={scrimRef} className="target-selection-scrim" aria-hidden="true" onClick={() => close(true)} />
+              <div
+                ref={panelRef}
+                id={panelId}
+                className="target-selection-panel"
+                role="dialog"
+                aria-modal="false"
+                aria-label="対象の選択"
+                tabIndex={-1}
+                data-target-selection="true"
+                style={
+                  position === undefined
+                    ? { visibility: 'hidden' }
+                    : {
+                        ['--target-selection-x' as string]: `${position.x}px`,
+                        ['--target-selection-y' as string]: `${position.y}px`,
+                        ...(position.maxHeight === undefined ? {} : { ['--target-selection-max-height' as string]: `${position.maxHeight}px` }),
+                      }
+                }
+                onKeyDown={(event) => {
+                  pointerRef.current = false;
+                  if (event.key === 'Tab') leaveByTab(event);
+                }}
+                onBlur={(event) => {
+                  // Tab以外でフォーカスが選択の外へ出た時（ブラウザの操作等）も、開いたまま取り残さない。
+                  const next = event.relatedTarget as Node | null;
+                  if (next !== null && !panelRef.current?.contains(next) && !buttonRef.current?.contains(next)) close(false);
+                }}
+                onPointerDown={() => {
+                  pointerRef.current = true;
+                }}
+              >
+                <div className="target-selection-filter">
+                  <input
+                    ref={filterRef}
+                    type="search"
+                    value={query}
+                    placeholder="配列・Setupを名前で絞り込む"
+                    aria-label="配列・Setupを名前で絞り込む"
+                    onChange={(event) => setQuery(event.currentTarget.value)}
+                  />
+                  <div className="target-selection-kind" role="group" aria-label="配列の種類で絞り込む">
+                    {KIND_FILTERS.map((item) => (
+                      <label key={item.value}>
+                        <input type="radio" name={`${panelId}-kind`} checked={kindFilter === item.value} onChange={() => setKindFilter(item.value)} />
+                        <span>{item.label}</span>
                       </label>
-                    );
-                  })}
-                </fieldset>
-              ))}
-            </div>
-            {extraItem !== undefined ? <div className="target-selection-extra">{extraItem}</div> : null}
-            <div className="target-selection-foot">
-              {mode === 'multiple' ? (
-                <>
-                  <span className="target-selection-count" role="status">
-                    <b>{selected.length}</b>件を選択中
-                  </span>
-                  <button type="button" onClick={() => onChange([])} disabled={selected.length === 0}>すべて外す</button>
-                </>
-              ) : (
-                <span className="target-selection-count">配列かSetupを1つ選んでください</span>
-              )}
-              <button type="button" onClick={() => close(true)}>閉じる</button>
-            </div>
-          </div>
-        </>,
-        document.body,
-      ) : null}
+                    ))}
+                  </div>
+                </div>
+                <div className="target-selection-list">
+                  {visibleGroups.length === 0 ? (
+                    <p className="target-selection-empty">当てはまる配列・Setupはありません。</p>
+                  ) : (
+                    visibleGroups.map((group) => (
+                      <fieldset key={group.id} className="target-selection-group" data-target-group={group.id}>
+                        <legend>{group.label}</legend>
+                        {group.choices.map((choice) => {
+                          const checked = selectedKeys.has(choice.key);
+                          const swatch = swatchByKey.get(choice.key);
+                          return (
+                            <label key={choice.key} className="target-selection-choice" title={choice.fullName ?? choice.name}>
+                              <input
+                                type={mode === 'single' ? 'radio' : 'checkbox'}
+                                name={mode === 'single' ? `${panelId}-target` : undefined}
+                                value={choice.key}
+                                checked={checked}
+                                onChange={(event) => toggle(choice.target, choice.key, event.currentTarget.checked)}
+                                // 選ばれているラジオを押してもchangeは起きない。ホストが既定の対象を表示しているだけの時も
+                                // 「選んだ」として書き込み、押したら閉じる動きも揃える（描画時点で選ばれていたものだけ。
+                                // 矢印キーで別のラジオへ移る時のclickは、移り先がまだ選ばれていないので対象にならない）。
+                                onClick={mode === 'single' && checked ? () => confirmChecked(choice.target, choice.key) : undefined}
+                                // Chromeでは選ばれているラジオでSpaceを押してもclickが起きないので、キーボードでも同じ確定を通す。
+                                // 矢印キーはここでは扱わず、これまでどおりchangeで書いて閉じない。
+                                onKeyDown={
+                                  mode === 'single' && checked
+                                    ? (event) => {
+                                        if (event.key !== ' ' && event.key !== 'Enter') return;
+                                        // Enterのフォーム送信・Spaceのスクロールやclick（ブラウザによっては二重に走る）を止める。
+                                        event.preventDefault();
+                                        confirmChecked(choice.target, choice.key);
+                                      }
+                                    : undefined
+                                }
+                              />
+                              {mode === 'multiple' ? (
+                                <TargetSwatch color={checked ? swatch?.color : undefined} mark={checked ? swatch?.mark : undefined} />
+                              ) : null}
+                              <span className="target-selection-choice-text">
+                                <span className="target-selection-choice-name">{choice.name}</span>
+                                {/* ラベル付きのSetupは、何の配列・物理配列かを2行目に出す（hoverの無いタッチでも見えるように）。 */}
+                                {choice.fullName !== undefined ? <span className="target-selection-choice-detail">{choice.fullName}</span> : null}
+                              </span>
+                              {choice.tag !== undefined ? <span className="target-selection-choice-tag">{choice.tag}</span> : null}
+                            </label>
+                          );
+                        })}
+                      </fieldset>
+                    ))
+                  )}
+                </div>
+                {extraItem !== undefined ? <div className="target-selection-extra">{extraItem}</div> : null}
+                <div className="target-selection-foot">
+                  {mode === 'multiple' ? (
+                    <>
+                      <span className="target-selection-count" role="status">
+                        <b>{selected.length}</b>件を選択中
+                      </span>
+                      <button type="button" onClick={() => onChange([])} disabled={selected.length === 0}>
+                        すべて外す
+                      </button>
+                    </>
+                  ) : (
+                    <span className="target-selection-count">配列かSetupを1つ選んでください</span>
+                  )}
+                  <button type="button" onClick={() => close(true)}>
+                    閉じる
+                  </button>
+                </div>
+              </div>
+            </>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

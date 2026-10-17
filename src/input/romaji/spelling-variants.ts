@@ -34,7 +34,10 @@ const YOUON_ONSETS: ReadonlyArray<readonly [head: string, onsets: readonly strin
 /** 拗音のうち、表にあるもの（ゃゅょぇで終わるもの）の綴りを表に足す。 */
 for (const [head, onsets] of YOUON_ONSETS) {
   for (const [small, vowel] of Object.entries(SMALL_KANA_VOWEL)) {
-    TABLE_SPELLINGS.set(`${head}${small}`, onsets.map((onset) => `${onset}${vowel}`));
+    TABLE_SPELLINGS.set(
+      `${head}${small}`,
+      onsets.map((onset) => `${onset}${vowel}`),
+    );
   }
 }
 
@@ -89,15 +92,20 @@ export function romajiSpellingUnits(text: string, table: ReadonlyMap<string, str
     if ([...kana].length > 1 && kana.startsWith('っ')) {
       const core = kana.slice(1);
       const coreRoman = table.get(core);
-      const doubled = coreRoman === undefined
-        ? []
-        : plainSpellings(core, coreRoman).filter(startsWithConsonant).map((spelling) => `${spelling[0]}${spelling}`);
+      const doubled =
+        coreRoman === undefined
+          ? []
+          : plainSpellings(core, coreRoman)
+              .filter(startsWithConsonant)
+              .map((spelling) => `${spelling[0]}${spelling}`);
       return { kana, spellings: unique([roman, ...doubled]) };
     }
     return { kana, spellings: plainSpellings(kana, roman) };
   });
   // 「ん」の`n`1打は、次のかなの綴りが決まってから許すかを判定する。
-  return units.map((unit, index) => unit.kana === 'ん' && table.has('ん') && allowsSingleN(units[index + 1], inTable[index + 1] ?? false)
-    ? { kana: unit.kana, spellings: unique([...unit.spellings, 'n']) }
-    : unit);
+  return units.map((unit, index) =>
+    unit.kana === 'ん' && table.has('ん') && allowsSingleN(units[index + 1], inTable[index + 1] ?? false)
+      ? { kana: unit.kana, spellings: unique([...unit.spellings, 'n']) }
+      : unit,
+  );
 }

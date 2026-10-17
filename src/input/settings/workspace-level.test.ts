@@ -30,9 +30,7 @@ function contextFor(layout: Layout, options: { inputMethod?: InputMethod; setupI
     layoutId: layout.id,
     layout,
   };
-  return options.setupId === undefined
-    ? { ...base, targetKind: 'layout' }
-    : { ...base, targetKind: 'setup', setupId: options.setupId };
+  return options.setupId === undefined ? { ...base, targetKind: 'layout' } : { ...base, targetKind: 'setup', setupId: options.setupId };
 }
 
 const ITEMS = {
@@ -93,7 +91,10 @@ test('Workspaceに置けない項目: 書き込みは拒否し、残っている
   const resolved = resolveCascade(ITEMS, { workspace: { globalOnly: false } }, contextFor(naginata));
   assert.equal(resolved.globalOnly.value, true);
   assert.equal(resolved.globalOnly.origin.kind, 'default');
-  assert.deepEqual(resolved.globalOnly.diagnostics.map((d) => d.kind), ['ignored-disallowed-level']);
+  assert.deepEqual(
+    resolved.globalOnly.diagnostics.map((d) => d.kind),
+    ['ignored-disallowed-level'],
+  );
 });
 
 test('配列の推奨はWorkspaceの値にも勝ち、勝った相手に記録する。推奨の無い配列はWorkspaceの値に従う', () => {
@@ -118,14 +119,18 @@ test('Workspaceに値が無くても、継承値が推奨と違えば推奨が�
   const same = resolveCascade(ITEMS, { global: { rule: 'recommended' } }, contextFor(asuka));
   assert.equal(same.rule.recommendationWins, undefined);
   // Workspaceに置けない項目は記録しない
-  const noWorkspace = resolveCascade({
-    rule: defineItem<string>({
-      id: 'rule',
-      allowedLevels: new Set(['global', 'layout']),
-      defaultValue: 'base',
-      layoutRecommendation: () => 'recommended',
-    }),
-  }, emptyCascadeOverrides(), contextFor(asuka));
+  const noWorkspace = resolveCascade(
+    {
+      rule: defineItem<string>({
+        id: 'rule',
+        allowedLevels: new Set(['global', 'layout']),
+        defaultValue: 'base',
+        layoutRecommendation: () => 'recommended',
+      }),
+    },
+    emptyCascadeOverrides(),
+    contextFor(asuka),
+  );
   assert.deepEqual(noWorkspace.rule.recommendationWins, { shadowed: ['global'] });
 });
 

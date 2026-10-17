@@ -78,7 +78,11 @@ test('MULTI_TARGET_SELECTION_CODEC: colorSlotsが配列でなければ診断を1
   for (const broken of ['0,1', { 0: 1 }, 5, null]) {
     const decoded = decodeValue({ version: 1, targets: [A, B], colorSlots: broken });
     assert.deepEqual(decoded.value.colorSlots, [0, 1]);
-    assert.deepEqual(decoded.diagnostics.map((d) => d.path), ['colorSlots'], `値: ${JSON.stringify(broken)}`);
+    assert.deepEqual(
+      decoded.diagnostics.map((d) => d.path),
+      ['colorSlots'],
+      `値: ${JSON.stringify(broken)}`,
+    );
   }
   const absent = decodeValue({ version: 1, targets: [A, B], colorSlots: undefined });
   assert.deepEqual(absent.diagnostics, []);

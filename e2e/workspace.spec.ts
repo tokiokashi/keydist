@@ -33,15 +33,27 @@ function pane(page: Page, name: string): Locator {
 }
 
 /** 保存したWorkspaceの手持ち（decodeせず生のJSON）。 */
-async function storedWorkspaces(page: Page): Promise<{ workspaces: { id: string; name: string; optionSets?: { id: string; options?: unknown }[]; panes: { id: string; analyzerId: string; options?: unknown; optionsBinding?: { mode: string; set?: string } }[]; grid?: { id: string; x: number; y: number; w: number; h: number }[]; text: { ref: { kind: string; id: string } } }[] }> {
+async function storedWorkspaces(page: Page): Promise<{
+  workspaces: {
+    id: string;
+    name: string;
+    optionSets?: { id: string; options?: unknown }[];
+    panes: { id: string; analyzerId: string; options?: unknown; optionsBinding?: { mode: string; set?: string } }[];
+    grid?: { id: string; x: number; y: number; w: number; h: number }[];
+    text: { ref: { kind: string; id: string } };
+  }[];
+}> {
   return JSON.parse((await page.evaluate((key) => localStorage.getItem(key), WORKSPACES_KEY)) ?? '{"workspaces":[]}');
 }
 
 /** 保存先へ、ペインを指定してWorkspaceを直接書く（画面を経由せず状態を作る）。 */
 function seedWorkspace(page: Page, workspace: unknown): Promise<void> {
-  return page.addInitScript(({ key, value }) => {
-    if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 4, workspaces: [value] }));
-  }, { key: WORKSPACES_KEY, value: workspace });
+  return page.addInitScript(
+    ({ key, value }) => {
+      if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 4, workspaces: [value] }));
+    },
+    { key: WORKSPACES_KEY, value: workspace },
+  );
 }
 
 const QWERTY = { kind: 'layout', layoutId: 'qwerty' };
@@ -126,7 +138,10 @@ test('ペインを追加して並べる。個別画面と同じcomponentが載�
   await page.setViewportSize({ width: 1920, height: 1000 });
   const id = await createWorkspace(page);
   await expect(page.locator('[data-workspace-empty]')).toContainText('ペインを追加');
-  await page.locator('[data-workspace-empty]').getByRole('button', { name: /ペインを追加/ }).click();
+  await page
+    .locator('[data-workspace-empty]')
+    .getByRole('button', { name: /ペインを追加/ })
+    .click();
   await page.getByRole('menuitem', { name: /Bigram Flow/ }).click();
   await addAnalyzer(page, '比較表');
   await addAnalyzer(page, 'N感度');
@@ -146,12 +161,15 @@ test('ペインを追加して並べる。個別画面と同じcomponentが載�
   expect(Math.abs(boxes[1]!.x - boxes[2]!.x)).toBeLessThan(2);
   expect(boxes[2]!.y).toBeGreaterThan(boxes[1]!.y + boxes[1]!.height - 2);
   // どのペインも重ならない
-  await expect.poll(async () => {
-    const grid = (await storedWorkspaces(page)).workspaces[0]?.grid ?? [];
-    return grid.every((a, i) => grid.slice(i + 1).every((b) => !(a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h)));
-  }).toBe(true);
+  await expect
+    .poll(async () => {
+      const grid = (await storedWorkspaces(page)).workspaces[0]?.grid ?? [];
+      return grid.every((a, i) => grid.slice(i + 1).every((b) => !(a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h)));
+    })
+    .toBe(true);
 
-  await expect.poll(async () => (await storedWorkspaces(page)).workspaces[0]?.panes.map((p) => p.analyzerId))
+  await expect
+    .poll(async () => (await storedWorkspaces(page)).workspaces[0]?.panes.map((p) => p.analyzerId))
     .toEqual(['bigram-flow', 'comparison', 'n-sensitivity']);
   const gridBefore = JSON.stringify((await storedWorkspaces(page)).workspaces[0]!.grid);
 
@@ -211,12 +229,16 @@ test('⋯で閉じたペインも資産から消え、最後の1つを閉じる�
   await addAnalyzer(page, '比較表');
   await expect(page.locator('.pane-frame')).toHaveCount(2);
 
-  await pane(page, '比較表').getByRole('button', { name: /の操作$/ }).click();
+  await pane(page, '比較表')
+    .getByRole('button', { name: /の操作$/ })
+    .click();
   await page.getByRole('menuitem', { name: /閉じる/ }).click();
   await expect(page.locator('.pane-frame h2.pane-frame-title')).toHaveText(['Bigram Flow']);
   await expect.poll(async () => (await storedWorkspaces(page)).workspaces[0]?.panes.length).toBe(1);
 
-  await pane(page, 'Bigram Flow').getByRole('button', { name: /の操作$/ }).click();
+  await pane(page, 'Bigram Flow')
+    .getByRole('button', { name: /の操作$/ })
+    .click();
   await page.getByRole('menuitem', { name: /閉じる/ }).click();
   await expect(page.locator('[data-workspace-empty]')).toBeVisible();
   await expect.poll(async () => (await storedWorkspaces(page)).workspaces[0]?.panes.length).toBe(0);
@@ -260,7 +282,11 @@ test('新しく足したペインは同じAnalyzerの共有の設定に従い、
   }
 
   // ⋯の「解析設定を初期値に戻す」。共有の設定が戻るので、右のペインも戻る。対象は変わらない
-  await page.locator('.pane-frame').nth(0).getByRole('button', { name: /の操作$/ }).click();
+  await page
+    .locator('.pane-frame')
+    .nth(0)
+    .getByRole('button', { name: /の操作$/ })
+    .click();
   await page.getByRole('menuitem', { name: /解析設定を初期値に戻す/ }).click();
   for (const index of [0, 1]) {
     await page.locator('.pane-frame').nth(index).getByRole('button', { name: '解析設定', exact: true }).click();
@@ -516,7 +542,7 @@ test('連動を2つ持つ時、集合のペインは連動ごとに別の集合�
   await expect(rows(second)).toHaveCount(1, { timeout: 10_000 });
   await expect(rows(first)).toHaveCount(2);
   await expect(sensitivity.getByRole('button', { name: '配列・Setupを選ぶ' })).toBeVisible();
-  const stored = await storedFirst(page) as unknown as { groups: { target: { set: { targets: unknown[] } } }[] };
+  const stored = (await storedFirst(page)) as unknown as { groups: { target: { set: { targets: unknown[] } } }[] };
   expect(stored.groups.map((g) => g.target.set.targets.length)).toEqual([2, 1]);
 });
 
@@ -584,7 +610,8 @@ test('ペイン間でengineのキャッシュを共有する: 同じ条件の2�
   // （描画は使わない）の呼び出し回数で、計算が走ったかを見る
   await page.route('**/*engine-worker*', async (route) => {
     const response = await route.fetch();
-    const patch = 'self.__counter = { atan2: 0 }; { const original = Math.atan2; Math.atan2 = (y, x) => { self.__counter.atan2 += 1; return original(y, x); }; }\n';
+    const patch =
+      'self.__counter = { atan2: 0 }; { const original = Math.atan2; Math.atan2 = (y, x) => { self.__counter.atan2 += 1; return original(y, x); }; }\n';
     await route.fulfill({ response, body: patch + (await response.text()) });
   });
   const calls = async () => {
@@ -597,12 +624,17 @@ test('ペイン間でengineのキャッシュを共有する: 同じ条件の2�
   // 計算が落ち着いてから数える
   const settled = async () => {
     let previous = -1;
-    await expect.poll(async () => {
-      const now = await calls();
-      const stable = now === previous;
-      previous = now;
-      return stable;
-    }, { intervals: [400, 400, 400], timeout: 10_000 }).toBe(true);
+    await expect
+      .poll(
+        async () => {
+          const now = await calls();
+          const stable = now === previous;
+          previous = now;
+          return stable;
+        },
+        { intervals: [400, 400, 400], timeout: 10_000 },
+      )
+      .toBe(true);
     return calls();
   };
 
@@ -616,9 +648,18 @@ test('ペイン間でengineのキャッシュを共有する: 同じ条件の2�
   await expect(page.locator('.pane-frame').nth(1).locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   expect(await settled()).toBe(one);
 
-  await page.locator('.pane-frame').nth(1).getByRole('button', { name: /^対象: / }).click();
+  await page
+    .locator('.pane-frame')
+    .nth(1)
+    .getByRole('button', { name: /^対象: / })
+    .click();
   await page.getByRole('dialog', { name: '対象の選択' }).locator('input[value="layout:colemak-dh"]').click();
-  await expect(page.locator('.pane-frame').nth(1).getByRole('button', { name: /^対象: / })).toHaveAttribute('aria-label', '対象: Colemak-DH');
+  await expect(
+    page
+      .locator('.pane-frame')
+      .nth(1)
+      .getByRole('button', { name: /^対象: / }),
+  ).toHaveAttribute('aria-label', '対象: Colemak-DH');
   await expect.poll(settled).toBeGreaterThan(one);
 });
 
@@ -641,7 +682,9 @@ test('1つのペインの描画が落ちても、他のペインとWorkspaceは�
   await expect(comparison.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(1, { timeout: 10_000 });
   await expect(pane(page, 'Bigram Flow').locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
 
-  await page.evaluate(() => { (window as unknown as { __break: boolean }).__break = true; });
+  await page.evaluate(() => {
+    (window as unknown as { __break: boolean }).__break = true;
+  });
   // 既定の物理配列を変えて、Bigram Flowを描き直させる
   await page.getByLabel('既定の物理配列').selectOption('ortholinear');
   await expect(pane(page, 'Bigram Flow').locator('[data-pane-crashed]')).toBeVisible({ timeout: 10_000 });
@@ -661,7 +704,12 @@ test('使えないAnalyzerのペインは使えないと出て、閉じられる
     text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
     panes: [
       { id: 'p-good', analyzerId: 'bigram-flow', binding: { mode: 'fixed', target: { kind: 'single', target: QWERTY } } },
-      { id: 'p-unknown', analyzerId: 'future-analyzer', options: { z: 1 }, binding: { mode: 'fixed', target: { kind: 'set', selection: { targets: [] } } } },
+      {
+        id: 'p-unknown',
+        analyzerId: 'future-analyzer',
+        options: { z: 1 },
+        binding: { mode: 'fixed', target: { kind: 'set', selection: { targets: [] } } },
+      },
       { id: 'p-mismatch', analyzerId: 'comparison', binding: { mode: 'fixed', target: { kind: 'single', target: QWERTY } } },
     ],
     grid: [
@@ -689,17 +737,28 @@ test('使えないAnalyzerのペインは使えないと出て、閉じられる
 });
 
 test('壊れた保存データでも画面は開き、壊れた部分だけが落ちる', async ({ page }) => {
-  await page.addInitScript(({ key }) => {
-    localStorage.setItem(key, JSON.stringify({
-      version: 4,
-      workspaces: [
-        { id: 'w', name: '一部が壊れている', panes: [
-          { id: 'ok', analyzerId: 'bigram-flow', binding: { mode: 'follow' } },
-          { id: 'broken', analyzerId: 'bigram-flow', binding: { mode: 'fixed', target: { kind: 'nonsense' } } },
-        ], grid: 'broken' },
-      ],
-    }));
-  }, { key: WORKSPACES_KEY });
+  await page.addInitScript(
+    ({ key }) => {
+      localStorage.setItem(
+        key,
+        JSON.stringify({
+          version: 4,
+          workspaces: [
+            {
+              id: 'w',
+              name: '一部が壊れている',
+              panes: [
+                { id: 'ok', analyzerId: 'bigram-flow', binding: { mode: 'follow' } },
+                { id: 'broken', analyzerId: 'bigram-flow', binding: { mode: 'fixed', target: { kind: 'nonsense' } } },
+              ],
+              grid: 'broken',
+            },
+          ],
+        }),
+      );
+    },
+    { key: WORKSPACES_KEY },
+  );
   await page.goto('/workspace/w');
   await waitForHydration(page);
   await expect(page.locator('.context-bar').getByRole('heading', { level: 1, name: '一部が壊れている' })).toBeVisible();
@@ -813,16 +872,23 @@ test('窓の大きさを変えても、ペインの画素の幅と面に対す�
   await waitForHydration(page);
   await expect(page.locator('.pane-frame')).toHaveCount(3);
   // 面に対する位置（スクロールの分を含む）と幅。ライブラリの配置の動き（200ms）が済み、落ち着いてから測る
-  const places = () => page.$$eval('.workspace-grid-item', (elements) => elements.map((element) => {
-    const area = element.closest('.workspace-grid-area')!;
-    const rect = element.getBoundingClientRect();
-    return [Math.round(rect.left - area.getBoundingClientRect().left + area.scrollLeft), Math.round(rect.width)];
-  }));
+  const places = () =>
+    page.$$eval('.workspace-grid-item', (elements) =>
+      elements.map((element) => {
+        const area = element.closest('.workspace-grid-area')!;
+        const rect = element.getBoundingClientRect();
+        return [Math.round(rect.left - area.getBoundingClientRect().left + area.scrollLeft), Math.round(rect.width)];
+      }),
+    );
   await settleBy(page, async () => JSON.stringify(await places()));
   const wide = await places();
   const gridBefore = JSON.stringify((await storedWorkspaces(page)).workspaces[0]!.grid);
   // 列の幅は68px（升の間を含む）。幅は（列の数 × 68 - 8）、位置は（8 + 左端の列 × 68）
-  expect(wide).toEqual([[8, 6 * 68 - 8], [8 + 6 * 68, 12 * 68 - 8], [8 + 18 * 68, 6 * 68 - 8]]);
+  expect(wide).toEqual([
+    [8, 6 * 68 - 8],
+    [8 + 6 * 68, 12 * 68 - 8],
+    [8 + 18 * 68, 6 * 68 - 8],
+  ]);
 
   for (const width of [1000, 2560, 2000]) {
     await page.setViewportSize({ width, height: 900 });
@@ -896,7 +962,7 @@ async function openPaneConditionModal(page: Page, paneLocator: Locator): Promise
 
 /** Workspaceの条件（`workspaces[i].conditions`。decodeせず生のJSON）。無ければ空。 */
 async function storedWorkspaceConditions(page: Page, index = 0): Promise<Record<string, unknown>> {
-  const stored = await storedWorkspaces(page) as unknown as { workspaces: { conditions?: Record<string, unknown> }[] };
+  const stored = (await storedWorkspaces(page)) as unknown as { workspaces: { conditions?: Record<string, unknown> }[] };
   return stored.workspaces[index]?.conditions ?? {};
 }
 
@@ -906,7 +972,9 @@ async function pickScope(row: Locator, item: string): Promise<void> {
   await row.getByRole('menuitem', { name: item }).click();
 }
 
-test('Workspaceのペインの条件のモーダルはWorkspaceのレベルで開き、変えた値はそのWorkspaceにだけ入る（全体・個別画面・他のWorkspaceには入らない）', async ({ page }) => {
+test('Workspaceのペインの条件のモーダルはWorkspaceのレベルで開き、変えた値はそのWorkspaceにだけ入る（全体・個別画面・他のWorkspaceには入らない）', async ({
+  page,
+}) => {
   const panes = await createWithBigramPanes(page, 1);
   // 見出しの1行には chip で出す（変えた項目の中身はhoverの説明とモーダルが出す）
   await expect(panes.first().locator('.pane-condition-trigger')).toHaveText('条件: 既定値');
@@ -1125,7 +1193,9 @@ test('Workspaceで変えた条件はWorkspaceの元に戻すで戻り、個別�
 
 test('Bigram Flowを配列違いで並べても、Keyboard Flowの線は自分のペインの色で塗られる', async ({ page }) => {
   const fixed = (id: string, layoutId: string) => ({
-    id, analyzerId: 'bigram-flow', binding: { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId } } },
+    id,
+    analyzerId: 'bigram-flow',
+    binding: { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId } } },
   });
   await seedWorkspace(page, {
     id: 'flow-gradient',
@@ -1133,8 +1203,13 @@ test('Bigram Flowを配列違いで並べても、Keyboard Flowの線は自分�
     text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
     panes: [fixed('a', 'qwerty'), fixed('b', 'dvorak')],
     layout: {
-      kind: 'split', direction: 'row', weight: 1,
-      children: [{ kind: 'group', paneIds: ['a'], weight: 1 }, { kind: 'group', paneIds: ['b'], weight: 1 }],
+      kind: 'split',
+      direction: 'row',
+      weight: 1,
+      children: [
+        { kind: 'group', paneIds: ['a'], weight: 1 },
+        { kind: 'group', paneIds: ['b'], weight: 1 },
+      ],
     },
   });
   await page.goto('/workspace/flow-gradient');
@@ -1145,18 +1220,20 @@ test('Bigram Flowを配列違いで並べても、Keyboard Flowの線は自分�
 
   // 線が参照する塗りは、同じ図（SVG）の中の定義でなければならない。idが図をまたいで重なると、
   // 後ろの図の線が先頭の図の色・座標で塗られる
-  const foreign = await flows.evaluateAll((roots) => roots.map((root) => {
-    const svg = root.querySelector('svg.flow-keyboard-svg')!;
-    let total = 0;
-    let outside = 0;
-    for (const edge of svg.querySelectorAll('[data-flow-edge="true"]')) {
-      const id = /url\(#(.+)\)/.exec(edge.getAttribute('stroke') ?? '')?.[1];
-      if (id === undefined) continue;
-      total += 1;
-      if (document.getElementById(id)?.closest('svg') !== svg) outside += 1;
-    }
-    return { total, outside };
-  }));
+  const foreign = await flows.evaluateAll((roots) =>
+    roots.map((root) => {
+      const svg = root.querySelector('svg.flow-keyboard-svg')!;
+      let total = 0;
+      let outside = 0;
+      for (const edge of svg.querySelectorAll('[data-flow-edge="true"]')) {
+        const id = /url\(#(.+)\)/.exec(edge.getAttribute('stroke') ?? '')?.[1];
+        if (id === undefined) continue;
+        total += 1;
+        if (document.getElementById(id)?.closest('svg') !== svg) outside += 1;
+      }
+      return { total, outside };
+    }),
+  );
   expect(foreign.map((f) => f.total > 0)).toEqual([true, true]);
   expect(foreign.map((f) => f.outside)).toEqual([0, 0]);
 });

@@ -7,10 +7,7 @@ import { NAGINATA_V18 } from '#input/layouts/naginata.ts';
 import { SHIN_JIS_SIMULTANEOUS } from '#input/layouts/shin-jis.ts';
 import { TSUKI_2_263 } from '#input/layouts/tsuki-2-263.ts';
 
-const physical = (
-  type: 'keydown' | 'keyup',
-  code: string,
-) => {
+const physical = (type: 'keydown' | 'keyup', code: string) => {
   const event = browserKeyboardEventToPhysicalKeyEvent({ type, code });
   assert.ok(event !== undefined);
   return event;
@@ -36,7 +33,6 @@ test('built-in月配列をbrowser adapter経由でprefix入力できる', () => 
     ['ま'],
   );
 });
-
 
 test('built-in新JIS通常シフトはrelease後の次打へ持ち越さない', () => {
   const engine = new TypingInputEngine(SHIN_JIS_SIMULTANEOUS.canonicalInputs, {
@@ -81,13 +77,15 @@ test('built-in新JIS通常シフトをbrowser adapter経由でhold入力でき�
   engine.handle(physical('keyup', 'KeyH'));
 
   const continued = engine.handle(physical('keydown', 'KeyJ')).recognized;
-  assert.deepEqual(continued.map((entry) => entry.output), ['お']);
+  assert.deepEqual(
+    continued.map((entry) => entry.output),
+    ['お'],
+  );
   assert.deepEqual(
     continued[0].actions.map((action) => action.heldKeys),
     [['thumb-r']],
   );
 });
-
 
 test('shortcut modifier中のkeyupでもpressed stateを解放する', () => {
   const engine = new TypingInputEngine(TSUKI_2_263.canonicalInputs);
@@ -105,7 +103,6 @@ test('shortcut modifier中のkeyupでもpressed stateを解放する', () => {
   assert.ok(up !== undefined);
   assert.deepEqual(engine.handle(up).pressedKeys, []);
 });
-
 
 test('薙刀式の未定義roll overlapは左右どちらも単打を落とさない', () => {
   const cases = [
@@ -130,7 +127,6 @@ test('薙刀式の未定義roll overlapは左右どちらも単打を落とさ�
     assert.deepEqual(outputs, expected, keys.join(' -> '));
   }
 });
-
 
 test('かわせみ配列+の同時押し拡張を実canonical inputで認識する', () => {
   const cases = [
@@ -170,7 +166,6 @@ test('かわせみ配列+の同時押し拡張を実canonical inputで認識す�
   }
 });
 
-
 test('月配列のprefix triggerは非対象側の通常1打で消費され後続へ残らない', () => {
   const cases = [
     { trigger: 'k', sameHand: 'h', sameOutput: 'く', opposite: 'f', oppositeBaseOutput: 'と' },
@@ -192,7 +187,6 @@ test('月配列のprefix triggerは非対象側の通常1打で消費され後�
     );
   }
 });
-
 
 test('未定義physical keyは出力せずprefix one-shotを消費する', () => {
   const engine = new TypingInputEngine(TSUKI_2_263.canonicalInputs);

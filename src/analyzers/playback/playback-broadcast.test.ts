@@ -27,7 +27,15 @@ function apply(action: PlaybackBroadcastAction, panes: readonly PlaybackState[])
 
 test('再生: 止まっているペインを今の位置から始め、再生中のペインは続け、最後まで再生したペインは始めない', () => {
   const next = apply('play', [stopped, middle, playingMid, finished]);
-  assert.deepEqual(next.map((state) => [state.cursor, state.playing]), [[0, true], [4, true], [5, true], [TOTAL, false]]);
+  assert.deepEqual(
+    next.map((state) => [state.cursor, state.playing]),
+    [
+      [0, true],
+      [4, true],
+      [5, true],
+      [TOTAL, false],
+    ],
+  );
   // 再生中のペインは始め直さない（経過時間をそのまま残す）
   assert.equal(next[2], playingMid);
   assert.equal(next[1]?.elapsedMs, 0);
@@ -35,7 +43,15 @@ test('再生: 止まっているペインを今の位置から始め、再生中
 
 test('一時停止: 再生中のペインだけをその位置で止める', () => {
   const next = apply('pause', [stopped, middle, playingMid, at(7, true, 10)]);
-  assert.deepEqual(next.map((state) => [state.cursor, state.playing]), [[0, false], [4, false], [5, false], [7, false]]);
+  assert.deepEqual(
+    next.map((state) => [state.cursor, state.playing]),
+    [
+      [0, false],
+      [4, false],
+      [5, false],
+      [7, false],
+    ],
+  );
   assert.equal(next[2]?.elapsedMs, 30);
   assert.equal(next[0], stopped);
 });
@@ -78,7 +94,9 @@ test('押せる条件: 再生は、止まっていて最後まで再生してい
 test('伝える所: 操作は番号を増やして購読者へ知らせ、ペインの状態の報告で押せる条件が変わる', () => {
   const broadcast = createPlaybackBroadcast();
   let notified = 0;
-  const unsubscribe = broadcast.subscribe(() => { notified += 1; });
+  const unsubscribe = broadcast.subscribe(() => {
+    notified += 1;
+  });
   const initial = broadcast.command();
   assert.equal(initial.revision, 0);
   assert.equal(broadcast.canStop(), false);

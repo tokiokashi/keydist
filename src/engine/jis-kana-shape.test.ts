@@ -4,12 +4,7 @@ import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { AnalysisTarget, Setup } from '#input/setup/index.ts';
 import type { CascadeLevel } from '#input/settings/index.ts';
-import {
-  EMPTY_SETTINGS_OVERRIDES,
-  setSettingsOverride,
-  withWorkspaceConditions,
-  type SettingsCascadeOverrides,
-} from './settings-items.ts';
+import { EMPTY_SETTINGS_OVERRIDES, setSettingsOverride, withWorkspaceConditions, type SettingsCascadeOverrides } from './settings-items.ts';
 import { resolveEngineInput, type ResolvedInputResult } from './resolved-input.ts';
 import { describeResolvedInputError } from './resolved-input-errors.ts';
 
@@ -26,12 +21,7 @@ function withShape(overrides: SettingsCascadeOverrides, level: CascadeLevel, sha
   return result.ok ? result.overrides : overrides;
 }
 
-function resolve(
-  target: AnalysisTarget,
-  overrides: SettingsCascadeOverrides,
-  setups: readonly Setup[] = [],
-  catalog = CATALOG,
-): ResolvedInputResult {
+function resolve(target: AnalysisTarget, overrides: SettingsCascadeOverrides, setups: readonly Setup[] = [], catalog = CATALOG): ResolvedInputResult {
   return resolveEngineInput({
     target,
     setups: new Map(setups.map((setup) => [setup.id, setup])),
@@ -104,9 +94,10 @@ test('配列のレベルの上書きが手持ちに無い物理配列を指す�
   assert.equal(geometryIdOf(result), 'jis-ortholinear');
   assert.ok(result.ok);
   if (!result.ok) return;
-  assert.deepEqual(result.input.cascade.defaultShapeId.diagnostics.map((d) => d.message), [
-    '既定に選んでいた物理配列が見つからないため、「オーソリニア（JIS）」で測りました',
-  ]);
+  assert.deepEqual(
+    result.input.cascade.defaultShapeId.diagnostics.map((d) => d.message),
+    ['既定に選んでいた物理配列が見つからないため、「オーソリニア（JIS）」で測りました'],
+  );
 });
 
 test('全体の値が手持ちに無い物理配列を指す時も、JISかな配列は既定の形から導き、診断を出す。導出でidが変わるだけなら出さない', () => {
@@ -135,10 +126,7 @@ test('全体の値が自作の物理配列の時は、配列が使うキーを�
   const jisAssignment = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'fingerAssignmentId', 'jis-default');
   assert.ok(jisAssignment.ok);
   const base = jisAssignment.ok ? jisAssignment.overrides : EMPTY_SETTINGS_OVERRIDES;
-  assert.equal(
-    geometryIdOf(resolve(JIS_KANA_TARGET, withShape(base, { kind: 'global' }, full.id), [], catalog)),
-    'shape-full',
-  );
+  assert.equal(geometryIdOf(resolve(JIS_KANA_TARGET, withShape(base, { kind: 'global' }, full.id), [], catalog)), 'shape-full');
   assert.equal(
     geometryIdOf(resolve(JIS_KANA_TARGET, withShape(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, short.id), [], catalog)),
     'jis-row-staggered',

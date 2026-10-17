@@ -36,11 +36,7 @@ export function useSharedScale(key: string, own: ScaleRange | undefined): ScaleR
     registry.report(key, owner, { min, max });
     return () => registry.report(key, owner, undefined);
   }, [registry, key, owner, min, max]);
-  const shared = useSyncExternalStore(
-    registry?.subscribe ?? NO_SUBSCRIBE,
-    () => registry?.rangeOf(key),
-    NONE,
-  );
+  const shared = useSyncExternalStore(registry?.subscribe ?? NO_SUBSCRIBE, () => registry?.rangeOf(key), NONE);
   if (shared === undefined) return own;
   if (min === undefined || max === undefined) return shared;
   // 報告が済む前の描画でも、自分の範囲は必ず含める

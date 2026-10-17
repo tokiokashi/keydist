@@ -1,10 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {
-  initialStandaloneAnalyzerOptions,
-  standaloneAnalyzerOptionsFor,
-  withStandaloneAnalyzerOptions,
-} from './standalone-analyzer-options.ts';
+import { initialStandaloneAnalyzerOptions, standaloneAnalyzerOptionsFor, withStandaloneAnalyzerOptions } from './standalone-analyzer-options.ts';
 
 test('initialStandaloneAnalyzerOptions: 空のrecord', () => {
   assert.deepEqual(initialStandaloneAnalyzerOptions(), {});

@@ -82,11 +82,16 @@ export interface RelativeVector {
 
 export function fingerClass(finger: Finger): FingerClass | undefined {
   switch (finger[1]) {
-    case 'P': return 'pinky';
-    case 'R': return 'ring';
-    case 'M': return 'middle';
-    case 'I': return 'index';
-    case 'T': return undefined;
+    case 'P':
+      return 'pinky';
+    case 'R':
+      return 'ring';
+    case 'M':
+      return 'middle';
+    case 'I':
+      return 'index';
+    case 'T':
+      return undefined;
     default: {
       const exhaustive: never = finger[1] as never;
       return exhaustive;
@@ -145,37 +150,29 @@ function vectorsBetween(
       const hand = vectorHand(fromPress.finger, toPress.finger);
       const dx = toPress.target.x - fromPress.target.x;
       const dy = toPress.target.y - fromPress.target.y;
-      result.push(Object.freeze({
-        id: vectorId(
+      result.push(
+        Object.freeze({
+          id: vectorId(source, fromStrokeIndex, toStrokeIndex, fromPressIndex, toPressIndex, fromPress, toPress),
           source,
           fromStrokeIndex,
           toStrokeIndex,
-          fromPressIndex,
-          toPressIndex,
-          fromPress,
-          toPress,
-        ),
-        source,
-        fromStrokeIndex,
-        toStrokeIndex,
-        fromFinger: fromPress.finger,
-        toFinger: toPress.finger,
-        fromFingerClass: fromClass,
-        toFingerClass: toClass,
-        fromKeyIds: Object.freeze(fromPress.keys.map((key) => key.id)),
-        toKeyIds: Object.freeze(toPress.keys.map((key) => key.id)),
-        from: Object.freeze({ ...fromPress.target }),
-        to: Object.freeze({ ...toPress.target }),
-        hand,
-        fingerDirection: hand === 'cross'
-          ? undefined
-          : fingerRelation(fromPress.finger, toPress.finger).direction,
-        dx,
-        dy,
-        distance: Math.hypot(dx, dy),
-        angle: Math.atan2(dy, dx),
-        weight: 1,
-      }));
+          fromFinger: fromPress.finger,
+          toFinger: toPress.finger,
+          fromFingerClass: fromClass,
+          toFingerClass: toClass,
+          fromKeyIds: Object.freeze(fromPress.keys.map((key) => key.id)),
+          toKeyIds: Object.freeze(toPress.keys.map((key) => key.id)),
+          from: Object.freeze({ ...fromPress.target }),
+          to: Object.freeze({ ...toPress.target }),
+          hand,
+          fingerDirection: hand === 'cross' ? undefined : fingerRelation(fromPress.finger, toPress.finger).direction,
+          dx,
+          dy,
+          distance: Math.hypot(dx, dy),
+          angle: Math.atan2(dy, dx),
+          weight: 1,
+        }),
+      );
     });
   });
 
@@ -185,13 +182,7 @@ function vectorsBetween(
 function actualVectors(strokes: readonly Stroke[]): BigramVector[] {
   const result: BigramVector[] = [];
   for (let index = 0; index + 1 < strokes.length; index++) {
-    result.push(...vectorsBetween(
-      'actual',
-      index,
-      index + 1,
-      strokes[index].presses,
-      strokes[index + 1].presses,
-    ));
+    result.push(...vectorsBetween('actual', index, index + 1, strokes[index].presses, strokes[index + 1].presses));
   }
   return result;
 }
@@ -207,13 +198,7 @@ function withinHandVectors(strokes: readonly Stroke[]): BigramVector[] {
       if (presses.length === 0) continue;
 
       if (previous !== undefined) {
-        result.push(...vectorsBetween(
-          'within-hand',
-          previous.strokeIndex,
-          strokeIndex,
-          previous.presses,
-          presses,
-        ));
+        result.push(...vectorsBetween('within-hand', previous.strokeIndex, strokeIndex, previous.presses, presses));
       }
       // 同じ手の親指だけのStrokeも「手の次の打鍵」なので境界として残す。
       previous = { strokeIndex, presses };
@@ -227,29 +212,22 @@ function withinHandVectors(strokes: readonly Stroke[]): BigramVector[] {
  * 実Stroke bigram、または反対手だけを飛ばした手内bigramをvector factへ変換する。
  * Roll / Arpeggioの成立判定やChainInterpretationは参照しない。
  */
-export function buildBigramVectors(
-  strokes: readonly Stroke[],
-  source: BigramSource,
-): readonly BigramVector[] {
+export function buildBigramVectors(strokes: readonly Stroke[], source: BigramSource): readonly BigramVector[] {
   return Object.freeze(source === 'actual' ? actualVectors(strokes) : withinHandVectors(strokes));
 }
 
-export function filterBigramVectors(
-  vectors: readonly BigramVector[],
-  selected: readonly FingerClass[],
-): readonly BigramVector[] {
+export function filterBigramVectors(vectors: readonly BigramVector[], selected: readonly FingerClass[]): readonly BigramVector[] {
   if (selected.length === 0) return vectors;
   if (selected.length === 1) {
     const finger = selected[0];
-    return vectors.filter(
-      (vector) => vector.fromFingerClass === finger || vector.toFingerClass === finger,
-    );
+    return vectors.filter((vector) => vector.fromFingerClass === finger || vector.toFingerClass === finger);
   }
 
   const [first, second] = selected;
-  return vectors.filter((vector) =>
-    (vector.fromFingerClass === first && vector.toFingerClass === second)
-    || (vector.fromFingerClass === second && vector.toFingerClass === first));
+  return vectors.filter(
+    (vector) =>
+      (vector.fromFingerClass === first && vector.toFingerClass === second) || (vector.fromFingerClass === second && vector.toFingerClass === first),
+  );
 }
 
 function aggregateKey(vector: BigramVector): string {
@@ -268,17 +246,13 @@ function aggregateKey(vector: BigramVector): string {
 }
 
 /** 同じ物理vectorをまとめ、出現回数をweightへ積む。 */
-export function aggregateBigramVectors(
-  vectors: readonly BigramVector[],
-): readonly BigramVector[] {
+export function aggregateBigramVectors(vectors: readonly BigramVector[]): readonly BigramVector[] {
   const byKey = new Map<string, BigramVector>();
 
   for (const vector of vectors) {
     const key = aggregateKey(vector);
     const current = byKey.get(key);
-    byKey.set(key, current === undefined
-      ? vector
-      : Object.freeze({ ...current, weight: current.weight + vector.weight }));
+    byKey.set(key, current === undefined ? vector : Object.freeze({ ...current, weight: current.weight + vector.weight }));
   }
 
   return Object.freeze([...byKey.values()]);
@@ -309,39 +283,31 @@ export function repeatCountsByKey(vectors: readonly BigramVector[]): ReadonlyMap
  * 移動量（dx/dy）と指の組が同じvectorへ集約する。絶対位置（from/to）を持たず
  * 相対移動だけを見るMovement profileプロットが使う。
  */
-export function relativeVectors(
-  vectors: readonly BigramVector[],
-  hand: 'left' | 'right',
-): readonly RelativeVector[] {
+export function relativeVectors(vectors: readonly BigramVector[], hand: 'left' | 'right'): readonly RelativeVector[] {
   const grouped = new Map<string, RelativeVector>();
   for (const vector of vectors) {
     if (vector.hand !== hand || vector.distance === 0) continue;
-    const key = [
-      vector.dx.toFixed(6),
-      vector.dy.toFixed(6),
-      vector.fromFingerClass,
-      vector.toFingerClass,
-    ].join('|');
+    const key = [vector.dx.toFixed(6), vector.dy.toFixed(6), vector.fromFingerClass, vector.toFingerClass].join('|');
     const current = grouped.get(key);
-    grouped.set(key, current === undefined
-      ? {
-        id: key,
-        dx: vector.dx,
-        dy: vector.dy,
-        weight: vector.weight,
-        fromFingerClass: vector.fromFingerClass,
-        toFingerClass: vector.toFingerClass,
-        fingerDirection: vector.fingerDirection,
-      }
-      : { ...current, weight: current.weight + vector.weight });
+    grouped.set(
+      key,
+      current === undefined
+        ? {
+            id: key,
+            dx: vector.dx,
+            dy: vector.dy,
+            weight: vector.weight,
+            fromFingerClass: vector.fromFingerClass,
+            toFingerClass: vector.toFingerClass,
+            fingerDirection: vector.fingerDirection,
+          }
+        : { ...current, weight: current.weight + vector.weight },
+    );
   }
   return [...grouped.values()];
 }
 
-export function directionSummary(
-  vectors: readonly BigramVector[],
-  hand: 'left' | 'right',
-): DirectionSummary {
+export function directionSummary(vectors: readonly BigramVector[], hand: 'left' | 'right'): DirectionSummary {
   let x = 0;
   let y = 0;
   let directionalWeight = 0;
@@ -389,12 +355,8 @@ export function directionSummary(
   };
 }
 
-
 /** frequency-weighted mean displacement。距離を保持するため単位はgeometryのu。 */
-export function meanDisplacement(
-  vectors: readonly BigramVector[],
-  hand: 'left' | 'right',
-): MeanDisplacement {
+export function meanDisplacement(vectors: readonly BigramVector[], hand: 'left' | 'right'): MeanDisplacement {
   let x = 0;
   let y = 0;
   let totalWeight = 0;
@@ -426,11 +388,7 @@ export function meanDisplacement(
  * 方向頻度を円周上の構成比へ変換する。
  * 各vectorは隣接するbinへ線形補間して、離散geometry由来の角度を一点binに固定しない。
  */
-export function directionDistribution(
-  vectors: readonly BigramVector[],
-  hand: 'left' | 'right',
-  binCount = 16,
-): DirectionDistribution {
+export function directionDistribution(vectors: readonly BigramVector[], hand: 'left' | 'right', binCount = 16): DirectionDistribution {
   if (!Number.isInteger(binCount) || binCount < 4) {
     throw new RangeError('binCount must be an integer >= 4');
   }
@@ -454,10 +412,12 @@ export function directionDistribution(
     directionalWeight += vector.weight;
   }
 
-  const bins = weights.map((weight, index) => Object.freeze({
-    angle: index * binWidth,
-    proportion: directionalWeight === 0 ? 0 : weight / directionalWeight,
-  }));
+  const bins = weights.map((weight, index) =>
+    Object.freeze({
+      angle: index * binWidth,
+      proportion: directionalWeight === 0 ? 0 : weight / directionalWeight,
+    }),
+  );
 
   return {
     bins: Object.freeze(bins),
@@ -465,18 +425,12 @@ export function directionDistribution(
   };
 }
 
-
 /**
  * 実vector角度をfrequency-weighted empirical distributionとして扱い、
  * 円周上で積分1となるvon Mises kernelで平滑化したcircular KDEをsampleする。
  * bandwidthDegreesはkernelがpeakの1/2になる半値半幅 (HWHM)。
  */
-export function directionDensity(
-  vectors: readonly BigramVector[],
-  hand: 'left' | 'right',
-  bandwidthDegrees = 15,
-  sampleCount = 96,
-): DirectionDensity {
+export function directionDensity(vectors: readonly BigramVector[], hand: 'left' | 'right', bandwidthDegrees = 15, sampleCount = 96): DirectionDensity {
   if (!(bandwidthDegrees > 0 && bandwidthDegrees < 180)) {
     throw new RangeError('bandwidthDegrees must be > 0 and < 180');
   }
@@ -484,17 +438,15 @@ export function directionDensity(
     throw new RangeError('sampleCount must be an integer >= 16');
   }
 
-  const directional = vectors.filter(
-    (vector) => vector.hand === hand && vector.distance >= 1e-12,
-  );
+  const directional = vectors.filter((vector) => vector.hand === hand && vector.distance >= 1e-12);
   const directionalWeight = directional.reduce((sum, vector) => sum + vector.weight, 0);
   const tau = Math.PI * 2;
-  const halfWidth = bandwidthDegrees * Math.PI / 180;
+  const halfWidth = (bandwidthDegrees * Math.PI) / 180;
   const kappa = Math.log(2) / (1 - Math.cos(halfWidth));
   const normalization = tau * scaledModifiedBesselI0(kappa);
 
   const samples = Array.from({ length: sampleCount }, (_, index) => {
-    const angle = index * tau / sampleCount;
+    const angle = (index * tau) / sampleCount;
     if (directionalWeight === 0) {
       return Object.freeze({ angle, density: 0 });
     }
@@ -525,37 +477,16 @@ function scaledModifiedBesselI0(x: number): number {
   const ax = Math.abs(x);
   if (ax < 3.75) {
     const y = (ax / 3.75) ** 2;
-    const i0 = 1 + y * (
-      3.5156229 + y * (
-        3.0899424 + y * (
-          1.2067492 + y * (
-            0.2659732 + y * (
-              0.0360768 + y * 0.0045813
-            )
-          )
-        )
-      )
-    );
+    const i0 = 1 + y * (3.5156229 + y * (3.0899424 + y * (1.2067492 + y * (0.2659732 + y * (0.0360768 + y * 0.0045813)))));
     return i0 * Math.exp(-ax);
   }
 
   const y = 3.75 / ax;
   return (
-    0.39894228 + y * (
-      0.01328592 + y * (
-        0.00225319 + y * (
-          -0.00157565 + y * (
-            0.00916281 + y * (
-              -0.02057706 + y * (
-                0.02635537 + y * (
-                  -0.01647633 + y * 0.00392377
-                )
-              )
-            )
-          )
-        )
-      )
-    )
-  ) / Math.sqrt(ax);
+    (0.39894228 +
+      y *
+        (0.01328592 +
+          y * (0.00225319 + y * (-0.00157565 + y * (0.00916281 + y * (-0.02057706 + y * (0.02635537 + y * (-0.01647633 + y * 0.00392377)))))))) /
+    Math.sqrt(ax)
+  );
 }
-

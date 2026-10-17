@@ -1,9 +1,4 @@
-import {
-  assignmentWithHomeKeys,
-  buildGeometry,
-  type FingerAssignment,
-  type Geometry,
-} from '#input/shapes/geometry.ts';
+import { assignmentWithHomeKeys, buildGeometry, type FingerAssignment, type Geometry } from '#input/shapes/geometry.ts';
 import { describeShapeFallback } from '#input/setup/index.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { ExtractionAssets } from '#analyzers/contract.ts';
@@ -18,11 +13,7 @@ import type { ChainInterpretation } from '#interpretation/structure/chain.ts';
 import type { ArpeggioInterpretation } from '#interpretation/structure/arpeggio.ts';
 import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import { defaultFingerAssignmentId, resolveFingerAssignment } from './finger-assignment.ts';
-import {
-  resolveSettings,
-  type ResolvedSettingsCascade,
-  type SettingsCascadeOverrides,
-} from './settings-items.ts';
+import { resolveSettings, type ResolvedSettingsCascade, type SettingsCascadeOverrides } from './settings-items.ts';
 import { prepareEvaluationText } from '#input/text/evaluation-text.ts';
 import { resolveTargetForText } from './target-resolution.ts';
 
@@ -77,9 +68,7 @@ export type ResolvedInputError =
    */
   | { readonly kind: 'target-missing'; readonly target: AnalysisTarget };
 
-export type ResolvedInputResult =
-  | { readonly ok: true; readonly input: ResolvedInput }
-  | { readonly ok: false; readonly error: ResolvedInputError };
+export type ResolvedInputResult = { readonly ok: true; readonly input: ResolvedInput } | { readonly ok: false; readonly error: ResolvedInputError };
 
 export interface ResolveEngineInputOptions {
   readonly target: AnalysisTarget;
@@ -127,14 +116,7 @@ function withoutRomaji(layout: Layout): Layout {
  * 失敗は例外にせず値で返す。
  */
 export function resolveEngineInput(options: ResolveEngineInputOptions): ResolvedInputResult {
-  const textResolution = resolveTargetForText(
-    options.target,
-    options.setups,
-    options.catalog,
-    options.userLayouts,
-    options.overrides,
-    options.language,
-  );
+  const textResolution = resolveTargetForText(options.target, options.setups, options.catalog, options.userLayouts, options.overrides, options.language);
   if (!textResolution.ok) {
     if (textResolution.kind === 'target-missing') {
       return { ok: false, error: { kind: 'target-missing', target: textResolution.target } };
@@ -142,9 +124,9 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
     return textResolution.kind === 'reference'
       ? { ok: false, error: { kind: 'reference', errors: textResolution.errors } }
       : {
-        ok: false,
-        error: { kind: 'incompatible-text', layout: textResolution.layout, language: textResolution.language },
-      };
+          ok: false,
+          error: { kind: 'incompatible-text', layout: textResolution.layout, language: textResolution.language },
+        };
   }
 
   const cascade = resolveSettings(options.overrides, textResolution.context);
@@ -154,9 +136,10 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
   const baseLayout = withoutRomaji(textResolution.layout);
   // ローマ字を経ない打ち方では、romajiOnlyのコンボ（仕様 §4.3）を外した配列を渡す。
   // Trace生成も同じ規則で外すが、ResolvedInput.layoutは表示側も読むので、ここで揃えておく。
-  const layout = romajiRuleId !== null
-    ? withRomaji(baseLayout, tableForRule(romajiRuleId, options.customRomajiRules ? [...options.customRomajiRules] : undefined))
-    : withoutRomajiOnlyCombos(baseLayout);
+  const layout =
+    romajiRuleId !== null
+      ? withRomaji(baseLayout, tableForRule(romajiRuleId, options.customRomajiRules ? [...options.customRomajiRules] : undefined))
+      : withoutRomajiOnlyCombos(baseLayout);
 
   // 未知のidが渡ってきた時のfallback先は「その物理配列の既定」（defaultFingerAssignmentId）に揃える。
   // 上書きが無い時の既定値（settings-items.tsのdefaultValue）と同じ規則にすることで、
@@ -171,49 +154,54 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
   // customFingerAssignmentsはcontext非依存の別カタログなので、resolveCascade自体には
   // 組み込めない（validateはCascadeContextしか見られない）。ここで後から合成する。
   // どのレベルの値でも、ローマ字規則が解決できない時は、表は既定（訓令式）で打つ。値は変えず、診断だけを足す。
-  const romajiDiagnostic = romajiRuleId !== null
-    && !isBuiltin(romajiRuleId)
-    && !(options.customRomajiRules ?? []).some((rule) => rule.id === romajiRuleId)
-    ? {
-      kind: 'invalid-fallback' as const,
-      message: `選んでいたローマ字規則が見つからないため、既定の「${ROMAJI_RULES.kunrei.name}」で測りました`,
-    }
-    : undefined;
+  const romajiDiagnostic =
+    romajiRuleId !== null && !isBuiltin(romajiRuleId) && !(options.customRomajiRules ?? []).some((rule) => rule.id === romajiRuleId)
+      ? {
+          kind: 'invalid-fallback' as const,
+          message: `選んでいたローマ字規則が見つからないため、既定の「${ROMAJI_RULES.kunrei.name}」で測りました`,
+        }
+      : undefined;
   // JISの物理配列が要る配列の既定の物理配列は、値を入力にして物理配列を導くので、`validate`は食い違いを見ない。
   // 値が手持ちに無い物理配列を指す時の診断は、手持ち（catalog）を持つここで、他の配列と同じ文で足す。
   const shapeValue = cascade.defaultShapeId.value;
-  const shapeDiagnostic = textResolution.context.targetKind === 'layout'
-    && layout.requiresJisShape === true
-    && !options.catalog.shapes.has(shapeValue)
-    ? {
-      kind: 'invalid-fallback' as const,
-      message: describeShapeFallback(textResolution.shape.name),
-    }
-    : undefined;
-  const resolvedCascade = assignmentDiagnostic === undefined && romajiDiagnostic === undefined && shapeDiagnostic === undefined
-    ? cascade
-    : {
-      ...cascade,
-      ...(shapeDiagnostic === undefined ? {} : {
-        defaultShapeId: {
-          ...cascade.defaultShapeId,
-          diagnostics: [...cascade.defaultShapeId.diagnostics, shapeDiagnostic],
-        },
-      }),
-      ...(assignmentDiagnostic === undefined ? {} : {
-        fingerAssignmentId: {
-          ...cascade.fingerAssignmentId,
-          value: assignment.id,
-          diagnostics: [...cascade.fingerAssignmentId.diagnostics, assignmentDiagnostic],
-        },
-      }),
-      ...(romajiDiagnostic === undefined ? {} : {
-        romajiRuleId: {
-          ...cascade.romajiRuleId,
-          diagnostics: [...cascade.romajiRuleId.diagnostics, romajiDiagnostic],
-        },
-      }),
-    };
+  const shapeDiagnostic =
+    textResolution.context.targetKind === 'layout' && layout.requiresJisShape === true && !options.catalog.shapes.has(shapeValue)
+      ? {
+          kind: 'invalid-fallback' as const,
+          message: describeShapeFallback(textResolution.shape.name),
+        }
+      : undefined;
+  const resolvedCascade =
+    assignmentDiagnostic === undefined && romajiDiagnostic === undefined && shapeDiagnostic === undefined
+      ? cascade
+      : {
+          ...cascade,
+          ...(shapeDiagnostic === undefined
+            ? {}
+            : {
+                defaultShapeId: {
+                  ...cascade.defaultShapeId,
+                  diagnostics: [...cascade.defaultShapeId.diagnostics, shapeDiagnostic],
+                },
+              }),
+          ...(assignmentDiagnostic === undefined
+            ? {}
+            : {
+                fingerAssignmentId: {
+                  ...cascade.fingerAssignmentId,
+                  value: assignment.id,
+                  diagnostics: [...cascade.fingerAssignmentId.diagnostics, assignmentDiagnostic],
+                },
+              }),
+          ...(romajiDiagnostic === undefined
+            ? {}
+            : {
+                romajiRuleId: {
+                  ...cascade.romajiRuleId,
+                  diagnostics: [...cascade.romajiRuleId.diagnostics, romajiDiagnostic],
+                },
+              }),
+        };
 
   let geometry: Geometry;
   try {
@@ -240,13 +228,14 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
   return {
     ok: true,
     input: {
-      text: options.verbatimText === true
-        ? options.text
-        : prepareEvaluationText(options.text, {
-          language: options.language,
-          keepSymbols: cascade.keepSymbols.value,
-          layoutHasChar: (char) => layout.canonicalInputs.has(char),
-        }),
+      text:
+        options.verbatimText === true
+          ? options.text
+          : prepareEvaluationText(options.text, {
+              language: options.language,
+              keepSymbols: cascade.keepSymbols.value,
+              layoutHasChar: (char) => layout.canonicalInputs.has(char),
+            }),
       layout,
       geometry,
       tracePolicy,

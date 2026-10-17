@@ -14,12 +14,7 @@ import {
   setCascadeOverrideCommand,
   type KeydistAssets,
 } from '#engine/commands.ts';
-import {
-  SETTINGS_ITEMS,
-  type SettingsCascadeOverrides,
-  type SettingsItemId,
-  type SettingsValueMap,
-} from '#engine/settings-items.ts';
+import { SETTINGS_ITEMS, type SettingsCascadeOverrides, type SettingsItemId, type SettingsValueMap } from '#engine/settings-items.ts';
 import { conditionLevelLabel, type ConditionSummaryRow, type ConditionValueNames } from './condition-summary.ts';
 
 /**
@@ -68,10 +63,7 @@ export const GLOBAL_EDITABLE_IDS: readonly GlobalEditableId[] = [
 ];
 
 /** 行を出している項目（`hiddenIds`を除く）のうち、全体の上書きがあるもの。 */
-export function resettableGlobalIds(
-  overrides: SettingsCascadeOverrides,
-  hiddenIds: readonly SettingsItemId[] = [],
-): readonly GlobalEditableId[] {
+export function resettableGlobalIds(overrides: SettingsCascadeOverrides, hiddenIds: readonly SettingsItemId[] = []): readonly GlobalEditableId[] {
   return GLOBAL_EDITABLE_IDS.filter((id) => !hiddenIds.includes(id) && globalOverrideOf(overrides, id) !== undefined);
 }
 
@@ -81,15 +73,11 @@ export function resettableLayoutIds(
   layoutId: string,
   hiddenIds: readonly SettingsItemId[] = [],
 ): readonly GlobalEditableId[] {
-  return GLOBAL_EDITABLE_IDS.filter((id) =>
-    !hiddenIds.includes(id) && canEditAtLayout(id) && layoutOverrideOf(overrides, layoutId, id) !== undefined);
+  return GLOBAL_EDITABLE_IDS.filter((id) => !hiddenIds.includes(id) && canEditAtLayout(id) && layoutOverrideOf(overrides, layoutId, id) !== undefined);
 }
 
 /** 行を出している項目のうち、Workspaceのレベルに上書きがあるもの。 */
-export function resettableWorkspaceIds(
-  overrides: SettingsCascadeOverrides,
-  hiddenIds: readonly SettingsItemId[] = [],
-): readonly GlobalEditableId[] {
+export function resettableWorkspaceIds(overrides: SettingsCascadeOverrides, hiddenIds: readonly SettingsItemId[] = []): readonly GlobalEditableId[] {
   return GLOBAL_EDITABLE_IDS.filter((id) => !hiddenIds.includes(id) && workspaceOverrideOf(overrides, id) !== undefined);
 }
 
@@ -105,11 +93,14 @@ export function resetAllCommand(
   layout?: { readonly layoutId: string; readonly ids: readonly GlobalEditableId[] },
   workspace?: { readonly workspaceId: string; readonly ids: readonly GlobalEditableId[] },
 ): Command<KeydistAssets> {
-  return resetCascadeItemsAtLevelsCommand([
-    { level: GLOBAL_LEVEL, itemIds: globalIds },
-    ...(workspace === undefined ? [] : [{ level: WORKSPACE_LEVEL, itemIds: workspace.ids }]),
-    ...(layout === undefined ? [] : [{ level: layoutLevel(layout.layoutId), itemIds: layout.ids }]),
-  ], workspace?.workspaceId);
+  return resetCascadeItemsAtLevelsCommand(
+    [
+      { level: GLOBAL_LEVEL, itemIds: globalIds },
+      ...(workspace === undefined ? [] : [{ level: WORKSPACE_LEVEL, itemIds: workspace.ids }]),
+      ...(layout === undefined ? [] : [{ level: layoutLevel(layout.layoutId), itemIds: layout.ids }]),
+    ],
+    workspace?.workspaceId,
+  );
 }
 
 /**
@@ -148,10 +139,7 @@ export function resetAllPlan(
 }
 
 /** Workspaceのレベルの上書き。無ければ`undefined`（全体の値を継承している）。 */
-export function workspaceOverrideOf<K extends SettingsItemId>(
-  overrides: SettingsCascadeOverrides,
-  id: K,
-): SettingsValueMap[K] | undefined {
+export function workspaceOverrideOf<K extends SettingsItemId>(overrides: SettingsCascadeOverrides, id: K): SettingsValueMap[K] | undefined {
   return readOverride(overrides, WORKSPACE_LEVEL, id);
 }
 
@@ -199,11 +187,7 @@ export function canEditAtSetup(id: SettingsItemId): boolean {
 }
 
 /** Setupのレベルの上書き。無ければ`undefined`（配列などの値を継承している）。 */
-export function setupOverrideOf<K extends SettingsItemId>(
-  overrides: SettingsCascadeOverrides,
-  setupId: string,
-  id: K,
-): SettingsValueMap[K] | undefined {
+export function setupOverrideOf<K extends SettingsItemId>(overrides: SettingsCascadeOverrides, setupId: string, id: K): SettingsValueMap[K] | undefined {
   return readOverride(overrides, setupLevel(setupId), id);
 }
 
@@ -228,8 +212,9 @@ export function resettableSetupIds(
   setupId: string,
   hiddenIds: readonly SettingsItemId[] = [],
 ): readonly SettingsItemId[] {
-  return (Object.keys(SETTINGS_ITEMS) as SettingsItemId[]).filter((id) =>
-    !hiddenIds.includes(id) && canEditAtSetup(id) && setupOverrideOf(overrides, setupId, id) !== undefined);
+  return (Object.keys(SETTINGS_ITEMS) as SettingsItemId[]).filter(
+    (id) => !hiddenIds.includes(id) && canEditAtSetup(id) && setupOverrideOf(overrides, setupId, id) !== undefined,
+  );
 }
 
 /** Setupのレベルの上書きを、指定した項目ぶんまとめて消す（1コマンド＝元に戻すの1回で全部戻る）。 */
@@ -238,10 +223,7 @@ export function resetSetupConditionsCommand(setupId: string, itemIds: readonly S
 }
 
 /** 全体のレベルの上書き。無ければ`undefined`（既定値のまま）。 */
-export function globalOverrideOf<K extends GlobalEditableId>(
-  overrides: SettingsCascadeOverrides,
-  id: K,
-): SettingsValueMap[K] | undefined {
+export function globalOverrideOf<K extends GlobalEditableId>(overrides: SettingsCascadeOverrides, id: K): SettingsValueMap[K] | undefined {
   return readOverride(overrides, GLOBAL_LEVEL, id);
 }
 
@@ -298,11 +280,7 @@ export function setLayoutCommand<K extends SettingsItemId>(
  * 配列のレベルの値を全体へ移す（昇格）。全体へ書き、配列の上書きは消す。1コマンドなので元に戻すの1回で戻る。
  * 全体へ書く値が既定値と同じなら、全体の上書きは消す（`setGlobalCommand`と同じ理由）。
  */
-export function promoteToGlobalCommand<K extends GlobalEditableId>(
-  layoutId: string,
-  id: K,
-  defaultValue: SettingsValueMap[K],
-): Command<KeydistAssets> {
+export function promoteToGlobalCommand<K extends GlobalEditableId>(layoutId: string, id: K, defaultValue: SettingsValueMap[K]): Command<KeydistAssets> {
   return promoteCascadeOverrideCommand(layoutLevel(layoutId), GLOBAL_LEVEL, id, defaultValue);
 }
 
@@ -342,17 +320,16 @@ export function defaultShapeChipNotice(
 ): string | undefined {
   const unique = [...new Set(layoutIds)];
   const nameOf = (layoutId: string) => layoutNames?.get(layoutId)?.name ?? 'この配列';
-  const own = unique
-    .filter((layoutId) => layoutOverrideOf(overrides, layoutId, 'defaultShapeId') !== undefined)
-    .map(nameOf);
+  const own = unique.filter((layoutId) => layoutOverrideOf(overrides, layoutId, 'defaultShapeId') !== undefined).map(nameOf);
   // JISの物理配列が要る配列は、配列の上書きが無ければ、選んだ物理配列と同じ形のJISの物理配列で測る。
   const jis = unique
-    .filter((layoutId) => layoutOverrideOf(overrides, layoutId, 'defaultShapeId') === undefined
-      && layoutNames?.get(layoutId)?.requiresJisShape === true)
+    .filter((layoutId) => layoutOverrideOf(overrides, layoutId, 'defaultShapeId') === undefined && layoutNames?.get(layoutId)?.requiresJisShape === true)
     .map(nameOf);
   const sentences = [
     ...(own.length === 0 ? [] : [`配列${own.map((name) => `「${name}」`).join('')}は物理配列を別に決めているため、ここで変えても変わりません`]),
-    ...(jis.length === 0 ? [] : [`配列${jis.map((name) => `「${name}」`).join('')}はJISの物理配列が必要なため、選んだ物理配列と同じ形のJISの物理配列で測ります`]),
+    ...(jis.length === 0
+      ? []
+      : [`配列${jis.map((name) => `「${name}」`).join('')}はJISの物理配列が必要なため、選んだ物理配列と同じ形のJISの物理配列で測ります`]),
   ];
   return sentences.length === 0 ? undefined : sentences.join('。');
 }

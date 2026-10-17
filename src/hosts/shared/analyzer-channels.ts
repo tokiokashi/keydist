@@ -1,11 +1,6 @@
 import type { SingleAnalyzerDefinition } from '#analyzers/contract.ts';
 import type { EngineComputer } from '#engine/computer.ts';
-import {
-  createExtractRequest,
-  createTraceRequest,
-  type ExtractionRequestState,
-  type TraceRequestState,
-} from '#engine/engine-requests.ts';
+import { createExtractRequest, createTraceRequest, type ExtractionRequestState, type TraceRequestState } from '#engine/engine-requests.ts';
 import type { EngineRequestChannel, EngineRequestOptions } from '#engine/request.ts';
 import type { ResolvedInputResult } from '#engine/resolved-input.ts';
 
@@ -54,8 +49,7 @@ export function syncAnalyzerPaneChannels<Options, Extracted>(
   current: AnalyzerPaneChannels<Options> | undefined,
   params: AnalyzerPaneChannelParams<Options, Extracted>,
 ): AnalyzerPaneChannels<Options> {
-  const trace = current?.trace
-    ?? createTraceRequest(params.cache, params.onTrace, params.requestOptions);
+  const trace = current?.trace ?? createTraceRequest(params.cache, params.onTrace, params.requestOptions);
   trace.request(params.resolution);
 
   if (current !== undefined && Object.is(current.options, params.options)) {
@@ -64,21 +58,13 @@ export function syncAnalyzerPaneChannels<Options, Extracted>(
   }
 
   current?.extraction.unsubscribe();
-  const extraction = createExtractRequest(
-    params.cache,
-    params.definition,
-    params.options,
-    params.onExtraction,
-    params.requestOptions,
-  );
+  const extraction = createExtractRequest(params.cache, params.definition, params.options, params.onExtraction, params.requestOptions);
   extraction.request(params.resolution);
   return { options: params.options, extraction, trace };
 }
 
 /** ペインが不要になった時（アンマウント・対象の切り替えで作り直す時）の後始末。 */
-export function closeAnalyzerPaneChannels(
-  channels: AnalyzerPaneChannels<unknown> | undefined,
-): void {
+export function closeAnalyzerPaneChannels(channels: AnalyzerPaneChannels<unknown> | undefined): void {
   channels?.extraction.unsubscribe();
   channels?.trace.unsubscribe();
 }
@@ -93,7 +79,5 @@ export function foldExtractionState<Extracted>(
   previous: ExtractionRequestState<Extracted>,
   next: ExtractionRequestState<Extracted>,
 ): ExtractionRequestState<Extracted> {
-  return next.status === 'computing' && (previous.status === 'ready' || previous.status === 'stale')
-    ? { status: 'stale', value: previous.value }
-    : next;
+  return next.status === 'computing' && (previous.status === 'ready' || previous.status === 'stale') ? { status: 'stale', value: previous.value } : next;
 }

@@ -7,9 +7,15 @@ interface Assets {
   readonly b: number;
 }
 
-const setA = (value: number): Command<Assets> => () => ({ kind: 'applied', label: 'a', changes: { a: value } });
-const setB = (value: number): Command<Assets> => () => ({ kind: 'applied', label: 'b', changes: { b: value } });
-const addToA = (delta: number): Command<Assets> => (current) => ({ kind: 'applied', label: 'a+', changes: { a: current.a + delta } });
+const setA =
+  (value: number): Command<Assets> =>
+  () => ({ kind: 'applied', label: 'a', changes: { a: value } });
+const setB =
+  (value: number): Command<Assets> =>
+  () => ({ kind: 'applied', label: 'b', changes: { b: value } });
+const addToA =
+  (delta: number): Command<Assets> =>
+  (current) => ({ kind: 'applied', label: 'a+', changes: { a: current.a + delta } });
 
 test('composeCommands: 履歴は1項目で、Undo 1回で全部戻る', () => {
   const step = applyCommand({ a: 1, b: 2 }, emptyCommandHistory<Assets>(), composeCommands('まとめ', [setA(10), setB(20)]));

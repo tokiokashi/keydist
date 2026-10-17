@@ -14,12 +14,13 @@ const item = (page: Page, id: string): Locator => page.locator(`.workspace-grid-
 const scrollsX = (page: Page) => area(page).evaluate((el) => el.scrollWidth > el.clientWidth + 1);
 
 /** 面の左端を基準にした、ペインの左端と幅（スクロールの分を含む。画素）。 */
-const placeOf = (page: Page, id: string) => item(page, id).evaluate((el) => {
-  const areaRect = el.closest('.workspace-grid-area')!.getBoundingClientRect();
-  const scrollLeft = el.closest('.workspace-grid-area')!.scrollLeft;
-  const rect = el.getBoundingClientRect();
-  return { left: Math.round(rect.left - areaRect.left + scrollLeft), width: Math.round(rect.width) };
-});
+const placeOf = (page: Page, id: string) =>
+  item(page, id).evaluate((el) => {
+    const areaRect = el.closest('.workspace-grid-area')!.getBoundingClientRect();
+    const scrollLeft = el.closest('.workspace-grid-area')!.scrollLeft;
+    const rect = el.getBoundingClientRect();
+    return { left: Math.round(rect.left - areaRect.left + scrollLeft), width: Math.round(rect.width) };
+  });
 
 const THREE = [cell('a', 0, 0, 6, 8), cell('b', 6, 0, 12, 8), cell('c', 18, 0, 6, 8)];
 
@@ -62,14 +63,18 @@ test('並びが面に収まる時は横にスクロールせず、面より広�
   // 右端のペインは、スクロールするまで面の外にある
   const frame = (await area(page).boundingBox())!;
   expect((await item(page, 'c').boundingBox())!.x).toBeGreaterThanOrEqual(frame.x + frame.width);
-  await area(page).evaluate((el) => { el.scrollLeft = el.scrollWidth; });
+  await area(page).evaluate((el) => {
+    el.scrollLeft = el.scrollWidth;
+  });
   await settle(page);
   const c = (await item(page, 'c').boundingBox())!;
   expect(c.x + c.width).toBeLessThanOrEqual(frame.x + frame.width + 1);
   expect(c.x).toBeGreaterThanOrEqual(frame.x - 1);
 
   // はみ出していたペインの操作（⋯のメニュー）と、ドラッグ（2列左へ）が効く
-  await item(page, 'c').getByRole('button', { name: /の操作$/ }).click();
+  await item(page, 'c')
+    .getByRole('button', { name: /の操作$/ })
+    .click();
   await expect(page.getByRole('menuitem', { name: /閉じる/ })).toBeVisible();
   await page.keyboard.press('Escape');
   await dragPane(page, 'c', -2 * COL_STEP, 0);
@@ -106,11 +111,16 @@ test('見えている範囲より右へは、ドラッグで枠が右端に届�
   await page.mouse.move(edgeX, y, { steps: 12 });
   // 端に近づけたまま、面が横にスクロールするまで待つ（ポインタを少し動かし続ける）
   let jitter = 0;
-  await expect.poll(async () => {
-    jitter = 1 - jitter;
-    await page.mouse.move(edgeX + jitter, y);
-    return area(page).evaluate((el) => el.scrollLeft);
-  }, { timeout: 15_000 }).toBeGreaterThan(2 * COL_STEP);
+  await expect
+    .poll(
+      async () => {
+        jitter = 1 - jitter;
+        await page.mouse.move(edgeX + jitter, y);
+        return area(page).evaluate((el) => el.scrollLeft);
+      },
+      { timeout: 15_000 },
+    )
+    .toBeGreaterThan(2 * COL_STEP);
   await page.mouse.up();
   await settle(page);
   const placed = await itemOf(page, 'a');
@@ -135,11 +145,16 @@ test('見えている範囲より右へは、右の辺で広げても伸ばせ�
   const edgeX = frame.x + frame.width - 20;
   await page.mouse.move(edgeX, y, { steps: 12 });
   let jitter = 0;
-  await expect.poll(async () => {
-    jitter = 1 - jitter;
-    await page.mouse.move(edgeX + jitter, y);
-    return area(page).evaluate((el) => el.scrollLeft);
-  }, { timeout: 15_000 }).toBeGreaterThan(2 * COL_STEP);
+  await expect
+    .poll(
+      async () => {
+        jitter = 1 - jitter;
+        await page.mouse.move(edgeX + jitter, y);
+        return area(page).evaluate((el) => el.scrollLeft);
+      },
+      { timeout: 15_000 },
+    )
+    .toBeGreaterThan(2 * COL_STEP);
   await page.mouse.up();
   await settle(page);
   const placed = await itemOf(page, 'a');
@@ -158,7 +173,9 @@ async function openScrolledRight(page: Page): Promise<void> {
   // 24列の並びを、面が16列ぶんの幅で開く。右へスクロールして、左のペインの一部が隠れる状態にする
   await open(page, ['a', 'b'], [cell('a', 0, 0, 12, 8), cell('b', 12, 0, 12, 8)], { width: 1400, height: 900 });
   expect(await scrollsX(page)).toBe(true);
-  await area(page).evaluate((el) => { el.scrollLeft = el.scrollWidth; });
+  await area(page).evaluate((el) => {
+    el.scrollLeft = el.scrollWidth;
+  });
   await settle(page);
   expect(await isHorizontallyVisible(page, 'a')).toBe(false);
 }
@@ -180,7 +197,9 @@ test('ペインを足した時は、横にスクロールした面の今見え�
 test('ペインを複製した時は、横にスクロールした面の今見えている範囲に出る', async ({ page }) => {
   await openScrolledRight(page);
   // bの右隣は見えている範囲の外。見えている範囲の中（真下）に置く
-  await item(page, 'b').getByRole('button', { name: /の操作$/ }).click();
+  await item(page, 'b')
+    .getByRole('button', { name: /の操作$/ })
+    .click();
   await page.getByRole('menuitem', { name: /複製/ }).click();
   await expect.poll(async () => (await stored(page)).length).toBe(3);
   const copy = (await stored(page)).find((entry) => entry.id !== 'a' && entry.id !== 'b')!;
@@ -207,23 +226,43 @@ test('縦に長い並びで横にスクロールする時、横のスクロー�
   expect(metrics.areaScrollable).toBeGreaterThan(0);
 });
 
-test('横にスクロールした状態から拡大しても、拡大したペインは面の左端と帯の下から画面の右下までを使い、戻すとスクロールの位置も並びも保たれる', async ({ page }) => {
+test('横にスクロールした状態から拡大しても、拡大したペインは面の左端と帯の下から画面の右下までを使い、戻すとスクロールの位置も並びも保たれる', async ({
+  page,
+}) => {
   // 拡大できるのはAnalyzerのペインだけ（余白のペインには拡大の項目が無い）
-  const flow = (id: string) => ({ id, analyzerId: 'bigram-flow', binding: { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } } } });
+  const flow = (id: string) => ({
+    id,
+    analyzerId: 'bigram-flow',
+    binding: { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } } },
+  });
   await page.setViewportSize({ width: 1400, height: 900 });
-  await page.addInitScript((value) => {
-    if (localStorage.getItem('keydist:workspaces') === null) localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
-  }, { id: 'g', name: '格子', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes: [flow('a'), flow('b')], grid: [cell('a', 0, 0, 12, 16), cell('b', 12, 0, 12, 16)] });
+  await page.addInitScript(
+    (value) => {
+      if (localStorage.getItem('keydist:workspaces') === null)
+        localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
+    },
+    {
+      id: 'g',
+      name: '格子',
+      text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+      panes: [flow('a'), flow('b')],
+      grid: [cell('a', 0, 0, 12, 16), cell('b', 12, 0, 12, 16)],
+    },
+  );
   await page.goto('/workspace/g');
   await waitForHydration(page);
   await expect(page.locator('.pane-frame[data-pane-status="ready"]')).toHaveCount(2, { timeout: 15_000 });
   await settle(page);
   expect(await scrollsX(page)).toBe(true);
-  await area(page).evaluate((el) => { el.scrollLeft = el.scrollWidth; });
+  await area(page).evaluate((el) => {
+    el.scrollLeft = el.scrollWidth;
+  });
   await settle(page);
   const scrollBefore = await area(page).evaluate((el) => el.scrollLeft);
   const gridBefore = await stored(page);
-  await item(page, 'b').getByRole('button', { name: /の操作$/ }).click();
+  await item(page, 'b')
+    .getByRole('button', { name: /の操作$/ })
+    .click();
   await page.getByRole('menuitem', { name: '拡大表示' }).click();
   await expect.poll(() => item(page, 'b').evaluate((el) => el.hasAttribute('data-maximized'))).toBe(true);
   await settle(page);

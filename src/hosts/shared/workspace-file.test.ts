@@ -44,10 +44,15 @@ function fileText(body: Record<string, unknown>): string {
 
 /** 本物の中身を持つWorkspace（サンプル。ペイン・連動の組・解析設定・Workspaceの条件を持つ）。 */
 function sampleWorkspace(id: string, name?: string): Workspace {
-  const made = createSampleWorkspace(initialWorkspaceLibrary(), () => id, (() => {
-    let n = 0;
-    return () => `pane-${++n}`;
-  })(), 'overview').created;
+  const made = createSampleWorkspace(
+    initialWorkspaceLibrary(),
+    () => id,
+    (() => {
+      let n = 0;
+      return () => `pane-${++n}`;
+    })(),
+    'overview',
+  ).created;
   return name === undefined ? made : { ...made, name };
 }
 
@@ -77,13 +82,18 @@ test('封筒: Workspaceだけの本体はworkspacesとversionだけを持つ（p
 });
 
 test('封筒: プリセットとWorkspaceの両方を持つファイルは、それぞれの読み手が自分の側だけを読む', () => {
-  const text = fileText(presetFileBody({
-    presets: [{ id: 'p1', name: '自分用メモ', values: { windowSize: 5 } }],
-    workspaces: [sampleWorkspace('w1')],
-  }));
+  const text = fileText(
+    presetFileBody({
+      presets: [{ id: 'p1', name: '自分用メモ', values: { windowSize: 5 } }],
+      workspaces: [sampleWorkspace('w1')],
+    }),
+  );
   const presets = parsePresetFile(text, REFERENCES);
   assert.ok(presets.ok);
-  assert.deepEqual(presets.presets.map((preset) => preset.name), ['自分用メモ']);
+  assert.deepEqual(
+    presets.presets.map((preset) => preset.name),
+    ['自分用メモ'],
+  );
   assert.equal(presets.message, '1件のプリセットを読み込みました');
   assert.equal(readWorkspaces(text).length, 1);
 });
@@ -117,10 +127,7 @@ test('未知のキー: 最上位とプリセットの中の未知のキーは読
   assert.ok(result.ok);
   assert.equal(result.message, '1件のプリセットを読み込みました');
   assert.deepEqual(result.presets, [{ name: 'A', values: { windowSize: 5 } }]);
-  assert.deepEqual(result.details, [
-    'futureField: 未知のキーのため読み込みませんでした',
-    'presets[0].note: 未知のキーのため読み込みませんでした',
-  ]);
+  assert.deepEqual(result.details, ['futureField: 未知のキーのため読み込みませんでした', 'presets[0].note: 未知のキーのため読み込みませんでした']);
 });
 
 test('未知のキー: Workspaceの読み手も最上位の未知のキーを原文に残し、読める部分は読む', () => {
@@ -137,7 +144,10 @@ test('診断: 壊れたWorkspaceは件数で伝え、ペインなどの一部だ
   const withBrokenPane = { ...good[0]!, id: 'w2', panes: [3, ...(good[0]!.panes as unknown[])] };
   const result = parseWorkspaceFile(fileText({ version: 2, workspaces: [good[0], withBrokenPane, 'x', { name: 'idなし' }] }));
   assert.ok(result.ok);
-  assert.deepEqual(result.workspaces.map((workspace) => workspace.id), ['w1', 'w2']);
+  assert.deepEqual(
+    result.workspaces.map((workspace) => workspace.id),
+    ['w1', 'w2'],
+  );
   assert.deepEqual(result.dropped, ['2件のWorkspaceは読み込めませんでした', '1件のペインや設定は読み込めませんでした']);
   assert.equal(result.details.length, 3);
 });
@@ -158,10 +168,16 @@ test('読み込み: 同じファイルを二度読んでも増えない', () => 
   const file = written([sampleWorkspace('w1')]);
   const first = mergeWorkspaces([], readWorkspaces(file), HOLDINGS, generateId);
   assert.equal(first.library.length, 1);
-  assert.deepEqual(first.entries.map((entry) => entry.outcome.kind), ['added']);
+  assert.deepEqual(
+    first.entries.map((entry) => entry.outcome.kind),
+    ['added'],
+  );
   const second = mergeWorkspaces(first.library, readWorkspaces(file), HOLDINGS, generateId);
   assert.deepEqual(second.library, first.library);
-  assert.deepEqual(second.entries.map((entry) => entry.outcome.kind), ['skipped-same']);
+  assert.deepEqual(
+    second.entries.map((entry) => entry.outcome.kind),
+    ['skipped-same'],
+  );
 });
 
 test('読み込み: 同じidで中身が違えば別のidと別名で足し、同じファイルを読み直しても増えない', () => {
@@ -178,7 +194,10 @@ test('読み込み: 同じidで中身が違えば別のidと別名で足し、�
   // 別名で足した後に読み直す
   const again = mergeWorkspaces(first.library, readWorkspaces(file), HOLDINGS, generateId);
   assert.deepEqual(again.library, first.library);
-  assert.deepEqual(again.entries.map((entry) => entry.outcome.kind), ['skipped-same']);
+  assert.deepEqual(
+    again.entries.map((entry) => entry.outcome.kind),
+    ['skipped-same'],
+  );
   // 別名で足した方の名前を手元で変えても、同じ中身として扱う
   const renamed = first.library.map((workspace) => (workspace.id === added.id ? { ...workspace, name: '自分で付けた名前' } : workspace));
   const afterRename = mergeWorkspaces(renamed, readWorkspaces(file), HOLDINGS, generateId);
@@ -195,5 +214,8 @@ test('読み込み: 名前だけが違い中身が同じなら、同じidのも�
 test('読み込み: 別のidのWorkspaceはそのまま末尾に足し、並びを保つ', () => {
   const local = [sampleWorkspace('w0', '手元')];
   const result = mergeWorkspaces(local, readWorkspaces(written([sampleWorkspace('w1', 'A'), sampleWorkspace('w2', 'B')])), HOLDINGS, generateId);
-  assert.deepEqual(result.library.map((workspace) => workspace.id), ['w0', 'w1', 'w2']);
+  assert.deepEqual(
+    result.library.map((workspace) => workspace.id),
+    ['w0', 'w1', 'w2'],
+  );
 });

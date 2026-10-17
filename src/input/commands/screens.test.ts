@@ -33,7 +33,10 @@ const SCOPES: ItemScopes<Assets> = {
 const INITIAL: Assets = {
   counter: 0,
   mark: { text: '初期' },
-  items: [{ id: 'a', value: 1 }, { id: 'b', value: 1 }],
+  items: [
+    { id: 'a', value: 1 },
+    { id: 'b', value: 1 },
+  ],
   options: { x: { n: 1 }, y: { n: 1 } },
 };
 
@@ -87,8 +90,12 @@ interface State {
 function session() {
   let state: State = { assets: INITIAL, histories: emptyScreenHistories() };
   return {
-    get assets() { return state.assets; },
-    get histories() { return state.histories; },
+    get assets() {
+      return state.assets;
+    },
+    get histories() {
+      return state.histories;
+    },
     dispatch(screen: string | undefined, command: Command<Assets>) {
       const result = applyCommandInScreen(state.assets, state.histories, screen, command);
       state = { assets: result.assets, histories: result.histories };
@@ -191,9 +198,15 @@ test('配列の件: 別の件を別の画面で変えても、自分の件の変
   s.dispatch('/workspace/b', setItem('b', 7));
 
   assert.equal(s.step('/workspace/a', 'undo').kind, 'applied');
-  assert.deepEqual(s.assets.items, [{ id: 'a', value: 1 }, { id: 'b', value: 7 }]);
+  assert.deepEqual(s.assets.items, [
+    { id: 'a', value: 1 },
+    { id: 'b', value: 7 },
+  ]);
   assert.equal(s.step('/workspace/a', 'redo').kind, 'applied');
-  assert.deepEqual(s.assets.items, [{ id: 'a', value: 5 }, { id: 'b', value: 7 }]);
+  assert.deepEqual(s.assets.items, [
+    { id: 'a', value: 5 },
+    { id: 'b', value: 7 },
+  ]);
 });
 
 test('配列の件: 同じ件が別の画面で書き換わっていたら戻さない', () => {
@@ -201,7 +214,10 @@ test('配列の件: 同じ件が別の画面で書き換わっていたら戻さ
   s.dispatch('/workspace/a', setItem('a', 5));
   s.dispatch('/other', setItem('a', 9));
   assert.equal(s.step('/workspace/a', 'undo').kind, 'conflict');
-  assert.deepEqual(s.assets.items, [{ id: 'a', value: 9 }, { id: 'b', value: 1 }]);
+  assert.deepEqual(s.assets.items, [
+    { id: 'a', value: 9 },
+    { id: 'b', value: 1 },
+  ]);
 });
 
 test('配列の件: 件が別の画面で削除されていたら戻さない', () => {
@@ -223,7 +239,10 @@ test('配列の件: 件を足した項目は、他に変わりが無ければ戻
   const s = session();
   s.dispatch('/a', addItem('c'));
   assert.equal(s.step('/a', 'undo').kind, 'applied');
-  assert.deepEqual(s.assets.items.map((item) => item.id), ['a', 'b']);
+  assert.deepEqual(
+    s.assets.items.map((item) => item.id),
+    ['a', 'b'],
+  );
 });
 
 test('配列の件: 別の画面で並びが入れ替わっていても、idで引いて戻せる', () => {
@@ -231,7 +250,10 @@ test('配列の件: 別の画面で並びが入れ替わっていても、idで�
   s.dispatch('/a', setItem('a', 5));
   s.dispatch('/b', (current) => ({ kind: 'applied', label: '逆順', changes: { items: [...current.items].reverse() } }));
   assert.equal(s.step('/a', 'undo').kind, 'applied');
-  assert.deepEqual(s.assets.items.map((item) => item.id), ['b', 'a']);
+  assert.deepEqual(
+    s.assets.items.map((item) => item.id),
+    ['b', 'a'],
+  );
   assert.equal(s.assets.items.find((item) => item.id === 'a')?.value, 1);
 });
 
@@ -249,7 +271,10 @@ test('配列の件: 件の中身と他の資産を同時に変えた項目は、
   s.dispatch('/b', setItem('b', 7));
   assert.equal(s.step('/a', 'undo').kind, 'applied');
   assert.equal(s.assets.counter, 0);
-  assert.deepEqual(s.assets.items, [{ id: 'a', value: 1 }, { id: 'b', value: 7 }]);
+  assert.deepEqual(s.assets.items, [
+    { id: 'a', value: 1 },
+    { id: 'b', value: 7 },
+  ]);
 });
 
 test('recordの件: 別のidの設定を変えても、自分のidの設定を戻せる', () => {
@@ -337,7 +362,10 @@ test('別のタブでの変更: その資産に触れる項目を、取ってお
   s.dispatch('/b', increment);
   const result = applyExternalChangeToScreens(s.assets, s.histories, 'counter', 10);
   assert.equal(result.assets.counter, 10);
-  assert.deepEqual(result.histories.get('/a')!.undoStack.map((entry) => entry.label), ['印をaにする']);
+  assert.deepEqual(
+    result.histories.get('/a')!.undoStack.map((entry) => entry.label),
+    ['印をaにする'],
+  );
   assert.deepEqual(result.histories.get('/b')!.undoStack, []);
 });
 

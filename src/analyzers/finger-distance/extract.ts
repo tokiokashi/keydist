@@ -3,12 +3,7 @@ import { plainDisciplineContext } from '#analyzers/discipline-material.ts';
 import { stateShares, type StateShare } from '#interpretation/excess-distribution.ts';
 import type { Metrics } from '#interpretation/metrics.ts';
 import { ALL_FINGERS, type Finger } from '#input/shapes/geometry.ts';
-import {
-  ALTERNATE_FINGER_DISTANCE_OPTIONS,
-  DEFAULT_FINGER_DISTANCE_OPTIONS,
-  fingerDistanceOptions,
-  type FingerDistanceOptions,
-} from './options.ts';
+import { ALTERNATE_FINGER_DISTANCE_OPTIONS, DEFAULT_FINGER_DISTANCE_OPTIONS, fingerDistanceOptions, type FingerDistanceOptions } from './options.ts';
 
 /**
  * 指ごとの距離の抽出（仕様 §11.1・§11.2・§11.6）。
@@ -77,14 +72,16 @@ export function computeFingerDistanceExtraction(metrics: Metrics): FingerDistanc
   const totalDistance = metrics.totalUnits;
   const totalPresses = ALL_FINGERS.reduce((sum, finger) => sum + metrics.perFingerPresses[finger], 0);
 
-  const fingers = ALL_FINGERS.map((finger): FingerDistanceFinger => ({
-    finger,
-    hand: handOf(finger),
-    distance: metrics.perFinger[finger],
-    distanceShare: ratio(metrics.perFinger[finger], totalDistance),
-    presses: metrics.perFingerPresses[finger],
-    pressShare: ratio(metrics.perFingerPresses[finger], totalPresses),
-  }));
+  const fingers = ALL_FINGERS.map(
+    (finger): FingerDistanceFinger => ({
+      finger,
+      hand: handOf(finger),
+      distance: metrics.perFinger[finger],
+      distanceShare: ratio(metrics.perFinger[finger], totalDistance),
+      presses: metrics.perFingerPresses[finger],
+      pressShare: ratio(metrics.perFingerPresses[finger], totalPresses),
+    }),
+  );
 
   const handTotal = (hand: FingerDistanceHand): FingerDistanceHandTotal => {
     const members = fingers.filter((item) => item.hand === hand);

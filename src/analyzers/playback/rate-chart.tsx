@@ -60,19 +60,27 @@ export function PlaybackRateChart({ points, cursor, showChain, showArpeggio, onS
       >
         <g aria-label="凡例" className="playback-rate-legend">
           <line x1={RATE_CHART_MARGIN.left} y1={14} x2={RATE_CHART_MARGIN.left + 18} y2={14} className="playback-rate-line-kana" />
-          <text x={RATE_CHART_MARGIN.left + 24} y={18}>かな/秒</text>
+          <text x={RATE_CHART_MARGIN.left + 24} y={18}>
+            かな/秒
+          </text>
           <line x1={RATE_CHART_MARGIN.left + 100} y1={14} x2={RATE_CHART_MARGIN.left + 118} y2={14} className="playback-rate-line-action" />
-          <text x={RATE_CHART_MARGIN.left + 124} y={18}>アクション/秒</text>
+          <text x={RATE_CHART_MARGIN.left + 124} y={18}>
+            アクション/秒
+          </text>
           {showChain ? (
             <>
               <rect x={RATE_CHART_MARGIN.left + 230} y={8} width={14} height={12} className="playback-rate-band-chain" />
-              <text x={RATE_CHART_MARGIN.left + 250} y={18}>Chain</text>
+              <text x={RATE_CHART_MARGIN.left + 250} y={18}>
+                Chain
+              </text>
             </>
           ) : null}
           {showArpeggio ? (
             <>
               <rect x={RATE_CHART_MARGIN.left + 300} y={8} width={14} height={12} className="playback-rate-band-arpeggio" />
-              <text x={RATE_CHART_MARGIN.left + 320} y={18}>Arpeggio</text>
+              <text x={RATE_CHART_MARGIN.left + 320} y={18}>
+                Arpeggio
+              </text>
             </>
           ) : null}
         </g>

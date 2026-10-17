@@ -327,11 +327,7 @@ test('既定の物理配列: 配列のレベルへ書け、全体と同じ値へ
   );
   assert.equal(layoutOverrideOf(step.assets.setupLibrary.overrides, 'naginata-v18', 'defaultShapeId'), 'ortholinear');
   assert.equal(globalOverrideOf(step.assets.setupLibrary.overrides, 'defaultShapeId'), undefined, '全体へは書かない');
-  const back = applyCommand(
-    step.assets,
-    step.history,
-    setLayoutCommand('naginata-v18', 'defaultShapeId', 'row-staggered', 'row-staggered'),
-  );
+  const back = applyCommand(step.assets, step.history, setLayoutCommand('naginata-v18', 'defaultShapeId', 'row-staggered', 'row-staggered'));
   assert.equal(layoutOverrideOf(back.assets.setupLibrary.overrides, 'naginata-v18', 'defaultShapeId'), undefined);
   const undone = undo(step.assets, step.history);
   assert.equal(layoutOverrideOf(undone.assets.setupLibrary.overrides, 'naginata-v18', 'defaultShapeId'), undefined);

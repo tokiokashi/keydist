@@ -42,7 +42,5 @@ export interface StateShare {
 export function stateShares(counts: StateCounts): StateShare[] {
   let total = 0;
   for (const count of counts.values()) total += count;
-  return [...counts]
-    .sort(([a], [b]) => a - b)
-    .map(([state, count]) => ({ state, count, share: (count / total) * 100 }));
+  return [...counts].sort(([a], [b]) => a - b).map(([state, count]) => ({ state, count, share: (count / total) * 100 }));
 }

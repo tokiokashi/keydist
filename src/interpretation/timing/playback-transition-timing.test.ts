@@ -2,16 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { Finger, Key, Point } from '#input/shapes/geometry.ts';
 import type { Press, Stroke, StrokeParticipation } from '#trace/generate.ts';
-import {
-  playbackStepDurationMs,
-} from './playback.ts';
+import { playbackStepDurationMs } from './playback.ts';
 import { analyzeStrokeStructure } from '../structure/aggregate.ts';
-import {
-  DEFAULT_CHAIN_INTERPRETATION,
-} from '../structure/chain.ts';
-import {
-  DEFAULT_ARPEGGIO_INTERPRETATION,
-} from '../structure/arpeggio.ts';
+import { DEFAULT_CHAIN_INTERPRETATION } from '../structure/chain.ts';
+import { DEFAULT_ARPEGGIO_INTERPRETATION } from '../structure/arpeggio.ts';
 
 const key = (id: string, finger: Finger, x: number, y: number, row = 2): Key => ({
   id,
@@ -22,13 +16,7 @@ const key = (id: string, finger: Finger, x: number, y: number, row = 2): Key => 
   col: 0,
 });
 
-const press = (
-  finger: Finger,
-  keys: Key[],
-  target?: Point,
-  sfb = false,
-  distance = 0,
-): Press => ({
+const press = (finger: Finger, keys: Key[], target?: Point, sfb = false, distance = 0): Press => ({
   finger,
   keys,
   target: target ?? { x: keys[0].x, y: keys[0].y },
@@ -108,16 +96,13 @@ const calibration = {
 };
 
 test('方向別Transition CalibrationはArpeggio所属に依存せず適用する', () => {
-  const analysis = analyzeStrokeStructure([
-    stroke(0, press('LM', [key('d', 'LM', 3, 2)])),
-    stroke(1, press('LI', [key('f', 'LI', 4, 2)])),
-  ], keepSameFinger);
+  const analysis = analyzeStrokeStructure(
+    [stroke(0, press('LM', [key('d', 'LM', 3, 2)])), stroke(1, press('LI', [key('f', 'LI', 4, 2)]))],
+    keepSameFinger,
+  );
 
   assert.equal(analysis.arpeggioSpans.length, 1);
-  assert.equal(
-    playbackStepDurationMs(analysis, 1, 1, false, calibration),
-    100,
-  );
+  assert.equal(playbackStepDurationMs(analysis, 1, 1, false, calibration), 100);
 
   const withoutArpeggio = {
     ...analysis,
@@ -127,63 +112,54 @@ test('方向別Transition CalibrationはArpeggio所属に依存せず適用す�
       inArpeggio: false,
     })),
   };
-  assert.equal(
-    playbackStepDurationMs(withoutArpeggio, 1, 1, false, calibration),
-    100,
-  );
+  assert.equal(playbackStepDurationMs(withoutArpeggio, 1, 1, false, calibration), 100);
 });
 
 test('異手TransitionはL→R / R→Lの方向別Calibrationを常に使う', () => {
-  const analysis = analyzeStrokeStructure([
-    stroke(0, press('LI', [key('f', 'LI', 4, 2)])),
-    stroke(1, press('RI', [key('j', 'RI', 7, 2)])),
-    stroke(2, press('LI', [key('f', 'LI', 4, 2)])),
-  ], keepSameFinger);
+  const analysis = analyzeStrokeStructure(
+    [stroke(0, press('LI', [key('f', 'LI', 4, 2)])), stroke(1, press('RI', [key('j', 'RI', 7, 2)])), stroke(2, press('LI', [key('f', 'LI', 4, 2)]))],
+    keepSameFinger,
+  );
 
   assert.equal(playbackStepDurationMs(analysis, 1, 1, false, calibration), 125);
-  assert.ok(Math.abs(
-    playbackStepDurationMs(analysis, 2, 1, false, calibration) - (1000 / 7),
-  ) < 1e-9);
+  assert.ok(Math.abs(playbackStepDurationMs(analysis, 2, 1, false, calibration) - 1000 / 7) < 1e-9);
 });
 
 test('3打以上のRollでも内部Transitionを1回ずつdirected pairで評価する', () => {
-  const analysis = analyzeStrokeStructure([
-    stroke(0, press('LP', [key('a', 'LP', 1, 2)])),
-    stroke(1, press('LR', [key('s', 'LR', 2, 2)])),
-    stroke(2, press('LM', [key('d', 'LM', 3, 2)])),
-    stroke(3, press('LI', [key('f', 'LI', 4, 2)])),
-  ], keepSameFinger);
+  const analysis = analyzeStrokeStructure(
+    [
+      stroke(0, press('LP', [key('a', 'LP', 1, 2)])),
+      stroke(1, press('LR', [key('s', 'LR', 2, 2)])),
+      stroke(2, press('LM', [key('d', 'LM', 3, 2)])),
+      stroke(3, press('LI', [key('f', 'LI', 4, 2)])),
+    ],
+    keepSameFinger,
+  );
 
   assert.equal(analysis.longRolls.length, 1);
   assert.deepEqual(
-    [1, 2, 3].map((index) =>
-      playbackStepDurationMs(analysis, index, 1, false, calibration)),
+    [1, 2, 3].map((index) => playbackStepDurationMs(analysis, index, 1, false, calibration)),
     [250, 200, 100],
   );
 });
 
 test('overlapするArpeggioSpanがあっても同じTransition時間を二重加算しない', () => {
-  const analysis = analyzeStrokeStructure([
-    stroke(0, press('LP', [key('a', 'LP', 1, 2)])),
-    stroke(1, press('LR', [key('s', 'LR', 2, 2)])),
-    stroke(2, press('LR', [key('w', 'LR', 2, 1)], undefined, true)),
-    stroke(3, press('LP', [key('q', 'LP', 1, 1)])),
-  ], keepSameFinger, {
-    ...DEFAULT_ARPEGGIO_INTERPRETATION,
-    bridgeSameFinger: true,
-  });
+  const analysis = analyzeStrokeStructure(
+    [
+      stroke(0, press('LP', [key('a', 'LP', 1, 2)])),
+      stroke(1, press('LR', [key('s', 'LR', 2, 2)])),
+      stroke(2, press('LR', [key('w', 'LR', 2, 1)], undefined, true)),
+      stroke(3, press('LP', [key('q', 'LP', 1, 1)])),
+    ],
+    keepSameFinger,
+    {
+      ...DEFAULT_ARPEGGIO_INTERPRETATION,
+      bridgeSameFinger: true,
+    },
+  );
 
   assert.equal(analysis.arpeggioSpans.length, 2);
-  const withOverlap = [0, 1, 2, 3].reduce(
-    (sum, index) => sum + playbackStepDurationMs(
-      analysis,
-      index,
-      2,
-      true,
-      calibration,
-    ),
-    0,
-  );
+  const withOverlap = [0, 1, 2, 3].reduce((sum, index) => sum + playbackStepDurationMs(analysis, index, 2, true, calibration), 0);
   const withoutSpans = {
     ...analysis,
     arpeggioSpans: [],
@@ -192,34 +168,21 @@ test('overlapするArpeggioSpanがあっても同じTransition時間を二重加
       inArpeggio: false,
     })),
   };
-  const withoutOverlap = [0, 1, 2, 3].reduce(
-    (sum, index) => sum + playbackStepDurationMs(
-      withoutSpans,
-      index,
-      2,
-      true,
-      calibration,
-    ),
-    0,
-  );
+  const withoutOverlap = [0, 1, 2, 3].reduce((sum, index) => sum + playbackStepDurationMs(withoutSpans, index, 2, true, calibration), 0);
   assert.equal(withOverlap, withoutOverlap);
 });
 
 test('複数candidate時は既存のfirst-match規則を順序込みで固定する', () => {
-  const analysis = analyzeStrokeStructure([
-    multiStroke(0, [
-      press('LP', [key('a', 'LP', 1, 2)]),
-      press('LM', [key('d', 'LM', 3, 2)]),
-    ]),
-    multiStroke(1, [
-      press('LR', [key('s', 'LR', 2, 2)]),
-      press('LI', [key('f', 'LI', 4, 2)]),
-    ]),
-  ], keepSameFinger);
+  const analysis = analyzeStrokeStructure(
+    [
+      multiStroke(0, [press('LP', [key('a', 'LP', 1, 2)]), press('LM', [key('d', 'LM', 3, 2)])]),
+      multiStroke(1, [press('LR', [key('s', 'LR', 2, 2)]), press('LI', [key('f', 'LI', 4, 2)])]),
+    ],
+    keepSameFinger,
+  );
 
   assert.deepEqual(
-    analysis.transitions[0].candidates.map((candidate) =>
-      `${candidate.fromFinger}>${candidate.toFinger}`),
+    analysis.transitions[0].candidates.map((candidate) => `${candidate.fromFinger}>${candidate.toFinger}`),
     ['LP>LR', 'LP>LI', 'LM>LR', 'LM>LI'],
   );
 
@@ -232,40 +195,28 @@ test('複数candidate時は既存のfirst-match規則を順序込みで固定す
       'LM>LI': 40,
     },
   };
-  assert.equal(
-    playbackStepDurationMs(analysis, 1, 1, false, multiCalibration),
-    100,
-    'Press×Press候補の先頭different-finger pairを既存規則どおり使う',
-  );
+  assert.equal(playbackStepDurationMs(analysis, 1, 1, false, multiCalibration), 100, 'Press×Press候補の先頭different-finger pairを既存規則どおり使う');
 });
 
 test('Chain境界でHandTransitionが無い場合は元StrokeのTiming fallbackを使う', () => {
-  const analysis = analyzeStrokeStructure([
-    stroke(0, press('LI', [key('f', 'LI', 4, 2)])),
-    stroke(1, press('LI', [key('r', 'LI', 3.5, 1)], undefined, true, 3)),
-  ], DEFAULT_CHAIN_INTERPRETATION);
+  const analysis = analyzeStrokeStructure(
+    [stroke(0, press('LI', [key('f', 'LI', 4, 2)])), stroke(1, press('LI', [key('r', 'LI', 3.5, 1)], undefined, true, 3))],
+    DEFAULT_CHAIN_INTERPRETATION,
+  );
 
   assert.equal(
     analysis.transitions.some((transition) => transition.toStrokeIndex === 1),
     false,
     '既定breakOnSameFingerでAnalysis Chain Transitionは生成されない',
   );
-  assert.equal(
-    playbackStepDurationMs(analysis, 1, 1, false, calibration),
-    200,
-    'Transitionが無くても通常速度fallbackを維持する',
-  );
+  assert.equal(playbackStepDurationMs(analysis, 1, 1, false, calibration), 200, 'Transitionが無くても通常速度fallbackを維持する');
 });
 
 test('SFBの移動速度による律速はTransition Timing移行後も維持する', () => {
-  const analysis = analyzeStrokeStructure([
-    stroke(0, press('LI', [key('f', 'LI', 4, 2)])),
-    stroke(1, press('LI', [key('r', 'LI', 3.5, 1)], undefined, true, 3)),
-  ], keepSameFinger);
-
-  assert.equal(
-    playbackStepDurationMs(analysis, 1, 1, true, calibration),
-    575,
-    '移動の時間は、続け打ちの時間（200）に距離3×125を足した値',
+  const analysis = analyzeStrokeStructure(
+    [stroke(0, press('LI', [key('f', 'LI', 4, 2)])), stroke(1, press('LI', [key('r', 'LI', 3.5, 1)], undefined, true, 3))],
+    keepSameFinger,
   );
+
+  assert.equal(playbackStepDurationMs(analysis, 1, 1, true, calibration), 575, '移動の時間は、続け打ちの時間（200）に距離3×125を足した値');
 });

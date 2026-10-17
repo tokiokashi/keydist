@@ -30,7 +30,10 @@ function builderWith(overrides: SettingsCascadeOverrides) {
 
 const SELECTION: PersonalSpeedSelection = { layoutId: 'qwerty', shapeId: 'row-staggered', fingerAssignmentId: 'default' };
 
-function written(overrides: SettingsCascadeOverrides, ...args: Parameters<typeof setSettingsOverride>extends [unknown, ...infer R] ? R : never): SettingsCascadeOverrides {
+function written(
+  overrides: SettingsCascadeOverrides,
+  ...args: Parameters<typeof setSettingsOverride> extends [unknown, ...infer R] ? R : never
+): SettingsCascadeOverrides {
   const result = setSettingsOverride(overrides, ...args);
   assert.ok(result.ok);
   return result.overrides;
@@ -47,7 +50,10 @@ test('ローマ字規則は全体の条件に従う', () => {
   const overrides = written(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'romajiRuleId', 'oonishi');
   const result = builderWith(overrides)(SELECTION, 'しゃ');
   assert.ok(result.ok);
-  assert.deepEqual(sentenceSteps(result.analysis).map((step) => step.keys.join('+')), ['s', 'h', 'a']);
+  assert.deepEqual(
+    sentenceSteps(result.analysis).map((step) => step.keys.join('+')),
+    ['s', 'h', 'a'],
+  );
 });
 
 test('画面で選んだ物理配列を使い、配列のレベルの上書きは読まない', () => {
@@ -127,7 +133,10 @@ test('コンボで打つストロークだけが出力の文字を持ち、同�
   };
   // 「きょう」は、kと、コンボyouの2ストロークで、同じ入力単位を打つkは出力の文字を持たない。
   const combo = build('oonishi-custom', 'きょう');
-  assert.deepEqual(combo.map((step) => step.outputChars), [undefined, ['y', 'o', 'u']]);
+  assert.deepEqual(
+    combo.map((step) => step.outputChars),
+    [undefined, ['y', 'o', 'u']],
+  );
   assert.equal(combo[1].keys.length, 3);
   assert.equal(combo[0].inputIndex, combo[1].inputIndex);
   // コンボを含まない配列と、かなの同時押しの配列は、どのストロークも持たない。
@@ -140,8 +149,15 @@ function codeOfKeyId(id: string): string {
   if (/^[a-z]$/i.test(id)) return `Key${id.toUpperCase()}`;
   if (/^[0-9]$/.test(id)) return `Digit${id}`;
   const named: Record<string, string> = {
-    ';': 'Semicolon', "'": 'Quote', ',': 'Comma', '.': 'Period', '/': 'Slash',
-    '[': 'BracketLeft', ']': 'BracketRight', '-': 'Minus', '=': 'Equal',
+    ';': 'Semicolon',
+    "'": 'Quote',
+    ',': 'Comma',
+    '.': 'Period',
+    '/': 'Slash',
+    '[': 'BracketLeft',
+    ']': 'BracketRight',
+    '-': 'Minus',
+    '=': 'Equal',
   };
   return named[id] ?? id;
 }
@@ -154,9 +170,9 @@ function codeOfKeyId(id: string): string {
 function pressesOf(step: SentenceStep, output: boolean, keyLabel: (id: string) => string) {
   return output && step.outputChars !== undefined
     ? step.outputChars.map((char) => ({ key: char, code: codeOfKeyId(char) }))
-    : step.keys.map((id) => (output
-      ? { key: keyLabel(id), code: codeOfKeyId(keyLabel(id).toLowerCase()) }
-      : { key: keyLabel(id), code: codeOfKeyId(id) }));
+    : step.keys.map((id) =>
+        output ? { key: keyLabel(id), code: codeOfKeyId(keyLabel(id).toLowerCase()) } : { key: keyLabel(id), code: codeOfKeyId(id) },
+      );
 }
 
 function tkContext(texts: readonly string[]) {
@@ -218,7 +234,10 @@ test('TK音直入力法の示す文は、押すキーでも出力の文字でも
     assert.ok(!outcomes.includes('wrong-key'), `output=${output}`);
     assert.ok(sentenceSessionFinished(session), `output=${output}`);
     assert.equal(session.records.length, MEASUREMENT_SENTENCES.length * SENTENCE_ROUNDS);
-    assert.ok(session.records.every((record) => record.taps.every((tap) => tap.clean)), `output=${output}`);
+    assert.ok(
+      session.records.every((record) => record.taps.every((tap) => tap.clean)),
+      `output=${output}`,
+    );
   }
 });
 
@@ -226,8 +245,10 @@ test('TK音直入力法で出力の文字で打つと、コンボのストロー
   const { stepsOf } = tkContext(MEASUREMENT_SENTENCES);
   const comboStrokes = stepsOf.flat().filter((step) => step.outputChars !== undefined).length * SENTENCE_ROUNDS;
   assert.ok(comboStrokes > 0);
-  const marked = (output: boolean) => playTkSession(MEASUREMENT_SENTENCES, output).session.records
-    .flatMap((record) => record.taps).filter((tap) => tap.outputCompleted === true).length;
+  const marked = (output: boolean) =>
+    playTkSession(MEASUREMENT_SENTENCES, output)
+      .session.records.flatMap((record) => record.taps)
+      .filter((tap) => tap.outputCompleted === true).length;
   assert.equal(marked(false), 0);
   assert.equal(marked(true), comboStrokes);
 });

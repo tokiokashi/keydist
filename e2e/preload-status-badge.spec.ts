@@ -41,8 +41,13 @@ for (const width of [390, 1440]) {
           const button = [...document.querySelectorAll('button')].find((b) => /^対象: /.test(b.getAttribute('aria-label') ?? ''));
           if (button) {
             const rect = button.getBoundingClientRect();
-            samples.push({ x: rect.x, y: rect.y, status: document.querySelector('section.pane-frame')?.getAttribute('data-pane-status') ?? null,
-              busyText: document.querySelector('[data-pane-busy]')?.textContent ?? null, badge: document.querySelector('.pane-status-badge') !== null });
+            samples.push({
+              x: rect.x,
+              y: rect.y,
+              status: document.querySelector('section.pane-frame')?.getAttribute('data-pane-status') ?? null,
+              busyText: document.querySelector('[data-pane-busy]')?.textContent ?? null,
+              badge: document.querySelector('.pane-status-badge') !== null,
+            });
           }
           requestAnimationFrame(tick);
         };
@@ -54,8 +59,14 @@ for (const width of [390, 1440]) {
       await expect(page.locator('[data-pane-status="ready"]')).toBeVisible({ timeout: 20_000 });
       // readyの後の数フレームも見る。記録側のフレームが10コマ増えるまで待つ
       const framesAtReady = await page.evaluate(() => (window as unknown as { __targetSamples: unknown[] }).__targetSamples.length);
-      await expect.poll(() => page.evaluate(() => (window as unknown as { __targetSamples: unknown[] }).__targetSamples.length)).toBeGreaterThanOrEqual(framesAtReady + 10);
-      const samples = await page.evaluate(() => (window as unknown as { __targetSamples: { x: number; y: number; status: string | null; busyText: string | null; badge: boolean }[] }).__targetSamples);
+      await expect
+        .poll(() => page.evaluate(() => (window as unknown as { __targetSamples: unknown[] }).__targetSamples.length))
+        .toBeGreaterThanOrEqual(framesAtReady + 10);
+      const samples = await page.evaluate(
+        () =>
+          (window as unknown as { __targetSamples: { x: number; y: number; status: string | null; busyText: string | null; badge: boolean }[] })
+            .__targetSamples,
+      );
       expect(samples.length).toBeGreaterThan(5);
       expect(samples.some((s) => s.status === 'ready')).toBe(true);
       // 本文が「計算中…」を出している間は、見出しにバッジを出さない（同じ文字が2つ並ばない）

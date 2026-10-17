@@ -1,15 +1,5 @@
 import { isRecord } from '#input/codec/index.ts';
-import {
-  ALL_FINGERS,
-  FINGERS,
-  HOME_ROW,
-  THUMB_KEY,
-  dist,
-  resolveKeyId,
-  type Finger,
-  type Geometry,
-  type Key,
-} from '#input/shapes/geometry.ts';
+import { ALL_FINGERS, FINGERS, HOME_ROW, THUMB_KEY, dist, resolveKeyId, type Finger, type Geometry, type Key } from '#input/shapes/geometry.ts';
 
 /**
  * 遷移（直前のストロークから今のストロークへ）が属する構造の種類。打鍵の上乗せ（`keystrokeOverheadMs`）を選ぶ。
@@ -138,9 +128,7 @@ export function median(values: readonly number[]): number | undefined {
   const sorted = positiveFiniteValues(values).sort((a, b) => a - b);
   if (sorted.length === 0) return undefined;
   const middle = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 1
-    ? sorted[middle]
-    : (sorted[middle - 1] + sorted[middle]) / 2;
+  return sorted.length % 2 === 1 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
 }
 
 export function actionsPerSecondFromIntervals(intervalsMs: readonly number[]): number | undefined {
@@ -201,11 +189,8 @@ export function meanRepeatMs(calibration: Pick<PlaybackCalibration, 'fingerRepea
 /** 同じ手の別指を識別する、順序に依存しないキーを返す。 */
 export function sameHandFingerPairKey(first: Finger, second: Finger): string | undefined {
   if (first === second || first[0] !== second[0]) return undefined;
-  if (!FINGERS.includes(first as typeof FINGERS[number])
-    || !FINGERS.includes(second as typeof FINGERS[number])) return undefined;
-  const ordered = [first, second].sort((a, b) =>
-    FINGERS.indexOf(a as typeof FINGERS[number]) - FINGERS.indexOf(b as typeof FINGERS[number]),
-  );
+  if (!FINGERS.includes(first as (typeof FINGERS)[number]) || !FINGERS.includes(second as (typeof FINGERS)[number])) return undefined;
+  const ordered = [first, second].sort((a, b) => FINGERS.indexOf(a as (typeof FINGERS)[number]) - FINGERS.indexOf(b as (typeof FINGERS)[number]));
   return `${ordered[0]}:${ordered[1]}`;
 }
 
@@ -218,8 +203,7 @@ export function handDirection(first: Finger, second: Finger): HandDirection | un
 /** 同手別指の順序を残した保存キーを返す。 */
 export function sameHandDirectedFingerPairKey(from: Finger, to: Finger): string | undefined {
   if (from === to || from[0] !== to[0]) return undefined;
-  if (!FINGERS.includes(from as typeof FINGERS[number])
-    || !FINGERS.includes(to as typeof FINGERS[number])) return undefined;
+  if (!FINGERS.includes(from as (typeof FINGERS)[number]) || !FINGERS.includes(to as (typeof FINGERS)[number])) return undefined;
   return `${from}>${to}`;
 }
 
@@ -228,8 +212,7 @@ function inRange(value: unknown, min: number, max: number): value is number {
 }
 
 function isRateRecord(value: unknown, keyValid: (key: string) => boolean, min: number, max: number): boolean {
-  return isRecord(value)
-    && Object.entries(value).every(([key, speed]) => keyValid(key) && inRange(speed, min, max));
+  return isRecord(value) && Object.entries(value).every(([key, speed]) => keyValid(key) && inRange(speed, min, max));
 }
 
 function isSameHandPairKey(key: string): boolean {
@@ -251,15 +234,20 @@ export function playbackCalibrationProblem(value: unknown): string | undefined {
   const rateOk = (speed: unknown) => inRange(speed, CALIBRATION_ACTIONS_PER_SECOND_MIN, CALIBRATION_ACTIONS_PER_SECOND_MAX);
   if (!rateOk(value.actionsPerSecond)) return '通常の打鍵速度が範囲外です';
   if (!rateOk(value.sameHandDifferentFingerActionsPerSecond)) return '同手・別指の代表の速度が範囲外です';
-  if (!inRange(value.fallbackRepeatMs, CALIBRATION_REPEAT_MS_MIN, CALIBRATION_REPEAT_MS_MAX)) return '測定できなかった指の同じキーを続けて打つ時間が範囲外です';
-  if (!inRange(value.fallbackMoveMsPerUnit, CALIBRATION_MOVE_MS_PER_UNIT_MIN, CALIBRATION_MOVE_MS_PER_UNIT_MAX)) return '測定できなかった指の移動の時間が範囲外です';
+  if (!inRange(value.fallbackRepeatMs, CALIBRATION_REPEAT_MS_MIN, CALIBRATION_REPEAT_MS_MAX))
+    return '測定できなかった指の同じキーを続けて打つ時間が範囲外です';
+  if (!inRange(value.fallbackMoveMsPerUnit, CALIBRATION_MOVE_MS_PER_UNIT_MIN, CALIBRATION_MOVE_MS_PER_UNIT_MAX))
+    return '測定できなかった指の移動の時間が範囲外です';
   if (typeof value.measuredAt !== 'number' || !Number.isFinite(value.measuredAt)) return '測定した時刻が正しくありません';
-  if (!isRateRecord(
-    value.sameHandDifferentFingerActionsPerSecondByPair,
-    isSameHandPairKey,
-    CALIBRATION_ACTIONS_PER_SECOND_MIN,
-    CALIBRATION_ACTIONS_PER_SECOND_MAX,
-  )) return '同手・別指の組ごとの速度が正しくありません';
+  if (
+    !isRateRecord(
+      value.sameHandDifferentFingerActionsPerSecondByPair,
+      isSameHandPairKey,
+      CALIBRATION_ACTIONS_PER_SECOND_MIN,
+      CALIBRATION_ACTIONS_PER_SECOND_MAX,
+    )
+  )
+    return '同手・別指の組ごとの速度が正しくありません';
   const fingerKey = (finger: string) => ALL_FINGERS.includes(finger as Finger);
   if (!isRateRecord(value.fingerRepeatMs, fingerKey, CALIBRATION_REPEAT_MS_MIN, CALIBRATION_REPEAT_MS_MAX)) {
     return '指ごとの同じキーを続けて打つ時間が正しくありません';
@@ -273,30 +261,46 @@ export function playbackCalibrationProblem(value: unknown): string | undefined {
   if (repeatFingers.length !== moveFingers.length || repeatFingers.some((finger) => !moveFingers.includes(finger))) {
     return '指ごとの同じキーを続けて打つ時間と移動の時間の指が揃っていません';
   }
-  if (value.actionsPerSecondByDirection !== undefined && !isRateRecord(
-    value.actionsPerSecondByDirection,
-    (direction) => direction === 'L→R' || direction === 'R→L',
-    CALIBRATION_ACTIONS_PER_SECOND_MIN,
-    CALIBRATION_ACTIONS_PER_SECOND_MAX,
-  )) return '異手の方向別の速度が正しくありません';
-  if (value.sameHandDifferentFingerActionsPerDirectedPair !== undefined && !isRateRecord(
-    value.sameHandDifferentFingerActionsPerDirectedPair,
-    isDirectedPairKey,
-    CALIBRATION_ACTIONS_PER_SECOND_MIN,
-    CALIBRATION_ACTIONS_PER_SECOND_MAX,
-  )) return '同手・別指の方向別の速度が正しくありません';
-  if (value.keystrokeOverheadMs !== undefined && !isRateRecord(
-    value.keystrokeOverheadMs,
-    (kind) => OVERHEAD_KINDS.includes(kind as OverheadKind),
-    CALIBRATION_OVERHEAD_MS_MIN,
-    CALIBRATION_OVERHEAD_MS_MAX,
-  )) return '打鍵の上乗せが正しくありません';
-  if (value.simultaneousOverheadMs !== undefined && !isRateRecord(
-    value.simultaneousOverheadMs,
-    (kind) => SIMULTANEOUS_KINDS.includes(kind as SimultaneousKind),
-    CALIBRATION_OVERHEAD_MS_MIN,
-    CALIBRATION_OVERHEAD_MS_MAX,
-  )) return '同時押しの上乗せが正しくありません';
+  if (
+    value.actionsPerSecondByDirection !== undefined &&
+    !isRateRecord(
+      value.actionsPerSecondByDirection,
+      (direction) => direction === 'L→R' || direction === 'R→L',
+      CALIBRATION_ACTIONS_PER_SECOND_MIN,
+      CALIBRATION_ACTIONS_PER_SECOND_MAX,
+    )
+  )
+    return '異手の方向別の速度が正しくありません';
+  if (
+    value.sameHandDifferentFingerActionsPerDirectedPair !== undefined &&
+    !isRateRecord(
+      value.sameHandDifferentFingerActionsPerDirectedPair,
+      isDirectedPairKey,
+      CALIBRATION_ACTIONS_PER_SECOND_MIN,
+      CALIBRATION_ACTIONS_PER_SECOND_MAX,
+    )
+  )
+    return '同手・別指の方向別の速度が正しくありません';
+  if (
+    value.keystrokeOverheadMs !== undefined &&
+    !isRateRecord(
+      value.keystrokeOverheadMs,
+      (kind) => OVERHEAD_KINDS.includes(kind as OverheadKind),
+      CALIBRATION_OVERHEAD_MS_MIN,
+      CALIBRATION_OVERHEAD_MS_MAX,
+    )
+  )
+    return '打鍵の上乗せが正しくありません';
+  if (
+    value.simultaneousOverheadMs !== undefined &&
+    !isRateRecord(
+      value.simultaneousOverheadMs,
+      (kind) => SIMULTANEOUS_KINDS.includes(kind as SimultaneousKind),
+      CALIBRATION_OVERHEAD_MS_MIN,
+      CALIBRATION_OVERHEAD_MS_MAX,
+    )
+  )
+    return '同時押しの上乗せが正しくありません';
   if (value.sentenceSimultaneousKinds !== undefined && !isSimultaneousKindList(value.sentenceSimultaneousKinds)) {
     return '文章に入った同時押しの分け方が正しくありません';
   }
@@ -305,9 +309,7 @@ export function playbackCalibrationProblem(value: unknown): string | undefined {
 
 /** 同時押しの分け方の並び。知らない分け方と重複を持たない。 */
 function isSimultaneousKindList(value: unknown): boolean {
-  return Array.isArray(value)
-    && value.every((kind) => SIMULTANEOUS_KINDS.includes(kind as SimultaneousKind))
-    && new Set(value).size === value.length;
+  return Array.isArray(value) && value.every((kind) => SIMULTANEOUS_KINDS.includes(kind as SimultaneousKind)) && new Set(value).size === value.length;
 }
 
 /** 打鍵の上乗せのうち、文章に入った同時押しの分け方の記録を残す根拠になる種類（構造の種類の分けない値・かなの中・かなの境目の値と、同指連続）。 */
@@ -328,10 +330,7 @@ export function withoutOrphanedSentenceSimultaneous(calibration: PlaybackCalibra
 const CALIBRATION_KEY_LABEL_PATTERN = /\p{L}|\p{P}/u;
 
 /** 選択中の配列で文字・ピリオド・コンマが刻印された物理キーだけを候補にする。 */
-export function calibrationEligibleKeyIds(
-  geometry: Geometry,
-  legends?: ReadonlyMap<string, string>,
-): ReadonlySet<string> {
+export function calibrationEligibleKeyIds(geometry: Geometry, legends?: ReadonlyMap<string, string>): ReadonlySet<string> {
   const gridKeyIds = new Set(geometry.grid.flat().map((key) => key.id));
   if (!legends) return gridKeyIds;
   return new Set(
@@ -346,26 +345,17 @@ export function calibrationEligibleKeyIds(
  * 指のホームキーと同じ列（`col`）の、ホーム段の1つ下の段のキー。数字段は使わない。
  * キーが無い、刻印が無い、その指の担当でない時は`undefined`。別の下段のキーで代わりにしない。
  */
-function lowerKeyInHomeColumn(
-  geometry: Geometry,
-  finger: typeof FINGERS[number],
-  home: Key,
-  eligibleKeyIds: ReadonlySet<string>,
-): Key | undefined {
-  return [...geometry.keys.values()].find((key) => key.finger === finger
-    && key.row === HOME_ROW + 1
-    && key.col === home.col
-    && eligibleKeyIds.has(key.id));
+function lowerKeyInHomeColumn(geometry: Geometry, finger: (typeof FINGERS)[number], home: Key, eligibleKeyIds: ReadonlySet<string>): Key | undefined {
+  return [...geometry.keys.values()].find(
+    (key) => key.finger === finger && key.row === HOME_ROW + 1 && key.col === home.col && eligibleKeyIds.has(key.id),
+  );
 }
 
 /**
  * 各指の測定項目に使う、ホームと同じ列の下段のキーの組（`spec/playback-timing.md` §6.1）。
  * ホームキーか下段のキーが使えない（刻印が無い・その指の担当でない・無い）指、距離が0の指は組を作らない。
  */
-export function calibrationKeyPairs(
-  geometry: Geometry,
-  eligibleKeyIds = calibrationEligibleKeyIds(geometry),
-): CalibrationKeyPair[] {
+export function calibrationKeyPairs(geometry: Geometry, eligibleKeyIds = calibrationEligibleKeyIds(geometry)): CalibrationKeyPair[] {
   const pairs: CalibrationKeyPair[] = [];
   for (const finger of FINGERS) {
     const homeId = geometry.assignment.homeKey[finger];
@@ -382,22 +372,14 @@ export function calibrationKeyPairs(
 }
 
 /** 通常の打鍵速度の測定に使う、左右人差し指のホームキー。 */
-export function calibrationActionPair(
-  geometry: Geometry,
-  eligibleKeyIds = calibrationEligibleKeyIds(geometry),
-): [string, string] | undefined {
+export function calibrationActionPair(geometry: Geometry, eligibleKeyIds = calibrationEligibleKeyIds(geometry)): [string, string] | undefined {
   const left = geometry.assignment.homeKey.LI;
   const right = geometry.assignment.homeKey.RI;
-  return left && right && left !== right && eligibleKeyIds.has(left) && eligibleKeyIds.has(right)
-    ? [left, right]
-    : undefined;
+  return left && right && left !== right && eligibleKeyIds.has(left) && eligibleKeyIds.has(right) ? [left, right] : undefined;
 }
 
 /** 同じ手の別指を交互に打つ測定用のホームキー組。候補キーだけで全組合せを作る。 */
-export function calibrationSameHandPairs(
-  geometry: Geometry,
-  eligibleKeyIds = calibrationEligibleKeyIds(geometry),
-): [string, string][] {
+export function calibrationSameHandPairs(geometry: Geometry, eligibleKeyIds = calibrationEligibleKeyIds(geometry)): [string, string][] {
   const pairs: [string, string][] = [];
   for (const hand of ['L', 'R'] as const) {
     const fingers = FINGERS.filter((finger) => finger.startsWith(hand));
@@ -415,10 +397,7 @@ export function calibrationSameHandPairs(
 }
 
 /** アルペジオ用の同手・別指の全方向キー組を作る。 */
-export function calibrationDirectedSameHandPairs(
-  geometry: Geometry,
-  eligibleKeyIds = calibrationEligibleKeyIds(geometry),
-): [string, string][] {
+export function calibrationDirectedSameHandPairs(geometry: Geometry, eligibleKeyIds = calibrationEligibleKeyIds(geometry)): [string, string][] {
   const pairs: [string, string][] = [];
   for (const [first, second] of calibrationSameHandPairs(geometry, eligibleKeyIds)) {
     pairs.push([first, second], [second, first]);
@@ -433,14 +412,17 @@ export function calibrationKeyMatches(event: { readonly key: string; readonly co
   if (eventKey === keyId.toLowerCase() || eventKey === keyLabel.toLowerCase()) return true;
 
   const codeToKey: Record<string, string> = {
-    Semicolon: ';', Quote: "'", Comma: ',', Period: '.', Slash: '/',
-    BracketLeft: '[', BracketRight: ']', Minus: '-', Equal: '=',
+    Semicolon: ';',
+    Quote: "'",
+    Comma: ',',
+    Period: '.',
+    Slash: '/',
+    BracketLeft: '[',
+    BracketRight: ']',
+    Minus: '-',
+    Equal: '=',
   };
   const code = event.code;
-  const physicalKey = code.startsWith('Key')
-    ? code.slice(3).toLowerCase()
-    : code.startsWith('Digit')
-      ? code.slice(5)
-      : codeToKey[code];
+  const physicalKey = code.startsWith('Key') ? code.slice(3).toLowerCase() : code.startsWith('Digit') ? code.slice(5) : codeToKey[code];
   return physicalKey !== undefined && physicalKey === keyId.toLowerCase();
 }

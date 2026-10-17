@@ -39,12 +39,7 @@ test('decodeCascadeOverrides: 妥当な値はレベルをまたいでそのま�
 
 test('decodeCascadeOverrides: 未知の項目idは捨てて診断を積む', () => {
   const diagnostics: CodecDiagnostic[] = [];
-  const result = decodeCascadeOverrides(
-    testItemSchemas,
-    { global: { enabled: true, notARealItem: 123 } },
-    'overrides',
-    diagnostics,
-  );
+  const result = decodeCascadeOverrides(testItemSchemas, { global: { enabled: true, notARealItem: 123 } }, 'overrides', diagnostics);
   assert.deepEqual(result, { global: { enabled: true } });
   assert.equal(diagnostics.length, 1);
   assert.match(diagnostics[0].message, /未知の項目「notARealItem」/);
@@ -52,12 +47,7 @@ test('decodeCascadeOverrides: 未知の項目idは捨てて診断を積む', () 
 
 test('decodeCascadeOverrides: 型の合わない値は項目単位で捨てて診断を積む', () => {
   const diagnostics: CodecDiagnostic[] = [];
-  const result = decodeCascadeOverrides(
-    testItemSchemas,
-    { global: { enabled: 'yes', windowSize: 3 } },
-    'overrides',
-    diagnostics,
-  );
+  const result = decodeCascadeOverrides(testItemSchemas, { global: { enabled: 'yes', windowSize: 3 } }, 'overrides', diagnostics);
   assert.deepEqual(result, { global: { windowSize: 3 } });
   assert.equal(diagnostics.length, 1);
   assert.equal(diagnostics[0].path, 'overrides.global.enabled');
@@ -65,12 +55,7 @@ test('decodeCascadeOverrides: 型の合わない値は項目単位で捨てて�
 
 test('decodeCascadeOverrides: 全項目が捨てられたレベルはエントリごと消える（空オブジェクトを残さない）', () => {
   const diagnostics: CodecDiagnostic[] = [];
-  const result = decodeCascadeOverrides(
-    testItemSchemas,
-    { layout: { qwerty: { enabled: 'yes' } } },
-    'overrides',
-    diagnostics,
-  );
+  const result = decodeCascadeOverrides(testItemSchemas, { layout: { qwerty: { enabled: 'yes' } } }, 'overrides', diagnostics);
   assert.deepEqual(result, {});
 });
 
@@ -78,12 +63,7 @@ test('decodeCascadeOverrides: 許可されていないレベルに値があっ�
   // testItemSchemasはレベルの許可を知らない。ここでは「型検査だけがcodecの仕事」であることを、
   // 値そのものは通ることで確認する（レベルの可否はresolveCascadeが判定する。codec.ts先頭コメント参照）。
   const diagnostics: CodecDiagnostic[] = [];
-  const result = decodeCascadeOverrides(
-    testItemSchemas,
-    { setup: { 's-1': { enabled: true } } },
-    'overrides',
-    diagnostics,
-  );
+  const result = decodeCascadeOverrides(testItemSchemas, { setup: { 's-1': { enabled: true } } }, 'overrides', diagnostics);
   assert.deepEqual(result, { setup: { 's-1': { enabled: true } } });
   assert.deepEqual(diagnostics, []);
 });
@@ -108,12 +88,7 @@ test('decodeCascadeOverrides: JSON.parse由来の"__proto__"を項目idに使っ
 
 test('decodeCascadeOverrides: "constructor"を項目idに使った上書きも例外を投げず、未知の項目として捨てる', () => {
   const diagnostics: CodecDiagnostic[] = [];
-  const result = decodeCascadeOverrides(
-    testItemSchemas,
-    { global: { constructor: { windowSize: 5 } } },
-    'overrides',
-    diagnostics,
-  );
+  const result = decodeCascadeOverrides(testItemSchemas, { global: { constructor: { windowSize: 5 } } }, 'overrides', diagnostics);
   assert.deepEqual(result, {});
   assert.equal(diagnostics.length, 1);
   assert.match(diagnostics[0].message, /未知の項目「constructor」/);

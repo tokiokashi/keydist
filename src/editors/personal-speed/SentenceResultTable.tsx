@@ -28,8 +28,14 @@ export function SentenceResultTable({ table }: { readonly table: SentenceResultT
           <caption>{SENTENCE_TABLE_CAPTION}</caption>
           <thead>
             <tr>
-              <th scope="col"><span className="personal-speed-visually-hidden">種類</span></th>
-              {OVERHEAD_TABLE_COLUMNS.map(({ part, label }) => <th key={part} scope="col">{label}</th>)}
+              <th scope="col">
+                <span className="personal-speed-visually-hidden">種類</span>
+              </th>
+              {OVERHEAD_TABLE_COLUMNS.map(({ part, label }) => (
+                <th key={part} scope="col">
+                  {label}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -43,7 +49,12 @@ export function SentenceResultTable({ table }: { readonly table: SentenceResultT
                     return <td key={part} className="personal-speed-cell personal-speed-cell-blank" aria-hidden="true" />;
                   }
                   return (
-                    <td key={part} className="personal-speed-cell personal-speed-result-cell" data-personal-speed-result-cell={kind} data-saved={entry.status}>
+                    <td
+                      key={part}
+                      className="personal-speed-cell personal-speed-result-cell"
+                      data-personal-speed-result-cell={kind}
+                      data-saved={entry.status}
+                    >
                       <span className="personal-speed-result-value">{sentenceTableValueText(entry.stats.differenceMs)}</span>
                       <span>{entry.stats.count}打</span>
                       <span>{sentenceTableSavedText(entry.status)}</span>
@@ -55,7 +66,11 @@ export function SentenceResultTable({ table }: { readonly table: SentenceResultT
           </tbody>
         </table>
       </div>
-      {unsaved.map((status) => <p key={status} className="personal-speed-note">{sentenceTableSavedDetail(status)}</p>)}
+      {unsaved.map((status) => (
+        <p key={status} className="personal-speed-note">
+          {sentenceTableSavedDetail(status)}
+        </p>
+      ))}
       <details className="personal-speed-details" data-personal-speed-result-details>
         <summary>{SENTENCE_TABLE_DETAILS_SUMMARY}</summary>
         <div className="personal-speed-grid-wrap">
@@ -81,7 +96,11 @@ export function SentenceResultTable({ table }: { readonly table: SentenceResultT
             </tbody>
           </table>
         </div>
-        {SENTENCE_TABLE_NOTES.map((note) => <p key={note} className="personal-speed-note">{note}</p>)}
+        {SENTENCE_TABLE_NOTES.map((note) => (
+          <p key={note} className="personal-speed-note">
+            {note}
+          </p>
+        ))}
       </details>
     </div>
   );

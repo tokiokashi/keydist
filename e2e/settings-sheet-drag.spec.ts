@@ -24,23 +24,26 @@ async function openSheet(page: Page) {
 /** 要素の中心から下へ`dy`だけ、pointerイベントで引く。`release`がfalseなら放さずに止める。 */
 async function drag(target: Locator, dy: number, options: { release?: boolean; gapMs?: number; offsetY?: number } = {}) {
   const box = (await target.boundingBox())!;
-  await target.evaluate(async (el, args) => {
-    const fire = (type: string, clientY: number) =>
-      el.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: 7, pointerType: 'touch', button: 0, clientX: args.x, clientY }));
-    fire('pointerdown', args.y);
-    const steps = 6;
-    for (let i = 1; i <= steps; i += 1) {
-      await new Promise((resolve) => setTimeout(resolve, args.gapMs));
-      fire('pointermove', args.y + (args.dy * i) / steps);
-    }
-    if (args.release) fire('pointerup', args.y + args.dy);
-  }, {
-    x: box.x + 20,
-    y: box.y + (options.offsetY ?? box.height / 2),
-    dy,
-    release: options.release ?? true,
-    gapMs: options.gapMs ?? 200,
-  });
+  await target.evaluate(
+    async (el, args) => {
+      const fire = (type: string, clientY: number) =>
+        el.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: 7, pointerType: 'touch', button: 0, clientX: args.x, clientY }));
+      fire('pointerdown', args.y);
+      const steps = 6;
+      for (let i = 1; i <= steps; i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, args.gapMs));
+        fire('pointermove', args.y + (args.dy * i) / steps);
+      }
+      if (args.release) fire('pointerup', args.y + args.dy);
+    },
+    {
+      x: box.x + 20,
+      y: box.y + (options.offsetY ?? box.height / 2),
+      dy,
+      release: options.release ?? true,
+      gapMs: options.gapMs ?? 200,
+    },
+  );
 }
 
 const grabber = (page: Page) => page.locator('.settings-sheet-grabber');

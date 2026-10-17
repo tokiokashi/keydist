@@ -48,7 +48,6 @@ export interface UserAssetsPageProps {
   readonly onImport: (bundle: UserAssetsBundle, stamp: string) => readonly UserAssetImportEntry[] | undefined;
 }
 
-
 interface ImportResult {
   readonly summary: string;
   readonly lines: readonly string[];
@@ -75,7 +74,9 @@ function AssetSection({ title, kind, emptyText, rows, onDelete }: AssetSectionPr
   return (
     <section className="user-assets-section" data-user-assets-section={kind}>
       <h2>{title}</h2>
-      {rows.length === 0 ? <p className="user-assets-empty">{emptyText}</p> : (
+      {rows.length === 0 ? (
+        <p className="user-assets-empty">{emptyText}</p>
+      ) : (
         <ul className="user-assets-list">
           {rows.map((row) => (
             <li key={row.id} className="user-assets-row" data-user-asset-row={row.id}>
@@ -83,7 +84,9 @@ function AssetSection({ title, kind, emptyText, rows, onDelete }: AssetSectionPr
                 <span className="user-assets-name">{row.name}</span>
                 {row.detail === undefined ? null : <span className="user-assets-detail">{row.detail}</span>}
               </div>
-              <button type="button" aria-label={`「${row.name}」を削除`} onClick={(event) => onDelete(row, event.currentTarget)}>削除</button>
+              <button type="button" aria-label={`「${row.name}」を削除`} onClick={(event) => onDelete(row, event.currentTarget)}>
+                削除
+              </button>
             </li>
           ))}
         </ul>
@@ -114,7 +117,11 @@ function confirmText(pending: PendingDelete): readonly string[] {
 }
 
 /** 削除の確認。キャンセルにフォーカスを置き、Escでもキャンセルになる。 */
-function ConfirmDelete({ pending, onConfirm, onCancel }: {
+function ConfirmDelete({
+  pending,
+  onConfirm,
+  onCancel,
+}: {
   readonly pending: PendingDelete;
   readonly onConfirm: () => void;
   readonly onCancel: () => void;
@@ -125,19 +132,38 @@ function ConfirmDelete({ pending, onConfirm, onCancel }: {
     if (dialog !== null && !dialog.open) dialog.showModal();
   }, []);
   return (
-    <dialog ref={ref} className="user-assets-confirm" aria-labelledby="user-assets-confirm-title" onCancel={(event) => { event.preventDefault(); onCancel(); }}>
-      <h2 id="user-assets-confirm-title">{pending.kind === 'missing-setup-override' ? `「${pending.row.name}」の変更を戻しますか` : `「${pending.row.name}」を削除しますか`}</h2>
-      {confirmText(pending).map((line) => <p key={line}>{line}</p>)}
+    <dialog
+      ref={ref}
+      className="user-assets-confirm"
+      aria-labelledby="user-assets-confirm-title"
+      onCancel={(event) => {
+        event.preventDefault();
+        onCancel();
+      }}
+    >
+      <h2 id="user-assets-confirm-title">
+        {pending.kind === 'missing-setup-override' ? `「${pending.row.name}」の変更を戻しますか` : `「${pending.row.name}」を削除しますか`}
+      </h2>
+      {confirmText(pending).map((line) => (
+        <p key={line}>{line}</p>
+      ))}
       <div className="user-assets-confirm-actions">
-        <button type="button" autoFocus onClick={onCancel}>キャンセル</button>
-        <button type="button" onClick={onConfirm}>{pending.kind === 'missing-setup-override' ? '変更を戻す' : '削除する'}</button>
+        <button type="button" autoFocus onClick={onCancel}>
+          キャンセル
+        </button>
+        <button type="button" onClick={onConfirm}>
+          {pending.kind === 'missing-setup-override' ? '変更を戻す' : '削除する'}
+        </button>
       </div>
     </dialog>
   );
 }
 
 /** 保存してある条件の上書きの一覧。適用範囲ごとに、項目の名前と値を並べ、項目ごとに消せる。 */
-function OverrideSection({ groups, onReset }: {
+function OverrideSection({
+  groups,
+  onReset,
+}: {
   readonly groups: readonly OverrideGroup[];
   readonly onReset: (group: OverrideGroup, entry: OverrideEntry, button: HTMLElement) => void;
 }) {
@@ -148,7 +174,9 @@ function OverrideSection({ groups, onReset }: {
         保存してある変更をそのまま並べています。継承する値と同じ値や、今の条件では使われない値も含みます。
         書き出しのファイルに入るのは、Setupの変更だけです。
       </p>
-      {groups.length === 0 ? <p className="user-assets-empty">変更した条件はありません。</p> : (
+      {groups.length === 0 ? (
+        <p className="user-assets-empty">変更した条件はありません。</p>
+      ) : (
         <ul className="user-assets-list">
           {groups.map((group) => (
             <li key={group.key} className="user-assets-override-group" data-user-assets-override-group={group.key}>
@@ -157,10 +185,18 @@ function OverrideSection({ groups, onReset }: {
                 {group.entries.map((entry) => (
                   <li key={entry.itemId} className="user-assets-row" data-user-assets-override={`${group.key}/${entry.itemId}`}>
                     <div className="user-assets-row-text">
-                      <span className="user-assets-name">{entry.label}: {entry.valueText}</span>
+                      <span className="user-assets-name">
+                        {entry.label}: {entry.valueText}
+                      </span>
                       {entry.unused ? <span className="user-assets-detail">この適用範囲では使われません</span> : null}
                     </div>
-                    <button type="button" aria-label={`${group.title}の「${entry.label}」の変更を戻す`} onClick={(event) => onReset(group, entry, event.currentTarget)}>変更を戻す</button>
+                    <button
+                      type="button"
+                      aria-label={`${group.title}の「${entry.label}」の変更を戻す`}
+                      onClick={(event) => onReset(group, entry, event.currentTarget)}
+                    >
+                      変更を戻す
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -230,8 +266,14 @@ export function UserAssetsPage({
   useHistoryShortcuts({
     canUndo,
     canRedo,
-    undo: () => { clearResults(); onUndo(); },
-    redo: () => { clearResults(); onRedo(); },
+    undo: () => {
+      clearResults();
+      onUndo();
+    },
+    redo: () => {
+      clearResults();
+      onRedo();
+    },
   });
 
   const exportAssets = () => {
@@ -279,12 +321,35 @@ export function UserAssetsPage({
     <article className="user-assets" ref={root}>
       <h1>{USER_ASSETS_LABEL}</h1>
       <div className="user-assets-toolbar">
-        <button type="button" data-user-assets-undo="true" disabled={!canUndo} onClick={() => { clearResults(); onUndo(); }}>元に戻す</button>
-        <button type="button" disabled={!canRedo} onClick={() => { clearResults(); onRedo(); }}>やり直す</button>
+        <button
+          type="button"
+          data-user-assets-undo="true"
+          disabled={!canUndo}
+          onClick={() => {
+            clearResults();
+            onUndo();
+          }}
+        >
+          元に戻す
+        </button>
+        <button
+          type="button"
+          disabled={!canRedo}
+          onClick={() => {
+            clearResults();
+            onRedo();
+          }}
+        >
+          やり直す
+        </button>
         {fileIo === undefined ? null : (
           <>
-            <button type="button" disabled={!hasAssets} onClick={exportAssets}>書き出す</button>
-            <button type="button" disabled={!ready} onClick={() => fileInput.current?.click()}>読み込む…</button>
+            <button type="button" disabled={!hasAssets} onClick={exportAssets}>
+              書き出す
+            </button>
+            <button type="button" disabled={!ready} onClick={() => fileInput.current?.click()}>
+              読み込む…
+            </button>
             <input
               ref={fileInput}
               type="file"
@@ -295,13 +360,19 @@ export function UserAssetsPage({
             />
           </>
         )}
-        <p className="user-assets-message" role="status">{message}</p>
+        <p className="user-assets-message" role="status">
+          {message}
+        </p>
       </div>
       {importResult === undefined ? null : (
         <div className="user-assets-import-result" data-user-assets-import-result="true">
           <p role="status">{importResult.summary}</p>
           {importResult.lines.length === 0 ? null : (
-            <ul>{importResult.lines.map((line, index) => <li key={index}>{line}</li>)}</ul>
+            <ul>
+              {importResult.lines.map((line, index) => (
+                <li key={index}>{line}</li>
+              ))}
+            </ul>
           )}
           <ErrorDetails lines={importResult.details} />
         </div>
@@ -313,28 +384,40 @@ export function UserAssetsPage({
             kind="layout"
             emptyText="自作の配列はありません。"
             rows={layouts}
-            onDelete={(row, button) => { opener.current = button; setPending({ kind: 'layout', row }); }}
+            onDelete={(row, button) => {
+              opener.current = button;
+              setPending({ kind: 'layout', row });
+            }}
           />
           <AssetSection
             title="ローマ字規則"
             kind="romaji-rule"
             emptyText="自作のローマ字規則はありません。"
             rows={rules}
-            onDelete={(row, button) => { opener.current = button; setPending({ kind: 'romaji-rule', row }); }}
+            onDelete={(row, button) => {
+              opener.current = button;
+              setPending({ kind: 'romaji-rule', row });
+            }}
           />
           <AssetSection
             title="指の割り当て"
             kind="finger-assignment"
             emptyText="自作の指の割り当てはありません。"
             rows={fingerAssignments}
-            onDelete={(row, button) => { opener.current = button; setPending({ kind: 'finger-assignment', row }); }}
+            onDelete={(row, button) => {
+              opener.current = button;
+              setPending({ kind: 'finger-assignment', row });
+            }}
           />
           <AssetSection
             title="Setup"
             kind="setup"
             emptyText="Setupはありません。"
             rows={setups}
-            onDelete={(row, button) => { opener.current = button; setPending({ kind: 'setup', row }); }}
+            onDelete={(row, button) => {
+              opener.current = button;
+              setPending({ kind: 'setup', row });
+            }}
           />
           {conditionTable}
           <OverrideSection

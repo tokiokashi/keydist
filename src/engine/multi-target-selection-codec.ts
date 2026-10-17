@@ -74,11 +74,7 @@ function decodeSetParts(payload: unknown, path: string, diagnostics: CodecDiagno
   return { set: { targets, baseline }, knownSlots };
 }
 
-export function decodeMultiTargetSelection(
-  payload: unknown,
-  path: string,
-  diagnostics: CodecDiagnostic[],
-): MultiTargetSelection | undefined {
+export function decodeMultiTargetSelection(payload: unknown, path: string, diagnostics: CodecDiagnostic[]): MultiTargetSelection | undefined {
   const decoded = decodeSetParts(payload, path, diagnostics, true);
   if (decoded === undefined) return undefined;
   const { targets, baseline } = decoded.set;

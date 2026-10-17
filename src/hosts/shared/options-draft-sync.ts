@@ -42,12 +42,7 @@ export function applyDraftInput<T>(state: DraftSyncState<T>, next: T): DraftSync
  *   今ある書き込みはすべて見たことにする。保存先が動かなかった書き込み（同じ値の書き込み）が残って、
  *   後の元に戻す・やり直すを反響と取り違えないため
  */
-export function syncDraftWithStored<T>(
-  state: DraftSyncState<T>,
-  stored: T,
-  writes: readonly OptionsWrite[],
-  latest: number,
-): DraftSyncState<T> {
+export function syncDraftWithStored<T>(state: DraftSyncState<T>, stored: T, writes: readonly OptionsWrite[], latest: number): DraftSyncState<T> {
   const unseen = writes.filter((write) => write.seq > state.seen);
   // 見ていない書き込みが無く、保存先が動いていなければ何もしない（描画のたびに通る道なので軽くする）
   if (state.source === stored && unseen.length === 0) return state;

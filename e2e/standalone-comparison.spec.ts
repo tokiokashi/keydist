@@ -1,6 +1,15 @@
 import { expect, test, type Page } from '@playwright/test';
 import { enabledValues, recordControlStates } from './options-draft-recorder.ts';
-import { dismissAutoOpenedSelection, expectChosenTarget, expectTargetNames, openSettings, openTargetSelection, targetButton, targetNames, toggleTarget } from './pane-helper.ts';
+import {
+  dismissAutoOpenedSelection,
+  expectChosenTarget,
+  expectTargetNames,
+  openSettings,
+  openTargetSelection,
+  targetButton,
+  targetNames,
+  toggleTarget,
+} from './pane-helper.ts';
 
 /**
  * 比較表単体ページのE2E。
@@ -105,13 +114,8 @@ test('選択・基準はリロードしても残る（資産の読み込み前�
   await expect(table.locator('tr[data-baseline="true"]')).toHaveCount(1);
 
   // debounceされた資産への反映が実際にstorageへ書き込まれるまで待ってからリロードする。
-  await expect
-    .poll(async () => page.evaluate((key) => localStorage.getItem(key), MULTI_TARGET_SELECTION_KEY))
-    .toContain('fixed-a');
-  const storedBeforeReload = await page.evaluate(
-    (key) => localStorage.getItem(key),
-    MULTI_TARGET_SELECTION_KEY,
-  );
+  await expect.poll(async () => page.evaluate((key) => localStorage.getItem(key), MULTI_TARGET_SELECTION_KEY)).toContain('fixed-a');
+  const storedBeforeReload = await page.evaluate((key) => localStorage.getItem(key), MULTI_TARGET_SELECTION_KEY);
   expect(storedBeforeReload).toContain('fixed-b');
 
   await page.reload();
@@ -125,10 +129,7 @@ test('選択・基準はリロードしても残る（資産の読み込み前�
   await expect(tableAfterReload.locator('tr[data-baseline="true"]')).toHaveCount(1);
 
   // storage側の中身も保たれている（付けた順・基準とも。付けた順は色を配る順）。
-  const storedAfterReload = await page.evaluate(
-    (key) => localStorage.getItem(key),
-    MULTI_TARGET_SELECTION_KEY,
-  );
+  const storedAfterReload = await page.evaluate((key) => localStorage.getItem(key), MULTI_TARGET_SELECTION_KEY);
   const parsed = JSON.parse(storedAfterReload ?? '{}') as {
     targets: { kind: string; setupId?: string }[];
     baseline?: { kind: string; setupId?: string };
@@ -151,7 +152,10 @@ test('集合に存在しないSetup idが混ざっていても行は消えず「
       'keydist:multi-target-selection',
       JSON.stringify({
         version: 1,
-        targets: [{ kind: 'setup', setupId: 'fixed-a' }, { kind: 'setup', setupId: 'deleted-setup' }],
+        targets: [
+          { kind: 'setup', setupId: 'fixed-a' },
+          { kind: 'setup', setupId: 'deleted-setup' },
+        ],
       }),
     );
   });
@@ -185,10 +189,7 @@ test('既定と違う条件が条件の要約に出る（対象ごとの差は�
         overrides: { global: { sfbHomeCost: false } },
       }),
     );
-    localStorage.setItem(
-      'keydist:multi-target-selection',
-      JSON.stringify({ version: 1, targets: [{ kind: 'setup', setupId: 'fixed-a' }] }),
-    );
+    localStorage.setItem('keydist:multi-target-selection', JSON.stringify({ version: 1, targets: [{ kind: 'setup', setupId: 'fixed-a' }] }));
   });
   await page.goto('/analyzer/comparison');
 
@@ -215,7 +216,10 @@ test('既定の物理配列を変えると、配列対象は追従しSetup対象
       'keydist:multi-target-selection',
       JSON.stringify({
         version: 1,
-        targets: [{ kind: 'layout', layoutId: 'qwerty' }, { kind: 'setup', setupId: 'fixed-a' }],
+        targets: [
+          { kind: 'layout', layoutId: 'qwerty' },
+          { kind: 'setup', setupId: 'fixed-a' },
+        ],
       }),
     );
   });
@@ -249,7 +253,13 @@ test('対象ごとに条件が違う時は、閉じた1行に「対象ごとに�
     );
     localStorage.setItem(
       'keydist:multi-target-selection',
-      JSON.stringify({ version: 1, targets: [{ kind: 'setup', setupId: 'fixed-a' }, { kind: 'setup', setupId: 'fixed-b' }] }),
+      JSON.stringify({
+        version: 1,
+        targets: [
+          { kind: 'setup', setupId: 'fixed-a' },
+          { kind: 'setup', setupId: 'fixed-b' },
+        ],
+      }),
     );
   });
   await page.goto('/analyzer/comparison');
@@ -269,7 +279,10 @@ test('対象ごとに条件が違う時は、閉じた1行に「対象ごとに�
 });
 
 test('全対象の条件が同じなら、対象ごとの差の節も「対象ごとに差あり」も出ない', async ({ page }) => {
-  const targets = [{ kind: 'setup', setupId: 'fixed-a' }, { kind: 'setup', setupId: 'fixed-b' }];
+  const targets = [
+    { kind: 'setup', setupId: 'fixed-a' },
+    { kind: 'setup', setupId: 'fixed-b' },
+  ];
   await page.addInitScript(seedSelection, { targets, overrides: {} });
   await page.goto('/analyzer/comparison');
 
@@ -293,23 +306,21 @@ function seedSelection({ targets, overrides }: { targets: readonly unknown[]; ov
       overrides,
     }),
   );
-  localStorage.setItem(
-    'keydist:multi-target-selection',
-    JSON.stringify({ version: 1, targets }),
-  );
+  localStorage.setItem('keydist:multi-target-selection', JSON.stringify({ version: 1, targets }));
 }
 
 test('Setup対象だけの集合では、既定の物理配列を変えても名前・条件欄に「既定の物理配列」が出ない（M1）', async ({ page }) => {
-  const targets = [{ kind: 'setup', setupId: 'fixed-a' }, { kind: 'setup', setupId: 'fixed-b' }];
+  const targets = [
+    { kind: 'setup', setupId: 'fixed-a' },
+    { kind: 'setup', setupId: 'fixed-b' },
+  ];
   await page.addInitScript(seedSelection, { targets, overrides: {} });
   await page.goto('/analyzer/comparison');
 
   const table = page.locator('.comparison-table');
   await expect(table.locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
   await page.getByLabel('既定の物理配列').selectOption('ortholinear');
-  await expect
-    .poll(async () => page.evaluate(() => localStorage.getItem('keydist:setup-library')))
-    .toContain('ortholinear');
+  await expect.poll(async () => page.evaluate(() => localStorage.getItem('keydist:setup-library'))).toContain('ortholinear');
 
   await expectTargetNames(page, ['QWERTY', 'Colemak-DH']);
   await expect(table).not.toContainText('既定の物理配列');
@@ -334,7 +345,10 @@ test('配列と上書きの無いSetupが同名になっても、衝突した2�
 });
 
 test('解決に失敗したメンバーにも意味のある名前が付く（L2）', async ({ page }) => {
-  const targets = [{ kind: 'setup', setupId: 'fixed-a' }, { kind: 'setup', setupId: 'deleted-setup' }];
+  const targets = [
+    { kind: 'setup', setupId: 'fixed-a' },
+    { kind: 'setup', setupId: 'deleted-setup' },
+  ];
   await page.addInitScript(seedSelection, { targets, overrides: {} });
   await page.goto('/analyzer/comparison');
 
@@ -438,11 +452,14 @@ test('Tabで選択の最後から先へ進むと閉じてボタンの次へ、�
 
 test('ラベル付きのSetupは、候補の2行目にフル名を出す', async ({ page }) => {
   await page.addInitScript(() => {
-    localStorage.setItem('keydist:setup-library', JSON.stringify({
-      version: 1,
-      setups: [{ id: 'fixed-a', layoutId: 'qwerty', shapeId: 'row-staggered', label: '自宅の分割キーボード' }],
-      overrides: {},
-    }));
+    localStorage.setItem(
+      'keydist:setup-library',
+      JSON.stringify({
+        version: 1,
+        setups: [{ id: 'fixed-a', layoutId: 'qwerty', shapeId: 'row-staggered', label: '自宅の分割キーボード' }],
+        overrides: {},
+      }),
+    );
   });
   await page.goto('/analyzer/comparison');
   const selection = await openTargetSelection(page);
@@ -501,7 +518,9 @@ test('画面の文言に開発の内部（issue番号・Phase・ファイル名�
   const description = await page.locator('meta[name="description"]').getAttribute('content');
   expect(description).not.toMatch(/#\d|Phase|standalone|単体ページ|個別画面/);
   const body = page.locator('body');
-  await expect(body).not.toContainText(/#\d{3}|Phase|standalone|単体ページ|個別画面|\.ts\b|Vector lab|connections|N sensitivity|Setup comparison|baseline|言語判定: /);
+  await expect(body).not.toContainText(
+    /#\d{3}|Phase|standalone|単体ページ|個別画面|\.ts\b|Vector lab|connections|N sensitivity|Setup comparison|baseline|言語判定: /,
+  );
 });
 
 test('保存済みの表示する列は、操作可能になった瞬間から表示されている（既定値のまま操作できる瞬間が無い）', async ({ page }) => {
@@ -581,10 +600,7 @@ test.describe('スマホ幅で対象が空の時', () => {
 
 function seedQwertySelection() {
   return () => {
-    localStorage.setItem(
-      'keydist:multi-target-selection',
-      JSON.stringify({ version: 1, targets: [{ kind: 'layout', layoutId: 'qwerty' }] }),
-    );
+    localStorage.setItem('keydist:multi-target-selection', JSON.stringify({ version: 1, targets: [{ kind: 'layout', layoutId: 'qwerty' }] }));
   };
 }
 
@@ -643,9 +659,7 @@ test('Multiの集合（並び・色・基準）はN感度と共有される', as
   await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
   await openTargetSelection(page);
   await page.getByLabel('基準', { exact: true }).selectOption('layout:colemak-dh');
-  await expect
-    .poll(async () => page.evaluate((key) => localStorage.getItem(key), MULTI_TARGET_SELECTION_KEY))
-    .toContain('"baseline"');
+  await expect.poll(async () => page.evaluate((key) => localStorage.getItem(key), MULTI_TARGET_SELECTION_KEY)).toContain('"baseline"');
   const comparisonNames = await targetNames(page);
 
   // N感度は同じ集合をそのまま使う。
@@ -663,9 +677,7 @@ test('Singleはまだ選んでいなければMultiの基準で埋まり、Single
   await expect(table.locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
   await openTargetSelection(page);
   await page.getByLabel('基準', { exact: true }).selectOption('layout:colemak-dh');
-  await expect
-    .poll(async () => page.evaluate((key) => localStorage.getItem(key), MULTI_TARGET_SELECTION_KEY))
-    .toContain('"baseline"');
+  await expect.poll(async () => page.evaluate((key) => localStorage.getItem(key), MULTI_TARGET_SELECTION_KEY)).toContain('"baseline"');
   const comparisonNames = await targetNames(page);
 
   // Bigram Flowはまだ対象を選んでいないので、Multiの基準（Colemak-DH）で埋まる。
@@ -676,9 +688,7 @@ test('Singleはまだ選んでいなければMultiの基準で埋まり、Single
   // Bigram Flowで選び直してもMultiの集合は変わらない。
   await toggleTarget(page, 'layout:dvorak');
   await expectChosenTarget(page, 'layout:dvorak');
-  await expect
-    .poll(async () => page.evaluate(() => localStorage.getItem('keydist:single-target-selection')))
-    .toContain('dvorak');
+  await expect.poll(async () => page.evaluate(() => localStorage.getItem('keydist:single-target-selection'))).toContain('dvorak');
   await page.goto('/analyzer/comparison');
   await expect(table.locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
   await expectTargetNames(page, comparisonNames);
@@ -690,9 +700,7 @@ test('Singleで一度選んだ後は、Multiの基準を変えてもSingleは変
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   await toggleTarget(page, 'layout:dvorak');
   await expectChosenTarget(page, 'layout:dvorak');
-  await expect
-    .poll(async () => page.evaluate(() => localStorage.getItem('keydist:single-target-selection')))
-    .toContain('dvorak');
+  await expect.poll(async () => page.evaluate(() => localStorage.getItem('keydist:single-target-selection'))).toContain('dvorak');
 
   await page.goto('/analyzer/comparison');
   await addTarget(page, 'layout:qwerty');
@@ -743,7 +751,10 @@ test('読み込み前のHTMLに空状態のボタンが無く、保存済みの�
       key,
       JSON.stringify({
         version: 1,
-        targets: [{ kind: 'layout', layoutId: 'qwerty' }, { kind: 'layout', layoutId: 'dvorak' }],
+        targets: [
+          { kind: 'layout', layoutId: 'qwerty' },
+          { kind: 'layout', layoutId: 'dvorak' },
+        ],
         colorSlots: {},
       }),
     );
@@ -832,9 +843,7 @@ test('共有リンクは集合を並び順・基準ごと運び、自作のSetup
   expect(url).not.toContain('src-1');
 
   // 同じ名前のSetupを別のidで持つ人は、そのSetupで開く。並び順と基準も同じ。
-  const same = await openShared(context, url, [
-    { id: 'dst-9', layoutId: 'colemak-dh', shapeId: 'row-staggered', label: '仕事用' },
-  ]);
+  const same = await openShared(context, url, [{ id: 'dst-9', layoutId: 'colemak-dh', shapeId: 'row-staggered', label: '仕事用' }]);
   try {
     await expect(same.opened.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(3, { timeout: 10_000 });
     await expect(same.opened.locator('.comparison-table tr[data-baseline="true"]')).toContainText('仕事用');
@@ -883,13 +892,16 @@ test('手持ちの集合が空で共有リンクの対象を1つも引けない�
 });
 
 async function openSummaryWith(page: Page, setups: readonly { id: string; layoutId: string; shapeId: string }[]) {
-  await page.addInitScript(({ setups: list }) => {
-    localStorage.setItem('keydist:setup-library', JSON.stringify({ version: 1, setups: list, overrides: {} }));
-    localStorage.setItem(
-      'keydist:multi-target-selection',
-      JSON.stringify({ version: 1, targets: list.map((s) => ({ kind: 'setup', setupId: s.id })) }),
-    );
-  }, { setups });
+  await page.addInitScript(
+    ({ setups: list }) => {
+      localStorage.setItem('keydist:setup-library', JSON.stringify({ version: 1, setups: list, overrides: {} }));
+      localStorage.setItem(
+        'keydist:multi-target-selection',
+        JSON.stringify({ version: 1, targets: list.map((s) => ({ kind: 'setup', setupId: s.id })) }),
+      );
+    },
+    { setups },
+  );
   await page.goto('/analyzer/comparison');
   await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(setups.length, { timeout: 10_000 });
   const summary = page.locator('.pane-condition-summary');
@@ -940,7 +952,10 @@ test('全体のローマ字規則を変えると、QWERTYの数値は動き、�
 
 test('2件とも同じ値へ上書きしても、共通の行は画面の値のまま、2件とも対象ごとの差に出る', async ({ page }) => {
   await page.addInitScript(seedSelection, {
-    targets: [{ kind: 'setup', setupId: 'fixed-a' }, { kind: 'setup', setupId: 'fixed-b' }],
+    targets: [
+      { kind: 'setup', setupId: 'fixed-a' },
+      { kind: 'setup', setupId: 'fixed-b' },
+    ],
     overrides: { setup: { 'fixed-a': { windowSize: 2 }, 'fixed-b': { windowSize: 2 } } },
   });
   await page.goto('/analyzer/comparison');
@@ -970,10 +985,7 @@ test('上書きありのSetupを1件だけ選ぶと、条件の要約の「対�
 
 test('共有リンクで届いた解析設定と対象は、「元に戻す」1回でリンクを開く前へ戻る', async ({ page }) => {
   await page.addInitScript(() => {
-    localStorage.setItem(
-      'keydist:multi-target-selection',
-      JSON.stringify({ version: 1, targets: [{ kind: 'layout', layoutId: 'qwerty' }] }),
-    );
+    localStorage.setItem('keydist:multi-target-selection', JSON.stringify({ version: 1, targets: [{ kind: 'layout', layoutId: 'qwerty' }] }));
     localStorage.setItem(
       'keydist:standalone-analyzer-options',
       JSON.stringify({ version: 1, comparison: { visibleColumns: ['actions', 'totalUnits'] } }),

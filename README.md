@@ -298,6 +298,8 @@ Node.js 22.20以上（24系なら24.4以上）が要ります（ビルド時の�
 npm install
 npm run dev        # 開発サーバー
 npm test           # モデルの分岐を検証
+npm run lint       # 書式と一般的な誤りの検査
+npm run format     # 書式を整える
 npm run typecheck  # 型検査のみ
 npm run build      # ビルドのみ（型検査はしない）
 ```

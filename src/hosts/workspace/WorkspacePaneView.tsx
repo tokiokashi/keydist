@@ -16,27 +16,21 @@ import type { WorkspacePaneRuntime } from './pane-runtime.ts';
  * 描画の例外は`WorkspacePaneBoundary`が受け、Analyzerが無い・対象の形が合わないペインは
  * 使えないことを示して閉じられるようにする。
  */
-export function WorkspacePaneView({
-  pane,
-  runtime,
-}: {
-  readonly pane: WorkspacePane;
-  readonly runtime: WorkspacePaneRuntime;
-}) {
+export function WorkspacePaneView({ pane, runtime }: { readonly pane: WorkspacePane; readonly runtime: WorkspacePaneRuntime }) {
   if (isBlankPane(pane.analyzerId)) {
     // 余白のペインは対象も解析設定も持たず、描画で失敗する要素も無いので、境界を挟まない
     return <BlankWorkspacePane pane={pane} runtime={runtime} />;
   }
   const entry = findWorkspaceAnalyzer(pane.analyzerId);
   // 固定の対象がAnalyzerの形と合わない時だけ使えない（従うペインは、Workspaceの対象から形に合う方を読む）。
-  const usable = entry !== undefined && (pane.binding.mode === 'follow' || (pane.binding.mode === 'fixed' && pane.binding.target.kind === entry.cardinality));
+  const usable =
+    entry !== undefined && (pane.binding.mode === 'follow' || (pane.binding.mode === 'fixed' && pane.binding.target.kind === entry.cardinality));
   return (
     <WorkspacePaneBoundary onClose={() => runtime.closePane(pane.id)}>
-      {usable ? <AnalyzerPane pane={pane} runtime={runtime} /> : (
-        <PaneNotice
-          message="このAnalyzerは使えません。閉じてから、もう一度追加してください"
-          onClose={() => runtime.closePane(pane.id)}
-        />
+      {usable ? (
+        <AnalyzerPane pane={pane} runtime={runtime} />
+      ) : (
+        <PaneNotice message="このAnalyzerは使えません。閉じてから、もう一度追加してください" onClose={() => runtime.closePane(pane.id)} />
       )}
     </WorkspacePaneBoundary>
   );
@@ -63,7 +57,9 @@ function PaneNotice({
     <div className="workspace-pane-notice" role="alert" data-workspace-pane-notice="true">
       <p>{message}</p>
       <ErrorDetails lines={details} />
-      <button type="button" className="pane-empty-button" onClick={onClose}>閉じる</button>
+      <button type="button" className="pane-empty-button" onClick={onClose}>
+        閉じる
+      </button>
     </div>
   );
 }
@@ -73,10 +69,7 @@ function PaneNotice({
  * ここが受けるのはそれより外（見出し・解析設定・対象の選択・ペインの組み立て）の例外。
  * 他のペインとWorkspaceは動き続ける。
  */
-class WorkspacePaneBoundary extends Component<
-  { readonly children: ReactNode; readonly onClose: () => void },
-  { readonly error?: unknown }
-> {
+class WorkspacePaneBoundary extends Component<{ readonly children: ReactNode; readonly onClose: () => void }, { readonly error?: unknown }> {
   override state: { readonly error?: unknown } = {};
 
   static getDerivedStateFromError(error: unknown) {

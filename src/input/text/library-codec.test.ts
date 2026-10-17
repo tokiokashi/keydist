@@ -74,7 +74,10 @@ test('decode: 未知の項目は捨てて診断を積む（要素は残す）', 
   assert.equal(result.ok, true);
   if (result.ok) {
     assert.deepEqual(result.value.texts, [{ id: 'b', name: 'n', text: 't' }]);
-    assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.path), ['texts[0].typo']);
+    assert.deepEqual(
+      result.diagnostics.map((diagnostic) => diagnostic.path),
+      ['texts[0].typo'],
+    );
   }
 });
 

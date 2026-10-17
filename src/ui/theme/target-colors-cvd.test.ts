@@ -53,10 +53,12 @@ function oklab([r, g, b]: Vec3): Vec3 {
 }
 
 const THEME_CSS = readFileSync(new URL('./theme.css', import.meta.url), 'utf8');
-const PALETTES = [1, 2].map((group) => Array.from({ length: TARGET_PALETTE_SIZE }, (_, i) => {
-  const m = THEME_CSS.match(new RegExp(`--target-color-${i}:\\s*light-dark\\(\\s*(#[0-9a-fA-F]{6})\\s*,\\s*(#[0-9a-fA-F]{6})`))!;
-  return m[group]!;
-}));
+const PALETTES = [1, 2].map((group) =>
+  Array.from({ length: TARGET_PALETTE_SIZE }, (_, i) => {
+    const m = THEME_CSS.match(new RegExp(`--target-color-${i}:\\s*light-dark\\(\\s*(#[0-9a-fA-F]{6})\\s*,\\s*(#[0-9a-fA-F]{6})`))!;
+    return m[group]!;
+  }),
+);
 
 // 集合は先頭の数色しか使わないことが多い。12色すべてを見分けられる並びは作れない
 // （1型・2型・3型では0.03を割る組が必ず残る）ので、先頭の範囲に限って保証する。

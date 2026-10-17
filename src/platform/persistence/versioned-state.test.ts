@@ -17,14 +17,11 @@ test('versioned decoder distinguishes missing, invalid and unsupported state', (
   assert.deepEqual(decodeVersionedState(null, 1, isExampleState), { status: 'empty' });
   assert.deepEqual(decodeVersionedState('{', 1, isExampleState), { status: 'invalid' });
   assert.deepEqual(decodeVersionedState('{}', 1, isExampleState), { status: 'invalid' });
-  assert.deepEqual(
-    decodeVersionedState('{"version":2,"value":"x"}', 1, isExampleState),
-    {
-      status: 'unsupported-version',
-      version: 2,
-      value: { version: 2, value: 'x' },
-    },
-  );
+  assert.deepEqual(decodeVersionedState('{"version":2,"value":"x"}', 1, isExampleState), {
+    status: 'unsupported-version',
+    version: 2,
+    value: { version: 2, value: 'x' },
+  });
 });
 
 test('unsupported-version payload can be passed to a migrator without reparsing', () => {
@@ -40,12 +37,6 @@ test('unsupported-version payload can be passed to a migrator without reparsing'
 });
 
 test('versioned decoder validates matching-version payloads before returning them', () => {
-  assert.deepEqual(
-    decodeVersionedState('{"version":1,"value":1}', 1, isExampleState),
-    { status: 'invalid' },
-  );
-  assert.deepEqual(
-    decodeVersionedState('{"version":1,"value":"ok"}', 1, isExampleState),
-    { status: 'ok', value: { version: 1, value: 'ok' } },
-  );
+  assert.deepEqual(decodeVersionedState('{"version":1,"value":1}', 1, isExampleState), { status: 'invalid' });
+  assert.deepEqual(decodeVersionedState('{"version":1,"value":"ok"}', 1, isExampleState), { status: 'ok', value: { version: 1, value: 'ok' } });
 });

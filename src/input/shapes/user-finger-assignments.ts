@@ -1,5 +1,15 @@
 import * as v from 'valibot';
-import { decodeDroppingInvalid, defineAssetCodec, isRecord, UNSAFE_OBJECT_KEYS, type AssetCodec, type CodecDiagnostic, droppedDuplicateId, droppedNotArray, droppedReservedKey } from '#input/codec/index.ts';
+import {
+  decodeDroppingInvalid,
+  defineAssetCodec,
+  isRecord,
+  UNSAFE_OBJECT_KEYS,
+  type AssetCodec,
+  type CodecDiagnostic,
+  droppedDuplicateId,
+  droppedNotArray,
+  droppedReservedKey,
+} from '#input/codec/index.ts';
 import { ALL_FINGERS, FINGERS, type Finger, type FingerAssignment, type NonThumb } from './geometry.ts';
 
 /**
@@ -17,8 +27,7 @@ import { ALL_FINGERS, FINGERS, type Finger, type FingerAssignment, type NonThumb
  */
 export const USER_FINGER_ASSIGNMENT_ID_PREFIX = 'finger-';
 
-export const newId = (): string =>
-  `${USER_FINGER_ASSIGNMENT_ID_PREFIX}${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+export const newId = (): string => `${USER_FINGER_ASSIGNMENT_ID_PREFIX}${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
 const nonThumbFingerSchema = v.picklist(FINGERS);
 
@@ -43,9 +52,7 @@ const homeKeySchema = v.strictObject(
  * ホームキーがその指の担当でない割り当ては、編集の途中の状態として保存でき（エディタが警告を出す）、
  * 物理配列を構築する時に拒否される。
  */
-export function fingerAssignmentConsistencyProblem(
-  assignment: Pick<FingerAssignment, 'baseFinger' | 'fingerKeys'>,
-): string | undefined {
+export function fingerAssignmentConsistencyProblem(assignment: Pick<FingerAssignment, 'baseFinger' | 'fingerKeys'>): string | undefined {
   for (const [key, finger] of Object.entries(assignment.baseFinger)) {
     if (!assignment.fingerKeys[finger].includes(key)) return `キー「${key}」の基本の指が、そのキーを担当していません`;
   }
@@ -72,11 +79,7 @@ const userFingerAssignmentSchema = v.pipe(
  * `raw`から自作の指割り当ての配列を読み取る。壊れた要素・id重複は捨てて診断を積む
  * （`input/setup/codec.ts`の`decodeSetups`と同じ「壊れた要素だけ捨てて残りを読む」方針）。
  */
-export function decodeUserFingerAssignments(
-  raw: unknown,
-  path: string,
-  diagnostics: CodecDiagnostic[],
-): FingerAssignment[] {
+export function decodeUserFingerAssignments(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): FingerAssignment[] {
   if (!Array.isArray(raw)) {
     // 値があって配列でない時は、全件が消えることを診断で示す（無い時は空の手持ちで正しい）
     if (raw !== undefined) diagnostics.push({ path, message: droppedNotArray('指の割り当て') });
@@ -180,23 +183,16 @@ export function duplicateUserFingerAssignment(
  * 値だけからは資産由来か組み込みかコマンド層からは区別できない）。値を残し、解決側の
  * fallbackに一本化する方が経路が1つで済む。
  */
-export function deleteUserFingerAssignment(
-  assignments: readonly FingerAssignment[],
-  id: string,
-): readonly FingerAssignment[] {
+export function deleteUserFingerAssignment(assignments: readonly FingerAssignment[], id: string): readonly FingerAssignment[] {
   if (!assignments.some((assignment) => assignment.id === id)) return assignments;
   return assignments.filter((assignment) => assignment.id !== id);
 }
 
 /** 改名。対象が存在しない、または既に同じ名前なら`assignments`をそのまま返す。 */
-export function renameUserFingerAssignment(
-  assignments: readonly FingerAssignment[],
-  id: string,
-  name: string,
-): readonly FingerAssignment[] {
+export function renameUserFingerAssignment(assignments: readonly FingerAssignment[], id: string, name: string): readonly FingerAssignment[] {
   const target = assignments.find((assignment) => assignment.id === id);
   if (target === undefined || target.name === name) return assignments;
-  return assignments.map((assignment) => assignment.id === id ? { ...assignment, name } : assignment);
+  return assignments.map((assignment) => (assignment.id === id ? { ...assignment, name } : assignment));
 }
 
 /**
@@ -211,9 +207,9 @@ export function updateUserFingerAssignment(
   const target = assignments.find((assignment) => assignment.id === id);
   if (target === undefined || sameContent(target, content)) return assignments;
   const cloned = structuredClone(content);
-  return assignments.map((assignment) => assignment.id === id
-    ? { ...assignment, baseFinger: cloned.baseFinger, fingerKeys: cloned.fingerKeys, homeKey: cloned.homeKey }
-    : assignment);
+  return assignments.map((assignment) =>
+    assignment.id === id ? { ...assignment, baseFinger: cloned.baseFinger, fingerKeys: cloned.fingerKeys, homeKey: cloned.homeKey } : assignment,
+  );
 }
 
 function sameContent(

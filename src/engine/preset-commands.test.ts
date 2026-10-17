@@ -60,9 +60,10 @@ test('savePresetCommand: 全体の今の上書きを複製して保存する。�
   const start = withOverrides({ global: { windowSize: 5 }, layout: { qwerty: { windowSize: 9 } } });
   const step = run(start, savePresetCommand('  厳しめ ', GLOBAL, generateId));
   assert.equal(step.outcome.kind, 'applied');
-  assert.deepEqual(step.assets.presetLibrary.presets.map(({ name, values }) => ({ name, values })), [
-    { name: '厳しめ', values: { windowSize: 5 } },
-  ]);
+  assert.deepEqual(
+    step.assets.presetLibrary.presets.map(({ name, values }) => ({ name, values })),
+    [{ name: '厳しめ', values: { windowSize: 5 } }],
+  );
   assert.equal(step.assets.setupLibrary, start.setupLibrary);
 });
 
@@ -79,10 +80,7 @@ test('savePresetCommand: 上書きが無いレベルは空の値で保存でき�
 });
 
 test('applyPresetCommand: 置き換える（無い項目は既定へ戻り、既定と同じ値は残らない）。undoで戻る', () => {
-  const saved = run(
-    withOverrides({ global: { windowSize: 6 } }),
-    savePresetCommand('P', GLOBAL, generateId),
-  );
+  const saved = run(withOverrides({ global: { windowSize: 6 } }), savePresetCommand('P', GLOBAL, generateId));
   const id = saved.assets.presetLibrary.presets[0].id;
   // 今は別の上書き（sfbHomeCost）だけを持つ状態にして流し込む
   const other = withOverrides({ global: { sfbHomeCost: false } });
@@ -153,10 +151,7 @@ test('流し込んだ条件は、同じ値を手で設定した時と実効値�
   };
   const applied = run(target, applyPresetCommand(saved.assets.presetLibrary.presets[0].id, GLOBAL)).assets;
 
-  assert.deepEqual(
-    resolveSettings(applied.setupLibrary.overrides, context),
-    resolveSettings(manual.setupLibrary.overrides, context),
-  );
+  assert.deepEqual(resolveSettings(applied.setupLibrary.overrides, context), resolveSettings(manual.setupLibrary.overrides, context));
   assert.equal(readOverride(applied.setupLibrary.overrides, GLOBAL, 'preferOppositeThumb'), undefined);
 });
 
@@ -180,8 +175,20 @@ test('importPresetsCommand: 新しいidで追加し、同名は番号を付け�
     ...withOverrides({ global: { windowSize: 4 } }),
     presetLibrary: { presets: [{ id: 'p', name: 'A', values: { windowSize: 7 } }] },
   };
-  const step = run(start, importPresetsCommand([{ name: 'A', values: { windowSize: 5 } }, { name: 'A', values: {} }], generateId));
-  assert.deepEqual(step.assets.presetLibrary.presets.map((preset) => preset.name), ['A', 'A 2', 'A 3']);
+  const step = run(
+    start,
+    importPresetsCommand(
+      [
+        { name: 'A', values: { windowSize: 5 } },
+        { name: 'A', values: {} },
+      ],
+      generateId,
+    ),
+  );
+  assert.deepEqual(
+    step.assets.presetLibrary.presets.map((preset) => preset.name),
+    ['A', 'A 2', 'A 3'],
+  );
   assert.deepEqual(step.assets.presetLibrary.presets[0], start.presetLibrary.presets[0]);
   assert.equal(step.assets.setupLibrary, start.setupLibrary);
   assert.equal(run(start, importPresetsCommand([], generateId)).outcome.kind, 'no-op');

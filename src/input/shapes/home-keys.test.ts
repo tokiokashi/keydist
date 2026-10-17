@@ -1,11 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {
-  assignmentWithHomeKeys,
-  buildGeometry,
-  DEFAULT_FINGER_ASSIGNMENT,
-  PHYSICAL_SHAPES,
-} from './geometry.ts';
+import { assignmentWithHomeKeys, buildGeometry, DEFAULT_FINGER_ASSIGNMENT, PHYSICAL_SHAPES } from './geometry.ts';
 import { toLayout, type UserLayout } from '../layouts/user-layouts.ts';
 
 test('配列側のホームキーを運指へ適用し、未知のキーは無視する', () => {

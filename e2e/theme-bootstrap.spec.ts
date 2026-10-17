@@ -2,10 +2,13 @@ import { expect, test } from '@playwright/test';
 
 test('explicit theme is applied by the head bootstrap before client scripts run', async ({ page }) => {
   await page.addInitScript(() => {
-    localStorage.setItem('keydist:app-state', JSON.stringify({
-      version: 2,
-      appearance: { theme: 'dark' },
-    }));
+    localStorage.setItem(
+      'keydist:app-state',
+      JSON.stringify({
+        version: 2,
+        appearance: { theme: 'dark' },
+      }),
+    );
   });
   await page.route('**/*', async (route) => {
     if (route.request().resourceType() === 'script') {
@@ -21,11 +24,14 @@ test('explicit theme is applied by the head bootstrap before client scripts run'
 
 test('an invalid appearance.theme leaves the system theme even when analyzer.theme holds a valid one', async ({ page }) => {
   await page.addInitScript(() => {
-    localStorage.setItem('keydist:app-state', JSON.stringify({
-      version: 2,
-      appearance: { theme: 'not-a-real-theme' },
-      analyzer: { theme: 'dark' },
-    }));
+    localStorage.setItem(
+      'keydist:app-state',
+      JSON.stringify({
+        version: 2,
+        appearance: { theme: 'not-a-real-theme' },
+        analyzer: { theme: 'dark' },
+      }),
+    );
   });
   await page.route('**/*', async (route) => {
     if (route.request().resourceType() === 'script') {

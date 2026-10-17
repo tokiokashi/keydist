@@ -10,7 +10,12 @@ import { defaultGridSize, gridWidthPx, rightmostCol } from './grid-metrics.ts';
 for (const kind of SAMPLE_KINDS) {
   test(`サンプル（${kind}）のペインのAnalyzerは、Workspaceに置ける組み込みのAnalyzerで、対象の持ち方も合う`, () => {
     let n = 0;
-    const { created } = createSampleWorkspace(initialWorkspaceLibrary(), () => 'w', () => `p${(n += 1)}`, kind);
+    const { created } = createSampleWorkspace(
+      initialWorkspaceLibrary(),
+      () => 'w',
+      () => `p${(n += 1)}`,
+      kind,
+    );
     for (const pane of created.panes) {
       const entry = findWorkspaceAnalyzer(pane.analyzerId);
       assert.ok(entry, `組み込みのAnalyzerに無い: ${pane.analyzerId}`);
@@ -32,7 +37,12 @@ test('サンプルの指ごとの距離の高さは、ペインを足した時�
 for (const kind of SAMPLE_KINDS) {
   test(`サンプル（${kind}）の並びは、FHDでサイドバーを固定して開いた面に、縦のスクロールバーがあっても横にスクロールせずに収まる`, () => {
     let n = 0;
-    const { created } = createSampleWorkspace(initialWorkspaceLibrary(), () => 'w', () => `p${(n += 1)}`, kind);
+    const { created } = createSampleWorkspace(
+      initialWorkspaceLibrary(),
+      () => 'w',
+      () => `p${(n += 1)}`,
+      kind,
+    );
     const width = gridWidthPx(rightmostCol(created.grid));
     assert.ok(width <= 1680 - 15, `${width}px`);
   });

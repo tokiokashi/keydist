@@ -2,17 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { Finger, Key, Point } from '#input/shapes/geometry.ts';
 import type { Press, Stroke, StrokeParticipation } from '#trace/generate.ts';
-import {
-  analyzeStrokeStructure,
-} from './aggregate.ts';
-import {
-  DEFAULT_ARPEGGIO_INTERPRETATION,
-} from './arpeggio.ts';
+import { analyzeStrokeStructure } from './aggregate.ts';
+import { DEFAULT_ARPEGGIO_INTERPRETATION } from './arpeggio.ts';
 import { DEFAULT_CHAIN_INTERPRETATION } from './chain.ts';
-import {
-  DEFAULT_ACTION_REALIZATION_POLICY,
-  DEFAULT_TRIGGER_REALIZATION_POLICY,
-} from '#input/semantics/index.ts';
+import { DEFAULT_ACTION_REALIZATION_POLICY, DEFAULT_TRIGGER_REALIZATION_POLICY } from '#input/semantics/index.ts';
 
 const key = (id: string, finger: Finger, x: number, y: number, row = 2): Key => ({
   id,
@@ -23,12 +16,7 @@ const key = (id: string, finger: Finger, x: number, y: number, row = 2): Key => 
   col: 0,
 });
 
-const press = (
-  finger: Finger,
-  keys: Key[],
-  target?: Point,
-  sfb = false,
-): Press => ({
+const press = (finger: Finger, keys: Key[], target?: Point, sfb = false): Press => ({
   finger,
   keys,
   target: target ?? { x: keys[0].x, y: keys[0].y },
@@ -69,23 +57,23 @@ const keepSameFinger = {
 };
 
 test('overlapするArpeggioSpanはraw countを保ちcoverageだけunionする', () => {
-  const result = analyzeStrokeStructure([
-    stroke(0, press('LP', [key('a', 'LP', 1, 2)])),
-    stroke(1, press('LR', [key('s', 'LR', 2, 2)])),
-    stroke(2, press('LR', [key('w', 'LR', 2, 1)], undefined, true)),
-    stroke(3, press('LP', [key('q', 'LP', 1, 1)])),
-  ], keepSameFinger, {
-    ...DEFAULT_ARPEGGIO_INTERPRETATION,
-    bridgeSameFinger: true,
-  });
+  const result = analyzeStrokeStructure(
+    [
+      stroke(0, press('LP', [key('a', 'LP', 1, 2)])),
+      stroke(1, press('LR', [key('s', 'LR', 2, 2)])),
+      stroke(2, press('LR', [key('w', 'LR', 2, 1)], undefined, true)),
+      stroke(3, press('LP', [key('q', 'LP', 1, 1)])),
+    ],
+    keepSameFinger,
+    {
+      ...DEFAULT_ARPEGGIO_INTERPRETATION,
+      bridgeSameFinger: true,
+    },
+  );
 
   assert.equal(result.arpeggioSpans.length, 2);
   assert.deepEqual(
-    result.arpeggioSpans.map((span) => [
-      span.startStrokeIndex,
-      span.endStrokeIndex,
-      span.direction,
-    ]),
+    result.arpeggioSpans.map((span) => [span.startStrokeIndex, span.endStrokeIndex, span.direction]),
     [
       [0, 3, 'inward'],
       [1, 4, 'outward'],
@@ -100,11 +88,14 @@ test('overlapするArpeggioSpanはraw countを保ちcoverageだけunionする', 
 });
 
 test('A → A → A はSFB event=2、関与Stroke=3になる', () => {
-  const result = analyzeStrokeStructure([
-    stroke(0, press('LI', [key('f', 'LI', 4, 2)])),
-    stroke(1, press('LI', [key('r', 'LI', 3.5, 1)], undefined, true)),
-    stroke(2, press('LI', [key('v', 'LI', 4.25, 3)], undefined, true)),
-  ], keepSameFinger);
+  const result = analyzeStrokeStructure(
+    [
+      stroke(0, press('LI', [key('f', 'LI', 4, 2)])),
+      stroke(1, press('LI', [key('r', 'LI', 3.5, 1)], undefined, true)),
+      stroke(2, press('LI', [key('v', 'LI', 4.25, 3)], undefined, true)),
+    ],
+    keepSameFinger,
+  );
 
   assert.equal(result.sfbEvents.length, 2);
   assert.equal(result.aggregate.sfb.events, 2);
@@ -119,11 +110,10 @@ test('A → A → A はSFB event=2、関与Stroke=3になる', () => {
 });
 
 test('Redirect annotationは3 Stroke全体ではなくpivotだけに付く', () => {
-  const result = analyzeStrokeStructure([
-    stroke(0, press('LP', [key('a', 'LP', 1, 2)])),
-    stroke(1, press('LM', [key('d', 'LM', 3, 2)])),
-    stroke(2, press('LR', [key('s', 'LR', 2, 2)])),
-  ], keepSameFinger);
+  const result = analyzeStrokeStructure(
+    [stroke(0, press('LP', [key('a', 'LP', 1, 2)])), stroke(1, press('LM', [key('d', 'LM', 3, 2)])), stroke(2, press('LR', [key('s', 'LR', 2, 2)]))],
+    keepSameFinger,
+  );
 
   assert.equal(result.redirects.length, 1);
   assert.deepEqual(
@@ -138,15 +128,19 @@ test('Redirect annotationは3 Stroke全体ではなくpivotだけに付く', () 
 });
 
 test('bridgeSameFinger後もinSfbを残して非排他的annotationにする', () => {
-  const result = analyzeStrokeStructure([
-    stroke(0, press('LP', [key('a', 'LP', 1, 2)])),
-    stroke(1, press('LR', [key('s', 'LR', 2, 2)])),
-    stroke(2, press('LR', [key('w', 'LR', 2, 1)], undefined, true)),
-    stroke(3, press('LM', [key('d', 'LM', 3, 2)])),
-  ], keepSameFinger, {
-    ...DEFAULT_ARPEGGIO_INTERPRETATION,
-    bridgeSameFinger: true,
-  });
+  const result = analyzeStrokeStructure(
+    [
+      stroke(0, press('LP', [key('a', 'LP', 1, 2)])),
+      stroke(1, press('LR', [key('s', 'LR', 2, 2)])),
+      stroke(2, press('LR', [key('w', 'LR', 2, 1)], undefined, true)),
+      stroke(3, press('LM', [key('d', 'LM', 3, 2)])),
+    ],
+    keepSameFinger,
+    {
+      ...DEFAULT_ARPEGGIO_INTERPRETATION,
+      bridgeSameFinger: true,
+    },
+  );
 
   assert.equal(result.annotations[1].inArpeggio, true);
   assert.equal(result.annotations[2].inArpeggio, true);
@@ -155,20 +149,20 @@ test('bridgeSameFinger後もinSfbを残して非排他的annotationにする', (
 });
 
 test('LongRoll内部pairはinTwoRollにならずAnyRollはunionになる', () => {
-  const result = analyzeStrokeStructure([
-    stroke(0, press('LP', [key('a', 'LP', 1, 2)])),
-    stroke(1, press('LR', [key('s', 'LR', 2, 2)])),
-    stroke(2, press('LM', [key('d', 'LM', 3, 2)])),
-    stroke(3, press('LI', [key('f', 'LI', 4, 2)])),
-  ], keepSameFinger);
+  const result = analyzeStrokeStructure(
+    [
+      stroke(0, press('LP', [key('a', 'LP', 1, 2)])),
+      stroke(1, press('LR', [key('s', 'LR', 2, 2)])),
+      stroke(2, press('LM', [key('d', 'LM', 3, 2)])),
+      stroke(3, press('LI', [key('f', 'LI', 4, 2)])),
+    ],
+    keepSameFinger,
+  );
 
   assert.equal(result.longRolls.length, 1);
   assert.equal(result.twoRolls.length, 0);
   assert.deepEqual(
-    result.annotations.map((annotation) => [
-      annotation.inLongRoll,
-      annotation.inTwoRoll,
-    ]),
+    result.annotations.map((annotation) => [annotation.inLongRoll, annotation.inTwoRoll]),
     [
       [true, false],
       [true, false],
@@ -182,25 +176,25 @@ test('LongRoll内部pairはinTwoRollにならずAnyRollはunionになる', () =>
 });
 
 test('standalone TwoRollの両端だけinTwoRoll=trueになりcoverageへunionする', () => {
-  const result = analyzeStrokeStructure([
-    stroke(0, press('LP', [key('a', 'LP', 1, 2)])),
-    stroke(1, press('LM', [key('d', 'LM', 3, 2)])),
-    stroke(2, press('LR', [key('s', 'LR', 2, 2)])),
-  ], keepSameFinger);
+  const result = analyzeStrokeStructure(
+    [stroke(0, press('LP', [key('a', 'LP', 1, 2)])), stroke(1, press('LM', [key('d', 'LM', 3, 2)])), stroke(2, press('LR', [key('s', 'LR', 2, 2)]))],
+    keepSameFinger,
+  );
 
-  assert.deepEqual(result.redirects.map((redirect) => redirect.pivotStrokeIndex), [1]);
-  assert.deepEqual(result.twoRolls, [{
-    chainIndex: 0,
-    startStrokeIndex: 1,
-    endStrokeIndex: 3,
-    direction: 'outward',
-  }]);
   assert.deepEqual(
-    result.annotations.map((annotation) => [
-      annotation.inLongRoll,
-      annotation.inTwoRoll,
-      annotation.inRedirect,
-    ]),
+    result.redirects.map((redirect) => redirect.pivotStrokeIndex),
+    [1],
+  );
+  assert.deepEqual(result.twoRolls, [
+    {
+      chainIndex: 0,
+      startStrokeIndex: 1,
+      endStrokeIndex: 3,
+      direction: 'outward',
+    },
+  ]);
+  assert.deepEqual(
+    result.annotations.map((annotation) => [annotation.inLongRoll, annotation.inTwoRoll, annotation.inRedirect]),
     [
       [false, false, false],
       [false, true, true],
@@ -213,12 +207,15 @@ test('standalone TwoRollの両端だけinTwoRoll=trueになりcoverageへunion�
 });
 
 test('directional pair統計はcandidate数ではなくHandTransitionを基準に数える', () => {
-  const result = analyzeStrokeStructure([
-    stroke(0, press('LP', [key('a', 'LP', 1, 2)])),
-    stroke(1, press('LR', [key('s', 'LR', 2, 2)])),
-    stroke(2, press('LR', [key('w', 'LR', 2, 1)], undefined, true)),
-    stroke(3, press('LP', [key('q', 'LP', 1, 1)])),
-  ], keepSameFinger);
+  const result = analyzeStrokeStructure(
+    [
+      stroke(0, press('LP', [key('a', 'LP', 1, 2)])),
+      stroke(1, press('LR', [key('s', 'LR', 2, 2)])),
+      stroke(2, press('LR', [key('w', 'LR', 2, 1)], undefined, true)),
+      stroke(3, press('LP', [key('q', 'LP', 1, 1)])),
+    ],
+    keepSameFinger,
+  );
 
   assert.deepEqual(result.aggregate.directionalTransitions, {
     total: 3,
@@ -241,10 +238,11 @@ test('集計結果は解決済みChainInterpretation / ArpeggioInterpretationを
     includeSingleRedirectTail: true,
   };
 
-  const result = analyzeStrokeStructure([
-    stroke(0, press('LP', [key('a', 'LP', 1, 2)])),
-    stroke(1, press('LR', [key('s', 'LR', 2, 2)])),
-  ], chainInterpretation, arpeggioInterpretation);
+  const result = analyzeStrokeStructure(
+    [stroke(0, press('LP', [key('a', 'LP', 1, 2)])), stroke(1, press('LR', [key('s', 'LR', 2, 2)]))],
+    chainInterpretation,
+    arpeggioInterpretation,
+  );
 
   assert.deepEqual(result.aggregate.conditions, {
     chainInterpretation,
@@ -254,14 +252,8 @@ test('集計結果は解決済みChainInterpretation / ArpeggioInterpretationを
   });
   assert.notEqual(result.aggregate.conditions.chainInterpretation, chainInterpretation);
   assert.notEqual(result.aggregate.conditions.arpeggioInterpretation, arpeggioInterpretation);
-  assert.notEqual(
-    result.aggregate.conditions.triggerRealizationPolicy,
-    DEFAULT_TRIGGER_REALIZATION_POLICY,
-  );
-  assert.notEqual(
-    result.aggregate.conditions.actionRealizationPolicy,
-    DEFAULT_ACTION_REALIZATION_POLICY,
-  );
+  assert.notEqual(result.aggregate.conditions.triggerRealizationPolicy, DEFAULT_TRIGGER_REALIZATION_POLICY);
+  assert.notEqual(result.aggregate.conditions.actionRealizationPolicy, DEFAULT_ACTION_REALIZATION_POLICY);
   assert.equal(Object.isFrozen(result.aggregate.conditions), true);
   assert.equal(Object.isFrozen(result.aggregate.conditions.chainInterpretation), true);
   assert.equal(Object.isFrozen(result.aggregate.conditions.arpeggioInterpretation), true);

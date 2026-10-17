@@ -26,11 +26,7 @@ export function decodeVersionedState<T>(
     return { status: 'invalid' };
   }
 
-  if (
-    !isRecord(parsed)
-    || typeof parsed.version !== 'number'
-    || !Number.isInteger(parsed.version)
-  ) {
+  if (!isRecord(parsed) || typeof parsed.version !== 'number' || !Number.isInteger(parsed.version)) {
     return { status: 'invalid' };
   }
 

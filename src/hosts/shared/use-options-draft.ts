@@ -30,28 +30,29 @@ import { applyDraftInput, initialDraftSync, syncDraftWithStored, type DraftSyncS
 export function useOptionsDraft<T>(stored: T, writeLogKey: string): readonly [T, (next: T) => void] {
   const log = useOptionsWriteLog(writeLogKey);
   const peers = useOptionsDraftPeers();
-  const [state, setState] = useState<{ readonly key: string; readonly sync: DraftSyncState<T> }>(
-    () => ({ key: writeLogKey, sync: initialDraftSync(stored, log.latestSeq()) }),
-  );
-  const current = state.key === writeLogKey
-    ? state.sync
-    : initialDraftSync(stored, log.latestSeq());
+  const [state, setState] = useState<{ readonly key: string; readonly sync: DraftSyncState<T> }>(() => ({
+    key: writeLogKey,
+    sync: initialDraftSync(stored, log.latestSeq()),
+  }));
+  const current = state.key === writeLogKey ? state.sync : initialDraftSync(stored, log.latestSeq());
   const synced = state.key === writeLogKey ? syncDraftWithStored(current, stored, log.entries(), log.latestSeq()) : current;
   if (state.key !== writeLogKey || synced !== state.sync) setState({ key: writeLogKey, sync: synced });
 
   const listenerRef = useRef<(value: unknown) => void>(() => {});
-  listenerRef.current = (value) => setState((prev) => (
-    prev.key === writeLogKey ? { key: prev.key, sync: applyDraftInput(prev.sync, value as T) } : prev
-  ));
+  listenerRef.current = (value) =>
+    setState((prev) => (prev.key === writeLogKey ? { key: prev.key, sync: applyDraftInput(prev.sync, value as T) } : prev));
   // 購読の同一性（自分を除いて伝える時の目印）は、この下書きの存続中は変えない
   const selfRef = useRef<((value: unknown) => void) | undefined>(undefined);
   selfRef.current ??= (value) => listenerRef.current(value);
   const self = selfRef.current;
   useEffect(() => peers.subscribe(writeLogKey, self), [peers, writeLogKey, self]);
 
-  const setDraft = useCallback((next: T) => {
-    setState((prev) => (prev.key === writeLogKey ? { key: prev.key, sync: applyDraftInput(prev.sync, next) } : prev));
-    peers.publish(writeLogKey, next, self);
-  }, [peers, writeLogKey, self]);
+  const setDraft = useCallback(
+    (next: T) => {
+      setState((prev) => (prev.key === writeLogKey ? { key: prev.key, sync: applyDraftInput(prev.sync, next) } : prev));
+      peers.publish(writeLogKey, next, self);
+    },
+    [peers, writeLogKey, self],
+  );
   return [synced.draft, setDraft] as const;
 }

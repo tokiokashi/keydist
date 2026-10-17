@@ -192,12 +192,7 @@ export interface SetRowSource {
  * 単体ページとWorkspaceのペインに載る。
  */
 export interface SetAnalyzerPaneParts<Options, Extracted, RowContext>
-  extends AnalyzerPaneParts<
-    SetAnalyzerDefinition<Options, Extracted>,
-    Options,
-    SetBodyProps<Extracted, Options, RowContext>,
-    string | undefined
-  > {
+  extends AnalyzerPaneParts<SetAnalyzerDefinition<Options, Extracted>, Options, SetBodyProps<Extracted, Options, RowContext>, string | undefined> {
   /** 解析設定の共有リンクでの読み書き。`options.ts`の`defineOptions`の結果をそのまま渡す。 */
   readonly urlOptions: UrlOptionsCodec<Options>;
   /** 本体が行ごとに使う文脈を作る。`undefined`を返した行は本体へ渡さない。 */

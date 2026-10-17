@@ -11,7 +11,8 @@ export const Route = createFileRoute('/setup')({
       { title: `${SETUP_LABEL} | keydist` },
       {
         name: 'description',
-        content: '配列と物理配列の組に、その組だけの条件を足したSetupを作ります。名前の変更、物理配列の付け替え、条件の変更ができます。作ったSetupはAnalyzerの対象から選べます。',
+        content:
+          '配列と物理配列の組に、その組だけの条件を足したSetupを作ります。名前の変更、物理配列の付け替え、条件の変更ができます。作ったSetupはAnalyzerの対象から選べます。',
       },
     ],
   }),

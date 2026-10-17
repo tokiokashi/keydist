@@ -53,7 +53,8 @@ export const COMPARISON_COLUMN_TEXT: Readonly<Record<ComparisonColumnId, Compari
   },
   perCharUnits: {
     label: 'u/文字',
-    description: '入力1文字あたりの総移動距離（u/文字）。文字数はローマ字展開やコンボ結合の前の原文で数えるので、打鍵数を減らした効果がこの値に残ります。',
+    description:
+      '入力1文字あたりの総移動距離（u/文字）。文字数はローマ字展開やコンボ結合の前の原文で数えるので、打鍵数を減らした効果がこの値に残ります。',
   },
   perCharSteps: {
     label: '動作数/文字',

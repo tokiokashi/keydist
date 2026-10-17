@@ -11,12 +11,7 @@ import {
   type SimultaneousKind,
 } from './calibration.ts';
 import type { Stroke } from '#trace/generate.ts';
-import {
-  playbackNormalMs,
-  playbackSameFingerMovementMs,
-  playbackSimultaneousOverheadMs,
-  type PlaybackTimingAnalysis,
-} from './playback.ts';
+import { playbackNormalMs, playbackSameFingerMovementMs, playbackSimultaneousOverheadMs, type PlaybackTimingAnalysis } from './playback.ts';
 import { strokeOverheadKinds, strokeOverheadSide, strokeSimultaneousKind } from './stroke-structure.ts';
 
 /**
@@ -41,9 +36,7 @@ export function adjoinsPunctuation(strokes: readonly Pick<Stroke, 'inputChar' | 
   if (stroke === undefined) return false;
   if (PUNCTUATION_INPUT_CHARS.has(stroke.inputChar)) return true;
   const previous = strokes[index - 1];
-  return previous !== undefined
-    && PUNCTUATION_INPUT_CHARS.has(previous.inputChar)
-    && previous.inputIndex !== stroke.inputIndex;
+  return previous !== undefined && PUNCTUATION_INPUT_CHARS.has(previous.inputChar) && previous.inputIndex !== stroke.inputIndex;
 }
 
 /** 差の種類ごとの打鍵の上乗せを保存する、数えたストロークの最小数（文ごとに数える回の最大を全文で足した数）。これ未満の種類は保存しない。 */
@@ -190,14 +183,14 @@ function emptyCounts(): Record<OverheadKind, number> {
  * 文ごとに数える回のそれぞれで数えたストロークの数の最大を取り、全文で足した数にする。
  * 文ごとの数はその文で数えた回のどれか1回の数に等しく、同じ打鍵を2回目と3回目で数え直して下限を満たすことが無い。
  */
-export function measureSentence(
-  samples: readonly SentenceSample[],
-  calibration: PlaybackCalibration,
-): SentenceMeasurement {
+export function measureSentence(samples: readonly SentenceSample[], calibration: PlaybackCalibration): SentenceMeasurement {
   const collected = (): Collected => ({ bases: [], intervals: [], differences: [] });
   const gathered = Object.fromEntries(OVERHEAD_KINDS.map((kind) => [kind, collected()])) as Record<OverheadKind, Collected>;
   const maxPerSentence = new Map<number, Record<OverheadKind, number>>();
-  const rowSimultaneous = Object.fromEntries(OVERHEAD_KINDS.map((kind) => [kind, new Set<SimultaneousKind>()])) as Record<OverheadKind, Set<SimultaneousKind>>;
+  const rowSimultaneous = Object.fromEntries(OVERHEAD_KINDS.map((kind) => [kind, new Set<SimultaneousKind>()])) as Record<
+    OverheadKind,
+    Set<SimultaneousKind>
+  >;
   for (const { sentence, analysis, taps } of samples) {
     const kinds = strokeOverheadKinds(analysis);
     const round = emptyCounts();
@@ -213,9 +206,8 @@ export function measureSentence(
       const kind = kinds[index];
       // 同時押しのストロークの基準の時間には、再生と同じ位置（そのストロークのステップ）で同時押しの上乗せを含める。
       const simultaneousMs = playbackSimultaneousOverheadMs(analysis.strokes[index], calibration);
-      const baseMs = (kind === 'sfb'
-        ? Math.max(normalMs, playbackSameFingerMovementMs(analysis.strokes[index], calibration) ?? 0)
-        : normalMs) + simultaneousMs;
+      const baseMs =
+        (kind === 'sfb' ? Math.max(normalMs, playbackSameFingerMovementMs(analysis.strokes[index], calibration) ?? 0) : normalMs) + simultaneousMs;
       const intervalMs = tap.atMs - previous.atMs;
       const saved: OverheadKind[] = [kind];
       if (kind === 'arpeggio' || kind === 'chain' || kind === 'other') {
@@ -275,8 +267,7 @@ export function applySentenceMeasurement(
   if (!sameValue(base, current)) return { ok: false, reason: 'changed' };
   const measurement = measureSentence(samples, base);
   if (Object.keys(measurement.overheadMs).length === 0) return { ok: false, reason: 'too-few', measurement };
-  const inRange = Object.values(measurement.overheadMs).every((value) =>
-    value >= CALIBRATION_OVERHEAD_MS_MIN && value <= CALIBRATION_OVERHEAD_MS_MAX);
+  const inRange = Object.values(measurement.overheadMs).every((value) => value >= CALIBRATION_OVERHEAD_MS_MIN && value <= CALIBRATION_OVERHEAD_MS_MAX);
   // 続け打ちの行だけを保存する時は、同時押しの分け方の記録を持たせない（記録は構造の種類と同指連続の値の根拠）。
   const { sentenceSimultaneousKinds: _previous, ...withoutRecord } = base;
   const recordable = SENTENCE_RECORDED_OVERHEAD_KINDS.some((kind) => measurement.overheadMs[kind] !== undefined);

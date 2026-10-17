@@ -49,7 +49,10 @@ test('別の画面で同じ資産が書き換わっていたら戻さず、知�
   // 別の画面（データ・設定の管理）で、作った規則を削除する
   await openFromSidebar(page, 'データ・設定の管理');
   await expect(page).toHaveURL(/\/assets$/);
-  await page.locator('[data-user-assets-section="romaji-rule"]').getByRole('button', { name: /を削除$/ }).click();
+  await page
+    .locator('[data-user-assets-section="romaji-rule"]')
+    .getByRole('button', { name: /を削除$/ })
+    .click();
   await page.getByRole('dialog').getByRole('button', { name: '削除する' }).click();
   await expect.poll(() => storedRules(page)).not.toContain('新しいローマ字の綴り');
 

@@ -75,10 +75,7 @@ function playAll(run: CalibrationRun, intervalMs: number): CalibrationRun {
 const FINGER_TASKS = PLAN.normal!.filter((task) => task.item.kind === 'finger-repeat' || task.item.kind === 'finger');
 /** 1本の指の測定項目を、続け打ちの間隔`repeatMs`・往復の間隔`moveMs`で打つ。 */
 const playFinger = (finger: string, repeatMs: number, moveMs: number) =>
-  playAllBy(
-    startCalibrationRun('item', PLAN.byField.get(`finger:${finger}`)!),
-    (task) => (task.item.kind === 'finger-repeat' ? repeatMs : moveMs),
-  );
+  playAllBy(startCalibrationRun('item', PLAN.byField.get(`finger:${finger}`)!), (task) => (task.item.kind === 'finger-repeat' ? repeatMs : moveMs));
 
 test('row-staggeredの測定は通常速度・8指の続け打ちと往復・同手12組、方向別は2方向・24組になる', () => {
   assert.equal(PLAN.normal?.length, 1 + 8 * 2 + 12);
@@ -116,7 +113,10 @@ test('項目の識別子は種類と対象で決まる', () => {
 });
 
 test('案内に出すキーの名前は刻印を使い、無ければキーidにする', () => {
-  const legends = new Map([['f', 'と'], ['j', ' ']]);
+  const legends = new Map([
+    ['f', 'と'],
+    ['j', ' '],
+  ]);
   assert.equal(calibrationKeyLabel(legends, 'f'), 'と');
   assert.equal(calibrationKeyLabel(legends, 'j'), 'J');
   assert.equal(calibrationKeyLabel(legends, 'k'), 'K');
@@ -128,7 +128,11 @@ const ONE_WAY: CalibrationTask = { item: { kind: 'direction', direction: 'L→R'
 
 test('交互に打つ項目は、最初の打鍵の後の打鍵ごとに間隔を数える', () => {
   let run = startCalibrationRun('item', [ALTERNATING]);
-  const presses: [string, number][] = [['f', 100], ['j', 300], ['f', 600]];
+  const presses: [string, number][] = [
+    ['f', 100],
+    ['j', 300],
+    ['f', 600],
+  ];
   for (const [key, at] of presses) run = pressCalibrationKey(run, event(key), at, label).run;
   assert.deepEqual(run.intervalsMs, [200, 300]);
   assert.equal(remainingCalibrationIntervals(run), 1);
@@ -140,7 +144,13 @@ test('交互に打つ項目は、最初の打鍵の後の打鍵ごとに間隔�
 
 test('片道だけ数える項目は、戻りの間隔を捨てる', () => {
   let run = startCalibrationRun('item', [ONE_WAY]);
-  const presses: [string, number][] = [['f', 0], ['j', 100], ['f', 150], ['j', 300], ['f', 320]];
+  const presses: [string, number][] = [
+    ['f', 0],
+    ['j', 100],
+    ['f', 150],
+    ['j', 300],
+    ['f', 320],
+  ];
   for (const [key, at] of presses) run = pressCalibrationKey(run, event(key), at, label).run;
   assert.deepEqual(run.results[0]?.intervalsMs, [100, 150]);
 });
@@ -173,7 +183,12 @@ test('刻印と物理コードのどちらでも次のキーとして受け付�
 
 test('項目が終わると次の項目の最初のキーから始め、前の項目の時刻を持ち越さない', () => {
   let run = startCalibrationRun('directional', [ONE_WAY, ALTERNATING]);
-  const presses: [string, number][] = [['f', 0], ['j', 100], ['f', 150], ['j', 300]];
+  const presses: [string, number][] = [
+    ['f', 0],
+    ['j', 100],
+    ['f', 150],
+    ['j', 300],
+  ];
   let outcome = '';
   for (const [key, at] of presses) {
     const pressed = pressCalibrationKey(run, event(key), at, label);
@@ -282,10 +297,7 @@ test('通常速度の測定は、保存値の方向別の値を残して他を�
   const applied = applyCalibrationRun(SAVED, run, 777);
   assert.ok(applied.ok);
   assert.deepEqual(applied.calibration.actionsPerSecondByDirection, SAVED.actionsPerSecondByDirection);
-  assert.deepEqual(
-    applied.calibration.sameHandDifferentFingerActionsPerDirectedPair,
-    SAVED.sameHandDifferentFingerActionsPerDirectedPair,
-  );
+  assert.deepEqual(applied.calibration.sameHandDifferentFingerActionsPerDirectedPair, SAVED.sameHandDifferentFingerActionsPerDirectedPair);
   assert.equal(applied.calibration.actionsPerSecond, 4);
   assert.equal(applied.calibration.fingerMoveMsPerUnit.RI === SAVED.fingerMoveMsPerUnit.RI, false);
   assert.equal(SAVED.actionsPerSecond, 5);
@@ -383,8 +395,14 @@ test('指ごとの測定項目は、続け打ちと往復を1本ずつ続けて�
   const repeatTasks = PLAN.normal!.filter((task) => task.item.kind === 'finger-repeat');
   assert.equal(repeatTasks.length, 8);
   assert.ok(repeatTasks.every((task) => task.required === 9 && !task.oneWay && task.keys[0] === task.keys[1]));
-  assert.deepEqual(PLAN.byField.get('finger:LI')?.map((task) => calibrationItemId(task.item)), ['finger-repeat:LI', 'finger:LI']);
-  assert.deepEqual(PLAN.byField.get('finger-repeat:LI')?.map((task) => calibrationItemId(task.item)), ['finger-repeat:LI', 'finger:LI']);
+  assert.deepEqual(
+    PLAN.byField.get('finger:LI')?.map((task) => calibrationItemId(task.item)),
+    ['finger-repeat:LI', 'finger:LI'],
+  );
+  assert.deepEqual(
+    PLAN.byField.get('finger-repeat:LI')?.map((task) => calibrationItemId(task.item)),
+    ['finger-repeat:LI', 'finger:LI'],
+  );
   assert.equal(PLAN.byField.get('actions')?.length, 1);
   assert.equal(PLAN.byField.get('direction:L→R')?.length, 1);
 });
@@ -434,7 +452,11 @@ test('通常速度の測り直しは、続け打ちの基準を変えないの�
 
 test('方向別・同手別指の測り直しは構造の種類と同指連続の差を消し、続け打ちの差は残す', () => {
   const withOverhead: PlaybackCalibration = { ...SAVED, keystrokeOverheadMs: ALL_OVERHEADS };
-  for (const [scope, id] of [['directional', 'direction:R→L'], ['item', 'same-hand-pair:LM:LI'], ['item', 'directed-pair:LI>LM']] as const) {
+  for (const [scope, id] of [
+    ['directional', 'direction:R→L'],
+    ['item', 'same-hand-pair:LM:LI'],
+    ['item', 'directed-pair:LI>LM'],
+  ] as const) {
     const run = playAll(startCalibrationRun(scope, [PLAN.byItem.get(id)!]), 200);
     const applied = applyCalibrationRun(withOverhead, run, 5);
     assert.ok(applied.ok, id);
@@ -480,10 +502,17 @@ test('途中で止めた進行は保存値に何も足さない', () => {
 });
 
 const SIDE_OVERHEADS = {
-  arpeggio: 10, 'arpeggio-within': 8, 'arpeggio-boundary': 12,
-  chain: 20, 'chain-within': 18, 'chain-boundary': 22,
-  other: 60, 'other-within': 40, 'other-boundary': 70,
-  repeat: 5, sfb: 15,
+  arpeggio: 10,
+  'arpeggio-within': 8,
+  'arpeggio-boundary': 12,
+  chain: 20,
+  'chain-within': 18,
+  'chain-boundary': 22,
+  other: 60,
+  'other-within': 40,
+  'other-boundary': 70,
+  repeat: 5,
+  sfb: 15,
 } as const;
 
 test('通常速度・移動速度の測定は、かなの中・かなの境目の値も、分けない値と同じく消す', () => {
@@ -493,9 +522,15 @@ test('通常速度・移動速度の測定は、かなの中・かなの境目�
   assert.ok(applied.ok);
   assert.deepEqual(applied.calibration.keystrokeOverheadMs, { repeat: -45 });
   assert.deepEqual(applied.clearedOverheads, [
-    'arpeggio', 'arpeggio-within', 'arpeggio-boundary',
-    'chain', 'chain-within', 'chain-boundary',
-    'other', 'other-within', 'other-boundary',
+    'arpeggio',
+    'arpeggio-within',
+    'arpeggio-boundary',
+    'chain',
+    'chain-within',
+    'chain-boundary',
+    'other',
+    'other-within',
+    'other-boundary',
     'sfb',
   ]);
 });

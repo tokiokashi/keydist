@@ -16,25 +16,29 @@ test('Tester restores selected layout and physical geometry after reload', async
   await expect(layoutSelect).toHaveValue('tsuki-2-263');
   await expect(geometrySelect).toHaveValue('column-staggered');
 
-  await expect.poll(async () => page.evaluate(() => {
-    const raw = window.localStorage.getItem('keydist:app-state');
-    return raw === null ? null : JSON.parse(raw).inputConverter;
-  })).toMatchObject({
-    version: 2,
-    layoutId: 'tsuki-2-263',
-    geometryId: 'column-staggered',
-    layouts: {
-      'tsuki-2-263': {
-        showDynamicGuide: true,
-        showLayerGuide: true,
-        showLayerKeys: true,
-        showShiftKeys: false,
-        inputText: '',
-        practiceText: '',
-        randomPracticeMode: null,
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        const raw = window.localStorage.getItem('keydist:app-state');
+        return raw === null ? null : JSON.parse(raw).inputConverter;
+      }),
+    )
+    .toMatchObject({
+      version: 2,
+      layoutId: 'tsuki-2-263',
+      geometryId: 'column-staggered',
+      layouts: {
+        'tsuki-2-263': {
+          showDynamicGuide: true,
+          showLayerGuide: true,
+          showLayerKeys: true,
+          showShiftKeys: false,
+          inputText: '',
+          practiceText: '',
+          randomPracticeMode: null,
+        },
       },
-    },
-  });
+    });
 
   await page.reload();
 
@@ -58,10 +62,7 @@ test('reload restores floating rect, mode and z-order', async ({ page }) => {
 
   // input.lookup を小窓化して動かす
   const lookupPanel = page.getByLabel('Practice Text', { exact: true });
-  await page
-    .getByLabel('Practice Textをクリックまたはドラッグして小窓表示')
-    .getByText('Practice Text', { exact: true })
-    .click();
+  await page.getByLabel('Practice Textをクリックまたはドラッグして小窓表示').getByText('Practice Text', { exact: true }).click();
   await expect(lookupPanel).toHaveAttribute('data-floating', 'true');
   const lookupMove = page.getByLabel('Practice Textを移動');
   let box = await lookupMove.boundingBox();
@@ -129,10 +130,7 @@ test('a window blur mid-drag commits the in-flight move so the next drag does no
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
 
   const lookupPanel = page.getByLabel('Practice Text', { exact: true });
-  await page
-    .getByLabel('Practice Textをクリックまたはドラッグして小窓表示')
-    .getByText('Practice Text', { exact: true })
-    .click();
+  await page.getByLabel('Practice Textをクリックまたはドラッグして小窓表示').getByText('Practice Text', { exact: true }).click();
   await expect(lookupPanel).toHaveAttribute('data-floating', 'true');
   await waitForSpringSettle(page);
 
@@ -152,9 +150,7 @@ test('a window blur mid-drag commits the in-flight move so the next drag does no
   // blur時点（pointerupより前）でpointer captureが解放されていることを確認する。
   // 解放し忘れると、マウスボタンを離さないまま他panelへ移動してもそちらが
   // pointer eventを受け取れなくなる。
-  const hasPointerCaptureAfterBlur = await lookupMove.evaluate(
-    (el) => (el as HTMLElement).hasPointerCapture(1),
-  );
+  const hasPointerCaptureAfterBlur = await lookupMove.evaluate((el) => (el as HTMLElement).hasPointerCapture(1));
   expect(hasPointerCaptureAfterBlur).toBe(false);
 
   await page.mouse.up();
@@ -207,10 +203,7 @@ test('restoring into a smaller viewport clamps the floating rect back into view'
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
 
   const lookupPanel = page.getByLabel('Practice Text', { exact: true });
-  await page
-    .getByLabel('Practice Textをクリックまたはドラッグして小窓表示')
-    .getByText('Practice Text', { exact: true })
-    .click();
+  await page.getByLabel('Practice Textをクリックまたはドラッグして小窓表示').getByText('Practice Text', { exact: true }).click();
   const lookupMove = page.getByLabel('Practice Textを移動');
   const box = await lookupMove.boundingBox();
   expect(box).not.toBeNull();
@@ -277,10 +270,7 @@ test('no in-progress layout animation right after a restoring reload', async ({ 
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
 
   const lookupPanel = page.getByLabel('Practice Text', { exact: true });
-  await page
-    .getByLabel('Practice Textをクリックまたはドラッグして小窓表示')
-    .getByText('Practice Text', { exact: true })
-    .click();
+  await page.getByLabel('Practice Textをクリックまたはドラッグして小窓表示').getByText('Practice Text', { exact: true }).click();
   const lookupMove = page.getByLabel('Practice Textを移動');
   const box = await lookupMove.boundingBox();
   expect(box).not.toBeNull();

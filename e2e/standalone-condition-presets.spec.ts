@@ -227,7 +227,10 @@ test('プリセット: 比較表とN感度の個別画面のモーダルにも�
       'keydist:multi-target-selection',
       JSON.stringify({
         version: 1,
-        targets: [{ kind: 'layout', layoutId: 'qwerty' }, { kind: 'layout', layoutId: 'colemak-dh' }],
+        targets: [
+          { kind: 'layout', layoutId: 'qwerty' },
+          { kind: 'layout', layoutId: 'colemak-dh' },
+        ],
       }),
     );
   });
@@ -269,7 +272,9 @@ test.describe('スマホ幅', () => {
     const modal = await openBigramFlowModal(page);
     const section = await openPresets(modal);
     for (const name of ['一つ目', '二つ目', '三つ目', '四つ目']) await savePreset(section, name);
-    await rowOf(section, '二つ目').getByRole('button', { name: /の操作$/ }).click();
+    await rowOf(section, '二つ目')
+      .getByRole('button', { name: /の操作$/ })
+      .click();
     await page.getByRole('menuitem', { name: '削除' }).click();
     const undo = section.locator('[data-preset-result]').getByRole('button', { name: '元に戻す' });
     await expect(undo).toBeFocused();

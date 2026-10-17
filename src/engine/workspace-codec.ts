@@ -216,9 +216,8 @@ function decodePane(
   if (binding === undefined) return undefined;
   seen.add(raw.id);
   // 余白のペインは設定を持たないので、持ち方の欄が無くても診断しない
-  const optionsBinding = binding.mode === 'none'
-    ? OWN_OPTIONS
-    : decodeOptionsBinding(raw.optionsBinding, raw.analyzerId, sets, `${path}.optionsBinding`, diagnostics);
+  const optionsBinding =
+    binding.mode === 'none' ? OWN_OPTIONS : decodeOptionsBinding(raw.optionsBinding, raw.analyzerId, sets, `${path}.optionsBinding`, diagnostics);
   return {
     id: raw.id,
     analyzerId: raw.analyzerId,
@@ -250,9 +249,8 @@ function decodeWorkspace(raw: unknown, path: string, seenIds: Set<string>, diagn
     diagnostics.push({ path: `${path}.name`, message: '名前が読めないため既定の名前へ戻しました' });
   }
 
-  const text = raw.text === undefined
-    ? initialTextSelection()
-    : decodeTextSelectionState(raw.text, `${path}.text`, diagnostics) ?? initialTextSelection();
+  const text =
+    raw.text === undefined ? initialTextSelection() : (decodeTextSelectionState(raw.text, `${path}.text`, diagnostics) ?? initialTextSelection());
 
   const groups = decodeGroups(raw.groups, `${path}.groups`, diagnostics);
   const groupIds = new Set(groups.map((group) => group.id));
@@ -280,7 +278,11 @@ function decodeWorkspace(raw: unknown, path: string, seenIds: Set<string>, diagn
   });
   // 詰める設定は真だけを読む（それ以外は既定の「詰めない」）。並びを直す時の詰め方がこれで決まる
   const compactPanes = raw.compactPanes === true;
-  const grid: WorkspaceGrid = normalizeGrid(rawGrid, panes.map((pane) => pane.id), compactPanes);
+  const grid: WorkspaceGrid = normalizeGrid(
+    rawGrid,
+    panes.map((pane) => pane.id),
+    compactPanes,
+  );
   // 色の番号は、読めた分を持ち越し、無い・壊れた・和に無い対象は配り直す（診断は出さない。色は表示だけの値）
   const known = new Map<string, number>();
   if (isRecord(raw.colorSlots)) {
@@ -289,11 +291,17 @@ function decodeWorkspace(raw: unknown, path: string, seenIds: Set<string>, diagn
   const colorSlots = assignWorkspaceColors({ groups, panes, colorSlots: {} }, known);
   // 条件は値の型だけを検査して読む（置けるレベルかどうかは解決が決める。`input/settings/codec.ts`の方針と同じ）。
   // 読めない項目は捨てて「無い」ことにし、全体の条件のまま解決する。
-  const conditions = raw.conditions === undefined
-    ? undefined
-    : decodeLevelOverrides(SETTINGS_ITEM_SCHEMAS, raw.conditions, `${path}.conditions`, diagnostics);
+  const conditions =
+    raw.conditions === undefined ? undefined : decodeLevelOverrides(SETTINGS_ITEM_SCHEMAS, raw.conditions, `${path}.conditions`, diagnostics);
   return {
-    id: raw.id, name, text, groups, optionSets, panes, grid, colorSlots,
+    id: raw.id,
+    name,
+    text,
+    groups,
+    optionSets,
+    panes,
+    grid,
+    colorSlots,
     ...(compactPanes ? { compactPanes: true as const } : {}),
     ...(conditions === undefined ? {} : { conditions }),
   };
@@ -307,9 +315,12 @@ function encodePaneTarget(target: WorkspacePaneTarget): Record<string, unknown> 
 
 function encodeBinding(binding: PaneTargetBinding): Record<string, unknown> {
   switch (binding.mode) {
-    case 'follow': return { mode: 'follow', group: binding.group };
-    case 'fixed': return { mode: 'fixed', target: encodePaneTarget(binding.target) };
-    case 'none': return { mode: 'none' };
+    case 'follow':
+      return { mode: 'follow', group: binding.group };
+    case 'fixed':
+      return { mode: 'fixed', target: encodePaneTarget(binding.target) };
+    case 'none':
+      return { mode: 'none' };
   }
 }
 
@@ -318,9 +329,7 @@ function encodePane(pane: WorkspacePane): Record<string, unknown> {
     id: pane.id,
     analyzerId: pane.analyzerId,
     ...(pane.optionsBinding.mode === 'own' && pane.options !== undefined ? { options: pane.options } : {}),
-    optionsBinding: pane.optionsBinding.mode === 'shared'
-      ? { mode: 'shared', set: pane.optionsBinding.set }
-      : { mode: 'own' },
+    optionsBinding: pane.optionsBinding.mode === 'shared' ? { mode: 'shared', set: pane.optionsBinding.set } : { mode: 'own' },
     binding: encodeBinding(pane.binding),
   };
 }

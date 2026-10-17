@@ -121,9 +121,32 @@ function recordCell(
 }
 
 const DvorakJ_FUNCTIONS = new Set([
-  'BS', 'BSPC', 'BACKSPACE', 'ENTER', 'ESC', 'ESCAPE', 'TAB', 'SPACE',
-  'DEL', 'DELETE', 'HOME', 'END', 'PGUP', 'PGDN', 'PAGEUP', 'PAGEDOWN',
-  'INSERT', 'UP', 'DOWN', 'LEFT', 'RIGHT', '↑', '↓', '←', '→', '無',
+  'BS',
+  'BSPC',
+  'BACKSPACE',
+  'ENTER',
+  'ESC',
+  'ESCAPE',
+  'TAB',
+  'SPACE',
+  'DEL',
+  'DELETE',
+  'HOME',
+  'END',
+  'PGUP',
+  'PGDN',
+  'PAGEUP',
+  'PAGEDOWN',
+  'INSERT',
+  'UP',
+  'DOWN',
+  'LEFT',
+  'RIGHT',
+  '↑',
+  '↓',
+  '←',
+  '→',
+  '無',
 ]);
 
 function isDvorakJFunction(token: string): boolean {
@@ -181,9 +204,7 @@ function dvorakJAliases(lines: string[], warnings: string[]): Map<string, string
     const key = match[1];
     const code = match[2].toLowerCase();
     // DvorakJのSはこの形式のセンターシフトを表す。旧idのspaceを返し、評価入口でthumb-rに解決する。
-    const physical = code === 'shift' && key.toUpperCase() === 'S'
-      ? 'space'
-      : dvorakJScanCode(code);
+    const physical = code === 'shift' && key.toUpperCase() === 'S' ? 'space' : dvorakJScanCode(code);
     if (physical) aliases.set(key, physical);
     else addWarning(warnings, `DvorakJのエイリアス「${key}」の物理キーを解決できないため無視しました`);
   }
@@ -192,16 +213,18 @@ function dvorakJAliases(lines: string[], warnings: string[]): Map<string, string
 
 function resolveDvorakJTrigger(token: string, aliases: Map<string, string>): string | undefined {
   const normalized = normalise(token);
-  return aliases.get(token) ?? aliases.get(normalized) ??
+  return (
+    aliases.get(token) ??
+    aliases.get(normalized) ??
     (normalized.length === 1 && (QWERTY_LEGEND.join('').includes(normalized) || normalized === ' ')
-      ? (normalized === ' ' ? 'space' : normalized.toLowerCase())
-      : undefined);
+      ? normalized === ' '
+        ? 'space'
+        : normalized.toLowerCase()
+      : undefined)
+  );
 }
 
-function dvorakJHeader(
-  header: string,
-  aliases: Map<string, string>,
-): string[] | undefined {
+function dvorakJHeader(header: string, aliases: Map<string, string>): string[] | undefined {
   if (header === '[') return [];
 
   const parenthesised = header.match(/^\((.*)\[\s*$/);
@@ -209,19 +232,27 @@ function dvorakJHeader(
     if (parenthesised[1].replace(/\{[^}]+\}/g, '').trim()) return undefined;
     const tokens = [...parenthesised[1].matchAll(/\{([^}]+)\}/g)].map((m) => m[1]);
     const triggers = tokens.map((token) => resolveDvorakJTrigger(token, aliases));
-    return tokens.length > 0 && triggers.every((trigger): trigger is string => trigger !== undefined)
-      ? triggers
-      : undefined;
+    return tokens.length > 0 && triggers.every((trigger): trigger is string => trigger !== undefined) ? triggers : undefined;
   }
 
   // 一部のDvorakJ配布物は -f-jを、次行の [ と組み合わせて使う。
-  if (/^-(?:[^-]+-?)+$/.test(header)) {
-    const triggers = header.split('-').filter(Boolean).map((token) => resolveDvorakJTrigger(token, aliases));
-    return triggers.length > 0 && triggers.every((trigger): trigger is string => trigger !== undefined)
-      ? triggers
-      : undefined;
+  if (isDashSeparatedHeader(header)) {
+    const triggers = header
+      .split('-')
+      .filter(Boolean)
+      .map((token) => resolveDvorakJTrigger(token, aliases));
+    return triggers.length > 0 && triggers.every((trigger): trigger is string => trigger !== undefined) ? triggers : undefined;
   }
   return undefined;
+}
+
+/**
+ * `-f-j` のように、先頭が `-` で、`-` 以外の並びを `-` で区切った見出しか。
+ * 連続する `-` は許さず、末尾の `-` は1つまで許す。
+ * 利用者のファイルが通る経路なので、バックトラックが入力の長さに対して線形で済む形で書く。
+ */
+export function isDashSeparatedHeader(header: string): boolean {
+  return /^-[^-]+(?:-[^-]+)*-?$/.test(header);
 }
 
 /** DvorakJの配列表ブロックだけを読む。コメント・option-inputの設定・ファイル名は判定材料にしない。 */
@@ -240,13 +271,12 @@ export function importDvorakJ(source: string, name = 'DvorakJ取り込み'): Imp
     if (!header || header.startsWith('-option-input')) continue;
     let triggers = dvorakJHeader(header, aliases);
     let bodyStart = i;
-    if (/^-(?:[^-]+-?)+$/.test(header) && lines[i + 1]?.trim() === '[') {
+    if (isDashSeparatedHeader(header) && lines[i + 1]?.trim() === '[') {
       bodyStart = i + 1;
     }
     const openingBracketIsOnHeader = header.endsWith('[');
     if (!triggers || (!openingBracketIsOnHeader && lines[bodyStart]?.trim() !== '[')) {
-      if (header !== '-option-input[' &&
-        (header.endsWith('[') || (/^-(?:[^-]+-?)+$/.test(header) && lines[i + 1]?.trim() === '['))) {
+      if (header !== '-option-input[' && (header.endsWith('[') || (isDashSeparatedHeader(header) && lines[i + 1]?.trim() === '['))) {
         addWarning(warnings, `DvorakJの面ヘッダ「${header}」を解釈できないため無視しました`);
       }
       continue;
@@ -256,32 +286,54 @@ export function importDvorakJ(source: string, name = 'DvorakJ取り込み'): Imp
     let end = bodyStart;
     while (++end < lines.length && lines[end].trim() !== ']') body.push(lines[end]);
     i = end;
-    const grid = body.filter((line) => line.includes('|')).map(dvorakJCells).slice(0, 4);
+    const grid = body
+      .filter((line) => line.includes('|'))
+      .map(dvorakJCells)
+      .slice(0, 4);
     if (grid.length === 0) {
       addWarning(warnings, `DvorakJの面「${header}」にセルがないため無視しました`);
       continue;
     }
     const base = triggers.length === 0;
-    grid.forEach((line, row) => line.slice(0, WIDTHS[row] ?? 0).forEach((raw, column) => {
-      const cell = dvorakJCell(raw);
-      if (!cell) return;
-      const sequence: Sequence = [triggers!.concat(QWERTY_LEGEND[row][column])];
-      recordCell(rows, legends, sequences, kinds, row, column, cell.output, cell.label, sequence, base);
-      if (!base && hasDvorakJFunctionLabel(cell.label)) {
-        legends.set(QWERTY_LEGEND[row][column], cell.label);
-      }
-    }));
+    grid.forEach((line, row) =>
+      line.slice(0, WIDTHS[row] ?? 0).forEach((raw, column) => {
+        const cell = dvorakJCell(raw);
+        if (!cell) return;
+        const sequence: Sequence = [triggers!.concat(QWERTY_LEGEND[row][column])];
+        recordCell(rows, legends, sequences, kinds, row, column, cell.output, cell.label, sequence, base);
+        if (!base && hasDvorakJFunctionLabel(cell.label)) {
+          legends.set(QWERTY_LEGEND[row][column], cell.label);
+        }
+      }),
+    );
   }
   return finish(name, rows, legends, sequences, kinds, warnings);
 }
 
 const QMK_PRINTABLE: Record<string, string> = {
-  KC_COMM: ',', KC_COMMA: ',', KC_DOT: '.', KC_SLSH: '/', KC_SLASH: '/',
-  KC_SCLN: ';', KC_SCOLON: ';', KC_QUOT: "'", KC_QUOTE: "'",
-  KC_MINS: '-', KC_MINUS: '-', KC_EQL: '=', KC_EQUAL: '=',
-  KC_LBRC: '[', KC_LBRACKET: '[', KC_RBRC: ']', KC_RBRACKET: ']',
-  KC_BSLS: '\\', KC_BSLASH: '\\', KC_GRV: String.fromCharCode(96), KC_GRAVE: String.fromCharCode(96),
-  KC_SPC: ' ', KC_SPACE: ' ',
+  KC_COMM: ',',
+  KC_COMMA: ',',
+  KC_DOT: '.',
+  KC_SLSH: '/',
+  KC_SLASH: '/',
+  KC_SCLN: ';',
+  KC_SCOLON: ';',
+  KC_QUOT: "'",
+  KC_QUOTE: "'",
+  KC_MINS: '-',
+  KC_MINUS: '-',
+  KC_EQL: '=',
+  KC_EQUAL: '=',
+  KC_LBRC: '[',
+  KC_LBRACKET: '[',
+  KC_RBRC: ']',
+  KC_RBRACKET: ']',
+  KC_BSLS: '\\',
+  KC_BSLASH: '\\',
+  KC_GRV: String.fromCharCode(96),
+  KC_GRAVE: String.fromCharCode(96),
+  KC_SPC: ' ',
+  KC_SPACE: ' ',
 };
 
 const QMK_NOOP = new Set(['KC_NO', 'KC_TRNS', 'KC_TRANSPARENT', '-1']);
@@ -292,7 +344,7 @@ function qmkChar(value: unknown): string | undefined {
   if (QMK_NOOP.has(code)) return undefined;
   if (/^KC_[A-Z]$/.test(code)) return code.at(-1)!.toLowerCase();
   if (/^KC_[0-9]$/.test(code)) return code.at(-1)!;
-  if (Object.prototype.hasOwnProperty.call(QMK_PRINTABLE, code)) return QMK_PRINTABLE[code];
+  if (Object.hasOwn(QMK_PRINTABLE, code)) return QMK_PRINTABLE[code];
 
   // Home-row modやlayer-tapは、タップ側が単純な文字ならその文字を表示・逆引きする。
   const inner = code.match(/\((?:[^,()]+,\s*)?(KC_[A-Z0-9_]+)\)$/)?.[1];
@@ -303,8 +355,8 @@ function qmkLabel(value: unknown): string | undefined {
   if (typeof value === 'number' || value === null || value === undefined) return undefined;
   if (typeof value !== 'string' || QMK_NOOP.has(value.toUpperCase())) return undefined;
   const code = value.toUpperCase();
-  const simple = /^KC_[A-Z0-9]$/.test(code) || Object.prototype.hasOwnProperty.call(QMK_PRINTABLE, code);
-  return simple ? qmkChar(value) ?? value : value;
+  const simple = /^KC_[A-Z0-9]$/.test(code) || Object.hasOwn(QMK_PRINTABLE, code);
+  return simple ? (qmkChar(value) ?? value) : value;
 }
 
 function macroText(value: unknown): string | undefined {
@@ -396,8 +448,7 @@ export function importVial(source: string, name = 'Vial取り込み'): ImportedL
         inputs.push(physical);
       }
       if (inputs.length < 2) {
-        const unresolvedCode = entry.slice(0, 4).find((code) =>
-          typeof code === 'string' && !QMK_NOOP.has(code.toUpperCase()) && !qmkChar(code));
+        const unresolvedCode = entry.slice(0, 4).find((code) => typeof code === 'string' && !QMK_NOOP.has(code.toUpperCase()) && !qmkChar(code));
         if (unresolvedCode !== undefined) {
           addWarning(warnings, `Vialのコンボ ${comboIndex} は入力キー「${String(unresolvedCode)}」を解決できないため無視しました`);
         }
@@ -418,9 +469,26 @@ export function importVial(source: string, name = 'Vial取り込み'): ImportedL
 }
 
 const BENIZARA_FUNCTIONS = new Set([
-  'BS', 'BSPC', 'BACKSPACE', 'ENTER', 'ESC', 'ESCAPE', 'TAB', 'SPACE',
-  'DEL', 'DELETE', 'HOME', 'END', 'PGUP', 'PGDN', 'INSERT',
-  'UP', 'DOWN', 'LEFT', 'RIGHT', '無',
+  'BS',
+  'BSPC',
+  'BACKSPACE',
+  'ENTER',
+  'ESC',
+  'ESCAPE',
+  'TAB',
+  'SPACE',
+  'DEL',
+  'DELETE',
+  'HOME',
+  'END',
+  'PGUP',
+  'PGDN',
+  'INSERT',
+  'UP',
+  'DOWN',
+  'LEFT',
+  'RIGHT',
+  '無',
 ]);
 
 function benizaraCell(raw: string): { output?: string; label: string } | undefined {
@@ -428,23 +496,28 @@ function benizaraCell(raw: string): { output?: string; label: string } | undefin
   if (!trimmed) return undefined;
   const label = trimmed.replace(/^\+/, '');
   let output = trimmed.replace(/^\+/, '');
-  output = output.replace(/\{([^}]*)\}/g, (_, token: string) =>
-    BENIZARA_FUNCTIONS.has(token.toUpperCase()) ? '' : token);
+  output = output.replace(/\{([^}]*)\}/g, (_, token: string) => (BENIZARA_FUNCTIONS.has(token.toUpperCase()) ? '' : token));
   if (BENIZARA_FUNCTIONS.has(output.toUpperCase()) || output === '無') output = '';
   return { output: output.trim(), label };
 }
 
 function hasBenizaraFunctionLabel(label: string): boolean {
   const value = normalise(label).trim().replace(/^\+/, '');
-  return BENIZARA_FUNCTIONS.has(value.toUpperCase()) ||
+  return (
+    BENIZARA_FUNCTIONS.has(value.toUpperCase()) ||
     [...value.matchAll(/\{([^}]*)\}/g)].some((match) =>
-      BENIZARA_FUNCTIONS.has(normalise(match[1] ?? '').trim().toUpperCase()));
+      BENIZARA_FUNCTIONS.has(
+        normalise(match[1] ?? '')
+          .trim()
+          .toUpperCase(),
+      ),
+    )
+  );
 }
 
 function benizaraTrigger(section: string): string[] | undefined {
   if (section.includes('シフト無し')) return [];
-  if (section.includes('左右親指') || section.includes('両親指') ||
-    (section.includes('左親指') && section.includes('右親指'))) {
+  if (section.includes('左右親指') || section.includes('両親指') || (section.includes('左親指') && section.includes('右親指'))) {
     return ['thumb-l', 'space'];
   }
   if (section.includes('右親指') || section.includes('スペース')) return ['space'];
@@ -469,8 +542,7 @@ export function importBenizara(source: string, name = '紅皿取り込み'): Imp
     if (current) sections.get(current)!.push(raw);
   }
 
-  const candidates = [...sections.keys()].filter((section) =>
-    section.startsWith('ローマ字') || section.startsWith('英数') || section.startsWith('かな'));
+  const candidates = [...sections.keys()].filter((section) => section.startsWith('ローマ字') || section.startsWith('英数') || section.startsWith('かな'));
   const base = candidates.find((section) => section.includes('シフト無し'));
   if (!base) throw new Error('紅皿の基底面（シフト無し）を見つけられない');
   const prefix = base.startsWith('ローマ字') ? 'ローマ字' : base.startsWith('英数') ? '英数' : 'かな';
@@ -492,18 +564,25 @@ export function importBenizara(source: string, name = '紅皿取り込み'): Imp
       addWarning(warnings, `面「${section}」は対応する親指キーを決められないため無視しました`);
       continue;
     }
-    const grid = sections.get(section)!
-      .map((line) => normalise(line).split(',').map((cell) => cell.trim()))
+    const grid = sections
+      .get(section)!
+      .map((line) =>
+        normalise(line)
+          .split(',')
+          .map((cell) => cell.trim()),
+      )
       .slice(0, 4);
     const isBase = section === base;
-    grid.forEach((line, row) => line.slice(0, WIDTHS[row] ?? 0).forEach((raw, column) => {
-      const cell = benizaraCell(raw);
-      if (!cell) return;
-      const physical = QWERTY_LEGEND[row][column];
-      const sequence: Sequence = [trigger.concat(physical)];
-      recordCell(rows, legends, sequences, kinds, row, column, cell.output, cell.label, sequence, isBase);
-      if (!isBase && hasBenizaraFunctionLabel(cell.label)) legends.set(physical, cell.label);
-    }));
+    grid.forEach((line, row) =>
+      line.slice(0, WIDTHS[row] ?? 0).forEach((raw, column) => {
+        const cell = benizaraCell(raw);
+        if (!cell) return;
+        const physical = QWERTY_LEGEND[row][column];
+        const sequence: Sequence = [trigger.concat(physical)];
+        recordCell(rows, legends, sequences, kinds, row, column, cell.output, cell.label, sequence, isBase);
+        if (!isBase && hasBenizaraFunctionLabel(cell.label)) legends.set(physical, cell.label);
+      }),
+    );
   }
   return finish(name, rows, legends, sequences, kinds, warnings);
 }

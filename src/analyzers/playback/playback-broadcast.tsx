@@ -18,11 +18,7 @@ const FALSE = (): boolean => false;
 
 /** 伝えられた操作。操作が起きた時、同じ描画の確定の中で全部のペインに届く。 */
 export function usePlaybackCommand(store: PlaybackBroadcast | undefined): PlaybackCommand {
-  return useSyncExternalStore(
-    store?.subscribe ?? NO_SUBSCRIBE,
-    store?.command ?? (() => INITIAL_COMMAND),
-    () => INITIAL_COMMAND,
-  );
+  return useSyncExternalStore(store?.subscribe ?? NO_SUBSCRIBE, store?.command ?? (() => INITIAL_COMMAND), () => INITIAL_COMMAND);
 }
 
 /** 全部のペインの状態から決まる、再生と停止を押せるか。値が変わった時だけ描き直す。 */

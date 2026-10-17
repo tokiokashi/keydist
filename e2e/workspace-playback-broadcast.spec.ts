@@ -15,17 +15,20 @@ const playback = (id: string, layoutId: string, options?: Record<string, unknown
 
 async function open(page: Page, panes: readonly { readonly id: string }[]): Promise<void> {
   await page.setViewportSize({ width: 1600, height: 1000 });
-  await page.addInitScript((value) => {
-    if (localStorage.getItem('keydist:workspaces') === null) {
-      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
-    }
-  }, {
-    id: 'p',
-    name: '再生',
-    text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
-    panes,
-    grid: panes.map((pane, i) => ({ id: pane.id, x: (i % 2) * 12, y: Math.floor(i / 2) * 24, w: 12, h: 24 })),
-  });
+  await page.addInitScript(
+    (value) => {
+      if (localStorage.getItem('keydist:workspaces') === null) {
+        localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
+      }
+    },
+    {
+      id: 'p',
+      name: '再生',
+      text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+      panes,
+      grid: panes.map((pane, i) => ({ id: pane.id, x: (i % 2) * 12, y: Math.floor(i / 2) * 24, w: 12, h: 24 })),
+    },
+  );
   await page.goto('/workspace/p');
   await waitForHydration(page);
   await expect(page.locator('.pane-frame[data-pane-status="ready"]')).toHaveCount(panes.length, { timeout: 30_000 });
@@ -40,7 +43,10 @@ async function cursor(page: Page, id: string): Promise<number> {
   return Number(/^(\d+) \//.exec(text)?.[1]);
 }
 
-const playing = (page: Page, id: string) => button(page, id, 'toggle').innerText().then((text) => text.includes('一時停止'));
+const playing = (page: Page, id: string) =>
+  button(page, id, 'toggle')
+    .innerText()
+    .then((text) => text.includes('一時停止'));
 
 test('停止のあとに再生すると全部のペインが同じ時刻に先頭から始まり、一時停止で同じ位置に並ぶ', async ({ page }) => {
   await open(page, [playback('a', 'qwerty'), playback('b', 'qwerty')]);
@@ -87,7 +93,10 @@ test('再生倍率が違うペインにも伝わり、1ステップ送りとス�
 
 test('拡大表示の間も、隠れたペインに操作が伝わる', async ({ page }) => {
   await open(page, [playback('a', 'qwerty'), playback('b', 'qwerty')]);
-  await pane(page, 'a').locator('.pane-frame-menu').getByRole('button', { name: /の操作$/ }).click();
+  await pane(page, 'a')
+    .locator('.pane-frame-menu')
+    .getByRole('button', { name: /の操作$/ })
+    .click();
   await page.getByRole('menuitem', { name: '拡大表示' }).click();
   await expect(pane(page, 'a')).toHaveAttribute('data-maximized', 'true');
 

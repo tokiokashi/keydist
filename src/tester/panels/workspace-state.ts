@@ -1,7 +1,4 @@
-import type {
-  PanelId,
-  WorkspacePanelDefinition,
-} from './panel-registry.ts';
+import type { PanelId, WorkspacePanelDefinition } from './panel-registry.ts';
 
 export const WORKSPACE_STATE_VERSION = 1;
 
@@ -26,20 +23,12 @@ export type WorkspacePanels = Partial<Record<PanelId, WorkspacePanelState>>;
 export const DORMANT_DYNAMIC_PANEL_PREFIX = 'input.layer:';
 export const MAX_DORMANT_DYNAMIC_PANELS = 128;
 
-export function compactWorkspacePanels(
-  panels: WorkspacePanels,
-  currentIds: ReadonlySet<PanelId>,
-): WorkspacePanels {
+export function compactWorkspacePanels(panels: WorkspacePanels, currentIds: ReadonlySet<PanelId>): WorkspacePanels {
   const entries = Object.entries(panels) as Array<[PanelId, WorkspacePanelState]>;
-  const dormantDynamicIds = entries
-    .filter(([id]) => !currentIds.has(id) && id.startsWith(DORMANT_DYNAMIC_PANEL_PREFIX))
-    .map(([id]) => id);
-  const keepDormant = new Set(
-    dormantDynamicIds.slice(-MAX_DORMANT_DYNAMIC_PANELS),
-  );
+  const dormantDynamicIds = entries.filter(([id]) => !currentIds.has(id) && id.startsWith(DORMANT_DYNAMIC_PANEL_PREFIX)).map(([id]) => id);
+  const keepDormant = new Set(dormantDynamicIds.slice(-MAX_DORMANT_DYNAMIC_PANELS));
 
-  return Object.fromEntries(entries.filter(([id]) =>
-    currentIds.has(id) || keepDormant.has(id))) as WorkspacePanels;
+  return Object.fromEntries(entries.filter(([id]) => currentIds.has(id) || keepDormant.has(id))) as WorkspacePanels;
 }
 
 export interface WorkspaceStateV1 {
@@ -49,9 +38,7 @@ export interface WorkspaceStateV1 {
   zOrder: PanelId[];
 }
 
-export function createWorkspacePanelState(
-  definition: WorkspacePanelDefinition,
-): WorkspacePanelState {
+export function createWorkspacePanelState(definition: WorkspacePanelDefinition): WorkspacePanelState {
   return {
     visible: true,
     mode: 'docked',
@@ -59,9 +46,7 @@ export function createWorkspacePanelState(
   };
 }
 
-export function createWorkspaceState(
-  definitions: readonly WorkspacePanelDefinition[],
-): WorkspaceStateV1 {
+export function createWorkspaceState(definitions: readonly WorkspacePanelDefinition[]): WorkspaceStateV1 {
   const panels: WorkspacePanels = {};
   const zOrder: PanelId[] = [];
 
@@ -86,10 +71,7 @@ export function createWorkspaceState(
  * first-seen順の末尾128件へ上限を設ける。未知/廃止済みの静的panel IDはpruneする。
  * zOrderには現行definitionsだけを残す。
  */
-export function reconcileWorkspaceState(
-  state: WorkspaceStateV1,
-  definitions: readonly WorkspacePanelDefinition[],
-): WorkspaceStateV1 {
+export function reconcileWorkspaceState(state: WorkspaceStateV1, definitions: readonly WorkspacePanelDefinition[]): WorkspaceStateV1 {
   const definitionIds = new Set<PanelId>();
   const nextPanels: WorkspacePanels = { ...state.panels };
 
@@ -116,10 +98,8 @@ export function reconcileWorkspaceState(
   const compactedPanels = compactWorkspacePanels(nextPanels, definitionIds);
   const stateKeys = Object.keys(state.panels);
   const nextKeys = Object.keys(compactedPanels);
-  const samePanels = stateKeys.length === nextKeys.length
-    && nextKeys.every((id) => state.panels[id as PanelId] === compactedPanels[id as PanelId]);
-  const sameOrder = nextOrder.length === state.zOrder.length
-    && nextOrder.every((id, index) => id === state.zOrder[index]);
+  const samePanels = stateKeys.length === nextKeys.length && nextKeys.every((id) => state.panels[id as PanelId] === compactedPanels[id as PanelId]);
+  const sameOrder = nextOrder.length === state.zOrder.length && nextOrder.every((id, index) => id === state.zOrder[index]);
 
   if (samePanels && sameOrder) return state;
   return {

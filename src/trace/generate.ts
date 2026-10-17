@@ -1,20 +1,6 @@
 import { ALL_FINGERS, resolveKeyId, type Finger, type Geometry, type Key, type Point } from '#input/shapes/geometry.ts';
-import {
-  decidePress,
-  selectFingers,
-  strokeFingerChoices,
-  targetOf,
-  type PlannedInput,
-  type PlannedStroke,
-} from './finger-selection.ts';
-import {
-  COMBO_LAYER_ID,
-  SINGLE_LAYER_ID,
-  type HoldPhase,
-  type LayerDefinition,
-  type Layout,
-  withoutRomajiOnlyCombos,
-} from '#input/layouts/types.ts';
+import { decidePress, selectFingers, strokeFingerChoices, targetOf, type PlannedInput, type PlannedStroke } from './finger-selection.ts';
+import { COMBO_LAYER_ID, SINGLE_LAYER_ID, type HoldPhase, type LayerDefinition, type Layout, withoutRomajiOnlyCombos } from '#input/layouts/types.ts';
 import { layerDefinitionsWithLabels } from '#input/layouts/layers.ts';
 import { kanaToRomajiChunks, type RomajiChunk } from '#input/romaji/kunrei.ts';
 import {
@@ -40,7 +26,7 @@ export interface TracePolicy {
   /**
    * 同指連続（g=0）で打鍵先がその指のホームキー自身のとき、移動を加算するか。
    * falseにすると距離0として扱う。
-  */
+   */
   sfbHomeCost: boolean;
   /** 親指シフトを出力キーと反対側の親指へ振り替えるか。 */
   preferOppositeThumb?: boolean;
@@ -172,8 +158,7 @@ function comboFrameHeadingCount(layout: Layout): number {
   let faceHeadings = 0;
   for (const [output, alternatives] of layout.canonicalInputs) {
     if (definedHeadings.has(output)) continue;
-    if (alternatives.some((alternative) =>
-      alternative.origin === 'face' && isComboFrameAlternative(alternative))) {
+    if (alternatives.some((alternative) => alternative.origin === 'face' && isComboFrameAlternative(alternative))) {
       faceHeadings++;
     }
   }
@@ -219,9 +204,8 @@ export function generateTrace(
   const seen = new Set<string>();
   const comboHits: string[] = [];
   const comboDefinitions = comboFrameHeadingCount(layout);
-  const layerDefinitions: LayerDefinition[] = layout.layerDefinitions === undefined
-    ? [{ id: SINGLE_LAYER_ID, kind: 'layer', label: '単打' }]
-    : layerDefinitionsWithLabels(layout);
+  const layerDefinitions: LayerDefinition[] =
+    layout.layerDefinitions === undefined ? [{ id: SINGLE_LAYER_ID, kind: 'layer', label: '単打' }] : layerDefinitionsWithLabels(layout);
   if (comboDefinitions > 0 && !layerDefinitions.some((definition) => definition.id === COMBO_LAYER_ID)) {
     layerDefinitions.push({ id: COMBO_LAYER_ID, kind: 'combo', label: 'コンボ' });
   }
@@ -235,10 +219,7 @@ export function generateTrace(
   // 展開前の単位も残しておく。かな配列はそのまま打つ。
   const rawChars = [...text];
   const chunks = layout.romajiTable ? (romajiChunks ?? kanaToRomajiChunks(text, layout.romajiTable)) : undefined;
-  const chars = (chunks
-    ? chunks.flatMap((chunk) => [...chunk.roman])
-    : rawChars)
-    .map(normalizeEvaluationChar);
+  const chars = (chunks ? chunks.flatMap((chunk) => [...chunk.roman]) : rawChars).map(normalizeEvaluationChar);
   const chunkRanges: RomajiChunkRange[] = [];
   if (chunks) {
     let start = 0;
@@ -258,10 +239,7 @@ export function generateTrace(
     }
   }
   // 見出し探索のauthorityもcanonicalInputs。legacy Layout.map由来の長さmetadataへ依存しない。
-  const maxLen = Math.max(
-    1,
-    ...[...layout.canonicalInputs.keys()].map((output) => [...output].length),
-  );
+  const maxLen = Math.max(1, ...[...layout.canonicalInputs.keys()].map((output) => [...output].length));
 
   for (let cursor = 0; cursor < chars.length; ) {
     let alternatives: InputAlternativeSet | undefined;
@@ -272,14 +250,8 @@ export function generateTrace(
       const candidate = chars.slice(cursor, cursor + len).join('');
       const found = layout.canonicalInputs.get(candidate);
       const eligible = found?.filter((alternative) =>
-        alternativeContextSatisfied(
-          alternative.contextRequirements,
-          cursor,
-          cursor + len,
-          chars,
-          chunkRanges,
-          chunks !== undefined,
-        ));
+        alternativeContextSatisfied(alternative.contextRequirements, cursor, cursor + len, chars, chunkRanges, chunks !== undefined),
+      );
       if (eligible && eligible.length > 0) {
         alternatives = eligible;
         char = candidate;
@@ -298,13 +270,11 @@ export function generateTrace(
     const inputEnd = cursor + consumed;
     const inputChar = chunks
       ? chunkRanges
-        .filter((range) => range.start < inputEnd && inputStart < range.end)
-        .map((range) => range.kana)
-        .join('')
+          .filter((range) => range.start < inputEnd && inputStart < range.end)
+          .map((range) => range.kana)
+          .join('')
       : rawChars.slice(inputStart, inputEnd).join('');
-    const inputIndex = chunks
-      ? chunkRanges.find((range) => range.start < inputEnd && inputStart < range.end)?.start ?? inputStart
-      : inputStart;
+    const inputIndex = chunks ? (chunkRanges.find((range) => range.start < inputEnd && inputStart < range.end)?.start ?? inputStart) : inputStart;
     // 入力が覆うテキストの範囲。ローマ字配列は、覆う英字を含む綴りの単位のかなの範囲
     let kanaStart = inputStart;
     let kanaEnd = inputEnd - 1;
@@ -319,12 +289,7 @@ export function generateTrace(
     }
     cursor += consumed;
 
-    const selectedAlternative = selectInputAlternative(
-      alternatives,
-      layout,
-      geometry,
-      options,
-    );
+    const selectedAlternative = selectInputAlternative(alternatives, layout, geometry, options);
     if (isComboFrameAlternative(selectedAlternative)) comboHits.push(char);
 
     const realized = realizeTriggerActions(
@@ -333,10 +298,7 @@ export function generateTrace(
       triggerHoldState,
     );
     triggerHoldState = realized.holdState;
-    const actions = applyActionRealizationPolicy(
-      realized.actions,
-      options.actionRealizationPolicy ?? DEFAULT_ACTION_REALIZATION_POLICY,
-    );
+    const actions = applyActionRealizationPolicy(realized.actions, options.actionRealizationPolicy ?? DEFAULT_ACTION_REALIZATION_POLICY);
 
     const plannedActions: PlannedAction[] = [];
     for (const action of actions) {
@@ -368,8 +330,7 @@ export function generateTrace(
       end: kanaEnd,
       actions: plannedActions,
       strokes: plannedActions.map((planned) => planned.stroke),
-      ambiguous: plannedActions.some((planned) =>
-        planned.stroke.candidates.some((fingers) => fingers.length > 1)),
+      ambiguous: plannedActions.some((planned) => planned.stroke.candidates.some((fingers) => fingers.length > 1)),
     });
   }
 
@@ -382,31 +343,23 @@ export function generateTrace(
     const currentInputOrdinal = input.ordinal;
     const chosen = input.ambiguous
       ? selectFingers(
-        geometry,
-        selectionPolicy,
-        { prev, last, lastInputEnd, nextStrokeIndex: index, position: input.start, holders },
-        inputs,
-        inputPosition,
-      ).strokes
+          geometry,
+          selectionPolicy,
+          { prev, last, lastInputEnd, nextStrokeIndex: index, position: input.start, holders },
+          inputs,
+          inputPosition,
+        ).strokes
       : undefined;
 
     input.actions.forEach((planned, actionPosition) => {
       const { action, stroke: plannedStroke } = planned;
       const { char, inputChar, inputIndex } = input;
-      const fingers = chosen?.[actionPosition]
-        ?? strokeFingerChoices(plannedStroke, holders)[0];
+      const fingers = chosen?.[actionPosition] ?? strokeFingerChoices(plannedStroke, holders)[0];
       const triggerKeys = action.triggerKeys;
       const aggregationGroupId = action.input.aggregationGroupId;
-      const modifierKeys = new Set(
-        action.input.roles
-          .filter((role) => role.role === 'modifier')
-          .map((role) => resolveKeyId(role.key)),
-      );
-      const pressedModifierKeys = [...new Set(action.keys.map(resolveKeyId))]
-        .filter((key) => modifierKeys.has(key));
-      const pairedTriggerKeys = pressedModifierKeys.length >= 2
-        ? triggerKeys.filter((key) => modifierKeys.has(resolveKeyId(key)))
-        : [];
+      const modifierKeys = new Set(action.input.roles.filter((role) => role.role === 'modifier').map((role) => resolveKeyId(role.key)));
+      const pressedModifierKeys = [...new Set(action.keys.map(resolveKeyId))].filter((key) => modifierKeys.has(key));
+      const pairedTriggerKeys = pressedModifierKeys.length >= 2 ? triggerKeys.filter((key) => modifierKeys.has(resolveKeyId(key))) : [];
       const byFinger = new Map<Finger, Key[]>();
       plannedStroke.keys.forEach((key, slot) => {
         const finger = fingers[slot];
@@ -420,9 +373,7 @@ export function generateTrace(
         const target = targetOf(finger, keys);
         const gap = index - last[finger] - 1;
         const previousInputEnd = lastInputEnd[finger];
-        const inputDistance = Number.isFinite(previousInputEnd)
-          ? Math.max(0, input.start - previousInputEnd)
-          : Number.POSITIVE_INFINITY;
+        const inputDistance = Number.isFinite(previousInputEnd) ? Math.max(0, input.start - previousInputEnd) : Number.POSITIVE_INFINITY;
         inputDistanceByFinger.set(finger, inputDistance);
         const at = prev[finger];
         return {
@@ -467,17 +418,9 @@ export function generateTrace(
           selectionPolicy,
         );
         press.distance = decision.distance;
-        press.origin = decision.stay
-          ? { at: { ...prev[press.finger] }, from: 'previous' }
-          : { at: { ...geometry.homes[press.finger] }, from: 'home' };
+        press.origin = decision.stay ? { at: { ...prev[press.finger] }, from: 'previous' } : { at: { ...geometry.homes[press.finger] }, from: 'home' };
         if (decision.stay) {
-          restoreStaySnapshots(
-            strokes,
-            last[press.finger],
-            index,
-            press.finger,
-            prev[press.finger],
-          );
+          restoreStaySnapshots(strokes, last[press.finger], index, press.finger, prev[press.finger]);
         }
         total += press.distance;
       }
@@ -609,46 +552,26 @@ function normalizeParticipations(
  * logical outputの合法なcanonical path群から今回のphysical realizationを選ぶ。
  * authoring defaultは先頭。preferOppositeThumbはkey rewriteせずpath selectionとして適用する。
  */
-function thumbVariantSignature(
-  alternative: InputAlternative,
-  thumbKeys: ReadonlySet<string>,
-): string {
-  return inputAlternativeSelectionIdentity(
-    alternative,
-    (key) => thumbKeys.has(resolveKeyId(key)) ? '<thumb>' : resolveKeyId(key),
-  );
+function thumbVariantSignature(alternative: InputAlternative, thumbKeys: ReadonlySet<string>): string {
+  return inputAlternativeSelectionIdentity(alternative, (key) => (thumbKeys.has(resolveKeyId(key)) ? '<thumb>' : resolveKeyId(key)));
 }
 
 /**
  * authoring defaultを基準に、同じpathの合法なthumb variantだけを比較する。
  * non-thumb alternativeや別方式alternativeはpreferOppositeThumbでは選ばない。
  */
-function shiftVariantSignature(
-  alternative: InputAlternative,
-  shiftKeys: ReadonlySet<string>,
-): string {
-  return inputAlternativeSelectionIdentity(
-    alternative,
-    (key) => shiftKeys.has(resolveKeyId(key)) ? '<shift>' : resolveKeyId(key),
-  );
+function shiftVariantSignature(alternative: InputAlternative, shiftKeys: ReadonlySet<string>): string {
+  return inputAlternativeSelectionIdentity(alternative, (key) => (shiftKeys.has(resolveKeyId(key)) ? '<shift>' : resolveKeyId(key)));
 }
 
-function oppositeHandShiftScore(
-  alternative: InputAlternative,
-  shiftKeys: ReadonlySet<string>,
-  geometry: Geometry,
-): number {
+function oppositeHandShiftScore(alternative: InputAlternative, shiftKeys: ReadonlySet<string>, geometry: Geometry): number {
   let value = 0;
   for (const realization of alternative.baseRealizations) {
-    const triggerShifts = (realization.defaultTriggerKeys ?? [])
-      .map(resolveKeyId)
-      .filter((key) => shiftKeys.has(key));
+    const triggerShifts = (realization.defaultTriggerKeys ?? []).map(resolveKeyId).filter((key) => shiftKeys.has(key));
     if (triggerShifts.length === 0) continue;
 
     const outputHands = nonThumbHands(
-      realization.defaultOutputKeys
-        .map(resolveKeyId)
-        .filter((key) => !shiftKeys.has(key)),
+      realization.defaultOutputKeys.map(resolveKeyId).filter((key) => !shiftKeys.has(key)),
       geometry,
     );
     if (outputHands.size !== 1) continue;
@@ -664,12 +587,7 @@ function oppositeHandShiftScore(
   return value;
 }
 
-function selectInputAlternative(
-  alternatives: InputAlternativeSet,
-  layout: Layout,
-  geometry: Geometry,
-  options: TracePolicy,
-): InputAlternative {
+function selectInputAlternative(alternatives: InputAlternativeSet, layout: Layout, geometry: Geometry, options: TracePolicy): InputAlternative {
   let fallback = alternatives[0];
   if (!fallback) throw new Error('canonical input alternativeが空');
 
@@ -695,15 +613,11 @@ function selectInputAlternative(
   const score = (alternative: InputAlternative): number => {
     let value = 0;
     for (const realization of alternative.baseRealizations) {
-      const triggerThumbs = (realization.defaultTriggerKeys ?? [])
-        .map(resolveKeyId)
-        .filter((key) => thumbKeys.has(key));
+      const triggerThumbs = (realization.defaultTriggerKeys ?? []).map(resolveKeyId).filter((key) => thumbKeys.has(key));
       if (triggerThumbs.length === 0) continue;
 
       const outputHands = nonThumbHands(
-        realization.defaultOutputKeys
-          .map(resolveKeyId)
-          .filter((key) => !thumbKeys.has(key)),
+        realization.defaultOutputKeys.map(resolveKeyId).filter((key) => !thumbKeys.has(key)),
         geometry,
       );
       if (outputHands.size !== 1) continue;
@@ -736,15 +650,12 @@ function selectInputAlternative(
   return selected;
 }
 
-function nonThumbHands(
-  keys: readonly string[],
-  geometry: Geometry,
-): Set<'left' | 'right'> {
+function nonThumbHands(keys: readonly string[], geometry: Geometry): Set<'left' | 'right'> {
   return new Set(
     keys
       .map((key) => geometry.keys.get(resolveKeyId(key))?.finger)
       .filter((finger): finger is Finger => finger !== undefined && finger !== 'LT' && finger !== 'RT')
-      .map((finger) => finger.startsWith('L') ? 'left' as const : 'right' as const),
+      .map((finger) => (finger.startsWith('L') ? ('left' as const) : ('right' as const))),
   );
 }
 
@@ -781,9 +692,7 @@ function alternativeContextSatisfied(
 }
 
 function coveredByKana(start: number, end: number, chunks: RomajiChunkRange[]): boolean {
-  return chunks
-    .filter((chunk) => chunk.start < end && start < chunk.end)
-    .every((chunk) => chunk.fromTable);
+  return chunks.filter((chunk) => chunk.start < end && start < chunk.end).every((chunk) => chunk.fromTable);
 }
 
 function canFireYouonOnlyCombo(cursor: number, chars: string[], chunks: RomajiChunkRange[]): boolean {
@@ -796,8 +705,7 @@ const EVALUATION_CHAR_ALIASES: Readonly<Record<string, string>> = {
   '？': '?',
 };
 
-const normalizeEvaluationChar = (char: string): string =>
-  EVALUATION_CHAR_ALIASES[char] ?? char;
+const normalizeEvaluationChar = (char: string): string => EVALUATION_CHAR_ALIASES[char] ?? char;
 
 function record(errors: string[], seen: Set<string>, message: string) {
   if (seen.has(message)) return;
@@ -811,12 +719,7 @@ function record(errors: string[], seen: Set<string>, message: string) {
  * 後続の同指打鍵で「残す」が選ばれた区間だけ、先行スナップショットを
  * restoreStaySnapshotsが前回キーへ戻す。
  */
-function snapshot(
-  prev: Record<Finger, Point>,
-  last: Record<Finger, number>,
-  index: number,
-  geometry: Geometry,
-): Record<Finger, Point> {
+function snapshot(prev: Record<Finger, Point>, last: Record<Finger, number>, index: number, geometry: Geometry): Record<Finger, Point> {
   const out = {} as Record<Finger, Point>;
   for (const finger of ALL_FINGERS) {
     out[finger] = last[finger] === index ? prev[finger] : geometry.homes[finger];
@@ -828,13 +731,7 @@ function snapshot(
  * 後続の同指打鍵で残留が確定した区間を、前回キー位置へ戻す。
  * `strokes[i].index === i` を前提に、区間 (previousIndex, currentIndex) だけを直接引く。
  */
-function restoreStaySnapshots(
-  strokes: Stroke[],
-  previousIndex: number,
-  currentIndex: number,
-  finger: Finger,
-  position: Point,
-): void {
+function restoreStaySnapshots(strokes: Stroke[], previousIndex: number, currentIndex: number, finger: Finger, position: Point): void {
   if (!Number.isFinite(previousIndex)) return;
   const end = Math.min(currentIndex, strokes.length);
   for (let i = previousIndex + 1; i < end; i++) {

@@ -8,14 +8,7 @@ import { EMPTY_SETTINGS_OVERRIDES } from '#engine/settings-items.ts';
 import { resolveEngineInput } from '#engine/resolved-input.ts';
 import { createEngineCache } from '#engine/cache.ts';
 import { computeTraceScalars, TRACE_SCALAR_IDS } from '#interpretation/metrics.ts';
-import {
-  axisKindOf,
-  axisTitle,
-  axisValue,
-  formatMetricValue,
-  N_SENSITIVITY_METRIC_IDS,
-  N_SENSITIVITY_METRICS,
-} from './metric-catalog.ts';
+import { axisKindOf, axisTitle, axisValue, formatMetricValue, N_SENSITIVITY_METRIC_IDS, N_SENSITIVITY_METRICS } from './metric-catalog.ts';
 import { N_SENSITIVITY_RANGE } from './extract.ts';
 
 const CATALOG = {
@@ -35,7 +28,12 @@ test('選択肢の指標は、組み込みの配列でNによって値が変わ�
     ...LAYOUTS_JA.map((layout) => ({ layoutId: layout.id, language: 'ja' as const, text: sampleText('ja', 'legacy') })),
   ];
   for (const { layoutId, language, text } of cases) {
-    const setup: Setup = { id: 'setup-a', number: 1, layoutId, shapeId: CATALOG.layouts.get(layoutId)?.requiresJisShape === true ? 'jis-row-staggered' : 'row-staggered' };
+    const setup: Setup = {
+      id: 'setup-a',
+      number: 1,
+      layoutId,
+      shapeId: CATALOG.layouts.get(layoutId)?.requiresJisShape === true ? 'jis-row-staggered' : 'row-staggered',
+    };
     const resolved = resolveEngineInput({
       target: { kind: 'setup', setupId: 'setup-a' },
       setups: new Map([[setup.id, setup]]),
@@ -49,18 +47,18 @@ test('選択肢の指標は、組み込みの配列でNによって値が変わ�
     if (!resolved.ok) continue;
     const cache = createEngineCache();
     const rows = N_SENSITIVITY_RANGE.map((windowSize) =>
-      computeTraceScalars(cache.getTrace({
-        ...resolved.input,
-        tracePolicy: { ...resolved.input.tracePolicy, windowSize },
-      }).trace));
+      computeTraceScalars(
+        cache.getTrace({
+          ...resolved.input,
+          tracePolicy: { ...resolved.input.tracePolicy, windowSize },
+        }).trace,
+      ),
+    );
     for (const id of TRACE_SCALAR_IDS) {
       if (rows.some((row) => row[id] !== rows[0]![id])) varied.add(id);
     }
   }
-  assert.deepEqual(
-    [...N_SENSITIVITY_METRIC_IDS].sort(),
-    [...varied].sort(),
-  );
+  assert.deepEqual([...N_SENSITIVITY_METRIC_IDS].sort(), [...varied].sort());
 });
 
 test('相対: 単位が%の指標はN=0との差[pt]、それ以外はN=0を100%とした比', () => {

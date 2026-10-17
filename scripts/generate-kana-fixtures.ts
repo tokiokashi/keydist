@@ -47,12 +47,7 @@ interface Fixture {
   omissions: SourceManifest['omissions'];
 }
 
-const OMISSION_REASONS = new Set<OmissionReason>([
-  'jis-only-key',
-  'function-key',
-  'symbol',
-  'source-only',
-]);
+const OMISSION_REASONS = new Set<OmissionReason>(['jis-only-key', 'function-key', 'symbol', 'source-only']);
 
 function omissionKey(faceIndex: number, row: number, column: number) {
   return `${faceIndex}:${row}:${column}`;
@@ -69,9 +64,7 @@ export function validateSourceManifest(fileName: string, manifest: SourceManifes
     return face.sourceRows.map((row, rowIndex) => {
       const cells = row.split('\t');
       if (cells.length !== SOURCE_ROW_WIDTHS[rowIndex]) {
-        throw new Error(
-          `${fileName}: face ${faceIndex} sourceRows row ${rowIndex} の列数が${SOURCE_ROW_WIDTHS[rowIndex]}ではない`,
-        );
+        throw new Error(`${fileName}: face ${faceIndex} sourceRows row ${rowIndex} の列数が${SOURCE_ROW_WIDTHS[rowIndex]}ではない`);
       }
       return cells;
     });
@@ -83,9 +76,7 @@ export function validateSourceManifest(fileName: string, manifest: SourceManifes
     }
     for (const [rowIndex, row] of face.rows.entries()) {
       if (row.length !== SOURCE_ROW_WIDTHS[rowIndex]) {
-        throw new Error(
-          `${fileName}: face ${faceIndex} rows row ${rowIndex} の列数が${SOURCE_ROW_WIDTHS[rowIndex]}ではない`,
-        );
+        throw new Error(`${fileName}: face ${faceIndex} rows row ${rowIndex} の列数が${SOURCE_ROW_WIDTHS[rowIndex]}ではない`);
       }
     }
   }
@@ -109,9 +100,7 @@ export function validateSourceManifest(fileName: string, manifest: SourceManifes
 
     const key = omissionKey(omission.faceIndex, omission.row, omission.column);
     if (omissionKeys.has(key)) {
-      throw new Error(
-        `${fileName}: 除外が重複している (face ${omission.faceIndex}, row ${omission.row}, column ${omission.column})`,
-      );
+      throw new Error(`${fileName}: 除外が重複している (face ${omission.faceIndex}, row ${omission.row}, column ${omission.column})`);
     }
     omissionKeys.add(key);
 
@@ -140,18 +129,14 @@ export function validateSourceManifest(fileName: string, manifest: SourceManifes
         const inAnsi = column < TARGET_ROW_WIDTHS[rowIndex];
 
         if (!inAnsi && selectedCell !== '') {
-          throw new Error(
-            `${fileName}: ANSI対象外セルが採用側rowsに残っている (face ${faceIndex}, row ${rowIndex}, column ${column})`,
-          );
+          throw new Error(`${fileName}: ANSI対象外セルが採用側rowsに残っている (face ${faceIndex}, row ${rowIndex}, column ${column})`);
         }
 
         if (sourceCell === selectedCell) continue;
 
         if (sourceCell !== '' && selectedCell === '') {
           if (!omitted) {
-            throw new Error(
-              `${fileName}: sourceから除外されたセルに omissions が無い (face ${faceIndex}, row ${rowIndex}, column ${column})`,
-            );
+            throw new Error(`${fileName}: sourceから除外されたセルに omissions が無い (face ${faceIndex}, row ${rowIndex}, column ${column})`);
           }
           continue;
         }
@@ -185,13 +170,11 @@ function projectToAnsi(manifest: SourceManifest): Fixture {
 }
 
 function generateFixtures() {
-  for (const fileName of readdirSync(SOURCE_DIR).filter((name) => name.endsWith('.json')).sort()) {
+  for (const fileName of readdirSync(SOURCE_DIR)
+    .filter((name) => name.endsWith('.json'))
+    .sort()) {
     const fixture = projectToAnsi(readManifest(fileName));
-    writeFileSync(
-      join(FIXTURE_DIR, `${fixture.layoutId}.json`),
-      `${JSON.stringify(fixture, null, 2)}\n`,
-      'utf8',
-    );
+    writeFileSync(join(FIXTURE_DIR, `${fixture.layoutId}.json`), `${JSON.stringify(fixture, null, 2)}\n`, 'utf8');
   }
 }
 

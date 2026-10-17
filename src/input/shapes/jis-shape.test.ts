@@ -5,7 +5,9 @@ import { jisShapeIdFor, physicalShapeKeyIds } from './jis-shape.ts';
 
 test('物理配列が持つキーのidは、組み込みの全物理配列でbuildGeometryのキーと一致する', () => {
   for (const shape of Object.values(PHYSICAL_SHAPES)) {
-    const built = new Set(buildGeometry(shape, presetGeometryStandard(shape.id as keyof typeof PHYSICAL_SHAPES) === 'jis' ? JIS_FINGER_ASSIGNMENT : undefined).keys.keys());
+    const built = new Set(
+      buildGeometry(shape, presetGeometryStandard(shape.id as keyof typeof PHYSICAL_SHAPES) === 'jis' ? JIS_FINGER_ASSIGNMENT : undefined).keys.keys(),
+    );
     assert.deepEqual([...physicalShapeKeyIds(shape)].sort(), [...built].sort(), shape.id);
   }
 });

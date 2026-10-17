@@ -74,7 +74,11 @@ export function ContextBar({ children, history, share, disabled = false }: Conte
                 {state.kind === 'copied' ? 'URLをコピーしました' : state.kind === 'failed' ? 'コピーできませんでした' : ''}
                 {state.kind === 'idle'
                   ? null
-                  : state.notices.map((line) => <span key={line} className="context-share-notice" data-share-notice="true">{line}</span>)}
+                  : state.notices.map((line) => (
+                      <span key={line} className="context-share-notice" data-share-notice="true">
+                        {line}
+                      </span>
+                    ))}
               </span>
             </>
           )}
@@ -95,27 +99,13 @@ export interface ContextBarHistory {
 function UndoRedoButtons({ history }: { readonly history: ContextBarHistory }) {
   return (
     <>
-      <button
-        type="button"
-        className="context-icon-button"
-        aria-label="元に戻す"
-        title="元に戻す"
-        disabled={!history.canUndo}
-        onClick={history.undo}
-      >
+      <button type="button" className="context-icon-button" aria-label="元に戻す" title="元に戻す" disabled={!history.canUndo} onClick={history.undo}>
         <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
           <path d="M5.5 3.5 2.5 6.5l3 3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           <path d="M3 6.5h6.25a3.75 3.75 0 0 1 0 7.5H7" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
         </svg>
       </button>
-      <button
-        type="button"
-        className="context-icon-button"
-        aria-label="やり直す"
-        title="やり直す"
-        disabled={!history.canRedo}
-        onClick={history.redo}
-      >
+      <button type="button" className="context-icon-button" aria-label="やり直す" title="やり直す" disabled={!history.canRedo} onClick={history.redo}>
         <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
           <path d="m10.5 3.5 3 3-3 3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           <path d="M13 6.5H6.75a3.75 3.75 0 0 0 0 7.5H9" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -174,7 +164,10 @@ function useShareCopy(query: ContextBarShare['query']): { readonly state: ShareS
       show('failed', []);
       return;
     }
-    clipboard.writeText(url).then(() => show('copied', notices), () => show('failed', []));
+    clipboard.writeText(url).then(
+      () => show('copied', notices),
+      () => show('failed', []),
+    );
   };
 
   return { state, copy };
@@ -195,7 +188,13 @@ function ShareIcon() {
   return (
     <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
       <path d="M8 10V2.5M5 5.25 8 2.25l3 3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M4.5 7.5H3.75A1.25 1.25 0 0 0 2.5 8.75v4.5c0 .69.56 1.25 1.25 1.25h8.5c.69 0 1.25-.56 1.25-1.25v-4.5c0-.69-.56-1.25-1.25-1.25H11.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path
+        d="M4.5 7.5H3.75A1.25 1.25 0 0 0 2.5 8.75v4.5c0 .69.56 1.25 1.25 1.25h8.5c.69 0 1.25-.56 1.25-1.25v-4.5c0-.69-.56-1.25-1.25-1.25H11.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }

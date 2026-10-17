@@ -109,12 +109,8 @@ function rawStep(strokes: readonly Stroke[], strokeIndex: number, hand: Hand): R
   const hasTrigger = roles.includes('trigger');
   const hasHeldTrigger = roles.includes('held-trigger');
   const thumbOnly = participations.every((participation) => isThumb(participation.finger));
-  const sameFinger = stroke.presses.some(
-    (press) => handOf(press.finger) === hand && press.sfb,
-  );
-  const nonThumbSameFinger = stroke.presses.some(
-    (press) => handOf(press.finger) === hand && !isThumb(press.finger) && press.sfb,
-  );
+  const sameFinger = stroke.presses.some((press) => handOf(press.finger) === hand && press.sfb);
+  const nonThumbSameFinger = stroke.presses.some((press) => handOf(press.finger) === hand && !isThumb(press.finger) && press.sfb);
   const oppositeHandOutput = stroke.participations.some(
     (participation) => participation.hand === opposite(hand) && participation.roles.includes('output'),
   );
@@ -143,12 +139,14 @@ export function buildRawHandRuns(strokes: readonly Stroke[]): readonly RawHandRu
     let steps: RawHandStep[] = [];
     const flush = () => {
       if (steps.length === 0) return;
-      runs.push(Object.freeze({
-        hand,
-        startStrokeIndex: steps[0].strokeIndex,
-        endStrokeIndex: steps[steps.length - 1].strokeIndex + 1,
-        steps: Object.freeze(steps),
-      }));
+      runs.push(
+        Object.freeze({
+          hand,
+          startStrokeIndex: steps[0].strokeIndex,
+          endStrokeIndex: steps[steps.length - 1].strokeIndex + 1,
+          steps: Object.freeze(steps),
+        }),
+      );
       steps = [];
     };
 
@@ -163,17 +161,18 @@ export function buildRawHandRuns(strokes: readonly Stroke[]): readonly RawHandRu
     flush();
   }
 
-  runs.sort((left, right) =>
-    left.startStrokeIndex - right.startStrokeIndex || left.hand.localeCompare(right.hand));
+  runs.sort((left, right) => left.startStrokeIndex - right.startStrokeIndex || left.hand.localeCompare(right.hand));
   return Object.freeze(runs);
 }
 
 function breaksChain(step: RawHandStep, policy: ChainInterpretation): boolean {
   // same-fingerは旧UI互換のため非親指だけを対象にし、親指onlyは独立Policyで扱う。
-  return (policy.breakOnSameFinger && step.nonThumbSameFinger)
-    || (policy.breakOnTriggerOnly && step.triggerOnly && !step.isComposition)
-    || (policy.breakOnThumbOnly && step.thumbOnly)
-    || (policy.breakOnOppositeHandSimultaneous && step.oppositeHandOutput);
+  return (
+    (policy.breakOnSameFinger && step.nonThumbSameFinger) ||
+    (policy.breakOnTriggerOnly && step.triggerOnly && !step.isComposition) ||
+    (policy.breakOnThumbOnly && step.thumbOnly) ||
+    (policy.breakOnOppositeHandSimultaneous && step.oppositeHandOutput)
+  );
 }
 
 /**
@@ -194,13 +193,15 @@ export function buildAnalysisChains(
         start = undefined;
         return;
       }
-      chains.push(Object.freeze({
-        chainIndex: chains.length,
-        rawRunIndex,
-        hand: run.hand,
-        startStrokeIndex: start,
-        endStrokeIndex: end,
-      }));
+      chains.push(
+        Object.freeze({
+          chainIndex: chains.length,
+          rawRunIndex,
+          hand: run.hand,
+          startStrokeIndex: start,
+          endStrokeIndex: end,
+        }),
+      );
       start = undefined;
     };
 
@@ -221,10 +222,7 @@ export function buildAnalysisChains(
  * 1回の解析結果をimmutableなindex参照として固定する。
  * stable IDは導入せず、StrokeIndex / chainIndexはこのresult内だけで意味を持つ。
  */
-export function analyzeChains(
-  strokes: readonly Stroke[],
-  policy: ChainInterpretation = DEFAULT_CHAIN_INTERPRETATION,
-): ChainAnalysisResult {
+export function analyzeChains(strokes: readonly Stroke[], policy: ChainInterpretation = DEFAULT_CHAIN_INTERPRETATION): ChainAnalysisResult {
   const rawHandRuns = buildRawHandRuns(strokes);
   const chainInterpretation = Object.freeze({ ...policy });
   const chains = buildAnalysisChains(rawHandRuns, chainInterpretation);

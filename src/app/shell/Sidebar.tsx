@@ -10,12 +10,7 @@ import { LAYER_COMBO_PRESSES_PANE_META } from '#analyzers/layer-combo-presses/pa
 import { COMPARISON_PANE_META } from '#analyzers/comparison/pane-meta.ts';
 import { FINGER_MATRIX_PANE_META } from '#analyzers/finger-matrix/pane-meta.ts';
 import { N_SENSITIVITY_PANE_META } from '#analyzers/n-sensitivity/pane-meta.ts';
-import {
-  getAppearanceSnapshot,
-  getServerAppearanceSnapshot,
-  setAppearanceTheme,
-  subscribeAppearance,
-} from '../theme/appearance.ts';
+import { getAppearanceSnapshot, getServerAppearanceSnapshot, setAppearanceTheme, subscribeAppearance } from '../theme/appearance.ts';
 import type { ThemeChoice } from '../theme/theme.ts';
 import { ABOUT_LABEL } from '../about/AboutPage.tsx';
 import { FINGER_ASSIGNMENT_LABEL } from '#editors/finger-assignment/label.ts';
@@ -129,7 +124,12 @@ function NavLink({ to, children, onNavigate }: { readonly to: string; readonly c
  * 畳んだ見た目は `<html data-sidebar-collapsed>` に対するCSSが決める（描画の前から効かせるため）。
  * `aria-expanded` はこの状態から出すので、描画が終わるまでの間はHTML上で常に「開いている」と示す。
  */
-function SidebarGroup({ id, title, collapsed, children }: {
+function SidebarGroup({
+  id,
+  title,
+  collapsed,
+  children,
+}: {
   readonly id: SidebarGroupId;
   readonly title: string;
   readonly collapsed: boolean;
@@ -147,12 +147,25 @@ function SidebarGroup({ id, title, collapsed, children }: {
           onClick={() => setSidebarGroupCollapsed(id, !collapsed)}
         >
           {title}
-          <svg className="sidebar-heading-chevron" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            className="sidebar-heading-chevron"
+            viewBox="0 0 16 16"
+            width="12"
+            height="12"
+            aria-hidden="true"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.75"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <path d="M4 6l4 4 4-4" />
           </svg>
         </button>
       </h2>
-      <div className="sidebar-group-items" id={itemsId}>{children}</div>
+      <div className="sidebar-group-items" id={itemsId}>
+        {children}
+      </div>
     </section>
   );
 }
@@ -186,7 +199,9 @@ export function Sidebar({ pinned, onPinnedChange, onNavigate }: SidebarProps) {
   return (
     <>
       <div className="sidebar-top">
-        <Link className="sidebar-brand" to="/" onClick={onNavigate}>keydist</Link>
+        <Link className="sidebar-brand" to="/" onClick={onNavigate}>
+          keydist
+        </Link>
         <button
           type="button"
           className="sidebar-icon-button sidebar-pin"
@@ -195,7 +210,17 @@ export function Sidebar({ pinned, onPinnedChange, onNavigate }: SidebarProps) {
           aria-pressed={pinned}
           onClick={() => onPinnedChange(!pinned)}
         >
-          <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round">
+          <svg
+            viewBox="0 0 16 16"
+            width="15"
+            height="15"
+            aria-hidden="true"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          >
             <path d="M6 2.5h4l-.5 4 2.5 2.5H4l2.5-2.5z" />
             <path d="M8 9v4.5" />
           </svg>
@@ -205,17 +230,37 @@ export function Sidebar({ pinned, onPinnedChange, onNavigate }: SidebarProps) {
       <nav className="sidebar-nav" aria-label="主要ナビゲーション">
         <SidebarGroup id="analyze" title="Analyze" collapsed={isCollapsed('analyze')}>
           <h3 className="sidebar-subheading">Single</h3>
-          <NavLink to="/analyzer/bigram-flow" onNavigate={onNavigate}>{BIGRAM_FLOW_PANE_META.name}</NavLink>
-          <NavLink to="/analyzer/finger-distance" onNavigate={onNavigate}>{FINGER_DISTANCE_PANE_META.name}</NavLink>
-          <NavLink to="/analyzer/heatmap" onNavigate={onNavigate}>{HEATMAP_PANE_META.name}</NavLink>
-          <NavLink to="/analyzer/heatmap-layers" onNavigate={onNavigate}>{HEATMAP_LAYERS_PANE_META.name}</NavLink>
-          <NavLink to="/analyzer/layer-combo-presses" onNavigate={onNavigate}>{LAYER_COMBO_PRESSES_PANE_META.name}</NavLink>
-          <NavLink to="/analyzer/keymap" onNavigate={onNavigate}>{KEYMAP_PANE_META.name}</NavLink>
-          <NavLink to="/analyzer/playback" onNavigate={onNavigate}>{PLAYBACK_PANE_META.name}</NavLink>
+          <NavLink to="/analyzer/bigram-flow" onNavigate={onNavigate}>
+            {BIGRAM_FLOW_PANE_META.name}
+          </NavLink>
+          <NavLink to="/analyzer/finger-distance" onNavigate={onNavigate}>
+            {FINGER_DISTANCE_PANE_META.name}
+          </NavLink>
+          <NavLink to="/analyzer/heatmap" onNavigate={onNavigate}>
+            {HEATMAP_PANE_META.name}
+          </NavLink>
+          <NavLink to="/analyzer/heatmap-layers" onNavigate={onNavigate}>
+            {HEATMAP_LAYERS_PANE_META.name}
+          </NavLink>
+          <NavLink to="/analyzer/layer-combo-presses" onNavigate={onNavigate}>
+            {LAYER_COMBO_PRESSES_PANE_META.name}
+          </NavLink>
+          <NavLink to="/analyzer/keymap" onNavigate={onNavigate}>
+            {KEYMAP_PANE_META.name}
+          </NavLink>
+          <NavLink to="/analyzer/playback" onNavigate={onNavigate}>
+            {PLAYBACK_PANE_META.name}
+          </NavLink>
           <h3 className="sidebar-subheading">Multi</h3>
-          <NavLink to="/analyzer/comparison" onNavigate={onNavigate}>{COMPARISON_PANE_META.name}</NavLink>
-          <NavLink to="/analyzer/finger-matrix" onNavigate={onNavigate}>{FINGER_MATRIX_PANE_META.name}</NavLink>
-          <NavLink to="/analyzer/n-sensitivity" onNavigate={onNavigate}>{N_SENSITIVITY_PANE_META.name}</NavLink>
+          <NavLink to="/analyzer/comparison" onNavigate={onNavigate}>
+            {COMPARISON_PANE_META.name}
+          </NavLink>
+          <NavLink to="/analyzer/finger-matrix" onNavigate={onNavigate}>
+            {FINGER_MATRIX_PANE_META.name}
+          </NavLink>
+          <NavLink to="/analyzer/n-sensitivity" onNavigate={onNavigate}>
+            {N_SENSITIVITY_PANE_META.name}
+          </NavLink>
         </SidebarGroup>
 
         <SidebarGroup id="workspace" title="Workspace" collapsed={isCollapsed('workspace')}>
@@ -249,24 +294,44 @@ export function Sidebar({ pinned, onPinnedChange, onNavigate }: SidebarProps) {
         </SidebarGroup>
 
         <section className="sidebar-group">
-          <NavLink to="/input" onNavigate={onNavigate}>Tester</NavLink>
+          <NavLink to="/input" onNavigate={onNavigate}>
+            Tester
+          </NavLink>
         </section>
 
         <SidebarGroup id="assets" title="Assets" collapsed={isCollapsed('assets')}>
-          <NavLink to="/assets" onNavigate={onNavigate}>{USER_ASSETS_LABEL}</NavLink>
-          <NavLink to="/setup" onNavigate={onNavigate}>{SETUP_LABEL}</NavLink>
-          <NavLink to="/finger-assignment" onNavigate={onNavigate}>{FINGER_ASSIGNMENT_LABEL}</NavLink>
-          <NavLink to="/romaji-layout" onNavigate={onNavigate}>{ROMAJI_LAYOUT_LABEL}</NavLink>
-          <NavLink to="/romaji-rule" onNavigate={onNavigate}>{ROMAJI_RULE_LABEL}</NavLink>
-          <NavLink to="/personal-speed" onNavigate={onNavigate}>{PERSONAL_SPEED_LABEL}</NavLink>
+          <NavLink to="/assets" onNavigate={onNavigate}>
+            {USER_ASSETS_LABEL}
+          </NavLink>
+          <NavLink to="/setup" onNavigate={onNavigate}>
+            {SETUP_LABEL}
+          </NavLink>
+          <NavLink to="/finger-assignment" onNavigate={onNavigate}>
+            {FINGER_ASSIGNMENT_LABEL}
+          </NavLink>
+          <NavLink to="/romaji-layout" onNavigate={onNavigate}>
+            {ROMAJI_LAYOUT_LABEL}
+          </NavLink>
+          <NavLink to="/romaji-rule" onNavigate={onNavigate}>
+            {ROMAJI_RULE_LABEL}
+          </NavLink>
+          <NavLink to="/personal-speed" onNavigate={onNavigate}>
+            {PERSONAL_SPEED_LABEL}
+          </NavLink>
         </SidebarGroup>
 
         <SidebarGroup id="about" title="About" collapsed={isCollapsed('about')}>
-          <NavLink to="/about" onNavigate={onNavigate}>{ABOUT_LABEL}</NavLink>
+          <NavLink to="/about" onNavigate={onNavigate}>
+            {ABOUT_LABEL}
+          </NavLink>
           {SPEC_LINKS.map((link) => (
-            <a key={link.url} className="sidebar-link" href={link.url} target="_blank" rel="noopener noreferrer">{link.label}</a>
+            <a key={link.url} className="sidebar-link" href={link.url} target="_blank" rel="noopener noreferrer">
+              {link.label}
+            </a>
           ))}
-          <a className="sidebar-link" href={REPOSITORY_URL} target="_blank" rel="noopener noreferrer">GitHub</a>
+          <a className="sidebar-link" href={REPOSITORY_URL} target="_blank" rel="noopener noreferrer">
+            GitHub
+          </a>
         </SidebarGroup>
       </nav>
 

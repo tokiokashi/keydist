@@ -61,9 +61,7 @@ export function FingerDistanceChart({ spec, scaleKey }: { readonly spec: ChartSp
   return (
     <div className="finger-distance-chart">
       <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label={spec.title}>
-        {divider === undefined ? null : (
-          <line className="finger-distance-chart-divider" x1={divider} x2={divider} y1={TOP} y2={HEIGHT - BOTTOM + 6} />
-        )}
+        {divider === undefined ? null : <line className="finger-distance-chart-divider" x1={divider} x2={divider} y1={TOP} y2={HEIGHT - BOTTOM + 6} />}
         <line className="finger-distance-chart-baseline" x1={SIDE} x2={WIDTH - SIDE} y1={baseline} y2={baseline} />
         {placed.map(({ bar, left, centre }) => {
           const valueY = yOf(bar.value);
@@ -92,14 +90,7 @@ export function FingerDistanceChart({ spec, scaleKey }: { readonly spec: ChartSp
                 data-selected={selected?.key === bar.key || undefined}
               />
               {barH > 0.5 ? (
-                <rect
-                  className="finger-distance-chart-bar"
-                  x={centre - barW / 2}
-                  y={Math.min(valueY, baseline)}
-                  width={barW}
-                  height={barH}
-                  rx={2}
-                />
+                <rect className="finger-distance-chart-bar" x={centre - barW / 2} y={Math.min(valueY, baseline)} width={barW} height={barH} rx={2} />
               ) : null}
               <text className="finger-distance-chart-value" x={centre} y={labelY} textAnchor="middle">
                 {bar.valueText}
@@ -111,13 +102,7 @@ export function FingerDistanceChart({ spec, scaleKey }: { readonly spec: ChartSp
           );
         })}
         {spans.map((group) => (
-          <text
-            key={group.hand}
-            className="finger-distance-chart-hand"
-            x={(group.from + group.to) / 2}
-            y={HEIGHT - 6}
-            textAnchor="middle"
-          >
+          <text key={group.hand} className="finger-distance-chart-hand" x={(group.from + group.to) / 2} y={HEIGHT - 6} textAnchor="middle">
             {HAND_LABEL[group.hand]}
           </text>
         ))}

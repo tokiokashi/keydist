@@ -20,7 +20,15 @@ import { nSensitivityDefinition } from '#analyzers/n-sensitivity/extract.ts';
  * 描画側（`definition.tsx`）はReactを引き込むので読み込まず、抽出だけの`extract.ts`を使う。
  */
 const handle = createEngineWorkerHandler(createEngineCache(), {
-  single: [bigramFlowDefinition, fingerDistanceDefinition, heatmapDefinition, heatmapLayersDefinition, layerComboPressesDefinition, keymapDefinition, playbackDefinition],
+  single: [
+    bigramFlowDefinition,
+    fingerDistanceDefinition,
+    heatmapDefinition,
+    heatmapLayersDefinition,
+    layerComboPressesDefinition,
+    keymapDefinition,
+    playbackDefinition,
+  ],
   set: [comparisonDefinition, fingerMatrixDefinition, nSensitivityDefinition],
 });
 

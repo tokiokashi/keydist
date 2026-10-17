@@ -31,14 +31,7 @@ import {
 } from './playback.ts';
 import { assignmentWithHomeKeys, buildGeometry, DEFAULT_FINGER_ASSIGNMENT } from '#input/shapes/geometry.ts';
 import { generateTrace } from '#trace/generate.ts';
-import {
-  faceFromEntries,
-  fromFaces,
-  fromKana,
-  LAYOUT_BY_ID,
-  withRomaji,
-  withThumbShiftAlternatives,
-} from '#input/layouts/index.ts';
+import { faceFromEntries, fromFaces, fromKana, LAYOUT_BY_ID, withRomaji, withThumbShiftAlternatives } from '#input/layouts/index.ts';
 import { kunrei } from '#input/romaji/kunrei.ts';
 import { analyzeStrokeStructure } from '../structure/aggregate.ts';
 import { DEFAULT_CHAIN_INTERPRETATION, type ChainInterpretation } from '../structure/chain.ts';
@@ -61,13 +54,13 @@ const playing = (cursor = 0) => ({
   cursor,
   playing: true,
 });
-const withStepsPerSecond = <T extends object>(state: T, stepsPerSecond: number): T & { stepsPerSecond: number; elapsedMs: number } =>
-  ({ ...state, stepsPerSecond, elapsedMs: 0 });
+const withStepsPerSecond = <T extends object>(state: T, stepsPerSecond: number): T & { stepsPerSecond: number; elapsedMs: number } => ({
+  ...state,
+  stepsPerSecond,
+  elapsedMs: 0,
+});
 const emptyStrokes = (length: number) => Array.from({ length }, () => ({ presses: [] })) as never[];
-const timingAnalysis = (
-  strokes: readonly any[],
-  chainInterpretation?: ChainInterpretation,
-) => {
+const timingAnalysis = (strokes: readonly any[], chainInterpretation?: ChainInterpretation) => {
   const normalized = strokes.map((source, index) => {
     const presses = (source.presses ?? []).map((raw: any) => {
       const keys = (raw.keys ?? []).map((key: any, keyIndex: number) => ({
@@ -114,11 +107,8 @@ const timingAnalysis = (
   return analyzeStrokeStructure(normalized as never[], chainInterpretation);
 };
 
-const advancePlayback = (
-  state: ReturnType<typeof createPlaybackState>,
-  elapsedMs: number,
-  strokes: readonly never[],
-) => advancePlaybackAnalysis(state, elapsedMs, timingAnalysis(strokes));
+const advancePlayback = (state: ReturnType<typeof createPlaybackState>, elapsedMs: number, strokes: readonly never[]) =>
+  advancePlaybackAnalysis(state, elapsedMs, timingAnalysis(strokes));
 
 const playbackRecentActionsPerSecond = (
   strokes: readonly never[],
@@ -128,15 +118,7 @@ const playbackRecentActionsPerSecond = (
   limit = 10,
   calibration?: Parameters<typeof playbackRecentActionsPerSecondAnalysis>[5],
   speedMultiplier?: number,
-) => playbackRecentActionsPerSecondAnalysis(
-  timingAnalysis(strokes),
-  cursor,
-  stepsPerSecond,
-  sameFingerDelay,
-  limit,
-  calibration,
-  speedMultiplier,
-);
+) => playbackRecentActionsPerSecondAnalysis(timingAnalysis(strokes), cursor, stepsPerSecond, sameFingerDelay, limit, calibration, speedMultiplier);
 
 const playbackRecentKanaPerSecond = (
   strokes: readonly never[],
@@ -146,15 +128,7 @@ const playbackRecentKanaPerSecond = (
   limit = 10,
   calibration?: Parameters<typeof playbackRecentKanaPerSecondAnalysis>[5],
   speedMultiplier?: number,
-) => playbackRecentKanaPerSecondAnalysis(
-  timingAnalysis(strokes),
-  cursor,
-  stepsPerSecond,
-  sameFingerDelay,
-  limit,
-  calibration,
-  speedMultiplier,
-);
+) => playbackRecentKanaPerSecondAnalysis(timingAnalysis(strokes), cursor, stepsPerSecond, sameFingerDelay, limit, calibration, speedMultiplier);
 
 const playbackRateChartData = (
   strokes: readonly never[],
@@ -163,14 +137,7 @@ const playbackRateChartData = (
   limit = 10,
   calibration?: Parameters<typeof playbackRateChartDataAnalysis>[4],
   speedMultiplier?: number,
-) => playbackRateChartDataAnalysis(
-  timingAnalysis(strokes),
-  stepsPerSecond,
-  sameFingerDelay,
-  limit,
-  calibration,
-  speedMultiplier,
-);
+) => playbackRateChartDataAnalysis(timingAnalysis(strokes), stepsPerSecond, sameFingerDelay, limit, calibration, speedMultiplier);
 
 test('構造解析の再生成ではcursor/playingとStroke内進捗率を維持する', () => {
   const calibration = {
@@ -184,14 +151,8 @@ test('構造解析の再生成ではcursor/playingとStroke内進捗率を維持
     fallbackMoveMsPerUnit: 1000 / 10,
     measuredAt: 1,
   };
-  const previous = timingAnalysis([
-    { presses: [{ finger: 'LI' }] },
-    { presses: [{ finger: 'RI' }] },
-  ]);
-  const next = timingAnalysis([
-    { presses: [{ finger: 'LI' }] },
-    { presses: [{ finger: 'LM' }] },
-  ]);
+  const previous = timingAnalysis([{ presses: [{ finger: 'LI' }] }, { presses: [{ finger: 'RI' }] }]);
+  const next = timingAnalysis([{ presses: [{ finger: 'LI' }] }, { presses: [{ finger: 'LM' }] }]);
   const state = {
     ...createPlaybackState(4, false, calibration),
     cursor: 1,
@@ -199,12 +160,7 @@ test('構造解析の再生成ではcursor/playingとStroke内進捗率を維持
     elapsedMs: 62.5,
   };
 
-  const refreshed = reconcilePlaybackStateAfterAnalysisRefresh(
-    state,
-    state,
-    previous,
-    next,
-  );
+  const refreshed = reconcilePlaybackStateAfterAnalysisRefresh(state, state, previous, next);
 
   assert.equal(refreshed.cursor, 1);
   assert.equal(refreshed.playing, true);
@@ -212,14 +168,8 @@ test('構造解析の再生成ではcursor/playingとStroke内進捗率を維持
 });
 
 test('配列切替では位置だけ引き継ぎTiming設定は新配列へ切り替える', () => {
-  const previous = timingAnalysis([
-    { presses: [] },
-    { presses: [] },
-  ]);
-  const next = timingAnalysis([
-    { presses: [] },
-    { presses: [] },
-  ]);
+  const previous = timingAnalysis([{ presses: [] }, { presses: [] }]);
+  const next = timingAnalysis([{ presses: [] }, { presses: [] }]);
   const previousState = {
     ...createPlaybackState(4, false, undefined, 1),
     cursor: 1,
@@ -228,12 +178,7 @@ test('配列切替では位置だけ引き継ぎTiming設定は新配列へ切�
   };
   const nextBaseState = createPlaybackState(8, true, undefined, 2);
 
-  const refreshed = reconcilePlaybackStateAfterAnalysisRefresh(
-    previousState,
-    nextBaseState,
-    previous,
-    next,
-  );
+  const refreshed = reconcilePlaybackStateAfterAnalysisRefresh(previousState, nextBaseState, previous, next);
 
   assert.equal(refreshed.cursor, 1);
   assert.equal(refreshed.playing, true);
@@ -244,13 +189,8 @@ test('配列切替では位置だけ引き継ぎTiming設定は新配列へ切�
 });
 
 test('構造解析の再生成後にcursorが末尾なら再生を停止する', () => {
-  const previous = timingAnalysis([
-    { presses: [{ finger: 'LI' }] },
-    { presses: [{ finger: 'LM' }] },
-  ]);
-  const next = timingAnalysis([
-    { presses: [{ finger: 'LI' }] },
-  ]);
+  const previous = timingAnalysis([{ presses: [{ finger: 'LI' }] }, { presses: [{ finger: 'LM' }] }]);
+  const next = timingAnalysis([{ presses: [{ finger: 'LI' }] }]);
   const state = {
     ...createPlaybackState(),
     cursor: 2,
@@ -258,12 +198,7 @@ test('構造解析の再生成後にcursorが末尾なら再生を停止する',
     elapsedMs: 123,
   };
 
-  const refreshed = reconcilePlaybackStateAfterAnalysisRefresh(
-    state,
-    state,
-    previous,
-    next,
-  );
+  const refreshed = reconcilePlaybackStateAfterAnalysisRefresh(state, state, previous, next);
 
   assert.equal(refreshed.cursor, 1);
   assert.equal(refreshed.playing, false);
@@ -326,10 +261,7 @@ test('再生倍率は基準速度とキャリブレーション後の速度を�
 });
 
 test('同指ディレイは移動距離に応じてステップ間隔を延ばす', () => {
-  const strokes = [
-    { presses: [{ sfb: true, distance: 2 }] },
-    { presses: [] },
-  ] as never[];
+  const strokes = [{ presses: [{ sfb: true, distance: 2 }] }, { presses: [] }] as never[];
   assert.equal(playbackStrokeDurationMs(strokes[0], 2, false), 500);
   assert.equal(playbackStrokeDurationMs(strokes[0], 2, true), 1000);
 
@@ -341,7 +273,7 @@ test('同指ディレイは移動距離に応じてステップ間隔を延ば�
   for (let i = 0; i < 4; i++) state = advancePlayback(state, 100, strokes);
   state = advancePlayback(state, 100, strokes);
   assert.equal(state.cursor, 2);
-  assert.ok(Math.abs(playbackRecentActionsPerSecond(strokes, 2, 2, true)! - (4 / 3)) < 1e-9);
+  assert.ok(Math.abs(playbackRecentActionsPerSecond(strokes, 2, 2, true)! - 4 / 3) < 1e-9);
 });
 
 test('直近のかな毎秒は入力単位のかな数を同じ実効時間で割る', () => {
@@ -405,7 +337,10 @@ test('待機を挿入したscheduleでも、SMAとEWMAは打鍵の時間だけ�
     { strokeIndex: 1, startMs: 500, endMs: 1800, waitMs: 300 },
     { strokeIndex: 2, startMs: 1800, endMs: 3000, waitMs: 700 },
   ];
-  for (const [average, halfLife] of [['sma', 1], ['ewma', 1]] as const) {
+  for (const [average, halfLife] of [
+    ['sma', 1],
+    ['ewma', 1],
+  ] as const) {
     for (const cursor of [1, 2, 3]) {
       assert.equal(
         playbackRecentActionsPerSecondAnalysis(analysis, cursor, 2, true, 10, undefined, 1, waited, average, halfLife),
@@ -434,32 +369,22 @@ test('EWMAは確定Timingの経過時間を半減期として使う', () => {
     { strokeIndex: 1, startMs: 500, endMs: 1500 },
   ];
 
-  const actions = playbackRecentActionsPerSecondAnalysis(
-    analysis, 2, 2, true, 10, undefined, 1, schedule, 'ewma', 1,
-  );
+  const actions = playbackRecentActionsPerSecondAnalysis(analysis, 2, 2, true, 10, undefined, 1, schedule, 'ewma', 1);
   // 1打目は2/s。そこから1秒経過で寄与が1/2になり、
   // 2打目の瞬時値1/sが残り1/2を占めるため1.5/s。
   assert.ok(actions !== undefined);
   assert.ok(Math.abs(actions - 1.5) < 1e-9);
 
-  const kanaAtFirstStroke = playbackRecentKanaPerSecondAnalysis(
-    analysis, 1, 2, true, 10, undefined, 1, schedule, 'ewma', 1,
-  );
-  const actionsAtFirstStroke = playbackRecentActionsPerSecondAnalysis(
-    analysis, 1, 2, true, 10, undefined, 1, schedule, 'ewma', 1,
-  );
+  const kanaAtFirstStroke = playbackRecentKanaPerSecondAnalysis(analysis, 1, 2, true, 10, undefined, 1, schedule, 'ewma', 1);
+  const actionsAtFirstStroke = playbackRecentActionsPerSecondAnalysis(analysis, 1, 2, true, 10, undefined, 1, schedule, 'ewma', 1);
   assert.equal(kanaAtFirstStroke, actionsAtFirstStroke);
 
-  const kana = playbackRecentKanaPerSecondAnalysis(
-    analysis, 2, 2, true, 10, undefined, 1, schedule, 'ewma', 1,
-  );
+  const kana = playbackRecentKanaPerSecondAnalysis(analysis, 2, 2, true, 10, undefined, 1, schedule, 'ewma', 1);
   assert.ok(kana !== undefined);
   // 1 Stroke = 1かなならinstantaneous系列が同じなのでEWMAも一致する。
   assert.ok(Math.abs(kana - actions) < 1e-9);
 
-  const points = playbackRateChartDataAnalysis(
-    analysis, 2, true, 10, undefined, 1, schedule, 'ewma', 1,
-  );
+  const points = playbackRateChartDataAnalysis(analysis, 2, true, 10, undefined, 1, schedule, 'ewma', 1);
   assert.ok(Math.abs(points[2].actionsPerSecond! - actions) < 1e-9);
   assert.ok(Math.abs(points[2].kanaPerSecond! - kana) < 1e-9);
 });
@@ -475,15 +400,8 @@ test('EWMAのかな速度は入力単位の完了時だけ文字数を加える'
     { strokeIndex: 1, startMs: 500, endMs: 1000 },
   ];
 
-  assert.equal(
-    playbackRecentKanaPerSecondAnalysis(
-      analysis, 1, 2, true, 10, undefined, 1, schedule, 'ewma', 1,
-    ),
-    undefined,
-  );
-  const completed = playbackRecentKanaPerSecondAnalysis(
-    analysis, 2, 2, true, 10, undefined, 1, schedule, 'ewma', 1,
-  );
+  assert.equal(playbackRecentKanaPerSecondAnalysis(analysis, 1, 2, true, 10, undefined, 1, schedule, 'ewma', 1), undefined);
+  const completed = playbackRecentKanaPerSecondAnalysis(analysis, 2, 2, true, 10, undefined, 1, schedule, 'ewma', 1);
   assert.ok(completed !== undefined && completed > 0);
 });
 
@@ -500,8 +418,8 @@ test('速度グラフのChain帯はAnalysis Chain所属を直接使う', () => {
   assert.deepEqual(
     points.slice(1).map((point) => point.chain),
     analysis.strokes.map((_, strokeIndex) =>
-      analysis.chains.some((chain) =>
-        strokeIndex >= chain.startStrokeIndex && strokeIndex < chain.endStrokeIndex)),
+      analysis.chains.some((chain) => strokeIndex >= chain.startStrokeIndex && strokeIndex < chain.endStrokeIndex),
+    ),
   );
 });
 
@@ -517,8 +435,7 @@ test('速度グラフは適用済みChainInterpretationのAnalysis Chain所属�
     breakOnSameFinger: false,
   });
   assert.equal(
-    analysis.chains.some((chain) =>
-      1 >= chain.startStrokeIndex && 1 < chain.endStrokeIndex),
+    analysis.chains.some((chain) => 1 >= chain.startStrokeIndex && 1 < chain.endStrokeIndex),
     true,
   );
   assert.equal(playbackRateChartDataAnalysis(analysis, 2)[2].chain, true);
@@ -604,15 +521,16 @@ test('方向別Transition CalibrationはArpeggio設定に依存せず再生へ�
     fallbackMoveMsPerUnit: 1000 / 10,
     measuredAt: 1,
   };
-  const strokes = [
-    { presses: [{ finger: 'LI' }] },
-    { presses: [{ finger: 'RI' }] },
-  ] as never[];
-  const state = advancePlayback({
-    ...createPlaybackState(5, false, calibration),
-    cursor: 1,
-    playing: true,
-  }, 100, strokes);
+  const strokes = [{ presses: [{ finger: 'LI' }] }, { presses: [{ finger: 'RI' }] }] as never[];
+  const state = advancePlayback(
+    {
+      ...createPlaybackState(5, false, calibration),
+      cursor: 1,
+      playing: true,
+    },
+    100,
+    strokes,
+  );
   assert.equal(state.cursor, 2);
   assert.equal(state.elapsedMs, 0);
 });
@@ -635,7 +553,10 @@ test('キャリブレーションの指ペアはホーム段と下段で揃え�
   assert.deepEqual(calibrationActionPair(geometry), ['f', 'j']);
   assert.equal(pairs.find((pair) => pair.finger === 'LI')?.fromKey, 'f');
   assert.equal(pairs.find((pair) => pair.finger === 'LI')?.toKey, 'v');
-  assert.equal(pairs.every((pair) => geometry.keys.get(pair.toKey)?.row === 3), true);
+  assert.equal(
+    pairs.every((pair) => geometry.keys.get(pair.toKey)?.row === 3),
+    true,
+  );
 });
 
 test('キャリブレーションは選択配列の文字と句読点だけを候補にする', () => {
@@ -652,16 +573,40 @@ test('キャリブレーションは選択配列の文字と句読点だけを�
   assert.equal(eligibleKeyIds.has('.'), true);
   assert.equal(eligibleKeyIds.has('/'), true);
   assert.equal(pairs.find((pair) => pair.finger === 'RP')?.toKey, '/');
-  assert.equal(pairs.every((pair) => eligibleKeyIds.has(pair.fromKey) && eligibleKeyIds.has(pair.toKey)), true);
-  assert.deepEqual(sameHandPairs.slice(6), [['j', 'k'], ['j', 'l'], ['j', ';'], ['k', 'l'], ['k', ';'], ['l', ';']]);
+  assert.equal(
+    pairs.every((pair) => eligibleKeyIds.has(pair.fromKey) && eligibleKeyIds.has(pair.toKey)),
+    true,
+  );
+  assert.deepEqual(sameHandPairs.slice(6), [
+    ['j', 'k'],
+    ['j', 'l'],
+    ['j', ';'],
+    ['k', 'l'],
+    ['k', ';'],
+    ['l', ';'],
+  ]);
 });
 
 test('同手の別指測定は隣接以外も含む全組合せのホームキーを使う', () => {
   const geometry = buildGeometry('row-staggered');
   const pairs = calibrationSameHandPairs(geometry);
   assert.equal(pairs.length, 12);
-  assert.deepEqual(pairs.slice(0, 6), [['a', 's'], ['a', 'd'], ['a', 'f'], ['s', 'd'], ['s', 'f'], ['d', 'f']]);
-  assert.deepEqual(pairs.slice(6), [['j', 'k'], ['j', 'l'], ['j', ';'], ['k', 'l'], ['k', ';'], ['l', ';']]);
+  assert.deepEqual(pairs.slice(0, 6), [
+    ['a', 's'],
+    ['a', 'd'],
+    ['a', 'f'],
+    ['s', 'd'],
+    ['s', 'f'],
+    ['d', 'f'],
+  ]);
+  assert.deepEqual(pairs.slice(6), [
+    ['j', 'k'],
+    ['j', 'l'],
+    ['j', ';'],
+    ['k', 'l'],
+    ['k', ';'],
+    ['l', ';'],
+  ]);
 });
 
 test('アルペジオ用の同手測定は全組合せを片方向組として作る', () => {
@@ -669,12 +614,32 @@ test('アルペジオ用の同手測定は全組合せを片方向組として�
   const pairs = calibrationDirectedSameHandPairs(geometry);
   assert.equal(pairs.length, 24);
   assert.deepEqual(pairs.slice(0, 12), [
-    ['a', 's'], ['s', 'a'], ['a', 'd'], ['d', 'a'], ['a', 'f'], ['f', 'a'],
-    ['s', 'd'], ['d', 's'], ['s', 'f'], ['f', 's'], ['d', 'f'], ['f', 'd'],
+    ['a', 's'],
+    ['s', 'a'],
+    ['a', 'd'],
+    ['d', 'a'],
+    ['a', 'f'],
+    ['f', 'a'],
+    ['s', 'd'],
+    ['d', 's'],
+    ['s', 'f'],
+    ['f', 's'],
+    ['d', 'f'],
+    ['f', 'd'],
   ]);
   assert.deepEqual(pairs.slice(12), [
-    ['j', 'k'], ['k', 'j'], ['j', 'l'], ['l', 'j'], ['j', ';'], [';', 'j'],
-    ['k', 'l'], ['l', 'k'], ['k', ';'], [';', 'k'], ['l', ';'], [';', 'l'],
+    ['j', 'k'],
+    ['k', 'j'],
+    ['j', 'l'],
+    ['l', 'j'],
+    ['j', ';'],
+    [';', 'j'],
+    ['k', 'l'],
+    ['l', 'k'],
+    ['k', ';'],
+    [';', 'k'],
+    ['l', ';'],
+    [';', 'l'],
   ]);
 });
 
@@ -693,15 +658,14 @@ test('キャリブレーションはKeyboardEventの刻印と物理コードを�
 });
 
 test('同指連続のキー移動は直前のキーから現在のキーを返す', () => {
-  const strokes = [
-    { presses: [{ finger: 'LP', keys: [{ id: 'a' }] }] },
-    { presses: [{ finger: 'LP', sfb: true, keys: [{ id: 's' }] }] },
-  ] as never[];
-  assert.deepEqual(playbackSameFingerKeyMotions(strokes, 2), [{
-    fromKey: 'a',
-    toKeys: ['s'],
-    finger: 'LP',
-  }]);
+  const strokes = [{ presses: [{ finger: 'LP', keys: [{ id: 'a' }] }] }, { presses: [{ finger: 'LP', sfb: true, keys: [{ id: 's' }] }] }] as never[];
+  assert.deepEqual(playbackSameFingerKeyMotions(strokes, 2), [
+    {
+      fromKey: 'a',
+      toKeys: ['s'],
+      finger: 'LP',
+    },
+  ]);
 });
 
 test('末尾では停止し、先頭へループしない', () => {
@@ -769,9 +733,7 @@ test('入力プレビューは現在の入力を下線対象にし、先読み�
   const trace = generateTrace('きょうあ', layout, buildGeometry('row-staggered'));
 
   // 先読みNは、現在の入力（きょ）の終わりから数えたかなの数
-  assert.deepEqual(playbackInputPreview(trace.strokes, 2, 0), [
-    { text: 'きょ', kind: 'current' },
-  ]);
+  assert.deepEqual(playbackInputPreview(trace.strokes, 2, 0), [{ text: 'きょ', kind: 'current' }]);
   assert.deepEqual(playbackInputPreview(trace.strokes, 2, 1), [
     { text: 'きょ', kind: 'current' },
     { text: 'う', kind: 'planned' },
@@ -834,7 +796,8 @@ test('予定キーは、今の入力の残りの打鍵と、範囲に入る入�
   for (const id of bodyKeys) assert.ok(plannedAfterShift.has(id), `${id}は今の入力の残りなのでN=0でも出る`);
   // 次のかな（ぎ）のキーは、N=0では範囲の外、N=1では範囲の中
   const next = trace.strokes.filter((stroke) => stroke.selectionIndex !== trace.strokes[0].selectionIndex);
-  const nextOnly = next.flatMap((stroke) => stroke.presses.flatMap((press) => press.keys.map((key) => key.id)))
+  const nextOnly = next
+    .flatMap((stroke) => stroke.presses.flatMap((press) => press.keys.map((key) => key.id)))
     .filter((id) => !plannedAfterShift.has(id));
   assert.ok(nextOnly.length > 0);
   const wider = playbackPlannedKeys(trace.strokes, 1, 1);
@@ -947,10 +910,7 @@ test('Face再生でaggregation mappingが欠落していればerrorにする', (
   const layout = LAYOUT_BY_ID.get('shingeta')!;
   const stroke = generateTrace('あ', layout, buildGeometry('row-staggered')).strokes[0];
   const { faceLayerIds: _faceLayerIds, ...withoutFaceLayerIds } = layout;
-  assert.throws(
-    () => playbackStrokeDisplay(withoutFaceLayerIds, stroke),
-    /faceLayerIdsの明示が必要/,
-  );
+  assert.throws(() => playbackStrokeDisplay(withoutFaceLayerIds, stroke), /faceLayerIdsの明示が必要/);
 });
 
 test('combo再生はpresentation trigger alternativeで選択済み親指pathをFaceへ帰属する', () => {
@@ -961,17 +921,8 @@ test('combo再生はpresentation trigger alternativeで選択済み親指pathを
     triggerPersistence: 'single' as const,
     presentationTriggerAlternatives: [['thumb-r'], ['thumb-l']] as const,
   };
-  const layout = withThumbShiftAlternatives(
-    fromFaces('combo-thumb-presentation', 'combo-thumb-presentation', [face]),
-    'thumb-r',
-    ['thumb-r', 'thumb-l'],
-  );
-  const trace = generateTrace(
-    'あ',
-    layout,
-    buildGeometry('row-staggered'),
-    { windowSize: 3, sfbHomeCost: true, preferOppositeThumb: true },
-  );
+  const layout = withThumbShiftAlternatives(fromFaces('combo-thumb-presentation', 'combo-thumb-presentation', [face]), 'thumb-r', ['thumb-r', 'thumb-l']);
+  const trace = generateTrace('あ', layout, buildGeometry('row-staggered'), { windowSize: 3, sfbHomeCost: true, preferOppositeThumb: true });
   const stroke = trace.strokes[0];
 
   assert.equal(stroke.aggregationGroupId, 'combo');
@@ -996,8 +947,7 @@ test('薙刀式の濁音はシフトと出力かなを同じステップで表�
 test('入力プレビューの入力済みは、既定で20個まで返し、数を渡せばその数で切る', () => {
   const layout = withRomaji(LAYOUT_BY_ID.get('qwerty')!, kunrei());
   const trace = generateTrace('a'.repeat(40), layout, buildGeometry('row-staggered'));
-  const completed = (limit?: number) =>
-    playbackInputPreview(trace.strokes, 30, 0, limit).filter((segment) => segment.kind === 'completed').length;
+  const completed = (limit?: number) => playbackInputPreview(trace.strokes, 30, 0, limit).filter((segment) => segment.kind === 'completed').length;
 
   assert.equal(PLAYBACK_COMPLETED_INPUT_LIMIT, 20);
   assert.equal(completed(), 20);
@@ -1041,9 +991,7 @@ test('ローマ字の入力の行: 単位を出す文字は、選択ごとに1�
     { char: 'H', inputChar: 'ぎ', inputIndex: 2, kana: [2, 2], selectionIndex: 3, keys: ['h'] },
     { char: 'H', inputChar: 'ぎ', inputIndex: 2, kana: [2, 2], selectionIndex: 3, keys: ['rshift'], triggerKeys: ['rshift'] },
   ]);
-  assert.deepEqual(playbackRomajiInputPreview(strokes, 0, 6).map(unit), [
-    'planned:|sya', 'planned:|G', 'planned:|H',
-  ]);
+  assert.deepEqual(playbackRomajiInputPreview(strokes, 0, 6).map(unit), ['planned:|sya', 'planned:|G', 'planned:|H']);
 });
 
 test('ローマ字の入力の行: 現在の単位の境目は、文字を出力するストロークを打った時に進み、シフトだけのステップでは進まない', () => {
@@ -1053,7 +1001,10 @@ test('ローマ字の入力の行: 現在の単位の境目は、文字を出力
     { char: 'H', inputChar: 'ぎ', inputIndex: 1, selectionIndex: 1, keys: ['h'] },
     { char: 'H', inputChar: 'ぎ', inputIndex: 1, selectionIndex: 1, keys: ['rshift'], triggerKeys: ['rshift'] },
   ]);
-  const current = (cursor: number) => playbackRomajiInputPreview(strokes, cursor).filter((s) => s.kind === 'current').map(unit);
+  const current = (cursor: number) =>
+    playbackRomajiInputPreview(strokes, cursor)
+      .filter((s) => s.kind === 'current')
+      .map(unit);
   // シフトが文字の前: シフトを打っても進まず、文字を打つと進む（単位の最後のステップなのでかなに戻る）
   assert.deepEqual(current(1), ['current:|G']);
   assert.deepEqual(current(2), ['current:が']);
@@ -1114,7 +1065,10 @@ test('ローマ字の入力の行: 実際の打鍵の列で、拗音と、コン
   // 「きょう」のkとコンボyouは同じ単位の別の選択。コンボの3文字は1回で進む
   const combo = withRomaji(LAYOUT_BY_ID.get('oonishi-custom')!, kunrei());
   const kyou = generateTrace('きょう', combo, geometry);
-  assert.deepEqual(kyou.strokes.map((stroke) => stroke.char), ['k', 'you']);
+  assert.deepEqual(
+    kyou.strokes.map((stroke) => stroke.char),
+    ['k', 'you'],
+  );
   assert.deepEqual(playbackRomajiInputPreview(kyou.strokes, 1).map(unit), ['current:k|you']);
   assert.deepEqual(playbackRomajiInputPreview(kyou.strokes, 2).map(unit), ['current:きょう']);
 });

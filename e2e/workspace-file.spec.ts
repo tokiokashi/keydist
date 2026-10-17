@@ -56,8 +56,7 @@ test('書き出したWorkspaceを、削除した後に読み込むと同じWorks
 
   // 同じファイルをもう一度読んでも増えない
   await importFile(page, text);
-  await expect(notice(page).locator('[data-imported-workspaces-summary]'))
-    .toHaveText('読み込んだWorkspaceはありません。同じ中身のものが既にあります');
+  await expect(notice(page).locator('[data-imported-workspaces-summary]')).toHaveText('読み込んだWorkspaceはありません。同じ中身のものが既にあります');
   expect(await stored(page)).toEqual([original]);
 
   // 同じidで中身が違うファイルは、手元を残して別の名前で足す。読み直しても増えない
@@ -72,8 +71,7 @@ test('書き出したWorkspaceを、削除した後に読み込むと同じWorks
   expect(after[1]!.conditions).toMatchObject({ windowSize: 6 });
   await expect(page).toHaveURL(new RegExp(`/workspace/${after[1]!.id}$`));
   await importFile(page, JSON.stringify(changed));
-  await expect(notice(page).locator('[data-imported-workspaces-summary]'))
-    .toHaveText('読み込んだWorkspaceはありません。同じ中身のものが既にあります');
+  await expect(notice(page).locator('[data-imported-workspaces-summary]')).toHaveText('読み込んだWorkspaceはありません。同じ中身のものが既にあります');
   expect(await stored(page)).toEqual(after);
 });
 

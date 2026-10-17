@@ -67,9 +67,7 @@ const ALLOWED: Readonly<Record<Layer, ReadonlySet<Layer>>> = {
   interpretation: new Set(['input', 'trace', 'interpretation']),
   engine: new Set(['input', 'trace', 'interpretation', 'analyzers', 'engine']),
   analyzers: new Set(['input', 'trace', 'interpretation', 'analyzers', 'ui-base', 'ui-domain']),
-  hosts: new Set([
-    'input', 'trace', 'interpretation', 'engine', 'analyzers', 'hosts', 'ui-base', 'ui-domain',
-  ]),
+  hosts: new Set(['input', 'trace', 'interpretation', 'engine', 'analyzers', 'hosts', 'ui-base', 'ui-domain']),
   editors: new Set(['input', 'interpretation', 'editors', 'ui-base', 'ui-domain']),
   // Testerは当面platformを直接使ってよい（永続化の作り直しは別に行う）。
   tester: new Set(['input', 'tester', 'ui-base', 'ui-domain', 'platform']),
@@ -88,10 +86,8 @@ const STORAGE_LAYERS = new Set<Layer>(['platform', 'app', 'tester']);
  * 解消したら消す。実在しない行が残っているとテストが落ちる（一方向にしか減らないようにするため）。
  */
 const KNOWN_VIOLATIONS: Readonly<Record<string, string>> = {
-  'tester/input-converter-preferences.ts -> app/state/app-state-storage.ts':
-    'AppStateV2の集約を経由している。資産codecで分解する',
-  'tester/panels/workspace-persistence.ts -> app/state/app-state-storage.ts':
-    'AppStateV2の集約を経由している。資産codecで分解する',
+  'tester/input-converter-preferences.ts -> app/state/app-state-storage.ts': 'AppStateV2の集約を経由している。資産codecで分解する',
+  'tester/panels/workspace-persistence.ts -> app/state/app-state-storage.ts': 'AppStateV2の集約を経由している。資産codecで分解する',
 };
 
 /**
@@ -120,13 +116,7 @@ const RESTRICTED_HOST_UNITS: Readonly<Record<string, string>> = {
   'TanStack Router / Start': 'standalone',
 };
 
-const FRAMEWORK_MODULE_PATTERNS = [
-  /^react(?:\/|$)/,
-  /^react-dom(?:\/|$)/,
-  /^motion(?:\/|$)/,
-  /^@tanstack\//,
-  /^react-grid-layout/,
-] as const;
+const FRAMEWORK_MODULE_PATTERNS = [/^react(?:\/|$)/, /^react-dom(?:\/|$)/, /^motion(?:\/|$)/, /^@tanstack\//, /^react-grid-layout/] as const;
 
 /** コメントを除いた本文に当てる。 */
 const PLATFORM_GLOBAL_PATTERNS = [
@@ -143,9 +133,7 @@ const STORAGE_PATTERN = /\b(?:localStorage|sessionStorage|indexedDB)\b/;
 
 /** 行コメントとブロックコメントを除く。URLの `://` は残す。文字列中の `//` は近似で扱う。 */
 function stripComments(source: string): string {
-  return source
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/(^|[^:'"`\\])\/\/.*$/gm, '$1');
+  return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\/.*$/gm, '$1');
 }
 
 function toPosix(path: string): string {
@@ -192,11 +180,13 @@ export function isPureFile(srcPath: string): boolean {
 
 async function sourceFiles(dir: string): Promise<string[]> {
   const entries = await readdir(dir, { withFileTypes: true });
-  const nested = await Promise.all(entries.map(async (entry) => {
-    const path = join(dir, entry.name);
-    if (entry.isDirectory()) return sourceFiles(path);
-    return entry.isFile() ? [path] : [];
-  }));
+  const nested = await Promise.all(
+    entries.map(async (entry) => {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) return sourceFiles(path);
+      return entry.isFile() ? [path] : [];
+    }),
+  );
   return nested.flat();
 }
 
@@ -272,10 +262,7 @@ interface Violation {
   message: string;
 }
 
-export function layerViolation(
-  importer: string,
-  target: string,
-): Violation | undefined {
+export function layerViolation(importer: string, target: string): Violation | undefined {
   const from = placementOf(importer);
   const to = placementOf(target);
   // 未配置のファイルは移行中なので、どちら側でも検査しない（UNPLACED_BASELINE で別に絞る）。
@@ -334,9 +321,7 @@ async function collectViolations(): Promise<Violation[]> {
     const source = await readFile(path, 'utf8');
     for (const specifier of moduleSpecifiers(source)) {
       const target = resolveToSrc(path, specifier);
-      const violation = target === undefined
-        ? packageViolation(importer, specifier)
-        : layerViolation(importer, target);
+      const violation = target === undefined ? packageViolation(importer, specifier) : layerViolation(importer, target);
       if (violation) violations.push(violation);
     }
   }
@@ -346,7 +331,10 @@ async function collectViolations(): Promise<Violation[]> {
 test('依存の向きが docs/architecture.md の表に従う', async () => {
   const violations = await collectViolations();
   const unexpected = violations.filter((violation) => !(violation.key in KNOWN_VIOLATIONS));
-  assert.deepEqual(unexpected.map((violation) => violation.message), []);
+  assert.deepEqual(
+    unexpected.map((violation) => violation.message),
+    [],
+  );
 
   const actualKeys = new Set(violations.map((violation) => violation.key));
   const stale = Object.keys(KNOWN_VIOLATIONS).filter((key) => !actualKeys.has(key));
@@ -402,9 +390,9 @@ const ANALYZER_VIEW_FORBIDDEN_PATTERNS: readonly { pattern: RegExp; what: string
 
 export function analyzerViewViolations(source: string): readonly string[] {
   const stripped = stripComments(source);
-  return ANALYZER_VIEW_FORBIDDEN_PATTERNS
-    .filter(({ pattern }) => pattern.test(stripped))
-    .map(({ what, pattern }) => `${what}（${stripped.match(pattern)![0]}）`);
+  return ANALYZER_VIEW_FORBIDDEN_PATTERNS.filter(({ pattern }) => pattern.test(stripped)).map(
+    ({ what, pattern }) => `${what}（${stripped.match(pattern)![0]}）`,
+  );
 }
 
 test('Analyzerの可視化（analyzers/**/*.tsx）は URL・クリップボード・location・history に触らない', async () => {
@@ -478,7 +466,11 @@ export function gridLibraryRuntimeImports(source: string): readonly string[] {
   const found: string[] = [];
   for (const match of stripped.matchAll(/import\s+(type\s+)?([^'";]*?)\s*from\s*['"](react-grid-layout[^'"]*)['"]/g)) {
     if (match[1] !== undefined) continue;
-    const names = match[2]!.replace(/[{}]/g, ' ').split(',').map((name) => name.trim()).filter((name) => name !== '');
+    const names = match[2]!
+      .replace(/[{}]/g, ' ')
+      .split(',')
+      .map((name) => name.trim())
+      .filter((name) => name !== '');
     // `{ type A, type B }` のように全部が型なら実行時には消える
     if (names.length > 0 && names.every((name) => name.startsWith('type '))) continue;
     found.push(match[3]!);
@@ -515,16 +507,10 @@ test('新しいファイルは新しい構造の中に置く（src直下など�
     .filter((file) => placementOf(file) === undefined)
     // tsr が生成するファイルは対象外。
     .filter((file) => file !== 'routeTree.gen.ts');
-  const hostsRoot = (await sourceFiles(SRC))
-    .map(srcRelative)
-    .filter((file) => /^hosts\/[^/]+$/.test(file));
+  const hostsRoot = (await sourceFiles(SRC)).map(srcRelative).filter((file) => /^hosts\/[^/]+$/.test(file));
   assert.deepEqual(hostsRoot, [], 'hosts/ 直下にファイルを置かない（共有物は hosts/shared へ）');
   const baseline = new Set(UNPLACED_BASELINE);
-  assert.deepEqual(
-    unplaced.filter((file) => !baseline.has(file)).sort(),
-    [],
-    '新しいファイルは docs/architecture.md の構造の中に置く',
-  );
+  assert.deepEqual(unplaced.filter((file) => !baseline.has(file)).sort(), [], '新しいファイルは docs/architecture.md の構造の中に置く');
   const present = new Set(unplaced);
   assert.deepEqual(
     UNPLACED_BASELINE.filter((file) => !present.has(file)),

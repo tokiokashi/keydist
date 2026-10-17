@@ -28,17 +28,37 @@ function SidebarSample() {
       <section className="sidebar-group">
         <p className="sidebar-heading">Analyze</p>
         <p className="sidebar-subheading">Single</p>
-        <Link className="sidebar-link" to="/analyzer/bigram-flow">{BIGRAM_FLOW_PANE_META.name}</Link>
-        <Link className="sidebar-link" to="/analyzer/finger-distance">{FINGER_DISTANCE_PANE_META.name}</Link>
-        <Link className="sidebar-link" to="/analyzer/heatmap">{HEATMAP_PANE_META.name}</Link>
-        <Link className="sidebar-link" to="/analyzer/heatmap-layers">{HEATMAP_LAYERS_PANE_META.name}</Link>
-        <Link className="sidebar-link" to="/analyzer/layer-combo-presses">{LAYER_COMBO_PRESSES_PANE_META.name}</Link>
-        <Link className="sidebar-link" to="/analyzer/keymap">{KEYMAP_PANE_META.name}</Link>
-        <Link className="sidebar-link" to="/analyzer/playback">{PLAYBACK_PANE_META.name}</Link>
+        <Link className="sidebar-link" to="/analyzer/bigram-flow">
+          {BIGRAM_FLOW_PANE_META.name}
+        </Link>
+        <Link className="sidebar-link" to="/analyzer/finger-distance">
+          {FINGER_DISTANCE_PANE_META.name}
+        </Link>
+        <Link className="sidebar-link" to="/analyzer/heatmap">
+          {HEATMAP_PANE_META.name}
+        </Link>
+        <Link className="sidebar-link" to="/analyzer/heatmap-layers">
+          {HEATMAP_LAYERS_PANE_META.name}
+        </Link>
+        <Link className="sidebar-link" to="/analyzer/layer-combo-presses">
+          {LAYER_COMBO_PRESSES_PANE_META.name}
+        </Link>
+        <Link className="sidebar-link" to="/analyzer/keymap">
+          {KEYMAP_PANE_META.name}
+        </Link>
+        <Link className="sidebar-link" to="/analyzer/playback">
+          {PLAYBACK_PANE_META.name}
+        </Link>
         <p className="sidebar-subheading">Multi</p>
-        <Link className="sidebar-link" to="/analyzer/comparison">{COMPARISON_PANE_META.name}</Link>
-        <Link className="sidebar-link" to="/analyzer/finger-matrix">{FINGER_MATRIX_PANE_META.name}</Link>
-        <Link className="sidebar-link" to="/analyzer/n-sensitivity">{N_SENSITIVITY_PANE_META.name}</Link>
+        <Link className="sidebar-link" to="/analyzer/comparison">
+          {COMPARISON_PANE_META.name}
+        </Link>
+        <Link className="sidebar-link" to="/analyzer/finger-matrix">
+          {FINGER_MATRIX_PANE_META.name}
+        </Link>
+        <Link className="sidebar-link" to="/analyzer/n-sensitivity">
+          {N_SENSITIVITY_PANE_META.name}
+        </Link>
       </section>
       <section className="sidebar-group">
         <p className="sidebar-heading">Workspace</p>
@@ -54,9 +74,7 @@ function Home() {
     <section className="hero">
       <p className="eyebrow">keyboard layout laboratory</p>
       <h1>keydist</h1>
-      <p>
-        キーボードの配列を、文章を打った時に押すキーから調べるツールです。配列の良し悪しを決めるのではなく、性質を数値で眺めるために使います。
-      </p>
+      <p>キーボードの配列を、文章を打った時に押すキーから調べるツールです。配列の良し悪しを決めるのではなく、性質を数値で眺めるために使います。</p>
       {/*
         トップは道具の全体像を説明するページ（docs/architecture.md「画面の構成」）。
         サイドバーの Analyze / Workspace の見本（スマホ幅だけ）を描き、その下に縦1列で4点（Analyzer・Single と Multi・始め方・Workspace）を説明する。
@@ -84,7 +102,9 @@ function Home() {
             <p>複数の Analyzer を並べて見る画面です。サイドバーの「＋ 新しいWorkspace」から作ります。中身の入ったサンプルから始めることもできます。</p>
             <div className="top-sample-workspaces">
               {SAMPLE_KINDS.map((kind) => (
-                <button key={kind} type="button" className="top-sample-workspace" onClick={() => createSample(kind)}>{sampleLabel(kind)}を作る</button>
+                <button key={kind} type="button" className="top-sample-workspace" onClick={() => createSample(kind)}>
+                  {sampleLabel(kind)}を作る
+                </button>
               ))}
             </div>
           </li>

@@ -5,11 +5,7 @@ import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { AnalysisTarget, Setup } from '#input/setup/index.ts';
 import { sampleText } from '#input/text/samples.ts';
 import { nSensitivity } from '#analyzers/n-sensitivity/sensitivity.ts';
-import {
-  N_SENSITIVITY_RANGE,
-  nSensitivityDefinition,
-  type NSensitivitySeries,
-} from '#analyzers/n-sensitivity/extract.ts';
+import { N_SENSITIVITY_RANGE, nSensitivityDefinition, type NSensitivitySeries } from '#analyzers/n-sensitivity/extract.ts';
 import { DEFAULT_N_SENSITIVITY_OPTIONS } from '#analyzers/n-sensitivity/options.ts';
 import { EMPTY_SETTINGS_OVERRIDES, type SettingsCascadeOverrides } from './settings-items.ts';
 import { resolveEngineInput, type ResolvedInput } from './resolved-input.ts';
@@ -79,16 +75,8 @@ function assertSeriesMatchesLegacy(series: NSensitivitySeries | undefined, input
 
   assert.equal(series!.points.length, legacyPoints.length);
   for (let i = 0; i < legacyPoints.length; i++) {
-    assert.equal(
-      series!.points[i]!.windowSize,
-      legacyPoints[i]!.windowSize,
-      `windowSize[${i}]`,
-    );
-    assert.equal(
-      series!.points[i]!.values.totalUnits,
-      legacyPoints[i]!.totalUnits,
-      `totalUnits[${i}] (N=${legacyPoints[i]!.windowSize})`,
-    );
+    assert.equal(series!.points[i]!.windowSize, legacyPoints[i]!.windowSize, `windowSize[${i}]`);
+    assert.equal(series!.points[i]!.values.totalUnits, legacyPoints[i]!.totalUnits, `totalUnits[${i}] (N=${legacyPoints[i]!.windowSize})`);
   }
 }
 
@@ -104,8 +92,14 @@ test('cache.getSetExtraction: 異なる配列の2メンバーそれぞれが、�
   );
 
   assert.equal(result.extracted.series.length, 2);
-  assertSeriesMatchesLegacy(result.extracted.series.find((s) => s.targetKey === 'setup:setup-qwerty'), inputA);
-  assertSeriesMatchesLegacy(result.extracted.series.find((s) => s.targetKey === 'setup:setup-colemak-dh'), inputB);
+  assertSeriesMatchesLegacy(
+    result.extracted.series.find((s) => s.targetKey === 'setup:setup-qwerty'),
+    inputA,
+  );
+  assertSeriesMatchesLegacy(
+    result.extracted.series.find((s) => s.targetKey === 'setup:setup-colemak-dh'),
+    inputB,
+  );
 });
 
 test('cache.getSetExtraction: 長い日本語サンプル・windowSize=7（非既定）の実engine経路でも旧nSensitivityと全11N一致する', () => {
@@ -116,11 +110,7 @@ test('cache.getSetExtraction: 長い日本語サンプル・windowSize=7（非�
   const input = resolve('qwerty', text, { global: { windowSize: 7 } }, 'ja');
   assert.equal(input.tracePolicy.windowSize, 7);
 
-  const result = cache.getSetExtraction(
-    [memberInputFor('qwerty', input)],
-    nSensitivityDefinition,
-    DEFAULT_N_SENSITIVITY_OPTIONS,
-  );
+  const result = cache.getSetExtraction([memberInputFor('qwerty', input)], nSensitivityDefinition, DEFAULT_N_SENSITIVITY_OPTIONS);
 
   assert.equal(result.extracted.series.length, 1);
   assertSeriesMatchesLegacy(result.extracted.series[0], input);

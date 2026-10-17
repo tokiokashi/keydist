@@ -43,14 +43,25 @@ export function DefaultShapeChip({ overrides, workspaceId, dispatch, shapes, lay
   const noticeId = useId();
   return (
     <div className="context-chip-group">
-      <label className="context-chip context-select-chip" title={workspaceId === undefined ? '既定の物理配列: 配列を対象にした時に使う物理配列' : '既定の物理配列: このWorkspaceで配列を対象にした時に使う物理配列'}>
+      <label
+        className="context-chip context-select-chip"
+        title={
+          workspaceId === undefined
+            ? '既定の物理配列: 配列を対象にした時に使う物理配列'
+            : '既定の物理配列: このWorkspaceで配列を対象にした時に使う物理配列'
+        }
+      >
         {/* バーが狭い時は名前を出さずこのアイコンだけにする。選択は透明にしたselectが受ける（タップで選択肢が開く）。 */}
         <svg className="context-chip-icon" viewBox="0 0 20 14" width="20" height="14" aria-hidden="true">
           {/* キーボード: 枠の中にキーの四角（1段目5個・2段目4個をずらして）と幅広のスペースバー。線でなく四角で描き、☰と読まれないようにする。 */}
           <rect x="0.7" y="0.7" width="18.6" height="12.6" rx="2" fill="none" stroke="currentColor" strokeWidth="1.2" />
           <g fill="currentColor">
-            {[0, 1, 2, 3, 4].map((i) => <rect key={`a${i}`} x={2 + i * 3.4} y="3" width="2.2" height="2" rx="0.4" />)}
-            {[0, 1, 2, 3].map((i) => <rect key={`b${i}`} x={3.7 + i * 3.4} y="6.2" width="2.2" height="2" rx="0.4" />)}
+            {[0, 1, 2, 3, 4].map((i) => (
+              <rect key={`a${i}`} x={2 + i * 3.4} y="3" width="2.2" height="2" rx="0.4" />
+            ))}
+            {[0, 1, 2, 3].map((i) => (
+              <rect key={`b${i}`} x={3.7 + i * 3.4} y="6.2" width="2.2" height="2" rx="0.4" />
+            ))}
             <rect x="5.5" y="9.4" width="9" height="2" rx="0.4" />
           </g>
         </svg>
@@ -59,23 +70,35 @@ export function DefaultShapeChip({ overrides, workspaceId, dispatch, shapes, lay
           aria-label="既定の物理配列"
           aria-describedby={notice === undefined ? undefined : noticeId}
           value={current}
-          onChange={(event) => dispatch(workspaceId === undefined
-            ? defaultShapeCommand(event.currentTarget.value)
-            : defaultShapeWorkspaceCommand(workspaceId, event.currentTarget.value, resolveGlobalDefaultShapeId(overrides)))}
+          onChange={(event) =>
+            dispatch(
+              workspaceId === undefined
+                ? defaultShapeCommand(event.currentTarget.value)
+                : defaultShapeWorkspaceCommand(workspaceId, event.currentTarget.value, resolveGlobalDefaultShapeId(overrides)),
+            )
+          }
         >
           {/* 選ばれているidがカタログに無い時も、実際の状態をそのまま見せる（選び直せるが、このoptionは選べない）。 */}
-          {currentIsKnown ? null : <option value={current} disabled>（{MISSING_SHAPE_NAME}）</option>}
+          {currentIsKnown ? null : (
+            <option value={current} disabled>
+              （{MISSING_SHAPE_NAME}）
+            </option>
+          )}
           {groupShapes(shapes.values()).map((group) => (
             <optgroup key={group.key} label={group.label}>
               {group.shapes.map((shape) => (
-                <option key={shape.id} value={shape.id}>{shape.name}</option>
+                <option key={shape.id} value={shape.id}>
+                  {shape.name}
+                </option>
               ))}
             </optgroup>
           ))}
         </select>
       </label>
       {notice === undefined ? null : (
-        <p id={noticeId} className="context-chip-note" data-default-shape-notice="true">{notice}</p>
+        <p id={noticeId} className="context-chip-note" data-default-shape-notice="true">
+          {notice}
+        </p>
       )}
     </div>
   );

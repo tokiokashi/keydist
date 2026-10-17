@@ -61,10 +61,7 @@ export function userLayoutKind(layout: UserLayout): LayoutKind {
  * 元の `UserLayout.direct`）ため、自作配列の一覧を呼び出し側から渡してもらう。
  * `userLayouts` に無いidは組み込み扱いにする。
  */
-export function layoutKind(
-  layout: Layout,
-  userLayouts: ReadonlyMap<string, UserLayout>,
-): LayoutKind {
+export function layoutKind(layout: Layout, userLayouts: ReadonlyMap<string, UserLayout>): LayoutKind {
   const user = userLayouts.get(layout.id);
   return user ? userLayoutKind(user) : builtInLayoutKind(layout.id);
 }

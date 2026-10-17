@@ -12,12 +12,14 @@ assert.ok(count(/[ゃゅょ]/g) > 0, '拗音がない');
 assert.ok(count(/っ/g) > 0, '促音がない');
 assert.ok(count(/ん/g) > 0, '撥音がない');
 
-console.log(JSON.stringify({
-  chars: text.length,
-  desuMasu: count(/です|ます|ました|ません|ましょ/g),
-  dearuDatta: count(/である|だった/g),
-  singleYaRow: count(/[やゆよ]/g),
-  youon: count(/[ゃゅょ]/g),
-  sokuon: count(/っ/g),
-  hatsuon: count(/ん/g),
-}));
+console.log(
+  JSON.stringify({
+    chars: text.length,
+    desuMasu: count(/です|ます|ました|ません|ましょ/g),
+    dearuDatta: count(/である|だった/g),
+    singleYaRow: count(/[やゆよ]/g),
+    youon: count(/[ゃゅょ]/g),
+    sokuon: count(/っ/g),
+    hatsuon: count(/ん/g),
+  }),
+);

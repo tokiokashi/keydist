@@ -25,16 +25,28 @@ test('内容が違えば別のキーになる', () => {
 });
 
 test('Mapは挿入順に依存せず、キーで並べ替えて正規化する', () => {
-  const a = new Map([['b', 2], ['a', 1]]);
-  const b = new Map([['a', 1], ['b', 2]]);
+  const a = new Map([
+    ['b', 2],
+    ['a', 1],
+  ]);
+  const b = new Map([
+    ['a', 1],
+    ['b', 2],
+  ]);
   assert.equal(stableStringify(a), stableStringify(b));
 });
 
 test('Mapのキーがオブジェクトでも正規化できる（Layout.faceLayerIds相当）', () => {
   const keyA = { trigger: ['x'], mode: 'prefix' };
   const keyB = { trigger: ['y'], mode: 'suffix' };
-  const a = new Map([[keyB, 'layer-b'], [keyA, 'layer-a']]);
-  const b = new Map([[keyA, 'layer-a'], [keyB, 'layer-b']]);
+  const a = new Map([
+    [keyB, 'layer-b'],
+    [keyA, 'layer-a'],
+  ]);
+  const b = new Map([
+    [keyA, 'layer-a'],
+    [keyB, 'layer-b'],
+  ]);
   assert.equal(stableStringify(a), stableStringify(b));
 });
 

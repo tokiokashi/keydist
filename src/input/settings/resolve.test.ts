@@ -46,9 +46,7 @@ function contextFor(
     : { ...base, targetKind, ...(options.setupId === undefined ? {} : { setupId: options.setupId }) };
 }
 
-const ANY_LEVEL = new Set<'global' | 'shape' | 'inputMethod' | 'layout' | 'setup'>([
-  'global', 'shape', 'inputMethod', 'layout', 'setup',
-]);
+const ANY_LEVEL = new Set<'global' | 'shape' | 'inputMethod' | 'layout' | 'setup'>(['global', 'shape', 'inputMethod', 'layout', 'setup']);
 
 /** 仕組みだけを見るための小さなテスト用レジストリ。実項目の代わり。 */
 const TEST_ITEMS = {
@@ -67,12 +65,10 @@ const TEST_ITEMS = {
     id: 'thumbRequiring',
     allowedLevels: ANY_LEVEL,
     defaultValue: false,
-    isApplicable: (context) =>
-      context.layout.thumbShiftKeys !== undefined && context.layout.thumbShiftKeys.length > 0,
+    isApplicable: (context) => context.layout.thumbShiftKeys !== undefined && context.layout.thumbShiftKeys.length > 0,
     validate: (value, context) => {
       if (!value) return { ok: true };
-      const hasBothThumbs = context.shape.thumbs.some((t) => t.finger === 'LT')
-        && context.shape.thumbs.some((t) => t.finger === 'RT');
+      const hasBothThumbs = context.shape.thumbs.some((t) => t.finger === 'LT') && context.shape.thumbs.some((t) => t.finger === 'RT');
       return hasBothThumbs ? { ok: true } : { ok: false, fallback: false, reason: '反対側の親指キーが無い' };
     },
   }),
@@ -198,11 +194,7 @@ test('妥当性: 反対側の親指キーが無い物理配列では実現でき
   assert.ok(resolved.thumbRequiring.diagnostics.some((d) => d.kind === 'invalid-fallback'));
 
   // 両方の親指キーがある物理配列では同じ上書きがそのまま実現できる
-  const resolvedOk = resolveCascade(
-    TEST_ITEMS,
-    written.overrides,
-    contextFor(naginata, { inputMethod: 'kana-direct' }),
-  );
+  const resolvedOk = resolveCascade(TEST_ITEMS, written.overrides, contextFor(naginata, { inputMethod: 'kana-direct' }));
   assert.equal(resolvedOk.thumbRequiring.value, true);
   assert.equal(resolvedOk.thumbRequiring.diagnostics.length, 0);
 });

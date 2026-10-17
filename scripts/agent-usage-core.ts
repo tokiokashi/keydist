@@ -54,10 +54,7 @@ export function extractRequests(jsonl: string): RequestUsage[] {
     const split = usage.cache_creation;
     const write5m: number = split ? (split.ephemeral_5m_input_tokens ?? 0) : creation;
     const write1h: number = split ? (split.ephemeral_1h_input_tokens ?? 0) : 0;
-    const key =
-      row.message?.id !== undefined && row.requestId !== undefined
-        ? `${row.message.id}\u0000${row.requestId}`
-        : `anonymous-${anonymous++}`;
+    const key = row.message?.id !== undefined && row.requestId !== undefined ? `${row.message.id}\u0000${row.requestId}` : `anonymous-${anonymous++}`;
     // 同じ組が後から来たら置き換える。Mapは最初の挿入位置を保つので、順序は初出のまま
     byKey.set(key, {
       model: String(row.message?.model ?? ''),
@@ -84,10 +81,7 @@ export interface Summary {
   unpricedModels: string[];
 }
 
-export function requestCostUsd(
-  r: RequestUsage,
-  prices: Readonly<Record<string, Price>> = PRICES,
-): { cost: number; long: boolean } | null {
+export function requestCostUsd(r: RequestUsage, prices: Readonly<Record<string, Price>> = PRICES): { cost: number; long: boolean } | null {
   const price = prices[r.model];
   if (price === undefined) return null;
   const prompt = r.input + r.write5m + r.write1h + r.read;
@@ -95,18 +89,12 @@ export function requestCostUsd(
   const long = rule !== undefined && prompt > rule.threshold;
   const multiplier = long ? rule.multiplier : 1;
   const base =
-    (r.input * price.input +
-      r.write5m * price.input * CACHE_WRITE_5M_RATIO +
-      r.write1h * price.input * CACHE_WRITE_1H_RATIO +
-      r.read * price.cacheRead) /
+    (r.input * price.input + r.write5m * price.input * CACHE_WRITE_5M_RATIO + r.write1h * price.input * CACHE_WRITE_1H_RATIO + r.read * price.cacheRead) /
     1_000_000;
   return { cost: base * multiplier, long };
 }
 
-export function summarize(
-  requests: readonly RequestUsage[],
-  prices: Readonly<Record<string, Price>> = PRICES,
-): Summary {
+export function summarize(requests: readonly RequestUsage[], prices: Readonly<Record<string, Price>> = PRICES): Summary {
   const models: string[] = [];
   const unpriced: string[] = [];
   let cost = 0;
@@ -161,13 +149,9 @@ export function formatSummary(s: Summary, prices: Readonly<Record<string, Price>
   } else {
     parts.push(`input-side cost: $${(s.costUsd ?? 0).toFixed(2)}`);
   }
-  const thresholds = s.models
-    .map((m) => prices[m]?.longPrompt?.threshold)
-    .filter((t): t is number => t !== undefined);
+  const thresholds = s.models.map((m) => prices[m]?.longPrompt?.threshold).filter((t): t is number => t !== undefined);
   if (thresholds.length > 0) {
-    parts.push(
-      `プロンプト${formatTokens(thresholds[0]!)}超え: ${s.longPromptRequests}件（単価が5倍）`,
-    );
+    parts.push(`プロンプト${formatTokens(thresholds[0]!)}超え: ${s.longPromptRequests}件（単価が5倍）`);
   }
   return `${parts.join(' / ')}（出力tokensは含まない）`;
 }

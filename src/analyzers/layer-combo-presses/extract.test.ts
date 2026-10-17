@@ -34,14 +34,20 @@ const pairs = (rows: readonly { readonly id: string; readonly presses: number }[
 test('レイヤーが1つの配列: 唯一のレイヤーが全押下を持つ', () => {
   const { extracted } = extractFor('single-layer', 'aaq');
   assert.equal(extracted.presses, 3);
-  assert.deepEqual(extracted.rows.map((row) => [row.id, row.kind, row.presses]), [['single', 'layer', 3]]);
+  assert.deepEqual(
+    extracted.rows.map((row) => [row.id, row.kind, row.presses]),
+    [['single', 'layer', 3]],
+  );
 });
 
 test('Shiftのレイヤーを持つ配列: "aAa" は単打2、Shift2。Shiftのレイヤーは修飾', () => {
   // 「A」は右Shiftとaの2押下をShiftのレイヤーへ数える
   const { extracted } = extractFor('qwerty', 'aAa');
   assert.equal(extracted.presses, 4);
-  assert.deepEqual(pairs(extracted.rows), [['single', 2], ['layer:Shift', 2]]);
+  assert.deepEqual(pairs(extracted.rows), [
+    ['single', 2],
+    ['layer:Shift', 2],
+  ]);
   assert.equal(extracted.rows[1]!.role, 'modifier');
   assert.equal(extracted.rows[1]!.label, 'Shift');
 });
@@ -50,27 +56,39 @@ test('レイヤーが複数のかな配列: 使わなかったレイヤーも宣
   // 新下駄の "あいがぱ": 単打(あ・い)と中指シフト(が・ぱ)
   const { extracted } = extractFor('shingeta', 'あいがぱ');
   assert.equal(extracted.presses, 6);
-  assert.deepEqual(
-    pairs(extracted.rows),
-    [['single', 2], ['layer:中指シフト', 4], ['layer:薬指シフト', 0], ['layer:拗音1', 0], ['layer:拗音2', 0]],
-  );
+  assert.deepEqual(pairs(extracted.rows), [
+    ['single', 2],
+    ['layer:中指シフト', 4],
+    ['layer:薬指シフト', 0],
+    ['layer:拗音1', 0],
+    ['layer:拗音2', 0],
+  ]);
 });
 
 test('コンボ枠は末尾に1行。押下が無くても、配列がコンボを持つなら行は残る', () => {
   // かわせみ配列+の「あい」はlと;の同時押しで、二重母音拡張としてコンボ枠に数える
   const used = extractFor('kawasemi-plus', 'あい').extracted;
-  assert.deepEqual(used.rows.find((row) => row.kind === 'combo'), { id: 'combo', label: 'コンボ', kind: 'combo', role: undefined, presses: 2 });
+  assert.deepEqual(
+    used.rows.find((row) => row.kind === 'combo'),
+    { id: 'combo', label: 'コンボ', kind: 'combo', role: undefined, presses: 2 },
+  );
   assert.equal(used.rows.filter((row) => row.kind === 'combo').length, 1);
   assert.equal(used.presses, 2);
 
   const unused = extractFor('kawasemi-plus', 'あ').extracted;
-  assert.deepEqual(unused.rows.find((row) => row.kind === 'combo'), { id: 'combo', label: 'コンボ', kind: 'combo', role: undefined, presses: 0 });
+  assert.deepEqual(
+    unused.rows.find((row) => row.kind === 'combo'),
+    { id: 'combo', label: 'コンボ', kind: 'combo', role: undefined, presses: 0 },
+  );
 });
 
 test('層に計上すると宣言された文字キーの同時押しは、コンボ枠ではなくトリガーのキーごとの層に数える', () => {
   // 新小梅の「ぴ」はgとuの同時押しで、gの面（層）に2押下を数える
   const koume = extractFor('shin-koume', 'ぴ').extracted;
-  assert.equal(koume.rows.some((row) => row.kind === 'combo'), false);
+  assert.equal(
+    koume.rows.some((row) => row.kind === 'combo'),
+    false,
+  );
   const layer = koume.rows.find((row) => row.presses > 0 && row.id !== 'single');
   assert.ok(layer);
   assert.equal(layer.kind, 'layer');
@@ -84,14 +102,23 @@ test('層に計上すると宣言された文字キーの同時押しは、コ�
 });
 
 test('コンボを持たない配列には、コンボ枠の行が無い', () => {
-  assert.equal(extractFor('qwerty', 'aAa').extracted.rows.some((row) => row.kind === 'combo'), false);
-  assert.equal(extractFor('nicola', 'あ').extracted.rows.some((row) => row.kind === 'combo'), false);
+  assert.equal(
+    extractFor('qwerty', 'aAa').extracted.rows.some((row) => row.kind === 'combo'),
+    false,
+  );
+  assert.equal(
+    extractFor('nicola', 'あ').extracted.rows.some((row) => row.kind === 'combo'),
+    false,
+  );
 });
 
 test('テキストが空なら、押下数はすべて0でレイヤーの構成だけが残る', () => {
   const { extracted } = extractFor('qwerty', '');
   assert.equal(extracted.presses, 0);
-  assert.deepEqual(pairs(extracted.rows), [['single', 0], ['layer:Shift', 0]]);
+  assert.deepEqual(pairs(extracted.rows), [
+    ['single', 0],
+    ['layer:Shift', 0],
+  ]);
 });
 
 test('割合は全体に対する百分率。全体が0なら0.0%', () => {
@@ -102,9 +129,9 @@ test('割合は全体に対する百分率。全体が0なら0.0%', () => {
 
 test('宣言と、抽出に効く設定の入れ忘れが無い', () => {
   assert.deepEqual(Object.keys(layerComboPressesOptions.items), []);
-  assert.deepEqual(
-    checkOptionsDiscipline(layerComboPressesOptions, layerComboPressesDefinition.optionsDiscipline),
-    { keyViolations: [], viewExtractionViolations: [] },
-  );
+  assert.deepEqual(checkOptionsDiscipline(layerComboPressesOptions, layerComboPressesDefinition.optionsDiscipline), {
+    keyViolations: [],
+    viewExtractionViolations: [],
+  });
   assert.deepEqual(DEFAULT_LAYER_COMBO_PRESSES_OPTIONS, {});
 });

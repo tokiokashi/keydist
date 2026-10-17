@@ -9,5 +9,4 @@ import type { SettingsValueMap } from './settings-items.ts';
  * 版番号はカスケードと独立に1から始める（`values`の形がカスケード項目のレジストリに従うのは
  * 同じだが、資産のキーが別なので版も別に数える）。
  */
-export const PRESET_LIBRARY_CODEC: AssetCodec<PresetLibrary<SettingsValueMap>> =
-  presetLibraryCodec(SETTINGS_ITEM_SCHEMAS, 1);
+export const PRESET_LIBRARY_CODEC: AssetCodec<PresetLibrary<SettingsValueMap>> = presetLibraryCodec(SETTINGS_ITEM_SCHEMAS, 1);

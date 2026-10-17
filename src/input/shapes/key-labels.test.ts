@@ -1,11 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry, JIS_FINGER_ASSIGNMENT, PHYSICAL_SHAPES } from './geometry.ts';
-import {
-  keyboardStandardForGeometryId,
-  physicalKeyDisplayLabel,
-  physicalKeyEngraving,
-} from './key-labels.ts';
+import { keyboardStandardForGeometryId, physicalKeyDisplayLabel, physicalKeyEngraving } from './key-labels.ts';
 
 test('名前付きの物理キーは内部idではなく表示名になる', () => {
   assert.equal(physicalKeyDisplayLabel('thumb-l'), '左親指');
@@ -62,12 +58,7 @@ test('JIS物理配列ではANSIと刻印が違うキーを引き直し、同じ�
   assert.equal(physicalKeyEngraving(']', 'jis'), '[');
   assert.equal(physicalKeyEngraving("'", 'jis'), ':');
 
-  const jisKeys = [
-    ...'1234567890-=', 'r0c12',
-    ...'qwertyuiop[]',
-    ...'asdfghjkl;\'', 'r2c11',
-    ...'zxcvbnm,./', 'r3c10',
-  ];
+  const jisKeys = [...'1234567890-=', 'r0c12', ...'qwertyuiop[]', ..."asdfghjkl;'", 'r2c11', ...'zxcvbnm,./', 'r3c10'];
   const labels = jisKeys.map((key) => physicalKeyEngraving(key, 'jis'));
   assert.equal(new Set(labels).size, labels.length);
 });

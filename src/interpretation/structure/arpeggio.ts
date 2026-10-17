@@ -25,9 +25,7 @@ export const DEFAULT_ARPEGGIO_INTERPRETATION: ArpeggioInterpretation = {
   includeSingleRedirectTail: false,
 };
 
-export type ArpeggioExtension =
-  | 'same-finger-bridge'
-  | 'single-redirect-tail';
+export type ArpeggioExtension = 'same-finger-bridge' | 'single-redirect-tail';
 
 export interface ArpeggioSpan {
   readonly startStrokeIndex: number;
@@ -47,44 +45,23 @@ interface SpanSeed extends ArpeggioSpan {
   readonly chainIndex: number;
 }
 
-function chainHand(
-  analysis: RollAnalysisResult,
-  chainIndex: number,
-): Hand {
+function chainHand(analysis: RollAnalysisResult, chainIndex: number): Hand {
   const chain = analysis.chains[chainIndex];
   if (!chain) throw new Error(`Unknown chainIndex: ${chainIndex}`);
   return chain.hand;
 }
 
-function spanHasThumb(
-  analysis: RollAnalysisResult,
-  chainIndex: number,
-  startStrokeIndex: number,
-  endStrokeIndex: number,
-): boolean {
-  return transitionsForStrokeSpan(
-    analysis,
-    chainIndex,
-    startStrokeIndex,
-    endStrokeIndex,
-  ).some((transition) => transition.candidates.some(
-    (candidate) => isThumb(candidate.fromFinger) || isThumb(candidate.toFinger),
-  ));
+function spanHasThumb(analysis: RollAnalysisResult, chainIndex: number, startStrokeIndex: number, endStrokeIndex: number): boolean {
+  return transitionsForStrokeSpan(analysis, chainIndex, startStrokeIndex, endStrokeIndex).some((transition) =>
+    transition.candidates.some((candidate) => isThumb(candidate.fromFinger) || isThumb(candidate.toFinger)),
+  );
 }
 
-function coreSeeds(
-  analysis: RollAnalysisResult,
-  policy: ArpeggioInterpretation,
-): readonly SpanSeed[] {
+function coreSeeds(analysis: RollAnalysisResult, policy: ArpeggioInterpretation): readonly SpanSeed[] {
   const seeds: SpanSeed[] = [];
 
   for (const roll of analysis.longRolls) {
-    if (!policy.includeThumb && spanHasThumb(
-      analysis,
-      roll.chainIndex,
-      roll.startStrokeIndex,
-      roll.endStrokeIndex,
-    )) continue;
+    if (!policy.includeThumb && spanHasThumb(analysis, roll.chainIndex, roll.startStrokeIndex, roll.endStrokeIndex)) continue;
     seeds.push({
       chainIndex: roll.chainIndex,
       startStrokeIndex: roll.startStrokeIndex,
@@ -97,12 +74,7 @@ function coreSeeds(
   }
 
   for (const roll of analysis.twoRolls) {
-    if (!policy.includeThumb && spanHasThumb(
-      analysis,
-      roll.chainIndex,
-      roll.startStrokeIndex,
-      roll.endStrokeIndex,
-    )) continue;
+    if (!policy.includeThumb && spanHasThumb(analysis, roll.chainIndex, roll.startStrokeIndex, roll.endStrokeIndex)) continue;
     seeds.push({
       chainIndex: roll.chainIndex,
       startStrokeIndex: roll.startStrokeIndex,
@@ -130,32 +102,22 @@ function bridgeTransitionDirection(
 ): 'same' | RollDirection | undefined {
   const fromStroke = analysis.strokes[transition.fromStrokeIndex];
   const toStroke = analysis.strokes[transition.toStrokeIndex];
-  if (!isRollEligibleStroke(fromStroke, transition.hand)
-    || !isRollEligibleStroke(toStroke, transition.hand)) return undefined;
+  if (!isRollEligibleStroke(fromStroke, transition.hand) || !isRollEligibleStroke(toStroke, transition.hand)) return undefined;
   if (transition.candidates.length !== 1) return undefined;
 
   const candidate = transition.candidates[0];
-  if (!policy.includeThumb
-    && (isThumb(candidate.fromFinger) || isThumb(candidate.toFinger))) return undefined;
+  if (!policy.includeThumb && (isThumb(candidate.fromFinger) || isThumb(candidate.toFinger))) return undefined;
   return candidate.fingerDirection;
 }
 
-function expandSeedForBridge(
-  analysis: RollAnalysisResult,
-  seed: SpanSeed,
-  policy: ArpeggioInterpretation,
-): SpanSeed {
+function expandSeedForBridge(analysis: RollAnalysisResult, seed: SpanSeed, policy: ArpeggioInterpretation): SpanSeed {
   let startStrokeIndex = seed.startStrokeIndex;
   let endStrokeIndex = seed.endStrokeIndex;
   let changed = false;
   let sawSame = false;
 
   while (true) {
-    const transition = transitionEndingAt(
-      analysis,
-      seed.chainIndex,
-      startStrokeIndex,
-    );
+    const transition = transitionEndingAt(analysis, seed.chainIndex, startStrokeIndex);
     if (!transition) break;
     const direction = bridgeTransitionDirection(analysis, transition, policy);
     if (direction !== 'same' && direction !== seed.direction) break;
@@ -165,11 +127,7 @@ function expandSeedForBridge(
   }
 
   while (true) {
-    const transition = transitionStartingAt(
-      analysis,
-      seed.chainIndex,
-      endStrokeIndex - 1,
-    );
+    const transition = transitionStartingAt(analysis, seed.chainIndex, endStrokeIndex - 1);
     if (!transition) break;
     const direction = bridgeTransitionDirection(analysis, transition, policy);
     if (direction !== 'same' && direction !== seed.direction) break;
@@ -186,10 +144,7 @@ function expandSeedForBridge(
   };
 }
 
-function extensionsUnion(
-  left: readonly ArpeggioExtension[],
-  right: readonly ArpeggioExtension[],
-): readonly ArpeggioExtension[] {
+function extensionsUnion(left: readonly ArpeggioExtension[], right: readonly ArpeggioExtension[]): readonly ArpeggioExtension[] {
   return [...new Set([...left, ...right])];
 }
 
@@ -197,9 +152,7 @@ function extensionsUnion(
  * sameで拡張されたcoreが重なった場合だけ1つのmaximal Spanへ正規化する。
  * adjacentな別Spanはmergeしない。
  */
-function normalizeBridgedSeeds(
-  seeds: readonly SpanSeed[],
-): readonly SpanSeed[] {
+function normalizeBridgedSeeds(seeds: readonly SpanSeed[]): readonly SpanSeed[] {
   const groups = new Map<string, SpanSeed[]>();
   for (const seed of seeds) {
     const key = `${seed.chainIndex}:${seed.direction}`;
@@ -210,11 +163,7 @@ function normalizeBridgedSeeds(
 
   const normalized: SpanSeed[] = [];
   for (const group of groups.values()) {
-    const sorted = [...group].sort(
-      (left, right) =>
-        left.startStrokeIndex - right.startStrokeIndex
-        || left.endStrokeIndex - right.endStrokeIndex,
-    );
+    const sorted = [...group].sort((left, right) => left.startStrokeIndex - right.startStrokeIndex || left.endStrokeIndex - right.endStrokeIndex);
 
     let current: SpanSeed | undefined;
     for (const seed of sorted) {
@@ -234,42 +183,31 @@ function normalizeBridgedSeeds(
         ...current,
         startStrokeIndex: Math.min(current.startStrokeIndex, seed.startStrokeIndex),
         endStrokeIndex: Math.max(current.endStrokeIndex, seed.endStrokeIndex),
-        coreKind: current.coreKind === 'roll' || seed.coreKind === 'roll'
-          ? 'roll'
-          : 'two-roll',
-        extensions: extensionsUnion(
-          extensionsUnion(current.extensions, seed.extensions),
-          ['same-finger-bridge'],
-        ),
+        coreKind: current.coreKind === 'roll' || seed.coreKind === 'roll' ? 'roll' : 'two-roll',
+        extensions: extensionsUnion(extensionsUnion(current.extensions, seed.extensions), ['same-finger-bridge']),
       };
     }
     if (current) normalized.push(current);
   }
 
-  return Object.freeze(normalized.sort(
-    (left, right) =>
-      left.startStrokeIndex - right.startStrokeIndex
-      || left.endStrokeIndex - right.endStrokeIndex
-      || left.hand.localeCompare(right.hand)
-      || left.direction.localeCompare(right.direction),
-  ));
-}
-
-function applySameFingerBridge(
-  analysis: RollAnalysisResult,
-  seeds: readonly SpanSeed[],
-  policy: ArpeggioInterpretation,
-): readonly SpanSeed[] {
-  if (!policy.bridgeSameFinger) return Object.freeze([...seeds]);
-  return normalizeBridgedSeeds(
-    seeds.map((seed) => expandSeedForBridge(analysis, seed, policy)),
+  return Object.freeze(
+    normalized.sort(
+      (left, right) =>
+        left.startStrokeIndex - right.startStrokeIndex ||
+        left.endStrokeIndex - right.endStrokeIndex ||
+        left.hand.localeCompare(right.hand) ||
+        left.direction.localeCompare(right.direction),
+    ),
   );
 }
 
+function applySameFingerBridge(analysis: RollAnalysisResult, seeds: readonly SpanSeed[], policy: ArpeggioInterpretation): readonly SpanSeed[] {
+  if (!policy.bridgeSameFinger) return Object.freeze([...seeds]);
+  return normalizeBridgedSeeds(seeds.map((seed) => expandSeedForBridge(analysis, seed, policy)));
+}
+
 /** `chainIndex:pivotStrokeIndex` からRedirectEventを引く索引。同じ組が複数あれば先に現れた方を残す。 */
-function redirectsByPivot(
-  analysis: RollAnalysisResult,
-): ReadonlyMap<string, RedirectEvent> {
+function redirectsByPivot(analysis: RollAnalysisResult): ReadonlyMap<string, RedirectEvent> {
   const byPivot = new Map<string, RedirectEvent>();
   for (const redirect of analysis.redirects) {
     const key = `${redirect.chainIndex}:${redirect.pivotStrokeIndex}`;
@@ -290,17 +228,22 @@ function redirectTailFor(
   const before = analysis.transitions[redirect.beforeTransitionIndex];
   const after = analysis.transitions[redirect.afterTransitionIndex];
   if (!before || !after) return undefined;
-  if (before.fromStrokeIndex < seed.startStrokeIndex
-    || before.toStrokeIndex !== pivotStrokeIndex
-    || after.fromStrokeIndex !== pivotStrokeIndex
-    || after.toStrokeIndex !== seed.endStrokeIndex) return undefined;
+  if (
+    before.fromStrokeIndex < seed.startStrokeIndex ||
+    before.toStrokeIndex !== pivotStrokeIndex ||
+    after.fromStrokeIndex !== pivotStrokeIndex ||
+    after.toStrokeIndex !== seed.endStrokeIndex
+  )
+    return undefined;
 
   const candidateMatches = redirect.candidates.some((candidate) => {
     const beforeCandidate = before.candidates[candidate.beforeCandidateIndex];
     const afterCandidate = after.candidates[candidate.afterCandidateIndex];
-    return beforeCandidate?.fingerDirection === seed.direction
-      && afterCandidate?.fingerDirection !== 'same'
-      && afterCandidate?.fingerDirection !== seed.direction;
+    return (
+      beforeCandidate?.fingerDirection === seed.direction &&
+      afterCandidate?.fingerDirection !== 'same' &&
+      afterCandidate?.fingerDirection !== seed.direction
+    );
   });
   if (!candidateMatches) return undefined;
 
@@ -310,37 +253,28 @@ function redirectTailFor(
   };
 }
 
-function applyRedirectTail(
-  analysis: RollAnalysisResult,
-  seeds: readonly SpanSeed[],
-  enabled: boolean,
-): readonly SpanSeed[] {
+function applyRedirectTail(analysis: RollAnalysisResult, seeds: readonly SpanSeed[], enabled: boolean): readonly SpanSeed[] {
   if (!enabled) return Object.freeze([...seeds]);
 
   const redirects = redirectsByPivot(analysis);
-  return Object.freeze(seeds.map((seed) => {
-    const tail = redirectTailFor(analysis, seed, redirects);
-    if (!tail) return seed;
-    return {
-      ...seed,
-      endStrokeIndex: tail.endStrokeIndex,
-      extensions: extensionsUnion(seed.extensions, ['single-redirect-tail']),
-    };
-  }));
+  return Object.freeze(
+    seeds.map((seed) => {
+      const tail = redirectTailFor(analysis, seed, redirects);
+      if (!tail) return seed;
+      return {
+        ...seed,
+        endStrokeIndex: tail.endStrokeIndex,
+        extensions: extensionsUnion(seed.extensions, ['single-redirect-tail']),
+      };
+    }),
+  );
 }
 
-function dedupeFinalSpans(
-  seeds: readonly SpanSeed[],
-): readonly ArpeggioSpan[] {
+function dedupeFinalSpans(seeds: readonly SpanSeed[]): readonly ArpeggioSpan[] {
   const map = new Map<string, SpanSeed>();
 
   for (const seed of seeds) {
-    const key = [
-      seed.startStrokeIndex,
-      seed.endStrokeIndex,
-      seed.hand,
-      seed.direction,
-    ].join(':');
+    const key = [seed.startStrokeIndex, seed.endStrokeIndex, seed.hand, seed.direction].join(':');
     const existing = map.get(key);
     if (!existing) {
       map.set(key, seed);
@@ -348,9 +282,7 @@ function dedupeFinalSpans(
     }
     map.set(key, {
       ...existing,
-      coreKind: existing.coreKind === 'roll' || seed.coreKind === 'roll'
-        ? 'roll'
-        : 'two-roll',
+      coreKind: existing.coreKind === 'roll' || seed.coreKind === 'roll' ? 'roll' : 'two-roll',
       extensions: extensionsUnion(existing.extensions, seed.extensions),
     });
   }
@@ -359,19 +291,21 @@ function dedupeFinalSpans(
     [...map.values()]
       .sort(
         (left, right) =>
-          left.startStrokeIndex - right.startStrokeIndex
-          || left.endStrokeIndex - right.endStrokeIndex
-          || left.hand.localeCompare(right.hand)
-          || left.direction.localeCompare(right.direction),
+          left.startStrokeIndex - right.startStrokeIndex ||
+          left.endStrokeIndex - right.endStrokeIndex ||
+          left.hand.localeCompare(right.hand) ||
+          left.direction.localeCompare(right.direction),
       )
-      .map((seed) => Object.freeze({
-        startStrokeIndex: seed.startStrokeIndex,
-        endStrokeIndex: seed.endStrokeIndex,
-        hand: seed.hand,
-        coreKind: seed.coreKind,
-        direction: seed.direction,
-        extensions: Object.freeze([...seed.extensions]),
-      })),
+      .map((seed) =>
+        Object.freeze({
+          startStrokeIndex: seed.startStrokeIndex,
+          endStrokeIndex: seed.endStrokeIndex,
+          hand: seed.hand,
+          coreKind: seed.coreKind,
+          direction: seed.direction,
+          extensions: Object.freeze([...seed.extensions]),
+        }),
+      ),
   );
 }
 
@@ -381,11 +315,7 @@ export function buildArpeggioSpans(
 ): readonly ArpeggioSpan[] {
   const seeds = coreSeeds(analysis, policy);
   const bridged = applySameFingerBridge(analysis, seeds, policy);
-  const tailed = applyRedirectTail(
-    analysis,
-    bridged,
-    policy.includeSingleRedirectTail,
-  );
+  const tailed = applyRedirectTail(analysis, bridged, policy.includeSingleRedirectTail);
   return dedupeFinalSpans(tailed);
 }
 
@@ -407,8 +337,5 @@ export function analyzeStrokeArpeggios(
   chainInterpretation?: ChainInterpretation,
   arpeggioInterpretation: ArpeggioInterpretation = DEFAULT_ARPEGGIO_INTERPRETATION,
 ): ArpeggioAnalysisResult {
-  return analyzeArpeggios(
-    analyzeStrokeRolls(strokes, chainInterpretation),
-    arpeggioInterpretation,
-  );
+  return analyzeArpeggios(analyzeStrokeRolls(strokes, chainInterpretation), arpeggioInterpretation);
 }

@@ -79,9 +79,7 @@ interface InputConverterPreferencesV1 {
   showShiftKeys: unknown;
 }
 
-export function createDefaultInputConverterPreferences(
-  defaults: InputConverterPreferencesDefaults,
-): InputConverterPreferencesV2 {
+export function createDefaultInputConverterPreferences(defaults: InputConverterPreferencesDefaults): InputConverterPreferencesV2 {
   return {
     version: INPUT_CONVERTER_PREFERENCES_VERSION,
     layoutId: defaults.layoutId,
@@ -96,11 +94,7 @@ function isRawPreferencesShape(value: unknown): value is Record<string, unknown>
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function sanitizeString(
-  value: unknown,
-  allowed: readonly string[],
-  fallback: string,
-): string {
+function sanitizeString(value: unknown, allowed: readonly string[], fallback: string): string {
   return typeof value === 'string' && allowed.includes(value) ? value : fallback;
 }
 
@@ -112,35 +106,21 @@ function sanitizeText(value: unknown, fallback: string): string {
   return typeof value === 'string' ? value : fallback;
 }
 
-function sanitizeRandomPracticeMode(
-  value: unknown,
-  fallback: InputConverterRandomPracticeMode | null,
-): InputConverterRandomPracticeMode | null {
-  return value === 'word' || value === 'phrase' || value === null
-    ? value
-    : fallback;
+function sanitizeRandomPracticeMode(value: unknown, fallback: InputConverterRandomPracticeMode | null): InputConverterRandomPracticeMode | null {
+  return value === 'word' || value === 'phrase' || value === null ? value : fallback;
 }
 
-function sanitizeLayoutPreferences(
-  value: unknown,
-  fallback: InputConverterLayoutPreferencesV2,
-): InputConverterLayoutPreferencesV2 {
+function sanitizeLayoutPreferences(value: unknown, fallback: InputConverterLayoutPreferencesV2): InputConverterLayoutPreferencesV2 {
   if (!isRawPreferencesShape(value)) return { ...fallback };
   return {
     showDynamicGuide: sanitizeBoolean(value.showDynamicGuide, fallback.showDynamicGuide),
     showLayerGuide: sanitizeBoolean(value.showLayerGuide, fallback.showLayerGuide),
     showLayerKeys: sanitizeBoolean(value.showLayerKeys, fallback.showLayerKeys),
     showShiftKeys: sanitizeBoolean(value.showShiftKeys, fallback.showShiftKeys),
-    showPracticeAssist: sanitizeBoolean(
-      value.showPracticeAssist,
-      fallback.showPracticeAssist,
-    ),
+    showPracticeAssist: sanitizeBoolean(value.showPracticeAssist, fallback.showPracticeAssist),
     inputText: sanitizeText(value.inputText, fallback.inputText),
     practiceText: sanitizeText(value.practiceText, fallback.practiceText),
-    randomPracticeMode: sanitizeRandomPracticeMode(
-      value.randomPracticeMode,
-      fallback.randomPracticeMode,
-    ),
+    randomPracticeMode: sanitizeRandomPracticeMode(value.randomPracticeMode, fallback.randomPracticeMode),
   };
 }
 
@@ -159,22 +139,10 @@ function migrateV1(
     layouts: {
       [layoutId]: {
         ...defaults.layout,
-        showDynamicGuide: sanitizeBoolean(
-          legacy.showDynamicGuide,
-          defaults.layout.showDynamicGuide,
-        ),
-        showLayerGuide: sanitizeBoolean(
-          legacy.showLayerGuide,
-          defaults.layout.showLayerGuide,
-        ),
-        showLayerKeys: sanitizeBoolean(
-          legacy.showLayerKeys,
-          defaults.layout.showLayerKeys,
-        ),
-        showShiftKeys: sanitizeBoolean(
-          legacy.showShiftKeys,
-          defaults.layout.showShiftKeys,
-        ),
+        showDynamicGuide: sanitizeBoolean(legacy.showDynamicGuide, defaults.layout.showDynamicGuide),
+        showLayerGuide: sanitizeBoolean(legacy.showLayerGuide, defaults.layout.showLayerGuide),
+        showLayerKeys: sanitizeBoolean(legacy.showLayerKeys, defaults.layout.showLayerKeys),
+        showShiftKeys: sanitizeBoolean(legacy.showShiftKeys, defaults.layout.showShiftKeys),
       },
     },
   };
@@ -193,11 +161,7 @@ export function decodeInputConverterPreferences(
   defaults: InputConverterPreferencesDefaults,
 ): InputConverterPreferencesV2 {
   const fallback = createDefaultInputConverterPreferences(defaults);
-  const decoded = decodeVersionedState(
-    raw,
-    INPUT_CONVERTER_PREFERENCES_VERSION,
-    isRawPreferencesShape,
-  );
+  const decoded = decodeVersionedState(raw, INPUT_CONVERTER_PREFERENCES_VERSION, isRawPreferencesShape);
 
   if (decoded.status === 'unsupported-version' && decoded.version === 1) {
     return migrateV1(decoded.value, catalogs, defaults);
@@ -212,10 +176,7 @@ export function decodeInputConverterPreferences(
   if (isRawPreferencesShape(value.layouts)) {
     for (const candidateLayoutId of catalogs.layoutIds) {
       if (!(candidateLayoutId in value.layouts)) continue;
-      layouts[candidateLayoutId] = sanitizeLayoutPreferences(
-        value.layouts[candidateLayoutId],
-        defaults.layout,
-      );
+      layouts[candidateLayoutId] = sanitizeLayoutPreferences(value.layouts[candidateLayoutId], defaults.layout);
     }
   }
 
@@ -250,11 +211,7 @@ export function loadInputConverterPreferences(
   defaults: InputConverterPreferencesDefaults,
 ): InputConverterPreferencesV2 {
   return loadOrMigrateAppStateSlice(storage, 'inputConverter', {
-    decode: (value) => decodeInputConverterPreferences(
-      JSON.stringify(value),
-      catalogs,
-      defaults,
-    ),
+    decode: (value) => decodeInputConverterPreferences(JSON.stringify(value), catalogs, defaults),
     loadLegacy: () => {
       let raw: string | null;
       try {
@@ -268,15 +225,11 @@ export function loadInputConverterPreferences(
   });
 }
 
-export function saveInputConverterPreferences(
-  storage: KeyValueStorage,
-  prefs: InputConverterPreferencesV2,
-): void {
+export function saveInputConverterPreferences(storage: KeyValueStorage, prefs: InputConverterPreferencesV2): void {
   patchAppStateSlice(storage, 'inputConverter', prefs);
 }
 
-export type InputConverterPreferencesScheduler =
-  AppStateSliceScheduler<InputConverterPreferencesV2>;
+export type InputConverterPreferencesScheduler = AppStateSliceScheduler<InputConverterPreferencesV2>;
 
 export interface InputConverterPreferencesSchedulerOptions {
   storage: KeyValueStorage;
@@ -289,13 +242,6 @@ export interface InputConverterPreferencesSchedulerOptions {
  * トグル・入力・配列切替の連続操作でlocalStorageへ書きすぎないための書き込みコアレッシング。
  * ワークスペース永続化（src/workspace/workspace-persistence.ts）と同じ汎用スケジューラを使う。
  */
-export function createInputConverterPreferencesScheduler(
-  options: InputConverterPreferencesSchedulerOptions,
-): InputConverterPreferencesScheduler {
-  return createAppStateSliceScheduler(
-    options.storage,
-    'inputConverter',
-    serializeInputConverterPreferences,
-    options.debounceMs,
-  );
+export function createInputConverterPreferencesScheduler(options: InputConverterPreferencesSchedulerOptions): InputConverterPreferencesScheduler {
+  return createAppStateSliceScheduler(options.storage, 'inputConverter', serializeInputConverterPreferences, options.debounceMs);
 }

@@ -1,12 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  defineItem,
-  emptyCascadeOverrides,
-  setOverride,
-  type CascadeOverrides,
-  type ItemRegistry,
-} from '#input/settings/index.ts';
+import { defineItem, emptyCascadeOverrides, setOverride, type CascadeOverrides, type ItemRegistry } from '#input/settings/index.ts';
 import { createSetup, duplicateSetup, deleteSetup, relabelSetup, setSetupShape, type SetupLibrary } from './collection.ts';
 
 // Setup固有の上書き（カスケードのsetupレベル）が複製・削除に追従することを検証するための
@@ -62,10 +56,7 @@ test('duplicateSetup: 配列・物理配列・上書きをコピーした独立�
   assert.equal(library.setups[1].shapeId, 'row-staggered');
 
   // 複製直後は元と同じ上書きを持つ。
-  assert.deepEqual(
-    library.overrides.setup?.[copyId],
-    library.overrides.setup?.[sourceId],
-  );
+  assert.deepEqual(library.overrides.setup?.[copyId], library.overrides.setup?.[sourceId]);
   // ただし別オブジェクト（以後独立して書き換えられる）。
   const rewritten = setOverride(ITEMS, library.overrides, { kind: 'setup', setupId: copyId }, 'windowSize', 9);
   assert.ok(rewritten.ok);
@@ -101,7 +92,8 @@ test('deleteSetup: 他のSetupの上書きは残る', () => {
   library = createSetup(library, 'dvorak', 'row-staggered', nextId);
   const [keep, remove] = library.setups;
 
-  let overrides = (setOverride(ITEMS, library.overrides, { kind: 'setup', setupId: keep.id }, 'windowSize', 4) as { ok: true; overrides: Overrides }).overrides;
+  let overrides = (setOverride(ITEMS, library.overrides, { kind: 'setup', setupId: keep.id }, 'windowSize', 4) as { ok: true; overrides: Overrides })
+    .overrides;
   overrides = (setOverride(ITEMS, overrides, { kind: 'setup', setupId: remove.id }, 'windowSize', 8) as { ok: true; overrides: Overrides }).overrides;
   library = { ...library, overrides };
 
@@ -174,7 +166,10 @@ test('番号: 作成で付き、既存の最大＋1になる', () => {
   let library = createSetup(emptyLibrary(), 'qwerty', 'row-staggered', nextId);
   library = createSetup(library, 'dvorak', 'row-staggered', nextId);
   library = duplicateSetup(library, 'setup-1', nextId);
-  assert.deepEqual(library.setups.map((setup) => setup.number), [1, 2, 3]);
+  assert.deepEqual(
+    library.setups.map((setup) => setup.number),
+    [1, 2, 3],
+  );
 });
 
 test('番号: 削除・ラベル変更で他のSetupの番号は変わらず、間の空いた番号は使わない', () => {
@@ -183,16 +178,28 @@ test('番号: 削除・ラベル変更で他のSetupの番号は変わらず、�
   library = createSetup(library, 'dvorak', 'row-staggered', nextId);
   library = createSetup(library, 'colemak', 'row-staggered', nextId);
   library = deleteSetup(library, 'setup-2');
-  assert.deepEqual(library.setups.map((setup) => [setup.id, setup.number]), [['setup-1', 1], ['setup-3', 3]]);
+  assert.deepEqual(
+    library.setups.map((setup) => [setup.id, setup.number]),
+    [
+      ['setup-1', 1],
+      ['setup-3', 3],
+    ],
+  );
   library = relabelSetup(library, 'setup-3', '名前');
   assert.equal(library.setups[1]!.number, 3);
   // 最大（3）の次。削除で空いた2は使わない
   library = createSetup(library, 'qwerty', 'row-staggered', nextId);
-  assert.deepEqual(library.setups.map((setup) => setup.number), [1, 3, 4]);
+  assert.deepEqual(
+    library.setups.map((setup) => setup.number),
+    [1, 3, 4],
+  );
   // 末尾（最大）を消した後に作ると、消した番号が再び付く（指す先が残っていないので衝突しない）
   library = deleteSetup(library, 'setup-4');
   library = createSetup(library, 'qwerty', 'row-staggered', nextId);
-  assert.deepEqual(library.setups.map((setup) => setup.number), [1, 3, 4]);
+  assert.deepEqual(
+    library.setups.map((setup) => setup.number),
+    [1, 3, 4],
+  );
 });
 
 test('setSetupShape: 物理配列だけを付け替え、配列・番号・ラベル・Setupのレベルの上書きは変えない', () => {

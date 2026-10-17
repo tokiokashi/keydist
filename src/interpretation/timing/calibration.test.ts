@@ -173,10 +173,19 @@ test('続け打ちの基準の平均は、親指を除く8本の指の値（測�
   const complete = { ...VALID, fingerRepeatMs: repeat, fingerMoveMsPerUnit: { LP: 1, LR: 1, LM: 1, LI: 1, RI: 1, RM: 1, RR: 1, RP: 1 } };
   assert.equal(meanRepeatMs(complete), 135);
   // 2本が代表値（200）になる。
-  const partial = { ...VALID, fingerRepeatMs: { LP: 100, LR: 110, LM: 120, LI: 130, RI: 140, RM: 150 }, fingerMoveMsPerUnit: { LP: 1, LR: 1, LM: 1, LI: 1, RI: 1, RM: 1 }, fallbackRepeatMs: 200 };
+  const partial = {
+    ...VALID,
+    fingerRepeatMs: { LP: 100, LR: 110, LM: 120, LI: 130, RI: 140, RM: 150 },
+    fingerMoveMsPerUnit: { LP: 1, LR: 1, LM: 1, LI: 1, RI: 1, RM: 1 },
+    fallbackRepeatMs: 200,
+  };
   assert.equal(meanRepeatMs(partial), (100 + 110 + 120 + 130 + 140 + 150 + 200 + 200) / 8);
   // 親指の値は平均に入らない。
-  const withThumb: PlaybackCalibration = { ...complete, fingerRepeatMs: { ...repeat, RT: 10 }, fingerMoveMsPerUnit: { ...complete.fingerMoveMsPerUnit, RT: 1 } };
+  const withThumb: PlaybackCalibration = {
+    ...complete,
+    fingerRepeatMs: { ...repeat, RT: 10 },
+    fingerMoveMsPerUnit: { ...complete.fingerMoveMsPerUnit, RT: 1 },
+  };
   assert.equal(meanRepeatMs(withThumb), 135);
 });
 
@@ -185,7 +194,10 @@ const FINGER_ORDER = ['LP', 'LR', 'LM', 'LI', 'RI', 'RM', 'RR', 'RP'] as const;
 test('測る下段のキーはホームと同じ列のキーで、ロウスタッガードの人差し指はF→VとJ→Mになり、8本とも1.118uになる', () => {
   const geometry = buildGeometry('row-staggered');
   const pairs = calibrationKeyPairs(geometry);
-  assert.deepEqual(pairs.map((pair) => pair.finger), [...FINGER_ORDER]);
+  assert.deepEqual(
+    pairs.map((pair) => pair.finger),
+    [...FINGER_ORDER],
+  );
   const byFinger = new Map(pairs.map((pair) => [pair.finger, pair] as const));
   assert.deepEqual([byFinger.get('LI')?.fromKey, byFinger.get('LI')?.toKey], ['f', 'v']);
   assert.deepEqual([byFinger.get('RI')?.fromKey, byFinger.get('RI')?.toKey], ['j', 'm']);
@@ -206,10 +218,16 @@ test('ホームの下段のキーに刻印が無い指は、別の下段のキ�
   const eligible = new Set(calibrationEligibleKeyIds(geometry));
   eligible.delete('v');
   const pairs = calibrationKeyPairs(geometry, eligible);
-  assert.deepEqual(pairs.map((pair) => pair.finger), FINGER_ORDER.filter((finger) => finger !== 'LI'));
+  assert.deepEqual(
+    pairs.map((pair) => pair.finger),
+    FINGER_ORDER.filter((finger) => finger !== 'LI'),
+  );
   // ホームキーに刻印が無い指も組を作らない。
   eligible.delete('j');
-  assert.deepEqual(calibrationKeyPairs(geometry, eligible).map((pair) => pair.finger), FINGER_ORDER.filter((finger) => finger !== 'LI' && finger !== 'RI'));
+  assert.deepEqual(
+    calibrationKeyPairs(geometry, eligible).map((pair) => pair.finger),
+    FINGER_ORDER.filter((finger) => finger !== 'LI' && finger !== 'RI'),
+  );
 });
 
 test('ホームと同じ列の下段のキーがほかの指の担当なら、その指は組を作らない', () => {
@@ -218,14 +236,20 @@ test('ホームと同じ列の下段のキーがほかの指の担当なら、�
   const assignment = { ...base, baseFinger: { ...base.baseFinger, v: 'LM' as const } };
   const geometry = buildGeometry('row-staggered', assignment);
   assert.equal(geometry.keys.get('v')?.finger, 'LM');
-  assert.deepEqual(calibrationKeyPairs(geometry).map((pair) => pair.finger), FINGER_ORDER.filter((finger) => finger !== 'LI'));
+  assert.deepEqual(
+    calibrationKeyPairs(geometry).map((pair) => pair.finger),
+    FINGER_ORDER.filter((finger) => finger !== 'LI'),
+  );
 });
 
 test('かなの中・かなの境目の値は、分けない値を持たなくても、範囲の中なら保存できる', () => {
   const sides = {
-    'arpeggio-within': -1000, 'arpeggio-boundary': 1000,
-    'chain-within': 0, 'chain-boundary': 12.5,
-    'other-within': 30, 'other-boundary': 90,
+    'arpeggio-within': -1000,
+    'arpeggio-boundary': 1000,
+    'chain-within': 0,
+    'chain-boundary': 12.5,
+    'other-within': 30,
+    'other-boundary': 90,
   };
   assert.equal(isPlaybackCalibration({ ...VALID, keystrokeOverheadMs: sides }), true);
   assert.equal(isPlaybackCalibration({ ...VALID, keystrokeOverheadMs: { 'other-within': 30 } }), true);
@@ -247,10 +271,7 @@ test('かなの中・かなの境目の値が1つでも範囲の外・数でな�
   ]) {
     assert.equal(isPlaybackCalibration({ ...VALID, keystrokeOverheadMs: bad }), false, JSON.stringify(bad));
   }
-  assert.equal(
-    playbackCalibrationProblem({ ...VALID, keystrokeOverheadMs: { 'other-within': 2000 } }),
-    '打鍵の上乗せが正しくありません',
-  );
+  assert.equal(playbackCalibrationProblem({ ...VALID, keystrokeOverheadMs: { 'other-within': 2000 } }), '打鍵の上乗せが正しくありません');
 });
 
 test('同時押しの上乗せは-1000から1000ミリ秒まで保存でき、外側と知らない分け方は保存できない', () => {

@@ -16,14 +16,17 @@ const flow = { id: 'f', analyzerId: 'bigram-flow', binding: { mode: 'fixed', tar
  * 動いている最中の矩形を測ると上端がずれる（`workspace-grid.spec.ts` の `settle()` と同じ考え方）。
  */
 async function settle(page: Page): Promise<void> {
-  await settleBy(page, () => page.evaluate(() => {
-    const feature = document.querySelector('[data-react-feature="bigram-flow"]')!;
-    return ['.flow-stage', '.flow-two-up', '.flow-roll-legend']
-      .map((q) => {
-        const r = feature.querySelector(q)!.getBoundingClientRect();
-        return `${Math.round(r.x)},${Math.round(r.y)},${Math.round(r.width)},${Math.round(r.height)}`;
-      }).join('|');
-  }));
+  await settleBy(page, () =>
+    page.evaluate(() => {
+      const feature = document.querySelector('[data-react-feature="bigram-flow"]')!;
+      return ['.flow-stage', '.flow-two-up', '.flow-roll-legend']
+        .map((q) => {
+          const r = feature.querySelector(q)!.getBoundingClientRect();
+          return `${Math.round(r.x)},${Math.round(r.y)},${Math.round(r.width)},${Math.round(r.height)}`;
+        })
+        .join('|');
+    }),
+  );
 }
 
 function measure(page: Page) {
@@ -80,15 +83,18 @@ interface SideCase {
 /** 保存先へWorkspaceを直接書いて開く。 */
 async function openWorkspace(page: Page, c: SideCase): Promise<void> {
   await page.setViewportSize({ width: 1440, height: 1100 });
-  await page.addInitScript((value) => {
-    localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
-  }, {
-    id: 'legend',
-    name: '凡例の確認',
-    text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
-    panes: [c.fingers === undefined ? flow : { ...flow, options: { selectedFingers: c.fingers } }],
-    grid: [{ id: 'f', x: 0, y: 0, w: c.w, h: c.h }],
-  });
+  await page.addInitScript(
+    (value) => {
+      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
+    },
+    {
+      id: 'legend',
+      name: '凡例の確認',
+      text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+      panes: [c.fingers === undefined ? flow : { ...flow, options: { selectedFingers: c.fingers } }],
+      grid: [{ id: 'f', x: 0, y: 0, w: c.w, h: c.h }],
+    },
+  );
   await page.goto('/workspace/legend');
   await waitForHydration(page);
   await ready(page);
@@ -101,7 +107,9 @@ async function openWorkspace(page: Page, c: SideCase): Promise<void> {
   }
   if (c.rootFontSize !== undefined) {
     // 利用者のブラウザの文字サイズ設定（rem の基準）を大きくした状態。読み込み後に変えて、組み直しを待つ。
-    await page.evaluate((size) => { document.documentElement.style.fontSize = size; }, c.rootFontSize);
+    await page.evaluate((size) => {
+      document.documentElement.style.fontSize = size;
+    }, c.rootFontSize);
     await settle(page);
   }
   if (c.openSettings !== undefined) {

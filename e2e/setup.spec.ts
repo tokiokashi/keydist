@@ -127,7 +127,10 @@ test('Setupを対象にしたペインの条件のモーダルから、そのSet
   await page.keyboard.press('Escape');
   await playback.locator('.pane-condition-trigger').click();
   const single = page.getByRole('dialog', { name: '条件' });
-  await expect(single.getByRole('link', { name: 'このSetupの物理配列と条件を編集' })).toHaveAttribute('href', new RegExp(`/setup\\?setup=${setups[0]!.id}$`));
+  await expect(single.getByRole('link', { name: 'このSetupの物理配列と条件を編集' })).toHaveAttribute(
+    'href',
+    new RegExp(`/setup\\?setup=${setups[0]!.id}$`),
+  );
   await page.keyboard.press('Escape');
 
   const comparison = paneOf('比較表');

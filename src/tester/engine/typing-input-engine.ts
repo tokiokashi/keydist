@@ -24,9 +24,7 @@ export interface PhysicalKeyEvent {
 export interface TypingInputEngineOptions {
   readonly triggerRealizationPolicy?: TriggerRealizationPolicy;
   readonly actionRealizationPolicy?: ActionRealizationPolicy;
-  readonly contextSatisfied?: (
-    requirements: readonly InputContextRequirement[],
-  ) => boolean;
+  readonly contextSatisfied?: (requirements: readonly InputContextRequirement[]) => boolean;
 }
 
 export interface RecognizedTypingInput {
@@ -85,51 +83,38 @@ interface ReplayWindowKey {
   readonly order: number;
 }
 
-const canonicalKeys = (keys: readonly PhysicalKeyId[]): PhysicalKeyId[] =>
-  [...new Set(keys.map(resolveKeyId))];
+const canonicalKeys = (keys: readonly PhysicalKeyId[]): PhysicalKeyId[] => [...new Set(keys.map(resolveKeyId))];
 
-const sortedCanonicalKeys = (keys: readonly PhysicalKeyId[]): PhysicalKeyId[] =>
-  canonicalKeys(keys).sort();
+const sortedCanonicalKeys = (keys: readonly PhysicalKeyId[]): PhysicalKeyId[] => canonicalKeys(keys).sort();
 
-const keySet = (keys: readonly PhysicalKeyId[]): ReadonlySet<PhysicalKeyId> =>
-  new Set(canonicalKeys(keys));
+const keySet = (keys: readonly PhysicalKeyId[]): ReadonlySet<PhysicalKeyId> => new Set(canonicalKeys(keys));
 
-const isSubset = (
-  subset: ReadonlySet<PhysicalKeyId>,
-  superset: ReadonlySet<PhysicalKeyId>,
-): boolean => [...subset].every((key) => superset.has(key));
+const isSubset = (subset: ReadonlySet<PhysicalKeyId>, superset: ReadonlySet<PhysicalKeyId>): boolean => [...subset].every((key) => superset.has(key));
 
-const isStrictSubset = (
-  subset: ReadonlySet<PhysicalKeyId>,
-  superset: ReadonlySet<PhysicalKeyId>,
-): boolean => subset.size < superset.size && isSubset(subset, superset);
+const isStrictSubset = (subset: ReadonlySet<PhysicalKeyId>, superset: ReadonlySet<PhysicalKeyId>): boolean =>
+  subset.size < superset.size && isSubset(subset, superset);
 
 const requirementSignature = (input: SemanticInput): string =>
-  input.requirements.map((requirement) => {
-    if (requirement.kind === 'overlap') {
-      return 'overlap:' + sortedCanonicalKeys(requirement.keys).join('\u0000');
-    }
-    return 'order:'
-      + sortedCanonicalKeys(requirement.before).join('\u0000')
-      + '>'
-      + sortedCanonicalKeys(requirement.after).join('\u0000');
-  }).sort().join('\u0001');
+  input.requirements
+    .map((requirement) => {
+      if (requirement.kind === 'overlap') {
+        return 'overlap:' + sortedCanonicalKeys(requirement.keys).join('\u0000');
+      }
+      return 'order:' + sortedCanonicalKeys(requirement.before).join('\u0000') + '>' + sortedCanonicalKeys(requirement.after).join('\u0000');
+    })
+    .sort()
+    .join('\u0001');
 
 /**
  * physical recognizerで区別できるoperation identity。
  * output/classification/capabilityは発火条件ではないためidentityへ含めず、
  * multi-step pathの選択はInputAlternative側で行う。
  */
-const operationSignature = (input: SemanticInput): string => [
-  sortedCanonicalKeys(input.physicalKeys).join('\u0000'),
-  requirementSignature(input),
-].join('\u0002');
+const operationSignature = (input: SemanticInput): string =>
+  [sortedCanonicalKeys(input.physicalKeys).join('\u0000'), requirementSignature(input)].join('\u0002');
 
-const sameStrings = (
-  left: readonly string[],
-  right: readonly string[],
-): boolean => left.length === right.length
-  && left.every((value, index) => value === right[index]);
+const sameStrings = (left: readonly string[], right: readonly string[]): boolean =>
+  left.length === right.length && left.every((value, index) => value === right[index]);
 
 /**
  * Input Converter向けframework-independent入力engine。
@@ -145,9 +130,7 @@ export class TypingInputEngine {
   readonly #maxSequenceLength: number;
   readonly #triggerPolicy: TriggerRealizationPolicy;
   readonly #actionPolicy: ActionRealizationPolicy;
-  readonly #contextSatisfied: (
-    requirements: readonly InputContextRequirement[],
-  ) => boolean;
+  readonly #contextSatisfied: (requirements: readonly InputContextRequirement[]) => boolean;
 
   readonly #pressed = new Set<PhysicalKeyId>();
   readonly #windowKeys = new Set<PhysicalKeyId>();
@@ -160,10 +143,7 @@ export class TypingInputEngine {
   #pending: StepCandidate | undefined;
   #holdState: TriggerHoldState | undefined;
 
-  constructor(
-    canonicalInputs: CanonicalInputMap,
-    options: TypingInputEngineOptions = {},
-  ) {
+  constructor(canonicalInputs: CanonicalInputMap, options: TypingInputEngineOptions = {}) {
     const candidates: Candidate[] = [];
     let order = 0;
     for (const [output, alternatives] of canonicalInputs) {
@@ -175,9 +155,7 @@ export class TypingInputEngine {
           }
         }
         if (alternative.semanticInputs.length !== alternative.baseRealizations.length) {
-          throw new Error(
-            'InputAlternativeのSemanticInput列とBaseActionRealization列の長さが一致しない',
-          );
+          throw new Error('InputAlternativeのSemanticInput列とBaseActionRealization列の長さが一致しない');
         }
         candidates.push({
           output,
@@ -189,16 +167,10 @@ export class TypingInputEngine {
       }
     }
     this.#candidates = candidates;
-    this.#maxSequenceLength = Math.max(
-      1,
-      ...candidates.map((candidate) => candidate.operationSignatures.length),
-    );
-    this.#triggerPolicy =
-      options.triggerRealizationPolicy ?? DEFAULT_TRIGGER_REALIZATION_POLICY;
-    this.#actionPolicy =
-      options.actionRealizationPolicy ?? DEFAULT_ACTION_REALIZATION_POLICY;
-    this.#contextSatisfied = options.contextSatisfied
-      ?? ((requirements) => requirements.length === 0);
+    this.#maxSequenceLength = Math.max(1, ...candidates.map((candidate) => candidate.operationSignatures.length));
+    this.#triggerPolicy = options.triggerRealizationPolicy ?? DEFAULT_TRIGGER_REALIZATION_POLICY;
+    this.#actionPolicy = options.actionRealizationPolicy ?? DEFAULT_ACTION_REALIZATION_POLICY;
+    this.#contextSatisfied = options.contextSatisfied ?? ((requirements) => requirements.length === 0);
   }
 
   handle(event: PhysicalKeyEvent): TypingInputResult {
@@ -216,10 +188,7 @@ export class TypingInputEngine {
         this.#holdState = undefined;
       }
 
-      if (
-        this.#pending?.input.physicalKeys.map(resolveKeyId).includes(key)
-        && !this.#hasPotentialExtension(this.#pending)
-      ) {
+      if (this.#pending?.input.physicalKeys.map(resolveKeyId).includes(key) && !this.#hasPotentialExtension(this.#pending)) {
         recognized.push(...this.#commitStep(this.#pending));
       }
 
@@ -254,9 +223,7 @@ export class TypingInputEngine {
   }
 
   flush(): TypingInputResult {
-    const recognized = this.#pending === undefined
-      ? []
-      : this.#commitStep(this.#pending);
+    const recognized = this.#pending === undefined ? [] : this.#commitStep(this.#pending);
     this.#segments.length = 0;
     return this.#result(recognized);
   }
@@ -285,9 +252,7 @@ export class TypingInputEngine {
     return this.#contextSatisfied(candidate.alternative.contextRequirements);
   }
 
-  #segmentsMatchingSignatures(
-    signatures: readonly string[],
-  ): readonly RecognitionSegment[] | undefined {
+  #segmentsMatchingSignatures(signatures: readonly string[]): readonly RecognitionSegment[] | undefined {
     if (signatures.length === 0) return [];
 
     const selected: RecognitionSegment[] = [];
@@ -305,11 +270,7 @@ export class TypingInputEngine {
   }
 
   #continuationIndex(candidate: Candidate): number | undefined {
-    for (
-      let length = candidate.operationSignatures.length - 1;
-      length >= 1;
-      length -= 1
-    ) {
+    for (let length = candidate.operationSignatures.length - 1; length >= 1; length -= 1) {
       const prefix = candidate.operationSignatures.slice(0, length);
       if (this.#segmentsMatchingSignatures(prefix) !== undefined) return length;
     }
@@ -348,9 +309,7 @@ export class TypingInputEngine {
   }
 
   #activeWindowPressed(): ReadonlySet<PhysicalKeyId> {
-    return new Set(
-      [...this.#pressed].filter((key) => this.#windowKeys.has(key)),
-    );
+    return new Set([...this.#pressed].filter((key) => this.#windowKeys.has(key)));
   }
 
   #stepMatches(step: StepCandidate): boolean {
@@ -363,34 +322,28 @@ export class TypingInputEngine {
         return canonicalKeys(requirement.keys).every((key) => this.#pressed.has(key));
       }
 
-      const before = canonicalKeys(requirement.before)
-        .map((key) => this.#pressOrder.get(key));
-      const after = canonicalKeys(requirement.after)
-        .map((key) => this.#pressOrder.get(key));
-      if (
-        before.some((value) => value === undefined)
-        || after.some((value) => value === undefined)
-      ) {
+      const before = canonicalKeys(requirement.before).map((key) => this.#pressOrder.get(key));
+      const after = canonicalKeys(requirement.after).map((key) => this.#pressOrder.get(key));
+      if (before.some((value) => value === undefined) || after.some((value) => value === undefined)) {
         return false;
       }
 
-      return Math.max(...before as number[]) < Math.min(...after as number[]);
+      return Math.max(...(before as number[])) < Math.min(...(after as number[]));
     });
   }
 
   #bestMatch(): StepCandidate | undefined {
     return this.#activeStepCandidates()
       .filter((step) => this.#stepMatches(step))
-      .sort((left, right) =>
-        right.input.physicalKeys.length - left.input.physicalKeys.length
-        || Number(right.continuation) - Number(left.continuation)
-        || left.candidate.order - right.candidate.order)[0];
+      .sort(
+        (left, right) =>
+          right.input.physicalKeys.length - left.input.physicalKeys.length ||
+          Number(right.continuation) - Number(left.continuation) ||
+          left.candidate.order - right.candidate.order,
+      )[0];
   }
 
-  #stepCanStillMatch(
-    step: StepCandidate,
-    nextKey?: PhysicalKeyId,
-  ): boolean {
+  #stepCanStillMatch(step: StepCandidate, nextKey?: PhysicalKeyId): boolean {
     const physical = keySet(step.input.physicalKeys);
     if (!isSubset(this.#windowKeys, physical)) return false;
     if (nextKey !== undefined && !physical.has(nextKey)) return false;
@@ -405,8 +358,7 @@ export class TypingInputEngine {
 
     return step.input.requirements.every((requirement) => {
       if (requirement.kind === 'overlap') {
-        return canonicalKeys(requirement.keys)
-          .every((key) => !this.#releasedWindowKeys.has(key));
+        return canonicalKeys(requirement.keys).every((key) => !this.#releasedWindowKeys.has(key));
       }
 
       const before = canonicalKeys(requirement.before).map((key) => order.get(key));
@@ -424,8 +376,7 @@ export class TypingInputEngine {
     const current = keySet(step.input.physicalKeys);
     return this.#activeStepCandidates().some((other) => {
       if (other === step) return false;
-      return isStrictSubset(current, keySet(other.input.physicalKeys))
-        && this.#stepCanStillMatch(other);
+      return isStrictSubset(current, keySet(other.input.physicalKeys)) && this.#stepCanStillMatch(other);
     });
   }
 
@@ -434,18 +385,13 @@ export class TypingInputEngine {
     const pendingKeys = keySet(this.#pending.input.physicalKeys);
     return this.#activeStepCandidates().some((step) => {
       const candidateKeys = keySet(step.input.physicalKeys);
-      return isStrictSubset(pendingKeys, candidateKeys)
-        && candidateKeys.has(key)
-        && this.#stepCanStillMatch(step, key);
+      return isStrictSubset(pendingKeys, candidateKeys) && candidateKeys.has(key) && this.#stepCanStillMatch(step, key);
     });
   }
 
   #singleStepCandidate(signature: string): Candidate | undefined {
     return this.#candidates
-      .filter((candidate) =>
-        this.#eligible(candidate)
-        && candidate.operationSignatures.length === 1
-        && candidate.operationSignatures[0] === signature)
+      .filter((candidate) => this.#eligible(candidate) && candidate.operationSignatures.length === 1 && candidate.operationSignatures[0] === signature)
       .sort((left, right) => left.order - right.order)[0];
   }
 
@@ -463,27 +409,22 @@ export class TypingInputEngine {
       matches.push({ candidate, previousSegments });
     }
 
-    return matches.sort((left, right) =>
-      right.candidate.operationSignatures.length
-        - left.candidate.operationSignatures.length
-      || left.candidate.order - right.candidate.order)[0];
+    return matches.sort(
+      (left, right) =>
+        right.candidate.operationSignatures.length - left.candidate.operationSignatures.length || left.candidate.order - right.candidate.order,
+    )[0];
   }
 
   #hasStandaloneInput(key: PhysicalKeyId): boolean {
     return this.#candidates.some((candidate) => {
       if (!this.#eligible(candidate)) return false;
-      if (
-        candidate.operationSignatures.length !== 1
-        || candidate.alternative.semanticInputs.length !== 1
-      ) return false;
+      if (candidate.operationSignatures.length !== 1 || candidate.alternative.semanticInputs.length !== 1) return false;
       const keys = canonicalKeys(candidate.alternative.semanticInputs[0].physicalKeys);
       return keys.length === 1 && keys[0] === key;
     });
   }
 
-  #unconsumedWindowKeys(
-    consumedKeys: readonly PhysicalKeyId[],
-  ): ReplayWindowKey[] {
+  #unconsumedWindowKeys(consumedKeys: readonly PhysicalKeyId[]): ReplayWindowKey[] {
     const consumed = keySet(consumedKeys);
     return [...this.#windowKeys]
       .filter((key) => {
@@ -506,9 +447,7 @@ export class TypingInputEngine {
    * released状態へ戻すことで、未定義の重なりを単打として失わず、
    * prefix等のrelease後も有効なorder semanticはそのまま延長できる。
    */
-  #replayUnconsumedWindowKeys(
-    keys: readonly ReplayWindowKey[],
-  ): RecognizedTypingInput[] {
+  #replayUnconsumedWindowKeys(keys: readonly ReplayWindowKey[]): RecognizedTypingInput[] {
     const recognized: RecognizedTypingInput[] = [];
 
     for (const replay of keys) {
@@ -530,10 +469,7 @@ export class TypingInputEngine {
       if (!replay.released || !this.#windowKeys.has(replay.key)) continue;
 
       this.#releasedWindowKeys.add(replay.key);
-      if (
-        this.#pending?.input.physicalKeys.map(resolveKeyId).includes(replay.key)
-        && !this.#hasPotentialExtension(this.#pending)
-      ) {
+      if (this.#pending?.input.physicalKeys.map(resolveKeyId).includes(replay.key) && !this.#hasPotentialExtension(this.#pending)) {
         recognized.push(...this.#commitStep(this.#pending));
       }
     }
@@ -548,11 +484,7 @@ export class TypingInputEngine {
     readonly actions: readonly RealizedSemanticAction[];
     readonly holdState?: TriggerHoldState;
   } {
-    const realized = realizeTriggerActions(
-      realizations,
-      this.#triggerPolicy,
-      previous,
-    );
+    const realized = realizeTriggerActions(realizations, this.#triggerPolicy, previous);
     return {
       actions: applyActionRealizationPolicy(realized.actions, this.#actionPolicy),
       ...(realized.holdState === undefined ? {} : { holdState: realized.holdState }),
@@ -569,86 +501,65 @@ export class TypingInputEngine {
     const multiStep = this.#completedMultiStepMatch(step.signature);
     if (multiStep !== undefined) {
       const previousSegments = [...multiStep.previousSegments];
-      const sequenceHoldStateBefore = previousSegments.length > 0
-        ? previousSegments[0].holdStateBefore
-        : holdStateBefore;
-      const actions = [
-        ...previousSegments.flatMap((segment) => segment.actions),
-        ...provisional.actions,
-      ];
+      const sequenceHoldStateBefore = previousSegments.length > 0 ? previousSegments[0].holdStateBefore : holdStateBefore;
+      const actions = [...previousSegments.flatMap((segment) => segment.actions), ...provisional.actions];
 
       if (previousSegments.length > 0) {
-        this.#segments.splice(
-          this.#segments.length - previousSegments.length,
-          previousSegments.length,
-        );
+        this.#segments.splice(this.#segments.length - previousSegments.length, previousSegments.length);
       }
 
-      const replacePreviousText = previousSegments
-        .map((segment) => segment.visibleOutput)
-        .join('');
+      const replacePreviousText = previousSegments.map((segment) => segment.visibleOutput).join('');
       this.#segments.push({
         operationSignatures: multiStep.candidate.operationSignatures,
         visibleOutput: multiStep.candidate.output,
         actions,
-        ...(sequenceHoldStateBefore === undefined
-          ? {}
-          : { holdStateBefore: sequenceHoldStateBefore }),
-        ...(provisional.holdState === undefined
-          ? {}
-          : { holdStateAfter: provisional.holdState }),
+        ...(sequenceHoldStateBefore === undefined ? {} : { holdStateBefore: sequenceHoldStateBefore }),
+        ...(provisional.holdState === undefined ? {} : { holdStateAfter: provisional.holdState }),
       });
       this.#trimSegments();
       this.#resetRecognitionWindow();
 
-      return [{
-        output: multiStep.candidate.output,
-        alternative: multiStep.candidate.alternative,
-        actions,
-        ...(replacePreviousText.length === 0
-          ? {}
-          : { replacePreviousText }),
-      }, ...this.#replayUnconsumedWindowKeys(unconsumedWindowKeys)];
+      return [
+        {
+          output: multiStep.candidate.output,
+          alternative: multiStep.candidate.alternative,
+          actions,
+          ...(replacePreviousText.length === 0 ? {} : { replacePreviousText }),
+        },
+        ...this.#replayUnconsumedWindowKeys(unconsumedWindowKeys),
+      ];
     }
 
     const direct = this.#singleStepCandidate(step.signature);
     if (direct !== undefined) {
-      const realized = this.#realize(
-        direct.alternative.baseRealizations,
-        holdStateBefore,
-      );
+      const realized = this.#realize(direct.alternative.baseRealizations, holdStateBefore);
       this.#holdState = realized.holdState;
       this.#segments.push({
         operationSignatures: direct.operationSignatures,
         visibleOutput: direct.output,
         actions: realized.actions,
-        ...(holdStateBefore === undefined
-          ? {}
-          : { holdStateBefore }),
-        ...(realized.holdState === undefined
-          ? {}
-          : { holdStateAfter: realized.holdState }),
+        ...(holdStateBefore === undefined ? {} : { holdStateBefore }),
+        ...(realized.holdState === undefined ? {} : { holdStateAfter: realized.holdState }),
       });
       this.#trimSegments();
       this.#resetRecognitionWindow();
 
-      return [{
-        output: direct.output,
-        alternative: direct.alternative,
-        actions: realized.actions,
-      }, ...this.#replayUnconsumedWindowKeys(unconsumedWindowKeys)];
+      return [
+        {
+          output: direct.output,
+          alternative: direct.alternative,
+          actions: realized.actions,
+        },
+        ...this.#replayUnconsumedWindowKeys(unconsumedWindowKeys),
+      ];
     }
 
     this.#segments.push({
       operationSignatures: [step.signature],
       visibleOutput: '',
       actions: provisional.actions,
-      ...(holdStateBefore === undefined
-        ? {}
-        : { holdStateBefore }),
-      ...(provisional.holdState === undefined
-        ? {}
-        : { holdStateAfter: provisional.holdState }),
+      ...(holdStateBefore === undefined ? {} : { holdStateBefore }),
+      ...(provisional.holdState === undefined ? {} : { holdStateAfter: provisional.holdState }),
     });
     this.#trimSegments();
     this.#resetRecognitionWindow();
@@ -662,10 +573,7 @@ export class TypingInputEngine {
       return;
     }
 
-    const operationCount = () => this.#segments.reduce(
-      (total, segment) => total + segment.operationSignatures.length,
-      0,
-    );
+    const operationCount = () => this.#segments.reduce((total, segment) => total + segment.operationSignatures.length, 0);
     while (this.#segments.length > 0 && operationCount() > maxHistoryOperations) {
       this.#segments.shift();
     }

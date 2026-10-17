@@ -138,11 +138,7 @@ function droppedTexts(diagnostics: readonly CodecDiagnostic[]): readonly string[
   }
   const texts: string[] = [];
   if (droppedValues > 0) {
-    const parts = [
-      ...labels,
-      ...(noRow > 0 ? [`その他の項目 ${noRow}件`] : []),
-      ...(unknown > 0 ? [`この版に無い項目 ${unknown}件`] : []),
-    ];
+    const parts = [...labels, ...(noRow > 0 ? [`その他の項目 ${noRow}件`] : []), ...(unknown > 0 ? [`この版に無い項目 ${unknown}件`] : [])];
     texts.push(`${droppedValues}件の値は読み込めませんでした（${parts.join('、')}）`);
   }
   if (droppedPresets > 0) texts.push(`${droppedPresets}件のプリセットは読み込めませんでした`);
@@ -180,11 +176,7 @@ function missingReferences(presets: readonly ImportedPreset[], references: Prese
 /**
  * 結果の行に出す文。参照先の注記は、追加後の名前（`addedNames`。`presets`と同じ並び）で書く。
  */
-export function importResultMessage(
-  message: string,
-  missing: readonly MissingReference[],
-  addedNames: readonly string[],
-): string {
+export function importResultMessage(message: string, missing: readonly MissingReference[], addedNames: readonly string[]): string {
   const notes = missing.map(({ noun, indices }) => {
     const names = indices.map((index) => `「${addedNames[index] ?? ''}」`).join('');
     return `${names}はこの端末にない${noun}を使っています。流し込むと既定に戻ります`;

@@ -38,9 +38,7 @@ export function createSetup<V>(
 ): SetupLibrary<V> {
   const label = effectiveLabel(rawLabel);
   const number = nextSetupNumber(library.setups);
-  const setup: Setup = label === undefined
-    ? { id: generateId(), number, layoutId, shapeId }
-    : { id: generateId(), number, layoutId, shapeId, label };
+  const setup: Setup = label === undefined ? { id: generateId(), number, layoutId, shapeId } : { id: generateId(), number, layoutId, shapeId, label };
   return { setups: [...library.setups, setup], overrides: library.overrides };
 }
 
@@ -50,21 +48,17 @@ export function createSetup<V>(
  * （以後どちらかを変えても他方には影響しない）。
  * 複製元が存在しないidなら何もしない（値として無視する。例外にしない方針）。
  */
-export function duplicateSetup<V>(
-  library: SetupLibrary<V>,
-  sourceSetupId: string,
-  generateId: SetupIdGenerator,
-  rawLabel?: string,
-): SetupLibrary<V> {
+export function duplicateSetup<V>(library: SetupLibrary<V>, sourceSetupId: string, generateId: SetupIdGenerator, rawLabel?: string): SetupLibrary<V> {
   const label = effectiveLabel(rawLabel);
   const source = library.setups.find((setup) => setup.id === sourceSetupId);
   if (source === undefined) return library;
 
   const id = generateId();
   const number = nextSetupNumber(library.setups);
-  const duplicated: Setup = label === undefined
-    ? { id, number, layoutId: source.layoutId, shapeId: source.shapeId }
-    : { id, number, layoutId: source.layoutId, shapeId: source.shapeId, label };
+  const duplicated: Setup =
+    label === undefined
+      ? { id, number, layoutId: source.layoutId, shapeId: source.shapeId }
+      : { id, number, layoutId: source.layoutId, shapeId: source.shapeId, label };
 
   return {
     setups: [...library.setups, duplicated],
@@ -92,17 +86,13 @@ export function deleteSetup<V>(library: SetupLibrary<V>, setupId: string): Setup
  * 対象が存在しない、または既に同じラベルなら`library`をそのまま返す（`deleteSetup`と
  * 同じ規約。`map`も対象が無くても新しい配列を作ってしまうため）。
  */
-export function relabelSetup<V>(
-  library: SetupLibrary<V>,
-  setupId: string,
-  rawLabel: string | undefined,
-): SetupLibrary<V> {
+export function relabelSetup<V>(library: SetupLibrary<V>, setupId: string, rawLabel: string | undefined): SetupLibrary<V> {
   // 空白だけのラベルは見出しとして読めないので、ラベル無し（自動命名）として保存する。
   const label = effectiveLabel(rawLabel);
   const target = library.setups.find((setup) => setup.id === setupId);
   if (target === undefined || target.label === label) return library;
   return {
-    setups: library.setups.map((setup) => setup.id === setupId ? withLabel(setup, label) : setup),
+    setups: library.setups.map((setup) => (setup.id === setupId ? withLabel(setup, label) : setup)),
     overrides: library.overrides,
   };
 }
@@ -115,7 +105,7 @@ export function setSetupShape<V>(library: SetupLibrary<V>, setupId: string, shap
   const target = library.setups.find((setup) => setup.id === setupId);
   if (target === undefined || target.shapeId === shapeId) return library;
   return {
-    setups: library.setups.map((setup) => setup.id === setupId ? { ...setup, shapeId } : setup),
+    setups: library.setups.map((setup) => (setup.id === setupId ? { ...setup, shapeId } : setup)),
     overrides: library.overrides,
   };
 }

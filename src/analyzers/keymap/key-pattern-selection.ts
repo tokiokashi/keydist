@@ -36,12 +36,13 @@ export function keyPatternSelectionView(layout: Layout, selected: readonly strin
   const candidateLegends = new Map([...result.candidates].map(([key, matches]) => [key, summarizeCandidateMatches(matches)] as const));
   const continuationKeys = new Set(result.continuations.keys());
   const hasNext = continuationKeys.size > 0;
-  const message = exactOutputs.length > 0
-    ? `確定: ${exactOutputs.join(' / ')}${hasNext ? '。青い枠のキーを続けて選ぶこともできます。' : ''}`
-    : hasNext
-      ? candidateLegends.size > 0
-        ? '青い枠のキーを選ぶと、出る文字が決まります。'
-        : '青い枠のキーを続けて選んでください。'
-      : 'このキーの組み合わせで出る文字はありません。';
+  const message =
+    exactOutputs.length > 0
+      ? `確定: ${exactOutputs.join(' / ')}${hasNext ? '。青い枠のキーを続けて選ぶこともできます。' : ''}`
+      : hasNext
+        ? candidateLegends.size > 0
+          ? '青い枠のキーを選ぶと、出る文字が決まります。'
+          : '青い枠のキーを続けて選んでください。'
+        : 'このキーの組み合わせで出る文字はありません。';
   return { exactOutputs, candidateLegends, continuationKeys, message };
 }

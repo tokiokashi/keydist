@@ -21,28 +21,32 @@ export async function checkFirstFrame(page: Page, scrollbarTakesWidth: boolean):
     { id: 'b', x: 12, y: 0, w: 12, h: 12 },
     { id: 'c', x: 0, y: 12, w: 24, h: 12 },
   ];
-  await page.addInitScript((value) => {
-    localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
-    // ペインが初めてDOMに現れた時の矩形と、その後の全ての描画コマでの矩形を記録する
-    const snap = () => [...document.querySelectorAll('.workspace-grid-item')].map((el) => {
-      const r = el.getBoundingClientRect();
-      return [r.x, r.y, r.width, r.height];
-    });
-    const w = window as unknown as { __frames: number[][][] };
-    w.__frames = [];
-    let started = false;
-    const loop = () => {
-      const s = snap();
-      if (s.length > 0) w.__frames.push(s);
-      requestAnimationFrame(loop);
-    };
-    new MutationObserver(() => {
-      if (started || document.querySelectorAll('.workspace-grid-item').length === 0) return;
-      started = true;
-      w.__frames.push(snap());
-      requestAnimationFrame(loop);
-    }).observe(document, { childList: true, subtree: true });
-  }, { id: 'g', name: '格子', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes: grid.map((g) => blank(g.id)), grid });
+  await page.addInitScript(
+    (value) => {
+      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
+      // ペインが初めてDOMに現れた時の矩形と、その後の全ての描画コマでの矩形を記録する
+      const snap = () =>
+        [...document.querySelectorAll('.workspace-grid-item')].map((el) => {
+          const r = el.getBoundingClientRect();
+          return [r.x, r.y, r.width, r.height];
+        });
+      const w = window as unknown as { __frames: number[][][] };
+      w.__frames = [];
+      let started = false;
+      const loop = () => {
+        const s = snap();
+        if (s.length > 0) w.__frames.push(s);
+        requestAnimationFrame(loop);
+      };
+      new MutationObserver(() => {
+        if (started || document.querySelectorAll('.workspace-grid-item').length === 0) return;
+        started = true;
+        w.__frames.push(snap());
+        requestAnimationFrame(loop);
+      }).observe(document, { childList: true, subtree: true });
+    },
+    { id: 'g', name: '格子', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes: grid.map((g) => blank(g.id)), grid },
+  );
   await page.goto('/workspace/g');
   await waitForHydration(page);
   await expect(page.locator('.workspace-grid-item')).toHaveCount(3);

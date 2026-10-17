@@ -45,13 +45,18 @@ const USE_NOT_USE = [
  * 打鍵再生の設定項目の入力欄。解析設定の小窓（計算の項目）と配列図の表示の小窓（見た目の項目）が、
  * どちらもここから同じ入力欄を取る。どの項目をどちらに置くかは`settings-sections.ts`の表が決める。
  */
-export function usePlaybackFields(
-  options: PlaybackOptions,
-  onOptionsChange: (next: PlaybackOptions) => void,
-): Record<keyof PlaybackOptions, ReactNode> {
-  const bind = <K extends keyof PlaybackOptions>(key: K) =>
-    bindOption(options, DEFAULT_PLAYBACK_OPTIONS, onOptionsChange, key);
-  const bindOnOff = (key: 'sameFingerDelay' | 'allFingerMovementDelay' | 'applyPersonalSpeed' | 'useCrossHandDirection' | 'useFingerValues' | 'useSimultaneousOverhead' | 'useKeystrokeOverhead'): OptionBinding<'on' | 'off'> => {
+export function usePlaybackFields(options: PlaybackOptions, onOptionsChange: (next: PlaybackOptions) => void): Record<keyof PlaybackOptions, ReactNode> {
+  const bind = <K extends keyof PlaybackOptions>(key: K) => bindOption(options, DEFAULT_PLAYBACK_OPTIONS, onOptionsChange, key);
+  const bindOnOff = (
+    key:
+      | 'sameFingerDelay'
+      | 'allFingerMovementDelay'
+      | 'applyPersonalSpeed'
+      | 'useCrossHandDirection'
+      | 'useFingerValues'
+      | 'useSimultaneousOverhead'
+      | 'useKeystrokeOverhead',
+  ): OptionBinding<'on' | 'off'> => {
     const inner = bind(key);
     return {
       value: inner.value ? 'on' : 'off',
@@ -62,9 +67,7 @@ export function usePlaybackFields(
   const personalSpeedSaved = useContext(PersonalSpeedSavedContext);
   const personalSpeedInUse = personalSpeedSaved && options.applyPersonalSpeed;
   // 保存値の部分の設定は、個人速度を適用しない間は読まれない
-  const partHint = (text: string) => (options.applyPersonalSpeed
-    ? text
-    : `${text}個人速度を適用しないため、この設定は使われません。`);
+  const partHint = (text: string) => (options.applyPersonalSpeed ? text : `${text}個人速度を適用しないため、この設定は使われません。`);
   const fields: Record<keyof PlaybackOptions, ReactNode> = {
     stepsPerSecond: (
       <NumberOptionField
@@ -74,9 +77,11 @@ export function usePlaybackFields(
         max={PLAYBACK_STEPS_PER_SECOND_MAX}
         step={0.05}
         unit="ステップ/秒"
-        hint={personalSpeedInUse
-          ? '1秒に進むステップ数。個人速度で計算しているため、基準速度は使われません。'
-          : '1秒に進むステップ数。個人速度で計算している間は使われません。'}
+        hint={
+          personalSpeedInUse
+            ? '1秒に進むステップ数。個人速度で計算しているため、基準速度は使われません。'
+            : '1秒に進むステップ数。個人速度で計算している間は使われません。'
+        }
       />
     ),
     speedMultiplier: (
@@ -110,7 +115,10 @@ export function usePlaybackFields(
       <SegmentedOptionField
         label="個人速度"
         binding={bindOnOff('applyPersonalSpeed')}
-        choices={[{ value: 'on', label: '適用する' }, { value: 'off', label: '適用しない' }]}
+        choices={[
+          { value: 'on', label: '適用する' },
+          { value: 'off', label: '適用しない' },
+        ]}
         hint="個人速度の画面で測った速さで、再生の時間を求めます。"
       />
     ),
@@ -210,7 +218,10 @@ export function usePlaybackFields(
       <SegmentedOptionField
         label="平均の方式"
         binding={bind('rateAverage')}
-        choices={[{ value: 'sma', label: 'SMA' }, { value: 'ewma', label: 'EWMA' }]}
+        choices={[
+          { value: 'sma', label: 'SMA' },
+          { value: 'ewma', label: 'EWMA' },
+        ]}
         hint="SMAは直近の打鍵の単純な平均、EWMAは古い打鍵ほど寄与を時間で減らす平均です。"
       />
     ),
@@ -223,9 +234,7 @@ export function usePlaybackFields(
         step={1}
         integer
         unit="打鍵"
-        hint={options.rateAverage === 'ewma'
-          ? 'SMAで平均する直近の打鍵数。平均の方式がEWMAのため、窓幅は使われません。'
-          : 'SMAで平均する直近の打鍵数。'}
+        hint={options.rateAverage === 'ewma' ? 'SMAで平均する直近の打鍵数。平均の方式がEWMAのため、窓幅は使われません。' : 'SMAで平均する直近の打鍵数。'}
       />
     ),
     rateHalfLifeSeconds: (
@@ -236,9 +245,11 @@ export function usePlaybackFields(
         max={PLAYBACK_RATE_HALF_LIFE_SECONDS_MAX}
         step={0.1}
         unit="秒"
-        hint={options.rateAverage === 'sma'
-          ? 'EWMAで、打鍵の寄与が半分になるまでの時間。平均の方式がSMAのため、半減時間は使われません。'
-          : 'EWMAで、打鍵の寄与が半分になるまでの時間。'}
+        hint={
+          options.rateAverage === 'sma'
+            ? 'EWMAで、打鍵の寄与が半分になるまでの時間。平均の方式がSMAのため、半減時間は使われません。'
+            : 'EWMAで、打鍵の寄与が半分になるまでの時間。'
+        }
       />
     ),
     showChain: (
@@ -256,18 +267,10 @@ export function usePlaybackFields(
       />
     ),
     showSameFingerMotion: (
-      <CheckboxOptionField
-        label="同指移動の動的表示"
-        binding={bind('showSameFingerMotion')}
-        hint="同じ指が離れたキーへ移る動きを配列図に重ねます。"
-      />
+      <CheckboxOptionField label="同指移動の動的表示" binding={bind('showSameFingerMotion')} hint="同じ指が離れたキーへ移る動きを配列図に重ねます。" />
     ),
     showFingerPositions: (
-      <CheckboxOptionField
-        label="指の位置を表示"
-        binding={bind('showFingerPositions')}
-        hint="各指が今いるキーを、指ごとの色で配列図に出します。"
-      />
+      <CheckboxOptionField label="指の位置を表示" binding={bind('showFingerPositions')} hint="各指が今いるキーを、指ごとの色で配列図に出します。" />
     ),
     showPlannedKeys: (
       <CheckboxOptionField
@@ -290,13 +293,7 @@ export function usePlaybackFields(
         hint="ローマ字の規則を持つ配列で、今の入力単位のまだ押していないキーを、押下予定キーと同じ緑の塗りで配列図に出します。ローマ字の規則を持たない配列では出ません。"
       />
     ),
-    showTrail: (
-      <CheckboxOptionField
-        label="押下履歴を表示"
-        binding={bind('showTrail')}
-        hint="押したキーを、残すステップ数の分だけ配列図に残します。"
-      />
-    ),
+    showTrail: <CheckboxOptionField label="押下履歴を表示" binding={bind('showTrail')} hint="押したキーを、残すステップ数の分だけ配列図に残します。" />,
     trailSteps: (
       <NumberOptionField
         label="押下履歴を残すステップ数"
@@ -306,9 +303,11 @@ export function usePlaybackFields(
         step={1}
         integer
         unit="ステップ"
-        hint={options.showTrail
-          ? '押したキーを何ステップ前まで残すかです。'
-          : '押したキーを何ステップ前まで残すかです。押下履歴を表示しない間は使われません。'}
+        hint={
+          options.showTrail
+            ? '押したキーを何ステップ前まで残すかです。'
+            : '押したキーを何ステップ前まで残すかです。押下履歴を表示しない間は使われません。'
+        }
       />
     ),
     showOrderLabels: (

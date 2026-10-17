@@ -1,11 +1,7 @@
 import * as v from 'valibot';
-import {
-  decodeCascadeOverrides,
-  encodeCascadeOverrides,
-  type ItemSchemaMap,
-} from '#input/settings/index.ts';
+import { decodeCascadeOverrides, encodeCascadeOverrides, type ItemSchemaMap } from '#input/settings/index.ts';
 import { defineAssetCodec, type AssetCodec } from '#input/codec/index.ts';
-import { SETTINGS_ITEMS, type SettingsCascadeOverrides, type SettingsValueMap } from './settings-items.ts';
+import type { SETTINGS_ITEMS, SettingsCascadeOverrides, SettingsValueMap } from './settings-items.ts';
 
 /**
  * カスケードの上書きのcodec。項目ごとの値schemaは、値の型を二重に
@@ -34,13 +30,17 @@ const actionRealizationPolicySchema = v.strictObject({
       'postpress-required': v.exactOptional(triggerActivationGroupingSchema),
     }),
   ),
-  triggerActivationOverrides: v.exactOptional(v.array(v.strictObject({
-    selector: v.strictObject({
-      modifierGroupIds: v.exactOptional(v.array(v.string())),
-      triggerKeys: v.exactOptional(v.array(v.string())),
-    }),
-    grouping: triggerActivationGroupingSchema,
-  }))),
+  triggerActivationOverrides: v.exactOptional(
+    v.array(
+      v.strictObject({
+        selector: v.strictObject({
+          modifierGroupIds: v.exactOptional(v.array(v.string())),
+          triggerKeys: v.exactOptional(v.array(v.string())),
+        }),
+        grouping: triggerActivationGroupingSchema,
+      }),
+    ),
+  ),
 });
 
 const chainInterpretationSchema = v.strictObject({
@@ -109,7 +109,6 @@ void _keysMatch;
  */
 export const SETTINGS_CASCADE_OVERRIDES_CODEC: AssetCodec<SettingsCascadeOverrides> = defineAssetCodec({
   currentVersion: 1,
-  decodePayload: (payload, diagnostics) =>
-    decodeCascadeOverrides(SETTINGS_ITEM_SCHEMAS, payload, 'overrides', diagnostics),
+  decodePayload: (payload, diagnostics) => decodeCascadeOverrides(SETTINGS_ITEM_SCHEMAS, payload, 'overrides', diagnostics),
   encodePayload: (value) => encodeCascadeOverrides(value),
 });

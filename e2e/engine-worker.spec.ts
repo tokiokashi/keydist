@@ -37,9 +37,7 @@ test('5万字の比較表の計算中も、メインスレッドは止まらな�
   expect(page.workers().length).toBeGreaterThanOrEqual(1);
 
   const body = (await openTextChip(page)).getByLabel('テキスト', { exact: true });
-  const readMonitor = () => page.evaluate(
-    () => (window as unknown as { __monitor: { maxGap: number; posted: number } }).__monitor,
-  );
+  const readMonitor = () => page.evaluate(() => (window as unknown as { __monitor: { maxGap: number; posted: number } }).__monitor);
   await page.evaluate(() => {
     const monitor = (window as unknown as { __monitor: { maxGap: number; posted: number } }).__monitor;
     monitor.maxGap = 0;

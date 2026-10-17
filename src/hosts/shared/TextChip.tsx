@@ -117,9 +117,7 @@ export function TextChip(props: TextChipProps) {
         <span className="context-chip-key">テキスト</span>
         <span className="context-chip-value">{resolved.name}</span>
         <span className="text-chip-count">{formatTextCount(countTextCharacters(resolved.text))}</span>
-        {hasUnseen ? (
-          <span className="text-chip-unseen" role="img" aria-label="新しいテキストがあります" title="新しいテキストがあります" />
-        ) : null}
+        {hasUnseen ? <span className="text-chip-unseen" role="img" aria-label="新しいテキストがあります" title="新しいテキストがあります" /> : null}
         <span className="text-chip-language">{languageLabel(resolved.language)}</span>
         <svg className="context-chip-chevron" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
           <path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
@@ -134,14 +132,7 @@ export function TextChip(props: TextChipProps) {
   );
 }
 
-function TextEditor({
-  holder,
-  textLibrary,
-  selection,
-  dispatch,
-  generateTextId,
-  onTextContentCommit,
-}: TextChipProps) {
+function TextEditor({ holder, textLibrary, selection, dispatch, generateTextId, onTextContentCommit }: TextChipProps) {
   const resolved = resolveTextSelection(selection, textLibrary);
 
   // 本文は見た目へ即座に反映し（controlled textarea）、資産への反映は間引く。
@@ -159,9 +150,7 @@ function TextEditor({
   const [textDraftSource, setTextDraftSource] = useState({ text: resolved.text, ref: resolved.ref });
   if (textDraftSource.text !== resolved.text || refKey(textDraftSource.ref) !== currentKey) {
     const movedByOwnWrite =
-      textDraftSource.ref.kind === 'builtin' &&
-      resolved.ref.kind === 'user' &&
-      onTextContentCommit.wasRedirected(textDraftSource.ref, resolved.ref);
+      textDraftSource.ref.kind === 'builtin' && resolved.ref.kind === 'user' && onTextContentCommit.wasRedirected(textDraftSource.ref, resolved.ref);
     setTextDraftSource({ text: resolved.text, ref: resolved.ref });
     if (textDraftSource.text !== resolved.text && !(movedByOwnWrite && textDraft !== resolved.text)) {
       setTextDraft(resolved.text);
@@ -261,7 +250,7 @@ function TextEditor({
             value={resolved.languageOverride ?? 'auto'}
             onChange={(event) => {
               const value = event.currentTarget.value;
-              dispatch(setTextLanguageOverrideCommand(holder, value === 'auto' ? undefined : value as TextLanguage));
+              dispatch(setTextLanguageOverrideCommand(holder, value === 'auto' ? undefined : (value as TextLanguage)));
             }}
             disabled={resolved.isBuiltin}
             aria-label="言語の判定"
@@ -306,14 +295,14 @@ function TextEditor({
           />
         </label>
         <div className="text-editor-buttons">
-          <button type="button" onClick={() => dispatch(createTextCommand(holder, generateTextId))}>新規作成</button>
-          <button type="button" onClick={() => dispatch(duplicateTextCommand(holder, generateTextId))}>複製</button>
+          <button type="button" onClick={() => dispatch(createTextCommand(holder, generateTextId))}>
+            新規作成
+          </button>
+          <button type="button" onClick={() => dispatch(duplicateTextCommand(holder, generateTextId))}>
+            複製
+          </button>
           {/* 削除は「元に戻す」で戻せるので、確認は挟まない。 */}
-          <button
-            type="button"
-            onClick={() => dispatch(deleteTextCommand(holder, resolved.ref.id))}
-            disabled={resolved.isBuiltin}
-          >
+          <button type="button" onClick={() => dispatch(deleteTextCommand(holder, resolved.ref.id))} disabled={resolved.isBuiltin}>
             削除
           </button>
         </div>

@@ -47,8 +47,7 @@ export interface ComboDiagramItem {
 }
 
 function faceTriggerText(layout: Layout, face: Face, standard: PhysicalKeyboardStandard | undefined): string {
-  return face.presentationTriggerText
-    ?? triggerChordsDisplayText(layout, displayTriggerChords(face), standard);
+  return face.presentationTriggerText ?? triggerChordsDisplayText(layout, displayTriggerChords(face), standard);
 }
 
 /** コンボ枠に計上すると宣言された面。面を持たない配列は空。 */
@@ -73,14 +72,18 @@ export function modifierRows(layout: Layout): ModifierRow[] {
  * 面ごとに1行を足す（面の行は複数の出力をまとめるので、行数は仕様 §11.8の `B` と一致しない）。
  */
 export function comboRows(layout: Layout, standard: PhysicalKeyboardStandard | undefined): ComboRow[] {
-  const faceRows = faceCombos(layout).map((face): ComboRow => ({
-    trigger: faceTriggerText(layout, face, standard),
-    output: [...faceCells(face).values()].join(' / '),
-  }));
-  const definitionRows = (layout.resolvedComboDefinitions ?? []).map((combo): ComboRow => ({
-    trigger: `${combo.group ? `${combo.group}: ` : ''}${combo.inputs.join(' + ')}`,
-    output: combo.output,
-  }));
+  const faceRows = faceCombos(layout).map(
+    (face): ComboRow => ({
+      trigger: faceTriggerText(layout, face, standard),
+      output: [...faceCells(face).values()].join(' / '),
+    }),
+  );
+  const definitionRows = (layout.resolvedComboDefinitions ?? []).map(
+    (combo): ComboRow => ({
+      trigger: `${combo.group ? `${combo.group}: ` : ''}${combo.inputs.join(' + ')}`,
+      output: combo.output,
+    }),
+  );
   return [...faceRows, ...definitionRows];
 }
 
@@ -89,11 +92,13 @@ export function comboRows(layout: Layout, standard: PhysicalKeyboardStandard | u
  * 同じ組・同じ押し方で別のキーを押すものを1枚にまとめる。
  */
 export function comboDiagramItems(layout: Layout, standard: PhysicalKeyboardStandard | undefined): ComboDiagramItem[] {
-  const faceItems = faceCombos(layout).map((face): ComboDiagramItem => ({
-    label: faceTriggerText(layout, face, standard),
-    triggerKeys: [...new Set(displayTriggerKeys(face).map(resolveKeyId))],
-    outputs: faceDisplayCells(face),
-  }));
+  const faceItems = faceCombos(layout).map(
+    (face): ComboDiagramItem => ({
+      label: faceTriggerText(layout, face, standard),
+      triggerKeys: [...new Set(displayTriggerKeys(face).map(resolveKeyId))],
+      outputs: faceDisplayCells(face),
+    }),
+  );
 
   const folded = new Map<string, { label: string; triggerKeys: readonly string[]; outputs: Map<string, string> }>();
   for (const combo of layout.resolvedComboDefinitions ?? []) {

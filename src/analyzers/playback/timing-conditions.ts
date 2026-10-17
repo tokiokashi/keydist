@@ -25,10 +25,8 @@ export type CalibrationPartOptions = Pick<
   'sameHandSpeed' | 'useCrossHandDirection' | 'useFingerValues' | 'useSimultaneousOverhead' | 'useKeystrokeOverhead'
 >;
 
-type TimingOptions = CalibrationPartOptions & Pick<
-  PlaybackOptions,
-  'stepsPerSecond' | 'speedMultiplier' | 'sameFingerDelay' | 'allFingerMovementDelay' | 'applyPersonalSpeed'
->;
+type TimingOptions = CalibrationPartOptions &
+  Pick<PlaybackOptions, 'stepsPerSecond' | 'speedMultiplier' | 'sameFingerDelay' | 'allFingerMovementDelay' | 'applyPersonalSpeed'>;
 
 /**
  * 保存値から、使わない設定の部分の項目を外した個人速度を返す。外した項目は、持たないもの
@@ -37,16 +35,15 @@ type TimingOptions = CalibrationPartOptions & Pick<
  */
 export function calibrationWithParts(calibration: PlaybackCalibration, parts: CalibrationPartOptions): PlaybackCalibration {
   if (
-    parts.sameHandSpeed === 'directed' && parts.useCrossHandDirection && parts.useFingerValues
-    && parts.useSimultaneousOverhead && parts.useKeystrokeOverhead
-  ) return calibration;
-  const {
-    actionsPerSecondByDirection,
-    sameHandDifferentFingerActionsPerDirectedPair,
-    keystrokeOverheadMs,
-    simultaneousOverheadMs,
-    ...kept
-  } = calibration;
+    parts.sameHandSpeed === 'directed' &&
+    parts.useCrossHandDirection &&
+    parts.useFingerValues &&
+    parts.useSimultaneousOverhead &&
+    parts.useKeystrokeOverhead
+  )
+    return calibration;
+  const { actionsPerSecondByDirection, sameHandDifferentFingerActionsPerDirectedPair, keystrokeOverheadMs, simultaneousOverheadMs, ...kept } =
+    calibration;
   const next: PlaybackCalibration = { ...kept };
   if (parts.useCrossHandDirection && actionsPerSecondByDirection !== undefined) {
     next.actionsPerSecondByDirection = actionsPerSecondByDirection;
@@ -68,9 +65,7 @@ export function calibrationWithParts(calibration: PlaybackCalibration, parts: Ca
 
 /** 保存値の、文章を打つ速さで測った打鍵の上乗せが、時間に足されうるか（§2.2）。0でない値を持ち、同指連続の値は同じ指の移動時間を考慮する時だけ数える。 */
 export function keystrokeOverheadAdds(calibration: PlaybackCalibration | undefined, sameFingerDelay: boolean): boolean {
-  return Object.entries(calibration?.keystrokeOverheadMs ?? {}).some(
-    ([kind, ms]) => ms !== 0 && (kind !== 'sfb' || sameFingerDelay),
-  );
+  return Object.entries(calibration?.keystrokeOverheadMs ?? {}).some(([kind, ms]) => ms !== 0 && (kind !== 'sfb' || sameFingerDelay));
 }
 
 /** 保存値の同時押しの上乗せが、時間に足されうるか（§2.2）。0でない値を持つ。 */
@@ -114,9 +109,7 @@ export function playbackTimingConditions(options: TimingOptions, assets: Extract
     speedMultiplier: options.speedMultiplier,
     sameFingerDelay: options.sameFingerDelay,
     allFingerMovementDelay: options.allFingerMovementDelay,
-    calibration: options.applyPersonalSpeed && assets.personalSpeed !== undefined
-      ? calibrationWithParts(assets.personalSpeed, options)
-      : undefined,
+    calibration: options.applyPersonalSpeed && assets.personalSpeed !== undefined ? calibrationWithParts(assets.personalSpeed, options) : undefined,
   };
 }
 

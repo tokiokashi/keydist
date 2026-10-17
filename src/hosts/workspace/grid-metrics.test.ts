@@ -50,7 +50,10 @@ test('gridCols: 面に収まる列数と並びの右端の大きい方。右端�
 });
 
 test('rightmostCol: xとwの和の最大。ペインが無ければ0', () => {
-  const grid: WorkspaceGrid = [{ id: 'a', x: 0, y: 0, w: 12, h: 4 }, { id: 'b', x: 30, y: 0, w: 6, h: 4 }];
+  const grid: WorkspaceGrid = [
+    { id: 'a', x: 0, y: 0, w: 12, h: 4 },
+    { id: 'b', x: 30, y: 0, w: 6, h: 4 },
+  ];
   assert.equal(rightmostCol(grid), 36);
   assert.equal(rightmostCol([]), 0);
 });

@@ -1,8 +1,4 @@
-import {
-  isPresetGeometryKind,
-  presetGeometryStandard,
-  type PhysicalKeyboardStandard,
-} from './geometry.ts';
+import { isPresetGeometryKind, presetGeometryStandard, type PhysicalKeyboardStandard } from './geometry.ts';
 
 // 物理キーidは内部の識別子（QWERTY刻印・thumb-l・r0c12等）なので、画面にはここで決めた表示名を出す。
 // JIS物理配列ではQWERTY（ANSI）刻印と刻印が違うキーがあり、idのまま出すと別のキーと同じ文字になる
@@ -39,9 +35,7 @@ const GRID_KEY_ID = /^r(\d+)c(\d+)$/;
  * 刻印の表示に使う規格。組み込みの物理配列だけが規格を持つ。
  * 自作物理配列は列数だけではANSI由来かJIS由来か決まらないので、未指定を返す。
  */
-export function keyboardStandardForGeometryId(
-  geometryId: string,
-): PhysicalKeyboardStandard | undefined {
+export function keyboardStandardForGeometryId(geometryId: string): PhysicalKeyboardStandard | undefined {
   return isPresetGeometryKind(geometryId) ? presetGeometryStandard(geometryId) : undefined;
 }
 
@@ -50,10 +44,7 @@ export function keyboardStandardForGeometryId(
  * JISの刻印は規格がJISと分かっている時だけ使う。規格が分からない時に `r{row}c{col}` を
  * JISで読むと、ANSI由来の自作物理配列に¥が出たり、JIS大の自作物理配列で「]」が2つのキーに出たりする。
  */
-export function physicalKeyEngraving(
-  key: string,
-  standard?: PhysicalKeyboardStandard,
-): string {
+export function physicalKeyEngraving(key: string, standard?: PhysicalKeyboardStandard): string {
   if (standard === 'jis') {
     const jis = JIS_ENGRAVINGS[key];
     if (jis !== undefined) return jis;
@@ -71,10 +62,7 @@ export function physicalKeyEngraving(
 }
 
 /** 物理キーの表示名。文字キーは大文字にする（キーキャップの刻印に合わせる）。 */
-export function physicalKeyDisplayLabel(
-  key: string,
-  standard?: PhysicalKeyboardStandard,
-): string {
+export function physicalKeyDisplayLabel(key: string, standard?: PhysicalKeyboardStandard): string {
   const engraving = physicalKeyEngraving(key, standard);
   return engraving.length === 1 ? engraving.toUpperCase() : engraving;
 }

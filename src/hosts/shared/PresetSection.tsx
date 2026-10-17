@@ -3,13 +3,7 @@ import { appendImportedPresets, applyPresetValues, normalizePresetName } from '#
 import { SETTINGS_ITEMS } from '#engine/settings-items.ts';
 import { FINGER_ASSIGNMENT_REGISTRY } from '#engine/finger-assignment.ts';
 import { ROMAJI_RULES } from '#input/romaji/rules.ts';
-import {
-  applyPresetCommand,
-  deletePresetCommand,
-  importPresetsCommand,
-  renamePresetCommand,
-  savePresetCommand,
-} from '#engine/preset-commands.ts';
+import { applyPresetCommand, deletePresetCommand, importPresetsCommand, renamePresetCommand, savePresetCommand } from '#engine/preset-commands.ts';
 import { GLOBAL_LEVEL, WORKSPACE_LEVEL, setupLevel } from './condition-edit.ts';
 import type { ConditionEditorContext } from './ConditionEditor.tsx';
 import { ErrorDetails } from './ErrorDetails.tsx';
@@ -26,14 +20,7 @@ import {
   presetFileName,
   type PresetReferences,
 } from './preset-file.ts';
-import {
-  applyResultText,
-  changedGlobalItemCount,
-  deletedResultText,
-  isSavableName,
-  presetRows,
-  savedResultText,
-} from './preset-panel.ts';
+import { applyResultText, changedGlobalItemCount, deletedResultText, isSavableName, presetRows, savedResultText } from './preset-panel.ts';
 
 /**
  * 条件のモーダルの上部に置くプリセットの節（閉じたまま開く折りたたみ）。
@@ -64,19 +51,14 @@ interface Notice {
  *   読み上げが二重にならない。結果の行（role=status）には、状態の変化でフォーカスを当てない）
  * 読み込みの後は移さない（選択の後もフォーカスは「読み込む…」に残る）。
  */
-type FocusTarget =
-  | { readonly kind: 'menu'; readonly id: string }
-  | { readonly kind: 'undo' }
-  | { readonly kind: 'summary' };
+type FocusTarget = { readonly kind: 'menu'; readonly id: string } | { readonly kind: 'undo' } | { readonly kind: 'summary' };
 
 export function PresetSection({ editor }: { readonly editor: ConditionEditorContext }) {
   const { overrides, presetLibrary, dispatch } = editor;
   // 保存・流し込みの先は、モーダルが開いた時の編集先と同じレベル（WorkspaceのペインはWorkspace、単体ページは全体、
   // Setupの編集画面はそのSetup）。Workspaceの中の操作が、他の画面の全体の値を書き換えないようにする。
   // Setupのレベルでは、Setupのレベルに置ける項目だけを保存・流し込みの対象にする。
-  const level = editor.setup !== undefined
-    ? setupLevel(editor.setup.id)
-    : editor.workspace === undefined ? GLOBAL_LEVEL : WORKSPACE_LEVEL;
+  const level = editor.setup !== undefined ? setupLevel(editor.setup.id) : editor.workspace === undefined ? GLOBAL_LEVEL : WORKSPACE_LEVEL;
   const scopeLabel = editor.setup !== undefined ? 'Setup' : editor.workspace === undefined ? '全体' : 'Workspace';
   const rows = useMemo(() => presetRows(presetLibrary, overrides, level), [presetLibrary, overrides, level]);
   const [name, setName] = useState('');
@@ -90,8 +72,7 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
     setNotice({ ...notice, settled: { overrides, library: presetLibrary } });
   }, [notice, overrides, presetLibrary]);
 
-  const stale = notice?.settled !== undefined
-    && (notice.settled.overrides !== overrides || notice.settled.library !== presetLibrary);
+  const stale = notice?.settled !== undefined && (notice.settled.overrides !== overrides || notice.settled.library !== presetLibrary);
   const visibleNotice = stale ? undefined : notice;
 
   const show = (text: string, undoable: boolean, details?: readonly string[]) => {
@@ -109,11 +90,12 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
     if (target === undefined || root.current === null) return;
     // 一度きり。見つからなくても消し、古い指定が後の描画で急に効かないようにする
     pendingFocus.current = undefined;
-    const element = target.kind === 'menu'
-      ? root.current.querySelector<HTMLElement>(`[data-preset-id="${CSS.escape(target.id)}"] .pane-menu-button`)
-      : target.kind === 'undo'
-        ? root.current.querySelector<HTMLElement>('[data-preset-result] button')
-        : root.current.querySelector<HTMLElement>('summary');
+    const element =
+      target.kind === 'menu'
+        ? root.current.querySelector<HTMLElement>(`[data-preset-id="${CSS.escape(target.id)}"] .pane-menu-button`)
+        : target.kind === 'undo'
+          ? root.current.querySelector<HTMLElement>('[data-preset-result] button')
+          : root.current.querySelector<HTMLElement>('summary');
     element?.focus();
   });
 
@@ -131,9 +113,10 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
     if (fileIo === undefined) return;
     const chosen = ids === undefined ? presetLibrary.presets : presetLibrary.presets.filter((preset) => ids.includes(preset.id));
     if (chosen.length === 0) return;
-    const filename = chosen.length === 1 && ids !== undefined
-      ? presetFileName({ kind: 'one', name: chosen[0]!.name })
-      : presetFileName({ kind: 'all', date: new Date() });
+    const filename =
+      chosen.length === 1 && ids !== undefined
+        ? presetFileName({ kind: 'one', name: chosen[0]!.name })
+        : presetFileName({ kind: 'all', date: new Date() });
     fileIo.saveJson(filename, PRESET_FILE_FORMAT, presetFileBody({ presets: chosen }));
     show(chosen.length === 1 && ids !== undefined ? `「${chosen[0]!.name}」を書き出しました` : `${chosen.length}件のプリセットを書き出しました`, false);
   };
@@ -157,7 +140,15 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
     // 追加後の名前（同名は番号付き）で注記するため、コマンドと同じ計算を先に行う。追加分は末尾に並ぶ
     const added = appendImportedPresets(presetLibrary, parsed.presets, () => '').presets.slice(presetLibrary.presets.length);
     dispatch(importPresetsCommand(parsed.presets, editor.generatePresetId));
-    show(importResultMessage(parsed.message, parsed.missingReferences, added.map((preset) => preset.name)), true, parsed.details);
+    show(
+      importResultMessage(
+        parsed.message,
+        parsed.missingReferences,
+        added.map((preset) => preset.name),
+      ),
+      true,
+      parsed.details,
+    );
   };
 
   const save = (event: FormEvent) => {
@@ -228,22 +219,24 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
                         pendingFocus.current = { kind: 'menu', id: row.id };
                       }}
                     />
-                    <button type="submit" disabled={!isSavableName(renaming.draft)}>変更</button>
-                    <button type="button" onClick={() => {
-                      setRenaming(undefined);
-                      pendingFocus.current = { kind: 'menu', id: row.id };
-                    }}>やめる</button>
+                    <button type="submit" disabled={!isSavableName(renaming.draft)}>
+                      変更
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRenaming(undefined);
+                        pendingFocus.current = { kind: 'menu', id: row.id };
+                      }}
+                    >
+                      やめる
+                    </button>
                   </form>
                 ) : (
                   <>
                     <span className="condition-preset-name">{row.name}</span>
                     {row.sameAsCurrent ? <span className="condition-preset-same">今の値と同じ</span> : null}
-                    <button
-                      type="button"
-                      className="condition-preset-apply"
-                      aria-label={`「${row.name}」の値を流し込む`}
-                      onClick={() => apply(row.id)}
-                    >
+                    <button type="button" className="condition-preset-apply" aria-label={`「${row.name}」の値を流し込む`} onClick={() => apply(row.id)}>
                       流し込む
                     </button>
                     <PaneMenu
@@ -263,19 +256,19 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
           </ul>
         )}
         <form className="condition-preset-save" onSubmit={save}>
-          <input
-            type="text"
-            aria-label="プリセットの名前"
-            placeholder="名前"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-          />
-          <button type="submit" disabled={!isSavableName(name)}>今の{scopeLabel}の値を保存</button>
+          <input type="text" aria-label="プリセットの名前" placeholder="名前" value={name} onChange={(event) => setName(event.target.value)} />
+          <button type="submit" disabled={!isSavableName(name)}>
+            今の{scopeLabel}の値を保存
+          </button>
         </form>
         {fileIo === undefined ? null : (
           <div className="condition-preset-files">
-            <button type="button" disabled={rows.length === 0} onClick={() => exportPresets()}>すべて書き出す</button>
-            <button type="button" onClick={() => fileInput.current?.click()}>読み込む…</button>
+            <button type="button" disabled={rows.length === 0} onClick={() => exportPresets()}>
+              すべて書き出す
+            </button>
+            <button type="button" onClick={() => fileInput.current?.click()}>
+              読み込む…
+            </button>
             <input
               ref={fileInput}
               type="file"
@@ -290,7 +283,11 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
           <div className="condition-preset-result-block">
             <p className="condition-preset-result" role="status" data-preset-result="true">
               <span>{visibleNotice.text}</span>
-              {visibleNotice.undoable ? <button type="button" onClick={undo}>元に戻す</button> : null}
+              {visibleNotice.undoable ? (
+                <button type="button" onClick={undo}>
+                  元に戻す
+                </button>
+              ) : null}
             </p>
             <ErrorDetails lines={visibleNotice.details ?? []} />
           </div>

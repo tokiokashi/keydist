@@ -17,5 +17,9 @@ export const SetupLinkContext = createContext<ComponentType<SetupLinkProps> | un
 export function SetupLink({ setupId, className, children }: SetupLinkProps) {
   const Link = useContext(SetupLinkContext);
   if (Link === undefined) return null;
-  return <Link setupId={setupId} className={className}>{children}</Link>;
+  return (
+    <Link setupId={setupId} className={className}>
+      {children}
+    </Link>
+  );
 }

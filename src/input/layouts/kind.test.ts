@@ -39,10 +39,17 @@ test('未知のidはalpha扱いにする（英字系がほとんどのため）'
 
 test('自作配列はdirect:trueならkana、それ以外はalpha', () => {
   const direct: UserLayout = {
-    id: 'my-kana', name: 'かな配列', rows: ['', '', '', ''], romaji: 'kunrei', direct: true,
+    id: 'my-kana',
+    name: 'かな配列',
+    rows: ['', '', '', ''],
+    romaji: 'kunrei',
+    direct: true,
   };
   const romaji: UserLayout = {
-    id: 'my-alpha', name: 'ローマ字配列', rows: ['', '', '', ''], romaji: 'kunrei',
+    id: 'my-alpha',
+    name: 'ローマ字配列',
+    rows: ['', '', '', ''],
+    romaji: 'kunrei',
   };
   assert.equal(userLayoutKind(direct), 'kana');
   assert.equal(userLayoutKind(romaji), 'alpha');

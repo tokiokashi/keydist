@@ -25,12 +25,15 @@ export interface KeySelectionStore {
 
 export function useKeySelectionStore(): KeySelectionStore {
   const [state, setState] = useState<KeySelectionState>(EMPTY_KEY_SELECTION);
-  const actions = useMemo(() => ({
-    press: (pane: string, target: string, keyId: string) => setState((current) => pressKey(current, pane, target, keyId)),
-    clear: (target: string) => setState((current) => clearSelection(current, target)),
-    closeWindowsExcept: (pane: string) => setState((current) => closeWindowsExcept(current, pane)),
-    dropPane: (pane: string) => setState((current) => dropPane(current, pane)),
-  }), []);
+  const actions = useMemo(
+    () => ({
+      press: (pane: string, target: string, keyId: string) => setState((current) => pressKey(current, pane, target, keyId)),
+      clear: (target: string) => setState((current) => clearSelection(current, target)),
+      closeWindowsExcept: (pane: string) => setState((current) => closeWindowsExcept(current, pane)),
+      dropPane: (pane: string) => setState((current) => dropPane(current, pane)),
+    }),
+    [],
+  );
   return useMemo(() => ({ state, ...actions }), [state, actions]);
 }
 
@@ -67,12 +70,15 @@ export function usePaneKeySelection(paneKey: string | undefined, target: string 
   const selectedKeyId = target === undefined ? undefined : selectedKeyOf(store.state, target);
   const windowKeyId = target === undefined ? undefined : windowKeyOf(store.state, pane, target);
   const { press: storePress, clear: storeClear } = store;
-  const press = useCallback((keyId: string, element: Element) => {
-    if (target === undefined) return;
-    // 小窓の位置は開く時だけ決める。開いたまま別のキーを押しても、動かした位置を保つ
-    if (windowKeyId === undefined) setAnchor(element);
-    storePress(pane, target, keyId);
-  }, [target, windowKeyId, storePress, pane]);
+  const press = useCallback(
+    (keyId: string, element: Element) => {
+      if (target === undefined) return;
+      // 小窓の位置は開く時だけ決める。開いたまま別のキーを押しても、動かした位置を保つ
+      if (windowKeyId === undefined) setAnchor(element);
+      storePress(pane, target, keyId);
+    },
+    [target, windowKeyId, storePress, pane],
+  );
   const clear = useCallback(() => {
     if (target !== undefined) storeClear(target);
   }, [target, storeClear]);

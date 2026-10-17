@@ -50,24 +50,42 @@ test('同じ対象は、別のペインに違う順で入れても同じ色に�
   // どちらのペインから見ても、対象の色は1つ。Workspaceが対象ごとに1つしか持たない
   assert.equal(Object.keys(colors(library)).length, 4);
   // 加えた順（p1のA, B, C → p2で増えたD）に、互いに違う番号が並ぶ
-  assert.deepEqual([A, B, C, D].map((t) => slotOf(library, t)), [0, 1, 2, 3]);
+  assert.deepEqual(
+    [A, B, C, D].map((t) => slotOf(library, t)),
+    [0, 1, 2, 3],
+  );
 });
 
 test('従う組の集合と、固定のペインの集合も同じ1つの集合として配る', () => {
-  let library = withPanes({ id: 'p1', analyzerId: 'comparison', options: undefined, optionsBinding: OWN_OPTIONS, binding: followBinding(INITIAL_LINK_GROUP_ID) });
+  let library = withPanes({
+    id: 'p1',
+    analyzerId: 'comparison',
+    options: undefined,
+    optionsBinding: OWN_OPTIONS,
+    binding: followBinding(INITIAL_LINK_GROUP_ID),
+  });
   library = withWorkspaceTarget(library, 'w1', INITIAL_LINK_GROUP_ID, { kind: 'set', selection: { targets: [A, B], baseline: undefined } });
   library = addWorkspacePane(library, 'w1', fixedSetPane('p2', [B, C]), { w: 6, h: 10 });
-  assert.deepEqual([A, B, C].map((t) => slotOf(library, t)), [0, 1, 2]);
+  assert.deepEqual(
+    [A, B, C].map((t) => slotOf(library, t)),
+    [0, 1, 2],
+  );
 });
 
 test('ペインの対象を外しても、他の対象の色は動かず、空いた色は次に加えた対象が使う', () => {
   let library = withPanes(fixedSetPane('p1', [A, B, C]));
   library = withWorkspacePaneBinding(library, 'w1', 'p1', fixedSetBinding([A, C]));
   assert.equal(slotOf(library, B), undefined);
-  assert.deepEqual([A, C].map((t) => slotOf(library, t)), [0, 2]);
+  assert.deepEqual(
+    [A, C].map((t) => slotOf(library, t)),
+    [0, 2],
+  );
   library = withWorkspacePaneBinding(library, 'w1', 'p1', fixedSetBinding([A, C, D]));
   assert.equal(slotOf(library, D), 1);
-  assert.deepEqual([A, C].map((t) => slotOf(library, t)), [0, 2]);
+  assert.deepEqual(
+    [A, C].map((t) => slotOf(library, t)),
+    [0, 2],
+  );
 });
 
 test('別のペインにも居る対象は、片方のペインから外しても色を失わない', () => {
@@ -90,7 +108,10 @@ test('ペインを閉じると、そのペインだけに居た対象の色は�
   library = closeWorkspacePane(library, 'w1', 'p1');
   // Aは和から消える。Bは別のペインに居るので色を保つ
   assert.equal(slotOf(library, A), undefined);
-  assert.deepEqual([B, C].map((t) => slotOf(library, t)), [1, 2]);
+  assert.deepEqual(
+    [B, C].map((t) => slotOf(library, t)),
+    [1, 2],
+  );
   // 空いた0番は、次に加えた対象が使う
   library = addWorkspacePane(library, 'w1', fixedSetPane('p3', [D]), { w: 6, h: 10 });
   assert.equal(slotOf(library, D), 0);
@@ -124,7 +145,10 @@ test('個別画面で配っていた色を引き継いでWorkspaceを作れる',
     () => 'w1',
     undefined,
     { single: { target: undefined }, set: { targets: [A, B], baseline: undefined } },
-    new Map([[analysisTargetKey(A), 5], [analysisTargetKey(B), 2]]),
+    new Map([
+      [analysisTargetKey(A), 5],
+      [analysisTargetKey(B), 2],
+    ]),
   ).created;
   assert.deepEqual(created.colorSlots, { [analysisTargetKey(A)]: 5, [analysisTargetKey(B)]: 2 });
 });

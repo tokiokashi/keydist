@@ -20,10 +20,7 @@ import { analyzeStrokeStructure } from '#interpretation/structure/aggregate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import type { ChainInterpretation } from '#interpretation/structure/chain.ts';
 import type { ArpeggioInterpretation } from '#interpretation/structure/arpeggio.ts';
-import type {
-  ActionRealizationPolicy,
-  TriggerRealizationPolicy,
-} from '#input/semantics/index.ts';
+import type { ActionRealizationPolicy, TriggerRealizationPolicy } from '#input/semantics/index.ts';
 import { tableForRule } from '#input/romaji/rules.ts';
 import { sampleText, type TextLanguage } from '#input/text/samples.ts';
 
@@ -128,22 +125,13 @@ function recompute(fixtureCase: FixtureCase) {
     fixtureCase.textSha256,
     `${fixtureCase.id}: サンプルテキストのハッシュがfixture生成時と違う（テキスト本文か前処理が変わった。数値差分ではない）`,
   );
-  assert.equal(
-    [...text].length,
-    fixtureCase.textLength,
-    `${fixtureCase.id}: サンプルテキストの文字数がfixture生成時と違う`,
-  );
+  assert.equal([...text].length, fixtureCase.textLength, `${fixtureCase.id}: サンプルテキストの文字数がfixture生成時と違う`);
 
-  const resolvedLayout = fixtureCase.conditions.romajiRuleId !== null
-    ? withRomaji(layout, tableForRule(fixtureCase.conditions.romajiRuleId))
-    : layout;
+  const resolvedLayout = fixtureCase.conditions.romajiRuleId !== null ? withRomaji(layout, tableForRule(fixtureCase.conditions.romajiRuleId)) : layout;
 
   const shapeId = fixtureCase.conditions.geometryShapeId as PresetGeometryKind;
   const fingerAssignment = findFingerAssignment(fixtureCase.conditions.fingerAssignmentId);
-  const geometry = buildGeometry(
-    PHYSICAL_SHAPES[shapeId],
-    assignmentWithHomeKeys(fingerAssignment, layout.homeKeys),
-  );
+  const geometry = buildGeometry(PHYSICAL_SHAPES[shapeId], assignmentWithHomeKeys(fingerAssignment, layout.homeKeys));
   const options: TracePolicy = {
     windowSize: fixtureCase.conditions.windowSize,
     sfbHomeCost: fixtureCase.conditions.sfbHomeCost,
@@ -224,16 +212,8 @@ test('fixtureのバージョンとケース数が空でない', () => {
 for (const fixtureCase of fixture.cases) {
   test(`回帰: ${fixtureCase.id}`, () => {
     const { metrics, analysis } = recompute(fixtureCase);
-    assert.deepEqual(
-      metricsSummary(metrics),
-      fixtureCase.metrics,
-      `${fixtureCase.id}: metricsがfixtureと食い違う`,
-    );
-    assert.deepEqual(
-      analysisSummary(analysis),
-      fixtureCase.analysis,
-      `${fixtureCase.id}: analysis集計がfixtureと食い違う`,
-    );
+    assert.deepEqual(metricsSummary(metrics), fixtureCase.metrics, `${fixtureCase.id}: metricsがfixtureと食い違う`);
+    assert.deepEqual(analysisSummary(analysis), fixtureCase.analysis, `${fixtureCase.id}: analysis集計がfixtureと食い違う`);
   });
 
   if (fixtureCase.nSensitivity) {
@@ -241,15 +221,11 @@ for (const fixtureCase of fixture.cases) {
       const { nSensitivity } = await import('#analyzers/n-sensitivity/sensitivity.ts');
       const layout = findLayout(fixtureCase.language, fixtureCase.layoutId);
       const text = sampleText(fixtureCase.language, fixtureCase.sampleId);
-      const resolvedLayout = fixtureCase.conditions.romajiRuleId !== null
-        ? withRomaji(layout, tableForRule(fixtureCase.conditions.romajiRuleId))
-        : layout;
+      const resolvedLayout =
+        fixtureCase.conditions.romajiRuleId !== null ? withRomaji(layout, tableForRule(fixtureCase.conditions.romajiRuleId)) : layout;
       const shapeId = fixtureCase.conditions.geometryShapeId as PresetGeometryKind;
       const fingerAssignment = findFingerAssignment(fixtureCase.conditions.fingerAssignmentId);
-      const geometry = buildGeometry(
-        PHYSICAL_SHAPES[shapeId],
-        assignmentWithHomeKeys(fingerAssignment, layout.homeKeys),
-      );
+      const geometry = buildGeometry(PHYSICAL_SHAPES[shapeId], assignmentWithHomeKeys(fingerAssignment, layout.homeKeys));
       const options: TracePolicy = {
         windowSize: fixtureCase.conditions.windowSize,
         sfbHomeCost: fixtureCase.conditions.sfbHomeCost,

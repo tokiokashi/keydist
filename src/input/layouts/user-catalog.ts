@@ -34,10 +34,7 @@ export interface UserCatalog {
  *   `romaji`が指す規則が組み込みにも自作にも無い時と、`romaji`が無い時は配列は残し、
  *   規則の推奨だけ持たせない（全体の値の規則で打つ）。診断を積むのは前者だけ。`direct`の配列はローマ字を経ないので`romaji`を見ない
  */
-export function buildUserCatalog(
-  userLayouts: readonly UserLayout[],
-  userRomajiRules: readonly UserRomajiRule[],
-): UserCatalog {
+export function buildUserCatalog(userLayouts: readonly UserLayout[], userRomajiRules: readonly UserRomajiRule[]): UserCatalog {
   const diagnostics: CodecDiagnostic[] = [];
 
   const romajiRules: UserRomajiRule[] = [];
@@ -106,10 +103,7 @@ export function buildUserCatalog(
  * ローマ字の表を持たせる点。`direct`の配列と、`romaji`が無い・指す規則が見つからない配列は表を持たず、
  * 打ったキーの出力をそのまま使う。
  */
-export function userInputLayouts(
-  userLayouts: readonly UserLayout[],
-  userRomajiRules: readonly UserRomajiRule[],
-): readonly Layout[] {
+export function userInputLayouts(userLayouts: readonly UserLayout[], userRomajiRules: readonly UserRomajiRule[]): readonly Layout[] {
   const catalog = buildUserCatalog(userLayouts, userRomajiRules);
   const ruleIds = new Set(catalog.romajiRules.map((rule) => rule.id));
   return [...catalog.userLayouts.values()].map((definition) => {

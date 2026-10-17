@@ -19,8 +19,7 @@ const FIELD_EQUALS: { readonly [K in keyof ResolvedText]: (a: ResolvedText[K], b
  * オブジェクトを返すので、参照ではなく中身で比べる。
  */
 export function sameResolvedText(a: ResolvedText, b: ResolvedText): boolean {
-  return (Object.keys(FIELD_EQUALS) as (keyof ResolvedText)[]).every((key) =>
-    (FIELD_EQUALS[key] as (x: unknown, y: unknown) => boolean)(a[key], b[key]));
+  return (Object.keys(FIELD_EQUALS) as (keyof ResolvedText)[]).every((key) => (FIELD_EQUALS[key] as (x: unknown, y: unknown) => boolean)(a[key], b[key]));
 }
 
 /**

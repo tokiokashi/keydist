@@ -116,11 +116,7 @@ test('decodeOptionsFromUrl: 壊れた値は診断を積みvaluesから外す（�
 // ---------------------------------------------------------------------------
 
 test('findOptionsKeyDisciplineViolations: 正しく分類されていれば違反は無い', () => {
-  const violations = findOptionsKeyDisciplineViolations(
-    fixtureOptions,
-    { bucketSize: 4, color: 'red' },
-    { bucketSize: 8, color: 'blue' },
-  );
+  const violations = findOptionsKeyDisciplineViolations(fixtureOptions, { bucketSize: 4, color: 'red' }, { bucketSize: 8, color: 'blue' });
   assert.deepEqual(violations, []);
 });
 
@@ -137,22 +133,13 @@ test('findOptionsKeyDisciplineViolations: affects:extractと宣言したのにex
       normalizeForExtractKey: () => 'ignored',
     }),
   });
-  const violations = findOptionsKeyDisciplineViolations(
-    forgetful,
-    { bucketSize: 4 },
-    { bucketSize: 8 },
-  );
+  const violations = findOptionsKeyDisciplineViolations(forgetful, { bucketSize: 4 }, { bucketSize: 8 });
   assert.deepEqual(violations, ['bucketSize']);
 });
 
 test('findViewOptionsExtractionViolations: view項目を変えても抽出結果が変わらなければ違反無し', () => {
   const extract = (options: FixtureOptions) => options.bucketSize * 2; // colorを一切使わない
-  const violations = findViewOptionsExtractionViolations(
-    fixtureOptions,
-    { bucketSize: 4, color: 'red' },
-    { bucketSize: 8, color: 'blue' },
-    extract,
-  );
+  const violations = findViewOptionsExtractionViolations(fixtureOptions, { bucketSize: 4, color: 'red' }, { bucketSize: 8, color: 'blue' }, extract);
   assert.deepEqual(violations, []);
 });
 
@@ -160,23 +147,16 @@ test('findViewOptionsExtractionViolations: view宣言なのに実際は抽出結
   // colorはaffects: 'view'だが、抽出関数の実装が実際にはcolorを使ってしまっている
   // （extractKeyOfのキーには乗らないのに結果は変わる = 同じキーで違う値を返す事故の再現）。
   const extract = (options: FixtureOptions) => (options.color === 'blue' ? 999 : options.bucketSize);
-  const violations = findViewOptionsExtractionViolations(
-    fixtureOptions,
-    { bucketSize: 4, color: 'red' },
-    { bucketSize: 4, color: 'blue' },
-    extract,
-  );
+  const violations = findViewOptionsExtractionViolations(fixtureOptions, { bucketSize: 4, color: 'red' }, { bucketSize: 4, color: 'blue' }, extract);
   assert.deepEqual(violations, ['color']);
 });
 
 test('findViewOptionsExtractionViolations: Mapを含む抽出結果でも正しく比較できる', () => {
   const extract = (options: FixtureOptions) =>
-    new Map([['bucket', options.bucketSize], ['dummy', options.color === 'blue' ? 0 : 0]]);
-  const violations = findViewOptionsExtractionViolations(
-    fixtureOptions,
-    { bucketSize: 4, color: 'red' },
-    { bucketSize: 4, color: 'blue' },
-    extract,
-  );
+    new Map([
+      ['bucket', options.bucketSize],
+      ['dummy', options.color === 'blue' ? 0 : 0],
+    ]);
+  const violations = findViewOptionsExtractionViolations(fixtureOptions, { bucketSize: 4, color: 'red' }, { bucketSize: 4, color: 'blue' }, extract);
   assert.deepEqual(violations, []);
 });

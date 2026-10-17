@@ -8,10 +8,7 @@ import type { AssetValues, Command } from './types.ts';
  * - `no-op` と `rejected` のコマンドは飛ばして残りを当てる。1つも `applied` が無ければ `no-op`
  * - `quiet`（履歴に積まない書き込み）は1項目にまとめられないので、このコマンドの対象にしない。渡したら例外にする
  */
-export function composeCommands<A extends AssetValues>(
-  label: string,
-  commands: readonly Command<A>[],
-): Command<A> {
+export function composeCommands<A extends AssetValues>(label: string, commands: readonly Command<A>[]): Command<A> {
   return (current) => {
     let working: Readonly<A> = current;
     let changes: Partial<A> = {};

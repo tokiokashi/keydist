@@ -9,11 +9,14 @@ import { blank, cell, itemOf, open, settle } from './workspace-grid-helper.ts';
 
 async function seed(page: Page, panes: readonly object[], grid: readonly object[]): Promise<void> {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.addInitScript((value) => {
-    if (localStorage.getItem('keydist:workspaces') === null) {
-      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
-    }
-  }, { id: 'g', name: '格子', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes, grid });
+  await page.addInitScript(
+    (value) => {
+      if (localStorage.getItem('keydist:workspaces') === null) {
+        localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
+      }
+    },
+    { id: 'g', name: '格子', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes, grid },
+  );
   await page.goto('/workspace/g');
   await waitForHydration(page);
 }
@@ -83,7 +86,11 @@ test('つかみ所の説明にキーの割り当てがある', async ({ page }) 
 });
 
 test('拡大表示中は矢印キーで動かさない', async ({ page }) => {
-  await seed(page, [{ id: 'f', analyzerId: 'bigram-flow', binding: { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } } } }], [cell('f', 0, 0, 12, 16)]);
+  await seed(
+    page,
+    [{ id: 'f', analyzerId: 'bigram-flow', binding: { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } } } }],
+    [cell('f', 0, 0, 12, 16)],
+  );
   await expect(page.locator('.pane-frame').first()).toHaveAttribute('data-pane-status', 'ready', { timeout: 15_000 });
   await page.locator('.workspace-grid-item[data-pane-id="f"] .pane-menu-button[aria-label$="の操作"]').click();
   await page.getByRole('menuitem', { name: '拡大表示' }).click();

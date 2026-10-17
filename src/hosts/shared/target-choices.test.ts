@@ -2,7 +2,14 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
-import { filterTargetChoiceGroups, normalizeSearchText, sortTargetsByChoices, targetChoiceGroups, targetSummaryText, type TargetChoiceSource } from './target-choices.ts';
+import {
+  filterTargetChoiceGroups,
+  normalizeSearchText,
+  sortTargetsByChoices,
+  targetChoiceGroups,
+  targetSummaryText,
+  type TargetChoiceSource,
+} from './target-choices.ts';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import { analysisTargetKey, type AnalysisTarget, type Setup } from '#input/setup/index.ts';
 
@@ -21,7 +28,10 @@ const SETUPS: readonly Setup[] = [
 
 test('組み込みの配列を英字とかなに分け、空の区分は出さない', () => {
   const groups = targetChoiceGroups(source());
-  assert.deepEqual(groups.map((group) => group.id), ['builtin-alphabet', 'builtin-kana']);
+  assert.deepEqual(
+    groups.map((group) => group.id),
+    ['builtin-alphabet', 'builtin-kana'],
+  );
   const [alphabet, kana] = groups;
   assert.equal(alphabet!.choices[0]!.key, 'layout:qwerty');
   assert.ok(alphabet!.choices.some((choice) => choice.name === 'Colemak-DH'));
@@ -31,8 +41,14 @@ test('組み込みの配列を英字とかなに分け、空の区分は出さ�
 
 test('自作の配列とSetupはそれぞれの区分に入り、Setupには番号を添える', () => {
   const groups = targetChoiceGroups(source({ userLayouts: new Map([['dvorak', USER_ALPHA]]), setups: SETUPS }));
-  assert.deepEqual(groups.map((group) => group.id), ['builtin-alphabet', 'builtin-kana', 'user', 'setup']);
-  assert.deepEqual(groups[2]!.choices.map((choice) => choice.key), ['layout:dvorak']);
+  assert.deepEqual(
+    groups.map((group) => group.id),
+    ['builtin-alphabet', 'builtin-kana', 'user', 'setup'],
+  );
+  assert.deepEqual(
+    groups[2]!.choices.map((choice) => choice.key),
+    ['layout:dvorak'],
+  );
   assert.ok(!groups[0]!.choices.some((choice) => choice.key === 'layout:dvorak'));
   const [plain, labeled] = groups[3]!.choices;
   assert.equal(plain!.tag, 'Setup 1');
@@ -43,27 +59,47 @@ test('自作の配列とSetupはそれぞれの区分に入り、Setupには番�
 });
 
 test('選んでいるのに候補に無い対象は「見つからない」区分に先頭で出す', () => {
-  const groups = targetChoiceGroups(source({
-    selected: [{ kind: 'setup', setupId: 'gone' }, { kind: 'layout', layoutId: 'qwerty' }],
-  }));
+  const groups = targetChoiceGroups(
+    source({
+      selected: [
+        { kind: 'setup', setupId: 'gone' },
+        { kind: 'layout', layoutId: 'qwerty' },
+      ],
+    }),
+  );
   assert.equal(groups[0]!.id, 'missing');
-  assert.deepEqual(groups[0]!.choices.map((choice) => [choice.key, choice.name]), [['setup:gone', '削除されたSetup']]);
+  assert.deepEqual(
+    groups[0]!.choices.map((choice) => [choice.key, choice.name]),
+    [['setup:gone', '削除されたSetup']],
+  );
 });
 
 test('絞り込みは全角半角・大文字小文字を区別せず、名前・フル名・番号に当て、空の区分を落とす', () => {
   const groups = targetChoiceGroups(source({ setups: SETUPS }));
   const colemak = filterTargetChoiceGroups(groups, 'ＣＯＬＥＭＡＫ');
-  assert.deepEqual(colemak.map((group) => group.id), ['builtin-alphabet']);
-  assert.deepEqual(colemak[0]!.choices.map((choice) => choice.name), ['Colemak', 'Colemak-DH']);
+  assert.deepEqual(
+    colemak.map((group) => group.id),
+    ['builtin-alphabet'],
+  );
+  assert.deepEqual(
+    colemak[0]!.choices.map((choice) => choice.name),
+    ['Colemak', 'Colemak-DH'],
+  );
 
   // 空白で区切った語はすべて含むものだけ残す。
-  assert.deepEqual(filterTargetChoiceGroups(groups, 'colemak dh')[0]!.choices.map((choice) => choice.name), ['Colemak-DH']);
+  assert.deepEqual(
+    filterTargetChoiceGroups(groups, 'colemak dh')[0]!.choices.map((choice) => choice.name),
+    ['Colemak-DH'],
+  );
   // ラベル付きのSetupも配列名（フル名）で見つかる。
-  assert.deepEqual(filterTargetChoiceGroups(groups, '2-263').flatMap((group) => group.choices.map((choice) => choice.key)), [
-    'layout:tsuki-2-263',
-    'setup:b',
-  ]);
-  assert.deepEqual(filterTargetChoiceGroups(groups, 'setup 2').flatMap((group) => group.choices.map((choice) => choice.key)), ['setup:b']);
+  assert.deepEqual(
+    filterTargetChoiceGroups(groups, '2-263').flatMap((group) => group.choices.map((choice) => choice.key)),
+    ['layout:tsuki-2-263', 'setup:b'],
+  );
+  assert.deepEqual(
+    filterTargetChoiceGroups(groups, 'setup 2').flatMap((group) => group.choices.map((choice) => choice.key)),
+    ['setup:b'],
+  );
   assert.deepEqual(filterTargetChoiceGroups(groups, 'そんな配列は無い'), []);
   assert.equal(filterTargetChoiceGroups(groups, '  '), groups);
 });
@@ -95,7 +131,10 @@ test('集合の並びは付けた順によらず一覧の順（組み込みの�
     'setup:gone',
   ]);
   // 既に並んでいれば同じ参照を返す（依存配列に入れても再計算が続かないように）。
-  const sorted = [{ kind: 'layout', layoutId: 'qwerty' }, { kind: 'setup', setupId: 'a' }] as const;
+  const sorted = [
+    { kind: 'layout', layoutId: 'qwerty' },
+    { kind: 'setup', setupId: 'a' },
+  ] as const;
   assert.equal(sortTargetsByChoices(sorted, groups), sorted);
 });
 
@@ -140,12 +179,17 @@ test('種類の切り替えは名前の絞り込みと同時に使え、自作�
     { id: 'c', number: 3, layoutId: 'mine-kana', shapeId: 'row-staggered' },
     { id: 'd', number: 4, layoutId: 'no-such-layout', shapeId: 'row-staggered' },
   ];
-  const groups = targetChoiceGroups(source({
-    layouts,
-    userLayouts: new Map([['dvorak', USER_ALPHA], ['mine-kana', kanaMine]]),
-    setups,
-    selected: [{ kind: 'setup', setupId: 'gone' }],
-  }));
+  const groups = targetChoiceGroups(
+    source({
+      layouts,
+      userLayouts: new Map([
+        ['dvorak', USER_ALPHA],
+        ['mine-kana', kanaMine],
+      ]),
+      setups,
+      selected: [{ kind: 'setup', setupId: 'gone' }],
+    }),
+  );
   const keys = (query: string, kind: 'all' | 'alpha' | 'kana') =>
     filterTargetChoiceGroups(groups, query, kind).flatMap((group) => group.choices.map((choice) => choice.key));
 

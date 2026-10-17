@@ -21,9 +21,7 @@ test('壊れた保存データで開くと知らせ、開き直すと知らせ�
   await page.goto('/analyzer/bigram-flow');
   const notice = page.locator('[data-asset-load-notice]');
   await expect(notice).toContainText('テキスト: 読めない部分が1件');
-  expect(await page.evaluate((key) => localStorage.getItem(key), TEXT_LIBRARY_KEY)).toBe(
-    JSON.stringify({ version: 1, texts: [] }),
-  );
+  expect(await page.evaluate((key) => localStorage.getItem(key), TEXT_LIBRARY_KEY)).toBe(JSON.stringify({ version: 1, texts: [] }));
 
   await notice.getByRole('button', { name: '知らせを閉じる' }).click();
   await expect(notice).toHaveCount(0);

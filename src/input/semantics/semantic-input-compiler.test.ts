@@ -9,26 +9,16 @@ import {
   validateCanonicalInputMap,
   type SemanticInput,
 } from './index.ts';
-import {
-  LAYOUTS,
-  LAYOUTS_JA,
-  fromFaces,
-  fromKana,
-  fromRows,
-  withCombos,
-  withComposedOutputs,
-  withThumbShiftAlternatives,
-} from '../layouts/index.ts';
+import { LAYOUTS, LAYOUTS_JA, fromFaces, fromKana, fromRows, withCombos, withComposedOutputs, withThumbShiftAlternatives } from '../layouts/index.ts';
 import { faceFromEntries, type Face, type FaceMode } from '../layouts/types.ts';
 
 const face = (
   trigger: string[],
   mode: FaceMode,
   entries: Record<string, string>,
-  options: Partial<Pick<
-    Face,
-    'layer' | 'inputRole' | 'compositionAggregation' | 'triggerPersistence' | 'modifierGroups' | 'triggerOrder' | 'presentationCells'
-  >> = {},
+  options: Partial<
+    Pick<Face, 'layer' | 'inputRole' | 'compositionAggregation' | 'triggerPersistence' | 'modifierGroups' | 'triggerOrder' | 'presentationCells'>
+  > = {},
 ): Face => ({
   ...faceFromEntries(trigger, mode, entries),
   inputRole: trigger.length === 0 ? 'layer' : 'modifier',
@@ -95,24 +85,32 @@ test('canonical identityはoptional holdKeysの情報を保持しselection ident
   const realization = base.baseRealizations[0];
   const withoutHold = {
     ...base,
-    baseRealizations: [{
-      ...realization,
-      alternateParticipations: [{
-        outputKeys: realization.defaultOutputKeys,
-        triggerKeys: realization.defaultTriggerKeys ?? [],
-      }],
-    }],
+    baseRealizations: [
+      {
+        ...realization,
+        alternateParticipations: [
+          {
+            outputKeys: realization.defaultOutputKeys,
+            triggerKeys: realization.defaultTriggerKeys ?? [],
+          },
+        ],
+      },
+    ],
   };
   const withEmptyHold = {
     ...base,
-    baseRealizations: [{
-      ...realization,
-      alternateParticipations: [{
-        outputKeys: realization.defaultOutputKeys,
-        triggerKeys: realization.defaultTriggerKeys ?? [],
-        holdKeys: [],
-      }],
-    }],
+    baseRealizations: [
+      {
+        ...realization,
+        alternateParticipations: [
+          {
+            outputKeys: realization.defaultOutputKeys,
+            triggerKeys: realization.defaultTriggerKeys ?? [],
+            holdKeys: [],
+          },
+        ],
+      },
+    ],
   };
 
   assert.notEqual(
@@ -128,19 +126,13 @@ test('canonical identityはoptional holdKeysの情報を保持しselection ident
 });
 
 test('legacy Step列はordered SemanticInput sequenceへcompileする', () => {
-  const inputs = compileSequenceSemanticInputs(
-    'x',
-    [['space', 'j'], ['j']],
-    'single',
-  );
+  const inputs = compileSequenceSemanticInputs('x', [['space', 'j'], ['j']], 'single');
 
   assert.equal(inputs.length, 2);
   assert.deepEqual(inputs[0], {
     output: '',
     physicalKeys: ['j', 'thumb-r'],
-    requirements: [
-      { kind: 'overlap', keys: ['j', 'thumb-r'] },
-    ],
+    requirements: [{ kind: 'overlap', keys: ['j', 'thumb-r'] }],
     capabilities: [],
     aggregationGroupId: 'single',
     classifications: [],
@@ -160,30 +152,21 @@ test('legacy Step列はordered SemanticInput sequenceへcompileする', () => {
 });
 
 test('legacy Step compilerはStep間の再押下を許しorder Requirementへ重複させない', () => {
-  const inputs = compileSequenceSemanticInputs(
-    'x',
-    [['d'], ['d', 'k'], ['d']],
-    'single',
-  );
+  const inputs = compileSequenceSemanticInputs('x', [['d'], ['d', 'k'], ['d']], 'single');
 
   assert.equal(inputs.length, 3);
-  assert.deepEqual(inputs.map((input) => input.output), ['', '', 'x']);
+  assert.deepEqual(
+    inputs.map((input) => input.output),
+    ['', '', 'x'],
+  );
   assert.deepEqual(inputs[0].requirements, []);
-  assert.deepEqual(inputs[1].requirements, [
-    { kind: 'overlap', keys: ['d', 'k'] },
-  ]);
+  assert.deepEqual(inputs[1].requirements, [{ kind: 'overlap', keys: ['d', 'k'] }]);
   assert.deepEqual(inputs[2].requirements, []);
 });
 
 test('legacy Step compilerは空Sequence / 空Stepをerrorにする', () => {
-  assert.throws(
-    () => compileSequenceSemanticInputs('x', [], 'single'),
-    /1 step以上必要/,
-  );
-  assert.throws(
-    () => compileSequenceSemanticInputs('x', [[]], 'single'),
-    /1 key以上必要/,
-  );
+  assert.throws(() => compileSequenceSemanticInputs('x', [], 'single'), /1 step以上必要/);
+  assert.throws(() => compileSequenceSemanticInputs('x', [[]], 'single'), /1 key以上必要/);
 });
 
 test('fromKanaはlegacy Step列をcanonical SemanticInput列として保持する', () => {
@@ -200,11 +183,8 @@ test('fromKanaはlegacy Step列をcanonical SemanticInput列として保持す�
   assert.equal(inputs[1].output, 'x');
 });
 
-
 test('triggerなしFaceを単打SemanticInputへcompileする', () => {
-  const [input] = compileFaceSemanticInputs([
-    face([], 'simultaneous', { a: 'あ' }),
-  ]);
+  const [input] = compileFaceSemanticInputs([face([], 'simultaneous', { a: 'あ' })]);
 
   assert.deepEqual(input, {
     output: 'あ',
@@ -219,9 +199,7 @@ test('triggerなしFaceを単打SemanticInputへcompileする', () => {
 });
 
 test('triggerless compositionはexplicit author intentを優先してcomboへcompileする', () => {
-  const [input] = compileFaceSemanticInputs([
-    face([], 'simultaneous', { a: 'きゃ' }, { inputRole: 'composition', compositionAggregation: 'combo' }),
-  ]);
+  const [input] = compileFaceSemanticInputs([face([], 'simultaneous', { a: 'きゃ' }, { inputRole: 'composition', compositionAggregation: 'combo' })]);
 
   assert.equal(input.aggregationGroupId, 'combo');
   assert.deepEqual(input.classifications, ['composition']);
@@ -230,25 +208,26 @@ test('triggerless compositionはexplicit author intentを優先してcomboへcom
 });
 
 test('simultaneousはoverlap Requirementへcompileする', () => {
-  const [input] = compileFaceSemanticInputs([
-    face(['d'], 'simultaneous', { h: 'へ' }, { layer: '中指シフト' }),
-  ]);
+  const [input] = compileFaceSemanticInputs([face(['d'], 'simultaneous', { h: 'へ' }, { layer: '中指シフト' })]);
 
   assert.deepEqual(input.physicalKeys, ['d', 'h']);
-  assert.deepEqual(input.requirements, [
-    { kind: 'overlap', keys: ['d', 'h'] },
-  ]);
+  assert.deepEqual(input.requirements, [{ kind: 'overlap', keys: ['d', 'h'] }]);
   assert.deepEqual(input.roles, [{ key: 'd', role: 'modifier' }]);
   assert.equal(input.aggregationGroupId, 'layer:中指シフト');
 });
 
 test('modifierGroupsはphysical keyごとのlogical modifier semanticを保持する', () => {
   const [input] = compileFaceSemanticInputs([
-    face(['h', 'j'], 'simultaneous', { w: 'ぎゃ' }, {
-      inputRole: 'modifier',
-      triggerPersistence: 'hold-capable',
-      modifierGroups: { h: '拗音', j: '濁音' },
-    }),
+    face(
+      ['h', 'j'],
+      'simultaneous',
+      { w: 'ぎゃ' },
+      {
+        inputRole: 'modifier',
+        triggerPersistence: 'hold-capable',
+        modifierGroups: { h: '拗音', j: '濁音' },
+      },
+    ),
   ]);
 
   assert.deepEqual(input.roles, [
@@ -259,43 +238,46 @@ test('modifierGroupsはphysical keyごとのlogical modifier semanticを保持�
 
 test('modifierGroupsを明示したFaceは全trigger keyのsemantic groupを要求する', () => {
   assert.throws(
-    () => compileFaceSemanticInputs([
-      face(['h', 'j'], 'simultaneous', { w: 'ぎゃ' }, {
-        inputRole: 'modifier',
-        triggerPersistence: 'hold-capable',
-        modifierGroups: { h: '拗音' },
-      }),
-    ]),
+    () =>
+      compileFaceSemanticInputs([
+        face(
+          ['h', 'j'],
+          'simultaneous',
+          { w: 'ぎゃ' },
+          {
+            inputRole: 'modifier',
+            triggerPersistence: 'hold-capable',
+            modifierGroups: { h: '拗音' },
+          },
+        ),
+      ]),
     /全trigger keyを分類する必要がある/,
   );
 });
 
 test('prefixはorder Requirementだけを持つ', () => {
-  const [input] = compileFaceSemanticInputs([
-    face(['d'], 'prefix', { h: 'へ' }),
-  ]);
+  const [input] = compileFaceSemanticInputs([face(['d'], 'prefix', { h: 'へ' })]);
 
-  assert.deepEqual(input.requirements, [
-    { kind: 'order', before: ['d'], after: ['h'] },
-  ]);
+  assert.deepEqual(input.requirements, [{ kind: 'order', before: ['d'], after: ['h'] }]);
 });
 
 test('suffixは逆向きorder Requirementだけを持つ', () => {
-  const [input] = compileFaceSemanticInputs([
-    face(['d'], 'suffix', { h: 'へ' }),
-  ]);
+  const [input] = compileFaceSemanticInputs([face(['d'], 'suffix', { h: 'へ' })]);
 
-  assert.deepEqual(input.requirements, [
-    { kind: 'order', before: ['h'], after: ['d'] },
-  ]);
+  assert.deepEqual(input.requirements, [{ kind: 'order', before: ['h'], after: ['d'] }]);
 });
 
 test('simultaneous + prefix orderはoverlapとorderを独立して持つ', () => {
   const [input] = compileFaceSemanticInputs([
-    face(['space'], 'simultaneous', { j: 'え' }, {
-      triggerPersistence: 'hold-capable',
-      triggerOrder: 'prefix',
-    }),
+    face(
+      ['space'],
+      'simultaneous',
+      { j: 'え' },
+      {
+        triggerPersistence: 'hold-capable',
+        triggerOrder: 'prefix',
+      },
+    ),
   ]);
 
   assert.deepEqual(input.physicalKeys, ['j', 'thumb-r']);
@@ -303,35 +285,32 @@ test('simultaneous + prefix orderはoverlapとorderを独立して持つ', () =>
     { kind: 'overlap', keys: ['j', 'thumb-r'] },
     { kind: 'order', before: ['thumb-r'], after: ['j'] },
   ]);
-  assert.deepEqual(input.capabilities, [
-    { kind: 'while-held', keys: ['thumb-r'] },
-  ]);
+  assert.deepEqual(input.capabilities, [{ kind: 'while-held', keys: ['thumb-r'] }]);
 });
 
 test('hold-capable Faceはtrigger集合全体をwhile-held Capabilityへ写像する', () => {
   const [input] = compileFaceSemanticInputs([
-    face(['k', 'd'], 'simultaneous', { j: 'x' }, {
-      inputRole: 'composition',
-      compositionAggregation: 'combo',
-      triggerPersistence: 'hold-capable',
-    }),
+    face(
+      ['k', 'd'],
+      'simultaneous',
+      { j: 'x' },
+      {
+        inputRole: 'composition',
+        compositionAggregation: 'combo',
+        triggerPersistence: 'hold-capable',
+      },
+    ),
   ]);
 
-  assert.deepEqual(input.capabilities, [
-    { kind: 'while-held', keys: ['d', 'k'] },
-  ]);
+  assert.deepEqual(input.capabilities, [{ kind: 'while-held', keys: ['d', 'k'] }]);
 });
 
 test('SemanticInput IRは一部キーだけのwhile-held capabilityを表現できる', () => {
   const input: SemanticInput = {
     output: 'そく',
     physicalKeys: ['d', 'j', 'thumb-r'],
-    requirements: [
-      { kind: 'overlap', keys: ['d', 'j', 'thumb-r'] },
-    ],
-    capabilities: [
-      { kind: 'while-held', keys: ['thumb-r'] },
-    ],
+    requirements: [{ kind: 'overlap', keys: ['d', 'j', 'thumb-r'] }],
+    capabilities: [{ kind: 'while-held', keys: ['thumb-r'] }],
     aggregationGroupId: 'combo',
     classifications: [],
     roles: [],
@@ -365,9 +344,7 @@ test('相互シフトを両Faceから定義すると1 SemanticInputへdedupeし�
   assert.deepEqual(inputs[0], {
     output: 'れ',
     physicalKeys: ['d', 'k'],
-    requirements: [
-      { kind: 'overlap', keys: ['d', 'k'] },
-    ],
+    requirements: [{ kind: 'overlap', keys: ['d', 'k'] }],
     capabilities: [],
     aggregationGroupId: 'layer:中指シフト',
     classifications: [],
@@ -384,29 +361,28 @@ test('相互シフトを両Faceから定義すると1 SemanticInputへdedupeし�
 
 test('同一physical operationのoutput衝突をerrorにする', () => {
   assert.throws(
-    () => compileFaceSemanticInputs([
-      face(['d'], 'simultaneous', { h: 'へ' }, { layer: '中指シフト' }),
-      face(['d'], 'simultaneous', { h: 'ほ' }, { layer: '中指シフト' }),
-    ]),
+    () =>
+      compileFaceSemanticInputs([
+        face(['d'], 'simultaneous', { h: 'へ' }, { layer: '中指シフト' }),
+        face(['d'], 'simultaneous', { h: 'ほ' }, { layer: '中指シフト' }),
+      ]),
     /同一physical operationに異なるoutput/,
   );
 });
 
 test('同一physicalKeysで同時成立し得るactivation variantをerrorにする', () => {
   assert.throws(
-    () => compileFaceSemanticInputs([
-      face(['d'], 'simultaneous', { h: 'へ' }, { layer: '中指シフト' }),
-      face(['d'], 'prefix', { h: 'ほ' }, { layer: '中指シフト' }),
-    ]),
+    () =>
+      compileFaceSemanticInputs([
+        face(['d'], 'simultaneous', { h: 'へ' }, { layer: '中指シフト' }),
+        face(['d'], 'prefix', { h: 'ほ' }, { layer: '中指シフト' }),
+      ]),
     /同時成立し得るRequirement set/,
   );
 });
 
 test('同一outputの複数activation variantは別SemanticInputとして保持する', () => {
-  const faces = [
-    face(['d'], 'simultaneous', { h: 'へ' }),
-    face(['d'], 'prefix', { h: 'へ' }),
-  ];
+  const faces = [face(['d'], 'simultaneous', { h: 'へ' }), face(['d'], 'prefix', { h: 'へ' })];
   const inputs = compileFaceSemanticInputs(faces);
   assert.equal(inputs.length, 2);
   assert.ok(inputs.every((input) => input.output === 'へ'));
@@ -417,23 +393,30 @@ test('同一outputの複数activation variantは別SemanticInputとして保持�
   assert.equal(alternatives.length, 2);
   assert.deepEqual(
     alternatives.map((alternative) => alternative.semanticInputs[0].requirements),
-    [
-      [{ kind: 'overlap', keys: ['d', 'h'] }],
-      [{ kind: 'order', before: ['d'], after: ['h'] }],
-    ],
+    [[{ kind: 'overlap', keys: ['d', 'h'] }], [{ kind: 'order', before: ['d'], after: ['h'] }]],
   );
 });
 
 test('同一Requirement/outputのreciprocal FaceはCapabilityをunionする', () => {
   const inputs = compileFaceSemanticInputs([
-    face(['j'], 'simultaneous', { f: 'が' }, {
-      layer: '濁音',
-      triggerPersistence: 'hold-capable',
-    }),
-    face(['f'], 'simultaneous', { j: 'が' }, {
-      layer: '濁音',
-      triggerPersistence: 'hold-capable',
-    }),
+    face(
+      ['j'],
+      'simultaneous',
+      { f: 'が' },
+      {
+        layer: '濁音',
+        triggerPersistence: 'hold-capable',
+      },
+    ),
+    face(
+      ['f'],
+      'simultaneous',
+      { j: 'が' },
+      {
+        layer: '濁音',
+        triggerPersistence: 'hold-capable',
+      },
+    ),
   ]);
 
   assert.equal(inputs.length, 1);
@@ -456,51 +439,57 @@ test('逆向きorderでmutually exclusiveな同一physicalKeysは別SemanticInpu
 
   assert.equal(inputs.length, 2);
   const byOutput = new Map(inputs.map((input) => [input.output, input]));
-  assert.deepEqual(byOutput.get('も')?.requirements, [
-    { kind: 'order', before: ['d'], after: ['k'] },
-  ]);
-  assert.deepEqual(byOutput.get('ら')?.requirements, [
-    { kind: 'order', before: ['k'], after: ['d'] },
-  ]);
+  assert.deepEqual(byOutput.get('も')?.requirements, [{ kind: 'order', before: ['d'], after: ['k'] }]);
+  assert.deepEqual(byOutput.get('ら')?.requirements, [{ kind: 'order', before: ['k'], after: ['d'] }]);
 });
 
 test('subset / superset physicalKeysは別SemanticInputとして共存できる', () => {
   const inputs = compileFaceSemanticInputs([
     face(['d'], 'simultaneous', { h: 'へ' }, { layer: '中指シフト' }),
-    face(['d', 'h'], 'simultaneous', { j: 'じゃ' }, {
-      inputRole: 'composition',
-      compositionAggregation: 'combo',
-    }),
+    face(
+      ['d', 'h'],
+      'simultaneous',
+      { j: 'じゃ' },
+      {
+        inputRole: 'composition',
+        compositionAggregation: 'combo',
+      },
+    ),
   ]);
 
   assert.equal(inputs.length, 2);
-  assert.ok(inputs.some((input) => (
-    input.physicalKeys.length === 2
-    && input.physicalKeys[0] === 'd'
-    && input.physicalKeys[1] === 'h'
-  )));
-  assert.ok(inputs.some((input) => (
-    input.physicalKeys.length === 3
-    && input.physicalKeys[0] === 'd'
-    && input.physicalKeys[1] === 'h'
-    && input.physicalKeys[2] === 'j'
-  )));
+  assert.ok(inputs.some((input) => input.physicalKeys.length === 2 && input.physicalKeys[0] === 'd' && input.physicalKeys[1] === 'h'));
+  assert.ok(
+    inputs.some(
+      (input) => input.physicalKeys.length === 3 && input.physicalKeys[0] === 'd' && input.physicalKeys[1] === 'h' && input.physicalKeys[2] === 'j',
+    ),
+  );
 });
 
 test('authoring上のtrigger順にcanonical field orderが依存しない', () => {
   const first = compileFaceSemanticInputs([
-    face(['k', 'd'], 'simultaneous', { j: 'x' }, {
-      inputRole: 'composition',
-      compositionAggregation: 'combo',
-      triggerPersistence: 'hold-capable',
-    }),
+    face(
+      ['k', 'd'],
+      'simultaneous',
+      { j: 'x' },
+      {
+        inputRole: 'composition',
+        compositionAggregation: 'combo',
+        triggerPersistence: 'hold-capable',
+      },
+    ),
   ]);
   const second = compileFaceSemanticInputs([
-    face(['d', 'k'], 'simultaneous', { j: 'x' }, {
-      inputRole: 'composition',
-      compositionAggregation: 'combo',
-      triggerPersistence: 'hold-capable',
-    }),
+    face(
+      ['d', 'k'],
+      'simultaneous',
+      { j: 'x' },
+      {
+        inputRole: 'composition',
+        compositionAggregation: 'combo',
+        triggerPersistence: 'hold-capable',
+      },
+    ),
   ]);
 
   assert.deepEqual(first, second);
@@ -508,80 +497,65 @@ test('authoring上のtrigger順にcanonical field orderが依存しない', () =
 
 test('prefix / suffix modeと逆向きtriggerOrderの併記はerrorにする', () => {
   assert.throws(
-    () => compileFaceSemanticInputs([
-      face(['d'], 'prefix', { h: 'へ' }, { triggerOrder: 'suffix' }),
-    ]),
+    () => compileFaceSemanticInputs([face(['d'], 'prefix', { h: 'へ' }, { triggerOrder: 'suffix' })]),
     /mode=prefixとtriggerOrder=suffixが矛盾/,
   );
 });
 
-
 test('self-triggerでorderのbefore / afterが重なるauthoringをerrorにする', () => {
-  assert.throws(
-    () => compileFaceSemanticInputs([
-      face(['d'], 'prefix', { d: 'x' }),
-    ]),
-    /before \/ afterは互いに素/,
-  );
+  assert.throws(() => compileFaceSemanticInputs([face(['d'], 'prefix', { d: 'x' })]), /before \/ afterは互いに素/);
 });
 
 test('canonical sortはlocale非依存のcode-unit順を使う', () => {
   const [input] = compileFaceSemanticInputs([
-    face(['ä', 'Z'], 'simultaneous', { a: 'x' }, {
-      inputRole: 'composition',
-      compositionAggregation: 'combo',
-      triggerPersistence: 'hold-capable',
-    }),
+    face(
+      ['ä', 'Z'],
+      'simultaneous',
+      { a: 'x' },
+      {
+        inputRole: 'composition',
+        compositionAggregation: 'combo',
+        triggerPersistence: 'hold-capable',
+      },
+    ),
   ]);
 
   assert.deepEqual(input.physicalKeys, ['Z', 'a', 'ä']);
-  assert.deepEqual(input.requirements, [
-    { kind: 'overlap', keys: ['Z', 'a', 'ä'] },
-  ]);
-  assert.deepEqual(input.capabilities, [
-    { kind: 'while-held', keys: ['Z', 'ä'] },
-  ]);
+  assert.deepEqual(input.requirements, [{ kind: 'overlap', keys: ['Z', 'a', 'ä'] }]);
+  assert.deepEqual(input.capabilities, [{ kind: 'while-held', keys: ['Z', 'ä'] }]);
 });
-
 
 test('Faceを持つbuilt-in layoutはSemanticInput compilerで検証できる', () => {
   for (const layout of LAYOUTS_JA) {
     if (!layout.faces) continue;
-    assert.doesNotThrow(
-      () => compileFaceSemanticInputs(layout.faces!),
-      `${layout.id} should compile to SemanticInput`,
-    );
+    assert.doesNotThrow(() => compileFaceSemanticInputs(layout.faces!), `${layout.id} should compile to SemanticInput`);
   }
 });
-
 
 test('built-inの相互Face membershipはauthoring側へ明示される', () => {
   const shingeta = LAYOUTS_JA.find((layout) => layout.id === 'shingeta')!;
   const shingetaInputs = compileFaceSemanticInputs(shingeta.faces!);
-  const re = shingetaInputs.find((input) => input.output === 'れ'
-    && input.physicalKeys.length === 2
-    && input.physicalKeys.includes('d')
-    && input.physicalKeys.includes('k'))!;
+  const re = shingetaInputs.find(
+    (input) => input.output === 'れ' && input.physicalKeys.length === 2 && input.physicalKeys.includes('d') && input.physicalKeys.includes('k'),
+  )!;
   assert.deepEqual(re.roles, [
     { key: 'd', role: 'modifier', modifierGroupId: '中指シフト' },
     { key: 'k', role: 'modifier', modifierGroupId: '中指シフト' },
   ]);
   assert.equal(re.faceMemberships.length, 2);
 
-  const o = shingetaInputs.find((input) => input.output === 'お'
-    && input.physicalKeys.length === 2
-    && input.physicalKeys.includes('d')
-    && input.physicalKeys.includes('l'))!;
+  const o = shingetaInputs.find(
+    (input) => input.output === 'お' && input.physicalKeys.length === 2 && input.physicalKeys.includes('d') && input.physicalKeys.includes('l'),
+  )!;
   assert.equal(o.aggregationGroupId, 'layer:薬指シフト');
   assert.deepEqual(o.faceMemberships, [
     { faceIndex: 2, cellKey: 'l' },
     { faceIndex: 3, cellKey: 'd' },
   ]);
 
-  const ji = shingetaInputs.find((input) => input.output === 'じ'
-    && input.physicalKeys.length === 2
-    && input.physicalKeys.includes('k')
-    && input.physicalKeys.includes('s'))!;
+  const ji = shingetaInputs.find(
+    (input) => input.output === 'じ' && input.physicalKeys.length === 2 && input.physicalKeys.includes('k') && input.physicalKeys.includes('s'),
+  )!;
   assert.equal(ji.aggregationGroupId, 'layer:中指シフト');
   assert.deepEqual(ji.faceMemberships, [
     { faceIndex: 1, cellKey: 's' },
@@ -590,10 +564,9 @@ test('built-inの相互Face membershipはauthoring側へ明示される', () => 
 
   const naginata = LAYOUTS_JA.find((layout) => layout.id === 'naginata-v18')!;
   const naginataInputs = compileFaceSemanticInputs(naginata.faces!);
-  const ga = naginataInputs.find((input) => input.output === 'が'
-    && input.physicalKeys.length === 2
-    && input.physicalKeys.includes('f')
-    && input.physicalKeys.includes('j'))!;
+  const ga = naginataInputs.find(
+    (input) => input.output === 'が' && input.physicalKeys.length === 2 && input.physicalKeys.includes('f') && input.physicalKeys.includes('j'),
+  )!;
   assert.deepEqual(ga.roles, [
     { key: 'f', role: 'modifier', modifierGroupId: '濁音' },
     { key: 'j', role: 'modifier', modifierGroupId: '濁音' },
@@ -608,10 +581,15 @@ test('built-inの相互Face membershipはauthoring側へ明示される', () => 
 test('presentation-only membershipは既存SemanticInputへfaceMembershipだけを追加する', () => {
   const inputs = compileFaceSemanticInputs([
     face(['l'], 'simultaneous', { d: 'お' }, { layer: '薬指シフト' }),
-    face(['d'], 'simultaneous', { j: 'あ' }, {
-      layer: '中指シフト',
-      presentationCells: { l: 'お' },
-    }),
+    face(
+      ['d'],
+      'simultaneous',
+      { j: 'あ' },
+      {
+        layer: '中指シフト',
+        presentationCells: { l: 'お' },
+      },
+    ),
   ]);
 
   const input = inputs.find((candidate) => candidate.output === 'お')!;
@@ -625,23 +603,35 @@ test('presentation-only membershipは既存SemanticInputへfaceMembershipだけ�
 
 test('presentation-only membershipは対応するsemantic operationが無ければerrorにする', () => {
   assert.throws(
-    () => compileFaceSemanticInputs([
-      face(['d'], 'simultaneous', { j: 'あ' }, {
-        layer: '中指シフト',
-        presentationCells: { l: 'お' },
-      }),
-    ]),
+    () =>
+      compileFaceSemanticInputs([
+        face(
+          ['d'],
+          'simultaneous',
+          { j: 'あ' },
+          {
+            layer: '中指シフト',
+            presentationCells: { l: 'お' },
+          },
+        ),
+      ]),
     /presentation cell l=おに対応するSemanticInputがない/,
   );
 });
 
 test('presentation-only membershipは同じセルの異なるsemantic outputと競合できない', () => {
   assert.throws(
-    () => compileFaceSemanticInputs([
-      face(['d'], 'simultaneous', { l: 'あ' }, {
-        presentationCells: { l: 'お' },
-      }),
-    ]),
+    () =>
+      compileFaceSemanticInputs([
+        face(
+          ['d'],
+          'simultaneous',
+          { l: 'あ' },
+          {
+            presentationCells: { l: 'お' },
+          },
+        ),
+      ]),
     /presentation cell lがsemantic cellと競合している/,
   );
 });
@@ -654,7 +644,6 @@ test('legacy fromFaces mapは相互Faceを明示しても既存の打鍵列を�
   const naginata = LAYOUTS_JA.find((layout) => layout.id === 'naginata-v18')!;
   assert.deepEqual(naginata.map.get('が'), [['j', 'f']]);
 });
-
 
 test('built-in Layoutは全map outputにcanonical SemanticInput sequenceを持つ', () => {
   for (const layout of [...LAYOUTS, ...LAYOUTS_JA]) {
@@ -673,9 +662,7 @@ test('Face prefixはlegacy 2 Stepでもcanonicalでは1 SemanticInputのorder制
   const inputs = tsuki.canonicalInputs.get('ぬ')?.[0]?.semanticInputs;
   assert.ok(inputs);
   assert.equal(inputs.length, 1);
-  assert.deepEqual(inputs[0].requirements, [
-    { kind: 'order', before: ['d'], after: ['y'] },
-  ]);
+  assert.deepEqual(inputs[0].requirements, [{ kind: 'order', before: ['d'], after: ['y'] }]);
 });
 
 test('composed outputはsource / markのcanonical SemanticInput列を再利用して連結する', () => {
@@ -711,14 +698,8 @@ test('withCombos由来outputは1つのcombo SemanticInput + overlapになる', (
   assert.equal(inputs[0].output, 'desita');
 });
 
-
 test('fromRowsは同じoutputの複数物理キーをcanonical alternativeとして保持する', () => {
-  const layout = fromRows('duplicate-output', 'duplicate-output', [
-    '',
-    'aa',
-    '',
-    '',
-  ]);
+  const layout = fromRows('duplicate-output', 'duplicate-output', ['', 'aa', '', '']);
   const alternatives = layout.canonicalInputs.get('a');
   assert.ok(alternatives);
   assert.equal(alternatives.length, 2);
@@ -744,72 +725,63 @@ test('fromKana tuple定義は同じoutputの複数pathを保持する', () => {
 });
 
 test('別SemanticInputから同じFace outputが成立する場合は別alternativeになる', () => {
-  const layout = fromFaces('face-alternatives', 'face-alternatives', [
-    face(['d'], 'simultaneous', { f: 'x' }),
-    face(['k'], 'simultaneous', { j: 'x' }),
-  ]);
+  const layout = fromFaces('face-alternatives', 'face-alternatives', [face(['d'], 'simultaneous', { f: 'x' }), face(['k'], 'simultaneous', { j: 'x' })]);
   const alternatives = layout.canonicalInputs.get('x');
   assert.ok(alternatives);
   assert.equal(alternatives.length, 2);
   assert.notEqual(alternatives[0].semanticInputs[0], alternatives[1].semanticInputs[0]);
 });
 
-
 test('composition Faceはclassificationをcanonicalへ保持する', () => {
   const [input] = compileFaceSemanticInputs([
-    face(['d', 'k'], 'simultaneous', { j: 'x' }, {
-      inputRole: 'composition',
-      compositionAggregation: 'combo',
-      triggerPersistence: 'single',
-    }),
+    face(
+      ['d', 'k'],
+      'simultaneous',
+      { j: 'x' },
+      {
+        inputRole: 'composition',
+        compositionAggregation: 'combo',
+        triggerPersistence: 'single',
+      },
+    ),
   ]);
   assert.deepEqual(input.classifications, ['composition']);
   assert.equal(input.aggregationGroupId, 'combo');
 });
 
-
 test('CanonicalInputMapは空alternative setをrejectする', () => {
-  assert.throws(
-    () => validateCanonicalInputMap(new Map([
-      ['あ', []],
-    ])),
-    /canonical input「あ」には1つ以上のalternativeが必要/,
-  );
+  assert.throws(() => validateCanonicalInputMap(new Map([['あ', []]])), /canonical input「あ」には1つ以上のalternativeが必要/);
 });
 
 test('CanonicalInputMapは異なるoutputの同一activationをrejectする', () => {
   assert.throws(
-    () => fromKana('conflict', 'conflict', [
-      ['あ', [['f']]],
-      ['い', [['f']]],
-    ]),
+    () =>
+      fromKana('conflict', 'conflict', [
+        ['あ', [['f']]],
+        ['い', [['f']]],
+      ]),
     /異なるlogical outputに同時成立し得るcanonical activation path/,
   );
 });
 
 test('CanonicalInputMapはclassification差をactivation排他の根拠にしない', () => {
   const plain = compileSequenceInputAlternative('あ', [['f']], 'single');
-  const classified = compileSequenceInputAlternative(
-    'い',
-    [['f']],
-    'single',
-    ['vocabulary-extension'],
-  );
+  const classified = compileSequenceInputAlternative('い', [['f']], 'single', ['vocabulary-extension']);
 
   assert.throws(
-    () => validateCanonicalInputMap(new Map([
-      ['あ', [plain]],
-      ['い', [classified]],
-    ])),
+    () =>
+      validateCanonicalInputMap(
+        new Map([
+          ['あ', [plain]],
+          ['い', [classified]],
+        ]),
+      ),
     /あ \/ い/,
   );
 });
 
 test('CanonicalInputMapはmutually exclusiveなorder pathを共存させる', () => {
-  assert.doesNotThrow(() => fromFaces('exclusive', 'exclusive', [
-    face(['d'], 'prefix', { k: 'も' }),
-    face(['k'], 'prefix', { d: 'ら' }),
-  ]));
+  assert.doesNotThrow(() => fromFaces('exclusive', 'exclusive', [face(['d'], 'prefix', { k: 'も' }), face(['k'], 'prefix', { d: 'ら' })]));
 });
 
 test('withComposedOutputsはcanonical sourceだけでsemantic compositionできる', () => {
@@ -822,12 +794,7 @@ test('withComposedOutputsはcanonical sourceだけでsemantic compositionでき�
   map.delete('゛');
   const canonicalOnly = { ...base, map };
 
-  const layout = withComposedOutputs(
-    canonicalOnly,
-    { か: 'が' },
-    '゛',
-    'canonical-only',
-  );
+  const layout = withComposedOutputs(canonicalOnly, { か: 'が' }, '゛', 'canonical-only');
 
   const alternatives = layout.canonicalInputs.get('が');
   assert.ok(alternatives);
@@ -836,11 +803,7 @@ test('withComposedOutputsはcanonical sourceだけでsemantic compositionでき�
     alternatives[0].semanticInputs.map((input) => input.physicalKeys),
     [['f'], ['j']],
   );
-  assert.equal(
-    layout.map.has('が'),
-    false,
-    'legacy map defaultが無くてもcanonical compositionは成立する',
-  );
+  assert.equal(layout.map.has('が'), false, 'legacy map defaultが無くてもcanonical compositionは成立する');
 });
 
 test('withComposedOutputsは既存direct pathを失わずcomposed alternativeをappendする', () => {
@@ -868,21 +831,15 @@ test('withCombosは既存direct pathを失わずcombo alternativeをappendする
     ['b', [['j']]],
     ['ab', [['q']]],
   ]);
-  const layout = withCombos('combo-alternative-2', 'combo-alternative-2', base, [
-    ['ab', ['a', 'b']],
-  ]);
+  const layout = withCombos('combo-alternative-2', 'combo-alternative-2', base, [['ab', ['a', 'b']]]);
 
   const alternatives = layout.canonicalInputs.get('ab');
   assert.ok(alternatives);
   assert.equal(alternatives.length, 2);
   assert.deepEqual(alternatives[0].semanticInputs[0].physicalKeys, ['q']);
-  assert.deepEqual(
-    alternatives[1].semanticInputs[0].physicalKeys,
-    ['f', 'j'],
-  );
+  assert.deepEqual(alternatives[1].semanticInputs[0].physicalKeys, ['f', 'j']);
   assert.deepEqual(layout.map.get('ab'), [['q']], 'legacy defaultはdirect pathを維持する');
 });
-
 
 test('youonOnlyはcombo alternative自身のcontext requirementとして保持する', () => {
   const base = fromKana('context-alt', 'context-alt', [
@@ -890,9 +847,7 @@ test('youonOnlyはcombo alternative自身のcontext requirementとして保持�
     ['b', [['j']]],
     ['ab', [['q']]],
   ]);
-  const layout = withCombos('context-alt-combo', 'context-alt-combo', base, [
-    ['ab', ['a', 'b'], { youonOnly: true }],
-  ]);
+  const layout = withCombos('context-alt-combo', 'context-alt-combo', base, [['ab', ['a', 'b'], { youonOnly: true }]]);
 
   const alternatives = layout.canonicalInputs.get('ab');
   assert.ok(alternatives);
@@ -907,18 +862,14 @@ test('composed alternativeはsourceとmarkのcontext requirementを引き継ぐ'
     b: [['j']],
     mark: [['k']],
   });
-  const conditioned = withCombos('context-compose-combo', 'context-compose-combo', sourceBase, [
-    ['source', ['a', 'b'], { youonOnly: true }],
-  ]);
+  const conditioned = withCombos('context-compose-combo', 'context-compose-combo', sourceBase, [['source', ['a', 'b'], { youonOnly: true }]]);
   const layout = withComposedOutputs(conditioned, { source: 'output' }, 'mark', 'test');
 
   const alternatives = layout.canonicalInputs.get('output');
   assert.ok(alternatives);
   assert.ok(alternatives.length > 0);
-  assert.ok(alternatives.every((alternative) =>
-    alternative.contextRequirements.some((requirement) => requirement.kind === 'youon-only')));
+  assert.ok(alternatives.every((alternative) => alternative.contextRequirements.some((requirement) => requirement.kind === 'youon-only')));
 });
-
 
 test('thumb派生はactionが同じでもsemanticが異なるalternativeを落とさない', () => {
   const base = fromFaces('thumb-semantic-alts', 'thumb-semantic-alts', [
@@ -928,19 +879,17 @@ test('thumb派生はactionが同じでもsemanticが異なるalternativeを落�
   const before = base.canonicalInputs.get('x');
   assert.ok(before);
   assert.equal(before.length, 2);
-  assert.deepEqual(before.map((alternative) => alternative.origin), ['face', 'face']);
-
-  const layout = withThumbShiftAlternatives(
-    base,
-    'thumb-r',
-    ['thumb-r', 'thumb-l'],
+  assert.deepEqual(
+    before.map((alternative) => alternative.origin),
+    ['face', 'face'],
   );
+
+  const layout = withThumbShiftAlternatives(base, 'thumb-r', ['thumb-r', 'thumb-l']);
   const alternatives = layout.canonicalInputs.get('x');
   assert.ok(alternatives);
   assert.equal(alternatives.length, 4);
 
-  const leftThumb = alternatives.filter((alternative) =>
-    alternative.semanticInputs[0].physicalKeys.includes('thumb-l'));
+  const leftThumb = alternatives.filter((alternative) => alternative.semanticInputs[0].physicalKeys.includes('thumb-l'));
   assert.equal(leftThumb.length, 2);
   assert.deepEqual(
     leftThumb.map((alternative) => alternative.semanticInputs[0].requirements.length).sort(),
@@ -954,8 +903,6 @@ test('withCombos由来pathはtop-level originをcomboとして保持する', () 
     a: [['f']],
     b: [['j']],
   });
-  const layout = withCombos('combo-origin-2', 'combo-origin-2', base, [
-    ['ab', ['a', 'b']],
-  ]);
+  const layout = withCombos('combo-origin-2', 'combo-origin-2', base, [['ab', ['a', 'b']]]);
   assert.equal(layout.canonicalInputs.get('ab')?.[0]?.origin, 'combo');
 });

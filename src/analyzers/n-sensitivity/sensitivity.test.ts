@@ -15,7 +15,13 @@ test('N=0は、同じかなの中だけ指を残す候補を持つ', () => {
   assert.equal(zero.totalUnits, one.totalUnits, '同じかなの中は、N=0とN=1で変わらない');
 
   // 隣のかなの中のuは、N=0では範囲の外でホームから来る。N=1では範囲の中で残る
-  const nextKana = withRomaji(LAYOUT_BY_ID.get('qwerty')!, new Map([['い', 'u'], ['う', 'xu']]));
+  const nextKana = withRomaji(
+    LAYOUT_BY_ID.get('qwerty')!,
+    new Map([
+      ['い', 'u'],
+      ['う', 'xu'],
+    ]),
+  );
   const [nextZero, nextOne] = nSensitivity('いう', nextKana, geometry, OPTIONS, [0, 1]);
   assert.ok(nextOne.totalUnits < nextZero.totalUnits, 'N=1で残る候補が増えて短くなる');
 

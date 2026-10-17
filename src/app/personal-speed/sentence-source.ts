@@ -45,7 +45,8 @@ function spellingSourceOf(input: ResolvedInput): SentenceSpellingSource | undefi
   if (table === undefined || hasRomajiOnlyCombos(input.layout)) return undefined;
   const units = romajiSpellingUnits(input.text, table);
   if (units === undefined) return undefined;
-  const chunksOf = (spellings: readonly string[]) => units.map((unit, index) => ({ kana: unit.kana, roman: spellings[index], fromTable: table.has(unit.kana) }));
+  const chunksOf = (spellings: readonly string[]) =>
+    units.map((unit, index) => ({ kana: unit.kana, roman: spellings[index], fromTable: table.has(unit.kana) }));
   return {
     units,
     strokes(spellings) {
@@ -72,9 +73,7 @@ function spellingSourceOf(input: ResolvedInput): SentenceSpellingSource | undefi
  * 直接読めないので、appが再生と同じ経路（条件の解決 → Trace生成 → 構造解析）を包んで注入する。
  * 配列は画面で選んだもの、ローマ字規則・Chain・Arpeggioの数え方などは全体の条件を使う。
  */
-export function personalSpeedSentenceBuilder(
-  assets: SentenceAssets,
-): (selection: PersonalSpeedSelection, text: string) => SentenceBuildResult {
+export function personalSpeedSentenceBuilder(assets: SentenceAssets): (selection: PersonalSpeedSelection, text: string) => SentenceBuildResult {
   const catalog = paneCatalog(assets);
   const customFingerAssignments = new Map(assets.fingerAssignments.map((assignment) => [assignment.id, assignment] as const));
   return (selection, text) => {

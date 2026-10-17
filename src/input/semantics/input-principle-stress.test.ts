@@ -1,20 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { TypingInputEngine } from '#tester/engine/index.ts';
-import {
-  applyRecognizedTypingInputs,
-} from '#tester/typing-session-command.ts';
-import {
-  faceFromEntries,
-  fromFaces,
-  fromKana,
-  type Face,
-} from '../layouts/index.ts';
+import { applyRecognizedTypingInputs } from '#tester/typing-session-command.ts';
+import { faceFromEntries, fromFaces, fromKana, type Face } from '../layouts/index.ts';
 
-const orderedFace = (
-  trigger: string[],
-  entries: Record<string, string>,
-): Face => ({
+const orderedFace = (trigger: string[], entries: Record<string, string>): Face => ({
   ...faceFromEntries(trigger, 'prefix', entries),
   inputRole: 'modifier',
   triggerPersistence: 'single',
@@ -28,10 +18,7 @@ const orderedFace = (
  * ここでは「か = f+k / k+f」を最小fixtureとして使う。
  */
 test('Phoenix principle: reverse-order alternativesは時間閾値なしで同じoutputになる', () => {
-  const phoenix = fromFaces('phoenix-principle', 'Phoenix principle', [
-    orderedFace(['f'], { k: 'か' }),
-    orderedFace(['k'], { f: 'か' }),
-  ]);
+  const phoenix = fromFaces('phoenix-principle', 'Phoenix principle', [orderedFace(['f'], { k: 'か' }), orderedFace(['k'], { f: 'か' })]);
 
   assert.equal(phoenix.canonicalInputs.get('か')?.length, 2);
 
@@ -136,7 +123,6 @@ test('Yau principle: 行キーの次が別行キーなら前のア段を巻き�
   assert.equal(text, 'から');
 });
 
-
 /**
  * よだか配列の入力原理:
  * - 頻出かなは単打
@@ -157,21 +143,30 @@ test('Yodaka principle: direct + 2-key + 3-key chordを同じcanonical mapで扱
 
   const direct = engine.handle({ type: 'down', key: 'f' }).recognized[0];
   assert.equal(direct.output, 'の');
-  assert.deepEqual(direct.actions.map((action) => action.keys), [['f']]);
+  assert.deepEqual(
+    direct.actions.map((action) => action.keys),
+    [['f']],
+  );
   engine.handle({ type: 'up', key: 'f' });
 
   engine.handle({ type: 'down', key: 'd' });
   assert.deepEqual(engine.handle({ type: 'down', key: 'j' }).recognized, []);
   const kana = engine.handle({ type: 'up', key: 'j' }).recognized[0];
   assert.equal(kana.output, 'か');
-  assert.deepEqual(kana.actions.map((action) => action.keys), [['d', 'j']]);
+  assert.deepEqual(
+    kana.actions.map((action) => action.keys),
+    [['d', 'j']],
+  );
   engine.handle({ type: 'up', key: 'd' });
 
   engine.handle({ type: 'down', key: 'd' });
   engine.handle({ type: 'down', key: 'j' });
   const youon = engine.handle({ type: 'down', key: 'k' }).recognized[0];
   assert.equal(youon.output, 'きゃ');
-  assert.deepEqual(youon.actions.map((action) => action.keys), [['d', 'j', 'k']]);
+  assert.deepEqual(
+    youon.actions.map((action) => action.keys),
+    [['d', 'j', 'k']],
+  );
   engine.handle({ type: 'up', key: 'k' });
   engine.handle({ type: 'up', key: 'j' });
   engine.handle({ type: 'up', key: 'd' });
@@ -179,5 +174,8 @@ test('Yodaka principle: direct + 2-key + 3-key chordを同じcanonical mapで扱
   engine.handle({ type: 'down', key: 'd' });
   const hatsuon = engine.handle({ type: 'down', key: 'l' }).recognized[0];
   assert.equal(hatsuon.output, 'かん');
-  assert.deepEqual(hatsuon.actions.map((action) => action.keys), [['d', 'l']]);
+  assert.deepEqual(
+    hatsuon.actions.map((action) => action.keys),
+    [['d', 'l']],
+  );
 });

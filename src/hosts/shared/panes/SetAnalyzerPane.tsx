@@ -70,10 +70,13 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
   // 各メンバーの解決済み入力（または解決失敗）。表示順（`targets`）のまま作る
   // （engineの抽出キーが順序込みで畳み込む対象）。
   const members: readonly EngineSetMemberInput[] = useMemo(
-    () => targets.map((target): EngineSetMemberInput => ({
-      target,
-      resolution: resolvePaneInput(target, setupsById, catalog, overrides, resolvedText),
-    })),
+    () =>
+      targets.map(
+        (target): EngineSetMemberInput => ({
+          target,
+          resolution: resolvePaneInput(target, setupsById, catalog, overrides, resolvedText),
+        }),
+      ),
     [targets, setupsById, catalog, overrides, resolvedText],
   );
   const membersByTarget = useMemo(() => new Map(members.map((m) => [m.target, m] as const)), [members]);
@@ -82,21 +85,26 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
   // （`naming.ts`の`TargetNameSource.failed`参照）。
   const excludeIds = useMemo(() => settingsItemIds(analyzer.conditionExcludeIds), [analyzer]);
   const setupNumbers = useMemo(() => setupNumbersOf(setups), [setups]);
-  const namedTargets = useMemo(() => nameTargets(targets.map((target) => targetNameSource(
-    target,
-    membersByTarget.get(target)?.resolution,
-    setupsById,
-    setupNumbers,
-    catalog.setupCatalog,
-    excludeIds,
-  ))), [targets, setupsById, setupNumbers, membersByTarget, catalog.setupCatalog, excludeIds]);
+  const namedTargets = useMemo(
+    () =>
+      nameTargets(
+        targets.map((target) =>
+          targetNameSource(target, membersByTarget.get(target)?.resolution, setupsById, setupNumbers, catalog.setupCatalog, excludeIds),
+        ),
+      ),
+    [targets, setupsById, setupNumbers, membersByTarget, catalog.setupCatalog, excludeIds],
+  );
   const namedByKey = useMemo(() => new Map(namedTargets.map((n) => [n.key, n] as const)), [namedTargets]);
 
-  const targetSummary = useMemo(() => targets.map((target) => {
-    const key = analysisTargetKey(target);
-    const named = namedByKey.get(key);
-    return { key, label: named?.displayName ?? key, fullName: named?.fullName ?? '', color: colorByKey.get(key), mark: markByKey.get(key) };
-  }), [targets, namedByKey, colorByKey, markByKey]);
+  const targetSummary = useMemo(
+    () =>
+      targets.map((target) => {
+        const key = analysisTargetKey(target);
+        const named = namedByKey.get(key);
+        return { key, label: named?.displayName ?? key, fullName: named?.fullName ?? '', color: colorByKey.get(key), mark: markByKey.get(key) };
+      }),
+    [targets, namedByKey, colorByKey, markByKey],
+  );
 
   const conditionNames: ConditionValueNames = catalog.setupCatalog;
   const rowContext = useMemo(() => {
@@ -109,9 +117,7 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
         targetKey: key,
         label: named.displayName,
         fullName: named.fullName,
-        header: member.resolution.ok
-          ? conditionHeaderInfoFromResolvedInput(member.resolution.input.layout, member.resolution.input.geometry)
-          : undefined,
+        header: member.resolution.ok ? conditionHeaderInfoFromResolvedInput(member.resolution.input.layout, member.resolution.input.geometry) : undefined,
         // 色は集合が配った番号から引く（加えた順。表示順とは別）。
         color: colorByKey.get(key),
         mark: markByKey.get(key),
@@ -123,18 +129,24 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
   }, [analyzer, members, namedByKey, colorByKey, markByKey]);
 
   // 条件の要約は、共通の条件と、対象ごとに違う条件（Setupの上書き）に分けて出す。
-  const conditionSummary = useMemo(() => multiTargetConditionSummary(
-    members.flatMap((member) => {
-      if (!member.resolution.ok) return [];
-      const key = analysisTargetKey(member.target);
-      return [{
-        key,
-        label: namedByKey.get(key)?.displayName ?? key,
-        rows: traceConditionSummary(member.resolution.input.cascade, conditionNames),
-      }];
-    }),
-    { excludeIds, globalValues: globalConditionValues(overrides), globalLevels: globalConditionLevels(overrides), names: conditionNames },
-  ), [members, namedByKey, conditionNames, overrides, excludeIds]);
+  const conditionSummary = useMemo(
+    () =>
+      multiTargetConditionSummary(
+        members.flatMap((member) => {
+          if (!member.resolution.ok) return [];
+          const key = analysisTargetKey(member.target);
+          return [
+            {
+              key,
+              label: namedByKey.get(key)?.displayName ?? key,
+              rows: traceConditionSummary(member.resolution.input.cascade, conditionNames),
+            },
+          ];
+        }),
+        { excludeIds, globalValues: globalConditionValues(overrides), globalLevels: globalConditionLevels(overrides), names: conditionNames },
+      ),
+    [members, namedByKey, conditionNames, overrides, excludeIds],
+  );
 
   const order = useMemo(() => targets.map(analysisTargetKey), [targets]);
 
@@ -165,7 +177,7 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
       targetBinding={chrome.targetBinding}
       optionsBinding={chrome.optionsBinding}
       showPaneNameInSettings={chrome.showPaneNameInSettings}
-      target={(
+      target={
         <TargetSelection
           mode="multiple"
           groups={choiceGroups}
@@ -175,18 +187,20 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
           open={selectionOpen}
           onOpenChange={setSelectionOpen}
           autoOpen={assetsReady && chrome.autoOpenTargetSelection ? targets.length === 0 && !chrome.holdTargetSelectionClosed : undefined}
-          extraItem={TargetItem === undefined ? undefined : (
-            <TargetItem
-              value={baselineTargetKey}
-              candidates={candidates}
-              onChange={(nextKey) => {
-                const next = nextKey === undefined ? undefined : targets.find((t) => analysisTargetKey(t) === nextKey);
-                onBaselineChange(next);
-              }}
-            />
-          )}
+          extraItem={
+            TargetItem === undefined ? undefined : (
+              <TargetItem
+                value={baselineTargetKey}
+                candidates={candidates}
+                onChange={(nextKey) => {
+                  const next = nextKey === undefined ? undefined : targets.find((t) => analysisTargetKey(t) === nextKey);
+                  onBaselineChange(next);
+                }}
+              />
+            )
+          }
         />
-      )}
+      }
       settings={<Settings options={options} onOptionsChange={onOptionsChange} />}
       onResetOptions={() => onOptionsChange(analyzer.defaultOptions)}
       conditionRows={conditionSummary.rows}
@@ -202,11 +216,11 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
         ...(env.workspaceId === undefined ? {} : { workspace: { id: env.workspaceId } }),
         hiddenIds: excludeIds,
         // 手持ちに無いSetup（削除したもの）へは、`/setup` で開いても別のSetupが選ばれるだけなので出さない
-        openSetups: targets.flatMap((target) => (
+        openSetups: targets.flatMap((target) =>
           target.kind === 'setup' && setupsById.has(target.setupId)
             ? [{ id: target.setupId, name: namedByKey.get(analysisTargetKey(target))?.displayName ?? target.setupId }]
-            : []
-        )),
+            : [],
+        ),
       }}
       conditionTargetDiffs={conditionSummary.diffs}
       engineState={extraction}
@@ -214,14 +228,14 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
       linkNotices={linkNotices}
       {...(targets.length === 0
         ? {
-          // 資産の読み込み前は保存済みの対象が未反映なだけで、空とは限らない。
-          // 押せないボタンが一瞬見えてから表に置き換わるのを避けるため、空のペインにする
-          emptyContent: assetsReady ? (
-            <button type="button" className="pane-empty-button" onClick={() => setSelectionOpen(true)}>
-              配列・Setupを選ぶ
-            </button>
-          ) : null,
-        }
+            // 資産の読み込み前は保存済みの対象が未反映なだけで、空とは限らない。
+            // 押せないボタンが一瞬見えてから表に置き換わるのを避けるため、空のペインにする
+            emptyContent: assetsReady ? (
+              <button type="button" className="pane-empty-button" onClick={() => setSelectionOpen(true)}>
+                配列・Setupを選ぶ
+              </button>
+            ) : null,
+          }
         : {})}
     >
       {extracted === undefined ? undefined : (

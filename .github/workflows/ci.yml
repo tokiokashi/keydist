@@ -53,6 +53,13 @@ jobs:
             npm ci
           } 2>&1 | tee "$RUNNER_TEMP/npm-ci.log"
 
+      - name: Lint
+        id: lint
+        shell: bash
+        run: |
+          set -o pipefail
+          npx biome ci . 2>&1 | tee "$RUNNER_TEMP/lint.log"
+
       - name: Typecheck
         id: typecheck
         shell: bash
@@ -118,6 +125,7 @@ jobs:
           CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
           SETUP_NODE_OUTCOME: ${{ steps.setup-node.outcome }}
           INSTALL_OUTCOME: ${{ steps.install.outcome }}
+          LINT_OUTCOME: ${{ steps.lint.outcome }}
           TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
           TEST_OUTCOME: ${{ steps.test.outcome }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
@@ -141,6 +149,7 @@ jobs:
             printf '| Checkout | %s %s |\n' "$(icon "$CHECKOUT_OUTCOME")" "$CHECKOUT_OUTCOME"
             printf '| Setup Node.js | %s %s |\n' "$(icon "$SETUP_NODE_OUTCOME")" "$SETUP_NODE_OUTCOME"
             printf '| Install dependencies | %s %s |\n' "$(icon "$INSTALL_OUTCOME")" "$INSTALL_OUTCOME"
+            printf '| Lint | %s %s |\n' "$(icon "$LINT_OUTCOME")" "$LINT_OUTCOME"
             printf '| Typecheck | %s %s |\n' "$(icon "$TYPECHECK_OUTCOME")" "$TYPECHECK_OUTCOME"
             printf '| Test | %s %s |\n' "$(icon "$TEST_OUTCOME")" "$TEST_OUTCOME"
             printf '| Build | %s %s |\n' "$(icon "$BUILD_OUTCOME")" "$BUILD_OUTCOME"
@@ -171,6 +180,7 @@ jobs:
           }
 
           append_failure_log "Install dependencies" "$INSTALL_OUTCOME" "$RUNNER_TEMP/npm-ci.log"
+          append_failure_log "Lint" "$LINT_OUTCOME" "$RUNNER_TEMP/lint.log"
           append_failure_log "Typecheck" "$TYPECHECK_OUTCOME" "$RUNNER_TEMP/typecheck.log"
           append_failure_log "Test" "$TEST_OUTCOME" "$RUNNER_TEMP/test.log"
           append_failure_log "Build" "$BUILD_OUTCOME" "$RUNNER_TEMP/build.log"

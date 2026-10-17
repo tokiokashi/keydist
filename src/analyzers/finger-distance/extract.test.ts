@@ -86,7 +86,10 @@ test('「ae」: 左中指がdからeへ動いた距離だけが計上され、�
   near(pair.maxExcess, 0.25);
   // 左手の他の組・右手は動かないので0。
   assert.equal(extracted.adjacent.find((item) => item.pair[1] === 'LR')?.stdDev, 0);
-  assert.equal(extracted.adjacent.filter((item) => item.hand === 'right').every((item) => item.stdDev === 0), true);
+  assert.equal(
+    extracted.adjacent.filter((item) => item.hand === 'right').every((item) => item.stdDev === 0),
+    true,
+  );
 });
 
 /** 実機の経路（Trace）から、仕様の式で指ごとの値を数え直す。抽出の実装には頼らない。 */
@@ -138,7 +141,18 @@ test('固定値: QWERTY / row-staggered / 「hello world」', () => {
   const slanted = Math.hypot(0.25, 1);
   assert.deepEqual(
     extracted.fingers.map((item) => [item.finger, item.presses]),
-    [['LP', 0], ['LR', 1], ['LM', 2], ['LI', 1], ['LT', 0], ['RT', 1], ['RI', 1], ['RM', 0], ['RR', 5], ['RP', 0]],
+    [
+      ['LP', 0],
+      ['LR', 1],
+      ['LM', 2],
+      ['LI', 1],
+      ['LT', 0],
+      ['RT', 1],
+      ['RI', 1],
+      ['RM', 0],
+      ['RR', 5],
+      ['RP', 0],
+    ],
   );
   near(fingerOf(extracted, 'LR').distance, slanted);
   near(fingerOf(extracted, 'LM').distance, slanted);
@@ -149,7 +163,14 @@ test('固定値: QWERTY / row-staggered / 「hello world」', () => {
   assert.equal(extracted.totalPresses, 11);
   assert.deepEqual(
     extracted.adjacent.map((item) => [item.pair.join('-'), Number(item.stdDev.toFixed(6))]),
-    [['LP-LR', 0.07187], ['LR-LM', 0.180312], ['LM-LI', 0.180312], ['RI-RM', 0.28748], ['RM-RR', 0.120261], ['RR-RP', 0.289003]],
+    [
+      ['LP-LR', 0.07187],
+      ['LR-LM', 0.180312],
+      ['LM-LI', 0.180312],
+      ['RI-RM', 0.28748],
+      ['RM-RR', 0.120261],
+      ['RR-RP', 0.289003],
+    ],
   );
   near(extracted.hands.left.distance + extracted.hands.right.distance, extracted.totalDistance);
   near(extracted.hands.left.distanceShare + extracted.hands.right.distanceShare, 1);
@@ -164,7 +185,14 @@ test('固定値: Colemak-DH / row-staggered / 「hello world」', () => {
   near(extracted.totalDistance, 5.328397196713036);
   assert.deepEqual(
     extracted.adjacent.map((item) => [item.pair.join('-'), Number(item.stdDev.toFixed(6))]),
-    [['LP-LR', 0.07187], ['LR-LM', 0.172712], ['LM-LI', 0.230782], ['RI-RM', 0.263108], ['RM-RR', 0], ['RR-RP', 0]],
+    [
+      ['LP-LR', 0.07187],
+      ['LR-LM', 0.172712],
+      ['LM-LI', 0.230782],
+      ['RI-RM', 0.263108],
+      ['RM-RR', 0],
+      ['RR-RP', 0],
+    ],
   );
 });
 
@@ -222,10 +250,10 @@ test('移動も押下も無いテキストでは、割合は0で出て非数に�
 test('入れ忘れ防止: 見る量は表示専用で、抽出キーは空になる', () => {
   assert.deepEqual(Object.keys(fingerDistanceOptions.items), ['chartMetric']);
   assert.deepEqual(fingerDistanceOptions.extractKeyOf(DEFAULT_FINGER_DISTANCE_OPTIONS), {});
-  assert.deepEqual(
-    checkOptionsDiscipline(fingerDistanceOptions, fingerDistanceDefinition.optionsDiscipline),
-    { keyViolations: [], viewExtractionViolations: [] },
-  );
+  assert.deepEqual(checkOptionsDiscipline(fingerDistanceOptions, fingerDistanceDefinition.optionsDiscipline), {
+    keyViolations: [],
+    viewExtractionViolations: [],
+  });
 });
 
 test('既定の見る量は移動距離', () => {
@@ -235,18 +263,42 @@ test('既定の見る量は移動距離', () => {
 test('グラフの棒は左手の小指から右手の小指の順で、値は抽出結果と同じ', () => {
   const extracted = extract(resolve('qwerty', 'row-staggered', 'the quick brown fox'));
   const distance = chartSpecOf(extracted, 'distance');
-  assert.deepEqual(distance.bars.map((bar) => bar.key), ['LP', 'LR', 'LM', 'LI', 'LT', 'RT', 'RI', 'RM', 'RR', 'RP']);
-  assert.deepEqual(distance.bars.map((bar) => bar.value), extracted.fingers.map((item) => item.distance));
-  assert.deepEqual(distance.bars.map((bar) => bar.hand), [...Array(5).fill('left'), ...Array(5).fill('right')]);
-  assert.deepEqual(chartSpecOf(extracted, 'presses').bars.map((bar) => bar.value), extracted.fingers.map((item) => item.presses));
+  assert.deepEqual(
+    distance.bars.map((bar) => bar.key),
+    ['LP', 'LR', 'LM', 'LI', 'LT', 'RT', 'RI', 'RM', 'RR', 'RP'],
+  );
+  assert.deepEqual(
+    distance.bars.map((bar) => bar.value),
+    extracted.fingers.map((item) => item.distance),
+  );
+  assert.deepEqual(
+    distance.bars.map((bar) => bar.hand),
+    [...Array(5).fill('left'), ...Array(5).fill('right')],
+  );
+  assert.deepEqual(
+    chartSpecOf(extracted, 'presses').bars.map((bar) => bar.value),
+    extracted.fingers.map((item) => item.presses),
+  );
   // 割合はツールチップに出る
   assert.ok(distance.bars[0]!.tip.includes(formatShare(extracted.fingers[0]!.distanceShare)));
 
   const pairs = extracted.adjacent;
-  assert.deepEqual(chartSpecOf(extracted, 'stdDev').bars.map((bar) => bar.value), pairs.map((item) => item.stdDev));
-  assert.deepEqual(chartSpecOf(extracted, 'mean').bars.map((bar) => bar.value), pairs.map((item) => item.meanExcess));
-  assert.deepEqual(chartSpecOf(extracted, 'max').bars.map((bar) => bar.value), pairs.map((item) => item.maxExcess));
-  assert.deepEqual(chartSpecOf(extracted, 'max').bars.map((bar) => bar.hand), ['left', 'left', 'left', 'right', 'right', 'right']);
+  assert.deepEqual(
+    chartSpecOf(extracted, 'stdDev').bars.map((bar) => bar.value),
+    pairs.map((item) => item.stdDev),
+  );
+  assert.deepEqual(
+    chartSpecOf(extracted, 'mean').bars.map((bar) => bar.value),
+    pairs.map((item) => item.meanExcess),
+  );
+  assert.deepEqual(
+    chartSpecOf(extracted, 'max').bars.map((bar) => bar.value),
+    pairs.map((item) => item.maxExcess),
+  );
+  assert.deepEqual(
+    chartSpecOf(extracted, 'max').bars.map((bar) => bar.hand),
+    ['left', 'left', 'left', 'right', 'right', 'right'],
+  );
 });
 
 test('指間距離の分布: 「ae」は左薬指–左中指が超過0と0.25に半分ずつ分かれ、ホームにある打鍵も母集団に入る', () => {
@@ -254,16 +306,29 @@ test('指間距離の分布: 「ae」は左薬指–左中指が超過0と0.25�
   const extracted = extract(resolve('qwerty', 'row-staggered', 'ae'));
   const pair = extracted.adjacent.find((item) => item.pair[0] === 'LR' && item.pair[1] === 'LM');
   assert.ok(pair);
-  assert.deepEqual(pair.distribution.map((item) => [item.state, item.count, item.share]), [[0, 1, 50], [0.25, 1, 50]]);
+  assert.deepEqual(
+    pair.distribution.map((item) => [item.state, item.count, item.share]),
+    [
+      [0, 1, 50],
+      [0.25, 1, 50],
+    ],
+  );
   // 一度も動かない組は、全打鍵が状態0
   const idle = extracted.adjacent.find((item) => item.pair[0] === 'RI');
-  assert.deepEqual(idle?.distribution.map((item) => [item.state, item.count, item.share]), [[0, 2, 100]]);
+  assert.deepEqual(
+    idle?.distribution.map((item) => [item.state, item.count, item.share]),
+    [[0, 2, 100]],
+  );
 });
 
 test('指間距離の分布: 割合の総和が100%で、状態から求めた平均・最大値が同じ組の平均・最大値と一致する', () => {
   const extracted = extract(resolve('qwerty', 'column-staggered', 'the quick brown fox jumps over the lazy dog'));
   for (const item of extracted.adjacent) {
-    near(item.distribution.reduce((sum, entry) => sum + entry.share, 0), 100, 'share total');
+    near(
+      item.distribution.reduce((sum, entry) => sum + entry.share, 0),
+      100,
+      'share total',
+    );
     // 状態の値は小数第6位に丸めているので、丸めの幅の範囲で一致する
     const mean = item.distribution.reduce((sum, entry) => sum + entry.state * entry.share, 0) / 100;
     assert.ok(Math.abs(mean - item.meanExcess) < 1e-6, `${item.pair.join('-')} mean ${mean} vs ${item.meanExcess}`);

@@ -81,10 +81,7 @@ export type BigramFlowFigures = Omit<BigramFlowExtracted, 'keyDetails'>;
  * 不要）ので、契約の型を経由せず`Trace`と`options`だけを引数に取る形で外へ公開する
  * （engineを経由しない呼び出しとテストが直接呼べる）。
  */
-export function computeBigramFlowExtraction(
-  trace: Trace,
-  options: BigramFlowOptions,
-): BigramFlowFigures {
+export function computeBigramFlowExtraction(trace: Trace, options: BigramFlowOptions): BigramFlowFigures {
   const vectors = buildBigramVectors(trace.strokes, options.source);
   const filtered = filterBigramVectors(vectors, options.selectedFingers);
   const aggregated = aggregateBigramVectors(filtered);
@@ -92,21 +89,19 @@ export function computeBigramFlowExtraction(
   // 1指選択だけ特別扱い: 「その指自身のキー間移動」だけを見たいので、
   // 通常のfilter（その指が絡む全vector）ではなく、from/toとも同じ指のvectorだけを
   // 集める（bigram-flow-view.tsxの旧実装から移設。挙動は変えない）。
-  const analysisVectors = options.selectedFingers.length === 1
-    ? aggregateBigramVectors(vectors.filter((vector) =>
-      vector.fromFingerClass === options.selectedFingers[0]
-      && vector.toFingerClass === options.selectedFingers[0]))
-    : aggregated;
+  const analysisVectors =
+    options.selectedFingers.length === 1
+      ? aggregateBigramVectors(
+          vectors.filter((vector) => vector.fromFingerClass === options.selectedFingers[0] && vector.toFingerClass === options.selectedFingers[0]),
+        )
+      : aggregated;
 
   const rawCount = filtered.reduce((sum, vector) => sum + vector.weight, 0);
 
   const leftRelative = relativeVectors(analysisVectors, 'left');
   const rightRelative = relativeVectors(analysisVectors, 'right');
   const allRelative = [...leftRelative, ...rightRelative];
-  const relativeMaxDistance = Math.ceil(Math.max(
-    1,
-    ...allRelative.map((vector) => Math.hypot(vector.dx, vector.dy)),
-  ));
+  const relativeMaxDistance = Math.ceil(Math.max(1, ...allRelative.map((vector) => Math.hypot(vector.dx, vector.dy))));
   const relativeMaxWeight = Math.max(1, ...allRelative.map((vector) => vector.weight));
 
   const leftDensity = directionDensity(analysisVectors, 'left', options.polarBandwidth, POLAR_SAMPLE_COUNT);
@@ -116,8 +111,7 @@ export function computeBigramFlowExtraction(
   const maxWeight = Math.max(1, ...movingVectors.map((vector) => vector.weight));
   const repeatCounts = repeatCountsByKey(aggregated);
 
-  const hasCrossHandInAnalysis = options.source === 'actual'
-    && analysisVectors.some((vector) => vector.hand === 'cross');
+  const hasCrossHandInAnalysis = options.source === 'actual' && analysisVectors.some((vector) => vector.hand === 'cross');
 
   return {
     keyboardFlow: { vectors: aggregated, repeatCounts, maxWeight },

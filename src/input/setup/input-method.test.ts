@@ -39,11 +39,7 @@ test('日本語一覧（LAYOUTS_JA）は種類に応じてromaji/kana-directの�
     const derivation = deriveInputMethod('ja', kind);
     assert.equal(derivation.ok, true, `layoutId=${layout.id}`);
     if (derivation.ok) {
-      assert.equal(
-        derivation.inputMethod,
-        kind === 'kana' ? 'kana-direct' : 'romaji',
-        `layoutId=${layout.id}`,
-      );
+      assert.equal(derivation.inputMethod, kind === 'kana' ? 'kana-direct' : 'romaji', `layoutId=${layout.id}`);
     }
   }
 });
@@ -104,7 +100,10 @@ function catalogWith(layoutId: string): SetupCatalog {
 }
 
 const setupFor = (layoutId: string): Setup => ({
-  id: 'setup-1', number: 1, layoutId, shapeId: 'shape-1',
+  id: 'setup-1',
+  number: 1,
+  layoutId,
+  shapeId: 'shape-1',
 });
 
 const NO_USER_LAYOUTS: ReadonlyMap<string, UserLayout> = new Map();

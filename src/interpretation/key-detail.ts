@@ -107,13 +107,7 @@ interface RoundedOrigin {
   from: 'previous' | 'home';
 }
 
-function accumulate(
-  target: Accumulator,
-  role: string,
-  previousChar: string | undefined,
-  origin: RoundedOrigin,
-  distance: number,
-): void {
+function accumulate(target: Accumulator, role: string, previousChar: string | undefined, origin: RoundedOrigin, distance: number): void {
   target.presses++;
   increment(target.roles, role);
   if (previousChar === undefined) target.noPreviousChar++;
@@ -189,8 +183,7 @@ export function computeKeyDetails(trace: Trace, geometry: Geometry): KeyDetails 
     })),
     distances: value.distances,
   });
-  const freezeAll = (map: Map<string, Accumulator>): Map<string, KeyDetail> =>
-    new Map([...map].map(([id, value]) => [id, freeze(value)]));
+  const freezeAll = (map: Map<string, Accumulator>): Map<string, KeyDetail> => new Map([...map].map(([id, value]) => [id, freeze(value)]));
 
   return {
     faces: new Map([...faces].map(([face, map]) => [face, freezeAll(map)])),

@@ -5,8 +5,7 @@ import { gridDeviations } from './grid-deviation.ts';
 const pair = (id: string) => `same-hand-pair:${id}`;
 const LEFT_IDS = ['LP:LR', 'LP:LM', 'LP:LI', 'LR:LM', 'LR:LI', 'LM:LI'];
 /** 左手の組を並びの順に、与えた保存値で埋める。 */
-const leftPairs = (values: readonly string[]) =>
-  Object.fromEntries(LEFT_IDS.slice(0, values.length).map((id, i) => [pair(id), values[i]!]));
+const leftPairs = (values: readonly string[]) => Object.fromEntries(LEFT_IDS.slice(0, values.length).map((id, i) => [pair(id), values[i]!]));
 
 test('中央値より遅いマスと速いマスは別の向きになる', () => {
   const result = gridDeviations('same-hand-pair', leftPairs(['1.00', '3.00', '3.00', '3.00', '3.00', '9.00']));

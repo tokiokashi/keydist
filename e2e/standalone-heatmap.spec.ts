@@ -62,21 +62,26 @@ const SINGLE_KEY = 'keydist:single-target-selection';
 const MULTI_KEY = 'keydist:multi-target-selection';
 
 async function seedSelections(page: Page, single: string, multi: readonly string[]) {
-  await page.addInitScript(([singleId, multiIds, singleKey, multiKey]) => {
-    localStorage.setItem(singleKey, JSON.stringify({ version: 1, target: { kind: 'layout', layoutId: singleId } }));
-    localStorage.setItem(multiKey, JSON.stringify({ version: 1, targets: multiIds.map((layoutId) => ({ kind: 'layout', layoutId })), colorSlots: {} }));
-  }, [single, multi, SINGLE_KEY, MULTI_KEY] as const);
+  await page.addInitScript(
+    ([singleId, multiIds, singleKey, multiKey]) => {
+      localStorage.setItem(singleKey, JSON.stringify({ version: 1, target: { kind: 'layout', layoutId: singleId } }));
+      localStorage.setItem(multiKey, JSON.stringify({ version: 1, targets: multiIds.map((layoutId) => ({ kind: 'layout', layoutId })), colorSlots: {} }));
+    },
+    [single, multi, SINGLE_KEY, MULTI_KEY] as const,
+  );
 }
 
 const cells = (page: Page) => feature(page).locator('[data-heatmap-set-target]');
 
 /** 図のキーごとの、ツールチップ1行目（キーの名前と押下数）と色の強度 */
 async function keyReadings(figure: Locator) {
-  return figure.locator('[data-heatmap-key]').evaluateAll((keys) => keys.map((key) => ({
-    id: key.getAttribute('data-heatmap-key')!,
-    tooltip: (key.querySelector('title')?.textContent ?? '').split('\n')[0]!,
-    heat: key.getAttribute('data-heat')!,
-  })));
+  return figure.locator('[data-heatmap-key]').evaluateAll((keys) =>
+    keys.map((key) => ({
+      id: key.getAttribute('data-heatmap-key')!,
+      tooltip: (key.querySelector('title')?.textContent ?? '').split('\n')[0]!,
+      heat: key.getAttribute('data-heat')!,
+    })),
+  );
 }
 
 test('集合の対象の図が、Singleの対象の下に名前と印付きで並ぶ。Singleの対象と同じ対象は並ばない', async ({ page }) => {
@@ -167,12 +172,19 @@ test('格子の図のツールチップは押下数だけで、キーを押し�
   expect(topTitles.some((title) => title.includes('押し方:'))).toBe(true);
 });
 
-for (const viewport of [{ name: 'パソコン幅', width: 1440, height: 900 }, { name: 'スマホ幅', width: 390, height: 800 }]) {
+for (const viewport of [
+  { name: 'パソコン幅', width: 1440, height: 900 },
+  { name: 'スマホ幅', width: 390, height: 800 },
+]) {
   test(`${viewport.name}: 格子の図が画面の幅からはみ出さない`, async ({ page }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await seedSelections(page, 'qwerty', ['dvorak', 'colemak-dh', 'workman', 'colemak']);
     await page.goto('/analyzer/heatmap');
-    await expect(cells(page).filter({ has: page.locator('[data-heatmap-diagram]') }).first()).toBeVisible({ timeout: 10_000 });
+    await expect(
+      cells(page)
+        .filter({ has: page.locator('[data-heatmap-diagram]') })
+        .first(),
+    ).toBeVisible({ timeout: 10_000 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     for (const figure of await feature(page).locator('[data-heatmap-diagram]').all()) {
       const box = (await figure.boundingBox())!;

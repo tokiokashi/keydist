@@ -12,11 +12,7 @@ export interface PresetFileIo {
   readonly readText: (
     file: Blob,
     maxBytes: number,
-  ) => Promise<
-    | { readonly kind: 'ok'; readonly text: string }
-    | { readonly kind: 'too-large' }
-    | { readonly kind: 'unreadable' }
-  >;
+  ) => Promise<{ readonly kind: 'ok'; readonly text: string } | { readonly kind: 'too-large' } | { readonly kind: 'unreadable' }>;
 }
 
 export const PresetFileIoContext = createContext<PresetFileIo | undefined>(undefined);

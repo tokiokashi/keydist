@@ -59,9 +59,7 @@ export function chartSpecOf(extracted: FingerDistanceExtracted, metric: FingerDi
           label: SHORT_FINGER[item.finger],
           hand: item.hand,
           value,
-          valueText: isDistance
-            ? compact(value, value >= 1000 ? value.toFixed(0) : formatDistance(value))
-            : compact(value, String(value)),
+          valueText: isDistance ? compact(value, value >= 1000 ? value.toFixed(0) : formatDistance(value)) : compact(value, String(value)),
           tip: `${FINGER_LABEL[item.finger]}: ${text}（全体の${formatShare(share)}）`,
         };
       }),

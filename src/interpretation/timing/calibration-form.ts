@@ -183,12 +183,7 @@ function withField(base: PlaybackCalibration, fieldId: string, value: number | u
  * 編集した1つの欄の値を、保存値に重ねる。他の欄は保存値のまま変えない（欄の表示の丸めも持ち込まない）。
  * 空欄の任意の項目は項目ごと無くし、必須の欄が空、または数値でない・範囲の外なら、その欄と範囲を返して保存値は作らない。
  */
-export function applyCalibrationField(
-  base: PlaybackCalibration,
-  fieldId: string,
-  raw: string,
-  measuredAtMs: number,
-): ApplyCalibrationFieldResult {
+export function applyCalibrationField(base: PlaybackCalibration, fieldId: string, raw: string, measuredAtMs: number): ApplyCalibrationFieldResult {
   const spec = fieldSpec(fieldId);
   if (spec === undefined) return { ok: false, fieldId, problem: 'invalid', ...RATE_RANGE };
   const { range, required } = spec;

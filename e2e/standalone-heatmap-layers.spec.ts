@@ -81,7 +81,11 @@ test('色の尺度を対数にすると、図の色が変わる', async ({ page 
   await selectLayout(page, 'qwerty');
   await page.goto('/analyzer/heatmap-layers');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
-  const heats = () => diagrams(page).first().locator('[data-heatmap-key]').evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-heat')));
+  const heats = () =>
+    diagrams(page)
+      .first()
+      .locator('[data-heatmap-key]')
+      .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-heat')));
   const linear = await heats();
   await page.goto('/analyzer/heatmap-layers?scale=log');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });

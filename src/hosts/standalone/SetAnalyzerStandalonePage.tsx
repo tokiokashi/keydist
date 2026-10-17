@@ -79,18 +79,14 @@ export function SetAnalyzerStandalonePage<Options, Extracted, RowContext>({
   onAddToWorkspace,
 }: SetAnalyzerStandalonePageProps<Options, Extracted, RowContext>) {
   const analyzerId = analyzer.definition.id;
-  const resolvedText = useStableResolvedText(useMemo(
-    () => resolveTextSelection(assets.standaloneTextSelection, assets.textLibrary),
-    [assets.standaloneTextSelection, assets.textLibrary],
-  ));
+  const resolvedText = useStableResolvedText(
+    useMemo(() => resolveTextSelection(assets.standaloneTextSelection, assets.textLibrary), [assets.standaloneTextSelection, assets.textLibrary]),
+  );
 
   // 解析設定は資産（standaloneAnalyzerOptions）が正
   // （SingleAnalyzerStandalonePageと同じ形）。
   const storedOptionsRaw = assets.standaloneAnalyzerOptions[analyzerId];
-  const decoded = useMemo(
-    () => decodeStoredAnalyzerOptions(analyzer.definition, storedOptionsRaw),
-    [storedOptionsRaw],
-  );
+  const decoded = useMemo(() => decodeStoredAnalyzerOptions(analyzer.definition, storedOptionsRaw), [storedOptionsRaw]);
   // `SingleAnalyzerStandalonePage`と同じ形: 見た目は即座に反映しつつ（controlled）、
   // 資産への書き込みは呼び出し側がdebounceする（`onOptionsCommit`）。
   const [optionsDraft, setOptionsDraft] = useOptionsDraft<Options>(decoded.options, STANDALONE_WRITE_LOG_KEY);
@@ -108,18 +104,21 @@ export function SetAnalyzerStandalonePage<Options, Extracted, RowContext>({
   });
 
   const undo = useLatestCallback(history.undo);
-  const env: PaneEnvironment = useMemo(() => ({
-    setups: assets.setupLibrary.setups,
-    overrides: assets.setupLibrary.overrides,
-    catalog,
-    resolvedText,
-    cache,
-    dispatch,
-    presetLibrary: assets.presetLibrary,
-    generatePresetId,
-    undo,
-    assetsReady,
-  }), [assets.setupLibrary, assets.presetLibrary, catalog, resolvedText, cache, dispatch, generatePresetId, undo, assetsReady]);
+  const env: PaneEnvironment = useMemo(
+    () => ({
+      setups: assets.setupLibrary.setups,
+      overrides: assets.setupLibrary.overrides,
+      catalog,
+      resolvedText,
+      cache,
+      dispatch,
+      presetLibrary: assets.presetLibrary,
+      generatePresetId,
+      undo,
+      assetsReady,
+    }),
+    [assets.setupLibrary, assets.presetLibrary, catalog, resolvedText, cache, dispatch, generatePresetId, undo, assetsReady],
+  );
 
   const changeOptions = (next: Options) => {
     setOptionsDraft(next);
@@ -134,14 +133,10 @@ export function SetAnalyzerStandalonePage<Options, Extracted, RowContext>({
     sharedTargetsAtReadyRef.current = hasSharedTargetParams(window.location.search, 'multi');
   }
   const colorSlots = useMultiColorSlots(assets.multiTargetSelection);
-  const baseChrome: PaneChrome = sharedTargetsAtReadyRef.current === true
-    ? { ...STANDALONE_CHROME, holdTargetSelectionClosed: true }
-    : STANDALONE_CHROME;
+  const baseChrome: PaneChrome = sharedTargetsAtReadyRef.current === true ? { ...STANDALONE_CHROME, holdTargetSelectionClosed: true } : STANDALONE_CHROME;
   const chrome: PaneChrome = {
     ...baseChrome,
-    headerAction: (
-      <AddToWorkspaceMenu workspaces={assets.workspaces} onAdd={(destination) => onAddToWorkspace(destination, optionsDraft)} />
-    ),
+    headerAction: <AddToWorkspaceMenu workspaces={assets.workspaces} onAdd={(destination) => onAddToWorkspace(destination, optionsDraft)} />,
   };
 
   return (
@@ -177,10 +172,7 @@ export function SetAnalyzerStandalonePage<Options, Extracted, RowContext>({
         />
       </ContextBar>
       {/* プリレンダーされたページはハイドレーション完了まで操作を効かせない。 */}
-      <fieldset
-        disabled={!assetsReady}
-        style={{ display: 'contents', border: 0, padding: 0, margin: 0, minWidth: 0 }}
-      >
+      <fieldset disabled={!assetsReady} style={{ display: 'contents', border: 0, padding: 0, margin: 0, minWidth: 0 }}>
         <div className="standalone-stage">
           <SetAnalyzerPane
             analyzer={analyzer}

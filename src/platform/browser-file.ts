@@ -1,7 +1,4 @@
-export type ReadTextResult =
-  | { readonly kind: 'ok'; readonly text: string }
-  | { readonly kind: 'too-large' }
-  | { readonly kind: 'unreadable' };
+export type ReadTextResult = { readonly kind: 'ok'; readonly text: string } | { readonly kind: 'too-large' } | { readonly kind: 'unreadable' };
 
 /**
  * 利用者が選んだファイルを文字列として読む。`maxBytes`を超えるものは中身を読まずに断る

@@ -1,10 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { ErrorDetails } from '#hosts/shared/ErrorDetails.tsx';
-import {
-  getImportedWorkspacesSnapshot,
-  setImportedWorkspaces,
-  subscribeImportedWorkspaces,
-} from './imported-workspaces-notice.ts';
+import { getImportedWorkspacesSnapshot, setImportedWorkspaces, subscribeImportedWorkspaces } from './imported-workspaces-notice.ts';
 
 /**
  * Workspaceをファイルから読み込んだ直後の知らせ。何件読み込めたかと、別名で足した理由・足さなかった理由・
@@ -19,12 +15,16 @@ export function ImportedWorkspacesNotice() {
         <span data-imported-workspaces-summary="true">{imported.summary}</span>
         {imported.lines.length === 0 ? null : (
           <ul className="shell-notice-details">
-            {imported.lines.map((line, index) => <li key={index}>{line}</li>)}
+            {imported.lines.map((line, index) => (
+              <li key={index}>{line}</li>
+            ))}
           </ul>
         )}
         <ErrorDetails lines={imported.details} />
       </div>
-      <button type="button" aria-label="閉じる" title="閉じる" onClick={() => setImportedWorkspaces(undefined)}>×</button>
+      <button type="button" aria-label="閉じる" title="閉じる" onClick={() => setImportedWorkspaces(undefined)}>
+        ×
+      </button>
     </div>
   );
 }

@@ -107,14 +107,10 @@ function viewOf(session: Session, layoutId: string) {
     rowOf,
     notices: overrideWinsNotices(rows, names),
     /** 閉じた1行の文字（「すべて既定値」か、変えた項目の先頭2件）。 */
-    triggerText: line.changedCount === 0
-      ? 'すべて既定値'
-      : line.shown.map((row) => `${row.label}: ${row.displayValue}`).join(' · '),
+    triggerText: line.changedCount === 0 ? 'すべて既定値' : line.shown.map((row) => `${row.label}: ${row.displayValue}`).join(' · '),
     /** メニューに「全体へ移す」を出すか（配列の値を編集している行）。 */
-    canPromote: (id: 'windowSize' | 'romajiRuleId') => canPromoteLayoutValue(
-      session.assets.setupLibrary.overrides.layout?.[layoutId]?.[id],
-      rowOf(id).promotedBase,
-    ),
+    canPromote: (id: 'windowSize' | 'romajiRuleId') =>
+      canPromoteLayoutValue(session.assets.setupLibrary.overrides.layout?.[layoutId]?.[id], rowOf(id).promotedBase),
   };
 }
 
@@ -187,7 +183,10 @@ test('動作数の扱い: 2動作にすると要約に出て、例外を足す�
 });
 
 test('下のレベルが勝つ行: 配列の上書きがあれば、全体を変えても変わらない理由を出す（QWERTYでも大西配列でも）', () => {
-  for (const [layoutId, name] of [['oonishi', '大西配列'], ['qwerty', 'QWERTY']] as const) {
+  for (const [layoutId, name] of [
+    ['oonishi', '大西配列'],
+    ['qwerty', 'QWERTY'],
+  ] as const) {
     const session = newSession();
     dispatch(session, setLayoutCommand(layoutId, 'windowSize', 2, windowDefault));
     const view = viewOf(session, layoutId);

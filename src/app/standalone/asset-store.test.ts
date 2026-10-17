@@ -1,12 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { KeyValueStorage } from '#platform/persistence/storage.ts';
-import {
-  createTextCommand,
-  selectTextCommand,
-  setStandaloneAnalyzerOptionsCommand,
-  setTargetForSingleAndMultiCommand,
-} from '#engine/commands.ts';
+import { createTextCommand, selectTextCommand, setStandaloneAnalyzerOptionsCommand, setTargetForSingleAndMultiCommand } from '#engine/commands.ts';
 import { createWorkspaceCommand, renameWorkspaceCommand, restoreWorkspaceCommand } from '#engine/workspace-commands.ts';
 import { createAssetStore } from './asset-store.ts';
 
@@ -14,8 +9,12 @@ function createFakeStorage(): KeyValueStorage {
   const map = new Map<string, string>();
   return {
     getItem: (key) => map.get(key) ?? null,
-    setItem: (key, value) => { map.set(key, value); },
-    removeItem: (key) => { map.delete(key); },
+    setItem: (key, value) => {
+      map.set(key, value);
+    },
+    removeItem: (key) => {
+      map.delete(key);
+    },
   };
 }
 
@@ -24,9 +23,13 @@ function createFakeBus() {
   return {
     subscribe: (keys: readonly string[], listener: (key: string) => void) => {
       const watched = new Set(keys);
-      const wrapped = (key: string) => { if (watched.has(key)) listener(key); };
+      const wrapped = (key: string) => {
+        if (watched.has(key)) listener(key);
+      };
       listeners.add(wrapped);
-      return () => { listeners.delete(wrapped); };
+      return () => {
+        listeners.delete(wrapped);
+      };
     },
     notify: (key: string) => {
       for (const listener of listeners) listener(key);
@@ -98,7 +101,10 @@ test('Workspace Aを変えた後にWorkspace Bを変えても、Aの変更を戻
   store.dispatch('/workspace/b', renameWorkspaceCommand('b', 'B2'));
 
   assert.equal(store.step('/workspace/a', 'undo').kind, 'applied');
-  assert.deepEqual(store.getAssets().workspaces.map((workspace) => workspace.name), ['A', 'B2']);
+  assert.deepEqual(
+    store.getAssets().workspaces.map((workspace) => workspace.name),
+    ['A', 'B2'],
+  );
 });
 
 test('サイドバーでWorkspaceを作った後も、他の画面で取っておいたWorkspaceの中身の変更を戻せる', () => {
@@ -109,7 +115,10 @@ test('サイドバーでWorkspaceを作った後も、他の画面で取って�
   store.dispatch(undefined, createWorkspaceCommand('c', 'C'));
 
   assert.equal(store.step('/workspace/a', 'undo').kind, 'applied');
-  assert.deepEqual(store.getAssets().workspaces.map((workspace) => workspace.name), ['A', 'C']);
+  assert.deepEqual(
+    store.getAssets().workspaces.map((workspace) => workspace.name),
+    ['A', 'C'],
+  );
 });
 
 test('トップで対象を選んだ後は、その対象の選択に触れる項目が戻せなくなる', () => {
@@ -165,7 +174,9 @@ test('履歴は保存データに書かない: 新しいストアは空の履歴
 test('購読: 値や履歴が変わった時だけ通知する', () => {
   const store = newStore();
   let count = 0;
-  store.subscribe(() => { count += 1; });
+  store.subscribe(() => {
+    count += 1;
+  });
   store.dispatch('/a', setStandaloneAnalyzerOptionsCommand('heatmap', { n: 1 }));
   assert.equal(count, 1);
   store.dispatch('/a', setStandaloneAnalyzerOptionsCommand('heatmap', { n: 1 }));

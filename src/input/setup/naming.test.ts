@@ -3,18 +3,14 @@ import assert from 'node:assert/strict';
 import { nameTargets } from './naming.ts';
 
 test('nameTargets: 単一の対象は配列名だけを出す', () => {
-  const named = nameTargets([
-    { key: 'layout:qwerty', kind: 'layout', layoutName: 'QWERTY', shapeName: 'ロウスタッガード（ANSI）' },
-  ]);
+  const named = nameTargets([{ key: 'layout:qwerty', kind: 'layout', layoutName: 'QWERTY', shapeName: 'ロウスタッガード（ANSI）' }]);
   assert.equal(named.length, 1);
   assert.equal(named[0].displayName, 'QWERTY');
   assert.equal(named[0].fullName, 'QWERTY/ロウスタッガード（ANSI）');
 });
 
 test('nameTargets: 単一の対象では非既定条件を併記しない', () => {
-  const named = nameTargets([
-    { key: 'setup:s1', kind: 'setup', layoutName: 'QWERTY', shapeName: '物理配列A', overrideSummary: '指の割当: JIS' },
-  ]);
+  const named = nameTargets([{ key: 'setup:s1', kind: 'setup', layoutName: 'QWERTY', shapeName: '物理配列A', overrideSummary: '指の割当: JIS' }]);
   assert.equal(named[0].displayName, 'QWERTY');
   assert.equal(named[0].fullName, 'QWERTY/物理配列A · 指の割当: JIS');
 });
@@ -76,7 +72,10 @@ test('nameTargets: 衝突した組だけを詳しくし、衝突していない�
     { key: 'setup:fixed-a', kind: 'setup', setupNumber: 1, layoutName: 'QWERTY', shapeName: 'ロウスタッガード' },
     { key: 'setup:fixed-b', kind: 'setup', setupNumber: 2, layoutName: 'Colemak-DH', shapeName: 'ロウスタッガード' },
   ]);
-  assert.deepEqual(named.map((n) => n.displayName), ['QWERTY（配列）', 'QWERTY（Setup 1）', 'Colemak-DH']);
+  assert.deepEqual(
+    named.map((n) => n.displayName),
+    ['QWERTY（配列）', 'QWERTY（Setup 1）', 'Colemak-DH'],
+  );
 });
 
 test('nameTargets: 番号の無い（手持ちから消えた）Setup同士が衝突しても、位置で必ず解消する', () => {
@@ -84,7 +83,10 @@ test('nameTargets: 番号の無い（手持ちから消えた）Setup同士が�
     { key: 'setup:gone-1', kind: 'setup', failed: true, description: '削除されたSetup' },
     { key: 'setup:gone-2', kind: 'setup', failed: true, description: '削除されたSetup' },
   ]);
-  assert.deepEqual(named.map((n) => n.displayName), ['削除されたSetup（1番目）', '削除されたSetup（2番目）']);
+  assert.deepEqual(
+    named.map((n) => n.displayName),
+    ['削除されたSetup（1番目）', '削除されたSetup（2番目）'],
+  );
 });
 
 test('nameTargets: 同じ配列名を持つ別のuser layoutも衝突を解消する', () => {
@@ -131,7 +133,10 @@ test('nameTargets: 空文字・空白だけのラベルはラベル無し扱い�
     { key: 'setup:s2', kind: 'setup', label: ' \u3000\t', layoutName: 'Dvorak', shapeName: '物理配列A' },
     { key: 'setup:s3', kind: 'setup', label: '  比較用  ', layoutName: 'Colemak', shapeName: '物理配列A' },
   ]);
-  assert.deepEqual(named.map((n) => n.displayName), ['QWERTY', 'Dvorak', '比較用']);
+  assert.deepEqual(
+    named.map((n) => n.displayName),
+    ['QWERTY', 'Dvorak', '比較用'],
+  );
 });
 
 test('nameTargets: 表示名が空文字になることはない', () => {
@@ -152,7 +157,10 @@ test('nameTargets: 同じラベルのSetup同士は種類（Setup n）で区別�
     { key: 'setup:b', kind: 'setup', setupNumber: 3, label: 'A', layoutName: 'Dvorak', shapeName: '物理配列A' },
     { key: 'layout:colemak', kind: 'layout', layoutName: 'Colemak', shapeName: '物理配列A' },
   ]);
-  assert.deepEqual(named.map((n) => n.displayName), ['A（Setup 1）', 'A（Setup 3）', 'Colemak']);
+  assert.deepEqual(
+    named.map((n) => n.displayName),
+    ['A（Setup 1）', 'A（Setup 3）', 'Colemak'],
+  );
 });
 
 test('nameTargets: 手持ちから消えたSetupは「Setup」を重ねず位置で区別する', () => {
@@ -161,5 +169,8 @@ test('nameTargets: 手持ちから消えたSetupは「Setup」を重ねず位置
     { key: 'setup:gone-1', kind: 'setup', failed: true, description: '削除されたSetup' },
     { key: 'setup:gone-2', kind: 'setup', failed: true, description: '削除されたSetup' },
   ]);
-  assert.deepEqual(named.map((n) => n.displayName), ['QWERTY', '削除されたSetup（2番目）', '削除されたSetup（3番目）']);
+  assert.deepEqual(
+    named.map((n) => n.displayName),
+    ['QWERTY', '削除されたSetup（2番目）', '削除されたSetup（3番目）'],
+  );
 });

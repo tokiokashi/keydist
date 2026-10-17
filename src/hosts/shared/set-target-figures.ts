@@ -8,10 +8,7 @@ import { describeEngineRequestError } from './pane-status.ts';
  * 単体の画面でSingleの対象の図の下に並べる対象。Multiの集合から、Singleの対象と同じものを除く。
  * Singleの対象の図は一番上に出ていて、並べる側に重ねて出さないため。順は集合の並びのまま。
  */
-export function setTargetsBesideSingle(
-  setTargets: readonly AnalysisTarget[],
-  single: AnalysisTarget,
-): readonly AnalysisTarget[] {
+export function setTargetsBesideSingle(setTargets: readonly AnalysisTarget[], single: AnalysisTarget): readonly AnalysisTarget[] {
   const singleKey = analysisTargetKey(single);
   return setTargets.filter((target) => analysisTargetKey(target) !== singleKey);
 }

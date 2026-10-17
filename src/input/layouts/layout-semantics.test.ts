@@ -44,9 +44,7 @@ test('semantic migrationで物理Sequenceは変えない', () => {
       assert.equal(trace.strokes.length, sequence.length, `${id}: ${output}`);
       for (const [index, step] of sequence.entries()) {
         const expected = step.map(resolveKeyId).sort();
-        const actual = trace.strokes[index].presses
-          .flatMap((press) => press.keys.map((key) => key.id))
-          .sort();
+        const actual = trace.strokes[index].presses.flatMap((press) => press.keys.map((key) => key.id)).sort();
         assert.deepEqual(actual, expected, `${id}: ${output} step ${index}`);
       }
     }
@@ -91,10 +89,8 @@ test('薙刀式はsimultaneousとhold-capableを独立して持ち、Spaceだけ
 test('NICOLA / 新下駄の同期Faceは通常triggerとしてrealizeする', () => {
   const nicolaLayout = LAYOUT_BY_ID.get('nicola')!;
   const shingetaLayout = LAYOUT_BY_ID.get('shingeta')!;
-  assert.ok(nicolaLayout.faces?.filter((face) => face.trigger.length > 0)
-    .every((face) => face.triggerPersistence === 'single'));
-  assert.ok(shingetaLayout.faces?.filter((face) => face.trigger.length > 0)
-    .every((face) => face.triggerPersistence === 'single'));
+  assert.ok(nicolaLayout.faces?.filter((face) => face.trigger.length > 0).every((face) => face.triggerPersistence === 'single'));
+  assert.ok(shingetaLayout.faces?.filter((face) => face.trigger.length > 0).every((face) => face.triggerPersistence === 'single'));
 
   const nicola = generateTrace('え', nicolaLayout, geometry, opts()).strokes[0];
   assert.ok(nicola.participations.some((p) => p.roles.includes('trigger')));
@@ -108,8 +104,7 @@ test('NICOLA / 新下駄の同期Faceは通常triggerとしてrealizeする', ()
 
 test('月配列prefixはtrigger-only Strokeとして正規化する', () => {
   const layout = LAYOUT_BY_ID.get('tsuki-2-263')!;
-  assert.ok(layout.faces?.filter((face) => face.trigger.length > 0)
-    .every((face) => face.triggerPersistence === 'single'));
+  assert.ok(layout.faces?.filter((face) => face.trigger.length > 0).every((face) => face.triggerPersistence === 'single'));
   const trace = generateTrace('ぬ', layout, geometry, opts());
   assert.equal(trace.strokes.length, 2);
   assert.deepEqual(trace.strokes[0].participations[0].roles, ['trigger']);
@@ -120,16 +115,16 @@ test('月配列prefixはtrigger-only Strokeとして正規化する', () => {
 test('新JISはFaceMode / TriggerPersistence / TriggerOrderを独立して持つ', () => {
   const prefixLayout = LAYOUT_BY_ID.get('shin-jis-prefix')!;
   const simultaneousLayout = LAYOUT_BY_ID.get('shin-jis-simultaneous')!;
-  assert.ok(prefixLayout.faces?.filter((face) => face.trigger.length > 0)
-    .every((face) =>
-      face.mode === 'prefix'
-      && face.triggerPersistence === 'single'
-      && face.triggerOrder === undefined));
-  assert.ok(simultaneousLayout.faces?.filter((face) => face.trigger.length > 0)
-    .every((face) =>
-      face.mode === 'simultaneous'
-      && face.triggerPersistence === 'hold-capable'
-      && face.triggerOrder === 'prefix'));
+  assert.ok(
+    prefixLayout.faces
+      ?.filter((face) => face.trigger.length > 0)
+      .every((face) => face.mode === 'prefix' && face.triggerPersistence === 'single' && face.triggerOrder === undefined),
+  );
+  assert.ok(
+    simultaneousLayout.faces
+      ?.filter((face) => face.trigger.length > 0)
+      .every((face) => face.mode === 'simultaneous' && face.triggerPersistence === 'hold-capable' && face.triggerOrder === 'prefix'),
+  );
 
   const prefix = generateTrace('お', prefixLayout, geometry, opts());
   const simultaneous = generateTrace('お', simultaneousLayout, geometry, opts());

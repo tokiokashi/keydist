@@ -122,10 +122,7 @@ async function pickScope(row: Locator, item: string) {
 
 test('条件のモーダル: 配列の値を「全体へ移す」と、編集先が全体になり、全体の保存先に値が入る', async ({ page }) => {
   await page.addInitScript(() => {
-    localStorage.setItem(
-      'keydist:single-target-selection',
-      JSON.stringify({ version: 1, target: { kind: 'layout', layoutId: 'qwerty' } }),
-    );
+    localStorage.setItem('keydist:single-target-selection', JSON.stringify({ version: 1, target: { kind: 'layout', layoutId: 'qwerty' } }));
   });
   await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
@@ -138,10 +135,13 @@ test('条件のモーダル: 配列の値を「全体へ移す」と、編集先
   await expect(row.getByRole('button', { name: /の編集先: / })).toHaveAttribute('aria-label', /の編集先: 全体$/);
   await expect(row).toContainText('全体で変更');
   await expect(row.locator('output[aria-label="先読みN"]')).toHaveText('4');
-  const overrides = () => page.evaluate(() => {
-    const raw = localStorage.getItem('keydist:setup-library');
-    return raw === null ? undefined : (JSON.parse(raw) as { overrides: { global?: { windowSize?: number }; layout?: Record<string, unknown> } }).overrides;
-  });
+  const overrides = () =>
+    page.evaluate(() => {
+      const raw = localStorage.getItem('keydist:setup-library');
+      return raw === null
+        ? undefined
+        : (JSON.parse(raw) as { overrides: { global?: { windowSize?: number }; layout?: Record<string, unknown> } }).overrides;
+    });
   await expect.poll(async () => (await overrides())?.global?.windowSize).toEqual(4);
   expect((await overrides())?.layout?.['qwerty']).toBeUndefined();
 });
@@ -257,10 +257,11 @@ test('同じ組み込みを選び直して同じ本文を打っても保存さ�
   await openTextChip(page);
   const textarea = page.getByLabel('テキスト', { exact: true });
   const picker = page.getByLabel('テキストを選ぶ', { exact: true });
-  const libraryLength = () => page.evaluate(() => {
-    const raw = localStorage.getItem('keydist:text-library');
-    return raw === null ? 0 : (JSON.parse(raw) as { texts: unknown[] }).texts.length;
-  });
+  const libraryLength = () =>
+    page.evaluate(() => {
+      const raw = localStorage.getItem('keydist:text-library');
+      return raw === null ? 0 : (JSON.parse(raw) as { texts: unknown[] }).texts.length;
+    });
 
   const builtinValue = await picker.inputValue();
   const edited = `${await textarea.inputValue()}X`;
@@ -282,14 +283,13 @@ test('テキストを編集すると自作として保存され、リロード�
   await openTextChip(page);
   const textarea = page.getByLabel('テキスト', { exact: true });
   await textarea.fill('リロードしても残るテキスト');
-  await expect
-    .poll(async () => page.evaluate(() => localStorage.getItem('keydist:text-library')))
-    .toContain('リロードしても残るテキスト');
+  await expect.poll(async () => page.evaluate(() => localStorage.getItem('keydist:text-library'))).toContain('リロードしても残るテキスト');
   // 組み込みの編集は自作の複製になり、選択がそちらへ移る
-  const stored = () => page.evaluate(() => ({
-    texts: (JSON.parse(localStorage.getItem('keydist:text-library') ?? '{"texts":[]}') as { texts: unknown[] }).texts.length,
-    selection: (JSON.parse(localStorage.getItem('keydist:standalone-text-selection') ?? 'null') as { ref: { kind: string } } | null)?.ref.kind,
-  }));
+  const stored = () =>
+    page.evaluate(() => ({
+      texts: (JSON.parse(localStorage.getItem('keydist:text-library') ?? '{"texts":[]}') as { texts: unknown[] }).texts.length,
+      selection: (JSON.parse(localStorage.getItem('keydist:standalone-text-selection') ?? 'null') as { ref: { kind: string } } | null)?.ref.kind,
+    }));
   await expect.poll(stored).toEqual({ texts: 1, selection: 'user' });
 
   await page.reload();
@@ -342,10 +342,12 @@ test('打ってすぐリロードしても編集が残る（既存のユーザ�
   await openTextChip(page);
   await page.getByRole('button', { name: '複製', exact: true }).click();
   await expect
-    .poll(async () => page.evaluate(() => {
-      const raw = localStorage.getItem('keydist:text-library');
-      return raw === null ? 0 : (JSON.parse(raw) as { texts: unknown[] }).texts.length;
-    }))
+    .poll(async () =>
+      page.evaluate(() => {
+        const raw = localStorage.getItem('keydist:text-library');
+        return raw === null ? 0 : (JSON.parse(raw) as { texts: unknown[] }).texts.length;
+      }),
+    )
     .toEqual(1);
 
   await page.clock.install();
@@ -382,9 +384,7 @@ test('解析設定はリロードしても残る（資産として保持する�
 
   // 資産への反映はdebounceされる（`use-debounced-commit.ts`、既定400ms）ので、
   // storageに実際に書き込まれるまで待ってからリロードする。
-  await expect
-    .poll(async () => page.evaluate(() => localStorage.getItem('keydist:standalone-analyzer-options')))
-    .toContain('within-hand');
+  await expect.poll(async () => page.evaluate(() => localStorage.getItem('keydist:standalone-analyzer-options'))).toContain('within-hand');
 
   await page.reload();
   const flowAfterReload = page.locator('[data-react-feature="bigram-flow"]');
@@ -436,10 +436,7 @@ test('保存された解析設定が壊れていたら、既定値へ戻しつ�
   // （`decodeStoredAnalyzerOptions`が捨てずに`diagnostics`として返し、
   // `PaneFrame`の`settingsDiagnostics`へ届くことを確認する）。
   await page.addInitScript(() => {
-    localStorage.setItem(
-      'keydist:standalone-analyzer-options',
-      JSON.stringify({ version: 1, 'bigram-flow': { source: 'no-such-source' } }),
-    );
+    localStorage.setItem('keydist:standalone-analyzer-options', JSON.stringify({ version: 1, 'bigram-flow': { source: 'no-such-source' } }));
   });
   await page.goto('/analyzer/bigram-flow');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
@@ -471,9 +468,7 @@ test('URLパラメータで開くと解析設定が反映され、資産に残�
   await expect(page).toHaveURL(/\/analyzer\/bigram-flow$/);
 
   // 資産（storage）に残る。
-  await expect
-    .poll(async () => page.evaluate(() => localStorage.getItem('keydist:standalone-analyzer-options')))
-    .toContain('within-hand');
+  await expect.poll(async () => page.evaluate(() => localStorage.getItem('keydist:standalone-analyzer-options'))).toContain('within-hand');
 
   // リロードしても保たれる。
   await page.reload();
@@ -508,9 +503,7 @@ test('URLパラメータは既存の解析設定へ部分マージされる（�
   await expect(flow).toBeVisible({ timeout: 10_000 });
   const lineScale = (await openFigureSettings(page, 'Keyboard Flow')).getByLabel('紐の太さ', { exact: true });
   await lineScale.selectOption('sqrt');
-  await expect
-    .poll(async () => page.evaluate(() => localStorage.getItem('keydist:standalone-analyzer-options')))
-    .toContain('sqrt');
+  await expect.poll(async () => page.evaluate(() => localStorage.getItem('keydist:standalone-analyzer-options'))).toContain('sqrt');
 
   // sourceだけを指定したURLで開く。lineScaleの指定は無いので、保存済みの'sqrt'が保たれるはず。
   await page.goto('/analyzer/bigram-flow?source=within-hand');
@@ -625,9 +618,7 @@ test('保存済みのSetupが2件あっても、開いた時に手を付けず�
   expect(parsed.setups.map((setup) => setup.id)).toEqual(['fixed-a', 'fixed-b']);
 
   // 対象の選択がstorageへ書き込まれるまで待ってからリロードする。
-  await expect
-    .poll(async () => page.evaluate(() => localStorage.getItem('keydist:single-target-selection')))
-    .toContain('fixed-b');
+  await expect.poll(async () => page.evaluate(() => localStorage.getItem('keydist:single-target-selection'))).toContain('fixed-b');
 
   // リロードしても2件・id・選択とも保たれる。
   await page.reload();
@@ -686,17 +677,17 @@ test('タブ間の競合修正: 他タブの選択切り替えが割り込んで
   const ITERATIONS = 12;
 
   await context.addInitScript(() => {
-    localStorage.setItem('keydist:text-library', JSON.stringify({
-      version: 1,
-      texts: [
-        { id: 'u1', name: 'u1', text: 'one' },
-        { id: 'u2', name: 'u2', text: 'two' },
-      ],
-    }));
     localStorage.setItem(
-      'keydist:standalone-text-selection',
-      JSON.stringify({ version: 1, ref: { kind: 'user', id: 'u1' } }),
+      'keydist:text-library',
+      JSON.stringify({
+        version: 1,
+        texts: [
+          { id: 'u1', name: 'u1', text: 'one' },
+          { id: 'u2', name: 'u2', text: 'two' },
+        ],
+      }),
     );
+    localStorage.setItem('keydist:standalone-text-selection', JSON.stringify({ version: 1, ref: { kind: 'user', id: 'u1' } }));
   });
 
   const pageA = await context.newPage();
@@ -715,10 +706,11 @@ test('タブ間の競合修正: 他タブの選択切り替えが割り込んで
   await openTextChip(pageB);
   const pickerB = pageB.getByLabel('テキストを選ぶ', { exact: true });
 
-  const textLibraryOf = (page: typeof pageA) => page.evaluate(() => {
-    const raw = localStorage.getItem('keydist:text-library');
-    return raw === null ? [] : (JSON.parse(raw) as { texts: { id: string; text: string }[] }).texts;
-  });
+  const textLibraryOf = (page: typeof pageA) =>
+    page.evaluate(() => {
+      const raw = localStorage.getItem('keydist:text-library');
+      return raw === null ? [] : (JSON.parse(raw) as { texts: { id: string; text: string }[] }).texts;
+    });
 
   for (let i = 0; i < ITERATIONS; i++) {
     const value = `typed-in-B-for-u1-${i}`;
@@ -729,13 +721,10 @@ test('タブ間の競合修正: 他タブの選択切り替えが割り込んで
     await pageA.waitForTimeout(372 + (i % 13));
     await pickerA.selectOption({ label: 'u2' });
 
-    await expect
-      .poll(async () => (await textLibraryOf(pageB)).find((text) => text.id === 'u1')?.text, { timeout: 2000 })
-      .toEqual(value);
+    await expect.poll(async () => (await textLibraryOf(pageB)).find((text) => text.id === 'u1')?.text, { timeout: 2000 }).toEqual(value);
 
     const texts = await textLibraryOf(pageB);
-    expect(texts.find((text) => text.id === 'u2')?.text, `iteration ${i}: u2はBの入力(${value})で汚染されていないはず`)
-      .toEqual('two');
+    expect(texts.find((text) => text.id === 'u2')?.text, `iteration ${i}: u2はBの入力(${value})で汚染されていないはず`).toEqual('two');
 
     // 次の周回のため両タブの選択をu1へ戻す。
     await pickerB.selectOption({ label: 'u1' });
@@ -754,7 +743,9 @@ test('画面の文言に開発の内部（issue番号・Phase・ファイル名�
   const description = await page.locator('meta[name="description"]').getAttribute('content');
   expect(description).not.toMatch(/#\d|Phase|standalone|単体ページ|個別画面/);
   const body = page.locator('body');
-  await expect(body).not.toContainText(/#\d{3}|Phase|standalone|単体ページ|個別画面|\.ts\b|Vector lab|connections|N sensitivity|Setup comparison|baseline|言語判定: /);
+  await expect(body).not.toContainText(
+    /#\d{3}|Phase|standalone|単体ページ|個別画面|\.ts\b|Vector lab|connections|N sensitivity|Setup comparison|baseline|言語判定: /,
+  );
 });
 
 test('読み込みで操作可能になった瞬間から、テキストのチップは保存済みのテキストを表示している', async ({ page }) => {
@@ -762,14 +753,14 @@ test('読み込みで操作可能になった瞬間から、テキストのチ�
   // 差し替わってはならない。本文はチップを開いた時にだけ出るので、閉じた状態のチップについて
   // 「操作可能か・表示している名前」の移り変わりを記録し、操作可能な間に古い値が無いことを見る。
   await page.addInitScript(() => {
-    localStorage.setItem('keydist:text-library', JSON.stringify({
-      version: 1,
-      texts: [{ id: 'u1', name: 'u1', text: 'one' }],
-    }));
     localStorage.setItem(
-      'keydist:standalone-text-selection',
-      JSON.stringify({ version: 1, ref: { kind: 'user', id: 'u1' } }),
+      'keydist:text-library',
+      JSON.stringify({
+        version: 1,
+        texts: [{ id: 'u1', name: 'u1', text: 'one' }],
+      }),
     );
+    localStorage.setItem('keydist:standalone-text-selection', JSON.stringify({ version: 1, ref: { kind: 'user', id: 'u1' } }));
     const states: string[] = [];
     (window as unknown as { __chipStates: string[] }).__chipStates = states;
     const record = () => {
@@ -946,9 +937,7 @@ test('小窓の開閉は保存しない（再読み込みで閉じ、値は残�
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   const figure = await openFigureSettings(page, 'Keyboard Flow');
   await figure.getByLabel('紐の太さ', { exact: true }).selectOption('sqrt');
-  await expect
-    .poll(async () => page.evaluate(() => localStorage.getItem('keydist:standalone-analyzer-options')))
-    .toContain('sqrt');
+  await expect.poll(async () => page.evaluate(() => localStorage.getItem('keydist:standalone-analyzer-options'))).toContain('sqrt');
   await page.reload();
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   await expect(page.locator('[data-figure-settings-window]')).toHaveCount(0);
@@ -1037,9 +1026,7 @@ test('未選択の時に表示している既定の対象を押しても「選�
 
   await toggleTarget(page, 'layout:qwerty');
   await expect(page.getByRole('dialog', { name: '対象の選択' })).toHaveCount(0);
-  await expect
-    .poll(async () => page.evaluate(() => localStorage.getItem('keydist:single-target-selection')))
-    .toContain('qwerty');
+  await expect.poll(async () => page.evaluate(() => localStorage.getItem('keydist:single-target-selection'))).toContain('qwerty');
 });
 
 test('キーボードで開いて表示中のラジオにSpaceを押すと「選んだ」になって閉じる', async ({ page }) => {
@@ -1054,9 +1041,7 @@ test('キーボードで開いて表示中のラジオにSpaceを押すと「選
   await page.keyboard.press('Space');
   await expect(selection).toHaveCount(0);
   await expect(targetButton(page)).toBeFocused();
-  await expect
-    .poll(async () => page.evaluate(() => localStorage.getItem('keydist:single-target-selection')))
-    .toContain('qwerty');
+  await expect.poll(async () => page.evaluate(() => localStorage.getItem('keydist:single-target-selection'))).toContain('qwerty');
 });
 
 test('選ばれているラジオから矢印キーで動かしても閉じず、Enterでは確定して閉じる', async ({ page }) => {
@@ -1084,10 +1069,7 @@ test('条件を変えたSetupを選んでも、対象ボタンは名前だけで
         overrides: { global: { sfbHomeCost: false } },
       }),
     );
-    localStorage.setItem(
-      'keydist:single-target-selection',
-      JSON.stringify({ version: 1, target: { kind: 'setup', setupId: 'fixed-a' } }),
-    );
+    localStorage.setItem('keydist:single-target-selection', JSON.stringify({ version: 1, target: { kind: 'setup', setupId: 'fixed-a' } }));
   });
   await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
@@ -1217,8 +1199,12 @@ test('Relative vectors: 内向き・外向きの割合は、読み上げでも�
     expect(total).toBeCloseTo(100, 0);
   }
   // 既定の条件（QWERTY・既定のテキスト）での値と向きの対応。取り違えると落ちる
-  const names = async (hand: number) => section.locator('.roll-summary').nth(hand).getByRole('img')
-    .evaluateAll((els) => els.map((el) => el.getAttribute('aria-label')));
+  const names = async (hand: number) =>
+    section
+      .locator('.roll-summary')
+      .nth(hand)
+      .getByRole('img')
+      .evaluateAll((els) => els.map((el) => el.getAttribute('aria-label')));
   // 図の並びと同じ順（左手は外側が左、右手は内側が左）で読み上げる
   expect(await names(0)).toEqual(['外向き 56.8%', '内向き 43.2%']);
   expect(await names(1)).toEqual(['内向き 57.9%', '外向き 42.1%']);
@@ -1228,15 +1214,18 @@ test('Keyboard Flow: 個別画面の連打ラベルは、縮んだ図でも読�
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
-  const info = await page.locator('.flow-repeat-badge').first().evaluate((badge) => {
-    const svg = document.querySelector('.flow-keyboard-svg') as SVGSVGElement;
-    const zoom = svg.getBoundingClientRect().width / svg.viewBox.baseVal.width;
-    return {
-      zoom,
-      scale: Number(/scale\(([\d.]+)\)/.exec(badge.getAttribute('transform') ?? '')?.[1]),
-      cap: getComputedStyle(svg).getPropertyValue('--flow-repeat-label-max-scale'),
-    };
-  });
+  const info = await page
+    .locator('.flow-repeat-badge')
+    .first()
+    .evaluate((badge) => {
+      const svg = document.querySelector('.flow-keyboard-svg') as SVGSVGElement;
+      const zoom = svg.getBoundingClientRect().width / svg.viewBox.baseVal.width;
+      return {
+        zoom,
+        scale: Number(/scale\(([\d.]+)\)/.exec(badge.getAttribute('transform') ?? '')?.[1]),
+        cap: getComputedStyle(svg).getPropertyValue('--flow-repeat-label-max-scale'),
+      };
+    });
   // 文字が画面上で8pxになる拡大率（上限なし）。Workspaceのペインの上限（1.4）を超える
   expect(info.cap.trim()).toBe('');
   expect(info.scale).toBeCloseTo(8 / (6.2 * info.zoom), 1);
@@ -1245,10 +1234,7 @@ test('Keyboard Flow: 個別画面の連打ラベルは、縮んだ図でも読�
 
 test('読み込みが済むまで、保存済みと違う既定の対象名（QWERTY）を出さない', async ({ page }) => {
   await page.addInitScript(() => {
-    localStorage.setItem(
-      'keydist:single-target-selection',
-      JSON.stringify({ version: 1, target: { kind: 'layout', layoutId: 'dvorak' } }),
-    );
+    localStorage.setItem('keydist:single-target-selection', JSON.stringify({ version: 1, target: { kind: 'layout', layoutId: 'dvorak' } }));
     // ハイドレーション・読み込みの途中の描画も含め、対象ボタンと見出し（pane-frame の aria-label）に出た名前を全部覚えておく
     const seen: string[] = [];
     (window as unknown as { __seenTargetNames: string[] }).__seenTargetNames = seen;

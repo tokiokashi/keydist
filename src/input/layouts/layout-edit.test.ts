@@ -38,23 +38,35 @@ test('不備の無い入力には、保存できない不備も注意も無い',
 
 test('名前が空（空白だけを含む）なら、名前の欄の保存できない不備になる', () => {
   const problems = errorsOf({ ...DVORAK, name: '  ' });
-  assert.deepEqual(problems.map((problem) => problem.field), [{ kind: 'name' }]);
+  assert.deepEqual(
+    problems.map((problem) => problem.field),
+    [{ kind: 'name' }],
+  );
 });
 
 test('段が置けるキーの数を超えたら、その段の保存できない不備になる。どの段かは場所で分かる', () => {
   const problems = errorsOf({ ...DVORAK, rows: ['1234567890[]', "',.pyfgcrl/=x", 'aoeuidhtns-', ';qjkxbmwvz'] });
-  assert.deepEqual(problems.map((problem) => problem.field), [{ kind: 'row', index: 1 }]);
+  assert.deepEqual(
+    problems.map((problem) => problem.field),
+    [{ kind: 'row', index: 1 }],
+  );
   assert.match(problems[0]!.message, /上段が13文字/);
 });
 
 test('英字の段がすべて空なら、保存できない不備になる。数字段だけの入力も同じ', () => {
   const problems = errorsOf({ ...DVORAK, rows: ['1234567890', '', '', ''] });
-  assert.deepEqual(problems.map((problem) => problem.field), [{ kind: 'letter-rows' }]);
+  assert.deepEqual(
+    problems.map((problem) => problem.field),
+    [{ kind: 'letter-rows' }],
+  );
 });
 
 test('ホームキーが段に無いキーを指すなら、その指の保存できない不備になる', () => {
   const problems = errorsOf({ ...DVORAK, rows: ['', 'qwert', 'asdf', 'zxcv'], homeKeys: { RI: 'j', LI: 'f' } });
-  assert.deepEqual(problems.map((problem) => problem.field), [{ kind: 'home-key', finger: 'RI' }]);
+  assert.deepEqual(
+    problems.map((problem) => problem.field),
+    [{ kind: 'home-key', finger: 'RI' }],
+  );
   assert.match(problems[0]!.message, /右人差し指のホームキー「J」/);
 });
 
@@ -66,14 +78,20 @@ test('同じ文字が複数のキーに載っている時は、保存できる�
   const content: UserLayoutContent = { ...DVORAK, rows: ['', 'qwerty', 'asdfgq', 'zxcvb'] };
   assert.deepEqual(errorsOf(content), []);
   const warnings = warningsOf(content);
-  assert.deepEqual(warnings.map((warning) => warning.field), [{ kind: 'duplicate', char: 'q', keyIds: ['q', 'h'] }]);
+  assert.deepEqual(
+    warnings.map((warning) => warning.field),
+    [{ kind: 'duplicate', char: 'q', keyIds: ['q', 'h'] }],
+  );
   assert.equal(hasBlockingProblem(warnings), false);
 });
 
 test('選んだローマ字規則が無ければ、保存できる注意として知らせる。組み込みと自作の規則は見つかる', () => {
   assert.deepEqual(layoutProblems({ ...DVORAK, romaji: 'romaji-gone' }), [], '規則の一覧を渡さない時は調べない');
   const missing = layoutProblems({ ...DVORAK, romaji: 'romaji-gone' }, new Set(['romaji-a']));
-  assert.deepEqual(missing.map((problem) => [problem.severity, problem.field]), [['warning', { kind: 'romaji' }]]);
+  assert.deepEqual(
+    missing.map((problem) => [problem.severity, problem.field]),
+    [['warning', { kind: 'romaji' }]],
+  );
   assert.deepEqual(layoutProblems({ ...DVORAK, romaji: 'romaji-a' }, new Set(['romaji-a'])), []);
   assert.deepEqual(layoutProblems({ ...DVORAK, romaji: 'azik' }, new Set()), []);
 });
@@ -100,7 +118,10 @@ test('新規作成は、名前と段の前後の空白を落とし、空のホ�
     homeKeys: { LP: '', RI: 'h' },
   });
   assert.ok(result.ok);
-  assert.deepEqual(result.layouts.map((layout) => layout.id), ['user-old', 'user-new']);
+  assert.deepEqual(
+    result.layouts.map((layout) => layout.id),
+    ['user-old', 'user-new'],
+  );
   assert.deepEqual(result.layouts[1], {
     id: 'user-new',
     name: '新しい配列',
@@ -132,7 +153,13 @@ test('更新はidと並びを保ち、中身が同じなら同じ参照を返す
 
   const changed = updateUserLayout(layouts, 'user-a', { ...DVORAK, name: '改名', homeKeys: { RI: 'h' } });
   assert.ok(changed.ok);
-  assert.deepEqual(changed.layouts.map((layout) => [layout.id, layout.name]), [['user-a', '改名'], ['user-b', '別の配列']]);
+  assert.deepEqual(
+    changed.layouts.map((layout) => [layout.id, layout.name]),
+    [
+      ['user-a', '改名'],
+      ['user-b', '別の配列'],
+    ],
+  );
   assert.deepEqual(changed.layouts[0]!.homeKeys, { RI: 'h' });
   assert.equal(changed.layouts[1], layouts[1]);
 });
@@ -161,10 +188,18 @@ test('取り込み形式の配列は直せない。段の文字だけで保存�
 test('段の中の空白はキーに数えない。重複の注意にも、ホームキーの検査にも使わない', () => {
   const content: UserLayoutContent = { ...DVORAK, rows: ['', 'q  w', 'as df', 'zxcv'], homeKeys: {} };
   assert.deepEqual(layoutProblems(content), []);
-  assert.deepEqual(placedKeys(content.rows).filter((entry) => entry.row === 2).map((entry) => entry.keyId), ['a', 's', 'f', 'g']);
+  assert.deepEqual(
+    placedKeys(content.rows)
+      .filter((entry) => entry.row === 2)
+      .map((entry) => entry.keyId),
+    ['a', 's', 'f', 'g'],
+  );
   // 空白の位置のキー（ホーム段の3列目）は「段に無いキー」
   const problems = layoutProblems({ ...content, homeKeys: { LM: 'd' } });
-  assert.deepEqual(problems.map((problem) => problem.field), [{ kind: 'home-key', finger: 'LM' }]);
+  assert.deepEqual(
+    problems.map((problem) => problem.field),
+    [{ kind: 'home-key', finger: 'LM' }],
+  );
 });
 
 test('ホームキーの不備と重複の注意は、内部のidでなくキーの表示名で示す', () => {
@@ -219,7 +254,10 @@ test('layoutProblems: ホームキーをその指が担当しない割り当て�
 });
 
 test('layoutProblems: 一部の割り当てだけが担当しないキーは、その割り当ての名前だけを挙げる', () => {
-  const problems = homeWarnings({ ...DVORAK, homeKeys: { LI: 'h' } }, [namedAssignment(DEFAULT_FINGER_ASSIGNMENT, '甲'), namedAssignment(QWERTY_OPTIMIZED_FINGER_ASSIGNMENT, '乙')]);
+  const problems = homeWarnings({ ...DVORAK, homeKeys: { LI: 'h' } }, [
+    namedAssignment(DEFAULT_FINGER_ASSIGNMENT, '甲'),
+    namedAssignment(QWERTY_OPTIMIZED_FINGER_ASSIGNMENT, '乙'),
+  ]);
   assert.equal(problems.length, 1);
   assert.match(problems[0]!.message, /「甲」では/);
   assert.doesNotMatch(problems[0]!.message, /乙/);
@@ -240,5 +278,8 @@ test('layoutProblems: そのキーをどの指も担当しない割り当ては�
 
 test('layoutProblems: 段に無いキーは今ある不備だけを返し、担当の警告を重ねない', () => {
   const problems = layoutProblems({ ...DVORAK, rows: ['', '', 'aoeu', ''], homeKeys: { LI: 'h' } }, undefined, [DEFAULT_FINGER_ASSIGNMENT]);
-  assert.deepEqual(problems.filter((problem) => problem.field.kind === 'home-key').map((problem) => problem.severity), ['error']);
+  assert.deepEqual(
+    problems.filter((problem) => problem.field.kind === 'home-key').map((problem) => problem.severity),
+    ['error'],
+  );
 });

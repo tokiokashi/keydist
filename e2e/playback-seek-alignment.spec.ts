@@ -42,7 +42,9 @@ for (const [name, width, capped] of [
       await expect(feature(page).locator('[data-playback-position]')).toContainText(`${target} / ${total}`);
       const axis = (await feature(page).locator('[data-playback-rate-cursor-line]').boundingBox())!.x;
       const thumb = await thumbCenter(page);
-      console.log(`MEASURE viewport=${width} chart=${chartWidth.toFixed(1)} position=${target} thumb=${thumb.toFixed(2)} axis=${axis.toFixed(2)} diff=${(thumb - axis).toFixed(2)}`);
+      console.log(
+        `MEASURE viewport=${width} chart=${chartWidth.toFixed(1)} position=${target} thumb=${thumb.toFixed(2)} axis=${axis.toFixed(2)} diff=${(thumb - axis).toFixed(2)}`,
+      );
       expect(Math.abs(thumb - axis)).toBeLessThanOrEqual(2);
     }
   });

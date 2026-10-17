@@ -26,7 +26,10 @@ const NAMES: ConditionValueNames = {
   fingerAssignments: new Map([[CUSTOM_FINGER.id, CUSTOM_FINGER]]),
 };
 
-function groupsOf(overrides: SettingsCascadeOverrides, extra: { workspaces?: readonly Workspace[]; setups?: { id: string; displayName: string }[] } = {}) {
+function groupsOf(
+  overrides: SettingsCascadeOverrides,
+  extra: { workspaces?: readonly Workspace[]; setups?: { id: string; displayName: string }[] } = {},
+) {
   return cascadeOverrideGroups({ overrides, workspaces: extra.workspaces ?? [], setups: extra.setups ?? [], names: NAMES });
 }
 
@@ -44,14 +47,20 @@ test('条件の項目の定義にある全項目に、一覧に出す名前と�
 test('配列のレベルのローマ字規則は、配列の名前・項目の名前・規則の名前で出る', () => {
   const [group] = groupsOf({ layout: { 'user-a': { romajiRuleId: 'rule-a' } } });
   assert.equal(group!.title, '配列「自作A」');
-  assert.deepEqual(group!.entries.map((entry) => [entry.label, entry.valueText]), [['ローマ字規則', '自作の規則']]);
+  assert.deepEqual(
+    group!.entries.map((entry) => [entry.label, entry.valueText]),
+    [['ローマ字規則', '自作の規則']],
+  );
 });
 
 test('指の割当は、自作でも名前で出し、手持ちに無ければ見つからない旨を出す。idは出ない', () => {
   const [group] = groupsOf({ global: { fingerAssignmentId: 'finger-a' }, layout: { qwerty: { fingerAssignmentId: 'finger-gone' } } });
   assert.match(group!.entries[0]!.valueText, /^自作の運指/);
   const missing = groupsOf({ layout: { qwerty: { fingerAssignmentId: 'finger-gone', romajiRuleId: 'rule-gone', defaultShapeId: 'shape-gone' } } })[0]!;
-  assert.deepEqual(missing.entries.map((entry) => entry.valueText), ['（見つからないローマ字規則）', '（見つからない指の割当）', '（見つからない物理配列）']);
+  assert.deepEqual(
+    missing.entries.map((entry) => entry.valueText),
+    ['（見つからないローマ字規則）', '（見つからない指の割当）', '（見つからない物理配列）'],
+  );
   assert.doesNotMatch(JSON.stringify(missing), /gone/);
 });
 
@@ -68,15 +77,37 @@ test('適用範囲はカスケードの順に並び、継承する値と同じ�
     },
     { workspaces: [workspace], setups: [{ id: 's-1', displayName: 'Setup A' }] },
   );
-  assert.deepEqual(groups.map((group) => group.key), ['global', 'workspace:ws-1', 'shape:row-staggered', 'inputMethod:romaji', 'layout:qwerty', 'setup:s-1']);
-  assert.deepEqual(groups.map((group) => group.title), ['全体', 'ワークスペース', `物理配列「${SHAPES.get('row-staggered')!.name}」`, 'ローマ字入力', `配列「${LAYOUT_BY_ID.get('qwerty')!.name}」`, 'Setup A']);
+  assert.deepEqual(
+    groups.map((group) => group.key),
+    ['global', 'workspace:ws-1', 'shape:row-staggered', 'inputMethod:romaji', 'layout:qwerty', 'setup:s-1'],
+  );
+  assert.deepEqual(
+    groups.map((group) => group.title),
+    [
+      '全体',
+      'ワークスペース',
+      `物理配列「${SHAPES.get('row-staggered')!.name}」`,
+      'ローマ字入力',
+      `配列「${LAYOUT_BY_ID.get('qwerty')!.name}」`,
+      'Setup A',
+    ],
+  );
   assert.equal(groups[0]!.entries[0]!.valueText, '3');
-  assert.deepEqual(groups.map((group) => group.entries[0]!.unused), [false, false, true, true, false, false]);
+  assert.deepEqual(
+    groups.map((group) => group.entries[0]!.unused),
+    [false, false, true, true, false, false],
+  );
 });
 
 test('項目が置けないレベルの値は、使われない印を付けて出す', () => {
   const [group] = groupsOf({ shape: { 'row-staggered': { windowSize: 5, preferOppositeThumb: true } } });
-  assert.deepEqual(group!.entries.map((entry) => [entry.itemId, entry.unused]), [['windowSize', true], ['preferOppositeThumb', false]]);
+  assert.deepEqual(
+    group!.entries.map((entry) => [entry.itemId, entry.unused]),
+    [
+      ['windowSize', true],
+      ['preferOppositeThumb', false],
+    ],
+  );
 });
 
 test('同名のWorkspaceは番号で区別する', () => {
@@ -86,7 +117,10 @@ test('同名のWorkspaceは番号で区別する', () => {
     { ...base, id: 'b', conditions: { windowSize: 5 } },
     { ...base, id: 'c', name: '別', conditions: { windowSize: 6 } },
   ];
-  assert.deepEqual(groupsOf(emptyCascadeOverrides(), { workspaces }).map((group) => group.title), ['W（1）', 'W（2）', '別']);
+  assert.deepEqual(
+    groupsOf(emptyCascadeOverrides(), { workspaces }).map((group) => group.title),
+    ['W（1）', 'W（2）', '別'],
+  );
 });
 
 test('手持ちに無い配列・物理配列・Setupは見つからない旨で出し、複数あれば番号で区別する。idは出ない', () => {
@@ -98,8 +132,14 @@ test('手持ちに無い配列・物理配列・Setupは見つからない旨で
     },
     { setups: [] },
   );
-  assert.deepEqual(groups.map((group) => group.title), ['（見つからない物理配列）', `配列「${LAYOUT_BY_ID.get('qwerty')!.name}」`, '（見つからない配列1）', '（見つからない配列2）', '（削除されたSetup）']);
-  assert.deepEqual(groups.map((group) => group.missingSetup), [false, false, false, false, true]);
+  assert.deepEqual(
+    groups.map((group) => group.title),
+    ['（見つからない物理配列）', `配列「${LAYOUT_BY_ID.get('qwerty')!.name}」`, '（見つからない配列1）', '（見つからない配列2）', '（削除されたSetup）'],
+  );
+  assert.deepEqual(
+    groups.map((group) => group.missingSetup),
+    [false, false, false, false, true],
+  );
   assert.doesNotMatch(groups.map((group) => group.title).join(), /gone|shape-x/);
 });
 
@@ -129,7 +169,10 @@ test('一覧の適用範囲の情報で変更を戻すと一覧から消え、�
   const workspace: Workspace = { ...createWorkspace(initialWorkspaceLibrary(), () => 'ws-1', 'W').library[0]!, conditions: { windowSize: 4 } };
   const assets = assetsWith({ layout: { 'user-a': { romajiRuleId: 'rule-a' } } }, [workspace]);
   const listOf = (current: KeydistAssets) => groupsOf(current.setupLibrary.overrides, { workspaces: current.workspaces });
-  assert.deepEqual(listOf(assets).map((group) => group.key), ['workspace:ws-1', 'layout:user-a']);
+  assert.deepEqual(
+    listOf(assets).map((group) => group.key),
+    ['workspace:ws-1', 'layout:user-a'],
+  );
 
   let history = emptyCommandHistory<KeydistAssets>();
   let current = assets;
@@ -145,5 +188,8 @@ test('一覧の適用範囲の情報で変更を戻すと一覧から消え、�
     history = step.history;
     current = step.assets;
   }
-  assert.deepEqual(listOf(current).map((group) => group.key), ['workspace:ws-1', 'layout:user-a']);
+  assert.deepEqual(
+    listOf(current).map((group) => group.key),
+    ['workspace:ws-1', 'layout:user-a'],
+  );
 });

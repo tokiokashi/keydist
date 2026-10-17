@@ -138,7 +138,13 @@ export function gridWithMovedPane(grid: WorkspaceGrid, paneId: string, dx: numbe
   const x = Math.min(GRID_MAX_COLS - item.w, Math.max(0, item.x + dx));
   const y = Math.max(0, item.y + dy);
   if (x === item.x && y === item.y) return grid;
-  return compactIf(compact, resolveOverlapsKeeping(grid.map((candidate) => (candidate.id === paneId ? { ...candidate, x, y } : candidate)), paneId));
+  return compactIf(
+    compact,
+    resolveOverlapsKeeping(
+      grid.map((candidate) => (candidate.id === paneId ? { ...candidate, x, y } : candidate)),
+      paneId,
+    ),
+  );
 }
 
 /**
@@ -152,7 +158,13 @@ export function gridWithResizedPane(grid: WorkspaceGrid, paneId: string, dw: num
   const w = Math.min(GRID_MAX_COLS - item.x, Math.max(Math.min(min.w, item.w), item.w + dw));
   const h = Math.max(Math.min(min.h, item.h), item.h + dh);
   if (w === item.w && h === item.h) return grid;
-  return compactIf(compact, resolveOverlapsKeeping(grid.map((candidate) => (candidate.id === paneId ? { ...candidate, w, h } : candidate)), paneId));
+  return compactIf(
+    compact,
+    resolveOverlapsKeeping(
+      grid.map((candidate) => (candidate.id === paneId ? { ...candidate, w, h } : candidate)),
+      paneId,
+    ),
+  );
 }
 
 /**
@@ -160,12 +172,7 @@ export function gridWithResizedPane(grid: WorkspaceGrid, paneId: string, dw: num
  * 幅が範囲に収まらない大きさは、範囲の左端に置く。範囲に空きが無ければ、並びの下の範囲の左端に置く
  * （縦は際限が無いので、必ず置ける）。
  */
-function firstFreeSlot(
-  grid: WorkspaceGrid,
-  size: GridSize,
-  fromY: number,
-  range: GridColumnRange,
-): { readonly x: number; readonly y: number } {
+function firstFreeSlot(grid: WorkspaceGrid, size: GridSize, fromY: number, range: GridColumnRange): { readonly x: number; readonly y: number } {
   const bottom = grid.reduce((max, item) => Math.max(max, item.y + item.h), 0);
   const start = Math.max(0, Math.min(range.start, GRID_MAX_COLS - size.w));
   const last = Math.max(start, Math.min(range.end - size.w, GRID_MAX_COLS - size.w));
@@ -269,7 +276,10 @@ export function gridWithPaneNextTo(
  */
 export function gridWithoutPane(grid: WorkspaceGrid, paneId: string, compact: boolean): WorkspaceGrid {
   if (!grid.some((item) => item.id === paneId)) return grid;
-  return compactIf(compact, grid.filter((item) => item.id !== paneId));
+  return compactIf(
+    compact,
+    grid.filter((item) => item.id !== paneId),
+  );
 }
 
 /** ペインのidを画面の読み順（上→下・左→右）で返す。縦積みの並びにも使う。 */

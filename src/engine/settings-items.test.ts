@@ -68,19 +68,9 @@ test('上書きが無ければ全項目が現行アプリの既定値で解決�
 });
 
 test('windowSize/sfbHomeCostはglobal/layout/setupのみ許可（shape/inputMethodは拒否）', () => {
-  const toShape = setSettingsOverride(
-    EMPTY_SETTINGS_OVERRIDES,
-    { kind: 'shape', shapeId: 'row-staggered' },
-    'windowSize',
-    6,
-  );
+  const toShape = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'shape', shapeId: 'row-staggered' }, 'windowSize', 6);
   assert.equal(toShape.ok, false);
-  const toLayout = setSettingsOverride(
-    EMPTY_SETTINGS_OVERRIDES,
-    { kind: 'layout', layoutId: asuka.id },
-    'windowSize',
-    6,
-  );
+  const toLayout = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'layout', layoutId: asuka.id }, 'windowSize', 6);
   assert.ok(toLayout.ok);
 });
 
@@ -95,17 +85,9 @@ test('romajiRuleId: 既定値は配列ごとに違う（大西配列だけoonish
 });
 
 test('romajiRuleId: 打ち方のレベルで「ローマ字入力は全部Xにする」ができる（推奨の無い配列）', () => {
-  const toInputMethod = setSettingsOverride(
-    EMPTY_SETTINGS_OVERRIDES,
-    { kind: 'inputMethod', inputMethod: 'romaji' },
-    'romajiRuleId',
-    'azik',
-  );
+  const toInputMethod = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'inputMethod', inputMethod: 'romaji' }, 'romajiRuleId', 'azik');
   assert.ok(toInputMethod.ok);
-  const resolved = resolveSettings(
-    toInputMethod.overrides,
-    contextFor(qwertyJa, { inputMethod: 'romaji' }),
-  );
+  const resolved = resolveSettings(toInputMethod.overrides, contextFor(qwertyJa, { inputMethod: 'romaji' }));
   assert.equal(resolved.romajiRuleId.value, 'azik'); // 全体の既定（kunrei）より強い
   assert.deepEqual(resolved.romajiRuleId.origin, { kind: 'inputMethod', inputMethod: 'romaji' });
 });
@@ -125,7 +107,10 @@ test('romajiRuleId: 全体の値は推奨の無い配列に効き、出どころ
 
 test('romajiRuleId: 推奨を持つ配列（大西配列・TK音直入力法）は全体を変えても推奨のまま。負けた全体は理由に残る', () => {
   const tk = findLayout(LAYOUTS_JA, 'oonishi-custom');
-  for (const [layout, expected] of [[oonishiJa, 'oonishi'], [tk, 'kunrei']] as const) {
+  for (const [layout, expected] of [
+    [oonishiJa, 'oonishi'],
+    [tk, 'kunrei'],
+  ] as const) {
     const resolved = resolveSettings(withGlobalRomaji('azik'), contextFor(layout, { inputMethod: 'romaji' }));
     assert.equal(resolved.romajiRuleId.value, expected, layout.id);
     // 推奨は利用者が変えた値ではないので、出どころは既定値のまま
@@ -142,12 +127,7 @@ test('romajiRuleId: 全体の値が推奨と同じなら、負けた値は無い
 });
 
 test('romajiRuleId: 配列・Setupの上書きは推奨より強い', () => {
-  const layoutOverride = setSettingsOverride(
-    withGlobalRomaji('azik'),
-    { kind: 'layout', layoutId: 'oonishi' },
-    'romajiRuleId',
-    'qwerty',
-  );
+  const layoutOverride = setSettingsOverride(withGlobalRomaji('azik'), { kind: 'layout', layoutId: 'oonishi' }, 'romajiRuleId', 'qwerty');
   assert.ok(layoutOverride.ok);
   const byLayout = resolveSettings(layoutOverride.overrides, contextFor(oonishiJa, { inputMethod: 'romaji' }));
   assert.equal(byLayout.romajiRuleId.value, 'qwerty');
@@ -177,19 +157,10 @@ test('romajiRuleId: 打ち方がromaji以外（既定値のdirect）ではnot-ap
 // 打ち方（inputMethod）で決まるべき、という判断をここで固定する。
 test('romajiRuleId: 同じ配列でも打ち方がromajiでなければnot-applicable（配列ではなく打ち方で決まる）', () => {
   // qwertyJaはromajiTableを持つ配列だが、direct/kana-directで使われている場面では効かない。
-  assert.equal(
-    resolveSettings(EMPTY_SETTINGS_OVERRIDES, contextFor(qwertyJa, { inputMethod: 'direct' })).romajiRuleId.applicable,
-    false,
-  );
-  assert.equal(
-    resolveSettings(EMPTY_SETTINGS_OVERRIDES, contextFor(qwertyJa, { inputMethod: 'kana-direct' })).romajiRuleId.applicable,
-    false,
-  );
+  assert.equal(resolveSettings(EMPTY_SETTINGS_OVERRIDES, contextFor(qwertyJa, { inputMethod: 'direct' })).romajiRuleId.applicable, false);
+  assert.equal(resolveSettings(EMPTY_SETTINGS_OVERRIDES, contextFor(qwertyJa, { inputMethod: 'kana-direct' })).romajiRuleId.applicable, false);
   // 同じLayoutオブジェクトでも、打ち方がromajiなら効く。
-  assert.equal(
-    resolveSettings(EMPTY_SETTINGS_OVERRIDES, contextFor(qwertyJa, { inputMethod: 'romaji' })).romajiRuleId.applicable,
-    true,
-  );
+  assert.equal(resolveSettings(EMPTY_SETTINGS_OVERRIDES, contextFor(qwertyJa, { inputMethod: 'romaji' })).romajiRuleId.applicable, true);
 });
 
 test('fingerAssignmentId: 既定は物理配列から決まり（JIS系物理配列はjis-default）、shape/layout/setupで上書きできる', () => {
@@ -208,12 +179,7 @@ test('fingerAssignmentId: 既定は物理配列から決まり（JIS系物理配
   );
   assert.equal(toInputMethod.ok, false, 'inputMethodレベルへの書き込みは許可されていない');
 
-  const toSetup = setSettingsOverride(
-    EMPTY_SETTINGS_OVERRIDES,
-    { kind: 'setup', setupId: 'setup-1' },
-    'fingerAssignmentId',
-    'jis-default',
-  );
+  const toSetup = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'setup', setupId: 'setup-1' }, 'fingerAssignmentId', 'jis-default');
   assert.ok(toSetup.ok);
   if (!toSetup.ok) return;
   const resolved = resolveSettings(toSetup.overrides, contextFor(asuka, { shapeId: 'row-staggered', setupId: 'setup-1' }));
@@ -299,22 +265,10 @@ test('上書き無しの解決結果は、全組み込み配列でfixtureに記�
     assert.equal(resolved.windowSize.value, scenario.conditions.windowSize, scenario.id);
     assert.equal(resolved.sfbHomeCost.value, scenario.conditions.sfbHomeCost, scenario.id);
     assert.equal(resolved.preferOppositeThumb.value, scenario.conditions.preferOppositeThumb, scenario.id);
-    assert.deepEqual(
-      resolved.triggerRealizationPolicy.value,
-      scenario.conditions.triggerRealizationPolicy,
-      scenario.id,
-    );
-    assert.deepEqual(
-      resolved.actionRealizationPolicy.value,
-      scenario.conditions.actionRealizationPolicy,
-      scenario.id,
-    );
+    assert.deepEqual(resolved.triggerRealizationPolicy.value, scenario.conditions.triggerRealizationPolicy, scenario.id);
+    assert.deepEqual(resolved.actionRealizationPolicy.value, scenario.conditions.actionRealizationPolicy, scenario.id);
     assert.deepEqual(resolved.chainInterpretation.value, scenario.conditions.chainInterpretation, scenario.id);
-    assert.deepEqual(
-      resolved.arpeggioInterpretation.value,
-      scenario.conditions.arpeggioInterpretation,
-      scenario.id,
-    );
+    assert.deepEqual(resolved.arpeggioInterpretation.value, scenario.conditions.arpeggioInterpretation, scenario.id);
     // romajiRuleIdはローマ字入力の配列のみ厳密照合する（かな直接・英字はnot-applicableなので対象外）。
     if (scenario.conditions.romajiRuleId !== null) {
       assert.equal(resolved.romajiRuleId.value, scenario.conditions.romajiRuleId, scenario.id);
@@ -349,22 +303,12 @@ test('defaultShapeId: globalレベルへの書き込みは許可される', () =
 });
 
 test('defaultShapeId: shapeレベルへの書き込みは拒否される（GLOBAL_ONLY）', () => {
-  const written = setSettingsOverride(
-    EMPTY_SETTINGS_OVERRIDES,
-    { kind: 'shape', shapeId: 'row-staggered' },
-    'defaultShapeId',
-    'ortholinear',
-  );
+  const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'shape', shapeId: 'row-staggered' }, 'defaultShapeId', 'ortholinear');
   assert.equal(written.ok, false);
 });
 
 test('defaultShapeId: layoutレベルへの書き込みは許可され、その配列だけ全体の値に勝つ', () => {
-  const written = setSettingsOverride(
-    EMPTY_SETTINGS_OVERRIDES,
-    { kind: 'layout', layoutId: colemakEn.id },
-    'defaultShapeId',
-    'ortholinear',
-  );
+  const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'layout', layoutId: colemakEn.id }, 'defaultShapeId', 'ortholinear');
   assert.equal(written.ok, true);
   if (!written.ok) return;
   const withGlobal = setSettingsOverride(written.overrides, { kind: 'global' }, 'defaultShapeId', 'column-staggered');
@@ -379,19 +323,17 @@ test('defaultShapeId: layoutレベルへの書き込みは許可され、その�
 });
 
 test('defaultShapeId: 配列対象の解決は、配列の上書きが決めた物理配列を使う（別の配列だけが全体の値に従う）', () => {
-  const written = setSettingsOverride(
-    EMPTY_SETTINGS_OVERRIDES,
-    { kind: 'layout', layoutId: 'qwerty' },
-    'defaultShapeId',
-    'ortholinear',
-  );
+  const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'layout', layoutId: 'qwerty' }, 'defaultShapeId', 'ortholinear');
   assert.ok(written.ok);
   if (!written.ok) return;
   const withGlobal = setSettingsOverride(written.overrides, { kind: 'global' }, 'defaultShapeId', 'column-staggered');
   assert.ok(withGlobal.ok);
   if (!withGlobal.ok) return;
   const catalog = {
-    layouts: new Map([[qwertyJa.id, qwertyJa], [colemakEn.id, colemakEn]]),
+    layouts: new Map([
+      [qwertyJa.id, qwertyJa],
+      [colemakEn.id, colemakEn],
+    ]),
     shapes: new Map(Object.entries(PHYSICAL_SHAPES)),
   };
   const shapeOf = (layoutId: string) => {
@@ -418,12 +360,7 @@ test('resolveDefaultShapeId: 優先は 配列の上書き ＞ 全体の値 ＞ �
 });
 
 test('defaultShapeId: setupレベルへの書き込みは拒否される（GLOBAL_ONLY）', () => {
-  const written = setSettingsOverride(
-    EMPTY_SETTINGS_OVERRIDES,
-    { kind: 'setup', setupId: 'some-setup' },
-    'defaultShapeId',
-    'ortholinear',
-  );
+  const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'setup', setupId: 'some-setup' }, 'defaultShapeId', 'ortholinear');
   assert.equal(written.ok, false);
 });
 
@@ -441,21 +378,18 @@ test('defaultShapeId: idがまだ無いSetupのプレビューでも効かず、
   const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'defaultShapeId', 'ortholinear');
   assert.ok(written.ok);
   if (!written.ok) return;
-  const resolved = resolveSettings(
-    written.overrides,
-    contextFor(colemakEn, { shapeId: 'row-staggered', targetKind: 'setup' }),
-  );
+  const resolved = resolveSettings(written.overrides, contextFor(colemakEn, { shapeId: 'row-staggered', targetKind: 'setup' }));
   assert.equal(resolved.defaultShapeId.applicable, false);
   // 効かない旨（not-applicable）は残るが、物理配列を読み替えるfallbackは起きない。
-  assert.deepEqual(resolved.defaultShapeId.diagnostics.map((d) => d.kind), ['not-applicable']);
+  assert.deepEqual(
+    resolved.defaultShapeId.diagnostics.map((d) => d.kind),
+    ['not-applicable'],
+  );
   assert.equal(resolved.defaultShapeId.value, 'ortholinear');
 });
 
 test('defaultShapeId: 値と実際に使われた物理配列（context.shapeId）が一致すればvalidateは素通りする', () => {
-  const resolved = resolveSettings(
-    EMPTY_SETTINGS_OVERRIDES,
-    contextFor(colemakEn, { shapeId: 'row-staggered' }),
-  );
+  const resolved = resolveSettings(EMPTY_SETTINGS_OVERRIDES, contextFor(colemakEn, { shapeId: 'row-staggered' }));
   assert.equal(resolved.defaultShapeId.diagnostics.length, 0);
 });
 
@@ -480,10 +414,7 @@ test('defaultShapeId: Setup対象ではSetup自身のshapeIdと値が食い違�
   if (!written.ok) return;
   // Setup自身はrow-staggeredを使うが、グローバルのdefaultShapeIdはortholinear
   // （Setup対象では無関係な値なので、突き合わせて誤診断を出してはいけない）。
-  const resolved = resolveSettings(
-    written.overrides,
-    contextFor(colemakEn, { shapeId: 'row-staggered', setupId: 'some-setup' }),
-  );
+  const resolved = resolveSettings(written.overrides, contextFor(colemakEn, { shapeId: 'row-staggered', setupId: 'some-setup' }));
   // Setup対象では項目自体が「効かない」ので診断は1件（not-applicable）だけになり、
   // 値の食い違いを理由にしたfallback診断（`validate`由来）は乗らない。
   assert.equal(resolved.defaultShapeId.applicable, false);

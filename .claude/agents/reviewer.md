@@ -118,7 +118,7 @@ PR本文と差分の文章（コミットメッセージ・コードコメント
 ## 必ず流す
 
 ```bash
-npm run typecheck && npm test && npm run build
+npm run lint && npm run typecheck && npm test && npm run build
 ```
 
 「CI が緑だった」で済ませない。**自分の手元で通してから**結果を書く。

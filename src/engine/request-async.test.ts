@@ -85,7 +85,10 @@ test('新しい依頼が来たら、計算中の依頼へ打ち切りを伝え�
   deferred.calls[1]!.resolve('value-b');
   deferred.calls[0]!.resolve('value-a');
   await Promise.resolve();
-  assert.deepEqual(states.filter((s) => s.status === 'ready'), [{ status: 'ready', value: 'value-b' }]);
+  assert.deepEqual(
+    states.filter((s) => s.status === 'ready'),
+    [{ status: 'ready', value: 'value-b' }],
+  );
 });
 
 test('計算中に新しい依頼を出すと、直前の結果をstaleで持ち続ける', async () => {
@@ -136,7 +139,10 @@ test('unsubscribeは計算中の依頼を打ち切り、以後は何も届けな
 
   deferred.calls[0]!.resolve('value-a');
   await Promise.resolve();
-  assert.equal(states.some((s) => s.status === 'ready'), false);
+  assert.equal(
+    states.some((s) => s.status === 'ready'),
+    false,
+  );
 });
 
 test('集合対象の依頼でも同じく、Promiseの結果を届け、古い依頼は打ち切る', async () => {
@@ -157,5 +163,8 @@ test('集合対象の依頼でも同じく、Promiseの結果を届け、古い�
   pending[0]!.resolve('old');
   pending[1]!.resolve('new');
   await Promise.resolve();
-  assert.deepEqual(states.filter((s) => s.status === 'ready'), [{ status: 'ready', value: 'new' }]);
+  assert.deepEqual(
+    states.filter((s) => s.status === 'ready'),
+    [{ status: 'ready', value: 'new' }],
+  );
 });

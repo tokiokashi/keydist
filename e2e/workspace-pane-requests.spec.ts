@@ -27,25 +27,28 @@ const groupOf = (id: string, layoutId: string) => ({ id, target: { single: layou
 async function openSeeded(page: Page, workspace: unknown): Promise<void> {
   // 保存の間引きが切れるまでの時間を、実時間で待たずに `advance` で進める
   await page.clock.install();
-  await page.addInitScript(({ key, value }) => {
-    if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 4, workspaces: [value] }));
-    const log = { requests: 0, stale: [] as number[] };
-    (window as unknown as { __log: typeof log }).__log = log;
-    const Original = window.Worker;
-    window.Worker = class extends Original {
-      override postMessage(message: unknown, ...rest: unknown[]) {
-        log.requests += 1;
-        return (super.postMessage as (...args: unknown[]) => void)(message, ...rest);
-      }
-    } as typeof Worker;
-    new MutationObserver((records) => {
-      for (const record of records) {
-        const element = record.target as Element;
-        if (element.getAttribute('data-pane-status') !== 'stale') continue;
-        log.stale.push([...document.querySelectorAll('.pane-frame')].indexOf(element));
-      }
-    }).observe(document, { subtree: true, attributes: true, attributeFilter: ['data-pane-status'] });
-  }, { key: WORKSPACES_KEY, value: workspace });
+  await page.addInitScript(
+    ({ key, value }) => {
+      if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 4, workspaces: [value] }));
+      const log = { requests: 0, stale: [] as number[] };
+      (window as unknown as { __log: typeof log }).__log = log;
+      const Original = window.Worker;
+      window.Worker = class extends Original {
+        override postMessage(message: unknown, ...rest: unknown[]) {
+          log.requests += 1;
+          return (super.postMessage as (...args: unknown[]) => void)(message, ...rest);
+        }
+      } as typeof Worker;
+      new MutationObserver((records) => {
+        for (const record of records) {
+          const element = record.target as Element;
+          if (element.getAttribute('data-pane-status') !== 'stale') continue;
+          log.stale.push([...document.querySelectorAll('.pane-frame')].indexOf(element));
+        }
+      }).observe(document, { subtree: true, attributes: true, attributeFilter: ['data-pane-status'] });
+    },
+    { key: WORKSPACES_KEY, value: workspace },
+  );
   await page.goto('/workspace/requests');
   await waitForHydration(page);
 }
@@ -53,14 +56,16 @@ async function openSeeded(page: Page, workspace: unknown): Promise<void> {
 /** 開いた直後の計算（見えていないペインのぶんも含む）が済むまで待つ。依頼の数が600ms動かなければ済んだとみなす。 */
 async function waitForInitialCompute(page: Page): Promise<void> {
   let previous = -1;
-  await expect.poll(async () => {
-    const current = await page.evaluate(() => (window as unknown as { __log: { requests: number } }).__log.requests);
-    const settled = current === previous;
-    previous = current;
-    // 依頼が出ない時間そのものが条件（600ms動かなければ済んだとみなす）なので、実時間で待つ
-    if (!settled) await page.waitForTimeout(600);
-    return settled;
-  }).toBe(true);
+  await expect
+    .poll(async () => {
+      const current = await page.evaluate(() => (window as unknown as { __log: { requests: number } }).__log.requests);
+      const settled = current === previous;
+      previous = current;
+      // 依頼が出ない時間そのものが条件（600ms動かなければ済んだとみなす）なので、実時間で待つ
+      if (!settled) await page.waitForTimeout(600);
+      return settled;
+    })
+    .toBe(true);
 }
 
 async function resetLog(page: Page): Promise<void> {
@@ -183,7 +188,10 @@ test('計算中に別のペインの大きさを変える（資産の保存）�
     ...WORKSPACE_BASE,
     groups: [groupOf('g1', 'qwerty')],
     panes: [follow('a', 'g1'), fixed('b', 'dvorak')],
-    grid: [{ id: 'a', x: 0, y: 0, w: 12, h: 16 }, { id: 'b', x: 12, y: 0, w: 12, h: 16 }],
+    grid: [
+      { id: 'a', x: 0, y: 0, w: 12, h: 16 },
+      { id: 'b', x: 12, y: 0, w: 12, h: 16 },
+    ],
   });
   await expect(page.locator('.pane-frame[data-pane-status="ready"]')).toHaveCount(2, { timeout: 15_000 });
 

@@ -62,7 +62,10 @@ test('コンボ定義の配列図は、同じ組・同じ押し方のコンボ�
   const first = comboRows(input.layout, undefined)[0]!;
   assert.deepEqual(first, { trigger: '語彙拡張: d + s + t', output: 'desita' });
   // 図に載るのは、トリガーと押す先のキーが決まっているコンボだけ。表は73件すべてを載せる
-  assert.equal(items.reduce((total, item) => total + item.outputs.size, 0), 41);
+  assert.equal(
+    items.reduce((total, item) => total + item.outputs.size, 0),
+    41,
+  );
 });
 
 test('コンボ枠に計上すると宣言された面は、面ごとに表の1行と図の1枚になる。層に計上する面は載らない', () => {
@@ -89,7 +92,10 @@ test('コンボも修飾も持たない配列では、どちらも空', () => {
 
 test('修飾のレイヤー: 表示区分が修飾のレイヤーだけが、押し方と出る文字つきで並ぶ', () => {
   const qwerty = modifierRows(measure('qwerty', 'en').input.layout);
-  assert.deepEqual(qwerty.map((row) => [row.id, row.label, row.trigger]), [['layer:Shift', 'Shift', 'Shift']]);
+  assert.deepEqual(
+    qwerty.map((row) => [row.id, row.label, row.trigger]),
+    [['layer:Shift', 'Shift', 'Shift']],
+  );
   assert.ok(qwerty[0]!.outputs.startsWith('! / @ / #'));
 
   const naginata = modifierRows(measure('naginata-v18', 'ja').input.layout);
@@ -100,5 +106,8 @@ test('修飾のレイヤー: 表示区分が修飾のレイヤーだけが、押
   const outputs = dakuon.outputs.split(' / ');
   assert.equal(new Set(outputs).size, outputs.length);
   // 単打・SandSなど、修飾でないレイヤーは載らない
-  assert.equal(naginata.some((row) => row.id === 'single' || row.id === 'layer:SandS'), false);
+  assert.equal(
+    naginata.some((row) => row.id === 'single' || row.id === 'layer:SandS'),
+    false,
+  );
 });

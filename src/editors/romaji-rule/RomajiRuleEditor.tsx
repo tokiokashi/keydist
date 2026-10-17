@@ -1,12 +1,5 @@
 import { useMemo, useState } from 'react';
-import {
-  isKanaKey,
-  newRomajiRuleId,
-  spellingRows,
-  withSpelling,
-  type RomajiRuleContent,
-  type SpellingRow,
-} from '#input/romaji/rule-edit.ts';
+import { isKanaKey, newRomajiRuleId, spellingRows, withSpelling, type RomajiRuleContent, type SpellingRow } from '#input/romaji/rule-edit.ts';
 import { ROMAJI_RULES, type BuiltinRomajiRuleId, type UserRomajiRule } from '#input/romaji/rules.ts';
 import { ROMAJI_RULE_LABEL } from './label.ts';
 import './romaji-rule.css';
@@ -35,7 +28,10 @@ export interface RomajiRuleEditorProps {
 const SPELLING_PROBLEM = '綴りは、空白を含まず、キーボードにあるキーだけで書いてください';
 
 /** 揺れる箇所の一覧の1行。入力中の綴りは行の中だけで持ち、確定した時に親へ渡す。 */
-function SpellingRowView({ row, onCommit }: {
+function SpellingRowView({
+  row,
+  onCommit,
+}: {
   readonly row: SpellingRow;
   /** 確定した綴りを渡す。置けない綴りなら`false`を返す。 */
   readonly onCommit: (kana: string, roman: string) => boolean;
@@ -64,14 +60,22 @@ function SpellingRowView({ row, onCommit }: {
           value={draft ?? row.current}
           onChange={(event) => setDraft(event.currentTarget.value)}
           onBlur={commit}
-          onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') event.currentTarget.blur();
+          }}
         />
         {row.alternatives.length === 0 ? null : (
           <datalist id={listId}>
-            {row.alternatives.map((option) => <option key={option} value={option} />)}
+            {row.alternatives.map((option) => (
+              <option key={option} value={option} />
+            ))}
           </datalist>
         )}
-        {invalid ? <span className="romaji-rule-invalid" role="alert">{SPELLING_PROBLEM}</span> : null}
+        {invalid ? (
+          <span className="romaji-rule-invalid" role="alert">
+            {SPELLING_PROBLEM}
+          </span>
+        ) : null}
       </td>
       <td className="romaji-rule-mark">{row.differs ? '基底と違う' : ''}</td>
     </tr>
@@ -101,8 +105,14 @@ function AddSpelling({ onAdd }: { readonly onAdd: (kana: string, roman: string) 
         綴り
         <input type="text" value={roman} placeholder="kya" spellCheck={false} onChange={(event) => setRoman(event.currentTarget.value)} />
       </label>
-      <button type="button" data-romaji-rule-add-submit disabled={kana.trim() === '' || roman.trim() === ''} onClick={add}>一覧に足す</button>
-      {problem === undefined ? null : <span className="romaji-rule-invalid" role="alert">{problem}</span>}
+      <button type="button" data-romaji-rule-add-submit disabled={kana.trim() === '' || roman.trim() === ''} onClick={add}>
+        一覧に足す
+      </button>
+      {problem === undefined ? null : (
+        <span className="romaji-rule-invalid" role="alert">
+          {problem}
+        </span>
+      )}
     </div>
   );
 }
@@ -111,18 +121,7 @@ function AddSpelling({ onAdd }: { readonly onAdd: (kana: string, roman: string) 
  * 基底のルールに差分を足して、自作のローマ字規則を作る・編集する画面。
  * 書き込みは親が渡すコールバックを通す。選んでいる規則はこの画面の中だけの値で、保存しない。
  */
-export function RomajiRuleEditor({
-  rules,
-  ready,
-  canUndo,
-  canRedo,
-  onUndo,
-  onRedo,
-  onCreate,
-  onDuplicate,
-  onRename,
-  onUpdate,
-}: RomajiRuleEditorProps) {
+export function RomajiRuleEditor({ rules, ready, canUndo, canRedo, onUndo, onRedo, onCreate, onDuplicate, onRename, onUpdate }: RomajiRuleEditorProps) {
   useHistoryShortcuts({ canUndo, canRedo, undo: onUndo, redo: onRedo });
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
   const [nameDraft, setNameDraft] = useState<string | undefined>(undefined);
@@ -178,8 +177,12 @@ export function RomajiRuleEditor({
         基底のルールに差分を足して、自作のローマ字の綴りを作ります。作った綴りは、条件のローマ字規則から選べます。綴りは小文字として扱います。
       </p>
       <div className="romaji-rule-toolbar">
-        <button type="button" disabled={!canUndo} onClick={onUndo}>元に戻す</button>
-        <button type="button" disabled={!canRedo} onClick={onRedo}>やり直す</button>
+        <button type="button" disabled={!canUndo} onClick={onUndo}>
+          元に戻す
+        </button>
+        <button type="button" disabled={!canRedo} onClick={onRedo}>
+          やり直す
+        </button>
       </div>
       {!ready ? null : (
         <>
@@ -189,13 +192,27 @@ export function RomajiRuleEditor({
               {rule === undefined ? null : (
                 <label>
                   編集する綴り
-                  <select value={rule.id} onChange={(event) => { setSelectedId(event.currentTarget.value); setNameDraft(undefined); }}>
-                    {rules.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                  <select
+                    value={rule.id}
+                    onChange={(event) => {
+                      setSelectedId(event.currentTarget.value);
+                      setNameDraft(undefined);
+                    }}
+                  >
+                    {rules.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
                   </select>
                 </label>
               )}
-              <button type="button" data-romaji-rule-create onClick={create}>新規作成</button>
-              <button type="button" data-romaji-rule-duplicate disabled={rule === undefined} onClick={duplicate}>複製</button>
+              <button type="button" data-romaji-rule-create onClick={create}>
+                新規作成
+              </button>
+              <button type="button" data-romaji-rule-duplicate disabled={rule === undefined} onClick={duplicate}>
+                複製
+              </button>
             </div>
             {rule === undefined ? (
               <p className="romaji-rule-note">自作の綴りはありません。訓令式を基底にして作れます。</p>
@@ -208,7 +225,9 @@ export function RomajiRuleEditor({
                     value={nameDraft ?? rule.name}
                     onChange={(event) => setNameDraft(event.currentTarget.value)}
                     onBlur={commitName}
-                    onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') event.currentTarget.blur();
+                    }}
                   />
                 </label>
                 <div className="romaji-rule-actions">
@@ -222,7 +241,11 @@ export function RomajiRuleEditor({
                         update({ base, generateSokuon: base === 'azik' ? false : rule.generateSokuon });
                       }}
                     >
-                      {BASE_IDS.map((id) => <option key={id} value={id}>{ROMAJI_RULES[id].name}</option>)}
+                      {BASE_IDS.map((id) => (
+                        <option key={id} value={id}>
+                          {ROMAJI_RULES[id].name}
+                        </option>
+                      ))}
                     </select>
                   </label>
                   <label className="romaji-rule-check">
@@ -242,20 +265,22 @@ export function RomajiRuleEditor({
           {rule === undefined ? null : (
             <section className="romaji-rule-section" aria-labelledby="romaji-rule-spellings">
               <h2 id="romaji-rule-spellings">綴りが割れるかな</h2>
-              <p className="romaji-rule-note">
-                この規則の綴りを書き換えると、基底のルールとの差分になります。空にすると基底の綴りへ戻ります。
-              </p>
+              <p className="romaji-rule-note">この規則の綴りを書き換えると、基底のルールとの差分になります。空にすると基底の綴りへ戻ります。</p>
               <table className="romaji-rule-table" data-romaji-rule-table>
                 <thead>
                   <tr>
                     <th scope="col">かな</th>
                     <th scope="col">基底の綴り</th>
                     <th scope="col">この規則の綴り</th>
-                    <th scope="col"><span className="romaji-rule-sr">基底との差</span></th>
+                    <th scope="col">
+                      <span className="romaji-rule-sr">基底との差</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((row) => <SpellingRowView key={`${rule.id}:${row.kana}`} row={row} onCommit={commitSpelling} />)}
+                  {rows.map((row) => (
+                    <SpellingRowView key={`${rule.id}:${row.kana}`} row={row} onCommit={commitSpelling} />
+                  ))}
                 </tbody>
               </table>
               <h3>一覧に無いかなの綴りを足す</h3>

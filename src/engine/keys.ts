@@ -174,11 +174,7 @@ export function setMemberKeyOf(member: EngineSetMemberInput): unknown {
 }
 
 /** 集合対象の抽出キーを、メンバー（表示順）から一気に作る。`singleExtractionKeyOf`と同じ理由で共通の入口にする。 */
-export function setExtractionKeyOf(
-  members: readonly EngineSetMemberInput[],
-  definitionId: string,
-  extractionRelevantOptions: unknown,
-): string {
+export function setExtractionKeyOf(members: readonly EngineSetMemberInput[], definitionId: string, extractionRelevantOptions: unknown): string {
   return setAnalyzerExtractionKeyOf(
     members.map((member) => ({ target: member.target, memberKey: setMemberKeyOf(member) })),
     definitionId,

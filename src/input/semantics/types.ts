@@ -24,11 +24,7 @@ export type InputContextRequirement =
   // ローマ字綴りを出すコンボが英字の区間で誤発火しないよう、かな由来の区間にpathを絞る。
   | { kind: 'romaji-input' };
 
-export type InputAlternativeOrigin =
-  | 'sequence'
-  | 'face'
-  | 'combo'
-  | 'composed';
+export type InputAlternativeOrigin = 'sequence' | 'face' | 'combo' | 'composed';
 
 export type InputClassification =
   | 'composition'
@@ -108,7 +104,6 @@ export interface BaseActionRealization {
 }
 
 export type BaseActionRealizationSequence = readonly BaseActionRealization[];
-
 
 /**
  * 1 logical outputを成立させる具体的なcanonical input path。

@@ -9,7 +9,13 @@ import { canToggleLayerDetail, compactPresentationOf, type LayerDetail } from '.
  * 配列がまとめる表示を宣言していて、まとめると層が減る時だけ、ボタンと小窓を出す。
  * 開閉の状態はここで持ち、保存しない。
  */
-export function LayerDetailHeading({ layout, figureName, headingClassName, children, binding }: {
+export function LayerDetailHeading({
+  layout,
+  figureName,
+  headingClassName,
+  children,
+  binding,
+}: {
   readonly layout: Layout;
   /** 図の名前。ボタンと小窓の読み上げ名の元になる */
   readonly figureName: string;
@@ -27,16 +33,18 @@ export function LayerDetailHeading({ layout, figureName, headingClassName, child
         {children}
         {toggleable ? figureSettings.toggle : null}
       </div>
-      {toggleable ? figureSettings.renderWindow(
-        <SegmentedOptionField
-          label={compact.controlLabel}
-          binding={binding}
-          choices={[
-            { value: 'compact', label: compact.compactLabel },
-            { value: 'detail', label: compact.detailLabel },
-          ]}
-        />,
-      ) : null}
+      {toggleable
+        ? figureSettings.renderWindow(
+            <SegmentedOptionField
+              label={compact.controlLabel}
+              binding={binding}
+              choices={[
+                { value: 'compact', label: compact.compactLabel },
+                { value: 'detail', label: compact.detailLabel },
+              ]}
+            />,
+          )
+        : null}
     </>
   );
 }

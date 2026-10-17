@@ -45,10 +45,7 @@ export interface ComparisonBarRange {
 }
 
 /** 列の値（数でないものは除く）から範囲を作る。数の値が1つも無ければ`undefined`。 */
-export function comparisonBarRange(
-  scale: ComparisonBarScale,
-  values: readonly number[],
-): ComparisonBarRange | undefined {
+export function comparisonBarRange(scale: ComparisonBarScale, values: readonly number[]): ComparisonBarRange | undefined {
   let min = Infinity;
   let max = -Infinity;
   for (const value of values) {

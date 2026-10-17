@@ -23,25 +23,27 @@ const comparison = (id: string, targets: unknown[]) => ({
 });
 
 async function openWorkspace(page: Page): Promise<void> {
-  await page.addInitScript((value) => {
-    localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
-  }, {
-    id: 'colors',
-    name: '色の確認',
-    // 3ペインで同じ対象を違う順に入れる。先頭のペインの順が色の順になる
-    panes: [
-      sensitivity('a', [QWERTY, COLEMAK, DVORAK]),
-      sensitivity('b', [DVORAK, QWERTY, COLEMAK]),
-      comparison('c', [DVORAK, QWERTY]),
-    ],
-    layout: {
-      kind: 'split', direction: 'row', weight: 1, children: [
-        { kind: 'group', paneIds: ['a'], weight: 1 },
-        { kind: 'group', paneIds: ['b'], weight: 1 },
-        { kind: 'group', paneIds: ['c'], weight: 1 },
-      ],
+  await page.addInitScript(
+    (value) => {
+      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
     },
-  });
+    {
+      id: 'colors',
+      name: '色の確認',
+      // 3ペインで同じ対象を違う順に入れる。先頭のペインの順が色の順になる
+      panes: [sensitivity('a', [QWERTY, COLEMAK, DVORAK]), sensitivity('b', [DVORAK, QWERTY, COLEMAK]), comparison('c', [DVORAK, QWERTY])],
+      layout: {
+        kind: 'split',
+        direction: 'row',
+        weight: 1,
+        children: [
+          { kind: 'group', paneIds: ['a'], weight: 1 },
+          { kind: 'group', paneIds: ['b'], weight: 1 },
+          { kind: 'group', paneIds: ['c'], weight: 1 },
+        ],
+      },
+    },
+  );
   await page.setViewportSize({ width: 1800, height: 900 });
   await page.goto('/workspace/colors');
   await waitForHydration(page);
@@ -55,7 +57,10 @@ test('同じ対象は、別のペインに違う順で入れても、図の線�
     const svg = page.locator('.n-sensitivity-svg').nth(svgIndex);
     const result: Record<string, string | null> = {};
     for (const key of ['layout:qwerty', 'layout:colemak-dh', 'layout:dvorak']) {
-      result[key] = await svg.locator(`[data-n-sensitivity-series="${key}"] .n-sensitivity-line`).first().evaluate((path) => getComputedStyle(path).stroke);
+      result[key] = await svg
+        .locator(`[data-n-sensitivity-series="${key}"] .n-sensitivity-line`)
+        .first()
+        .evaluate((path) => getComputedStyle(path).stroke);
     }
     return result;
   };
@@ -66,12 +71,16 @@ test('同じ対象は、別のペインに違う順で入れても、図の線�
   expect(new Set(Object.values(first)).size).toBe(3);
 
   // 比較表のペインの見出しの色見本（表示順は一覧の順: QWERTY, Dvorak）も、図の線と同じ色
-  const swatches = await page.locator('.pane-frame').nth(2).locator('.target-selection-swatch').evaluateAll(
-    (nodes) => nodes.map((node) => {
-      const style = getComputedStyle(node.querySelector('path')!);
-      return style.fill !== 'none' ? style.fill : style.stroke;
-    }),
-  );
+  const swatches = await page
+    .locator('.pane-frame')
+    .nth(2)
+    .locator('.target-selection-swatch')
+    .evaluateAll((nodes) =>
+      nodes.map((node) => {
+        const style = getComputedStyle(node.querySelector('path')!);
+        return style.fill !== 'none' ? style.fill : style.stroke;
+      }),
+    );
   expect(swatches).toEqual([first['layout:qwerty'], first['layout:dvorak']]);
 });
 
@@ -96,8 +105,10 @@ test('同じ対象は、別のペインでも同じ点の形と線種になり�
   expect(new Set(Object.values(first)).size).toBe(3);
 
   // 比較表のペイン（QWERTY, Dvorakの順）の色見本は、図の点と同じ形
-  const swatchShapes = await page.locator('.pane-frame').nth(2).locator('.target-selection-swatch').evaluateAll(
-    (nodes) => nodes.map((node) => node.getAttribute('data-mark')),
-  );
+  const swatchShapes = await page
+    .locator('.pane-frame')
+    .nth(2)
+    .locator('.target-selection-swatch')
+    .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-mark')));
   expect(swatchShapes).toEqual([first['layout:qwerty'], first['layout:dvorak']].map((mark) => mark!.split('/')[0]));
 });

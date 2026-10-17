@@ -39,7 +39,7 @@ test('withLevelOverrides: layoutIdが"__proto__"でも診断なしに正しく�
   // （Object.prototypeを直接書き換えていれば、無関係な新規オブジェクトにまで
   // 影響が漏れて見える）。
   assert.deepEqual(Object.getPrototypeOf({}), Object.prototype);
-  assert.equal(('windowSize' in {}), false);
+  assert.equal('windowSize' in {}, false);
 
   // written自身のbucketも、実際にown propertyとして"__proto__"を持てている
   // （＝真にエントリとして保存されている）ことを確認する。

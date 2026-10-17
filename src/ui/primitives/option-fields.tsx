@@ -87,9 +87,15 @@ export function OptionField<T>({ label, binding, valueText, hint, badge, childre
   return (
     <div className="option-field" data-option-default={isDefaultValue(binding) || undefined}>
       <div className="option-field-head">
-        <label className="option-field-label" id={`${inputId}-label`} htmlFor={inputId}>{label}</label>
+        <label className="option-field-label" id={`${inputId}-label`} htmlFor={inputId}>
+          {label}
+        </label>
         {badge}
-        {valueText !== undefined ? <output className="option-field-value" htmlFor={inputId}>{valueText}</output> : null}
+        {valueText !== undefined ? (
+          <output className="option-field-value" htmlFor={inputId}>
+            {valueText}
+          </output>
+        ) : null}
         <ResetButton label={label} binding={binding} />
       </div>
       <div className="option-field-input">{children(inputId)}</div>
@@ -133,18 +139,18 @@ export function SelectOptionField<T extends string>({
   return (
     <OptionField label={label} binding={binding} hint={hint} badge={badge}>
       {(id) => (
-        <select
-          id={id}
-          value={binding.value}
-          onChange={(event) => binding.onChange(event.currentTarget.value as T)}
-        >
+        <select id={id} value={binding.value} onChange={(event) => binding.onChange(event.currentTarget.value as T)}>
           {plain.map((choice) => (
-            <option key={choice.value} value={choice.value}>{choice.label}</option>
+            <option key={choice.value} value={choice.value}>
+              {choice.label}
+            </option>
           ))}
           {groups.map(([group, members]) => (
             <optgroup key={group} label={group}>
               {members.map((choice) => (
-                <option key={choice.value} value={choice.value}>{choice.label}</option>
+                <option key={choice.value} value={choice.value}>
+                  {choice.label}
+                </option>
               ))}
             </optgroup>
           ))}
@@ -173,12 +179,7 @@ export function SegmentedOptionField<T extends string>({
       {(id) => (
         <div className="option-segmented" role="group" aria-labelledby={`${id}-label`} id={id}>
           {choices.map((choice) => (
-            <button
-              type="button"
-              key={choice.value}
-              aria-pressed={binding.value === choice.value}
-              onClick={() => binding.onChange(choice.value)}
-            >
+            <button type="button" key={choice.value} aria-pressed={binding.value === choice.value} onClick={() => binding.onChange(choice.value)}>
               {choice.label}
             </button>
           ))}
@@ -202,13 +203,11 @@ export function RadioOptionField<T extends string>({
 }) {
   const name = useId();
   return (
-    <fieldset
-      className="option-field option-field-group"
-      aria-labelledby={`${name}-label`}
-      data-option-default={isDefaultValue(binding) || undefined}
-    >
+    <fieldset className="option-field option-field-group" aria-labelledby={`${name}-label`} data-option-default={isDefaultValue(binding) || undefined}>
       <div className="option-field-head">
-        <span className="option-field-label" id={`${name}-label`}>{label}</span>
+        <span className="option-field-label" id={`${name}-label`}>
+          {label}
+        </span>
         <ResetButton label={label} binding={binding} />
       </div>
       <div className="option-radio-group">
@@ -245,13 +244,10 @@ export function CheckboxOptionField({
   return (
     <div className="option-field option-field-checkbox" data-option-default={isDefaultValue(binding) || undefined}>
       <div className="option-field-head">
-        <input
-          id={inputId}
-          type="checkbox"
-          checked={binding.value}
-          onChange={(event) => binding.onChange(event.currentTarget.checked)}
-        />
-        <label className="option-field-label" htmlFor={inputId}>{label}</label>
+        <input id={inputId} type="checkbox" checked={binding.value} onChange={(event) => binding.onChange(event.currentTarget.checked)} />
+        <label className="option-field-label" htmlFor={inputId}>
+          {label}
+        </label>
         {badge}
         <ResetButton label={label} binding={binding} />
       </div>
@@ -315,23 +311,17 @@ export function CheckboxGroupOptionField<T extends string>({
   };
   const labelId = useId();
   return (
-    <fieldset
-      className="option-field option-field-group"
-      aria-labelledby={labelId}
-      data-option-default={isDefaultValue(binding) || undefined}
-    >
+    <fieldset className="option-field option-field-group" aria-labelledby={labelId} data-option-default={isDefaultValue(binding) || undefined}>
       <div className="option-field-head">
-        <span className="option-field-label" id={labelId}>{label}</span>
+        <span className="option-field-label" id={labelId}>
+          {label}
+        </span>
         <ResetButton label={label} binding={binding} />
       </div>
       <div className="option-checkbox-group">
         {choices.map((choice) => (
           <label key={choice.value}>
-            <input
-              type="checkbox"
-              checked={binding.value.includes(choice.value)}
-              onChange={() => toggle(choice.value)}
-            />
+            <input type="checkbox" checked={binding.value.includes(choice.value)} onChange={() => toggle(choice.value)} />
             {choice.label}
           </label>
         ))}
@@ -355,7 +345,11 @@ export function OptionGroup({ title, children }: { readonly title: string; reado
  * 個別に変えたい人向けの項目を畳んでおく節。既定は閉じた状態で、開閉は短い動きで切り替える（動きは`option-fields.css`）。
  * 閉じていても、既定と違う項目がある時は見出しに数を出す。
  */
-export function OptionDisclosure({ title, changedCount, children }: {
+export function OptionDisclosure({
+  title,
+  changedCount,
+  children,
+}: {
   readonly title: string;
   readonly changedCount: number;
   readonly children: ReactNode;

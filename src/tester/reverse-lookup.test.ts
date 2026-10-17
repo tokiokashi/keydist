@@ -22,24 +22,24 @@ import {
 } from './reverse-lookup.ts';
 
 /** テスト用に最小限のReverseLookupRouteを組み立てる。1step・1actionだけを持つ単純な経路。 */
-function fixtureRoute(
-  output: string,
-  actions: readonly (readonly string[])[],
-  origin: InputAlternativeOrigin = 'sequence',
-): ReverseLookupRoute {
+function fixtureRoute(output: string, actions: readonly (readonly string[])[], origin: InputAlternativeOrigin = 'sequence'): ReverseLookupRoute {
   return {
-    steps: [{
-      output,
-      actions,
-      actionKeyAlternatives: actions.map((action) => [action]),
-      actionParticipationAlternatives: actions.map((action) => [{
-        outputKeys: action,
-        triggerKeys: [],
-      }]),
-      origin,
-      aggregationGroupIds: [],
-      acceptedAlternativeSelectionIdentities: [],
-    }],
+    steps: [
+      {
+        output,
+        actions,
+        actionKeyAlternatives: actions.map((action) => [action]),
+        actionParticipationAlternatives: actions.map((action) => [
+          {
+            outputKeys: action,
+            triggerKeys: [],
+          },
+        ]),
+        origin,
+        aggregationGroupIds: [],
+        acceptedAlternativeSelectionIdentities: [],
+      },
+    ],
     actionCount: actions.length,
     keyCount: actions.reduce((total, action) => total + action.length, 0),
   };
@@ -70,8 +70,7 @@ test('reverseLookupはTK音直のyouon-only comboを前置子音がある場合�
   assert.ok(layout);
 
   const kya = reverseLookup(layout, 'きゃ');
-  assert.ok(kya.some((route) =>
-    route.steps.some((step) => step.output === 'ya' && step.origin === 'combo')));
+  assert.ok(kya.some((route) => route.steps.some((step) => step.output === 'ya' && step.origin === 'combo')));
 
   const ya = reverseLookup(layout, 'や');
   assert.equal(
@@ -87,7 +86,10 @@ test('reverseLookupはTK音直のコンボを英字の綴りには使わない',
   assert.ok(top);
   const comboOutputs = top.steps.filter((step) => step.origin === 'combo').map((step) => step.output);
   assert.ok(comboOutputs.includes('desu'));
-  assert.equal(comboOutputs.some((output) => 'website'.includes(output) && output.length > 1), false);
+  assert.equal(
+    comboOutputs.some((output) => 'website'.includes(output) && output.length > 1),
+    false,
+  );
   const outputs = top.steps.map((step) => step.output);
   for (const char of ['s', 'i', 't', 'e']) assert.ok(outputs.includes(char));
 });
@@ -103,40 +105,41 @@ test('reverseLookupはかなだけの文では句読点をまたいでもコン�
 test('reverseLookupRouteLabelはchordとsequenceを区別して表示する', () => {
   const layout = LAYOUT_BY_ID.get('naginata-v18');
   assert.ok(layout);
-  assert.equal(reverseLookupRouteLabel(layout, {
-    actionCount: 2,
-    keyCount: 3,
-    steps: [{
+  assert.equal(
+    reverseLookupRouteLabel(layout, {
+      actionCount: 2,
+      keyCount: 3,
+      steps: [
+        {
+          output: 'x',
+          origin: 'face',
+          actions: [['thumb-r'], ['h', 'j']],
+          aggregationGroupIds: ['layer:test'],
+          actionKeyAlternatives: [[['thumb-r']], [['h', 'j']]],
+          actionParticipationAlternatives: [[{ outputKeys: [], triggerKeys: ['thumb-r'] }], [{ outputKeys: ['h', 'j'], triggerKeys: [] }]],
+          acceptedAlternativeSelectionIdentities: ['test-alternative'],
+        },
+      ],
+    }),
+    '右親指 → H + J',
+  );
+});
+
+test('reverseLookupStepLabelは1入力単位のaction順を表示する', () => {
+  const layout = LAYOUT_BY_ID.get('naginata-v18');
+  assert.ok(layout);
+  assert.equal(
+    reverseLookupStepLabel(layout, {
       output: 'x',
       origin: 'face',
       actions: [['thumb-r'], ['h', 'j']],
       aggregationGroupIds: ['layer:test'],
       actionKeyAlternatives: [[['thumb-r']], [['h', 'j']]],
-      actionParticipationAlternatives: [
-        [{ outputKeys: [], triggerKeys: ['thumb-r'] }],
-        [{ outputKeys: ['h', 'j'], triggerKeys: [] }],
-      ],
+      actionParticipationAlternatives: [[{ outputKeys: [], triggerKeys: ['thumb-r'] }], [{ outputKeys: ['h', 'j'], triggerKeys: [] }]],
       acceptedAlternativeSelectionIdentities: ['test-alternative'],
-    }],
-  }), '右親指 → H + J');
-});
-
-
-test('reverseLookupStepLabelは1入力単位のaction順を表示する', () => {
-  const layout = LAYOUT_BY_ID.get('naginata-v18');
-  assert.ok(layout);
-  assert.equal(reverseLookupStepLabel(layout, {
-    output: 'x',
-    origin: 'face',
-    actions: [['thumb-r'], ['h', 'j']],
-    aggregationGroupIds: ['layer:test'],
-    actionKeyAlternatives: [[['thumb-r']], [['h', 'j']]],
-    actionParticipationAlternatives: [
-      [{ outputKeys: [], triggerKeys: ['thumb-r'] }],
-      [{ outputKeys: ['h', 'j'], triggerKeys: [] }],
-    ],
-    acceptedAlternativeSelectionIdentities: ['test-alternative'],
-  }), '右親指 → H + J');
+    }),
+    '右親指 → H + J',
+  );
 });
 
 test('reverseLookupStepMatchesRecognitionは同じcanonical alternativeだけを一致扱いする', () => {
@@ -147,22 +150,26 @@ test('reverseLookupStepMatchesRecognitionは同じcanonical alternativeだけを
   const step = route.steps[0];
   assert.ok(step);
 
-  const exact = layout.canonicalInputs.get(step.output)?.find((alternative) =>
-    step.acceptedAlternativeSelectionIdentities.includes(
-      inputAlternativeSelectionIdentity(alternative),
-    ));
+  const exact = layout.canonicalInputs
+    .get(step.output)
+    ?.find((alternative) => step.acceptedAlternativeSelectionIdentities.includes(inputAlternativeSelectionIdentity(alternative)));
   assert.ok(exact);
 
-  assert.equal(reverseLookupStepMatchesRecognition(step, {
-    output: step.output,
-    alternative: exact,
-  }), true);
-  assert.equal(reverseLookupStepMatchesRecognition(step, {
-    output: '別',
-    alternative: exact,
-  }), false);
+  assert.equal(
+    reverseLookupStepMatchesRecognition(step, {
+      output: step.output,
+      alternative: exact,
+    }),
+    true,
+  );
+  assert.equal(
+    reverseLookupStepMatchesRecognition(step, {
+      output: '別',
+      alternative: exact,
+    }),
+    false,
+  );
 });
-
 
 test('reverseLookupGuideActionsは逐次入力をaction単位へ展開する', () => {
   const layout = LAYOUT_BY_ID.get('tsuki-2-263');
@@ -202,33 +209,22 @@ test('reverseLookupは明示された親指shift alternativeだけを同じ表�
   const routes = reverseLookup(layout, 'ま', 10);
   assert.ok(routes.length > 0);
 
-  const shifted = routes.find((route) =>
-    route.steps[0]?.actions.some((action) =>
-      action.includes('thumb-r') || action.includes('thumb-l')));
+  const shifted = routes.find((route) => route.steps[0]?.actions.some((action) => action.includes('thumb-r') || action.includes('thumb-l')));
   assert.ok(shifted);
   const step = shifted.steps[0]!;
   assert.ok(step.acceptedAlternativeSelectionIdentities.length >= 2);
 
   const guide = reverseLookupGuideActions(shifted);
-  const thumbAction = guide.find((action) =>
-    action.keyAlternatives.some((variant) =>
-      variant.includes('thumb-r') || variant.includes('thumb-l')));
+  const thumbAction = guide.find((action) => action.keyAlternatives.some((variant) => variant.includes('thumb-r') || variant.includes('thumb-l')));
   assert.ok(thumbAction);
   assert.equal(reverseLookupGuideActionMatchesKeys(thumbAction, ['thumb-r', 'f']), true);
   assert.equal(reverseLookupGuideActionMatchesKeys(thumbAction, ['thumb-l', 'f']), true);
   assert.equal(reverseLookupGuideActionLabel(layout, thumbAction), 'Space + F');
-  assert.deepEqual(
-    new Set(reverseLookupGuideActionHighlightKeys(layout, thumbAction)),
-    new Set(['thumb-r', 'thumb-l', 'f']),
-  );
-  assert.deepEqual(
-    new Set(reverseLookupGuideActionTriggerOnlyKeys(thumbAction)),
-    new Set(['thumb-r', 'thumb-l']),
-  );
+  assert.deepEqual(new Set(reverseLookupGuideActionHighlightKeys(layout, thumbAction)), new Set(['thumb-r', 'thumb-l', 'f']));
+  assert.deepEqual(new Set(reverseLookupGuideActionTriggerOnlyKeys(thumbAction)), new Set(['thumb-r', 'thumb-l']));
   assert.equal(reverseLookupRouteLabel(layout, shifted).includes('右親指'), false);
   assert.equal(reverseLookupRouteLabel(layout, shifted).includes('左親指'), false);
 });
-
 
 test('reverseLookupGuideIndexForTextは正しいprefixだけをguide進捗として数える', () => {
   const layout = LAYOUT_BY_ID.get('naginata-v18');
@@ -305,8 +301,7 @@ test('reverseLookupは物理配列に無いキーを答えにせず、打てな�
   assert.ok(layout);
   const ansi = physicalAvailableKeys(buildGeometry('row-staggered'));
   const jis = physicalAvailableKeys(buildGeometry('jis-row-staggered', JIS_FINGER_ASSIGNMENT));
-  const keysOf = (route: ReverseLookupRoute) =>
-    route.steps.flatMap((step) => step.actions.flat());
+  const keysOf = (route: ReverseLookupRoute) => route.steps.flatMap((step) => step.actions.flat());
 
   // 「ー」はJISかなでANSIに無いキーを使う
   const withJis = reverseLookup(layout, 'ー', 3, jis);

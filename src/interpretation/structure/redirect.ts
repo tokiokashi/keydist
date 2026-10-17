@@ -1,10 +1,6 @@
 import type { Finger } from '#input/shapes/geometry.ts';
 import type { Hand } from './chain.ts';
-import {
-  analyzeStrokeTransitions,
-  type FingerTransition,
-  type TransitionAnalysisResult,
-} from './transition.ts';
+import { analyzeStrokeTransitions, type FingerTransition, type TransitionAnalysisResult } from './transition.ts';
 import type { Stroke } from '#trace/generate.ts';
 import type { ChainInterpretation } from './chain.ts';
 
@@ -53,23 +49,15 @@ function isDirectional(candidate: FingerTransition): boolean {
   return candidate.fingerDirection !== 'same';
 }
 
-function reversesDirection(
-  before: FingerTransition,
-  after: FingerTransition,
-): boolean {
-  return isDirectional(before)
-    && isDirectional(after)
-    && before.fingerDirection !== after.fingerDirection;
+function reversesDirection(before: FingerTransition, after: FingerTransition): boolean {
+  return isDirectional(before) && isDirectional(after) && before.fingerDirection !== after.fingerDirection;
 }
 
 /**
  * before.to と after.from が同じpivot Stroke上の同じPress / participationを指すことを確認する。
  * 別pivot候補の継ぎ接ぎで架空のredirect pathを作らない。
  */
-function samePivotParticipation(
-  before: FingerTransition,
-  after: FingerTransition,
-): boolean {
+function samePivotParticipation(before: FingerTransition, after: FingerTransition): boolean {
   if (before.toPressIndex !== after.fromPressIndex) return false;
   if (before.toFinger !== after.fromFinger) return false;
 
@@ -92,14 +80,16 @@ function redirectCandidates(
       if (!samePivotParticipation(beforeCandidate, afterCandidate)) continue;
       if (!reversesDirection(beforeCandidate, afterCandidate)) continue;
 
-      candidates.push(Object.freeze({
-        candidateIndex: candidates.length,
-        beforeCandidateIndex: beforeCandidate.candidateIndex,
-        afterCandidateIndex: afterCandidate.candidateIndex,
-        fromFinger: beforeCandidate.fromFinger,
-        pivotFinger: beforeCandidate.toFinger,
-        toFinger: afterCandidate.toFinger,
-      }));
+      candidates.push(
+        Object.freeze({
+          candidateIndex: candidates.length,
+          beforeCandidateIndex: beforeCandidate.candidateIndex,
+          afterCandidateIndex: afterCandidate.candidateIndex,
+          fromFinger: beforeCandidate.fromFinger,
+          pivotFinger: beforeCandidate.toFinger,
+          toFinger: afterCandidate.toFinger,
+        }),
+      );
     }
   }
 
@@ -112,9 +102,7 @@ function redirectCandidates(
  * Redirectはpure runではなく「実在する反転pathがある」というexistential factなので、
  * pivot Strokeが対象手の複数Pressを含むこと自体では除外しない。
  */
-export function buildRedirectEvents(
-  analysis: TransitionAnalysisResult,
-): readonly RedirectEvent[] {
+export function buildRedirectEvents(analysis: TransitionAnalysisResult): readonly RedirectEvent[] {
   const events: RedirectEvent[] = [];
 
   for (const chain of analysis.chains) {
@@ -131,34 +119,28 @@ export function buildRedirectEvents(
       const candidates = redirectCandidates(before, after);
       if (candidates.length === 0) continue;
 
-      events.push(Object.freeze({
-        redirectIndex: events.length,
-        chainIndex: chain.chainIndex,
-        hand: chain.hand,
-        pivotStrokeIndex: before.toStrokeIndex,
-        beforeTransitionIndex: before.transitionIndex,
-        afterTransitionIndex: after.transitionIndex,
-        candidates,
-      }));
+      events.push(
+        Object.freeze({
+          redirectIndex: events.length,
+          chainIndex: chain.chainIndex,
+          hand: chain.hand,
+          pivotStrokeIndex: before.toStrokeIndex,
+          beforeTransitionIndex: before.transitionIndex,
+          afterTransitionIndex: after.transitionIndex,
+          candidates,
+        }),
+      );
     }
   }
 
   return Object.freeze(events);
 }
 
-function transitionCandidate(
-  analysis: TransitionAnalysisResult,
-  transitionIndex: number,
-  candidateIndex: number,
-): FingerTransition {
+function transitionCandidate(analysis: TransitionAnalysisResult, transitionIndex: number, candidateIndex: number): FingerTransition {
   const transition = analysis.transitions[transitionIndex];
-  const candidate = transition?.candidates.find(
-    (entry) => entry.candidateIndex === candidateIndex,
-  );
+  const candidate = transition?.candidates.find((entry) => entry.candidateIndex === candidateIndex);
   if (!candidate) {
-    throw new Error(
-      `Redirect geometry参照が不正: transition=${transitionIndex}, candidate=${candidateIndex}`,
-    );
+    throw new Error(`Redirect geometry参照が不正: transition=${transitionIndex}, candidate=${candidateIndex}`);
   }
   return candidate;
 }
@@ -169,37 +151,24 @@ function transitionCandidate(
  * finger-direction上のRedirectでもphysical dxが反転しない場合は0。
  * Event単位のmax/min等へ集約せず、candidateごとの値をそのまま返す。
  */
-export function redirectGeometryQualities(
-  analysis: TransitionAnalysisResult,
-  event: RedirectEvent,
-): readonly RedirectGeometryQuality[] {
-  return Object.freeze(event.candidates.map((candidate) => {
-    const before = transitionCandidate(
-      analysis,
-      event.beforeTransitionIndex,
-      candidate.beforeCandidateIndex,
-    );
-    const after = transitionCandidate(
-      analysis,
-      event.afterTransitionIndex,
-      candidate.afterCandidateIndex,
-    );
-    const horizontalReversal = before.dx * after.dx < 0
-      ? Math.min(Math.abs(before.dx), Math.abs(after.dx))
-      : 0;
+export function redirectGeometryQualities(analysis: TransitionAnalysisResult, event: RedirectEvent): readonly RedirectGeometryQuality[] {
+  return Object.freeze(
+    event.candidates.map((candidate) => {
+      const before = transitionCandidate(analysis, event.beforeTransitionIndex, candidate.beforeCandidateIndex);
+      const after = transitionCandidate(analysis, event.afterTransitionIndex, candidate.afterCandidateIndex);
+      const horizontalReversal = before.dx * after.dx < 0 ? Math.min(Math.abs(before.dx), Math.abs(after.dx)) : 0;
 
-    return Object.freeze({
-      candidateIndex: candidate.candidateIndex,
-      beforeDx: before.dx,
-      afterDx: after.dx,
-      horizontalReversal,
-    });
-  }));
+      return Object.freeze({
+        candidateIndex: candidate.candidateIndex,
+        beforeDx: before.dx,
+        afterDx: after.dx,
+        horizontalReversal,
+      });
+    }),
+  );
 }
 
-export function analyzeRedirects(
-  transitionAnalysis: TransitionAnalysisResult,
-): RedirectAnalysisResult {
+export function analyzeRedirects(transitionAnalysis: TransitionAnalysisResult): RedirectAnalysisResult {
   const redirects = buildRedirectEvents(transitionAnalysis);
   return Object.freeze({
     ...transitionAnalysis,
@@ -208,9 +177,6 @@ export function analyzeRedirects(
 }
 
 /** 呼び出し側向けの合成入口。 */
-export function analyzeStrokeRedirects(
-  strokes: readonly Stroke[],
-  policy?: ChainInterpretation,
-): RedirectAnalysisResult {
+export function analyzeStrokeRedirects(strokes: readonly Stroke[], policy?: ChainInterpretation): RedirectAnalysisResult {
   return analyzeRedirects(analyzeStrokeTransitions(strokes, policy));
 }

@@ -16,10 +16,7 @@ import { DEFAULT_EXTRACTION_ASSETS, type SingleAnalyzerExtractContext } from './
  * 読んでも、アプリが渡す値と同じ形で検査される。物理配列はrow-staggered、Trace方針は
  * `DEFAULT_TRACE_POLICY`。
  */
-export function singleDisciplineContext(
-  layout: Layout,
-  text: string,
-): Omit<SingleAnalyzerExtractContext<unknown>, 'options'> {
+export function singleDisciplineContext(layout: Layout, text: string): Omit<SingleAnalyzerExtractContext<unknown>, 'options'> {
   const geometry = buildGeometry('row-staggered');
   const trace = generateTrace(text, layout, geometry, DEFAULT_TRACE_POLICY);
   return {
@@ -31,12 +28,8 @@ export function singleDisciplineContext(
     assets: DEFAULT_EXTRACTION_ASSETS,
     basisId: 'discipline',
     requestTrace: {
-      requestTrace: (input) => generateTrace(
-        input.text ?? text,
-        input.layout ?? layout,
-        input.geometry ?? geometry,
-        { ...DEFAULT_TRACE_POLICY, ...input.tracePolicy },
-      ),
+      requestTrace: (input) =>
+        generateTrace(input.text ?? text, input.layout ?? layout, input.geometry ?? geometry, { ...DEFAULT_TRACE_POLICY, ...input.tracePolicy }),
     },
     keyDetails: () => computeKeyDetails(trace, geometry),
   };

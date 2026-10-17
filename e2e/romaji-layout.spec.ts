@@ -62,7 +62,10 @@ test('配列を作り、不備を直し、編集して、元に戻せる。作�
   const id = await page.locator('[data-layout-pick]').inputValue();
   await page.goto('/');
   await waitForHydration(page);
-  await page.locator('.hero').getByRole('button', { name: /^対象: / }).click();
+  await page
+    .locator('.hero')
+    .getByRole('button', { name: /^対象: / })
+    .click();
   await expect(page.getByRole('dialog', { name: '対象の選択' }).locator(`input[value="layout:${id}"]`)).toHaveCount(1);
 });
 
@@ -74,7 +77,10 @@ test('指が担当しないキーをホームキーにすると警告が出て�
   await page.locator('[data-layout-row="2"]').fill('aoeuidhtns-');
   await page.locator('[data-layout-row="3"]').fill(';qjkxbmwvz');
 
-  const warning = page.locator('[data-layout-home="LI"]').locator('xpath=ancestor::div[contains(@class, "romaji-layout-home-item")]').locator('[data-layout-problem="warning"]');
+  const warning = page
+    .locator('[data-layout-home="LI"]')
+    .locator('xpath=ancestor::div[contains(@class, "romaji-layout-home-item")]')
+    .locator('[data-layout-problem="warning"]');
   await expect(warning).toHaveCount(0);
   await page.locator('[data-layout-home="LI"]').selectOption('h');
   await expect(warning).toContainText('使われず');
@@ -88,16 +94,21 @@ test('指が担当しないキーをホームキーにすると警告が出て�
 test('取り込み形式の配列は開かず、直せない旨を出す', async ({ page }) => {
   await page.addInitScript((key) => {
     if (localStorage.getItem(key) !== null) return;
-    localStorage.setItem(key, JSON.stringify({
-      version: 1,
-      layouts: [{
-        id: 'user-imported',
-        name: '取り込んだ配列',
-        rows: ['1234567890-=', 'qwertyuiop[]', "asdfghjkl;'", 'zxcvbnm,./'],
-        romaji: 'kunrei',
-        sequences: [['あ', [['a']]]],
-      }],
-    }));
+    localStorage.setItem(
+      key,
+      JSON.stringify({
+        version: 1,
+        layouts: [
+          {
+            id: 'user-imported',
+            name: '取り込んだ配列',
+            rows: ['1234567890-=', 'qwertyuiop[]', "asdfghjkl;'", 'zxcvbnm,./'],
+            romaji: 'kunrei',
+            sequences: [['あ', [['a']]]],
+          },
+        ],
+      }),
+    );
   }, STORAGE_KEY);
   await page.goto('/romaji-layout');
   await waitForHydration(page);

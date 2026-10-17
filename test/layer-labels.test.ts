@@ -4,11 +4,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { faceFromEntries, fromFaces, LAYOUTS, LAYOUTS_JA, type Face, type Layout } from '#input/layouts/index.ts';
-import {
-  compactLayerGuideDefinitions,
-  defaultLayerNames,
-  layerDefinitionsWithLabels,
-} from '#input/layouts/layers.ts';
+import { compactLayerGuideDefinitions, defaultLayerNames, layerDefinitionsWithLabels } from '#input/layouts/layers.ts';
 import { buildGeometry } from '#input/shapes/geometry.ts';
 import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
@@ -67,7 +63,10 @@ test('組み込みの全配列で、既定の名前のレイヤーは同じ配�
 
 test('既定の名前は、出る文字の種類と共通する小書き、重なる時は出る文字、呼べない時はトリガーの表示そのものになる', () => {
   const nicola = defaultLayerNames(ALL_LAYOUTS.find((layout) => layout.id === 'nicola')!);
-  assert.deepEqual([...nicola.values()].map((name) => name.label), ['無変換', '変換']);
+  assert.deepEqual(
+    [...nicola.values()].map((name) => name.label),
+    ['無変換', '変換'],
+  );
 
   const naginata = defaultLayerNames(ALL_LAYOUTS.find((layout) => layout.id === 'naginata-v18')!);
   const label = (id: string) => naginata.get(id)?.label;
@@ -93,23 +92,31 @@ test('文字の種類で呼べない面と、並べても重なる面の名前',
     triggerPersistence: 'hold-capable',
   });
   const base: Face = { ...faceFromEntries([], 'simultaneous', { h: 'H' }), inputRole: 'layer' };
-  const names = (...faces: Face[]) =>
-    [...defaultLayerNames(fromFaces('names-test', 'names-test', [base, ...faces])).values()];
+  const names = (...faces: Face[]) => [...defaultLayerNames(fromFaces('names-test', 'names-test', [base, ...faces])).values()];
 
   // かな以外や、種類の混ざる出力を含む面は、トリガーで呼ぶ
   const mixed = names(layer(['a'], { h: 'A' }), layer(['b'], { h: 'きゃ', j: 'ぎゃ', k: 'て' }));
-  assert.deepEqual(mixed.map((name) => name.label), ['A', 'B']);
+  assert.deepEqual(
+    mixed.map((name) => name.label),
+    ['A', 'B'],
+  );
 
   // 同じ文字を出す面どうしは、並べても重なるので、トリガーで呼ぶ
   const same = names(layer(['a'], { h: 'てぃ' }), layer(['b'], { h: 'てぃ' }));
-  assert.deepEqual(same.map((name) => name.label), ['A', 'B']);
+  assert.deepEqual(
+    same.map((name) => name.label),
+    ['A', 'B'],
+  );
 
   // 4つ以上出る面は3つまで並べて「…」で省く
   const long = names(
     layer(['a'], { h: 'くぃ', j: 'うぃ', k: 'ふぃ', l: 'つぃ' }),
     layer(['b'], { h: 'てぃ', j: 'でぃ', k: 'すぃ', l: 'ずぃ', ';': 'ぐぃ' }),
   );
-  assert.deepEqual(long.map((name) => name.label), ['くぃ・うぃ・ふぃ…', '外来音（ぃ）']);
+  assert.deepEqual(
+    long.map((name) => name.label),
+    ['くぃ・うぃ・ふぃ…', '外来音（ぃ）'],
+  );
 });
 
 test('配列が付けた名前と重なる既定の名前は、出る文字を並べて区別する', () => {
@@ -126,7 +133,10 @@ test('配列が付けた名前と重なる既定の名前は、出る文字を�
     layer(['a'], { h: 'きゃ', j: 'しゃ' }, '拗音（ゃ）'),
     layer(['b'], { h: 'ちゃ', j: 'にゃ' }),
   ]);
-  assert.deepEqual([...defaultLayerNames(layout).values()].map((name) => name.label), ['ちゃ・にゃ']);
+  assert.deepEqual(
+    [...defaultLayerNames(layout).values()].map((name) => name.label),
+    ['ちゃ・にゃ'],
+  );
   const labels = layerDefinitionsWithLabels(layout).map((definition) => definition.label);
   assert.equal(new Set(labels).size, labels.length);
 });
@@ -142,9 +152,7 @@ test('トリガーの表示だけの名前が、配列が付けた名前・種�
   // キーaの意味を、重ねたい名前にする（刻印は1文字しか持てないので、文字の意味で与える）
   const GROUP = 'overlap';
   const labels = (meaning: string, ...faces: Face[]) => {
-    const withMeaning = faces.map((face) => (face.trigger.includes('a')
-      ? { ...face, triggerMeaningGroups: { a: GROUP } }
-      : face));
+    const withMeaning = faces.map((face) => (face.trigger.includes('a') ? { ...face, triggerMeaningGroups: { a: GROUP } } : face));
     const built = fromFaces('overlap-test', 'overlap-test', [base, ...withMeaning]);
     const layout = { ...built, triggerMeanings: { [GROUP]: { a: { kind: 'char' as const, text: meaning } } } };
     return layerDefinitionsWithLabels(layout)
@@ -154,33 +162,20 @@ test('トリガーの表示だけの名前が、配列が付けた名前・種�
   const base: Face = { ...faceFromEntries([], 'simultaneous', { h: 'H' }), inputRole: 'layer' };
 
   // 配列が付けた名前: 配列の名前は変えず、既定の名前に番号を付ける
-  assert.deepEqual(
-    labels('あ', layer(['b'], { h: 'B' }, 'あ'), layer(['a'], { h: 'A' })),
-    ['あ', 'あ（2）'],
-  );
+  assert.deepEqual(labels('あ', layer(['b'], { h: 'B' }, 'あ'), layer(['a'], { h: 'A' })), ['あ', 'あ（2）']);
 
   // 種類の名前: 種類の名前の層が前にあれば、その層が名前を取り、トリガーの表示の層に番号が付く
-  assert.deepEqual(
-    labels('拗音（ゃ）', layer(['b'], { h: 'きゃ', j: 'しゃ' }), layer(['a'], { h: 'A' })),
-    ['拗音（ゃ）', '拗音（ゃ）（2）'],
-  );
+  assert.deepEqual(labels('拗音（ゃ）', layer(['b'], { h: 'きゃ', j: 'しゃ' }), layer(['a'], { h: 'A' })), ['拗音（ゃ）', '拗音（ゃ）（2）']);
   // 種類の名前の層が後ろにあれば、前の層（トリガーの表示）が名前を取り、種類の名前の層に番号が付く
-  assert.deepEqual(
-    labels('拗音（ゃ）', layer(['a'], { h: 'A' }), layer(['b'], { h: 'きゃ', j: 'しゃ' })),
-    ['拗音（ゃ）', '拗音（ゃ）（2）'],
-  );
+  assert.deepEqual(labels('拗音（ゃ）', layer(['a'], { h: 'A' }), layer(['b'], { h: 'きゃ', j: 'しゃ' })), ['拗音（ゃ）', '拗音（ゃ）（2）']);
 
   // 出る文字を並べた名前: 並べた名前がトリガーの表示と重なる層は、並べた名前をやめてトリガーの表示で呼ぶ。
   // トリガーの表示の層は名前を変えない
-  assert.deepEqual(
-    labels(
-      'ちゃ',
-      layer(['b'], { h: 'きゃ', j: 'しゃ' }),
-      layer(['c'], { h: 'ちゃ' }),
-      layer(['a'], { h: 'A' }),
-    ),
-    ['拗音（ゃ）', 'C', 'ちゃ'],
-  );
+  assert.deepEqual(labels('ちゃ', layer(['b'], { h: 'きゃ', j: 'しゃ' }), layer(['c'], { h: 'ちゃ' }), layer(['a'], { h: 'A' })), [
+    '拗音（ゃ）',
+    'C',
+    'ちゃ',
+  ]);
 });
 
 test('ヒートマップの見出しは、どの層にもトリガーを付けず、押し方の区分を番号の後ろに置く', () => {
@@ -222,5 +217,8 @@ test('レイヤーの名前を画面に出すソースは、生の定義の名�
     }
   };
   walk(join(root, 'src'));
-  assert.deepEqual(readers.filter((path) => !allowed.has(path)), []);
+  assert.deepEqual(
+    readers.filter((path) => !allowed.has(path)),
+    [],
+  );
 });

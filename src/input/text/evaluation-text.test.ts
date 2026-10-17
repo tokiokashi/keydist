@@ -25,19 +25,13 @@ test('日本語: 範囲を広げると記号をすべて残す', () => {
 
 test('日本語: 配列が半角の , . を持たなければ 、 。 に解決する', () => {
   for (const keepSymbols of [false, true]) {
-    assert.equal(
-      prepareEvaluationText('あ,い.う', { language: 'ja', keepSymbols, layoutHasChar: has('') }),
-      'あ、い。う',
-    );
+    assert.equal(prepareEvaluationText('あ,い.う', { language: 'ja', keepSymbols, layoutHasChar: has('') }), 'あ、い。う');
   }
 });
 
 test('日本語: 配列が半角の , . を持てばそのまま残す', () => {
   for (const keepSymbols of [false, true]) {
-    assert.equal(
-      prepareEvaluationText('あ,い.う', { language: 'ja', keepSymbols, layoutHasChar: has(',.') }),
-      'あ,い.う',
-    );
+    assert.equal(prepareEvaluationText('あ,い.う', { language: 'ja', keepSymbols, layoutHasChar: has(',.') }), 'あ,い.う');
   }
 });
 
@@ -50,7 +44,7 @@ test('日本語: 、 。 を半角へ戻す解決はしない', () => {
 });
 
 test('英語: 範囲の切り替えに関わらず何も変えない', () => {
-  const text = "It's (a) test; \"ok\", yes. 〜！";
+  const text = 'It\'s (a) test; "ok", yes. 〜！';
   for (const keepSymbols of [false, true]) {
     assert.equal(prepareEvaluationText(text, { language: 'en', keepSymbols, layoutHasChar: has('') }), text);
   }

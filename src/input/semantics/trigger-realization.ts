@@ -1,12 +1,6 @@
 import { resolveKeyId } from '../shapes/geometry.ts';
 import { validateBaseActionRealization } from './realization.ts';
-import type {
-  BaseActionRealization,
-  BaseActionRealizationSequence,
-  BaseParticipationView,
-  PhysicalKeyId,
-  SemanticInput,
-} from './types.ts';
+import type { BaseActionRealization, BaseActionRealizationSequence, BaseParticipationView, PhysicalKeyId, SemanticInput } from './types.ts';
 
 export interface TriggerRealizationPolicy {
   /** while-held Capabilityを実際の連続保持として使う。 */
@@ -17,10 +11,7 @@ export const DEFAULT_TRIGGER_REALIZATION_POLICY: TriggerRealizationPolicy = {
   useHold: false,
 };
 
-export function sameTriggerRealizationPolicy(
-  left: TriggerRealizationPolicy,
-  right: TriggerRealizationPolicy,
-): boolean {
+export function sameTriggerRealizationPolicy(left: TriggerRealizationPolicy, right: TriggerRealizationPolicy): boolean {
   return left.useHold === right.useHold;
 }
 
@@ -48,13 +39,9 @@ export interface TriggerRealizationResult {
   readonly holdState?: TriggerHoldState;
 }
 
-const canonicalKeys = (keys: readonly PhysicalKeyId[]): PhysicalKeyId[] =>
-  keys.map(resolveKeyId);
+const canonicalKeys = (keys: readonly PhysicalKeyId[]): PhysicalKeyId[] => keys.map(resolveKeyId);
 
-const sameKeys = (
-  left: readonly PhysicalKeyId[],
-  right: readonly PhysicalKeyId[],
-): boolean => {
+const sameKeys = (left: readonly PhysicalKeyId[], right: readonly PhysicalKeyId[]): boolean => {
   const l = canonicalKeys(left);
   const r = canonicalKeys(right);
   if (l.length !== r.length) return false;
@@ -62,11 +49,8 @@ const sameKeys = (
   return r.every((key) => set.has(key));
 };
 
-const acceptsHoldGroup = (
-  input: SemanticInput,
-  keys: readonly PhysicalKeyId[],
-): boolean => input.capabilities.some((capability) =>
-  capability.kind === 'while-held' && sameKeys(capability.keys, keys));
+const acceptsHoldGroup = (input: SemanticInput, keys: readonly PhysicalKeyId[]): boolean =>
+  input.capabilities.some((capability) => capability.kind === 'while-held' && sameKeys(capability.keys, keys));
 
 /**
  * active hold keyはcurrent inputのfresh keyより前からdownしている。
@@ -77,65 +61,43 @@ const acceptsHoldGroup = (
  * held before + fresh after は成立可能。
  * held before + held after はhold開始時の成立順序を維持しているものとして許容する。
  */
-const holdContinuationSatisfiesRequirements = (
-  input: SemanticInput,
-  heldKeys: readonly PhysicalKeyId[],
-): boolean => {
+const holdContinuationSatisfiesRequirements = (input: SemanticInput, heldKeys: readonly PhysicalKeyId[]): boolean => {
   const held = new Set(canonicalKeys(heldKeys));
 
   return input.requirements.every((requirement) => {
     if (requirement.kind !== 'order') return true;
 
-    const afterHasHeld = requirement.after
-      .map(resolveKeyId)
-      .some((key) => held.has(key));
+    const afterHasHeld = requirement.after.map(resolveKeyId).some((key) => held.has(key));
     if (!afterHasHeld) return true;
 
-    const beforeNeedsFreshPress = requirement.before
-      .map(resolveKeyId)
-      .some((key) => !held.has(key));
+    const beforeNeedsFreshPress = requirement.before.map(resolveKeyId).some((key) => !held.has(key));
     return !beforeNeedsFreshPress;
   });
 };
 
-const withoutHeldKeys = (
-  action: readonly PhysicalKeyId[],
-  heldKeys: readonly PhysicalKeyId[],
-): PhysicalKeyId[] => {
+const withoutHeldKeys = (action: readonly PhysicalKeyId[], heldKeys: readonly PhysicalKeyId[]): PhysicalKeyId[] => {
   const held = new Set(canonicalKeys(heldKeys));
   return canonicalKeys(action).filter((key) => !held.has(key));
 };
 
-const intersectKeys = (
-  keys: readonly PhysicalKeyId[],
-  selected: readonly PhysicalKeyId[] | undefined,
-): PhysicalKeyId[] => {
+const intersectKeys = (keys: readonly PhysicalKeyId[], selected: readonly PhysicalKeyId[] | undefined): PhysicalKeyId[] => {
   if (selected === undefined) return [];
   const set = new Set(canonicalKeys(selected));
   return canonicalKeys(keys).filter((key) => set.has(key));
 };
 
-const defaultParticipationView = (
-  realization: BaseActionRealization,
-): BaseParticipationView => ({
+const defaultParticipationView = (realization: BaseActionRealization): BaseParticipationView => ({
   outputKeys: realization.defaultOutputKeys,
   triggerKeys: realization.defaultTriggerKeys ?? [],
-  ...(realization.defaultHoldKeys === undefined
-    ? {}
-    : { holdKeys: realization.defaultHoldKeys }),
+  ...(realization.defaultHoldKeys === undefined ? {} : { holdKeys: realization.defaultHoldKeys }),
 });
 
-const participationViewForHold = (
-  realization: BaseActionRealization,
-  heldKeys: readonly PhysicalKeyId[],
-): BaseParticipationView | undefined => {
+const participationViewForHold = (realization: BaseActionRealization, heldKeys: readonly PhysicalKeyId[]): BaseParticipationView | undefined => {
   const defaultView = defaultParticipationView(realization);
   if (defaultView.holdKeys !== undefined && sameKeys(defaultView.holdKeys, heldKeys)) {
     return defaultView;
   }
-  return realization.alternateParticipations?.find(
-    (view) => view.holdKeys !== undefined && sameKeys(view.holdKeys, heldKeys),
-  );
+  return realization.alternateParticipations?.find((view) => view.holdKeys !== undefined && sameKeys(view.holdKeys, heldKeys));
 };
 
 const realizedAction = (
@@ -150,25 +112,17 @@ const realizedAction = (
   return {
     keys: canonicalKeys(keys),
     input: realization.input,
-    outputKeys: intersectKeys(baseKeys, participation.outputKeys)
-      .filter((key) => pressed.has(key)),
-    triggerKeys: intersectKeys(baseKeys, participation.triggerKeys)
-      .filter((key) => pressed.has(key)),
+    outputKeys: intersectKeys(baseKeys, participation.outputKeys).filter((key) => pressed.has(key)),
+    triggerKeys: intersectKeys(baseKeys, participation.triggerKeys).filter((key) => pressed.has(key)),
     heldKeys: canonicalKeys(heldKeys),
     ...(holdPhase === undefined ? {} : { holdPhase }),
   };
 };
 
-const wouldEraseFreshOutputEvent = (
-  realization: BaseActionRealization,
-  heldKeys: readonly PhysicalKeyId[],
-): boolean => realization.input.output !== ''
-  && realization.actions.every((action) => withoutHeldKeys(action, heldKeys).length === 0);
+const wouldEraseFreshOutputEvent = (realization: BaseActionRealization, heldKeys: readonly PhysicalKeyId[]): boolean =>
+  realization.input.output !== '' && realization.actions.every((action) => withoutHeldKeys(action, heldKeys).length === 0);
 
-const startActionIndex = (
-  realization: BaseActionRealization,
-  holdKeys: readonly PhysicalKeyId[],
-): number => {
+const startActionIndex = (realization: BaseActionRealization, holdKeys: readonly PhysicalKeyId[]): number => {
   const hold = canonicalKeys(holdKeys);
   return realization.actions.findIndex((action) => {
     const actionKeys = canonicalKeys(action);
@@ -187,34 +141,23 @@ function realizeOne(
 
   if (!policy.useHold) {
     return {
-      actions: realization.actions.map((keys) =>
-        realizedAction(realization, defaultView, keys, keys, [])),
+      actions: realization.actions.map((keys) => realizedAction(realization, defaultView, keys, keys, [])),
     };
   }
 
-  const continuationView = previous === undefined
-    ? undefined
-    : participationViewForHold(realization, previous.keys);
-  const canContinue = previous !== undefined
-    && continuationView !== undefined
-    && acceptsHoldGroup(realization.input, previous.keys)
-    && holdContinuationSatisfiesRequirements(realization.input, previous.keys)
-    && !wouldEraseFreshOutputEvent(realization, previous.keys);
+  const continuationView = previous === undefined ? undefined : participationViewForHold(realization, previous.keys);
+  const canContinue =
+    previous !== undefined &&
+    continuationView !== undefined &&
+    acceptsHoldGroup(realization.input, previous.keys) &&
+    holdContinuationSatisfiesRequirements(realization.input, previous.keys) &&
+    !wouldEraseFreshOutputEvent(realization, previous.keys);
 
   if (canContinue && continuationView !== undefined) {
     const actions = realization.actions.flatMap((baseAction): RealizedSemanticAction[] => {
       const keys = withoutHeldKeys(baseAction, previous.keys);
       if (keys.length === 0) return [];
-      return [
-        realizedAction(
-          realization,
-          continuationView,
-          baseAction,
-          keys,
-          previous.keys,
-          'continue',
-        ),
-      ];
+      return [realizedAction(realization, continuationView, baseAction, keys, previous.keys, 'continue')];
     });
     return {
       actions,
@@ -225,8 +168,7 @@ function realizeOne(
   const defaultHoldKeys = realization.defaultHoldKeys;
   if (defaultHoldKeys === undefined) {
     return {
-      actions: realization.actions.map((keys) =>
-        realizedAction(realization, defaultView, keys, keys, [])),
+      actions: realization.actions.map((keys) => realizedAction(realization, defaultView, keys, keys, [])),
     };
   }
 
@@ -240,14 +182,7 @@ function realizeOne(
     if (index < startAt) {
       return realizedAction(realization, defaultView, keys, keys, []);
     }
-    return realizedAction(
-      realization,
-      defaultView,
-      keys,
-      keys,
-      holdKeys,
-      index === startAt ? 'start' : 'continue',
-    );
+    return realizedAction(realization, defaultView, keys, keys, holdKeys, index === startAt ? 'start' : 'continue');
   });
   return {
     actions,

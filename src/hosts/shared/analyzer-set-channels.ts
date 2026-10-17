@@ -43,13 +43,7 @@ export function syncAnalyzerSetPaneChannels<Options, Extracted>(
   }
 
   current?.extraction.unsubscribe();
-  const extraction = createSetExtractRequest(
-    params.cache,
-    params.definition,
-    params.options,
-    params.onExtraction,
-    params.requestOptions,
-  );
+  const extraction = createSetExtractRequest(params.cache, params.definition, params.options, params.onExtraction, params.requestOptions);
   extraction.request(params.members);
   return { options: params.options, extraction };
 }

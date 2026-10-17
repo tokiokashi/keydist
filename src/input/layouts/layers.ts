@@ -1,18 +1,7 @@
 import { resolveKeyId, type PhysicalKeyboardStandard } from '../shapes/geometry.ts';
 import { physicalKeyDisplayLabel } from '../shapes/key-labels.ts';
-import {
-  faceCells,
-  handOfKey,
-  type Hand,
-} from './face-geometry.ts';
-import {
-  SINGLE_LAYER_ID,
-  type Face,
-  type LayerDefinition,
-  type LayerPresentationRole,
-  type Layout,
-  type TriggerMeaning,
-} from './types.ts';
+import { faceCells, handOfKey, type Hand } from './face-geometry.ts';
+import { SINGLE_LAYER_ID, type Face, type LayerDefinition, type LayerPresentationRole, type Layout, type TriggerMeaning } from './types.ts';
 import { kanaKindName } from './kana-kind.ts';
 
 export { faceCells, handOfKey };
@@ -93,9 +82,7 @@ export interface TriggerChord {
 /** 面のtrigger alternativeを、キーが属する組（`modifierGroups` と `triggerMeaningGroups`）を添えたchord列にする。 */
 export function displayTriggerChords(face: Face): readonly TriggerChord[] {
   const entries = Object.entries({ ...face.modifierGroups, ...face.triggerMeaningGroups });
-  const groupsField = entries.length === 0
-    ? {}
-    : { groups: new Map(entries.map(([key, group]) => [resolveKeyId(key), group] as const)) };
+  const groupsField = entries.length === 0 ? {} : { groups: new Map(entries.map(([key, group]) => [resolveKeyId(key), group] as const)) };
   return displayTriggerAlternatives(face).map((keys) => ({ keys, ...groupsField }));
 }
 
@@ -108,16 +95,9 @@ export function displayTriggerKeys(face: Face): readonly string[] {
 }
 
 /** presentation trigger alternativeとphysical key集合のexact match。 */
-export function matchesDisplayTriggerAlternative(
-  face: Face,
-  keys: ReadonlySet<string>,
-): boolean {
+export function matchesDisplayTriggerAlternative(face: Face, keys: ReadonlySet<string>): boolean {
   const resolved = new Set([...keys].map(resolveKeyId));
-  return displayTriggerAlternatives(face).some(
-    (alternative) =>
-      alternative.length === resolved.size
-      && alternative.every((key) => resolved.has(key)),
-  );
+  return displayTriggerAlternatives(face).some((alternative) => alternative.length === resolved.size && alternative.every((key) => resolved.has(key)));
 }
 
 /** semantic cellと明示presentation membershipを、このFaceの表示セルとして統合する。 */
@@ -138,23 +118,22 @@ export function faceDisplayCells(face: Face): Map<string, string> {
  * authoring semantic metadataは再解釈せず、
  * presentationではfaceLayerIdsを帰属authority、layerDefinitionsをkind authorityとして使う。semantic/analysis authorityには使わない。
  */
-export function classifyPresentationFaces(
-  layout: Pick<Layout, 'faces' | 'faceLayerIds' | 'layerDefinitions'>,
-): FaceGroups {
+export function classifyPresentationFaces(layout: Pick<Layout, 'faces' | 'faceLayerIds' | 'layerDefinitions'>): FaceGroups {
   const faces = layout.faces ?? [];
   if (faces.length === 0) return { layers: [], modifiers: [], combos: [] };
   if (!layout.faceLayerIds) {
     throw new Error('Face表示にはfaceLayerIdsの明示が必要');
   }
 
-  const definitions = new Map(
-    (layout.layerDefinitions ?? []).map((definition) => [definition.id, definition] as const),
-  );
-  const groups = new Map<string, {
-    order: number;
-    role: LayerPresentationRole;
-    faces: Face[];
-  }>();
+  const definitions = new Map((layout.layerDefinitions ?? []).map((definition) => [definition.id, definition] as const));
+  const groups = new Map<
+    string,
+    {
+      order: number;
+      role: LayerPresentationRole;
+      faces: Face[];
+    }
+  >();
   const combos: Face[] = [];
 
   for (const [faceIndex, face] of faces.entries()) {
@@ -171,18 +150,17 @@ export function classifyPresentationFaces(
       continue;
     }
     if (definition.presentationRole === undefined) {
-      throw new Error(
-        `Face表示にはaggregation「${layerId}」のpresentationRole明示が必要`,
-      );
+      throw new Error(`Face表示にはaggregation「${layerId}」のpresentationRole明示が必要`);
     }
 
     const group = groups.get(layerId);
     if (group) group.faces.push(face);
-    else groups.set(layerId, {
-      order: faceIndex,
-      role: definition.presentationRole,
-      faces: [face],
-    });
+    else
+      groups.set(layerId, {
+        order: faceIndex,
+        role: definition.presentationRole,
+        faces: [face],
+      });
   }
 
   const layers: Layer[] = [];
@@ -199,13 +177,9 @@ export function classifyPresentationFaces(
 }
 
 /** compiled presentation aggregationを元Face列の出現順へ戻す。role別配列の連結順はauthorityにしない。 */
-export function orderedPresentationLayers(
-  groups: Pick<FaceGroups, 'layers' | 'modifiers'>,
-): Layer[] {
-  return [...groups.layers, ...groups.modifiers]
-    .sort((first, second) => first.order - second.order);
+export function orderedPresentationLayers(groups: Pick<FaceGroups, 'layers' | 'modifiers'>): Layer[] {
+  return [...groups.layers, ...groups.modifiers].sort((first, second) => first.order - second.order);
 }
-
 
 export interface PresentationLayerGuide {
   readonly legends: ReadonlyMap<string, string>;
@@ -219,27 +193,15 @@ export interface PresentationLayerGuide {
  * カンペはFace authoringとpresentationCellsを含むfaceDisplayCellsをそのまま使う。
  */
 export function presentationLayerGuide(
-  layout: Pick<
-    Layout,
-    | 'canonicalInputs'
-    | 'faces'
-    | 'faceLayerIds'
-    | 'layerDefinitions'
-    | 'thumbShiftKeys'
-    | 'legends'
-    | 'triggerMeanings'
-  >,
+  layout: Pick<Layout, 'canonicalInputs' | 'faces' | 'faceLayerIds' | 'layerDefinitions' | 'thumbShiftKeys' | 'legends' | 'triggerMeanings'>,
   layerId: string,
 ): PresentationLayerGuide | undefined {
-  const layer = orderedPresentationLayers(classifyPresentationFaces(layout))
-    .find((candidate) => candidate.id === layerId);
+  const layer = orderedPresentationLayers(classifyPresentationFaces(layout)).find((candidate) => candidate.id === layerId);
 
   // Face authoringがあるlayerではpresentation Faceをauthorityにする。
   // Faceを持たない生成layer（通常Shift等）だけcanonical aggregationへfallbackする。
   if (layer === undefined) {
-    const definition = (layout.layerDefinitions ?? []).find(
-      (candidate) => candidate.id === layerId && candidate.kind === 'layer',
-    );
+    const definition = (layout.layerDefinitions ?? []).find((candidate) => candidate.id === layerId && candidate.kind === 'layer');
     if (definition === undefined) return undefined;
     const legends = aggregationLegendMap(layout, layerId);
     return { legends, triggerKeys: aggregationTriggerKeys(layout, layerId) };
@@ -257,24 +219,17 @@ export function presentationLayerGuide(
     }
   }
 
-  const triggerKeys = [...new Set(
-    layer.faces.flatMap((face) => displayTriggerKeys(face)),
-  )];
+  const triggerKeys = [...new Set(layer.faces.flatMap((face) => displayTriggerKeys(face)))];
 
   return { legends, triggerKeys };
 }
-
-
 
 /**
  * recognition window内のmodifier roleから、現在成立可能なpresentation aggregationを返す。
  * UIがFaceやlayout idを解釈せず、canonical semanticのroles / aggregationGroupIdをauthorityにする。
  * 複合modifierが揃った場合は、より多くのmodifier keyを要求するgroupを優先する。
  */
-export function activeModifierAggregationGroupIds(
-  layout: Pick<Layout, 'canonicalInputs'>,
-  recognitionKeys: readonly string[],
-): readonly string[] {
+export function activeModifierAggregationGroupIds(layout: Pick<Layout, 'canonicalInputs'>, recognitionKeys: readonly string[]): readonly string[] {
   const active = new Set(recognitionKeys.map(resolveKeyId));
   if (active.size === 0) return [];
 
@@ -285,11 +240,7 @@ export function activeModifierAggregationGroupIds(
         const physical = new Set(input.physicalKeys.map(resolveKeyId));
         if (![...active].every((key) => physical.has(key))) continue;
 
-        const modifierKeys = [...new Set(
-          input.roles
-            .filter((role) => role.role === 'modifier')
-            .map((role) => resolveKeyId(role.key)),
-        )];
+        const modifierKeys = [...new Set(input.roles.filter((role) => role.role === 'modifier').map((role) => resolveKeyId(role.key)))];
         if (modifierKeys.length === 0) continue;
         if (!modifierKeys.every((key) => active.has(key))) continue;
 
@@ -302,18 +253,11 @@ export function activeModifierAggregationGroupIds(
   }
 
   const maxModifierCount = Math.max(0, ...matches.map((match) => match.modifierCount));
-  return [...new Set(
-    matches
-      .filter((match) => match.modifierCount === maxModifierCount)
-      .map((match) => match.id),
-  )];
+  return [...new Set(matches.filter((match) => match.modifierCount === maxModifierCount).map((match) => match.id))];
 }
 
 /** canonical aggregationに属するoutput key -> legend。 */
-export function aggregationLegendMap(
-  layout: Pick<Layout, 'canonicalInputs'>,
-  aggregationGroupId: string,
-): ReadonlyMap<string, string> {
+export function aggregationLegendMap(layout: Pick<Layout, 'canonicalInputs'>, aggregationGroupId: string): ReadonlyMap<string, string> {
   const legends = new Map<string, string>();
 
   const add = (key: string, output: string) => {
@@ -330,9 +274,7 @@ export function aggregationLegendMap(
       alternative.semanticInputs.forEach((input, index) => {
         if (input.aggregationGroupId !== aggregationGroupId) return;
         const realization = alternative.baseRealizations[index];
-        const output = input.output || (
-          alternative.semanticInputs.length === 1 ? logicalOutput : ''
-        );
+        const output = input.output || (alternative.semanticInputs.length === 1 ? logicalOutput : '');
         if (output === '') return;
         for (const key of realization?.defaultOutputKeys ?? []) add(key, output);
         for (const view of realization?.alternateParticipations ?? []) {
@@ -346,10 +288,7 @@ export function aggregationLegendMap(
 }
 
 /** canonical aggregationのauthoring realizationがtriggerとして扱うphysical key。 */
-export function aggregationTriggerKeys(
-  layout: Pick<Layout, 'canonicalInputs'>,
-  aggregationGroupId: string,
-): readonly string[] {
+export function aggregationTriggerKeys(layout: Pick<Layout, 'canonicalInputs'>, aggregationGroupId: string): readonly string[] {
   const keys = new Set<string>();
   for (const alternatives of layout.canonicalInputs.values()) {
     for (const alternative of alternatives) {
@@ -370,39 +309,24 @@ export function aggregationTriggerKeys(
 
 /** compiled aggregationのtriggerを、人間向けのside-neutralな表示へ畳む。 */
 export function aggregationTriggerDisplayText(
-  layout: Pick<
-    Layout,
-    | 'canonicalInputs'
-    | 'faces'
-    | 'faceLayerIds'
-    | 'layerDefinitions'
-    | 'thumbShiftKeys'
-    | 'legends'
-    | 'triggerMeanings'
-  >,
+  layout: Pick<Layout, 'canonicalInputs' | 'faces' | 'faceLayerIds' | 'layerDefinitions' | 'thumbShiftKeys' | 'legends' | 'triggerMeanings'>,
   aggregationGroupId: string,
 ): string {
-  const authoredTexts = [...new Set(
-    (layout.faces ?? [])
-      .filter((face) => layout.faceLayerIds?.get(face) === aggregationGroupId)
-      .map((face) => face.presentationTriggerText)
-      .filter((text): text is string => text !== undefined && text.trim() !== ''),
-  )];
+  const authoredTexts = [
+    ...new Set(
+      (layout.faces ?? [])
+        .filter((face) => layout.faceLayerIds?.get(face) === aggregationGroupId)
+        .map((face) => face.presentationTriggerText)
+        .filter((text): text is string => text !== undefined && text.trim() !== ''),
+    ),
+  ];
   if (authoredTexts.length === 1) return authoredTexts[0];
 
-  return triggerChordsDisplayText(
-    layout,
-    aggregationTriggerChords(layout, aggregationGroupId),
-    undefined,
-    layerLabelOf(layout, aggregationGroupId),
-  );
+  return triggerChordsDisplayText(layout, aggregationTriggerChords(layout, aggregationGroupId), undefined, layerLabelOf(layout, aggregationGroupId));
 }
 
 /** 層の名前（配列が付けた名前。名前の無い層は既定の名前の仮置きなので、意味と突き合わせる相手にならない）。 */
-export function layerLabelOf(
-  layout: Pick<Layout, 'layerDefinitions'>,
-  layerId: string,
-): string | undefined {
+export function layerLabelOf(layout: Pick<Layout, 'layerDefinitions'>, layerId: string): string | undefined {
   const definition = (layout.layerDefinitions ?? []).find((candidate) => candidate.id === layerId);
   return definition === undefined || definition.labelIsDefault === true ? undefined : definition.label;
 }
@@ -412,10 +336,7 @@ export interface DefaultLayerName {
   label: string;
 }
 
-type DefaultLayerNameLayout = Pick<
-  Layout,
-  'faces' | 'faceLayerIds' | 'layerDefinitions' | 'thumbShiftKeys' | 'legends' | 'triggerMeanings'
->;
+type DefaultLayerNameLayout = Pick<Layout, 'faces' | 'faceLayerIds' | 'layerDefinitions' | 'thumbShiftKeys' | 'legends' | 'triggerMeanings'>;
 
 /** 出る文字を並べた名前に入れる文字数の上限。超えたら「…」で省く。 */
 const LISTED_OUTPUT_LIMIT = 3;
@@ -440,33 +361,29 @@ function listedOutputsName(outputs: readonly string[]): string {
  * 組み立ての途中ではなく、表示・トレースを作る時点の配列から読む。
  * 刻印の無いキーの表示名は物理配列の規格で変わるが、名前はどの画面でも同じにするため、規格を渡さない既定の表示名で作る。
  */
-export function defaultLayerNames(
-  layout: DefaultLayerNameLayout,
-): ReadonlyMap<string, DefaultLayerName> {
+export function defaultLayerNames(layout: DefaultLayerNameLayout): ReadonlyMap<string, DefaultLayerName> {
   const definitions = layout.layerDefinitions ?? [];
   const candidates = definitions.flatMap((definition) => {
     if (definition.labelIsDefault !== true) return [];
-    const faces = (layout.faces ?? [])
-      .filter((face) => layout.faceLayerIds?.get(face) === definition.id);
+    const faces = (layout.faces ?? []).filter((face) => layout.faceLayerIds?.get(face) === definition.id);
     const trigger = triggerChordsDisplayText(
       layout,
       faces.flatMap((face) => displayTriggerChords(face)),
     );
     const outputs = [...new Set(faces.flatMap((face) => [...faceCells(face).values()]))];
-    return [{
-      id: definition.id,
-      trigger,
-      kind: kanaKindName(outputs),
-      listed: listedOutputsName(outputs),
-      outputCount: outputs.length,
-    }];
+    return [
+      {
+        id: definition.id,
+        trigger,
+        kind: kanaKindName(outputs),
+        listed: listedOutputsName(outputs),
+        outputCount: outputs.length,
+      },
+    ];
   });
 
-  const authored = definitions
-    .filter((definition) => definition.labelIsDefault !== true)
-    .map((definition) => definition.label);
-  const countOf = (labels: readonly string[], label: string) =>
-    labels.filter((other) => other === label).length;
+  const authored = definitions.filter((definition) => definition.labelIsDefault !== true).map((definition) => definition.label);
+  const countOf = (labels: readonly string[], label: string) => labels.filter((other) => other === label).length;
 
   // 1と2: 種類の名前が重なる層は、出る文字が一番多い層を除いて、出る文字を並べる
   const stage = new Map<string, { label: string; listed: boolean }>();
@@ -477,13 +394,10 @@ export function defaultLayerNames(
     }
     const sameKind = candidates.filter((other) => other.kind === candidate.kind);
     const mostOutputs = Math.max(...sameKind.map((other) => other.outputCount));
-    const keepsKind = !authored.includes(candidate.kind)
-      && (sameKind.length === 1
-        || (candidate.outputCount === mostOutputs
-          && sameKind.filter((other) => other.outputCount === mostOutputs).length === 1));
-    stage.set(candidate.id, keepsKind
-      ? { label: candidate.kind, listed: false }
-      : { label: candidate.listed, listed: true });
+    const keepsKind =
+      !authored.includes(candidate.kind) &&
+      (sameKind.length === 1 || (candidate.outputCount === mostOutputs && sameKind.filter((other) => other.outputCount === mostOutputs).length === 1));
+    stage.set(candidate.id, keepsKind ? { label: candidate.kind, listed: false } : { label: candidate.listed, listed: true });
   }
 
   // 並べても重なる層は、3の名前にする
@@ -517,9 +431,7 @@ export function defaultLayerNames(
  * 層の名前を画面に出す箇所は、配列の `layerDefinitions` を直接読まずに、この列を使う。
  * 名前の付いた層の定義は、そのまま返す。
  */
-export function layerDefinitionsWithLabels(
-  layout: DefaultLayerNameLayout,
-): LayerDefinition[] {
+export function layerDefinitionsWithLabels(layout: DefaultLayerNameLayout): LayerDefinition[] {
   const names = defaultLayerNames(layout);
   return (layout.layerDefinitions ?? []).map((definition) => {
     const name = names.get(definition.id);
@@ -530,10 +442,7 @@ export function layerDefinitionsWithLabels(
 }
 
 /** aggregationTriggerKeysのchord構造を保ったview。realizationごとに1 chordとする。 */
-function aggregationTriggerChords(
-  layout: Pick<Layout, 'canonicalInputs'>,
-  aggregationGroupId: string,
-): readonly TriggerChord[] {
+function aggregationTriggerChords(layout: Pick<Layout, 'canonicalInputs'>, aggregationGroupId: string): readonly TriggerChord[] {
   const chords: TriggerChord[] = [];
   for (const alternatives of layout.canonicalInputs.values()) {
     for (const alternative of alternatives) {
@@ -601,17 +510,17 @@ export function triggerChordsDisplayText(
     const groups = Array.isArray(chord) ? undefined : (chord as TriggerChord).groups;
     const keys = [...new Set(rawKeys.map(resolveKeyId))];
     if (keys.length === 0) continue;
-    const signature = [...keys].sort()
-      .map((key) => `${key}\u0001${meaningOf(key, groups)?.text ?? ''}`).join('\u0000');
+    const signature = [...keys]
+      .sort()
+      .map((key) => `${key}\u0001${meaningOf(key, groups)?.text ?? ''}`)
+      .join('\u0000');
     if (seen.has(signature)) continue;
     seen.add(signature);
     unique.push({ keys, groups });
   }
   if (unique.length === 0) return '—';
 
-  const sameAsLayer = layerName !== undefined && unique.every(
-    ({ keys, groups }) => keys.every((key) => meaningOf(key, groups)?.text === layerName),
-  );
+  const sameAsLayer = layerName !== undefined && unique.every(({ keys, groups }) => keys.every((key) => meaningOf(key, groups)?.text === layerName));
   const label = (key: string, groups: ReadonlyMap<string, string> | undefined) => {
     if (sameAsLayer) return physical(key);
     const meaning = meaningOf(key, groups);
@@ -630,14 +539,11 @@ export function triggerChordsDisplayText(
   return [...new Set(unique.map(({ keys, groups }) => keys.map((key) => label(key, groups)).join(' + ')))].join(' / ');
 }
 
-
 /**
  * canonical semantic上でmodifier roleを持つphysical key。
  * analysis互換用。Input Converterの表示trigger判定はauthoring realizationを使う。
  */
-export function modifierPhysicalKeys(
-  layout: Pick<Layout, 'canonicalInputs'>,
-): ReadonlySet<string> {
+export function modifierPhysicalKeys(layout: Pick<Layout, 'canonicalInputs'>): ReadonlySet<string> {
   const keys = new Set<string>();
   for (const alternatives of layout.canonicalInputs.values()) {
     for (const alternative of alternatives) {
@@ -651,7 +557,6 @@ export function modifierPhysicalKeys(
   return keys;
 }
 
-
 export interface PresentationTriggerGuideStyle {
   readonly kind: 'layer' | 'combo';
   readonly colorSlot?: number;
@@ -662,9 +567,7 @@ export interface PresentationTriggerGuideStyle {
  * presentation色を割り当てる。layerはlayerShiftStylesのseries slotを再利用し、
  * composition/comboは専用色として扱う。
  */
-export function presentationTriggerGuideStyles(
-  layout: Layout,
-): ReadonlyMap<string, PresentationTriggerGuideStyle> {
+export function presentationTriggerGuideStyles(layout: Layout): ReadonlyMap<string, PresentationTriggerGuideStyle> {
   const groups = classifyPresentationFaces(layout);
   const ordered = orderedPresentationLayers(groups);
   const faceStyles = layerShiftStyles(ordered);
@@ -706,9 +609,7 @@ export function presentationTriggerGuideStyles(
 /**
  * 個々のchordをカンペへ列挙せず、authoring済みsemantic groupだけを短いラベルとして返す。
  */
-export function semanticCombinationLabels(
-  layout: Pick<Layout, 'canonicalInputs' | 'resolvedComboDefinitions'>,
-): readonly string[] {
+export function semanticCombinationLabels(layout: Pick<Layout, 'canonicalInputs' | 'resolvedComboDefinitions'>): readonly string[] {
   const labels = new Set<string>();
 
   for (const alternatives of layout.canonicalInputs.values()) {
@@ -730,19 +631,13 @@ export function semanticCombinationLabels(
   return [...labels];
 }
 
-
 /**
  * Input/Analyzerで小型カンペへ出すsemantic layer。
  * layoutがcompact presentation policyを持つ場合は、そのkeepLayerIdsだけをauthorityにする。
  * base(single)はmain keyboardが担うためカンペから除外する。
  */
-export function compactLayerGuideDefinitions(
-  layout: DefaultLayerNameLayout & Pick<Layout, 'layerViewPresentation'>,
-): readonly LayerDefinition[] {
-  const definitions = layerDefinitionsWithLabels(layout)
-    .filter((definition) =>
-      definition.kind === 'layer'
-      && definition.presentationRole === 'layer');
+export function compactLayerGuideDefinitions(layout: DefaultLayerNameLayout & Pick<Layout, 'layerViewPresentation'>): readonly LayerDefinition[] {
+  const definitions = layerDefinitionsWithLabels(layout).filter((definition) => definition.kind === 'layer' && definition.presentationRole === 'layer');
 
   const compact = layout.layerViewPresentation?.compact;
   if (compact === undefined) {

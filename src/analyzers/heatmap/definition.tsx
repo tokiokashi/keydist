@@ -82,7 +82,7 @@ export function HeatmapBody({ layout, geometry, extracted, keySelection, setTarg
                   {...figureProps(figure.state.layout, figure.state.geometry)}
                   title={figure.label}
                   diagramId={`set-${figure.key}`}
-                  detailOf={(keyId) => figure.state.status === 'ready' ? figure.state.extracted.keyDetails.merged.get(keyId) : undefined}
+                  detailOf={(keyId) => (figure.state.status === 'ready' ? figure.state.extracted.keyDetails.merged.get(keyId) : undefined)}
                   colorCounts={figure.state.extracted.keyCounts}
                   maxCount={maxCount}
                   ariaSuffix="（全レイヤー合算・線形）"

@@ -27,7 +27,10 @@ test('複製は差分を共有しない。変化が無い操作は同じ配列�
   const duplicated = duplicateUserRomajiRule(rules, 'romaji-a', () => 'romaji-b');
   assert.equal(duplicated[1]!.name, 'Aのコピー');
   assert.notEqual(duplicated[1]!.overrides, duplicated[0]!.overrides);
-  assert.equal(duplicateUserRomajiRule(rules, 'none', () => 'x'), rules);
+  assert.equal(
+    duplicateUserRomajiRule(rules, 'none', () => 'x'),
+    rules,
+  );
   assert.equal(renameUserRomajiRule(rules, 'romaji-a', 'A'), rules);
   assert.equal(renameUserRomajiRule(rules, 'none', 'B'), rules);
   assert.equal(updateUserRomajiRule(rules, 'romaji-a', { base: 'kunrei', overrides: { し: 'shi' }, generateSokuon: true }), rules);
@@ -48,19 +51,31 @@ test('綴りの差し替え: 小文字にし、空なら差分を外し、置け
 
 test('揺れる箇所の一覧: 固定の一覧の全てのかなを並べ、基底と違う行だけがdiffersになる', () => {
   const plain = spellingRows(RULE);
-  assert.deepEqual(plain.map((row) => row.kana), ROMAJI_VARIANTS.map((variant) => variant.kana));
+  assert.deepEqual(
+    plain.map((row) => row.kana),
+    ROMAJI_VARIANTS.map((variant) => variant.kana),
+  );
   assert.ok(plain.every((row) => !row.differs && row.base === row.current));
   assert.equal(plain.find((row) => row.kana === 'し')!.base, 'si');
 
   const rows = spellingRows({ ...RULE, overrides: { し: 'shi', か: 'ka' } });
-  assert.deepEqual(rows.filter((row) => row.differs).map((row) => [row.kana, row.base, row.current]), [['し', 'si', 'shi']]);
+  assert.deepEqual(
+    rows.filter((row) => row.differs).map((row) => [row.kana, row.base, row.current]),
+    [['し', 'si', 'shi']],
+  );
 });
 
 test('固定の一覧に無いかなの上書きも、末尾に基底の綴りと並べて出る', () => {
   const rows = spellingRows({ ...RULE, base: 'oonishi', overrides: { きゃ: 'kya', ぎゃ: 'gha' } });
   const extra = rows.slice(ROMAJI_VARIANTS.length);
-  assert.deepEqual(extra.map((row) => row.kana), ['きゃ', 'ぎゃ']);
-  assert.deepEqual(extra.map((row) => row.alternatives), [[], []]);
+  assert.deepEqual(
+    extra.map((row) => row.kana),
+    ['きゃ', 'ぎゃ'],
+  );
+  assert.deepEqual(
+    extra.map((row) => row.alternatives),
+    [[], []],
+  );
   assert.equal(extra[1]!.current, 'gha');
   assert.equal(extra[1]!.differs, true);
   assert.notEqual(extra[1]!.base, 'gha');

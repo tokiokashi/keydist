@@ -4,10 +4,7 @@ import type { KeydistAssets } from '#engine/commands.ts';
 import { setWorkspacePaneOptionsCommand } from '#engine/workspace-commands.ts';
 import type { PaneOptionsCommit } from '#hosts/workspace/index.ts';
 import type { OptionsWriteLogs } from '#hosts/shared/options-write-log.ts';
-import {
-  createDebouncedPersistenceScheduler,
-  type DebouncedPersistenceScheduler,
-} from '#platform/persistence/debounced-scheduler.ts';
+import { createDebouncedPersistenceScheduler, type DebouncedPersistenceScheduler } from '#platform/persistence/debounced-scheduler.ts';
 
 /**
  * Workspaceのペインの解析設定を、ペインごとに間引いてから`dispatch`する。
@@ -52,10 +49,11 @@ export function usePaneOptionsCommit(
       }
       return scheduler;
     };
-    commitRef.current = Object.assign(
-      (ownerKey: string, paneId: string, options: unknown) => schedulerFor(ownerKey).notify({ paneId, options }),
-      { flush: () => { for (const scheduler of schedulersRef.current.values()) scheduler.flush(); } },
-    );
+    commitRef.current = Object.assign((ownerKey: string, paneId: string, options: unknown) => schedulerFor(ownerKey).notify({ paneId, options }), {
+      flush: () => {
+        for (const scheduler of schedulersRef.current.values()) scheduler.flush();
+      },
+    });
   }
   const commit = commitRef.current;
 

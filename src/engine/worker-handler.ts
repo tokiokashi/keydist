@@ -21,10 +21,7 @@ export interface EngineWorkerRegistry {
  * メッセージの受け取りと送り返しは入口の側に任せ、ここは値から値への関数にしておく
  * （Workerを立てずにNodeのテストから直接呼べる。DOM・`self`に依存しない）。
  */
-export function createEngineWorkerHandler(
-  cache: EngineCache,
-  registry: EngineWorkerRegistry,
-): (request: EngineWorkerRequest) => EngineWorkerResponse {
+export function createEngineWorkerHandler(cache: EngineCache, registry: EngineWorkerRegistry): (request: EngineWorkerRequest) => EngineWorkerResponse {
   const single = new Map(registry.single.map((definition) => [definition.id, definition]));
   const set = new Map(registry.set.map((definition) => [definition.id, definition]));
 

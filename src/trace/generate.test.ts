@@ -4,7 +4,16 @@ import { buildGeometry } from '#input/shapes/geometry.ts';
 import { generateTrace, type TracePolicy } from './generate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { compileSequenceInputAlternative } from '#input/semantics/index.ts';
-import { faceFromEntries, fromFaces, fromKana, LAYOUT_BY_ID, type Layout, withCombos, withRomaji, withThumbShiftAlternatives } from '#input/layouts/index.ts';
+import {
+  faceFromEntries,
+  fromFaces,
+  fromKana,
+  LAYOUT_BY_ID,
+  type Layout,
+  withCombos,
+  withRomaji,
+  withThumbShiftAlternatives,
+} from '#input/layouts/index.ts';
 import { kunrei } from '#input/romaji/kunrei.ts';
 
 const geometry = buildGeometry('row-staggered');
@@ -15,11 +24,9 @@ const opts = (o: Partial<TracePolicy> = {}): TracePolicy => ({
   ...o,
 });
 
-const near = (a: number, b: number, msg?: string) =>
-  assert.ok(Math.abs(a - b) < 1e-9, `${msg ?? ''} expected ${b}, got ${a}`);
+const near = (a: number, b: number, msg?: string) => assert.ok(Math.abs(a - b) < 1e-9, `${msg ?? ''} expected ${b}, got ${a}`);
 
-const totalOf = (text: string, o: Partial<TracePolicy> = {}) =>
-  computeMetrics(generateTrace(text, qwerty, geometry, opts(o)), geometry).totalUnits;
+const totalOf = (text: string, o: Partial<TracePolicy> = {}) => computeMetrics(generateTrace(text, qwerty, geometry, opts(o)), geometry).totalUnits;
 
 test('初回打鍵はホームからの距離になる', () => {
   // jは右人差し指のホームキー
@@ -117,7 +124,14 @@ test('複数文字見出しは、覆う最後の文字からNを数える', () =
   const outside = generateTrace('yきゃu', layout, geometry, opts({ windowSize: 2 }));
 
   assert.equal(inside.strokes.length, 3, 'きゃは1見出しとして1 Stroke');
-  assert.deepEqual(inside.strokes.map((stroke) => [stroke.kanaStart, stroke.kanaEnd]), [[0, 0], [1, 2], [3, 3]]);
+  assert.deepEqual(
+    inside.strokes.map((stroke) => [stroke.kanaStart, stroke.kanaEnd]),
+    [
+      [0, 0],
+      [1, 2],
+      [3, 3],
+    ],
+  );
   near(inside.strokes[2].distance, 1, 'yからuは3文字先なのでN=3でstay候補');
   const home = geometry.homes.RI;
   const u = geometry.keys.get('u')!;
@@ -138,14 +152,24 @@ test('trigger action分離でNの入力距離は変わらない', () => {
     },
   ]);
 
-  const combined = generateTrace('yxu', layout, geometry, opts({
-    windowSize: 1,
-    actionRealizationPolicy: { triggerActivation: 'disabled' },
-  }));
-  const separate = generateTrace('yxu', layout, geometry, opts({
-    windowSize: 1,
-    actionRealizationPolicy: { triggerActivation: 'semantic' },
-  }));
+  const combined = generateTrace(
+    'yxu',
+    layout,
+    geometry,
+    opts({
+      windowSize: 1,
+      actionRealizationPolicy: { triggerActivation: 'disabled' },
+    }),
+  );
+  const separate = generateTrace(
+    'yxu',
+    layout,
+    geometry,
+    opts({
+      windowSize: 1,
+      actionRealizationPolicy: { triggerActivation: 'semantic' },
+    }),
+  );
 
   assert.equal(combined.strokes.length + 1, separate.strokes.length, 'trigger-only Strokeだけ増える');
   near(
@@ -182,10 +206,7 @@ test('ホーム段だけを打つと隣接指の超過はほぼ0になる', () =
   // 生の距離ではなくホーム間隔1uを引いた超過を見る（仕様 §11.6）
   const m = computeMetrics(generateTrace('asdf jkl;', qwerty, geometry, opts()), geometry);
   for (const stat of m.adjacent) {
-    assert.ok(
-      Math.abs(stat.meanExcess) < 0.5,
-      `${stat.pair.join('-')}: ${stat.meanExcess}`,
-    );
+    assert.ok(Math.abs(stat.meanExcess) < 0.5, `${stat.pair.join('-')}: ${stat.meanExcess}`);
   }
 });
 
@@ -211,8 +232,7 @@ test('親指の連打でも距離は増えない', () => {
 
 // ---- 同時押しと前置・後置シフト ----
 
-const chord = (map: Record<string, string[][]>): Layout =>
-  fromKana('test', 'test', map);
+const chord = (map: Record<string, string[][]>): Layout => fromKana('test', 'test', map);
 
 test('同時押しは1ステップ、押下は押したキーの数だけ数える', () => {
   const l = chord({ x: [['space', 'q']] });
@@ -257,11 +277,13 @@ test('同時押しと順次打鍵の差はステップ数に出る。押下数�
 
 test('prefix配列のシフト単独ステップでも後続出力を見て反対側親指へ振り替える', () => {
   const prefix = withThumbShiftAlternatives(
-    fromFaces('prefix-thumb-shift', 'prefix-thumb-shift', [{
-      ...faceFromEntries(['thumb-r'], 'prefix', { q: '左', j: '右' }),
-      inputRole: 'modifier',
-      triggerPersistence: 'single',
-    }]),
+    fromFaces('prefix-thumb-shift', 'prefix-thumb-shift', [
+      {
+        ...faceFromEntries(['thumb-r'], 'prefix', { q: '左', j: '右' }),
+        inputRole: 'modifier',
+        triggerPersistence: 'single',
+      },
+    ]),
     'thumb-r',
     ['thumb-r', 'thumb-l'],
   );
@@ -298,11 +320,13 @@ test('新JIS prefixでも振り替え後の親指がtrigger semanticsへ伝播�
 
 test('suffix配列も合法alternativeから反対側親指pathを選択する', () => {
   const suffix = withThumbShiftAlternatives(
-    fromFaces('suffix-thumb-shift', 'suffix-thumb-shift', [{
-      ...faceFromEntries(['thumb-r'], 'suffix', { q: '左', j: '右' }),
-      inputRole: 'modifier',
-      triggerPersistence: 'single',
-    }]),
+    fromFaces('suffix-thumb-shift', 'suffix-thumb-shift', [
+      {
+        ...faceFromEntries(['thumb-r'], 'suffix', { q: '左', j: '右' }),
+        inputRole: 'modifier',
+        triggerPersistence: 'single',
+      },
+    ]),
     'thumb-r',
     ['thumb-r', 'thumb-l'],
   );
@@ -321,10 +345,22 @@ test('薙刀式のシフトは設定時に出力キーと反対側の親指へ�
   const fixed = generateTrace('おせ', naginata, geometry, opts());
   const opposite = generateTrace('おせ', naginata, geometry, opts({ preferOppositeThumb: true }));
 
-  assert.deepEqual(fixed.strokes[0].presses.find((press) => press.finger === 'RT')?.keys.map((key) => key.id), ['thumb-r']);
-  assert.deepEqual(fixed.strokes[1].presses.find((press) => press.finger === 'RT')?.keys.map((key) => key.id), ['thumb-r']);
-  assert.deepEqual(opposite.strokes[0].presses.find((press) => press.finger === 'LT')?.keys.map((key) => key.id), ['thumb-l']);
-  assert.deepEqual(opposite.strokes[1].presses.find((press) => press.finger === 'RT')?.keys.map((key) => key.id), ['thumb-r']);
+  assert.deepEqual(
+    fixed.strokes[0].presses.find((press) => press.finger === 'RT')?.keys.map((key) => key.id),
+    ['thumb-r'],
+  );
+  assert.deepEqual(
+    fixed.strokes[1].presses.find((press) => press.finger === 'RT')?.keys.map((key) => key.id),
+    ['thumb-r'],
+  );
+  assert.deepEqual(
+    opposite.strokes[0].presses.find((press) => press.finger === 'LT')?.keys.map((key) => key.id),
+    ['thumb-l'],
+  );
+  assert.deepEqual(
+    opposite.strokes[1].presses.find((press) => press.finger === 'RT')?.keys.map((key) => key.id),
+    ['thumb-r'],
+  );
   assert.deepEqual(opposite.strokes[0].triggerKeys, ['thumb-l']);
   assert.deepEqual(opposite.strokes[1].triggerKeys, ['thumb-r']);
 });
@@ -393,9 +429,7 @@ test('最長一致の探索上限はcanonicalInputsだけから決まる', () =>
     ゃ: [['k']],
   });
   const canonicalInputs = new Map(base.canonicalInputs);
-  canonicalInputs.set('きゃ', [
-    compileSequenceInputAlternative('きゃ', [['f']], 'single'),
-  ]);
+  canonicalInputs.set('きゃ', [compileSequenceInputAlternative('きゃ', [['f']], 'single')]);
   const layout = { ...base, canonicalInputs };
 
   assert.equal(layout.map.has('きゃ'), false, 'legacy mapには長い見出しを追加しない');
@@ -428,7 +462,10 @@ test('「きゃ」を見出しに持たない配列は「き」「ゃ」に分�
   });
   const t = generateTrace('きゃ', l, geometry, opts());
   assert.equal(t.strokes.length, 2);
-  assert.deepEqual(t.strokes.map((s) => s.char), ['き', 'ゃ']);
+  assert.deepEqual(
+    t.strokes.map((s) => s.char),
+    ['き', 'ゃ'],
+  );
 });
 
 test('最長一致は後続の文字を食い過ぎない', () => {
@@ -439,7 +476,10 @@ test('最長一致は後続の文字を食い過ぎない', () => {
     く: [['j']],
   });
   const t = generateTrace('きゃく', l, geometry, opts());
-  assert.deepEqual(t.strokes.map((s) => s.char), ['きゃ', 'く']);
+  assert.deepEqual(
+    t.strokes.map((s) => s.char),
+    ['きゃ', 'く'],
+  );
 });
 
 test('ヤ行コンボは拗音の内部だけで発火し、単独ヤ行を奪わない', () => {
@@ -454,7 +494,11 @@ test('ヤ行コンボは拗音の内部だけで発火し、単独ヤ行を奪�
 
   for (const [text, expected] of cases) {
     const trace = generateTrace(text, combo, geometry, opts());
-    assert.deepEqual(trace.strokes.map((stroke) => stroke.char), expected, text);
+    assert.deepEqual(
+      trace.strokes.map((stroke) => stroke.char),
+      expected,
+      text,
+    );
     assert.equal(trace.skipped, 0, text);
   }
 
@@ -474,10 +518,15 @@ test('ヤ行コンボは拗音の内部だけで発火し、単独ヤ行を奪�
     kunrei(),
   );
 
-  assert.deepEqual(generateTrace('やく', generic, geometry, opts()).strokes.map((s) => s.char), ['yaku']);
-  assert.deepEqual(generateTrace('やく', restricted, geometry, opts()).strokes.map((s) => s.char), ['y', 'aku']);
+  assert.deepEqual(
+    generateTrace('やく', generic, geometry, opts()).strokes.map((s) => s.char),
+    ['yaku'],
+  );
+  assert.deepEqual(
+    generateTrace('やく', restricted, geometry, opts()).strokes.map((s) => s.char),
+    ['y', 'aku'],
+  );
 });
-
 
 test('semantic normalizationはoutputのみのStrokeを表現する', () => {
   const trace = generateTrace('a', qwerty, geometry, opts());
@@ -491,28 +540,38 @@ test('semantic normalizationはoutputのみのStrokeを表現する', () => {
 });
 
 test('prefix + singleはtrigger-only Strokeとして正規化する', () => {
-  const layout = fromFaces('semantic-prefix-single', 'semantic-prefix-single', [{
-    trigger: ['q'],
-    mode: 'prefix',
-    rows: ['', '', ['x'], ''],
-    inputRole: 'modifier',
-    triggerPersistence: 'single',
-  }]);
+  const layout = fromFaces('semantic-prefix-single', 'semantic-prefix-single', [
+    {
+      trigger: ['q'],
+      mode: 'prefix',
+      rows: ['', '', ['x'], ''],
+      inputRole: 'modifier',
+      triggerPersistence: 'single',
+    },
+  ]);
   const trace = generateTrace('x', layout, geometry, opts());
 
   assert.equal(trace.strokes.length, 2);
-  assert.deepEqual(trace.strokes[0].participations.map((p) => p.roles), [['trigger']]);
-  assert.deepEqual(trace.strokes[1].participations.map((p) => p.roles), [['output']]);
+  assert.deepEqual(
+    trace.strokes[0].participations.map((p) => p.roles),
+    [['trigger']],
+  );
+  assert.deepEqual(
+    trace.strokes[1].participations.map((p) => p.roles),
+    [['output']],
+  );
 });
 
 test('同一キーはoutput + triggerの複合roleを持てる', () => {
-  const layout = fromFaces('semantic-composite', 'semantic-composite', [{
-    trigger: ['a'],
-    mode: 'simultaneous',
-    rows: ['', '', ['x'], ''],
-    inputRole: 'modifier',
-    triggerPersistence: 'single',
-  }]);
+  const layout = fromFaces('semantic-composite', 'semantic-composite', [
+    {
+      trigger: ['a'],
+      mode: 'simultaneous',
+      rows: ['', '', ['x'], ''],
+      inputRole: 'modifier',
+      triggerPersistence: 'single',
+    },
+  ]);
   const trace = generateTrace('x', layout, geometry, opts());
   const participation = trace.strokes[0].participations[0];
 
@@ -521,29 +580,26 @@ test('同一キーはoutput + triggerの複合roleを持てる', () => {
 });
 
 test('hold-capableはcapabilityとして伝播し、base normalizationではheld-triggerを生成しない', () => {
-  const layout = fromFaces('semantic-hold-capable', 'semantic-hold-capable', [{
-    trigger: ['q'],
-    mode: 'simultaneous',
-    rows: ['', '', ['x'], ''],
-    inputRole: 'modifier',
-    triggerPersistence: 'hold-capable',
-  }]);
+  const layout = fromFaces('semantic-hold-capable', 'semantic-hold-capable', [
+    {
+      trigger: ['q'],
+      mode: 'simultaneous',
+      rows: ['', '', ['x'], ''],
+      inputRole: 'modifier',
+      triggerPersistence: 'hold-capable',
+    },
+  ]);
   const trace = generateTrace('x', layout, geometry, opts());
   const stroke = trace.strokes[0];
 
-  assert.deepEqual(
-    layout.canonicalInputs.get('x')?.[0]?.semanticInputs[0].capabilities,
-    [{ kind: 'while-held', keys: ['q'] }],
-  );
+  assert.deepEqual(layout.canonicalInputs.get('x')?.[0]?.semanticInputs[0].capabilities, [{ kind: 'while-held', keys: ['q'] }]);
   assert.deepEqual(stroke.classifications, []);
   assert.ok(stroke.participations.some((p) => p.roles.includes('trigger')));
   assert.ok(stroke.participations.every((p) => !p.roles.includes('held-trigger')));
 });
 
 test('文字コンボはcompositionとして伝播し、trigger宣言なしではtriggerにしない', () => {
-  const layout = withCombos('semantic-combo', 'semantic-combo', qwerty, [
-    ['ab', ['a', 'b']],
-  ]);
+  const layout = withCombos('semantic-combo', 'semantic-combo', qwerty, [['ab', ['a', 'b']]]);
   const trace = generateTrace('ab', layout, geometry, opts());
   const stroke = trace.strokes[0];
 
@@ -555,13 +611,16 @@ test('文字コンボはcompositionとして伝播し、trigger宣言なしで�
 });
 
 test('semantic normalizationはlayout idに依存しない', () => {
-  const make = (id: string) => fromFaces(id, 'same', [{
-    trigger: ['q'],
-    mode: 'simultaneous',
-    rows: ['', '', ['x'], ''],
-    inputRole: 'modifier',
-    triggerPersistence: 'single',
-  }]);
+  const make = (id: string) =>
+    fromFaces(id, 'same', [
+      {
+        trigger: ['q'],
+        mode: 'simultaneous',
+        rows: ['', '', ['x'], ''],
+        inputRole: 'modifier',
+        triggerPersistence: 'single',
+      },
+    ]);
   const first = generateTrace('x', make('semantic-a'), geometry, opts()).strokes[0];
   const second = generateTrace('x', make('semantic-b'), geometry, opts()).strokes[0];
 
@@ -573,36 +632,33 @@ test('semantic normalizationはlayout idに依存しない', () => {
   );
 });
 
-
 test('同じlogical outputの複数alternativeは既定でauthoring先頭pathを使う', () => {
   const layout = fromKana('alternative-default', 'alternative-default', [
     ['x', [['f']]],
     ['x', [['j']]],
   ]);
   const trace = generateTrace('x', layout, geometry, opts());
-  assert.deepEqual(trace.strokes[0].presses.flatMap((press) => press.keys.map((key) => key.id)), ['f']);
-});
-
-
-test('classificationはselected canonical alternativeからStrokeまで伝播する', () => {
-  const layout = withCombos('classified-combo', 'classified-combo', qwerty, [
-    ['ab', ['a', 'b'], undefined, undefined, ['vocabulary-extension']],
-  ]);
-  const trace = generateTrace('ab', layout, geometry, opts());
   assert.deepEqual(
-    trace.strokes[0].classifications,
-    ['composition', 'vocabulary-extension'],
+    trace.strokes[0].presses.flatMap((press) => press.keys.map((key) => key.id)),
+    ['f'],
   );
 });
 
+test('classificationはselected canonical alternativeからStrokeまで伝播する', () => {
+  const layout = withCombos('classified-combo', 'classified-combo', qwerty, [['ab', ['a', 'b'], undefined, undefined, ['vocabulary-extension']]]);
+  const trace = generateTrace('ab', layout, geometry, opts());
+  assert.deepEqual(trace.strokes[0].classifications, ['composition', 'vocabulary-extension']);
+});
 
 test('preferOppositeThumbのpath同一性はFace presentation provenanceに依存しない', () => {
   const base = withThumbShiftAlternatives(
-    fromFaces('thumb-presentation-provenance', 'thumb-presentation-provenance', [{
-      ...faceFromEntries(['thumb-r'], 'simultaneous', { j: 'x' }),
-      inputRole: 'modifier',
-      triggerPersistence: 'single',
-    }]),
+    fromFaces('thumb-presentation-provenance', 'thumb-presentation-provenance', [
+      {
+        ...faceFromEntries(['thumb-r'], 'simultaneous', { j: 'x' }),
+        inputRole: 'modifier',
+        triggerPersistence: 'single',
+      },
+    ]),
     'thumb-r',
     ['thumb-r', 'thumb-l'],
   );
@@ -612,14 +668,17 @@ test('preferOppositeThumbのpath同一性はFace presentation provenanceに依�
 
   const opposite = alternatives[1];
   const mappedInputs = new Map(
-    opposite.semanticInputs.map((input) => [
-      input,
-      {
-        ...input,
-        // physical/semantic/realization factは同じまま、presentation provenanceだけを変える。
-        faceMemberships: [{ faceIndex: 999, cellKey: 'q' }],
-      },
-    ] as const),
+    opposite.semanticInputs.map(
+      (input) =>
+        [
+          input,
+          {
+            ...input,
+            // physical/semantic/realization factは同じまま、presentation provenanceだけを変える。
+            faceMemberships: [{ faceIndex: 999, cellKey: 'q' }],
+          },
+        ] as const,
+    ),
   );
   const provenanceOnlyDifferent = {
     ...opposite,
@@ -634,11 +693,7 @@ test('preferOppositeThumbのpath同一性はFace presentation provenanceに依�
   const layout = { ...base, canonicalInputs };
 
   const trace = generateTrace('x', layout, geometry, opts({ preferOppositeThumb: true }));
-  assert.deepEqual(
-    trace.strokes[0].triggerKeys,
-    ['thumb-l'],
-    'presentation provenance差だけで合法なopposite-thumb variantを除外しない',
-  );
+  assert.deepEqual(trace.strokes[0].triggerKeys, ['thumb-l'], 'presentation provenance差だけで合法なopposite-thumb variantを除外しない');
 });
 
 test('preferOppositeThumbはnon-thumb別方式alternativeへ切り替えない', () => {
@@ -657,12 +712,8 @@ test('preferOppositeThumbはnon-thumb別方式alternativeへ切り替えない',
   layout.thumbShiftKeys = ['thumb-l', 'thumb-r'];
 
   const trace = generateTrace('x', layout, geometry, opts({ preferOppositeThumb: true }));
-  assert.deepEqual(
-    trace.strokes[0].presses.flatMap((press) => press.keys.map((key) => key.id)).sort(),
-    ['q', 'thumb-l'],
-  );
+  assert.deepEqual(trace.strokes[0].presses.flatMap((press) => press.keys.map((key) => key.id)).sort(), ['q', 'thumb-l']);
 });
-
 
 test('same-output direct alternativeはcomboのyouonOnlyに巻き込まれない', () => {
   const base = fromKana('condition-scope', 'condition-scope', [
@@ -670,15 +721,12 @@ test('same-output direct alternativeはcomboのyouonOnlyに巻き込まれない
     ['b', [['j']]],
     ['ab', [['q']]],
   ]);
-  const layout = withCombos('condition-scope-combo', 'condition-scope-combo', base, [
-    ['ab', ['a', 'b'], { youonOnly: true }],
-  ]);
+  const layout = withCombos('condition-scope-combo', 'condition-scope-combo', base, [['ab', ['a', 'b'], { youonOnly: true }]]);
 
   const trace = generateTrace('ab', layout, geometry, opts());
   assert.equal(trace.skipped, 0);
   assert.deepEqual(
-    trace.strokes.flatMap((stroke) =>
-      stroke.presses.flatMap((press) => press.keys.map((key) => key.id))),
+    trace.strokes.flatMap((stroke) => stroke.presses.flatMap((press) => press.keys.map((key) => key.id))),
     ['q'],
   );
   assert.deepEqual(trace.comboHits, [], 'selected direct alternativeはcombo hitに数えない');
@@ -691,15 +739,15 @@ test('youonOnlyしかない長い見出しは拗音外でeligibleにならず短
     k: [['e']],
     u: [['r']],
   });
-  const layout = withCombos('condition-fallback-combo', 'condition-fallback-combo', base, [
-    ['yaku', ['y', 'a', 'k', 'u'], { youonOnly: true }],
-  ]);
+  const layout = withCombos('condition-fallback-combo', 'condition-fallback-combo', base, [['yaku', ['y', 'a', 'k', 'u'], { youonOnly: true }]]);
 
   const trace = generateTrace('yaku', layout, geometry, opts());
-  assert.deepEqual(trace.strokes.map((stroke) => stroke.char), ['y', 'a', 'k', 'u']);
+  assert.deepEqual(
+    trace.strokes.map((stroke) => stroke.char),
+    ['y', 'a', 'k', 'u'],
+  );
   assert.deepEqual(trace.comboHits, []);
 });
-
 
 test('層に計上するFace compositionがselectedされた場合は、同outputのwithCombos定義をcombo hitに数えない', () => {
   const base = fromFaces('combo-origin-selection', 'combo-origin-selection', [
@@ -714,24 +762,19 @@ test('層に計上するFace compositionがselectedされた場合は、同outpu
       triggerPersistence: 'single',
     },
   ]);
-  const layout = withCombos(
-    'combo-origin-selection-2',
-    'combo-origin-selection-2',
-    base,
-    [['x', ['a', 'b']]],
-  );
+  const layout = withCombos('combo-origin-selection-2', 'combo-origin-selection-2', base, [['x', ['a', 'b']]]);
 
   const alternatives = layout.canonicalInputs.get('x');
   assert.ok(alternatives);
-  assert.deepEqual(alternatives.map((alternative) => alternative.origin), ['face', 'combo']);
+  assert.deepEqual(
+    alternatives.map((alternative) => alternative.origin),
+    ['face', 'combo'],
+  );
 
   const trace = generateTrace('x', layout, geometry, opts());
   assert.deepEqual(trace.comboHits, []);
   assert.equal(trace.comboDefinitions, 1);
-  assert.deepEqual(
-    trace.strokes[0].presses.flatMap((press) => press.keys.map((key) => key.id)).sort(),
-    ['d', 'q'],
-  );
+  assert.deepEqual(trace.strokes[0].presses.flatMap((press) => press.keys.map((key) => key.id)).sort(), ['d', 'q']);
 });
 
 test('コンボ枠に計上するFace compositionの出力は、定義数B・命中数U・延べ回数Hに数える', () => {
@@ -769,7 +812,10 @@ test('コンボ枠に計上するFace compositionの出力は、定義数B・命
 test('selectionIndexは入力の選択ごとに振り、同じ入力単位でも別の選択なら別の値になる', () => {
   const combo = LAYOUT_BY_ID.get('oonishi-custom')!;
   const kyou = generateTrace('きょう', combo, geometry, opts());
-  assert.deepEqual(kyou.strokes.map((stroke) => stroke.char), ['k', 'you']);
+  assert.deepEqual(
+    kyou.strokes.map((stroke) => stroke.char),
+    ['k', 'you'],
+  );
   assert.equal(kyou.strokes[0].inputIndex, kyou.strokes[1].inputIndex);
   assert.notEqual(kyou.strokes[0].selectionIndex, kyou.strokes[1].selectionIndex);
   // 1つの選択が複数のストロークになる時は、そのストロークどうしで共有する。
@@ -779,38 +825,71 @@ test('selectionIndexは入力の選択ごとに振り、同じ入力単位でも
 });
 
 /** 打鍵ごとの、指ごとの`Press.inputDistance`。参加が初めての指は無限大 */
-const inputDistances = (trace: ReturnType<typeof generateTrace>) =>
-  trace.strokes.map((stroke) => stroke.presses.map((press) => press.inputDistance));
+const inputDistances = (trace: ReturnType<typeof generateTrace>) => trace.strokes.map((stroke) => stroke.presses.map((press) => press.inputDistance));
 
 test('ローマ字配列: 同じかなを打つ入力どうしはΔI=0、隣り合うかなの入力はΔI=1になる', () => {
   const romaji = withRomaji(qwerty, kunrei());
   // 「ふ」はh・u（どちらも右人差し指）。続く「ふ」のhは、前のかなのuから1文字先
   const trace = generateTrace('ふふ', romaji, geometry, opts());
-  assert.deepEqual(trace.strokes.map((stroke) => stroke.char), ['h', 'u', 'h', 'u']);
+  assert.deepEqual(
+    trace.strokes.map((stroke) => stroke.char),
+    ['h', 'u', 'h', 'u'],
+  );
   assert.deepEqual(inputDistances(trace), [[Infinity], [0], [1], [0]]);
 });
 
 test('ローマ字配列: kyaの3つの入力は同じかなの範囲を持つ', () => {
   const romaji = withRomaji(qwerty, kunrei());
   const trace = generateTrace('あきゃ', romaji, geometry, opts());
-  assert.deepEqual(trace.strokes.map((stroke) => stroke.char), ['a', 'k', 'y', 'a']);
-  assert.deepEqual(trace.strokes.map((stroke) => [stroke.kanaStart, stroke.kanaEnd]), [[0, 0], [1, 2], [1, 2], [1, 2]]);
+  assert.deepEqual(
+    trace.strokes.map((stroke) => stroke.char),
+    ['a', 'k', 'y', 'a'],
+  );
+  assert.deepEqual(
+    trace.strokes.map((stroke) => [stroke.kanaStart, stroke.kanaEnd]),
+    [
+      [0, 0],
+      [1, 2],
+      [1, 2],
+      [1, 2],
+    ],
+  );
   assert.equal(new Set(trace.strokes.map((stroke) => stroke.selectionIndex)).size, 4);
 });
 
 test('ローマ字配列: 促音を含む綴りの単位は、促音とその次のかなの範囲を持つ', () => {
   const romaji = withRomaji(qwerty, kunrei());
   const trace = generateTrace('あっか', romaji, geometry, opts());
-  assert.deepEqual(trace.strokes.map((stroke) => stroke.char), ['a', 'k', 'k', 'a']);
-  assert.deepEqual(trace.strokes.map((stroke) => [stroke.kanaStart, stroke.kanaEnd]), [[0, 0], [1, 2], [1, 2], [1, 2]]);
+  assert.deepEqual(
+    trace.strokes.map((stroke) => stroke.char),
+    ['a', 'k', 'k', 'a'],
+  );
+  assert.deepEqual(
+    trace.strokes.map((stroke) => [stroke.kanaStart, stroke.kanaEnd]),
+    [
+      [0, 0],
+      [1, 2],
+      [1, 2],
+      [1, 2],
+    ],
+  );
 });
 
 test('コンボが2つの綴りの単位にまたがる時、範囲は両方の単位を覆う。ΔIが負になる所は0にする', () => {
   const combo = withRomaji(LAYOUT_BY_ID.get('oonishi-custom')!, kunrei());
   const trace = generateTrace('きょう', combo, geometry, opts());
-  assert.deepEqual(trace.strokes.map((stroke) => stroke.char), ['k', 'you']);
+  assert.deepEqual(
+    trace.strokes.map((stroke) => stroke.char),
+    ['k', 'you'],
+  );
   // 「きょ」(kyo)と「う」(u)をまたぐyouは0〜2、kは「きょ」の0〜1
-  assert.deepEqual(trace.strokes.map((stroke) => [stroke.kanaStart, stroke.kanaEnd]), [[0, 1], [0, 2]]);
+  assert.deepEqual(
+    trace.strokes.map((stroke) => [stroke.kanaStart, stroke.kanaEnd]),
+    [
+      [0, 1],
+      [0, 2],
+    ],
+  );
   for (const stroke of trace.strokes) {
     for (const press of stroke.presses) assert.ok((press.inputDistance ?? -1) >= 0, 'ΔIは負にならない');
   }
@@ -820,14 +899,26 @@ test('かな配列: 読み飛ばした文字も位置に数える', () => {
   const layout = fromKana('skip-count', 'skip-count', { a: [['a']], u: [['u']] });
   const trace = generateTrace('a☆☆u', layout, geometry, opts());
   assert.equal(trace.skipped, 2);
-  assert.deepEqual(trace.strokes.map((stroke) => [stroke.kanaStart, stroke.kanaEnd]), [[0, 0], [3, 3]]);
+  assert.deepEqual(
+    trace.strokes.map((stroke) => [stroke.kanaStart, stroke.kanaEnd]),
+    [
+      [0, 0],
+      [3, 3],
+    ],
+  );
 });
 
 test('ローマ字配列: 配列に無く読み飛ばした文字も位置に数える', () => {
   const romaji = withRomaji(qwerty, kunrei());
   const trace = generateTrace('あ☆☆い', romaji, geometry, opts());
   assert.equal(trace.skipped, 2);
-  assert.deepEqual(trace.strokes.map((stroke) => [stroke.kanaStart, stroke.kanaEnd]), [[0, 0], [3, 3]]);
+  assert.deepEqual(
+    trace.strokes.map((stroke) => [stroke.kanaStart, stroke.kanaEnd]),
+    [
+      [0, 0],
+      [3, 3],
+    ],
+  );
 });
 
 test('読み飛ばした文字は、Nの範囲を狭める位置として数える', () => {
@@ -847,8 +938,21 @@ test('かな配列: きゃを1つの入力で打つ場合と、きとゃを別�
   const apart = fromKana('kya-apart', 'kya-apart', { き: [['k']], ゃ: [['j']], う: [['u']] });
   const a = generateTrace('きゃう', together, geometry, opts());
   const b = generateTrace('きゃう', apart, geometry, opts());
-  assert.deepEqual(a.strokes.map((stroke) => [stroke.kanaStart, stroke.kanaEnd]), [[0, 1], [2, 2]]);
-  assert.deepEqual(b.strokes.map((stroke) => [stroke.kanaStart, stroke.kanaEnd]), [[0, 0], [1, 1], [2, 2]]);
+  assert.deepEqual(
+    a.strokes.map((stroke) => [stroke.kanaStart, stroke.kanaEnd]),
+    [
+      [0, 1],
+      [2, 2],
+    ],
+  );
+  assert.deepEqual(
+    b.strokes.map((stroke) => [stroke.kanaStart, stroke.kanaEnd]),
+    [
+      [0, 0],
+      [1, 1],
+      [2, 2],
+    ],
+  );
   assert.equal(a.strokes[1].presses[0].inputDistance, 1);
   assert.equal(b.strokes[2].presses[0].inputDistance, 1);
   // きだけを打った指（右中指）から見た次のかな「う」は、別々に打つ配列の方が1大きい
@@ -858,7 +962,16 @@ test('かな配列: きゃを1つの入力で打つ場合と、きとゃを別�
 
 test('英文: 文字1つが1文字で、読み飛ばす文字が無い時はNの範囲が文字数のまま', () => {
   const trace = generateTrace('hello', qwerty, geometry, opts());
-  assert.deepEqual(trace.strokes.map((stroke) => [stroke.kanaStart, stroke.kanaEnd]), [[0, 0], [1, 1], [2, 2], [3, 3], [4, 4]]);
+  assert.deepEqual(
+    trace.strokes.map((stroke) => [stroke.kanaStart, stroke.kanaEnd]),
+    [
+      [0, 0],
+      [1, 1],
+      [2, 2],
+      [3, 3],
+      [4, 4],
+    ],
+  );
 });
 
 test('N=0は、同じかなの中だけ指を残す候補を持つ', () => {
@@ -871,11 +984,28 @@ test('N=0は、同じかなの中だけ指を残す候補を持つ', () => {
     return Math.hypot(home.x - target.x, home.y - target.y);
   };
   const inside = generateTrace('あ', layout, geometry, opts({ windowSize: 0 }));
-  assert.deepEqual(inside.strokes.map((stroke) => stroke.char), ['u', 'x', 'u']);
+  assert.deepEqual(
+    inside.strokes.map((stroke) => stroke.char),
+    ['u', 'x', 'u'],
+  );
   near(inside.strokes[2].distance, 0, '同じかなの中なのでN=0でも残る候補を持つ');
   // 隣のかなのuは、N=0では範囲の外
-  const outside = generateTrace('いう', withRomaji(qwerty, new Map([['い', 'u'], ['う', 'xu']])), geometry, opts({ windowSize: 0 }));
-  assert.deepEqual(outside.strokes.map((stroke) => stroke.char), ['u', 'x', 'u']);
+  const outside = generateTrace(
+    'いう',
+    withRomaji(
+      qwerty,
+      new Map([
+        ['い', 'u'],
+        ['う', 'xu'],
+      ]),
+    ),
+    geometry,
+    opts({ windowSize: 0 }),
+  );
+  assert.deepEqual(
+    outside.strokes.map((stroke) => stroke.char),
+    ['u', 'x', 'u'],
+  );
   near(outside.strokes[2].distance, toHome('u', 'RI'), '隣のかなはN=0の外なのでホームから');
 });
 

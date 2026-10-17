@@ -4,9 +4,7 @@ import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
 import type { PaneCatalog } from '#hosts/shared/resolve-pane-input.ts';
 
-const BUILTIN_SHAPES: ReadonlyMap<string, PhysicalShape> = new Map(
-  Object.values(PHYSICAL_SHAPES).map((shape) => [shape.id, shape] as const),
-);
+const BUILTIN_SHAPES: ReadonlyMap<string, PhysicalShape> = new Map(Object.values(PHYSICAL_SHAPES).map((shape) => [shape.id, shape] as const));
 
 /**
  * ペイン（個別画面・Workspace）が`resolveEngineInput`へ渡すカタログの組み立て。

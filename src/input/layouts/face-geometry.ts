@@ -1,10 +1,4 @@
-import {
-  DEFAULT_FINGER_ASSIGNMENT,
-  keyId,
-  resolveKeyId,
-  THUMB_KEY,
-  type Finger,
-} from '../shapes/geometry.ts';
+import { DEFAULT_FINGER_ASSIGNMENT, keyId, resolveKeyId, THUMB_KEY, type Finger } from '../shapes/geometry.ts';
 import type { Face } from './types.ts';
 
 export type Hand = 'left' | 'right';

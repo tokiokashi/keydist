@@ -103,7 +103,10 @@ test('診断: 壊れた値・未知の項目は捨てて残りを読み、項目
     REFERENCES,
   );
   assert.ok(result.ok);
-  assert.deepEqual(result.presets.map((preset) => preset.values), [{ windowSize: 5 }, {}]);
+  assert.deepEqual(
+    result.presets.map((preset) => preset.values),
+    [{ windowSize: 5 }, {}],
+  );
   assert.match(result.message, /^2件のプリセットを読み込みました。4件の値は読み込めませんでした（/);
   assert.match(result.message, /先読みN/);
   assert.match(result.message, /同指連続のホーム復帰距離/);
@@ -123,16 +126,16 @@ test('診断: 条件に無い項目（playbackStepsPerSecondなど）を含む�
     REFERENCES,
   );
   assert.ok(result.ok);
-  assert.deepEqual(result.presets.map((preset) => preset.values), [{ windowSize: 4 }]);
+  assert.deepEqual(
+    result.presets.map((preset) => preset.values),
+    [{ windowSize: 4 }],
+  );
   assert.match(result.message, /3件の値は読み込めませんでした（この版に無い項目 3件）/);
   assert.doesNotMatch(result.message, /playbackRateWindow|playbackStepsPerSecond|playbackPersonalSpeed/);
 });
 
 test('診断: 壊れたプリセットは件数で伝え、残りは読む', () => {
-  const result = parsePresetFile(
-    fileText({ version: 1, presets: [{ id: 'a', name: 'A', values: {} }, { id: 'b', values: {} }, 3] }),
-    REFERENCES,
-  );
+  const result = parsePresetFile(fileText({ version: 1, presets: [{ id: 'a', name: 'A', values: {} }, { id: 'b', values: {} }, 3] }), REFERENCES);
   assert.ok(result.ok);
   assert.equal(result.presets.length, 1);
   assert.equal(result.message, '1件のプリセットを読み込みました。2件のプリセットは読み込めませんでした');
@@ -179,16 +182,17 @@ test('参照先: 手元に同名のプリセットがあっても、注記は番
   assert.ok(result.ok);
   const library: PresetLibrary<SettingsValueMap> = { presets: [{ id: 'own', name: '比較用（N=5）', values: {} }] };
   const added = appendImportedPresets(library, result.presets, () => 'new').presets.slice(library.presets.length);
-  const message = importResultMessage(result.message, result.missingReferences, added.map((preset) => preset.name));
+  const message = importResultMessage(
+    result.message,
+    result.missingReferences,
+    added.map((preset) => preset.name),
+  );
   assert.match(message, /「比較用（N=5） 2」はこの端末にない指の割当/);
   assert.doesNotMatch(message, /「比較用（N=5）」/);
 });
 
 test('参照先: 手元にある参照先なら注記しない', () => {
-  const result = parsePresetFile(
-    fileText({ version: 1, presets: [{ id: 'a', name: 'A', values: { fingerAssignmentId: 'standard' } }] }),
-    REFERENCES,
-  );
+  const result = parsePresetFile(fileText({ version: 1, presets: [{ id: 'a', name: 'A', values: { fingerAssignmentId: 'standard' } }] }), REFERENCES);
   assert.ok(result.ok);
   assert.equal(result.message, '1件のプリセットを読み込みました');
 });
@@ -198,9 +202,15 @@ test('同名の番号付け: 読み込みは常に追加し、既存と同じ名
   assert.ok(parsed.ok);
   let counter = 0;
   const once = appendImportedPresets(LIBRARY, parsed.presets, () => `new-${++counter}`);
-  assert.deepEqual(once.presets.map((preset) => preset.name), ['自分用メモ', '比較用（N=5）', '自分用メモ 2', '比較用（N=5） 2']);
+  assert.deepEqual(
+    once.presets.map((preset) => preset.name),
+    ['自分用メモ', '比較用（N=5）', '自分用メモ 2', '比較用（N=5） 2'],
+  );
   // 元のidは持ち越さない
-  assert.deepEqual(once.presets.map((preset) => preset.id), ['a', 'b', 'new-1', 'new-2']);
+  assert.deepEqual(
+    once.presets.map((preset) => preset.id),
+    ['a', 'b', 'new-1', 'new-2'],
+  );
   const twice = appendImportedPresets(once, parsed.presets, () => `new-${++counter}`);
   assert.equal(twice.presets[4]!.name, '自分用メモ 3');
 });

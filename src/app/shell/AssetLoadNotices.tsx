@@ -1,9 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import {
-  dismissAssetLoadNotices,
-  getAssetLoadNoticesSnapshot,
-  subscribeAssetLoadNotices,
-} from '../standalone/asset-load-notice.ts';
+import { dismissAssetLoadNotices, getAssetLoadNoticesSnapshot, subscribeAssetLoadNotices } from '../standalone/asset-load-notice.ts';
 import { assetNoticeText } from '../standalone/asset-load-notice-text.ts';
 
 const NO_NOTICES: ReturnType<typeof getAssetLoadNoticesSnapshot> = [];
@@ -21,10 +17,16 @@ export function AssetLoadNotices() {
       <div className="shell-notice-body">
         <span>保存データに読めない部分がありました。</span>
         <ul className="shell-notice-details">
-          {notices.map((notice) => <li key={notice.key} data-asset-load-notice-key={notice.key}>{assetNoticeText(notice)}</li>)}
+          {notices.map((notice) => (
+            <li key={notice.key} data-asset-load-notice-key={notice.key}>
+              {assetNoticeText(notice)}
+            </li>
+          ))}
         </ul>
       </div>
-      <button type="button" aria-label="知らせを閉じる" title="知らせを閉じる" onClick={dismissAssetLoadNotices}>×</button>
+      <button type="button" aria-label="知らせを閉じる" title="知らせを閉じる" onClick={dismissAssetLoadNotices}>
+        ×
+      </button>
     </div>
   );
 }

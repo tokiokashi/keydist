@@ -105,11 +105,7 @@ test('decode: structurally invalid payload (array) falls back to defaults', () =
 
 test('decode: a valid V2 payload round-trips as-is', () => {
   const saved = samplePreferences();
-  const result = decodeInputConverterPreferences(
-    serializeInputConverterPreferences(saved),
-    catalogs,
-    defaults,
-  );
+  const result = decodeInputConverterPreferences(serializeInputConverterPreferences(saved), catalogs, defaults);
   assert.deepEqual(result, saved);
 });
 
@@ -261,10 +257,7 @@ test('saveInputConverterPreferences writes the Tester slice under AppState and r
   const storage = memoryStorage();
   const prefs = samplePreferences();
   saveInputConverterPreferences(storage, prefs);
-  assert.deepEqual(
-    JSON.parse(storage.getItem(APP_STATE_STORAGE_KEY)!).inputConverter,
-    prefs,
-  );
+  assert.deepEqual(JSON.parse(storage.getItem(APP_STATE_STORAGE_KEY)!).inputConverter, prefs);
   assert.equal(storage.getItem(INPUT_CONVERTER_PREFERENCES_STORAGE_KEY), null);
   assert.deepEqual(loadInputConverterPreferences(storage, catalogs, defaults), prefs);
 });
@@ -286,21 +279,13 @@ test('saveInputConverterPreferences swallows a storage.setItem failure', () => {
     },
     removeItem: () => {},
   };
-  assert.doesNotThrow(() =>
-    saveInputConverterPreferences(storage, createDefaultInputConverterPreferences(defaults)));
+  assert.doesNotThrow(() => saveInputConverterPreferences(storage, createDefaultInputConverterPreferences(defaults)));
 });
 
 test('contract: only durable practice state is serialized; interaction transients remain excluded', () => {
-  const parsed = JSON.parse(
-    serializeInputConverterPreferences(samplePreferences()),
-  ) as Record<string, unknown>;
+  const parsed = JSON.parse(serializeInputConverterPreferences(samplePreferences())) as Record<string, unknown>;
 
-  assert.deepEqual(Object.keys(parsed).sort(), [
-    'geometryId',
-    'layoutId',
-    'layouts',
-    'version',
-  ]);
+  assert.deepEqual(Object.keys(parsed).sort(), ['geometryId', 'layoutId', 'layouts', 'version']);
 
   const layouts = parsed.layouts as Record<string, Record<string, unknown>>;
   const allowedLayoutKeys = [
@@ -371,10 +356,7 @@ test('write coalescing: rapid notify() calls debounce into a single write', (t) 
 
   t.mock.timers.tick(300);
   assert.equal(writes, 1);
-  assert.deepEqual(
-    JSON.parse(storage.getItem(APP_STATE_STORAGE_KEY)!).inputConverter,
-    prefs,
-  );
+  assert.deepEqual(JSON.parse(storage.getItem(APP_STATE_STORAGE_KEY)!).inputConverter, prefs);
 });
 
 test('write coalescing: identical serialized value is not written twice', (t) => {

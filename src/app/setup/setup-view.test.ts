@@ -1,12 +1,7 @@
 import { EMPTY_PERSONAL_SPEED } from '#interpretation/timing/calibration-codec.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {
-  createSetupCommand,
-  setCascadeOverrideCommand,
-  setSetupShapeCommand,
-  type KeydistAssets,
-} from '#engine/commands.ts';
+import { createSetupCommand, setCascadeOverrideCommand, setSetupShapeCommand, type KeydistAssets } from '#engine/commands.ts';
 import { resolveEngineInput } from '#engine/resolved-input.ts';
 import { withWorkspaceConditions } from '#engine/settings-items.ts';
 import { initialWorkspaceLibrary } from '#engine/workspace.ts';
@@ -61,12 +56,21 @@ const row = (session: Session, setupId: string, id: string) => {
 
 test('同じ配列で物理配列の違うSetupを2つ作ると、別々の物理配列で解決され、一覧では物理配列の名前で区別される', () => {
   const session = newSession();
-  dispatch(session, createSetupCommand('qwerty', 'row-staggered', () => 'a'));
-  dispatch(session, createSetupCommand('qwerty', 'ortholinear', () => 'b'));
+  dispatch(
+    session,
+    createSetupCommand('qwerty', 'row-staggered', () => 'a'),
+  );
+  dispatch(
+    session,
+    createSetupCommand('qwerty', 'ortholinear', () => 'b'),
+  );
   const catalog = paneCatalog(session.assets);
   const items = setupListItems(session.assets.setupLibrary.setups, catalog, session.assets.setupLibrary.overrides);
   assert.equal(new Set(items.map((item) => item.displayName)).size, 2);
-  assert.ok(items.every((item) => item.displayName !== 'QWERTY'), items.map((item) => item.displayName).join());
+  assert.ok(
+    items.every((item) => item.displayName !== 'QWERTY'),
+    items.map((item) => item.displayName).join(),
+  );
 
   const geometries = ['a', 'b'].map((setupId) => {
     const resolved = resolveEngineInput({
@@ -86,7 +90,10 @@ test('同じ配列で物理配列の違うSetupを2つ作ると、別々の物�
 
 test('物理配列の付け替えは一覧の名前と解決に反映され、元に戻せる', () => {
   const session = newSession();
-  dispatch(session, createSetupCommand('qwerty', 'row-staggered', () => 'a'));
+  dispatch(
+    session,
+    createSetupCommand('qwerty', 'row-staggered', () => 'a'),
+  );
   dispatch(session, setSetupShapeCommand('a', 'ortholinear'));
   assert.equal(session.assets.setupLibrary.setups[0]!.shapeId, 'ortholinear');
   const [item] = setupListItems(session.assets.setupLibrary.setups, paneCatalog(session.assets), session.assets.setupLibrary.overrides);
@@ -95,7 +102,10 @@ test('物理配列の付け替えは一覧の名前と解決に反映され、�
 
 test('Setupのレベルの条件: 継承する値は全体と配列のレベルから求め、Workspaceのレベルは含まない。継承と同じ値を書くと上書きを消す', () => {
   const session = newSession();
-  dispatch(session, createSetupCommand('qwerty', 'row-staggered', () => 'a'));
+  dispatch(
+    session,
+    createSetupCommand('qwerty', 'row-staggered', () => 'a'),
+  );
   dispatch(session, setCascadeOverrideCommand({ kind: 'global' }, 'windowSize', 4));
   dispatch(session, setCascadeOverrideCommand({ kind: 'layout', layoutId: 'qwerty' }, 'windowSize', 6));
   const before = row(session, 'a', 'windowSize');
@@ -115,7 +125,10 @@ test('Setupのレベルの条件: 継承する値は全体と配列のレベル�
 
 test('Setupのレベルの条件は、Workspaceのレベルの値があっても、そのWorkspaceの中の解決で勝つ', () => {
   const session = newSession();
-  dispatch(session, createSetupCommand('qwerty', 'row-staggered', () => 'a'));
+  dispatch(
+    session,
+    createSetupCommand('qwerty', 'row-staggered', () => 'a'),
+  );
   dispatch(session, setSetupConditionCommand('a', 'windowSize', 8, 3));
   const catalog = paneCatalog(session.assets);
   const resolveWith = (workspaceN: number) => {
@@ -136,7 +149,10 @@ test('Setupのレベルの条件は、Workspaceのレベルの値があっても
 
 test('Setupのレベルの変更をまとめて戻す: 行を出さない項目は触らず、1回の元に戻すで全部戻る', () => {
   const session = newSession();
-  dispatch(session, createSetupCommand('qwerty', 'row-staggered', () => 'a'));
+  dispatch(
+    session,
+    createSetupCommand('qwerty', 'row-staggered', () => 'a'),
+  );
   dispatch(session, setSetupConditionCommand('a', 'windowSize', 8, 3));
   dispatch(session, setSetupConditionCommand('a', 'sfbHomeCost', false, true));
   const ids = resettableSetupIds(session.assets.setupLibrary.overrides, 'a', SETUP_HIDDEN_ITEM_IDS);
@@ -148,8 +164,14 @@ test('Setupのレベルの変更をまとめて戻す: 行を出さない項目�
 
 test('配列が見つからないSetupは条件の行を作らず、一覧では見つからない旨の名前で出る。物理配列が見つからない時も同じ', () => {
   const session = newSession();
-  dispatch(session, createSetupCommand('user-missing', 'row-staggered', () => 'a'));
-  dispatch(session, createSetupCommand('qwerty', 'future-shape', () => 'b'));
+  dispatch(
+    session,
+    createSetupCommand('user-missing', 'row-staggered', () => 'a'),
+  );
+  dispatch(
+    session,
+    createSetupCommand('qwerty', 'future-shape', () => 'b'),
+  );
   const catalog = paneCatalog(session.assets);
   const overrides = session.assets.setupLibrary.overrides;
   assert.equal(setupConditionRows(session.assets.setupLibrary.setups[0]!, catalog, overrides), undefined);

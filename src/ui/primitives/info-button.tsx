@@ -77,7 +77,12 @@ function InfoModalButton({ name, description, tabIndex, help }: InfoButtonProps 
   );
 }
 
-function InfoModal({ name, description, help, onClose }: {
+function InfoModal({
+  name,
+  description,
+  help,
+  onClose,
+}: {
   readonly name: string;
   readonly description: string;
   readonly help: InfoHelp;
@@ -114,7 +119,9 @@ function InfoModal({ name, description, help, onClose }: {
         {/* 本文だけがスクロールする。キーボードだけでも後半を読めるよう、フォーカスを受けられるようにする */}
         <div className="info-modal-body" tabIndex={0} role="region" aria-labelledby={titleId}>
           <p>{description}</p>
-          {help.notes.map((note) => <p key={note}>{note}</p>)}
+          {help.notes.map((note) => (
+            <p key={note}>{note}</p>
+          ))}
           <h3>{help.listLabel}</h3>
           <dl className="info-modal-list">
             {help.items.map((item) => (
@@ -130,12 +137,7 @@ function InfoModal({ name, description, help, onClose }: {
   );
 }
 
-function InfoPopoverButton({
-  name,
-  description,
-  floating = false,
-  tabIndex,
-}: Omit<InfoButtonProps, 'help'>) {
+function InfoPopoverButton({ name, description, floating = false, tabIndex }: Omit<InfoButtonProps, 'help'>) {
   const [hovered, setHovered] = useState(false);
   const [pinned, setPinned] = useState(false);
   const [anchor, setAnchor] = useState<{ readonly top: number; readonly left: number } | undefined>(undefined);
@@ -227,12 +229,14 @@ function InfoPopoverButton({
           {description}
         </span>
       ) : null}
-      {visible && floating && anchor !== undefined ? createPortal(
-        <span ref={popoverRef} className="info-popover info-popover-floating" role="tooltip" id={tooltipId} style={anchor}>
-          {description}
-        </span>,
-        document.body,
-      ) : null}
+      {visible && floating && anchor !== undefined
+        ? createPortal(
+            <span ref={popoverRef} className="info-popover info-popover-floating" role="tooltip" id={tooltipId} style={anchor}>
+              {description}
+            </span>,
+            document.body,
+          )
+        : null}
     </span>
   );
 }

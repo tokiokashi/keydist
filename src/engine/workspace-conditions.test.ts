@@ -29,13 +29,7 @@ import {
 import { initialMultiTargetSelection } from './multi-target-selection.ts';
 import { initialSingleTargetSelection } from './single-target-selection.ts';
 import { WORKSPACE_LIBRARY_CODEC } from './workspace-codec.ts';
-import {
-  createWorkspace,
-  duplicateWorkspace,
-  findWorkspace,
-  initialWorkspaceLibrary,
-  withWorkspaceConditionOverrides,
-} from './workspace.ts';
+import { createWorkspace, duplicateWorkspace, findWorkspace, initialWorkspaceLibrary, withWorkspaceConditionOverrides } from './workspace.ts';
 
 const WORKSPACE = { kind: 'workspace' } as const;
 const GLOBAL = { kind: 'global' } as const;
@@ -61,9 +55,16 @@ function assetsWithWorkspaces(...ids: string[]): KeydistAssets {
 }
 
 test('各項目の置けるレベル: 全体に置ける項目は、すべてWorkspaceにも置ける', () => {
-  const global = Object.entries(SETTINGS_ITEMS).filter(([, item]) => item.allowedLevels.has('global')).map(([id]) => id);
-  const workspace = Object.entries(SETTINGS_ITEMS).filter(([, item]) => item.allowedLevels.has('workspace')).map(([id]) => id);
-  assert.deepEqual(global.filter((id) => !workspace.includes(id)), []);
+  const global = Object.entries(SETTINGS_ITEMS)
+    .filter(([, item]) => item.allowedLevels.has('global'))
+    .map(([id]) => id);
+  const workspace = Object.entries(SETTINGS_ITEMS)
+    .filter(([, item]) => item.allowedLevels.has('workspace'))
+    .map(([id]) => id);
+  assert.deepEqual(
+    global.filter((id) => !workspace.includes(id)),
+    [],
+  );
   // 解釈（chain・arpeggio）はWorkspaceのレベルまで広げる。配列・Setupには置かない
   // （同じ画面で比べる配列の間で、数値の定義を混ぜないため）
   for (const id of ['chainInterpretation', 'arpeggioInterpretation'] as const) {
@@ -98,7 +99,11 @@ test('Workspaceのレベルへの書き込みは、他のWorkspaceに入らな�
 });
 
 test('Workspaceのレベルを消すと、Workspaceの条件のキーごと無くなる（空の条件を残さない）', () => {
-  const written = applyCommand(assetsWithWorkspaces('w1'), emptyCommandHistory<KeydistAssets>(), setCascadeOverrideCommand(WORKSPACE, 'windowSize', 5, 'w1'));
+  const written = applyCommand(
+    assetsWithWorkspaces('w1'),
+    emptyCommandHistory<KeydistAssets>(),
+    setCascadeOverrideCommand(WORKSPACE, 'windowSize', 5, 'w1'),
+  );
   const reset = applyCommand(written.assets, written.history, resetCascadeItemCommand(WORKSPACE, 'windowSize', 'w1'));
   assert.equal(reset.outcome.kind, 'applied');
   const workspace = findWorkspace(reset.assets.workspaces, 'w1')!;
@@ -117,7 +122,11 @@ test('単体ページはWorkspaceのレベルを持たない: Workspaceを指さ
 });
 
 test('Workspaceのレベルを全体へ移す（昇格）: 全体へ書いてWorkspaceの値を消す。1コマンドで、undo1回で両方戻る', () => {
-  const written = applyCommand(assetsWithWorkspaces('w1'), emptyCommandHistory<KeydistAssets>(), setCascadeOverrideCommand(WORKSPACE, 'windowSize', 5, 'w1'));
+  const written = applyCommand(
+    assetsWithWorkspaces('w1'),
+    emptyCommandHistory<KeydistAssets>(),
+    setCascadeOverrideCommand(WORKSPACE, 'windowSize', 5, 'w1'),
+  );
   const promoted = applyCommand(written.assets, written.history, promoteCascadeOverrideCommand(WORKSPACE, GLOBAL, 'windowSize', 3, 'w1'));
   assert.equal(promoted.outcome.kind, 'applied');
   assert.equal(promoted.assets.setupLibrary.overrides.global?.windowSize, 5);
@@ -146,10 +155,17 @@ test('複数のレベルをまとめて消す: Workspaceと配列の上書きを
     assets = step.assets;
     history = step.history;
   }
-  const reset = applyCommand(assets, history, resetCascadeItemsAtLevelsCommand([
-    { level: WORKSPACE, itemIds: ['windowSize'] },
-    { level: { kind: 'layout', layoutId: 'qwerty' }, itemIds: ['windowSize'] },
-  ], 'w1'));
+  const reset = applyCommand(
+    assets,
+    history,
+    resetCascadeItemsAtLevelsCommand(
+      [
+        { level: WORKSPACE, itemIds: ['windowSize'] },
+        { level: { kind: 'layout', layoutId: 'qwerty' }, itemIds: ['windowSize'] },
+      ],
+      'w1',
+    ),
+  );
   assert.equal(reset.outcome.kind, 'applied');
   assert.equal(reset.assets.setupLibrary.overrides.global?.windowSize, 7);
   assert.equal(reset.assets.setupLibrary.overrides.layout, undefined);
@@ -187,7 +203,11 @@ test('プリセット: 全体N=7でWorkspaceに値が無い画面の保存は、
   const history = emptyCommandHistory<KeydistAssets>();
   const withGlobal = applyCommand(assets, history, setCascadeOverrideCommand(GLOBAL, 'windowSize', 7));
   assets = withGlobal.assets;
-  const saved = applyCommand(assets, withGlobal.history, savePresetCommand('全体7', WORKSPACE, () => 'p1', 'w1'));
+  const saved = applyCommand(
+    assets,
+    withGlobal.history,
+    savePresetCommand('全体7', WORKSPACE, () => 'p1', 'w1'),
+  );
   assert.deepEqual(saved.assets.presetLibrary.presets[0]?.values, { windowSize: 7 });
 });
 
@@ -197,11 +217,13 @@ test('プリセット: 全体の既定で保存した値を、全体N=7のWorksp
   const withGlobal = applyCommand(assets, history, setCascadeOverrideCommand(GLOBAL, 'windowSize', 7));
   assets = {
     ...withGlobal.assets,
-    presetLibrary: { presets: [
-      { id: 'def', name: '既定', values: {} },
-      { id: 'n3', name: 'N=3', values: { windowSize: 3 } },
-      { id: 'n7', name: 'N=7', values: { windowSize: 7 } },
-    ] },
+    presetLibrary: {
+      presets: [
+        { id: 'def', name: '既定', values: {} },
+        { id: 'n3', name: 'N=3', values: { windowSize: 3 } },
+        { id: 'n7', name: 'N=7', values: { windowSize: 7 } },
+      ],
+    },
   };
   for (const id of ['def', 'n3']) {
     const applied = applyCommand(assets, withGlobal.history, applyPresetCommand(id, WORKSPACE, 'w1'));
@@ -235,7 +257,10 @@ test('Workspaceの資産: 条件は複製で写り、空は消え、codecで往�
   assert.ok(broken.ok);
   assert.deepEqual(broken.value[0]?.conditions, { sfbHomeCost: false });
   assert.equal(broken.diagnostics.length, 2);
-  const none = WORKSPACE_LIBRARY_CODEC.decode({ version: 4, workspaces: [{ id: 'w', name: 'x', groups: [{ id: 'link-1', target: {} }], conditions: {} }] });
+  const none = WORKSPACE_LIBRARY_CODEC.decode({
+    version: 4,
+    workspaces: [{ id: 'w', name: 'x', groups: [{ id: 'link-1', target: {} }], conditions: {} }],
+  });
   assert.ok(none.ok);
   assert.equal('conditions' in none.value[0]!, false);
 });
@@ -291,11 +316,14 @@ test('解決: Workspaceのレベルが対象の解決・Trace生成の入力（N
   assert.deepEqual(noValue.tracePolicy, plain.tracePolicy);
   assert.equal(noValue.geometry.name, plain.geometry.name);
 
-  const view = withWorkspaceConditions({ global: { windowSize: 7 } }, {
-    windowSize: 5,
-    defaultShapeId: 'ortholinear',
-    chainInterpretation: { breakOnSameFinger: false, breakOnTriggerOnly: true, breakOnThumbOnly: true, breakOnOppositeHandSimultaneous: true },
-  });
+  const view = withWorkspaceConditions(
+    { global: { windowSize: 7 } },
+    {
+      windowSize: 5,
+      defaultShapeId: 'ortholinear',
+      chainInterpretation: { breakOnSameFinger: false, breakOnTriggerOnly: true, breakOnThumbOnly: true, breakOnOppositeHandSimultaneous: true },
+    },
+  );
   const input = resolveTotalInput('qwerty', view);
   assert.equal(input.tracePolicy.windowSize, 5);
   assert.equal(input.geometry.name, PHYSICAL_SHAPES.ortholinear.name);

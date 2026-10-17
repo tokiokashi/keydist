@@ -15,10 +15,7 @@ function keepsPairedTriggers(role: LayerPresentationRole | undefined): boolean {
 }
 
 /** 層の表示区分から色用押下数を作る。表示用の `Layer` を持たない抽出が使う。 */
-export function normalizedRoleColors(
-  role: LayerPresentationRole | undefined,
-  data: LayerColorData,
-): Map<string, number> {
+export function normalizedRoleColors(role: LayerPresentationRole | undefined, data: LayerColorData): Map<string, number> {
   const colorCounts = new Map(data.keyCounts);
   for (const [key, count] of data.triggerKeyCounts) {
     const remaining = (colorCounts.get(key) ?? 0) - count;

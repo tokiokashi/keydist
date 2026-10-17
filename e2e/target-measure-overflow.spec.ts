@@ -14,10 +14,7 @@ for (const width of [390, 761, 900, 1440]) {
     await page.setViewportSize({ width, height: 800 });
     await page.addInitScript(
       ([key, ids]) => {
-        localStorage.setItem(
-          key,
-          JSON.stringify({ version: 1, targets: ids.map((layoutId) => ({ kind: 'layout', layoutId })), colorSlots: {} }),
-        );
+        localStorage.setItem(key, JSON.stringify({ version: 1, targets: ids.map((layoutId) => ({ kind: 'layout', layoutId })), colorSlots: {} }));
       },
       [MULTI_TARGET_SELECTION_KEY, LAYOUT_IDS] as const,
     );

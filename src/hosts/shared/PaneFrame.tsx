@@ -122,7 +122,15 @@ export interface PaneFrameProps {
  * （Workspaceのペインも個別画面も、`use-status-badge-fit.ts`が測る。`pane-frame.css`）。
  * 状態の文は文字の要素とtitleに残すので、点でも読み上げとホバーで分かる。
  */
-function StatusBadge({ status, label, asText = false }: { readonly status: EngineRequestState<unknown>['status']; readonly label: string; readonly asText?: boolean }) {
+function StatusBadge({
+  status,
+  label,
+  asText = false,
+}: {
+  readonly status: EngineRequestState<unknown>['status'];
+  readonly label: string;
+  readonly asText?: boolean;
+}) {
   return (
     <span className="pane-status-badge" data-status={status} data-text={asText || undefined} title={label}>
       <span className="pane-status-badge-text">{label}</span>
@@ -155,9 +163,7 @@ function OptionsBindingSwitch({ control }: { readonly control: PaneOptionsBindin
         </button>
       </div>
       <p className="settings-window-binding-note">
-        {control.shared
-          ? '同じAnalyzerの共有に従うペインと、設定が一緒に変わります'
-          : 'このペインの設定は、他のペインに合わせて変わりません'}
+        {control.shared ? '同じAnalyzerの共有に従うペインと、設定が一緒に変わります' : 'このペインの設定は、他のペインに合わせて変わりません'}
       </p>
     </div>
   );
@@ -199,9 +205,7 @@ export function PaneFrame({
   // バッジの幅の分だけ対象ボタンが動いて、計算が済むと戻る。前の結果を表示している間と失敗は見出しで伝える
   const bodyShowsBusy = engineState.status === 'computing' && children === undefined;
   const statusLabel = emptyContent === undefined && assetsReady && !bodyShowsBusy ? paneStatusLabel(engineState.status) : '';
-  const errorMessage = emptyContent === undefined && engineState.status === 'failed'
-    ? describeEngineRequestError(engineState.error)
-    : undefined;
+  const errorMessage = emptyContent === undefined && engineState.status === 'failed' ? describeEngineRequestError(engineState.error) : undefined;
   const paneName = targetName === undefined ? name : `${name} — ${targetName}`;
   const Heading = headingLevel === 1 ? 'h1' : 'h2';
   const nameInLead = useContext(PaneNameInLeadContext);
@@ -212,21 +216,24 @@ export function PaneFrame({
   // 本体の図の表示の小窓。解析設定の小窓と同じ部品で描き、Workspaceでは同じくペイン名を出す。
   // 関数を毎回作り直さないよう、ペイン名が変わる時だけ作る
   const figureWindowPaneName = showPaneNameInSettings ? paneName : undefined;
-  const renderFigureWindow = useCallback((props: FigureSettingsWindowProps) => (
-    <FloatingWindow
-      open={props.open}
-      onClose={props.onClose}
-      title={props.title}
-      closeLabel={props.closeLabel}
-      kind="figure-settings"
-      titleHeading
-      placement="below-start"
-      anchor={props.anchor}
-      {...(figureWindowPaneName === undefined ? {} : { paneName: figureWindowPaneName })}
-    >
-      <div className="option-groups">{props.children}</div>
-    </FloatingWindow>
-  ), [figureWindowPaneName]);
+  const renderFigureWindow = useCallback(
+    (props: FigureSettingsWindowProps) => (
+      <FloatingWindow
+        open={props.open}
+        onClose={props.onClose}
+        title={props.title}
+        closeLabel={props.closeLabel}
+        kind="figure-settings"
+        titleHeading
+        placement="below-start"
+        anchor={props.anchor}
+        {...(figureWindowPaneName === undefined ? {} : { paneName: figureWindowPaneName })}
+      >
+        <div className="option-groups">{props.children}</div>
+      </FloatingWindow>
+    ),
+    [figureWindowPaneName],
+  );
 
   const closeSettings = () => {
     setSettingsOpen(false);
@@ -235,13 +242,7 @@ export function PaneFrame({
   };
 
   const conditionSummary = (
-    <ConditionSummary
-      rows={conditionRows}
-      header={header}
-      targetDiffs={conditionTargetDiffs}
-      editor={conditionEditor}
-      compact={nameInLead}
-    />
+    <ConditionSummary rows={conditionRows} header={header} targetDiffs={conditionTargetDiffs} editor={conditionEditor} compact={nameInLead} />
   );
 
   return (
@@ -252,8 +253,14 @@ export function PaneFrame({
       data-name-in-lead={nameInLead || undefined}
       style={{ '--pane-recommended-width': `${recommendedWidthRem}rem` } as CSSProperties}
     >
-      <header ref={headerRef} className="pane-frame-header" data-sticky={stickyHeader || undefined} data-menu={menuItems.length > 0 || undefined}
-        data-action={headerAction !== undefined || undefined} data-lead={(nameInLead && headerLead !== null) || undefined}>
+      <header
+        ref={headerRef}
+        className="pane-frame-header"
+        data-sticky={stickyHeader || undefined}
+        data-menu={menuItems.length > 0 || undefined}
+        data-action={headerAction !== undefined || undefined}
+        data-lead={(nameInLead && headerLead !== null) || undefined}
+      >
         {nameInLead && headerLead !== null ? <div className="pane-frame-lead">{headerLead}</div> : null}
         {nameInLead ? (
           <Heading className="pane-frame-title pane-visually-hidden">{name}</Heading>
@@ -261,9 +268,7 @@ export function PaneFrame({
           <div className="pane-frame-name">
             <Heading className="pane-frame-title">{name}</Heading>
             <InfoButton name={name} description={description} help={help} />
-            {statusLabel ? (
-              <StatusBadge status={engineState.status} label={statusLabel} asText={badgeAsText} />
-            ) : null}
+            {statusLabel ? <StatusBadge status={engineState.status} label={statusLabel} asText={badgeAsText} /> : null}
           </div>
         )}
         <div className="pane-frame-target">
@@ -273,18 +278,18 @@ export function PaneFrame({
               paneName={paneName}
               items={targetBinding.items}
               label={`${targetBinding.follows ? `連動 ${targetBinding.groupNumber}` : '固定'}（対象: ${targetBinding.summary}）`}
-              title={targetBinding.follows
-                ? `連動 ${targetBinding.groupNumber}: 同じ番号のペインと、配列・Setupが一緒に変わります`
-                : '固定: このペインの対象は、他のペインに合わせて変わりません'}
+              title={
+                targetBinding.follows
+                  ? `連動 ${targetBinding.groupNumber}: 同じ番号のペインと、配列・Setupが一緒に変わります`
+                  : '固定: このペインの対象は、他のペインに合わせて変わりません'
+              }
               icon={<BindingGlyph kind={targetBinding.follows ? 'link' : 'pin'} number={targetBinding.follows ? targetBinding.groupNumber : undefined} />}
               className="pane-target-binding"
               data={{ 'data-follows': String(targetBinding.follows) }}
             />
           )}
           {nameInLead ? conditionSummary : null}
-          {nameInLead && statusLabel ? (
-            <StatusBadge status={engineState.status} label={statusLabel} asText={badgeAsText} />
-          ) : null}
+          {nameInLead && statusLabel ? <StatusBadge status={engineState.status} label={statusLabel} asText={badgeAsText} /> : null}
         </div>
         <button
           ref={settingsButtonRef}
@@ -340,18 +345,24 @@ export function PaneFrame({
       ) : null}
 
       {linkNotices?.map((line) => (
-        <p key={line} className="pane-settings-diagnostics" role="status" data-pane-link-notice="true">{line}</p>
+        <p key={line} className="pane-settings-diagnostics" role="status" data-pane-link-notice="true">
+          {line}
+        </p>
       ))}
 
       {emptyContent !== undefined ? (
-        <div className="pane-empty" data-pane-empty="true">{emptyContent}</div>
+        <div className="pane-empty" data-pane-empty="true">
+          {emptyContent}
+        </div>
       ) : errorMessage ? (
         <div className="pane-error" role="alert" data-pane-error="true">
           <p>{errorMessage}</p>
           {engineState.status === 'failed' ? <ErrorDetails lines={engineRequestErrorDetail(engineState.error)} /> : null}
         </div>
       ) : children === undefined ? (
-        <p className="pane-busy" aria-busy="true" data-pane-busy="true">計算中…</p>
+        <p className="pane-busy" aria-busy="true" data-pane-busy="true">
+          計算中…
+        </p>
       ) : (
         <PaneErrorBoundary>
           <div className="pane-body" data-pane-stale={engineState.status === 'stale' || undefined}>

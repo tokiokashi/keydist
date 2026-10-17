@@ -22,7 +22,9 @@ function createManualScheduler(): EngineScheduler & { flush(): void } {
     schedule(task) {
       const entry = { cancelled: false, task };
       queue.push(entry);
-      return () => { entry.cancelled = true; };
+      return () => {
+        entry.cancelled = true;
+      };
     },
     flush() {
       const toRun = queue;
@@ -182,8 +184,14 @@ test('結果を同期に引ける計算機では、解決し直した同じ中�
   channels = syncAnalyzerPaneChannels(channels, params(resolutionFor('qwerty')));
   scheduler.flush();
   assert.deepEqual(requested, ['trace', 'extraction'], '計算機へ依頼を出し直した');
-  assert.deepEqual(extractionStates.map((s) => s.status), ['ready']);
-  assert.deepEqual(traceStates.map((s) => s.status), ['ready']);
+  assert.deepEqual(
+    extractionStates.map((s) => s.status),
+    ['ready'],
+  );
+  assert.deepEqual(
+    traceStates.map((s) => s.status),
+    ['ready'],
+  );
 
   // 中身が違う入力は引けないので、依頼が出て計算中を経る
   extractionStates.length = 0;
@@ -200,5 +208,8 @@ test('foldExtractionState: 直前の結果がある時の computing は stale �
   assert.deepEqual(foldExtractionState({ status: 'ready', value: 'a' } as unknown as State, computing), { status: 'stale', value: 'a' });
   assert.deepEqual(foldExtractionState({ status: 'stale', value: 'b' } as unknown as State, computing), { status: 'stale', value: 'b' });
   assert.deepEqual(foldExtractionState({ status: 'idle' } as unknown as State, computing), computing);
-  assert.deepEqual(foldExtractionState({ status: 'ready', value: 'a' } as unknown as State, { status: 'ready', value: 'c' } as unknown as State), { status: 'ready', value: 'c' });
+  assert.deepEqual(foldExtractionState({ status: 'ready', value: 'a' } as unknown as State, { status: 'ready', value: 'c' } as unknown as State), {
+    status: 'ready',
+    value: 'c',
+  });
 });

@@ -1,13 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as v from 'valibot';
-import {
-  decodeDroppingInvalid,
-  decodeField,
-  defineAssetCodec,
-  encodedSizeBytes,
-  type MigrationStep,
-} from './index.ts';
+import { decodeDroppingInvalid, decodeField, defineAssetCodec, encodedSizeBytes, type MigrationStep } from './index.ts';
 
 /** テスト用の小さな資産: v2で`count`を持つ。 */
 interface Widget {

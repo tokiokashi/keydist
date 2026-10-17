@@ -1,10 +1,4 @@
-import {
-  defineAssetCodec,
-  isRecord,
-  type AssetCodec,
-  type CodecDiagnostic,
-  type DecodedWithDiagnostics,
-} from '../codec/index.ts';
+import { defineAssetCodec, isRecord, type AssetCodec, type CodecDiagnostic, type DecodedWithDiagnostics } from '../codec/index.ts';
 import { droppedDuplicateId, droppedNotArray } from '#input/codec/index.ts';
 import {
   canonicalInputAlternativeIdentity,
@@ -45,7 +39,6 @@ export interface UserLayout {
 export const ROW_LIMITS = QWERTY_LEGEND.map((row) => row.length);
 export const ROW_LABELS = ['数字段', '上段', 'ホーム段', '下段'];
 
-
 const isSequenceEntry = (entry: unknown): entry is [string, Sequence] =>
   Array.isArray(entry) &&
   entry.length === 2 &&
@@ -54,32 +47,27 @@ const isSequenceEntry = (entry: unknown): entry is [string, Sequence] =>
   entry[1].every((step) => Array.isArray(step) && step.every((key) => typeof key === 'string'));
 
 const isLegendEntry = (entry: unknown): entry is [string, string] =>
-  Array.isArray(entry) &&
-  entry.length === 2 &&
-  typeof entry[0] === 'string' &&
-  typeof entry[1] === 'string';
+  Array.isArray(entry) && entry.length === 2 && typeof entry[0] === 'string' && typeof entry[1] === 'string';
 
 const isHomeKeys = (value: unknown): value is Partial<Record<NonThumb, string>> =>
-  value === undefined || (
-    value !== null && typeof value === 'object' && !Array.isArray(value)
-    && Object.values(value).every((key) => typeof key === 'string')
-  );
+  value === undefined ||
+  (value !== null && typeof value === 'object' && !Array.isArray(value) && Object.values(value).every((key) => typeof key === 'string'));
 
 export const isValidUserLayout = (l: unknown): l is UserLayout => {
   if (!l || typeof l !== 'object') return false;
   const value = l as Partial<UserLayout>;
-  return typeof value.id === 'string' &&
+  return (
+    typeof value.id === 'string' &&
     typeof value.name === 'string' &&
     (value.romaji === undefined || typeof value.romaji === 'string') &&
     Array.isArray(value.rows) &&
     value.rows.length === 4 &&
     value.rows.every((row) => typeof row === 'string') &&
-    (value.sequences === undefined ||
-      (Array.isArray(value.sequences) && value.sequences.every(isSequenceEntry))) &&
-    (value.legends === undefined ||
-      (Array.isArray(value.legends) && value.legends.every(isLegendEntry))) &&
+    (value.sequences === undefined || (Array.isArray(value.sequences) && value.sequences.every(isSequenceEntry))) &&
+    (value.legends === undefined || (Array.isArray(value.legends) && value.legends.every(isLegendEntry))) &&
     (value.direct === undefined || typeof value.direct === 'boolean') &&
-    isHomeKeys(value.homeKeys);
+    isHomeKeys(value.homeKeys)
+  );
 };
 
 /**
@@ -88,9 +76,7 @@ export const isValidUserLayout = (l: unknown): l is UserLayout => {
  */
 export function decodeUserLayouts(value: unknown): DecodedWithDiagnostics<UserLayout[]> {
   if (!Array.isArray(value)) {
-    const diagnostics = value === undefined
-      ? []
-      : [{ path: '', message: droppedNotArray('自作の配列') }];
+    const diagnostics = value === undefined ? [] : [{ path: '', message: droppedNotArray('自作の配列') }];
     return { value: [], diagnostics };
   }
   const diagnostics: CodecDiagnostic[] = [];
@@ -153,12 +139,7 @@ export function toLayout(def: UserLayout): Layout {
   const rows = def.rows.map((r, i) => (r.trim() === '' && !imported ? QWERTY_LEGEND[i] : r));
   // imported形式は物理spaceを機能キーとして扱う場合があるため、
   // syntheticなthumb-r -> ' ' を足さず、明示されたsequenceだけをkeymapへ入れる。
-  const layout = fromRows(
-    def.id,
-    def.name,
-    rows,
-    imported ? {} : { RT: ' ' },
-  );
+  const layout = fromRows(def.id, def.name, rows, imported ? {} : { RT: ' ' });
   if (!def.sequences && !def.legends) {
     // 組み込みの英字配列と同じく、単打の段定義には通常Shiftの出力を付ける。
     // 直接かな配列は組み込みにShift記号が無いので付けない。
@@ -167,8 +148,7 @@ export function toLayout(def: UserLayout): Layout {
   }
   const map = new Map(layout.map);
   const canonicalInputs = new Map<string, InputAlternative[]>(
-    [...layout.canonicalInputs].map(([output, alternatives]) =>
-      [output, [...alternatives]] as const),
+    [...layout.canonicalInputs].map(([output, alternatives]) => [output, [...alternatives]] as const),
   );
   for (const [output, sequence] of def.sequences ?? []) {
     // imported sequenceは従来mapを上書きしていたためauthoring defaultとして先頭へ置く。
@@ -177,8 +157,7 @@ export function toLayout(def: UserLayout): Layout {
     const alternativeIdentity = canonicalInputAlternativeIdentity(alternative);
     canonicalInputs.set(output, [
       alternative,
-      ...(canonicalInputs.get(output) ?? []).filter((candidate) =>
-        canonicalInputAlternativeIdentity(candidate) !== alternativeIdentity),
+      ...(canonicalInputs.get(output) ?? []).filter((candidate) => canonicalInputAlternativeIdentity(candidate) !== alternativeIdentity),
     ]);
   }
   const legends = new Map(layout.legends);

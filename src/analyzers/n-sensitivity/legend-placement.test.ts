@@ -26,15 +26,18 @@ const BELOW: BelowArea = { x: 8, y: 200, width: 480 };
 const measure = estimateTextWidth;
 
 /** 左上から右下へ下がる線（N感度の線の形）。 */
-const descending: Point[] = [{ x: LEFT, y: TOP }, { x: LEFT + 60, y: TOP }, { x: RIGHT, y: TOP + 60 }];
+const descending: Point[] = [
+  { x: LEFT, y: TOP },
+  { x: LEFT + 60, y: TOP },
+  { x: RIGHT, y: TOP + 60 },
+];
 
 function place(lines: Point[][], labels: string[], plot: Rect = PLOT, below: BelowArea = BELOW) {
   return placeLegend(plot, lines, labels, measure, below);
 }
 
 function within(inner: Rect, outer: Rect): boolean {
-  return inner.x >= outer.x && inner.y >= outer.y
-    && inner.x + inner.width <= outer.x + outer.width && inner.y + inner.height <= outer.y + outer.height;
+  return inner.x >= outer.x && inner.y >= outer.y && inner.x + inner.width <= outer.x + outer.width && inner.y + inner.height <= outer.y + outer.height;
 }
 
 test('線分と矩形の交差: 内側・貫通・かすめない・縁', () => {
@@ -53,18 +56,30 @@ test('左上から右下へ下がる線なら、左下に置く', () => {
 });
 
 test('左下が線で塞がれていれば右上へ移す', () => {
-  const low: Point[] = [{ x: LEFT, y: BOTTOM - 10 }, { x: RIGHT, y: BOTTOM - 10 }];
+  const low: Point[] = [
+    { x: LEFT, y: BOTTOM - 10 },
+    { x: RIGHT, y: BOTTOM - 10 },
+  ];
   assert.equal(place([low], ['QWERTY', 'Dvorak']).corner, 'top-right');
 });
 
 test('左下・右上が塞がれていれば、空いている別の隅へ移す', () => {
-  const lowLeft: Point[] = [{ x: LEFT, y: BOTTOM - 10 }, { x: LEFT + 200, y: BOTTOM - 10 }];
-  const highRight: Point[] = [{ x: RIGHT - 200, y: TOP + 10 }, { x: RIGHT, y: TOP + 10 }];
+  const lowLeft: Point[] = [
+    { x: LEFT, y: BOTTOM - 10 },
+    { x: LEFT + 200, y: BOTTOM - 10 },
+  ];
+  const highRight: Point[] = [
+    { x: RIGHT - 200, y: TOP + 10 },
+    { x: RIGHT, y: TOP + 10 },
+  ];
   assert.equal(place([lowLeft, highRight], ['QWERTY']).corner, 'bottom-right');
 });
 
 test('四隅が塞がれていて、辺の中央が空いていれば中央へ置く', () => {
-  const corner = (x: number, y: number): Point[] => [{ x: x - 60, y }, { x: x + 60, y }];
+  const corner = (x: number, y: number): Point[] => [
+    { x: x - 60, y },
+    { x: x + 60, y },
+  ];
   const blockers = [corner(LEFT + 40, BOTTOM - 10), corner(RIGHT - 40, TOP + 10), corner(RIGHT - 40, BOTTOM - 10), corner(LEFT + 40, TOP + 10)];
   const placement = place(blockers, ['QWERTY']);
   assert.equal(placement.corner, 'right-middle');
@@ -93,7 +108,10 @@ test('置き場は、どんな大きさ・対象数でもプロットに収ま�
     const labels = Array.from({ length: count }, (_, i) => `配列${i}${'x'.repeat(Math.floor(random() * 12))}`);
     const lines: Point[][] = Array.from({ length: count }, () => {
       const start = plot.y + random() * plot.height;
-      return [{ x: plot.x, y: start }, { x: plot.x + plot.width, y: start + random() * (plot.y + plot.height - start) }];
+      return [
+        { x: plot.x, y: start },
+        { x: plot.x + plot.width, y: start + random() * (plot.y + plot.height - start) },
+      ];
     });
     const below: BelowArea = { x: 8, y: plot.y + plot.height + 40, width: plot.width + 90 };
     const placement = place(lines, labels, plot, below);
@@ -133,11 +151,7 @@ test('省いた後も、別の対象が同じ名前にならない（区別の�
 });
 
 test('全対象が共有する部分を先に省き、区別の部分（ANSI・JISなど）を残す', () => {
-  const labels = [
-    'カラムスタッガード（ANSI・分割）',
-    'カラムスタッガード（JIS・分割）',
-    'カラムスタッガード（ISO・分割）',
-  ];
+  const labels = ['カラムスタッガード（ANSI・分割）', 'カラムスタッガード（JIS・分割）', 'カラムスタッガード（ISO・分割）'];
   const fitted = fitLabels(labels, measure, LEGEND_MAX_LABEL_WIDTH, 300);
   assert.ok(fitted[0]!.includes('ANSI'));
   assert.ok(fitted[1]!.includes('JIS'));
@@ -146,15 +160,15 @@ test('全対象が共有する部分を先に省き、区別の部分（ANSI・J
 });
 
 test('NICOLAのSetup 4件: 物理配列を区別する語（ロウ/カラム・ANSI/JIS）が、省いた名前にも残る', () => {
-  const labels = [
-    'ロウスタッガード（ANSI）',
-    'ロウスタッガード（JIS）',
-    'カラムスタッガード（ANSI・分割）',
-    'カラムスタッガード（JIS・分割）',
-  ];
+  const labels = ['ロウスタッガード（ANSI）', 'ロウスタッガード（JIS）', 'カラムスタッガード（ANSI・分割）', 'カラムスタッガード（JIS・分割）'];
   for (const hardMax of [270, 400]) {
     const fitted = fitLabels(labels, measure, LEGEND_MAX_LABEL_WIDTH, hardMax);
-    const words = [['ロウ', 'ANSI'], ['ロウ', 'JIS'], ['カラム', 'ANSI'], ['カラム', 'JIS']];
+    const words = [
+      ['ロウ', 'ANSI'],
+      ['ロウ', 'JIS'],
+      ['カラム', 'ANSI'],
+      ['カラム', 'JIS'],
+    ];
     words.forEach(([kind, size], i) => {
       assert.ok(fitted[i]!.includes(kind!) && fitted[i]!.includes(size!), `${hardMax}: ${fitted[i]}`);
     });
@@ -204,7 +218,11 @@ test('distinct: true の時は、どの名前も名前に使える幅を超え�
   const labels = ['QWERTY', 'Dvorak', 'Colemak-DH', 'Workman'];
   for (const hardMax of [40, 60, 90, 130, 400]) {
     const result = fitLegendLabels(labels, measure, LEGEND_MAX_LABEL_WIDTH, hardMax);
-    if (result.distinct) assert.ok(result.labels.every((label) => measure(label) <= hardMax), `hardMax ${hardMax}`);
+    if (result.distinct)
+      assert.ok(
+        result.labels.every((label) => measure(label) <= hardMax),
+        `hardMax ${hardMax}`,
+      );
   }
   // 1つしか無ければ、区別の必要が無いので幅に収まる限り distinct
   assert.equal(fitLegendLabels(['QWERTY'], measure, LEGEND_MAX_LABEL_WIDTH, 60).distinct, true);

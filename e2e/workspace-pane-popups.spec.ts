@@ -12,11 +12,14 @@ const flow = (id: string) => ({ id, analyzerId: 'bigram-flow', binding: fixedSin
 
 async function openWorkspace(page: Page, panes: readonly unknown[], layout: unknown, size: { width: number; height: number }): Promise<void> {
   await page.setViewportSize(size);
-  await page.addInitScript((value) => {
-    if (localStorage.getItem('keydist:workspaces') === null) {
-      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
-    }
-  }, { id: 'p', name: 'ポップアップ', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes, grid: layout });
+  await page.addInitScript(
+    (value) => {
+      if (localStorage.getItem('keydist:workspaces') === null) {
+        localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
+      }
+    },
+    { id: 'p', name: 'ポップアップ', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes, grid: layout },
+  );
   await page.goto('/workspace/p');
   await waitForHydration(page);
   await expect(page.locator('.workspace-grid-item').first()).toBeVisible({ timeout: 15_000 });
@@ -31,7 +34,12 @@ async function box(locator: Locator) {
 
 test('条件のモーダルのプリセットの⋯は、左端の列でも右端の列でもボタンの下に開き、ダイアログに収まる', async ({ page }) => {
   const ids = ['a', 'b', 'c', 'd'];
-  await openWorkspace(page, ids.map(flow), ids.map((id, i) => ({ id, x: i * 6, y: 0, w: 6, h: 16 })), { width: 1440, height: 900 });
+  await openWorkspace(
+    page,
+    ids.map(flow),
+    ids.map((id, i) => ({ id, x: i * 6, y: 0, w: 6, h: 16 })),
+    { width: 1440, height: 900 },
+  );
   await expect(page.locator('.workspace-grid-item')).toHaveCount(4);
   await expect(page.locator('.pane-frame[data-pane-status="ready"]')).toHaveCount(4, { timeout: 15_000 });
 
@@ -70,7 +78,12 @@ test('条件のモーダルのプリセットの⋯は、左端の列でも右�
 
 /** ペインを縦に3つ並べる（ページがスクロールする）。幅は、1440pxの面（サイドバー固定で1200px）に横にスクロールせず収まる16列。 */
 async function openTall(page: Page): Promise<void> {
-  await openWorkspace(page, ['a', 'b', 'c'].map(flow), ['a', 'b', 'c'].map((id, i) => ({ id, x: 0, y: i * 30, w: 16, h: 30 })), { width: 1440, height: 600 });
+  await openWorkspace(
+    page,
+    ['a', 'b', 'c'].map(flow),
+    ['a', 'b', 'c'].map((id, i) => ({ id, x: 0, y: i * 30, w: 16, h: 30 })),
+    { width: 1440, height: 600 },
+  );
   await expect(page.locator('.workspace-grid-item')).toHaveCount(3);
 }
 
@@ -79,7 +92,11 @@ const popover = (page: Page) => page.getByRole('tooltip');
 test('見出しの先頭のⓘで出した説明は、スクロールしてもⓘに付いてくる。説明を押しても閉じない', async ({ page }) => {
   await openTall(page);
   // 一番上のペインのⓘは窓の上寄りにあるので、説明は下に出る
-  const info = page.locator('.workspace-grid-item').first().locator('.pane-frame-lead').getByRole('button', { name: /の説明$/ });
+  const info = page
+    .locator('.workspace-grid-item')
+    .first()
+    .locator('.pane-frame-lead')
+    .getByRole('button', { name: /の説明$/ });
   await info.click();
   await expect(popover(page)).toBeVisible();
   const gap = async () => (await box(popover(page))).y - (await box(info)).y - (await box(info)).height;
@@ -97,7 +114,11 @@ test('見出しの先頭のⓘで出した説明は、スクロールしても�
 
 test('窓の下端に近いⓘの説明は、ⓘの上に出て窓に収まる', async ({ page }) => {
   await openTall(page);
-  const info = page.locator('.workspace-grid-item').nth(1).locator('.pane-frame-lead').getByRole('button', { name: /の説明$/ });
+  const info = page
+    .locator('.workspace-grid-item')
+    .nth(1)
+    .locator('.pane-frame-lead')
+    .getByRole('button', { name: /の説明$/ });
   await info.scrollIntoViewIfNeeded();
   // ⓘが窓の下端から30pxの所に来るまでスクロールする
   const target = await info.evaluate((el) => el.getBoundingClientRect().bottom - (window.innerHeight - 30));

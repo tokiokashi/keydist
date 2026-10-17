@@ -13,8 +13,7 @@ const singleHand = (keys: Iterable<string>): Hand | undefined => {
   return hands.size === 1 ? [...hands][0] : undefined;
 };
 
-const opposite = (first: Hand | undefined, second: Hand | undefined) =>
-  first !== undefined && second !== undefined && first !== second;
+const opposite = (first: Hand | undefined, second: Hand | undefined) => first !== undefined && second !== undefined && first !== second;
 
 const effectiveTriggerOrder = (face: Face): 'prefix' | 'suffix' | undefined =>
   face.triggerOrder ?? (face.mode === 'prefix' || face.mode === 'suffix' ? face.mode : undefined);
@@ -53,15 +52,11 @@ function validatePresentationMetadata(face: Face, faceIndex: number): void {
   const alternatives = face.presentationTriggerAlternatives;
   if (alternatives === undefined) return;
   if (alternatives.length === 0) {
-    throw new Error(
-      `presentationTriggerAlternativesは空にできない（face:${faceIndex}）`,
-    );
+    throw new Error(`presentationTriggerAlternativesは空にできない（face:${faceIndex}）`);
   }
   alternatives.forEach((alternative, alternativeIndex) => {
     if (alternative.length === 0) {
-      throw new Error(
-        `presentationTriggerAlternatives[${alternativeIndex}]は空にできない（face:${faceIndex}）`,
-      );
+      throw new Error(`presentationTriggerAlternatives[${alternativeIndex}]は空にできない（face:${faceIndex}）`);
     }
   });
 }
@@ -81,16 +76,12 @@ export function validateFaceAuthoring(faces: readonly Face[]): void {
       continue;
     }
     if (face.inputRole === 'composition' && new Set(face.trigger).size !== 1) {
-      throw new Error(
-        `compositionの面をレイヤーに計上できるのはtriggerが1キーの面だけ（face:${faceIndex}）`,
-      );
+      throw new Error(`compositionの面をレイヤーに計上できるのはtriggerが1キーの面だけ（face:${faceIndex}）`);
     }
     if (face.inputRole === 'composition') {
       const key = resolveKeyId(face.trigger[0]!);
       if (compositionLayerTriggers.has(key)) {
-        throw new Error(
-          `同じtriggerキーのcompositionの面を、レイヤーに2枚以上計上できない（face:${faceIndex}）`,
-        );
+        throw new Error(`同じtriggerキーのcompositionの面を、レイヤーに2枚以上計上できない（face:${faceIndex}）`);
       }
       compositionLayerTriggers.add(key);
     }
@@ -101,7 +92,7 @@ export function validateFaceAuthoring(faces: readonly Face[]): void {
   }
 
   for (const [layer, group] of groups) {
-    const roles = new Set(group.map((face) => face.role === 'modifier' ? 'modifier' : 'layer'));
+    const roles = new Set(group.map((face) => (face.role === 'modifier' ? 'modifier' : 'layer')));
     if (roles.size > 1) {
       throw new Error(`レイヤー「${layer}」に異なる役割の面を混在させられない`);
     }

@@ -1,13 +1,4 @@
-import type {
-  AssetValues,
-  Command,
-  CommandHistory,
-  CommandOutcome,
-  CommandStepResult,
-  HistoryEntry,
-  HistoryStepResult,
-  ItemScopes,
-} from './types.ts';
+import type { AssetValues, Command, CommandHistory, CommandOutcome, CommandStepResult, HistoryEntry, HistoryStepResult, ItemScopes } from './types.ts';
 
 /** 履歴の上限（既定値は100）。超えたら古い方から捨てる。 */
 export const DEFAULT_MAX_HISTORY_ENTRIES = 100;
@@ -21,10 +12,7 @@ export function emptyCommandHistory<A extends AssetValues>(): CommandHistory<A> 
  * （参照が同じなら「何も変えなかった」とみなす。純関数が同じ参照を返したことを
  * 資産1つずつの粒度で見る）。
  */
-function diffChanges<A extends AssetValues>(
-  current: A,
-  changes: Readonly<Partial<A>>,
-): { before: Partial<A>; after: Partial<A> } {
+function diffChanges<A extends AssetValues>(current: A, changes: Readonly<Partial<A>>): { before: Partial<A>; after: Partial<A> } {
   const before: Partial<A> = {};
   const after: Partial<A> = {};
   for (const key of Object.keys(changes) as (keyof A & string)[]) {
@@ -42,10 +30,7 @@ function withPatch<A extends AssetValues>(current: A, patch: Readonly<Partial<A>
   return { ...current, ...patch };
 }
 
-function capUndoStack<A extends AssetValues>(
-  stack: readonly HistoryEntry<A>[],
-  maxEntries: number,
-): readonly HistoryEntry<A>[] {
+function capUndoStack<A extends AssetValues>(stack: readonly HistoryEntry<A>[], maxEntries: number): readonly HistoryEntry<A>[] {
   return stack.length > maxEntries ? stack.slice(stack.length - maxEntries) : stack;
 }
 
@@ -173,12 +158,7 @@ type Direction = 'undo' | 'redo';
  * `scopes`に挙げたキーは、項目が既にある件の中身だけを変えている時（件の追加・削除・並べ替えをしていない時）、
  * 変わった件だけを照らし合わせて、その件だけを書き換える。他の件が今変わっていても当てられる。
  */
-function reconcile<A extends AssetValues>(
-  assets: A,
-  entry: HistoryEntry<A>,
-  direction: Direction,
-  scopes: ItemScopes<A>,
-): Partial<A> | undefined {
+function reconcile<A extends AssetValues>(assets: A, entry: HistoryEntry<A>, direction: Direction, scopes: ItemScopes<A>): Partial<A> | undefined {
   const from = direction === 'undo' ? entry.after : entry.before;
   const to = direction === 'undo' ? entry.before : entry.after;
   const patch: Partial<A> = {};
@@ -189,11 +169,10 @@ function reconcile<A extends AssetValues>(
     if (scope !== undefined && Object.hasOwn(from, key) && Object.hasOwn(to, key)) {
       const fromItems = scope.items(from[key] as A[typeof key]);
       const toItems = scope.items(to[key] as A[typeof key]);
-      const sameLayout = scope.membership === 'free'
-        || (fromItems.size === toItems.size && [...fromItems.keys()].every((id, index) => id === [...toItems.keys()][index]));
+      const sameLayout =
+        scope.membership === 'free' || (fromItems.size === toItems.size && [...fromItems.keys()].every((id, index) => id === [...toItems.keys()][index]));
       if (sameLayout) {
-        const changedIds = [...new Set([...fromItems.keys(), ...toItems.keys()])]
-          .filter((id) => !Object.is(fromItems.get(id), toItems.get(id)));
+        const changedIds = [...new Set([...fromItems.keys(), ...toItems.keys()])].filter((id) => !Object.is(fromItems.get(id), toItems.get(id)));
         if (changedIds.length > 0) {
           const currentItems = scope.items(current);
           if (!changedIds.every((id) => Object.is(currentItems.get(id), fromItems.get(id)))) return undefined;
@@ -223,11 +202,7 @@ function reconcile<A extends AssetValues>(
  * 今の資産に当てられない項目（照らし合わせは`reconcile`）は、資産を変えずに履歴から捨てて`conflict`を返す。
  * 次の呼び出しは、その下の項目を戻す。
  */
-export function undo<A extends AssetValues>(
-  assets: A,
-  history: CommandHistory<A>,
-  scopes: ItemScopes<A> = {},
-): HistoryStepResult<A> {
+export function undo<A extends AssetValues>(assets: A, history: CommandHistory<A>, scopes: ItemScopes<A> = {}): HistoryStepResult<A> {
   if (history.undoStack.length === 0) return unchanged(assets, history);
 
   const entry = history.undoStack[history.undoStack.length - 1]!;
@@ -248,11 +223,7 @@ export function undo<A extends AssetValues>(
 }
 
 /** 直前にundoした項目を1つやり直す。当てられない時の扱いは`undo`と同じ（`redoStack`から捨てる）。 */
-export function redo<A extends AssetValues>(
-  assets: A,
-  history: CommandHistory<A>,
-  scopes: ItemScopes<A> = {},
-): HistoryStepResult<A> {
+export function redo<A extends AssetValues>(assets: A, history: CommandHistory<A>, scopes: ItemScopes<A> = {}): HistoryStepResult<A> {
   if (history.redoStack.length === 0) return unchanged(assets, history);
 
   const entry = history.redoStack[history.redoStack.length - 1]!;
@@ -294,12 +265,8 @@ export function applyExternalChange<A extends AssetValues, K extends keyof A & s
 }
 
 /** その資産キーに触れる項目を、undo側・redo側の両方から捨てた履歴。 */
-export function withoutEntriesTouching<A extends AssetValues>(
-  history: CommandHistory<A>,
-  assetKey: keyof A & string,
-): CommandHistory<A> {
-  const touchesAssetKey = (entry: HistoryEntry<A>): boolean =>
-    Object.hasOwn(entry.before, assetKey) || Object.hasOwn(entry.after, assetKey);
+export function withoutEntriesTouching<A extends AssetValues>(history: CommandHistory<A>, assetKey: keyof A & string): CommandHistory<A> {
+  const touchesAssetKey = (entry: HistoryEntry<A>): boolean => Object.hasOwn(entry.before, assetKey) || Object.hasOwn(entry.after, assetKey);
   return {
     undoStack: history.undoStack.filter((entry) => !touchesAssetKey(entry)),
     redoStack: history.redoStack.filter((entry) => !touchesAssetKey(entry)),

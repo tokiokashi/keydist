@@ -31,12 +31,15 @@ test('詰めない（既定）: 縮めた所へ下のペインが上がらない
   await expect.poll(async () => (await itemOf(page, 'a')).h).toBe(5);
   expect(await stored(page)).toEqual([cell('a', 0, 0, 12, 5), cell('b', 12, 0, 12, 16), cell('c', 0, 10, 12, 6)]);
   // 見えている位置も、cはaを縮める前と同じ高さのまま
-  expect(await drawnTop(page, 'c') - await drawnTop(page, 'a')).toBe(10 * ROW_STEP);
+  expect((await drawnTop(page, 'c')) - (await drawnTop(page, 'a'))).toBe(10 * ROW_STEP);
 });
 
 test('詰めない（既定）: 閉じた所は空いたまま残り、元に戻すで戻る', async ({ page }) => {
   await open(page, ['a', 'b', 'c'], COLUMN);
-  await page.locator('.workspace-grid-item[data-pane-id="a"]').getByRole('button', { name: /の操作$/ }).click();
+  await page
+    .locator('.workspace-grid-item[data-pane-id="a"]')
+    .getByRole('button', { name: /の操作$/ })
+    .click();
   await page.getByRole('menuitem', { name: /閉じる/ }).click();
   await expect(page.locator('.workspace-grid-item')).toHaveCount(2);
   expect(await stored(page)).toEqual([cell('b', 12, 0, 12, 16), cell('c', 0, 10, 12, 6)]);
@@ -80,18 +83,18 @@ test('詰める設定: 縮めた所へ下のペインが上がる', async ({ pag
 test('切り替え: 並びを書き換えない。詰める間は表示だけが詰まり、戻すと空きが戻る。元に戻すで1回ずつ戻る', async ({ page }) => {
   const gapped = [cell('a', 0, 0, 12, 5), cell('b', 12, 0, 12, 16), cell('c', 0, 10, 12, 6)];
   await open(page, ['a', 'b', 'c'], gapped);
-  const gap = await drawnTop(page, 'c') - await drawnTop(page, 'a');
+  const gap = (await drawnTop(page, 'c')) - (await drawnTop(page, 'a'));
   expect(gap).toBe(10 * ROW_STEP);
 
   await toggleCompact(page);
   expect(await stored(page)).toEqual(gapped);
   expect((await workspaces(page))[0]!.compactPanes).toBe(true);
-  expect(await drawnTop(page, 'c') - await drawnTop(page, 'a')).toBe(5 * ROW_STEP);
+  expect((await drawnTop(page, 'c')) - (await drawnTop(page, 'a'))).toBe(5 * ROW_STEP);
 
   await toggleCompact(page);
   expect(await stored(page)).toEqual(gapped);
   expect((await workspaces(page))[0]!.compactPanes).toBeUndefined();
-  expect(await drawnTop(page, 'c') - await drawnTop(page, 'a')).toBe(gap);
+  expect((await drawnTop(page, 'c')) - (await drawnTop(page, 'a'))).toBe(gap);
 
   const bar = page.locator('.context-bar');
   await bar.getByRole('button', { name: '元に戻す' }).click();
@@ -129,17 +132,20 @@ test('設定は保存され、メニューに今の状態が出る。Workspace�
 
 test('縦積み（スマホ幅）: 並びを書き換えず、設定の切り替えも使える。広げ直すと保存した並びで描かれる', async ({ page }) => {
   const gapped = [cell('a', 0, 0, 12, 5), cell('b', 12, 0, 12, 16), cell('c', 0, 10, 12, 6)];
-  await page.addInitScript((value) => {
-    if (localStorage.getItem('keydist:workspaces') === null) {
-      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
-    }
-  }, {
-    id: 'g',
-    name: '格子',
-    text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
-    panes: ['a', 'b', 'c'].map((id) => ({ id, analyzerId: 'blank', binding: { mode: 'none' } })),
-    grid: gapped,
-  });
+  await page.addInitScript(
+    (value) => {
+      if (localStorage.getItem('keydist:workspaces') === null) {
+        localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
+      }
+    },
+    {
+      id: 'g',
+      name: '格子',
+      text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+      panes: ['a', 'b', 'c'].map((id) => ({ id, analyzerId: 'blank', binding: { mode: 'none' } })),
+      grid: gapped,
+    },
+  );
   await page.setViewportSize({ width: 390, height: 900 });
   await page.goto('/workspace/g');
   await waitForHydration(page);
@@ -151,7 +157,7 @@ test('縦積み（スマホ幅）: 並びを書き換えず、設定の切り替
   await expect(page.locator('.workspace-grid-item')).toHaveCount(3);
   await settle(page);
   expect(await stored(page)).toEqual(gapped);
-  expect(await drawnTop(page, 'c') - await drawnTop(page, 'a')).toBe(10 * ROW_STEP);
+  expect((await drawnTop(page, 'c')) - (await drawnTop(page, 'a'))).toBe(10 * ROW_STEP);
 });
 
 test('拡大表示: 拡大しても戻しても、保存した並びも空きも変わらない', async ({ page }) => {
@@ -161,23 +167,26 @@ test('拡大表示: 拡大しても戻しても、保存した並びも空きも
     analyzerId: 'bigram-flow',
     binding: { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } } },
   });
-  await page.addInitScript((value) => {
-    if (localStorage.getItem('keydist:workspaces') === null) {
-      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
-    }
-  }, {
-    id: 'g',
-    name: '格子',
-    text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
-    panes: ['a', 'b', 'c'].map(fixed),
-    grid: gapped,
-  });
+  await page.addInitScript(
+    (value) => {
+      if (localStorage.getItem('keydist:workspaces') === null) {
+        localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
+      }
+    },
+    {
+      id: 'g',
+      name: '格子',
+      text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+      panes: ['a', 'b', 'c'].map(fixed),
+      grid: gapped,
+    },
+  );
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/workspace/g');
   await waitForHydration(page);
   await expect(page.locator('.workspace-grid-item')).toHaveCount(3);
   await settle(page);
-  const gap = await drawnTop(page, 'c') - await drawnTop(page, 'a');
+  const gap = (await drawnTop(page, 'c')) - (await drawnTop(page, 'a'));
   expect(gap).toBe(20 * ROW_STEP);
 
   await page.locator('.workspace-grid-item[data-pane-id="a"] .pane-menu-button[aria-label$="の操作"]').click();
@@ -188,28 +197,38 @@ test('拡大表示: 拡大しても戻しても、保存した並びも空きも
   await expect(page.locator('.workspace-grid-item[data-maximized]')).toHaveCount(0);
   await settle(page);
   expect(await stored(page)).toEqual(gapped);
-  expect(await drawnTop(page, 'c') - await drawnTop(page, 'a')).toBe(gap);
+  expect((await drawnTop(page, 'c')) - (await drawnTop(page, 'a'))).toBe(gap);
 });
 
-interface Rect { readonly id: string; readonly x: number; readonly y: number; readonly w: number; readonly h: number }
+interface Rect {
+  readonly id: string;
+  readonly x: number;
+  readonly y: number;
+  readonly w: number;
+  readonly h: number;
+}
 
 async function drawnRects(page: Page): Promise<Rect[]> {
-  return page.locator('.workspace-grid-item').evaluateAll((els) => els.map((el) => {
-    const r = el.getBoundingClientRect();
-    return { id: el.getAttribute('data-pane-id')!, x: Math.round(r.x), y: Math.round(r.y + scrollY), w: Math.round(r.width), h: Math.round(r.height) };
-  }));
+  return page.locator('.workspace-grid-item').evaluateAll((els) =>
+    els.map((el) => {
+      const r = el.getBoundingClientRect();
+      return { id: el.getAttribute('data-pane-id')!, x: Math.round(r.x), y: Math.round(r.y + scrollY), w: Math.round(r.width), h: Math.round(r.height) };
+    }),
+  );
 }
 
 function overlapping(rects: readonly Rect[], moving?: string): string[] {
   const found: string[] = [];
-  rects.forEach((a, i) => rects.slice(i + 1).forEach((b) => {
-    const width = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
-    const height = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
-    // つかんで動かしている・大きさを変えているペインは、ライブラリが指の位置の画素で描き、他のペインは升目で動く。
-    // その差（1升未満）は、動かしているペインを含む組にだけ許す。動かしていないペインどうしは、重なりを一切許さない
-    const limit = a.id === moving || b.id === moving ? ROW_STEP : 1;
-    if (width >= limit && height >= limit) found.push(`${a.id}/${b.id}`);
-  }));
+  rects.forEach((a, i) =>
+    rects.slice(i + 1).forEach((b) => {
+      const width = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+      const height = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+      // つかんで動かしている・大きさを変えているペインは、ライブラリが指の位置の画素で描き、他のペインは升目で動く。
+      // その差（1升未満）は、動かしているペインを含む組にだけ許す。動かしていないペインどうしは、重なりを一切許さない
+      const limit = a.id === moving || b.id === moving ? ROW_STEP : 1;
+      if (width >= limit && height >= limit) found.push(`${a.id}/${b.id}`);
+    }),
+  );
   return found;
 }
 
@@ -243,7 +262,10 @@ async function dragWhileChecking(page: Page, grab: { x: number; y: number }, dx:
   const after = await drawnRects(page);
   expect(overlapping(after)).toEqual([]);
   for (const rect of before.filter((r) => r.id !== moving)) {
-    expect(after.find((r) => r.id === rect.id), `${rect.id}が離した瞬間に飛ぶ`).toEqual(rect);
+    expect(
+      after.find((r) => r.id === rect.id),
+      `${rect.id}が離した瞬間に飛ぶ`,
+    ).toEqual(rect);
   }
 }
 

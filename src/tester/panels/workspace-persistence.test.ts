@@ -1,11 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createWorkspacePanelRegistry } from './panel-registry.ts';
-import {
-  createWorkspaceState,
-  MAX_DORMANT_DYNAMIC_PANELS,
-  type WorkspaceStateV1,
-} from './workspace-state.ts';
+import { createWorkspaceState, MAX_DORMANT_DYNAMIC_PANELS, type WorkspaceStateV1 } from './workspace-state.ts';
 import {
   clampAllFloatingPanels,
   createWorkspacePersistenceScheduler,
@@ -50,22 +46,12 @@ test('decode: corrupt JSON falls back to default without throwing', () => {
 });
 
 test('decode: unknown version falls back to default without throwing', () => {
-  const result = decodeWorkspaceState(
-    JSON.stringify({ version: 99, panels: {}, zOrder: [] }),
-    definitions,
-    registry,
-    viewport,
-  );
+  const result = decodeWorkspaceState(JSON.stringify({ version: 99, panels: {}, zOrder: [] }), definitions, registry, viewport);
   assert.deepEqual(result, createWorkspaceState(definitions));
 });
 
 test('decode: structurally invalid payload falls back to default without throwing', () => {
-  const result = decodeWorkspaceState(
-    JSON.stringify({ version: 1, panels: 'nope' }),
-    definitions,
-    registry,
-    viewport,
-  );
+  const result = decodeWorkspaceState(JSON.stringify({ version: 1, panels: 'nope' }), definitions, registry, viewport);
   assert.deepEqual(result, createWorkspaceState(definitions));
 });
 
@@ -112,7 +98,7 @@ test('decode: unknown fields on a panel are dropped', () => {
   assert.deepEqual(result.panels.a, { visible: true, mode: 'docked', dockSlot: 'main' });
 });
 
-test('decode: floating rect is clamped to viewport using the panel\'s min size', () => {
+test("decode: floating rect is clamped to viewport using the panel's min size", () => {
   const raw = JSON.stringify({
     version: 1,
     panels: {
@@ -154,17 +140,9 @@ test('decode: dynamic layer panels stay dormant while retired static ids are pru
 
 test('decode: dormant dynamic panels are bounded to the newest first-seen entries', () => {
   const dormant = Object.fromEntries(
-    Array.from({ length: MAX_DORMANT_DYNAMIC_PANELS + 2 }, (_, index) => [
-      `input.layer:${index}`,
-      { visible: true, mode: 'docked', dockSlot: 'guide' },
-    ]),
+    Array.from({ length: MAX_DORMANT_DYNAMIC_PANELS + 2 }, (_, index) => [`input.layer:${index}`, { visible: true, mode: 'docked', dockSlot: 'guide' }]),
   );
-  const result = decodeWorkspaceState(
-    JSON.stringify({ version: 1, panels: dormant, zOrder: [] }),
-    definitions,
-    registry,
-    viewport,
-  );
+  const result = decodeWorkspaceState(JSON.stringify({ version: 1, panels: dormant, zOrder: [] }), definitions, registry, viewport);
 
   const dormantIds = Object.keys(result.panels).filter((id) => id.startsWith('input.layer:'));
   assert.equal(dormantIds.length, MAX_DORMANT_DYNAMIC_PANELS);

@@ -25,11 +25,7 @@ function withOneText(text = '', name = '新しいテキスト'): TextLibrary {
 
 test('appendCopiedUserText: 既存の内容を新しいユーザーテキストとして足す', () => {
   idCounter = 0;
-  const { library, created } = appendCopiedUserText(
-    emptyTextLibrary(),
-    nextId,
-    { text: '吾輩は猫である', name: '旧文' },
-  );
+  const { library, created } = appendCopiedUserText(emptyTextLibrary(), nextId, { text: '吾輩は猫である', name: '旧文' });
   assert.equal(library.texts.length, 1);
   assert.equal(created.text, '吾輩は猫である');
   assert.equal(created.name, '旧文');
@@ -44,22 +40,13 @@ test('appendCopiedUserText: 空文字列を渡せば「新規作成」相当に�
 
 test('appendCopiedUserText: nameを明示すればそちらを使う', () => {
   idCounter = 0;
-  const { created } = appendCopiedUserText(
-    emptyTextLibrary(),
-    nextId,
-    { text: 'hello', name: '英文' },
-    '英文のコピー',
-  );
+  const { created } = appendCopiedUserText(emptyTextLibrary(), nextId, { text: 'hello', name: '英文' }, '英文のコピー');
   assert.equal(created.name, '英文のコピー');
 });
 
 test('appendCopiedUserText: languageOverrideも引き継ぐ', () => {
   idCounter = 0;
-  const { created } = appendCopiedUserText(
-    emptyTextLibrary(),
-    nextId,
-    { text: 'テスト', name: '手動指定テキスト', languageOverride: 'en' },
-  );
+  const { created } = appendCopiedUserText(emptyTextLibrary(), nextId, { text: 'テスト', name: '手動指定テキスト', languageOverride: 'en' });
   assert.equal(created.languageOverride, 'en');
 });
 

@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { N_SENSITIVITY_RANGE, nSensitivityDefinition, type NSensitivityExtracted, type NSensitivitySeries, type NSensitivitySeriesFailed } from './extract.ts';
+import {
+  N_SENSITIVITY_RANGE,
+  nSensitivityDefinition,
+  type NSensitivityExtracted,
+  type NSensitivitySeries,
+  type NSensitivitySeriesFailed,
+} from './extract.ts';
 import { DEFAULT_N_SENSITIVITY_OPTIONS, nSensitivityOptions, type NSensitivityOptions } from './options.ts';
 import { bindOption, RadioOptionField, SelectOptionField } from '#ui/primitives/option-fields.tsx';
 import { N_SENSITIVITY_PANE_META } from './pane-meta.ts';
@@ -101,7 +107,14 @@ function formatY(kind: NSensitivityAxisKind, metric: NSensitivityMetricId, value
 const MARK_RADIUS = 3;
 
 /** 系列の点・凡例の見本。形は対象ごとに違い、色を見分けられなくても区別できる。 */
-function SeriesMark({ mark, color, x, y, className, children }: {
+function SeriesMark({
+  mark,
+  color,
+  x,
+  y,
+  className,
+  children,
+}: {
   readonly mark: TargetMark;
   readonly color: string;
   readonly x: number;
@@ -187,7 +200,9 @@ function useLegendMeasure(ref: React.RefObject<HTMLElement | null>): MeasureText
     };
     read();
     void document.fonts?.ready.then(read);
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [ref]);
   if (source === null) return estimateTextWidth;
   if (measureContext === undefined) measureContext = document.createElement('canvas').getContext('2d');
@@ -239,10 +254,7 @@ function NSensitivityChart({
   // 並んだ同じ指標・同じ見せ方・同じ決め方のペイン全部の値を含む範囲で決める（配るものが無ければ自分の値だけ）。
   // 指標が違えば単位も値の大きさも違うので、指標ごとに分ける
   const ys = series.flatMap((s) => s.points.map((p) => p.y));
-  const sharedRange = useSharedScale(
-    `n-sensitivity:${metric}:${kind}:${yRangeMode}`,
-    yValuesRange(ys),
-  );
+  const sharedRange = useSharedScale(`n-sensitivity:${metric}:${kind}:${yRangeMode}`, yValuesRange(ys));
   const yRange = computeYRange(yRangeMode, kind, sharedRange === undefined ? [] : [sharedRange.min, sharedRange.max]);
   const ySpan = yRange.hi - yRange.lo || 1;
   const yTickValues = yRange.ticks;
@@ -253,19 +265,26 @@ function NSensitivityChart({
   const measure = useLegendMeasure(wrapRef);
   // 凡例の枠が図の幅を超えないよう、名前に使える幅は図の幅から枠の余白・見本・測り誤差を引いた分まで。
   const labelRoom = CHART_WIDTH - LEGEND_BELOW_SIDE * 2 - LEGEND_PADDING * 2 - LEGEND_SWATCH_WIDTH - LEGEND_SWATCH_GAP - LEGEND_MEASURE_SLACK;
-  const { labels: legendLabels, distinct: legendDistinct } = fitLegendLabels(series.map((s) => s.label), measure, undefined, labelRoom);
+  const { labels: legendLabels, distinct: legendDistinct } = fitLegendLabels(
+    series.map((s) => s.label),
+    measure,
+    undefined,
+    labelRoom,
+  );
   // 図の幅に収めると名前を見分けられない時は、図の中の枠をやめ、名前を省かずに図の下へ折り返して並べる。
   const legendInList = !legendDistinct;
   const layoutFor = (chartHeight: number) => {
     const plotHeight = chartHeight - MARGIN.top - MARGIN.bottom;
     const yScale = (y: number) => MARGIN.top + plotHeight - ((y - yRange.lo) / ySpan) * plotHeight;
-    const legend = legendInList ? null : placeLegend(
-      { x: MARGIN.left, y: MARGIN.top, width: plotWidth, height: plotHeight },
-      series.map((s) => s.points.map((p) => ({ x: xScale(p.windowSize), y: yScale(p.y) }))),
-      legendLabels,
-      measure,
-      { x: LEGEND_BELOW_SIDE, y: chartHeight + LEGEND_BELOW_GAP, width: CHART_WIDTH - LEGEND_BELOW_SIDE * 2 },
-    );
+    const legend = legendInList
+      ? null
+      : placeLegend(
+          { x: MARGIN.left, y: MARGIN.top, width: plotWidth, height: plotHeight },
+          series.map((s) => s.points.map((p) => ({ x: xScale(p.windowSize), y: yScale(p.y) }))),
+          legendLabels,
+          measure,
+          { x: LEGEND_BELOW_SIDE, y: chartHeight + LEGEND_BELOW_GAP, width: CHART_WIDTH - LEGEND_BELOW_SIDE * 2 },
+        );
     const svgHeight = legend?.corner === 'below' ? legend.rect.y + legend.rect.height + LEGEND_BELOW_GAP : chartHeight;
     return { chartHeight, yScale, legend, svgHeight };
   };
@@ -296,135 +315,106 @@ function NSensitivityChart({
 
   return (
     <>
-    <div className="n-sensitivity-chart" ref={wrapRef} style={wrapStyle}>
-    <svg
-      className="n-sensitivity-svg"
-      viewBox={`0 0 ${CHART_WIDTH} ${svgHeight}`}
-      role="img"
-      aria-label={`N感度チャート（${axisTitle(metric, kind)}）: ${series.map((s) => s.label).join('、')}`}
-    >
-      {yTickValues.map((value, i) => (
-        <g key={value}>
-          <line
-            className="n-sensitivity-grid-line"
-            x1={MARGIN.left}
-            x2={CHART_WIDTH - MARGIN.right}
-            y1={yScale(value)}
-            y2={yScale(value)}
-          />
-          <text className="n-sensitivity-axis-label" x={MARGIN.left - 6} y={yScale(value)} textAnchor="end" dominantBaseline="middle">
-            {yTickLabels[i]}
-          </text>
-        </g>
-      ))}
-      {N_SENSITIVITY_RANGE.filter((_, i) => i % tickStep === 0).map((n) => (
-        <text
-          key={n}
-          className="n-sensitivity-axis-label"
-          x={xScale(n)}
-          y={CHART_HEIGHT - MARGIN.bottom + 16}
-          textAnchor="middle"
+      <div className="n-sensitivity-chart" ref={wrapRef} style={wrapStyle}>
+        <svg
+          className="n-sensitivity-svg"
+          viewBox={`0 0 ${CHART_WIDTH} ${svgHeight}`}
+          role="img"
+          aria-label={`N感度チャート（${axisTitle(metric, kind)}）: ${series.map((s) => s.label).join('、')}`}
         >
-          {n}
-        </text>
-      ))}
-      <text className="n-sensitivity-y-title" x={MARGIN.left} y={MARGIN.top - 5} textAnchor="start" data-n-sensitivity-y-title="">
-        {axisTitle(metric, kind)}
-      </text>
-      <text
-        className="n-sensitivity-axis-title"
-        x={MARGIN.left + plotWidth / 2}
-        y={CHART_HEIGHT - 4}
-        textAnchor="middle"
-      >
-        N（先読み文字数）
-      </text>
-
-      {series.map((s) => {
-        const path = s.points
-          .map((p, i) => `${i === 0 ? 'M' : 'L'}${xScale(p.windowSize)},${yScale(p.y)}`)
-          .join(' ');
-        return (
-          <g key={s.targetKey} data-n-sensitivity-series={s.targetKey}>
-            <path
-              className="n-sensitivity-line"
-              d={path}
-              style={{ stroke: s.color }}
-              fill="none"
-              strokeDasharray={s.mark.dashed ? TARGET_DASH_ARRAY : undefined}
-            />
-            {s.points.map((p) => (
-              <SeriesMark
-                key={p.windowSize}
-                className="n-sensitivity-point"
-                mark={s.mark}
-                color={s.color}
-                x={xScale(p.windowSize)}
-                y={yScale(p.y)}
-              >
-                <title>{`${s.label} N=${p.windowSize}: ${formatY(kind, metric, p.y)}（実測 ${formatMetricValue(metric, s.actuals.find((a) => a.windowSize === p.windowSize)!.value)}）`}</title>
-              </SeriesMark>
-            ))}
-          </g>
-        );
-      })}
-
-      {legend === null ? null : (
-      <g
-        className="n-sensitivity-legend"
-        data-n-sensitivity-legend={legend.corner}
-        transform={`translate(${legend.rect.x},${legend.rect.y})`}
-      >
-        <rect className="n-sensitivity-legend-frame" width={legend.rect.width} height={legend.rect.height} rx={3} />
-        {series.map((s, i) => {
-          const at = legendItemOffset(legend, i);
-          return (
-            <g key={s.targetKey} data-n-sensitivity-row="ok" transform={`translate(${at.x},${at.y})`}>
-              <title>{s.fullName || s.label}</title>
-              <line
-                className="n-sensitivity-line"
-                x1={0}
-                x2={LEGEND_SWATCH_WIDTH}
-                style={{ stroke: s.color }}
-                strokeDasharray={s.mark.dashed ? TARGET_DASH_ARRAY : undefined}
-              />
-              <SeriesMark className="n-sensitivity-legend-mark" mark={s.mark} color={s.color} x={LEGEND_SWATCH_WIDTH / 2} y={0} />
-              <text
-                className="n-sensitivity-legend-label"
-                x={LEGEND_SWATCH_WIDTH + 6}
-                dominantBaseline="middle"
-                fontSize={LEGEND_FONT_SIZE}
-              >
-                {legendLabels[i]}
+          {yTickValues.map((value, i) => (
+            <g key={value}>
+              <line className="n-sensitivity-grid-line" x1={MARGIN.left} x2={CHART_WIDTH - MARGIN.right} y1={yScale(value)} y2={yScale(value)} />
+              <text className="n-sensitivity-axis-label" x={MARGIN.left - 6} y={yScale(value)} textAnchor="end" dominantBaseline="middle">
+                {yTickLabels[i]}
               </text>
             </g>
-          );
-        })}
-      </g>
-      )}
-    </svg>
-    </div>
-    {legendInList ? (
-      <ul className="n-sensitivity-legend-list" data-n-sensitivity-legend="list" aria-label="凡例">
-        {series.map((s) => (
-          <li key={s.targetKey} data-n-sensitivity-row="ok" title={s.fullName || s.label}>
-            <svg className="n-sensitivity-legend-swatch" width={LEGEND_SWATCH_WIDTH} height={12} viewBox={`0 0 ${LEGEND_SWATCH_WIDTH} 12`} aria-hidden="true">
-              <line
-                className="n-sensitivity-line"
-                x1={0}
-                x2={LEGEND_SWATCH_WIDTH}
-                y1={6}
-                y2={6}
-                style={{ stroke: s.color }}
-                strokeDasharray={s.mark.dashed ? TARGET_DASH_ARRAY : undefined}
-              />
-              <SeriesMark className="n-sensitivity-legend-mark" mark={s.mark} color={s.color} x={LEGEND_SWATCH_WIDTH / 2} y={6} />
-            </svg>
-            <span className="n-sensitivity-legend-name">{s.label}</span>
-          </li>
-        ))}
-      </ul>
-    ) : null}
+          ))}
+          {N_SENSITIVITY_RANGE.filter((_, i) => i % tickStep === 0).map((n) => (
+            <text key={n} className="n-sensitivity-axis-label" x={xScale(n)} y={CHART_HEIGHT - MARGIN.bottom + 16} textAnchor="middle">
+              {n}
+            </text>
+          ))}
+          <text className="n-sensitivity-y-title" x={MARGIN.left} y={MARGIN.top - 5} textAnchor="start" data-n-sensitivity-y-title="">
+            {axisTitle(metric, kind)}
+          </text>
+          <text className="n-sensitivity-axis-title" x={MARGIN.left + plotWidth / 2} y={CHART_HEIGHT - 4} textAnchor="middle">
+            N（先読み文字数）
+          </text>
+
+          {series.map((s) => {
+            const path = s.points.map((p, i) => `${i === 0 ? 'M' : 'L'}${xScale(p.windowSize)},${yScale(p.y)}`).join(' ');
+            return (
+              <g key={s.targetKey} data-n-sensitivity-series={s.targetKey}>
+                <path
+                  className="n-sensitivity-line"
+                  d={path}
+                  style={{ stroke: s.color }}
+                  fill="none"
+                  strokeDasharray={s.mark.dashed ? TARGET_DASH_ARRAY : undefined}
+                />
+                {s.points.map((p) => (
+                  <SeriesMark key={p.windowSize} className="n-sensitivity-point" mark={s.mark} color={s.color} x={xScale(p.windowSize)} y={yScale(p.y)}>
+                    <title>{`${s.label} N=${p.windowSize}: ${formatY(kind, metric, p.y)}（実測 ${formatMetricValue(metric, s.actuals.find((a) => a.windowSize === p.windowSize)!.value)}）`}</title>
+                  </SeriesMark>
+                ))}
+              </g>
+            );
+          })}
+
+          {legend === null ? null : (
+            <g className="n-sensitivity-legend" data-n-sensitivity-legend={legend.corner} transform={`translate(${legend.rect.x},${legend.rect.y})`}>
+              <rect className="n-sensitivity-legend-frame" width={legend.rect.width} height={legend.rect.height} rx={3} />
+              {series.map((s, i) => {
+                const at = legendItemOffset(legend, i);
+                return (
+                  <g key={s.targetKey} data-n-sensitivity-row="ok" transform={`translate(${at.x},${at.y})`}>
+                    <title>{s.fullName || s.label}</title>
+                    <line
+                      className="n-sensitivity-line"
+                      x1={0}
+                      x2={LEGEND_SWATCH_WIDTH}
+                      style={{ stroke: s.color }}
+                      strokeDasharray={s.mark.dashed ? TARGET_DASH_ARRAY : undefined}
+                    />
+                    <SeriesMark className="n-sensitivity-legend-mark" mark={s.mark} color={s.color} x={LEGEND_SWATCH_WIDTH / 2} y={0} />
+                    <text className="n-sensitivity-legend-label" x={LEGEND_SWATCH_WIDTH + 6} dominantBaseline="middle" fontSize={LEGEND_FONT_SIZE}>
+                      {legendLabels[i]}
+                    </text>
+                  </g>
+                );
+              })}
+            </g>
+          )}
+        </svg>
+      </div>
+      {legendInList ? (
+        <ul className="n-sensitivity-legend-list" data-n-sensitivity-legend="list" aria-label="凡例">
+          {series.map((s) => (
+            <li key={s.targetKey} data-n-sensitivity-row="ok" title={s.fullName || s.label}>
+              <svg
+                className="n-sensitivity-legend-swatch"
+                width={LEGEND_SWATCH_WIDTH}
+                height={12}
+                viewBox={`0 0 ${LEGEND_SWATCH_WIDTH} 12`}
+                aria-hidden="true"
+              >
+                <line
+                  className="n-sensitivity-line"
+                  x1={0}
+                  x2={LEGEND_SWATCH_WIDTH}
+                  y1={6}
+                  y2={6}
+                  style={{ stroke: s.color }}
+                  strokeDasharray={s.mark.dashed ? TARGET_DASH_ARRAY : undefined}
+                />
+                <SeriesMark className="n-sensitivity-legend-mark" mark={s.mark} color={s.color} x={LEGEND_SWATCH_WIDTH / 2} y={6} />
+              </svg>
+              <span className="n-sensitivity-legend-name">{s.label}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </>
   );
 }
@@ -472,13 +462,19 @@ function NSensitivityTable({ plotted, metric, chartReady }: { plotted: readonly 
           <thead>
             <tr>
               <th scope="col">対象</th>
-              {N_SENSITIVITY_RANGE.map((n) => <th scope="col" key={n}>N={n}</th>)}
+              {N_SENSITIVITY_RANGE.map((n) => (
+                <th scope="col" key={n}>
+                  N={n}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
             {plotted.map((s) => (
               <tr key={s.targetKey}>
-                <th scope="row" title={s.fullName}>{s.label}</th>
+                <th scope="row" title={s.fullName}>
+                  {s.label}
+                </th>
                 {s.actuals.map((a) => (
                   <td key={a.windowSize}>{formatMetricValue(metric, a.value)}</td>
                 ))}
@@ -495,12 +491,7 @@ function NSensitivityTable({ plotted, metric, chartReady }: { plotted: readonly 
  * N感度の本体（凡例を図の中に持つチャートと実測値の表）。メンバー単位の失敗は図の下に行で出す。
  * 対象が空の時はホストが選ぶボタンを出し、本体は呼ばれない。全メンバーが失敗した時は失敗の行だけが残る。
  */
-export function NSensitivityBody({
-  extracted,
-  order,
-  rowContext,
-  options,
-}: NSensitivityBodyProps) {
+export function NSensitivityBody({ extracted, order, rowContext, options }: NSensitivityBodyProps) {
   const [chartReady, setChartReady] = useState(false);
   const markChartReady = useCallback((ready: boolean) => setChartReady(ready), []);
   const okRows = order
@@ -530,13 +521,13 @@ export function NSensitivityBody({
   // 比はN=0の値が0だと決まらない。黙って0に置かず、描けない対象を知らせる
   const undrawn = plotted.filter((s) => s.points.length === 0);
 
-  const failedRows = okRows.filter(
-    (row): row is typeof row & { entry: NSensitivitySeriesFailed } => row.entry.kind === 'failed',
-  );
+  const failedRows = okRows.filter((row): row is typeof row & { entry: NSensitivitySeriesFailed } => row.entry.kind === 'failed');
 
   return (
     <section className="n-sensitivity-feature" data-react-feature="n-sensitivity">
-      {plotted.length > 0 ? <NSensitivityChart series={plotted} metric={metric} kind={kind} yRangeMode={options.yRange} onMeasured={markChartReady} /> : null}
+      {plotted.length > 0 ? (
+        <NSensitivityChart series={plotted} metric={metric} kind={kind} yRangeMode={options.yRange} onMeasured={markChartReady} />
+      ) : null}
 
       {undrawn.length > 0 ? (
         <p className="n-sensitivity-undrawn" role="note">

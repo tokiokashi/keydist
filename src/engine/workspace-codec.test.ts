@@ -42,7 +42,10 @@ const setPane = (id: string): WorkspacePane => ({
     target: {
       kind: 'set',
       selection: {
-        targets: [{ kind: 'layout', layoutId: 'qwerty' }, { kind: 'setup', setupId: 's1' }],
+        targets: [
+          { kind: 'layout', layoutId: 'qwerty' },
+          { kind: 'setup', setupId: 's1' },
+        ],
         baseline: { kind: 'layout', layoutId: 'qwerty' },
       },
     },
@@ -62,7 +65,12 @@ function sample(): WorkspaceLibrary {
     selection: { targets: [{ kind: 'layout', layoutId: 'qwerty' }], baseline: undefined },
   });
   library = withPaneInNewLinkGroup(library, 'w1', 'p1', 'link-2', { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } });
-  library = addWorkspacePane(library, 'w1', { id: 'p4', analyzerId: BLANK_PANE_ID, options: undefined, optionsBinding: OWN_OPTIONS, binding: NO_BINDING }, SIZE);
+  library = addWorkspacePane(
+    library,
+    'w1',
+    { id: 'p4', analyzerId: BLANK_PANE_ID, options: undefined, optionsBinding: OWN_OPTIONS, binding: NO_BINDING },
+    SIZE,
+  );
   library = createWorkspace(library, () => 'w2').library;
   return library;
 }
@@ -103,7 +111,11 @@ test('壊れたWorkspace・ペインはその1件だけ診断つきで捨て、�
         id: 'ok',
         name: '残る',
         panes: [
-          { id: 'good', analyzerId: 'bigram-flow', binding: { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } } } },
+          {
+            id: 'good',
+            analyzerId: 'bigram-flow',
+            binding: { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } } },
+          },
           { id: 'bad-target', analyzerId: 'bigram-flow', binding: { mode: 'fixed', target: { kind: 'single', target: { kind: 'nope' } } } },
           { id: 'bad-kind', analyzerId: 'bigram-flow', binding: { mode: 'fixed', target: { kind: 'weird' } } },
           { id: 'bad-mode', analyzerId: 'bigram-flow', binding: { mode: 'sometimes' } },
@@ -116,8 +128,14 @@ test('壊れたWorkspace・ペインはその1件だけ診断つきで捨て、�
     ],
   });
   assert.ok(result.ok);
-  assert.deepEqual(result.value.map((w) => w.id), ['ok']);
-  assert.deepEqual(result.value[0]!.panes.map((p) => p.id), ['good']);
+  assert.deepEqual(
+    result.value.map((w) => w.id),
+    ['ok'],
+  );
+  assert.deepEqual(
+    result.value[0]!.panes.map((p) => p.id),
+    ['good'],
+  );
   assert.ok(result.diagnostics.length >= 8);
 });
 
@@ -125,8 +143,14 @@ test('従う組 / 固定と、組ごとの対象は往復で保たれる', () =>
   const decoded = WORKSPACE_LIBRARY_CODEC.decode(JSON.parse(JSON.stringify(WORKSPACE_LIBRARY_CODEC.encode(sample()))));
   assert.ok(decoded.ok);
   const workspace = findWorkspace(decoded.value, 'w1')!;
-  assert.deepEqual(workspace.panes.map((p) => p.binding.mode), ['follow', 'fixed', 'follow', 'none']);
-  assert.deepEqual(workspace.groups.map((g) => g.id), [G, 'link-2']);
+  assert.deepEqual(
+    workspace.panes.map((p) => p.binding.mode),
+    ['follow', 'fixed', 'follow', 'none'],
+  );
+  assert.deepEqual(
+    workspace.groups.map((g) => g.id),
+    [G, 'link-2'],
+  );
   assert.deepEqual(workspace.groups[0]!.target.single.target, { kind: 'layout', layoutId: 'colemak-dh' });
   assert.equal(workspace.groups[0]!.target.set.targets.length, 1);
   assert.deepEqual(workspace.groups[1]!.target.single.target, { kind: 'layout', layoutId: 'qwerty' });
@@ -135,20 +159,25 @@ test('従う組 / 固定と、組ごとの対象は往復で保たれる', () =>
 test('組が壊れていれば壊れた部分だけ空へ戻し、捨てた値には診断を出す', () => {
   const broken = WORKSPACE_LIBRARY_CODEC.decode({
     version: 4,
-    workspaces: [{
-      id: 'w',
-      name: 'n',
-      groups: [
-        { id: 'a', target: { single: { kind: 'nope' }, set: { targets: [{ kind: 'layout', layoutId: 'qwerty' }] } } },
-        { id: 'b', target: { set: 'not-an-object' } },
-        { id: 'a' },
-        'not-an-object',
-      ],
-    }],
+    workspaces: [
+      {
+        id: 'w',
+        name: 'n',
+        groups: [
+          { id: 'a', target: { single: { kind: 'nope' }, set: { targets: [{ kind: 'layout', layoutId: 'qwerty' }] } } },
+          { id: 'b', target: { set: 'not-an-object' } },
+          { id: 'a' },
+          'not-an-object',
+        ],
+      },
+    ],
   });
   assert.ok(broken.ok);
   const groups = broken.value[0]!.groups;
-  assert.deepEqual(groups.map((g) => g.id), ['a', 'b']);
+  assert.deepEqual(
+    groups.map((g) => g.id),
+    ['a', 'b'],
+  );
   assert.deepEqual(groups[0]!.target.single, { target: undefined });
   assert.equal(groups[0]!.target.set.targets.length, 1);
   assert.deepEqual(groups[1]!.target.set.targets, []);
@@ -163,28 +192,39 @@ test('組が壊れていれば壊れた部分だけ空へ戻し、捨てた値�
 test('組が1つも読めなければ空の組を1つ作り、診断を出す。従う組が無いペインは先頭の組へ従わせる', () => {
   const missing = WORKSPACE_LIBRARY_CODEC.decode({ version: 4, workspaces: [{ id: 'w', name: 'n' }] });
   assert.ok(missing.ok);
-  assert.deepEqual(missing.value[0]!.groups.map((g) => g.id), [G]);
+  assert.deepEqual(
+    missing.value[0]!.groups.map((g) => g.id),
+    [G],
+  );
   assert.deepEqual(missing.value[0]!.groups[0]!.target.single, { target: undefined });
   assert.ok(missing.diagnostics.some((d) => d.path === 'workspaces[0].groups'));
 
   const result = WORKSPACE_LIBRARY_CODEC.decode({
     version: 4,
-    workspaces: [{
-      id: 'w',
-      name: 'n',
-      groups: [{ id: 'x', target: {} }],
-      panes: [
-        { id: 'p1', analyzerId: 'bigram-flow', optionsBinding: { mode: 'own' }, binding: { mode: 'follow', group: 'x' } },
-        { id: 'p2', analyzerId: 'bigram-flow', optionsBinding: { mode: 'own' }, binding: { mode: 'follow', group: 'gone' } },
-        { id: 'p3', analyzerId: 'bigram-flow', optionsBinding: { mode: 'own' }, binding: { mode: 'follow' } },
-        { id: 'p4', analyzerId: 'bigram-flow' },
-        { id: 'p5', analyzerId: 'bigram-flow', binding: 'oops' },
-      ],
-    }],
+    workspaces: [
+      {
+        id: 'w',
+        name: 'n',
+        groups: [{ id: 'x', target: {} }],
+        panes: [
+          { id: 'p1', analyzerId: 'bigram-flow', optionsBinding: { mode: 'own' }, binding: { mode: 'follow', group: 'x' } },
+          { id: 'p2', analyzerId: 'bigram-flow', optionsBinding: { mode: 'own' }, binding: { mode: 'follow', group: 'gone' } },
+          { id: 'p3', analyzerId: 'bigram-flow', optionsBinding: { mode: 'own' }, binding: { mode: 'follow' } },
+          { id: 'p4', analyzerId: 'bigram-flow' },
+          { id: 'p5', analyzerId: 'bigram-flow', binding: 'oops' },
+        ],
+      },
+    ],
   });
   assert.ok(result.ok);
-  assert.deepEqual(result.value[0]!.panes.map((p) => p.id), ['p1', 'p2', 'p3']);
-  assert.deepEqual(result.value[0]!.panes.map((p) => p.binding), [followBinding('x'), followBinding('x'), followBinding('x')]);
+  assert.deepEqual(
+    result.value[0]!.panes.map((p) => p.id),
+    ['p1', 'p2', 'p3'],
+  );
+  assert.deepEqual(
+    result.value[0]!.panes.map((p) => p.binding),
+    [followBinding('x'), followBinding('x'), followBinding('x')],
+  );
   // 従う組が無い2件・持ち方が無い1件・object形式でない1件
   assert.equal(result.diagnostics.length, 4);
   // 持ち方が無い場合とobject形式でない場合は、別の文で伝える
@@ -196,11 +236,13 @@ test('組が1つも読めなければ空の組を1つ作り、診断を出す。
 test('ペインの集合の選択がobject形式でなければ診断を出してペインを捨てる', () => {
   const result = WORKSPACE_LIBRARY_CODEC.decode({
     version: 4,
-    workspaces: [{
-      id: 'w',
-      name: 'n',
-      panes: [{ id: 'p', analyzerId: 'comparison', binding: { mode: 'fixed', target: { kind: 'set', selection: 'oops' } } }],
-    }],
+    workspaces: [
+      {
+        id: 'w',
+        name: 'n',
+        panes: [{ id: 'p', analyzerId: 'comparison', binding: { mode: 'fixed', target: { kind: 'set', selection: 'oops' } } }],
+      },
+    ],
   });
   assert.ok(result.ok);
   assert.deepEqual(result.value[0]!.panes, []);
@@ -222,24 +264,26 @@ test('名前・テキストの選択が壊れていれば既定へ戻し、診�
 test('配置がペインと食い違っていてもペインを失わず、並びを直して読む', () => {
   const result = WORKSPACE_LIBRARY_CODEC.decode({
     version: 4,
-    workspaces: [{
-      id: 'w',
-      name: 'n',
-      panes: [singlePane('a'), singlePane('b'), singlePane('c')].map((p) => ({
-        id: p.id,
-        analyzerId: p.analyzerId,
-        binding: { mode: 'follow' },
-      })),
-      grid: [
-        // 列の上限からはみ出す・負の位置・重なり・知らないペイン・数でない値は、範囲に収めるか捨てる
-        { id: 'a', x: 20, y: 0, w: 8, h: 8 },
-        { id: 'a', x: 0, y: 0, w: 6, h: 8 },
-        { id: 'b', x: 100000, y: 0, w: 5000, h: 8 },
-        { id: 'ghost', x: 0, y: 0, w: 2, h: 2 },
-        { id: 'c', x: -3, y: 0, w: 'wide', h: 8 },
-        'broken',
-      ],
-    }],
+    workspaces: [
+      {
+        id: 'w',
+        name: 'n',
+        panes: [singlePane('a'), singlePane('b'), singlePane('c')].map((p) => ({
+          id: p.id,
+          analyzerId: p.analyzerId,
+          binding: { mode: 'follow' },
+        })),
+        grid: [
+          // 列の上限からはみ出す・負の位置・重なり・知らないペイン・数でない値は、範囲に収めるか捨てる
+          { id: 'a', x: 20, y: 0, w: 8, h: 8 },
+          { id: 'a', x: 0, y: 0, w: 6, h: 8 },
+          { id: 'b', x: 100000, y: 0, w: 5000, h: 8 },
+          { id: 'ghost', x: 0, y: 0, w: 2, h: 2 },
+          { id: 'c', x: -3, y: 0, w: 'wide', h: 8 },
+          'broken',
+        ],
+      },
+    ],
   });
   assert.ok(result.ok);
   const workspace = findWorkspace(result.value, 'w')!;
@@ -259,22 +303,30 @@ test('配置がペインと食い違っていてもペインを失わず、並�
 test('保存した列の位置と幅はそのまま読む。面の幅や24列では寄せず、上限だけで収める', () => {
   const result = WORKSPACE_LIBRARY_CODEC.decode({
     version: 4,
-    workspaces: [{
-      id: 'w',
-      name: 'n',
-      panes: [singlePane('a'), singlePane('b'), singlePane('c')].map((p) => ({ id: p.id, analyzerId: p.analyzerId, binding: { mode: 'follow' } })),
-      grid: [
-        { id: 'a', x: 0, y: 0, w: 24, h: 8 },
-        { id: 'b', x: 24, y: 0, w: 30, h: 8 },
-        { id: 'c', x: 500, y: 0, w: 5000, h: 8 },
-      ],
-    }],
+    workspaces: [
+      {
+        id: 'w',
+        name: 'n',
+        panes: [singlePane('a'), singlePane('b'), singlePane('c')].map((p) => ({ id: p.id, analyzerId: p.analyzerId, binding: { mode: 'follow' } })),
+        grid: [
+          { id: 'a', x: 0, y: 0, w: 24, h: 8 },
+          { id: 'b', x: 24, y: 0, w: 30, h: 8 },
+          { id: 'c', x: 500, y: 0, w: 5000, h: 8 },
+        ],
+      },
+    ],
   });
   assert.ok(result.ok);
   const grid = findWorkspace(result.value, 'w')!.grid;
-  assert.deepEqual(grid.find((item) => item.id === 'a'), { id: 'a', x: 0, y: 0, w: 24, h: 8 });
+  assert.deepEqual(
+    grid.find((item) => item.id === 'a'),
+    { id: 'a', x: 0, y: 0, w: 24, h: 8 },
+  );
   // 24列を越えた位置・幅は保たれる
-  assert.deepEqual(grid.find((item) => item.id === 'b'), { id: 'b', x: 24, y: 0, w: 30, h: 8 });
+  assert.deepEqual(
+    grid.find((item) => item.id === 'b'),
+    { id: 'b', x: 24, y: 0, w: 30, h: 8 },
+  );
   // 上限を超える値だけが上限の中へ収まる
   const c = grid.find((item) => item.id === 'c')!;
   assert.equal(c.w, GRID_MAX_COLS);
@@ -285,7 +337,14 @@ test('配置が無くてもペインは並ぶ。ペインが無ければ配置�
   const result = WORKSPACE_LIBRARY_CODEC.decode({
     version: 4,
     workspaces: [
-      { id: 'w', name: 'n', panes: [{ id: 'a', analyzerId: 'x', binding: { mode: 'follow' } }, { id: 'b', analyzerId: 'x', binding: { mode: 'follow' } }] },
+      {
+        id: 'w',
+        name: 'n',
+        panes: [
+          { id: 'a', analyzerId: 'x', binding: { mode: 'follow' } },
+          { id: 'b', analyzerId: 'x', binding: { mode: 'follow' } },
+        ],
+      },
       { id: 'empty', name: 'e' },
     ],
   });
@@ -325,19 +384,28 @@ test('詰める設定は往復する。詰めない（既定）は値を持た�
   assert.deepEqual(decoded.value, library);
   assert.equal(JSON.stringify(WORKSPACE_LIBRARY_CODEC.encode(sample())).includes('compactPanes'), false);
 
-  const raw = (compactPanes: unknown) => WORKSPACE_LIBRARY_CODEC.decode({
-    version: 4,
-    workspaces: [{
-      id: 'w',
-      name: 'n',
-      panes: ['a', 'b'].map((id) => ({ id, analyzerId: 'x', binding: { mode: 'follow' } })),
-      grid: [{ id: 'a', x: 0, y: 4, w: 6, h: 4 }, { id: 'b', x: 12, y: 9, w: 6, h: 4 }],
-      compactPanes,
-    }],
-  });
+  const raw = (compactPanes: unknown) =>
+    WORKSPACE_LIBRARY_CODEC.decode({
+      version: 4,
+      workspaces: [
+        {
+          id: 'w',
+          name: 'n',
+          panes: ['a', 'b'].map((id) => ({ id, analyzerId: 'x', binding: { mode: 'follow' } })),
+          grid: [
+            { id: 'a', x: 0, y: 4, w: 6, h: 4 },
+            { id: 'b', x: 12, y: 9, w: 6, h: 4 },
+          ],
+          compactPanes,
+        },
+      ],
+    });
   const off = raw(undefined);
   assert.ok(off.ok);
-  assert.deepEqual(off.value[0]!.grid.map((i) => i.y), [4, 9]);
+  assert.deepEqual(
+    off.value[0]!.grid.map((i) => i.y),
+    [4, 9],
+  );
   assert.equal(off.value[0]!.compactPanes, undefined);
   // 真以外（壊れた値）は既定の詰めない
   const broken = raw('yes');
@@ -345,28 +413,41 @@ test('詰める設定は往復する。詰めない（既定）は値を持た�
   assert.equal(broken.value[0]!.compactPanes, undefined);
   const on = raw(true);
   assert.ok(on.ok);
-  assert.deepEqual(on.value[0]!.grid.map((i) => i.y), [0, 0]);
+  assert.deepEqual(
+    on.value[0]!.grid.map((i) => i.y),
+    [0, 0],
+  );
 });
 
 test('gridが配列でなければ診断を1件積み、ペインは失わない。undefinedは診断なし', () => {
-  const decode = (grid: unknown) => WORKSPACE_LIBRARY_CODEC.decode({
-    version: 4,
-    workspaces: [{
-      id: 'w',
-      name: 'n',
-      panes: ['a', 'b'].map((id) => ({ id, analyzerId: 'x', binding: { mode: 'follow' } })),
-      grid,
-    }],
-  });
+  const decode = (grid: unknown) =>
+    WORKSPACE_LIBRARY_CODEC.decode({
+      version: 4,
+      workspaces: [
+        {
+          id: 'w',
+          name: 'n',
+          panes: ['a', 'b'].map((id) => ({ id, analyzerId: 'x', binding: { mode: 'follow' } })),
+          grid,
+        },
+      ],
+    });
   for (const broken of ['abc', { 0: 1 }, 3, null]) {
     const result = decode(broken);
     assert.ok(result.ok);
-    assert.deepEqual(result.diagnostics.map((d) => d.path).filter((path) => path.includes('grid')), ['workspaces[0].grid'], `値: ${JSON.stringify(broken)}`);
+    assert.deepEqual(
+      result.diagnostics.map((d) => d.path).filter((path) => path.includes('grid')),
+      ['workspaces[0].grid'],
+      `値: ${JSON.stringify(broken)}`,
+    );
     assert.deepEqual([...gridPaneIds(result.value[0]!.grid)].sort(), ['a', 'b'], '枠が無いペインは空いている場所へ置く');
   }
   const absent = decode(undefined);
   assert.ok(absent.ok);
-  assert.deepEqual(absent.diagnostics.filter((d) => d.path.includes('grid')), []);
+  assert.deepEqual(
+    absent.diagnostics.filter((d) => d.path.includes('grid')),
+    [],
+  );
 });
 
 /** 解析設定の共有を持つ前の版（版3）のアプリが実際に保存した手持ち（サンプルのWorkspaceと、手で足したペイン5種を並べたWorkspace）。 */
@@ -385,8 +466,14 @@ test('版3の保存は、各ペインが自分の解析設定を持つ形とし�
     const stored = VERSION_3_STORED.workspaces[index]!;
     assert.deepEqual(workspace.optionSets, []);
     // ペインを1つも失わず、解析設定はそのペインのものとして残る
-    assert.deepEqual(workspace.panes.map((pane) => pane.id), stored.panes.map((pane) => pane.id));
-    assert.deepEqual(workspace.panes.map((pane) => pane.analyzerId), stored.panes.map((pane) => pane.analyzerId));
+    assert.deepEqual(
+      workspace.panes.map((pane) => pane.id),
+      stored.panes.map((pane) => pane.id),
+    );
+    assert.deepEqual(
+      workspace.panes.map((pane) => pane.analyzerId),
+      stored.panes.map((pane) => pane.analyzerId),
+    );
     workspace.panes.forEach((pane, paneIndex) => {
       assert.equal(pane.optionsBinding.mode, 'own');
       assert.deepEqual(pane.options, stored.panes[paneIndex]!.options);
@@ -409,22 +496,24 @@ test('Workspaceの条件に保存されていた再生の時間と速度平均�
   const encoded = WORKSPACE_LIBRARY_CODEC.encode(sample()) as { workspaces: readonly Record<string, unknown>[] };
   const withOldItems = {
     ...encoded,
-    workspaces: encoded.workspaces.map((workspace, index) => (index === 0
-      ? {
-        ...workspace,
-        conditions: {
-          windowSize: 4,
-          playbackStepsPerSecond: 2,
-          playbackSpeedMultiplier: 2,
-          playbackSameFingerDelay: false,
-          playbackAllFingerMovementDelay: true,
-          playbackPersonalSpeed: false,
-          playbackRateAverage: 'ewma',
-          playbackRateWindow: 5,
-          playbackRateHalfLifeSeconds: 2,
-        },
-      }
-      : workspace)),
+    workspaces: encoded.workspaces.map((workspace, index) =>
+      index === 0
+        ? {
+            ...workspace,
+            conditions: {
+              windowSize: 4,
+              playbackStepsPerSecond: 2,
+              playbackSpeedMultiplier: 2,
+              playbackSameFingerDelay: false,
+              playbackAllFingerMovementDelay: true,
+              playbackPersonalSpeed: false,
+              playbackRateAverage: 'ewma',
+              playbackRateWindow: 5,
+              playbackRateHalfLifeSeconds: 2,
+            },
+          }
+        : workspace,
+    ),
   };
   const decoded = WORKSPACE_LIBRARY_CODEC.decode(withOldItems);
   assert.ok(decoded.ok);

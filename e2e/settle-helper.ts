@@ -7,35 +7,45 @@ import type { Page } from '@playwright/test';
  */
 
 /** 描画のフレームを `count` 回進める。ResizeObserverの通知とその後の再描画を待つ時に使う。 */
-export const afterFrames = (page: Page, count = 3): Promise<void> => page.evaluate((frames) => new Promise<void>((resolve) => {
-  let left = frames;
-  const tick = () => {
-    left -= 1;
-    if (left <= 0) resolve();
-    else requestAnimationFrame(tick);
-  };
-  requestAnimationFrame(tick);
-}), count);
+export const afterFrames = (page: Page, count = 3): Promise<void> =>
+  page.evaluate(
+    (frames) =>
+      new Promise<void>((resolve) => {
+        let left = frames;
+        const tick = () => {
+          left -= 1;
+          if (left <= 0) resolve();
+          else requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }),
+    count,
+  );
 
 /**
  * macrotaskを `count` 回進める。`page.clock` でタイマーと描画のフレームを止めている間は
  * `requestAnimationFrame` が進まないので、フレームの代わりにこちらを使う。
  * Reactの描画はMessageChannelのtaskで流れるので、同じ経路のtaskを後ろに積めば、先に積まれた描画が済む。
  */
-export const afterTasks = (page: Page, count = 5): Promise<void> => page.evaluate((rounds) => new Promise<void>((resolve) => {
-  let left = rounds;
-  const channel = new MessageChannel();
-  channel.port1.onmessage = () => {
-    left -= 1;
-    if (left <= 0) resolve();
-    else channel.port2.postMessage(0);
-  };
-  channel.port2.postMessage(0);
-}), count);
+export const afterTasks = (page: Page, count = 5): Promise<void> =>
+  page.evaluate(
+    (rounds) =>
+      new Promise<void>((resolve) => {
+        let left = rounds;
+        const channel = new MessageChannel();
+        channel.port1.onmessage = () => {
+          left -= 1;
+          if (left <= 0) resolve();
+          else channel.port2.postMessage(0);
+        };
+        channel.port2.postMessage(0);
+      }),
+    count,
+  );
 
 /** 動いているCSSのtransition（格子の配置の動き200ms等）が無くなるまでの確認。 */
-const hasRunningTransition = (page: Page): Promise<boolean> => page.evaluate(() => document.getAnimations()
-  .some((animation) => animation instanceof CSSTransition && animation.playState === 'running'));
+const hasRunningTransition = (page: Page): Promise<boolean> =>
+  page.evaluate(() => document.getAnimations().some((animation) => animation instanceof CSSTransition && animation.playState === 'running'));
 
 /** `settleBy` が落ち着きを待つ確認の回数の上限。1回はフレーム3つぶんなので、約10秒分に当たる。 */
 const SETTLE_MAX_CHECKS = 200;
@@ -67,18 +77,37 @@ export async function settleBy(page: Page, read: () => Promise<string>, stableCh
  * ドラッグ中の印と、描かれた矩形・transformが続けて変わらなくなったことを見る。
  */
 export function settlePanels(page: Page): Promise<void> {
-  return settleBy(page, () => page.locator('section[data-floating="true"]').evaluateAll((els) => els.map((el) => {
-    const r = el.getBoundingClientRect();
-    return [el.getAttribute('data-dragging') ?? '', getComputedStyle(el).transform, r.x.toFixed(2), r.y.toFixed(2), r.width.toFixed(2), r.height.toFixed(2)].join(',');
-  }).join('|')));
+  return settleBy(page, () =>
+    page.locator('section[data-floating="true"]').evaluateAll((els) =>
+      els
+        .map((el) => {
+          const r = el.getBoundingClientRect();
+          return [
+            el.getAttribute('data-dragging') ?? '',
+            getComputedStyle(el).transform,
+            r.x.toFixed(2),
+            r.y.toFixed(2),
+            r.width.toFixed(2),
+            r.height.toFixed(2),
+          ].join(',');
+        })
+        .join('|'),
+    ),
+  );
 }
 
 /** Workspaceの全ペインの位置・大きさが落ち着くまで待つ（格子の配置の動き200msの後）。 */
 export function settleGrid(page: Page): Promise<void> {
-  return settleBy(page, () => page.locator('.workspace-grid-item').evaluateAll((els) => els.map((el) => {
-    const r = el.getBoundingClientRect();
-    return `${Math.round(r.x)},${Math.round(r.y)},${Math.round(r.width)},${Math.round(r.height)}`;
-  }).join('|')));
+  return settleBy(page, () =>
+    page.locator('.workspace-grid-item').evaluateAll((els) =>
+      els
+        .map((el) => {
+          const r = el.getBoundingClientRect();
+          return `${Math.round(r.x)},${Math.round(r.y)},${Math.round(r.width)},${Math.round(r.height)}`;
+        })
+        .join('|'),
+    ),
+  );
 }
 
 /**

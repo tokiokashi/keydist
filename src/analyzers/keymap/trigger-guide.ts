@@ -59,9 +59,7 @@ export function triggerGuide(layout: Layout, detail: LayerDetail): TriggerGuide 
   const styles = layerShiftStyles(layers);
   const definitions = layerDefinitionsWithLabels(layout);
   const compact = compactPresentationOf(layout);
-  const keepIds = compact !== undefined && detail === 'compact' && canToggleLayerDetail(layout)
-    ? new Set(compact.keepLayerIds)
-    : undefined;
+  const keepIds = compact !== undefined && detail === 'compact' && canToggleLayerDetail(layout) ? new Set(compact.keepLayerIds) : undefined;
   const isKept = (layerId: string) => keepIds === undefined || keepIds.has(layerId);
   const keyTones = new Map<string, TriggerTone>();
   const faceTones = new Map<Face, TriggerTone>();

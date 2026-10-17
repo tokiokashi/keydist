@@ -40,7 +40,10 @@ test('規則の行: 推奨に使っている配列を挙げる。使われてい
 
 test('指の割り当ての行: 名前と、削除した時に既定の割り当てで測る旨を出す', () => {
   const rows = userFingerAssignmentRows([{ ...DEFAULT_FINGER_ASSIGNMENT, id: 'finger-a', name: '自作の運指' }]);
-  assert.deepEqual(rows.map((row) => [row.id, row.name]), [['finger-a', '自作の運指']]);
+  assert.deepEqual(
+    rows.map((row) => [row.id, row.name]),
+    [['finger-a', '自作の運指']],
+  );
   assert.match(rows[0]!.detail!, /既定の割り当てで測ります/);
 });
 

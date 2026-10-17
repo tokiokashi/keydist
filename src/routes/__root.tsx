@@ -1,10 +1,5 @@
 /// <reference types="vite/client" />
-import {
-  HeadContent,
-  Scripts,
-  createRootRoute,
-  useRouterState,
-} from '@tanstack/react-router';
+import { HeadContent, Scripts, createRootRoute, useRouterState } from '@tanstack/react-router';
 import { useLayoutEffect, type ReactNode } from 'react';
 import { getAppearanceSnapshot } from '#app/theme/appearance.ts';
 import { applyTheme, THEME_BOOTSTRAP_SCRIPT } from '#app/theme/theme.ts';
@@ -45,8 +40,7 @@ function RootDocument({ children }: { children: ReactNode }) {
   // pathnameの文字列比較だと、GitHub Pagesが付ける末尾スラッシュ（/analyzer/）で外れ、
   // prerender済みHTMLとの不一致でhydrationが失敗する。matchしたrouteの宣言で判定する。
   const layout = useRouterState({
-    select: (state): 'context-bar' | 'plain' =>
-      state.matches.some((match) => match.staticData.contextBar === true) ? 'context-bar' : 'plain',
+    select: (state): 'context-bar' | 'plain' => (state.matches.some((match) => match.staticData.contextBar === true) ? 'context-bar' : 'plain'),
   });
 
   return (

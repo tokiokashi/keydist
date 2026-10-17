@@ -3,21 +3,9 @@ import test from 'node:test';
 import type { KeyValueStorage } from '#platform/persistence/storage.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
 import { ASSET_KEYS, ASSET_STORAGE_SPECS } from './asset-storage-specs.ts';
-import {
-  createSetupCommand,
-  createTextCommand,
-  selectTextCommand,
-} from '#engine/commands.ts';
+import { createSetupCommand, createTextCommand, selectTextCommand } from '#engine/commands.ts';
 import { applyCommand, applyExternalChangeToScreens, emptyCommandHistory, emptyScreenHistories, type Command } from '#input/commands/index.ts';
-import {
-  buildAssetSyncs,
-  commitCommand,
-  commitHistoryStep,
-  loadAssets,
-  saveChangedAssets,
-  startAssetSyncs,
-  type AssetState,
-} from './asset-syncs.ts';
+import { buildAssetSyncs, commitCommand, commitHistoryStep, loadAssets, saveChangedAssets, startAssetSyncs, type AssetState } from './asset-syncs.ts';
 
 /**
  * `ASSET_STORAGE_SPECS`の`initial()`をそのまま束ねるだけの、このテスト専用の最小`KeydistAssets`。
@@ -34,8 +22,12 @@ function createFakeStorage(): KeyValueStorage {
   const map = new Map<string, string>();
   return {
     getItem: (key) => map.get(key) ?? null,
-    setItem: (key, value) => { map.set(key, value); },
-    removeItem: (key) => { map.delete(key); },
+    setItem: (key, value) => {
+      map.set(key, value);
+    },
+    removeItem: (key) => {
+      map.delete(key);
+    },
   };
 }
 
@@ -45,9 +37,13 @@ function createFakeBus() {
   return {
     subscribe: (keys: readonly string[], listener: (key: string) => void) => {
       const watched = new Set(keys);
-      const wrapped = (key: string) => { if (watched.has(key)) listener(key); };
+      const wrapped = (key: string) => {
+        if (watched.has(key)) listener(key);
+      };
       listeners.add(wrapped);
-      return () => { listeners.delete(wrapped); };
+      return () => {
+        listeners.delete(wrapped);
+      };
     },
     notify: (key: string) => {
       for (const listener of listeners) listener(key);
@@ -158,9 +154,13 @@ function createTab(storage: KeyValueStorage) {
     notify: () => {},
   });
   return {
-    get state() { return state; },
+    get state() {
+      return state;
+    },
     /** この画面の履歴。 */
-    get history() { return state.histories.get(SCREEN) ?? emptyCommandHistory<KeydistAssets>(); },
+    get history() {
+      return state.histories.get(SCREEN) ?? emptyCommandHistory<KeydistAssets>();
+    },
     dispatch(command: Command<KeydistAssets>) {
       const result = commitCommand(syncs, () => state, SCREEN, command);
       if (result.outcome.kind === 'applied') state = result;
@@ -210,7 +210,10 @@ test('commitCommand: 他タブの変更を取り込んだ資産の履歴は捨�
   tabA.dispatch(createTextCommand('standalone', freshId));
   tabB.dispatch(createTextCommand('standalone', freshId));
 
-  assert.deepEqual(tabB.history.undoStack.map((entry) => entry.label), ['テキストを作成する']);
+  assert.deepEqual(
+    tabB.history.undoStack.map((entry) => entry.label),
+    ['テキストを作成する'],
+  );
   assert.equal(tabB.state.assets.textLibrary.texts.length, 3);
 });
 
@@ -278,12 +281,17 @@ test('自作の配列とローマ字規則: 書いたものが往復し、別タ
   });
   const syncsB = buildAssetSyncs({ onExternalChange: () => {}, storage, subscribe: bus.subscribe, notify: bus.notify });
   const stopA = startAssetSyncs(syncsA);
-  const userLayouts = [{ id: 'user-a', name: 'A', rows: ['', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'] as [string, string, string, string], romaji: 'kunrei' }];
+  const userLayouts = [
+    { id: 'user-a', name: 'A', rows: ['', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'] as [string, string, string, string], romaji: 'kunrei' },
+  ];
   const userRomajiRules = [{ id: 'rule-a', name: 'R', base: 'kunrei' as const, overrides: { し: 'si' }, generateSokuon: true }];
 
   saveChangedAssets(syncsB, { ...baseAssets(), userLayouts, userRomajiRules }, ['userLayouts', 'userRomajiRules']);
 
-  assert.deepEqual(seen, [['userLayouts', userLayouts], ['userRomajiRules', userRomajiRules]]);
+  assert.deepEqual(seen, [
+    ['userLayouts', userLayouts],
+    ['userRomajiRules', userRomajiRules],
+  ]);
   assert.deepEqual(loadAssets(buildAssetSyncs({ onExternalChange: () => {}, storage })).userLayouts, userLayouts);
   stopA();
 });
@@ -314,16 +322,21 @@ test('外部変更: 他タブで書いた自作の配列とローマ字規則が
   const stopA = startAssetSyncs(syncsA);
   const stopB = startAssetSyncs(syncsB);
 
-  const userLayouts = [{
-    id: 'user-a',
-    name: '自作の配列',
-    rows: ['1234567890', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'] as [string, string, string, string],
-    romaji: 'romaji-a',
-  }];
+  const userLayouts = [
+    {
+      id: 'user-a',
+      name: '自作の配列',
+      rows: ['1234567890', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'] as [string, string, string, string],
+      romaji: 'romaji-a',
+    },
+  ];
   const userRomajiRules = [{ id: 'romaji-a', name: '自作の規則', base: 'kunrei' as const, overrides: { し: 'shi' }, generateSokuon: true }];
   saveChangedAssets(syncsB, { ...baseAssets(), userLayouts, userRomajiRules }, ['userLayouts', 'userRomajiRules']);
 
-  assert.deepEqual(seen, [['userLayouts', userLayouts], ['userRomajiRules', userRomajiRules]]);
+  assert.deepEqual(seen, [
+    ['userLayouts', userLayouts],
+    ['userRomajiRules', userRomajiRules],
+  ]);
   // 新しいタブの読み込みでも同じ値が読める
   const loaded = loadAssets(buildAssetSyncs({ onExternalChange: () => {}, storage }));
   assert.deepEqual(loaded.userLayouts, userLayouts);

@@ -1,8 +1,29 @@
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MutableRefObject, type ReactNode, type RefObject } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MutableRefObject,
+  type ReactNode,
+  type RefObject,
+} from 'react';
 import ReactGridLayout, { verticalCompactor, type Compactor, type Layout, type LayoutItem } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
-import { compactGrid, gridPaneIds, gridWithMovedPane, gridWithResizedPane, resolveOverlaps, type GridColumnRange, type GridItem, type WorkspaceGrid } from '#engine/workspace-grid.ts';
+import {
+  compactGrid,
+  gridPaneIds,
+  gridWithMovedPane,
+  gridWithResizedPane,
+  resolveOverlaps,
+  type GridColumnRange,
+  type GridItem,
+  type WorkspaceGrid,
+} from '#engine/workspace-grid.ts';
 import { PaneHeaderLeadContext, PaneNameInLeadContext } from '#hosts/shared/pane-name-in-lead.ts';
 import { InfoButton, type InfoHelp } from '#ui/primitives/info-button.tsx';
 import {
@@ -62,7 +83,11 @@ function pointerOf(event: Event): { readonly x: number; readonly y: number } | n
  * ドラッグ・大きさの変更の間、ポインタが面の左右の端に近ければ面を横にスクロールする（ライブラリは自動ではスクロールしない）。
  * スクロールした分だけ枠の位置も動かすため、ポインタが止まっていても動き続けるよう、同じ位置のマウスの移動を流し直す。
  */
-function useEdgeScroll(areaRef: { readonly current: HTMLElement | null }, active: boolean, pointerRef: { readonly current: { readonly x: number; readonly y: number } | null }): void {
+function useEdgeScroll(
+  areaRef: { readonly current: HTMLElement | null },
+  active: boolean,
+  pointerRef: { readonly current: { readonly x: number; readonly y: number } | null },
+): void {
   useEffect(() => {
     if (!active) return undefined;
     let frame = 0;
@@ -71,7 +96,8 @@ function useEdgeScroll(areaRef: { readonly current: HTMLElement | null }, active
       const pointer = pointerRef.current;
       if (area !== null && pointer !== null) {
         const rect = area.getBoundingClientRect();
-        const delta = pointer.x > rect.right - EDGE_SCROLL_ZONE_PX ? EDGE_SCROLL_STEP_PX : pointer.x < rect.left + EDGE_SCROLL_ZONE_PX ? -EDGE_SCROLL_STEP_PX : 0;
+        const delta =
+          pointer.x > rect.right - EDGE_SCROLL_ZONE_PX ? EDGE_SCROLL_STEP_PX : pointer.x < rect.left + EDGE_SCROLL_ZONE_PX ? -EDGE_SCROLL_STEP_PX : 0;
         if (delta !== 0) {
           const before = area.scrollLeft;
           area.scrollLeft = before + delta;
@@ -234,7 +260,18 @@ function fromLayout(layout: Layout): WorkspaceGrid {
  * 正は資産の格子（`grid`）で、ライブラリには毎回その値を渡す。人の操作は、離した時（ドラッグ・大きさの変更の終わり）に
  * 1回だけ資産へ書く。途中の位置は書かないので、Undoは1操作につき1回で戻る。
  */
-export function WorkspaceGrid({ grid, analyzerIdOf, titleOf, descriptionOf, helpOf, renderPane, maximizedId, compact, onGridChange, visibleRangeRef }: WorkspaceGridProps) {
+export function WorkspaceGrid({
+  grid,
+  analyzerIdOf,
+  titleOf,
+  descriptionOf,
+  helpOf,
+  renderPane,
+  maximizedId,
+  compact,
+  onGridChange,
+  visibleRangeRef,
+}: WorkspaceGridProps) {
   const { width, containerRef } = useGridAreaWidth();
   const mounted = width !== null;
   const animated = useAfterFirstPaint(mounted);
@@ -244,10 +281,7 @@ export function WorkspaceGrid({ grid, analyzerIdOf, titleOf, descriptionOf, help
   // 詰める時は、ライブラリへ渡す並びも詰めた形にする。ライブラリは渡された並びが変わった時だけ内部の並びを作り直すので、
   // 詰める→詰めないへ戻した時に、詰めた形が内部に残らないよう、渡す並び自体を切り替える（保存した並びは書き換えない）
   const displayGrid = useMemo(() => (compact ? compactGrid(grid) : grid), [compact, grid]);
-  const layout = useMemo(
-    () => displayGrid.map((item) => toLayoutItem(item, analyzerIdOf(item.id))),
-    [displayGrid, analyzerIdOf],
-  );
+  const layout = useMemo(() => displayGrid.map((item) => toLayoutItem(item, analyzerIdOf(item.id))), [displayGrid, analyzerIdOf]);
   // 列の数は、面に収まる数と並びの右端の大きい方。操作の間は、動かしている枠が右端に届くたびに伸ばす
   const [reach, setReach] = useState(0);
   const [interacting, setInteracting] = useState(false);
@@ -267,10 +301,13 @@ export function WorkspaceGrid({ grid, analyzerIdOf, titleOf, descriptionOf, help
       visibleRangeRef.current = null;
     };
   }, [visibleRangeRef, containerRef, cols]);
-  const onMove = useCallback((_layout: Layout, _old: LayoutItem | null, item: LayoutItem | null, _placeholder: LayoutItem | null, event: Event) => {
-    pointerRef.current = pointerOf(event);
-    if (item !== null) setReach((current) => extendedReach(cols, item.x + item.w, current));
-  }, [cols]);
+  const onMove = useCallback(
+    (_layout: Layout, _old: LayoutItem | null, item: LayoutItem | null, _placeholder: LayoutItem | null, event: Event) => {
+      pointerRef.current = pointerOf(event);
+      if (item !== null) setReach((current) => extendedReach(cols, item.x + item.w, current));
+    },
+    [cols],
+  );
   const onStart = useCallback(() => setInteracting(true), []);
   const finishInteraction = useCallback(() => {
     setInteracting(false);
@@ -283,18 +320,21 @@ export function WorkspaceGrid({ grid, analyzerIdOf, titleOf, descriptionOf, help
     [maximized],
   );
   const [announcement, setAnnouncement] = useState('');
-  const onPaneKeyDown = useCallback((paneId: string, event: ReactKeyboardEvent<HTMLElement>) => {
-    if (event.nativeEvent.isComposing) return;
-    const next = gridAfterArrowKey(grid, paneId, event, minGridSize(analyzerIdOf(paneId)), compact);
-    if (next === undefined) return;
-    // 矢印キーでページがスクロールしないようにする（端で動かせない時も同じ）
-    event.preventDefault();
-    if (next === grid) return;
-    keyboardPaneRef.current = paneId;
-    onGridChange(next);
-    const item = next.find((candidate) => candidate.id === paneId);
-    if (item !== undefined) setAnnouncement(describeItem(titleOf(paneId), item));
-  }, [grid, analyzerIdOf, compact, onGridChange, titleOf]);
+  const onPaneKeyDown = useCallback(
+    (paneId: string, event: ReactKeyboardEvent<HTMLElement>) => {
+      if (event.nativeEvent.isComposing) return;
+      const next = gridAfterArrowKey(grid, paneId, event, minGridSize(analyzerIdOf(paneId)), compact);
+      if (next === undefined) return;
+      // 矢印キーでページがスクロールしないようにする（端で動かせない時も同じ）
+      event.preventDefault();
+      if (next === grid) return;
+      keyboardPaneRef.current = paneId;
+      onGridChange(next);
+      const item = next.find((candidate) => candidate.id === paneId);
+      if (item !== undefined) setAnnouncement(describeItem(titleOf(paneId), item));
+    },
+    [grid, analyzerIdOf, compact, onGridChange, titleOf],
+  );
   const keyboardPaneRef = useRef<string | undefined>(undefined);
   // キーボードで並びを変えた直後は、動かしたペインのつかみ所を見える位置へ寄せる（フォーカスはつかみ所に残っている）
   useLayoutEffect(() => {
@@ -367,7 +407,9 @@ export function WorkspaceGrid({ grid, analyzerIdOf, titleOf, descriptionOf, help
           </ReactGridLayout>
         </div>
       ) : null}
-      <div className="workspace-visually-hidden" role="status" aria-live="polite">{announcement}</div>
+      <div className="workspace-visually-hidden" role="status" aria-live="polite">
+        {announcement}
+      </div>
     </div>
   );
 }
@@ -422,9 +464,12 @@ function GripIcon() {
   return (
     <svg className="workspace-grip-icon" viewBox="0 0 12 16" width="10" height="14" aria-hidden="true">
       <g fill="currentColor">
-        <circle cx="3" cy="3" r="1.2" /><circle cx="9" cy="3" r="1.2" />
-        <circle cx="3" cy="8" r="1.2" /><circle cx="9" cy="8" r="1.2" />
-        <circle cx="3" cy="13" r="1.2" /><circle cx="9" cy="13" r="1.2" />
+        <circle cx="3" cy="3" r="1.2" />
+        <circle cx="9" cy="3" r="1.2" />
+        <circle cx="3" cy="8" r="1.2" />
+        <circle cx="9" cy="8" r="1.2" />
+        <circle cx="3" cy="13" r="1.2" />
+        <circle cx="9" cy="13" r="1.2" />
       </g>
     </svg>
   );
@@ -461,17 +506,21 @@ export function PaneShell({
         title={draggable ? `${title}（つかんで動かす）${onHandleKeyDown === undefined ? '' : `。${KEYBOARD_HINT}`}` : title}
         {...(draggable && onHandleKeyDown !== undefined
           ? {
-            role: 'button',
-            tabIndex: 0,
-            'aria-label': `${title}の位置と大きさ`,
-            'aria-describedby': hintId,
-            onKeyDown: (event: ReactKeyboardEvent<HTMLElement>) => onHandleKeyDown(paneId, event),
-          }
+              role: 'button',
+              tabIndex: 0,
+              'aria-label': `${title}の位置と大きさ`,
+              'aria-describedby': hintId,
+              onKeyDown: (event: ReactKeyboardEvent<HTMLElement>) => onHandleKeyDown(paneId, event),
+            }
           : {})}
       >
         {draggable ? <GripIcon /> : null}
         <span className="workspace-pane-lead-name">{title}</span>
-        {draggable && onHandleKeyDown !== undefined ? <span id={hintId} className="workspace-visually-hidden">{KEYBOARD_HINT}</span> : null}
+        {draggable && onHandleKeyDown !== undefined ? (
+          <span id={hintId} className="workspace-visually-hidden">
+            {KEYBOARD_HINT}
+          </span>
+        ) : null}
       </div>
       {description === '' ? null : <InfoButton name={title} description={description} help={help} floating />}
     </div>

@@ -32,18 +32,11 @@ export function playbackScheduleOf(
   /** 読点・句点の前後の待機（`planPunctuationWaits`の`gapMs`）。省略した時は待機を足さない */
   waitGapsMs?: readonly number[],
 ): PlaybackTimingStep[] {
-  return playbackTimingSchedule(
-    analysis,
-    timing.stepsPerSecond,
-    timing.sameFingerDelay,
-    timing.calibration,
-    timing.speedMultiplier,
-    {
-      allFingerMovementDelay: timing.allFingerMovementDelay,
-      geometry,
-      ...(waitGapsMs === undefined ? {} : { waitGapsMs }),
-    },
-  );
+  return playbackTimingSchedule(analysis, timing.stepsPerSecond, timing.sameFingerDelay, timing.calibration, timing.speedMultiplier, {
+    allFingerMovementDelay: timing.allFingerMovementDelay,
+    geometry,
+    ...(waitGapsMs === undefined ? {} : { waitGapsMs }),
+  });
 }
 
 /** 再生を始める。最後まで進んでいる時は始めない（先頭へ戻す操作は停止）。 */
@@ -109,9 +102,12 @@ export function playbackToggleAction(pressed: Pick<PlaybackPaneStatus, 'playing'
  */
 export function applyPlaybackAction(state: PlaybackState, action: PlaybackBroadcastAction, total: number): PlaybackState {
   switch (action) {
-    case 'play': return startPlayback(state, total);
-    case 'pause': return pausePlayback(state);
-    case 'stop': return stopPlayback(state);
+    case 'play':
+      return startPlayback(state, total);
+    case 'pause':
+      return pausePlayback(state);
+    case 'stop':
+      return stopPlayback(state);
   }
 }
 

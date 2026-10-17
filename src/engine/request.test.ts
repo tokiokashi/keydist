@@ -53,7 +53,11 @@ function tagOf(input: ResolvedInput): string {
 test('request→flushで結果がreadyとしてlistenerへ届く', () => {
   const scheduler = createManualScheduler();
   const states: EngineRequestState<string>[] = [];
-  const channel = createEngineRequest<string>((input) => `computed:${tagOf(input)}`, (s) => states.push(s), { scheduler });
+  const channel = createEngineRequest<string>(
+    (input) => `computed:${tagOf(input)}`,
+    (s) => states.push(s),
+    { scheduler },
+  );
 
   channel.request(okResolution('a'));
   assert.deepEqual(states.at(-1), { status: 'computing' });
@@ -65,19 +69,30 @@ test('request→flushで結果がreadyとしてlistenerへ届く', () => {
 test('unsubscribe後は進行中の計算があってもlistenerへ届かない', () => {
   const scheduler = createManualScheduler();
   const states: EngineRequestState<string>[] = [];
-  const channel = createEngineRequest<string>((input) => `computed:${tagOf(input)}`, (s) => states.push(s), { scheduler });
+  const channel = createEngineRequest<string>(
+    (input) => `computed:${tagOf(input)}`,
+    (s) => states.push(s),
+    { scheduler },
+  );
 
   channel.request(okResolution('a'));
   channel.unsubscribe();
   scheduler.flush();
 
-  assert.ok(states.every((s) => s.status !== 'ready'), 'unsubscribe後にreadyが届いてはいけない');
+  assert.ok(
+    states.every((s) => s.status !== 'ready'),
+    'unsubscribe後にreadyが届いてはいけない',
+  );
 });
 
 test('unsubscribe後のrequestは無視される', () => {
   const scheduler = createManualScheduler();
   const states: EngineRequestState<string>[] = [];
-  const channel = createEngineRequest<string>((input) => `computed:${tagOf(input)}`, (s) => states.push(s), { scheduler });
+  const channel = createEngineRequest<string>(
+    (input) => `computed:${tagOf(input)}`,
+    (s) => states.push(s),
+    { scheduler },
+  );
 
   channel.unsubscribe();
   channel.request(okResolution('a'));
@@ -117,7 +132,11 @@ test('同じキーへの依頼はcompute関数の共有先（cache）で1回に�
 test('計算中に新しい依頼が来たら、前のreadyな値をstaleとして保持しつつ再計算する', () => {
   const scheduler = createManualScheduler();
   const states: EngineRequestState<string>[] = [];
-  const channel = createEngineRequest<string>((input) => `computed:${tagOf(input)}`, (s) => states.push(s), { scheduler });
+  const channel = createEngineRequest<string>(
+    (input) => `computed:${tagOf(input)}`,
+    (s) => states.push(s),
+    { scheduler },
+  );
 
   channel.request(okResolution('a'));
   scheduler.flush();
@@ -134,7 +153,11 @@ test('計算中に新しい依頼が来たら、前のreadyな値をstaleとし�
 test('打ち切り: 連続した依頼のうち最後の結果だけが届く', () => {
   const scheduler = createManualScheduler();
   const states: EngineRequestState<string>[] = [];
-  const channel = createEngineRequest<string>((input) => `computed:${tagOf(input)}`, (s) => states.push(s), { scheduler });
+  const channel = createEngineRequest<string>(
+    (input) => `computed:${tagOf(input)}`,
+    (s) => states.push(s),
+    { scheduler },
+  );
 
   channel.request(okResolution('a'));
   channel.request(okResolution('b'));
@@ -153,15 +176,19 @@ test('再入: listener内でrequest()を呼んでも取り消しの管理が壊�
   const scheduler = createManualScheduler();
   const states: EngineRequestState<string>[] = [];
   let reentered = false;
-  const channel = createEngineRequest<string>((input) => `computed:${tagOf(input)}`, (s) => {
-    states.push(s);
-    // 'b'向けの依頼がstaleを出した瞬間、listenerの中からさらに'c'への依頼を出す
-    // （テキストがさらに変わった、のような状況を模す）。
-    if (!reentered && s.status === 'stale') {
-      reentered = true;
-      channel.request(okResolution('c'));
-    }
-  }, { scheduler });
+  const channel = createEngineRequest<string>(
+    (input) => `computed:${tagOf(input)}`,
+    (s) => {
+      states.push(s);
+      // 'b'向けの依頼がstaleを出した瞬間、listenerの中からさらに'c'への依頼を出す
+      // （テキストがさらに変わった、のような状況を模す）。
+      if (!reentered && s.status === 'stale') {
+        reentered = true;
+        channel.request(okResolution('c'));
+      }
+    },
+    { scheduler },
+  );
 
   channel.request(okResolution('a'));
   scheduler.flush();
@@ -184,25 +211,36 @@ test('再入: listener内でrequest()を呼んでも取り消しの管理が壊�
 test('再入: listener内でunsubscribe()を呼んだら、直後に積んだタスクも取り消されている', () => {
   const scheduler = createManualScheduler();
   const states: EngineRequestState<string>[] = [];
-  const channel = createEngineRequest<string>((input) => `computed:${tagOf(input)}`, (s) => {
-    states.push(s);
-    if (s.status === 'computing') {
-      channel.unsubscribe();
-    }
-  }, { scheduler });
+  const channel = createEngineRequest<string>(
+    (input) => `computed:${tagOf(input)}`,
+    (s) => {
+      states.push(s);
+      if (s.status === 'computing') {
+        channel.unsubscribe();
+      }
+    },
+    { scheduler },
+  );
 
   channel.request(okResolution('a'));
   // listener内のunsubscribe()が、この呼び出しがちょうど積んだタスクも取り消しているはず。
   assert.equal(scheduler.pendingCount(), 0, 'unsubscribe後にスケジュール待ちが残ってはいけない');
 
   scheduler.flush();
-  assert.ok(states.every((s) => s.status !== 'ready'), 'unsubscribe後はreadyが届かない');
+  assert.ok(
+    states.every((s) => s.status !== 'ready'),
+    'unsubscribe後はreadyが届かない',
+  );
 });
 
 test('古い結果は後から届かない（schedulerがキャンセルに協力しなくても、revisionチェックで守られる）', () => {
   const scheduler = createManualScheduler({ cancellable: false });
   const states: EngineRequestState<string>[] = [];
-  const channel = createEngineRequest<string>((input) => `computed:${tagOf(input)}`, (s) => states.push(s), { scheduler });
+  const channel = createEngineRequest<string>(
+    (input) => `computed:${tagOf(input)}`,
+    (s) => states.push(s),
+    { scheduler },
+  );
 
   channel.request(okResolution('old'));
   channel.request(okResolution('new'));
@@ -219,9 +257,13 @@ test('古い結果は後から届かない（schedulerがキャンセルに協�
 test('解決済み入力自体の失敗は、計算を挟まず値として即座に届く', () => {
   const scheduler = createManualScheduler();
   const states: EngineRequestState<string>[] = [];
-  const channel = createEngineRequest<string>(() => {
-    throw new Error('resolutionが失敗している依頼はcomputeへ渡らないはず');
-  }, (s) => states.push(s), { scheduler });
+  const channel = createEngineRequest<string>(
+    () => {
+      throw new Error('resolutionが失敗している依頼はcomputeへ渡らないはず');
+    },
+    (s) => states.push(s),
+    { scheduler },
+  );
 
   channel.request(ngResolution());
 
@@ -236,9 +278,13 @@ test('解決済み入力自体の失敗は、計算を挟まず値として即�
 test('計算中の例外はfailedとして値で届く', () => {
   const scheduler = createManualScheduler();
   const states: EngineRequestState<string>[] = [];
-  const channel = createEngineRequest<string>(() => {
-    throw new Error('boom');
-  }, (s) => states.push(s), { scheduler });
+  const channel = createEngineRequest<string>(
+    () => {
+      throw new Error('boom');
+    },
+    (s) => states.push(s),
+    { scheduler },
+  );
 
   channel.request(okResolution('a'));
   scheduler.flush();
@@ -254,10 +300,14 @@ test('計算中の例外はfailedとして値で届く', () => {
 test('購読していない（requestを呼んでいない）間はcomputeが走らない', () => {
   const scheduler = createManualScheduler();
   let computeCalls = 0;
-  createEngineRequest<string>(() => {
-    computeCalls++;
-    return 'x';
-  }, () => {}, { scheduler });
+  createEngineRequest<string>(
+    () => {
+      computeCalls++;
+      return 'x';
+    },
+    () => {},
+    { scheduler },
+  );
 
   scheduler.flush();
   assert.equal(computeCalls, 0);
@@ -304,6 +354,9 @@ test('peekで即答した依頼は、待っていた前の計算の結果を捨�
   channel.request(okResolution('slow'));
   channel.request(okResolution('known'));
   scheduler.flush();
-  assert.deepEqual(states.map((s) => s.status), ['computing', 'ready']);
+  assert.deepEqual(
+    states.map((s) => s.status),
+    ['computing', 'ready'],
+  );
   assert.deepEqual(states.at(-1), { status: 'ready', value: 'peeked' });
 });

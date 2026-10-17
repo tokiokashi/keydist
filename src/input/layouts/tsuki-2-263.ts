@@ -1,12 +1,5 @@
 import { THUMB_KEY } from '../shapes/geometry.ts';
-import {
-  faceFromEntries,
-  fromFaces,
-  withAliases,
-  withComposedOutputs,
-  type Face,
-  type Layout,
-} from './types.ts';
+import { faceFromEntries, fromFaces, withAliases, withComposedOutputs, type Face, type Layout } from './types.ts';
 
 /**
  * 月配列2-263式。
@@ -27,42 +20,118 @@ const face = (trigger: string[], entries: Record<string, string>, layer?: string
 
 export const TSUKI_2_263_FACES: Face[] = [
   face([], {
-    q: 'そ', w: 'こ', e: 'し', r: 'て', t: 'ょ', y: 'つ', u: 'ん', i: 'い', o: 'の', p: 'り', '[': 'ち',
-    a: 'は', s: 'か', f: 'と', g: 'た', h: 'く', j: 'う', l: '゛', ';': 'き', "'": 'れ',
-    z: 'す', x: 'け', c: 'に', v: 'な', b: 'さ', n: 'っ', m: 'る', ',': '、', '.': '。', '/': '゜',
+    q: 'そ',
+    w: 'こ',
+    e: 'し',
+    r: 'て',
+    t: 'ょ',
+    y: 'つ',
+    u: 'ん',
+    i: 'い',
+    o: 'の',
+    p: 'り',
+    '[': 'ち',
+    a: 'は',
+    s: 'か',
+    f: 'と',
+    g: 'た',
+    h: 'く',
+    j: 'う',
+    l: '゛',
+    ';': 'き',
+    "'": 'れ',
+    z: 'す',
+    x: 'け',
+    c: 'に',
+    v: 'な',
+    b: 'さ',
+    n: 'っ',
+    m: 'る',
+    ',': '、',
+    '.': '。',
+    '/': '゜',
   }),
-  face(['d'], {
-    y: 'ぬ', u: 'え', i: 'み', o: 'や', p: 'ぇ', '[': '「',
-    h: 'ま', j: 'お', k: 'も', l: 'わ', ';': 'ゆ', "'": '」',
-    n: 'む', m: 'ろ', ',': 'ね', '.': 'ー', '/': 'ぉ',
-  }, '中指シフト'),
-  face(['k'], {
-    q: 'ぁ', w: 'ひ', e: 'ほ', r: 'ふ', t: 'め',
-    a: 'ぃ', s: 'を', d: 'ら', f: 'あ', g: 'よ',
-    z: 'ぅ', x: 'へ', c: 'せ', v: 'ゅ', b: 'ゃ',
-  }, '中指シフト'),
+  face(
+    ['d'],
+    {
+      y: 'ぬ',
+      u: 'え',
+      i: 'み',
+      o: 'や',
+      p: 'ぇ',
+      '[': '「',
+      h: 'ま',
+      j: 'お',
+      k: 'も',
+      l: 'わ',
+      ';': 'ゆ',
+      "'": '」',
+      n: 'む',
+      m: 'ろ',
+      ',': 'ね',
+      '.': 'ー',
+      '/': 'ぉ',
+    },
+    '中指シフト',
+  ),
+  face(
+    ['k'],
+    {
+      q: 'ぁ',
+      w: 'ひ',
+      e: 'ほ',
+      r: 'ふ',
+      t: 'め',
+      a: 'ぃ',
+      s: 'を',
+      d: 'ら',
+      f: 'あ',
+      g: 'よ',
+      z: 'ぅ',
+      x: 'へ',
+      c: 'せ',
+      v: 'ゅ',
+      b: 'ゃ',
+    },
+    '中指シフト',
+  ),
 ];
 
 const layout: Layout = fromFaces('tsuki-2-263', '月配列2-263式', TSUKI_2_263_FACES);
 
 const VOICED: Record<string, string> = {
-  か: 'が', き: 'ぎ', く: 'ぐ', け: 'げ', こ: 'ご',
-  さ: 'ざ', し: 'じ', す: 'ず', せ: 'ぜ', そ: 'ぞ',
-  た: 'だ', ち: 'ぢ', つ: 'づ', て: 'で', と: 'ど',
-  は: 'ば', ひ: 'び', ふ: 'ぶ', へ: 'べ', ほ: 'ぼ',
+  か: 'が',
+  き: 'ぎ',
+  く: 'ぐ',
+  け: 'げ',
+  こ: 'ご',
+  さ: 'ざ',
+  し: 'じ',
+  す: 'ず',
+  せ: 'ぜ',
+  そ: 'ぞ',
+  た: 'だ',
+  ち: 'ぢ',
+  つ: 'づ',
+  て: 'で',
+  と: 'ど',
+  は: 'ば',
+  ひ: 'び',
+  ふ: 'ぶ',
+  へ: 'べ',
+  ほ: 'ぼ',
   う: 'ゔ',
 };
 
 const SEMI_VOICED: Record<string, string> = {
-  は: 'ぱ', ひ: 'ぴ', ふ: 'ぷ', へ: 'ぺ', ほ: 'ぽ',
+  は: 'ぱ',
+  ひ: 'ぴ',
+  ふ: 'ぷ',
+  へ: 'ぺ',
+  ほ: 'ぽ',
 };
 
-const composed = withComposedOutputs(
-  withComposedOutputs(layout, VOICED, '゛', '月配列'),
-  SEMI_VOICED,
-  '゜',
-  '月配列',
-);
+const composed = withComposedOutputs(withComposedOutputs(layout, VOICED, '゛', '月配列'), SEMI_VOICED, '゜', '月配列');
 composed.legends.delete(THUMB_KEY.LT);
 composed.legends.delete(THUMB_KEY.RT);
 export const TSUKI_2_263 = withAliases(composed, ['つき', 'つきはいれつ', 'つきにーにーろくさんしき']);

@@ -11,10 +11,7 @@ import {
 import { resolveKeyId } from '../shapes/geometry.ts';
 import { fromFaces, LAYOUT_BY_ID, type Face } from '../layouts/index.ts';
 
-const semanticInput = (
-  physicalKeys: readonly string[],
-  requirements: SemanticInput['requirements'] = [],
-): SemanticInput => ({
+const semanticInput = (physicalKeys: readonly string[], requirements: SemanticInput['requirements'] = []): SemanticInput => ({
   output: 'x',
   physicalKeys,
   requirements,
@@ -37,9 +34,7 @@ const baseRealization = (
 });
 
 test('BaseActionRealizationはRequirementからgroupingを推測せず明示actionを使う', () => {
-  const input = semanticInput(['d', 'h'], [
-    { kind: 'overlap', keys: ['d', 'h'] },
-  ]);
+  const input = semanticInput(['d', 'h'], [{ kind: 'overlap', keys: ['d', 'h'] }]);
   const combined = baseRealization(input, [['d', 'h']]);
   const separate = baseRealization(input, [['d'], ['h']]);
 
@@ -69,22 +64,12 @@ test('Requirementなしのmulti-key入力もcombined/separateをRealization側�
 });
 
 test('legacy Sequence compilerはsource Step境界をbase actionとして保持する', () => {
-  const artifacts = compileSequenceInputArtifacts(
-    'x',
-    [['space', 'j'], ['j']],
-    'single',
-  );
+  const artifacts = compileSequenceInputArtifacts('x', [['space', 'j'], ['j']], 'single');
 
   assert.equal(artifacts.semanticInputs.length, 2);
   assert.equal(artifacts.baseActionRealizations.length, 2);
-  assert.equal(
-    artifacts.baseActionRealizations[0].input,
-    artifacts.semanticInputs[0],
-  );
-  assert.equal(
-    artifacts.baseActionRealizations[1].input,
-    artifacts.semanticInputs[1],
-  );
+  assert.equal(artifacts.baseActionRealizations[0].input, artifacts.semanticInputs[0]);
+  assert.equal(artifacts.baseActionRealizations[1].input, artifacts.semanticInputs[1]);
   assert.deepEqual(artifacts.baseActionRealizations[0].actions, [['thumb-r', 'j']]);
   assert.deepEqual(artifacts.baseActionRealizations[0].defaultOutputKeys, ['j', 'thumb-r']);
   assert.equal(artifacts.baseActionRealizations[0].defaultTriggerKeys, undefined);
@@ -107,9 +92,7 @@ test('Face prefix multi-triggerのdefault groupingはFace sourceから[T] -> [K]
   assert.ok(semantic);
   assert.ok(base);
   assert.equal(semantic.length, 1);
-  assert.deepEqual(semantic[0].requirements, [
-    { kind: 'order', before: ['d', 'k'], after: ['j'] },
-  ]);
+  assert.deepEqual(semantic[0].requirements, [{ kind: 'order', before: ['d', 'k'], after: ['j'] }]);
   assert.equal(base.length, 1);
   assert.equal(base[0].input, semantic[0]);
   assert.deepEqual(base[0].actions, [['d', 'k'], ['j']]);
@@ -145,67 +128,44 @@ test('Face simultaneous + orderのdefault groupingはFace sourceどおり1 actio
 test('BaseActionRealizationは空realization / 空actionをrejectする', () => {
   const input = semanticInput(['d']);
 
-  assert.throws(
-    () => validateBaseActionRealization(baseRealization(input, [])),
-    /1 action以上必要/,
-  );
-  assert.throws(
-    () => validateBaseActionRealization(baseRealization(input, [[]])),
-    /1 key以上必要/,
-  );
+  assert.throws(() => validateBaseActionRealization(baseRealization(input, [])), /1 action以上必要/);
+  assert.throws(() => validateBaseActionRealization(baseRealization(input, [[]])), /1 key以上必要/);
 });
 
 test('BaseActionRealizationはinput.physicalKeys外のkeyをrejectする', () => {
   const input = semanticInput(['d']);
 
-  assert.throws(
-    () => validateBaseActionRealization(baseRealization(input, [['k']])),
-    /physicalKeys外/,
-  );
+  assert.throws(() => validateBaseActionRealization(baseRealization(input, [['k']])), /physicalKeys外/);
 });
 
 test('BaseActionRealizationは必要physicalKeysの欠落をrejectする', () => {
   const input = semanticInput(['d', 'k']);
 
-  assert.throws(
-    () => validateBaseActionRealization(baseRealization(input, [['d']])),
-    /欠落している: k/,
-  );
+  assert.throws(() => validateBaseActionRealization(baseRealization(input, [['d']])), /欠落している: k/);
 });
 
 test('BaseActionRealizationのdefault output/trigger metadataを検証する', () => {
   const input = semanticInput(['d', 'k']);
 
-  assert.doesNotThrow(() => validateBaseActionRealization(baseRealization(
-    input,
-    [['d', 'k']],
-    {
-      defaultOutputKeys: ['k'],
-      defaultTriggerKeys: ['d'],
-    },
-  )));
-  assert.doesNotThrow(() => validateBaseActionRealization(baseRealization(
-    input,
-    [['d', 'k']],
-    {
-      defaultOutputKeys: ['d'],
-      defaultTriggerKeys: ['d'],
-    },
-  )));
-  assert.throws(
-    () => validateBaseActionRealization(baseRealization(
-      input,
-      [['d', 'k']],
-      { defaultOutputKeys: [] },
-    )),
-    /defaultOutputKeysは非空/,
+  assert.doesNotThrow(() =>
+    validateBaseActionRealization(
+      baseRealization(input, [['d', 'k']], {
+        defaultOutputKeys: ['k'],
+        defaultTriggerKeys: ['d'],
+      }),
+    ),
   );
+  assert.doesNotThrow(() =>
+    validateBaseActionRealization(
+      baseRealization(input, [['d', 'k']], {
+        defaultOutputKeys: ['d'],
+        defaultTriggerKeys: ['d'],
+      }),
+    ),
+  );
+  assert.throws(() => validateBaseActionRealization(baseRealization(input, [['d', 'k']], { defaultOutputKeys: [] })), /defaultOutputKeysは非空/);
   assert.throws(
-    () => validateBaseActionRealization(baseRealization(
-      input,
-      [['d', 'k']],
-      { defaultTriggerKeys: ['j'] },
-    )),
+    () => validateBaseActionRealization(baseRealization(input, [['d', 'k']], { defaultTriggerKeys: ['j'] })),
     /defaultTriggerKeysがinput.physicalKeys外/,
   );
 });
@@ -216,52 +176,53 @@ test('BaseActionRealization.defaultHoldKeysはwhile-held Capabilityとexact matc
     capabilities: [{ kind: 'while-held', keys: ['d'] }],
   };
 
-  assert.doesNotThrow(() => validateBaseActionRealization(baseRealization(
-    input,
-    [['d', 'k']],
-    {
-      defaultOutputKeys: ['k'],
-      defaultTriggerKeys: ['d'],
-      defaultHoldKeys: ['d'],
-    },
-  )));
-  assert.throws(
-    () => validateBaseActionRealization(baseRealization(
-      input,
-      [['d', 'k']],
-      {
+  assert.doesNotThrow(() =>
+    validateBaseActionRealization(
+      baseRealization(input, [['d', 'k']], {
         defaultOutputKeys: ['k'],
         defaultTriggerKeys: ['d'],
-        defaultHoldKeys: [],
-      },
-    )),
+        defaultHoldKeys: ['d'],
+      }),
+    ),
+  );
+  assert.throws(
+    () =>
+      validateBaseActionRealization(
+        baseRealization(input, [['d', 'k']], {
+          defaultOutputKeys: ['k'],
+          defaultTriggerKeys: ['d'],
+          defaultHoldKeys: [],
+        }),
+      ),
     /非空/,
   );
   assert.throws(
-    () => validateBaseActionRealization(baseRealization(
-      input,
-      [['d', 'k']],
-      {
-        defaultOutputKeys: ['d'],
-        defaultTriggerKeys: ['k'],
-        defaultHoldKeys: ['k'],
-      },
-    )),
+    () =>
+      validateBaseActionRealization(
+        baseRealization(input, [['d', 'k']], {
+          defaultOutputKeys: ['d'],
+          defaultTriggerKeys: ['k'],
+          defaultHoldKeys: ['k'],
+        }),
+      ),
     /Capabilityと一致/,
   );
   assert.throws(
-    () => validateBaseActionRealization(baseRealization(
-      {
-        ...input,
-        capabilities: [{ kind: 'while-held', keys: ['d', 'k'] }],
-      },
-      [['d'], ['k']],
-      {
-        defaultOutputKeys: ['k'],
-        defaultTriggerKeys: ['d', 'k'],
-        defaultHoldKeys: ['d', 'k'],
-      },
-    )),
+    () =>
+      validateBaseActionRealization(
+        baseRealization(
+          {
+            ...input,
+            capabilities: [{ kind: 'while-held', keys: ['d', 'k'] }],
+          },
+          [['d'], ['k']],
+          {
+            defaultOutputKeys: ['k'],
+            defaultTriggerKeys: ['d', 'k'],
+            defaultHoldKeys: ['d', 'k'],
+          },
+        ),
+      ),
     /1 actionに収まる/,
   );
 });
@@ -269,10 +230,7 @@ test('BaseActionRealization.defaultHoldKeysはwhile-held Capabilityとexact matc
 test('BaseActionRealizationはalias解決後のphysical key重複をrejectする', () => {
   const input = semanticInput(['thumb-r']);
 
-  assert.throws(
-    () => validateBaseActionRealization(baseRealization(input, [['space', 'thumb-r']])),
-    /physical key「thumb-r」が重複/,
-  );
+  assert.throws(() => validateBaseActionRealization(baseRealization(input, [['space', 'thumb-r']])), /physical key「thumb-r」が重複/);
 });
 
 test('flatten時はaliasをcanonical PhysicalKeyIdへ正規化する', () => {
@@ -291,24 +249,16 @@ test('built-in全outputでauthoring-derived base actionがlegacy Layout.mapと�
 
     for (const [output, legacySequence] of layout.map) {
       const semanticSequence = layout.canonicalInputs.get(output)?.[0]?.semanticInputs;
-      const baseRealizations: BaseActionRealizationSequence | undefined =
-        layout.canonicalInputs.get(output)?.[0]?.baseRealizations;
+      const baseRealizations: BaseActionRealizationSequence | undefined = layout.canonicalInputs.get(output)?.[0]?.baseRealizations;
       assert.ok(semanticSequence, `${layout.id}: ${output} semantic sequence`);
       assert.ok(baseRealizations, `${layout.id}: ${output} base realization`);
 
       for (const realization of baseRealizations) {
-        assert.ok(
-          semanticSequence.includes(realization.input),
-          `${layout.id}: ${output} realization input belongs to semantic sequence`,
-        );
+        assert.ok(semanticSequence.includes(realization.input), `${layout.id}: ${output} realization input belongs to semantic sequence`);
       }
 
       const actions = flattenBaseActionRealizations(baseRealizations);
-      assert.equal(
-        actions.length,
-        legacySequence.length,
-        `${layout.id}: ${output} action count`,
-      );
+      assert.equal(actions.length, legacySequence.length, `${layout.id}: ${output} action count`);
 
       for (const [index, legacyStep] of legacySequence.entries()) {
         const expected = [...new Set(legacyStep.map(resolveKeyId))].sort();
@@ -335,8 +285,6 @@ test('composed outputはcomponentのBaseActionRealization objectを再利用す�
   }
 });
 
-
-
 test('薙刀式がはreciprocal Faceのalternate participation viewを保持する', () => {
   const layout = LAYOUT_BY_ID.get('naginata-v18')!;
   const base = layout.canonicalInputs.get('が')?.[0]?.baseRealizations;
@@ -347,9 +295,11 @@ test('薙刀式がはreciprocal Faceのalternate participation viewを保持す�
   assert.deepEqual(realization.defaultTriggerKeys, ['j']);
   assert.deepEqual(realization.defaultOutputKeys, ['f']);
   assert.deepEqual(realization.defaultHoldKeys, ['j']);
-  assert.deepEqual(realization.alternateParticipations, [{
-    outputKeys: ['j'],
-    triggerKeys: ['f'],
-    holdKeys: ['f'],
-  }]);
+  assert.deepEqual(realization.alternateParticipations, [
+    {
+      outputKeys: ['j'],
+      triggerKeys: ['f'],
+      holdKeys: ['f'],
+    },
+  ]);
 });

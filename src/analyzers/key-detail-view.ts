@@ -26,8 +26,7 @@ export const TOOLTIP_PREVIOUS_CHAR_LIMIT = 3;
 export function keyName(keyId: string, legend: string | undefined, standard?: PhysicalKeyboardStandard): string {
   const name = physicalKeyDisplayLabel(keyId, standard);
   const text = legend?.trim() ?? '';
-  const sameAsName = text === ''
-    || text.split(' / ').every((part) => part.trim().toLowerCase() === name.toLowerCase());
+  const sameAsName = text === '' || text.split(' / ').every((part) => part.trim().toLowerCase() === name.toLowerCase());
   return sameAsName ? name : `${text}（${name}）`;
 }
 
@@ -40,7 +39,10 @@ const ROLE_LABELS: Readonly<Record<string, string>> = {
 /** 押し方（役の組。`roleSetId` の値）の表示名。 */
 export function roleSetLabel(roleSet: string): string {
   if (roleSet === NO_ROLE) return 'その他';
-  return roleSet.split('+').map((role) => ROLE_LABELS[role] ?? role).join('・');
+  return roleSet
+    .split('+')
+    .map((role) => ROLE_LABELS[role] ?? role)
+    .join('・');
 }
 
 /** 回数の降順、同じ回数は並びが決まるようキーの昇順。 */
@@ -61,7 +63,11 @@ export function keyDetailTooltip(name: string, detail: KeyDetail | undefined): s
   const presses = detail?.presses ?? 0;
   const lines = [`${name}: ${presses}打`];
   if (detail === undefined || presses === 0) return lines.join('\n');
-  lines.push(`押し方: ${rankedCounts(detail.roles).map(([role, count]) => `${roleSetLabel(role)} ${count}打`).join('・')}`);
+  lines.push(
+    `押し方: ${rankedCounts(detail.roles)
+      .map(([role, count]) => `${roleSetLabel(role)} ${count}打`)
+      .join('・')}`,
+  );
   const previous = rankedCounts(detail.previousChars);
   if (previous.length > 0) {
     const top = previous.slice(0, TOOLTIP_PREVIOUS_CHAR_LIMIT).map(([char, count]) => `${char} ${count}打`);
@@ -83,14 +89,17 @@ export interface OriginRow {
 /** 移動の起点を、回数の多い順に並べる。位置が物理キーに当たらない時は座標（単位はキー幅）で示す。 */
 export function originRows(origins: readonly KeyOriginCount[], standard?: PhysicalKeyboardStandard): OriginRow[] {
   return origins
-    .map((origin): OriginRow => ({
-      label: origin.keyIds.length > 0
-        ? origin.keyIds.map((id) => physicalKeyDisplayLabel(id, standard)).join(' / ')
-        : `キーのない位置（${origin.x}, ${origin.y}）`,
-      fromPrevious: origin.fromPrevious,
-      fromHome: origin.fromHome,
-      total: origin.fromPrevious + origin.fromHome,
-    }))
+    .map(
+      (origin): OriginRow => ({
+        label:
+          origin.keyIds.length > 0
+            ? origin.keyIds.map((id) => physicalKeyDisplayLabel(id, standard)).join(' / ')
+            : `キーのない位置（${origin.x}, ${origin.y}）`,
+        fromPrevious: origin.fromPrevious,
+        fromHome: origin.fromHome,
+        total: origin.fromPrevious + origin.fromHome,
+      }),
+    )
     .sort((a, b) => b.total - a.total || (a.label < b.label ? -1 : a.label > b.label ? 1 : 0));
 }
 
@@ -187,12 +196,14 @@ export function keyPatternGroups(
       selfTrigger: !isCombo && matches.some((match) => match.triggerKeyVariants.some((keys) => keys.includes(keyId))),
       rows: [...matches]
         .sort((a, b) => a.keys.length - b.keys.length || (a.output < b.output ? -1 : a.output > b.output ? 1 : 0))
-        .map((match): PatternRow => ({
-          keyNames: names(match.keys),
-          output: match.output,
-          group: match.group,
-          ordered: match.orderRequirements !== undefined,
-        })),
+        .map(
+          (match): PatternRow => ({
+            keyNames: names(match.keys),
+            output: match.output,
+            group: match.group,
+            ordered: match.orderRequirements !== undefined,
+          }),
+        ),
     };
   });
 }

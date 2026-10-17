@@ -10,10 +10,7 @@ test('JIS系プリセット物理配列はJIS既定の指割り当てになる',
 
 test('ANSI系プリセット物理配列・自作物理配列は既定（列固定）の指割り当てになる', () => {
   assert.equal(defaultFingerAssignmentId(PHYSICAL_SHAPES['row-staggered']), DEFAULT_FINGER_ASSIGNMENT.id);
-  assert.equal(
-    defaultFingerAssignmentId({ ...PHYSICAL_SHAPES['row-staggered'], id: 'shape-custom' }),
-    DEFAULT_FINGER_ASSIGNMENT.id,
-  );
+  assert.equal(defaultFingerAssignmentId({ ...PHYSICAL_SHAPES['row-staggered'], id: 'shape-custom' }), DEFAULT_FINGER_ASSIGNMENT.id);
 });
 
 test('未登録のidはdefaultへfallbackし、診断を返す', () => {

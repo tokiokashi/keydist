@@ -12,12 +12,7 @@ import { setCascadeOverrideCommand, type KeydistAssets } from '#engine/commands.
 import { resolveEngineInput } from '#engine/resolved-input.ts';
 import { initialMultiTargetSelection } from '#engine/multi-target-selection.ts';
 import { initialSingleTargetSelection } from '#engine/single-target-selection.ts';
-import {
-  EMPTY_SETTINGS_OVERRIDES,
-  withWorkspaceConditions,
-  type SettingsCascadeOverrides,
-  type SettingsValueMap,
-} from '#engine/settings-items.ts';
+import { EMPTY_SETTINGS_OVERRIDES, withWorkspaceConditions, type SettingsCascadeOverrides, type SettingsValueMap } from '#engine/settings-items.ts';
 import { createWorkspace, findWorkspace, initialWorkspaceLibrary } from '#engine/workspace.ts';
 import {
   WORKSPACE_LEVEL,
@@ -111,11 +106,7 @@ test('「すべて戻す」（Workspace）: Workspaceの上書きだけを消し
   assert.deepEqual(resettableGlobalIds(view), ['windowSize']);
 
   // 配列のレベルの値は単体ページや他のWorkspaceにも入るので、Workspaceのペインは消す対象に渡さない
-  const reset = applyCommand(state, history, resetAllCommand(
-    [],
-    undefined,
-    { workspaceId: 'w1', ids: resettableWorkspaceIds(view) },
-  ));
+  const reset = applyCommand(state, history, resetAllCommand([], undefined, { workspaceId: 'w1', ids: resettableWorkspaceIds(view) }));
   assert.equal(reset.outcome.kind, 'applied');
   assert.equal(findWorkspace(reset.assets.workspaces, 'w1')?.conditions, undefined);
   assert.equal(reset.assets.setupLibrary.overrides.layout?.qwerty?.windowSize, 2);
@@ -157,7 +148,10 @@ test('Workspaceの値を全体へ移す: 全体へ書いてWorkspaceの値を消
   const start = applyCommand(assets(), emptyCommandHistory<KeydistAssets>(), setCascadeOverrideCommand(WORKSPACE_LEVEL, 'windowSize', 5, 'w1'));
   const before = rowsOf('qwerty', withWorkspaceConditions(start.assets.setupLibrary.overrides, findWorkspace(start.assets.workspaces, 'w1')?.conditions));
   const promoted = applyCommand(start.assets, start.history, promoteWorkspaceToGlobalCommand('w1', 'windowSize', 3));
-  const after = rowsOf('qwerty', withWorkspaceConditions(promoted.assets.setupLibrary.overrides, findWorkspace(promoted.assets.workspaces, 'w1')?.conditions));
+  const after = rowsOf(
+    'qwerty',
+    withWorkspaceConditions(promoted.assets.setupLibrary.overrides, findWorkspace(promoted.assets.workspaces, 'w1')?.conditions),
+  );
   assert.equal(before.find((row) => row.id === 'windowSize')!.value, 5);
   assert.equal(after.find((row) => row.id === 'windowSize')!.value, 5);
   assert.deepEqual(after.find((row) => row.id === 'windowSize')!.origin, { kind: 'global' });
@@ -195,7 +189,10 @@ test('出どころ: Workspaceより強いレベル・配列の推奨が勝つ行
   const romaji = withWorkspaceConditions(EMPTY_SETTINGS_OVERRIDES, { romajiRuleId: 'hepburn' });
   const rows = rowsOf('oonishi', romaji);
   assert.equal(rows.find((row) => row.id === 'romajiRuleId')!.recommendationWinsOverWorkspace, true);
-  assert.match(overrideWinsNotices(rows, undefined, 'Workspace').get('romajiRuleId') ?? '', /この配列の推奨（.+）が優先されるため、Workspaceを変えてもこの画面は変わりません/);
+  assert.match(
+    overrideWinsNotices(rows, undefined, 'Workspace').get('romajiRuleId') ?? '',
+    /この配列の推奨（.+）が優先されるため、Workspaceを変えてもこの画面は変わりません/,
+  );
   // 推奨の無い配列はWorkspaceの値に従う
   assert.equal(rowsOf('qwerty', romaji).find((row) => row.id === 'romajiRuleId')!.value, 'hepburn');
 });

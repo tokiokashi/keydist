@@ -1,5 +1,14 @@
 import * as v from 'valibot';
-import { decodeDroppingInvalid, decodeField, defineAssetCodec, isRecord, type AssetCodec, type CodecDiagnostic, droppedDuplicateId, droppedNotArray } from '#input/codec/index.ts';
+import {
+  decodeDroppingInvalid,
+  decodeField,
+  defineAssetCodec,
+  isRecord,
+  type AssetCodec,
+  type CodecDiagnostic,
+  droppedDuplicateId,
+  droppedNotArray,
+} from '#input/codec/index.ts';
 import type { TextLibrary, UserText } from './library.ts';
 
 /**
@@ -56,22 +65,10 @@ function decodeUserTexts(raw: unknown, path: string, diagnostics: CodecDiagnosti
     }
 
     const rawLanguageOverride = isRecord(candidate) ? candidate.languageOverride : undefined;
-    const languageOverride = decodeField(
-      optionalTextLanguageSchema,
-      rawLanguageOverride,
-      undefined,
-      `${elementPath}.languageOverride`,
-      diagnostics,
-    );
+    const languageOverride = decodeField(optionalTextLanguageSchema, rawLanguageOverride, undefined, `${elementPath}.languageOverride`, diagnostics);
 
     // 印は壊れていても要素は残す（印が消えるだけで本文は失わない）
-    const unseen = decodeField(
-      optionalUnseenSchema,
-      isRecord(candidate) ? candidate.unseen : undefined,
-      undefined,
-      `${elementPath}.unseen`,
-      diagnostics,
-    );
+    const unseen = decodeField(optionalUnseenSchema, isRecord(candidate) ? candidate.unseen : undefined, undefined, `${elementPath}.unseen`, diagnostics);
 
     texts.push({
       id: decoded.id,

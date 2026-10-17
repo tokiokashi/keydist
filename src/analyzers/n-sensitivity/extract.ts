@@ -9,12 +9,7 @@ import type { Finger, Key } from '#input/shapes/geometry.ts';
 import { computeTraceScalars, DEFAULT_METRIC_CONDITIONS, type Metrics } from '#interpretation/metrics.ts';
 import { analysisTargetKey, type AnalysisTarget } from '#input/setup/index.ts';
 import type { Press, Stroke, StrokeParticipation, Trace } from '#trace/generate.ts';
-import {
-  ALTERNATE_N_SENSITIVITY_OPTIONS,
-  DEFAULT_N_SENSITIVITY_OPTIONS,
-  nSensitivityOptions,
-  type NSensitivityOptions,
-} from './options.ts';
+import { ALTERNATE_N_SENSITIVITY_OPTIONS, DEFAULT_N_SENSITIVITY_OPTIONS, nSensitivityOptions, type NSensitivityOptions } from './options.ts';
 import { N_SENSITIVITY_METRIC_IDS, type NSensitivityMetricId } from './metric-catalog.ts';
 import { LAYOUT_MISSING_REASON } from '#input/setup/index.ts';
 
@@ -208,9 +203,7 @@ const FIXTURE_MEMBERS: readonly AnalyzerSetMember[] = [
   },
 ];
 
-const FIXTURE_FAILURES: readonly AnalyzerSetMemberFailure[] = [
-  { target: FIXTURE_TARGET_MISSING, kind: 'reference', message: LAYOUT_MISSING_REASON },
-];
+const FIXTURE_FAILURES: readonly AnalyzerSetMemberFailure[] = [{ target: FIXTURE_TARGET_MISSING, kind: 'reference', message: LAYOUT_MISSING_REASON }];
 
 /**
  * engine（`engine/cache.ts`の`getSetExtraction`）が呼ぶ、Analyzer契約の実体。

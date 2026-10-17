@@ -35,12 +35,21 @@ test('Multi にすでにある配列を選んでも重複しない', async ({ pa
     if (localStorage.getItem('keydist:multi-target-selection') !== null) return;
     localStorage.setItem(
       'keydist:multi-target-selection',
-      JSON.stringify({ version: 1, targets: [{ kind: 'layout', layoutId: 'qwerty' }, { kind: 'layout', layoutId: 'colemak-dh' }] }),
+      JSON.stringify({
+        version: 1,
+        targets: [
+          { kind: 'layout', layoutId: 'qwerty' },
+          { kind: 'layout', layoutId: 'colemak-dh' },
+        ],
+      }),
     );
   });
   await page.goto('/');
   await waitForHydration(page);
-  await page.locator('.hero').getByRole('button', { name: /^対象: / }).click();
+  await page
+    .locator('.hero')
+    .getByRole('button', { name: /^対象: / })
+    .click();
   await page.getByRole('dialog', { name: '対象の選択' }).locator('input[value="layout:colemak-dh"]').click();
 
   await page.locator('.hero').getByRole('link', { name: '比較表', exact: true }).click();
@@ -83,12 +92,14 @@ test('資産の自作の配列が対象の選択に並び、選んだ配列が�
       'keydist:user-layouts',
       JSON.stringify({
         version: 1,
-        layouts: [{
-          id: 'user-e2e',
-          name: '自作のテスト配列',
-          rows: ['1234567890-=', 'qwertyuiop[]', "asdfghjkl;'", 'zxcvbnm,./'],
-          romaji: 'kunrei',
-        }],
+        layouts: [
+          {
+            id: 'user-e2e',
+            name: '自作のテスト配列',
+            rows: ['1234567890-=', 'qwertyuiop[]', "asdfghjkl;'", 'zxcvbnm,./'],
+            romaji: 'kunrei',
+          },
+        ],
       }),
     );
   });

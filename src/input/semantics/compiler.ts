@@ -23,40 +23,38 @@ interface MutableSemanticInput {
   requirements: Requirement[];
   capabilities: InputCapability[];
   aggregationGroupId: string;
-    classifications: InputClassification[];
+  classifications: InputClassification[];
   roles: KeyRole[];
   faceMemberships: FaceMembership[];
 }
 
 const REQUIREMENT_OUT_OF_KEYS = 'RequirementがphysicalKeys外のkeyを参照している';
 
-const compareString = (left: string, right: string): number =>
-  left < right ? -1 : left > right ? 1 : 0;
+const compareString = (left: string, right: string): number => (left < right ? -1 : left > right ? 1 : 0);
 
-const sortedUniqueKeys = (keys: readonly string[]): PhysicalKeyId[] =>
-  [...new Set(keys.map(resolveKeyId))].sort(compareString);
+const sortedUniqueKeys = (keys: readonly string[]): PhysicalKeyId[] => [...new Set(keys.map(resolveKeyId))].sort(compareString);
 
 const requirementSignature = (requirement: Requirement): string => {
   if (requirement.kind === 'overlap') return `overlap:${requirement.keys.join('\u0000')}`;
   return `order:${requirement.before.join('\u0000')}>${requirement.after.join('\u0000')}`;
 };
 
-const capabilitySignature = (capability: InputCapability): string =>
-  `while-held:${capability.keys.join('\u0000')}`;
+const capabilitySignature = (capability: InputCapability): string => `while-held:${capability.keys.join('\u0000')}`;
 
 const normalizeRequirements = (requirements: readonly Requirement[]): Requirement[] => {
   const unique = new Map<string, Requirement>();
   for (const requirement of requirements) {
-    const normalized = requirement.kind === 'overlap'
-      ? {
-          kind: 'overlap' as const,
-          keys: sortedUniqueKeys(requirement.keys),
-        }
-      : {
-          kind: 'order' as const,
-          before: sortedUniqueKeys(requirement.before),
-          after: sortedUniqueKeys(requirement.after),
-        };
+    const normalized =
+      requirement.kind === 'overlap'
+        ? {
+            kind: 'overlap' as const,
+            keys: sortedUniqueKeys(requirement.keys),
+          }
+        : {
+            kind: 'order' as const,
+            before: sortedUniqueKeys(requirement.before),
+            after: sortedUniqueKeys(requirement.after),
+          };
     unique.set(requirementSignature(normalized), normalized);
   }
   return [...unique.values()].sort((left, right) => {
@@ -76,18 +74,13 @@ const normalizeCapabilities = (capabilities: readonly InputCapability[]): InputC
     };
     unique.set(capabilitySignature(normalized), normalized);
   }
-  return [...unique.values()].sort((left, right) =>
-    compareString(capabilitySignature(left), capabilitySignature(right)));
+  return [...unique.values()].sort((left, right) => compareString(capabilitySignature(left), capabilitySignature(right)));
 };
 
-const normalizeClassifications = (
-  classifications: readonly InputClassification[],
-): InputClassification[] =>
+const normalizeClassifications = (classifications: readonly InputClassification[]): InputClassification[] =>
   [...new Set(classifications)].sort(compareString);
 
-const normalizeContextRequirements = (
-  requirements: readonly InputContextRequirement[],
-): InputContextRequirement[] => {
+const normalizeContextRequirements = (requirements: readonly InputContextRequirement[]): InputContextRequirement[] => {
   const byKind = new Map(requirements.map((requirement) => [requirement.kind, requirement]));
   return [...byKind.values()].sort((left, right) => compareString(left.kind, right.kind));
 };
@@ -100,15 +93,14 @@ const normalizeRoles = (roles: readonly KeyRole[]): KeyRole[] => {
       role: role.role,
       ...(role.modifierGroupId === undefined ? {} : { modifierGroupId: role.modifierGroupId }),
     };
-    unique.set(
-      `${normalized.key}\u0000${normalized.role}\u0000${normalized.modifierGroupId ?? ''}`,
-      normalized,
-    );
+    unique.set(`${normalized.key}\u0000${normalized.role}\u0000${normalized.modifierGroupId ?? ''}`, normalized);
   }
-  return [...unique.values()].sort((left, right) =>
-    compareString(left.key, right.key)
-    || compareString(left.role, right.role)
-    || compareString(left.modifierGroupId ?? '', right.modifierGroupId ?? ''));
+  return [...unique.values()].sort(
+    (left, right) =>
+      compareString(left.key, right.key) ||
+      compareString(left.role, right.role) ||
+      compareString(left.modifierGroupId ?? '', right.modifierGroupId ?? ''),
+  );
 };
 
 const normalizeMemberships = (memberships: readonly FaceMembership[]): FaceMembership[] => {
@@ -120,38 +112,19 @@ const normalizeMemberships = (memberships: readonly FaceMembership[]): FaceMembe
     };
     unique.set(`${normalized.faceIndex}\u0000${normalized.cellKey}`, normalized);
   }
-  return [...unique.values()].sort((left, right) =>
-    left.faceIndex - right.faceIndex || compareString(left.cellKey, right.cellKey));
+  return [...unique.values()].sort((left, right) => left.faceIndex - right.faceIndex || compareString(left.cellKey, right.cellKey));
 };
 
-const requirementSetSignature = (requirements: readonly Requirement[]): string =>
-  requirements.map(requirementSignature).join('\u0001');
+const requirementSetSignature = (requirements: readonly Requirement[]): string => requirements.map(requirementSignature).join('\u0001');
 
-const activationSignature = (
-  requirements: readonly Requirement[],
-  capabilities: readonly InputCapability[],
-): string => [
-  requirementSetSignature(requirements),
-  capabilities.map(capabilitySignature).join('\u0001'),
-].join('\u0002');
+const activationSignature = (requirements: readonly Requirement[], capabilities: readonly InputCapability[]): string =>
+  [requirementSetSignature(requirements), capabilities.map(capabilitySignature).join('\u0001')].join('\u0002');
 
-const operationIdentity = (input: Pick<
-  SemanticInput,
-  'output' | 'physicalKeys' | 'requirements'
->): string => [
-  input.physicalKeys.join('\u0000'),
-  requirementSetSignature(input.requirements),
-  input.output,
-].join('\u0003');
+const operationIdentity = (input: Pick<SemanticInput, 'output' | 'physicalKeys' | 'requirements'>): string =>
+  [input.physicalKeys.join('\u0000'), requirementSetSignature(input.requirements), input.output].join('\u0003');
 
-const semanticIdentity = (input: Pick<
-  SemanticInput,
-  'output' | 'physicalKeys' | 'requirements' | 'capabilities'
->): string => [
-  input.physicalKeys.join('\u0000'),
-  activationSignature(input.requirements, input.capabilities),
-  input.output,
-].join('\u0003');
+const semanticIdentity = (input: Pick<SemanticInput, 'output' | 'physicalKeys' | 'requirements' | 'capabilities'>): string =>
+  [input.physicalKeys.join('\u0000'), activationSignature(input.requirements, input.capabilities), input.output].join('\u0003');
 
 const hasOrderCycle = (requirements: readonly Requirement[]): boolean => {
   const edges = new Map<PhysicalKeyId, Set<PhysicalKeyId>>();
@@ -187,20 +160,11 @@ const hasOrderCycle = (requirements: readonly Requirement[]): boolean => {
   return [...nodes].some(visit);
 };
 
-const requirementsMutuallyExclusive = (
-  left: readonly Requirement[],
-  right: readonly Requirement[],
-): boolean => hasOrderCycle([...left, ...right]);
+const requirementsMutuallyExclusive = (left: readonly Requirement[], right: readonly Requirement[]): boolean => hasOrderCycle([...left, ...right]);
 
-const isSubset = (
-  subset: readonly PhysicalKeyId[],
-  superset: ReadonlySet<PhysicalKeyId>,
-): boolean => subset.every((key) => superset.has(key));
+const isSubset = (subset: readonly PhysicalKeyId[], superset: ReadonlySet<PhysicalKeyId>): boolean => subset.every((key) => superset.has(key));
 
-const assertCanonicalInput = (input: Pick<
-  SemanticInput,
-  'physicalKeys' | 'requirements' | 'capabilities' | 'roles'
->): void => {
+const assertCanonicalInput = (input: Pick<SemanticInput, 'physicalKeys' | 'requirements' | 'capabilities' | 'roles'>): void => {
   const physicalKeys = new Set(input.physicalKeys);
 
   for (const requirement of input.requirements) {
@@ -277,26 +241,18 @@ export const faceAggregatesAsCombo = (face: Face): boolean => {
  * 1ステップで、コンボ枠に帰属する、コンボ定義か面から作ったpathに限る。
  */
 export const isComboFrameAlternative = (alternative: InputAlternative): boolean =>
-  (alternative.origin === 'combo' || alternative.origin === 'face')
-  && alternative.semanticInputs.length === 1
-  && alternative.semanticInputs[0].aggregationGroupId === 'combo';
+  (alternative.origin === 'combo' || alternative.origin === 'face') &&
+  alternative.semanticInputs.length === 1 &&
+  alternative.semanticInputs[0].aggregationGroupId === 'combo';
 
-const normalizedAggregationGroupId = (
-  face: Face,
-  faceIndex: number,
-  triggerKeys: readonly PhysicalKeyId[],
-): string => {
+const normalizedAggregationGroupId = (face: Face, faceIndex: number, triggerKeys: readonly PhysicalKeyId[]): string => {
   if (faceAggregatesAsCombo(face)) return 'combo';
   if (triggerKeys.length === 0) return 'single';
   if (face.layer !== undefined) return `layer:${face.layer}`;
   return `face:${faceIndex}`;
 };
 
-const faceRequirements = (
-  face: Face,
-  triggerKeys: readonly PhysicalKeyId[],
-  cellKey: PhysicalKeyId,
-): Requirement[] => {
+const faceRequirements = (face: Face, triggerKeys: readonly PhysicalKeyId[], cellKey: PhysicalKeyId): Requirement[] => {
   if (triggerKeys.length === 0) return [];
 
   const physicalKeys = sortedUniqueKeys([...triggerKeys, cellKey]);
@@ -306,17 +262,9 @@ const faceRequirements = (
     requirements.push({ kind: 'overlap', keys: physicalKeys });
   }
 
-  const implicitOrder = face.mode === 'prefix' || face.mode === 'suffix'
-    ? face.mode
-    : undefined;
-  if (
-    implicitOrder !== undefined
-    && face.triggerOrder !== undefined
-    && face.triggerOrder !== implicitOrder
-  ) {
-    throw new Error(
-      `Faceのmode=${face.mode}とtriggerOrder=${face.triggerOrder}が矛盾している`,
-    );
+  const implicitOrder = face.mode === 'prefix' || face.mode === 'suffix' ? face.mode : undefined;
+  if (implicitOrder !== undefined && face.triggerOrder !== undefined && face.triggerOrder !== implicitOrder) {
+    throw new Error(`Faceのmode=${face.mode}とtriggerOrder=${face.triggerOrder}が矛盾している`);
   }
   const order = face.triggerOrder ?? implicitOrder;
   if (order === 'prefix') {
@@ -336,10 +284,7 @@ const faceRequirements = (
   return normalizeRequirements(requirements);
 };
 
-const faceCapabilities = (
-  face: Face,
-  triggerKeys: readonly PhysicalKeyId[],
-): InputCapability[] => {
+const faceCapabilities = (face: Face, triggerKeys: readonly PhysicalKeyId[]): InputCapability[] => {
   if (triggerKeys.length === 0) return [];
   if (face.triggerPersistence === undefined) {
     throw new Error('triggerを持つFaceはtriggerPersistenceを明示する必要がある');
@@ -348,13 +293,9 @@ const faceCapabilities = (
   return normalizeCapabilities([{ kind: 'while-held', keys: [...triggerKeys] }]);
 };
 
-const faceClassifications = (face: Face): InputClassification[] =>
-  face.inputRole === 'composition' ? ['composition'] : [];
+const faceClassifications = (face: Face): InputClassification[] => (face.inputRole === 'composition' ? ['composition'] : []);
 
-const faceRoles = (
-  face: Face,
-  triggerKeys: readonly PhysicalKeyId[],
-): KeyRole[] => {
+const faceRoles = (face: Face, triggerKeys: readonly PhysicalKeyId[]): KeyRole[] => {
   if (face.inputRole === undefined) {
     throw new Error('FaceはinputRoleを明示する必要がある');
   }
@@ -380,14 +321,16 @@ const faceRoles = (
     throw new Error(`modifierGroupsを明示したFaceは全trigger keyを分類する必要がある: ${missing.join(', ')}`);
   }
 
-  return normalizeRoles(triggerKeys.map((key) => {
-    const modifierGroupId = normalizedGroups.get(key);
-    return {
-      key,
-      role: 'modifier' as const,
-      ...(modifierGroupId === undefined ? {} : { modifierGroupId }),
-    };
-  }));
+  return normalizeRoles(
+    triggerKeys.map((key) => {
+      const modifierGroupId = normalizedGroups.get(key);
+      return {
+        key,
+        role: 'modifier' as const,
+        ...(modifierGroupId === undefined ? {} : { modifierGroupId }),
+      };
+    }),
+  );
 };
 
 const faceCells = (face: Face): readonly { key: PhysicalKeyId; output: string }[] => {
@@ -404,7 +347,6 @@ const faceCells = (face: Face): readonly { key: PhysicalKeyId; output: string }[
   });
   return cells;
 };
-
 
 /**
  * richerなauthoring semanticを持たないlegacy Step列をcanonical入力列へ変換する。
@@ -423,14 +365,10 @@ export function compileSequenceSemanticInputs(
   return sequence.map((step, stepIndex): SemanticInput => {
     const physicalKeys = sortedUniqueKeys(step);
     if (physicalKeys.length === 0) {
-      throw new Error(
-        `SemanticInput sequence「${output}」のstep ${stepIndex} は1 key以上必要`,
-      );
+      throw new Error(`SemanticInput sequence「${output}」のstep ${stepIndex} は1 key以上必要`);
     }
 
-    const requirements = physicalKeys.length > 1
-      ? normalizeRequirements([{ kind: 'overlap', keys: physicalKeys }])
-      : [];
+    const requirements = physicalKeys.length > 1 ? normalizeRequirements([{ kind: 'overlap', keys: physicalKeys }]) : [];
     const input: SemanticInput = {
       output: stepIndex === sequence.length - 1 ? output : '',
       physicalKeys,
@@ -462,12 +400,11 @@ export function compileSequenceInputArtifacts(
   classifications: readonly InputClassification[] = [],
 ): CompiledSequenceArtifacts {
   const semanticInputs = compileSequenceSemanticInputs(output, sequence, aggregationGroupId, classifications);
-  const baseActionRealizations: BaseActionRealizationSequence =
-    semanticInputs.map((input, index) => ({
-      input,
-      actions: [sequence[index].map(resolveKeyId)],
-      defaultOutputKeys: [...input.physicalKeys],
-    }));
+  const baseActionRealizations: BaseActionRealizationSequence = semanticInputs.map((input, index) => ({
+    input,
+    actions: [sequence[index].map(resolveKeyId)],
+    defaultOutputKeys: [...input.physicalKeys],
+  }));
   validateBaseActionRealizations(baseActionRealizations);
   return {
     semanticInputs,
@@ -517,9 +454,7 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
         const siblingRequirements = requirementSetSignature(sibling.requirements);
         if (siblingRequirements === candidateRequirements) {
           if (sibling.output !== candidate.output) {
-            throw new Error(
-              `同一physical operationに異なるoutputがある: ${sibling.output} / ${candidate.output}`,
-            );
+            throw new Error(`同一physical operationに異なるoutputがある: ${sibling.output} / ${candidate.output}`);
           }
           continue;
         }
@@ -528,9 +463,7 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
           continue;
         }
         if (!requirementsMutuallyExclusive(sibling.requirements, candidate.requirements)) {
-          throw new Error(
-            `同一physicalKeysに同時成立し得るRequirement setがある: ${physicalKeys.join(', ')}`,
-          );
+          throw new Error(`同一physicalKeysに同時成立し得るRequirement setがある: ${physicalKeys.join(', ')}`);
         }
       }
 
@@ -543,24 +476,13 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
         continue;
       }
       if (existing.aggregationGroupId !== aggregationGroupId) {
-        throw new Error(
-          `同一SemanticInputが異なるaggregationGroupIdへ属している: ${existing.aggregationGroupId} / ${aggregationGroupId}`,
-        );
+        throw new Error(`同一SemanticInputが異なるaggregationGroupIdへ属している: ${existing.aggregationGroupId} / ${aggregationGroupId}`);
       }
-      existing.capabilities = normalizeCapabilities([
-        ...existing.capabilities,
-        ...capabilities,
-      ]);
-      existing.classifications = normalizeClassifications([
-        ...existing.classifications,
-        ...classifications,
-      ]);
+      existing.capabilities = normalizeCapabilities([...existing.capabilities, ...capabilities]);
+      existing.classifications = normalizeClassifications([...existing.classifications, ...classifications]);
       existing.roles = normalizeRoles([...existing.roles, ...roles]);
       assertCanonicalInput(existing);
-      existing.faceMemberships = normalizeMemberships([
-        ...existing.faceMemberships,
-        ...candidate.faceMemberships,
-      ]);
+      existing.faceMemberships = normalizeMemberships([...existing.faceMemberships, ...candidate.faceMemberships]);
     }
   });
 
@@ -577,40 +499,34 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
       const cellKey = resolveKeyId(rawKey);
       const semanticOutput = semanticCells.get(cellKey);
       if (semanticOutput !== undefined && semanticOutput !== output) {
-        throw new Error(
-          `Face ${faceIndex} のpresentation cell ${cellKey}がsemantic cellと競合している: ${semanticOutput} / ${output}`,
-        );
+        throw new Error(`Face ${faceIndex} のpresentation cell ${cellKey}がsemantic cellと競合している: ${semanticOutput} / ${output}`);
       }
       const physicalKeys = sortedUniqueKeys([...triggerKeys, cellKey]);
       const requirements = faceRequirements(face, triggerKeys, cellKey);
       const identity = operationIdentity({ output, physicalKeys, requirements });
       const existing = byIdentity.get(identity);
       if (existing === undefined) {
-        throw new Error(
-          `Face ${faceIndex} のpresentation cell ${cellKey}=${output}に対応するSemanticInputがない`,
-        );
+        throw new Error(`Face ${faceIndex} のpresentation cell ${cellKey}=${output}に対応するSemanticInputがない`);
       }
-      existing.faceMemberships = normalizeMemberships([
-        ...existing.faceMemberships,
-        { faceIndex, cellKey },
-      ]);
+      existing.faceMemberships = normalizeMemberships([...existing.faceMemberships, { faceIndex, cellKey }]);
     }
   });
 
   return [...byIdentity.values()]
-    .map((input): SemanticInput => ({
-      output: input.output,
-      physicalKeys: [...input.physicalKeys],
-      requirements: normalizeRequirements(input.requirements),
-      capabilities: normalizeCapabilities(input.capabilities),
-      aggregationGroupId: input.aggregationGroupId,
-      classifications: normalizeClassifications(input.classifications),
-      roles: normalizeRoles(input.roles),
-      faceMemberships: normalizeMemberships(input.faceMemberships),
-    }))
+    .map(
+      (input): SemanticInput => ({
+        output: input.output,
+        physicalKeys: [...input.physicalKeys],
+        requirements: normalizeRequirements(input.requirements),
+        capabilities: normalizeCapabilities(input.capabilities),
+        aggregationGroupId: input.aggregationGroupId,
+        classifications: normalizeClassifications(input.classifications),
+        roles: normalizeRoles(input.roles),
+        faceMemberships: normalizeMemberships(input.faceMemberships),
+      }),
+    )
     .sort((left, right) => compareString(semanticIdentity(left), semanticIdentity(right)));
 }
-
 
 export function compileSequenceInputAlternative(
   output: string,
@@ -629,11 +545,7 @@ export function compileSequenceInputAlternative(
   };
 }
 
-
-const samePhysicalKeySet = (
-  left: readonly PhysicalKeyId[],
-  right: readonly PhysicalKeyId[],
-): boolean => {
+const samePhysicalKeySet = (left: readonly PhysicalKeyId[], right: readonly PhysicalKeyId[]): boolean => {
   const l = sortedUniqueKeys(left);
   const r = sortedUniqueKeys(right);
   return l.length === r.length && l.every((key, index) => key === r[index]);
@@ -645,19 +557,13 @@ const samePhysicalKeySet = (
  * sequence長違い / prefix relation等のprecedenceはここでは証明しない。
  * Capability / classification / action grouping差はactivation排他の根拠にしない。
  */
-const activationPathsCanConflict = (
-  left: InputAlternative,
-  right: InputAlternative,
-): boolean => {
+const activationPathsCanConflict = (left: InputAlternative, right: InputAlternative): boolean => {
   if (left.semanticInputs.length !== right.semanticInputs.length) return false;
 
   return left.semanticInputs.every((leftInput, index) => {
     const rightInput = right.semanticInputs[index];
     if (!samePhysicalKeySet(leftInput.physicalKeys, rightInput.physicalKeys)) return false;
-    return !requirementsMutuallyExclusive(
-      leftInput.requirements,
-      rightInput.requirements,
-    );
+    return !requirementsMutuallyExclusive(leftInput.requirements, rightInput.requirements);
   });
 };
 
@@ -674,8 +580,7 @@ export function validateCanonicalInputMap(inputs: CanonicalInputMap): void {
     }
   }
 
-  const paths = [...inputs].flatMap(([output, alternatives]) =>
-    alternatives.map((alternative) => ({ output, alternative })));
+  const paths = [...inputs].flatMap(([output, alternatives]) => alternatives.map((alternative) => ({ output, alternative })));
 
   for (let leftIndex = 0; leftIndex < paths.length; leftIndex++) {
     const left = paths[leftIndex];
@@ -684,14 +589,10 @@ export function validateCanonicalInputMap(inputs: CanonicalInputMap): void {
       if (left.output === right.output) continue;
       if (!activationPathsCanConflict(left.alternative, right.alternative)) continue;
 
-      throw new Error(
-        `異なるlogical outputに同時成立し得るcanonical activation pathがある: `
-        + `${left.output} / ${right.output}`,
-      );
+      throw new Error(`異なるlogical outputに同時成立し得るcanonical activation pathがある: ` + `${left.output} / ${right.output}`);
     }
   }
 }
-
 
 type AlternativeIdentityProjection = {
   mapKey: (key: PhysicalKeyId) => PhysicalKeyId;
@@ -700,16 +601,8 @@ type AlternativeIdentityProjection = {
   preserveOptionalParticipationHoldKeys: boolean;
 };
 
-function inputAlternativeIdentity(
-  alternative: InputAlternative,
-  projection: AlternativeIdentityProjection,
-): string {
-  const {
-    mapKey,
-    mapKeys,
-    includeFaceMemberships,
-    preserveOptionalParticipationHoldKeys,
-  } = projection;
+function inputAlternativeIdentity(alternative: InputAlternative, projection: AlternativeIdentityProjection): string {
+  const { mapKey, mapKeys, includeFaceMemberships, preserveOptionalParticipationHoldKeys } = projection;
   return JSON.stringify({
     semanticInputs: alternative.semanticInputs.map((input) => ({
       output: input.output,
@@ -721,7 +614,8 @@ function inputAlternativeIdentity(
               kind: 'order',
               before: mapKeys(requirement.before),
               after: mapKeys(requirement.after),
-            }),
+            },
+      ),
       capabilities: input.capabilities.map((capability) => ({
         kind: capability.kind,
         keys: mapKeys(capability.keys),
@@ -743,9 +637,7 @@ function inputAlternativeIdentity(
       alternateParticipations: (realization.alternateParticipations ?? []).map((view) => ({
         outputKeys: mapKeys(view.outputKeys),
         triggerKeys: mapKeys(view.triggerKeys),
-        ...(view.holdKeys === undefined && preserveOptionalParticipationHoldKeys
-          ? {}
-          : { holdKeys: mapKeys(view.holdKeys ?? []) }),
+        ...(view.holdKeys === undefined && preserveOptionalParticipationHoldKeys ? {} : { holdKeys: mapKeys(view.holdKeys ?? []) }),
       })),
     })),
     contextRequirements: alternative.contextRequirements,
@@ -757,9 +649,7 @@ function inputAlternativeIdentity(
  * InputAlternativeの情報保持identity。
  * activation identityとは別で、thumb派生等のdedupe時にsemantic/provenanceを落とさないために使う。
  */
-export function canonicalInputAlternativeIdentity(
-  alternative: InputAlternative,
-): string {
+export function canonicalInputAlternativeIdentity(alternative: InputAlternative): string {
   return inputAlternativeIdentity(alternative, {
     mapKey: (key) => key,
     mapKeys: (keys) => keys,
@@ -777,8 +667,7 @@ export function inputAlternativeSelectionIdentity(
   mapPhysicalKey: (key: PhysicalKeyId) => PhysicalKeyId = resolveKeyId,
 ): string {
   const mapKey = (key: PhysicalKeyId) => mapPhysicalKey(resolveKeyId(key));
-  const mapKeys = (keys: readonly PhysicalKeyId[]) =>
-    keys.map(mapKey).sort(compareString);
+  const mapKeys = (keys: readonly PhysicalKeyId[]) => keys.map(mapKey).sort(compareString);
   return inputAlternativeIdentity(alternative, {
     mapKey,
     mapKeys,

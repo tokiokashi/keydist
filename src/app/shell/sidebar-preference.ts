@@ -136,7 +136,9 @@ export function getServerSidebarPinnedSnapshot(): boolean {
 export function subscribeSidebarPreferences(listener: () => void): () => void {
   ensureInitialized();
   listeners.add(listener);
-  return () => { listeners.delete(listener); };
+  return () => {
+    listeners.delete(listener);
+  };
 }
 
 export function setSidebarPinned(pinned: boolean): void {

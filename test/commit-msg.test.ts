@@ -58,7 +58,7 @@ describe('commit-msgフック', { skip: hasBash ? false : 'bashが無い' }, () 
   });
 
   test('gitが形を決めるメッセージは素通しする', () => {
-    assert.ok(accepts('Merge branch \'main\' into feat/x'));
+    assert.ok(accepts("Merge branch 'main' into feat/x"));
     assert.ok(accepts('Merge pull request #26 from tokiokashi/feat/x'));
     assert.ok(accepts('Revert "feat(ui): 分ける"'));
     assert.ok(accepts('fixup! feat(ui): 分ける'));
@@ -75,9 +75,7 @@ describe('commit-msgフック', { skip: hasBash ? false : 'bashが無い' }, () 
   });
 
   test('セッションURLの行(Claude-Session:)を落として、ほかの行は残す', () => {
-    const r = rewritten(
-      'docs: 規約を足す\n\n理由を書く\n\nCo-Authored-By: Someone <a@example.com>\nClaude-Session: https://example.com/session_x\n',
-    );
+    const r = rewritten('docs: 規約を足す\n\n理由を書く\n\nCo-Authored-By: Someone <a@example.com>\nClaude-Session: https://example.com/session_x\n');
     assert.ok(r.ok);
     assert.ok(!/^Claude-Session:/m.test(r.text));
     assert.ok(r.text.includes('Co-Authored-By: Someone'));
@@ -101,11 +99,7 @@ describe('commit-msgフック', { skip: hasBash ? false : 'bashが無い' }, () 
     const file = join(dir, 'COMMIT_EDITMSG');
     writeFileSync(
       file,
-      Buffer.concat([
-        Buffer.from('fix: a\n\nbad '),
-        Buffer.from([0xff, 0xfe]),
-        Buffer.from(' byte\nafter\nClaude-Session: https://example.com/x\n'),
-      ]),
+      Buffer.concat([Buffer.from('fix: a\n\nbad '), Buffer.from([0xff, 0xfe]), Buffer.from(' byte\nafter\nClaude-Session: https://example.com/x\n')]),
     );
     const status = spawnSync('bash', [HOOK, file], { env: { ...process.env, LC_ALL: 'C.UTF-8' } }).status;
     const out = readFileSync(file);
@@ -116,9 +110,7 @@ describe('commit-msgフック', { skip: hasBash ? false : 'bashが無い' }, () 
   });
 
   test('Claudeの共作者行から、メールアドレスだけを外す', () => {
-    const r = rewritten(
-      'docs: 規約を足す\n\n理由を書く\n\nCo-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>\n',
-    );
+    const r = rewritten('docs: 規約を足す\n\n理由を書く\n\nCo-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>\n');
     assert.ok(r.ok);
     assert.ok(r.text.includes('Co-Authored-By: Claude Sonnet 5.5\n'));
     assert.ok(!r.text.includes('noreply@anthropic.com'));
@@ -165,11 +157,7 @@ describe('commit-msgフック', { skip: hasBash ? false : 'bashが無い' }, () 
     const file = join(dir, 'COMMIT_EDITMSG');
     writeFileSync(
       file,
-      Buffer.concat([
-        Buffer.from('fix: a\n\nCo-Authored-By: Claude '),
-        Buffer.from([0xff]),
-        Buffer.from(' <noreply@anthropic.com>\n'),
-      ]),
+      Buffer.concat([Buffer.from('fix: a\n\nCo-Authored-By: Claude '), Buffer.from([0xff]), Buffer.from(' <noreply@anthropic.com>\n')]),
     );
     const status = spawnSync('bash', [HOOK, file], { env: { ...process.env, LC_ALL: 'C.UTF-8' } }).status;
     const out = readFileSync(file);

@@ -26,8 +26,7 @@ import { strokeFingerChoices } from './finger-selection.ts';
 
 const SHAPE = 'row-staggered';
 const opts = (o: Partial<TracePolicy> = {}): TracePolicy => ({ windowSize: 3, sfbHomeCost: true, ...o });
-const near = (a: number, b: number, msg?: string) =>
-  assert.ok(Math.abs(a - b) < 1e-9, `${msg ?? ''} expected ${b}, got ${a}`);
+const near = (a: number, b: number, msg?: string) => assert.ok(Math.abs(a - b) < 1e-9, `${msg ?? ''} expected ${b}, got ${a}`);
 
 /** 英字1文字が同じ刻印のキー1打になる配列 */
 const LETTERS = 'abcdefghijklmnopqrstuvwxyz';
@@ -70,8 +69,7 @@ function planOf(text: string, defs: Record<string, string[][]>): PlannedStroke[]
 function planWithSpans(
   inputs: readonly { readonly keys: readonly (readonly string[])[]; readonly start: number; readonly end: number }[],
 ): PlannedStroke[] {
-  return inputs.flatMap((input, ordinal) =>
-    input.keys.map((keys) => ({ ordinal, start: input.start, end: input.end, keys })));
+  return inputs.flatMap((input, ordinal) => input.keys.map((keys) => ({ ordinal, start: input.start, end: input.end, keys })));
 }
 
 interface RefState {
@@ -85,7 +83,10 @@ function cloneRef(state: RefState): RefState {
 }
 
 /** 左から右へ並べた、手ごとの親指以外の指。同じ手の隣の指は、この並びで隣り合う指。横の座標は、この並びの順に増える */
-const LEFT_TO_RIGHT: Finger[][] = [['LP', 'LR', 'LM', 'LI'], ['RI', 'RM', 'RR', 'RP']];
+const LEFT_TO_RIGHT: Finger[][] = [
+  ['LP', 'LR', 'LM', 'LI'],
+  ['RI', 'RM', 'RR', 'RP'],
+];
 
 /** 1打鍵を進め、(同指連続, 入れ替わり, 近くに戻る, 丸めた距離, 基本の指で打ったキー数) を返す */
 function refStep(
@@ -126,7 +127,10 @@ function refStep(
       if (at < 0) continue;
       const placed = (other: Finger) => Math.max(0, stroke.start - state.lastEnd[other]) <= 1;
       // 指の並びと同じ左右の順は、左隣の指より右、右隣の指より左にあること
-      for (const [other, sign] of [[hand[at - 1], -1], [hand[at + 1], 1]] as const) {
+      for (const [other, sign] of [
+        [hand[at - 1], -1],
+        [hand[at + 1], 1],
+      ] as const) {
         if (other !== undefined && placed(other) && sign * (target.x - state.prev[other].x) >= -1e-9) swapped = true;
       }
     }
@@ -167,11 +171,7 @@ function refChoices(geometry: Geometry, stroke: PlannedStroke): Finger[][] {
  * 各入力で、その入力と、開始から今の入力の終わりを引いた値がN以下の入力の全通りを数え、
  * 最小の並びのうち今の入力の指だけを確定していく
  */
-function referenceFingers(
-  geometry: Geometry,
-  strokes: readonly PlannedStroke[],
-  windowSize: number,
-): Finger[][] {
+function referenceFingers(geometry: Geometry, strokes: readonly PlannedStroke[], windowSize: number): Finger[][] {
   const state: RefState = { prev: {} as RefState['prev'], last: {} as RefState['last'], lastEnd: {} as RefState['lastEnd'] };
   for (const finger of ALL_FINGERS) {
     state.prev[finger] = geometry.homes[finger];
@@ -183,13 +183,12 @@ function referenceFingers(
   while (index < strokes.length) {
     const ordinal = strokes[index].ordinal;
     const currentEnd = strokes[index].end;
-    const end = strokes.findIndex((stroke) =>
-      stroke.ordinal > ordinal && stroke.start - currentEnd > windowSize);
+    const end = strokes.findIndex((stroke) => stroke.ordinal > ordinal && stroke.start - currentEnd > windowSize);
     const windowEnd = end < 0 ? strokes.length : end;
     const firstEnd = strokes.findIndex((stroke) => stroke.ordinal > ordinal);
     const inputEnd = firstEnd < 0 ? strokes.length : firstEnd;
 
-    let best: Candidate & { fingers: Finger[][] } | undefined;
+    let best: (Candidate & { fingers: Finger[][] }) | undefined;
     const visit = (
       at: number,
       s: RefState,
@@ -288,7 +287,15 @@ test('範囲ごとの全通りを数え上げた結果と一致する（1入力�
   const layout = letterLayout();
   const geometry = buildGeometry(SHAPE, QWERTY_OPTIMIZED_FINGER_ASSIGNMENT);
   const defs = Object.fromEntries([...LETTERS].map((c) => [c, [[c]]]));
-  for (const [seed, windowSize] of [[1, 1], [2, 2], [3, 3], [4, 1], [5, 2], [6, 3], [7, 0]] as const) {
+  for (const [seed, windowSize] of [
+    [1, 1],
+    [2, 2],
+    [3, 3],
+    [4, 1],
+    [5, 2],
+    [6, 3],
+    [7, 0],
+  ] as const) {
     const text = randomText(seed, 'ykjiubnmgcdhxzrtaseol', 24);
     const expected = referenceFingers(geometry, planOf(text, defs), windowSize);
     const trace = generateTrace(text, layout, geometry, opts({ windowSize }));
@@ -312,8 +319,7 @@ test('物理配列に無いキーで打鍵が0個になる入力が範囲の中�
   for (let seed = 21; seed < 61; seed++) {
     const windowSize = 1 + (seed % 4);
     const text = randomText(seed, 'いうふきくしゆーーー', 14);
-    const inputs = [...text].flatMap((kana, position) =>
-      [...romaji[kana]].map((letter) => ({ keys: defs[letter], start: position, end: position })));
+    const inputs = [...text].flatMap((kana, position) => [...romaji[kana]].map((letter) => ({ keys: defs[letter], start: position, end: position })));
     const expected = referenceFingers(geometry, planWithSpans(inputs), windowSize);
     const trace = generateTrace(text, layout, geometry, opts({ windowSize }));
     const actual = fingersOf(trace).map((map, index) => [...map.keys()].map((key) => map.get(key)!).slice(0, expected[index].length));
@@ -325,7 +331,12 @@ test('範囲ごとの全通りを数え上げた結果と一致する（担当�
   const layout = letterLayout();
   const geometry = buildGeometry(SHAPE, richAssignment());
   const defs = Object.fromEntries([...LETTERS].map((c) => [c, [[c]]]));
-  for (const [seed, windowSize] of [[11, 1], [12, 2], [13, 2], [14, 1]] as const) {
+  for (const [seed, windowSize] of [
+    [11, 1],
+    [12, 2],
+    [13, 2],
+    [14, 1],
+  ] as const) {
     const text = randomText(seed, 'qwertasdfgzxcvyuiophjklnm', 12);
     const expected = referenceFingers(geometry, planOf(text, defs), windowSize);
     const trace = generateTrace(text, layout, geometry, opts({ windowSize }));
@@ -343,7 +354,11 @@ test('1つの入力が複数の打鍵になる時も、全通りを数え上げ�
   };
   const layout = letterLayout({ ゆ: defs['ゆ'], き: defs['き'], む: defs['む'] });
   const geometry = buildGeometry(SHAPE, QWERTY_OPTIMIZED_FINGER_ASSIGNMENT);
-  for (const [seed, windowSize] of [[21, 1], [22, 2], [23, 3]] as const) {
+  for (const [seed, windowSize] of [
+    [21, 1],
+    [22, 2],
+    [23, 3],
+  ] as const) {
     const text = randomText(seed, 'ゆきむaoenk', 10);
     const strokes = planOf(text, defs);
     const expected = referenceFingers(geometry, strokes, windowSize);
@@ -371,7 +386,15 @@ test('複数のかなを覆う入力と読み飛ばした文字があっても�
   const layout = fromKana('spans', 'spans', defs);
   const geometry = buildGeometry(SHAPE, richAssignment());
   const tokens = ['きゃ', 'ゆむ', '☆', ...'ykjiubnmhl'];
-  for (const [seed, windowSize] of [[31, 0], [32, 1], [33, 2], [34, 3], [35, 0], [36, 4], [37, 2]] as const) {
+  for (const [seed, windowSize] of [
+    [31, 0],
+    [32, 1],
+    [33, 2],
+    [34, 3],
+    [35, 0],
+    [36, 4],
+    [37, 2],
+  ] as const) {
     const random = lcg(seed);
     const picked = Array.from({ length: 9 }, () => tokens[Math.floor(random() * tokens.length)]);
     const text = picked.join('');
@@ -397,7 +420,14 @@ test('入力の範囲が次の入力の途中まで及ぶ時、はみ出した�
   const romaji = withRomaji(LAYOUT_BY_ID.get('qwerty')!, kunrei());
   const geometry = buildGeometry(SHAPE, QWERTY_OPTIMIZED_FINGER_ASSIGNMENT);
   const chunks: [string, number, number][] = [
-    ['syo', 0, 1], ['u', 2, 2], ['.', 3, 3], ['ko', 4, 4], ['no', 5, 5], ['yo', 6, 6], ['u', 7, 7], ['na', 8, 8],
+    ['syo', 0, 1],
+    ['u', 2, 2],
+    ['.', 3, 3],
+    ['ko', 4, 4],
+    ['no', 5, 5],
+    ['yo', 6, 6],
+    ['u', 7, 7],
+    ['na', 8, 8],
   ];
   const inputs = chunks.flatMap(([letters, start, end]) => [...letters].map((c) => ({ keys: [[c]], start, end })));
   const strokes = planWithSpans(inputs);
@@ -412,13 +442,7 @@ test('入力の範囲が次の入力の途中まで及ぶ時、はみ出した�
 test('同点の決め方: 基本の指を距離より先に選び、それでも同じなら指の固定の順で先の指を選ぶ', () => {
   // LP・LMのホームをfにする。fを打つ距離はLP・LMが0で、基本の指(RI)は0より遠い
   const homes = { ...DEFAULT_FINGER_ASSIGNMENT.homeKey, LP: 'f', LM: 'f', LI: 'g' };
-  const toRight = makeFingerAssignment(
-    'tie',
-    'tie',
-    { ...DEFAULT_FINGER_ASSIGNMENT.baseFinger, f: 'RI' },
-    homes,
-    { f: ['LP', 'LM'] },
-  );
+  const toRight = makeFingerAssignment('tie', 'tie', { ...DEFAULT_FINGER_ASSIGNMENT.baseFinger, f: 'RI' }, homes, { f: ['LP', 'LM'] });
   const letters = letterLayout();
   const g1 = buildGeometry(SHAPE, toRight);
   const near = fingerDist('LP', g1.homes.LP, { x: g1.keys.get('f')!.x, y: g1.keys.get('f')!.y });
@@ -427,12 +451,14 @@ test('同点の決め方: 基本の指を距離より先に選び、それでも
   assert.equal(fingersOf(generateTrace('f', letters, g1, opts()))[0].get('f'), 'RI');
 
   // 基本の指(RI)がjを押さえている間は選べない。残るLPとLMは、hを打つ距離も他の値も同じなので、固定の順で先のLPを選ぶ
-  const holdLayout = fromFaces('hold-tie', 'hold-tie', [{
-    ...faceFromEntries(['j'], 'simultaneous', { k: 'x', h: 'y' }),
-    inputRole: 'modifier',
-    triggerPersistence: 'hold-capable',
-    triggerOrder: 'prefix',
-  }]);
+  const holdLayout = fromFaces('hold-tie', 'hold-tie', [
+    {
+      ...faceFromEntries(['j'], 'simultaneous', { k: 'x', h: 'y' }),
+      inputRole: 'modifier',
+      triggerPersistence: 'hold-capable',
+      triggerOrder: 'prefix',
+    },
+  ]);
   const tie = makeFingerAssignment(
     'hold-tie',
     'hold-tie',
@@ -468,12 +494,14 @@ test('同時押しで1本の指が2つのキーを打つ選び方は、他の選
 
 test('押さえ続けている指は、押さえている間は他のキーに選ばない', () => {
   // fを押さえ続け、押さえている間にhを打つ。fとhはどちらもLIとRIが担当する
-  const layout = fromFaces('hold', 'hold', [{
-    ...faceFromEntries(['f'], 'simultaneous', { g: 'x', h: 'y' }),
-    inputRole: 'modifier',
-    triggerPersistence: 'hold-capable',
-    triggerOrder: 'prefix',
-  }]);
+  const layout = fromFaces('hold', 'hold', [
+    {
+      ...faceFromEntries(['f'], 'simultaneous', { g: 'x', h: 'y' }),
+      inputRole: 'modifier',
+      triggerPersistence: 'hold-capable',
+      triggerOrder: 'prefix',
+    },
+  ]);
   const policy = opts({ triggerRealizationPolicy: { useHold: true }, windowSize: 3 });
   const both = withExtra({ f: ['RI'], g: ['RI'], h: ['LI'] }, 'hold-both');
   const geometry = buildGeometry(SHAPE, both);
@@ -624,8 +652,16 @@ test('担当する指が1本のキーだけの割り当ては、指の選び方�
 
 test('組み込みのQWERTY最適化は、元の割り当ての担当と基本の指を残して、表のキーを足す', () => {
   const expected: Record<string, Finger[]> = {
-    LP: [], LR: ['z'], LM: ['r', 't', 'x'], LI: ['c', 'd', 'y', 'h', 'n'], LT: ['x'],
-    RT: ['b', 'n', 'm'], RI: ['g', 'b', 'k', 'i'], RM: ['y', 'u', 'j'], RR: ['k', 'i'], RP: [],
+    LP: [],
+    LR: ['z'],
+    LM: ['r', 't', 'x'],
+    LI: ['c', 'd', 'y', 'h', 'n'],
+    LT: ['x'],
+    RT: ['b', 'n', 'm'],
+    RI: ['g', 'b', 'k', 'i'],
+    RM: ['y', 'u', 'j'],
+    RR: ['k', 'i'],
+    RP: [],
   } as unknown as Record<string, Finger[]>;
   const original = DEFAULT_FINGER_ASSIGNMENT;
   const optimized = QWERTY_OPTIMIZED_FINGER_ASSIGNMENT;
@@ -639,12 +675,16 @@ test('組み込みのQWERTY最適化は、元の割り当ての担当と基本�
 });
 
 test('columnFingerAssignmentは既定の割り当てと同じ内容を作る', () => {
-  const same = columnFingerAssignment(
-    'default',
-    '既定（列固定）',
-    ['LP', 'LR', 'LM', 'LI', 'LI', 'RI', 'RI', 'RM', 'RR', 'RP', 'RP', 'RP', 'RP'],
-    { LP: 0, LR: 1, LM: 2, LI: 3, RI: 6, RM: 7, RR: 8, RP: 9 },
-  );
+  const same = columnFingerAssignment('default', '既定（列固定）', ['LP', 'LR', 'LM', 'LI', 'LI', 'RI', 'RI', 'RM', 'RR', 'RP', 'RP', 'RP', 'RP'], {
+    LP: 0,
+    LR: 1,
+    LM: 2,
+    LI: 3,
+    RI: 6,
+    RM: 7,
+    RR: 8,
+    RP: 9,
+  });
   assert.deepEqual(same, DEFAULT_FINGER_ASSIGNMENT);
 });
 
@@ -695,7 +735,5 @@ test('指の左右の入れ替わりは、同じ指が近くに戻る打鍵よ�
 test('同指連続を先に比べるので、同じ指が近くに戻る打鍵が増えても、同指連続の少ない選び方を採る', () => {
   // 「したところで」のdは、左中指で打つと次のeを打つ左中指と同指連続になる。
   // 左人差し指で打つとrを打った指が近くに戻るが、同指連続を先に比べるので、左人差し指になる
-  assert.deepEqual(fingerNamesOf('したところで', 3), [
-    's:LR', 'i:RM', 't:LI', 'a:LP', 't:LI', 'o:RR', 'k:RM', 'o:RR', 'r:LI', 'o:RR', 'd:LI', 'e:LM',
-  ]);
+  assert.deepEqual(fingerNamesOf('したところで', 3), ['s:LR', 'i:RM', 't:LI', 'a:LP', 't:LI', 'o:RR', 'k:RM', 'o:RR', 'r:LI', 'o:RR', 'd:LI', 'e:LM']);
 });

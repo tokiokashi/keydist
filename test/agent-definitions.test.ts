@@ -29,7 +29,10 @@ function parseDefinition(file: string): Definition {
     assert.notEqual(colon, -1, `${file}のfrontmatterにkey: valueでない行がある: ${line}`);
     frontmatter[line.slice(0, colon).trim()] = line.slice(colon + 1).trim();
   }
-  const body = lines.slice(end + 1).join('\n').trim();
+  const body = lines
+    .slice(end + 1)
+    .join('\n')
+    .trim();
   return { frontmatter, body };
 }
 
@@ -38,21 +41,12 @@ describe('reviewerとreviewer-strictの定義', () => {
   const strict = parseDefinition('reviewer-strict.md');
 
   test('手順の本文が一致する', () => {
-    assert.equal(
-      strict.body,
-      reviewer.body,
-      'reviewer.mdとreviewer-strict.mdの本文が違う。手順を直す時は両方を同じように直す',
-    );
+    assert.equal(strict.body, reviewer.body, 'reviewer.mdとreviewer-strict.mdの本文が違う。手順を直す時は両方を同じように直す');
   });
 
   test('frontmatterのname・description・model・color以外のキーと値が一致する', () => {
-    const pick = (fm: Record<string, string>) =>
-      Object.fromEntries(Object.entries(fm).filter(([key]) => !VARIABLE_KEYS.has(key)));
-    assert.deepEqual(
-      pick(strict.frontmatter),
-      pick(reviewer.frontmatter),
-      'name・description・model・color以外のfrontmatterが違う',
-    );
+    const pick = (fm: Record<string, string>) => Object.fromEntries(Object.entries(fm).filter(([key]) => !VARIABLE_KEYS.has(key)));
+    assert.deepEqual(pick(strict.frontmatter), pick(reviewer.frontmatter), 'name・description・model・color以外のfrontmatterが違う');
   });
 
   test('可変のキーは両方に存在する', () => {

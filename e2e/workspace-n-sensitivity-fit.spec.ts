@@ -19,18 +19,28 @@ const cell = (id: string, x: number, y: number, w: number, h: number) => ({ id, 
 
 async function openWorkspace(page: Page, panes: readonly unknown[], grid: unknown, size: { width: number; height: number }, seriesCount = 2) {
   await page.setViewportSize(size);
-  await page.addInitScript((value) => {
-    localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
-  }, { id: 'fit', name: '収まりの確認', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes, grid });
+  await page.addInitScript(
+    (value) => {
+      localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
+    },
+    { id: 'fit', name: '収まりの確認', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes, grid },
+  );
   await page.goto('/workspace/fit');
   await waitForHydration(page);
   await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(seriesCount, { timeout: 15_000 });
   // 図の大きさが領域の実寸に合うまで待つ（最初の描画は既定の幅）
-  await expect.poll(() => page.locator('.n-sensitivity-svg').first().evaluate((svg) => {
-    const box = svg.getBoundingClientRect();
-    const [, , w, h] = svg.getAttribute('viewBox')!.split(' ').map(Number);
-    return Math.abs(box.width - w!) < 1.5 && Math.abs(box.height - h!) < 1.5;
-  })).toBe(true);
+  await expect
+    .poll(() =>
+      page
+        .locator('.n-sensitivity-svg')
+        .first()
+        .evaluate((svg) => {
+          const box = svg.getBoundingClientRect();
+          const [, , w, h] = svg.getAttribute('viewBox')!.split(' ').map(Number);
+          return Math.abs(box.width - w!) < 1.5 && Math.abs(box.height - h!) < 1.5;
+        }),
+    )
+    .toBe(true);
 }
 
 /** ペインの右下の角をつかんで、`dy`（画素）だけ縦に動かす。 */
@@ -85,30 +95,33 @@ function measure(page: Page) {
 
 /** 凡例の枠と線・点の重なり（standalone-n-sensitivity.spec.ts の検査と同じ）。 */
 function measureLegend(page: Page) {
-  return page.locator('.n-sensitivity-svg').first().evaluate((svg) => {
-    const svgRect = svg.getBoundingClientRect();
-    const frame = svg.querySelector('.n-sensitivity-legend-frame')!.getBoundingClientRect();
-    const touches = (x: number, y: number) => x >= frame.left && x <= frame.right && y >= frame.top && y <= frame.bottom;
-    let linePointsInside = 0;
-    for (const path of svg.querySelectorAll<SVGPathElement>('[data-n-sensitivity-series] .n-sensitivity-line')) {
-      const matrix = path.getScreenCTM()!;
-      const length = path.getTotalLength();
-      for (let at = 0; at <= length; at += 1) {
-        const point = path.getPointAtLength(at).matrixTransform(matrix);
-        if (touches(point.x, point.y)) linePointsInside += 1;
+  return page
+    .locator('.n-sensitivity-svg')
+    .first()
+    .evaluate((svg) => {
+      const svgRect = svg.getBoundingClientRect();
+      const frame = svg.querySelector('.n-sensitivity-legend-frame')!.getBoundingClientRect();
+      const touches = (x: number, y: number) => x >= frame.left && x <= frame.right && y >= frame.top && y <= frame.bottom;
+      let linePointsInside = 0;
+      for (const path of svg.querySelectorAll<SVGPathElement>('[data-n-sensitivity-series] .n-sensitivity-line')) {
+        const matrix = path.getScreenCTM()!;
+        const length = path.getTotalLength();
+        for (let at = 0; at <= length; at += 1) {
+          const point = path.getPointAtLength(at).matrixTransform(matrix);
+          if (touches(point.x, point.y)) linePointsInside += 1;
+        }
       }
-    }
-    let dotsInside = 0;
-    for (const circle of svg.querySelectorAll('.n-sensitivity-point')) {
-      const r = circle.getBoundingClientRect();
-      if (r.right >= frame.left && r.left <= frame.right && r.bottom >= frame.top && r.top <= frame.bottom) dotsInside += 1;
-    }
-    return {
-      insideSvg: frame.left >= svgRect.left && frame.right <= svgRect.right && frame.top >= svgRect.top && frame.bottom <= svgRect.bottom,
-      linePointsInside,
-      dotsInside,
-    };
-  });
+      let dotsInside = 0;
+      for (const circle of svg.querySelectorAll('.n-sensitivity-point')) {
+        const r = circle.getBoundingClientRect();
+        if (r.right >= frame.left && r.left <= frame.right && r.bottom >= frame.top && r.top <= frame.bottom) dotsInside += 1;
+      }
+      return {
+        insideSvg: frame.left >= svgRect.left && frame.right <= svgRect.right && frame.top >= svgRect.top && frame.bottom <= svgRect.bottom,
+        linePointsInside,
+        dotsInside,
+      };
+    });
 }
 
 test('Workspaceで余りの無いペインでは実測値の表が畳まれて始まり、キーボードで開ける', async ({ page }) => {
@@ -178,10 +191,17 @@ test('凡例は、ペインの高さが変わっても線や点に重ならず�
   // ペインの下の辺を3行（108px）ずつ縮める（22行 → 19 → 16 → 13）
   for (const rows of [22, 19, 16, 13]) {
     if (rows !== 22) await dragCornerBy(page, 'n', -108);
-    await expect.poll(() => page.locator('.n-sensitivity-svg').first().evaluate((svg) => {
-      const [, , , h] = svg.getAttribute('viewBox')!.split(' ').map(Number);
-      return Math.abs(svg.getBoundingClientRect().height - h!);
-    })).toBeLessThan(1.5);
+    await expect
+      .poll(() =>
+        page
+          .locator('.n-sensitivity-svg')
+          .first()
+          .evaluate((svg) => {
+            const [, , , h] = svg.getAttribute('viewBox')!.split(' ').map(Number);
+            return Math.abs(svg.getBoundingClientRect().height - h!);
+          }),
+      )
+      .toBeLessThan(1.5);
     const legend = await measureLegend(page);
     expect(legend, `${rows}行`).toEqual({ insideSvg: true, linePointsInside: 0, dotsInside: 0 });
   }
@@ -211,42 +231,57 @@ test('個別画面に漏れない: 外側に高さを測れるcontainerがあっ
 });
 
 const LAYOUT_IDS_MANY = [
-  'qwerty', 'dvorak', 'colemak', 'colemak-dh', 'workman', 'oonishi', 'naginata-v18', 'nicola', 'shin-koume', 'asuka',
-  'shin-jis-prefix', 'shin-jis-simultaneous', 'shingeta', 'tsuki-2-263', 'kawasemi-plus', 'oonishi-custom',
+  'qwerty',
+  'dvorak',
+  'colemak',
+  'colemak-dh',
+  'workman',
+  'oonishi',
+  'naginata-v18',
+  'nicola',
+  'shin-koume',
+  'asuka',
+  'shin-jis-prefix',
+  'shin-jis-simultaneous',
+  'shingeta',
+  'tsuki-2-263',
+  'kawasemi-plus',
+  'oonishi-custom',
 ];
 const nsensMany = {
   id: 'n',
   analyzerId: 'n-sensitivity',
   binding: {
     mode: 'fixed',
-    target: { kind: 'set', selection: { targets: LAYOUT_IDS_MANY.map((layoutId) => ({ kind: 'layout', layoutId })), colorSlots: LAYOUT_IDS_MANY.map((_, i) => i % 8) } },
+    target: {
+      kind: 'set',
+      selection: { targets: LAYOUT_IDS_MANY.map((layoutId) => ({ kind: 'layout', layoutId })), colorSlots: LAYOUT_IDS_MANY.map((_, i) => i % 8) },
+    },
   },
 };
 
 /** 16msおきに数十回（rAFは並列実行中の裏のページで止まることがあるのでタイマーで測る）、図の描画の高さと領域の min-height の記録を取る（値が変わり続けるなら振動している）。 */
 function recordFrames(page: Page, frames = 40) {
-  return page.evaluate((count) => new Promise<string[]>((resolve) => {
-    const out: string[] = [];
-    const tick = () => {
-      const svg = document.querySelector('.n-sensitivity-svg')!;
-      const wrap = svg.parentElement!;
-      out.push(`${svg.getAttribute('viewBox')}|${wrap.style.minHeight}|${wrap.style.maxHeight}|${wrap.clientHeight}`);
-      if (out.length >= count) resolve(out);
-      else setTimeout(tick, 16);
-    };
-    setTimeout(tick, 16);
-  }), frames);
+  return page.evaluate(
+    (count) =>
+      new Promise<string[]>((resolve) => {
+        const out: string[] = [];
+        const tick = () => {
+          const svg = document.querySelector('.n-sensitivity-svg')!;
+          const wrap = svg.parentElement!;
+          out.push(`${svg.getAttribute('viewBox')}|${wrap.style.minHeight}|${wrap.style.maxHeight}|${wrap.clientHeight}`);
+          if (out.length >= count) resolve(out);
+          else setTimeout(tick, 16);
+        };
+        setTimeout(tick, 16);
+      }),
+    frames,
+  );
 }
 
 test('凡例が図の下に出て下限に当たる低いペインでも、描画の高さは振動しない', async ({ page }) => {
   // 対象が多い時の凡例は図の中に収まらず下に出る。7行にして図の領域を下限まで縮める。
-  await openWorkspace(
-    page,
-    [nsensMany],
-    [cell('n', 0, 0, 24, 7)],
-    { width: 1920, height: 900 },
-    LAYOUT_IDS_MANY.length,
-  );
+  await openWorkspace(page, [nsensMany], [cell('n', 0, 0, 24, 7)], { width: 1920, height: 900 }, LAYOUT_IDS_MANY.length);
   await expect(page.locator('[data-n-sensitivity-legend]')).toHaveAttribute('data-n-sensitivity-legend', 'below');
   const frames = await recordFrames(page);
   expect(new Set(frames).size, frames.slice(0, 4).join(' / ')).toBe(1);
@@ -266,10 +301,18 @@ test('縦に長いペインでも、図の高さは幅を超えず、表の見�
   expect(m.gap).toBeLessThan(24);
 });
 
-const svgHeight = (page: Page) => page.locator('.n-sensitivity-svg').first().evaluate((svg) => svg.getBoundingClientRect().height);
+const svgHeight = (page: Page) =>
+  page
+    .locator('.n-sensitivity-svg')
+    .first()
+    .evaluate((svg) => svg.getBoundingClientRect().height);
 
 /** 図の viewBox（描画する大きさの宣言）。 */
-const viewBoxOf = (page: Page) => page.locator('.n-sensitivity-svg').first().evaluate((svg) => svg.getAttribute('viewBox'));
+const viewBoxOf = (page: Page) =>
+  page
+    .locator('.n-sensitivity-svg')
+    .first()
+    .evaluate((svg) => svg.getAttribute('viewBox'));
 
 /**
  * ビューポートを変えた後、図が新しい並びの大きさへ作り直され、描画の大きさと領域の高さが揃うまで待つ。
@@ -278,21 +321,37 @@ const viewBoxOf = (page: Page) => page.locator('.n-sensitivity-svg').first().eva
  * 途中で記録を始めると、収束の途中を拾って「値が2つある」と誤って振動と読む。
  */
 async function waitForRelayout(page: Page, previousViewBox: string | null) {
-  await expect.poll(() => page.locator('.n-sensitivity-svg').first().evaluate((svg, previous) => {
-    const viewBox = svg.getAttribute('viewBox')!;
-    const box = svg.getBoundingClientRect();
-    const [, , w, h] = viewBox.split(' ').map(Number);
-    const wrapHeight = svg.parentElement!.clientHeight;
-    return viewBox !== previous && Math.abs(box.width - w!) < 1.5 && Math.abs(box.height - h!) < 1.5 && Math.abs(wrapHeight - h!) < 1.5 && box.height > 100;
-  }, previousViewBox)).toBe(true);
+  await expect
+    .poll(() =>
+      page
+        .locator('.n-sensitivity-svg')
+        .first()
+        .evaluate((svg, previous) => {
+          const viewBox = svg.getAttribute('viewBox')!;
+          const box = svg.getBoundingClientRect();
+          const [, , w, h] = viewBox.split(' ').map(Number);
+          const wrapHeight = svg.parentElement!.clientHeight;
+          return (
+            viewBox !== previous &&
+            Math.abs(box.width - w!) < 1.5 &&
+            Math.abs(box.height - h!) < 1.5 &&
+            Math.abs(wrapHeight - h!) < 1.5 &&
+            box.height > 100
+          );
+        }, previousViewBox),
+    )
+    .toBe(true);
 }
 
 test('縦積みの幅（760px以下）では表が開いて始まり、広げ直しても図の高さが0にならず振動しない', async ({ page }) => {
   await openWorkspace(page, [nsens], [cell('n', 0, 0, 24, 22)], { width: 700, height: 900 });
   expect(await page.locator('details.n-sensitivity-table-details').evaluate((el: HTMLDetailsElement) => el.open)).toBe(true);
-  expect((await svgHeight(page))).toBeGreaterThan(100);
+  expect(await svgHeight(page)).toBeGreaterThan(100);
   expect(new Set(await recordFrames(page)).size).toBe(1);
-  for (const size of [{ width: 1440, height: 900 }, { width: 700, height: 900 }]) {
+  for (const size of [
+    { width: 1440, height: 900 },
+    { width: 700, height: 900 },
+  ]) {
     const before = await viewBoxOf(page);
     await page.setViewportSize(size);
     await waitForRelayout(page, before);

@@ -10,10 +10,7 @@ import { basisIdOf, singleExtractionKeyOf, traceKeyOf } from '#engine/keys.ts';
 import { resolveEngineInput, type ResolvedInput } from '#engine/resolved-input.ts';
 import { createEngineCache } from '#engine/cache.ts';
 import { checkOptionsDiscipline } from '#analyzers/options.ts';
-import {
-  DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
-  DEFAULT_PLAYBACK_STEPS_PER_SECOND,
-} from '#interpretation/timing/playback.ts';
+import { DEFAULT_PLAYBACK_SPEED_MULTIPLIER, DEFAULT_PLAYBACK_STEPS_PER_SECOND } from '#interpretation/timing/playback.ts';
 import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import { reconcilePlaybackStateAfterAnalysisRefresh } from '#interpretation/timing/playback.ts';
 import { bigramFlowDefinition } from '#analyzers/bigram-flow/extract.ts';
@@ -182,10 +179,7 @@ test('解析設定は、時間と速度平均の17項目だけが抽出のキー
     rateWindow: 10,
     rateHalfLifeSeconds: 1,
   });
-  assert.deepEqual(
-    checkOptionsDiscipline(playbackOptions, playbackDefinition.optionsDiscipline),
-    { keyViolations: [], viewExtractionViolations: [] },
-  );
+  assert.deepEqual(checkOptionsDiscipline(playbackOptions, playbackDefinition.optionsDiscipline), { keyViolations: [], viewExtractionViolations: [] });
 });
 
 test('表示設定を替えても同じ抽出結果が返る（Traceも抽出も作り直さない）', () => {
@@ -201,11 +195,7 @@ test('表示設定を替えても同じ抽出結果が返る（Traceも抽出も
 // ---------------------------------------------------------------------------
 
 /** 解析設定の一部だけを替えた打鍵再生の抽出。 */
-function extractionOf(
-  input: ResolvedInput,
-  options: Partial<PlaybackOptions> = {},
-  cache = createEngineCache(),
-): PlaybackExtracted {
+function extractionOf(input: ResolvedInput, options: Partial<PlaybackOptions> = {}, cache = createEngineCache()): PlaybackExtracted {
   return cache.getExtraction(input, playbackDefinition, { ...DEFAULT_PLAYBACK_OPTIONS, ...options }).extracted;
 }
 
@@ -218,14 +208,26 @@ test('速度の推移（SMA・窓幅10）: 完了した入力単位だけをか�
   // 条件: 配列qwerty・ローマ字（訓令式）・物理配列row-staggered・指の割り当ては既定・テキスト「かあ」（k・a・aの3打鍵）。
   // どのステップも指が違うか同じキーの連打で、表示時間は800ms。窓の合計は800ms×窓のStroke数。
   const { rateChart } = extractionOf(resolve('qwerty', 'かあ', 'ja'));
-  assert.deepEqual(rateChart.map((point) => point.cursor), [0, 1, 2, 3]);
+  assert.deepEqual(
+    rateChart.map((point) => point.cursor),
+    [0, 1, 2, 3],
+  );
   assert.deepEqual([rateChart[0].kanaPerSecond, rateChart[0].actionsPerSecond], [undefined, undefined]);
   // アクション/秒 = Stroke数 × 1000 / D = 1000 / 800
-  assert.deepEqual(rateChart.map((point) => point.actionsPerSecond), [undefined, 1.25, 1.25, 1.25]);
+  assert.deepEqual(
+    rateChart.map((point) => point.actionsPerSecond),
+    [undefined, 1.25, 1.25, 1.25],
+  );
   // かな/秒 = 窓の中で始まり終わる入力単位の文字数 × 1000 / D。
   // 位置1は「か」の途中（kだけ）なので数えず、位置2で「か」が完了して1×1000/1600、位置3で「あ」も加わって2×1000/2400
-  assert.deepEqual(rateChart.map((point) => point.kanaPerSecond), [undefined, undefined, 1000 / 1600, 2000 / 2400]);
-  assert.deepEqual(rateChart.map((point) => point.inputText), ['', 'か', 'か', 'かあ']);
+  assert.deepEqual(
+    rateChart.map((point) => point.kanaPerSecond),
+    [undefined, undefined, 1000 / 1600, 2000 / 2400],
+  );
+  assert.deepEqual(
+    rateChart.map((point) => point.inputText),
+    ['', 'か', 'か', 'かあ'],
+  );
 });
 
 test('速度の推移（SMA）: 時間は再生と同じ時間表を使い、同指連続のステップは長くなる（§3.3・§5.1）', () => {
@@ -323,16 +325,17 @@ test('既定と違う計算の知らせ: 使われない項目は挙げず、個
   assert.deepEqual(notes({ stepsPerSecond: 2, speedMultiplier: 3 }, 'missing').changes, ['基準速度: 2ステップ/秒', '再生倍率: 3倍']);
   // 個人速度で計算している間、基準速度は数値に入らない。再生倍率は入る
   assert.deepEqual(notes({ stepsPerSecond: 2, speedMultiplier: 3 }, 'applied').changes, ['再生倍率: 3倍']);
-  assert.deepEqual(
-    notes({ sameFingerDelay: false, allFingerMovementDelay: false, applyPersonalSpeed: false }, 'not-applied').changes,
-    ['同じ指の移動時間を考慮しない', '全指の移動時間で律速しない', '個人速度を適用しない'],
-  );
+  assert.deepEqual(notes({ sameFingerDelay: false, allFingerMovementDelay: false, applyPersonalSpeed: false }, 'not-applied').changes, [
+    '同じ指の移動時間を考慮しない',
+    '全指の移動時間で律速しない',
+    '個人速度を適用しない',
+  ]);
   // 平均の方式で使われない側の窓幅・半減時間は挙げない
   assert.deepEqual(notes({ rateWindow: 20, rateHalfLifeSeconds: 2 }, 'missing').changes, ['平均の窓幅: 20打鍵']);
-  assert.deepEqual(
-    notes({ rateAverage: 'ewma', rateWindow: 20, rateHalfLifeSeconds: 2 }, 'missing').changes,
-    ['平均の方式: EWMA', '平均の半減時間: 2秒'],
-  );
+  assert.deepEqual(notes({ rateAverage: 'ewma', rateWindow: 20, rateHalfLifeSeconds: 2 }, 'missing').changes, [
+    '平均の方式: EWMA',
+    '平均の半減時間: 2秒',
+  ]);
 });
 
 test('時間表と速度の推移が、固定した値になる', () => {
@@ -346,7 +349,11 @@ test('時間表と速度の推移が、固定した値になる', () => {
     { strokeIndex: 0, startMs: 0, endMs: 800 },
     { strokeIndex: 1, startMs: 800, endMs: 1694.427190999916 },
   ]);
-  assert.deepEqual(rates(fv), [[0, undefined, undefined], [1, 1.25, 1.25], [2, 1.1803398874989484, 1.1803398874989484]]);
+  assert.deepEqual(rates(fv), [
+    [0, undefined, undefined],
+    [1, 1.25, 1.25],
+    [2, 1.1803398874989484, 1.1803398874989484],
+  ]);
   // 既定の解析設定・テキスト「かあ」
   const kana = extractionOf(resolve('qwerty', 'かあ', 'ja'));
   assert.deepEqual(kana.schedule, [
@@ -354,7 +361,12 @@ test('時間表と速度の推移が、固定した値になる', () => {
     { strokeIndex: 1, startMs: 800, endMs: 1600 },
     { strokeIndex: 2, startMs: 1600, endMs: 2400 },
   ]);
-  assert.deepEqual(rates(kana), [[0, undefined, undefined], [1, undefined, 1.25], [2, 0.625, 1.25], [3, 0.8333333333333334, 1.25]]);
+  assert.deepEqual(rates(kana), [
+    [0, undefined, undefined],
+    [1, undefined, 1.25],
+    [2, 0.625, 1.25],
+    [3, 0.8333333333333334, 1.25],
+  ]);
   // 8項目を既定と違う値にして、個人速度を適用しない設定・テキスト「fv」
   const changed = extractionOf(resolve('qwerty', 'fv'), {
     stepsPerSecond: 2.5,
@@ -370,26 +382,46 @@ test('時間表と速度の推移が、固定した値になる', () => {
     { strokeIndex: 0, startMs: 0, endMs: 266.6666666666667 },
     { strokeIndex: 1, startMs: 266.6666666666667, endMs: 533.3333333333334 },
   ]);
-  assert.deepEqual(rates(changed), [[0, undefined, undefined], [1, 3.7499999999999996, 3.7499999999999996], [2, 3.7499999999999996, 3.7499999999999996]]);
+  assert.deepEqual(rates(changed), [
+    [0, undefined, undefined],
+    [1, 3.7499999999999996, 3.7499999999999996],
+    [2, 3.7499999999999996, 3.7499999999999996],
+  ]);
   // 既定の解析設定・個人速度の保存値あり・テキスト「fv」
   const personal = extractionOf(resolve('qwerty', 'fv', 'en', EMPTY_SETTINGS_OVERRIDES, CALIBRATION));
   assert.deepEqual(personal.schedule, [
     { strokeIndex: 0, startMs: 0, endMs: 200 },
     { strokeIndex: 1, startMs: 200, endMs: 511.8033988749895 },
   ]);
-  assert.deepEqual(rates(personal), [[0, undefined, undefined], [1, 5, 5], [2, 3.907750523728956, 3.907750523728956]]);
+  assert.deepEqual(rates(personal), [
+    [0, undefined, undefined],
+    [1, 5, 5],
+    [2, 3.907750523728956, 3.907750523728956],
+  ]);
 });
 
 test('速度の推移: ChainとArpeggioの区間を点ごとに持つ（表示するかは見る側が決める）', () => {
   // 条件: 配列qwerty・テキスト「fv」。構造解析のChainは打鍵0だけ（f）で、vで切れる
   const fv = extractionOf(resolve('qwerty', 'fv'));
-  assert.deepEqual(fv.analysis.chains.map((chain) => [chain.startStrokeIndex, chain.endStrokeIndex]), [[0, 1]]);
-  assert.deepEqual(fv.rateChart.map((point) => point.chain ?? false), [false, true, false]);
+  assert.deepEqual(
+    fv.analysis.chains.map((chain) => [chain.startStrokeIndex, chain.endStrokeIndex]),
+    [[0, 1]],
+  );
+  assert.deepEqual(
+    fv.rateChart.map((point) => point.chain ?? false),
+    [false, true, false],
+  );
   // テキスト「asdf」はChain 1本・Arpeggio 1本で、4打鍵すべてが入る
   const asdf = extractionOf(resolve('qwerty', 'asdf'));
-  assert.deepEqual(asdf.rateChart.slice(1).map((point) => [point.chain, point.arpeggio]), [
-    [true, true], [true, true], [true, true], [true, true],
-  ]);
+  assert.deepEqual(
+    asdf.rateChart.slice(1).map((point) => [point.chain, point.arpeggio]),
+    [
+      [true, true],
+      [true, true],
+      [true, true],
+      [true, true],
+    ],
+  );
 });
 
 test('平均方式・窓幅・半減時間を変えると、Traceと構造解析は作り直さずに抽出だけが変わる', () => {
@@ -477,7 +509,10 @@ test('全指の移動時間で律速する設定が、抽出の時間表に届�
   const off = extractionOf(fv, { allFingerMovementDelay: false });
   assert.equal(on.timing.allFingerMovementDelay, true);
   assert.equal(off.timing.allFingerMovementDelay, false);
-  assert.deepEqual(on.schedule.map((step) => step.strokeIndex), off.schedule.map((step) => step.strokeIndex));
+  assert.deepEqual(
+    on.schedule.map((step) => step.strokeIndex),
+    off.schedule.map((step) => step.strokeIndex),
+  );
   assert.ok(on.schedule[1].endMs >= off.schedule[1].endMs);
 });
 
@@ -689,14 +724,17 @@ test('同指連続のステップは、移動距離を正規化して掛けた�
   assert.ok(moved > 1, `この物理配列でf→vは1uを超える: ${moved}`);
   const schedule = playbackScheduleOf(extracted.analysis, input.geometry, defaultTiming());
   assert.equal(schedule[0].endMs - schedule[0].startMs, 800);
-  assert.ok(Math.abs((schedule[1].endMs - schedule[1].startMs) - 800 * moved) < 1e-6);
+  assert.ok(Math.abs(schedule[1].endMs - schedule[1].startMs - 800 * moved) < 1e-6);
   assert.equal(schedule[1].startMs, schedule[0].endMs);
 });
 
 test('同じキーの連打は同指連続に数えず、通常の800ms（§3.2）', () => {
   const { input, extracted } = prepare('qwerty', 'ff');
   const schedule = playbackScheduleOf(extracted.analysis, input.geometry, defaultTiming());
-  assert.deepEqual(schedule.map((step) => step.endMs - step.startMs), [800, 800]);
+  assert.deepEqual(
+    schedule.map((step) => step.endMs - step.startMs),
+    [800, 800],
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -762,7 +800,10 @@ test('開始前: 打鍵の表示は無く、帰属は「開始前」、指はホ
   assert.equal(frame.fingerPositionKeys.get('f'), 'LI');
   assert.equal(frame.fingerPositionKeys.get('j'), 'RI');
   // 先読みN=3のうち、これから押すfとjが予定に出る
-  assert.deepEqual([...frame.plannedOrders].sort(), [['f', 1], ['j', 2]]);
+  assert.deepEqual([...frame.plannedOrders].sort(), [
+    ['f', 1],
+    ['j', 2],
+  ]);
 });
 
 test('1打鍵目の後: 押したキー・履歴・予定・入力の履歴が揃う', () => {
@@ -773,12 +814,18 @@ test('1打鍵目の後: 押したキー・履歴・予定・入力の履歴が�
   assert.equal(frame.trailKeys.get('f'), 1);
   assert.deepEqual([...frame.trailOrders], [['f', 1]]);
   // これから押すキーは次のステップから数える
-  assert.deepEqual([...frame.plannedOrders].sort(), [['d', 2], ['j', 1]]);
-  assert.deepEqual(frame.inputPreview.map((segment) => [segment.text, segment.kind]), [
-    ['f', 'current'],
-    ['j', 'planned'],
-    ['d', 'planned'],
+  assert.deepEqual([...frame.plannedOrders].sort(), [
+    ['d', 2],
+    ['j', 1],
   ]);
+  assert.deepEqual(
+    frame.inputPreview.map((segment) => [segment.text, segment.kind]),
+    [
+      ['f', 'current'],
+      ['j', 'planned'],
+      ['d', 'planned'],
+    ],
+  );
   assert.equal(frame.structureLabel, '—');
 });
 
@@ -843,7 +890,10 @@ test('配列図の4つの切り替えは、それぞれ自分の表示だけを�
   assert.deepEqual(sizes(only('showOrderLabels')), [false, false, false, false]);
   // 順番ラベルは、出ている表示にだけ付く
   const plannedWithOrders = frameAt('qwerty', 'fjd', 1, { showPlannedKeys: true, showOrderLabels: true }).frame;
-  assert.deepEqual([...plannedWithOrders.plannedOrders].sort(), [['d', 2], ['j', 1]]);
+  assert.deepEqual([...plannedWithOrders.plannedOrders].sort(), [
+    ['d', 2],
+    ['j', 1],
+  ]);
   assert.equal(plannedWithOrders.trailOrders.size, 0);
   const trailWithOrders = frameAt('qwerty', 'fjd', 1, { showTrail: true, showOrderLabels: true }).frame;
   assert.deepEqual([...trailWithOrders.trailOrders], [['f', 1]]);
@@ -851,8 +901,7 @@ test('配列図の4つの切り替えは、それぞれ自分の表示だけを�
 });
 
 test('押下履歴を残すステップ数は、履歴が残る長さを決める', () => {
-  const trailAt = (trailSteps: number) =>
-    [...frameAt('qwerty', 'fjdksl', 6, { showTrail: true, trailSteps }).frame.trailKeys.keys()].sort();
+  const trailAt = (trailSteps: number) => [...frameAt('qwerty', 'fjdksl', 6, { showTrail: true, trailSteps }).frame.trailKeys.keys()].sort();
   assert.deepEqual(trailAt(1), ['l']);
   assert.deepEqual(trailAt(3), ['k', 'l', 's']);
   assert.equal(trailAt(5).length, 5);
@@ -895,10 +944,7 @@ test('同指移動の動的表示: 設定が真の時だけ、同じ指の移動
   assert.deepEqual(off.frame.motions, []);
   const on = frameAt('qwerty', 'fv', 2, { showSameFingerMotion: true });
   assert.equal(on.frame.motions.length, 1);
-  assert.deepEqual(
-    [on.frame.motions[0].fromKey, on.frame.motions[0].toKey, on.frame.motions[0].kind],
-    ['f', 'v', 'sameFinger'],
-  );
+  assert.deepEqual([on.frame.motions[0].fromKey, on.frame.motions[0].toKey, on.frame.motions[0].kind], ['f', 'v', 'sameFinger']);
   // 動く長さはそのステップの表示時間で、1500msを超えない
   assert.ok(on.frame.motions[0].durationMs >= 150 && on.frame.motions[0].durationMs <= 1500);
 });
@@ -1112,7 +1158,12 @@ test('部分の設定: 打鍵の上乗せを使わない時、上乗せ無しで
 
 test('部分の設定: 同時押しの上乗せを使わない時、同時押しのステップに足さない', () => {
   // 親指を含む同時押しのストローク。使う時はthumbの50ms、使わない時は0。
-  const thumbStroke = { presses: [{ finger: 'RT' as const, keys: [] }, { finger: 'RI' as const, keys: [] }] };
+  const thumbStroke = {
+    presses: [
+      { finger: 'RT' as const, keys: [] },
+      { finger: 'RI' as const, keys: [] },
+    ],
+  };
   const parts = { ...DEFAULT_PLAYBACK_OPTIONS, useSimultaneousOverhead: false };
   assert.equal(playbackSimultaneousOverheadMs(thumbStroke, FULL_CALIBRATION), 50);
   assert.equal(playbackSimultaneousOverheadMs(thumbStroke, calibrationWithParts(FULL_CALIBRATION, parts)), 0);
@@ -1227,7 +1278,11 @@ test('既定と違う計算の知らせ: 同時押しの上乗せは、再生す
 
 test('既定と違う計算の知らせ: 打鍵の上乗せは、再生するステップに入る種類の値が0でない時だけ足していると示す', () => {
   // 条件: 配列qwerty・既定の解析設定。「fjdk」は同指連続を持たず、全ステップが「その他」。「edc」は同じ指で違う位置を続けて打つ（同指連続）。
-  const notesOf = (text: string, keystrokeOverheadMs: NonNullable<PlaybackCalibration['keystrokeOverheadMs']>, options: Partial<PlaybackOptions> = {}) => {
+  const notesOf = (
+    text: string,
+    keystrokeOverheadMs: NonNullable<PlaybackCalibration['keystrokeOverheadMs']>,
+    options: Partial<PlaybackOptions> = {},
+  ) => {
     const extracted = extractionOf(resolve('qwerty', text, 'en', EMPTY_SETTINGS_OVERRIDES, { ...CALIBRATION, keystrokeOverheadMs }), options);
     return playbackCalculationNotes(
       { ...DEFAULT_PLAYBACK_OPTIONS, ...options },
@@ -1268,8 +1323,7 @@ function keepSymbolsOverrides(): SettingsCascadeOverrides {
 }
 
 /** ステップごとの打鍵の時間（表示時間から待機を除いた時間）。 */
-const typingMsOf = (extracted: PlaybackExtracted) =>
-  extracted.schedule.map((step) => step.endMs - step.startMs - (step.waitMs ?? 0));
+const typingMsOf = (extracted: PlaybackExtracted) => extracted.schedule.map((step) => step.endMs - step.startMs - (step.waitMs ?? 0));
 
 test('待機: 待機が0の時、時間表・総時間は待機を持たない時間表と一致する', () => {
   // 条件: 配列qwerty・ローマ字（訓令式）・物理配列row-staggered・既定の解析設定（待機は4つとも0）・日本語のテキスト。
@@ -1286,7 +1340,10 @@ test('待機: 打てる読点・句点の前の待機は入力単位の最初の
   const input = resolve('qwerty', 'あ、い。', 'ja');
   const plain = extractionOf(input);
   const waited = extractionOf(input, WAIT_OPTIONS);
-  assert.deepEqual(waited.schedule.map((step) => step.waitMs ?? 0), [0, 300, 200, 100]);
+  assert.deepEqual(
+    waited.schedule.map((step) => step.waitMs ?? 0),
+    [0, 300, 200, 100],
+  );
   // 句点の後の待機は最後のステップの後なので、どのステップにも入らず総時間にだけ入る
   assert.equal(waited.timeTotals.typingMs, plain.timeTotals.typingMs);
   assert.equal(waited.timeTotals.totalMs, plain.timeTotals.totalMs + 300 + 200 + 100 + 500);
@@ -1306,7 +1363,10 @@ test('待機: 配列が打てない読点・句点でも、テキストのその
   const waited = extractionOf(input, WAIT_OPTIONS);
   assert.equal(waited.schedule.length, 3);
   // 「，」は あ と い の間（前300+後200）、「．」は い と う の間（前100+後500）
-  assert.deepEqual(waited.schedule.map((step) => step.waitMs ?? 0), [0, 500, 600]);
+  assert.deepEqual(
+    waited.schedule.map((step) => step.waitMs ?? 0),
+    [0, 500, 600],
+  );
   assert.equal(waited.timeTotals.totalMs, plain.timeTotals.totalMs + 1100);
   // 打てる配列と打てない配列で、同じテキストの待機の合計が同じになる
   const typable = extractionOf(resolve('qwerty', 'あ、い。う', 'ja'), WAIT_OPTIONS);
@@ -1339,7 +1399,10 @@ test('待機: 打鍵の時間は待機の有無で変わらない（全指の移
 test('待機: かな/秒・アクション/秒の推移は、SMAでもEWMAでも待機で変わらない', () => {
   // 条件: 配列qwerty・ローマ字・テキスト「あ、い。う、ええ。」・SMAは窓幅3、EWMAは半減時間1秒。
   const input = resolve('qwerty', 'あ、い。う、ええ。', 'ja');
-  for (const average of [{ rateAverage: 'sma', rateWindow: 3 }, { rateAverage: 'ewma', rateHalfLifeSeconds: 1 }] as const) {
+  for (const average of [
+    { rateAverage: 'sma', rateWindow: 3 },
+    { rateAverage: 'ewma', rateHalfLifeSeconds: 1 },
+  ] as const) {
     const plain = extractionOf(input, average);
     const waited = extractionOf(input, { ...average, ...WAIT_OPTIONS });
     assert.notEqual(waited.timeTotals.totalMs, plain.timeTotals.totalMs);
@@ -1388,7 +1451,10 @@ test('待機: 日本語のテキストに半角の , . が残っても、読点�
   // 条件: 配列qwerty・ローマ字・テキスト「あ,い.う」。qwertyは半角の「,」「.」を直接持つので、前処理で書き換わらずそのまま打つ。
   const input = resolve('qwerty', 'あ,い.う', 'ja');
   const waited = extractionOf(input, WAIT_OPTIONS);
-  assert.deepEqual(waited.schedule.map((step) => step.waitMs ?? 0), [0, 300, 200, 100, 500]);
+  assert.deepEqual(
+    waited.schedule.map((step) => step.waitMs ?? 0),
+    [0, 300, 200, 100, 500],
+  );
 });
 
 test('待機: テキストの言語が違えば、抽出のキーに入る資産が違う', () => {
@@ -1420,15 +1486,24 @@ test('待機: 既定と違う計算の知らせには、テキストに足す位
     notesOf('あ、い', 'ja', WAIT_OPTIONS).filter((change) => change.includes('待機')),
     ['読点の前の待機: 300ミリ秒', '読点の後の待機: 200ミリ秒'],
   );
-  assert.deepEqual(notesOf('あ、い', 'ja', {}).filter((change) => change.includes('待機')), []);
-  assert.deepEqual(notesOf('a, b', 'en', WAIT_OPTIONS).filter((change) => change.includes('待機')), []);
+  assert.deepEqual(
+    notesOf('あ、い', 'ja', {}).filter((change) => change.includes('待機')),
+    [],
+  );
+  assert.deepEqual(
+    notesOf('a, b', 'en', WAIT_OPTIONS).filter((change) => change.includes('待機')),
+    [],
+  );
 });
 
 test('待機: 再生は待機を含めた表示時間で進み、待機の間はカーソルが動かない', () => {
   // 条件: 配列qwerty・ローマ字・テキスト「あ、い」・読点の前300ms。基準速度の既定で1ステップ800ms。2打鍵目の表示時間は800+300ms。
   const input = resolve('qwerty', 'あ、い', 'ja');
   const extracted = extractionOf(input, { commaBeforeMs: 300 });
-  assert.deepEqual(extracted.schedule.slice(0, 2).map((step) => step.endMs - step.startMs), [800, 1100]);
+  assert.deepEqual(
+    extracted.schedule.slice(0, 2).map((step) => step.endMs - step.startMs),
+    [800, 1100],
+  );
   let state = startPlayback(seekPlayback(initialPlaybackState(extracted.timing), 1, 3), 3);
   for (let elapsed = 0; elapsed < 1000; elapsed += 100) state = tickPlayback(state, 100, extracted.analysis, extracted.schedule);
   // 1000ms経過: 2打鍵目の表示時間1100msの手前なので、カーソルは動かない

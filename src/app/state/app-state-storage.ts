@@ -1,13 +1,6 @@
-import {
-  APP_STATE_VERSION,
-  type AppStateSliceKey,
-  type AppStateV2,
-} from './app-state.ts';
+import { APP_STATE_VERSION, type AppStateSliceKey, type AppStateV2 } from './app-state.ts';
 import { notifyKeydistStorageChange } from '#platform/browser-storage-events.ts';
-import {
-  createDebouncedPersistenceScheduler,
-  type DebouncedPersistenceScheduler,
-} from '#platform/persistence/debounced-scheduler.ts';
+import { createDebouncedPersistenceScheduler, type DebouncedPersistenceScheduler } from '#platform/persistence/debounced-scheduler.ts';
 import type { KeyValueStorage } from '#platform/persistence/storage.ts';
 
 export const APP_STATE_STORAGE_KEY = 'keydist:app-state';
@@ -39,10 +32,13 @@ export function loadAppStateDocument(storage: KeyValueStorage): AppStateV2 {
 
 export function saveAppStateDocument(storage: KeyValueStorage, state: AppStateV2): boolean {
   try {
-    storage.setItem(APP_STATE_STORAGE_KEY, JSON.stringify({
-      ...state,
-      version: APP_STATE_VERSION,
-    }));
+    storage.setItem(
+      APP_STATE_STORAGE_KEY,
+      JSON.stringify({
+        ...state,
+        version: APP_STATE_VERSION,
+      }),
+    );
     notifyKeydistStorageChange(APP_STATE_STORAGE_KEY);
     return true;
   } catch {
@@ -50,10 +46,7 @@ export function saveAppStateDocument(storage: KeyValueStorage, state: AppStateV2
   }
 }
 
-export function patchAppState(
-  storage: KeyValueStorage,
-  patch: Partial<Omit<AppStateV2, 'version'>>,
-): boolean {
+export function patchAppState(storage: KeyValueStorage, patch: Partial<Omit<AppStateV2, 'version'>>): boolean {
   const current = loadAppStateDocument(storage);
   return saveAppStateDocument(storage, {
     ...current,
@@ -62,18 +55,11 @@ export function patchAppState(
   });
 }
 
-export function patchAppStateSlice<K extends AppStateSliceKey>(
-  storage: KeyValueStorage,
-  key: K,
-  value: NonNullable<AppStateV2[K]>,
-): boolean {
+export function patchAppStateSlice<K extends AppStateSliceKey>(storage: KeyValueStorage, key: K, value: NonNullable<AppStateV2[K]>): boolean {
   return patchAppState(storage, { [key]: value } as Partial<Omit<AppStateV2, 'version'>>);
 }
 
-function removeStorageKeys(
-  storage: KeyValueStorage,
-  keys: readonly string[],
-): void {
+function removeStorageKeys(storage: KeyValueStorage, keys: readonly string[]): void {
   for (const key of keys) {
     try {
       storage.removeItem(key);
@@ -116,7 +102,9 @@ export function createAppStateSliceScheduler<K extends AppStateSliceKey>(
   debounceMs?: number,
 ): AppStateSliceScheduler<NonNullable<AppStateV2[K]>> {
   return createDebouncedPersistenceScheduler({
-    write: (value) => { patchAppStateSlice(storage, key, value); },
+    write: (value) => {
+      patchAppStateSlice(storage, key, value);
+    },
     serialize,
     debounceMs,
   });

@@ -29,9 +29,7 @@ export interface DebouncedPersistenceSchedulerOptions<T> {
 
 export const DEFAULT_DEBOUNCE_MS = 400;
 
-export function createDebouncedPersistenceScheduler<T>(
-  options: DebouncedPersistenceSchedulerOptions<T>,
-): DebouncedPersistenceScheduler<T> {
+export function createDebouncedPersistenceScheduler<T>(options: DebouncedPersistenceSchedulerOptions<T>): DebouncedPersistenceScheduler<T> {
   const debounceMs = options.debounceMs ?? DEFAULT_DEBOUNCE_MS;
   const setTimeoutFn = options.setTimeoutFn ?? setTimeout;
   const clearTimeoutFn = options.clearTimeoutFn ?? clearTimeout;
