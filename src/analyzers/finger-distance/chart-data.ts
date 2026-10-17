@@ -122,7 +122,7 @@ export function distributionSpecsOf(extracted: FingerDistanceExtracted): readonl
       bars: item.distribution.map((entry) => ({
         state: entry.state,
         share: entry.share,
-        tip: `${HAND_LABEL[item.hand]} ${label}: 超過 ${formatState(entry.state)} u が${formatPercent(entry.share)}（${entry.count}打鍵）`,
+        tip: `${HAND_LABEL[item.hand]} ${label}: 超過${formatState(entry.state)}uの打鍵が${formatPercent(entry.share)}（${entry.count}打鍵）`,
       })),
     };
   });

@@ -3,7 +3,7 @@ import test from 'node:test';
 import { countStates, excessState, stateShares } from './excess-distribution.ts';
 
 test('浮動小数の誤差だけ違う値は同じ状態に数える', () => {
-  // 0.1 + 0.2 は 0.30000000000000004 で、0.3 と1ビット違う
+  // 0.1+0.2は0.30000000000000004で、0.3と1ビット違う
   assert.notEqual(0.1 + 0.2, 0.3);
   assert.equal(excessState(0.1 + 0.2), excessState(0.3));
   // 同じ長さを別の順序で作った値（hypotと平方根）
