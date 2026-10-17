@@ -636,9 +636,13 @@ h2.pane-frame-title {
   font-weight: 700;
 }
 
-/* 見出しの語は折り返さない。ペイン名が同じ行に収まらない時は、ペイン名が2行目へ落ちる。 */
+/* 見出しの語は折り返さない。ペイン名が同じ行に収まらない時は、ペイン名が2行目へ落ちる。
+   見出し（h2）にする時も、ブラウザの既定の余白と大きさを持ち込まない。 */
 .settings-window-title-text {
   flex: none;
+  margin: 0;
+  font-size: inherit;
+  font-weight: inherit;
   max-width: 100%;
   min-width: 0;
   overflow: hidden;
