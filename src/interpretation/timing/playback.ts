@@ -666,6 +666,30 @@ export interface PlaybackRateInput {
   }[];
 }
 
+type RateTransition = PlaybackRateInput['transitions'][number];
+
+const transitionsByToStrokeCache = new WeakMap<object, ReadonlyMap<number, readonly RateTransition[]>>();
+
+/**
+ * 遷移を、入る側のストローク（`toStrokeIndex`）から引く索引。各ストロークの遷移は、`transitions`の並びのまま持つ。
+ * 同じ`transitions`の配列には同じ索引を返すので、全ステップの時間を求める間に作るのは1回だけ。
+ * 手のまたがる打鍵は左右両方のChainに入りうるため、Chainごとではなく全遷移から作る。
+ */
+function transitionsByToStroke(
+  transitions: PlaybackRateInput['transitions'],
+): ReadonlyMap<number, readonly RateTransition[]> {
+  const cached = transitionsByToStrokeCache.get(transitions);
+  if (cached !== undefined) return cached;
+  const byToStroke = new Map<number, RateTransition[]>();
+  for (const transition of transitions) {
+    const group = byToStroke.get(transition.toStrokeIndex);
+    if (group) group.push(transition);
+    else byToStroke.set(transition.toStrokeIndex, [transition]);
+  }
+  transitionsByToStrokeCache.set(transitions, byToStroke);
+  return byToStroke;
+}
+
 function playbackTransitionRateFromAnalysis(
   analysis: PlaybackRateInput,
   strokeIndex: number,
@@ -686,8 +710,7 @@ function playbackTransitionRateFromAnalysis(
   // 同手別指はHandTransitionのcandidateをsource of truthとして有向pairを選ぶ。
   // candidateは直前のStrokeの押下を外側、今のStrokeの押下を内側に取った組で、`pressFingerPairs`と同じ並び。
   const sameHand = sameHandRate(
-    analysis.transitions
-      .filter((transition) => transition.toStrokeIndex === strokeIndex)
+    (transitionsByToStroke(analysis.transitions).get(strokeIndex) ?? [])
       .flatMap((transition) => transition.candidates)
       .map((candidate) => [candidate.fromFinger, candidate.toFinger] as const),
     stepsPerSecond,
@@ -1325,6 +1348,77 @@ interface PlaybackEwmaRate {
   actionsPerSecond?: number;
 }
 
+/**
+ * EWMAを1ステップずつ進める状態。ステップ0から順に`advance`を呼ぶと、`snapshot`は
+ * 「そのステップまでを先頭から畳み込んだ値」と同じ値（演算の順序も同じ）を返す。
+ */
+interface PlaybackEwmaState {
+  advance(index: number): void;
+  snapshot(): PlaybackEwmaRate;
+}
+
+function playbackEwmaState(
+  analysis: AggregatedAnalysisResult,
+  stepsPerSecond: PlaybackStepsPerSecond,
+  sameFingerDelay: boolean,
+  halfLifeSeconds: number,
+  calibration: PlaybackCalibration | undefined,
+  speedMultiplier: number,
+  schedule: readonly PlaybackTimingStep[] | undefined,
+): PlaybackEwmaState {
+  const strokes = analysis.strokes;
+  let actionRate: number | undefined;
+  let kanaRate: number | undefined;
+  // 表示するのは直近6件だけなので、それより前の完了済み入力は持たない
+  const recentInputs: string[] = [];
+
+  return {
+    advance(index) {
+      const durationMs = playbackTimingStepTypingMs(schedule, index)
+        ?? playbackStepDurationMs(
+          analysis,
+          index,
+          stepsPerSecond,
+          sameFingerDelay,
+          calibration,
+          speedMultiplier,
+        );
+      if (!(durationMs > 0)) return;
+
+      const decay = 2 ** (-(durationMs / 1000) / halfLifeSeconds);
+      const actionInstant = 1000 / durationMs;
+      actionRate = actionRate === undefined
+        ? actionInstant
+        : decay * actionRate + (1 - decay) * actionInstant;
+
+      const inputIndex = strokes[index].inputIndex;
+      const nextStartsNewInput = index + 1 >= strokes.length
+        || strokes[index + 1].inputIndex !== inputIndex;
+      const completedHere = nextStartsNewInput
+        ? Array.from(strokes[index].inputChar).length
+        : 0;
+      if (completedHere > 0) {
+        const kanaInstant = (completedHere * 1000) / durationMs;
+        kanaRate = kanaRate === undefined
+          ? kanaInstant
+          : decay * kanaRate + (1 - decay) * kanaInstant;
+        recentInputs.push(strokes[index].inputChar);
+        if (recentInputs.length > 6) recentInputs.shift();
+      } else if (kanaRate !== undefined) {
+        // 最初の入力単位が完了するまでは未観測。以後の入力途中Strokeでは0へ時間減衰する。
+        kanaRate *= decay;
+      }
+    },
+    snapshot() {
+      return {
+        inputText: recentInputs.join(''),
+        ...(kanaRate === undefined ? {} : { kanaPerSecond: kanaRate }),
+        ...(actionRate === undefined ? {} : { actionsPerSecond: actionRate }),
+      };
+    },
+  };
+}
+
 function playbackEwmaRate(
   analysis: AggregatedAnalysisResult,
   cursor: number,
@@ -1335,55 +1429,20 @@ function playbackEwmaRate(
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
   schedule?: readonly PlaybackTimingStep[],
 ): PlaybackEwmaRate | undefined {
-  const strokes = analysis.strokes;
-  const end = clampPlaybackCursor(cursor, strokes.length);
+  const end = clampPlaybackCursor(cursor, analysis.strokes.length);
   if (end === 0 || halfLifeSeconds <= 0) return undefined;
 
-  let actionRate: number | undefined;
-  let kanaRate: number | undefined;
-  const completedInputs: string[] = [];
-
-  for (let index = 0; index < end; index++) {
-    const durationMs = playbackTimingStepTypingMs(schedule, index)
-      ?? playbackStepDurationMs(
-        analysis,
-        index,
-        stepsPerSecond,
-        sameFingerDelay,
-        calibration,
-        speedMultiplier,
-      );
-    if (!(durationMs > 0)) continue;
-
-    const decay = 2 ** (-(durationMs / 1000) / halfLifeSeconds);
-    const actionInstant = 1000 / durationMs;
-    actionRate = actionRate === undefined
-      ? actionInstant
-      : decay * actionRate + (1 - decay) * actionInstant;
-
-    const inputIndex = strokes[index].inputIndex;
-    const nextStartsNewInput = index + 1 >= strokes.length
-      || strokes[index + 1].inputIndex !== inputIndex;
-    const completedHere = nextStartsNewInput
-      ? Array.from(strokes[index].inputChar).length
-      : 0;
-    if (completedHere > 0) {
-      const kanaInstant = (completedHere * 1000) / durationMs;
-      kanaRate = kanaRate === undefined
-        ? kanaInstant
-        : decay * kanaRate + (1 - decay) * kanaInstant;
-      completedInputs.push(strokes[index].inputChar);
-    } else if (kanaRate !== undefined) {
-      // 最初の入力単位が完了するまでは未観測。以後の入力途中Strokeでは0へ時間減衰する。
-      kanaRate *= decay;
-    }
-  }
-
-  return {
-    inputText: completedInputs.slice(-6).join(''),
-    ...(kanaRate === undefined ? {} : { kanaPerSecond: kanaRate }),
-    ...(actionRate === undefined ? {} : { actionsPerSecond: actionRate }),
-  };
+  const state = playbackEwmaState(
+    analysis,
+    stepsPerSecond,
+    sameFingerDelay,
+    halfLifeSeconds,
+    calibration,
+    speedMultiplier,
+    schedule,
+  );
+  for (let index = 0; index < end; index++) state.advance(index);
+  return state.snapshot();
 }
 
 /** 直近の完了済みStrokeを確定Timingで割った移動平均アクション毎秒。 */
@@ -1492,6 +1551,24 @@ export function playbackRateChartData(
 ): PlaybackRateChartPoint[] {
   const strokes = analysis.strokes;
   const points: PlaybackRateChartPoint[] = [{ cursor: 0, inputText: '' }];
+  // ストロークごとに、Chainの中にあるか。カーソルごとに全Chainを走査しない
+  const inChain = new Uint8Array(strokes.length);
+  for (const chain of analysis.chains) {
+    const to = Math.min(chain.endStrokeIndex, strokes.length);
+    for (let at = Math.max(0, chain.startStrokeIndex); at < to; at++) inChain[at] = 1;
+  }
+  // EWMAはカーソルを1つ進めるたびに、前のカーソルの状態から続ける
+  const ewmaState = average === 'ewma' && halfLifeSeconds > 0
+    ? playbackEwmaState(
+      analysis,
+      stepsPerSecond,
+      sameFingerDelay,
+      halfLifeSeconds,
+      calibration,
+      speedMultiplier,
+      schedule,
+    )
+    : undefined;
   for (let cursor = 1; cursor <= strokes.length; cursor++) {
     const recent = average === 'sma'
       ? playbackRecentRateWindow(
@@ -1505,18 +1582,8 @@ export function playbackRateChartData(
         schedule,
       )
       : undefined;
-    const ewma = average === 'ewma'
-      ? playbackEwmaRate(
-        analysis,
-        cursor,
-        stepsPerSecond,
-        sameFingerDelay,
-        halfLifeSeconds,
-        calibration,
-        speedMultiplier,
-        schedule,
-      )
-      : undefined;
+    ewmaState?.advance(cursor - 1);
+    const ewma = ewmaState?.snapshot();
     const kanaPerSecond = average === 'ewma'
       ? ewma?.kanaPerSecond
       : playbackRecentKanaPerSecond(
@@ -1539,8 +1606,7 @@ export function playbackRateChartData(
       inputText: ewma?.inputText ?? (recent ? playbackRateWindowInputText(strokes, recent) : ''),
       ...(kanaPerSecond === undefined ? {} : { kanaPerSecond }),
       ...(actionsPerSecond === undefined ? {} : { actionsPerSecond }),
-      chain: analysis.chains.some((chain) =>
-        cursor - 1 >= chain.startStrokeIndex && cursor - 1 < chain.endStrokeIndex),
+      chain: inChain[cursor - 1] === 1,
       arpeggio: analysis.annotations[cursor - 1]?.inArpeggio ?? false,
     });
   }

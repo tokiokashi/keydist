@@ -23,12 +23,13 @@ import {
   playbackStrokeDurationMs,
   playbackSameFingerKeyMotions,
   playbackTimeTotals,
+  playbackTimingSchedule,
   reconcilePlaybackStateAfterAnalysisRefresh,
   playbackTrailKeys,
   playbackTrailOrders,
   stepPlayback,
 } from './playback.ts';
-import { buildGeometry } from '#input/shapes/geometry.ts';
+import { assignmentWithHomeKeys, buildGeometry, DEFAULT_FINGER_ASSIGNMENT } from '#input/shapes/geometry.ts';
 import { generateTrace } from '#trace/generate.ts';
 import {
   faceFromEntries,
@@ -1116,4 +1117,45 @@ test('ローマ字の入力の行: 実際の打鍵の列で、拗音と、コン
   assert.deepEqual(kyou.strokes.map((stroke) => stroke.char), ['k', 'you']);
   assert.deepEqual(playbackRomajiInputPreview(kyou.strokes, 1).map(unit), ['current:k|you']);
   assert.deepEqual(playbackRomajiInputPreview(kyou.strokes, 2).map(unit), ['current:きょう']);
+});
+
+test('EWMAの速度グラフは、カーソルごとに先頭から畳み込んだ時の値と1ビットも違わない', () => {
+  // 値は、カーソルごとに先頭から計算し直す実装で求めた値
+  const layout = LAYOUT_BY_ID.get('asuka')!;
+  const geometry = buildGeometry('row-staggered', assignmentWithHomeKeys(DEFAULT_FINGER_ASSIGNMENT, layout.homeKeys));
+  const trace = generateTrace(
+    'わがはいはねこである。なまえはまだない。どこでうまれたかとんとけんとうがつかぬ、なんでもうすぐらいじめじめしたところでにゃーにゃーないていたことだけはきおくしている。',
+    layout,
+    geometry,
+    { windowSize: 3, sfbHomeCost: true },
+  );
+  const analysis = analyzeStrokeStructure(trace.strokes);
+  const calibration = {
+    actionsPerSecond: 6,
+    actionsPerSecondByDirection: { 'L→R': 6.5, 'R→L': 5.5 },
+    sameHandDifferentFingerActionsPerSecond: 5,
+    sameHandDifferentFingerActionsPerSecondByPair: { 'LM:LI': 6, 'RI:RM': 5.2, 'LR:LM': 4.4 },
+    fingerRepeatMs: { LI: 150, RI: 140, LM: 160 },
+    fingerMoveMsPerUnit: { LI: 40, RI: 35, LM: 50 },
+    fallbackRepeatMs: 170,
+    fallbackMoveMsPerUnit: 45,
+    keystrokeOverheadMs: { other: 10, chain: -5, arpeggio: 3, repeat: 20, sfb: 15 },
+    simultaneousOverheadMs: { 'both-hands': 8, 'one-hand': 12, thumb: 6 },
+    measuredAt: 0,
+  };
+  const schedule = playbackTimingSchedule(analysis, 4, true, calibration, 1, { allFingerMovementDelay: true, geometry });
+  const chart = playbackRateChartDataAnalysis(analysis, 4, true, 8, calibration, 1, schedule, 'ewma', 0.7);
+  assert.equal(chart.length - 1, 83);
+  const expected = [
+    { cursor: 1, inputText: 'わ', rate: 5.474452554744526, chain: true, arpeggio: false },
+    { cursor: 2, inputText: 'わが', rate: 5.4737012654331245, chain: true, arpeggio: false },
+    { cursor: 5, inputText: 'わがはいは', rate: 5.387944290608676, chain: true, arpeggio: true },
+    { cursor: 13, inputText: 'である。なま', rate: 5.4322670076555175, chain: true, arpeggio: false },
+    { cursor: 30, inputText: 'まれたかとん', rate: 5.368970199810067, chain: true, arpeggio: true },
+    { cursor: 47, inputText: 'んでもうすぐ', rate: 5.650028163372759, chain: true, arpeggio: false },
+    { cursor: 83, inputText: 'くしている。', rate: 5.491430856085303, chain: true, arpeggio: false },
+  ];
+  for (const { cursor, rate, ...rest } of expected) {
+    assert.deepEqual(chart[cursor], { cursor, ...rest, kanaPerSecond: rate, actionsPerSecond: rate });
+  }
 });
