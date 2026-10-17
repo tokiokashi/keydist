@@ -8,7 +8,7 @@ import { createContext, useContext, type ComponentType, type ReactNode } from 'r
 export interface SetupLinkProps {
   /** 開くSetupのid。 */
   readonly setupId: string;
-  readonly className?: string;
+  readonly className?: string | undefined;
   readonly children: ReactNode;
 }
 

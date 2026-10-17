@@ -22,7 +22,7 @@ export interface DebouncedPersistenceSchedulerOptions<T> {
    * （他タブで変わった後に同じ本文を打ち直すと保存されなくなる）
    */
   serialize?: (value: T) => string;
-  debounceMs?: number;
+  debounceMs?: number | undefined;
   setTimeoutFn?: typeof setTimeout;
   clearTimeoutFn?: typeof clearTimeout;
 }

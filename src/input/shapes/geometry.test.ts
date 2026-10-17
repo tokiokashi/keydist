@@ -271,7 +271,7 @@ function dualThumbShape(thumbHome?: Partial<Record<'LT' | 'RT', string>>): Physi
       { id: 'space', finger: 'RT', col: 5.5, y: 4 },
       { id: 'thumb-r2', finger: 'RT', col: 6.5, y: 4 }, // ホームの1u右
     ],
-    thumbHome,
+    ...(thumbHome === undefined ? {} : { thumbHome }),
   };
 }
 

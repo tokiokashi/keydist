@@ -38,7 +38,7 @@ export function contentOf(layout: UserLayout): UserLayoutContent {
   return {
     name: layout.name,
     rows: [layout.rows[0], layout.rows[1], layout.rows[2], layout.rows[3]],
-    romaji: layout.romaji,
+    ...(layout.romaji === undefined ? {} : { romaji: layout.romaji }),
     homeKeys: { ...layout.homeKeys },
   };
 }
@@ -53,7 +53,7 @@ export function normalizeContent(content: UserLayoutContent): UserLayoutContent 
   return {
     name: content.name.trim(),
     rows: [content.rows[0].trim(), content.rows[1].trim(), content.rows[2].trim(), content.rows[3].trim()],
-    romaji: content.romaji,
+    ...(content.romaji === undefined ? {} : { romaji: content.romaji }),
     homeKeys,
   };
 }

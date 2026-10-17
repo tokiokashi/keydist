@@ -168,9 +168,9 @@ export interface ComboPresentation {
 export type ComboDefinition = [
   output: string,
   inputs: string[],
-  condition?: ComboCondition,
-  presentation?: ComboPresentation,
-  classifications?: readonly InputClassification[],
+  condition?: ComboCondition | undefined,
+  presentation?: ComboPresentation | undefined,
+  classifications?: readonly InputClassification[] | undefined,
 ];
 
 /** withCombosで解決済みのコンボ。表示・検証で元定義と物理キー集合を参照する。 */

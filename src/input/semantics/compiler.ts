@@ -380,13 +380,14 @@ const faceRoles = (
     throw new Error(`modifierGroupsを明示したFaceは全trigger keyを分類する必要がある: ${missing.join(', ')}`);
   }
 
-  return normalizeRoles(triggerKeys.map((key) => ({
-    key,
-    role: 'modifier' as const,
-    ...(normalizedGroups.get(key) === undefined
-      ? {}
-      : { modifierGroupId: normalizedGroups.get(key) }),
-  })));
+  return normalizeRoles(triggerKeys.map((key) => {
+    const modifierGroupId = normalizedGroups.get(key);
+    return {
+      key,
+      role: 'modifier' as const,
+      ...(modifierGroupId === undefined ? {} : { modifierGroupId }),
+    };
+  }));
 };
 
 const faceCells = (face: Face): readonly { key: PhysicalKeyId; output: string }[] => {

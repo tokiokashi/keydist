@@ -163,7 +163,7 @@ export function toLayout(def: UserLayout): Layout {
     // 組み込みの英字配列と同じく、単打の段定義には通常Shiftの出力を付ける。
     // 直接かな配列は組み込みにShift記号が無いので付けない。
     const base = def.direct ? layout : withShiftedOutputs(layout);
-    return { ...base, homeKeys: def.homeKeys };
+    return { ...base, ...(def.homeKeys === undefined ? {} : { homeKeys: def.homeKeys }) };
   }
   const map = new Map(layout.map);
   const canonicalInputs = new Map<string, InputAlternative[]>(
@@ -189,7 +189,7 @@ export function toLayout(def: UserLayout): Layout {
     map,
     canonicalInputs,
     legends,
-    homeKeys: def.homeKeys,
+    ...(def.homeKeys === undefined ? {} : { homeKeys: def.homeKeys }),
   };
 }
 

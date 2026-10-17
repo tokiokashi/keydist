@@ -38,7 +38,11 @@ export function playbackScheduleOf(
     timing.sameFingerDelay,
     timing.calibration,
     timing.speedMultiplier,
-    { allFingerMovementDelay: timing.allFingerMovementDelay, geometry, waitGapsMs },
+    {
+      allFingerMovementDelay: timing.allFingerMovementDelay,
+      geometry,
+      ...(waitGapsMs === undefined ? {} : { waitGapsMs }),
+    },
   );
 }
 

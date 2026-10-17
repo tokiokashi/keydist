@@ -618,7 +618,7 @@ function MovementProfilePlot({
                     y2: vector.dy * unitsPerSvgUnit,
                     opacity: 0.24 + 0.7 * strength,
                   }}
-                  exit={reduceMotion ? undefined : { opacity: 0 }}
+                  {...(reduceMotion ? {} : { exit: { opacity: 0 } })}
                   strokeWidth={0.85 + 2.45 * strength}
                   transition={reduceMotion
                     ? { duration: 0 }

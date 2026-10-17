@@ -48,7 +48,7 @@ export interface AnalyzerPaneParts<Definition, Options, BodyProps, TargetItemVal
   /** 何を描くかを1〜2文で。見出しのⓘで出す。操作の説明や経緯は書かない。 */
   readonly description: string;
   /** 短い説明に収まらない説明。あれば見出しのⓘは小窓ではなくモーダルを開く。 */
-  readonly help?: InfoHelp;
+  readonly help?: InfoHelp | undefined;
   /** 本体の推奨幅 [rem]。省略すると既定（`recommended-width.ts`）。 */
   readonly recommendedWidthRem?: number;
   readonly Body: ComponentType<BodyProps>;

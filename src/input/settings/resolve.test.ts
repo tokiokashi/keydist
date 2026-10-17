@@ -43,7 +43,7 @@ function contextFor(
   const targetKind = options.targetKind ?? (options.setupId === undefined ? 'layout' : 'setup');
   return targetKind === 'layout'
     ? { ...base, targetKind }
-    : { ...base, targetKind, setupId: options.setupId };
+    : { ...base, targetKind, ...(options.setupId === undefined ? {} : { setupId: options.setupId }) };
 }
 
 const ANY_LEVEL = new Set<'global' | 'shape' | 'inputMethod' | 'layout' | 'setup'>([

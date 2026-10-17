@@ -1,5 +1,4 @@
 import {
-  type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
@@ -9,7 +8,7 @@ import {
   useState,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { motion } from 'motion/react';
+import { motion, type MotionStyle } from 'motion/react';
 import { resolvePanelLayout, type PanelId } from './panel-registry.ts';
 import type { PanelRect, WorkspacePanelState } from './workspace-state.ts';
 import { clampPanelRectToViewport } from './viewport-clamp.ts';
@@ -410,7 +409,7 @@ export function WorkspacePanel({
   };
 
   const shellClassName = ['workspace-panel', className].filter(Boolean).join(' ');
-  const shellStyle: CSSProperties | undefined = mode === 'floating' && panel.rect !== undefined
+  const shellStyle: MotionStyle | undefined = mode === 'floating' && panel.rect !== undefined
     ? {
         left: panel.rect.x,
         top: panel.rect.y,
@@ -436,7 +435,7 @@ export function WorkspacePanel({
       layoutId={`workspace-panel:${id}`}
       layoutRoot={mode === 'floating'}
       ref={panelRef}
-      style={shellStyle}
+      {...(shellStyle === undefined ? {} : { style: shellStyle })}
       transition={{
         layout: {
           type: 'spring',

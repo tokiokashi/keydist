@@ -15,7 +15,7 @@ export interface PaneMenuItem {
   /** 入り・切りの項目で、今入っているか（`menuitemcheckbox`として読み上げる）。 */
   readonly checked?: boolean;
   /** 項目の先頭に出す絵（対象の持ち方）。あれば1行で出す。 */
-  readonly glyph?: { readonly kind: BindingGlyphKind; readonly number?: number };
+  readonly glyph?: { readonly kind: BindingGlyphKind; readonly number?: number | undefined };
   /** 読み上げ名。省略時は`label`。 */
   readonly ariaLabel?: string;
   readonly onSelect: () => void;
@@ -53,7 +53,7 @@ export function PaneMenu({
   readonly caption?: string;
   /** メニューをボタンのどちらの端にそろえて開くか。既定は右端（見出しの右寄りのボタン向け）。 */
   readonly align?: 'start' | 'end';
-  readonly className?: string;
+  readonly className?: string | undefined;
   readonly data?: Readonly<Record<string, string>>;
 }) {
   const accessibleName = label ?? `${paneName}の操作`;
@@ -279,7 +279,7 @@ const CHAIN_PATH = 'M6.7 9.3l2.6-2.6M7.2 4.6l.9-.9a2.5 2.5 0 013.5 3.5l-.9.9M8.8
  * 新しい連動は鎖に「＋」。番号は組の見分け用で、対象の色（配列ごとの色）とは無関係。
  * 文字の名前は持たず、読み上げ名は呼び出し側のボタン・項目が持つ。
  */
-export function BindingGlyph({ kind, number }: { readonly kind: BindingGlyphKind; readonly number?: number }) {
+export function BindingGlyph({ kind, number }: { readonly kind: BindingGlyphKind; readonly number?: number | undefined }) {
   return (
     <span className="pane-binding-icon" data-linked={kind !== 'pin'}>
       {kind === 'pin' ? (

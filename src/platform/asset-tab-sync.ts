@@ -34,11 +34,11 @@ export interface AssetTabSyncOptions<T> {
   readonly storageKey: string;
   readonly codec: AssetCodec<T>;
   /** 既定は`window.localStorage`。テストでは偽物を注入する。 */
-  readonly storage?: KeyValueStorage;
+  readonly storage?: KeyValueStorage | undefined;
   /** 既定は`browser-storage-events.ts`の購読。テストでは偽物を注入する。 */
-  readonly subscribe?: typeof subscribeKeydistStorageChanges;
+  readonly subscribe?: typeof subscribeKeydistStorageChanges | undefined;
   /** 既定は`browser-storage-events.ts`の通知。テストでは偽物を注入する。 */
-  readonly notify?: typeof notifyKeydistStorageChange;
+  readonly notify?: typeof notifyKeydistStorageChange | undefined;
   /**
    * 他タブがこの資産を書き換えた時に呼ばれる。decodeが失敗した場合は呼ばれず、
    * `onLoadFailure`（あれば）が呼ばれる（decodeが失敗したら外部変更を取り込まず、

@@ -49,7 +49,11 @@ export function createEngineWorkerHandler(
     try {
       return { id: request.id, ok: true, value: solve(request) };
     } catch (error) {
-      if (error instanceof Error) return { id: request.id, ok: false, message: error.message, stack: error.stack };
+      if (error instanceof Error) {
+        return error.stack === undefined
+          ? { id: request.id, ok: false, message: error.message }
+          : { id: request.id, ok: false, message: error.message, stack: error.stack };
+      }
       return { id: request.id, ok: false, message: String(error) };
     }
   };

@@ -8,7 +8,7 @@ import { createElement } from 'react';
  */
 export function WindowTitle({ title, paneName, heading }: {
   readonly title: string;
-  readonly paneName?: string;
+  readonly paneName?: string | undefined;
   readonly heading: boolean;
 }) {
   return createElement(

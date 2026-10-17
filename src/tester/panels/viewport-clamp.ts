@@ -6,8 +6,8 @@ export interface ViewportSize {
 }
 
 export interface PanelSizeConstraints {
-  minWidth?: number;
-  minHeight?: number;
+  minWidth?: number | undefined;
+  minHeight?: number | undefined;
 }
 
 function finiteNonNegative(value: number): number {

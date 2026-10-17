@@ -945,8 +945,9 @@ test('再生layer groupingはinputRoleではなくfaceLayerIdsをauthorityにす
 test('Face再生でaggregation mappingが欠落していればerrorにする', () => {
   const layout = LAYOUT_BY_ID.get('shingeta')!;
   const stroke = generateTrace('あ', layout, buildGeometry('row-staggered')).strokes[0];
+  const { faceLayerIds: _faceLayerIds, ...withoutFaceLayerIds } = layout;
   assert.throws(
-    () => playbackStrokeDisplay({ ...layout, faceLayerIds: undefined }, stroke),
+    () => playbackStrokeDisplay(withoutFaceLayerIds, stroke),
     /faceLayerIdsの明示が必要/,
   );
 });

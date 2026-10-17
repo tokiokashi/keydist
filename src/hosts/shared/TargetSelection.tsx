@@ -25,9 +25,9 @@ export interface TargetSummaryItem {
   /** hoverに出すフルの名前。 */
   readonly fullName: string;
   /** 集合の中で配った色。色を使わないAnalyzerでは省く。 */
-  readonly color?: string;
+  readonly color?: string | undefined;
   /** 色以外の手がかり（点の形）。色と同じ番号から決まる。 */
-  readonly mark?: TargetMark;
+  readonly mark?: TargetMark | undefined;
 }
 
 export interface TargetSelectionProps {

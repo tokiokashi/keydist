@@ -30,12 +30,12 @@ export interface ConditionSummaryProps {
    * モーダルの先頭に出す、対象の実体（配列・物理配列・指の割当）の名前。解決前（読み込み中）は省略する。
    * 対象のフル名（既定と違う条件つき）は出さない。条件の差分は各行が出どころつきで出すため。
    */
-  readonly header?: ConditionHeaderInfo;
+  readonly header?: ConditionHeaderInfo | undefined;
   /**
    * 複数の対象を持つペインで、共通の条件（`rows`）と違う対象とその項目。全対象が同じなら空か省略。
    * 単一の対象のペインは渡さない。
    */
-  readonly targetDiffs?: readonly ConditionTargetDiff[];
+  readonly targetDiffs?: readonly ConditionTargetDiff[] | undefined;
   /** 全体のレベルの条件を書き換えるための手持ち。 */
   readonly editor: ConditionEditorContext;
   /**

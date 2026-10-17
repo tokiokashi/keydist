@@ -49,7 +49,7 @@ interface Notice {
   readonly text: string;
   readonly undoable: boolean;
   /** 不具合報告用の原文（読み込みで捨てた値の診断など）。 */
-  readonly details?: readonly string[];
+  readonly details?: readonly string[] | undefined;
   /** 操作の直前の資産。これと違う参照になった最初の描画で、結果の反映後の参照を`settled`に記録する。 */
   readonly base: { readonly overrides: unknown; readonly library: unknown };
   readonly settled?: { readonly overrides: unknown; readonly library: unknown };

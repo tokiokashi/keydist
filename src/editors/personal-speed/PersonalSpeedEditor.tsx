@@ -110,7 +110,7 @@ export interface PersonalSpeedEditorProps {
   readonly onSave: (calibration: PlaybackCalibration) => void;
   readonly onDiscard: () => void;
   /** 計算の詳細を読める再生時間モデルの仕様書のURL。 */
-  readonly specHref?: string;
+  readonly specHref?: string | undefined;
 }
 
 /** 文章を打つ測定の準備。打てる時は文ごとの測定の計画を持ち、打てない時は理由の文を持つ。 */
@@ -164,7 +164,7 @@ interface ValueRowProps {
   readonly onCommit: (fieldId: string) => void;
   readonly onMeasure: (tasks: readonly CalibrationTask[]) => void;
   /** 行の下に出す注記。 */
-  readonly note?: string;
+  readonly note?: string | undefined;
 }
 
 /**
@@ -250,7 +250,7 @@ interface Notice {
   readonly kind: 'message' | 'error';
   readonly text: string;
   /** 文章を打つ測定を終えた時の表。知らせと一緒に出し、一緒に消える。 */
-  readonly table?: SentenceResultTableData;
+  readonly table?: SentenceResultTableData | undefined;
 }
 
 function NoticeLines({ notice }: { readonly notice: Notice | undefined }) {
