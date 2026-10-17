@@ -108,6 +108,7 @@ export function TextChip(props: TextChipProps) {
         ref={buttonRef}
         type="button"
         className="context-chip text-chip"
+        aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
         title={resolved.name}
