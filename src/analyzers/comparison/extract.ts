@@ -5,6 +5,7 @@ import {
   type SetAnalyzerDefinition,
   type SetAnalyzerExtractContext,
 } from '#analyzers/contract.ts';
+import { countBigramCombinations } from '#interpretation/bigram-combinations.ts';
 import { DEFAULT_METRIC_CONDITIONS, rightHandShare, sameFingerRate, type Metrics } from '#interpretation/metrics.ts';
 import { analysisTargetKey, type AnalysisTarget } from '#input/setup/index.ts';
 import { ALL_FINGERS, type Finger, type Key } from '#input/shapes/geometry.ts';
@@ -67,7 +68,8 @@ export interface ComparisonExtracted {
 }
 
 /** `Metrics`から全列を読み出す純関数。`options.ts`のコメント参照。 */
-export function computeComparisonRowValues(metrics: Metrics): ComparisonRowValues {
+export function computeComparisonRowValues(metrics: Metrics, trace: Trace): ComparisonRowValues {
+  const bigrams = countBigramCombinations(trace);
   const adjacentCount = metrics.adjacent.length || 1;
   const adjacentMean = metrics.adjacent.reduce((sum, item) => sum + item.meanExcess, 0) / adjacentCount;
   const adjacentStdDev = metrics.adjacent.reduce((sum, item) => sum + item.stdDev, 0) / adjacentCount;
@@ -87,11 +89,13 @@ export function computeComparisonRowValues(metrics: Metrics): ComparisonRowValue
     adjacentStdDev,
     rightHandDistanceShare: rightHandShare(metrics.perFinger),
     rightHandPressShare: rightHandShare(metrics.perFingerPresses),
+    physicalBigramCombinations: bigrams.physical,
+    logicalBigramCombinations: bigrams.withTriggers,
   };
 }
 
 function memberToRow(member: AnalyzerSetMember): ComparisonOkRow {
-  return { kind: 'ok', targetKey: analysisTargetKey(member.target), values: computeComparisonRowValues(member.metrics) };
+  return { kind: 'ok', targetKey: analysisTargetKey(member.target), values: computeComparisonRowValues(member.metrics, member.trace) };
 }
 
 function failureToRow(failure: AnalyzerSetMemberFailure): ComparisonFailedRow {

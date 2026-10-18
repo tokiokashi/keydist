@@ -58,11 +58,11 @@ test('computeComparisonRowValues: interpretation/metrics.tsを同条件で直接
   // どちらも同じ入力なので、同じ値になるはず（テスト自身の前提確認）。
   assert.equal(engineMetrics.totalUnits, directMetrics.totalUnits);
 
-  const row = computeComparisonRowValues(engineMetrics);
+  const row = computeComparisonRowValues(engineMetrics, traceResult.trace);
   const adjacentMean = directMetrics.adjacent.reduce((sum, item) => sum + item.meanExcess, 0) / directMetrics.adjacent.length;
   const adjacentStdDev = directMetrics.adjacent.reduce((sum, item) => sum + item.stdDev, 0) / directMetrics.adjacent.length;
 
-  const { rightHandDistanceShare, rightHandPressShare, ...existing } = row;
+  const { rightHandDistanceShare, rightHandPressShare, physicalBigramCombinations, logicalBigramCombinations, ...existing } = row;
   assert.deepEqual(existing, {
     actions: directMetrics.actions,
     totalUnits: directMetrics.totalUnits,
@@ -80,6 +80,7 @@ test('computeComparisonRowValues: interpretation/metrics.tsを同条件で直接
   });
   assert.ok(rightHandDistanceShare > 0 && rightHandDistanceShare < 100);
   assert.ok(rightHandPressShare > 0 && rightHandPressShare < 100);
+  assert.ok(physicalBigramCombinations > 0 && logicalBigramCombinations >= physicalBigramCombinations);
 });
 
 test('右手の割合: 指ごとの距離のAnalyzerの右手の小計と同じ値（%）になる', () => {
@@ -96,9 +97,10 @@ test('右手の割合: 指ごとの距離のAnalyzerの右手の小計と同じ�
     });
     assert.ok(resolution.ok);
     if (!resolution.ok) return;
-    const { metrics } = createEngineCache().getInterpretation(resolution.input);
+    const cache = createEngineCache();
+    const { metrics } = cache.getInterpretation(resolution.input);
     const right = computeFingerDistanceExtraction(metrics).hands.right;
-    const row = computeComparisonRowValues(metrics);
+    const row = computeComparisonRowValues(metrics, cache.getTrace(resolution.input).trace);
     assert.ok(Math.abs(row.rightHandDistanceShare - right.distanceShare * 100) < 1e-9, text);
     assert.ok(Math.abs(row.rightHandPressShare - right.pressShare * 100) < 1e-9, text);
   }
@@ -118,10 +120,12 @@ test('右手の割合: 右手だけ・左手だけ・0の入力で、親指を�
   });
   assert.ok(resolution.ok);
   if (!resolution.ok) return;
-  const base = createEngineCache().getInterpretation(resolution.input).metrics;
+  const cache = createEngineCache();
+  const base = cache.getInterpretation(resolution.input).metrics;
+  const { trace } = cache.getTrace(resolution.input);
   const only = (fingers: readonly Finger[]) => Object.assign({ ...zero }, ...fingers.map((finger) => ({ [finger]: 1 })));
   const row = (perFinger: Record<Finger, number>, perFingerPresses: Record<Finger, number>) =>
-    computeComparisonRowValues({ ...base, perFinger, perFingerPresses });
+    computeComparisonRowValues({ ...base, perFinger, perFingerPresses }, trace);
 
   const none = row(zero, zero);
   assert.equal(none.rightHandDistanceShare, 0);
