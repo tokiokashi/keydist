@@ -423,7 +423,7 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options, onOp
       </div>
 
       <div className="playback-rate-panel">
-        <h3 className="playback-rate-heading">かな/秒・アクション/秒の平均推移（打鍵時間で計算）</h3>
+        <h3 className="playback-rate-heading">かな/秒・アクション/秒の平均推移</h3>
         <PlaybackRateChart
           points={rateChart}
           cursor={state.cursor}

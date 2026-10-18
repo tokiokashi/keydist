@@ -38,7 +38,7 @@ import { booleanUrlCodec, defineOption, defineOptions, numberUrlCodec, picklistU
  *   個人速度で計算している間に、保存値の部分ごとに時間へ使うか。使わない部分は、時間の計算へ渡す保存値から外す
  *   （`timing-conditions.ts`）。個人速度を適用しない時は読まれない
  * - `commaBeforeMs` / `commaAfterMs` / `periodBeforeMs` / `periodAfterMs`: 日本語のテキストの読点・句点の前後に足す待機 [ミリ秒]。
- *   打鍵の時間とは別に持ち、速度グラフの値は変えない（`spec/playback-timing.md` §3.9）
+ *   打鍵の時間とは別に持つ。速度グラフの値には、待機を含む表示時間として入る（`spec/playback-timing.md` §3.9）
  * - `rateAverage` / `rateWindow` / `rateHalfLifeSeconds`: 速度グラフの平均の方式・SMAの直近Stroke数・EWMAの半減時間 [秒]
  * - `showChain` / `showArpeggio` / `showSameFingerMotion`: 構造の動的表示。Chain・Arpeggioの区間の中で、
  *   今のステップの押下へ向かうキーの動きと順番を配列図に重ねる

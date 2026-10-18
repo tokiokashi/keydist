@@ -924,12 +924,13 @@ export interface PlaybackTimingOptions {
   waitGapsMs?: readonly number[];
 }
 
+/** ステップの表示時間（待機を含む）。かな/秒・アクション/秒の平均は、この時間で求める。 */
 export function playbackTimingStepDurationMs(schedule: readonly PlaybackTimingStep[] | undefined, strokeIndex: number): number | undefined {
   const step = schedule?.[strokeIndex];
   return step ? Math.max(0, step.endMs - step.startMs) : undefined;
 }
 
-/** ステップの打鍵の時間（待機を除く表示時間）。かな/秒・アクション/秒の平均は、この時間で求める。 */
+/** ステップの打鍵の時間（待機を除く表示時間）。打鍵時間の合計に使う。 */
 export function playbackTimingStepTypingMs(schedule: readonly PlaybackTimingStep[] | undefined, strokeIndex: number): number | undefined {
   const step = schedule?.[strokeIndex];
   if (!step) return undefined;
@@ -1181,7 +1182,7 @@ function playbackRecentRateWindow(
   const durationMs = Array.from({ length: end - start }, (_, offset) => start + offset).reduce(
     (total, index) =>
       total +
-      (playbackTimingStepTypingMs(schedule, index) ??
+      (playbackTimingStepDurationMs(schedule, index) ??
         playbackStepDurationMs(analysis, index, stepsPerSecond, sameFingerDelay, calibration, speedMultiplier)),
     0,
   );
@@ -1234,7 +1235,7 @@ function playbackEwmaState(
   return {
     advance(index) {
       const durationMs =
-        playbackTimingStepTypingMs(schedule, index) ??
+        playbackTimingStepDurationMs(schedule, index) ??
         playbackStepDurationMs(analysis, index, stepsPerSecond, sameFingerDelay, calibration, speedMultiplier);
       if (!(durationMs > 0)) return;
 
