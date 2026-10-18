@@ -268,7 +268,7 @@ for (const sidebar of ['pinned', 'unpinned'] as const) {
  * ペインの幅は面の幅に依らないので、各ペインの中身は1920pxの面と同じに収まる（どのペインも中でスクロールしない）。
  * 右端のペインを見るには面を横にスクロールする。
  */
-test('1440x900（サイドバー固定）では、24列の並びは面の中で横にスクロールし、どのペインも中でスクロールしない', async ({ page }) => {
+test('1440x900（サイドバー固定）では、並びは面の中で横にスクロールし、どのペインも中でスクロールしない', async ({ page }) => {
   await openSampleAt(page, { width: 1440, height: 900 }, 'pinned');
   const m = await page.evaluate(() => {
     const area = document.querySelector('.workspace-grid-area')!;
@@ -284,13 +284,13 @@ test('1440x900（サイドバー固定）では、24列の並びは面の中で�
 
 const LAYOUT_DETAIL_BUTTON = '配列の詳細と比較のサンプルを作る';
 const LAYOUT_DETAIL_ANALYZERS = [
-  'playback',
-  'heatmap-layers',
   'heatmap',
-  'finger-distance',
-  'finger-distance',
+  'heatmap-layers',
+  'playback',
   'bigram-flow',
   'comparison',
+  'finger-distance',
+  'finger-distance',
   'n-sensitivity',
   'finger-matrix',
   'finger-matrix',
@@ -298,7 +298,7 @@ const LAYOUT_DETAIL_ANALYZERS = [
   'finger-matrix',
 ];
 
-test('トップの「配列の詳細と比較のサンプルを作る」で、12個のペインを持つWorkspaceができて開く。詳細の段が上、比較の段が下', async ({ page }) => {
+test('トップの「配列の詳細と比較のサンプルを作る」で、12個のペインを持つWorkspaceができて開く。決めた位置に並ぶ', async ({ page }) => {
   await page.goto('/');
   await waitForHydration(page);
   await page.locator('.hero').getByRole('button', { name: LAYOUT_DETAIL_BUTTON }).click();
@@ -309,8 +309,22 @@ test('トップの「配列の詳細と比較のサンプルを作る」で、12
   expect(workspace.panes.map((pane) => pane.analyzerId)).toEqual(LAYOUT_DETAIL_ANALYZERS);
   // 全部が同じ連動の組に従う
   expect(new Set(workspace.panes.map((pane) => pane.binding.group))).toEqual(new Set(['link-1']));
-  const detailBottom = Math.max(...workspace.grid.slice(0, 6).map((item) => item.y + item.h));
-  expect(Math.min(...workspace.grid.slice(6).map((item) => item.y))).toBeGreaterThanOrEqual(detailBottom);
+  // ペインを詰める設定で、決めた位置（x, y, w, h）に並ぶ
+  expect((workspace as { compactPanes?: boolean }).compactPanes).toBe(true);
+  expect(workspace.grid.map(({ x, y, w, h }) => [x, y, w, h])).toEqual([
+    [0, 0, 8, 10],
+    [8, 0, 8, 10],
+    [0, 10, 8, 21],
+    [8, 10, 8, 21],
+    [0, 31, 18, 9],
+    [0, 40, 8, 23],
+    [8, 40, 8, 12],
+    [8, 52, 8, 11],
+    [0, 63, 12, 10],
+    [0, 73, 12, 10],
+    [0, 83, 12, 10],
+    [0, 93, 12, 10],
+  ]);
 });
 
 test('空のWorkspaceの「配列の詳細と比較のサンプルで始める」で、今のWorkspaceに12個のペインが入る', async ({ page }) => {
@@ -380,7 +394,7 @@ for (const size of [
       // N感度は畳んだ表の包みが横にスクロールする作りで、他は中でスクロールしない
       if (LAYOUT_DETAIL_ANALYZERS[i] !== 'n-sensitivity') expect(inner, `${LAYOUT_DETAIL_ANALYZERS[i]}の中のスクロール`).toBe(0);
     });
-    // 1920pxの面（サイドバー固定）には24列の並びが横にスクロールせず収まり、1440pxの面では面の中で横にスクロールする
+    // 1920pxの面（サイドバー固定）には18列の並びが横にスクロールせず収まり、1440pxの面では面の中で横にスクロールする
     if (size.width === 1920) expect(m.area[0]).toBeLessThanOrEqual(m.area[1]! + 1);
     else expect(m.area[0]).toBeGreaterThan(m.area[1]!);
   });
