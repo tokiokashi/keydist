@@ -344,6 +344,7 @@ headのSHAのcheck run（`https://api.github.com/repos/tokiokashi/keydist/commit
 | `infra` | ビルド・CI・リポジトリ基盤 |
 | `docs` | README・仕様以外のドキュメント |
 | `meta` | ロードマップなどissue運用そのもの |
+| `update-screenshots` | 付けると、スクリーンショットの基準の画像を作り直すworkflowが走る（手順は `CONTRIBUTING.md`「ブラウザe2e」） |
 | `needs-decision` | オーナーが決めていない選択を含む。待ち時間の作業・ついでの修正に取らない |
 
 コミットとissueの紐づけ:
