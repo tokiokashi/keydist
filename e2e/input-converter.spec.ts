@@ -1438,7 +1438,7 @@ test('Practice Textは最長候補を1件だけ表示し、他の打ち方はhov
   const items = results.locator(':scope > ol > li');
 
   // 「にゅ」は「にゅ」1stepの経路（物理key表示: P + D）と、
-  // 「に→ゅ」2stepの経路（物理key表示: Space + D → Q + P）を持つ。
+  // 「に→ゅ」2stepの経路（物理key表示: SandS + D → Q + P）を持つ。
   // 表示される行は最長（1step）の方だけで、guideもそれに揃う。
   await lookup.fill('にゅ');
   await expect.poll(() => items.count()).toBe(1);
@@ -1455,7 +1455,7 @@ test('Practice Textは最長候補を1件だけ表示し、他の打ち方はhov
 
   await toggle.hover();
   await expect(popover).toBeVisible();
-  await expect(popover).toContainText('Space + D → Q + P');
+  await expect(popover).toContainText('SandS + D → Q + P');
 
   // hoverを外すと閉じる。
   await lookup.hover();
@@ -1784,7 +1784,7 @@ test('打ち方逆引きは配列ごとのcanonical inputを表示する', async
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
   await lookup.fill('ま');
   await expect(results.locator('li')).toHaveCount(1);
-  await expect(guide).toContainText('Space + F');
+  await expect(guide).toContainText('SandS + F');
   await expect(guide).not.toContainText('右親指');
   await expect(guide).not.toContainText('左親指');
   await expect(keyboard.locator('[data-key-id="f"]')).toHaveAttribute('data-lookup', 'true');
@@ -1801,9 +1801,17 @@ test('打ち方逆引きは配列ごとのcanonical inputを表示する', async
   await page.getByLabel('配列', { exact: true }).selectOption('shin-jis-simultaneous');
   await expect(feature).toHaveAttribute('data-input-ready', 'shin-jis-simultaneous');
   await lookup.fill('お');
-  await expect(guide).toContainText('Space + J');
+  await expect(guide).toContainText('Shift + J');
   await expect(guide).not.toContainText('右親指');
   await expect(guide).not.toContainText('左親指');
+  // 呼び名の種類を切り替えると、同じシフトキーを刻印やキー名で出す
+  const keyNaming = page.getByLabel('レイヤーキーの呼び名');
+  await keyNaming.selectOption({ label: '刻印' });
+  await expect(guide).toContainText('Space + J');
+  await keyNaming.selectOption({ label: 'キー名' });
+  await expect(guide).toContainText('左親指 / 右親指 + J');
+  await keyNaming.selectOption({ label: '作者の呼び名' });
+  await expect(guide).toContainText('Shift + J');
   await expect(keyboard.locator('[data-key-id="j"]')).toHaveAttribute('data-lookup', 'true');
   await expect(keyboard.locator('[data-key-id="thumb-l"]')).toHaveAttribute('data-lookup', 'true');
   await expect(keyboard.locator('[data-key-id="thumb-r"]')).toHaveAttribute('data-lookup', 'true');

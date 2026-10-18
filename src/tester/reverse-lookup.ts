@@ -1,9 +1,9 @@
 import { inputAlternativeSelectionIdentity, type InputAlternative, type InputContextRequirement } from '#input/semantics/index.ts';
 import { resolveKeyId, type PhysicalKeyboardStandard } from '#input/shapes/geometry.ts';
-import { physicalKeyDisplayLabel } from '#input/shapes/key-labels.ts';
 import type { Layout } from '#input/layouts/index.ts';
 import { kanaToRomajiChunks } from '#input/romaji/kunrei.ts';
 import { romajiToKana } from './live-romaji.ts';
+import { DEFAULT_LAYER_KEY_NAMING, layerKeyNames, type LayerKeyNaming, type NamedKeySlot } from './layer-key-names.ts';
 
 export interface ReverseLookupActionParticipation {
   /** このactionでoutput側として参加するphysical key。 */
@@ -36,6 +36,8 @@ export interface ReverseLookupGuideAction {
   readonly keyAlternatives: readonly (readonly string[])[];
   readonly participationAlternatives: readonly ReverseLookupActionParticipation[];
   readonly finalInRouteStep: boolean;
+  /** この動作を含む入力単位が属する層。キーの呼び名を決める時に使う。 */
+  readonly aggregationGroupIds: readonly string[];
 }
 
 export interface ReverseLookupRoute {
@@ -326,6 +328,7 @@ export function reverseLookupGuideActions(route: ReverseLookupRoute): readonly R
       keyAlternatives: step.actionKeyAlternatives[actionIndex] ?? [keys],
       participationAlternatives: step.actionParticipationAlternatives[actionIndex] ?? [],
       finalInRouteStep: actionIndex === step.actions.length - 1,
+      aggregationGroupIds: step.aggregationGroupIds,
     })),
   );
 }
@@ -403,46 +406,94 @@ export function reverseLookupGuideIndexForText(layout: Layout, route: ReverseLoo
   return nextActionIndex < 0 ? 0 : nextActionIndex;
 }
 
-function equivalentThumbShiftLabel(layout: Layout): string | undefined {
-  const keys = [...new Set((layout.thumbShiftKeys ?? []).map(resolveKeyId))];
-  if (keys.length < 2) return undefined;
-  const labels = [...new Set(keys.map((key) => layout.legends.get(key)).filter((label): label is string => label !== undefined && label.trim() !== ''))];
-  return labels.length === 1 ? labels[0] : undefined;
-}
-
-function guideActionLabels(
+/**
+ * 1打鍵のキーを、表示名を決めるスロットへ並べる。
+ * 左右の親指を同じ働きとして畳める時（どの経路も、親指の左右だけが違う時）は、
+ * 親指のキーを左右まとめた1つのスロットにする。どちらを押してもよいことを、片方のキーの名前で偽らないため。
+ */
+function guideActionSlots(
   layout: Layout,
   keys: readonly string[],
   alternatives: readonly (readonly string[])[],
-  standard: PhysicalKeyboardStandard | undefined,
-): readonly string[] {
-  const label = (key: string) => physicalKeyDisplayLabel(key, standard);
-  const equivalentThumbs = new Set((layout.thumbShiftKeys ?? []).map(resolveKeyId));
-  const thumbLabel = equivalentThumbShiftLabel(layout);
-  if (thumbLabel === undefined || equivalentThumbs.size < 2 || alternatives.length < 2) {
-    return keys.map(label);
-  }
+  triggerOnlyKeys: ReadonlySet<string>,
+  layerIds: readonly string[],
+): NamedKeySlot[] {
+  const equivalentThumbs = [...new Set((layout.thumbShiftKeys ?? []).map(resolveKeyId))];
+  const slotFor = (members: readonly string[]): NamedKeySlot =>
+    members.some((key) => triggerOnlyKeys.has(resolveKeyId(key))) ? { keys: members, triggerLayerIds: layerIds } : { keys: members };
 
   const normalize = (variant: readonly string[]) =>
-    variant.map((key) => (equivalentThumbs.has(resolveKeyId(key)) ? '__thumb-shift__' : resolveKeyId(key)));
+    variant.map((key) => (equivalentThumbs.includes(resolveKeyId(key)) ? '__thumb-shift__' : resolveKeyId(key)));
   const signatures = alternatives.map((variant) => [...normalize(variant)].sort().join('\u0000'));
-  if (!signatures.every((signature) => signature === signatures[0])) {
-    return keys.map(label);
-  }
+  const collapsible = equivalentThumbs.length >= 2 && alternatives.length >= 2 && signatures.every((signature) => signature === signatures[0]);
 
-  return normalize(keys).map((key) => (key === '__thumb-shift__' ? thumbLabel : label(key)));
+  return keys.map((key) => (collapsible && equivalentThumbs.includes(resolveKeyId(key)) ? slotFor([...equivalentThumbs].sort()) : slotFor([key])));
 }
 
-export function reverseLookupGuideActionLabel(layout: Layout, action: ReverseLookupGuideAction, standard?: PhysicalKeyboardStandard): string {
-  return guideActionLabels(layout, action.keys, action.keyAlternatives, standard).join(' + ');
+function participationTriggerOnlyKeys(participations: readonly ReverseLookupActionParticipation[]): ReadonlySet<string> {
+  const outputKeys = new Set(participations.flatMap((participation) => participation.outputKeys.map(resolveKeyId)));
+  const triggerKeys = new Set(participations.flatMap((participation) => participation.triggerKeys.map(resolveKeyId)));
+  return new Set([...triggerKeys].filter((key) => !outputKeys.has(key)));
 }
 
-export function reverseLookupStepLabel(layout: Layout, step: ReverseLookupStep, standard?: PhysicalKeyboardStandard): string {
-  return step.actions
-    .map((action, actionIndex) => guideActionLabels(layout, action, step.actionKeyAlternatives[actionIndex] ?? [action], standard).join(' + '))
-    .join(' → ');
+function stepActionSlotLists(layout: Layout, step: ReverseLookupStep): NamedKeySlot[][] {
+  return step.actions.map((action, actionIndex) =>
+    guideActionSlots(
+      layout,
+      action,
+      step.actionKeyAlternatives[actionIndex] ?? [action],
+      participationTriggerOnlyKeys(step.actionParticipationAlternatives[actionIndex] ?? []),
+      step.aggregationGroupIds,
+    ),
+  );
 }
 
-export function reverseLookupRouteLabel(layout: Layout, route: ReverseLookupRoute, standard?: PhysicalKeyboardStandard): string {
-  return route.steps.map((step) => reverseLookupStepLabel(layout, step, standard)).join(' → ');
+export function reverseLookupGuideActionLabel(
+  layout: Layout,
+  action: ReverseLookupGuideAction,
+  standard?: PhysicalKeyboardStandard,
+  naming: LayerKeyNaming = DEFAULT_LAYER_KEY_NAMING,
+): string {
+  const slots = guideActionSlots(
+    layout,
+    action.keys,
+    action.keyAlternatives,
+    new Set(reverseLookupGuideActionTriggerOnlyKeys(action)),
+    action.aggregationGroupIds,
+  );
+  return layerKeyNames(layout, [slots], naming, standard)[0].join(' + ');
+}
+
+function stepLabels(
+  layout: Layout,
+  steps: readonly ReverseLookupStep[],
+  standard: PhysicalKeyboardStandard | undefined,
+  naming: LayerKeyNaming,
+): string[] {
+  const lists = steps.flatMap((step) => stepActionSlotLists(layout, step));
+  const names = layerKeyNames(layout, lists, naming, standard);
+  let cursor = 0;
+  return steps.map((step) => {
+    const labels = names.slice(cursor, cursor + step.actions.length).map((keys) => keys.join(' + '));
+    cursor += step.actions.length;
+    return labels.join(' → ');
+  });
+}
+
+export function reverseLookupStepLabel(
+  layout: Layout,
+  step: ReverseLookupStep,
+  standard?: PhysicalKeyboardStandard,
+  naming: LayerKeyNaming = DEFAULT_LAYER_KEY_NAMING,
+): string {
+  return stepLabels(layout, [step], standard, naming)[0];
+}
+
+export function reverseLookupRouteLabel(
+  layout: Layout,
+  route: ReverseLookupRoute,
+  standard?: PhysicalKeyboardStandard,
+  naming: LayerKeyNaming = DEFAULT_LAYER_KEY_NAMING,
+): string {
+  return stepLabels(layout, route.steps, standard, naming).join(' → ');
 }

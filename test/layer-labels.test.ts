@@ -62,11 +62,9 @@ test('組み込みの全配列で、既定の名前のレイヤーは同じ配�
 });
 
 test('既定の名前は、出る文字の種類と共通する小書き、重なる時は出る文字、呼べない時はトリガーの表示そのものになる', () => {
+  // 親指シフトに作者の呼び名がある配列は、既定の名前を作らない
   const nicola = defaultLayerNames(ALL_LAYOUTS.find((layout) => layout.id === 'nicola')!);
-  assert.deepEqual(
-    [...nicola.values()].map((name) => name.label),
-    ['無変換', '変換'],
-  );
+  assert.deepEqual([...nicola.values()], []);
 
   const naginata = defaultLayerNames(ALL_LAYOUTS.find((layout) => layout.id === 'naginata-v18')!);
   const label = (id: string) => naginata.get(id)?.label;
@@ -180,7 +178,7 @@ test('トリガーの表示だけの名前が、配列が付けた名前・種�
 
 test('ヒートマップの見出しは、どの層にもトリガーを付けず、押し方の区分を番号の後ろに置く', () => {
   const titles = (id: string) => new Map(heatmapTitles(ALL_LAYOUTS.find((layout) => layout.id === id)!).entries.map((entry) => [entry.id, entry.title]));
-  assert.equal(titles('nicola').get('face:1'), 'レイヤー2（同時）: 無変換');
+  assert.equal(titles('nicola').get('layer:左親指'), 'レイヤー2（同時）: 左親指');
 
   const naginata = titles('naginata-v18');
   assert.match(naginata.get('face:2')!, /^レイヤー\d+（同時）: 小書き$/);

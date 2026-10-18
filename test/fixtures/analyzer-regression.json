@@ -7296,13 +7296,13 @@
             "presses": 168
           },
           {
-            "id": "face:1",
-            "label": "無変換",
+            "id": "layer:左親指",
+            "label": "左親指",
             "presses": 106
           },
           {
-            "id": "face:2",
-            "label": "変換",
+            "id": "layer:右親指",
+            "label": "右親指",
             "presses": 138
           }
         ],
@@ -7502,13 +7502,13 @@
             "presses": 959
           },
           {
-            "id": "face:1",
-            "label": "無変換",
+            "id": "layer:左親指",
+            "label": "左親指",
             "presses": 588
           },
           {
-            "id": "face:2",
-            "label": "変換",
+            "id": "layer:右親指",
+            "label": "右親指",
             "presses": 846
           }
         ],
@@ -12361,6 +12361,6 @@
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     }
   ],
-  "sourceCommit": "555887ac749c4fbfaa2673df904b48aa6fc18f34",
+  "sourceCommit": "dd41e12018df0b85e9902c0805068ef1ca329e77",
   "version": 1
 }

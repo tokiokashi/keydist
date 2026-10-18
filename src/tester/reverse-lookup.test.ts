@@ -219,7 +219,8 @@ test('reverseLookupは明示された親指shift alternativeだけを同じ表�
   assert.ok(thumbAction);
   assert.equal(reverseLookupGuideActionMatchesKeys(thumbAction, ['thumb-r', 'f']), true);
   assert.equal(reverseLookupGuideActionMatchesKeys(thumbAction, ['thumb-l', 'f']), true);
-  assert.equal(reverseLookupGuideActionLabel(layout, thumbAction), 'Space + F');
+  assert.equal(reverseLookupGuideActionLabel(layout, thumbAction, undefined, 'legend'), 'Space + F');
+  assert.equal(reverseLookupGuideActionLabel(layout, thumbAction), 'SandS + F');
   assert.deepEqual(new Set(reverseLookupGuideActionHighlightKeys(layout, thumbAction)), new Set(['thumb-r', 'thumb-l', 'f']));
   assert.deepEqual(new Set(reverseLookupGuideActionTriggerOnlyKeys(thumbAction)), new Set(['thumb-r', 'thumb-l']));
   assert.equal(reverseLookupRouteLabel(layout, shifted).includes('右親指'), false);

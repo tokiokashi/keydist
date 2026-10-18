@@ -57,7 +57,7 @@ const NOT_FAILURE_TEXT: ReadonlySet<string> = new Set([
   'QWERTY最適化',
   'っ${kana}',
   '${source.name}のコピー',
-  '「${definition.label}」を元に戻す',
+  '「${title}」を元に戻す',
   '${name}の表示',
   '${name}の説明',
   '外向き ${(outwardRate * 100).toFixed(1)}%',

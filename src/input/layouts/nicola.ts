@@ -1,8 +1,9 @@
 import { THUMB_KEY } from '../shapes/geometry.ts';
 import { faceFromEntries, fromFaces, withAliases, type Face, type Layout } from './types.ts';
 
-const face = (trigger: string[], entries: Record<string, string>, inputRole: Face['inputRole'] = 'layer'): Face => ({
+const face = (trigger: string[], entries: Record<string, string>, inputRole: Face['inputRole'] = 'layer', layer?: string): Face => ({
   ...faceFromEntries(trigger, 'simultaneous', entries),
+  ...(layer === undefined ? {} : { layer }),
   inputRole,
   ...(trigger.length > 0 ? { triggerPersistence: 'single' as const } : {}),
 });
@@ -90,6 +91,7 @@ export const NICOLA_FACES: Face[] = [
       '/': '゛',
     },
     'modifier',
+    '左親指',
   ),
 
   // 変換キーとの同時打鍵
@@ -127,6 +129,7 @@ export const NICOLA_FACES: Face[] = [
       '/': 'ぉ',
     },
     'modifier',
+    '右親指',
   ),
 ];
 

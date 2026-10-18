@@ -6,6 +6,7 @@ import {
 } from '#app/state/app-state-storage.ts';
 import type { KeyValueStorage } from '#platform/persistence/storage.ts';
 import { decodeVersionedState } from '#platform/persistence/versioned-state.ts';
+import { DEFAULT_LAYER_KEY_NAMING, isLayerKeyNaming, type LayerKeyNaming } from './layer-key-names.ts';
 
 /*
  * Tester preferenceはAppStateV2へ統合済み。
@@ -53,6 +54,11 @@ export interface InputConverterPreferencesV2 {
    * 物理配列は配列ごとには分けず、Tester全体で1つだけ保持する。
    */
   geometryId: string;
+  /**
+   * シフトキーなど層のトリガーキーの呼び名。表示だけが変わるので配列を問わず1つだけ保持する。
+   * 配列が作者の呼び名・刻印を持たない時は、この設定によらずキー名で出す。
+   */
+  layerKeyNaming: LayerKeyNaming;
   /** 配列idごとの練習環境 */
   layouts: Record<string, InputConverterLayoutPreferencesV2>;
 }
@@ -84,6 +90,7 @@ export function createDefaultInputConverterPreferences(defaults: InputConverterP
     version: INPUT_CONVERTER_PREFERENCES_VERSION,
     layoutId: defaults.layoutId,
     geometryId: defaults.geometryId,
+    layerKeyNaming: DEFAULT_LAYER_KEY_NAMING,
     layouts: {
       [defaults.layoutId]: { ...defaults.layout },
     },
@@ -136,6 +143,7 @@ function migrateV1(
     version: INPUT_CONVERTER_PREFERENCES_VERSION,
     layoutId,
     geometryId,
+    layerKeyNaming: DEFAULT_LAYER_KEY_NAMING,
     layouts: {
       [layoutId]: {
         ...defaults.layout,
@@ -151,7 +159,7 @@ function migrateV1(
 /**
  * 保存済みJSONをデコードする。
  *
- * - V2: globalなlayoutId/geometryIdと配列ごとの練習環境をフィールド単位でsanitize
+ * - V2: globalなlayoutId/geometryId/layerKeyNamingと配列ごとの練習環境をフィールド単位でsanitize
  * - V1: 同じstorage key上でV2へ1世代だけmigration
  * - 壊れたJSON / 未知version / 構造不一致: defaultsへfallback
  */
@@ -188,6 +196,7 @@ export function decodeInputConverterPreferences(
     version: INPUT_CONVERTER_PREFERENCES_VERSION,
     layoutId,
     geometryId,
+    layerKeyNaming: isLayerKeyNaming(value.layerKeyNaming) ? value.layerKeyNaming : DEFAULT_LAYER_KEY_NAMING,
     layouts,
   };
 }

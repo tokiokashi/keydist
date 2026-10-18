@@ -459,6 +459,7 @@ test('presentation: prepress-requiredなhold layerはrelease後にprefix化し�
 
   const down = session.step({ type: 'down', key: 'thumb-r' });
   assert.deepEqual(down.state.activeAggregationGroupIds, ['face:1']);
+  assert.deepEqual(down.state.activeTriggers, [{ aggregationGroupId: 'face:1', triggerKeys: ['thumb-r'] }]);
   assert.ok(down.state.selectedKeys.includes('thumb-r'));
 
   const released = session.step({ type: 'up', key: 'thumb-r' });

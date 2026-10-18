@@ -442,7 +442,7 @@ export function layerDefinitionsWithLabels(layout: DefaultLayerNameLayout): Laye
 }
 
 /** aggregationTriggerKeysのchord構造を保ったview。realizationごとに1 chordとする。 */
-function aggregationTriggerChords(layout: Pick<Layout, 'canonicalInputs'>, aggregationGroupId: string): readonly TriggerChord[] {
+export function aggregationTriggerChords(layout: Pick<Layout, 'canonicalInputs'>, aggregationGroupId: string): readonly TriggerChord[] {
   const chords: TriggerChord[] = [];
   for (const alternatives of layout.canonicalInputs.values()) {
     for (const alternative of alternatives) {

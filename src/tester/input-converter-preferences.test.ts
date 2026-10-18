@@ -56,6 +56,7 @@ function samplePreferences(): InputConverterPreferencesV2 {
     version: INPUT_CONVERTER_PREFERENCES_VERSION,
     layoutId: 'shingeta',
     geometryId: 'column-staggered',
+    layerKeyNaming: 'legend',
     layouts: {
       'naginata-v18': {
         showDynamicGuide: true,
@@ -101,6 +102,16 @@ test('decode: structurally invalid payload (array) falls back to defaults', () =
   const raw = JSON.stringify([1, 2, 3]);
   const result = decodeInputConverterPreferences(raw, catalogs, defaults);
   assert.deepEqual(result, createDefaultInputConverterPreferences(defaults));
+});
+
+test('decode: 層のトリガーキーの呼び名は既定が作者の呼び名で、未知の値は既定へ戻す', () => {
+  assert.equal(createDefaultInputConverterPreferences(defaults).layerKeyNaming, 'authored');
+
+  const withoutNaming = { ...samplePreferences(), layerKeyNaming: undefined };
+  assert.equal(decodeInputConverterPreferences(JSON.stringify(withoutNaming), catalogs, defaults).layerKeyNaming, 'authored');
+
+  const unknownNaming = { ...samplePreferences(), layerKeyNaming: 'nickname' };
+  assert.equal(decodeInputConverterPreferences(JSON.stringify(unknownNaming), catalogs, defaults).layerKeyNaming, 'authored');
 });
 
 test('decode: a valid V2 payload round-trips as-is', () => {
@@ -285,7 +296,7 @@ test('saveInputConverterPreferences swallows a storage.setItem failure', () => {
 test('contract: only durable practice state is serialized; interaction transients remain excluded', () => {
   const parsed = JSON.parse(serializeInputConverterPreferences(samplePreferences())) as Record<string, unknown>;
 
-  assert.deepEqual(Object.keys(parsed).sort(), ['geometryId', 'layoutId', 'layouts', 'version']);
+  assert.deepEqual(Object.keys(parsed).sort(), ['geometryId', 'layerKeyNaming', 'layoutId', 'layouts', 'version']);
 
   const layouts = parsed.layouts as Record<string, Record<string, unknown>>;
   const allowedLayoutKeys = [
