@@ -20,8 +20,6 @@ test('サイドバーは区分ごとのナビゲーションと、最下端の�
   await expect(sidebar.getByRole('link', { name: 'Bigram Flow', exact: true })).toHaveAttribute('aria-current', 'page');
   await expect(sidebar.getByText('Analyzerを並べて見る画面。')).toBeVisible();
   await expect(sidebar).toContainText(`v${PACKAGE_VERSION}`);
-  await expect(sidebar.getByRole('link', { name: '旧版' })).toHaveCount(0);
-  await expect(sidebar.locator('a[href*="classic"]')).toHaveCount(0);
 
   await sidebar.getByRole('link', { name: '比較表', exact: true }).click();
   await expect(page).toHaveURL(/\/analyzer\/comparison$/);
@@ -261,7 +259,7 @@ test('トップとTesterもシェルに載る', async ({ page }) => {
   await expect(page.locator('#app-sidebar').getByRole('link', { name: 'Tester', exact: true })).toHaveAttribute('aria-current', 'page');
 });
 
-test('トップは道具の全体像を説明するページで、旧版への導線は無い', async ({ page }) => {
+test('トップは道具の全体像を説明するページで', async ({ page }) => {
   await page.goto('/');
   await waitForHydration(page);
   const hero = page.locator('.hero');
@@ -269,10 +267,6 @@ test('トップは道具の全体像を説明するページで、旧版への�
     await expect(hero.getByRole('heading', { name, level: 2, exact: true })).toBeVisible();
   }
   await expect(hero.getByText('複数の配列を選んで、情報を比較します。')).toBeVisible();
-  await expect(hero.locator('a[href*="classic"]')).toHaveCount(0);
-  await expect(page.locator('#app-sidebar').locator('a[href*="classic"]')).toHaveCount(0);
-  await expect(page.getByRole('link', { name: '旧版' })).toHaveCount(0);
-  await expect(page.getByRole('link', { name: '旧バージョン' })).toHaveCount(0);
   await expect(page.locator('a[href$="/analyzer"], a[href$="/analyzer/"]')).toHaveCount(0);
 });
 

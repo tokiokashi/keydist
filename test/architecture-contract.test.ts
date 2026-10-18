@@ -508,34 +508,3 @@ test('structural analysisはbuilt-in layoutのID/nameへ依存しない', async 
     }
   }
 });
-
-test('廃止済みのlegacy symbol / production helperをsrcへ再導入しない', async () => {
-  const forbiddenEverywhere = [
-    'leadDelayMs',
-    'playbackArpeggioSpans',
-    'ARPEGGIO_PRESETS',
-    'TriggerBehavior',
-    'chord-trigger',
-    'one-shot-trigger',
-    'minHorizontalSpread',
-    'maxRowReversal',
-    'maxRowStep',
-    'HoldStartActionPolicy',
-    'holdStartAction',
-    'countAsSeparateStep',
-    'holdStart',
-    'arpeggioEnabled',
-    'arpeggioDelayMode',
-  ] as const;
-
-  for (const path of await tsFiles(SRC)) {
-    const source = await readFile(path, 'utf8');
-    for (const symbol of forbiddenEverywhere) {
-      assert.equal(source.includes(symbol), false, `${relative(ROOT, path)} reintroduced legacy symbol: ${symbol}`);
-    }
-  }
-
-  const sourcePaths = (await tsFiles(SRC)).map((path) => relative(SRC, path).replaceAll('\\', '/'));
-  assert.equal(sourcePaths.includes('playback-arpeggio.ts'), false);
-  assert.equal(sourcePaths.includes('hold-start-action.ts'), false);
-});

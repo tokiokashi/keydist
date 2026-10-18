@@ -12,12 +12,7 @@ export interface ChainInterpretation {
   breakOnOppositeHandSimultaneous: boolean;
 }
 
-/**
- * 現行UIの既定値
- *   chainIncludeSameFinger = false
- *   chainIncludeLayerKeys = true
- * と同じ意味になるPolicy。
- */
+/** 既定のPolicy。同指移動と親指だけのStrokeを境界にし、trigger-onlyと逆手の同時outputは境界にしない。 */
 export const DEFAULT_CHAIN_INTERPRETATION: ChainInterpretation = {
   breakOnSameFinger: true,
   breakOnTriggerOnly: false,
@@ -48,7 +43,7 @@ export interface RawHandStep {
   readonly thumbTriggerOnly: boolean;
   /** 現在Strokeで同指移動(sfb)が起きた。親指もfactとして保持する。 */
   readonly sameFinger: boolean;
-  /** 旧chainIncludeSameFingerと同じく、親指を除く同指移動。 */
+  /** 親指を除く同指移動。 */
   readonly nonThumbSameFinger: boolean;
   /** 同じStrokeに逆手のoutputが存在する。 */
   readonly oppositeHandOutput: boolean;
@@ -166,7 +161,7 @@ export function buildRawHandRuns(strokes: readonly Stroke[]): readonly RawHandRu
 }
 
 function breaksChain(step: RawHandStep, policy: ChainInterpretation): boolean {
-  // same-fingerは旧UI互換のため非親指だけを対象にし、親指onlyは独立Policyで扱う。
+  // same-fingerは非親指だけを対象にし、親指onlyは独立Policyで扱う。
   return (
     (policy.breakOnSameFinger && step.nonThumbSameFinger) ||
     (policy.breakOnTriggerOnly && step.triggerOnly && !step.isComposition) ||

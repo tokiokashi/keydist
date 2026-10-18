@@ -784,14 +784,13 @@ Metrics / structural aggregationのcondition snapshotにも実効値を保存す
 逆手同時入力を理由に区切る判断はしない。
 
 Raw hand runへ **ChainInterpretation** を適用した結果が **Analysis Chain** である。
-現時点でPolicyが持つ境界条件は次の3つ。
+現時点でPolicyが持つ境界条件は次の4つ。
 
-- `breakOnSameFinger`: 同指移動Strokeを境界にする。既定 `true`（従来の
-  `chainIncludeSameFinger=false` と同じ）
+- `breakOnSameFinger`: 同指移動Strokeを境界にする。既定 `true`
 - `breakOnTriggerOnly`: 新規triggerだけでoutputを持たないStrokeを境界にする。
-  既定 `false`（従来の `chainIncludeLayerKeys=true` と同じ）
+  既定 `false`
 - `breakOnThumbOnly`: 対象手の参加指がすべて親指のStrokeを境界にする。
-  既定 `true`。旧playbackで親指だけのstepがChain参加から落ちていた挙動を維持する
+  既定 `true`
 - `breakOnOppositeHandSimultaneous`: 同じStrokeに逆手のoutputがある場合を境界にする。
   既定 `false`
 
@@ -805,8 +804,6 @@ Arpeggio等の構造要素はAnalysis Chain境界を越えてはならない。
 
 ChainInterpretationは測定条件の一部として `conditions.defaults` / `conditions.perLayout` で
 配列ごとに解決し、`Metrics.conditions` のsnapshotにも保存する（§12.3）。
-旧 `ui.playback.chainIncludeSameFinger` / `chainIncludeLayerKeys` は移行期間の互換入口として
-残すが、意味が一意に対応する項目だけをadapterでChainInterpretationへ変換する。
 
 ### 10.2 Transition facts
 
@@ -940,15 +937,8 @@ redirect tailは末尾1 Transitionだけで、leading redirectやtail後方のsa
 ArpeggioSpanはStroke index half-open範囲、hand、coreKind、direction、適用extensionだけを持つ。
 Timing durationのsourceにはせず、Roll / Redirect / Key / Point等の詳細を重複コピーしない。
 
-cutover後のcanonical設定は `conditions.arpeggioPolicy` のみとする。
-旧 `conditions.arpeggio` を読み込んだ場合は、意味が一致する `includeThumb` だけを移行し、
-`minHorizontalSpread` / `maxRowReversal` / `maxRowStep` /
-`breakOnOppositeHand` は推測変換せず破棄する。新規 `bridgeSameFinger` /
-`includeSingleRedirectTail` はfalseから始める。
-
-旧 `arpeggioEnabled` / `arpeggioDelayMode` はPlayback Timingから廃止済みで、
-strict / looseの旧geometry presetも残さない。migration後のstateは再保存し、
-同じmigration通知を次回起動で繰り返さない。
+設定は `conditions.arpeggioPolicy` のみとする。`bridgeSameFinger` /
+`includeSingleRedirectTail` の既定はfalseとする。
 
 ### 10.6 StrokeAnnotation / structural aggregation
 
