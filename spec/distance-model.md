@@ -773,7 +773,7 @@ Trigger realizationはcanonical factだけを入力にする。aggregationGroupI
 後段のChain / Transition / Roll / Timingはrealized Stroke streamだけを読み、
 独自にhold可能性を再判定しない。
 
-Policyは数値へ影響するため `conditions.defaults` / `conditions.perLayout` に置き、
+Policyは数値へ影響するため、条件として §12.3 の解決順に載せる。置けるレベルは全体・Workspace・配列・Setupで、物理配列と打ち方には置かない。
 Metrics / structural aggregationのcondition snapshotにも実効値を保存する。
 
 ### 10.1 構造解析用のRaw hand runとAnalysis Chain
