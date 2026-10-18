@@ -46,7 +46,7 @@ export const SAMPLE_COMPARISON_LAYOUT_IDS: readonly string[] = [
 export const SAMPLE_BIGRAM_FLOW_LAYOUT_IDS: readonly string[] = ['qwerty', 'oonishi', 'tsuki-2-263', 'naginata-v18'];
 
 /** サンプルのWorkspaceの条件（Workspaceのレベル）の既定の物理配列。全体の条件は書き換えない。 */
-export const SAMPLE_DEFAULT_SHAPE_ID = 'split-ortholinear';
+export const SAMPLE_DEFAULT_SHAPE_ID = 'ortholinear';
 
 /** Bigram Flowの共有の解析設定。2打鍵の取り方を手の中だけにする（変えた項目だけを持つ）。 */
 export const SAMPLE_BIGRAM_FLOW_OPTIONS = { source: 'within-hand' } as const;

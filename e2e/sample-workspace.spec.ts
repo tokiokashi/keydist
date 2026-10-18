@@ -93,7 +93,7 @@ async function expectSampleLayout(page: Page, id: string): Promise<void> {
     expect(pane.options).toBeUndefined();
   }
   // Workspaceの条件
-  expect(workspace.conditions).toEqual({ defaultShapeId: 'split-ortholinear' });
+  expect(workspace.conditions).toEqual({ defaultShapeId: 'ortholinear' });
   // 格子: 上の段は比較表とN感度が横に並んで24列を使い切り、中の段・下の段は同じ幅の4つが横に並ぶ
   const [comparison, nSensitivity, ...lower] = workspace.grid;
   expect([comparison!.x, comparison!.y]).toEqual([0, 0]);

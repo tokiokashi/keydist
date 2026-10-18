@@ -113,7 +113,7 @@ test('サンプルの並び: 上に比較表とN感度の横並び（18 + 6列�
     assert.equal(set?.analyzerId, pane.analyzerId);
     assert.equal(resolvePaneOptions(created, pane) === undefined, pane.analyzerId === 'finger-distance');
   }
-  assert.deepEqual(created.conditions, { defaultShapeId: 'split-ortholinear' });
+  assert.deepEqual(created.conditions, { defaultShapeId: 'ortholinear' });
   // サンプルも既定どおり詰めない
   assert.equal(created.compactPanes, undefined);
 
