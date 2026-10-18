@@ -259,7 +259,7 @@ test('トップとTesterもシェルに載る', async ({ page }) => {
   await expect(page.locator('#app-sidebar').getByRole('link', { name: 'Tester', exact: true })).toHaveAttribute('aria-current', 'page');
 });
 
-test('トップは道具の全体像を説明するページで', async ({ page }) => {
+test('トップは道具の全体像を説明するページ', async ({ page }) => {
   await page.goto('/');
   await waitForHydration(page);
   const hero = page.locator('.hero');

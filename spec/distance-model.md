@@ -802,8 +802,8 @@ Analysis結果はStrokeを複製せず、1回の結果内で安定する `Stroke
 `chainIndex` で参照する。永続的なstable IDは作らない。後段のRoll / Redirect /
 Arpeggio等の構造要素はAnalysis Chain境界を越えてはならない。
 
-ChainInterpretationは測定条件の一部として `conditions.defaults` / `conditions.perLayout` で
-配列ごとに解決し、`Metrics.conditions` のsnapshotにも保存する（§12.3）。
+ChainInterpretationは測定条件の一部として全体とWorkspaceのレベルまでに置き、
+配列・Setupのレベルには置かない。`Metrics.conditions` のsnapshotにも保存する（§12.3）。
 
 ### 10.2 Transition facts
 
@@ -936,9 +936,6 @@ redirect tailは末尾1 Transitionだけで、leading redirectやtail後方のsa
 
 ArpeggioSpanはStroke index half-open範囲、hand、coreKind、direction、適用extensionだけを持つ。
 Timing durationのsourceにはせず、Roll / Redirect / Key / Point等の詳細を重複コピーしない。
-
-設定は `conditions.arpeggioPolicy` のみとする。`bridgeSameFinger` /
-`includeSingleRedirectTail` の既定はfalseとする。
 
 ### 10.6 StrokeAnnotation / structural aggregation
 
