@@ -25,7 +25,10 @@ async function openAnalyzer(page: Page, path: string, feature: string, layoutId:
 
 test('Bigram Flowの図', async ({ page }) => {
   await openAnalyzer(page, '/analyzer/bigram-flow', 'bigram-flow', 'qwerty');
-  await expect(page.locator('[data-react-feature="bigram-flow"]')).toHaveScreenshot('bigram-flow.png', { animations: 'disabled' });
+  // 見出しの行が撮る範囲の端で切れると、図の崩れと関係なくフォントの描画の差を拾うので、図の本体だけを撮る
+  const flow = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flow.locator('.flow-stage')).toHaveScreenshot('bigram-flow-keyboard.png');
+  await expect(flow.locator('.flow-profile-panel').first()).toHaveScreenshot('bigram-flow-vectors.png');
 });
 
 test('ヒートマップの図', async ({ page }) => {
