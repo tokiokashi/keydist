@@ -527,15 +527,6 @@ h1 {
   accent-color: var(--accent);
 }
 
-.input-display-options select {
-  min-width: 0;
-  padding: 0 0.2rem;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-}
-
 .input-panel-dock {
   flex: 0 0 auto;
   min-height: 1.55rem;

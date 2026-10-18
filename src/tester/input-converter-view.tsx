@@ -854,6 +854,22 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
                         ))}
                       </select>
                     </label>
+                    <label>
+                      <span>シフトキーの呼び名</span>
+                      <select
+                        aria-label="シフトキーの呼び名"
+                        value={layerKeyNaming}
+                        onChange={(event) => {
+                          if (isLayerKeyNaming(event.target.value)) setLayerKeyNaming(event.target.value);
+                        }}
+                      >
+                        {LAYER_KEY_NAMING_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                   </div>
                 </div>
               ) : null}
@@ -1106,21 +1122,6 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
                   <label>
                     <input type="checkbox" checked={showLayerKeys} onChange={(event) => setShowLayerKeys(event.target.checked)} />
                     レイヤーキー
-                  </label>
-                  <label>
-                    シフトキーの呼び名
-                    <select
-                      value={layerKeyNaming}
-                      onChange={(event) => {
-                        if (isLayerKeyNaming(event.target.value)) setLayerKeyNaming(event.target.value);
-                      }}
-                    >
-                      {LAYER_KEY_NAMING_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
                   </label>
                   {hasShiftKeys ? (
                     <label>
