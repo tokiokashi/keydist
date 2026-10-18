@@ -68,6 +68,29 @@ export const SAMPLE_BIGRAM_FLOW_OPTIONS = { source: 'within-hand' } as const;
  *   930pxは、オーナーの1080のモニタで普通の窓に開いた時の表示領域（約930px）。
  *   全画面表示の1080pxで測ると、普通の窓では中の段が切れる。
  */
+/**
+ * サンプルの比較表が出す列。表は18列の幅（SAMPLE_COMPARISON_SIZE）の中で横にスクロールせずに収まる列に絞る。
+ * Bigram数の2列まで出すと幅が足りず、表の中で横にスクロールする。足りない列は解析設定で出せる。
+ */
+export const SAMPLE_COMPARISON_OPTIONS = {
+  visibleColumns: [
+    'actions',
+    'totalUnits',
+    'meanPerStroke',
+    'perCharUnits',
+    'perCharSteps',
+    'perCharPresses',
+    'singleTapLayerRate',
+    'singleTapRate',
+    'singleKeyRate',
+    'sameFinger',
+    'sameFingerRate',
+    'adjacentMean',
+    'adjacentStdDev',
+    'rightHandDistanceShare',
+    'rightHandPressShare',
+  ],
+};
 export const SAMPLE_COMPARISON_SIZE: GridSize = { w: 18, h: 9 };
 export const SAMPLE_N_SENSITIVITY_SIZE: GridSize = { w: 6, h: 9 };
 export const SAMPLE_LOWER_SIZE: GridSize = { w: 6, h: 14 };
@@ -175,7 +198,7 @@ const OVERVIEW: SampleDefinition = {
   ],
   // 上の段は比較表とN感度の2つ、中の段はBigram Flowの4つ、下の段は指ごとの距離の4つが左から並ぶ
   panes: [
-    { analyzerId: SAMPLE_COMPARISON_ANALYZER_ID, group: 1, size: SAMPLE_COMPARISON_SIZE },
+    { analyzerId: SAMPLE_COMPARISON_ANALYZER_ID, options: SAMPLE_COMPARISON_OPTIONS, group: 1, size: SAMPLE_COMPARISON_SIZE },
     { analyzerId: SAMPLE_N_SENSITIVITY_ANALYZER_ID, group: 1, size: SAMPLE_N_SENSITIVITY_SIZE },
     ...SAMPLE_BIGRAM_FLOW_LAYOUT_IDS.map(
       (_, i): SamplePaneSpec => ({ analyzerId: SAMPLE_BIGRAM_FLOW_ANALYZER_ID, optionSet: true, group: i + 1, size: SAMPLE_LOWER_SIZE }),
@@ -208,7 +231,7 @@ const LAYOUT_DETAIL: SampleDefinition = {
     { analyzerId: SAMPLE_FINGER_DISTANCE_ANALYZER_ID, group: 1, size: LAYOUT_DETAIL_FINGER_DISTANCE_SIZE },
     { analyzerId: SAMPLE_FINGER_DISTANCE_ANALYZER_ID, options: { chartMetric: 'stdDev' }, group: 1, size: LAYOUT_DETAIL_FINGER_DISTANCE_STD_DEV_SIZE },
     { analyzerId: SAMPLE_BIGRAM_FLOW_ANALYZER_ID, group: 1, size: LAYOUT_DETAIL_BIGRAM_FLOW_SIZE },
-    { analyzerId: SAMPLE_COMPARISON_ANALYZER_ID, group: 1, size: LAYOUT_DETAIL_COMPARISON_SIZE },
+    { analyzerId: SAMPLE_COMPARISON_ANALYZER_ID, options: SAMPLE_COMPARISON_OPTIONS, group: 1, size: LAYOUT_DETAIL_COMPARISON_SIZE },
     { analyzerId: SAMPLE_N_SENSITIVITY_ANALYZER_ID, group: 1, size: LAYOUT_DETAIL_N_SENSITIVITY_SIZE },
     ...(['presses', 'distance', 'pairMean', 'pairStdDev'] as const).map(
       (surface): SamplePaneSpec => ({
