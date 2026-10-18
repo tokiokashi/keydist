@@ -1108,7 +1108,7 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
                     レイヤーキー
                   </label>
                   <label>
-                    レイヤーキーの呼び名
+                    シフトキーの呼び名
                     <select
                       value={layerKeyNaming}
                       onChange={(event) => {

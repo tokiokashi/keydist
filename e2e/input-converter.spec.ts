@@ -1076,7 +1076,7 @@ test('Tester keeps browser key lifecycle consistent', async ({ page }) => {
   await expect(output).toHaveValue('が');
 
   await page.keyboard.down('d');
-  await expect(pressed).toHaveText('D');
+  await expect(pressed).toHaveText('中指シフト');
 
   await page.getByLabel('配列', { exact: true }).focus();
   await expect(pressed).toHaveText('—');
@@ -1770,7 +1770,7 @@ test('打ち方逆引きは配列ごとのcanonical inputを表示する', async
   await expect(feature).toHaveAttribute('data-input-ready', 'tsuki-2-263');
   await lookup.fill('よ');
   await expect(guide).toContainText('1 / 2');
-  await expect(guide).toContainText('K');
+  await expect(guide).toContainText('中指シフト');
   await expect(keyboard.locator('[data-key-id="k"]')).toHaveAttribute('data-lookup', 'true');
   await expect(keyboard.locator('[data-key-id="g"]')).not.toHaveAttribute('data-lookup', 'true');
   await output.click();
@@ -1805,7 +1805,7 @@ test('打ち方逆引きは配列ごとのcanonical inputを表示する', async
   await expect(guide).not.toContainText('右親指');
   await expect(guide).not.toContainText('左親指');
   // 呼び名の種類を切り替えると、同じシフトキーを刻印やキー名で出す
-  const keyNaming = page.getByLabel('レイヤーキーの呼び名');
+  const keyNaming = page.getByLabel('シフトキーの呼び名');
   await keyNaming.selectOption({ label: '刻印' });
   await expect(guide).toContainText('Space + J');
   await keyNaming.selectOption({ label: 'キー名' });
