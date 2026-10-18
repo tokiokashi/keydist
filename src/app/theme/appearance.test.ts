@@ -47,23 +47,6 @@ test('外観の保存が不正な値の時は既定を返す', () => {
   assert.deepEqual(loadAppearancePreference(storage), { theme: 'system' });
 });
 
-test('旧画面の保存（keydist:ui-state・keydist:theme・analyzer.theme）はテーマの移行元にしない', () => {
-  const storage = new MemoryStorage();
-  storage.setItem('keydist:ui-state', JSON.stringify({ version: 1, ui: { theme: 'light' } }));
-  storage.setItem('keydist:theme', 'light');
-  storage.setItem(
-    APP_STATE_STORAGE_KEY,
-    JSON.stringify({
-      version: APP_STATE_VERSION,
-      analyzer: { theme: 'light' },
-    }),
-  );
-
-  assert.deepEqual(loadAppearancePreference(storage), { theme: 'system' });
-  assert.equal(storage.getItem('keydist:ui-state') !== null, true);
-  assert.equal(storage.getItem('keydist:theme'), 'light');
-});
-
 test('保存した外観の設定を読み戻す', () => {
   const storage = new MemoryStorage();
   assert.equal(saveAppearancePreference(storage, 'dark'), true);

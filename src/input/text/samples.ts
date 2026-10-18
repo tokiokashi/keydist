@@ -23,8 +23,7 @@ export const SAMPLE_TEXTS: Record<TextLanguage, Record<string, string>> = {
 /**
  * ラベルの「（既定）」は`FALLBACK_SAMPLE_ID`・`DEFAULT_BUILTIN_TEXT_ID`（`builtin.ts`）
  * が実際に使う既定のsampleIdに付ける。日本語の既定は`ja.legacy`（「吾輩は猫である」、
- * 前処理後290文字）にする: `ja.modern`は単体ページを開いた瞬間の初回計算が重すぎる
- * （旧アプリの`selectedSampleByMode: { ja: 'legacy' }`と同じ選択）。
+ * 前処理後290文字）にする: `ja.modern`は単体ページを開いた瞬間の初回計算が重すぎるため。
  */
 export const SAMPLE_TEXT_NAMES: Record<TextLanguage, Record<string, string>> = {
   en: { default: '英文（既定）' },

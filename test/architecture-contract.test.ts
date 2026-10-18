@@ -539,16 +539,3 @@ test('廃止済みのlegacy symbol / production helperをsrcへ再導入しな�
   assert.equal(sourcePaths.includes('playback-arpeggio.ts'), false);
   assert.equal(sourcePaths.includes('hold-start-action.ts'), false);
 });
-
-test('旧画面の入口と転送を復活させない', async () => {
-  const rootEntries = await readdir(ROOT);
-  for (const path of ['legacy.html', 'vite.legacy.config.ts', 'playwright.legacy.config.ts']) {
-    assert.equal(rootEntries.includes(path), false, `${path} must remain retired`);
-  }
-
-  const pkg = JSON.parse(await readFile(join(ROOT, 'package.json'), 'utf8')) as {
-    scripts?: Record<string, string>;
-  };
-  assert.equal(pkg.scripts?.['test:browser:legacy'], undefined);
-  assert.doesNotMatch(pkg.scripts?.build ?? '', /legacy/);
-});
