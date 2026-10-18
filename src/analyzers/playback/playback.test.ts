@@ -1396,22 +1396,85 @@ test('待機: 打鍵の時間は待機の有無で変わらない（全指の移
   }
 });
 
-test('待機: かな/秒・アクション/秒の推移は、SMAでもEWMAでも待機で変わらない', () => {
-  // 条件: 配列qwerty・ローマ字・テキスト「あ、い。う、ええ。」・SMAは窓幅3、EWMAは半減時間1秒。
+/** 確定scheduleの各ステップの表示時間（待機を含む）[ms]。 */
+const displayMsOf = (extracted: PlaybackExtracted) => extracted.schedule.map((step) => step.endMs - step.startMs);
+
+test('待機: SMAのアクション/秒は、窓のステップの表示時間（待機を含む）の合計で求める', () => {
+  // 条件: 配列qwerty・ローマ字・テキスト「あ、い。う、ええ。」・SMA窓幅3・待機は4つとも0でない。
+  const input = resolve('qwerty', 'あ、い。う、ええ。', 'ja');
+  const average = { rateAverage: 'sma', rateWindow: 3 } as const;
+  const plain = extractionOf(input, average);
+  const waited = extractionOf(input, { ...average, ...WAIT_OPTIONS });
+  const durations = displayMsOf(waited);
+  assert.ok(durations.some((ms, index) => ms > displayMsOf(plain)[index]));
+  for (const point of waited.rateChart) {
+    if (point.actionsPerSecond === undefined) continue;
+    const window = durations.slice(Math.max(0, point.cursor - 3), point.cursor);
+    const expected = (window.length * 1000) / window.reduce((sum, ms) => sum + ms, 0);
+    assert.ok(Math.abs(point.actionsPerSecond - expected) < 1e-9, `cursor ${point.cursor}`);
+  }
+  // 待機の分だけ、待機を含む窓の値は待機0の時より下がる
+  const lower = waited.rateChart.filter((point, index) => (point.actionsPerSecond ?? Infinity) < (plain.rateChart[index].actionsPerSecond ?? -Infinity));
+  assert.ok(lower.length > 0);
+  for (const point of waited.rateChart) {
+    const base = plain.rateChart.find((candidate) => candidate.cursor === point.cursor);
+    if (point.actionsPerSecond !== undefined && base?.actionsPerSecond !== undefined) assert.ok(point.actionsPerSecond <= base.actionsPerSecond + 1e-9);
+  }
+});
+
+test('待機: EWMAは待機を含む表示時間で減衰し、待機が複数打鍵のかなの先頭に付くとかなの値が大きく下がる', () => {
+  // 条件: 配列qwerty・ローマ字・テキスト「あ、かあ」・EWMA半減時間1秒・読点の後の待機だけ2000ms。
+  // 「か」はk・aの2打鍵で、待機は先頭のkの表示時間に付く。
+  const input = resolve('qwerty', 'あ、かあ', 'ja');
+  const average = { rateAverage: 'ewma', rateHalfLifeSeconds: 1 } as const;
+  const plain = extractionOf(input, average);
+  const waited = extractionOf(input, { ...average, commaAfterMs: 2000 });
+  const waitedStep = waited.schedule.findIndex((step) => (step.waitMs ?? 0) > 0);
+  assert.equal(waited.schedule[waitedStep].waitMs, 2000);
+  const at = (extracted: PlaybackExtracted, cursor: number) => extracted.rateChart.find((point) => point.cursor === cursor);
+  // 待機のあるステップを打ち終えた時、待機分の減衰が掛かる
+  const before = at(waited, waitedStep);
+  const after = at(waited, waitedStep + 1);
+  const plainAfter = at(plain, waitedStep + 1);
+  assert.ok(before?.kanaPerSecond !== undefined && after?.kanaPerSecond !== undefined && plainAfter?.kanaPerSecond !== undefined);
+  const durationMs = displayMsOf(waited)[waitedStep];
+  assert.ok(durationMs >= 2000);
+  const decay = 2 ** (-durationMs / 1000);
+  assert.ok(Math.abs(after.kanaPerSecond - before.kanaPerSecond * decay) < 1e-9);
+  assert.ok(after.kanaPerSecond < plainAfter.kanaPerSecond);
+  // 待機を含む表示時間の分だけアクション/秒の瞬時値も下がる
+  assert.ok((after.actionsPerSecond ?? 0) < (plainAfter.actionsPerSecond ?? 0));
+});
+
+test('待機: 待機が全部0なら、速度の推移は待機を足さない時と同じ値になる', () => {
+  // 条件: 配列qwerty・ローマ字・テキスト「あ、い。う、ええ。」・SMA窓幅3とEWMA半減時間1秒・待機は4つとも0。
   const input = resolve('qwerty', 'あ、い。う、ええ。', 'ja');
   for (const average of [
     { rateAverage: 'sma', rateWindow: 3 },
     { rateAverage: 'ewma', rateHalfLifeSeconds: 1 },
   ] as const) {
     const plain = extractionOf(input, average);
-    const waited = extractionOf(input, { ...average, ...WAIT_OPTIONS });
-    assert.notEqual(waited.timeTotals.totalMs, plain.timeTotals.totalMs);
+    const zero = extractionOf(input, { ...average, commaBeforeMs: 0, commaAfterMs: 0, periodBeforeMs: 0, periodAfterMs: 0 });
+    assert.deepEqual(zero.rateChart, plain.rateChart);
+  }
+});
+
+test('待機: 最後のステップより後の待機は、速度の推移に入らない', () => {
+  // 条件: 配列qwerty・ローマ字・テキスト「あい。」・句点の後の待機だけ1000ms・SMA窓幅3とEWMA半減時間1秒。
+  const input = resolve('qwerty', 'あい。', 'ja');
+  for (const average of [
+    { rateAverage: 'sma', rateWindow: 3 },
+    { rateAverage: 'ewma', rateHalfLifeSeconds: 1 },
+  ] as const) {
+    const plain = extractionOf(input, average);
+    const waited = extractionOf(input, { ...average, periodAfterMs: 1000 });
+    assert.ok(waited.timeTotals.totalMs > plain.timeTotals.totalMs);
     assert.deepEqual(waited.rateChart, plain.rateChart);
   }
 });
 
-test('待機: 既定のサンプルの長いテキストでも、打鍵時間と速度の推移は待機0の時と完全に一致する', () => {
-  // 条件: 組み込みのサンプル「ja.legacy」・配列qwertyとcolemak・SMA窓幅10とEWMA半減時間1秒。浮動小数の誤差も許さない。
+test('待機: 既定のサンプルの長いテキストでも、打鍵時間は待機0の時と一致し、速度の推移は待機の分だけ下がる', () => {
+  // 条件: 組み込みのサンプル「ja.legacy」・配列qwertyとcolemak・SMA窓幅10とEWMA半減時間1秒。
   const sample = builtinTextById('builtin:ja.legacy');
   assert.ok(sample);
   for (const layoutId of ['qwerty', 'colemak']) {
@@ -1421,7 +1484,7 @@ test('待機: 既定のサンプルの長いテキストでも、打鍵時間と
       const waited = extractionOf(input, { ...average, ...WAIT_OPTIONS });
       assert.notEqual(waited.timeTotals.totalMs, plain.timeTotals.totalMs);
       assert.equal(waited.timeTotals.typingMs, plain.timeTotals.typingMs);
-      assert.deepEqual(waited.rateChart, plain.rateChart);
+      assert.notDeepEqual(waited.rateChart, plain.rateChart);
     }
   }
 });

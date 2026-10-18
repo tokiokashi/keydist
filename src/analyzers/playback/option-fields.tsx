@@ -175,7 +175,7 @@ export function usePlaybackFields(options: PlaybackOptions, onOptionsChange: (ne
         step={50}
         integer
         unit="ミリ秒"
-        hint="日本語のテキストの「、」「，」「,」を打つ前に置く間です。打鍵の速さの平均には入りません。"
+        hint="日本語のテキストの「、」「，」「,」を打つ前に置く間です。"
       />
     ),
     commaAfterMs: (

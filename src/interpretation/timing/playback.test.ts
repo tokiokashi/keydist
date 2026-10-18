@@ -319,7 +319,7 @@ test('速度の集計窓は数値表示とグラフで同じ直近Stroke数を�
   assert.equal(playbackRateChartData(strokes, 2, true, 50)[4].inputText, 'あいうえ');
 });
 
-test('待機を挿入したscheduleでも、SMAとEWMAは打鍵の時間だけで求める', () => {
+test('待機を挿入したscheduleでは、SMAとEWMAは待機を含む表示時間で求める', () => {
   const strokes = [
     { inputIndex: 0, inputChar: 'あ', presses: [] },
     { inputIndex: 1, inputChar: 'い', presses: [] },
@@ -331,26 +331,40 @@ test('待機を挿入したscheduleでも、SMAとEWMAは打鍵の時間だけ�
     { strokeIndex: 1, startMs: 500, endMs: 1500 },
     { strokeIndex: 2, startMs: 1500, endMs: 2000 },
   ];
-  // 2打目の前に300ms、3打目の前に700msの待機。各ステップの打鍵の時間は500・1000・500のまま
+  // 2打目の前に300ms、3打目の前に700msの待機。各ステップの表示時間は500・1300・1200
   const waited = [
     { strokeIndex: 0, startMs: 0, endMs: 500 },
     { strokeIndex: 1, startMs: 500, endMs: 1800, waitMs: 300 },
     { strokeIndex: 2, startMs: 1800, endMs: 3000, waitMs: 700 },
   ];
-  for (const [average, halfLife] of [
-    ['sma', 1],
-    ['ewma', 1],
-  ] as const) {
-    for (const cursor of [1, 2, 3]) {
+  const rate = (schedule: typeof plain, cursor: number, average: 'sma' | 'ewma') => {
+    const actions = playbackRecentActionsPerSecondAnalysis(analysis, cursor, 2, true, 10, undefined, 1, schedule, average, 1);
+    const kana = playbackRecentKanaPerSecondAnalysis(analysis, cursor, 2, true, 10, undefined, 1, schedule, average, 1);
+    assert.equal(actions, kana);
+    return actions;
+  };
+  // SMA: 窓の打ち終えたステップ数 / 表示時間の合計。待機の後のステップを打ち終えた時に下がる
+  assert.equal(rate(waited, 1, 'sma'), 2);
+  assert.ok(Math.abs((rate(waited, 2, 'sma') ?? 0) - 2000 / 1800) < 1e-12);
+  assert.ok(Math.abs((rate(waited, 3, 'sma') ?? 0) - 3000 / 3000) < 1e-12);
+  assert.ok(Math.abs((rate(plain, 3, 'sma') ?? 0) - 3000 / 2000) < 1e-12);
+  // EWMA（半減期1秒）: 最初の瞬時値2/sを、表示時間1.3秒・1.2秒の減衰で畳み込む
+  const firstDecay = 2 ** -1.3;
+  const afterSecond = firstDecay * 2 + (1 - firstDecay) * (1000 / 1300);
+  const secondDecay = 2 ** -1.2;
+  assert.ok(Math.abs((rate(waited, 2, 'ewma') ?? 0) - afterSecond) < 1e-12);
+  assert.ok(Math.abs((rate(waited, 3, 'ewma') ?? 0) - (secondDecay * afterSecond + (1 - secondDecay) * (1000 / 1200))) < 1e-12);
+  // 待機が全部0のscheduleは、待機を足さない時と同じ値
+  for (const average of ['sma', 'ewma'] as const) {
+    for (const cursor of [1, 2, 3])
       assert.equal(
-        playbackRecentActionsPerSecondAnalysis(analysis, cursor, 2, true, 10, undefined, 1, waited, average, halfLife),
-        playbackRecentActionsPerSecondAnalysis(analysis, cursor, 2, true, 10, undefined, 1, plain, average, halfLife),
+        rate(
+          plain.map((step) => ({ ...step, waitMs: undefined })),
+          cursor,
+          average,
+        ),
+        rate(plain, cursor, average),
       );
-      assert.equal(
-        playbackRecentKanaPerSecondAnalysis(analysis, cursor, 2, true, 10, undefined, 1, waited, average, halfLife),
-        playbackRecentKanaPerSecondAnalysis(analysis, cursor, 2, true, 10, undefined, 1, plain, average, halfLife),
-      );
-    }
   }
   assert.deepEqual(playbackTimeTotals(plain), { typingMs: 2000, totalMs: 2000 });
   assert.deepEqual(playbackTimeTotals(waited), { typingMs: 2000, totalMs: 3000 });
