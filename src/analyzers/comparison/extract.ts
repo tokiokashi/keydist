@@ -67,7 +67,7 @@ export interface ComparisonExtracted {
   readonly rows: readonly ComparisonRow[];
 }
 
-/** `Metrics`から全列を読み出す純関数。`options.ts`のコメント参照。 */
+/** `Metrics`と`Trace`から全列を読み出す純関数。Bigramの組の種類数の2列だけ`Trace`から数え、他の列は`Metrics`を写す。 */
 export function computeComparisonRowValues(metrics: Metrics, trace: Trace): ComparisonRowValues {
   const bigrams = countBigramCombinations(trace);
   const adjacentCount = metrics.adjacent.length || 1;

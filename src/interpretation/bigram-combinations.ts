@@ -1,3 +1,4 @@
+import { resolveKeyId } from '#input/shapes/geometry.ts';
 import type { Stroke, Trace } from '#trace/generate.ts';
 
 /**
@@ -21,11 +22,18 @@ interface Hit {
 
 const emitsChar = (stroke: Stroke): boolean => stroke.participations.some((participation) => participation.roles.includes('output'));
 
+/**
+ * 1本の指が文字を出すキーとトリガーのキーを同時に押す参加があるので、役はキーごとに分ける。
+ * Strokeの `triggerKeys` に挙がったキーはトリガー、それ以外は参加の役が文字を出すならそのキー、そうでなければ（押しっぱなしのトリガーだけ）トリガーとして数える。
+ */
 function addKeys(hit: Hit, stroke: Stroke): void {
+  const triggers = new Set(stroke.triggerKeys.map(resolveKeyId));
   for (const participation of stroke.participations) {
-    const target = participation.roles.includes('output') ? hit.outputKeys : hit.triggerKeys;
-    // 1本のキーが文字を出しつつトリガーでもある参加は、文字を出す側に数える。
-    for (const key of participation.keys) target.add(key.id);
+    const emits = participation.roles.includes('output');
+    for (const key of participation.keys) {
+      const isOutput = emits && !triggers.has(key.id);
+      (isOutput ? hit.outputKeys : hit.triggerKeys).add(key.id);
+    }
   }
 }
 

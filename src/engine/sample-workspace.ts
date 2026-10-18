@@ -68,6 +68,11 @@ export const SAMPLE_BIGRAM_FLOW_OPTIONS = { source: 'within-hand' } as const;
  *   930pxは、オーナーの1080のモニタで普通の窓に開いた時の表示領域（約930px）。
  *   全画面表示の1080pxで測ると、普通の窓では中の段が切れる。
  */
+export const SAMPLE_COMPARISON_SIZE: GridSize = { w: 18, h: 9 };
+export const SAMPLE_N_SENSITIVITY_SIZE: GridSize = { w: 6, h: 9 };
+export const SAMPLE_LOWER_SIZE: GridSize = { w: 6, h: 14 };
+export const SAMPLE_FINGER_DISTANCE_SIZE: GridSize = { w: 6, h: 10 };
+
 /**
  * サンプルの比較表が出す列。表は18列の幅（SAMPLE_COMPARISON_SIZE）の中で横にスクロールせずに収まる列に絞る。
  * Bigram数の2列まで出すと幅が足りず、表の中で横にスクロールする。足りない列は解析設定で出せる。
@@ -91,10 +96,6 @@ export const SAMPLE_COMPARISON_OPTIONS = {
     'rightHandPressShare',
   ],
 };
-export const SAMPLE_COMPARISON_SIZE: GridSize = { w: 18, h: 9 };
-export const SAMPLE_N_SENSITIVITY_SIZE: GridSize = { w: 6, h: 9 };
-export const SAMPLE_LOWER_SIZE: GridSize = { w: 6, h: 14 };
-export const SAMPLE_FINGER_DISTANCE_SIZE: GridSize = { w: 6, h: 10 };
 
 /**
  * サンプルの並びが使う列の数。上の段（18 + 6）と中・下の段（6 × 4）がそろって右端になる幅。

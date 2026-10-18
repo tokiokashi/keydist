@@ -82,3 +82,11 @@ test('親指シフトのキーはトリガーなので、物理キーの要素�
   // 「ああ」は左親指+sを2回。s→sの1種類
   assert.deepEqual(countBigramCombinations(traceOf('nicola', 'ああ')), { physical: 1, withTriggers: 1 });
 });
+
+test('1本の指が文字を出すキーとトリガーのキーを同時に押す時、トリガーのキーは物理キーの要素に入れない', () => {
+  // JISかな配列の「つ」はz単独、「っ」は左小指でShiftとzを同時に押す（1本の指の参加にShiftとzが入る）
+  const trace = traceOf('jis-kana', 'つっつ');
+  assert.equal(trace.strokes.length, 3);
+  // 物理キーはz→zの1種類。シフト込みはz→(z+shift-l)と(z+shift-l)→zの2種類
+  assert.deepEqual(countBigramCombinations(trace), { physical: 1, withTriggers: 2 });
+});
