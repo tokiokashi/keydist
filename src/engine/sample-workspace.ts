@@ -106,8 +106,8 @@ export const SAMPLE_GRID_COLS = 24;
 const SAMPLE_RANGE: GridColumnRange = { start: 0, end: SAMPLE_GRID_COLS };
 
 /**
- * 配列の詳細と比較のサンプル。1つの配列の詳細の段を上に、複数の配列の比較の段をその下に置く。
- * 全部のペインが1つの連動の組に従い、詳細の段は組の単体の対象（1つの配列）、比較の段は組の集合を見る。
+ * 配列の詳細と比較のサンプル。1つの配列の詳細と複数の配列の比較を並べる。
+ * 全部のペインが1つの連動の組に従い、詳細のペインは組の単体の対象（1つの配列）、比較のペインは組の集合を見る。
  */
 export const LAYOUT_DETAIL_WORKSPACE_NAME = '配列の詳細と比較';
 export const SAMPLE_FINGER_MATRIX_ANALYZER_ID = 'finger-matrix';
@@ -116,35 +116,27 @@ export const SAMPLE_FINGER_MATRIX_ANALYZER_ID = 'finger-matrix';
 export const LAYOUT_DETAIL_LAYOUT_ID = 'tsuki-2-263';
 
 /**
- * 並びの大きさ（24列）。詳細の段は、左に打鍵再生（8列）、右上にヒートマップ（レイヤー）（16列）、その下に
- * ヒートマップと指ごとの距離（移動距離）（8列ずつ）、さらに下に指ごとの距離（標準偏差）（8列）とBigram Flow（16列）。
- * 比較の段は、比較表とN感度が横に並び（18 + 6列）、その下に配列×指のマトリックス4つが2列で並ぶ（12列ずつ）。
- * 列の幅は面の幅に依らない固定なので、ペインの画素の幅も画面の幅に依らない（8列は536px、24列の並びは1640px）。
- * 24列の並びはFHDでサイドバーを固定して開いた面（1680px）に、縦のスクロールバーがあっても横にスクロールせずに収まる。
- * 高さは升目（1升は行28pxと間8pxで36px）単位。各ペインの中身がペインの中でスクロールせずに収まる最小の高さを、
- * 画面の幅2560で、その幅・高さのペインを縦に積んで実測して決めた（ペインの幅は画面の幅に依らないので、他の画面の幅でも同じ）。
- * 実測した最小の幅と高さ（列 × 升）:
- * - 打鍵再生: 8列で20升（6列では収まらない）。右隣の段の高さ（9 + 12）に揃えて21升。
- * - ヒートマップ（レイヤー）: 16列で9升（12列以下は図が縦に並ぶので15升）。
- * - ヒートマップ: 図が小さく、8列で収まる。高さは隣の指ごとの距離に揃えて12升。
- * - 指ごとの距離: 移動距離は8列で12升、標準偏差は8列で23升（見出し・縦棒・指の名前・左手と右手の見出し・選んだ棒の文を出す欄に加えて、6組の分布の図まで）。
- * - Bigram Flow: 16列で10升（Keyboard FlowとRelative vectorsが凡例まで）。左隣の指ごとの距離（標準偏差）の高さに揃えて23升。
- * - 比較表: 18列で9升。N感度: 6列の並びで9升（図・凡例・横軸のラベル・畳んだ表の見出しまで）。
- * - 配列×指のマトリックス: 12列で10升（押下数・移動距離は12列から、指間距離の平均・標準偏差は10列から横にスクロールせず収まる）。
- * 縦は収めない（詳細の段で44升、全体で73升）ので、下の段を見るにはページを縦にスクロールする。
+ * 並びの大きさ（最大18列）。上から、ヒートマップとヒートマップ（レイヤー）（8列ずつ）、打鍵再生とBigram Flow（8列ずつ）、
+ * 比較表（18列）、左に指ごとの距離（標準偏差）、右に指ごとの距離（移動距離）とN感度（8列ずつ）、
+ * その下に配列×指のマトリックス4つ（12列で縦に積む）。
+ * 列の幅は面の幅に依らない固定なので、ペインの画素の幅も画面の幅に依らない（8列は536px、18列は1216px）。
+ * 高さは升目（1升は行28pxと間8pxで36px）単位。ペインは上の順に置き、空いている最初の場所とペインを詰める設定で、上の位置になる。
+ * ヒートマップ（レイヤー）は色の尺度を線形、層の並びをタブ、層の詳細をコンパクト、見る層を単一にして、図を小さく収める。
+ * 縦は1画面に収めず、下のペインを見るにはページを縦にスクロールする。
+ * どのペインも中でスクロールせずに収まることは、1920x930と1440x900で`e2e/sample-workspace.spec.ts`が確かめる。
  */
+export const LAYOUT_DETAIL_HEATMAP_SIZE: GridSize = { w: 8, h: 10 };
+export const LAYOUT_DETAIL_HEATMAP_LAYERS_SIZE: GridSize = { w: 8, h: 10 };
 export const LAYOUT_DETAIL_PLAYBACK_SIZE: GridSize = { w: 8, h: 21 };
-export const LAYOUT_DETAIL_HEATMAP_LAYERS_SIZE: GridSize = { w: 16, h: 9 };
-export const LAYOUT_DETAIL_HEATMAP_SIZE: GridSize = { w: 8, h: 12 };
-export const LAYOUT_DETAIL_FINGER_DISTANCE_SIZE: GridSize = { w: 8, h: 12 };
-export const LAYOUT_DETAIL_FINGER_DISTANCE_STD_DEV_SIZE: GridSize = { w: 8, h: 23 };
-export const LAYOUT_DETAIL_BIGRAM_FLOW_SIZE: GridSize = { w: 16, h: 23 };
+export const LAYOUT_DETAIL_BIGRAM_FLOW_SIZE: GridSize = { w: 8, h: 21 };
 export const LAYOUT_DETAIL_COMPARISON_SIZE: GridSize = { w: 18, h: 9 };
-export const LAYOUT_DETAIL_N_SENSITIVITY_SIZE: GridSize = { w: 6, h: 9 };
+export const LAYOUT_DETAIL_FINGER_DISTANCE_STD_DEV_SIZE: GridSize = { w: 8, h: 23 };
+export const LAYOUT_DETAIL_FINGER_DISTANCE_SIZE: GridSize = { w: 8, h: 12 };
+export const LAYOUT_DETAIL_N_SENSITIVITY_SIZE: GridSize = { w: 8, h: 11 };
 export const LAYOUT_DETAIL_FINGER_MATRIX_SIZE: GridSize = { w: 12, h: 10 };
 
-/** 配列の詳細と比較のサンプルが使う列の数。 */
-export const LAYOUT_DETAIL_GRID_COLS = 24;
+/** 配列の詳細と比較のサンプルが使う列の数。並びの最大の幅（比較表の18列）に合わせる。 */
+export const LAYOUT_DETAIL_GRID_COLS = 18;
 const LAYOUT_DETAIL_RANGE: GridColumnRange = { start: 0, end: LAYOUT_DETAIL_GRID_COLS };
 
 const layoutTarget = (layoutId: string): AnalysisTarget => ({ kind: 'layout', layoutId });
@@ -172,6 +164,8 @@ interface SampleDefinition {
   readonly optionSets: readonly OptionSet[];
   readonly panes: readonly SamplePaneSpec[];
   readonly range: GridColumnRange;
+  /** ペインを詰める設定を付けて始めるか。 */
+  readonly compactPanes?: true;
   /** 画面に出す名前。「〜を作る」「〜で始める」の前に付く。 */
   readonly label: string;
 }
@@ -214,7 +208,8 @@ const LAYOUT_DETAIL: SampleDefinition = {
   name: LAYOUT_DETAIL_WORKSPACE_NAME,
   label: '配列の詳細と比較のサンプル',
   range: LAYOUT_DETAIL_RANGE,
-  // 全部が1つの連動の組に従う。詳細の段のペインは単体の対象、比較の段のペインは集合を見る
+  compactPanes: true,
+  // 全部が1つの連動の組に従う。ヒートマップ・打鍵再生などは単体の対象、比較表・N感度・マトリックスは集合を見る
   groups: [
     {
       id: groupId(1),
@@ -226,13 +221,18 @@ const LAYOUT_DETAIL: SampleDefinition = {
   ],
   optionSets: [],
   panes: [
-    { analyzerId: 'playback', group: 1, size: LAYOUT_DETAIL_PLAYBACK_SIZE },
-    { analyzerId: 'heatmap-layers', group: 1, size: LAYOUT_DETAIL_HEATMAP_LAYERS_SIZE },
     { analyzerId: 'heatmap', group: 1, size: LAYOUT_DETAIL_HEATMAP_SIZE },
-    { analyzerId: SAMPLE_FINGER_DISTANCE_ANALYZER_ID, group: 1, size: LAYOUT_DETAIL_FINGER_DISTANCE_SIZE },
-    { analyzerId: SAMPLE_FINGER_DISTANCE_ANALYZER_ID, options: { chartMetric: 'stdDev' }, group: 1, size: LAYOUT_DETAIL_FINGER_DISTANCE_STD_DEV_SIZE },
+    {
+      analyzerId: 'heatmap-layers',
+      options: { colorScale: 'linear', layerArrangement: 'tabs', layerDetail: 'compact', activeLayerId: 'single' },
+      group: 1,
+      size: LAYOUT_DETAIL_HEATMAP_LAYERS_SIZE,
+    },
+    { analyzerId: 'playback', group: 1, size: LAYOUT_DETAIL_PLAYBACK_SIZE },
     { analyzerId: SAMPLE_BIGRAM_FLOW_ANALYZER_ID, group: 1, size: LAYOUT_DETAIL_BIGRAM_FLOW_SIZE },
     { analyzerId: SAMPLE_COMPARISON_ANALYZER_ID, options: SAMPLE_COMPARISON_OPTIONS, group: 1, size: LAYOUT_DETAIL_COMPARISON_SIZE },
+    { analyzerId: SAMPLE_FINGER_DISTANCE_ANALYZER_ID, options: { chartMetric: 'stdDev' }, group: 1, size: LAYOUT_DETAIL_FINGER_DISTANCE_STD_DEV_SIZE },
+    { analyzerId: SAMPLE_FINGER_DISTANCE_ANALYZER_ID, group: 1, size: LAYOUT_DETAIL_FINGER_DISTANCE_SIZE },
     { analyzerId: SAMPLE_N_SENSITIVITY_ANALYZER_ID, group: 1, size: LAYOUT_DETAIL_N_SENSITIVITY_SIZE },
     ...(['presses', 'distance', 'pairMean', 'pairStdDev'] as const).map(
       (surface): SamplePaneSpec => ({
@@ -274,6 +274,7 @@ export function applySampleLayout(
     groups: [...definition.groups],
     optionSets: [...definition.optionSets],
     conditions: { ...target.conditions, defaultShapeId: SAMPLE_DEFAULT_SHAPE_ID },
+    ...(definition.compactPanes === true ? { compactPanes: true as const } : {}),
   };
   let next: WorkspaceLibrary = library.map((workspace) => (workspace.id === workspaceId ? seeded : workspace));
 

@@ -207,14 +207,25 @@ test('ペインがあるWorkspace・存在しないidにサンプルの並びは
   assert.equal(startWorkspaceFromSampleCommand('none', sequence('q'), 'overview')(filled.assets).kind, 'no-op');
 });
 
-test('配列の詳細と比較のサンプル: 詳細の段が上、比較の段が下。全部が1つの連動の組に従い、見る量・表示の面が指定どおり', () => {
+test('配列の詳細と比較のサンプル: 全部が1つの連動の組に従い、見る量・表示の面・並びが指定どおり', () => {
   const { created } = createSampleWorkspace(initialWorkspaceLibrary(), () => 'w', sequence('p'), 'layout-detail');
   assert.equal(created.name, LAYOUT_DETAIL_WORKSPACE_NAME);
-  const detail = ['playback', 'heatmap-layers', 'heatmap', 'finger-distance', 'finger-distance', 'bigram-flow'];
-  const comparison = ['comparison', 'n-sensitivity', 'finger-matrix', 'finger-matrix', 'finger-matrix', 'finger-matrix'];
   assert.deepEqual(
     created.panes.map((pane) => pane.analyzerId),
-    [...detail, ...comparison],
+    [
+      'heatmap',
+      'heatmap-layers',
+      'playback',
+      'bigram-flow',
+      'comparison',
+      'finger-distance',
+      'finger-distance',
+      'n-sensitivity',
+      'finger-matrix',
+      'finger-matrix',
+      'finger-matrix',
+      'finger-matrix',
+    ],
   );
   // 連動の組は1つで、単体の対象は詳細で見る配列（比較する集合の中の1つ）、集合は比較する配列
   assert.deepEqual(
@@ -229,45 +240,45 @@ test('配列の詳細と比較のサンプル: 詳細の段が上、比較の段
   );
   assert.ok(SAMPLE_COMPARISON_LAYOUT_IDS.includes(LAYOUT_DETAIL_LAYOUT_ID));
   assert.deepEqual(created.conditions, { defaultShapeId: SAMPLE_DEFAULT_SHAPE_ID });
+  assert.equal(created.compactPanes, true);
   assert.deepEqual(created.optionSets, []);
-  // 指ごとの距離は移動距離（既定）と標準偏差の2つ、配列×指のマトリックスは押下数・移動距離・指間距離の平均・標準偏差の4つ
+  // 解析設定は共有せずペインごと。変えた項目だけを持つ
   const optionsOf = (analyzerId: string) => created.panes.filter((pane) => pane.analyzerId === analyzerId).map((pane) => pane.options);
-  assert.deepEqual(optionsOf('finger-distance'), [undefined, { chartMetric: 'stdDev' }]);
+  assert.deepEqual(optionsOf('heatmap-layers'), [{ colorScale: 'linear', layerArrangement: 'tabs', layerDetail: 'compact', activeLayerId: 'single' }]);
+  assert.deepEqual(optionsOf('finger-distance'), [{ chartMetric: 'stdDev' }, undefined]);
   assert.deepEqual(
     optionsOf('finger-matrix'),
     ['presses', 'distance', 'pairMean', 'pairStdDev'].map((surface) => ({ surface })),
   );
   assert.ok(created.panes.every((pane) => pane.optionsBinding.mode === 'own'));
 
-  // 詳細の段のペインは、比較の段のどのペインより上にある
-  const bottomOfDetail = Math.max(...created.grid.slice(0, detail.length).map((item) => item.y + item.h));
-  assert.ok(created.grid.slice(detail.length).every((item) => item.y >= bottomOfDetail));
-  // 24列に収まり、不変条件を満たした形（正規化しても変わらない）
+  // 最大の幅に収まり、不変条件を満たした形（詰め直しても変わらない）
   assert.ok(created.grid.every((item) => item.x + item.w <= LAYOUT_DETAIL_GRID_COLS));
+  assert.equal(Math.max(...created.grid.map((item) => item.x + item.w)), LAYOUT_DETAIL_GRID_COLS);
   assert.deepEqual(
     normalizeGrid(
       created.grid,
       created.panes.map((pane) => pane.id),
-      false,
+      true,
     ),
     created.grid,
   );
-  // 並び（x, y, w, h）。高さは各ペインが中でスクロールしない最小の高さ（`e2e/sample-workspace.spec.ts` で確かめる）
+  // 並び（x, y, w, h）。高さは各ペインが中でスクロールしない高さ（`e2e/sample-workspace.spec.ts` で確かめる）
   assert.deepEqual(
     created.grid.map(({ x, y, w, h }) => [x, y, w, h]),
     [
-      [0, 0, 8, 21],
-      [8, 0, 16, 9],
-      [8, 9, 8, 12],
-      [16, 9, 8, 12],
-      [0, 21, 8, 23],
-      [8, 21, 16, 23],
-      [0, 44, 18, 9],
-      [18, 44, 6, 9],
-      [0, 53, 12, 10],
-      [12, 53, 12, 10],
+      [0, 0, 8, 10],
+      [8, 0, 8, 10],
+      [0, 10, 8, 21],
+      [8, 10, 8, 21],
+      [0, 31, 18, 9],
+      [0, 40, 8, 23],
+      [8, 40, 8, 12],
+      [8, 52, 8, 11],
       [0, 63, 12, 10],
-      [12, 63, 12, 10],
+      [0, 73, 12, 10],
+      [0, 83, 12, 10],
+      [0, 93, 12, 10],
     ],
   );
 });
