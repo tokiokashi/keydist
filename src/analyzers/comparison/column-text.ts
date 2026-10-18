@@ -21,6 +21,8 @@ export const COMPARISON_COLUMN_IDS = [
   'adjacentStdDev',
   'rightHandDistanceShare',
   'rightHandPressShare',
+  'physicalBigramCombinations',
+  'logicalBigramCombinations',
 ] as const;
 
 export type ComparisonColumnId = (typeof COMPARISON_COLUMN_IDS)[number];
@@ -99,5 +101,15 @@ export const COMPARISON_COLUMN_TEXT: Readonly<Record<ComparisonColumnId, Compari
   rightHandPressShare: {
     label: '右手押下率',
     description: '右手（親指を含む5本）の押下数を、全押下数で割った割合（%）。左手は100%から引いた値。',
+  },
+  physicalBigramCombinations: {
+    label: 'Bigram数（物理キー）',
+    description:
+      'テキストを打った時に現れた、続けて打つ2回の打鍵の組が何種類あるか。文字を出したキーだけで区別し、シフトの違いは区別しません。前置・後置のシフトは、そのシフトで打つ文字と合わせて1回の打鍵と数えます。A→BとB→Aは別の組で、親指のキーも数えます。',
+  },
+  logicalBigramCombinations: {
+    label: 'Bigram数（シフト込み）',
+    description:
+      'テキストを打った時に現れた、続けて打つ2回の打鍵の組が何種類あるか。シフトなどのレイヤーを切り替えるキーも含めて区別し、左右のシフトと左右の親指シフトも別と数えます。前置・後置のシフトは、そのシフトで打つ文字と合わせて1回の打鍵と数えます。A→BとB→Aは別の組で、親指のキーも数えます。',
   },
 } as const;

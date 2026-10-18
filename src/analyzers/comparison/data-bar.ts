@@ -32,6 +32,9 @@ export const COMPARISON_BAR_SCALE: Readonly<Record<ComparisonColumnId, Compariso
   // 右手の割合（%）。0%は右手を使っていない。
   rightHandDistanceShare: 'zero',
   rightHandPressShare: 'zero',
+  // Bigramの組の種類数。0は組が現れていない。
+  physicalBigramCombinations: 'zero',
+  logicalBigramCombinations: 'zero',
 };
 
 /** 相対の長さのバーを持つセルのtooltip。 */
