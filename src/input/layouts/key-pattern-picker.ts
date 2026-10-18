@@ -42,12 +42,18 @@ export interface KeyPatternPresentationState {
   readonly oneShotActivations: readonly KeyPatternTriggerActivation[];
   /** 現在presentation上activeなaggregation。 */
   readonly activeAggregationGroupIds: readonly string[];
+  /**
+   * activeなaggregationを起動しているtriggerの組。
+   * aggregationのtrigger全体ではなく、今そのaggregationを起動しているキーだけを持つ。
+   */
+  readonly activeTriggers: readonly KeyPatternTriggerActivation[];
 }
 
 export const EMPTY_KEY_PATTERN_PRESENTATION_STATE: KeyPatternPresentationState = {
   selectedKeys: [],
   oneShotActivations: [],
   activeAggregationGroupIds: [],
+  activeTriggers: [],
 };
 
 export interface KeyPatternPresentationEvent {
@@ -321,19 +327,19 @@ function shouldKeepReleasedSelectionKey(releasedKey: string, oneShotActivations:
   return oneShotActivations.some((activation) => activation.triggerKeys.includes(canonical));
 }
 
-function activeAggregationIds(oneShot: readonly KeyPatternTriggerActivation[], held: readonly PresentationTriggerPattern[]): readonly string[] {
+function activeTriggerActivations(
+  oneShot: readonly KeyPatternTriggerActivation[],
+  held: readonly PresentationTriggerPattern[],
+): readonly KeyPatternTriggerActivation[] {
   const all = [
-    ...oneShot.map((activation) => ({
-      aggregationGroupId: activation.aggregationGroupId,
-      specificity: activation.triggerKeys.length,
-    })),
+    ...oneShot.map((activation) => ({ activation, specificity: activation.triggerKeys.length })),
     ...held.map((pattern) => ({
-      aggregationGroupId: pattern.aggregationGroupId,
+      activation: { aggregationGroupId: pattern.aggregationGroupId, triggerKeys: pattern.triggerKeys },
       specificity: pattern.specificity,
     })),
   ];
   const maxSpecificity = Math.max(0, ...all.map((entry) => entry.specificity));
-  return [...new Set(all.filter((entry) => entry.specificity === maxSpecificity).map((entry) => entry.aggregationGroupId))];
+  return uniqueActivations(all.filter((entry) => entry.specificity === maxSpecificity).map((entry) => entry.activation));
 }
 
 /**
@@ -397,10 +403,12 @@ export function advanceKeyPatternPresentation(
     }
   }
 
+  const activeTriggers = activeTriggerActivations(oneShot, [...held, ...pressedGesture]);
   return {
     selectedKeys: [...new Set(selectedKeys)],
     oneShotActivations: oneShot,
-    activeAggregationGroupIds: activeAggregationIds(oneShot, [...held, ...pressedGesture]),
+    activeAggregationGroupIds: [...new Set(activeTriggers.map((activation) => activation.aggregationGroupId))],
+    activeTriggers,
   };
 }
 

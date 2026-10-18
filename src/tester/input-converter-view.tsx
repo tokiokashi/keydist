@@ -59,6 +59,15 @@ import {
 } from './reverse-lookup.ts';
 import { keyboardStandardForGeometryId, physicalKeyDisplayLabel, physicalKeyEngraving } from '#input/shapes/key-labels.ts';
 import { romajiTypingCorrectness } from './live-romaji.ts';
+import {
+  DEFAULT_LAYER_KEY_NAMING,
+  LAYER_KEY_NAMING_OPTIONS,
+  isLayerKeyNaming,
+  layerCardTitle,
+  pressedKeyNames,
+  recognizedActionKeyNames,
+  type LayerKeyNaming,
+} from './layer-key-names.ts';
 import { useTypingSession } from './use-typing-session.ts';
 
 const DIRECT_JA_INPUT_LAYOUTS = LAYOUTS_JA.filter((layout) => layout.romajiTable === undefined);
@@ -187,41 +196,47 @@ const HOLD_PHASE_LABEL: Record<RecognizedHoldPhase, string> = {
 };
 
 function RecognizedDetail({
+  layout,
   recognized,
   standard,
+  naming,
 }: {
+  layout: Layout;
   recognized: ReturnType<typeof useTypingSession>['lastRecognized'];
   standard: PhysicalKeyboardStandard | undefined;
+  naming: LayerKeyNaming;
 }) {
-  const label = (key: string) => physicalKeyDisplayLabel(key, standard);
   if (recognized.length === 0) {
     return <p className="input-muted input-recognized-empty">-</p>;
   }
 
   return (
     <div className="input-recognized-list">
-      {recognized.map((entry, entryIndex) => (
-        <div className="input-recognized" key={entryIndex}>
-          <strong title={entry.output}>{entry.output}</strong>
-          <div>
-            {entry.actions.map((action, actionIndex) => {
-              const actionLabel = [
-                action.keys.map(label).join(' + '),
-                action.heldKeys.length > 0 ? `[${action.heldKeys.map(label).join(' + ')} 押したまま]` : '',
-                action.holdPhase === undefined ? '' : HOLD_PHASE_LABEL[action.holdPhase],
-              ]
-                .filter(Boolean)
-                .join(' ');
+      {recognized.map((entry, entryIndex) => {
+        const keyNames = recognizedActionKeyNames(layout, entry, naming, standard);
+        return (
+          <div className="input-recognized" key={entryIndex}>
+            <strong title={entry.output}>{entry.output}</strong>
+            <div>
+              {entry.actions.map((action, actionIndex) => {
+                const actionLabel = [
+                  keyNames[actionIndex].keys.join(' + '),
+                  action.heldKeys.length > 0 ? `[${keyNames[actionIndex].held.join(' + ')} 押したまま]` : '',
+                  action.holdPhase === undefined ? '' : HOLD_PHASE_LABEL[action.holdPhase],
+                ]
+                  .filter(Boolean)
+                  .join(' ');
 
-              return (
-                <code key={actionIndex} title={actionLabel}>
-                  {actionLabel}
-                </code>
-              );
-            })}
+                return (
+                  <code key={actionIndex} title={actionLabel}>
+                    {actionLabel}
+                  </code>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -265,6 +280,7 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
   const [showLayerKeys, setShowLayerKeys] = useState(true);
   const [showShiftKeys, setShowShiftKeys] = useState(false);
   const [showPracticeAssist, setShowPracticeAssist] = useState(true);
+  const [layerKeyNaming, setLayerKeyNaming] = useState<LayerKeyNaming>(DEFAULT_LAYER_KEY_NAMING);
   const [settingsOpen, setSettingsOpen] = useState(true);
   const [splitPercent, setSplitPercent] = useState(DEFAULT_SPLIT_PERCENT);
   const [lookupQuery, setLookupQuery] = useState('');
@@ -323,7 +339,7 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
         },
         ...guideDefinitions.map((definition) => ({
           id: layerGuideCardPanelId(definition.id),
-          title: definition.label,
+          title: layerCardTitle(layout, definition.id, definition.label, layerKeyNaming, keyboardStandard),
           defaultDockSlot: 'input.sidebar.guide',
           minWidth: MIN_FLOATING_GUIDE_WIDTH,
           minHeight: MIN_FLOATING_GUIDE_HEIGHT,
@@ -331,7 +347,7 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
           defaultFloatingHeight: 280,
         })),
       ]),
-    [guideDefinitions],
+    [guideDefinitions, layout, layerKeyNaming, keyboardStandard],
   );
   const workspacePanelDefinitions = useMemo(() => [...workspaceRegistry.values()], [workspaceRegistry]);
   const workspace = useWorkspace(workspacePanelDefinitions, workspaceRegistry);
@@ -399,6 +415,7 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
     const restoredLayout = selectableLayouts.find((candidate) => candidate.id === restored.layoutId);
     if (restoredLayout !== undefined) setLayout(restoredLayout);
     setGeometryId(restored.geometryId);
+    setLayerKeyNaming(restored.layerKeyNaming);
     applyLayoutPreferences(inputConverterLayoutPreferences(restored, restored.layoutId, DEFAULT_LAYOUT_PREFERENCES));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 自作の配列の読み込みが終わった時に一度だけ復元する
   }, [userLayoutsReady]);
@@ -430,6 +447,7 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
       version: INPUT_CONVERTER_PREFERENCES_VERSION,
       layoutId: layout.id,
       geometryId,
+      layerKeyNaming,
       layouts: {
         ...current.layouts,
         [layout.id]: currentLayoutPreferences(),
@@ -440,6 +458,7 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
   }, [
     layout.id,
     geometryId,
+    layerKeyNaming,
     showDynamicGuide,
     showLayerGuide,
     showLayerKeys,
@@ -464,6 +483,7 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
         version: INPUT_CONVERTER_PREFERENCES_VERSION,
         layoutId: nextLayout.id,
         geometryId: nextGeometryId,
+        layerKeyNaming,
         layouts: {
           ...current.layouts,
           [layout.id]: currentLayoutPreferences(),
@@ -834,6 +854,22 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
                         ))}
                       </select>
                     </label>
+                    <label>
+                      <span>シフトキーの呼び名</span>
+                      <select
+                        aria-label="シフトキーの呼び名"
+                        value={layerKeyNaming}
+                        onChange={(event) => {
+                          if (isLayerKeyNaming(event.target.value)) setLayerKeyNaming(event.target.value);
+                        }}
+                      >
+                        {LAYER_KEY_NAMING_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                   </div>
                 </div>
               ) : null}
@@ -874,6 +910,7 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
                   }
                 >
                   {guideDefinitions.map((definition) => {
+                    const title = layerCardTitle(layout, definition.id, definition.label, layerKeyNaming, keyboardStandard);
                     const guide = presentationLayerGuide(layout, definition.id);
                     const legends = guide?.legends ?? new Map<string, string>();
                     const triggers = new Set(guide?.triggerKeys ?? []);
@@ -892,32 +929,32 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
 
                     return (
                       <WorkspacePanel
-                        ariaLabel={`「${definition.label}」個別カンペ`}
+                        ariaLabel={`「${title}」個別カンペ`}
                         className="input-layer-card"
-                        dockAriaLabel={`「${definition.label}」を元に戻す`}
-                        dockedHeaderAriaLabel={`「${definition.label}」カンペをクリックまたはドラッグして小窓表示`}
-                        floatingHeaderAriaLabel={`「${definition.label}」カンペを移動`}
+                        dockAriaLabel={`「${title}」を元に戻す`}
+                        dockedHeaderAriaLabel={`「${title}」カンペをクリックまたはドラッグして小窓表示`}
+                        floatingHeaderAriaLabel={`「${title}」カンペを移動`}
                         id={layerGuideCardPanelId(definition.id)}
                         key={definition.id}
-                        resizeAriaLabel={`「${definition.label}」カンペのサイズを変更`}
+                        resizeAriaLabel={`「${title}」カンペのサイズを変更`}
                         renderHeader={() => (
                           <h3>
-                            {definition.label}
+                            {title}
                             {definition.presentationModeLabel ? <small>{definition.presentationModeLabel}</small> : null}
                           </h3>
                         )}
                         renderPlaceholder={({ dock }) => (
                           <section className="input-layer-card-placeholder">
-                            <strong>{definition.label}</strong>
+                            <strong>{title}</strong>
                             <span>小窓表示中</span>
-                            <button aria-label={`「${definition.label}」を元に戻す`} onClick={dock} type="button">
+                            <button aria-label={`「${title}」を元に戻す`} onClick={dock} type="button">
                               戻す
                             </button>
                           </section>
                         )}
                       >
                         <PhysicalKeyboard
-                          ariaLabel={`「${definition.label}」レイヤー`}
+                          ariaLabel={`「${title}」レイヤー`}
                           geometryId={geometry.id}
                           keys={visibleKeys}
                           keyViews={views}
@@ -1100,11 +1137,15 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
                 <div className="input-key-status" aria-label="キーの状態">
                   <section>
                     <h2>Pressed</h2>
-                    <p>{session.pressedKeys.length > 0 ? session.pressedKeys.map(keyLabel).join(' + ') : '—'}</p>
+                    <p>
+                      {session.pressedKeys.length > 0
+                        ? pressedKeyNames(layout, session.pressedKeys, session.presentation.activeTriggers, layerKeyNaming, keyboardStandard).join(' + ')
+                        : '—'}
+                    </p>
                   </section>
                   <section>
                     <h2>Recognized</h2>
-                    <RecognizedDetail recognized={session.lastRecognized} standard={keyboardStandard} />
+                    <RecognizedDetail layout={layout} naming={layerKeyNaming} recognized={session.lastRecognized} standard={keyboardStandard} />
                   </section>
                 </div>
               </div>
@@ -1279,11 +1320,11 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
                                 {activeLookupGuideActions.length}
                               </span>
                               <strong>{activeLookupAction.output}</strong>
-                              <code>{reverseLookupGuideActionLabel(layout, activeLookupAction, keyboardStandard)}</code>
+                              <code>{reverseLookupGuideActionLabel(layout, activeLookupAction, keyboardStandard, layerKeyNaming)}</code>
                             </div>
                             <ol>
                               <li data-active>
-                                <code>{reverseLookupRouteLabel(layout, activeLookupRoute, keyboardStandard)}</code>
+                                <code>{reverseLookupRouteLabel(layout, activeLookupRoute, keyboardStandard, layerKeyNaming)}</code>
                                 {activeLookupRoute.steps.some((step) => step.origin === 'combo') ? <small>コンボ</small> : null}
                                 {otherLookupRoutes.length > 0 ? (
                                   <span className="input-lookup-alt">
@@ -1305,7 +1346,7 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
                                       <ol>
                                         {otherLookupRoutes.map((route, index) => (
                                           <li key={`${reverseLookupRouteLabel(layout, route)}:${index}`}>
-                                            <code>{reverseLookupRouteLabel(layout, route, keyboardStandard)}</code>
+                                            <code>{reverseLookupRouteLabel(layout, route, keyboardStandard, layerKeyNaming)}</code>
                                             {route.steps.some((step) => step.origin === 'combo') ? <small>コンボ</small> : null}
                                           </li>
                                         ))}
