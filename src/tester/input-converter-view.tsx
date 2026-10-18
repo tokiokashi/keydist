@@ -213,7 +213,7 @@ function RecognizedDetail({
   return (
     <div className="input-recognized-list">
       {recognized.map((entry, entryIndex) => {
-        const keyNames = recognizedActionKeyNames(layout, entry.actions, naming, standard);
+        const keyNames = recognizedActionKeyNames(layout, entry, naming, standard);
         return (
           <div className="input-recognized" key={entryIndex}>
             <strong title={entry.output}>{entry.output}</strong>

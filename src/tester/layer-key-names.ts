@@ -1,7 +1,7 @@
 import type { KeyPatternTriggerActivation } from '#input/layouts/key-pattern-picker.ts';
 import { aggregationTriggerChords, aggregationTriggerKeys, layerLabelOf } from '#input/layouts/layers.ts';
 import type { Layout } from '#input/layouts/index.ts';
-import type { RealizedSemanticAction } from '#input/semantics/index.ts';
+import type { InputAlternative, RealizedSemanticAction } from '#input/semantics/index.ts';
 import { resolveKeyId, type PhysicalKeyboardStandard } from '#input/shapes/geometry.ts';
 import { physicalKeyDisplayLabel } from '#input/shapes/key-labels.ts';
 
@@ -148,14 +148,22 @@ export function pressedKeyNames(
  */
 export function recognizedActionKeyNames(
   layout: Layout,
-  actions: readonly RealizedSemanticAction[],
+  recognized: { readonly actions: readonly RealizedSemanticAction[]; readonly alternative: InputAlternative },
   naming: LayerKeyNaming,
   standard?: PhysicalKeyboardStandard,
 ): { readonly keys: string[]; readonly held: string[] }[] {
+  const { actions, alternative } = recognized;
   const lists: NamedKeySlot[][] = [];
   for (const action of actions) {
     const layerId = action.input.aggregationGroupId;
-    const outputs = new Set(action.outputKeys.map(resolveKeyId));
+    // 逆引きと同じ規則: 同じ入力の参加の候補のどれかで出力側にもなるキーは、トリガーとして名前を付けない
+    const views = alternative.baseRealizations
+      .filter((realization) => realization.input === action.input)
+      .flatMap((realization) => [
+        { outputKeys: realization.defaultOutputKeys, triggerKeys: realization.defaultTriggerKeys ?? [] },
+        ...(realization.alternateParticipations ?? []),
+      ]);
+    const outputs = new Set([...action.outputKeys, ...views.flatMap((view) => view.outputKeys)].map(resolveKeyId));
     const triggers = new Set(action.triggerKeys.map(resolveKeyId));
     lists.push(
       action.keys.map((key): NamedKeySlot => {
@@ -189,6 +197,9 @@ export function layerCardTitle(layout: Layout, layerId: string, layerLabel: stri
     seen.add(signature);
     chords.push(keys);
   }
+  // 左右どちらでもよい親指は、キーの識別子順に並べて逆引きの並びとそろえる
+  const equivalentThumbs = new Set((layout.thumbShiftKeys ?? []).map(resolveKeyId));
+  if (chords.every((keys) => keys.length === 1 && equivalentThumbs.has(keys[0]))) chords.sort((left, right) => left[0].localeCompare(right[0]));
   if (chords.length === 0) return layerLabel;
 
   const name = (key: string) =>

@@ -27,7 +27,7 @@ function play(layout: Layout, events: readonly ['down' | 'up', string][]) {
 }
 
 const recognizedLabel = (layout: Layout, recognized: RecognizedTypingInput, naming: LayerKeyNaming) =>
-  recognizedActionKeyNames(layout, recognized.actions, naming).map((names) => names.keys.join(' + '));
+  recognizedActionKeyNames(layout, recognized, naming).map((names) => names.keys.join(' + '));
 
 test('新下駄の中指シフトは、カード・逆引き・Pressed・Recognizedで同じ呼び名になる', () => {
   const layout = layoutOf('shingeta');
@@ -127,9 +127,40 @@ test('押したままのトリガーキーも同じ呼び名で出す', () => {
   const action = continued.actions[0]!;
   assert.deepEqual(action.heldKeys, ['thumb-r']);
   assert.deepEqual(
-    NAMINGS.map((naming) => recognizedActionKeyNames(layout, continued.actions, naming)[0]!.held),
+    NAMINGS.map((naming) => recognizedActionKeyNames(layout, continued, naming)[0]!.held),
     [['Shift'], ['右親指'], ['Space']],
   );
+});
+
+test('相互シフトの「れ」「さ」は、Recognizedと逆引きで同じく文字のキーとして出す', () => {
+  const layout = layoutOf('shingeta');
+  const cases: [string, [string, string], string][] = [
+    ['れ', ['k', 'd'], 'K + D'],
+    ['さ', ['l', 's'], 'L + S'],
+  ];
+  for (const [output, [first, second], expected] of cases) {
+    const route = reverseLookup(layout, output)[0];
+    assert.ok(route);
+    const steps = play(layout, [
+      ['down', first],
+      ['down', second],
+    ]);
+    const recognized = steps[1].result.recognized[0];
+    assert.ok(recognized, output);
+    for (const naming of NAMINGS) {
+      assert.equal(reverseLookupRouteLabel(layout, route, undefined, naming), expected, `逆引き ${output} ${naming}`);
+      assert.deepEqual(recognizedLabel(layout, recognized, naming), [expected], `Recognized ${output} ${naming}`);
+    }
+  }
+});
+
+test('キー名の並びは、左右どちらでもよい親指でレイヤーカードと逆引きがそろう', () => {
+  for (const id of ['shin-jis-simultaneous', 'naginata-v18']) {
+    const layout = layoutOf(id);
+    const card = compactLayerGuideDefinitions(layout)[0];
+    assert.ok(card);
+    assert.equal(layerCardTitle(layout, card.id, card.label, 'key-name'), '左親指 / 右親指', id);
+  }
 });
 
 test('層の名前を持たないトリガーキーは、どの種類でもキー名で出す', () => {
