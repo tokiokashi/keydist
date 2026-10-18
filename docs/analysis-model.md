@@ -292,7 +292,6 @@ Playback TimingはTransitionを1回だけ評価し、同手別指では有向指
 異手ではL→R / R→LのCalibrationを使う。ArpeggioSpan所属そのものをduration sourceにせず、
 overlap Spanでも同じTransition時間を重複適用しない。
 
-旧 `arpeggioEnabled` / `arpeggioDelayMode` / lead delayはTiming modelから廃止した。
 方向別測定も「Arpeggio専用速度」ではなくTransition Calibrationとして扱う。
 
 ## 解析軸の境界

@@ -12,7 +12,6 @@ import { conditionItemLabel } from './condition-summary.ts';
  * ファイルは`{ format, version, presets?, workspaces? }`。`version`・`presets`・`workspaces`は封筒のcodec
  * （`engine/preset-file-codec.ts`）の出力そのままで、`format`だけを書く直前に付ける（`platform/browser-download.ts`）。
  * どちらか一方だけを持つファイルも読める。読む時は`format`を見てからcodecへ渡す。
- * 旧画面の条件ファイルも`version: 4`を持つので、印が無いと新しい版と取り違える。
  *
  * 最上位とプリセットの中の未知のキーは、読まずに捨てる。捨てたことは不具合報告用の原文にだけ残し、
  * 結果の行の件数の文には数えない（新しい版が足した項目を、古い版が読めなかった失敗として見せないため）。
@@ -235,9 +234,6 @@ function readEnvelope(text: string): EnvelopeRead {
     parsed = JSON.parse(text);
   } catch (error) {
     return failure('条件ファイルとして読めませんでした', error instanceof Error ? error.message : String(error));
-  }
-  if (isRecord(parsed) && !('format' in parsed) && 'conditions' in parsed && parsed.version === 4) {
-    return failure('旧画面の条件ファイルは読み込めません', 'legacy bundle version 4');
   }
   if (!isRecord(parsed) || parsed.format !== PRESET_FILE_FORMAT) {
     return failure('keydist の条件ファイルではありません', `format: ${JSON.stringify(isRecord(parsed) ? parsed.format : undefined) ?? 'undefined'}`);

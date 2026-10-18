@@ -65,13 +65,6 @@ test('診断: formatが無い・別の値・オブジェクトでない', () => 
   }
 });
 
-test('診断: 旧画面の条件ファイル（conditionsとversion 4）', () => {
-  const result = failed('{"version":4,"conditions":{"defaults":{}},"layouts":[]}');
-  assert.equal(result.message, '旧画面の条件ファイルは読み込めません');
-  // 印が付いていれば旧形式とは見なさない
-  assert.equal(failed('{"format":"x","version":4,"conditions":{}}').message, 'keydist の条件ファイルではありません');
-});
-
 test('診断: 新しい版', () => {
   const result = failed(fileText({ version: 3, presets: [] }));
   assert.equal(result.message, '新しい形式のファイルです。keydistを更新してから読み込んでください');

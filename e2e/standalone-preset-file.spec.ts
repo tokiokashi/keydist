@@ -139,7 +139,6 @@ test('読み込めないファイルは、理由を文で伝え、プリセッ�
   const cases: readonly [string, string | Buffer, string][] = [
     ['壊れたJSON', '{ 壊れた', '条件ファイルとして読めませんでした'],
     ['印が無い', '{"version":1,"presets":[]}', 'keydist の条件ファイルではありません'],
-    ['旧画面の形式', '{"version":4,"conditions":{"defaults":{}}}', '旧画面の条件ファイルは読み込めません'],
     ['新しい版', '{"format":"keydist-presets","version":3,"presets":[]}', '新しい形式のファイルです。keydistを更新してから読み込んでください'],
     ['形が正しくない', '{"format":"keydist-presets","presets":[]}', 'ファイルの形式が正しくありません'],
     ['大きすぎる', Buffer.alloc(1024 * 1024 + 1, 32), 'ファイルが大きすぎます'],

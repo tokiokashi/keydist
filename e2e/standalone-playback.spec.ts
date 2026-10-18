@@ -248,27 +248,12 @@ async function seedPersonalSpeed(page: Page): Promise<void> {
   );
 }
 
-test('条件のモーダルに、再生の時間・速度グラフの平均・個人速度の行は無く、チェーンの区切りとアルペジオの数え方の行は残る', async ({ page }) => {
+test('条件のモーダルに、チェーンの区切りとアルペジオの数え方の行がある', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await openPlayback(page);
   const modal = await openConditionModal(page);
   await expect(modal.locator('[data-item="chainInterpretation"]')).toBeVisible();
   await expect(modal.locator('[data-item="arpeggioInterpretation"]')).toBeVisible();
-  for (const id of [
-    'playbackStepsPerSecond',
-    'playbackSpeedMultiplier',
-    'playbackSameFingerDelay',
-    'playbackAllFingerMovementDelay',
-    'playbackPersonalSpeed',
-    'playbackRateAverage',
-    'playbackRateWindow',
-    'playbackRateHalfLifeSeconds',
-  ]) {
-    await expect(modal.locator(`[data-item="${id}"]`)).toHaveCount(0);
-  }
-  for (const group of ['再生の時間', '速度グラフの平均', '個人速度']) {
-    await expect(modal.locator(`section[aria-label="${group}"]`)).toHaveCount(0);
-  }
 });
 
 test('解析設定で再生倍率を変えると、ペインの中に既定と違う設定が出て、再生位置は保たれる。保存値が無い間は再生のペインと個人速度の行がそれを知らせる', async ({
