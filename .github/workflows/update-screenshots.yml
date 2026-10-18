@@ -2,8 +2,8 @@ name: Update Screenshots
 
 # スクリーンショットの基準の画像（e2e/screenshots/）を作り直し、artifactとして上げる。
 # 基準の画像はCIの `browser-e2e` と同じ環境（runner・Node・Chromium・`CI=1`・本番ビルドとpreview）で作らないと、
-# 描画の1画素のずれで比較が落ちる。そのため手元では作らず、この workflow が作る。
-# ブランチへのコミットはこの workflow からは行わない。`GITHUB_TOKEN` によるpushでは他のworkflow（CI）が起動せず、
+# 描画の1画素のずれで比較が落ちる。そのため手元では作らず、このworkflowが作る。
+# ブランチへのコミットはこのworkflowからは行わない。`GITHUB_TOKEN` によるpushでは他のworkflow（CI）が起動せず、
 # 取り込んだコミットのheadに `browser-e2e` のcheck runが付かないため。artifactを取ってコミットする（CONTRIBUTING.md「ブラウザe2e」）。
 #
 # 起動の仕方は2つ。
@@ -43,7 +43,7 @@ jobs:
           key: npm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
           restore-keys: npm-${{ runner.os }}-
 
-      # e2e.yml の e2e-shard と同じ手順にする
+      # e2e.ymlのe2e-shardと同じ手順にする
       - name: Install dependencies
         shell: bash
         run: |
@@ -57,7 +57,7 @@ jobs:
         shell: bash
         run: npx playwright install --with-deps --only-shell chromium
 
-      # CI=1 にして、playwright.config.ts の本番ビルドとpreviewの配信を `browser-e2e` と揃える。
+      # CI=1にして、playwright.config.tsの本番ビルドとpreviewの配信を `browser-e2e` と揃える。
       # 古い画像が残らないよう、いったん消してから全部作り直す
       - name: Update screenshots
         shell: bash
