@@ -357,6 +357,22 @@ patchが当たらなくなった更新PRは、そのままマージしない。�
 - モデルの分岐（仕様 §9の `g` による場合分け）を変えたら、対応するテストを足す
 - 配列を追加したら「全かなが打てる」ことを検証する既存テストに乗せる
 
+### テストの役割分担
+
+層ごとに、何をどのテストで検査するかを決めてある。数値で判定できるものは、ブラウザを使わない上の層のテストへ寄せる。
+
+| 対象 | テスト | 置き場 |
+|---|---|---|
+| input・trace・interpretation・engine・各Analyzerの抽出 | `node --test`（unit test） | 主対象のソースの隣（`src/**/*.test.ts`） |
+| 抽出と指標の結果 | 固定入力に対する期待値の固定（fixture） | `test/*-regression.test.ts` と `test/fixtures/` |
+| 可視化（図の重なり・欠け・色・配置） | Playwrightの `toHaveScreenshot`（基準の画像との比較） | `e2e/visual-figures.spec.ts` と `e2e/screenshots/` |
+| ページ（画面の配線・操作の流れ・配置・スクロール） | Playwrightのe2e | `e2e/*.spec.ts` |
+
+- `node --test` は型を除去するだけでJSXを変換できない。`.tsx` をimportするテストは書けないので、描画に依らない計算は `.ts` に分けてunit testで検査し、描画は可視化とページのe2eで見る
+- 図の数値が合っていることは、unit testとfixtureで固定する。スクリーンショットは、数値が合っていても起きる崩れだけを見る。数値の検査をスクリーンショットに寄せない
+- スクリーンショットは、図の本体だけを撮る。ペインの枠・条件の表示・見出しは含めない（文言や並びの変更で全部の画像が動き、撮る範囲の端で見出しが切れるとフォントの描画の差を拾うため）。
+  対象はBigram FlowとHeatmapから始め、図を足す時は `e2e/visual-figures.spec.ts` に1件ずつ足す
+
 ### 合計件数は環境によって変わる
 
 `npm test` が報告する件数は実行環境で変わる。`test/commit-msg.test.ts` の17件は
@@ -401,6 +417,23 @@ PRを開く前に全件を見たい時は、draft PRを開くか、`e2e.yml` を
 - `merge-stack` はジョブの名前と起動元（event）ごとに最新の実行を取る。`browser-e2e` はpull_requestにしか付かないので、その成功を求める。
   必須でないジョブも、failureなら止める（`browser-e2e-shard` のfailureも同じ）
 - `main` へのpushは、続けてマージしても途中のマージコミットの実行を取り消さない（`e2e.yml` と `ci.yml` のconcurrencyはmainだけコミットごとのgroupにし、main以外は同じブランチの古い実行を取り消す。同じgroupのpendingは新しい実行に置き換わって取り消されるため、mainではgroupを分けている）
+
+#### スクリーンショットの基準の画像
+
+`e2e/visual-figures.spec.ts` は、`e2e/screenshots/` の基準の画像と図を比べる。
+
+- **比べるのはCIだけ。** 基準の画像は、CIの `browser-e2e` と同じ環境（`ubuntu-latest`・Node 22・`npx playwright install` で入れるChromium・`CI=1`・本番ビルドとpreviewの配信）で作る。
+  手元は環境が違い、描画が1画素ずれるので、手元ではこのspecを飛ばす（`CI` が空の時）。`npx playwright test e2e/<spec> --workers=1` の手順のまま、落ちずに飛ばされる
+- **固定するもの。** `e2e/screenshot-helper.ts` が、画面の大きさ（1280×900）・テーマ（ライト）・動き（`prefers-reduced-motion: reduce` と `animations: 'disabled'`）・フォントを固定する。
+  フォントはrunnerに入っているものに頼らず、`package-lock.json` で版を固定したnpmのパッケージ `@fontsource-variable/noto-sans-jp` を、アプリのサーバーを通さずに配って全要素へ当てる。
+  runnerのイメージが更新されても、字形と幅が動かない。比較の許容は `playwright.config.ts` の `expect.toHaveScreenshot` に置く（文字の縁の揺れだけを許す小ささ）
+- **図の見た目を変えるPRは、基準の画像を作り直して同じPRに入れる。** 行うのはPRを作った人（エージェントなら実装役）。
+  1. PRにラベル `update-screenshots` を付ける。付けると `Update Screenshots`（`.github/workflows/update-screenshots.yml`）が走る。
+     同じPRで作り直しをもう一度したい時は、ラベルを外して付け直す。Actions画面から `workflow_dispatch` で起動する方法は、workflowのファイルが `main` にある時だけ使える
+  2. 実行が終わったら、artifact `screenshots` を取る。`gh run list --workflow update-screenshots.yml --branch <ブランチ>` で実行を探し、`gh run download <run-id> -n screenshots -D <空のディレクトリ>` で取る
+  3. 取ったファイルを `e2e/screenshots/` に置いてコミットし、pushする。workflowは画像をコミットしない（`GITHUB_TOKEN` によるpushではCIが走らず、そのheadに `browser-e2e` のcheck runが付かないため）
+  4. 置いた画像を目で確かめ、意図した変化だけであることをPR本文に書く
+- 画像が無い、または図が変わっていると、`browser-e2e` のこのspecが落ちる。差分の画像は、失敗時のartifact（`browser-e2e-trace-<N>`）に入る
 
 **e2eに書く範囲。** 計算で判定できる検査はunit testに書き、e2eは画面の配線と主要な操作の流れだけにする。
 

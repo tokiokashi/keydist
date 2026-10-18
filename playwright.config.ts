@@ -39,6 +39,16 @@ if (process.env.TEST_WORKER_INDEX === undefined) console.log(`e2e: ${baseURL}`);
 export default defineConfig({
   testDir: './e2e',
   globalSetup: './e2e/global-setup.ts',
+  // 基準の画像は1つの環境（CIの `browser-e2e`）でだけ作るので、OS名やブラウザ名をファイル名に付けない
+  snapshotPathTemplate: '{testDir}/screenshots/{testFileName}/{arg}{ext}',
+  expect: {
+    toHaveScreenshot: {
+      // 文字の縁の描画の揺れだけを許す。図の崩れ（重なり・欠け・色・配置のずれ）はこの範囲に収まらない
+      maxDiffPixelRatio: 0.002,
+      animations: 'disabled',
+      caret: 'hide',
+    },
+  },
   fullyParallel: true,
   workers: isCI ? 4 : undefined,
   reporter: isCI ? 'line' : 'list',
