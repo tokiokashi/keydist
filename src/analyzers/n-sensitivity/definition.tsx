@@ -13,6 +13,8 @@ import { N_SENSITIVITY_PANE_META } from './pane-meta.ts';
 import { computeYRange, formatYTicks, yValuesRange } from './y-range.ts';
 import {
   axisKindOf,
+  deltaUnit,
+  relativeChoiceLabel,
   axisTitle,
   axisValue,
   DEFAULT_N_SENSITIVITY_METRIC,
@@ -99,7 +101,10 @@ function seriesFor(series: readonly NSensitivitySeries[], targetKey: string): NS
 /** 点の吹き出しに出す、縦軸の値の文字。 */
 function formatY(kind: NSensitivityAxisKind, metric: NSensitivityMetricId, value: number): string {
   if (kind === 'ratio') return `${value.toFixed(0)}%`;
-  if (kind === 'delta') return `${value > 0 ? '+' : ''}${value.toFixed(1)} pt`;
+  if (kind === 'delta') {
+    const def = N_SENSITIVITY_METRICS[metric];
+    return `${value > 0 ? '+' : ''}${value.toFixed(def.percent ? 1 : def.digits)} ${deltaUnit(metric)}`;
+  }
   return formatMetricValue(metric, value, N_SENSITIVITY_METRICS[metric].tickDigits);
 }
 
@@ -249,8 +254,8 @@ function NSensitivityChart({
   const xMax = N_SENSITIVITY_RANGE[N_SENSITIVITY_RANGE.length - 1]!;
   const xScale = (n: number) => MARGIN.left + ((n - xMin) / (xMax - xMin)) * plotWidth;
 
-  // 縦軸の範囲は決め方を`y-range.ts`に閉じている（既定は0から）。比は上限100%固定
-  // （N=0が100%で、Nを増やしても距離は増えないため）。実測は系列の最大値に合わせる。
+  // 縦軸の範囲は決め方を`y-range.ts`に閉じている（既定は0から）。比は、N=0が最大の指標なら上限100%固定、
+  // Nで増えうる指標なら最大値を含む区切りまで広げる。実測は系列の最大値に合わせ、負の値があれば0を含めて下へ広げる。
   // 並んだ同じ指標・同じ見せ方・同じ決め方のペイン全部の値を含む範囲で決める（配るものが無ければ自分の値だけ）。
   // 指標が違えば単位も値の大きさも違うので、指標ごとに分ける
   const ys = series.flatMap((s) => s.points.map((p) => p.y));
@@ -565,7 +570,7 @@ export function NSensitivitySettings({ options, onOptionsChange }: AnalyzerSetti
         label="縦軸"
         binding={bindOption(options, DEFAULT_N_SENSITIVITY_OPTIONS, onOptionsChange, 'scale')}
         choices={[
-          { value: 'relative', label: def.percent ? '相対（N=0との差 [pt]）' : '相対（N=0を100%）' },
+          { value: 'relative', label: relativeChoiceLabel(options.metric) },
           { value: 'absolute', label: `実測値 [${def.unit}]` },
         ]}
       />

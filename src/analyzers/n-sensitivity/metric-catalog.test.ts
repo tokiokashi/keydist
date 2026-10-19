@@ -8,8 +8,17 @@ import { EMPTY_SETTINGS_OVERRIDES } from '#engine/settings-items.ts';
 import { resolveEngineInput } from '#engine/resolved-input.ts';
 import { createEngineCache } from '#engine/cache.ts';
 import { computeTraceScalars, TRACE_SCALAR_IDS } from '#interpretation/metrics.ts';
-import { axisKindOf, axisTitle, axisValue, formatMetricValue, N_SENSITIVITY_METRIC_IDS, N_SENSITIVITY_METRICS } from './metric-catalog.ts';
-import { N_SENSITIVITY_RANGE } from './extract.ts';
+import {
+  axisKindOf,
+  axisTitle,
+  axisValue,
+  deltaUnit,
+  formatMetricValue,
+  relativeChoiceLabel,
+  N_SENSITIVITY_METRIC_IDS,
+  N_SENSITIVITY_METRICS,
+} from './metric-catalog.ts';
+import { N_SENSITIVITY_RANGE, valuesOf } from './extract.ts';
 
 const CATALOG = {
   layouts: LAYOUT_BY_ID,
@@ -46,15 +55,16 @@ test('選択肢の指標は、組み込みの配列でNによって値が変わ�
     assert.ok(resolved.ok, `${layoutId} ${language}`);
     if (!resolved.ok) continue;
     const cache = createEngineCache();
-    const rows = N_SENSITIVITY_RANGE.map((windowSize) =>
-      computeTraceScalars(
-        cache.getTrace({
-          ...resolved.input,
-          tracePolicy: { ...resolved.input.tracePolicy, windowSize },
-        }).trace,
-      ),
-    );
-    for (const id of TRACE_SCALAR_IDS) {
+    const homeSpacings = cache.getInterpretation(resolved.input).metrics.adjacentHomeSpacings;
+    const rows = N_SENSITIVITY_RANGE.map((windowSize) => {
+      const trace = cache.getTrace({
+        ...resolved.input,
+        tracePolicy: { ...resolved.input.tracePolicy, windowSize },
+      }).trace;
+      const { adjacentMean, adjacentStdDev } = valuesOf(trace, homeSpacings);
+      return { ...computeTraceScalars(trace), adjacentMean, adjacentStdDev };
+    });
+    for (const id of [...TRACE_SCALAR_IDS, 'adjacentMean', 'adjacentStdDev'] as const) {
       if (rows.some((row) => row[id] !== rows[0]![id])) varied.add(id);
     }
   }
@@ -68,6 +78,21 @@ test('相対: 単位が%の指標はN=0との差[pt]、それ以外はN=0を100%
   assert.equal(axisValue('delta', 12.5, 10), -2.5);
   assert.equal(axisValue('ratio', 200, 150), 75);
   assert.equal(axisValue('value', 200, 150), 150);
+});
+
+test('相対: 0や負になりうる指間平均は差、0以上の指間σは比で描く', () => {
+  assert.equal(axisKindOf('adjacentMean', 'relative'), 'delta');
+  assert.equal(axisKindOf('adjacentStdDev', 'relative'), 'ratio');
+  assert.equal(axisKindOf('adjacentMean', 'absolute'), 'value');
+  // 基準が負でも、差は符号どおりに出る
+  assert.equal(axisValue('delta', -0.02, 0.05), 0.07);
+  assert.equal(axisTitle('adjacentMean', 'delta'), '指間平均（N=0との差 [u]）');
+  assert.equal(axisTitle('adjacentStdDev', 'ratio'), '指間σ（N=0を100%）');
+  assert.equal(relativeChoiceLabel('adjacentMean'), '相対（N=0との差 [u]）');
+  assert.equal(relativeChoiceLabel('sameFingerRate'), '相対（N=0との差 [pt]）');
+  assert.equal(relativeChoiceLabel('adjacentStdDev'), '相対（N=0を100%）');
+  assert.equal(deltaUnit('adjacentMean'), 'u');
+  assert.equal(deltaUnit('sameFingerRate'), 'pt');
 });
 
 test('相対の比は、N=0の値が0なら決まらない（0や100に置かない）', () => {

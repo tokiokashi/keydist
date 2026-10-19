@@ -7,7 +7,8 @@ import { EMPTY_SETTINGS_OVERRIDES } from '#engine/settings-items.ts';
 import { resolveEngineInput, type ResolvedInput } from '#engine/resolved-input.ts';
 import { createEngineCache } from '#engine/cache.ts';
 import { findOptionsKeyDisciplineViolations, findViewOptionsExtractionViolations } from '#analyzers/options.ts';
-import { rightHandShare, sameFingerRate } from '#interpretation/metrics.ts';
+import { adjacentMeanStdDev, computeMetrics, rightHandShare, sameFingerRate } from '#interpretation/metrics.ts';
+import { computeComparisonRowValues } from '#analyzers/comparison/extract.ts';
 import { nSensitivity } from './sensitivity.ts';
 import { N_SENSITIVITY_RANGE, computeMemberSeries, computeNSensitivityExtraction } from './extract.ts';
 import { ALTERNATE_N_SENSITIVITY_OPTIONS, DEFAULT_N_SENSITIVITY_OPTIONS, nSensitivityOptions } from './options.ts';
@@ -29,8 +30,8 @@ const CATALOG = {
 
 const TARGET_A: AnalysisTarget = { kind: 'setup', setupId: 'setup-a' };
 
-function resolve(layoutId: string, text: string): ResolvedInput {
-  const setup: Setup = { id: 'setup-a', number: 1, layoutId, shapeId: 'row-staggered' };
+function resolve(layoutId: string, text: string, shapeId = 'row-staggered'): ResolvedInput {
+  const setup: Setup = { id: 'setup-a', number: 1, layoutId, shapeId };
   const result = resolveEngineInput({
     target: TARGET_A,
     setups: new Map([[setup.id, setup]]),
@@ -140,6 +141,7 @@ test('computeMemberSeries: 既定のNの点は、一覧の全指標でメンバ�
       },
     });
     const values = series.points.find((point) => point.windowSize === input.tracePolicy.windowSize)!.values;
+    const comparison = computeComparisonRowValues(metrics, traceResult.trace);
     assert.deepEqual(
       values,
       {
@@ -150,9 +152,51 @@ test('computeMemberSeries: 既定のNの点は、一覧の全指標でメンバ�
         sameFingerRate: sameFingerRate(metrics.sameFinger, metrics.strokes),
         rightHandDistanceShare: rightHandShare(metrics.perFinger),
         rightHandPressShare: rightHandShare(metrics.perFingerPresses),
+        adjacentMean: comparison.adjacentMean,
+        adjacentStdDev: comparison.adjacentStdDev,
       },
       layoutId,
     );
+  }
+});
+
+/** 既定のNだけでなく全11Nで、指間平均・指間σが、そのNのTraceに対して`computeMetrics`を直接呼んで求めた値とビット一致する。 */
+test('computeMemberSeries: 指間平均・指間σは、全11Nで同条件のcomputeMetricsの値とビット一致する', () => {
+  for (const [layoutId, shapeId, text] of [
+    ['qwerty', 'row-staggered', 'hello world'],
+    ['colemak-dh', 'row-staggered', 'the quick brown fox jumps over the lazy dog'],
+    ['dvorak', 'ortholinear', 'the quick brown fox jumps over the lazy dog'],
+  ] as const) {
+    const input = resolve(layoutId, text, shapeId);
+    const cache = createEngineCache();
+    const interpretation = cache.getInterpretation(input);
+    const series = computeMemberSeries({
+      target: TARGET_A,
+      trace: cache.getTrace(input).trace,
+      analysis: interpretation.analysis,
+      metrics: interpretation.metrics,
+      requestTrace: {
+        requestTrace: (request: { tracePolicy?: { windowSize?: number } }) =>
+          cache.getTrace({ ...input, tracePolicy: { ...input.tracePolicy, ...request.tracePolicy } }).trace,
+      },
+    });
+    for (const point of series.points) {
+      const tracePolicy = { ...input.tracePolicy, windowSize: point.windowSize };
+      const direct = computeMetrics(cache.getTrace({ ...input, tracePolicy }).trace, input.geometry, {
+        windowSize: point.windowSize,
+        sfbHomeCost: tracePolicy.sfbHomeCost,
+        preferOppositeThumb: tracePolicy.preferOppositeThumb ?? false,
+        chainInterpretation: input.chainInterpretation,
+        arpeggioInterpretation: input.arpeggioInterpretation,
+        triggerRealizationPolicy: tracePolicy.triggerRealizationPolicy!,
+        actionRealizationPolicy: tracePolicy.actionRealizationPolicy!,
+        romajiRuleId: input.romajiRuleId,
+        keepSymbols: input.keepSymbols,
+      });
+      const expected = adjacentMeanStdDev(direct.adjacent);
+      assert.equal(point.values.adjacentMean, expected.mean, `${layoutId} ${shapeId} N=${point.windowSize} 指間平均`);
+      assert.equal(point.values.adjacentStdDev, expected.stdDev, `${layoutId} ${shapeId} N=${point.windowSize} 指間σ`);
+    }
   }
 });
 
