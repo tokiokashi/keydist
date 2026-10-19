@@ -21,8 +21,8 @@ async function storedWorkspaces(page: Page): Promise<StoredWorkspace[]> {
 }
 
 /** 既存のWorkspace（Bigram Flowのペインを1つ持つ）を保存先へ直接書く。 */
-function seedWorkspace(page: Page, id = 'w1', name = '比較用'): Promise<void> {
-  return page.addInitScript(
+async function seedWorkspace(page: Page, id = 'w1', name = '比較用'): Promise<void> {
+  await page.addInitScript(
     ({ key, value }) => {
       if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 4, workspaces: [value] }));
     },
@@ -46,7 +46,7 @@ function seedWorkspace(page: Page, id = 'w1', name = '比較用'): Promise<void>
 }
 
 /** 保存先へ、Workspaceを2つ（どちらもBigram Flowのペインを1つ持つ）直接書く。 */
-function seedTwoWorkspaces(page: Page): Promise<void> {
+async function seedTwoWorkspaces(page: Page): Promise<void> {
   const make = (id: string, name: string) => ({
     id,
     name,
@@ -60,7 +60,7 @@ function seedTwoWorkspaces(page: Page): Promise<void> {
     ],
     grid: [{ id: `${id}-pane`, x: 0, y: 0, w: 12, h: 15 }],
   });
-  return page.addInitScript(
+  await page.addInitScript(
     ({ key, value }) => {
       if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 4, workspaces: value }));
     },
@@ -232,9 +232,9 @@ test('解析設定の書き込みが間引き待ちの間に追加しても、�
 });
 
 /** 共有の設定（Bigram FlowはWithin-hand、指ごとの距離は何も変えていない）を持つWorkspaceを保存先へ直接書く。 */
-function seedWorkspaceWithSharedOptions(page: Page): Promise<void> {
+async function seedWorkspaceWithSharedOptions(page: Page): Promise<void> {
   const fixedQwerty = { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } } };
-  return page.addInitScript(
+  await page.addInitScript(
     ({ key, value }) => {
       if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 4, workspaces: [value] }));
     },

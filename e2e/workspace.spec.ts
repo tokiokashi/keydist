@@ -47,8 +47,8 @@ async function storedWorkspaces(page: Page): Promise<{
 }
 
 /** 保存先へ、ペインを指定してWorkspaceを直接書く（画面を経由せず状態を作る）。 */
-function seedWorkspace(page: Page, workspace: unknown): Promise<void> {
-  return page.addInitScript(
+async function seedWorkspace(page: Page, workspace: unknown): Promise<void> {
+  await page.addInitScript(
     ({ key, value }) => {
       if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 4, workspaces: [value] }));
     },

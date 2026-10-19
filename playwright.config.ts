@@ -50,7 +50,8 @@ export default defineConfig({
     },
   },
   fullyParallel: true,
-  workers: isCI ? 4 : undefined,
+  // 手元ではキーごと省いてPlaywrightの既定のworker数にする（`exactOptionalPropertyTypes` の下では `undefined` を渡せない）
+  ...(isCI ? { workers: 4 } : {}),
   reporter: isCI ? 'line' : 'list',
   use: {
     baseURL,

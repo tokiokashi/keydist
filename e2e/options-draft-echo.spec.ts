@@ -45,7 +45,7 @@ async function hookSaveTimer(page: Page): Promise<void> {
           w.__pendingSaves = pending.size;
           fn();
           const after = w.__afterSave;
-          w.__afterSave = undefined;
+          delete w.__afterSave;
           after?.();
         },
         ms,
