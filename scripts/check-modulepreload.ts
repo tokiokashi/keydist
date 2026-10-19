@@ -1,8 +1,8 @@
 // 事前描画したページの modulepreload が、読み込むモジュールの静的importの推移閉包を覆っているかを確かめる。
 //
-// TanStack Start は、ルートのチャンクが直接importするチャンクしか modulepreload に出さない
-// （上流のissue: https://github.com/TanStack/router/issues/8511 / https://github.com/TanStack/router/issues/8520）。patches/ のパッチで推移閉包まで出すようにしているが、
-// パッチが外れたり上流の実装が変わったりすると、react や集計のチャンクが preload から落ち、
+// TanStack Start は、古い版ではルートのチャンクが直接importするチャンクしかmodulepreloadに出さなかった
+// （上流のissue: https://github.com/TanStack/router/issues/8511 / https://github.com/TanStack/router/issues/8520）。
+// 今の版は推移閉包まで出すが、上流の実装が変わると、reactや集計のチャンクが preload から落ち、
 // 読み込みが直列の往復に戻る。表示は壊れないので、e2e では気づけない。そのためビルドの後に検査する。
 //
 // 見るのは静的import（`import ... from` / `import "..."` / `export ... from`）だけ。
