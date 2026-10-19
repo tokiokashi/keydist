@@ -143,20 +143,10 @@ function OptionsBindingSwitch({ control }: { readonly control: PaneOptionsBindin
   return (
     <div className="settings-window-binding" data-options-binding={control.shared ? 'shared' : 'own'}>
       <fieldset className="plain-group settings-window-binding-choices" aria-label="設定の持ち方">
-        <button
-          type="button"
-          aria-pressed={control.shared}
-          className="settings-window-binding-choice"
-          onClick={() => control.onChange(true)}
-        >
+        <button type="button" aria-pressed={control.shared} className="settings-window-binding-choice" onClick={() => control.onChange(true)}>
           共有に従う
         </button>
-        <button
-          type="button"
-          aria-pressed={!control.shared}
-          className="settings-window-binding-choice"
-          onClick={() => control.onChange(false)}
-        >
+        <button type="button" aria-pressed={!control.shared} className="settings-window-binding-choice" onClick={() => control.onChange(false)}>
           このペインだけ
         </button>
       </fieldset>
