@@ -14,9 +14,10 @@
   box-sizing: border-box;
 }
 
-/* ラベル付きのボタン群などに使うfieldset。既定の枠・余白・最小幅を外してdivと同じ見た目にする */
-fieldset.plain-group {
-  min-width: 0;
+/* ラベル付きのボタン群などに使うfieldset。既定の枠・余白・最小幅だけを外してdivと同じ見た目にする。
+   詳細度を0にして、各部品のクラスが指定する枠・余白を上書きしない */
+:where(fieldset.plain-group) {
+  min-width: auto;
   margin: 0;
   padding: 0;
   border: 0;
