@@ -276,12 +276,14 @@ function decodeWorkspace(raw: unknown, path: string, seenIds: Set<string>, diagn
     const decoded = decodeGridItem(item, `${path}.grid[${index}]`, diagnostics);
     if (decoded !== undefined) rawGrid.push(decoded);
   });
-  // 詰める設定は真だけを読む（それ以外は既定の「詰めない」）。並びを直す時の詰め方がこれで決まる
+  // 詰める設定は真だけを読む（それ以外は既定の「詰めない」）
   const compactPanes = raw.compactPanes === true;
+  // 読む時は詰めない。詰める設定がオンでも、保存した並びの空きは残す
+  // （詰めるのは表示と編集の時だけ。オフに戻せば保存した並びがそのまま見える）
   const grid: WorkspaceGrid = normalizeGrid(
     rawGrid,
     panes.map((pane) => pane.id),
-    compactPanes,
+    false,
   );
   // 色の番号は、読めた分を持ち越し、無い・壊れた・和に無い対象は配り直す（診断は出さない。色は表示だけの値）
   const known = new Map<string, number>();
