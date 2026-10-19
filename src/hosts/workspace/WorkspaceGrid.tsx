@@ -16,7 +16,7 @@ import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import {
   compactGrid,
-  gridPaneIds,
+  displayedPaneIds,
   gridWithMovedPane,
   gridWithResizedPane,
   resolveOverlaps,
@@ -383,7 +383,7 @@ export function WorkspaceGrid({
             }}
           >
             {/* DOMの順は画面の読み順（上→下・左→右）。Tabと読み上げの順が見た目と合う */}
-            {gridPaneIds(grid).map((id) => (
+            {displayedPaneIds(grid, compact).map((id) => (
               // 拡大中の他のペインは、背面に残したまま操作できなくする（フォーカスも入らない）
               <div
                 key={id}

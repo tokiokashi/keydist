@@ -11,10 +11,12 @@ import {
   initialWorkspaceLibrary,
   INITIAL_LINK_GROUP_ID,
   OWN_OPTIONS,
+  withWorkspaceCompactPanes,
   withWorkspaceTarget,
   type Workspace,
   type WorkspacePaneTarget,
 } from './workspace.ts';
+import { WORKSPACE_LIBRARY_CODEC } from './workspace-codec.ts';
 import { importWorkspacesCommand, mergeWorkspaces, missingWorkspaceReferences, type WorkspaceReferenceHoldings } from './workspace-import.ts';
 
 const HOLDINGS: WorkspaceReferenceHoldings = {
@@ -134,4 +136,41 @@ test('コマンド: 足すものが無ければno-op。内訳は読み取れる'
   const plan = importWorkspacesCommand([existing], () => 'x');
   assert.equal(plan.command(assetsWith([existing])).kind, 'no-op');
   assert.equal(plan.entries()?.[0]?.outcome.kind, 'skipped-same');
+});
+
+test('突き合わせ: 空きを残したまま詰める設定をオンにしたWorkspaceを書き出して読み込んでも、Workspaceは増えない', () => {
+  const base = addWorkspacePane(
+    addWorkspacePane(
+      [workspace('w1', '比較')],
+      'w1',
+      {
+        id: 'a',
+        analyzerId: 'bigram-flow',
+        options: undefined,
+        optionsBinding: OWN_OPTIONS,
+        binding: followBinding(INITIAL_LINK_GROUP_ID),
+      },
+      { w: 6, h: 4 },
+    ),
+    'w1',
+    {
+      id: 'b',
+      analyzerId: 'bigram-flow',
+      options: undefined,
+      optionsBinding: OWN_OPTIONS,
+      binding: followBinding(INITIAL_LINK_GROUP_ID),
+    },
+    { w: 6, h: 4 },
+  );
+  const gapped = [
+    { id: 'a', x: 0, y: 4, w: 6, h: 4 },
+    { id: 'b', x: 12, y: 9, w: 6, h: 4 },
+  ];
+  const local = withWorkspaceCompactPanes([{ ...base[0]!, grid: gapped }], 'w1', true);
+  const file = JSON.parse(JSON.stringify(WORKSPACE_LIBRARY_CODEC.encode(local)));
+  const incoming = WORKSPACE_LIBRARY_CODEC.decode(file);
+  assert.ok(incoming.ok);
+  const result = mergeWorkspaces(local, incoming.value, HOLDINGS, () => 'fresh');
+  assert.equal(result.library.length, 1);
+  assert.equal(result.entries[0]!.outcome.kind, 'skipped-same');
 });

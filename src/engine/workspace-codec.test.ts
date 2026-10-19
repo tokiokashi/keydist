@@ -413,10 +413,37 @@ test('詰める設定は往復する。詰めない（既定）は値を持た�
   assert.equal(broken.value[0]!.compactPanes, undefined);
   const on = raw(true);
   assert.ok(on.ok);
+  // 詰める設定がオンでも、読み込みでは保存した並びの空きを詰めない
+  assert.equal(on.value[0]!.compactPanes, true);
   assert.deepEqual(
     on.value[0]!.grid.map((i) => i.y),
-    [0, 0],
+    [4, 9],
   );
+});
+
+test('詰める設定をオンにして書き出した並びは、読み込み直してもオフに戻すと空きのある並びが見える', () => {
+  const gapped = [
+    { id: 'a', x: 0, y: 4, w: 6, h: 4 },
+    { id: 'b', x: 12, y: 9, w: 6, h: 4 },
+  ];
+  const decoded = WORKSPACE_LIBRARY_CODEC.decode({
+    version: 4,
+    workspaces: [
+      {
+        id: 'w',
+        name: 'n',
+        panes: ['a', 'b'].map((id) => ({ id, analyzerId: 'x', binding: { mode: 'follow' } })),
+        grid: gapped,
+      },
+    ],
+  });
+  assert.ok(decoded.ok);
+  const compacted = withWorkspaceCompactPanes(decoded.value, 'w', true);
+  const reloaded = WORKSPACE_LIBRARY_CODEC.decode(JSON.parse(JSON.stringify(WORKSPACE_LIBRARY_CODEC.encode(compacted))));
+  assert.ok(reloaded.ok);
+  assert.deepEqual(reloaded.value, compacted);
+  const off = withWorkspaceCompactPanes(reloaded.value, 'w', false);
+  assert.deepEqual(off[0]!.grid, gapped);
 });
 
 test('gridが配列でなければ診断を1件積み、ペインは失わない。undefinedは診断なし', () => {
