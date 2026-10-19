@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { LAYOUTS, LAYOUTS_JA, withRomaji, type Layout } from '#input/layouts/index.ts';
@@ -31,6 +31,8 @@ import { physicalKeysUsedByLayout } from '#input/layouts/physical-keys.ts';
 import { jisShapeIdFor } from '#input/shapes/jis-shape.ts';
 import { defaultRomajiRuleId, tableForRule } from '#input/romaji/rules.ts';
 import { nSensitivity } from '#analyzers/n-sensitivity/sensitivity.ts';
+import { MODEL_VERSION } from '#engine/model-version.ts';
+import { modelVersionBumpError, stableStringify } from './model-version-guard.ts';
 import { sampleText, SAMPLE_TEXTS, type TextLanguage } from '#input/text/samples.ts';
 
 // このスクリプトが再現する経路は、条件の決定 → generateTrace → analyzeStrokeStructure → computeMetrics の並び
@@ -116,6 +118,11 @@ interface FixtureCase {
 
 interface Fixture {
   version: typeof FIXTURE_VERSION;
+  /**
+   * この数値を出した時の `MODEL_VERSION`。テストが今の値との一致を検査し、
+   * 生成時は数値が動いたのにこの値が今の版のままなら書き出しを拒む。
+   */
+  modelVersion: number;
   /**
    * この数値を出した旧実装のcommit。
    * 旧実装と同じ数値が出ることの確認の起点として記録する。
@@ -374,6 +381,7 @@ function generate(): Fixture {
 
   return {
     version: FIXTURE_VERSION,
+    modelVersion: MODEL_VERSION,
     sourceCommit: sourceCommit(),
     cases,
   };
@@ -388,25 +396,16 @@ function sourceCommit(): string | undefined {
   }
 }
 
-function stableStringify(value: unknown): string {
-  // JSON.stringifyのkey順はオブジェクト生成順に依存するため、diffを安定させるために
-  // key順をソートしてから書き出す（配列の順序はcases.sort()で決めている）。
-  const sortKeys = (input: unknown): unknown => {
-    if (Array.isArray(input)) return input.map(sortKeys);
-    if (input !== null && typeof input === 'object') {
-      return Object.fromEntries(
-        Object.entries(input as Record<string, unknown>)
-          .sort(([a], [b]) => a.localeCompare(b))
-          .map(([key, val]) => [key, sortKeys(val)]),
-      );
-    }
-    return input;
-  };
-  return JSON.stringify(sortKeys(value), null, 2);
-}
-
 function main(): void {
   const fixture = generate();
+  if (existsSync(OUT_PATH)) {
+    const error = modelVersionBumpError(JSON.parse(readFileSync(OUT_PATH, 'utf8')), fixture);
+    if (error !== null) {
+      console.error(error);
+      process.exitCode = 1;
+      return;
+    }
+  }
   writeFileSync(OUT_PATH, `${stableStringify(fixture)}\n`, 'utf8');
   // eslint系の設定は無いので素朴にconsoleへ出す。CIログで生成規模が見えるようにする。
   console.log(`wrote ${fixture.cases.length} cases to ${OUT_PATH}`);

@@ -22,6 +22,7 @@ import type { ChainInterpretation } from '#interpretation/structure/chain.ts';
 import type { ArpeggioInterpretation } from '#interpretation/structure/arpeggio.ts';
 import type { ActionRealizationPolicy, TriggerRealizationPolicy } from '#input/semantics/index.ts';
 import { tableForRule } from '#input/romaji/rules.ts';
+import { MODEL_VERSION } from '#engine/model-version.ts';
 import { sampleText, type TextLanguage } from '#input/text/samples.ts';
 
 /**
@@ -83,6 +84,7 @@ interface FixtureCase {
 
 interface Fixture {
   version: number;
+  modelVersion: number;
   sourceCommit?: string;
   cases: FixtureCase[];
 }
@@ -207,6 +209,14 @@ function analysisSummary(a: ReturnType<typeof recompute>['analysis']) {
 test('fixtureのバージョンとケース数が空でない', () => {
   assert.equal(fixture.version, 1);
   assert.ok(fixture.cases.length > 0);
+});
+
+test('fixtureを作った時のMODEL_VERSIONが今の値と一致する', () => {
+  assert.equal(
+    fixture.modelVersion,
+    MODEL_VERSION,
+    'MODEL_VERSIONを上げたらfixtureを作り直す。数値が動いたのに版が同じなら、先に src/engine/model-version.ts を上げてから npm run generate:analyzer-regression-fixture を回す',
+  );
 });
 
 for (const fixtureCase of fixture.cases) {
