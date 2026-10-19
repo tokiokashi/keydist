@@ -86,7 +86,7 @@ export function SetAnalyzerStandalonePage<Options, Extracted, RowContext>({
   // 解析設定は資産（standaloneAnalyzerOptions）が正
   // （SingleAnalyzerStandalonePageと同じ形）。
   const storedOptionsRaw = assets.standaloneAnalyzerOptions[analyzerId];
-  const decoded = useMemo(() => decodeStoredAnalyzerOptions(analyzer.definition, storedOptionsRaw), [storedOptionsRaw]);
+  const decoded = useMemo(() => decodeStoredAnalyzerOptions(analyzer.definition, storedOptionsRaw), [analyzer.definition, storedOptionsRaw]);
   // `SingleAnalyzerStandalonePage`と同じ形: 見た目は即座に反映しつつ（controlled）、
   // 資産への書き込みは呼び出し側がdebounceする（`onOptionsCommit`）。
   const [optionsDraft, setOptionsDraft] = useOptionsDraft<Options>(decoded.options, STANDALONE_WRITE_LOG_KEY);

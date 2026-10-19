@@ -58,10 +58,15 @@ export function useTypingSession(layout: Layout, browserBindings: BrowserKeyBind
   const [composing, setComposing] = useState(false);
   const [readyLayoutId, setReadyLayoutId] = useState<string>();
 
-  const displayFromRaw = (raw: string): string => (layout.romajiTable === undefined ? raw : romajiToKana(raw, layout.romajiTable));
+  const { romajiTable } = layout;
+  const displayFromRaw = useCallback((raw: string): string => (romajiTable === undefined ? raw : romajiToKana(raw, romajiTable)), [romajiTable]);
 
-  const rawFromDisplay = (display: string): string => (layout.romajiTable === undefined ? display : kanaToRomaji(display, layout.romajiTable));
+  const rawFromDisplay = useCallback(
+    (display: string): string => (romajiTable === undefined ? display : kanaToRomaji(display, romajiTable)),
+    [romajiTable],
+  );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: layoutは作り直す時を決める合図。本体では読まない。依存から外すと、ローマ字の表が同じ配列どうしの切り替えでは、生の入力を作り直さない
   useEffect(() => {
     rawTextRef.current = rawFromDisplay(text);
   }, [layout, text]);
@@ -220,7 +225,7 @@ export function useTypingSession(layout: Layout, browserBindings: BrowserKeyBind
       window.removeEventListener('blur', onWindowBlur);
       engine.reset();
     };
-  }, [browserBindings, captureTarget, engine, layout, ownedPhysicalKeys]);
+  }, [browserBindings, captureTarget, engine, layout, ownedPhysicalKeys, displayFromRaw, rawFromDisplay]);
 
   const replaceText = (nextText: string) => {
     engine.reset();

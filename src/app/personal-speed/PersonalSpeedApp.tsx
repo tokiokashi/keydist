@@ -15,11 +15,16 @@ const TIMING_SPEC_HREF = SPEC_LINKS.find((link) => link.path === 'spec/playback-
  */
 export function PersonalSpeedApp() {
   const { assets, ready, dispatch, canUndo, canRedo, undo, redo } = useKeydistAssets();
-  const catalog = useMemo(() => personalSpeedCatalog(assets), [assets.userLayouts, assets.userRomajiRules, assets.fingerAssignments]);
+  const { userLayouts, userRomajiRules, fingerAssignments } = assets;
+  const { overrides } = assets.setupLibrary;
+  const catalog = useMemo(
+    () => personalSpeedCatalog({ userLayouts, userRomajiRules, fingerAssignments }),
+    [userLayouts, userRomajiRules, fingerAssignments],
+  );
   // 示す文の打鍵の列は、全体の条件（ローマ字規則・Chain・Arpeggioの数え方など）と自作の配列・指の割り当てで決まる。
   const buildSentence = useMemo(
-    () => personalSpeedSentenceBuilder(assets),
-    [assets.userLayouts, assets.userRomajiRules, assets.fingerAssignments, assets.setupLibrary.overrides],
+    () => personalSpeedSentenceBuilder({ userLayouts, userRomajiRules, fingerAssignments, setupLibrary: { overrides } }),
+    [userLayouts, userRomajiRules, fingerAssignments, overrides],
   );
   return (
     <PersonalSpeedEditor

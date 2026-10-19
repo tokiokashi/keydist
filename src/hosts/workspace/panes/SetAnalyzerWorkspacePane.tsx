@@ -25,7 +25,7 @@ export function SetAnalyzerWorkspacePane<Options, Extracted, RowContext>({
   );
   const chrome: PaneChrome = useMemo(
     () => workspacePaneChrome(runtime, pane, () => onOptionsChange(analyzer.defaultOptions)),
-    [runtime, pane, onOptionsChange],
+    [runtime, pane, onOptionsChange, analyzer.defaultOptions],
   );
   const resolved = runtime.paneTarget(pane, 'set');
   if (resolved?.kind !== 'set') return null;

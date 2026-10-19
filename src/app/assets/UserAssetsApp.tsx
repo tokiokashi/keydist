@@ -9,6 +9,7 @@ import {
 import { importUserAssetsCommand } from '#engine/user-assets-file.ts';
 import { paneCatalog } from '../standalone/catalog.ts';
 import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
+import { usePaneCatalog } from '../standalone/use-pane-catalog.ts';
 import { setupListItems } from '../setup/setup-view.ts';
 import { generatePresetId } from '../standalone/id-generator.ts';
 import { cascadeOverrideGroups } from './cascade-override-groups.ts';
@@ -20,7 +21,7 @@ import { UserAssetsPage } from './UserAssetsPage.tsx';
 export function UserAssetsApp() {
   const { assets, ready, dispatch, canUndo, canRedo, undo, redo } = useKeydistAssets();
   const setupItems = useMemo(() => setupListItems(assets.setupLibrary.setups, paneCatalog(assets), assets.setupLibrary.overrides), [assets]);
-  const catalog = useMemo(() => paneCatalog(assets), [assets.userLayouts, assets.userRomajiRules, assets.fingerAssignments, assets.personalSpeed]);
+  const catalog = usePaneCatalog(assets);
   const names = useMemo(
     () => conditionValueNames(catalog, assets.userLayouts, assets.userRomajiRules, assets.fingerAssignments),
     [catalog, assets.userLayouts, assets.userRomajiRules, assets.fingerAssignments],

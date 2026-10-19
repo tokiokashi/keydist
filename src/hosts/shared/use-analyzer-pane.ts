@@ -46,7 +46,8 @@ export function useAnalyzerPane<Options, Extracted>(
   }, [cache, definition, options, resolution]);
 
   // アンマウント時だけ購読を止める（cacheが変わることはこの単体ページでは無いが、
-  // 念のため依存に含める）。
+  // 念のため、cacheが替わった時にも止める）。
+  // biome-ignore lint/correctness/useExhaustiveDependencies: cacheは止める時を決める合図。本体では読まない。依存から外すと、cacheが替わっても前のcacheの購読が残る
   useEffect(
     () => () => {
       closeAnalyzerPaneChannels(channelsRef.current);

@@ -24,7 +24,7 @@ export function SingleAnalyzerWorkspacePane<Options, Extracted>({
   );
   const chrome: PaneChrome = useMemo(
     () => workspacePaneChrome(runtime, pane, () => onOptionsChange(analyzer.defaultOptions)),
-    [runtime, pane, onOptionsChange],
+    [runtime, pane, onOptionsChange, analyzer.defaultOptions],
   );
   const resolved = runtime.paneTarget(pane, 'single');
   if (resolved?.kind !== 'single') return null;

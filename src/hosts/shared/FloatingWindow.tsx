@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom';
-import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { useEffect, useEffectEvent, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { MOBILE_QUERY } from '#ui/theme/breakpoints.ts';
 import { WindowTitle } from './window-title.ts';
 
@@ -136,6 +136,7 @@ export function FloatingWindow({
 
   // 開くたびにボタンの近くへ出し直す（前回ドラッグした位置は、閉じたら意味を失う）。
   // 開いている間は基準の要素が作り直されても出し直さず、ドラッグした位置を保つ。
+  const placeInitially = useEffectEvent(() => setPosition(initialPosition(anchor, windowRef.current, placement)));
   useLayoutEffect(() => {
     // 閉じ終わる前に開き直した時、遅れて来る閉じる処理が新しいシートを閉じないようにする。
     window.clearTimeout(closeTimerRef.current);
@@ -148,7 +149,7 @@ export function FloatingWindow({
       closingRef.current = false;
       return;
     }
-    setPosition(initialPosition(anchor, windowRef.current, placement));
+    placeInitially();
     focusPendingRef.current = true;
   }, [open]);
 

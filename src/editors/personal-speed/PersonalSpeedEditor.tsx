@@ -1,6 +1,6 @@
 import { focusOnMount } from '#ui/primitives/focus-on-mount.ts';
 import { useHistoryShortcuts } from '#ui/primitives/use-history-shortcuts.ts';
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useEffectEvent, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Layout } from '#input/layouts/types.ts';
 import { FINGERS, type FingerAssignment, type PhysicalShape } from '#input/shapes/geometry.ts';
 import { OVERHEAD_KINDS, SIMULTANEOUS_KINDS, type PlaybackCalibration } from '#interpretation/timing/calibration.ts';
@@ -536,9 +536,12 @@ export function PersonalSpeedEditor({
   );
 
   // 測定中は案内にフォーカスを置き（押した測定のボタンは無効になるため）、終わったら押したボタンへ戻す。
+  const focusMeasurement = useEffectEvent(() => {
+    (sentenceRunner.session === undefined ? regionRef : sentenceRegionRef).current?.focus();
+  });
   useEffect(() => {
     if (running) {
-      (sentenceRunner.session === undefined ? regionRef : sentenceRegionRef).current?.focus();
+      focusMeasurement();
       return undefined;
     }
     const target = opener.current;

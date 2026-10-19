@@ -36,6 +36,7 @@ export function useAnalyzerSetPane<Options, Extracted>(
     // `use-analyzer-pane.ts`と同じ理由（無限ループ対策）で依存配列をこの4つに絞る。
   }, [cache, definition, options, members]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: cacheは止める時を決める合図。本体では読まない。依存から外すと、cacheが替わっても前のcacheの購読が残る
   useEffect(
     () => () => {
       closeAnalyzerSetPaneChannels(channelsRef.current);

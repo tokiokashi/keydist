@@ -1,5 +1,15 @@
 import { createPortal } from 'react-dom';
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
+import {
+  useEffect,
+  useEffectEvent,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+} from 'react';
 import { analysisTargetKey, type AnalysisTarget } from '#input/setup/index.ts';
 import { filterTargetChoiceGroups, targetSummaryText, type TargetChoiceGroup, type TargetKindFilter } from './target-choices.ts';
 import { isStrokeOnlyMark, targetMark, targetMarkPath, type TargetMark } from '#ui/theme/target-marks.ts';
@@ -173,6 +183,7 @@ export function TargetSelection({
 
   // 全部の名前が入るかを実寸で測る。測る用の要素（見えない・全文）と、ボタンが使える幅を比べる。
   // 使える幅 = 見出しの対象の欄の幅 − ボタンの名前以外の部分の幅。
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fullTextは測り直す時を決める合図。本体では読まない（測る要素の中身が変わる）。依存から外すと、名前が変わっても収まるかを測り直さない
   useLayoutEffect(() => {
     const button = buttonRef.current;
     const measure = measureRef.current;
@@ -192,14 +203,17 @@ export function TargetSelection({
     return () => observer.disconnect();
   }, [fullText]);
 
+  // 自動で開くかを決めるのは、autoOpenが決まった最初の一度だけ。開いているか・開く関数は、決める時の値を読む。
+  const decideAutoOpen = useEffectEvent((shouldOpen: boolean) => {
+    // すでに開いている（読み込み中に押した）時は、フォーカスの扱いを変えない。
+    if (!shouldOpen || open || isSheet()) return;
+    focusOnOpenRef.current = false;
+    setOpen(true);
+  });
   useEffect(() => {
     if (autoOpen === undefined || autoOpenDecidedRef.current) return;
     autoOpenDecidedRef.current = true;
-    // すでに開いている（読み込み中に押した）時は、フォーカスの扱いを変えない。
-    if (!autoOpen || open || isSheet()) return;
-    focusOnOpenRef.current = false;
-    setOpen(true);
-    // 決めるのは一度だけ（依存に`setOpen`・`open`を入れると、ホストの再描画のたびに走り直す）。
+    decideAutoOpen(autoOpen);
   }, [autoOpen]);
 
   const close = (focusButton: boolean) => {
@@ -230,6 +244,7 @@ export function TargetSelection({
   }, [placed]);
 
   // 外を押す・Escapeで閉じる。画面の大きさ・スクロールが変わったら置き直す。
+  const closeFromOutside = useEffectEvent((focusButton: boolean) => close(focusButton));
   useEffect(() => {
     if (!open) return undefined;
     const onPointerDown = (event: PointerEvent) => {
@@ -237,7 +252,7 @@ export function TargetSelection({
       // 暗い所（スマホ幅）は自分のクリックで閉じ、フォーカスをボタンへ戻す。ここで先に閉じると
       // フォーカスの行き先が無くなり、ページ全体へ落ちる。
       if (panelRef.current?.contains(target) || buttonRef.current?.contains(target) || scrimRef.current?.contains(target)) return;
-      close(false);
+      closeFromOutside(false);
     };
     const reposition = () => {
       if (buttonRef.current) setPosition(placeFor(buttonRef.current));
@@ -247,7 +262,7 @@ export function TargetSelection({
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
       const active = document.activeElement;
-      close(active !== null && (panelRef.current?.contains(active) === true || buttonRef.current?.contains(active) === true));
+      closeFromOutside(active !== null && (panelRef.current?.contains(active) === true || buttonRef.current?.contains(active) === true));
     };
     document.addEventListener('pointerdown', onPointerDown);
     document.addEventListener('keydown', onKeyDown);

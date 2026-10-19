@@ -226,6 +226,7 @@ export function FingerAssignmentEditor({
     if (column >= columns.length) setColumn(0);
   }, [keyIds, columns, selectedKeyId, column]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: assignmentとeditingFingerは消す時を決める合図。本体では読まない。依存から外すと、割り当てや指を替えても理由が残る
   useEffect(() => {
     setFingerNotice(undefined);
   }, [assignment, editingFinger]);
