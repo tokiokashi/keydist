@@ -147,6 +147,8 @@ export interface Metrics {
   singleKeyRate: number;
   /** 隣接指間距離の統計。ホーム間隔からの超過で持つ（仕様 §11.6） */
   adjacent: PairStat[];
+  /** `adjacent` と同じ並びの、各ペアのホーム間隔 [u]。Nを変えたTraceから同じ超過を求め直すために持つ */
+  adjacentHomeSpacings: number[];
   /** 隣接指間距離の超過の分布。`adjacent` と同じ並び・同じ母集団（仕様 §11.6） */
   adjacentDistribution: PairDistribution[];
   /** 同指連続回数。同じ指で異なる位置を続けて打った数 */
@@ -202,6 +204,37 @@ export const DEFAULT_METRIC_CONDITIONS: MetricConditions = {
   keepSymbols: false,
 };
 
+/** 各打鍵の押下直後のスナップショットから、ペアごとのホーム間隔からの超過の列を求める（仕様 §11.6）。0でクランプはしない */
+export function adjacentExcessSamples(trace: Trace, homeSpacings: readonly number[]): number[][] {
+  const samples: number[][] = ADJACENT_PAIRS.map(() => []);
+  for (const stroke of trace.strokes) {
+    ADJACENT_PAIRS.forEach((pair, i) => {
+      samples[i].push(dist(stroke.positions[pair[0]], stroke.positions[pair[1]]) - homeSpacings[i]);
+    });
+  }
+  return samples;
+}
+
+/** ペアごとの超過の列から、`Metrics.adjacent` の欄を作る。 */
+export function adjacentPairStats(samples: readonly (readonly number[])[]): PairStat[] {
+  return ADJACENT_PAIRS.map((pair, i) => {
+    const { mean, stdDev, max } = meanStdDevMax([...samples[i]]);
+    return { pair, meanExcess: mean, stdDev, maxExcess: max };
+  });
+}
+
+/**
+ * 隣接ペアの超過の平均と標準偏差を、ペア間で単純平均した値（比較表の「指間平均」「指間σ」）。
+ * 比較表とN感度が同じ値を共有するため、計算をここに1つだけ持つ。
+ */
+export function adjacentMeanStdDev(adjacent: readonly Pick<PairStat, 'meanExcess' | 'stdDev'>[]): { mean: number; stdDev: number } {
+  const count = adjacent.length || 1;
+  return {
+    mean: adjacent.reduce((sum, item) => sum + item.meanExcess, 0) / count,
+    stdDev: adjacent.reduce((sum, item) => sum + item.stdDev, 0) / count,
+  };
+}
+
 export function computeMetrics(trace: Trace, geometry: Geometry, conditions: MetricConditions = DEFAULT_METRIC_CONDITIONS): Metrics {
   const tally = tallyPresses(trace);
   const keyCounts = new Map<string, number>();
@@ -239,7 +272,6 @@ export function computeMetrics(trace: Trace, geometry: Geometry, conditions: Met
   const comboKeyCounts = new Map<string, number>();
   const comboKeyDistance = new Map<string, number>();
   let comboPresses = 0;
-  const pairSamples: number[][] = ADJACENT_PAIRS.map(() => []);
   const homeSpacings = ADJACENT_PAIRS.map((pair) => homeSpacing(geometry, pair));
 
   for (const stroke of trace.strokes) {
@@ -269,17 +301,10 @@ export function computeMetrics(trace: Trace, geometry: Geometry, conditions: Met
         }
       }
     }
-
-    ADJACENT_PAIRS.forEach((pair, i) => {
-      // そのペアのホーム間隔を引いた超過で溜める（仕様 §11.6）。0でクランプはしない
-      pairSamples[i].push(dist(stroke.positions[pair[0]], stroke.positions[pair[1]]) - homeSpacings[i]);
-    });
   }
 
-  const adjacent = ADJACENT_PAIRS.map((pair, i) => {
-    const { mean, stdDev, max } = meanStdDevMax(pairSamples[i]);
-    return { pair, meanExcess: mean, stdDev, maxExcess: max };
-  });
+  const pairSamples = adjacentExcessSamples(trace, homeSpacings);
+  const adjacent = adjacentPairStats(pairSamples);
 
   const adjacentDistribution = ADJACENT_PAIRS.map(
     (pair, i): PairDistribution => ({
@@ -327,6 +352,7 @@ export function computeMetrics(trace: Trace, geometry: Geometry, conditions: Met
     singleTapRate: scalars.singleTapRate,
     singleKeyRate: scalars.singleKeyRate,
     adjacent,
+    adjacentHomeSpacings: homeSpacings,
     adjacentDistribution,
     sameFinger: scalars.sameFinger,
     perFingerSameFinger,

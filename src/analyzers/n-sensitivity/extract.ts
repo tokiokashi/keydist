@@ -5,8 +5,15 @@ import {
   type SetAnalyzerDefinition,
   type SetAnalyzerExtractContext,
 } from '#analyzers/contract.ts';
-import type { Finger, Key } from '#input/shapes/geometry.ts';
-import { computeTraceScalars, DEFAULT_METRIC_CONDITIONS, type Metrics } from '#interpretation/metrics.ts';
+import { ADJACENT_PAIRS, ALL_FINGERS, type Finger, type Key } from '#input/shapes/geometry.ts';
+import {
+  adjacentExcessSamples,
+  adjacentMeanStdDev,
+  adjacentPairStats,
+  computeTraceScalars,
+  DEFAULT_METRIC_CONDITIONS,
+  type Metrics,
+} from '#interpretation/metrics.ts';
 import { analysisTargetKey, type AnalysisTarget } from '#input/setup/index.ts';
 import type { Press, Stroke, StrokeParticipation, Trace } from '#trace/generate.ts';
 import { ALTERNATE_N_SENSITIVITY_OPTIONS, DEFAULT_N_SENSITIVITY_OPTIONS, nSensitivityOptions, type NSensitivityOptions } from './options.ts';
@@ -20,11 +27,12 @@ import { LAYOUT_MISSING_REASON } from '#input/setup/index.ts';
  * （N=0..10）で、`metric-catalog.ts`の一覧の指標をすべて求める。縦軸にどれを描くかは
  * 可視化の側が選ぶので、抽出は指標の選択を知らない。
  *
- * **`computeMetrics`を呼び直さない。** 一覧の指標はどれもGeometryを要らず、Nごとに生成した
- * Traceだけから`computeTraceScalars`（`computeMetrics`のスカラー欄と同じ定義）で求まる
- * （Geometry・Nは`generateTrace`の時点で既にstrokeへ焼き込まれている）。指間の平均のように
- * Geometryの実体（`AnalyzerSetMember`には無い）を要る指標は一覧に入れず、契約に
- * Geometryを足さずに済ませる。
+ * **`computeMetrics`を呼び直さない。** Nごとに生成したTraceから、`computeMetrics`と同じ定義の関数で求める
+ * （Geometry・Nは`generateTrace`の時点で既にstrokeへ焼き込まれている）。スカラーは`computeTraceScalars`、
+ * 指間平均・指間σは`adjacentExcessSamples`・`adjacentPairStats`・`adjacentMeanStdDev`（比較表と同じ関数）。
+ * 指間の指標は6組のホーム間隔が要るが、ホーム間隔は物理配列と指割当だけで決まりNによらないので、
+ * メンバーの`Metrics.adjacentHomeSpacings`から受け取る。`AnalyzerSetMember`と`TraceRequester`にGeometryは足さない。
+ * 比較表の値から逆算せず、Nごとに超過を求め直すので、そのメンバー自身のNでは比較表とビット一致する。
  *
  * **`totalMm`は持たない。** `totalUnits × (member.metrics.totalMm / member.metrics.totalUnits)`
  * で`pitchMm`を逆算する方法は取れない。`totalMm`は`computeMetrics`側で
@@ -69,16 +77,23 @@ export interface NSensitivityExtracted {
   readonly series: readonly NSensitivitySeries[];
 }
 
-function valuesOf(trace: Trace): NSensitivityValues {
+/**
+ * 各Nの値。Traceだけで求まる指標は`computeTraceScalars`から、指間平均・指間σは、そのNのTraceの
+ * 打鍵ごとの指の位置から求めた超過を比較表と同じ関数（`adjacentMeanStdDev`）で平均して取る。
+ * ホーム間隔はNによらない定数なので、メンバー自身の`Metrics`が持つ値を使う。
+ */
+export function valuesOf(trace: Trace, homeSpacings: readonly number[]): NSensitivityValues {
   const scalars = computeTraceScalars(trace);
-  return Object.fromEntries(N_SENSITIVITY_METRIC_IDS.map((id) => [id, scalars[id]])) as NSensitivityValues;
+  const adjacent = adjacentMeanStdDev(adjacentPairStats(adjacentExcessSamples(trace, homeSpacings)));
+  const all: Readonly<Record<string, number>> = { ...scalars, adjacentMean: adjacent.mean, adjacentStdDev: adjacent.stdDev };
+  return Object.fromEntries(N_SENSITIVITY_METRIC_IDS.map((id) => [id, all[id]!])) as NSensitivityValues;
 }
 
 /** メンバー1件ぶんの、N=0..10の系列を求める。 */
 export function computeMemberSeries(member: AnalyzerSetMember): NSensitivitySeriesOk {
   const points = N_RANGE.map((windowSize) => {
     const trace = member.requestTrace.requestTrace({ tracePolicy: { windowSize } });
-    return { windowSize, values: valuesOf(trace) };
+    return { windowSize, values: valuesOf(trace, member.metrics.adjacentHomeSpacings) };
   });
   return { kind: 'ok', targetKey: analysisTargetKey(member.target), points };
 }
@@ -112,6 +127,10 @@ function fixtureParticipation(p: Press): StrokeParticipation {
   return { hand: p.finger.startsWith('L') ? 'left' : 'right', finger: p.finger, keys: p.keys, roles: ['output'] };
 }
 
+function fixturePositions(): Stroke['positions'] {
+  return Object.fromEntries(ALL_FINGERS.map((finger, i) => [finger, { x: i, y: 2 }])) as Stroke['positions'];
+}
+
 function fixtureStroke(index: number, presses: Press[]): Stroke {
   return {
     index,
@@ -128,7 +147,7 @@ function fixtureStroke(index: number, presses: Press[]): Stroke {
     participations: presses.map(fixtureParticipation),
     presses,
     distance: presses.reduce((sum, p) => sum + p.distance, 0),
-    positions: {} as Stroke['positions'],
+    positions: fixturePositions(),
   };
 }
 
@@ -170,6 +189,7 @@ function fixtureMetrics(totalUnits: number): Metrics {
     singleTapRate: 100,
     singleKeyRate: 100,
     adjacent: [],
+    adjacentHomeSpacings: ADJACENT_PAIRS.map(() => 1),
     adjacentDistribution: [],
     sameFinger: 0,
     perFingerSameFinger: {} as Metrics['perFingerSameFinger'],

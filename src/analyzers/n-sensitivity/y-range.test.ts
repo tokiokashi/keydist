@@ -119,3 +119,42 @@ test('実測の目盛りは指標の単位と桁で書く', () => {
   assert.deepEqual(formatYTicks('value', [0, 12.5], 'sameFingerRate'), ['0.0%', '12.5%']);
   assert.deepEqual(formatYTicks('value', [0, 4], 'sameFinger'), ['0回', '4回']);
 });
+
+test('比がNで100%を超える指標（指間σ）は、最大値を含む区切りまで上限を広げる', () => {
+  const values = [100, 118, 131, 146.3];
+  for (const mode of ['full', 'fit', 'coarse'] as const) {
+    const range = computeYRange(mode, 'ratio', values);
+    assert.ok(range.lo <= 100 && range.hi >= 146.3, `${mode} ${JSON.stringify(range)}`);
+    assert.deepEqual(range.ticks.at(0), range.lo);
+    assert.deepEqual(range.ticks.at(-1), range.hi);
+  }
+  assert.deepEqual(computeYRange('full', 'ratio', values), { lo: 0, hi: 150, ticks: [0, 50, 100, 150] });
+  // 100%以下だけの時は、従来どおり100%に固定する
+  assert.equal(computeYRange('fit', 'ratio', [100, 80]).hi, 100);
+});
+
+test('実測が負になる指標（指間平均）は、0を含む範囲で全点が収まる', () => {
+  const values = [-0.031, 0.002, 0.05, 0.12];
+  for (const mode of ['full', 'fit', 'coarse'] as const) {
+    const range = computeYRange(mode, 'value', values);
+    assert.ok(range.lo <= -0.031 && range.hi >= 0.12, `${mode} ${JSON.stringify(range)}`);
+    assert.ok(range.lo <= 0 && range.hi >= 0, mode);
+    const labels = formatYTicks('value', range.ticks, 'adjacentMean');
+    assert.equal(new Set(labels).size, labels.length, `${mode} ${labels.join(' ')}`);
+  }
+});
+
+test('実測が1未満の指標も、最大値までで範囲を取る（0〜1に押し込めない）', () => {
+  const range = computeYRange('full', 'value', [0.12, 0.2, 0.33]);
+  assert.equal(range.hi, 0.33);
+});
+
+test('差の目盛りは指標の単位を付ける（指間平均はu）', () => {
+  assert.deepEqual(formatYTicks('delta', [-0.05, 0, 0.05, 0.1], 'adjacentMean'), ['-0.05 u', '0.00 u', '0.05 u', '0.10 u']);
+  for (const mode of ['full', 'fit', 'coarse'] as const) {
+    const range = computeYRange(mode, 'delta', [0, 0.04, 0.11, 0.2]);
+    assert.ok(range.lo <= 0 && range.hi >= 0.2, mode);
+    const labels = formatYTicks('delta', range.ticks, 'adjacentMean');
+    assert.equal(new Set(labels).size, labels.length, labels.join(' '));
+  }
+});
