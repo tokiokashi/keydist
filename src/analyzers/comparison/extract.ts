@@ -6,7 +6,7 @@ import {
   type SetAnalyzerExtractContext,
 } from '#analyzers/contract.ts';
 import { countBigramCombinations } from '#interpretation/bigram-combinations.ts';
-import { DEFAULT_METRIC_CONDITIONS, rightHandShare, sameFingerRate, type Metrics } from '#interpretation/metrics.ts';
+import { adjacentMeanStdDev, DEFAULT_METRIC_CONDITIONS, rightHandShare, sameFingerRate, type Metrics } from '#interpretation/metrics.ts';
 import { analysisTargetKey, type AnalysisTarget } from '#input/setup/index.ts';
 import { ALL_FINGERS, type Finger, type Key } from '#input/shapes/geometry.ts';
 import type { Press, Stroke, StrokeParticipation, Trace } from '#trace/generate.ts';
@@ -70,9 +70,7 @@ export interface ComparisonExtracted {
 /** `Metrics`と`Trace`から全列を読み出す純関数。Bigramの組の種類数の2列だけ`Trace`から数え、他の列は`Metrics`を写す。 */
 export function computeComparisonRowValues(metrics: Metrics, trace: Trace): ComparisonRowValues {
   const bigrams = countBigramCombinations(trace);
-  const adjacentCount = metrics.adjacent.length || 1;
-  const adjacentMean = metrics.adjacent.reduce((sum, item) => sum + item.meanExcess, 0) / adjacentCount;
-  const adjacentStdDev = metrics.adjacent.reduce((sum, item) => sum + item.stdDev, 0) / adjacentCount;
+  const { mean: adjacentMean, stdDev: adjacentStdDev } = adjacentMeanStdDev(metrics.adjacent);
   return {
     actions: metrics.actions,
     totalUnits: metrics.totalUnits,
@@ -188,6 +186,7 @@ function fixtureMetrics(totalUnits: number): Metrics {
     singleTapRate: 100,
     singleKeyRate: 100,
     adjacent: [],
+    adjacentHomeSpacings: [],
     adjacentDistribution: [],
     sameFinger: 0,
     perFingerSameFinger: fixtureFingerRecord(),

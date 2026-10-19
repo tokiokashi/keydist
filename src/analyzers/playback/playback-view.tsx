@@ -352,6 +352,7 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options, onOp
             {frame.inputPreview.map(
               (segment, index) =>
                 segment.kind === 'completed' && (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: 入力の単位の位置が識別で、並びは先頭から順に進むだけ
                   <span key={`${segment.kind}-${index}`} className={`playback-input-segment playback-input-${segment.kind}`}>
                     {segment.text}
                   </span>
@@ -364,6 +365,7 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options, onOp
                 (segment, index) =>
                   segment.kind !== 'completed' && (
                     <span
+                      // biome-ignore lint/suspicious/noArrayIndexKey: 入力の単位の位置が識別で、並びは先頭から順に進むだけ
                       key={`${segment.kind}-${index}`}
                       className={`playback-input-segment playback-input-${segment.kind}`}
                       aria-current={segment.kind === 'current' ? 'step' : undefined}
@@ -378,6 +380,7 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options, onOp
               {frame.romajiInputPreview.map(
                 (segment, index) =>
                   segment.kind === 'current' && (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: 入力の単位の位置が識別で、並びは先頭から順に進むだけ
                     <span key={`${segment.kind}-${index}`} className="playback-input-segment playback-input-current" aria-current="step">
                       {segment.romaji === undefined ? (
                         segment.kana
@@ -394,6 +397,7 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options, onOp
                 {frame.romajiInputPreview.map(
                   (segment, index) =>
                     segment.kind === 'planned' && (
+                      // biome-ignore lint/suspicious/noArrayIndexKey: 入力の単位の位置が識別で、並びは先頭から順に進むだけ
                       <span key={`${segment.kind}-${index}`} className="playback-input-segment playback-input-planned">
                         {segment.romaji?.remaining ?? segment.kana}
                       </span>

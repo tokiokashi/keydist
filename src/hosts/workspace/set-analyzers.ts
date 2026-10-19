@@ -11,7 +11,7 @@ import type { SetAnalyzerPaneParts } from '#analyzers/pane-parts.tsx';
  * こちらは可視化まで読み込むので、ペインを描く側（`WorkspacePaneView.tsx`）だけが使う。
  * 型引数は消してある（保存したペインのidから引くため、Analyzerごとの型は呼び出し側から見えない）。
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// biome-ignore lint/suspicious/noExplicitAny: ペインの部品は型引数ごとに反変の位置を持ち、unknownでは個々のAnalyzerの部品を代入できない
 type AnyPaneParts = SetAnalyzerPaneParts<any, any, any>;
 
 export const SET_ANALYZER_PANE_PARTS: readonly AnyPaneParts[] = [comparisonAnalyzer, fingerMatrixAnalyzer, nSensitivityAnalyzer];

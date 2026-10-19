@@ -44,8 +44,8 @@
         "useExhaustiveDependencies": "off"
       },
       "suspicious": {
-        "noArrayIndexKey": "off",
-        "noExplicitAny": "off",
+        "noArrayIndexKey": "error",
+        "noExplicitAny": "error",
         "noTemplateCurlyInString": "off"
       },
       "a11y": {

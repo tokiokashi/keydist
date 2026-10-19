@@ -1,4 +1,4 @@
-import { N_SENSITIVITY_METRICS, withUnit, type NSensitivityAxisKind, type NSensitivityMetricId } from './metric-catalog.ts';
+import { deltaUnit, N_SENSITIVITY_METRICS, withUnit, type NSensitivityAxisKind, type NSensitivityMetricId } from './metric-catalog.ts';
 
 /**
  * N感度の縦軸の範囲の決め方。
@@ -13,11 +13,12 @@ import { N_SENSITIVITY_METRICS, withUnit, type NSensitivityAxisKind, type NSensi
  *   データの最小値を含む一番高い区切りを下限にする。
  *   fitより下限が粗く、軸が0から始まらないことが目盛りから読み取りやすい
  *
- * 上限は、N=0を100%とする比（ratio）ではN=0が必ず100%（=最大）なので、どの決め方でも100%。実測（value）では
- * 最大値（fit・coarseは、目盛りがきりのよい値になるよう上へ丸める）。
- * 「0を含めて上だけ詰める」は、比では上限が最初から最大なので詰める余地が無く、fullと同じになる。
+ * 上限は、N=0を100%とする比（ratio）で全点が100%以下なら、どの決め方でも100%。Nで増えて100%を超える点がある時は、
+ * 最大値を含むきりのよい区切りまで広げる。実測（value）では最大値（fit・coarseは、目盛りがきりのよい値になるよう上へ丸める）。
+ * 実測に負の値がある時は、差（delta）と同じく0を含めて下へ広げる。
+ * 「0を含めて上だけ詰める」は、100%に固定した比では上限が最初から最大なので詰める余地が無く、fullと同じになる。
  *
- * N=0との差[pt]（delta）は負にもなり、N=0の点が必ず0なので範囲はいつも0を含む。そのため「0から」と
+ * N=0との差（delta。率はpt、それ以外は指標の単位）は負にもなり、N=0の点が必ず0なので範囲はいつも0を含む。そのため「0から」と
  * 「値の範囲」でデータの範囲は変わらず、違いは余白と目盛りの粗さになる（`computeDeltaRange`）。
  */
 export type YRangeMode = 'full' | 'fit' | 'coarse';
@@ -46,6 +47,11 @@ function niceStep(span: number, intervals: number): number {
   return factor * magnitude;
 }
 
+/** 刻みの掛け算に残る浮動小数の誤差（0.6000000000000001など）を落とす。目盛りの値と範囲の端を同じ値にそろえる。 */
+function tidy(value: number): number {
+  return Number(value.toFixed(9));
+}
+
 function ticksBetween(lo: number, hi: number, step: number): number[] {
   const count = Math.round((hi - lo) / step);
   // 0.1刻みなどで足し算の誤差が目盛りの値に残らないよう、桁を丸める
@@ -71,7 +77,8 @@ export function formatYTicks(kind: NSensitivityAxisKind, ticks: readonly number[
   }
   if (kind === 'delta') {
     const digits = decimalsFor(ticks);
-    return ticks.map((tick) => `${tick.toFixed(digits)} pt`);
+    const unit = deltaUnit(metric);
+    return ticks.map((tick) => withUnit(tick.toFixed(digits), unit));
   }
   const def = N_SENSITIVITY_METRICS[metric];
   return ticks.map((tick) => withUnit(tick.toFixed(def.tickDigits), def.unit));
@@ -86,8 +93,8 @@ function computeDeltaRange(mode: YRangeMode, values: readonly number[]): YRange 
   const pad = mode === 'fit' ? span * FIT_PADDING : 0;
   const intervals = mode === 'full' ? FULL_TICK_INTERVALS : mode === 'fit' ? FIT_TICK_INTERVALS : COARSE_TICK_INTERVALS;
   const step = niceStep(span + pad * 2, intervals);
-  const lo = Math.floor((dataMin - pad) / step) * step;
-  const hi = Math.max(Math.ceil((dataMax + pad) / step) * step, lo + step);
+  const lo = tidy(Math.floor((dataMin - pad) / step) * step);
+  const hi = tidy(Math.max(Math.ceil((dataMax + pad) / step) * step, lo + step));
   return { lo, hi, ticks: ticksBetween(lo, hi, step) };
 }
 
@@ -100,26 +107,32 @@ export function computeYRange(mode: YRangeMode, kind: NSensitivityAxisKind, valu
   const relative = kind === 'ratio';
   const dataMax = values.length > 0 ? Math.max(...values) : 1;
   const dataMin = values.length > 0 ? Math.min(...values) : 0;
-  const hi = relative ? 100 : Math.max(1, dataMax);
+  // 実測値が負になる指標（指間平均）は、0を含む範囲で描く
+  if (!relative && dataMin < 0) return computeDeltaRange(mode, values);
+  // 比の上限は、N=0が必ず最大の指標では100%に固定する。Nで増えうる指標（指間σ）は、最大値を含む区切りまで広げる
+  const capped = relative && dataMax <= 100;
+  const uncappedStep = relative && !capped ? niceStep(dataMax, FULL_TICK_INTERVALS) : 0;
+  const hi = capped ? 100 : relative ? tidy(Math.ceil(dataMax / uncappedStep) * uncappedStep) : dataMax > 0 ? dataMax : 1;
 
   if (mode === 'full' || dataMin >= hi) {
+    if (relative && !capped) return { lo: 0, hi, ticks: ticksBetween(0, hi, uncappedStep) };
     return { lo: 0, hi, ticks: Array.from({ length: FULL_TICK_INTERVALS + 1 }, (_, i) => (hi / FULL_TICK_INTERVALS) * i) };
   }
 
   if (mode === 'coarse') {
-    // 相対は0〜100%の4等分（25%刻み）。実測の最大値は区切りが悪いので、きりのよい刻みで上へ丸める
-    const quarter = relative ? hi / 4 : niceStep(hi, 4);
-    const top = relative ? hi : Math.ceil(hi / quarter) * quarter;
-    const lo = Math.min(Math.round(top / quarter) - 1, Math.floor(dataMin / quarter)) * quarter;
+    // 100%に固定した相対は0〜100%の4等分（25%刻み）。それ以外は最大値を、きりのよい刻みで上へ丸める
+    const quarter = capped ? hi / 4 : niceStep(hi, 4);
+    const top = capped ? hi : tidy(Math.ceil(hi / quarter) * quarter);
+    const lo = tidy(Math.min(Math.round(top / quarter) - 1, Math.floor(dataMin / quarter)) * quarter);
     return { lo, hi: top, ticks: ticksBetween(lo, top, quarter) };
   }
 
-  // fit: 下限は最小値の少し下を、目盛り幅の倍数へ切り下げる。上限は最大値（相対は100）のまま。
+  // fit: 下限は最小値の少し下を、目盛り幅の倍数へ切り下げる。上限は最大値（100%に固定した相対は100）のまま。
   const padded = Math.max(0, dataMin - (hi - dataMin) * FIT_PADDING);
   const step = niceStep(hi - padded, FIT_TICK_INTERVALS);
-  const lo = Math.floor(padded / step) * step;
-  // 相対の上限は100%のまま（100%を超える目盛りは作らない）。
-  const top = relative ? hi : Math.ceil(hi / step) * step;
+  const lo = tidy(Math.floor(padded / step) * step);
+  // 100%に固定した相対の上限は100%のまま（100%を超える目盛りは作らない）。
+  const top = capped ? hi : tidy(Math.ceil(hi / step) * step);
   return { lo, hi: top, ticks: ticksBetween(lo, top, step) };
 }
 

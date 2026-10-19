@@ -60,10 +60,39 @@ const withStepsPerSecond = <T extends object>(state: T, stepsPerSecond: number):
   elapsedMs: 0,
 });
 const emptyStrokes = (length: number) => Array.from({ length }, () => ({ presses: [] })) as never[];
-const timingAnalysis = (strokes: readonly any[], chainInterpretation?: ChainInterpretation) => {
+// テストが書く打鍵は、必要な項目だけを書き、残りは下の既定で補う
+interface TestKey {
+  id?: string;
+  x?: number;
+  y?: number;
+  row?: number;
+  col?: number;
+}
+interface TestPress {
+  finger?: string;
+  keys?: TestKey[];
+  target?: { x: number; y: number };
+  gap?: number;
+  distance?: number;
+  sfb?: boolean;
+}
+interface TestStroke {
+  presses?: TestPress[];
+  char?: string;
+  inputChar?: string;
+  inputIndex?: number;
+  aggregationGroupId?: string;
+  inputRole?: string;
+  classifications?: unknown[];
+  triggerKeys?: unknown[];
+  pairedTriggerKeys?: unknown[];
+  distance?: number;
+  positions?: Record<string, unknown>;
+}
+const timingAnalysis = (strokes: readonly TestStroke[], chainInterpretation?: ChainInterpretation) => {
   const normalized = strokes.map((source, index) => {
-    const presses = (source.presses ?? []).map((raw: any) => {
-      const keys = (raw.keys ?? []).map((key: any, keyIndex: number) => ({
+    const presses = (source.presses ?? []).map((raw) => {
+      const keys = (raw.keys ?? []).map((key, keyIndex: number) => ({
         id: key.id ?? `k-${index}-${keyIndex}`,
         finger: raw.finger ?? 'LI',
         x: key.x ?? 0,
@@ -93,7 +122,7 @@ const timingAnalysis = (strokes: readonly any[], chainInterpretation?: ChainInte
       classifications: source.classifications ?? [],
       triggerKeys: source.triggerKeys ?? [],
       pairedTriggerKeys: source.pairedTriggerKeys ?? [],
-      participations: presses.map((press: any) => ({
+      participations: presses.map((press) => ({
         hand: press.finger.startsWith('L') ? 'left' : 'right',
         finger: press.finger,
         keys: press.keys,

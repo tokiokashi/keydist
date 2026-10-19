@@ -16,6 +16,7 @@ export function ImportedWorkspacesNotice() {
         {imported.lines.length === 0 ? null : (
           <ul className="shell-notice-details">
             {imported.lines.map((line, index) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: 知らせごとにまるごと作り直す表示だけの一覧で、同じ文が並びうる
               <li key={index}>{line}</li>
             ))}
           </ul>

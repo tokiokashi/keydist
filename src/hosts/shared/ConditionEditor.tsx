@@ -342,6 +342,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
           </p>
         )}
         {diagnostics.map((text, index) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: 診断の文を毎回作り直す表示だけの一覧で、同じ文が並びうる
           <p key={index} className="condition-row-diagnostic">
             {text}
           </p>

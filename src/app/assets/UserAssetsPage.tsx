@@ -370,6 +370,7 @@ export function UserAssetsPage({
           {importResult.lines.length === 0 ? null : (
             <ul>
               {importResult.lines.map((line, index) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: 読み込みの結果を毎回まるごと差し替える表示だけの一覧で、同じ文が並びうる
                 <li key={index}>{line}</li>
               ))}
             </ul>
