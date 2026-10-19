@@ -321,7 +321,7 @@ test('Workspace: 「このペインだけ」にしたペインは並び替えを
   // 2つ目を「このペインだけ」にする
   await page.locator('.pane-frame').nth(1).getByRole('button', { name: '解析設定', exact: true }).click();
   const settings = page.locator('[data-settings-window="true"]');
-  await settings.getByRole('radio', { name: 'このペインだけ' }).click();
+  await settings.getByRole('button', { name: 'このペインだけ' }).click();
   await settings.getByRole('button', { name: '解析設定を閉じる' }).click();
 
   const first = tables.nth(0);

@@ -1,3 +1,4 @@
+import { focusOnMount } from '#ui/primitives/focus-on-mount.ts';
 import { useHistoryShortcuts } from '#ui/primitives/use-history-shortcuts.ts';
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Layout } from '#input/layouts/types.ts';
@@ -377,7 +378,7 @@ function ConfirmDiscard({ onConfirm, onCancel }: { readonly onConfirm: () => voi
         通常の速度、指ごとの同じキーを続けて打つ速さと移動の時間、方向別の速度、同時押しの上乗せ、文章を打つ時の打鍵の上乗せを全て消します。「元に戻す」で戻せます。再読み込みやタブを閉じた後は戻せません。
       </p>
       <div className="personal-speed-confirm-actions">
-        <button type="button" autoFocus onClick={onCancel}>
+        <button type="button" ref={focusOnMount} onClick={onCancel}>
           キャンセル
         </button>
         <button type="button" onClick={onConfirm}>

@@ -377,6 +377,7 @@ function KeyboardFlow({
             </AnimatePresence>
           </g>
 
+          {/* biome-ignore lint/a11y/noAriaHiddenOnFocusable: SVGのgは焦点を受けない。規則がSVGの要素を焦点の対象外と判別できない */}
           <g className="flow-overlay-layer" aria-hidden="true">
             {keys.map((key) => {
               const point = chartPoint(key, origin.minX, origin.minY);
@@ -599,7 +600,7 @@ function MovementProfilePlot({
       </div>
 
       <div className="roll-summary">
-        <div className="roll-bar" aria-label="内向きと外向きの割合">
+        <div className="roll-bar">
           {hand === 'left' ? (
             <>
               <motion.span
@@ -831,7 +832,7 @@ function FingerOptionField({ binding }: { binding: OptionBinding<readonly Finger
   return (
     <OptionField label="指の組み合わせ" binding={binding} hint={FINGER_SET_HINTS[selected.length as 0 | 1 | 2]}>
       {(id) => (
-        <div className="option-segmented flow-finger-buttons" role="group" id={id} aria-labelledby={`${id}-label`}>
+        <fieldset className="plain-group option-segmented flow-finger-buttons" id={id} aria-labelledby={`${id}-label`}>
           {FINGER_OPTIONS.map((finger) => {
             const active = selected.includes(finger.id);
             return (
@@ -840,7 +841,7 @@ function FingerOptionField({ binding }: { binding: OptionBinding<readonly Finger
               </button>
             );
           })}
-        </div>
+        </fieldset>
       )}
     </OptionField>
   );

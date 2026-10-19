@@ -1,3 +1,4 @@
+import { focusOnMount } from '#ui/primitives/focus-on-mount.ts';
 import { useContext, useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import { LAYOUT_MISSING_REASON, MISSING_SETUP_NAME } from '#input/setup/index.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
@@ -148,7 +149,7 @@ function ConfirmDelete({
         <p key={line}>{line}</p>
       ))}
       <div className="user-assets-confirm-actions">
-        <button type="button" autoFocus onClick={onCancel}>
+        <button type="button" ref={focusOnMount} onClick={onCancel}>
           キャンセル
         </button>
         <button type="button" onClick={onConfirm}>

@@ -254,7 +254,7 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options, onOp
           ) : null}
         </p>
       ) : null}
-      <div className="playback-controls" role="group" aria-label="打鍵再生の操作">
+      <fieldset className="plain-group playback-controls" aria-label="打鍵再生の操作">
         <button
           type="button"
           data-playback-action="back"
@@ -277,7 +277,7 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options, onOp
         >
           <span aria-hidden="true">▶</span> 1ステップ進む
         </button>
-      </div>
+      </fieldset>
 
       <div className="playback-seek" style={{ '--seek-axis-left': axisInsets.left, '--seek-axis-right': axisInsets.right } as CSSProperties}>
         {/* 数はラベルの横に置き、ラベルとスライダーの名前は「再生位置」のまま保つ（数を名前に入れると、数が変わるたびに読み上げ名が変わる） */}

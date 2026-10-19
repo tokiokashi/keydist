@@ -414,7 +414,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
           {row('windowSize', (badge) => (
             <OptionField label="先読みN" binding={windowBinding} badge={badge} hint="同じ指を残すかホームへ戻すかを決める時に、先の何文字まで見るか">
               {(id) => (
-                <div className="condition-stepper" id={id} role="group" aria-labelledby={`${id}-label`}>
+                <fieldset className="plain-group condition-stepper" id={id} aria-labelledby={`${id}-label`}>
                   <button
                     type="button"
                     aria-label="先読みNを1減らす"
@@ -427,7 +427,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
                   <button type="button" aria-label="先読みNを1増やす" onClick={() => windowBinding.onChange(windowBinding.value + 1)}>
                     ＋
                   </button>
-                </div>
+                </fieldset>
               )}
             </OptionField>
           ))}
@@ -503,7 +503,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
                     {ACTION_EXCEPTION_CLASSES.map(({ key, label }) => (
                       <div key={key} className="condition-fold-row" data-exception-class={key}>
                         <span id={`condition-exception-${key}`}>{label}</span>
-                        <div className="option-segmented" role="group" aria-labelledby={`condition-exception-${key}`}>
+                        <fieldset className="plain-group option-segmented" aria-labelledby={`condition-exception-${key}`}>
                           {(['combined', 'separate'] as const).map((grouping) => (
                             <button
                               key={grouping}
@@ -514,7 +514,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
                               {grouping === 'combined' ? '1動作' : '2動作'}
                             </button>
                           ))}
-                        </div>
+                        </fieldset>
                       </div>
                     ))}
                   </div>

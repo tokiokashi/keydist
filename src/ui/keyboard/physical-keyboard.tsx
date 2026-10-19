@@ -128,6 +128,7 @@ export function PhysicalKeyboard({
           const homeMarkY = legendY + Math.max(3, unit * 0.11);
 
           return (
+            // biome-ignore lint/a11y/noStaticElementInteractions: SVGの図形にはHTMLのbuttonを置けない。操作できる時は、下でroleとtabIndexとキー操作を付ける
             <g
               className="physical-keyboard-key"
               data-accent-slot={view?.accentSlot}

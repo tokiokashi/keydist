@@ -83,13 +83,13 @@ export function HeatmapLayersBody({
         <h3 id="heatmap-layers-heading">ヒートマップ（レイヤー）・{entries.length}図</h3>
       </LayerDetailHeading>
       {shiftLegend.length > 0 ? (
-        <div className="heatmap-shift-legend" aria-label="シフトキーの枠色">
+        <fieldset className="plain-group heatmap-shift-legend" aria-label="シフトキーの枠色">
           {shiftLegend.map((item) => (
             <span key={item.id} className="heatmap-shift-swatch" style={{ ['--shift-color' as string]: `var(--series-${item.style.colorSlot})` }}>
               {item.label}
             </span>
           ))}
-        </div>
+        </fieldset>
       ) : null}
 
       {tabbed ? (

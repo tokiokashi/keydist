@@ -114,6 +114,15 @@
   font-variant-numeric: tabular-nums;
   cursor: pointer;
   outline: none;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  line-height: inherit;
+  text-align: inherit;
 }
 
 .finger-distance-distribution-row[data-selected] {

@@ -385,14 +385,14 @@ export function TargetSelection({
                     aria-label="配列・Setupを名前で絞り込む"
                     onChange={(event) => setQuery(event.currentTarget.value)}
                   />
-                  <div className="target-selection-kind" role="group" aria-label="配列の種類で絞り込む">
+                  <fieldset className="plain-group target-selection-kind" aria-label="配列の種類で絞り込む">
                     {KIND_FILTERS.map((item) => (
                       <label key={item.value}>
                         <input type="radio" name={`${panelId}-kind`} checked={kindFilter === item.value} onChange={() => setKindFilter(item.value)} />
                         <span>{item.label}</span>
                       </label>
                     ))}
-                  </div>
+                  </fieldset>
                 </div>
                 <div className="target-selection-list">
                   {visibleGroups.length === 0 ? (

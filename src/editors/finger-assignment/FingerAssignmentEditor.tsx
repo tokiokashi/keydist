@@ -127,12 +127,14 @@ const BLOCK_HINT: Record<OwnerChangeBlock, string> = {
 };
 
 function FingerSelect({
+  id,
   value,
   label,
   onPick,
   placeholder,
   options = FINGERS,
 }: {
+  readonly id?: string;
   readonly value: Finger | undefined;
   readonly options?: readonly NonThumb[];
   readonly label: string;
@@ -141,6 +143,7 @@ function FingerSelect({
 }) {
   return (
     <select
+      id={id}
       aria-label={label}
       value={value ?? ''}
       onChange={(event) => {
@@ -448,9 +451,10 @@ export function FingerAssignmentEditor({
                     <>
                       <p>選んだキー: {keyLabelOf(selectedKeyId)}</p>
                       {selectedKeyNonThumbOwners.length >= 2 ? (
-                        <label>
+                        <label htmlFor="finger-assignment-base-finger">
                           基本の指
                           <FingerSelect
+                            id="finger-assignment-base-finger"
                             value={selectedKeyBase}
                             label="選んだキーの基本の指"
                             placeholder="指を選ぶ"
@@ -461,9 +465,10 @@ export function FingerAssignmentEditor({
                       ) : selectedKeyNonThumbOwners.length === 1 && selectedKeyBase !== undefined ? (
                         <p data-finger-assignment-base-note>基本の指: {FINGER_LABEL[selectedKeyBase]}（担当する親指以外の指が1本のため）</p>
                       ) : (
-                        <label>
+                        <label htmlFor="finger-assignment-base-finger">
                           基本の指
                           <FingerSelect
+                            id="finger-assignment-base-finger"
                             value={selectedKeyBase}
                             label="選んだキーの基本の指"
                             placeholder="指を選ぶ"

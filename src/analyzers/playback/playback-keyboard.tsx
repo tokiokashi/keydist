@@ -263,6 +263,7 @@ export function PlaybackKeyboard({
       aria-label={`${layout.name}の打鍵再生`}
     >
       {positioned.keys.map((item) => renderKey(item))}
+      {/* biome-ignore lint/a11y/noAriaHiddenOnFocusable: SVGのgは焦点を受けない。規則がSVGの要素を焦点の対象外と判別できない */}
       <g data-playback-motion-layer aria-hidden="true">
         {frame.motions.map((motion, index) => {
           const target = positions.get(motion.toKey);

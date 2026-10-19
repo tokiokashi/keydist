@@ -1,3 +1,4 @@
+import { focusOnMount } from '#ui/primitives/focus-on-mount.ts';
 import { useMemo, useState, type FormEvent } from 'react';
 import type { Command } from '#input/commands/index.ts';
 import { createSetupCommand, duplicateSetupCommand, relabelSetupCommand, setSetupShapeCommand, type KeydistAssets } from '#engine/commands.ts';
@@ -231,7 +232,7 @@ export function SetupPage({
                           type="text"
                           aria-label="新しい名前"
                           value={renaming.draft}
-                          autoFocus
+                          ref={focusOnMount}
                           onChange={(event) => setRenaming({ id: setup.id, draft: event.currentTarget.value })}
                           onKeyDown={(event) => {
                             if (event.key !== 'Escape') return;

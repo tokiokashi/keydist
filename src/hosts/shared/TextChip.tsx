@@ -93,6 +93,7 @@ export function TextChip(props: TextChipProps) {
   }, [open]);
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: 内側のどこで押されたEscapeも受けて閉じるため、キー入力を受けるだけの外側の要素に付ける。この要素自体は操作の対象ではない
     <div
       ref={rootRef}
       className="text-chip-root"

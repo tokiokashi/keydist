@@ -182,7 +182,7 @@ test('サンプルのWorkspaceは普通のWorkspaceと同じに扱える。Bigra
   await bigramFlow.getByRole('button', { name: '解析設定', exact: true }).click();
   const settings = page.locator('[data-settings-window="true"]');
   await expect(settings.getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'true');
-  await expect(settings.getByRole('radio', { name: '共有に従う' })).toHaveAttribute('aria-checked', 'true');
+  await expect(settings.getByRole('button', { name: '共有に従う' })).toHaveAttribute('aria-pressed', 'true');
   await settings.getByRole('button', { name: '解析設定を閉じる' }).click();
 
   // 作成は履歴を持たないトップからの書き込みなので、作った直後の画面の履歴は空。以降の変更は元に戻せる

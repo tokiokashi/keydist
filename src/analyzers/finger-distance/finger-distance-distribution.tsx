@@ -18,11 +18,8 @@ export function FingerDistanceDistribution({ specs }: { readonly specs: readonly
     .flatMap((spec) => spec.bars.map((bar) => ({ key: keyOf(spec.key, bar.state), tip: bar.tip })))
     .find((item) => item.key === selectedKey)?.tip;
   const toggle = (key: string) => setSelectedKey((current) => (current === key ? undefined : key));
-  const onKeyDown = (event: KeyboardEvent, key: string) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      toggle(key);
-    } else if (event.key === 'Escape') {
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (event.key === 'Escape') {
       setSelectedKey(undefined);
     }
   };
@@ -36,25 +33,24 @@ export function FingerDistanceDistribution({ specs }: { readonly specs: readonly
               {spec.bars.map((bar) => {
                 const key = keyOf(spec.key, bar.state);
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={key}
                     className="finger-distance-distribution-row"
                     data-distribution-bar={bar.state}
                     data-selected={selectedKey === key || undefined}
-                    role="button"
-                    tabIndex={0}
                     aria-pressed={selectedKey === key}
                     aria-label={bar.tip}
                     title={bar.tip}
                     onClick={() => toggle(key)}
-                    onKeyDown={(event) => onKeyDown(event, key)}
+                    onKeyDown={onKeyDown}
                   >
                     <span className="finger-distance-distribution-state">{formatState(bar.state)}</span>
                     <span className="finger-distance-distribution-track">
                       <span className="finger-distance-distribution-fill" style={{ width: `${(bar.share / high) * 100}%` }} />
                     </span>
                     <span className="finger-distance-distribution-share">{formatPercent(bar.share)}</span>
-                  </div>
+                  </button>
                 );
               })}
             </div>
