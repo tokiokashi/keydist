@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   compactGrid,
+  displayedGrid,
   DEFAULT_GRID_RANGE,
   DEFAULT_PANE_COLS,
   DEFAULT_SMALL_PANE_COLS,
@@ -230,4 +231,19 @@ test('gridWithResizedPane: 下限を下回る枠は縮めず、広げる操作�
   const grid: WorkspaceGrid = [item('a', 0, 0, 12, 4), item('b', 12, 0, 12, 4)];
   const grown = gridWithResizedPane(grid, 'a', 1, 0, min, false);
   assert.deepEqual(grown, [item('a', 0, 0, 13, 4), item('b', 12, 4, 12, 4)]);
+});
+
+test('詰める設定で空きのある保存値: 編集の結果は、見えている（詰めた）並びから計算した結果と一致する', () => {
+  const stored: WorkspaceGrid = [item('A', 0, 0, 6, 4), item('C', 0, 5, 6, 4), item('B', 6, 10, 6, 4)];
+  const shown = displayedGrid(stored, true);
+  const same = (a: WorkspaceGrid, b: WorkspaceGrid) => assert.ok(sameGrid(a, b), JSON.stringify([a, b]));
+  same(gridWithMovedPane(stored, 'B', -1, 0, true), gridWithMovedPane(shown, 'B', -1, 0, true));
+  same(gridWithResizedPane(stored, 'A', 2, 0, { w: 1, h: 1 }, true), gridWithResizedPane(shown, 'A', 2, 0, { w: 1, h: 1 }, true));
+  same(gridWithPaneNextTo(stored, 'A', 'N', true), gridWithPaneNextTo(shown, 'A', 'N', true));
+  same(gridWithPane(stored, 'N', { w: 6, h: 4 }, true), gridWithPane(shown, 'N', { w: 6, h: 4 }, true));
+  same(gridWithoutPane(stored, 'A', true), gridWithoutPane(shown, 'A', true));
+  // 読み順も見えている並びで決まる（保存値の読み順はA,C,B）
+  assert.deepEqual(gridPaneIds(displayedGrid(stored, true)), ['A', 'B', 'C']);
+  // 詰めない設定は保存値そのまま
+  assert.equal(displayedGrid(stored, false), stored);
 });

@@ -133,13 +133,15 @@ function resolveOverlapsKeeping(grid: WorkspaceGrid, firstId: string): Workspace
 /**
  * ペインを`dx`列・`dy`行だけ動かした枠。列は0から`GRID_MAX_COLS`の範囲、行は0以上に収める。
  * 動かした先で重なった相手は下へ押し、詰める設定なら上に詰める。動かせない（範囲の端）時は、同じ並びを返す。
+ * 計算は、画面に見えている並び（`displayedGrid`）を入力にする。
  */
-export function gridWithMovedPane(grid: WorkspaceGrid, paneId: string, dx: number, dy: number, compact: boolean): WorkspaceGrid {
+export function gridWithMovedPane(stored: WorkspaceGrid, paneId: string, dx: number, dy: number, compact: boolean): WorkspaceGrid {
+  const grid = displayedGrid(stored, compact);
   const item = grid.find((candidate) => candidate.id === paneId);
   if (item === undefined) return grid;
   const x = Math.min(GRID_MAX_COLS - item.w, Math.max(0, item.x + dx));
   const y = Math.max(0, item.y + dy);
-  if (x === item.x && y === item.y) return grid;
+  if (x === item.x && y === item.y) return stored;
   return compactIf(
     compact,
     resolveOverlapsKeeping(
@@ -154,12 +156,13 @@ export function gridWithMovedPane(grid: WorkspaceGrid, paneId: string, dx: numbe
  * 幅・高さは`min`以上、幅は右端が`GRID_MAX_COLS`に収まる範囲にする。今の幅・高さが`min`を下回る枠は、縮める操作では変えない
  * （広げる操作にだけ従う）。変わらない時は同じ並びを返す。重なった相手は下へ押し、詰める設定なら上に詰める。
  */
-export function gridWithResizedPane(grid: WorkspaceGrid, paneId: string, dw: number, dh: number, min: GridSize, compact: boolean): WorkspaceGrid {
+export function gridWithResizedPane(stored: WorkspaceGrid, paneId: string, dw: number, dh: number, min: GridSize, compact: boolean): WorkspaceGrid {
+  const grid = displayedGrid(stored, compact);
   const item = grid.find((candidate) => candidate.id === paneId);
   if (item === undefined) return grid;
   const w = Math.min(GRID_MAX_COLS - item.x, Math.max(Math.min(min.w, item.w), item.w + dw));
   const h = Math.max(Math.min(min.h, item.h), item.h + dh);
-  if (w === item.w && h === item.h) return grid;
+  if (w === item.w && h === item.h) return stored;
   return compactIf(
     compact,
     resolveOverlapsKeeping(
@@ -232,15 +235,24 @@ function compactIf(compact: boolean, grid: WorkspaceGrid): WorkspaceGrid {
   return compact ? compactGrid(grid) : grid;
 }
 
+/**
+ * 画面に出る並び。詰める設定なら保存値を詰めた形、詰めない設定なら保存値そのまま。
+ * 保存値には空きが残りうるので、編集の結果・読み順・Tab順は、見えている並びから求める。
+ */
+export function displayedGrid(grid: WorkspaceGrid, compact: boolean): WorkspaceGrid {
+  return compactIf(compact, grid);
+}
+
 /** ペインを足した枠。`range`の中の空いている最初の場所に`size`で置く。詰めない設定なら、他の枠は動かさない。 */
 export function gridWithPane(
-  grid: WorkspaceGrid,
+  stored: WorkspaceGrid,
   paneId: string,
   size: GridSize,
   compact: boolean,
   range: GridColumnRange = DEFAULT_GRID_RANGE,
 ): WorkspaceGrid {
-  if (grid.some((item) => item.id === paneId)) return grid;
+  if (stored.some((item) => item.id === paneId)) return stored;
+  const grid = displayedGrid(stored, compact);
   const fitted = clampSize(size);
   return compactIf(compact, [...grid, { id: paneId, ...firstFreeSlot(grid, fitted, 0, range), ...fitted }]);
 }
@@ -251,14 +263,15 @@ export function gridWithPane(
  * 元のペインが見つからなければ、`fallbackSize`で`range`の中の空いている最初の場所に置く。
  */
 export function gridWithPaneNextTo(
-  grid: WorkspaceGrid,
+  stored: WorkspaceGrid,
   referencePaneId: string,
   paneId: string,
   compact: boolean,
   fallbackSize: GridSize = FALLBACK_GRID_SIZE,
   range: GridColumnRange = DEFAULT_GRID_RANGE,
 ): WorkspaceGrid {
-  if (grid.some((item) => item.id === paneId)) return grid;
+  if (stored.some((item) => item.id === paneId)) return stored;
+  const grid = displayedGrid(stored, compact);
   const source = grid.find((item) => item.id === referencePaneId);
   if (source === undefined) return gridWithPane(grid, paneId, fallbackSize, compact, range);
   const size: GridSize = { w: source.w, h: source.h };
@@ -276,15 +289,15 @@ export function gridWithPaneNextTo(
  * ペインを取り除いた枠。他のペインの大きさは変わらない。詰める設定なら下のペインが上へ詰まり、
  * 詰めない設定なら閉じた所は空いたまま残る。
  */
-export function gridWithoutPane(grid: WorkspaceGrid, paneId: string, compact: boolean): WorkspaceGrid {
-  if (!grid.some((item) => item.id === paneId)) return grid;
+export function gridWithoutPane(stored: WorkspaceGrid, paneId: string, compact: boolean): WorkspaceGrid {
+  if (!stored.some((item) => item.id === paneId)) return stored;
   return compactIf(
     compact,
-    grid.filter((item) => item.id !== paneId),
+    displayedGrid(stored, compact).filter((item) => item.id !== paneId),
   );
 }
 
-/** ペインのidを画面の読み順（上→下・左→右）で返す。縦積みの並びにも使う。 */
+/** ペインのidを画面の読み順（上→下・左→右）で返す。縦積みの並びにも使う。詰める設定の時は、`displayedGrid`で詰めた並びを渡す。 */
 export function gridPaneIds(grid: WorkspaceGrid): readonly string[] {
   return inReadingOrder(grid).map((item) => item.id);
 }

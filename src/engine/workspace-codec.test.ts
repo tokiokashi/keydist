@@ -58,34 +58,17 @@ function sample(): WorkspaceLibrary {
   library = addWorkspacePane(library, 'w1', setPane('p2'), SIZE);
   library = addWorkspacePane(library, 'w1', singlePane('p3'), SIZE);
   library = withWorkspacePaneOptions(library, 'w1', 'p1', { showLabels: true });
-  library = withWorkspaceText(library, 'w1', {
-    ref: { kind: 'user', id: 'text-1' },
-  });
-  library = withWorkspaceTarget(library, 'w1', G, {
-    kind: 'single',
-    target: { kind: 'layout', layoutId: 'colemak-dh' },
-  });
+  library = withWorkspaceText(library, 'w1', { ref: { kind: 'user', id: 'text-1' } });
+  library = withWorkspaceTarget(library, 'w1', G, { kind: 'single', target: { kind: 'layout', layoutId: 'colemak-dh' } });
   library = withWorkspaceTarget(library, 'w1', G, {
     kind: 'set',
-    selection: {
-      targets: [{ kind: 'layout', layoutId: 'qwerty' }],
-      baseline: undefined,
-    },
+    selection: { targets: [{ kind: 'layout', layoutId: 'qwerty' }], baseline: undefined },
   });
-  library = withPaneInNewLinkGroup(library, 'w1', 'p1', 'link-2', {
-    kind: 'single',
-    target: { kind: 'layout', layoutId: 'qwerty' },
-  });
+  library = withPaneInNewLinkGroup(library, 'w1', 'p1', 'link-2', { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } });
   library = addWorkspacePane(
     library,
     'w1',
-    {
-      id: 'p4',
-      analyzerId: BLANK_PANE_ID,
-      options: undefined,
-      optionsBinding: OWN_OPTIONS,
-      binding: NO_BINDING,
-    },
+    { id: 'p4', analyzerId: BLANK_PANE_ID, options: undefined, optionsBinding: OWN_OPTIONS, binding: NO_BINDING },
     SIZE,
   );
   library = createWorkspace(library, () => 'w2').library;
@@ -111,10 +94,7 @@ test('保存形式は自前の格子で、載せるライブラリの形（`i`�
 });
 
 test('将来の版・版の無い値は失敗として返す（黙って切り捨てない）', () => {
-  const future = WORKSPACE_LIBRARY_CODEC.decode({
-    version: 99,
-    workspaces: [],
-  });
+  const future = WORKSPACE_LIBRARY_CODEC.decode({ version: 99, workspaces: [] });
   assert.ok(!future.ok && future.reason.kind === 'future-version');
   const missing = WORKSPACE_LIBRARY_CODEC.decode({ workspaces: [] });
   assert.ok(!missing.ok && missing.reason.kind === 'missing-version');
@@ -134,32 +114,11 @@ test('壊れたWorkspace・ペインはその1件だけ診断つきで捨て、�
           {
             id: 'good',
             analyzerId: 'bigram-flow',
-            binding: {
-              mode: 'fixed',
-              target: {
-                kind: 'single',
-                target: { kind: 'layout', layoutId: 'qwerty' },
-              },
-            },
+            binding: { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } } },
           },
-          {
-            id: 'bad-target',
-            analyzerId: 'bigram-flow',
-            binding: {
-              mode: 'fixed',
-              target: { kind: 'single', target: { kind: 'nope' } },
-            },
-          },
-          {
-            id: 'bad-kind',
-            analyzerId: 'bigram-flow',
-            binding: { mode: 'fixed', target: { kind: 'weird' } },
-          },
-          {
-            id: 'bad-mode',
-            analyzerId: 'bigram-flow',
-            binding: { mode: 'sometimes' },
-          },
+          { id: 'bad-target', analyzerId: 'bigram-flow', binding: { mode: 'fixed', target: { kind: 'single', target: { kind: 'nope' } } } },
+          { id: 'bad-kind', analyzerId: 'bigram-flow', binding: { mode: 'fixed', target: { kind: 'weird' } } },
+          { id: 'bad-mode', analyzerId: 'bigram-flow', binding: { mode: 'sometimes' } },
           { id: 'no-binding', analyzerId: 'bigram-flow' },
           { id: 'good', analyzerId: 'comparison', binding: { mode: 'follow' } },
           { analyzerId: 'bigram-flow', binding: { mode: 'follow' } },
@@ -192,15 +151,9 @@ test('従う組 / 固定と、組ごとの対象は往復で保たれる', () =>
     workspace.groups.map((g) => g.id),
     [G, 'link-2'],
   );
-  assert.deepEqual(workspace.groups[0]!.target.single.target, {
-    kind: 'layout',
-    layoutId: 'colemak-dh',
-  });
+  assert.deepEqual(workspace.groups[0]!.target.single.target, { kind: 'layout', layoutId: 'colemak-dh' });
   assert.equal(workspace.groups[0]!.target.set.targets.length, 1);
-  assert.deepEqual(workspace.groups[1]!.target.single.target, {
-    kind: 'layout',
-    layoutId: 'qwerty',
-  });
+  assert.deepEqual(workspace.groups[1]!.target.single.target, { kind: 'layout', layoutId: 'qwerty' });
 });
 
 test('組が壊れていれば壊れた部分だけ空へ戻し、捨てた値には診断を出す', () => {
@@ -211,13 +164,7 @@ test('組が壊れていれば壊れた部分だけ空へ戻し、捨てた値�
         id: 'w',
         name: 'n',
         groups: [
-          {
-            id: 'a',
-            target: {
-              single: { kind: 'nope' },
-              set: { targets: [{ kind: 'layout', layoutId: 'qwerty' }] },
-            },
-          },
+          { id: 'a', target: { single: { kind: 'nope' }, set: { targets: [{ kind: 'layout', layoutId: 'qwerty' }] } } },
           { id: 'b', target: { set: 'not-an-object' } },
           { id: 'a' },
           'not-an-object',
@@ -243,18 +190,13 @@ test('組が壊れていれば壊れた部分だけ空へ戻し、捨てた値�
 });
 
 test('組が1つも読めなければ空の組を1つ作り、診断を出す。従う組が無いペインは先頭の組へ従わせる', () => {
-  const missing = WORKSPACE_LIBRARY_CODEC.decode({
-    version: 4,
-    workspaces: [{ id: 'w', name: 'n' }],
-  });
+  const missing = WORKSPACE_LIBRARY_CODEC.decode({ version: 4, workspaces: [{ id: 'w', name: 'n' }] });
   assert.ok(missing.ok);
   assert.deepEqual(
     missing.value[0]!.groups.map((g) => g.id),
     [G],
   );
-  assert.deepEqual(missing.value[0]!.groups[0]!.target.single, {
-    target: undefined,
-  });
+  assert.deepEqual(missing.value[0]!.groups[0]!.target.single, { target: undefined });
   assert.ok(missing.diagnostics.some((d) => d.path === 'workspaces[0].groups'));
 
   const result = WORKSPACE_LIBRARY_CODEC.decode({
@@ -265,24 +207,9 @@ test('組が1つも読めなければ空の組を1つ作り、診断を出す。
         name: 'n',
         groups: [{ id: 'x', target: {} }],
         panes: [
-          {
-            id: 'p1',
-            analyzerId: 'bigram-flow',
-            optionsBinding: { mode: 'own' },
-            binding: { mode: 'follow', group: 'x' },
-          },
-          {
-            id: 'p2',
-            analyzerId: 'bigram-flow',
-            optionsBinding: { mode: 'own' },
-            binding: { mode: 'follow', group: 'gone' },
-          },
-          {
-            id: 'p3',
-            analyzerId: 'bigram-flow',
-            optionsBinding: { mode: 'own' },
-            binding: { mode: 'follow' },
-          },
+          { id: 'p1', analyzerId: 'bigram-flow', optionsBinding: { mode: 'own' }, binding: { mode: 'follow', group: 'x' } },
+          { id: 'p2', analyzerId: 'bigram-flow', optionsBinding: { mode: 'own' }, binding: { mode: 'follow', group: 'gone' } },
+          { id: 'p3', analyzerId: 'bigram-flow', optionsBinding: { mode: 'own' }, binding: { mode: 'follow' } },
           { id: 'p4', analyzerId: 'bigram-flow' },
           { id: 'p5', analyzerId: 'bigram-flow', binding: 'oops' },
         ],
@@ -313,16 +240,7 @@ test('ペインの集合の選択がobject形式でなければ診断を出し�
       {
         id: 'w',
         name: 'n',
-        panes: [
-          {
-            id: 'p',
-            analyzerId: 'comparison',
-            binding: {
-              mode: 'fixed',
-              target: { kind: 'set', selection: 'oops' },
-            },
-          },
-        ],
+        panes: [{ id: 'p', analyzerId: 'comparison', binding: { mode: 'fixed', target: { kind: 'set', selection: 'oops' } } }],
       },
     ],
   });
@@ -334,13 +252,7 @@ test('ペインの集合の選択がobject形式でなければ診断を出し�
 test('名前・テキストの選択が壊れていれば既定へ戻し、診断を出す', () => {
   const result = WORKSPACE_LIBRARY_CODEC.decode({
     version: 4,
-    workspaces: [
-      {
-        id: 'w',
-        name: 42,
-        text: { ref: { kind: 'builtin', id: 'no-such-text' } },
-      },
-    ],
+    workspaces: [{ id: 'w', name: 42, text: { ref: { kind: 'builtin', id: 'no-such-text' } } }],
   });
   assert.ok(result.ok);
   assert.equal(result.value[0]!.name, '新しいWorkspace');
@@ -395,11 +307,7 @@ test('保存した列の位置と幅はそのまま読む。面の幅や24列で
       {
         id: 'w',
         name: 'n',
-        panes: [singlePane('a'), singlePane('b'), singlePane('c')].map((p) => ({
-          id: p.id,
-          analyzerId: p.analyzerId,
-          binding: { mode: 'follow' },
-        })),
+        panes: [singlePane('a'), singlePane('b'), singlePane('c')].map((p) => ({ id: p.id, analyzerId: p.analyzerId, binding: { mode: 'follow' } })),
         grid: [
           { id: 'a', x: 0, y: 0, w: 24, h: 8 },
           { id: 'b', x: 24, y: 0, w: 30, h: 8 },
@@ -448,20 +356,7 @@ test('配置が無くてもペインは並ぶ。ペインが無ければ配置�
 test('知らないAnalyzerのペインは捨てずに残す', () => {
   const result = WORKSPACE_LIBRARY_CODEC.decode({
     version: 4,
-    workspaces: [
-      {
-        id: 'w',
-        name: 'n',
-        panes: [
-          {
-            id: 'a',
-            analyzerId: 'future-analyzer',
-            options: { z: 1 },
-            binding: { mode: 'follow' },
-          },
-        ],
-      },
-    ],
+    workspaces: [{ id: 'w', name: 'n', panes: [{ id: 'a', analyzerId: 'future-analyzer', options: { z: 1 }, binding: { mode: 'follow' } }] }],
   });
   assert.ok(result.ok);
   const pane = result.value[0]!.panes[0]!;
@@ -496,11 +391,7 @@ test('詰める設定は往復する。詰めない（既定）は値を持た�
         {
           id: 'w',
           name: 'n',
-          panes: ['a', 'b'].map((id) => ({
-            id,
-            analyzerId: 'x',
-            binding: { mode: 'follow' },
-          })),
+          panes: ['a', 'b'].map((id) => ({ id, analyzerId: 'x', binding: { mode: 'follow' } })),
           grid: [
             { id: 'a', x: 0, y: 4, w: 6, h: 4 },
             { id: 'b', x: 12, y: 9, w: 6, h: 4 },
@@ -541,11 +432,7 @@ test('詰める設定をオンにして書き出した並びは、読み込み�
       {
         id: 'w',
         name: 'n',
-        panes: ['a', 'b'].map((id) => ({
-          id,
-          analyzerId: 'x',
-          binding: { mode: 'follow' },
-        })),
+        panes: ['a', 'b'].map((id) => ({ id, analyzerId: 'x', binding: { mode: 'follow' } })),
         grid: gapped,
       },
     ],
@@ -567,11 +454,7 @@ test('gridが配列でなければ診断を1件積み、ペインは失わない
         {
           id: 'w',
           name: 'n',
-          panes: ['a', 'b'].map((id) => ({
-            id,
-            analyzerId: 'x',
-            binding: { mode: 'follow' },
-          })),
+          panes: ['a', 'b'].map((id) => ({ id, analyzerId: 'x', binding: { mode: 'follow' } })),
           grid,
         },
       ],
@@ -597,13 +480,7 @@ test('gridが配列でなければ診断を1件積み、ペインは失わない
 /** 解析設定の共有を持つ前の版（版3）のアプリが実際に保存した手持ち（サンプルのWorkspaceと、手で足したペイン5種を並べたWorkspace）。 */
 const VERSION_3_STORED = JSON.parse(readFileSync(new URL('../../test/fixtures/workspace-library-v3.json', import.meta.url), 'utf8')) as {
   readonly version: number;
-  readonly workspaces: readonly {
-    readonly panes: readonly {
-      readonly id: string;
-      readonly analyzerId: string;
-      readonly options?: unknown;
-    }[];
-  }[];
+  readonly workspaces: readonly { readonly panes: readonly { readonly id: string; readonly analyzerId: string; readonly options?: unknown }[] }[];
 };
 
 test('版3の保存は、各ペインが自分の解析設定を持つ形として、診断なしで読める', () => {
@@ -643,9 +520,7 @@ test('版3の保存を読んで書き直すと版4になり、もう一度読ん
 });
 
 test('Workspaceの条件に保存されていた再生の時間と速度平均の8項目は、読まずに捨てて診断を出す', () => {
-  const encoded = WORKSPACE_LIBRARY_CODEC.encode(sample()) as {
-    workspaces: readonly Record<string, unknown>[];
-  };
+  const encoded = WORKSPACE_LIBRARY_CODEC.encode(sample()) as { workspaces: readonly Record<string, unknown>[] };
   const withOldItems = {
     ...encoded,
     workspaces: encoded.workspaces.map((workspace, index) =>

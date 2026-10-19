@@ -52,7 +52,7 @@ import { AddPaneMenu } from './AddPaneMenu.tsx';
 import { findWorkspaceAnalyzer, findWorkspacePaneMeta, type WorkspaceAnalyzerEntry } from './analyzer-registry.ts';
 import type { PaneBindingChoice, WorkspacePaneRuntime } from './pane-runtime.ts';
 import { summarizeLinkGroups } from './group-summary.ts';
-import { gridPaneIds, type GridColumnRange } from '#engine/workspace-grid.ts';
+import { displayedGrid, gridPaneIds, type GridColumnRange } from '#engine/workspace-grid.ts';
 import { defaultGridSize } from './grid-metrics.ts';
 import { useMaximizeKeys } from './use-maximize-keys.ts';
 import { useFocusAfterClose } from './use-focus-after-close.ts';
@@ -222,8 +222,12 @@ export function WorkspacePage({
   const panes = workspace?.panes;
   const panesById = useMemo(() => new Map((panes ?? []).map((pane) => [pane.id, pane] as const)), [panes]);
   const workspaceGrid = workspace?.grid;
-  // 画面の読み順（上→下・左→右）のペインのid。縦積みの並び・閉じた後のフォーカスの行き先に使う
-  const paneIds = useMemo(() => (workspaceGrid === undefined ? [] : gridPaneIds(workspaceGrid)), [workspaceGrid]);
+  // 画面に見えている並びの読み順（上→下・左→右）のペインのid。縦積みの並び・閉じた後のフォーカスの行き先に使う
+  const compactPanes = workspace?.compactPanes === true;
+  const paneIds = useMemo(
+    () => (workspaceGrid === undefined ? [] : gridPaneIds(displayedGrid(workspaceGrid, compactPanes))),
+    [workspaceGrid, compactPanes],
+  );
   // ペインを閉じた後に、フォーカスをbodyへ落とさない（どの経路で閉じても同じ規則）
   const pageRef = useFocusAfterClose(paneIds);
   useMaximizeKeys(maximizedId, () => setMaximizedId(undefined));

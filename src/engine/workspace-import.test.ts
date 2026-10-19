@@ -50,10 +50,7 @@ function withGroupTarget(base: Workspace, target: WorkspacePaneTarget): Workspac
 }
 
 test('参照先: 手元にある組み込みの配列だけを指すWorkspaceは注記しない', () => {
-  const used = withGroupTarget(workspace('w1'), {
-    kind: 'single',
-    target: { kind: 'layout', layoutId: 'qwerty' },
-  });
+  const used = withGroupTarget(workspace('w1'), { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } });
   assert.deepEqual(missingWorkspaceReferences(used, HOLDINGS), []);
 });
 
@@ -72,17 +69,7 @@ test('参照先: この端末に無い配列・Setupを、種類ごとに1度ず
   assert.deepEqual([...missingWorkspaceReferences(used, HOLDINGS)].sort(), ['layout', 'setup']);
   const setups = {
     ...HOLDINGS,
-    setupLibrary: {
-      ...HOLDINGS.setupLibrary,
-      setups: [
-        {
-          id: 'gone-setup',
-          number: 1,
-          layoutId: 'qwerty',
-          shapeId: 'row-staggered',
-        },
-      ],
-    },
+    setupLibrary: { ...HOLDINGS.setupLibrary, setups: [{ id: 'gone-setup', number: 1, layoutId: 'qwerty', shapeId: 'row-staggered' }] },
   };
   assert.deepEqual(missingWorkspaceReferences(used, setups), ['layout']);
 });
@@ -90,31 +77,19 @@ test('参照先: この端末に無い配列・Setupを、種類ごとに1度ず
 test('参照先: Workspaceの条件が指す指の割当・ローマ字規則・物理配列と、自作のテキスト', () => {
   const used: Workspace = {
     ...workspace('w1'),
-    conditions: {
-      fingerAssignmentId: 'mine',
-      romajiRuleId: 'mine',
-      defaultShapeId: 'mine',
-      windowSize: 4,
-    },
+    conditions: { fingerAssignmentId: 'mine', romajiRuleId: 'mine', defaultShapeId: 'mine', windowSize: 4 },
     text: { ref: { kind: 'user', id: 'text-1' } },
   };
   assert.deepEqual([...missingWorkspaceReferences(used, HOLDINGS)].sort(), ['finger-assignment', 'romaji-rule', 'shape', 'text']);
   const known: Workspace = {
     ...workspace('w2'),
-    conditions: {
-      fingerAssignmentId: DEFAULT_FINGER_ASSIGNMENT.id,
-      romajiRuleId: 'qwerty',
-      defaultShapeId: PHYSICAL_SHAPES['row-staggered'].id,
-    },
+    conditions: { fingerAssignmentId: DEFAULT_FINGER_ASSIGNMENT.id, romajiRuleId: 'qwerty', defaultShapeId: PHYSICAL_SHAPES['row-staggered'].id },
   };
   assert.deepEqual(missingWorkspaceReferences(known, HOLDINGS), []);
 });
 
 test('読み込み: 足したWorkspaceだけが参照先の注記を持つ。足さなかったものは持たない', () => {
-  const gone: Workspace = {
-    ...workspace('w1'),
-    text: { ref: { kind: 'user', id: 'text-1' } },
-  };
+  const gone: Workspace = { ...workspace('w1'), text: { ref: { kind: 'user', id: 'text-1' } } };
   const first = mergeWorkspaces([], [gone], HOLDINGS, () => 'x');
   assert.deepEqual(first.entries[0]!.missing, ['text']);
   const second = mergeWorkspaces(first.library, [gone], HOLDINGS, () => 'x');
@@ -123,10 +98,7 @@ test('読み込み: 足したWorkspaceだけが参照先の注記を持つ。足
 
 test('読み込み: 新しいidが手元のidと重なったら、重ならないものが出るまで発行し直す', () => {
   const local = [workspace('w1', '比較'), workspace('taken')];
-  const incoming: Workspace = {
-    ...workspace('w1', '比較'),
-    conditions: { windowSize: 6 },
-  };
+  const incoming: Workspace = { ...workspace('w1', '比較'), conditions: { windowSize: 6 } };
   const ids = ['taken', 'fresh'];
   const result = mergeWorkspaces(local, [incoming], HOLDINGS, () => ids.shift()!);
   assert.deepEqual(
@@ -138,10 +110,7 @@ test('読み込み: 新しいidが手元のidと重なったら、重ならな�
 
 test('読み込み: 別名は手元で使われていない最初の番号を取る', () => {
   const local = [workspace('w1', '比較'), workspace('w2', '比較 (2)')];
-  const incoming: Workspace = {
-    ...workspace('w1', '比較'),
-    conditions: { windowSize: 6 },
-  };
+  const incoming: Workspace = { ...workspace('w1', '比較'), conditions: { windowSize: 6 } };
   const result = mergeWorkspaces(local, [incoming], HOLDINGS, () => 'fresh');
   assert.equal(result.library[2]!.name, '比較 (3)');
 });
