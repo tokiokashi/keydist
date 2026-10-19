@@ -81,11 +81,10 @@ async function uncheckThenToggleAfterSave(page: Page): Promise<void> {
       const start = performance.now();
       const sample = () => {
         w.__seen.push(box.checked);
-        if (performance.now() - start < 1000) requestAnimationFrame(sample);
+        if (performance.now() - start < 1000) setTimeout(sample, 0);
         else w.__seenDone = true;
       };
       sample();
-      requestAnimationFrame(sample);
     };
     box.click();
   }, LABEL);
@@ -100,7 +99,8 @@ async function expectNoRevert(page: Page, toggle: Locator): Promise<void> {
   await expect.poll(() => page.evaluate(() => (window as unknown as EchoWindow).__seenDone === true)).toBe(true);
   const seen = await page.evaluate(() => (window as unknown as EchoWindow).__seen);
   expect(seen.length).toBeGreaterThan(10);
-  // 押した直後から、反響を挟んでも、チェックは入ったまま
+  // 押した直後から、反響を挟んでも、チェックは入ったまま。
+  // 記録はフレームの描画に結び付けず、timerのtaskごとに取る。負荷でフレームが間引かれても、記録の数が足りなくならない
   expect(seen.every((checked) => checked)).toBe(true);
   await expect(toggle).toBeChecked();
 }
