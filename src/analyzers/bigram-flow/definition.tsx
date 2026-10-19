@@ -600,7 +600,7 @@ function MovementProfilePlot({
       </div>
 
       <div className="roll-summary">
-        <div className="roll-bar" role="img" aria-label="内向きと外向きの割合">
+        <div className="roll-bar">
           {hand === 'left' ? (
             <>
               <motion.span
