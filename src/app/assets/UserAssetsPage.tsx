@@ -244,6 +244,7 @@ export function UserAssetsPage({
 
   /** 上書きを消した後、一覧が書き換わってからフォーカスを移す。消した項目のボタンは無くなり、「元に戻す」は書き込みの後に押せるようになるため。 */
   const focusUndoAfterReset = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: overrideGroupsは一覧が書き換わった時を知る合図。本体では読まない。依存から外すと、上書きを消した後に「元に戻す」へフォーカスが移らない
   useEffect(() => {
     if (!focusUndoAfterReset.current) return;
     focusUndoAfterReset.current = false;

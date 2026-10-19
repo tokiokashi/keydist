@@ -60,7 +60,7 @@ export function HeatmapLayersBody({
       styles,
       max: sharedMaxCount(entries),
     };
-  }, [layout, extracted, options.layerDetail, standard]);
+  }, [layout, extracted, options.layerDetail]);
 
   const { entries, styles } = view;
   const arrangement = resolveArrangement(options.layerArrangement, entries.length);

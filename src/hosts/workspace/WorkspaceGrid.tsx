@@ -337,6 +337,7 @@ export function WorkspaceGrid({
   );
   const keyboardPaneRef = useRef<string | undefined>(undefined);
   // キーボードで並びを変えた直後は、動かしたペインのつかみ所を見える位置へ寄せる（フォーカスはつかみ所に残っている）
+  // biome-ignore lint/correctness/useExhaustiveDependencies: gridは寄せる時を決める合図。本体では読まない（並びが替わって描き直された後に寄せる）。依存から外すと、並びを変えても寄せない
   useLayoutEffect(() => {
     const paneId = keyboardPaneRef.current;
     if (paneId === undefined) return;

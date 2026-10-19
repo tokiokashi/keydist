@@ -17,8 +17,8 @@ import { targetNameSource } from '#hosts/shared/target-name-source.ts';
 import { resolvePaneInput } from '#hosts/shared/resolve-pane-input.ts';
 import { nameTargets } from '#input/setup/index.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
-import { paneCatalog } from '../standalone/catalog.ts';
 import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
+import { usePaneCatalog } from '../standalone/use-pane-catalog.ts';
 
 /**
  * トップで気になる配列を1つ選ぶ部品。選んだ配列は Single の対象になり、Multi の組にも入る
@@ -33,7 +33,7 @@ import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
  */
 export function TopTargetPick() {
   const { assets, ready, dispatch } = useKeydistAssets({ history: false });
-  const catalog = useMemo(() => paneCatalog(assets), [assets.userLayouts, assets.userRomajiRules, assets.fingerAssignments, assets.personalSpeed]);
+  const catalog = usePaneCatalog(assets);
   const setups = assets.setupLibrary.setups;
   const target = effectiveSingleTarget(assets.singleTargetSelection);
 

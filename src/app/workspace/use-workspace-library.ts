@@ -24,6 +24,7 @@ export function useWorkspaceLibrary(refreshKey: unknown): WorkspaceLibrary | und
     return sync.start();
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: refreshKeyは読み直す時を決める合図。本体では読まない。依存から外すと、書き込み直後の読み直しが起きない
   useEffect(() => {
     const loaded = syncRef.current?.load();
     if (loaded !== undefined) setLibrary(loaded);

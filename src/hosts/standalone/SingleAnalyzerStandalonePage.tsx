@@ -101,7 +101,7 @@ export function SingleAnalyzerStandalonePage<Options, Extracted>({
   // UI用の一時状態: 見た目は即座に反映しつつ（controlled）、資産への書き込みは
   // `onOptionsCommit`（呼び出し元がdebounceする）経由にする。
   const storedOptionsRaw = assets.standaloneAnalyzerOptions[analyzerId];
-  const decoded = useMemo(() => decodeStoredAnalyzerOptions(analyzer.definition, storedOptionsRaw), [storedOptionsRaw]);
+  const decoded = useMemo(() => decodeStoredAnalyzerOptions(analyzer.definition, storedOptionsRaw), [analyzer.definition, storedOptionsRaw]);
   const [optionsDraft, setOptionsDraft] = useOptionsDraft<Options>(decoded.options, STANDALONE_WRITE_LOG_KEY);
 
   // URL経由で解析設定と対象を受け取る（共有リンク。`use-shared-link.ts`）。書き込みは1つのコマンドで、Undo 1回で戻る。

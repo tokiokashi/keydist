@@ -41,7 +41,7 @@
       },
       "correctness": {
         "noChildrenProp": "error",
-        "useExhaustiveDependencies": "off"
+        "useExhaustiveDependencies": "error"
       },
       "suspicious": {
         "noArrayIndexKey": "error",

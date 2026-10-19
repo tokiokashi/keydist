@@ -151,6 +151,7 @@ function InfoPopoverButton({ name, description, floating = false, tabIndex }: Om
   // 説明の位置を測る。画面の右端からはみ出さないよう、説明の最大幅（22rem）の分を残す。
   // 下に収まらない時はⓘの上に出す（説明の高さは、描いた後に測れるので、描いた後にもう一度測る）
   const placed = anchor !== undefined;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: placedは測り直す時を決める合図。本体では読まない（位置が決まった後に説明の高さを測り直す）。依存から外すと、上に出す判定が最初の高さのままになる
   useLayoutEffect(() => {
     if (!floating || !visible) return undefined;
     const place = () => {

@@ -8,7 +8,10 @@ import type { PersonalSpeedSelection } from '#editors/personal-speed/PersonalSpe
 import type { SentenceBuildResult, SentenceSpellingSource } from '#interpretation/timing/sentence-measurement.ts';
 import { paneCatalog } from '../standalone/catalog.ts';
 
-type SentenceAssets = Pick<KeydistAssets, 'userLayouts' | 'userRomajiRules' | 'fingerAssignments' | 'setupLibrary'>;
+/** 示す文の組み立てが読む資産。Setupの一覧は読まないので、上書きだけがあればよい。 */
+type SentenceAssets = Pick<KeydistAssets, 'userLayouts' | 'userRomajiRules' | 'fingerAssignments'> & {
+  readonly setupLibrary: Pick<KeydistAssets['setupLibrary'], 'overrides'> & Partial<KeydistAssets['setupLibrary']>;
+};
 
 const UNBUILDABLE_TEXT = 'この配列・物理配列・指の割り当ての組では、示す文を打つ打鍵の列を作れません。別の組を選んでください。';
 

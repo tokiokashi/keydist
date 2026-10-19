@@ -128,7 +128,9 @@ export function WorkspacePage({
   // 拡大できるのは格子の面だけなので、縦積みへ変わったら解く（戻した時に勝手に拡大し直さない）
   const [maximizedId, setMaximizedId] = useState<string | undefined>(undefined);
   // ペインどうしで揃える目盛りの範囲を集める所（Workspaceごとに1つ）
+  // biome-ignore lint/correctness/useExhaustiveDependencies: workspaceIdは作り直す時を決める合図。本体では読まない。依存から外すと、Workspaceを替えても前の範囲が残る
   const scaleRegistry = useMemo(() => createScaleRegistry(), [workspaceId]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: workspaceIdは作り直す時を決める合図。本体では読まない。依存から外すと、Workspaceを替えても前の再生の知らせが残る
   const playbackBroadcast = useMemo(() => createPlaybackBroadcast(), [workspaceId]);
   // 図のキーの選択。同じ配列・物理配列を映すペインどうしで連動する。保存しない見た目だけの状態で、
   // Workspaceを開き直すと外れる（資産・Undoの履歴には入れない）

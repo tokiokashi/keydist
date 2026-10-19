@@ -1,8 +1,7 @@
-import { useMemo } from 'react';
 import { useSearch } from '@tanstack/react-router';
-import { paneCatalog } from '../standalone/catalog.ts';
 import { generatePresetId, generateSetupId } from '../standalone/id-generator.ts';
 import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
+import { usePaneCatalog } from '../standalone/use-pane-catalog.ts';
 import { SetupPage } from './SetupPage.tsx';
 
 /**
@@ -12,7 +11,7 @@ import { SetupPage } from './SetupPage.tsx';
 export function SetupApp() {
   const { assets, ready, dispatch, canUndo, canRedo, undo, redo } = useKeydistAssets();
   const search = useSearch({ from: '/setup' });
-  const catalog = useMemo(() => paneCatalog(assets), [assets.userLayouts, assets.userRomajiRules, assets.fingerAssignments, assets.personalSpeed]);
+  const catalog = usePaneCatalog(assets);
   return (
     <SetupPage
       assets={assets}

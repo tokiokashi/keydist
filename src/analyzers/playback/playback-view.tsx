@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { FINGER_LABEL } from '#input/shapes/finger-names.ts';
 import { keyboardStandardForGeometryId } from '#input/shapes/key-labels.ts';
 import { reconcilePlaybackStateAfterAnalysisRefresh, type PlaybackState, type PlaybackTimingStep } from '#interpretation/timing/playback.ts';
@@ -151,12 +151,15 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options, onOp
   const seekId = useId();
 
   // 押した直後の合図。進む向きに動いた時だけ、そのステップで押したキーを光らせる
-  const withFeedback = (previous: Session, next: PlaybackState): Session => {
-    if (next.cursor <= previous.state.cursor) return { ...previous, state: next };
-    const stroke = trace.strokes[next.cursor - 1];
-    const keys = new Set(stroke?.presses.flatMap((press) => press.keys.map((key) => key.id)) ?? []);
-    return { ...previous, state: next, feedback: { revision: previous.feedback.revision + 1, keys } };
-  };
+  const withFeedback = useCallback(
+    (previous: Session, next: PlaybackState): Session => {
+      if (next.cursor <= previous.state.cursor) return { ...previous, state: next };
+      const stroke = trace.strokes[next.cursor - 1];
+      const keys = new Set(stroke?.presses.flatMap((press) => press.keys.map((key) => key.id)) ?? []);
+      return { ...previous, state: next, feedback: { revision: previous.feedback.revision + 1, keys } };
+    },
+    [trace],
+  );
 
   // 再生中は描画フレームごとに時間を進める
   useEffect(() => {
@@ -175,9 +178,8 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options, onOp
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-    // withFeedbackはtraceだけを読む。再生の開始・停止と、読む対象の替わりでだけ張り直す
-    // （フレームごとに張り直すと、経過時間が積算されない）
-  }, [state.playing, basisId, analysis, schedule, trace]);
+    // 再生の開始・停止と、読む対象の替わりでだけ張り直す（フレームごとに張り直すと、経過時間が積算されない）
+  }, [state.playing, basisId, analysis, schedule, withFeedback]);
 
   const frame = useMemo(
     () =>

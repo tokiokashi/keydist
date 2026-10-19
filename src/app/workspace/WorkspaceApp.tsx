@@ -5,11 +5,11 @@ import { findWorkspace } from '#engine/workspace.ts';
 import { PRESET_FILE_FORMAT, presetFileBody, workspaceFileName } from '#hosts/shared/preset-file.ts';
 import type { ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { WorkspacePage } from '#hosts/workspace/index.ts';
-import { paneCatalog } from '../standalone/catalog.ts';
 import { PRESET_FILE_IO } from '../shell/preset-file-io.ts';
 import { sharedEngineComputer } from '../standalone/engine-computer.ts';
 import { generatePresetId, generateTextId } from '../standalone/id-generator.ts';
 import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
+import { usePaneCatalog } from '../standalone/use-pane-catalog.ts';
 import { useTextContentCommit } from '../standalone/use-text-content-commit.ts';
 import { setDeletedWorkspace } from './deleted-workspace-notice.ts';
 import { generatePaneId, generateWorkspaceId } from './id-generator.ts';
@@ -29,7 +29,7 @@ import { usePaneOptionsCommit } from './use-pane-options-commit.ts';
  */
 export function WorkspaceApp({ workspaceId }: { readonly workspaceId: string }) {
   const { assets, ready, dispatch, getAssets, canUndo, canRedo, undo, redo, discardHistory } = useKeydistAssets();
-  const catalog = useMemo(() => paneCatalog(assets), [assets.userLayouts, assets.userRomajiRules, assets.fingerAssignments, assets.personalSpeed]);
+  const catalog = usePaneCatalog(assets);
   const holder = useMemo(() => ({ workspaceId }), [workspaceId]);
 
   const commitTextContent = useTextContentCommit(dispatch, getAssets, generateTextId, holder);

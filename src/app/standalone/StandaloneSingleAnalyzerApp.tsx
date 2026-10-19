@@ -3,10 +3,10 @@ import type { ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { setStandaloneAnalyzerOptionsCommand } from '#engine/commands.ts';
 import type { SingleAnalyzerPaneParts } from '#analyzers/pane-parts.tsx';
 import { SingleAnalyzerStandalonePage } from '#hosts/standalone/index.ts';
-import { paneCatalog } from './catalog.ts';
 import { sharedEngineComputer } from './engine-computer.ts';
 import { generatePresetId, generateTextId } from './id-generator.ts';
 import { useKeydistAssets } from './use-keydist-assets.ts';
+import { usePaneCatalog } from './use-pane-catalog.ts';
 import { useAddToWorkspace } from './use-add-to-workspace.ts';
 import { OptionsWriteLogsProvider } from '#hosts/shared/OptionsWriteLogsContext.ts';
 import { createOptionsWriteLogs, STANDALONE_WRITE_LOG_KEY } from '#hosts/shared/options-write-log.ts';
@@ -22,7 +22,7 @@ import { useTextContentCommit } from './use-text-content-commit.ts';
 export function StandaloneSingleAnalyzerApp<Options, Extracted>({ analyzer }: { readonly analyzer: SingleAnalyzerPaneParts<Options, Extracted> }) {
   const decodeOptions = (raw: unknown) => analyzer.definition.decodeOptions(raw, []);
   const { assets, ready, dispatch, getAssets, canUndo, canRedo, undo, redo } = useKeydistAssets();
-  const catalog = useMemo(() => paneCatalog(assets), [assets.userLayouts, assets.userRomajiRules, assets.fingerAssignments, assets.personalSpeed]);
+  const catalog = usePaneCatalog(assets);
 
   // 解析設定の書き込みは間引いてから`dispatch`する（`use-debounced-commit.ts`参照。
   // スライダーのような連続操作でstorage書き込み・Undo履歴が埋まらないようにするため）。

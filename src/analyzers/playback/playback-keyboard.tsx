@@ -88,6 +88,7 @@ export function PlaybackKeyboard({
   const motionTargets = useMemo(() => new Set(frame.motions.map((motion) => motion.toKey)), [frame.motions]);
 
   // キーの動き。今のステップが変わった時だけ、動き始める位置から元の位置へ動かす
+  // biome-ignore lint/correctness/useExhaustiveDependencies: frame.cursorは動かす時を決める合図。本体では読まない。依存から外すと、ステップが変わっても動きが始まらない
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return;

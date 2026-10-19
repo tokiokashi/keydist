@@ -3,10 +3,10 @@ import type { ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { setStandaloneAnalyzerOptionsCommand } from '#engine/commands.ts';
 import type { SetAnalyzerPaneParts } from '#analyzers/pane-parts.tsx';
 import { SetAnalyzerStandalonePage } from '#hosts/standalone/index.ts';
-import { paneCatalog } from './catalog.ts';
 import { sharedEngineComputer } from './engine-computer.ts';
 import { generatePresetId, generateTextId } from './id-generator.ts';
 import { useKeydistAssets } from './use-keydist-assets.ts';
+import { usePaneCatalog } from './use-pane-catalog.ts';
 import { useAddToWorkspace } from './use-add-to-workspace.ts';
 import { OptionsWriteLogsProvider } from '#hosts/shared/OptionsWriteLogsContext.ts';
 import { createOptionsWriteLogs, STANDALONE_WRITE_LOG_KEY } from '#hosts/shared/options-write-log.ts';
@@ -26,7 +26,7 @@ export function StandaloneSetAnalyzerApp<Options, Extracted, RowContext>({
 }) {
   const decodeOptions = (raw: unknown) => analyzer.definition.decodeOptions(raw, []);
   const { assets, ready, dispatch, getAssets, canUndo, canRedo, undo, redo } = useKeydistAssets();
-  const catalog = useMemo(() => paneCatalog(assets), [assets.userLayouts, assets.userRomajiRules, assets.fingerAssignments, assets.personalSpeed]);
+  const catalog = usePaneCatalog(assets);
 
   // 保存先へ書いた値を記録し、解析設定の下書きが自分の保存の反響を見分けるのに使う
   const writeLogs = useMemo(createOptionsWriteLogs, []);

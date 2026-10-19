@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { PhysicalKeyboard, type PhysicalKeyboardKeyView } from '#ui/keyboard/physical-keyboard.tsx';
 import {
   buildGeometry,
@@ -369,16 +369,19 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
     setSplitPercent(clampSplitPercent(((clientX - bounds.left) / bounds.width) * 100));
   };
 
-  const currentLayoutPreferences = (): InputConverterLayoutPreferencesV2 => ({
-    showDynamicGuide,
-    showLayerGuide,
-    showLayerKeys,
-    showShiftKeys,
-    showPracticeAssist,
-    inputText: session.text,
-    practiceText: lookupQuery,
-    randomPracticeMode,
-  });
+  const layoutPreferences = useMemo(
+    (): InputConverterLayoutPreferencesV2 => ({
+      showDynamicGuide,
+      showLayerGuide,
+      showLayerKeys,
+      showShiftKeys,
+      showPracticeAssist,
+      inputText: session.text,
+      practiceText: lookupQuery,
+      randomPracticeMode,
+    }),
+    [showDynamicGuide, showLayerGuide, showLayerKeys, showShiftKeys, showPracticeAssist, session.text, lookupQuery, randomPracticeMode],
+  );
 
   const applyLayoutPreferences = (next: InputConverterLayoutPreferencesV2) => {
     setShowDynamicGuide(next.showDynamicGuide);
@@ -398,9 +401,7 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
 
   // 保存した選択の復元は、自作の配列の読み込みが終わってから一度だけ行う。
   // 読み込み前に復元すると、保存した自作の配列が選べる配列に無いものとして既定へ戻る。
-  useEffect(() => {
-    if (!userLayoutsReady || persistedPreferencesRef.current !== null) return;
-
+  const restorePreferences = useEffectEvent(() => {
     const restored = preferences.restoreOnce(
       {
         layoutIds: selectableLayouts.map((candidate) => candidate.id),
@@ -419,18 +420,25 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
     setGeometryId(restored.geometryId);
     setLayerKeyNaming(restored.layerKeyNaming);
     applyLayoutPreferences(inputConverterLayoutPreferences(restored, restored.layoutId, DEFAULT_LAYOUT_PREFERENCES));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- 自作の配列の読み込みが終わった時に一度だけ復元する
+  });
+  useEffect(() => {
+    if (!userLayoutsReady || persistedPreferencesRef.current !== null) return;
+    restorePreferences();
   }, [userLayoutsReady]);
 
   // 復元後に自作の配列が変わった時（別タブでの編集・削除）は、選んでいる配列を追従させる。
   // 消えていたら既定の配列へ戻す。
-  useEffect(() => {
-    if (!userLayoutsReady || persistedPreferencesRef.current === null) return;
+  const followUserLayouts = useEffectEvent(() => {
     if (INPUT_LAYOUTS.some((candidate) => candidate.id === layout.id)) return;
     const latest = userLayouts.find((candidate) => candidate.id === layout.id);
     if (latest === undefined) switchLayout(DEFAULT_INPUT_LAYOUT);
     else if (latest !== layout) setLayout(latest);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- 自作の配列の一覧が変わった時だけ照らす
+  });
+  // 自作の配列の一覧が変わった時だけ照らす
+  // biome-ignore lint/correctness/useExhaustiveDependencies: userLayoutsは照らす時を決める合図。本体では効果イベントの中で読む。依存から外すと、別タブでの編集・削除に追従しない
+  useEffect(() => {
+    if (!userLayoutsReady || persistedPreferencesRef.current === null) return;
+    followUserLayouts();
   }, [userLayouts, userLayoutsReady]);
 
   // 書き込みのcoalescingはpreferences側が持つ。復元済みのV2全体へ現在配列の
@@ -452,25 +460,12 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
       layerKeyNaming,
       layouts: {
         ...current.layouts,
-        [layout.id]: currentLayoutPreferences(),
+        [layout.id]: layoutPreferences,
       },
     };
     persistedPreferencesRef.current = next;
     preferences.save(next);
-  }, [
-    layout.id,
-    geometryId,
-    layerKeyNaming,
-    showDynamicGuide,
-    showLayerGuide,
-    showLayerKeys,
-    showShiftKeys,
-    showPracticeAssist,
-    session.text,
-    lookupQuery,
-    randomPracticeMode,
-    preferences,
-  ]);
+  }, [layout.id, geometryId, layerKeyNaming, layoutPreferences, preferences]);
 
   const switchLayout = (nextLayout: Layout) => {
     let nextGeometryId = geometryId;
@@ -488,7 +483,7 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
         layerKeyNaming,
         layouts: {
           ...current.layouts,
-          [layout.id]: currentLayoutPreferences(),
+          [layout.id]: layoutPreferences,
         },
       };
       persistedPreferencesRef.current = nextStored;
@@ -502,10 +497,10 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
     setLayout(nextLayout);
   };
 
-  const updateBindingOverrides = (next: BrowserKeyBindingOverrides) => {
+  const updateBindingOverrides = useCallback((next: BrowserKeyBindingOverrides) => {
     setBindingOverrides(next);
     saveBrowserKeyBindingOverrides(next, window.localStorage);
-  };
+  }, []);
 
   useEffect(() => {
     if (!bindingCapturing || bindingTargetKey === undefined) {
@@ -535,7 +530,7 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
       window.removeEventListener('keydown', onKeyDown, true);
       window.removeEventListener('keyup', onKeyUp, true);
     };
-  }, [bindingCapturing, bindingOverrides, bindingTargetKey]);
+  }, [bindingCapturing, bindingOverrides, bindingTargetKey, updateBindingOverrides]);
 
   const selectedShape = PRESET_GEOMETRY_SHAPES.find((shape) => shape.id === geometryId) ?? PHYSICAL_SHAPES['row-staggered'];
   const geometry = useMemo(() => {
@@ -664,7 +659,6 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
       }),
     );
   }, [
-    activeGroupIds,
     activeTriggerKeys,
     layout,
     patternResult,
@@ -734,6 +728,7 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
     };
   }, [layout.romajiTable, lookupQuery, session.text]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: layout.idとlookupQueryは戻す時を決める合図。本体では読まない。依存から外すと、配列や練習の文を替えても手順の位置が残る
   useEffect(() => {
     setLookupStepIndex(0);
   }, [layout.id, lookupQuery]);
@@ -755,6 +750,7 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
   // callback refにすると、
   // node自体の付け替え（=mode切替によるremount含む）でReactが自動的にこの関数を
   // 呼び直してくれるため、featureがpanel modeを読まずに同じ張り直しを実現できる。
+  // biome-ignore lint/correctness/useExhaustiveDependencies: geometry.id・layout.id・settingsOpenはrefを呼び直す時を決める合図。本体では読まない。依存から外すと、物理配列・配列・設定の開閉で図が作り直されても、大きさの監視が前の要素のまま残る
   const attachGuideGridRef = useCallback(
     (grid: HTMLDivElement | null) => {
       if (grid === null || guideDefinitions.length === 0) return;
