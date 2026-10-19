@@ -216,7 +216,7 @@ function runCase(language: TextLanguage, layout: Layout, sampleId: string, opts:
     ...DEFAULT_TRACE_POLICY,
     windowSize: opts.windowSize ?? DEFAULT_TRACE_POLICY.windowSize,
     sfbHomeCost: opts.sfbHomeCost ?? DEFAULT_TRACE_POLICY.sfbHomeCost,
-    preferOppositeThumb: opts.preferOppositeThumb ?? DEFAULT_TRACE_POLICY.preferOppositeThumb,
+    preferOppositeThumb: opts.preferOppositeThumb ?? DEFAULT_TRACE_POLICY.preferOppositeThumb ?? false,
     triggerRealizationPolicy,
     actionRealizationPolicy,
   };
@@ -236,11 +236,13 @@ function runCase(language: TextLanguage, layout: Layout, sampleId: string, opts:
     triggerRealizationPolicy,
     actionRealizationPolicy,
     romajiRuleId,
+    // サンプルテキストは記号を含まず、回帰テストも記号を残さずに計算するので false で一致する
+    keepSymbols: false,
   });
 
   return {
     id: `${language}:${layout.id}:${sampleId}${opts.note ? `:${opts.note}` : ''}`,
-    note: opts.note,
+    ...(opts.note !== undefined ? { note: opts.note } : {}),
     language,
     layoutId: layout.id,
     sampleId,
@@ -379,10 +381,11 @@ function generate(): Fixture {
 
   cases.sort((a, b) => a.id.localeCompare(b.id));
 
+  const commit = sourceCommit();
   return {
     version: FIXTURE_VERSION,
     modelVersion: MODEL_VERSION,
-    sourceCommit: sourceCommit(),
+    ...(commit !== undefined ? { sourceCommit: commit } : {}),
     cases,
   };
 }
