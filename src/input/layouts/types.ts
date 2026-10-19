@@ -206,7 +206,9 @@ export function groupNamedModifierKeyMeanings(faces: readonly Face[]): TriggerMe
   const meanings: Record<string, Record<string, TriggerMeaning>> = {};
   for (const face of faces) {
     for (const [key, group] of Object.entries({ ...face.modifierGroups, ...face.triggerMeaningGroups })) {
-      (meanings[group] ??= {})[key] = modifierKeyMeaning(group);
+      const bucket = meanings[group] ?? {};
+      meanings[group] = bucket;
+      bucket[key] = modifierKeyMeaning(group);
     }
   }
   return meanings;

@@ -95,7 +95,7 @@ export function PlaybackKeyboard({
       const dx = Number(node.dataset.motionDx ?? 0);
       const dy = Number(node.dataset.motionDy ?? 0);
       const duration = Number(node.dataset.motionDuration ?? 0);
-      node.getAnimations().forEach((animation) => animation.cancel());
+      for (const animation of node.getAnimations()) animation.cancel();
       node.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'translate(0px, 0px)' }], {
         duration,
         easing: 'ease-out',
@@ -114,8 +114,8 @@ export function PlaybackKeyboard({
       const key = root.querySelector<SVGGElement>(`[data-playback-key="${CSS.escape(id)}"]`);
       const overlay = key?.querySelector<SVGRectElement>('[data-playback-feedback-overlay]');
       if (!key || !overlay) continue;
-      key.getAnimations().forEach((animation) => animation.cancel());
-      overlay.getAnimations().forEach((animation) => animation.cancel());
+      for (const animation of key.getAnimations()) animation.cancel();
+      for (const animation of overlay.getAnimations()) animation.cancel();
       if (reduced) {
         overlay.animate([{ opacity: 0.45 }, { opacity: 0 }], { duration: 34, easing: 'linear' });
       } else if (feedbackStyle === 'fade') {

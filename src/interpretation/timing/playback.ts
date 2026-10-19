@@ -474,10 +474,10 @@ export function playbackStrokeDisplay(layout: Layout, stroke: Stroke): PlaybackS
 
   // 面に空欄として定義されたキーは、基底面の刻印へ戻さず空欄にする。
   for (const face of displayFaces) {
-    face.rows.forEach((row, rowIndex) => {
+    for (const [rowIndex, row] of face.rows.entries()) {
       const cells = typeof row === 'string' ? [...row] : [...row];
-      cells.forEach((_label, colIndex) => keyLabels.set(keyId(rowIndex, colIndex), ''));
-    });
+      for (const colIndex of cells.keys()) keyLabels.set(keyId(rowIndex, colIndex), '');
+    }
   }
   for (const face of displayFaces) {
     for (const [key, label] of faceDisplayCells(face)) {

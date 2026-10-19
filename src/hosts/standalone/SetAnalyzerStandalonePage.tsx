@@ -150,7 +150,7 @@ export function SetAnalyzerStandalonePage<Options, Extracted, RowContext>({
             const params = analyzer.urlOptions.encodeOptionsToUrl(optionsDraft);
             const selection = assets.multiTargetSelection;
             const encoded = encodeMultiTargetsToUrl(selection.targets, effectiveMultiBaseline(selection), shareSource);
-            encoded.params.forEach((value, key) => params.append(key, value));
+            for (const [key, value] of encoded.params) params.append(key, value);
             return { params, notices: describeShareEncodeNotice(encoded.notice) };
           },
         }}

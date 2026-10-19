@@ -161,7 +161,7 @@ export function SingleAnalyzerStandalonePage<Options, Extracted>({
           query: () => {
             const params = analyzer.urlOptions.encodeOptionsToUrl(optionsDraft);
             const encoded = encodeSingleTargetToUrl(target, shareSource);
-            encoded.params.forEach((value, key) => params.append(key, value));
+            for (const [key, value] of encoded.params) params.append(key, value);
             return { params, notices: describeShareEncodeNotice(encoded.notice) };
           },
         }}

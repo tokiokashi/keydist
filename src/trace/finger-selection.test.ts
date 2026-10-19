@@ -352,7 +352,7 @@ test('1つの入力が複数の打鍵になる時も、全通りを数え上げ�
     き: [['k'], ['i']],
     む: [['m'], ['u']],
   };
-  const layout = letterLayout({ ゆ: defs['ゆ'], き: defs['き'], む: defs['む'] });
+  const layout = letterLayout({ ゆ: defs.ゆ, き: defs.き, む: defs.む });
   const geometry = buildGeometry(SHAPE, QWERTY_OPTIMIZED_FINGER_ASSIGNMENT);
   for (const [seed, windowSize] of [
     [21, 1],

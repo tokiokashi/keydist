@@ -52,7 +52,7 @@ function okRow(extracted: FingerMatrixExtracted, layoutId: string): FingerMatrix
 
 function assertCloseArray(actual: readonly number[], expected: readonly number[], message: string): void {
   assert.equal(actual.length, expected.length, message);
-  actual.forEach((value, i) => assert.ok(Math.abs(value - expected[i]!) < 1e-9, `${message}[${i}] actual=${value} expected=${expected[i]}`));
+  for (const [i, value] of actual.entries()) assert.ok(Math.abs(value - expected[i]!) < 1e-9, `${message}[${i}] actual=${value} expected=${expected[i]}`);
 }
 
 // 面のidごとの列の種類。指の面は親指を含む10本、指間の面は仕様 §11.6の6組

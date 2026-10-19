@@ -196,7 +196,7 @@ async function headerReport(item: Locator): Promise<HeaderReport> {
  * `root`の中で、`root`の外へ出ている要素のうち、間に切り抜き（overflowがvisibleでない祖先）が無いもの。
  * 切り抜きがあれば、見えない分は中でスクロール・切り捨てされる設計なので数えない（その入れ物自身は数える）。
  */
-async function spillingOutOf(root: Locator, scope: 'x' | 'both' = 'x'): Promise<string[]> {
+async function spillingOutOf(root: Locator): Promise<string[]> {
   return root.evaluate((rootEl, scopeValue) => {
     const box = rootEl.getBoundingClientRect();
     const out: string[] = [];
@@ -251,7 +251,7 @@ async function expectHeaderUsable(page: Page, id: string, minTargetWidth = 60): 
 /** ペインの外（隣のペイン）へ何もはみ出さない。横スクロールは本体の中だけ。 */
 async function expectNoSpillOutsidePane(page: Page, id: string): Promise<void> {
   const item = itemOf(page, id);
-  expect(await spillingOutOf(item.locator('.pane-frame'), 'x'), '枠の中の、本体の外の部品').toEqual([]);
+  expect(await spillingOutOf(item.locator('.pane-frame')), '枠の中の、本体の外の部品').toEqual([]);
   const pane = (await item.boundingBox())!;
   const neighbor = (await itemOf(page, id === 'a' ? 'b' : 'a').boundingBox())!;
   expect(pane.x + pane.width, '隣のペインと重ならない').toBeLessThanOrEqual(neighbor.x + 0.5);
@@ -284,14 +284,14 @@ for (const c of cases) {
     const item = itemOf(page, 'a');
     const body = item.locator('.pane-body');
     // 本体の横幅の外へ出る部品が無い（図の見出しのⓘ・表示調整のボタン、凡例）
-    expect(await spillingOutOf(body, 'x'), '本体の外へ出る部品').toEqual([]);
+    expect(await spillingOutOf(body), '本体の外へ出る部品').toEqual([]);
     expect(await body.evaluate((el) => el.scrollWidth - el.clientWidth), '本体が横にスクロールしない').toBeLessThanOrEqual(1);
     const cards = item.locator('.flow-mini-panel');
     await expect(cards).toHaveCount(2);
     for (let i = 0; i < 2; i += 1) {
       const card = cards.nth(i);
       // 図の正方形・見出し・割合の文字が、カードの枠（切り抜きがある）で切れない
-      expect(await spillingOutOf(card, 'x'), `カード${i}の中身`).toEqual([]);
+      expect(await spillingOutOf(card), `カード${i}の中身`).toEqual([]);
       const cardBox = (await card.boundingBox())!;
       const viewport = (await card.locator('.flow-profile-viewport').boundingBox())!;
       expect(viewport.x, `図${i}の左`).toBeGreaterThanOrEqual(cardBox.x - 0.5);
@@ -647,7 +647,7 @@ interface Sweep {
 
 const SWEEP_EDGES = [250, 900] as const;
 // 環境変数 `SWEEP_FULL=1` で、250〜900pxを1px刻みで全部回し、状態が変わる幅を出力する（境目の測り直し用。CIの既定では回さない）。
-const SWEEP_FULL = process.env['SWEEP_FULL'] === '1';
+const SWEEP_FULL = process.env.SWEEP_FULL === '1';
 const widthsOf = (boundaries: readonly number[]): number[] =>
   SWEEP_FULL
     ? Array.from({ length: 900 - 250 + 1 }, (_, i) => 250 + i)

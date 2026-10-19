@@ -36,35 +36,17 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "complexity": {
-        "noBannedTypes": "off",
-        "noUselessFragments": "off",
-        "noUselessTernary": "off",
-        "useLiteralKeys": "off",
-        "useOptionalChain": "off"
-      },
       "style": {
-        "noNonNullAssertion": "off",
-        "useConst": "off",
-        "useTemplate": "off"
+        "noNonNullAssertion": "off"
       },
       "correctness": {
-        "noChildrenProp": "off",
-        "noSelfAssign": "off",
-        "noUnusedFunctionParameters": "off",
-        "noUnusedImports": "off",
-        "noUnusedVariables": "off",
+        "noChildrenProp": "error",
         "useExhaustiveDependencies": "off"
       },
       "suspicious": {
         "noArrayIndexKey": "off",
-        "noAssignInExpressions": "off",
-        "noControlCharactersInRegex": "off",
         "noExplicitAny": "off",
-        "noRedeclare": "off",
-        "noShadowRestrictedNames": "off",
-        "noTemplateCurlyInString": "off",
-        "useIterableCallbackReturn": "off"
+        "noTemplateCurlyInString": "off"
       },
       "a11y": {
         "noAriaHiddenOnFocusable": "off",
@@ -77,7 +59,7 @@
         "useSemanticElements": "off"
       },
       "security": {
-        "noDangerouslySetInnerHtml": "off"
+        "noDangerouslySetInnerHtml": "error"
       }
     }
   }

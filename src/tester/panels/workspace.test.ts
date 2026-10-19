@@ -61,7 +61,7 @@ test('workspace state starts docked and keeps bottom-to-top registration order',
     mode: 'docked',
     dockSlot: 'main',
   });
-  assert.equal(state.panels['missing'], undefined);
+  assert.equal(state.panels.missing, undefined);
 });
 
 test('workspace reducer handles float, move, resize, activate, visibility and dock', () => {

@@ -159,7 +159,7 @@ export function nameTargets(sources: readonly TargetNameSource[]): readonly Name
   let names = namesNow();
   for (;;) {
     const members = new Map<string, number[]>();
-    names.forEach((name, i) => members.set(name, [...(members.get(name) ?? []), i]));
+    for (const [i, name] of names.entries()) members.set(name, [...(members.get(name) ?? []), i]);
     let raised = false;
     for (const group of members.values()) {
       if (group.length <= 1) continue;

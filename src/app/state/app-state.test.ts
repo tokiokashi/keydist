@@ -67,7 +67,7 @@ test('slice migration writes AppState before removing the legacy key', () => {
   storage.setItem('legacy-workspace', JSON.stringify({ version: 1, panels: {}, zOrder: [] }));
 
   const workspace = loadOrMigrateAppStateSlice(storage, 'workspace', {
-    decode: (value) => value as { version: 1; panels: {}; zOrder: [] },
+    decode: (value) => value as { version: 1; panels: Record<string, never>; zOrder: [] },
     loadLegacy: () => ({ version: 1, panels: {}, zOrder: [] }),
     legacyKeys: ['legacy-workspace'],
   });

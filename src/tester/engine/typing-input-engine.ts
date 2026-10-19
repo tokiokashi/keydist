@@ -98,9 +98,9 @@ const requirementSignature = (input: SemanticInput): string =>
   input.requirements
     .map((requirement) => {
       if (requirement.kind === 'overlap') {
-        return 'overlap:' + sortedCanonicalKeys(requirement.keys).join('\u0000');
+        return `overlap:${sortedCanonicalKeys(requirement.keys).join('\u0000')}`;
       }
-      return 'order:' + sortedCanonicalKeys(requirement.before).join('\u0000') + '>' + sortedCanonicalKeys(requirement.after).join('\u0000');
+      return `order:${sortedCanonicalKeys(requirement.before).join('\u0000')}>${sortedCanonicalKeys(requirement.after).join('\u0000')}`;
     })
     .sort()
     .join('\u0001');

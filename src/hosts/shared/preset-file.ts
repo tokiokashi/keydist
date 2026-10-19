@@ -40,6 +40,7 @@ export function presetFileBody(contents: Partial<PresetFileContents>): Record<st
 }
 
 /** ファイル名に使えない文字（OSごとに違うものの和集合）と制御文字。 */
+// biome-ignore lint/suspicious/noControlCharactersInRegex: ファイル名に使えない文字として制御文字（U+0000〜U+001F）そのものを除くため
 const UNSAFE_FILENAME_CHARS = /[\\/:*?"<>|\u0000-\u001f]/g;
 
 /** ファイル名に入れる名前。使えない文字は`_`にし、長すぎる名前は切る。 */

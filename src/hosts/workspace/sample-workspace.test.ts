@@ -13,7 +13,10 @@ for (const kind of SAMPLE_KINDS) {
     const { created } = createSampleWorkspace(
       initialWorkspaceLibrary(),
       () => 'w',
-      () => `p${(n += 1)}`,
+      () => {
+        n += 1;
+        return `p${n}`;
+      },
       kind,
     );
     for (const pane of created.panes) {
@@ -40,7 +43,10 @@ for (const kind of SAMPLE_KINDS) {
     const { created } = createSampleWorkspace(
       initialWorkspaceLibrary(),
       () => 'w',
-      () => `p${(n += 1)}`,
+      () => {
+        n += 1;
+        return `p${n}`;
+      },
       kind,
     );
     const width = gridWidthPx(rightmostCol(created.grid));

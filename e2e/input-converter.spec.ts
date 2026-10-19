@@ -57,7 +57,6 @@ test('Tester uses a resizable wide FHD workspace without test-mode scrolling', a
   expect(viewportMetrics.body).toBeLessThanOrEqual(0);
   expect(viewportMetrics.document).toBeLessThanOrEqual(0);
 
-  const keyboard = page.getByRole('img', { name: '現在の物理キー状態' });
   const statusSections = keyStatus.locator('section');
   await expect(statusSections).toHaveCount(2);
   await expect(statusSections.nth(0)).toContainText('Pressed');

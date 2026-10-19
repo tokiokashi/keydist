@@ -22,7 +22,7 @@ import {
   resolveOverlaps,
   type GridColumnRange,
   type GridItem,
-  type WorkspaceGrid,
+  type WorkspaceGrid as WorkspaceGridData,
 } from '#engine/workspace-grid.ts';
 import { PaneHeaderLeadContext, PaneNameInLeadContext } from '#hosts/shared/pane-name-in-lead.ts';
 import { InfoButton, type InfoHelp } from '#ui/primitives/info-button.tsx';
@@ -40,7 +40,7 @@ import {
 import './workspace-grid.css';
 
 export interface WorkspaceGridProps {
-  readonly grid: WorkspaceGrid;
+  readonly grid: WorkspaceGridData;
   /** ペインのidから、Analyzerのid（大きさの下限を引く）。 */
   readonly analyzerIdOf: (paneId: string) => string;
   readonly titleOf: (paneId: string) => string;
@@ -60,7 +60,7 @@ export interface WorkspaceGridProps {
    */
   readonly compact: boolean;
   /** 人がドラッグ・大きさの変更を終えた。 */
-  readonly onGridChange: (grid: WorkspaceGrid) => void;
+  readonly onGridChange: (grid: WorkspaceGridData) => void;
   /**
    * 面の今見えている列の範囲を読む関数の置き場。ペインを足す・複製する側が、見えている範囲に置くために読む
    * （横にスクロールした位置を知るのは面だけ）。面が無い間は`null`。
@@ -233,12 +233,12 @@ const ARROW_STEP: Readonly<Record<string, { readonly dx: number; readonly dy: nu
  * 矢印キーは動かす、Shift+矢印キーは右下の角を動かして大きさを変える（右・下が広げる、左・上が縮める）。
  */
 function gridAfterArrowKey(
-  grid: WorkspaceGrid,
+  grid: WorkspaceGridData,
   paneId: string,
   event: { readonly key: string; readonly shiftKey: boolean; readonly altKey: boolean; readonly ctrlKey: boolean; readonly metaKey: boolean },
   min: { readonly w: number; readonly h: number },
   compact: boolean,
-): WorkspaceGrid | undefined {
+): WorkspaceGridData | undefined {
   const step = ARROW_STEP[event.key];
   if (step === undefined || event.altKey || event.ctrlKey || event.metaKey) return undefined;
   return event.shiftKey ? gridWithResizedPane(grid, paneId, step.dx, step.dy, min, compact) : gridWithMovedPane(grid, paneId, step.dx, step.dy, compact);
@@ -249,7 +249,7 @@ function describeItem(title: string, item: GridItem): string {
   return `${title}: 左から${item.x + 1}列目、上から${item.y + 1}行目、幅${item.w}、高さ${item.h}`;
 }
 
-function fromLayout(layout: Layout): WorkspaceGrid {
+function fromLayout(layout: Layout): WorkspaceGridData {
   return layout.map((item) => ({ id: item.i, x: item.x, y: item.y, w: item.w, h: item.h }));
 }
 

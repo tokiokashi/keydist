@@ -132,10 +132,10 @@ export function rateChartModel(
   const yMax = Math.max(1, sharedRange?.max ?? Math.max(0, ...finiteRates(points))) * 1.1;
   const yOf = (value: number) => RATE_CHART_MARGIN.top + (1 - value / yMax) * PLOT_HEIGHT;
 
-  const seriesOf = (valueOf: (point: PlaybackRateChartPoint) => number | undefined) => {
+  const seriesOf = (pick: (point: PlaybackRateChartPoint) => number | undefined) => {
     const dots: RateChartDot[] = [];
     for (const point of points) {
-      const value = valueOf(point);
+      const value = pick(point);
       if (value === undefined || !Number.isFinite(value)) continue;
       dots.push({ x: rateChartX(point.cursor, total), y: yOf(value) });
     }

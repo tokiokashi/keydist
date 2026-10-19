@@ -56,7 +56,7 @@ export function describeEngineRequestError(error: EngineRequestError): string {
 /** 例外の原文（メッセージとstack）。不具合報告用に折りたたんで出す。 */
 export function describeErrorDetail(error: unknown): string[] {
   if (error instanceof Error) {
-    return [error.stack && error.stack.includes(error.message) ? error.stack : `${error.name}: ${error.message}`];
+    return [error.stack?.includes(error.message) ? error.stack : `${error.name}: ${error.message}`];
   }
   return [String(error)];
 }

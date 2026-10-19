@@ -114,7 +114,7 @@ export interface ConditionSummaryRow {
 function effectivelySameAsDefault(id: SettingsItemId, value: unknown): boolean {
   if (id !== 'actionRealizationPolicy') return false;
   const defaultValue: unknown = SETTINGS_ITEMS.actionRealizationPolicy.defaultValue;
-  const semantic = (policy: unknown) => isRecord(policy) && policy['triggerActivation'] === 'semantic';
+  const semantic = (policy: unknown) => isRecord(policy) && policy.triggerActivation === 'semantic';
   return !semantic(value) && !semantic(defaultValue);
 }
 
@@ -213,14 +213,14 @@ function formatValue(
   // 実現方式の2項目は、利用者が選べる主な値（する/しない）で出す。例外は中身を並べず、
   // あることだけを示す（例外は打ち方の大分類・キーごとの指定で、短い1行に収まらないため）。
   if (id === 'triggerRealizationPolicy' && isRecord(value)) {
-    return { format: 'primitive', displayValue: value['useHold'] === true ? 'する' : 'しない' };
+    return { format: 'primitive', displayValue: value.useHold === true ? 'する' : 'しない' };
   }
   if (id === 'actionRealizationPolicy' && isRecord(value)) {
     // Shift+Aを1動作にする時は例外を一切読まない（`input/semantics/action-realization.ts`）ので、
     // 例外が残っていても出さない。出すと効いていない例外で測ったように読めてしまう。
-    if (value['triggerActivation'] !== 'semantic') return { format: 'primitive', displayValue: ACTION_COUNT_TEXT.combined };
-    const classOverrides = isRecord(value['triggerActivationClassOverrides']) ? Object.keys(value['triggerActivationClassOverrides']).length : 0;
-    const overrides = Array.isArray(value['triggerActivationOverrides']) ? value['triggerActivationOverrides'].length : 0;
+    if (value.triggerActivation !== 'semantic') return { format: 'primitive', displayValue: ACTION_COUNT_TEXT.combined };
+    const classOverrides = isRecord(value.triggerActivationClassOverrides) ? Object.keys(value.triggerActivationClassOverrides).length : 0;
+    const overrides = Array.isArray(value.triggerActivationOverrides) ? value.triggerActivationOverrides.length : 0;
     return {
       format: 'primitive',
       displayValue: classOverrides + overrides > 0 ? `${ACTION_COUNT_TEXT.separate}（例外あり）` : ACTION_COUNT_TEXT.separate,
@@ -502,7 +502,7 @@ export function multiTargetConditionSummary(
     if (excluded.includes(templateRow.id)) continue;
     const applicable = targets.flatMap((target) => {
       const row = target.rows.find((r) => r.id === templateRow.id);
-      return row !== undefined && row.applicable ? [{ target, row }] : [];
+      return row?.applicable ? [{ target, row }] : [];
     });
     // どの対象にも効かない項目は、効かない旨の行のまま出す（Singleと同じ）
     if (applicable.length === 0) {

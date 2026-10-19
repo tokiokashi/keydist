@@ -75,11 +75,11 @@ export function ComparisonBody({ extracted, order, rowContext, baselineTargetKey
   const { visibleColumns, showBaselineRatio, sort } = options;
   // 並び替えは表の表示だけ。集合の順（order）はそのまま、描く順だけを並べ直す。
   const displayOrder = useMemo(() => {
-    const valueOf = new Map<string, ComparisonRow>(extracted.rows.map((row) => [row.targetKey, row]));
+    const rowByKey = new Map<string, ComparisonRow>(extracted.rows.map((row) => [row.targetKey, row]));
     return sortOrderByColumn<ComparisonColumnId>(
       order,
       (targetKey, column) => {
-        const row = valueOf.get(targetKey);
+        const row = rowByKey.get(targetKey);
         return row?.kind === 'ok' ? row.values[column] : undefined;
       },
       sort,

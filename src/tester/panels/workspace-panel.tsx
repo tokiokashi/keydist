@@ -413,7 +413,7 @@ export function WorkspacePanel({
       data-dragging={dragging || undefined}
       data-floating={mode === 'floating' || undefined}
       data-restoring={restoring || undefined}
-      layout={dragging || restoring ? false : true}
+      layout={!(dragging || restoring)}
       // Motionは既定ではReact renderごとにlayoutを計測する。
       // dock/floating切替だけを依存値にして、typing等のcontent renderでは計測しない。
       layoutDependency={mode}

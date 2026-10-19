@@ -8,25 +8,26 @@ test('解決済みの入力とテキストの項目は、書き換えると型�
   const input = {} as ResolvedInput;
   const text = {} as ResolvedText;
   const never = (): boolean => false;
+  const same = <T>(value: T): T => value;
   if (never()) {
     // @ts-expect-error
     input.text = 'x';
     // @ts-expect-error
-    input.layout = input.layout;
+    input.layout = same(input.layout);
     // @ts-expect-error
-    input.geometry = input.geometry;
+    input.geometry = same(input.geometry);
     // @ts-expect-error
-    input.tracePolicy = input.tracePolicy;
+    input.tracePolicy = same(input.tracePolicy);
     // @ts-expect-error
-    input.extractionAssets = input.extractionAssets;
+    input.extractionAssets = same(input.extractionAssets);
     // @ts-expect-error
     input.romajiRuleId = null;
     // @ts-expect-error
-    input.cascade = input.cascade;
+    input.cascade = same(input.cascade);
     // @ts-expect-error
     text.text = 'x';
     // @ts-expect-error
-    text.ref = text.ref;
+    text.ref = same(text.ref);
     // @ts-expect-error
     text.ref.id = 'x';
   }

@@ -219,16 +219,16 @@ async function drawnRects(page: Page): Promise<Rect[]> {
 
 function overlapping(rects: readonly Rect[], moving?: string): string[] {
   const found: string[] = [];
-  rects.forEach((a, i) =>
-    rects.slice(i + 1).forEach((b) => {
+  for (const [i, a] of rects.entries()) {
+    for (const b of rects.slice(i + 1)) {
       const width = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
       const height = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
       // つかんで動かしている・大きさを変えているペインは、ライブラリが指の位置の画素で描き、他のペインは升目で動く。
       // その差（1升未満）は、動かしているペインを含む組にだけ許す。動かしていないペインどうしは、重なりを一切許さない
       const limit = a.id === moving || b.id === moving ? ROW_STEP : 1;
       if (width >= limit && height >= limit) found.push(`${a.id}/${b.id}`);
-    }),
-  );
+    }
+  }
   return found;
 }
 

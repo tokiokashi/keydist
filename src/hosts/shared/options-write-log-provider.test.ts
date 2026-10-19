@@ -21,6 +21,7 @@ test('OptionsWriteLogsProviderの外で解析設定の下書きを使うと、�
 });
 
 test('OptionsWriteLogsProviderで包めば描画できる', () => {
+  // biome-ignore lint/correctness/noChildrenProp: Providerのpropsがchildrenを必須にしており、.tsのテストではJSXの子として渡せない
   const html = renderToString(createElement(OptionsWriteLogsProvider, { logs: createOptionsWriteLogs(), children: createElement(Draft) }));
   assert.match(html, /true/);
 });

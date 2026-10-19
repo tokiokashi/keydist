@@ -269,7 +269,7 @@ export function importDvorakJ(source: string, name = 'DvorakJ取り込み'): Imp
   for (let i = 0; i < lines.length; i++) {
     const header = lines[i].trim();
     if (!header || header.startsWith('-option-input')) continue;
-    let triggers = dvorakJHeader(header, aliases);
+    const triggers = dvorakJHeader(header, aliases);
     let bodyStart = i;
     if (isDashSeparatedHeader(header) && lines[i + 1]?.trim() === '[') {
       bodyStart = i + 1;
@@ -295,17 +295,17 @@ export function importDvorakJ(source: string, name = 'DvorakJ取り込み'): Imp
       continue;
     }
     const base = triggers.length === 0;
-    grid.forEach((line, row) =>
-      line.slice(0, WIDTHS[row] ?? 0).forEach((raw, column) => {
+    for (const [row, line] of grid.entries()) {
+      for (const [column, raw] of line.slice(0, WIDTHS[row] ?? 0).entries()) {
         const cell = dvorakJCell(raw);
-        if (!cell) return;
+        if (!cell) continue;
         const sequence: Sequence = [triggers!.concat(QWERTY_LEGEND[row][column])];
         recordCell(rows, legends, sequences, kinds, row, column, cell.output, cell.label, sequence, base);
         if (!base && hasDvorakJFunctionLabel(cell.label)) {
           legends.set(QWERTY_LEGEND[row][column], cell.label);
         }
-      }),
-    );
+      }
+    }
   }
   return finish(name, rows, legends, sequences, kinds, warnings);
 }
@@ -573,16 +573,16 @@ export function importBenizara(source: string, name = '紅皿取り込み'): Imp
       )
       .slice(0, 4);
     const isBase = section === base;
-    grid.forEach((line, row) =>
-      line.slice(0, WIDTHS[row] ?? 0).forEach((raw, column) => {
+    for (const [row, line] of grid.entries()) {
+      for (const [column, raw] of line.slice(0, WIDTHS[row] ?? 0).entries()) {
         const cell = benizaraCell(raw);
-        if (!cell) return;
+        if (!cell) continue;
         const physical = QWERTY_LEGEND[row][column];
         const sequence: Sequence = [trigger.concat(physical)];
         recordCell(rows, legends, sequences, kinds, row, column, cell.output, cell.label, sequence, isBase);
         if (!isBase && hasBenizaraFunctionLabel(cell.label)) legends.set(physical, cell.label);
-      }),
-    );
+      }
+    }
   }
   return finish(name, rows, legends, sequences, kinds, warnings);
 }

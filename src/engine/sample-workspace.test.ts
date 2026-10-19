@@ -27,7 +27,10 @@ import { normalizeGrid } from './workspace-grid.ts';
 
 function sequence(prefix: string): () => string {
   let n = 0;
-  return () => `${prefix}${(n += 1)}`;
+  return () => {
+    n += 1;
+    return `${prefix}${n}`;
+  };
 }
 
 function assets(): KeydistAssets {

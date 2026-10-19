@@ -903,16 +903,16 @@ test('共有リンクの取り込み: 解析設定と対象を1コマンドに�
   const step = applyCommand(beforeTargets.assets, beforeTargets.history, imported);
   assert.equal(step.outcome.kind, 'applied');
   assert.equal(step.history.undoStack.length, beforeTargets.history.undoStack.length + 1);
-  assert.deepEqual(step.assets.standaloneAnalyzerOptions['comparison'], { columns: 'new' });
+  assert.deepEqual(step.assets.standaloneAnalyzerOptions.comparison, { columns: 'new' });
   assert.deepEqual(step.assets.multiTargetSelection.targets, [TARGET_A, TARGET_B]);
 
   const undone = undo(step.assets, step.history);
-  assert.deepEqual(undone.assets.standaloneAnalyzerOptions['comparison'], { columns: 'old' });
+  assert.deepEqual(undone.assets.standaloneAnalyzerOptions.comparison, { columns: 'old' });
   assert.deepEqual(undone.assets.multiTargetSelection.targets, [TARGET_NOT_SELECTED]);
   assert.equal(undone.history.undoStack.length, beforeTargets.history.undoStack.length);
 
   const redone = redo(undone.assets, undone.history);
-  assert.deepEqual(redone.assets.standaloneAnalyzerOptions['comparison'], { columns: 'new' });
+  assert.deepEqual(redone.assets.standaloneAnalyzerOptions.comparison, { columns: 'new' });
   assert.deepEqual(redone.assets.multiTargetSelection.targets, [TARGET_A, TARGET_B]);
 });
 
