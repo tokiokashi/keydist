@@ -32,6 +32,22 @@ export interface RequestUsage {
   read: number;
 }
 
+/** transcriptの1行のうち、読む項目だけ。どの項目も欠けうる。 */
+interface TranscriptRow {
+  type?: string;
+  requestId?: string;
+  message?: {
+    id?: string;
+    model?: string;
+    usage?: {
+      input_tokens?: number;
+      cache_creation_input_tokens?: number;
+      cache_read_input_tokens?: number;
+      cache_creation?: { ephemeral_5m_input_tokens?: number; ephemeral_1h_input_tokens?: number };
+    } | null;
+  };
+}
+
 /**
  * JSONLの本文から、リクエストごとのusageを取り出す。
  * 同じリクエストが複数行に分かれて記録されるので、(message.id, requestId) の組ごとに最後の行を使う。
@@ -41,7 +57,7 @@ export function extractRequests(jsonl: string): RequestUsage[] {
   let anonymous = 0;
   for (const line of jsonl.split('\n')) {
     if (line.trim() === '') continue;
-    let row: any;
+    let row: TranscriptRow | null;
     try {
       row = JSON.parse(line);
     } catch {

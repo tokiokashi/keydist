@@ -140,6 +140,7 @@ function SentenceText({ plan, run }: { readonly plan: SentencePlan; readonly run
       {plan.units.map((unit, index) => {
         const state = run === undefined ? 'rest' : run.unit > index ? 'done' : run.unit === index ? 'current' : 'rest';
         return (
+          // biome-ignore lint/suspicious/noArrayIndexKey: 文の入力単位の位置が識別で、並びは変わらない。同じ文字が並びうる
           <span key={index} data-sentence-unit={state}>
             {unit.text}
           </span>

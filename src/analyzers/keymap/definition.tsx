@@ -117,6 +117,7 @@ function ComboSection({ layout, geometry }: { readonly layout: Layout; readonly 
                 コンボの配列図
                 <select id={selectId} value={items.indexOf(current)} onChange={(event) => setSelected(Number(event.currentTarget.value))}>
                   {items.map((item, index) => (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: 選択肢は配置から作り直す一覧で、並べ替えず、同じ表示名が並びうる。値も位置で持つ
                     <option key={`${item.label}-${index}`} value={index}>
                       {item.label}
                     </option>
@@ -136,6 +137,7 @@ function ComboSection({ layout, geometry }: { readonly layout: Layout; readonly 
               </thead>
               <tbody>
                 {rows.map((row, index) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: 表は配置から作り直す一覧で、並べ替えず、行に状態を持たない。同じ押し方が並びうる
                   <tr key={`${row.trigger}-${index}`}>
                     <td>{row.trigger}</td>
                     <td>{row.output}</td>

@@ -215,6 +215,7 @@ function RecognizedDetail({
       {recognized.map((entry, entryIndex) => {
         const keyNames = recognizedActionKeyNames(layout, entry, naming, standard);
         return (
+          // biome-ignore lint/suspicious/noArrayIndexKey: 直近に認識した入力の表示だけの一覧で、毎回まるごと差し替わる
           <div className="input-recognized" key={entryIndex}>
             <strong title={entry.output}>{entry.output}</strong>
             <div>
@@ -228,6 +229,7 @@ function RecognizedDetail({
                   .join(' ');
 
                 return (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: 認識した操作の表示だけの一覧で、毎回まるごと差し替わる
                   <code key={actionIndex} title={actionLabel}>
                     {actionLabel}
                   </code>
@@ -1039,11 +1041,13 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
                 {lookupQuery.length > 0 ? (
                   <div aria-hidden="true" className="input-output-visual" data-testid="typing-target">
                     {typingTargetPresentation.typed.map((item, index) => (
+                      // biome-ignore lint/suspicious/noArrayIndexKey: 打った文字の位置が識別で、並びは末尾に伸びるだけ
                       <span className={item.correct ? 'input-output-char-correct' : 'input-output-char-error'} key={`typed-${index}`}>
                         {item.char}
                       </span>
                     ))}
                     {typingTargetPresentation.remaining.map((char, index) => (
+                      // biome-ignore lint/suspicious/noArrayIndexKey: 目標の文字の位置が識別で、並びは先頭から減るだけ
                       <span className="input-output-char-pending" key={`pending-${index}`}>
                         {char}
                       </span>
@@ -1345,6 +1349,7 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
                                       <span className="input-lookup-alt-heading">他の打ち方</span>
                                       <ol>
                                         {otherLookupRoutes.map((route, index) => (
+                                          // biome-ignore lint/suspicious/noArrayIndexKey: 打ち方の候補を毎回作り直す表示だけの一覧で、同じ表示が並びうる
                                           <li key={`${reverseLookupRouteLabel(layout, route)}:${index}`}>
                                             <code>{reverseLookupRouteLabel(layout, route, keyboardStandard, layerKeyNaming)}</code>
                                             {route.steps.some((step) => step.origin === 'combo') ? <small>コンボ</small> : null}

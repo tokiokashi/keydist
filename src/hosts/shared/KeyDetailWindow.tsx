@@ -60,10 +60,12 @@ function CountTable({
           <tr key={row.key}>
             {row.cells.map((cell, index) =>
               index === 0 ? (
+                // biome-ignore lint/suspicious/noArrayIndexKey: 列の位置が識別で、見出しと同じ並びの固定の列
                 <th key={index} scope="row">
                   {cell}
                 </th>
               ) : (
+                // biome-ignore lint/suspicious/noArrayIndexKey: 列の位置が識別で、見出しと同じ並びの固定の列
                 <td key={index} data-numeric>
                   {cell}
                 </td>
@@ -204,6 +206,7 @@ export function KeyDetailWindow({ keyId, layout, geometry, trace, keyDetails, pa
                 )}
                 <ul className="key-detail-patterns">
                   {group.rows.map((row, index) => (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: 入力方法を毎回作り直す表示だけの一覧で、識別する値を持たない
                     <li key={index}>
                       <span className="key-detail-pattern-keys">{row.keyNames.join(' + ')}</span>
                       <span aria-hidden="true">→</span>

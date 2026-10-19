@@ -141,6 +141,7 @@ export function isUserRomajiRule(value: unknown): value is UserRomajiRule {
     value.id.length > 0 &&
     typeof value.name === 'string' &&
     value.name.length > 0 &&
+    typeof value.base === 'string' &&
     isBuiltin(value.base) &&
     isRecord(value.overrides) &&
     Object.entries(value.overrides).every(([kana, roman]) => kana.length > 0 && typeof roman === 'string' && roman.length > 0) &&
@@ -204,6 +205,6 @@ export function decodeStoredRomajiSettings(value: unknown): DecodedWithDiagnosti
   return { value: { rules, assignments }, diagnostics };
 }
 
-function isRecord(value: unknown): value is Record<string, any> {
+function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 }

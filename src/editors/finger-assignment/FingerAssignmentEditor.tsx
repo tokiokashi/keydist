@@ -417,6 +417,7 @@ export function FingerAssignmentEditor({
               {problems.length === 0 ? null : (
                 <ul className="finger-assignment-problems" data-finger-assignment-problems>
                   {problems.map((problem, index) => (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: 割り当ての検査結果を毎回作り直す一覧で、識別する値を持たない。行は状態を持たない
                     <li key={index}>
                       <span>{problemText(problem, standard)}</span>
                       {problem.kind === 'home-other-finger' && editable ? (
@@ -564,6 +565,7 @@ export function FingerAssignmentEditor({
                       <select aria-label="列を選ぶ" value={column} onChange={(event) => setColumn(Number(event.currentTarget.value))}>
                         {columns.map((ids, index) => (
                           <option
+                            // biome-ignore lint/suspicious/noArrayIndexKey: 列の番号そのものが選択肢の値で、並びは物理配列から決まる
                             key={index}
                             value={index}
                           >{`${index + 1}列目（${ids.map((id) => physicalKeyDisplayLabel(id, standard)).join(' ')}）`}</option>

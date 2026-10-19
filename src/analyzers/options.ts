@@ -77,6 +77,7 @@ export function defineOption<T>(def: OptionDef<T>): OptionDef<T> {
   return def;
 }
 
+// biome-ignore lint/suspicious/noExplicitAny: 値の型は項目ごとに違い、unknownでは引数位置の反変性で個々の項目定義を代入できない
 export type OptionsRegistry = Readonly<Record<string, OptionDef<any>>>;
 
 /** レジストリから「項目id → 値の型」の写像を作る。`Options`型はこれで決まる（手で二重に書かない）。 */

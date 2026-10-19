@@ -48,6 +48,7 @@ export function resolveDefaultValue<T>(item: SettingItem<T>, context: CascadeCon
  * レジストリ自体の型は `SettingItem<any>` で持つ（`unknown` にすると引数位置の反変性で
  * 個々の項目オブジェクトが代入できなくなる）。具体の値の型は `RegistryValueMap` 側で復元する。
  */
+// biome-ignore lint/suspicious/noExplicitAny: 値の型は項目ごとに違い、unknownでは引数位置の反変性で個々の項目定義を代入できない
 export type ItemRegistry = Readonly<Record<string, SettingItem<any>>>;
 
 /** レジストリから「項目id → 値の型」の写像を作る。カスケードの値の型はこれで決まる。 */

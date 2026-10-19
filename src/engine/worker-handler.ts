@@ -12,7 +12,9 @@ function unregisteredAnalyzerError(definitionId: string): Error {
  * engineはAnalyzerを名指ししない。
  */
 export interface EngineWorkerRegistry {
+  // biome-ignore lint/suspicious/noExplicitAny: Analyzerごとに違う型引数を、unknownでは反変の位置で代入できないため消す
   readonly single: readonly SingleAnalyzerDefinition<any, any>[];
+  // biome-ignore lint/suspicious/noExplicitAny: 同上
   readonly set: readonly SetAnalyzerDefinition<any, any>[];
 }
 

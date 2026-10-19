@@ -21,7 +21,15 @@ function verdict(edit: () => void, version: () => string): { ok: boolean; out: s
   return { ok: r.status === 0, out: r.stdout };
 }
 
-const editJson = (file: string, f: (j: any) => void) => {
+// package.jsonとpackage-lock.jsonの、書き換える項目だけを表す
+interface EditableJson {
+  version?: string;
+  packages: Record<string, { version?: string }>;
+  dependencies: Record<string, string>;
+  scripts: Record<string, string>;
+}
+
+const editJson = (file: string, f: (j: EditableJson) => void) => {
   const j = JSON.parse(readFileSync(join(dir, file), 'utf8'));
   f(j);
   writeFileSync(join(dir, file), `${JSON.stringify(j, null, 2)}\n`);
