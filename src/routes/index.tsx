@@ -24,7 +24,7 @@ export const Route = createFileRoute('/')({
  */
 function SidebarSample() {
   return (
-    <div className="top-sample" role="group" aria-label="サイドバーの見本">
+    <fieldset className="plain-group top-sample" aria-label="サイドバーの見本">
       <section className="sidebar-group">
         <p className="sidebar-heading">Analyze</p>
         <p className="sidebar-subheading">Single</p>
@@ -64,7 +64,7 @@ function SidebarSample() {
         <p className="sidebar-heading">Workspace</p>
         <p className="sidebar-empty">{WORKSPACE_EMPTY_TEXT}</p>
       </section>
-    </div>
+    </fieldset>
   );
 }
 

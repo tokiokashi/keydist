@@ -68,6 +68,7 @@ export function FingerDistanceChart({ spec, scaleKey }: { readonly spec: ChartSp
           const barH = Math.abs(valueY - baseline);
           const labelY = bar.value < 0 ? valueY + 12 : valueY - 4;
           return (
+            // biome-ignore lint/a11y/useSemanticElements: SVGの図形の中にHTMLのbuttonは置けない
             <g
               key={bar.key}
               data-chart-bar={bar.key}

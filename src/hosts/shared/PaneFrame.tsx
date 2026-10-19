@@ -143,6 +143,7 @@ function OptionsBindingSwitch({ control }: { readonly control: PaneOptionsBindin
   return (
     <div className="settings-window-binding" data-options-binding={control.shared ? 'shared' : 'own'}>
       <div className="settings-window-binding-choices" role="radiogroup" aria-label="設定の持ち方">
+        {/* biome-ignore lint/a11y/useSemanticElements: ボタンの見た目の選択肢のまま、ラジオの役割を伝える。input type="radio" に替えるとTabで1つずつ動く操作が矢印キーに変わる */}
         <button
           type="button"
           role="radio"
@@ -152,6 +153,7 @@ function OptionsBindingSwitch({ control }: { readonly control: PaneOptionsBindin
         >
           共有に従う
         </button>
+        {/* biome-ignore lint/a11y/useSemanticElements: 上の選択肢と同じ理由 */}
         <button
           type="button"
           role="radio"

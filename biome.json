@@ -48,16 +48,6 @@
         "noExplicitAny": "error",
         "noTemplateCurlyInString": "off"
       },
-      "a11y": {
-        "noAriaHiddenOnFocusable": "off",
-        "noAutofocus": "off",
-        "noLabelWithoutControl": "off",
-        "noNoninteractiveTabindex": "off",
-        "noStaticElementInteractions": "off",
-        "useAriaPropsSupportedByRole": "off",
-        "useKeyWithClickEvents": "off",
-        "useSemanticElements": "off"
-      },
       "security": {
         "noDangerouslySetInnerHtml": "error"
       }

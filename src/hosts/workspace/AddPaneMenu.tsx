@@ -38,6 +38,7 @@ export function AddPaneMenu({
   };
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: 内側のどこで押されたEscapeも受けて閉じるため、キー入力を受けるだけの外側の要素に付ける。この要素自体は操作の対象ではない
     <div
       ref={rootRef}
       className="pane-menu workspace-add-pane"

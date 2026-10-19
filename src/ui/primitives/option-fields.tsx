@@ -177,13 +177,13 @@ export function SegmentedOptionField<T extends string>({
   return (
     <OptionField label={label} binding={binding} hint={hint} badge={badge}>
       {(id) => (
-        <div className="option-segmented" role="group" aria-labelledby={`${id}-label`} id={id}>
+        <fieldset className="plain-group option-segmented" aria-labelledby={`${id}-label`} id={id}>
           {choices.map((choice) => (
             <button type="button" key={choice.value} aria-pressed={binding.value === choice.value} onClick={() => binding.onChange(choice.value)}>
               {choice.label}
             </button>
           ))}
-        </div>
+        </fieldset>
       )}
     </OptionField>
   );

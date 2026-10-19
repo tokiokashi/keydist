@@ -439,6 +439,8 @@ export function WorkspacePanel({
       onFocusCapture={mode === 'floating' ? activateFromOwnTree : undefined}
       onPointerDownCapture={mode === 'floating' ? activateFromOwnTree : undefined}
     >
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: 浮かべた間はドラッグで動かす持ち手で、並べた間は role と tabIndex を付けてボタンとして操作できる */}
+      {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: 並べて浮かべられる間だけ role="button" が付く。付かない間は見出し行の名前として付ける */}
       <header
         aria-label={mode === 'floating' ? floatingHeaderAriaLabel : dockedHeaderAriaLabel}
         className={['workspace-panel-header', headerClassName].filter(Boolean).join(' ')}
@@ -464,6 +466,7 @@ export function WorkspacePanel({
       </header>
       {children}
       {mode === 'floating' ? (
+        // biome-ignore lint/a11y/useSemanticElements: ドラッグで大きさを変える持ち手で、操作できない hr には替えられない
         <div
           aria-label={resizeAriaLabel}
           className="workspace-panel-resize"

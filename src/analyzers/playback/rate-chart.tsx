@@ -130,6 +130,7 @@ export function PlaybackRateChart({ points, cursor, showChain, showArpeggio, onS
           </text>
         ))}
 
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: 図の上のポインタ操作で位置を選ぶ補助。キーボードでは同じ位置を再生位置のスライダーで動かせる */}
         <rect
           data-playback-rate-hit
           x={RATE_CHART_MARGIN.left}

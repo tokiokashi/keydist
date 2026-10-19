@@ -1,3 +1,4 @@
+import { focusOnMount } from '#ui/primitives/focus-on-mount.ts';
 import { useContext, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { appendImportedPresets, applyPresetValues, normalizePresetName } from '#input/presets/index.ts';
 import { SETTINGS_ITEMS } from '#engine/settings-items.ts';
@@ -208,7 +209,7 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
                       type="text"
                       aria-label="新しい名前"
                       value={renaming.draft}
-                      autoFocus
+                      ref={focusOnMount}
                       onChange={(event) => setRenaming({ id: row.id, draft: event.target.value })}
                       onKeyDown={(event) => {
                         if (event.key !== 'Escape') return;

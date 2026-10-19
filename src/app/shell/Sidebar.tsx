@@ -93,7 +93,7 @@ const THEME_TITLES: Readonly<Record<ThemeChoice, string>> = {
 function ThemeSwitch() {
   const theme = useSyncExternalStore(subscribeAppearance, getAppearanceSnapshot, getServerAppearanceSnapshot);
   return (
-    <div className="sidebar-theme" role="group" aria-label="テーマ">
+    <fieldset className="plain-group sidebar-theme" aria-label="テーマ">
       {THEME_OPTIONS.map((option) => (
         <button
           key={option.value}
@@ -107,7 +107,7 @@ function ThemeSwitch() {
           {option.icon}
         </button>
       ))}
-    </div>
+    </fieldset>
   );
 }
 

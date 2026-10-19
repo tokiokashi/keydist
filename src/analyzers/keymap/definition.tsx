@@ -225,7 +225,7 @@ function KeyPatternSection({
           </button>
         </div>
         {triggers.legend.length > 0 ? (
-          <div className="keymap-trigger-legend" aria-label="トリガーになるキーの枠" data-keymap-trigger-legend>
+          <fieldset className="plain-group keymap-trigger-legend" aria-label="トリガーになるキーの枠" data-keymap-trigger-legend>
             {triggers.legend.map((item) => (
               <span
                 key={item.id}
@@ -237,7 +237,7 @@ function KeyPatternSection({
                 {item.label}
               </span>
             ))}
-          </div>
+          </fieldset>
         ) : null}
         <PhysicalKeyboard
           ariaLabel="出る文字を調べるキーの選択"

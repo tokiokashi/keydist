@@ -895,11 +895,11 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
                 renderDockedActions={() => <small>クリックで小窓表示</small>}
               >
                 {combinationLabels.length > 0 ? (
-                  <div className="input-semantic-groups" aria-label="同時押しの組み合わせ">
+                  <fieldset className="plain-group input-semantic-groups" aria-label="同時押しの組み合わせ">
                     {combinationLabels.map((label) => (
                       <span key={label}>{label}</span>
                     ))}
-                  </div>
+                  </fieldset>
                 ) : null}
                 <div
                   className="input-layer-guide-grid"
@@ -971,6 +971,7 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
             ) : null}
           </aside>
 
+          {/* biome-ignore lint/a11y/useSemanticElements: 焦点を受けて矢印キーで動かす分割バーなので、操作できない hr には替えられない */}
           <div
             aria-label="カンペと入力領域の幅を調整"
             aria-orientation="vertical"
@@ -1099,7 +1100,7 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
               )}
             >
               <div className="input-keyboard-toolbar">
-                <div className="input-display-options" aria-label="表示設定">
+                <fieldset className="plain-group input-display-options" aria-label="表示設定">
                   <label>
                     <input type="checkbox" checked={showDynamicGuide} onChange={(event) => setShowDynamicGuide(event.target.checked)} />
                     動的ガイド
@@ -1133,12 +1134,12 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
                       Shiftキー
                     </label>
                   ) : null}
-                </div>
+                </fieldset>
                 <p className="input-active-layer" data-active={activeDefinitions.length > 0 || undefined}>
                   <span>現在</span>
                   <strong>{activeDefinitions.length > 0 ? activeDefinitions.map((definition) => definition.label).join(' / ') : '通常'}</strong>
                 </p>
-                <div className="input-key-status" aria-label="キーの状態">
+                <fieldset className="plain-group input-key-status" aria-label="キーの状態">
                   <section>
                     <h2>Pressed</h2>
                     <p>
@@ -1151,11 +1152,11 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
                     <h2>Recognized</h2>
                     <RecognizedDetail layout={layout} naming={layerKeyNaming} recognized={session.lastRecognized} standard={keyboardStandard} />
                   </section>
-                </div>
+                </fieldset>
               </div>
               {bindingTargetKey !== undefined ? (
                 <div className="input-keyboard-heading">
-                  <div className="input-key-binding-inline" aria-label="物理キー割当">
+                  <fieldset className="plain-group input-key-binding-inline" aria-label="物理キー割当">
                     <strong>{keyLabel(bindingTargetKey)}</strong>
                     <span aria-hidden="true">←</span>
                     <div className="input-key-binding-codes">
@@ -1204,7 +1205,7 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
                     >
                       閉じる
                     </button>
-                  </div>
+                  </fieldset>
                 </div>
               ) : null}
               <div className="input-keyboard-content">
@@ -1299,7 +1300,7 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
                           </span>
                         ) : (
                           <>
-                            <div className="input-lookup-guide" aria-label="入力順ガイド">
+                            <fieldset className="plain-group input-lookup-guide" aria-label="入力順ガイド">
                               <span className="input-lookup-nav">
                                 <button
                                   aria-label="前の入力単位"
@@ -1325,7 +1326,7 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
                               </span>
                               <strong>{activeLookupAction.output}</strong>
                               <code>{reverseLookupGuideActionLabel(layout, activeLookupAction, keyboardStandard, layerKeyNaming)}</code>
-                            </div>
+                            </fieldset>
                             <ol>
                               <li data-active>
                                 <code>{reverseLookupRouteLabel(layout, activeLookupRoute, keyboardStandard, layerKeyNaming)}</code>

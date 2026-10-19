@@ -149,6 +149,7 @@ export function PaneMenu({
   };
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: 内側のどこで押されたEscapeも受けて閉じるため、キー入力を受けるだけの外側の要素に付ける。この要素自体は操作の対象ではない
     <div
       ref={rootRef}
       className={className === undefined ? 'pane-menu' : `pane-menu ${className}`}
@@ -199,6 +200,7 @@ export function PaneMenu({
             </div>
           )}
           {items.map((item) => (
+            // biome-ignore lint/a11y/useAriaPropsSupportedByRole: 役割は項目ごとに変わり、aria-checked を持つのはチェックとラジオの項目だけ
             <button
               type="button"
               role={item.checked !== undefined ? 'menuitemcheckbox' : item.selected === undefined ? 'menuitem' : 'menuitemradio'}

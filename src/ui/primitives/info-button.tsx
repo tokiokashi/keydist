@@ -97,6 +97,7 @@ function InfoModal({
     // 片付けでcloseを呼ばない（開発時の二重実行で、開いた直後に閉じてしまう。閉じる時は親が描画をやめ、要素ごと外れる）。
   }, []);
   return (
+    // biome-ignore lint/a11y/useKeyWithClickEvents: 背後を押して閉じるのはマウス向けの補助で、キーボードではEscapeでダイアログが閉じる
     <dialog
       ref={dialogRef}
       className="info-modal"
@@ -116,8 +117,8 @@ function InfoModal({
             </svg>
           </button>
         </header>
-        {/* 本文だけがスクロールする。キーボードだけでも後半を読めるよう、フォーカスを受けられるようにする */}
-        <div className="info-modal-body" tabIndex={0} role="region" aria-labelledby={titleId}>
+        {/* biome-ignore lint/a11y/noNoninteractiveTabindex: 本文だけがスクロールするので、キーボードだけでも後半を読めるよう焦点を受けられるようにする */}
+        <section className="info-modal-body" tabIndex={0} aria-labelledby={titleId}>
           <p>{description}</p>
           {help.notes.map((note) => (
             <p key={note}>{note}</p>
@@ -131,7 +132,7 @@ function InfoModal({
               </div>
             ))}
           </dl>
-        </div>
+        </section>
       </div>
     </dialog>
   );
