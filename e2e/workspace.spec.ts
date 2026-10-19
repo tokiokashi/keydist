@@ -257,7 +257,7 @@ test('新しく足したペインは同じAnalyzerの共有の設定に従い、
 
   await left.getByRole('button', { name: '解析設定', exact: true }).click();
   const settings = page.locator('[data-settings-window="true"]');
-  await expect(settings.getByRole('radio', { name: '共有に従う' })).toHaveAttribute('aria-checked', 'true');
+  await expect(settings.getByRole('button', { name: '共有に従う' })).toHaveAttribute('aria-pressed', 'true');
   await settings.getByRole('button', { name: 'Within-hand' }).click();
   await expect(settings.getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'true');
   await settings.getByRole('button', { name: '解析設定を閉じる' }).click();

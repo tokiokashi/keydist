@@ -142,28 +142,24 @@ function StatusBadge({
 function OptionsBindingSwitch({ control }: { readonly control: PaneOptionsBindingControl }) {
   return (
     <div className="settings-window-binding" data-options-binding={control.shared ? 'shared' : 'own'}>
-      <div className="settings-window-binding-choices" role="radiogroup" aria-label="設定の持ち方">
-        {/* biome-ignore lint/a11y/useSemanticElements: ボタンの見た目の選択肢のまま、ラジオの役割を伝える。input type="radio" に替えるとTabで1つずつ動く操作が矢印キーに変わる */}
+      <fieldset className="plain-group settings-window-binding-choices" aria-label="設定の持ち方">
         <button
           type="button"
-          role="radio"
-          aria-checked={control.shared}
+          aria-pressed={control.shared}
           className="settings-window-binding-choice"
           onClick={() => control.onChange(true)}
         >
           共有に従う
         </button>
-        {/* biome-ignore lint/a11y/useSemanticElements: 上の選択肢と同じ理由 */}
         <button
           type="button"
-          role="radio"
-          aria-checked={!control.shared}
+          aria-pressed={!control.shared}
           className="settings-window-binding-choice"
           onClick={() => control.onChange(false)}
         >
           このペインだけ
         </button>
-      </div>
+      </fieldset>
       <p className="settings-window-binding-note">
         {control.shared ? '同じAnalyzerの共有に従うペインと、設定が一緒に変わります' : 'このペインの設定は、他のペインに合わせて変わりません'}
       </p>

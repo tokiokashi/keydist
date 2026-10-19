@@ -117,9 +117,9 @@ test('「このペインだけ」にしたペインは、他のペインの変�
 
   // このペインだけにすると、押した瞬間の見た目は変わらない
   let settings = await openSettings(page, 'b');
-  await expect(settings.getByRole('radio', { name: '共有に従う' })).toHaveAttribute('aria-checked', 'true');
-  await settings.getByRole('radio', { name: 'このペインだけ' }).click();
-  await expect(settings.getByRole('radio', { name: 'このペインだけ' })).toHaveAttribute('aria-checked', 'true');
+  await expect(settings.getByRole('button', { name: '共有に従う' })).toHaveAttribute('aria-pressed', 'true');
+  await settings.getByRole('button', { name: 'このペインだけ' }).click();
+  await expect(settings.getByRole('button', { name: 'このペインだけ' })).toHaveAttribute('aria-pressed', 'true');
   await expect(settings.getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'true');
   await expect(settings.getByRole('button', { name: 'Actual' })).toHaveAttribute('aria-pressed', 'false');
   // 小窓の中でこのペインだけの設定を変えても、共有に従うaは変わらない
@@ -136,7 +136,7 @@ test('「このペインだけ」にしたペインは、他のペインの変�
 
   // 共有に戻すと、共有の設定を読む
   settings = await openSettings(page, 'b');
-  await settings.getByRole('radio', { name: '共有に従う' }).click();
+  await settings.getByRole('button', { name: '共有に従う' }).click();
   await closeSettings(page);
   await expectWithinHand(page, { a: false, b: false, c: false });
 });
