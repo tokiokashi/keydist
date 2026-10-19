@@ -416,8 +416,8 @@ export function FingerAssignmentEditor({
               />
               {problems.length === 0 ? null : (
                 <ul className="finger-assignment-problems" data-finger-assignment-problems>
-                  {problems.map((problem, index) => (
-                    <li key={index}>
+                  {problems.map((problem) => (
+                    <li key={problem.kind === 'unassigned' ? 'unassigned' : `${problem.kind}:${problem.finger}`}>
                       <span>{problemText(problem, standard)}</span>
                       {problem.kind === 'home-other-finger' && editable ? (
                         <button
@@ -564,7 +564,7 @@ export function FingerAssignmentEditor({
                       <select aria-label="列を選ぶ" value={column} onChange={(event) => setColumn(Number(event.currentTarget.value))}>
                         {columns.map((ids, index) => (
                           <option
-                            key={index}
+                            key={ids.join(',')}
                             value={index}
                           >{`${index + 1}列目（${ids.map((id) => physicalKeyDisplayLabel(id, standard)).join(' ')}）`}</option>
                         ))}
