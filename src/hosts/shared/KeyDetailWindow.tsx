@@ -60,13 +60,11 @@ function CountTable({
           <tr key={row.key}>
             {row.cells.map((cell, index) =>
               index === 0 ? (
-                // biome-ignore lint/suspicious/noArrayIndexKey: 列の位置が識別で、見出しと同じ並びの固定の列
-                <th key={index} scope="row">
+                <th key={head[index]} scope="row">
                   {cell}
                 </th>
               ) : (
-                // biome-ignore lint/suspicious/noArrayIndexKey: 列の位置が識別で、見出しと同じ並びの固定の列
-                <td key={index} data-numeric>
+                <td key={head[index]} data-numeric>
                   {cell}
                 </td>
               ),
