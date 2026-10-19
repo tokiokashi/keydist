@@ -15,5 +15,5 @@
     "skipLibCheck": true,
     "jsx": "react-jsx"
   },
-  "include": ["src", "test", "scripts", "vite.config.ts"]
+  "include": ["src", "test", "scripts", "e2e", "playwright.config.ts", "vite.config.ts"]
 }
