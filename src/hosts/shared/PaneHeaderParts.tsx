@@ -200,7 +200,7 @@ export function PaneMenu({
             </div>
           )}
           {items.map((item) => (
-            // biome-ignore lint/a11y/useAriaPropsSupportedByRole: 役割は項目ごとに変わり、aria-checked を持つのはチェックとラジオの項目だけ
+            // biome-ignore lint/a11y/useAriaPropsSupportedByRole: 役割は項目ごとに変わり、aria-checkedを持つのはチェックとラジオの項目だけ
             <button
               type="button"
               role={item.checked !== undefined ? 'menuitemcheckbox' : item.selected === undefined ? 'menuitem' : 'menuitemradio'}

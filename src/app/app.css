@@ -14,7 +14,7 @@
   box-sizing: border-box;
 }
 
-/* ラベル付きのボタン群などに使う fieldset。既定の枠・余白・最小幅を外して div と同じ見た目にする */
+/* ラベル付きのボタン群などに使うfieldset。既定の枠・余白・最小幅を外してdivと同じ見た目にする */
 fieldset.plain-group {
   min-width: 0;
   margin: 0;

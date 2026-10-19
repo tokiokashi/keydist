@@ -971,7 +971,7 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
             ) : null}
           </aside>
 
-          {/* biome-ignore lint/a11y/useSemanticElements: 焦点を受けて矢印キーで動かす分割バーなので、操作できない hr には替えられない */}
+          {/* biome-ignore lint/a11y/useSemanticElements: 焦点を受けて矢印キーで動かす分割バーなので、操作できないhrには替えられない */}
           <div
             aria-label="カンペと入力領域の幅を調整"
             aria-orientation="vertical"
