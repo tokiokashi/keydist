@@ -403,6 +403,12 @@ PRを開く前に全件を見たい時は、draft PRを開くか、`e2e.yml` を
 - 手元のdev serverのポートはworktreeごとに決まる（configのあるリポジトリのルートの絶対パスから4200〜4999。どのディレクトリから回しても同じ）。並行する別worktreeでも、一時のconfigを作らずそのまま回せる。
   ポートが別のworktreeのserverと重なった時は、e2eの実行が最初に止まり、`KEYDIST_E2E_PORT` で変えるよう案内が出る。
   実行の冒頭に出る `e2e: http://127.0.0.1:<ポート>` が、当たるserverのポート。`KEYDIST_E2E_PORT=<番号>` で固定もできる。CIは4173の固定
+- `e2e/workspace-narrow-panes.spec.ts` は、見出しの幅を掃引して境目（402px・449px・486pxなど）を判定する。
+  境目の値は文字の幅で決まり、CIのrunnerの欧文フォント（DejaVu Sans。日本語はWenQuanYi Zen Hei）で測ってある。
+  手元にInterが入っていると、欧文の幅が変わって5件が落ちる（配信方式・workers数・`CI` の有無では変わらない）。
+  手元で回す時は、Interを除いた設定のfontconfigを `FONTCONFIG_FILE` で渡す。設定は、`/etc/fonts/fonts.conf` を読み込み、
+  `<selectfont><rejectfont><glob>` でInterのフォントのディレクトリ（`fc-list | grep -i inter` で分かる）を除く。
+  落ちた時は、まず `fc-list | grep -i inter` でInterの有無を確かめ、あれば除いて回し直してから、変更による退行かを判断する
 - 全件は、draft PRを開くか `e2e.yml` を `workflow_dispatch` で回して、CIの結果を読む。headのコミットのcheck runを見る
 
   ```bash
