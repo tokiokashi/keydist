@@ -193,11 +193,12 @@ async function headerReport(item: Locator): Promise<HeaderReport> {
 }
 
 /**
- * `root`の中で、`root`の外へ出ている要素のうち、間に切り抜き（overflowがvisibleでない祖先）が無いもの。
+ * `root`の中で、横の外（左右の端）へ出ている要素のうち、間に切り抜き（overflowXがvisibleでない祖先）が無いもの。
  * 切り抜きがあれば、見えない分は中でスクロール・切り捨てされる設計なので数えない（その入れ物自身は数える）。
+ * 縦は判定しない。本体（`.pane-body`）は縦に内容を持つ入れ物なので、縦の内容を数えると本体の中の正常な配置まで外と数える。
  */
 async function spillingOutOf(root: Locator): Promise<string[]> {
-  return root.evaluate((rootEl, scopeValue) => {
+  return root.evaluate((rootEl) => {
     const box = rootEl.getBoundingClientRect();
     const out: string[] = [];
     for (const el of rootEl.querySelectorAll('*')) {
@@ -207,13 +208,11 @@ async function spillingOutOf(root: Locator): Promise<string[]> {
       let clipped = false;
       for (let a = el.parentElement; a !== null && a !== rootEl; a = a.parentElement) {
         const style = getComputedStyle(a);
-        if (style.overflowX !== 'visible' && (scopeValue === 'x' || style.overflowY !== 'visible')) clipped = true;
+        if (style.overflowX !== 'visible') clipped = true;
         if (style.position === 'absolute' && a.className.toString().includes('measure')) clipped = true;
       }
       if (clipped) continue;
-      const spillX = r.left < box.left - 1 || r.right > box.right + 1;
-      const spillY = scopeValue === 'both' && (r.top < box.top - 1 || r.bottom > box.bottom + 1);
-      if (spillX || spillY)
+      if (r.left < box.left - 1 || r.right > box.right + 1)
         out.push(
           `${el.tagName.toLowerCase()}.${(el.getAttribute('class') ?? '').split(' ')[0]} ${Math.round(r.left - box.left)}..${Math.round(r.right - box.left)} / ${Math.round(box.width)}`,
         );
