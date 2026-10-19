@@ -99,8 +99,8 @@ test('Setupのレベルの条件を変えた操作は、別のSetupの変更に�
   state = run(state, OTHER_SCREEN, setCascadeOverrideCommand({ kind: 'setup', setupId: 'b' }, 'windowSize', 9));
   const undone = step(state, SETUP_SCREEN, 'undo');
   assert.equal(undone.outcome.kind, 'applied');
-  assert.equal(undone.state.assets.setupLibrary.overrides.setup?.['a'], undefined);
-  assert.equal(undone.state.assets.setupLibrary.overrides.setup?.['b']?.windowSize, 9);
+  assert.equal(undone.state.assets.setupLibrary.overrides.setup?.a, undefined);
+  assert.equal(undone.state.assets.setupLibrary.overrides.setup?.b?.windowSize, 9);
 });
 
 test('複製の取り消しは、複製した分のSetupとそのSetupのレベルの条件だけを除く', () => {
@@ -112,12 +112,12 @@ test('複製の取り消しは、複製した分のSetupとそのSetupのレベ�
     duplicateSetupCommand('a', () => 'copy'),
   );
   state = run(state, OTHER_SCREEN, global(4));
-  assert.equal(state.assets.setupLibrary.overrides.setup?.['copy']?.windowSize, 7);
+  assert.equal(state.assets.setupLibrary.overrides.setup?.copy?.windowSize, 7);
   const undone = step(state, SETUP_SCREEN, 'undo');
   assert.equal(undone.outcome.kind, 'applied');
   assert.deepEqual(ids(undone.state), ['a']);
-  assert.equal(undone.state.assets.setupLibrary.overrides.setup?.['copy'], undefined);
-  assert.equal(undone.state.assets.setupLibrary.overrides.setup?.['a']?.windowSize, 7);
+  assert.equal(undone.state.assets.setupLibrary.overrides.setup?.copy, undefined);
+  assert.equal(undone.state.assets.setupLibrary.overrides.setup?.a?.windowSize, 7);
   assert.equal(undone.state.assets.setupLibrary.overrides.global?.windowSize, 4);
 });
 

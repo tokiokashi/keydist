@@ -5,7 +5,7 @@ import { nextColumnSort, sortOrderByColumn } from './column-sort.ts';
 type Column = 'a' | 'b';
 
 const values: Readonly<Record<string, number>> = { x: 30, y: 10, z: 20, w: 10, n: Number.NaN };
-const valueOf = (key: string): number | undefined => values[key];
+const numberOf = (key: string): number | undefined => values[key];
 // 末尾の2件は値を持たない行（計算中・失敗）
 const order = ['x', 'y', 'z', 'w', 'u', 'v'];
 
@@ -19,22 +19,22 @@ test('nextColumnSort: 昇順 → 降順 → 解除、別の列は昇順から', 
 });
 
 test('sortOrderByColumn: 並び替えなしは元の順のまま', () => {
-  assert.equal(sortOrderByColumn<Column>(order, valueOf, null), order);
+  assert.equal(sortOrderByColumn<Column>(order, numberOf, null), order);
 });
 
 test('sortOrderByColumn: 同じ値は元の順を保ち、値の無い行は向きによらず末尾', () => {
-  assert.deepEqual(sortOrderByColumn<Column>(order, valueOf, { column: 'a', direction: 'asc' }), ['y', 'w', 'z', 'x', 'u', 'v']);
-  assert.deepEqual(sortOrderByColumn<Column>(order, valueOf, { column: 'a', direction: 'desc' }), ['x', 'z', 'y', 'w', 'u', 'v']);
+  assert.deepEqual(sortOrderByColumn<Column>(order, numberOf, { column: 'a', direction: 'asc' }), ['y', 'w', 'z', 'x', 'u', 'v']);
+  assert.deepEqual(sortOrderByColumn<Column>(order, numberOf, { column: 'a', direction: 'desc' }), ['x', 'z', 'y', 'w', 'u', 'v']);
 });
 
 test('sortOrderByColumn: 入力の順を書き換えない', () => {
   const copy = [...order];
-  sortOrderByColumn<Column>(order, valueOf, { column: 'a', direction: 'asc' });
+  sortOrderByColumn<Column>(order, numberOf, { column: 'a', direction: 'asc' });
   assert.deepEqual(order, copy);
 });
 
 test('sortOrderByColumn: 値が有限でない行は値の無い行と同じく末尾', () => {
-  assert.deepEqual(sortOrderByColumn<Column>(['x', 'n', 'y'], valueOf, { column: 'a', direction: 'asc' }), ['y', 'x', 'n']);
+  assert.deepEqual(sortOrderByColumn<Column>(['x', 'n', 'y'], numberOf, { column: 'a', direction: 'asc' }), ['y', 'x', 'n']);
 });
 
 test('sortOrderByColumn: 値は列ごとに引く', () => {

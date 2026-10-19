@@ -130,8 +130,7 @@ test('syncAnalyzerSetPaneChannels: 一部メンバーが解決に失敗しても
   };
   const states: ExtractionRequestState<ComparisonExtracted>[] = [];
 
-  let channels: AnalyzerSetPaneChannels<ComparisonOptions> | undefined;
-  channels = syncAnalyzerSetPaneChannels(channels, {
+  const channels: AnalyzerSetPaneChannels<ComparisonOptions> = syncAnalyzerSetPaneChannels(undefined, {
     cache,
     definition: comparisonDefinition,
     options: DEFAULT_COMPARISON_OPTIONS,

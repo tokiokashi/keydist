@@ -206,7 +206,7 @@ test('拡大して戻しても、計算の依頼は出し直されず、計算�
     l.stale = 0;
     // 部品が作り直されていないことの印。作り直されると、新しい要素には印が無い（計算済みの結果は使い回されて
     // 依頼の数には出ないので、依頼の数だけでは作り直しを見逃す）
-    document.querySelectorAll('.pane-frame').forEach((el) => el.setAttribute('data-mounted-mark', '1'));
+    for (const el of document.querySelectorAll('.pane-frame')) el.setAttribute('data-mounted-mark', '1');
   });
 
   await maximize(page, 'b');

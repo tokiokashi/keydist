@@ -143,7 +143,7 @@ test('条件のモーダル: 配列の値を「全体へ移す」と、編集先
         : (JSON.parse(raw) as { overrides: { global?: { windowSize?: number }; layout?: Record<string, unknown> } }).overrides;
     });
   await expect.poll(async () => (await overrides())?.global?.windowSize).toEqual(4);
-  expect((await overrides())?.layout?.['qwerty']).toBeUndefined();
+  expect((await overrides())?.layout?.qwerty).toBeUndefined();
 });
 
 test('条件のモーダル: 動作数の扱いは2動作にした時だけ例外を出し、閉じた1行に「例外あり」と出る', async ({ page }) => {

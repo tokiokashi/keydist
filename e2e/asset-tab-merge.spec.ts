@@ -15,7 +15,6 @@ import { installTimerCapture, type RaceWindow } from './text-timer-capture-helpe
 
 const ITERATIONS = Number(process.env.ITER ?? 15);
 const TEXT_LIBRARY_KEY = 'keydist:text-library';
-const TEXT_SELECTION_KEY = 'keydist:standalone-text-selection';
 
 interface StoredText {
   readonly id: string;

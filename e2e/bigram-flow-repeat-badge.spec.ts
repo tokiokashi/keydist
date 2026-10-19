@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
 import { openFigureSettings } from './bigram-flow-figure-helper.ts';
 import { waitForHydration } from './hydration-helper.ts';
 

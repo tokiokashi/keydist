@@ -47,7 +47,9 @@ export function assignKeysToFinger(assignment: FingerAssignment, keyIds: readonl
   for (const owner of ALL_FINGERS) {
     for (const id of assignment.fingerKeys[owner]) {
       if (targets.has(id) || assignment.baseFinger[id] === owner) continue;
-      (extra[id] ??= []).push(owner);
+      const list = extra[id] ?? [];
+      extra[id] = list;
+      list.push(owner);
     }
   }
   return makeFingerAssignment(assignment.id, assignment.name, baseFinger, assignment.homeKey, extra);
@@ -81,7 +83,11 @@ function rebuildAssignment(
 function ownersOfAll(assignment: FingerAssignment): Record<string, Set<Finger>> {
   const owners: Record<string, Set<Finger>> = {};
   for (const finger of ALL_FINGERS) {
-    for (const id of assignment.fingerKeys[finger]) (owners[id] ??= new Set()).add(finger);
+    for (const id of assignment.fingerKeys[finger]) {
+      const set = owners[id] ?? new Set<Finger>();
+      owners[id] = set;
+      set.add(finger);
+    }
   }
   return owners;
 }
@@ -135,7 +141,9 @@ export function setBaseFinger(assignment: FingerAssignment, keyIdToSet: string, 
 export function addKeyToFinger(assignment: FingerAssignment, keyIdToSet: string, finger: Finger): FingerAssignment {
   if (assignment.fingerKeys[finger].includes(keyIdToSet)) return assignment;
   const owners = ownersOfAll(assignment);
-  (owners[keyIdToSet] ??= new Set()).add(finger);
+  const ownerSet = owners[keyIdToSet] ?? new Set<Finger>();
+  owners[keyIdToSet] = ownerSet;
+  ownerSet.add(finger);
   let baseFinger = assignment.baseFinger;
   if (baseFinger[keyIdToSet] === undefined) {
     if (isThumb(finger)) return assignment;

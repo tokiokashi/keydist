@@ -1012,5 +1012,5 @@ test('N=0は、同じかなの中だけ指を残す候補を持つ', () => {
 test('打鍵のindexは並びの位置と一致する', () => {
   const trace = generateTrace('asdf jkl; hello world, again', qwerty, geometry, opts());
   assert.ok(trace.strokes.length > 10);
-  trace.strokes.forEach((stroke, position) => assert.equal(stroke.index, position));
+  for (const [position, stroke] of trace.strokes.entries()) assert.equal(stroke.index, position);
 });

@@ -179,7 +179,7 @@ test('DvorakJと紅皿の面内容からローマ字・かなを判定する', (
 
 test('紅皿のローマ字面とUTF-16LEを読む', () => {
   const source = '[ローマ字シフト無し]\nｋ,ａ,Enter\nｓ,ｉ,ｕ\nｔ,ｅ,ｏ\nｎ,ｍ,ｙ';
-  const bytes = Buffer.from('\ufeff' + source, 'utf16le');
+  const bytes = Buffer.from(`\ufeff${source}`, 'utf16le');
   const decoded = decodeLayoutFile(bytes, 'benizara');
   const layout = importBenizara(decoded);
   assert.equal(layout.direct, false);

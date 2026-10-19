@@ -46,8 +46,14 @@ function RootDocument({ children }: { children: ReactNode }) {
   return (
     <html lang="ja" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
-        <script dangerouslySetInnerHTML={{ __html: SIDEBAR_BOOTSTRAP_SCRIPT }} />
+        <script
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: クライアントのバンドルより先にdocument rootへ配色を確定する固定の文字列で、利用者の入力を含まない
+          dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }}
+        />
+        <script
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: クライアントのバンドルより先にdocument rootへサイドバーの開閉を確定する固定の文字列で、利用者の入力を含まない
+          dangerouslySetInnerHTML={{ __html: SIDEBAR_BOOTSTRAP_SCRIPT }}
+        />
         <HeadContent />
       </head>
       <body>

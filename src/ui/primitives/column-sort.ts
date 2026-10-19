@@ -19,20 +19,20 @@ export function nextColumnSort<Column extends string>(current: ColumnSort<Column
 /**
  * 表の行の順を、列の値で並べ替える。`order`（行の元の順）は変えず、並べ直した新しい配列を返す。
  *
- * - 並べるのは表に出ている値そのもの（`valueOf`が返す値）
+ * - 並べるのは表に出ている値そのもの（`numberOf`が返す値）
  * - 同じ値の行は`order`の順を保つ（安定ソート）
- * - 値を持たない行（`valueOf`が`undefined`か有限でない値を返す行。計算中・失敗・割り算の分母が0の行など）は、
+ * - 値を持たない行（`numberOf`が`undefined`か有限でない値を返す行。計算中・失敗・割り算の分母が0の行など）は、
  *   向きによらず末尾に`order`の順で置く（並びの比較に加えない。「0」のような値を当てはめない）
  */
 export function sortOrderByColumn<Column extends string>(
   order: readonly string[],
-  valueOf: (targetKey: string, column: Column) => number | undefined,
+  numberOf: (targetKey: string, column: Column) => number | undefined,
   sort: ColumnSort<Column>,
 ): readonly string[] {
   if (sort === null) return order;
   const sign = sort.direction === 'asc' ? 1 : -1;
   const indexed = order.map((key, index) => {
-    const value = valueOf(key, sort.column);
+    const value = numberOf(key, sort.column);
     return { key, index, value: value !== undefined && Number.isFinite(value) ? value : undefined };
   });
   const withValue = indexed.filter((item) => item.value !== undefined);

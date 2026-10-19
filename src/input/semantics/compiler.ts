@@ -589,7 +589,7 @@ export function validateCanonicalInputMap(inputs: CanonicalInputMap): void {
       if (left.output === right.output) continue;
       if (!activationPathsCanConflict(left.alternative, right.alternative)) continue;
 
-      throw new Error(`異なるlogical outputに同時成立し得るcanonical activation pathがある: ` + `${left.output} / ${right.output}`);
+      throw new Error(`異なるlogical outputに同時成立し得るcanonical activation pathがある: ${left.output} / ${right.output}`);
     }
   }
 }

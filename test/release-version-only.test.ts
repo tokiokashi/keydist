@@ -24,7 +24,7 @@ function verdict(edit: () => void, version: () => string): { ok: boolean; out: s
 const editJson = (file: string, f: (j: any) => void) => {
   const j = JSON.parse(readFileSync(join(dir, file), 'utf8'));
   f(j);
-  writeFileSync(join(dir, file), JSON.stringify(j, null, 2) + '\n');
+  writeFileSync(join(dir, file), `${JSON.stringify(j, null, 2)}\n`);
 };
 
 // package.jsonとpackage-lock.jsonのversion（ルートとpackages[""]）を揃えて書き換える

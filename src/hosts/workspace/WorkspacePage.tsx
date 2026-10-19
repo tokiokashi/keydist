@@ -484,27 +484,23 @@ export function WorkspacePage({
                     ))}
                   </div>
                 </div>
+              ) : stacked ? (
+                <WorkspaceStack paneIds={paneIds} titleOf={titleOf} descriptionOf={descriptionOf} helpOf={helpOf} renderPane={renderPane} />
               ) : (
-                <>
-                  {stacked ? (
-                    <WorkspaceStack paneIds={paneIds} titleOf={titleOf} descriptionOf={descriptionOf} helpOf={helpOf} renderPane={renderPane} />
-                  ) : (
-                    <div className="workspace-stage">
-                      <WorkspaceGrid
-                        grid={workspace.grid}
-                        analyzerIdOf={analyzerIdOf}
-                        titleOf={titleOf}
-                        descriptionOf={descriptionOf}
-                        helpOf={helpOf}
-                        renderPane={renderPane}
-                        compact={workspace.compactPanes === true}
-                        visibleRangeRef={visibleRangeRef}
-                        maximizedId={maximizedId !== undefined && panesById.has(maximizedId) ? maximizedId : undefined}
-                        onGridChange={(grid) => dispatch(setWorkspaceGridCommand(workspaceId, grid))}
-                      />
-                    </div>
-                  )}
-                </>
+                <div className="workspace-stage">
+                  <WorkspaceGrid
+                    grid={workspace.grid}
+                    analyzerIdOf={analyzerIdOf}
+                    titleOf={titleOf}
+                    descriptionOf={descriptionOf}
+                    helpOf={helpOf}
+                    renderPane={renderPane}
+                    compact={workspace.compactPanes === true}
+                    visibleRangeRef={visibleRangeRef}
+                    maximizedId={maximizedId !== undefined && panesById.has(maximizedId) ? maximizedId : undefined}
+                    onGridChange={(grid) => dispatch(setWorkspaceGridCommand(workspaceId, grid))}
+                  />
+                </div>
               )}
             </fieldset>
           </div>

@@ -14,7 +14,6 @@ const CHART_FLOOR = 8.5 * REM;
 const QWERTY = { kind: 'layout', layoutId: 'qwerty' };
 const set = { kind: 'set', selection: { targets: [QWERTY, { kind: 'layout', layoutId: 'dvorak' }], colorSlots: [0, 1] } };
 const nsens = { id: 'n', analyzerId: 'n-sensitivity', binding: { mode: 'fixed', target: set } };
-const flow = { id: 'f', analyzerId: 'bigram-flow', binding: { mode: 'fixed', target: { kind: 'single', target: QWERTY } } };
 const cell = (id: string, x: number, y: number, w: number, h: number) => ({ id, x, y, w, h });
 
 async function openWorkspace(page: Page, panes: readonly unknown[], grid: unknown, size: { width: number; height: number }, seriesCount = 2) {

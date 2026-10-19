@@ -67,6 +67,6 @@ test('Setupのレベル: 継承する値を知れないので、既定と同じ�
     onlyGlobal: defineItem<boolean>({ id: 'onlyGlobal', allowedLevels: new Set(['global']), defaultValue: false }),
   };
   const result = applyPresetValues(registry, { global: { windowSize: 7 } }, { kind: 'setup', setupId: 's' }, { windowSize: 3, onlyGlobal: true });
-  assert.deepEqual(result.overrides.setup?.['s'], { windowSize: 3 });
+  assert.deepEqual(result.overrides.setup?.s, { windowSize: 3 });
   assert.deepEqual(result.skipped, ['onlyGlobal']);
 });

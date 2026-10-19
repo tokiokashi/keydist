@@ -22,7 +22,7 @@ function resolvePort(): number {
     // 0x1100 や 1e3 のような書き方は受け付けず、十進数だけにする
     const port = /^\d+$/.test(fromEnv.trim()) ? Number(fromEnv) : Number.NaN;
     if (!Number.isInteger(port) || port < 1 || port > 65535) {
-      throw new Error('不正なポート指定です: KEYDIST_E2E_PORT=' + fromEnv);
+      throw new Error(`不正なポート指定です: KEYDIST_E2E_PORT=${fromEnv}`);
     }
     return port;
   }

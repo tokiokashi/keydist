@@ -22,7 +22,7 @@ test('往復で値が変わらず、版1の文書になる', () => {
 test('符号化は入力の規則と上書きを共有しない', () => {
   const rules = [rule('rule-a')];
   const encoded = USER_ROMAJI_RULES_CODEC.encode(rules) as { rules: UserRomajiRule[] };
-  encoded.rules[0].overrides['ち'] = 'ti';
+  encoded.rules[0].overrides.ち = 'ti';
   assert.deepEqual(rules[0].overrides, { し: 'si' });
 });
 
