@@ -286,8 +286,8 @@ PRの目的と関係の無い変更が増えてレビューしにくくなるな
 
 ### patchの当たらない更新
 
-`patches/` のpatchは、`package.json` に無い推移的依存（今は `@tanstack/start-plugin-core`）に当たっている。この依存は設定の対象に直接入れず、
-直接依存（`@tanstack/react-start`）の更新に任せる。`postinstall` の `patch-package --error-on-fail` の挙動は次の通り。
+`patches/` のpatchは、上流の不具合を回避するために、`package.json` に無い推移的依存に当てる（今はpatchが無い）。当てる依存は設定の対象に直接入れず、
+直接依存の更新に任せる。`postinstall` の `patch-package --error-on-fail` の挙動は次の通り。
 
 - patchのファイル名の版と入った版が違っても、patchが当たれば警告だけで通る
 - patchが当たらなければinstallが失敗する。更新PRのCIが落ちて気づく
