@@ -8,6 +8,7 @@ import {
   DEFAULT_SMALL_PANE_COLS,
   FALLBACK_GRID_SIZE,
   GRID_MAX_COLS,
+  displayedPaneIds,
   gridPaneIds,
   gridWithPane,
   gridWithPaneNextTo,
@@ -238,12 +239,28 @@ test('詰める設定で空きのある保存値: 編集の結果は、見えて
   const shown = displayedGrid(stored, true);
   const same = (a: WorkspaceGrid, b: WorkspaceGrid) => assert.ok(sameGrid(a, b), JSON.stringify([a, b]));
   same(gridWithMovedPane(stored, 'B', -1, 0, true), gridWithMovedPane(shown, 'B', -1, 0, true));
-  same(gridWithResizedPane(stored, 'A', 2, 0, { w: 1, h: 1 }, true), gridWithResizedPane(shown, 'A', 2, 0, { w: 1, h: 1 }, true));
   same(gridWithPaneNextTo(stored, 'A', 'N', true), gridWithPaneNextTo(shown, 'A', 'N', true));
   same(gridWithPane(stored, 'N', { w: 6, h: 4 }, true), gridWithPane(shown, 'N', { w: 6, h: 4 }, true));
   same(gridWithoutPane(stored, 'A', true), gridWithoutPane(shown, 'A', true));
   // 読み順も見えている並びで決まる（保存値の読み順はA,C,B）
-  assert.deepEqual(gridPaneIds(displayedGrid(stored, true)), ['A', 'B', 'C']);
+  assert.deepEqual(displayedPaneIds(stored, true), ['A', 'B', 'C']);
+  assert.deepEqual(displayedPaneIds(stored, false), ['A', 'C', 'B']);
   // 詰めない設定は保存値そのまま
   assert.equal(displayedGrid(stored, false), stored);
+});
+
+test('詰める設定で空きのある保存値: 大きさの変更は、見えている並びから計算した結果と一致する', () => {
+  const stored: WorkspaceGrid = [item('A', 4, 4, 4, 1), item('B', 8, 0, 4, 1), item('C', 8, 4, 4, 1), item('D', 8, 1, 6, 1)];
+  const min = { w: 1, h: 1 };
+  const result = gridWithResizedPane(stored, 'A', 1, 0, min, true);
+  assert.ok(sameGrid(result, gridWithResizedPane(displayedGrid(stored, true), 'A', 1, 0, min, true)));
+  assert.deepEqual(
+    result.map((i) => [i.id, i.x, i.y, i.w]),
+    [
+      ['A', 4, 0, 5],
+      ['B', 8, 1, 4],
+      ['C', 8, 3, 4],
+      ['D', 8, 2, 6],
+    ],
+  );
 });

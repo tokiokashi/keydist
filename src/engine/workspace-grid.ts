@@ -16,7 +16,7 @@
  * - 枠どうしは重ならない
  * - 上に空きが無いとは限らない。「空いた所に詰める」設定（`compact`）がオンでも、保存値には空きが残りうる
  *   （詰めない設定の間に作った空きは、設定をオンにしても保存値を書き換えないため）。
- *   詰めるのは、設定がオンの時の表示（`compactGrid`で詰めて描く）と、ペインを足す・閉じる・動かす・大きさを変える編集の結果だけ。
+ *   詰めるのは、設定がオンの時の表示（`compactGrid`で詰めて描く）と、ペインを足す・複製する・閉じる・動かす・大きさを変える編集の結果だけ。
  *   編集の結果は詰めて保存する。詰めない設定（既定）では、縮めた・閉じた所は空いたまま残し、衝突した時に下へ押すだけにする
  */
 
@@ -288,18 +288,24 @@ export function gridWithPaneNextTo(
 /**
  * ペインを取り除いた枠。他のペインの大きさは変わらない。詰める設定なら下のペインが上へ詰まり、
  * 詰めない設定なら閉じた所は空いたまま残る。
+ * 取り除いた後に詰めるので、保存値から求めても、見えている並び（`displayedGrid`）から求めても同じ結果になる。
  */
 export function gridWithoutPane(stored: WorkspaceGrid, paneId: string, compact: boolean): WorkspaceGrid {
   if (!stored.some((item) => item.id === paneId)) return stored;
   return compactIf(
     compact,
-    displayedGrid(stored, compact).filter((item) => item.id !== paneId),
+    stored.filter((item) => item.id !== paneId),
   );
 }
 
-/** ペインのidを画面の読み順（上→下・左→右）で返す。縦積みの並びにも使う。詰める設定の時は、`displayedGrid`で詰めた並びを渡す。 */
+/** ペインのidを並びの読み順（上→下・左→右）で返す。 */
 export function gridPaneIds(grid: WorkspaceGrid): readonly string[] {
   return inReadingOrder(grid).map((item) => item.id);
+}
+
+/** ペインのidを、画面に見えている並び（`displayedGrid`）の読み順（上→下・左→右）で返す。縦積みの並び・Tab順にも使う。 */
+export function displayedPaneIds(grid: WorkspaceGrid, compact: boolean): readonly string[] {
+  return gridPaneIds(displayedGrid(grid, compact));
 }
 
 /** 枠の同一性（位置と大きさ。配列の順は見ない）。 */
