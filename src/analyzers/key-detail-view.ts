@@ -161,7 +161,7 @@ const keySignature = (keys: readonly string[]): string => [...keys].sort().join(
 
 /**
  * 選んだ物理キーを含む入力パターンを、面ごとに分けて返す。
- * 面の並びは配列の定義でそのキーが最初に現れる順、面の中は打鍵数の少ない順（同じなら出力の順）。
+ * 面の並びは配列の面の定義の順（定義に無い面は、そのキーが最初に現れる順で後ろに置く）、面の中は打鍵数の少ない順（同じなら出力の順）。
  * 入力パターンとトリガーは配列の定義から出し、Traceの集計には依らない。コンボの面にはトリガーを付けない。
  */
 export function keyPatternGroups(
@@ -177,7 +177,11 @@ export function keyPatternGroups(
     else byFace.set(match.aggregationGroupId, [match]);
   }
   const names = (keys: readonly string[]) => keys.map((key) => physicalKeyDisplayLabel(key, standard));
-  return [...byFace].map(([faceId, matches]): PatternGroup => {
+  // 同じ出力を複数の面が持つ配列では、出力の並びが面の並びと一致しない。面の定義の順で並べる
+  const definitionOrder = new Map((layout.layerDefinitions ?? []).map((definition, index) => [definition.id, index] as const));
+  const orderOf = (faceId: string) => definitionOrder.get(faceId) ?? Number.POSITIVE_INFINITY;
+  const faceOrder = [...byFace].sort(([a], [b]) => orderOf(a) - orderOf(b));
+  return faceOrder.map(([faceId, matches]): PatternGroup => {
     // コンボは押したキーの組そのものが入力で、切り替えるトリガーを持たない
     const isCombo = layout.layerDefinitions?.find((definition) => definition.id === faceId)?.kind === 'combo';
     const triggers = new Map<string, TriggerGuide>();

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry, resolveKeyId } from '../shapes/geometry.ts';
-import { generateTrace, type TracePolicy } from '#trace/generate.ts';
+import { generateTrace, normalizeEvaluationHeading, type TracePolicy } from '#trace/generate.ts';
 import { LAYOUT_BY_ID } from './index.ts';
 
 const geometry = buildGeometry('row-staggered');
@@ -41,11 +41,22 @@ test('semantic migrationで物理Sequenceは変えない', () => {
     for (const [output, sequence] of layout.map) {
       const trace = generateTrace(output, layout, geometry, opts());
       assert.equal(trace.skipped, 0, `${id}: ${output}`);
+      // 全角形と半角の記号は同じ見出しになる（仕様 §4）ので、どちらの定義の打ち方も選ばれうる
+      const heading = normalizeEvaluationHeading(output);
+      const sameHeading = [...layout.map].filter(([other]) => other === output || normalizeEvaluationHeading(other) === heading);
+      const chosen = trace.strokes.map((stroke) => stroke.presses.flatMap((press) => press.keys.map((key) => key.id)).sort());
+      if (sameHeading.length > 1) {
+        const candidates = sameHeading.map(([, candidate]) => candidate.map((step) => step.map(resolveKeyId).sort()));
+        assert.ok(
+          candidates.some((candidate) => JSON.stringify(candidate) === JSON.stringify(chosen)),
+          `${id}: ${output}`,
+        );
+        continue;
+      }
       assert.equal(trace.strokes.length, sequence.length, `${id}: ${output}`);
       for (const [index, step] of sequence.entries()) {
         const expected = step.map(resolveKeyId).sort();
-        const actual = trace.strokes[index].presses.flatMap((press) => press.keys.map((key) => key.id)).sort();
-        assert.deepEqual(actual, expected, `${id}: ${output} step ${index}`);
+        assert.deepEqual(chosen[index], expected, `${id}: ${output} step ${index}`);
       }
     }
   }

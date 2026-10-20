@@ -291,7 +291,13 @@ test('logical output matching lengthはcanonicalInputsをauthorityにする', as
   assert.doesNotMatch(layoutTypesSource, /\bmaxCharLength\b/);
   assert.doesNotMatch(userLayoutsSource, /\bmaxCharLength\b/);
   assert.doesNotMatch(traceSource, /layout\.maxCharLength\b/, 'generateTrace must derive the longest-match bound from canonicalInputs');
-  assert.match(traceSource, /layout\.canonicalInputs\.keys\(\)/, 'canonicalInputs must be the authority for logical output match length');
+  assert.match(
+    traceSource,
+    /const canonicalInputs = evaluationCanonicalInputs\(layout\);/,
+    'canonicalInputs must be the authority for logical output match length',
+  );
+  assert.match(traceSource, /\[\.\.\.canonicalInputs\.keys\(\)\]/, 'canonicalInputs must be the authority for logical output match length');
+  assert.match(traceSource, /const source = layout\.canonicalInputs;/, 'the match table must be derived from layout.canonicalInputs');
 });
 
 test('generateTrace realized factはFace authoring metadataへ依存しない', async () => {

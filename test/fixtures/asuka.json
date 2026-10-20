@@ -5,7 +5,7 @@
     "url": "https://github.com/k-ayaki/benizara/blob/master/飛鳥123(拡張親指シフト).bnz",
     "sha": "cb8e9a6d7694c695e9978d9752c469956c26208b",
     "path": "飛鳥123(拡張親指シフト).bnz",
-    "transform": "紅皿のローマ字3面をかなへ正規化し、JIS 13/12/12/11列をANSI 12/12/11/10列へ投影する。機能キー・英数記号は除外し、出典に存在しない小書き「ゎ」は追加しない"
+    "transform": "紅皿のローマ字3面をかなへ正規化し、JIS 13/12/12/11列をANSI 12/12/11/10列へ投影する。機能キー・数字・IMEの変換表で出る記号が決まる記号（- ^）・単独の濁点と半濁点は除外し、1つの打鍵が1つの記号を出すセルは採る。出典に存在しない小書き「ゎ」は追加しない"
   },
   "faces": [
     {
@@ -27,17 +27,17 @@
           ""
         ],
         [
-          "",
+          "［",
           "ー",
           "",
           "び",
-          "",
+          "％",
           "",
           "",
           "と",
           "は",
           "ぽ",
-          "",
+          "］",
           ""
         ],
         [
@@ -74,17 +74,17 @@
       "mode": "simultaneous",
       "cells": [
         [
+          "｛",
+          "［",
+          "］",
+          "｝",
           "",
           "",
-          "",
-          "",
-          "",
-          "",
-          "",
-          "",
-          "",
-          "",
-          "",
+          "’",
+          "＊",
+          "￥",
+          "／",
+          "＋",
           ""
         ],
         [
@@ -94,11 +94,11 @@
           "ぁ",
           "ぅ",
           "ヴ",
-          "",
+          "！",
           "よ",
           "ふ",
           "へ",
-          "",
+          "）",
           ""
         ],
         [
@@ -124,7 +124,7 @@
           "え",
           "、",
           "。",
-          ""
+          "？"
         ]
       ]
     },
@@ -135,25 +135,25 @@
       "mode": "simultaneous",
       "cells": [
         [
+          "！",
+          "”",
+          "＃",
+          "＄",
+          "％",
+          "＆",
           "",
           "",
-          "",
-          "",
-          "",
-          "",
-          "",
-          "",
-          "",
-          "",
-          "",
-          ""
+          "＞",
+          "＜",
+          "＝",
+          "＿"
         ],
         [
-          "",
+          "（",
           "べ",
           "れ",
           "ぺ",
-          "",
+          "～",
           "ぢ",
           "ぬ",
           "ど",
@@ -180,7 +180,7 @@
           "ぐ",
           "み",
           "ざ",
-          "",
+          "＊",
           "む",
           "を",
           "つ",
@@ -285,23 +285,9 @@
     {
       "faceIndex": 0,
       "row": 1,
-      "column": 0,
-      "value": "［",
-      "reason": "symbol"
-    },
-    {
-      "faceIndex": 0,
-      "row": 1,
       "column": 2,
       "value": "入",
       "reason": "function-key"
-    },
-    {
-      "faceIndex": 0,
-      "row": 1,
-      "column": 4,
-      "value": "％",
-      "reason": "symbol"
     },
     {
       "faceIndex": 0,
@@ -316,13 +302,6 @@
       "column": 6,
       "value": "逃",
       "reason": "function-key"
-    },
-    {
-      "faceIndex": 0,
-      "row": 1,
-      "column": 10,
-      "value": "］",
-      "reason": "symbol"
     },
     {
       "faceIndex": 0,
@@ -348,71 +327,8 @@
     {
       "faceIndex": 1,
       "row": 0,
-      "column": 0,
-      "value": "｛",
-      "reason": "symbol"
-    },
-    {
-      "faceIndex": 1,
-      "row": 0,
-      "column": 1,
-      "value": "［",
-      "reason": "symbol"
-    },
-    {
-      "faceIndex": 1,
-      "row": 0,
-      "column": 2,
-      "value": "］",
-      "reason": "symbol"
-    },
-    {
-      "faceIndex": 1,
-      "row": 0,
-      "column": 3,
-      "value": "｝",
-      "reason": "symbol"
-    },
-    {
-      "faceIndex": 1,
-      "row": 0,
       "column": 4,
       "value": "゛",
-      "reason": "symbol"
-    },
-    {
-      "faceIndex": 1,
-      "row": 0,
-      "column": 6,
-      "value": "’",
-      "reason": "symbol"
-    },
-    {
-      "faceIndex": 1,
-      "row": 0,
-      "column": 7,
-      "value": "＊",
-      "reason": "symbol"
-    },
-    {
-      "faceIndex": 1,
-      "row": 0,
-      "column": 8,
-      "value": "￥",
-      "reason": "symbol"
-    },
-    {
-      "faceIndex": 1,
-      "row": 0,
-      "column": 9,
-      "value": "／",
-      "reason": "symbol"
-    },
-    {
-      "faceIndex": 1,
-      "row": 0,
-      "column": 10,
-      "value": "＋",
       "reason": "symbol"
     },
     {
@@ -432,20 +348,6 @@
     {
       "faceIndex": 1,
       "row": 1,
-      "column": 6,
-      "value": "！",
-      "reason": "symbol"
-    },
-    {
-      "faceIndex": 1,
-      "row": 1,
-      "column": 10,
-      "value": "）",
-      "reason": "symbol"
-    },
-    {
-      "faceIndex": 1,
-      "row": 1,
       "column": 11,
       "value": "右",
       "reason": "function-key"
@@ -460,13 +362,6 @@
     {
       "faceIndex": 1,
       "row": 3,
-      "column": 9,
-      "value": "？",
-      "reason": "symbol"
-    },
-    {
-      "faceIndex": 1,
-      "row": 3,
       "column": 10,
       "value": "上",
       "reason": "jis-only-key"
@@ -474,92 +369,8 @@
     {
       "faceIndex": 2,
       "row": 0,
-      "column": 0,
-      "value": "！",
-      "reason": "symbol"
-    },
-    {
-      "faceIndex": 2,
-      "row": 0,
-      "column": 1,
-      "value": "”",
-      "reason": "symbol"
-    },
-    {
-      "faceIndex": 2,
-      "row": 0,
-      "column": 2,
-      "value": "＃",
-      "reason": "symbol"
-    },
-    {
-      "faceIndex": 2,
-      "row": 0,
-      "column": 3,
-      "value": "＄",
-      "reason": "symbol"
-    },
-    {
-      "faceIndex": 2,
-      "row": 0,
-      "column": 4,
-      "value": "％",
-      "reason": "symbol"
-    },
-    {
-      "faceIndex": 2,
-      "row": 0,
-      "column": 5,
-      "value": "＆",
-      "reason": "symbol"
-    },
-    {
-      "faceIndex": 2,
-      "row": 0,
       "column": 7,
       "value": "゜",
-      "reason": "symbol"
-    },
-    {
-      "faceIndex": 2,
-      "row": 0,
-      "column": 8,
-      "value": "＞",
-      "reason": "symbol"
-    },
-    {
-      "faceIndex": 2,
-      "row": 0,
-      "column": 9,
-      "value": "＜",
-      "reason": "symbol"
-    },
-    {
-      "faceIndex": 2,
-      "row": 0,
-      "column": 10,
-      "value": "＝",
-      "reason": "symbol"
-    },
-    {
-      "faceIndex": 2,
-      "row": 0,
-      "column": 11,
-      "value": "＿",
-      "reason": "symbol"
-    },
-    {
-      "faceIndex": 2,
-      "row": 1,
-      "column": 0,
-      "value": "（",
-      "reason": "symbol"
-    },
-    {
-      "faceIndex": 2,
-      "row": 1,
-      "column": 4,
-      "value": "～",
       "reason": "symbol"
     },
     {
@@ -575,13 +386,6 @@
       "column": 11,
       "value": "終",
       "reason": "jis-only-key"
-    },
-    {
-      "faceIndex": 2,
-      "row": 3,
-      "column": 4,
-      "value": "＊",
-      "reason": "symbol"
     },
     {
       "faceIndex": 2,

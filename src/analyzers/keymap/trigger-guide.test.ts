@@ -38,7 +38,7 @@ test('宣言のある配列の全レイヤー詳細: トリガーはレイヤー
   assert.ok(guide.keyTones.size > 0);
   const tones = [...guide.keyTones.values()];
   assert.ok(tones.every((tone) => tone.kind === 'layer' && tone.slot >= 1 && tone.slot <= 8));
-  assert.equal(guide.legend.length, 30);
+  assert.equal(guide.legend.length, 31);
   assert.equal(
     guide.legend.some((item) => item.id === 'combo' || item.id === 'other-layers'),
     false,
