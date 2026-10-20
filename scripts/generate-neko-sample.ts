@@ -1,7 +1,7 @@
 // 組み込みのサンプル『吾輩は猫である』の本文（src/input/text/sample-ja-neko*.ts）を、青空文庫の原文から作る。
 //
 // 原文は青空文庫の作品 789（夏目漱石）。ルビ・入力者注・外字などの記法を取り除いて、評価に渡す本文にする
-// （規則は scripts/aozora-core.ts）。ビルドと npm test では取りに行かない（本文をリポジトリに置く）。
+// （規則はscripts/aozora-core.ts）。ビルドとnpm testでは取りに行かない（本文をリポジトリに置く）。
 //
 //   node --experimental-strip-types scripts/generate-neko-sample.ts           本文を作り直して書く
 //   node --experimental-strip-types scripts/generate-neko-sample.ts --check   置いてある本文が同じ原文から作れるかを確かめる
@@ -56,14 +56,14 @@ async function archiveBytes(localPath: string | undefined): Promise<Uint8Array> 
   return bytes;
 }
 
-const HEADER = `// 青空文庫『${AOZORA_SOURCE.title}』（夏目漱石）の原文から scripts/generate-neko-sample.ts が作る。手で直さない。
+const HEADER = `// 青空文庫『${AOZORA_SOURCE.title}』（夏目漱石）の原文からscripts/generate-neko-sample.tsが作る。手で直さない。
 // 底本：「夏目漱石全集1」ちくま文庫、筑摩書房、1987（昭和62）年9月29日第1刷発行
 // 入力：柴田卓治、校正：渡部峰子ほか。ルビ・入力者注などの記法は取り除いてある。
 // 取得元 ${AOZORA_SOURCE.url}（sha256 ${AOZORA_SOURCE.sha256}）
 `;
 
 function moduleSource(exportName: string, doc: string, text: string): string {
-  // リポジトリの書式（一重引用符。長い行は代入の後で折る）に合わせて書く。npm run lint が通る形にしておく
+  // リポジトリの書式（一重引用符。長い行は代入の後で折る）に合わせて書く。npm run lintが通る形にしておく
   const quoted = `'${text.replaceAll('\\', '\\\\').replaceAll("'", "\\'").replaceAll('\n', '\\n')}'`;
   return `${HEADER}\n/** ${doc} */\nexport const ${exportName} =\n  ${quoted};\n`;
 }

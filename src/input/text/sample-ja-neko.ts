@@ -1,4 +1,4 @@
-// 青空文庫『吾輩は猫である』（夏目漱石）の原文から scripts/generate-neko-sample.ts が作る。手で直さない。
+// 青空文庫『吾輩は猫である』（夏目漱石）の原文からscripts/generate-neko-sample.tsが作る。手で直さない。
 // 底本：「夏目漱石全集1」ちくま文庫、筑摩書房、1987（昭和62）年9月29日第1刷発行
 // 入力：柴田卓治、校正：渡部峰子ほか。ルビ・入力者注などの記法は取り除いてある。
 // 取得元 https://www.aozora.gr.jp/cards/000148/files/789_ruby_5639.zip（sha256 6545750b89ee2c57f215a65079eeab56ee7c997373b7b86e5b00ae74fe69208f）

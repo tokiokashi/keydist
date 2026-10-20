@@ -1,6 +1,6 @@
-// 青空文庫の注記付きテキストを、評価に渡す本文に直す規則。取得や書き出しは持たない（generate-neko-sample.ts が使う）。
+// 青空文庫の注記付きテキストを、評価に渡す本文に直す規則。取得や書き出しは持たない（generate-neko-sample.tsが使う）。
 
-/** JIS X 0213 の面区点番号（`面-区-点`）から Unicode の字を引く表。『吾輩は猫である』の本文に現れる外字だけを持つ。 */
+/** JIS X 0213の面区点番号（`面-区-点`）からUnicodeの字を引く表。『吾輩は猫である』の本文に現れる外字だけを持つ。 */
 export const GAIJI_TABLE: Readonly<Record<string, string>> = {
   '1-6-84': 'ㇶ',
   '1-14-76': '匇',
@@ -65,7 +65,7 @@ export function decodeAccentSeparation(inner: string): string {
 
 export interface AozoraConversion {
   readonly text: string;
-  /** 面区点番号から Unicode の字に直した外字の数 */
+  /** 面区点番号からUnicodeの字に直した外字の数 */
   readonly gaijiConverted: number;
   /** 表に無く、`※` と注ごと取り除いた外字の数 */
   readonly gaijiRemoved: number;
@@ -97,7 +97,7 @@ export function extractBody(raw: string): string {
 /**
  * 本文から、青空文庫の記法を取り除く。
  *
- * 1. 外字（`※［＃…、面-区-点］`）を表で Unicode の字に直す。表に無い外字は `※` と注ごと取り除く
+ * 1. 外字（`※［＃…、面-区-点］`）を表でUnicodeの字に直す。表に無い外字は `※` と注ごと取り除く
  * 2. 章見出しの行（`［＃８字下げ］一［＃「一」は中見出し］`）を行ごと取り除く
  * 3. 入力者注（`［＃…］`）を、注だけ取り除く。注が指している本文の字は残す
  * 4. アクセント分解（`〔…〕`）を元の字に直し、括弧を取り除く
