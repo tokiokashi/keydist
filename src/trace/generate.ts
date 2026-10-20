@@ -715,9 +715,9 @@ function alternativeContextSatisfied(
 }
 
 /**
- * 英字の範囲 [start, end) と重なる綴りの単位を、`chunks` の添字の範囲 [from, to) で返す。
- * 綴りの単位は英字の位置の順に隙間なく並ぶので、end が start を超える最初の単位を二分探索で見つけ、
- * そこから start が範囲の終わりに届くまで進めばよい。全件を頭から走査しない（テキストの長さに比例した時間にするため）。
+ * 英字の範囲[start, end)と重なる綴りの単位を、`chunks` の添字の範囲 [from, to) で返す。
+ * 綴りの単位は英字の位置の順に隙間なく並ぶので、endがstartを超える最初の単位を二分探索で見つけ、
+ * そこからstartが範囲の終わりに届くまで進めばよい。全件を頭から走査しない（テキストの長さに比例した時間にするため）。
  */
 function coveringChunkRange(chunks: readonly RomajiChunkRange[], start: number, end: number): { from: number; to: number } {
   let low = 0;
@@ -740,7 +740,7 @@ function coveredByKana(start: number, end: number, chunks: RomajiChunkRange[]): 
 
 function canFireYouonOnlyCombo(cursor: number, chars: string[], chunks: RomajiChunkRange[]): boolean {
   if (cursor === 0 || !/[bcdfghjklmnpqrstvwxyz]/.test(chars[cursor - 1])) return false;
-  // cursor の1つ前と cursor の両方を覆う単位は、end が cursor を超える最初の単位に限られる
+  // cursorの1つ前とcursorの両方を覆う単位は、endがcursorを超える最初の単位に限られる
   const { from } = coveringChunkRange(chunks, cursor, cursor + 1);
   const chunk = chunks[from];
   return chunk !== undefined && chunk.kanaLength > 1 && chunk.start < cursor && cursor < chunk.end;
