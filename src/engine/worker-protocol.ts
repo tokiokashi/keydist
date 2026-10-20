@@ -23,6 +23,14 @@ export type EngineWorkerRequest =
       readonly members: readonly EngineSetMemberInput[];
       readonly definitionId: string;
       readonly options: unknown;
+    }
+  | {
+      /** 集合の抽出のうち、メンバー1件の`step`番目の段だけを求めて覚える（`SetAnalyzerWarmup`）。値は返さない。 */
+      readonly id: number;
+      readonly kind: 'set-warmup';
+      readonly member: EngineSetMemberInput;
+      readonly definitionId: string;
+      readonly step: number;
     };
 
 export type EngineWorkerResponse =

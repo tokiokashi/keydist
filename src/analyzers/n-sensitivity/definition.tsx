@@ -611,4 +611,6 @@ export const nSensitivityAnalyzer = {
   },
   // Nはこのペイン自身が掃引する軸なので、条件からは除く
   conditionExcludeIds: ['windowSize'],
+  // 配列の数 × 11通りのNでTraceを作るので、Workspaceでは画面に入るまで計算しない
+  computeOnlyWhenOnScreen: true,
 } satisfies SetAnalyzerPaneParts<NSensitivityOptions, NSensitivityExtracted, NSensitivityRowContext>;

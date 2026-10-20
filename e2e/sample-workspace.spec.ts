@@ -195,6 +195,11 @@ test('サンプルのWorkspaceは普通のWorkspaceと同じに扱える。Bigra
   await expect(page.locator('.pane-frame')).toHaveCount(10);
 });
 
+/** N感度のペインは画面に入るまで計算しないので、画面の外にあれば入れる（入っていれば動かさない）。 */
+async function showNSensitivity(page: Page): Promise<void> {
+  await page.locator('.pane-frame[aria-label="N感度"]').scrollIntoViewIfNeeded();
+}
+
 /** サンプルを開き、全ペインの描画が済むまで待つ。 */
 async function openSampleAt(page: Page, size: { width: number; height: number }, sidebar: 'pinned' | 'unpinned'): Promise<void> {
   await page.setViewportSize(size);
@@ -209,6 +214,7 @@ async function openSampleAt(page: Page, size: { width: number; height: number },
   await page.locator('.hero').getByRole('button', { name: '複数の配列を並べたサンプルを作る' }).click();
   await expectSampleWorkspace(page, 'サンプル');
   await expect(page.locator('[data-flow-edge="true"]').first()).toBeAttached({ timeout: 15_000 });
+  await showNSensitivity(page);
   await expect(page.locator('[data-n-sensitivity-series]').first()).toBeAttached({ timeout: 15_000 });
   await expect(page.locator('.workspace-grid-item .pane-frame[data-pane-status="ready"]')).toHaveCount(10, { timeout: 30_000 });
   // 図の描画（N感度は領域の実寸に合わせて描き直す）が落ち着くまで待つ。
@@ -353,6 +359,7 @@ for (const size of [
     await waitForHydration(page);
     await page.locator('.hero').getByRole('button', { name: LAYOUT_DETAIL_BUTTON }).click();
     await expect(page.locator('.pane-frame')).toHaveCount(12);
+    await showNSensitivity(page);
     await expect(page.locator('.workspace-grid-item .pane-frame[data-pane-status="ready"]')).toHaveCount(12, { timeout: 30_000 });
     await settleBy(
       page,

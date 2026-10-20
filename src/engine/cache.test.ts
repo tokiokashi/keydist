@@ -9,6 +9,8 @@ import { defineOption, defineOptions } from '#analyzers/options.ts';
 import { EMPTY_SETTINGS_OVERRIDES, setSettingsOverride, type SettingsCascadeOverrides } from './settings-items.ts';
 import { resolveEngineInput, type ResolvedInput, type ResolvedInputResult } from './resolved-input.ts';
 import type { EngineSetMemberInput } from './request.ts';
+import { nSensitivityDefinition } from '#analyzers/n-sensitivity/extract.ts';
+import { DEFAULT_N_SENSITIVITY_OPTIONS } from '#analyzers/n-sensitivity/options.ts';
 import { createEngineCache } from './cache.ts';
 
 // `SingleAnalyzerDefinition`はブランド付きの型で、`defineSingleAnalyzer`経由でしか作れない。ここでも実物のAnalyzerと同じ作法（`defineOptions`宣言 +
@@ -175,7 +177,7 @@ test('clear()は永続化していないメモリキャッシュを空にする'
   cache.getInterpretation(resolve(setup));
   assert.ok(cache.size.trace > 0);
   cache.clear();
-  assert.deepEqual(cache.size, { trace: 0, interpretation: 0, extraction: 0, keyDetails: 0 });
+  assert.deepEqual(cache.size, { trace: 0, interpretation: 0, extraction: 0, keyDetails: 0, parts: 0 });
 });
 
 test('getExtraction: 同じ抽出キーの2インスタンスはextractを1回しか呼ばない', () => {
@@ -421,4 +423,33 @@ test('getSetExtraction: 同じ枠・同じ種類で文言だけが違う失敗�
   const b = cache.getSetExtraction([{ target, resolution: second }], definition, setFixtureOptions.defaultOptions);
   assert.deepEqual(a.extracted, ['配列が見つかりません（削除された可能性があります）']);
   assert.deepEqual(b.extracted, ['物理配列が見つかりません（削除された可能性があります）']);
+});
+
+test('warmSetMember: 段を先に求めても抽出の値は変わらず、N違いのTraceは共有のキャッシュに積まれない', () => {
+  const warmup = nSensitivityDefinition.warmup!;
+  const setups = ['qwerty', 'dvorak'].map(
+    (layoutId, index): Setup => ({ id: `setup-${layoutId}`, number: index + 1, layoutId, shapeId: 'row-staggered' }),
+  );
+  const members: EngineSetMemberInput[] = setups.map((setup) => ({ target: { kind: 'setup', setupId: setup.id }, resolution: resolveResult(setup) }));
+
+  const cold = createEngineCache();
+  const expected = cold.getSetExtraction(members, nSensitivityDefinition, DEFAULT_N_SENSITIVITY_OPTIONS);
+
+  const warmed = createEngineCache();
+  for (const member of members) {
+    for (let step = 0; step < warmup.steps; step += 1) warmed.warmSetMember(member, nSensitivityDefinition, step);
+  }
+  assert.equal(warmed.size.parts, members.length * warmup.steps);
+  assert.equal(warmed.size.trace, members.length, 'メンバー自身のNのTraceだけが積まれる');
+  assert.deepStrictEqual(warmed.getSetExtraction(members, nSensitivityDefinition, DEFAULT_N_SENSITIVITY_OPTIONS), expected);
+  assert.equal(warmed.size.parts, members.length * warmup.steps, '抽出は覚えた値を読み、増やさない');
+  assert.equal(warmed.size.trace, members.length);
+});
+
+test('warmSetMember: 解決に失敗したメンバーと、段を持たないAnalyzerでは何もしない', () => {
+  const cache = createEngineCache();
+  const target = { kind: 'setup', setupId: 'setup-missing' } as const;
+  cache.warmSetMember({ target, resolution: { ok: false, error: { kind: 'target-missing', target } } }, nSensitivityDefinition, 0);
+  assert.equal(cache.size.parts, 0);
+  assert.equal(cache.size.trace, 0);
 });

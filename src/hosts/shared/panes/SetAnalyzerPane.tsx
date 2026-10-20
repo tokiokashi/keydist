@@ -20,6 +20,7 @@ import { targetNameSource } from '../target-name-source.ts';
 import { setupNumbersOf } from '../target-choices.ts';
 import { TargetSelection } from '../TargetSelection.tsx';
 import { useAnalyzerSetPane } from '../use-analyzer-set-pane.ts';
+import { usePaneOnScreen } from '../use-pane-on-screen.ts';
 import { useSetTargetSelection } from '../use-set-target-selection.ts';
 import { readingProvenance } from '../reading-evaluation.ts';
 import type { PaneChrome, PaneEnvironment } from './pane-environment.ts';
@@ -154,7 +155,11 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
 
   const order = useMemo(() => targets.map(analysisTargetKey), [targets]);
 
-  const pane = useAnalyzerSetPane(cache, analyzer.definition, options, members, !readingLoading);
+  // 画面に入るまで計算を始めないペイン（Workspaceで、Analyzerが求めた時）。入った後に出た依頼は止めない
+  const waitsForScreen = chrome.computeOnlyWhenOnScreen === true;
+  const { ref: frameRef, onScreen } = usePaneOnScreen<HTMLElement>(waitsForScreen);
+  const shown = onScreen && chrome.coveredByMaximizedPane !== true;
+  const pane = useAnalyzerSetPane(cache, analyzer.definition, options, members, !readingLoading && shown);
   const { Body, Settings, TargetItem } = analyzer;
   const extraction = pane.extraction;
   const extracted = extraction.status === 'ready' || extraction.status === 'stale' ? extraction.value.extracted : undefined;
@@ -230,6 +235,8 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
       conditionProvenance={conditionProvenance}
       reading={env.reading}
       engineState={extraction}
+      frameRef={frameRef}
+      waitingForScreen={waitsForScreen && !shown && extraction.status === 'idle'}
       settingsDiagnostics={settingsDiagnostics}
       linkNotices={linkNotices}
       {...(targets.length === 0

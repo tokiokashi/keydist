@@ -125,6 +125,32 @@ export interface AnalyzerSetMember {
    * 解決できたメンバーそれぞれに対して`createTraceRequesterFor`を呼ぶ）。
    */
   readonly requestTrace: TraceRequester;
+  /**
+   * このメンバーに対する部分結果を、`key`で覚えて使い回す。覚えていれば`compute`を呼ばずにその値を返し、
+   * 無ければ`compute`の値を覚えて返す。`key`はメンバーの中身（テキスト・配列・物理配列・Trace方針・解釈）と
+   * Analyzerの組ごとに別の入れ物になるので、Analyzer内で部分結果を区別できればよい。
+   * 値は覚えた後に書き換えない。`compute`の結果は入力だけで決まる（同じ`key`なら同じ値）こと。
+   * 集合の抽出が、`SetAnalyzerWarmup`で先に求めた部分結果を読むのに使う。
+   */
+  readonly remember: <T>(key: string, compute: () => T) => T;
+}
+
+/** 何も覚えずに毎回`compute`を呼ぶ`AnalyzerSetMember.remember`。テストの材料と、覚える入れ物を持たない呼び出しが使う。 */
+export function noRemember<T>(_key: string, compute: () => T): T {
+  return compute();
+}
+
+/**
+ * 集合の抽出のうち、メンバーごと・段ごとに分けて先に求めておける部分。
+ * 呼び出し側（Worker越しの依頼）は、抽出を頼む前に`steps`個の段を1段ずつ小さい依頼として送る。
+ * ほかの依頼が間に入れるので、1回の抽出が長い間ほかのペインの計算を止めない。
+ * `run`は求めた値を`AnalyzerSetMember.remember`に覚えさせ、抽出が同じ`key`でそれを読む。
+ * 先に`run`を呼ばなくても抽出の値は変わらない（覚えていなければ抽出が自分で求める）。
+ */
+export interface SetAnalyzerWarmup {
+  /** メンバー1件あたりの段の数。 */
+  readonly steps: number;
+  run(member: AnalyzerSetMember, step: number): void;
 }
 
 /**
@@ -237,6 +263,8 @@ export interface SetAnalyzerDefinition<Options = unknown, Extracted = unknown> {
   decodeOptions(raw: unknown, diagnostics: CodecDiagnostic[]): Options;
   extractKeyOf(options: Options): unknown;
   extract(context: SetAnalyzerExtractContext<Options>): Extracted;
+  /** 抽出を小さい段に分けて先に求められるAnalyzerだけが持つ。 */
+  readonly warmup?: SetAnalyzerWarmup;
   readonly optionsDiscipline: OptionsDisciplineCheck<Options, Extracted>;
   readonly optionsItems: OptionsRegistry;
 }
@@ -289,6 +317,8 @@ export function defineSetAnalyzer<R extends OptionsRegistry, Extracted>(config: 
   readonly id: string;
   readonly options: OptionsDefinition<R>;
   readonly extract: (context: SetAnalyzerExtractContext<OptionsValueMap<R>>) => Extracted;
+  /** 抽出を小さい段に分けて先に求められるAnalyzerだけが渡す。 */
+  readonly warmup?: SetAnalyzerWarmup;
   readonly optionsDiscipline: SetOptionsDisciplineFixture<OptionsValueMap<R>>;
 }): SetAnalyzerDefinition<OptionsValueMap<R>, Extracted> {
   return {
@@ -299,6 +329,7 @@ export function defineSetAnalyzer<R extends OptionsRegistry, Extracted>(config: 
     decodeOptions: config.options.decodeOptions,
     extractKeyOf: config.options.extractKeyOf,
     extract: config.extract,
+    ...(config.warmup === undefined ? {} : { warmup: config.warmup }),
     optionsDiscipline: {
       sample: config.optionsDiscipline.sample,
       alternates: config.optionsDiscipline.alternates,

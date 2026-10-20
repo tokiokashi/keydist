@@ -1,9 +1,11 @@
 import {
   defineSetAnalyzer,
+  noRemember,
   type AnalyzerSetMember,
   type AnalyzerSetMemberFailure,
   type SetAnalyzerDefinition,
   type SetAnalyzerExtractContext,
+  type SetAnalyzerWarmup,
 } from '#analyzers/contract.ts';
 import { ADJACENT_PAIRS, ALL_FINGERS, type Finger, type Key } from '#input/shapes/geometry.ts';
 import {
@@ -89,14 +91,34 @@ export function valuesOf(trace: Trace, homeSpacings: readonly number[]): NSensit
   return Object.fromEntries(N_SENSITIVITY_METRIC_IDS.map((id) => [id, all[id]!])) as NSensitivityValues;
 }
 
+/**
+ * メンバー1件の、Nが`windowSize`の時の点。Nごとに求めた値はメンバーに覚えさせる（`AnalyzerSetMember.remember`）。
+ * 先に`nSensitivityWarmup`で求めてあれば、Traceを作り直さずに覚えた値を読む。
+ */
+function pointOf(member: AnalyzerSetMember, windowSize: number): NSensitivityPoint {
+  const values = member.remember(`n=${windowSize}`, () => {
+    const trace = member.requestTrace.requestTrace({ tracePolicy: { windowSize } });
+    return valuesOf(trace, member.metrics.adjacentHomeSpacings);
+  });
+  return { windowSize, values };
+}
+
 /** メンバー1件ぶんの、N=0..10の系列を求める。 */
 export function computeMemberSeries(member: AnalyzerSetMember): NSensitivitySeriesOk {
-  const points = N_RANGE.map((windowSize) => {
-    const trace = member.requestTrace.requestTrace({ tracePolicy: { windowSize } });
-    return { windowSize, values: valuesOf(trace, member.metrics.adjacentHomeSpacings) };
-  });
-  return { kind: 'ok', targetKey: analysisTargetKey(member.target), points };
+  return { kind: 'ok', targetKey: analysisTargetKey(member.target), points: N_RANGE.map((windowSize) => pointOf(member, windowSize)) };
 }
+
+/**
+ * 系列をNごとの段に分けて先に求める。1段はTrace 1本の生成と指標の計算で、
+ * 抽出全体（配列の数 × 11本）をひと息に計算しないための分け目になる。
+ */
+export const nSensitivityWarmup: SetAnalyzerWarmup = {
+  steps: N_RANGE.length,
+  run(member, step) {
+    const windowSize = N_RANGE[step];
+    if (windowSize !== undefined) pointOf(member, windowSize);
+  },
+};
 
 function failureToSeries(failure: AnalyzerSetMemberFailure): NSensitivitySeriesFailed {
   return { kind: 'failed', targetKey: analysisTargetKey(failure.target), failureKind: failure.kind, message: failure.message };
@@ -221,6 +243,7 @@ const FIXTURE_MEMBERS: readonly AnalyzerSetMember[] = [
     analysis: { chains: [], arpeggios: [] } as unknown as AnalyzerSetMember['analysis'],
     metrics: fixtureMetrics(4),
     requestTrace: fixtureRequestTrace(),
+    remember: noRemember,
   },
 ];
 
@@ -235,6 +258,7 @@ export const nSensitivityDefinition: SetAnalyzerDefinition<NSensitivityOptions, 
   extract(context: SetAnalyzerExtractContext<NSensitivityOptions>): NSensitivityExtracted {
     return computeNSensitivityExtraction(context.members, context.failures);
   },
+  warmup: nSensitivityWarmup,
   optionsDiscipline: {
     sample: DEFAULT_N_SENSITIVITY_OPTIONS,
     alternates: ALTERNATE_N_SENSITIVITY_OPTIONS,

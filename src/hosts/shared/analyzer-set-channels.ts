@@ -15,6 +15,8 @@ import type { EngineRequestOptions, EngineSetMemberInput, EngineSetRequestChanne
  */
 export interface AnalyzerSetPaneChannels<Options> {
   readonly options: Options;
+  /** 最後に依頼したメンバー。同じ参照の依頼は、計算を打ち切り直さないよう出し直さない。 */
+  readonly members: readonly EngineSetMemberInput[];
   readonly extraction: EngineSetRequestChannel;
 }
 
@@ -30,22 +32,25 @@ export interface AnalyzerSetPaneChannelParams<Options, Extracted> {
 
 /**
  * `analyzer-channels.ts`の`syncAnalyzerPaneChannels`と同じ形: `options`の参照が変わった
- * 時だけチャンネルを作り直し、`members`は毎回`request()`する（`members`は呼び出し側
+ * 時だけチャンネルを作り直し、`members`の参照が変わった時に`request()`する（`members`は呼び出し側
  * （Reactの副作用）が値が変わった時だけ新しい配列参照を作る前提）。
+ * 同じ`members`の依頼を出し直さないのは、画面に入るまで依頼を止めていたペインが入った時に、
+ * すでに走っている計算を打ち切り直さないため。
  */
 export function syncAnalyzerSetPaneChannels<Options, Extracted>(
   current: AnalyzerSetPaneChannels<Options> | undefined,
   params: AnalyzerSetPaneChannelParams<Options, Extracted>,
 ): AnalyzerSetPaneChannels<Options> {
   if (current !== undefined && Object.is(current.options, params.options)) {
+    if (Object.is(current.members, params.members)) return current;
     current.extraction.request(params.members);
-    return current;
+    return { ...current, members: params.members };
   }
 
   current?.extraction.unsubscribe();
   const extraction = createSetExtractRequest(params.cache, params.definition, params.options, params.onExtraction, params.requestOptions);
   extraction.request(params.members);
-  return { options: params.options, extraction };
+  return { options: params.options, members: params.members, extraction };
 }
 
 /** ペインが不要になった時（アンマウント・対象の作り直し）の後始末。 */

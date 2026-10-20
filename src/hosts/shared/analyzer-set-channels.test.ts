@@ -148,3 +148,38 @@ test('syncAnalyzerSetPaneChannels: 一部メンバーが解決に失敗しても
   }
   closeAnalyzerSetPaneChannels(channels);
 });
+
+test('syncAnalyzerSetPaneChannels: 同じメンバーの再同期は依頼を出し直さず、別のメンバーなら出し直す', () => {
+  const scheduler = createManualScheduler();
+  const cache = createEngineCache();
+  const members = [memberFor('a', 'qwerty')];
+  const states: ExtractionRequestState<ComparisonExtracted>[] = [];
+  const params = {
+    cache,
+    definition: comparisonDefinition,
+    options: DEFAULT_COMPARISON_OPTIONS,
+    onExtraction: (s: ExtractionRequestState<ComparisonExtracted>) => states.push(s),
+    requestOptions: { scheduler },
+  };
+
+  let channels = syncAnalyzerSetPaneChannels(undefined, { ...params, members });
+  assert.deepEqual(
+    states.map((state) => state.status),
+    ['computing'],
+  );
+
+  // 計算の途中で同じメンバーを同期しても、走っている依頼を打ち切って出し直さない
+  channels = syncAnalyzerSetPaneChannels(channels, { ...params, members });
+  assert.deepEqual(
+    states.map((state) => state.status),
+    ['computing'],
+  );
+  scheduler.flush();
+  assert.equal(states.at(-1)?.status, 'ready');
+
+  channels = syncAnalyzerSetPaneChannels(channels, { ...params, members: [memberFor('a', 'dvorak')] });
+  assert.equal(states.at(-1)?.status, 'stale', '別のメンバーは出し直す');
+  scheduler.flush();
+  assert.equal(states.at(-1)?.status, 'ready');
+  closeAnalyzerSetPaneChannels(channels);
+});
