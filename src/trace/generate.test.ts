@@ -1014,3 +1014,23 @@ test('打鍵のindexは並びの位置と一致する', () => {
   assert.ok(trace.strokes.length > 10);
   for (const [position, stroke] of trace.strokes.entries()) assert.equal(stroke.index, position);
 });
+
+test('ローマ字の配列のTrace生成は、テキストの長さに比例した時間で終わる', () => {
+  const layout = withRomaji(qwerty, kunrei());
+  const unit = 'きょうはいいてんきですねあしたもはれるでしょうか';
+  const timeOf = (length: number): number => {
+    const text = unit.repeat(Math.ceil(length / unit.length));
+    let best = Number.POSITIVE_INFINITY;
+    for (let run = 0; run < 3; run++) {
+      const start = performance.now();
+      generateTrace(text, layout, geometry, opts());
+      best = Math.min(best, performance.now() - start);
+    }
+    return best;
+  };
+  generateTrace(unit, layout, geometry, opts());
+  const shortMs = timeOf(6000);
+  const longMs = timeOf(18000);
+  // 長さの比は3。長さの2乗に比例するなら時間の比は約9になる。固定費と時計の揺れを見込んで4を上限にする
+  assert.ok(longMs / shortMs < 4, `18000字は6000字の${(longMs / shortMs).toFixed(2)}倍の時間（${shortMs.toFixed(0)}msと${longMs.toFixed(0)}ms）`);
+});
