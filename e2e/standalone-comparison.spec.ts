@@ -10,7 +10,7 @@ import {
   targetNames,
   toggleTarget,
 } from './pane-helper.ts';
-import { useKanaText } from './kana-text-helper.ts';
+import { useShortText } from './short-text-helper.ts';
 
 /**
  * 比較表単体ページのE2E。
@@ -48,9 +48,9 @@ async function addTarget(page: import('@playwright/test').Page, key: string) {
   await toggleTarget(page, key);
 }
 
-// 数値でなく図の形を見る検査なので、漢字を含まない短いテキストで回す
+// 数値でなく図の形を見る検査なので、短い本文で回す
 test.beforeEach(async ({ page }) => {
-  await useKanaText(page);
+  await useShortText(page);
 });
 
 test('新規プロファイルで、配列を2つ直接選ぶだけでSetupを作らずに比較できる', async ({ page }) => {

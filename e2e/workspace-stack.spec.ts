@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { waitForHydration } from './hydration-helper.ts';
 import { advance, settleBy } from './settle-helper.ts';
+import { SHORT_TEXT_REF, useShortText } from './short-text-helper.ts';
 
 /**
  * スマホ幅（760px以下）のWorkspaceは、格子を使わずペインを縦に積み、ページを縦にスクロールして見る。
@@ -34,6 +35,7 @@ const PHONE = { width: 390, height: 844 };
 
 async function openWorkspace(page: Page, size: { width: number; height: number }, name = '新しいWorkspace', withTarget = false) {
   await page.setViewportSize(size);
+  await useShortText(page);
   await page.addInitScript(
     (value) => {
       if (localStorage.getItem('keydist:workspaces') === null) {
@@ -43,7 +45,7 @@ async function openWorkspace(page: Page, size: { width: number; height: number }
     {
       id: 'stack',
       name,
-      text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+      text: { ref: SHORT_TEXT_REF },
       panes: [flow, comparison, withTarget ? sensitivityWithTarget : sensitivity],
       grid: GRID,
       groups: [{ id: 'link-1', target: {} }],

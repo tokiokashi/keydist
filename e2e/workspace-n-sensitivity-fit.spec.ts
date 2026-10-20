@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { waitForHydration } from './hydration-helper.ts';
 import { settleGrid } from './settle-helper.ts';
+import { SHORT_TEXT_REF, useShortText } from './short-text-helper.ts';
 
 /**
  * N感度のグラフがWorkspaceのペインの残りの高さに合わせて伸縮し、実測値の表を、余りが無ければ畳んで始める（余りがある時に開くのは`workspace-n-sensitivity-table-fit.spec.ts`）。
@@ -18,11 +19,12 @@ const cell = (id: string, x: number, y: number, w: number, h: number) => ({ id, 
 
 async function openWorkspace(page: Page, panes: readonly unknown[], grid: unknown, size: { width: number; height: number }, seriesCount = 2) {
   await page.setViewportSize(size);
+  await useShortText(page);
   await page.addInitScript(
     (value) => {
       localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
     },
-    { id: 'fit', name: '収まりの確認', text: { ref: { kind: 'builtin', id: 'builtin:ja.modern' } }, panes, grid },
+    { id: 'fit', name: '収まりの確認', text: { ref: SHORT_TEXT_REF }, panes, grid },
   );
   await page.goto('/workspace/fit');
   await waitForHydration(page);
@@ -58,6 +60,7 @@ async function dragCornerBy(page: Page, id: string, dy: number): Promise<void> {
 /** 個別画面を、配列2つの集合で開く。 */
 async function openStandalone(page: Page) {
   await page.setViewportSize({ width: 1440, height: 900 });
+  await useShortText(page);
   await page.addInitScript(() => {
     localStorage.setItem(
       'keydist:multi-target-selection',

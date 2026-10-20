@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { figureSettingsWindow } from './bigram-flow-figure-helper.ts';
 import { waitForHydration } from './hydration-helper.ts';
 import { settleBy } from './settle-helper.ts';
+import { SHORT_TEXT_REF, useShortText } from './short-text-helper.ts';
 
 /**
  * Relative vectorsの凡例（内向き・外向き・最大{N}u · ±{N}°）は、左右の図の下に1行で置く。
@@ -83,6 +84,7 @@ interface SideCase {
 /** 保存先へWorkspaceを直接書いて開く。 */
 async function openWorkspace(page: Page, c: SideCase): Promise<void> {
   await page.setViewportSize({ width: 1440, height: 1100 });
+  await useShortText(page);
   await page.addInitScript(
     (value) => {
       localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
@@ -90,7 +92,7 @@ async function openWorkspace(page: Page, c: SideCase): Promise<void> {
     {
       id: 'legend',
       name: '凡例の確認',
-      text: { ref: { kind: 'builtin', id: 'builtin:ja.modern' } },
+      text: { ref: SHORT_TEXT_REF },
       panes: [c.fingers === undefined ? flow : { ...flow, options: { selectedFingers: c.fingers } }],
       grid: [{ id: 'f', x: 0, y: 0, w: c.w, h: c.h }],
     },

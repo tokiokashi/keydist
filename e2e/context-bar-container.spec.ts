@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { waitForHydration } from './hydration-helper.ts';
-import { useKanaText } from './kana-text-helper.ts';
+import { useShortText } from './short-text-helper.ts';
 
 /**
  * サイドバーを固定した中間の幅（761〜1100）でも、文脈バーは1行に収まり、
@@ -8,9 +8,9 @@ import { useKanaText } from './kana-text-helper.ts';
  */
 test.use({ viewport: { width: 1100, height: 900 } });
 
-// 数値でなく図の形を見る検査なので、漢字を含まない短いテキストで回す
+// 数値でなく図の形を見る検査なので、短い本文で回す
 test.beforeEach(async ({ page }) => {
-  await useKanaText(page);
+  await useShortText(page);
 });
 
 test('サイドバー固定で761〜1100の幅を20px刻みに動かしても、文脈バーが1行で重ならず横にあふれない', async ({ page }) => {

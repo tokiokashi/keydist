@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { waitForHydration } from './hydration-helper.ts';
+import { SHORT_TEXT_REF, useShortText } from './short-text-helper.ts';
 
 /**
  * Workspaceで、同じAnalyzerのペインどうしの解析設定を共有できる。共有に従うペインの設定を変えると、同じ共有に従う
@@ -22,6 +23,7 @@ const panes = [
 
 async function openWorkspace(page: Page): Promise<void> {
   await page.setViewportSize({ width: 1600, height: 1000 });
+  await useShortText(page);
   await page.addInitScript(
     (value) => {
       if (localStorage.getItem('keydist:workspaces') === null) {
@@ -31,7 +33,7 @@ async function openWorkspace(page: Page): Promise<void> {
     {
       id: 's',
       name: '共有',
-      text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+      text: { ref: SHORT_TEXT_REF },
       optionSets: [
         { id: 'bigram-flow-1', analyzerId: 'bigram-flow' },
         { id: 'finger-distance-1', analyzerId: 'finger-distance' },

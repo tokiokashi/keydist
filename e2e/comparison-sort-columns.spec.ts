@@ -1,6 +1,8 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { expectTargetNames, openSettings, targetNames } from './pane-helper.ts';
 import { waitForHydration } from './hydration-helper.ts';
+import { openTextChip } from './context-bar-helper.ts';
+import { SHORT_TEXT_NAME, seedShortTextLibrary } from './short-text-helper.ts';
 
 /**
  * 比較表の列の見出し: 並び替え（昇順 → 降順 → 解除）と、列名。
@@ -245,11 +247,16 @@ for (const width of [1500, 390]) {
 
 /** 比較表を2つ並べ、3つの配列を対象にして、表が出るまで待つ。 */
 async function openTwoComparisons(page: Page): Promise<void> {
+  // 保存の間引き（約400ms）の中で操作する検査なので、再計算が短く済む短い本文で回す
+  await seedShortTextLibrary(page);
   await page.setViewportSize({ width: 800, height: 900 });
   await page.goto('/');
   await waitForHydration(page);
   await page.locator('#app-sidebar').getByRole('button', { name: '＋ 新しいWorkspace' }).click();
   await expect(page).toHaveURL(/\/workspace\/[^/?]+$/);
+  await openTextChip(page);
+  await page.getByLabel('テキストを選ぶ', { exact: true }).selectOption({ label: SHORT_TEXT_NAME });
+  await page.keyboard.press('Escape');
   for (let n = 0; n < 2; n += 1) {
     await page.getByRole('button', { name: /ペインを追加/ }).click();
     await page.getByRole('menuitem', { name: /比較表/ }).click();

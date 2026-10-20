@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { waitForHydration } from './hydration-helper.ts';
+import { SHORT_TEXT_REF, useShortText } from './short-text-helper.ts';
 
 /**
  * Workspaceで、同じAnalyzerの同じ見る量のペインどうしは、グラフの目盛りの範囲を揃える。
@@ -18,6 +19,7 @@ const bigramFlow = (id: string, layoutId: string) => ({ id, analyzerId: 'bigram-
 
 async function openWorkspace(page: Page, panes: readonly { readonly id: string }[]): Promise<void> {
   await page.setViewportSize({ width: 1600, height: 1000 });
+  await useShortText(page);
   await page.addInitScript(
     (value) => {
       if (localStorage.getItem('keydist:workspaces') === null) {
@@ -27,7 +29,7 @@ async function openWorkspace(page: Page, panes: readonly { readonly id: string }
     {
       id: 's',
       name: '目盛り',
-      text: { ref: { kind: 'builtin', id: 'builtin:ja.modern' } },
+      text: { ref: SHORT_TEXT_REF },
       panes,
       grid: panes.map((pane, i) => ({ id: pane.id, x: (i % 2) * 12, y: Math.floor(i / 2) * 20, w: 12, h: 20 })),
     },

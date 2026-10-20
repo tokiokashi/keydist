@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { toggleTarget } from './pane-helper.ts';
+import { useShortText } from './short-text-helper.ts';
 
 /**
  * 表を横にスクロールしても、行の見出し（対象名）の列が左端に残ること。
@@ -44,6 +45,7 @@ for (const scheme of ['light', 'dark'] as const) {
   });
 
   test(`N感度の表: 横スクロールしても対象名の列が左端に残る（${scheme}）`, async ({ page }) => {
+    await useShortText(page);
     await page.emulateMedia({ colorScheme: scheme });
     await page.goto('/analyzer/n-sensitivity');
     await expectNameColumnStays(page, '.n-sensitivity-table');
