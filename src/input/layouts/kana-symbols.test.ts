@@ -17,7 +17,7 @@ const geometry = buildGeometry('row-staggered');
 
 const triggerId = (trigger: readonly string[]) => trigger.map(resolveKeyId).sort().join('+');
 
-/** 出典のスナップショットから起こしたfixtureの、記号だけのセル。`面|キー|出力` の形で返す。 */
+/** 出典のスナップショットから起こしたfixtureの、記号だけのセル。面|キー|出力の形で返す。 */
 function fixtureSymbols(layoutId: string): Set<string> {
   const fixture = JSON.parse(readFileSync(new URL(`../../../test/fixtures/${layoutId}.json`, import.meta.url), 'utf8')) as { faces: FixtureFace[] };
   const out = new Set<string>();

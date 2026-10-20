@@ -109,7 +109,7 @@ export const NAGINATA_V18_FACES: Face[] = [
       e: 'り',
       '.': 'わ',
       c: 'を',
-      // 数字の段と右端の列の記号。出典のJISの列をANSIへ投影して置く（JIS専用の列に当たる `}` `_` は置かない）
+      // 数字の段と右端の列の記号。出典のJISの列をANSIへ投影して置く（JIS専用の列に当たる}と_は置かない）
       1: '!',
       2: '"',
       3: '#',
@@ -251,7 +251,7 @@ export const NAGINATA_V18_FACES: Face[] = [
     ['j', 'k'],
     {
       e: 'でぃ',
-      // 編集モード1の左手。出典の `{改行}` などの機能キーの部分は打鍵に含めない
+      // 編集モード1の左手。出典の{改行}などの機能キーの部分は打鍵に含めない
       w: '／',
       t: '・',
       a: '……',
@@ -337,7 +337,8 @@ export const NAGINATA_V18_FACES: Face[] = [
     ['p', 'v'],
     { ';': 'ふゅ' },
     { modifierGroups: { p: '拗音', v: '半濁音' }, role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' },
-  ), // 編集モード2の左手
+  ),
+  // 編集モード2の左手
   face(
     ['m', ','],
     { q: '｜', t: '○', a: '《', s: '【', z: '》', x: '】' },

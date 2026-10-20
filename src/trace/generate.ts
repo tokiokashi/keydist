@@ -705,7 +705,7 @@ function canFireYouonOnlyCombo(cursor: number, chars: string[], chunks: RomajiCh
 
 /**
  * 全角形の記号（U+FF01〜U+FF5E）から、対応する半角の記号への別名（仕様 §4）。
- * 全角形の英字・数字は別の文字として扱う。`，` `．` は日本語の句読点の解決（仕様 §4.6）と重なるので入れない。
+ * 全角形の英字・数字は別の文字として扱う。，と．は日本語の句読点の解決（仕様 §4.6）と重なるので入れない。
  */
 export const EVALUATION_CHAR_ALIASES: Readonly<Record<string, string>> = (() => {
   const aliases: Record<string, string> = {};

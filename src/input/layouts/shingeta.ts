@@ -8,8 +8,8 @@ import { faceFromEntries, fromFaces, groupNamedModifierKeyMeanings, withAliases,
  * keydistではこの公開された配列仕様をFace定義として独自に記述し、
  * 機能キーやJIS専用キーは解析対象から除く。
  * 単打面の重複する長音は元記事の主要部に合わせてqを採る。
- * D面の記号は、単打面の `「` と重なるものも含めて、同じ記号の代わりの打ち方として持つ。
- * `」` はANSIに無い列に置かれた単打面ではなく、D面で打つ。
+ * D面の記号は、単打面にもある「を含めて、同じ記号の代わりの打ち方として持つ。
+ * 」はANSIに無い列に置かれた単打面ではなく、D面で打つ。
  */
 
 const face = (
