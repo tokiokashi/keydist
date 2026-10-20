@@ -25,7 +25,7 @@ import { resolveTargetForText } from './target-resolution.ts';
  */
 export interface ResolvedInput {
   /**
-   * 打つ文章。前処理（漢字を読みに直す段と評価対象の記号の範囲。仕様 §4.6）を通した後の値。ローマ字展開はTrace生成時に行う。
+   * 打つ文章。前処理（漢字を読みに直す段・片仮名をひらがなに書き換える段・評価対象の記号の範囲。仕様 §4.6）を通した後の値。ローマ字展開はTrace生成時に行う。
    */
   readonly text: string;
   /** ローマ字入力なら、実効ローマ字規則で組み直した表を持つ最終形。持たなければ配列側のまま。 */
