@@ -24,6 +24,29 @@ export async function convertForEvaluation(source: ReadingSource, text: string):
   }
 }
 
+/** 読みに直した結果と、それがどのテキストのものか。 */
+export interface StoredReadingOutcome {
+  /** ペインが選んでいるテキストの同一性（`textIdentity`）。中身の文字列ではない */
+  readonly identity: string;
+  readonly outcome: ReadingOutcome;
+}
+
+/**
+ * ペインが選んでいるテキストの同一性。自作のテキストは資産のid、組み込みのテキストはそのid。
+ * 同じテキストの編集では変わらず、別のテキストへ切り替えると変わる。
+ */
+export function textIdentity(resolved: ResolvedText): string {
+  return `${resolved.ref.kind}:${resolved.ref.id}`;
+}
+
+/**
+ * 今のテキストに使ってよい結果。同じテキストの編集では前の結果を残して読み直すが、
+ * 別のテキストへ切り替えた時は前のテキストの結果を引き継がない（undefined。読み込み中と同じ扱い）。
+ */
+export function outcomeFor(resolved: ResolvedText, stored: StoredReadingOutcome | undefined): ReadingOutcome | undefined {
+  return stored !== undefined && stored.identity === textIdentity(resolved) ? stored.outcome : undefined;
+}
+
 /** 評価に渡すテキスト。読みに直す対象のテキストは、読みの変換の条件を添える。 */
 export interface PaneText extends ResolvedText {
   readonly reading?: ReadingConditions | null;
