@@ -715,7 +715,7 @@ function alternativeContextSatisfied(
 }
 
 /**
- * 英字の範囲[start, end)と重なる綴りの単位を、`chunks` の添字の範囲 [from, to) で返す。
+ * 英字の範囲[start, end)と重なる綴りの単位を、`chunks`の添字の範囲[from, to)で返す。
  * 綴りの単位は英字の位置の順に隙間なく並ぶので、endがstartを超える最初の単位を二分探索で見つけ、
  * そこからstartが範囲の終わりに届くまで進めばよい。全件を頭から走査しない（テキストの長さに比例した時間にするため）。
  */
