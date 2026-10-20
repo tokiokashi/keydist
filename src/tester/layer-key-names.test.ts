@@ -74,7 +74,7 @@ test('呼び名の種類を切り替えると、トリガーキーの名前だ�
   assert.ok(card);
   assert.deepEqual(
     NAMINGS.map((naming) => layerCardTitle(layout, card.id, card.label, naming)),
-    ['中指シフト', 'K / D', 'い / か'],
+    ['中指シフト', 'D / K', 'か / い'],
   );
 });
 

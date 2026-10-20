@@ -371,12 +371,14 @@ test('built-in薙刀式のreciprocal濁音はactive hold側をtriggerとして�
     });
 
     engine.handle(browserPhysical('keydown', testCase.holdCode));
-    const start = engine.handle(browserPhysical('keydown', testCase.startCode)).recognized[0];
+    // より多いキーの同時押し（編集モード1）に延びうる組は、キーを離すまで確定を待つ
+    const pressed = engine.handle(browserPhysical('keydown', testCase.startCode)).recognized;
+    const released = engine.handle(browserPhysical('keyup', testCase.startCode)).recognized;
+    const start = [...pressed, ...released][0];
     assert.equal(start.output, testCase.startOutput);
     assert.equal(start.actions[0].holdPhase, 'start');
     assert.deepEqual(start.actions[0].heldKeys, [testCase.heldKey]);
 
-    engine.handle(browserPhysical('keyup', testCase.startCode));
     assert.deepEqual(engine.handle(browserPhysical('keydown', testCase.reciprocalCode)).recognized, []);
     const reciprocal = engine.handle(browserPhysical('keyup', testCase.reciprocalCode)).recognized[0];
 

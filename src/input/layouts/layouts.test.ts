@@ -480,7 +480,7 @@ test('宣言された面だけを逆手の条件でレイヤーへ集約する',
     [7, 5, 0, 0],
     [3, 2, 0, 0],
     [3, 3, 0, 0],
-    [33, 2, 29, 0],
+    [34, 2, 30, 0],
   ]);
 
   assert.deepEqual(
@@ -504,7 +504,7 @@ test('宣言された面だけを逆手の条件でレイヤーへ集約する',
     naginataGroups.modifiers.slice(0, 6).map((layer) => layer.faces.map((face) => face.trigger)),
     [[['q']], [['j'], ['f']], [['m'], ['v']], [['h']], [['p']], [['i']]],
   );
-  assert.equal(naginataGroups.modifiers.length, 29);
+  assert.equal(naginataGroups.modifiers.length, 30);
   assert.equal(naginataGroups.combos.length, 0);
 
   assert.equal(handOfKey('space'), 'right');
@@ -564,7 +564,7 @@ test('畳んだレイヤーはauthoringで明示したpresentation membershipだ
 test('薙刀式v18は面から生成され、全定義を1ステップで保持する', () => {
   const layout = LAYOUT_BY_ID.get('naginata-v18')!;
 
-  assert.equal(layout.map.size, 150);
+  assert.equal(layout.map.size, 180);
   assert.equal(layout.map.has(' '), false);
   assert.equal(layout.legends.get('thumb-l'), 'Space');
   assert.equal(layout.legends.get('thumb-r'), 'Space');
