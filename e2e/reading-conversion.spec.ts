@@ -181,3 +181,54 @@ test('Workspaceのペインも、漢字を含むテキストを読みに直し�
   await expect(page.getByRole('dialog', { name: '条件' }).getByRole('region', { name: '数値の出どころ' })).toContainText('IPADIC（6.2.0）');
   expect(traffic.zip).toBe(1);
 });
+
+test('読みの辞書を読み込めなかったテキストから別の漢字を含むテキストへ切り替えると、前の失敗の知らせを引き継がず、読み込み中を出す', async ({ page }) => {
+  let requests = 0;
+  let release: (() => void) | undefined;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  // 1回目の取得は失敗させ、2回目は止めたままにする
+  await page.route(ZIP_PATTERN, async (route: Route) => {
+    requests += 1;
+    if (requests === 1) {
+      await route.fulfill({ status: 404, contentType: 'text/plain', body: 'not found' });
+      return;
+    }
+    await held;
+    await route.abort();
+  });
+  await page.addInitScript(
+    ({ texts }) => {
+      if (localStorage.getItem('keydist:text-library') === null) {
+        localStorage.setItem('keydist:text-library', JSON.stringify({ version: 1, texts }));
+      }
+    },
+    {
+      texts: [
+        { id: 'kanji-a', name: '漢字A', text: '今日は良い天気です。' },
+        { id: 'kanji-b', name: '漢字B', text: '明日は雨が降るでしょう。' },
+      ],
+    },
+  );
+  await openAnalyzer(page, '/analyzer/bigram-flow');
+
+  const select = async (id: string) => {
+    const panel = await openTextChip(page);
+    await panel.getByLabel('テキストを選ぶ').selectOption(`user:${id}`);
+    await page.keyboard.press('Escape');
+  };
+
+  await select('kanji-a');
+  await expect(readingFailed(page)).toBeVisible({ timeout: 20_000 });
+  await expect(flowBody(page)).toBeVisible();
+
+  await select('kanji-b');
+  await expect(readingLoading(page)).toBeVisible({ timeout: 10_000 });
+  // Aの失敗の状態も、Aの数値も、Bには出ない
+  await expect(readingFailed(page)).toHaveCount(0);
+  await expect(flowBody(page)).toHaveCount(0);
+  // Bのために辞書を取り直している（止めている2回目の取得を待っている）
+  await expect.poll(() => requests).toBe(2);
+  release?.();
+});
