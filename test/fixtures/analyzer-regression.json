@@ -2043,212 +2043,6 @@
       "analysis": {
         "arpeggio": {
           "coverage": {
-            "rate": 0.1310344827586207,
-            "strokes": 38
-          },
-          "meanSpanLength": 2.1666666666666665,
-          "spans": 18
-        },
-        "directionalTransitions": {
-          "empty": 0,
-          "inward": 43,
-          "mixed": 23,
-          "outward": 41,
-          "same": 2,
-          "total": 109
-        },
-        "redirect": {
-          "events": 38,
-          "pivots": {
-            "rate": 0.1310344827586207,
-            "strokes": 38
-          }
-        },
-        "roll": {
-          "anyRoll": {
-            "rate": 0.1310344827586207,
-            "strokes": 38
-          },
-          "longRoll": {
-            "rate": 0.02413793103448276,
-            "strokes": 7
-          },
-          "twoRoll": {
-            "rate": 0.1103448275862069,
-            "strokes": 32
-          }
-        },
-        "sfb": {
-          "events": 13,
-          "involvedStrokes": {
-            "rate": 0.08620689655172414,
-            "strokes": 25
-          }
-        },
-        "strokeCount": 290
-      },
-      "conditions": {
-        "actionRealizationPolicy": {
-          "triggerActivation": "disabled",
-          "triggerActivationClassOverrides": {},
-          "triggerActivationOverrides": []
-        },
-        "arpeggioInterpretation": {
-          "bridgeSameFinger": false,
-          "includeSingleRedirectTail": false,
-          "includeThumb": false
-        },
-        "chainInterpretation": {
-          "breakOnOppositeHandSimultaneous": false,
-          "breakOnSameFinger": true,
-          "breakOnThumbOnly": true,
-          "breakOnTriggerOnly": false
-        },
-        "fingerAssignmentId": "default",
-        "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
-        "romajiRuleId": null,
-        "sfbHomeCost": true,
-        "triggerRealizationPolicy": {
-          "useHold": false
-        },
-        "windowSize": 3
-      },
-      "id": "ja:asuka:legacy",
-      "language": "ja",
-      "layoutId": "asuka",
-      "metrics": {
-        "actions": 290,
-        "adjacent": [
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.021455455590204633,
-            "pair": [
-              "LP",
-              "LR"
-            ],
-            "stdDev": 0.11059927902508927
-          },
-          {
-            "maxExcess": 1.6575364531836625,
-            "meanExcess": 0.06082379000897098,
-            "pair": [
-              "LR",
-              "LM"
-            ],
-            "stdDev": 0.2169485645365062
-          },
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.028775958914009487,
-            "pair": [
-              "LM",
-              "LI"
-            ],
-            "stdDev": 0.12026992120545836
-          },
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.051338164474811106,
-            "pair": [
-              "RI",
-              "RM"
-            ],
-            "stdDev": 0.15560824524330472
-          },
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.12245397408708435,
-            "pair": [
-              "RM",
-              "RR"
-            ],
-            "stdDev": 0.2487253855870397
-          },
-          {
-            "maxExcess": 1,
-            "meanExcess": 0.06934154494058774,
-            "pair": [
-              "RR",
-              "RP"
-            ],
-            "stdDev": 0.19924436111591848
-          }
-        ],
-        "comboPresses": 0,
-        "combos": {
-          "definitions": 0,
-          "hits": 0,
-          "matched": 0
-        },
-        "fingerAssignmentId": "default",
-        "fingerAssignmentName": "既定（列固定）",
-        "geometryId": "row-staggered",
-        "geometryName": "ロウスタッガード（ANSI）",
-        "inputChars": 290,
-        "layers": [
-          {
-            "id": "single",
-            "label": "単打",
-            "presses": 145
-          },
-          {
-            "id": "layer:左親指",
-            "label": "左親指",
-            "presses": 130
-          },
-          {
-            "id": "layer:右親指",
-            "label": "右親指",
-            "presses": 160
-          }
-        ],
-        "meanPerStroke": 0.3917759824910569,
-        "perCharPresses": 1.5,
-        "perCharSteps": 1,
-        "perCharUnits": 0.3917759824910569,
-        "perFinger": {
-          "LI": 1.118033988749895,
-          "LM": 17.19048316123448,
-          "LP": 4.47213595499958,
-          "LR": 9.800533151712616,
-          "LT": 0,
-          "RI": 12.211116293903364,
-          "RM": 28.267250884646593,
-          "RP": 7.030776406404415,
-          "RR": 33.52470508075548,
-          "RT": 0
-        },
-        "perFingerPresses": {
-          "LI": 15,
-          "LM": 48,
-          "LP": 23,
-          "LR": 31,
-          "LT": 65,
-          "RI": 34,
-          "RM": 50,
-          "RP": 31,
-          "RR": 58,
-          "RT": 80
-        },
-        "presses": 435,
-        "sameFinger": 18,
-        "singleKeyRate": 50,
-        "singleTapLayerRate": 50,
-        "singleTapRate": 50,
-        "skipped": 0,
-        "strokes": 290,
-        "totalMm": 2164.366415271844,
-        "totalUnits": 113.6150349224065
-      },
-      "sampleId": "legacy",
-      "textLength": 290,
-      "textSha256": "13032193a6d690c3512871d49b029cf1f04bca30a16c3df6b5f1b3d5d5182fdc"
-    },
-    {
-      "analysis": {
-        "arpeggio": {
-          "coverage": {
             "rate": 0.07637231503579953,
             "strokes": 128
           },
@@ -2869,207 +2663,6 @@
       "analysis": {
         "arpeggio": {
           "coverage": {
-            "rate": 0.5223300970873787,
-            "strokes": 269
-          },
-          "meanSpanLength": 2.0930232558139537,
-          "spans": 129
-        },
-        "directionalTransitions": {
-          "empty": 0,
-          "inward": 114,
-          "mixed": 0,
-          "outward": 98,
-          "same": 23,
-          "total": 235
-        },
-        "redirect": {
-          "events": 76,
-          "pivots": {
-            "rate": 0.14757281553398058,
-            "strokes": 76
-          }
-        },
-        "roll": {
-          "anyRoll": {
-            "rate": 0.5223300970873787,
-            "strokes": 269
-          },
-          "longRoll": {
-            "rate": 0.05048543689320388,
-            "strokes": 26
-          },
-          "twoRoll": {
-            "rate": 0.47378640776699027,
-            "strokes": 244
-          }
-        },
-        "sfb": {
-          "events": 23,
-          "involvedStrokes": {
-            "rate": 0.08932038834951456,
-            "strokes": 46
-          }
-        },
-        "strokeCount": 515
-      },
-      "conditions": {
-        "actionRealizationPolicy": {
-          "triggerActivation": "disabled",
-          "triggerActivationClassOverrides": {},
-          "triggerActivationOverrides": []
-        },
-        "arpeggioInterpretation": {
-          "bridgeSameFinger": false,
-          "includeSingleRedirectTail": false,
-          "includeThumb": false
-        },
-        "chainInterpretation": {
-          "breakOnOppositeHandSimultaneous": false,
-          "breakOnSameFinger": true,
-          "breakOnThumbOnly": true,
-          "breakOnTriggerOnly": false
-        },
-        "fingerAssignmentId": "default",
-        "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
-        "romajiRuleId": "kunrei",
-        "sfbHomeCost": true,
-        "triggerRealizationPolicy": {
-          "useHold": false
-        },
-        "windowSize": 3
-      },
-      "id": "ja:colemak-dh:legacy",
-      "language": "ja",
-      "layoutId": "colemak-dh",
-      "metrics": {
-        "actions": 515,
-        "adjacent": [
-          {
-            "maxExcess": 0.25,
-            "meanExcess": 0.007887972618930202,
-            "pair": [
-              "LP",
-              "LR"
-            ],
-            "stdDev": 0.04046681115979392
-          },
-          {
-            "maxExcess": 0.6007810593582121,
-            "meanExcess": 0.013998781965628244,
-            "pair": [
-              "LR",
-              "LM"
-            ],
-            "stdDev": 0.09063242886800273
-          },
-          {
-            "maxExcess": 1.0155644370746373,
-            "meanExcess": 0.05768496571131609,
-            "pair": [
-              "LM",
-              "LI"
-            ],
-            "stdDev": 0.21837126288475722
-          },
-          {
-            "maxExcess": 1.3584952830141508,
-            "meanExcess": 0.17159858880861842,
-            "pair": [
-              "RI",
-              "RM"
-            ],
-            "stdDev": 0.3272457125928332
-          },
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.08324023313329679,
-            "pair": [
-              "RM",
-              "RR"
-            ],
-            "stdDev": 0.21107288402318328
-          },
-          {
-            "maxExcess": 1.3584952830141508,
-            "meanExcess": 0.01901419365849051,
-            "pair": [
-              "RR",
-              "RP"
-            ],
-            "stdDev": 0.12250767884081148
-          }
-        ],
-        "comboPresses": 0,
-        "combos": {
-          "definitions": 0,
-          "hits": 0,
-          "matched": 0
-        },
-        "fingerAssignmentId": "default",
-        "fingerAssignmentName": "既定（列固定）",
-        "geometryId": "row-staggered",
-        "geometryName": "ロウスタッガード（ANSI）",
-        "inputChars": 290,
-        "layers": [
-          {
-            "id": "single",
-            "label": "単打",
-            "presses": 515
-          },
-          {
-            "id": "layer:Shift",
-            "label": "Shift",
-            "presses": 0
-          }
-        ],
-        "meanPerStroke": 0.2723861746649953,
-        "perCharPresses": 1.7758620689655173,
-        "perCharSteps": 1.7758620689655173,
-        "perCharUnits": 0.4837202756981813,
-        "perFinger": {
-          "LI": 32.87461179749809,
-          "LM": 0,
-          "LP": 5.5901699437494745,
-          "LR": 8.246211251235321,
-          "LT": 0,
-          "RI": 53.6590536512467,
-          "RM": 22.677080940897124,
-          "RP": 2.0155644370746373,
-          "RR": 15.216187930771131,
-          "RT": 0
-        },
-        "perFingerPresses": {
-          "LI": 76,
-          "LM": 20,
-          "LP": 90,
-          "LR": 28,
-          "LT": 0,
-          "RI": 112,
-          "RM": 74,
-          "RP": 57,
-          "RR": 58,
-          "RT": 0
-        },
-        "presses": 515,
-        "sameFinger": 3,
-        "singleKeyRate": 100,
-        "singleTapLayerRate": 0,
-        "singleTapRate": 0,
-        "skipped": 0,
-        "strokes": 515,
-        "totalMm": 2672.3126630946026,
-        "totalUnits": 140.27887995247258
-      },
-      "sampleId": "legacy",
-      "textLength": 290,
-      "textSha256": "13032193a6d690c3512871d49b029cf1f04bca30a16c3df6b5f1b3d5d5182fdc"
-    },
-    {
-      "analysis": {
-        "arpeggio": {
-          "coverage": {
             "rate": 0.5171723907969323,
             "strokes": 1551
           },
@@ -3266,207 +2859,6 @@
       "sampleId": "modern",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
-    },
-    {
-      "analysis": {
-        "arpeggio": {
-          "coverage": {
-            "rate": 0.5223300970873787,
-            "strokes": 269
-          },
-          "meanSpanLength": 2.0930232558139537,
-          "spans": 129
-        },
-        "directionalTransitions": {
-          "empty": 0,
-          "inward": 114,
-          "mixed": 0,
-          "outward": 98,
-          "same": 23,
-          "total": 235
-        },
-        "redirect": {
-          "events": 76,
-          "pivots": {
-            "rate": 0.14757281553398058,
-            "strokes": 76
-          }
-        },
-        "roll": {
-          "anyRoll": {
-            "rate": 0.5223300970873787,
-            "strokes": 269
-          },
-          "longRoll": {
-            "rate": 0.05048543689320388,
-            "strokes": 26
-          },
-          "twoRoll": {
-            "rate": 0.47378640776699027,
-            "strokes": 244
-          }
-        },
-        "sfb": {
-          "events": 23,
-          "involvedStrokes": {
-            "rate": 0.08932038834951456,
-            "strokes": 46
-          }
-        },
-        "strokeCount": 515
-      },
-      "conditions": {
-        "actionRealizationPolicy": {
-          "triggerActivation": "disabled",
-          "triggerActivationClassOverrides": {},
-          "triggerActivationOverrides": []
-        },
-        "arpeggioInterpretation": {
-          "bridgeSameFinger": false,
-          "includeSingleRedirectTail": false,
-          "includeThumb": false
-        },
-        "chainInterpretation": {
-          "breakOnOppositeHandSimultaneous": false,
-          "breakOnSameFinger": true,
-          "breakOnThumbOnly": true,
-          "breakOnTriggerOnly": false
-        },
-        "fingerAssignmentId": "default",
-        "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
-        "romajiRuleId": "kunrei",
-        "sfbHomeCost": true,
-        "triggerRealizationPolicy": {
-          "useHold": false
-        },
-        "windowSize": 3
-      },
-      "id": "ja:colemak:legacy",
-      "language": "ja",
-      "layoutId": "colemak",
-      "metrics": {
-        "actions": 515,
-        "adjacent": [
-          {
-            "maxExcess": 0.25,
-            "meanExcess": 0.007887972618930202,
-            "pair": [
-              "LP",
-              "LR"
-            ],
-            "stdDev": 0.04046681115979392
-          },
-          {
-            "maxExcess": 0.6007810593582121,
-            "meanExcess": 0.013998781965628244,
-            "pair": [
-              "LR",
-              "LM"
-            ],
-            "stdDev": 0.09063242886800273
-          },
-          {
-            "maxExcess": 1.6925824035672523,
-            "meanExcess": 0.07032587795023978,
-            "pair": [
-              "LM",
-              "LI"
-            ],
-            "stdDev": 0.2692304575301492
-          },
-          {
-            "maxExcess": 1.3584952830141508,
-            "meanExcess": 0.16861334074893652,
-            "pair": [
-              "RI",
-              "RM"
-            ],
-            "stdDev": 0.32530515266112997
-          },
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.08324023313329679,
-            "pair": [
-              "RM",
-              "RR"
-            ],
-            "stdDev": 0.21107288402318328
-          },
-          {
-            "maxExcess": 1.3584952830141508,
-            "meanExcess": 0.01901419365849051,
-            "pair": [
-              "RR",
-              "RP"
-            ],
-            "stdDev": 0.12250767884081148
-          }
-        ],
-        "comboPresses": 0,
-        "combos": {
-          "definitions": 0,
-          "hits": 0,
-          "matched": 0
-        },
-        "fingerAssignmentId": "default",
-        "fingerAssignmentName": "既定（列固定）",
-        "geometryId": "row-staggered",
-        "geometryName": "ロウスタッガード（ANSI）",
-        "inputChars": 290,
-        "layers": [
-          {
-            "id": "single",
-            "label": "単打",
-            "presses": 515
-          },
-          {
-            "id": "layer:Shift",
-            "label": "Shift",
-            "presses": 0
-          }
-        ],
-        "meanPerStroke": 0.27676646800615534,
-        "perCharPresses": 1.7758620689655173,
-        "perCharSteps": 1.7758620689655173,
-        "perCharUnits": 0.4914990724936896,
-        "perFinger": {
-          "LI": 34.658326913195985,
-          "LM": 0,
-          "LP": 5.5901699437494745,
-          "LR": 8.246211251235321,
-          "LT": 0,
-          "RI": 54.13118960624628,
-          "RM": 22.677080940897124,
-          "RP": 2.0155644370746373,
-          "RR": 15.216187930771131,
-          "RT": 0
-        },
-        "perFingerPresses": {
-          "LI": 76,
-          "LM": 20,
-          "LP": 90,
-          "LR": 28,
-          "LT": 0,
-          "RI": 112,
-          "RM": 74,
-          "RP": 57,
-          "RR": 58,
-          "RT": 0
-        },
-        "presses": 515,
-        "sameFinger": 3,
-        "singleKeyRate": 100,
-        "singleTapLayerRate": 0,
-        "singleTapRate": 0,
-        "skipped": 0,
-        "strokes": 515,
-        "totalMm": 2715.2866259913885,
-        "totalUnits": 142.53473102317
-      },
-      "sampleId": "legacy",
-      "textLength": 290,
-      "textSha256": "13032193a6d690c3512871d49b029cf1f04bca30a16c3df6b5f1b3d5d5182fdc"
     },
     {
       "analysis": {
@@ -3673,207 +3065,6 @@
       "analysis": {
         "arpeggio": {
           "coverage": {
-            "rate": 0.3106796116504854,
-            "strokes": 160
-          },
-          "meanSpanLength": 2.0125,
-          "spans": 80
-        },
-        "directionalTransitions": {
-          "empty": 0,
-          "inward": 66,
-          "mixed": 0,
-          "outward": 35,
-          "same": 21,
-          "total": 122
-        },
-        "redirect": {
-          "events": 21,
-          "pivots": {
-            "rate": 0.040776699029126215,
-            "strokes": 21
-          }
-        },
-        "roll": {
-          "anyRoll": {
-            "rate": 0.3106796116504854,
-            "strokes": 160
-          },
-          "longRoll": {
-            "rate": 0.005825242718446602,
-            "strokes": 3
-          },
-          "twoRoll": {
-            "rate": 0.3067961165048544,
-            "strokes": 158
-          }
-        },
-        "sfb": {
-          "events": 21,
-          "involvedStrokes": {
-            "rate": 0.08155339805825243,
-            "strokes": 42
-          }
-        },
-        "strokeCount": 515
-      },
-      "conditions": {
-        "actionRealizationPolicy": {
-          "triggerActivation": "disabled",
-          "triggerActivationClassOverrides": {},
-          "triggerActivationOverrides": []
-        },
-        "arpeggioInterpretation": {
-          "bridgeSameFinger": false,
-          "includeSingleRedirectTail": false,
-          "includeThumb": false
-        },
-        "chainInterpretation": {
-          "breakOnOppositeHandSimultaneous": false,
-          "breakOnSameFinger": true,
-          "breakOnThumbOnly": true,
-          "breakOnTriggerOnly": false
-        },
-        "fingerAssignmentId": "default",
-        "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
-        "romajiRuleId": "kunrei",
-        "sfbHomeCost": true,
-        "triggerRealizationPolicy": {
-          "useHold": false
-        },
-        "windowSize": 3
-      },
-      "id": "ja:dvorak:legacy",
-      "language": "ja",
-      "layoutId": "dvorak",
-      "metrics": {
-        "actions": 515,
-        "adjacent": [
-          {
-            "maxExcess": 0,
-            "meanExcess": 0,
-            "pair": [
-              "LP",
-              "LR"
-            ],
-            "stdDev": 0
-          },
-          {
-            "maxExcess": 0.25,
-            "meanExcess": 0.004368932038834952,
-            "pair": [
-              "LR",
-              "LM"
-            ],
-            "stdDev": 0.03275889867728736
-          },
-          {
-            "maxExcess": 1.462214450449026,
-            "meanExcess": 0.27843666009323714,
-            "pair": [
-              "LM",
-              "LI"
-            ],
-            "stdDev": 0.43210671249590277
-          },
-          {
-            "maxExcess": 1,
-            "meanExcess": 0.09766088935701223,
-            "pair": [
-              "RI",
-              "RM"
-            ],
-            "stdDev": 0.27005894562464544
-          },
-          {
-            "maxExcess": 1.0155644370746373,
-            "meanExcess": 0.024004396192469555,
-            "pair": [
-              "RM",
-              "RR"
-            ],
-            "stdDev": 0.11216080029219244
-          },
-          {
-            "maxExcess": 1,
-            "meanExcess": 0.05640165126527745,
-            "pair": [
-              "RR",
-              "RP"
-            ],
-            "stdDev": 0.1934259792696469
-          }
-        ],
-        "comboPresses": 0,
-        "combos": {
-          "definitions": 0,
-          "hits": 0,
-          "matched": 0
-        },
-        "fingerAssignmentId": "default",
-        "fingerAssignmentName": "既定（列固定）",
-        "geometryId": "row-staggered",
-        "geometryName": "ロウスタッガード（ANSI）",
-        "inputChars": 290,
-        "layers": [
-          {
-            "id": "single",
-            "label": "単打",
-            "presses": 515
-          },
-          {
-            "id": "layer:Shift",
-            "label": "Shift",
-            "presses": 0
-          }
-        ],
-        "meanPerStroke": 0.31906756639094935,
-        "perCharPresses": 1.7758620689655173,
-        "perCharSteps": 1.7758620689655173,
-        "perCharUnits": 0.5666199885908239,
-        "perFinger": {
-          "LI": 82.23529157249602,
-          "LM": 9.276987657639737,
-          "LP": 0,
-          "LR": 0,
-          "LT": 0,
-          "RI": 44.04749748888813,
-          "RM": 6.708203932499369,
-          "RP": 6.5901699437494745,
-          "RR": 15.461646096066229,
-          "RT": 0
-        },
-        "perFingerPresses": {
-          "LI": 115,
-          "LM": 49,
-          "LP": 84,
-          "LR": 55,
-          "LT": 0,
-          "RI": 60,
-          "RM": 54,
-          "RP": 28,
-          "RR": 70,
-          "RT": 0
-        },
-        "presses": 515,
-        "sameFinger": 23,
-        "singleKeyRate": 100,
-        "singleTapLayerRate": 0,
-        "singleTapRate": 0,
-        "skipped": 0,
-        "strokes": 515,
-        "totalMm": 3130.2921269700064,
-        "totalUnits": 164.31979669133892
-      },
-      "sampleId": "legacy",
-      "textLength": 290,
-      "textSha256": "13032193a6d690c3512871d49b029cf1f04bca30a16c3df6b5f1b3d5d5182fdc"
-    },
-    {
-      "analysis": {
-        "arpeggio": {
-          "coverage": {
             "rate": 0.23507835945315106,
             "strokes": 705
           },
@@ -4070,212 +3261,6 @@
       "sampleId": "modern",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
-    },
-    {
-      "analysis": {
-        "arpeggio": {
-          "coverage": {
-            "rate": 0.3853211009174312,
-            "strokes": 126
-          },
-          "meanSpanLength": 2.135593220338983,
-          "spans": 59
-        },
-        "directionalTransitions": {
-          "empty": 0,
-          "inward": 58,
-          "mixed": 0,
-          "outward": 53,
-          "same": 4,
-          "total": 115
-        },
-        "redirect": {
-          "events": 31,
-          "pivots": {
-            "rate": 0.09480122324159021,
-            "strokes": 31
-          }
-        },
-        "roll": {
-          "anyRoll": {
-            "rate": 0.3853211009174312,
-            "strokes": 126
-          },
-          "longRoll": {
-            "rate": 0.07339449541284404,
-            "strokes": 24
-          },
-          "twoRoll": {
-            "rate": 0.3119266055045872,
-            "strokes": 102
-          }
-        },
-        "sfb": {
-          "events": 4,
-          "involvedStrokes": {
-            "rate": 0.024464831804281346,
-            "strokes": 8
-          }
-        },
-        "strokeCount": 327
-      },
-      "conditions": {
-        "actionRealizationPolicy": {
-          "triggerActivation": "disabled",
-          "triggerActivationClassOverrides": {},
-          "triggerActivationOverrides": []
-        },
-        "arpeggioInterpretation": {
-          "bridgeSameFinger": false,
-          "includeSingleRedirectTail": false,
-          "includeThumb": false
-        },
-        "chainInterpretation": {
-          "breakOnOppositeHandSimultaneous": false,
-          "breakOnSameFinger": true,
-          "breakOnThumbOnly": true,
-          "breakOnTriggerOnly": false
-        },
-        "fingerAssignmentId": "jis-default",
-        "geometryShapeId": "jis-row-staggered",
-        "preferOppositeThumb": false,
-        "romajiRuleId": null,
-        "sfbHomeCost": true,
-        "triggerRealizationPolicy": {
-          "useHold": false
-        },
-        "windowSize": 3
-      },
-      "id": "ja:jis-kana:legacy",
-      "language": "ja",
-      "layoutId": "jis-kana",
-      "metrics": {
-        "actions": 327,
-        "adjacent": [
-          {
-            "maxExcess": 1.6575364531836625,
-            "meanExcess": 0.15411963963313333,
-            "pair": [
-              "LP",
-              "LR"
-            ],
-            "stdDev": 0.36289512631558635
-          },
-          {
-            "maxExcess": 1.6575364531836625,
-            "meanExcess": 0.09732196040947298,
-            "pair": [
-              "LR",
-              "LM"
-            ],
-            "stdDev": 0.2702317301613295
-          },
-          {
-            "maxExcess": 1.6925824035672523,
-            "meanExcess": 0.29172830060672567,
-            "pair": [
-              "LM",
-              "LI"
-            ],
-            "stdDev": 0.501161419159398
-          },
-          {
-            "maxExcess": 2.400367627183861,
-            "meanExcess": 0.17432977812968545,
-            "pair": [
-              "RI",
-              "RM"
-            ],
-            "stdDev": 0.449432227982779
-          },
-          {
-            "maxExcess": 1.6575364531836625,
-            "meanExcess": 0.06714546646681382,
-            "pair": [
-              "RM",
-              "RR"
-            ],
-            "stdDev": 0.23249136619778535
-          },
-          {
-            "maxExcess": 2.8160843806184372,
-            "meanExcess": 0.32163896610810466,
-            "pair": [
-              "RR",
-              "RP"
-            ],
-            "stdDev": 0.5422005647719412
-          }
-        ],
-        "comboPresses": 0,
-        "combos": {
-          "definitions": 0,
-          "hits": 0,
-          "matched": 0
-        },
-        "fingerAssignmentId": "jis-default",
-        "fingerAssignmentName": "JIS既定（列固定）",
-        "geometryId": "jis-row-staggered",
-        "geometryName": "ロウスタッガード（JIS）",
-        "inputChars": 290,
-        "layers": [
-          {
-            "id": "single",
-            "label": "単打",
-            "presses": 306
-          },
-          {
-            "id": "face:1",
-            "label": "Shift",
-            "presses": 42
-          },
-          {
-            "id": "face:2",
-            "label": "Shift",
-            "presses": 0
-          }
-        ],
-        "meanPerStroke": 1.0647995041700125,
-        "perCharPresses": 1.2,
-        "perCharSteps": 1.1275862068965516,
-        "perCharUnits": 1.2006532340123934,
-        "perFinger": {
-          "LI": 71.71032648719098,
-          "LM": 37.10904712404633,
-          "LP": 57.713981346609266,
-          "LR": 18.628423438800024,
-          "LT": 0,
-          "RI": 55.12423225656828,
-          "RM": 11.574694299835153,
-          "RP": 76.84054310711387,
-          "RR": 19.48818980342989,
-          "RT": 0
-        },
-        "perFingerPresses": {
-          "LI": 63,
-          "LM": 45,
-          "LP": 49,
-          "LR": 39,
-          "LT": 0,
-          "RI": 46,
-          "RM": 16,
-          "RP": 69,
-          "RR": 21,
-          "RT": 0
-        },
-        "presses": 348,
-        "sameFinger": 46,
-        "singleKeyRate": 93.57798165137615,
-        "singleTapLayerRate": 80,
-        "singleTapRate": 70.9480122324159,
-        "skipped": 0,
-        "strokes": 327,
-        "totalMm": 6633.008791301468,
-        "totalUnits": 348.1894378635941
-      },
-      "sampleId": "legacy",
-      "textLength": 290,
-      "textSha256": "13032193a6d690c3512871d49b029cf1f04bca30a16c3df6b5f1b3d5d5182fdc"
     },
     {
       "analysis": {
@@ -4482,282 +3467,6 @@
       "sampleId": "modern",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
-    },
-    {
-      "analysis": {
-        "arpeggio": {
-          "coverage": {
-            "rate": 0.09663865546218488,
-            "strokes": 23
-          },
-          "meanSpanLength": 2.090909090909091,
-          "spans": 11
-        },
-        "directionalTransitions": {
-          "empty": 0,
-          "inward": 75,
-          "mixed": 8,
-          "outward": 72,
-          "same": 19,
-          "total": 174
-        },
-        "redirect": {
-          "events": 74,
-          "pivots": {
-            "rate": 0.3025210084033613,
-            "strokes": 72
-          }
-        },
-        "roll": {
-          "anyRoll": {
-            "rate": 0.09663865546218488,
-            "strokes": 23
-          },
-          "longRoll": {
-            "rate": 0.012605042016806723,
-            "strokes": 3
-          },
-          "twoRoll": {
-            "rate": 0.08403361344537816,
-            "strokes": 20
-          }
-        },
-        "sfb": {
-          "events": 23,
-          "involvedStrokes": {
-            "rate": 0.1722689075630252,
-            "strokes": 41
-          }
-        },
-        "strokeCount": 238
-      },
-      "conditions": {
-        "actionRealizationPolicy": {
-          "triggerActivation": "disabled",
-          "triggerActivationClassOverrides": {},
-          "triggerActivationOverrides": []
-        },
-        "arpeggioInterpretation": {
-          "bridgeSameFinger": false,
-          "includeSingleRedirectTail": false,
-          "includeThumb": false
-        },
-        "chainInterpretation": {
-          "breakOnOppositeHandSimultaneous": false,
-          "breakOnSameFinger": true,
-          "breakOnThumbOnly": true,
-          "breakOnTriggerOnly": false
-        },
-        "fingerAssignmentId": "default",
-        "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
-        "romajiRuleId": null,
-        "sfbHomeCost": true,
-        "triggerRealizationPolicy": {
-          "useHold": false
-        },
-        "windowSize": 3
-      },
-      "id": "ja:kawasemi-plus:legacy",
-      "language": "ja",
-      "layoutId": "kawasemi-plus",
-      "metrics": {
-        "actions": 238,
-        "adjacent": [
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.06420416382652866,
-            "pair": [
-              "LP",
-              "LR"
-            ],
-            "stdDev": 0.19868517865026383
-          },
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.0933054252864132,
-            "pair": [
-              "LR",
-              "LM"
-            ],
-            "stdDev": 0.23101995980696408
-          },
-          {
-            "maxExcess": 1.6925824035672523,
-            "meanExcess": 0.20079747398126704,
-            "pair": [
-              "LM",
-              "LI"
-            ],
-            "stdDev": 0.4138456228951221
-          },
-          {
-            "maxExcess": 1.462214450449026,
-            "meanExcess": 0.17013403868534863,
-            "pair": [
-              "RI",
-              "RM"
-            ],
-            "stdDev": 0.3872421717441711
-          },
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.04615163324429473,
-            "pair": [
-              "RM",
-              "RR"
-            ],
-            "stdDev": 0.180741806443416
-          },
-          {
-            "maxExcess": 1.6575364531836625,
-            "meanExcess": 0.056890712776977076,
-            "pair": [
-              "RR",
-              "RP"
-            ],
-            "stdDev": 0.22005271576683977
-          }
-        ],
-        "comboPresses": 84,
-        "combos": {
-          "definitions": 383,
-          "hits": 29,
-          "matched": 23
-        },
-        "fingerAssignmentId": "default",
-        "fingerAssignmentName": "既定（列固定）",
-        "geometryId": "row-staggered",
-        "geometryName": "ロウスタッガード（ANSI）",
-        "inputChars": 290,
-        "layers": [
-          {
-            "id": "single",
-            "label": "単打",
-            "presses": 134
-          },
-          {
-            "id": "face:1",
-            "label": "な行",
-            "presses": 18
-          },
-          {
-            "id": "face:2",
-            "label": "か行",
-            "presses": 22
-          },
-          {
-            "id": "face:3",
-            "label": "さ行",
-            "presses": 16
-          },
-          {
-            "id": "face:5",
-            "label": "た行",
-            "presses": 28
-          },
-          {
-            "id": "face:7",
-            "label": "は行",
-            "presses": 6
-          },
-          {
-            "id": "face:8",
-            "label": "ら行",
-            "presses": 12
-          },
-          {
-            "id": "face:10",
-            "label": "ま行",
-            "presses": 16
-          },
-          {
-            "id": "face:12",
-            "label": "記号",
-            "presses": 0
-          },
-          {
-            "id": "face:13",
-            "label": "ぱ行",
-            "presses": 0
-          },
-          {
-            "id": "face:14",
-            "label": "捨て仮名、旧かな",
-            "presses": 0
-          },
-          {
-            "id": "face:15",
-            "label": "が行",
-            "presses": 8
-          },
-          {
-            "id": "face:16",
-            "label": "ざ行",
-            "presses": 0
-          },
-          {
-            "id": "face:17",
-            "label": "だ行",
-            "presses": 14
-          },
-          {
-            "id": "face:19",
-            "label": "ば行",
-            "presses": 2
-          },
-          {
-            "id": "layer:右親指",
-            "label": "右親指",
-            "presses": 4
-          },
-          {
-            "id": "layer:左親指",
-            "label": "左親指",
-            "presses": 4
-          }
-        ],
-        "meanPerStroke": 0.7852988477755802,
-        "perCharPresses": 1.2689655172413794,
-        "perCharSteps": 0.8206896551724138,
-        "perCharUnits": 0.6444866405882348,
-        "perFinger": {
-          "LI": 51.73530484945775,
-          "LM": 27.114293642338332,
-          "LP": 9.800533151712616,
-          "LR": 25.760105824201858,
-          "LT": 0,
-          "RI": 39.47341413445364,
-          "RM": 2.0615528128088303,
-          "RP": 15.47796067780757,
-          "RR": 15.47796067780757,
-          "RT": 0
-        },
-        "perFingerPresses": {
-          "LI": 80,
-          "LM": 42,
-          "LP": 25,
-          "LR": 44,
-          "LT": 3,
-          "RI": 68,
-          "RM": 22,
-          "RP": 45,
-          "RR": 30,
-          "RT": 9
-        },
-        "presses": 368,
-        "sameFinger": 39,
-        "singleKeyRate": 56.30252100840336,
-        "singleTapLayerRate": 46.206896551724135,
-        "singleTapRate": 56.30252100840336,
-        "skipped": 0,
-        "strokes": 238,
-        "totalMm": 3560.4664459297032,
-        "totalUnits": 186.9011257705881
-      },
-      "sampleId": "legacy",
-      "textLength": 290,
-      "textSha256": "13032193a6d690c3512871d49b029cf1f04bca30a16c3df6b5f1b3d5d5182fdc"
     },
     {
       "analysis": {
@@ -5034,357 +3743,6 @@
       "sampleId": "modern",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
-    },
-    {
-      "analysis": {
-        "arpeggio": {
-          "coverage": {
-            "rate": 0.14084507042253522,
-            "strokes": 40
-          },
-          "meanSpanLength": 2,
-          "spans": 20
-        },
-        "directionalTransitions": {
-          "empty": 0,
-          "inward": 44,
-          "mixed": 20,
-          "outward": 55,
-          "same": 17,
-          "total": 136
-        },
-        "redirect": {
-          "events": 52,
-          "pivots": {
-            "rate": 0.18309859154929578,
-            "strokes": 52
-          }
-        },
-        "roll": {
-          "anyRoll": {
-            "rate": 0.14084507042253522,
-            "strokes": 40
-          },
-          "longRoll": {
-            "rate": 0,
-            "strokes": 0
-          },
-          "twoRoll": {
-            "rate": 0.14084507042253522,
-            "strokes": 40
-          }
-        },
-        "sfb": {
-          "events": 28,
-          "involvedStrokes": {
-            "rate": 0.16549295774647887,
-            "strokes": 47
-          }
-        },
-        "strokeCount": 284
-      },
-      "conditions": {
-        "actionRealizationPolicy": {
-          "triggerActivation": "disabled",
-          "triggerActivationClassOverrides": {},
-          "triggerActivationOverrides": []
-        },
-        "arpeggioInterpretation": {
-          "bridgeSameFinger": false,
-          "includeSingleRedirectTail": false,
-          "includeThumb": false
-        },
-        "chainInterpretation": {
-          "breakOnOppositeHandSimultaneous": false,
-          "breakOnSameFinger": true,
-          "breakOnThumbOnly": true,
-          "breakOnTriggerOnly": false
-        },
-        "fingerAssignmentId": "default",
-        "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
-        "romajiRuleId": null,
-        "sfbHomeCost": true,
-        "triggerRealizationPolicy": {
-          "useHold": false
-        },
-        "windowSize": 3
-      },
-      "id": "ja:naginata-v18:legacy",
-      "language": "ja",
-      "layoutId": "naginata-v18",
-      "metrics": {
-        "actions": 284,
-        "adjacent": [
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.008988646611732376,
-            "pair": [
-              "LP",
-              "LR"
-            ],
-            "stdDev": 0.06106457925516682
-          },
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.07912213818908902,
-            "pair": [
-              "LR",
-              "LM"
-            ],
-            "stdDev": 0.21265588058237483
-          },
-          {
-            "maxExcess": 1.6925824035672523,
-            "meanExcess": 0.14558296043212496,
-            "pair": [
-              "LM",
-              "LI"
-            ],
-            "stdDev": 0.3335794420342022
-          },
-          {
-            "maxExcess": 1,
-            "meanExcess": 0.1720146765932157,
-            "pair": [
-              "RI",
-              "RM"
-            ],
-            "stdDev": 0.32510764083883154
-          },
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.06373282779276551,
-            "pair": [
-              "RM",
-              "RR"
-            ],
-            "stdDev": 0.19304529302864037
-          },
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.03516537671894989,
-            "pair": [
-              "RR",
-              "RP"
-            ],
-            "stdDev": 0.14135748518194044
-          }
-        ],
-        "comboPresses": 0,
-        "combos": {
-          "definitions": 0,
-          "hits": 0,
-          "matched": 0
-        },
-        "fingerAssignmentId": "default",
-        "fingerAssignmentName": "既定（列固定）",
-        "geometryId": "row-staggered",
-        "geometryName": "ロウスタッガード（ANSI）",
-        "inputChars": 290,
-        "layers": [
-          {
-            "id": "single",
-            "label": "単打",
-            "presses": 178
-          },
-          {
-            "id": "layer:SandS",
-            "label": "SandS",
-            "presses": 126
-          },
-          {
-            "id": "face:2",
-            "label": "小書き",
-            "presses": 0
-          },
-          {
-            "id": "layer:濁音",
-            "label": "濁音",
-            "presses": 74
-          },
-          {
-            "id": "layer:半濁音",
-            "label": "半濁音",
-            "presses": 0
-          },
-          {
-            "id": "face:7",
-            "label": "拗音（ゃ）",
-            "presses": 4
-          },
-          {
-            "id": "face:8",
-            "label": "拗音（ゅ）",
-            "presses": 4
-          },
-          {
-            "id": "face:9",
-            "label": "拗音（ょ）",
-            "presses": 4
-          },
-          {
-            "id": "face:10",
-            "label": "外来音（ぇ）",
-            "presses": 0
-          },
-          {
-            "id": "face:11",
-            "label": "外来音（ぃ）",
-            "presses": 0
-          },
-          {
-            "id": "face:12",
-            "label": "外来音（ぉ）",
-            "presses": 0
-          },
-          {
-            "id": "face:13",
-            "label": "濁音の拗音（ゃ）",
-            "presses": 0
-          },
-          {
-            "id": "face:14",
-            "label": "濁音の拗音（ゅ）",
-            "presses": 0
-          },
-          {
-            "id": "face:15",
-            "label": "濁音の拗音（ょ）",
-            "presses": 0
-          },
-          {
-            "id": "face:16",
-            "label": "外来音（ぁ）",
-            "presses": 0
-          },
-          {
-            "id": "face:17",
-            "label": "てぃ",
-            "presses": 0
-          },
-          {
-            "id": "face:18",
-            "label": "てゅ・ぴゅ",
-            "presses": 0
-          },
-          {
-            "id": "face:19",
-            "label": "でぃ・編集モード1",
-            "presses": 0
-          },
-          {
-            "id": "face:20",
-            "label": "外来音（ぅ）",
-            "presses": 0
-          },
-          {
-            "id": "face:21",
-            "label": "濁音の外来音（ぅ）",
-            "presses": 0
-          },
-          {
-            "id": "face:22",
-            "label": "半濁音の拗音（ゃ）",
-            "presses": 0
-          },
-          {
-            "id": "face:23",
-            "label": "半濁音の拗音（ょ）",
-            "presses": 0
-          },
-          {
-            "id": "face:24",
-            "label": "濁音の外来音（ぇ）",
-            "presses": 0
-          },
-          {
-            "id": "face:25",
-            "label": "しぇ・ちぇ",
-            "presses": 0
-          },
-          {
-            "id": "face:26",
-            "label": "濁音の外来音（ぁ）",
-            "presses": 0
-          },
-          {
-            "id": "face:27",
-            "label": "濁音の外来音（ぃ）",
-            "presses": 0
-          },
-          {
-            "id": "face:28",
-            "label": "ぐぇ",
-            "presses": 0
-          },
-          {
-            "id": "face:29",
-            "label": "濁音の外来音（ぉ）",
-            "presses": 0
-          },
-          {
-            "id": "face:30",
-            "label": "濁音の合拗音（ゎ）",
-            "presses": 0
-          },
-          {
-            "id": "face:31",
-            "label": "合拗音（ゎ）",
-            "presses": 0
-          },
-          {
-            "id": "face:32",
-            "label": "ふゅ",
-            "presses": 0
-          },
-          {
-            "id": "face:33",
-            "label": "編集モード2",
-            "presses": 0
-          }
-        ],
-        "meanPerStroke": 0.6225241012673195,
-        "perCharPresses": 1.3448275862068966,
-        "perCharSteps": 0.9793103448275862,
-        "perCharUnits": 0.6096442922755818,
-        "perFinger": {
-          "LI": 43.072836649687616,
-          "LM": 37.28597091816629,
-          "LP": 0,
-          "LR": 6.271916020771971,
-          "LT": 0,
-          "RI": 45.635591367729454,
-          "RM": 17.36499832592544,
-          "RP": 9.800533151712616,
-          "RR": 17.36499832592544,
-          "RT": 0
-        },
-        "perFingerPresses": {
-          "LI": 69,
-          "LM": 59,
-          "LP": 5,
-          "LR": 13,
-          "LT": 0,
-          "RI": 91,
-          "RM": 42,
-          "RP": 14,
-          "RR": 34,
-          "RT": 63
-        },
-        "presses": 390,
-        "sameFinger": 32,
-        "singleKeyRate": 62.676056338028175,
-        "singleTapLayerRate": 61.37931034482759,
-        "singleTapRate": 62.676056338028175,
-        "skipped": 0,
-        "strokes": 284,
-        "totalMm": 3367.979892676452,
-        "totalUnits": 176.79684475991874
-      },
-      "sampleId": "legacy",
-      "textLength": 290,
-      "textSha256": "13032193a6d690c3512871d49b029cf1f04bca30a16c3df6b5f1b3d5d5182fdc"
     },
     {
       "analysis": {
@@ -7176,212 +5534,6 @@
       "analysis": {
         "arpeggio": {
           "coverage": {
-            "rate": 0.18620689655172415,
-            "strokes": 54
-          },
-          "meanSpanLength": 2,
-          "spans": 27
-        },
-        "directionalTransitions": {
-          "empty": 0,
-          "inward": 42,
-          "mixed": 19,
-          "outward": 39,
-          "same": 2,
-          "total": 102
-        },
-        "redirect": {
-          "events": 32,
-          "pivots": {
-            "rate": 0.1103448275862069,
-            "strokes": 32
-          }
-        },
-        "roll": {
-          "anyRoll": {
-            "rate": 0.18620689655172415,
-            "strokes": 54
-          },
-          "longRoll": {
-            "rate": 0,
-            "strokes": 0
-          },
-          "twoRoll": {
-            "rate": 0.18620689655172415,
-            "strokes": 54
-          }
-        },
-        "sfb": {
-          "events": 10,
-          "involvedStrokes": {
-            "rate": 0.05862068965517241,
-            "strokes": 17
-          }
-        },
-        "strokeCount": 290
-      },
-      "conditions": {
-        "actionRealizationPolicy": {
-          "triggerActivation": "disabled",
-          "triggerActivationClassOverrides": {},
-          "triggerActivationOverrides": []
-        },
-        "arpeggioInterpretation": {
-          "bridgeSameFinger": false,
-          "includeSingleRedirectTail": false,
-          "includeThumb": false
-        },
-        "chainInterpretation": {
-          "breakOnOppositeHandSimultaneous": false,
-          "breakOnSameFinger": true,
-          "breakOnThumbOnly": true,
-          "breakOnTriggerOnly": false
-        },
-        "fingerAssignmentId": "default",
-        "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
-        "romajiRuleId": null,
-        "sfbHomeCost": true,
-        "triggerRealizationPolicy": {
-          "useHold": false
-        },
-        "windowSize": 3
-      },
-      "id": "ja:nicola:legacy",
-      "language": "ja",
-      "layoutId": "nicola",
-      "metrics": {
-        "actions": 290,
-        "adjacent": [
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.05662381973408235,
-            "pair": [
-              "LP",
-              "LR"
-            ],
-            "stdDev": 0.15855892014252682
-          },
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.08679855185514126,
-            "pair": [
-              "LR",
-              "LM"
-            ],
-            "stdDev": 0.1972612763160667
-          },
-          {
-            "maxExcess": 1.6925824035672523,
-            "meanExcess": 0.14350450411364488,
-            "pair": [
-              "LM",
-              "LI"
-            ],
-            "stdDev": 0.3130509500826812
-          },
-          {
-            "maxExcess": 1.462214450449026,
-            "meanExcess": 0.1421710755612405,
-            "pair": [
-              "RI",
-              "RM"
-            ],
-            "stdDev": 0.33116366358994415
-          },
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.05465801835144815,
-            "pair": [
-              "RM",
-              "RR"
-            ],
-            "stdDev": 0.17793813972382552
-          },
-          {
-            "maxExcess": 0.6007810593582121,
-            "meanExcess": 0.024379712042521293,
-            "pair": [
-              "RR",
-              "RP"
-            ],
-            "stdDev": 0.11083382421519072
-          }
-        ],
-        "comboPresses": 0,
-        "combos": {
-          "definitions": 0,
-          "hits": 0,
-          "matched": 0
-        },
-        "fingerAssignmentId": "default",
-        "fingerAssignmentName": "既定（列固定）",
-        "geometryId": "row-staggered",
-        "geometryName": "ロウスタッガード（ANSI）",
-        "inputChars": 290,
-        "layers": [
-          {
-            "id": "single",
-            "label": "単打",
-            "presses": 168
-          },
-          {
-            "id": "layer:左親指",
-            "label": "左親指",
-            "presses": 106
-          },
-          {
-            "id": "layer:右親指",
-            "label": "右親指",
-            "presses": 138
-          }
-        ],
-        "meanPerStroke": 0.46857583249316465,
-        "perCharPresses": 1.4206896551724137,
-        "perCharSteps": 1,
-        "perCharUnits": 0.46857583249316465,
-        "perFinger": {
-          "LI": 26.417020877717214,
-          "LM": 21.051816039815694,
-          "LP": 9.276987657639737,
-          "LR": 19.759266886374842,
-          "LT": 0,
-          "RI": 37.21204993290469,
-          "RM": 11.425798052794049,
-          "RP": 0,
-          "RR": 10.744051975771551,
-          "RT": 0
-        },
-        "perFingerPresses": {
-          "LI": 36,
-          "LM": 49,
-          "LP": 25,
-          "LR": 48,
-          "LT": 53,
-          "RI": 60,
-          "RM": 23,
-          "RP": 17,
-          "RR": 32,
-          "RT": 69
-        },
-        "presses": 412,
-        "sameFinger": 15,
-        "singleKeyRate": 57.931034482758626,
-        "singleTapLayerRate": 57.931034482758626,
-        "singleTapRate": 57.931034482758626,
-        "skipped": 0,
-        "strokes": 290,
-        "totalMm": 2588.647186608488,
-        "totalUnits": 135.88699142301775
-      },
-      "sampleId": "legacy",
-      "textLength": 290,
-      "textSha256": "13032193a6d690c3512871d49b029cf1f04bca30a16c3df6b5f1b3d5d5182fdc"
-    },
-    {
-      "analysis": {
-        "arpeggio": {
-          "coverage": {
             "rate": 0.13902147971360382,
             "strokes": 233
           },
@@ -7583,207 +5735,6 @@
       "sampleId": "modern",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
-    },
-    {
-      "analysis": {
-        "arpeggio": {
-          "coverage": {
-            "rate": 0.06930693069306931,
-            "strokes": 28
-          },
-          "meanSpanLength": 2,
-          "spans": 14
-        },
-        "directionalTransitions": {
-          "empty": 0,
-          "inward": 16,
-          "mixed": 12,
-          "outward": 2,
-          "same": 5,
-          "total": 35
-        },
-        "redirect": {
-          "events": 0,
-          "pivots": {
-            "rate": 0,
-            "strokes": 0
-          }
-        },
-        "roll": {
-          "anyRoll": {
-            "rate": 0.06930693069306931,
-            "strokes": 28
-          },
-          "longRoll": {
-            "rate": 0,
-            "strokes": 0
-          },
-          "twoRoll": {
-            "rate": 0.06930693069306931,
-            "strokes": 28
-          }
-        },
-        "sfb": {
-          "events": 8,
-          "involvedStrokes": {
-            "rate": 0.039603960396039604,
-            "strokes": 16
-          }
-        },
-        "strokeCount": 404
-      },
-      "conditions": {
-        "actionRealizationPolicy": {
-          "triggerActivation": "disabled",
-          "triggerActivationClassOverrides": {},
-          "triggerActivationOverrides": []
-        },
-        "arpeggioInterpretation": {
-          "bridgeSameFinger": false,
-          "includeSingleRedirectTail": false,
-          "includeThumb": false
-        },
-        "chainInterpretation": {
-          "breakOnOppositeHandSimultaneous": false,
-          "breakOnSameFinger": true,
-          "breakOnThumbOnly": true,
-          "breakOnTriggerOnly": false
-        },
-        "fingerAssignmentId": "default",
-        "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
-        "romajiRuleId": "kunrei",
-        "sfbHomeCost": true,
-        "triggerRealizationPolicy": {
-          "useHold": false
-        },
-        "windowSize": 3
-      },
-      "id": "ja:oonishi-custom:legacy",
-      "language": "ja",
-      "layoutId": "oonishi-custom",
-      "metrics": {
-        "actions": 404,
-        "adjacent": [
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.005761602055602894,
-            "pair": [
-              "LP",
-              "LR"
-            ],
-            "stdDev": 0.058734895499685545
-          },
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.02623942382553954,
-            "pair": [
-              "LR",
-              "LM"
-            ],
-            "stdDev": 0.1086641270658216
-          },
-          {
-            "maxExcess": 1.0155644370746373,
-            "meanExcess": 0.10010909487645327,
-            "pair": [
-              "LM",
-              "LI"
-            ],
-            "stdDev": 0.26127380589591986
-          },
-          {
-            "maxExcess": 1.6575364531836625,
-            "meanExcess": 0.1711848876406471,
-            "pair": [
-              "RI",
-              "RM"
-            ],
-            "stdDev": 0.3331654638297578
-          },
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.05969613181230123,
-            "pair": [
-              "RM",
-              "RR"
-            ],
-            "stdDev": 0.17817709875030358
-          },
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.00859067527709168,
-            "pair": [
-              "RR",
-              "RP"
-            ],
-            "stdDev": 0.07086661743636752
-          }
-        ],
-        "comboPresses": 145,
-        "combos": {
-          "definitions": 73,
-          "hits": 66,
-          "matched": 33
-        },
-        "fingerAssignmentId": "default",
-        "fingerAssignmentName": "既定（列固定）",
-        "geometryId": "row-staggered",
-        "geometryName": "ロウスタッガード（ANSI）",
-        "inputChars": 290,
-        "layers": [
-          {
-            "id": "single",
-            "label": "単打",
-            "presses": 338
-          },
-          {
-            "id": "layer:Shift",
-            "label": "Shift",
-            "presses": 0
-          }
-        ],
-        "meanPerStroke": 0.3835136956363996,
-        "perCharPresses": 1.6655172413793105,
-        "perCharSteps": 1.393103448275862,
-        "perCharUnits": 0.5342742518520877,
-        "perFinger": {
-          "LI": 27.875314892259873,
-          "LM": 21.908077281529152,
-          "LP": 4.47213595499958,
-          "LR": 3.266844383904205,
-          "LT": 0,
-          "RI": 60.71286864209837,
-          "RM": 27.760019972315057,
-          "RP": 3.3541019662496847,
-          "RR": 5.5901699437494745,
-          "RT": 0
-        },
-        "perFingerPresses": {
-          "LI": 84,
-          "LM": 108,
-          "LP": 52,
-          "LR": 34,
-          "LT": 0,
-          "RI": 101,
-          "RM": 61,
-          "RP": 17,
-          "RR": 26,
-          "RT": 0
-        },
-        "presses": 483,
-        "sameFinger": 5,
-        "singleKeyRate": 83.66336633663366,
-        "singleTapLayerRate": 0,
-        "singleTapRate": 0,
-        "skipped": 0,
-        "strokes": 404,
-        "totalMm": 2951.5981043568586,
-        "totalUnits": 154.93953303710543
-      },
-      "sampleId": "legacy",
-      "textLength": 290,
-      "textSha256": "13032193a6d690c3512871d49b029cf1f04bca30a16c3df6b5f1b3d5d5182fdc"
     },
     {
       "analysis": {
@@ -8192,207 +6143,6 @@
       "analysis": {
         "arpeggio": {
           "coverage": {
-            "rate": 0.229126213592233,
-            "strokes": 118
-          },
-          "meanSpanLength": 2,
-          "spans": 59
-        },
-        "directionalTransitions": {
-          "empty": 0,
-          "inward": 40,
-          "mixed": 0,
-          "outward": 27,
-          "same": 23,
-          "total": 90
-        },
-        "redirect": {
-          "events": 8,
-          "pivots": {
-            "rate": 0.015533980582524271,
-            "strokes": 8
-          }
-        },
-        "roll": {
-          "anyRoll": {
-            "rate": 0.229126213592233,
-            "strokes": 118
-          },
-          "longRoll": {
-            "rate": 0,
-            "strokes": 0
-          },
-          "twoRoll": {
-            "rate": 0.229126213592233,
-            "strokes": 118
-          }
-        },
-        "sfb": {
-          "events": 23,
-          "involvedStrokes": {
-            "rate": 0.08932038834951456,
-            "strokes": 46
-          }
-        },
-        "strokeCount": 515
-      },
-      "conditions": {
-        "actionRealizationPolicy": {
-          "triggerActivation": "disabled",
-          "triggerActivationClassOverrides": {},
-          "triggerActivationOverrides": []
-        },
-        "arpeggioInterpretation": {
-          "bridgeSameFinger": false,
-          "includeSingleRedirectTail": false,
-          "includeThumb": false
-        },
-        "chainInterpretation": {
-          "breakOnOppositeHandSimultaneous": false,
-          "breakOnSameFinger": true,
-          "breakOnThumbOnly": true,
-          "breakOnTriggerOnly": false
-        },
-        "fingerAssignmentId": "default",
-        "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
-        "romajiRuleId": "oonishi",
-        "sfbHomeCost": true,
-        "triggerRealizationPolicy": {
-          "useHold": false
-        },
-        "windowSize": 3
-      },
-      "id": "ja:oonishi:legacy",
-      "language": "ja",
-      "layoutId": "oonishi",
-      "metrics": {
-        "actions": 515,
-        "adjacent": [
-          {
-            "maxExcess": 0.1180339887498949,
-            "meanExcess": 0.00022919221116484448,
-            "pair": [
-              "LP",
-              "LR"
-            ],
-            "stdDev": 0.005196146822842478
-          },
-          {
-            "maxExcess": 0.25,
-            "meanExcess": 0.020388349514563107,
-            "pair": [
-              "LR",
-              "LM"
-            ],
-            "stdDev": 0.06842077595813098
-          },
-          {
-            "maxExcess": 1.0155644370746373,
-            "meanExcess": 0.07645220277032358,
-            "pair": [
-              "LM",
-              "LI"
-            ],
-            "stdDev": 0.2265468399358045
-          },
-          {
-            "maxExcess": 1.0155644370746373,
-            "meanExcess": 0.1746445166046318,
-            "pair": [
-              "RI",
-              "RM"
-            ],
-            "stdDev": 0.3410670967200447
-          },
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.04818342061055866,
-            "pair": [
-              "RM",
-              "RR"
-            ],
-            "stdDev": 0.1576553395148317
-          },
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.013509291610377507,
-            "pair": [
-              "RR",
-              "RP"
-            ],
-            "stdDev": 0.08940408590613924
-          }
-        ],
-        "comboPresses": 0,
-        "combos": {
-          "definitions": 0,
-          "hits": 0,
-          "matched": 0
-        },
-        "fingerAssignmentId": "default",
-        "fingerAssignmentName": "既定（列固定）",
-        "geometryId": "row-staggered",
-        "geometryName": "ロウスタッガード（ANSI）",
-        "inputChars": 290,
-        "layers": [
-          {
-            "id": "single",
-            "label": "単打",
-            "presses": 515
-          },
-          {
-            "id": "layer:Shift",
-            "label": "Shift",
-            "presses": 0
-          }
-        ],
-        "meanPerStroke": 0.2844373362846992,
-        "perCharPresses": 1.7758620689655173,
-        "perCharSteps": 1.7758620689655173,
-        "perCharUnits": 0.5051214765055865,
-        "perFinger": {
-          "LI": 12.25,
-          "LM": 28.861739379323605,
-          "LP": 1.118033988749895,
-          "LR": 0,
-          "LT": 0,
-          "RI": 65.48961012342352,
-          "RM": 28.87805396106495,
-          "RP": 3.3541019662496847,
-          "RR": 6.53368876780841,
-          "RT": 0
-        },
-        "perFingerPresses": {
-          "LI": 66,
-          "LM": 118,
-          "LP": 41,
-          "LR": 43,
-          "LT": 0,
-          "RI": 114,
-          "RM": 85,
-          "RP": 20,
-          "RR": 28,
-          "RT": 0
-        },
-        "presses": 515,
-        "sameFinger": 1,
-        "singleKeyRate": 100,
-        "singleTapLayerRate": 0,
-        "singleTapRate": 0,
-        "skipped": 0,
-        "strokes": 515,
-        "totalMm": 2790.5435969551127,
-        "totalUnits": 146.48522818662008
-      },
-      "sampleId": "legacy",
-      "textLength": 290,
-      "textSha256": "13032193a6d690c3512871d49b029cf1f04bca30a16c3df6b5f1b3d5d5182fdc"
-    },
-    {
-      "analysis": {
-        "arpeggio": {
-          "coverage": {
             "rate": 0.18169672678690715,
             "strokes": 544
           },
@@ -8589,207 +6339,6 @@
       "sampleId": "modern",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
-    },
-    {
-      "analysis": {
-        "arpeggio": {
-          "coverage": {
-            "rate": 0.574757281553398,
-            "strokes": 296
-          },
-          "meanSpanLength": 2.164285714285714,
-          "spans": 140
-        },
-        "directionalTransitions": {
-          "empty": 0,
-          "inward": 106,
-          "mixed": 0,
-          "outward": 110,
-          "same": 22,
-          "total": 238
-        },
-        "redirect": {
-          "events": 62,
-          "pivots": {
-            "rate": 0.1203883495145631,
-            "strokes": 62
-          }
-        },
-        "roll": {
-          "anyRoll": {
-            "rate": 0.574757281553398,
-            "strokes": 296
-          },
-          "longRoll": {
-            "rate": 0.13009708737864079,
-            "strokes": 67
-          },
-          "twoRoll": {
-            "rate": 0.458252427184466,
-            "strokes": 236
-          }
-        },
-        "sfb": {
-          "events": 22,
-          "involvedStrokes": {
-            "rate": 0.0854368932038835,
-            "strokes": 44
-          }
-        },
-        "strokeCount": 515
-      },
-      "conditions": {
-        "actionRealizationPolicy": {
-          "triggerActivation": "disabled",
-          "triggerActivationClassOverrides": {},
-          "triggerActivationOverrides": []
-        },
-        "arpeggioInterpretation": {
-          "bridgeSameFinger": false,
-          "includeSingleRedirectTail": false,
-          "includeThumb": false
-        },
-        "chainInterpretation": {
-          "breakOnOppositeHandSimultaneous": false,
-          "breakOnSameFinger": true,
-          "breakOnThumbOnly": true,
-          "breakOnTriggerOnly": false
-        },
-        "fingerAssignmentId": "qwerty-optimized",
-        "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
-        "romajiRuleId": "kunrei",
-        "sfbHomeCost": true,
-        "triggerRealizationPolicy": {
-          "useHold": false
-        },
-        "windowSize": 3
-      },
-      "id": "ja:qwerty-optimized:legacy",
-      "language": "ja",
-      "layoutId": "qwerty-optimized",
-      "metrics": {
-        "actions": 515,
-        "adjacent": [
-          {
-            "maxExcess": 0.25,
-            "meanExcess": 0.010800593978153503,
-            "pair": [
-              "LP",
-              "LR"
-            ],
-            "stdDev": 0.04807582996687959
-          },
-          {
-            "maxExcess": 1.9261749776799064,
-            "meanExcess": 0.07144419792284007,
-            "pair": [
-              "LR",
-              "LM"
-            ],
-            "stdDev": 0.19506670668740583
-          },
-          {
-            "maxExcess": 2,
-            "meanExcess": 0.36520495871183134,
-            "pair": [
-              "LM",
-              "LI"
-            ],
-            "stdDev": 0.5510817987050232
-          },
-          {
-            "maxExcess": 2,
-            "meanExcess": 0.24837270107250076,
-            "pair": [
-              "RI",
-              "RM"
-            ],
-            "stdDev": 0.376252042143226
-          },
-          {
-            "maxExcess": 1.462214450449026,
-            "meanExcess": 0.13989668379248918,
-            "pair": [
-              "RM",
-              "RR"
-            ],
-            "stdDev": 0.2429183745348481
-          },
-          {
-            "maxExcess": 1.3584952830141508,
-            "meanExcess": 0.15251531106674257,
-            "pair": [
-              "RR",
-              "RP"
-            ],
-            "stdDev": 0.2795362169588775
-          }
-        ],
-        "comboPresses": 0,
-        "combos": {
-          "definitions": 0,
-          "hits": 0,
-          "matched": 0
-        },
-        "fingerAssignmentId": "qwerty-optimized",
-        "fingerAssignmentName": "QWERTY最適化",
-        "geometryId": "row-staggered",
-        "geometryName": "ロウスタッガード（ANSI）",
-        "inputChars": 290,
-        "layers": [
-          {
-            "id": "single",
-            "label": "単打",
-            "presses": 515
-          },
-          {
-            "id": "layer:Shift",
-            "label": "Shift",
-            "presses": 0
-          }
-        ],
-        "meanPerStroke": 0.5335814753533977,
-        "perCharPresses": 1.7758620689655173,
-        "perCharSteps": 1.7758620689655173,
-        "perCharUnits": 0.947567102782758,
-        "perFinger": {
-          "LI": 78.3756716791934,
-          "LM": 31.06575100358941,
-          "LP": 2.23606797749979,
-          "LR": 9.538760404676175,
-          "LT": 0,
-          "RI": 72.45306624585177,
-          "RM": 25.277862000255332,
-          "RP": 2.0155644370746373,
-          "RR": 36.831716058859406,
-          "RT": 17
-        },
-        "perFingerPresses": {
-          "LI": 88,
-          "LM": 51,
-          "LP": 87,
-          "LR": 32,
-          "LT": 0,
-          "RI": 101,
-          "RM": 69,
-          "RP": 2,
-          "RR": 65,
-          "RT": 20
-        },
-        "presses": 515,
-        "sameFinger": 0,
-        "singleKeyRate": 100,
-        "singleTapLayerRate": 0,
-        "singleTapRate": 0,
-        "skipped": 0,
-        "strokes": 515,
-        "totalMm": 5234.834459323347,
-        "totalUnits": 274.79445980699984
-      },
-      "sampleId": "legacy",
-      "textLength": 290,
-      "textSha256": "13032193a6d690c3512871d49b029cf1f04bca30a16c3df6b5f1b3d5d5182fdc"
     },
     {
       "analysis": {
@@ -8996,611 +6545,6 @@
       "analysis": {
         "arpeggio": {
           "coverage": {
-            "rate": 0.49902912621359224,
-            "strokes": 257
-          },
-          "meanSpanLength": 2.105691056910569,
-          "spans": 123
-        },
-        "directionalTransitions": {
-          "empty": 0,
-          "inward": 101,
-          "mixed": 0,
-          "outward": 94,
-          "same": 22,
-          "total": 217
-        },
-        "redirect": {
-          "events": 63,
-          "pivots": {
-            "rate": 0.12233009708737864,
-            "strokes": 63
-          }
-        },
-        "roll": {
-          "anyRoll": {
-            "rate": 0.49902912621359224,
-            "strokes": 257
-          },
-          "longRoll": {
-            "rate": 0.07184466019417475,
-            "strokes": 37
-          },
-          "twoRoll": {
-            "rate": 0.43106796116504853,
-            "strokes": 222
-          }
-        },
-        "sfb": {
-          "events": 22,
-          "involvedStrokes": {
-            "rate": 0.0854368932038835,
-            "strokes": 44
-          }
-        },
-        "strokeCount": 515
-      },
-      "conditions": {
-        "actionRealizationPolicy": {
-          "triggerActivation": "disabled",
-          "triggerActivationClassOverrides": {},
-          "triggerActivationOverrides": []
-        },
-        "arpeggioInterpretation": {
-          "bridgeSameFinger": false,
-          "includeSingleRedirectTail": false,
-          "includeThumb": false
-        },
-        "chainInterpretation": {
-          "breakOnOppositeHandSimultaneous": false,
-          "breakOnSameFinger": true,
-          "breakOnThumbOnly": true,
-          "breakOnTriggerOnly": false
-        },
-        "fingerAssignmentId": "default",
-        "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
-        "romajiRuleId": "kunrei",
-        "sfbHomeCost": true,
-        "triggerRealizationPolicy": {
-          "useHold": false
-        },
-        "windowSize": 3
-      },
-      "id": "ja:qwerty:legacy",
-      "language": "ja",
-      "layoutId": "qwerty",
-      "metrics": {
-        "actions": 515,
-        "adjacent": [
-          {
-            "maxExcess": 0.25,
-            "meanExcess": 0.010800593978153503,
-            "pair": [
-              "LP",
-              "LR"
-            ],
-            "stdDev": 0.04807582996687959
-          },
-          {
-            "maxExcess": 0.6007810593582121,
-            "meanExcess": 0.049145929653702444,
-            "pair": [
-              "LR",
-              "LM"
-            ],
-            "stdDev": 0.1232512740035402
-          },
-          {
-            "maxExcess": 1.6925824035672523,
-            "meanExcess": 0.3004531911950244,
-            "pair": [
-              "LM",
-              "LI"
-            ],
-            "stdDev": 0.4443126495165125
-          },
-          {
-            "maxExcess": 1.462214450449026,
-            "meanExcess": 0.2951325479173059,
-            "pair": [
-              "RI",
-              "RM"
-            ],
-            "stdDev": 0.3942063845455718
-          },
-          {
-            "maxExcess": 1.6575364531836625,
-            "meanExcess": 0.13782016733182634,
-            "pair": [
-              "RM",
-              "RR"
-            ],
-            "stdDev": 0.22769683646736563
-          },
-          {
-            "maxExcess": 1.3584952830141508,
-            "meanExcess": 0.15057356349392703,
-            "pair": [
-              "RR",
-              "RP"
-            ],
-            "stdDev": 0.27710516253832473
-          }
-        ],
-        "comboPresses": 0,
-        "combos": {
-          "definitions": 0,
-          "hits": 0,
-          "matched": 0
-        },
-        "fingerAssignmentId": "default",
-        "fingerAssignmentName": "既定（列固定）",
-        "geometryId": "row-staggered",
-        "geometryName": "ロウスタッガード（ANSI）",
-        "inputChars": 290,
-        "layers": [
-          {
-            "id": "single",
-            "label": "単打",
-            "presses": 515
-          },
-          {
-            "id": "layer:Shift",
-            "label": "Shift",
-            "presses": 0
-          }
-        ],
-        "meanPerStroke": 0.533847927726045,
-        "perCharPresses": 1.7758620689655173,
-        "perCharSteps": 1.7758620689655173,
-        "perCharUnits": 0.9480402854445282,
-        "perFinger": {
-          "LI": 63.55842019645337,
-          "LM": 28.861739379323605,
-          "LP": 5.5901699437494745,
-          "LR": 6.184658438426491,
-          "LT": 0,
-          "RI": 98.87379291368072,
-          "RM": 34.01562141134568,
-          "RP": 2.0155644370746373,
-          "RR": 35.831716058859406,
-          "RT": 0
-        },
-        "perFingerPresses": {
-          "LI": 76,
-          "LM": 59,
-          "LP": 90,
-          "LR": 29,
-          "LT": 0,
-          "RI": 120,
-          "RM": 75,
-          "RP": 2,
-          "RR": 64,
-          "RT": 0
-        },
-        "presses": 515,
-        "sameFinger": 32,
-        "singleKeyRate": 100,
-        "singleTapLayerRate": 0,
-        "singleTapRate": 0,
-        "skipped": 0,
-        "strokes": 515,
-        "totalMm": 5237.448556938296,
-        "totalUnits": 274.93168277891317
-      },
-      "sampleId": "legacy",
-      "textLength": 290,
-      "textSha256": "13032193a6d690c3512871d49b029cf1f04bca30a16c3df6b5f1b3d5d5182fdc"
-    },
-    {
-      "analysis": {
-        "arpeggio": {
-          "coverage": {
-            "rate": 0.5631067961165048,
-            "strokes": 290
-          },
-          "meanSpanLength": 2.1142857142857143,
-          "spans": 140
-        },
-        "directionalTransitions": {
-          "empty": 0,
-          "inward": 101,
-          "mixed": 0,
-          "outward": 118,
-          "same": 22,
-          "total": 241
-        },
-        "redirect": {
-          "events": 71,
-          "pivots": {
-            "rate": 0.1378640776699029,
-            "strokes": 71
-          }
-        },
-        "roll": {
-          "anyRoll": {
-            "rate": 0.5631067961165048,
-            "strokes": 290
-          },
-          "longRoll": {
-            "rate": 0.08932038834951456,
-            "strokes": 46
-          },
-          "twoRoll": {
-            "rate": 0.4854368932038835,
-            "strokes": 250
-          }
-        },
-        "sfb": {
-          "events": 22,
-          "involvedStrokes": {
-            "rate": 0.0854368932038835,
-            "strokes": 44
-          }
-        },
-        "strokeCount": 515
-      },
-      "conditions": {
-        "actionRealizationPolicy": {
-          "triggerActivation": "disabled",
-          "triggerActivationClassOverrides": {},
-          "triggerActivationOverrides": []
-        },
-        "arpeggioInterpretation": {
-          "bridgeSameFinger": false,
-          "includeSingleRedirectTail": false,
-          "includeThumb": false
-        },
-        "chainInterpretation": {
-          "breakOnOppositeHandSimultaneous": false,
-          "breakOnSameFinger": true,
-          "breakOnThumbOnly": true,
-          "breakOnTriggerOnly": false
-        },
-        "fingerAssignmentId": "qwerty-optimized",
-        "geometryShapeId": "column-staggered",
-        "preferOppositeThumb": false,
-        "romajiRuleId": "kunrei",
-        "sfbHomeCost": true,
-        "triggerRealizationPolicy": {
-          "useHold": false
-        },
-        "windowSize": 3
-      },
-      "id": "ja:qwerty:legacy:物理配列=column-staggered・fingerAssignment=qwerty-optimized（分割する物理配列で反対側の手の追加の担当を候補から外す分岐）",
-      "language": "ja",
-      "layoutId": "qwerty",
-      "metrics": {
-        "actions": 515,
-        "adjacent": [
-          {
-            "maxExcess": 0.5535522640432631,
-            "meanExcess": 0.027899892827633457,
-            "pair": [
-              "LP",
-              "LR"
-            ],
-            "stdDev": 0.12121245607699586
-          },
-          {
-            "maxExcess": 2.0710719889958167,
-            "meanExcess": 0.08373121549714085,
-            "pair": [
-              "LR",
-              "LM"
-            ],
-            "stdDev": 0.2027705903669254
-          },
-          {
-            "maxExcess": 1.3803845262632237,
-            "meanExcess": 0.26366198656378576,
-            "pair": [
-              "LM",
-              "LI"
-            ],
-            "stdDev": 0.4768058898808626
-          },
-          {
-            "maxExcess": 2.042962568713545,
-            "meanExcess": 0.3274057267257484,
-            "pair": [
-              "RI",
-              "RM"
-            ],
-            "stdDev": 0.5264923012517525
-          },
-          {
-            "maxExcess": 1.237909252416338,
-            "meanExcess": 0.12848488320780915,
-            "pair": [
-              "RM",
-              "RR"
-            ],
-            "stdDev": 0.2743568793350075
-          },
-          {
-            "maxExcess": 1.6534727267613814,
-            "meanExcess": 0.16867370501486237,
-            "pair": [
-              "RR",
-              "RP"
-            ],
-            "stdDev": 0.30820000147591514
-          }
-        ],
-        "comboPresses": 0,
-        "combos": {
-          "definitions": 0,
-          "hits": 0,
-          "matched": 0
-        },
-        "fingerAssignmentId": "qwerty-optimized",
-        "fingerAssignmentName": "QWERTY最適化",
-        "geometryId": "column-staggered",
-        "geometryName": "カラムスタッガード（ANSI・分割）",
-        "inputChars": 290,
-        "layers": [
-          {
-            "id": "single",
-            "label": "単打",
-            "presses": 515
-          },
-          {
-            "id": "layer:Shift",
-            "label": "Shift",
-            "presses": 0
-          }
-        ],
-        "meanPerStroke": 0.5528558472184637,
-        "perCharPresses": 1.7758620689655173,
-        "perCharSteps": 1.7758620689655173,
-        "perCharUnits": 0.9817957286810648,
-        "perFinger": {
-          "LI": 73.3055443615324,
-          "LM": 28.345362404707373,
-          "LP": 4,
-          "LR": 7.577466322936879,
-          "LT": 0,
-          "RI": 81.8103022473527,
-          "RM": 26.381449618829482,
-          "RP": 2.2360679774997894,
-          "RR": 44.06456838465021,
-          "RT": 17
-        },
-        "perFingerPresses": {
-          "LI": 85,
-          "LM": 50,
-          "LP": 89,
-          "LR": 30,
-          "LT": 0,
-          "RI": 104,
-          "RM": 61,
-          "RP": 2,
-          "RR": 74,
-          "RT": 20
-        },
-        "presses": 515,
-        "sameFinger": 0,
-        "singleKeyRate": 100,
-        "singleTapLayerRate": 0,
-        "singleTapRate": 0,
-        "skipped": 0,
-        "strokes": 515,
-        "totalMm": 5124.973703715158,
-        "totalUnits": 284.7207613175088
-      },
-      "note": "物理配列=column-staggered・fingerAssignment=qwerty-optimized（分割する物理配列で反対側の手の追加の担当を候補から外す分岐）",
-      "sampleId": "legacy",
-      "textLength": 290,
-      "textSha256": "13032193a6d690c3512871d49b029cf1f04bca30a16c3df6b5f1b3d5d5182fdc"
-    },
-    {
-      "analysis": {
-        "arpeggio": {
-          "coverage": {
-            "rate": 0.5631067961165048,
-            "strokes": 290
-          },
-          "meanSpanLength": 2.1142857142857143,
-          "spans": 140
-        },
-        "directionalTransitions": {
-          "empty": 0,
-          "inward": 101,
-          "mixed": 0,
-          "outward": 118,
-          "same": 22,
-          "total": 241
-        },
-        "redirect": {
-          "events": 71,
-          "pivots": {
-            "rate": 0.1378640776699029,
-            "strokes": 71
-          }
-        },
-        "roll": {
-          "anyRoll": {
-            "rate": 0.5631067961165048,
-            "strokes": 290
-          },
-          "longRoll": {
-            "rate": 0.08932038834951456,
-            "strokes": 46
-          },
-          "twoRoll": {
-            "rate": 0.4854368932038835,
-            "strokes": 250
-          }
-        },
-        "sfb": {
-          "events": 22,
-          "involvedStrokes": {
-            "rate": 0.0854368932038835,
-            "strokes": 44
-          }
-        },
-        "strokeCount": 515
-      },
-      "conditions": {
-        "actionRealizationPolicy": {
-          "triggerActivation": "disabled",
-          "triggerActivationClassOverrides": {},
-          "triggerActivationOverrides": []
-        },
-        "arpeggioInterpretation": {
-          "bridgeSameFinger": false,
-          "includeSingleRedirectTail": false,
-          "includeThumb": false
-        },
-        "chainInterpretation": {
-          "breakOnOppositeHandSimultaneous": false,
-          "breakOnSameFinger": true,
-          "breakOnThumbOnly": true,
-          "breakOnTriggerOnly": false
-        },
-        "fingerAssignmentId": "qwerty-optimized",
-        "geometryShapeId": "split-ortholinear",
-        "preferOppositeThumb": false,
-        "romajiRuleId": "kunrei",
-        "sfbHomeCost": true,
-        "triggerRealizationPolicy": {
-          "useHold": false
-        },
-        "windowSize": 3
-      },
-      "id": "ja:qwerty:legacy:物理配列=split-ortholinear・fingerAssignment=qwerty-optimized（分割する物理配列で反対側の手の追加の担当を候補から外す分岐）",
-      "language": "ja",
-      "layoutId": "qwerty",
-      "metrics": {
-        "actions": 515,
-        "adjacent": [
-          {
-            "maxExcess": 0.41421356237309515,
-            "meanExcess": 0.02091175266349607,
-            "pair": [
-              "LP",
-              "LR"
-            ],
-            "stdDev": 0.09068974675646943
-          },
-          {
-            "maxExcess": 1.8284271247461903,
-            "meanExcess": 0.08631648114846203,
-            "pair": [
-              "LR",
-              "LM"
-            ],
-            "stdDev": 0.21250699101870896
-          },
-          {
-            "maxExcess": 1.2360679774997898,
-            "meanExcess": 0.32319276071941766,
-            "pair": [
-              "LM",
-              "LI"
-            ],
-            "stdDev": 0.5311973519489621
-          },
-          {
-            "maxExcess": 1.8284271247461903,
-            "meanExcess": 0.3268773830835261,
-            "pair": [
-              "RI",
-              "RM"
-            ],
-            "stdDev": 0.5049063188789974
-          },
-          {
-            "maxExcess": 1.2360679774997898,
-            "meanExcess": 0.16391517631394828,
-            "pair": [
-              "RM",
-              "RR"
-            ],
-            "stdDev": 0.3126158134389383
-          },
-          {
-            "maxExcess": 1.8284271247461903,
-            "meanExcess": 0.14388188506381858,
-            "pair": [
-              "RR",
-              "RP"
-            ],
-            "stdDev": 0.2860515603152097
-          }
-        ],
-        "comboPresses": 0,
-        "combos": {
-          "definitions": 0,
-          "hits": 0,
-          "matched": 0
-        },
-        "fingerAssignmentId": "qwerty-optimized",
-        "fingerAssignmentName": "QWERTY最適化",
-        "geometryId": "split-ortholinear",
-        "geometryName": "オーソリニア（ANSI・分割）",
-        "inputChars": 290,
-        "layers": [
-          {
-            "id": "single",
-            "label": "単打",
-            "presses": 515
-          },
-          {
-            "id": "layer:Shift",
-            "label": "Shift",
-            "presses": 0
-          }
-        ],
-        "meanPerStroke": 0.5528235056486126,
-        "perCharPresses": 1.7758620689655173,
-        "perCharSteps": 1.7758620689655173,
-        "perCharUnits": 0.9817382945139155,
-        "perFinger": {
-          "LI": 75.11269837220806,
-          "LM": 28.414213562373096,
-          "LP": 4,
-          "LR": 7.414213562373095,
-          "LT": 0,
-          "RI": 79.45584412271569,
-          "RM": 26.656854249492383,
-          "RP": 2.23606797749979,
-          "RR": 44.41421356237309,
-          "RT": 17
-        },
-        "perFingerPresses": {
-          "LI": 85,
-          "LM": 50,
-          "LP": 89,
-          "LR": 30,
-          "LT": 0,
-          "RI": 104,
-          "RM": 61,
-          "RP": 2,
-          "RR": 74,
-          "RT": 20
-        },
-        "presses": 515,
-        "sameFinger": 0,
-        "singleKeyRate": 100,
-        "singleTapLayerRate": 0,
-        "singleTapRate": 0,
-        "skipped": 0,
-        "strokes": 515,
-        "totalMm": 5423.613208042127,
-        "totalUnits": 284.7041054090355
-      },
-      "note": "物理配列=split-ortholinear・fingerAssignment=qwerty-optimized（分割する物理配列で反対側の手の追加の担当を候補から外す分岐）",
-      "sampleId": "legacy",
-      "textLength": 290,
-      "textSha256": "13032193a6d690c3512871d49b029cf1f04bca30a16c3df6b5f1b3d5d5182fdc"
-    },
-    {
-      "analysis": {
-        "arpeggio": {
-          "coverage": {
             "rate": 0.4638212737579193,
             "strokes": 1391
           },
@@ -9802,49 +6746,49 @@
       "analysis": {
         "arpeggio": {
           "coverage": {
-            "rate": 0.3422459893048128,
-            "strokes": 128
+            "rate": 0.5235078359453151,
+            "strokes": 1570
           },
-          "meanSpanLength": 2.0476190476190474,
-          "spans": 63
+          "meanSpanLength": 2.106241699867198,
+          "spans": 753
         },
         "directionalTransitions": {
           "empty": 0,
-          "inward": 43,
+          "inward": 656,
           "mixed": 0,
-          "outward": 43,
-          "same": 2,
-          "total": 88
+          "outward": 610,
+          "same": 80,
+          "total": 1346
         },
         "redirect": {
-          "events": 21,
+          "events": 462,
           "pivots": {
-            "rate": 0.05614973262032086,
-            "strokes": 21
+            "rate": 0.15405135045015006,
+            "strokes": 462
           }
         },
         "roll": {
           "anyRoll": {
-            "rate": 0.3422459893048128,
-            "strokes": 128
+            "rate": 0.5235078359453151,
+            "strokes": 1570
           },
           "longRoll": {
-            "rate": 0.02406417112299465,
-            "strokes": 9
+            "rate": 0.07902634211403801,
+            "strokes": 237
           },
           "twoRoll": {
-            "rate": 0.32085561497326204,
-            "strokes": 120
+            "rate": 0.4494831610536846,
+            "strokes": 1348
           }
         },
         "sfb": {
-          "events": 2,
+          "events": 80,
           "involvedStrokes": {
-            "rate": 0.0106951871657754,
-            "strokes": 4
+            "rate": 0.05301767255751917,
+            "strokes": 159
           }
         },
-        "strokeCount": 374
+        "strokeCount": 2999
       },
       "conditions": {
         "actionRealizationPolicy": {
@@ -9863,75 +6807,75 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
-        "fingerAssignmentId": "default",
-        "geometryShapeId": "row-staggered",
+        "fingerAssignmentId": "qwerty-optimized",
+        "geometryShapeId": "column-staggered",
         "preferOppositeThumb": false,
-        "romajiRuleId": null,
+        "romajiRuleId": "kunrei",
         "sfbHomeCost": true,
         "triggerRealizationPolicy": {
           "useHold": false
         },
         "windowSize": 3
       },
-      "id": "ja:shin-jis-prefix:legacy",
+      "id": "ja:qwerty:modern:物理配列=column-staggered・fingerAssignment=qwerty-optimized（分割する物理配列で反対側の手の追加の担当を候補から外す分岐）",
       "language": "ja",
-      "layoutId": "shin-jis-prefix",
+      "layoutId": "qwerty",
       "metrics": {
-        "actions": 374,
+        "actions": 2999,
         "adjacent": [
           {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.0270304886053872,
+            "maxExcess": 0.5535522640432631,
+            "meanExcess": 0.013747732943154812,
             "pair": [
               "LP",
               "LR"
             ],
-            "stdDev": 0.13063944368004995
+            "stdDev": 0.08646586152108532
           },
           {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.03371096148492052,
+            "maxExcess": 2.0710719889958167,
+            "meanExcess": 0.08137325602075302,
             "pair": [
               "LR",
               "LM"
             ],
-            "stdDev": 0.14724907407909665
+            "stdDev": 0.23036122770787423
           },
           {
-            "maxExcess": 1.6925824035672523,
-            "meanExcess": 0.16045773456925227,
+            "maxExcess": 2.042962568713545,
+            "meanExcess": 0.24404102893734603,
             "pair": [
               "LM",
               "LI"
             ],
-            "stdDev": 0.3862124270291784
+            "stdDev": 0.4518727688349486
           },
           {
-            "maxExcess": 1.462214450449026,
-            "meanExcess": 0.11620887612320002,
+            "maxExcess": 2.042962568713545,
+            "meanExcess": 0.23356759356262444,
             "pair": [
               "RI",
               "RM"
             ],
-            "stdDev": 0.2977189419455776
+            "stdDev": 0.45981838112891255
           },
           {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.04892899775283968,
+            "maxExcess": 2.1028739661761264,
+            "meanExcess": 0.14865803834096508,
             "pair": [
               "RM",
               "RR"
             ],
-            "stdDev": 0.18240253547017996
+            "stdDev": 0.33480038806394713
           },
           {
-            "maxExcess": 1.0155644370746373,
-            "meanExcess": 0.06348595187373451,
+            "maxExcess": 1.6534727267613814,
+            "meanExcess": 0.20704967166221158,
             "pair": [
               "RR",
               "RP"
             ],
-            "stdDev": 0.22206260669057215
+            "stdDev": 0.3550324876878612
           }
         ],
         "comboPresses": 0,
@@ -9940,64 +6884,267 @@
           "hits": 0,
           "matched": 0
         },
-        "fingerAssignmentId": "default",
-        "fingerAssignmentName": "既定（列固定）",
-        "geometryId": "row-staggered",
-        "geometryName": "ロウスタッガード（ANSI）",
-        "inputChars": 290,
+        "fingerAssignmentId": "qwerty-optimized",
+        "fingerAssignmentName": "QWERTY最適化",
+        "geometryId": "column-staggered",
+        "geometryName": "カラムスタッガード（ANSI・分割）",
+        "inputChars": 1676,
         "layers": [
           {
             "id": "single",
             "label": "単打",
-            "presses": 280
+            "presses": 2999
           },
           {
-            "id": "face:1",
+            "id": "layer:Shift",
             "label": "Shift",
-            "presses": 94
+            "presses": 0
           }
         ],
-        "meanPerStroke": 0.44970871787424926,
-        "perCharPresses": 1.289655172413793,
-        "perCharSteps": 1.289655172413793,
-        "perCharUnits": 0.5799691740861008,
+        "meanPerStroke": 0.6299770483679759,
+        "perCharPresses": 1.7893794749403342,
+        "perCharSteps": 1.7893794749403342,
+        "perCharUnits": 1.12726800003315,
         "perFinger": {
-          "LI": 57.38821286854048,
-          "LM": 8.68249916296272,
-          "LP": 7.389950009521867,
-          "LR": 11.862085964521446,
+          "LI": 386.3007483333169,
+          "LM": 175.63288583834682,
+          "LP": 17,
+          "LR": 76.92959587524257,
           "LT": 0,
-          "RI": 40.92200459538034,
-          "RM": 6.184658438426491,
-          "RP": 22.519756745308193,
-          "RR": 13.24189270030778,
-          "RT": 0
+          "RI": 514.0360172314561,
+          "RM": 255.49986818620306,
+          "RP": 8.886349517372674,
+          "RR": 310.0157030736243,
+          "RT": 145
         },
         "perFingerPresses": {
-          "LI": 74,
-          "LM": 30,
-          "LP": 20,
-          "LR": 31,
+          "LI": 428,
+          "LM": 247,
+          "LP": 431,
+          "LR": 227,
           "LT": 0,
-          "RI": 57,
-          "RM": 31,
-          "RP": 27,
-          "RR": 57,
-          "RT": 47
+          "RI": 579,
+          "RM": 429,
+          "RP": 7,
+          "RR": 479,
+          "RT": 172
         },
-        "presses": 374,
-        "sameFinger": 12,
+        "presses": 2999,
+        "sameFinger": 1,
         "singleKeyRate": 100,
-        "singleTapLayerRate": 71.37931034482759,
-        "singleTapRate": 55.3475935828877,
+        "singleTapLayerRate": 0,
+        "singleTapRate": 0,
         "skipped": 0,
-        "strokes": 374,
-        "totalMm": 3204.0397022386637,
-        "totalUnits": 168.19106048496923
+        "strokes": 2999,
+        "totalMm": 34007.421025000076,
+        "totalUnits": 1889.3011680555596
       },
-      "sampleId": "legacy",
-      "textLength": 290,
-      "textSha256": "13032193a6d690c3512871d49b029cf1f04bca30a16c3df6b5f1b3d5d5182fdc"
+      "note": "物理配列=column-staggered・fingerAssignment=qwerty-optimized（分割する物理配列で反対側の手の追加の担当を候補から外す分岐）",
+      "sampleId": "modern",
+      "textLength": 1676,
+      "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
+    },
+    {
+      "analysis": {
+        "arpeggio": {
+          "coverage": {
+            "rate": 0.5235078359453151,
+            "strokes": 1570
+          },
+          "meanSpanLength": 2.106241699867198,
+          "spans": 753
+        },
+        "directionalTransitions": {
+          "empty": 0,
+          "inward": 654,
+          "mixed": 0,
+          "outward": 612,
+          "same": 80,
+          "total": 1346
+        },
+        "redirect": {
+          "events": 462,
+          "pivots": {
+            "rate": 0.15405135045015006,
+            "strokes": 462
+          }
+        },
+        "roll": {
+          "anyRoll": {
+            "rate": 0.5235078359453151,
+            "strokes": 1570
+          },
+          "longRoll": {
+            "rate": 0.07902634211403801,
+            "strokes": 237
+          },
+          "twoRoll": {
+            "rate": 0.4494831610536846,
+            "strokes": 1348
+          }
+        },
+        "sfb": {
+          "events": 80,
+          "involvedStrokes": {
+            "rate": 0.05301767255751917,
+            "strokes": 159
+          }
+        },
+        "strokeCount": 2999
+      },
+      "conditions": {
+        "actionRealizationPolicy": {
+          "triggerActivation": "disabled",
+          "triggerActivationClassOverrides": {},
+          "triggerActivationOverrides": []
+        },
+        "arpeggioInterpretation": {
+          "bridgeSameFinger": false,
+          "includeSingleRedirectTail": false,
+          "includeThumb": false
+        },
+        "chainInterpretation": {
+          "breakOnOppositeHandSimultaneous": false,
+          "breakOnSameFinger": true,
+          "breakOnThumbOnly": true,
+          "breakOnTriggerOnly": false
+        },
+        "fingerAssignmentId": "qwerty-optimized",
+        "geometryShapeId": "split-ortholinear",
+        "preferOppositeThumb": false,
+        "romajiRuleId": "kunrei",
+        "sfbHomeCost": true,
+        "triggerRealizationPolicy": {
+          "useHold": false
+        },
+        "windowSize": 3
+      },
+      "id": "ja:qwerty:modern:物理配列=split-ortholinear・fingerAssignment=qwerty-optimized（分割する物理配列で反対側の手の追加の担当を候補から外す分岐）",
+      "language": "ja",
+      "layoutId": "qwerty",
+      "metrics": {
+        "actions": 2999,
+        "adjacent": [
+          {
+            "maxExcess": 0.41421356237309515,
+            "meanExcess": 0.010358791989990719,
+            "pair": [
+              "LP",
+              "LR"
+            ],
+            "stdDev": 0.06467957606976078
+          },
+          {
+            "maxExcess": 1.8284271247461903,
+            "meanExcess": 0.08866057311668009,
+            "pair": [
+              "LR",
+              "LM"
+            ],
+            "stdDev": 0.24812713041240655
+          },
+          {
+            "maxExcess": 1.8284271247461903,
+            "meanExcess": 0.2919775062299797,
+            "pair": [
+              "LM",
+              "LI"
+            ],
+            "stdDev": 0.5004338151601662
+          },
+          {
+            "maxExcess": 1.8284271247461903,
+            "meanExcess": 0.24251662474789856,
+            "pair": [
+              "RI",
+              "RM"
+            ],
+            "stdDev": 0.4546822682574183
+          },
+          {
+            "maxExcess": 2.1622776601683795,
+            "meanExcess": 0.16410527718375817,
+            "pair": [
+              "RM",
+              "RR"
+            ],
+            "stdDev": 0.347875873273957
+          },
+          {
+            "maxExcess": 1.8284271247461903,
+            "meanExcess": 0.1973945199639708,
+            "pair": [
+              "RR",
+              "RP"
+            ],
+            "stdDev": 0.34316692141151145
+          }
+        ],
+        "comboPresses": 0,
+        "combos": {
+          "definitions": 0,
+          "hits": 0,
+          "matched": 0
+        },
+        "fingerAssignmentId": "qwerty-optimized",
+        "fingerAssignmentName": "QWERTY最適化",
+        "geometryId": "split-ortholinear",
+        "geometryName": "オーソリニア（ANSI・分割）",
+        "inputChars": 1676,
+        "layers": [
+          {
+            "id": "single",
+            "label": "単打",
+            "presses": 2999
+          },
+          {
+            "id": "layer:Shift",
+            "label": "Shift",
+            "presses": 0
+          }
+        ],
+        "meanPerStroke": 0.630516829226744,
+        "perCharPresses": 1.7893794749403342,
+        "perCharSteps": 1.7893794749403342,
+        "perCharUnits": 1.1282338728227954,
+        "perFinger": {
+          "LI": 396.5756851698612,
+          "LM": 177.1126983722081,
+          "LP": 17,
+          "LR": 74.97056274847712,
+          "LT": 0,
+          "RI": 505.73506473629516,
+          "RM": 256.9411254969543,
+          "RP": 8.886349517372675,
+          "RR": 308.6984848098351,
+          "RT": 145
+        },
+        "perFingerPresses": {
+          "LI": 428,
+          "LM": 247,
+          "LP": 431,
+          "LR": 227,
+          "LT": 0,
+          "RI": 579,
+          "RM": 429,
+          "RP": 7,
+          "RR": 479,
+          "RT": 172
+        },
+        "presses": 2999,
+        "sameFinger": 1,
+        "singleKeyRate": 100,
+        "singleTapLayerRate": 0,
+        "singleTapRate": 0,
+        "skipped": 0,
+        "strokes": 2999,
+        "totalMm": 36022.02544471165,
+        "totalUnits": 1890.9199708510052
+      },
+      "note": "物理配列=split-ortholinear・fingerAssignment=qwerty-optimized（分割する物理配列で反対側の手の追加の担当を候補から外す分岐）",
+      "sampleId": "modern",
+      "textLength": 1676,
+      "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     },
     {
       "analysis": {
@@ -10204,207 +7351,6 @@
       "analysis": {
         "arpeggio": {
           "coverage": {
-            "rate": 0.3241590214067278,
-            "strokes": 106
-          },
-          "meanSpanLength": 2.0576923076923075,
-          "spans": 52
-        },
-        "directionalTransitions": {
-          "empty": 0,
-          "inward": 55,
-          "mixed": 7,
-          "outward": 43,
-          "same": 2,
-          "total": 107
-        },
-        "redirect": {
-          "events": 37,
-          "pivots": {
-            "rate": 0.11314984709480122,
-            "strokes": 37
-          }
-        },
-        "roll": {
-          "anyRoll": {
-            "rate": 0.3241590214067278,
-            "strokes": 106
-          },
-          "longRoll": {
-            "rate": 0.027522935779816515,
-            "strokes": 9
-          },
-          "twoRoll": {
-            "rate": 0.2996941896024465,
-            "strokes": 98
-          }
-        },
-        "sfb": {
-          "events": 6,
-          "involvedStrokes": {
-            "rate": 0.03058103975535168,
-            "strokes": 10
-          }
-        },
-        "strokeCount": 327
-      },
-      "conditions": {
-        "actionRealizationPolicy": {
-          "triggerActivation": "disabled",
-          "triggerActivationClassOverrides": {},
-          "triggerActivationOverrides": []
-        },
-        "arpeggioInterpretation": {
-          "bridgeSameFinger": false,
-          "includeSingleRedirectTail": false,
-          "includeThumb": false
-        },
-        "chainInterpretation": {
-          "breakOnOppositeHandSimultaneous": false,
-          "breakOnSameFinger": true,
-          "breakOnThumbOnly": true,
-          "breakOnTriggerOnly": false
-        },
-        "fingerAssignmentId": "default",
-        "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
-        "romajiRuleId": null,
-        "sfbHomeCost": true,
-        "triggerRealizationPolicy": {
-          "useHold": false
-        },
-        "windowSize": 3
-      },
-      "id": "ja:shin-jis-simultaneous:legacy",
-      "language": "ja",
-      "layoutId": "shin-jis-simultaneous",
-      "metrics": {
-        "actions": 327,
-        "adjacent": [
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.030915604704632456,
-            "pair": [
-              "LP",
-              "LR"
-            ],
-            "stdDev": 0.13928230440005496
-          },
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.0336463251372975,
-            "pair": [
-              "LR",
-              "LM"
-            ],
-            "stdDev": 0.14499936487641596
-          },
-          {
-            "maxExcess": 1.6925824035672523,
-            "meanExcess": 0.1695260302737265,
-            "pair": [
-              "LM",
-              "LI"
-            ],
-            "stdDev": 0.39461125025030036
-          },
-          {
-            "maxExcess": 1.462214450449026,
-            "meanExcess": 0.13030990400831374,
-            "pair": [
-              "RI",
-              "RM"
-            ],
-            "stdDev": 0.3139208656517474
-          },
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.04921441230807289,
-            "pair": [
-              "RM",
-              "RR"
-            ],
-            "stdDev": 0.1825470594987234
-          },
-          {
-            "maxExcess": 1.0155644370746373,
-            "meanExcess": 0.06943395224937286,
-            "pair": [
-              "RR",
-              "RP"
-            ],
-            "stdDev": 0.23266310986857708
-          }
-        ],
-        "comboPresses": 0,
-        "combos": {
-          "definitions": 0,
-          "hits": 0,
-          "matched": 0
-        },
-        "fingerAssignmentId": "default",
-        "fingerAssignmentName": "既定（列固定）",
-        "geometryId": "row-staggered",
-        "geometryName": "ロウスタッガード（ANSI）",
-        "inputChars": 290,
-        "layers": [
-          {
-            "id": "single",
-            "label": "単打",
-            "presses": 280
-          },
-          {
-            "id": "face:1",
-            "label": "Shift",
-            "presses": 94
-          }
-        ],
-        "meanPerStroke": 0.5254100748431777,
-        "perCharPresses": 1.289655172413793,
-        "perCharSteps": 1.1275862068965516,
-        "perCharUnits": 0.5924451533576521,
-        "perFinger": {
-          "LI": 57.38821286854048,
-          "LM": 9.713275569367136,
-          "LP": 7.389950009521867,
-          "LR": 11.862085964521446,
-          "LT": 0,
-          "RI": 42.39122818897593,
-          "RM": 6.184658438426491,
-          "RP": 22.519756745308193,
-          "RR": 14.359926689057675,
-          "RT": 0
-        },
-        "perFingerPresses": {
-          "LI": 74,
-          "LM": 30,
-          "LP": 20,
-          "LR": 31,
-          "LT": 0,
-          "RI": 57,
-          "RM": 31,
-          "RP": 27,
-          "RR": 57,
-          "RT": 47
-        },
-        "presses": 374,
-        "sameFinger": 18,
-        "singleKeyRate": 85.62691131498471,
-        "singleTapLayerRate": 71.37931034482759,
-        "singleTapRate": 63.30275229357798,
-        "skipped": 0,
-        "strokes": 327,
-        "totalMm": 3272.963249724349,
-        "totalUnits": 171.8090944737191
-      },
-      "sampleId": "legacy",
-      "textLength": 290,
-      "textSha256": "13032193a6d690c3512871d49b029cf1f04bca30a16c3df6b5f1b3d5d5182fdc"
-    },
-    {
-      "analysis": {
-        "arpeggio": {
-          "coverage": {
             "rate": 0.27405405405405403,
             "strokes": 507
           },
@@ -10601,282 +7547,6 @@
       "sampleId": "modern",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
-    },
-    {
-      "analysis": {
-        "arpeggio": {
-          "coverage": {
-            "rate": 0.23591549295774647,
-            "strokes": 67
-          },
-          "meanSpanLength": 2.193548387096774,
-          "spans": 31
-        },
-        "directionalTransitions": {
-          "empty": 0,
-          "inward": 52,
-          "mixed": 15,
-          "outward": 44,
-          "same": 2,
-          "total": 113
-        },
-        "redirect": {
-          "events": 40,
-          "pivots": {
-            "rate": 0.14084507042253522,
-            "strokes": 40
-          }
-        },
-        "roll": {
-          "anyRoll": {
-            "rate": 0.23591549295774647,
-            "strokes": 67
-          },
-          "longRoll": {
-            "rate": 0.06338028169014084,
-            "strokes": 18
-          },
-          "twoRoll": {
-            "rate": 0.176056338028169,
-            "strokes": 50
-          }
-        },
-        "sfb": {
-          "events": 10,
-          "involvedStrokes": {
-            "rate": 0.056338028169014086,
-            "strokes": 16
-          }
-        },
-        "strokeCount": 284
-      },
-      "conditions": {
-        "actionRealizationPolicy": {
-          "triggerActivation": "disabled",
-          "triggerActivationClassOverrides": {},
-          "triggerActivationOverrides": []
-        },
-        "arpeggioInterpretation": {
-          "bridgeSameFinger": false,
-          "includeSingleRedirectTail": false,
-          "includeThumb": false
-        },
-        "chainInterpretation": {
-          "breakOnOppositeHandSimultaneous": false,
-          "breakOnSameFinger": true,
-          "breakOnThumbOnly": true,
-          "breakOnTriggerOnly": false
-        },
-        "fingerAssignmentId": "default",
-        "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
-        "romajiRuleId": null,
-        "sfbHomeCost": true,
-        "triggerRealizationPolicy": {
-          "useHold": false
-        },
-        "windowSize": 3
-      },
-      "id": "ja:shin-koume:legacy",
-      "language": "ja",
-      "layoutId": "shin-koume",
-      "metrics": {
-        "actions": 284,
-        "adjacent": [
-          {
-            "maxExcess": 0.6007810593582121,
-            "meanExcess": 0.034003625120506725,
-            "pair": [
-              "LP",
-              "LR"
-            ],
-            "stdDev": 0.11841926767194844
-          },
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.07724738996013224,
-            "pair": [
-              "LR",
-              "LM"
-            ],
-            "stdDev": 0.2000555316747335
-          },
-          {
-            "maxExcess": 1.0155644370746373,
-            "meanExcess": 0.11969887351062022,
-            "pair": [
-              "LM",
-              "LI"
-            ],
-            "stdDev": 0.28959016010227556
-          },
-          {
-            "maxExcess": 1,
-            "meanExcess": 0.07700439302892342,
-            "pair": [
-              "RI",
-              "RM"
-            ],
-            "stdDev": 0.2040736250441336
-          },
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.07299444813662258,
-            "pair": [
-              "RM",
-              "RR"
-            ],
-            "stdDev": 0.20036013044919546
-          },
-          {
-            "maxExcess": 1,
-            "meanExcess": 0.03448486533994739,
-            "pair": [
-              "RR",
-              "RP"
-            ],
-            "stdDev": 0.14166840375336867
-          }
-        ],
-        "comboPresses": 0,
-        "combos": {
-          "definitions": 0,
-          "hits": 0,
-          "matched": 0
-        },
-        "fingerAssignmentId": "default",
-        "fingerAssignmentName": "既定（列固定）",
-        "geometryId": "row-staggered",
-        "geometryName": "ロウスタッガード（ANSI）",
-        "inputChars": 290,
-        "layers": [
-          {
-            "id": "single",
-            "label": "単打",
-            "presses": 180
-          },
-          {
-            "id": "layer:左親指",
-            "label": "左親指",
-            "presses": 48
-          },
-          {
-            "id": "layer:右親指",
-            "label": "右親指",
-            "presses": 144
-          },
-          {
-            "id": "face:3",
-            "label": "半濁音",
-            "presses": 0
-          },
-          {
-            "id": "face:4",
-            "label": "ひ・び",
-            "presses": 0
-          },
-          {
-            "id": "face:5",
-            "label": "き・ぎ",
-            "presses": 0
-          },
-          {
-            "id": "face:6",
-            "label": "つ・に・づ",
-            "presses": 4
-          },
-          {
-            "id": "face:7",
-            "label": "ぴ・ぱ",
-            "presses": 0
-          },
-          {
-            "id": "face:8",
-            "label": "ふ・ぶ",
-            "presses": 0
-          },
-          {
-            "id": "face:9",
-            "label": "く・い・ぐ",
-            "presses": 4
-          },
-          {
-            "id": "face:10",
-            "label": "り・し・じ",
-            "presses": 6
-          },
-          {
-            "id": "face:11",
-            "label": "外来音（ぅ）",
-            "presses": 0
-          },
-          {
-            "id": "face:12",
-            "label": "み",
-            "presses": 0
-          },
-          {
-            "id": "face:13",
-            "label": "う・ヴ",
-            "presses": 0
-          },
-          {
-            "id": "face:14",
-            "label": "て・で",
-            "presses": 0
-          },
-          {
-            "id": "face:15",
-            "label": "ち・ぢ",
-            "presses": 2
-          },
-          {
-            "id": "face:16",
-            "label": "外来音（ぉ）",
-            "presses": 0
-          }
-        ],
-        "meanPerStroke": 0.5051119314661964,
-        "perCharPresses": 1.3379310344827586,
-        "perCharSteps": 0.9793103448275862,
-        "perCharUnits": 0.4946613397806888,
-        "perFinger": {
-          "LI": 23.47592764503778,
-          "LM": 21.995334863874632,
-          "LP": 10.307764064044152,
-          "LR": 16.492422502470642,
-          "LT": 0,
-          "RI": 32.719853378115324,
-          "RM": 18.046744402947937,
-          "RP": 3.23606797749979,
-          "RR": 17.177673702409557,
-          "RT": 0
-        },
-        "perFingerPresses": {
-          "LI": 29,
-          "LM": 52,
-          "LP": 19,
-          "LR": 34,
-          "LT": 24,
-          "RI": 53,
-          "RM": 41,
-          "RP": 30,
-          "RR": 34,
-          "RT": 72
-        },
-        "presses": 388,
-        "sameFinger": 15,
-        "singleKeyRate": 63.38028169014085,
-        "singleTapLayerRate": 62.06896551724138,
-        "singleTapRate": 63.38028169014085,
-        "skipped": 0,
-        "strokes": 284,
-        "totalMm": 2732.7565716184154,
-        "totalUnits": 143.45178853639976
-      },
-      "sampleId": "legacy",
-      "textLength": 290,
-      "textSha256": "13032193a6d690c3512871d49b029cf1f04bca30a16c3df6b5f1b3d5d5182fdc"
     },
     {
       "analysis": {
@@ -11158,222 +7828,6 @@
       "analysis": {
         "arpeggio": {
           "coverage": {
-            "rate": 0.20774647887323944,
-            "strokes": 59
-          },
-          "meanSpanLength": 2.107142857142857,
-          "spans": 28
-        },
-        "directionalTransitions": {
-          "empty": 0,
-          "inward": 97,
-          "mixed": 0,
-          "outward": 73,
-          "same": 12,
-          "total": 182
-        },
-        "redirect": {
-          "events": 71,
-          "pivots": {
-            "rate": 0.2323943661971831,
-            "strokes": 66
-          }
-        },
-        "roll": {
-          "anyRoll": {
-            "rate": 0.20774647887323944,
-            "strokes": 59
-          },
-          "longRoll": {
-            "rate": 0.03169014084507042,
-            "strokes": 9
-          },
-          "twoRoll": {
-            "rate": 0.176056338028169,
-            "strokes": 50
-          }
-        },
-        "sfb": {
-          "events": 12,
-          "involvedStrokes": {
-            "rate": 0.08450704225352113,
-            "strokes": 24
-          }
-        },
-        "strokeCount": 284
-      },
-      "conditions": {
-        "actionRealizationPolicy": {
-          "triggerActivation": "disabled",
-          "triggerActivationClassOverrides": {},
-          "triggerActivationOverrides": []
-        },
-        "arpeggioInterpretation": {
-          "bridgeSameFinger": false,
-          "includeSingleRedirectTail": false,
-          "includeThumb": false
-        },
-        "chainInterpretation": {
-          "breakOnOppositeHandSimultaneous": false,
-          "breakOnSameFinger": true,
-          "breakOnThumbOnly": true,
-          "breakOnTriggerOnly": false
-        },
-        "fingerAssignmentId": "default",
-        "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
-        "romajiRuleId": null,
-        "sfbHomeCost": true,
-        "triggerRealizationPolicy": {
-          "useHold": false
-        },
-        "windowSize": 3
-      },
-      "id": "ja:shingeta:legacy",
-      "language": "ja",
-      "layoutId": "shingeta",
-      "metrics": {
-        "actions": 284,
-        "adjacent": [
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.03488676274541686,
-            "pair": [
-              "LP",
-              "LR"
-            ],
-            "stdDev": 0.1433829978378167
-          },
-          {
-            "maxExcess": 1.0155644370746373,
-            "meanExcess": 0.058793844120386914,
-            "pair": [
-              "LR",
-              "LM"
-            ],
-            "stdDev": 0.17234800575983886
-          },
-          {
-            "maxExcess": 1.6925824035672523,
-            "meanExcess": 0.1370796025477095,
-            "pair": [
-              "LM",
-              "LI"
-            ],
-            "stdDev": 0.3584478157624511
-          },
-          {
-            "maxExcess": 1.462214450449026,
-            "meanExcess": 0.14882987607004786,
-            "pair": [
-              "RI",
-              "RM"
-            ],
-            "stdDev": 0.3028557511253896
-          },
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.06966574121904923,
-            "pair": [
-              "RM",
-              "RR"
-            ],
-            "stdDev": 0.19275173210976795
-          },
-          {
-            "maxExcess": 1.0155644370746373,
-            "meanExcess": 0.0343874251556228,
-            "pair": [
-              "RR",
-              "RP"
-            ],
-            "stdDev": 0.14768893281862427
-          }
-        ],
-        "comboPresses": 0,
-        "combos": {
-          "definitions": 0,
-          "hits": 0,
-          "matched": 0
-        },
-        "fingerAssignmentId": "default",
-        "fingerAssignmentName": "既定（列固定）",
-        "geometryId": "row-staggered",
-        "geometryName": "ロウスタッガード（ANSI）",
-        "inputChars": 290,
-        "layers": [
-          {
-            "id": "single",
-            "label": "単打",
-            "presses": 200
-          },
-          {
-            "id": "layer:中指シフト",
-            "label": "中指シフト",
-            "presses": 78
-          },
-          {
-            "id": "layer:薬指シフト",
-            "label": "薬指シフト",
-            "presses": 78
-          },
-          {
-            "id": "layer:拗音1",
-            "label": "拗音1",
-            "presses": 8
-          },
-          {
-            "id": "layer:拗音2",
-            "label": "拗音2",
-            "presses": 4
-          }
-        ],
-        "meanPerStroke": 0.5668416979113748,
-        "perCharPresses": 1.2689655172413794,
-        "perCharSteps": 0.9793103448275862,
-        "perCharUnits": 0.555113938644243,
-        "perFinger": {
-          "LI": 20.86653084569535,
-          "LM": 22.069782987395186,
-          "LP": 3.266844383904205,
-          "LR": 14.854348142564286,
-          "LT": 0,
-          "RI": 45.67329114644725,
-          "RM": 29.95765957334006,
-          "RP": 4.780776406404415,
-          "RR": 19.513808721079748,
-          "RT": 0
-        },
-        "perFingerPresses": {
-          "LI": 40,
-          "LM": 62,
-          "LP": 13,
-          "LR": 60,
-          "LT": 0,
-          "RI": 70,
-          "RM": 63,
-          "RP": 21,
-          "RR": 39,
-          "RT": 0
-        },
-        "presses": 368,
-        "sameFinger": 34,
-        "singleKeyRate": 70.4225352112676,
-        "singleTapLayerRate": 68.96551724137932,
-        "singleTapRate": 70.4225352112676,
-        "skipped": 0,
-        "strokes": 284,
-        "totalMm": 3066.7269540401203,
-        "totalUnits": 160.98304220683045
-      },
-      "sampleId": "legacy",
-      "textLength": 290,
-      "textSha256": "13032193a6d690c3512871d49b029cf1f04bca30a16c3df6b5f1b3d5d5182fdc"
-    },
-    {
-      "analysis": {
-        "arpeggio": {
-          "coverage": {
             "rate": 0.20495767835550183,
             "strokes": 339
           },
@@ -11590,207 +8044,6 @@
       "analysis": {
         "arpeggio": {
           "coverage": {
-            "rate": 0.2868217054263566,
-            "strokes": 111
-          },
-          "meanSpanLength": 2.018181818181818,
-          "spans": 55
-        },
-        "directionalTransitions": {
-          "empty": 0,
-          "inward": 63,
-          "mixed": 0,
-          "outward": 47,
-          "same": 4,
-          "total": 114
-        },
-        "redirect": {
-          "events": 21,
-          "pivots": {
-            "rate": 0.05426356589147287,
-            "strokes": 21
-          }
-        },
-        "roll": {
-          "anyRoll": {
-            "rate": 0.2868217054263566,
-            "strokes": 111
-          },
-          "longRoll": {
-            "rate": 0.007751937984496124,
-            "strokes": 3
-          },
-          "twoRoll": {
-            "rate": 0.27906976744186046,
-            "strokes": 108
-          }
-        },
-        "sfb": {
-          "events": 4,
-          "involvedStrokes": {
-            "rate": 0.020671834625323,
-            "strokes": 8
-          }
-        },
-        "strokeCount": 387
-      },
-      "conditions": {
-        "actionRealizationPolicy": {
-          "triggerActivation": "disabled",
-          "triggerActivationClassOverrides": {},
-          "triggerActivationOverrides": []
-        },
-        "arpeggioInterpretation": {
-          "bridgeSameFinger": false,
-          "includeSingleRedirectTail": false,
-          "includeThumb": false
-        },
-        "chainInterpretation": {
-          "breakOnOppositeHandSimultaneous": false,
-          "breakOnSameFinger": true,
-          "breakOnThumbOnly": true,
-          "breakOnTriggerOnly": false
-        },
-        "fingerAssignmentId": "default",
-        "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
-        "romajiRuleId": null,
-        "sfbHomeCost": true,
-        "triggerRealizationPolicy": {
-          "useHold": false
-        },
-        "windowSize": 3
-      },
-      "id": "ja:tsuki-2-263:legacy",
-      "language": "ja",
-      "layoutId": "tsuki-2-263",
-      "metrics": {
-        "actions": 387,
-        "adjacent": [
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.025986116539232097,
-            "pair": [
-              "LP",
-              "LR"
-            ],
-            "stdDev": 0.12386865923669596
-          },
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.05192502434733077,
-            "pair": [
-              "LR",
-              "LM"
-            ],
-            "stdDev": 0.16435685162601338
-          },
-          {
-            "maxExcess": 1.6925824035672523,
-            "meanExcess": 0.1865084164481896,
-            "pair": [
-              "LM",
-              "LI"
-            ],
-            "stdDev": 0.3816462367809101
-          },
-          {
-            "maxExcess": 1.462214450449026,
-            "meanExcess": 0.1378908349085398,
-            "pair": [
-              "RI",
-              "RM"
-            ],
-            "stdDev": 0.32786846369373884
-          },
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.06763640760179343,
-            "pair": [
-              "RM",
-              "RR"
-            ],
-            "stdDev": 0.2009603426118501
-          },
-          {
-            "maxExcess": 1.0155644370746373,
-            "meanExcess": 0.04876860883033084,
-            "pair": [
-              "RR",
-              "RP"
-            ],
-            "stdDev": 0.19244560146923906
-          }
-        ],
-        "comboPresses": 0,
-        "combos": {
-          "definitions": 0,
-          "hits": 0,
-          "matched": 0
-        },
-        "fingerAssignmentId": "default",
-        "fingerAssignmentName": "既定（列固定）",
-        "geometryId": "row-staggered",
-        "geometryName": "ロウスタッガード（ANSI）",
-        "inputChars": 290,
-        "layers": [
-          {
-            "id": "single",
-            "label": "単打",
-            "presses": 267
-          },
-          {
-            "id": "layer:中指シフト",
-            "label": "中指シフト",
-            "presses": 120
-          }
-        ],
-        "meanPerStroke": 0.46219281020198816,
-        "perCharPresses": 1.3344827586206895,
-        "perCharSteps": 1.3344827586206895,
-        "perCharUnits": 0.616788336372998,
-        "perFinger": {
-          "LI": 52.22553802770156,
-          "LM": 22.34436519325655,
-          "LP": 7.389950009521867,
-          "LR": 13.923638777330277,
-          "LT": 0,
-          "RI": 39.29044712961772,
-          "RM": 15.54890367841171,
-          "RP": 10.780776406404415,
-          "RR": 17.36499832592544,
-          "RT": 0
-        },
-        "perFingerPresses": {
-          "LI": 83,
-          "LM": 61,
-          "LP": 20,
-          "LR": 34,
-          "LT": 0,
-          "RI": 57,
-          "RM": 54,
-          "RP": 16,
-          "RR": 62,
-          "RT": 0
-        },
-        "presses": 387,
-        "sameFinger": 9,
-        "singleKeyRate": 100,
-        "singleTapLayerRate": 66.89655172413794,
-        "singleTapRate": 50.129198966408275,
-        "skipped": 0,
-        "strokes": 387,
-        "totalMm": 3407.447164292628,
-        "totalUnits": 178.86861754816942
-      },
-      "sampleId": "legacy",
-      "textLength": 290,
-      "textSha256": "13032193a6d690c3512871d49b029cf1f04bca30a16c3df6b5f1b3d5d5182fdc"
-    },
-    {
-      "analysis": {
-        "arpeggio": {
-          "coverage": {
             "rate": 0.24107536359629794,
             "strokes": 547
           },
@@ -11987,207 +8240,6 @@
       "sampleId": "modern",
       "textLength": 1676,
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
-    },
-    {
-      "analysis": {
-        "arpeggio": {
-          "coverage": {
-            "rate": 0.4854368932038835,
-            "strokes": 250
-          },
-          "meanSpanLength": 2.0403225806451615,
-          "spans": 124
-        },
-        "directionalTransitions": {
-          "empty": 0,
-          "inward": 97,
-          "mixed": 0,
-          "outward": 103,
-          "same": 23,
-          "total": 223
-        },
-        "redirect": {
-          "events": 75,
-          "pivots": {
-            "rate": 0.14563106796116504,
-            "strokes": 75
-          }
-        },
-        "roll": {
-          "anyRoll": {
-            "rate": 0.4854368932038835,
-            "strokes": 250
-          },
-          "longRoll": {
-            "rate": 0.02912621359223301,
-            "strokes": 15
-          },
-          "twoRoll": {
-            "rate": 0.4621359223300971,
-            "strokes": 238
-          }
-        },
-        "sfb": {
-          "events": 23,
-          "involvedStrokes": {
-            "rate": 0.08932038834951456,
-            "strokes": 46
-          }
-        },
-        "strokeCount": 515
-      },
-      "conditions": {
-        "actionRealizationPolicy": {
-          "triggerActivation": "disabled",
-          "triggerActivationClassOverrides": {},
-          "triggerActivationOverrides": []
-        },
-        "arpeggioInterpretation": {
-          "bridgeSameFinger": false,
-          "includeSingleRedirectTail": false,
-          "includeThumb": false
-        },
-        "chainInterpretation": {
-          "breakOnOppositeHandSimultaneous": false,
-          "breakOnSameFinger": true,
-          "breakOnThumbOnly": true,
-          "breakOnTriggerOnly": false
-        },
-        "fingerAssignmentId": "default",
-        "geometryShapeId": "row-staggered",
-        "preferOppositeThumb": false,
-        "romajiRuleId": "kunrei",
-        "sfbHomeCost": true,
-        "triggerRealizationPolicy": {
-          "useHold": false
-        },
-        "windowSize": 3
-      },
-      "id": "ja:workman:legacy",
-      "language": "ja",
-      "layoutId": "workman",
-      "metrics": {
-        "actions": 515,
-        "adjacent": [
-          {
-            "maxExcess": 0.25,
-            "meanExcess": 0.012742341550969037,
-            "pair": [
-              "LP",
-              "LR"
-            ],
-            "stdDev": 0.05245005130872212
-          },
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.07657435570839285,
-            "pair": [
-              "LR",
-              "LM"
-            ],
-            "stdDev": 0.2083622832882156
-          },
-          {
-            "maxExcess": 1.0155644370746373,
-            "meanExcess": 0.0635204618321066,
-            "pair": [
-              "LM",
-              "LI"
-            ],
-            "stdDev": 0.19918999585543523
-          },
-          {
-            "maxExcess": 1.3584952830141508,
-            "meanExcess": 0.12460383341451804,
-            "pair": [
-              "RI",
-              "RM"
-            ],
-            "stdDev": 0.2812061476586546
-          },
-          {
-            "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.08052330315146806,
-            "pair": [
-              "RM",
-              "RR"
-            ],
-            "stdDev": 0.2114868149555389
-          },
-          {
-            "maxExcess": 1.3584952830141508,
-            "meanExcess": 0.015252004492853995,
-            "pair": [
-              "RR",
-              "RP"
-            ],
-            "stdDev": 0.13389703475780015
-          }
-        ],
-        "comboPresses": 0,
-        "combos": {
-          "definitions": 0,
-          "hits": 0,
-          "matched": 0
-        },
-        "fingerAssignmentId": "default",
-        "fingerAssignmentName": "既定（列固定）",
-        "geometryId": "row-staggered",
-        "geometryName": "ロウスタッガード（ANSI）",
-        "inputChars": 290,
-        "layers": [
-          {
-            "id": "single",
-            "label": "単打",
-            "presses": 515
-          },
-          {
-            "id": "layer:Shift",
-            "label": "Shift",
-            "presses": 0
-          }
-        ],
-        "meanPerStroke": 0.27313137602716225,
-        "perCharPresses": 1.7758620689655173,
-        "perCharSteps": 1.7758620689655173,
-        "perCharUnits": 0.485043650530995,
-        "perFinger": {
-          "LI": 18.934658438426492,
-          "LM": 28.87805396106495,
-          "LP": 5.5901699437494745,
-          "LR": 18.55397531527947,
-          "LT": 0,
-          "RI": 33.95084971874735,
-          "RM": 22.677080940897124,
-          "RP": 2.0155644370746373,
-          "RR": 10.062305898749054,
-          "RT": 0
-        },
-        "perFingerPresses": {
-          "LI": 66,
-          "LM": 48,
-          "LP": 90,
-          "LR": 39,
-          "LT": 0,
-          "RI": 89,
-          "RM": 74,
-          "RP": 45,
-          "RR": 64,
-          "RT": 0
-        },
-        "presses": 515,
-        "sameFinger": 4,
-        "singleKeyRate": 100,
-        "singleTapLayerRate": 0,
-        "singleTapRate": 0,
-        "skipped": 0,
-        "strokes": 515,
-        "totalMm": 2679.6236473584822,
-        "totalUnits": 140.66265865398856
-      },
-      "sampleId": "legacy",
-      "textLength": 290,
-      "textSha256": "13032193a6d690c3512871d49b029cf1f04bca30a16c3df6b5f1b3d5d5182fdc"
     },
     {
       "analysis": {
@@ -12392,6 +8444,6 @@
     }
   ],
   "modelVersion": 5,
-  "sourceCommit": "a322033b5faceaeafb4f282e4d16b697fdb425a2",
+  "sourceCommit": "f0803d63514b5375700f2f784a43212a820222c1",
   "version": 1
 }

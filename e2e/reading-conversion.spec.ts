@@ -31,6 +31,15 @@ function watchTraffic(page: Page): Traffic {
   return traffic;
 }
 
+/** 漢字を含まない組み込みのテキスト（現代文）を選んだ状態から始める。既定のテキストは漢字を含むので、開いただけで辞書を取得する。 */
+async function startWithKanaText(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    if (localStorage.getItem('keydist:standalone-text-selection') === null) {
+      localStorage.setItem('keydist:standalone-text-selection', JSON.stringify({ version: 1, ref: { kind: 'builtin', id: 'builtin:ja.modern' } }));
+    }
+  });
+}
+
 async function openAnalyzer(page: Page, path: string): Promise<void> {
   await page.goto(path);
   await waitForHydration(page);
@@ -54,9 +63,10 @@ const KANJI_TEXT = '今日は良い天気です。𠮷';
 
 test('漢字を含まない日本語と英語のテキストでは、辞書もwasmも取得しない', async ({ page }) => {
   const traffic = watchTraffic(page);
+  await startWithKanaText(page);
   await openAnalyzer(page, '/analyzer/bigram-flow');
   await expect(flowBody(page)).toBeVisible({ timeout: 10_000 });
-  // 既定の日本語のテキスト
+  // 漢字を含まない日本語のテキスト
   await setText(page, 'あいうえおかきくけこ');
   await expect(flowBody(page)).toBeVisible();
   // 英語のテキスト。漢字だけを含み、かなを含まないテキストも英語として扱うので読みに直さない
@@ -204,6 +214,7 @@ test('読みの辞書を読み込めなかったテキストから別の漢字�
     await held;
     await route.abort();
   });
+  await startWithKanaText(page);
   await page.addInitScript(
     ({ texts }) => {
       if (localStorage.getItem('keydist:text-library') === null) {

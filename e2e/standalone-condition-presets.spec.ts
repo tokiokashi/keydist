@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { useKanaText } from './kana-text-helper.ts';
 
 /**
  * 条件のモーダルのプリセットの節（保存・流し込み・名前の変更・削除・元に戻す）のE2E。
@@ -84,6 +85,7 @@ test('プリセット: 今の全体の値を保存すると一覧に加わり、
 });
 
 test('プリセット: 流し込むと全体の値が置き換わり、結果の行の元に戻すで戻る', async ({ page }) => {
+  await useKanaText(page);
   const modal = await openBigramFlowModal(page);
   await raiseWindowSize(modal);
   await modal.getByRole('button', { name: 'OFF' }).first().click();

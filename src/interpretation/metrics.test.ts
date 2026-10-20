@@ -5,7 +5,7 @@ import { generateTrace, type TracePolicy } from '#trace/generate.ts';
 import { computeMetrics, DEFAULT_METRIC_CONDITIONS, homeSpacing, meanStdDevMax } from './metrics.ts';
 import { faceFromEntries, fromFaces, fromKana, LAYOUTS_JA, LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { dist } from '#input/shapes/geometry.ts';
-import { SAMPLE_TEXT_JA, SAMPLE_TEXT_JA_LEGACY } from '#input/text/sample-ja.ts';
+import { SAMPLE_TEXT_JA } from '#input/text/sample-ja.ts';
 import { DEFAULT_CHAIN_INTERPRETATION } from './structure/chain.ts';
 import { DEFAULT_ARPEGGIO_INTERPRETATION } from './structure/arpeggio.ts';
 
@@ -67,10 +67,6 @@ test('Metricsは数値を算出した測定条件をスナップショットで�
     keepSymbols: true,
     reading: null,
   });
-});
-
-test('旧日本語サンプルは過去の測定用に290文字で残る', () => {
-  assert.equal(SAMPLE_TEXT_JA_LEGACY.replace(/\s+/g, '').length, 290);
 });
 
 test('スキップされた文字も入力文字数に数える', () => {

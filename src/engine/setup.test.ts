@@ -99,10 +99,10 @@ test('resolveSetup: 配列が削除されたSetupは値としてエラーを返�
 
 // 「同じ入力で旧実装と同じ数値が出る」という基準を、配列を対象
 // （`AnalysisTarget`）にした解決結果についても
-// 満たすことを確認する。fixtureの「上書き無しシナリオ」（id末尾が default/legacy/modern）は
+// 満たすことを確認する。fixtureの「上書き無しシナリオ」（id末尾が default/modern）は
 // `row-staggered`（＝`defaultShapeId`の既定値）か、JISの物理配列が要る配列ならjis-row-staggeredを使う条件なので、Setupという器を
 // 経由しない配列対象の解決と1対1に対応する。
-test('配列を対象にした解決は、実カタログではfixtureの既定条件（default/legacy/modern）と一致する', () => {
+test('配列を対象にした解決は、実カタログではfixtureの既定条件（default/modern）と一致する', () => {
   const fixturePath = join(ROOT, 'test', 'fixtures', 'analyzer-regression.json');
   const fixture = JSON.parse(readFileSync(fixturePath, 'utf8')) as {
     cases: Array<{

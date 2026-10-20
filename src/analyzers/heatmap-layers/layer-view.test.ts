@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildGeometry } from '#input/shapes/geometry.ts';
 import { LAYOUT_BY_ID, LAYOUTS, LAYOUTS_JA } from '#input/layouts/index.ts';
-import { sampleText } from '#input/text/samples.ts';
 import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
 import { computeKeyDetails } from '#interpretation/key-detail.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
@@ -10,6 +9,7 @@ import { computeHeatmapLayersExtraction } from './extract.ts';
 import { DEFAULT_HEATMAP_LAYERS_OPTIONS } from './options.ts';
 import { activeEntryIndex, buildLayerEntries, entryKeyDetail, resolveArrangement, sharedMaxCount } from './layer-view.ts';
 import { canToggleLayerDetail } from '../layer-detail.ts';
+import { KANA_TEST_TEXT } from '../../../test/kana-test-text.ts';
 
 /**
  * ヒートマップ（レイヤー）の図の組み立て。期待値は、実行して確かめた値を固定している
@@ -37,7 +37,7 @@ function extractionFor(layoutId: string, text: string) {
 const total = (counts: ReadonlyMap<string, number>) => [...counts.values()].reduce((sum, count) => sum + count, 0);
 
 test('薙刀式(吾輩は猫である): まとめは層を足してから色用の押下数を求める。jは13で、層別に足した8や7ではない', () => {
-  const { layout, extracted } = extractionFor('naginata-v18', sampleText('ja', 'legacy'));
+  const { layout, extracted } = extractionFor('naginata-v18', KANA_TEST_TEXT);
   const compact = buildLayerEntries(layout, extracted, 'compact');
   assert.deepEqual(
     compact.map((entry) => entry.id),
@@ -53,7 +53,7 @@ test('薙刀式(吾輩は猫である): まとめは層を足してから色用�
 });
 
 test('薙刀式(吾輩は猫である): 共通の最大値は表示する図の組で決まる。まとめは22、詳細は17', () => {
-  const { layout, extracted } = extractionFor('naginata-v18', sampleText('ja', 'legacy'));
+  const { layout, extracted } = extractionFor('naginata-v18', KANA_TEST_TEXT);
   assert.equal(canToggleLayerDetail(layout), true);
   const compact = buildLayerEntries(layout, extracted, 'compact');
   const detail = buildLayerEntries(layout, extracted, 'detail');
@@ -66,7 +66,7 @@ test('薙刀式(吾輩は猫である): 共通の最大値は表示する図の�
 });
 
 test('共通の最大値は表示中のタブに依らない。薬指シフトのタブを出していても、隠れた単打の層の17を使う', () => {
-  const { layout, extracted } = extractionFor('shingeta', sampleText('ja', 'legacy'));
+  const { layout, extracted } = extractionFor('shingeta', KANA_TEST_TEXT);
   const entries = buildLayerEntries(layout, extracted, 'detail');
   const own = new Map(entries.map((entry) => [entry.id, Math.max(0, ...entry.colorCounts.values())]));
   assert.equal(own.get('single'), 17);
@@ -152,7 +152,7 @@ test('レイヤーの見出しは、押し方の区分を番号の後ろの括�
 
 test('図ごとのキーの詳細: 押下数は、その図のツールチップの値（keyCounts）と全キーで一致する', () => {
   const cases: Array<[string, string]> = [
-    ['naginata-v18', sampleText('ja', 'legacy')],
+    ['naginata-v18', KANA_TEST_TEXT],
     ['shingeta', 'あいがぱきゃ'],
     ['qwerty', 'aAbB'],
     ['shin-koume', 'ぴあぴかぴ'],
@@ -172,7 +172,7 @@ test('図ごとのキーの詳細: 押下数は、その図のツールチップ
 });
 
 test('図ごとのキーの詳細: まとめた図は合算した面の和、ヒートマップの図は面をまたいだ合算と一致する', () => {
-  const { layout, extracted } = extractionFor('naginata-v18', sampleText('ja', 'legacy'));
+  const { layout, extracted } = extractionFor('naginata-v18', KANA_TEST_TEXT);
   const compact = buildLayerEntries(layout, extracted, 'compact');
   const detail = buildLayerEntries(layout, extracted, 'detail');
   // 合算先の単打に、残す層（SandS）以外の30層を足す

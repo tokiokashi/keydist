@@ -103,7 +103,7 @@ export function SingleAnalyzerStandalonePage<Options, Extracted>({
     useMemo(() => resolveTextSelection(assets.standaloneTextSelection, assets.textLibrary), [assets.standaloneTextSelection, assets.textLibrary]),
   );
   // 漢字を含む日本語のテキストは、評価の前に読みに直す。ペインへ渡すのは直した後のテキストと、その状態
-  const evaluation = useReadingEvaluation(resolvedText, reading);
+  const evaluation = useReadingEvaluation(resolvedText, reading, assetsReady);
 
   // 解析設定は資産（assets.standaloneAnalyzerOptions）が正で、ページはローカルには持たない。`optionsDraft`はtextDraftと同じ形の
   // UI用の一時状態: 見た目は即座に反映しつつ（controlled）、資産への書き込みは

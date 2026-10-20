@@ -88,7 +88,7 @@ function createFakeWorker(options: { manual?: boolean } = {}) {
 test('Worker越しのTrace・抽出は、メインスレッドの計算と完全に一致する（英文・日本語のローマ字入力）', async () => {
   for (const [language, sample] of [
     ['en', 'default'],
-    ['ja', 'legacy'],
+    ['ja', 'modern'],
   ] as const) {
     const entries = resolveAll(sampleText(language, sample), language);
     const local = createEngineCache();

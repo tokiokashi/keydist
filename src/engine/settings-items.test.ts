@@ -224,7 +224,7 @@ test('リセット: 項目単位・レベル単位が実レジストリでも動
 
 // 「同じ入力で旧実装と同じ数値が出ることがfixtureで確認されている」ことを
 // カスケードの既定値についても満たす。test/fixtures/analyzer-regression.json の
-// 上書き無しシナリオ（id末尾が default/legacy/modern で、それ以外の分岐名を含まないもの）は
+// 上書き無しシナリオ（id末尾が default/modern で、それ以外の分岐名を含まないもの）は
 // 全て「アプリの現在の既定値」を記録しているので、上書き無しの解決結果と一致するはずである。
 test('上書き無しの解決結果は、全組み込み配列でfixtureに記録された既定条件と一致する', () => {
   const fixturePath = join(ROOT, 'test', 'fixtures', 'analyzer-regression.json');

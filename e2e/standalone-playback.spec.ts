@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { waitForHydration } from './hydration-helper.ts';
 import { openSettings, toggleTarget } from './pane-helper.ts';
+import { useKanaText } from './kana-text-helper.ts';
 
 /**
  * 打鍵再生のE2E。時間の決め方・配列図に出す値はunit test（`playback.test.ts`）で固定しているので、
@@ -259,6 +260,7 @@ test('条件のモーダルに、チェーンの区切りとアルペジオの�
 test('解析設定で再生倍率を変えると、ペインの中に既定と違う設定が出て、再生位置は保たれる。保存値が無い間は再生のペインと個人速度の行がそれを知らせる', async ({
   page,
 }) => {
+  await useKanaText(page);
   await page.setViewportSize({ width: 1440, height: 900 });
   await openPlayback(page);
   for (let i = 0; i < 3; i++) await feature(page).locator('[data-playback-action="forward"]').click();
@@ -426,6 +428,7 @@ test('解析設定の共有リンクに、時間の設定が載る。開くと�
 });
 
 test('個人速度を保存していても、再生を読まないペインの条件のモーダルに再生の行は出ない', async ({ page }) => {
+  await useKanaText(page);
   await page.setViewportSize({ width: 1440, height: 900 });
   await seedPersonalSpeed(page);
   await page.goto('/analyzer/bigram-flow');

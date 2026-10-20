@@ -2,12 +2,12 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES } from '#input/shapes/geometry.ts';
-import { sampleText } from '#input/text/samples.ts';
 import type { Setup } from '#input/setup/index.ts';
 import { EMPTY_SETTINGS_OVERRIDES } from '#engine/settings-items.ts';
 import { resolveEngineInput } from '#engine/resolved-input.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import { triggerGuide, type TriggerTone } from './trigger-guide.ts';
+import { fixedTestText } from '../../../test/kana-test-text.ts';
 
 const CATALOG = {
   layouts: LAYOUT_BY_ID,
@@ -23,7 +23,7 @@ function resolvedLayout(layoutId: string, language: 'ja' | 'en' = 'ja') {
     catalog: CATALOG,
     userLayouts: new Map(),
     overrides: EMPTY_SETTINGS_OVERRIDES,
-    text: sampleText(language, language === 'ja' ? 'legacy' : 'default'),
+    text: fixedTestText(language),
     language,
   });
   assert.ok(result.ok);

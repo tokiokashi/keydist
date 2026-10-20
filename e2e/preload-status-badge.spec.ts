@@ -73,7 +73,8 @@ for (const width of [390, 1440]) {
       if (name === 'Bigram Flow') expect(samples.some((s) => s.busyText !== null)).toBe(true);
       for (const s of samples) {
         if (s.busyText !== null) {
-          expect(s.busyText).toBe('計算中…');
+          // 既定のテキストは漢字を含むので、辞書を読み込む間は読み込み中の文を出す
+          expect(['計算中…', '読みの辞書を読み込み中…']).toContain(s.busyText);
           expect(s.badge).toBe(false);
         }
         expect(Math.abs(s.x - before!.x), `x（status=${s.status}）`).toBeLessThanOrEqual(1);

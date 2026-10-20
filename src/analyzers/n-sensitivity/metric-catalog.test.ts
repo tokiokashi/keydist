@@ -19,6 +19,7 @@ import {
   N_SENSITIVITY_METRICS,
 } from './metric-catalog.ts';
 import { N_SENSITIVITY_RANGE, valuesOf } from './extract.ts';
+import { KANA_TEST_TEXT } from '../../../test/kana-test-text.ts';
 
 const CATALOG = {
   layouts: LAYOUT_BY_ID,
@@ -34,7 +35,7 @@ test('選択肢の指標は、組み込みの配列でNによって値が変わ�
   const varied = new Set<string>();
   const cases = [
     ...LAYOUTS.map((layout) => ({ layoutId: layout.id, language: 'en' as const, text: sampleText('en', 'default') })),
-    ...LAYOUTS_JA.map((layout) => ({ layoutId: layout.id, language: 'ja' as const, text: sampleText('ja', 'legacy') })),
+    ...LAYOUTS_JA.map((layout) => ({ layoutId: layout.id, language: 'ja' as const, text: KANA_TEST_TEXT })),
   ];
   for (const { layoutId, language, text } of cases) {
     const setup: Setup = {

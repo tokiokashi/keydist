@@ -19,6 +19,8 @@ async function openReady(page: Page, path: string) {
   // 見出しの高さ・位置は、計算が済んで状態のバッジが消えてから測る（計算中の間は点が出て、見出しの並びが変わる）。
   await expect(page.locator('.pane-frame').first()).toHaveAttribute('data-pane-status', 'ready', { timeout: 20_000 });
   await expect(page.locator('.pane-status-badge')).toHaveCount(0);
+  // 漢字を含むテキストは、読みの辞書を読み込む間、ペインが読み込み中を出す
+  await expect(page.locator('[data-pane-reading="loading"]')).toHaveCount(0);
 }
 
 for (const path of PAGES) {
@@ -60,6 +62,14 @@ test('スマホ幅: 物理配列はアイコンだけで、selectを操作して
 });
 
 test('スマホ幅: テキストのチップは名前が8文字以上読める幅を持つ', async ({ page }) => {
+  // 漢字を含むテキストでは読みのチップが同じ行に並ぶので、漢字を含まない長い名前のテキストで測る
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'keydist:text-library',
+      JSON.stringify({ version: 1, texts: [{ id: 'long-name', name: '名前の長いかなだけのテキスト', text: 'あいうえおかきくけこ' }] }),
+    );
+    localStorage.setItem('keydist:standalone-text-selection', JSON.stringify({ version: 1, ref: { kind: 'user', id: 'long-name' } }));
+  });
   await openReady(page, 'bigram-flow');
   const visible = await page.evaluate(() => {
     const value = document.querySelector('.text-chip .context-chip-value') as HTMLElement;

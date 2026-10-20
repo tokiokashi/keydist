@@ -3,6 +3,7 @@ import { openTextChip } from './context-bar-helper.ts';
 import { enabledValues, recordControlStates } from './options-draft-recorder.ts';
 import { openFigureSettings } from './bigram-flow-figure-helper.ts';
 import { expectChosenTarget, openSettings, openTargetSelection, targetButton, toggleTarget } from './pane-helper.ts';
+import { useKanaText } from './kana-text-helper.ts';
 
 /**
  * Bigram Flow単体ページのE2E。
@@ -10,6 +11,7 @@ import { expectChosenTarget, openSettings, openTargetSelection, targetButton, to
  * 設定変更・テキスト変更に追従することを確認する。
  */
 test('単体ページが開き、Bigram Flowが描画される', async ({ page }) => {
+  await useKanaText(page);
   await page.goto('/analyzer/bigram-flow');
 
   // ページの見出し(h1)とAnalyzer自身の見出し(h2)は同じ文字列。h2は計算が済むと現れるので、
@@ -44,6 +46,7 @@ async function openConditionModal(page: Page): Promise<Locator> {
 }
 
 test('条件のモーダル: 全体の値を変えると要約と出どころに出て、文脈バーの元に戻す/やり直すが効く', async ({ page }) => {
+  await useKanaText(page);
   await page.goto('/analyzer/bigram-flow');
   const pane = page.locator('.pane-frame');
   await expect(pane).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
@@ -91,6 +94,7 @@ test('既定の物理配列にオーソリニア（分割）を選べて、図�
 });
 
 test('条件のモーダル: 既定の物理配列は文脈バーのチップと同じ値を書く', async ({ page }) => {
+  await useKanaText(page);
   await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
   const chip = page.locator('.context-bar').getByLabel('既定の物理配列');
@@ -147,6 +151,7 @@ test('条件のモーダル: 配列の値を「全体へ移す」と、編集先
 });
 
 test('条件のモーダル: 動作数の扱いは2動作にした時だけ例外を出し、閉じた1行に「例外あり」と出る', async ({ page }) => {
+  await useKanaText(page);
   await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
   const trigger = page.locator('.pane-condition-trigger');
@@ -301,7 +306,7 @@ test('テキストを編集すると自作として保存され、リロード�
 
   // 削除は文脈バーの「元に戻す」で戻せるので、確認を挟まない。
   await page.getByRole('button', { name: '削除', exact: true }).click();
-  await expect(page.getByLabel('テキスト', { exact: true })).toHaveValue(/わがはい/);
+  await expect(page.getByLabel('テキスト', { exact: true })).toHaveValue(/^吾輩は猫である。/);
   await expect.poll(stored).toMatchObject({ texts: 0 });
 });
 
@@ -1206,8 +1211,8 @@ test('Relative vectors: 内向き・外向きの割合は、読み上げでも�
       .getByRole('img')
       .evaluateAll((els) => els.map((el) => el.getAttribute('aria-label')));
   // 図の並びと同じ順（左手は外側が左、右手は内側が左）で読み上げる
-  expect(await names(0)).toEqual(['外向き 56.8%', '内向き 43.2%']);
-  expect(await names(1)).toEqual(['内向き 57.9%', '外向き 42.1%']);
+  expect(await names(0)).toEqual(['外向き 55.0%', '内向き 45.0%']);
+  expect(await names(1)).toEqual(['内向き 57.1%', '外向き 42.9%']);
 });
 
 test('Keyboard Flow: 個別画面の連打ラベルは、縮んだ図でも読める大きさまで広げる（拡大率に上限を置かない）', async ({ page }) => {

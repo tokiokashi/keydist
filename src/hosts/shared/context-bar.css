@@ -390,6 +390,30 @@ button.context-chip:hover:not(:disabled),
     max-width: none;
   }
 
+  /* 読みのチップは余る幅を分け合わず、「読」の1字だけの幅で並ぶ（名前と語数は読み上げには残す）。テキストのチップに名前が読める幅を残す。 */
+  .reading-chip-root {
+    flex: none;
+  }
+
+  .reading-chip .context-chip-key,
+  .reading-chip .context-chip-value,
+  .reading-chip .context-chip-chevron {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .reading-chip::before {
+    content: "読";
+  }
+
+  .context-bar .reading-chip {
+    padding-inline: 0.2rem;
+  }
+
   .text-chip .context-chip-key,
   .text-chip .text-chip-count,
   .text-chip .text-chip-language,

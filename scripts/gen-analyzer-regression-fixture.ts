@@ -33,6 +33,7 @@ import { defaultRomajiRuleId, tableForRule } from '#input/romaji/rules.ts';
 import { nSensitivity } from '#analyzers/n-sensitivity/sensitivity.ts';
 import { MODEL_VERSION } from '#engine/model-version.ts';
 import { modelVersionBumpError, stableStringify } from './model-version-guard.ts';
+import { containsKanji } from '#input/text/reading.ts';
 import { sampleText, SAMPLE_TEXTS, type TextLanguage } from '#input/text/samples.ts';
 
 // このスクリプトが再現する経路は、条件の決定 → generateTrace → analyzeStrokeStructure → computeMetrics の並び
@@ -293,8 +294,10 @@ function generate(): Fixture {
       );
     }
   }
+  // 漢字を含むサンプルは、読みに直す段（辞書が要る）を通してから評価するので、この記録には入れない
+  const kanaSampleIds = Object.keys(SAMPLE_TEXTS.ja).filter((sampleId) => !containsKanji(sampleText('ja', sampleId)));
   for (const layout of LAYOUTS_JA) {
-    for (const sampleId of Object.keys(SAMPLE_TEXTS.ja)) {
+    for (const sampleId of kanaSampleIds) {
       cases.push(
         runCase('ja', layout, sampleId, {
           withNSensitivity: layout.id === 'naginata-v18' && sampleId === 'modern',
@@ -372,7 +375,7 @@ function generate(): Fixture {
   const qwertyJa = byId(LAYOUTS_JA, 'qwerty');
   for (const shapeId of ['split-ortholinear', 'column-staggered'] as const) {
     cases.push(
-      runCase('ja', qwertyJa, 'legacy', {
+      runCase('ja', qwertyJa, 'modern', {
         shapeId,
         fingerAssignment: QWERTY_OPTIMIZED_FINGER_ASSIGNMENT,
         note: `物理配列=${shapeId}・fingerAssignment=qwerty-optimized（分割する物理配列で反対側の手の追加の担当を候補から外す分岐）`,

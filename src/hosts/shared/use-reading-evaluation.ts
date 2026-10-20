@@ -18,17 +18,19 @@ import {
  * 同じテキストの編集で読み直している間は、前の結果を残す（ペインが前の数値を出し続ける状態と同じ）。
  * 別のテキストへ切り替えた時は、前のテキストの結果を引き継がず、そのテキストの変換が済むまで `loading` になる。
  * `resolved` がundefinedの間（Workspaceの読み込み前）は、何も返さない。
+ * `enabled` がfalseの間は、解析を始めない（資産の読み込み前は、保存した選択ではなく既定のテキストが
+ * 解決されているので、保存した選択が漢字を含まない時に辞書を取りに行かないため）。
  */
-export function useReadingEvaluation(resolved: ResolvedText, source: ReadingSource): ReadingEvaluation;
-export function useReadingEvaluation(resolved: ResolvedText | undefined, source: ReadingSource): ReadingEvaluation | undefined;
-export function useReadingEvaluation(resolved: ResolvedText | undefined, source: ReadingSource): ReadingEvaluation | undefined {
+export function useReadingEvaluation(resolved: ResolvedText, source: ReadingSource, enabled?: boolean): ReadingEvaluation;
+export function useReadingEvaluation(resolved: ResolvedText | undefined, source: ReadingSource, enabled?: boolean): ReadingEvaluation | undefined;
+export function useReadingEvaluation(resolved: ResolvedText | undefined, source: ReadingSource, enabled = true): ReadingEvaluation | undefined {
   const text = resolved?.text;
   const identity = resolved === undefined ? undefined : textIdentity(resolved);
   const needs = resolved !== undefined && needsReading(resolved.text, resolved.language);
   const [outcome, setOutcome] = useState<StoredReadingOutcome | undefined>(undefined);
 
   useEffect(() => {
-    if (!needs || text === undefined || identity === undefined) {
+    if (!enabled || !needs || text === undefined || identity === undefined) {
       setOutcome(undefined);
       return undefined;
     }
@@ -39,7 +41,7 @@ export function useReadingEvaluation(resolved: ResolvedText | undefined, source:
     return () => {
       cancelled = true;
     };
-  }, [needs, text, identity, source]);
+  }, [enabled, needs, text, identity, source]);
 
   return useMemo(
     () => (resolved === undefined ? undefined : evaluationText(resolved, source, outcomeFor(resolved, outcome))),
