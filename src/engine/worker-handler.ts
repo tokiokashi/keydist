@@ -41,6 +41,12 @@ export function createEngineWorkerHandler(cache: EngineCache, registry: EngineWo
         if (definition === undefined) throw unregisteredAnalyzerError(request.definitionId);
         return cache.getSetExtraction(request.members, definition, request.options);
       }
+      case 'set-warmup': {
+        const definition = set.get(request.definitionId);
+        if (definition === undefined) throw unregisteredAnalyzerError(request.definitionId);
+        cache.warmSetMember(request.member, definition, request.step);
+        return undefined;
+      }
     }
   }
 

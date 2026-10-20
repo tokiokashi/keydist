@@ -1,5 +1,6 @@
 import {
   defineSetAnalyzer,
+  noRemember,
   type AnalyzerSetMember,
   type AnalyzerSetMemberFailure,
   type SetAnalyzerDefinition,
@@ -229,6 +230,7 @@ const FIXTURE_MEMBERS: readonly AnalyzerSetMember[] = [
         throw new Error('unused');
       },
     },
+    remember: noRemember,
   },
 ];
 

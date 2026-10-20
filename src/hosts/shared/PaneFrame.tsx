@@ -1,4 +1,4 @@
-import { useCallback, useContext, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useContext, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react';
 import type { EngineRequestState } from '#engine/request.ts';
 import type { CodecDiagnostic } from '#input/codec/index.ts';
 import { describeEngineRequestError, engineRequestErrorDetail, paneStatusLabel, TRACE_ERRORS_SENTENCE } from './pane-status.ts';
@@ -106,6 +106,10 @@ export interface PaneFrameProps {
   readonly conditionTargetDiffs?: readonly ConditionTargetDiff[] | undefined;
   /** 抽出の依頼の現在の状態。値そのもの（`value`）は本体側で使うので、ここでは見ない。 */
   readonly engineState: EngineRequestState<unknown>;
+  /** 枠の要素。画面に入っているかを知るのに使う。 */
+  readonly frameRef?: RefObject<HTMLElement | null> | undefined;
+  /** 画面に入るまで計算を始めないペインが、まだ入っていなくて待っている。本体の欄に、見ると計算することを出す。 */
+  readonly waitingForScreen?: boolean | undefined;
   /** Trace生成段の診断（配列定義の不備等）。値として表示する。 */
   readonly traceErrors?: readonly string[] | undefined;
   /**
@@ -191,6 +195,8 @@ export function PaneFrame({
   conditionProvenance,
   reading,
   engineState,
+  frameRef,
+  waitingForScreen = false,
   traceErrors,
   settingsDiagnostics,
   linkNotices,
@@ -254,6 +260,7 @@ export function PaneFrame({
 
   return (
     <section
+      ref={frameRef}
       className="pane-frame"
       aria-label={paneName}
       data-pane-status={engineState.status}
@@ -375,6 +382,10 @@ export function PaneFrame({
       ) : readingLoading ? (
         <p className="pane-busy" aria-busy="true" data-pane-busy="true" data-pane-reading="loading">
           読みの辞書を読み込み中…
+        </p>
+      ) : children === undefined && waitingForScreen ? (
+        <p className="pane-busy" data-pane-waiting="true">
+          表示すると計算します
         </p>
       ) : children === undefined ? (
         <p className="pane-busy" aria-busy="true" data-pane-busy="true">

@@ -23,9 +23,14 @@ export function SetAnalyzerWorkspacePane<Options, Extracted, RowContext>({
     runtime.paneOptionsKey(pane),
     (next) => runtime.commitPaneOptions(pane.id, next),
   );
+  const coveredByMaximizedPane = runtime.maximizedPaneId !== undefined && runtime.maximizedPaneId !== pane.id;
+  const computeOnlyWhenOnScreen = analyzer.computeOnlyWhenOnScreen === true;
   const chrome: PaneChrome = useMemo(
-    () => workspacePaneChrome(runtime, pane, () => onOptionsChange(analyzer.defaultOptions)),
-    [runtime, pane, onOptionsChange, analyzer.defaultOptions],
+    () => ({
+      ...workspacePaneChrome(runtime, pane, () => onOptionsChange(analyzer.defaultOptions)),
+      ...(computeOnlyWhenOnScreen ? { computeOnlyWhenOnScreen, coveredByMaximizedPane } : {}),
+    }),
+    [runtime, pane, onOptionsChange, analyzer.defaultOptions, computeOnlyWhenOnScreen, coveredByMaximizedPane],
   );
   const resolved = runtime.paneTarget(pane, 'set');
   if (resolved?.kind !== 'set') return null;
