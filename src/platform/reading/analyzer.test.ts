@@ -47,9 +47,10 @@ test('辞書の読み込みは解析器を作る1回だけで、解析は作っ�
   assert.deepEqual(calls, ['load:2', 'instance', 'mode:normal', 'build']);
 });
 
-// 実際の辞書があるとき（ビルドやdevで取得した後）だけ、lindera-wasmで語の位置と読みを確かめる。ネットワークには頼らない
+// 実際の辞書があるとき（ビルドやdevで取得した後）に、lindera-wasmで語の位置と読みを確かめる。テスト自身は取得しない。
+// CIでは取得の step が先に回るので、zipが無ければ飛ばさず失敗させる
 const zipPath = new URL(`../../../.cache/dictionary/${DICTIONARY_SPEC.fileName}`, import.meta.url);
-test('実際の辞書で、語のバイト位置と読みが原文に対応する', { skip: !existsSync(zipPath) }, async () => {
+test('実際の辞書で、語のバイト位置と読みが原文に対応する', { skip: process.env.CI === undefined && !existsSync(zipPath) }, async () => {
   const lindera = await import('lindera-wasm');
   lindera.initSync({ module: await readFile(new URL('../../../node_modules/lindera-wasm/lindera_wasm_bg.wasm', import.meta.url)) });
   const analyzer = createReadingAnalyzer(lindera as unknown as LinderaModule, await readDictionaryZip(await readFile(zipPath)));

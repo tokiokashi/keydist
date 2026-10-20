@@ -126,7 +126,8 @@ CIもPRの各コミットに同じスクリプトを掛けるため、フック�
 
 漢字の読みの解析に使う辞書（IPADICの zip）は、リポジトリに置かず、`npm run dev` と `npm run build` が `.cache/dictionary/`（追跡しない）へ取る。
 版・取得元・sha256は `src/platform/reading/dictionary-spec.ts` に固定してあり、sha256が合わなければ止まる。置き場に合う zip があれば取り直さない。
-`npm test` は辞書に頼らない（置き場に zip がある時だけ、実際の辞書で解析する検査が走る）。
+`npm test` は辞書を取得せず、ネットワークに頼らない。置き場に zip がある時に、実際の辞書で解析する検査が走る。手元で zip が無ければ飛ばす。
+CI（`CI` が設定されている環境）では飛ばさず、zip が無ければ失敗する。`ci.yml` と `pages.yml` は Test の前に `scripts/dictionary-fetch.ts` を回して zip をそろえるので、この検査は必ず走る。
 公開物には zip と告知文（`lindera-ipadic-NOTICE.txt`）が入る。CIは zip を `dictionary-spec.ts` のハッシュをキーにキャッシュする（`ci.yml`・`e2e.yml`・`pages.yml`・`update-screenshots.yml`）。
 取得元のリリースから zip が消えると、過去のタグのビルドは取得で失敗する。この危険は受け入れてある。
 同じ zip を別の場所へ置いて `upstreamUrl` を差し替えれば、同じ公開物を作り直せる。
