@@ -18,7 +18,7 @@ export interface ReadingChipProps {
   readonly setups: readonly Setup[];
   readonly catalog: PaneCatalog;
   readonly overrides: SettingsCascadeOverrides;
-  /** 表記の読みを直す（`reading` がundefinedなら辞書の読みに戻す）。書き込みは呼び出し側がコマンドで行う */
+  /** 表記の読みを直す（`reading`がundefinedなら辞書の読みに戻す）。書き込みは呼び出し側がコマンドで行う */
   readonly onCorrect: (ref: TextRef, surface: string, reading: string | undefined) => void;
 }
 

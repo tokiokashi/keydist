@@ -62,7 +62,7 @@ test('tar.gzの最上位のディレクトリ直下のCSVだけを取り出す',
 });
 
 test('置いてある候補の表は、漢字を含む表記と、打てる読み2つ以上だけを持つ', () => {
-  const table = JSON.parse(readFileSync(new URL('../src/platform/reading/candidates.json', import.meta.url), 'utf8')) as Record<string, string[]>;
+  const table = JSON.parse(readFileSync(new URL('../src/platform/reading/candidate-table.json', import.meta.url), 'utf8')) as Record<string, string[]>;
   const surfaces = Object.keys(table);
   assert.ok(surfaces.length > 10000);
   for (const surface of surfaces) {

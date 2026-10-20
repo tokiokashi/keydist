@@ -78,7 +78,7 @@ export function correctionEntries(corrections: ReadingCorrections): ReadingCorre
     .map((surface) => ({ surface, reading: corrections[surface]! }));
 }
 
-/** 表記の直しを足す・差し替える。`reading` がundefinedなら直しを消す。変化が無ければ同じ参照を返す。 */
+/** 表記の直しを足す・差し替える。`reading`がundefinedなら直しを消す。変化が無ければ同じ参照を返す。 */
 export function withReadingCorrection(corrections: ReadingCorrections, surface: string, reading: string | undefined): ReadingCorrections {
   const has = Object.hasOwn(corrections, surface);
   if (reading === undefined) {
@@ -107,7 +107,7 @@ export interface ReadingConversion {
  *
  * 置き換えるのは、表記に漢字を含み、直しがあるか辞書の読みがカタカナと長音だけの語。
  * 利用者の直し（`corrections`）は表記が一致する語すべての読みを置き換え、辞書の読みの有無を問わない
- * （未知語・読みが無い語・`々` だけの語にも当たる）。直しの無い未知語・読みが無い語・`々` だけの語は
+ * （未知語・読みが無い語・`々`だけの語にも当たる）。直しの無い未知語・読みが無い語・`々`だけの語は
  * 表記のまま残し、配列が打てない文字として数える。
  * 漢字を含まない語（全角数字を含む）は、辞書が読みを返しても、直しがあっても置き換えない。
  *
@@ -161,7 +161,7 @@ export interface ReadingWord {
 
 /**
  * 解析の結果から、漢字を含む語を表記ごとにまとめる。出現の順に並べる。
- * 辞書の読みは、読みを置き換える語（`convertToReading` と同じ条件）のものだけを数える。
+ * 辞書の読みは、読みを置き換える語（`convertToReading`と同じ条件）のものだけを数える。
  */
 export function listReadingWords(tokens: readonly ReadingToken[]): ReadingWord[] {
   const bySurface = new Map<string, { count: number; readings: Map<string, number> }>();

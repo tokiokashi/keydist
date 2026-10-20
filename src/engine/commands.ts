@@ -739,8 +739,8 @@ export function setTextContentCommand(holder: TextSelectionHolder, ref: TextRef,
 }
 
 /**
- * テキストの表記の読みを直す。`reading` がundefinedなら、その表記の直しを消して辞書の読みに戻す。
- * `ref` は操作の瞬間に見ていたテキストを指す（選択を読み直さない）。自作のテキストはその資産に、
+ * テキストの表記の読みを直す。`reading`がundefinedなら、その表記の直しを消して辞書の読みに戻す。
+ * `ref`は操作の瞬間に見ていたテキストを指す（選択を読み直さない）。自作のテキストはその資産に、
  * 組み込みのテキストは本文を写さずに、組み込みのテキストのidに紐づけて直しだけを保存する。
  */
 export function setReadingCorrectionCommand(ref: TextRef, surface: string, reading: string | undefined): Command<KeydistAssets> {

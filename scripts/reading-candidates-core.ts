@@ -24,7 +24,7 @@ function compareText(a: string, b: string): number {
 /**
  * mecab-ipadicのCSV（EUC-JP）から、漢字を含み読みが2つ以上ある表記の候補の表を作る。
  *
- * - 漢字は `\p{Script=Han}`（`々` を含む）で判定する
+ * - 漢字は`\p{Script=Han}`（`々`を含む）で判定する
  * - 読みはひらがなにそろえ、利用者が打てる読み（ひらがなと長音）に収まるものだけを残す
  * - 候補は、その読みを持つ語のコストの最小が小さい順（解析が選びやすい順）、同じなら読みの順に並べる
  * - 表記は文字コードの順に並べる。同じCSVからは同じ表ができる
@@ -65,7 +65,7 @@ export function serializeCandidateTable(table: CandidateTable): string {
   return `${JSON.stringify(table)}\n`;
 }
 
-/** tar.gzから、最上位のディレクトリ直下の `.csv` を取り出す。 */
+/** tar.gzから、最上位のディレクトリ直下の`.csv`を取り出す。 */
 export function readCsvFilesFromTarGz(archive: Uint8Array): SourceFile[] {
   const tar = gunzipSync(archive);
   const files: SourceFile[] = [];

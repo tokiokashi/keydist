@@ -1,4 +1,4 @@
-// 読みの候補の表（src/platform/reading/candidates.json）を、mecab-ipadicのCSVから作る。
+// 読みの候補の表（src/platform/reading/candidate-table.json）を、mecab-ipadicのCSVから作る。
 //
 // 表は辞書（lindera-ipadic）の元になったデータと同じmecab-ipadic-2.7.0-20070801から作る。
 // 辞書のzipは活用した語の表記を持たず、表記から読みを引けないため、元のCSVを使う。
@@ -24,7 +24,7 @@ export const MECAB_IPADIC_SOURCE = {
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const CACHE_DIR = join(root, '.cache', 'mecab-ipadic');
-const TABLE_PATH = join(root, 'src', 'platform', 'reading', 'candidates.json');
+const TABLE_PATH = join(root, 'src', 'platform', 'reading', 'candidate-table.json');
 
 function sha256Of(bytes: Uint8Array): string {
   return createHash('sha256').update(bytes).digest('hex');

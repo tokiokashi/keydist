@@ -137,9 +137,9 @@ export function markUserTextsSeen(library: TextLibrary, ids: readonly string[]):
 }
 
 /**
- * テキストの読みの直しを足す・差し替える・消す。`reading` がundefinedなら、その表記の直しを消す。
- * 自作のテキストは `UserText` に、組み込みのテキストは `builtinReadingCorrections` に持つ。
- * 対象が無い（手持ちに無い自作のテキスト）・変化が無い時は `library` をそのまま返す。
+ * テキストの読みの直しを足す・差し替える・消す。`reading`がundefinedなら、その表記の直しを消す。
+ * 自作のテキストは`UserText`に、組み込みのテキストは`builtinReadingCorrections`に持つ。
+ * 対象が無い（手持ちに無い自作のテキスト）・変化が無い時は`library`をそのまま返す。
  */
 export function setTextReadingCorrection(
   library: TextLibrary,

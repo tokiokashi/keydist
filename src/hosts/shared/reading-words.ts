@@ -20,7 +20,7 @@ export interface OrderedReadingWord {
  * 語を並べる。読みが複数ある語（候補が2つ以上）を、読み違えた時の打鍵数の変わり方が大きい順に先に並べ、
  * 残りの語は出現の順に続ける。変わり方が同じ語は出現の順を保つ。
  *
- * `strokeCounts` は、読み1つを単独のテキストとして評価した打鍵数を、比べている配列ごとに返す。
+ * `strokeCounts`は、読み1つを単独のテキストとして評価した打鍵数を、比べている配列ごとに返す。
  * 並びは配列の集まり全体で1つに決まる（ペインごとには変えない）。
  */
 export function orderReadingWords(
@@ -41,7 +41,7 @@ export function orderReadingWords(
   });
   const multi = ordered.filter((entry) => entry.candidates.length >= 2);
   const rest = ordered.filter((entry) => entry.candidates.length < 2);
-  // 配列の `sort` は安定なので、変わり方が同じ語は出現の順のまま
+  // 配列の`sort`は安定なので、変わり方が同じ語は出現の順のまま
   multi.sort((a, b) => b.spread - a.spread);
   return [...multi, ...rest];
 }

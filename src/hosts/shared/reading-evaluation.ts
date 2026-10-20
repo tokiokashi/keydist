@@ -17,13 +17,13 @@ export interface ReadingSource {
 
 /**
  * 1つのテキストを解析した結果。語の列を持ち、利用者の直しはここへ後から当てる
- * （直しを変えても解析し直さない）。`sourceText` は解析した時点の原文。
+ * （直しを変えても解析し直さない）。`sourceText`は解析した時点の原文。
  */
 export type ReadingOutcome =
   | { readonly kind: 'analyzed'; readonly sourceText: string; readonly tokens: readonly ReadingToken[] }
   | { readonly kind: 'failed' };
 
-/** 漢字を含む日本語のテキストを解析する。読み込みと解析の失敗、語の位置が原文と合わない結果は、値の `failed` で返す。 */
+/** 漢字を含む日本語のテキストを解析する。読み込みと解析の失敗、語の位置が原文と合わない結果は、値の`failed`で返す。 */
 export async function analyzeForEvaluation(source: ReadingSource, text: string): Promise<ReadingOutcome> {
   try {
     const tokens = await source.tokenize(text);

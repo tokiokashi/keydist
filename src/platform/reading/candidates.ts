@@ -5,5 +5,5 @@ import type { ReadingCandidateTable } from '#input/text/reading-candidates.ts';
  * 読みを直す画面を開いた時にだけ呼ぶ。
  */
 export async function loadReadingCandidates(): Promise<ReadingCandidateTable> {
-  return (await import('./candidates.json')).default as ReadingCandidateTable;
+  return (await import('./candidate-table.json')).default as ReadingCandidateTable;
 }
