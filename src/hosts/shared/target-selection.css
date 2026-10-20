@@ -87,6 +87,11 @@
   left: var(--target-selection-x, 1rem);
   z-index: 45;
   display: grid;
+  /*
+   * 列の幅はパネルの幅に固定する。既定の列（auto）は中身の最小幅まで広がるので、差し込まれた項目の
+   * selectが長い候補名を持つと、パネルの背景を残して中身だけが横へはみ出す。
+   */
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto auto;
   width: 24rem;
   max-width: calc(100% - 16px);
