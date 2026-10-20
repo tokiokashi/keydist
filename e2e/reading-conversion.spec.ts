@@ -10,6 +10,9 @@ import { waitForHydration } from './hydration-helper.ts';
 
 const ZIP_PATTERN = '**/lindera-ipadic-*.zip';
 
+/** 候補の表そのものの応答は数百KBあり、これより小さい応答は表を読み込む側のモジュール */
+const CANDIDATE_TABLE_MIN_BYTES = 100_000;
+
 interface Traffic {
   zip: number;
   wasm: number;
@@ -22,7 +25,15 @@ function watchTraffic(page: Page): Traffic {
     const { pathname } = new URL(request.url());
     if (/lindera-ipadic-.*\.zip$/.test(pathname)) traffic.zip += 1;
     if (pathname.endsWith('.wasm')) traffic.wasm += 1;
-    if (/\/candidates(-[^/]*\.js|\.json)$/.test(pathname)) traffic.candidates += 1;
+  });
+  // 候補の表は、ビルドすると表そのもののチャンクと、それを読み込む小さいチャンクの2つが `candidates-*.js` になる。
+  // 表そのものだけを数えるため、応答の大きさで見分ける
+  page.on('response', (response) => {
+    const { pathname } = new URL(response.url());
+    if (!/\/candidates(-[^/]*\.js|\.json)$/.test(pathname)) return;
+    void response.body().then((body) => {
+      if (body.length > CANDIDATE_TABLE_MIN_BYTES) traffic.candidates += 1;
+    });
   });
   return traffic;
 }
@@ -249,7 +260,7 @@ test('読みを直す: 候補から選び、同じ表記の語すべてが変わ
   await chip.click();
   const row = page.locator('[data-reading-word="日本"]');
   await expect(row).toBeVisible({ timeout: 10_000 });
-  expect(traffic.candidates).toBe(1);
+  await expect.poll(() => traffic.candidates).toBe(1);
   await expect(row).toContainText('2回');
   await row.getByLabel('日本の読みの候補').selectOption('にっぽん');
   await expect(row.locator('[data-reading-current]')).toHaveText('にっぽん');
