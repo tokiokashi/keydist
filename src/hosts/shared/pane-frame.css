@@ -876,6 +876,15 @@ h2.pane-frame-title {
   color: var(--accent-strong);
 }
 
+.pane-condition-provenance {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+
 .pane-condition-diffs h4 {
   margin: 0 0 0.3rem;
   padding-top: 0.45rem;

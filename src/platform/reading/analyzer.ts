@@ -1,17 +1,7 @@
+import type { ReadingToken } from '#input/text/reading.ts';
 import type { DictionaryFiles } from './dictionary-files.ts';
 
-/** 解析の結果の1語。 */
-export interface ReadingToken {
-  /** 原文での表記 */
-  surface: string;
-  /** 原文（UTF-8）でのバイト位置。`byteStart` 以上 `byteEnd` 未満 */
-  byteStart: number;
-  byteEnd: number;
-  /** 辞書の読み（カタカナ）。辞書に読みが無い語はnull */
-  reading: string | null;
-  /** 辞書に無い語（未知語）か */
-  isUnknown: boolean;
-}
+export type { ReadingToken };
 
 /** `lindera-wasm` の `Tokenizer.tokenize` が返す1語のうち、使う欄。 */
 interface RawToken {

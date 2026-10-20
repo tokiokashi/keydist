@@ -21,6 +21,7 @@ import { setupNumbersOf } from '../target-choices.ts';
 import { TargetSelection } from '../TargetSelection.tsx';
 import { useAnalyzerSetPane } from '../use-analyzer-set-pane.ts';
 import { useSetTargetSelection } from '../use-set-target-selection.ts';
+import { readingProvenance } from '../reading-evaluation.ts';
 import type { PaneChrome, PaneEnvironment } from './pane-environment.ts';
 
 /**
@@ -61,6 +62,9 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
   linkNotices,
 }: SetAnalyzerPaneProps<Options, Extracted, RowContext>) {
   const { setups, overrides, catalog, resolvedText, cache, dispatch, assetsReady } = env;
+  // 辞書の読み込み中は、評価に渡すテキストがまだ無いので依頼を出さない（漢字を打てない文字に数えた暫定の数値を出さない）
+  const readingLoading = env.reading?.kind === 'loading';
+  const conditionProvenance = useMemo(() => readingProvenance(resolvedText.reading), [resolvedText.reading]);
   const setupsById = useMemo(() => new Map(setups.map((setup) => [setup.id, setup] as const)), [setups]);
   const { choiceGroups, targets, colorByKey, markByKey } = useSetTargetSelection(selection, colorSlots, setups, catalog);
 
@@ -150,7 +154,7 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
 
   const order = useMemo(() => targets.map(analysisTargetKey), [targets]);
 
-  const pane = useAnalyzerSetPane(cache, analyzer.definition, options, members);
+  const pane = useAnalyzerSetPane(cache, analyzer.definition, options, members, !readingLoading);
   const { Body, Settings, TargetItem } = analyzer;
   const extraction = pane.extraction;
   const extracted = extraction.status === 'ready' || extraction.status === 'stale' ? extraction.value.extracted : undefined;
@@ -223,6 +227,8 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
         ),
       }}
       conditionTargetDiffs={conditionSummary.diffs}
+      conditionProvenance={conditionProvenance}
+      reading={env.reading}
       engineState={extraction}
       settingsDiagnostics={settingsDiagnostics}
       linkNotices={linkNotices}

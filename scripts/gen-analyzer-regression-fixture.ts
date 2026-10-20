@@ -238,6 +238,7 @@ function runCase(language: TextLanguage, layout: Layout, sampleId: string, opts:
     romajiRuleId,
     // サンプルテキストは記号を含まず、回帰テストも記号を残さずに計算するので false で一致する
     keepSymbols: false,
+    reading: null,
   });
 
   return {

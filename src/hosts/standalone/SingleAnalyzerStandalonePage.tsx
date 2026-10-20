@@ -9,6 +9,8 @@ import type { TextIdGenerator } from '#input/text/library.ts';
 import type { EngineComputer } from '#engine/computer.ts';
 import type { SingleAnalyzerPaneParts } from '#analyzers/pane-parts.tsx';
 import { useStableResolvedText } from '#hosts/shared/stable-resolved-text.ts';
+import type { ReadingSource } from '#hosts/shared/reading-evaluation.ts';
+import { useReadingEvaluation } from '#hosts/shared/use-reading-evaluation.ts';
 import { ContextBar, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { TextChip, type TextContentCommit } from '#hosts/shared/TextChip.tsx';
 import { DefaultShapeChip } from '#hosts/shared/DefaultShapeChip.tsx';
@@ -48,6 +50,8 @@ export interface SingleAnalyzerStandalonePageProps<Options, Extracted> {
   readonly assetsReady: boolean;
   readonly dispatch: (command: Command<KeydistAssets>) => void;
   readonly cache: EngineComputer;
+  /** 漢字を読みに直す入口（`app` が組み立てる）。漢字を含む日本語のテキストのときだけ呼ぶ。 */
+  readonly reading: ReadingSource;
   readonly catalog: PaneCatalog;
   readonly generateTextId: TextIdGenerator;
   /** `TextChip`の本文debounce書き込み（`app/standalone`がuseDebouncedCommitで組み立てる）。 */
@@ -78,6 +82,7 @@ export function SingleAnalyzerStandalonePage<Options, Extracted>({
   assetsReady,
   dispatch,
   cache,
+  reading,
   catalog,
   generateTextId,
   onTextContentCommit,
@@ -96,6 +101,8 @@ export function SingleAnalyzerStandalonePage<Options, Extracted>({
   const resolvedText = useStableResolvedText(
     useMemo(() => resolveTextSelection(assets.standaloneTextSelection, assets.textLibrary), [assets.standaloneTextSelection, assets.textLibrary]),
   );
+  // 漢字を含む日本語のテキストは、評価の前に読みに直す。ペインへ渡すのは直した後のテキストと、その状態
+  const evaluation = useReadingEvaluation(resolvedText, reading);
 
   // 解析設定は資産（assets.standaloneAnalyzerOptions）が正で、ページはローカルには持たない。`optionsDraft`はtextDraftと同じ形の
   // UI用の一時状態: 見た目は即座に反映しつつ（controlled）、資産への書き込みは
@@ -123,7 +130,8 @@ export function SingleAnalyzerStandalonePage<Options, Extracted>({
       setups: assets.setupLibrary.setups,
       overrides: assets.setupLibrary.overrides,
       catalog,
-      resolvedText,
+      resolvedText: evaluation.text,
+      reading: evaluation.state,
       cache,
       dispatch,
       presetLibrary: assets.presetLibrary,
@@ -131,7 +139,7 @@ export function SingleAnalyzerStandalonePage<Options, Extracted>({
       undo,
       assetsReady,
     }),
-    [assets.setupLibrary, assets.presetLibrary, catalog, resolvedText, cache, dispatch, generatePresetId, undo, assetsReady],
+    [assets.setupLibrary, assets.presetLibrary, catalog, evaluation, cache, dispatch, generatePresetId, undo, assetsReady],
   );
 
   // Multiの集合は読むだけ（Singleの対象の図の下に並べる宣言をしたAnalyzerにだけ渡す）

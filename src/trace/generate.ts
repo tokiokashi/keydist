@@ -2,6 +2,8 @@ import { ALL_FINGERS, resolveKeyId, type Finger, type Geometry, type Key, type P
 import { decidePress, selectFingers, strokeFingerChoices, targetOf, type PlannedInput, type PlannedStroke } from './finger-selection.ts';
 import { COMBO_LAYER_ID, SINGLE_LAYER_ID, type HoldPhase, type LayerDefinition, type Layout, withoutRomajiOnlyCombos } from '#input/layouts/types.ts';
 import { layerDefinitionsWithLabels } from '#input/layouts/layers.ts';
+import { isSymbolChar } from '#input/text/evaluation-text.ts';
+import { isKanjiChar } from '#input/text/reading.ts';
 import { kanaToRomajiChunks, type RomajiChunk } from '#input/romaji/kunrei.ts';
 import {
   applyActionRealizationPolicy,
@@ -130,10 +132,25 @@ export interface Stroke {
   positions: Record<Finger, Point>;
 }
 
+/** 打鍵できなかった文字の種別ごとの件数。 */
+export interface SkippedByKind {
+  /** 漢字（読みに直せずに残ったもの） */
+  kanji: number;
+  /** 記号 */
+  symbol: number;
+  /** それ以外の文字（読みに直した後に配列が打てないかなを含む） */
+  other: number;
+}
+
 export interface Trace {
   strokes: Stroke[];
   /** 配列に無く打鍵できなかった文字数 */
   skipped: number;
+  /**
+   * `skipped` の内訳。合計は `skipped` と一致する。読みに直せなかった漢字・記号・それ以外の文字に分ける。
+   * 漢字は言語や読みの変換の成否によらず、文字が漢字なら漢字に数える。
+   */
+  skippedByKind: SkippedByKind;
   /**
    * 入力文字数（ローマ字展開・コンボ結合の前、原文の文字数）。
    * 打鍵数（ステップ数）は配列で変わるが、これは変わらないので
@@ -212,6 +229,7 @@ export function generateTrace(
     layerDefinitions.push({ id: COMBO_LAYER_ID, kind: 'combo', label: 'コンボ' });
   }
   let skipped = 0;
+  const skippedByKind: SkippedByKind = { kanji: 0, symbol: 0, other: 0 };
   let index = 0;
   let inputOrdinal = 0;
   let triggerHoldState: TriggerHoldState | undefined;
@@ -265,6 +283,7 @@ export function generateTrace(
 
     if (!alternatives) {
       skipped++;
+      skippedByKind[skippedKindOf(char)]++;
       cursor++;
       continue;
     }
@@ -480,6 +499,7 @@ export function generateTrace(
   return {
     strokes,
     skipped,
+    skippedByKind,
     inputChars: [...text].length,
     comboHits,
     comboDefinitions,
@@ -701,6 +721,11 @@ function coveredByKana(start: number, end: number, chunks: RomajiChunkRange[]): 
 function canFireYouonOnlyCombo(cursor: number, chars: string[], chunks: RomajiChunkRange[]): boolean {
   if (cursor === 0 || !/[bcdfghjklmnpqrstvwxyz]/.test(chars[cursor - 1])) return false;
   return chunks.some((chunk) => chunk.kanaLength > 1 && chunk.start < cursor && cursor < chunk.end);
+}
+
+function skippedKindOf(char: string): keyof SkippedByKind {
+  if (isKanjiChar(char)) return 'kanji';
+  return isSymbolChar(char) ? 'symbol' : 'other';
 }
 
 /**

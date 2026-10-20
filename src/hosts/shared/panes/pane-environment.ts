@@ -6,8 +6,8 @@ import type { SettingsCascadeOverrides } from '#engine/settings-items.ts';
 import type { PresetIdGenerator, PresetLibrary } from '#input/presets/index.ts';
 import type { SettingsValueMap } from '#engine/settings-items.ts';
 import type { Setup } from '#input/setup/index.ts';
-import type { ResolvedText } from '#input/text/resolve.ts';
 import type { PaneMenuItem } from '../PaneHeaderParts.tsx';
+import type { PaneReadingState, PaneText } from '../reading-evaluation.ts';
 import type { PaneCatalog } from '../resolve-pane-input.ts';
 
 /**
@@ -29,7 +29,13 @@ export interface PaneEnvironment {
    */
   readonly workspaceId?: string;
   readonly catalog: PaneCatalog;
-  readonly resolvedText: ResolvedText;
+  /** 評価に渡すテキスト。漢字を含む日本語のテキストは、読みに直した後の値（仕様 §4.6）。 */
+  readonly resolvedText: PaneText;
+  /**
+   * 漢字を読みに直す段の状態。省略は読みに直す対象でない。`loading` の間、ペインは数値を出さずに読み込み中だけを出す。
+   * `failed` の間は、漢字を読みに直さずに評価した数値を、その旨の知らせと一緒に出す。
+   */
+  readonly reading?: PaneReadingState;
   /** 抽出・Traceのキャッシュ。器の中のペイン全部で同じものを渡し、計算を共有する。 */
   readonly cache: EngineComputer;
   /** 資産への書き込み（条件のモーダルが全体のレベルの条件を書き換える）。 */

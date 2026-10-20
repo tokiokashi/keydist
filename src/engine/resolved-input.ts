@@ -6,6 +6,7 @@ import { withoutRomajiOnlyCombos, withRomaji } from '#input/layouts/types.ts';
 import { physicalKeysUsedByLayout } from '#input/layouts/physical-keys.ts';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { TextLanguage } from '#input/text/language.ts';
+import type { ReadingConditions } from '#input/text/reading.ts';
 import type { AnalysisTarget, Setup, SetupCatalog, SetupReferenceError } from '#input/setup/index.ts';
 import { isBuiltin, ROMAJI_RULES, tableForRule, type UserRomajiRule } from '#input/romaji/rules.ts';
 import type { TracePolicy } from '#trace/generate.ts';
@@ -24,7 +25,7 @@ import { resolveTargetForText } from './target-resolution.ts';
  */
 export interface ResolvedInput {
   /**
-   * 打つ文章。評価対象の記号の範囲の前処理（仕様 §4.6）を通した後の値。ローマ字展開はTrace生成時に行う。
+   * 打つ文章。前処理（漢字を読みに直す段と評価対象の記号の範囲。仕様 §4.6）を通した後の値。ローマ字展開はTrace生成時に行う。
    */
   readonly text: string;
   /** ローマ字入力なら、実効ローマ字規則で組み直した表を持つ最終形。持たなければ配列側のまま。 */
@@ -36,6 +37,8 @@ export interface ResolvedInput {
   readonly arpeggioInterpretation: ArpeggioInterpretation;
   /** 日本語のテキストで、かなと `、` `。` 以外の記号も評価に渡したか。`text` は既にこの値で前処理済み。 */
   readonly keepSymbols: boolean;
+  /** `text` を作った読みの変換の条件。数値の出どころとして運ぶ（仕様 §12.3）。直す対象でないテキストはnull。 */
+  readonly reading: ReadingConditions | null;
   /**
    * 抽出が読む資産の値。Traceと解釈のキーには入れず、抽出のキーにだけ、各Analyzerが決めた分を入れる
    * （`keys.ts`の`singleExtractionKeyOf`）。
@@ -89,8 +92,17 @@ export interface ResolveEngineInputOptions {
    * 無ければ個人速度の保存値は無い。読むAnalyzerが適用する設定の時だけ、抽出のキーに入る。
    */
   readonly personalSpeed?: PlaybackCalibration | undefined;
+  /**
+   * 打つ文章。漢字を読みに直す段（仕様 §4.6の1段目）を通した後の値を渡す。直す対象でないテキストは原文のまま。
+   * 辞書の読み込みを待つ段は計算部より前に置くので、計算部は読みに直した後のテキストを同期で受け取る。
+   */
   readonly text: string;
   readonly language: TextLanguage;
+  /**
+   * `text` を作った読みの変換の条件。漢字を読みに直した、または辞書を読み込めず直さずに評価した時に渡す。
+   * 読みに直す対象でない（漢字を含まない・英語の）テキストは渡さない。
+   */
+  readonly reading?: ReadingConditions | null | undefined;
   /**
    * 前処理を通さず、`text` をそのまま評価に渡す。画面に出した文を利用者がそのまま打つ場面（個人速度の示す文）が使う。
    */
@@ -242,6 +254,7 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
       chainInterpretation: cascade.chainInterpretation.value,
       arpeggioInterpretation: cascade.arpeggioInterpretation.value,
       keepSymbols: cascade.keepSymbols.value,
+      reading: options.verbatimText === true ? null : (options.reading ?? null),
       extractionAssets: { personalSpeed: options.personalSpeed, textLanguage: options.language },
       romajiRuleId,
       cascade: resolvedCascade,

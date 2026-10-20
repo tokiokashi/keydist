@@ -150,6 +150,7 @@ const FIXTURE_TRACE: Trace = {
   ],
   errors: [],
   skipped: 0,
+  skippedByKind: { kanji: 0, symbol: 0, other: 0 },
   inputChars: 3,
   comboHits: [],
   comboDefinitions: 0,

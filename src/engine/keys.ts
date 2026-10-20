@@ -63,6 +63,8 @@ export function interpretationKeyOf(input: ResolvedInput, traceKey: string): str
     arpeggioInterpretation: input.arpeggioInterpretation,
     // テキストは前処理の後の値でTraceのキーに入る。同じ前処理後のテキストでも、記号の範囲の条件は数値の出どころとして運ぶ
     keepSymbols: input.keepSymbols,
+    // 読みに直した後のテキストが同じでも、直した辞書の版や直せなかった事実は数値の出どころとして運ぶ
+    reading: input.reading,
   });
 }
 

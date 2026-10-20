@@ -37,6 +37,7 @@ import { BIGRAM_FLOW_PANE_META } from './pane-meta.ts';
 import { keyDetailTooltip, keyName } from '../key-detail-view.ts';
 import type { AnalyzerSettingsProps, KeySelectionProps, SingleAnalyzerPaneParts } from '../pane-parts.tsx';
 import { useSharedScale } from '../shared-scale.tsx';
+import { skippedCharsText } from './skipped-text.ts';
 import './bigram-vector-view.css';
 
 /**
@@ -702,6 +703,7 @@ const CROSS_HAND_NOTE = '左右の手をまたぐ2打鍵は、Keyboard Flowに�
  */
 export function BigramFlowBody({ layout, geometry, trace, extracted, options, onOptionsChange, keySelection }: BigramFlowBodyProps) {
   const { source, selectedFingers, lineScale, layerOrder, hoverScale, repeatBadge, polarBandwidth, polarGain } = options;
+  const skippedText = skippedCharsText(trace);
 
   // 小窓の開閉は保存しない（再読み込みで閉じる）。閉じるまで開いたまま。小窓は指の選択で作り直される
   // 図のブロックの外に置くので、指を選んでも閉じず、動かした位置も保たれる
@@ -727,9 +729,9 @@ export function BigramFlowBody({ layout, geometry, trace, extracted, options, on
         飛ばした文字は出る時だけ1行を使う（普段は行を使わない）。何組を描いたかは、行を増やさずに済む
         Keyboard Flowの見出しの行に置く。
       */}
-      {trace.skipped > 0 ? (
+      {skippedText !== undefined ? (
         <p className="flow-status">
-          <span>打てずに飛ばした文字 {trace.skipped}</span>
+          <span>{skippedText}</span>
         </p>
       ) : null}
 

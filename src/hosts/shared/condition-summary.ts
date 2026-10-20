@@ -424,6 +424,8 @@ export function conditionTriggerTitle(input: {
   readonly compact: boolean;
   readonly line: ConditionSummaryLine;
   readonly hasTargetDiffs: boolean;
+  /** 数値の出どころとして添える項目。見出しの1行に置く小さい形のhoverに出す。 */
+  readonly provenance?: readonly { readonly label: string; readonly value: string }[];
 }): string {
   const examples = input.rows
     .filter((row) => !input.hiddenIds.includes(row.id))
@@ -439,7 +441,8 @@ export function conditionTriggerTitle(input: {
     line.changedCount === 0
       ? 'すべて既定値'
       : `${line.shown.map((row) => `${row.label}: ${row.displayValue}`).join(' · ')}${line.restCount > 0 ? ` 他${line.restCount}件` : ''}`;
-  return `${intro}条件: ${detail}${input.hasTargetDiffs ? '（対象ごとに差あり）' : ''}`;
+  const provenance = (input.provenance ?? []).map((item) => `。${item.label}: ${item.value}`).join('');
+  return `${intro}条件: ${detail}${input.hasTargetDiffs ? '（対象ごとに差あり）' : ''}${provenance}`;
 }
 
 /** 複数の対象を持つペインに渡す、対象1つぶんの条件。 */
