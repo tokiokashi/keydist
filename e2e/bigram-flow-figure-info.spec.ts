@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures.ts';
 
 /**
  * Bigram Flowの図の読み方。Keyboard FlowとRelative vectorsの小見出しの横にⓘがあり、

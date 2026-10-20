@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from './fixtures.ts';
 
 /**
  * キーマップのE2E。行数や中身はunit test（`layout-breakdown.test.ts`・`key-pattern-selection.test.ts`）で固定しているので、

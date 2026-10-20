@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures.ts';
 import { waitForHydration } from './hydration-helper.ts';
 
 test('サイドバーから計算方法のページを開け、仕様書とリポジトリへのリンクが出る', async ({ page }) => {

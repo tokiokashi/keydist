@@ -3,6 +3,7 @@ import { openFigureSettings } from './bigram-flow-figure-helper.ts';
 import { openTextChip } from './context-bar-helper.ts';
 import { advance, afterTasks, freezeClock } from './settle-helper.ts';
 import { installTimerCapture, type RaceWindow } from './text-timer-capture-helper.ts';
+import { useShortText } from './short-text-helper.ts';
 
 /**
  * コレクション資産（1つのstorageキーへ丸ごと書く`setupLibrary`・`textLibrary`）の
@@ -30,8 +31,9 @@ async function readTexts(page: Page): Promise<readonly StoredText[]> {
 
 async function openBoth(pageA: Page, pageB: Page): Promise<void> {
   await Promise.all([pageA.goto('/analyzer/bigram-flow', { waitUntil: 'commit' }), pageB.goto('/analyzer/bigram-flow', { waitUntil: 'commit' })]);
-  await expect(pageA.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
-  await expect(pageB.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+  // 2つのタブが同じ既定のテキストを同時に計算するので、1つのタブだけの時より待つ
+  await expect(pageA.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 30_000 });
+  await expect(pageB.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 30_000 });
 }
 
 test('通知が届く前の他タブの追加を、自タブの書き込みで消さない', async ({ page }) => {
@@ -88,6 +90,8 @@ test('2タブが同じ組み込みテキストを続けて書き換えても、�
 });
 
 test('他タブが別のAnalyzerの解析設定を書いても、自タブの未反映の変更を戻さない', async ({ context }) => {
+  // 解析設定の変更を見る検査で、本文の長さは問わないので、短い本文で回す
+  await useShortText(context);
   // 解析設定は3つのAnalyzerの分が1つのstorageキーに入る。他タブの書き込みで記録全体が
   // 読み直されると、自分のAnalyzerの設定が中身は同じまま新しい参照になり、debounce待ちの
   // 下書きが保存値へ戻されて、その後の別の変更が先の変更を上書きしてはならない。
@@ -151,6 +155,8 @@ test('他タブが別のAnalyzerの解析設定を書いても、自タブの未
 });
 
 test('他タブが同じAnalyzerの解析設定を変えたら、自タブの表示がそれに揃う', async ({ context }) => {
+  // 解析設定の変更を見る検査で、本文の長さは問わないので、短い本文で回す
+  await useShortText(context);
   // 中身比較にしても、中身が変わった読み直しでは下書きを保存値へ揃える
   const key = 'keydist:standalone-analyzer-options';
   const pageA = await context.newPage();

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures.ts';
 
 /**
  * 別のタブでテーマを変えたら、サイドバーのテーマ切替がstorageイベントで追従する。

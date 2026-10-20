@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures.ts';
 import { waitForHydration } from './hydration-helper.ts';
 import { cell, COL_STEP, dragHandle, itemOf, open, ROW_STEP, settle, stored } from './workspace-grid-helper.ts';
 

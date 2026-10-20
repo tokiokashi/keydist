@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures.ts';
 
 test('explicit theme is applied by the head bootstrap before client scripts run', async ({ page }) => {
   await page.addInitScript(() => {

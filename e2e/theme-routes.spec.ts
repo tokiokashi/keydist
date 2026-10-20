@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures.ts';
 import { waitForHydration } from './hydration-helper.ts';
 
 test('theme authority survives SPA route transitions and reload', async ({ page }) => {

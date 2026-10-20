@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { BrowserContext, Page } from '@playwright/test';
 
 /**
  * 図や見出しの形を見る検査に使う、漢字を含む短い本文（約230字）。
@@ -15,7 +15,7 @@ export const SHORT_TEXT_NAME = '冒頭の一節';
 export const SHORT_TEXT_REF = { kind: 'user', id: SHORT_TEXT_ID } as const;
 
 /** 短い本文をテキストの一覧に入れる。保存済みの一覧があれば上書きしない。 */
-export async function seedShortTextLibrary(page: Page): Promise<void> {
+export async function seedShortTextLibrary(page: Page | BrowserContext): Promise<void> {
   await page.addInitScript(
     ({ id, name, text }) => {
       if (localStorage.getItem('keydist:text-library') === null) {
@@ -27,7 +27,7 @@ export async function seedShortTextLibrary(page: Page): Promise<void> {
 }
 
 /** 短い本文を入れ、個別画面のテキストの選択もその本文から始める。保存済みの選択があれば上書きしない。 */
-export async function useShortText(page: Page): Promise<void> {
+export async function useShortText(page: Page | BrowserContext): Promise<void> {
   await seedShortTextLibrary(page);
   await page.addInitScript((id) => {
     if (localStorage.getItem('keydist:standalone-text-selection') === null) {

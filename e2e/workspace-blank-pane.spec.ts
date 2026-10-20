@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures.ts';
 import { waitForHydration } from './hydration-helper.ts';
 
 /** 余白のペイン（何も表示せず、並びの空きを埋めるだけ）。足す・保存して再読み込みで残る・複製・閉じる。 */

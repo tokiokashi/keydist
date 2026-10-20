@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures.ts';
 
 test('Tester uses a resizable wide FHD workspace without test-mode scrolling', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });

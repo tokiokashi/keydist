@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures.ts';
 import { enabledValues, recordControlStates } from './options-draft-recorder.ts';
 import { expectTargetNames, openSettings, openTargetSelection, targetNames, toggleTarget } from './pane-helper.ts';
 import { useShortText } from './short-text-helper.ts';

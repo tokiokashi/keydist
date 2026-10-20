@@ -2,7 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Page, test } from './fixtures.ts';
 import { createServer, type ViteDevServer } from 'vite';
 import { dictionaryPlugin } from '../scripts/dictionary-plugin.ts';
 import { DICTIONARY_SPEC } from '../src/platform/reading/dictionary-spec.ts';

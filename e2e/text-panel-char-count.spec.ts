@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures.ts';
 import { openTextChip } from './context-bar-helper.ts';
 import { waitForHydration } from './hydration-helper.ts';
 

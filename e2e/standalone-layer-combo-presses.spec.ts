@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures.ts';
 
 /**
  * レイヤーとコンボの押下数のE2E。押下数と割合はunit test（`extract.test.ts`・`engine-path.test.ts`）で固定しているので、
