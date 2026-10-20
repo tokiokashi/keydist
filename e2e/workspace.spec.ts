@@ -2,6 +2,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { openTextChip } from './context-bar-helper.ts';
 import { waitForHydration } from './hydration-helper.ts';
 import { advance, settleBy, settleGrid } from './settle-helper.ts';
+import { SHORT_TEXT_REF, useShortText } from './short-text-helper.ts';
 
 /**
  * Workspace（Analyzerを並べる器。docs/architecture.md「画面の構成」）のE2E。
@@ -1197,10 +1198,12 @@ test('Bigram Flowを配列違いで並べても、Keyboard Flowの線は自分�
     analyzerId: 'bigram-flow',
     binding: { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId } } },
   });
+  // 線の塗りのidを見る検査で、本文の長さは問わないので、短い本文で回す
+  await useShortText(page);
   await seedWorkspace(page, {
     id: 'flow-gradient',
     name: '色の確認',
-    text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+    text: { ref: SHORT_TEXT_REF },
     panes: [fixed('a', 'qwerty'), fixed('b', 'dvorak')],
     layout: {
       kind: 'split',
