@@ -339,6 +339,8 @@ test('打ってすぐリロードしても編集が残る（組み込みから�
 });
 
 test('打ってすぐリロードしても編集が残る（既存のユーザーテキストの直接編集、debounce完了前）', async ({ page }) => {
+  // 本文の保存を時計で止めて確かめる検査なので、再計算の短い本文で回す
+  await useKanaText(page);
   await page.goto('/analyzer/bigram-flow');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
