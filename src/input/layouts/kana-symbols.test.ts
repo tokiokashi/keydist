@@ -51,7 +51,13 @@ for (const layoutId of ['asuka', 'shin-koume', 'shingeta', 'naginata-v18']) {
 /** 記号の範囲を広げた日本語のテキストを、アプリと同じ前処理を通して打つ時のskipped。 */
 function skippedWithWideSymbols(layoutId: string, text: string): number {
   const layout = LAYOUT_BY_ID.get(layoutId)!;
-  const prepared = prepareEvaluationText(text, { language: 'ja', keepSymbols: true, layoutHasChar: (char) => layout.canonicalInputs.has(char) });
+  const prepared = prepareEvaluationText(text, {
+    language: 'ja',
+    keepSymbols: true,
+    layoutHasChar: (char) => layout.canonicalInputs.has(char),
+    layoutHasHeading: (heading) => layout.canonicalInputs.has(heading),
+    maxKatakanaHeadingLength: 0,
+  });
   return generateTrace(prepared, layout, geometry, DEFAULT_TRACE_POLICY).skipped;
 }
 
