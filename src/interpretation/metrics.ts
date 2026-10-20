@@ -343,7 +343,12 @@ export function computeMetrics(trace: Trace, geometry: Geometry, conditions: Met
       reading:
         conditions.reading === null
           ? null
-          : { ...conditions.reading, dictionary: { ...conditions.reading.dictionary }, library: { ...conditions.reading.library } },
+          : {
+              ...conditions.reading,
+              dictionary: { ...conditions.reading.dictionary },
+              library: { ...conditions.reading.library },
+              corrections: conditions.reading.corrections.map((entry) => ({ ...entry })),
+            },
     },
     strokes: scalars.actions,
     actions: scalars.actions,

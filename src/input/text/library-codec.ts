@@ -9,6 +9,7 @@ import {
   droppedDuplicateId,
   droppedNotArray,
 } from '#input/codec/index.ts';
+import { isCorrectableSurface, isCorrectionReading, type ReadingCorrections } from './reading.ts';
 import type { TextLibrary, UserText } from './library.ts';
 
 /**
@@ -38,7 +39,42 @@ const requiredFieldsSchema = v.looseObject({
   text: v.string(),
 });
 
-const KNOWN_USER_TEXT_KEYS: ReadonlySet<string> = new Set(['id', 'name', 'text', 'languageOverride', 'unseen']);
+const KNOWN_USER_TEXT_KEYS: ReadonlySet<string> = new Set(['id', 'name', 'text', 'languageOverride', 'unseen', 'readingCorrections']);
+
+/**
+ * 読みの直しを1項目ずつ読む。表記が漢字を含まない・読みが打てる文字（ひらがなと長音）でない項目は、
+ * 項目だけを診断付きで捨てる（本文と他の直しは残す）。
+ */
+function decodeReadingCorrections(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): ReadingCorrections | undefined {
+  if (raw === undefined) return undefined;
+  if (!isRecord(raw)) {
+    diagnostics.push({ path, message: '読みの直しの形が違うため捨てました' });
+    return undefined;
+  }
+  const corrections: Record<string, string> = {};
+  for (const [surface, reading] of Object.entries(raw)) {
+    if (!isCorrectableSurface(surface) || typeof reading !== 'string' || !isCorrectionReading(reading)) {
+      diagnostics.push({ path: `${path}.${surface}`, message: '読みの直しとして読めない項目を捨てました' });
+      continue;
+    }
+    corrections[surface] = reading;
+  }
+  return Object.keys(corrections).length === 0 ? undefined : corrections;
+}
+
+function decodeBuiltinReadingCorrections(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): Record<string, ReadingCorrections> | undefined {
+  if (raw === undefined) return undefined;
+  if (!isRecord(raw)) {
+    diagnostics.push({ path, message: '組み込みのテキストの読みの直しの形が違うため捨てました' });
+    return undefined;
+  }
+  const result: Record<string, ReadingCorrections> = {};
+  for (const [id, entry] of Object.entries(raw)) {
+    const corrections = decodeReadingCorrections(entry, `${path}.${id}`, diagnostics);
+    if (corrections !== undefined) result[id] = corrections;
+  }
+  return Object.keys(result).length === 0 ? undefined : result;
+}
 
 function decodeUserTexts(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): UserText[] {
   if (!Array.isArray(raw)) {
@@ -70,12 +106,19 @@ function decodeUserTexts(raw: unknown, path: string, diagnostics: CodecDiagnosti
     // 印は壊れていても要素は残す（印が消えるだけで本文は失わない）
     const unseen = decodeField(optionalUnseenSchema, isRecord(candidate) ? candidate.unseen : undefined, undefined, `${elementPath}.unseen`, diagnostics);
 
+    const readingCorrections = decodeReadingCorrections(
+      isRecord(candidate) ? candidate.readingCorrections : undefined,
+      `${elementPath}.readingCorrections`,
+      diagnostics,
+    );
+
     texts.push({
       id: decoded.id,
       name: decoded.name,
       text: decoded.text,
       ...(languageOverride === undefined ? {} : { languageOverride }),
       ...(unseen === undefined ? {} : { unseen }),
+      ...(readingCorrections === undefined ? {} : { readingCorrections }),
     });
   });
   return texts;
@@ -85,9 +128,14 @@ export const TEXT_LIBRARY_CODEC: AssetCodec<TextLibrary> = defineAssetCodec<Text
   currentVersion: 1,
   decodePayload: (payload, diagnostics) => {
     if (!isRecord(payload)) return undefined;
-    return { texts: decodeUserTexts(payload.texts, 'texts', diagnostics) };
+    const builtinReadingCorrections = decodeBuiltinReadingCorrections(payload.builtinReadingCorrections, 'builtinReadingCorrections', diagnostics);
+    return {
+      texts: decodeUserTexts(payload.texts, 'texts', diagnostics),
+      ...(builtinReadingCorrections === undefined ? {} : { builtinReadingCorrections }),
+    };
   },
   encodePayload: (value) => ({
     texts: value.texts.map((text) => ({ ...text })),
+    ...(value.builtinReadingCorrections === undefined ? {} : { builtinReadingCorrections: value.builtinReadingCorrections }),
   }),
 });

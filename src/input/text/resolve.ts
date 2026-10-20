@@ -1,6 +1,7 @@
 import { detectTextLanguage, type TextLanguage } from './language.ts';
 import { builtinTextById, DEFAULT_BUILTIN_TEXT_ID } from './builtin.ts';
 import type { TextLibrary } from './library.ts';
+import { NO_READING_CORRECTIONS, type ReadingCorrections } from './reading.ts';
 import { DEFAULT_TEXT_REF, type TextRef, type TextSelectionState } from './selection.ts';
 
 /** 選択から実際に使う値を1つに決めた結果。resolve系の他の型（`SetupResolution`等）と同じ形。 */
@@ -13,6 +14,8 @@ export interface ResolvedText {
   /** ユーザーテキストの手動上書き。組み込みの時は常に`undefined`（言語固定）。 */
   readonly languageOverride: TextLanguage | undefined;
   readonly isBuiltin: boolean;
+  /** 利用者が直した読み。組み込みのテキストも、手持ちに保存した直しを持つ。直していなければ空。 */
+  readonly readingCorrections: ReadingCorrections;
 }
 
 /**
@@ -34,6 +37,7 @@ export function resolveTextSelection(selection: TextSelectionState, library: Tex
       language: builtin.language,
       languageOverride: undefined,
       isBuiltin: true,
+      readingCorrections: library.builtinReadingCorrections?.[builtin.id] ?? NO_READING_CORRECTIONS,
     };
   }
 
@@ -48,5 +52,6 @@ export function resolveTextSelection(selection: TextSelectionState, library: Tex
     language: userText.languageOverride ?? detectTextLanguage(userText.text),
     languageOverride: userText.languageOverride,
     isBuiltin: false,
+    readingCorrections: userText.readingCorrections ?? NO_READING_CORRECTIONS,
   };
 }

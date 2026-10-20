@@ -19,6 +19,7 @@
     "dev": "vite",
     "build": "vite build && node --experimental-strip-types scripts/check-prerender-render.ts && node --experimental-strip-types --experimental-vm-modules --disable-warning=ExperimentalWarning scripts/check-modulepreload.ts && node --experimental-strip-types scripts/write-workspace-fallback.ts",
     "check:sample": "node --experimental-strip-types scripts/check-sample-text.ts",
+    "generate:reading-candidates": "node --experimental-strip-types scripts/generate-reading-candidates.ts",
     "generate:kana-fixtures": "node --experimental-strip-types scripts/generate-kana-fixtures.ts",
     "generate:analyzer-regression-fixture": "node --experimental-strip-types scripts/gen-analyzer-regression-fixture.ts",
     "preview": "vite preview",

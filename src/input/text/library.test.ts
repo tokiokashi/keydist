@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  setTextReadingCorrection,
   appendCopiedUserText,
   deleteUserText,
   editUserTextContent,
@@ -125,4 +126,31 @@ test('uniqueAutoTextName: 連番も埋まっていれば次の番号へ進む', 
   let library = appendCopiedUserText(emptyTextLibrary(), nextId, { text: '', name: '新しいテキスト' }).library;
   library = appendCopiedUserText(library, nextId, { text: '', name: '新しいテキスト 2' }).library;
   assert.equal(uniqueAutoTextName(library, '新しいテキスト'), '新しいテキスト 3');
+});
+
+test('setTextReadingCorrection: 自作のテキストの直しを足す・差し替える・消す', () => {
+  const library = { texts: [{ id: 'a', name: 'A', text: '今日' }] };
+  const added = setTextReadingCorrection(library, { kind: 'user', id: 'a' }, '今日', 'こんにち');
+  assert.deepEqual(added.texts[0]!.readingCorrections, { 今日: 'こんにち' });
+  assert.equal(setTextReadingCorrection(added, { kind: 'user', id: 'a' }, '今日', 'こんにち'), added);
+  const removed = setTextReadingCorrection(added, { kind: 'user', id: 'a' }, '今日', undefined);
+  assert.equal('readingCorrections' in removed.texts[0]!, false);
+  assert.equal(setTextReadingCorrection(library, { kind: 'user', id: 'none' }, '今日', 'こんにち'), library);
+});
+
+test('setTextReadingCorrection: 組み込みのテキストの直しは本文を写さず、組み込みのidに紐づけて持つ', () => {
+  const library = { texts: [] };
+  const added = setTextReadingCorrection(library, { kind: 'builtin', id: 'builtin:ja.legacy' }, '吾輩', 'わがはい');
+  assert.deepEqual(added.texts, []);
+  assert.deepEqual(added.builtinReadingCorrections, { 'builtin:ja.legacy': { 吾輩: 'わがはい' } });
+  const removed = setTextReadingCorrection(added, { kind: 'builtin', id: 'builtin:ja.legacy' }, '吾輩', undefined);
+  assert.equal('builtinReadingCorrections' in removed, false);
+});
+
+test('appendCopiedUserText: 直した読みも複製先に持たせ、空の直しは持たせない', () => {
+  const generate = () => 'new';
+  const copied = appendCopiedUserText({ texts: [] }, generate, { text: '今日', name: 'A', readingCorrections: { 今日: 'こんにち' } });
+  assert.deepEqual(copied.created.readingCorrections, { 今日: 'こんにち' });
+  const empty = appendCopiedUserText({ texts: [] }, generate, { text: '今日', name: 'A', readingCorrections: {} });
+  assert.equal('readingCorrections' in empty.created, false);
 });

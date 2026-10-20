@@ -4,7 +4,7 @@ import { createPlaybackBroadcast } from '#analyzers/playback/playback-broadcast.
 import { PlaybackBroadcastProvider } from '#analyzers/playback/playback-broadcast.tsx';
 import { SharedScaleProvider } from '#analyzers/shared-scale.tsx';
 import type { Command } from '#input/commands/index.ts';
-import type { KeydistAssets } from '#engine/commands.ts';
+import { setReadingCorrectionCommand, type KeydistAssets } from '#engine/commands.ts';
 import type { EngineComputer } from '#engine/computer.ts';
 import {
   addWorkspacePaneCommand,
@@ -48,7 +48,9 @@ import { useReadingEvaluation } from '#hosts/shared/use-reading-evaluation.ts';
 import { useLatestCallback } from '#hosts/shared/use-latest-callback.ts';
 import type { PaneEnvironment } from '#hosts/shared/panes/pane-environment.ts';
 import type { PaneCatalog } from '#hosts/shared/resolve-pane-input.ts';
+import { ReadingChip } from '#hosts/shared/ReadingChip.tsx';
 import { TextChip, type TextContentCommit } from '#hosts/shared/TextChip.tsx';
+import { workspacePaneTargets } from './pane-targets.ts';
 import { PaneMenu } from '#hosts/shared/PaneHeaderParts.tsx';
 import { AddPaneMenu } from './AddPaneMenu.tsx';
 import { findWorkspaceAnalyzer, findWorkspacePaneMeta, type WorkspaceAnalyzerEntry } from './analyzer-registry.ts';
@@ -218,6 +220,8 @@ export function WorkspacePage({
   );
 
   const panes = workspace?.panes;
+  // 読みの候補の並べ方が比べる配列。テキストを使うペインに載った配列すべて
+  const paneTargets = useMemo(() => (workspace === undefined ? [] : workspacePaneTargets(workspace)), [workspace]);
   const panesById = useMemo(() => new Map((panes ?? []).map((pane) => [pane.id, pane] as const)), [panes]);
   const workspaceGrid = workspace?.grid;
   // 画面に見えている並びの読み順（上→下・左→右）のペインのid。縦積みの並び・閉じた後のフォーカスの行き先に使う
@@ -460,6 +464,17 @@ export function WorkspacePage({
                 generateTextId={generateTextId}
                 onTextContentCommit={onTextContentCommit}
               />
+              {evaluation === undefined ? null : (
+                <ReadingChip
+                  evaluation={evaluation}
+                  source={reading}
+                  targets={paneTargets}
+                  setups={assets.setupLibrary.setups}
+                  catalog={catalog}
+                  overrides={overrides}
+                  onCorrect={(ref, surface, value) => dispatch(setReadingCorrectionCommand(ref, surface, value))}
+                />
+              )}
               <DefaultShapeChip
                 overrides={overrides}
                 workspaceId={workspaceId}

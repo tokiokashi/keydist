@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { stableStringify } from '#engine/cache-key.ts';
 import type { ResolvedText } from '#input/text/resolve.ts';
 
 /**
@@ -12,6 +13,7 @@ const FIELD_EQUALS: { readonly [K in keyof ResolvedText]: (a: ResolvedText[K], b
   language: (a, b) => a === b,
   languageOverride: (a, b) => a === b,
   isBuiltin: (a, b) => a === b,
+  readingCorrections: (a, b) => a === b || stableStringify(a) === stableStringify(b),
 };
 
 /**

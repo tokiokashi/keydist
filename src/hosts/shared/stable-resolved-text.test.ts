@@ -20,3 +20,10 @@ test('sameResolvedText: テキスト・言語・参照が違えば別物', () =>
   assert.equal(sameResolvedText(ja, { ...ja, ref: { kind: 'user', id: ja.ref.id } }), false);
   assert.equal(sameResolvedText(ja, { ...ja, name: `${ja.name}2` }), false);
 });
+
+test('sameResolvedText: 読みの直しが違えば別物で、同じ中身なら同じ', () => {
+  const ja = builtin('builtin:ja.legacy');
+  assert.equal(sameResolvedText({ ...ja, readingCorrections: { 吾輩: 'わがはい' } }, { ...ja, readingCorrections: { 吾輩: 'わがはい' } }), true);
+  assert.equal(sameResolvedText({ ...ja, readingCorrections: { 吾輩: 'わがはい' } }, { ...ja, readingCorrections: { 吾輩: 'われ' } }), false);
+  assert.equal(sameResolvedText(ja, { ...ja, readingCorrections: { 吾輩: 'わがはい' } }), false);
+});
