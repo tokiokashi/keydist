@@ -290,21 +290,21 @@ export function generateTrace(
     const currentInputOrdinal = inputOrdinal++;
     const inputStart = cursor;
     const inputEnd = cursor + consumed;
-    const inputChar = chunks
+    const coveredRange = chunks ? coveringChunkRange(chunkRanges, inputStart, inputEnd) : undefined;
+    const inputChar = coveredRange
       ? chunkRanges
-          .filter((range) => range.start < inputEnd && inputStart < range.end)
+          .slice(coveredRange.from, coveredRange.to)
           .map((range) => range.kana)
           .join('')
       : rawChars.slice(inputStart, inputEnd).join('');
-    const inputIndex = chunks ? (chunkRanges.find((range) => range.start < inputEnd && inputStart < range.end)?.start ?? inputStart) : inputStart;
+    const inputIndex = coveredRange ? (chunkRanges[coveredRange.from]?.start ?? inputStart) : inputStart;
     // 入力が覆うテキストの範囲。ローマ字配列は、覆う英字を含む綴りの単位のかなの範囲
     let kanaStart = inputStart;
     let kanaEnd = inputEnd - 1;
-    if (chunks) {
-      const covered = chunkRanges.filter((range) => range.start < inputEnd && inputStart < range.end);
-      const first = covered[0];
-      const lastCovered = covered[covered.length - 1];
-      if (first && lastCovered) {
+    if (coveredRange) {
+      const first = chunkRanges[coveredRange.from];
+      const lastCovered = chunkRanges[coveredRange.to - 1];
+      if (coveredRange.from < coveredRange.to && first && lastCovered) {
         kanaStart = first.kanaStart;
         kanaEnd = lastCovered.kanaStart + lastCovered.kanaLength - 1;
       }
@@ -714,13 +714,36 @@ function alternativeContextSatisfied(
   });
 }
 
+/**
+ * 英字の範囲[start, end)と重なる綴りの単位を、`chunks`の添字の範囲[from, to)で返す。
+ * 綴りの単位は英字の位置の順に隙間なく並ぶので、endがstartを超える最初の単位を二分探索で見つけ、
+ * そこからstartが範囲の終わりに届くまで進めばよい。全件を頭から走査しない（テキストの長さに比例した時間にするため）。
+ */
+function coveringChunkRange(chunks: readonly RomajiChunkRange[], start: number, end: number): { from: number; to: number } {
+  let low = 0;
+  let high = chunks.length;
+  while (low < high) {
+    const mid = (low + high) >>> 1;
+    if (chunks[mid].end > start) high = mid;
+    else low = mid + 1;
+  }
+  let to = low;
+  while (to < chunks.length && chunks[to].start < end) to++;
+  return { from: low, to };
+}
+
 function coveredByKana(start: number, end: number, chunks: RomajiChunkRange[]): boolean {
-  return chunks.filter((chunk) => chunk.start < end && start < chunk.end).every((chunk) => chunk.fromTable);
+  const { from, to } = coveringChunkRange(chunks, start, end);
+  for (let i = from; i < to; i++) if (!chunks[i].fromTable) return false;
+  return true;
 }
 
 function canFireYouonOnlyCombo(cursor: number, chars: string[], chunks: RomajiChunkRange[]): boolean {
   if (cursor === 0 || !/[bcdfghjklmnpqrstvwxyz]/.test(chars[cursor - 1])) return false;
-  return chunks.some((chunk) => chunk.kanaLength > 1 && chunk.start < cursor && cursor < chunk.end);
+  // cursorの1つ前とcursorの両方を覆う単位は、endがcursorを超える最初の単位に限られる
+  const { from } = coveringChunkRange(chunks, cursor, cursor + 1);
+  const chunk = chunks[from];
+  return chunk !== undefined && chunk.kanaLength > 1 && chunk.start < cursor && cursor < chunk.end;
 }
 
 function skippedKindOf(char: string): keyof SkippedByKind {
