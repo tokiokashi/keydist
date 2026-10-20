@@ -2,7 +2,6 @@ import { expect, test, type Page } from '@playwright/test';
 import { openTextChip } from './context-bar-helper.ts';
 import { targetButton, toggleTarget } from './pane-helper.ts';
 import { waitForHydration } from './hydration-helper.ts';
-import { useKanaText } from './kana-text-helper.ts';
 
 /**
  * スマホ幅（〜760px）の文脈バーとペインの見出しは、どちらも1行に収まる。
@@ -63,8 +62,14 @@ test('スマホ幅: 物理配列はアイコンだけで、selectを操作して
 });
 
 test('スマホ幅: テキストのチップは名前が8文字以上読める幅を持つ', async ({ page }) => {
-  // 漢字を含むテキストでは読みのチップが同じ行に並ぶので、含まないテキストで測る
-  await useKanaText(page);
+  // 漢字を含むテキストでは読みのチップが同じ行に並ぶので、漢字を含まない長い名前のテキストで測る
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'keydist:text-library',
+      JSON.stringify({ version: 1, texts: [{ id: 'long-name', name: '名前の長いかなだけのテキスト', text: 'あいうえおかきくけこ' }] }),
+    );
+    localStorage.setItem('keydist:standalone-text-selection', JSON.stringify({ version: 1, ref: { kind: 'user', id: 'long-name' } }));
+  });
   await openReady(page, 'bigram-flow');
   const visible = await page.evaluate(() => {
     const value = document.querySelector('.text-chip .context-chip-value') as HTMLElement;
