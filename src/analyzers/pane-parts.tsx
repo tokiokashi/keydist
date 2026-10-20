@@ -202,4 +202,9 @@ export interface SetAnalyzerPaneParts<Options, Extracted, RowContext>
    * 全員に共通の軸として別に見せる項目を挙げる。
    */
   readonly conditionExcludeIds?: readonly string[];
+  /**
+   * Workspaceのペインで、画面に入るまで計算を始めない。計算が長く、いつも見ているとは限らないAnalyzerだけが立てる。
+   * 個別画面は開いた時に計算する。
+   */
+  readonly computeOnlyWhenOnScreen?: boolean;
 }

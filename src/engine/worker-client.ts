@@ -53,6 +53,16 @@ interface Job {
   readonly reject: (error: unknown) => void;
   readonly signal: AbortSignal | undefined;
   readonly onAbort: () => void;
+  /** 後回しの依頼。後回しでない依頼が待っている間は、Workerへ送らない。 */
+  readonly deferred: boolean;
+  /** 走っている間に打ち切られても、Workerを止めずに終わるまで待つ。短い依頼にだけ使う。 */
+  readonly shortLived: boolean;
+}
+
+/** 依頼の送り方。 */
+interface EnqueueOptions {
+  readonly deferred?: boolean;
+  readonly shortLived?: boolean;
 }
 
 function errorOf(response: Extract<EngineWorkerResponse, { ok: false }>): Error {
@@ -78,6 +88,10 @@ export class EngineAbortError extends Error {
  * - **走っている依頼が打ち切られたら、Workerを止めて立て直す。** 古い入力の計算（長いテキスト
  *   では数秒〜十数秒）が終わるまで新しい依頼を待たせないため。立て直すとWorker内の
  *   キャッシュは空になるが、入力が変わった後の計算は元々キャッシュに当たらない
+ * - **後回しの依頼は、後回しでない依頼が待っていない時にだけ送る。** 段に分けられる集合の抽出
+ *   （`SetAnalyzerWarmup`）は、段ごとの小さい依頼と最後の抽出をすべて後回しにする。ほかのペインの依頼が
+ *   待つのは、走っている段1件が終わるまでになる。段の依頼は短いので、走っている間に打ち切られても
+ *   Workerを止めず、終わるまで待つ（止めるとWorker内のキャッシュが空になり、ほかのペインの計算もやり直しになる）
  * - Traceと抽出を続けて頼む場合、1件ずつ順に送るので、後の依頼は先の依頼が積んだ
  *   Worker内のキャッシュに当たり、同じTraceを二度作らない
  */
@@ -132,7 +146,8 @@ export function createWorkerEngineComputer(spawn: () => WorkerLike): WorkerEngin
 
   function pump(): void {
     while (current === undefined && queue.length > 0) {
-      const job = queue.shift()!;
+      const first = queue.findIndex((waiting) => !waiting.deferred);
+      const job = queue.splice(first >= 0 ? first : 0, 1)[0]!;
       try {
         if (worker === undefined) worker = attach(spawn());
         current = job;
@@ -145,7 +160,7 @@ export function createWorkerEngineComputer(spawn: () => WorkerLike): WorkerEngin
     }
   }
 
-  function enqueue<T>(build: (id: number) => EngineWorkerRequest, signal: AbortSignal | undefined): Promise<T> {
+  function enqueue<T>(build: (id: number) => EngineWorkerRequest, signal: AbortSignal | undefined, how: EnqueueOptions = {}): Promise<T> {
     if (signal?.aborted) return Promise.reject(new EngineAbortError());
     return new Promise<T>((resolve, reject) => {
       const job: Job = {
@@ -154,7 +169,14 @@ export function createWorkerEngineComputer(spawn: () => WorkerLike): WorkerEngin
         resolve: resolve as (value: unknown) => void,
         reject,
         signal,
+        deferred: how.deferred ?? false,
+        shortLived: how.shortLived ?? false,
         onAbort: () => {
+          if (current === job && job.shortLived) {
+            // 短い依頼はWorkerの中で終わるまで走らせる。呼び出し側へは打ち切りだけを返し、結果は捨てる。
+            finish(job, () => reject(new EngineAbortError()));
+            return;
+          }
           if (current === job) {
             // 走っている計算は止められないので、Workerごと止める。
             current = undefined;
@@ -221,16 +243,29 @@ export function createWorkerEngineComputer(spawn: () => WorkerLike): WorkerEngin
         enqueue((id) => ({ id, kind: 'extraction', input, definitionId: definition.id, options }), signal),
       );
     },
-    getSetExtraction<Options, Extracted>(
+    async getSetExtraction<Options, Extracted>(
       members: readonly EngineSetMemberInput[],
       definition: SetAnalyzerDefinition<Options, Extracted>,
       options: Options,
       signal?: AbortSignal,
     ): Promise<EngineExtractionResult<Extracted>> {
+      const warmup = definition.warmup;
+      if (warmup !== undefined) {
+        // 段を1件ずつ頼み、前の段が終わってから次を頼む。段の間にほかの依頼が先に送られる。
+        for (const member of members) {
+          if (!member.resolution.ok) continue;
+          for (let step = 0; step < warmup.steps; step += 1) {
+            await enqueue<void>((id) => ({ id, kind: 'set-warmup', member, definitionId: definition.id, step }), signal, {
+              deferred: true,
+              shortLived: true,
+            });
+          }
+        }
+      }
       return remember(
         extractionMirror as LruCache<string, EngineExtractionResult<Extracted>>,
         setExtractionKeyOf(members, definition.id, definition.extractKeyOf(options)),
-        enqueue((id) => ({ id, kind: 'set-extraction', members, definitionId: definition.id, options }), signal),
+        enqueue((id) => ({ id, kind: 'set-extraction', members, definitionId: definition.id, options }), signal, { deferred: warmup !== undefined }),
       );
     },
     dispose(): void {

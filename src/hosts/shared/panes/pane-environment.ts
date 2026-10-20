@@ -95,6 +95,13 @@ export interface PaneChrome {
   /** 解析設定の小窓にペイン名を出す（Workspaceでは、どのペインの設定か分かるように）。 */
   readonly showPaneNameInSettings?: boolean;
   /**
+   * ペインが画面に入るまで、計算を始めない（Workspaceのペイン。Analyzerがそれを求める時だけ立てる）。
+   * 一度始めた計算は、ペインが画面から出ても続けて結果を残す。個別画面は開いた時に計算するので立てない。
+   */
+  readonly computeOnlyWhenOnScreen?: boolean;
+  /** 別のペインを拡大表示していて、このペインが隠れている。隠れている間は画面に入っていないものとして扱う。 */
+  readonly coveredByMaximizedPane?: boolean;
+  /**
    * 対象が空のペインを開いた直後に、対象の選択を自動で開く（個別画面）。Workspaceは複数の
    * ペインが同時に開こうとするので使わない。
    */

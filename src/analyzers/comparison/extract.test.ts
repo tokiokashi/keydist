@@ -6,6 +6,7 @@ import type { AnalysisTarget, Setup } from '#input/setup/index.ts';
 import { EMPTY_SETTINGS_OVERRIDES } from '#engine/settings-items.ts';
 import { resolveEngineInput } from '#engine/resolved-input.ts';
 import { createEngineCache } from '#engine/cache.ts';
+import { noRemember } from '#analyzers/contract.ts';
 import { computeFingerDistanceExtraction } from '#analyzers/finger-distance/extract.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { findOptionsKeyDisciplineViolations, findViewOptionsExtractionViolations } from '#analyzers/options.ts';
@@ -177,6 +178,7 @@ test('computeComparisonExtraction: 解決できたメンバーはok行、失敗�
             throw new Error('unused');
           },
         },
+        remember: noRemember,
       },
     ],
     [{ target: targetDeleted, kind: 'reference', message: '配列が見つかりません（削除された可能性があります）' }],

@@ -1,5 +1,6 @@
 import {
   defineSetAnalyzer,
+  noRemember,
   type AnalyzerSetMember,
   type AnalyzerSetMemberFailure,
   type SetAnalyzerDefinition,
@@ -219,6 +220,7 @@ const FIXTURE_MEMBERS: readonly AnalyzerSetMember[] = [
     analysis: { chains: [], arpeggios: [] } as unknown as AnalyzerSetMember['analysis'],
     metrics: fixtureMetrics(10),
     requestTrace: UNUSED_REQUEST_TRACE,
+    remember: noRemember,
   },
   {
     target: FIXTURE_TARGET_B,
@@ -226,6 +228,7 @@ const FIXTURE_MEMBERS: readonly AnalyzerSetMember[] = [
     analysis: { chains: [], arpeggios: [] } as unknown as AnalyzerSetMember['analysis'],
     metrics: fixtureMetrics(20),
     requestTrace: UNUSED_REQUEST_TRACE,
+    remember: noRemember,
   },
 ];
 

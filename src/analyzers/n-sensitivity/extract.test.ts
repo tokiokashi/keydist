@@ -6,6 +6,7 @@ import type { AnalysisTarget, Setup } from '#input/setup/index.ts';
 import { EMPTY_SETTINGS_OVERRIDES } from '#engine/settings-items.ts';
 import { resolveEngineInput, type ResolvedInput } from '#engine/resolved-input.ts';
 import { createEngineCache } from '#engine/cache.ts';
+import { noRemember } from '#analyzers/contract.ts';
 import { findOptionsKeyDisciplineViolations, findViewOptionsExtractionViolations } from '#analyzers/options.ts';
 import { adjacentMeanStdDev, computeMetrics, rightHandShare, sameFingerRate } from '#interpretation/metrics.ts';
 import { computeComparisonRowValues } from '#analyzers/comparison/extract.ts';
@@ -64,6 +65,7 @@ function checkLayout(layoutId: string, text: string): void {
           tracePolicy: { ...input.tracePolicy, ...request.tracePolicy },
         }).trace,
     },
+    remember: noRemember,
   };
 
   const series = computeMemberSeries(member);
@@ -111,6 +113,7 @@ test('computeMemberSeries: N=既定の点は、メンバー自身のMetrics（to
           tracePolicy: { ...input.tracePolicy, ...request.tracePolicy },
         }).trace,
     },
+    remember: noRemember,
   };
   const series = computeMemberSeries(member);
   const basePoint = series.points.find((point) => point.windowSize === input.tracePolicy.windowSize);
@@ -139,6 +142,7 @@ test('computeMemberSeries: 既定のNの点は、一覧の全指標でメンバ�
             tracePolicy: { ...input.tracePolicy, ...request.tracePolicy },
           }).trace,
       },
+      remember: noRemember,
     });
     const values = series.points.find((point) => point.windowSize === input.tracePolicy.windowSize)!.values;
     const comparison = computeComparisonRowValues(metrics, traceResult.trace);
@@ -179,6 +183,7 @@ test('computeMemberSeries: 指間平均・指間σは、全11Nで同条件のcom
         requestTrace: (request: { tracePolicy?: { windowSize?: number } }) =>
           cache.getTrace({ ...input, tracePolicy: { ...input.tracePolicy, ...request.tracePolicy } }).trace,
       },
+      remember: noRemember,
     });
     for (const point of series.points) {
       const tracePolicy = { ...input.tracePolicy, windowSize: point.windowSize };
@@ -216,6 +221,7 @@ test('computeNSensitivityExtraction: 解決できたメンバーはok系列、�
         analysis: interpretationResult.analysis,
         metrics: interpretationResult.metrics,
         requestTrace: { requestTrace: () => traceResult.trace },
+        remember: noRemember,
       },
     ],
     [{ target: targetDeleted, kind: 'reference', message: '配列が見つかりません（削除された可能性があります）' }],

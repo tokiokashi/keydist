@@ -1,5 +1,6 @@
 import type { AnalyzerSetMember, AnalyzerSetMemberFailure, SetAnalyzerDefinition, SingleAnalyzerDefinition } from '#analyzers/contract.ts';
 import type { AnalysisTarget } from '#input/setup/index.ts';
+import { stableStringify } from './cache-key.ts';
 import { LruCache } from './lru-cache.ts';
 import { basisIdOf, interpretationKeyOf, setAnalyzerExtractionKeyOf, setMemberKeyOf, singleExtractionKeyOf, traceKeyOf } from './keys.ts';
 import {
@@ -25,6 +26,12 @@ import { createTraceRequesterFor } from './trace-requester.ts';
  */
 const DEFAULT_MAX_ENTRIES = 32;
 
+/**
+ * 部分結果の既定の最大件数。1件は数値の組で小さいので、Traceより大きく取る。
+ * N感度の既定のWorkspace（7配列 × 11通りのN）の77件に、条件を替えた分の余裕を足した値。
+ */
+const DEFAULT_MAX_PART_ENTRIES = 1024;
+
 export interface EngineCacheOptions {
   /** Traceキャッシュの最大保持件数。省略時は`DEFAULT_MAX_ENTRIES`。 */
   readonly maxTraceEntries?: number;
@@ -34,6 +41,8 @@ export interface EngineCacheOptions {
   readonly maxExtractionEntries?: number;
   /** キーの詳細のキャッシュの最大保持件数。省略時は`DEFAULT_MAX_ENTRIES`。 */
   readonly maxKeyDetailsEntries?: number;
+  /** 集合の抽出が覚える部分結果（`AnalyzerSetMember.remember`）の最大保持件数。省略時は`DEFAULT_MAX_PART_ENTRIES`。 */
+  readonly maxPartEntries?: number;
 }
 
 export interface EngineCache {
@@ -81,6 +90,12 @@ export interface EngineCache {
     definition: SetAnalyzerDefinition<Options, Extracted>,
     options: Options,
   ): EngineExtractionResult<Extracted>;
+  /**
+   * 集合の抽出を小さい段に分けて先に求める（`SetAnalyzerWarmup`）。`member`1件の`step`番目の段だけを求め、
+   * 結果は部分結果として覚える。後の`getSetExtraction`が同じメンバーの部分結果を読むので、
+   * 抽出の値は段を先に求めても求めなくても同じ。メンバーの解決に失敗している時、Analyzerが段を持たない時は何もしない。
+   */
+  warmSetMember<Options, Extracted>(member: EngineSetMemberInput, definition: SetAnalyzerDefinition<Options, Extracted>, step: number): void;
   /** 計算結果は永続化しない。明示的に空にする時だけ使う。 */
   clear(): void;
   readonly size: {
@@ -88,6 +103,7 @@ export interface EngineCache {
     readonly interpretation: number;
     readonly extraction: number;
     readonly keyDetails: number;
+    readonly parts: number;
   };
 }
 
@@ -109,6 +125,19 @@ export function createEngineCache(options: EngineCacheOptions = {}): EngineCache
   // 値の型はAnalyzerごとに違うので`unknown`で持ち、`getExtraction`の呼び出し側の
   // ジェネリックで絞り込む（このファイル内では中身の型を知らないまま扱う）。
   const extractionCache = new LruCache<string, EngineExtractionResult<unknown>>(options.maxExtractionEntries ?? DEFAULT_MAX_ENTRIES);
+  const partCache = new LruCache<string, unknown>(options.maxPartEntries ?? DEFAULT_MAX_PART_ENTRIES);
+  // 部分結果のキーにメンバーの中身（テキストと配列を含む長い文字列）を毎回入れると、部分結果の件数ぶんだけ長い文字列を持つ。
+  // 中身は番号に置き換えて持つ。番号は使い回さないので、番号の記録が追い出された後に同じ中身が来ても、古い部分結果を引かない。
+  const partOwnerIds = new LruCache<string, number>(DEFAULT_MAX_ENTRIES * 2);
+  let nextPartOwnerId = 1;
+
+  function partOwnerIdOf(ownerKey: string): number {
+    const known = partOwnerIds.get(ownerKey);
+    if (known !== undefined) return known;
+    const id = nextPartOwnerId++;
+    partOwnerIds.set(ownerKey, id);
+    return id;
+  }
 
   function getTrace(input: ResolvedInput): EngineTraceResult {
     const key = traceKeyOf(input);
@@ -164,6 +193,49 @@ export function createEngineCache(options: EngineCacheOptions = {}): EngineCache
     return result;
   }
 
+  /**
+   * 追加のTraceを求める窓口。`getTrace`と違い、無ければ作って返すだけで、キャッシュには積まない。
+   * N感度は1メンバーにつきNの数だけTraceを作るが、そのTraceは1度読んだら使わない。積むと、
+   * 比較表などが共有するTraceを追い出して、後で作り直しになる。
+   */
+  function getTraceWithoutStoring(input: ResolvedInput): EngineTraceResult {
+    return traceCache.get(traceKeyOf(input)) ?? generateEngineTrace(input);
+  }
+
+  /** 集合の解決できたメンバー1件。`memberKey`は部分結果の入れ物を、メンバーの中身ごとに分けるのに使う。 */
+  function buildSetMember(target: AnalysisTarget, input: ResolvedInput, memberKey: unknown, definitionId: string): AnalyzerSetMember {
+    const interpretationResult = getInterpretation(input);
+    const traceResult = getTrace(input);
+    const partPrefix = String(partOwnerIdOf(stableStringify({ memberKey, definitionId })));
+    return {
+      target,
+      trace: traceResult.trace,
+      analysis: interpretationResult.analysis,
+      metrics: interpretationResult.metrics,
+      // メンバー自身の解決済み入力を土台にする（`AnalyzerSetMember.requestTrace`のコメント
+      // 参照。N感度は各メンバーごとに独立したNの掃引が要るため、先頭メンバー等の
+      // 代表1件を土台にする窓口では成立しない）。TraceRequesterはキャッシュキーに
+      // 含まれない（関数は`stableStringify`で比較できないため。`requestTrace`が返す
+      // Traceは、積んであれば`getTrace`と同じキーで引くので、
+      // 抽出結果の再現性には影響しない）。
+      requestTrace: createTraceRequesterFor({ getTrace: getTraceWithoutStoring }, input),
+      remember<T>(key: string, compute: () => T): T {
+        const partKey = `${partPrefix}\u0000${key}`;
+        const known = partCache.get(partKey);
+        if (known !== undefined) return known as T;
+        const value = compute();
+        partCache.set(partKey, value);
+        return value;
+      },
+    };
+  }
+
+  function warmSetMember<Options, Extracted>(member: EngineSetMemberInput, definition: SetAnalyzerDefinition<Options, Extracted>, step: number): void {
+    const warmup = definition.warmup;
+    if (warmup === undefined || !member.resolution.ok) return;
+    warmup.run(buildSetMember(member.target, member.resolution.input, setMemberKeyOf(member), definition.id), step);
+  }
+
   function getSetExtraction<Options, Extracted>(
     members: readonly EngineSetMemberInput[],
     definition: SetAnalyzerDefinition<Options, Extracted>,
@@ -184,23 +256,8 @@ export function createEngineCache(options: EngineCacheOptions = {}): EngineCache
         keyMembers.push({ target: member.target, memberKey });
         continue;
       }
-      const input = member.resolution.input;
-      const interpretationResult = getInterpretation(input);
-      const traceResult = getTrace(input);
       keyMembers.push({ target: member.target, memberKey });
-      resolvedMembers.push({
-        target: member.target,
-        trace: traceResult.trace,
-        analysis: interpretationResult.analysis,
-        metrics: interpretationResult.metrics,
-        // メンバー自身の解決済み入力を土台にする（`AnalyzerSetMember.requestTrace`のコメント
-        // 参照。N感度は各メンバーごとに独立したNの掃引が要るため、先頭メンバー等の
-        // 代表1件を土台にする窓口では成立しない）。TraceRequesterはキャッシュキーに
-        // 含まれない（関数は`stableStringify`で比較できないため。`requestTrace`が返す
-        // Trace自体は内部で`getTrace`と同じキャッシュ・同じキーを経由するので、
-        // 抽出結果の再現性には影響しない）。
-        requestTrace: createTraceRequesterFor({ getTrace }, input),
-      });
+      resolvedMembers.push(buildSetMember(member.target, member.resolution.input, memberKey, definition.id));
     }
 
     const key = setAnalyzerExtractionKeyOf(keyMembers, definition.id, definition.extractKeyOf(options));
@@ -218,11 +275,14 @@ export function createEngineCache(options: EngineCacheOptions = {}): EngineCache
     getKeyDetails,
     getExtraction,
     getSetExtraction,
+    warmSetMember,
     clear() {
       traceCache.clear();
       interpretationCache.clear();
       extractionCache.clear();
       keyDetailsCache.clear();
+      partCache.clear();
+      partOwnerIds.clear();
     },
     get size() {
       return {
@@ -230,6 +290,7 @@ export function createEngineCache(options: EngineCacheOptions = {}): EngineCache
         interpretation: interpretationCache.size,
         extraction: extractionCache.size,
         keyDetails: keyDetailsCache.size,
+        parts: partCache.size,
       };
     },
   };

@@ -314,3 +314,75 @@ test('Traceの写しは8件まで（古いものから捨てる）。A→B→A�
   }
   remote.dispose();
 });
+
+/** 偽Workerの保留中の応答を、1件ずつ返しながら、返すたびに依頼側の続き（Promiseの後続）を進める。 */
+async function deliverAll(fake: ReturnType<typeof createFakeWorker>): Promise<void> {
+  while (fake.held.length > 0) {
+    fake.held.shift()!();
+    await new Promise<void>((resolve) => setImmediate(resolve));
+  }
+}
+
+test('段に分けられる集合の抽出は、後回しでない依頼より後に送られ、ほかの依頼は走っている段1件だけを待つ', async () => {
+  const fake = createFakeWorker({ manual: true });
+  const remote = createWorkerEngineComputer(() => fake.worker);
+  const entries = resolveAll('hello world', 'en');
+  const members = entries.map((entry) => entry.member);
+
+  const slow = remote.getSetExtraction(members, nSensitivityDefinition, DEFAULT_N_SENSITIVITY_OPTIONS);
+  // 後から頼んだ別の抽出の段が先に待っていても、後回しでない依頼が追い越す
+  const otherSlow = remote.getSetExtraction(members.slice(0, 1), nSensitivityDefinition, DEFAULT_N_SENSITIVITY_OPTIONS);
+  const trace = remote.getTrace(entries[0]!.input);
+  const extraction = remote.getExtraction(entries[0]!.input, bigramFlowDefinition, DEFAULT_BIGRAM_FLOW_OPTIONS);
+  // N感度の最初の段は他に待ちが無かったので、すぐWorkerへ送られている
+  assert.deepEqual(
+    fake.received.map((request) => request.kind),
+    ['set-warmup'],
+  );
+
+  await deliverAll(fake);
+  const kinds = fake.received.map((request) => request.kind);
+  assert.deepEqual(kinds.slice(0, 3), ['set-warmup', 'trace', 'extraction'], '走っていた段の次は、後回しでない2件が先');
+  assert.equal(kinds.filter((kind) => kind === 'set-warmup').length, (LAYOUT_IDS.length + 1) * nSensitivityDefinition.warmup!.steps);
+  assert.equal(kinds.at(-1), 'set-extraction', '最後に抽出');
+  assert.deepStrictEqual(await trace, createEngineCache().getTrace(entries[0]!.input));
+  assert.deepStrictEqual(await extraction, createEngineCache().getExtraction(entries[0]!.input, bigramFlowDefinition, DEFAULT_BIGRAM_FLOW_OPTIONS));
+  assert.deepStrictEqual(
+    await slow,
+    createEngineCache().getSetExtraction(members, nSensitivityDefinition, DEFAULT_N_SENSITIVITY_OPTIONS),
+    '段に分けても抽出の値は同じ',
+  );
+  await otherSlow;
+  remote.dispose();
+});
+
+test('段の依頼が走っている間に打ち切られても、Workerは止めず、段が終わるまで次の依頼を送らない', async () => {
+  const workers: Array<ReturnType<typeof createFakeWorker>> = [];
+  const remote = createWorkerEngineComputer(() => {
+    const fake = createFakeWorker({ manual: true });
+    workers.push(fake);
+    return fake.worker;
+  });
+  const entries = resolveAll('hello world', 'en');
+  const controller = new AbortController();
+  const stale = remote.getSetExtraction(
+    entries.map((entry) => entry.member),
+    nSensitivityDefinition,
+    DEFAULT_N_SENSITIVITY_OPTIONS,
+    controller.signal,
+  );
+  const next = remote.getTrace(entries[0]!.input);
+  assert.equal(workers[0]!.received.length, 1, '段が走っている');
+
+  controller.abort();
+  await assert.rejects(stale, EngineAbortError);
+  assert.equal(workers.length, 1);
+  assert.equal(workers[0]!.isTerminated(), false, '短い段の打ち切りでWorkerを止めない');
+  assert.equal(workers[0]!.received.length, 1, '段が終わるまでは次を送らない');
+
+  await deliverAll(workers[0]!);
+  assert.deepStrictEqual(await next, createEngineCache().getTrace(entries[0]!.input));
+  assert.equal(workers.length, 1, '同じWorkerが続きを受けた');
+  assert.equal(workers[0]!.received.length, 2, '打ち切った抽出の残りの段は送られない');
+  remote.dispose();
+});
