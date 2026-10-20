@@ -2,12 +2,12 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES } from '#input/shapes/geometry.ts';
-import { sampleText } from '#input/text/samples.ts';
 import type { Setup } from '#input/setup/index.ts';
 import { EMPTY_SETTINGS_OVERRIDES } from '#engine/settings-items.ts';
 import { resolveEngineInput, type ResolvedInput } from '#engine/resolved-input.ts';
 import { generateTrace } from '#trace/generate.ts';
 import { comboDiagramItems, comboRows, modifierRows } from './layout-breakdown.ts';
+import { fixedTestText } from '../../../test/kana-test-text.ts';
 
 /**
  * 配列の定義から出す修飾・コンボ表・コンボの配列図を、実際のengine経路（解決 → Trace）で検証する。物理配列はrow-staggered。テキストは組み込みのサンプル
@@ -38,7 +38,7 @@ function measureInput(input: ResolvedInput) {
 }
 
 function measure(layoutId: string, language: 'ja' | 'en') {
-  const result = tryResolve(layoutId, language, sampleText(language, language === 'ja' ? 'legacy' : 'default'));
+  const result = tryResolve(layoutId, language, fixedTestText(language));
   assert.ok(result.ok, result.ok ? '' : JSON.stringify(result.error));
   if (!result.ok) throw new Error('unreachable');
   return measureInput(result.input);

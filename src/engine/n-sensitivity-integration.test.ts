@@ -3,7 +3,6 @@ import test from 'node:test';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { AnalysisTarget, Setup } from '#input/setup/index.ts';
-import { sampleText } from '#input/text/samples.ts';
 import { nSensitivity } from '#analyzers/n-sensitivity/sensitivity.ts';
 import { N_SENSITIVITY_RANGE, nSensitivityDefinition, type NSensitivitySeries } from '#analyzers/n-sensitivity/extract.ts';
 import { DEFAULT_N_SENSITIVITY_OPTIONS } from '#analyzers/n-sensitivity/options.ts';
@@ -11,6 +10,7 @@ import { EMPTY_SETTINGS_OVERRIDES, type SettingsCascadeOverrides } from './setti
 import { resolveEngineInput, type ResolvedInput } from './resolved-input.ts';
 import { createEngineCache } from './cache.ts';
 import type { EngineSetMemberInput } from './request.ts';
+import { KANA_TEST_TEXT } from '../../test/kana-test-text.ts';
 
 /**
  * `cache.getSetExtraction`（`SetAnalyzerDefinition`の実際の配線）を通した、N感度の
@@ -104,7 +104,7 @@ test('cache.getSetExtraction: 異なる配列の2メンバーそれぞれが、�
 
 test('cache.getSetExtraction: 長い日本語サンプル・windowSize=7（非既定）の実engine経路でも旧nSensitivityと全11N一致する', () => {
   const cache = createEngineCache();
-  const text = sampleText('ja', 'legacy');
+  const text = KANA_TEST_TEXT;
   assert.ok(text.length > 100, '「長い」ことの前提確認（前処理後の文字数）');
 
   const input = resolve('qwerty', text, { global: { windowSize: 7 } }, 'ja');

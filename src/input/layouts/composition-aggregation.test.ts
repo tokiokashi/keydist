@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildGeometry } from '../shapes/geometry.ts';
 import { sampleText } from '../text/samples.ts';
+import { KANA_TEST_TEXT } from '../../../test/kana-test-text.ts';
 import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { attributeMetrics } from '#interpretation/attribution.ts';
@@ -80,9 +81,11 @@ test('新小梅: composition面14面は、すべてトリガーのキーごと�
 });
 
 for (const layout of [kawasemi, koume]) {
-  for (const sampleId of ['legacy', 'modern']) {
+  for (const [sampleId, text] of [
+    ['kana', KANA_TEST_TEXT],
+    ['modern', sampleText('ja', 'modern')],
+  ] as const) {
     test(`${layout.id}/${sampleId}: 層とコンボ枠の押下数の和は押下キー数に等しく、U ≤ B`, () => {
-      const text = sampleText('ja', sampleId);
       const trace = generateTrace(text, layout, geometry, DEFAULT_TRACE_POLICY);
       assert.equal(trace.skipped, 0);
       const metrics = computeMetrics(trace, geometry);

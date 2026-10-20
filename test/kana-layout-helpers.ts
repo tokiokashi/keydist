@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs';
 import { buildGeometry } from '#input/shapes/geometry.ts';
 import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
 import type { Layout } from '#input/layouts/index.ts';
-import { SAMPLE_TEXT_JA, SAMPLE_TEXT_JA_LEGACY } from '#input/text/sample-ja.ts';
+import { SAMPLE_TEXT_JA } from '#input/text/sample-ja.ts';
+import { KANA_TEST_TEXT } from './kana-test-text.ts';
 
 type FixtureFace = {
   trigger: string[];
@@ -84,7 +85,7 @@ export function assertKanaLayout(layout: Layout, missing: readonly string[] = []
   const geometry = buildGeometry('row-staggered');
   for (const [name, source] of [
     ['現代文', SAMPLE_TEXT_JA],
-    ['旧文', SAMPLE_TEXT_JA_LEGACY],
+    ['固定のかな文', KANA_TEST_TEXT],
   ] as const) {
     const text = source.replace(/\s+/g, '');
     const trace = generateTrace(text, layout, geometry, DEFAULT_TRACE_POLICY);

@@ -301,7 +301,7 @@ test('テキストを編集すると自作として保存され、リロード�
 
   // 削除は文脈バーの「元に戻す」で戻せるので、確認を挟まない。
   await page.getByRole('button', { name: '削除', exact: true }).click();
-  await expect(page.getByLabel('テキスト', { exact: true })).toHaveValue(/わがはい/);
+  await expect(page.getByLabel('テキスト', { exact: true })).toHaveValue(/^吾輩は猫である。/);
   await expect.poll(stored).toMatchObject({ texts: 0 });
 });
 

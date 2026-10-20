@@ -131,7 +131,7 @@ test('格子の図の押下数は、同じ対象をSingleで選んだ時の図�
 });
 
 test('色の尺度は全部の図の最大で揃う。最大の違う組では、格子の図の濃さが押下数÷全部の図の最大になる', async ({ page }) => {
-  // 既定のテキストで、QWERTYの最大は84、新下駄の最大は47
+  // 既定のテキストで、QWERTYの最大は79、新下駄の最大は46
   await seedSelections(page, 'qwerty', ['shingeta']);
   await page.goto('/analyzer/heatmap');
   const cell = cells(page).filter({ has: page.locator('[data-heatmap-diagram]') });
@@ -140,8 +140,8 @@ test('色の尺度は全部の図の最大で揃う。最大の違う組では�
   const grid = await keyReadings(cell.locator('[data-heatmap-diagram]'));
   const countOf = (tooltip: string) => Number(tooltip.split(': ')[1]!.replace('打', ''));
   const max = Math.max(...top.map((key) => countOf(key.tooltip)), ...grid.map((key) => countOf(key.tooltip)));
-  expect(max).toBe(84);
-  expect(Math.max(...grid.map((key) => countOf(key.tooltip)))).toBe(47);
+  expect(max).toBe(79);
+  expect(Math.max(...grid.map((key) => countOf(key.tooltip)))).toBe(46);
   for (const key of [...top, ...grid]) {
     expect(Math.abs(Number(key.heat) - countOf(key.tooltip) / max)).toBeLessThan(0.002);
   }

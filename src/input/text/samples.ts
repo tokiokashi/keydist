@@ -1,5 +1,6 @@
 import { SAMPLE_TEXT } from './sample-en.ts';
-import { SAMPLE_TEXT_JA, SAMPLE_TEXT_JA_LEGACY } from './sample-ja.ts';
+import { SAMPLE_TEXT_JA } from './sample-ja.ts';
+import { SAMPLE_TEXT_JA_NEKO } from './sample-ja-neko.ts';
 
 /**
  * サンプルテキストの言語。用語集の「テキストは言語を属性に持つ」に合わせる。
@@ -16,14 +17,15 @@ export const SAMPLE_TEXTS: Record<TextLanguage, Record<string, string>> = {
   en: { default: SAMPLE_TEXT.replace(/\s+/g, ' ').trim() },
   ja: {
     modern: SAMPLE_TEXT_JA.replace(/\s+/g, ''),
-    legacy: SAMPLE_TEXT_JA_LEGACY.replace(/\s+/g, ''),
+    legacy: SAMPLE_TEXT_JA_NEKO.replace(/\s+/g, ''),
   },
 };
 
 /**
  * ラベルの「（既定）」は`FALLBACK_SAMPLE_ID`・`DEFAULT_BUILTIN_TEXT_ID`（`builtin.ts`）
- * が実際に使う既定のsampleIdに付ける。日本語の既定は`ja.legacy`（「吾輩は猫である」、
- * 前処理後290文字）にする: `ja.modern`は単体ページを開いた瞬間の初回計算が重すぎるため。
+ * が実際に使う既定のsampleIdに付ける。日本語の既定は`ja.legacy`（青空文庫の『吾輩は猫である』の冒頭、
+ * 漢字かな交じりの原文）にする。漢字を読みに直す段が入るので、字数が増えるほどWorkspaceの
+ * ペインが数値を出すまでが延び、数千字を超えると10秒を超える。そのため、既定は短い冒頭にしている。
  */
 export const SAMPLE_TEXT_NAMES: Record<TextLanguage, Record<string, string>> = {
   en: { default: '英文（既定）' },

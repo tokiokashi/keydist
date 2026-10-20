@@ -2,13 +2,13 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { LAYOUT_BY_ID, LAYOUTS, LAYOUTS_JA } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES } from '#input/shapes/geometry.ts';
-import { sampleText } from '#input/text/samples.ts';
 import type { Setup } from '#input/setup/index.ts';
 import { EMPTY_SETTINGS_OVERRIDES } from '#engine/settings-items.ts';
 import { resolveEngineInput, type ResolvedInput } from '#engine/resolved-input.ts';
 import { generateTrace } from '#trace/generate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { computeLayerComboPressesExtraction } from './extract.ts';
+import { fixedTestText } from '../../../test/kana-test-text.ts';
 
 /**
  * 押下数の表の材料を、実際のengine経路（解決 → Trace → Metrics）で検証する。物理配列は、JISの物理配列が要る配列ではjis-row-staggered、それ以外はrow-staggered。
@@ -46,7 +46,7 @@ test('帰属先ごとの押下数の和は、全配列・日本語と英文の�
   let measured = 0;
   for (const id of ids) {
     for (const language of ['ja', 'en'] as const) {
-      const result = tryResolve(id, language, sampleText(language, language === 'ja' ? 'legacy' : 'default'));
+      const result = tryResolve(id, language, fixedTestText(language));
       // その言語のテキストを打てない配列は、エンジンが対象から外す
       if (!result.ok) {
         assert.equal(result.error.kind, 'incompatible-text', `${id}/${language}`);
@@ -65,7 +65,7 @@ test('帰属先ごとの押下数の和は、全配列・日本語と英文の�
 
 test('英文ではローマ字のコンボが外れ、コンボの行が無くなる', () => {
   const kinds = (language: 'ja' | 'en') => {
-    const result = tryResolve('oonishi-custom', language, sampleText(language, language === 'ja' ? 'legacy' : 'default'));
+    const result = tryResolve('oonishi-custom', language, fixedTestText(language));
     assert.ok(result.ok);
     if (!result.ok) throw new Error('unreachable');
     return measureInput(result.input).extracted.rows.map((row) => row.kind);

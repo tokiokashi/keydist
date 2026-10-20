@@ -539,7 +539,7 @@ test('setTextContentCommand: 組み込みから自作へ移った後に3回続�
 test('duplicateTextCommand: 複製元と同じ本文で始まる自作テキストになり、元に戻すで複製と選択が戻る', () => {
   nextTextId = 0;
   const step = applyCommand(emptyAssets(), emptyCommandHistory<KeydistAssets>(), duplicateTextCommand('standalone', generateTextId));
-  assert.match(step.assets.textLibrary.texts[0]!.text, /わがはい/);
+  assert.match(step.assets.textLibrary.texts[0]!.text, /^吾輩は猫である。/);
   assert.deepEqual(step.assets.standaloneTextSelection.ref, { kind: 'user', id: step.assets.textLibrary.texts[0]!.id });
   const back = undo(step.assets, step.history);
   assert.equal(back.assets.textLibrary.texts.length, 0);
