@@ -7,6 +7,7 @@ import {
   type ConditionTargetDiff,
 } from './condition-summary.ts';
 import { resetAllPlan } from './condition-edit.ts';
+import type { ConditionProvenanceItem } from './reading-evaluation.ts';
 import { ConditionEditor, type ConditionEditorContext } from './ConditionEditor.tsx';
 import { PresetSection } from './PresetSection.tsx';
 import { SetupLink } from './setup-link.tsx';
@@ -36,6 +37,11 @@ export interface ConditionSummaryProps {
    * 単一の対象のペインは渡さない。
    */
   readonly targetDiffs?: readonly ConditionTargetDiff[] | undefined;
+  /**
+   * 数値の出どころとして添える項目（読みの辞書の名前と版）。設定値ではなく、数値を作った段の記録なので、
+   * 条件の行とは別に出す。閉じた1行にも出し、見出しの1行に置く小さい形ではhoverの説明に出す。
+   */
+  readonly provenance?: readonly ConditionProvenanceItem[] | undefined;
   /** 全体のレベルの条件を書き換えるための手持ち。 */
   readonly editor: ConditionEditorContext;
   /**
@@ -52,7 +58,7 @@ function compactLabel(changedCount: number, hasTargetDiffs: boolean): string {
   return hasTargetDiffs ? '条件: 対象ごとに差あり' : '条件: 既定値';
 }
 
-export function ConditionSummary({ rows, header, targetDiffs = [], editor, compact = false }: ConditionSummaryProps) {
+export function ConditionSummary({ rows, header, targetDiffs = [], provenance = [], editor, compact = false }: ConditionSummaryProps) {
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   if (rows.length === 0) return null;
@@ -73,6 +79,7 @@ export function ConditionSummary({ rows, header, targetDiffs = [], editor, compa
     compact,
     line,
     hasTargetDiffs: targetDiffs.length > 0,
+    provenance,
   });
 
   return (
@@ -115,16 +122,22 @@ export function ConditionSummary({ rows, header, targetDiffs = [], editor, compa
               </>
             )}
             {targetDiffs.length > 0 ? <span className="pane-condition-diff-flag">対象ごとに差あり</span> : null}
+            {provenance.map((item) => (
+              <span key={item.label} className="pane-condition-provenance">
+                {item.label}: {item.value}
+              </span>
+            ))}
           </>
         )}
       </button>
-      {open ? <ConditionModal rows={rows} header={header} targetDiffs={targetDiffs} editor={editor} onClose={close} /> : null}
+      {open ? <ConditionModal rows={rows} header={header} targetDiffs={targetDiffs} provenance={provenance} editor={editor} onClose={close} /> : null}
     </div>
   );
 }
 
 interface ConditionModalProps extends ConditionSummaryProps {
   readonly targetDiffs: readonly ConditionTargetDiff[];
+  readonly provenance: readonly ConditionProvenanceItem[];
   readonly onClose: () => void;
 }
 
@@ -132,7 +145,7 @@ interface ConditionModalProps extends ConditionSummaryProps {
  * どの画面でも同じ器で開く（パソコン幅は中央のモーダル、スマホ幅は下からのシート。`pane-frame.css`）。
  * `<dialog>`のモーダルにするのは、背後の操作を止め、Escapeとフォーカスの戻りをブラウザに任せるため。
  */
-function ConditionModal({ rows, header, targetDiffs, editor, onClose }: ConditionModalProps) {
+function ConditionModal({ rows, header, targetDiffs, provenance, editor, onClose }: ConditionModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   // 消すレベルの組み立て（単体ページは全体と今の配列、Workspaceのペインはそのレベルだけ）は`resetAllPlan`
@@ -206,6 +219,19 @@ function ConditionModal({ rows, header, targetDiffs, editor, onClose }: Conditio
               ))}
           <PresetSection editor={editor} />
           <ConditionEditor editor={editor} rows={rows} />
+          {provenance.length > 0 ? (
+            <section className="pane-condition-diffs" aria-label="数値の出どころ">
+              <h4>数値の出どころ</h4>
+              <dl>
+                {provenance.map((item) => (
+                  <div key={item.label} className="pane-condition-diff">
+                    <dt>{item.label}</dt>
+                    <dd>{item.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          ) : null}
           {targetDiffs.length > 0 ? (
             <section className="pane-condition-diffs" aria-label="対象ごとの差">
               <h4>対象ごとの差</h4>

@@ -21,6 +21,7 @@ import { useTargetExtractions } from '../use-target-extractions.ts';
 import { useSetTargetSelection } from '../use-set-target-selection.ts';
 import { setTargetFigureState, setTargetsBesideSingle } from '../set-target-figures.ts';
 import type { PaneChrome, PaneEnvironment } from './pane-environment.ts';
+import { readingProvenance } from '../reading-evaluation.ts';
 import { PersonalSpeedSavedContext } from '#ui/primitives/personal-speed-link.tsx';
 
 /**
@@ -54,6 +55,7 @@ export interface SingleAnalyzerPaneProps<Options, Extracted> {
 }
 
 const NO_SET_TARGETS: TargetSet = { targets: [], baseline: undefined };
+const NO_BESIDE_MEMBERS: readonly never[] = [];
 
 export function SingleAnalyzerPane<Options, Extracted>({
   analyzer,
@@ -68,13 +70,16 @@ export function SingleAnalyzerPane<Options, Extracted>({
   setTargetSource,
 }: SingleAnalyzerPaneProps<Options, Extracted>) {
   const { setups, overrides, catalog, resolvedText, cache, dispatch, assetsReady } = env;
+  // 辞書の読み込み中は、評価に渡すテキストがまだ無いので依頼を出さない（漢字を打てない文字に数えた暫定の数値を出さない）
+  const readingLoading = env.reading?.kind === 'loading';
+  const conditionProvenance = useMemo(() => readingProvenance(resolvedText.reading), [resolvedText.reading]);
   const setupsById = useMemo(() => new Map(setups.map((setup) => [setup.id, setup] as const)), [setups]);
 
   const resolution = useMemo(
     () => resolvePaneInput(target, setupsById, catalog, overrides, resolvedText),
     [target, setupsById, catalog, overrides, resolvedText],
   );
-  const pane = useAnalyzerPane(cache, analyzer.definition, options, resolution);
+  const pane = useAnalyzerPane(cache, analyzer.definition, options, resolution, !readingLoading);
 
   // このAnalyzerが読む条件だけを、要約と対象名に足して数える（読まない条件を数えると、その条件で測ったように読めるため）
   const summaryScope = useMemo(
@@ -110,7 +115,7 @@ export function SingleAnalyzerPane<Options, Extracted>({
       })),
     [besideTargets, setupsById, catalog, overrides, resolvedText],
   );
-  const besideExtractions = useTargetExtractions(cache, analyzer.definition, options, besideMembers);
+  const besideExtractions = useTargetExtractions(cache, analyzer.definition, options, readingLoading ? NO_BESIDE_MEMBERS : besideMembers);
   // 表示名は、画面に並ぶ集合（Singleの対象と並べる対象）に対して計算する
   const besideNamed = useMemo(() => {
     if (besideMembers.length === 0) return new Map<string, ReturnType<typeof nameTargets>[number]>();
@@ -236,6 +241,8 @@ export function SingleAnalyzerPane<Options, Extracted>({
         ...(resolution.ok ? { layout: { id: resolution.input.layout.id, name: resolution.input.layout.name } } : {}),
         ...(target.kind === 'setup' ? { openSetups: [{ id: target.setupId }] } : {}),
       }}
+      conditionProvenance={conditionProvenance}
+      reading={env.reading}
       engineState={combinePaneStates(extraction, pane.trace)}
       traceErrors={traceErrors}
       settingsDiagnostics={settingsDiagnostics}

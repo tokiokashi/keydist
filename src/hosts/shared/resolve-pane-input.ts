@@ -5,7 +5,7 @@ import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { FingerAssignment } from '#input/shapes/geometry.ts';
 import type { UserRomajiRule } from '#input/romaji/rules.ts';
 import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
-import type { ResolvedText } from '#input/text/resolve.ts';
+import type { PaneText } from './reading-evaluation.ts';
 import type { ConditionValueNames } from './condition-summary.ts';
 
 /**
@@ -43,7 +43,7 @@ export function resolvePaneInput(
   setups: ReadonlyMap<string, Setup>,
   catalog: PaneCatalog,
   overrides: SettingsCascadeOverrides,
-  resolvedText: ResolvedText,
+  resolvedText: PaneText,
 ): ResolvedInputResult {
   return resolveEngineInput({
     target,
@@ -56,5 +56,6 @@ export function resolvePaneInput(
     overrides,
     text: resolvedText.text,
     language: resolvedText.language,
+    reading: resolvedText.reading,
   });
 }

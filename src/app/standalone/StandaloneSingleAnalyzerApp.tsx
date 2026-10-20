@@ -4,6 +4,7 @@ import { setStandaloneAnalyzerOptionsCommand } from '#engine/commands.ts';
 import type { SingleAnalyzerPaneParts } from '#analyzers/pane-parts.tsx';
 import { SingleAnalyzerStandalonePage } from '#hosts/standalone/index.ts';
 import { sharedEngineComputer } from './engine-computer.ts';
+import { sharedReadingSource } from './reading-source.ts';
 import { generatePresetId, generateTextId } from './id-generator.ts';
 import { useKeydistAssets } from './use-keydist-assets.ts';
 import { usePaneCatalog } from './use-pane-catalog.ts';
@@ -68,6 +69,7 @@ export function StandaloneSingleAnalyzerApp<Options, Extracted>({ analyzer }: { 
         assetsReady={ready}
         dispatch={dispatch}
         cache={sharedEngineComputer}
+        reading={sharedReadingSource}
         catalog={catalog}
         generateTextId={generateTextId}
         generatePresetId={generatePresetId}

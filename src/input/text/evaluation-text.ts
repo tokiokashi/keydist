@@ -19,6 +19,11 @@ export interface EvaluationTextOptions {
 
 const NOT_SYMBOL = /[\p{L}\p{M}\p{N}\s]/u;
 
+/** 記号か（文字・結合文字・数字・空白のどれでもない）。 */
+export function isSymbolChar(char: string): boolean {
+  return !NOT_SYMBOL.test(char);
+}
+
 /** 既定の範囲で残す記号。 */
 const DEFAULT_KEPT_SYMBOLS: ReadonlySet<string> = new Set(['、', '。']);
 
@@ -37,7 +42,7 @@ export function prepareEvaluationText(text: string, options: EvaluationTextOptio
       out += options.layoutHasChar(char) ? char : punctuation;
       continue;
     }
-    if (options.keepSymbols || NOT_SYMBOL.test(char) || DEFAULT_KEPT_SYMBOLS.has(char)) out += char;
+    if (options.keepSymbols || !isSymbolChar(char) || DEFAULT_KEPT_SYMBOLS.has(char)) out += char;
   }
   return out;
 }

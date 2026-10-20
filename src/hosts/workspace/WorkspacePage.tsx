@@ -43,6 +43,8 @@ import { ContextBar, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx
 import { DefaultShapeChip } from '#hosts/shared/DefaultShapeChip.tsx';
 import { KeySelectionContext, useKeySelectionStore } from '#hosts/shared/key-selection-store.tsx';
 import { useStableResolvedText } from '#hosts/shared/stable-resolved-text.ts';
+import type { ReadingSource } from '#hosts/shared/reading-evaluation.ts';
+import { useReadingEvaluation } from '#hosts/shared/use-reading-evaluation.ts';
 import { useLatestCallback } from '#hosts/shared/use-latest-callback.ts';
 import type { PaneEnvironment } from '#hosts/shared/panes/pane-environment.ts';
 import type { PaneCatalog } from '#hosts/shared/resolve-pane-input.ts';
@@ -78,6 +80,8 @@ export interface WorkspacePageProps {
   readonly dispatch: (command: Command<KeydistAssets>) => void;
   /** Workspaceの全ペインが共有する。同じ条件の計算は1回で済む。 */
   readonly cache: EngineComputer;
+  /** 漢字を読みに直す入口（`app` が組み立てる）。漢字を含む日本語のテキストのときだけ呼ぶ。 */
+  readonly reading: ReadingSource;
   readonly catalog: PaneCatalog;
   readonly generateTextId: TextIdGenerator;
   /** ペインのidの発行。 */
@@ -110,6 +114,7 @@ export function WorkspacePage({
   assetsReady,
   dispatch,
   cache,
+  reading,
   catalog,
   generateTextId,
   generateId,
@@ -177,6 +182,8 @@ export function WorkspacePage({
   const resolvedText = useStableResolvedText(
     useMemo(() => (workspace === undefined ? undefined : resolveTextSelection(workspace.text, assets.textLibrary)), [workspace, assets.textLibrary]),
   );
+  // 漢字を含む日本語のテキストは、評価の前に読みに直す。ペインへ渡すのは直した後のテキストと、その状態
+  const evaluation = useReadingEvaluation(resolvedText, reading);
 
   // 条件のモーダルの元に戻すも、文脈バーと同じく待っている書き込みを先に反映してから戻す
   const undo = useLatestCallback(pageHistory.undo);
@@ -191,14 +198,15 @@ export function WorkspacePage({
 
   const env: PaneEnvironment | undefined = useMemo(
     () =>
-      resolvedText === undefined
+      evaluation === undefined
         ? undefined
         : {
             setups: assets.setupLibrary.setups,
             overrides,
             workspaceId,
             catalog,
-            resolvedText,
+            resolvedText: evaluation.text,
+            reading: evaluation.state,
             cache,
             dispatch,
             presetLibrary: assets.presetLibrary,
@@ -206,19 +214,7 @@ export function WorkspacePage({
             undo,
             assetsReady,
           },
-    [
-      assets.setupLibrary.setups,
-      overrides,
-      workspaceId,
-      assets.presetLibrary,
-      catalog,
-      resolvedText,
-      cache,
-      dispatch,
-      generatePresetId,
-      undo,
-      assetsReady,
-    ],
+    [assets.setupLibrary.setups, overrides, workspaceId, assets.presetLibrary, catalog, evaluation, cache, dispatch, generatePresetId, undo, assetsReady],
   );
 
   const panes = workspace?.panes;

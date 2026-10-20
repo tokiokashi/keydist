@@ -7,6 +7,7 @@ import type { ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { WorkspacePage } from '#hosts/workspace/index.ts';
 import { PRESET_FILE_IO } from '../shell/preset-file-io.ts';
 import { sharedEngineComputer } from '../standalone/engine-computer.ts';
+import { sharedReadingSource } from '../standalone/reading-source.ts';
 import { generatePresetId, generateTextId } from '../standalone/id-generator.ts';
 import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
 import { usePaneCatalog } from '../standalone/use-pane-catalog.ts';
@@ -98,6 +99,7 @@ export function WorkspaceApp({ workspaceId }: { readonly workspaceId: string }) 
         assetsReady={ready}
         dispatch={dispatch}
         cache={sharedEngineComputer}
+        reading={sharedReadingSource}
         catalog={catalog}
         generateTextId={generateTextId}
         generateId={generatePaneId}

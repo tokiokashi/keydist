@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { ensureDictionaryZip } from '../scripts/dictionary-fetch.ts';
-import { DICTIONARY_SPEC } from '../src/platform/reading/dictionary-spec.ts';
+import { DICTIONARY_SPEC, LIBRARY_SPEC } from '../src/platform/reading/dictionary-spec.ts';
 
 const body = new TextEncoder().encode('dictionary zip stand-in');
 const sha = createHash('sha256').update(body).digest('hex');
@@ -70,6 +70,7 @@ test('取得の応答が失敗なら失敗する', async () => {
 test('辞書の版・取得元・ファイル名はlindera-wasmの版と一致する', async () => {
   const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')) as { dependencies: Record<string, string> };
   assert.equal(pkg.dependencies['lindera-wasm'], DICTIONARY_SPEC.version);
+  assert.equal(pkg.dependencies[LIBRARY_SPEC.name], LIBRARY_SPEC.version);
   assert.ok(DICTIONARY_SPEC.fileName.includes(DICTIONARY_SPEC.version));
   assert.ok(DICTIONARY_SPEC.upstreamUrl.includes(`/v${DICTIONARY_SPEC.version}/`));
   assert.ok(DICTIONARY_SPEC.upstreamUrl.endsWith(`/${DICTIONARY_SPEC.fileName}`));

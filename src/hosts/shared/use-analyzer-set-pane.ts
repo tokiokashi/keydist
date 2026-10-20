@@ -21,11 +21,14 @@ export function useAnalyzerSetPane<Options, Extracted>(
   definition: SetAnalyzerDefinition<Options, Extracted>,
   options: Options,
   members: readonly EngineSetMemberInput[],
+  /** falseの間は依頼を出さない（漢字を読みに直す辞書の読み込み中は、評価に渡すテキストがまだ無い）。 */
+  active = true,
 ): UseAnalyzerSetPaneResult<Extracted> {
   const [extraction, setExtraction] = useState<ExtractionRequestState<Extracted>>(IDLE_EXTRACTION as ExtractionRequestState<Extracted>);
   const channelsRef = useRef<AnalyzerSetPaneChannels<Options> | undefined>(undefined);
 
   useEffect(() => {
+    if (!active) return;
     channelsRef.current = syncAnalyzerSetPaneChannels(channelsRef.current, {
       cache,
       definition,
@@ -34,7 +37,7 @@ export function useAnalyzerSetPane<Options, Extracted>(
       onExtraction: setExtraction,
     });
     // `use-analyzer-pane.ts`と同じ理由（無限ループ対策）で依存配列をこの4つに絞る。
-  }, [cache, definition, options, members]);
+  }, [cache, definition, options, members, active]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: cacheは止める時を決める合図。本体では読まない。依存から外すと、cacheが替わっても前のcacheの購読が残る
   useEffect(

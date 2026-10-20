@@ -18,6 +18,13 @@ export const DICTIONARY_SPEC = {
   sha256: '5ed4bba6b429030b0387df67d40d5751d35dedef0306f4bac6d957cad5f04b72',
 } as const;
 
+/** 辞書を読んで解析する解析器。数値の条件には名前と版を記録する（画面には出さない）。 */
+export const LIBRARY_SPEC = {
+  name: 'lindera-wasm',
+  /** `package.json` の `lindera-wasm` の版と同じ */
+  version: '6.2.0',
+} as const;
+
 /** zipの中の告知文のファイル名（ディレクトリを除いた名前） */
 export const DICTIONARY_NOTICE_ENTRY = 'NOTICE.txt';
 

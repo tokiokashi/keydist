@@ -24,12 +24,15 @@ export function useAnalyzerPane<Options, Extracted>(
   definition: SingleAnalyzerDefinition<Options, Extracted>,
   options: Options,
   resolution: ResolvedInputResult,
+  /** falseの間は依頼を出さない（漢字を読みに直す辞書の読み込み中は、評価に渡すテキストがまだ無い）。 */
+  active = true,
 ): UseAnalyzerPaneResult<Extracted> {
   const [extraction, setExtraction] = useState<ExtractionRequestState<Extracted>>(IDLE_EXTRACTION as ExtractionRequestState<Extracted>);
   const [trace, setTrace] = useState<TraceRequestState>(IDLE_TRACE);
   const channelsRef = useRef<AnalyzerPaneChannels<Options> | undefined>(undefined);
 
   useEffect(() => {
+    if (!active) return;
     channelsRef.current = syncAnalyzerPaneChannels(channelsRef.current, {
       cache,
       definition,
@@ -43,7 +46,7 @@ export function useAnalyzerPane<Options, Extracted>(
     // cache/definitionは安定参照、options/resolutionは呼び出し側が値が変わった時だけ
     // 新しい参照を作る前提（`analyzer-channels.ts`のコメント参照）なので、この4つを
     // 依存にすれば「値が変わった時だけ同期する」が実現する。
-  }, [cache, definition, options, resolution]);
+  }, [cache, definition, options, resolution, active]);
 
   // アンマウント時だけ購読を止める（cacheが変わることはこの単体ページでは無いが、
   // 念のため、cacheが替わった時にも止める）。

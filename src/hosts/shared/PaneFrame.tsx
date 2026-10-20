@@ -4,6 +4,7 @@ import type { CodecDiagnostic } from '#input/codec/index.ts';
 import { describeEngineRequestError, engineRequestErrorDetail, paneStatusLabel, TRACE_ERRORS_SENTENCE } from './pane-status.ts';
 import type { ConditionHeaderInfo, ConditionSummaryRow, ConditionTargetDiff } from './condition-summary.ts';
 import { ConditionSummary } from './ConditionSummary.tsx';
+import type { ConditionProvenanceItem, PaneReadingState } from './reading-evaluation.ts';
 import type { ConditionEditorContext } from './ConditionEditor.tsx';
 import { ErrorDetails } from './ErrorDetails.tsx';
 import { PaneErrorBoundary } from './PaneErrorBoundary.tsx';
@@ -93,6 +94,14 @@ export interface PaneFrameProps {
   readonly conditionRows: readonly ConditionSummaryRow[];
   /** 条件のモーダルが全体のレベルの条件を書き換えるための手持ち。 */
   readonly conditionEditor: ConditionEditorContext;
+  /** 数値の出どころとして条件の要約に添える項目（読みの辞書の名前と版など）。条件の設定値ではないので、行とは別に渡す。 */
+  readonly conditionProvenance?: readonly ConditionProvenanceItem[] | undefined;
+  /**
+   * 漢字を読みに直す段の状態。`loading` の間は本体を出さず、読み込み中だけを出す
+   * （漢字を打てない文字に数えた暫定の数値を、読みに直した数値と取り違えないため）。
+   * `failed` の間は本体を出したまま、漢字を読みに直していないことを伝える。
+   */
+  readonly reading?: PaneReadingState | undefined;
   /** 複数の対象を持つペインの、対象ごとの差（`conditionRows`は共通の条件）。 */
   readonly conditionTargetDiffs?: readonly ConditionTargetDiff[] | undefined;
   /** 抽出の依頼の現在の状態。値そのもの（`value`）は本体側で使うので、ここでは見ない。 */
@@ -179,6 +188,8 @@ export function PaneFrame({
   conditionRows,
   conditionEditor,
   conditionTargetDiffs,
+  conditionProvenance,
+  reading,
   engineState,
   traceErrors,
   settingsDiagnostics,
@@ -192,7 +203,8 @@ export function PaneFrame({
   // 前の結果が無い計算中は、本文が「計算中…」を出している。見出しにも出すと重複し、
   // バッジの幅の分だけ対象ボタンが動いて、計算が済むと戻る。前の結果を表示している間と失敗は見出しで伝える
   const bodyShowsBusy = engineState.status === 'computing' && children === undefined;
-  const statusLabel = emptyContent === undefined && assetsReady && !bodyShowsBusy ? paneStatusLabel(engineState.status) : '';
+  const readingLoading = reading?.kind === 'loading';
+  const statusLabel = emptyContent === undefined && assetsReady && !bodyShowsBusy && !readingLoading ? paneStatusLabel(engineState.status) : '';
   const errorMessage = emptyContent === undefined && engineState.status === 'failed' ? describeEngineRequestError(engineState.error) : undefined;
   const paneName = targetName === undefined ? name : `${name} — ${targetName}`;
   const Heading = headingLevel === 1 ? 'h1' : 'h2';
@@ -230,7 +242,14 @@ export function PaneFrame({
   };
 
   const conditionSummary = (
-    <ConditionSummary rows={conditionRows} header={header} targetDiffs={conditionTargetDiffs} editor={conditionEditor} compact={nameInLead} />
+    <ConditionSummary
+      rows={conditionRows}
+      header={header}
+      targetDiffs={conditionTargetDiffs}
+      provenance={conditionProvenance}
+      editor={conditionEditor}
+      compact={nameInLead}
+    />
   );
 
   return (
@@ -332,6 +351,12 @@ export function PaneFrame({
         </p>
       ) : null}
 
+      {reading?.kind === 'failed' ? (
+        <p className="pane-settings-diagnostics" role="status" data-pane-reading="failed">
+          読みの辞書を読み込めませんでした。漢字は読みに直さず、打てない文字として数えています
+        </p>
+      ) : null}
+
       {linkNotices?.map((line) => (
         <p key={line} className="pane-settings-diagnostics" role="status" data-pane-link-notice="true">
           {line}
@@ -347,6 +372,10 @@ export function PaneFrame({
           <p>{errorMessage}</p>
           {engineState.status === 'failed' ? <ErrorDetails lines={engineRequestErrorDetail(engineState.error)} /> : null}
         </div>
+      ) : readingLoading ? (
+        <p className="pane-busy" aria-busy="true" data-pane-busy="true" data-pane-reading="loading">
+          読みの辞書を読み込み中…
+        </p>
       ) : children === undefined ? (
         <p className="pane-busy" aria-busy="true" data-pane-busy="true">
           計算中…

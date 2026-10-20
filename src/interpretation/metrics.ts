@@ -4,6 +4,7 @@ import { countStates, type StateCounts } from './excess-distribution.ts';
 import { DEFAULT_CHAIN_INTERPRETATION, type ChainInterpretation } from './structure/chain.ts';
 import { DEFAULT_ARPEGGIO_INTERPRETATION, type ArpeggioInterpretation } from './structure/arpeggio.ts';
 import { COMBO_LAYER_ID, SINGLE_LAYER_ID } from '#input/layouts/types.ts';
+import type { ReadingConditions } from '#input/text/reading.ts';
 import {
   DEFAULT_ACTION_REALIZATION_POLICY,
   DEFAULT_TRIGGER_REALIZATION_POLICY,
@@ -190,6 +191,11 @@ export interface MetricConditions {
   romajiRuleId: string | null;
   /** 日本語のテキストで、かなと `、` `。` 以外の記号も評価に渡したか（仕様 §4.6）。 */
   keepSymbols: boolean;
+  /**
+   * 漢字を含む日本語のテキストを、読みに直して評価したか（仕様 §4.6・§12.3）。
+   * 読みに直す対象でないテキスト（漢字を含まない・英語）はnull。
+   */
+  reading: ReadingConditions | null;
 }
 
 export const DEFAULT_METRIC_CONDITIONS: MetricConditions = {
@@ -202,6 +208,7 @@ export const DEFAULT_METRIC_CONDITIONS: MetricConditions = {
   actionRealizationPolicy: { ...DEFAULT_ACTION_REALIZATION_POLICY },
   romajiRuleId: null,
   keepSymbols: false,
+  reading: null,
 };
 
 /** 各打鍵の押下直後のスナップショットから、ペアごとのホーム間隔からの超過の列を求める（仕様 §11.6）。0でクランプはしない */
@@ -333,6 +340,10 @@ export function computeMetrics(trace: Trace, geometry: Geometry, conditions: Met
       arpeggioInterpretation: { ...conditions.arpeggioInterpretation },
       triggerRealizationPolicy: { ...conditions.triggerRealizationPolicy },
       actionRealizationPolicy: { ...conditions.actionRealizationPolicy },
+      reading:
+        conditions.reading === null
+          ? null
+          : { ...conditions.reading, dictionary: { ...conditions.reading.dictionary }, library: { ...conditions.reading.library } },
     },
     strokes: scalars.actions,
     actions: scalars.actions,

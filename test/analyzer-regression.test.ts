@@ -160,6 +160,7 @@ function recompute(fixtureCase: FixtureCase) {
     actionRealizationPolicy: fixtureCase.conditions.actionRealizationPolicy,
     romajiRuleId: fixtureCase.conditions.romajiRuleId,
     keepSymbols: false,
+    reading: null,
   });
 
   return { trace, analysis, metrics, geometry, options };
