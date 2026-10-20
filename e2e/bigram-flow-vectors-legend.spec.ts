@@ -90,7 +90,7 @@ async function openWorkspace(page: Page, c: SideCase): Promise<void> {
     {
       id: 'legend',
       name: '凡例の確認',
-      text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+      text: { ref: { kind: 'builtin', id: 'builtin:ja.modern' } },
       panes: [c.fingers === undefined ? flow : { ...flow, options: { selectedFingers: c.fingers } }],
       grid: [{ id: 'f', x: 0, y: 0, w: c.w, h: c.h }],
     },

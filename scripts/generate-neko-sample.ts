@@ -13,7 +13,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { extractZip } from '../src/platform/reading/zip.ts';
-import { convertAozora, extractBody, openingOf } from './aozora-core.ts';
+import { convertAozora, extractBody, firstChapterOf } from './aozora-core.ts';
 
 /** 原文のアーカイブ。 */
 export const AOZORA_SOURCE = {
@@ -76,18 +76,20 @@ export interface GeneratedFile {
 export function buildFiles(raw: string): { files: GeneratedFile[]; summary: Record<string, number> } {
   const body = extractBody(raw);
   const whole = convertAozora(body);
-  const opening = openingOf(whole.text);
+  // 既定にするのは第一章。全文は長すぎて、Workspaceが数値を出すまでに分単位でかかりメモリも足りなくなる。
+  // 章の境目は、変換が見出しの行を取り除く前の本文で決める
+  const chapter = convertAozora(firstChapterOf(body)).text.trim();
   const files: GeneratedFile[] = [
     {
       path: join(TEXT_DIR, 'sample-ja-neko.ts'),
-      source: moduleSource('SAMPLE_TEXT_JA_NEKO', '既定の日本語サンプル。『吾輩は猫である』の冒頭（最初の段落の途中まで）。', opening),
+      source: moduleSource('SAMPLE_TEXT_JA_NEKO', '既定の日本語サンプル。『吾輩は猫である』の第一章。', chapter),
     },
   ];
   return {
     files,
     summary: {
       全文の字数: [...whole.text.replace(/\s+/g, '')].length,
-      冒頭の字数: [...opening.replace(/\s+/g, '')].length,
+      第一章の字数: [...chapter.replace(/\s+/g, '')].length,
       外字を字に直した数: whole.gaijiConverted,
       外字を取り除いた数: whole.gaijiRemoved,
       章見出しの行: whole.headingLinesRemoved,

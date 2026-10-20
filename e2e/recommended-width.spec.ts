@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { waitForHydration } from './hydration-helper.ts';
+import { useKanaText } from './kana-text-helper.ts';
 
 /**
  * ペインの推奨幅（既定64rem、比較表だけ96rem）。
@@ -63,6 +64,11 @@ for (const { route, limit } of cases) {
   });
 }
 
+// 数値でなく図の形を見る検査なので、漢字を含まない短いテキストで回す
+test.beforeEach(async ({ page }) => {
+  await useKanaText(page);
+});
+
 test('Workspaceのペイン: 広いペインでも中身は推奨幅で止まり、見出しは幅いっぱい', async ({ page }) => {
   await page.addInitScript((ids) => {
     const targets = ids.map((layoutId) => ({ kind: 'layout', layoutId }));
@@ -74,7 +80,7 @@ test('Workspaceのペイン: 広いペインでも中身は推奨幅で止まり
           {
             id: 'seeded',
             name: '幅の確認',
-            text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+            text: { ref: { kind: 'builtin', id: 'builtin:ja.modern' } },
             panes: [{ id: 'p1', analyzerId: 'n-sensitivity', binding: { mode: 'fixed', target: { kind: 'set', selection: { targets } } } }],
             grid: [{ id: 'p1', x: 0, y: 0, w: 24, h: 20 }],
           },

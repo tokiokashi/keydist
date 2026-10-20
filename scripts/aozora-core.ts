@@ -140,11 +140,12 @@ export function assertNoMarkup(text: string): void {
   }
 }
 
-/** 既定のサンプルにする冒頭の範囲。「吾輩は猫である。」から、最初の「…あったばかりである。」まで。 */
-export const OPENING_END = '感じがあったばかりである。';
-
-export function openingOf(text: string): string {
-  const end = text.indexOf(OPENING_END);
-  if (end === -1) throw new Error('冒頭の終わりが見つからない');
-  return text.slice(0, end + OPENING_END.length).trim();
+/**
+ * 変換前の本文から、第一章（先頭から二つ目の章見出しの行の手前まで）を返す。
+ * `convertAozora` が章見出しの行を取り除くので、章の境目は変換の前に見出しの行で決める。
+ */
+export function firstChapterOf(body: string): string {
+  const second = [...body.matchAll(HEADING_LINE)][1];
+  if (second === undefined) throw new Error('二つ目の章見出しが見つからない');
+  return body.slice(0, second.index);
 }

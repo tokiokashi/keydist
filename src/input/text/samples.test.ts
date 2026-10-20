@@ -25,7 +25,7 @@ test('sampleTextEntries: language:sampleIdの組み合わせに重複が無い�
 test('既定の日本語サンプルは、青空文庫の記法を含まない漢字かな交じりの原文で、現代文は漢字を含まない', () => {
   const legacy = sampleText('ja', 'legacy');
   assert.ok(legacy.startsWith('吾輩は猫である。名前はまだ無い。'));
-  assert.ok(legacy.endsWith('あったばかりである。'));
+  assert.ok(legacy.endsWith('無名の猫で終るつもりだ。'));
   assert.ok(containsKanji(legacy));
   assertNoMarkup(legacy);
   assert.equal(containsKanji(sampleText('ja', 'modern')), false);

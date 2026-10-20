@@ -266,7 +266,7 @@ async function openTwoComparisons(page: Page): Promise<void> {
   await page.keyboard.press('Escape');
   const tables = page.locator('.comparison-table');
   for (let n = 0; n < 2; n += 1) {
-    await expect(tables.nth(n).locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(3, { timeout: 15_000 });
+    await expect(tables.nth(n).locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(3, { timeout: 60_000 });
   }
 }
 
@@ -298,7 +298,7 @@ test('Workspace: 共有に従う2つの比較表では、片方を並べると�
   await page.reload();
   await waitForHydration(page);
   for (let n = 0; n < 2; n += 1) {
-    await expect(headerOf(page.locator('.comparison-table').nth(n), '距離')).toHaveAttribute('aria-sort', 'descending');
+    await expect(headerOf(page.locator('.comparison-table').nth(n), '距離')).toHaveAttribute('aria-sort', 'descending', { timeout: 60_000 });
   }
 
   // ⋯の「解析設定を初期値に戻す」で共有の並び替えが解除され、もう片方も解除される。

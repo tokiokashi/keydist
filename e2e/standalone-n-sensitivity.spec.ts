@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { enabledValues, recordControlStates } from './options-draft-recorder.ts';
 import { expectTargetNames, openSettings, openTargetSelection, targetNames, toggleTarget } from './pane-helper.ts';
+import { useKanaText } from './kana-text-helper.ts';
 
 /**
  * N感度単体ページのE2E。
@@ -86,6 +87,11 @@ async function measureLegend(page: import('@playwright/test').Page, svgSelector 
 async function addTarget(page: import('@playwright/test').Page, key: string) {
   await toggleTarget(page, key);
 }
+
+// 数値でなく図の形を見る検査なので、漢字を含まない短いテキストで回す
+test.beforeEach(async ({ page }) => {
+  await useKanaText(page);
+});
 
 test('新規プロファイルで、配列を2つ直接選ぶだけでSetupを作らずに2本の折れ線が出る', async ({ page }) => {
   await page.goto('/analyzer/n-sensitivity');
@@ -611,7 +617,7 @@ test('縦軸の範囲を切り替えると目盛りが変わり、表とツー�
   const base = await shownValues(page);
 
   await settings.getByRole('radio', { name: '値の範囲' }).check();
-  await expect.poll(() => yTickTexts(page)).toEqual(['40%', '60%', '80%', '100%']);
+  await expect.poll(() => yTickTexts(page)).toEqual(['60%', '70%', '80%', '90%', '100%']);
   expect(await shownValues(page)).toEqual(base);
 
   await (await openSettings(page)).getByRole('radio', { name: '粗い区切り' }).check();
@@ -810,6 +816,7 @@ test('Workspaceの狭い4ペイン（約340px）でも、凡例は図の中に�
           {
             id: 'four-panes',
             name: '4ペイン',
+            text: { ref: { kind: 'builtin', id: 'builtin:ja.modern' } },
             panes: [set('a'), set('b'), set('c'), set('d')],
             grid: ['a', 'b', 'c', 'd'].map((id, i) => ({ id, x: i * 6, y: 0, w: 6, h: 22 })),
           },
@@ -840,5 +847,5 @@ test('実測値で縦軸の範囲を粗い区切りにすると、目盛りは�
   await seedLayouts(page, ['qwerty', 'dvorak', 'colemak-dh']);
   await page.goto('/analyzer/n-sensitivity');
   await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(3, { timeout: 20_000 });
-  expect(await yTickTexts(page)).toEqual(['100 u', '200 u', '300 u', '400 u']);
+  expect(await yTickTexts(page)).toEqual(['0 u', '1000 u', '2000 u', '3000 u']);
 });

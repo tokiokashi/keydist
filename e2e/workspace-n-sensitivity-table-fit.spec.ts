@@ -48,7 +48,7 @@ async function seed(page: Page, panes: readonly unknown[], grid: unknown) {
     (value) => {
       localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
     },
-    { id: 'fit', name: '収まりの確認', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes, grid },
+    { id: 'fit', name: '収まりの確認', text: { ref: { kind: 'builtin', id: 'builtin:ja.modern' } }, panes, grid },
   );
 }
 

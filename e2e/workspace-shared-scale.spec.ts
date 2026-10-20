@@ -27,7 +27,7 @@ async function openWorkspace(page: Page, panes: readonly { readonly id: string }
     {
       id: 's',
       name: '目盛り',
-      text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+      text: { ref: { kind: 'builtin', id: 'builtin:ja.modern' } },
       panes,
       grid: panes.map((pane, i) => ({ id: pane.id, x: (i % 2) * 12, y: Math.floor(i / 2) * 20, w: 12, h: 20 })),
     },

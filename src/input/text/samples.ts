@@ -23,9 +23,10 @@ export const SAMPLE_TEXTS: Record<TextLanguage, Record<string, string>> = {
 
 /**
  * ラベルの「（既定）」は`FALLBACK_SAMPLE_ID`・`DEFAULT_BUILTIN_TEXT_ID`（`builtin.ts`）
- * が実際に使う既定のsampleIdに付ける。日本語の既定は`ja.legacy`（青空文庫の『吾輩は猫である』の冒頭、
+ * が実際に使う既定のsampleIdに付ける。日本語の既定は`ja.legacy`（青空文庫の『吾輩は猫である』の第一章、
  * 漢字かな交じりの原文）にする。漢字を読みに直す段が入るので、字数が増えるほどWorkspaceの
- * ペインが数値を出すまでが延び、数千字を超えると10秒を超える。そのため、既定は短い冒頭にしている。
+ * ペインが数値を出すまでが延びる。全文（約32万字）は数値が出るまでに分単位でかかりメモリも足りなくなるため、
+ * 既定は第一章（約1.2万字）までにしている。
  */
 export const SAMPLE_TEXT_NAMES: Record<TextLanguage, Record<string, string>> = {
   en: { default: '英文（既定）' },
