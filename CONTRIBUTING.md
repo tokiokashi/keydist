@@ -122,6 +122,15 @@ CIもPRの各コミットに同じスクリプトを掛けるため、フック�
 - 切っている規則は `biome.json` の `linter.rules` にある。直す単位を別のissueにして順に入れ、直したら `off` を外す
 - 書式だけを変えたコミットは `.git-blame-ignore-revs` に載せる。手元の `git blame` で読み飛ばすには、clone直後に1度 `git config blame.ignoreRevsFile .git-blame-ignore-revs` を打つ（GitHubの画面は、このファイルを自動で読む）
 
+## 読みの辞書
+
+漢字の読みの解析に使う辞書（IPADICの zip）は、リポジトリに置かず、`npm run dev` と `npm run build` が `.cache/dictionary/`（追跡しない）へ取る。
+版・取得元・sha256は `src/platform/reading/dictionary-spec.ts` に固定してあり、sha256が合わなければ止まる。置き場に合う zip があれば取り直さない。
+`npm test` は辞書に頼らない（置き場に zip がある時だけ、実際の辞書で解析する検査が走る）。
+公開物には zip と告知文（`lindera-ipadic-NOTICE.txt`）が入る。CIは zip を `dictionary-spec.ts` のハッシュをキーにキャッシュする（`ci.yml`・`e2e.yml`・`pages.yml`・`update-screenshots.yml`）。
+取得元のリリースから zip が消えると、過去のタグのビルドは取得で失敗する。この危険は受け入れてある。
+同じ zip を別の場所へ置いて `upstreamUrl` を差し替えれば、同じ公開物を作り直せる。
+
 ## ブランチとPR
 
 - `main` に直接pushしない。`<type>/<短い説明>` のブランチを切る（例: `feat/kana-layout-form`）

@@ -413,7 +413,7 @@ src/
     theme/           token
     keyboard/        キーボード図など、入力の型を知る部品
     charts/          グラフの部品
-  platform/          storage・ブラウザAPI
+  platform/          storage・ブラウザAPI。`reading/` は漢字の読みの解析（Worker・wasm・辞書の取得と保存）
   app/               組み立て・シェル・AppState
   routes/            TanStack Startの規約どおり。createFileRouteだけの薄いファイル
   router.tsx

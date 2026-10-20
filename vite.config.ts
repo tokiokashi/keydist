@@ -3,6 +3,7 @@ import viteReact from '@vitejs/plugin-react';
 import { nitro } from 'nitro/vite';
 import { readFileSync, realpathSync } from 'node:fs';
 import { defineConfig, type Plugin } from 'vite';
+import { dictionaryPlugin } from './scripts/dictionary-plugin.ts';
 
 const base = process.env.KEYDIST_BASE_PATH ?? '/';
 
@@ -36,6 +37,7 @@ export default defineConfig({
   },
   plugins: [
     e2eRootProbe(),
+    dictionaryPlugin(),
     tanstackStart({
       srcDirectory: 'src',
       // 保存したWorkspaceのURL（/workspace/<id>）はidがビルド時に分からず、URLごとのHTMLを作れない。
@@ -53,4 +55,6 @@ export default defineConfig({
     nitro(),
   ],
   build: { target: 'es2022' },
+  // lindera-wasmはwasmを `new URL(..., import.meta.url)` で読む。devの依存の事前バンドルに入れると、その位置が壊れる
+  optimizeDeps: { exclude: ['lindera-wasm'] },
 });

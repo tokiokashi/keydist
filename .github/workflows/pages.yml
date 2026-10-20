@@ -119,6 +119,14 @@ jobs:
           key: npm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
           restore-keys: npm-${{ runner.os }}-
 
+      # ビルドが取る読みの辞書のzip（scripts/dictionary-fetch.ts）。版とハッシュはdictionary-spec.tsにあるので、そのファイルをキーにする。
+      # 取得元が消えた時の備えにはならない（キャッシュは期限で消える）
+      - name: Cache reading dictionary
+        uses: actions/cache@v6
+        with:
+          path: .cache/dictionary
+          key: dictionary-${{ hashFiles('src/platform/reading/dictionary-spec.ts') }}
+
       - name: Install dependencies
         id: install
         shell: bash
