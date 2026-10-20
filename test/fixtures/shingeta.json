@@ -5,7 +5,7 @@
     "url": "https://kouy.exblog.jp/13627994/",
     "sha": "published-2010-11-13",
     "path": "新下駄配列を作りました / 公開配列表",
-    "transform": "考案者kouy氏が公開した配列表を仕様根拠として、keydistのANSI Face表現へ独自に記述し、機能キー・記号セルとJIS専用列を解析対象から除外する"
+    "transform": "考案者kouy氏が公開した配列表を仕様根拠として、keydistのANSI Face表現へ独自に記述し、機能キーとJIS専用列を解析対象から除外する。1つの打鍵が1つの記号を出すセルは採る"
   },
   "faces": [
     {
@@ -141,11 +141,11 @@
           "",
           "",
           "",
-          "",
-          "",
-          "",
-          "",
-          "",
+          "，",
+          "「",
+          "」",
+          "；",
+          "＠",
           ""
         ],
         [
@@ -455,41 +455,6 @@
       "column": 10,
       "value": "￥",
       "reason": "jis-only-key"
-    },
-    {
-      "faceIndex": 2,
-      "row": 0,
-      "column": 6,
-      "value": "，",
-      "reason": "symbol"
-    },
-    {
-      "faceIndex": 2,
-      "row": 0,
-      "column": 7,
-      "value": "「",
-      "reason": "symbol"
-    },
-    {
-      "faceIndex": 2,
-      "row": 0,
-      "column": 8,
-      "value": "」",
-      "reason": "symbol"
-    },
-    {
-      "faceIndex": 2,
-      "row": 0,
-      "column": 9,
-      "value": "；",
-      "reason": "symbol"
-    },
-    {
-      "faceIndex": 2,
-      "row": 0,
-      "column": 10,
-      "value": "＠",
-      "reason": "symbol"
     }
   ]
 }

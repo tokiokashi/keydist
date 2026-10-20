@@ -192,7 +192,7 @@ test('入力パターン: そのキーを含むパターンを面ごとに分け
   assert.equal(middle.selfTrigger, true);
   assert.deepEqual(
     middle.triggers.map((trigger) => trigger.keyNames),
-    [['K'], ['D']],
+    [['D'], ['K']],
   );
   assert.ok(middle.rows.length > 1);
   assert.ok(middle.rows.every((row) => row.keyNames.includes('D') || row.keyNames.includes('K')));

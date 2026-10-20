@@ -78,8 +78,9 @@ test('既定の名前は、出る文字の種類と共通する小書き、重�
   assert.equal(label('face:11'), '外来音（ぃ）');
   assert.equal(label('face:17'), 'てぃ');
   assert.equal(label('face:18'), 'てゅ・ぴゅ');
-  // 出る文字の数が並ぶ面は、どちらも出る文字を並べる
-  assert.deepEqual(['face:19', 'face:27'].map(label), ['でぃ', 'ぐぃ']);
+  // 同じ種類の面が他に無ければ、出る文字が1つでも種類の名前で呼ぶ。名前を付けた面（face:19）は既定の名前を作らない
+  assert.equal(label('face:19'), undefined);
+  assert.equal(label('face:27'), '濁音の外来音（ぃ）');
 });
 
 test('文字の種類で呼べない面と、並べても重なる面の名前', () => {

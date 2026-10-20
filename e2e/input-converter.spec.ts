@@ -815,18 +815,18 @@ test('Recognized detail stays one row when one event realizes multiple inputs', 
 
   await output.click();
   await page.keyboard.down('r');
-  await page.keyboard.down(',');
-  await expect(output).toHaveValue('しん');
+  await page.keyboard.down('/');
+  await expect(output).toHaveValue('しれ');
 
   const recognizedRows = recognizedSection.locator('.input-recognized');
   await expect(recognizedRows).toHaveCount(2);
   await expect(recognizedRows.nth(0)).toContainText('し');
-  await expect(recognizedRows.nth(1)).toContainText('ん');
+  await expect(recognizedRows.nth(1)).toContainText('れ');
 
   const boxes = await recognizedRows.evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect()));
   expect(Math.abs(boxes[0]!.top - boxes[1]!.top)).toBeLessThanOrEqual(1);
 
-  await page.keyboard.up(',');
+  await page.keyboard.up('/');
   await page.keyboard.up('r');
 });
 

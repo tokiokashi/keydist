@@ -48,7 +48,7 @@ test('薙刀式(吾輩は猫である): まとめは層を足してから色用�
   assert.equal(compact[0]!.title, 'レイヤー1: 単打（レイヤー3以降を合算）');
 
   const detail = buildLayerEntries(layout, extracted, 'detail');
-  assert.equal(detail.length, 31);
+  assert.equal(detail.length, 32);
   assert.equal(detail[0]!.colorCounts.get('j'), 8);
 });
 
@@ -175,9 +175,9 @@ test('図ごとのキーの詳細: まとめた図は合算した面の和、ヒ
   const { layout, extracted } = extractionFor('naginata-v18', sampleText('ja', 'legacy'));
   const compact = buildLayerEntries(layout, extracted, 'compact');
   const detail = buildLayerEntries(layout, extracted, 'detail');
-  // 合算先の単打に、残す層（SandS）以外の29層を足す
+  // 合算先の単打に、残す層（SandS）以外の30層を足す
   assert.equal(compact[0]!.faceIds[0], 'single');
-  assert.equal(compact[0]!.faceIds.length, 30);
+  assert.equal(compact[0]!.faceIds.length, 31);
   assert.ok(!compact[0]!.faceIds.includes('layer:SandS'));
   assert.deepEqual(compact[1]!.faceIds, ['layer:SandS']);
   // jの押し方: まとめた図の内訳は、合算した面の内訳の和

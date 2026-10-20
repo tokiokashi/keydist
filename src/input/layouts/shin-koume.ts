@@ -81,6 +81,8 @@ const compositionFace = (trigger: string, entries: Record<string, string>, layer
 const SHIN_KOUME_FACES: Face[] = [
   // シフト無し
   layerFace([], {
+    y: '／',
+    b: '～',
     q: '。',
     w: 'な',
     e: 'て',
@@ -115,6 +117,19 @@ const SHIN_KOUME_FACES: Face[] = [
   layerFace(
     [THUMB_KEY.LT],
     {
+      1: '？',
+      2: '／',
+      3: '～',
+      4: '［',
+      5: '］',
+      6: '＆',
+      7: '’',
+      8: '＜',
+      9: '＞',
+      0: '＋',
+      '-': '＝',
+      '=': '‘',
+      p: '］',
       w: 'け',
       e: 'よ',
       y: 'ゑ',
@@ -149,6 +164,18 @@ const SHIN_KOUME_FACES: Face[] = [
   layerFace(
     [THUMB_KEY.RT],
     {
+      1: '！',
+      2: '”',
+      3: '＃',
+      4: '＄',
+      5: '％',
+      6: '［',
+      7: '］',
+      8: '（',
+      9: '）',
+      0: '｛',
+      '-': '｝',
+      p: '［',
       w: 'げ',
       e: 'で',
       r: 'ぜ',
@@ -231,6 +258,8 @@ const SHIN_KOUME_FACES: Face[] = [
     g: 'ぱ',
     x: 'ぽ',
     c: 'ぷ',
+    s: '！',
+    d: '？',
   }),
   compositionFace('j', {
     a: 'ふぇ',
@@ -297,12 +326,14 @@ const SHIN_KOUME_FACES: Face[] = [
     b: 'ヴぃ',
   }),
   compositionFace(',', {
+    d: '，',
     s: 'てゅ',
     g: 'てぃ',
     x: 'でゅ',
     b: 'でぃ',
   }),
   compositionFace('.', {
+    d: '．',
     q: 'ちぇ',
     w: 'ちゅ',
     e: 'ちょ',

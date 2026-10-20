@@ -7,8 +7,9 @@ import { faceFromEntries, fromFaces, groupNamedModifierKeyMeanings, withAliases,
  * https://kouy.exblog.jp/13627994/
  * keydistではこの公開された配列仕様をFace定義として独自に記述し、
  * 機能キーやJIS専用キーは解析対象から除く。
- * 単打面の重複する長音は元記事の主要部に合わせてqを採り、
- * D面の重複する括弧や機能キーは採らず、単打面の `「` を残す。
+ * 単打面の重複する長音は元記事の主要部に合わせてqを採る。
+ * D面の記号は、単打面にもある「を含めて、同じ記号の代わりの打ち方として持つ。
+ * 」はANSIに無い列に置かれた単打面ではなく、D面で打つ。
  */
 
 const face = (
@@ -92,6 +93,11 @@ export const SHINGETA_FACES: Face[] = [
   face(
     ['d'],
     {
+      7: '，',
+      8: '「',
+      9: '」',
+      0: '；',
+      '-': '＠',
       y: 'うぃ',
       u: 'ぱ',
       i: 'よ',

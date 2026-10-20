@@ -109,6 +109,21 @@ export const NAGINATA_V18_FACES: Face[] = [
       e: 'り',
       '.': 'わ',
       c: 'を',
+      // 数字の段と右端の列の記号。出典のJISの列をANSIへ投影して置く（JIS専用の列に当たる}と_は置かない）
+      1: '!',
+      2: '"',
+      3: '#',
+      4: '$',
+      5: '%',
+      6: '&',
+      7: "'",
+      8: '(',
+      9: ')',
+      '-': '=',
+      '=': '~',
+      '[': '`',
+      ']': '{',
+      "'": '*',
     },
     {
       layer: 'SandS',
@@ -234,8 +249,29 @@ export const NAGINATA_V18_FACES: Face[] = [
   ),
   face(
     ['j', 'k'],
-    { e: 'でぃ' },
-    { modifierGroups: { j: '濁音', k: '外来音' }, role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' },
+    {
+      e: 'でぃ',
+      // 編集モード1の左手。出典の{改行}などの機能キーの部分は打鍵に含めない
+      w: '／',
+      t: '・',
+      a: '……',
+      s: '『',
+      d: '？',
+      f: '「',
+      g: '(',
+      z: '――',
+      x: '』',
+      c: '！',
+      v: '」',
+      b: ')',
+    },
+    {
+      modifierGroups: { j: '濁音', k: '外来音' },
+      role: 'modifier',
+      inputRole: 'modifier',
+      triggerPersistence: 'hold-capable',
+      presentationLabel: 'でぃ・編集モード1',
+    },
   ),
   face(
     ['l', 'm'],
@@ -301,6 +337,18 @@ export const NAGINATA_V18_FACES: Face[] = [
     ['p', 'v'],
     { ';': 'ふゅ' },
     { modifierGroups: { p: '拗音', v: '半濁音' }, role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' },
+  ),
+  // 編集モード2の左手
+  face(
+    ['m', ','],
+    { q: '｜', t: '○', a: '《', s: '【', z: '》', x: '】' },
+    {
+      modifierGroups: { m: '半濁音', ',': '編集モード' },
+      role: 'modifier',
+      inputRole: 'modifier',
+      triggerPersistence: 'hold-capable',
+      presentationLabel: '編集モード2',
+    },
   ),
 ];
 
