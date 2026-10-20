@@ -182,3 +182,54 @@ test('直した読みの対応は条件のスナップショットに全体が�
   // スナップショットは入力の配列を共有しない
   assert.notEqual(a.metrics.conditions.reading?.corrections, fixedA.corrections);
 });
+
+function strokeChars(layoutId: string, text: string) {
+  return measure(layoutId, text, 'ja').trace.strokes.map((stroke) => stroke.inputChar);
+}
+
+test('片仮名は、配列が見出しとして持たない部分だけをひらがなにして打つ', () => {
+  const asuka = measure('asuka', 'ヴォ', 'ja');
+  assert.equal(asuka.input.text, 'ヴぉ');
+  assert.deepEqual(
+    asuka.trace.strokes.map((stroke) => stroke.inputChar),
+    ['ヴ', 'ぉ'],
+  );
+  assert.equal(asuka.trace.skipped, 0);
+  assert.equal(asuka.trace.inputChars, 2);
+});
+
+test('片仮名の見出し（複数文字・片仮名とひらがなの混じり）は、配列ごとにそのまま打つ', () => {
+  assert.equal(measure('kawasemi-plus', 'ヴァヴォヴぇい', 'ja').input.text, 'ヴァヴォヴぇい');
+  assert.deepEqual(strokeChars('kawasemi-plus', 'ヴァ'), ['ヴァ']);
+  assert.equal(measure('shin-koume', 'ヴぁヴぇ', 'ja').input.text, 'ヴぁヴぇ');
+  assert.deepEqual(strokeChars('shin-koume', 'ヴォ'), ['ヴぉ']);
+});
+
+test('片仮名の見出しを持たない配列では、片仮名をひらがなにして打つ', () => {
+  const kana = measure('nicola', 'ニャーニャー', 'ja');
+  assert.equal(kana.input.text, 'にゃーにゃー');
+  assert.equal(kana.trace.skipped, 0);
+  assert.equal(measure('qwerty', 'ニャーニャー', 'ja').trace.skipped, 0);
+  // 書き換えたひらがな（ゔ）を配列が打てなければ、打てない文字に数える
+  assert.equal(measure('qwerty', 'ヴ', 'ja').trace.skipped, 1);
+});
+
+test('ローマ字のテーブルが片仮名を見出しとして持つ時は、その片仮名をそのまま打つ', () => {
+  const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'layout', layoutId: 'qwerty' }, 'romajiRuleId', 'azik');
+  assert.ok(written.ok);
+  const result = resolveEngineInput({
+    target: { kind: 'layout', layoutId: 'qwerty' },
+    setups: new Map(),
+    catalog: CATALOG,
+    userLayouts: new Map(),
+    overrides: written.overrides,
+    text: 'ヴォ',
+    language: 'ja',
+  });
+  assert.ok(result.ok);
+  assert.equal(result.input.text, 'ヴぉ');
+});
+
+test('英語のテキストの片仮名は書き換えない', () => {
+  assert.equal(resolve('qwerty', 'ニャー ヴ', 'en').text, 'ニャー ヴ');
+});
