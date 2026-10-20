@@ -617,7 +617,7 @@ test('ペイン間でengineのキャッシュを共有する: 同じ条件の2�
   const calls = async () => {
     // Workerが複数起きても（共有が崩れた時）、全部の合計で数える
     const counts = await Promise.all(
-      page.workers().map((worker) => worker.evaluate(() => (self as unknown as { __counter: { atan2: number } }).__counter.atan2)),
+      page.workers().map((worker) => worker.evaluate(() => (self as unknown as { __counter?: { atan2: number } }).__counter?.atan2 ?? 0)),
     );
     return counts.reduce((sum, count) => sum + count, 0);
   };

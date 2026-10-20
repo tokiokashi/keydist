@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { waitForHydration } from './hydration-helper.ts';
 import { settleGrid } from './settle-helper.ts';
+import { useKanaText } from './kana-text-helper.ts';
 
 /**
  * Bigram Flowの「2打鍵 N組」は、本文の先頭に1行を使わず、Keyboard Flowの見出しの行に置く。
@@ -21,7 +22,7 @@ async function openWorkspace(page: Page, cols: number): Promise<void> {
     {
       id: 'c',
       name: '組の数',
-      text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+      text: { ref: { kind: 'builtin', id: 'builtin:ja.modern' } },
       panes: [flow],
       grid: [{ id: 'a', x: 0, y: 0, w: cols, h: 22 }],
     },
@@ -46,6 +47,7 @@ async function expectNoLabelOnlyRow(page: Page): Promise<void> {
 }
 
 test('個別画面: 組の数は本文の先頭の行を使わず、見出しの名前として読み上げられる', async ({ page }) => {
+  await useKanaText(page);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 20_000 });

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { useKanaText } from './kana-text-helper.ts';
 
 /**
  * 例外が起きた時のペインの表示。利用者向けの1文だけを見せ、例外の原文（不具合報告用）は
@@ -43,6 +44,7 @@ async function expectFoldedDetails(alert: ReturnType<Page['locator']>, withStack
 }
 
 test('計算中の例外: 1文だけ出し、原文は折りたたんだ詳細に入る', async ({ page }) => {
+  await useKanaText(page);
   await breakMathInWorker(page, 'hypot');
   await page.goto('/analyzer/bigram-flow');
   const pane = page.locator('.pane-frame');

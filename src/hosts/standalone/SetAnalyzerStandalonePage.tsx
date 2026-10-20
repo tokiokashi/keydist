@@ -89,7 +89,7 @@ export function SetAnalyzerStandalonePage<Options, Extracted, RowContext>({
     useMemo(() => resolveTextSelection(assets.standaloneTextSelection, assets.textLibrary), [assets.standaloneTextSelection, assets.textLibrary]),
   );
   // 漢字を含む日本語のテキストは、評価の前に読みに直す。ペインへ渡すのは直した後のテキストと、その状態
-  const evaluation = useReadingEvaluation(resolvedText, reading);
+  const evaluation = useReadingEvaluation(resolvedText, reading, assetsReady);
 
   // 解析設定は資産（standaloneAnalyzerOptions）が正
   // （SingleAnalyzerStandalonePageと同じ形）。
