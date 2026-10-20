@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>reading harness</title>
+  </head>
+  <body>
+    <!-- e2e/reading-dictionary.spec.tsが自前のdevサーバーで配る。製品の画面ではない -->
+    <script type="module">
+      import { createReadingService, readingService } from '/src/platform/reading/client.ts';
+      import { DICTIONARY_SPEC } from '/src/platform/reading/dictionary-spec.ts';
+
+      window.harness = {
+        shared: () => readingService(),
+        // 辞書の版を指定した入口。版が変わった時に取り直すことの確認に使う
+        withVersion: (version) =>
+          createReadingService({
+            createWorker: () => new Worker(new URL('/src/platform/reading/worker.ts', location.origin), { type: 'module' }),
+            dictionary: { url: `/${DICTIONARY_SPEC.fileName}`, version },
+          }),
+        cacheNames: () => caches.keys(),
+        cachedUrls: async (name) => (await (await caches.open(name)).keys()).map((request) => new URL(request.url).pathname),
+      };
+      window.harnessReady = true;
+    </script>
+  </body>
+</html>

@@ -10,3 +10,6 @@ src/routeTree.gen.ts
 
 playwright-report/
 test-results/
+
+# ビルドで取る辞書のzipの置き場（scripts/dictionary-fetch.ts）
+.cache/
