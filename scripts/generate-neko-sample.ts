@@ -13,7 +13,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { extractZip } from '../src/platform/reading/zip.ts';
-import { convertAozora, extractBody, firstChapterOf } from './aozora-core.ts';
+import { convertAozora, excerptBySentence, extractBody, firstChapterOf } from './aozora-core.ts';
 
 /** 原文のアーカイブ。 */
 export const AOZORA_SOURCE = {
@@ -24,6 +24,9 @@ export const AOZORA_SOURCE = {
   /** zipの中のテキスト。Shift_JIS */
   entryName: 'wagahaiwa_nekodearu.txt',
 } as const;
+
+/** 既定のサンプルの目安の字数（空白を除いた原文の字数）。 */
+const EXCERPT_TARGET_CHARS = 1000;
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const CACHE_DIR = join(root, '.cache', 'aozora');
@@ -76,13 +79,14 @@ export interface GeneratedFile {
 export function buildFiles(raw: string): { files: GeneratedFile[]; summary: Record<string, number> } {
   const body = extractBody(raw);
   const whole = convertAozora(body);
-  // 既定にするのは第一章。全文は長すぎて、Workspaceが数値を出すまでに分単位でかかりメモリも足りなくなる。
+  // 既定にするのは第一章の先頭の約1000字（文末で切る）。長くすると、打鍵再生の図が長くなりすぎ、Workspaceが数値を出すまでも延びる。
   // 章の境目は、変換が見出しの行を取り除く前の本文で決める
   const chapter = convertAozora(firstChapterOf(body)).text.trim();
+  const excerpt = excerptBySentence(chapter, EXCERPT_TARGET_CHARS);
   const files: GeneratedFile[] = [
     {
       path: join(TEXT_DIR, 'sample-ja-neko.ts'),
-      source: moduleSource('SAMPLE_TEXT_JA_NEKO', '既定の日本語サンプル。『吾輩は猫である』の第一章。', chapter),
+      source: moduleSource('SAMPLE_TEXT_JA_NEKO', '既定の日本語サンプル。『吾輩は猫である』の第一章の先頭の約1000字（文末まで）。', excerpt),
     },
   ];
   return {
@@ -90,6 +94,7 @@ export function buildFiles(raw: string): { files: GeneratedFile[]; summary: Reco
     summary: {
       全文の字数: [...whole.text.replace(/\s+/g, '')].length,
       第一章の字数: [...chapter.replace(/\s+/g, '')].length,
+      既定の字数: [...excerpt.replace(/\s+/g, '')].length,
       外字を字に直した数: whole.gaijiConverted,
       外字を取り除いた数: whole.gaijiRemoved,
       章見出しの行: whole.headingLinesRemoved,

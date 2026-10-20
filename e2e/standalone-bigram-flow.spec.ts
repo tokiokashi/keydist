@@ -1215,8 +1215,8 @@ test('Relative vectors: 内向き・外向きの割合は、読み上げでも�
       .getByRole('img')
       .evaluateAll((els) => els.map((el) => el.getAttribute('aria-label')));
   // 図の並びと同じ順（左手は外側が左、右手は内側が左）で読み上げる
-  expect(await names(0)).toEqual(['外向き 55.5%', '内向き 44.5%']);
-  expect(await names(1)).toEqual(['内向き 54.3%', '外向き 45.7%']);
+  expect(await names(0)).toEqual(['外向き 58.1%', '内向き 41.9%']);
+  expect(await names(1)).toEqual(['内向き 54.6%', '外向き 45.4%']);
 });
 
 test('Keyboard Flow: 個別画面の連打ラベルは、縮んだ図でも読める大きさまで広げる（拡大率に上限を置かない）', async ({ page }) => {

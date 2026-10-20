@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { assertNoMarkup, convertAozora, decodeAccentSeparation, extractBody, firstChapterOf } from '../scripts/aozora-core.ts';
+import { assertNoMarkup, convertAozora, decodeAccentSeparation, excerptBySentence, extractBody, firstChapterOf } from '../scripts/aozora-core.ts';
 
 test('ルビ《》とルビの始まり｜を取り除き、ルビの付く本文の字は残す', () => {
   assert.equal(convertAozora('吾輩《わがはい》は一番｜獰悪《どうあく》な種族').text, '吾輩は一番獰悪な種族');
@@ -65,4 +65,11 @@ test('第一章は、二つ目の章見出しの行の手前までで、その�
   assert.equal(firstChapterOf(body), '［＃８字下げ］一［＃「一」は中見出し］\n　第一章の本文\n');
   assert.equal(convertAozora(firstChapterOf(body)).text, '　第一章の本文\n');
   assert.throws(() => firstChapterOf('［＃８字下げ］一［＃「一」は中見出し］\n本文\n'), /見つからない/);
+});
+
+test('抜き出しは、空白を除いた字数が目安に最も近い文末で切る', () => {
+  // 文末は3字目・7字目（空白を除く）。目安5では差が2で並ぶので短い方、目安6では7字目を取る
+  assert.equal(excerptBySentence('あい。\n　うえお。か', 5), 'あい。');
+  assert.equal(excerptBySentence('あい。\n　うえお。か', 6), 'あい。\n　うえお。');
+  assert.throws(() => excerptBySentence('文末が無い', 3), /見つからない/);
 });

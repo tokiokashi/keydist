@@ -200,13 +200,6 @@ async function showNSensitivity(page: Page): Promise<void> {
   await page.locator('.pane-frame[aria-label="N感度"]').scrollIntoViewIfNeeded();
 }
 
-/**
- * サンプルの既定のテキストは約1.2万字で、全ペインが数値を出すまでに、N感度を含めて20秒前後かかる。
- * 並行して回る検査の負荷も見て、待つ上限とテスト全体の上限をその数倍に取る。
- */
-const LONG_TEXT_WAIT = 90_000;
-const LONG_TEXT_TEST_TIMEOUT = 180_000;
-
 /** サンプルを開き、全ペインの描画が済むまで待つ。 */
 async function openSampleAt(page: Page, size: { width: number; height: number }, sidebar: 'pinned' | 'unpinned'): Promise<void> {
   await page.setViewportSize(size);
@@ -220,10 +213,10 @@ async function openSampleAt(page: Page, size: { width: number; height: number },
   else await expect(page.locator('html')).not.toHaveAttribute('data-sidebar', 'unpinned');
   await page.locator('.hero').getByRole('button', { name: '複数の配列を並べたサンプルを作る' }).click();
   await expectSampleWorkspace(page, 'サンプル');
-  await expect(page.locator('[data-flow-edge="true"]').first()).toBeAttached({ timeout: LONG_TEXT_WAIT });
+  await expect(page.locator('[data-flow-edge="true"]').first()).toBeAttached({ timeout: 15_000 });
   await showNSensitivity(page);
-  await expect(page.locator('[data-n-sensitivity-series]').first()).toBeAttached({ timeout: LONG_TEXT_WAIT });
-  await expect(page.locator('.workspace-grid-item .pane-frame[data-pane-status="ready"]')).toHaveCount(10, { timeout: LONG_TEXT_WAIT });
+  await expect(page.locator('[data-n-sensitivity-series]').first()).toBeAttached({ timeout: 15_000 });
+  await expect(page.locator('.workspace-grid-item .pane-frame[data-pane-status="ready"]')).toHaveCount(10, { timeout: 30_000 });
   // 図の描画（N感度は領域の実寸に合わせて描き直す）が落ち着くまで待つ。
   // ペインの寸法と、N感度の図の大きさ・viewBox（実寸に合わせた描き直しの結果）が変わらなくなるのを見る
   await settleBy(
@@ -254,7 +247,6 @@ for (const sidebar of ['pinned', 'unpinned'] as const) {
   test(`1920x930（サイドバー${sidebar === 'pinned' ? '固定' : '非固定'}）で、サンプルの上の2段が1画面に入り、どのペインも中でスクロールしない。横にもスクロールしない`, async ({
     page,
   }) => {
-    test.setTimeout(LONG_TEXT_TEST_TIMEOUT);
     await openSampleAt(page, { width: VIEWPORT_1080_MONITOR.width, height: VIEWPORT_1080_MONITOR.height }, sidebar);
     const m = await page.evaluate(() => ({
       viewport: document.documentElement.clientHeight,
@@ -283,7 +275,6 @@ for (const sidebar of ['pinned', 'unpinned'] as const) {
  * 右端のペインを見るには面を横にスクロールする。
  */
 test('1440x900（サイドバー固定）では、並びは面の中で横にスクロールし、どのペインも中でスクロールしない', async ({ page }) => {
-  test.setTimeout(LONG_TEXT_TEST_TIMEOUT);
   await openSampleAt(page, { width: 1440, height: 900 }, 'pinned');
   const m = await page.evaluate(() => {
     const area = document.querySelector('.workspace-grid-area')!;
@@ -332,13 +323,13 @@ test('トップの「配列の詳細と比較のサンプルを作る」で、12
     [0, 10, 8, 21],
     [8, 10, 8, 21],
     [0, 31, 18, 9],
-    [0, 40, 8, 25],
+    [0, 40, 8, 24],
     [8, 40, 8, 12],
     [8, 52, 8, 11],
-    [0, 65, 12, 10],
-    [0, 75, 12, 10],
-    [0, 85, 12, 10],
-    [0, 95, 12, 10],
+    [0, 64, 12, 10],
+    [0, 74, 12, 10],
+    [0, 84, 12, 10],
+    [0, 94, 12, 10],
   ]);
 });
 
@@ -363,14 +354,13 @@ for (const size of [
   { width: 1440, height: 900 },
 ]) {
   test(`配列の詳細と比較のサンプルは、${size.width}x${size.height}で、どのペインも中でスクロールしない`, async ({ page }) => {
-    test.setTimeout(LONG_TEXT_TEST_TIMEOUT);
     await page.setViewportSize(size);
     await page.goto('/');
     await waitForHydration(page);
     await page.locator('.hero').getByRole('button', { name: LAYOUT_DETAIL_BUTTON }).click();
     await expect(page.locator('.pane-frame')).toHaveCount(12);
     await showNSensitivity(page);
-    await expect(page.locator('.workspace-grid-item .pane-frame[data-pane-status="ready"]')).toHaveCount(12, { timeout: LONG_TEXT_WAIT });
+    await expect(page.locator('.workspace-grid-item .pane-frame[data-pane-status="ready"]')).toHaveCount(12, { timeout: 30_000 });
     await settleBy(
       page,
       () =>
