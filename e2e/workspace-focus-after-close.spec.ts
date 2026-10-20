@@ -1,5 +1,6 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures.ts';
 import { waitForHydration } from './hydration-helper.ts';
+import { SHORT_TEXT_REF, useShortText } from './short-text-helper.ts';
 
 /**
  * ペインを閉じた後のフォーカスは`body`へ落とさない。⋯の「閉じる」をキーボードだけで使え、
@@ -23,13 +24,14 @@ const GRID = [
 
 async function openWorkspace(page: Page): Promise<void> {
   await page.setViewportSize({ width: 1440, height: 900 });
+  await useShortText(page);
   await page.addInitScript(
     (value) => {
       if (localStorage.getItem('keydist:workspaces') === null) {
         localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
       }
     },
-    { id: 'k', name: 'キーボード', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes: PANES, grid: GRID },
+    { id: 'k', name: 'キーボード', text: { ref: SHORT_TEXT_REF }, panes: PANES, grid: GRID },
   );
   await page.goto('/workspace/k');
   await waitForHydration(page);

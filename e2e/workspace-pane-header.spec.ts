@@ -1,5 +1,6 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures.ts';
 import { waitForHydration } from './hydration-helper.ts';
+import { SHORT_TEXT_REF, useShortText } from './short-text-helper.ts';
 
 /**
  * Workspaceのペインの見出しの余白。見出しの先頭（つかみ所の絵）の左端が、本文（図）の左端と揃うこと（±1px）を確かめる。
@@ -11,6 +12,7 @@ const QWERTY = { kind: 'layout', layoutId: 'qwerty' };
 const pane = (id: string) => ({ id, analyzerId: 'bigram-flow', binding: { mode: 'fixed', target: { kind: 'single', target: QWERTY } } });
 
 async function openWorkspace(page: Page, theme: 'light' | 'dark'): Promise<void> {
+  await useShortText(page);
   await page.addInitScript(
     ({ workspace, theme }) => {
       localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [workspace] }));
@@ -21,7 +23,7 @@ async function openWorkspace(page: Page, theme: 'light' | 'dark'): Promise<void>
       workspace: {
         id: 'header',
         name: '見出しの余白',
-        text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+        text: { ref: SHORT_TEXT_REF },
         panes: [pane('a'), pane('b')],
         grid: [
           { id: 'a', x: 0, y: 0, w: 12, h: 16 },

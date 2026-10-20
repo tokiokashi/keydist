@@ -1,5 +1,6 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from './fixtures.ts';
 import { waitForHydration } from './hydration-helper.ts';
+import { SHORT_TEXT_REF, useShortText } from './short-text-helper.ts';
 
 /**
  * Workspaceで、ペインの外へ出るポップアップ（条件のモーダル内のプリセットの⋯メニュー、見出しの先頭のⓘの説明）が
@@ -12,13 +13,14 @@ const flow = (id: string) => ({ id, analyzerId: 'bigram-flow', binding: fixedSin
 
 async function openWorkspace(page: Page, panes: readonly unknown[], layout: unknown, size: { width: number; height: number }): Promise<void> {
   await page.setViewportSize(size);
+  await useShortText(page);
   await page.addInitScript(
     (value) => {
       if (localStorage.getItem('keydist:workspaces') === null) {
         localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
       }
     },
-    { id: 'p', name: 'ポップアップ', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes, grid: layout },
+    { id: 'p', name: 'ポップアップ', text: { ref: SHORT_TEXT_REF }, panes, grid: layout },
   );
   await page.goto('/workspace/p');
   await waitForHydration(page);

@@ -1,6 +1,7 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures.ts';
 import { enabledValues, recordControlStates } from './options-draft-recorder.ts';
 import { expectTargetNames, openSettings, openTargetSelection, targetNames, toggleTarget } from './pane-helper.ts';
+import { useShortText } from './short-text-helper.ts';
 
 /**
  * N感度単体ページのE2E。
@@ -86,6 +87,11 @@ async function measureLegend(page: import('@playwright/test').Page, svgSelector 
 async function addTarget(page: import('@playwright/test').Page, key: string) {
   await toggleTarget(page, key);
 }
+
+// 数値でなく図の形を見る検査なので、短い本文で回す
+test.beforeEach(async ({ page }) => {
+  await useShortText(page);
+});
 
 test('新規プロファイルで、配列を2つ直接選ぶだけでSetupを作らずに2本の折れ線が出る', async ({ page }) => {
   await page.goto('/analyzer/n-sensitivity');
@@ -408,6 +414,7 @@ test('「共有」でコピーしたURLを新しいページで開くと、解�
   const other = await context.browser()!.newContext();
   try {
     const opened = await other.newPage();
+    await useShortText(opened);
     await opened.goto(url);
     // 対象もURLで届くので、選び直さなくても図が出る。
     await expect(opened.locator('.n-sensitivity-svg')).toBeVisible({ timeout: 10_000 });
@@ -810,6 +817,7 @@ test('Workspaceの狭い4ペイン（約340px）でも、凡例は図の中に�
           {
             id: 'four-panes',
             name: '4ペイン',
+            text: { ref: { kind: 'user', id: 'short-text' } },
             panes: [set('a'), set('b'), set('c'), set('d')],
             grid: ['a', 'b', 'c', 'd'].map((id, i) => ({ id, x: i * 6, y: 0, w: 6, h: 22 })),
           },

@@ -1,6 +1,7 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures.ts';
 import { waitForHydration } from './hydration-helper.ts';
 import { settleGrid } from './settle-helper.ts';
+import { SHORT_TEXT_REF, useShortText } from './short-text-helper.ts';
 
 /**
  * N感度の「各Nの実測値」の表は、Workspaceのペインで図の下の余りに収まる時は開いて始まり、
@@ -44,11 +45,12 @@ const threePanes = (nsensPane: unknown, rows = 22) => ({
 });
 
 async function seed(page: Page, panes: readonly unknown[], grid: unknown) {
+  await useShortText(page);
   await page.addInitScript(
     (value) => {
       localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
     },
-    { id: 'fit', name: '収まりの確認', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes, grid },
+    { id: 'fit', name: '収まりの確認', text: { ref: SHORT_TEXT_REF }, panes, grid },
   );
 }
 

@@ -1,6 +1,7 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures.ts';
 import { waitForHydration } from './hydration-helper.ts';
 import { blank, cell, itemOf, open, settle } from './workspace-grid-helper.ts';
+import { SHORT_TEXT_REF, useShortText } from './short-text-helper.ts';
 
 /**
  * ペインのつかみ所にフォーカスを置いた時の矢印キーで、ペインを動かし、大きさを変える。
@@ -9,13 +10,14 @@ import { blank, cell, itemOf, open, settle } from './workspace-grid-helper.ts';
 
 async function seed(page: Page, panes: readonly object[], grid: readonly object[]): Promise<void> {
   await page.setViewportSize({ width: 1440, height: 900 });
+  await useShortText(page);
   await page.addInitScript(
     (value) => {
       if (localStorage.getItem('keydist:workspaces') === null) {
         localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
       }
     },
-    { id: 'g', name: '格子', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes, grid },
+    { id: 'g', name: '格子', text: { ref: SHORT_TEXT_REF }, panes, grid },
   );
   await page.goto('/workspace/g');
   await waitForHydration(page);

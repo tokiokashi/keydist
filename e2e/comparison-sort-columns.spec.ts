@@ -1,6 +1,8 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from './fixtures.ts';
 import { expectTargetNames, openSettings, targetNames } from './pane-helper.ts';
 import { waitForHydration } from './hydration-helper.ts';
+import { openTextChip } from './context-bar-helper.ts';
+import { SHORT_TEXT_NAME, seedShortTextLibrary } from './short-text-helper.ts';
 
 /**
  * 比較表の列の見出し: 並び替え（昇順 → 降順 → 解除）と、列名。
@@ -245,11 +247,16 @@ for (const width of [1500, 390]) {
 
 /** 比較表を2つ並べ、3つの配列を対象にして、表が出るまで待つ。 */
 async function openTwoComparisons(page: Page): Promise<void> {
+  // 保存の間引き（約400ms）の中で操作する検査なので、再計算が短く済む短い本文で回す
+  await seedShortTextLibrary(page);
   await page.setViewportSize({ width: 800, height: 900 });
   await page.goto('/');
   await waitForHydration(page);
   await page.locator('#app-sidebar').getByRole('button', { name: '＋ 新しいWorkspace' }).click();
   await expect(page).toHaveURL(/\/workspace\/[^/?]+$/);
+  await openTextChip(page);
+  await page.getByLabel('テキストを選ぶ', { exact: true }).selectOption({ label: SHORT_TEXT_NAME });
+  await page.keyboard.press('Escape');
   for (let n = 0; n < 2; n += 1) {
     await page.getByRole('button', { name: /ペインを追加/ }).click();
     await page.getByRole('menuitem', { name: /比較表/ }).click();
@@ -266,7 +273,7 @@ async function openTwoComparisons(page: Page): Promise<void> {
   await page.keyboard.press('Escape');
   const tables = page.locator('.comparison-table');
   for (let n = 0; n < 2; n += 1) {
-    await expect(tables.nth(n).locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(3, { timeout: 15_000 });
+    await expect(tables.nth(n).locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(3, { timeout: 60_000 });
   }
 }
 
@@ -298,7 +305,7 @@ test('Workspace: 共有に従う2つの比較表では、片方を並べると�
   await page.reload();
   await waitForHydration(page);
   for (let n = 0; n < 2; n += 1) {
-    await expect(headerOf(page.locator('.comparison-table').nth(n), '距離')).toHaveAttribute('aria-sort', 'descending');
+    await expect(headerOf(page.locator('.comparison-table').nth(n), '距離')).toHaveAttribute('aria-sort', 'descending', { timeout: 60_000 });
   }
 
   // ⋯の「解析設定を初期値に戻す」で共有の並び替えが解除され、もう片方も解除される。

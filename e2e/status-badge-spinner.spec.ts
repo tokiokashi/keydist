@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures.ts';
 import { openTextChip } from './context-bar-helper.ts';
 import { targetButton, toggleTarget } from './pane-helper.ts';
 import { afterFrames } from './settle-helper.ts';

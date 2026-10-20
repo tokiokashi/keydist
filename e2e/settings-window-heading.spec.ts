@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures.ts';
 import { openFigureSettings } from './bigram-flow-figure-helper.ts';
 import { waitForHydration } from './hydration-helper.ts';
 import { openSettings } from './pane-helper.ts';

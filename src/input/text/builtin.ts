@@ -30,7 +30,7 @@ export const BUILTIN_TEXTS: readonly BuiltinText[] = sampleTextEntries().map((en
 }));
 
 /**
- * 単体ページの既定選択は組み込みのja.legacy（「吾輩は猫である」の冒頭）にする。
+ * 単体ページの既定選択は組み込みのja.legacy（「吾輩は猫である」の第一章の先頭の約1000字）にする。
  * `samples.ts`の`FALLBACK_SAMPLE_ID`が指す既定と揃える。
  */
 export const DEFAULT_BUILTIN_TEXT_ID = `${BUILTIN_ID_PREFIX}ja.legacy`;

@@ -17,6 +17,13 @@ const QWERTY = { kind: 'layout', layoutId: 'qwerty' };
 const DVORAK = { kind: 'layout', layoutId: 'dvorak' };
 const SETUP_LIBRARY_KEY = 'keydist:setup-library';
 const WORKSPACES_KEY = 'keydist:workspaces';
+const TEXT_LIBRARY_KEY = 'keydist:text-library';
+/**
+ * 見出しの幅と折り返しの境目を測る検査のテキスト。漢字を含み、字数が3桁の短い本文にそろえる。
+ * 既定のテキスト（約1000字）は字数が4桁で、見出しの幅と境目が変わる。
+ */
+const NARROW_TEXT =
+  '吾輩は猫である。名前はまだ無い。\n　どこで生れたかとんと見当がつかぬ。何でも薄暗いじめじめした所でニャーニャー泣いていた事だけは記憶している。吾輩はここで始めて人間というものを見た。しかもあとで聞くとそれは書生という人間中で一番獰悪な種族であったそうだ。この書生というのは時々我々を捕えて煮て食うという話である。しかしその当時は何という考もなかったから別段恐しいとも思わなかった。ただ彼の掌に載せられてスーと持ち上げられた時何だかフワフワした感じがあったばかりである。';
 
 /** 長い名前になる Setup（新JIS × カラム/ロウ・ANSI/JIS の組）。名前の違いが末尾側にある。 */
 const LONG_SETUPS = [
@@ -62,8 +69,9 @@ async function open(
   const longNames = options.longNames === true;
   await page.setViewportSize(size);
   await page.addInitScript(
-    ({ key, setupKey, setups, overrides, theme, value }) => {
+    ({ key, setupKey, setups, overrides, theme, value, textKey, text }) => {
       if (localStorage.getItem(key) === null) {
+        localStorage.setItem(textKey, JSON.stringify({ version: 1, texts: [{ id: 'narrow-text', name: '短い本文', text }] }));
         localStorage.setItem(key, JSON.stringify({ version: 4, workspaces: [value] }));
         localStorage.setItem(setupKey, JSON.stringify({ version: 1, setups, overrides }));
         localStorage.setItem('keydist:app-state', JSON.stringify({ version: 2, appearance: { theme } }));
@@ -71,6 +79,8 @@ async function open(
     },
     {
       key: WORKSPACES_KEY,
+      textKey: TEXT_LIBRARY_KEY,
+      text: NARROW_TEXT,
       setupKey: SETUP_LIBRARY_KEY,
       setups: LONG_SETUPS,
       overrides: options.overrides ?? {},
@@ -78,7 +88,7 @@ async function open(
       value: {
         id: 'narrow',
         name: '細いペイン',
-        text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+        text: { ref: { kind: 'user', id: 'narrow-text' } },
         ...(options.conditions === undefined ? {} : { conditions: options.conditions }),
         panes: [paneOf('a', analyzerId, longNames, options.status === 'failed'), paneOf('b', 'comparison', false)],
         grid: [

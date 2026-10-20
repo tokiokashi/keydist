@@ -1,6 +1,7 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from './fixtures.ts';
 import { waitForHydration } from './hydration-helper.ts';
 import { COL_STEP, cell, dragPane, itemOf, open, settle, stored } from './workspace-grid-helper.ts';
+import { SHORT_TEXT_REF, useShortText } from './short-text-helper.ts';
 
 /**
  * Workspaceの列の幅は面の幅に依らない固定の値。ペインの画素の幅は持っている列の数だけで決まり、
@@ -236,6 +237,7 @@ test('横にスクロールした状態から拡大しても、拡大したペ�
     binding: { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } } },
   });
   await page.setViewportSize({ width: 1400, height: 900 });
+  await useShortText(page);
   await page.addInitScript(
     (value) => {
       if (localStorage.getItem('keydist:workspaces') === null)
@@ -244,7 +246,7 @@ test('横にスクロールした状態から拡大しても、拡大したペ�
     {
       id: 'g',
       name: '格子',
-      text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+      text: { ref: SHORT_TEXT_REF },
       panes: [flow('a'), flow('b')],
       grid: [cell('a', 0, 0, 12, 16), cell('b', 12, 0, 12, 16)],
     },

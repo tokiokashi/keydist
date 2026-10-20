@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures.ts';
 
 /**
  * 打鍵再生の操作の行と再生位置の数の配置。再生と一時停止を切り替えても、ボタンの群の折り返しと、

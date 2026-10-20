@@ -339,6 +339,8 @@ test('打ってすぐリロードしても編集が残る（組み込みから�
 });
 
 test('打ってすぐリロードしても編集が残る（既存のユーザーテキストの直接編集、debounce完了前）', async ({ page }) => {
+  // 本文の保存を時計で止めて確かめる検査なので、再計算の短い本文で回す
+  await useKanaText(page);
   await page.goto('/analyzer/bigram-flow');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
@@ -644,6 +646,8 @@ test('タブ間同期: 別タブでのテキスト変更が届き、複数回変
    */
   const pageA = await context.newPage();
   const pageB = await context.newPage();
+  await useKanaText(pageA);
+  await useKanaText(pageB);
 
   await pageA.goto('/analyzer/bigram-flow');
   await pageB.goto('/analyzer/bigram-flow');
@@ -1191,7 +1195,7 @@ test('Relative vectors: スマホ幅でも左右の図は横に2つ並ぶ', asyn
 test('Relative vectors: 内向き・外向きの割合は、読み上げでも向きと値が分かる名前を持つ', async ({ page }) => {
   await page.goto('/analyzer/bigram-flow');
   const section = page.locator('section[aria-label="Relative vectors"]');
-  await expect(section.locator('.flow-profile-svg')).toHaveCount(2, { timeout: 15_000 });
+  await expect(section.locator('.flow-profile-svg')).toHaveCount(2, { timeout: 60_000 });
   // 左右どちらの手でも、内向き・外向きが1つずつ、向きの語と割合を名前に持つ
   for (const hand of [0, 1]) {
     const labels = section.locator('.roll-summary').nth(hand).getByRole('img');
@@ -1211,8 +1215,8 @@ test('Relative vectors: 内向き・外向きの割合は、読み上げでも�
       .getByRole('img')
       .evaluateAll((els) => els.map((el) => el.getAttribute('aria-label')));
   // 図の並びと同じ順（左手は外側が左、右手は内側が左）で読み上げる
-  expect(await names(0)).toEqual(['外向き 56.3%', '内向き 43.8%']);
-  expect(await names(1)).toEqual(['内向き 57.0%', '外向き 43.0%']);
+  expect(await names(0)).toEqual(['外向き 58.1%', '内向き 41.9%']);
+  expect(await names(1)).toEqual(['内向き 54.6%', '外向き 45.4%']);
 });
 
 test('Keyboard Flow: 個別画面の連打ラベルは、縮んだ図でも読める大きさまで広げる（拡大率に上限を置かない）', async ({ page }) => {

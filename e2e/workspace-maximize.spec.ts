@@ -1,6 +1,7 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures.ts';
 import { waitForHydration } from './hydration-helper.ts';
 import { advance, settleBy } from './settle-helper.ts';
+import { SHORT_TEXT_REF, useShortText } from './short-text-helper.ts';
 
 /**
  * Workspaceのペインの拡大表示。⋯の「拡大表示」で、そのペインをWorkspaceいっぱいに広げる。
@@ -9,7 +10,7 @@ import { advance, settleBy } from './settle-helper.ts';
  */
 
 const WORKSPACES_KEY = 'keydist:workspaces';
-const TEXT = { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } };
+const TEXT = { ref: SHORT_TEXT_REF };
 const QWERTY = { kind: 'layout', layoutId: 'qwerty' };
 const fixed = (id: string, layoutId = 'qwerty') => ({
   id,
@@ -28,6 +29,7 @@ async function open(page: Page, size = { width: 1440, height: 900 }): Promise<vo
   // 保存の間引き（400ms）が切れるまでの時間を、実時間で待たずに `advance` で進める
   await page.clock.install();
   await page.setViewportSize(size);
+  await useShortText(page);
   await page.addInitScript(
     ({ key, value }) => {
       if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 4, workspaces: [value] }));
@@ -417,6 +419,7 @@ test('固定を外して重ねて出したサイドバーを拡大中に開い�
   page,
 }) => {
   // 既定の固定を外し、サイドバーを重ねて出せる状態で始める
+  await useShortText(page);
   await page.addInitScript(() => {
     if (localStorage.getItem('keydist:app-state') === null) {
       localStorage.setItem('keydist:app-state', JSON.stringify({ version: 2, shell: { sidebarPinned: false } }));

@@ -140,11 +140,33 @@ export function assertNoMarkup(text: string): void {
   }
 }
 
-/** 既定のサンプルにする冒頭の範囲。「吾輩は猫である。」から、最初の「…あったばかりである。」まで。 */
-export const OPENING_END = '感じがあったばかりである。';
+/**
+ * 変換前の本文から、第一章（先頭から二つ目の章見出しの行の手前まで）を返す。
+ * `convertAozora` が章見出しの行を取り除くので、章の境目は変換の前に見出しの行で決める。
+ */
+export function firstChapterOf(body: string): string {
+  const second = [...body.matchAll(HEADING_LINE)][1];
+  if (second === undefined) throw new Error('二つ目の章見出しが見つからない');
+  return body.slice(0, second.index);
+}
 
-export function openingOf(text: string): string {
-  const end = text.indexOf(OPENING_END);
-  if (end === -1) throw new Error('冒頭の終わりが見つからない');
-  return text.slice(0, end + OPENING_END.length).trim();
+/**
+ * 本文の先頭から、空白を除いた字数が `target` に最も近い文末（`。`）までを返す。
+ * 文や語の途中で切ると、打鍵の列の終わりが半端になるので、文末で切る。
+ * 字数は評価に渡す前処理と同じく、空白を除いて数える。同じ近さの文末が2つあれば短い方を取る。
+ */
+export function excerptBySentence(text: string, target: number): string {
+  let count = 0;
+  let best: { end: number; distance: number } | undefined;
+  const chars = [...text];
+  let offset = 0;
+  for (const char of chars) {
+    offset += char.length;
+    if (!/\s/.test(char)) count++;
+    if (char !== '。') continue;
+    const distance = Math.abs(count - target);
+    if (best === undefined || distance < best.distance) best = { end: offset, distance };
+  }
+  if (best === undefined) throw new Error('文末が見つからない');
+  return text.slice(0, best.end).trim();
 }

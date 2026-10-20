@@ -1,8 +1,9 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from './fixtures.ts';
 import { DEFAULT_DEBOUNCE_MS } from '../src/platform/persistence/debounced-scheduler.ts';
 import { openFigureSettings } from './bigram-flow-figure-helper.ts';
 import { waitForHydration } from './hydration-helper.ts';
 import { advance, freezeClock } from './settle-helper.ts';
+import { useShortText } from './short-text-helper.ts';
 
 /**
  * 解析設定の保存（debounce）の反響が、利用者の次の入力の後に届いても、下書きが
@@ -26,6 +27,7 @@ interface EchoWindow {
 
 /** 保存のtimerの処理の直後に、1度だけ`__afterSave`を呼ぶ。 */
 async function hookSaveTimer(page: Page): Promise<void> {
+  await useShortText(page);
   await page.addInitScript((debounceMs) => {
     const w = window as unknown as EchoWindow;
     const origSet = window.setTimeout.bind(window);
@@ -161,6 +163,7 @@ test('個別画面: 保存のtimerが遅れても、書かれなかった入力�
   // 保存のtimer（400ms）を700msに遅らせる。入力の時刻から「書かれたはず」と推測する方式は、この順序で外れる。
   // 遅らせるwrapperが、時計の差し替え後のsetTimeoutを包むように、先に時計を入れる
   await page.clock.install();
+  await useShortText(page);
   await page.addInitScript((debounceMs) => {
     const origSet = window.setTimeout.bind(window);
     (window as unknown as { setTimeout: unknown }).setTimeout = (fn: () => void, ms?: number, ...args: unknown[]) =>
@@ -207,6 +210,7 @@ test('個別画面: 保存を待っている間の元に戻すで、表示と保
 test('Workspace のペイン: 保存の反響が次の入力の後に届いても、下書きは新しい値のまま', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await hookSaveTimer(page);
+  await useShortText(page);
   await page.addInitScript(() => {
     if (localStorage.getItem('keydist:workspaces') === null) {
       localStorage.setItem(
@@ -217,7 +221,7 @@ test('Workspace のペイン: 保存の反響が次の入力の後に届いて�
             {
               id: 'echo',
               name: 'echo',
-              text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+              text: { ref: { kind: 'user', id: 'short-text' } },
               panes: [
                 {
                   id: 'a',

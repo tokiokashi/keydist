@@ -1,7 +1,8 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures.ts';
 import { GRID_COL_STEP_PX } from '../src/hosts/workspace/grid-metrics.ts';
 import { waitForHydration } from './hydration-helper.ts';
 import { afterFrames, settleBy, settleGrid } from './settle-helper.ts';
+import { SHORT_TEXT_REF, useShortText } from './short-text-helper.ts';
 
 /**
  * Workspaceのペインの本体が「ペインの残りの高さ」を持ち、Bigram Flowの図がそこに収まる。
@@ -27,11 +28,12 @@ const cell = (id: string, x: number, y: number, w: number, h: number) => ({ id, 
 /** 保存先へWorkspaceを直接書いて開く。 */
 async function openWorkspace(page: Page, panes: readonly unknown[], grid: unknown, size: { width: number; height: number }) {
   await page.setViewportSize(size);
+  await useShortText(page);
   await page.addInitScript(
     (value) => {
       localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
     },
-    { id: 'fit', name: '収まりの確認', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes, grid },
+    { id: 'fit', name: '収まりの確認', text: { ref: SHORT_TEXT_REF }, panes, grid },
   );
   await page.goto('/workspace/fit');
   await waitForHydration(page);

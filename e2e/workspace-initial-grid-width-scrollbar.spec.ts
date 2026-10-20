@@ -1,4 +1,4 @@
-import { test } from '@playwright/test';
+import { test } from './fixtures.ts';
 import { checkFirstFrame } from './workspace-initial-grid-width-check.ts';
 
 /**

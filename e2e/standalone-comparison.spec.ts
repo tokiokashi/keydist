@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures.ts';
 import { enabledValues, recordControlStates } from './options-draft-recorder.ts';
 import {
   dismissAutoOpenedSelection,
@@ -10,6 +10,7 @@ import {
   targetNames,
   toggleTarget,
 } from './pane-helper.ts';
+import { useShortText } from './short-text-helper.ts';
 
 /**
  * 比較表単体ページのE2E。
@@ -46,6 +47,11 @@ function seedTwoSetups() {
 async function addTarget(page: import('@playwright/test').Page, key: string) {
   await toggleTarget(page, key);
 }
+
+// 数値でなく図の形を見る検査なので、短い本文で回す
+test.beforeEach(async ({ page }) => {
+  await useShortText(page);
+});
 
 test('新規プロファイルで、配列を2つ直接選ぶだけでSetupを作らずに比較できる', async ({ page }) => {
   await page.goto('/analyzer/comparison');
