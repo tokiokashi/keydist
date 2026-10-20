@@ -1,0 +1,65 @@
+/* ---- 読みの確認と修正のポップオーバー ---- */
+.reading-chip-panel {
+  top: calc(100% + 0.45rem);
+  left: 0;
+  width: min(36rem, calc(100vw - 2rem));
+  padding: 0.85rem;
+}
+
+.reading-editor {
+  display: grid;
+  gap: 0.6rem;
+  font-size: 0.86rem;
+}
+
+.reading-editor-hint,
+.reading-editor-note {
+  margin: 0;
+  color: var(--text-muted, inherit);
+}
+
+.reading-editor-list {
+  display: grid;
+  gap: 0.4rem;
+  max-height: 22rem;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.reading-word {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.6rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.reading-word-surface {
+  font-weight: 600;
+}
+
+.reading-word-badge {
+  font-size: 0.75rem;
+  color: var(--accent, inherit);
+}
+
+.reading-word-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.reading-word-controls input[type="text"] {
+  min-width: 8rem;
+}
+
+.reading-word-error {
+  width: 100%;
+  margin: 0;
+  color: var(--danger, inherit);
+}

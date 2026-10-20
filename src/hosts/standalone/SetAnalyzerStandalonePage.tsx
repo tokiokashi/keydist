@@ -1,6 +1,6 @@
 import { useMemo, useRef } from 'react';
 import type { Command } from '#input/commands/index.ts';
-import { setMultiBaselineCommand, setMultiTargetsCommand, type KeydistAssets } from '#engine/commands.ts';
+import { setMultiBaselineCommand, setMultiTargetsCommand, setReadingCorrectionCommand, type KeydistAssets } from '#engine/commands.ts';
 import type { EngineComputer } from '#engine/computer.ts';
 import { layoutIdsOfTargets } from '#input/setup/index.ts';
 import type { PresetIdGenerator } from '#input/presets/index.ts';
@@ -11,6 +11,7 @@ import { useStableResolvedText } from '#hosts/shared/stable-resolved-text.ts';
 import type { ReadingSource } from '#hosts/shared/reading-evaluation.ts';
 import { useReadingEvaluation } from '#hosts/shared/use-reading-evaluation.ts';
 import { ContextBar, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
+import { ReadingChip } from '#hosts/shared/ReadingChip.tsx';
 import { TextChip, type TextContentCommit } from '#hosts/shared/TextChip.tsx';
 import { DefaultShapeChip } from '#hosts/shared/DefaultShapeChip.tsx';
 import { decodeStoredAnalyzerOptions } from '#hosts/shared/decode-analyzer-options.ts';
@@ -170,6 +171,15 @@ export function SetAnalyzerStandalonePage<Options, Extracted, RowContext>({
           dispatch={dispatch}
           generateTextId={generateTextId}
           onTextContentCommit={onTextContentCommit}
+        />
+        <ReadingChip
+          evaluation={evaluation}
+          source={reading}
+          targets={assets.multiTargetSelection.targets}
+          setups={assets.setupLibrary.setups}
+          catalog={catalog}
+          overrides={assets.setupLibrary.overrides}
+          onCorrect={(ref, surface, value) => dispatch(setReadingCorrectionCommand(ref, surface, value))}
         />
         <DefaultShapeChip
           overrides={assets.setupLibrary.overrides}

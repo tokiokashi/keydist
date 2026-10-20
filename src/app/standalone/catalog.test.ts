@@ -31,6 +31,7 @@ const TEXT: ResolvedText = {
   language: 'ja',
   languageOverride: undefined,
   isBuiltin: false,
+  readingCorrections: {},
 };
 
 test('資産に自作の配列があれば、対象の選択の「自作の配列」に並ぶ', () => {

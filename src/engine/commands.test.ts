@@ -7,6 +7,7 @@ import type { AnalysisTarget, SetupLibrary } from '#input/setup/index.ts';
 import { assignKeyFinger } from '#input/shapes/finger-assignment-edit.ts';
 import { DEFAULT_FINGER_ASSIGNMENT } from '#input/shapes/geometry.ts';
 import { emptyTextLibrary } from '#input/text/library.ts';
+import { resolveTextSelection } from '#input/text/resolve.ts';
 import { DEFAULT_TEXT_REF, type TextRef } from '#input/text/selection.ts';
 import { initialTextSelection } from '#input/text/selection.ts';
 import {
@@ -39,6 +40,7 @@ import {
   setTargetForSingleAndMultiCommand,
   setStandaloneAnalyzerOptionsCommand,
   setTextContentCommand,
+  setReadingCorrectionCommand,
   markTextsSeenCommand,
   setTextLanguageOverrideCommand,
   setUserRomajiRuleContentCommand,
@@ -1080,4 +1082,52 @@ test('自作のローマ字規則のコマンド: 作成・複製・名前・中
     assert.equal(step.outcome.kind, 'no-op');
     assert.equal(step.history, renamed.history);
   }
+});
+
+test('setReadingCorrectionCommand: 自作のテキストの直しを資産に保存し、undo/redoで往復できる', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+  const created = applyCommand(assets, history, createTextCommand('standalone', generateTextId));
+  const id = created.assets.textLibrary.texts[0]!.id;
+  const step = applyCommand(created.assets, created.history, setReadingCorrectionCommand({ kind: 'user', id }, '今日', 'こんにち'));
+  assert.equal(step.outcome.kind, 'applied');
+  assert.deepEqual(step.assets.textLibrary.texts[0]!.readingCorrections, { 今日: 'こんにち' });
+  const back = undo(step.assets, step.history);
+  assert.equal(back.assets.textLibrary.texts[0]!.readingCorrections, undefined);
+  const cleared = applyCommand(step.assets, step.history, setReadingCorrectionCommand({ kind: 'user', id }, '今日', undefined));
+  assert.equal(cleared.assets.textLibrary.texts[0]!.readingCorrections, undefined);
+});
+
+test('setReadingCorrectionCommand: 組み込みのテキストの直しは、本文を自作に写さず組み込みのidに紐づけて保存する', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+  const step = applyCommand(assets, history, setReadingCorrectionCommand(DEFAULT_TEXT_REF, '吾輩', 'わがはい'));
+  assert.equal(step.outcome.kind, 'applied');
+  assert.deepEqual(step.assets.textLibrary.texts, []);
+  assert.deepEqual(step.assets.textLibrary.builtinReadingCorrections, { [DEFAULT_TEXT_REF.id]: { 吾輩: 'わがはい' } });
+  assert.deepEqual(step.assets.standaloneTextSelection, assets.standaloneTextSelection);
+  const resolved = resolveTextSelection(step.assets.standaloneTextSelection, step.assets.textLibrary);
+  assert.deepEqual(resolved.readingCorrections, { 吾輩: 'わがはい' });
+  assert.equal(applyCommand(step.assets, step.history, setReadingCorrectionCommand(DEFAULT_TEXT_REF, '吾輩', 'わがはい')).outcome.kind, 'no-op');
+});
+
+test('組み込みのテキストを編集して自作へ写す時は、組み込みに保存した直しも写した先に持たせる', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+  const fixed = applyCommand(assets, history, setReadingCorrectionCommand(DEFAULT_TEXT_REF, '吾輩', 'わがはい'));
+  const edited = applyCommand(fixed.assets, fixed.history, setTextContentCommand('standalone', DEFAULT_TEXT_REF, '吾輩は猫', generateTextId));
+  assert.deepEqual(edited.assets.textLibrary.texts[0]!.readingCorrections, { 吾輩: 'わがはい' });
+  assert.deepEqual(edited.assets.textLibrary.builtinReadingCorrections, { [DEFAULT_TEXT_REF.id]: { 吾輩: 'わがはい' } });
+});
+
+test('duplicateTextCommand: 直した読みも複製先に持たせる', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+  const created = applyCommand(assets, history, createTextCommand('standalone', generateTextId));
+  const id = created.assets.textLibrary.texts[0]!.id;
+  const fixed = applyCommand(created.assets, created.history, setReadingCorrectionCommand({ kind: 'user', id }, '今日', 'こんにち'));
+  const copied = applyCommand(fixed.assets, fixed.history, duplicateTextCommand('standalone', generateTextId));
+  assert.deepEqual(copied.assets.textLibrary.texts[1]!.readingCorrections, { 今日: 'こんにち' });
+  const fresh = applyCommand(copied.assets, copied.history, createTextCommand('standalone', generateTextId));
+  assert.equal(fresh.assets.textLibrary.texts[2]!.readingCorrections, undefined);
 });

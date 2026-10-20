@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { needsReading } from '#input/text/reading.ts';
 import type { ResolvedText } from '#input/text/resolve.ts';
 import {
-  convertForEvaluation,
+  analyzeForEvaluation,
   evaluationText,
   outcomeFor,
   textIdentity,
@@ -33,7 +33,7 @@ export function useReadingEvaluation(resolved: ResolvedText | undefined, source:
       return undefined;
     }
     let cancelled = false;
-    void convertForEvaluation(source, text).then((next) => {
+    void analyzeForEvaluation(source, text).then((next) => {
       if (!cancelled) setOutcome({ identity, outcome: next });
     });
     return () => {

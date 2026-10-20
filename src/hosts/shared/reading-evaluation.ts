@@ -1,4 +1,5 @@
-import { convertToReading, needsReading, type ReadingConditions, type ReadingToken } from '#input/text/reading.ts';
+import { convertToReading, listReadingWords, needsReading, type ReadingConditions, type ReadingToken, type ReadingWord } from '#input/text/reading.ts';
+import type { ReadingCandidateTable } from '#input/text/reading-candidates.ts';
 import type { ResolvedText } from '#input/text/resolve.ts';
 
 /**
@@ -10,15 +11,24 @@ export interface ReadingSource {
   tokenize(text: string): Promise<readonly ReadingToken[]>;
   /** 読みの辞書と解析器の名前・版。数値の条件に載せる。 */
   readonly conditions: Pick<ReadingConditions, 'dictionary' | 'library'>;
+  /** 読みを選ぶ候補の表を読み込む。最初に呼ばれるまで通信せず、読み込めなければ例外を投げる。 */
+  loadCandidates(): Promise<ReadingCandidateTable>;
 }
 
-/** 1つのテキストを読みに直した結果。 */
-export type ReadingOutcome = { readonly kind: 'converted'; readonly text: string } | { readonly kind: 'failed' };
+/**
+ * 1つのテキストを解析した結果。語の列を持ち、利用者の直しはここへ後から当てる
+ * （直しを変えても解析し直さない）。`sourceText` は解析した時点の原文。
+ */
+export type ReadingOutcome =
+  | { readonly kind: 'analyzed'; readonly sourceText: string; readonly tokens: readonly ReadingToken[] }
+  | { readonly kind: 'failed' };
 
-/** 漢字を含む日本語のテキストを読みに直す。読み込みと解析の失敗は、値の `failed` で返す。 */
-export async function convertForEvaluation(source: ReadingSource, text: string): Promise<ReadingOutcome> {
+/** 漢字を含む日本語のテキストを解析する。読み込みと解析の失敗、語の位置が原文と合わない結果は、値の `failed` で返す。 */
+export async function analyzeForEvaluation(source: ReadingSource, text: string): Promise<ReadingOutcome> {
   try {
-    return { kind: 'converted', text: convertToReading(text, await source.tokenize(text)).text };
+    const tokens = await source.tokenize(text);
+    convertToReading(text, tokens);
+    return { kind: 'analyzed', sourceText: text, tokens };
   } catch {
     return { kind: 'failed' };
   }
@@ -62,6 +72,8 @@ export type PaneReadingState = { readonly kind: 'none' } | { readonly kind: 'loa
 export interface ReadingEvaluation {
   readonly text: PaneText;
   readonly state: PaneReadingState;
+  /** 読みを見て直せる語（表記ごと）。読みに直した時だけ持つ */
+  readonly words: readonly ReadingWord[];
 }
 
 /**
@@ -69,12 +81,18 @@ export interface ReadingEvaluation {
  * 結果がまだ無い（`outcome` がundefined）間は `loading`。評価に渡すテキストは原文のままだが、ペインは数値を出さない。
  */
 export function evaluationText(resolved: ResolvedText, source: ReadingSource, outcome: ReadingOutcome | undefined): ReadingEvaluation {
-  if (!needsReading(resolved.text, resolved.language)) return { text: resolved, state: { kind: 'none' } };
-  if (outcome === undefined) return { text: resolved, state: { kind: 'loading' } };
+  if (!needsReading(resolved.text, resolved.language)) return { text: resolved, state: { kind: 'none' }, words: [] };
+  if (outcome === undefined) return { text: resolved, state: { kind: 'loading' }, words: [] };
   if (outcome.kind === 'failed') {
-    return { text: { ...resolved, reading: { status: 'unavailable', ...source.conditions } }, state: { kind: 'failed' } };
+    // 語の列が無いので直しを当てない
+    return { text: { ...resolved, reading: { status: 'unavailable', ...source.conditions, corrections: [] } }, state: { kind: 'failed' }, words: [] };
   }
-  return { text: { ...resolved, text: outcome.text, reading: { status: 'converted', ...source.conditions } }, state: { kind: 'converted' } };
+  const conversion = convertToReading(outcome.sourceText, outcome.tokens, resolved.readingCorrections);
+  return {
+    text: { ...resolved, text: conversion.text, reading: { status: 'converted', ...source.conditions, corrections: conversion.appliedCorrections } },
+    state: { kind: 'converted' },
+    words: listReadingWords(outcome.tokens),
+  };
 }
 
 /** 条件の要約に添える、数値の出どころの1項目。 */
@@ -87,5 +105,9 @@ export interface ConditionProvenanceItem {
 export function readingProvenance(reading: ReadingConditions | null | undefined): readonly ConditionProvenanceItem[] {
   if (reading === null || reading === undefined) return [];
   const dictionary = `${reading.dictionary.name}（${reading.dictionary.version}）`;
-  return [{ label: '読みの辞書', value: reading.status === 'converted' ? dictionary : `${dictionary}を読み込めず、漢字は読みに直していません` }];
+  const items: ConditionProvenanceItem[] = [
+    { label: '読みの辞書', value: reading.status === 'converted' ? dictionary : `${dictionary}を読み込めず、漢字は読みに直していません` },
+  ];
+  if (reading.corrections.length > 0) items.push({ label: '読みの直し', value: `${reading.corrections.length}表記の読みを直して測定` });
+  return items;
 }

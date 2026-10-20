@@ -120,3 +120,28 @@ test('decode: textsが無い（undefined）時は診断を積まない', () => {
   assert.equal(result.ok, true);
   if (result.ok) assert.deepEqual(result.diagnostics, []);
 });
+
+test('encode/decode: 直した読みを往復できる（自作と組み込み）', () => {
+  const library = {
+    texts: [{ id: 'a', name: 'A', text: '今日', readingCorrections: { 今日: 'こんにち' } }],
+    builtinReadingCorrections: { 'builtin:ja.legacy': { 吾輩: 'わがはい' } },
+  };
+  const result = TEXT_LIBRARY_CODEC.decode(TEXT_LIBRARY_CODEC.encode(library));
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.deepEqual(result.value, library);
+    assert.deepEqual(result.diagnostics, []);
+  }
+});
+
+test('decode: 直しとして読めない項目だけを診断付きで捨て、本文と他の直しは残す', () => {
+  const result = TEXT_LIBRARY_CODEC.decode({
+    version: 1,
+    texts: [{ id: 'a', name: 'A', text: '今日', readingCorrections: { 今日: 'こんにち', あい: 'あい', 明日: 'アス', 昨日: 1 } }],
+  });
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.deepEqual(result.value.texts[0]!.readingCorrections, { 今日: 'こんにち' });
+    assert.equal(result.diagnostics.length, 3);
+  }
+});

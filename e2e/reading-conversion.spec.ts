@@ -13,14 +13,16 @@ const ZIP_PATTERN = '**/lindera-ipadic-*.zip';
 interface Traffic {
   zip: number;
   wasm: number;
+  candidates: number;
 }
 
 function watchTraffic(page: Page): Traffic {
-  const traffic: Traffic = { zip: 0, wasm: 0 };
+  const traffic: Traffic = { zip: 0, wasm: 0, candidates: 0 };
   page.on('request', (request) => {
     const { pathname } = new URL(request.url());
     if (/lindera-ipadic-.*\.zip$/.test(pathname)) traffic.zip += 1;
     if (pathname.endsWith('.wasm')) traffic.wasm += 1;
+    if (/\/candidates(-[^/]*\.js|\.json)$/.test(pathname)) traffic.candidates += 1;
   });
   return traffic;
 }
@@ -58,7 +60,7 @@ test('漢字を含まない日本語と英語のテキストでは、辞書もwa
   await expect(flowBody(page)).toBeVisible();
   await expect(readingLoading(page)).toHaveCount(0);
   await expect(readingFailed(page)).toHaveCount(0);
-  expect(traffic).toEqual({ zip: 0, wasm: 0 });
+  expect(traffic).toEqual({ zip: 0, wasm: 0, candidates: 0 });
 });
 
 test('漢字を含む日本語のテキストでは、辞書を取得して読みに直した数値を出し、条件の要約に辞書の名前と版を出す', async ({ page }) => {
@@ -231,4 +233,45 @@ test('読みの辞書を読み込めなかったテキストから別の漢字�
   // Bのために辞書を取り直している（止めている2回目の取得を待っている）
   await expect.poll(() => requests).toBe(2);
   release?.();
+});
+
+test('読みを直す: 候補から選び、同じ表記の語すべてが変わり、条件の要約に出て、開き直しても残る。候補の表は読みの画面を開くまで取得しない', async ({
+  page,
+}) => {
+  const traffic = watchTraffic(page);
+  await openAnalyzer(page, '/analyzer/bigram-flow');
+  await setText(page, '日本は日本です');
+  await expect(flowBody(page)).toBeVisible({ timeout: 20_000 });
+  const chip = page.locator('button[data-reading-chip]');
+  await expect(chip).toContainText('1語');
+  expect(traffic.candidates).toBe(0);
+
+  await chip.click();
+  const row = page.locator('[data-reading-word="日本"]');
+  await expect(row).toBeVisible({ timeout: 10_000 });
+  expect(traffic.candidates).toBe(1);
+  await expect(row).toContainText('2回');
+  await row.getByLabel('日本の読みの候補').selectOption('にっぽん');
+  await expect(row.locator('[data-reading-current]')).toHaveText('にっぽん');
+  await expect(row).toHaveAttribute('data-reading-corrected', 'true');
+
+  // ひらがなと「ー」以外は直せない
+  await row.getByLabel('日本の読みを入力').fill('ニホン');
+  await row.getByRole('button', { name: '直す' }).click();
+  await expect(row.getByRole('alert')).toContainText('ひらがな');
+  await page.keyboard.press('Escape');
+
+  await expect(page.locator('.pane-condition-summary')).toContainText('読みの直し: 1表記の読みを直して測定');
+  await expect(chip).toContainText('1表記を直し済み');
+
+  await page.reload();
+  await waitForHydration(page);
+  await expect(page.locator('button[data-reading-chip]')).toContainText('1表記を直し済み', { timeout: 20_000 });
+  await expect(page.locator('.pane-condition-summary')).toContainText('読みの直し: 1表記の読みを直して測定');
+
+  // 辞書の読みに戻す
+  await page.locator('button[data-reading-chip]').click();
+  await page.locator('[data-reading-word="日本"]').getByRole('button', { name: '辞書の読みに戻す' }).click();
+  await expect(page.locator('[data-reading-word="日本"]')).not.toHaveAttribute('data-reading-corrected', 'true');
+  await expect(page.locator('.pane-condition-summary')).not.toContainText('読みの直し');
 });

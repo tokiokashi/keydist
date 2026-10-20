@@ -34,6 +34,7 @@ function resolvedTextOf(text: string, languageOverride?: 'en' | 'ja'): ResolvedT
     language,
     languageOverride,
     isBuiltin: false,
+    readingCorrections: {},
   };
 }
 

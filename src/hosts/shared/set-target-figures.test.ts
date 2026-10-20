@@ -23,6 +23,7 @@ const EN_TEXT: ResolvedText = {
   language: 'en',
   languageOverride: undefined,
   isBuiltin: false,
+  readingCorrections: {},
 };
 
 const layoutTarget = (layoutId: string): AnalysisTarget => ({ kind: 'layout', layoutId });

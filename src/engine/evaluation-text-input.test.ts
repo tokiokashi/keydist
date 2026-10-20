@@ -124,6 +124,7 @@ const READING: ReadingConditions = {
   status: 'converted',
   dictionary: { name: 'IPADIC', version: '6.2.0' },
   library: { name: 'lindera-wasm', version: '6.2.0' },
+  corrections: [],
 };
 
 test('読みに直した後のテキストで、入力文字数・打鍵の入力の文字列を数える', () => {
@@ -167,4 +168,17 @@ test('読みの条件を渡さなければnull。示す文をそのまま打つ�
   });
   assert.ok(result.ok);
   assert.equal(result.input.reading, null);
+});
+
+test('直した読みの対応は条件のスナップショットに全体が入り、同じ数でも中身の違う直しは解釈のキーを分ける', () => {
+  const fixedA: ReadingConditions = { ...READING, corrections: [{ surface: '今日', reading: 'こんにち' }] };
+  const fixedB: ReadingConditions = { ...READING, corrections: [{ surface: '今日', reading: 'きょー' }] };
+  const a = measure('nicola', 'こんにちは', 'ja', false, fixedA);
+  const b = measure('nicola', 'こんにちは', 'ja', false, fixedB);
+  assert.deepEqual(a.metrics.conditions.reading?.corrections, [{ surface: '今日', reading: 'こんにち' }]);
+  const keyOf = (input: ReturnType<typeof resolve>) => interpretationKeyOf(input, traceKeyOf(input));
+  assert.notEqual(keyOf(a.input), keyOf(b.input));
+  assert.notEqual(keyOf(a.input), keyOf(measure('nicola', 'こんにちは', 'ja', false, READING).input));
+  // スナップショットは入力の配列を共有しない
+  assert.notEqual(a.metrics.conditions.reading?.corrections, fixedA.corrections);
 });

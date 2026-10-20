@@ -1,4 +1,5 @@
 import type { TextLanguage } from './samples.ts';
+import { NO_READING_CORRECTIONS, withReadingCorrection, type ReadingCorrections } from './reading.ts';
 
 /**
  * ユーザーが自作したテキスト（`docs/architecture.md`
@@ -20,10 +21,20 @@ export interface UserText {
    * 他タブへ伝えるため、セッションの中ではなく資産に持つ。
    */
   readonly unseen?: true;
+  /**
+   * 利用者が直した読み（表記 → 読み）。無ければ直していない。読みはテキストの語ごとに決まるので、
+   * テキストと一緒に持ち、別のテキストには当たらない。
+   */
+  readonly readingCorrections?: ReadingCorrections;
 }
 
 export interface TextLibrary {
   readonly texts: readonly UserText[];
+  /**
+   * 組み込みのテキストの読みの直し（組み込みのテキストのid → 表記 → 読み）。組み込みのテキストは資産を持たず、
+   * 本文を自作のテキストへ写さずに直しだけを保存するため、ここに持つ。
+   */
+  readonly builtinReadingCorrections?: Readonly<Record<string, ReadingCorrections>>;
 }
 
 /**
@@ -51,6 +62,7 @@ export function appendCopiedUserText(
     readonly name: string;
     readonly languageOverride?: TextLanguage;
     readonly unseen?: true;
+    readonly readingCorrections?: ReadingCorrections;
   },
   name?: string,
 ): { readonly library: TextLibrary; readonly created: UserText } {
@@ -60,8 +72,12 @@ export function appendCopiedUserText(
     source.languageOverride === undefined
       ? { id, name: entryName, text: source.text }
       : { id, name: entryName, text: source.text, languageOverride: source.languageOverride };
-  const created: UserText = source.unseen === true ? { ...base, unseen: true } : base;
-  return { library: { texts: [...library.texts, created] }, created };
+  const withUnseen: UserText = source.unseen === true ? { ...base, unseen: true } : base;
+  const created: UserText =
+    source.readingCorrections === undefined || Object.keys(source.readingCorrections).length === 0
+      ? withUnseen
+      : { ...withUnseen, readingCorrections: { ...source.readingCorrections } };
+  return { library: { ...library, texts: [...library.texts, created] }, created };
 }
 
 /**
@@ -71,7 +87,7 @@ export function appendCopiedUserText(
  */
 export function deleteUserText(library: TextLibrary, id: string): TextLibrary {
   if (!library.texts.some((text) => text.id === id)) return library;
-  return { texts: library.texts.filter((text) => text.id !== id) };
+  return { ...library, texts: library.texts.filter((text) => text.id !== id) };
 }
 
 /**
@@ -81,7 +97,7 @@ export function deleteUserText(library: TextLibrary, id: string): TextLibrary {
 export function renameUserText(library: TextLibrary, id: string, name: string): TextLibrary {
   const target = library.texts.find((text) => text.id === id);
   if (target === undefined || target.name === name) return library;
-  return { texts: library.texts.map((text) => (text.id === id ? { ...text, name } : text)) };
+  return { ...library, texts: library.texts.map((text) => (text.id === id ? { ...text, name } : text)) };
 }
 
 /**
@@ -92,7 +108,7 @@ export function renameUserText(library: TextLibrary, id: string, name: string): 
 export function editUserTextContent(library: TextLibrary, id: string, text: string): TextLibrary {
   const target = library.texts.find((entry) => entry.id === id);
   if (target === undefined || target.text === text) return library;
-  return { texts: library.texts.map((entry) => (entry.id === id ? { ...entry, text } : entry)) };
+  return { ...library, texts: library.texts.map((entry) => (entry.id === id ? { ...entry, text } : entry)) };
 }
 
 /** 言語判定の手動上書きを設定・解除する。`undefined`で自動判定へ戻す。 */
@@ -100,7 +116,7 @@ export function setUserTextLanguageOverride(library: TextLibrary, id: string, ov
   const target = library.texts.find((text) => text.id === id);
   if (target === undefined || target.languageOverride === override) return library;
   const next: UserText = override === undefined ? withoutLanguageOverride(target) : { ...target, languageOverride: override };
-  return { texts: library.texts.map((text) => (text.id === id ? next : text)) };
+  return { ...library, texts: library.texts.map((text) => (text.id === id ? next : text)) };
 }
 
 /**
@@ -111,12 +127,44 @@ export function markUserTextsSeen(library: TextLibrary, ids: readonly string[]):
   const targets = new Set(ids);
   if (!library.texts.some((text) => text.unseen === true && targets.has(text.id))) return library;
   return {
+    ...library,
     texts: library.texts.map((text) => {
       if (text.unseen !== true || !targets.has(text.id)) return text;
       const { unseen: _drop, ...rest } = text;
       return rest;
     }),
   };
+}
+
+/**
+ * テキストの読みの直しを足す・差し替える・消す。`reading` がundefinedなら、その表記の直しを消す。
+ * 自作のテキストは `UserText` に、組み込みのテキストは `builtinReadingCorrections` に持つ。
+ * 対象が無い（手持ちに無い自作のテキスト）・変化が無い時は `library` をそのまま返す。
+ */
+export function setTextReadingCorrection(
+  library: TextLibrary,
+  ref: { readonly kind: 'user' | 'builtin'; readonly id: string },
+  surface: string,
+  reading: string | undefined,
+): TextLibrary {
+  if (ref.kind === 'user') {
+    const target = library.texts.find((text) => text.id === ref.id);
+    if (target === undefined) return library;
+    const current = target.readingCorrections ?? NO_READING_CORRECTIONS;
+    const next = withReadingCorrection(current, surface, reading);
+    if (next === current) return library;
+    const { readingCorrections: _drop, ...rest } = target;
+    const updated: UserText = Object.keys(next).length === 0 ? rest : { ...rest, readingCorrections: next };
+    return { ...library, texts: library.texts.map((text) => (text.id === ref.id ? updated : text)) };
+  }
+  const all = library.builtinReadingCorrections ?? {};
+  const current = all[ref.id] ?? NO_READING_CORRECTIONS;
+  const next = withReadingCorrection(current, surface, reading);
+  if (next === current) return library;
+  const { [ref.id]: _drop, ...others } = all;
+  const nextAll = Object.keys(next).length === 0 ? others : { ...others, [ref.id]: next };
+  const { builtinReadingCorrections: _old, ...base } = library;
+  return Object.keys(nextAll).length === 0 ? base : { ...base, builtinReadingCorrections: nextAll };
 }
 
 function withoutLanguageOverride(text: UserText): UserText {

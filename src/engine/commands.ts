@@ -29,6 +29,7 @@ import {
   editUserTextContent,
   renameUserText,
   setUserTextLanguageOverride,
+  setTextReadingCorrection,
   uniqueAutoTextName,
   type TextIdGenerator,
   type TextLibrary,
@@ -605,6 +606,7 @@ export function duplicateTextCommand(holder: TextSelectionHolder, generateId: Te
         text: resolved.text,
         name: resolved.name,
         ...(resolved.languageOverride === undefined ? {} : { languageOverride: resolved.languageOverride }),
+        readingCorrections: resolved.readingCorrections,
       },
       uniqueName,
     );
@@ -719,7 +721,11 @@ export function setTextContentCommand(holder: TextSelectionHolder, ref: TextRef,
     const notSelected = resolvedRef.kind !== 'builtin' || resolvedRef.id !== ref.id;
     // 選ばれないコピーは、打った本人の画面から本文が消えたように見える。文脈バーのチップに
     // 印を付けて知らせるため、まだ見ていない印を付けて残す
-    const { library: nextLibrary, created } = appendCopiedUserText(library, generateId, notSelected ? { text, name, unseen: true } : { text, name });
+    // 組み込みのテキストに保存した読みの直しは、写した先にも持たせる（編集の前後で読みが変わらないように）。
+    // 編集で現れなくなった表記の直しは、数値に使われない
+    const readingCorrections = library.builtinReadingCorrections?.[ref.id];
+    const copySource = { text, name, ...(readingCorrections === undefined ? {} : { readingCorrections }) };
+    const { library: nextLibrary, created } = appendCopiedUserText(library, generateId, notSelected ? { ...copySource, unseen: true } : copySource);
     if (notSelected) {
       return { kind: 'applied', label: 'テキストを変更する', changes: { textLibrary: nextLibrary } };
     }
@@ -730,6 +736,15 @@ export function setTextContentCommand(holder: TextSelectionHolder, ref: TextRef,
       changes: { textLibrary: nextLibrary, ...withTextSelectionOf(current, holder, nextSelection) },
     };
   };
+}
+
+/**
+ * テキストの表記の読みを直す。`reading` がundefinedなら、その表記の直しを消して辞書の読みに戻す。
+ * `ref` は操作の瞬間に見ていたテキストを指す（選択を読み直さない）。自作のテキストはその資産に、
+ * 組み込みのテキストは本文を写さずに、組み込みのテキストのidに紐づけて直しだけを保存する。
+ */
+export function setReadingCorrectionCommand(ref: TextRef, surface: string, reading: string | undefined): Command<KeydistAssets> {
+  return textLibraryCommand('読みを直す', (library) => setTextReadingCorrection(library, ref, surface, reading));
 }
 
 /**

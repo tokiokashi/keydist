@@ -1,6 +1,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { containsKanji, convertToReading, isKanjiChar, katakanaToHiragana, needsReading, type ReadingToken } from './reading.ts';
+import {
+  containsKanji,
+  convertToReading,
+  isCorrectionReading,
+  isKanjiChar,
+  katakanaToHiragana,
+  listReadingWords,
+  needsReading,
+  withReadingCorrection,
+  type ReadingToken,
+} from './reading.ts';
 
 const encoder = new TextEncoder();
 
@@ -145,4 +155,78 @@ test('読みに直す対象は、漢字を含む日本語のテキストだけ',
   assert.equal(needsReading('あいう', 'ja'), false);
   assert.equal(needsReading('今日', 'en'), false);
   assert.equal(needsReading('hello', 'en'), false);
+});
+
+test('直しは表記が一致する語すべての読みを置き換え、辞書の読みの有無を問わない', () => {
+  const text = '今日と今日と謎と々と花';
+  const tokens = tokensOf(text, [
+    ['今日', 'キョウ'],
+    ['と', 'ト'],
+    ['今日', 'コンニチ'],
+    ['と', 'ト'],
+    ['謎', null, true],
+    ['と', 'ト'],
+    ['々', '々'],
+    ['と', 'ト'],
+    ['花', 'ハナ'],
+  ]);
+  const result = convertToReading(text, tokens, { 今日: 'こんにち', 謎: 'なぞ', 々: 'ぞう' });
+  assert.equal(result.text, 'こんにちとこんにちとなぞとぞうとはな');
+  assert.equal(result.replacedWords, 5);
+  assert.deepEqual(result.appliedCorrections, [
+    { surface: '々', reading: 'ぞう' },
+    { surface: '今日', reading: 'こんにち' },
+    { surface: '謎', reading: 'なぞ' },
+  ]);
+});
+
+test('直しは語の区切りを変えず、直していない表記と漢字を含まない語には当たらない', () => {
+  const text = '今日は１２３';
+  const tokens = tokensOf(text, [
+    ['今日', 'キョウ'],
+    ['は', 'ハ'],
+    ['１２３', 'イチニサン'],
+  ]);
+  const result = convertToReading(text, tokens, { は: 'わ', '１２３': 'いちにさん', 明日: 'あす' });
+  assert.equal(result.text, 'きょうは１２３');
+  assert.deepEqual(result.appliedCorrections, []);
+});
+
+test('テキストに現れない表記の直しは、当たった直しに含めない', () => {
+  const text = '今日';
+  const result = convertToReading(text, tokensOf(text, [['今日', 'キョウ']]), { 明日: 'あす' });
+  assert.equal(result.text, 'きょう');
+  assert.deepEqual(result.appliedCorrections, []);
+});
+
+test('打てる読みはひらがなと長音だけで、1文字以上', () => {
+  for (const reading of ['きょう', 'らーめん', 'ゔぁ']) assert.equal(isCorrectionReading(reading), true, reading);
+  for (const reading of ['', 'キョウ', 'kyou', '今日', 'きょう ', 'き・ょ']) assert.equal(isCorrectionReading(reading), false, reading);
+});
+
+test('listReadingWords: 漢字を含む語を表記ごとにまとめ、辞書の読みを出現の多い順に持つ', () => {
+  const text = '日本と日本と日本と何';
+  const tokens = tokensOf(text, [
+    ['日本', 'ニッポン'],
+    ['と', 'ト'],
+    ['日本', 'ニホン'],
+    ['と', 'ト'],
+    ['日本', 'ニホン'],
+    ['と', 'ト'],
+    ['何', null, true],
+  ]);
+  assert.deepEqual(listReadingWords(tokens), [
+    { surface: '日本', count: 3, dictionaryReadings: ['にほん', 'にっぽん'] },
+    { surface: '何', count: 1, dictionaryReadings: [] },
+  ]);
+});
+
+test('withReadingCorrection: 足す・差し替える・消す。変化が無ければ同じ参照', () => {
+  const none = {};
+  const one = withReadingCorrection(none, '今日', 'こんにち');
+  assert.deepEqual(one, { 今日: 'こんにち' });
+  assert.equal(withReadingCorrection(one, '今日', 'こんにち'), one);
+  assert.deepEqual(withReadingCorrection(one, '今日', 'きょう'), { 今日: 'きょう' });
+  assert.deepEqual(withReadingCorrection(one, '今日', undefined), {});
+  assert.equal(withReadingCorrection(none, '今日', undefined), none);
 });
