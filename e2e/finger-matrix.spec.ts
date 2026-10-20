@@ -1,7 +1,8 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from './fixtures.ts';
 import { openSettings } from './pane-helper.ts';
 import { waitForHydration } from './hydration-helper.ts';
 import { holdWorker, installWorkerHold, releaseWorker } from './worker-hold-helper.ts';
+import { SHORT_TEXT_REF, useShortText } from './short-text-helper.ts';
 
 /**
  * 指ごとの比較（配列×指のマトリックス）: 単体ページとWorkspaceのペインの配線、面の切り替え、列見出しによる並び替え。
@@ -21,6 +22,7 @@ function seedThreeLayouts(targets: readonly unknown[]) {
 
 async function openStandalone(page: Page): Promise<Locator> {
   await installWorkerHold(page);
+  await useShortText(page);
   await page.addInitScript(seedThreeLayouts, TARGETS);
   await page.goto('/analyzer/finger-matrix');
   await waitForHydration(page);
@@ -31,6 +33,7 @@ async function openStandalone(page: Page): Promise<Locator> {
 
 async function openInWorkspace(page: Page): Promise<Locator> {
   await installWorkerHold(page);
+  await useShortText(page);
   await page.addInitScript(
     (value) => {
       localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
@@ -38,7 +41,7 @@ async function openInWorkspace(page: Page): Promise<Locator> {
     {
       id: 'w',
       name: '指の比較',
-      text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+      text: { ref: SHORT_TEXT_REF },
       panes: [{ id: 'p', analyzerId: 'finger-matrix', binding: { mode: 'fixed', target: { kind: 'set', selection: { targets: TARGETS } } } }],
       grid: [{ id: 'p', x: 0, y: 0, w: 24, h: 16 }],
     },

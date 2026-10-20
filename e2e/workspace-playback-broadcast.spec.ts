@@ -1,5 +1,6 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from './fixtures.ts';
 import { waitForHydration } from './hydration-helper.ts';
+import { SHORT_TEXT_REF, useShortText } from './short-text-helper.ts';
 
 /**
  * Workspaceの打鍵再生のペインどうしで、「再生／一時停止」と「停止」の操作が全部のペインに伝わる。
@@ -15,6 +16,7 @@ const playback = (id: string, layoutId: string, options?: Record<string, unknown
 
 async function open(page: Page, panes: readonly { readonly id: string }[]): Promise<void> {
   await page.setViewportSize({ width: 1600, height: 1000 });
+  await useShortText(page);
   await page.addInitScript(
     (value) => {
       if (localStorage.getItem('keydist:workspaces') === null) {
@@ -24,7 +26,7 @@ async function open(page: Page, panes: readonly { readonly id: string }[]): Prom
     {
       id: 'p',
       name: '再生',
-      text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+      text: { ref: SHORT_TEXT_REF },
       panes,
       grid: panes.map((pane, i) => ({ id: pane.id, x: (i % 2) * 12, y: Math.floor(i / 2) * 24, w: 12, h: 24 })),
     },

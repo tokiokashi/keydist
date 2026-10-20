@@ -1,7 +1,8 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from './fixtures.ts';
 import { waitForHydration } from './hydration-helper.ts';
 import { openSettings, toggleTarget } from './pane-helper.ts';
 import { useKanaText } from './kana-text-helper.ts';
+import { SHORT_TEXT_REF, useShortText } from './short-text-helper.ts';
 
 /**
  * 打鍵再生のE2E。時間の決め方・配列図に出す値はunit test（`playback.test.ts`）で固定しているので、
@@ -239,6 +240,7 @@ async function openConditionModal(page: Page): Promise<Locator> {
 }
 
 async function seedPersonalSpeed(page: Page): Promise<void> {
+  await useShortText(page);
   await page.addInitScript(
     ({ key, value }) => {
       if (sessionStorage.getItem('seeded') !== null) return;
@@ -343,6 +345,7 @@ test('個人速度の保存値がある時は、ペインの中に個人速度�
 
 test('個人速度の保存値が打鍵の上乗せを持つ時は、ペインの中に足していることも出る', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
+  await useShortText(page);
   await page.addInitScript(
     ({ key, value }) => {
       if (sessionStorage.getItem('seeded') !== null) return;
@@ -384,6 +387,7 @@ test('個人速度の保存値が打鍵の上乗せを持つ時は、ペイン�
 
 test('個人速度の保存値が同時押しの上乗せを持っていても、同時押しの打鍵が無い再生では足していることを出さない', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
+  await useShortText(page);
   await page.addInitScript(
     ({ key, value }) => {
       if (sessionStorage.getItem('seeded') !== null) return;
@@ -449,6 +453,7 @@ test('Workspaceで、共有に従う打鍵再生のペインは時間の設定�
     { id: 'b', analyzerId: 'playback', optionsBinding: { mode: 'shared', set: 'playback-1' }, binding: layoutTarget('dvorak') },
     { id: 'c', analyzerId: 'playback', optionsBinding: { mode: 'own' }, binding: layoutTarget('qwerty') },
   ];
+  await useShortText(page);
   await page.addInitScript(
     (value) => {
       if (localStorage.getItem('keydist:workspaces') === null) {
@@ -458,7 +463,7 @@ test('Workspaceで、共有に従う打鍵再生のペインは時間の設定�
     {
       id: 's',
       name: '共有',
-      text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+      text: { ref: SHORT_TEXT_REF },
       optionSets: [{ id: 'playback-1', analyzerId: 'playback' }],
       panes,
       grid: panes.map((pane, i) => ({ id: pane.id, x: i * 8, y: 0, w: 8, h: 30 })),

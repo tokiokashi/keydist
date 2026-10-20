@@ -702,7 +702,7 @@ test('使えないAnalyzerのペインは使えないと出て、閉じられる
   await seedWorkspace(page, {
     id: 'seeded',
     name: '読み込みの確認',
-    text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+    text: { ref: SHORT_TEXT_REF },
     panes: [
       { id: 'p-good', analyzerId: 'bigram-flow', binding: { mode: 'fixed', target: { kind: 'single', target: QWERTY } } },
       {

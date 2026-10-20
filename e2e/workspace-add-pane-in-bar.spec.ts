@@ -1,5 +1,6 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures.ts';
 import { waitForHydration } from './hydration-helper.ts';
+import { SHORT_TEXT_REF, useShortText } from './short-text-helper.ts';
 
 /**
  * 「ペインを追加」は文脈バーの中にある（格子の上に専用の1行を持たない）。
@@ -8,10 +9,11 @@ import { waitForHydration } from './hydration-helper.ts';
 
 const QWERTY = { kind: 'layout', layoutId: 'qwerty' };
 const flow = { id: 'f', analyzerId: 'bigram-flow', binding: { mode: 'fixed', target: { kind: 'single', target: QWERTY } } };
-const TEXT = { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } };
+const TEXT = { ref: SHORT_TEXT_REF };
 
 async function open(page: Page, size: { width: number; height: number }, panes: readonly unknown[] = [flow], name = '並べて見る'): Promise<void> {
   await page.setViewportSize(size);
+  await useShortText(page);
   await page.addInitScript(
     (value) => {
       if (localStorage.getItem('keydist:workspaces') === null) {

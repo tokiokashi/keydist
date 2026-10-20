@@ -1,5 +1,6 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from './fixtures.ts';
 import { waitForHydration } from './hydration-helper.ts';
+import { SHORT_TEXT_REF, useShortText } from './short-text-helper.ts';
 
 /**
  * キーの詳細。キーにカーソルを乗せると要点（ツールチップ）、押すと小窓で全件が読める。
@@ -8,6 +9,7 @@ import { waitForHydration } from './hydration-helper.ts';
  */
 
 async function selectLayout(page: Page, layoutId: string) {
+  await useShortText(page);
   await page.addInitScript((id) => {
     if (localStorage.getItem('keydist:single-target-selection') === null) {
       localStorage.setItem('keydist:single-target-selection', JSON.stringify({ version: 1, target: { kind: 'layout', layoutId: id } }));
@@ -177,6 +179,7 @@ const fixed = (id: string, analyzerId: string, layoutId: string) => ({
 
 async function openWorkspace(page: Page): Promise<void> {
   await page.setViewportSize({ width: 1440, height: 1200 });
+  await useShortText(page);
   await page.addInitScript(
     ({ key, value }) => {
       if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 4, workspaces: [value] }));
@@ -186,7 +189,7 @@ async function openWorkspace(page: Page): Promise<void> {
       value: {
         id: 'k',
         name: 'キー',
-        text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+        text: { ref: SHORT_TEXT_REF },
         // a: ヒートマップ(QWERTY) / b: Bigram Flow(QWERTY) / c: ヒートマップ(Dvorak) / d: ヒートマップ（レイヤー）(QWERTY)。
         // a・b・dは配列と物理配列が同じ
         panes: [

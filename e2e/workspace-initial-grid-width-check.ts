@@ -1,6 +1,7 @@
 import { expect, type Page } from '@playwright/test';
 import { waitForHydration } from './hydration-helper.ts';
 import { settleGrid } from './settle-helper.ts';
+import { SHORT_TEXT_REF, useShortText } from './short-text-helper.ts';
 
 /**
  * （`workspace-initial-grid-width*.spec.ts`の共通部）
@@ -21,6 +22,7 @@ export async function checkFirstFrame(page: Page, scrollbarTakesWidth: boolean):
     { id: 'b', x: 12, y: 0, w: 12, h: 12 },
     { id: 'c', x: 0, y: 12, w: 24, h: 12 },
   ];
+  await useShortText(page);
   await page.addInitScript(
     (value) => {
       localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 4, workspaces: [value] }));
@@ -45,7 +47,7 @@ export async function checkFirstFrame(page: Page, scrollbarTakesWidth: boolean):
         requestAnimationFrame(loop);
       }).observe(document, { childList: true, subtree: true });
     },
-    { id: 'g', name: '格子', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes: grid.map((g) => blank(g.id)), grid },
+    { id: 'g', name: '格子', text: { ref: SHORT_TEXT_REF }, panes: grid.map((g) => blank(g.id)), grid },
   );
   await page.goto('/workspace/g');
   await waitForHydration(page);

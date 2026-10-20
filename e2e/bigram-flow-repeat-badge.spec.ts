@@ -1,6 +1,7 @@
-import { expect, test, type Locator } from '@playwright/test';
+import { expect, test, type Locator } from './fixtures.ts';
 import { openFigureSettings } from './bigram-flow-figure-helper.ts';
 import { waitForHydration } from './hydration-helper.ts';
+import { useShortText } from './short-text-helper.ts';
 
 /**
  * Keyboard Flow の連打の回数バッジを出す・出さないの切り替え。
@@ -105,6 +106,7 @@ test('個別画面: 消した操作は文脈バーの元に戻すで戻る', asy
 
 test('Workspace のペイン: 連打の回数バッジを消せて、戻せる。線と凡例は変わらない', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
+  await useShortText(page);
   await page.addInitScript(() => {
     if (localStorage.getItem('keydist:workspaces') === null) {
       localStorage.setItem(
@@ -115,7 +117,7 @@ test('Workspace のペイン: 連打の回数バッジを消せて、戻せる�
             {
               id: 'badge',
               name: 'バッジ',
-              text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+              text: { ref: { kind: 'user', id: 'short-text' } },
               panes: [
                 {
                   id: 'a',

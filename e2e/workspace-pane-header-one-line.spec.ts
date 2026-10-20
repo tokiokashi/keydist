@@ -1,6 +1,7 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from './fixtures.ts';
 import { waitForHydration } from './hydration-helper.ts';
 import { settleGrid } from './settle-helper.ts';
+import { SHORT_TEXT_REF, useShortText } from './short-text-helper.ts';
 
 /**
  * Workspaceのペインの見出し。見出しの先頭につかみ所・名前・ⓘがあり、対象・連動・条件・状態・解析設定・⋯が並ぶ。
@@ -30,7 +31,7 @@ function rowGrid(...items: readonly (readonly [string, number])[]) {
 const workspaceOf = (panes: readonly unknown[], grid: unknown, extra: Record<string, unknown> = {}) => ({
   id: 'h',
   name: '見出し',
-  text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+  text: { ref: SHORT_TEXT_REF },
   panes,
   grid,
   groups: [{ id: 'link-1', target: {} }],
@@ -39,6 +40,7 @@ const workspaceOf = (panes: readonly unknown[], grid: unknown, extra: Record<str
 
 async function openWorkspace(page: Page, panes: readonly unknown[], grid: unknown, size: { width: number; height: number }): Promise<void> {
   await page.setViewportSize(size);
+  await useShortText(page);
   await page.addInitScript(
     (value) => {
       if (localStorage.getItem('keydist:workspaces') === null) {

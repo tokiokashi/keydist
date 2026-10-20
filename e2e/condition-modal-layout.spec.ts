@@ -1,5 +1,6 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from './fixtures.ts';
 import { waitForHydration } from './hydration-helper.ts';
+import { SHORT_TEXT_REF, useShortText } from './short-text-helper.ts';
 
 /**
  * 条件のモーダルの配置。
@@ -15,6 +16,7 @@ const WORKSPACE_CHANGED = { sfbHomeCost: false, defaultShapeId: 'ortholinear' };
 
 async function openWorkspaceModal(page: Page, size: { width: number; height: number }, conditions: Record<string, unknown> = {}): Promise<Locator> {
   await page.setViewportSize(size);
+  await useShortText(page);
   await page.addInitScript(
     (value) => {
       if (localStorage.getItem('keydist:workspaces') === null) {
@@ -24,7 +26,7 @@ async function openWorkspaceModal(page: Page, size: { width: number; height: num
     {
       id: 'm',
       name: '配置',
-      text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+      text: { ref: SHORT_TEXT_REF },
       conditions,
       panes: [{ id: 'p1', analyzerId: 'bigram-flow', binding: { mode: 'fixed', target: { kind: 'single', target: QWERTY } } }],
       grid: [{ id: 'p1', x: 0, y: 0, w: 24, h: 24 }],

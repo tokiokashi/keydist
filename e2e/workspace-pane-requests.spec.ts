@@ -1,7 +1,8 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures.ts';
 import { waitForHydration } from './hydration-helper.ts';
 import { advance, settleGrid } from './settle-helper.ts';
 import { holdWorker, installWorkerHold, releaseWorker } from './worker-hold-helper.ts';
+import { SHORT_TEXT_REF, useShortText } from './short-text-helper.ts';
 
 /**
  * Workspaceで、入力が変わっていないペインは計算の依頼を出し直さず、「計算中」にもならないことの確認。
@@ -12,7 +13,7 @@ import { holdWorker, installWorkerHold, releaseWorker } from './worker-hold-help
  */
 
 const WORKSPACES_KEY = 'keydist:workspaces';
-const TEXT = { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } };
+const TEXT = { ref: SHORT_TEXT_REF };
 
 const layoutTarget = (layoutId: string) => ({ kind: 'layout', layoutId });
 const follow = (id: string, group: string) => ({ id, analyzerId: 'bigram-flow', binding: { mode: 'follow', group } });
@@ -27,6 +28,7 @@ const groupOf = (id: string, layoutId: string) => ({ id, target: { single: layou
 async function openSeeded(page: Page, workspace: unknown): Promise<void> {
   // 保存の間引きが切れるまでの時間を、実時間で待たずに `advance` で進める
   await page.clock.install();
+  await useShortText(page);
   await page.addInitScript(
     ({ key, value }) => {
       if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 4, workspaces: [value] }));

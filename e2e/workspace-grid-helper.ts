@@ -2,6 +2,7 @@ import { expect, type Page } from '@playwright/test';
 import { GRID_COL_STEP_PX } from '../src/hosts/workspace/grid-metrics.ts';
 import { waitForHydration } from './hydration-helper.ts';
 import { settleGrid } from './settle-helper.ts';
+import { SHORT_TEXT_REF, useShortText } from './short-text-helper.ts';
 
 /** Workspaceの格子のe2eが共有する部品（`workspace-grid.spec.ts`・`workspace-no-compaction.spec.ts`）。 */
 
@@ -26,6 +27,7 @@ export async function open(
   compact = false,
 ): Promise<void> {
   await page.setViewportSize(size);
+  await useShortText(page);
   await page.addInitScript(
     (value) => {
       if (localStorage.getItem('keydist:workspaces') === null) {
@@ -35,7 +37,7 @@ export async function open(
     {
       id: 'g',
       name: '格子',
-      text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+      text: { ref: SHORT_TEXT_REF },
       panes: ids.map(blank),
       grid,
       ...(compact ? { compactPanes: true } : {}),

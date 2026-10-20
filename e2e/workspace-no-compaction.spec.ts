@@ -1,6 +1,7 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures.ts';
 import { waitForHydration } from './hydration-helper.ts';
 import { cell, COL_STEP, dragHandle, dragPane, drawnTop, itemOf, open, ROW_STEP, settle, stored, WORKSPACES_KEY } from './workspace-grid-helper.ts';
+import { SHORT_TEXT_REF, useShortText } from './short-text-helper.ts';
 
 /**
  * 「空いた所に詰める」の設定。Workspaceごとに持ち、既定は詰めない。
@@ -132,6 +133,7 @@ test('設定は保存され、メニューに今の状態が出る。Workspace�
 
 test('縦積み（スマホ幅）: 並びを書き換えず、設定の切り替えも使える。広げ直すと保存した並びで描かれる', async ({ page }) => {
   const gapped = [cell('a', 0, 0, 12, 5), cell('b', 12, 0, 12, 16), cell('c', 0, 10, 12, 6)];
+  await useShortText(page);
   await page.addInitScript(
     (value) => {
       if (localStorage.getItem('keydist:workspaces') === null) {
@@ -141,7 +143,7 @@ test('縦積み（スマホ幅）: 並びを書き換えず、設定の切り替
     {
       id: 'g',
       name: '格子',
-      text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+      text: { ref: SHORT_TEXT_REF },
       panes: ['a', 'b', 'c'].map((id) => ({ id, analyzerId: 'blank', binding: { mode: 'none' } })),
       grid: gapped,
     },
@@ -167,6 +169,7 @@ test('拡大表示: 拡大しても戻しても、保存した並びも空きも
     analyzerId: 'bigram-flow',
     binding: { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } } },
   });
+  await useShortText(page);
   await page.addInitScript(
     (value) => {
       if (localStorage.getItem('keydist:workspaces') === null) {
@@ -176,7 +179,7 @@ test('拡大表示: 拡大しても戻しても、保存した並びも空きも
     {
       id: 'g',
       name: '格子',
-      text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+      text: { ref: SHORT_TEXT_REF },
       panes: ['a', 'b', 'c'].map(fixed),
       grid: gapped,
     },
