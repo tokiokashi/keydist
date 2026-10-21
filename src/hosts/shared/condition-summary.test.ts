@@ -198,7 +198,7 @@ test('traceConditionSummary: 既定の物理配列はidでなく物理配列名�
   assert.equal(row.originLabel, '上書き: 全体');
 });
 
-test('nonDefaultConditionRows: 既定の物理配列は物理配列名として別に出しているので、併記には含めない', () => {
+test('nonDefaultConditionRows: 既定の物理配列は物理配列名としてフルの名前に出すので、併記には含めない', () => {
   const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'defaultShapeId', 'ortholinear');
   assert.ok(written.ok);
   if (!written.ok) return;

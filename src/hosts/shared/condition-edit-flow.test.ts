@@ -163,7 +163,7 @@ test('既定の物理配列: 全体へ書くと図の物理配列に出る。既
   }
   dispatch(session, defaultShapeCommand('row-staggered'));
   assert.equal(viewOf(session, 'qwerty').rowOf('defaultShapeId').originLabel, '既定値');
-  // 既定の物理配列は物理配列名として別に出すので、閉じた1行には数えない
+  // 既定の物理配列は物理配列名としてフルの名前に出すので、閉じた1行には数えない
   assert.equal(viewOf(session, 'qwerty').triggerText, 'すべて既定値');
 });
 
