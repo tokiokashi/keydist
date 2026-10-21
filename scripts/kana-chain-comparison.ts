@@ -355,10 +355,10 @@ async function runBoundaryStage(input: BoundaryStageInput): Promise<void> {
     `- 前処理: 仕様 §4.6の1〜4段（既定の記号の範囲）`,
     `- 文節の区切り: ${BUNSETSU_SPLITTER.name} ${BUNSETSU_SPLITTER.version}を、改行を含む原文の全文に1回当て、アプリと同じ経路で評価に渡すテキストの位置へ写した。原文の上で${bunsetsuSource.length}個、読みの上で${bunsetsuInReading.length}個。段落の先頭（改行の直後）に載った区切りは読みの上で${atParagraphStart}個`,
     `- 配列: ${conditions.join('、')}`,
-    `- 比べる量: 区切りの直後の1文字に帰属したステップの1文字あたりの距離 [u] の、全区切りでの平均（docs/segment-metrics.md の直後の1文字）`,
+    `- 比べる量: 区切りの直後の1文字に帰属したステップの1文字あたりの距離 [u] の、全区切りでの平均（docs/segment-metrics.mdの直後の1文字）`,
     `- 並びを揃えたランダムな区切り: 乱数${PRNG_NAME}、種${args.seedStart}〜${args.seedStart + BOUNDARY_CONTEXT_SEED_COUNT - 1}の${BOUNDARY_CONTEXT_SEED_COUNT}個。並びの長さ1・2・3文字。判定は並びの長さ・配列ごとに別々`,
     `- 選ぶ余地が無い区切りの割合の上限: ${BOUNDARY_CONTEXT_FORCED_RATIO_LIMIT * 100}%。超えたらその並びの長さ・配列の判定を出さない`,
-    `- 長さの並べ替え（docs/segment-metrics.md のランダム）: 同じ全文・同じ種の${BOUNDARY_CONTEXT_SEED_COUNT}個。全文の区切りすべてを使うので、並びの長さごとの列の文節の値（前の文字が足りない区切りを除く）とは、長さ2・3で区切りの数が少し違う`,
+    `- 長さの並べ替え（docs/segment-metrics.mdのランダム）: 同じ全文・同じ種の${BOUNDARY_CONTEXT_SEED_COUNT}個。全文の区切りすべてを使うので、並びの長さごとの列の文節の値（前の文字が足りない区切りを除く）とは、長さ2・3で区切りの数が少し違う`,
     '',
   );
   out.push('## 文節の直後の1文字（1文字あたりの距離 [u]）', '');

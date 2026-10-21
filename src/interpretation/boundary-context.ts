@@ -47,7 +47,7 @@ export interface ContextMatchedBoundaries {
 /**
  * 並びの型ごとの区切りの数を文節と揃えたランダムな区切り。
  * 型ごとに、文節の区切りのうちその型を持つ数 `k` と、テキストの中でその型が現れる位置の数 `m` を数え、
- * `m` 個の位置から `k` 個を重複なしに一様に選ぶ（部分的な Fisher-Yates）。型は文字列の昇順に辿るので、同じ種からは同じ区切りが出る。
+ * `m`個の位置から`k`個を重複なしに一様に選ぶ（部分的なFisher-Yates）。型は文字列の昇順に辿るので、同じ種からは同じ区切りが出る。
  */
 export function contextMatchedBoundaries(chars: readonly string[], bunsetsu: readonly number[], length: number, seed: number): ContextMatchedBoundaries {
   const compared = comparableBoundaries(bunsetsu, length).filter((boundary) => boundary < chars.length);

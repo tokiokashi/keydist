@@ -67,7 +67,7 @@ test('選んだ区切りの並びの型ごとの数は、文節の区切りの�
 });
 
 test('出現位置の数と区切りの数が等しい型では位置が全部選ばれ、選ぶ余地が無い区切りに数えられる', () => {
-  // 文字 a は位置1・4・6にだけ現れる。位置1と4を区切りにすると k=2、m=3で余地がある。b は位置8だけで k=m=1
+  // 文字aは位置1・4・6にだけ現れる。位置1と4を区切りにするとk=2、m=3で余地がある。bは位置8だけでk=m=1
   const chars = [...'xaxxaxaxbx'];
   const result = contextMatchedBoundaries(chars, [1, 4, 8], 1, 1);
   assert.equal(result.comparedCount, 3);
