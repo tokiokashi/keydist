@@ -24,7 +24,7 @@ import { useLatestCallback } from '#hosts/shared/use-latest-callback.ts';
 import { useOptionsDraft } from '#hosts/shared/use-options-draft.ts';
 import { STANDALONE_WRITE_LOG_KEY } from '#hosts/shared/options-write-log.ts';
 import { AddToWorkspaceMenu, type AddToWorkspaceDestination } from '#hosts/shared/AddToWorkspaceMenu.tsx';
-import { usePlaybackArrival } from './use-playback-arrival.ts';
+import { arrivalPositionFor, usePlaybackArrival } from './use-playback-arrival.ts';
 import { urlOptionsNotices, useSharedLink, useTargetShareSource } from './use-shared-link.ts';
 import { describeShareEncodeNotice, encodeSingleTargetToUrl } from './target-share.ts';
 import './standalone.css';
@@ -117,6 +117,7 @@ export function SingleAnalyzerStandalonePage<Options, Extracted>({
   const shareSource = useTargetShareSource(catalog, assets.setupLibrary.setups);
   // 別の画面の図から開いた時の最初の文字位置。共有リンクの取り込みが`target`をURLから消す前に対象を読むため、取り込みより前に呼ぶ
   const arrival = usePlaybackArrival(analyzer.acceptsPlaybackSeek === true, assetsReady, shareSource);
+  const initialPosition = arrivalPositionFor(arrival, analysisTargetKey(target));
   const { optionDiagnostics: urlDiagnostics, targetNotices } = useSharedLink({
     analyzerId: analyzerId,
     optionsDefinition: analyzer.urlOptions,
@@ -224,9 +225,7 @@ export function SingleAnalyzerStandalonePage<Options, Extracted>({
             onOptionsChange={changeOptions}
             settingsDiagnostics={decoded.diagnostics}
             {...(setTargetSource === undefined ? {} : { setTargetSource })}
-            {...(arrival === undefined || (arrival.targetKey !== undefined && arrival.targetKey !== analysisTargetKey(target))
-              ? {}
-              : { initialCharPosition: arrival.charPosition })}
+            {...(initialPosition === undefined ? {} : { initialCharPosition: initialPosition })}
             linkNotices={[...urlOptionsNotices(urlDiagnostics), ...targetNotices]}
           />
         </div>

@@ -10,6 +10,15 @@ export interface PlaybackArrival {
 }
 
 /**
+ * 開いた画面の対象で使う最初の文字位置。リンクの対象が今の対象と同じと確かめられた時だけ返す。
+ * リンクが対象を運ばなかった・解決できなかった時は、同じかどうか確かめられないので使わない。
+ */
+export function arrivalPositionFor(arrival: PlaybackArrival | undefined, currentTargetKey: string): number | undefined {
+  if (arrival === undefined || arrival.targetKey === undefined || arrival.targetKey !== currentTargetKey) return undefined;
+  return arrival.charPosition;
+}
+
+/**
  * 別の画面の図（Run Chart）から打鍵再生の画面を開いた時の、最初の文字位置を受け取る。受け取るのは資産の初回読み込みの後の1回だけで、
  * 受け取ったらURLの`position`を消す（開いた時の位置だけを使い、URLへ書き戻さない）。
  * 共有リンクの取り込み（`useSharedLink`）が`target`をURLから消す前に対象を読めるよう、`useSharedLink`より前に呼ぶ。
