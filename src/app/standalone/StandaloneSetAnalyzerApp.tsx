@@ -1,3 +1,4 @@
+import { useNavigate } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import type { ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { setStandaloneAnalyzerOptionsCommand } from '#engine/commands.ts';
@@ -43,6 +44,15 @@ export function StandaloneSetAnalyzerApp<Options, Extracted, RowContext>({
     commitOptions.flush();
   });
 
+  // 図で押した点から打鍵再生の画面を開く。間引き待ちの書き込み（テキスト・解析設定）を先に反映してから移る
+  const navigate = useNavigate();
+  const openPlayback = (params: URLSearchParams) => {
+    commitTextContent.flush();
+    commitOptions.flush();
+    // 文字位置は数値のまま渡す（文字列にすると、routerが数字の文字列を引用符で包んでURLに書く）
+    void navigate({ to: '/analyzer/playback', search: { target: params.get('target'), position: Number(params.get('position')) } });
+  };
+
   // 間引き待ちの変更を先に書いてから戻す。待ち中の値を残したまま戻すと、戻した後にその値が
   // 書かれて、戻したはずの変更がまた入るため。
   const history: ContextBarHistory = {
@@ -76,6 +86,7 @@ export function StandaloneSetAnalyzerApp<Options, Extracted, RowContext>({
         onTextContentCommit={commitTextContent}
         onAddToWorkspace={addToWorkspace}
         onOptionsCommit={commitOptions}
+        onOpenPlayback={openPlayback}
       />
     </OptionsWriteLogsProvider>
   );

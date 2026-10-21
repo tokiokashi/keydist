@@ -10,6 +10,7 @@ import {
   rateChartReadout,
   rateChartX,
 } from './rate-chart-model.ts';
+import { viewXFromClient } from '../chart-frame.ts';
 import { useSharedScale } from '../shared-scale.tsx';
 
 /** 縦軸の単位（1秒あたりの数）はペインの設定で変わらないので、キーは1つ */
@@ -44,7 +45,7 @@ export function PlaybackRateChart({ points, cursor, showChain, showArpeggio, onS
     if (svg === null) return 0;
     const bounds = svg.getBoundingClientRect();
     if (bounds.width === 0) return 0;
-    return rateChartPositionAt(((event.clientX - bounds.left) / bounds.width) * RATE_CHART_WIDTH, model.total);
+    return rateChartPositionAt(viewXFromClient(event.clientX, bounds.left, bounds.width), model.total);
   };
 
   const shown = points[hovered ?? cursor] ?? points[0];

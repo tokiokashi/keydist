@@ -16,6 +16,8 @@ import { KeyDetailWindow } from '../KeyDetailWindow.tsx';
 import { keySelectionTargetOf } from '../key-selection.ts';
 import { usePaneKeySelection } from '../key-selection-store.tsx';
 import { useAnalyzerPane } from '../use-analyzer-pane.ts';
+import { playbackSeekDeliveryFor } from '../playback-seek.ts';
+import { usePlaybackSeekCommand } from '../playback-seek-store.tsx';
 import { useCoherentPaneValues } from '../coherent-pane-values.ts';
 import { useTargetExtractions } from '../use-target-extractions.ts';
 import { useSetTargetSelection } from '../use-set-target-selection.ts';
@@ -52,6 +54,8 @@ export interface SingleAnalyzerPaneProps<Options, Extracted> {
    * Analyzerが`standaloneSetTargets`を宣言している時だけ渡す。読むだけで、どちらにも書かない。
    */
   readonly setTargetSource?: { readonly selection: TargetSet; readonly colorSlots: ColorSlotsByKey };
+  /** 開いた時の最初の文字位置（別の画面の図から開いた時の個別画面）。`acceptsPlaybackSeek` を宣言したAnalyzerにだけ渡る。 */
+  readonly initialCharPosition?: number;
 }
 
 const NO_SET_TARGETS: TargetSet = { targets: [], baseline: undefined };
@@ -68,6 +72,7 @@ export function SingleAnalyzerPane<Options, Extracted>({
   settingsDiagnostics = [],
   linkNotices,
   setTargetSource,
+  initialCharPosition,
 }: SingleAnalyzerPaneProps<Options, Extracted>) {
   const { setups, overrides, catalog, resolvedText, cache, dispatch, assetsReady } = env;
   // 辞書の読み込み中は、評価に渡すテキストがまだ無いので依頼を出さない（漢字を打てない文字に数えた暫定の数値を出さない）
@@ -164,6 +169,17 @@ export function SingleAnalyzerPane<Options, Extracted>({
     if (selectedKeyId !== undefined && selectedGeometry !== undefined && !selectedGeometry.keys.has(selectedKeyId)) clearKeySelection();
   }, [selectedKeyId, selectedGeometry, clearKeySelection]);
 
+  // 図で押された文字位置へ移る操作を受ける（Workspace）。同じ対象を映す打鍵再生のペインとして登録し、宛てられた操作を本体へ渡す
+  const seekStore = analyzer.acceptsPlaybackSeek === true ? env.playbackSeek : undefined;
+  const targetKey = analysisTargetKey(target);
+  const seekCommand = usePlaybackSeekCommand(seekStore);
+  const canReceiveSeek = resolution.ok;
+  useEffect(() => {
+    if (seekStore === undefined || !canReceiveSeek) return undefined;
+    return seekStore.register(targetKey);
+  }, [seekStore, targetKey, canReceiveSeek]);
+  const playbackSeek = seekStore === undefined ? undefined : playbackSeekDeliveryFor(seekCommand, targetKey);
+
   const extraction = pane.extraction;
 
   return (
@@ -256,6 +272,8 @@ export function SingleAnalyzerPane<Options, Extracted>({
           extracted={coherent.extraction.extracted}
           options={options}
           onOptionsChange={onOptionsChange}
+          {...(playbackSeek === undefined ? {} : { playbackSeek })}
+          {...(analyzer.acceptsPlaybackSeek === true && initialCharPosition !== undefined ? { initialCharPosition } : {})}
           {...(setTargetFigures.length === 0 ? {} : { setTargets: setTargetFigures })}
           {...(keyDetailsOf === undefined
             ? {}

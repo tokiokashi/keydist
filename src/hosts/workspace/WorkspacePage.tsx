@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createScaleRegistry } from '#analyzers/shared-scale.ts';
 import { createPlaybackBroadcast } from '#analyzers/playback/playback-broadcast.ts';
+import { createPlaybackSeekStore } from '#hosts/shared/playback-seek.ts';
 import { PlaybackBroadcastProvider } from '#analyzers/playback/playback-broadcast.tsx';
 import { SharedScaleProvider } from '#analyzers/shared-scale.tsx';
 import type { Command } from '#input/commands/index.ts';
@@ -139,6 +140,9 @@ export function WorkspacePage({
   const scaleRegistry = useMemo(() => createScaleRegistry(), [workspaceId]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: workspaceIdは作り直す時を決める合図。本体では読まない。依存から外すと、Workspaceを替えても前の再生の知らせが残る
   const playbackBroadcast = useMemo(() => createPlaybackBroadcast(), [workspaceId]);
+  // 図（Run Chart）で押した文字位置を、同じ対象を映す打鍵再生のペインへ伝える所（Workspaceごとに1つ）
+  // biome-ignore lint/correctness/useExhaustiveDependencies: workspaceIdは作り直す時を決める合図。本体では読まない。依存から外すと、Workspaceを替えても前のペインの登録が残る
+  const playbackSeek = useMemo(() => createPlaybackSeekStore(), [workspaceId]);
   // 図のキーの選択。同じ配列・物理配列を映すペインどうしで連動する。保存しない見た目だけの状態で、
   // Workspaceを開き直すと外れる（資産・Undoの履歴には入れない）
   const keySelection = useKeySelectionStore();
@@ -215,8 +219,22 @@ export function WorkspacePage({
             generatePresetId,
             undo,
             assetsReady,
+            playbackSeek,
           },
-    [assets.setupLibrary.setups, overrides, workspaceId, assets.presetLibrary, catalog, evaluation, cache, dispatch, generatePresetId, undo, assetsReady],
+    [
+      assets.setupLibrary.setups,
+      overrides,
+      workspaceId,
+      assets.presetLibrary,
+      catalog,
+      evaluation,
+      cache,
+      dispatch,
+      generatePresetId,
+      undo,
+      assetsReady,
+      playbackSeek,
+    ],
   );
 
   const panes = workspace?.panes;

@@ -37,7 +37,8 @@ import {
   LEGEND_SWATCH_WIDTH,
   type MeasureText,
 } from './legend-placement.ts';
-import { isStrokeOnlyMark, targetMarkPath, TARGET_DASH_ARRAY, targetMark, type TargetMark } from '#ui/theme/target-marks.ts';
+import { SeriesMark } from '#ui/charts/series-mark.tsx';
+import { TARGET_DASH_ARRAY, targetMark, type TargetMark } from '#ui/theme/target-marks.ts';
 import type { AnalyzerSettingsProps, SetAnalyzerPaneParts, SetBodyProps } from '../pane-parts.tsx';
 import './n-sensitivity-view.css';
 
@@ -106,41 +107,6 @@ function formatY(kind: NSensitivityAxisKind, metric: NSensitivityMetricId, value
     return `${value > 0 ? '+' : ''}${value.toFixed(def.percent ? 1 : def.digits)} ${deltaUnit(metric)}`;
   }
   return formatMetricValue(metric, value, N_SENSITIVITY_METRICS[metric].tickDigits);
-}
-
-/** 点の半径。形が変わっても外接がこの前後に収まる（`target-marks.ts`）。線との間隔は凡例の配置が見る。 */
-const MARK_RADIUS = 3;
-
-/** 系列の点・凡例の見本。形は対象ごとに違い、色を見分けられなくても区別できる。 */
-function SeriesMark({
-  mark,
-  color,
-  x,
-  y,
-  className,
-  children,
-}: {
-  readonly mark: TargetMark;
-  readonly color: string;
-  readonly x: number;
-  readonly y: number;
-  readonly className: string;
-  readonly children?: React.ReactNode;
-}) {
-  const d = targetMarkPath(mark.shape, MARK_RADIUS);
-  return (
-    <path
-      className={className}
-      data-mark={mark.shape}
-      transform={`translate(${x},${y})`}
-      d={d}
-      // 色は`var(--target-color-N)`が来るので、属性でなくstyleで渡す（属性ではvar()が解けない）
-      style={isStrokeOnlyMark(mark.shape) ? { fill: 'none', stroke: color } : { fill: color }}
-      strokeWidth={isStrokeOnlyMark(mark.shape) ? 1.8 : undefined}
-    >
-      {children}
-    </path>
-  );
 }
 
 interface PlottedSeries {

@@ -1,5 +1,6 @@
 import type { Geometry } from '#input/shapes/geometry.ts';
 import type { AggregatedAnalysisResult } from '#interpretation/structure/aggregate.ts';
+import type { Stroke } from '#trace/generate.ts';
 import {
   advancePlayback,
   clampPlaybackCursor,
@@ -63,6 +64,23 @@ export function stepPlaybackBy(state: PlaybackState, delta: -1 | 1, total: numbe
 /** 指定したステップへ移る。今のステップの経過時間は0へ戻す。再生中かどうかは変えない。 */
 export function seekPlayback(state: PlaybackState, cursor: number, total: number): PlaybackState {
   return { ...state, cursor: clampPlaybackCursor(cursor, total), elapsedMs: 0 };
+}
+
+/**
+ * 文字位置（評価に渡したテキストの文字位置。先頭が0）を含む最初のステップの、再生位置（そのステップまで進んだ位置）。
+ * 文字位置を含むステップが無い時（打鍵できなかった文字の位置）は、その位置より後で終わる最初のステップ。後にも無ければ最後。
+ * 打鍵が無ければ0。
+ */
+export function playbackCursorAtChar(strokes: readonly Pick<Stroke, 'kanaStart' | 'kanaEnd'>[], charPosition: number): number {
+  const containing = strokes.findIndex((stroke) => stroke.kanaStart <= charPosition && charPosition <= stroke.kanaEnd);
+  if (containing >= 0) return containing + 1;
+  const after = strokes.findIndex((stroke) => stroke.kanaEnd >= charPosition);
+  return after >= 0 ? after + 1 : strokes.length;
+}
+
+/** 文字位置へ移って一時停止にした再生位置。再生中でも止める。 */
+export function seekPlaybackToChar(state: PlaybackState, strokes: readonly Pick<Stroke, 'kanaStart' | 'kanaEnd'>[], charPosition: number): PlaybackState {
+  return pausePlayback(seekPlayback(state, playbackCursorAtChar(strokes, charPosition), strokes.length));
 }
 
 /** Workspaceで全部のペインに伝える操作。「再生／一時停止」は押したペインの状態で再生か一時停止かが決まる。 */

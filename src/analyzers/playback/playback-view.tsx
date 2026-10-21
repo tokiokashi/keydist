@@ -21,6 +21,7 @@ import {
   playbackPaneStatus,
   playbackToggleAction,
   seekPlayback,
+  seekPlaybackToChar,
   startPlayback,
   stepPlaybackBy,
   stopPlayback,
@@ -85,13 +86,26 @@ function PlaybackFigureSettings({
   );
 }
 
-export function PlaybackBody({ layout, geometry, trace, extracted, options, onOptionsChange }: SingleBodyProps<PlaybackExtracted, PlaybackOptions>) {
+export function PlaybackBody({
+  layout,
+  geometry,
+  trace,
+  extracted,
+  options,
+  onOptionsChange,
+  playbackSeek,
+  initialCharPosition,
+}: SingleBodyProps<PlaybackExtracted, PlaybackOptions>) {
   const { analysis, windowSize, timing, savedCalibration, overheadUse, personalSpeedUse, schedule, rateChart, basisId, timeTotals, waitUse } = extracted;
   const total = trace.strokes.length;
   const calculation = playbackCalculationNotes(options, personalSpeedUse, timing.calibration, savedCalibration, overheadUse, waitUse);
   const figureSettings = useFigureSettings('配列図');
 
-  const [session, setSession] = useState<Session>(() => freshSession(basisId, schedule, initialPlaybackState(timing)));
+  // 別の画面の図から開いた時は、その文字位置を含むステップで一時停止した状態から始める（本体を最初に描く時だけ）
+  const [session, setSession] = useState<Session>(() => {
+    const start = initialPlaybackState(timing);
+    return freshSession(basisId, schedule, initialCharPosition === undefined ? start : seekPlaybackToChar(start, trace.strokes, initialCharPosition));
+  });
   if (session.basisId !== basisId) {
     setSession(freshSession(basisId, schedule, initialPlaybackState(timing)));
   } else if (session.schedule !== schedule) {
@@ -124,6 +138,16 @@ export function PlaybackBody({ layout, geometry, trace, extracted, options, onOp
     setAppliedRevision(command.revision);
     if (action !== undefined) {
       setSession((previous) => withFeedback(previous, applyPlaybackAction(previous.state, action, total)));
+    }
+  }
+  // Workspaceの別のペインの図（Run Chart）で押された文字位置へ移る。宛先は同じ対象を映すペインで、移ったら一時停止にする。
+  // 本体を描いた時点までの操作は当てない（後から開いたペインが、前の操作で動かないように）
+  const [appliedSeekRevision, setAppliedSeekRevision] = useState(playbackSeek?.revision ?? 0);
+  if (playbackSeek !== undefined && appliedSeekRevision !== playbackSeek.revision) {
+    const { charPosition } = playbackSeek;
+    setAppliedSeekRevision(playbackSeek.revision);
+    if (charPosition !== undefined) {
+      setSession((previous) => withFeedback(previous, seekPlaybackToChar(previous.state, trace.strokes, charPosition)));
     }
   }
   // 押せる条件に使う状態を報告する。本体を描いている間だけ加わり、打鍵の無いペインは加わらない

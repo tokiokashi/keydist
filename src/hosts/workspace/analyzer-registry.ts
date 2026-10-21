@@ -20,6 +20,8 @@ import { playbackDefinition } from '#analyzers/playback/extract.ts';
 import { PLAYBACK_PANE_META } from '#analyzers/playback/pane-meta.ts';
 import { nSensitivityDefinition } from '#analyzers/n-sensitivity/extract.ts';
 import { N_SENSITIVITY_PANE_META } from '#analyzers/n-sensitivity/pane-meta.ts';
+import { runChartDefinition } from '#analyzers/run-chart/extract.ts';
+import { RUN_CHART_PANE_META } from '#analyzers/run-chart/pane-meta.ts';
 
 /**
  * Workspaceのペインに置けるAnalyzer。ペインの追加（Analyzerを選ぶ）と、保存したペインの
@@ -53,6 +55,7 @@ export const WORKSPACE_ANALYZERS: readonly WorkspaceAnalyzerEntry[] = [
   { id: comparisonDefinition.id, ...COMPARISON_PANE_META, cardinality: 'set' },
   { id: fingerMatrixDefinition.id, ...FINGER_MATRIX_PANE_META, cardinality: 'set' },
   { id: nSensitivityDefinition.id, ...N_SENSITIVITY_PANE_META, cardinality: 'set' },
+  { id: runChartDefinition.id, ...RUN_CHART_PANE_META, cardinality: 'set' },
 ];
 
 export function findWorkspaceAnalyzer(analyzerId: string): WorkspaceAnalyzerEntry | undefined {

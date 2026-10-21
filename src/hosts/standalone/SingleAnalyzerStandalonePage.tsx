@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import type { Command } from '#input/commands/index.ts';
 import { setReadingCorrectionCommand, setSingleTargetCommand, type KeydistAssets } from '#engine/commands.ts';
 import { effectiveSingleTarget } from '#engine/single-target-selection.ts';
-import { layoutIdsOfTargets } from '#input/setup/index.ts';
+import { analysisTargetKey, layoutIdsOfTargets } from '#input/setup/index.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
 import type { PresetIdGenerator } from '#input/presets/index.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
@@ -24,6 +24,7 @@ import { useLatestCallback } from '#hosts/shared/use-latest-callback.ts';
 import { useOptionsDraft } from '#hosts/shared/use-options-draft.ts';
 import { STANDALONE_WRITE_LOG_KEY } from '#hosts/shared/options-write-log.ts';
 import { AddToWorkspaceMenu, type AddToWorkspaceDestination } from '#hosts/shared/AddToWorkspaceMenu.tsx';
+import { arrivalPositionFor, usePlaybackArrival } from './use-playback-arrival.ts';
 import { urlOptionsNotices, useSharedLink, useTargetShareSource } from './use-shared-link.ts';
 import { describeShareEncodeNotice, encodeSingleTargetToUrl } from './target-share.ts';
 import './standalone.css';
@@ -114,6 +115,9 @@ export function SingleAnalyzerStandalonePage<Options, Extracted>({
 
   // URL経由で解析設定と対象を受け取る（共有リンク。`use-shared-link.ts`）。書き込みは1つのコマンドで、Undo 1回で戻る。
   const shareSource = useTargetShareSource(catalog, assets.setupLibrary.setups);
+  // 別の画面の図から開いた時の最初の文字位置。共有リンクの取り込みが`target`をURLから消す前に対象を読むため、取り込みより前に呼ぶ
+  const arrival = usePlaybackArrival(analyzer.acceptsPlaybackSeek === true, assetsReady, shareSource);
+  const initialPosition = arrivalPositionFor(arrival, analysisTargetKey(target));
   const { optionDiagnostics: urlDiagnostics, targetNotices } = useSharedLink({
     analyzerId: analyzerId,
     optionsDefinition: analyzer.urlOptions,
@@ -221,6 +225,7 @@ export function SingleAnalyzerStandalonePage<Options, Extracted>({
             onOptionsChange={changeOptions}
             settingsDiagnostics={decoded.diagnostics}
             {...(setTargetSource === undefined ? {} : { setTargetSource })}
+            {...(initialPosition === undefined ? {} : { initialCharPosition: initialPosition })}
             linkNotices={[...urlOptionsNotices(urlDiagnostics), ...targetNotices]}
           />
         </div>

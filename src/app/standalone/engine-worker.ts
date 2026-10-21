@@ -11,6 +11,7 @@ import { playbackDefinition } from '#analyzers/playback/extract.ts';
 import { comparisonDefinition } from '#analyzers/comparison/extract.ts';
 import { fingerMatrixDefinition } from '#analyzers/finger-matrix/extract.ts';
 import { nSensitivityDefinition } from '#analyzers/n-sensitivity/extract.ts';
+import { runChartDefinition } from '#analyzers/run-chart/extract.ts';
 
 /**
  * 計算用Workerの入口（Vite が別チャンクとして切り出す。`engine-computer.ts`が起動する）。
@@ -29,7 +30,7 @@ const handle = createEngineWorkerHandler(createEngineCache(), {
     keymapDefinition,
     playbackDefinition,
   ],
-  set: [comparisonDefinition, fingerMatrixDefinition, nSensitivityDefinition],
+  set: [comparisonDefinition, fingerMatrixDefinition, nSensitivityDefinition, runChartDefinition],
 });
 
 // このファイルはWorkerとして動く。DOMの型のままだと`self`が`Window`になるので、使う分だけ型を当てる。

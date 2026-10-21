@@ -7,6 +7,7 @@ import type { PresetIdGenerator, PresetLibrary } from '#input/presets/index.ts';
 import type { SettingsValueMap } from '#engine/settings-items.ts';
 import type { Setup } from '#input/setup/index.ts';
 import type { PaneMenuItem } from '../PaneHeaderParts.tsx';
+import type { PlaybackSeekStore } from '../playback-seek.ts';
 import type { PaneReadingState, PaneText } from '../reading-evaluation.ts';
 import type { PaneCatalog } from '../resolve-pane-input.ts';
 
@@ -47,6 +48,16 @@ export interface PaneEnvironment {
   readonly undo: () => void;
   /** 資産の初回読み込みが済んでいるか。済む前は、対象が空に見えても空とは限らない。 */
   readonly assetsReady: boolean;
+  /**
+   * 図（Run Chart）で押した点の文字位置を、同じ対象を映す打鍵再生のペインへ伝える所（Workspace）。
+   * 打鍵再生のペインは受け手として登録し、Run Chartは宛先があるかを読んで操作を伝える。個別画面は持たない。
+   */
+  readonly playbackSeek?: PlaybackSeekStore;
+  /**
+   * 図で押した点の文字位置から、その対象の打鍵再生の画面を開く（個別画面。画面の移動はrouterを使える`app`が持つ）。
+   * Workspaceは持たない。
+   */
+  readonly openPlayback?: (targetKey: string, charPosition: number) => void;
 }
 
 export interface PaneTargetBindingControl {

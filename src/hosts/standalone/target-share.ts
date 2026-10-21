@@ -22,6 +22,11 @@ import { analysisTargetKey, effectiveLabel, type AnalysisTarget, type Setup } fr
 export const SHARE_TARGET_PARAM = 'target';
 export const SHARE_TARGETS_PARAM = 'targets';
 export const SHARE_BASELINE_PARAM = 'baseline';
+/**
+ * 打鍵再生の画面を開く時の最初の文字位置（評価に渡したテキストの文字位置。先頭が0）。
+ * 別の画面の図（Run Chart）で押した点から開く時に付く。開いた時の最初の位置にだけ使い、受け取ったらURLから消す。
+ */
+export const SHARE_POSITION_PARAM = 'position';
 
 /** 1つのリンクが運ぶ対象の件数の上限。組み込みの配列を全部並べても収まる数にしてある。 */
 export const SHARE_MAX_TARGETS = 40;
@@ -373,4 +378,19 @@ export function describeShareEncodeNotice(notice: ShareEncodeNotice): readonly s
     lines.push(`${names.join('・')}${rest > 0 ? `ほか${rest}件` : ''}は名前だけがリンクに載ります。受け取った側に同じ名前の配列が無いと開けません`);
   }
   return lines;
+}
+
+/** 最初の文字位置のパラメータを読む。無い・整数でない・負の値は`undefined`。 */
+export function decodePlaybackPositionFromUrl(params: URLSearchParams): number | undefined {
+  const raw = params.get(SHARE_POSITION_PARAM);
+  if (raw === null || !/^\d{1,9}$/.test(raw)) return undefined;
+  return Number(raw);
+}
+
+/** 図で押した点から打鍵再生の画面を開くための、対象と最初の文字位置のパラメータ。対象を参照として運べない時は`undefined`。 */
+export function encodePlaybackOpenParams(target: AnalysisTarget, charPosition: number, source: TargetShareSource): URLSearchParams | undefined {
+  const { params } = encodeSingleTargetToUrl(target, source);
+  if (!params.has(SHARE_TARGET_PARAM)) return undefined;
+  params.set(SHARE_POSITION_PARAM, String(Math.max(0, Math.floor(charPosition))));
+  return params;
 }

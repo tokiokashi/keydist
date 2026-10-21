@@ -1,0 +1,126 @@
+.run-chart-feature {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.run-chart-empty,
+.run-chart-notice,
+.run-chart-guide-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.run-chart-figure {
+  max-width: 760px;
+  min-width: 0;
+}
+
+.run-chart-figure svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.run-chart-grid {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.run-chart-tick,
+.run-chart-axis-title {
+  fill: var(--text-muted);
+  font-size: 11px;
+}
+
+.run-chart-line {
+  stroke-width: 2;
+}
+
+/* 中心線（テキスト全体の値）。推移の線と区別できるよう、細い点線にする */
+.run-chart-center {
+  stroke-width: 1;
+  stroke-dasharray: 1 4;
+  stroke-linecap: round;
+  opacity: 0.9;
+}
+
+/* 目安線。推移の線より細く、薄くする */
+.run-chart-guide {
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  opacity: 0.55;
+}
+
+.run-chart-active line {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+}
+
+.run-chart-active circle {
+  fill: var(--bg);
+  stroke-width: 2;
+}
+
+.run-chart-hit {
+  cursor: pointer;
+  outline: none;
+}
+
+.run-chart-hit:focus-visible {
+  stroke: var(--focus);
+  stroke-width: 2;
+}
+
+.run-chart-readout {
+  margin: 0.2rem 0 0;
+  min-height: 1.4em;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.run-chart-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1rem;
+  font-size: 0.8rem;
+}
+
+.run-chart-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.run-chart-legend-swatch {
+  flex: none;
+}
+
+.run-chart-legend-center {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.run-chart-failures {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+}
+
+.run-chart-failures li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.run-chart-active { pointer-events: none; }

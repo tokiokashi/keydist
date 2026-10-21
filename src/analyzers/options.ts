@@ -270,6 +270,20 @@ export function numberUrlCodec(name: string, min: number, max: number): OptionUr
   };
 }
 
+/** 整数の数値範囲のURL codec。小数は範囲内でも捨てる（解析設定のschemaと同じ規則）。 */
+export function integerUrlCodec(name: string, min: number, max: number): OptionUrlCodec<number> {
+  const base = numberUrlCodec(name, min, max);
+  return {
+    ...base,
+    decode: (raw, path, diagnostics) => {
+      const value = base.decode(raw, path, diagnostics);
+      if (value === undefined || Number.isInteger(value)) return value;
+      diagnostics.push({ path, message: `URLパラメータの値「${raw}」は整数でないため捨てました` });
+      return undefined;
+    },
+  };
+}
+
 /**
  * 文字列の集合（順序を持たない・最大件数あり）のURL codec。カンマ区切り。
  * 壊れた要素だけを落として残りは読む（`schema`単体では表現できない集合系項目向け）。

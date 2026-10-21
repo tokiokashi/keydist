@@ -2,6 +2,7 @@ import { comparisonAnalyzer } from '#analyzers/comparison/definition.tsx';
 import { fingerMatrixAnalyzer } from '#analyzers/finger-matrix/definition.tsx';
 import { nSensitivityAnalyzer } from '#analyzers/n-sensitivity/definition.tsx';
 import type { SetAnalyzerPaneParts } from '#analyzers/pane-parts.tsx';
+import { runChartAnalyzer } from '#analyzers/run-chart/definition.tsx';
 
 /**
  * Workspaceのペインに載せる、対象の集合を見るAnalyzer（Set）のペインに渡すもの。Setを足す時は、
@@ -14,7 +15,7 @@ import type { SetAnalyzerPaneParts } from '#analyzers/pane-parts.tsx';
 // biome-ignore lint/suspicious/noExplicitAny: ペインの部品は型引数ごとに反変の位置を持ち、unknownでは個々のAnalyzerの部品を代入できない
 type AnyPaneParts = SetAnalyzerPaneParts<any, any, any>;
 
-export const SET_ANALYZER_PANE_PARTS: readonly AnyPaneParts[] = [comparisonAnalyzer, fingerMatrixAnalyzer, nSensitivityAnalyzer];
+export const SET_ANALYZER_PANE_PARTS: readonly AnyPaneParts[] = [comparisonAnalyzer, fingerMatrixAnalyzer, nSensitivityAnalyzer, runChartAnalyzer];
 
 export function findSetAnalyzer(analyzerId: string): AnyPaneParts | undefined {
   return SET_ANALYZER_PANE_PARTS.find((entry) => entry.definition.id === analyzerId);
