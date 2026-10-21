@@ -414,7 +414,7 @@ src/
     setup/           Setup
     presets/         プリセット（条件の1レベル分に付けた名前）
   trace/             Trace生成
-  interpretation/    構造（chain・arpeggio…）、時間モデル、複数のAnalyzerが使う指標、区間の集計と区切り（`span-metrics.ts`・`segments.ts`）、名前のある乱数生成器（`prng.ts`）
+  interpretation/    構造（chain・arpeggio…）、時間モデル、複数のAnalyzerが使う指標、区間の集計と区切り（`span-metrics.ts`・`segments.ts`）、名前のある乱数生成器（`prng.ts`）、対照テキスト（順序破壊・一様ランダム）を作る関数（`control-texts.ts`。塊の規則と乱数の使い方はファイル先頭のコメント）
   analyzers/
     contract.ts      Analyzerの契約のうち純粋な部分（抽出・解析設定・Traceを依頼する窓口の型）
     pane-parts.tsx   ペインに渡すものの型（名前・短い説明・本体・解析設定・差し込む項目・既定値）。Reactの型を使うので.tsx
