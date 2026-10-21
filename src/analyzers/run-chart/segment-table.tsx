@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react';
 import { SEGMENT_SEED_COUNT, type RankAmongRandom, type SegmentMetricStats, type SegmentStats } from '#interpretation/segments.ts';
-import type { SegmentationOrigin } from '#input/text/segmentation.ts';
 import { SPAN_METRIC_IDS, type SpanMetricId } from '#interpretation/span-metrics.ts';
+import { segmentationSourceSentence } from '../segmentation-text.ts';
 import type { RunChartSegments } from './extract.ts';
 import { displayValue, RUN_CHART_METRICS } from './metric-catalog.ts';
 
@@ -17,13 +17,6 @@ export interface SegmentTableRow {
   readonly fullName: string;
   readonly segments: RunChartSegments;
 }
-
-const ORIGIN_TEXT: Readonly<Record<SegmentationOrigin, string>> = {
-  dictionary: '区切りの出どころは、漢字を辞書で読みに直した語の境目へ寄せて写した文節の区切りです。',
-  'kana-only':
-    '原文が漢字を含まないので、前処理の対応だけで区切りを写しています。かなだけの文では分割器の精度が落ちる見込みですが、精度は測っていません。',
-  'dictionary-unavailable': '辞書を読み込めず漢字を読みに直していないので、前処理の対応だけで区切りを写しています。',
-};
 
 function cell(metric: SpanMetricId, value: number | undefined): string {
   if (value === undefined) return '—';
@@ -102,7 +95,7 @@ function SegmentTableFor({ row }: { readonly row: SegmentTableRow }) {
       ) : (
         <>
           <p className="run-chart-segment-condition" data-run-chart-segment-condition="">
-            分割器は{segments.splitter.name} {segments.splitter.version}（日本語のモデル）です。{ORIGIN_TEXT[segments.origin]}固定長の長さは
+            {segmentationSourceSentence(segments.splitter, segments.origin)}固定長の長さは
             {report.fixedLength}文字です。ランダムの乱数生成器は{segments.rng}で、種は{segments.seedStart}〜{segments.seedStart + segments.seedCount - 1}
             の{segments.seedCount}個です（文節の区間の長さを並べ替えます）。
           </p>

@@ -178,6 +178,7 @@ function fixtureTrace(strokeCount: number): Trace {
     strokes: Array.from({ length: strokeCount }, (_, index) => fixtureStroke(index, [fixturePress('LI', 'f', 4)])),
     errors: [],
     skipped: 0,
+    skippedPositions: [],
     skippedByKind: { kanji: 0, symbol: 0, other: 0 },
     inputChars: strokeCount,
     comboHits: [],

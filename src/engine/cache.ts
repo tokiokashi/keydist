@@ -209,6 +209,7 @@ export function createEngineCache(options: EngineCacheOptions = {}): EngineCache
     const partPrefix = String(partOwnerIdOf(stableStringify({ memberKey, definitionId })));
     return {
       target,
+      text: input.text,
       trace: traceResult.trace,
       analysis: interpretationResult.analysis,
       metrics: interpretationResult.metrics,

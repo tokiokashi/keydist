@@ -125,7 +125,7 @@ Traceは同じまま数値の定義を変える項目（解釈）のうち、今
 保存したWorkspaceを開き、Analyzerをペインとして並べる器。個別画面と同じAnalyzerのcomponent（`hosts/shared/panes/`）を載せる。
 
 - **Single（対象を1つ見るAnalyzer）の配線はAnalyzerごとに持たない。** ペイン（`hosts/shared/panes/SingleAnalyzerPane.tsx`）・個別画面（`hosts/standalone/SingleAnalyzerStandalonePage.tsx`、組み立ては`app/standalone/StandaloneSingleAnalyzerApp.tsx`）・Workspaceのペイン（`hosts/workspace/panes/SingleAnalyzerWorkspacePane.tsx`）は、Analyzerの`definition.tsx`がexportする`SingleAnalyzerPaneParts`（`analyzers/pane-parts.tsx`）を引数に取る。Singleを足す時に書くのは、`definition.tsx`、`analyzer-registry.ts`と`single-analyzers.ts`に1行ずつ、個別画面のroute（`routes/analyzer.<id>.tsx`。`StandaloneSingleAnalyzerApp`に渡すだけ）、`app/standalone/engine-worker.ts`への登録。本体（`Body`）にはどのSingleにも同じprops（`SingleBodyProps`）を渡し、使わないものは受け取らない。例外は、省略できる宣言を持つAnalyzerにだけ渡す項目で、`keyDetailsOf`（宣言すると`keySelection`を渡す）と`standaloneSetTargets`（宣言すると、単体の画面でだけ`setTargets`を渡す。下の「個別画面どうしで共有する対象」）がある。Workspaceのペインは`setTargets`を渡さず、本体は1つの図を出す
-- **Multi（対象の集合を見るAnalyzer。比較表・指ごとの比較・N感度・Run Chart）の配線もAnalyzerごとに持たない。** ペイン（`hosts/shared/panes/SetAnalyzerPane.tsx`）・個別画面（`hosts/standalone/SetAnalyzerStandalonePage.tsx`、組み立ては`app/standalone/StandaloneSetAnalyzerApp.tsx`）・Workspaceのペイン（`hosts/workspace/panes/SetAnalyzerWorkspacePane.tsx`）は、Analyzerの`definition.tsx`がexportする`SetAnalyzerPaneParts`（`analyzers/pane-parts.tsx`）を引数に取る。Singleとは対象の形（集合・色・基準）と本体のpropsが違うので、別の型にしている。Multiを足す時に書くのは、`definition.tsx`、`analyzer-registry.ts`と`set-analyzers.ts`に1行ずつ（足し忘れは`set-analyzers.test.ts`が落とす）、個別画面のroute（`routes/analyzer.<id>.tsx`。`StandaloneSetAnalyzerApp`に渡すだけ）、`app/standalone/engine-worker.ts`の`set:`への登録
+- **Multi（対象の集合を見るAnalyzer。比較表・指ごとの比較・N感度・Run Chart・文節ごとの統計）の配線もAnalyzerごとに持たない。** ペイン（`hosts/shared/panes/SetAnalyzerPane.tsx`）・個別画面（`hosts/standalone/SetAnalyzerStandalonePage.tsx`、組み立ては`app/standalone/StandaloneSetAnalyzerApp.tsx`）・Workspaceのペイン（`hosts/workspace/panes/SetAnalyzerWorkspacePane.tsx`）は、Analyzerの`definition.tsx`がexportする`SetAnalyzerPaneParts`（`analyzers/pane-parts.tsx`）を引数に取る。Singleとは対象の形（集合・色・基準）と本体のpropsが違うので、別の型にしている。Multiを足す時に書くのは、`definition.tsx`、`analyzer-registry.ts`と`set-analyzers.ts`に1行ずつ（足し忘れは`set-analyzers.test.ts`が落とす）、個別画面のroute（`routes/analyzer.<id>.tsx`。`StandaloneSetAnalyzerApp`に渡すだけ）、`app/standalone/engine-worker.ts`の`set:`への登録
   - 本体（`Body`）にはどのMultiにも同じprops（`SetBodyProps`）を渡し、使わないものは受け取らない。基準を選ぶ部品（`TargetItem`）を持つ定義にだけ、ホストが対象の選択へ基準の選択を差し込む。共有リンクには基準を持たないAnalyzerでも載せる
   - 行ごとの文脈（表示名・色・解決した配列名など）はホストが集合に対して決めた値を`SetRowSource`で定義の`rowContext`へ渡し、定義が本体向けの形にする。ホストはAnalyzer固有の値を知らない
   - 条件の要約・条件の編集・対象の名前の作り分けから除く項目は、定義の`conditionExcludeIds`に挙げる（N感度が振るN）
@@ -293,6 +293,16 @@ Workspaceで並べたペインは、同じキー（Analyzerと見る量。例: `
 - **かな3文字までの並びとの比べ方**（定義は `docs/kana-chain-comparison.md`）。n-gramの表の数え方（`interpretation/ngram-table.ts`）、2次マルコフ連鎖の生成文（`interpretation/markov-text.ts`）、元のテキスト・生成文・対照テキストの比べ方と順位・判定（`interpretation/chain-comparison.ts`）は、画面に依存しない純粋な関数。評価（Traceの生成）は呼び出し側が渡す関数で行う。今は画面に出さず、`scripts/kana-chain-comparison.ts` がコーパスの範囲で実行して表を出す
 - **境目のまわりの並びを揃えたランダムな区切りとの比べ方**（定義は `docs/boundary-context-comparison.md`）。並びの型ごとの区切りの数を文節と揃えたランダムな区切りの作成、選ぶ余地が無い区切りの割合、順位と判定、境目の打鍵が占める割合（`interpretation/boundary-context.ts`）は、画面に依存しない純粋な関数。今は画面に出さず、`scripts/kana-chain-comparison.ts` の `--stage boundary` が全文で実行して表を出す
 
+### 文節ごとの統計（文節の区切りを使う、もう1つのMulti）
+
+文節の中の文字と境目の文字に分けて、指の移動距離の統計を配列ごとに表で並べるMulti（`analyzers/bunsetsu-stats/`）。定義は `docs/segment-metrics.md`「文節の中と境目の統計」。距離モデルは変えない。
+
+- **計算部は `interpretation/bunsetsu-stats.ts`**（画面に依存しない純粋な関数）。テキストだけで決まる量（`analyzeBunsetsuText`）と、Traceから求める配列ごとの量（`bunsetsuLayoutStats`）に分ける。打鍵できなかった文字の位置は、Trace生成が記録する（`Trace.skippedPositions`。ローマ字配列では、一部の英字だけ打てたかなも入るので、数は `skipped` と一致するとは限らない）
+- **配線**: 抽出は `analyzers/bunsetsu-stats/extract.ts`（`engine-worker.ts` と `hosts/workspace/analyzer-registry.ts` に載せる）、可視化は `definition.tsx`（`hosts/workspace/set-analyzers.ts` に載せる）、routeは `/analyzer/bunsetsu-stats`。解析設定は持たない。Traceから作る索引と打鍵できなかった文字の位置は、メンバーに覚えさせて使い回す。文節の区切りに依るものは、覚える入れ物のキーに区切りが入らないので覚えさせない
+- **文節の区切りの受け取り方はRun Chartと同じ**（`SetAnalyzerPaneParts.usesSegmentation`、`ExtractionAssets.segmentation`）。ただし区切りを常に使うので、`usesSegmentation` は常に真を返し、`assetsKeyOf` は区切りをそのままキーに入れる。区切りの出どころと分割器の文面は `analyzers/segmentation-text.ts` でRun Chartと共有する
+- **評価に渡すテキストを抽出が読む**ので、集合のメンバー（`AnalyzerSetMember`）が `text` を持つ。追加のTraceは依頼しない
+- 評価に渡すテキストが対象ごとに違う時は、テキストの表と上位の一覧の行を、区切りが渡された最初の対象のテキストから求める。各対象の値とセルは、その対象自身のテキストで求め（行の文字列を自分のテキストから引く）、テキストが違う対象があれば画面に知らせる
+
 ### 条件の要約
 
 - 閉じた状態は1行。変えた項目の先頭2件（項目の定義順）と「他N件」を出す。何も変えていなければ「すべて既定値」
@@ -309,7 +319,7 @@ Workspaceで並べたペインは、同じキー（Analyzerと見る量。例: `
 - モーダルの見出しの「すべて既定値に戻す」は、モーダルに行がある項目の全体の上書きと、対象が配列・Setupの時はその配列の上書きを、1コマンドで消す（行の無い項目、他の配列・Setupの上書きは消さない。配列の上書きだけがある時も押せる。元に戻すの1回で全部戻る）。Workspaceのペインでは「Workspaceの変更をすべて戻す」で、Workspaceの上書きだけを消す（全体と今の配列の上書きは、単体ページや他のWorkspaceにも入るので消さない）
 - Workspaceのレベルの値は、変えた項目として数える（出どころは「Workspaceで変更」）。比較表・N感度の共通の行は、全体の値にWorkspaceの値を重ねた値で、出どころもそのレベル。同じ配列・Setupでも、Workspaceが違えば数値が変わるので、出どころは必ず出す
 - 個別画面とWorkspaceで同じ部品を使う（`hosts/shared/ConditionSummary.tsx`）
-- 複数の対象を持つペイン（比較表・指ごとの比較・N感度・Run Chart）は、**共通の条件 + 差のある対象だけ**を出す。単一の対象のペインは変えない
+- 複数の対象を持つペイン（比較表・指ごとの比較・N感度・Run Chart・文節ごとの統計）は、**共通の条件 + 差のある対象だけ**を出す。単一の対象のペインは変えない
   - 共通の行は**この画面で効く値**（対象ごとの上書きも、配列・物理配列ごとの既定も受けない時の値。全体のレベルの値、それも無ければ項目の既定値。指の割当は列固定）。対象の並びに依らず、最初の対象の値を共通として採らない。閉じた1行はこの共通の行だけを、上と同じ規則で数える。効く値が共通の行と違う対象があれば、末尾に「対象ごとに差あり」を添える
   - モーダルの中で、共通の行（出どころ付き）の下に「対象ごとの差」の節を置き、**効く値が共通の行と違う対象だけ**を、違う項目だけで並べる（例: 共通「ローマ字規則 訓令式（既定値）」に対し `大西配列: ローマ字規則=大西式`。全体をAZIKにしても大西配列は大西式のままなので、共通「AZIK（全体）」に対して差に出る）。全対象が共通の行と同じなら節を出さない。全対象が同じ値へ上書きしても、共通の行は画面の値のまま、全対象が差に出る。その項目が効かない対象は数えない
   - ペインが自分で掃引する項目（N感度の先読みN）は、共通の条件にも差にも出さない
@@ -416,12 +426,13 @@ src/
     setup/           Setup
     presets/         プリセット（条件の1レベル分に付けた名前）
   trace/             Trace生成
-  interpretation/    構造（chain・arpeggio…）、時間モデル、複数のAnalyzerが使う指標、区間の集計と区切り（`span-metrics.ts`・`segments.ts`）、名前のある乱数生成器（`prng.ts`）、対照テキスト（順序破壊・一様ランダム）を作る関数（`control-texts.ts`。塊の規則と乱数の使い方はファイル先頭のコメント）
+  interpretation/    構造（chain・arpeggio…）、時間モデル、複数のAnalyzerが使う指標、区間の集計と区切り（`span-metrics.ts`・`segments.ts`）、文節の中と境目の統計（`bunsetsu-stats.ts`）、名前のある乱数生成器（`prng.ts`）、対照テキスト（順序破壊・一様ランダム）を作る関数（`control-texts.ts`。塊の規則と乱数の使い方はファイル先頭のコメント）
   analyzers/
     contract.ts      Analyzerの契約のうち純粋な部分（抽出・解析設定・Traceを依頼する窓口の型）
     pane-parts.tsx   ペインに渡すものの型（名前・短い説明・本体・解析設定・差し込む項目・既定値）。Reactの型を使うので.tsx
     chart-frame.ts   位置を横軸にとる折れ線の寸法と座標の変換。打鍵再生の速度グラフとRun Chartが共有する純粋な計算
     metric-labels.ts  複数のAnalyzerが縦軸に描く指標のうち、名前と単位が同じ指標の表示の文字
+    segmentation-text.ts  文節の区切りの出どころと分割器を示す文面。区切りを使うAnalyzer（Run Chart・文節ごとの統計）が共有する
     key-detail-view.ts  キーの詳細を画面に出す文字列と並び（ツールチップ・小窓の表・入力方法の面ごとの分け方）。図と小窓が共有する純粋な変換
     heatmap-diagram.tsx / heatmap-figure.ts  ヒートマップとヒートマップ（レイヤー）が共有するキーボードの図と、その純粋な計算（色の強度・刻印）。Analyzerどうしは互いをimportできないので、複数のAnalyzerが同じ図を描く時の共有物はここに置く
     <name>/          .ts が抽出と設定（純粋）、.tsx が可視化（本体・解析設定）と definition.tsx（結び付け）

@@ -1,0 +1,112 @@
+.bunsetsu-stats-feature {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.bunsetsu-stats-notice,
+.bunsetsu-stats-empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.bunsetsu-stats-scroll {
+  overflow-x: auto;
+}
+
+.bunsetsu-stats-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.82rem;
+}
+
+.bunsetsu-stats-table caption {
+  caption-side: top;
+  padding: 0 0.6rem 0.4rem;
+  text-align: left;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.bunsetsu-stats-table th,
+.bunsetsu-stats-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 0.4rem 0.6rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.bunsetsu-stats-table th[scope='row'],
+.bunsetsu-stats-table thead th:first-child {
+  text-align: left;
+  font-weight: 600;
+}
+
+.bunsetsu-stats-table th[scope='col'],
+.bunsetsu-stats-table th[scope='colgroup'] {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.bunsetsu-stats-table th[scope='colgroup'] {
+  text-align: center;
+}
+
+/*
+ * 行の見出し（対象名・文節・並び）の列は、横にスクロールしても左端に残す。どの行の値か分からなくなるため。
+ * 背景を敷くのは、下をスクロールする数値が透けないようにするため。
+ * border-collapseでは固定したセルの罫線がスクロールに付いてこないので、右の境界はbox-shadowで描く。
+ */
+.bunsetsu-stats-table tbody th[scope='row'],
+.bunsetsu-stats-table thead th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--bg);
+  box-shadow: 1px 0 0 var(--border-strong);
+}
+
+/* テキストの表は、行の見出しが長い文なので折り返す。 */
+.bunsetsu-stats-text-table th[scope='row'] {
+  white-space: normal;
+  max-width: 26rem;
+}
+
+@container (max-width: 40rem) {
+  .bunsetsu-stats-layout-table tbody th[scope='row'] {
+    max-width: 7.5rem;
+    white-space: normal;
+    min-width: 5rem;
+    overflow-wrap: break-word;
+  }
+}
+
+.bunsetsu-stats-table td[data-empty] {
+  color: var(--text-muted);
+}
+
+.bunsetsu-stats-table tr[data-bunsetsu-stats-row='failed'] td,
+.bunsetsu-stats-table tr[data-bunsetsu-stats-row='no-segmentation'] td,
+.bunsetsu-stats-table tr[data-bunsetsu-stats-row='pending'] td {
+  color: var(--text-muted);
+  text-align: left;
+  white-space: normal;
+}
+
+.bunsetsu-stats-failures {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+}
+
+.bunsetsu-stats-failures li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
