@@ -74,6 +74,61 @@ test.describe('個別画面', () => {
     expect(description).not.toMatch(/1文字目|2文字目以降/u);
   });
 
+  test('配列ごとの表は見出しで並べ替えられ、一覧の配列ごとの列の順は変わらない', async ({ page }) => {
+    const layout = feature(page).locator('[data-bunsetsu-stats-layout-table]');
+    const rowTitles = async () => await layout.locator('tbody th[scope="row"]').evaluateAll((cells) => cells.map((cell) => cell.getAttribute('title')));
+    const listTitles = async () =>
+      await feature(page)
+        .locator('[data-bunsetsu-stats-frequent-segments] thead th[title]')
+        .evaluateAll((cells) => cells.map((cell) => cell.getAttribute('title')));
+    const shares = async () =>
+      (await layout.locator('tbody tr[data-bunsetsu-stats-row="ok"] td:nth-child(4)').allInnerTexts()).map((text) => parseFloat(text));
+    const headerCell = layout.locator('thead th', { has: page.getByRole('button', { name: '文節頭の距離の割合', exact: true }) });
+    const button = headerCell.getByRole('button', { name: '文節頭の距離の割合', exact: true });
+
+    const original = await rowTitles();
+    expect(original).toHaveLength(2);
+    expect(await listTitles()).toEqual(original);
+    await expect(headerCell).not.toHaveAttribute('aria-sort', /.+/);
+
+    await button.click();
+    await expect(headerCell).toHaveAttribute('aria-sort', 'ascending');
+    const ascending = await shares();
+    expect(ascending).toEqual([...ascending].sort((a, b) => a - b));
+    const ascendingTitles = await rowTitles();
+    expect(await listTitles()).toEqual(original);
+
+    await button.click();
+    await expect(headerCell).toHaveAttribute('aria-sort', 'descending');
+    const descending = await shares();
+    expect(descending).toEqual([...descending].sort((a, b) => b - a));
+    expect(await listTitles()).toEqual(original);
+    // 2配列の値が違えば、降順の行の順は昇順の逆になる
+    expect(ascending[0]).not.toBe(ascending[1]);
+    expect(await rowTitles()).toEqual([...ascendingTitles].reverse());
+
+    await button.click();
+    await expect(headerCell).not.toHaveAttribute('aria-sort', /.+/);
+    expect(await rowTitles()).toEqual(original);
+  });
+
+  test('2段目の見出しも並べ替えられ、名前はまとまりを含む正式な名前になる', async ({ page }) => {
+    const layout = feature(page).locator('[data-bunsetsu-stats-layout-table]');
+    const button = layout.getByRole('button', { name: '文節頭の標準偏差', exact: true });
+    await expect(button).toBeVisible();
+    await button.click();
+    const header = layout.locator('thead th', { has: page.getByRole('button', { name: '文節頭の標準偏差', exact: true }) });
+    await expect(header).toHaveAttribute('aria-sort', 'ascending');
+    await expect(header).toContainText('↑');
+    // 並べ替えた後も、まとまりの縦の罫線が見出しと本文に付く
+    await expect(header).toHaveClass(/bunsetsu-stats-edge-end/);
+    await expect(header).toHaveCSS('border-right-width', '1px');
+    const startHeader = layout.locator('thead th', { has: page.getByRole('button', { name: '文節頭の1文字あたりの距離', exact: true }) });
+    await expect(startHeader).toHaveClass(/bunsetsu-stats-edge-start/);
+    await expect(startHeader).toHaveCSS('border-left-width', '1px');
+    await expect(layout.locator('tbody tr[data-bunsetsu-stats-row="ok"] td').nth(4)).toHaveCSS('border-right-width', '1px');
+  });
+
   test('打ちやすさ・順位・結論を述べる文言を出さない', async ({ page }) => {
     const text = (await feature(page).innerText()).replaceAll(/\s+/g, '');
     for (const word of ['打ちやすい', '打ちにくい', '優れ', '劣', '順位', '結論', '合成スコア', 'おすすめ']) {

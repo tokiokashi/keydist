@@ -1,6 +1,11 @@
+import { useMemo, type ReactNode } from 'react';
 import { SHARED_METRIC_TEXT } from '../metric-labels.ts';
 import { segmentationSourceSentence } from '../segmentation-text.ts';
 import type { AnalyzerSettingsProps, SetAnalyzerPaneParts, SetBodyProps } from '../pane-parts.tsx';
+import { bindOption, OptionField } from '#ui/primitives/option-fields.tsx';
+import { sortOrderByColumn } from '#ui/primitives/column-sort.ts';
+import { SortColumnHeader } from '#ui/primitives/sort-column-header.tsx';
+import { BUNSETSU_STATS_COLUMN_FULL_NAME, bunsetsuStatsColumnValue, type BunsetsuStatsColumnId } from './columns.ts';
 import { countText, distanceText, EMPTY_CELL_TEXT, percentText, VISIBLE_TEXT_NOTE, visibleText } from './display.ts';
 import { bunsetsuStatsDefinition, type BunsetsuStatsExtracted, type BunsetsuStatsOkRow, type BunsetsuStatsRow } from './extract.ts';
 import { bunsetsuStatsOptions, DEFAULT_BUNSETSU_STATS_OPTIONS, type BunsetsuStatsOptions } from './options.ts';
@@ -11,7 +16,10 @@ import './bunsetsu-stats-view.css';
  * 文節の中と境目の統計の可視化。
  *
  * 抽出の結果（`extract.ts`）を表に並べるだけで、計算し直さない。表の値は書式（`display.ts`）で文字にする。
- * 配列の並べ替え・順位・合成スコアは出さない。上位の一覧の行は出現回数で並び、配列の値では並び替えない。
+ * 順位・合成スコアは出さない。配列ごとの表の行の並びの既定は呼び出し側（ホスト）が渡す`order`の順のまま。列の値で並べるのは、
+ * 利用者が見出しを押して選ぶ表示の操作（解析設定`sort`）であり、ツールが順位を決めるものではない。
+ * 並べ替えるのは配列ごとの表の表示だけで、`order`（対象の集合の順）は変えない。
+ * 上位の一覧の行は出現回数で並び、配列の値では並び替えない。一覧の配列ごとの列の順も`order`のまま。
  */
 
 /** 1対象ぶんの、行の名前。条件は名前が重なった時だけ名前に足し、基本はペインの条件の要約が出す。 */
@@ -96,7 +104,7 @@ function edgeClass(index: number): string | undefined {
   return classes.length === 0 ? undefined : classes.join(' ');
 }
 
-function statsCells(row: BunsetsuStatsOkRow): readonly (readonly [key: string, text: string])[] {
+function statsCells(row: BunsetsuStatsOkRow): readonly (readonly [key: BunsetsuStatsColumnId, text: string])[] {
   const { stats } = row;
   return [
     ['skipped', countText(stats.skippedChars)],
@@ -115,7 +123,27 @@ function statsCells(row: BunsetsuStatsOkRow): readonly (readonly [key: string, t
 
 const STATS_COLUMN_COUNT = 11;
 
-function LayoutTable({ rows }: { readonly rows: readonly DisplayRow[] }) {
+function LayoutTable({
+  rows,
+  sort,
+  onSortChange,
+}: {
+  readonly rows: readonly DisplayRow[];
+  readonly sort: BunsetsuStatsOptions['sort'];
+  readonly onSortChange: (next: BunsetsuStatsOptions['sort']) => void;
+}) {
+  /** 値の列の見出し。`index`は`statsCells`の並びの添字（まとまりの罫線に使う）。 */
+  const header = (column: BunsetsuStatsColumnId, index: number | undefined, label: ReactNode, rowSpan?: number) => (
+    <SortColumnHeader<BunsetsuStatsColumnId>
+      column={column}
+      label={label}
+      fullName={BUNSETSU_STATS_COLUMN_FULL_NAME[column]}
+      className={index === undefined ? undefined : edgeClass(index)}
+      rowSpan={rowSpan}
+      sort={sort}
+      onSortChange={onSortChange}
+    />
+  );
   return (
     <div className="bunsetsu-stats-scroll">
       <table className="bunsetsu-stats-table" data-bunsetsu-stats-layout-table="">
@@ -128,9 +156,7 @@ function LayoutTable({ rows }: { readonly rows: readonly DisplayRow[] }) {
             <th colSpan={2} scope="colgroup" className="bunsetsu-stats-edge-start bunsetsu-stats-edge-end">
               打てない文字
             </th>
-            <th rowSpan={2} scope="col">
-              文節頭の距離の割合
-            </th>
+            {header('boundaryShare', undefined, BUNSETSU_STATS_COLUMN_FULL_NAME.boundaryShare, 2)}
             <th colSpan={2} scope="colgroup" className="bunsetsu-stats-edge-start bunsetsu-stats-edge-end">
               文節頭
             </th>
@@ -145,36 +171,28 @@ function LayoutTable({ rows }: { readonly rows: readonly DisplayRow[] }) {
             </th>
           </tr>
           <tr>
-            <th scope="col" className={edgeClass(0)}>
-              数
-            </th>
-            <th scope="col" className={edgeClass(1)}>
-              うち文節頭
-            </th>
-            <th scope="col" className={edgeClass(3)}>
-              {DISTANCE.label} [{DISTANCE.unit}]
-            </th>
-            <th scope="col" className={edgeClass(4)}>
-              標準偏差 [{SEGMENT_DISTANCE_UNIT}]
-            </th>
-            <th scope="col" className={edgeClass(5)}>
-              {DISTANCE.label} [{DISTANCE.unit}]
-            </th>
-            <th scope="col" className={edgeClass(6)}>
-              標準偏差 [{SEGMENT_DISTANCE_UNIT}]
-            </th>
-            <th scope="col" className={edgeClass(7)}>
-              標準偏差
-            </th>
-            <th scope="col" className={edgeClass(8)}>
-              90%点
-            </th>
-            <th scope="col" className={edgeClass(9)}>
-              中央値
-            </th>
-            <th scope="col" className={edgeClass(10)}>
-              90%点
-            </th>
+            {header('skipped', 0, '数')}
+            {header('skippedAfterBoundary', 1, 'うち文節頭')}
+            {header(
+              'boundaryPerChar',
+              3,
+              <>
+                {DISTANCE.label} [{DISTANCE.unit}]
+              </>,
+            )}
+            {header('boundaryDeviation', 4, <>標準偏差 [{SEGMENT_DISTANCE_UNIT}]</>)}
+            {header(
+              'interiorPerChar',
+              5,
+              <>
+                {DISTANCE.label} [{DISTANCE.unit}]
+              </>,
+            )}
+            {header('interiorDeviation', 6, <>標準偏差 [{SEGMENT_DISTANCE_UNIT}]</>)}
+            {header('segmentDeviation', 7, '標準偏差')}
+            {header('segmentP90', 8, '90%点')}
+            {header('segmentPerCharMedian', 9, '中央値')}
+            {header('segmentPerCharP90', 10, '90%点')}
           </tr>
         </thead>
         <tbody>
@@ -342,8 +360,21 @@ function FrequentBigramsTable({ text, rows }: { readonly text: NonNullable<Bunse
  * 文節の中と境目の統計の本体。対象が空の時はホストが選ぶボタンを出し、本体は呼ばれない。
  * 日本語以外のテキストと、分割器を読み込めなかった時は、値を出さずその旨を示す。
  */
-export function BunsetsuStatsBody({ extracted, order, rowContext, segmentation }: BunsetsuStatsBodyProps) {
+export function BunsetsuStatsBody({ extracted, order, rowContext, segmentation, options, onOptionsChange }: BunsetsuStatsBodyProps) {
   const rows = displayRows(extracted, order, rowContext);
+  // 並べ替えるのは配列ごとの表だけ。一覧の列の順と注の配列の並びは`order`のままにする。
+  const layoutRows = useMemo(() => {
+    const byKey = new Map(extracted.rows.map((row) => [row.targetKey, row]));
+    const sorted = sortOrderByColumn<BunsetsuStatsColumnId>(
+      order,
+      (targetKey, column) => {
+        const row = byKey.get(targetKey);
+        return row?.kind === 'ok' ? bunsetsuStatsColumnValue(row, column) : undefined;
+      },
+      options.sort,
+    );
+    return displayRows(extracted, sorted, rowContext);
+  }, [extracted, order, rowContext, options.sort]);
   const text = extracted.text;
   const unavailable = segmentation === 'unsupported' || segmentation === 'failed';
   const differentText = text === undefined ? [] : rows.filter((row) => okRowOf(row)?.sameText === false);
@@ -368,7 +399,7 @@ export function BunsetsuStatsBody({ extracted, order, rowContext, segmentation }
             {segmentationSourceSentence(text.source.splitter, text.source.origin)}
           </p>
           <TextTable text={text} />
-          <LayoutTable rows={rows} />
+          <LayoutTable rows={layoutRows} sort={options.sort} onSortChange={(next) => onOptionsChange({ ...options, sort: next })} />
           <FrequentSegmentsTable text={text} rows={rows} />
           <FrequentBigramsTable text={text} rows={rows} />
           {differentText.length > 0 ? (
@@ -410,9 +441,22 @@ function FailedList({ rows }: { readonly rows: readonly DisplayRow[] }) {
   );
 }
 
-/** ここで設定できる項目は無い。 */
-export function BunsetsuStatsSettings(_props: AnalyzerSettingsProps<BunsetsuStatsOptions>) {
-  return <p className="bunsetsu-stats-empty">ここで設定できる項目はありません。</p>;
+const SORT_DIRECTION_TEXT = { asc: '昇順', desc: '降順' } as const;
+
+/** 文節ごとの統計の解析設定（配列ごとの表の並び替え）。 */
+export function BunsetsuStatsSettings({ options, onOptionsChange }: AnalyzerSettingsProps<BunsetsuStatsOptions>) {
+  const bind = <K extends keyof BunsetsuStatsOptions>(key: K) => bindOption(options, DEFAULT_BUNSETSU_STATS_OPTIONS, onOptionsChange, key);
+  return (
+    <div className="option-groups">
+      <OptionField label="並び替え" binding={bind('sort')} hint="配列ごとの表の列の見出しを押すと切り替わります。">
+        {(id) => (
+          <span id={id}>
+            {options.sort === null ? 'なし' : `${BUNSETSU_STATS_COLUMN_FULL_NAME[options.sort.column]}（${SORT_DIRECTION_TEXT[options.sort.direction]}）`}
+          </span>
+        )}
+      </OptionField>
+    </div>
+  );
 }
 
 /** ペインに渡すもの（`analyzers/pane-parts.tsx`）。 */

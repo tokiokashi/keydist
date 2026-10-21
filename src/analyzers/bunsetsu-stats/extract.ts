@@ -24,7 +24,7 @@ import {
   type FrequentSegment,
 } from '#interpretation/bunsetsu-stats.ts';
 import { generateTrace } from '#trace/generate.ts';
-import { DEFAULT_BUNSETSU_STATS_OPTIONS, bunsetsuStatsOptions, type BunsetsuStatsOptions } from './options.ts';
+import { ALTERNATE_BUNSETSU_STATS_OPTIONS, DEFAULT_BUNSETSU_STATS_OPTIONS, bunsetsuStatsOptions, type BunsetsuStatsOptions } from './options.ts';
 
 /**
  * 文節の中と境目の統計の抽出（定義は `docs/segment-metrics.md`「文節の中と境目の統計」）。
@@ -205,7 +205,7 @@ export const bunsetsuStatsDefinition: SetAnalyzerDefinition<BunsetsuStatsOptions
   assetsKeyOf: (_options, assets) => assets.segmentation ?? null,
   optionsDiscipline: {
     sample: DEFAULT_BUNSETSU_STATS_OPTIONS,
-    alternates: DEFAULT_BUNSETSU_STATS_OPTIONS,
+    alternates: ALTERNATE_BUNSETSU_STATS_OPTIONS,
     context: () => ({ members: fixtureMembers(), failures: FIXTURE_FAILURES }),
   },
 });
