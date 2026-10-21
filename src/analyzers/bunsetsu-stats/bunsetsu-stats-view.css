@@ -84,6 +84,30 @@
   }
 }
 
+/*
+ * 複数の列にまたがる見出し（まとまり）の左右の境と、見出しの下の横線。配列ごとの表と、またぐ並びの一覧で使う。
+ * 色は中立のテーマの色だけにする（配列の色や、打鍵再生の同指移動の色と紛れないように）。
+ */
+.bunsetsu-stats-table th[scope='colgroup'] {
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.bunsetsu-stats-table .bunsetsu-stats-edge-start {
+  border-left: 1px solid var(--border-strong);
+}
+
+.bunsetsu-stats-table .bunsetsu-stats-edge-end {
+  border-right: 1px solid var(--border-strong);
+}
+
+/* 見出しの単位は、列の名前の下に小さく出す。 */
+.bunsetsu-stats-unit {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
 .bunsetsu-stats-table td[data-empty] {
   color: var(--text-muted);
 }
