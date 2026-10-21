@@ -77,3 +77,39 @@ test('別名の範囲の外の出力は、文字が一致した時だけ打て�
   assert.equal(generateTrace('’￥', layout, geometry, DEFAULT_TRACE_POLICY).skipped, 0);
   assert.equal(generateTrace("'\\", layout, geometry, DEFAULT_TRACE_POLICY).skipped, 2);
 });
+
+test('『』は、『』を持たないかな配列では「」と同じ物理入力で打つ', () => {
+  const layout = fromKana('alias-bracket', 'かぎ括弧だけ', { '「': [['a']], '」': [['s']] });
+  const single = generateTrace('「」', layout, geometry, DEFAULT_TRACE_POLICY);
+  const double = generateTrace('『』', layout, geometry, DEFAULT_TRACE_POLICY);
+  assert.equal(double.skipped, 0);
+  assert.deepEqual(keysOf(double), keysOf(single));
+  assert.deepEqual(
+    double.strokes.map((stroke) => stroke.inputChar),
+    ['『', '』'],
+  );
+});
+
+test('『』を片方だけ持つ配列では、持たない側にだけ別名を当てる', () => {
+  const layout = fromKana('alias-bracket-half', '『だけ', { '「': [['a']], '」': [['s']], '『': [['d']] });
+  assert.deepEqual(keysOf(generateTrace('『』「', layout, geometry, DEFAULT_TRACE_POLICY)), [['d'], ['s'], ['a']]);
+});
+
+test('『』を持つ薙刀式v18では、『』を自分の定義で打ち、「」の打鍵は変わらない', () => {
+  const naginata = LAYOUT_BY_ID.get('naginata-v18')!;
+  assert.deepEqual(keysOf(generateTrace('『』', naginata, geometry, DEFAULT_TRACE_POLICY)), [
+    ['j', 'k', 's'],
+    ['j', 'k', 'x'],
+  ]);
+  assert.deepEqual(keysOf(generateTrace('「」', naginata, geometry, DEFAULT_TRACE_POLICY)), [
+    ['j', 'k', 'f'],
+    ['j', 'k', 'v'],
+  ]);
+});
+
+test('「」を打てない配列では、『』も打てない記号に数える', () => {
+  const layout = fromKana('alias-bracket-none', '括弧なし', { あ: [['a']] });
+  const trace = generateTrace('『あ』', layout, geometry, DEFAULT_TRACE_POLICY);
+  assert.equal(trace.skipped, 2);
+  assert.deepEqual(trace.skippedByKind, { kanji: 0, symbol: 2, other: 0 });
+});

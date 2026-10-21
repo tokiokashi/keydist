@@ -233,3 +233,27 @@ test('ローマ字のテーブルが片仮名を見出しとして持つ時は�
 test('英語のテキストの片仮名は書き換えない', () => {
   assert.equal(resolve('qwerty', 'ニャー ヴ', 'en').text, 'ニャー ヴ');
 });
+
+test('範囲を広げると、ローマ字配列は「」・と『』を打ち、物理キーを持たない配列と…は打てない文字に数える', () => {
+  const text = 'あ「い」・『う』…';
+  const qwerty = measure('qwerty', text, 'ja', true);
+  // 打てないのは…だけ
+  assert.equal(qwerty.trace.skipped, 1);
+  assert.deepEqual(qwerty.trace.skippedByKind, { kanji: 0, symbol: 1, other: 0 });
+  const keys = qwerty.trace.strokes.map((stroke) => stroke.inputChar);
+  assert.deepEqual(keys, [...'あ「い」・『う』']);
+
+  // 大西配列は [ ] / のキーを持たない。それ以外は同じ
+  const oonishi = measure('oonishi', text, 'ja', true);
+  assert.equal(oonishi.trace.skipped, 6);
+  // TK音直入力法は / のキーだけを持つ
+  const custom = measure('oonishi-custom', text, 'ja', true);
+  assert.equal(custom.trace.skipped, 5);
+});
+
+test('既定の範囲では、「」・『』…は評価の前に取り除かれ、数値が変わらない', () => {
+  const plain = measure('qwerty', 'あいう', 'ja');
+  const withSymbols = measure('qwerty', 'あ「い」・『う』…', 'ja');
+  assert.equal(withSymbols.trace.skipped, 0);
+  assert.equal(withSymbols.metrics.totalUnits, plain.metrics.totalUnits);
+});

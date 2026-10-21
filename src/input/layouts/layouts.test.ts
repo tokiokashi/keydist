@@ -252,6 +252,9 @@ test('romajiOnlyのコンボは、かなから展開した綴りの区間だけ�
   assert.deepEqual(hits('から、です'), ['kara', 'desu']);
   assert.deepEqual(hits('からーです'), ['kara', 'desu']);
   assert.deepEqual(hits('からです。'), ['kara', 'desu']);
+  // 中黒もテーブルの見出しに当たるのでかな由来に入り、挟んでも両側のコンボは成立する。英字の区間はまたがない
+  assert.deepEqual(hits('から・です'), ['kara', 'desu']);
+  assert.deepEqual(hits('web・site'), []);
 });
 
 test('romajiOnlyのコンボの成立は、呼び出し側が渡す綴りの列でも塊の由来で決まる', () => {

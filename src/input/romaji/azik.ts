@@ -20,6 +20,8 @@ import { addSokuonForms } from './kunrei.ts';
 const BASE: Record<string, string> = {
   '、': ',',
   '。': '.',
+  '「': '[',
+  '」': ']',
   ぁ: 'la',
   ぁい: 'lq',
   ぁん: 'lz',
@@ -432,6 +434,7 @@ const BASE: Record<string, string> = {
   ヴぉー: 'vp',
   ヴん: 'vj',
   ヴー: 'vh',
+  '・': '/',
   ー: '-',
 };
 

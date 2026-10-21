@@ -126,6 +126,10 @@ const BASE: Record<string, string> = {
   ー: '-',
   '、': ',',
   '。': '.',
+  // 日本語IMEのローマ字入力の既定（Microsoft IME・Google日本語入力とも `[` `]` `/`）
+  '「': '[',
+  '」': ']',
+  '・': '/',
 };
 
 const VOWELS = 'aiueo';
@@ -149,7 +153,8 @@ export function kunrei(overrides: Record<string, string> = {}, generateSokuon = 
 export function addSokuonForms(table: Map<string, string>) {
   for (const [kana, roman] of [...table]) {
     const head = roman[0];
-    if (VOWELS.includes(head) || head === '-' || head === ',' || head === '.') continue;
+    // 子音の英字で始まる綴りだけ重ねる。母音と、長音・句読点・括弧・中黒のような記号の綴りは重ねない
+    if (VOWELS.includes(head) || !/[a-z]/.test(head)) continue;
     // 「ん」は nn なので重ねない
     if (kana === 'ん' || kana.startsWith('っ')) continue;
     if (!table.has(`っ${kana}`)) table.set(`っ${kana}`, head + roman);

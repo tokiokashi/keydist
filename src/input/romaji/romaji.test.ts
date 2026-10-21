@@ -144,12 +144,16 @@ test('AZIKの促音は ; の1打のみ。子音を重ねた自動生成をしな
   assert.equal(kanaToRomaji('っか', azikTable), ';ka');
 });
 
-test('JIS配列前提の記号（「」『』・…‥〜）は落とす。句読点はkunreiと同じ綴りで残す', () => {
-  for (const symbol of ['「', '」', '『', '』', '・', '…', '‥', '〜']) {
+test('AZIKは出典の `[` `]` の「」と句読点を残し、・は `/` を足す。ほかの記号は落とす', () => {
+  for (const symbol of ['『', '』', '…', '‥', '〜']) {
     assert.equal(azikTable.has(symbol), false, `${symbol} は落とすはずが残っている`);
   }
   assert.equal(azikTable.get('、'), ',');
   assert.equal(azikTable.get('。'), '.');
+  assert.equal(azikTable.get('「'), '[');
+  assert.equal(azikTable.get('」'), ']');
+  // 出典で・はz/にだけある。zで始まる綴りは採らず、ほかのテーブルと同じ/にする
+  assert.equal(azikTable.get('・'), '/');
 });
 
 test('AZIKは逆写像で取りこぼしなく全かなを打てる（kunreiが持つ見出し全件で検証）', () => {
@@ -183,4 +187,68 @@ test('AZIKは訓令式よりステップ数が少ない（2かな以上への短
   const kunreiSteps = generateTrace(text, ja, geometry, opts).strokes.length;
   const azikSteps = generateTrace(text, azikJa, geometry, opts).strokes.length;
   assert.ok(azikSteps < kunreiSteps, `AZIK: ${azikSteps} 訓令式: ${kunreiSteps}`);
+});
+
+test('テーブルは「」・を日本語IMEの既定の綴り [ ] / で持つ', () => {
+  assert.equal(table.get('「'), '[');
+  assert.equal(table.get('」'), ']');
+  assert.equal(table.get('・'), '/');
+  // 『』は専用の見出しを持たず、評価側が「」の別名として打つ。…は綴りを持たない
+  for (const symbol of ['『', '』', '…']) assert.equal(table.has(symbol), false, symbol);
+});
+
+test('促音の自動生成は記号の見出しから作らない', () => {
+  for (const heading of ['っ「', 'っ」', 'っ・', 'っー', 'っ、', 'っ。']) assert.equal(table.has(heading), false, heading);
+  assert.equal(table.get('っか'), 'kka');
+});
+
+test('「」・を含む文は、ローマ字を経る配列で [ ] / を打つ', () => {
+  const t = generateTrace('あ「い」・', ja, geometry, opts);
+  assert.equal(t.skipped, 0);
+  assert.deepEqual(
+    t.strokes.map((stroke) => stroke.presses.flatMap((press) => press.keys.map((key) => key.id))),
+    [['a'], ['['], ['i'], [']'], ['/']],
+  );
+  assert.deepEqual(
+    t.strokes.map((stroke) => stroke.inputChar),
+    ['あ', '「', 'い', '」', '・'],
+  );
+});
+
+test('『』は「」と同じ打鍵で、inputCharは元の文字を保つ', () => {
+  const single = generateTrace('「あ」', ja, geometry, opts);
+  const double = generateTrace('『あ』', ja, geometry, opts);
+  assert.equal(double.skipped, 0);
+  const keys = (trace: typeof single) => trace.strokes.map((stroke) => stroke.presses.flatMap((press) => press.keys.map((key) => key.id)));
+  assert.deepEqual(keys(double), keys(single));
+  assert.deepEqual(
+    double.strokes.map((stroke) => stroke.inputChar),
+    ['『', 'あ', '』'],
+  );
+});
+
+test('ローマ字テーブルが『を見出しに持つ時は別名を当てず、その綴りで打つ', () => {
+  const own = withRomaji(qwerty, new Map([...table, ['『', 'q']]));
+  const t = generateTrace('『「', own, geometry, opts);
+  assert.deepEqual(
+    t.strokes.map((stroke) => stroke.presses.flatMap((press) => press.keys.map((key) => key.id))),
+    [['q'], ['[']],
+  );
+});
+
+test('…は綴りを持たず、打てない記号に数える', () => {
+  const t = generateTrace('あ…', ja, geometry, opts);
+  assert.equal(t.skipped, 1);
+  assert.deepEqual(t.skippedByKind, { kanji: 0, symbol: 1, other: 0 });
+});
+
+test('物理キーを持たない配列では「」・を打てない文字に数える', () => {
+  const oonishi = LAYOUTS_JA.find((layout) => layout.id === 'oonishi')!;
+  const custom = LAYOUTS_JA.find((layout) => layout.id === 'oonishi-custom')!;
+  // 大西配列は [ ] / のキーを持たない。『』も「」を打てないので打てない文字に数える
+  assert.equal(generateTrace('「」・『』', oonishi, geometry, opts).skipped, 5);
+  // TK音直入力法は / のキーだけを持つ
+  const partial = generateTrace('「」・『』', custom, geometry, opts);
+  assert.equal(partial.skipped, 4);
+  assert.equal(partial.strokes.length, 1);
 });
