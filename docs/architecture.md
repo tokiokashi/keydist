@@ -285,6 +285,7 @@ Workspaceで並べたペインは、同じキー（Analyzerと見る量。例: `
 - **既定と違う集計窓**は、ペインの中で、解析設定の小窓を開かなくても分かるように知らせる。目安線は統計的な保証ではなく、外れている箇所を探す目安で、画面にもそう書く
 - **押した点から打鍵再生へ移る**仕組みは、打鍵再生の節の「文字位置へ移る操作」
 - **区切りを重ねる**（定義は `docs/segment-metrics.md`）。区切り方（なし・文節・固定長・ランダム）とランダムの種の始まりの値は、今Run Chartだけが読むので解析設定に置く（`affects: 'extract'`。既定は区切りなし）。区切りなし以外の時は、ペインの中で、解析設定の小窓を開かなくても分かるように知らせる。区間の集計と区切りの作成は `interpretation/segments.ts`（乱数生成器は共有の `interpretation/prng.ts`）
+- **かな3文字までの並びとの比べ方**（定義は `docs/kana-chain-comparison.md`）。n-gramの表の数え方（`interpretation/ngram-table.ts`）、2次マルコフ連鎖の生成文（`interpretation/markov-text.ts`）、元のテキスト・生成文・対照テキストの比べ方と順位・判定（`interpretation/chain-comparison.ts`）は、画面に依存しない純粋な関数。評価（Traceの生成）は呼び出し側が渡す関数で行う。今は画面に出さず、`scripts/kana-chain-comparison.ts` がコーパスの範囲で実行して表を出す
   - **文節の区切りの経路**: 分割器（BudouX）は `platform/bunsetsu/` に置き、`app` が `BunsetsuSource`（`hosts/shared/segmentation.ts`）として器へ注入する。解析設定が区切りを求める（`SetAnalyzerPaneParts.usesSegmentation`）間だけ、ペインが分割器を呼ぶ。分割器のモジュールは、区切りを使う設定のペインが現れるまで読み込まない（事前描画の modulepreload に載せない）
   - 分割器は、読みに直す前の原文に当てる。ペインが受け取る `resolvedText` は読みに直した後のテキストなので、器は漢字を読みに直した時に語の列と原文を `PaneText.segmentationBasis` に添える。漢字を含まないテキストと辞書を読み込めなかったテキストは、語の列が無い材料をペインが作る（`segmentationBasisOf`）。原文の区切りを、語の境目へ寄せて読みのテキストの位置へ写す処理は `input/text/segmentation.ts`
   - 読みのテキストの区切りは `resolveEngineInput` の `segmentation` で渡す。記号の取り除き（`keepSymbols`）は対象ごとに違うので、評価に渡すテキストの位置への写し直しは解決の中で対象ごとに行い、`ExtractionAssets.segmentation` として計算部へ渡す。計算部は評価に渡すテキストの文字位置の列だけを受け取る
