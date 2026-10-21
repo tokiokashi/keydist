@@ -156,7 +156,7 @@ test('順位は同じ値があれば幅で示し、端に数えるのは厳密�
   assert.deepEqual(rankAmong(3, [3, 3, 3]), { low: 1, high: 4, of: 4, extreme: null });
 });
 
-test('特徴が無い入力（文節の区切りがランダムな区切りと同じ分布）で、端に来る割合は 2/21 以下', () => {
+test('特徴が無い入力（文節の区切りがランダムな区切りと同じ分布）で、端に来る割合は 2/21以下', () => {
   const index = indexFor('qwerty');
   let extremes = 0;
   const trials = 60;
@@ -166,7 +166,7 @@ test('特徴が無い入力（文節の区切りがランダムな区切りと�
     const report = buildSegmentationReport(index, bunsetsu, 1)!;
     if (report.rank.p90?.extreme !== null) extremes++;
   }
-  // 2/21 は約9.5%。60回で期待は約5.7回。大きく外れていないことだけを確かめる
+  // 2/21は約9.5%。60回で期待は約5.7回。大きく外れていないことだけを確かめる
   assert.ok(extremes / trials <= 0.25, `端に来た割合 ${extremes}/${trials}`);
 });
 

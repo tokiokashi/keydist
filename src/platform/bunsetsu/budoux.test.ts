@@ -4,7 +4,7 @@ import test from 'node:test';
 import { splitBunsetsu } from './budoux.ts';
 import { BUNSETSU_SPLITTER } from './info.ts';
 
-test('分割器の版は package.json の budoux の版と同じ', () => {
+test('分割器の版は package.jsonのbudouxの版と同じ', () => {
   const pkg = JSON.parse(readFileSync(new URL('../../../package.json', import.meta.url), 'utf8')) as { dependencies: Record<string, string> };
   assert.equal(pkg.dependencies.budoux, BUNSETSU_SPLITTER.version);
 });

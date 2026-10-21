@@ -26,7 +26,7 @@ test('分割器の区切りを語の境目へ寄せ、読みのテキストの�
     return { surface, byteStart, byteEnd: byteStart + encoder.encode(surface).length, reading, isUnknown: false };
   });
   const input = await computeSegmentation(source, { sourceText: text, tokens, corrections: {}, origin: 'dictionary' });
-  // 分割器の区切り 1（吾|輩）は語「吾輩」の途中なので読みの4へ寄り、3（は|猫）は5、5（で|ある）は8
+  // 分割器の区切り1（吾|輩）は語「吾輩」の途中なので読みの4へ寄り、3（は|猫）は5、5（で|ある）は8
   assert.deepEqual(input.boundaries, [4, 5, 8]);
   assert.equal(input.origin, 'dictionary');
   assert.deepEqual(input.splitter, { name: 'テスト用', version: '1' });

@@ -102,7 +102,7 @@ function SegmentTableFor({ row }: { readonly row: SegmentTableRow }) {
         <>
           <p className="run-chart-segment-condition" data-run-chart-segment-condition="">
             区切り: {segments.splitter.name} {segments.splitter.version}（日本語のモデル）で{ORIGIN_TEXT[segments.origin]}。固定長は
-            {report.fixedLength}文字、ランダムは乱数生成器 {segments.rng}・種 {segments.seedStart}〜{segments.seedStart + segments.seedCount - 1}の
+            {report.fixedLength}文字、ランダムは乱数生成器{segments.rng}、種{segments.seedStart}〜{segments.seedStart + segments.seedCount - 1}の
             {segments.seedCount}個（文節の区間の長さの並べ替え）。
           </p>
           <div className="run-chart-segment-scroll">
