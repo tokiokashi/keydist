@@ -23,6 +23,8 @@ export function SortColumnHeader<Column extends string>({
   column,
   label,
   fullName,
+  className,
+  rowSpan,
   sort,
   onSortChange,
 }: {
@@ -30,12 +32,21 @@ export function SortColumnHeader<Column extends string>({
   /** 見出しに出す文字。 */
   readonly label: ReactNode;
   readonly fullName?: string;
+  /** 見出しのセルに足すclass（表ごとの罫線など）。 */
+  readonly className?: string | undefined;
+  /** 2段の見出しの1段目から2段目まで続ける時に指定する。 */
+  readonly rowSpan?: number | undefined;
   readonly sort: ColumnSort<Column>;
   readonly onSortChange: (next: ColumnSort<Column>) => void;
 }) {
   const active = sort !== null && sort.column === column ? sort : undefined;
   return (
-    <th className="sort-column-header" scope="col" aria-sort={active === undefined ? undefined : SORT_ARIA[active.direction]}>
+    <th
+      className={className === undefined ? 'sort-column-header' : `sort-column-header ${className}`}
+      scope="col"
+      rowSpan={rowSpan}
+      aria-sort={active === undefined ? undefined : SORT_ARIA[active.direction]}
+    >
       <button
         type="button"
         className="sort-column-button"

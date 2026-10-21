@@ -298,7 +298,7 @@ Workspaceで並べたペインは、同じキー（Analyzerと見る量。例: `
 文節の中の文字と境目の文字に分けて、指の移動距離の統計を配列ごとに表で並べるMulti（`analyzers/bunsetsu-stats/`）。定義は `docs/segment-metrics.md`「文節の中と境目の統計」。距離モデルは変えない。
 
 - **計算部は `interpretation/bunsetsu-stats.ts`**（画面に依存しない純粋な関数）。テキストだけで決まる量（`analyzeBunsetsuText`）と、Traceから求める配列ごとの量（`bunsetsuLayoutStats`）に分ける。打鍵できなかった文字の位置は、Trace生成が記録する（`Trace.skippedPositions`。ローマ字配列では、一部の英字だけ打てたかなも入るので、数は `skipped` と一致するとは限らない）
-- **配線**: 抽出は `analyzers/bunsetsu-stats/extract.ts`（`engine-worker.ts` と `hosts/workspace/analyzer-registry.ts` に載せる）、可視化は `definition.tsx`（`hosts/workspace/set-analyzers.ts` に載せる）、routeは `/analyzer/bunsetsu-stats`。解析設定は持たない。Traceから作る索引と打鍵できなかった文字の位置は、メンバーに覚えさせて使い回す。文節の区切りに依るものは、覚える入れ物のキーに区切りが入らないので覚えさせない
+- **配線**: 抽出は `analyzers/bunsetsu-stats/extract.ts`（`engine-worker.ts` と `hosts/workspace/analyzer-registry.ts` に載せる）、可視化は `definition.tsx`（`hosts/workspace/set-analyzers.ts` に載せる）、routeは `/analyzer/bunsetsu-stats`。解析設定は配列ごとの表の並び替え（`sort`。表示だけが変わる）だけを持つ。Traceから作る索引と打鍵できなかった文字の位置は、メンバーに覚えさせて使い回す。文節の区切りに依るものは、覚える入れ物のキーに区切りが入らないので覚えさせない
 - **文節の区切りの受け取り方はRun Chartと同じ**（`SetAnalyzerPaneParts.usesSegmentation`、`ExtractionAssets.segmentation`）。ただし区切りを常に使うので、`usesSegmentation` は常に真を返し、`assetsKeyOf` は区切りをそのままキーに入れる。区切りの出どころと分割器の文面は `analyzers/segmentation-text.ts` でRun Chartと共有する
 - **評価に渡すテキストを抽出が読む**ので、集合のメンバー（`AnalyzerSetMember`）が `text` を持つ。追加のTraceは依頼しない
 - 評価に渡すテキストが対象ごとに違う時は、テキストの表と上位の一覧の行を、区切りが渡された最初の対象のテキストから求める。各対象の値とセルは、その対象自身のテキストで求め（行の文字列を自分のテキストから引く）、テキストが違う対象があれば画面に知らせる
