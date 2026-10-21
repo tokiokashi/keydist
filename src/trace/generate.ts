@@ -245,8 +245,12 @@ export function generateTrace(
   // ローマ字配列はかなテキストを展開してから打つ。コンボの誤命中を防ぐため、
   // 展開前の単位も残しておく。かな配列はそのまま打つ。
   const rawChars = [...text];
-  const chunks = layout.romajiTable ? (romajiChunks ?? kanaToRomajiChunks(text, layout.romajiTable)) : undefined;
-  const chars = (chunks ? chunks.flatMap((chunk) => [...chunk.roman]) : rawChars).map(normalizeEvaluationChar);
+  const bracketAliases = bracketAliasesFor(layout);
+  const sourceChunks = layout.romajiTable ? (romajiChunks ?? kanaToRomajiChunks(text, layout.romajiTable)) : undefined;
+  const chunks = sourceChunks && layout.romajiTable ? aliasBracketChunks(sourceChunks, layout.romajiTable, bracketAliases) : undefined;
+  const chars = (chunks ? chunks.flatMap((chunk) => [...chunk.roman]) : rawChars.map((char) => bracketAliases[char] ?? char)).map(
+    normalizeEvaluationChar,
+  );
   const chunkRanges: RomajiChunkRange[] = [];
   if (chunks) {
     let start = 0;
@@ -778,6 +782,36 @@ export const EVALUATION_CHAR_ALIASES: Readonly<Record<string, string>> = (() => 
   }
   return aliases;
 })();
+
+/**
+ * 二重かぎ括弧から、同じ入力として打つかぎ括弧への別名（仕様 §4）。
+ * 変換で出す文字として、`『』` は `「」` と同じ物理入力で打つ。
+ */
+const BRACKET_ALIASES: Readonly<Record<string, string>> = { '『': '「', '』': '」' };
+
+/** 配列（ローマ字配列はローマ字テーブルを含む）が自分の出力として持たない二重かぎ括弧だけの別名。 */
+function bracketAliasesFor(layout: Layout): Record<string, string> {
+  const aliases: Record<string, string> = {};
+  for (const [from, to] of Object.entries(BRACKET_ALIASES)) {
+    const owns = (heading: string) => heading.includes(from);
+    const has = [...layout.canonicalInputs.keys()].some(owns) || (layout.romajiTable !== undefined && [...layout.romajiTable.keys()].some(owns));
+    if (!has) aliases[from] = to;
+  }
+  return aliases;
+}
+
+/**
+ * ローマ字テーブルに当たらなかった二重かぎ括弧の塊を、かぎ括弧の綴りへ置き換える。
+ * 展開前のかな（inputChar）は元の文字のまま残す。かぎ括弧がテーブルに無ければ置き換えない。
+ */
+function aliasBracketChunks(chunks: readonly RomajiChunk[], table: ReadonlyMap<string, string>, aliases: Record<string, string>): readonly RomajiChunk[] {
+  if (Object.keys(aliases).length === 0) return chunks;
+  return chunks.map((chunk) => {
+    const target = aliases[chunk.kana];
+    const roman = target === undefined || chunk.fromTable ? undefined : table.get(target);
+    return roman === undefined ? chunk : { kana: chunk.kana, roman, fromTable: true };
+  });
+}
 
 const normalizeEvaluationChar = (char: string): string => EVALUATION_CHAR_ALIASES[char] ?? char;
 
