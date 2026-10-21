@@ -308,6 +308,10 @@ async function runBoundaryStage(input: BoundaryStageInput): Promise<void> {
   let withheld = 0;
   let judged = 0;
   const forcedRatios: Record<number, number[]> = { 1: [], 2: [], 3: [] };
+  // 改行に関わる区切りの数（評価に渡すテキストの上）。テキストだけで決まるので、配列で変わらないことを確かめる
+  let boundaryTotal = 0;
+  let newlineDistance = 0;
+  let newlineCounts: { beforeNewline: number; afterNewline: number; lone: number } | undefined;
   for (const layoutId of args.layouts) {
     const resolved = resolveFor(layoutId, wholeReading, args.window, { boundaries: bunsetsuInReading });
     const chars = [...resolved.text];
@@ -316,6 +320,17 @@ async function runBoundaryStage(input: BoundaryStageInput): Promise<void> {
     const boundaries = must(resolved.extractionAssets.segmentation, '区切りが評価の資産に載っていない').boundaries;
     const index = evaluatorOf(resolved)(resolved.text);
     lap(`${layoutId}: 全文のTraceを作った`);
+    const boundarySet = new Set(boundaries);
+    const counts = {
+      beforeNewline: boundaries.filter((b) => chars[b] === '\n').length,
+      afterNewline: boundaries.filter((b) => chars[b - 1] === '\n').length,
+      lone: boundaries.filter((b) => chars[b] === '\n' && boundarySet.has(b + 1)).length,
+    };
+    if (newlineCounts !== undefined && JSON.stringify(newlineCounts) !== JSON.stringify(counts))
+      throw new Error(`${layoutId}: 改行に関わる区切りの数が配列で違う`);
+    newlineCounts = counts;
+    boundaryTotal = boundaries.length;
+    newlineDistance = Math.max(newlineDistance, ...boundaries.filter((b) => chars[b] === '\n').map((b) => Math.abs(index.distanceAt[b]!)));
     const layout = must(LAYOUT_BY_ID.get(layoutId), layoutId);
     conditions.push(
       `${layout.name}（${layoutId}。${resolved.romajiRuleId === null ? 'かな直接入力' : `ローマ字入力、綴り${resolved.romajiRuleId}`}、物理配列${resolved.geometry.id}、指の割り当て${resolved.geometry.assignment.id}、N=${resolved.tracePolicy.windowSize}）`,
@@ -367,6 +382,7 @@ async function runBoundaryStage(input: BoundaryStageInput): Promise<void> {
     `- 読みの辞書: ${DICTIONARY_SPEC.name} ${DICTIONARY_SPEC.version}、解析器${LIBRARY_SPEC.name} ${LIBRARY_SPEC.version}。利用者の読みの直しは無し。全文を段落ごとに読みに直してつないだ文字列は${wholeChars.length}文字、評価に渡す文字列は${totalEvalChars}文字（全配列で一致を確かめた）`,
     `- 前処理: 仕様 §4.6の1〜4段（既定の記号の範囲）`,
     `- 文節の区切り: ${BUNSETSU_SPLITTER.name} ${BUNSETSU_SPLITTER.version}を、改行を含む原文の全文に1回当て、アプリと同じ経路で評価に渡すテキストの位置へ写した。原文の上で${bunsetsuSource.length}個、読みの上で${bunsetsuInReading.length}個。段落の先頭（改行の直後）に載った区切りは読みの上で${atParagraphStart}個`,
+    `- 改行に関わる区切り（評価に渡すテキストの上。全${boundaryTotal}個）: 改行の直後に載った区切り${newlineCounts?.afterNewline}個、区切りの直後の1文字が改行になる区切り${newlineCounts?.beforeNewline}個（${percent((newlineCounts?.beforeNewline ?? 0) / boundaryTotal)}）、改行の前後の両方に区切りがあり改行1文字が1つの文節になるもの${newlineCounts?.lone}個。改行に帰属する距離は0（全配列で、改行の直後が境目の文字になる区切りの最大値は${newlineDistance}）なので、改行の直前に載った区切りでは改行が境目の文字になり、境目の文字の1文字あたりの距離はその分小さく出る。このPRでは除かずに数えた`,
     `- 配列: ${conditions.join('、')}`,
     `- 比べる量: 区切りの直後の1文字に帰属したステップの1文字あたりの距離 [u] の、全区切りでの平均（docs/segment-metrics.mdの直後の1文字）`,
     `- 並びを揃えたランダムな区切り: 乱数${PRNG_NAME}、種${args.seedStart}〜${args.seedStart + BOUNDARY_CONTEXT_SEED_COUNT - 1}の${BOUNDARY_CONTEXT_SEED_COUNT}個。並びの長さ1・2・3文字。判定は並びの長さ・配列ごとに別々`,
