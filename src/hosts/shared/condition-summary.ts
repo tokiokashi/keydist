@@ -345,7 +345,7 @@ export function conditionDiagnosticText(row: ConditionSummaryRow, diagnostic: Di
 
 /**
  * `traceConditionSummary`の結果から、既定値と違う項目だけを残す。
- * 集合対象ページ（比較表・N感度）は各行に効いている条件を併記する。
+ * 集合対象ページ（比較表・N感度）の対象名は、配列名と物理配列名が他と重なった時だけ、この条件を併記して区別する。
  *
  * 集合対象のページは1画面に複数Setupを並べるため、`PaneFrame`（単一Setup対象）のように
  * 全項目を`<details>`で出すと行ごとに同じ既定値の羅列が並んでしまい読みにくい。

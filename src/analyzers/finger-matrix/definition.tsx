@@ -23,7 +23,7 @@ import './finger-matrix-view.css';
  * 列の値で並べるのは、利用者が見出しを押して選ぶ表示の操作（解析設定`sort`）であり、ツールが順位を決めるものではない。
  */
 
-/** 1対象ぶんの、行の名前。条件は行に併記せず、ペインの条件の要約が出す。 */
+/** 1対象ぶんの、行の名前。条件は名前が重なった時だけ名前に足し、基本はペインの条件の要約が出す。 */
 export interface FingerMatrixRowContext {
   readonly targetKey: string;
   readonly label: string;
