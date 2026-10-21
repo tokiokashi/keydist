@@ -37,7 +37,7 @@ function sha256Of(bytes: Uint8Array): string {
 }
 
 /** zipを返す。引数で渡した場所（取得済みのファイル）か、置き場か、取得元から。sha256が合わなければ例外を投げる。 */
-async function archiveBytes(localPath: string | undefined): Promise<Uint8Array> {
+export async function archiveBytes(localPath: string | undefined): Promise<Uint8Array> {
   const path = localPath ?? join(CACHE_DIR, AOZORA_SOURCE.fileName);
   const stored = await readFile(path).catch(() => undefined);
   if (stored !== undefined) {
