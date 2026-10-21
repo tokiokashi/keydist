@@ -107,7 +107,7 @@ export interface SegmentStats {
 }
 
 /** 全区切りについて、1文字の範囲 `[at, at + 1)` の分子と分母を足した値。 */
-function boundaryCharValue(index: SpanIndex, metric: SpanMetricId, boundaries: readonly number[], offset: number): number | undefined {
+export function boundaryCharValue(index: SpanIndex, metric: SpanMetricId, boundaries: readonly number[], offset: number): number | undefined {
   let numerator = 0;
   let denominator = 0;
   for (const boundary of boundaries) {

@@ -3,7 +3,8 @@
 //
 //   node --experimental-strip-types scripts/kana-chain-comparison.ts                        すべて出す
 //   node --experimental-strip-types scripts/kana-chain-comparison.ts --stage support        候補が1つの割合と続けた回数だけ出す（順位・判定は出さない）
-//   ... --layouts qwerty,jis-kana    比べる配列（既定はqwertyとjis-kana）
+//   node --experimental-strip-types scripts/kana-chain-comparison.ts --stage boundary      全文で、文節の区切りの直後の1文字を、境目のまわりの並びを揃えたランダムな区切りと比べる（`docs/boundary-context-comparison.md`）
+//   ... --layouts qwerty,jis-kana    比べる配列（既定はqwertyとjis-kana。allで組み込みの全配列）
 //   ... --ranges 3                   抜き出す範囲の数（既定は3）
 //   ... --range-seed 1               範囲を選ぶ種（既定は1）
 //   ... --seed-start <s>             生成文・対照テキスト・ランダムの区切りの種の始まりの値（既定はRun Chartの解析設定の既定）
@@ -41,6 +42,16 @@ import {
 import { buildMarkovChain } from '#interpretation/markov-text.ts';
 import { countNgrams, ngramTablesWithoutRange } from '#interpretation/ngram-table.ts';
 import { createMulberry32, PRNG_NAME } from '#interpretation/prng.ts';
+import {
+  BOUNDARY_CONTEXT_FORCED_RATIO_LIMIT,
+  BOUNDARY_CONTEXT_LENGTHS,
+  BOUNDARY_CONTEXT_METRIC,
+  BOUNDARY_CONTEXT_SEED_COUNT,
+  boundaryInterior,
+  boundaryShare,
+  compareBoundaryContext,
+  type BoundaryContextVerdict,
+} from '#interpretation/boundary-context.ts';
 import { buildSegmentationReport, type RankAmongRandom, type SegmentationReport } from '#interpretation/segments.ts';
 import { buildSpanIndex, type SpanIndex } from '#interpretation/span-metrics.ts';
 import { splitBunsetsu } from '#platform/bunsetsu/budoux.ts';
@@ -59,7 +70,7 @@ const root = resolve(fileURLToPath(import.meta.url), '..', '..');
 const RANGE_MIN_CHARS = 2000;
 
 interface Args {
-  stage: 'support' | 'full';
+  stage: 'support' | 'full' | 'boundary';
   layouts: string[];
   ranges: number;
   rangeSeed: number;
@@ -81,11 +92,11 @@ function parseArgs(argv: readonly string[]): Args {
     return parsed;
   };
   const stage = value('--stage') ?? 'full';
-  if (stage !== 'support' && stage !== 'full') throw new Error(`--stageはsupportかfull: ${stage}`);
+  if (stage !== 'support' && stage !== 'full' && stage !== 'boundary') throw new Error(`--stageはsupportかfullかboundary: ${stage}`);
   const window = value('--window');
   return {
     stage,
-    layouts: (value('--layouts') ?? 'qwerty,jis-kana').split(',').filter((id) => id !== ''),
+    layouts: value('--layouts') === 'all' ? [...LAYOUT_BY_ID.keys()] : (value('--layouts') ?? 'qwerty,jis-kana').split(',').filter((id) => id !== ''),
     ranges: integer('--ranges', 3),
     rangeSeed: integer('--range-seed', 1),
     seedStart: integer('--seed-start', DEFAULT_RUN_CHART_OPTIONS.seedStart),
@@ -134,6 +145,8 @@ interface Unit {
   readonly end: number;
   /** 評価に渡すテキストでの文字数（記号を取り除いた後） */
   readonly evalChars: number;
+  /** 段落の原文を読みに直した時の語の列（位置は段落の中のバイト位置） */
+  readonly tokens: readonly ReadingToken[];
 }
 
 /** 前処理（仕様 §4.6）が1文字を残すか。残す文字は、記号でない文字と `、` `。`、および `、` `。` に書き換わるか配列が直接持つ半角の `,` `.` */
@@ -243,6 +256,215 @@ function supportRow(rangeLabel: string, layoutId: string, support: ChainSupport)
 }
 
 // ---------------------------------------------------------------------------
+// 全文での境目のまわりの並びとの比較
+// ---------------------------------------------------------------------------
+
+interface BoundaryStageInput {
+  readonly args: Args;
+  readonly started: number;
+  readonly lap: (label: string) => void;
+  readonly corpus: string;
+  readonly corpusSha: string;
+  readonly units: readonly Unit[];
+  readonly wholeReading: string;
+  readonly wholeChars: readonly string[];
+}
+
+function boundaryVerdictText(verdict: BoundaryContextVerdict, length: number): string {
+  switch (verdict.kind) {
+    case 'unexplained':
+      return `境目のまわりの${length}文字の並びでは説明できなかった（並びの外の打鍵を含む）`;
+    case 'not-ruled-out':
+      return '説明できなかったとは言えない';
+    case 'withheld':
+      return verdict.reason === 'forced-ratio' ? '判定なし（選ぶ余地が無い区切りの割合が上限を超えた）' : '判定なし（値が決まらない）';
+  }
+}
+
+async function runBoundaryStage(input: BoundaryStageInput): Promise<void> {
+  const { args, started, lap, corpus, corpusSha, units, wholeReading, wholeChars } = input;
+  // 文節の区切り: 改行を含む原文の全文にBudouXを当て、段落ごとの語の列を全文のバイト位置へずらして読みへ写す
+  const tokens: ReadingToken[] = [];
+  let byteOffset = 0;
+  for (const unit of units) {
+    for (const token of unit.tokens) tokens.push({ ...token, byteStart: token.byteStart + byteOffset, byteEnd: token.byteEnd + byteOffset });
+    byteOffset += new TextEncoder().encode(unit.source).length;
+  }
+  const bunsetsuSource = offsetsOfChunks(splitBunsetsu(corpus));
+  const bunsetsuInReading = mapBoundariesToReading(corpus, tokens, bunsetsuSource);
+  lap(`全文の文節の区切りを付けた（原文${bunsetsuSource.length}個、読みの上${bunsetsuInReading.length}個）`);
+  // 改行の直後に区切りが付いた数（段落の境目の扱いの記録）
+  const paragraphStarts = new Set(units.map((unit) => unit.start));
+  const atParagraphStart = bunsetsuInReading.filter((boundary) => paragraphStarts.has(boundary)).length;
+
+  const totalEvalChars = units.reduce((sum, unit) => sum + unit.evalChars, 0);
+  const sections = {
+    context: [] as string[][],
+    share: [] as string[][],
+    interior: [] as string[][],
+    forced: [] as string[][],
+  };
+  const conditions: string[] = [];
+  let withheld = 0;
+  let judged = 0;
+  const forcedRatios: Record<number, number[]> = { 1: [], 2: [], 3: [] };
+  // 改行に関わる区切りの数（評価に渡すテキストの上）。テキストだけで決まるので、配列で変わらないことを確かめる
+  let boundaryTotal = 0;
+  let newlineDistance = 0;
+  let newlineCounts: { beforeNewline: number; afterNewline: number; lone: number } | undefined;
+  for (const layoutId of args.layouts) {
+    const resolved = resolveFor(layoutId, wholeReading, args.window, { boundaries: bunsetsuInReading });
+    const chars = [...resolved.text];
+    if (chars.length !== totalEvalChars)
+      throw new Error(`${layoutId}: 評価に渡す全体の文字数${chars.length}が、記号の取り除きだけで数えた${totalEvalChars}と違う`);
+    const boundaries = must(resolved.extractionAssets.segmentation, '区切りが評価の資産に載っていない').boundaries;
+    const index = evaluatorOf(resolved)(resolved.text);
+    lap(`${layoutId}: 全文のTraceを作った`);
+    const boundarySet = new Set(boundaries);
+    const counts = {
+      beforeNewline: boundaries.filter((b) => chars[b] === '\n').length,
+      afterNewline: boundaries.filter((b) => chars[b - 1] === '\n').length,
+      lone: boundaries.filter((b) => chars[b] === '\n' && boundarySet.has(b + 1)).length,
+    };
+    if (newlineCounts !== undefined && JSON.stringify(newlineCounts) !== JSON.stringify(counts))
+      throw new Error(`${layoutId}: 改行に関わる区切りの数が配列で違う`);
+    newlineCounts = counts;
+    boundaryTotal = boundaries.length;
+    newlineDistance = Math.max(newlineDistance, ...boundaries.filter((b) => chars[b] === '\n').map((b) => Math.abs(index.distanceAt[b]!)));
+    const layout = must(LAYOUT_BY_ID.get(layoutId), layoutId);
+    conditions.push(
+      `${layout.name}（${layoutId}。${resolved.romajiRuleId === null ? 'かな直接入力' : `ローマ字入力、綴り${resolved.romajiRuleId}`}、物理配列${resolved.geometry.id}、指の割り当て${resolved.geometry.assignment.id}、N=${resolved.tracePolicy.windowSize}）`,
+    );
+    // #125のランダムな区切り（区間の長さの並べ替え）を同じ全文で作った値と順位
+    const report = must(buildSegmentationReport(index, boundaries, args.seedStart), `${layoutId}: 区切りの比較を作れない`);
+    const permuted = report.bunsetsu.byMetric[BOUNDARY_CONTEXT_METRIC].after;
+    const permutedRandom = report.random.map((stats) => stats.byMetric[BOUNDARY_CONTEXT_METRIC].after);
+    for (const length of BOUNDARY_CONTEXT_LENGTHS) {
+      const result = compareBoundaryContext(index, chars, boundaries, length, args.seedStart);
+      if (result.verdict.kind === 'withheld') withheld++;
+      else judged++;
+      forcedRatios[length]!.push(result.forcedRatio ?? Number.NaN);
+      sections.context.push([
+        layoutId,
+        String(length),
+        String(result.comparedCount),
+        fixed(result.own),
+        minMax(result.random),
+        rankText(result.rank),
+        boundaryVerdictText(result.verdict, length),
+        fixed(permuted),
+        minMax(permutedRandom),
+        rankText(report.rank.after),
+      ]);
+      sections.forced.push([layoutId, String(length), String(result.comparedCount), String(result.forcedCount), percent(result.forcedRatio)]);
+    }
+    const share = boundaryShare(index, boundaries);
+    const interior = boundaryInterior(index, boundaries);
+    sections.interior.push([
+      layoutId,
+      String(interior.boundaryChars),
+      fixed(interior.boundaryPerChar),
+      String(interior.interiorChars),
+      fixed(interior.interiorPerChar),
+      String(interior.segmentInteriorCount),
+      fixed(interior.segmentInteriorMedian),
+      fixed(interior.segmentInteriorP90),
+    ]);
+    sections.share.push([layoutId, String(boundaries.length), percent(share.charShare), percent(share.distanceShare)]);
+  }
+  lap('評価を終えた');
+
+  const out: string[] = [];
+  out.push('# 文節の区切りの直後の1文字と、境目のまわりの並びを揃えたランダムな区切り（全文）', '');
+  out.push('## 再現の条件', '');
+  out.push(
+    `- コーパス: 青空文庫『${AOZORA_SOURCE.title}』（作品789）。zip ${AOZORA_SOURCE.fileName}（sha256 ${AOZORA_SOURCE.sha256}）。除去後の全文のsha256 ${corpusSha}（${cpLength(corpus)}文字、${units.length}段落）`,
+    `- 読みの辞書: ${DICTIONARY_SPEC.name} ${DICTIONARY_SPEC.version}、解析器${LIBRARY_SPEC.name} ${LIBRARY_SPEC.version}。利用者の読みの直しは無し。全文を段落ごとに読みに直してつないだ文字列は${wholeChars.length}文字、評価に渡す文字列は${totalEvalChars}文字（全配列で一致を確かめた）`,
+    `- 前処理: 仕様 §4.6の1〜4段（既定の記号の範囲）`,
+    `- 文節の区切り: ${BUNSETSU_SPLITTER.name} ${BUNSETSU_SPLITTER.version}を、改行を含む原文の全文に1回当て、アプリと同じ経路で評価に渡すテキストの位置へ写した。原文の上で${bunsetsuSource.length}個、読みの上で${bunsetsuInReading.length}個。段落の先頭（改行の直後）に載った区切りは読みの上で${atParagraphStart}個`,
+    `- 改行に関わる区切り（評価に渡すテキストの上。全${boundaryTotal}個）: 改行の直後に載った区切り${newlineCounts?.afterNewline}個、区切りの直後の1文字が改行になる区切り${newlineCounts?.beforeNewline}個（${percent((newlineCounts?.beforeNewline ?? 0) / boundaryTotal)}）、改行の前後の両方に区切りがあり改行1文字が1つの文節になるもの${newlineCounts?.lone}個。改行に帰属する距離は0（回した全配列で、境目の文字になった改行に帰属する距離の最大値は${newlineDistance}）なので、改行の直前に載った区切りでは改行が境目の文字になり、境目の文字の1文字あたりの距離はその分小さく出る。除かずに数えた`,
+    `- 配列: ${conditions.join('、')}`,
+    `- 比べる量: 区切りの直後の1文字に帰属したステップの1文字あたりの距離 [u] の、全区切りでの平均（docs/segment-metrics.mdの直後の1文字）`,
+    `- 並びを揃えたランダムな区切り: 乱数${PRNG_NAME}、種${args.seedStart}〜${args.seedStart + BOUNDARY_CONTEXT_SEED_COUNT - 1}の${BOUNDARY_CONTEXT_SEED_COUNT}個。並びの長さ1・2・3文字。判定は並びの長さ・配列ごとに別々`,
+    `- 選ぶ余地が無い区切りの割合の上限: ${BOUNDARY_CONTEXT_FORCED_RATIO_LIMIT * 100}%。超えたらその並びの長さ・配列の判定を出さない`,
+    `- 長さの並べ替え（docs/segment-metrics.mdのランダム）: 同じ全文・同じ種の${BOUNDARY_CONTEXT_SEED_COUNT}個。全文の区切りすべてを使うので、並びの長さごとの列の文節の値（前の文字が足りない区切りを除く）とは、長さ2・3で区切りの数が少し違う`,
+    '',
+  );
+  out.push('## 文節の直後の1文字（1文字あたりの距離 [u]）', '');
+  out.push(
+    table(
+      [
+        '配列',
+        '並びの長さ',
+        '比べる区切りの数',
+        '文節',
+        '並びを揃えたランダム20個',
+        '順位',
+        '判定',
+        '文節（全区切り）',
+        '長さの並べ替え20個',
+        '長さの並べ替えでの順位',
+      ],
+      sections.context,
+    ),
+    '',
+  );
+  out.push(
+    '判定は並びの長さ・配列ごとの別々の判定である。特徴が無くても、1つの判定が端に来る確率は最大で2/21で、判定は並びの長さ3通り×配列の数だけ並ぶ。順位は統計的な有意ではない。配列や並びの長さをまとめた結論は出さない。',
+    '',
+  );
+  out.push('## 選ぶ余地が無い区切りの割合', '');
+  out.push(table(['配列', '並びの長さ', '比べる区切りの数', '選ぶ余地が無い区切りの数', '割合'], sections.forced), '');
+  out.push(`- 判定を出した（並びの長さ×配列）: ${judged}、出さなかった: ${withheld}（合計${judged + withheld}）`);
+  for (const length of BOUNDARY_CONTEXT_LENGTHS) {
+    const ratios = forcedRatios[length]!;
+    out.push(`- 並びの長さ${length}: 割合の最小〜最大 ${minMaxPercent(ratios)}`);
+  }
+  out.push('');
+  out.push('## 境目の打鍵が占める割合', '');
+  out.push(
+    table(
+      ['配列', '区切りの数', '区切りの直後の1文字が全文の文字数に占める割合', '区切りの直後の1文字に帰属する距離が全文の距離に占める割合'],
+      sections.share,
+    ),
+    '',
+  );
+  out.push('## 文節の内側と境目の距離（配列は組み込みの並び順。順位・判定は付けない）', '');
+  out.push(
+    table(
+      [
+        '配列',
+        '境目の文字の数',
+        '境目の文字の1文字あたりの距離',
+        '文節の内側の文字の数',
+        '文節の内側の文字の1文字あたりの距離',
+        '内側の値が求まった文節の数',
+        '内側の値の中央値',
+        '内側の値の90%点',
+      ],
+      sections.interior,
+    ),
+    '',
+  );
+  out.push(
+    '境目の文字は文節の区切りの直後の1文字（全区切り）、文節の内側の文字は各文節の先頭の1文字を除いた文字、テキストの先頭の文字はどちらにも入れない。文字数は打鍵できなかった文字も1文字に数える。内側の値は文字数2以上の文節だけで求めた。距離は指の移動距離から見た量で、打ちやすさそのものではない。境目の文字と文節の内側の文字の構成が違うので、2つの差は配列の性質と文字の構成の違いを区別できない。境目の打鍵が占める割合と、この表の1文字あたりの距離は同じ距離の和から導く量で、互いに独立ではない。',
+    '',
+  );
+  out.push(
+    '## 実行',
+    '',
+    `- 実行時間${((Date.now() - started) / 1000).toFixed(1)}秒（全文の評価を含む）、最大の常駐メモリ${(process.resourceUsage().maxRSS / 1024).toFixed(0)}MB`,
+  );
+  console.log(out.join('\n'));
+}
+
+function minMaxPercent(values: readonly number[]): string {
+  const defined = values.filter((value) => !Number.isNaN(value));
+  if (defined.length === 0) return '–';
+  return `${percent(Math.min(...defined))}〜${percent(Math.max(...defined))}`;
+}
+
+// ---------------------------------------------------------------------------
 // 本体
 // ---------------------------------------------------------------------------
 
@@ -268,17 +490,22 @@ async function main(): Promise<void> {
   let cursor = 0;
   for (const line of corpus.slice(0, -1).split('\n')) {
     const source = `${line}\n`;
-    const reading = readingOf(analyzer, source).text;
+    const { text: reading, tokens: unitTokens } = readingOf(analyzer, source);
     const length = cpLength(reading);
     let evalChars = 0;
     for (const char of reading) if (keptByPreprocess(char)) evalChars++;
-    units.push({ source, start: cursor, end: cursor + length, evalChars });
+    units.push({ source, start: cursor, end: cursor + length, evalChars, tokens: unitTokens });
     readingParts += reading;
     cursor += length;
   }
   const wholeReading = readingParts;
   const wholeChars = [...wholeReading];
   lap(`コーパス全文を読みに直した（${units.length}段落、${wholeChars.length}文字）`);
+
+  if (args.stage === 'boundary') {
+    await runBoundaryStage({ args, started, lap, corpus, corpusSha, units, wholeReading, wholeChars });
+    return;
+  }
 
   // 前提: 前処理の3段目（半角の `,` `.` の書き換え）は1文字を1文字に直すだけで、文字数を変えない。
   // 配列が直接持てば半角のまま、持たなければ `、` `。` になり、どちらも4段目の記号の取り除きを受けない。

@@ -291,6 +291,7 @@ Workspaceで並べたペインは、同じキー（Analyzerと見る量。例: `
   - **抽出のキー**: Setの抽出も `assetsKeyOf` を持てる。Run Chartは区切りを使う設定の時だけ、メンバーごとの区切りの列と分割器の名前・版・出どころをキーに入れる。区切りなしの設定では、資産が変わっても抽出を作り直さない
   - 読み込み中は依頼を出さない。分割器を読み込めなかった時と、日本語以外のテキストの時は、区切りなしで計算して、ペインの中でその旨を知らせる
 - **かな3文字までの並びとの比べ方**（定義は `docs/kana-chain-comparison.md`）。n-gramの表の数え方（`interpretation/ngram-table.ts`）、2次マルコフ連鎖の生成文（`interpretation/markov-text.ts`）、元のテキスト・生成文・対照テキストの比べ方と順位・判定（`interpretation/chain-comparison.ts`）は、画面に依存しない純粋な関数。評価（Traceの生成）は呼び出し側が渡す関数で行う。今は画面に出さず、`scripts/kana-chain-comparison.ts` がコーパスの範囲で実行して表を出す
+- **境目のまわりの並びを揃えたランダムな区切りとの比べ方**（定義は `docs/boundary-context-comparison.md`）。並びの型ごとの区切りの数を文節と揃えたランダムな区切りの作成、選ぶ余地が無い区切りの割合、順位と判定、境目の打鍵が占める割合（`interpretation/boundary-context.ts`）は、画面に依存しない純粋な関数。今は画面に出さず、`scripts/kana-chain-comparison.ts` の `--stage boundary` が全文で実行して表を出す
 
 ### 条件の要約
 
