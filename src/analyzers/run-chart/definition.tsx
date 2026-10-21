@@ -364,8 +364,7 @@ export function RunChartBody({ extracted, order, rowContext, playbackJump, segme
             ))}
           </ul>
           <p className="run-chart-guide-note" data-run-chart-guide-note="">
-            点線はテキスト全体の値（中心線）です。細い線の目安線は、中心線から上下に、全体のばらつきの3倍を範囲の大きさの平方根で割った幅を引いています。
-            統計的な保証ではなく、外れている箇所を探す目安です。
+            点線はテキスト全体の値（中心線）、細い線は目安線です。
             {rows.length > GUIDES_FOR_ALL_LIMIT ? '配列が多いので、ポインタを合わせた配列の目安線だけを引きます。' : ''}
           </p>
         </>
