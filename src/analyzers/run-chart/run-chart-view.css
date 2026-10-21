@@ -124,3 +124,79 @@
   gap: 0.5rem;
 }
 .run-chart-active { pointer-events: none; }
+
+/* 区切りの位置。推移の線より薄く、細くする */
+.run-chart-boundary {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+  opacity: 0.4;
+}
+
+.run-chart-segments {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.run-chart-segments-title,
+.run-chart-segment-title {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.run-chart-segment-title {
+  font-size: 0.85rem;
+}
+
+.run-chart-segment-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.run-chart-segment-condition,
+.run-chart-segment-rank {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.run-chart-segment-rank {
+  padding-left: 1.2rem;
+}
+
+.run-chart-segment-scroll {
+  overflow-x: auto;
+}
+
+.run-chart-segment-table {
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.run-chart-segment-table th,
+.run-chart-segment-table td {
+  padding: 0.2rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.run-chart-segment-table th[scope='row'],
+.run-chart-segment-table th[scope='col']:first-child,
+.run-chart-segment-metric th {
+  text-align: left;
+}
+
+.run-chart-segment-metric th {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.run-chart-segment-seeds {
+  font-size: 0.8rem;
+}

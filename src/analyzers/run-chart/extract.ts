@@ -1,4 +1,5 @@
 import {
+  DEFAULT_EXTRACTION_ASSETS,
   defineSetAnalyzer,
   noRemember,
   type AnalyzerSetMember,
@@ -11,6 +12,9 @@ import { buildGeometry } from '#input/shapes/geometry.ts';
 import { analysisTargetKey, LAYOUT_MISSING_REASON, type AnalysisTarget } from '#input/setup/index.ts';
 import { buildSpanIndex, guideScaleOf, spanSpread, spanTotals, spanValue, type SpanIndex, type SpanMetricId } from '#interpretation/span-metrics.ts';
 import { generateTrace, type Trace } from '#trace/generate.ts';
+import type { SegmenterInfo, SegmentationOrigin } from '#input/text/segmentation.ts';
+import { PRNG_NAME } from '#interpretation/prng.ts';
+import { buildSegmentationReport, SEGMENT_SEED_COUNT, type SegmentationReport } from '#interpretation/segments.ts';
 import { ALTERNATE_RUN_CHART_OPTIONS, DEFAULT_RUN_CHART_OPTIONS, runChartOptions, type RunChartOptions } from './options.ts';
 
 /**
@@ -27,6 +31,20 @@ import { ALTERNATE_RUN_CHART_OPTIONS, DEFAULT_RUN_CHART_OPTIONS, runChartOptions
  * 指標と窓幅を変えた時は、索引から点の値だけを求め直す。
  */
 
+/** 区切りを使った結果と、その再現の条件。 */
+export interface RunChartSegments {
+  /** 分割器の名前と版 */
+  readonly splitter: SegmenterInfo;
+  /** 区切りの出どころ（原文が漢字を含んだか、辞書を読めたか） */
+  readonly origin: SegmentationOrigin;
+  /** ランダムの区切りに使った乱数生成器の名前 */
+  readonly rng: string;
+  readonly seedStart: number;
+  readonly seedCount: number;
+  /** 区切りが1つも無い（区間が1つ）時は `undefined` */
+  readonly report: SegmentationReport | undefined;
+}
+
 export interface RunChartSeriesOk {
   readonly kind: 'ok';
   readonly targetKey: string;
@@ -42,6 +60,8 @@ export interface RunChartSeriesOk {
   readonly center: number;
   /** 目安線の幅を決める係数 `3·s`。分母 `D` の範囲の目安線は、中心線から上下に `guideScale / √D`。 */
   readonly guideScale: number;
+  /** 区切りを使う設定で、区切りが渡された時だけ持つ。 */
+  readonly segments?: RunChartSegments;
 }
 
 export interface RunChartSeriesFailed {
@@ -57,6 +77,8 @@ export interface RunChartExtracted {
   /** 指標と窓幅（結果を作った時の値）。 */
   readonly metric: SpanMetricId;
   readonly window: number;
+  /** 区切り方（結果を作った時の値）。 */
+  readonly segmentation: RunChartOptions['segmentation'];
   /** 集合の各枠（配列かSetup）ぶんの系列。並び順に表示上の意味は無い。 */
   readonly series: readonly RunChartSeries[];
 }
@@ -85,7 +107,13 @@ function basisOf(member: AnalyzerSetMember): MemberBasis {
 }
 
 /** 索引と点の位置から、指標と窓幅に応じた系列を作る。 */
-export function seriesFromBasis(targetKey: string, basis: MemberBasis, metric: SpanMetricId, window: number): RunChartSeriesOk {
+export function seriesFromBasis(
+  targetKey: string,
+  basis: MemberBasis,
+  metric: SpanMetricId,
+  window: number,
+  segments?: RunChartSegments,
+): RunChartSeriesOk {
   const { index, positions } = basis;
   const values: (number | null)[] = [];
   const denominators: number[] = [];
@@ -95,11 +123,34 @@ export function seriesFromBasis(targetKey: string, basis: MemberBasis, metric: S
     denominators.push(totals.denominator);
   }
   const { center, deviation } = spanSpread(index, metric);
-  return { kind: 'ok', targetKey, inputChars: index.inputChars, positions, values, denominators, center, guideScale: guideScaleOf(deviation) };
+  return {
+    kind: 'ok',
+    targetKey,
+    inputChars: index.inputChars,
+    positions,
+    values,
+    denominators,
+    center,
+    guideScale: guideScaleOf(deviation),
+    ...(segments === undefined ? {} : { segments }),
+  };
 }
 
 export function computeMemberSeries(member: AnalyzerSetMember, options: RunChartOptions): RunChartSeriesOk {
-  return seriesFromBasis(analysisTargetKey(member.target), basisOf(member), options.metric, options.window);
+  const basis = basisOf(member);
+  const input = options.segmentation === 'none' ? undefined : member.assets?.segmentation;
+  const segments: RunChartSegments | undefined =
+    input === undefined
+      ? undefined
+      : {
+          splitter: input.splitter,
+          origin: input.origin,
+          rng: PRNG_NAME,
+          seedStart: options.seedStart,
+          seedCount: SEGMENT_SEED_COUNT,
+          report: buildSegmentationReport(basis.index, input.boundaries, options.seedStart),
+        };
+  return seriesFromBasis(analysisTargetKey(member.target), basis, options.metric, options.window, segments);
 }
 
 function failureToSeries(failure: AnalyzerSetMemberFailure): RunChartSeriesFailed {
@@ -114,6 +165,7 @@ export function computeRunChartExtraction(
   return {
     metric: options.metric,
     window: options.window,
+    segmentation: options.segmentation,
     series: [...members.map((member) => computeMemberSeries(member, options)), ...failures.map(failureToSeries)],
   };
 }
@@ -124,6 +176,12 @@ export function computeRunChartExtraction(
 
 /** 窓幅の既定（50）と代替（20）のどちらでも、先頭で窓が満たない点と満たす点が出る長さ。 */
 const FIXTURE_TEXT = 'あいうえおかきくけこさしすせそたちつてと'.repeat(5);
+/** 区切りを選んだ設定で、抽出の中身が変わることを入れ忘れ防止テストが見られるようにする文節の区切り。 */
+const FIXTURE_SEGMENTATION = {
+  boundaries: [7, 23, 40, 61, 83],
+  origin: 'kana-only',
+  splitter: { name: 'fixture', version: '0' },
+} as const;
 const FIXTURE_TARGET: AnalysisTarget = { kind: 'setup', setupId: 'fixture-a' };
 const FIXTURE_TARGET_MISSING: AnalysisTarget = { kind: 'setup', setupId: 'fixture-missing' };
 
@@ -137,6 +195,7 @@ function fixtureMembers(): readonly AnalyzerSetMember[] {
       analysis: undefined as never,
       metrics: undefined as never,
       requestTrace: { requestTrace: () => trace },
+      assets: { ...DEFAULT_EXTRACTION_ASSETS, segmentation: FIXTURE_SEGMENTATION },
       remember: noRemember,
     },
   ];
@@ -151,6 +210,7 @@ export const runChartDefinition: SetAnalyzerDefinition<RunChartOptions, RunChart
   extract(context: SetAnalyzerExtractContext<RunChartOptions>): RunChartExtracted {
     return computeRunChartExtraction(context.members, context.failures, context.options);
   },
+  assetsKeyOf: (options, assets) => (options.segmentation === 'none' ? null : (assets.segmentation ?? null)),
   optionsDiscipline: {
     sample: DEFAULT_RUN_CHART_OPTIONS,
     alternates: ALTERNATE_RUN_CHART_OPTIONS,

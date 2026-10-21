@@ -1,4 +1,13 @@
-import { convertToReading, listReadingWords, needsReading, type ReadingConditions, type ReadingToken, type ReadingWord } from '#input/text/reading.ts';
+import type { SegmentationOrigin } from '#input/text/segmentation.ts';
+import {
+  convertToReading,
+  listReadingWords,
+  needsReading,
+  type ReadingConditions,
+  type ReadingCorrections,
+  type ReadingToken,
+  type ReadingWord,
+} from '#input/text/reading.ts';
 import type { ReadingCandidateTable } from '#input/text/reading-candidates.ts';
 import type { ResolvedText } from '#input/text/resolve.ts';
 
@@ -60,6 +69,19 @@ export function outcomeFor(resolved: ResolvedText, stored: StoredReadingOutcome 
 /** 評価に渡すテキスト。読みに直す対象のテキストは、読みの変換の条件を添える。 */
 export interface PaneText extends ResolvedText {
   readonly reading?: ReadingConditions | null;
+  /** 文節の区切りを作る材料。漢字を読みに直した時だけ持つ（語の列が要る）。それ以外は `segmentationBasisOf` が作る。 */
+  readonly segmentationBasis?: SegmentationBasis;
+}
+
+/**
+ * 文節の区切りを作る材料。分割器は原文に当てて、区切りを語の境目へ寄せ、利用者の読みの直しを当てた読みのテキストの位置へ写す
+ * （`input/text/segmentation.ts`）。語の列が無い（漢字を含まない・辞書を読み込めなかった）時の `tokens` は空。
+ */
+export interface SegmentationBasis {
+  readonly sourceText: string;
+  readonly tokens: readonly ReadingToken[];
+  readonly corrections: ReadingCorrections;
+  readonly origin: SegmentationOrigin;
 }
 
 /**
@@ -85,11 +107,23 @@ export function evaluationText(resolved: ResolvedText, source: ReadingSource, ou
   if (outcome === undefined) return { text: resolved, state: { kind: 'loading' }, words: [] };
   if (outcome.kind === 'failed') {
     // 語の列が無いので直しを当てない
-    return { text: { ...resolved, reading: { status: 'unavailable', ...source.conditions, corrections: [] } }, state: { kind: 'failed' }, words: [] };
+    return {
+      text: {
+        ...resolved,
+        reading: { status: 'unavailable', ...source.conditions, corrections: [] },
+      },
+      state: { kind: 'failed' },
+      words: [],
+    };
   }
   const conversion = convertToReading(outcome.sourceText, outcome.tokens, resolved.readingCorrections);
   return {
-    text: { ...resolved, text: conversion.text, reading: { status: 'converted', ...source.conditions, corrections: conversion.appliedCorrections } },
+    text: {
+      ...resolved,
+      text: conversion.text,
+      reading: { status: 'converted', ...source.conditions, corrections: conversion.appliedCorrections },
+      segmentationBasis: { sourceText: outcome.sourceText, tokens: outcome.tokens, corrections: resolved.readingCorrections, origin: 'dictionary' },
+    },
     state: { kind: 'converted' },
     words: listReadingWords(outcome.tokens),
   };
@@ -110,4 +144,20 @@ export function readingProvenance(reading: ReadingConditions | null | undefined)
   ];
   if (reading.corrections.length > 0) items.push({ label: '読みの直し', value: `${reading.corrections.length}表記の読みを直して測定` });
   return items;
+}
+
+/**
+ * 文節の区切りを作る材料。日本語のテキストだけが持つ（分割器は日本語のモデルだけを使う）。
+ * 漢字を読みに直した時は器が語の列を添えている。漢字を含まないテキストと、辞書を読み込めなかったテキストは、
+ * 語の列が無いので原文のままの位置から写す。
+ */
+export function segmentationBasisOf(text: PaneText): SegmentationBasis | undefined {
+  if (text.segmentationBasis !== undefined) return text.segmentationBasis;
+  if (text.language !== 'ja') return undefined;
+  return {
+    sourceText: text.text,
+    tokens: [],
+    corrections: {},
+    origin: text.reading?.status === 'unavailable' ? 'dictionary-unavailable' : 'kana-only',
+  };
 }

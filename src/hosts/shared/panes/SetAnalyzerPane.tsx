@@ -3,7 +3,7 @@ import type { CodecDiagnostic } from '#input/codec/index.ts';
 import type { EngineSetMemberInput } from '#engine/request.ts';
 import { effectiveMultiBaseline, type ColorSlotsByKey, type TargetSet } from '#engine/multi-target-selection.ts';
 import { analysisTargetKey, nameTargets, type AnalysisTarget } from '#input/setup/index.ts';
-import type { PlaybackJump, SetAnalyzerPaneParts, SetRowSource } from '#analyzers/pane-parts.tsx';
+import type { PlaybackJump, SegmentationStatus, SetAnalyzerPaneParts, SetRowSource } from '#analyzers/pane-parts.tsx';
 import {
   conditionHeaderInfoFromResolvedInput,
   globalConditionLevels,
@@ -23,7 +23,8 @@ import { useAnalyzerSetPane } from '../use-analyzer-set-pane.ts';
 import { usePaneOnScreen } from '../use-pane-on-screen.ts';
 import { usePlaybackSeekReceivers } from '../playback-seek-store.tsx';
 import { useSetTargetSelection } from '../use-set-target-selection.ts';
-import { readingProvenance } from '../reading-evaluation.ts';
+import { readingProvenance, segmentationBasisOf } from '../reading-evaluation.ts';
+import { useSegmentation } from '../segmentation.ts';
 import type { PaneChrome, PaneEnvironment } from './pane-environment.ts';
 
 /**
@@ -66,6 +67,19 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
   const { setups, overrides, catalog, resolvedText, cache, dispatch, assetsReady } = env;
   // 辞書の読み込み中は、評価に渡すテキストがまだ無いので依頼を出さない（漢字を打てない文字に数えた暫定の数値を出さない）
   const readingLoading = env.reading?.kind === 'loading';
+  // 文節の区切りを求める設定の間だけ、分割器を呼ぶ。日本語以外のテキストは材料が無く、区切りを使わずに計算する
+  const wantsSegmentation = analyzer.usesSegmentation?.(options) === true;
+  const segmentationBasis = useMemo(() => segmentationBasisOf(resolvedText), [resolvedText]);
+  const segmentationState = useSegmentation(env.bunsetsu, segmentationBasis, wantsSegmentation && !readingLoading);
+  const segmentationLoading = segmentationState.status === 'loading';
+  const segmentationInput = segmentationState.status === 'ready' ? segmentationState.input : undefined;
+  const segmentationStatus: SegmentationStatus | undefined = !wantsSegmentation
+    ? undefined
+    : segmentationState.status === 'failed' || env.bunsetsu === undefined
+      ? 'failed'
+      : segmentationBasis === undefined
+        ? 'unsupported'
+        : 'ready';
   const conditionProvenance = useMemo(() => readingProvenance(resolvedText.reading), [resolvedText.reading]);
   const setupsById = useMemo(() => new Map(setups.map((setup) => [setup.id, setup] as const)), [setups]);
   const { choiceGroups, targets, colorByKey, markByKey } = useSetTargetSelection(selection, colorSlots, setups, catalog);
@@ -80,10 +94,10 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
       targets.map(
         (target): EngineSetMemberInput => ({
           target,
-          resolution: resolvePaneInput(target, setupsById, catalog, overrides, resolvedText),
+          resolution: resolvePaneInput(target, setupsById, catalog, overrides, resolvedText, segmentationInput),
         }),
       ),
-    [targets, setupsById, catalog, overrides, resolvedText],
+    [targets, setupsById, catalog, overrides, resolvedText, segmentationInput],
   );
   const membersByTarget = useMemo(() => new Map(members.map((m) => [m.target, m] as const)), [members]);
 
@@ -160,7 +174,7 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
   const waitsForScreen = chrome.computeOnlyWhenOnScreen === true;
   const { ref: frameRef, onScreen } = usePaneOnScreen<HTMLElement>(waitsForScreen);
   const shown = onScreen && chrome.coveredByMaximizedPane !== true;
-  const pane = useAnalyzerSetPane(cache, analyzer.definition, options, members, !readingLoading && shown);
+  const pane = useAnalyzerSetPane(cache, analyzer.definition, options, members, !readingLoading && !segmentationLoading && shown);
   const { Body, Settings, TargetItem } = analyzer;
   const extraction = pane.extraction;
   const extracted = extraction.status === 'ready' || extraction.status === 'stale' ? extraction.value.extracted : undefined;
@@ -277,6 +291,7 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
           options={options}
           onOptionsChange={onOptionsChange}
           {...(playbackJump === undefined ? {} : { playbackJump })}
+          {...(segmentationStatus === undefined ? {} : { segmentation: segmentationStatus })}
         />
       )}
     </PaneFrame>

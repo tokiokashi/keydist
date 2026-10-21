@@ -16,6 +16,23 @@ export const RUN_CHART_WINDOW_MIN = 5;
 export const RUN_CHART_WINDOW_MAX = 1000;
 export const DEFAULT_RUN_CHART_WINDOW = 50;
 
+/**
+ * `segmentation` は図に区切りを重ねる区切り方。`none` は区切りを使わない（既定。区切りの分割器を読み込まない）。
+ * それ以外を選ぶと、文節・固定長・ランダムの3つの区切り方の表を図の下に出し、選んだ区切り方の位置を図に重ねる。
+ * 区切りの出どころ（文節の区切り）は器が渡す資産で、解析設定は選択だけを持つ。
+ *
+ * `seedStart` はランダムの区切りの種の始まりの値 `s`。種は `s, s+1, …, s+19` の20個で固定する。
+ * どちらも抽出の中身が変わるので `affects: 'extract'`。
+ */
+export const RUN_CHART_SEGMENTATION_IDS = ['none', 'bunsetsu', 'fixed', 'random'] as const;
+export type RunChartSegmentationId = (typeof RUN_CHART_SEGMENTATION_IDS)[number];
+export const DEFAULT_RUN_CHART_SEGMENTATION: RunChartSegmentationId = 'none';
+
+export const RUN_CHART_SEED_MIN = 0;
+export const RUN_CHART_SEED_MAX = 1_000_000_000;
+export const DEFAULT_RUN_CHART_SEED_START = 1;
+export const RUN_CHART_SEED_LABEL = 'ランダムの種の始まり';
+
 export const runChartOptions = defineOptions({
   metric: defineOption<RunChartMetricId>({
     schema: v.picklist(RUN_CHART_METRIC_IDS),
@@ -31,6 +48,20 @@ export const runChartOptions = defineOptions({
     url: integerUrlCodec('window', RUN_CHART_WINDOW_MIN, RUN_CHART_WINDOW_MAX),
     label: '集計窓',
   }),
+  segmentation: defineOption<RunChartSegmentationId>({
+    schema: v.picklist(RUN_CHART_SEGMENTATION_IDS),
+    default: DEFAULT_RUN_CHART_SEGMENTATION,
+    affects: 'extract',
+    url: picklistUrlCodec('segmentation', RUN_CHART_SEGMENTATION_IDS),
+    label: '区切り',
+  }),
+  seedStart: defineOption<number>({
+    schema: v.pipe(v.number(), v.integer(), v.minValue(RUN_CHART_SEED_MIN), v.maxValue(RUN_CHART_SEED_MAX)),
+    default: DEFAULT_RUN_CHART_SEED_START,
+    affects: 'extract',
+    url: integerUrlCodec('seed', RUN_CHART_SEED_MIN, RUN_CHART_SEED_MAX),
+    label: RUN_CHART_SEED_LABEL,
+  }),
 });
 
 export type RunChartOptions = typeof runChartOptions.defaultOptions;
@@ -41,4 +72,6 @@ export const DEFAULT_RUN_CHART_OPTIONS: RunChartOptions = runChartOptions.defaul
 export const ALTERNATE_RUN_CHART_OPTIONS: RunChartOptions = {
   metric: 'sameFingerRate',
   window: 20,
+  segmentation: 'bunsetsu',
+  seedStart: 7,
 };

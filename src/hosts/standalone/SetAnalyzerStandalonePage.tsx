@@ -9,6 +9,7 @@ import { resolveTextSelection } from '#input/text/resolve.ts';
 import type { SetAnalyzerPaneParts } from '#analyzers/pane-parts.tsx';
 import { useStableResolvedText } from '#hosts/shared/stable-resolved-text.ts';
 import type { ReadingSource } from '#hosts/shared/reading-evaluation.ts';
+import type { BunsetsuSource } from '#hosts/shared/segmentation.ts';
 import { useReadingEvaluation } from '#hosts/shared/use-reading-evaluation.ts';
 import { ContextBar, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { ReadingChip } from '#hosts/shared/ReadingChip.tsx';
@@ -50,6 +51,8 @@ export interface SetAnalyzerStandalonePageProps<Options, Extracted, RowContext> 
   readonly cache: EngineComputer;
   /** 漢字を読みに直す入口（`app` が組み立てる）。漢字を含む日本語のテキストのときだけ呼ぶ。 */
   readonly reading: ReadingSource;
+  /** 文節の分割器の入口（`app` が組み立てる）。区切りを使う設定のときだけ呼ぶ。 */
+  readonly bunsetsu?: BunsetsuSource;
   readonly catalog: PaneCatalog;
   readonly generateTextId: TextIdGenerator;
   /** `TextChip`の本文debounce書き込み（`app/standalone`がuseDebouncedCommitで組み立てる）。 */
@@ -81,6 +84,7 @@ export function SetAnalyzerStandalonePage<Options, Extracted, RowContext>({
   dispatch,
   cache,
   reading,
+  bunsetsu,
   catalog,
   generateTextId,
   onTextContentCommit,
@@ -134,6 +138,7 @@ export function SetAnalyzerStandalonePage<Options, Extracted, RowContext>({
       catalog,
       resolvedText: evaluation.text,
       reading: evaluation.state,
+      ...(bunsetsu === undefined ? {} : { bunsetsu }),
       cache,
       dispatch,
       presetLibrary: assets.presetLibrary,
@@ -142,7 +147,7 @@ export function SetAnalyzerStandalonePage<Options, Extracted, RowContext>({
       assetsReady,
       ...(openPlayback === undefined ? {} : { openPlayback }),
     }),
-    [assets.setupLibrary, assets.presetLibrary, catalog, evaluation, cache, dispatch, generatePresetId, undo, assetsReady, openPlayback],
+    [assets.setupLibrary, assets.presetLibrary, catalog, evaluation, cache, dispatch, generatePresetId, undo, assetsReady, openPlayback, bunsetsu],
   );
 
   const changeOptions = (next: Options) => {

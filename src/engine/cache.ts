@@ -2,7 +2,7 @@ import type { AnalyzerSetMember, AnalyzerSetMemberFailure, SetAnalyzerDefinition
 import type { AnalysisTarget } from '#input/setup/index.ts';
 import { stableStringify } from './cache-key.ts';
 import { LruCache } from './lru-cache.ts';
-import { basisIdOf, interpretationKeyOf, setAnalyzerExtractionKeyOf, setMemberKeyOf, singleExtractionKeyOf, traceKeyOf } from './keys.ts';
+import { basisIdOf, interpretationKeyOf, setAnalyzerExtractionKeyOf, setKeyMemberOf, setMemberKeyOf, singleExtractionKeyOf, traceKeyOf } from './keys.ts';
 import {
   computeEngineKeyDetails,
   extractSet,
@@ -212,6 +212,7 @@ export function createEngineCache(options: EngineCacheOptions = {}): EngineCache
       trace: traceResult.trace,
       analysis: interpretationResult.analysis,
       metrics: interpretationResult.metrics,
+      assets: input.extractionAssets,
       // メンバー自身の解決済み入力を土台にする（`AnalyzerSetMember.requestTrace`のコメント
       // 参照。N感度は各メンバーごとに独立したNの掃引が要るため、先頭メンバー等の
       // 代表1件を土台にする窓口では成立しない）。TraceRequesterはキャッシュキーに
@@ -243,7 +244,7 @@ export function createEngineCache(options: EngineCacheOptions = {}): EngineCache
   ): EngineExtractionResult<Extracted> {
     const resolvedMembers: AnalyzerSetMember[] = [];
     const failures: AnalyzerSetMemberFailure[] = [];
-    const keyMembers: { readonly target: AnalysisTarget; readonly memberKey: unknown }[] = [];
+    const keyMembers: { readonly target: AnalysisTarget; readonly memberKey: unknown; readonly assetsKey?: unknown }[] = [];
 
     for (const member of members) {
       const memberKey = setMemberKeyOf(member);
@@ -253,10 +254,10 @@ export function createEngineCache(options: EngineCacheOptions = {}): EngineCache
           kind: member.resolution.error.kind,
           message: describeResolvedInputError(member.resolution.error),
         });
-        keyMembers.push({ target: member.target, memberKey });
+        keyMembers.push(setKeyMemberOf(member, definition, options));
         continue;
       }
-      keyMembers.push({ target: member.target, memberKey });
+      keyMembers.push(setKeyMemberOf(member, definition, options));
       resolvedMembers.push(buildSetMember(member.target, member.resolution.input, memberKey, definition.id));
     }
 

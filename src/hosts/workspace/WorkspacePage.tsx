@@ -45,6 +45,7 @@ import { DefaultShapeChip } from '#hosts/shared/DefaultShapeChip.tsx';
 import { KeySelectionContext, useKeySelectionStore } from '#hosts/shared/key-selection-store.tsx';
 import { useStableResolvedText } from '#hosts/shared/stable-resolved-text.ts';
 import type { ReadingSource } from '#hosts/shared/reading-evaluation.ts';
+import type { BunsetsuSource } from '#hosts/shared/segmentation.ts';
 import { useReadingEvaluation } from '#hosts/shared/use-reading-evaluation.ts';
 import { useLatestCallback } from '#hosts/shared/use-latest-callback.ts';
 import type { PaneEnvironment } from '#hosts/shared/panes/pane-environment.ts';
@@ -85,6 +86,8 @@ export interface WorkspacePageProps {
   readonly cache: EngineComputer;
   /** 漢字を読みに直す入口（`app` が組み立てる）。漢字を含む日本語のテキストのときだけ呼ぶ。 */
   readonly reading: ReadingSource;
+  /** 文節の分割器の入口（`app` が組み立てる）。区切りを使うペインが求めるまで呼ばない。 */
+  readonly bunsetsu?: BunsetsuSource;
   readonly catalog: PaneCatalog;
   readonly generateTextId: TextIdGenerator;
   /** ペインのidの発行。 */
@@ -118,6 +121,7 @@ export function WorkspacePage({
   dispatch,
   cache,
   reading,
+  bunsetsu,
   catalog,
   generateTextId,
   generateId,
@@ -213,6 +217,7 @@ export function WorkspacePage({
             catalog,
             resolvedText: evaluation.text,
             reading: evaluation.state,
+            ...(bunsetsu === undefined ? {} : { bunsetsu }),
             cache,
             dispatch,
             presetLibrary: assets.presetLibrary,
@@ -234,6 +239,7 @@ export function WorkspacePage({
       undo,
       assetsReady,
       playbackSeek,
+      bunsetsu,
     ],
   );
 

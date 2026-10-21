@@ -99,3 +99,36 @@ export function prepareEvaluationText(text: string, options: EvaluationTextOptio
   }
   return out;
 }
+
+/**
+ * 読みのテキストの区切り（コードポイントの位置）を、評価に渡すテキストのコードポイントの位置へ写す。
+ * 前処理（`prepareEvaluationText`）で文字が減るのは、記号を取り除く段だけ（片仮名の書き換えと半角の `,` `.` の書き換えは1文字を1文字に直す）。
+ * そこで、区切りより前に残る文字の数を、区切りの新しい位置にする。
+ * 先頭・末尾に来た区切りと、取り除いた記号に挟まれて重なった区切りは除く。結果は昇順で重複しない。
+ * 日本語以外のテキストは前処理が何も変えないので、区切りをそのまま返す。
+ */
+export function evaluationBoundaries(
+  readingText: string,
+  boundaries: readonly number[],
+  options: Pick<EvaluationTextOptions, 'language' | 'keepSymbols'>,
+): number[] {
+  const chars = [...readingText];
+  const kept: number[] = [0];
+  for (const char of chars) {
+    const keeps =
+      options.language !== 'ja' ||
+      HALFWIDTH_PUNCTUATION[char] !== undefined ||
+      options.keepSymbols ||
+      !isSymbolChar(char) ||
+      DEFAULT_KEPT_SYMBOLS.has(char);
+    kept.push(kept[kept.length - 1]! + (keeps ? 1 : 0));
+  }
+  const total = kept[kept.length - 1]!;
+  const mapped = new Set<number>();
+  for (const boundary of boundaries) {
+    if (boundary < 0 || boundary > chars.length) continue;
+    const position = kept[boundary]!;
+    if (position > 0 && position < total) mapped.add(position);
+  }
+  return [...mapped].sort((a, b) => a - b);
+}
