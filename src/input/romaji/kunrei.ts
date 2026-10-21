@@ -126,7 +126,7 @@ const BASE: Record<string, string> = {
   ー: '-',
   '、': ',',
   '。': '.',
-  // 日本語IMEのローマ字入力の既定（Microsoft IME・Google日本語入力とも `[` `]` `/`）
+  // Google日本語入力（mozc）のローマ字入力の既定。Microsoft IMEは一次情報で確かめていない
   '「': '[',
   '」': ']',
   '・': '/',
