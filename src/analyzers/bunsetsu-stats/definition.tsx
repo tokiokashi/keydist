@@ -68,11 +68,11 @@ function TextTable({ text }: { readonly text: NonNullable<BunsetsuStatsExtracted
             <td data-bunsetsu-stats-segment-count="">{countText(table.segmentCount)}</td>
           </tr>
           <tr>
-            <th scope="row">境目の文字が全文字に占める割合</th>
+            <th scope="row">文節の1文字目の割合</th>
             <td data-bunsetsu-stats-boundary-share="">{percentText(table.boundaryCharShare)}</td>
           </tr>
           <tr>
-            <th scope="row">文節をまたぐbigramの出現のうち、同じ並びが文節の中にも出る並びの出現の割合</th>
+            <th scope="row">またぐ並びのうち、文節の中にも出る並びの割合</th>
             <td data-bunsetsu-stats-cross-inside-share="">
               {percentText(table.crossAlsoInsideShare)}
               {table.crossCount === 0 ? '' : `（${table.crossAlsoInsideCount} / ${table.crossCount}）`}
@@ -82,6 +82,18 @@ function TextTable({ text }: { readonly text: NonNullable<BunsetsuStatsExtracted
       </table>
     </div>
   );
+}
+
+/**
+ * 配列ごとの表の列（`statsCells` の並び）の、まとまりの左右の境。見出しと本文の両方に同じ添字で付ける。
+ * まとまりは2列ずつ（打てない文字・1文字目・2文字目以降・1文節の距離・文節ごとの距離）。
+ */
+const GROUP_START = new Set([0, 3, 5, 7, 9]);
+const GROUP_END = new Set([1, 4, 6, 8, 10]);
+
+function edgeClass(index: number): string | undefined {
+  const classes = [GROUP_START.has(index) ? 'bunsetsu-stats-edge-start' : '', GROUP_END.has(index) ? 'bunsetsu-stats-edge-end' : ''].filter(Boolean);
+  return classes.length === 0 ? undefined : classes.join(' ');
 }
 
 function statsCells(row: BunsetsuStatsOkRow): readonly (readonly [key: string, text: string])[] {
@@ -113,40 +125,56 @@ function LayoutTable({ rows }: { readonly rows: readonly DisplayRow[] }) {
             <th rowSpan={2} scope="col">
               対象
             </th>
-            <th colSpan={2} scope="colgroup">
-              打鍵できなかった文字
+            <th colSpan={2} scope="colgroup" className="bunsetsu-stats-edge-start bunsetsu-stats-edge-end">
+              打てない文字
             </th>
             <th rowSpan={2} scope="col">
-              境目の文字の距離の割合
+              1文字目の距離の割合
             </th>
-            <th colSpan={2} scope="colgroup">
-              境目の文字
+            <th colSpan={2} scope="colgroup" className="bunsetsu-stats-edge-start bunsetsu-stats-edge-end">
+              1文字目
             </th>
-            <th colSpan={2} scope="colgroup">
-              内側の文字
+            <th colSpan={2} scope="colgroup" className="bunsetsu-stats-edge-start bunsetsu-stats-edge-end">
+              2文字目以降
             </th>
-            <th colSpan={2} scope="colgroup">
+            <th colSpan={2} scope="colgroup" className="bunsetsu-stats-edge-start bunsetsu-stats-edge-end">
               1文節の距離 [{SEGMENT_DISTANCE_UNIT}]
             </th>
-            <th colSpan={2} scope="colgroup">
+            <th colSpan={2} scope="colgroup" className="bunsetsu-stats-edge-start bunsetsu-stats-edge-end">
               文節ごとの{DISTANCE.label} [{DISTANCE.unit}]
             </th>
           </tr>
           <tr>
-            <th scope="col">数</th>
-            <th scope="col">区切りの直後</th>
-            <th scope="col">
+            <th scope="col" className={edgeClass(0)}>
+              数
+            </th>
+            <th scope="col" className={edgeClass(1)}>
+              うち1文字目
+            </th>
+            <th scope="col" className={edgeClass(3)}>
               {DISTANCE.label} [{DISTANCE.unit}]
             </th>
-            <th scope="col">標準偏差 [{SEGMENT_DISTANCE_UNIT}]</th>
-            <th scope="col">
+            <th scope="col" className={edgeClass(4)}>
+              標準偏差 [{SEGMENT_DISTANCE_UNIT}]
+            </th>
+            <th scope="col" className={edgeClass(5)}>
               {DISTANCE.label} [{DISTANCE.unit}]
             </th>
-            <th scope="col">標準偏差 [{SEGMENT_DISTANCE_UNIT}]</th>
-            <th scope="col">標準偏差</th>
-            <th scope="col">90%点</th>
-            <th scope="col">中央値</th>
-            <th scope="col">90%点</th>
+            <th scope="col" className={edgeClass(6)}>
+              標準偏差 [{SEGMENT_DISTANCE_UNIT}]
+            </th>
+            <th scope="col" className={edgeClass(7)}>
+              標準偏差
+            </th>
+            <th scope="col" className={edgeClass(8)}>
+              90%点
+            </th>
+            <th scope="col" className={edgeClass(9)}>
+              中央値
+            </th>
+            <th scope="col" className={edgeClass(10)}>
+              90%点
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -184,8 +212,8 @@ function LayoutTable({ rows }: { readonly rows: readonly DisplayRow[] }) {
             return (
               <tr key={row.targetKey} data-bunsetsu-stats-row="ok">
                 <RowName row={row} />
-                {statsCells(entry).map(([key, cell]) => (
-                  <td key={key} data-empty={cell === EMPTY_CELL_TEXT || undefined}>
+                {statsCells(entry).map(([key, cell], index) => (
+                  <td key={key} className={edgeClass(index)} data-empty={cell === EMPTY_CELL_TEXT || undefined}>
                     {cell}
                   </td>
                 ))}
@@ -207,9 +235,7 @@ function FrequentSegmentsTable({ text, rows }: { readonly text: NonNullable<Buns
   return (
     <div className="bunsetsu-stats-scroll">
       <table className="bunsetsu-stats-table" data-bunsetsu-stats-frequent-segments="">
-        <caption>
-          頻出の文節（上位{text.frequentSegments.length}。文字数1の文節を除く）。セルは、文節の内側の文字の{DISTANCE.label} [{DISTANCE.unit}]
-        </caption>
+        <caption>頻出の文節（上位{text.frequentSegments.length}）</caption>
         <thead>
           <tr>
             <th scope="col">文節</th>
@@ -217,6 +243,9 @@ function FrequentSegmentsTable({ text, rows }: { readonly text: NonNullable<Buns
             {rows.map((row) => (
               <th key={row.targetKey} scope="col" title={row.fullName}>
                 {row.label}
+                <span className="bunsetsu-stats-unit">
+                  {DISTANCE.label} [{DISTANCE.unit}]
+                </span>
               </th>
             ))}
           </tr>
@@ -247,10 +276,7 @@ function FrequentBigramsTable({ text, rows }: { readonly text: NonNullable<Bunse
   return (
     <div className="bunsetsu-stats-scroll">
       <table className="bunsetsu-stats-table" data-bunsetsu-stats-frequent-bigrams="">
-        <caption>
-          頻出の文節をまたぐbigram（上位{text.frequentBigrams.length}）。セルは、またいだ出現と文節の中の出現のそれぞれの{DISTANCE.label}の平均 [
-          {DISTANCE.unit}]
-        </caption>
+        <caption>頻出の文節をまたぐ並び（上位{text.frequentBigrams.length}）</caption>
         <thead>
           <tr>
             <th rowSpan={2} scope="col">
@@ -263,18 +289,24 @@ function FrequentBigramsTable({ text, rows }: { readonly text: NonNullable<Bunse
               文節の中の回数
             </th>
             {rows.map((row) => (
-              <th key={row.targetKey} colSpan={2} scope="colgroup" title={row.fullName}>
+              <th key={row.targetKey} colSpan={2} scope="colgroup" className="bunsetsu-stats-edge-start bunsetsu-stats-edge-end" title={row.fullName}>
                 {row.label}
               </th>
             ))}
           </tr>
           <tr>
             {rows.flatMap((row) => [
-              <th key={`${row.targetKey}:cross`} scope="col">
-                またぐ
+              <th key={`${row.targetKey}:cross`} scope="col" className="bunsetsu-stats-edge-start">
+                <span>
+                  またぐ
+                  <span className="bunsetsu-stats-unit">[{DISTANCE.unit}]</span>
+                </span>
               </th>,
-              <th key={`${row.targetKey}:inside`} scope="col">
-                文節の中
+              <th key={`${row.targetKey}:inside`} scope="col" className="bunsetsu-stats-edge-end">
+                <span>
+                  文節の中
+                  <span className="bunsetsu-stats-unit">[{DISTANCE.unit}]</span>
+                </span>
               </th>,
             ])}
           </tr>
@@ -290,10 +322,10 @@ function FrequentBigramsTable({ text, rows }: { readonly text: NonNullable<Bunse
                 const cross = cell === undefined ? EMPTY_CELL_TEXT : distanceText(cell.cross);
                 const inside = cell === undefined ? EMPTY_CELL_TEXT : distanceText(cell.inside);
                 return [
-                  <td key={`${row.targetKey}:cross`} data-empty={cross === EMPTY_CELL_TEXT || undefined}>
+                  <td key={`${row.targetKey}:cross`} className="bunsetsu-stats-edge-start" data-empty={cross === EMPTY_CELL_TEXT || undefined}>
                     {cross}
                   </td>,
-                  <td key={`${row.targetKey}:inside`} data-empty={inside === EMPTY_CELL_TEXT || undefined}>
+                  <td key={`${row.targetKey}:inside`} className="bunsetsu-stats-edge-end" data-empty={inside === EMPTY_CELL_TEXT || undefined}>
                     {inside}
                   </td>,
                 ];
@@ -337,18 +369,16 @@ export function BunsetsuStatsBody({ extracted, order, rowContext, segmentation }
           </p>
           <TextTable text={text} />
           <LayoutTable rows={rows} />
-          <p className="bunsetsu-stats-notice" data-bunsetsu-stats-layout-note="">
-            境目の文字と内側の文字の{DISTANCE.label}
-            ・標準偏差と、境目の文字の距離の割合は、打鍵できなかった文字をどちらにも数えません。標準偏差は母標準偏差です。
-            1文節の距離は先頭の文字を含む文節の距離の和、文節ごとの{DISTANCE.label}は先頭の文字を含み、打鍵できなかった文字も文字数に数えます。
-          </p>
           <FrequentSegmentsTable text={text} rows={rows} />
           <FrequentBigramsTable text={text} rows={rows} />
-          <p className="bunsetsu-stats-notice" data-bunsetsu-stats-list-note="">
-            2つの一覧の行は出現回数の順（同じ回数は最初に出た順）で、配列の値では並べ替えません。{VISIBLE_TEXT_NOTE}
-            {differentText.length > 0
-              ? `${differentText.map((row) => row.label).join('、')}は評価に渡すテキストが${referenceLabel ?? '他の対象'}と違います。テキストの表と2つの一覧の行は${referenceLabel ?? '他の対象'}のテキストから求め、各対象の値はその対象のテキストで求めています。`
-              : ''}
+          {differentText.length > 0 ? (
+            <p className="bunsetsu-stats-notice" data-bunsetsu-stats-different-text="">
+              {differentText.map((row) => row.label).join('、')}は評価に渡すテキストが{referenceLabel ?? '他の対象'}と違います。テキストの表と一覧の行は
+              {referenceLabel ?? '他の対象'}のテキストから求めています。
+            </p>
+          ) : null}
+          <p className="bunsetsu-stats-notice" data-bunsetsu-stats-visible-note="">
+            {VISIBLE_TEXT_NOTE}
           </p>
         </>
       )}
