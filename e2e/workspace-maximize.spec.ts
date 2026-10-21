@@ -2,6 +2,7 @@ import { expect, test, type Page } from './fixtures.ts';
 import { waitForHydration } from './hydration-helper.ts';
 import { advance, settleBy } from './settle-helper.ts';
 import { SHORT_TEXT_REF, useShortText } from './short-text-helper.ts';
+import { parkPointerOutsideEdge } from './sidebar-helper.ts';
 
 /**
  * Workspaceのペインの拡大表示。⋯の「拡大表示」で、そのペインをWorkspaceいっぱいに広げる。
@@ -428,6 +429,7 @@ test('固定を外して重ねて出したサイドバーを拡大中に開い�
   await openReady(page);
   await maximize(page, 'a');
   const shell = page.locator('.shell');
+  await parkPointerOutsideEdge(page);
   await page.locator('.context-bar').getByRole('button', { name: 'サイドバーを開く' }).click();
   await expect(shell).toHaveAttribute('data-sidebar-open', 'true');
   // 開いた直後のフォーカスはサイドバーの中の項目にある。そのままEscapeを押して、サイドバーが開いている判定で決まることを確かめる

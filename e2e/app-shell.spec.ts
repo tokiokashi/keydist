@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { openTextChip } from './context-bar-helper.ts';
 import { waitForHydration } from './hydration-helper.ts';
+import { parkPointerOutsideEdge } from './sidebar-helper.ts';
 
 /**
  * シェル（サイドバー・文脈バー）のE2E（docs/architecture.md「画面の構成」）。
@@ -57,6 +58,7 @@ test('固定を外すとサイドバーは隠れ、ボタンで重ねて出し�
 
   // 文脈バーのボタンで重ねて出す。Escapeで閉じるとフォーカスはボタンへ戻る。
   await expect(page.locator('.context-bar').getByRole('button', { name: 'サイドバーを開く' })).toBeVisible();
+  await parkPointerOutsideEdge(page);
   await toggle.click();
   await expectSidebarShown(page);
   await page.keyboard.press('Escape');
@@ -92,6 +94,7 @@ test('ボタンで重ねて出している間は、Tabで本体へ抜けない',
   });
   await page.goto('/analyzer/bigram-flow');
   await waitForHydration(page);
+  await parkPointerOutsideEdge(page);
   await page.getByRole('button', { name: 'サイドバーを開く' }).click();
   await expectSidebarShown(page);
   const sidebar = page.locator('#app-sidebar');
@@ -444,6 +447,7 @@ test('固定を外して重ねて出した時も畳める。今いる画面の�
   });
   await page.goto('/analyzer/bigram-flow');
   await waitForHydration(page);
+  await parkPointerOutsideEdge(page);
   await page.getByRole('button', { name: 'サイドバーを開く' }).click();
   await expectSidebarShown(page);
   await expect(groupButton(page, 'Analyze')).toBeFocused();
@@ -480,6 +484,7 @@ test('まとまりを畳んだ状態でも、Tabはサイドバーの中の見�
   });
   await page.goto('/analyzer/bigram-flow');
   await waitForHydration(page);
+  await parkPointerOutsideEdge(page);
   await page.getByRole('button', { name: 'サイドバーを開く' }).click();
   await expectSidebarShown(page);
   // 畳んだ項目は数えない。

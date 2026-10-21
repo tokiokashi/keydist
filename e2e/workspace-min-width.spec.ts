@@ -50,6 +50,8 @@ async function open(page: Page, theme: 'light' | 'dark' = 'light', size = FHD, g
   await waitForHydration(page);
   await expect(page.locator('.workspace-grid-item')).toHaveCount(3);
   await expect(page.locator('.app-sidebar')).toBeVisible();
+  // 読みへの変換が済むと、文脈バーに読みのチップが出て、2行に折り返して格子が下がる。その後の位置で測るため、チップを待ってから落ち着きを待つ
+  await expect(page.locator('.context-bar [data-reading-chip]')).toBeVisible();
   await settle(page);
 }
 
