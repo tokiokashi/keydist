@@ -398,3 +398,30 @@ test('Setupのレベルの指の割り当てとローマ字規則がどちらも
   assert.equal(result.input.cascade.fingerAssignmentId.diagnostics.length, 1);
   assert.equal(result.input.cascade.romajiRuleId.diagnostics.length, 1);
 });
+
+test('文節の区切りは、この対象の記号の範囲で評価に渡すテキストの位置へ写して資産に載せる', () => {
+  const setup = setupFor('qwerty');
+  const input = (keepSymbols: boolean) => {
+    const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'keepSymbols', true);
+    assert.ok(written.ok);
+    if (!written.ok) return undefined;
+    const result = resolveEngineInput({
+      target: { kind: 'setup', setupId: setup.id },
+      setups: new Map([[setup.id, setup]]),
+      catalog: CATALOG,
+      userLayouts: NO_USER_LAYOUTS,
+      overrides: keepSymbols ? written.overrides : EMPTY_SETTINGS_OVERRIDES,
+      text: 'あ「い」うえ',
+      language: 'ja',
+      segmentation: { boundaries: [2, 4], origin: 'kana-only', splitter: { name: 'テスト用', version: '1' } },
+    });
+    assert.ok(result.ok);
+    return result.ok ? result.input : undefined;
+  };
+  assert.deepEqual(input(false)?.extractionAssets.segmentation, {
+    boundaries: [1, 2],
+    origin: 'kana-only',
+    splitter: { name: 'テスト用', version: '1' },
+  });
+  assert.deepEqual(input(true)?.extractionAssets.segmentation?.boundaries, [2, 4]);
+});

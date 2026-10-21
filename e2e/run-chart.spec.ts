@@ -71,6 +71,34 @@ test.describe('個別画面', () => {
     await expect(title).toContainText('直近20文字');
   });
 
+  test('区切りは既定で使わず、選ぶと区切りの位置を図に重ね、区切り方ごとの表と順位を出す', async ({ page }) => {
+    const budouxRequests: string[] = [];
+    page.on('request', (request) => {
+      if (/budoux/.test(new URL(request.url()).pathname)) budouxRequests.push(request.url());
+    });
+    await expect(feature(page).locator('[data-run-chart-segments]')).toHaveCount(0);
+    await expect(feature(page).locator('[data-run-chart-boundaries]')).toHaveCount(0);
+    expect(budouxRequests).toEqual([]);
+
+    const settings = await openSettings(page);
+    await settings.getByLabel('区切り', { exact: true }).selectOption('bunsetsu');
+    await expect(feature(page).locator('[data-run-chart-segmentation-note]')).toContainText('文節の区切りを図に重ね');
+    await expect(feature(page).locator('[data-run-chart-boundaries]')).toHaveCount(1, { timeout: 15_000 });
+    // 配列ごとに表のブロックを分ける
+    await expect(feature(page).locator('[data-run-chart-segment-block]')).toHaveCount(2);
+    await expect(feature(page).locator('[data-run-chart-segment-condition]').first()).toContainText('BudouX 0.10.0');
+    await expect(feature(page).locator('[data-run-chart-segment-condition]').first()).toContainText('mulberry32');
+    await expect(feature(page).locator('[data-run-chart-segment-rank]').first()).toContainText('21個のうち小さい方から');
+    await expect(feature(page).locator('[data-run-chart-segment-note]')).toContainText('2/21');
+    await expect(feature(page).locator('[data-run-chart-segment-note]')).not.toContainText('有意である');
+    expect(budouxRequests.length).toBeGreaterThan(0);
+
+    // 区切り方を替えると、重ねる位置が替わる
+    const before = await feature(page).locator('[data-run-chart-boundaries]').innerHTML();
+    await settings.getByLabel('区切り', { exact: true }).selectOption('random');
+    await expect(feature(page).locator('[data-run-chart-boundaries]')).not.toHaveJSProperty('innerHTML', before);
+  });
+
   test('図を押すと、押した点の配列の打鍵再生へ、その文字位置のステップで一時停止して移り、URLに位置を残さない', async ({ page }) => {
     await clickAt(page, 0.5);
     await expect(page).toHaveURL(/\/analyzer\/playback/);

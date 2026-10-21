@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { noRemember, type AnalyzerSetMember } from '#analyzers/contract.ts';
+import { DEFAULT_EXTRACTION_ASSETS, noRemember, type AnalyzerSetMember } from '#analyzers/contract.ts';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { buildGeometry } from '#input/shapes/geometry.ts';
 import { SAMPLE_TEXT_JA } from '#input/text/sample-ja.ts';
@@ -137,4 +137,49 @@ test('3万字前後のテキストでも、抽出は入力の単位の数に比�
   assert.ok(series.positions.length > 10000);
   // 区間ごとに全体を集計し直す方式なら字数の2乗（9億回級）になる。累積和なら数十ミリ秒に収まる
   assert.ok(elapsedMs < 2000, `${elapsedMs}ms`);
+});
+
+const SEGMENTATION_ASSETS = {
+  boundaries: [4, 9, 15, 22, 30, 41],
+  origin: 'kana-only',
+  splitter: { name: 'テスト用', version: '1' },
+} as const;
+
+function memberWithSegmentation(text: string, layoutId: string): AnalyzerSetMember {
+  return { ...memberOf(text, layoutId), assets: { ...DEFAULT_EXTRACTION_ASSETS, segmentation: SEGMENTATION_ASSETS } };
+}
+
+test('区切りなしの設定では、区切りが渡されていても結果に区切りを載せない', () => {
+  const member = memberWithSegmentation(SAMPLE_TEXT_JA.slice(0, 120), 'qwerty');
+  const series = computeMemberSeries(member, options({ segmentation: 'none' }));
+  assert.equal(series.segments, undefined);
+});
+
+test('区切りを選ぶと、再現の条件と3つの区切り方の値を載せ、区間を合わせると全体に戻る', () => {
+  const member = memberWithSegmentation(SAMPLE_TEXT_JA.slice(0, 120), 'qwerty');
+  const series = computeMemberSeries(member, options({ segmentation: 'random', seedStart: 5 }));
+  const segments = series.segments!;
+  assert.deepEqual(segments.splitter, { name: 'テスト用', version: '1' });
+  assert.equal(segments.origin, 'kana-only');
+  assert.equal(segments.rng, 'mulberry32');
+  assert.equal(segments.seedStart, 5);
+  assert.equal(segments.seedCount, 20);
+  const report = segments.report!;
+  assert.deepEqual(report.overlay.bunsetsu, SEGMENTATION_ASSETS.boundaries);
+  assert.equal(report.random.length, 20);
+  assert.equal(report.bunsetsu.segmentCount, SEGMENTATION_ASSETS.boundaries.length + 1);
+  assert.equal(report.fixed.segmentCount, report.overlay.fixed.length + 1);
+  // 同じ入力からは同じ結果
+  assert.deepEqual(computeMemberSeries(member, options({ segmentation: 'random', seedStart: 5 })), series);
+});
+
+test('区切りを選んだ時だけ、抽出のキーに区切りが入る', () => {
+  const withSegments = { ...DEFAULT_EXTRACTION_ASSETS, segmentation: SEGMENTATION_ASSETS };
+  const other = { ...DEFAULT_EXTRACTION_ASSETS, segmentation: { ...SEGMENTATION_ASSETS, boundaries: [5, 9] } };
+  assert.equal(runChartDefinition.assetsKeyOf(options({ segmentation: 'none' }), withSegments), null);
+  assert.deepEqual(runChartDefinition.assetsKeyOf(options({ segmentation: 'bunsetsu' }), withSegments), SEGMENTATION_ASSETS);
+  assert.notDeepEqual(
+    runChartDefinition.assetsKeyOf(options({ segmentation: 'bunsetsu' }), withSegments),
+    runChartDefinition.assetsKeyOf(options({ segmentation: 'bunsetsu' }), other),
+  );
 });

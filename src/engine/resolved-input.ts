@@ -7,6 +7,7 @@ import { physicalKeysUsedByLayout } from '#input/layouts/physical-keys.ts';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { TextLanguage } from '#input/text/language.ts';
 import type { ReadingConditions } from '#input/text/reading.ts';
+import type { SegmentationInput } from '#input/text/segmentation.ts';
 import type { AnalysisTarget, Setup, SetupCatalog, SetupReferenceError } from '#input/setup/index.ts';
 import { isBuiltin, ROMAJI_RULES, tableForRule, type UserRomajiRule } from '#input/romaji/rules.ts';
 import type { TracePolicy } from '#trace/generate.ts';
@@ -15,7 +16,7 @@ import type { ArpeggioInterpretation } from '#interpretation/structure/arpeggio.
 import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import { defaultFingerAssignmentId, resolveFingerAssignment } from './finger-assignment.ts';
 import { resolveSettings, type ResolvedSettingsCascade, type SettingsCascadeOverrides } from './settings-items.ts';
-import { hasConvertibleKatakana, prepareEvaluationText } from '#input/text/evaluation-text.ts';
+import { evaluationBoundaries, hasConvertibleKatakana, prepareEvaluationText } from '#input/text/evaluation-text.ts';
 import { resolveTargetForText } from './target-resolution.ts';
 
 /**
@@ -103,6 +104,11 @@ export interface ResolveEngineInputOptions {
    * 読みに直す対象でない（漢字を含まない・英語の）テキストは渡さない。
    */
   readonly reading?: ReadingConditions | null | undefined;
+  /**
+   * 文節の区切り（読みのテキストの位置）。区切りを使うペインだけが渡す。評価に渡すテキストの位置へは、
+   * この対象の記号の範囲（`keepSymbols`）で写し直して `extractionAssets.segmentation` に載せる。
+   */
+  readonly segmentation?: SegmentationInput | undefined;
   /**
    * 前処理を通さず、`text` をそのまま評価に渡す。画面に出した文を利用者がそのまま打つ場面（個人速度の示す文）が使う。
    */
@@ -270,7 +276,21 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
       arpeggioInterpretation: cascade.arpeggioInterpretation.value,
       keepSymbols: cascade.keepSymbols.value,
       reading: options.verbatimText === true ? null : (options.reading ?? null),
-      extractionAssets: { personalSpeed: options.personalSpeed, textLanguage: options.language },
+      extractionAssets: {
+        personalSpeed: options.personalSpeed,
+        textLanguage: options.language,
+        segmentation:
+          options.segmentation === undefined || options.verbatimText === true
+            ? undefined
+            : {
+                boundaries: evaluationBoundaries(options.text, options.segmentation.boundaries, {
+                  language: options.language,
+                  keepSymbols: cascade.keepSymbols.value,
+                }),
+                origin: options.segmentation.origin,
+                splitter: options.segmentation.splitter,
+              },
+      },
       romajiRuleId,
       cascade: resolvedCascade,
     },

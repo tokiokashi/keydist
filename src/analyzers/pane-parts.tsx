@@ -182,7 +182,15 @@ export interface SetBodyProps<Extracted, Options, RowContext> {
   readonly onOptionsChange: (next: Options) => void;
   /** 図で押した点の位置から打鍵再生へ移る手段。`SetAnalyzerPaneParts.jumpsToPlayback` を宣言したAnalyzerにだけ渡す。 */
   readonly playbackJump?: PlaybackJump;
+  /** 文節の区切りを使う設定の時の、区切りの用意の状態。`SetAnalyzerPaneParts.usesSegmentation` を宣言したAnalyzerにだけ渡す。 */
+  readonly segmentation?: SegmentationStatus;
 }
+
+/**
+ * 文節の区切りの用意の状態。`unsupported` は日本語以外のテキスト（分割器は日本語のモデルだけを使う）、
+ * `failed` は分割器を読み込めなかった時。どちらも区切りを使わずに計算する。
+ */
+export type SegmentationStatus = 'ready' | 'unsupported' | 'failed';
 
 /** 別のペインの図で押された文字位置への移動を、打鍵再生のペインに伝える形。宛先でなければ `charPosition` は `undefined`（番号だけ進む）。 */
 export interface PlaybackSeekDelivery {
@@ -250,4 +258,9 @@ export interface SetAnalyzerPaneParts<Options, Extracted, RowContext>
    * 立てると、ホストが移る手段を本体へ`playbackJump`で渡す。
    */
   readonly jumpsToPlayback?: boolean;
+  /**
+   * 解析設定が文節の区切りを求めているか。持つAnalyzerだけが宣言する。
+   * 求めている間だけ、ホストが分割器を読み込み、区切りを入力へ載せる（求めない設定では分割器に触れない）。
+   */
+  readonly usesSegmentation?: (options: Options) => boolean;
 }

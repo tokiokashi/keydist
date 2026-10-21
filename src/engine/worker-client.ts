@@ -227,9 +227,7 @@ export function createWorkerEngineComputer(spawn: () => WorkerLike): WorkerEngin
       definition: SetAnalyzerDefinition<Options, Extracted>,
       options: Options,
     ): EngineExtractionResult<Extracted> | undefined {
-      return extractionMirror.get(setExtractionKeyOf(members, definition.id, definition.extractKeyOf(options))) as
-        | EngineExtractionResult<Extracted>
-        | undefined;
+      return extractionMirror.get(setExtractionKeyOf(members, definition, options)) as EngineExtractionResult<Extracted> | undefined;
     },
     getExtraction<Options, Extracted>(
       input: ResolvedInput,
@@ -264,7 +262,7 @@ export function createWorkerEngineComputer(spawn: () => WorkerLike): WorkerEngin
       }
       return remember(
         extractionMirror as LruCache<string, EngineExtractionResult<Extracted>>,
-        setExtractionKeyOf(members, definition.id, definition.extractKeyOf(options)),
+        setExtractionKeyOf(members, definition, options),
         enqueue((id) => ({ id, kind: 'set-extraction', members, definitionId: definition.id, options }), signal, { deferred: warmup !== undefined }),
       );
     },

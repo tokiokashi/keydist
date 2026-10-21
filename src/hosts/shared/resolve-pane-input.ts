@@ -5,6 +5,7 @@ import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { FingerAssignment } from '#input/shapes/geometry.ts';
 import type { UserRomajiRule } from '#input/romaji/rules.ts';
 import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
+import type { SegmentationInput } from '#input/text/segmentation.ts';
 import type { PaneText } from './reading-evaluation.ts';
 import type { ConditionValueNames } from './condition-summary.ts';
 
@@ -44,6 +45,7 @@ export function resolvePaneInput(
   catalog: PaneCatalog,
   overrides: SettingsCascadeOverrides,
   resolvedText: PaneText,
+  segmentation?: SegmentationInput,
 ): ResolvedInputResult {
   return resolveEngineInput({
     target,
@@ -57,5 +59,6 @@ export function resolvePaneInput(
     text: resolvedText.text,
     language: resolvedText.language,
     reading: resolvedText.reading,
+    segmentation,
   });
 }

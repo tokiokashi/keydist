@@ -90,6 +90,10 @@ export function withReadingCorrection(corrections: ReadingCorrections, surface: 
   return { ...corrections, [surface]: reading };
 }
 
+/** 語の位置・表記が原文と合わない時の例外の文。`convertToReading` と、区切りを写す処理（`segmentation.ts`）が同じ文を使う。 */
+export const TOKEN_POSITION_MISMATCH = '語の位置が原文と合わない';
+export const TOKEN_SURFACE_MISMATCH = '語の表記が原文と合わない';
+
 export interface ReadingConversion {
   /** 読みに直したテキスト */
   readonly text: string;
@@ -97,6 +101,19 @@ export interface ReadingConversion {
   readonly replacedWords: number;
   /** 直しが当たった表記と読み。表記の順に並べる。テキストに現れなかった直しは含まない */
   readonly appliedCorrections: readonly ReadingCorrectionEntry[];
+}
+
+/**
+ * 語を置き換える読み。置き換えない語はundefined。`corrected` は利用者の直しを当てたか。
+ * `convertToReading` と、原文の位置を読みのテキストの位置へ写す処理（`segmentation.ts`）が同じ判定を使う。
+ */
+export function replacementFor(token: ReadingToken, corrections: ReadingCorrections): { readonly text: string; readonly corrected: boolean } | undefined {
+  const hasKanji = KANJI.test(token.surface);
+  if (hasKanji && Object.hasOwn(corrections, token.surface)) return { text: corrections[token.surface]!, corrected: true };
+  if (!token.isUnknown && token.reading !== null && hasKanji && KATAKANA_READING.test(token.reading)) {
+    return { text: katakanaToHiragana(token.reading), corrected: false };
+  }
+  return undefined;
 }
 
 /**
@@ -127,21 +144,18 @@ export function convertToReading(
   const applied = new Set<string>();
   for (const token of tokens) {
     if (token.byteStart < position || token.byteEnd < token.byteStart || token.byteEnd > bytes.length) {
-      throw new Error('語の位置が原文と合わない');
+      throw new Error(TOKEN_POSITION_MISMATCH);
     }
     out += decoder.decode(bytes.subarray(position, token.byteStart));
     const original = decoder.decode(bytes.subarray(token.byteStart, token.byteEnd));
-    if (original !== token.surface) throw new Error('語の表記が原文と合わない');
-    const hasKanji = KANJI.test(token.surface);
-    if (hasKanji && Object.hasOwn(corrections, token.surface)) {
-      out += corrections[token.surface];
-      applied.add(token.surface);
-      replacedWords++;
-    } else if (!token.isUnknown && token.reading !== null && hasKanji && KATAKANA_READING.test(token.reading)) {
-      out += katakanaToHiragana(token.reading);
-      replacedWords++;
-    } else {
+    if (original !== token.surface) throw new Error(TOKEN_SURFACE_MISMATCH);
+    const replacement = replacementFor(token, corrections);
+    if (replacement === undefined) {
       out += original;
+    } else {
+      out += replacement.text;
+      if (replacement.corrected) applied.add(token.surface);
+      replacedWords++;
     }
     position = token.byteEnd;
   }

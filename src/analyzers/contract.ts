@@ -7,6 +7,7 @@ import type { AggregatedAnalysisResult } from '#interpretation/structure/aggrega
 import type { KeyDetails } from '#interpretation/key-detail.ts';
 import type { Metrics } from '#interpretation/metrics.ts';
 import type { TextLanguage } from '#input/text/language.ts';
+import type { SegmentationAssets } from '#input/text/segmentation.ts';
 import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import type { OptionsDefinition, OptionsDisciplineCheck, OptionsDisciplineFixture, OptionsRegistry, OptionsValueMap } from './options.ts';
 
@@ -76,11 +77,14 @@ export interface ExtractionAssets {
   readonly personalSpeed: PlaybackCalibration | undefined;
   /** 評価に渡したテキストの言語。テキストを同じに保ったまま言語の指定だけが変わる場合があるので、Traceのキーとは別に持つ */
   readonly textLanguage: TextLanguage;
+  /** 文節の区切り（評価に渡すテキストの文字位置）。区切りを使うペインだけが器から受け取る。無ければ`undefined` */
+  readonly segmentation: SegmentationAssets | undefined;
 }
 
 export const DEFAULT_EXTRACTION_ASSETS: ExtractionAssets = {
   personalSpeed: undefined,
   textLanguage: 'ja',
+  segmentation: undefined,
 };
 
 /** 単一Setup対象の抽出に渡す値。 */
@@ -125,6 +129,8 @@ export interface AnalyzerSetMember {
    * 解決できたメンバーそれぞれに対して`createTraceRequesterFor`を呼ぶ）。
    */
   readonly requestTrace: TraceRequester;
+  /** このメンバーの入力が持つ、抽出が読む資産の値。engineが組み立てる時は必ず持ち、テストの材料は省略できる（省略は`DEFAULT_EXTRACTION_ASSETS`と同じ）。 */
+  readonly assets?: ExtractionAssets;
   /**
    * このメンバーに対する部分結果を、`key`で覚えて使い回す。覚えていれば`compute`を呼ばずにその値を返し、
    * 無ければ`compute`の値を覚えて返す。`key`はメンバーの中身（テキスト・配列・物理配列・Trace方針・解釈）と
@@ -262,6 +268,8 @@ export interface SetAnalyzerDefinition<Options = unknown, Extracted = unknown> {
   readonly defaultOptions: Options;
   decodeOptions(raw: unknown, diagnostics: CodecDiagnostic[]): Options;
   extractKeyOf(options: Options): unknown;
+  /** `SingleAnalyzerDefinition.assetsKeyOf` と同じ。メンバーごとに呼び、抽出のキーに畳み込む。資産を読まなければ常に`null`。 */
+  assetsKeyOf(options: Options, assets: ExtractionAssets): unknown;
   extract(context: SetAnalyzerExtractContext<Options>): Extracted;
   /** 抽出を小さい段に分けて先に求められるAnalyzerだけが持つ。 */
   readonly warmup?: SetAnalyzerWarmup;
@@ -317,6 +325,8 @@ export function defineSetAnalyzer<R extends OptionsRegistry, Extracted>(config: 
   readonly id: string;
   readonly options: OptionsDefinition<R>;
   readonly extract: (context: SetAnalyzerExtractContext<OptionsValueMap<R>>) => Extracted;
+  /** 抽出が資産を読むAnalyzerだけが渡す。省略すると資産はキーに入れない。 */
+  readonly assetsKeyOf?: (options: OptionsValueMap<R>, assets: ExtractionAssets) => unknown;
   /** 抽出を小さい段に分けて先に求められるAnalyzerだけが渡す。 */
   readonly warmup?: SetAnalyzerWarmup;
   readonly optionsDiscipline: SetOptionsDisciplineFixture<OptionsValueMap<R>>;
@@ -328,6 +338,7 @@ export function defineSetAnalyzer<R extends OptionsRegistry, Extracted>(config: 
     defaultOptions: config.options.defaultOptions,
     decodeOptions: config.options.decodeOptions,
     extractKeyOf: config.options.extractKeyOf,
+    assetsKeyOf: config.assetsKeyOf ?? (() => null),
     extract: config.extract,
     ...(config.warmup === undefined ? {} : { warmup: config.warmup }),
     optionsDiscipline: {

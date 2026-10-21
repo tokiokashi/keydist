@@ -3,7 +3,16 @@ import { bindOption, NumberOptionField, SelectOptionField } from '#ui/primitives
 import { SeriesMark } from '#ui/charts/series-mark.tsx';
 import { TARGET_DASH_ARRAY, targetMark, type TargetMark } from '#ui/theme/target-marks.ts';
 import type { AnalyzerSettingsProps, PlaybackJump, SetAnalyzerPaneParts, SetBodyProps } from '../pane-parts.tsx';
-import { CHART_HEIGHT, CHART_MARGIN, CHART_PLOT_HEIGHT, CHART_PLOT_RIGHT, CHART_WIDTH, viewXFromClient } from '../chart-frame.ts';
+import {
+  chartX,
+  CHART_HEIGHT,
+  CHART_MARGIN,
+  CHART_PLOT_HEIGHT,
+  CHART_PLOT_WIDTH,
+  CHART_PLOT_RIGHT,
+  CHART_WIDTH,
+  viewXFromClient,
+} from '../chart-frame.ts';
 import {
   adjacentRunChartTarget,
   nearestRunChartTarget,
@@ -14,12 +23,17 @@ import {
   type RunChartTarget,
 } from './chart-model.ts';
 import { runChartDefinition, type RunChartExtracted, type RunChartSeries, type RunChartSeriesFailed, type RunChartSeriesOk } from './extract.ts';
+import { SegmentTables, type SegmentTableRow } from './segment-table.tsx';
 import { axisTitle, formatMetricValue, RUN_CHART_METRIC_IDS, RUN_CHART_METRICS, type RunChartMetricId } from './metric-catalog.ts';
 import {
   DEFAULT_RUN_CHART_OPTIONS,
   DEFAULT_RUN_CHART_WINDOW,
+  RUN_CHART_SEED_LABEL,
+  RUN_CHART_SEED_MAX,
+  RUN_CHART_SEED_MIN,
   RUN_CHART_WINDOW_MAX,
   RUN_CHART_WINDOW_MIN,
+  RUN_CHART_SEGMENTATION_IDS,
   runChartOptions,
   type RunChartOptions,
 } from './options.ts';
@@ -44,6 +58,13 @@ export interface RunChartRowContext {
 
 export type RunChartBodyProps = SetBodyProps<RunChartExtracted, RunChartOptions, RunChartRowContext>;
 
+const SEGMENTATION_LABELS: Readonly<Record<RunChartOptions['segmentation'], string>> = {
+  none: '区切りなし',
+  bunsetsu: '文節',
+  fixed: '固定長',
+  random: 'ランダム（最初の種）',
+};
+
 /** 目安線を全系列に引く系列数の上限。これより多い時は、ポインタを合わせた系列だけに引く。 */
 const GUIDES_FOR_ALL_LIMIT = 3;
 
@@ -66,9 +87,14 @@ interface RunChartFigureProps {
   readonly windowChars: number;
   readonly model: RunChartModel;
   readonly jump: PlaybackJump | undefined;
+  /** 図に重ねる区切りの位置（評価に渡したテキストの文字位置）。 */
+  readonly boundaries: readonly number[];
 }
 
-function RunChartFigure({ rows, metric, windowChars, model, jump }: RunChartFigureProps) {
+/** 区切りの線を全高で引く本数の上限。これより多い時は、軸の上に短い目盛りだけを並べる（線が塗りつぶしにならないように）。 */
+const BOUNDARY_FULL_LINE_LIMIT = Math.floor(CHART_PLOT_WIDTH / 4);
+
+function RunChartFigure({ rows, metric, windowChars, model, jump, boundaries }: RunChartFigureProps) {
   const clipId = useId().replace(/:/g, '');
   const def = RUN_CHART_METRICS[metric];
   const [active, setActive] = useState<RunChartTarget | undefined>(undefined);
@@ -153,6 +179,25 @@ function RunChartFigure({ rows, metric, windowChars, model, jump }: RunChartFigu
             {tick.value}
           </text>
         ))}
+
+        {boundaries.length === 0 ? null : (
+          <g className="run-chart-boundaries" data-run-chart-boundaries={boundaries.length}>
+            {boundaries.map((boundary) => {
+              const x = chartX(boundary, model.total);
+              const full = boundaries.length <= BOUNDARY_FULL_LINE_LIMIT;
+              return (
+                <line
+                  key={boundary}
+                  className="run-chart-boundary"
+                  x1={x}
+                  x2={x}
+                  y1={full ? CHART_MARGIN.top : CHART_MARGIN.top + CHART_PLOT_HEIGHT - 6}
+                  y2={CHART_MARGIN.top + CHART_PLOT_HEIGHT}
+                />
+              );
+            })}
+          </g>
+        )}
 
         <g clipPath={`url(#${clipId})`}>
           {model.series.map((series, index) => {
@@ -240,7 +285,7 @@ function seriesFor(series: readonly RunChartSeries[], targetKey: string): RunCha
  * Run Chartの本体。対象が空の時はホストが選ぶボタンを出し、本体は呼ばれない。
  * メンバー単位の失敗は図の下に行で出す。
  */
-export function RunChartBody({ extracted, order, rowContext, playbackJump }: RunChartBodyProps) {
+export function RunChartBody({ extracted, order, rowContext, playbackJump, segmentation }: RunChartBodyProps) {
   const metric = extracted.metric;
   const found = order
     .map((targetKey) => ({ targetKey, entry: seriesFor(extracted.series, targetKey), context: rowContext.get(targetKey) }))
@@ -266,6 +311,13 @@ export function RunChartBody({ extracted, order, rowContext, playbackJump }: Run
   const withoutDestination =
     playbackJump === undefined || playbackJump.destination !== 'pane' ? [] : rows.filter((row) => !playbackJump.available(row.targetKey));
   const windowChanged = extracted.window !== DEFAULT_RUN_CHART_WINDOW;
+  const segmentationChosen = extracted.segmentation !== 'none';
+  // 区切りの位置は、先頭の対象のものを図に重ねる（対象が違っても、評価に渡すテキストは通常同じ）
+  const overlayReport = segmentationChosen ? rows.find((row) => row.data.segments?.report !== undefined)?.data.segments?.report : undefined;
+  const overlay = overlayReport === undefined || extracted.segmentation === 'none' ? [] : overlayReport.overlay[extracted.segmentation];
+  const segmentRows: SegmentTableRow[] = rows.flatMap((row) =>
+    row.data.segments === undefined ? [] : [{ targetKey: row.targetKey, label: row.label, fullName: row.fullName, segments: row.data.segments }],
+  );
 
   return (
     <section className="run-chart-feature" data-react-feature="run-chart">
@@ -275,13 +327,22 @@ export function RunChartBody({ extracted, order, rowContext, playbackJump }: Run
         </p>
       ) : null}
 
+      {segmentationChosen ? (
+        <p className="run-chart-notice" data-run-chart-segmentation-note="">
+          既定と違う設定で計算しています。{SEGMENTATION_LABELS[extracted.segmentation]}
+          の区切りを図に重ね、区切り方ごとの表を出しています（既定は区切りなし）。
+          {segmentation === 'unsupported' ? '文節の区切りは日本語のテキストでだけ使えるので、区切りなしで描いています。' : ''}
+          {segmentation === 'failed' ? '文節の分割器を読み込めなかったので、区切りなしで描いています。' : ''}
+        </p>
+      ) : null}
+
       {model === undefined ? (
         rows.length > 0 ? (
           <p className="run-chart-empty">打鍵するデータがありません。</p>
         ) : null
       ) : (
         <>
-          <RunChartFigure rows={rows} metric={metric} windowChars={extracted.window} model={model} jump={playbackJump} />
+          <RunChartFigure rows={rows} metric={metric} windowChars={extracted.window} model={model} jump={playbackJump} boundaries={overlay} />
           <ul className="run-chart-legend" aria-label="凡例">
             {rows.map((row) => (
               <li key={row.targetKey} data-run-chart-row="ok" title={row.fullName || row.label}>
@@ -309,6 +370,8 @@ export function RunChartBody({ extracted, order, rowContext, playbackJump }: Run
           </p>
         </>
       )}
+
+      <SegmentTables rows={segmentRows} />
 
       {withoutDestination.length > 0 ? (
         <p className="run-chart-notice" data-run-chart-no-playback="">
@@ -350,6 +413,22 @@ export function RunChartSettings({ options, onOptionsChange }: AnalyzerSettingsP
         unit="文字"
         hint="各点の値を、その点で終わる直近の何文字から求めるかです。大きいほど線がなめらかになり、短い範囲の変動が見えにくくなります。"
       />
+      <SelectOptionField
+        label="区切り"
+        binding={bindOption(options, DEFAULT_RUN_CHART_OPTIONS, onOptionsChange, 'segmentation')}
+        choices={RUN_CHART_SEGMENTATION_IDS.map((id) => ({ value: id, label: SEGMENTATION_LABELS[id] }))}
+        hint="図に重ねる区切りです。区切りなし以外を選ぶと、文節・固定長・ランダムの区切りで、区間ごとの指標と区切りの前後の指標を比べる表を出します。日本語のテキストでだけ使えます。"
+      />
+      <NumberOptionField
+        label={RUN_CHART_SEED_LABEL}
+        binding={bindOption(options, DEFAULT_RUN_CHART_OPTIONS, onOptionsChange, 'seedStart')}
+        min={RUN_CHART_SEED_MIN}
+        max={RUN_CHART_SEED_MAX}
+        step={1}
+        integer
+        unit=""
+        hint="ランダムの区切りに使う種は、この値から続く20個です。同じテキストと同じ値からは、同じ区切りが出ます。"
+      />
     </div>
   );
 }
@@ -368,4 +447,6 @@ export const runChartAnalyzer = {
   },
   // 押した点の位置から、同じ対象の打鍵再生へ移る
   jumpsToPlayback: true,
+  // 区切りを選んだ時だけ、ホストが文節の分割器を読み込む
+  usesSegmentation: (options) => options.segmentation !== 'none',
 } satisfies SetAnalyzerPaneParts<RunChartOptions, RunChartExtracted, RunChartRowContext>;

@@ -1,6 +1,6 @@
 import { stableStringify } from './cache-key.ts';
 import { MODEL_VERSION } from './model-version.ts';
-import type { SingleAnalyzerDefinition, TraceRequestInput } from '#analyzers/contract.ts';
+import type { SetAnalyzerDefinition, SingleAnalyzerDefinition, TraceRequestInput } from '#analyzers/contract.ts';
 import type { AnalysisTarget } from '#input/setup/index.ts';
 import type { EngineSetMemberInput } from './request.ts';
 import type { ResolvedInput } from './resolved-input.ts';
@@ -120,7 +120,7 @@ export function analyzerExtractionKeyOf(
  * どの枠か」を区別する必要がある）。
  */
 export function setAnalyzerExtractionKeyOf(
-  members: readonly { readonly target: AnalysisTarget; readonly memberKey: unknown }[],
+  members: readonly { readonly target: AnalysisTarget; readonly memberKey: unknown; readonly assetsKey?: unknown }[],
   definitionId: string,
   extractionRelevantOptions: unknown,
 ): string {
@@ -176,10 +176,25 @@ export function setMemberKeyOf(member: EngineSetMemberInput): unknown {
 }
 
 /** 集合対象の抽出キーを、メンバー（表示順）から一気に作る。`singleExtractionKeyOf`と同じ理由で共通の入口にする。 */
-export function setExtractionKeyOf(members: readonly EngineSetMemberInput[], definitionId: string, extractionRelevantOptions: unknown): string {
+export function setExtractionKeyOf<Options>(
+  members: readonly EngineSetMemberInput[],
+  definition: Pick<SetAnalyzerDefinition<Options>, 'id' | 'extractKeyOf' | 'assetsKeyOf'>,
+  options: Options,
+): string {
   return setAnalyzerExtractionKeyOf(
-    members.map((member) => ({ target: member.target, memberKey: setMemberKeyOf(member) })),
-    definitionId,
-    extractionRelevantOptions,
+    members.map((member) => setKeyMemberOf(member, definition, options)),
+    definition.id,
+    definition.extractKeyOf(options),
   );
+}
+
+/** 集合のメンバー1枠の、抽出のキーの要素。資産の値が`null`の枠は`assetsKey`を持たない（資産を読まない抽出のキーを変えない）。 */
+export function setKeyMemberOf<Options>(
+  member: EngineSetMemberInput,
+  definition: Pick<SetAnalyzerDefinition<Options>, 'assetsKeyOf'>,
+  options: Options,
+): { readonly target: AnalysisTarget; readonly memberKey: unknown; readonly assetsKey?: unknown } {
+  const memberKey = setMemberKeyOf(member);
+  const assetsKey = member.resolution.ok ? definition.assetsKeyOf(options, member.resolution.input.extractionAssets) : null;
+  return assetsKey === null ? { target: member.target, memberKey } : { target: member.target, memberKey, assetsKey };
 }

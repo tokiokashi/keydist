@@ -284,6 +284,12 @@ Workspaceで並べたペインは、同じキー（Analyzerと見る量。例: `
 - **描画の寸法と座標は打鍵再生の速度グラフと同じ**（`analyzers/chart-frame.ts`。余白・点の丸の上限・押した位置の変換）。速度（時間）と距離は同じ図に混ぜない。指標の名前と単位は、N感度と同じ指標では同じ文字（`analyzers/metric-labels.ts`）
 - **既定と違う集計窓**は、ペインの中で、解析設定の小窓を開かなくても分かるように知らせる。目安線は統計的な保証ではなく、外れている箇所を探す目安で、画面にもそう書く
 - **押した点から打鍵再生へ移る**仕組みは、打鍵再生の節の「文字位置へ移る操作」
+- **区切りを重ねる**（定義は `docs/segment-metrics.md`）。区切り方（なし・文節・固定長・ランダム）とランダムの種の始まりの値は、今Run Chartだけが読むので解析設定に置く（`affects: 'extract'`。既定は区切りなし）。区切りなし以外の時は、ペインの中で、解析設定の小窓を開かなくても分かるように知らせる。区間の集計と区切りの作成は `interpretation/segments.ts`（乱数生成器は共有の `interpretation/prng.ts`）
+  - **文節の区切りの経路**: 分割器（BudouX）は `platform/bunsetsu/` に置き、`app` が `BunsetsuSource`（`hosts/shared/segmentation.ts`）として器へ注入する。解析設定が区切りを求める（`SetAnalyzerPaneParts.usesSegmentation`）間だけ、ペインが分割器を呼ぶ。分割器のモジュールは、区切りを使う設定のペインが現れるまで読み込まない（事前描画の modulepreload に載せない）
+  - 分割器は、読みに直す前の原文に当てる。ペインが受け取る `resolvedText` は読みに直した後のテキストなので、器は漢字を読みに直した時に語の列と原文を `PaneText.segmentationBasis` に添える。漢字を含まないテキストと辞書を読み込めなかったテキストは、語の列が無い材料をペインが作る（`segmentationBasisOf`）。原文の区切りを、語の境目へ寄せて読みのテキストの位置へ写す処理は `input/text/segmentation.ts`
+  - 読みのテキストの区切りは `resolveEngineInput` の `segmentation` で渡す。記号の取り除き（`keepSymbols`）は対象ごとに違うので、評価に渡すテキストの位置への写し直しは解決の中で対象ごとに行い、`ExtractionAssets.segmentation` として計算部へ渡す。計算部は評価に渡すテキストの文字位置の列だけを受け取る
+  - **抽出のキー**: Setの抽出も `assetsKeyOf` を持てる。Run Chartは区切りを使う設定の時だけ、メンバーごとの区切りの列と分割器の名前・版・出どころをキーに入れる。区切りなしの設定では、資産が変わっても抽出を作り直さない
+  - 読み込み中は依頼を出さない。分割器を読み込めなかった時と、日本語以外のテキストの時は、区切りなしで計算して、ペインの中でその旨を知らせる
 
 ### 条件の要約
 
@@ -408,7 +414,7 @@ src/
     setup/           Setup
     presets/         プリセット（条件の1レベル分に付けた名前）
   trace/             Trace生成
-  interpretation/    構造（chain・arpeggio…）、時間モデル、複数のAnalyzerが使う指標
+  interpretation/    構造（chain・arpeggio…）、時間モデル、複数のAnalyzerが使う指標、区間の集計と区切り（`span-metrics.ts`・`segments.ts`）、名前のある乱数生成器（`prng.ts`）
   analyzers/
     contract.ts      Analyzerの契約のうち純粋な部分（抽出・解析設定・Traceを依頼する窓口の型）
     pane-parts.tsx   ペインに渡すものの型（名前・短い説明・本体・解析設定・差し込む項目・既定値）。Reactの型を使うので.tsx
@@ -429,7 +435,7 @@ src/
     theme/           token
     keyboard/        キーボード図など、入力の型を知る部品
     charts/          グラフの部品（系列の点の見本など）
-  platform/          storage・ブラウザAPI。`reading/` は漢字の読みの解析（Worker・wasm・辞書の取得と保存）
+  platform/          storage・ブラウザAPI。`reading/` は漢字の読みの解析（Worker・wasm・辞書の取得と保存）、`bunsetsu/` は文節の分割器（BudouX）
   app/               組み立て・シェル・AppState
   routes/            TanStack Startの規約どおり。createFileRouteだけの薄いファイル
   router.tsx
