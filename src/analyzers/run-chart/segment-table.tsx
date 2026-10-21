@@ -19,9 +19,10 @@ export interface SegmentTableRow {
 }
 
 const ORIGIN_TEXT: Readonly<Record<SegmentationOrigin, string>> = {
-  dictionary: '漢字を辞書で読みに直したテキストに、文節の区切りを語の境目へ寄せて写した',
-  'kana-only': '原文が漢字を含まないテキスト（前処理の対応だけで写した。かなだけの文では分割器の精度が落ちる見込みで、精度は測っていない）',
-  'dictionary-unavailable': '辞書を読み込めず、漢字を読みに直さないテキスト（前処理の対応だけで写した）',
+  dictionary: '区切りの出どころは、漢字を辞書で読みに直した語の境目へ寄せて写した文節の区切りです。',
+  'kana-only':
+    '原文が漢字を含まないので、前処理の対応だけで区切りを写しています。かなだけの文では分割器の精度が落ちる見込みですが、精度は測っていません。',
+  'dictionary-unavailable': '辞書を読み込めず漢字を読みに直していないので、前処理の対応だけで区切りを写しています。',
 };
 
 function cell(metric: SpanMetricId, value: number | undefined): string {
@@ -101,9 +102,9 @@ function SegmentTableFor({ row }: { readonly row: SegmentTableRow }) {
       ) : (
         <>
           <p className="run-chart-segment-condition" data-run-chart-segment-condition="">
-            区切り: {segments.splitter.name} {segments.splitter.version}（日本語のモデル）で{ORIGIN_TEXT[segments.origin]}。固定長は
-            {report.fixedLength}文字、ランダムは乱数生成器{segments.rng}、種{segments.seedStart}〜{segments.seedStart + segments.seedCount - 1}の
-            {segments.seedCount}個（文節の区間の長さの並べ替え）。
+            分割器は{segments.splitter.name} {segments.splitter.version}（日本語のモデル）です。{ORIGIN_TEXT[segments.origin]}固定長の長さは
+            {report.fixedLength}文字です。ランダムの乱数生成器は{segments.rng}で、種は{segments.seedStart}〜{segments.seedStart + segments.seedCount - 1}
+            の{segments.seedCount}個です（文節の区間の長さを並べ替えます）。
           </p>
           <div className="run-chart-segment-scroll">
             <table className="run-chart-segment-table" data-run-chart-segment-table="">
