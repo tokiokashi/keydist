@@ -49,13 +49,26 @@ test.describe('個別画面', () => {
     await expect(feature(page).locator('[data-run-chart-series]')).toHaveCount(2, { timeout: 15_000 });
   });
 
-  test('2つの配列を同じ図に重ね、配列ごとに中心線と目安線を引く。目安線は保証でなく目安だと書く', async ({ page }) => {
+  test('2つの配列を同じ図に重ね、配列ごとに中心線と目安線を引き、図の線が何かを本文に書く', async ({ page }) => {
     await expect(feature(page).locator('[data-run-chart-line]')).toHaveCount(2);
     await expect(feature(page).locator('[data-run-chart-center]')).toHaveCount(2);
     await expect(feature(page).locator('[data-run-chart-guide="upper"]')).toHaveCount(2);
     await expect(feature(page).locator('[data-run-chart-guide="lower"]')).toHaveCount(2);
-    await expect(feature(page).locator('[data-run-chart-guide-note]')).toContainText('統計的な保証ではなく、外れている箇所を探す目安です');
+    await expect(feature(page).locator('[data-run-chart-guide-note]')).toContainText('細い線は目安線です');
+    // 目安線の幅の求め方と、目安が統計的な保証でないことは、ⓘの説明に出す
+    await expect(feature(page).locator('[data-run-chart-guide-note]')).not.toContainText('統計的な保証');
     await expect(feature(page).locator('[data-run-chart-window-note]')).toHaveCount(0);
+  });
+
+  test('ⓘの説明に、目安線の求め方・ランダムの作り方・順位の読み方を出し、優劣の注記は出さない', async ({ page }) => {
+    await page.getByRole('button', { name: 'Run Chartの説明' }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toContainText('統計的な保証ではなく、外れている箇所を探す目安です');
+    await expect(dialog).toContainText('文節の区間の長さを並べ替えて作ります');
+    await expect(dialog).toContainText('2/21の確率で端');
+    await expect(dialog).toContainText('統計的に有意かどうかを示すものではありません');
+    await expect(dialog).not.toContainText('優劣');
+    await page.keyboard.press('Escape');
   });
 
   test('指標を切り替えると縦軸の見出しが替わり、窓幅を既定から変えるとペインの中に知らせる', async ({ page }) => {
@@ -87,10 +100,14 @@ test.describe('個別画面', () => {
     // 配列ごとに表のブロックを分ける
     await expect(feature(page).locator('[data-run-chart-segment-block]')).toHaveCount(2);
     await expect(feature(page).locator('[data-run-chart-segment-condition]').first()).toContainText('BudouX 0.10.0');
-    await expect(feature(page).locator('[data-run-chart-segment-condition]').first()).toContainText('mulberry32');
+    // 乱数生成器と種の範囲は、対象が2つでも表の上に1回だけ出す
+    await expect(feature(page).locator('[data-run-chart-segment-seed-range]')).toHaveCount(1);
+    await expect(feature(page).locator('[data-run-chart-segment-seed-range]')).toContainText('mulberry32');
+    await expect(feature(page).locator('[data-run-chart-segment-condition]').first()).not.toContainText('mulberry32');
     await expect(feature(page).locator('[data-run-chart-segment-rank]').first()).toContainText('21個のうち小さい方から');
-    await expect(feature(page).locator('[data-run-chart-segment-note]')).toContainText('2/21');
-    await expect(feature(page).locator('[data-run-chart-segment-note]')).not.toContainText('有意である');
+    // 順位の注は本文に出さず、ⓘの説明に出す
+    await expect(feature(page)).not.toContainText('有意');
+    await expect(feature(page)).not.toContainText('優劣');
     expect(budouxRequests.length).toBeGreaterThan(0);
 
     // 区切り方を替えると、重ねる位置が替わる

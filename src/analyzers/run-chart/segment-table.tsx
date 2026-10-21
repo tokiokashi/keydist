@@ -95,9 +95,7 @@ function SegmentTableFor({ row }: { readonly row: SegmentTableRow }) {
       ) : (
         <>
           <p className="run-chart-segment-condition" data-run-chart-segment-condition="">
-            {segmentationSourceSentence(segments.splitter, segments.origin)}固定長の長さは
-            {report.fixedLength}文字です。ランダムの乱数生成器は{segments.rng}で、種は{segments.seedStart}〜{segments.seedStart + segments.seedCount - 1}
-            の{segments.seedCount}個です（文節の区間の長さを並べ替えます）。
+            {segmentationSourceSentence(segments.splitter, segments.origin)}固定長の長さは{report.fixedLength}文字です。
           </p>
           <div className="run-chart-segment-scroll">
             <table className="run-chart-segment-table" data-run-chart-segment-table="">
@@ -166,18 +164,19 @@ function SegmentTableFor({ row }: { readonly row: SegmentTableRow }) {
 /** 区切りを選んだ時に図の下へ出す、区切り方ごとの表。配列ごとにブロックを分ける。 */
 export function SegmentTables({ rows }: { readonly rows: readonly SegmentTableRow[] }) {
   if (rows.length === 0) return null;
+  // 乱数生成器と種の範囲は対象によらず同じなので、表を出した対象のうち最初のものから1回だけ出す
+  const seeded = rows.find((row) => row.segments.report !== undefined)?.segments;
   return (
     <section className="run-chart-segments" data-run-chart-segments="" aria-label="区切り方ごとの指標">
       <h3 className="run-chart-segments-title">区切り方ごとの指標</h3>
+      {seeded === undefined ? null : (
+        <p className="run-chart-segment-condition" data-run-chart-segment-seed-range="">
+          ランダムの乱数生成器は{seeded.rng}で、種は{seeded.seedStart}〜{seeded.seedStart + seeded.seedCount - 1}の{seeded.seedCount}個です。
+        </p>
+      )}
       {rows.map((row) => (
         <SegmentTableFor key={row.targetKey} row={row} />
       ))}
-      <p className="run-chart-guide-note" data-run-chart-segment-note="">
-        順位は、特徴が無い時でも、量ごとに {2}/{SEGMENT_SEED_COUNT + 1} の確率で端（1番目か{SEGMENT_SEED_COUNT + 1}
-        番目）に来ます。同じ値がある時は幅で示し、
-        端に数えるのは、ランダムのどの値よりも厳密に小さいか大きい時だけです。統計的に有意かどうかを示すものではありません。
-        配列の優劣の判定や順位付けには使えません。
-      </p>
     </section>
   );
 }
