@@ -15,27 +15,12 @@ import { buildSpanIndex, type SpanIndex } from './span-metrics.ts';
 export const BUNSETSU_STATS_TOP_COUNT = 20;
 
 /**
- * 打鍵できなかった文字の位置。どのステップの `kanaStart` から `kanaEnd` にも入らない文字を `1` にした、長さ `inputChars` の列。
- * `Trace` は打鍵できなかった文字を件数でしか持たないので、ステップが覆う範囲から求める。
- * ローマ字で複数の文字を1入力で打つと、打鍵できた文字でもその文字に帰属するステップが0になるので、ステップの帰属数では判定しない。
+ * 打鍵できなかった文字の位置。`Trace.skippedPositions`（Trace生成が `skipped` を数えた時に記録した、評価に渡すテキストの文字位置）を、
+ * 長さ `inputChars` の `1` と `0` の列にする。ローマ字配列では、一部の英字だけ打てたかなも入るので、数は `Trace.skipped` と一致するとは限らない。
  */
 export function skippedPositionsOf(trace: Trace): Uint8Array {
-  const total = trace.inputChars;
-  const skipped = new Uint8Array(total);
-  if (total === 0) return skipped;
-  const covered = new Int32Array(total + 1);
-  for (const stroke of trace.strokes) {
-    const from = Math.min(Math.max(0, stroke.kanaStart), total - 1);
-    const to = Math.min(Math.max(0, stroke.kanaEnd), total - 1);
-    if (to < from) continue;
-    covered[from] = covered[from]! + 1;
-    covered[to + 1] = covered[to + 1]! - 1;
-  }
-  let running = 0;
-  for (let position = 0; position < total; position++) {
-    running += covered[position]!;
-    skipped[position] = running === 0 ? 1 : 0;
-  }
+  const skipped = new Uint8Array(trace.inputChars);
+  for (const position of trace.skippedPositions) skipped[position] = 1;
   return skipped;
 }
 
@@ -224,7 +209,7 @@ export interface DistanceParts {
   readonly first: number;
   readonly boundary: number;
   readonly interior: number;
-  /** 打鍵できなかった文字。ステップが帰属しないので0 */
+  /** 打鍵できなかった文字。ステップが帰属しなければ0。ローマ字で一部だけ打てたかなには、打てた部分の距離が入る */
   readonly skipped: number;
   /** 全文の距離。4つの和に一致する */
   readonly total: number;

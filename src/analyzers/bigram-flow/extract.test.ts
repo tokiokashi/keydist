@@ -98,6 +98,7 @@ function fixtureTrace(): Trace {
     strokes,
     errors: [],
     skipped: 0,
+    skippedPositions: [],
     skippedByKind: { kanji: 0, symbol: 0, other: 0 },
     inputChars: strokes.length,
     comboHits: [],

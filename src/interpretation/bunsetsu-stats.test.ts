@@ -4,9 +4,10 @@ import { generateEngineTrace } from '#engine/pipeline.ts';
 import { resolveEngineInput } from '#engine/resolved-input.ts';
 import { EMPTY_SETTINGS_OVERRIDES } from '#engine/settings-items.ts';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
-import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
+import { buildGeometry, PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
+
 import { SAMPLE_TEXT_JA_NEKO } from '#input/text/sample-ja-neko.ts';
-import type { Trace } from '#trace/generate.ts';
+import { generateTrace, type Trace } from '#trace/generate.ts';
 import { analyzeBunsetsuText, buildBunsetsuTraceBasis, bunsetsuLayoutStats, skippedPositionsOf } from './bunsetsu-stats.ts';
 import { boundaryInterior } from './boundary-context.ts';
 import { segmentStats } from './segments.ts';
@@ -31,6 +32,7 @@ function stroke(kanaStart: number, kanaEnd: number, distance: number): Trace['st
 const TRACE = {
   strokes: [stroke(0, 0, 1), stroke(1, 1, 2), stroke(2, 2, 3), stroke(3, 3, 4), stroke(4, 4, 5), stroke(6, 6, 7), stroke(8, 8, 9), stroke(9, 10, 20)],
   skipped: 2,
+  skippedPositions: [5, 7],
   inputChars: 11,
 } as unknown as Trace;
 
@@ -56,7 +58,7 @@ test('区切りが無いテキストと空のテキストでは、割合を出�
   assert.equal(empty.boundaryCharShare, undefined);
 });
 
-test('どのステップにも覆われない文字が、打鍵できなかった文字になる', () => {
+test('Traceが記録した打鍵できなかった文字の位置が、打鍵できなかった文字になる', () => {
   assert.deepEqual([...skippedPositionsOf(TRACE)], [0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0]);
 });
 
@@ -199,7 +201,14 @@ function traceFor(layoutId: string, text: string): Trace | undefined {
 /** 改行・漢字・記号・英字・配列に無いかなを含む、既定の日本語サンプル以外の1本。 */
 const MIXED_TEXT = 'いろは、にほへと。\nちりぬるを（わかよ）たれそ\n\nABC 123つねならむ漢字ゔぁ〜\n';
 
-test('打鍵できなかった文字の位置の数が、組み込みの全配列でTraceのskippedと一致する（既定の日本語サンプルと、改行などを含む1本）', () => {
+/** どのステップの `kanaStart` から `kanaEnd` にも入らない文字の位置。 */
+function uncoveredPositions(trace: Trace): number[] {
+  const covered = new Set<number>();
+  for (const stroke of trace.strokes) for (let position = stroke.kanaStart; position <= stroke.kanaEnd; position++) covered.add(position);
+  return Array.from({ length: trace.inputChars }, (_, position) => position).filter((position) => !covered.has(position));
+}
+
+test('組み込みの全配列で、打鍵できなかった文字の位置は、覆いから求めた補集合を含み、かな配列では数が skipped と一致する', () => {
   let resolved = 0;
   let withSkipped = 0;
   for (const layoutId of LAYOUT_BY_ID.keys()) {
@@ -207,15 +216,30 @@ test('打鍵できなかった文字の位置の数が、組み込みの全配�
       const trace = traceFor(layoutId, text);
       if (trace === undefined) continue;
       resolved++;
-      const skipped = skippedPositionsOf(trace);
-      const count = skipped.reduce((sum, value) => sum + value, 0);
-      assert.equal(count, trace.skipped, `${layoutId}: 位置から数えた打鍵できなかった文字${count}が、Traceの${trace.skipped}と違う`);
-      assert.equal(skipped.length, trace.inputChars);
+      const positions = new Set(trace.skippedPositions);
+      assert.equal(positions.size, trace.skippedPositions.length, `${layoutId}: 位置が重複している`);
+      for (const position of uncoveredPositions(trace)) assert.ok(positions.has(position), `${layoutId}: 覆われない位置${position}が入っていない`);
+      assert.ok(trace.skippedPositions.every((position) => position >= 0 && position < trace.inputChars));
+      if (LAYOUT_BY_ID.get(layoutId)!.romajiTable === undefined) assert.equal(positions.size, trace.skipped, layoutId);
       if (trace.skipped > 0) withSkipped++;
     }
   }
   assert.ok(resolved >= 30, `解決できた組が少ない: ${resolved}`);
   assert.ok(withSkipped > 0, '打鍵できなかった文字が出る組が無く、検査になっていない');
+});
+
+test('ローマ字の綴りの一部の英字だけが打てない時は、そのかなの文字を全部、打鍵できなかった文字に数える', () => {
+  const base = LAYOUT_BY_ID.get('qwerty')!;
+  // 英字 y の入力だけ配列から外す。きょ（kyo）は k と o が打てても、綴りの一部が欠けるので打てなかったものとして数える
+  const layout = { ...base, canonicalInputs: new Map([...base.canonicalInputs].filter(([output]) => output !== 'y')) };
+  const trace = generateTrace('きょうはやまにいく', layout, buildGeometry('row-staggered'), { windowSize: 3, sfbHomeCost: true });
+  assert.equal(trace.skipped, 2);
+  assert.ok(trace.skippedPositions.includes(0), 'き');
+  assert.ok(trace.skippedPositions.includes(1), 'ょ');
+  // や（ya）も y を含む
+  assert.ok(trace.skippedPositions.includes(4), 'や');
+  // 覆いから求めると、一部が打てたかなは打鍵できた文字に見える。記録した位置はその分を含む
+  assert.ok(uncoveredPositions(trace).length < trace.skippedPositions.length);
 });
 
 test('打鍵できなかった文字には距離が帰属しない', () => {

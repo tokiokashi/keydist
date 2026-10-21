@@ -147,6 +147,12 @@ export interface Trace {
   /** 配列に無く打鍵できなかった文字数 */
   skipped: number;
   /**
+   * 打鍵できなかった文字の位置（評価に渡すテキストの文字位置。昇順で重複しない）。`skipped` を数えた単位が属する文字を入れる。
+   * かな配列では `skipped` と同じ数になる。ローマ字配列では、展開後の英字を数えた時に、その英字を含む綴りの単位のかなを全部入れる。
+   * 一部の英字だけ打てたかなも入るので、数は `skipped`（展開後の英字の数）と一致するとは限らない。
+   */
+  skippedPositions: number[];
+  /**
    * `skipped` の内訳。合計は `skipped` と一致する。読みに直せなかった漢字・記号・それ以外の文字に分ける。
    * 漢字は言語や読みの変換の成否によらず、文字が漢字なら漢字に数える。
    */
@@ -229,6 +235,7 @@ export function generateTrace(
     layerDefinitions.push({ id: COMBO_LAYER_ID, kind: 'combo', label: 'コンボ' });
   }
   let skipped = 0;
+  const skippedPositions = new Set<number>();
   const skippedByKind: SkippedByKind = { kanji: 0, symbol: 0, other: 0 };
   let index = 0;
   let inputOrdinal = 0;
@@ -283,6 +290,12 @@ export function generateTrace(
 
     if (!alternatives) {
       skipped++;
+      if (chunks) {
+        const range = chunkRanges[coveringChunkRange(chunkRanges, cursor, cursor + 1).from];
+        if (range !== undefined) for (let offset = 0; offset < range.kanaLength; offset++) skippedPositions.add(range.kanaStart + offset);
+      } else {
+        skippedPositions.add(cursor);
+      }
       skippedByKind[skippedKindOf(char)]++;
       cursor++;
       continue;
@@ -499,6 +512,7 @@ export function generateTrace(
   return {
     strokes,
     skipped,
+    skippedPositions: [...skippedPositions].sort((a, b) => a - b),
     skippedByKind,
     inputChars: [...text].length,
     comboHits,

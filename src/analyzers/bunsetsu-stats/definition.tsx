@@ -198,7 +198,7 @@ function LayoutTable({ rows }: { readonly rows: readonly DisplayRow[] }) {
   );
 }
 
-/** 一覧の列に出す対象。値を出せる行（区切りがあり、テキストが基準と同じ）かどうかを持つ。 */
+/** 値を出せる行（解決できて、区切りが渡された行）を取り出す。 */
 function okRowOf(row: DisplayRow): BunsetsuStatsOkRow | undefined {
   return row.row?.kind === 'ok' ? row.row : undefined;
 }
