@@ -19,7 +19,7 @@ import {
   type PlaybackRateAverage,
 } from '#interpretation/timing/playback.ts';
 import { PUNCTUATION_WAIT_MS_MAX, PUNCTUATION_WAIT_MS_MIN } from '#interpretation/timing/punctuation-wait.ts';
-import { booleanUrlCodec, defineOption, defineOptions, numberUrlCodec, picklistUrlCodec, type OptionUrlCodec } from '#analyzers/options.ts';
+import { booleanUrlCodec, defineOption, defineOptions, integerUrlCodec, numberUrlCodec, picklistUrlCodec } from '#analyzers/options.ts';
 
 /**
  * 打鍵再生Analyzerの解析設定。
@@ -68,20 +68,6 @@ export const PLAYBACK_TRAIL_STEPS_MAX = 20;
 export const DEFAULT_PLAYBACK_TRAIL_STEPS = 5;
 export const PLAYBACK_SCALE_MIN = 0.5;
 export const PLAYBACK_SCALE_MAX = 3;
-
-/** 整数の数値範囲のURL codec。小数は範囲内でも捨てる（解析設定のschemaと同じ規則）。 */
-function integerUrlCodec(name: string, min: number, max: number): OptionUrlCodec<number> {
-  const base = numberUrlCodec(name, min, max);
-  return {
-    ...base,
-    decode: (raw, path, diagnostics) => {
-      const value = base.decode(raw, path, diagnostics);
-      if (value === undefined || Number.isInteger(value)) return value;
-      diagnostics.push({ path, message: `URLパラメータの値「${raw}」は整数でないため捨てました` });
-      return undefined;
-    },
-  };
-}
 
 export const playbackOptions = defineOptions({
   stepsPerSecond: defineOption<number>({

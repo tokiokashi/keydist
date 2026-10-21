@@ -1,4 +1,15 @@
 import type { PlaybackRateChartPoint } from '#interpretation/timing/playback.ts';
+import {
+  CHART_DOT_LIMIT,
+  CHART_HEIGHT,
+  CHART_MARGIN,
+  CHART_PLOT_HEIGHT,
+  CHART_WIDTH,
+  chartAxisInsets,
+  chartPositionAt,
+  chartX,
+  formatCoordinate,
+} from '../chart-frame.ts';
 import { scaleRangeWithZero, type ScaleRange } from '../shared-scale.ts';
 
 /**
@@ -6,12 +17,12 @@ import { scaleRangeWithZero, type ScaleRange } from '../shared-scale.ts';
  * 描画（`rate-chart.tsx`）はこの結果を並べるだけにする。
  */
 
-export const RATE_CHART_WIDTH = 760;
-export const RATE_CHART_HEIGHT = 260;
-export const RATE_CHART_MARGIN = { top: 30, right: 18, bottom: 30, left: 54 } as const;
+export const RATE_CHART_WIDTH = CHART_WIDTH;
+export const RATE_CHART_HEIGHT = CHART_HEIGHT;
+export const RATE_CHART_MARGIN = CHART_MARGIN;
 
 /** 点ごとの丸を描く上限。これを超える長い列では線だけにする（点が重なって線と見分けがつかない） */
-export const RATE_CHART_DOT_LIMIT = 200;
+export const RATE_CHART_DOT_LIMIT = CHART_DOT_LIMIT;
 
 export interface RateChartBand {
   readonly kind: 'chain' | 'arpeggio';
@@ -48,32 +59,19 @@ export interface RateChartDisplay {
   readonly arpeggio: boolean;
 }
 
-const PLOT_WIDTH = RATE_CHART_WIDTH - RATE_CHART_MARGIN.left - RATE_CHART_MARGIN.right;
-const PLOT_HEIGHT = RATE_CHART_HEIGHT - RATE_CHART_MARGIN.top - RATE_CHART_MARGIN.bottom;
+const PLOT_HEIGHT = CHART_PLOT_HEIGHT;
 
 /**
  * グラフの幅に対する、横軸（再生位置0から最後まで）の左端と右端の余白の割合（百分率）。
  * シークバーのつまみの動く範囲をこの横軸に合わせるのに使う。
  */
-export function rateChartAxisInsets(): { readonly left: string; readonly right: string } {
-  return {
-    left: `${(RATE_CHART_MARGIN.left / RATE_CHART_WIDTH) * 100}%`,
-    right: `${(RATE_CHART_MARGIN.right / RATE_CHART_WIDTH) * 100}%`,
-  };
-}
+export const rateChartAxisInsets = chartAxisInsets;
 
-export function rateChartX(position: number, total: number): number {
-  return RATE_CHART_MARGIN.left + (position / total) * PLOT_WIDTH;
-}
+export const rateChartX = chartX;
 
 /** グラフ内のx座標（viewBoxの座標）から、いちばん近い再生位置を求める。 */
 export function rateChartPositionAt(viewX: number, total: number): number {
-  const position = Math.round(((viewX - RATE_CHART_MARGIN.left) / PLOT_WIDTH) * total);
-  return Math.max(0, Math.min(total, position));
-}
-
-function formatCoordinate(value: number): string {
-  return String(Math.round(value * 100) / 100);
+  return Math.round(chartPositionAt(viewX, total));
 }
 
 /**

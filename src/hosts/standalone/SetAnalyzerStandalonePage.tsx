@@ -2,7 +2,7 @@ import { useMemo, useRef } from 'react';
 import type { Command } from '#input/commands/index.ts';
 import { setMultiBaselineCommand, setMultiTargetsCommand, setReadingCorrectionCommand, type KeydistAssets } from '#engine/commands.ts';
 import type { EngineComputer } from '#engine/computer.ts';
-import { layoutIdsOfTargets } from '#input/setup/index.ts';
+import { analysisTargetKey, layoutIdsOfTargets } from '#input/setup/index.ts';
 import type { PresetIdGenerator } from '#input/presets/index.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
@@ -25,7 +25,7 @@ import { STANDALONE_WRITE_LOG_KEY } from '#hosts/shared/options-write-log.ts';
 import { effectiveMultiBaseline } from '#engine/multi-target-selection.ts';
 import { AddToWorkspaceMenu, type AddToWorkspaceDestination } from '#hosts/shared/AddToWorkspaceMenu.tsx';
 import { urlOptionsNotices, useSharedLink, useTargetShareSource } from './use-shared-link.ts';
-import { describeShareEncodeNotice, encodeMultiTargetsToUrl, hasSharedTargetParams } from './target-share.ts';
+import { describeShareEncodeNotice, encodeMultiTargetsToUrl, encodePlaybackOpenParams, hasSharedTargetParams } from './target-share.ts';
 import './standalone.css';
 
 /**
@@ -64,6 +64,11 @@ export interface SetAnalyzerStandalonePageProps<Options, Extracted, RowContext> 
    * 書き込みと通知は組み立て側（`app`）が持つ。
    */
   readonly onAddToWorkspace: (destination: AddToWorkspaceDestination, options: unknown) => void;
+  /**
+   * 図で押した点から、その対象の打鍵再生の画面を開く。対象と最初の文字位置をURLのパラメータで渡す。
+   * 画面の移動はrouterを使える`app`が持つ。渡さない時は、図から打鍵再生へ移る操作を出さない。
+   */
+  readonly onOpenPlayback?: (params: URLSearchParams) => void;
 }
 
 /** 個別画面のペインの枠まわり。ペインのAnalyzer名がページのh1で、見出しを文脈バーの下に固定する。 */
@@ -83,6 +88,7 @@ export function SetAnalyzerStandalonePage<Options, Extracted, RowContext>({
   history,
   generatePresetId,
   onAddToWorkspace,
+  onOpenPlayback,
 }: SetAnalyzerStandalonePageProps<Options, Extracted, RowContext>) {
   const analyzerId = analyzer.definition.id;
   const resolvedText = useStableResolvedText(
@@ -112,6 +118,15 @@ export function SetAnalyzerStandalonePage<Options, Extracted, RowContext>({
   });
 
   const undo = useLatestCallback(history.undo);
+  const selectedTargets = assets.multiTargetSelection.targets;
+  const openPlayback = useMemo(() => {
+    if (onOpenPlayback === undefined) return undefined;
+    return (targetKey: string, charPosition: number) => {
+      const target = selectedTargets.find((candidate) => analysisTargetKey(candidate) === targetKey);
+      const params = target === undefined ? undefined : encodePlaybackOpenParams(target, charPosition, shareSource);
+      if (params !== undefined) onOpenPlayback(params);
+    };
+  }, [onOpenPlayback, selectedTargets, shareSource]);
   const env: PaneEnvironment = useMemo(
     () => ({
       setups: assets.setupLibrary.setups,
@@ -125,8 +140,9 @@ export function SetAnalyzerStandalonePage<Options, Extracted, RowContext>({
       generatePresetId,
       undo,
       assetsReady,
+      ...(openPlayback === undefined ? {} : { openPlayback }),
     }),
-    [assets.setupLibrary, assets.presetLibrary, catalog, evaluation, cache, dispatch, generatePresetId, undo, assetsReady],
+    [assets.setupLibrary, assets.presetLibrary, catalog, evaluation, cache, dispatch, generatePresetId, undo, assetsReady, openPlayback],
   );
 
   const changeOptions = (next: Options) => {

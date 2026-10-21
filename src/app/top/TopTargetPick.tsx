@@ -10,6 +10,7 @@ import { LAYER_COMBO_PRESSES_PANE_META } from '#analyzers/layer-combo-presses/pa
 import { COMPARISON_PANE_META } from '#analyzers/comparison/pane-meta.ts';
 import { FINGER_MATRIX_PANE_META } from '#analyzers/finger-matrix/pane-meta.ts';
 import { N_SENSITIVITY_PANE_META } from '#analyzers/n-sensitivity/pane-meta.ts';
+import { RUN_CHART_PANE_META } from '#analyzers/run-chart/pane-meta.ts';
 import { setTargetForSingleAndMultiCommand } from '#engine/commands.ts';
 import { effectiveSingleTarget } from '#engine/single-target-selection.ts';
 import { setupNumbersOf, targetChoiceGroups, TargetSelection } from '#hosts/shared/index.ts';
@@ -108,6 +109,9 @@ export function TopTargetPick() {
           </Link>
           <Link className="top-pick-link" to="/analyzer/n-sensitivity">
             {N_SENSITIVITY_PANE_META.name}
+          </Link>
+          <Link className="top-pick-link" to="/analyzer/run-chart">
+            {RUN_CHART_PANE_META.name}
           </Link>
         </p>
       ) : null}

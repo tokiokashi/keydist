@@ -1,3 +1,5 @@
+import { SHARED_METRIC_TEXT } from '../metric-labels.ts';
+
 /**
  * N感度で縦軸に描ける指標の一覧と、その表示の決まり。
  *
@@ -46,10 +48,10 @@ export interface NSensitivityMetricDef {
 
 export const N_SENSITIVITY_METRICS: Readonly<Record<NSensitivityMetricId, NSensitivityMetricDef>> = {
   totalUnits: { label: '距離', unit: 'u', percent: false, relative: 'ratio', digits: 1, tickDigits: 0 },
-  meanPerStroke: { label: '1打鍵あたりの距離', unit: 'u/打鍵', percent: false, relative: 'ratio', digits: 3, tickDigits: 2 },
-  perCharUnits: { label: '1文字あたりの距離', unit: 'u/文字', percent: false, relative: 'ratio', digits: 3, tickDigits: 2 },
+  meanPerStroke: { ...SHARED_METRIC_TEXT.meanPerStroke, percent: false, relative: 'ratio', digits: 3, tickDigits: 2 },
+  perCharUnits: { ...SHARED_METRIC_TEXT.perCharUnits, percent: false, relative: 'ratio', digits: 3, tickDigits: 2 },
   sameFinger: { label: '同指', unit: '回', percent: false, relative: 'ratio', digits: 0, tickDigits: 0 },
-  sameFingerRate: { label: '同指率', unit: '%', percent: true, relative: 'delta', digits: 1, tickDigits: 1 },
+  sameFingerRate: { ...SHARED_METRIC_TEXT.sameFingerRate, percent: true, relative: 'delta', digits: 1, tickDigits: 1 },
   rightHandDistanceShare: { label: '右手距離率', unit: '%', percent: true, relative: 'delta', digits: 1, tickDigits: 1 },
   rightHandPressShare: { label: '右手押下率', unit: '%', percent: true, relative: 'delta', digits: 1, tickDigits: 1 },
   adjacentMean: { label: '指間平均', unit: 'u', percent: false, relative: 'delta', digits: 3, tickDigits: 3 },

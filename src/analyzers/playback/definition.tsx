@@ -64,4 +64,6 @@ export const playbackAnalyzer = {
   urlOptions: playbackOptions,
   // 再生はChain・Arpeggioの数え方を読むので、要約に数える
   conditionExtraIds: ['chainInterpretation', 'arpeggioInterpretation'],
+  // Run Chartの図で押された文字位置へ移る
+  acceptsPlaybackSeek: true,
 } satisfies SingleAnalyzerPaneParts<PlaybackOptions, PlaybackExtracted>;

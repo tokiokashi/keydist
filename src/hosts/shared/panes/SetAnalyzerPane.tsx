@@ -3,7 +3,7 @@ import type { CodecDiagnostic } from '#input/codec/index.ts';
 import type { EngineSetMemberInput } from '#engine/request.ts';
 import { effectiveMultiBaseline, type ColorSlotsByKey, type TargetSet } from '#engine/multi-target-selection.ts';
 import { analysisTargetKey, nameTargets, type AnalysisTarget } from '#input/setup/index.ts';
-import type { SetAnalyzerPaneParts, SetRowSource } from '#analyzers/pane-parts.tsx';
+import type { PlaybackJump, SetAnalyzerPaneParts, SetRowSource } from '#analyzers/pane-parts.tsx';
 import {
   conditionHeaderInfoFromResolvedInput,
   globalConditionLevels,
@@ -21,6 +21,7 @@ import { setupNumbersOf } from '../target-choices.ts';
 import { TargetSelection } from '../TargetSelection.tsx';
 import { useAnalyzerSetPane } from '../use-analyzer-set-pane.ts';
 import { usePaneOnScreen } from '../use-pane-on-screen.ts';
+import { usePlaybackSeekReceivers } from '../playback-seek-store.tsx';
 import { useSetTargetSelection } from '../use-set-target-selection.ts';
 import { readingProvenance } from '../reading-evaluation.ts';
 import type { PaneChrome, PaneEnvironment } from './pane-environment.ts';
@@ -164,6 +165,22 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
   const extraction = pane.extraction;
   const extracted = extraction.status === 'ready' || extraction.status === 'stale' ? extraction.value.extracted : undefined;
 
+  // 図で押した点の位置から打鍵再生へ移る手段。Workspaceは同じ対象を映す打鍵再生のペインへ伝え、個別画面は打鍵再生の画面を開く
+  const seekStore = analyzer.jumpsToPlayback === true ? env.playbackSeek : undefined;
+  const seekReceivers = usePlaybackSeekReceivers(seekStore);
+  const openPlayback = analyzer.jumpsToPlayback === true ? env.openPlayback : undefined;
+  const playbackJump = useMemo((): PlaybackJump | undefined => {
+    if (seekStore !== undefined) {
+      return {
+        destination: 'pane',
+        available: (targetKey) => seekReceivers.has(targetKey),
+        jump: (targetKey, charPosition) => seekStore.seek(targetKey, charPosition),
+      };
+    }
+    if (openPlayback !== undefined) return { destination: 'page', available: () => true, jump: openPlayback };
+    return undefined;
+  }, [seekStore, seekReceivers, openPlayback]);
+
   const effectiveBaseline = effectiveMultiBaseline(selection);
   const baselineTargetKey = effectiveBaseline === undefined ? undefined : analysisTargetKey(effectiveBaseline);
   const candidates = order.map((key) => ({
@@ -259,6 +276,7 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
           baselineTargetKey={baselineTargetKey}
           options={options}
           onOptionsChange={onOptionsChange}
+          {...(playbackJump === undefined ? {} : { playbackJump })}
         />
       )}
     </PaneFrame>

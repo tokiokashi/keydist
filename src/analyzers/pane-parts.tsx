@@ -115,6 +115,16 @@ export interface SingleBodyProps<Extracted, Options> {
   readonly options: Options;
   /** 図のそばで開く表示の調整の書き込み先。解析設定と同じ1つの値を書き換える。 */
   readonly onOptionsChange: (next: Options) => void;
+  /**
+   * 別のペインの図で押された文字位置へ移る操作（Workspace）。`SingleAnalyzerPaneParts.acceptsPlaybackSeek` を宣言したAnalyzerにだけ渡す。
+   * 操作のたびに`revision`が増え、このペインが宛先の時だけ`charPosition`がある。
+   */
+  readonly playbackSeek?: PlaybackSeekDelivery;
+  /**
+   * 開いた時の最初の文字位置（個別画面。別の画面の図から開いた時）。`acceptsPlaybackSeek` を宣言したAnalyzerにだけ渡す。
+   * 本体を最初に描く時にだけ読む。
+   */
+  readonly initialCharPosition?: number;
 }
 
 /**
@@ -147,6 +157,12 @@ export interface SingleAnalyzerPaneParts<Options, Extracted>
    * 読まない条件で測ったように読めないよう、要約には数えない。
    */
   readonly conditionExtraIds?: readonly string[];
+  /**
+   * 別の画面の図（Run Chart）で押された文字位置へ移れることの宣言。持つAnalyzerだけが立てる。
+   * 立てると、Workspaceではホストが同じ対象を映すペインとして受け手に登録し、宛てられた操作を本体へ`playbackSeek`で渡す。
+   * 個別画面では、開いた時の最初の文字位置（URLの `position`）を本体へ`initialCharPosition`で渡す。
+   */
+  readonly acceptsPlaybackSeek?: boolean;
 }
 
 /**
@@ -164,6 +180,28 @@ export interface SetBodyProps<Extracted, Options, RowContext> {
   readonly options: Options;
   /** 本体の中で開く表示の調整の書き込み先。解析設定と同じ1つの値を書き換える。 */
   readonly onOptionsChange: (next: Options) => void;
+  /** 図で押した点の位置から打鍵再生へ移る手段。`SetAnalyzerPaneParts.jumpsToPlayback` を宣言したAnalyzerにだけ渡す。 */
+  readonly playbackJump?: PlaybackJump;
+}
+
+/** 別のペインの図で押された文字位置への移動を、打鍵再生のペインに伝える形。宛先でなければ `charPosition` は `undefined`（番号だけ進む）。 */
+export interface PlaybackSeekDelivery {
+  /** 操作のたびに増える。本体は、当てた番号と比べて新しい操作だけを当てる */
+  readonly revision: number;
+  readonly charPosition: number | undefined;
+}
+
+/**
+ * 図で押した点の文字位置から、打鍵再生へ移る手段（ホストが渡す）。
+ * 移り方は画面で違う。Workspaceは、同じ対象を映す打鍵再生のペインを動かす（`destination: 'pane'`）。
+ * 個別画面は、その対象の打鍵再生の画面を、文字位置を最初の再生位置にして開く（`destination: 'page'`）。
+ */
+export interface PlaybackJump {
+  readonly destination: 'pane' | 'page';
+  /** 対象（`targetKey`）の打鍵再生へ移れるか。個別画面は常に移れる。Workspaceは、同じ対象を映す打鍵再生のペインがある時だけ。 */
+  readonly available: (targetKey: string) => boolean;
+  /** 対象の打鍵再生の、文字位置（評価に渡したテキストの文字位置。先頭が0）へ移る。 */
+  readonly jump: (targetKey: string, charPosition: number) => void;
 }
 
 /** 行の文脈を作る時の、解決した配列・物理配列・指割当の名前。対象を解決できなかった行には無い。 */
@@ -207,4 +245,9 @@ export interface SetAnalyzerPaneParts<Options, Extracted, RowContext>
    * 個別画面は開いた時に計算する。
    */
   readonly computeOnlyWhenOnScreen?: boolean;
+  /**
+   * 図で押した点の位置から打鍵再生へ移ることの宣言。持つAnalyzerだけが立てる。
+   * 立てると、ホストが移る手段を本体へ`playbackJump`で渡す。
+   */
+  readonly jumpsToPlayback?: boolean;
 }
