@@ -1,3 +1,4 @@
+import { bunsetsuStatsAnalyzer } from '#analyzers/bunsetsu-stats/definition.tsx';
 import { comparisonAnalyzer } from '#analyzers/comparison/definition.tsx';
 import { fingerMatrixAnalyzer } from '#analyzers/finger-matrix/definition.tsx';
 import { nSensitivityAnalyzer } from '#analyzers/n-sensitivity/definition.tsx';
@@ -15,7 +16,13 @@ import { runChartAnalyzer } from '#analyzers/run-chart/definition.tsx';
 // biome-ignore lint/suspicious/noExplicitAny: ペインの部品は型引数ごとに反変の位置を持ち、unknownでは個々のAnalyzerの部品を代入できない
 type AnyPaneParts = SetAnalyzerPaneParts<any, any, any>;
 
-export const SET_ANALYZER_PANE_PARTS: readonly AnyPaneParts[] = [comparisonAnalyzer, fingerMatrixAnalyzer, nSensitivityAnalyzer, runChartAnalyzer];
+export const SET_ANALYZER_PANE_PARTS: readonly AnyPaneParts[] = [
+  comparisonAnalyzer,
+  fingerMatrixAnalyzer,
+  nSensitivityAnalyzer,
+  runChartAnalyzer,
+  bunsetsuStatsAnalyzer,
+];
 
 export function findSetAnalyzer(analyzerId: string): AnyPaneParts | undefined {
   return SET_ANALYZER_PANE_PARTS.find((entry) => entry.definition.id === analyzerId);

@@ -10,6 +10,7 @@ import { COMPARISON_PANE_META } from '#analyzers/comparison/pane-meta.ts';
 import { FINGER_MATRIX_PANE_META } from '#analyzers/finger-matrix/pane-meta.ts';
 import { N_SENSITIVITY_PANE_META } from '#analyzers/n-sensitivity/pane-meta.ts';
 import { RUN_CHART_PANE_META } from '#analyzers/run-chart/pane-meta.ts';
+import { BUNSETSU_STATS_PANE_META } from '#analyzers/bunsetsu-stats/pane-meta.ts';
 import { WORKSPACE_EMPTY_TEXT } from '../app/shell/Sidebar.tsx';
 import { TopTargetPick } from '../app/top/TopTargetPick.tsx';
 import { SAMPLE_KINDS, sampleLabel } from '#engine/sample-workspace.ts';
@@ -62,6 +63,9 @@ function SidebarSample() {
         </Link>
         <Link className="sidebar-link" to="/analyzer/run-chart">
           {RUN_CHART_PANE_META.name}
+        </Link>
+        <Link className="sidebar-link" to="/analyzer/bunsetsu-stats">
+          {BUNSETSU_STATS_PANE_META.name}
         </Link>
       </section>
       <section className="sidebar-group">

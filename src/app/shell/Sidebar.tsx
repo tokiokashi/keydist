@@ -11,6 +11,7 @@ import { COMPARISON_PANE_META } from '#analyzers/comparison/pane-meta.ts';
 import { FINGER_MATRIX_PANE_META } from '#analyzers/finger-matrix/pane-meta.ts';
 import { N_SENSITIVITY_PANE_META } from '#analyzers/n-sensitivity/pane-meta.ts';
 import { RUN_CHART_PANE_META } from '#analyzers/run-chart/pane-meta.ts';
+import { BUNSETSU_STATS_PANE_META } from '#analyzers/bunsetsu-stats/pane-meta.ts';
 import { getAppearanceSnapshot, getServerAppearanceSnapshot, setAppearanceTheme, subscribeAppearance } from '../theme/appearance.ts';
 import type { ThemeChoice } from '../theme/theme.ts';
 import { ABOUT_LABEL } from '../about/AboutPage.tsx';
@@ -264,6 +265,9 @@ export function Sidebar({ pinned, onPinnedChange, onNavigate }: SidebarProps) {
           </NavLink>
           <NavLink to="/analyzer/run-chart" onNavigate={onNavigate}>
             {RUN_CHART_PANE_META.name}
+          </NavLink>
+          <NavLink to="/analyzer/bunsetsu-stats" onNavigate={onNavigate}>
+            {BUNSETSU_STATS_PANE_META.name}
           </NavLink>
         </SidebarGroup>
 

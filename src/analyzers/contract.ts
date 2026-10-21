@@ -116,6 +116,8 @@ export interface SingleAnalyzerExtractContext<Options> {
 /** 集合対象の抽出が受け取る、集合の1メンバー分のTrace結果・解釈結果。 */
 export interface AnalyzerSetMember {
   readonly target: AnalysisTarget;
+  /** Traceを生成した、評価に渡すテキスト（前処理の後）。engineが組み立てる時は必ず持ち、文字の列を読む抽出が使う。テストの材料は、読まない抽出に対しては省略できる。 */
+  readonly text?: string;
   readonly trace: Trace;
   readonly analysis: AggregatedAnalysisResult;
   readonly metrics: Metrics;
