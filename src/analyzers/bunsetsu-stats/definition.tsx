@@ -68,7 +68,7 @@ function TextTable({ text }: { readonly text: NonNullable<BunsetsuStatsExtracted
             <td data-bunsetsu-stats-segment-count="">{countText(table.segmentCount)}</td>
           </tr>
           <tr>
-            <th scope="row">文節の1文字目の割合</th>
+            <th scope="row">文節頭の割合</th>
             <td data-bunsetsu-stats-boundary-share="">{percentText(table.boundaryCharShare)}</td>
           </tr>
           <tr>
@@ -86,7 +86,7 @@ function TextTable({ text }: { readonly text: NonNullable<BunsetsuStatsExtracted
 
 /**
  * 配列ごとの表の列（`statsCells` の並び）の、まとまりの左右の境。見出しと本文の両方に同じ添字で付ける。
- * まとまりは2列ずつ（打てない文字・1文字目・2文字目以降・1文節の距離・文節ごとの距離）。
+ * まとまりは2列ずつ（打てない文字・文節頭・文節中・1文節の距離・文節ごとの距離）。
  */
 const GROUP_START = new Set([0, 3, 5, 7, 9]);
 const GROUP_END = new Set([1, 4, 6, 8, 10]);
@@ -129,13 +129,13 @@ function LayoutTable({ rows }: { readonly rows: readonly DisplayRow[] }) {
               打てない文字
             </th>
             <th rowSpan={2} scope="col">
-              1文字目の距離の割合
+              文節頭の距離の割合
             </th>
             <th colSpan={2} scope="colgroup" className="bunsetsu-stats-edge-start bunsetsu-stats-edge-end">
-              1文字目
+              文節頭
             </th>
             <th colSpan={2} scope="colgroup" className="bunsetsu-stats-edge-start bunsetsu-stats-edge-end">
-              2文字目以降
+              文節中
             </th>
             <th colSpan={2} scope="colgroup" className="bunsetsu-stats-edge-start bunsetsu-stats-edge-end">
               1文節の距離 [{SEGMENT_DISTANCE_UNIT}]
@@ -149,7 +149,7 @@ function LayoutTable({ rows }: { readonly rows: readonly DisplayRow[] }) {
               数
             </th>
             <th scope="col" className={edgeClass(1)}>
-              うち1文字目
+              うち文節頭
             </th>
             <th scope="col" className={edgeClass(3)}>
               {DISTANCE.label} [{DISTANCE.unit}]

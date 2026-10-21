@@ -59,6 +59,21 @@ test.describe('個別画面', () => {
     await expect(page.getByRole('dialog')).toContainText('文字数1の文節は除きます');
   });
 
+  test('列の名前は文節頭・文節中で、画面と説明の「1文字目」「2文字目以降」は定義の1文以外に出ない', async ({ page }) => {
+    const tables = feature(page).locator('table');
+    const headings = (await tables.allInnerTexts()).join('');
+    expect(headings).toContain('文節頭');
+    expect(headings).toContain('文節中');
+    for (const word of ['1文字目', '2文字目以降']) {
+      expect(headings, word).not.toContain(word);
+    }
+    // 単体ページのtitleとmetaの説明文も、定義の語を出さずに分けた名前を出す
+    await expect(page).toHaveTitle(/文節ごとの統計/u);
+    const description = (await page.locator('meta[name="description"]').getAttribute('content')) ?? '';
+    expect(description).toContain('文節頭と文節中に分けて');
+    expect(description).not.toMatch(/1文字目|2文字目以降/u);
+  });
+
   test('打ちやすさ・順位・結論を述べる文言を出さない', async ({ page }) => {
     const text = (await feature(page).innerText()).replaceAll(/\s+/g, '');
     for (const word of ['打ちやすい', '打ちにくい', '優れ', '劣', '順位', '結論', '合成スコア', 'おすすめ']) {
