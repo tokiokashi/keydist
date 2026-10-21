@@ -33,7 +33,7 @@ import './comparison-view.css';
  * 最小の行を太字にするなどの強調もしない。
  */
 
-/** 1 対象ぶんの、行の名前。条件は行に併記せず、ペインの条件の要約が出す。 */
+/** 1 対象ぶんの、行の名前。条件は名前が重なった時だけ名前に足し、基本はペインの条件の要約が出す。 */
 export interface ComparisonRowContext {
   readonly targetKey: string;
   readonly label: string;

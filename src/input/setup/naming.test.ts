@@ -174,3 +174,129 @@ test('nameTargets: 手持ちから消えたSetupは「Setup」を重ねず位置
     ['QWERTY', '削除されたSetup（2番目）', '削除されたSetup（3番目）'],
   );
 });
+
+test('nameTargets: 名前が重なった組の中でだけ物理配列名と条件の併記を足す', () => {
+  const named = nameTargets([
+    { key: 'setup:ax-plain', kind: 'setup', layoutName: 'A', shapeName: 'X' },
+    { key: 'setup:ax-cond', kind: 'setup', layoutName: 'A', shapeName: 'X', overrideSummary: '条件' },
+    { key: 'setup:ay', kind: 'setup', layoutName: 'A', shapeName: 'Y' },
+    { key: 'setup:bx', kind: 'setup', layoutName: 'B', shapeName: 'X' },
+  ]);
+  assert.deepEqual(
+    named.map((n) => n.displayName),
+    ['A · X', 'A · X · 条件', 'A · Y', 'B'],
+  );
+});
+
+test('nameTargets: 配列・物理配列・条件がそれぞれ違う6配列は、配列名だけになる', () => {
+  const named = nameTargets([
+    {
+      key: 'layout:qwerty',
+      kind: 'layout',
+      layoutName: 'QWERTY',
+      shapeName: 'ロウスタッガード（ANSI）',
+      overrideSummary: '先読みN: 5・ローマ字規則: 標準',
+    },
+    { key: 'layout:qwerty-opt', kind: 'layout', layoutName: 'QWERTY最適化', shapeName: 'ロウスタッガード（ANSI）', overrideSummary: '先読みN: 5' },
+    { key: 'layout:dvorak', kind: 'layout', layoutName: 'Dvorak', shapeName: 'ロウスタッガード（ANSI）' },
+    { key: 'layout:oonishi', kind: 'layout', layoutName: '大西配列', shapeName: 'ロウスタッガード（ANSI）', overrideSummary: 'ローマ字規則: 標準' },
+    { key: 'layout:naginata', kind: 'layout', layoutName: '薙刀式v18', shapeName: 'オーソリニア（ANSI）', overrideSummary: '親指シフトの振り替え: ON' },
+    { key: 'layout:shingeta', kind: 'layout', layoutName: '新下駄', shapeName: 'オーソリニア（ANSI）', overrideSummary: '先読みN: 5' },
+  ]);
+  assert.deepEqual(
+    named.map((n) => n.displayName),
+    ['QWERTY', 'QWERTY最適化', 'Dvorak', '大西配列', '薙刀式v18', '新下駄'],
+  );
+  for (const n of named) assert.doesNotMatch(n.displayName, /先読み|ローマ字規則|親指シフト/);
+});
+
+test('nameTargets: 同じ配列・同じ物理配列で条件だけが違う2対象には条件の併記が付く', () => {
+  const named = nameTargets([
+    { key: 'setup:a', kind: 'setup', layoutName: 'QWERTY', shapeName: '物理配列A', overrideSummary: '先読みN: 3' },
+    { key: 'setup:b', kind: 'setup', layoutName: 'QWERTY', shapeName: '物理配列A', overrideSummary: '先読みN: 5' },
+  ]);
+  assert.deepEqual(
+    named.map((n) => n.displayName),
+    ['QWERTY · 先読みN: 3', 'QWERTY · 先読みN: 5'],
+  );
+});
+
+test('nameTargets: 重なった組で条件の併記が全員同じなら足さず、種類で区別する', () => {
+  const named = nameTargets([
+    { key: 'layout:a', kind: 'layout', layoutName: 'QWERTY', shapeName: '物理配列A', overrideSummary: '先読みN: 3' },
+    { key: 'setup:b', kind: 'setup', setupNumber: 1, layoutName: 'QWERTY', shapeName: '物理配列A', overrideSummary: '先読みN: 3' },
+  ]);
+  assert.deepEqual(
+    named.map((n) => n.displayName),
+    ['QWERTY（配列）', 'QWERTY（Setup 1）'],
+  );
+});
+
+test('nameTargets: 重なった組の外の対象には、条件の併記があっても付けない', () => {
+  const named = nameTargets([
+    { key: 'setup:a', kind: 'setup', layoutName: 'QWERTY', shapeName: '物理配列A', overrideSummary: '先読みN: 3' },
+    { key: 'setup:b', kind: 'setup', layoutName: 'QWERTY', shapeName: '物理配列A' },
+    { key: 'setup:c', kind: 'setup', layoutName: 'Dvorak', shapeName: '物理配列A', overrideSummary: '先読みN: 9' },
+  ]);
+  assert.deepEqual(
+    named.map((n) => n.displayName),
+    ['QWERTY · 先読みN: 3', 'QWERTY', 'Dvorak'],
+  );
+});
+
+test('nameTargets: 重なった組にラベル付きの対象が混ざっても、ラベルに条件の併記は付かない', () => {
+  const named = nameTargets([
+    { key: 'setup:a', kind: 'setup', layoutName: 'QWERTY', shapeName: '物理配列A', overrideSummary: '先読みN: 3' },
+    { key: 'setup:b', kind: 'setup', layoutName: 'QWERTY', shapeName: '物理配列A', overrideSummary: '先読みN: 5' },
+    { key: 'setup:c', kind: 'setup', label: 'メイン', layoutName: 'QWERTY', shapeName: '物理配列A', overrideSummary: '先読みN: 7' },
+  ]);
+  assert.deepEqual(
+    named.map((n) => n.displayName),
+    ['QWERTY · 先読みN: 3', 'QWERTY · 先読みN: 5', 'メイン'],
+  );
+});
+
+test('nameTargets: 母集団が1件以下の集合（2件のうち1件がラベル付き）は配列名と条件の併記を出す', () => {
+  const named = nameTargets([
+    { key: 'setup:a', kind: 'setup', label: 'メイン', layoutName: 'QWERTY', shapeName: '物理配列A' },
+    { key: 'setup:b', kind: 'setup', layoutName: 'QWERTY', shapeName: '物理配列A', overrideSummary: '先読みN: 5' },
+  ]);
+  assert.deepEqual(
+    named.map((n) => n.displayName),
+    ['メイン', 'QWERTY · 先読みN: 5'],
+  );
+});
+
+test('nameTargets: 配列名が全員同じで物理配列だけが違う2対象は、物理配列名だけを出す', () => {
+  const named = nameTargets([
+    { key: 'setup:x', kind: 'setup', layoutName: 'QWERTY', shapeName: 'X' },
+    { key: 'setup:y', kind: 'setup', layoutName: 'QWERTY', shapeName: 'Y' },
+  ]);
+  assert.deepEqual(
+    named.map((n) => n.displayName),
+    ['X', 'Y'],
+  );
+});
+
+test('nameTargets: 配列名が一部だけ重なる集合は、重なった組にだけ物理配列名を足す', () => {
+  const named = nameTargets([
+    { key: 'setup:qx', kind: 'setup', layoutName: 'QWERTY', shapeName: 'X' },
+    { key: 'setup:qy', kind: 'setup', layoutName: 'QWERTY', shapeName: 'Y' },
+    { key: 'setup:dx', kind: 'setup', layoutName: 'Dvorak', shapeName: 'X' },
+  ]);
+  assert.deepEqual(
+    named.map((n) => n.displayName),
+    ['QWERTY · X', 'QWERTY · Y', 'Dvorak'],
+  );
+});
+
+test('nameTargets: 配列名が違う対象には、物理配列名も条件の併記も付かない', () => {
+  const named = nameTargets([
+    { key: 'setup:a', kind: 'setup', layoutName: 'QWERTY', shapeName: 'X', overrideSummary: '先読みN: 3' },
+    { key: 'setup:b', kind: 'setup', layoutName: 'Dvorak', shapeName: 'Y', overrideSummary: '先読みN: 5' },
+  ]);
+  assert.deepEqual(
+    named.map((n) => n.displayName),
+    ['QWERTY', 'Dvorak'],
+  );
+});

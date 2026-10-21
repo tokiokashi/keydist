@@ -14,7 +14,7 @@ import './bunsetsu-stats-view.css';
  * 配列の並べ替え・順位・合成スコアは出さない。上位の一覧の行は出現回数で並び、配列の値では並び替えない。
  */
 
-/** 1対象ぶんの、行の名前。条件は行に併記せず、ペインの条件の要約が出す。 */
+/** 1対象ぶんの、行の名前。条件は名前が重なった時だけ名前に足し、基本はペインの条件の要約が出す。 */
 export interface BunsetsuStatsRowContext {
   readonly targetKey: string;
   readonly label: string;

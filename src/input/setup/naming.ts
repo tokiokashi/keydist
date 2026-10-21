@@ -2,8 +2,13 @@
  * 対象（`AnalysisTarget`）の表示名（docs/architecture.md「画面の構成」）。
  *
  * **表示名は常に、同じ画面に並ぶ集合に対して計算する。** 集合の中で共通な部分は落とし、
- * 違う部分だけを出す（例: 集合 `{QWERTY/row-staggered, Colemak-DH/row-staggered,
- * QWERTY/row-staggered・指割当JIS}` の表示は `QWERTY` / `Colemak-DH` / `QWERTY · 指割当JIS`）。
+ * 違う部分だけを出す。配列名は、集合の中で全員同じでなければ全員に出す。物理配列名と条件の併記は、
+ * 区別に要る時だけ足す。配列名で作った名前が他と重なった組の中で物理配列名が全員同じでなければ、
+ * その組の全員に物理配列名を足す。それでも名前が重なった組の中で条件の併記が全員同じでなければ、
+ * その組の全員に条件の併記を足す。名前が重ならない対象には、物理配列や条件が違っても足さない
+ * （違いは条件の要約とhoverのフルの名前で読める）。
+ * 例: 集合 `{QWERTY/row-staggered, Colemak-DH/row-staggered, QWERTY/row-staggered・指割当JIS}` の表示は
+ * `QWERTY` / `Colemak-DH` / `QWERTY · 指割当JIS`。
  * フルの名前はhoverに出す。
  *
  * ユーザーが付けたラベル（`Setup.label`）は既にユーザー自身が区別のために選んだ文字列なので、
@@ -85,22 +90,72 @@ function allSame(sources: readonly ResolvedSource[], pick: (s: ResolvedSource) =
   return sources.length > 0 && sources.every((s) => pick(s) === pick(sources[0]!));
 }
 
-/** 集合内で共通な部分を落とした名前（衝突を考えない段階）。 */
+/**
+ * 段階1: 集合内で共通な部分を落とした名前（配列名だけ）。配列名が母集団の全員で同じなら落とし、
+ * 落とした結果が空なら配列名へ戻す。物理配列名と条件の併記は、名前が重なった組にだけ後の段階で足す。
+ * 比較対象が無い（自分だけ、または全員ラベル付き・失敗）時は、単一対象と同じ扱いで
+ * 配列名に条件の併記を足す。
+ */
 function differenceName(source: TargetNameSource, commonalityBasis: readonly ResolvedSource[]): string {
   if (!isResolved(source)) return source.description;
 
   if (commonalityBasis.length <= 1) {
-    // 比較対象が無い（自分だけ、または全員ラベル付き・失敗）: 単一対象と同じ扱い。
     return source.overrideSummary ? `${source.layoutName} · ${source.overrideSummary}` : source.layoutName;
   }
+  return source.layoutName;
+}
 
-  const parts: string[] = [];
-  if (!allSame(commonalityBasis, (s) => s.layoutName)) parts.push(source.layoutName);
-  if (!allSame(commonalityBasis, (s) => s.shapeName)) parts.push(source.shapeName);
-  if (!allSame(commonalityBasis, (s) => s.overrideSummary ?? '') && source.overrideSummary) {
-    parts.push(source.overrideSummary);
+/** 名前が同じ、ラベル無し・解決成功の対象の組（2件以上のものだけ）。 */
+function collisionGroups(sources: readonly TargetNameSource[], labels: readonly (string | undefined)[], bases: readonly string[]): number[][] {
+  const groups = new Map<string, number[]>();
+  for (const [i, s] of sources.entries()) {
+    if (labels[i] !== undefined || !isResolved(s)) continue;
+    groups.set(bases[i]!, [...(groups.get(bases[i]!) ?? []), i]);
   }
-  return parts.length > 0 ? parts.join(' · ') : source.layoutName;
+  return [...groups.values()].filter((group) => group.length > 1);
+}
+
+/**
+ * 段階2: 段階1の名前が重なった組の中で、物理配列名が全員同じでなければ、組の全員に物理配列名を足す。
+ * 配列名が母集団の全員で同じ集合では、段階1で配列名を落としているので物理配列名だけの名前になる。
+ * 比べる相手は組の中のラベル無し・解決成功の対象だけで、ラベルと解決失敗の説明には足さない。
+ */
+function addShapesOnCollision(
+  sources: readonly TargetNameSource[],
+  labels: readonly (string | undefined)[],
+  bases: string[],
+  commonalityBasis: readonly ResolvedSource[],
+): void {
+  if (commonalityBasis.length <= 1) return;
+  const layoutShown = !allSame(commonalityBasis, (s) => s.layoutName);
+  for (const group of collisionGroups(sources, labels, bases)) {
+    const members = group.map((i) => sources[i] as ResolvedSource);
+    if (allSame(members, (s) => s.shapeName)) continue;
+    for (const [k, i] of group.entries()) {
+      bases[i] = layoutShown ? `${bases[i]} · ${members[k]!.shapeName}` : members[k]!.shapeName;
+    }
+  }
+}
+
+/**
+ * 段階3: 段階2の後でも名前が重なった組の中で、条件の併記が全員同じでなければ、組の全員に条件の併記を足す。
+ * 併記を持たない対象には何も足さない。比べる相手は段階2と同じ。
+ */
+function addConditionsOnCollision(
+  sources: readonly TargetNameSource[],
+  labels: readonly (string | undefined)[],
+  bases: string[],
+  commonalityBasis: readonly ResolvedSource[],
+): void {
+  if (commonalityBasis.length <= 1) return;
+  for (const group of collisionGroups(sources, labels, bases)) {
+    const members = group.map((i) => sources[i] as ResolvedSource);
+    if (allSame(members, (s) => s.overrideSummary ?? '')) continue;
+    for (const [k, i] of group.entries()) {
+      const summary = members[k]!.overrideSummary;
+      if (summary) bases[i] = `${bases[i]} · ${summary}`;
+    }
+  }
 }
 
 /**
@@ -121,9 +176,9 @@ function kindTag(source: TargetNameSource): string | undefined {
  * - 2: 集合の中での位置を添える（同じ名前の自作配列が2つある等、種類でも分からない時の最後の砦。
  *   位置は集合の中で一意なので、ここまで来れば必ず解消する）
  *
- * 配列名・物理配列名・条件のどれかが違えば段階0で既に名前に出ている（違う部分は全員に出す）ので、
- * 段階0で衝突するメンバー同士は配列名・物理配列名・条件が同じ。そこへ物理配列名や条件を足しても
- * 区別できないので、足すのは種類と位置だけにする。内部のkey（UUID等）は出さない。
+ * 配列名の違いは段階0で既に名前に出ており、物理配列名と条件の違いも、重なった組の中では
+ * 名前に足してある。段階0で衝突するメンバー同士は、配列名・物理配列名・条件が同じなので、
+ * そこへ足しても区別できない。足すのは種類と位置だけにする。内部のkey（UUID等）は出さない。
  */
 function escalatedName(base: string, source: TargetNameSource, position: number, level: number): string {
   if (level <= 0) return base;
@@ -152,6 +207,8 @@ export function nameTargets(sources: readonly TargetNameSource[]): readonly Name
   // 集合が1件なら共通部分は全部なので、名前だけにする（条件の差分は直下の条件の要約で見る）。
   // 2件以上で他がラベル付き・失敗のため基準が1件以下になる場合は、区別のために従来どおり差を含める。
   const bases = sources.map((s, i) => labels[i] ?? (sources.length === 1 && isResolved(s) ? s.layoutName : differenceName(s, commonalityBasis)));
+  addShapesOnCollision(sources, labels, bases, commonalityBasis);
+  addConditionsOnCollision(sources, labels, bases, commonalityBasis);
   const levels = sources.map(() => 0);
 
   const namesNow = () => sources.map((s, i) => escalatedName(bases[i]!, s, i, levels[i]!));

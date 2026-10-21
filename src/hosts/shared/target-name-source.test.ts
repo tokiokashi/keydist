@@ -120,19 +120,21 @@ test('空白だけのラベルはラベル無しとして自動命名に戻る�
   assert.equal(named[1]!.displayName, LAYOUT_BY_ID.get('colemak-dh')!.name);
 });
 
-test('既定の物理配列を変えた配列対象の名前に、物理配列名が2回並ばない', () => {
+test('既定の物理配列を変えた配列対象と同じ配列のSetupを並べると、名前は物理配列名だけで、物理配列名が2回並ばない', () => {
   const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'defaultShapeId', 'ortholinear');
   assert.ok(written.ok);
   if (!written.ok) return;
   const named = displayNames(
     [
       { kind: 'layout', layoutId: 'qwerty' },
-      { kind: 'setup', setupId: fixedB.id },
+      { kind: 'setup', setupId: fixedA.id },
     ],
-    [fixedA, fixedB],
+    [fixedA],
     written.overrides,
   );
   const ortho = PHYSICAL_SHAPES.ortholinear.name;
+  assert.equal(named[0]!.displayName, ortho);
+  assert.equal(named[1]!.displayName, PHYSICAL_SHAPES['row-staggered'].name);
   for (const text of [named[0]!.displayName, named[0]!.fullName]) {
     assert.equal(text.split(ortho).length - 1, 1, text);
     assert.doesNotMatch(text, /既定の物理配列/);
