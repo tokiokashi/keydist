@@ -14,7 +14,7 @@ export const Route = createFileRoute('/analyzer/bunsetsu-stats')({
       { title: `${BUNSETSU_STATS_PANE_META.name} | keydist` },
       {
         name: 'description',
-        content: '日本語のテキストを文節に区切り、文節の1文字目と2文字目以降に分けて、指の移動距離の平均やばらつきを配列やSetupごとに表で並べます。',
+        content: '日本語のテキストを文節に区切り、文節頭と文節中に分けて、指の移動距離の平均やばらつきを配列やSetupごとに表で並べます。',
       },
     ],
   }),
