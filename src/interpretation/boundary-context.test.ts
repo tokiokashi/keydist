@@ -7,6 +7,8 @@ import { generateTrace } from '#trace/generate.ts';
 import {
   BOUNDARY_CONTEXT_FORCED_RATIO_LIMIT,
   boundaryContextVerdict,
+  boundaryInterior,
+  boundaryInteriorOfTrace,
   boundaryShare,
   comparableBoundaries,
   compareBoundaryContext,
@@ -132,4 +134,55 @@ test('境目の打鍵が占める割合は、区切りの直後の1文字に帰�
       Math.abs(share.distanceShare! - bunsetsu.reduce((s, b) => s + spanTotals(index, 'perCharUnits', b, b + 1).numerator, 0) / whole.numerator) < 1e-12,
     );
   }
+});
+
+test('境目の文字・文節の内側の文字・先頭の文字の距離の和は全文の距離の和に一致し、先頭の文字はどちらにも数えない', () => {
+  const bunsetsu = bunsetsuLike(CHARS.length);
+  for (const layoutId of ['qwerty', 'jis-kana']) {
+    const index = indexFor(layoutId);
+    const result = boundaryInterior(index, bunsetsu);
+    const whole = index.distanceUpTo[index.inputChars]!;
+    assert.ok(Math.abs(result.boundaryDistance + result.interiorDistance + result.firstDistance - whole) < 1e-9);
+    assert.equal(result.firstDistance, index.distanceAt[0]);
+    assert.equal(result.boundaryChars + result.interiorChars + 1, index.inputChars);
+    // 区切りが先頭の直後（位置1）にある時、位置1は境目の文字で、位置0は先頭の文字として別に数える
+    assert.equal(bunsetsu[0], 1);
+    let boundary = 0;
+    for (const b of bunsetsu) boundary += index.distanceAt[b]!;
+    assert.ok(Math.abs(result.boundaryDistance - boundary) < 1e-9);
+  }
+});
+
+test('1文字あたりの距離は、打鍵できなかった文字も1文字に数えた文字数で割った値になる', () => {
+  // 空白・記号は打鍵できず、帰属する距離が0のまま文字数に数えられる
+  const text = 'あい う！えおかきくけこ';
+  const chars = [...text];
+  const index = buildSpanIndex(generateTrace(text, LAYOUT_BY_ID.get('jis-kana')!, geometry, { windowSize: 3, sfbHomeCost: true }));
+  assert.equal(index.inputChars, chars.length);
+  const bunsetsu = [3, 6];
+  const result = boundaryInterior(index, bunsetsu);
+  const sumAt = (positions: number[]) => positions.reduce((s, p) => s + index.distanceAt[p]!, 0);
+  const interior = [1, 2, 4, 5, 7, 8, 9, 10, 11];
+  assert.equal(result.interiorChars, interior.length);
+  assert.ok(Math.abs(result.interiorPerChar! - sumAt(interior) / interior.length) < 1e-12);
+  assert.ok(Math.abs(result.boundaryPerChar! - sumAt([3, 6]) / 2) < 1e-12);
+});
+
+test('文節ごとの内側の値は文字数2以上の文節についてだけ求まり、数・中央値・90%点が出る', () => {
+  const text = 'あいうえおかきくけこ';
+  const index = buildSpanIndex(generateTrace(text, LAYOUT_BY_ID.get('jis-kana')!, geometry, { windowSize: 3, sfbHomeCost: true }));
+  // 文節は [0,1) [1,4) [4,5) [5,10)。文字数が2以上なのは2番目と4番目
+  const result = boundaryInterior(index, [1, 4, 5]);
+  const d = (from: number, to: number) => index.distanceUpTo[to]! - index.distanceUpTo[from]!;
+  const values = [d(2, 4) / 2, d(6, 10) / 4].sort((a, b) => a - b);
+  assert.equal(result.segmentInteriorCount, 2);
+  assert.ok(Math.abs(result.segmentInteriorMedian! - (values[0]! + values[1]!) / 2) < 1e-12);
+  assert.ok(Math.abs(result.segmentInteriorP90! - values[1]!) < 1e-12);
+  assert.equal(boundaryInterior(index, [1, 2, 3, 4, 5, 6, 7, 8, 9]).segmentInteriorCount, 0);
+});
+
+test('Traceと区切りの列から直接求めた値は、索引から求めた値と一致する', () => {
+  const bunsetsu = bunsetsuLike(CHARS.length);
+  const trace = generateTrace(TEXT, LAYOUT_BY_ID.get('qwerty')!, geometry, { windowSize: 3, sfbHomeCost: true });
+  assert.deepEqual(boundaryInteriorOfTrace(trace, bunsetsu), boundaryInterior(buildSpanIndex(trace), bunsetsu));
 });

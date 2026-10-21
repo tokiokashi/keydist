@@ -1,6 +1,7 @@
 import { createMulberry32 } from './prng.ts';
-import { boundaryCharValue, rankAmong, SEGMENT_SEED_COUNT, type RankAmongRandom } from './segments.ts';
-import { spanTotals, wholeTotals, type SpanIndex, type SpanMetricId } from './span-metrics.ts';
+import { boundaryCharValue, median, quantileNearestRank, rankAmong, SEGMENT_SEED_COUNT, type RankAmongRandom } from './segments.ts';
+import type { Trace } from '#trace/generate.ts';
+import { buildSpanIndex, spanTotals, wholeTotals, type SpanIndex, type SpanMetricId } from './span-metrics.ts';
 
 /**
  * 文節の区切りの直後の1文字の量が、区切りのまわりの1〜3文字の並びだけで説明できるかを比べる
@@ -155,4 +156,66 @@ export function boundaryShare(index: SpanIndex, bunsetsu: readonly number[]): Bo
     distanceShare: whole.numerator === 0 ? undefined : numerator / whole.numerator,
     charShare: whole.denominator === 0 ? undefined : bunsetsu.length / whole.denominator,
   };
+}
+
+export interface BoundaryInterior {
+  /** 境目の文字（全区切りの直後の1文字）の数と、帰属する距離の和 */
+  readonly boundaryChars: number;
+  readonly boundaryDistance: number;
+  /** 文節の内側の文字（各文節の先頭の1文字を除いた文字）の数と、帰属する距離の和 */
+  readonly interiorChars: number;
+  readonly interiorDistance: number;
+  /** テキストの先頭の文字に帰属する距離。どちらにも数えない */
+  readonly firstDistance: number;
+  /** 1文字あたりの距離。文字数が0なら `undefined`。文字数は打鍵できなかった文字も1文字に数える */
+  readonly boundaryPerChar: number | undefined;
+  readonly interiorPerChar: number | undefined;
+  /** 文字数2以上の文節ごとの内側の値（内側の文字に帰属する距離の和 / 内側の文字数）の、数・中央値・90%点 */
+  readonly segmentInteriorCount: number;
+  readonly segmentInteriorMedian: number | undefined;
+  readonly segmentInteriorP90: number | undefined;
+}
+
+/**
+ * 文字を、境目の文字・文節の内側の文字・テキストの先頭の文字に分け、境目の文字と内側の文字の1文字あたりの距離と、
+ * 文節ごとの内側の値の分布を求める。文節は隣り合う区切りの間（テキストの先頭と末尾を含む）の文字の並び。
+ * 区切りには、前の文字が足りない区切りを除く規則を当てない。
+ */
+export function boundaryInterior(index: SpanIndex, bunsetsu: readonly number[]): BoundaryInterior {
+  const total = index.inputChars;
+  const distance = (from: number, to: number): number => index.distanceUpTo[to]! - index.distanceUpTo[from]!;
+  let boundaryDistance = 0;
+  for (const boundary of bunsetsu) boundaryDistance += distance(boundary, boundary + 1);
+  const firstDistance = total > 0 ? distance(0, 1) : 0;
+  let interiorDistance = 0;
+  const interiorChars = Math.max(0, total - 1 - bunsetsu.length);
+  const values: number[] = [];
+  let start = 0;
+  for (let i = 0; i <= bunsetsu.length; i++) {
+    const end = i < bunsetsu.length ? bunsetsu[i]! : total;
+    if (end - start >= 2) {
+      const inner = distance(start + 1, end);
+      interiorDistance += inner;
+      values.push(inner / (end - start - 1));
+    }
+    start = end;
+  }
+  const sorted = Float64Array.from(values).sort();
+  return {
+    boundaryChars: bunsetsu.length,
+    boundaryDistance,
+    interiorChars,
+    interiorDistance,
+    firstDistance,
+    boundaryPerChar: bunsetsu.length === 0 ? undefined : boundaryDistance / bunsetsu.length,
+    interiorPerChar: interiorChars === 0 ? undefined : interiorDistance / interiorChars,
+    segmentInteriorCount: sorted.length,
+    segmentInteriorMedian: median(sorted),
+    segmentInteriorP90: quantileNearestRank(sorted, 0.9),
+  };
+}
+
+/** Traceと文節の区切りの列から直接求める。 */
+export function boundaryInteriorOfTrace(trace: Trace, bunsetsu: readonly number[]): BoundaryInterior {
+  return boundaryInterior(buildSpanIndex(trace), bunsetsu);
 }

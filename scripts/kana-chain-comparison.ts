@@ -47,6 +47,7 @@ import {
   BOUNDARY_CONTEXT_LENGTHS,
   BOUNDARY_CONTEXT_METRIC,
   BOUNDARY_CONTEXT_SEED_COUNT,
+  boundaryInterior,
   boundaryShare,
   compareBoundaryContext,
   type BoundaryContextVerdict,
@@ -300,6 +301,7 @@ async function runBoundaryStage(input: BoundaryStageInput): Promise<void> {
   const sections = {
     context: [] as string[][],
     share: [] as string[][],
+    interior: [] as string[][],
     forced: [] as string[][],
   };
   const conditions: string[] = [];
@@ -342,6 +344,17 @@ async function runBoundaryStage(input: BoundaryStageInput): Promise<void> {
       sections.forced.push([layoutId, String(length), String(result.comparedCount), String(result.forcedCount), percent(result.forcedRatio)]);
     }
     const share = boundaryShare(index, boundaries);
+    const interior = boundaryInterior(index, boundaries);
+    sections.interior.push([
+      layoutId,
+      String(interior.boundaryChars),
+      fixed(interior.boundaryPerChar),
+      String(interior.interiorChars),
+      fixed(interior.interiorPerChar),
+      String(interior.segmentInteriorCount),
+      fixed(interior.segmentInteriorMedian),
+      fixed(interior.segmentInteriorP90),
+    ]);
     sections.share.push([layoutId, String(boundaries.length), percent(share.charShare), percent(share.distanceShare)]);
   }
   lap('評価を終えた');
@@ -398,6 +411,27 @@ async function runBoundaryStage(input: BoundaryStageInput): Promise<void> {
       ['配列', '区切りの数', '区切りの直後の1文字が全文の文字数に占める割合', '区切りの直後の1文字に帰属する距離が全文の距離に占める割合'],
       sections.share,
     ),
+    '',
+  );
+  out.push('## 文節の内側と境目の距離（配列は組み込みの並び順。順位・判定は付けない）', '');
+  out.push(
+    table(
+      [
+        '配列',
+        '境目の文字の数',
+        '境目の文字の1文字あたりの距離',
+        '文節の内側の文字の数',
+        '文節の内側の文字の1文字あたりの距離',
+        '内側の値が求まった文節の数',
+        '内側の値の中央値',
+        '内側の値の90%点',
+      ],
+      sections.interior,
+    ),
+    '',
+  );
+  out.push(
+    '境目の文字は文節の区切りの直後の1文字（全区切り）、文節の内側の文字は各文節の先頭の1文字を除いた文字、テキストの先頭の文字はどちらにも入れない。文字数は打鍵できなかった文字も1文字に数える。内側の値は文字数2以上の文節だけで求めた。距離は指の移動距離から見た量で、打ちやすさそのものではない。境目の文字と文節の内側の文字の構成が違うので、2つの差は配列の性質と文字の構成の違いを区別できない。境目の打鍵が占める割合と、この表の1文字あたりの距離は同じ距離の和から導く量で、互いに独立ではない。',
     '',
   );
   out.push(
