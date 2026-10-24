@@ -1,10 +1,5 @@
 import type { CodecDiagnostic } from '#input/codec/index.ts';
 
-export interface DecodedAnalyzerOptions<Options> {
-  readonly options: Options;
-  readonly diagnostics: readonly CodecDiagnostic[];
-}
-
 /**
  * `SingleAnalyzerDefinition`/`SetAnalyzerDefinition`のどちらでも持つ`decodeOptions`だけを
  * 要求する最小形。`decodeStoredAnalyzerOptions`は対象の種類（単一/集合）を問わないため、
@@ -16,17 +11,12 @@ export interface DecodableAnalyzerDefinition<Options> {
 }
 
 /**
- * 資産（`assets.standaloneAnalyzerOptions[analyzerId]`）に入っている生の値を、対象Analyzerの
- * `definition.decodeOptions`（`analyzers/contract.ts`）で型付きの値へ直す
- * （中身の各Analyzerの設定は、そのAnalyzerのdecodeOptionsで診断付きに読む）。
+ * 資産（`assets.standaloneAnalyzerOptions[analyzerId]`・Workspaceのペイン）に入っている生の値を、対象Analyzerの
+ * `definition.decodeOptions`（`analyzers/contract.ts`）で型付きの値へ直す。
  *
- * `engine`側のcodec（`engine/standalone-analyzer-options-codec.ts`）は資産の外側の形
- * （object全体・キーの安全性）しか見ないので、Analyzerごとの項目単位の検証はここで初めて行う。
- * 診断（壊れていた・未知の値だった等）は捨てず`diagnostics`として返す。呼び出し側
- * （`hosts/standalone`のページ）が`PaneFrame`の`settingsDiagnostics`へ渡して画面に出す。
+ * 読めない項目は既定値になる。診断は画面に出さない。読めない項目は古い版が残したもので利用者が直せるものではなく、
+ * 起動時の読み込み（`app/standalone/analyzer-options-repair.ts`）が保存値から捨てるため。
  */
-export function decodeStoredAnalyzerOptions<Options>(definition: DecodableAnalyzerDefinition<Options>, raw: unknown): DecodedAnalyzerOptions<Options> {
-  const diagnostics: CodecDiagnostic[] = [];
-  const options = definition.decodeOptions(raw, diagnostics);
-  return { options, diagnostics };
+export function decodeStoredAnalyzerOptions<Options>(definition: DecodableAnalyzerDefinition<Options>, raw: unknown): Options {
+  return definition.decodeOptions(raw, []);
 }

@@ -1,6 +1,5 @@
 import { useCallback, useContext, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react';
 import type { EngineRequestState } from '#engine/request.ts';
-import type { CodecDiagnostic } from '#input/codec/index.ts';
 import { describeEngineRequestError, engineRequestErrorDetail, paneStatusLabel, TRACE_ERRORS_SENTENCE } from './pane-status.ts';
 import type { ConditionHeaderInfo, ConditionSummaryRow, ConditionTargetDiff } from './condition-summary.ts';
 import { ConditionSummary } from './ConditionSummary.tsx';
@@ -112,11 +111,6 @@ export interface PaneFrameProps {
   readonly waitingForScreen?: boolean | undefined;
   /** Trace生成段の診断（配列定義の不備等）。値として表示する。 */
   readonly traceErrors?: readonly string[] | undefined;
-  /**
-   * 保存済みの解析設定を読み直した時の診断（壊れた値・未知の値を既定値へ戻したという報告）。
-   * `traceErrors`とは出どころが違うので混ぜない。共有リンクの取り込みは事実が違うので`linkNotices`で出す。
-   */
-  readonly settingsDiagnostics?: readonly CodecDiagnostic[] | undefined;
   /** 共有リンクを開いた時に、取り込めなかったものを伝える文（解析設定・対象）。 */
   readonly linkNotices?: readonly string[] | undefined;
   /**
@@ -198,7 +192,6 @@ export function PaneFrame({
   frameRef,
   waitingForScreen = false,
   traceErrors,
-  settingsDiagnostics,
   linkNotices,
   emptyContent,
   children,
@@ -346,16 +339,6 @@ export function PaneFrame({
           <p>{TRACE_ERRORS_SENTENCE}</p>
           <ErrorDetails lines={traceErrors} />
         </div>
-      ) : null}
-
-      {/*
-        読み直しの診断文は保存形式のキー名・検証ライブラリの英文を含む開発者向けの文なので、
-        個々には出さず、何が起きたかを1行で伝える（件数だけ添える）。
-      */}
-      {settingsDiagnostics && settingsDiagnostics.length > 0 ? (
-        <p className="pane-settings-diagnostics" role="status" data-pane-settings-diagnostics="true">
-          読み取れない解析設定があったため、その項目は既定値へ戻しました（{settingsDiagnostics.length}件）
-        </p>
       ) : null}
 
       {reading?.kind === 'failed' ? (

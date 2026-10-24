@@ -107,13 +107,13 @@ export function SetAnalyzerStandalonePage<Options, Extracted, RowContext>({
   const decoded = useMemo(() => decodeStoredAnalyzerOptions(analyzer.definition, storedOptionsRaw), [analyzer.definition, storedOptionsRaw]);
   // `SingleAnalyzerStandalonePage`と同じ形: 見た目は即座に反映しつつ（controlled）、
   // 資産への書き込みは呼び出し側がdebounceする（`onOptionsCommit`）。
-  const [optionsDraft, setOptionsDraft] = useOptionsDraft<Options>(decoded.options, STANDALONE_WRITE_LOG_KEY);
+  const [optionsDraft, setOptionsDraft] = useOptionsDraft<Options>(decoded, STANDALONE_WRITE_LOG_KEY);
   // URL経由で解析設定と対象を受け取る（共有リンク。`use-shared-link.ts`）。書き込みは1つのコマンドで、Undo 1回で戻る。
   const shareSource = useTargetShareSource(catalog, assets.setupLibrary.setups);
   const { optionDiagnostics: urlDiagnostics, targetNotices } = useSharedLink({
     analyzerId,
     optionsDefinition: analyzer.urlOptions,
-    currentOptions: decoded.options,
+    currentOptions: decoded,
     kind: 'multi',
     assetsReady,
     source: shareSource,
@@ -223,7 +223,6 @@ export function SetAnalyzerStandalonePage<Options, Extracted, RowContext>({
             onBaselineChange={(next) => dispatch(setMultiBaselineCommand(next))}
             options={optionsDraft}
             onOptionsChange={changeOptions}
-            settingsDiagnostics={decoded.diagnostics}
             linkNotices={[...urlOptionsNotices(urlDiagnostics), ...targetNotices]}
           />
         </div>

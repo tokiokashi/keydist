@@ -32,6 +32,7 @@ import { WORKSPACE_LIBRARY_CODEC } from '#engine/workspace-codec.ts';
 import { WORKSPACES_STORAGE_KEY } from '#platform/assets/workspaces-storage.ts';
 import { EMPTY_PERSONAL_SPEED, PERSONAL_SPEED_CODEC } from '#interpretation/timing/calibration-codec.ts';
 import { PERSONAL_SPEED_STORAGE_KEY } from '#platform/assets/personal-speed-storage.ts';
+import { repairStandaloneAnalyzerOptions, repairWorkspaceAnalyzerOptions } from './analyzer-options-repair.ts';
 
 /**
  * `KeydistAssets`（`engine/commands.ts`）の各キーを、永続化に要る3点
@@ -68,6 +69,11 @@ export interface AssetStorageSpec<T> {
   readonly codec: AssetCodec<T>;
   /** 初回起動時・storageに何も無い時の値。 */
   readonly initial: () => T;
+  /**
+   * 起動時に読めた値から、codecが判断できない読めない部分を知らせずに捨てる。捨てた時は別の参照を返し、
+   * 読み込み（`loadAssetsAndRepair`）がその形を書き戻す。何も捨てなければ同じ参照を返す。
+   */
+  readonly repair?: (value: T) => T;
 }
 
 export const ASSET_STORAGE_SPECS: { readonly [K in keyof KeydistAssets]: AssetStorageSpec<KeydistAssets[K]> } = {
@@ -95,6 +101,7 @@ export const ASSET_STORAGE_SPECS: { readonly [K in keyof KeydistAssets]: AssetSt
     storageKey: STANDALONE_ANALYZER_OPTIONS_STORAGE_KEY,
     codec: STANDALONE_ANALYZER_OPTIONS_CODEC,
     initial: initialStandaloneAnalyzerOptions,
+    repair: repairStandaloneAnalyzerOptions,
   },
   multiTargetSelection: {
     storageKey: MULTI_TARGET_SELECTION_STORAGE_KEY,
@@ -110,6 +117,7 @@ export const ASSET_STORAGE_SPECS: { readonly [K in keyof KeydistAssets]: AssetSt
     storageKey: WORKSPACES_STORAGE_KEY,
     codec: WORKSPACE_LIBRARY_CODEC,
     initial: initialWorkspaceLibrary,
+    repair: repairWorkspaceAnalyzerOptions,
   },
   presetLibrary: {
     storageKey: PRESET_LIBRARY_STORAGE_KEY,

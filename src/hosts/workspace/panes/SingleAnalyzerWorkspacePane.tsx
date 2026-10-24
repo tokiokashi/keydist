@@ -16,11 +16,8 @@ export function SingleAnalyzerWorkspacePane<Options, Extracted>({
   readonly pane: WorkspacePane;
   readonly runtime: WorkspacePaneRuntime;
 }) {
-  const { options, onOptionsChange, diagnostics } = usePaneOptions<Options>(
-    analyzer.definition,
-    runtime.paneOptions(pane),
-    runtime.paneOptionsKey(pane),
-    (next) => runtime.commitPaneOptions(pane.id, next),
+  const { options, onOptionsChange } = usePaneOptions<Options>(analyzer.definition, runtime.paneOptions(pane), runtime.paneOptionsKey(pane), (next) =>
+    runtime.commitPaneOptions(pane.id, next),
   );
   const chrome: PaneChrome = useMemo(
     () => workspacePaneChrome(runtime, pane, () => onOptionsChange(analyzer.defaultOptions)),
@@ -37,7 +34,6 @@ export function SingleAnalyzerWorkspacePane<Options, Extracted>({
       onTargetChange={(target) => runtime.setPaneTarget(pane.id, { kind: 'single', target })}
       options={options}
       onOptionsChange={onOptionsChange}
-      settingsDiagnostics={diagnostics}
     />
   );
 }

@@ -105,7 +105,7 @@ function reportToNotice<K extends keyof KeydistAssets>(key: K, report: AssetLoad
   return undefined;
 }
 
-/** 1資産を読み、直した形（読めなければ既定値）を書き戻す。新しい版の値と、無い値は書き戻さない。 */
+/** 1資産を読み、直した形（読めなければ既定値）を書き戻す。`repair`が捨てた部分は知らせずに書き戻す。新しい版の値と、無い値は書き戻さない。 */
 function loadAndRepairOne<K extends keyof KeydistAssets>(
   syncs: AssetSyncMap,
   key: K,
@@ -113,8 +113,10 @@ function loadAndRepairOne<K extends keyof KeydistAssets>(
   const report = syncs[key].loadReport();
   const notice = reportToNotice(key, report);
   if (report.kind === 'loaded') {
-    if (notice !== undefined) syncs[key].save(report.value);
-    return notice === undefined ? { entry: [key, report.value] } : { entry: [key, report.value], notice };
+    const repair = ASSET_STORAGE_SPECS[key].repair;
+    const value = repair === undefined ? report.value : repair(report.value);
+    if (notice !== undefined || value !== report.value) syncs[key].save(value);
+    return notice === undefined ? { entry: [key, value] } : { entry: [key, value], notice };
   }
   if (notice !== undefined && notice.kind === 'reset') syncs[key].save(ASSET_STORAGE_SPECS[key].initial());
   return notice === undefined ? {} : { notice };

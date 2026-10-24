@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import type { CodecDiagnostic } from '#input/codec/index.ts';
 import { decodeStoredAnalyzerOptions, type DecodableAnalyzerDefinition } from '#hosts/shared/decode-analyzer-options.ts';
 import { useOptionsDraft } from '#hosts/shared/use-options-draft.ts';
 
@@ -16,16 +15,14 @@ export function usePaneOptions<Options>(
 ): {
   readonly options: Options;
   readonly onOptionsChange: (next: Options) => void;
-  readonly diagnostics: readonly CodecDiagnostic[];
 } {
   const decoded = useMemo(() => decodeStoredAnalyzerOptions(definition, stored), [definition, stored]);
-  const [draft, setDraft] = useOptionsDraft<Options>(decoded.options, ownerKey);
+  const [draft, setDraft] = useOptionsDraft<Options>(decoded, ownerKey);
   return {
     options: draft,
     onOptionsChange: (next) => {
       setDraft(next);
       commit(next);
     },
-    diagnostics: decoded.diagnostics,
   };
 }

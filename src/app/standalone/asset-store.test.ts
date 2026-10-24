@@ -165,10 +165,10 @@ test('別のタブでの変更: その資産に触れる項目を、取ってお
 test('履歴は保存データに書かない: 新しいストアは空の履歴で始まる', () => {
   const storage = createFakeStorage();
   const first = newStore(storage);
-  first.dispatch('/a', setStandaloneAnalyzerOptionsCommand('heatmap', { n: 1 }));
+  first.dispatch('/a', setStandaloneAnalyzerOptionsCommand('playback', { showChain: true }));
   const reloaded = newStore(storage);
   assert.equal(reloaded.getState().histories.size, 0);
-  assert.deepEqual(reloaded.getAssets().standaloneAnalyzerOptions, { heatmap: { n: 1 } });
+  assert.deepEqual(reloaded.getAssets().standaloneAnalyzerOptions, { playback: { showChain: true } });
 });
 
 test('購読: 値や履歴が変わった時だけ通知する', () => {

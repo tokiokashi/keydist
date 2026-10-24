@@ -438,10 +438,8 @@ test('解析設定はdebounce完了前にリロードしても残る（pagehide�
   await expect((await openSettings(page)).getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'true');
 });
 
-test('保存された解析設定が壊れていたら、既定値へ戻しつつ診断をペインに表示する', async ({ page }) => {
-  // 対応するAnalyzer id（'bigram-flow'）に壊れた値を仕込んでから開く
-  // （`decodeStoredAnalyzerOptions`が捨てずに`diagnostics`として返し、
-  // `PaneFrame`の`settingsDiagnostics`へ届くことを確認する）。
+test('保存された解析設定の読めない項目は、知らせずに既定値へ戻し、保存値からも捨てる', async ({ page }) => {
+  // 対応するAnalyzer id（'bigram-flow'）に読めない値を仕込んでから開く
   await page.addInitScript(() => {
     localStorage.setItem('keydist:standalone-analyzer-options', JSON.stringify({ version: 1, 'bigram-flow': { source: 'no-such-source' } }));
   });
@@ -449,13 +447,13 @@ test('保存された解析設定が壊れていたら、既定値へ戻しつ�
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
-  const diagnostics = page.locator('[data-pane-settings-diagnostics="true"]');
-  await expect(diagnostics).toBeVisible();
-  await expect(diagnostics).toContainText('既定値へ戻しました');
-
-  // 既定値へ戻っているので、Actualが選ばれている（壊れた値のsourceは使われない）。
+  // 既定値へ戻っているので、Actualが選ばれている（読めない値のsourceは使われない）。
   const actual = (await openSettings(page)).getByRole('button', { name: 'Actual', exact: true });
   await expect(actual).toHaveAttribute('aria-pressed', 'true');
+
+  // 読み込みが読めない値を捨てた形を書き戻しているので、次に開いた時も同じ値は残っていない。
+  await expect.poll(async () => page.evaluate(() => localStorage.getItem('keydist:standalone-analyzer-options'))).not.toContain('no-such-source');
+  await expect(page.locator('[data-asset-load-notice]')).toHaveCount(0);
 });
 
 test('URLパラメータで開くと解析設定が反映され、資産に残り、URLから消える', async ({ page }) => {
@@ -489,11 +487,9 @@ test('URLパラメータの壊れた値は既定値へ戻し、診断をペイ�
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
-  // 共有リンクの取り込みは、保存済みの読み直し（既定値へ戻した）とは別の文で伝える。
   const notice = page.locator('[data-pane-link-notice="true"]');
   await expect(notice).toBeVisible();
   await expect(notice).toContainText('取り込みませんでした');
-  await expect(page.locator('[data-pane-settings-diagnostics="true"]:not([data-pane-link-notice])')).toHaveCount(0);
 
   // 既定値のまま（壊れたURLパラメータは使われない）。
   const actual = (await openSettings(page)).getByRole('button', { name: 'Actual', exact: true });
