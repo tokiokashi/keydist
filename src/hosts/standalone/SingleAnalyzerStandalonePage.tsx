@@ -111,7 +111,7 @@ export function SingleAnalyzerStandalonePage<Options, Extracted>({
   // `onOptionsCommit`（呼び出し元がdebounceする）経由にする。
   const storedOptionsRaw = assets.standaloneAnalyzerOptions[analyzerId];
   const decoded = useMemo(() => decodeStoredAnalyzerOptions(analyzer.definition, storedOptionsRaw), [analyzer.definition, storedOptionsRaw]);
-  const [optionsDraft, setOptionsDraft] = useOptionsDraft<Options>(decoded.options, STANDALONE_WRITE_LOG_KEY);
+  const [optionsDraft, setOptionsDraft] = useOptionsDraft<Options>(decoded, STANDALONE_WRITE_LOG_KEY);
 
   // URL経由で解析設定と対象を受け取る（共有リンク。`use-shared-link.ts`）。書き込みは1つのコマンドで、Undo 1回で戻る。
   const shareSource = useTargetShareSource(catalog, assets.setupLibrary.setups);
@@ -121,7 +121,7 @@ export function SingleAnalyzerStandalonePage<Options, Extracted>({
   const { optionDiagnostics: urlDiagnostics, targetNotices } = useSharedLink({
     analyzerId: analyzerId,
     optionsDefinition: analyzer.urlOptions,
-    currentOptions: decoded.options,
+    currentOptions: decoded,
     kind: 'single',
     assetsReady,
     source: shareSource,
@@ -223,7 +223,6 @@ export function SingleAnalyzerStandalonePage<Options, Extracted>({
             onTargetChange={(next) => dispatch(setSingleTargetCommand(next))}
             options={optionsDraft}
             onOptionsChange={changeOptions}
-            settingsDiagnostics={decoded.diagnostics}
             {...(setTargetSource === undefined ? {} : { setTargetSource })}
             {...(initialPosition === undefined ? {} : { initialCharPosition: initialPosition })}
             linkNotices={[...urlOptionsNotices(urlDiagnostics), ...targetNotices]}

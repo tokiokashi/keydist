@@ -17,11 +17,8 @@ export function SetAnalyzerWorkspacePane<Options, Extracted, RowContext>({
   readonly pane: WorkspacePane;
   readonly runtime: WorkspacePaneRuntime;
 }) {
-  const { options, onOptionsChange, diagnostics } = usePaneOptions<Options>(
-    analyzer.definition,
-    runtime.paneOptions(pane),
-    runtime.paneOptionsKey(pane),
-    (next) => runtime.commitPaneOptions(pane.id, next),
+  const { options, onOptionsChange } = usePaneOptions<Options>(analyzer.definition, runtime.paneOptions(pane), runtime.paneOptionsKey(pane), (next) =>
+    runtime.commitPaneOptions(pane.id, next),
   );
   const coveredByMaximizedPane = runtime.maximizedPaneId !== undefined && runtime.maximizedPaneId !== pane.id;
   const computeOnlyWhenOnScreen = analyzer.computeOnlyWhenOnScreen === true;
@@ -46,7 +43,6 @@ export function SetAnalyzerWorkspacePane<Options, Extracted, RowContext>({
       onBaselineChange={(baseline) => runtime.setPaneTarget(pane.id, { kind: 'set', selection: withMultiBaseline(selection, baseline) })}
       options={options}
       onOptionsChange={onOptionsChange}
-      settingsDiagnostics={diagnostics}
     />
   );
 }

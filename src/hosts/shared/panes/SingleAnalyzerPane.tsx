@@ -1,5 +1,4 @@
 import { useEffect, useMemo } from 'react';
-import type { CodecDiagnostic } from '#input/codec/index.ts';
 import { analysisTargetKey, nameTargets, type AnalysisTarget } from '#input/setup/index.ts';
 import type { ColorSlotsByKey, TargetSet } from '#engine/multi-target-selection.ts';
 import type { SetTargetFigure, SingleAnalyzerPaneParts } from '#analyzers/pane-parts.tsx';
@@ -45,8 +44,6 @@ export interface SingleAnalyzerPaneProps<Options, Extracted> {
   readonly options: Options;
   /** 下書きの更新と、資産への反映（間引き済み）は器が結ぶ。 */
   readonly onOptionsChange: (next: Options) => void;
-  /** 保存した解析設定を読み直した時の診断。 */
-  readonly settingsDiagnostics?: readonly CodecDiagnostic[];
   /** 共有リンクを開いた時に、取り込めなかったものを伝える文。 */
   readonly linkNotices?: readonly string[];
   /**
@@ -69,7 +66,6 @@ export function SingleAnalyzerPane<Options, Extracted>({
   onTargetChange,
   options,
   onOptionsChange,
-  settingsDiagnostics = [],
   linkNotices,
   setTargetSource,
   initialCharPosition,
@@ -261,7 +257,6 @@ export function SingleAnalyzerPane<Options, Extracted>({
       reading={env.reading}
       engineState={combinePaneStates(extraction, pane.trace)}
       traceErrors={traceErrors}
-      settingsDiagnostics={settingsDiagnostics}
       linkNotices={linkNotices}
     >
       {resolution.ok && coherent !== undefined ? (

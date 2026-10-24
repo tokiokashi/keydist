@@ -221,3 +221,21 @@ test('知らせの文: 資産の名前と件数だけを出し、codecの診断�
   assert.match(assetNoticeText({ key: 'userLayouts', kind: 'reset', diagnostics: [] }), /^自作の配列: .*初期の状態/);
   assert.match(assetNoticeText({ key: 'workspaces', kind: 'newer-version', diagnostics: [] }), /^Workspace: 新しい版/);
 });
+
+test('解析設定の読めない項目は、知らせずに捨てて書き戻し、次に開いても同じ値は残らない', () => {
+  const { storage, map } = createFakeStorage();
+  const storageKey = ASSET_STORAGE_SPECS.standaloneAnalyzerOptions.storageKey;
+  map.set(storageKey, JSON.stringify({ version: 1, 'bigram-flow': { source: 'no-such-source', lineScale: 'log' } }));
+
+  const first = open(storage);
+  assert.deepEqual(first.notices, []);
+  const repaired = first.assets.standaloneAnalyzerOptions?.['bigram-flow'] as Record<string, unknown>;
+  assert.equal(repaired.source, 'actual', '読めない項目は既定値になる');
+  assert.equal(repaired.lineScale, 'log', '読める項目は残る');
+  assert.ok(!(map.get(storageKey) ?? '').includes('no-such-source'), '捨てた形を書き戻している');
+
+  const again = createFakeStorage();
+  again.map.set(storageKey, map.get(storageKey)!);
+  open(again.storage);
+  assert.deepEqual(again.writes, [], '次に開いた時は書き戻さない');
+});

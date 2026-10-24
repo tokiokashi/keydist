@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import type { CodecDiagnostic } from '#input/codec/index.ts';
 import type { EngineSetMemberInput } from '#engine/request.ts';
 import { effectiveMultiBaseline, type ColorSlotsByKey, type TargetSet } from '#engine/multi-target-selection.ts';
 import { analysisTargetKey, nameTargets, type AnalysisTarget } from '#input/setup/index.ts';
@@ -46,7 +45,6 @@ export interface SetAnalyzerPaneProps<Options, Extracted, RowContext> {
   readonly onBaselineChange: (next: AnalysisTarget | undefined) => void;
   readonly options: Options;
   readonly onOptionsChange: (next: Options) => void;
-  readonly settingsDiagnostics?: readonly CodecDiagnostic[];
   /** 共有リンクを開いた時に、取り込めなかったものを伝える文。 */
   readonly linkNotices?: readonly string[];
 }
@@ -61,7 +59,6 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
   onBaselineChange,
   options,
   onOptionsChange,
-  settingsDiagnostics = [],
   linkNotices,
 }: SetAnalyzerPaneProps<Options, Extracted, RowContext>) {
   const { setups, overrides, catalog, resolvedText, cache, dispatch, assetsReady } = env;
@@ -268,7 +265,6 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
       engineState={extraction}
       frameRef={frameRef}
       waitingForScreen={waitsForScreen && !shown && extraction.status === 'idle'}
-      settingsDiagnostics={settingsDiagnostics}
       linkNotices={linkNotices}
       {...(targets.length === 0
         ? {
