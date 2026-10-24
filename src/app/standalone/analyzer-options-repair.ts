@@ -1,7 +1,7 @@
 import type { CodecDiagnostic } from '#input/codec/index.ts';
 import type { StandaloneAnalyzerOptionsState } from '#engine/standalone-analyzer-options.ts';
 import type { OptionSet, WorkspaceLibrary, WorkspacePane } from '#engine/workspace.ts';
-import { findWorkspaceAnalyzer } from '#hosts/workspace/analyzer-registry.ts';
+import { ANALYZER_OPTIONS_DECODERS } from './analyzer-options-decoders.ts';
 
 /**
  * 保存した解析設定のうち、今のAnalyzerが読めない項目を捨てる。
@@ -17,10 +17,10 @@ import { findWorkspaceAnalyzer } from '#hosts/workspace/analyzer-registry.ts';
  */
 function repairOptions(analyzerId: string, raw: unknown): unknown {
   if (raw === undefined) return raw;
-  const entry = findWorkspaceAnalyzer(analyzerId);
-  if (entry === undefined) return raw;
+  const decodeOptions = ANALYZER_OPTIONS_DECODERS.get(analyzerId);
+  if (decodeOptions === undefined) return raw;
   const diagnostics: CodecDiagnostic[] = [];
-  const decoded = entry.decodeOptions(raw, diagnostics);
+  const decoded = decodeOptions(raw, diagnostics);
   return diagnostics.length === 0 ? raw : decoded;
 }
 

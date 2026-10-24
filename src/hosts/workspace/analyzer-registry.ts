@@ -1,4 +1,3 @@
-import type { CodecDiagnostic } from '#input/codec/index.ts';
 import type { InfoHelp } from '#ui/primitives/info-button.tsx';
 import { BLANK_PANE_ID } from '#engine/workspace.ts';
 import { bigramFlowDefinition } from '#analyzers/bigram-flow/extract.ts';
@@ -45,28 +44,21 @@ export interface WorkspaceAnalyzerEntry {
   readonly cardinality: 'single' | 'set';
   /** 本体の縦の下限 [rem]（`analyzers/min-body-height.ts`）。宣言しないAnalyzerは既定。 */
   readonly minBodyHeightRem?: number;
-  /** 保存した解析設定を読む（`analyzers/contract.ts`の`decodeOptions`）。読めない項目は既定値へ戻し、診断を積む。 */
-  readonly decodeOptions: (raw: unknown, diagnostics: CodecDiagnostic[]) => unknown;
 }
 
 export const WORKSPACE_ANALYZERS: readonly WorkspaceAnalyzerEntry[] = [
-  { id: bigramFlowDefinition.id, decodeOptions: bigramFlowDefinition.decodeOptions, ...BIGRAM_FLOW_PANE_META, cardinality: 'single' },
-  { id: fingerDistanceDefinition.id, decodeOptions: fingerDistanceDefinition.decodeOptions, ...FINGER_DISTANCE_PANE_META, cardinality: 'single' },
-  { id: heatmapDefinition.id, decodeOptions: heatmapDefinition.decodeOptions, ...HEATMAP_PANE_META, cardinality: 'single' },
-  { id: heatmapLayersDefinition.id, decodeOptions: heatmapLayersDefinition.decodeOptions, ...HEATMAP_LAYERS_PANE_META, cardinality: 'single' },
-  {
-    id: layerComboPressesDefinition.id,
-    decodeOptions: layerComboPressesDefinition.decodeOptions,
-    ...LAYER_COMBO_PRESSES_PANE_META,
-    cardinality: 'single',
-  },
-  { id: keymapDefinition.id, decodeOptions: keymapDefinition.decodeOptions, ...KEYMAP_PANE_META, cardinality: 'single' },
-  { id: playbackDefinition.id, decodeOptions: playbackDefinition.decodeOptions, ...PLAYBACK_PANE_META, cardinality: 'single' },
-  { id: comparisonDefinition.id, decodeOptions: comparisonDefinition.decodeOptions, ...COMPARISON_PANE_META, cardinality: 'set' },
-  { id: fingerMatrixDefinition.id, decodeOptions: fingerMatrixDefinition.decodeOptions, ...FINGER_MATRIX_PANE_META, cardinality: 'set' },
-  { id: nSensitivityDefinition.id, decodeOptions: nSensitivityDefinition.decodeOptions, ...N_SENSITIVITY_PANE_META, cardinality: 'set' },
-  { id: runChartDefinition.id, decodeOptions: runChartDefinition.decodeOptions, ...RUN_CHART_PANE_META, cardinality: 'set' },
-  { id: bunsetsuStatsDefinition.id, decodeOptions: bunsetsuStatsDefinition.decodeOptions, ...BUNSETSU_STATS_PANE_META, cardinality: 'set' },
+  { id: bigramFlowDefinition.id, ...BIGRAM_FLOW_PANE_META, cardinality: 'single' },
+  { id: fingerDistanceDefinition.id, ...FINGER_DISTANCE_PANE_META, cardinality: 'single' },
+  { id: heatmapDefinition.id, ...HEATMAP_PANE_META, cardinality: 'single' },
+  { id: heatmapLayersDefinition.id, ...HEATMAP_LAYERS_PANE_META, cardinality: 'single' },
+  { id: layerComboPressesDefinition.id, ...LAYER_COMBO_PRESSES_PANE_META, cardinality: 'single' },
+  { id: keymapDefinition.id, ...KEYMAP_PANE_META, cardinality: 'single' },
+  { id: playbackDefinition.id, ...PLAYBACK_PANE_META, cardinality: 'single' },
+  { id: comparisonDefinition.id, ...COMPARISON_PANE_META, cardinality: 'set' },
+  { id: fingerMatrixDefinition.id, ...FINGER_MATRIX_PANE_META, cardinality: 'set' },
+  { id: nSensitivityDefinition.id, ...N_SENSITIVITY_PANE_META, cardinality: 'set' },
+  { id: runChartDefinition.id, ...RUN_CHART_PANE_META, cardinality: 'set' },
+  { id: bunsetsuStatsDefinition.id, ...BUNSETSU_STATS_PANE_META, cardinality: 'set' },
 ];
 
 export function findWorkspaceAnalyzer(analyzerId: string): WorkspaceAnalyzerEntry | undefined {
