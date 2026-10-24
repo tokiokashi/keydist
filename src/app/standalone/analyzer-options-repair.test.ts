@@ -9,12 +9,12 @@ test('個別画面: 読める解析設定・知らないAnalyzer・値の無い�
 });
 
 test('個別画面: 読めない項目を含む解析設定だけを読める形に置き換える', () => {
-  const keymap = { unknown: 1 };
-  const state = { 'bigram-flow': { source: 'no-such-source' }, 'future-analyzer': keymap };
+  const future = { unknown: 1 };
+  const state = { 'bigram-flow': { source: 'no-such-source' }, 'future-analyzer': future };
   const repaired = repairStandaloneAnalyzerOptions(state);
   assert.notEqual(repaired, state);
   assert.equal((repaired['bigram-flow'] as Record<string, unknown>).source, 'actual');
-  assert.equal(repaired['future-analyzer'], keymap);
+  assert.equal(repaired['future-analyzer'], future);
 });
 
 function library(paneOptions: unknown, setOptions: unknown): WorkspaceLibrary {

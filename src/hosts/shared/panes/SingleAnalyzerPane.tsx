@@ -44,7 +44,6 @@ export interface SingleAnalyzerPaneProps<Options, Extracted> {
   readonly options: Options;
   /** 下書きの更新と、資産への反映（間引き済み）は器が結ぶ。 */
   readonly onOptionsChange: (next: Options) => void;
-  /** 保存した解析設定を読み直した時の診断。 */
   /** 共有リンクを開いた時に、取り込めなかったものを伝える文。 */
   readonly linkNotices?: readonly string[];
   /**
