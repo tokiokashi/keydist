@@ -2,6 +2,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import { deleteWorkspaceCommand, duplicateWorkspaceCommand } from '#engine/workspace-commands.ts';
 import { findWorkspace } from '#engine/workspace.ts';
+import { workspaceAssetsOf } from '#engine/workspace-assets.ts';
 import { PRESET_FILE_FORMAT, presetFileBody, workspaceFileName } from '#hosts/shared/preset-file.ts';
 import type { ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { WorkspacePage } from '#hosts/workspace/index.ts';
@@ -72,7 +73,11 @@ export function WorkspaceApp({ workspaceId }: { readonly workspaceId: string }) 
     commitPaneOptions.flush();
     const workspace = findWorkspace(getAssets().workspaces, workspaceId);
     if (workspace === undefined) return;
-    PRESET_FILE_IO.saveJson(workspaceFileName(workspace.name), PRESET_FILE_FORMAT, presetFileBody({ workspaces: [workspace] }));
+    PRESET_FILE_IO.saveJson(
+      workspaceFileName(workspace.name),
+      PRESET_FILE_FORMAT,
+      presetFileBody({ workspaces: [workspace], userAssets: workspaceAssetsOf([workspace], getAssets()) }),
+    );
   };
 
   // 削除したら、一覧で次のWorkspace（最後だったら1つ前）へ移る。1つも残らなければトップへ移る。
