@@ -163,7 +163,9 @@ const CLASHING: Holdings = {
 };
 
 test('読み込み: 同じidで中身の違う資産が手元にあっても、Workspaceは同梱した資産を指す', () => {
-  const { after, plan } = importInto(assetsOf([], CLASHING), fileOf(makeWorkspace(), EXPORTER));
+  // 既定の配り方では出ない番号を持たせ、付け替えた対象のkeyに同じ番号が残ることを確かめる
+  const exported: Workspace = { ...makeWorkspace(), colorSlots: { 'layout:user-a': 4, 'layout:qwerty': 1 } };
+  const { after, plan } = importInto(assetsOf([], CLASHING), fileOf(exported, EXPORTER));
   const added = after.workspaces[0]!;
   const ownLayout = (id: string) => after.userLayouts.find((item) => item.id === id);
   // 固定のペインの集合と基準
@@ -209,10 +211,10 @@ test('読み込み: 同じidで中身の違う資産が手元にあっても、W
   assert.deepEqual(ownLayout('user-a')?.rows, OTHER_ROWS);
   assert.deepEqual(plan.entries()?.[0]?.missing, []);
   // 色の番号は付け替えた対象のkeyで持つ
-  assert.deepEqual(Object.keys(added.colorSlots).sort(), [`layout:${first.layoutId}`, 'layout:qwerty'].sort());
+  assert.deepEqual(added.colorSlots, { [`layout:${first.layoutId}`]: 4, 'layout:qwerty': 1 });
 });
 
-test('読み込み: 同じ中身のSetupが別のidで手元にあれば、Workspaceはそのへ向き、参照先が無い注記は出ない', () => {
+test('読み込み: 同じ中身のSetupが別のidで手元にあれば、Workspaceはその手元のSetupを指し、参照先が無い注記は出ない', () => {
   const local: Holdings = {
     userLayouts: EXPORTER.userLayouts.slice(0, 2),
     userRomajiRules: EXPORTER.userRomajiRules.slice(0, 3),
