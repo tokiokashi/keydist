@@ -8,7 +8,7 @@ import {
   type ScreenHistories,
 } from '#input/commands/index.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
-import { reportAssetLoadNotices } from './asset-load-notice.ts';
+import { reportAssetLoadNotices, reportAssetUnreadableElsewhere } from './asset-load-notice.ts';
 import { initialAssets } from './asset-storage-specs.ts';
 import { buildAssetSyncs, commitCommand, commitHistoryStep, loadAssetsAndRepair, startAssetSyncs, type BuildAssetSyncsOptions } from './asset-syncs.ts';
 
@@ -81,6 +81,7 @@ export function createAssetStore(options: Omit<BuildAssetSyncsOptions, 'onExtern
   };
 
   const syncs = buildAssetSyncs({
+    onExternalLoadFailure: (key) => reportAssetUnreadableElsewhere(key),
     ...options,
     onExternalChange: (key, value) => {
       const result = applyExternalChangeToScreens(state.assets, state.histories, key, value);

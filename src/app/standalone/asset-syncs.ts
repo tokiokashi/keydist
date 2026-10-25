@@ -6,7 +6,7 @@ import {
   type HistoryStepOutcome,
   type ScreenHistories,
 } from '#input/commands/index.ts';
-import { createAssetTabSync, type AssetLoadReport, type AssetTabSync } from '#platform/asset-tab-sync.ts';
+import { createAssetTabSync, type AssetLoadFailure, type AssetLoadReport, type AssetTabSync } from '#platform/asset-tab-sync.ts';
 import type { CodecDiagnostic } from '#input/codec/index.ts';
 import type { KeyValueStorage } from '#platform/persistence/storage.ts';
 import type { notifyKeydistStorageChange, subscribeKeydistStorageChanges } from '#platform/browser-storage-events.ts';
@@ -27,6 +27,8 @@ export type AssetSyncMap = { readonly [K in keyof KeydistAssets]: AssetTabSync<K
 
 export interface BuildAssetSyncsOptions {
   readonly onExternalChange: <K extends keyof KeydistAssets>(key: K, value: KeydistAssets[K]) => void;
+  /** 別のタブが書いた値を読めなかった時に呼ばれる。このタブは手元の値のまま動く。 */
+  readonly onExternalLoadFailure?: (key: keyof KeydistAssets, reason: AssetLoadFailure) => void;
   /** 既定は`createAssetTabSync`自身の既定（`window.localStorage`）。テストでは偽物を注入する。 */
   readonly storage?: KeyValueStorage;
   /** 既定は`browser-storage-events.ts`の購読。テストでは偽物を注入する。 */
@@ -51,6 +53,7 @@ function buildOne<K extends keyof KeydistAssets>(key: K, options: BuildAssetSync
     subscribe: options.subscribe,
     notify: options.notify,
     onExternalChange: (value) => options.onExternalChange(key, value),
+    onLoadFailure: (reason) => options.onExternalLoadFailure?.(key, reason),
   });
   return [key, sync];
 }
@@ -80,8 +83,9 @@ export function loadAssets(syncs: AssetSyncMap): Partial<KeydistAssets> {
  * - `repaired`: 壊れた値を捨てた・直して読めた。直した形を書き戻した
  * - `reset`: 読めず、既定値で始めた。既定値を書き戻した
  * - `newer-version`: 新しい版が書いた値で読めず、既定値で始めた。元の値は書き戻さず残した
+ * - `unreadable-elsewhere`: 開いた後に、別のタブが読めない値を書いた。このタブは手元の値のまま動き、初期値へは戻さない
  */
-export type AssetLoadNoticeKind = 'repaired' | 'reset' | 'newer-version';
+export type AssetLoadNoticeKind = 'repaired' | 'reset' | 'newer-version' | 'unreadable-elsewhere';
 
 export interface AssetLoadNotice {
   readonly key: keyof KeydistAssets;
@@ -95,12 +99,17 @@ export interface AssetLoadOutcome {
   readonly notices: readonly AssetLoadNotice[];
 }
 
+/** 開く時に読めなかった理由から、知らせを作る。 */
+export function openFailureNotice(key: keyof KeydistAssets, reason: AssetLoadFailure): AssetLoadNotice {
+  return { key, kind: reason.kind === 'future-version' ? 'newer-version' : 'reset', diagnostics: [] };
+}
+
 function reportToNotice<K extends keyof KeydistAssets>(key: K, report: AssetLoadReport<KeydistAssets[K]>): AssetLoadNotice | undefined {
   if (report.kind === 'loaded') {
     return report.diagnostics.length === 0 ? undefined : { key, kind: 'repaired', diagnostics: report.diagnostics };
   }
   if (report.kind === 'failed') {
-    return { key, kind: report.reason.kind === 'future-version' ? 'newer-version' : 'reset', diagnostics: [] };
+    return openFailureNotice(key, report.reason);
   }
   return undefined;
 }

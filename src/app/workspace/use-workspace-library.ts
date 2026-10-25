@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { WORKSPACE_LIBRARY_CODEC } from '#engine/workspace-codec.ts';
 import type { WorkspaceLibrary } from '#engine/workspace.ts';
-import { createAssetTabSync, type AssetTabSync } from '#platform/asset-tab-sync.ts';
-import { WORKSPACES_STORAGE_KEY } from '#platform/assets/workspaces-storage.ts';
+import type { AssetTabSync } from '#platform/asset-tab-sync.ts';
+import { createWorkspaceLibrarySync, loadWorkspaceLibrary } from '../standalone/workspace-library-sync.ts';
 
 /**
  * 保存したWorkspaceの手持ち（読む前は`undefined`）。どの画面の資産の手持ちにも属さないシェルの知らせが、
@@ -14,20 +13,19 @@ export function useWorkspaceLibrary(refreshKey: unknown): WorkspaceLibrary | und
   const syncRef = useRef<AssetTabSync<WorkspaceLibrary> | undefined>(undefined);
 
   useEffect(() => {
-    const sync = createAssetTabSync({
-      storageKey: WORKSPACES_STORAGE_KEY,
-      codec: WORKSPACE_LIBRARY_CODEC,
+    const sync = createWorkspaceLibrarySync({
       onExternalChange: (value) => setLibrary(value),
     });
     syncRef.current = sync;
-    setLibrary(sync.load() ?? []);
+    setLibrary(loadWorkspaceLibrary(sync));
     return sync.start();
   }, []);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: refreshKeyは読み直す時を決める合図。本体では読まない。依存から外すと、書き込み直後の読み直しが起きない
   useEffect(() => {
-    const loaded = syncRef.current?.load();
-    if (loaded !== undefined) setLibrary(loaded);
+    // 読めなかった値は開く時に知らせ済み。書き込みのたびに読み直すここでは知らせない
+    const report = syncRef.current?.loadReport();
+    if (report?.kind === 'loaded') setLibrary(report.value);
   }, [refreshKey]);
 
   return library;
