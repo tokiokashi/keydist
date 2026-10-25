@@ -3,6 +3,8 @@ import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { ROMAJI_RULES } from '#input/romaji/rules.ts';
 import { PHYSICAL_SHAPES } from '#input/shapes/geometry.ts';
 import type { KeydistAssets } from './commands.ts';
+import { isEmptyUserAssetsBundle, mergeUserAssets, userAssetChanges, type UserAssetImportEntry, type UserAssetsBundle } from './user-assets-file.ts';
+import { remapWorkspaceAssets } from './workspace-assets.ts';
 import { stableStringify } from './cache-key.ts';
 import { FINGER_ASSIGNMENT_REGISTRY } from './finger-assignment.ts';
 import { workspaceTargets, type Workspace, type WorkspaceIdGenerator, type WorkspaceLibrary } from './workspace.ts';
@@ -10,10 +12,14 @@ import { workspaceTargets, type Workspace, type WorkspaceIdGenerator, type Works
 /**
  * ファイルから読んだWorkspaceを手元へ足す計算（DOMを使わない）。
  *
- * 参照先の資産（Setup・自作の配列・指の割り当て・ローマ字規則・自作のテキスト）はファイルに入らない。
- * この端末に無い資産を指すWorkspaceも読み込み、指している種類を結果に添える（画面が注記する）。
+ * ファイルには、Workspaceが参照する自作の資産（配列・ローマ字規則・指の割り当て・Setup）が同梱される
+ * （`workspace-assets.ts`）。同梱した資産は自作の資産の読み込み（`user-assets-file.ts`）と同じ規則で手元に突き合わせ、
+ * その対応（ファイルのid → 読み込み後のid）をWorkspaceのすべての参照箇所に当ててから、Workspaceを手元に突き合わせる。
+ * 資産とWorkspaceは1回の変更で書くので、元に戻す操作は無く、同じファイルを二度読んでも資産もWorkspaceも増えない。
+ * 同梱されない参照先（組み込みの資産・物理配列・自作のテキスト、同梱するものが無かった自作の資産）は、
+ * この端末に無ければ指している種類を結果に添える（画面が注記する）。
  *
- * 突き合わせは自作の資産の読み込み（`user-assets-file.ts`）と同じ決め方にそろえる:
+ * Workspaceの突き合わせは自作の資産の読み込み（`user-assets-file.ts`）と同じ決め方にそろえる:
  * - 手元に同じidが無ければ、そのまま足す
  * - 同じidがあり中身が同じなら、何も足さない（同じファイルを二度読んでも増えない）
  * - 同じidがあり中身が違えば、手元を残し、読み込んだ側を新しいidと「名前 (2)」の別名で足す。
@@ -144,22 +150,38 @@ export function mergeWorkspaces(
 }
 
 /**
- * ファイルから読んだWorkspaceを手元へ足す。足すものが無ければ何もしない。
- * `entries()`は、コマンドが最後に適用された時の突き合わせの結果（画面に出す内訳）。書き込みと同じ突き合わせから作るので、
+ * ファイルから読んだWorkspaceと、同梱された資産を手元へ足す。足すものが無ければ何もしない。
+ * `entries()`・`assetEntries()`は、コマンドが最後に適用された時の突き合わせの結果（画面に出す内訳）。書き込みと同じ突き合わせから作るので、
  * 読み込みの途中で別のタブが資産を書き換えても、出した内訳と書いた中身は食い違わない。適用前は`undefined`。
  */
 export interface WorkspaceImportPlan {
   readonly command: Command<KeydistAssets>;
   entries(): readonly WorkspaceImportEntry[] | undefined;
+  /** 同梱された資産の突き合わせの結果。同梱が無ければ空。 */
+  assetEntries(): readonly UserAssetImportEntry[] | undefined;
 }
 
-export function importWorkspacesCommand(incoming: WorkspaceLibrary, generateId: WorkspaceIdGenerator): WorkspaceImportPlan {
+export function importWorkspacesCommand(
+  incoming: WorkspaceLibrary,
+  bundle: UserAssetsBundle,
+  generateId: WorkspaceIdGenerator,
+  stamp: string,
+): WorkspaceImportPlan {
   let entries: readonly WorkspaceImportEntry[] | undefined;
+  let assetEntries: readonly UserAssetImportEntry[] | undefined;
   const command: Command<KeydistAssets> = (current) => {
-    const merge = mergeWorkspaces(current.workspaces, incoming, current, generateId);
+    // 同梱が無ければ資産は触らず、Workspaceの参照もそのまま（同梱の無いファイルは同梱する資産が無いものとして読む）
+    const assets = isEmptyUserAssetsBundle(bundle) ? undefined : mergeUserAssets(current, bundle, stamp);
+    const remapped = assets === undefined ? incoming : incoming.map((workspace) => remapWorkspaceAssets(workspace, assets.idMaps));
+    const merge = mergeWorkspaces(current.workspaces, remapped, assets === undefined ? current : { ...current, ...assets.assets }, generateId);
     entries = merge.entries;
-    if (merge.library.length === current.workspaces.length) return { kind: 'no-op' };
-    return { kind: 'applied', label: 'Workspaceを読み込む', changes: { workspaces: merge.library } };
+    assetEntries = assets?.entries ?? [];
+    const changes: Partial<KeydistAssets> = {
+      ...(assets === undefined ? {} : userAssetChanges(current, assets.assets)),
+      ...(merge.library.length === current.workspaces.length ? {} : { workspaces: merge.library }),
+    };
+    if (Object.keys(changes).length === 0) return { kind: 'no-op' };
+    return { kind: 'applied', label: 'Workspaceを読み込む', changes };
   };
-  return { command, entries: () => entries };
+  return { command, entries: () => entries, assetEntries: () => assetEntries };
 }

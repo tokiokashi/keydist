@@ -1,6 +1,7 @@
 import { describeFileDecodeFailure, isRecord, type CodecDiagnostic } from '#input/codec/index.ts';
 import type { LevelOverrides } from '#input/settings/index.ts';
 import { PRESET_FILE_CODEC, type PresetFileContents } from '#engine/preset-file-codec.ts';
+import { EMPTY_USER_ASSETS_BUNDLE, USER_ASSETS_FILE_MAX_ITEMS, type UserAssetsBundle } from '#engine/user-assets-file.ts';
 import type { Workspace } from '#engine/workspace.ts';
 import { SETTINGS_ITEMS, type SettingsValueMap } from '#engine/settings-items.ts';
 import { conditionItemLabel } from './condition-summary.ts';
@@ -9,7 +10,7 @@ import { conditionItemLabel } from './condition-summary.ts';
  * プリセットの書き出しファイルの形と、読み込みの分類・文言（DOMを使わない計算。
  * ファイルの保存・読み取りは`platform/`で、`PresetFileIo`として注入される）。
  *
- * ファイルは`{ format, version, presets?, workspaces? }`。`version`・`presets`・`workspaces`は封筒のcodec
+ * ファイルは`{ format, version, presets?, workspaces?, userAssets? }`。`version`・`presets`・`workspaces`・`userAssets`は封筒のcodec
  * （`engine/preset-file-codec.ts`）の出力そのままで、`format`だけを書く直前に付ける（`platform/browser-download.ts`）。
  * どちらか一方だけを持つファイルも読める。読む時は`format`を見てからcodecへ渡す。
  *
@@ -36,7 +37,11 @@ export const PRESET_FILE_MAX_WORKSPACES = 100;
 
 /** 書き出すファイルの本体（`format`は付けない）。渡さない側、または空の側はファイルに出さない。 */
 export function presetFileBody(contents: Partial<PresetFileContents>): Record<string, unknown> {
-  return PRESET_FILE_CODEC.encode({ presets: contents.presets ?? [], workspaces: contents.workspaces ?? [] });
+  return PRESET_FILE_CODEC.encode({
+    presets: contents.presets ?? [],
+    workspaces: contents.workspaces ?? [],
+    userAssets: contents.userAssets ?? EMPTY_USER_ASSETS_BUNDLE,
+  });
 }
 
 /** ファイル名に使えない文字（OSごとに違うものの和集合）と制御文字。 */
@@ -156,7 +161,7 @@ const REFERENCE_KINDS: readonly {
 ];
 
 /**
- * 参照先の資産がこの端末に無いプリセット。ファイルには参照先を同梱しないので、他の端末で作った
+ * 参照先の資産がこの端末に無いプリセット。プリセットのファイルには参照先を同梱しないので、他の端末で作った
  * 自作の指の割当などを指す値が入ってくる。値は捨てずに残し、流し込むと既定へ戻ることを先に伝える。
  * 読み込みは同名に番号を付けるので、名前ではなく添字で返す（手元の同名のプリセットを指さないため）。
  */
@@ -184,7 +189,7 @@ export function importResultMessage(message: string, missing: readonly MissingRe
   return [message, ...notes].join('。');
 }
 
-const ENVELOPE_KEYS: ReadonlySet<string> = new Set(['format', 'version', 'presets', 'workspaces']);
+const ENVELOPE_KEYS: ReadonlySet<string> = new Set(['format', 'version', 'presets', 'workspaces', 'userAssets']);
 const PRESET_KEYS: ReadonlySet<string> = new Set(['id', 'name', 'values']);
 
 /** 読まずに捨てる未知のキー（最上位とプリセットの中）。不具合報告用の原文にだけ出す。 */
@@ -225,6 +230,7 @@ type EnvelopeRead =
       readonly contents: PresetFileContents;
       readonly presetDiagnostics: readonly CodecDiagnostic[];
       readonly workspaceDiagnostics: readonly CodecDiagnostic[];
+      readonly assetDiagnostics: readonly CodecDiagnostic[];
       readonly unknownKeys: readonly string[];
     };
 
@@ -245,6 +251,14 @@ function readEnvelope(text: string): EnvelopeRead {
   if (Array.isArray(parsed.workspaces) && parsed.workspaces.length > PRESET_FILE_MAX_WORKSPACES) {
     return failure(`Workspaceが多すぎます（${PRESET_FILE_MAX_WORKSPACES}件まで）`, `workspaces: ${parsed.workspaces.length}`);
   }
+  if (isRecord(parsed.userAssets)) {
+    for (const key of ['layouts', 'romajiRules', 'fingerAssignments', 'setups']) {
+      const list = parsed.userAssets[key];
+      if (Array.isArray(list) && list.length > USER_ASSETS_FILE_MAX_ITEMS) {
+        return failure(`同梱の資産が多すぎます（種類ごとに${USER_ASSETS_FILE_MAX_ITEMS}件まで）`, `userAssets.${key}: ${list.length}`);
+      }
+    }
+  }
   const decoded = PRESET_FILE_CODEC.decode(parsed);
   if (!decoded.ok) {
     const decodeFailure = describeFileDecodeFailure(decoded.reason);
@@ -255,6 +269,7 @@ function readEnvelope(text: string): EnvelopeRead {
     contents: decoded.value,
     presetDiagnostics: decoded.diagnostics.filter((diagnostic) => diagnostic.path.startsWith('presets')),
     workspaceDiagnostics: decoded.diagnostics.filter((diagnostic) => diagnostic.path.startsWith('workspaces')),
+    assetDiagnostics: decoded.diagnostics.filter((diagnostic) => diagnostic.path.startsWith('userAssets')),
     unknownKeys: unknownKeyLines(parsed),
   };
 }
@@ -285,6 +300,8 @@ export type WorkspaceFileReadResult =
   | {
       readonly ok: true;
       readonly workspaces: readonly Workspace[];
+      /** Workspaceが参照する自作の資産としてファイルに同梱されていたもの。無ければ空。 */
+      readonly userAssets: UserAssetsBundle;
       /** 読めなかった部分の文（捨てたWorkspaceの数など）。無ければ空。 */
       readonly dropped: readonly string[];
       /** 不具合報告用の原文（捨てた要素の診断と、読まなかった未知のキー）。 */
@@ -293,14 +310,15 @@ export type WorkspaceFileReadResult =
 
 /**
  * ファイルの中身を分類し、読めるWorkspaceを取り出す。壊れた要素は捨てて残りを読む。
- * 参照先の資産が手元にあるかは、手元に足す時に調べる（`engine/workspace-import.ts`）。
+ * 同梱された資産（`userAssets`）はそのまま返し、手元の資産への突き合わせと、参照先が手元にあるかの確認は、手元に足す時に行う
+ * （`engine/workspace-import.ts`）。
  * プリセットは扱わない（同じファイルのプリセットは`parsePresetFile`が読む）。
  */
 export function parseWorkspaceFile(text: string): WorkspaceFileReadResult {
   const envelope = readEnvelope(text);
   if (!envelope.ok) return envelope;
-  const details = [...envelope.workspaceDiagnostics.map(diagnosticLine), ...envelope.unknownKeys];
-  const { workspaces } = envelope.contents;
+  const details = [...envelope.workspaceDiagnostics.map(diagnosticLine), ...envelope.assetDiagnostics.map(diagnosticLine), ...envelope.unknownKeys];
+  const { workspaces, userAssets } = envelope.contents;
   if (workspaces.length === 0) {
     return failure(
       envelope.contents.presets.length > 0 ? 'このファイルにWorkspaceは含まれていません' : '読み込めるWorkspaceがありませんでした',
@@ -308,5 +326,15 @@ export function parseWorkspaceFile(text: string): WorkspaceFileReadResult {
       ...(details.length === 0 ? ['workspaces: 0'] : []),
     );
   }
-  return { ok: true, workspaces, dropped: workspaceDroppedTexts(envelope.workspaceDiagnostics), details };
+  const droppedAssets = envelope.assetDiagnostics.length;
+  return {
+    ok: true,
+    workspaces,
+    userAssets,
+    dropped: [
+      ...workspaceDroppedTexts(envelope.workspaceDiagnostics),
+      ...(droppedAssets > 0 ? [`${droppedAssets}件の同梱の資産の項目は読み込めませんでした`] : []),
+    ],
+    details,
+  };
 }

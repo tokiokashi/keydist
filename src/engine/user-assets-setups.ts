@@ -217,19 +217,26 @@ export function mergeUserAssetSetups(
   maps: SetupIdMaps,
   layoutNames: ReadonlyMap<string, string>,
   stamp: string,
-): { readonly library: SetupLibraryOfSettings; readonly entries: readonly SetupImportEntry[] } {
+): {
+  readonly library: SetupLibraryOfSettings;
+  readonly entries: readonly SetupImportEntry[];
+  /** ファイルのid → 読み込み後に指すid（足さなかったものは同じ中身の手元のid、足したものは足したid）。 */
+  readonly idMap: ReadonlyMap<string, string>;
+} {
   const setups: Setup[] = [...current.setups];
   let overrides = current.overrides;
   const contents = new Map(
     setups.map((setup) => [setup.id, setupContent(setup, levelOverrides(overrides, { kind: 'setup', setupId: setup.id }))] as const),
   );
   const entries: SetupImportEntry[] = [];
+  const idMap = new Map<string, string>();
   for (const file of incoming) {
     const remapped = remapSetup(file, maps);
     const content = setupContent(remapped, remapped.overrides);
     const name = setupName(file, layoutNames);
     const same = setups.find((setup) => contents.get(setup.id) === content);
     if (same !== undefined) {
+      idMap.set(file.id, same.id);
       entries.push({ name, outcome: { kind: 'skipped-same', existingName: setupName(same, layoutNames) } });
       continue;
     }
@@ -243,6 +250,7 @@ export function mergeUserAssetSetups(
       ...(remapped.label === undefined ? {} : { label: remapped.label }),
     };
     setups.push(added);
+    idMap.set(file.id, id);
     contents.set(id, content);
     if (remapped.overrides !== undefined && Object.keys(remapped.overrides).length > 0) {
       overrides = withLevelOverrides(overrides, { kind: 'setup', setupId: id }, remapped.overrides);
@@ -255,6 +263,6 @@ export function mergeUserAssetSetups(
           : { kind: 'added-renamed', addedName: name, addedId: id, overlap: { with: 'own', name: setupName(collision, layoutNames) } },
     });
   }
-  if (setups.length === current.setups.length) return { library: current, entries };
-  return { library: { setups, overrides }, entries };
+  if (setups.length === current.setups.length) return { library: current, entries, idMap };
+  return { library: { setups, overrides }, entries, idMap };
 }

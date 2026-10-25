@@ -40,27 +40,42 @@ export interface UserAssetsBundle {
   readonly setups: readonly UserAssetSetup[];
 }
 
-export const USER_ASSETS_FILE_CODEC: AssetCodec<UserAssetsBundle> = defineAssetCodec({
-  currentVersion: 1,
-  decodePayload: (payload, diagnostics) => {
-    if (!isRecord(payload)) return undefined;
-    const layouts = decodeUserLayouts(payload.layouts);
-    for (const diagnostic of layouts.diagnostics) {
-      diagnostics.push({ path: `layouts${diagnostic.path}`, message: diagnostic.message });
-    }
-    return {
-      layouts: layouts.value,
-      romajiRules: decodeUserRomajiRules(payload.romajiRules, 'romajiRules', diagnostics),
-      fingerAssignments: decodeUserFingerAssignments(payload.fingerAssignments, 'fingerAssignments', diagnostics),
-      setups: decodeUserAssetSetups(payload.setups, 'setups', diagnostics),
-    };
-  },
-  encodePayload: (value) => ({
+/**
+ * 資産の束を読む。`pathPrefix`は診断のpathの先頭（資産のファイルは空、Workspaceのファイルに同梱した資産は`userAssets.`）。
+ * 無い種類は空にする。
+ */
+export function decodeUserAssetsBundle(payload: Record<string, unknown>, pathPrefix: string, diagnostics: CodecDiagnostic[]): UserAssetsBundle {
+  const layouts = decodeUserLayouts(payload.layouts);
+  for (const diagnostic of layouts.diagnostics) {
+    diagnostics.push({ path: `${pathPrefix}layouts${diagnostic.path}`, message: diagnostic.message });
+  }
+  return {
+    layouts: layouts.value,
+    romajiRules: decodeUserRomajiRules(payload.romajiRules, `${pathPrefix}romajiRules`, diagnostics),
+    fingerAssignments: decodeUserFingerAssignments(payload.fingerAssignments, `${pathPrefix}fingerAssignments`, diagnostics),
+    setups: decodeUserAssetSetups(payload.setups, `${pathPrefix}setups`, diagnostics),
+  };
+}
+
+export function encodeUserAssetsBundle(value: UserAssetsBundle): Record<string, unknown> {
+  return {
     layouts: value.layouts.map((layout) => structuredClone(layout)),
     romajiRules: value.romajiRules.map((rule) => ({ ...rule, overrides: { ...rule.overrides } })),
     fingerAssignments: value.fingerAssignments.map((assignment) => structuredClone(assignment)),
     setups: encodeUserAssetSetups(value.setups),
-  }),
+  };
+}
+
+export function isEmptyUserAssetsBundle(bundle: UserAssetsBundle): boolean {
+  return bundle.layouts.length + bundle.romajiRules.length + bundle.fingerAssignments.length + bundle.setups.length === 0;
+}
+
+export const EMPTY_USER_ASSETS_BUNDLE: UserAssetsBundle = { layouts: [], romajiRules: [], fingerAssignments: [], setups: [] };
+
+export const USER_ASSETS_FILE_CODEC: AssetCodec<UserAssetsBundle> = defineAssetCodec({
+  currentVersion: 1,
+  decodePayload: (payload, diagnostics) => (isRecord(payload) ? decodeUserAssetsBundle(payload, '', diagnostics) : undefined),
+  encodePayload: encodeUserAssetsBundle,
 });
 
 export type UserAssetsHoldings = Pick<KeydistAssets, 'userLayouts' | 'userRomajiRules' | 'fingerAssignments' | 'setupLibrary'>;
@@ -83,8 +98,13 @@ function withResolvableRomaji(layout: UserLayout, resolve: (id: string) => strin
  * Setupのレベルの条件が指す指の割り当て・ローマ字規則も同じで、ファイルに入れない自作の資産への参照は外す。
  */
 export function userAssetsFileBody(assets: UserAssetsHoldings): Record<string, unknown> {
+  return USER_ASSETS_FILE_CODEC.encode(userAssetsBundleOf(assets));
+}
+
+/** 手元の資産を、ファイルに入れる形にする。入れない自作の規則・指の割り当てへの参照は外す。 */
+export function userAssetsBundleOf(assets: UserAssetsHoldings): UserAssetsBundle {
   const ruleIds = new Set(assets.userRomajiRules.map((rule) => rule.id));
-  return USER_ASSETS_FILE_CODEC.encode({
+  return {
     layouts: assets.userLayouts.map((layout) => withResolvableRomaji(layout, (id) => (ruleIds.has(id) ? id : undefined))),
     romajiRules: assets.userRomajiRules,
     fingerAssignments: assets.fingerAssignments,
@@ -94,7 +114,7 @@ export function userAssetsFileBody(assets: UserAssetsHoldings): Record<string, u
         fingerAssignmentIds: new Set(assets.fingerAssignments.map((assignment) => assignment.id)),
       }),
     ),
-  });
+  };
 }
 
 export type UserAssetKind = 'layout' | 'romaji-rule' | 'finger-assignment' | 'setup';
@@ -121,8 +141,17 @@ export interface UserAssetImportEntry {
   readonly outcome: UserAssetImportOutcome;
 }
 
+/** ファイルのid → 読み込み後に指すid。4種類とも、足さなかったものは同じ中身の手元のid、足したものは足したid。 */
+export interface UserAssetIdMaps {
+  readonly layouts: ReadonlyMap<string, string>;
+  readonly rules: ReadonlyMap<string, string>;
+  readonly fingers: ReadonlyMap<string, string>;
+  readonly setups: ReadonlyMap<string, string>;
+}
+
 export interface UserAssetsMerge {
   readonly assets: UserAssetsHoldings;
+  readonly idMaps: UserAssetIdMaps;
   /** 配列、規則、指の割り当て、Setupの順で、ファイルの並びのまま。 */
   readonly entries: readonly UserAssetImportEntry[];
 }
@@ -311,6 +340,7 @@ export function mergeUserAssets(current: UserAssetsHoldings, incoming: UserAsset
   );
   return {
     assets: { userLayouts: layouts.items, userRomajiRules: rules.items, fingerAssignments: fingers.items, setupLibrary: setups.library },
+    idMaps: { layouts: layouts.idMap, rules: rules.idMap, fingers: fingers.idMap, setups: setups.idMap },
     entries: [
       ...layouts.entries,
       ...rules.entries,
@@ -333,18 +363,22 @@ export interface UserAssetsImportPlan {
   entries(): readonly UserAssetImportEntry[] | undefined;
 }
 
+/** 突き合わせで変わった資産だけの変更。何も変わらなければ空。 */
+export function userAssetChanges(current: UserAssetsHoldings, merged: UserAssetsHoldings): Partial<KeydistAssets> {
+  return {
+    ...(merged.userLayouts.length === current.userLayouts.length ? {} : { userLayouts: merged.userLayouts }),
+    ...(merged.userRomajiRules.length === current.userRomajiRules.length ? {} : { userRomajiRules: merged.userRomajiRules }),
+    ...(merged.fingerAssignments.length === current.fingerAssignments.length ? {} : { fingerAssignments: merged.fingerAssignments }),
+    ...(merged.setupLibrary === current.setupLibrary ? {} : { setupLibrary: merged.setupLibrary }),
+  };
+}
+
 export function importUserAssetsCommand(incoming: UserAssetsBundle, stamp: string): UserAssetsImportPlan {
   let entries: readonly UserAssetImportEntry[] | undefined;
   const command: Command<KeydistAssets> = (current) => {
     const merge = mergeUserAssets(current, incoming, stamp);
     entries = merge.entries;
-    const merged = merge.assets;
-    const changes: Partial<KeydistAssets> = {
-      ...(merged.userLayouts.length === current.userLayouts.length ? {} : { userLayouts: merged.userLayouts }),
-      ...(merged.userRomajiRules.length === current.userRomajiRules.length ? {} : { userRomajiRules: merged.userRomajiRules }),
-      ...(merged.fingerAssignments.length === current.fingerAssignments.length ? {} : { fingerAssignments: merged.fingerAssignments }),
-      ...(merged.setupLibrary === current.setupLibrary ? {} : { setupLibrary: merged.setupLibrary }),
-    };
+    const changes = userAssetChanges(current, merge.assets);
     if (Object.keys(changes).length === 0) return { kind: 'no-op' };
     return { kind: 'applied', label: '自作の資産を読み込む', changes };
   };

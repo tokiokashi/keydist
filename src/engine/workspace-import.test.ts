@@ -17,6 +17,7 @@ import {
   type WorkspacePaneTarget,
 } from './workspace.ts';
 import { WORKSPACE_LIBRARY_CODEC } from './workspace-codec.ts';
+import { EMPTY_USER_ASSETS_BUNDLE } from './user-assets-file.ts';
 import { importWorkspacesCommand, mergeWorkspaces, missingWorkspaceReferences, type WorkspaceReferenceHoldings } from './workspace-import.ts';
 
 const HOLDINGS: WorkspaceReferenceHoldings = {
@@ -120,7 +121,7 @@ function assetsWith(workspaces: readonly Workspace[]): KeydistAssets {
 }
 
 test('コマンド: 足すものがあれば手持ちを書き、内訳は適用した時の突き合わせから返す', () => {
-  const plan = importWorkspacesCommand([workspace('w1', '新しい')], () => 'x');
+  const plan = importWorkspacesCommand([workspace('w1', '新しい')], EMPTY_USER_ASSETS_BUNDLE, () => 'x', 'stamp');
   assert.equal(plan.entries(), undefined);
   const outcome = plan.command(assetsWith([]));
   assert.ok(outcome.kind === 'applied');
@@ -133,7 +134,7 @@ test('コマンド: 足すものがあれば手持ちを書き、内訳は適用
 
 test('コマンド: 足すものが無ければno-op。内訳は読み取れる', () => {
   const existing = workspace('w1', '新しい');
-  const plan = importWorkspacesCommand([existing], () => 'x');
+  const plan = importWorkspacesCommand([existing], EMPTY_USER_ASSETS_BUNDLE, () => 'x', 'stamp');
   assert.equal(plan.command(assetsWith([existing])).kind, 'no-op');
   assert.equal(plan.entries()?.[0]?.outcome.kind, 'skipped-same');
 });
