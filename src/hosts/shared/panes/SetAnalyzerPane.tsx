@@ -9,7 +9,9 @@ import {
   globalConditionValues,
   multiTargetConditionSummary,
   settingsItemIds,
+  textInapplicableIdsOf,
   traceConditionSummary,
+  type ConditionSummaryScope,
   type ConditionValueNames,
 } from '../condition-summary.ts';
 import { recommendedWidthRemOf } from '#analyzers/recommended-width.ts';
@@ -101,15 +103,19 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
   // 表示名は常に集合全体に対して計算する。解決に失敗したメンバーは、共通性の判定からは除く
   // （`naming.ts`の`TargetNameSource.failed`参照）。
   const excludeIds = useMemo(() => settingsItemIds(analyzer.conditionExcludeIds), [analyzer]);
+  const summaryScope = useMemo(
+    (): ConditionSummaryScope => ({ textInapplicableIds: textInapplicableIdsOf(resolvedText.language) }),
+    [resolvedText.language],
+  );
   const setupNumbers = useMemo(() => setupNumbersOf(setups), [setups]);
   const namedTargets = useMemo(
     () =>
       nameTargets(
         targets.map((target) =>
-          targetNameSource(target, membersByTarget.get(target)?.resolution, setupsById, setupNumbers, catalog.setupCatalog, excludeIds),
+          targetNameSource(target, membersByTarget.get(target)?.resolution, setupsById, setupNumbers, catalog.setupCatalog, excludeIds, summaryScope),
         ),
       ),
-    [targets, setupsById, setupNumbers, membersByTarget, catalog.setupCatalog, excludeIds],
+    [targets, setupsById, setupNumbers, membersByTarget, catalog.setupCatalog, excludeIds, summaryScope],
   );
   const namedByKey = useMemo(() => new Map(namedTargets.map((n) => [n.key, n] as const)), [namedTargets]);
 
@@ -156,13 +162,13 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
             {
               key,
               label: namedByKey.get(key)?.displayName ?? key,
-              rows: traceConditionSummary(member.resolution.input.cascade, conditionNames),
+              rows: traceConditionSummary(member.resolution.input.cascade, conditionNames, summaryScope),
             },
           ];
         }),
         { excludeIds, globalValues: globalConditionValues(overrides), globalLevels: globalConditionLevels(overrides), names: conditionNames },
       ),
-    [members, namedByKey, conditionNames, overrides, excludeIds],
+    [members, namedByKey, conditionNames, overrides, excludeIds, summaryScope],
   );
 
   const order = useMemo(() => targets.map(analysisTargetKey), [targets]);

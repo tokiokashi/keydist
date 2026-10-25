@@ -330,7 +330,11 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
             {scopeMenu(id, summary?.label ?? conditionItemLabel(id) ?? id, notApplicable)}
           </>,
         )}
-        {notApplicable ? <p className="condition-row-flag">この配列・Setupでは効きません</p> : null}
+        {notApplicable ? (
+          <p className="condition-row-flag">
+            {summary?.inapplicableBecause === 'text' ? 'このテキストでは数値が変わりません' : 'この配列・Setupでは効きません'}
+          </p>
+        ) : null}
         {notice === undefined ? null : (
           <p className="condition-row-notice" data-condition-notice="true">
             {notice}

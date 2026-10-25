@@ -8,6 +8,7 @@ import { resolveSetupForText } from '#input/setup/index.ts';
 import { DEFAULT_CHAIN_INTERPRETATION } from '#interpretation/structure/chain.ts';
 import { DEFAULT_ARPEGGIO_INTERPRETATION } from '#interpretation/structure/arpeggio.ts';
 import { resolveEngineInput } from '#engine/resolved-input.ts';
+import { overrideWinsNotices } from './condition-edit.ts';
 import {
   conditionHeaderInfo,
   conditionHeaderInfoFromResolvedInput,
@@ -20,6 +21,7 @@ import {
   nonDefaultConditionRows,
   type ConditionSummaryRow,
   type ConditionSummaryScope,
+  textInapplicableIdsOf,
   summarizeNonDefaultConditions,
   traceConditionSummary,
 } from './condition-summary.ts';
@@ -375,7 +377,7 @@ test('チェーン・アルペジオを全体で変えても、宣言しない�
   assert.equal(summarizeNonDefaultConditions(nonDefaultConditionRows(rows)), undefined);
 });
 
-function overrideRows(entries: readonly (readonly [string, unknown])[]): readonly ConditionSummaryRow[] {
+function overrideRows(entries: readonly (readonly [string, unknown])[], scope: ConditionSummaryScope = {}): readonly ConditionSummaryRow[] {
   let overrides = EMPTY_SETTINGS_OVERRIDES;
   for (const [id, value] of entries) {
     const written = setSettingsOverride(overrides, { kind: 'global' }, id as never, value as never);
@@ -383,7 +385,7 @@ function overrideRows(entries: readonly (readonly [string, unknown])[]): readonl
     if (!written.ok) throw new Error(id);
     overrides = written.overrides;
   }
-  return traceConditionSummary(resolveWith({ kind: 'layout', layoutId: 'qwerty' }, [], overrides, 'en').cascade, CATALOG);
+  return traceConditionSummary(resolveWith({ kind: 'layout', layoutId: 'qwerty' }, [], overrides, 'en').cascade, CATALOG, scope);
 }
 
 test('conditionSummaryLine: 何も変えていなければ変えた項目は0件', () => {
@@ -412,6 +414,58 @@ test('conditionSummaryLine: 変えた項目の先頭2件（項目の定義順）
 test('conditionSummaryLine: 効かない上書きは変えた項目に数えない', () => {
   const rows = overrideRows([['windowSize', 5]]).map((row) => (row.id === 'windowSize' ? { ...row, applicable: false } : row));
   assert.equal(conditionSummaryLine(rows).changedCount, 0);
+});
+
+test('日本語の記号の評価: 英語のテキストでは変えた項目にも対象名の併記にも数えず、効かない行として残す', () => {
+  const scope: ConditionSummaryScope = { textInapplicableIds: textInapplicableIdsOf('en') };
+  const rows = overrideRows([['keepSymbols', true]], scope);
+  const row = rows.find((r) => r.id === 'keepSymbols')!;
+  assert.equal(row.applicable, false);
+  assert.equal(row.inapplicableBecause, 'text');
+  assert.equal(row.displayValue, 'ON');
+  assert.equal(conditionSummaryLine(rows).changedCount, 0);
+  assert.equal(summarizeNonDefaultConditions(nonDefaultConditionRows(rows)), undefined);
+  assert.equal(overrideWinsNotices(rows).has('keepSymbols'), false);
+});
+
+test('日本語の記号の評価: 日本語のテキストでは今のとおり変えた項目に数える', () => {
+  const scope: ConditionSummaryScope = { textInapplicableIds: textInapplicableIdsOf('ja') };
+  const rows = overrideRows([['keepSymbols', true]], scope);
+  const row = rows.find((r) => r.id === 'keepSymbols')!;
+  assert.equal(row.applicable, true);
+  assert.equal(row.inapplicableBecause, undefined);
+  assert.equal(conditionSummaryLine(rows).changedCount, 1);
+  assert.deepEqual(
+    nonDefaultConditionRows(rows).map((r) => r.id),
+    ['keepSymbols'],
+  );
+});
+
+test('日本語の記号の評価: テキストを持たない画面（scopeを渡さない）は言語に依らず数える', () => {
+  assert.equal(conditionSummaryLine(overrideRows([['keepSymbols', true]])).changedCount, 1);
+});
+
+test('日本語の記号の評価: 集合のペインは英語のテキストでは共通の行を効かない行のまま出し、対象ごとの差に出さない', () => {
+  let overrides = EMPTY_SETTINGS_OVERRIDES;
+  const written = setSettingsOverride(overrides, { kind: 'global' }, 'keepSymbols', true);
+  assert.ok(written.ok);
+  if (written.ok) overrides = written.overrides;
+  const scope: ConditionSummaryScope = { textInapplicableIds: textInapplicableIdsOf('en') };
+  const setups = [{ id: 't1', number: 1, layoutId: 'qwerty', shapeId: 'row-staggered' }];
+  const targets = withOverrides(
+    setups.map((setup) => ({
+      key: setup.id,
+      label: setup.id,
+      rows: traceConditionSummary(resolveWith({ kind: 'setup', setupId: setup.id }, setups, overrides, 'en').cascade, CATALOG, scope),
+    })),
+    overrides,
+  );
+  const summary = summarize(targets);
+  const common = summary.rows.find((row) => row.id === 'keepSymbols')!;
+  assert.equal(common.applicable, false);
+  assert.equal(common.inapplicableBecause, 'text');
+  assert.equal(conditionSummaryLine(summary.rows).changedCount, 0);
+  assert.deepEqual(summary.diffs, []);
 });
 
 test('数えない時に例外だけ違う上書きは、変えた項目にも対象名の差分にも入れない', () => {

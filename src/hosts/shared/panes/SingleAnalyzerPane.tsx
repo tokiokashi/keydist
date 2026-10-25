@@ -2,7 +2,13 @@ import { useEffect, useMemo } from 'react';
 import { analysisTargetKey, nameTargets, type AnalysisTarget } from '#input/setup/index.ts';
 import type { ColorSlotsByKey, TargetSet } from '#engine/multi-target-selection.ts';
 import type { SetTargetFigure, SingleAnalyzerPaneParts } from '#analyzers/pane-parts.tsx';
-import { conditionHeaderInfoFromResolvedInput, settingsItemIds, traceConditionSummary, type ConditionSummaryScope } from '../condition-summary.ts';
+import {
+  conditionHeaderInfoFromResolvedInput,
+  settingsItemIds,
+  textInapplicableIdsOf,
+  traceConditionSummary,
+  type ConditionSummaryScope,
+} from '../condition-summary.ts';
 import { combinePaneStates } from '../pane-status.ts';
 import { recommendedWidthRemOf } from '#analyzers/recommended-width.ts';
 import { PaneFrame } from '../PaneFrame.tsx';
@@ -86,8 +92,9 @@ export function SingleAnalyzerPane<Options, Extracted>({
   const summaryScope = useMemo(
     (): ConditionSummaryScope => ({
       extraIds: settingsItemIds(analyzer.conditionExtraIds),
+      textInapplicableIds: textInapplicableIdsOf(resolvedText.language),
     }),
-    [analyzer],
+    [analyzer, resolvedText.language],
   );
   const conditionRows = resolution.ok ? traceConditionSummary(resolution.input.cascade, catalog.setupCatalog, summaryScope) : [];
   const header = resolution.ok ? conditionHeaderInfoFromResolvedInput(resolution.input.layout, resolution.input.geometry) : undefined;

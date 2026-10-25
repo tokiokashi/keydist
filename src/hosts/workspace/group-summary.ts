@@ -4,6 +4,7 @@ import { nameTargets, type AnalysisTarget } from '#input/setup/index.ts';
 import type { PaneEnvironment } from '#hosts/shared/panes/pane-environment.ts';
 import { resolvePaneInput } from '#hosts/shared/resolve-pane-input.ts';
 import { setupNumbersOf } from '#hosts/shared/target-choices.ts';
+import { textInapplicableIdsOf } from '#hosts/shared/condition-summary.ts';
 import { targetNameSource } from '#hosts/shared/target-name-source.ts';
 
 /** 連動の組1つの対象の要約。Analyzerの種類（対象を1つ見る / 集合を見る）ごとに1つずつ。 */
@@ -30,7 +31,17 @@ function namer(env: PaneEnvironment): (targets: readonly AnalysisTarget[]) => st
   return (targets) =>
     nameTargets(
       targets.map((target) =>
-        targetNameSource(target, resolvePaneInput(target, setupsById, catalog, overrides, resolvedText), setupsById, setupNumbers, catalog.setupCatalog),
+        targetNameSource(
+          target,
+          resolvePaneInput(target, setupsById, catalog, overrides, resolvedText),
+          setupsById,
+          setupNumbers,
+          catalog.setupCatalog,
+          [],
+          {
+            textInapplicableIds: textInapplicableIdsOf(resolvedText.language),
+          },
+        ),
       ),
     ).map((named) => named.displayName);
 }
