@@ -1,5 +1,6 @@
 import type { KeydistAssets } from '#engine/commands.ts';
-import type { AssetLoadNotice } from './asset-syncs.ts';
+import type { AssetLoadFailure } from '#platform/asset-tab-sync.ts';
+import { openFailureNotice, type AssetLoadNotice } from './asset-syncs.ts';
 
 /**
  * 資産を読んだ時に捨てた・直した・読めなかった値の知らせの記憶（`AssetLoadNotices`が画面に出す）。
@@ -38,6 +39,16 @@ export function reportAssetLoadNotices(notices: readonly AssetLoadNotice[]): voi
   if (added.length === 0) return;
   current = [...current, ...added];
   emit();
+}
+
+/** 開く時に読めなかった資産の知らせを足す（資産のストアを通らずに読む経路用）。 */
+export function reportAssetOpenFailure(key: keyof KeydistAssets, reason: AssetLoadFailure): void {
+  reportAssetLoadNotices([openFailureNotice(key, reason)]);
+}
+
+/** 開いた後に別のタブが書いた値を読めなかった時の知らせを足す。 */
+export function reportAssetUnreadableElsewhere(key: keyof KeydistAssets): void {
+  reportAssetLoadNotices([{ key, kind: 'unreadable-elsewhere', diagnostics: [] }]);
 }
 
 export function dismissAssetLoadNotices(): void {

@@ -34,5 +34,7 @@ export function assetNoticeText(notice: AssetLoadNotice): string {
       return `${label}: 保存データを読めなかったため、初期の状態で開きました。`;
     case 'newer-version':
       return `${label}: 新しい版のアプリで保存されたデータのため読めず、初期の状態で開きました。保存データはそのまま残していますが、編集すると上書きされます。`;
+    case 'unreadable-elsewhere':
+      return `${label}: 別のタブが読めない保存データを書き込みました。このタブでは今の値のまま動いています。このタブで編集すると、保存データが上書きされます。`;
   }
 }

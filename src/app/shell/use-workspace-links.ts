@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
-import { WORKSPACE_LIBRARY_CODEC } from '#engine/workspace-codec.ts';
-import { createAssetTabSync } from '#platform/asset-tab-sync.ts';
-import { WORKSPACES_STORAGE_KEY } from '#platform/assets/workspaces-storage.ts';
+import { createWorkspaceLibrarySync, loadWorkspaceLibrary } from '../standalone/workspace-library-sync.ts';
 
 export interface WorkspaceLink {
   readonly id: string;
@@ -25,12 +23,10 @@ export function useWorkspaceLinks(): WorkspaceLinks {
   useEffect(() => {
     const toLinks = (library: readonly { readonly id: string; readonly name: string }[]): readonly WorkspaceLink[] =>
       library.map(({ id, name }) => ({ id, name }));
-    const sync = createAssetTabSync({
-      storageKey: WORKSPACES_STORAGE_KEY,
-      codec: WORKSPACE_LIBRARY_CODEC,
+    const sync = createWorkspaceLibrarySync({
       onExternalChange: (library) => setState({ ready: true, links: toLinks(library) }),
     });
-    setState({ ready: true, links: toLinks(sync.load() ?? []) });
+    setState({ ready: true, links: toLinks(loadWorkspaceLibrary(sync)) });
     return sync.start();
   }, []);
 
