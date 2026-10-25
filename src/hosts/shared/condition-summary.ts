@@ -3,6 +3,7 @@ import { MISSING_FINGER_ASSIGNMENT_NAME, MISSING_ROMAJI_RULE_NAME, MISSING_SHAPE
 import { SETTINGS_ITEMS, type ResolvedSettingsCascade, type SettingsCascadeOverrides, type SettingsItemId } from '#engine/settings-items.ts';
 import { DEFAULT_FINGER_ASSIGNMENT, hasMultiFingerKeys, type FingerAssignment, type Geometry, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
+import type { TextLanguage } from '#input/text/samples.ts';
 import type { InputMethod } from '#input/settings/levels.ts';
 import { ROMAJI_RULES } from '#input/romaji/rules.ts';
 import { FINGER_ASSIGNMENT_REGISTRY } from '#engine/finger-assignment.ts';
@@ -61,6 +62,21 @@ export function conditionItemLabel(id: string): string | undefined {
 export interface ConditionSummaryScope {
   /** 基本の項目に足す、このペインが読む項目。定義順（`PANE_CONDITION_ITEMS`の順）で行になる。 */
   readonly extraIds?: readonly SettingsItemId[];
+  /**
+   * このペインが表示するテキストでは数値が変わらない項目（`textInapplicableIds`）。
+   * 行は残したまま、配列・Setupで効かない行と同じ`applicable: false`にする。
+   * テキストを持たない画面は渡さない（数値を出さないので、テキストで決める理由が無い）。
+   */
+  readonly textInapplicableIds?: readonly SettingsItemId[];
+}
+
+/**
+ * 表示するテキストの言語では数値が変わらない項目。
+ * 「日本語の記号の評価」は日本語のテキストにだけ働く（仕様 §4.6）。言語は配列・Setupでなくテキストの属性で、
+ * 1つの配列が両方の言語のテキストに使われるため、項目の`isApplicable`でなくペインが求めて渡す。
+ */
+export function textInapplicableIdsOf(language: TextLanguage): readonly SettingsItemId[] {
+  return language === 'ja' ? [] : ['keepSymbols'];
 }
 
 /** ペインの定義が宣言する項目のidのうち、設定項目のidだけを通す。 */
@@ -95,6 +111,11 @@ export interface ConditionSummaryRow {
   /** `origin`を画面に出す文言（「既定値」「上書き: 配列「QWERTY」」等）。idは名前へ引いてある。 */
   readonly originLabel: string;
   readonly applicable: boolean;
+  /**
+   * `applicable`が`false`の理由がテキストにある時の`'text'`（表示中のテキストでは数値が変わらない）。
+   * 配列・Setupが理由の時は持たない。
+   */
+  readonly inapplicableBecause?: 'text';
   /**
    * 上書きされていても、効く値が既定と同じか。「動作数の扱い」は、Shift+Aを1動作にする時は例外を
    * 一切読まないため、例外だけ違う上書きは既定と同じに働く。
@@ -278,10 +299,12 @@ export function traceConditionSummary(
   scope: ConditionSummaryScope = {},
 ): readonly ConditionSummaryRow[] {
   const extraIds = scope.extraIds ?? [];
+  const textInapplicableIds = scope.textInapplicableIds ?? [];
   const items = [...TRACE_AFFECTING_ITEMS, ...PANE_CONDITION_ITEMS.filter((item) => extraIds.includes(item.id))];
   return items.map(({ id, label }) => {
     const resolved = cascade[id];
     const { format, displayValue } = formatValue(id, resolved.value, names);
+    const inapplicableByText = resolved.applicable && textInapplicableIds.includes(id);
     return {
       id,
       label,
@@ -295,7 +318,8 @@ export function traceConditionSummary(
       ...(resolved.promotedBase === undefined ? {} : { promotedBase: resolved.promotedBase }),
       origin: resolved.origin,
       originLabel: formatOrigin(resolved.origin, names),
-      applicable: resolved.applicable,
+      applicable: resolved.applicable && !inapplicableByText,
+      ...(inapplicableByText ? { inapplicableBecause: 'text' as const } : {}),
       sameAsDefault: effectivelySameAsDefault(id, resolved.value),
       diagnostics: resolved.diagnostics,
       recommendationWinsOverGlobal: resolved.recommendationWins?.shadowed.includes('global') ?? false,

@@ -15,6 +15,7 @@ import { BUNSETSU_STATS_PANE_META } from '#analyzers/bunsetsu-stats/pane-meta.ts
 import { setTargetForSingleAndMultiCommand } from '#engine/commands.ts';
 import { effectiveSingleTarget } from '#engine/single-target-selection.ts';
 import { setupNumbersOf, targetChoiceGroups, TargetSelection } from '#hosts/shared/index.ts';
+import { textInapplicableIdsOf } from '#hosts/shared/condition-summary.ts';
 import { targetNameSource } from '#hosts/shared/target-name-source.ts';
 import { resolvePaneInput } from '#hosts/shared/resolve-pane-input.ts';
 import { nameTargets } from '#input/setup/index.ts';
@@ -48,7 +49,11 @@ export function TopTargetPick() {
   const named = useMemo(() => {
     const setupsById = new Map(setups.map((setup) => [setup.id, setup] as const));
     const resolution = resolvePaneInput(target, setupsById, catalog, assets.setupLibrary.overrides, resolvedText);
-    return nameTargets([targetNameSource(target, resolution, setupsById, setupNumbersOf(setups), catalog.setupCatalog)])[0];
+    return nameTargets([
+      targetNameSource(target, resolution, setupsById, setupNumbersOf(setups), catalog.setupCatalog, [], {
+        textInapplicableIds: textInapplicableIdsOf(resolvedText.language),
+      }),
+    ])[0];
   }, [target, setups, catalog, assets.setupLibrary.overrides, resolvedText]);
 
   const groups = useMemo(
