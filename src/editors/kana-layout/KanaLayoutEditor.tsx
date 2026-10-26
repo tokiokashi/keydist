@@ -11,7 +11,7 @@ import {
 import { KANA_COVERAGE_GROUPS } from '#input/layouts/kana-coverage.ts';
 import { kanaLayoutFileText, parseKanaLayoutFile, type KanaLayoutContent } from '#input/layouts/kana-face-layout-file.ts';
 import { gridPositionOf, type FaceLayoutNotice, type FaceLayoutProblem } from '#input/layouts/kana-face-layout.ts';
-import { newUserLayoutId } from '#input/layouts/layout-edit.ts';
+import { ignoredHomeKeyWarnings, newUserLayoutId } from '#input/layouts/layout-edit.ts';
 import type { FaceMode, InputRole, LayerKind, TriggerOrder, TriggerPersistence } from '#input/layouts/types.ts';
 import { isFaceUserLayout, type UserLayout } from '#input/layouts/user-layouts.ts';
 import { FINGER_LABEL } from '#input/shapes/finger-names.ts';
@@ -21,6 +21,7 @@ import {
   FINGERS,
   HOME_ROW,
   JIS_FINGER_ASSIGNMENT,
+  type FingerAssignment,
   type Key,
   type PhysicalKeyboardStandard,
 } from '#input/shapes/geometry.ts';
@@ -67,6 +68,8 @@ export interface KanaLayoutEditorProps {
   readonly layouts: readonly UserLayout[];
   /** 保存の読み込みが済むまでは、配列が無いように見せない。 */
   readonly ready: boolean;
+  /** ホームキーの照合に使う、選べる指の割り当て（組み込みと自作）。 */
+  readonly fingerAssignments: readonly FingerAssignment[];
   readonly canUndo: boolean;
   readonly canRedo: boolean;
   readonly onUndo: () => void;
@@ -367,13 +370,14 @@ function FacePanel({ face, standard, homeKeys, problems, onChange }: FacePanelPr
 
 interface KanaLayoutFormProps {
   readonly initial: FaceLayoutDraft;
+  readonly fingerAssignments: readonly FingerAssignment[];
   readonly isNew: boolean;
   readonly onSubmit: (content: KanaLayoutContent) => void;
   readonly onDownload: (filename: string, text: string) => void;
 }
 
 /** 入力中の値はこの中だけで持ち、保存を押した時に親へ渡す。 */
-function KanaLayoutForm({ initial, isNew, onSubmit, onDownload }: KanaLayoutFormProps) {
+function KanaLayoutForm({ initial, fingerAssignments, isNew, onSubmit, onDownload }: KanaLayoutFormProps) {
   const [draft, setDraft] = useState<FaceLayoutDraft>(initial);
   const [faceIndex, setFaceIndex] = useState(0);
   const [standard, setStandard] = useState<PhysicalKeyboardStandard>(() => initialStandard(initial));
@@ -392,6 +396,7 @@ function KanaLayoutForm({ initial, isNew, onSubmit, onDownload }: KanaLayoutForm
   const shownIndex = Math.min(faceIndex, draft.faces.length - 1);
   const face = draft.faces[shownIndex]!;
   const homeKeySet = useMemo(() => new Set(Object.values(draft.homeKeys).filter((key) => key !== '')), [draft.homeKeys]);
+  const homeKeyWarnings = useMemo(() => ignoredHomeKeyWarnings(draft.homeKeys, fingerAssignments), [draft.homeKeys, fingerAssignments]);
   const homeRowKeys = useMemo(() => (geometryOf(standard).grid[HOME_ROW] ?? []).map((key) => key.id), [standard]);
 
   const problemsOfFace = (index: number) => check.problems.filter((problem) => faceIndexOfPath(problem.path) === index);
@@ -522,30 +527,43 @@ function KanaLayoutForm({ initial, isNew, onSubmit, onDownload }: KanaLayoutForm
       </fieldset>
 
       <fieldset className="kana-layout-home">
-        <legend>ホームキー（任意）</legend>
-        <p className="kana-layout-note">指の割り当てが担当するキーを選んだ時は、割り当てのホームキーより優先されます。</p>
+        <legend className="kana-layout-label-row">
+          ホームキー（任意）
+          <InfoButton
+            name="ホームキー"
+            description="指定したキーを指の割り当てがその指の担当にしている時は、割り当てのホームキーより、ここでの指定が優先されます。担当にしていない割り当てでは、指定は使われません。"
+          />
+        </legend>
         <div className="kana-layout-home-grid">
           {FINGERS.map((finger) => {
             const value = draft.homeKeys[finger] ?? '';
             const stale = value !== '' && !homeRowKeys.includes(value);
+            const warnings = homeKeyWarnings.filter((warning) => warning.finger === finger);
             return (
-              <label key={finger}>
-                {FINGER_LABEL[finger]}
-                <select
-                  value={value}
-                  aria-invalid={check.problems.some((problem) => problem.path === `homeKeys.${finger}`)}
-                  data-kana-home={finger}
-                  onChange={(event) => setDraft({ ...draft, homeKeys: { ...draft.homeKeys, [finger]: event.currentTarget.value } })}
-                >
-                  <option value="">指の割り当ての値</option>
-                  {stale ? <option value={value}>{keyLabel(value, standard)}（ホーム段に無いキー）</option> : null}
-                  {homeRowKeys.map((key) => (
-                    <option key={key} value={key}>
-                      {keyLabel(key, standard)}のキー
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <div key={finger}>
+                <label>
+                  {FINGER_LABEL[finger]}
+                  <select
+                    value={value}
+                    aria-invalid={check.problems.some((problem) => problem.path === `homeKeys.${finger}`)}
+                    data-kana-home={finger}
+                    onChange={(event) => setDraft({ ...draft, homeKeys: { ...draft.homeKeys, [finger]: event.currentTarget.value } })}
+                  >
+                    <option value="">指の割り当ての値</option>
+                    {stale ? <option value={value}>{keyLabel(value, standard)}（ホーム段に無いキー）</option> : null}
+                    {homeRowKeys.map((key) => (
+                      <option key={key} value={key}>
+                        {keyLabel(key, standard)}のキー
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {warnings.map((warning) => (
+                  <p key={warning.message} className="kana-layout-warning" role="status" data-kana-home-warning={finger}>
+                    {warning.message}
+                  </p>
+                ))}
+              </div>
             );
           })}
         </div>
@@ -658,7 +676,18 @@ function KanaLayoutForm({ initial, isNew, onSubmit, onDownload }: KanaLayoutForm
  * 面ごとに、切り替えのキー・打鍵の順序・キーごとの出力を決めて、かな配列を自作する・直す画面。
  * 書き込みは親が渡すコールバックを通す。選んでいる配列はこの画面の中だけの値で、保存しない。
  */
-export function KanaLayoutEditor({ layouts, ready, canUndo, canRedo, onUndo, onRedo, onCreate, onUpdate, onDownload }: KanaLayoutEditorProps) {
+export function KanaLayoutEditor({
+  layouts,
+  ready,
+  fingerAssignments,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
+  onCreate,
+  onUpdate,
+  onDownload,
+}: KanaLayoutEditorProps) {
   useHistoryShortcuts({ canUndo, canRedo, undo: onUndo, redo: onRedo });
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
   const [newCount, setNewCount] = useState(0);
@@ -722,7 +751,7 @@ export function KanaLayoutEditor({ layouts, ready, canUndo, canRedo, onUndo, onR
             </button>
           </div>
           <h2>{isNew ? '新しい配列' : layout.name}</h2>
-          <KanaLayoutForm key={formKey} initial={initial} isNew={isNew} onSubmit={submit} onDownload={onDownload} />
+          <KanaLayoutForm key={formKey} initial={initial} fingerAssignments={fingerAssignments} isNew={isNew} onSubmit={submit} onDownload={onDownload} />
         </>
       )}
     </article>

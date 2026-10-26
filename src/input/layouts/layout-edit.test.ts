@@ -4,6 +4,7 @@ import {
   contentOf,
   createUserLayout,
   hasBlockingProblem,
+  ignoredHomeKeyWarnings,
   isEditableUserLayout,
   layoutProblems,
   normalizeContent,
@@ -282,4 +283,23 @@ test('layoutProblems: 段に無いキーは今ある不備だけを返し、担�
     problems.filter((problem) => problem.field.kind === 'home-key').map((problem) => problem.severity),
     ['error'],
   );
+});
+
+test('ignoredHomeKeyWarnings: ローマ字配列の検査と同じ文面を、指ごとに返す。空の指定は数えない', () => {
+  const assignments = [namedAssignment(DEFAULT_FINGER_ASSIGNMENT, '甲')];
+  const homeKeys = { LI: 'h', RI: '', LM: 'd' } as const;
+  const warnings = ignoredHomeKeyWarnings(homeKeys, assignments);
+  assert.deepEqual(
+    warnings.map((warning) => warning.finger),
+    ['LI'],
+  );
+  assert.deepEqual(
+    warnings.map((warning) => warning.message),
+    homeWarnings({ ...DVORAK, homeKeys }, assignments).map((problem) => problem.message),
+  );
+});
+
+test('ignoredHomeKeyWarnings: 割り当てが無い、またはどの指も担当しないキーなら返さない', () => {
+  assert.deepEqual(ignoredHomeKeyWarnings({ LI: 'h' }, []), []);
+  assert.deepEqual(ignoredHomeKeyWarnings({ LI: 'no-such-key' }, [DEFAULT_FINGER_ASSIGNMENT]), []);
 });

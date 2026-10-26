@@ -120,3 +120,22 @@ test('貼り付けたJSONの誤りは、どの面のどのキーかが出て、�
   const exported = JSON.parse(await page.locator('[data-kana-json-export]').inputValue());
   expect(exported).toEqual(fixed);
 });
+
+test('指が担当しないキーをホームキーにすると注意が出て、担当するキーに直すと消える。保存は止まらない', async ({ page }) => {
+  await page.goto('/kana-layout');
+  await waitForHydration(page);
+  await page.locator('[data-kana-name]').fill('ホームキーの確認');
+  await page.locator('[data-kana-figure] [data-key-id="a"]').click();
+  await page.locator('[data-kana-output]').fill('あ');
+
+  const warning = page.locator('[data-kana-home-warning]');
+  await expect(warning).toHaveCount(0);
+  await page.locator('[data-kana-home="LI"]').selectOption('h');
+  await expect(warning).toHaveCount(1);
+  await expect(page.locator('[data-kana-home-warning="LI"]')).toContainText('使われず');
+  await expect(page.locator('[data-kana-submit]')).toBeEnabled();
+
+  await page.locator('[data-kana-home="LI"]').selectOption('');
+  await page.locator('[data-kana-home="RI"]').selectOption('h');
+  await expect(warning).toHaveCount(0);
+});
