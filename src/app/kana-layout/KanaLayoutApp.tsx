@@ -1,6 +1,8 @@
 import { createUserFaceLayoutCommand, updateUserFaceLayoutCommand } from '#engine/commands.ts';
+import { FINGER_ASSIGNMENT_REGISTRY } from '#engine/finger-assignment.ts';
 import { KanaLayoutEditor } from '#editors/kana-layout/KanaLayoutEditor.tsx';
 import { downloadText } from '#platform/browser-download.ts';
+import { useMemo } from 'react';
 import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
 
 const downloadJson = (filename: string, text: string) => downloadText(filename, text, 'application/json');
@@ -11,10 +13,12 @@ const downloadJson = (filename: string, text: string) => downloadText(filename, 
  */
 export function KanaLayoutApp() {
   const { assets, ready, dispatch, canUndo, canRedo, undo, redo } = useKeydistAssets();
+  const fingerAssignments = useMemo(() => [...Object.values(FINGER_ASSIGNMENT_REGISTRY), ...assets.fingerAssignments], [assets.fingerAssignments]);
   return (
     <KanaLayoutEditor
       layouts={assets.userLayouts}
       ready={ready}
+      fingerAssignments={fingerAssignments}
       canUndo={canUndo}
       canRedo={canRedo}
       onUndo={undo}

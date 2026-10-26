@@ -101,6 +101,31 @@ function definitionOf(id: string, content: UserLayoutContent): StageUserLayout {
 }
 
 /**
+ * 指のホームキーに選んだキーを、その指が担当しない割り当てがある時の注意文。無ければ`undefined`。
+ * そのキーをどの指も担当しない割り当ては、物理配列の違いなので照合から外す。
+ * ローマ字配列とかな配列の編集画面が同じ文面を出すために共有する。
+ */
+export function ignoredHomeKeyMessage(finger: NonThumb, key: string, fingerAssignments: readonly FingerAssignment[]): string | undefined {
+  const ignoring = fingerAssignments.filter((assignment) => assignmentHasKey(assignment, key) && !homeKeyOverrideApplies(assignment, finger, key));
+  if (ignoring.length === 0) return undefined;
+  const names = ignoring.map((assignment) => `「${assignment.name}」`).join('');
+  return `${FINGER_LABEL[finger]}のホームキー「${physicalKeyDisplayLabel(key)}」は、指の割り当て${names}では${FINGER_LABEL[finger]}の担当ではないため使われず、その割り当てのホームキーで測ります。${FINGER_LABEL[finger]}が担当するキーを選んでください`;
+}
+
+/** 指ごとのホームキーの指定のうち、ignoredHomeKeyMessageの注意が出るもの。空の指定は数えない。 */
+export function ignoredHomeKeyWarnings(
+  homeKeys: Readonly<Partial<Record<NonThumb, string>>>,
+  fingerAssignments: readonly FingerAssignment[],
+): readonly { readonly finger: NonThumb; readonly message: string }[] {
+  return FINGERS.flatMap((finger) => {
+    const key = homeKeys[finger];
+    if (key === undefined || key === '') return [];
+    const message = ignoredHomeKeyMessage(finger, key, fingerAssignments);
+    return message === undefined ? [] : [{ finger, message }];
+  });
+}
+
+/**
  * 入力の不備を調べる。`error`が1つでもあれば保存できない。
  * 同じ文字が複数のキーに載っているのは、配列のモデルが認めている置き方なので`warning`にとどめる。
  * `knownRomajiRuleIds`が渡された時は、選んだローマ字規則が無ければ`warning`で知らせる
@@ -145,15 +170,8 @@ export function layoutProblems(
         message: `${FINGER_LABEL[finger]}のホームキー「${physicalKeyDisplayLabel(key)}」は、段に無いキーです`,
       });
     } else if (key !== undefined && fingerAssignments !== undefined) {
-      const ignoring = fingerAssignments.filter((assignment) => assignmentHasKey(assignment, key) && !homeKeyOverrideApplies(assignment, finger, key));
-      if (ignoring.length > 0) {
-        const names = ignoring.map((assignment) => `「${assignment.name}」`).join('');
-        problems.push({
-          severity: 'warning',
-          field: { kind: 'home-key', finger },
-          message: `${FINGER_LABEL[finger]}のホームキー「${physicalKeyDisplayLabel(key)}」は、指の割り当て${names}では${FINGER_LABEL[finger]}の担当ではないため使われず、その割り当てのホームキーで測ります。${FINGER_LABEL[finger]}が担当するキーを選んでください`,
-        });
-      }
+      const message = ignoredHomeKeyMessage(finger, key, fingerAssignments);
+      if (message !== undefined) problems.push({ severity: 'warning', field: { kind: 'home-key', finger }, message });
     }
   }
 
