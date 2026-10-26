@@ -5,7 +5,14 @@ import { PHYSICAL_SHAPES } from '#input/shapes/geometry.ts';
 import type { Setup } from '#input/setup/index.ts';
 import { EMPTY_SETTINGS_OVERRIDES } from '#engine/settings-items.ts';
 import { resolveEngineInput } from '#engine/resolved-input.ts';
-import { keyPatternSelectionView, KEY_PATTERN_PROMPT, toggleSelectedKey } from './key-pattern-selection.ts';
+import {
+  keyPatternKeyDescription,
+  keyPatternSelectionView,
+  KEY_PATTERN_CONTINUATION_DESCRIPTION,
+  KEY_PATTERN_OUTPUT_DESCRIPTION,
+  KEY_PATTERN_PROMPT,
+  toggleSelectedKey,
+} from './key-pattern-selection.ts';
 import { fixedTestText } from '../../../test/kana-test-text.ts';
 
 const CATALOG = {
@@ -78,4 +85,19 @@ test('出る文字が無い組み合わせは、その旨を出す', () => {
   const layout = resolvedLayout('qwerty', 'en');
   const view = keyPatternSelectionView(layout, ['a', 's']);
   assert.equal(view.message, 'このキーの組み合わせで出る文字はありません。');
+});
+
+test('読み上げの説明: 続けて押せるキーには続けて押せると足し、あと1キーで決まるキーには出力が決まる旨だけを足す', () => {
+  const layout = resolvedLayout('oonishi-custom', 'ja');
+  const one = keyPatternSelectionView(layout, ['j']);
+  const continuationOnly = [...one.continuationKeys].find((key) => !one.candidateLegends.has(key));
+  assert.ok(continuationOnly !== undefined);
+  assert.equal(keyPatternKeyDescription(one, continuationOnly), KEY_PATTERN_CONTINUATION_DESCRIPTION);
+  assert.equal(keyPatternKeyDescription(one, 'z'), undefined);
+
+  // m は続けて押せるキーにも候補にも含まれるので、説明は候補の旨だけになる
+  const two = keyPatternSelectionView(layout, ['j', 'l']);
+  assert.ok(two.continuationKeys.has('m'));
+  assert.ok(two.candidateLegends.has('m'));
+  assert.equal(keyPatternKeyDescription(two, 'm'), KEY_PATTERN_OUTPUT_DESCRIPTION);
 });

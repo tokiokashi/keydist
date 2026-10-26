@@ -62,6 +62,24 @@ test('キーを選んで出る文字を調べる: キーボードでキーを選
   await expect(result).toContainText('選んだキーはありません');
 });
 
+test('キーを選んで出る文字を調べる: 続けて押せるキーと、出る文字が決まるキーの読み上げの名前に説明が入る', async ({ page }) => {
+  await selectLayout(page, 'oonishi-custom');
+  await page.goto('/analyzer/keymap');
+  await expect(feature(page)).toBeVisible({ timeout: 10_000 });
+
+  const pattern = feature(page).locator('[data-keymap-pattern]');
+  await pattern.locator('[data-key-id="j"]').focus();
+  await page.keyboard.press('Enter');
+  await expect(pattern.locator('[data-keymap-pattern-result]')).toContainText('続けて押せるキーがあります');
+
+  // 続けて押せるキーで、あと1キーで出る文字が決まらないもの
+  await expect(pattern.locator('[data-key-id="m"]')).toHaveAttribute('aria-label', /続けて押せるキー/);
+  // あと1キーで出る文字が決まるキーは、出る文字と「押すと出る文字が決まるキー」だけを読み上げる
+  const decided = pattern.locator('[data-key-id="l"]');
+  await expect(decided).toHaveAttribute('aria-label', /押すと出る文字が決まるキー/);
+  await expect(decided).not.toHaveAttribute('aria-label', /続けて押せるキー/);
+});
+
 test('トリガーになるキーの色付け: レイヤーとコンボの両方を持つ配列は、何も選ばない間に色付きの枠と凡例が出る', async ({ page }) => {
   await selectLayout(page, 'kawasemi-plus');
   await page.goto('/analyzer/keymap');

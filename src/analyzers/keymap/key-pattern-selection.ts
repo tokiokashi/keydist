@@ -46,3 +46,13 @@ export function keyPatternSelectionView(layout: Layout, selected: readonly strin
         : 'このキーの組み合わせで出る文字はありません。';
   return { exactOutputs, candidateLegends, continuationKeys, message };
 }
+
+/** 読み上げとhoverに足す説明。あと1キーで出る文字が決まるキーは、続けて押せるキーにも含まれるので、こちらだけを返す。 */
+export const KEY_PATTERN_CONTINUATION_DESCRIPTION = '続けて押せるキー';
+export const KEY_PATTERN_OUTPUT_DESCRIPTION = '押すと出る文字が決まるキー';
+
+export function keyPatternKeyDescription(view: KeyPatternSelectionView, keyId: string): string | undefined {
+  if (view.candidateLegends.has(keyId)) return KEY_PATTERN_OUTPUT_DESCRIPTION;
+  if (view.continuationKeys.has(keyId)) return KEY_PATTERN_CONTINUATION_DESCRIPTION;
+  return undefined;
+}
