@@ -186,3 +186,27 @@ test('ホームキーがその指の担当でない割り当ては警告が出�
   await page.locator('[data-finger-assignment-home="RI"]').click();
   await expect(problems).toHaveCount(0);
 });
+
+test('キーを選んだ後に指を選ぶと、選んでいたキーが外れる。指を選ばない時は前のキーを戻さない', async ({ page }) => {
+  await page.goto('/finger-assignment');
+  await waitForHydration(page);
+  await page.locator('[data-finger-assignment-create]').click();
+
+  // キーを選んだ後に指を選ぶ: 「キー単位」の欄は未選択に戻り、図に選んだキーの枠は残らない
+  await keyBox(page, 'f').click();
+  await expect(page.locator('[data-binding-target]')).toHaveCount(1);
+  await page.getByLabel('担当を編集する指').selectOption('RT');
+  await expect(page.getByText('選んでいるキー: なし', { exact: true })).toBeVisible();
+  await expect(page.locator('[data-binding-target]')).toHaveCount(0);
+
+  // 指を選んでいる間に aria-pressed が付くのは、その指の担当キーだけ
+  await keyBox(page, 'm').click();
+  await expect(keyBox(page, 'm')).toHaveAttribute('aria-pressed', 'true');
+  await expect(keyBox(page, 'f')).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('[data-binding-target]')).toHaveCount(0);
+
+  // 指の選択を「選ばない」へ戻しても、外したキーは戻らない
+  await page.getByLabel('担当を編集する指').selectOption('');
+  await expect(page.getByText('選んでいるキー: なし', { exact: true })).toBeVisible();
+  await expect(page.locator('[data-binding-target]')).toHaveCount(0);
+});
