@@ -12,6 +12,8 @@ export interface ParsedFace {
   cells: ParsedCell[];
   /** セルの表示が機能キーを含むか（段の形の凡例に使う） */
   isFunctionLabel: (label: string) => boolean;
+  /** ハイフン区切りの見出し（`-f-j[`）の面か。同時に押す面か順に押す面かを見出しの形から決められない */
+  dashHeading?: boolean;
 }
 
 export interface ParsedCell {
@@ -48,6 +50,10 @@ const keyName = (key: string): string => physicalKeyDisplayLabel(key);
 export function buildKanaContent(faces: readonly ParsedFace[], name: string, warnings: string[]): KanaLayoutContent {
   const groups = new Map<string, { trigger: string[]; headings: string[]; outputs: Record<string, string> }>();
   for (const face of faces) {
+    if (face.dashHeading === true) {
+      warnings.push(`面「${face.heading}」は、同時に押す面か順に押す面かを判定できないため取り込みませんでした`);
+      continue;
+    }
     const identity = [...face.trigger].sort().join('+');
     let group = groups.get(identity);
     if (group === undefined) {

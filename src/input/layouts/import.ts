@@ -327,7 +327,7 @@ export function importDvorakJ(source: string, name = 'DvorakJ取り込み'): Imp
         if (cell) cells.push({ row, column, output: cell.output, label: cell.label });
       }
     }
-    faces.push({ heading: header, trigger: triggers, cells, isFunctionLabel: hasDvorakJFunctionLabel });
+    faces.push({ heading: header, trigger: triggers, cells, isFunctionLabel: hasDvorakJFunctionLabel, dashHeading: isDashSeparatedHeader(header) });
   }
   return resolveFaces(name, faces, warnings);
 }
@@ -574,7 +574,7 @@ export function importBenizara(source: string, name = '紅皿取り込み'): Imp
   const warnings: string[] = [];
   for (const section of candidates) {
     if (!family.includes(section)) {
-      addWarning(warnings, `面「${section}」は選択した出力形式「${prefix}」と異なるため無視しました`);
+      addWarning(warnings, `面「${section}」は、基底面「${base}」と名前の始まり（${prefix}）が異なるため読み飛ばしました`);
     }
   }
   for (const section of [base, ...family.filter((candidate) => candidate !== base)]) {

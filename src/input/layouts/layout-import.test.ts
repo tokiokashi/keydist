@@ -241,6 +241,60 @@ const BENIZARA_KANA = [
   'x,x,x,x,x',
 ].join('\n');
 
+const DASH_FACE = ['-f-j', '[', '  |||', '  が|ぎ|ぐ|', ']'];
+
+test('ハイフン区切りの見出しの面は、かなの定義では取り込まずに注意へ入れる', () => {
+  const source = [
+    '-option-input[',
+    '  {F} | +21',
+    '  {J} | +24',
+    ']',
+    '[',
+    '  |||',
+    '  き|く|け|',
+    ']',
+    ...DASH_FACE,
+    '({F}[',
+    '  |||',
+    '  ぎ|ぐ|げ|',
+    ']',
+  ].join('\n');
+  const { content, warnings } = kanaOf(importDvorakJ(source));
+  assert.deepEqual(
+    content.faces.map((face) => face.trigger),
+    [[], ['f']],
+  );
+  assert.ok(warnings.some((warning) => warning.includes('「-f-j」') && warning.includes('取り込みませんでした')));
+});
+
+test('ハイフン区切りの見出しの面にだけかながある定義は、かなの定義と判定され、その面は注意に入る', () => {
+  const source = ['-option-input[', '  {F} | +21', '  {J} | +24', ']', '[', '  |||', '  q|w|e|', ']', ...DASH_FACE].join('\n');
+  assert.throws(() => importDvorakJ(source), /混在/);
+  const onlyKana = ['-option-input[', '  {F} | +21', '  {J} | +24', ']', '[', '  |||', '  1|2|3|', ']', ...DASH_FACE].join('\n');
+  const { content, warnings } = kanaOf(importDvorakJ(onlyKana));
+  assert.deepEqual(
+    content.faces.map((face) => face.trigger),
+    [[]],
+  );
+  assert.ok(warnings.some((warning) => warning.includes('「-f-j」')));
+});
+
+test('ハイフン区切りの見出しの面は、段の形（ローマ字）では今まで通り読む', () => {
+  const source = [
+    '-option-input[',
+    '  {F} | +21',
+    '  {J} | +24',
+    ']',
+    '[',
+    '  |||',
+    '  q|w|e|',
+    ']',
+    ...DASH_FACE.map((line) => line.replace(/[がぎぐ]/g, 'a')),
+  ].join('\n');
+  const layout = stageOf(importDvorakJ(source));
+  assert.deepEqual(new Map(layout.sequences).get('a'), [['f', 'j', 'q']]);
+});
+
 test('紅皿のかな定義は、面ごとのtriggerと出力を持つ面の形になる', () => {
   const { content, warnings } = kanaOf(importBenizara(BENIZARA_KANA, 'テスト'));
   assert.deepEqual(
