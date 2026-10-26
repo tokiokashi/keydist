@@ -2,7 +2,7 @@ import { useId, useMemo, useState } from 'react';
 import { visibleGeometryKeys } from '#input/layouts/physical-keys.ts';
 import { keyboardStandardForGeometryId } from '#input/shapes/key-labels.ts';
 import { PhysicalKeyboard, type PhysicalKeyboardKeyView } from '#ui/keyboard/physical-keyboard.tsx';
-import { keyPatternSelectionView, toggleSelectedKey } from './key-pattern-selection.ts';
+import { keyPatternKeyDescription, keyPatternSelectionView, toggleSelectedKey } from './key-pattern-selection.ts';
 import { keymapDefinition, type KeymapExtracted } from './extract.ts';
 import { comboDiagramItems, comboRows, modifierRows, type ComboDiagramItem } from './layout-breakdown.ts';
 import { bindOption } from '#ui/primitives/option-fields.tsx';
@@ -198,6 +198,7 @@ function KeyPatternSection({
             legend: candidate ?? layout.legends.get(key.id) ?? '',
             selected: chosen.has(key.id),
             guide,
+            description: keyPatternKeyDescription(view, key.id),
             ...(tone?.kind === 'layer' ? { accentSlot: tone.slot } : tone?.kind === 'others' ? { accentTone: 'muted' as const } : {}),
           },
         ];
