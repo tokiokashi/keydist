@@ -1,7 +1,7 @@
 import { defineAssetCodec, describeFileDecodeFailure, isRecord, type AssetCodec, type CodecDiagnostic } from '#input/codec/index.ts';
 import type { Command } from '#input/commands/index.ts';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
-import { decodeUserLayouts, type UserLayout } from '#input/layouts/user-layouts.ts';
+import { decodeUserLayouts, isFaceUserLayout, type UserLayout } from '#input/layouts/user-layouts.ts';
 import { decodeUserRomajiRules, isBuiltin, ROMAJI_RULES, type UserRomajiRule } from '#input/romaji/rules.ts';
 import { decodeUserFingerAssignments } from '#input/shapes/user-finger-assignments.ts';
 import type { FingerAssignment } from '#input/shapes/geometry.ts';
@@ -85,7 +85,7 @@ export type UserAssetsHoldings = Pick<KeydistAssets, 'userLayouts' | 'userRomaji
  * 参照を外す（手元の規則に結び付かず、全体の値の規則で打つ配列になる。ローマ字を経ない配列は`romaji`を見ないので触らない）。
  */
 function withResolvableRomaji(layout: UserLayout, resolve: (id: string) => string | undefined): UserLayout {
-  if (layout.direct === true || layout.romaji === undefined) return layout;
+  if (isFaceUserLayout(layout) || layout.romaji === undefined) return layout;
   const resolved = isBuiltin(layout.romaji) ? layout.romaji : resolve(layout.romaji);
   if (resolved === layout.romaji) return layout;
   const { romaji: _dropped, ...rest } = layout;
@@ -170,18 +170,16 @@ function canonical(value: unknown): string {
 
 /**
  * 「中身が同じ」の判定に使う項目。idと名前は比べない（idは突き合わせの鍵で、名前は数値に関わらない）。
- * 数値に関わる項目はすべて比べる。値が無いこととfalseが同じ意味の `direct` だけ、省略を揃える。
- * `romaji` は推奨の規則の読み込み後のidで比べる。ローマ字を経ない配列は `romaji` を使わないので比べない。
+ * 数値に関わる項目はすべて比べる。
+ * `romaji` は推奨の規則の読み込み後のidで比べる。面で定義する配列はローマ字を経ず `romaji` を持たない。
  * 面で定義する配列は `faces`（面の並びの順も含む）と `composition` で比べる。
  */
 function layoutContent(layout: UserLayout): string {
-  const direct = layout.direct === true;
   return canonical({
     rows: layout.rows,
-    romaji: direct ? undefined : layout.romaji,
+    romaji: layout.romaji,
     sequences: layout.sequences,
     legends: layout.legends,
-    direct: direct ? true : undefined,
     faces: layout.faces,
     composition: layout.composition,
     homeKeys: layout.homeKeys,

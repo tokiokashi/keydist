@@ -37,13 +37,12 @@ test('未知のidはalpha扱いにする（英字系がほとんどのため）'
   assert.equal(builtInLayoutKind('no-such-layout'), 'alpha');
 });
 
-test('自作配列はdirect:trueならkana、それ以外はalpha', () => {
+test('自作配列は面で定義するならkana、段で定義するならalpha', () => {
   const direct: UserLayout = {
     id: 'my-kana',
     name: 'かな配列',
-    rows: ['', '', '', ''],
-    romaji: 'kunrei',
-    direct: true,
+    faces: [{ trigger: [], inputRole: 'layer', outputs: { a: 'あ' } }],
+    composition: { dakuten: false, handakuten: false },
   };
   const romaji: UserLayout = {
     id: 'my-alpha',
@@ -57,7 +56,15 @@ test('自作配列はdirect:trueならkana、それ以外はalpha', () => {
 
 test('layoutKindは自作配列の一覧にあればそちらを優先し、無ければ組み込み表を使う', () => {
   const userLayouts = new Map<string, UserLayout>([
-    ['my-kana', { id: 'my-kana', name: 'かな配列', rows: ['', '', '', ''], romaji: 'kunrei', direct: true }],
+    [
+      'my-kana',
+      {
+        id: 'my-kana',
+        name: 'かな配列',
+        faces: [{ trigger: [], inputRole: 'layer', outputs: { a: 'あ' } }],
+        composition: { dakuten: false, handakuten: false },
+      },
+    ],
   ]);
   const myKanaLayout = { id: 'my-kana' } as unknown as Layout;
   const qwertyLayout = { id: 'qwerty' } as unknown as Layout;

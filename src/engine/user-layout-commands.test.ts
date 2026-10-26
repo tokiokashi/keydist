@@ -111,7 +111,7 @@ test('自作の配列のコマンド: 保存できない入力と取り込み形
   );
   const imported: KeydistAssets = {
     ...created.assets,
-    userLayouts: [{ ...(created.assets.userLayouts[0] as StageUserLayout), id: 'user-imp', direct: true }],
+    userLayouts: [{ ...(created.assets.userLayouts[0] as StageUserLayout), id: 'user-imp', sequences: [['あ', [['a']]]] }],
   };
   const cases = [
     { assets: created.assets, command: createUserLayoutCommand(() => 'user-2', { ...CONTENT, name: '' }) },

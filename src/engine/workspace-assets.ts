@@ -1,4 +1,4 @@
-import { isDirectUserLayout } from '#input/layouts/user-layouts.ts';
+import { isFaceUserLayout } from '#input/layouts/user-layouts.ts';
 import { isBuiltin } from '#input/romaji/rules.ts';
 import type { AnalysisTarget } from '#input/setup/index.ts';
 import { levelOverrides, type LevelOverrides } from '#input/settings/index.ts';
@@ -66,7 +66,7 @@ export function workspaceAssetsOf(workspaces: readonly Workspace[], holdings: Us
   }
   for (const id of layoutIds) {
     const layout = ownLayouts.get(id)!;
-    if (!isDirectUserLayout(layout)) addRule(layout.romaji);
+    if (!isFaceUserLayout(layout)) addRule(layout.romaji);
   }
   // 書き出しの突き合わせ（`userAssetsBundleOf`）に通して、同梱しない資産への参照を外す
   return userAssetsBundleOf({

@@ -11,6 +11,7 @@ import {
 import { KANA_COVERAGE_GROUPS } from '#input/layouts/kana-coverage.ts';
 import { kanaLayoutFileText, parseKanaLayoutFile, type KanaLayoutContent } from '#input/layouts/kana-face-layout-file.ts';
 import { gridPositionOf, type FaceLayoutNotice, type FaceLayoutProblem } from '#input/layouts/kana-face-layout.ts';
+import { importKanaLayoutFile } from '#input/layouts/import.ts';
 import { ignoredHomeKeyWarnings, newUserLayoutId } from '#input/layouts/layout-edit.ts';
 import type { FaceMode, InputRole, LayerKind, TriggerOrder, TriggerPersistence } from '#input/layouts/types.ts';
 import { isFaceUserLayout, type UserLayout } from '#input/layouts/user-layouts.ts';
@@ -691,6 +692,9 @@ export function KanaLayoutEditor({
   useHistoryShortcuts({ canUndo, canRedo, undo: onUndo, redo: onRedo });
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
   const [newCount, setNewCount] = useState(0);
+  // 定義ファイルから取り込んだ、保存していない新しい配列の下書き
+  const [imported, setImported] = useState<{ readonly content: KanaLayoutContent; readonly warnings: readonly string[] } | undefined>(undefined);
+  const [importError, setImportError] = useState<string | undefined>(undefined);
 
   const editable = useMemo(() => layouts.filter(isFaceUserLayout), [layouts]);
 
@@ -698,17 +702,33 @@ export function KanaLayoutEditor({
   const layout = selectedId === NEW ? undefined : (editable.find((candidate) => candidate.id === selectedId) ?? editable[0]);
   const isNew = layout === undefined;
 
-  const initial = useMemo(() => (layout === undefined ? blankFaceLayoutDraft() : draftOf(contentOfFaceLayout(layout))), [layout]);
+  const initial = useMemo(() => {
+    if (layout !== undefined) return draftOf(contentOfFaceLayout(layout));
+    return imported === undefined ? blankFaceLayoutDraft() : draftOf(imported.content);
+  }, [layout, imported]);
   const formKey = layout === undefined ? `new:${newCount}` : `${layout.id}:${JSON.stringify(initial)}`;
 
   const submit = (content: KanaLayoutContent) => {
     if (layout === undefined) {
       const id = newUserLayoutId();
       onCreate(id, content);
+      setImported(undefined);
       setSelectedId(id);
     } else {
       onUpdate(layout.id, content);
     }
+  };
+
+  const importFile = async (file: File) => {
+    const result = importKanaLayoutFile(file.name, await file.arrayBuffer());
+    if (!result.ok) {
+      setImportError(result.message);
+      return;
+    }
+    setImportError(undefined);
+    setImported({ content: result.content, warnings: result.warnings });
+    setSelectedId(NEW);
+    setNewCount((count) => count + 1);
   };
 
   return (
@@ -743,13 +763,50 @@ export function KanaLayoutEditor({
               type="button"
               data-kana-create
               onClick={() => {
+                setImported(undefined);
+                setImportError(undefined);
                 setSelectedId(NEW);
                 setNewCount((count) => count + 1);
               }}
             >
               新規作成
             </button>
+            <label>
+              DvorakJ・紅皿の定義ファイル
+              <input
+                type="file"
+                accept=".txt,.bnz,.ini,.vil"
+                data-kana-import-file
+                onChange={(event) => {
+                  const input = event.currentTarget;
+                  const file = input.files?.[0];
+                  // 同じファイルをもう一度選んでも変更として届くように、選択を空に戻す
+                  if (file !== undefined) void importFile(file).finally(() => (input.value = ''));
+                }}
+              />
+            </label>
           </div>
+          {importError === undefined ? null : (
+            <p className="kana-layout-error" role="alert" data-kana-file-import="error">
+              {importError}
+            </p>
+          )}
+          {imported === undefined || !isNew ? null : (
+            <div data-kana-file-import="ok">
+              <p className="kana-layout-note" role="status">
+                定義ファイルから開いた、保存していない配列です。
+              </p>
+              {imported.warnings.length === 0 ? null : (
+                <ul className="kana-layout-problems" data-kana-file-warnings>
+                  {imported.warnings.map((warning) => (
+                    <li key={warning} className="kana-layout-warning" role="status">
+                      {warning}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
           <h2>{isNew ? '新しい配列' : layout.name}</h2>
           <KanaLayoutForm key={formKey} initial={initial} fingerAssignments={fingerAssignments} isNew={isNew} onSubmit={submit} onDownload={onDownload} />
         </>

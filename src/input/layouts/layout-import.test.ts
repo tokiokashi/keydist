@@ -1,8 +1,28 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { decodeLayoutFile, formatForFileName, importBenizara, importDvorakJ, importVial, isDashSeparatedHeader } from './import.ts';
+import {
+  decodeLayoutFile,
+  formatForFileName,
+  importBenizara,
+  importDvorakJ,
+  importVial,
+  isDashSeparatedHeader,
+  type ImportedDefinition,
+  type ImportedLayout,
+} from './import.ts';
 import { CUSTOM_COMBOS } from './combos-custom.ts';
+import { buildFaceLayout, duplicateOutputNotices } from './kana-face-layout.ts';
 import { toLayout, type UserLayout } from './user-layouts.ts';
+
+const kanaOf = (result: ImportedDefinition) => {
+  assert.equal(result.kind, 'kana');
+  return result.kind === 'kana' ? result : assert.fail();
+};
+
+const stageOf = (result: ImportedDefinition): ImportedLayout => {
+  assert.equal(result.kind, 'stage');
+  return result.kind === 'stage' ? result.layout : assert.fail();
+};
 
 const vialKeyCode = (key: string): string => {
   if (key === '-') return 'KC_MINS';
@@ -46,7 +66,6 @@ test('Vialの第0層・通常キー出力・マクロ出力のコンボを読む
   assert.ok(layout.legends.some(([key, label]) => key === '=' && label === 'KC_ENTER'));
   assert.ok(!layout.sequences.some(([output]) => output === 'KC_ENTER'));
   assert.ok(layout.warnings.some((warning) => warning.includes('MO(1)')));
-  assert.equal(layout.direct, false);
 });
 
 test('既存のVial由来コンボ73件を全件取り込める', () => {
@@ -74,104 +93,217 @@ test('既存のVial由来コンボ73件を全件取り込める', () => {
   }
 });
 
-test('DvorakJの基底面と同時打鍵面を読む', () => {
+const DVORAKJ_KANA = [
+  '-option-input[',
+  '  {F} | +21',
+  '  {J} | +24',
+  '  {S} | +shift',
+  '  {Z} | +99',
+  ']',
+  '[',
+  '  1|2|3|',
+  '  き|{←}|{→}|',
+  '  あ|い|う|',
+  '  た|ち|つ|',
+  ']',
+  '({S}[',
+  '  |||',
+  '  、{Enter}|ぎ|ぐ|',
+  '  |||',
+  '  |||',
+  ']',
+  '({F}{J}[',
+  '  |||',
+  '  が|ぎ|ぐ|',
+  '  |||',
+  '  |||',
+  ']',
+  '(+23, ({S}+23[',
+  '  |||',
+  ']',
+  '({F}[',
+  ']',
+].join('\n');
+
+test('DvorakJのかな定義は、面ごとのtriggerと出力を持つ面の形になる', () => {
+  const result = kanaOf(importDvorakJ(DVORAKJ_KANA, 'テスト'));
+  const { faces, composition, name } = result.content;
+  assert.equal(name, 'テスト');
+  assert.deepEqual(composition, { dakuten: false, handakuten: false });
+  assert.deepEqual(
+    faces.map((face) => face.trigger),
+    [[], ['thumb-r'], ['f', 'j']],
+  );
+  // triggerの無い面は役割だけを持つ。triggerを持つ面は同時打鍵・単発
+  assert.deepEqual(faces[0], {
+    trigger: [],
+    inputRole: 'layer',
+    outputs: { '1': '1', '2': '2', '3': '3', q: 'き', a: 'あ', s: 'い', d: 'う', z: 'た', x: 'ち', c: 'つ' },
+  });
+  assert.deepEqual(faces[1], {
+    trigger: ['thumb-r'],
+    mode: 'simultaneous',
+    triggerPersistence: 'single',
+    inputRole: 'layer',
+    outputs: { q: '、', w: 'ぎ', e: 'ぐ' },
+  });
+  assert.deepEqual(faces[2], {
+    trigger: ['f', 'j'],
+    mode: 'simultaneous',
+    triggerPersistence: 'single',
+    inputRole: 'layer',
+    outputs: { q: 'が', w: 'ぎ', e: 'ぐ' },
+  });
+  // 機能キーだけのセルは出力にしない
+  assert.ok(faces.every((face) => !Object.values(face.outputs).some((output) => output === '←' || output === '→')));
+  assert.ok(result.warnings.some((warning) => warning.includes('(+23, ({S}+23[')));
+  assert.ok(result.warnings.some((warning) => warning.includes('エイリアス「Z」')));
+  assert.ok(result.warnings.some((warning) => warning.includes('({F}[') && warning.includes('セルがない')));
+});
+
+test('同じ出力が複数の面にあれば、全部の置き場を残す', () => {
+  const { content } = kanaOf(importDvorakJ(DVORAKJ_KANA));
+  const places = content.faces.filter((face) => Object.values(face.outputs).includes('ぎ')).map((face) => face.trigger);
+  assert.deepEqual(places, [['thumb-r'], ['f', 'j']]);
+  assert.ok(duplicateOutputNotices(content).some((notice) => notice.output === 'ぎ'));
+});
+
+test('取り込んだ面の形は、組み立ての検査を通り、保存する自作の配列として組める', () => {
+  const { content } = kanaOf(importDvorakJ(DVORAKJ_KANA));
+  const layout = buildFaceLayout('imported', content.name, content);
+  assert.equal(layout.canonicalInputs.get('ぎ')?.length, 2);
+  assert.equal(layout.canonicalInputs.get('が')?.length, 1);
+  const user: UserLayout = { id: 'imported', ...content };
+  assert.equal(toLayout(user).canonicalInputs.get('あ')?.length, 1);
+});
+
+test('同じtriggerの面は1つにまとめ、キーが重なるセルとtrigger自身の位置のセルは注意に入る', () => {
   const source = [
     '-option-input[',
     '  {F} | +21',
-    '  {J} | +24',
-    '  {S} | +shift',
-    '  {Z} | +99',
-    ']',
-    '[',
-    '  1|2|3|',
-    '  き|{←}|{→}|',
-    '  あ|い|う|',
-    '  た|ち|つ|',
-    ']',
-    '({S}[',
-    '  |||',
-    '  、{Enter}|ぎ|ぐ|',
-    '  |||',
-    '  |||',
-    ']',
-    '({F}{J}[',
-    '  |||',
-    '  が|ぎ|ぐ|',
-    '  |||',
-    '  |||',
-    ']',
-    '(+23, ({S}+23[',
-    '  |||',
     ']',
     '({F}[',
+    '  |||',
+    '  あ|い|う|',
+    '  か|き|く|',
+    ']',
+    '({F}[',
+    '  |||',
+    '  え|い|お|',
+    '  |||',
+    '  さ|し|す|',
+    ']',
+    '[',
+    '  |||',
+    '  |||',
+    '  ん|ー|',
     ']',
   ].join('\n');
-  const layout = importDvorakJ(source);
-  assert.deepEqual(
-    layout.sequences.find(([output]) => output === 'あ'),
-    ['あ', [['a']]],
-  );
-  assert.deepEqual(
-    layout.sequences.find(([output]) => output === 'が'),
-    ['が', [['f', 'j', 'q']]],
-  );
-  assert.deepEqual(
-    layout.sequences.find(([output]) => output === '、'),
-    ['、', [['space', 'q']]],
-  );
-  assert.ok(!layout.sequences.some(([output]) => output === '←' || output === '→'));
-  assert.ok(layout.legends.some(([key, label]) => key === 'w' && label === '{←}'));
-  assert.ok(layout.legends.some(([key, label]) => key === 'q' && label === '、{Enter}'));
-  assert.ok(layout.warnings.some((warning) => warning.includes('(+23, ({S}+23[')));
-  assert.ok(layout.warnings.some((warning) => warning.includes('エイリアス「Z」')));
-  assert.ok(layout.warnings.some((warning) => warning.includes('({F}[') && warning.includes('セルがない')));
-  assert.equal(layout.direct, true);
+  const { content, warnings } = kanaOf(importDvorakJ(source));
+  const faceF = content.faces.find((face) => face.trigger.join() === 'f');
+  assert.equal(content.faces.filter((face) => face.trigger.join() === 'f').length, 1);
+  // 先に出たセルを残す。同じ出力が重なるだけなら注意にしない
+  assert.deepEqual(faceF?.outputs, { q: 'あ', w: 'い', e: 'う', a: 'か', s: 'き', d: 'く', z: 'さ', x: 'し', c: 'す' });
+  assert.ok(warnings.some((warning) => warning.includes('「え」') && warning.includes('重なる')));
+  assert.ok(warnings.some((warning) => warning.includes('「お」') && warning.includes('重なる')));
+  assert.ok(!warnings.some((warning) => warning.includes('「い」')));
 });
 
-test('DvorakJと紅皿の面内容からローマ字・かなを判定する', () => {
-  const roman = importDvorakJ('[\n  ka|si|tu|ne|\n  q|w|e|r|\n]');
-  assert.equal(roman.direct, false);
+test('triggerのキー自身の位置にあるセルは、取り込まずに注意へ入れる', () => {
+  const source = ['-option-input[', '  {A} | +1e', ']', '({A}[', '  |||', '  |||', '  あ|い|う|', ']', '[', '  あ|い|', ']'].join('\n');
+  const { content, warnings } = kanaOf(importDvorakJ(source));
+  const face = content.faces.find((entry) => entry.trigger.join() === 'a');
+  assert.deepEqual(face?.outputs, { s: 'い', d: 'う' });
+  assert.equal(warnings.filter((warning) => warning.includes('自身の位置')).length, 1);
+  assert.ok(warnings.some((warning) => warning.includes('「あ」') && warning.includes('自身の位置')));
+});
 
-  const kana = importBenizara(
-    [
-      '[配列]',
-      '名称=テスト',
-      '[かなシフト無し]',
-      'あ,い,う,え,お',
-      'か,き,く,け,こ',
-      'さ,し,す,せ,そ',
-      'た,ち,つ,て,と',
-      '[かな左右親指シフト]',
-      'が,ぎ,ぐ,げ,ご',
-      'だ,ぢ,づ,で,ど',
-      '[かな小指シフト]',
-      'x,x,x,x,x',
-    ].join('\n'),
-  );
-  assert.equal(kana.direct, true);
+test('DvorakJの面の内容からローマ字の定義は段の形、かなの定義は面の形に分かれる', () => {
+  const roman = stageOf(importDvorakJ('[\n  ka|si|tu|ne|\n  q|w|e|r|\n]'));
+  assert.ok(roman.sequences.some(([output]) => output === 'ka'));
+  assert.throws(() => importDvorakJ('[\n  ka|あ|\n]'), /混在/);
+});
+
+const BENIZARA_KANA = [
+  '[配列]',
+  '名称=テスト',
+  '[かなシフト無し]',
+  'あ,い,う,え,お',
+  'か,き,く,け,こ',
+  'さ,し,す,せ,そ',
+  'た,ち,つ,て,と',
+  '[かな左右親指シフト]',
+  'が,ぎ,ぐ,げ,ご',
+  'だ,ぢ,づ,で,ど',
+  '[かな右親指シフト]',
+  'ガ,,,,',
+  '[かな小指シフト]',
+  'x,x,x,x,x',
+].join('\n');
+
+test('紅皿のかな定義は、面ごとのtriggerと出力を持つ面の形になる', () => {
+  const { content, warnings } = kanaOf(importBenizara(BENIZARA_KANA, 'テスト'));
   assert.deepEqual(
-    kana.sequences.find(([output]) => output === 'が'),
-    ['が', [['thumb-l', 'space', '1']]],
+    content.faces.map((face) => face.trigger),
+    [[], ['thumb-l', 'thumb-r'], ['thumb-r']],
   );
-  assert.deepEqual(kana.warnings, ['面「かな小指シフト」は対応する親指キーを決められないため無視しました']);
+  assert.deepEqual(content.faces[0], {
+    trigger: [],
+    inputRole: 'layer',
+    outputs: {
+      '1': 'あ',
+      '2': 'い',
+      '3': 'う',
+      '4': 'え',
+      '5': 'お',
+      q: 'か',
+      w: 'き',
+      e: 'く',
+      r: 'け',
+      t: 'こ',
+      a: 'さ',
+      s: 'し',
+      d: 'す',
+      f: 'せ',
+      g: 'そ',
+      z: 'た',
+      x: 'ち',
+      c: 'つ',
+      v: 'て',
+      b: 'と',
+    },
+  });
+  assert.deepEqual(content.faces[1], {
+    trigger: ['thumb-l', 'thumb-r'],
+    mode: 'simultaneous',
+    triggerPersistence: 'single',
+    inputRole: 'layer',
+    outputs: { '1': 'が', '2': 'ぎ', '3': 'ぐ', '4': 'げ', '5': 'ご', q: 'だ', w: 'ぢ', e: 'づ', r: 'で', t: 'ど' },
+  });
+  assert.deepEqual(warnings, ['面「かな小指シフト」は対応する親指キーを決められないため無視しました']);
+  const layout = buildFaceLayout('imported', content.name, content);
+  assert.equal(layout.canonicalInputs.get('が')?.length, 1);
+});
 
-  const mixed = importBenizara(
-    [
-      '[ローマ字シフト無し]',
-      'a,b,c,d',
-      'e,f,g,h',
-      'i,j,k,l',
-      'm,n,o,p',
-      '[かなシフト無し]',
-      'あ,い,う,え',
-      'か,き,く,け',
-      'さ,し,す,せ',
-      'た,ち,つ,て',
-      '[かな右親指シフト]',
-      'が,ぎ,ぐ,げ',
-    ].join('\n'),
+test('紅皿でかなとローマ字の面が混ざる定義は、ローマ字の面を選んだ段の形になり、かなの面は無視される', () => {
+  const mixed = stageOf(
+    importBenizara(
+      [
+        '[ローマ字シフト無し]',
+        'a,b,c,d',
+        'e,f,g,h',
+        'i,j,k,l',
+        'm,n,o,p',
+        '[かなシフト無し]',
+        'あ,い,う,え',
+        'か,き,く,け',
+        'さ,し,す,せ',
+        'た,ち,つ,て',
+        '[かな右親指シフト]',
+        'が,ぎ,ぐ,げ',
+      ].join('\n'),
+    ),
   );
-  assert.equal(mixed.direct, false);
   assert.ok(!new Map(mixed.sequences).has('あ'));
   assert.ok(mixed.warnings.some((warning) => warning.includes('かなシフト無し')));
   assert.ok(mixed.warnings.some((warning) => warning.includes('かな右親指シフト')));
@@ -181,14 +313,13 @@ test('紅皿のローマ字面とUTF-16LEを読む', () => {
   const source = '[ローマ字シフト無し]\nｋ,ａ,Enter\nｓ,ｉ,ｕ\nｔ,ｅ,ｏ\nｎ,ｍ,ｙ';
   const bytes = Buffer.from(`\ufeff${source}`, 'utf16le');
   const decoded = decodeLayoutFile(bytes, 'benizara');
-  const layout = importBenizara(decoded);
-  assert.equal(layout.direct, false);
+  const layout = stageOf(importBenizara(decoded));
   assert.equal(layout.rows[0].slice(0, 2), 'ka');
   assert.ok(layout.legends.some(([key, label]) => key === '3' && label === 'Enter'));
 });
 
 test('取り込んだ機能キーは凡例だけに残す', () => {
-  const imported = importBenizara('[ローマ字シフト無し]\na,Enter\nb,c\nd,e\nf,g');
+  const imported = stageOf(importBenizara('[ローマ字シフト無し]\na,Enter\nb,c\nd,e\nf,g'));
   const def: UserLayout = {
     id: 'imported',
     name: 'imported',
@@ -196,7 +327,6 @@ test('取り込んだ機能キーは凡例だけに残す', () => {
     romaji: 'kunrei',
     sequences: imported.sequences,
     legends: imported.legends,
-    direct: imported.direct,
   };
   const layout = toLayout(def);
   assert.equal(layout.map.has('Enter'), false);
@@ -213,6 +343,7 @@ test('拡張子から取り込み形式を選ぶ', () => {
 
 test('対象の配列表がないファイルはエラーにする', () => {
   assert.throws(() => importDvorakJ('-option-input[\n{x} | -20\n]'), /配列表/);
+  assert.throws(() => importBenizara('[かなシフト無し]\n;\n'), /配列表|出力/);
   assert.throws(() => importVial('{}'), /layout/);
 });
 

@@ -1,5 +1,5 @@
 import type { Layout } from './types.ts';
-import { isDirectUserLayout, type UserLayout } from './user-layouts.ts';
+import { isFaceUserLayout, type UserLayout } from './user-layouts.ts';
 
 /**
  * 配列の「種類」（打ち方はテキストの言語×配列の種類から導く、の後者）。
@@ -43,23 +43,20 @@ export function builtInLayoutKind(layoutId: string): LayoutKind {
 }
 
 /**
- * 自作配列（`UserLayout`）の種類。`direct: true` は「かなをローマ字へ変換せず、
- * sequencesを直接使う」（`user-layouts.ts` の `UserLayout.direct` コメント）ことを表す。
- * これは日本語テキストで「ローマ字表を挟むか（`romaji`）／挟まないか（`kana`）」を
- * 切り替える条件そのものなので、`direct` を `alpha` / `kana` の判定にそのまま使う。
- * 面で定義する配列（`faces`）もローマ字を経ずにかなを打つので `kana` にする。
+ * 自作配列（`UserLayout`）の種類。面で定義する配列（`faces`）はローマ字を経ずにかなを打つので `kana`、
+ * 段の文字で定義する配列はローマ字表を挟むので `alpha` にする。
  *
  * 英語テキストには、`deriveInputMethod`（`#input/setup/input-method.ts`）が
  * 「かな配列は使えない」という原則を自作配列にも一律で適用する
- * （`direct: true` の自作配列は英語テキストには使えない、と判定する）。
+ * （面で定義する自作配列は英語テキストには使えない、と判定する）。
  */
 export function userLayoutKind(layout: UserLayout): LayoutKind {
-  return isDirectUserLayout(layout) ? 'kana' : 'alpha';
+  return isFaceUserLayout(layout) ? 'kana' : 'alpha';
 }
 
 /**
  * `Layout` の種類を引く。組み込みか自作かで参照先が違う（組み込みはid表、自作は
- * 元の `UserLayout.direct`）ため、自作配列の一覧を呼び出し側から渡してもらう。
+ * 元の `UserLayout` が面で定義されているか）ため、自作配列の一覧を呼び出し側から渡してもらう。
  * `userLayouts` に無いidは組み込み扱いにする。
  */
 export function layoutKind(layout: Layout, userLayouts: ReadonlyMap<string, UserLayout>): LayoutKind {

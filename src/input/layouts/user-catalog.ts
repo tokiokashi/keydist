@@ -3,7 +3,7 @@ import { droppedDuplicateId } from '#input/codec/index.ts';
 import { isBuiltin, type UserRomajiRule } from '../romaji/rules.ts';
 import { LAYOUT_BY_ID } from './index.ts';
 import type { Layout } from './types.ts';
-import { isDirectUserLayout, toJapaneseLayout, toLayout, validate, type UserLayout } from './user-layouts.ts';
+import { isFaceUserLayout, toJapaneseLayout, toLayout, validate, type UserLayout } from './user-layouts.ts';
 
 /**
  * 資産に入っている自作の配列・ローマ字規則を、組み込みと並べて引ける形にしたもの。
@@ -32,7 +32,7 @@ export interface UserCatalog {
  * - 自作のローマ字規則: 組み込みのidと同じもの・id重複を捨てる
  * - 自作の配列: 組み込みの配列と同じid・id重複・段の列数オーバー・配列として組めないものを捨てる。
  *   `romaji`が指す規則が組み込みにも自作にも無い時と、`romaji`が無い時は配列は残し、
- *   規則の推奨だけ持たせない（全体の値の規則で打つ）。診断を積むのは前者だけ。`direct`の配列はローマ字を経ないので`romaji`を見ない
+ *   規則の推奨だけ持たせない（全体の値の規則で打つ）。診断を積むのは前者だけ。面で定義する配列はローマ字を経ないので`romaji`を見ない
  */
 export function buildUserCatalog(userLayouts: readonly UserLayout[], userRomajiRules: readonly UserRomajiRule[]): UserCatalog {
   const diagnostics: CodecDiagnostic[] = [];
@@ -84,7 +84,7 @@ export function buildUserCatalog(userLayouts: readonly UserLayout[], userRomajiR
       return;
     }
     const romaji = definition.romaji;
-    if (!isDirectUserLayout(definition) && romaji !== undefined) {
+    if (!isFaceUserLayout(definition) && romaji !== undefined) {
       if (isBuiltin(romaji) || ruleIds.has(romaji)) {
         layout = { ...layout, recommendedRomajiRuleId: romaji };
       } else {
@@ -101,7 +101,7 @@ export function buildUserCatalog(userLayouts: readonly UserLayout[], userRomajiR
 /**
  * 自作の配列を、実際に打って試す画面（Tester）が使う形にする。
  * 使える配列の選び方は`buildUserCatalog`と同じ。違うのは、`romaji`が指す規則（組み込み・自作）で
- * ローマ字の表を持たせる点。`direct`の配列と、`romaji`が無い・指す規則が見つからない配列は表を持たず、
+ * ローマ字の表を持たせる点。面で定義する配列と、`romaji`が無い・指す規則が見つからない配列は表を持たず、
  * 打ったキーの出力をそのまま使う。
  */
 export function userInputLayouts(userLayouts: readonly UserLayout[], userRomajiRules: readonly UserRomajiRule[]): readonly Layout[] {

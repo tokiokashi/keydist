@@ -171,7 +171,12 @@ test('別名は絞り込みにだけ効き、名前や区分の並びは変え�
 });
 
 test('種類の切り替えは名前の絞り込みと同時に使え、自作の配列・Setupも種類で分かれる', () => {
-  const kanaMine = { ...USER_ALPHA, id: 'mine-kana', direct: true };
+  const kanaMine: UserLayout = {
+    id: 'mine-kana',
+    name: USER_ALPHA.name,
+    faces: [{ trigger: [], inputRole: 'layer', outputs: { a: 'あ' } }],
+    composition: { dakuten: false, handakuten: false },
+  };
   const layouts = new Map(LAYOUT_BY_ID);
   layouts.set('mine-kana', { ...LAYOUT_BY_ID.get('qwerty')!, id: 'mine-kana', name: '自作かな' });
   const setups: Setup[] = [
@@ -182,7 +187,7 @@ test('種類の切り替えは名前の絞り込みと同時に使え、自作�
   const groups = targetChoiceGroups(
     source({
       layouts,
-      userLayouts: new Map([
+      userLayouts: new Map<string, UserLayout>([
         ['dvorak', USER_ALPHA],
         ['mine-kana', kanaMine],
       ]),

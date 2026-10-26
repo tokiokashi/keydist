@@ -132,9 +132,17 @@ test('resolveSetupForText: alpha配列 + 日本語テキストはromajiとして
   if (result.ok) assert.equal(result.context.inputMethod, 'romaji');
 });
 
-test('resolveSetupForText: 自作かな配列（direct:true）は自作配列一覧から種類を引く', () => {
+test('resolveSetupForText: 自作かな配列（面で定義）は自作配列一覧から種類を引く', () => {
   const userLayouts = new Map<string, UserLayout>([
-    ['my-kana', { id: 'my-kana', name: 'かな配列', rows: ['', '', '', ''], romaji: 'kunrei', direct: true }],
+    [
+      'my-kana',
+      {
+        id: 'my-kana',
+        name: 'かな配列',
+        faces: [{ trigger: [], inputRole: 'layer', outputs: { a: 'あ' } }],
+        composition: { dakuten: false, handakuten: false },
+      },
+    ],
   ]);
   const setup = setupFor('my-kana');
   const okJa = resolveSetupForText(setup, catalogWith('my-kana'), userLayouts, 'ja');

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { buildGeometry } from '../shapes/geometry.ts';
 import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
-import { fromRows, LAYOUTS, type Layout } from './index.ts';
+import { LAYOUTS, type Layout } from './index.ts';
 import { buildKeyPatternMatrix } from './key-pattern-picker.ts';
 import { toLayout, type StageUserLayout } from './user-layouts.ts';
 
@@ -45,11 +45,6 @@ test('自作のqwertyは、配列の定義と鍵盤の選択肢も組み込み�
   assert.deepEqual(buildKeyPatternMatrix(user), buildKeyPatternMatrix(builtin));
 });
 
-test('小文字と句読点だけの文では、Shift出力の有無で自作配列の数値が変わらない', () => {
-  const text = 'hello, world. the quick brown fox.';
-  assert.deepEqual(measure(userQwerty(), text), measure(userQwerty({ direct: true }), text));
-});
-
 test('自作配列が大文字や記号を単打で置いている時は、その文字にShift経路を足さない', () => {
   const layout = toLayout({
     id: 'user-placed',
@@ -71,17 +66,6 @@ test('自作配列が大文字や記号を単打で置いている時は、そ�
     trace.strokes.map((stroke) => stroke.presses.flatMap((press) => press.keys).length),
     [1, 1],
   );
-});
-
-test('directの自作配列は、数値も配列の定義もShift出力を持たない', () => {
-  const direct = userQwerty({ direct: true });
-  const plain = fromRows('plain', 'plain', QWERTY_ROWS, { RT: ' ' });
-  assert.deepEqual([...direct.canonicalInputs], [...plain.canonicalInputs]);
-  assert.equal(direct.shiftKeys, undefined);
-  assert.equal(direct.canonicalInputs.has('H'), false);
-  assert.equal(direct.canonicalInputs.has('!'), false);
-  assert.deepEqual(measure(direct, SAMPLE), measure(plain, SAMPLE));
-  assert.equal(measure(direct, SAMPLE).skipped, 4);
 });
 
 test('取り込み形式の自作配列は、Shift出力を持たない', () => {
