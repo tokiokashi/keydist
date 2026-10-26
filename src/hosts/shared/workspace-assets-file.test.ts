@@ -313,3 +313,63 @@ test('結果の文: 重なって別の名前で足した資産は、理由を一
   assert.equal(result.summary, '読み込んだWorkspaceはありません。同じ中身のものが既にあります。同梱の資産1件を足しました');
   assert.deepEqual(result.lines, ['配列「自作A」は、手元に重なる資産があり中身が違うため、「自作A (2)」として足しました']);
 });
+
+/** 面で定義する配列。ローマ字の規則を持たない。 */
+const FACE_LAYOUT: UserLayout = {
+  id: 'user-face',
+  name: '面の配列',
+  faces: [
+    { trigger: [], inputRole: 'layer', outputs: { a: 'あ', s: 'か', d: 'さ', f: '゛' } },
+    { trigger: ['thumb-l'], mode: 'simultaneous', triggerPersistence: 'single', inputRole: 'modifier', layer: '左親指', outputs: { a: 'ぁ', s: 'い' } },
+  ],
+  composition: { dakuten: true, handakuten: false },
+};
+const FACE_HOLDINGS: Holdings = {
+  userLayouts: [FACE_LAYOUT, layout('user-z', 'rule-z')],
+  userRomajiRules: [rule('rule-z', 'zi')],
+  fingerAssignments: [],
+  setupLibrary: library([]),
+};
+
+function faceWorkspace(): Workspace {
+  const lib = addWorkspacePane(
+    [createWorkspace(initialWorkspaceLibrary(), () => 'w1', '面').created],
+    'w1',
+    {
+      id: 'fixed',
+      analyzerId: 'compare-table',
+      options: undefined,
+      optionsBinding: OWN_OPTIONS,
+      binding: { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId: 'user-face' } } },
+    },
+    { w: 6, h: 4 },
+  );
+  return lib[0]!;
+}
+
+test('面で定義する配列: 同梱され（推奨の規則を持たないので規則は同梱しない）、空の手元へ同じ配列が戻る', () => {
+  const bundle = workspaceAssetsOf([faceWorkspace()], FACE_HOLDINGS);
+  assert.deepEqual(idsOf(bundle.layouts), ['user-face']);
+  assert.deepEqual(bundle.romajiRules, []);
+  const { after } = importInto(
+    assetsOf([], { userLayouts: [], userRomajiRules: [], fingerAssignments: [], setupLibrary: library([]) }),
+    fileOf(faceWorkspace(), FACE_HOLDINGS),
+  );
+  assert.deepEqual(after.userLayouts, [FACE_LAYOUT]);
+  assert.deepEqual(after.workspaces[0]!.panes[0]!.binding, faceWorkspace().panes[0]!.binding);
+});
+
+test('面で定義する配列: 同じidで中身の違う配列が手元にあっても、Workspaceは同梱した配列を指す', () => {
+  const clashing: UserLayout = { ...FACE_LAYOUT, composition: { dakuten: true, handakuten: true } };
+  const local: Holdings = { userLayouts: [clashing], userRomajiRules: [], fingerAssignments: [], setupLibrary: library([]) };
+  const { after } = importInto(assetsOf([], local), fileOf(faceWorkspace(), FACE_HOLDINGS));
+  assert.deepEqual(after.userLayouts[0], clashing);
+  const binding = after.workspaces[0]!.panes[0]!.binding;
+  assert.ok(binding.mode === 'fixed' && binding.target.kind === 'single' && binding.target.target.kind === 'layout');
+  if (!(binding.mode === 'fixed' && binding.target.kind === 'single' && binding.target.target.kind === 'layout')) return;
+  const { layoutId } = binding.target.target;
+  assert.notEqual(layoutId, 'user-face');
+  const imported = after.userLayouts.find((item) => item.id === layoutId)!;
+  assert.deepEqual(imported.faces, FACE_LAYOUT.faces);
+  assert.deepEqual(imported.composition, FACE_LAYOUT.composition);
+});

@@ -2,7 +2,7 @@ import { isBuiltin } from '../romaji/rules.ts';
 import { FINGER_LABEL } from '../shapes/finger-names.ts';
 import { physicalKeyDisplayLabel } from '../shapes/key-labels.ts';
 import { assignmentHasKey, FINGERS, homeKeyOverrideApplies, keyId, QWERTY_LEGEND, type FingerAssignment, type NonThumb } from '../shapes/geometry.ts';
-import { ROW_LABELS, ROW_LIMITS, toLayout, validate, type UserLayout } from './user-layouts.ts';
+import { isDirectUserLayout, ROW_LABELS, ROW_LIMITS, toLayout, validate, type StageUserLayout, type UserLayout } from './user-layouts.ts';
 
 /**
  * 自作の配列（段の文字で表せるもの）を作る・直す操作の純関数。
@@ -28,12 +28,13 @@ export interface UserLayoutContent {
 /**
  * 段の文字だけで表せる配列か。取り込み形式の配列（かな・コンボの定義、表示ラベル、直接入力）は
  * 段の文字だけで保存し直すとそれらが消えるので、この画面では直さない。
+ * 面で定義する配列も段を持たず、ローマ字配列の画面では扱わない。
  */
-export const isEditableUserLayout = (layout: UserLayout): boolean =>
-  layout.sequences === undefined && layout.legends === undefined && layout.direct !== true;
+export const isEditableUserLayout = (layout: UserLayout): layout is StageUserLayout =>
+  layout.sequences === undefined && layout.legends === undefined && !isDirectUserLayout(layout);
 
 /** 配列の定義から画面の入力欄の値を作る。 */
-export function contentOf(layout: UserLayout): UserLayoutContent {
+export function contentOf(layout: StageUserLayout): UserLayoutContent {
   return {
     name: layout.name,
     rows: [layout.rows[0], layout.rows[1], layout.rows[2], layout.rows[3]],
@@ -86,8 +87,8 @@ export function placedKeys(rows: readonly string[]): { readonly char: string; re
   );
 }
 
-function definitionOf(id: string, content: UserLayoutContent): UserLayout {
-  const layout: UserLayout = {
+function definitionOf(id: string, content: UserLayoutContent): StageUserLayout {
+  const layout: StageUserLayout = {
     id,
     name: content.name,
     rows: [content.rows[0], content.rows[1], content.rows[2], content.rows[3]],

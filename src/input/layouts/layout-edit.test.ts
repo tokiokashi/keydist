@@ -12,7 +12,7 @@ import {
   type UserLayoutContent,
 } from './layout-edit.ts';
 import { ALL_FINGERS, DEFAULT_FINGER_ASSIGNMENT, QWERTY_OPTIMIZED_FINGER_ASSIGNMENT, type FingerAssignment } from '../shapes/geometry.ts';
-import { validate, type UserLayout } from './user-layouts.ts';
+import { validate, type StageUserLayout } from './user-layouts.ts';
 
 const DVORAK: UserLayoutContent = {
   name: '私のDvorak',
@@ -21,7 +21,7 @@ const DVORAK: UserLayoutContent = {
   homeKeys: {},
 };
 
-const stored = (overrides: Partial<UserLayout> = {}): UserLayout => ({
+const stored = (overrides: Partial<StageUserLayout> = {}): StageUserLayout => ({
   id: 'user-a',
   name: '私のDvorak',
   rows: [...DVORAK.rows],
@@ -172,7 +172,7 @@ test('対象が無い更新は何もしない', () => {
 });
 
 test('取り込み形式の配列は直せない。段の文字だけで保存し直すと、かな・表示ラベル・直接入力が消えるため', () => {
-  const imported: UserLayout[] = [
+  const imported: StageUserLayout[] = [
     stored({ id: 'user-seq', sequences: [['あ', [['a']]]] }),
     stored({ id: 'user-leg', legends: [['a', 'あ']] }),
     stored({ id: 'user-dir', direct: true }),
@@ -233,7 +233,7 @@ test('updateUserLayout: 推奨の規則を省いた内容で書き換えると�
 
 test('updateUserLayout: 推奨の規則を持たない配列は、contentOfの結果をそのまま渡しても同じ参照を返す', () => {
   const { romaji: _removed, ...rest } = stored();
-  const layouts: UserLayout[] = [rest];
+  const layouts: StageUserLayout[] = [rest];
   const same = updateUserLayout(layouts, 'user-a', contentOf(layouts[0]!));
   assert.equal(same.ok && same.layouts, layouts);
 });

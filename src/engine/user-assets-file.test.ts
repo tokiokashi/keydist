@@ -706,3 +706,84 @@ test('Setup: 参照を外した結果が手元と同じ中身なら足さず、�
     ['skipped-same'],
   );
 });
+
+const FACE_LAYOUT: UserLayout = {
+  id: 'user-face',
+  name: '面の配列',
+  faces: [
+    { trigger: [], inputRole: 'layer', outputs: { a: 'あ', s: 'か', d: 'さ', f: '゛' } },
+    {
+      trigger: ['thumb-l'],
+      mode: 'simultaneous',
+      triggerPersistence: 'single',
+      inputRole: 'modifier',
+      layer: '左親指',
+      outputs: { a: 'ぁ', s: 'い' },
+    },
+  ],
+  composition: { dakuten: true, handakuten: false },
+};
+const FACE_HOLDINGS: UserAssetsHoldings = { userLayouts: [LAYOUT, FACE_LAYOUT], userRomajiRules: [RULE], fingerAssignments: [], setupLibrary: NO_SETUPS };
+
+test('面で定義する配列は、書き出して空の手元へ読み込むと同じ配列が戻り、同じ条件で同じ打鍵列が出る', () => {
+  const merged = mergeUserAssets(EMPTY, read(FACE_HOLDINGS), STAMP);
+  assert.deepEqual(merged.assets, FACE_HOLDINGS);
+  const text = 'あかさがぁい';
+  const before = measure(FACE_HOLDINGS, FACE_LAYOUT.id, 'ja', text, EMPTY_SETTINGS_OVERRIDES);
+  const after = measure(merged.assets, FACE_LAYOUT.id, 'ja', text, EMPTY_SETTINGS_OVERRIDES);
+  assert.equal(before.trace.trace.skipped, 0);
+  assert.equal(before.trace.trace.strokes.length, 7);
+  assert.deepEqual(after.trace.trace.strokes, before.trace.trace.strokes);
+  assert.deepEqual(after.metrics, before.metrics);
+});
+
+test('面で定義する配列は、二度読んでも増えず、面の中身が違えば別名で足す', () => {
+  const bundle = read(FACE_HOLDINGS);
+  const first = mergeUserAssets(EMPTY, bundle, STAMP).assets;
+  const second = mergeUserAssets(first, bundle, STAMP);
+  assert.deepEqual(second.assets, first);
+  assert.ok(second.entries.every((entry) => entry.outcome.kind === 'skipped-same'));
+
+  const edited: UserLayout = {
+    ...FACE_LAYOUT,
+    faces: [{ ...FACE_LAYOUT.faces![0]!, outputs: { a: 'あ', s: 'く', d: 'さ', f: '゛' } }, FACE_LAYOUT.faces![1]!],
+  };
+  const clash = mergeUserAssets({ ...EMPTY, userLayouts: [edited] }, bundle, STAMP);
+  assert.equal(clash.entries.find((entry) => entry.name === '面の配列')?.outcome.kind, 'added-renamed');
+  assert.deepEqual(
+    clash.assets.userLayouts.map((layout) => layout.name),
+    ['面の配列', '自作A', '面の配列 (2)'],
+  );
+});
+
+test('面で定義する配列の比較: 合成の有無・面の並びのどれが違っても別の中身で、出力のキーの並びは同じ中身', () => {
+  const differs = (a: UserLayout, b: UserLayout): boolean =>
+    mergeUserAssets({ ...EMPTY, userLayouts: [a] }, { layouts: [b], romajiRules: [], fingerAssignments: [], setups: [] }, STAMP).entries[0]!.outcome
+      .kind === 'added-renamed';
+  assert.equal(differs(FACE_LAYOUT, { ...FACE_LAYOUT, composition: { dakuten: true, handakuten: true } }), true);
+  const reordered: UserLayout = {
+    ...FACE_LAYOUT,
+    faces: [{ ...FACE_LAYOUT.faces![0]!, outputs: { f: '゛', d: 'さ', s: 'か', a: 'あ' } }, FACE_LAYOUT.faces![1]!],
+  };
+  assert.equal(differs(FACE_LAYOUT, reordered), false);
+  const swapped: UserLayout = { ...FACE_LAYOUT, faces: [FACE_LAYOUT.faces![1]!, FACE_LAYOUT.faces![0]!] };
+  assert.equal(differs(FACE_LAYOUT, swapped), true);
+});
+
+test('面で定義する配列を含む資産のファイルは、壊れた面の配列だけを捨てて残りを読み、理由を返す', () => {
+  const body = userAssetsFileBody(FACE_HOLDINGS);
+  const layouts = body.layouts as Record<string, unknown>[];
+  const broken = structuredClone(layouts[1]!);
+  broken.id = 'user-broken';
+  (broken.faces as Record<string, unknown>[])[0]!.outputs = { zz: 'あ' };
+  const parsed = parseUserAssetsFile(JSON.stringify({ format: USER_ASSETS_FILE_FORMAT, ...body, layouts: [...layouts, broken] }));
+  assert.ok(parsed.ok);
+  if (!parsed.ok) return;
+  assert.deepEqual(
+    parsed.bundle.layouts.map((layout) => layout.id),
+    ['user-a', 'user-face'],
+  );
+  assert.equal(parsed.dropped.length, 1);
+  assert.equal(parsed.dropped[0]!.path, 'layouts[2]');
+  assert.match(parsed.dropped[0]!.message, /面1の出力のキー「zz」/);
+});
