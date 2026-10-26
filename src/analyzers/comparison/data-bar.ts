@@ -38,6 +38,14 @@ export const COMPARISON_BAR_SCALE: Readonly<Record<ComparisonColumnId, Compariso
   // 割合（%）。0は該当が無い。
   alternationCoverage: 'zero',
   sameHandContinuationRate: 'zero',
+  // 組数・打鍵数・連続の数と長さ。0は該当が無い。値が無い行（連続が0件の平均と最長）はバーを出さない。
+  handSwitches: 'zero',
+  handContinuations: 'zero',
+  bothHandPairShare: 'zero',
+  bothHandStrokes: 'zero',
+  alternationRuns: 'zero',
+  alternationMeanLength: 'zero',
+  alternationMaxLength: 'zero',
 };
 
 /** 相対の長さのバーを持つセルのtooltip。 */

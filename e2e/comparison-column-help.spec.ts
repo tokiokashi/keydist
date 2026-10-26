@@ -27,7 +27,14 @@ const COLUMN_LABELS = [
   'Bigram数（物理キー）',
   'Bigram数（シフト込み）',
   '交互打鍵の連続の割合',
-  '同じ手の継続率',
+  '同じ手の続きの割合',
+  '手の切り替え',
+  '同じ手の続き',
+  '両手の打鍵を含む組の割合',
+  '両手の打鍵',
+  '交互打鍵の連続の数',
+  '交互打鍵の連続の平均の長さ',
+  '交互打鍵の連続の最長の長さ',
 ];
 
 function seedThreeLayouts() {
@@ -81,7 +88,7 @@ test('見出しのⓘでモーダルが開き、比較表の説明・単位・�
   const table = await openComparison(page);
   // 表の下の「列の説明」は無い。見出しのセルにもⓘは置かない。
   await expect(page.getByRole('button', { name: '列の説明' })).toHaveCount(0);
-  await expect(page.locator('.comparison-feature').getByRole('button')).toHaveCount(19);
+  await expect(page.locator('.comparison-feature').getByRole('button')).toHaveCount(26);
   await expect(table.locator('thead .info-button')).toHaveCount(0);
 
   const info = infoButton(page);
@@ -95,7 +102,7 @@ test('見出しのⓘでモーダルが開き、比較表の説明・単位・�
   await expect(dialog).toContainText('距離の単位uは、キーの幅を1とした距離');
   await expect(dialog.getByRole('heading', { name: '列の説明' })).toBeVisible();
   await expect(dialog.locator('dt')).toHaveText(COLUMN_LABELS);
-  await expect(dialog.locator('dd')).toHaveCount(19);
+  await expect(dialog.locator('dd')).toHaveCount(26);
   await expect(dialog).toContainText('ホームに置いた時の間隔');
   // dlの直下はdt / ddを包むdivだけ。
   const badChildren = await dialog
@@ -116,7 +123,7 @@ test('見出しのⓘでモーダルが開き、比較表の説明・単位・�
   await page.getByRole('button', { name: '解析設定', exact: true }).click();
   await page.locator('[data-settings-window="true"]').getByRole('checkbox', { name: '指間σ', exact: true }).uncheck();
   await page.getByRole('button', { name: '解析設定を閉じる' }).click();
-  await expect(table.locator('thead th')).toHaveCount(19);
+  await expect(table.locator('thead th')).toHaveCount(26);
   await info.click();
   await expect(dialog.locator('dt')).toHaveText(COLUMN_LABELS);
 });
@@ -187,7 +194,7 @@ for (const size of [
       await expect.poll(async () => (await scrollState(dialog)).bodyScrollTop).toBeGreaterThan(0);
     }
     await expect(last).toBeInViewport({ ratio: 1 });
-    await expect(last).toContainText('同じ手の継続率');
+    await expect(last).toContainText('交互打鍵の連続の最長の長さ');
     const after = await scrollState(dialog);
     expect(after.dialogScrollable).toBeLessThanOrEqual(0);
     // 最後の項目がdialogの外へはみ出さない。

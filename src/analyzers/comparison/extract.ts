@@ -7,7 +7,7 @@ import {
   type SetAnalyzerExtractContext,
 } from '#analyzers/contract.ts';
 import { countBigramCombinations } from '#interpretation/bigram-combinations.ts';
-import { analyzeHandRhythm } from '#interpretation/structure/hand-rhythm.ts';
+import { analyzeHandRhythm, type HandRhythmAggregate } from '#interpretation/structure/hand-rhythm.ts';
 import { adjacentMeanStdDev, DEFAULT_METRIC_CONDITIONS, rightHandShare, sameFingerRate, type Metrics } from '#interpretation/metrics.ts';
 import { analysisTargetKey, type AnalysisTarget } from '#input/setup/index.ts';
 import { ALL_FINGERS, type Finger, type Key } from '#input/shapes/geometry.ts';
@@ -32,7 +32,7 @@ import { LAYOUT_MISSING_REASON } from '#input/setup/index.ts';
  * （`options.ts`のコメント参照）。
  */
 
-/** 1行（1 Setup）ぶんの、全列の生値。 */
+/** 1行（1 Setup）ぶんの、全列の生値。値が無い列（連続が0件の平均と最長の長さ）は`NaN`。 */
 export type ComparisonRowValues = Readonly<Record<ComparisonColumnId, number>>;
 
 /** 解決できたメンバー1件の行。 */
@@ -69,7 +69,13 @@ export interface ComparisonExtracted {
   readonly rows: readonly ComparisonRow[];
 }
 
-/** `Metrics`と`Trace`から全列を読み出す純関数。Bigramの組の種類数とHand Rhythmの2列ずつだけ`Trace`から数え、他の列は`Metrics`を写す。 */
+/** 両手の打鍵を含む組の割合（%）。分母は手の切り替え + 同じ手の継続 + 両手の打鍵を含む組で、押す手が無い打鍵を含む組は入れない。分母が0なら0。 */
+function bothHandPairShare(handRhythm: HandRhythmAggregate): number {
+  const pairs = handRhythm.switches + handRhythm.continuations + handRhythm.bothHandPairs;
+  return pairs === 0 ? 0 : (handRhythm.bothHandPairs / pairs) * 100;
+}
+
+/** `Metrics`と`Trace`から全列を読み出す純関数。Bigramの組の種類数の2列とHand Rhythmの9列だけ`Trace`から数え、他の列は`Metrics`を写す。 */
 export function computeComparisonRowValues(metrics: Metrics, trace: Trace): ComparisonRowValues {
   const bigrams = countBigramCombinations(trace);
   // Hand Rhythmの値は`Trace`だけで決まる。集計が持つ条件のスナップショットには、`Trace`を生成したTrigger realizationとAction realizationのPolicyを渡す。
@@ -95,6 +101,14 @@ export function computeComparisonRowValues(metrics: Metrics, trace: Trace): Comp
     logicalBigramCombinations: bigrams.withTriggers,
     alternationCoverage: handRhythm.alternation.coverage.rate * 100,
     sameHandContinuationRate: handRhythm.continuationRate * 100,
+    handSwitches: handRhythm.switches,
+    handContinuations: handRhythm.continuations,
+    bothHandPairShare: bothHandPairShare(handRhythm),
+    bothHandStrokes: handRhythm.bothHandStrokes.simultaneous + handRhythm.bothHandStrokes.mixed,
+    alternationRuns: handRhythm.alternation.runs,
+    // 連続が0件の時は平均も最長も値が無い。0を当てはめず、表では「—」、並び替えでは末尾に置く。
+    alternationMeanLength: handRhythm.alternation.runs === 0 ? NaN : handRhythm.alternation.meanLength,
+    alternationMaxLength: handRhythm.alternation.runs === 0 ? NaN : handRhythm.alternation.maxLength,
   };
 }
 
@@ -120,7 +134,7 @@ function fixtureKey(id: string, finger: Finger, x: number, y = 2): Key {
   return { id, finger, x, y, row: 2, col: 0 };
 }
 
-function fixturePress(finger: Finger, id: string, x: number, y = 2): Press {
+export function fixturePress(finger: Finger, id: string, x: number, y = 2): Press {
   return { finger, keys: [fixtureKey(id, finger, x, y)], target: { x, y }, origin: { at: { x, y }, from: 'home' }, gap: 1, distance: 0, sfb: false };
 }
 
@@ -128,7 +142,7 @@ function fixtureParticipation(p: Press): StrokeParticipation {
   return { hand: p.finger.startsWith('L') ? 'left' : 'right', finger: p.finger, keys: p.keys, roles: ['output'] };
 }
 
-function fixtureStroke(index: number, presses: Press[]): Stroke {
+export function fixtureStroke(index: number, presses: Press[]): Stroke {
   return {
     index,
     char: String(index),
@@ -148,7 +162,7 @@ function fixtureStroke(index: number, presses: Press[]): Stroke {
   };
 }
 
-const FIXTURE_TRACE: Trace = {
+export const FIXTURE_TRACE: Trace = {
   strokes: [
     fixtureStroke(0, [fixturePress('LI', 'f', 4)]),
     fixtureStroke(1, [fixturePress('LM', 'd', 3)]),
@@ -168,7 +182,7 @@ function fixtureFingerRecord(): Record<Finger, number> {
   return Object.fromEntries(ALL_FINGERS.map((finger) => [finger, 0])) as Record<Finger, number>;
 }
 
-function fixtureMetrics(totalUnits: number): Metrics {
+export function fixtureMetrics(totalUnits: number): Metrics {
   return {
     geometryId: 'row-staggered',
     geometryName: 'Row-staggered',

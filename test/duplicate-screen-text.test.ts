@@ -17,6 +17,7 @@ const MIN_LENGTH = 8;
 const NOT_FAILURE_TEXT: ReadonlySet<string> = new Set([
   '方向分布の表示倍率',
   '距離の単位uは、キーの幅を1とした距離。',
+  '同じ手の続きの割合',
   '列の見出しを押すと切り替わります。',
   '（全レイヤー合算・線形）',
   'ヒートマップ（レイヤー）',

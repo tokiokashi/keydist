@@ -25,6 +25,13 @@ export const COMPARISON_COLUMN_IDS = [
   'logicalBigramCombinations',
   'alternationCoverage',
   'sameHandContinuationRate',
+  'handSwitches',
+  'handContinuations',
+  'bothHandPairShare',
+  'bothHandStrokes',
+  'alternationRuns',
+  'alternationMeanLength',
+  'alternationMaxLength',
 ] as const;
 
 export type ComparisonColumnId = (typeof COMPARISON_COLUMN_IDS)[number];
@@ -120,8 +127,37 @@ export const COMPARISON_COLUMN_TEXT: Readonly<Record<ComparisonColumnId, Compari
       '左右の手が交互に変わる3打鍵以上の連続に含まれる打鍵が、全打鍵のうちどれだけを占めるか（%）。前置・後置のシフトのキーも1打鍵と数えます。両手で押す打鍵は連続を切ります。',
   },
   sameHandContinuationRate: {
-    label: '同じ手の継続率',
+    label: '同じ手の続きの割合',
     description:
       '片手で打つ隣り合う2打鍵のうち、同じ手が続いた組の割合（%）。手が切り替わる組と同じ手が続く組の合計で割り、両手で押す打鍵を含む組は数えません。',
+  },
+  handSwitches: {
+    label: '手の切り替え',
+    description: '隣り合う2打鍵がどちらも片手で、左右の手が切り替わった組の数。両手で押す打鍵を含む組は数えません。',
+  },
+  handContinuations: {
+    label: '同じ手の続き',
+    description: '隣り合う2打鍵がどちらも片手で、同じ手が続いた組の数。両手で押す打鍵を含む組は数えません。',
+  },
+  bothHandPairShare: {
+    label: '両手の打鍵を含む組の割合',
+    description:
+      '隣り合う2打鍵の組のうち、少なくとも一方が両手で押す打鍵である組の割合（%）。手の切り替え、同じ手の続き、両手の打鍵を含む組の合計で割り、押す手が無い打鍵を含む組は数えません。',
+  },
+  bothHandStrokes: {
+    label: '両手の打鍵',
+    description: '左右の手が同時に押す打鍵の数。両手で文字を出す打鍵と、片手は切り替えのキーだけを押す打鍵を合わせて数えます。',
+  },
+  alternationRuns: {
+    label: '交互打鍵の連続の数',
+    description: '左右の手が交互に変わる、3打鍵以上の連続の数。両手で押す打鍵は連続を切ります。',
+  },
+  alternationMeanLength: {
+    label: '交互打鍵の連続の平均の長さ',
+    description: '交互打鍵の連続1件あたりの打鍵数の平均。連続が1件も無い時は値がありません。',
+  },
+  alternationMaxLength: {
+    label: '交互打鍵の連続の最長の長さ',
+    description: '交互打鍵の連続のうち、最も長いものの打鍵数。連続が1件も無い時は値がありません。',
   },
 } as const;
