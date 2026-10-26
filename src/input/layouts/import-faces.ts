@@ -40,6 +40,9 @@ const FACE_DEFAULTS = {
 /** 取り込める出力が1つも無い時の理由 */
 export const NO_OUTPUT_MESSAGE = '配列表から出力を見つけられませんでした';
 
+/** ハイフン区切りの見出しの面を取り込まない旨の注意。 */
+export const dashHeadingWarning = (heading: string): string => `面「${heading}」は、同時に押す面か順に押す面かを判定できないため取り込みませんでした`;
+
 const keyName = (key: string): string => physicalKeyDisplayLabel(key);
 
 /**
@@ -51,7 +54,7 @@ export function buildKanaContent(faces: readonly ParsedFace[], name: string, war
   const groups = new Map<string, { trigger: string[]; headings: string[]; outputs: Record<string, string> }>();
   for (const face of faces) {
     if (face.dashHeading === true) {
-      warnings.push(`面「${face.heading}」は、同時に押す面か順に押す面かを判定できないため取り込みませんでした`);
+      warnings.push(dashHeadingWarning(face.heading));
       continue;
     }
     const identity = [...face.trigger].sort().join('+');

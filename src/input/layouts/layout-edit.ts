@@ -2,6 +2,7 @@ import { isBuiltin } from '../romaji/rules.ts';
 import { FINGER_LABEL } from '../shapes/finger-names.ts';
 import { physicalKeyDisplayLabel } from '../shapes/key-labels.ts';
 import { assignmentHasKey, FINGERS, homeKeyOverrideApplies, keyId, QWERTY_LEGEND, type FingerAssignment, type NonThumb } from '../shapes/geometry.ts';
+import type { Sequence } from './types.ts';
 import { isFaceUserLayout, ROW_LABELS, ROW_LIMITS, toLayout, validate, type StageUserLayout, type UserLayout } from './user-layouts.ts';
 
 /**
@@ -26,15 +27,28 @@ export interface UserLayoutContent {
   readonly romaji?: string;
   /** 指ごとの任意のホームキー。値は物理キーのid。空文字は未指定 */
   readonly homeKeys: Readonly<Partial<Record<NonThumb, string>>>;
+  /**
+   * 取り込み形式が持つ、段の文字では表せない出力（同時押しなど）。この項目か `legends` を持つ配列は取り込み形式の配列で、
+   * 段の文字・この項目・`legends` は画面で直さず、保存し直しても元の値のまま残す
+   */
+  readonly sequences?: readonly (readonly [string, Sequence])[];
+  /** 取り込み形式が持つ、keyId → 取り込み元の表示ラベル */
+  readonly legends?: readonly (readonly [string, string])[];
 }
 
+/** 取り込み形式の配列か。段の文字・同時押しの出力・表示ラベルを読み取り専用にする配列。 */
+export const isImportedContent = (content: { readonly sequences?: unknown; readonly legends?: unknown }): boolean =>
+  content.sequences !== undefined || content.legends !== undefined;
+
 /**
- * 段の文字だけで表せる配列か。取り込み形式の配列（かな・コンボの定義、表示ラベル、直接入力）は
- * 段の文字だけで保存し直すとそれらが消えるので、この画面では直さない。
- * 面で定義する配列も段を持たず、ローマ字配列の画面では扱わない。
+ * ローマ字配列の画面で扱える配列か。段の形の配列が対象で、面で定義する配列は段を持たないので扱わない。
+ * 取り込み形式の配列は、名前・ローマ字規則・ホームキーだけを直せ、段の文字・`sequences`・`legends` は元の値のまま残す。
  */
-export const isEditableUserLayout = (layout: UserLayout): layout is StageUserLayout =>
-  layout.sequences === undefined && layout.legends === undefined && !isFaceUserLayout(layout);
+export const isEditableUserLayout = (layout: UserLayout): layout is StageUserLayout => !isFaceUserLayout(layout);
+
+/** 同時押しや複数の打鍵になる出力の数。1キーの単打は数えない。 */
+export const chordOutputCount = (sequences: readonly (readonly [string, Sequence])[]): number =>
+  sequences.filter(([, sequence]) => sequence.length > 1 || sequence.some((step) => step.length > 1)).length;
 
 /** 配列の定義から画面の入力欄の値を作る。 */
 export function contentOf(layout: StageUserLayout): UserLayoutContent {
@@ -43,21 +57,44 @@ export function contentOf(layout: StageUserLayout): UserLayoutContent {
     rows: [layout.rows[0], layout.rows[1], layout.rows[2], layout.rows[3]],
     ...(layout.romaji === undefined ? {} : { romaji: layout.romaji }),
     homeKeys: { ...layout.homeKeys },
+    ...(layout.sequences === undefined ? {} : { sequences: layout.sequences }),
+    ...(layout.legends === undefined ? {} : { legends: layout.legends }),
   };
 }
 
-/** 保存する形にそろえる。名前と段は前後の空白を落とし、空のホームキーは持たない。 */
+/** 取り込んだ結果から、保存していない新しい配列の入力欄の値を作る。 */
+export function contentOfImported(
+  imported: {
+    readonly name: string;
+    readonly rows: UserLayoutContent['rows'];
+    readonly sequences: NonNullable<UserLayoutContent['sequences']>;
+    readonly legends: NonNullable<UserLayoutContent['legends']>;
+  },
+  romaji: string,
+): UserLayoutContent {
+  return { name: imported.name, rows: imported.rows, romaji, homeKeys: {}, sequences: imported.sequences, legends: imported.legends };
+}
+
+/**
+ * 保存する形にそろえる。名前と段は前後の空白を落とし、空のホームキーは持たない。
+ * 取り込み形式の配列の段は、空白が機能キーや未定義のキーの位置を表し、`sequences` が物理キーで指すので落とさない。
+ */
 export function normalizeContent(content: UserLayoutContent): UserLayoutContent {
   const homeKeys: Partial<Record<NonThumb, string>> = {};
   for (const finger of FINGERS) {
     const key = content.homeKeys[finger];
     if (key !== undefined && key !== '') homeKeys[finger] = key;
   }
+  const rows: UserLayoutContent['rows'] = isImportedContent(content)
+    ? content.rows
+    : [content.rows[0].trim(), content.rows[1].trim(), content.rows[2].trim(), content.rows[3].trim()];
   return {
     name: content.name.trim(),
-    rows: [content.rows[0].trim(), content.rows[1].trim(), content.rows[2].trim(), content.rows[3].trim()],
+    rows,
     ...(content.romaji === undefined ? {} : { romaji: content.romaji }),
     homeKeys,
+    ...(content.sequences === undefined ? {} : { sequences: content.sequences }),
+    ...(content.legends === undefined ? {} : { legends: content.legends }),
   };
 }
 
@@ -90,12 +127,16 @@ export function placedKeys(rows: readonly string[]): { readonly char: string; re
   );
 }
 
+const romajiOf = (content: UserLayoutContent): { romaji?: string } => (content.romaji === undefined ? {} : { romaji: content.romaji });
+
 function definitionOf(id: string, content: UserLayoutContent): StageUserLayout {
   const layout: StageUserLayout = {
     id,
     name: content.name,
     rows: [content.rows[0], content.rows[1], content.rows[2], content.rows[3]],
     ...(content.romaji === undefined ? {} : { romaji: content.romaji }),
+    ...(content.sequences === undefined ? {} : { sequences: content.sequences.map(([output, sequence]) => [output, sequence] as [string, Sequence]) }),
+    ...(content.legends === undefined ? {} : { legends: content.legends.map(([key, label]) => [key, label] as [string, string]) }),
   };
   return Object.keys(content.homeKeys).length === 0 ? layout : { ...layout, homeKeys: { ...content.homeKeys } };
 }
@@ -140,6 +181,7 @@ export function layoutProblems(
   fingerAssignments?: readonly FingerAssignment[],
 ): readonly LayoutProblem[] {
   const normalized = normalizeContent(content);
+  const imported = isImportedContent(normalized);
   const problems: LayoutProblem[] = [];
   const rows = normalized.rows;
 
@@ -156,7 +198,7 @@ export function layoutProblems(
       });
     }
   });
-  if (rows.slice(1).every((row) => row === '')) {
+  if (!imported && rows.slice(1).every((row) => row === '')) {
     problems.push({ severity: 'error', field: { kind: 'letter-rows' }, message: '上段・ホーム段・下段のどれかに文字を入力してください' });
   }
 
@@ -185,8 +227,9 @@ export function layoutProblems(
     }
   }
 
+  // 取り込み形式の配列の段は直せないので、同じ文字の重なりは注意にしない
   const byChar = new Map<string, string[]>();
-  for (const entry of placedKeys(rows)) byChar.set(entry.char, [...(byChar.get(entry.char) ?? []), entry.keyId]);
+  for (const entry of imported ? [] : placedKeys(rows)) byChar.set(entry.char, [...(byChar.get(entry.char) ?? []), entry.keyId]);
   for (const [char, keyIds] of byChar) {
     if (keyIds.length < 2) continue;
     problems.push({
@@ -222,7 +265,8 @@ function blockingReason(content: UserLayoutContent): string | undefined {
   const messages = layoutProblems(normalized)
     .filter((problem) => problem.severity === 'error')
     .map((problem) => problem.message);
-  messages.push(...validate([...normalized.rows]).filter((error) => !messages.includes(error)));
+  // 取り込み形式の配列の段は元の定義のままなので、段の文字の検査は掛けない
+  if (!isImportedContent(normalized)) messages.push(...validate([...normalized.rows]).filter((error) => !messages.includes(error)));
   return messages.length > 0 ? messages.join('、') : undefined;
 }
 
@@ -235,15 +279,21 @@ export function createUserLayout(layouts: readonly UserLayout[], generateId: () 
 
 /**
  * 中身の書き換え。idは変えない。対象が無い、または中身が変わらない時は同じ参照を返す。
- * 取り込み形式の配列と、保存できない不備のある入力は理由を返す。
+ * 面で定義する配列と、保存できない不備のある入力は理由を返す。
+ * 取り込み形式の配列は、名前・ローマ字規則・ホームキーだけを書き換え、段の文字・`sequences`・`legends` は元の値のまま残す。
  */
 export function updateUserLayout(layouts: readonly UserLayout[], id: string, content: UserLayoutContent): UserLayoutEditResult {
   const target = layouts.find((layout) => layout.id === id);
   if (target === undefined) return { ok: true, layouts };
-  if (!isEditableUserLayout(target)) return { ok: false, reason: '取り込み形式の配列は、段の文字だけでは直せません' };
-  const reason = blockingReason(content);
+  if (!isEditableUserLayout(target)) return { ok: false, reason: '面で定義する配列は、ローマ字配列の画面では直せません' };
+  // 取り込み形式の配列は、画面で直せる3項目だけを入力から取り、残りは保存済みの値を使う
+  const { romaji: _stored, ...stored } = contentOf(target);
+  const kept: UserLayoutContent = isImportedContent(target)
+    ? { ...stored, name: content.name, homeKeys: content.homeKeys, ...romajiOf(content) }
+    : content;
+  const reason = blockingReason(kept);
   if (reason !== undefined) return { ok: false, reason };
-  const next = definitionOf(id, normalizeContent(content));
+  const next = definitionOf(id, normalizeContent(kept));
   if (JSON.stringify(next) === JSON.stringify(target)) return { ok: true, layouts };
   return { ok: true, layouts: layouts.map((layout) => (layout.id === id ? next : layout)) };
 }

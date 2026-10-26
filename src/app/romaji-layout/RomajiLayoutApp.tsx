@@ -1,8 +1,14 @@
 import { createUserLayoutCommand, updateUserLayoutCommand } from '#engine/commands.ts';
 import { FINGER_ASSIGNMENT_REGISTRY } from '#engine/finger-assignment.ts';
 import { RomajiLayoutEditor } from '#editors/romaji-layout/RomajiLayoutEditor.tsx';
-import { useMemo } from 'react';
+import { Link } from '@tanstack/react-router';
+import { useMemo, type ReactNode } from 'react';
 import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
+
+/** かな配列の画面へのリンク。エディタはルーターを使えないので、ここで渡す。 */
+function KanaLayoutLink({ children }: { readonly children: ReactNode }) {
+  return <Link to="/kana-layout">{children}</Link>;
+}
 
 /**
  * ローマ字配列の画面の組み立て。資産の読み書きと履歴は、個別画面と同じ仕組みに乗せる。
@@ -23,6 +29,7 @@ export function RomajiLayoutApp() {
       onRedo={redo}
       onCreate={(id, content) => dispatch(createUserLayoutCommand(() => id, content))}
       onUpdate={(id, content) => dispatch(updateUserLayoutCommand(id, content))}
+      KanaLayoutLink={KanaLayoutLink}
     />
   );
 }

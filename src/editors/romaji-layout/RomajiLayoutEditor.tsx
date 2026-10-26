@@ -1,8 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ComponentType, type ReactNode } from 'react';
+import { importRomajiLayoutFile } from '#input/layouts/import.ts';
 import {
+  chordOutputCount,
   contentOf,
+  contentOfImported,
   hasBlockingProblem,
   isEditableUserLayout,
+  isImportedContent,
   layoutProblems,
   newUserLayoutId,
   normalizeContent,
@@ -39,6 +43,8 @@ export interface RomajiLayoutEditorProps {
   readonly onRedo: () => void;
   readonly onCreate: (id: string, content: UserLayoutContent) => void;
   readonly onUpdate: (id: string, content: UserLayoutContent) => void;
+  /** かな配列の画面へのリンク。ルーターを使えるのは `app` だけなので、`app` が渡す */
+  readonly KanaLayoutLink: ComponentType<{ readonly children: ReactNode }>;
 }
 
 function Problems({ problems }: { readonly problems: readonly LayoutProblem[] }) {
@@ -66,12 +72,34 @@ interface LayoutFormProps {
   readonly onSubmit: (content: UserLayoutContent) => void;
 }
 
+/** 取り込んだ配列の段の文字と、段の文字では表せない出力。ここでは直せない。 */
+function ImportedParts({ content }: { readonly content: UserLayoutContent }) {
+  const chords = chordOutputCount(content.sequences ?? []);
+  return (
+    <fieldset className="romaji-layout-rows" data-layout-imported-parts>
+      <legend>段の文字（取り込んだ内容）</legend>
+      {ROW_LABELS.map((label, index) => (
+        <div key={label} className="romaji-layout-imported-line">
+          <span>{label}</span>
+          <code className="romaji-layout-imported-row" data-layout-imported-row={index}>
+            {content.rows[index]}
+          </code>
+        </div>
+      ))}
+      <p className="romaji-layout-note" data-layout-imported-summary>
+        同時押しなどで出す出力が{chords}件あります。段の文字・表示ラベルと合わせて、ここでは直せません。
+      </p>
+    </fieldset>
+  );
+}
+
 /** 入力中の値はこの中だけで持ち、保存を押した時に親へ渡す。 */
 function LayoutForm({ initial, isNew, fingerAssignments, ruleOptions, onSubmit }: LayoutFormProps) {
   const [draft, setDraft] = useState<UserLayoutContent>(initial);
   const knownRuleIds = useMemo(() => new Set(ruleOptions.map((option) => option.id)), [ruleOptions]);
   const problems = useMemo(() => layoutProblems(draft, knownRuleIds, fingerAssignments), [draft, knownRuleIds, fingerAssignments]);
   const normalized = useMemo(() => normalizeContent(draft), [draft]);
+  const imported = isImportedContent(initial);
   const dirty = JSON.stringify(normalized) !== JSON.stringify(normalizeContent(initial));
   const blocked = hasBlockingProblem(problems);
 
@@ -106,37 +134,41 @@ function LayoutForm({ initial, isNew, fingerAssignments, ruleOptions, onSubmit }
       </label>
       <Problems problems={problemsAt((problem) => problem.field.kind === 'name')} />
 
-      <fieldset className="romaji-layout-rows">
-        <legend>段の文字</legend>
-        <p className="romaji-layout-note">数字段は空にすると、QWERTYと同じ数字段になります。</p>
-        {ROW_LABELS.map((label, index) => {
-          const own = problemsAt((problem) => problem.field.kind === 'row' && problem.field.index === index);
-          const length = [...normalized.rows[index]!].length;
-          return (
-            <div key={label} className="romaji-layout-row">
-              <label>
-                {label}
-                <input
-                  type="text"
-                  spellCheck={false}
-                  autoComplete="off"
-                  placeholder={QWERTY_LEGEND[index]}
-                  value={draft.rows[index]}
-                  aria-invalid={own.length > 0}
-                  data-layout-row={index}
-                  onChange={(event) => setRow(index, event.currentTarget.value)}
-                />
-              </label>
-              <span className="romaji-layout-count">
-                {length} / {ROW_LIMITS[index]}
-              </span>
-              <Problems problems={own} />
-            </div>
-          );
-        })}
-        <Problems problems={problemsAt((problem) => problem.field.kind === 'letter-rows')} />
-        <Problems problems={problemsAt((problem) => problem.field.kind === 'duplicate')} />
-      </fieldset>
+      {imported ? (
+        <ImportedParts content={normalized} />
+      ) : (
+        <fieldset className="romaji-layout-rows">
+          <legend>段の文字</legend>
+          <p className="romaji-layout-note">数字段は空にすると、QWERTYと同じ数字段になります。</p>
+          {ROW_LABELS.map((label, index) => {
+            const own = problemsAt((problem) => problem.field.kind === 'row' && problem.field.index === index);
+            const length = [...normalized.rows[index]!].length;
+            return (
+              <div key={label} className="romaji-layout-row">
+                <label>
+                  {label}
+                  <input
+                    type="text"
+                    spellCheck={false}
+                    autoComplete="off"
+                    placeholder={QWERTY_LEGEND[index]}
+                    value={draft.rows[index]}
+                    aria-invalid={own.length > 0}
+                    data-layout-row={index}
+                    onChange={(event) => setRow(index, event.currentTarget.value)}
+                  />
+                </label>
+                <span className="romaji-layout-count">
+                  {length} / {ROW_LIMITS[index]}
+                </span>
+                <Problems problems={own} />
+              </div>
+            );
+          })}
+          <Problems problems={problemsAt((problem) => problem.field.kind === 'letter-rows')} />
+          <Problems problems={problemsAt((problem) => problem.field.kind === 'duplicate')} />
+        </fieldset>
+      )}
 
       <fieldset className="romaji-layout-home">
         <legend>ホームキー（任意）</legend>
@@ -226,30 +258,47 @@ export function RomajiLayoutEditor({
   onRedo,
   onCreate,
   onUpdate,
+  KanaLayoutLink,
 }: RomajiLayoutEditorProps) {
   useHistoryShortcuts({ canUndo, canRedo, undo: onUndo, redo: onRedo });
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
   const [newCount, setNewCount] = useState(0);
+  // 定義ファイルから取り込んだ、保存していない新しい配列の下書き
+  const [imported, setImported] = useState<{ readonly content: UserLayoutContent; readonly warnings: readonly string[] } | undefined>(undefined);
+  const [importError, setImportError] = useState<{ readonly message: string; readonly kanaLayout: boolean } | undefined>(undefined);
 
   const editable = useMemo(() => layouts.filter(isEditableUserLayout), [layouts]);
-  const importedCount = layouts.length - editable.length;
   const ruleOptions = useMemo(() => allRomajiRules([...rules]), [rules]);
+  const defaultRomaji = ruleOptions[0]?.id ?? 'kunrei';
 
   // 選んでいた配列が元に戻すなどで無くなった時は、先頭の配列（無ければ新規作成）に移る
   const layout = selectedId === NEW ? undefined : (editable.find((candidate) => candidate.id === selectedId) ?? editable[0]);
   const isNew = layout === undefined;
 
-  const initial = layout === undefined ? blankContent(ruleOptions[0]?.id ?? 'kunrei') : contentOf(layout);
+  const initial = layout !== undefined ? contentOf(layout) : (imported?.content ?? blankContent(defaultRomaji));
   const formKey = layout === undefined ? `new:${newCount}` : `${layout.id}:${JSON.stringify(initial)}`;
 
   const submit = (content: UserLayoutContent) => {
     if (layout === undefined) {
       const id = newUserLayoutId();
       onCreate(id, content);
+      setImported(undefined);
       setSelectedId(id);
     } else {
       onUpdate(layout.id, content);
     }
+  };
+
+  const importFile = async (file: File) => {
+    const result = importRomajiLayoutFile(file.name, await file.arrayBuffer());
+    if (!result.ok) {
+      setImportError({ message: result.message, kanaLayout: result.kanaLayout === true });
+      return;
+    }
+    setImportError(undefined);
+    setImported({ content: contentOfImported(result.layout, defaultRomaji), warnings: result.layout.warnings });
+    setSelectedId(NEW);
+    setNewCount((count) => count + 1);
   };
 
   return (
@@ -284,17 +333,50 @@ export function RomajiLayoutEditor({
               type="button"
               data-layout-create
               onClick={() => {
+                setImported(undefined);
+                setImportError(undefined);
                 setSelectedId(NEW);
                 setNewCount((count) => count + 1);
               }}
             >
               新規作成
             </button>
+            <label>
+              DvorakJ・Vial・紅皿の定義ファイル
+              <input
+                type="file"
+                accept=".txt,.vil,.bnz,.ini"
+                data-layout-import-file
+                onChange={(event) => {
+                  const input = event.currentTarget;
+                  const file = input.files?.[0];
+                  // 同じファイルをもう一度選んでも変更として届くように、選択を空に戻す
+                  if (file !== undefined) void importFile(file).finally(() => (input.value = ''));
+                }}
+              />
+            </label>
           </div>
-          {importedCount === 0 ? null : (
-            <p className="romaji-layout-note">
-              定義ファイルから取り込んだ配列（{importedCount}件）は、ここでは直せません。削除は「データ・設定の管理」で行えます。
+          {importError === undefined ? null : (
+            <p className="romaji-layout-error" role="alert" data-layout-file-import="error">
+              {importError.message}
+              {importError.kanaLayout ? <KanaLayoutLink>かな配列の画面を開く</KanaLayoutLink> : null}
             </p>
+          )}
+          {imported === undefined || !isNew ? null : (
+            <div data-layout-file-import="ok">
+              <p className="romaji-layout-note" role="status">
+                定義ファイルから開いた、保存していない配列です。
+              </p>
+              {imported.warnings.length === 0 ? null : (
+                <ul className="romaji-layout-problems" data-layout-file-warnings>
+                  {imported.warnings.map((warning) => (
+                    <li key={warning} className="romaji-layout-warning" role="status">
+                      {warning}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
           <h2>{isNew ? '新しい配列' : layout.name}</h2>
           <LayoutForm key={formKey} initial={initial} isNew={isNew} fingerAssignments={fingerAssignments} ruleOptions={ruleOptions} onSubmit={submit} />

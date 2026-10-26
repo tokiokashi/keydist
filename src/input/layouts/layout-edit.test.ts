@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  chordOutputCount,
   contentOf,
   createUserLayout,
   hasBlockingProblem,
@@ -13,7 +14,7 @@ import {
   type UserLayoutContent,
 } from './layout-edit.ts';
 import { ALL_FINGERS, DEFAULT_FINGER_ASSIGNMENT, QWERTY_OPTIMIZED_FINGER_ASSIGNMENT, type FingerAssignment } from '../shapes/geometry.ts';
-import { validate, type StageUserLayout } from './user-layouts.ts';
+import { toLayout, validate, type StageUserLayout } from './user-layouts.ts';
 
 const DVORAK: UserLayoutContent = {
   name: '私のDvorak',
@@ -172,13 +173,100 @@ test('対象が無い更新は何もしない', () => {
   assert.equal(result.layouts, layouts);
 });
 
-test('取り込み形式の配列は直せない。段の文字だけで保存し直すと、かな・表示ラベルが消えるため', () => {
-  const imported: StageUserLayout[] = [stored({ id: 'user-seq', sequences: [['あ', [['a']]]] }), stored({ id: 'user-leg', legends: [['a', 'あ']] })];
-  for (const layout of imported) {
-    assert.equal(isEditableUserLayout(layout), false);
-    assert.equal(updateUserLayout(imported, layout.id, DVORAK).ok, false);
-  }
+/** 機能キーや未定義のキーを空白で置いた取り込み形式の配列。先頭・途中・末尾に空白がある。 */
+const importedLayout = (overrides: Partial<StageUserLayout> = {}): StageUserLayout => ({
+  id: 'user-imported',
+  name: '取り込んだ配列',
+  rows: ['  34        ', ' q  t y     ', 'as df   l  ', ' x        '],
+  romaji: 'kunrei',
+  sequences: [
+    ['desu', [['d', 's']]],
+    ['ka', [['k'], ['a']]],
+  ],
+  legends: [['a', 'Enter']],
+  ...overrides,
+});
+
+test('取り込み形式の配列も直せる配列に出る。面で定義する配列は出ない', () => {
+  assert.equal(isEditableUserLayout(importedLayout()), true);
+  assert.equal(isEditableUserLayout(stored({ legends: [['a', 'あ']] })), true);
   assert.equal(isEditableUserLayout(stored()), true);
+});
+
+test('取り込み形式の配列は、名前・ローマ字規則・ホームキーだけを書き換え、段・sequences・legendsは元の値のまま残す', () => {
+  const layout = importedLayout();
+  const layouts = [layout];
+  // 画面が持つ入力欄の値は、段の空白を落とさない
+  assert.deepEqual(contentOf(layout).rows, layout.rows);
+  // 段や出力を書き換えた入力が来ても、保存済みの値を使う
+  const result = updateUserLayout(layouts, layout.id, {
+    ...contentOf(layout),
+    name: '改名',
+    rows: ['', 'qwert', 'asdfg', 'zxcvb'],
+    romaji: 'hepburn',
+    homeKeys: { LM: 'f' },
+    sequences: [['x', [['x']]]],
+    legends: [],
+  });
+  assert.ok(result.ok);
+  const saved = result.layouts[0] as StageUserLayout;
+  assert.equal(saved.name, '改名');
+  assert.equal(saved.romaji, 'hepburn');
+  assert.deepEqual(saved.homeKeys, { LM: 'f' });
+  assert.deepEqual(saved.rows, layout.rows);
+  assert.deepEqual(saved.sequences, layout.sequences);
+  assert.deepEqual(saved.legends, layout.legends);
+});
+
+test('取り込み形式の配列を保存し直しても、前後の配列から作った打鍵列が一致する', () => {
+  const layout = importedLayout();
+  const result = updateUserLayout([layout], layout.id, { ...contentOf(layout), name: '改名', homeKeys: { LM: 'f' } });
+  assert.ok(result.ok);
+  const before = toLayout(layout);
+  const after = toLayout(result.layouts[0] as StageUserLayout);
+  assert.deepEqual([...after.map], [...before.map]);
+  assert.deepEqual([...after.canonicalInputs], [...before.canonicalInputs]);
+  assert.deepEqual([...after.legends], [...before.legends]);
+  // 空白の位置のキーには文字が載らない（段を落とすと、右の文字が空白の位置へずれる）
+  assert.equal(after.map.has('3'), true);
+  assert.deepEqual(after.map.get('3'), [['3']]);
+  assert.deepEqual(after.map.get('l'), [['l']]);
+});
+
+test('取り込み形式の配列は、段が空白だけでも、同じ文字が重なっても、保存できない不備にならない', () => {
+  const blankRows = contentOf(importedLayout({ rows: ['    ', '    ', '    ', '    '] }));
+  assert.deepEqual(layoutProblems(blankRows), []);
+  const duplicated = contentOf(importedLayout({ rows: ['    ', 'aa  ', '    ', '    '] }));
+  assert.deepEqual(layoutProblems(duplicated), []);
+  // ホームキーは物理キーで指す。文字のある位置は選べ、段の空白の位置（ホーム段の3列目）は選べない
+  const problems = layoutProblems({ ...contentOf(importedLayout()), homeKeys: { LM: 'f' } });
+  assert.deepEqual(problems, []);
+  const onBlank = layoutProblems({ ...contentOf(importedLayout()), homeKeys: { LM: 'd' } });
+  assert.deepEqual(
+    onBlank.map((problem) => problem.field),
+    [{ kind: 'home-key', finger: 'LM' }],
+  );
+});
+
+test('取り込み形式の配列の新規作成は、段の空白を落とさずに保存する', () => {
+  const layout = importedLayout();
+  const created = createUserLayout([], () => 'user-new', contentOf(layout));
+  assert.ok(created.ok);
+  const saved = created.layouts[0] as StageUserLayout;
+  assert.deepEqual(saved.rows, layout.rows);
+  assert.deepEqual(saved.sequences, layout.sequences);
+  assert.deepEqual(saved.legends, layout.legends);
+});
+
+test('同時押しや複数の打鍵になる出力だけを数える', () => {
+  assert.equal(chordOutputCount(importedLayout().sequences ?? []), 2);
+  assert.equal(chordOutputCount([['a', [['a']]]]), 0);
+  assert.equal(chordOutputCount([]), 0);
+});
+
+test('面で定義する配列は、更新が理由つきで断られる', () => {
+  const face = { id: 'user-face', name: '面', faces: [] } as unknown as StageUserLayout;
+  assert.equal(updateUserLayout([face], face.id, DVORAK).ok, false);
 });
 
 test('段の中の空白はキーに数えない。重複の注意にも、ホームキーの検査にも使わない', () => {

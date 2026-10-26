@@ -290,3 +290,7 @@
     animation: none;
   }
 }
+
+.kana-layout-error a {
+  margin-inline-start: 0.5rem;
+}
