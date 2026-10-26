@@ -163,7 +163,27 @@
 }
 
 .kana-layout-output {
+  display: flex;
+  align-items: end;
+  gap: 0.5rem;
   max-width: 24rem;
+}
+
+.kana-layout-output label {
+  flex: 1;
+}
+
+.kana-layout-label-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* 出力を選ぶ間は、出力を書けないキー（親指・Shift）を薄くして見分けられるようにする */
+.kana-layout-figure[data-operation='output'] .physical-keyboard-key[data-key-id^='thumb-'],
+.kana-layout-figure[data-operation='output'] .physical-keyboard-key[data-key-id^='shift-'] {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .kana-layout-fields {

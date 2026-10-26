@@ -25,6 +25,7 @@ import {
   type PhysicalKeyboardStandard,
 } from '#input/shapes/geometry.ts';
 import { PhysicalKeyboard, type PhysicalKeyboardKeyView } from '#ui/keyboard/physical-keyboard.tsx';
+import { InfoButton } from '#ui/primitives/info-button.tsx';
 import { useHistoryShortcuts } from '#ui/primitives/use-history-shortcuts.ts';
 import {
   AGGREGATION_LABEL,
@@ -158,7 +159,6 @@ interface FacePanelProps {
 function FacePanel({ face, standard, homeKeys, problems, onChange }: FacePanelProps) {
   const [selectedKey, setSelectedKey] = useState<string | undefined>(undefined);
   const [operation, setOperation] = useState<'output' | 'trigger'>('output');
-  const [keyNotice, setKeyNotice] = useState<string | undefined>(undefined);
   const geometry = useMemo(() => geometryOf(standard), [standard]);
   const keys = useMemo(() => [...geometry.keys.values()], [geometry]);
   const triggered = face.trigger.length > 0;
@@ -175,7 +175,7 @@ function FacePanel({ face, standard, homeKeys, problems, onChange }: FacePanelPr
         trigger: isTrigger,
         selected: operation === 'output' && selectedKey === key.id,
         home: homeKeys.has(key.id),
-        description: isTrigger ? '切り替えのキー' : undefined,
+        description: isTrigger ? '切り替えのキー' : operation === 'output' && gridPositionOf(key.id) === undefined ? '出力を書けないキー' : undefined,
       });
     }
     return result;
@@ -184,22 +184,19 @@ function FacePanel({ face, standard, homeKeys, problems, onChange }: FacePanelPr
   const offFigure = Object.keys(face.outputs).filter((key) => !geometry.keys.has(key));
 
   const onKeyClick = (key: Key) => {
-    setKeyNotice(undefined);
     if (operation === 'trigger') {
       onChange(toggleTriggerKey(face, key.id));
       return;
     }
-    if (gridPositionOf(key.id) === undefined) {
-      setKeyNotice(`${keyLabel(key.id, standard)}には出力を書けません。切り替えのキーとして使うには、操作を切り替えてください`);
-      return;
-    }
+    // 出力を書けないキーは、図で見分けられるよう薄く出している（CSS）
+    if (gridPositionOf(key.id) === undefined) return;
     setSelectedKey(key.id === selectedKey ? undefined : key.id);
   };
 
   return (
     <div className="kana-layout-face" data-kana-face-panel>
       <fieldset className="kana-layout-operation">
-        <legend>図のキーを押した時の操作</legend>
+        <legend>図のキーで選ぶもの</legend>
         <label className="kana-layout-inline">
           <input
             type="radio"
@@ -208,7 +205,7 @@ function FacePanel({ face, standard, homeKeys, problems, onChange }: FacePanelPr
             data-kana-operation="output"
             onChange={() => setOperation('output')}
           />
-          出力を書くキーを選ぶ
+          出力
         </label>
         <label className="kana-layout-inline">
           <input
@@ -218,11 +215,11 @@ function FacePanel({ face, standard, homeKeys, problems, onChange }: FacePanelPr
             data-kana-operation="trigger"
             onChange={() => setOperation('trigger')}
           />
-          切り替えのキーを足す・外す
+          切り替えのキー
         </label>
       </fieldset>
 
-      <div className="kana-layout-figure" data-kana-figure>
+      <div className="kana-layout-figure" data-kana-figure data-operation={operation}>
         <PhysicalKeyboard
           keys={keys}
           keyViews={views}
@@ -235,37 +232,33 @@ function FacePanel({ face, standard, homeKeys, problems, onChange }: FacePanelPr
           onEscape={() => setSelectedKey(undefined)}
         />
       </div>
-      {keyNotice === undefined ? null : (
-        <p className="kana-layout-warning" role="status">
-          {keyNotice}
-        </p>
-      )}
-      {offFigure.length === 0 ? null : (
-        <p className="kana-layout-note">
-          この図に無いキーの出力があります（{offFigure.map((key) => key).join('・')}）。キーの並びの表示を切り替えると見られます。
-        </p>
-      )}
+      {offFigure.length === 0 ? null : <p className="kana-layout-note">この図に無いキーの出力があります（{offFigure.join('・')}）。</p>}
 
-      {operation === 'output' && selectedKey !== undefined ? (
-        <label className="kana-layout-output">
-          {keyLabel(selectedKey, standard)}のキーの出力
-          <input
-            type="text"
-            spellCheck={false}
-            autoComplete="off"
-            value={face.outputs[selectedKey] ?? ''}
-            data-kana-output
-            onChange={(event) => onChange(setFaceOutput(face, selectedKey, event.currentTarget.value))}
-          />
-          <span className="kana-layout-note">かなを入力します。複数の文字も書けます。空にすると、このキーの出力を消します。</span>
-        </label>
-      ) : operation === 'output' ? (
-        <p className="kana-layout-note">図のキーを押して、そのキーの出力を書きます。</p>
-      ) : (
-        <p className="kana-layout-note">
-          切り替えのキー: {triggered ? face.trigger.map((key) => keyLabel(key, standard)).join('+') : 'なし（単打の面）'}。親指とShiftのキーも選べます。
-        </p>
-      )}
+      {operation === 'output' ? (
+        <div className="kana-layout-output">
+          <label>
+            {selectedKey === undefined ? 'キーの出力' : `${keyLabel(selectedKey, standard)}のキーの出力`}
+            <input
+              type="text"
+              spellCheck={false}
+              autoComplete="off"
+              placeholder={selectedKey === undefined ? '図のキーを選ぶ' : '例: あ'}
+              disabled={selectedKey === undefined}
+              value={selectedKey === undefined ? '' : (face.outputs[selectedKey] ?? '')}
+              data-kana-output
+              onChange={(event) => selectedKey !== undefined && onChange(setFaceOutput(face, selectedKey, event.currentTarget.value))}
+            />
+          </label>
+          <button
+            type="button"
+            data-kana-output-clear
+            disabled={selectedKey === undefined || (face.outputs[selectedKey] ?? '') === ''}
+            onClick={() => selectedKey !== undefined && onChange(setFaceOutput(face, selectedKey, ''))}
+          >
+            消す
+          </button>
+        </div>
+      ) : null}
 
       <div className="kana-layout-fields">
         {triggered ? (
@@ -323,7 +316,13 @@ function FacePanel({ face, standard, homeKeys, problems, onChange }: FacePanelPr
         ) : null}
         {triggered ? (
           <label>
-            レイヤーの名前
+            <span className="kana-layout-label-row">
+              レイヤーの名前
+              <InfoButton
+                name="レイヤーの名前"
+                description="同じ名前を書いた面のうち、切り替えのキーが1つずつで条件を満たすものは、1つのレイヤーにまとめて数えます。"
+              />
+            </span>
             <input
               type="text"
               value={face.layer ?? ''}
@@ -335,16 +334,13 @@ function FacePanel({ face, standard, homeKeys, problems, onChange }: FacePanelPr
           </label>
         ) : null}
       </div>
-      {triggered ? (
-        <p className="kana-layout-note">
-          同じ名前のレイヤーを書いた面のうち、切り替えのキーが1つずつで条件を満たすものは、1つのレイヤーにまとめて数えます。
-        </p>
-      ) : null}
 
       {face.inputRole === 'modifier' && triggered ? (
         <fieldset className="kana-layout-groups">
-          <legend>修飾の組</legend>
-          <p className="kana-layout-note">切り替えのキーごとに、属する組の名前を書きます。1つでも書いた時は、すべてのキーに書いてください。</p>
+          <legend>
+            修飾の組
+            <InfoButton name="修飾の組" description="切り替えのキーごとに、属する組の名前を書きます。1つでも書いた時は、すべてのキーに書きます。" />
+          </legend>
           {face.trigger.map((key) => (
             <label key={key} className="kana-layout-inline">
               {keyLabel(key, standard)}
@@ -451,7 +447,6 @@ function KanaLayoutForm({ initial, isNew, onSubmit, onDownload }: KanaLayoutForm
 
       <fieldset className="kana-layout-faces">
         <legend>面</legend>
-        <p className="kana-layout-note">単打の面と、切り替えのキーを押して打つ面を並べます。面を選んで、図の上で出力と切り替えのキーを決めます。</p>
         <div className="kana-layout-face-list">
           {draft.faces.map((entry, index) => {
             const own = problemsOfFace(index);
@@ -501,9 +496,6 @@ function KanaLayoutForm({ initial, isNew, onSubmit, onDownload }: KanaLayoutForm
 
       <fieldset className="kana-layout-composition">
         <legend>濁点・半濁点</legend>
-        <p className="kana-layout-note">
-          濁点（゛）や半濁点（゜）を後から打って、濁音・半濁音を合成するかを決めます。使う時は、そのキーをどこかの面に置いてください。
-        </p>
         <label className="kana-layout-inline">
           <input
             type="checkbox"
@@ -526,9 +518,7 @@ function KanaLayoutForm({ initial, isNew, onSubmit, onDownload }: KanaLayoutForm
 
       <fieldset className="kana-layout-home">
         <legend>ホームキー（任意）</legend>
-        <p className="kana-layout-note">
-          指ごとに、この配列が前提とするホームキーを決めます。指の割り当てがその指の担当にしているキーを選んだ時は、割り当てのホームキーより、ここでの指定が優先されます。指定しない指は、指の割り当ての値を使います。
-        </p>
+        <p className="kana-layout-note">指の割り当てが担当するキーを選んだ時は、割り当てのホームキーより優先されます。</p>
         <div className="kana-layout-home-grid">
           {FINGERS.map((finger) => {
             const value = draft.homeKeys[finger] ?? '';
@@ -567,7 +557,7 @@ function KanaLayoutForm({ initial, isNew, onSubmit, onDownload }: KanaLayoutForm
         ) : (
           <>
             <p className="kana-layout-warning" role="status" data-kana-coverage-result="missing">
-              打てないかなが{check.uncovered.length}個あります。保存はできます。
+              打てないかなが{check.uncovered.length}個あります
             </p>
             <ul className="kana-layout-uncovered">
               {KANA_COVERAGE_GROUPS.map((group) => {
@@ -609,7 +599,7 @@ function KanaLayoutForm({ initial, isNew, onSubmit, onDownload }: KanaLayoutForm
         {importResult === undefined ? null : importResult.ok ? (
           <>
             <p className="kana-layout-note" role="status" data-kana-import-result="ok">
-              取り込みました。保存すると、配列として使えます。
+              取り込みました。
             </p>
             <NoticeList notices={importResult.notices} />
           </>
@@ -654,7 +644,6 @@ function KanaLayoutForm({ initial, isNew, onSubmit, onDownload }: KanaLayoutForm
         <button type="submit" data-kana-submit disabled={blocked || (!isNew && !dirty)}>
           {isNew ? '追加する' : '保存する'}
         </button>
-        {blocked ? <span className="kana-layout-note">保存できない入力があります</span> : null}
       </div>
     </form>
   );
@@ -691,9 +680,7 @@ export function KanaLayoutEditor({ layouts, ready, canUndo, canRedo, onUndo, onR
   return (
     <article className="kana-layout" data-kana-layout-editor>
       <h1>{KANA_LAYOUT_LABEL}</h1>
-      <p className="kana-layout-note">
-        面ごとに、切り替えのキーと打鍵の順序、キーごとの出力を決めて、かな配列を自作します。作った配列は、Analyzerの対象に選べます。ローマ字配列は、ローマ字配列の画面で作ります。
-      </p>
+      <p className="kana-layout-note">面ごとに、切り替えのキーと打鍵の順序、キーごとの出力を決めて、かな配列を自作します。</p>
       <div className="kana-layout-toolbar">
         <button type="button" disabled={!canUndo} onClick={onUndo}>
           元に戻す
