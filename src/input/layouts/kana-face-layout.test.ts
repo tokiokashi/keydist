@@ -97,7 +97,7 @@ test('面の形のNICOLAを書き出して読み込み直すと、組み込み�
   assert.ok(new Set(actual.map((stroke) => stroke.aggregationGroupId)).size >= 3, '単打と左右の親指の層に分かれる');
 });
 
-test('書き出した本体は formatと版を持ち、idを持たない', () => {
+test('書き出した本体はformatと版を持ち、idを持たない', () => {
   const body = kanaLayoutFileBody(NICOLA_CONTENT);
   assert.equal(body.format, 'keydist-kana-layout');
   assert.equal(body.version, 1);
