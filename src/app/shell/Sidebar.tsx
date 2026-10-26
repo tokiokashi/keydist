@@ -2,6 +2,7 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import { useRef, useSyncExternalStore, type ChangeEvent, type ReactNode } from 'react';
 import { BIGRAM_FLOW_PANE_META } from '#analyzers/bigram-flow/pane-meta.ts';
 import { FINGER_DISTANCE_PANE_META } from '#analyzers/finger-distance/pane-meta.ts';
+import { HAND_RHYTHM_PANE_META } from '#analyzers/hand-rhythm/pane-meta.ts';
 import { HEATMAP_PANE_META } from '#analyzers/heatmap/pane-meta.ts';
 import { HEATMAP_LAYERS_PANE_META } from '#analyzers/heatmap-layers/pane-meta.ts';
 import { KEYMAP_PANE_META } from '#analyzers/keymap/pane-meta.ts';
@@ -238,6 +239,9 @@ export function Sidebar({ pinned, onPinnedChange, onNavigate }: SidebarProps) {
           </NavLink>
           <NavLink to="/analyzer/finger-distance" onNavigate={onNavigate}>
             {FINGER_DISTANCE_PANE_META.name}
+          </NavLink>
+          <NavLink to="/analyzer/hand-rhythm" onNavigate={onNavigate}>
+            {HAND_RHYTHM_PANE_META.name}
           </NavLink>
           <NavLink to="/analyzer/heatmap" onNavigate={onNavigate}>
             {HEATMAP_PANE_META.name}

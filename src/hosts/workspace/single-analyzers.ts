@@ -1,5 +1,6 @@
 import { bigramFlowAnalyzer } from '#analyzers/bigram-flow/definition.tsx';
 import { fingerDistanceAnalyzer } from '#analyzers/finger-distance/definition.tsx';
+import { handRhythmAnalyzer } from '#analyzers/hand-rhythm/definition.tsx';
 import { heatmapAnalyzer } from '#analyzers/heatmap/definition.tsx';
 import { heatmapLayersAnalyzer } from '#analyzers/heatmap-layers/definition.tsx';
 import { keymapAnalyzer } from '#analyzers/keymap/definition.tsx';
@@ -21,6 +22,7 @@ type AnyPaneParts = SingleAnalyzerPaneParts<any, any>;
 export const SINGLE_ANALYZER_PANE_PARTS: readonly AnyPaneParts[] = [
   bigramFlowAnalyzer,
   fingerDistanceAnalyzer,
+  handRhythmAnalyzer,
   heatmapAnalyzer,
   heatmapLayersAnalyzer,
   layerComboPressesAnalyzer,

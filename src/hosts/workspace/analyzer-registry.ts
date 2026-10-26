@@ -7,6 +7,8 @@ import { COMPARISON_PANE_META } from '#analyzers/comparison/pane-meta.ts';
 import { fingerMatrixDefinition } from '#analyzers/finger-matrix/extract.ts';
 import { FINGER_MATRIX_PANE_META } from '#analyzers/finger-matrix/pane-meta.ts';
 import { fingerDistanceDefinition } from '#analyzers/finger-distance/extract.ts';
+import { handRhythmDefinition } from '#analyzers/hand-rhythm/extract.ts';
+import { HAND_RHYTHM_PANE_META } from '#analyzers/hand-rhythm/pane-meta.ts';
 import { FINGER_DISTANCE_PANE_META } from '#analyzers/finger-distance/pane-meta.ts';
 import { heatmapDefinition } from '#analyzers/heatmap/extract.ts';
 import { HEATMAP_PANE_META } from '#analyzers/heatmap/pane-meta.ts';
@@ -49,6 +51,7 @@ export interface WorkspaceAnalyzerEntry {
 export const WORKSPACE_ANALYZERS: readonly WorkspaceAnalyzerEntry[] = [
   { id: bigramFlowDefinition.id, ...BIGRAM_FLOW_PANE_META, cardinality: 'single' },
   { id: fingerDistanceDefinition.id, ...FINGER_DISTANCE_PANE_META, cardinality: 'single' },
+  { id: handRhythmDefinition.id, ...HAND_RHYTHM_PANE_META, cardinality: 'single' },
   { id: heatmapDefinition.id, ...HEATMAP_PANE_META, cardinality: 'single' },
   { id: heatmapLayersDefinition.id, ...HEATMAP_LAYERS_PANE_META, cardinality: 'single' },
   { id: layerComboPressesDefinition.id, ...LAYER_COMBO_PRESSES_PANE_META, cardinality: 'single' },

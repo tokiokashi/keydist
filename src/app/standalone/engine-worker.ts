@@ -3,6 +3,7 @@ import { createEngineWorkerHandler } from '#engine/worker-handler.ts';
 import type { EngineWorkerRequest, EngineWorkerResponse } from '#engine/worker-protocol.ts';
 import { bigramFlowDefinition } from '#analyzers/bigram-flow/extract.ts';
 import { fingerDistanceDefinition } from '#analyzers/finger-distance/extract.ts';
+import { handRhythmDefinition } from '#analyzers/hand-rhythm/extract.ts';
 import { heatmapDefinition } from '#analyzers/heatmap/extract.ts';
 import { heatmapLayersDefinition } from '#analyzers/heatmap-layers/extract.ts';
 import { keymapDefinition } from '#analyzers/keymap/extract.ts';
@@ -25,6 +26,7 @@ const handle = createEngineWorkerHandler(createEngineCache(), {
   single: [
     bigramFlowDefinition,
     fingerDistanceDefinition,
+    handRhythmDefinition,
     heatmapDefinition,
     heatmapLayersDefinition,
     layerComboPressesDefinition,

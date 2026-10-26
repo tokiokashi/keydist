@@ -1,0 +1,97 @@
+.hand-rhythm-feature {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.hand-rhythm-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0 0 0.4rem;
+}
+
+.hand-rhythm-heading h3 {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.hand-rhythm-empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.hand-rhythm-values {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.2rem 1.2rem;
+  margin: 0;
+  max-width: 32rem;
+  font-size: 0.8rem;
+}
+
+/* 項目の組を1つの行として扱う。dlの直下のdivで、値は右に寄せず読み順どおり並べる */
+.hand-rhythm-item {
+  display: contents;
+}
+
+.hand-rhythm-item dt {
+  color: var(--text-muted);
+}
+
+.hand-rhythm-item dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.hand-rhythm-distributions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.8rem 1.2rem;
+  max-width: 32rem;
+}
+
+.hand-rhythm-distribution {
+  margin: 0;
+  min-width: 0;
+}
+
+.hand-rhythm-distribution figcaption {
+  margin-bottom: 0.2rem;
+  font-size: 0.8rem;
+}
+
+.hand-rhythm-distribution-row {
+  display: grid;
+  grid-template-columns: 3.4em minmax(0, 1fr) 3.4em;
+  align-items: center;
+  gap: 0.3em;
+  min-height: 1.35rem;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.hand-rhythm-distribution-length {
+  text-align: right;
+}
+
+.hand-rhythm-distribution-track {
+  display: block;
+  height: 0.7rem;
+}
+
+/* 棒は値の大きさを示すだけの中立な1色。最大や最小を強調しない。 */
+.hand-rhythm-distribution-fill {
+  display: block;
+  height: 100%;
+  min-width: 1px;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+.hand-rhythm-distribution-count {
+  text-align: right;
+  color: var(--text-muted);
+}
