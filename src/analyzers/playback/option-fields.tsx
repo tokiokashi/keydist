@@ -8,7 +8,7 @@ import {
   PLAYBACK_SPEED_MULTIPLIER_MIN,
   PLAYBACK_STEPS_PER_SECOND_MAX,
   PLAYBACK_STEPS_PER_SECOND_MIN,
-} from '#interpretation/timing/playback.ts';
+} from '#interpretation/timing/playback-options.ts';
 import { PUNCTUATION_WAIT_MS_MAX, PUNCTUATION_WAIT_MS_MIN } from '#interpretation/timing/punctuation-wait.ts';
 import {
   bindOption,

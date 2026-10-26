@@ -1,7 +1,7 @@
 # 打鍵再生 時間モデル仕様
 
 本書は**打鍵再生が1ステップをどれだけの時間で表示するか**を定める。
-対象は `src/interpretation/timing/playback.ts` と `src/interpretation/timing/calibration.ts` に加え、
+対象は `src/interpretation/timing/playback.ts`、`src/interpretation/timing/playback-options.ts`、`src/interpretation/timing/calibration.ts` に加え、
 structural analysis の結果を Timing が受け取る境界である。
 
 依存方向は次の一方向とする。

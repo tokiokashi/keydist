@@ -14,6 +14,15 @@ import {
   type SimultaneousKind,
   type StrokeStructureKind,
 } from './calibration.ts';
+import {
+  DEFAULT_PLAYBACK_RATE_AVERAGE,
+  DEFAULT_PLAYBACK_RATE_HALF_LIFE_SECONDS,
+  DEFAULT_PLAYBACK_RATE_WINDOW,
+  DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
+  DEFAULT_PLAYBACK_STEPS_PER_SECOND,
+  type PlaybackRateAverage,
+  type PlaybackStepsPerSecond,
+} from './playback-options.ts';
 import type { AggregatedAnalysisResult } from '../structure/aggregate.ts';
 import {
   isRepeatStroke,
@@ -24,32 +33,11 @@ import {
   type StrokePressFingers,
 } from './stroke-structure.ts';
 
-/** 再生速度の入力範囲。実際の打鍵時間や距離モデルとは無関係。 */
-export const PLAYBACK_STEPS_PER_SECOND_MIN = 0.1;
-export const PLAYBACK_STEPS_PER_SECOND_MAX = 20;
-export type PlaybackStepsPerSecond = number;
-export const DEFAULT_PLAYBACK_STEPS_PER_SECOND: PlaybackStepsPerSecond = 1.25;
-export const PLAYBACK_SPEED_MULTIPLIER_MIN = 0.1;
-export const PLAYBACK_SPEED_MULTIPLIER_MAX = 10;
-export const DEFAULT_PLAYBACK_SPEED_MULTIPLIER = 1;
-export const PLAYBACK_RATE_WINDOW_MIN = 1;
-export const PLAYBACK_RATE_WINDOW_MAX = 50;
-export const DEFAULT_PLAYBACK_RATE_WINDOW = 10;
-export type PlaybackRateAverage = 'sma' | 'ewma';
-export const DEFAULT_PLAYBACK_RATE_AVERAGE: PlaybackRateAverage = 'sma';
-export const PLAYBACK_RATE_HALF_LIFE_SECONDS_MIN = 0.1;
-export const PLAYBACK_RATE_HALF_LIFE_SECONDS_MAX = 10;
-export const DEFAULT_PLAYBACK_RATE_HALF_LIFE_SECONDS = 1;
-
 /**
  * 打鍵の上乗せを足した時間の下限[ms]。保存値が許す最も速い1打の時間。
  * 上乗せが負の保存値で、時間が0以下になるのを防ぐ。再生倍率で割る前に当てる。
  */
 export const PLAYBACK_MIN_STEP_MS = 1000 / CALIBRATION_ACTIONS_PER_SECOND_MAX;
-
-export const DEFAULT_PLAYBACK_SAME_FINGER_DELAY = true;
-export const DEFAULT_PLAYBACK_ALL_FINGER_MOVEMENT_DELAY = true;
-export const DEFAULT_PLAYBACK_APPLY_PERSONAL_SPEED = true;
 
 /** 時間表を求めるのに読む、構造解析の結果の部分。 */
 export type PlaybackTimingAnalysis = Pick<AggregatedAnalysisResult, 'strokes' | 'transitions' | 'chains' | 'arpeggioSpans'>;
