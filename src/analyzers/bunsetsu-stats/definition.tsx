@@ -448,7 +448,7 @@ export function BunsetsuStatsSettings({ options, onOptionsChange }: AnalyzerSett
   const bind = <K extends keyof BunsetsuStatsOptions>(key: K) => bindOption(options, DEFAULT_BUNSETSU_STATS_OPTIONS, onOptionsChange, key);
   return (
     <div className="option-groups">
-      <OptionField label="並び替え" binding={bind('sort')} hint="配列ごとの表の列の見出しを押すと切り替わります。">
+      <OptionField label="並び替え" binding={bind('sort')}>
         {(id) => (
           <span id={id}>
             {options.sort === null ? 'なし' : `${BUNSETSU_STATS_COLUMN_FULL_NAME[options.sort.column]}（${SORT_DIRECTION_TEXT[options.sort.direction]}）`}

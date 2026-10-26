@@ -19,13 +19,12 @@ export const FINGER_MATRIX_SURFACE_TEXT: Readonly<Record<FingerMatrixSurfaceId, 
   presses: {
     label: '押下数',
     unit: '押下/文字',
-    description:
-      '指ごとに押したキーの数を、入力1文字あたりで出します。同時押しで1本の指が複数のキーを押した時は、押したキーの数だけ数えます。マウスを乗せると、1文字あたりに直す前の押下回数が出ます。',
+    description: '指ごとに押したキーの数を、入力1文字あたりで出します。同時押しで1本の指が複数のキーを押した時は、押したキーの数だけ数えます。',
   },
   distance: {
     label: '移動距離',
     unit: 'u/文字',
-    description: '指ごとの総移動距離を、入力1文字あたりで出します。マウスを乗せると、1文字あたりに直す前の距離が出ます。',
+    description: '指ごとの総移動距離を、入力1文字あたりで出します。',
   },
   pairMean: {
     label: '指間距離の平均',

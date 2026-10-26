@@ -25,7 +25,7 @@ export interface KeyPatternSelectionView {
   readonly message: string;
 }
 
-export const KEY_PATTERN_PROMPT = 'キーを選ぶと、続けて押せるキーと出る文字を確認できます。';
+export const KEY_PATTERN_PROMPT = '選んだキーはありません。';
 
 export function keyPatternSelectionView(layout: Layout, selected: readonly string[]): KeyPatternSelectionView {
   if (selected.length === 0) {
@@ -38,11 +38,11 @@ export function keyPatternSelectionView(layout: Layout, selected: readonly strin
   const hasNext = continuationKeys.size > 0;
   const message =
     exactOutputs.length > 0
-      ? `確定: ${exactOutputs.join(' / ')}${hasNext ? '。青い枠のキーを続けて選ぶこともできます。' : ''}`
+      ? `確定: ${exactOutputs.join(' / ')}${hasNext ? '。続けて押せるキーがあります。' : ''}`
       : hasNext
         ? candidateLegends.size > 0
-          ? '青い枠のキーを選ぶと、出る文字が決まります。'
-          : '青い枠のキーを続けて選んでください。'
+          ? 'あと1キーで出る文字が決まります。'
+          : '続けて押せるキーがあります。'
         : 'このキーの組み合わせで出る文字はありません。';
   return { exactOutputs, candidateLegends, continuationKeys, message };
 }
