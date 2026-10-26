@@ -12,6 +12,9 @@ import { isDirectUserLayout, ROW_LABELS, ROW_LIMITS, toLayout, validate, type St
 
 export const USER_LAYOUT_ID_PREFIX = 'user-';
 
+/** 名前が空の時の誤りの文。段の配列と面の配列の画面で同じ文を出す。 */
+export const NAME_REQUIRED_MESSAGE = '名前を入力してください';
+
 export const newUserLayoutId = (): string => `${USER_LAYOUT_ID_PREFIX}${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
 /** 配列の中身（idを除く）。画面の入力欄がそのまま持つ形。 */
@@ -116,7 +119,7 @@ export function layoutProblems(
   const rows = normalized.rows;
 
   if (normalized.name === '') {
-    problems.push({ severity: 'error', field: { kind: 'name' }, message: '名前を入力してください' });
+    problems.push({ severity: 'error', field: { kind: 'name' }, message: NAME_REQUIRED_MESSAGE });
   }
   rows.forEach((row, index) => {
     const length = [...row].length;

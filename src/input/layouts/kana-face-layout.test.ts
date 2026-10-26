@@ -446,7 +446,7 @@ test('読み込みの誤り: 読み込みの段で弾けない組み立ての失
   const problems = problemsOf(file);
   assert.equal(problems.length, 1);
   assert.equal(problems[0]!.path, 'faces[2]');
-  assert.match(problems[0]!.message, /^面3を加えると配列を組めません。triggerと打鍵の順序、同じキーの出力を見直してください$/);
+  assert.match(problems[0]!.message, /^面3を加えると配列を組めません。切り替えのキーと打鍵の順序、同じキーの出力を見直してください$/);
   assert.ok(problems[0]!.detail !== undefined && problems[0]!.detail !== '', '内部の文は詳細に残す');
   assertUserFacing(problems);
 });

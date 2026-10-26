@@ -22,7 +22,7 @@ export interface UserFace {
   triggerPersistence?: TriggerPersistence;
   /** 面が担う入力の意味 */
   inputRole: InputRole;
-  /** compositionの面を層とコンボ枠のどちらへ計上するか。compositionの面だけが持ち、必須 */
+  /** compositionの面をレイヤーとコンボ枠のどちらへ計上するか。compositionの面だけが持ち、必須 */
   compositionAggregation?: LayerKind;
   /** 同時の面でも、triggerを先（または後）に押すことを要求する */
   triggerOrder?: TriggerOrder;
@@ -144,17 +144,17 @@ function readFace(raw: unknown, index: number, problems: Problems): UserFace | u
   // trigger
   const trigger: string[] = [];
   if (!Array.isArray(raw.trigger)) {
-    problems.add(`${path}.trigger`, `${label}のtriggerを配列で書いてください。単打の面は空の配列です`);
+    problems.add(`${path}.trigger`, `${label}の切り替えのキー（trigger）を配列で書いてください。単打の面は空の配列です`);
   } else {
     raw.trigger.forEach((entry: unknown, triggerIndex) => {
       const triggerPath = `${path}.trigger[${triggerIndex}]`;
       if (typeof entry !== 'string' || !isTriggerKey(entry)) {
-        problems.add(triggerPath, `${label}のtriggerのキー ${describeValue(entry)} は、物理キーの名前ではありません`);
+        problems.add(triggerPath, `${label}の切り替えのキー ${describeValue(entry)} は、物理キーの名前ではありません`);
         return;
       }
       const resolved = resolveKeyId(entry);
       if (trigger.includes(resolved)) {
-        problems.add(triggerPath, `${label}のtriggerに、同じキー ${keyName(resolved)} が2回あります`);
+        problems.add(triggerPath, `${label}の切り替えのキーに、同じキー ${keyName(resolved)} が2回あります`);
         return;
       }
       trigger.push(resolved);
@@ -178,19 +178,19 @@ function readFace(raw: unknown, index: number, problems: Problems): UserFace | u
   let triggerPersistence: TriggerPersistence | undefined;
   if (triggered) {
     if (raw.triggerPersistence === undefined) {
-      problems.add(`${path}.triggerPersistence`, `${label}は、triggerの持続（triggerPersistence）を書いてください`);
+      problems.add(`${path}.triggerPersistence`, `${label}は、切り替えのキーの持続（triggerPersistence）を書いてください`);
     } else {
       const read = readEnum(
         raw.triggerPersistence,
         PERSISTENCES,
         `${path}.triggerPersistence`,
-        `${label}のtriggerの持続（triggerPersistence）`,
+        `${label}の切り替えのキーの持続（triggerPersistence）`,
         problems,
       );
       if (read.ok) triggerPersistence = read.value;
     }
   } else if (triggerless && raw.triggerPersistence !== undefined) {
-    problems.add(`${path}.triggerPersistence`, `${label}は単打の面なので、triggerの持続（triggerPersistence）を持てません`);
+    problems.add(`${path}.triggerPersistence`, `${label}は単打の面なので、切り替えのキーの持続（triggerPersistence）を持てません`);
   }
 
   // 入力の意味
@@ -206,7 +206,7 @@ function readFace(raw: unknown, index: number, problems: Problems): UserFace | u
     if (raw.compositionAggregation === undefined) {
       problems.add(
         `${path}.compositionAggregation`,
-        `${label}はcompositionの面なので、層とコンボ枠のどちらに数えるか（compositionAggregation）を書いてください`,
+        `${label}はcompositionの面なので、レイヤーとコンボ枠のどちらに数えるか（compositionAggregation）を書いてください`,
       );
     } else {
       const read = readEnum(
@@ -226,16 +226,16 @@ function readFace(raw: unknown, index: number, problems: Problems): UserFace | u
   let triggerOrder: TriggerOrder | undefined;
   if (raw.triggerOrder !== undefined) {
     if (triggerless) {
-      problems.add(`${path}.triggerOrder`, `${label}は単打の面なので、triggerの先押し（triggerOrder）を持てません`);
+      problems.add(`${path}.triggerOrder`, `${label}は単打の面なので、切り替えのキーの先押し（triggerOrder）を持てません`);
     } else {
-      const read = readEnum(raw.triggerOrder, TRIGGER_ORDERS, `${path}.triggerOrder`, `${label}のtriggerの先押し（triggerOrder）`, problems);
+      const read = readEnum(raw.triggerOrder, TRIGGER_ORDERS, `${path}.triggerOrder`, `${label}の切り替えのキーの先押し（triggerOrder）`, problems);
       if (read.ok) triggerOrder = read.value;
     }
   }
   if (triggerOrder !== undefined && mode !== undefined && mode !== 'simultaneous' && mode !== triggerOrder) {
     problems.add(
       `${path}.triggerOrder`,
-      `${label}の打鍵の順序（mode）が「${mode}」なのに、triggerの先押し（triggerOrder）が「${triggerOrder}」で食い違っています`,
+      `${label}の打鍵の順序（mode）が「${mode}」なのに、切り替えのキーの先押し（triggerOrder）が「${triggerOrder}」で食い違っています`,
     );
   }
   let layer: string | undefined;
@@ -249,7 +249,10 @@ function readFace(raw: unknown, index: number, problems: Problems): UserFace | u
     }
   }
   if (compositionAggregation === 'layer' && trigger.length !== 1) {
-    problems.add(`${path}.compositionAggregation`, `${label}は層に数えるcompositionの面なので、triggerは1キーだけで書いてください`);
+    problems.add(
+      `${path}.compositionAggregation`,
+      `${label}はレイヤーに数えるcompositionの面なので、切り替えのキー（trigger）は1キーだけで書いてください`,
+    );
   }
   if (compositionAggregation === 'combo' && layer !== undefined) {
     problems.add(`${path}.layer`, `${label}はコンボ枠に数えるcompositionの面なので、レイヤーの名前（layer）を持てません`);
@@ -278,14 +281,14 @@ function readFace(raw: unknown, index: number, problems: Problems): UserFace | u
       if (Array.isArray(raw.trigger) && trigger.length === raw.trigger.length) {
         for (const key of Object.keys(groups)) {
           if (!trigger.includes(key)) {
-            problems.add(`${path}.modifierGroups.${key}`, `${label}の修飾の組のキー ${keyName(key)} は、同じ面のtriggerにありません`);
+            problems.add(`${path}.modifierGroups.${key}`, `${label}の修飾の組のキー ${keyName(key)} は、同じ面の切り替えのキー（trigger）にありません`);
           }
         }
         const missing = trigger.filter((key) => !(key in groups));
         if (missing.length > 0 && Object.keys(groups).every((key) => trigger.includes(key))) {
           problems.add(
             `${path}.modifierGroups`,
-            `${label}の修飾の組は、triggerのキーをすべて分類してください（足りないキー: ${missing.map(keyName).join('・')}）`,
+            `${label}の修飾の組は、切り替えのキーをすべて分類してください（足りないキー: ${missing.map(keyName).join('・')}）`,
           );
         }
       }
@@ -310,7 +313,7 @@ function readFace(raw: unknown, index: number, problems: Problems): UserFace | u
       }
     }
     for (const key of trigger) {
-      if (key in outputs) problems.add(`${path}.outputs.${key}`, `${label}のtriggerのキー ${keyName(key)} に、同じ面の出力があります`);
+      if (key in outputs) problems.add(`${path}.outputs.${key}`, `${label}の切り替えのキー ${keyName(key)} に、同じ面の出力があります`);
     }
   }
 
@@ -390,7 +393,7 @@ export function readFaceBody(raw: Record<string, unknown>): { readonly body: Use
         const trigger = face.trigger.length === 0 ? '単打' : face.trigger.map((key) => physicalKeyDisplayLabel(key)).join('+');
         problems.add(
           `faces[${index}]`,
-          `${faceLabel(index)}は${faceLabel(first)}と、triggerと打鍵の順序が同じです（${trigger}${face.mode === undefined ? '' : `・${face.mode}`}）。1つの面にまとめてください`,
+          `${faceLabel(index)}は${faceLabel(first)}と、切り替えのキーと打鍵の順序が同じです（${trigger}${face.mode === undefined ? '' : `・${face.mode}`}）。1つの面にまとめてください`,
         );
       }
     });
@@ -403,7 +406,7 @@ export function readFaceBody(raw: Record<string, unknown>): { readonly body: Use
       else {
         problems.add(
           `faces[${index}]`,
-          `${faceLabel(index)}は${faceLabel(first)}と、層に数えるcompositionの面のtriggerのキー ${keyName(key)} が同じです。1つの面にまとめてください`,
+          `${faceLabel(index)}は${faceLabel(first)}と、レイヤーに数えるcompositionの面の切り替えのキー ${keyName(key)} が同じです。1つの面にまとめてください`,
         );
       }
     });
@@ -475,7 +478,7 @@ function culpritOf(faces: readonly Face[], id: string, name: string): { index: n
 }
 
 /** 読み込みの段で弾けなかった組み立ての失敗に付ける、利用者向けの文。内部の文は詳細に分ける。 */
-const BUILD_HINT = 'triggerと打鍵の順序、同じキーの出力を見直してください';
+const BUILD_HINT = '切り替えのキーと打鍵の順序、同じキーの出力を見直してください';
 
 /**
  * 面から `Layout` を組む。組めない時は `FaceLayoutBuildError` を投げる。

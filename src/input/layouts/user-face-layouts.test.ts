@@ -55,7 +55,7 @@ test('面で定義する配列を捨てる時は、どの面の何が誤りか�
   assert.deepEqual(result.value, []);
   assert.equal(result.diagnostics.length, 1);
   assert.equal(result.diagnostics[0]!.path, '[0]');
-  assert.match(result.diagnostics[0]!.message, /形式が不正なため自作の配列を捨てました（面2は、triggerの持続/);
+  assert.match(result.diagnostics[0]!.message, /形式が不正なため自作の配列を捨てました（面2は、切り替えのキーの持続/);
 });
 
 test('面の形は段の形・取り込み形式・ローマ字規則と併せ持てず、どれを併せ持っているかを診断に含める', () => {

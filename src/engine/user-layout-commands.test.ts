@@ -5,7 +5,13 @@ import { emptyCascadeOverrides } from '#input/settings/index.ts';
 import { emptyTextLibrary } from '#input/text/library.ts';
 import { initialTextSelection } from '#input/text/selection.ts';
 import { EMPTY_PERSONAL_SPEED } from '#interpretation/timing/calibration-codec.ts';
-import { createUserLayoutCommand, updateUserLayoutCommand, type KeydistAssets } from './commands.ts';
+import {
+  createUserFaceLayoutCommand,
+  createUserLayoutCommand,
+  updateUserFaceLayoutCommand,
+  updateUserLayoutCommand,
+  type KeydistAssets,
+} from './commands.ts';
 import type { StageUserLayout } from '#input/layouts/user-layouts.ts';
 import { initialMultiTargetSelection } from './multi-target-selection.ts';
 import { initialSingleTargetSelection } from './single-target-selection.ts';
@@ -56,6 +62,32 @@ test('自作の配列のコマンド: 作成と編集を書き込み、undoで�
     undo(edited.assets, edited.history).assets.userLayouts.map((layout) => layout.name),
     ['私のDvorak'],
   );
+});
+
+test('面で定義するかな配列のコマンド: 作成と編集を書き込み、undoで戻せ、誤りは拒否する', () => {
+  const content = {
+    name: '面の配列',
+    faces: [{ trigger: [], inputRole: 'layer' as const, outputs: { a: 'あ' } }],
+    composition: { dakuten: false, handakuten: false },
+  };
+  const created = applyCommand(
+    emptyAssets(),
+    emptyCommandHistory<KeydistAssets>(),
+    createUserFaceLayoutCommand(() => 'user-face', content),
+  );
+  assert.equal(created.outcome.kind, 'applied');
+  const edited = applyCommand(created.assets, created.history, updateUserFaceLayoutCommand('user-face', { ...content, name: '改名' }));
+  assert.equal(edited.outcome.kind, 'applied');
+  assert.deepEqual(
+    edited.assets.userLayouts.map((layout) => layout.name),
+    ['改名'],
+  );
+  assert.deepEqual(
+    undo(edited.assets, edited.history).assets.userLayouts.map((layout) => layout.name),
+    ['面の配列'],
+  );
+  const rejected = applyCommand(created.assets, created.history, updateUserFaceLayoutCommand('user-face', { ...content, faces: [] }));
+  assert.equal(rejected.outcome.kind, 'rejected');
 });
 
 test('自作の配列のコマンド: 変化が無い編集と存在しないidはno-opで、履歴に積まない', () => {

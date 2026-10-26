@@ -1,0 +1,279 @@
+/* かな配列の画面。読み物の幅は他のエディタと同じに抑えて中央に置く */
+.kana-layout {
+  max-width: 56rem;
+  margin-inline: auto;
+}
+
+.kana-layout h1 {
+  margin-bottom: 0.5rem;
+  font-size: clamp(1.5rem, 5vw, 2rem);
+}
+
+.kana-layout h2 {
+  margin: 1.75rem 0 0.5rem;
+  font-size: 1.1rem;
+}
+
+.kana-layout h3 {
+  margin: 0.75rem 0 0.4rem;
+  font-size: 1rem;
+}
+
+.kana-layout-note {
+  margin: 0 0 0.6rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.kana-layout-toolbar,
+.kana-layout-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.kana-layout button {
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.kana-layout button:hover:not(:disabled) {
+  background: var(--surface-muted);
+}
+
+.kana-layout button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.kana-layout label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.kana-layout label.kana-layout-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.kana-layout select,
+.kana-layout textarea,
+.kana-layout input[type='text'] {
+  min-width: 0;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+}
+
+.kana-layout textarea {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+}
+
+.kana-layout [aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.kana-layout-form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.kana-layout-name {
+  max-width: 20rem;
+}
+
+.kana-layout fieldset {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0.6rem 0.8rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.kana-layout legend {
+  padding-inline: 0.3rem;
+  font-weight: bold;
+  font-size: 0.95rem;
+}
+
+.kana-layout-face-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.kana-layout-face-list button {
+  display: grid;
+  justify-items: start;
+  gap: 0.1rem;
+  text-align: left;
+}
+
+.kana-layout-face-list button small {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.kana-layout-face-list button[aria-pressed='true'] {
+  border-color: var(--border-strong);
+  background: var(--surface-muted);
+  font-weight: bold;
+}
+
+.kana-layout-face-list button[data-has-problem] {
+  border-color: var(--danger);
+}
+
+.kana-layout-face-title {
+  margin-bottom: 0;
+}
+
+.kana-layout-face {
+  display: grid;
+  gap: 0.6rem;
+  padding-top: 0.25rem;
+  animation: kana-layout-reveal 140ms ease-out;
+}
+
+.kana-layout-operation {
+  border: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+}
+
+.kana-layout-figure {
+  overflow-x: auto;
+}
+
+.kana-layout-output {
+  display: flex;
+  align-items: end;
+  gap: 0.5rem;
+  max-width: 24rem;
+}
+
+.kana-layout-output label {
+  flex: 1;
+}
+
+.kana-layout-label-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.kana-layout-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 0.5rem 0.75rem;
+}
+
+.kana-layout-home-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0.5rem 0.75rem;
+}
+
+.kana-layout-problems {
+  display: grid;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.kana-layout-problems li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.1rem 0.5rem;
+  animation: kana-layout-reveal 140ms ease-out;
+}
+
+.kana-layout-error,
+.kana-layout-warning {
+  margin: 0.1rem 0;
+  font-size: 0.85rem;
+}
+
+.kana-layout-error {
+  color: var(--danger);
+}
+
+.kana-layout-warning {
+  color: var(--text-muted);
+}
+
+.kana-layout-path {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.kana-layout-detail {
+  flex-basis: 100%;
+  font-size: 0.8rem;
+}
+
+.kana-layout-detail pre {
+  margin: 0.25rem 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.kana-layout-uncovered {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.9rem;
+}
+
+.kana-layout-json {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.kana-layout-json > summary {
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.kana-layout-json[open] > *:not(summary) {
+  margin-top: 0.5rem;
+}
+
+@keyframes kana-layout-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kana-layout-face,
+  .kana-layout-problems li {
+    animation: none;
+  }
+}
