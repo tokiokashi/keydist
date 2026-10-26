@@ -44,7 +44,10 @@ export interface UserFaceBody {
 /** 読み込みや組み立ての誤り1件。`path` は `faces[2].outputs.q` のように定義の中の位置。 */
 export interface FaceLayoutProblem {
   readonly path: string;
+  /** 利用者に見せる文 */
   readonly message: string;
+  /** 内部の検査が返した文。画面の本文には出さず、詳細として添える */
+  readonly detail?: string;
 }
 
 /** 同じかなが2か所以上にある旨（代わりの打ち方）。誤りではない。 */
@@ -112,8 +115,8 @@ type Parsed<T> = { readonly ok: true; readonly value: T } | { readonly ok: false
 /** 読み込みの途中で誤りを積む入れ物。 */
 class Problems {
   readonly list: FaceLayoutProblem[] = [];
-  add(path: string, message: string): false {
-    this.list.push({ path, message });
+  add(path: string, message: string, detail?: string): false {
+    this.list.push({ path, message, ...(detail === undefined ? {} : { detail }) });
     return false;
   }
 }
@@ -229,6 +232,12 @@ function readFace(raw: unknown, index: number, problems: Problems): UserFace | u
       if (read.ok) triggerOrder = read.value;
     }
   }
+  if (triggerOrder !== undefined && mode !== undefined && mode !== 'simultaneous' && mode !== triggerOrder) {
+    problems.add(
+      `${path}.triggerOrder`,
+      `${label}の打鍵の順序（mode）が「${mode}」なのに、triggerの先押し（triggerOrder）が「${triggerOrder}」で食い違っています`,
+    );
+  }
   let layer: string | undefined;
   if (raw.layer !== undefined) {
     if (triggerless) {
@@ -238,6 +247,12 @@ function readFace(raw: unknown, index: number, problems: Problems): UserFace | u
     } else {
       layer = raw.layer;
     }
+  }
+  if (compositionAggregation === 'layer' && trigger.length !== 1) {
+    problems.add(`${path}.compositionAggregation`, `${label}は層に数えるcompositionの面なので、triggerは1キーだけで書いてください`);
+  }
+  if (compositionAggregation === 'combo' && layer !== undefined) {
+    problems.add(`${path}.layer`, `${label}はコンボ枠に数えるcompositionの面なので、レイヤーの名前（layer）を持てません`);
   }
   let modifierGroups: Record<string, string> | undefined;
   if (raw.modifierGroups !== undefined) {
@@ -260,6 +275,20 @@ function readFace(raw: unknown, index: number, problems: Problems): UserFace | u
         }
       }
       modifierGroups = groups;
+      if (Array.isArray(raw.trigger) && trigger.length === raw.trigger.length) {
+        for (const key of Object.keys(groups)) {
+          if (!trigger.includes(key)) {
+            problems.add(`${path}.modifierGroups.${key}`, `${label}の修飾の組のキー ${keyName(key)} は、同じ面のtriggerにありません`);
+          }
+        }
+        const missing = trigger.filter((key) => !(key in groups));
+        if (missing.length > 0 && Object.keys(groups).every((key) => trigger.includes(key))) {
+          problems.add(
+            `${path}.modifierGroups`,
+            `${label}の修飾の組は、triggerのキーをすべて分類してください（足りないキー: ${missing.map(keyName).join('・')}）`,
+          );
+        }
+      }
     }
   }
 
@@ -365,6 +394,19 @@ export function readFaceBody(raw: Record<string, unknown>): { readonly body: Use
         );
       }
     });
+    const compositionLayerTriggers = new Map<string, number>();
+    faces.forEach((face, index) => {
+      if (face.inputRole !== 'composition' || face.compositionAggregation !== 'layer' || face.trigger.length !== 1) return;
+      const key = face.trigger[0]!;
+      const first = compositionLayerTriggers.get(key);
+      if (first === undefined) compositionLayerTriggers.set(key, index);
+      else {
+        problems.add(
+          `faces[${index}]`,
+          `${faceLabel(index)}は${faceLabel(first)}と、層に数えるcompositionの面のtriggerのキー ${keyName(key)} が同じです。1つの面にまとめてください`,
+        );
+      }
+    });
     if (composition !== undefined) {
       const present = (mark: string) => faces.some((face) => Object.values(face.outputs).includes(mark));
       if (composition.dakuten && !present(DAKUTEN_MARK)) {
@@ -420,17 +462,20 @@ export class FaceLayoutBuildError extends Error {
 
 const reasonOf = (cause: unknown): string => (cause instanceof Error ? cause.message : String(cause));
 
-/** `fromFaces` が投げた時に、先頭から面を足していって初めて組めなくなる面を探す。 */
-function culpritOf(faces: readonly Face[], id: string, name: string): number | undefined {
+/** `fromFaces` が投げた時に、先頭から面を足していって初めて組めなくなる面と、その時の内部の文を探す。 */
+function culpritOf(faces: readonly Face[], id: string, name: string): { index: number; reason: string } | undefined {
   for (let count = 1; count <= faces.length; count += 1) {
     try {
       fromFaces(id, name, faces.slice(0, count));
-    } catch {
-      return count - 1;
+    } catch (cause) {
+      return { index: count - 1, reason: reasonOf(cause) };
     }
   }
   return undefined;
 }
+
+/** 読み込みの段で弾けなかった組み立ての失敗に付ける、利用者向けの文。内部の文は詳細に分ける。 */
+const BUILD_HINT = 'triggerと打鍵の順序、同じキーの出力を見直してください';
 
 /**
  * 面から `Layout` を組む。組めない時は `FaceLayoutBuildError` を投げる。
@@ -442,18 +487,19 @@ export function buildFaceLayout(id: string, name: string, body: UserFaceBody): L
   try {
     layout = fromFaces(id, name, faces);
   } catch (cause) {
-    const index = culpritOf(faces, id, name);
-    const reason = reasonOf(cause);
+    const culprit = culpritOf(faces, id, name);
     throw new FaceLayoutBuildError([
-      index === undefined
-        ? { path: 'faces', message: `面の組み合わせから配列を組めません（${reason}）` }
-        : { path: `faces[${index}]`, message: `${faceLabel(index)}を加えると配列を組めません（${reason}）` },
+      culprit === undefined
+        ? { path: 'faces', message: `面の組み合わせから配列を組めません。${BUILD_HINT}`, detail: reasonOf(cause) }
+        : { path: `faces[${culprit.index}]`, message: `${faceLabel(culprit.index)}を加えると配列を組めません。${BUILD_HINT}`, detail: culprit.reason },
     ]);
   }
   try {
     return composeKanaMarks(layout, body.composition, name);
   } catch (cause) {
-    throw new FaceLayoutBuildError([{ path: 'composition', message: `濁点・半濁点の合成を組めません（${reasonOf(cause)}）` }]);
+    throw new FaceLayoutBuildError([
+      { path: 'composition', message: '濁点・半濁点の合成を組めません。合成の指定と、面にある濁点・半濁点を見直してください', detail: reasonOf(cause) },
+    ]);
   }
 }
 

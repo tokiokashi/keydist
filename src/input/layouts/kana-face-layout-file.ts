@@ -66,7 +66,11 @@ export function parseKanaLayoutFile(text: string): KanaLayoutFileReadResult {
   try {
     parsed = JSON.parse(text);
   } catch (error) {
-    return fail({ path: '', message: `JSONとして読めません（${error instanceof Error ? error.message : String(error)}）` });
+    return fail({
+      path: '',
+      message: 'JSONとして読めません。括弧や引用符、カンマを確かめてください',
+      detail: error instanceof Error ? error.message : String(error),
+    });
   }
   if (!isRecord(parsed) || parsed.format !== KANA_LAYOUT_FILE_FORMAT) {
     const format = isRecord(parsed) ? parsed.format : undefined;

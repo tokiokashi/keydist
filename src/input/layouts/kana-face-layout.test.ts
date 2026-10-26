@@ -182,7 +182,7 @@ test('読み込みの誤り: JSONとして読めない', () => {
   const problems = problemsOf('{ "format": ');
   assert.equal(problems.length, 1);
   assert.equal(problems[0]!.path, '');
-  assert.match(problems[0]!.message, /JSONとして読めません/);
+  assert.match(problems[0]!.message, /^JSONとして読めません/);
 });
 
 test('読み込みの誤り: formatと版が違う', () => {
@@ -361,14 +361,114 @@ test('読み込みの誤り: 出力が空・値の型が違う', () => {
   );
 });
 
-test('読み込みの誤り: fromFacesが組めない面は、どの面かを位置で返す', () => {
+/** 利用者に見せる文に、内部の語（型名・内部の検査の語）が入っていないこと。 */
+function assertUserFacing(problems: readonly { path: string; message: string }[]) {
+  for (const problem of problems) {
+    assert.doesNotMatch(problem.message, /Face|Requirement|face:|aggregation|SemanticInput/, `${problem.path}: ${problem.message}`);
+  }
+}
+
+test('読み込みの誤り: 打鍵の順序と先押しの矛盾は、読み込みの段で利用者向けの文で返す', () => {
   const file = validFile();
-  // modeが前置なのに先押しの制約が後置、という矛盾はcompilerが検出する
   Object.assign((file.faces as Record<string, unknown>[])[1]!, { mode: 'prefix', triggerOrder: 'suffix' });
   const problems = problemsOf(file);
+  assert.deepEqual(
+    problems.map((problem) => problem.path),
+    ['faces[1].triggerOrder'],
+  );
+  assert.match(problems[0]!.message, /^面2の打鍵の順序（mode）が「prefix」なのに/);
+  assertUserFacing(problems);
+  // 同じ向きなら通る
+  Object.assign((file.faces as Record<string, unknown>[])[1]!, { triggerOrder: 'prefix' });
+  assert.ok(parseKanaLayoutFile(JSON.stringify(file)).ok);
+});
+
+test('読み込みの誤り: 修飾の組がtrigger以外のキーを指す・triggerの一部しか分類しない', () => {
+  const file = validFile();
+  const face = (file.faces as Record<string, unknown>[])[1]!;
+  face.trigger = ['thumb-l', 'thumb-r'];
+  face.modifierGroups = { 'thumb-l': 'A', f: 'B', 'thumb-r': 'C' };
+  const outside = problemsOf(file);
+  assert.deepEqual(
+    outside.map((problem) => problem.path),
+    ['faces[1].modifierGroups.f'],
+  );
+  assertUserFacing(outside);
+  face.modifierGroups = { 'thumb-l': 'A' };
+  const partial = problemsOf(file);
+  assert.deepEqual(
+    partial.map((problem) => problem.path),
+    ['faces[1].modifierGroups'],
+  );
+  assert.match(partial[0]!.message, /すべて分類してください/);
+  assertUserFacing(partial);
+  face.modifierGroups = { 'thumb-l': 'A', 'thumb-r': 'B' };
+  assert.ok(parseKanaLayoutFile(JSON.stringify(file)).ok);
+});
+
+test('読み込みの誤り: compositionの面の数え方の制約（層は1キー・コンボ枠にレイヤー名は不可・同じキーを2枚不可）', () => {
+  const file = validFile();
+  const faces = file.faces as Record<string, unknown>[];
+  Object.assign(faces[1]!, { inputRole: 'composition', compositionAggregation: 'layer', trigger: ['thumb-l', 'thumb-r'] });
+  delete faces[1]!.layer;
+  const twoKeys = problemsOf(file);
+  assert.deepEqual(
+    twoKeys.map((problem) => problem.path),
+    ['faces[1].compositionAggregation'],
+  );
+  assertUserFacing(twoKeys);
+
+  Object.assign(faces[1]!, { compositionAggregation: 'combo', layer: '左親指' });
+  const comboLayer = problemsOf(file);
+  assert.deepEqual(
+    comboLayer.map((problem) => problem.path),
+    ['faces[1].layer'],
+  );
+  assertUserFacing(comboLayer);
+
+  Object.assign(faces[1]!, { compositionAggregation: 'layer', trigger: ['thumb-l'] });
+  delete faces[1]!.layer;
+  faces.push({ ...structuredClone(faces[1]!), mode: 'prefix', outputs: { d: 'う' } });
+  const duplicate = problemsOf(file);
+  assert.deepEqual(
+    duplicate.map((problem) => problem.path),
+    ['faces[2]'],
+  );
+  assert.match(duplicate[0]!.message, /面3は面2と/);
+  assertUserFacing(duplicate);
+});
+
+test('読み込みの誤り: 読み込みの段で弾けない組み立ての失敗は、汎用の文と内部の文（詳細）に分ける', () => {
+  const file = validFile();
+  const faces = file.faces as Record<string, unknown>[];
+  // 同じレイヤー名で、対象のキーが重なる面（畳み条件を満たさない）
+  faces.push({ ...structuredClone(faces[1]!), trigger: ['thumb-r'] });
+  const problems = problemsOf(file);
   assert.equal(problems.length, 1);
-  assert.equal(problems[0]!.path, 'faces[1]');
-  assert.match(problems[0]!.message, /^面2を加えると/);
+  assert.equal(problems[0]!.path, 'faces[2]');
+  assert.match(problems[0]!.message, /^面3を加えると配列を組めません。triggerと打鍵の順序、同じキーの出力を見直してください$/);
+  assert.ok(problems[0]!.detail !== undefined && problems[0]!.detail !== '', '内部の文は詳細に残す');
+  assertUserFacing(problems);
+});
+
+test('読み込みの誤り: 濁点・半濁点の合成が組めない時も、内部の文は詳細に分ける', () => {
+  const { layout } = read(JSON.stringify(validFile()));
+  // 読み込みの検査をすり抜けた値を直接組み立てる
+  const broken = { ...layout, faces: [{ ...layout.faces[0]!, outputs: { a: 'あ', s: 'か' } }, layout.faces[1]!] };
+  assert.throws(
+    () => buildFaceLayout('x', 'x', broken),
+    (error: unknown) => {
+      const problem = (error as { problems: { message: string; detail?: string }[] }).problems[0]!;
+      assertUserFacing([{ path: 'composition', message: problem.message }]);
+      return problem.detail !== undefined && /未定義/.test(problem.detail);
+    },
+  );
+});
+
+test('読み込みの誤り: JSONの構文の誤りは、利用者向けの文とブラウザの文（詳細）に分ける', () => {
+  const problems = problemsOf('{ "format": ');
+  assert.equal(problems[0]!.message, 'JSONとして読めません。括弧や引用符、カンマを確かめてください');
+  assert.ok((problems[0]!.detail ?? '') !== '');
 });
 
 test('読み込みの誤り: 複数の誤りは1回で全部返す', () => {
