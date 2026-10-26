@@ -3,6 +3,7 @@ import { bigramFlowOptions } from '#analyzers/bigram-flow/options.ts';
 import { bunsetsuStatsOptions } from '#analyzers/bunsetsu-stats/options.ts';
 import { comparisonOptions } from '#analyzers/comparison/options.ts';
 import { fingerDistanceOptions } from '#analyzers/finger-distance/options.ts';
+import { handRhythmOptions } from '#analyzers/hand-rhythm/options.ts';
 import { fingerMatrixOptions } from '#analyzers/finger-matrix/options.ts';
 import { heatmapOptions } from '#analyzers/heatmap/options.ts';
 import { heatmapLayersOptions } from '#analyzers/heatmap-layers/options.ts';
@@ -26,6 +27,7 @@ export const ANALYZER_OPTIONS_DECODERS: ReadonlyMap<string, AnalyzerOptionsDecod
   ['bunsetsu-stats', bunsetsuStatsOptions.decodeOptions],
   ['comparison', comparisonOptions.decodeOptions],
   ['finger-distance', fingerDistanceOptions.decodeOptions],
+  ['hand-rhythm', handRhythmOptions.decodeOptions],
   ['finger-matrix', fingerMatrixOptions.decodeOptions],
   ['heatmap', heatmapOptions.decodeOptions],
   ['heatmap-layers', heatmapLayersOptions.decodeOptions],

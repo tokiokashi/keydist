@@ -1,6 +1,7 @@
 import { Link, createFileRoute } from '@tanstack/react-router';
 import { BIGRAM_FLOW_PANE_META } from '#analyzers/bigram-flow/pane-meta.ts';
 import { FINGER_DISTANCE_PANE_META } from '#analyzers/finger-distance/pane-meta.ts';
+import { HAND_RHYTHM_PANE_META } from '#analyzers/hand-rhythm/pane-meta.ts';
 import { HEATMAP_PANE_META } from '#analyzers/heatmap/pane-meta.ts';
 import { HEATMAP_LAYERS_PANE_META } from '#analyzers/heatmap-layers/pane-meta.ts';
 import { KEYMAP_PANE_META } from '#analyzers/keymap/pane-meta.ts';
@@ -35,6 +36,9 @@ function SidebarSample() {
         </Link>
         <Link className="sidebar-link" to="/analyzer/finger-distance">
           {FINGER_DISTANCE_PANE_META.name}
+        </Link>
+        <Link className="sidebar-link" to="/analyzer/hand-rhythm">
+          {HAND_RHYTHM_PANE_META.name}
         </Link>
         <Link className="sidebar-link" to="/analyzer/heatmap">
           {HEATMAP_PANE_META.name}

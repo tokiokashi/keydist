@@ -24,6 +24,8 @@ keydist のコードの分け方と依存の向き。
 | 打ち方 | input method | テキストの言語 × 配列の種類から導く（かな直接 / ローマ字 / 直接） |
 | Trace | `Trace` | 対象を解決した入力でテキストを打った記録（打鍵列・指の移動・押し方）。`generateTrace` が作る |
 | 解釈 | `…Interpretation`（`ChainInterpretation` 等） | **Traceの読み方**。Traceを変えずに数値の定義を変える（chain・arpeggio等の数え方）。複数のAnalyzerが読むものだけ |
+| 交互打鍵の連続 | `HandRhythmResult.alternatingRuns` | 片手の打鍵が続き、隣り合う組がすべて手の切り替えになっている、3打鍵以上の区間（仕様 §10.7）。孤立した1回の切り替えは数えない。画面の語は「交互打鍵の連続」。仕様 §7.1の「異手（交互打鍵）」（1回の遷移）とは別 |
+| 両手の打鍵 | `HandStrokeKind` の `both-output`・`both-mixed` | 押下する手が左右の2つの打鍵（仕様 §10.7）。どちらの手も文字を出す場合は「両手で文字を出す」（`both-output`）、少なくとも一方が切り替えのキーだけの場合は「片手は切り替えのキーだけ」（`both-mixed`）と画面に出す。両手の打鍵を含む組は、手の切り替えにも同じ手の続きにも数えない |
 | Analyzer | `AnalyzerDefinition` | **機能の単位**。抽出 + 可視化 + 解析設定 |
 | 抽出 | extract | Trace（と解釈の結果）からAnalyzerが使うデータを取り出す純関数 |
 | 可視化 | visualization | 抽出したデータを表示するcomponent。計算しない。ペインの本体として描く（「Analyzerがペインに渡すもの」） |
