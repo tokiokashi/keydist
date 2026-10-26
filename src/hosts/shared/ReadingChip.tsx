@@ -132,9 +132,7 @@ function ReadingEditor({ evaluation, source, targets, setups, catalog, overrides
 
   return (
     <div className="reading-editor">
-      <p className="reading-editor-hint">
-        漢字を含む語の読みです。直すと、このテキストの同じ表記の語すべてに当たります。ひらがなと「ー」で入力できます。
-      </p>
+      <p className="reading-editor-hint">漢字を含む語の読みです。直すと、このテキストの同じ表記の語すべてに当たります。</p>
       {tableState.kind === 'failed' ? (
         <p className="reading-editor-note" role="status" data-reading-candidates="failed">
           読みの候補を読み込めませんでした。読みを入力して直せます。

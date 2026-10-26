@@ -312,7 +312,7 @@ function TextEditor({ holder, textLibrary, selection, dispatch, generateTextId, 
       <p className="text-editor-hint">
         {resolved.isBuiltin
           ? 'サンプルを書き換えると、自作のテキストとして新しく保存します。元のサンプルはそのまま残ります。'
-          : '自作のテキストはその場で書き換わります。残しておきたい時は先に複製します。'}
+          : '自作のテキストはその場で書き換わります。'}
       </p>
     </div>
   );

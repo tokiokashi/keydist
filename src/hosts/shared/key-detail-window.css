@@ -89,11 +89,28 @@
   border-bottom: 1px solid var(--border);
 }
 
+/* 開閉できることを、手順の文ではなく矢印で示す。flexにするとブラウザ標準の三角が消えるため */
+.key-detail-faces summary::after {
+  content: '';
+  flex: none;
+  align-self: center;
+  width: 0.4rem;
+  height: 0.4rem;
+  border-right: 1.5px solid var(--text-muted);
+  border-bottom: 1.5px solid var(--text-muted);
+  transform: rotate(45deg);
+}
+
+.key-detail-faces details[open] > summary::after {
+  transform: rotate(225deg);
+}
+
 .key-detail-faces details > :not(summary) {
   margin: 0.5rem;
 }
 
 .key-detail-face-count {
+  margin-left: auto;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }

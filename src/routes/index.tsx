@@ -101,13 +101,13 @@ function Home() {
           </li>
           <li>
             <h2>始め方</h2>
-            <p>気になる配列を1つ選んでください。続けて見たい Analyzer を開きます。</p>
+            <p>配列を1つ選んで、見たいAnalyzerを開けます。</p>
             <TopTargetPick />
             <p className="top-note">※テキスト・物理配列・条件は、Analyzer を移っても引き継がれます。</p>
           </li>
           <li>
             <h2>Workspace</h2>
-            <p>複数の Analyzer を並べて見る画面です。サイドバーの「＋ 新しいWorkspace」から作ります。中身の入ったサンプルから始めることもできます。</p>
+            <p>複数の Analyzer を並べて見る画面です。中身の入ったサンプルから始めることもできます。</p>
             <div className="top-sample-workspaces">
               {SAMPLE_KINDS.map((kind) => (
                 <button key={kind} type="button" className="top-sample-workspace" onClick={() => createSample(kind)}>
