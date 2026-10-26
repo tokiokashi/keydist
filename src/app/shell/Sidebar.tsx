@@ -17,6 +17,7 @@ import type { ThemeChoice } from '../theme/theme.ts';
 import { ABOUT_LABEL } from '../about/AboutPage.tsx';
 import { FINGER_ASSIGNMENT_LABEL } from '#editors/finger-assignment/label.ts';
 import { SETUP_LABEL } from '../setup/label.ts';
+import { KANA_LAYOUT_LABEL } from '#editors/kana-layout/label.ts';
 import { ROMAJI_LAYOUT_LABEL } from '#editors/romaji-layout/label.ts';
 import { ROMAJI_RULE_LABEL } from '#editors/romaji-rule/label.ts';
 import { PERSONAL_SPEED_LABEL } from '#editors/personal-speed/label.ts';
@@ -319,6 +320,9 @@ export function Sidebar({ pinned, onPinnedChange, onNavigate }: SidebarProps) {
           </NavLink>
           <NavLink to="/romaji-layout" onNavigate={onNavigate}>
             {ROMAJI_LAYOUT_LABEL}
+          </NavLink>
+          <NavLink to="/kana-layout" onNavigate={onNavigate}>
+            {KANA_LAYOUT_LABEL}
           </NavLink>
           <NavLink to="/romaji-rule" onNavigate={onNavigate}>
             {ROMAJI_RULE_LABEL}
