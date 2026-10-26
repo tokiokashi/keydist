@@ -534,7 +534,10 @@ export function FingerAssignmentEditor({
                         value={editingFinger ?? ''}
                         onChange={(event) => {
                           const picked = event.currentTarget.value;
-                          setEditingFinger(ALL_FINGERS.includes(picked as Finger) ? (picked as Finger) : undefined);
+                          const finger = ALL_FINGERS.includes(picked as Finger) ? (picked as Finger) : undefined;
+                          setEditingFinger(finger);
+                          // 指を選んだ時は、選んでいたキーを外す。図の強調を指の担当キーだけにし、「キー単位」の欄も選んでいない状態へ戻す
+                          if (finger !== undefined) setSelectedKeyId(undefined);
                         }}
                       >
                         <option value="">選ばない</option>
