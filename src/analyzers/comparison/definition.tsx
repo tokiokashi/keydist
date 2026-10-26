@@ -159,7 +159,12 @@ export function ComparisonBody({ extracted, order, rowContext, baselineTargetKey
                   </th>
                   {visibleColumns.map((column) => {
                     const value = row.values[column];
-                    const showRatio = showBaselineRatio && effectiveBaseline !== undefined && effectiveBaseline.targetKey !== targetKey;
+                    const showRatio =
+                      showBaselineRatio &&
+                      effectiveBaseline !== undefined &&
+                      effectiveBaseline.targetKey !== targetKey &&
+                      Number.isFinite(value) &&
+                      Number.isFinite(effectiveBaseline.values[column]);
                     const fraction = comparisonBarFraction(value, barRanges.get(column));
                     return (
                       <td

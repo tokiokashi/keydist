@@ -204,7 +204,14 @@ test('列名は短くそろい、見出しのセルにⓘは置かない', async
     'Bigram数（物理キー）',
     'Bigram数（シフト込み）',
     '交互打鍵の連続の割合',
-    '同じ手の継続率',
+    '同じ手の続きの割合',
+    '手の切り替え',
+    '同じ手の続き',
+    '両手の打鍵を含む組の割合',
+    '両手の打鍵',
+    '交互打鍵の連続の数',
+    '交互打鍵の連続の平均の長さ',
+    '交互打鍵の連続の最長の長さ',
   ]);
   // 列ごとの説明は、見出しのⓘから開くモーダルに出る（comparison-column-help.spec.ts）。見出しのセルにⓘは置かない。
   await expect(table.locator('thead .info-button')).toHaveCount(0);
@@ -220,11 +227,11 @@ for (const width of [1500, 390]) {
     await page.setViewportSize({ width, height: 800 });
     const table = await openComparison(page);
     const none = await headerWidths(table);
-    expect(none).toHaveLength(20);
+    expect(none).toHaveLength(27);
 
     // 全列を順に押して、押した列を含む全列の幅が3状態で1px以内で同じことを確かめる。
     const labels = (await table.locator('thead th .sort-column-button').allInnerTexts()).map((text) => text.replace(/[↑↓]/g, '').trim());
-    expect(labels).toHaveLength(19);
+    expect(labels).toHaveLength(26);
     for (const label of labels) {
       const button = sortButton(table, label);
       await button.scrollIntoViewIfNeeded();
