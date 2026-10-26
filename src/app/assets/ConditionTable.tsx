@@ -68,9 +68,7 @@ export function ConditionTable({
   return (
     <section className="user-assets-section" data-user-assets-section="conditions">
       <h2>条件の設定</h2>
-      <p className="user-assets-detail">
-        適用範囲を選ぶと、その適用範囲で変えられる項目が並びます。値を変えるとその適用範囲に保存し、継承する値と同じ値にすると変更は消えます。
-      </p>
+      <p className="user-assets-detail">継承する値と同じ値にした項目は、変更として残りません。</p>
       <label className="conditions-table-select">
         適用範囲
         <select

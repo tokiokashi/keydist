@@ -149,9 +149,7 @@ export function SetupPage({
   return (
     <article className="setup-page" data-setup-page>
       <h1>{SETUP_LABEL}</h1>
-      <p className="setup-note">
-        配列と物理配列の組に、その組だけの条件を足せます。作ったSetupは、Analyzerの対象やWorkspaceのペインから選べます。削除は「データ・設定の管理」の画面で行います。
-      </p>
+      <p className="setup-note">配列と物理配列の組に、その組だけの条件を足せます。削除は「データ・設定の管理」の画面で行います。</p>
       <div className="setup-toolbar">
         <button type="button" disabled={!canUndo} onClick={onUndo}>
           元に戻す
@@ -206,7 +204,7 @@ export function SetupPage({
                 <input
                   type="text"
                   aria-label="Setupの名前"
-                  placeholder="省略できます"
+                  placeholder="自動で付けます"
                   value={labelDraft}
                   onChange={(event) => setLabelDraft(event.currentTarget.value)}
                 />
@@ -215,7 +213,6 @@ export function SetupPage({
                 作る
               </button>
             </form>
-            <p className="setup-note">名前を入れなければ、配列と物理配列から自動で付きます。</p>
           </section>
 
           <section className="setup-section" aria-labelledby="setup-list-title">

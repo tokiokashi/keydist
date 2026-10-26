@@ -188,10 +188,10 @@ function ConditionModal({ rows, header, targetDiffs, provenance, editor, onClose
             {inWorkspace
               ? editor.layout === undefined
                 ? 'このWorkspaceの値を変えます。他の画面には反映されません'
-                : `このWorkspaceの値を変えます。行ごとに全体や「${editor.layout.name}」だけの値にもできます`
+                : 'このWorkspaceの値を変えます'
               : editor.layout === undefined
                 ? '全体の値を変えます。すべての画面に反映されます'
-                : `全体の値を変えます。行ごとに「${editor.layout.name}」だけの値にもできます`}
+                : '全体の値を変えます'}
           </span>
           <button type="button" className="condition-modal-reset-all" disabled={resetPlan.disabled} onClick={() => editor.dispatch(resetPlan.command)}>
             {inWorkspace ? 'Workspaceの変更をすべて戻す' : 'すべて既定値に戻す'}
