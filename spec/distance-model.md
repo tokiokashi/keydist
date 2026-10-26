@@ -1090,7 +1090,8 @@ Roll・Arpeggio・SFBとは排他の分類にしない。同じStrokeが交互�
 - 同じ手の継続: どちらも片手のStrokeで、手が同じ
 - 両手を含む組: 少なくとも一方が両手のStroke（同時出力または混在）
 
-押下する手が無いStrokeを含む組は、どれにも数えない。手の切り替えは、`spec/playback-timing.md` §7.1の異手の遷移（1回の遷移）に当たる。
+押下する手が無いStrokeを含む組は、どれにも数えない。手の切り替えは、`spec/playback-timing.md` §3.1「異手の判定」の異手のうち、どちらも片手のStrokeである組に限ったものにあたる。
+再生の時間では、両手のStrokeを含む組も手の違う押下の組が見つかれば異手になりうるが、Hand Rhythmはそれを両手を含む組に分ける。そのため、手の切り替えの数は異手の組数と一致しない。
 
 **連続。** 区間はStroke indexのhalf-open範囲 `[start, end)` で持つ（§10.4と同じ）。
 
@@ -1107,9 +1108,9 @@ Roll・Arpeggio・SFBとは排他の分類にしない。同じStrokeが交互�
 - 交互打鍵の連続の数・平均の長さ・最長の長さ（Stroke数）
 - 交互打鍵が覆うStrokeの割合: 交互打鍵の連続が覆うStroke indexの和集合の数 / 全Stroke数（§10.6のcoverageと同じ数え方）。全Strokeが0件なら0
 
-集計結果には、値に効く `TriggerRealizationPolicy` と `ActionRealizationPolicy` のimmutableなsnapshotを持たせる。
-Hand Rhythmは解釈のPolicyを持たないので、条件（§12.3）は増えない。ただし手の判定は押下で行うので、既存の条件 `TriggerRealizationPolicy.useHold` で値が変わる
-（保持を続けるStrokeの層キーが押下から外れ、両手の混在が片手のStrokeになる）。
+Hand Rhythmは解釈のPolicyを持たないので、条件（§12.3）は増えない。値は `Trace` だけで決まるので、`Trace` を変える条件（物理配列・指割り当て・窓幅 `N`・綴りの規則・`TriggerRealizationPolicy`・`ActionRealizationPolicy` など、距離と同じ条件）を変えると値も変わる。
+たとえば手の判定は押下で行うので、指割り当てを変えるとStrokeの手が変わり、`TriggerRealizationPolicy.useHold` を変えると、保持を続けるStrokeの層キーが押下から外れて両手の混在が片手のStrokeになる。
+集計結果には、§10.6と同じく、その `Trace` を生成した `TriggerRealizationPolicy` と `ActionRealizationPolicy` のimmutableなsnapshotを持たせる。
 Chain・Arpeggioのsnapshotを持つ `AggregatedAnalysisResult` と `Metrics` には載せず、比較表の2列（§11.13）は行の抽出が `Trace` から数える。
 
 *採らなかった案。*
@@ -1580,7 +1581,7 @@ Strokeがトリガーとして挙げたキーをトリガーとして数え、�
 - **同じ手の継続率**: 同じ手の継続の組数 /（手の切り替えの組数 + 同じ手の継続の組数）× 100（%）。分母が0なら0。両手を含む組は分母に入れない
 
 切り替えの回数・連続の数と長さなど、残りの集計（§10.7）は、この2列では出さない。
-値に効く条件は、Trigger realizationとAction realizationのPolicyだけで、距離と同じ条件（§12.3）が付く。
+値は `Trace` だけで決まり、`Trace` を変える条件（距離と同じ条件、§12.3）を変えると値も変わる。
 
 ## 12. 数値の性質
 

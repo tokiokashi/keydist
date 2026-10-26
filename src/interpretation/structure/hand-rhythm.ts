@@ -100,7 +100,7 @@ export interface HandRhythmAggregate {
     /** 交互打鍵の連続が覆うStroke index数。rateは全Stroke数が分母で、0件なら0。 */
     readonly coverage: { readonly strokes: number; readonly rate: number };
   };
-  /** 値に効く2つのPolicyのsnapshot。 */
+  /** この`Trace`を生成した、Trigger realizationとAction realizationのPolicyのsnapshot。 */
   readonly conditions: {
     readonly triggerRealizationPolicy: Readonly<TriggerRealizationPolicy>;
     readonly actionRealizationPolicy: Readonly<ActionRealizationPolicy>;

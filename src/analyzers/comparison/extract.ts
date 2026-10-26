@@ -72,7 +72,7 @@ export interface ComparisonExtracted {
 /** `Metrics`と`Trace`から全列を読み出す純関数。Bigramの組の種類数とHand Rhythmの2列ずつだけ`Trace`から数え、他の列は`Metrics`を写す。 */
 export function computeComparisonRowValues(metrics: Metrics, trace: Trace): ComparisonRowValues {
   const bigrams = countBigramCombinations(trace);
-  // Hand Rhythmは値に効く条件がTrigger realizationとAction realizationのPolicyだけなので、条件のスナップショットからそれを読む。
+  // Hand Rhythmの値は`Trace`だけで決まる。集計が持つ条件のスナップショットには、`Trace`を生成したTrigger realizationとAction realizationのPolicyを渡す。
   const handRhythm = analyzeHandRhythm(trace.strokes, metrics.conditions.triggerRealizationPolicy, metrics.conditions.actionRealizationPolicy).aggregate;
   const { mean: adjacentMean, stdDev: adjacentStdDev } = adjacentMeanStdDev(metrics.adjacent);
   return {

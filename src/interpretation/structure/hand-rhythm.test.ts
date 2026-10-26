@@ -184,7 +184,7 @@ test('押下する手が無いストロークはどの組にも入れず連続�
   assert.equal(result.aggregate.switches + result.aggregate.continuations, 3);
 });
 
-test('値に効く2つのPolicyのsnapshotを持つ', () => {
+test('Trace生成のTrigger realizationとAction realizationのPolicyのsnapshotを持つ', () => {
   const result = analyzeHandRhythm([], { useHold: true });
   assert.equal(result.aggregate.conditions.triggerRealizationPolicy.useHold, true);
   assert.ok(Object.isFrozen(result.aggregate.conditions));

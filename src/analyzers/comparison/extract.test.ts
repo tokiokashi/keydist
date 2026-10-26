@@ -10,6 +10,7 @@ import { noRemember } from '#analyzers/contract.ts';
 import { computeFingerDistanceExtraction } from '#analyzers/finger-distance/extract.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { findOptionsKeyDisciplineViolations, findViewOptionsExtractionViolations } from '#analyzers/options.ts';
+import { analyzeHandRhythm } from '#interpretation/structure/hand-rhythm.ts';
 import { computeComparisonExtraction, computeComparisonRowValues } from './extract.ts';
 import { ALTERNATE_COMPARISON_OPTIONS, DEFAULT_COMPARISON_OPTIONS, comparisonOptions } from './options.ts';
 
@@ -91,8 +92,10 @@ test('computeComparisonRowValues: interpretation/metrics.tsを同条件で直接
   assert.ok(rightHandDistanceShare > 0 && rightHandDistanceShare < 100);
   assert.ok(rightHandPressShare > 0 && rightHandPressShare < 100);
   assert.ok(physicalBigramCombinations > 0 && logicalBigramCombinations >= physicalBigramCombinations);
-  assert.ok(alternationCoverage > 0 && alternationCoverage <= 100);
-  assert.ok(sameHandContinuationRate > 0 && sameHandContinuationRate < 100);
+  const { aggregate: handRhythm } = analyzeHandRhythm(traceResult.trace.strokes);
+  assert.ok(handRhythm.alternation.coverage.rate !== handRhythm.continuationRate);
+  assert.equal(alternationCoverage, handRhythm.alternation.coverage.rate * 100);
+  assert.equal(sameHandContinuationRate, handRhythm.continuationRate * 100);
 });
 
 test('右手の割合: 指ごとの距離のAnalyzerの右手の小計と同じ値（%）になる', () => {

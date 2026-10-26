@@ -117,7 +117,7 @@ export const COMPARISON_COLUMN_TEXT: Readonly<Record<ComparisonColumnId, Compari
   alternationCoverage: {
     label: '交互打鍵の連続の割合',
     description:
-      '左右の手が交互に変わる3打鍵以上の連続に含まれる打鍵が、全打鍵のうちどれだけを占めるか（%）。前置のシフトのキーも1打鍵と数えます。両手で押す打鍵は連続を切ります。',
+      '左右の手が交互に変わる3打鍵以上の連続に含まれる打鍵が、全打鍵のうちどれだけを占めるか（%）。前置・後置のシフトのキーも1打鍵と数えます。両手で押す打鍵は連続を切ります。',
   },
   sameHandContinuationRate: {
     label: '同じ手の継続率',
