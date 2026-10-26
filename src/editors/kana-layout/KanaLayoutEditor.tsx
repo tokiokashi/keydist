@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ComponentType, type ReactNode } from 'react';
 import {
   blankFace,
   blankFaceLayoutDraft,
@@ -79,6 +79,8 @@ export interface KanaLayoutEditorProps {
   readonly onUpdate: (id: string, content: KanaLayoutContent) => void;
   /** 書き出したJSONをファイルとして保存する。ブラウザの保存は `editors` が持てないので、appが渡す。 */
   readonly onDownload: (filename: string, text: string) => void;
+  /** ローマ字配列の画面へのリンク。ルーターを使えるのは `app` だけなので、`app` が渡す */
+  readonly RomajiLayoutLink: ComponentType<{ readonly children: ReactNode }>;
 }
 
 function ProblemList({ problems, severity }: { readonly problems: readonly FaceLayoutProblem[]; readonly severity: 'error' | 'warning' }) {
@@ -688,13 +690,14 @@ export function KanaLayoutEditor({
   onCreate,
   onUpdate,
   onDownload,
+  RomajiLayoutLink,
 }: KanaLayoutEditorProps) {
   useHistoryShortcuts({ canUndo, canRedo, undo: onUndo, redo: onRedo });
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
   const [newCount, setNewCount] = useState(0);
   // 定義ファイルから取り込んだ、保存していない新しい配列の下書き
   const [imported, setImported] = useState<{ readonly content: KanaLayoutContent; readonly warnings: readonly string[] } | undefined>(undefined);
-  const [importError, setImportError] = useState<string | undefined>(undefined);
+  const [importError, setImportError] = useState<{ readonly message: string; readonly romajiLayout: boolean } | undefined>(undefined);
 
   const editable = useMemo(() => layouts.filter(isFaceUserLayout), [layouts]);
 
@@ -722,7 +725,7 @@ export function KanaLayoutEditor({
   const importFile = async (file: File) => {
     const result = importKanaLayoutFile(file.name, await file.arrayBuffer());
     if (!result.ok) {
-      setImportError(result.message);
+      setImportError({ message: result.message, romajiLayout: result.romajiLayout === true });
       return;
     }
     setImportError(undefined);
@@ -788,7 +791,8 @@ export function KanaLayoutEditor({
           </div>
           {importError === undefined ? null : (
             <p className="kana-layout-error" role="alert" data-kana-file-import="error">
-              {importError}
+              {importError.message}
+              {importError.romajiLayout ? <RomajiLayoutLink>ローマ字配列の画面を開く</RomajiLayoutLink> : null}
             </p>
           )}
           {imported === undefined || !isNew ? null : (

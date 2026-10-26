@@ -1,5 +1,5 @@
 import { QWERTY_LEGEND } from '../shapes/geometry.ts';
-import { buildKanaContent, NO_OUTPUT_MESSAGE, printableOutput, type ParsedCell, type ParsedFace } from './import-faces.ts';
+import { buildKanaContent, dashHeadingWarning, NO_OUTPUT_MESSAGE, printableOutput, type ParsedCell, type ParsedFace } from './import-faces.ts';
 import type { KanaLayoutContent } from './kana-face-layout-file.ts';
 import type { Sequence } from './types.ts';
 
@@ -23,7 +23,15 @@ export type ImportedDefinition = { kind: 'kana'; content: KanaLayoutContent; war
 
 const WIDTHS = QWERTY_LEGEND.map((row) => [...row].length);
 const LATIN = /[A-Za-z]/;
-const KANA = /[\u3040-\u30ff]/u;
+/**
+ * かなの文字。ひらがな・カタカナの字と繰り返し記号だけを数える。
+ * 中黒（U+30FB）・長音（U+30FC）・濁点と半濁点の記号は、ローマ字を出す定義にも置かれるので数えない。
+ * かなを出す定義は、これらの記号のほかにかなの字も必ず出す。
+ */
+const KANA = /[\u3041-\u3096\u309d\u309e\u30a1-\u30fa\u30fd\u30fe]/u;
+
+/** 出力にかなの文字が含まれるか。 */
+export const hasKanaLetter = (value: string): boolean => KANA.test(value);
 
 /** 拡張子ごとの標準的な文字コードを優先しつつ、公開されている配布物の揺れも受け入れる。 */
 export function decodeLayoutFile(bytes: ArrayBuffer | Uint8Array, format: ImportFormat): string {
@@ -67,7 +75,7 @@ function normalise(value: string): string {
 }
 
 function classifyOutput(value: string, kinds: { kana: boolean; latin: boolean }) {
-  if (KANA.test(value)) kinds.kana = true;
+  if (hasKanaLetter(value)) kinds.kana = true;
   if (LATIN.test(value)) kinds.latin = true;
 }
 
@@ -110,6 +118,10 @@ function resolveFaces(name: string, faces: ParsedFace[], warnings: string[]): Im
   const legends = new Map<string, string>();
   const sequences = new Map<string, Sequence>();
   for (const face of faces) {
+    if (face.dashHeading === true) {
+      addWarning(warnings, dashHeadingWarning(face.heading));
+      continue;
+    }
     const base = face.trigger.length === 0;
     for (const cell of face.cells) {
       const physical = QWERTY_LEGEND[cell.row][cell.column];
@@ -603,28 +615,83 @@ export function importBenizara(source: string, name = '紅皿取り込み'): Imp
   return resolveFaces(name, faces, warnings);
 }
 
+/** 定義ファイルを読んだ結果。かなを直接打つ定義は面の形、それ以外は段の形で返る。読めない時は利用者向けの理由を返す。 */
+type ClassifiedFile =
+  | { readonly kind: 'kana'; readonly content: KanaLayoutContent; readonly warnings: readonly string[] }
+  | { readonly kind: 'stage'; readonly layout: ImportedLayout }
+  | { readonly kind: 'error'; readonly message: string };
+
+const UNKNOWN_FORMAT_MESSAGE = '取り込める形式ではありません。DvorakJ（.txt）、Vial（.vil）、紅皿（.bnz・.ini）の定義ファイルに対応しています';
+
+/**
+ * ファイル名と中身から、定義の種類を判定して読む。
+ * Vialは段の形しか作れないので、出力にかなを含む定義は面の形へ変換できず取り込まない。
+ */
+function classifyLayoutFile(fileName: string, bytes: ArrayBuffer | Uint8Array): ClassifiedFile {
+  const format = formatForFileName(fileName);
+  if (format === undefined) return { kind: 'error', message: UNKNOWN_FORMAT_MESSAGE };
+  const name = fileName.replace(/\.[^.]+$/, '').trim();
+  try {
+    const source = decodeLayoutFile(bytes, format);
+    if (format === 'vial') {
+      const layout = importVial(source, name || undefined);
+      if (layout.sequences.some(([output]) => hasKanaLetter(output))) {
+        return { kind: 'error', message: 'かなを出力するVialの定義は、取り込めません' };
+      }
+      return { kind: 'stage', layout };
+    }
+    const result = format === 'dvorakj' ? importDvorakJ(source, name || undefined) : importBenizara(source, name || undefined);
+    return result.kind === 'kana' ? { kind: 'kana', content: result.content, warnings: result.warnings } : { kind: 'stage', layout: result.layout };
+  } catch (error) {
+    return {
+      kind: 'error',
+      message: `取り込めませんでした。${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
+}
+
 /** かな配列の画面で定義ファイルを取り込んだ結果。取り込めない時は利用者向けの理由を返す。 */
 export type KanaFileImportResult =
-  | { readonly ok: true; readonly content: KanaLayoutContent; readonly warnings: readonly string[] }
-  | { readonly ok: false; readonly message: string };
+  | {
+      readonly ok: true;
+      readonly content: KanaLayoutContent;
+      readonly warnings: readonly string[];
+    }
+  | {
+      readonly ok: false;
+      readonly message: string;
+      /** ローマ字配列の画面で取り込める定義か（画面がリンクを添える） */
+      readonly romajiLayout?: true;
+    };
 
 /**
  * ファイル名と中身から、かなを直接打つ配列の面の形を作る。
- * 形式が分からないファイル、Vial、かなを含まない定義は取り込まない。
+ * 形式が分からないファイル、かなを出力するVial、かなを含まない定義は取り込まない。
  */
 export function importKanaLayoutFile(fileName: string, bytes: ArrayBuffer | Uint8Array): KanaFileImportResult {
-  const format = formatForFileName(fileName);
-  if (format === undefined) {
-    return { ok: false, message: '取り込める形式ではありません。DvorakJ（.txt）と紅皿（.bnz・.ini）の定義ファイルに対応しています' };
-  }
-  if (format === 'vial') return { ok: false, message: 'Vialの定義ファイル（.vil）は、かな配列として取り込めません' };
-  const name = fileName.replace(/\.[^.]+$/, '').trim() || 'かな配列';
-  try {
-    const source = decodeLayoutFile(bytes, format);
-    const result = format === 'dvorakj' ? importDvorakJ(source, name) : importBenizara(source, name);
-    if (result.kind === 'stage') return { ok: false, message: 'かな配列ではない定義のため、取り込めません' };
-    return { ok: true, content: result.content, warnings: result.warnings };
-  } catch (error) {
-    return { ok: false, message: `取り込めませんでした。${error instanceof Error ? error.message : String(error)}` };
-  }
+  const result = classifyLayoutFile(fileName, bytes);
+  if (result.kind === 'error') return { ok: false, message: result.message };
+  if (result.kind === 'stage') return { ok: false, message: 'かな配列ではない定義のため、取り込めません', romajiLayout: true };
+  return { ok: true, content: result.content, warnings: result.warnings };
+}
+
+/** ローマ字配列の画面で定義ファイルを取り込んだ結果。取り込めない時は利用者向けの理由を返す。 */
+export type RomajiFileImportResult =
+  | { readonly ok: true; readonly layout: ImportedLayout }
+  | {
+      readonly ok: false;
+      readonly message: string;
+      /** かな配列の画面で取り込める定義か（画面がリンクを添える） */
+      readonly kanaLayout?: true;
+    };
+
+/**
+ * ファイル名と中身から、段の形の取り込み結果を作る。
+ * 形式が分からないファイルと、かなを直接打つ定義は取り込まない。
+ */
+export function importRomajiLayoutFile(fileName: string, bytes: ArrayBuffer | Uint8Array): RomajiFileImportResult {
+  const result = classifyLayoutFile(fileName, bytes);
+  if (result.kind === 'error') return { ok: false, message: result.message };
+  if (result.kind === 'kana') return { ok: false, message: 'かなを直接打つ定義のため、取り込めません', kanaLayout: true };
+  return { ok: true, layout: result.layout };
 }

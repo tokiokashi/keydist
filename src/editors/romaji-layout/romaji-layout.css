@@ -138,3 +138,29 @@
 .romaji-layout-warning {
   color: var(--text-muted);
 }
+
+.romaji-layout-problems {
+  display: grid;
+  gap: 0.2rem;
+  margin: 0 0 0.6rem;
+  padding: 0;
+  list-style: none;
+}
+
+.romaji-layout-imported-line {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.romaji-layout-imported-row {
+  overflow-x: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: pre;
+}
+
+.romaji-layout-error a {
+  margin-inline-start: 0.5rem;
+}

@@ -3,8 +3,11 @@ import assert from 'node:assert/strict';
 import {
   decodeLayoutFile,
   formatForFileName,
+  hasKanaLetter,
   importBenizara,
   importDvorakJ,
+  importKanaLayoutFile,
+  importRomajiLayoutFile,
   importVial,
   isDashSeparatedHeader,
   type ImportedDefinition,
@@ -12,7 +15,8 @@ import {
 } from './import.ts';
 import { CUSTOM_COMBOS } from './combos-custom.ts';
 import { buildFaceLayout, duplicateOutputNotices } from './kana-face-layout.ts';
-import { toLayout, type UserLayout } from './user-layouts.ts';
+import { createUserLayout, contentOfImported } from './layout-edit.ts';
+import { toLayout, type StageUserLayout, type UserLayout } from './user-layouts.ts';
 
 const kanaOf = (result: ImportedDefinition) => {
   assert.equal(result.kind, 'kana');
@@ -279,7 +283,7 @@ test('ハイフン区切りの見出しの面にだけかながある定義は�
   assert.ok(warnings.some((warning) => warning.includes('「-f-j」')));
 });
 
-test('ハイフン区切りの見出しの面は、段の形（ローマ字）では今まで通り読む', () => {
+test('ハイフン区切りの見出しの面は、段の形（ローマ字）でも取り込まずに注意へ入れる', () => {
   const source = [
     '-option-input[',
     '  {F} | +21',
@@ -292,7 +296,14 @@ test('ハイフン区切りの見出しの面は、段の形（ローマ字）�
     ...DASH_FACE.map((line) => line.replace(/[がぎぐ]/g, 'a')),
   ].join('\n');
   const layout = stageOf(importDvorakJ(source));
-  assert.deepEqual(new Map(layout.sequences).get('a'), [['f', 'j', 'q']]);
+  assert.equal(new Map(layout.sequences).has('a'), false);
+  assert.equal(new Map(layout.sequences).has('q'), true);
+  assert.ok(layout.warnings.some((warning) => warning.includes('「-f-j」') && warning.includes('取り込みませんでした')));
+});
+
+test('ハイフン区切りの見出しの面は、かなかローマ字かの判定には含める', () => {
+  const source = ['-option-input[', '  {F} | +21', '  {J} | +24', ']', '[', '  |||', '  q|w|e|', ']', ...DASH_FACE].join('\n');
+  assert.throws(() => importDvorakJ(source), /混在/);
 });
 
 test('紅皿のかな定義は、面ごとのtriggerと出力を持つ面の形になる', () => {
@@ -431,4 +442,136 @@ test('見出しの区切り判定は、長い攻撃文字列でもすぐに終�
   assert.equal(isDashSeparatedHeader(`-${',-'.repeat(50000)}-x--`), false);
   assert.equal(isDashSeparatedHeader(`-${'a-'.repeat(50000)}-`), false);
   assert.ok(performance.now() - started < 1000);
+});
+
+test('かなの判定は、かなの文字だけを数える。中黒・長音・濁点の記号は数えない', () => {
+  for (const kana of ['あ', 'ぁ', 'ゔ', 'ア', 'ァ', 'ヴ', 'ヺ', 'ゝ', 'ヽ', 'ん', 'ン']) assert.equal(hasKanaLetter(kana), true, kana);
+  for (const other of ['・', 'ー', '゛', '゜', '゠', 'a', '漢', '、', '。', '1']) assert.equal(hasKanaLetter(other), false, other);
+});
+
+test('中黒を出力に含むローマ字の紅皿の定義が、段の形で取り込める', () => {
+  const source = ['[ローマ字シフト無し]', 'a,b,・,ー', 'c,d,e,f', 'g,h,i,j', 'k,l,m,n'].join('\n');
+  const layout = stageOf(importBenizara(source, 'テスト'));
+  const sequences = new Map(layout.sequences);
+  assert.deepEqual(sequences.get('・'), [['3']]);
+  assert.deepEqual(sequences.get('ー'), [['4']]);
+  assert.deepEqual(sequences.get('a'), [['1']]);
+});
+
+test('中黒だけでなくかなの文字も出力にある紅皿の定義は、今まで通りかなの定義になる', () => {
+  const source = ['[かなシフト無し]', 'あ,い,・,ー', 'う,え,お,か', 'き,く,け,こ', 'さ,し,す,せ'].join('\n');
+  const { content } = kanaOf(importBenizara(source, 'テスト'));
+  assert.equal(content.faces[0]?.outputs['3'], '・');
+});
+
+const encode = (text: string) => new TextEncoder().encode(text);
+
+const ROMAJI_DVORAKJ = [
+  '-option-input[',
+  '  {S} | +shift',
+  ']',
+  '[',
+  '  |||',
+  '  k|a|t|',
+  '  s|i|u|',
+  '  |||',
+  ']',
+  '({S}[',
+  '  |||',
+  '  g|z|d|',
+  '  |||',
+  '  |||',
+  ']',
+].join('\n');
+
+const VIAL_ROWS = [
+  ['KC_1', 'KC_2', 'KC_3', 'KC_4', 'KC_5', 'KC_6', 'KC_7', 'KC_8', 'KC_9', 'KC_0', 'KC_MINS', 'KC_EQL'],
+  ['KC_Q', 'KC_W', 'KC_E', 'KC_R', 'KC_T', 'KC_Y', 'KC_U', 'KC_I', 'KC_O', 'KC_P', 'KC_LBRC', 'KC_RBRC'],
+  ['KC_A', 'KC_S', 'KC_D', 'KC_F', 'KC_G', 'KC_H', 'KC_J', 'KC_K', 'KC_L', 'KC_SCLN', 'KC_QUOT'],
+  ['KC_Z', 'KC_X', 'KC_C', 'KC_V', 'KC_B', 'KC_N', 'KC_M', 'KC_COMMA', 'KC_DOT', 'KC_SLASH'],
+];
+
+test('ローマ字配列の画面の取り込みは、ローマ字の定義を段の形で返す', () => {
+  const dvorakj = importRomajiLayoutFile('私の配列.txt', encode(ROMAJI_DVORAKJ));
+  assert.ok(dvorakj.ok);
+  assert.equal(dvorakj.layout.name, '私の配列');
+  assert.deepEqual(new Map(dvorakj.layout.sequences).get('g'), [['space', 'q']]);
+
+  const vial = importRomajiLayoutFile(
+    'kbd.vil',
+    encode(
+      JSON.stringify({
+        layout: [VIAL_ROWS],
+        macro: [[['text', 'desu']]],
+        combo: [
+          ['KC_D', 'KC_S', 'KC_NO', 'KC_NO', 'M0'],
+          ['MO(1)', 'KC_A', 'KC_NO', 'KC_NO', 'KC_B'],
+        ],
+      }),
+    ),
+  );
+  assert.ok(vial.ok);
+  assert.deepEqual(new Map(vial.layout.sequences).get('desu'), [['d', 's']]);
+  assert.ok(vial.layout.warnings.some((warning) => warning.includes('MO(1)')));
+});
+
+test('ローマ字配列の画面の取り込みは、かなの定義にかな配列の画面へのリンクを付け、形式が分からないファイルを取り込まない', () => {
+  const kana = importRomajiLayoutFile('かな.txt', encode(DVORAKJ_KANA));
+  assert.ok(!kana.ok);
+  assert.equal(kana.kanaLayout, true);
+  const unknown = importRomajiLayoutFile('layout.csv', encode('a,b'));
+  assert.ok(!unknown.ok);
+  assert.match(unknown.message, /取り込める形式ではありません/);
+  assert.equal(unknown.kanaLayout, undefined);
+  const broken = importRomajiLayoutFile('x.vil', encode('{}'));
+  assert.ok(!broken.ok);
+  assert.match(broken.message, /Vial/);
+});
+
+test('かなを出力するVialの定義は、どちらの画面でも取り込まない', () => {
+  const rows = VIAL_ROWS.map((row) => [...row]);
+  const macro = [[['text', 'か']]];
+  const source = JSON.stringify({ layout: [rows], macro, combo: [['KC_D', 'KC_S', 'KC_NO', 'KC_NO', 'M0']] });
+  const romaji = importRomajiLayoutFile('kbd.vil', encode(source));
+  assert.ok(!romaji.ok);
+  assert.match(romaji.message, /かなを出力するVial/);
+  assert.equal(romaji.kanaLayout, undefined);
+  const kana = importKanaLayoutFile('kbd.vil', encode(source));
+  assert.ok(!kana.ok);
+  assert.equal(kana.romajiLayout, undefined);
+});
+
+test('かな配列の画面の取り込みは、かなを含まない定義にローマ字配列の画面へのリンクを付ける', () => {
+  const romaji = importKanaLayoutFile('romaji.txt', encode(ROMAJI_DVORAKJ));
+  assert.ok(!romaji.ok);
+  assert.match(romaji.message, /かな配列ではない/);
+  assert.equal(romaji.romajiLayout, true);
+  const vial = importKanaLayoutFile('kbd.vil', encode(JSON.stringify({ layout: [VIAL_ROWS] })));
+  assert.ok(!vial.ok);
+  assert.equal(vial.romajiLayout, true);
+  const unknown = importKanaLayoutFile('layout.csv', encode('a,b'));
+  assert.ok(!unknown.ok);
+  assert.equal(unknown.romajiLayout, undefined);
+  assert.ok(importKanaLayoutFile('かな.txt', encode(DVORAKJ_KANA)).ok);
+});
+
+test('取り込んだ段の形を自作の配列として保存しても、取り込み直後の配列と打鍵列が一致する', () => {
+  const imported = stageOf(importDvorakJ(ROMAJI_DVORAKJ, '取り込み'));
+  const created = createUserLayout([], () => 'user-x', contentOfImported(imported, 'kunrei'));
+  assert.ok(created.ok);
+  const saved = created.layouts[0] as StageUserLayout;
+  assert.deepEqual(saved.rows, imported.rows);
+  assert.deepEqual(saved.sequences, imported.sequences);
+  assert.deepEqual(saved.legends, imported.legends);
+  const direct = toLayout({
+    id: 'user-x',
+    name: '取り込み',
+    rows: imported.rows,
+    romaji: 'kunrei',
+    sequences: imported.sequences,
+    legends: imported.legends,
+  });
+  const stored = toLayout(saved);
+  assert.deepEqual([...stored.map], [...direct.map]);
+  assert.deepEqual([...stored.canonicalInputs], [...direct.canonicalInputs]);
 });

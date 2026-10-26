@@ -4,7 +4,7 @@ import { waitForHydration } from './hydration-helper.ts';
 /**
  * ローマ字配列の画面のE2E。検査の分岐と数値の一致はunit testが持つので、
  * ここでは画面の配線を見る: サイドバーから開ける、不備の場所が出る、作る・直す・元に戻す、
- * 保存先に反映される、トップの対象の選択に並ぶ、取り込み形式の配列は開かない。
+ * 保存先に反映される、トップの対象の選択に並ぶ、取り込み形式の配列は名前だけを直せる。
  */
 
 const STORAGE_KEY = 'keydist:user-layouts';
@@ -91,7 +91,7 @@ test('指が担当しないキーをホームキーにすると警告が出て�
   await expect(page.locator('.romaji-layout-home [data-layout-problem="warning"]')).toHaveCount(0);
 });
 
-test('取り込み形式の配列は開かず、直せない旨を出す', async ({ page }) => {
+test('取り込み形式の配列は、名前だけを直せ、段の文字と同時押しの出力は読み取り専用で示される', async ({ page }) => {
   await page.addInitScript((key) => {
     if (localStorage.getItem(key) !== null) return;
     localStorage.setItem(
@@ -102,9 +102,10 @@ test('取り込み形式の配列は開かず、直せない旨を出す', async
           {
             id: 'user-imported',
             name: '取り込んだ配列',
-            rows: ['1234567890-=', 'qwertyuiop[]', "asdfghjkl;'", 'zxcvbnm,./'],
+            rows: ['  34        ', ' qwert      ', 'as df      ', ' x        '],
             romaji: 'kunrei',
-            sequences: [['あ', [['a']]]],
+            sequences: [['desu', [['d', 's']]]],
+            legends: [['a', 'Enter']],
           },
         ],
       }),
@@ -112,7 +113,17 @@ test('取り込み形式の配列は開かず、直せない旨を出す', async
   }, STORAGE_KEY);
   await page.goto('/romaji-layout');
   await waitForHydration(page);
-  await expect(page.getByText('定義ファイルから取り込んだ配列（1件）')).toBeVisible();
-  await expect(page.locator('[data-layout-pick]')).toHaveCount(0);
-  await expect(page.locator('[data-layout-submit]')).toHaveText('追加する');
+  await expect(page.locator('[data-layout-pick]')).toHaveValue('user-imported');
+  await expect(page.locator('[data-layout-row]')).toHaveCount(0);
+  await expect(page.locator('[data-layout-imported-row="2"]')).toHaveText('as df      ');
+  await expect(page.locator('[data-layout-imported-summary]')).toContainText('同時押しなどで出す出力が1件');
+
+  await page.getByLabel('名前', { exact: true }).fill('改名した取り込み');
+  await page.locator('[data-layout-submit]').click();
+  const stored = () => page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY);
+  await expect.poll(stored).toContain('改名した取り込み');
+  const layout = JSON.parse((await stored()) ?? '{}').layouts[0];
+  expect(layout.rows).toEqual(['  34        ', ' qwert      ', 'as df      ', ' x        ']);
+  expect(layout.sequences).toEqual([['desu', [['d', 's']]]]);
+  expect(layout.legends).toEqual([['a', 'Enter']]);
 });
