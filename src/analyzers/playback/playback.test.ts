@@ -10,7 +10,7 @@ import { basisIdOf, singleExtractionKeyOf, traceKeyOf } from '#engine/keys.ts';
 import { resolveEngineInput, type ResolvedInput } from '#engine/resolved-input.ts';
 import { createEngineCache } from '#engine/cache.ts';
 import { checkOptionsDiscipline } from '#analyzers/options.ts';
-import { DEFAULT_PLAYBACK_SPEED_MULTIPLIER, DEFAULT_PLAYBACK_STEPS_PER_SECOND } from '#interpretation/timing/playback.ts';
+import { DEFAULT_PLAYBACK_SPEED_MULTIPLIER, DEFAULT_PLAYBACK_STEPS_PER_SECOND } from '#interpretation/timing/playback-options.ts';
 import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import { reconcilePlaybackStateAfterAnalysisRefresh } from '#interpretation/timing/playback.ts';
 import { bigramFlowDefinition } from '#analyzers/bigram-flow/extract.ts';
