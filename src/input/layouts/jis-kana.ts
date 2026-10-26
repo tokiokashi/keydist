@@ -1,4 +1,5 @@
 import { SHIFT_KEY } from '../shapes/geometry.ts';
+import { DAKUTEN, DAKUTEN_MARK, HANDAKUTEN, HANDAKUTEN_MARK } from './kana-composition.ts';
 import { fromFaces, withComposedOutputs, type Face, type Layout } from './types.ts';
 
 const BASE_ROWS = [
@@ -27,38 +28,6 @@ const shiftFace = (key: string): Face => ({
   presentationLabel: 'Shift',
 });
 
-const DAKUTEN: Readonly<Record<string, string>> = {
-  う: 'ゔ',
-  か: 'が',
-  き: 'ぎ',
-  く: 'ぐ',
-  け: 'げ',
-  こ: 'ご',
-  さ: 'ざ',
-  し: 'じ',
-  す: 'ず',
-  せ: 'ぜ',
-  そ: 'ぞ',
-  た: 'だ',
-  ち: 'ぢ',
-  つ: 'づ',
-  て: 'で',
-  と: 'ど',
-  は: 'ば',
-  ひ: 'び',
-  ふ: 'ぶ',
-  へ: 'べ',
-  ほ: 'ぼ',
-};
-
-const HANDAKUTEN: Readonly<Record<string, string>> = {
-  は: 'ぱ',
-  ひ: 'ぴ',
-  ふ: 'ぷ',
-  へ: 'ぺ',
-  ほ: 'ぽ',
-};
-
 const base: Face = {
   trigger: [],
   mode: 'simultaneous',
@@ -75,7 +44,7 @@ layout = {
 layout.legends.set(SHIFT_KEY.L, 'Shift');
 layout.legends.set(SHIFT_KEY.R, 'Shift');
 
-layout = withComposedOutputs(layout, DAKUTEN, '゛', 'JISかな配列');
-layout = withComposedOutputs(layout, HANDAKUTEN, '゜', 'JISかな配列');
+layout = withComposedOutputs(layout, DAKUTEN, DAKUTEN_MARK, 'JISかな配列');
+layout = withComposedOutputs(layout, HANDAKUTEN, HANDAKUTEN_MARK, 'JISかな配列');
 
 export const JIS_KANA = layout;

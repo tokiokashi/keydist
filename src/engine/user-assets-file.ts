@@ -172,6 +172,7 @@ function canonical(value: unknown): string {
  * 「中身が同じ」の判定に使う項目。idと名前は比べない（idは突き合わせの鍵で、名前は数値に関わらない）。
  * 数値に関わる項目はすべて比べる。値が無いこととfalseが同じ意味の `direct` だけ、省略を揃える。
  * `romaji` は推奨の規則の読み込み後のidで比べる。ローマ字を経ない配列は `romaji` を使わないので比べない。
+ * 面で定義する配列は `faces`（面の並びの順も含む）と `composition` で比べる。
  */
 function layoutContent(layout: UserLayout): string {
   const direct = layout.direct === true;
@@ -181,6 +182,8 @@ function layoutContent(layout: UserLayout): string {
     sequences: layout.sequences,
     legends: layout.legends,
     direct: direct ? true : undefined,
+    faces: layout.faces,
+    composition: layout.composition,
     homeKeys: layout.homeKeys,
   });
 }

@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { decodeUserLayouts, USER_LAYOUTS_CODEC, type UserLayout } from './user-layouts.ts';
+import { decodeUserLayouts, USER_LAYOUTS_CODEC, type StageUserLayout } from './user-layouts.ts';
 
-const layout = (id: string): UserLayout => ({
+const layout = (id: string): StageUserLayout => ({
   id,
   name: `配列 ${id}`,
   rows: ['1234567890', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'],

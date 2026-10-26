@@ -5,15 +5,15 @@ import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { fromRows, LAYOUTS, type Layout } from './index.ts';
 import { buildKeyPatternMatrix } from './key-pattern-picker.ts';
-import { toLayout, type UserLayout } from './user-layouts.ts';
+import { toLayout, type StageUserLayout } from './user-layouts.ts';
 
-const QWERTY_ROWS: UserLayout['rows'] = ['1234567890-=', 'qwertyuiop[]', "asdfghjkl;'", 'zxcvbnm,./'];
+const QWERTY_ROWS: StageUserLayout['rows'] = ['1234567890-=', 'qwertyuiop[]', "asdfghjkl;'", 'zxcvbnm,./'];
 const ENGLISH_QWERTY = LAYOUTS.find((layout) => layout.id === 'qwerty')!;
 const SAMPLE = 'Hello, World. The quick brown fox!';
 
 const geometry = buildGeometry('row-staggered');
 
-const userQwerty = (overrides: Partial<UserLayout> = {}): Layout =>
+const userQwerty = (overrides: Partial<StageUserLayout> = {}): Layout =>
   toLayout({ id: 'user-q', name: 'user-q', rows: QWERTY_ROWS, romaji: 'kunrei', ...overrides });
 
 function measure(layout: Layout, text: string) {

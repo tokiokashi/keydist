@@ -6,6 +6,7 @@ import { emptyTextLibrary } from '#input/text/library.ts';
 import { initialTextSelection } from '#input/text/selection.ts';
 import { EMPTY_PERSONAL_SPEED } from '#interpretation/timing/calibration-codec.ts';
 import { createUserLayoutCommand, updateUserLayoutCommand, type KeydistAssets } from './commands.ts';
+import type { StageUserLayout } from '#input/layouts/user-layouts.ts';
 import { initialMultiTargetSelection } from './multi-target-selection.ts';
 import { initialSingleTargetSelection } from './single-target-selection.ts';
 import { initialWorkspaceLibrary } from './workspace.ts';
@@ -76,7 +77,10 @@ test('自作の配列のコマンド: 保存できない入力と取り込み形
     emptyCommandHistory<KeydistAssets>(),
     createUserLayoutCommand(() => 'user-1', CONTENT),
   );
-  const imported: KeydistAssets = { ...created.assets, userLayouts: [{ ...created.assets.userLayouts[0]!, id: 'user-imp', direct: true }] };
+  const imported: KeydistAssets = {
+    ...created.assets,
+    userLayouts: [{ ...(created.assets.userLayouts[0] as StageUserLayout), id: 'user-imp', direct: true }],
+  };
   const cases = [
     { assets: created.assets, command: createUserLayoutCommand(() => 'user-2', { ...CONTENT, name: '' }) },
     { assets: created.assets, command: updateUserLayoutCommand('user-1', { ...CONTENT, rows: ['', '', '', ''] }) },

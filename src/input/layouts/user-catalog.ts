@@ -3,7 +3,7 @@ import { droppedDuplicateId } from '#input/codec/index.ts';
 import { isBuiltin, type UserRomajiRule } from '../romaji/rules.ts';
 import { LAYOUT_BY_ID } from './index.ts';
 import type { Layout } from './types.ts';
-import { toJapaneseLayout, toLayout, validate, type UserLayout } from './user-layouts.ts';
+import { isDirectUserLayout, toJapaneseLayout, toLayout, validate, type UserLayout } from './user-layouts.ts';
 
 /**
  * 資産に入っている自作の配列・ローマ字規則を、組み込みと並べて引ける形にしたもの。
@@ -11,7 +11,7 @@ import { toJapaneseLayout, toLayout, validate, type UserLayout } from './user-la
 export interface UserCatalog {
   /** 解決に使える自作の配列（`UserLayout.id` → 組み込みの配列と同じ形の実体）。 */
   readonly layouts: ReadonlyMap<string, Layout>;
-  /** `layouts`の元の定義。配列の種類（`direct`）の判定に使う。 */
+  /** `layouts`の元の定義。配列の種類（ローマ字を経ない配列か）の判定に使う。 */
   readonly userLayouts: ReadonlyMap<string, UserLayout>;
   /** 組み込みと衝突しない自作のローマ字規則。 */
   readonly romajiRules: readonly UserRomajiRule[];
@@ -66,7 +66,8 @@ export function buildUserCatalog(userLayouts: readonly UserLayout[], userRomajiR
       unusableLayouts.set(index, '同じ識別子の配列が先にあるため、計算には使えません');
       return;
     }
-    const errors = validate(definition.rows);
+    // 段の検査は段の形だけに掛ける。面で定義する配列の誤りは`toLayout`が、どの面かを添えて投げる
+    const errors = definition.faces === undefined ? validate(definition.rows) : [];
     if (errors.length > 0) {
       diagnostics.push({ path, message: `配列として組めないため捨てました（${errors.join('、')}）` });
       unusableLayouts.set(index, `配列として組めないため、計算には使えません（${errors.join('、')}）`);
@@ -83,7 +84,7 @@ export function buildUserCatalog(userLayouts: readonly UserLayout[], userRomajiR
       return;
     }
     const romaji = definition.romaji;
-    if (definition.direct !== true && romaji !== undefined) {
+    if (!isDirectUserLayout(definition) && romaji !== undefined) {
       if (isBuiltin(romaji) || ruleIds.has(romaji)) {
         layout = { ...layout, recommendedRomajiRuleId: romaji };
       } else {

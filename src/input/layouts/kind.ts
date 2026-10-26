@@ -1,5 +1,5 @@
 import type { Layout } from './types.ts';
-import type { UserLayout } from './user-layouts.ts';
+import { isDirectUserLayout, type UserLayout } from './user-layouts.ts';
 
 /**
  * 配列の「種類」（打ち方はテキストの言語×配列の種類から導く、の後者）。
@@ -47,13 +47,14 @@ export function builtInLayoutKind(layoutId: string): LayoutKind {
  * sequencesを直接使う」（`user-layouts.ts` の `UserLayout.direct` コメント）ことを表す。
  * これは日本語テキストで「ローマ字表を挟むか（`romaji`）／挟まないか（`kana`）」を
  * 切り替える条件そのものなので、`direct` を `alpha` / `kana` の判定にそのまま使う。
+ * 面で定義する配列（`faces`）もローマ字を経ずにかなを打つので `kana` にする。
  *
  * 英語テキストには、`deriveInputMethod`（`#input/setup/input-method.ts`）が
  * 「かな配列は使えない」という原則を自作配列にも一律で適用する
  * （`direct: true` の自作配列は英語テキストには使えない、と判定する）。
  */
 export function userLayoutKind(layout: UserLayout): LayoutKind {
-  return layout.direct === true ? 'kana' : 'alpha';
+  return isDirectUserLayout(layout) ? 'kana' : 'alpha';
 }
 
 /**

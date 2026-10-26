@@ -24,8 +24,8 @@ const WA_SMALL = 'ゎ';
 /** 単独で出ても小書きと呼ぶ文字。 */
 const SMALL_CHARS = new Set([...YOON_SMALL, ...FOREIGN_SMALL, ...WA_SMALL, 'っ', 'ゕ', 'ゖ']);
 
-const VOICED = new Set([...'がぎぐげござじずぜぞだぢづでどばびぶべぼゔ']);
-const SEMI_VOICED = new Set([...'ぱぴぷぺぽ']);
+export const VOICED = new Set([...'がぎぐげござじずぜぞだぢづでどばびぶべぼゔ']);
+export const SEMI_VOICED = new Set([...'ぱぴぷぺぽ']);
 
 /** カタカナをひらがなに寄せる。かな以外はそのまま返す。 */
 function toHiragana(text: string): string {

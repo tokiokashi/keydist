@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { UserRomajiRule } from '../romaji/rules.ts';
 import { buildUserCatalog, userInputLayouts } from './user-catalog.ts';
-import type { UserLayout } from './user-layouts.ts';
+import type { StageUserLayout } from './user-layouts.ts';
 
-const layout = (id: string, overrides: Partial<UserLayout> = {}): UserLayout => ({
+const layout = (id: string, overrides: Partial<StageUserLayout> = {}): StageUserLayout => ({
   id,
   name: `配列 ${id}`,
   rows: ['1234567890', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'],
