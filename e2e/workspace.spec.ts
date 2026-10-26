@@ -981,7 +981,7 @@ test('Workspaceのペインの条件のモーダルはWorkspaceのレベルで�
   await expect(panes.first().locator('.pane-condition-trigger')).toHaveText('条件: 既定値');
 
   const modal = await openPaneConditionModal(page, panes.first());
-  await expect(modal.getByText(/このWorkspaceの値を変えます。/)).toBeVisible();
+  await expect(modal.getByText(/このWorkspaceの値を変えます/)).toBeVisible();
   const row = modal.locator('[data-item="windowSize"]');
   // 開いた時の編集先はWorkspace
   await expect(row.getByRole('button', { name: /の編集先: / })).toHaveAttribute('aria-label', /の編集先: Workspace$/);
