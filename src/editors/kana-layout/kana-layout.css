@@ -179,13 +179,6 @@
   gap: 0.25rem;
 }
 
-/* 出力を選ぶ間は、出力を書けないキー（親指・Shift）を薄くして見分けられるようにする */
-.kana-layout-figure[data-operation='output'] .physical-keyboard-key[data-key-id^='thumb-'],
-.kana-layout-figure[data-operation='output'] .physical-keyboard-key[data-key-id^='shift-'] {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
 .kana-layout-fields {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));

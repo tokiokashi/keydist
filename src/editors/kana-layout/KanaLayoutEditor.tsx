@@ -169,13 +169,18 @@ function FacePanel({ face, standard, homeKeys, problems, onChange }: FacePanelPr
     const result = new Map<string, PhysicalKeyboardKeyView>();
     for (const key of keys) {
       const isTrigger = face.trigger.includes(key.id);
+      // 出力を書けるのは面の上のキーだけ。親指とShiftは、出力の操作の間は押せない
+      const noOutput = operation === 'output' && gridPositionOf(key.id) === undefined;
       result.set(key.id, {
         legend: face.outputs[key.id] ?? '',
         secondaryLegend: keyLabel(key.id, standard),
         trigger: isTrigger,
         selected: operation === 'output' && selectedKey === key.id,
         home: homeKeys.has(key.id),
-        description: isTrigger ? '切り替えのキー' : operation === 'output' && gridPositionOf(key.id) === undefined ? '出力を書けないキー' : undefined,
+        disabled: noOutput,
+        description:
+          [isTrigger ? '切り替えのキー' : undefined, noOutput ? '出力を書けないキー' : undefined].filter((text) => text !== undefined).join('。') ||
+          undefined,
       });
     }
     return result;
@@ -188,7 +193,7 @@ function FacePanel({ face, standard, homeKeys, problems, onChange }: FacePanelPr
       onChange(toggleTriggerKey(face, key.id));
       return;
     }
-    // 出力を書けないキーは、図で見分けられるよう薄く出している（CSS）
+    // 出力を書けないキーは、図が押せないキーとして出す（`disabled`）ので、ここへは来ない
     if (gridPositionOf(key.id) === undefined) return;
     setSelectedKey(key.id === selectedKey ? undefined : key.id);
   };
@@ -219,7 +224,7 @@ function FacePanel({ face, standard, homeKeys, problems, onChange }: FacePanelPr
         </label>
       </fieldset>
 
-      <div className="kana-layout-figure" data-kana-figure data-operation={operation}>
+      <div className="kana-layout-figure" data-kana-figure>
         <PhysicalKeyboard
           keys={keys}
           keyViews={views}

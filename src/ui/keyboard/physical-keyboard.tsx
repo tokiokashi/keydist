@@ -1,6 +1,7 @@
 import { useId, type KeyboardEvent } from 'react';
 import type { Key } from '#input/shapes/geometry.ts';
 import { bandThicknessRatio } from './band-thickness.ts';
+import { keyAriaLabel } from './key-aria-label.ts';
 import { drawnKeySpans } from '#input/shapes/drawn-key-spans.ts';
 import { keyboardStandardForGeometryId, physicalKeyDisplayLabel } from '#input/shapes/key-labels.ts';
 
@@ -40,6 +41,8 @@ export interface PhysicalKeyboardKeyView {
   /** キーを選んでいく操作で、選択中のキー。 */
   readonly selected?: boolean | undefined;
   readonly home?: boolean | undefined;
+  /** 今の操作では押せないキー。薄く出し、`operable` の時は `aria-disabled` を付けて、押しても `onKeyClick` を呼ばない。理由は `description` に書く。 */
+  readonly disabled?: boolean | undefined;
 }
 
 export interface PhysicalKeyboardProps {
@@ -137,6 +140,7 @@ export function PhysicalKeyboard({
               data-fill-tone={view?.fillTone}
               data-guide={view?.guide}
               data-highlighted={view?.highlighted || undefined}
+              data-disabled={view?.disabled || undefined}
               data-home={view?.home || undefined}
               data-key-id={key.id}
               data-lookup={view?.lookup || undefined}
@@ -146,20 +150,18 @@ export function PhysicalKeyboard({
               data-interactive={onKeyClick === undefined ? undefined : true}
               key={key.id}
               data-selected={view?.selected || undefined}
-              onClick={onKeyClick === undefined ? undefined : () => onKeyClick(key)}
+              onClick={onKeyClick === undefined || view?.disabled ? undefined : () => onKeyClick(key)}
               {...(operable && onKeyClick !== undefined
                 ? {
                     role: 'button',
                     tabIndex: 0,
                     'aria-pressed': view?.selected === true,
-                    'aria-label':
-                      legend === ''
-                        ? physicalKeyDisplayLabel(key.id, standard)
-                        : `${physicalKeyDisplayLabel(key.id, standard)}（${legend}${view?.description === undefined ? '' : `。${view.description}`}）`,
+                    'aria-disabled': view?.disabled === true ? true : undefined,
+                    'aria-label': keyAriaLabel(physicalKeyDisplayLabel(key.id, standard), legend, view?.description),
                     onKeyDown: (event: KeyboardEvent<SVGGElement>) => {
                       if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault();
-                        onKeyClick(key);
+                        if (view?.disabled !== true) onKeyClick(key);
                       } else if (event.key === 'Escape' && onEscape !== undefined) {
                         event.stopPropagation();
                         onEscape();

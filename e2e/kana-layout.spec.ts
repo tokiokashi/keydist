@@ -36,6 +36,14 @@ test('図の上で出力と切り替えのキーを決めて保存でき、保�
   await key('thumb-l').click();
   await expect(key('thumb-l')).toHaveAttribute('data-trigger', 'true');
   await page.locator('[data-kana-operation="output"]').check();
+  // 出力を書けないキー（親指とShift）は、支援技術にも押せないキーとして伝わる。切り替えのキーにした親指は、その旨も添える
+  await expect(key('thumb-l')).toHaveAttribute('aria-disabled', 'true');
+  await expect(key('thumb-l')).toHaveAttribute('aria-label', /切り替えのキー。出力を書けないキー/);
+  await expect(key('shift-l')).toHaveAttribute('aria-label', /出力を書けないキー/);
+  await expect(key('a')).not.toHaveAttribute('aria-disabled', 'true');
+  await page.locator('[data-kana-operation="trigger"]').check();
+  await expect(key('thumb-l')).not.toHaveAttribute('aria-disabled', 'true');
+  await page.locator('[data-kana-operation="output"]').check();
   await key('a').click();
   await page.locator('[data-kana-output]').fill('ぁ');
   await expect(page.getByRole('alert').filter({ hasText: '打鍵の順序' })).toBeVisible();

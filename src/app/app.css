@@ -1133,6 +1133,14 @@ h1 {
   stroke-width: 3;
 }
 
+.physical-keyboard-key[data-disabled] {
+  opacity: 0.4;
+}
+
+.physical-keyboard-key[data-interactive][data-disabled] {
+  cursor: not-allowed;
+}
+
 .physical-keyboard-key[data-lookup] rect {
   fill: color-mix(in srgb, var(--picker-selected) 20%, var(--surface));
   stroke-width: 3;
