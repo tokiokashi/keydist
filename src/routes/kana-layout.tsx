@@ -8,7 +8,7 @@ export const Route = createFileRoute('/kana-layout')({
       { title: `${KANA_LAYOUT_LABEL} | keydist` },
       {
         name: 'description',
-        content: 'レイヤーごとに、切り替えのキーと打鍵の順序、キーごとの出力を決めて、かな配列を自作します。作った配列は、Analyzerの対象に選べます。',
+        content: '面ごとに、切り替えのキーと打鍵の順序、キーごとの出力を決めて、かな配列を自作します。作った配列は、Analyzerの対象に選べます。',
       },
     ],
   }),

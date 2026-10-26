@@ -4,7 +4,7 @@ import { waitForHydration } from './hydration-helper.ts';
 /**
  * かな配列の画面のE2E。検査の分岐と保存の中身はunit testが持つので、
  * ここでは画面の配線を見る: サイドバーから開ける、図の上でキーを選んで出力を置ける、
- * 切り替えのキー付きのレイヤーを足せる、未選択の項目で保存が止まる、保存先に反映される、
+ * 切り替えのキー付きの面を足せる、未選択の項目で保存が止まる、保存先に反映される、
  * 対象の選択に並ぶ、貼り付けたJSONの誤りの場所が出て取り込まれない。
  */
 
@@ -30,7 +30,7 @@ test('図の上で出力と切り替えのキーを決めて保存でき、保�
   await expect(key('a').locator('.physical-keyboard-legend')).toHaveText('あ');
   await expect(submit).toBeEnabled();
 
-  // 切り替えのキー付きのレイヤーを足す。打鍵の順序と持続は選ぶまで保存を止める
+  // 切り替えのキー付きの面を足す。打鍵の順序と持続は選ぶまで保存を止める
   await page.locator('[data-kana-face-add]').click();
   await page.locator('[data-kana-operation="trigger"]').check();
   await key('thumb-l').click();

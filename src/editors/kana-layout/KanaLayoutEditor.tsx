@@ -335,7 +335,11 @@ function FacePanel({ face, standard, homeKeys, problems, onChange }: FacePanelPr
           </label>
         ) : null}
       </div>
-      {triggered ? <p className="kana-layout-note">同じ名前のレイヤーで、切り替えのキーが1つの面は、1つのレイヤーにまとめて数えます。</p> : null}
+      {triggered ? (
+        <p className="kana-layout-note">
+          同じ名前のレイヤーを書いた面のうち、切り替えのキーが1つずつで条件を満たすものは、1つのレイヤーにまとめて数えます。
+        </p>
+      ) : null}
 
       {face.inputRole === 'modifier' && triggered ? (
         <fieldset className="kana-layout-groups">
@@ -446,16 +450,14 @@ function KanaLayoutForm({ initial, isNew, onSubmit, onDownload }: KanaLayoutForm
       </label>
 
       <fieldset className="kana-layout-faces">
-        <legend>レイヤー</legend>
-        <p className="kana-layout-note">
-          単打のレイヤーと、切り替えのキーを押して打つレイヤーを並べます。レイヤーを選んで、図の上で出力と切り替えのキーを決めます。
-        </p>
+        <legend>面</legend>
+        <p className="kana-layout-note">単打の面と、切り替えのキーを押して打つ面を並べます。面を選んで、図の上で出力と切り替えのキーを決めます。</p>
         <div className="kana-layout-face-list">
           {draft.faces.map((entry, index) => {
             const own = problemsOfFace(index);
             return (
               <button
-                // biome-ignore lint/suspicious/noArrayIndexKey: レイヤーは並びの番号が名前で、並べ替えを持たない
+                // biome-ignore lint/suspicious/noArrayIndexKey: 面は並びの番号が名前で、並べ替えを持たない
                 key={index}
                 type="button"
                 aria-pressed={index === shownIndex}
@@ -463,7 +465,7 @@ function KanaLayoutForm({ initial, isNew, onSubmit, onDownload }: KanaLayoutForm
                 data-has-problem={own.length > 0 || undefined}
                 onClick={() => setFaceIndex(index)}
               >
-                <span>レイヤー{index + 1}</span>
+                <span>面{index + 1}</span>
                 <small>{faceSummary(entry, standard)}</small>
                 {own.length > 0 ? <small className="kana-layout-error">誤りあり</small> : null}
               </button>
@@ -472,10 +474,10 @@ function KanaLayoutForm({ initial, isNew, onSubmit, onDownload }: KanaLayoutForm
         </div>
         <div className="kana-layout-actions">
           <button type="button" data-kana-face-add onClick={addFace}>
-            レイヤーを足す
+            面を足す
           </button>
           <button type="button" data-kana-face-remove disabled={draft.faces.length <= 1} onClick={removeFace}>
-            選んだレイヤーを消す
+            選んだ面を消す
           </button>
           <label className="kana-layout-inline">
             キーの並びの表示
@@ -485,9 +487,9 @@ function KanaLayoutForm({ initial, isNew, onSubmit, onDownload }: KanaLayoutForm
             </select>
           </label>
         </div>
-        <h3 className="kana-layout-face-title">レイヤー{shownIndex + 1}</h3>
+        <h3 className="kana-layout-face-title">面{shownIndex + 1}</h3>
         <FacePanel
-          // 選ぶレイヤーが替わったら、選んでいたキーと操作を持ち越さない
+          // 選ぶ面が替わったら、選んでいたキーと操作を持ち越さない
           key={shownIndex}
           face={face}
           standard={standard}
@@ -500,7 +502,7 @@ function KanaLayoutForm({ initial, isNew, onSubmit, onDownload }: KanaLayoutForm
       <fieldset className="kana-layout-composition">
         <legend>濁点・半濁点</legend>
         <p className="kana-layout-note">
-          濁点（゛）や半濁点（゜）を後から打って、濁音・半濁音を合成するかを決めます。使う時は、そのキーをどこかのレイヤーに置いてください。
+          濁点（゛）や半濁点（゜）を後から打って、濁音・半濁音を合成するかを決めます。使う時は、そのキーをどこかの面に置いてください。
         </p>
         <label className="kana-layout-inline">
           <input
@@ -659,7 +661,7 @@ function KanaLayoutForm({ initial, isNew, onSubmit, onDownload }: KanaLayoutForm
 }
 
 /**
- * レイヤー（面）ごとに、切り替えのキー・打鍵の順序・キーごとの出力を決めて、かな配列を自作する・直す画面。
+ * 面ごとに、切り替えのキー・打鍵の順序・キーごとの出力を決めて、かな配列を自作する・直す画面。
  * 書き込みは親が渡すコールバックを通す。選んでいる配列はこの画面の中だけの値で、保存しない。
  */
 export function KanaLayoutEditor({ layouts, ready, canUndo, canRedo, onUndo, onRedo, onCreate, onUpdate, onDownload }: KanaLayoutEditorProps) {
@@ -690,7 +692,7 @@ export function KanaLayoutEditor({ layouts, ready, canUndo, canRedo, onUndo, onR
     <article className="kana-layout" data-kana-layout-editor>
       <h1>{KANA_LAYOUT_LABEL}</h1>
       <p className="kana-layout-note">
-        レイヤーごとに、切り替えのキーと打鍵の順序、キーごとの出力を決めて、かな配列を自作します。作った配列は、Analyzerの対象に選べます。ローマ字配列は、ローマ字配列の画面で作ります。
+        面ごとに、切り替えのキーと打鍵の順序、キーごとの出力を決めて、かな配列を自作します。作った配列は、Analyzerの対象に選べます。ローマ字配列は、ローマ字配列の画面で作ります。
       </p>
       <div className="kana-layout-toolbar">
         <button type="button" disabled={!canUndo} onClick={onUndo}>
