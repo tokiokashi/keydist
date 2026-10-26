@@ -153,7 +153,7 @@ test.describe('幅390px', () => {
     const figureScrolls = await page.locator('[data-kana-figure]').evaluate((figure) => figure.scrollWidth > figure.clientWidth);
     expect(figureScrolls).toBe(true);
 
-    // 図のキーは押せる大きさを保ち（24×24 CSS px 以上）、押すと出力の欄に移る
+    // 図のキーは押せる大きさを保ち（24×24 CSS px以上）、押すと出力の欄に移る
     const keyA = page.locator('[data-kana-figure] [data-key-id="a"]');
     const keyBox = await keyA.locator('rect').boundingBox();
     expect(keyBox?.width ?? 0).toBeGreaterThanOrEqual(24);
