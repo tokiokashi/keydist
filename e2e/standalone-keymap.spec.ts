@@ -48,18 +48,18 @@ test('キーを選んで出る文字を調べる: キーボードでキーを選
 
   const pattern = feature(page).locator('[data-keymap-pattern]');
   const result = pattern.locator('[data-keymap-pattern-result]');
-  await expect(result).toContainText('キーを選ぶと');
+  await expect(result).toContainText('選んだキーはありません');
 
   const shift = pattern.locator('[data-key-id="shift-l"]');
   await shift.focus();
   await page.keyboard.press('Enter');
   await expect(shift).toHaveAttribute('aria-pressed', 'true');
-  await expect(result).toContainText('青い枠');
+  await expect(result).toContainText('あと1キーで出る文字が決まります');
   await expect(pattern.locator('[data-key-id="a"] text')).toHaveText('A');
 
   await page.keyboard.press('Escape');
   await expect(shift).toHaveAttribute('aria-pressed', 'false');
-  await expect(result).toContainText('キーを選ぶと');
+  await expect(result).toContainText('選んだキーはありません');
 });
 
 test('トリガーになるキーの色付け: レイヤーとコンボの両方を持つ配列は、何も選ばない間に色付きの枠と凡例が出る', async ({ page }) => {

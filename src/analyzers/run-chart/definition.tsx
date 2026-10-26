@@ -375,7 +375,7 @@ export function RunChartBody({ extracted, order, rowContext, playbackJump, segme
       {withoutDestination.length > 0 ? (
         <p className="run-chart-notice" data-run-chart-no-playback="">
           {withoutDestination.map((row) => row.label).join('、')}
-          を映す打鍵再生のペインがありません。同じ対象の打鍵再生のペインをWorkspaceに足すと、図を押してその位置へ移れます。
+          を映す打鍵再生のペインがありません。
         </p>
       ) : null}
 
@@ -416,7 +416,7 @@ export function RunChartSettings({ options, onOptionsChange }: AnalyzerSettingsP
         label="区切り"
         binding={bindOption(options, DEFAULT_RUN_CHART_OPTIONS, onOptionsChange, 'segmentation')}
         choices={RUN_CHART_SEGMENTATION_IDS.map((id) => ({ value: id, label: SEGMENTATION_LABELS[id] }))}
-        hint="図に重ねる区切りです。区切りなし以外を選ぶと、文節・固定長・ランダムの区切りで、区間ごとの指標と区切りの前後の指標を比べる表を出します。日本語のテキストでだけ使えます。"
+        hint="図に重ねる区切りです。区切りなし以外では、文節・固定長・ランダムの区切りで、区間ごとの指標と区切りの前後の指標を比べる表を出します。日本語のテキストでだけ使えます。"
       />
       <NumberOptionField
         label={RUN_CHART_SEED_LABEL}

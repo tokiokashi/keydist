@@ -172,7 +172,7 @@ export function FingerMatrixSettings({ options, onOptionsChange }: AnalyzerSetti
         choices={SURFACE_CHOICES}
         hint="同指連続の比率は、その指で押した回数に対する割合です。"
       />
-      <OptionField label="並び替え" binding={bind('sort')} hint="列の見出しを押すと切り替わります。">
+      <OptionField label="並び替え" binding={bind('sort')}>
         {(id) => (
           <span id={id}>
             {options.sort === null ? 'なし' : `${sortColumnName(options.sort.column)}（${SORT_DIRECTION_TEXT[options.sort.direction]}）`}

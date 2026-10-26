@@ -268,11 +268,7 @@ export function KeymapBody({ layout, geometry, options, onOptionsChange }: Singl
 
 /** ここで設定できる項目は無い。レイヤーのまとめ方は、図の見出し行のボタンから変える。 */
 export function KeymapSettings(_props: AnalyzerSettingsProps<KeymapOptions>) {
-  return (
-    <p className="keymap-empty">
-      ここで設定できる項目はありません。レイヤーをまとめて示す配列では、図の見出しの右にあるボタンから表示を切り替えられます。
-    </p>
-  );
+  return <p className="keymap-empty">ここで設定できる項目はありません。</p>;
 }
 
 /** ペインに渡すもの（`analyzers/pane-parts.tsx`）。 */
