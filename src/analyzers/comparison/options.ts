@@ -15,8 +15,8 @@ export { COMPARISON_COLUMN_IDS, COMPARISON_UNIT_NOTE, type ComparisonColumnId } 
 /**
  * 比較表Analyzerの列。
  *
- * 並べる列は17列。列の値は`extract.ts`の`computeComparisonRowValues`が、`interpretation/metrics.ts`の
- * `computeMetrics`が返す`Metrics`と`Trace`から読み出すだけの写像で（Bigramの組の種類数の2列だけが`Trace`から数える）、
+ * 並べる列は19列。列の値は`extract.ts`の`computeComparisonRowValues`が、`interpretation/metrics.ts`の
+ * `computeMetrics`が返す`Metrics`と`Trace`から読み出すだけの写像で（Bigramの組の種類数の2列とHand Rhythmの2列だけが`Trace`から数える）、
  * 独自の派生指標・合成スコアは作らない
  * （AGENTS.md「優劣の判定・順位付け・合成スコアを作らない」）。
  * 列の名前と説明は`column-text.ts`（見出しのⓘから開く説明も読むため分けてある）。
@@ -114,6 +114,14 @@ export const COMPARISON_COLUMNS: Readonly<Record<ComparisonColumnId, ComparisonC
   logicalBigramCombinations: {
     ...COMPARISON_COLUMN_TEXT.logicalBigramCombinations,
     format: count,
+  },
+  alternationCoverage: {
+    ...COMPARISON_COLUMN_TEXT.alternationCoverage,
+    format: percent,
+  },
+  sameHandContinuationRate: {
+    ...COMPARISON_COLUMN_TEXT.sameHandContinuationRate,
+    format: percent,
   },
 } as const;
 

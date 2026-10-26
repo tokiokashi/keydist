@@ -64,7 +64,15 @@ test('computeComparisonRowValues: interpretation/metrics.tsを同条件で直接
   const adjacentMean = directMetrics.adjacent.reduce((sum, item) => sum + item.meanExcess, 0) / directMetrics.adjacent.length;
   const adjacentStdDev = directMetrics.adjacent.reduce((sum, item) => sum + item.stdDev, 0) / directMetrics.adjacent.length;
 
-  const { rightHandDistanceShare, rightHandPressShare, physicalBigramCombinations, logicalBigramCombinations, ...existing } = row;
+  const {
+    rightHandDistanceShare,
+    rightHandPressShare,
+    physicalBigramCombinations,
+    logicalBigramCombinations,
+    alternationCoverage,
+    sameHandContinuationRate,
+    ...existing
+  } = row;
   assert.deepEqual(existing, {
     actions: directMetrics.actions,
     totalUnits: directMetrics.totalUnits,
@@ -83,6 +91,8 @@ test('computeComparisonRowValues: interpretation/metrics.tsを同条件で直接
   assert.ok(rightHandDistanceShare > 0 && rightHandDistanceShare < 100);
   assert.ok(rightHandPressShare > 0 && rightHandPressShare < 100);
   assert.ok(physicalBigramCombinations > 0 && logicalBigramCombinations >= physicalBigramCombinations);
+  assert.ok(alternationCoverage > 0 && alternationCoverage <= 100);
+  assert.ok(sameHandContinuationRate > 0 && sameHandContinuationRate < 100);
 });
 
 test('右手の割合: 指ごとの距離のAnalyzerの右手の小計と同じ値（%）になる', () => {

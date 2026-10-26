@@ -35,6 +35,9 @@ export const COMPARISON_BAR_SCALE: Readonly<Record<ComparisonColumnId, Compariso
   // Bigramの組の種類数。0は組が現れていない。
   physicalBigramCombinations: 'zero',
   logicalBigramCombinations: 'zero',
+  // 割合（%）。0は該当が無い。
+  alternationCoverage: 'zero',
+  sameHandContinuationRate: 'zero',
 };
 
 /** 相対の長さのバーを持つセルのtooltip。 */
