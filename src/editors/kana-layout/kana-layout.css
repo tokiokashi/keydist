@@ -158,8 +158,21 @@
   gap: 0.25rem 1rem;
 }
 
+/*
+ * 図は実物の大きさ（SVGの幅の属性どおり、キーが約52px）より縮めない。画面がそれより狭い時は、
+ * 図の枠だけを横にスクロールさせる。共有の `.physical-keyboard` が内側で横スクロールを持つと、
+ * 図の枠は動かず内側だけが動くため、ここで内側の `overflow` を外す。
+ */
 .kana-layout-figure {
   overflow-x: auto;
+}
+
+.kana-layout-figure .physical-keyboard {
+  overflow: visible;
+}
+
+.kana-layout-figure .physical-keyboard svg {
+  max-width: none;
 }
 
 .kana-layout-output {
