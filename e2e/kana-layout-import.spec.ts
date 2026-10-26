@@ -2,7 +2,7 @@ import { expect, test } from './fixtures.ts';
 import { waitForHydration } from './hydration-helper.ts';
 
 /**
- * かな配列の画面で定義ファイルを取り込む操作のE2E。面の形への変換は unit test が持つので、
+ * かな配列の画面で定義ファイルを取り込む操作のE2E。面の形への変換は unit testが持つので、
  * ここでは画面の配線を見る: 取り込むと保存していない新しい配列として開く、保存すると対象の選択に並ぶ、
  * 取り込めないファイルは取り込まずにその旨が出る。
  */
