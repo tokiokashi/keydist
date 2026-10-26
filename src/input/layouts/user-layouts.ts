@@ -38,8 +38,6 @@ export interface StageUserLayout extends UserLayoutCommon {
   sequences?: [string, Sequence][];
   /** keyId → 取り込み元の表示ラベル */
   legends?: [string, string][];
-  /** かなをローマ字へ変換せず、sequencesを直接使う */
-  direct?: boolean;
   faces?: undefined;
   composition?: undefined;
 }
@@ -53,16 +51,12 @@ export interface FaceUserLayout extends UserLayoutCommon, UserFaceBody {
   romaji?: undefined;
   sequences?: undefined;
   legends?: undefined;
-  direct?: undefined;
 }
 
 export type UserLayout = StageUserLayout | FaceUserLayout;
 
 /** 面で定義する配列か。 */
 export const isFaceUserLayout = (layout: UserLayout): layout is FaceUserLayout => layout.faces !== undefined;
-
-/** ローマ字を経ずにかなを直接打つ配列か（`direct` の配列と、面で定義する配列）。 */
-export const isDirectUserLayout = (layout: UserLayout): boolean => layout.direct === true || layout.faces !== undefined;
 
 /** 各段に置けるキーの数 */
 export const ROW_LIMITS = QWERTY_LEGEND.map((row) => row.length);
@@ -85,7 +79,10 @@ const isHomeKeys = (value: unknown): value is Partial<Record<NonThumb, string>> 
 /** 面で定義する形のどれかの項目を持つか（持てば、面の形として読む）。 */
 const hasFaceProperty = (value: Record<string, unknown>): boolean => [...FACE_BODY_PROPERTIES].some((name) => value[name] !== undefined);
 
-/** 面で定義する配列が、段の文字・取り込み形式・ローマ字規則と併せ持たない項目。 */
+/**
+ * 面で定義する配列が、段の文字・取り込み形式・ローマ字規則と併せ持たない項目。
+ * かなを直接打つ配列は面の形だけで持つので、段の形の `direct` も持てない。
+ */
 const STAGE_PROPERTIES = ['rows', 'romaji', 'sequences', 'legends', 'direct'] as const;
 
 /**
@@ -122,7 +119,7 @@ function readUserLayout(l: unknown): UserLayout | string {
     stage.rows.every((row) => typeof row === 'string') &&
     (stage.sequences === undefined || (Array.isArray(stage.sequences) && stage.sequences.every(isSequenceEntry))) &&
     (stage.legends === undefined || (Array.isArray(stage.legends) && stage.legends.every(isLegendEntry))) &&
-    (stage.direct === undefined || typeof stage.direct === 'boolean');
+    value.direct === undefined;
   return valid ? (value as unknown as StageUserLayout) : form;
 }
 
@@ -205,9 +202,7 @@ export function toLayout(def: UserLayout): Layout {
   const layout = fromRows(def.id, def.name, rows, imported ? {} : { RT: ' ' });
   if (!def.sequences && !def.legends) {
     // 組み込みの英字配列と同じく、単打の段定義には通常Shiftの出力を付ける。
-    // 直接かな配列は組み込みにShift記号が無いので付けない。
-    const base = def.direct ? layout : withShiftedOutputs(layout);
-    return { ...base, ...(def.homeKeys === undefined ? {} : { homeKeys: def.homeKeys }) };
+    return { ...withShiftedOutputs(layout), ...(def.homeKeys === undefined ? {} : { homeKeys: def.homeKeys }) };
   }
   const map = new Map(layout.map);
   const canonicalInputs = new Map<string, InputAlternative[]>(
@@ -237,7 +232,7 @@ export function toLayout(def: UserLayout): Layout {
 
 export function toJapaneseLayout(def: UserLayout, customRules: UserRomajiRule[] = []): Layout {
   const layout = toLayout(def);
-  if (isDirectUserLayout(def) || def.romaji === undefined) return layout;
+  if (isFaceUserLayout(def) || def.romaji === undefined) return layout;
   return withRomaji(layout, tableForRule(def.romaji, customRules));
 }
 

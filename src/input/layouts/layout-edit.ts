@@ -2,7 +2,7 @@ import { isBuiltin } from '../romaji/rules.ts';
 import { FINGER_LABEL } from '../shapes/finger-names.ts';
 import { physicalKeyDisplayLabel } from '../shapes/key-labels.ts';
 import { assignmentHasKey, FINGERS, homeKeyOverrideApplies, keyId, QWERTY_LEGEND, type FingerAssignment, type NonThumb } from '../shapes/geometry.ts';
-import { isDirectUserLayout, ROW_LABELS, ROW_LIMITS, toLayout, validate, type StageUserLayout, type UserLayout } from './user-layouts.ts';
+import { isFaceUserLayout, ROW_LABELS, ROW_LIMITS, toLayout, validate, type StageUserLayout, type UserLayout } from './user-layouts.ts';
 
 /**
  * 自作の配列（段の文字で表せるもの）を作る・直す操作の純関数。
@@ -34,7 +34,7 @@ export interface UserLayoutContent {
  * 面で定義する配列も段を持たず、ローマ字配列の画面では扱わない。
  */
 export const isEditableUserLayout = (layout: UserLayout): layout is StageUserLayout =>
-  layout.sequences === undefined && layout.legends === undefined && !isDirectUserLayout(layout);
+  layout.sequences === undefined && layout.legends === undefined && !isFaceUserLayout(layout);
 
 /** 配列の定義から画面の入力欄の値を作る。 */
 export function contentOf(layout: StageUserLayout): UserLayoutContent {

@@ -1,8 +1,11 @@
 import { QWERTY_LEGEND } from '../shapes/geometry.ts';
+import { buildKanaContent, NO_OUTPUT_MESSAGE, printableOutput, type ParsedCell, type ParsedFace } from './import-faces.ts';
+import type { KanaLayoutContent } from './kana-face-layout-file.ts';
 import type { Sequence } from './types.ts';
 
 export type ImportFormat = 'dvorakj' | 'vial' | 'benizara';
 
+/** 段の形で受ける取り込み結果（かなを含まない定義）。 */
 export interface ImportedLayout {
   name: string;
   /** 物理キー位置に対応する基底面の表示。空白は機能キーまたは未定義。 */
@@ -11,11 +14,12 @@ export interface ImportedLayout {
   legends: [string, string][];
   /** かな・コンボを含む出力 → 物理キーの打鍵列 */
   sequences: [string, Sequence][];
-  /** trueの時は評価テキストをかなのまま打つ */
-  direct: boolean;
   /** 読み飛ばしたセクションなど、取り込み結果に影響する注意事項 */
   warnings: string[];
 }
+
+/** かなを直接打つ定義は面の形で、それ以外は段の形で返す。 */
+export type ImportedDefinition = { kind: 'kana'; content: KanaLayoutContent; warnings: string[] } | { kind: 'stage'; layout: ImportedLayout };
 
 const WIDTHS = QWERTY_LEGEND.map((row) => [...row].length);
 const LATIN = /[A-Za-z]/;
@@ -43,7 +47,7 @@ export function decodeLayoutFile(bytes: ArrayBuffer | Uint8Array, format: Import
       // 次の候補へ進む。最後の候補で内容のエラーを報告する。
     }
   }
-  throw new Error('定義ファイルの文字コードを判定できない');
+  throw new Error('定義ファイルの文字コードを判定できませんでした');
 }
 
 export function formatForFileName(fileName: string): ImportFormat | undefined {
@@ -62,10 +66,6 @@ function normalise(value: string): string {
   return value.normalize('NFKC');
 }
 
-function hasPrintableOutput(value: string): boolean {
-  return value !== '' && value !== '@@@' && value !== '無';
-}
-
 function classifyOutput(value: string, kinds: { kana: boolean; latin: boolean }) {
   if (KANA.test(value)) kinds.kana = true;
   if (LATIN.test(value)) kinds.latin = true;
@@ -80,17 +80,45 @@ function finish(
   warnings: string[] = [],
 ): ImportedLayout {
   if (kinds.kana && kinds.latin) {
-    throw new Error('かなを直接出力する面とローマ字を出力する面が混在している');
+    throw new Error(MIXED_KINDS_MESSAGE);
   }
-  if (sequences.size === 0) throw new Error('配列表から出力を見つけられない');
+  if (sequences.size === 0) throw new Error(NO_OUTPUT_MESSAGE);
   return {
     name,
     rows: rows.map((row) => row.join('')) as [string, string, string, string],
     legends: [...legends],
     sequences: [...sequences],
-    direct: kinds.kana,
     warnings,
   };
+}
+
+const MIXED_KINDS_MESSAGE = 'かなを出力する面とローマ字を出力する面が混在しているため、取り込めません';
+
+/** 面ごとの読み取り結果を、かなを含む定義なら面の形に、そうでなければ段の形にする。 */
+function resolveFaces(name: string, faces: ParsedFace[], warnings: string[]): ImportedDefinition {
+  const kinds = { kana: false, latin: false };
+  for (const face of faces) {
+    for (const cell of face.cells) {
+      const output = printableOutput(cell.output);
+      if (output !== undefined) classifyOutput(output, kinds);
+    }
+  }
+  if (kinds.kana && kinds.latin) throw new Error(MIXED_KINDS_MESSAGE);
+  if (kinds.kana) return { kind: 'kana', content: buildKanaContent(faces, name, warnings), warnings };
+
+  const rows = emptyRows();
+  const legends = new Map<string, string>();
+  const sequences = new Map<string, Sequence>();
+  for (const face of faces) {
+    const base = face.trigger.length === 0;
+    for (const cell of face.cells) {
+      const physical = QWERTY_LEGEND[cell.row][cell.column];
+      const sequence: Sequence = [face.trigger.concat(physical)];
+      recordCell(rows, legends, sequences, kinds, cell.row, cell.column, cell.output, cell.label, sequence, base);
+      if (!base && face.isFunctionLabel(cell.label)) legends.set(physical, cell.label);
+    }
+  }
+  return { kind: 'stage', layout: finish(name, rows, legends, sequences, kinds, warnings) };
 }
 
 function addWarning(warnings: string[], message: string) {
@@ -112,8 +140,9 @@ function recordCell(
   const physical = QWERTY_LEGEND[row]?.[column];
   if (physical === undefined || !label) return;
   if (showBase && !legends.has(physical)) legends.set(physical, label);
-  if (!output || !hasPrintableOutput(output)) return;
-  const value = normalise(output);
+  const printable = printableOutput(output);
+  if (printable === undefined) return;
+  const value = normalise(printable);
   if (!value) return;
   classifyOutput(value, kinds);
   if (showBase && [...value].length === 1) rows[row][column] = value;
@@ -256,15 +285,12 @@ export function isDashSeparatedHeader(header: string): boolean {
 }
 
 /** DvorakJの配列表ブロックだけを読む。コメント・option-inputの設定・ファイル名は判定材料にしない。 */
-export function importDvorakJ(source: string, name = 'DvorakJ取り込み'): ImportedLayout {
+export function importDvorakJ(source: string, name = 'DvorakJ取り込み'): ImportedDefinition {
   const text = source.replace(/^\uFEFF/, '').replace(/\/\*[\s\S]*?\*\//g, '');
   const lines = text.split(/\r?\n/);
   const warnings: string[] = [];
   const aliases = dvorakJAliases(lines, warnings);
-  const rows = emptyRows();
-  const legends = new Map<string, string>();
-  const sequences = new Map<string, Sequence>();
-  const kinds = { kana: false, latin: false };
+  const faces: ParsedFace[] = [];
 
   for (let i = 0; i < lines.length; i++) {
     const header = lines[i].trim();
@@ -294,20 +320,16 @@ export function importDvorakJ(source: string, name = 'DvorakJ取り込み'): Imp
       addWarning(warnings, `DvorakJの面「${header}」にセルがないため無視しました`);
       continue;
     }
-    const base = triggers.length === 0;
+    const cells: ParsedCell[] = [];
     for (const [row, line] of grid.entries()) {
       for (const [column, raw] of line.slice(0, WIDTHS[row] ?? 0).entries()) {
         const cell = dvorakJCell(raw);
-        if (!cell) continue;
-        const sequence: Sequence = [triggers!.concat(QWERTY_LEGEND[row][column])];
-        recordCell(rows, legends, sequences, kinds, row, column, cell.output, cell.label, sequence, base);
-        if (!base && hasDvorakJFunctionLabel(cell.label)) {
-          legends.set(QWERTY_LEGEND[row][column], cell.label);
-        }
+        if (cell) cells.push({ row, column, output: cell.output, label: cell.label });
       }
     }
+    faces.push({ heading: header, trigger: triggers, cells, isFunctionLabel: hasDvorakJFunctionLabel, dashHeading: isDashSeparatedHeader(header) });
   }
-  return finish(name, rows, legends, sequences, kinds, warnings);
+  return resolveFaces(name, faces, warnings);
 }
 
 const QMK_PRINTABLE: Record<string, string> = {
@@ -527,7 +549,7 @@ function benizaraTrigger(section: string): string[] | undefined {
 }
 
 /** 紅皿のCSVセクションからローマ字面またはかな面を読む。 */
-export function importBenizara(source: string, name = '紅皿取り込み'): ImportedLayout {
+export function importBenizara(source: string, name = '紅皿取り込み'): ImportedDefinition {
   const sections = new Map<string, string[]>();
   let current: string | undefined;
   for (const raw of source.replace(/^\uFEFF/, '').split(/\r?\n/)) {
@@ -544,18 +566,15 @@ export function importBenizara(source: string, name = '紅皿取り込み'): Imp
 
   const candidates = [...sections.keys()].filter((section) => section.startsWith('ローマ字') || section.startsWith('英数') || section.startsWith('かな'));
   const base = candidates.find((section) => section.includes('シフト無し'));
-  if (!base) throw new Error('紅皿の基底面（シフト無し）を見つけられない');
+  if (!base) throw new Error('紅皿の基底面（シフト無し）を見つけられませんでした');
   const prefix = base.startsWith('ローマ字') ? 'ローマ字' : base.startsWith('英数') ? '英数' : 'かな';
   const family = candidates.filter((section) => section.startsWith(prefix));
 
-  const rows = emptyRows();
-  const legends = new Map<string, string>();
-  const sequences = new Map<string, Sequence>();
-  const kinds = { kana: false, latin: false };
+  const faces: ParsedFace[] = [];
   const warnings: string[] = [];
   for (const section of candidates) {
     if (!family.includes(section)) {
-      addWarning(warnings, `面「${section}」は選択した出力形式「${prefix}」と異なるため無視しました`);
+      addWarning(warnings, `面「${section}」は、基底面「${base}」と名前の始まり（${prefix}）が異なるため読み飛ばしました`);
     }
   }
   for (const section of [base, ...family.filter((candidate) => candidate !== base)]) {
@@ -572,17 +591,40 @@ export function importBenizara(source: string, name = '紅皿取り込み'): Imp
           .map((cell) => cell.trim()),
       )
       .slice(0, 4);
-    const isBase = section === base;
+    const cells: ParsedCell[] = [];
     for (const [row, line] of grid.entries()) {
       for (const [column, raw] of line.slice(0, WIDTHS[row] ?? 0).entries()) {
         const cell = benizaraCell(raw);
-        if (!cell) continue;
-        const physical = QWERTY_LEGEND[row][column];
-        const sequence: Sequence = [trigger.concat(physical)];
-        recordCell(rows, legends, sequences, kinds, row, column, cell.output, cell.label, sequence, isBase);
-        if (!isBase && hasBenizaraFunctionLabel(cell.label)) legends.set(physical, cell.label);
+        if (cell) cells.push({ row, column, output: cell.output, label: cell.label });
       }
     }
+    faces.push({ heading: section, trigger, cells, isFunctionLabel: hasBenizaraFunctionLabel });
   }
-  return finish(name, rows, legends, sequences, kinds, warnings);
+  return resolveFaces(name, faces, warnings);
+}
+
+/** かな配列の画面で定義ファイルを取り込んだ結果。取り込めない時は利用者向けの理由を返す。 */
+export type KanaFileImportResult =
+  | { readonly ok: true; readonly content: KanaLayoutContent; readonly warnings: readonly string[] }
+  | { readonly ok: false; readonly message: string };
+
+/**
+ * ファイル名と中身から、かなを直接打つ配列の面の形を作る。
+ * 形式が分からないファイル、Vial、かなを含まない定義は取り込まない。
+ */
+export function importKanaLayoutFile(fileName: string, bytes: ArrayBuffer | Uint8Array): KanaFileImportResult {
+  const format = formatForFileName(fileName);
+  if (format === undefined) {
+    return { ok: false, message: '取り込める形式ではありません。DvorakJ（.txt）と紅皿（.bnz・.ini）の定義ファイルに対応しています' };
+  }
+  if (format === 'vial') return { ok: false, message: 'Vialの定義ファイル（.vil）は、かな配列として取り込めません' };
+  const name = fileName.replace(/\.[^.]+$/, '').trim() || 'かな配列';
+  try {
+    const source = decodeLayoutFile(bytes, format);
+    const result = format === 'dvorakj' ? importDvorakJ(source, name) : importBenizara(source, name);
+    if (result.kind === 'stage') return { ok: false, message: 'かな配列ではない定義のため、取り込めません' };
+    return { ok: true, content: result.content, warnings: result.warnings };
+  } catch (error) {
+    return { ok: false, message: `取り込めませんでした。${error instanceof Error ? error.message : String(error)}` };
+  }
 }

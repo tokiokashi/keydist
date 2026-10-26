@@ -1,7 +1,7 @@
 import { isBuiltin, ROMAJI_RULES, type UserRomajiRule } from '#input/romaji/rules.ts';
 import type { FingerAssignment } from '#input/shapes/geometry.ts';
 import { buildUserCatalog } from '#input/layouts/user-catalog.ts';
-import { isDirectUserLayout, isFaceUserLayout, type UserLayout } from '#input/layouts/user-layouts.ts';
+import { isFaceUserLayout, type UserLayout } from '#input/layouts/user-layouts.ts';
 
 /** 一覧の1行。種類ごとの違いは`detail`の文に収め、行の形は配列も規則も同じにする。 */
 export interface UserAssetRow {
@@ -22,7 +22,6 @@ export function userLayoutRows(userLayouts: readonly UserLayout[], userRomajiRul
     const unusable = unusableLayouts.get(index);
     if (unusable !== undefined) return { id: layout.id, name: layout.name, detail: unusable };
     if (isFaceUserLayout(layout)) return { id: layout.id, name: layout.name, detail: '面で定義した、ローマ字を経ずに直接打つ配列' };
-    if (layout.direct === true) return { id: layout.id, name: layout.name, detail: 'ローマ字を経ずに直接打つ配列' };
     const { romaji } = layout;
     if (romaji === undefined) {
       return { id: layout.id, name: layout.name, detail: '推奨のローマ字規則はありません。全体の値の規則で打ちます' };
@@ -36,7 +35,7 @@ export function userLayoutRows(userLayouts: readonly UserLayout[], userRomajiRul
 /** 自作のローマ字規則の行。補足は、その規則を推奨に使っている自作の配列（削除すると全体の値の規則に変わる旨）。 */
 export function userRomajiRuleRows(userLayouts: readonly UserLayout[], userRomajiRules: readonly UserRomajiRule[]): readonly UserAssetRow[] {
   return userRomajiRules.map((rule) => {
-    const users = userLayouts.filter((layout) => !isDirectUserLayout(layout) && layout.romaji === rule.id);
+    const users = userLayouts.filter((layout) => !isFaceUserLayout(layout) && layout.romaji === rule.id);
     const detail =
       users.length === 0
         ? undefined

@@ -8,20 +8,20 @@ import { userFingerAssignmentRows, userLayoutRows, userRomajiRuleRows } from './
 const ROWS: UserLayout['rows'] = ['', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'];
 const RULE: UserRomajiRule = { id: 'rule-a', name: '自作の規則', base: 'kunrei', overrides: {}, generateSokuon: true };
 
-test('配列の行: 推奨の規則の名前を出し、見つからない規則・組み込みの規則・直接入力を言い分ける', () => {
+test('配列の行: 推奨の規則の名前を出し、見つからない規則・組み込みの規則・面で定義した配列を言い分ける', () => {
   const rows = userLayoutRows(
     [
       { id: 'a', name: 'A', rows: ROWS, romaji: 'rule-a' },
       { id: 'b', name: 'B', rows: ROWS, romaji: 'rule-gone' },
       { id: 'c', name: 'C', rows: ROWS, romaji: 'azik' },
-      { id: 'd', name: 'D', rows: ROWS, romaji: 'rule-gone', direct: true },
+      { id: 'd', name: 'D', faces: [{ trigger: [], inputRole: 'layer', outputs: { a: 'あ' } }], composition: { dakuten: false, handakuten: false } },
     ],
     [RULE],
   );
   assert.equal(rows[0]!.detail, '推奨のローマ字規則: 自作の規則');
   assert.match(rows[1]!.detail!, /見つからないため、全体の値の規則で打ちます/);
   assert.match(rows[2]!.detail!, /^推奨のローマ字規則: AZIK/);
-  assert.equal(rows[3]!.detail, 'ローマ字を経ずに直接打つ配列');
+  assert.equal(rows[3]!.detail, '面で定義した、ローマ字を経ずに直接打つ配列');
 });
 
 test('配列の行: 推奨の規則を持たない配列は、全体の値の規則で打つ旨を出す', () => {
@@ -32,7 +32,7 @@ test('配列の行: 推奨の規則を持たない配列は、全体の値の規
 test('規則の行: 推奨に使っている配列を挙げる。使われていなければ補足なし', () => {
   const layouts: UserLayout[] = [
     { id: 'a', name: 'A', rows: ROWS, romaji: 'rule-a' },
-    { id: 'd', name: 'D', rows: ROWS, romaji: 'rule-a', direct: true },
+    { id: 'd', name: 'D', faces: [{ trigger: [], inputRole: 'layer', outputs: { a: 'あ' } }], composition: { dakuten: false, handakuten: false } },
   ];
   assert.match(userRomajiRuleRows(layouts, [RULE])[0]!.detail!, /^推奨に使っている配列: A。/);
   assert.equal(userRomajiRuleRows([], [RULE])[0]!.detail, undefined);

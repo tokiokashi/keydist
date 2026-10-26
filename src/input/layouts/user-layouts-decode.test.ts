@@ -22,10 +22,22 @@ test('undefinedは診断なしの空', () => {
 });
 
 test('正常な一覧は値が変わらず診断も無い', () => {
-  const layouts = [layout('user-a'), { ...layout('user-b'), direct: true, homeKeys: { 'L-index': 'f' } }];
+  const layouts = [layout('user-a'), { ...layout('user-b'), homeKeys: { 'L-index': 'f' } }];
   const result = decodeUserLayouts(structuredClone(layouts));
   assert.deepEqual(result.value, layouts);
   assert.deepEqual(result.diagnostics, []);
+});
+
+test('かなを直接打つ段の形（direct）の配列は、面の形でしか持てないので捨てて診断を積む', () => {
+  const result = decodeUserLayouts([layout('user-a'), { ...layout('user-b'), direct: true }]);
+  assert.deepEqual(
+    result.value.map((l) => l.id),
+    ['user-a'],
+  );
+  assert.deepEqual(
+    result.diagnostics.map((d) => d.path),
+    ['[1]'],
+  );
 });
 
 test('壊れた要素とid重複は捨てて、その数だけ診断を積む', () => {
@@ -41,7 +53,7 @@ test('壊れた要素とid重複は捨てて、その数だけ診断を積む', 
 });
 
 test('USER_LAYOUTS_CODEC: 往復で値が変わらず、版1の文書になる', () => {
-  const layouts = [layout('user-a'), { ...layout('user-b'), direct: true, homeKeys: { LI: 'f' } }];
+  const layouts = [layout('user-a'), { ...layout('user-b'), homeKeys: { LI: 'f' } }];
   const encoded = USER_LAYOUTS_CODEC.encode(layouts);
   assert.equal(encoded.version, 1);
   const decoded = USER_LAYOUTS_CODEC.decode(JSON.parse(JSON.stringify(encoded)));

@@ -961,7 +961,6 @@ test('imported user Sequenceもcanonical SemanticInput列へ同期する', () =>
     romaji: 'kunrei',
     sequences: [['x', [['space', 'j'], ['j']]]],
     legends: [],
-    direct: true,
   });
 
   const inputs = layout.canonicalInputs.get('x')?.[0]?.semanticInputs;
@@ -982,7 +981,6 @@ test('imported user Sequenceの完全一致pathはcanonical identityで1件へde
     romaji: 'kunrei',
     sequences: [['x', [['1']]]],
     legends: [],
-    direct: true,
   });
 
   const alternatives = layout.canonicalInputs.get('x');
@@ -999,7 +997,6 @@ test('保存済み凡例のspaceもthumb-rへ解決する', () => {
     romaji: 'kunrei',
     sequences: [['x', [['space']]]],
     legends: [['space', 'Space']],
-    direct: true,
   });
 
   assert.equal(layout.legends.get('thumb-r'), 'Space');

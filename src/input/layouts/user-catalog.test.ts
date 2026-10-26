@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { UserRomajiRule } from '../romaji/rules.ts';
 import { buildUserCatalog, userInputLayouts } from './user-catalog.ts';
-import type { StageUserLayout } from './user-layouts.ts';
+import type { FaceUserLayout, StageUserLayout } from './user-layouts.ts';
 
 const layout = (id: string, overrides: Partial<StageUserLayout> = {}): StageUserLayout => ({
   id,
@@ -10,6 +10,13 @@ const layout = (id: string, overrides: Partial<StageUserLayout> = {}): StageUser
   rows: ['1234567890', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'],
   romaji: 'kunrei',
   ...overrides,
+});
+
+const faceLayout = (id: string): FaceUserLayout => ({
+  id,
+  name: `面の配列 ${id}`,
+  faces: [{ trigger: [], inputRole: 'layer', outputs: { a: 'あ' } }],
+  composition: { dakuten: false, handakuten: false },
 });
 
 const rule = (id: string): UserRomajiRule => ({
@@ -109,8 +116,8 @@ test('捨てた自作の規則を指すromajiは、見つからない扱いに�
   assert.equal(catalog.layouts.get('user-a')?.recommendedRomajiRuleId, undefined);
 });
 
-test('directの配列はローマ字を経ないので、romajiが指す規則が無くても診断しない', () => {
-  const catalog = buildUserCatalog([layout('user-a', { direct: true, romaji: 'romaji-gone' })], []);
+test('面で定義する配列はローマ字を経ないので、診断しない', () => {
+  const catalog = buildUserCatalog([faceLayout('user-a')], []);
   assert.equal(catalog.layouts.get('user-a')?.recommendedRomajiRuleId, undefined);
   assert.deepEqual(catalog.diagnostics, []);
 });
@@ -151,12 +158,9 @@ test('Tester用の配列は、自作のローマ字規則の表で変換する',
   assert.equal(builtin[0]!.romajiTable?.get('し'), 'si');
 });
 
-test('Tester用の配列は、直接入力・規則なし・規則が見つからない配列に表を持たせず、使えない配列を除く', () => {
+test('Tester用の配列は、面で定義する配列・規則なし・規則が見つからない配列に表を持たせず、使えない配列を除く', () => {
   const { romaji: _noRule, ...withoutRule } = layout('user-none');
-  const layouts = userInputLayouts(
-    [layout('user-direct', { direct: true }), withoutRule, layout('user-missing', { romaji: 'romaji-none' }), layout('qwerty')],
-    [],
-  );
+  const layouts = userInputLayouts([faceLayout('user-direct'), withoutRule, layout('user-missing', { romaji: 'romaji-none' }), layout('qwerty')], []);
   assert.deepEqual(
     layouts.map((l) => l.id),
     ['user-direct', 'user-none', 'user-missing'],

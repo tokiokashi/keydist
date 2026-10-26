@@ -148,7 +148,7 @@ test('中身が同じで名前だけ違う時は足さず、手元の名前を�
   );
 });
 
-test('中身の比較: 数値に関わる項目はどれが違っても別の中身で、directの省略とfalse・キーの並びは同じ中身', () => {
+test('中身の比較: 数値に関わる項目はどれが違っても別の中身で、キーの並びは同じ中身', () => {
   const differs = (a: UserLayout, b: UserLayout): boolean => {
     const merged = mergeUserAssets({ ...EMPTY, userLayouts: [a] }, { layouts: [b], romajiRules: [], fingerAssignments: [], setups: [] }, STAMP);
     return merged.entries[0]!.outcome.kind === 'added-renamed';
@@ -158,12 +158,8 @@ test('中身の比較: 数値に関わる項目はどれが違っても別の中
   assert.equal(differs(base, { ...base, romaji: 'azik' }), true);
   assert.equal(differs(base, { ...base, sequences: [] }), true);
   assert.equal(differs(base, { ...base, legends: [['a', 'A']] }), true);
-  assert.equal(differs(base, { ...base, direct: true }), true);
   assert.equal(differs(base, { ...base, homeKeys: { LI: 'f' } }), true);
-  assert.equal(differs(base, { ...base, direct: false }), false);
   assert.equal(differs({ ...base, homeKeys: { LI: 'f', RI: 'j' } }, { ...base, homeKeys: { RI: 'j', LI: 'f' } }), false);
-  // ローマ字を経ない配列は推奨の規則を使わないので、規則のidが違っても同じ中身
-  assert.equal(differs({ ...base, direct: true }, { ...base, direct: true, romaji: 'azik' }), false);
 
   const ruleDiffers = (rule: UserRomajiRule) =>
     mergeUserAssets({ ...EMPTY, userRomajiRules: [RULE] }, { layouts: [], romajiRules: [rule], fingerAssignments: [], setups: [] }, STAMP).entries[0]!

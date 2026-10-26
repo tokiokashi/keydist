@@ -172,18 +172,13 @@ test('対象が無い更新は何もしない', () => {
   assert.equal(result.layouts, layouts);
 });
 
-test('取り込み形式の配列は直せない。段の文字だけで保存し直すと、かな・表示ラベル・直接入力が消えるため', () => {
-  const imported: StageUserLayout[] = [
-    stored({ id: 'user-seq', sequences: [['あ', [['a']]]] }),
-    stored({ id: 'user-leg', legends: [['a', 'あ']] }),
-    stored({ id: 'user-dir', direct: true }),
-  ];
+test('取り込み形式の配列は直せない。段の文字だけで保存し直すと、かな・表示ラベルが消えるため', () => {
+  const imported: StageUserLayout[] = [stored({ id: 'user-seq', sequences: [['あ', [['a']]]] }), stored({ id: 'user-leg', legends: [['a', 'あ']] })];
   for (const layout of imported) {
     assert.equal(isEditableUserLayout(layout), false);
     assert.equal(updateUserLayout(imported, layout.id, DVORAK).ok, false);
   }
   assert.equal(isEditableUserLayout(stored()), true);
-  assert.equal(isEditableUserLayout(stored({ direct: false })), true);
 });
 
 test('段の中の空白はキーに数えない。重複の注意にも、ホームキーの検査にも使わない', () => {
