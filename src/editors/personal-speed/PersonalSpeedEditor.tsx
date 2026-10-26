@@ -781,11 +781,7 @@ export function PersonalSpeedEditor({
       <NoticeLines notice={notices.all} />
       {ready ? (
         <>
-          {calibration === undefined ? null : (
-            <p className="personal-speed-note">
-              保存した数値は直接書き換えられます。欄から離れると保存され、「元に戻す」で戻せます。任意の項目は空にすると消えます。
-            </p>
-          )}
+          {calibration === undefined ? null : <p className="personal-speed-note">保存した数値は直接書き換えられます。任意の項目は空にすると消えます。</p>}
           <section className="personal-speed-section" aria-labelledby="personal-speed-basis">
             <h2 id="personal-speed-basis">測るキー</h2>
             <p className="personal-speed-note">

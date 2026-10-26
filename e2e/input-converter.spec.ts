@@ -1128,7 +1128,7 @@ test('Tester selects preset physical geometry and does not offer a saved custom 
   await expect(keyboard).toHaveAttribute('data-geometry-id', 'row-staggered');
   await expect(keyboard).toHaveAttribute('preserveAspectRatio', 'xMinYMid meet');
   const keyboardHeading = page.locator('.input-keyboard-panel-heading');
-  await expect(keyboardHeading).toContainText('キーをクリックすると実キーの割り当てを変更できます。');
+  await expect(keyboardHeading).toContainText('実キーの割り当てを変更できます。');
   await expect(page.getByLabel('物理キー割当')).toHaveCount(0);
 
   for (const id of [
@@ -1604,7 +1604,7 @@ test('入力欄はお題を薄く表示し正解・誤入力を位置ごとに�
 
   await lookup.fill('');
   await expect(target).toHaveCount(0);
-  await expect(output).toHaveAttribute('placeholder', 'ここをクリックして、そのまま打鍵してください。');
+  await expect(output).toHaveAttribute('placeholder', '打った文字が出ます');
   await expect(output).toHaveValue('か');
 });
 

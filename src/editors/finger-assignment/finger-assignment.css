@@ -114,11 +114,29 @@
 }
 
 /* 図の色と指の対応 */
+.finger-assignment-legend-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  margin: 0 0 0.25rem;
+}
+
+.finger-assignment .info-button {
+  padding: 0;
+  border-color: transparent;
+}
+
+.finger-assignment .info-button:hover,
+.finger-assignment .info-button:focus-visible {
+  border-color: var(--border);
+}
+
 .finger-assignment-legend {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem 0.75rem;
-  margin: 0 0 0.25rem;
+  margin: 0;
   padding: 0;
   list-style: none;
   font-size: 0.85rem;
