@@ -7,6 +7,7 @@ import {
   type SetAnalyzerExtractContext,
 } from '#analyzers/contract.ts';
 import { countBigramCombinations } from '#interpretation/bigram-combinations.ts';
+import { analyzeHandRhythm } from '#interpretation/structure/hand-rhythm.ts';
 import { adjacentMeanStdDev, DEFAULT_METRIC_CONDITIONS, rightHandShare, sameFingerRate, type Metrics } from '#interpretation/metrics.ts';
 import { analysisTargetKey, type AnalysisTarget } from '#input/setup/index.ts';
 import { ALL_FINGERS, type Finger, type Key } from '#input/shapes/geometry.ts';
@@ -68,9 +69,11 @@ export interface ComparisonExtracted {
   readonly rows: readonly ComparisonRow[];
 }
 
-/** `Metrics`と`Trace`から全列を読み出す純関数。Bigramの組の種類数の2列だけ`Trace`から数え、他の列は`Metrics`を写す。 */
+/** `Metrics`と`Trace`から全列を読み出す純関数。Bigramの組の種類数とHand Rhythmの2列ずつだけ`Trace`から数え、他の列は`Metrics`を写す。 */
 export function computeComparisonRowValues(metrics: Metrics, trace: Trace): ComparisonRowValues {
   const bigrams = countBigramCombinations(trace);
+  // Hand Rhythmの値は`Trace`だけで決まる。集計が持つ条件のスナップショットには、`Trace`を生成したTrigger realizationとAction realizationのPolicyを渡す。
+  const handRhythm = analyzeHandRhythm(trace.strokes, metrics.conditions.triggerRealizationPolicy, metrics.conditions.actionRealizationPolicy).aggregate;
   const { mean: adjacentMean, stdDev: adjacentStdDev } = adjacentMeanStdDev(metrics.adjacent);
   return {
     actions: metrics.actions,
@@ -90,6 +93,8 @@ export function computeComparisonRowValues(metrics: Metrics, trace: Trace): Comp
     rightHandPressShare: rightHandShare(metrics.perFingerPresses),
     physicalBigramCombinations: bigrams.physical,
     logicalBigramCombinations: bigrams.withTriggers,
+    alternationCoverage: handRhythm.alternation.coverage.rate * 100,
+    sameHandContinuationRate: handRhythm.continuationRate * 100,
   };
 }
 

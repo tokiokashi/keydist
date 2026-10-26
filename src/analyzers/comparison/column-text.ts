@@ -23,6 +23,8 @@ export const COMPARISON_COLUMN_IDS = [
   'rightHandPressShare',
   'physicalBigramCombinations',
   'logicalBigramCombinations',
+  'alternationCoverage',
+  'sameHandContinuationRate',
 ] as const;
 
 export type ComparisonColumnId = (typeof COMPARISON_COLUMN_IDS)[number];
@@ -111,5 +113,15 @@ export const COMPARISON_COLUMN_TEXT: Readonly<Record<ComparisonColumnId, Compari
     label: 'Bigram数（シフト込み）',
     description:
       'テキストを打った時に現れた、続けて打つ2回の打鍵の組が何種類あるか。シフトなどのレイヤーを切り替えるキーも含めて区別し、左右のシフトと左右の親指シフトも別と数えます。前置・後置のシフトは、そのシフトで打つ文字と合わせて1回の打鍵と数えます。A→BとB→Aは別の組で、親指のキーも数えます。',
+  },
+  alternationCoverage: {
+    label: '交互打鍵の連続の割合',
+    description:
+      '左右の手が交互に変わる3打鍵以上の連続に含まれる打鍵が、全打鍵のうちどれだけを占めるか（%）。前置・後置のシフトのキーも1打鍵と数えます。両手で押す打鍵は連続を切ります。',
+  },
+  sameHandContinuationRate: {
+    label: '同じ手の継続率',
+    description:
+      '片手で打つ隣り合う2打鍵のうち、同じ手が続いた組の割合（%）。手が切り替わる組と同じ手が続く組の合計で割り、両手で押す打鍵を含む組は数えません。',
   },
 } as const;

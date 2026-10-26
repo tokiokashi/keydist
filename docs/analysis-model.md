@@ -11,8 +11,8 @@ keydist 固有の内部モデルは同じものではないため、以下では
   SFB eventと、従来の距離指標 `metrics.sameFinger` は集計目的が異なる。
 - **roll**: 同じ手で指順が一方向へ進む連続打鍵を指す一般語。定義の細部は解析器ごとに異なる。
 - **redirect**: 同じ手の指順が3打の途中で反転するtrigramを指す一般語。
-- **alternation**: 左右の手を交互に使う系列。keydistではHand Rhythm / Alternationを
-  Chainとは別の解析軸として扱う。
+- **alternation**: 左右の手を交互に使う系列。keydistではHand RhythmをChainとは別の解析軸として扱い、
+  交互打鍵の連続（3Stroke以上）と同じ手の継続を `interpretation/structure/hand-rhythm.ts` が数える（仕様 §10.7）。
 - **weak redirect / weak-ish redirect**: 配列解析で使われることがある、
   redirectを指の組合せ等で細分する呼び方。keydistの現在の構造結果には
   この名称のbooleanや独立Runを保存しない。必要ならRedirectCandidate等のfactから後段で分類する。
@@ -296,6 +296,7 @@ overlap Spanでも同じTransition時間を重複適用しない。
 
 ## 解析軸の境界
 
-- Hand Rhythm / AlternationはChainとは別の解析軸として扱い、Chainへ吸収しない。
+- Hand RhythmはChainとは別の解析軸として扱い、Chainへ吸収しない。手は新しい押下で決め、
+  ChainInterpretationの境界を使わず、Chain・Arpeggioのsnapshotを持つ集計結果にも載せない（仕様 §10.7）。
 - geometry / reversal品質は別軸として扱い、Arpeggio構造定義へ戻さない。
 - 親指onlyのChainInterpretation既定値は未決事項を本モデルから推測しない。
