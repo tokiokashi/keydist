@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { PhysicalKeyboard, type PhysicalKeyboardKeyView } from '#ui/keyboard/physical-keyboard.tsx';
+import { InfoButton } from '#ui/primitives/info-button.tsx';
 import {
   addKeyToFinger,
   assignColumnFinger,
@@ -166,14 +167,20 @@ function FingerSelect({
 /** 図の色と指の対応。 */
 function FingerLegend() {
   return (
-    <ul className="finger-assignment-legend" aria-label="指の色">
-      {FINGERS.map((finger) => (
-        <li key={finger} data-tone={fingerTone(finger)}>
-          {FINGER_LABEL[finger]}
-        </li>
-      ))}
-      <li data-tone="muted">親指（下端の帯）</li>
-    </ul>
+    <div className="finger-assignment-legend-row">
+      <ul className="finger-assignment-legend" aria-label="指の色">
+        {FINGERS.map((finger) => (
+          <li key={finger} data-tone={fingerTone(finger)}>
+            {FINGER_LABEL[finger]}
+          </li>
+        ))}
+        <li data-tone="muted">親指（下端の帯）</li>
+      </ul>
+      <InfoButton
+        name="図の見方"
+        description="キーの色は基本の指を表します。複数の指が担当するキーは、追加で担当する指を縁の帯で示します。手の並びで基本の指より左の指は左端、右の指は右端、親指は下端です。下線のあるキーが指のホームキーです。"
+      />
+    </div>
   );
 }
 
@@ -239,12 +246,17 @@ export function FingerAssignmentEditor({
   const keyViews = useMemo(() => {
     if (board === undefined) return undefined;
     const views = new Map(board.views);
-    if (selectedKeyId !== undefined) {
+    if (assignment !== undefined && editable && editingFinger !== undefined) {
+      // 指を選んでいる間は、その指が担当するキーを押された状態にする。キーを押すと、その指の担当に足す・外す
+      for (const [id, view] of views) {
+        if (keyOwners(assignment, id).includes(editingFinger)) views.set(id, { ...view, selected: true });
+      }
+    } else if (selectedKeyId !== undefined) {
       const view = views.get(selectedKeyId);
       if (view !== undefined) views.set(selectedKeyId, { ...view, selected: true });
     }
     return views;
-  }, [board, selectedKeyId]);
+  }, [board, selectedKeyId, assignment, editable, editingFinger]);
 
   const commit = (next: FingerAssignment) => {
     if (assignment === undefined || !editable || next === assignment) return;
@@ -303,7 +315,7 @@ export function FingerAssignmentEditor({
     <article className="finger-assignment" data-finger-assignment-editor>
       <h1>{FINGER_ASSIGNMENT_LABEL}</h1>
       <p className="finger-assignment-note">
-        物理配列の上で、指ごとに担当するキーを決めます。1つのキーを複数の指が担当でき、どの指で打つかは、測る時に先読みの範囲で自動で選ばれます。作った割り当ては、条件の指の割り当てから選べます。ここでの物理配列の選択は、他の画面の条件を変えません。
+        物理配列の上で、指ごとに担当するキーを決めます。1つのキーを複数の指が担当でき、どの指で打つかは、測る時に先読みの範囲で自動で選ばれます。ここでの物理配列の選択は、他の画面の条件を変えません。
       </p>
       <div className="finger-assignment-toolbar">
         <button type="button" disabled={!canUndo} onClick={onUndo}>
@@ -386,23 +398,15 @@ export function FingerAssignmentEditor({
               </label>
             ) : (
               <p className="finger-assignment-note" data-finger-assignment-readonly>
-                組み込みの割り当てです。編集はできません。複製すると、自作の割り当てとして編集できます。
+                組み込みの割り当てのため、編集できません。
               </p>
             )}
-            {assignments.length === 0 ? (
-              <p className="finger-assignment-note">自作の指の割り当てはありません。新規作成では、選んでいる物理配列の既定の割り当てから作れます。</p>
-            ) : null}
+            {assignments.length === 0 ? <p className="finger-assignment-note">自作の指の割り当てはありません。</p> : null}
           </section>
 
           {assignment === undefined || shape === undefined || board === undefined || keyViews === undefined ? null : (
             <section className="finger-assignment-section" aria-labelledby="finger-assignment-edit">
               <h2 id="finger-assignment-edit">指の割り当て</h2>
-              <p className="finger-assignment-note">
-                {editable
-                  ? 'キーを選ぶと、そのキーの担当する指を決められます。担当する親指以外の指が複数ある時は、基本の指を選べます。'
-                  : 'キーを選ぶと、そのキーの基本の指と担当する指を見られます。'}
-                キーの色は基本の指を表します。複数の指が担当するキーは、追加で担当する指を縁の帯で示します。手の並びで基本の指より左の指は左端、右の指は右端、親指は下端です。下線のあるキーが指のホームキーです。
-              </p>
               <FingerLegend />
               <PhysicalKeyboard
                 keys={board.keys}
@@ -441,7 +445,7 @@ export function FingerAssignmentEditor({
                 <div className="finger-assignment-panel" data-finger-assignment-key-panel>
                   <h3>キー単位</h3>
                   {selectedKeyId === undefined ? (
-                    <p className="finger-assignment-note">図のキーを選びます。</p>
+                    <p className="finger-assignment-note">選んでいるキー: なし</p>
                   ) : !editable ? (
                     <>
                       <p>選んだキー: {keyLabelOf(selectedKeyId)}</p>
@@ -541,14 +545,8 @@ export function FingerAssignmentEditor({
                         ))}
                       </select>
                     </label>
-                    {editingFinger === undefined ? (
-                      <p className="finger-assignment-note">指を選ぶと、図のキーを押して、その指が担当するキーを足す・外せます。</p>
-                    ) : (
+                    {editingFinger === undefined ? null : (
                       <>
-                        <p className="finger-assignment-note">
-                          図のキーを押すと、そのキーが{FINGER_LABEL[editingFinger]}
-                          の担当に加わります（担当していれば外れます）。基本の指の担当も外せます。親指以外の最後の担当は、別の指の担当に加えてから外してください。
-                        </p>
                         {fingerNotice === undefined ? null : (
                           <p role="status" data-finger-assignment-notice>
                             {fingerNotice}

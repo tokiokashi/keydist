@@ -54,6 +54,7 @@ function SpellingRowView({
           type="text"
           aria-label={`${row.kana}の綴り`}
           aria-invalid={invalid}
+          placeholder={row.base}
           spellCheck={false}
           autoComplete="off"
           list={row.alternatives.length === 0 ? undefined : listId}
@@ -215,7 +216,7 @@ export function RomajiRuleEditor({ rules, ready, canUndo, canRedo, onUndo, onRed
               </button>
             </div>
             {rule === undefined ? (
-              <p className="romaji-rule-note">自作の綴りはありません。訓令式を基底にして作れます。</p>
+              <p className="romaji-rule-note">自作の綴りはありません。</p>
             ) : (
               <>
                 <label className="romaji-rule-name">
@@ -265,7 +266,6 @@ export function RomajiRuleEditor({ rules, ready, canUndo, canRedo, onUndo, onRed
           {rule === undefined ? null : (
             <section className="romaji-rule-section" aria-labelledby="romaji-rule-spellings">
               <h2 id="romaji-rule-spellings">綴りが割れるかな</h2>
-              <p className="romaji-rule-note">この規則の綴りを書き換えると、基底のルールとの差分になります。空にすると基底の綴りへ戻ります。</p>
               <table className="romaji-rule-table" data-romaji-rule-table>
                 <thead>
                   <tr>

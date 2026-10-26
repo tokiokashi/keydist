@@ -108,7 +108,7 @@ function LayoutForm({ initial, isNew, fingerAssignments, ruleOptions, onSubmit }
 
       <fieldset className="romaji-layout-rows">
         <legend>段の文字</legend>
-        <p className="romaji-layout-note">キーに置く文字を、左から順に続けて入力します。数字段は空にすると、QWERTYと同じ数字段になります。</p>
+        <p className="romaji-layout-note">数字段は空にすると、QWERTYと同じ数字段になります。</p>
         {ROW_LABELS.map((label, index) => {
           const own = problemsAt((problem) => problem.field.kind === 'row' && problem.field.index === index);
           const length = [...normalized.rows[index]!].length;
@@ -255,7 +255,7 @@ export function RomajiLayoutEditor({
   return (
     <article className="romaji-layout" data-romaji-layout-editor>
       <h1>{ROMAJI_LAYOUT_LABEL}</h1>
-      <p className="romaji-layout-note">名前と4段の文字を入力して、ローマ字配列を自作します。作った配列は、Analyzerの対象に選べます。</p>
+      <p className="romaji-layout-note">ローマ字配列を自作します。作った配列は、Analyzerの対象に選べます。</p>
       <div className="romaji-layout-toolbar">
         <button type="button" disabled={!canUndo} onClick={onUndo}>
           元に戻す

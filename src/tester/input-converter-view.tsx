@@ -779,7 +779,7 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
           <div>
             <h1>Alternative Keyboard Layout Tester</h1>
           </div>
-          <p>配列を選び、手元のキーボードで実際に打って試せます。打ったキーがその配列で何の文字になるかを、その場で確かめられます。</p>
+          <p>手元のキーボードで、配列の入力を試せます。</p>
         </header>
 
         <div className="input-workspace" style={{ '--input-sidebar-width': `${splitPercent}%` } as CSSProperties}>
@@ -888,7 +888,6 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
                     <span>{guideDefinitions.length} レイヤー</span>
                   </>
                 )}
-                renderDockedActions={() => <small>クリックで小窓表示</small>}
               >
                 {combinationLabels.length > 0 ? (
                   <fieldset className="plain-group input-semantic-groups" aria-label="同時押しの組み合わせ">
@@ -1006,7 +1005,6 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
             }}
             role="separator"
             tabIndex={0}
-            title="ドラッグで幅を調整できます。ダブルクリックで1:1に戻します。"
           />
 
           <section className="input-main">
@@ -1067,11 +1065,11 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
                     if (!randomPracticeComplete) return;
                     advanceRandomPractice(randomPracticeMode);
                   }}
-                  placeholder={lookupQuery.length === 0 ? 'ここをクリックして、そのまま打鍵してください。' : undefined}
+                  placeholder={lookupQuery.length === 0 ? '打った文字が出ます' : undefined}
                 />
               </div>
               <p className="input-capture-hint" id="input-capture-help">
-                {session.active ? '入力を受け付けています。' : '入力欄をクリックすると入力を開始します。'}
+                {session.active ? '入力を受け付けています。' : '入力を受け付けていません。'}
                 Backspaceで1文字削除します。
                 {randomPracticeMode === null ? 'Enterで改行します。' : 'ランダム練習中は完成後Enterで次のお題へ進みます。'}
                 {escapeIsLayoutInput ? 'Escは配列入力として扱います。' : 'Escで全削除します。'}
@@ -1091,7 +1089,7 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
               renderHeader={() => (
                 <>
                   <strong>Keyboard View</strong>
-                  <span className="input-keyboard-help">キーをクリックすると実キーの割り当てを変更できます。</span>
+                  <span className="input-keyboard-help">実キーの割り当てを変更できます。</span>
                 </>
               )}
             >
