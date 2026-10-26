@@ -5,7 +5,7 @@ import { waitForHydration } from './hydration-helper.ts';
  * かな配列の画面のE2E。検査の分岐と保存の中身はunit testが持つので、
  * ここでは画面の配線を見る: サイドバーから開ける、図の上でキーを選んで出力を置ける、
  * 切り替えのキー付きの面を足せる、未選択の項目で保存が止まる、保存先に反映される、
- * 対象の選択に並ぶ、貼り付けたJSONの誤りの場所が出て取り込まれない。
+ * 対象の選択に並ぶ、貼り付けたJSONの誤りの場所が出て取り込まれない、幅390pxでは図だけが横にスクロールして押せる。
  */
 
 const STORAGE_KEY = 'keydist:user-layouts';
@@ -138,4 +138,28 @@ test('指が担当しないキーをホームキーにすると注意が出て�
   await page.locator('[data-kana-home="LI"]').selectOption('');
   await page.locator('[data-kana-home="RI"]').selectOption('h');
   await expect(warning).toHaveCount(0);
+});
+
+test.describe('幅390px', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('図は横にスクロールし、ページ全体には横スクロールが出ず、図のキーを押して選べる', async ({ page }) => {
+    await page.goto('/kana-layout');
+    await waitForHydration(page);
+
+    // ページ全体は画面の幅に収まり、狭い分は図の枠だけがスクロールする
+    const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(pageWidth).toBeLessThanOrEqual(390);
+    const figureScrolls = await page.locator('[data-kana-figure]').evaluate((figure) => figure.scrollWidth > figure.clientWidth);
+    expect(figureScrolls).toBe(true);
+
+    // 図のキーは押せる大きさを保ち（24×24 CSS px 以上）、押すと出力の欄に移る
+    const keyA = page.locator('[data-kana-figure] [data-key-id="a"]');
+    const keyBox = await keyA.locator('rect').boundingBox();
+    expect(keyBox?.width ?? 0).toBeGreaterThanOrEqual(24);
+    expect(keyBox?.height ?? 0).toBeGreaterThanOrEqual(24);
+    await keyA.click();
+    await page.locator('[data-kana-output]').fill('あ');
+    await expect(keyA.locator('.physical-keyboard-legend')).toHaveText('あ');
+  });
 });
