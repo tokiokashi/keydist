@@ -19,6 +19,7 @@ import { HEATMAP_PANE_META, HEATMAP_STANDALONE_SET_TARGETS_WIDTH_REM } from './p
  * 優劣を示す色・強調・順位は出さない。
  *
  * 単体の画面では、Singleの対象の図の下に、Multiの集合の対象の図を格子に並べる（`setTargets`）。
+ * 格子に並べる対象を選ぶ操作は、一番上の図と格子の間に置く（`setTargetPicker`）。
  * 色の尺度は並べた図の全部で共通にし、同じ押下数のキーが同じ濃さになる。格子の図のキーは押せず、
  * ツールチップは押下数だけを出す。
  */
@@ -52,7 +53,14 @@ function figureProps(layout: Layout, geometry: Geometry) {
   };
 }
 
-export function HeatmapBody({ layout, geometry, extracted, keySelection, setTargets }: SingleBodyProps<HeatmapExtracted, HeatmapOptions>) {
+export function HeatmapBody({
+  layout,
+  geometry,
+  extracted,
+  keySelection,
+  setTargets,
+  setTargetPicker,
+}: SingleBodyProps<HeatmapExtracted, HeatmapOptions>) {
   const maxCount = sharedMaxCount([
     extracted.maxCount,
     ...(setTargets ?? []).flatMap((figure) => (figure.state.status === 'ready' ? [figure.state.extracted.maxCount] : [])),
@@ -76,6 +84,7 @@ export function HeatmapBody({ layout, geometry, extracted, keySelection, setTarg
           {...(keySelection === undefined ? {} : { keySelection })}
         />
       </div>
+      {setTargetPicker ?? null}
       {setTargets === undefined ? null : (
         <ul className="heatmap-set-grid" aria-label="他の対象の打鍵頻度">
           {setTargets.map((figure) => (

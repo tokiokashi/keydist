@@ -63,6 +63,11 @@ export interface TargetSelectionProps {
    * パソコン幅だけ。スマホ幅のシートは画面を覆うので自動では出さない。
    */
   readonly autoOpen?: boolean | undefined;
+  /**
+   * 何を選ぶ部品か（読み上げ名とダイアログ名の先頭）。省略時は「対象」。1つの画面に選択が2つ並ぶ時に、
+   * どちらの値を変えるのかを名前で区別する。
+   */
+  readonly label?: string;
 }
 
 /** スマホ幅（シートで出す幅）。解析設定のシートと同じ境目（`ui/theme/breakpoints.ts`）。 */
@@ -144,6 +149,7 @@ export function TargetSelection({
   open: controlledOpen,
   onOpenChange,
   autoOpen,
+  label = '対象',
 }: TargetSelectionProps) {
   const [innerOpen, setInnerOpen] = useState(false);
   const open = controlledOpen ?? innerOpen;
@@ -330,7 +336,7 @@ export function TargetSelection({
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
-        aria-label={`対象: ${ariaSummary}`}
+        aria-label={`${label}: ${ariaSummary}`}
         title={title || undefined}
         onClick={() => (open ? close(false) : setOpen(true))}
       >
@@ -366,7 +372,7 @@ export function TargetSelection({
                 className="target-selection-panel"
                 role="dialog"
                 aria-modal="false"
-                aria-label="対象の選択"
+                aria-label={`${label}の選択`}
                 tabIndex={-1}
                 data-target-selection="true"
                 style={

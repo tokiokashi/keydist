@@ -243,3 +243,80 @@ test('格子の図は、Shiftを使う配列と使わない配列でもキー1�
     expect(lefts[3]!.width).toBeGreaterThan(lefts[2]!.width);
   }
 });
+
+/** 格子に並べる配列を選ぶ操作（Multiの集合の書き換え）。Singleの対象の選択とは別の部品 */
+const setPicker = (page: Page) => feature(page).getByRole('button', { name: /^並べる配列: / });
+const setDialog = (page: Page) => page.getByRole('dialog', { name: '並べる配列の選択' });
+const multiOf = (page: Page) => page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? 'null') as unknown, MULTI_KEY);
+
+test('集合が空でも、並べる配列を選ぶ操作だけが出る。選ぶと格子が出て、Undoで戻る。Singleの対象は変わらない', async ({ page }) => {
+  await seedSelections(page, 'qwerty', []);
+  await page.goto('/analyzer/heatmap');
+  await expect(feature(page)).toBeVisible({ timeout: 10_000 });
+  await expect(cells(page)).toHaveCount(0);
+  await expect(setPicker(page)).toHaveAttribute('aria-label', '並べる配列: 未選択');
+  // 見出しのSingleの対象の選択は別のボタンで、名前で区別できる
+  await expect(page.getByRole('button', { name: /^対象: / })).toHaveCount(1);
+  // 選択の小窓は自動で開かない
+  await expect(setDialog(page)).toHaveCount(0);
+
+  await setPicker(page).click();
+  await setDialog(page).locator('input[value="layout:dvorak"]').click();
+  await setDialog(page).locator('input[value="layout:colemak-dh"]').click();
+  await expect(cells(page)).toHaveCount(2);
+  await expect(cells(page).filter({ has: page.locator('[data-heatmap-diagram]') })).toHaveCount(2, { timeout: 10_000 });
+  await page.keyboard.press('Escape');
+  expect(await page.evaluate((key) => localStorage.getItem(key), SINGLE_KEY)).toContain('qwerty');
+
+  // 選択の中の名前と格子の図の名前が同じ
+  const gridNames = await cells(page).locator('.heatmap-set-name').allTextContents();
+  const summary = (await setPicker(page).getAttribute('aria-label'))!.replace('並べる配列: ', '');
+  for (const name of gridNames) expect(summary).toContain(name.trim());
+
+  // 1回のUndoで、直前に足した1件だけが戻る
+  const bar = page.locator('.context-bar');
+  await bar.getByRole('button', { name: '元に戻す' }).click();
+  await expect(cells(page)).toHaveCount(1);
+  await bar.getByRole('button', { name: '元に戻す' }).click();
+  await expect(cells(page)).toHaveCount(0);
+  await expect(setPicker(page)).toHaveAttribute('aria-label', '並べる配列: 未選択');
+});
+
+test('Singleの対象を集合に足しても格子は増えない。外すと選択からも消える', async ({ page }) => {
+  await seedSelections(page, 'qwerty', ['dvorak']);
+  await page.goto('/analyzer/heatmap');
+  await expect(cells(page)).toHaveCount(1, { timeout: 10_000 });
+  await setPicker(page).click();
+  await setDialog(page).locator('input[value="layout:qwerty"]').click();
+  await expect(setDialog(page).getByRole('status')).toContainText('2件を選択中');
+  await expect(cells(page)).toHaveCount(1);
+  await setDialog(page).locator('input[value="layout:dvorak"]').click();
+  await expect(cells(page)).toHaveCount(0);
+  await expect(setDialog(page).getByRole('status')).toContainText('1件を選択中');
+});
+
+test('ヒートマップの画面で変えた集合は、比較表の画面にも出る', async ({ page }) => {
+  await seedSelections(page, 'qwerty', []);
+  await page.goto('/analyzer/heatmap');
+  await expect(feature(page)).toBeVisible({ timeout: 10_000 });
+  await setPicker(page).click();
+  await setDialog(page).locator('input[value="layout:dvorak"]').click();
+  await expect(cells(page)).toHaveCount(1);
+  await page.keyboard.press('Escape');
+  await expect.poll(async () => JSON.stringify(await multiOf(page))).toContain('dvorak');
+  // 初期値の書き込みを仕込んだページとは別のページで開く（開き直しで集合が上書きされない）
+  const comparison = await page.context().newPage();
+  await comparison.goto('/analyzer/comparison');
+  await expect(comparison.getByRole('button', { name: /^対象: .*Dvorak/ })).toBeVisible({ timeout: 10_000 });
+});
+
+test('Workspaceのヒートマップのペインには、並べる配列を選ぶ操作が出ない', async ({ page }) => {
+  await seedSelections(page, 'qwerty', ['qwerty', 'dvorak']);
+  await page.goto('/');
+  await waitForHydration(page);
+  await page.locator('#app-sidebar').getByRole('button', { name: '＋ 新しいWorkspace' }).click();
+  await page.getByRole('button', { name: /ペインを追加/ }).click();
+  await page.getByRole('menuitem', { name: /^ヒートマップ(?!（レイヤー）)/ }).click();
+  await expect(feature(page)).toBeVisible({ timeout: 10_000 });
+  await expect(setPicker(page)).toHaveCount(0);
+});
