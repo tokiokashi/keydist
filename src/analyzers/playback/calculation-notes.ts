@@ -40,6 +40,8 @@ export function playbackCalculationNotes(
   overheadUse: PlaybackOverheadUse,
   /** 読点・句点の前後の待機のうち、0でなくテキストに足す位置がある項目（`PlaybackExtracted.waitUse`）。省略した時はどれも足さない。 */
   waitUse: PunctuationWaitUse = NO_WAIT_USE,
+  /** 文節の区切りの待機を時間に足しているか（`PlaybackExtracted.bunsetsuUse`が有るか）。省略した時は足していない。 */
+  bunsetsuWaitInUse = false,
 ): PlaybackCalculationNotes {
   const defaults = DEFAULT_PLAYBACK_OPTIONS;
   const personalSpeedInUse = personalSpeedUse === 'applied';
@@ -66,6 +68,7 @@ export function playbackCalculationNotes(
   if (waitUse.commaAfterMs) changes.push(`読点の後の待機: ${options.commaAfterMs}ミリ秒`);
   if (waitUse.periodBeforeMs) changes.push(`句点の前の待機: ${options.periodBeforeMs}ミリ秒`);
   if (waitUse.periodAfterMs) changes.push(`句点の後の待機: ${options.periodAfterMs}ミリ秒`);
+  if (bunsetsuWaitInUse) changes.push(`文節の区切りの待機: ${options.bunsetsuWaitMs}ミリ秒`);
   if (options.rateAverage !== defaults.rateAverage) {
     changes.push(`平均の方式: ${options.rateAverage === 'ewma' ? 'EWMA' : 'SMA'}`);
   }

@@ -4,6 +4,7 @@ import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { builtinTextById } from '#input/text/builtin.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { Setup } from '#input/setup/index.ts';
+import type { SegmentationInput } from '#input/text/segmentation.ts';
 import { EMPTY_SETTINGS_OVERRIDES, setSettingsOverride, type SettingsCascadeOverrides } from '#engine/settings-items.ts';
 import { DEFAULT_EXTRACTION_ASSETS } from '#analyzers/contract.ts';
 import { basisIdOf, singleExtractionKeyOf, traceKeyOf } from '#engine/keys.ts';
@@ -65,6 +66,7 @@ function resolve(
   language: 'en' | 'ja' = 'en',
   overrides: SettingsCascadeOverrides = EMPTY_SETTINGS_OVERRIDES,
   personalSpeed?: PlaybackCalibration,
+  segmentation?: SegmentationInput,
 ): ResolvedInput {
   const setup: Setup = { id: 'setup-playback', number: 1, layoutId, shapeId: 'row-staggered' };
   const result = resolveEngineInput({
@@ -74,6 +76,7 @@ function resolve(
     userLayouts: new Map(),
     overrides,
     ...(personalSpeed === undefined ? {} : { personalSpeed }),
+    ...(segmentation === undefined ? {} : { segmentation }),
     text,
     language,
   });
@@ -127,10 +130,11 @@ test('抽出は構造解析の結果をそのまま持ち、打鍵の列とス�
   assert.equal(extracted.windowSize, 3);
 });
 
-test('解析設定は、時間と速度平均の17項目だけが抽出のキーに入り、残りは表示だけが変わる', () => {
+test('解析設定は、時間と速度平均の18項目だけが抽出のキーに入り、残りは表示だけが変わる', () => {
   assert.deepEqual(Object.keys(playbackOptions.items).sort(), [
     'allFingerMovementDelay',
     'applyPersonalSpeed',
+    'bunsetsuWaitMs',
     'commaAfterMs',
     'commaBeforeMs',
     'fingerPreparationSeconds',
@@ -175,6 +179,7 @@ test('解析設定は、時間と速度平均の17項目だけが抽出のキー
     commaAfterMs: 0,
     periodBeforeMs: 0,
     periodAfterMs: 0,
+    bunsetsuWaitMs: 0,
     rateAverage: 'sma',
     rateWindow: 10,
     rateHalfLifeSeconds: 1,
@@ -269,7 +274,7 @@ test('速度の推移（EWMA）: 時間で減衰させ、最初の有効な値�
   assert.equal(extracted.rateChart[2].actionsPerSecond, 1.1890265225127918);
 });
 
-test('解析設定の共有リンク: 時間と速度平均の17項目は既定と違う時だけ書き、読み戻すと同じ値になる', () => {
+test('解析設定の共有リンク: 時間と速度平均の18項目は既定と違う時だけ書き、読み戻すと同じ値になる', () => {
   assert.equal(playbackOptions.encodeOptionsToUrl(DEFAULT_PLAYBACK_OPTIONS).toString(), '');
   const changed: PlaybackOptions = {
     ...DEFAULT_PLAYBACK_OPTIONS,
@@ -287,12 +292,13 @@ test('解析設定の共有リンク: 時間と速度平均の17項目は既定�
     commaAfterMs: 200,
     periodBeforeMs: 100,
     periodAfterMs: 500,
+    bunsetsuWaitMs: 400,
     rateAverage: 'ewma',
     rateWindow: 20,
     rateHalfLifeSeconds: 2,
   };
   const params = playbackOptions.encodeOptionsToUrl(changed);
-  assert.equal(params.size, 17);
+  assert.equal(params.size, 18);
   const diagnostics: never[] = [];
   const decoded = playbackOptions.decodeOptionsFromUrl(params, diagnostics);
   assert.deepEqual({ ...DEFAULT_PLAYBACK_OPTIONS, ...decoded.values }, changed);
@@ -1573,4 +1579,155 @@ test('待機: 再生は待機を含めた表示時間で進み、待機の間は
   assert.equal(state.cursor, 1);
   state = tickPlayback(state, 100, extracted.analysis, extracted.schedule);
   assert.equal(state.cursor, 2);
+});
+
+// ---------------------------------------------------------------------------
+// 文節の区切りの待機（spec/playback-timing.md §3.9）
+// ---------------------------------------------------------------------------
+
+const SPLITTER = { name: 'BudouX', version: '0.0.0' };
+
+/** 評価に渡すテキストの文字位置の区切り（読みのテキストと同じ位置）。 */
+const segmentationOf = (boundaries: readonly number[]): SegmentationInput => ({ boundaries, origin: 'kana-only', splitter: SPLITTER });
+
+/** 区切りを渡した日本語のテキストの入力。 */
+const bunsetsuInput = (text: string, boundaries: readonly number[], overrides: SettingsCascadeOverrides = EMPTY_SETTINGS_OVERRIDES) =>
+  resolve('qwerty', text, 'ja', overrides, undefined, segmentationOf(boundaries));
+
+const waitsOf = (extracted: PlaybackExtracted) => extracted.schedule.map((step) => step.waitMs ?? 0);
+
+test('文節の区切りの待機: 待機が0の時、区切りを渡しても時間表は区切りを渡さない時と一致する', () => {
+  // 条件: 配列qwerty・ローマ字・テキスト「あいうえ」・区切りは位置2・待機0（既定）。
+  const plain = extractionOf(resolve('qwerty', 'あいうえ', 'ja'));
+  const withBoundary = extractionOf(bunsetsuInput('あいうえ', [2]));
+  assert.deepEqual(withBoundary.schedule, plain.schedule);
+  assert.deepEqual(withBoundary.timeTotals, plain.timeTotals);
+  assert.equal(withBoundary.bunsetsuUse, undefined);
+});
+
+test('文節の区切りの待機: 区切りの後ろの文節の最初のステップの前に、区切り1つにつき1回入る', () => {
+  // 条件: 配列qwerty・ローマ字・テキスト「あいうえ」（4打鍵）・区切りは位置2・待機400ms。
+  const input = bunsetsuInput('あいうえ', [2]);
+  const plain = extractionOf(input);
+  const waited = extractionOf(input, { bunsetsuWaitMs: 400 });
+  assert.deepEqual(waitsOf(waited), [0, 0, 400, 0]);
+  assert.deepEqual(typingMsOf(waited), typingMsOf(plain));
+  assert.equal(waited.timeTotals.typingMs, plain.timeTotals.typingMs);
+  assert.equal(waited.timeTotals.totalMs, plain.timeTotals.totalMs + 400);
+  assert.deepEqual(waited.bunsetsuUse, { splitter: SPLITTER, origin: 'kana-only' });
+  // 区切りが2つなら2回入る
+  assert.deepEqual(waitsOf(extractionOf(bunsetsuInput('あいうえ', [1, 3]), { bunsetsuWaitMs: 400 })), [0, 400, 0, 400]);
+});
+
+test('文節の区切りの待機: 複数のステップで打つかなは、区切りの待機が最初のステップの前に入る', () => {
+  // 条件: 配列qwerty・ローマ字・テキスト「あかあ」（4打鍵。「か」は2打鍵）・区切りは位置1と2・待機400ms。
+  const waited = extractionOf(bunsetsuInput('あかあ', [1, 2]), { bunsetsuWaitMs: 400 });
+  assert.deepEqual(waitsOf(waited), [0, 400, 0, 400]);
+});
+
+test('文節の区切りの待機: 配列が打てない文字の位置でも、テキストのその位置に足す', () => {
+  // 条件: 配列qwerty・ローマ字・記号をすべて残す・テキスト「あ，い」。qwertyは全角の「，」を打てず、a・iの2打鍵だけが残る。
+  // 区切りは位置1（「，」の前）と2（「，」の後ろ）。どちらも「あ」と「い」の間に入る。
+  const input = bunsetsuInput('あ，い', [1, 2], keepSymbolsOverrides());
+  assert.equal(createEngineCache().getTrace(input).trace.skipped, 1);
+  assert.deepEqual(waitsOf(extractionOf(input, { bunsetsuWaitMs: 400 })), [0, 800]);
+  // 打てる配列（「、」を含む3打鍵）でも、待機の合計が同じになる
+  const typable = extractionOf(bunsetsuInput('あ、い', [1, 2]), { bunsetsuWaitMs: 400 });
+  assert.equal(typable.timeTotals.totalMs - typable.timeTotals.typingMs, 800);
+});
+
+test('文節の区切りの待機: 読点の後の待機と同じ間に入る時は、両方を合計する', () => {
+  // 条件: 配列qwerty・ローマ字・テキスト「あ、いう」（読点を含む4打鍵）・区切りは位置2（読点の直後）・読点の後の待機200ms・文節の区切りの待機400ms。
+  const input = bunsetsuInput('あ、いう', [2]);
+  assert.deepEqual(waitsOf(extractionOf(input, { commaAfterMs: 200, bunsetsuWaitMs: 400 })), [0, 0, 600, 0]);
+  // 片方の値で、他方の足し方は変わらない
+  assert.deepEqual(waitsOf(extractionOf(input, { commaAfterMs: 200 })), [0, 0, 200, 0]);
+  assert.deepEqual(waitsOf(extractionOf(input, { bunsetsuWaitMs: 400 })), [0, 0, 400, 0]);
+  // 読点の前の待機は、読点を覆うステップの前に入り、区切りの待機とは別の間になる
+  assert.deepEqual(waitsOf(extractionOf(input, { commaBeforeMs: 300, bunsetsuWaitMs: 400 })), [0, 300, 400, 0]);
+});
+
+test('文節の区切りの待機: 再生倍率を掛けず、打鍵の時間も変えない（全指の移動時間で律速する設定でも）', () => {
+  // 条件: 配列qwerty・ローマ字・テキスト「ああ、ええ」・区切りは位置3・再生倍率2。
+  const input = bunsetsuInput('ああ、ええ', [3]);
+  for (const allFingerMovementDelay of [true, false]) {
+    const base = { speedMultiplier: 2, allFingerMovementDelay };
+    const plain = extractionOf(input, base);
+    const waited = extractionOf(input, { ...base, bunsetsuWaitMs: 400 });
+    assert.deepEqual(typingMsOf(waited), typingMsOf(plain));
+    assert.equal(waited.timeTotals.totalMs, plain.timeTotals.totalMs + 400);
+  }
+});
+
+test('文節の区切りの待機: SMAのアクション/秒は、窓のステップの表示時間（待機を含む）の合計で求める', () => {
+  // 条件: 配列qwerty・ローマ字・テキスト「あいうえおあ」・区切りは位置2と4・SMA窓幅3・待機400ms。
+  const input = bunsetsuInput('あいうえおあ', [2, 4]);
+  const waited = extractionOf(input, { rateAverage: 'sma', rateWindow: 3, bunsetsuWaitMs: 400 });
+  const durations = displayMsOf(waited);
+  assert.deepEqual(waitsOf(waited), [0, 0, 400, 0, 400, 0]);
+  for (const point of waited.rateChart) {
+    if (point.actionsPerSecond === undefined) continue;
+    const window = durations.slice(Math.max(0, point.cursor - 3), point.cursor);
+    const expected = (window.length * 1000) / window.reduce((sum, ms) => sum + ms, 0);
+    assert.ok(Math.abs(point.actionsPerSecond - expected) < 1e-9, `cursor ${point.cursor}`);
+  }
+});
+
+test('文節の区切りの待機: 日本語でないテキスト・区切りを受け取っていない時は待機を足さない', () => {
+  // 条件: 配列qwerty・待機400ms。英語のテキストは区切りを渡されても読まない。区切りを渡さない（分割器を読み込めない）日本語のテキストも足さない。
+  const english = resolve('qwerty', 'ab cd', 'en', EMPTY_SETTINGS_OVERRIDES, undefined, segmentationOf([2]));
+  const englishWaited = extractionOf(english, { bunsetsuWaitMs: 400 });
+  assert.deepEqual(englishWaited.schedule, extractionOf(english).schedule);
+  assert.equal(englishWaited.bunsetsuUse, undefined);
+  const missing = resolve('qwerty', 'あいうえ', 'ja');
+  const missingWaited = extractionOf(missing, { bunsetsuWaitMs: 400 });
+  assert.deepEqual(missingWaited.schedule, extractionOf(missing).schedule);
+  assert.equal(missingWaited.bunsetsuUse, undefined);
+});
+
+test('文節の区切りの待機: 区切りが1つも無いテキストでは、待機が0でなくても足さず、使った区切りも持たない', () => {
+  const input = bunsetsuInput('あいうえ', []);
+  const waited = extractionOf(input, { bunsetsuWaitMs: 400 });
+  assert.deepEqual(waited.schedule, extractionOf(input).schedule);
+  assert.equal(waited.bunsetsuUse, undefined);
+});
+
+test('文節の区切りの待機: 抽出のキーの資産は、待機が0でない時だけ区切りを含む', () => {
+  const assets = (boundaries: readonly number[]) => ({ ...DEFAULT_EXTRACTION_ASSETS, segmentation: segmentationOf(boundaries) });
+  // 待機が0の時は、区切りが変わってもキーが変わらない（抽出を作り直さない）
+  assert.deepEqual(playbackAssetsKeyOf(DEFAULT_PLAYBACK_OPTIONS, assets([2])), playbackAssetsKeyOf(DEFAULT_PLAYBACK_OPTIONS, assets([3])));
+  const waited = { ...DEFAULT_PLAYBACK_OPTIONS, bunsetsuWaitMs: 400 };
+  assert.notDeepEqual(playbackAssetsKeyOf(waited, assets([2])), playbackAssetsKeyOf(waited, assets([3])));
+  // 区切りを受け取っていない間と受け取った後で、キーが違う
+  assert.notDeepEqual(playbackAssetsKeyOf(waited, DEFAULT_EXTRACTION_ASSETS), playbackAssetsKeyOf(waited, assets([2])));
+});
+
+test('文節の区切りの待機: 既定と違う計算の知らせには、区切りを時間に足している時だけ出す', () => {
+  // 条件: 配列qwerty・ローマ字・テキスト「あいうえ」・区切りは位置2・待機400ms。
+  const notesOf = (boundaries: readonly number[] | undefined, options: Partial<PlaybackOptions>) => {
+    const input = boundaries === undefined ? resolve('qwerty', 'あいうえ', 'ja') : bunsetsuInput('あいうえ', boundaries);
+    const extracted = extractionOf(input, options);
+    return playbackCalculationNotes(
+      { ...DEFAULT_PLAYBACK_OPTIONS, ...options },
+      extracted.personalSpeedUse,
+      extracted.timing.calibration,
+      extracted.savedCalibration,
+      extracted.overheadUse,
+      extracted.waitUse,
+      extracted.bunsetsuUse !== undefined,
+    ).changes;
+  };
+  assert.deepEqual(notesOf([2], { bunsetsuWaitMs: 400 }), ['文節の区切りの待機: 400ミリ秒']);
+  assert.deepEqual(notesOf([2], {}), []);
+  assert.deepEqual(notesOf(undefined, { bunsetsuWaitMs: 400 }), []);
+  assert.deepEqual(notesOf([], { bunsetsuWaitMs: 400 }), []);
+});
+
+test('文節の区切りの待機: 再生は待機を含めた表示時間で進む', () => {
+  // 条件: 配列qwerty・ローマ字・テキスト「あいう」・区切りは位置1・待機300ms。基準速度の既定で1ステップ800ms。2打鍵目の表示時間は800+300ms。
+  const extracted = extractionOf(bunsetsuInput('あいう', [1]), { bunsetsuWaitMs: 300 });
+  assert.deepEqual(
+    extracted.schedule.map((step) => step.endMs - step.startMs),
+    [800, 1100, 800],
+  );
 });

@@ -66,4 +66,6 @@ export const playbackAnalyzer = {
   conditionExtraIds: ['chainInterpretation', 'arpeggioInterpretation'],
   // Run Chartの図で押された文字位置へ移る
   acceptsPlaybackSeek: true,
+  // 文節の区切りの待機が0でない間だけ、区切りを分割器から受け取る
+  usesSegmentation: (options) => options.bunsetsuWaitMs > 0,
 } satisfies SingleAnalyzerPaneParts<PlaybackOptions, PlaybackExtracted>;

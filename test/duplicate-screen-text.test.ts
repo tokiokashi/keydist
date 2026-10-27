@@ -27,6 +27,7 @@ const NOT_FAILURE_TEXT: ReadonlySet<string> = new Set([
   '同手・別指の速度',
   '異手の方向別の速度',
   '同時押しの上乗せ',
+  '文節の区切りの待機',
   'Chainの動的表示',
   'Arpeggioの動的表示',
   '同指移動の動的表示',

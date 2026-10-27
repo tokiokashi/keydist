@@ -1,4 +1,5 @@
 import type { Stroke } from '#trace/generate.ts';
+import { textCoverage } from './text-coverage.ts';
 
 /**
  * 読点・句点の前後の待機（`spec/playback-timing.md` §3.9）。
@@ -53,26 +54,8 @@ export function planPunctuationWaits(text: string, strokes: readonly StrokeRange
   if (!applies) return { gapMs, use };
 
   const chars = [...text];
-  // 文字ごとに、それを覆う最初と最後のステップ。覆うステップが無い文字は、後ろで最初に始まるステップの前に置く
-  const firstCovering = new Array<number>(chars.length).fill(-1);
-  const lastCovering = new Array<number>(chars.length).fill(-1);
-  const firstStartingAt = new Array<number>(chars.length).fill(-1);
-  for (const [index, stroke] of strokes.entries()) {
-    const from = Math.max(0, stroke.kanaStart);
-    const to = Math.min(chars.length - 1, stroke.kanaEnd);
-    if (from < chars.length && firstStartingAt[from] < 0) firstStartingAt[from] = index;
-    for (let at = from; at <= to; at++) {
-      if (firstCovering[at] < 0) firstCovering[at] = index;
-      lastCovering[at] = index;
-    }
-  }
-  // 文字の位置より後ろで最初に始まるステップ。無ければステップ数（最後のステップの後）
-  const nextStarting = new Array<number>(chars.length).fill(strokes.length);
-  let next = strokes.length;
-  for (let at = chars.length - 1; at >= 0; at--) {
-    nextStarting[at] = next;
-    if (firstStartingAt[at] >= 0) next = Math.min(next, firstStartingAt[at]);
-  }
+  // 覆うステップが無い文字は、後ろで最初に始まるステップの前に置く
+  const { firstCovering, lastCovering, nextStarting } = textCoverage(chars.length, strokes);
 
   for (const [at, char] of chars.entries()) {
     const kind = COMMA_CHARS.has(char) ? 'comma' : PERIOD_CHARS.has(char) ? 'period' : undefined;

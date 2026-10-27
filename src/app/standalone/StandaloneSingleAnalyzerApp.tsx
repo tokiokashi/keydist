@@ -5,6 +5,7 @@ import type { SingleAnalyzerPaneParts } from '#analyzers/pane-parts.tsx';
 import { SingleAnalyzerStandalonePage } from '#hosts/standalone/index.ts';
 import { sharedEngineComputer } from './engine-computer.ts';
 import { sharedReadingSource } from './reading-source.ts';
+import { sharedBunsetsuSource } from './bunsetsu-source.ts';
 import { generatePresetId, generateTextId } from './id-generator.ts';
 import { useKeydistAssets } from './use-keydist-assets.ts';
 import { usePaneCatalog } from './use-pane-catalog.ts';
@@ -70,6 +71,7 @@ export function StandaloneSingleAnalyzerApp<Options, Extracted>({ analyzer }: { 
         dispatch={dispatch}
         cache={sharedEngineComputer}
         reading={sharedReadingSource}
+        bunsetsu={sharedBunsetsuSource}
         catalog={catalog}
         generateTextId={generateTextId}
         generatePresetId={generatePresetId}
