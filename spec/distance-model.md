@@ -361,7 +361,11 @@ Shiftを押した時に出る記号は、既定ではUS配列の組（`1`→`!`�
 大文字と、**現在モデル化しているbase
 physical key**のShift記号はbase keyに `shift-l` / `shift-r` のいずれかを重ねる2つの
 合法alternativeとしてcompileする。各alternativeはbase keyとの `overlap` Requirement、
+Shiftがbase keyより先に押されることを求める `order` Requirement（Shiftが `before`、base keyが `after`）、
 Shift keyの `while-held` Capability、`modifierGroupId='Shift'` のmodifier roleを持つ。
+`order` Requirementは、かな配列のShiftの面（`triggerOrder='prefix'`）と同じ要件である。
+同じShiftキーを同じ押し方で押す入力を、かな配列と英字配列で別の要件にしない。
+OS上でも、base keyの後から押したShiftでは大文字にならない。
 Shiftを押しっぱなしで複数文字へ作用させるかは他のhold-capable triggerと同じ
 `TriggerRealizationPolicy` で決まる。
 
@@ -1310,6 +1314,8 @@ aggregationの `aggregationGroupId` はpolicy selectorへ使わない。優先�
 physical trigger selector > modifier group集合 > activation class > semantic default。
 薙刀式ではSandSは `prepress-required`、濁音・半濁音・拗音・外来音等は
 `order-free` なので、独立action化を有効にした既定状態ではSandSだけが分離される。
+英字配列の通常Shift（§4）は、Shiftが先という `order` Requirementを持つので `prepress-required` に入り、
+かな配列のShiftの面と同じく既定で分離される（`disabled` では分離されない）。
 
 したがってMetricsだけのvirtual action補正は行わない。Policy変更後は
 Chain / Transition / Metrics / Timing / Playbackがすべて同じrealized Stroke列を見る。

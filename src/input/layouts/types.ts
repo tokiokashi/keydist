@@ -837,7 +837,11 @@ export function withShiftedOutputs(
         const input: SemanticInput = {
           output: shiftedOutput,
           physicalKeys,
-          requirements: [{ kind: 'overlap', keys: physicalKeys }],
+          // かな配列のShiftの面（triggerOrder=prefix）と同じ要件。Shiftは出力のキーより先に押す
+          requirements: [
+            { kind: 'overlap', keys: physicalKeys },
+            { kind: 'order', before: [shiftKey], after: [outputKey] },
+          ],
           capabilities: [{ kind: 'while-held', keys: [shiftKey] }],
           aggregationGroupId: SHIFT_LAYER_ID,
           classifications: [],
