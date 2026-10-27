@@ -33,6 +33,7 @@ const BUILT_IN_KANA_LAYOUT_IDS: ReadonlySet<string> = new Set([
   'shin-jis-simultaneous',
   'shingeta',
   'tsuki-2-263',
+  'gekkou',
   'kawasemi-plus',
   'jis-kana',
 ]);

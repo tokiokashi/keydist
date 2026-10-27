@@ -290,6 +290,7 @@ TK音直入力法のコンボのヤ行19件で、拗音のローマ字塊の内�
 | 親指シフト（NICOLA） | [NICOLA配列規格書](http://nicola.sunicom.co.jp/spec/kikaku.htm)を仕様根拠として実装。専用キーボードの配置をANSIに写しているため、距離の絶対値は参考値 |
 | 新下駄 | [考案者kouy氏の公開配列表](https://kouy.exblog.jp/13627994/)を仕様根拠として実装した7面の同時打鍵配列 |
 | 月配列2-263式 | [成立時の2-263式配列表](https://jisx6004.client.jp/data/2chlog/1055763380.html)と[月配列の解説](https://jisx6004.client.jp/tsuki.html)を仕様根拠として実装した中指前置シフト配列 |
+| 中指シフト月光 | 作者tkenの記事[「中指シフト月光をレジストリに書き込む」](https://t-ken.blogspot.com/2021/06/blog-post.html)（2021-06-01）が掲載するMS-IMEのローマ字テーブル `gc_20210517` を復号して実装した中指前置シフト配列。`d` と `k` が前置シフトで、反対の手のシフトを既定の打ち方にする（作者が同じ手のシフトで打つと書いているゅ・ゃだけは `d` + `f` `g`）。濁音・半濁音は清音の後に ゛ ゜ を打つ。[かな配列テスター](http://testerde.gozaru.jp/gekkou/)の定義（2021/4/24版）と、ち・を の位置を除いて一致を確かめた（ち・を は `gc_20210517` に合わせている） |
 | JISかな配列 | JIS X 6002で策定されたかな配列。キーの割り当ては、xkeyboard-configの `symbols/jp` の `kana` と照合して一致を確かめた。Shiftで小書きのかな・`を`・`「」`・句読点を打ち、濁点・半濁点はかなの後に打つ。JISの物理配列が要る（選んだ物理配列と同じ形のJISで測る） |
 | かわせみ配列+ | [公式Kikyo定義](https://github.com/semialt/kawasemi/blob/911bb8f/Kikyo/%E3%81%8B%E3%82%8F%E3%81%9B%E3%81%BF%E9%85%8D%E5%88%97%2B.kky)から移植（コミット `911bb8f`、blob `220851f`）。二重母音・くき・つち・左手コンボ拡張を含む |
 | Eucalyn配列 | [作者の配列図](https://eucalyn.hatenadiary.jp/entry/about-eucalyn-layout)（2018-08-31の記事の画像）。作者が定義したのは30キーだけで、外側はQWERTYのまま。綴りは訓令式。[Paalonの転記](https://zenn.dev/paalon/articles/914f22aea7ecf9)と照合して一致を確かめた |
