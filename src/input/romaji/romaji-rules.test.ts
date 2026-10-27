@@ -82,6 +82,25 @@ test('AZIKを基底にしたルールでは促音自動生成を強制的に無�
   assert.equal(kanaToRomaji('っか', table), ';ka');
 });
 
+test('JLODを基底にしたルールでも促音自動生成を強制的に無効にする', () => {
+  const table = buildRomajiTable({
+    id: 'jlod-custom',
+    name: 'JLOD派生',
+    base: 'jlod',
+    overrides: {},
+    generateSokuon: true,
+  });
+  assert.equal(table.get('っ'), "'");
+  assert.equal(table.has('っか'), false);
+  assert.equal(kanaToRomaji('っか', table), "'ca");
+});
+
+test('JLODを基底にしたルールは差分で綴りを差し替えられる', () => {
+  const table = buildRomajiTable({ id: 'jlod-custom', name: 'JLOD派生', base: 'jlod', overrides: { か: 'ka' }, generateSokuon: false });
+  assert.equal(table.get('か'), 'ka');
+  assert.equal(table.get('かん'), 'c;');
+});
+
 test('既定のローマ字割り当ては組み込み配列の入力列と一致する', () => {
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
   assert.equal([...text].length, 1676);
