@@ -866,7 +866,7 @@ test('表は保存する行の11行を、構造の種類ごとに分けない値
       'sfb',
     ],
   );
-  assert.deepEqual(Object.keys(table), ['kinds']);
+  assert.deepEqual(Object.keys(table), ['kinds', 'phraseGap']);
   assert.equal(table.kinds.find(({ kind }) => kind === 'other-within')?.stats.count, 10);
 });
 
@@ -973,4 +973,142 @@ test('記録は文章を打つ測定の保存で置き換わる', () => {
   );
   assert.ok(result.ok);
   assert.deepEqual(result.calibration.sentenceSimultaneousKinds, ['both-hands']);
+});
+
+/** `intervalOf(i)`のうち区切りの直後の間隔だけを`afterMs`にした記録。区切りの位置`b`は、`kanaStart`が`b`のストロークの直前。 */
+function phraseTaps(count: number, breaks: readonly number[], baseMs: number, afterMs: number): SentenceTap[] {
+  return tapsFor(count, (index) => (breaks.includes(index) ? afterMs : baseMs));
+}
+
+const every = (step: number, from: number, to: number) => Array.from({ length: Math.floor((to - from) / step) + 1 }, (_, index) => from + index * step);
+
+test('文節の区切りの直後の群と、それ以外の群の、数・四分位平均・平均と、2つの差を求める', () => {
+  const analysis = alternating(60);
+  const breaks = every(5, 5, 55);
+  // 異手のnormalMsは200。区切りの直後だけ460ms、他は260ms。打鍵の上乗せ（other-boundary）は、区切りの直後が除かれて60。
+  const { phraseGap, overheadMs } = measureSentence([{ sentence: 0, analysis, taps: phraseTaps(60, breaks, 260, 460), phraseBreaks: breaks }], SAVED);
+  assert.equal(overheadMs.other, 60);
+  assert.equal(phraseGap.after.count, 11);
+  assert.equal(phraseGap.others.count, 48);
+  assert.equal(phraseGap.after.quartileMeanMs, 200);
+  assert.equal(phraseGap.after.meanMs, 200);
+  assert.equal(phraseGap.others.quartileMeanMs, 0);
+  assert.equal(phraseGap.others.meanMs, 0);
+  assert.deepEqual(phraseGap.difference, { quartileMeanMs: 200, meanMs: 200 });
+  assert.deepEqual(phraseGap.afterKindCounts, { arpeggio: 0, chain: 0, other: 11, repeat: 0, sfb: 0 });
+});
+
+test('平均は外れた値を除かず、四分位平均は大きい方の4分の1を除く', () => {
+  const analysis = alternating(60);
+  const breaks = every(5, 5, 55);
+  // 区切りの直後の11打のうち1打だけ大きく止まる。四分位平均は大きい方から2個除くので、その1打を含まない。
+  const taps = tapsFor(60, (index) => (index === 5 ? 2260 : breaks.includes(index) ? 460 : 260));
+  const { phraseGap } = measureSentence([{ sentence: 0, analysis, taps, phraseBreaks: breaks }], SAVED);
+  assert.equal(phraseGap.after.quartileMeanMs, 200);
+  assert.equal(phraseGap.after.meanMs, (10 * 200 + 2000) / 11);
+});
+
+test('どちらかの群の数が下限に届かない時は、差を持たず、数だけを持つ', () => {
+  const analysis = alternating(60);
+  const few = every(10, 10, 50);
+  const result = measureSentence([{ sentence: 0, analysis, taps: phraseTaps(60, few, 260, 460), phraseBreaks: few }], SAVED).phraseGap;
+  assert.equal(result.after.count, 5);
+  assert.equal(result.others.count, 54);
+  assert.equal(result.difference, undefined);
+  // 比べる相手の群が足りない場合
+  const short = alternating(8);
+  const breaks = [2, 3, 4, 5, 6, 7];
+  const other = measureSentence([{ sentence: 0, analysis: short, taps: phraseTaps(8, breaks, 260, 460), phraseBreaks: breaks }], SAVED).phraseGap;
+  assert.equal(other.after.count, 6);
+  assert.equal(other.others.count, 1);
+  assert.equal(other.difference, undefined);
+  // 区切りを渡さない時、区切りの直後の群は空
+  const none = measureSentence([{ sentence: 0, analysis, taps: phraseTaps(60, few, 260, 460) }], SAVED).phraseGap;
+  assert.equal(none.after.count, 0);
+  assert.equal(none.after.quartileMeanMs, undefined);
+  assert.equal(none.difference, undefined);
+});
+
+/** 2打で1つのかなを打つ列。偶数番のストロークがかなを打ち始め、奇数番はかなの中。 */
+function twoStrokesPerKana(count: number): PlaybackTimingAnalysis {
+  const base = alternating(count);
+  const strokes = base.strokes.map((item, index) => ({
+    ...item,
+    inputIndex: Math.floor(index / 2),
+    kanaStart: Math.floor(index / 2),
+    kanaEnd: Math.floor(index / 2),
+  }));
+  return { ...base, strokes };
+}
+
+test('かなを打ち始めるストロークだけを比べる。かなの中のストロークは両方の群に入れない', () => {
+  const analysis = twoStrokesPerKana(60);
+  const breaks = every(2, 4, 28);
+  // かなを打ち始めるのは偶数番の29打（最初を除く）。そのうち13打が区切りの直後。
+  const taps = tapsFor(60, (index) => (index % 2 === 1 ? 5000 : breaks.includes(index / 2) ? 460 : 260));
+  const { phraseGap } = measureSentence([{ sentence: 0, analysis, taps, phraseBreaks: breaks }], SAVED);
+  assert.equal(phraseGap.after.count, 13);
+  assert.equal(phraseGap.others.count, 16);
+});
+
+test('区切りの両側のかなを1つのストロークで打つ時、その区切りは数えない', () => {
+  const analysis = alternating(60);
+  // ストローク9は9と10のかなを打つので、位置10から始まるストロークが無い。ストローク10以降は11から始まる。
+  const strokes = analysis.strokes.map((item, index) =>
+    index < 9 ? item : index === 9 ? { ...item, kanaEnd: 10 } : { ...item, kanaStart: index + 1, kanaEnd: index + 1 },
+  );
+  const { phraseGap } = measureSentence([{ sentence: 0, analysis: { ...analysis, strokes }, taps: tapsFor(60, () => 260), phraseBreaks: [10] }], SAVED);
+  assert.equal(phraseGap.after.count, 0);
+  assert.equal(phraseGap.others.count, 59);
+});
+
+test('残りは、間隔から基準の時間と、そのストロークの差の種類の打鍵の上乗せを引いた値', () => {
+  const analysis = custom(
+    Array.from({ length: 60 }, () => 'LI' as Finger),
+    () => 'f',
+  );
+  const breaks = every(3, 3, 57);
+  // 続け打ちのnormalMsは200。区切りの直後は500ms、他は300ms。続け打ちの打鍵の上乗せは、全ストロークの四分位平均。
+  const taps = tapsFor(60, (index) => (breaks.includes(index) ? 500 : 300));
+  const { phraseGap, overheadMs } = measureSentence([{ sentence: 0, analysis, taps, phraseBreaks: breaks }], SAVED);
+  const repeat = overheadMs.repeat ?? Number.NaN;
+  assert.ok(Number.isFinite(repeat));
+  assert.ok(repeat > 100 && repeat < 300);
+  assert.ok(Math.abs((phraseGap.others.quartileMeanMs ?? Number.NaN) - (100 - repeat)) < 1e-9);
+  assert.ok(Math.abs((phraseGap.after.quartileMeanMs ?? Number.NaN) - (300 - repeat)) < 1e-9);
+  assert.ok(Math.abs((phraseGap.difference?.quartileMeanMs ?? Number.NaN) - 200) < 1e-9);
+  assert.deepEqual(phraseGap.afterKindCounts, { arpeggio: 0, chain: 0, other: 0, repeat: 19, sfb: 0 });
+});
+
+test('違うキーを押したストロークと、最初のストロークは比べない', () => {
+  const analysis = alternating(60);
+  const breaks = every(5, 5, 55);
+  const taps = tapsFor(
+    60,
+    (index) => (breaks.includes(index) ? 460 : 260),
+    (index) => index !== 5 && index !== 7,
+  );
+  const { phraseGap } = measureSentence([{ sentence: 0, analysis, taps, phraseBreaks: breaks }], SAVED);
+  // 区切りの直後のストローク5は外れ、他の群はストローク7が外れる。
+  assert.equal(phraseGap.after.count, 10);
+  assert.equal(phraseGap.others.count, 47);
+});
+
+test('数は文ごとに回の最大を取り、全文で足す。同じ文の回を数え直さない', () => {
+  const analysis = alternating(60);
+  const breaks = every(5, 5, 55);
+  const sample = (sentence: number) => ({ sentence, analysis, taps: phraseTaps(60, breaks, 260, 460), phraseBreaks: breaks });
+  assert.equal(measureSentence([sample(0), sample(0)], SAVED).phraseGap.after.count, 11);
+  assert.equal(measureSentence([sample(0), sample(0), sample(1), sample(1)], SAVED).phraseGap.after.count, 22);
+});
+
+test('範囲の外の値・下限に届かない種類があっても、比べた結果は求まった値で示す', () => {
+  const analysis = alternating(60);
+  const breaks = every(5, 5, 55);
+  // 打鍵の上乗せが範囲の外（1300ms）になる間隔でも、結果の表と比べた結果は作る。
+  const outOfRange = applyMeasurement(SAVED, [{ sentence: 0, analysis, taps: phraseTaps(60, breaks, 1500, 1700), phraseBreaks: breaks }], 1, SAVED);
+  assert.equal(!outOfRange.ok && outOfRange.reason, 'out-of-range');
+  const table = sentenceResultTable(outOfRange);
+  assert.ok(table);
+  assert.equal(table.phraseGap.after.count, 11);
 });

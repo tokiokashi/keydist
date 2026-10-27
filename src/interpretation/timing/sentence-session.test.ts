@@ -388,6 +388,13 @@ test('各文の1回目は数えず、2回目以降だけが標本になる', () 
       [500, 600],
     ],
   );
+  // 文節の区切りは、計画から標本へ渡す。
+  assert.ok(samples.every((sample) => sample.phraseBreaks === undefined));
+  const withBreaks = [{ ...withAnalysis[0], phraseBreaks: [1] }];
+  assert.deepEqual(
+    sentenceSamples(withBreaks, session.records)?.map((sample) => sample.phraseBreaks),
+    [[1], [1]],
+  );
   // 打った綴りの打鍵の列のストロークの数が記録と合わない回があれば、標本を作らない。
   const mismatched = [{ ...plans[0], analyze: () => ({ strokes: [{}] }) as never }];
   assert.equal(sentenceSamples(mismatched, session.records), undefined);

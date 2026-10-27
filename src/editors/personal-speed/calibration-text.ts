@@ -6,6 +6,7 @@ import {
   OVERHEAD_KINDS,
   type OverheadKind,
   type SimultaneousKind,
+  type StepOverheadKind,
 } from '#interpretation/timing/calibration.ts';
 import {
   CALIBRATION_FALLBACK_MOVE_FIELD,
@@ -14,6 +15,7 @@ import {
   type ApplyCalibrationFieldResult,
 } from '#interpretation/timing/calibration-form.ts';
 import {
+  PHRASE_GAP_KINDS,
   SENTENCE_MIN_SAMPLES,
   type ApplySentenceResult,
   type SentenceMeasurement,
@@ -33,30 +35,42 @@ export const ACTIONS_UNIT = 'アクション/秒';
 export const MOVE_UNIT = 'ミリ秒/u';
 export const OVERHEAD_UNIT = 'ミリ秒';
 
+/** 測定の文を文節に分けたもの。区切りは手で付けた。文は、つなげたものを示す。 */
+const MEASUREMENT_SENTENCE_PHRASES: readonly (readonly string[])[] = [
+  ['こんしゅうの', 'どようびに'],
+  ['えいがを', 'みに', 'いく'],
+  ['まいにち', 'すこしずつ'],
+  ['にほんごを', 'べんきょうする'],
+  ['あしたの', 'かいぎの'],
+  ['しりょうを', 'じゅんびした'],
+  ['せんせいが', 'おしえて', 'くれた'],
+  ['ことを', 'わすれない'],
+  ['かぞくで', 'ふゆやすみに'],
+  ['りょこうに', 'いきたい'],
+  ['この', 'ほんは', 'とても'],
+  ['おもしろくて', 'やめられない'],
+  ['あたらしい', 'くつを'],
+  ['かって', 'もらって', 'うれしい'],
+  ['なつやすみには', 'うみへ'],
+  ['あそびに', 'いきたい'],
+];
+
 /**
  * 文章を打つ測定で示す文。1本ずつ覚えて、2回目以降は続きを思い出す間を挟まずに打てるよう、
  * よく使われる日本語の短い文や句（かな8〜12文字、文節で2〜3個）にしてある。
  * 本数は、確かめる配列のそれぞれで、Arpeggio・Chain・その他のどれもが全文の1回分で10打以上になるよう決めてある。
  * 数える打鍵が10に満たない種類は保存しない。
  */
-export const MEASUREMENT_SENTENCES: readonly string[] = [
-  'こんしゅうのどようびに',
-  'えいがをみにいく',
-  'まいにちすこしずつ',
-  'にほんごをべんきょうする',
-  'あしたのかいぎの',
-  'しりょうをじゅんびした',
-  'せんせいがおしえてくれた',
-  'ことをわすれない',
-  'かぞくでふゆやすみに',
-  'りょこうにいきたい',
-  'このほんはとても',
-  'おもしろくてやめられない',
-  'あたらしいくつを',
-  'かってもらってうれしい',
-  'なつやすみにはうみへ',
-  'あそびにいきたい',
-];
+export const MEASUREMENT_SENTENCES: readonly string[] = MEASUREMENT_SENTENCE_PHRASES.map((phrases) => phrases.join(''));
+
+/**
+ * 測定の文ごとの文節の区切りの位置（文の文字位置。0と末尾は含まない）。位置 `b` の文字が次の文節の最初の文字。
+ * 文節の区切りの直後のストロークの比較に使う（`spec/playback-timing.md` §6.4）。
+ */
+export const MEASUREMENT_SENTENCE_BREAKS: readonly (readonly number[])[] = MEASUREMENT_SENTENCE_PHRASES.map((phrases) => {
+  let position = 0;
+  return phrases.slice(0, -1).map((phrase) => (position += [...phrase].length));
+});
 
 /** 打鍵の上乗せの種類の名前。 */
 export const OVERHEAD_KIND_LABEL: Readonly<Record<OverheadKind, string>> = {
@@ -406,30 +420,96 @@ export function sentenceTableValueText(value: number | undefined): string {
   return value === undefined ? 'なし' : value.toFixed(1);
 }
 
+/**
+ * 結果の表が、保存の選び方のどの段階か。選ぶ前は保存する時に何が起きるかを、
+ * 「保存する」を押した後は保存した結果を、「保存しない」を押した後は保存値を変えなかったことを示す。
+ */
+export type SentenceTablePhase = 'pending' | 'after-save' | 'after-decline';
+
 /** マスの中で、保存したかを示す短い文。 */
-export function sentenceTableSavedText(status: SentenceSaveStatus): string {
+export function sentenceTableSavedText(status: SentenceSaveStatus, phase: SentenceTablePhase = 'after-save'): string {
   switch (status) {
     case 'saved':
-      return '保存した';
+      return phase === 'pending' ? '保存する値' : phase === 'after-decline' ? '保存しなかった' : '保存した';
     case 'below-minimum':
-      return `未保存（${SENTENCE_MIN_SAMPLES}打未満）`;
+      return phase === 'pending' ? `保存しない（${SENTENCE_MIN_SAMPLES}打未満）` : `未保存（${SENTENCE_MIN_SAMPLES}打未満）`;
     case 'out-of-range':
-      return '未保存（範囲外）';
+      return phase === 'pending' ? '保存しない（範囲外）' : '未保存（範囲外）';
   }
 }
 
-/** 保存していない理由の詳しい文。表の下に、表に現れた状態の分だけ出す。 */
-export function sentenceTableSavedDetail(status: Exclude<SentenceSaveStatus, 'saved'>): string {
+/** 保存しない理由の詳しい文。表の下に、表に現れた状態の分だけ出す。 */
+export function sentenceTableSavedDetail(status: Exclude<SentenceSaveStatus, 'saved'>, phase: SentenceTablePhase = 'after-save'): string {
+  const verb = phase === 'pending' ? '保存しません' : '保存していません';
+  const label = `「${sentenceTableSavedText(status, phase)}」`;
   switch (status) {
     case 'below-minimum':
-      return `「未保存（${SENTENCE_MIN_SAMPLES}打未満）」は、数えた打鍵が${SENTENCE_MIN_SAMPLES}打に満たず、値が揺れやすいため保存していません。`;
+      return `${label}は、数えた打鍵が${SENTENCE_MIN_SAMPLES}打に満たず、値が揺れやすいため${verb}。`;
     case 'out-of-range':
-      return '「未保存（範囲外）」は、測った値が保存できる範囲を外れた種類があるため、保存していません。';
+      return `${label}は、測った値が保存できる範囲を外れた種類があるため、${verb}。`;
   }
 }
 
-/** 打った内容から測定の値を求められなかった時の文。 */
-export const SENTENCE_UNMEASURED_TEXT = '打った内容から測定の値を求められなかったため、保存していません。もう一度測ってください。';
+export const SENTENCE_SAVE_BUTTON = '保存する';
+export const SENTENCE_DISCARD_BUTTON = '保存しない';
+
+/** 打ち終えて、保存を選ぶ前の知らせ。保存値が変わっていないことと、保存しない種類があることを伝える。 */
+export function sentencePendingText(measurement: SentenceMeasurement): string {
+  const text = '測定が終わりました。保存値はまだ変わっていません。';
+  const missing = OVERHEAD_KINDS.some((kind) => measurement.overheadMs[kind] === undefined);
+  return missing ? `${text}数えた打鍵が${SENTENCE_MIN_SAMPLES}打に満たない種類は保存しません。${SENTENCE_OTHER_LAYOUT_NOTE}` : text;
+}
+
+/** 「保存しない」を押した時の知らせ。 */
+export const SENTENCE_DECLINED_TEXT = '文章を打つ速さは保存していません。保存値は変わっていません。';
+
+/** 保存できる値が無い時に、「保存する」を押せない理由の文。 */
+export function sentenceCannotSaveText(result: Exclude<ApplySentenceResult, { ok: true }> | undefined): string {
+  if (result === undefined) return '打った内容から測定の値を求められなかったため、保存できません。';
+  switch (result.reason) {
+    case 'changed':
+      return '測定の途中で個人速度が変わったため、保存できません。';
+    case 'no-saved-value':
+      return '個人速度が保存されていないため、保存できません。';
+    case 'too-few':
+      return `数えた打鍵が少なく、保存できません（${countsText(result.measurement)}）。${SENTENCE_OTHER_LAYOUT_NOTE}`;
+    case 'out-of-range':
+      return `測った打鍵の上乗せが保存できる範囲（${CALIBRATION_OVERHEAD_MS_MIN}から${CALIBRATION_OVERHEAD_MS_MAX}ミリ秒）を外れているため、保存できません。`;
+  }
+}
+
+/** 文節の区切りの直後の差の見出し。 */
+export const PHRASE_GAP_HEADING = '文節の区切りの直後の差';
+
+/** 文節の区切りの直後の差の、読み方の説明（`InfoButton`に入れる）。 */
+export const PHRASE_GAP_INFO =
+  '覚えた文を打つ時に、文節の区切りの直後のストロークの間隔が、それ以外のかなを打ち始めるストロークより長いかを比べた結果です。再生の時間にも保存値にも使いません。' +
+  '残りの間隔は、打った間隔から基準の時間と、測った打鍵の上乗せを引いた値です。差の種類の違いは、この引き算で除いています。' +
+  '四分位平均は大きい方の4分の1を除くので、一部の区切りでだけ止まる間は除かれます。平均はその間を含みます。' +
+  '2つが近ければ、間はどの区切りでも少しずつあり、平均だけが大きければ、一部の区切りにだけ大きな間があります。' +
+  '区切りの直後の打数は多くても20なので、値は揺れやすい結果です。' +
+  '打鍵の上乗せには区切りの直後のストロークも数えているため、差は小さく出る向きに寄ります。';
+
+export const PHRASE_GAP_COLUMNS = {
+  group: '群',
+  count: '打数',
+  quartileMean: '残りの間隔の四分位平均（ミリ秒）',
+  mean: '残りの間隔の平均（ミリ秒）',
+} as const;
+
+export const PHRASE_GAP_ROWS = {
+  after: '文節の区切りの直後',
+  others: 'それ以外のかなを打ち始める打鍵',
+  difference: '差（区切りの直後からそれ以外を引く）',
+} as const;
+
+/** どちらかの群の打数が下限に届かず、差を示さない時の文。 */
+export const PHRASE_GAP_TOO_FEW_TEXT = `どちらかの群の打鍵が${SENTENCE_MIN_SAMPLES}打に満たないため、差は示しません。`;
+
+/** 区切りの直後の群の、差の種類ごとの打数の文。 */
+export function phraseGapKindCountsText(counts: Readonly<Record<StepOverheadKind, number>>): string {
+  return `文節の区切りの直後の内訳: ${PHRASE_GAP_KINDS.map((kind) => `${OVERHEAD_KIND_LABEL[kind]} ${counts[kind]}打`).join('、')}`;
+}
 
 /**
  * 個人速度の画面の各測定の説明。何を測るか・どこに使うかの2文を持つ。

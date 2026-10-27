@@ -565,7 +565,7 @@ test('項目の測り直しは、その項目だけを入れ替える', async ({
   expect(saved.calibration.sameHandDifferentFingerActionsPerSecond).toBe(4);
 });
 
-test('文章を打つ測定の途中に別のタブで個人速度が変わると、打鍵の上乗せを保存せず測り直しを促す。表は出さない', async ({ page, context }) => {
+test('文章を打つ測定の途中に別のタブで個人速度が変わると、保存できない理由を示し、「保存する」を押せない。表は出さない', async ({ page, context }) => {
   test.setTimeout(240_000);
   await seed(page, { [STORAGE_KEY]: SEEDED });
   await open(page);
@@ -580,9 +580,13 @@ test('文章を打つ測定の途中に別のタブで個人速度が変わる�
   await page.bringToFront();
 
   await typeThroughSentence(page);
-  await expect(page.getByRole('alert').filter({ hasText: '測定の途中で個人速度が変わったため、保存していません' })).toBeVisible();
+  const pending = page.locator('[data-personal-speed-sentence-pending]');
+  await expect(pending.getByRole('alert').filter({ hasText: '測定の途中で個人速度が変わったため、保存できません' })).toBeVisible();
+  await expect(pending.locator('[data-personal-speed-sentence-save]')).toBeDisabled();
+  await expect(pending.locator('[data-personal-speed-sentence-decline]')).toBeEnabled();
   expect(await stored(page)).toEqual(changed);
   await expect(page.locator('[data-personal-speed-sentence-result]')).toHaveCount(0);
+  await expect(page.locator('[data-personal-speed-phrase-gap]')).toHaveCount(0);
 });
 
 test('画面内で選んだ配列は、Singleの対象や条件を変えない。初期値はSingleの対象', async ({ page }) => {
@@ -601,7 +605,7 @@ test('画面内で選んだ配列は、Singleの対象や条件を変えない�
   expect(after.library).toBeNull();
 });
 
-test('文章を打つ測定で、差の種類ごとの打鍵の上乗せを測って保存し、数えた打鍵の数が知らされる', async ({ page }) => {
+test('文章を打つ測定は打ち終えても保存せず、「保存する」を押すと、差の種類ごとの打鍵の上乗せを保存して数えた打鍵の数が知らされる', async ({ page }) => {
   test.setTimeout(240_000);
   await seed(page, { [STORAGE_KEY]: SEEDED });
   await open(page);
@@ -612,6 +616,25 @@ test('文章を打つ測定で、差の種類ごとの打鍵の上乗せを測�
   await typeThroughSentence(page);
   await expect(page.locator('[data-personal-speed-sentence-run="active"]')).toHaveCount(0);
   const sentenceGroup = page.locator('#personal-speed-group-sentence');
+
+  // 打ち終えた時は保存値を変えない。表と比べた結果を示し、保存するかを選ぶ
+  const pending = sentenceGroup.locator('[data-personal-speed-sentence-pending]');
+  await expect(pending).toBeVisible();
+  await expect(pending.getByText('測定が終わりました。保存値はまだ変わっていません。')).toBeVisible();
+  expect(await stored(page)).toEqual(SEEDED);
+  await expect(page.getByRole('button', { name: '元に戻す' })).toBeDisabled();
+  await expect(pending.locator('[data-personal-speed-sentence-save]')).toBeEnabled();
+  await expect(pending.locator('[data-personal-speed-result-cell="other"]')).toContainText('保存する値');
+  const gap = pending.locator('[data-personal-speed-phrase-gap]');
+  await expect(gap).toHaveAttribute('data-personal-speed-phrase-gap', 'compared');
+  await expect(gap.locator('[data-personal-speed-phrase-gap-row="after"]')).toContainText(/\d+打/);
+  await expect(gap.locator('[data-personal-speed-phrase-gap-row="others"]')).toContainText(/\d+打/);
+  await expect(gap.locator('[data-personal-speed-phrase-gap-row="difference"]')).toBeVisible();
+  await expect(gap.locator('[data-personal-speed-phrase-gap-kinds]')).toContainText('文節の区切りの直後の内訳');
+
+  await pending.locator('[data-personal-speed-sentence-save]').click();
+  await expect(pending).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '元に戻す' })).toBeEnabled();
   await expect(sentenceGroup.getByText('文章を打つ速さを測って保存しました。')).toBeVisible();
   const message = sentenceGroup.locator('.personal-speed-message');
   // 知らせは値を並べない。値は結果の表が示す
@@ -665,6 +688,8 @@ test('文章を打つ測定で、差の種類ごとの打鍵の上乗せを測�
     await expect(result.locator(`[data-personal-speed-result-cell="${cell}"]`)).toContainText(/\d+打/);
     await expect(result.locator(`[data-personal-speed-result-cell="${cell}"]`)).toContainText('保存した');
   }
+  // 保存した後も、比べた結果は残る
+  await expect(result.locator('[data-personal-speed-phrase-gap]')).toBeVisible();
   // 基準の時間と打った間隔の四分位平均と注記は、畳んだ欄に入っている
   const details = result.locator('[data-personal-speed-result-details]');
   await expect(details).toHaveJSProperty('open', false);
@@ -681,6 +706,66 @@ test('文章を打つ測定で、差の種類ごとの打鍵の上乗せを測�
   await expect(result).toBeVisible();
 });
 
+test('文章を打つ測定で「保存しない」を押すと、保存値を変えず、表と比べた結果を残す。別の測定を始めると消える', async ({ page }) => {
+  test.setTimeout(240_000);
+  await seed(page, { [STORAGE_KEY]: SEEDED });
+  await open(page);
+  await page.locator('[data-personal-speed-start="sentence"]').click();
+  await typeThroughSentence(page);
+  const sentenceGroup = page.locator('#personal-speed-group-sentence');
+  await sentenceGroup.locator('[data-personal-speed-sentence-decline]').click();
+  await expect(sentenceGroup.locator('[data-personal-speed-sentence-pending]')).toHaveCount(0);
+  await expect(sentenceGroup.getByText('文章を打つ速さは保存していません。保存値は変わっていません。')).toBeVisible();
+  expect(await stored(page)).toEqual(SEEDED);
+  await expect(page.getByRole('button', { name: '元に戻す' })).toBeDisabled();
+  const result = sentenceGroup.locator('[data-personal-speed-sentence-result]');
+  await expect(result.locator('[data-personal-speed-result-cell="other"]')).toContainText('保存しなかった');
+  await expect(result.locator('[data-personal-speed-phrase-gap]')).toBeVisible();
+
+  // 別の測定を始めると、前の結果は消える
+  await page.locator('[data-personal-speed-start="sentence"]').click();
+  await expect(sentenceGroup.locator('[data-personal-speed-sentence-result]')).toHaveCount(0);
+  await page.locator('[data-personal-speed-sentence-cancel]').click();
+  expect(await stored(page)).toEqual(SEEDED);
+});
+
+test('文章を打つ測定は、打ち終えた後に別の画面へ移ると保存しない', async ({ page }) => {
+  test.setTimeout(240_000);
+  await seed(page, { [STORAGE_KEY]: SEEDED });
+  await open(page);
+  await page.locator('[data-personal-speed-start="sentence"]').click();
+  await typeThroughSentence(page);
+  await expect(page.locator('[data-personal-speed-sentence-pending]')).toBeVisible();
+  await page.goto('/about');
+  await open(page);
+  await expect(page.locator('[data-personal-speed-sentence-pending]')).toHaveCount(0);
+  expect(await stored(page)).toEqual(SEEDED);
+});
+
+test('文章を打つ測定で結果を示している間に保存値が変わっても表は残り、「保存する」を押すと保存せずに知らせる', async ({ page, context }) => {
+  test.setTimeout(240_000);
+  await seed(page, { [STORAGE_KEY]: SEEDED });
+  await open(page);
+  await page.locator('[data-personal-speed-start="sentence"]').click();
+  await typeThroughSentence(page);
+  const pending = page.locator('[data-personal-speed-sentence-pending]');
+  await expect(pending.locator('[data-personal-speed-sentence-save]')).toBeEnabled();
+
+  const changed = { ...SEEDED, calibration: { ...SEEDED.calibration, actionsPerSecond: 6 } };
+  const other = await context.newPage();
+  await other.goto('/about');
+  await other.evaluate(({ key, value }) => localStorage.setItem(key, JSON.stringify(value)), { key: STORAGE_KEY, value: changed });
+  await other.close();
+  await page.bringToFront();
+  await expect.poll(async () => await page.locator('[id="personal-speed-actions"]').inputValue()).toBe('6.00');
+  await expect(pending.locator('[data-personal-speed-result-cell="other"]')).toBeVisible();
+
+  await pending.locator('[data-personal-speed-sentence-save]').click();
+  await expect(page.getByRole('alert').filter({ hasText: '測定の途中で個人速度が変わったため、保存していません' })).toBeVisible();
+  expect(await stored(page)).toEqual(changed);
+  await expect(page.locator('[data-personal-speed-sentence-result]')).toBeVisible();
+});
+
 test('文章を打つ測定で、下限に届かない種類がある配列では、別の配列で測ると求まる種類が変わることと、測り直すと置き換わることが知らされる', async ({
   page,
 }) => {
@@ -692,6 +777,11 @@ test('文章を打つ測定で、下限に届かない種類がある配列で�
   await expect(page.locator('[data-personal-speed-sentence-run="active"]')).toBeVisible();
   await typeThroughSentence(page);
   await expect(page.locator('[data-personal-speed-sentence-run="active"]')).toHaveCount(0);
+  // 選ぶ前にも、保存しない種類があることと、別の配列の添え書きが出る
+  const pending = page.locator('[data-personal-speed-sentence-pending]');
+  await expect(pending).toContainText('に満たない種類は保存しません');
+  await expect(pending).toContainText('手に馴染んだ別の配列で測ると、求まる種類が増えることがあります。');
+  await pending.locator('[data-personal-speed-sentence-save]').click();
   await expect(page.getByText('文章を打つ速さを測って保存しました。')).toBeVisible();
   const message = page.locator('#personal-speed-group-sentence .personal-speed-message');
   await expect(message).toContainText('に満たない種類は保存していません');
