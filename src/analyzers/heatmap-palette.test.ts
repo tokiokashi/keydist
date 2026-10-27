@@ -24,7 +24,7 @@ const THEME_CSS = readFileSync(new URL('../ui/theme/theme.css', import.meta.url)
 
 function groundOf(theme: HeatTheme): HeatRgb {
   const match = THEME_CSS.match(/^\s*--heat-0:\s*light-dark\(\s*(#[0-9a-fA-F]{6})\s*,\s*(#[0-9a-fA-F]{6})\s*\);/m);
-  assert.ok(match, 'theme.css の --heat-0 を light-dark(#rrggbb, #rrggbb) の形で読めない');
+  assert.ok(match, 'theme.cssの--heat-0をlight-dark(#rrggbb, #rrggbb)の形で読めない');
   const hex = theme === 'light' ? match[1]! : match[2]!;
   const n = Number.parseInt(hex.slice(1), 16);
   return [(n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff];
@@ -40,7 +40,7 @@ const SERIES: readonly { readonly name: string; readonly samples: readonly HeatS
   { name: 'サーモグラフィ', samples: blobLevels.map(heatMultiBlobSample) },
 ];
 
-test('地の色は theme.css の --heat-0 と同じ', () => {
+test('地の色はtheme.cssの--heat-0と同じ', () => {
   for (const theme of HEAT_THEMES) {
     const n = Number.parseInt(HEAT_GROUND[theme].slice(1), 16);
     assert.deepEqual(groundOf(theme), [(n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff]);

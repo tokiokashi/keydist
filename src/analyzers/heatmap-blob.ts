@@ -1,6 +1,6 @@
 /**
  * ヒートマップの「サーモグラフィ」の描き方で使う、純粋な計算。
- * キーごとの強度（0〜1）を中心にした塊を重ね、重なった所は 1 − Π(1 − 強度) で積み上げる。
+ * キーごとの強度（0〜1）を中心にした塊を重ね、重なった所は1 − Π(1 − 強度)で積み上げる。
  * 積み上げるのは、隣り合うキーの押下が重なった所に集まって見えるようにするため（手の押下が面としてどこに集まるかを読む図）。
  * 濃い方だけを取ると、キーごとの塗りをぼかしただけの図になり、集まりが見えない。
  * 強度が1を超えないので、色の尺度の上限（強度1）は保たれる。
@@ -69,7 +69,7 @@ export interface HeatBlobSource {
   readonly intensity: number;
 }
 
-/** 点 `(x, y)` の強度。塊ごとの強度を 1 − Π(1 − 塊の値) で積み上げる。`keySize` はキーの辺の長さ（`x`・`y` と同じ座標系）。 */
+/** 点 `(x, y)` の強度。塊ごとの強度を 1 − Π(1 − 塊の値)で積み上げる。`keySize` はキーの辺の長さ（`x`・`y` と同じ座標系）。 */
 export function heatBlobIntensityAt(sources: readonly HeatBlobSource[], x: number, y: number, keySize: number): number {
   let rest = 1;
   const reach = REACH_KEYS * keySize;
