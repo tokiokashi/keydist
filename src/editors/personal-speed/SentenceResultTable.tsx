@@ -11,14 +11,16 @@ import {
   sentenceTableSavedDetail,
   sentenceTableSavedText,
   sentenceTableValueText,
+  type SentenceTablePhase,
 } from './calibration-text.ts';
+import { PhraseGapTable } from './PhraseGapTable.tsx';
 
 /**
  * 文章を打つ測定を終えた時の表。行が差の種類、列が全体・かなの中・かなの境目で、
  * 各マスに打鍵の上乗せ・数えた打鍵の数・保存したかを出す。
  * 基準の時間と打った間隔の四分位平均は、マスに収めず、注記と一緒に畳んだ欄に出す。
  */
-export function SentenceResultTable({ table }: { readonly table: SentenceResultTableData }) {
+export function SentenceResultTable({ table, phase }: { readonly table: SentenceResultTableData; readonly phase: SentenceTablePhase }) {
   const byKind = new Map(table.kinds.map((entry) => [entry.kind, entry]));
   const unsaved = (['below-minimum', 'out-of-range'] as const).filter((status) => table.kinds.some((entry) => entry.status === status));
   return (
@@ -57,7 +59,7 @@ export function SentenceResultTable({ table }: { readonly table: SentenceResultT
                     >
                       <span className="personal-speed-result-value">{sentenceTableValueText(entry.stats.differenceMs)}</span>
                       <span>{entry.stats.count}打</span>
-                      <span>{sentenceTableSavedText(entry.status)}</span>
+                      <span>{sentenceTableSavedText(entry.status, phase)}</span>
                     </td>
                   );
                 })}
@@ -68,9 +70,10 @@ export function SentenceResultTable({ table }: { readonly table: SentenceResultT
       </div>
       {unsaved.map((status) => (
         <p key={status} className="personal-speed-note">
-          {sentenceTableSavedDetail(status)}
+          {sentenceTableSavedDetail(status, phase)}
         </p>
       ))}
+      <PhraseGapTable comparison={table.phraseGap} />
       <details className="personal-speed-details" data-personal-speed-result-details>
         <summary>{SENTENCE_TABLE_DETAILS_SUMMARY}</summary>
         <div className="personal-speed-grid-wrap">

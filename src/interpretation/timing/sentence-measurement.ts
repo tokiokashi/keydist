@@ -9,9 +9,17 @@ import {
   type OverheadKind,
   type PlaybackCalibration,
   type SimultaneousKind,
+  type StepOverheadKind,
 } from './calibration.ts';
 import type { Stroke } from '#trace/generate.ts';
-import { playbackNormalMs, playbackSameFingerMovementMs, playbackSimultaneousOverheadMs, type PlaybackTimingAnalysis } from './playback.ts';
+import {
+  playbackKeystrokeOverheadMs,
+  playbackNormalMs,
+  playbackSameFingerMovementMs,
+  playbackSameFingerOverheadMs,
+  playbackSimultaneousOverheadMs,
+  type PlaybackTimingAnalysis,
+} from './playback.ts';
 import { strokeOverheadKinds, strokeOverheadSide, strokeSimultaneousKind } from './stroke-structure.ts';
 
 /**
@@ -109,6 +117,36 @@ export interface SentenceMeasurement {
    * 四分位平均で除いたストロークも含む。保存する行が無ければ空。
    */
   readonly simultaneousKinds: readonly SimultaneousKind[];
+  /** 文節の区切りの直後のストロークと、それ以外のかなを打ち始めるストロークの比較。保存値には入れない。 */
+  readonly phraseGap: PhraseGapComparison;
+}
+
+/** 文節の区切りの直後の差を比べる時の、差の種類。 */
+export const PHRASE_GAP_KINDS: readonly StepOverheadKind[] = ['arpeggio', 'chain', 'other', 'repeat', 'sfb'];
+
+/** 比べる群1つの値。 */
+export interface PhraseGapGroup {
+  /** 数えたストロークの数（下限の判定に使う数。打鍵の上乗せの表と同じ数え方）。 */
+  readonly count: number;
+  /** 残りの四分位平均[ms]。数えたストロークが無ければ無い。 */
+  readonly quartileMeanMs?: number;
+  /** 残りの平均[ms]。外れた値を除かない。数えたストロークが無ければ無い。 */
+  readonly meanMs?: number;
+}
+
+/**
+ * 文節の区切りの直後のストロークと、それ以外のかなを打ち始めるストロークの比較（`spec/playback-timing.md` §6.4「文節の区切りの直後の差」）。
+ * 「残り」は、間隔から基準の時間と、その回の測定で求めた打鍵の上乗せを引いた値。
+ */
+export interface PhraseGapComparison {
+  /** 文節の区切りの直後の群。 */
+  readonly after: PhraseGapGroup;
+  /** 比べる相手の群。かなを打ち始めるストロークのうち、区切りの直後でないもの。 */
+  readonly others: PhraseGapGroup;
+  /** 区切りの直後の群の、差の種類ごとの数（下限の判定に使う数と同じ数え方）。 */
+  readonly afterKindCounts: Readonly<Record<StepOverheadKind, number>>;
+  /** 区切りの直後の群から他の群を引いた差[ms]。どちらかの群が下限に届かない時は無い。 */
+  readonly difference?: { readonly quartileMeanMs: number; readonly meanMs: number };
 }
 
 /** 保存値全体の比較。キーの並びは問わない。 */
@@ -143,6 +181,8 @@ export interface SentenceSample {
   readonly analysis: SentenceAnalysis;
   /** `analysis.strokes`と同じ長さ。 */
   readonly taps: readonly SentenceTap[];
+  /** その文の文節の区切りの位置（文の文字位置。0と末尾は含まない）。無ければ区切りの直後の群は空になる。 */
+  readonly phraseBreaks?: readonly number[];
 }
 
 /** 行ごとに集めた、数えたストロークの値。 */
@@ -238,7 +278,90 @@ export function measureSentence(samples: readonly SentenceSample[], calibration:
     if (overheadMs[kind] === undefined) continue;
     for (const simultaneousKind of rowSimultaneous[kind]) recorded.add(simultaneousKind);
   }
-  return { counts, kinds, overheadMs, simultaneousKinds: SIMULTANEOUS_KINDS.filter((kind) => recorded.has(kind)) };
+  return {
+    counts,
+    kinds,
+    overheadMs,
+    simultaneousKinds: SIMULTANEOUS_KINDS.filter((kind) => recorded.has(kind)),
+    phraseGap: comparePhraseGap(samples, calibration, overheadMs),
+  };
+}
+
+function emptyPhraseKindCounts(): Record<StepOverheadKind, number> {
+  return Object.fromEntries(PHRASE_GAP_KINDS.map((kind) => [kind, 0])) as Record<StepOverheadKind, number>;
+}
+
+function phraseGroup(count: number, values: readonly number[]): PhraseGapGroup {
+  if (values.length === 0) return { count };
+  return { count, quartileMeanMs: interquartileMean(values), meanMs: values.reduce((sum, value) => sum + value, 0) / values.length };
+}
+
+/**
+ * 文節の区切りの直後のストロークと、それ以外のかなを打ち始めるストロークを比べる（§6.4「文節の区切りの直後の差」）。
+ * 数えるストロークは打鍵の上乗せと同じで、各ストロークの値は、間隔から基準の時間と、打鍵の上乗せ（`overheadMs`）を引いた残り。
+ * 引く打鍵の上乗せは、再生がそのステップに足す値の選び方（§3.1.1）で選ぶ。
+ */
+function comparePhraseGap(
+  samples: readonly SentenceSample[],
+  calibration: PlaybackCalibration,
+  overheadMs: Readonly<Partial<Record<OverheadKind, number>>>,
+): PhraseGapComparison {
+  const measured: PlaybackCalibration = { ...calibration, keystrokeOverheadMs: overheadMs };
+  const afterValues: number[] = [];
+  const otherValues: number[] = [];
+  const best = new Map<number, { after: number; others: number; afterKinds: Record<StepOverheadKind, number> }>();
+  for (const { sentence, analysis, taps, phraseBreaks } of samples) {
+    const breaks = new Set(phraseBreaks ?? []);
+    const kinds = strokeOverheadKinds(analysis);
+    const round = { after: 0, others: 0, afterKinds: emptyPhraseKindCounts() };
+    for (let index = 1; index < analysis.strokes.length; index++) {
+      const tap = taps[index];
+      const previousTap = taps[index - 1];
+      if (tap === undefined || previousTap === undefined || !tap.clean) continue;
+      if (tap.outputCompleted === true || previousTap.outputCompleted === true) continue;
+      if (adjoinsPunctuation(analysis.strokes, index)) continue;
+      const current = analysis.strokes[index];
+      const previous = analysis.strokes[index - 1];
+      // かなを打ち始めるストロークだけを比べる。かなの中のストロークは混ぜない。
+      if (current.kanaStart <= previous.kanaEnd) continue;
+      const normalMs = playbackNormalMs(analysis, index, calibration);
+      if (!Number.isFinite(normalMs)) continue;
+      const kind = kinds[index];
+      const baseMs =
+        (kind === 'sfb' ? Math.max(normalMs, playbackSameFingerMovementMs(current, calibration) ?? 0) : normalMs) +
+        playbackSimultaneousOverheadMs(current, calibration);
+      const overhead = playbackSameFingerOverheadMs(analysis, index, measured) ?? playbackKeystrokeOverheadMs(analysis, index, measured);
+      const rest = tap.atMs - previousTap.atMs - baseMs - overhead;
+      if (breaks.has(current.kanaStart)) {
+        afterValues.push(rest);
+        round.after += 1;
+        round.afterKinds[kind] += 1;
+      } else {
+        otherValues.push(rest);
+        round.others += 1;
+      }
+    }
+    const previousBest = best.get(sentence) ?? { after: 0, others: 0, afterKinds: emptyPhraseKindCounts() };
+    const afterKinds = emptyPhraseKindCounts();
+    for (const kind of PHRASE_GAP_KINDS) afterKinds[kind] = Math.max(previousBest.afterKinds[kind], round.afterKinds[kind]);
+    best.set(sentence, { after: Math.max(previousBest.after, round.after), others: Math.max(previousBest.others, round.others), afterKinds });
+  }
+  let afterCount = 0;
+  let othersCount = 0;
+  const afterKindCounts = emptyPhraseKindCounts();
+  for (const entry of best.values()) {
+    afterCount += entry.after;
+    othersCount += entry.others;
+    for (const kind of PHRASE_GAP_KINDS) afterKindCounts[kind] += entry.afterKinds[kind];
+  }
+  const after = phraseGroup(afterCount, afterValues);
+  const others = phraseGroup(othersCount, otherValues);
+  const reached = afterCount >= SENTENCE_MIN_SAMPLES && othersCount >= SENTENCE_MIN_SAMPLES;
+  const difference =
+    reached && after.quartileMeanMs !== undefined && others.quartileMeanMs !== undefined && after.meanMs !== undefined && others.meanMs !== undefined
+      ? { quartileMeanMs: after.quartileMeanMs - others.quartileMeanMs, meanMs: after.meanMs - others.meanMs }
+      : undefined;
+  return { after, others, afterKindCounts, ...(difference === undefined ? {} : { difference }) };
 }
 
 export type ApplySentenceResult =
@@ -295,6 +418,8 @@ export type SentenceSaveStatus =
 /** 測り終えた時に示す表。 */
 export interface SentenceResultTable {
   readonly kinds: readonly { readonly kind: OverheadKind; readonly stats: SentenceRowStats; readonly status: SentenceSaveStatus }[];
+  /** 文節の区切りの直後の差。保存値には入れない。 */
+  readonly phraseGap: PhraseGapComparison;
 }
 
 /**
@@ -311,5 +436,6 @@ export function sentenceResultTable(result: ApplySentenceResult): SentenceResult
       stats: measurement.kinds[kind],
       status: measurement.overheadMs[kind] === undefined ? 'below-minimum' : reachedStatus,
     })),
+    phraseGap: measurement.phraseGap,
   };
 }

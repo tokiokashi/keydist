@@ -3,6 +3,8 @@ import test from 'node:test';
 import type { SentenceMeasurement } from '#interpretation/timing/sentence-measurement.ts';
 import type { CalibrationTask } from '#interpretation/timing/calibration-session.ts';
 import {
+  MEASUREMENT_SENTENCE_BREAKS,
+  MEASUREMENT_SENTENCES,
   SENTENCE_TABLE_NOTES,
   ZERO_MOVE_ROW_NOTE,
   calibrationInstruction,
@@ -15,6 +17,8 @@ import {
   SENTENCE_OTHER_LAYOUT_NOTE,
   sentenceFailureText,
   sentenceSavedMessage,
+  sentenceTableSavedDetail,
+  sentenceTableSavedText,
 } from './calibration-text.ts';
 
 /** 文章の知らせの文だけを検査するための測定結果。表に使う値は持たない。 */
@@ -223,4 +227,62 @@ test('保存値が数値の0の指の行にだけ、移動の時間の注記を�
   // 代表値の行・同じキーを続けて打つ速さの行
   assert.equal(zeroMoveRowNote('fallback-move', { ...saved, LM: 0 }), undefined);
   assert.equal(zeroMoveRowNote('finger-repeat:LI', saved), undefined);
+});
+
+/** 文を区切りの位置で分けて`|`でつなぐ。 */
+function withBreaks(sentence: string, breaks: readonly number[]): string {
+  const characters = [...sentence];
+  return characters.map((character, index) => (breaks.includes(index) ? `|${character}` : character)).join('');
+}
+
+test('測定の文の文節の区切りは、手で付けた20か所で、各文に1つ以上ある', () => {
+  assert.deepEqual(
+    MEASUREMENT_SENTENCES.map((sentence, index) => withBreaks(sentence, MEASUREMENT_SENTENCE_BREAKS[index])),
+    [
+      'こんしゅうの|どようびに',
+      'えいがを|みに|いく',
+      'まいにち|すこしずつ',
+      'にほんごを|べんきょうする',
+      'あしたの|かいぎの',
+      'しりょうを|じゅんびした',
+      'せんせいが|おしえて|くれた',
+      'ことを|わすれない',
+      'かぞくで|ふゆやすみに',
+      'りょこうに|いきたい',
+      'この|ほんは|とても',
+      'おもしろくて|やめられない',
+      'あたらしい|くつを',
+      'かって|もらって|うれしい',
+      'なつやすみには|うみへ',
+      'あそびに|いきたい',
+    ],
+  );
+  assert.equal(MEASUREMENT_SENTENCE_BREAKS.length, MEASUREMENT_SENTENCES.length);
+  for (const breaks of MEASUREMENT_SENTENCE_BREAKS) assert.ok(breaks.length >= 1);
+  assert.equal(MEASUREMENT_SENTENCE_BREAKS.flat().length, 20);
+});
+
+test('区切りで分けた文をつなぎ直すと元の文に戻り、区切りは0と末尾を含まず昇順に並ぶ', () => {
+  MEASUREMENT_SENTENCES.forEach((sentence, index) => {
+    const breaks = MEASUREMENT_SENTENCE_BREAKS[index];
+    const characters = [...sentence];
+    const edges = [0, ...breaks, characters.length];
+    const phrases = edges.slice(0, -1).map((start, at) => characters.slice(start, edges[at + 1]).join(''));
+    assert.equal(phrases.join(''), sentence);
+    assert.ok(phrases.every((phrase) => phrase !== ''));
+    assert.ok(breaks.every((position, at) => position > 0 && position < characters.length && (at === 0 || position > breaks[at - 1])));
+  });
+});
+
+test('表の「保存したか」は、選ぶ前は保存する時の状態、選んだ後は保存した結果か保存しなかった旨を示す', () => {
+  assert.equal(sentenceTableSavedText('saved', 'pending'), '保存する値');
+  assert.equal(sentenceTableSavedText('below-minimum', 'pending'), '保存しない（10打未満）');
+  assert.equal(sentenceTableSavedText('out-of-range', 'pending'), '保存しない（範囲外）');
+  assert.equal(sentenceTableSavedText('saved', 'after-save'), '保存した');
+  assert.equal(sentenceTableSavedText('below-minimum', 'after-save'), '未保存（10打未満）');
+  assert.equal(sentenceTableSavedText('saved', 'after-decline'), '保存しなかった');
+  assert.equal(sentenceTableSavedText('out-of-range', 'after-decline'), '未保存（範囲外）');
+  // 詳しい文は、マスの中の文と同じ語を引く
+  assert.ok(sentenceTableSavedDetail('below-minimum', 'pending').startsWith('「保存しない（10打未満）」は'));
+  assert.ok(sentenceTableSavedDetail('below-minimum', 'after-save').startsWith('「未保存（10打未満）」は'));
 });

@@ -100,6 +100,8 @@ export interface SentencePlan {
   candidateSteps(typed: readonly string[], unit: number, spelling: string): readonly SentenceStep[] | undefined;
   /** 単位ごとに打った綴りから、打鍵の列と構造を作る。 */
   analyze(typed: readonly string[]): SentenceAnalysis | undefined;
+  /** 示す文の文節の区切りの位置（文の文字位置。0と末尾は含まない）。文節の区切りの直後の差を比べるのに使う。 */
+  readonly phraseBreaks?: readonly number[];
 }
 
 /**
@@ -582,7 +584,8 @@ export function sentenceSamples(plans: readonly SentencePlan[], records: readonl
     if (record.round === 0) continue;
     const analysis = plans[record.sentence].analyze(record.typed);
     if (analysis === undefined || analysis.strokes.length !== record.taps.length) return undefined;
-    samples.push({ sentence: record.sentence, analysis, taps: record.taps });
+    const { phraseBreaks } = plans[record.sentence];
+    samples.push({ sentence: record.sentence, analysis, taps: record.taps, ...(phraseBreaks === undefined ? {} : { phraseBreaks }) });
   }
   return samples;
 }

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { EMPTY_SETTINGS_OVERRIDES, setSettingsOverride, type SettingsCascadeOverrides } from '#engine/settings-items.ts';
 import type { PersonalSpeedSelection } from '#editors/personal-speed/PersonalSpeedEditor.tsx';
-import { MEASUREMENT_SENTENCES } from '#editors/personal-speed/calibration-text.ts';
+import { MEASUREMENT_SENTENCE_BREAKS, MEASUREMENT_SENTENCES } from '#editors/personal-speed/calibration-text.ts';
 import { calibrationKeyLabel } from '#interpretation/timing/calibration-session.ts';
 import {
   SENTENCE_ROUNDS,
@@ -104,6 +104,20 @@ test('確かめる配列のそれぞれで、示す文の全文の合計がArpeg
     for (const kind of ['arpeggio', 'chain', 'other'] as const) {
       assert.ok(counts[kind] >= 10, `${layoutId} ${kind}: ${JSON.stringify(counts)}`);
     }
+  }
+});
+
+test('文節の区切りの位置のそれぞれに、かなを打ち始めるストロークがある。確かめる配列の全てで', () => {
+  for (const layoutId of ['qwerty', 'shingeta', 'tsuki-2-263']) {
+    MEASUREMENT_SENTENCES.forEach((sentence, index) => {
+      const result = builderWith(EMPTY_SETTINGS_OVERRIDES)({ ...SELECTION, layoutId }, sentence);
+      assert.ok(result.ok, `${layoutId}: ${sentence}`);
+      const { strokes } = result.analysis;
+      for (const position of MEASUREMENT_SENTENCE_BREAKS[index]) {
+        const at = strokes.findIndex((stroke) => stroke.kanaStart === position);
+        assert.ok(at > 0 && strokes[at].kanaStart > strokes[at - 1].kanaEnd, `${layoutId}: ${sentence} の位置${position}`);
+      }
+    });
   }
 });
 

@@ -26,8 +26,10 @@ import {
 import {
   applySentenceMeasurement,
   sentenceResultTable,
+  type ApplySentenceResult,
   type SentenceBuildResult,
   type SentenceResultTable as SentenceResultTableData,
+  type SentenceSample,
 } from '#interpretation/timing/sentence-measurement.ts';
 import {
   remainingSentenceKeys,
@@ -63,12 +65,18 @@ import {
   MEASUREMENT_HOW_TO,
   MEASUREMENT_OUT_OF_RANGE_TEXT,
   measurementEffectText,
+  MEASUREMENT_SENTENCE_BREAKS,
   MEASUREMENT_SENTENCES,
+  SENTENCE_DECLINED_TEXT,
+  SENTENCE_DISCARD_BUTTON,
   SENTENCE_LEARNING_ROUND_TEXT,
+  SENTENCE_SAVE_BUTTON,
+  sentenceCannotSaveText,
+  sentencePendingText,
+  type SentenceTablePhase,
   sentenceProgressText,
   PERSONAL_SPEED_PURPOSE,
   savedMessage,
-  SENTENCE_UNMEASURED_TEXT,
   sentenceFailureText,
   sentenceSavedMessage,
   sentenceUnmeasurableText,
@@ -123,13 +131,13 @@ export interface PersonalSpeedEditorProps {
 type SentenceSetup = { readonly ok: true; readonly plans: readonly SentencePlan[] } | { readonly ok: false; readonly message: string };
 
 /** 示す文の全部が打てる時だけ、測れる。1本でも作れない・測れない文があれば、その理由を返す。 */
-function sentenceSetupOf(builds: readonly SentenceBuildResult[]): SentenceSetup {
+function sentenceSetupOf(builds: readonly SentenceBuildResult[], phraseBreaks: readonly (readonly number[])[]): SentenceSetup {
   const plans: SentencePlan[] = [];
-  for (const build of builds) {
+  for (const [index, build] of builds.entries()) {
     if (!build.ok) return build;
     const unmeasurable = sentenceUnmeasurable(sentenceSteps(build.analysis));
     if (unmeasurable !== undefined) return { ok: false, message: sentenceUnmeasurableText(unmeasurable) };
-    plans.push(sentencePlan(build.analysis, build.spelling));
+    plans.push({ ...sentencePlan(build.analysis, build.spelling), phraseBreaks: phraseBreaks[index] ?? [] });
   }
   return { ok: true, plans };
 }
@@ -155,6 +163,18 @@ function SentenceText({ plan, run }: { readonly plan: SentencePlan; readonly run
 interface SentenceStart {
   readonly setup: Extract<SentenceSetup, { readonly ok: true }>;
   readonly calibration: PlaybackCalibration;
+}
+
+/**
+ * 打ち終えて、保存するかを選ぶ前の測定。保存値は変えていない。
+ * `samples`が無い時は、打った内容から打鍵の列を作れなかった。
+ */
+interface SentencePending {
+  /** 測定を始めた時の保存値。 */
+  readonly base: PlaybackCalibration;
+  readonly samples: readonly SentenceSample[] | undefined;
+  readonly result: ApplySentenceResult | undefined;
+  readonly table: SentenceResultTableData | undefined;
 }
 
 const NO_BASIS_TEXT = 'この配列・物理配列・指の割り当ての組では、測定用のキーを作れません。別の組を選んでください。';
@@ -280,6 +300,8 @@ interface Notice {
   readonly text: string;
   /** 文章を打つ測定を終えた時の表。知らせと一緒に出し、一緒に消える。 */
   readonly table?: SentenceResultTableData | undefined;
+  /** 表の「保存したか」の文言の段階。表と一緒に渡す。 */
+  readonly phase?: SentenceTablePhase;
 }
 
 function NoticeLines({ notice }: { readonly notice: Notice | undefined }) {
@@ -291,7 +313,7 @@ function NoticeLines({ notice }: { readonly notice: Notice | undefined }) {
       <p className="personal-speed-error" role="alert">
         {notice?.kind === 'error' ? notice.text : ''}
       </p>
-      {notice?.table === undefined ? null : <SentenceResultTable table={notice.table} />}
+      {notice?.table === undefined ? null : <SentenceResultTable table={notice.table} phase={notice.phase ?? 'after-save'} />}
     </>
   );
 }
@@ -487,12 +509,15 @@ export function PersonalSpeedEditor({
         ? undefined
         : sentenceSetupOf(
             MEASUREMENT_SENTENCES.map((text) => buildSentence({ layoutId: layout.id, shapeId: shape.id, fingerAssignmentId: assignment.id }, text)),
+            MEASUREMENT_SENTENCE_BREAKS,
           ),
     [ready, buildSentence, layout, shape, assignment],
   );
   // 測定を始めた時の示す文・打鍵の列と構造・保存値。別のタブで条件や保存値が変わっても、終わりまでこれを使う。
   const [sentenceStart, setSentenceStart] = useState<SentenceStart | undefined>(undefined);
   const sentenceStartRef = useRef<SentenceStart | undefined>(undefined);
+  // 打ち終えた測定。「保存する」「保存しない」を選ぶまで、保存値は変えない。
+  const [sentencePending, setSentencePending] = useState<SentencePending | undefined>(undefined);
   const sentenceFinished = (session: SentenceSession) => {
     const started = sentenceStartRef.current;
     sentenceStartRef.current = undefined;
@@ -501,18 +526,30 @@ export function PersonalSpeedEditor({
     // 数えるのは2回目以降だけ。値は、示した綴りではなく、回ごとに打った綴りで作った打鍵の列と構造から求める。
     const samples = sentenceSamples(started.setup.plans, session.records);
     if (samples === undefined) {
-      setNotices({ sentence: { kind: 'error', text: SENTENCE_UNMEASURED_TEXT } });
+      setSentencePending({ base: started.calibration, samples: undefined, result: undefined, table: undefined });
       return;
     }
     const result = applySentenceMeasurement(started.calibration, samples, Date.now(), calibration);
-    const table = sentenceResultTable(result);
+    setSentencePending({ base: started.calibration, samples, result, table: sentenceResultTable(result) });
+  };
+  const saveSentence = () => {
+    const pending = sentencePending;
+    if (pending?.samples === undefined || pending.result?.ok !== true) return;
+    // 保存の時点の保存値が、測定を始めた時と違えば保存しない。
+    const result = applySentenceMeasurement(pending.base, pending.samples, Date.now(), calibration);
+    setSentencePending(undefined);
     if (!result.ok) {
-      setNotices({ sentence: { kind: 'error', text: sentenceFailureText(result), table } });
+      setNotices({ sentence: { kind: 'error', text: sentenceFailureText(result), table: pending.table, phase: 'after-decline' } });
       return;
     }
     dropProblems();
     onSave(result.calibration);
-    setNotices({ sentence: { kind: 'message', text: sentenceSavedMessage(result.measurement), table } });
+    setNotices({ sentence: { kind: 'message', text: sentenceSavedMessage(result.measurement), table: pending.table, phase: 'after-save' } });
+  };
+  const declineSentence = () => {
+    const pending = sentencePending;
+    setSentencePending(undefined);
+    setNotices({ sentence: { kind: 'message', text: SENTENCE_DECLINED_TEXT, table: pending?.table, phase: 'after-decline' } });
   };
   const sentenceRunner = useSentenceRun({ keyLabel, onFinished: sentenceFinished });
   const running = runner.run !== undefined || sentenceRunner.session !== undefined;
@@ -553,6 +590,7 @@ export function PersonalSpeedEditor({
   const startRun = (scope: CalibrationScope, tasks: readonly CalibrationTask[]) => {
     opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setNotices({});
+    setSentencePending(undefined);
     runner.start(scope, tasks);
   };
 
@@ -567,6 +605,7 @@ export function PersonalSpeedEditor({
     setSentenceStart(started);
     opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setNotices({});
+    setSentencePending(undefined);
     sentenceRunner.start(sentence.plans);
   };
   const cancelSentence = () => {
@@ -996,6 +1035,25 @@ export function PersonalSpeedEditor({
                     </button>
                   </>
                 )}
+              </div>
+            )}
+            {sentencePending === undefined ? null : (
+              <div className="personal-speed-pending" data-personal-speed-sentence-pending>
+                <p className="personal-speed-message" role="status">
+                  {sentencePending.result?.ok === true ? sentencePendingText(sentencePending.result.measurement) : ''}
+                </p>
+                <p className="personal-speed-error" role="alert" data-personal-speed-sentence-cannot-save>
+                  {sentencePending.result?.ok === true ? '' : sentenceCannotSaveText(sentencePending.result)}
+                </p>
+                {sentencePending.table === undefined ? null : <SentenceResultTable table={sentencePending.table} phase="pending" />}
+                <div className="personal-speed-actions">
+                  <button type="button" data-personal-speed-sentence-save disabled={sentencePending.result?.ok !== true} onClick={saveSentence}>
+                    {SENTENCE_SAVE_BUTTON}
+                  </button>
+                  <button type="button" data-personal-speed-sentence-decline onClick={declineSentence}>
+                    {SENTENCE_DISCARD_BUTTON}
+                  </button>
+                </div>
               </div>
             )}
             <NoticeLines notice={notices.sentence} />
