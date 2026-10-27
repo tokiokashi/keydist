@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { DraftFace } from '#input/layouts/face-layout-edit.ts';
-import { faceIndexOfPath, faceSummary, patchFace, setFaceOutput, setModifierGroup, toggleTriggerKey } from './face-editing.ts';
+import { buildGeometry, DEFAULT_FINGER_ASSIGNMENT } from '#input/shapes/geometry.ts';
+import { faceIndexOfPath, faceSummary, nextOutputKey, patchFace, setFaceOutput, setModifierGroup, toggleTriggerKey } from './face-editing.ts';
 
 const SINGLE: DraftFace = { trigger: [], inputRole: 'layer', outputs: { a: 'あ' } };
 
@@ -84,4 +85,28 @@ test('診断の位置から面の番号を取り出す', () => {
   assert.equal(faceIndexOfPath('faces[10]'), 10);
   assert.equal(faceIndexOfPath('composition.dakuten'), undefined);
   assert.equal(faceIndexOfPath('name'), undefined);
+});
+
+const ANSI_KEYS = [...buildGeometry('row-staggered', DEFAULT_FINGER_ASSIGNMENT).keys.keys()];
+
+test('次の出力キーは、同じ段の右隣になる', () => {
+  assert.equal(nextOutputKey(ANSI_KEYS, 'a', []), 's');
+});
+
+test('次の出力キーは、段の右端から次の段の左端のキーへ進む', () => {
+  assert.equal(nextOutputKey(ANSI_KEYS, ']', []), 'a');
+});
+
+test('次の出力キーは、切り替えのキーを飛ばす', () => {
+  assert.equal(nextOutputKey(ANSI_KEYS, 'a', ['s']), 'd');
+});
+
+test('次の出力キーは、最後のキーと、その先が切り替えのキーだけの時は無い', () => {
+  assert.equal(nextOutputKey(ANSI_KEYS, '/', []), undefined);
+  assert.equal(nextOutputKey(ANSI_KEYS, 'm', [',', '.', '/']), undefined);
+});
+
+test('面の上の位置を持たないキーからは進まない', () => {
+  assert.equal(nextOutputKey(ANSI_KEYS, 'thumb-l', []), undefined);
+  assert.equal(nextOutputKey(ANSI_KEYS, 'shift-l', []), undefined);
 });

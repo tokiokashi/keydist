@@ -294,3 +294,14 @@
 .kana-layout-error a {
   margin-inline-start: 0.5rem;
 }
+
+.kana-layout-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

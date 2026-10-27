@@ -6,9 +6,13 @@ import { SINGLE_LAYER_ID, type Layout } from '#input/layouts/types.ts';
  * 純粋な計算。Analyzerどうしは互いをimportしないので、2つが共有するものをここに置く。
  */
 
-/** 図の描き方。キーごとの塗り・押下の集まりをぼかした熱の塊・何も塗らない（キーの枠と文字だけ）。 */
+/** 図の描き方。キーごとの塗り・キーの押下の熱をキーの境目をまたいで重ねて描くサーモグラフィ・何も塗らない（キーの枠と文字だけ）。 */
 export const HEATMAP_DRAW_STYLES = ['fill', 'blob', 'none'] as const;
 export type HeatmapDrawStyle = (typeof HEATMAP_DRAW_STYLES)[number];
+
+/** 図の配色。単色は青の濃淡、多色は強さに応じて色相が変わる（`heatmap-palette.ts`）。 */
+export const HEATMAP_PALETTES = ['single', 'multi'] as const;
+export type HeatmapPalette = (typeof HEATMAP_PALETTES)[number];
 
 /** 色の尺度。仕様 §11.10の線形・対数。 */
 export type HeatmapColorScale = 'linear' | 'log';
