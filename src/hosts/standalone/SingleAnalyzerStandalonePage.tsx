@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import type { Command } from '#input/commands/index.ts';
-import { setReadingCorrectionCommand, setSingleTargetCommand, type KeydistAssets } from '#engine/commands.ts';
+import { setMultiTargetsCommand, setReadingCorrectionCommand, setSingleTargetCommand, type KeydistAssets } from '#engine/commands.ts';
 import { effectiveSingleTarget } from '#engine/single-target-selection.ts';
-import { analysisTargetKey, layoutIdsOfTargets } from '#input/setup/index.ts';
+import { analysisTargetKey, layoutIdsOfTargets, type AnalysisTarget } from '#input/setup/index.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
 import type { PresetIdGenerator } from '#input/presets/index.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
@@ -152,11 +152,18 @@ export function SingleAnalyzerStandalonePage<Options, Extracted>({
     [assets.setupLibrary, assets.presetLibrary, catalog, evaluation, cache, dispatch, generatePresetId, undo, assetsReady, bunsetsu],
   );
 
-  // Multiの集合は読むだけ（Singleの対象の図の下に並べる宣言をしたAnalyzerにだけ渡す）
+  // Multiの集合は書き換えられる（Multiの画面と同じコマンド）。Singleの値には書かない。Singleの対象の図の下に並べる宣言をしたAnalyzerにだけ渡す
   const multiColorSlots = useMultiColorSlots(assets.multiTargetSelection);
   const setTargetSource = useMemo(
-    () => (analyzer.standaloneSetTargets === undefined ? undefined : { selection: assets.multiTargetSelection, colorSlots: multiColorSlots }),
-    [analyzer.standaloneSetTargets, assets.multiTargetSelection, multiColorSlots],
+    () =>
+      analyzer.standaloneSetTargets === undefined
+        ? undefined
+        : {
+            selection: assets.multiTargetSelection,
+            colorSlots: multiColorSlots,
+            onTargetsChange: (next: readonly AnalysisTarget[]) => dispatch(setMultiTargetsCommand(next)),
+          },
+    [analyzer.standaloneSetTargets, assets.multiTargetSelection, multiColorSlots, dispatch],
   );
 
   const changeOptions = (next: Options) => {

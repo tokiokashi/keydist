@@ -55,9 +55,14 @@ export interface SingleAnalyzerPaneProps<Options, Extracted> {
   readonly linkNotices?: readonly string[];
   /**
    * Singleの対象の図の下に並べる、Multiの集合（選んだ対象と、対象に配った色の番号）。単体の画面が、
-   * Analyzerが`standaloneSetTargets`を宣言している時だけ渡す。読むだけで、どちらにも書かない。
+   * Analyzerが`standaloneSetTargets`を宣言している時だけ渡す。`onTargetsChange`を渡すと、格子の上に集合を選ぶ操作を出す
+   * （集合の書き込み先は器が決める）。Singleの値には書かない。
    */
-  readonly setTargetSource?: { readonly selection: TargetSet; readonly colorSlots: ColorSlotsByKey };
+  readonly setTargetSource?: {
+    readonly selection: TargetSet;
+    readonly colorSlots: ColorSlotsByKey;
+    readonly onTargetsChange?: (next: readonly AnalysisTarget[]) => void;
+  };
   /** 開いた時の最初の文字位置（別の画面の図から開いた時の個別画面）。`acceptsPlaybackSeek` を宣言したAnalyzerにだけ渡る。 */
   readonly initialCharPosition?: number;
 }
@@ -141,8 +146,8 @@ export function SingleAnalyzerPane<Options, Extracted>({
   );
   const besideExtractions = useTargetExtractions(cache, analyzer.definition, options, readingLoading ? NO_BESIDE_MEMBERS : besideMembers);
   // 表示名は、画面に並ぶ集合（Singleの対象と並べる対象）に対して計算する
+  // 集合を選ぶ操作の中の名前も、ここで引く（Singleの対象は集合に入っていても、同じ画面に並ぶ集合の一員として名付ける）
   const besideNamed = useMemo(() => {
-    if (besideMembers.length === 0) return new Map<string, ReturnType<typeof nameTargets>[number]>();
     const sources = [
       targetNameSource(target, resolution, setupsById, setupNumbers, catalog.setupCatalog, [], summaryScope),
       ...besideMembers.map((member) =>
@@ -163,6 +168,35 @@ export function SingleAnalyzerPane<Options, Extracted>({
       })),
     [besideMembers, besideNamed, setSelection.colorByKey, setSelection.markByKey, besideExtractions],
   );
+
+  const onSetTargetsChange = setSource?.onTargetsChange;
+  const setTargetPicker =
+    standaloneSetTargets === undefined || onSetTargetsChange === undefined ? undefined : (
+      <div className="set-target-picker">
+        <span className="set-target-picker-label">並べる配列</span>
+        <TargetSelection
+          mode="multiple"
+          label="並べる配列"
+          groups={setSelection.choiceGroups}
+          selected={setSelection.targets}
+          summary={
+            assetsReady
+              ? setSelection.targets.map((member) => {
+                  const key = analysisTargetKey(member);
+                  return {
+                    key,
+                    label: besideNamed.get(key)?.displayName ?? key,
+                    fullName: besideNamed.get(key)?.fullName ?? '',
+                    color: setSelection.colorByKey.get(key),
+                    mark: setSelection.markByKey.get(key),
+                  };
+                })
+              : []
+          }
+          onChange={onSetTargetsChange}
+        />
+      </div>
+    );
 
   const choiceGroups = useMemo(
     () =>
@@ -294,6 +328,7 @@ export function SingleAnalyzerPane<Options, Extracted>({
           {...(playbackSeek === undefined ? {} : { playbackSeek })}
           {...(analyzer.acceptsPlaybackSeek === true && initialCharPosition !== undefined ? { initialCharPosition } : {})}
           {...(setTargetFigures.length === 0 ? {} : { setTargets: setTargetFigures })}
+          {...(setTargetPicker === undefined ? {} : { setTargetPicker })}
           {...(keyDetailsOf === undefined
             ? {}
             : {

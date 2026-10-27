@@ -307,3 +307,21 @@
     min-height: 2.4rem;
   }
 }
+
+/*
+ * 単体の画面で、格子に並べる対象（Multiの集合）を選ぶ行。見出しの対象の選択とは別の場所に置き、
+ * どちらの値を変えるのかを置き場とラベルで区別する。
+ */
+.set-target-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  max-width: 32rem;
+}
+
+.set-target-picker-label {
+  flex: none;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}

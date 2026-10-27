@@ -1,4 +1,4 @@
-import type { ComponentType } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import type { Geometry } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { KeyDetails } from '#interpretation/key-detail.ts';
@@ -108,6 +108,12 @@ export interface SingleBodyProps<Extracted, Options> {
    * 集合に並べる対象が無い時は渡さない。
    */
   readonly setTargets?: readonly SetTargetFigure<Extracted>[];
+  /**
+   * Multiの集合を選ぶ操作（ホストが値と結んだもの）。Singleの対象の図と`setTargets`の格子の間に置く。
+   * `standaloneSetTargets`を宣言したAnalyzerの単体の画面で、ホストが集合への書き込み口を持つ時だけ渡す。
+   * 集合に並べる対象が無い時も渡す。
+   */
+  readonly setTargetPicker?: ReactNode;
   readonly layout: Layout;
   readonly geometry: Geometry;
   readonly trace: Trace;
@@ -147,7 +153,8 @@ export interface SingleAnalyzerPaneParts<Options, Extracted>
    * 単体の画面で、Singleの対象の図の下にMultiの集合の対象を並べることの宣言。持つAnalyzerだけが渡す。
    * 渡すと、単体の画面のホストが集合の対象を追加で計算して本体へ`setTargets`で渡し、
    * 並べる対象がある間だけペインの幅の上限を`recommendedWidthRem`に広げる。
-   * SingleとMultiの値は読むだけで、どちらにも書かない。
+   * 単体の画面のホストが集合への書き込み口を渡す時は、格子の上に集合を選ぶ操作も出す（`setTargetPicker`）。
+   * Multiの集合は書き換えられる。Singleの値には書かない。
    */
   readonly standaloneSetTargets?: {
     /** 集合の対象を並べる間の、ペインの推奨幅 [rem]。 */
