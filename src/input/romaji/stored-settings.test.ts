@@ -65,3 +65,14 @@ test('壊れた規則・割り当ては捨てて診断を積み、残りは読�
     ['rules[1]', 'rules[2]', 'assignments.broken'],
   );
 });
+
+test('基底にJLODを持つ自作の規則を読める。基底が組み込みに無い値は捨てる', () => {
+  const jlodRule = { ...rule, id: 'rule-j', base: 'jlod', generateSokuon: false };
+  const result = decodeStoredRomajiSettings({ rules: [jlodRule, { ...rule, id: 'rule-x', base: 'unknown' }], assignments: { dvorak: 'jlod' } });
+  assert.deepEqual(
+    result.value.rules.map((r) => r.id),
+    ['rule-j'],
+  );
+  assert.equal(result.value.assignments.dvorak, 'jlod');
+  assert.equal(result.diagnostics.length, 1);
+});

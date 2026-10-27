@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { isKanaKey, newRomajiRuleId, spellingRows, withSpelling, type RomajiRuleContent, type SpellingRow } from '#input/romaji/rule-edit.ts';
-import { ROMAJI_RULES, type BuiltinRomajiRuleId, type UserRomajiRule } from '#input/romaji/rules.ts';
+import { hasSingleStrokeSokuon, ROMAJI_RULES, type BuiltinRomajiRuleId, type UserRomajiRule } from '#input/romaji/rules.ts';
 import { ROMAJI_RULE_LABEL } from './label.ts';
 import './romaji-rule.css';
 import { useHistoryShortcuts } from '#ui/primitives/use-history-shortcuts.ts';
@@ -8,7 +8,7 @@ import { useHistoryShortcuts } from '#ui/primitives/use-history-shortcuts.ts';
 /** 新しく作る規則の名前。 */
 const NEW_RULE_NAME = '新しいローマ字の綴り';
 
-const BASE_IDS: readonly BuiltinRomajiRuleId[] = ['kunrei', 'oonishi', 'tomisuke', 'azik', 'qwerty'];
+const BASE_IDS: readonly BuiltinRomajiRuleId[] = ['kunrei', 'oonishi', 'tomisuke', 'azik', 'jlod', 'qwerty'];
 
 export interface RomajiRuleEditorProps {
   /** 自作のローマ字規則。 */
@@ -238,8 +238,8 @@ export function RomajiRuleEditor({ rules, ready, canUndo, canRedo, onUndo, onRed
                       value={rule.base}
                       onChange={(event) => {
                         const base = event.currentTarget.value as BuiltinRomajiRuleId;
-                        // AZIKは促音を1打で持つので、子音を重ねる見出しは足さない
-                        update({ base, generateSokuon: base === 'azik' ? false : rule.generateSokuon });
+                        // AZIKとJLODは促音を1打で持つので、子音を重ねる見出しは足さない
+                        update({ base, generateSokuon: hasSingleStrokeSokuon(base) ? false : rule.generateSokuon });
                       }}
                     >
                       {BASE_IDS.map((id) => (
@@ -252,8 +252,8 @@ export function RomajiRuleEditor({ rules, ready, canUndo, canRedo, onUndo, onRed
                   <label className="romaji-rule-check">
                     <input
                       type="checkbox"
-                      checked={rule.base !== 'azik' && rule.generateSokuon}
-                      disabled={rule.base === 'azik'}
+                      checked={!hasSingleStrokeSokuon(rule.base) && rule.generateSokuon}
+                      disabled={hasSingleStrokeSokuon(rule.base)}
                       onChange={(event) => update({ generateSokuon: event.currentTarget.checked })}
                     />
                     促音の後ろに子音を重ねた見出しを自動生成する（っか → kka）
