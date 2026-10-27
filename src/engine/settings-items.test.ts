@@ -75,7 +75,7 @@ test('windowSize/sfbHomeCostはglobal/layout/setupのみ許可（shape/inputMeth
   assert.ok(toLayout.ok);
 });
 
-test('romajiRuleId: 既定値は配列ごとに違う（大西配列だけoonishi、それ以外はkunrei）', () => {
+test('romajiRuleId: 既定値は配列ごとに違う（大西配列はoonishi、とみすけ配列はtomisuke、それ以外はkunrei）', () => {
   const resolvedQwerty = resolveSettings(EMPTY_SETTINGS_OVERRIDES, contextFor(qwertyJa, { inputMethod: 'romaji' }));
   assert.equal(resolvedQwerty.romajiRuleId.value, 'kunrei');
   assert.equal(resolvedQwerty.romajiRuleId.origin.kind, 'default');
