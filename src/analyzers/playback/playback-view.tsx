@@ -29,7 +29,7 @@ import {
   tickPlayback,
 } from './session.ts';
 import { PLAYBACK_FIGURE_GROUPS } from './settings-sections.ts';
-import { rateChartAxisInsets } from './rate-chart-model.ts';
+import { formatRate, rateChartAxisInsets } from './rate-chart-model.ts';
 import { PlaybackRateChart } from './rate-chart.tsx';
 import './playback-view.css';
 
@@ -109,6 +109,7 @@ export function PlaybackBody({
     rateChart,
     basisId,
     timeTotals,
+    overallRates,
     waitUse,
     bunsetsuUse,
   } = extracted;
@@ -348,6 +349,11 @@ export function PlaybackBody({
           <span className="playback-position" data-playback-times>
             打鍵時間 <span data-playback-typing-time>{formatSeconds(timeTotals.typingMs)}</span>
             {' / '}総時間 <span data-playback-total-time>{formatSeconds(timeTotals.totalMs)}</span>
+          </span>
+          <span className="playback-position" data-playback-overall-rates>
+            全文の平均 <span data-playback-overall-kana>{formatRate(overallRates.kanaPerSecond)}</span>かな/秒
+            {' / '}
+            <span data-playback-overall-actions>{formatRate(overallRates.actionsPerSecond)}</span>アクション/秒
           </span>
         </div>
         <input

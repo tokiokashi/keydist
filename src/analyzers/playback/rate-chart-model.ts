@@ -156,7 +156,8 @@ export function rateChartModel(
   };
 }
 
-function formatRate(value: number | undefined): string {
+/** かな/秒・アクション/秒の表示。値を出せない時は「—」。 */
+export function formatRate(value: number | undefined): string {
   return value === undefined ? '—' : value.toFixed(2);
 }
 
