@@ -81,6 +81,48 @@ const ALPHA: Layout[] = [
     'こーるまっくdh',
   ]),
   withAliases(withShiftedOutputs(fromRows('workman', 'Workman', ['1234567890-=', 'qdrwbjfup;[]', "ashtgyneoi'", 'zxmcvkl,./'])), ['わーくまん']),
+  // 作者が定義したのは30キー（3段×10列）だけで、外側のキーはQWERTYのまま。
+  // 数字段・`[` `]`・ホーム段右端の `'` は作者の定義に無いのでQWERTYの位置に残し、
+  // 30キーに入った `,` `.` `;` `/` はQWERTYの位置から外してある
+  withAliases(withShiftedOutputs(fromRows('eucalyn', 'Eucalyn配列', ['1234567890-=', 'qw,.;mrdyp[]', "aoeiugtksn'", 'zxcvfbhjl/'])), [
+    'ゆかりん',
+    'ゆかりんはいれつ',
+    'eucalyn',
+  ]),
+  // 作者のKeyboard Layout Analyzer用定義（US配列の全キー）の記号をそのまま写した。作者は記号の位置を「仮」としている
+  withAliases(withShiftedOutputs(fromRows('astarte', 'Astarte', ['1234567890;=', 'qpuy,jdhgw[]', "ioea.ktnsr'", 'zx-c/mlfbv'])), [
+    'あすたるて',
+    'あすたるてはいれつ',
+    'astarte',
+  ]),
+  // 作者配布のUS配列版AutoHotkeyスクリプトのキー置換の写し。作者が記号の位置の標準とした版
+  withAliases(withShiftedOutputs(fromRows('tomisuke', 'Tomisuke配列', ['1234567890[]', "',.-=lrdyp;/", 'aoeiugntskf', 'xcvwqjhmbz'])), [
+    'とみすけ',
+    'とみすけはいれつ',
+    'tomisuke',
+  ]),
+  // Rowstag版。ホーム段の11番目（QWERTYの `'` の位置）に `/` が入り、`'` は下段にある。数字段と `[` `]` はQWERTYのまま
+  withAliases(withShiftedOutputs(fromRows('gallium', 'Gallium', ['1234567890-=', 'bldcvjfou,[]', 'nrtsgyhaei/', "xqmwzkp';."])), ['がりうむ', 'gallium']),
+  // 作者の定義は30キーに `'` を含み、`;` はホーム段の11番目（QWERTYの `;` の位置）に置かれる。
+  // 数字段の `-` `=` と `[` `]` はQWERTYのまま残る
+  withAliases(withShiftedOutputs(fromRows('semimak-jq', 'Semimak JQ', ['1234567890-=', "flhvz'wuoy[]", 'srntkcdeai;', 'xjbmqpg,./'])), [
+    'せみまっくじぇいきゅー',
+    'せみまっく',
+    'semimak',
+  ]),
+  // ホーム段の11番目（QWERTYの `'` の位置）に `/` が入り、`'` は下段の右端にある。`[` `]` と数字段はQWERTYのまま
+  withAliases(withShiftedOutputs(fromRows('recurva', 'Recurva', ['1234567890-=', 'frdpvqjuoy[]', 'sntcb.heai/', "zxkgwml;',"])), ['りかーば', 'recurva']),
+  // 作者のREADMEにある角度改変なしの並び。`;` はホーム段の11番目（QWERTYの `;` の位置）
+  withAliases(withShiftedOutputs(fromRows('aptv3', 'APTv3', ['1234567890-=', 'wgdfbqluoy[]', 'rsthkjneai;', "xcmpvz,.'/"])), [
+    'えーぴーてぃーぶいすりー',
+    'えーぴーてぃー',
+    'apt',
+  ]),
+  withAliases(withShiftedOutputs(fromRows('norman', 'Norman', ['1234567890-=', 'qwdfkjurl;[]', "asetgynioh'", 'zxcvbpm,./'])), ['のーまん']),
+  withAliases(withShiftedOutputs(fromRows('qgmlwy', 'QGMLWY', ['1234567890-=', 'qgmlwyfub;[]', "dstnriaeoh'", 'zxcvjkp,./'])), [
+    'きゅーじーえむえるだぶりゅーわい',
+    'carpalx',
+  ]),
   withAliases(withShiftedOutputs(fromRows('oonishi', '大西配列', ['1234567890', 'qlu,.fwryp', 'eiao-ktnsh', 'zxcv;gdmjb'])), [
     'おおにし',
     'おおにしはいれつ',

@@ -288,6 +288,9 @@ TK音直入力法のコンボのヤ行19件で、拗音のローマ字塊の内�
 | 月配列2-263式 | [成立時の2-263式配列表](https://jisx6004.client.jp/data/2chlog/1055763380.html)と[月配列の解説](https://jisx6004.client.jp/tsuki.html)を仕様根拠として実装した中指前置シフト配列 |
 | JISかな配列 | JIS X 6002で策定されたかな配列。キーの割り当ては、xkeyboard-configの `symbols/jp` の `kana` と照合して一致を確かめた。Shiftで小書きのかな・`を`・`「」`・句読点を打ち、濁点・半濁点はかなの後に打つ。JISの物理配列が要る（選んだ物理配列と同じ形のJISで測る） |
 | かわせみ配列+ | [公式Kikyo定義](https://github.com/semialt/kawasemi/blob/911bb8f/Kikyo/%E3%81%8B%E3%82%8F%E3%81%9B%E3%81%BF%E9%85%8D%E5%88%97%2B.kky)から移植（コミット `911bb8f`、blob `220851f`）。二重母音・くき・つち・左手コンボ拡張を含む |
+| Eucalyn配列 | [作者の配列図](https://eucalyn.hatenadiary.jp/entry/about-eucalyn-layout)（2018-08-31の記事の画像）。作者が定義したのは30キーだけで、外側はQWERTYのまま。綴りは訓令式。[Paalonの転記](https://zenn.dev/paalon/articles/914f22aea7ecf9)と照合して一致を確かめた |
+| Astarte | [作者の記事](https://neinvalli.hatenablog.com/entry/2018/07/21/185448)（2018-07-21）にあるKeyboard Layout Analyzer用の定義の全キー。記号の位置は作者が仮としている。綴りは訓令式。[Paalonの転記](https://zenn.dev/paalon/articles/914f22aea7ecf9)と照合して一致を確かめた |
+| Tomisuke配列 | [作者のページ](https://tomisuke.com/tomisuke-keyboard-layout/)（2023-08-14に記号の位置を「標準」とした版）で配布されるUS配列版AutoHotkeyスクリプト `Tomisuke_US_1.ahk` のキー置換。綴りは訓令式。英字26文字は[Paalonの転記](https://zenn.dev/paalon/articles/914f22aea7ecf9)（2022-07-19の版）と一致を確かめた。作者推奨の綴りは入れていない |
 
 コンボは「出力する文字列 → その文字を出すキーの集合」で書きます。
 キーを物理位置ではなく文字で指すので、同じ定義を別の英字配列にも適用できます。
@@ -307,6 +310,24 @@ TK音直入力法のコンボのヤ行19件で、拗音のローマ字塊の内�
 
 サイドバーの「ローマ字の綴り」から、組み込みの綴りを基底にした差分を保存できます。
 綴りが割れるかなごとに綴りを選べ、一覧に無いかなの綴りも足せます。促音の自動生成の有無も綴りごとに設定できます。
+
+## 英字配列
+
+英文を打つ配列として入っているもの。英語向けの配列も、日本語のテキストでは訓令式の綴りを通して測ります。
+どの配列も、4段の文字の並びをUS配列のShiftの組と合わせて定義しています。
+
+| 配列 | 出典と指した版 |
+|---|---|
+| Gallium | Rowstag版（旧称Gallium v2）。[作者のリポジトリ](https://github.com/GalileoBlues/Gallium)の `Linux/xkb/gallium_rowstag`（コミット `21a8a7b`）。同じリポジトリの `Kanata/Gallium.cfg` のRowstagと照合して一致を確かめた |
+| Semimak JQ | [作者の記事](https://github.com/semilin/semilin.github.io/blob/8e2381e/src/blog/reflection-on-semimak.org)（2021-10-14、コミット `8e2381e`）。作者の解析ツール[genkey](https://github.com/semilin/genkey/blob/f1f4173/layouts/semimak_jq)（コミット `f1f4173`）の `layouts/semimak_jq` と照合して一致を確かめた |
+| Recurva | [作者のREADME](https://github.com/GalileoBlues/Recurva/blob/b2919b1/README.md)（コミット `b2919b1`、2023-10-24）。[cyanophageの比較表](https://cyanophage.github.io/)（コミット `b02780b`）と照合して一致を確かめた |
+| APTv3 | [作者のREADME](https://github.com/Apsu/APT/blob/f852266/README.md)（コミット `f852266`、2022-01-13）の角度改変なしの並び。cyanophageの比較表（コミット `b02780b`）と照合して一致を確かめた |
+| Norman | [公式サイト](https://normanlayout.info/)の配置（2013）。genkeyの `layouts/norman`（コミット `f1f4173`）と照合して一致を確かめた |
+| QGMLWY | [carpalx](https://mk.bcgsc.ca/carpalx/?full_optimization)の「full Colemak-like optimization, ZXCV fixed」。genkeyの `layouts/qgmlwy`（コミット `f1f4173`）と照合して一致を確かめた |
+
+QWERTY・Dvorak・Colemak・Colemak-DH・Workmanも入っています。
+
+収録しているかどうかは配列の評価ではありません。入っていない配列は、自作の画面（かな配列・ローマ字配列）と定義ファイルの取り込みで使えます。
 
 ## 自作の配列を足す
 
