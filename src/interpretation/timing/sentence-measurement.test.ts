@@ -1112,3 +1112,59 @@ test('範囲の外の値・下限に届かない種類があっても、比べ�
   assert.ok(table);
   assert.equal(table.phraseGap.after.count, 11);
 });
+
+const near = (actual: number | undefined, expected: number) => {
+  assert.ok(actual !== undefined && Math.abs(actual - expected) < 1e-9, `${actual} !== ${expected}`);
+};
+
+test('残り: 同指連続のストロークは、基準の時間にmax(normalMs, 指の移動の時間)を使い、同指連続の値を引く', () => {
+  // 距離2u、LIの1uあたりの移動の時間250msなら、移動の時間は200 + 500 = 700ms。normalMsは200ms。
+  const analysis = custom(
+    Array.from({ length: 60 }, () => 'LI' as Finger),
+    (index) => (index % 2 === 0 ? 'f' : 'r'),
+    (index) => (index === 0 ? 0 : 2),
+  );
+  const calibration = { ...SAVED, fingerRepeatMs: { LI: 200 }, fingerMoveMsPerUnit: { LI: 250 } };
+  const breaks = every(3, 3, 57);
+  const taps = tapsFor(60, (index) => (breaks.includes(index) ? 1000 : 800));
+  const { phraseGap, overheadMs } = measureSentence([{ sentence: 0, analysis, taps, phraseBreaks: breaks }], calibration);
+  const sfb = overheadMs.sfb;
+  assert.ok(sfb !== undefined && sfb > 100 && sfb < 300);
+  // 他の群は 800 - 700 - 同指連続の値、区切りの直後は 1000 - 700 - 同指連続の値
+  near(phraseGap.others.quartileMeanMs, 100 - (sfb ?? 0));
+  near(phraseGap.after.quartileMeanMs, 300 - (sfb ?? 0));
+  assert.equal(phraseGap.afterKindCounts.sfb, 19);
+});
+
+test('残り: 同時押しのストロークの基準の時間に、同時押しの上乗せを含める', () => {
+  const analysis = withPresses(alternating(60), Object.fromEntries(Array.from({ length: 59 }, (_, index) => [index + 1, ['LI', 'RI'] as Finger[]])));
+  const calibration = { ...SAVED, simultaneousOverheadMs: { 'both-hands': 40 } };
+  const breaks = every(5, 5, 55);
+  const { phraseGap } = measureSentence([{ sentence: 0, analysis, taps: phraseTaps(60, breaks, 260, 460), phraseBreaks: breaks }], calibration);
+  // 打鍵の上乗せは同時押しの上乗せを含む基準の時間で求まるので、残りは同時押しの上乗せ分だけずれない。
+  near(phraseGap.others.quartileMeanMs, 0);
+  near(phraseGap.after.quartileMeanMs, 200);
+});
+
+test('残り: かなの中・かなの境目で上乗せが違う時は、そのストロークと同じ側の値を引く', () => {
+  const analysis = twoStrokesPerKana(60);
+  const breaks = every(4, 4, 28);
+  // かなの中は160ms（差は-40）、かなの境目は260ms（差は60）、区切りの直後は460ms。
+  const taps = tapsFor(60, (index) => (index % 2 === 1 ? 160 : breaks.includes(index / 2) ? 460 : 260));
+  const { phraseGap, overheadMs } = measureSentence([{ sentence: 0, analysis, taps, phraseBreaks: breaks }], SAVED);
+  assert.equal(overheadMs['other-within'], -40);
+  assert.equal(overheadMs['other-boundary'], 60);
+  near(phraseGap.others.quartileMeanMs, 0);
+  near(phraseGap.after.quartileMeanMs, 200);
+});
+
+test('残り: 下限に届かない種類のストロークは、代わりに使う値の順で選んだ値を引く', () => {
+  // Chainのストロークは5打で下限に届かず、Chainの値は無い。同じ側の「その他」の値（60）を引く。
+  const analysis = alternating(60, [range(10, 15)]);
+  const taps = tapsFor(60, (index) => (index >= 11 && index <= 15 ? 360 : 260));
+  const { phraseGap, overheadMs } = measureSentence([{ sentence: 0, analysis, taps }], SAVED);
+  assert.equal(overheadMs.chain, undefined);
+  assert.equal(overheadMs['other-boundary'], 60);
+  assert.equal(phraseGap.others.count, 59);
+  near(phraseGap.others.meanMs, (5 * 100) / 59);
+});
