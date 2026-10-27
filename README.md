@@ -320,7 +320,7 @@ TK音直入力法のコンボのヤ行19件で、拗音のローマ字塊の内�
 ## 英字配列
 
 英文を打つ配列として入っているもの。英語向けの配列も、日本語のテキストでは訓令式の綴りを通して測ります。
-どの配列も、4段の文字の並びをUS配列のShiftの組と合わせて定義しています。
+どの配列も、4段の文字の並びをUS配列のShiftの組と合わせて定義しています。ただし、作者が記号のShiftの組も配列の一部として定めている配列（Graphite・Halmak・MTGAP）は、作者の組で記号を打ちます。
 
 | 配列 | 出典と指した版 |
 |---|---|
@@ -333,6 +333,9 @@ TK音直入力法のコンボのヤ行19件で、拗音のローマ字塊の内�
 | Canary | 同じREADMEのオーソリニア用の並び。作者は30キーの外側を指定していないので、`;` はホーム段の11番目に置き、数字段と `[` `]` はQWERTYのまま。[cyanophageの比較表](https://cyanophage.github.io/)（コミット `b02780b`）と30キーが一致することを確かめた。cyanophageは `;` と `'` の位置が違う |
 | Sturdy（ANSI） | [作者のページ](https://oxey.dev/layouts/sturdy/)（2026-05-04時点）の30キーに、作者の説明にある角度改変の規則（下段の左5キーを1つ左へ寄せ、`z` を `b` の位置に移す）を当てた結果。作者がANSI用の並びを公開しているわけではない。cyanophageの比較表（コミット `b02780b`）のマトリクス用の並びに同じ規則を当てた結果と一致することを確かめた。ホーム段の11番目の `/` はcyanophageと同じ置き方 |
 | Sturdy | 同じページの30キー（寄せる前）。外側のキーの置き方は「Sturdy（ANSI）」と同じ。cyanophageの比較表（コミット `b02780b`）と照合して一致を確かめた |
+| Graphite | [作者のREADME](https://github.com/rdavison/graphite-layout/blob/5990356/README.md)（コミット `5990356`、2024-03-11）の「Ascii Version」。記号のShiftの組（`'`→`_`、`,`→`?`、`-`→`"`、`/`→`<`）も作者の定義のとおり。Paalonの「キーボード配列まとめ」（2024-01-12更新）の転記と、[cyanophageの比較表](https://cyanophage.github.io/)（コミット `b02780b`）の30キーと照合して一致を確かめた |
+| Halmak | [作者のリポジトリ](https://github.com/kaievns/halmak/blob/f623ad3/linux/symbols/halmak)の `linux/symbols/halmak`（コミット `f623ad3`）の、Halmakの面。記号のShiftの組（`9`→`<`、`0`→`>`、`,`→`(`、`.`→`)`）も作者の定義のとおり。genkeyの `layouts/halmak`（コミット `f1f4173`）と30キーが一致することを確かめた。cyanophageの比較表は一次と並びが違うので照合に使っていない |
+| MTGAP | [作者のページ](https://mathematicalmulticore.wordpress.com/the-keyboard-layout-project/)の「Optimized for the main 30 keys of a standard keyboard」（ページに日付が無いので、取得日の2026-10-27で指す）。`:` を単打で置き、`;` は `,` のShiftで打つ。作者のソフトウェアの配列表 [MTGandP/Typing](https://github.com/MTGandP/Typing/blob/b4431cb/doc/layoutStore.txt) の `MTGAP 3.14`（コミット `b4431cb`）と、無Shiftもその組も一致する。genkeyの `layouts/mtgap30`（コミット `f1f4173`）は `:` を `;` に置き換えた近似で、その1キーを除いて一致する。30キーの外側は作者が定めていないので、数字段・`[` `]`・ホーム段の11番目の `'` はQWERTYのまま |
 | Norman | [公式サイト](https://normanlayout.info/)の配置（2013）。genkeyの `layouts/norman`（コミット `f1f4173`）と照合して一致を確かめた |
 | QGMLWY | [carpalx](https://mk.bcgsc.ca/carpalx/?full_optimization)の「full Colemak-like optimization, ZXCV fixed」。genkeyの `layouts/qgmlwy`（コミット `f1f4173`）と照合して一致を確かめた |
 
@@ -348,7 +351,8 @@ QWERTY・Dvorak・Colemak・Colemak-DH・Workmanも入っています。
 - 各段に置ける数は物理配列で決まる（ANSIなら12 / 12 / 11 / 10）。超えると弾く
 - 同じ文字を複数のキーに置いてもよい。打鍵には先に書いた方を使い、
   後の方は刻印だけ残す
-- 英字の配列では、大文字と記号を組み込みの英字配列と同じくShiftとの同時押しで打つ。
+- 英字の配列では、大文字と記号をShiftとの同時押しで打つ。記号のShiftの組はUS配列のもので、
+  作者の組を持つ組み込みの配列（Graphite・Halmak・MTGAP）と同じ段を組んでも、記号の出方は同じにならない。
   `A` や `!` など、Shiftを使わずに打てるキーへ自分で置いた文字は、置いた定義を使う
 - ローマ字の綴りを選べる。綴りは配列と対で効くので、配置に合う方を選ぶ。自作の綴りは
   「ローマ字の綴り」から作成して選ぶ

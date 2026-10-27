@@ -158,6 +158,40 @@ const ALPHA: Layout[] = [
     'すたーでぃ',
     'sturdy',
   ]),
+  // 作者のREADMEのAscii Versionの並び。作者は記号の置き方も設計の一部としていて、`'` `,` `-` `/` のShiftの組がUS配列と違う。
+  // 作者の並びは `[` `]` `=` も含めて全キーを定義している（`` ` `` と `\` はモデル化していないキー）
+  withAliases(
+    withShiftedOutputs(fromRows('graphite', 'Graphite', ['1234567890[]', "bldwz'fouj;=", 'nrtsgyhaei,', 'qxmcvkp.-/']), undefined, {
+      "'": '_',
+      ',': '?',
+      '-': '"',
+      '/': '<',
+    }),
+    ['ぐらふぁいと', 'graphite'],
+  ),
+  // 作者のXKB定義の第2グループ（Halmakの面）の並び。記号の置き方も作者の定義で、`9` `0` `,` `.` のShiftの組がUS配列と違う。
+  // 数字段・`[` `]` はQWERTYのまま
+  withAliases(
+    withShiftedOutputs(fromRows('halmak', 'Halmak', ['1234567890-=', 'wlrbz;qudj[]', "shnt,.aeoi'", 'fmvc/gpxky']), undefined, {
+      '9': '<',
+      '0': '>',
+      ',': '(',
+      '.': ')',
+    }),
+    ['はるまっく', 'halmak'],
+  ),
+  // 作者が定義したのは3段×10列の30キーで、`:` を単打に置き、`;` は `,` のShiftで打つ。作者の組は `,`→`;` `/`→`<` `.`→`>` `:`→`?`。
+  // 30キーの外側は作者が指定していないので、数字段・`[` `]`・ホーム段の11番目の `'` はQWERTYの位置に残す。
+  // 外側のキーに作者の組が出す文字（`;` `?` `<` `>`）を置くと、その文字のShift経路が足されなくなるので置かない
+  withAliases(
+    withShiftedOutputs(fromRows('mtgap', 'MTGAP', ['1234567890-=', 'ypoujkdlcw[]', "inea,mhtsr'", 'qz/.:bfgvx']), undefined, {
+      ',': ';',
+      '/': '<',
+      '.': '>',
+      ':': '?',
+    }),
+    ['えむてぃーじーえーぴー', 'mtgap'],
+  ),
   withAliases(withShiftedOutputs(fromRows('norman', 'Norman', ['1234567890-=', 'qwdfkjurl;[]', "asetgynioh'", 'zxcvbpm,./'])), ['のーまん']),
   withAliases(withShiftedOutputs(fromRows('qgmlwy', 'QGMLWY', ['1234567890-=', 'qgmlwyfub;[]', "dstnriaeoh'", 'zxcvjkp,./'])), [
     'きゅーじーえむえるだぶりゅーわい',
