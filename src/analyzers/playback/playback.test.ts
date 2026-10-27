@@ -13,7 +13,11 @@ import { createEngineCache } from '#engine/cache.ts';
 import { checkOptionsDiscipline } from '#analyzers/options.ts';
 import { DEFAULT_PLAYBACK_SPEED_MULTIPLIER, DEFAULT_PLAYBACK_STEPS_PER_SECOND } from '#interpretation/timing/playback-options.ts';
 import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
-import { reconcilePlaybackStateAfterAnalysisRefresh } from '#interpretation/timing/playback.ts';
+import {
+  playbackRecentActionsPerSecond,
+  playbackRecentKanaPerSecond,
+  reconcilePlaybackStateAfterAnalysisRefresh,
+} from '#interpretation/timing/playback.ts';
 import { bigramFlowDefinition } from '#analyzers/bigram-flow/extract.ts';
 import { playbackDefinition, type PlaybackExtracted } from './extract.ts';
 import { derivePlaybackFrame, type PlaybackFrame } from './frame.ts';
@@ -1730,4 +1734,93 @@ test('文節の区切りの待機: 再生は待機を含めた表示時間で進
     extracted.schedule.map((step) => step.endMs - step.startMs),
     [800, 1100, 800],
   );
+});
+
+// ---------------------------------------------------------------------------
+// 全文の平均（spec/playback-timing.md §5.3）
+// ---------------------------------------------------------------------------
+
+/** 確定scheduleの全ステップの表示時間の合計 [ms]。 */
+function scheduleDurationMs(extracted: PlaybackExtracted): number {
+  return extracted.schedule.reduce((total, step) => total + (step.endMs - step.startMs), 0);
+}
+
+test('全文の平均: 待機を含む表示時間の合計で割り、最後のステップより後の待機は含めない', () => {
+  // 条件: 配列qwerty・ローマ字・テキスト「あ、い。」（a , i . の4打鍵・4かな）・待機は読点 前300/後200、句点 前100/後500・個人速度なし。
+  const input = resolve('qwerty', 'あ、い。', 'ja');
+  const plain = extractionOf(input);
+  const waited = extractionOf(input, WAIT_OPTIONS);
+  const plainMs = scheduleDurationMs(plain);
+  const waitedMs = scheduleDurationMs(waited);
+  // 待機はステップの先頭に入る（300 + 200 + 100）。句点の後の500は最後のステップより後なので入らない
+  assert.equal(waitedMs, plainMs + 600);
+  assert.equal(waited.timeTotals.totalMs, waitedMs + 500);
+  assert.equal(waited.overallRates.actionsPerSecond, (4 * 1000) / waitedMs);
+  assert.equal(waited.overallRates.kanaPerSecond, (4 * 1000) / waitedMs);
+  assert.equal(plain.overallRates.actionsPerSecond, (4 * 1000) / plainMs);
+});
+
+test('全文の平均: 1つの入力単位が複数の打鍵になる時、かなはかな文字数で数える', () => {
+  // 条件: 配列qwerty・ローマ字・テキスト「きゃ」（1入力単位2かな）・待機なし。
+  const extracted = extractionOf(resolve('qwerty', 'きゃ', 'ja'));
+  const ms = scheduleDurationMs(extracted);
+  const steps = extracted.analysis.strokes.length;
+  assert.ok(steps > 2);
+  assert.equal(extracted.overallRates.actionsPerSecond, (steps * 1000) / ms);
+  assert.equal(extracted.overallRates.kanaPerSecond, (2 * 1000) / ms);
+});
+
+test('全文の平均: 窓幅をステップ数以上にしたSMAを最後まで打ち終えた位置で求めた値と一致する', () => {
+  // 条件: 配列qwerty・ローマ字・テキスト「あ、いきゃ。う」・待機は読点 前300/後200、句点 前100/後500。
+  const extracted = extractionOf(resolve('qwerty', 'あ、いきゃ。う', 'ja'), WAIT_OPTIONS);
+  const { analysis, timing, schedule } = extracted;
+  const total = analysis.strokes.length;
+  for (const limit of [total, total + 7]) {
+    assert.equal(
+      extracted.overallRates.actionsPerSecond,
+      playbackRecentActionsPerSecond(
+        analysis,
+        total,
+        timing.stepsPerSecond,
+        timing.sameFingerDelay,
+        limit,
+        timing.calibration,
+        timing.speedMultiplier,
+        schedule,
+      ),
+    );
+    assert.equal(
+      extracted.overallRates.kanaPerSecond,
+      playbackRecentKanaPerSecond(
+        analysis,
+        total,
+        timing.stepsPerSecond,
+        timing.sameFingerDelay,
+        limit,
+        timing.calibration,
+        timing.speedMultiplier,
+        schedule,
+      ),
+    );
+  }
+});
+
+test('全文の平均: 平均の方式・窓幅・半減期を変えても値は変わらない', () => {
+  // 条件: 配列qwerty・ローマ字・テキスト「あ、いきゃ。う」・待機は読点 前300/後200、句点 前100/後500。
+  const input = resolve('qwerty', 'あ、いきゃ。う', 'ja');
+  const base = extractionOf(input, WAIT_OPTIONS).overallRates;
+  assert.ok(base.kanaPerSecond !== undefined && base.actionsPerSecond !== undefined);
+  for (const rate of [
+    { rateAverage: 'ewma' as const },
+    { rateAverage: 'ewma' as const, rateHalfLifeSeconds: 0.1 },
+    { rateWindow: 1 },
+    { rateWindow: 50 },
+  ]) {
+    assert.deepEqual(extractionOf(input, { ...WAIT_OPTIONS, ...rate }).overallRates, base);
+  }
+});
+
+test('全文の平均: 打鍵が無いテキストでは値を出さない', () => {
+  // 条件: 配列qwerty・テキスト「」（打鍵なし）。
+  assert.deepEqual(extractionOf(resolve('qwerty', '', 'ja')).overallRates, {});
 });

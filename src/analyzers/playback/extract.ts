@@ -5,9 +5,11 @@ import type { AggregatedAnalysisResult } from '#interpretation/structure/aggrega
 import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import type { Metrics } from '#interpretation/metrics.ts';
 import {
+  playbackOverallRates,
   playbackOverheadUse,
   playbackRateChartData,
   playbackTimeTotals,
+  type PlaybackOverallRates,
   type PlaybackOverheadUse,
   type PlaybackRateChartPoint,
   type PlaybackTimeTotals,
@@ -49,6 +51,8 @@ export interface PlaybackExtracted {
   readonly schedule: readonly PlaybackTimingStep[];
   /** 打鍵時間（待機を除く）と総時間（待機を含む）。テキスト全体の値 */
   readonly timeTotals: PlaybackTimeTotals;
+  /** 全文の平均のかな毎秒・アクション毎秒。再生位置と平均の設定（方式・窓幅・半減期）に依らない */
+  readonly overallRates: PlaybackOverallRates;
   /** 読点・句点の前後の待機のうち、0でなく、テキストに足す位置がある項目。「既定と違う設定」の知らせの判定に使う */
   readonly waitUse: PunctuationWaitUse;
   /**
@@ -117,6 +121,7 @@ export function computePlaybackExtraction({
     personalSpeedUse: personalSpeedUseOf(options, assets),
     schedule,
     timeTotals: playbackTimeTotals(schedule, gapMs[gapMs.length - 1]),
+    overallRates: playbackOverallRates(analysis, timing.stepsPerSecond, timing.sameFingerDelay, timing.calibration, timing.speedMultiplier, schedule),
     waitUse: waitPlan.use,
     bunsetsuUse: segmentation !== undefined && bunsetsuPlan.hasBoundary ? { splitter: segmentation.splitter, origin: segmentation.origin } : undefined,
     rateChart,

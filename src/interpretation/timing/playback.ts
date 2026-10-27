@@ -1326,6 +1326,53 @@ export function playbackRecentKanaPerSecond(
   return kanaCount > 0 ? (kanaCount * 1000) / recent.durationMs : undefined;
 }
 
+/** テキスト全体を打った時の平均（`spec/playback-timing.md` §5.3）。値を出せない時は持たない。 */
+export interface PlaybackOverallRates {
+  kanaPerSecond?: number;
+  actionsPerSecond?: number;
+}
+
+/**
+ * 全文の平均のかな毎秒・アクション毎秒。窓をステップ数にしたSMAを、最後のステップまで打ち終えた位置で求めた値と同じで、
+ * 平均の方式・窓幅・半減期には依らない。
+ */
+export function playbackOverallRates(
+  analysis: AggregatedAnalysisResult,
+  stepsPerSecond: PlaybackStepsPerSecond,
+  sameFingerDelay = true,
+  calibration?: PlaybackCalibration,
+  speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
+  schedule?: readonly PlaybackTimingStep[],
+): PlaybackOverallRates {
+  const total = analysis.strokes.length;
+  const kanaPerSecond = playbackRecentKanaPerSecond(
+    analysis,
+    total,
+    stepsPerSecond,
+    sameFingerDelay,
+    total,
+    calibration,
+    speedMultiplier,
+    schedule,
+    'sma',
+  );
+  const actionsPerSecond = playbackRecentActionsPerSecond(
+    analysis,
+    total,
+    stepsPerSecond,
+    sameFingerDelay,
+    total,
+    calibration,
+    speedMultiplier,
+    schedule,
+    'sma',
+  );
+  return {
+    ...(kanaPerSecond === undefined ? {} : { kanaPerSecond }),
+    ...(actionsPerSecond === undefined ? {} : { actionsPerSecond }),
+  };
+}
+
 /** 再生カーソルごとの速度移動平均と、その集計窓に触れた入力文字列。 */
 export function playbackRateChartData(
   analysis: AggregatedAnalysisResult,
