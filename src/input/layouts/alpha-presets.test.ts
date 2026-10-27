@@ -20,6 +20,9 @@ const SOURCE_ROWS: Record<string, { digits?: string; top: string; home: string; 
   'colemak-dh-ansi': { top: 'qwfpbjluy;[]', home: "arstgmneio'", bottom: 'xcdvzkh,./' },
   'canary-ansi': { top: 'wlypkzxou;[]', home: "crstbfneia'", bottom: 'jvdgqmh/,.' },
   canary: { top: "wlypbzfou'[]", home: 'crstgmneia;', bottom: 'qjvdkxh/,.' },
+  graphite: { digits: '1234567890[]', top: "bldwz'fouj;=", home: 'nrtsgyhaei,', bottom: 'qxmcvkp.-/' },
+  halmak: { digits: '1234567890-=', top: 'wlrbz;qudj[]', home: "shnt,.aeoi'", bottom: 'fmvc/gpxky' },
+  mtgap: { digits: '1234567890-=', top: 'ypoujkdlcw[]', home: "inea,mhtsr'", bottom: 'qz/.:bfgvx' },
   'sturdy-ansi': { top: 'vmlcpxfouj[]', home: 'strdy.naei/', bottom: "kqgwzbh';," },
   sturdy: { top: 'vmlcpxfouj[]', home: 'strdy.naei/', bottom: "zkqgwbh';," },
 };

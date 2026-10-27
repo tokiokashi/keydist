@@ -744,10 +744,32 @@ const SHIFTED_ASCII: Readonly<Record<string, string>> = {
   '/': '?',
 };
 
-const shiftedOutputFor = (output: string): string | undefined => {
+const shiftedOutputFor = (output: string, table: Readonly<Record<string, string>>): string | undefined => {
   if (/^[a-z]$/.test(output)) return output.toUpperCase();
-  return SHIFTED_ASCII[output];
+  return Object.hasOwn(table, output) ? table[output] : undefined;
 };
+
+/**
+ * 作者の記号のShiftの組をUS配列の組へ重ねた表を作る。
+ * 作者の組は、同じキーのUS配列の組を置き換える。表の中で同じ文字を出すキーが2つ残ると、
+ * その文字を打つ経路が一意に決まらないので、作る時に弾く。
+ */
+function shiftedTable(overrides: Readonly<Record<string, string>> | undefined): Readonly<Record<string, string>> {
+  if (overrides === undefined) return SHIFTED_ASCII;
+  for (const [base, shifted] of Object.entries(overrides)) {
+    if ([...base].length !== 1 || [...shifted].length !== 1) {
+      throw new Error(`Shiftの組は1文字どうしで指定する: ${base} -> ${shifted}`);
+    }
+  }
+  const table = { ...SHIFTED_ASCII, ...overrides };
+  const seen = new Map<string, string>();
+  for (const [base, shifted] of Object.entries(table)) {
+    const other = seen.get(shifted);
+    if (other !== undefined) throw new Error(`Shiftで ${shifted} を出すキーが重複している: ${other} と ${base}`);
+    seen.set(shifted, base);
+  }
+  return table;
+}
 
 /**
  * 単打alpha layoutへ通常Shift面をcanonical semanticとして追加する。
@@ -755,8 +777,17 @@ const shiftedOutputFor = (output: string): string | undefined => {
  * 左右Shiftは別physical alternativeとして保持し、どちらを使うかはruntime/evaluatorが
  * geometryを見て選べるようauthoring段階では潰さない。
  * 配列が既に単打などで置いている文字（大文字・記号）には、Shift経路を足さない。
+ *
+ * 記号のShiftの組は既定でUS配列のもの。作者が組を定めている配列は `shiftedOverrides`
+ * （単打で出る文字 -> Shiftを足して出る文字）で渡す。渡した文字は、そのキーのUS配列の組を置き換える。
+ * 数字段の文字も対象にできる。
  */
-export function withShiftedOutputs(layout: Layout, shiftKeys: readonly string[] = [SHIFT_KEY.L, SHIFT_KEY.R]): Layout {
+export function withShiftedOutputs(
+  layout: Layout,
+  shiftKeys: readonly string[] = [SHIFT_KEY.L, SHIFT_KEY.R],
+  shiftedOverrides?: Readonly<Record<string, string>>,
+): Layout {
+  const table = shiftedTable(shiftedOverrides);
   const canonicalShiftKeys = [...new Set(shiftKeys.map(resolveKeyId))];
   if (canonicalShiftKeys.length === 0) {
     throw new Error('shiftKeysは1キー以上必要');
@@ -767,7 +798,7 @@ export function withShiftedOutputs(layout: Layout, shiftKeys: readonly string[] 
   const layerDefinitions = [...(layout.layerDefinitions ?? [])];
 
   for (const [baseOutput, alternatives] of layout.canonicalInputs) {
-    const shiftedOutput = shiftedOutputFor(baseOutput);
+    const shiftedOutput = shiftedOutputFor(baseOutput, table);
     if (shiftedOutput === undefined) continue;
     // 配列がその文字を既に置いている時は、置かれた定義を優先してShift経路を足さない。
     if (layout.canonicalInputs.has(shiftedOutput)) continue;
