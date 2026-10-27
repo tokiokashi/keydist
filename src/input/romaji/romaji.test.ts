@@ -6,6 +6,7 @@ import { computeMetrics } from '#interpretation/metrics.ts';
 import { LAYOUTS, LAYOUTS_JA, withRomaji } from '../layouts/index.ts';
 import { kanaToRomaji, kanaToRomajiChunks, kunrei } from './kunrei.ts';
 import { azik } from './azik.ts';
+import { jlod } from './jlod.ts';
 import { SAMPLE_TEXT_JA } from '../text/sample-ja.ts';
 
 const geometry = buildGeometry('row-staggered');
@@ -251,4 +252,105 @@ test('物理キーを持たない配列では「」・を打てない文字に�
   const partial = generateTrace('「」・『』', custom, geometry, opts);
   assert.equal(partial.skipped, 4);
   assert.equal(partial.strokes.length, 1);
+});
+
+// JLOD。綴りはDvorakの文字で持つ。例は解説ページ（https://www.mikage.to/jlod/）の入力例
+const jlodTable = jlod();
+const dvorak = LAYOUTS.find((layout) => layout.id === 'dvorak')!;
+const jlodJa = withRomaji(dvorak, jlodTable);
+
+test('JLODテーブルの代表の綴り（Dvorakの文字）', () => {
+  assert.equal(jlodTable.get('か'), 'ca');
+  assert.equal(jlodTable.get('き'), 'ci');
+  assert.equal(jlodTable.get('こう'), 'c,');
+  assert.equal(jlodTable.get('かい'), "c'");
+  assert.equal(jlodTable.get('かん'), 'c;');
+  assert.equal(jlodTable.get('きゃ'), 'cga');
+  assert.equal(jlodTable.get('しゃ'), 'sha');
+  assert.equal(jlodTable.get('ん'), 'nn');
+  assert.equal(jlodTable.get('っ'), "'");
+  assert.equal(jlodTable.get('ぁ'), 'la');
+});
+
+test('JLODの綴りは解説ページの入力例と一致する', () => {
+  const spell = (text: string) => kanaToRomaji(text, jlodTable).toUpperCase();
+  assert.equal(spell('てんし'), 'TJSI');
+  assert.equal(spell('て') + spell('ん') + spell('し'), 'TENNSI');
+  assert.equal(spell('かーど'), 'CA-DO');
+  assert.equal(spell('あんき'), ';CI');
+  assert.equal(spell('かこ'), 'CACO');
+  assert.equal(spell('き') + spell('く'), 'CICU');
+  assert.equal(spell('よる'), 'VORU');
+  assert.equal(spell('やかん'), 'VAC;');
+  assert.equal(spell('ぴんく'), 'FXCU');
+});
+
+test('JLODの促音はアポストロフィの1打のみ。子音を重ねた自動生成をしない', () => {
+  assert.equal(jlodTable.get('っ'), "'");
+  assert.equal(jlodTable.has('っか'), false);
+  assert.equal(kanaToRomaji('っか', jlodTable), "'ca");
+});
+
+test('JLODは複数かなを1綴りに落とす（撥音・二重母音・母音+き/く/つ/っ・頻出拗音）', () => {
+  const expected: Record<string, string> = {
+    こん: 'cq',
+    かん: 'c;',
+    きゃん: 'cg;',
+    かつ: 'cfa',
+    かっ: 'cf;',
+    かく: "cf'",
+    きゅう: 'cc',
+    しゅう: 'st',
+    ぴゅく: 'frg',
+  };
+  for (const [kana, romaji] of Object.entries(expected)) assert.equal(jlodTable.get(kana), romaji, kana);
+});
+
+test('JLODは同じキー列の後の行を採る。句読点・長音・中点・括弧の綴り', () => {
+  assert.equal(jlodTable.get('、'), ',');
+  assert.equal(jlodTable.get('。'), '.');
+  assert.equal(jlodTable.get('ー'), '-');
+  assert.equal(jlodTable.get('・'), '/');
+  assert.equal(jlodTable.get('「'), '[');
+  assert.equal(jlodTable.get('」'), ']');
+});
+
+test('JLODは定型句の節を入れない', () => {
+  for (const phrase of ['いたしました', 'になります', 'よろしく', 'おねがい', 'なっております', 'かくにん', 'でしょうか']) {
+    assert.equal(jlodTable.has(phrase), false, phrase);
+  }
+  for (const kana of jlodTable.keys()) assert.ok([...kana].length <= 3, `${kana} が3文字を超える`);
+});
+
+test('JLODは出典でヵ・ヶだけを落とす。ヴは持つ', () => {
+  for (const kana of ['ヵ', 'ヶ']) assert.equal(jlodTable.has(kana), false, kana);
+  assert.equal(jlodTable.get('ヴ'), 'vvu');
+});
+
+test('JLODは逆写像で取りこぼしなく全かなを打てる（kunreiが持つ見出し全件で検証）', () => {
+  const untypable: [string, string][] = [];
+  for (const kana of table.keys()) {
+    const romaji = kanaToRomaji(kana, jlodTable);
+    if (/[぀-ヿ]/.test(romaji)) untypable.push([kana, romaji]);
+  }
+  assert.deepEqual(untypable, [], `JLODで打てないかな: ${untypable.map(([k]) => k).join(' ')}`);
+});
+
+test('JLODの綴りは、keydistのDvorak配列にあるキーだけで書かれる', () => {
+  for (const [kana, romaji] of jlodTable) {
+    for (const ch of romaji) assert.ok(dvorak.map.has(ch), `${kana} の綴り "${romaji}" にDvorakに無い "${ch}" が入っている`);
+  }
+});
+
+test('JLODは日本語サンプルをDvorak配列で全文字打てる', () => {
+  const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
+  const t = generateTrace(text, jlodJa, geometry, opts);
+  assert.equal(t.skipped, 0);
+  assert.equal(t.errors.length, 0);
+});
+
+test('JLODは日本語サンプルの打鍵のステップ数を出せる', () => {
+  const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
+  const steps = generateTrace(text, jlodJa, geometry, opts).strokes.length;
+  assert.ok(steps > 0, `JLOD: ${steps}`);
 });

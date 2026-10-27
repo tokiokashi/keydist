@@ -1,6 +1,6 @@
 import { QWERTY_LEGEND } from '../shapes/geometry.ts';
 import { kanaToRomaji } from './kunrei.ts';
-import { buildRomajiTable, ROMAJI_RULES, type BuiltinRomajiRuleId, type UserRomajiRule } from './rules.ts';
+import { buildRomajiTable, hasSingleStrokeSokuon, ROMAJI_RULES, type BuiltinRomajiRuleId, type UserRomajiRule } from './rules.ts';
 import { ROMAJI_VARIANTS } from './spelling-variations.ts';
 
 /**
@@ -9,7 +9,7 @@ import { ROMAJI_VARIANTS } from './spelling-variations.ts';
  * コマンド層（`engine/commands.ts`）はこの参照の一致でno-opを判定する。
  */
 
-/** 自作のローマ字規則のidの接頭辞。組み込みの規則のid（kunrei・oonishi・tomisuke・azik・qwerty）と衝突しない。 */
+/** 自作のローマ字規則のidの接頭辞。組み込みの規則のid（kunrei・oonishi・tomisuke・azik・jlod・qwerty）と衝突しない。 */
 export const USER_ROMAJI_RULE_ID_PREFIX = 'romaji-';
 
 export const newRomajiRuleId = (): string => `${USER_ROMAJI_RULE_ID_PREFIX}${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -17,14 +17,14 @@ export const newRomajiRuleId = (): string => `${USER_ROMAJI_RULE_ID_PREFIX}${Dat
 /** 規則の中身（名前とid以外）。 */
 export type RomajiRuleContent = Pick<UserRomajiRule, 'base' | 'overrides' | 'generateSokuon'>;
 
-/** 新規作成。差分を持たない、基底だけの規則から始める。AZIKは促音の子音重ねを持たない。 */
+/** 新規作成。差分を持たない、基底だけの規則から始める。AZIKとJLODは促音の子音重ねを持たない。 */
 export function createUserRomajiRule(
   rules: readonly UserRomajiRule[],
   generateId: () => string,
   name: string,
   base: BuiltinRomajiRuleId,
 ): readonly UserRomajiRule[] {
-  return [...rules, { id: generateId(), name, base, overrides: {}, generateSokuon: base !== 'azik' }];
+  return [...rules, { id: generateId(), name, base, overrides: {}, generateSokuon: !hasSingleStrokeSokuon(base) }];
 }
 
 /** 複製。複製元が存在しないidなら何もしない。 */
