@@ -10,7 +10,7 @@ import {
   droppedNotArray,
   droppedReservedKey,
 } from '#input/codec/index.ts';
-import { ALL_FINGERS, FINGERS, type Finger, type FingerAssignment, type NonThumb } from './geometry.ts';
+import { ALL_FINGERS, FINGERS, LEFT_COLUMN_KEYS, type Finger, type FingerAssignment, type NonThumb } from './geometry.ts';
 
 /**
  * 自作の指割り当て。
@@ -107,6 +107,29 @@ export function decodeUserFingerAssignments(raw: unknown, path: string, diagnost
     assignments.push(decoded);
   });
   return assignments;
+}
+
+/**
+ * 左端の列の3つのキー（`LEFT_COLUMN_KEYS`）を持たない割り当てに、持たないキーだけを左の小指で補う（仕様 §3）。
+ * 組み込みの物理配列は3つのキーを持ち、物理配列の全キーを指の割り当てが持つ必要があるため、
+ * 3つのキーが無い割り当てを選ぶと物理配列を構築できない。持っているキーの指は変えない。
+ * 補うものが無ければ同じ配列参照を返す。
+ */
+export function completeLeftColumnKeys(assignments: readonly FingerAssignment[]): readonly FingerAssignment[] {
+  let changed = false;
+  const completed = assignments.map((assignment) => {
+    const missing = LEFT_COLUMN_KEYS.filter(
+      (key) => assignment.baseFinger[key] === undefined && !ALL_FINGERS.some((finger) => assignment.fingerKeys[finger].includes(key)),
+    );
+    if (missing.length === 0) return assignment;
+    changed = true;
+    return {
+      ...assignment,
+      baseFinger: { ...assignment.baseFinger, ...Object.fromEntries(missing.map((key) => [key, 'LP' as const])) },
+      fingerKeys: { ...assignment.fingerKeys, LP: [...assignment.fingerKeys.LP, ...missing] },
+    };
+  });
+  return changed ? completed : assignments;
 }
 
 /**

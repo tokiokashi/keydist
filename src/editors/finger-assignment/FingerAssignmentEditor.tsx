@@ -88,7 +88,9 @@ function boardOf(
   // 図の座標を出すためだけなので、ホームキーはその指の担当に含めて、担当の不整合で図が描けなくなるのを避ける
   const homeExtra = Object.fromEntries(FINGERS.map((finger) => [homeKey[finger], [finger]]));
   const drawable = makeFingerAssignment(assignment.id, assignment.name, baseFinger, homeKey, homeExtra);
-  const keys = buildGeometry(shape, drawable).grid.flat();
+  const geometry = buildGeometry(shape, drawable);
+  // 格子のキーに、格子の外のキー（左端の列など）を足す。どちらも指を選べる
+  const keys = [...geometry.grid.flat(), ...(shape.extraKeys ?? []).flatMap((spec) => geometry.keys.get(spec.id) ?? [])];
   const homes = new Set<string>(FINGERS.map((finger) => assignment.homeKey[finger]));
   const standard = keyboardStandardForGeometryId(shape.id);
   const views = new Map<string, PhysicalKeyboardKeyView>();

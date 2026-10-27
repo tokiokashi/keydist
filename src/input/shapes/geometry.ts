@@ -194,6 +194,14 @@ export function assignmentWithHomeKeys(assignment: FingerAssignment, homeKeys?: 
 }
 
 /**
+ * 組み込みの物理配列が左端の列に持つ3つのキー（数字段の左・Tab・CapsLock。仕様 §3）。
+ * 物理配列の全キーを指の割り当てが持つ規則のため、組み込みの割り当てはどれも左の小指に割り当てる。
+ */
+export const LEFT_COLUMN_KEYS = ['backquote', 'tab', 'caps-lock'] as const;
+
+const LEFT_COLUMN_FINGER: NonThumb = 'LP';
+
+/**
  * 列を単位に指を割り当てる（既定の割り当てが取る形）。同じ列は全行で同じ指になる。
  * `rowWidths` を渡すと既定（ANSI 12/12/11/10）以外の物理配列にも割り当てを作れる。
  * `extra`は追加で担当させるキー（キーid → 指）。
@@ -213,6 +221,7 @@ export function columnFingerAssignment(
       if (finger !== undefined) baseFinger[keyId(row, col)] = finger;
     }
   });
+  for (const key of LEFT_COLUMN_KEYS) baseFinger[key] = LEFT_COLUMN_FINGER;
   const homeKey = {} as Record<NonThumb, string>;
   for (const finger of FINGERS) {
     homeKey[finger] = keyId(HOME_ROW, homeColumn[finger]);
@@ -396,6 +405,22 @@ const SPLIT_GAP = 2;
 /** 分割する物理配列が分割を始める列 */
 const SPLIT_AT = 5;
 
+/**
+ * 左端の列の3つのキー（数字段の左・Tab・CapsLock。仕様 §3）。表示上の右端が、その段の列0の左端に接する。
+ * `key.x` は幅によらず1u分の左端なので、列0のxから、幅に1を足して2で割った値を引く。
+ * row-staggeredは実寸の幅（1u・1.5u・1.75u）を持ち、段ずれ `ROW_STAGGER` はこの幅から決まっている。
+ * ほかの形は幅の指定を持たず1uで、yは列0のyに従う（column-staggeredは列0のyオフセットを持つ）。
+ */
+function leftColumnKeys(rowStaggered: boolean, columnY: number): ExtraPhysicalKeySpec[] {
+  const ids = ['backquote', 'tab', 'caps-lock'];
+  const widths = [1, 1.5, 1.75];
+  return ids.map((id, row) => {
+    if (!rowStaggered) return { id, row, col: -1, x: -1, y: row + columnY };
+    const width = widths[row]!;
+    return { id, row, col: -1, x: ROW_STAGGER[row]! - (width + 1) / 2, y: row, ...(width === 1 ? {} : { width }) };
+  });
+}
+
 const DEFAULT_THUMBS: ThumbKeySpec[] = [
   { id: THUMB_KEY.LT, finger: 'LT', col: 3.5, y: THUMB_ROW },
   { id: THUMB_KEY.RT, finger: 'RT', col: 5.5, y: THUMB_ROW },
@@ -413,6 +438,7 @@ export const PHYSICAL_SHAPES: Record<PresetGeometryKind, PhysicalShape> = {
     pitchMm: 19.05,
     rowWidths: ROW_WIDTH,
     rowStagger: ROW_STAGGER,
+    extraKeys: leftColumnKeys(true, 0),
     thumbs: DEFAULT_THUMBS,
   },
   'jis-row-staggered': {
@@ -421,6 +447,7 @@ export const PHYSICAL_SHAPES: Record<PresetGeometryKind, PhysicalShape> = {
     pitchMm: 19.05,
     rowWidths: [...JIS_ROW_WIDTH],
     rowStagger: ROW_STAGGER,
+    extraKeys: leftColumnKeys(true, 0),
     thumbs: DEFAULT_THUMBS,
   },
   ortholinear: {
@@ -428,6 +455,7 @@ export const PHYSICAL_SHAPES: Record<PresetGeometryKind, PhysicalShape> = {
     name: 'オーソリニア（ANSI）',
     pitchMm: 19.05,
     rowWidths: ROW_WIDTH,
+    extraKeys: leftColumnKeys(false, 0),
     thumbs: DEFAULT_THUMBS,
   },
   'jis-ortholinear': {
@@ -435,6 +463,7 @@ export const PHYSICAL_SHAPES: Record<PresetGeometryKind, PhysicalShape> = {
     name: 'オーソリニア（JIS）',
     pitchMm: 19.05,
     rowWidths: [...JIS_ROW_WIDTH],
+    extraKeys: leftColumnKeys(false, 0),
     thumbs: DEFAULT_THUMBS,
   },
   // ortholinearに分割（列5以降へ間隔を足す）だけを足した形。ピッチ・段ずれ・列オフセットは
@@ -447,6 +476,7 @@ export const PHYSICAL_SHAPES: Record<PresetGeometryKind, PhysicalShape> = {
     rowWidths: ROW_WIDTH,
     splitAt: SPLIT_AT,
     splitGap: SPLIT_GAP,
+    extraKeys: leftColumnKeys(false, 0),
     thumbs: DEFAULT_THUMBS,
   },
   'jis-split-ortholinear': {
@@ -456,6 +486,7 @@ export const PHYSICAL_SHAPES: Record<PresetGeometryKind, PhysicalShape> = {
     rowWidths: [...JIS_ROW_WIDTH],
     splitAt: SPLIT_AT,
     splitGap: SPLIT_GAP,
+    extraKeys: leftColumnKeys(false, 0),
     thumbs: DEFAULT_THUMBS,
   },
   'column-staggered': {
@@ -466,6 +497,7 @@ export const PHYSICAL_SHAPES: Record<PresetGeometryKind, PhysicalShape> = {
     columnStagger: COLUMN_STAGGER,
     splitAt: SPLIT_AT,
     splitGap: SPLIT_GAP,
+    extraKeys: leftColumnKeys(false, COLUMN_STAGGER[0]!),
     thumbs: [
       { id: THUMB_KEY.LT, finger: 'LT', col: 3.5, y: THUMB_ROW + 0.35 },
       { id: THUMB_KEY.RT, finger: 'RT', col: 5.5, y: THUMB_ROW + 0.35 },
@@ -479,6 +511,7 @@ export const PHYSICAL_SHAPES: Record<PresetGeometryKind, PhysicalShape> = {
     columnStagger: COLUMN_STAGGER,
     splitAt: SPLIT_AT,
     splitGap: SPLIT_GAP,
+    extraKeys: leftColumnKeys(false, COLUMN_STAGGER[0]!),
     thumbs: [
       { id: THUMB_KEY.LT, finger: 'LT', col: 3.5, y: THUMB_ROW + 0.35 },
       { id: THUMB_KEY.RT, finger: 'RT', col: 5.5, y: THUMB_ROW + 0.35 },

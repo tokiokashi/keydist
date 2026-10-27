@@ -783,3 +783,29 @@ test('面で定義する配列を含む資産のファイルは、壊れた面�
   assert.equal(parsed.dropped[0]!.path, 'layouts[2]');
   assert.match(parsed.dropped[0]!.message, /面1の出力のキー「zz」/);
 });
+
+test('左端の列の3つのキーを持たない指の割り当てのファイルは、読み込む時に左の小指で補う', () => {
+  const old = structuredClone(QWERTY_OPTIMIZED_FINGER_ASSIGNMENT);
+  for (const key of ['backquote', 'tab', 'caps-lock']) {
+    delete old.baseFinger[key];
+    old.fingerKeys.LP = old.fingerKeys.LP.filter((candidate) => candidate !== key);
+  }
+  const parsed = parseUserAssetsFile(
+    JSON.stringify({
+      format: USER_ASSETS_FILE_FORMAT,
+      version: 1,
+      layouts: [],
+      romajiRules: [],
+      fingerAssignments: [{ ...old, id: 'finger-old', name: '旧' }],
+      setups: [],
+    }),
+  );
+  assert.ok(parsed.ok);
+  if (!parsed.ok) return;
+  const [assignment] = parsed.bundle.fingerAssignments;
+  for (const key of ['backquote', 'tab', 'caps-lock']) {
+    assert.equal(assignment!.baseFinger[key], 'LP', `${key}を補う`);
+    assert.ok(assignment!.fingerKeys.LP.includes(key));
+  }
+  assert.equal(parsed.dropped.length, 0);
+});

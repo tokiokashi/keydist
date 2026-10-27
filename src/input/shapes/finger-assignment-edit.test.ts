@@ -36,7 +36,9 @@ test('物理配列の列は、上の段から各段の同じ位置のキーを�
   // 下段は10キー、ホーム段は11キーなので、11列目は上の3段になる
   assert.deepEqual(columns[10], ['-', '[', "'"]);
   assert.deepEqual(columns[11], ['=', ']']);
-  assert.equal(shapeKeyIds(ANSI).length, 12 + 12 + 11 + 10);
+  // 格子のキーに、左端の列の3つのキーを足す
+  assert.equal(shapeKeyIds(ANSI).length, 12 + 12 + 11 + 10 + 3);
+  assert.deepEqual(shapeKeyIds(ANSI).slice(-3), ['backquote', 'tab', 'caps-lock']);
   assert.equal(shapeColumns(JIS).length, 13);
 });
 

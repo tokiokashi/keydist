@@ -19,6 +19,15 @@ function actualWidth(key: Key): number {
   return key.width ?? (isThumbKey(key) ? THUMB_DRAW_WIDTH : 1);
 }
 
+export interface DrawnKeySpanOptions {
+  /**
+   * 段の左端のキーを実寸の幅で描き、段の右端の幅の広いキーを、ほかの段の右端を越えない幅へ詰める。
+   * 実寸の幅で左端が揃うのは、段ずれが修飾キーの実寸から決まっている組み込みのrow-staggeredだけなので、
+   * その物理配列の図だけが指定する。
+   */
+  readonly actualRowStart?: boolean;
+}
+
 /**
  * 図に描くキーの横の範囲を返す。
  * `key.x` は文字キー1個分を基準にした左端で、幅の広いキーは中心を保って左右へ広がる。
@@ -27,7 +36,7 @@ function actualWidth(key: Key): number {
  * 親指のキー、段の端でない位置の幅の広いキー、幅が1u以下のキーは実寸のまま描く。
  * 段に描くキーが1個しか無ければ、詰める隣のキーが無いので実寸のまま描く。
  */
-export function drawnKeySpans(keys: readonly Key[]): ReadonlyMap<string, DrawnKeySpan> {
+export function drawnKeySpans(keys: readonly Key[], options: DrawnKeySpanOptions = {}): ReadonlyMap<string, DrawnKeySpan> {
   const actual = new Map<string, DrawnKeySpan>();
   for (const key of keys) {
     const width = actualWidth(key);
@@ -55,8 +64,33 @@ export function drawnKeySpans(keys: readonly Key[]): ReadonlyMap<string, DrawnKe
     // 詰める先は、隣のキーの実寸の範囲
     const secondSpan = actual.get(second.id)!;
     const beforeLastSpan = actual.get(beforeLast.id)!;
-    if (firstSpan.width > 1) spans.set(first.id, { left: secondSpan.left - 1, width: 1 });
-    if (lastSpan.width > 1) spans.set(last.id, { left: beforeLastSpan.left + beforeLastSpan.width, width: 1 });
+    if (firstSpan.width > 1 && options.actualRowStart !== true) spans.set(first.id, { left: secondSpan.left - 1, width: 1 });
+    if (lastSpan.width > 1) {
+      const left = beforeLastSpan.left + beforeLastSpan.width;
+      spans.set(last.id, { left, width: options.actualRowStart === true ? rightEdgeLimitWidth(rows, row, actual, left, lastSpan.width) : 1 });
+    }
   }
   return spans;
+}
+
+/**
+ * 段の右端の幅の広いキーを、`left` から描く時の幅。ほかの段の右端のうち最も右にあるものを越えない幅にし、
+ * 実寸より広くはしない。ほかの段が無ければ1uにする。
+ */
+function rightEdgeLimitWidth(
+  rows: ReadonlyMap<number, Key[]>,
+  row: readonly Key[],
+  actual: ReadonlyMap<string, DrawnKeySpan>,
+  left: number,
+  actualWidth: number,
+): number {
+  let limit = -Infinity;
+  for (const other of rows.values()) {
+    if (other === row) continue;
+    for (const key of other) {
+      const span = actual.get(key.id)!;
+      limit = Math.max(limit, span.left + span.width);
+    }
+  }
+  return limit === -Infinity ? 1 : Math.min(actualWidth, limit - left);
 }

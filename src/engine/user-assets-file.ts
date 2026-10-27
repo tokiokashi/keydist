@@ -3,7 +3,7 @@ import type { Command } from '#input/commands/index.ts';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { decodeUserLayouts, isFaceUserLayout, type UserLayout } from '#input/layouts/user-layouts.ts';
 import { decodeUserRomajiRules, isBuiltin, ROMAJI_RULES, type UserRomajiRule } from '#input/romaji/rules.ts';
-import { decodeUserFingerAssignments } from '#input/shapes/user-finger-assignments.ts';
+import { completeLeftColumnKeys, decodeUserFingerAssignments } from '#input/shapes/user-finger-assignments.ts';
 import type { FingerAssignment } from '#input/shapes/geometry.ts';
 import type { KeydistAssets } from './commands.ts';
 import { FINGER_ASSIGNMENT_REGISTRY } from './finger-assignment.ts';
@@ -52,7 +52,7 @@ export function decodeUserAssetsBundle(payload: Record<string, unknown>, pathPre
   return {
     layouts: layouts.value,
     romajiRules: decodeUserRomajiRules(payload.romajiRules, `${pathPrefix}romajiRules`, diagnostics),
-    fingerAssignments: decodeUserFingerAssignments(payload.fingerAssignments, `${pathPrefix}fingerAssignments`, diagnostics),
+    fingerAssignments: completeLeftColumnKeys(decodeUserFingerAssignments(payload.fingerAssignments, `${pathPrefix}fingerAssignments`, diagnostics)),
     setups: decodeUserAssetSetups(payload.setups, `${pathPrefix}setups`, diagnostics),
   };
 }

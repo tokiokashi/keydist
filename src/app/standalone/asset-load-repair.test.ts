@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test, { beforeEach } from 'node:test';
 import type { KeyValueStorage } from '#platform/persistence/storage.ts';
 import { setStandaloneAnalyzerOptionsCommand, type KeydistAssets } from '#engine/commands.ts';
+import { DEFAULT_FINGER_ASSIGNMENT, LEFT_COLUMN_KEYS, type FingerAssignment } from '#input/shapes/geometry.ts';
 import { ASSET_KEYS, ASSET_STORAGE_SPECS, type AssetStorageSpec } from './asset-storage-specs.ts';
 import { buildAssetSyncs, loadAssetsAndRepair, startAssetSyncs } from './asset-syncs.ts';
 import { dismissAssetLoadNotices, getAssetLoadNoticesSnapshot, reportAssetLoadNotices, resetAssetLoadNoticesForTest } from './asset-load-notice.ts';
@@ -238,4 +239,55 @@ test('解析設定の読めない項目は、知らせずに捨てて書き戻�
   again.map.set(storageKey, map.get(storageKey)!);
   open(again.storage);
   assert.deepEqual(again.writes, [], '次に開いた時は書き戻さない');
+});
+
+/** 左端の列の3つのキーを持たない、旧い形の割り当て */
+function withoutLeftColumnKeys(): FingerAssignment {
+  const old = structuredClone(DEFAULT_FINGER_ASSIGNMENT);
+  for (const key of LEFT_COLUMN_KEYS) {
+    delete old.baseFinger[key];
+    old.fingerKeys.LP = old.fingerKeys.LP.filter((candidate) => candidate !== key);
+  }
+  return { ...old, id: 'finger-old', name: '旧' };
+}
+
+test('左端の列の3つのキーを持たない自作の指の割り当ては、知らせずに左の小指で補って書き戻し、次に開いても書き戻さない', () => {
+  const { storage, map, writes } = createFakeStorage();
+  const storageKey = ASSET_STORAGE_SPECS.fingerAssignments.storageKey;
+  map.set(storageKey, JSON.stringify({ version: 1, assignments: [withoutLeftColumnKeys()] }));
+
+  const first = open(storage);
+  assert.deepEqual(first.notices, []);
+  const completed = first.assets.fingerAssignments?.[0];
+  for (const key of LEFT_COLUMN_KEYS) assert.equal(completed?.baseFinger[key], 'LP', `${key}を補う`);
+  assert.deepEqual(writes, [storageKey], '補った形を書き戻す');
+  assert.ok((map.get(storageKey) ?? '').includes('caps-lock'));
+
+  const again = createFakeStorage();
+  again.map.set(storageKey, map.get(storageKey)!);
+  open(again.storage);
+  assert.deepEqual(again.writes, [], '次に開いた時は書き戻さない');
+});
+
+test('他のタブが旧い形で書いた自作の指の割り当ても、補った形で取り込む', () => {
+  const { storage } = createFakeStorage();
+  const listeners: ((key: string) => void)[] = [];
+  const seen: [string, unknown][] = [];
+  const syncs = buildAssetSyncs({
+    onExternalChange: (key, value) => seen.push([key, value]),
+    storage,
+    subscribe: (_keys, listener) => {
+      listeners.push(listener);
+      return () => {};
+    },
+    notify: () => {},
+  });
+  const stop = startAssetSyncs(syncs);
+  const storageKey = ASSET_STORAGE_SPECS.fingerAssignments.storageKey;
+  storage.setItem(storageKey, JSON.stringify({ version: 1, assignments: [withoutLeftColumnKeys()] }));
+  for (const listener of listeners) listener(storageKey);
+  stop();
+
+  assert.equal(seen[0]?.[0], 'fingerAssignments');
+  assert.equal((seen[0]![1] as FingerAssignment[])[0]?.baseFinger.tab, 'LP');
 });

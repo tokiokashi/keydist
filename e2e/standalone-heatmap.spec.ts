@@ -73,9 +73,9 @@ async function seedSelections(page: Page, single: string, multi: readonly string
 
 const cells = (page: Page) => feature(page).locator('[data-heatmap-set-target]');
 
-/** 図のキーごとの、ツールチップ1行目（キーの名前と押下数）と色の強度 */
+/** 図のキーごとの、ツールチップ1行目（キーの名前と押下数）と色の強度。配列が使わないために枠だけで描くキーは含めない */
 async function keyReadings(figure: Locator) {
-  return figure.locator('[data-heatmap-key]').evaluateAll((keys) =>
+  return figure.locator('[data-heatmap-key]:not([data-heatmap-key-unused])').evaluateAll((keys) =>
     keys.map((key) => ({
       id: key.getAttribute('data-heatmap-key')!,
       tooltip: (key.querySelector('title')?.textContent ?? '').split('\n')[0]!,
@@ -203,4 +203,43 @@ test('Workspaceのペインは、Multiの集合があっても図が1つのま�
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   await expect(diagrams(page)).toHaveCount(1);
   await expect(cells(page)).toHaveCount(0);
+});
+
+test('配列が使わないキーは、左端の列と左右のShiftだけが枠で描かれ、選べず、ツールチップも無い', async ({ page }) => {
+  await selectLayout(page, 'naginata-v18');
+  await page.goto('/analyzer/heatmap');
+  await expect(feature(page)).toBeVisible({ timeout: 10_000 });
+  const unused = diagrams(page).first().locator('[data-heatmap-key-unused]');
+  await expect(unused).toHaveCount(5);
+  expect(await unused.evaluateAll((keys) => keys.map((key) => key.getAttribute('data-heatmap-key')).sort())).toEqual(
+    ['backquote', 'caps-lock', 'shift-l', 'shift-r', 'tab'].sort(),
+  );
+  await expect(unused.locator('title')).toHaveCount(0);
+  await expect(unused.locator('text')).toHaveCount(0);
+  await expect(unused.first()).not.toHaveAttribute('role', 'button');
+  await unused.first().click({ force: true });
+  await expect(page.locator('[data-key-detail-window]')).toHaveCount(0);
+});
+
+test('格子の図は、Shiftを使う配列と使わない配列でもキー1つの幅が同じになり、左端の列が実寸の幅で揃う', async ({ page }) => {
+  for (const width of [390, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await seedSelections(page, 'qwerty', ['qwerty', 'naginata-v18', 'dvorak']);
+    await page.goto('/analyzer/heatmap');
+    const figures = cells(page).locator('[data-heatmap-diagram]');
+    await expect(figures).toHaveCount(2, { timeout: 10_000 });
+    const keyBoxes = async (id: string) =>
+      Promise.all((await figures.all()).map(async (figure) => (await figure.locator(`[data-heatmap-key="${id}"] rect`).first().boundingBox())!));
+    // 文字キー1つの幅と、同じキーの図の中の位置は、図によらず同じ
+    const [a1, a2] = await keyBoxes('a');
+    expect(Math.abs(a1!.width - a2!.width)).toBeLessThan(0.5);
+    const [figure1, figure2] = await Promise.all((await figures.all()).map((figure) => figure.boundingBox()));
+    expect(Math.abs(a1!.x - figure1!.x - (a2!.x - figure2!.x))).toBeLessThan(0.5);
+    // 左端の列は実寸の幅で、左端が段によらず揃う
+    const lefts = await Promise.all(['backquote', 'tab', 'caps-lock', 'shift-l'].map(async (id) => (await keyBoxes(id))[0]!));
+    for (const box of lefts) expect(Math.abs(box.x - lefts[0]!.x)).toBeLessThan(0.5);
+    expect(lefts[1]!.width).toBeGreaterThan(lefts[0]!.width);
+    expect(lefts[2]!.width).toBeGreaterThan(lefts[1]!.width);
+    expect(lefts[3]!.width).toBeGreaterThan(lefts[2]!.width);
+  }
 });

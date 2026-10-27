@@ -1,7 +1,5 @@
 import type { KeyboardEvent, MouseEvent } from 'react';
 import { THUMB_ROW, type Geometry } from '#input/shapes/geometry.ts';
-import { visibleGeometryKeys } from '#input/layouts/physical-keys.ts';
-import { drawnKeySpans } from '#input/shapes/drawn-key-spans.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { PhysicalKeyboardStandard } from '#input/shapes/geometry.ts';
 import type { KeyDetail } from '#interpretation/key-detail.ts';
@@ -9,6 +7,7 @@ import { keyDetailTooltip, keyName } from './key-detail-view.ts';
 import type { KeySelectionProps } from './pane-parts.tsx';
 import './heatmap-diagram.css';
 import { heatIntensity, type HeatmapColorScale } from './heatmap-figure.ts';
+import { HEATMAP_KEY_SIZE, heatmapBounds, heatmapDrawnKeys, heatmapViewBox, type HeatmapBounds } from './heatmap-keys.ts';
 
 /**
  * ヒートマップの図1枚。キーの色は押下数から決め、キーの上にマウスを乗せると、その図が表す面の
@@ -49,10 +48,11 @@ export interface HeatmapDiagramProps {
   readonly fill?: boolean;
   /** ツールチップに押下数だけを出す。省くと押し方と前の文字の内訳も出す */
   readonly countOnlyTooltip?: boolean;
+  /** 描く範囲。並べた図で共通にする時に渡す（`sharedHeatmapBounds`）。省くと、この図が描くキーの範囲 */
+  readonly bounds?: HeatmapBounds;
 }
 
-const KEY_SIZE = 30;
-const PAD = 6;
+const KEY_SIZE = HEATMAP_KEY_SIZE;
 
 export function HeatmapDiagram({
   layout,
@@ -71,34 +71,27 @@ export function HeatmapDiagram({
   keySelection,
   fill = false,
   countOnlyTooltip = false,
+  bounds,
 }: HeatmapDiagramProps) {
-  let minX = 0;
-  let minY = 0;
-  let maxX = 0;
-  let maxY = 0;
-  const visibleKeys = visibleGeometryKeys(layout, geometry);
-  const spans = drawnKeySpans(visibleKeys);
-  const keys = visibleKeys.map((key) => {
+  const drawnKeys = heatmapDrawnKeys(layout, geometry);
+  const keys = drawnKeys.map(({ key, left, width: span, unused }) => {
     const thumb = key.row === THUMB_ROW;
-    const span = spans.get(key.id)!;
-    const width = span.width * KEY_SIZE;
-    const x = span.left * KEY_SIZE;
+    const width = span * KEY_SIZE;
+    const x = left * KEY_SIZE;
     const y = key.y * KEY_SIZE;
-    minX = Math.min(minX, x);
-    minY = Math.min(minY, y);
-    maxX = Math.max(maxX, x + width);
-    maxY = Math.max(maxY, y + KEY_SIZE);
 
-    const label = legends.get(key.id) ?? '';
-    const intensity = heatIntensity(colorCounts.get(key.id) ?? 0, maxCount, scale);
-    const shift = shiftStyles.get(key.id);
-    return { key, x, y, width, label, detail: detailOf(key.id), intensity, shift, thumb };
+    // 配列が使わないために描くだけのキーは、押下数0・文字なし・詳細なしの枠にする
+    const label = unused ? '' : (legends.get(key.id) ?? '');
+    const intensity = unused ? 0 : heatIntensity(colorCounts.get(key.id) ?? 0, maxCount, scale);
+    const shift = unused ? undefined : shiftStyles.get(key.id);
+    return { key, x, y, width, label, detail: unused ? undefined : detailOf(key.id), intensity, shift, thumb, unused };
   });
 
-  const viewX = minX - PAD / 2;
-  const viewY = minY - PAD / 2;
-  const width = maxX - minX + PAD;
-  const height = maxY - minY + PAD;
+  const view = heatmapViewBox(bounds ?? heatmapBounds(drawnKeys));
+  const viewX = view.x;
+  const viewY = view.y;
+  const width = view.width;
+  const height = view.height;
   const caption = title === undefined ? '打鍵頻度' : `${title}・打鍵頻度`;
 
   return (
@@ -111,6 +104,23 @@ export function HeatmapDiagram({
       <figcaption>{caption}</figcaption>
       <svg viewBox={`${viewX} ${viewY} ${width} ${height}`} role={keySelection === undefined ? 'img' : 'group'} aria-label={`${caption}${ariaSuffix}`}>
         {keys.map((item) => {
+          if (item.unused) {
+            return (
+              <g key={item.key.id} className="heatmap-key" data-heatmap-key={item.key.id} data-heatmap-key-unused="">
+                <rect
+                  x={item.x + 1}
+                  y={item.y + 1}
+                  width={item.width - 2}
+                  height={KEY_SIZE - 2}
+                  rx={5}
+                  fill="none"
+                  stroke="var(--border-strong)"
+                  strokeWidth={1}
+                  pointerEvents="none"
+                />
+              </g>
+            );
+          }
           const name = keyName(item.key.id, item.label, standard);
           const tooltip = countOnlyTooltip ? `${name}: ${item.detail?.presses ?? 0}打` : keyDetailTooltip(name, item.detail);
           const selected = keySelection?.selectedKeyId === item.key.id;

@@ -4,7 +4,7 @@ import { emptyTextLibrary } from '#input/text/library.ts';
 import { TEXT_LIBRARY_CODEC } from '#input/text/library-codec.ts';
 import { initialTextSelection } from '#input/text/selection.ts';
 import { STANDALONE_TEXT_SELECTION_CODEC } from '#input/text/selection-codec.ts';
-import { USER_FINGER_ASSIGNMENTS_CODEC } from '#input/shapes/user-finger-assignments.ts';
+import { completeLeftColumnKeys, USER_FINGER_ASSIGNMENTS_CODEC } from '#input/shapes/user-finger-assignments.ts';
 import { USER_LAYOUTS_CODEC } from '#input/layouts/user-layouts.ts';
 import { USER_ROMAJI_RULES_CODEC } from '#input/romaji/user-rules-codec.ts';
 import { USER_LAYOUTS_ASSET_STORAGE_KEY } from '#platform/assets/user-layouts-asset-storage.ts';
@@ -86,6 +86,7 @@ export const ASSET_STORAGE_SPECS: { readonly [K in keyof KeydistAssets]: AssetSt
     storageKey: USER_FINGER_ASSIGNMENTS_STORAGE_KEY,
     codec: USER_FINGER_ASSIGNMENTS_CODEC,
     initial: () => [],
+    repair: completeLeftColumnKeys,
   },
   textLibrary: {
     storageKey: TEXT_LIBRARY_STORAGE_KEY,

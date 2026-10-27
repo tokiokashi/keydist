@@ -4,6 +4,7 @@ import type { Layout } from '#input/layouts/types.ts';
 import { isStrokeOnlyMark, TARGET_DASH_ARRAY, targetMarkPath, type TargetMark } from '#ui/theme/target-marks.ts';
 import { HeatmapDiagram, type HeatmapShiftStyle } from '../heatmap-diagram.tsx';
 import { baseLayerLegends } from '../heatmap-figure.ts';
+import { heatmapBounds, heatmapDrawnKeys, sharedHeatmapBounds } from '../heatmap-keys.ts';
 import type { AnalyzerSettingsProps, SingleAnalyzerPaneParts, SingleBodyProps } from '../pane-parts.tsx';
 import { heatmapDefinition, sharedMaxCount, type HeatmapExtracted } from './extract.ts';
 import { DEFAULT_HEATMAP_OPTIONS, heatmapOptions, type HeatmapOptions } from './options.ts';
@@ -56,6 +57,12 @@ export function HeatmapBody({ layout, geometry, extracted, keySelection, setTarg
     extracted.maxCount,
     ...(setTargets ?? []).flatMap((figure) => (figure.state.status === 'ready' ? [figure.state.extracted.maxCount] : [])),
   ]);
+  // 格子の図は、描く範囲を全部で共通にする。キーの大きさと位置が図ごとに変わらない
+  const setBounds = sharedHeatmapBounds(
+    (setTargets ?? []).flatMap((figure) =>
+      figure.state.status === 'ready' ? [heatmapBounds(heatmapDrawnKeys(figure.state.layout, figure.state.geometry))] : [],
+    ),
+  );
   return (
     <div className="heatmap-feature" data-react-feature="heatmap">
       <div className="heatmap-diagrams">
@@ -88,6 +95,7 @@ export function HeatmapBody({ layout, geometry, extracted, keySelection, setTarg
                   ariaSuffix="（全レイヤー合算・線形）"
                   fill
                   countOnlyTooltip
+                  {...(setBounds === undefined ? {} : { bounds: setBounds })}
                 />
               ) : (
                 <p className="heatmap-empty">{figure.state.status === 'failed' ? figure.state.message : '計算中…'}</p>
