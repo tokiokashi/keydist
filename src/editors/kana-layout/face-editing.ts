@@ -1,5 +1,6 @@
 import type { DraftFace } from '#input/layouts/face-layout-edit.ts';
 import type { FaceMode, InputRole, LayerKind, TriggerOrder, TriggerPersistence } from '#input/layouts/types.ts';
+import { gridPositionOf } from '#input/layouts/kana-face-layout.ts';
 import { physicalKeyDisplayLabel } from '#input/shapes/key-labels.ts';
 import { THUMB_KEY, SHIFT_KEY, type PhysicalKeyboardStandard } from '#input/shapes/geometry.ts';
 
@@ -43,6 +44,25 @@ export function setFaceOutput(face: DraftFace, key: string, output: string): Dra
   if (output === '') delete outputs[key];
   else outputs[key] = output;
   return { ...face, outputs };
+}
+
+/**
+ * 出力欄でEnterを押した後に選ぶキー。図にあり面の上の位置を持つキーを、行、列の順に並べた次のキー。
+ * その面の切り替えのキーは出力を置けないので飛ばす。次が無い時と、今のキーが面の上の位置を持たない時は `undefined`。
+ */
+export function nextOutputKey(figureKeys: readonly string[], current: string, trigger: readonly string[]): string | undefined {
+  const from = gridPositionOf(current);
+  if (from === undefined) return undefined;
+  let best: { key: string; row: number; col: number } | undefined;
+  for (const key of figureKeys) {
+    const position = gridPositionOf(key);
+    if (position === undefined || trigger.includes(key)) continue;
+    if (position.row < from.row || (position.row === from.row && position.col <= from.col)) continue;
+    if (best === undefined || position.row < best.row || (position.row === best.row && position.col < best.col)) {
+      best = { key, ...position };
+    }
+  }
+  return best?.key;
 }
 
 /** 修飾の組の名前を書く。空にすると、そのキーの分類を消す。 */
