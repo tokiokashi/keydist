@@ -84,7 +84,7 @@ export const ROMAJI_RULES: Record<
     table: () => azik(),
   },
   jlod: {
-    name: 'JLOD（拡張ローマ字。Dvorak配列で打つ前提。母音・撥音・促音を1綴りに短縮）',
+    name: 'JLOD（拡張ローマ字。Dvorak配列で打つ前提。二重母音・撥音・促音を1綴りに短縮）',
     base: 'jlod',
     overrides: {},
     generateSokuon: false,
