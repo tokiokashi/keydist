@@ -93,6 +93,12 @@
   font-size: 0.95rem;
 }
 
+.romaji-layout-label-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
 .romaji-layout-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

@@ -22,6 +22,8 @@ import { FINGERS, HOME_ROW, QWERTY_LEGEND, type FingerAssignment } from '#input/
 import { ROMAJI_LAYOUT_LABEL } from './label.ts';
 import './romaji-layout.css';
 import { useHistoryShortcuts } from '#ui/primitives/use-history-shortcuts.ts';
+import { InfoButton } from '#ui/primitives/info-button.tsx';
+import { HOME_KEY_RULE_DESCRIPTION } from '../home-key/home-key-text.ts';
 
 const NEW = 'new';
 
@@ -171,10 +173,10 @@ function LayoutForm({ initial, isNew, fingerAssignments, ruleOptions, onSubmit }
       )}
 
       <fieldset className="romaji-layout-home">
-        <legend>ホームキー（任意）</legend>
-        <p className="romaji-layout-note">
-          指ごとに、この配列が前提とするホームキーを決めます。指定したキーを指の割り当てがその指の担当にしている時は、割り当てのホームキーより、ここでの指定が優先されます。担当にしていない割り当てでは、指定は使われません。指定しない指は、指の割り当ての値を使います。
-        </p>
+        <legend className="romaji-layout-label-row">
+          ホームキー（任意）
+          <InfoButton name="ホームキー" description={HOME_KEY_RULE_DESCRIPTION} />
+        </legend>
         <div className="romaji-layout-home-grid">
           {FINGERS.map((finger) => {
             const value = draft.homeKeys[finger] ?? '';

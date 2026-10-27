@@ -29,6 +29,7 @@ import {
 } from '#input/shapes/geometry.ts';
 import { PhysicalKeyboard, type PhysicalKeyboardKeyView } from '#ui/keyboard/physical-keyboard.tsx';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
+import { HOME_KEY_RULE_DESCRIPTION } from '../home-key/home-key-text.ts';
 import { useHistoryShortcuts } from '#ui/primitives/use-history-shortcuts.ts';
 import {
   AGGREGATION_LABEL,
@@ -560,10 +561,7 @@ function KanaLayoutForm({ initial, fingerAssignments, isNew, onSubmit, onDownloa
       <fieldset className="kana-layout-home">
         <legend className="kana-layout-label-row">
           ホームキー（任意）
-          <InfoButton
-            name="ホームキー"
-            description="指定したキーを指の割り当てがその指の担当にしている時は、割り当てのホームキーより、ここでの指定が優先されます。担当にしていない割り当てでは、指定は使われません。"
-          />
+          <InfoButton name="ホームキー" description={HOME_KEY_RULE_DESCRIPTION} />
         </legend>
         <div className="kana-layout-home-grid">
           {FINGERS.map((finger) => {
