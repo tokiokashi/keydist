@@ -35,6 +35,7 @@ const asuka = findLayout(LAYOUTS_JA, 'asuka'); // SandSを持たない配列
 const nicola = findLayout(LAYOUTS_JA, 'nicola'); // かな直接（ローマ字表を持たない）
 const qwertyJa = findLayout(LAYOUTS_JA, 'qwerty'); // ローマ字入力（既定でkunreiが焼き込み済み）
 const oonishiJa = findLayout(LAYOUTS_JA, 'oonishi'); // ローマ字入力だが既定がoonishi
+const tomisukeJa = findLayout(LAYOUTS_JA, 'tomisuke'); // ローマ字入力だが既定がtomisuke
 const colemakEn = findLayout(LAYOUTS, 'colemak'); // 英字配列（ローマ字表を持たない）
 
 function contextFor(
@@ -74,7 +75,7 @@ test('windowSize/sfbHomeCostはglobal/layout/setupのみ許可（shape/inputMeth
   assert.ok(toLayout.ok);
 });
 
-test('romajiRuleId: 既定値は配列ごとに違う（大西配列だけoonishi、それ以外はkunrei）', () => {
+test('romajiRuleId: 既定値は配列ごとに違う（大西配列はoonishi、とみすけ配列はtomisuke、それ以外はkunrei）', () => {
   const resolvedQwerty = resolveSettings(EMPTY_SETTINGS_OVERRIDES, contextFor(qwertyJa, { inputMethod: 'romaji' }));
   assert.equal(resolvedQwerty.romajiRuleId.value, 'kunrei');
   assert.equal(resolvedQwerty.romajiRuleId.origin.kind, 'default');
@@ -82,6 +83,10 @@ test('romajiRuleId: 既定値は配列ごとに違う（大西配列だけoonish
 
   const resolvedOonishi = resolveSettings(EMPTY_SETTINGS_OVERRIDES, contextFor(oonishiJa, { inputMethod: 'romaji' }));
   assert.equal(resolvedOonishi.romajiRuleId.value, 'oonishi');
+
+  const resolvedTomisuke = resolveSettings(EMPTY_SETTINGS_OVERRIDES, contextFor(tomisukeJa, { inputMethod: 'romaji' }));
+  assert.equal(resolvedTomisuke.romajiRuleId.value, 'tomisuke');
+  assert.equal(resolvedTomisuke.romajiRuleId.origin.kind, 'default');
 });
 
 test('romajiRuleId: 打ち方のレベルで「ローマ字入力は全部Xにする」ができる（推奨の無い配列）', () => {
@@ -105,10 +110,11 @@ test('romajiRuleId: 全体の値は推奨の無い配列に効き、出どころ
   assert.equal(resolved.romajiRuleId.recommendationWins, undefined);
 });
 
-test('romajiRuleId: 推奨を持つ配列（大西配列・TK音直入力法）は全体を変えても推奨のまま。負けた全体は理由に残る', () => {
+test('romajiRuleId: 推奨を持つ配列（大西配列・とみすけ配列・TK音直入力法）は全体を変えても推奨のまま。負けた全体は理由に残る', () => {
   const tk = findLayout(LAYOUTS_JA, 'oonishi-custom');
   for (const [layout, expected] of [
     [oonishiJa, 'oonishi'],
+    [tomisukeJa, 'tomisuke'],
     [tk, 'kunrei'],
   ] as const) {
     const resolved = resolveSettings(withGlobalRomaji('azik'), contextFor(layout, { inputMethod: 'romaji' }));

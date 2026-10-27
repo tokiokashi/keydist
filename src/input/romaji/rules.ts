@@ -3,8 +3,9 @@ import { droppedDuplicateId, droppedNotArray, droppedReservedKey } from '#input/
 import { azik } from './azik.ts';
 import { kunrei, addSokuonForms } from './kunrei.ts';
 import { OONISHI_OVERRIDES, oonishiRomaji } from './oonishi.ts';
+import { TOMISUKE_OVERRIDES, tomisukeRomaji } from './tomisuke.ts';
 
-export type BuiltinRomajiRuleId = 'kunrei' | 'oonishi' | 'azik' | 'qwerty';
+export type BuiltinRomajiRuleId = 'kunrei' | 'oonishi' | 'tomisuke' | 'azik' | 'qwerty';
 export type RomajiRuleId = string;
 
 export interface RomajiRuleSpec {
@@ -67,6 +68,13 @@ export const ROMAJI_RULES: Record<
     generateSokuon: true,
     table: () => oonishiRomaji(),
   },
+  tomisuke: {
+    name: 'とみすけ式（si / sha / hu）',
+    base: 'kunrei',
+    overrides: TOMISUKE_OVERRIDES,
+    generateSokuon: true,
+    table: () => tomisukeRomaji(),
+  },
   azik: {
     name: 'AZIK（拡張ローマ字。二重母音・撥音・促音を1綴りに短縮）',
     base: 'azik',
@@ -81,12 +89,14 @@ export const DEFAULT_ROMAJI_RULE_ID: BuiltinRomajiRuleId = 'kunrei';
 
 /**
  * 配列が組み込みで持つローマ字規則の推奨。無ければ`undefined`（全体の値に従う）。
- * 大西配列は公式が前提とする大西式の綴り、TK音直入力法のコンボは訓令式（sya / zya）の綴りを
- * 前提に組まれているので、全体を別の規則へ変えても、この2つは推奨のまま打つ。
+ * 大西配列は公式が前提とする大西式の綴り、とみすけ配列は作者が勧めるとみすけ式の綴り、
+ * TK音直入力法のコンボは訓令式（sya / zya）の綴りを前提に組まれているので、
+ * 全体を別の規則へ変えても、この3つは推奨のまま打つ。
  * 全体の既定と同じ訓令式でも、TK音直入力法は「推奨として持つ」ので全体の変更に流されない。
  */
 export function recommendedRomajiRuleId(layoutId: string): BuiltinRomajiRuleId | undefined {
   if (layoutId === 'oonishi') return 'oonishi';
+  if (layoutId === 'tomisuke') return 'tomisuke';
   if (layoutId === 'oonishi-custom') return 'kunrei';
   return undefined;
 }
@@ -118,6 +128,8 @@ function baseTable(base: BuiltinRomajiRuleId, generateSokuon: boolean): Map<stri
       return kunrei(ROMAJI_RULES.qwerty.overrides, generateSokuon);
     case 'oonishi':
       return oonishiRomaji({}, generateSokuon);
+    case 'tomisuke':
+      return tomisukeRomaji({}, generateSokuon);
     case 'azik':
       return azik({}, generateSokuon);
     case 'kunrei':
@@ -130,7 +142,7 @@ export function isBuiltin(id: string): id is BuiltinRomajiRuleId {
 }
 
 export function allRomajiRules(customRules: UserRomajiRule[] = []) {
-  const builtinIds: BuiltinRomajiRuleId[] = ['kunrei', 'oonishi', 'azik', 'qwerty'];
+  const builtinIds: BuiltinRomajiRuleId[] = ['kunrei', 'oonishi', 'tomisuke', 'azik', 'qwerty'];
   return [...builtinIds.map((id) => ({ id, name: ROMAJI_RULES[id].name })), ...customRules.map(({ id, name }) => ({ id, name }))];
 }
 

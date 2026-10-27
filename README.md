@@ -294,7 +294,7 @@ TK音直入力法のコンボのヤ行19件で、拗音のローマ字塊の内�
 | かわせみ配列+ | [公式Kikyo定義](https://github.com/semialt/kawasemi/blob/911bb8f/Kikyo/%E3%81%8B%E3%82%8F%E3%81%9B%E3%81%BF%E9%85%8D%E5%88%97%2B.kky)から移植（コミット `911bb8f`、blob `220851f`）。二重母音・くき・つち・左手コンボ拡張を含む |
 | Eucalyn配列 | [作者の配列図](https://eucalyn.hatenadiary.jp/entry/about-eucalyn-layout)（2018-08-31の記事の画像）。作者が定義したのは30キーだけで、外側はQWERTYのまま。綴りは訓令式。[Paalonの転記](https://zenn.dev/paalon/articles/914f22aea7ecf9)と照合して一致を確かめた |
 | Astarte | [作者の記事](https://neinvalli.hatenablog.com/entry/2018/07/21/185448)（2018-07-21）にあるKeyboard Layout Analyzer用の定義の全キー。記号の位置は作者が仮としている。綴りは訓令式。[Paalonの転記](https://zenn.dev/paalon/articles/914f22aea7ecf9)と照合して一致を確かめた |
-| Tomisuke配列 | [作者のページ](https://tomisuke.com/tomisuke-keyboard-layout/)（2023-08-14に記号の位置を「標準」とした版）で配布されるUS配列版AutoHotkeyスクリプト `Tomisuke_US_1.ahk` のキー置換。綴りは訓令式。英字26文字は[Paalonの転記](https://zenn.dev/paalon/articles/914f22aea7ecf9)（2022-07-19の版）と一致を確かめた。作者推奨の綴りは入れていない |
+| Tomisuke配列 | [作者のページ](https://tomisuke.com/tomisuke-keyboard-layout/)（2023-08-14に記号の位置を「標準」とした版）で配布されるUS配列版AutoHotkeyスクリプト `Tomisuke_US_1.ahk` のキー置換。綴りは作者が勧めるとみすけ式（シャ行 `sh`）。英字26文字は[Paalonの転記](https://zenn.dev/paalon/articles/914f22aea7ecf9)（2022-07-19の版）と一致を確かめた |
 
 コンボは「出力する文字列 → その文字を出すキーの集合」で書きます。
 キーを物理位置ではなく文字で指すので、同じ定義を別の英字配列にも適用できます。
@@ -305,12 +305,13 @@ TK音直入力法のコンボのヤ行19件で、拗音のローマ字塊の内�
 
 入っているローマ字の綴り:
 
-| 綴り | 内容 |
-|---|---|
-| 標準 | QWERTY向け。ジャ行 `j`、シャ行 `sh`、チャ行 `ch` を使う（初期割り当ては訓令式） |
-| 訓令式 | 1かな1綴りの素のローマ字（`si` / `sya` / `zi` / `zya`） |
-| 大西式 | 大西配列公式が前提とする綴り（`si` / `sha` / `ji` / `ja`） |
-| AZIK | 拡張ローマ字。二重母音・撥音・促音をまとめて1綴りに落とし、打鍵数を削る（`かん` → `kz`、`きゃん` → `kyz` など）。促音は `;` の1打。[出典](https://github.com/toriwasa/azik-roman-table)の `azik_romantable.txt` から機械的に生成（`scripts/gen-azik-romaji.ts`） |
+| 綴り | 内容 | 出典 |
+|---|---|---|
+| 標準 | QWERTY向け。ジャ行 `j`、シャ行 `sh`、チャ行 `ch` を使う（初期割り当ては訓令式） | 一般的なIMEのローマ字入力の綴り（特定の出典は無い） |
+| 訓令式 | 1かな1綴りの素のローマ字（`si` / `sya` / `zi` / `zya`） | 訓令式ローマ字 |
+| 大西式 | 大西配列公式が前提とする綴り（`si` / `sha` / `ji` / `ja`） | [大西配列の公式ページ](https://o24.works/layout/) |
+| とみすけ式 | とみすけ配列の作者が勧める綴り。訓令式のしゃ・しゅ・しょ・しぇを `sha` `shu` `sho` `she` にしたもの（`si` / `sha` / `hu`）。ん は訓令式のまま | [作者のページ](https://tomisuke.com/tomisuke-keyboard-layout/)の「ローマ字テーブルを活かそう」（ページの公開は2022-07-19、更新は2026-01-09。節に個別の日付は無く、2026-10-27に取得して照合した） |
+| AZIK | 拡張ローマ字。二重母音・撥音・促音をまとめて1綴りに落とし、打鍵数を削る（`かん` → `kz`、`きゃん` → `kyz` など）。促音は `;` の1打。`scripts/gen-azik-romaji.ts` で機械的に生成 | [azik-roman-table](https://github.com/toriwasa/azik-roman-table)の `azik_romantable.txt` |
 
 サイドバーの「ローマ字の綴り」から、組み込みの綴りを基底にした差分を保存できます。
 綴りが割れるかなごとに綴りを選べ、一覧に無いかなの綴りも足せます。促音の自動生成の有無も綴りごとに設定できます。
