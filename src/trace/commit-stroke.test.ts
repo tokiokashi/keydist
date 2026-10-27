@@ -277,3 +277,13 @@ test('保持できる前置トリガーでも、確定の打鍵が入る継ぎ�
   assert.deepEqual(keysOf(next), ['d']);
   assert.ok(next.participations.every((participation) => !participation.roles.includes('held-trigger')));
 });
+
+test('前置の側: Aが2打以上で、最後の打鍵が前置トリガーと同じキーでも、確定が入らない', () => {
+  const layout = fromFaces('u9-shape', 'U9形', [
+    single({ d: '、', k: '。', f: 'い', a: 'あ' }),
+    prefix2('d', { f: 'ゆ' }),
+    prefix2('k', { d: 'ぞ', a: 'ざ' }),
+  ]);
+  assert.deepEqual(keyLists('ぞい', layout), ['k', 'd', 'f']);
+  assert.deepEqual(keyLists('、い', layout), ['d', 'thumb-r', 'f']);
+});

@@ -344,8 +344,6 @@ export function generateTrace(
     if (isComboFrameAlternative(selectedAlternative)) comboHits.push(char);
     const commit = previousAlternative !== undefined && needsCommitStroke(commitRules, previousAlternative, selectedAlternative);
     previousAlternative = selectedAlternative;
-    // 確定の打鍵が入る継ぎ目では、前の入力の保持を引き継がない（仕様 §4.7）
-    if (commit) triggerHoldState = undefined;
 
     const realized = realizeTriggerActions(
       selectedAlternative.baseRealizations,
