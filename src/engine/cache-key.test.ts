@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { canonicalize, stableStringify } from './cache-key.ts';
+import { faceFromEntries, fromFaces } from '#input/layouts/index.ts';
 
 test('オブジェクトのキー順に依存しない', () => {
   const a = stableStringify({ x: 1, y: 2 });
@@ -65,4 +66,19 @@ test('undefinedのプロパティはJSON.stringifyと同じく省略される', 
 test('canonicalizeはMap/SetをJSON化できる形（オブジェクト・配列のみ）へ変換する', () => {
   const result = canonicalize(new Map([['a', 1]]));
   assert.equal(JSON.stringify(result), JSON.stringify({ $map: [['a', 1]] }));
+});
+
+test('後置triggerだけが違う面を持つ配列は、別のキーになる', () => {
+  const layoutWith = (suffix: string) =>
+    fromFaces('suffix-key', 'suffix-key', [
+      { ...faceFromEntries([], 'simultaneous', { k: 'ひ' }), inputRole: 'layer' },
+      {
+        ...faceFromEntries(['j'], 'prefix', { k: 'ひゃ' }),
+        suffixTrigger: [suffix],
+        inputRole: 'layer',
+        triggerPersistence: 'single',
+      },
+    ]);
+  assert.notEqual(stableStringify(layoutWith('e')), stableStringify(layoutWith('s')));
+  assert.equal(stableStringify(layoutWith('e')), stableStringify(layoutWith('e')));
 });

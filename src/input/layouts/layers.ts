@@ -46,12 +46,12 @@ export function layerShiftStyles(layers: readonly Layer[]): Map<Face, LayerShift
 /**
  * presentation上のtrigger alternativeを正規化する。
  * authoring済みの外側OR / 内側chord構造を保持し、key aliasと重複だけを除く。
- * 未指定時はFace.trigger全体を1 chordとしてfallbackする。
+ * 未指定時はFace.trigger全体（後置triggerを持つ面は前置と後置の両方）を1 chordとしてfallbackする。
  */
 export function displayTriggerAlternatives(face: Face): readonly (readonly string[])[] {
   const authored = face.presentationTriggerAlternatives;
   if (authored === undefined) {
-    const chord = [...new Set(face.trigger.map(resolveKeyId))];
+    const chord = [...new Set([...face.trigger, ...(face.suffixTrigger ?? [])].map(resolveKeyId))];
     return chord.length === 0 ? [] : [chord];
   }
   if (authored.length === 0) {
