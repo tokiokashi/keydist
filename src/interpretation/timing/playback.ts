@@ -436,6 +436,8 @@ export function playbackRomajiInputPreview(
 
 /** 面定義と実際の押下から、再生中に表示する文字と刻印を引く。 */
 export function playbackStrokeDisplay(layout: Layout, stroke: Stroke): PlaybackStrokeDisplay {
+  // 確定の打鍵は面の刻印を持たないので、配列図の刻印は変えず、打った文字の欄にだけ「確定」と出す
+  if (stroke.commit === true) return { keyLabels: new Map(), character: '確定' };
   if (layout.romajiTable || !layout.faces) {
     return { keyLabels: new Map() };
   }
