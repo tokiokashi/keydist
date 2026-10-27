@@ -84,20 +84,19 @@ const ALPHA: Layout[] = [
   // 作者が定義したのは30キー（3段×10列）だけで、外側のキーはQWERTYのまま。
   // 数字段・`[` `]`・ホーム段右端の `'` は作者の定義に無いのでQWERTYの位置に残し、
   // 30キーに入った `,` `.` `;` `/` はQWERTYの位置から外してある
-  withAliases(withShiftedOutputs(fromRows('eucalyn', 'ユーカリ配列', ['1234567890-=', 'qw,.;mrdyp[]', "aoeiugtksn'", 'zxcvfbhjl/'])), [
-    'ゆーかりん',
-    'ゆーかり',
-    'ゆーかりはいれつ',
+  withAliases(withShiftedOutputs(fromRows('eucalyn', 'Eucalyn配列', ['1234567890-=', 'qw,.;mrdyp[]', "aoeiugtksn'", 'zxcvfbhjl/'])), [
+    'ゆかりん',
+    'ゆかりんはいれつ',
     'eucalyn',
   ]),
   // 作者のKeyboard Layout Analyzer用定義（US配列の全キー）の記号をそのまま写した。作者は記号の位置を「仮」としている
-  withAliases(withShiftedOutputs(fromRows('astarte', 'アスタルテ配列', ['1234567890;=', 'qpuy,jdhgw[]', "ioea.ktnsr'", 'zx-c/mlfbv'])), [
+  withAliases(withShiftedOutputs(fromRows('astarte', 'Astarte', ['1234567890;=', 'qpuy,jdhgw[]', "ioea.ktnsr'", 'zx-c/mlfbv'])), [
     'あすたるて',
     'あすたるてはいれつ',
     'astarte',
   ]),
   // 作者配布のUS配列版AutoHotkeyスクリプトのキー置換の写し。作者が記号の位置の標準とした版
-  withAliases(withShiftedOutputs(fromRows('tomisuke', 'とみすけ配列', ['1234567890[]', "',.-=lrdyp;/", 'aoeiugntskf', 'xcvwqjhmbz'])), [
+  withAliases(withShiftedOutputs(fromRows('tomisuke', 'Tomisuke配列', ['1234567890[]', "',.-=lrdyp;/", 'aoeiugntskf', 'xcvwqjhmbz'])), [
     'とみすけ',
     'とみすけはいれつ',
     'tomisuke',
