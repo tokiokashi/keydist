@@ -5,7 +5,7 @@ import {
   duplicateOutputNotices,
   FACE_BODY_PROPERTIES,
   FaceLayoutBuildError,
-  gridPositionOf,
+  isFaceOutputKey,
   readFaceBody,
   type FaceLayoutNotice,
   type FaceLayoutProblem,
@@ -48,7 +48,7 @@ function readHomeKeys(raw: unknown, problems: FaceLayoutProblem[]): Partial<Reco
     const path = `homeKeys.${finger}`;
     if (!(FINGERS as readonly string[]).includes(finger)) {
       problems.push({ path, message: `ホームキーの指の名前「${finger}」は、${FINGERS.join('・')} のどれかで書いてください` });
-    } else if (typeof key !== 'string' || gridPositionOf(key) === undefined) {
+    } else if (typeof key !== 'string' || !isFaceOutputKey(key)) {
       problems.push({ path, message: `ホームキーのキー ${JSON.stringify(key) ?? String(key)} は、物理キーの名前ではありません` });
     } else {
       homeKeys[finger as NonThumb] = key;

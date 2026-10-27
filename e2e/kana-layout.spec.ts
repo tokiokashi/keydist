@@ -140,6 +140,53 @@ test('指が担当しないキーをホームキーにすると注意が出て�
   await expect(warning).toHaveCount(0);
 });
 
+test('左端の列の3つのキーに出力を置き、切り替えのキーとホームキーにも選べて、保存した内容が戻る', async ({ page }) => {
+  await page.goto('/kana-layout');
+  await waitForHydration(page);
+  await page.locator('[data-kana-name]').fill('左端の列');
+  const key = (id: string) => page.locator(`[data-kana-figure] [data-key-id="${id}"]`);
+
+  for (const [id, output] of [
+    ['backquote', 'あ'],
+    ['tab', 'い'],
+    ['caps-lock', 'う'],
+  ] as const) {
+    await expect(key(id)).not.toHaveAttribute('aria-disabled', 'true');
+    await key(id).click();
+    await page.locator('[data-kana-output]').fill(output);
+    await expect(key(id).locator('.physical-keyboard-legend')).toHaveText(output);
+  }
+
+  // 3つのキーの1つを、別の面の切り替えのキーにする
+  await page.locator('[data-kana-face-add]').click();
+  await page.locator('[data-kana-operation="trigger"]').check();
+  await key('tab').click();
+  await expect(key('tab')).toHaveAttribute('data-trigger', 'true');
+  await page.locator('[data-kana-operation="output"]').check();
+  await key('a').click();
+  await page.locator('[data-kana-output]').fill('え');
+  await page.locator('[data-kana-face-field="mode"]').selectOption('simultaneous');
+  await page.locator('[data-kana-face-field="persistence"]').selectOption('single');
+
+  // ホームキーの入力欄にも選べる
+  await page.locator('[data-kana-home="LP"]').selectOption('caps-lock');
+  await expect(page.locator('[data-kana-home-warning]')).toHaveCount(0);
+
+  const submit = page.locator('[data-kana-submit]');
+  await expect(submit).toBeEnabled();
+  await submit.click();
+  const stored = () => page.evaluate((storageKey) => localStorage.getItem(storageKey), STORAGE_KEY);
+  await expect.poll(stored).toContain('"caps-lock":"う"');
+  await expect.poll(stored).toContain('"trigger":["tab"]');
+  await expect.poll(stored).toContain('"homeKeys":{"LP":"caps-lock"}');
+
+  // 再読み込みしても、保存した内容が編集画面に戻る
+  await page.reload();
+  await waitForHydration(page);
+  await expect(page.locator('[data-kana-home="LP"]')).toHaveValue('caps-lock');
+  await expect(key('caps-lock').locator('.physical-keyboard-legend')).toHaveText('う');
+});
+
 test.describe('幅390px', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 

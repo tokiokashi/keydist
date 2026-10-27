@@ -14,6 +14,7 @@ import {
 } from '../semantics/index.ts';
 import { keyId, QWERTY_LEGEND, resolveKeyId, SHIFT_KEY, THUMB_KEY, type NonThumb } from '../shapes/geometry.ts';
 import { validateFaceAuthoring } from './face-authoring-validation.ts';
+import { faceCells } from './face-geometry.ts';
 
 /** 1ステップで同時に押すキーの集合。キーはQWERTY刻印で指す（`thumb-r` `thumb-l` は親指キー）。`space` も入力互換で受け付ける */
 export type Step = string[];
@@ -54,6 +55,11 @@ export interface Face {
    */
   suffixTrigger?: readonly string[];
   rows: readonly FaceRow[];
+  /**
+   * 格子の外のキー（左端の列の3つのキー）の出力。キーid → 出力。
+   * `rows` の位置では指せないキーの出力だけを持つ（仕様 §4）。
+   */
+  extraCells?: Readonly<Record<string, string>>;
   /** 同じ値を持つ単一キー面は1レイヤーへ畳む。省略時はその面が単独で1レイヤー */
   layer?: string;
   /** 面の表示分類。既存UI互換用。省略時はlayer。canonical semanticには使わない。 */
@@ -354,10 +360,7 @@ export function fromRows(id: string, name: string, rows: string[], thumbs: { LT?
 }
 
 function faceHasOutput(face: Face): boolean {
-  return face.rows.some((row) => {
-    const cells = typeof row === 'string' ? [...row] : [...row];
-    return cells.some((output) => output !== '' && output !== ' ');
-  });
+  return faceCells(face).size > 0;
 }
 
 /** 面の集合を、評価器が使うかな → 打鍵ステップ列へ展開する。 */
@@ -476,79 +479,73 @@ export function fromFaces(id: string, name: string, faces: readonly Face[], thum
       },
       isCombo ? undefined : face.presentationLabel,
     );
-    face.rows.forEach((row, r) => {
-      const cells = typeof row === 'string' ? [...row] : [...row];
-      cells.forEach((output, c) => {
-        if (output === '' || output === ' ') return;
+    faceCells(face).forEach((output, key) => {
+      const semanticInput = semanticByMembership.get(`${faceIndex}\u0000${resolveKeyId(key)}`);
+      if (!semanticInput) {
+        throw new Error(`Face compilerのmembershipが見つからない（face:${faceIndex}, key:${key}）`);
+      }
+      const sequence = expandFace(trigger, face.mode, key, suffixTrigger);
+      const participationView = {
+        outputKeys: [resolveKeyId(key)],
+        triggerKeys: allTrigger.map(resolveKeyId),
+        ...(face.triggerPersistence === 'hold-capable' && trigger.length > 0 ? { holdKeys: allTrigger.map(resolveKeyId) } : {}),
+      };
 
-        const key = keyId(r, c);
-        const semanticInput = semanticByMembership.get(`${faceIndex}\u0000${resolveKeyId(key)}`);
-        if (!semanticInput) {
-          throw new Error(`Face compilerのmembershipが見つからない（face:${faceIndex}, key:${key}）`);
+      const alternatives = canonicalInputs.get(output) ?? [];
+      const sameSemanticIndex = alternatives.findIndex(
+        (alternative) => alternative.semanticInputs.length === 1 && alternative.semanticInputs[0] === semanticInput,
+      );
+
+      if (sameSemanticIndex >= 0) {
+        const existingAlternative = alternatives[sameSemanticIndex];
+        const existing = existingAlternative.baseRealizations[0];
+        if (!existing) {
+          throw new Error(`面の出力「${output}」のBaseActionRealizationが見つからない`);
         }
-        const sequence = expandFace(trigger, face.mode, key, suffixTrigger);
-        const participationView = {
-          outputKeys: [resolveKeyId(key)],
-          triggerKeys: allTrigger.map(resolveKeyId),
-          ...(face.triggerPersistence === 'hold-capable' && trigger.length > 0 ? { holdKeys: allTrigger.map(resolveKeyId) } : {}),
+        if (!sameActionGrouping(existing.actions, sequence)) {
+          throw new Error(`同一SemanticInputのreciprocal Faceでaction groupingが一致しない: ${output}`);
+        }
+        const defaultView = {
+          outputKeys: existing.defaultOutputKeys,
+          triggerKeys: existing.defaultTriggerKeys ?? [],
+          ...(existing.defaultHoldKeys !== undefined ? { holdKeys: existing.defaultHoldKeys } : {}),
         };
-
-        const alternatives = canonicalInputs.get(output) ?? [];
-        const sameSemanticIndex = alternatives.findIndex(
-          (alternative) => alternative.semanticInputs.length === 1 && alternative.semanticInputs[0] === semanticInput,
-        );
-
-        if (sameSemanticIndex >= 0) {
-          const existingAlternative = alternatives[sameSemanticIndex];
-          const existing = existingAlternative.baseRealizations[0];
-          if (!existing) {
-            throw new Error(`面の出力「${output}」のBaseActionRealizationが見つからない`);
-          }
-          if (!sameActionGrouping(existing.actions, sequence)) {
-            throw new Error(`同一SemanticInputのreciprocal Faceでaction groupingが一致しない: ${output}`);
-          }
-          const defaultView = {
-            outputKeys: existing.defaultOutputKeys,
-            triggerKeys: existing.defaultTriggerKeys ?? [],
-            ...(existing.defaultHoldKeys !== undefined ? { holdKeys: existing.defaultHoldKeys } : {}),
+        const alternates = existing.alternateParticipations ?? [];
+        if (!sameParticipationView(defaultView, participationView) && !alternates.some((view) => sameParticipationView(view, participationView))) {
+          const updated = {
+            ...existing,
+            alternateParticipations: [...alternates, participationView],
           };
-          const alternates = existing.alternateParticipations ?? [];
-          if (!sameParticipationView(defaultView, participationView) && !alternates.some((view) => sameParticipationView(view, participationView))) {
-            const updated = {
-              ...existing,
-              alternateParticipations: [...alternates, participationView],
-            };
-            validateBaseActionRealization(updated);
-            const updatedAlternatives = [...alternatives];
-            updatedAlternatives[sameSemanticIndex] = {
-              ...existingAlternative,
-              baseRealizations: [updated],
-            };
-            canonicalInputs.set(output, updatedAlternatives);
-          }
-          return;
+          validateBaseActionRealization(updated);
+          const updatedAlternatives = [...alternatives];
+          updatedAlternatives[sameSemanticIndex] = {
+            ...existingAlternative,
+            baseRealizations: [updated],
+          };
+          canonicalInputs.set(output, updatedAlternatives);
         }
+        return;
+      }
 
-        const baseRealization = {
-          input: semanticInput,
-          actions: sequence.map((step) => step.map(resolveKeyId)),
-          defaultOutputKeys: participationView.outputKeys,
-          ...(participationView.triggerKeys.length > 0 ? { defaultTriggerKeys: participationView.triggerKeys } : {}),
-          ...(participationView.holdKeys !== undefined ? { defaultHoldKeys: participationView.holdKeys } : {}),
-        };
-        validateBaseActionRealization(baseRealization);
-        appendCanonicalAlternative(canonicalInputs, output, {
-          semanticInputs: [semanticInput],
-          baseRealizations: [baseRealization],
-          contextRequirements: [],
-          origin: 'face',
-        });
-
-        // legacy/presentation mapはauthoring上の先頭pathだけを保持する。
-        if (!map.has(output)) map.set(output, sequence);
-        // 刻印は単打面の1文字だけを表示する。シフト面の出力で上書きしない。
-        if (trigger.length === 0 && [...output].length === 1) legends.set(key, output);
+      const baseRealization = {
+        input: semanticInput,
+        actions: sequence.map((step) => step.map(resolveKeyId)),
+        defaultOutputKeys: participationView.outputKeys,
+        ...(participationView.triggerKeys.length > 0 ? { defaultTriggerKeys: participationView.triggerKeys } : {}),
+        ...(participationView.holdKeys !== undefined ? { defaultHoldKeys: participationView.holdKeys } : {}),
+      };
+      validateBaseActionRealization(baseRealization);
+      appendCanonicalAlternative(canonicalInputs, output, {
+        semanticInputs: [semanticInput],
+        baseRealizations: [baseRealization],
+        contextRequirements: [],
+        origin: 'face',
       });
+
+      // legacy/presentation mapはauthoring上の先頭pathだけを保持する。
+      if (!map.has(output)) map.set(output, sequence);
+      // 刻印は単打面の1文字だけを表示する。シフト面の出力で上書きしない。
+      if (trigger.length === 0 && [...output].length === 1) legends.set(key, output);
     });
   }
 

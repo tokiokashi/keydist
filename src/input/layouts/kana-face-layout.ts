@@ -1,5 +1,5 @@
 import { isRecord, UNSAFE_OBJECT_KEYS } from '../codec/index.ts';
-import { keyId, QWERTY_LEGEND, resolveKeyId, SHIFT_KEY, THUMB_KEY } from '../shapes/geometry.ts';
+import { keyId, LEFT_COLUMN_KEYS, QWERTY_LEGEND, resolveKeyId, SHIFT_KEY, THUMB_KEY } from '../shapes/geometry.ts';
 import { physicalKeyDisplayLabel } from '../shapes/key-labels.ts';
 import { composeKanaMarks, DAKUTEN_MARK, HANDAKUTEN_MARK, type KanaMarkComposition } from './kana-composition.ts';
 import { fromFaces, type Face, type FaceMode, type InputRole, type Layout, type LayerKind, type TriggerOrder, type TriggerPersistence } from './types.ts';
@@ -14,7 +14,7 @@ import { fromFaces, type Face, type FaceMode, type InputRole, type Layout, type 
 
 /** 面1つ。 */
 export interface UserFace {
-  /** triggerのキーのid。単打の面は空。親指・Shiftのキーと、QWERTY刻印のキーを書ける */
+  /** triggerのキーのid。単打の面は空。親指・Shiftのキーと、QWERTY刻印のキー、左端の列の3つのキーを書ける */
   trigger: string[];
   /** 打鍵の順序（同時・前置・後置）。triggerを持つ面は必須、単打の面は持たない */
   mode?: FaceMode;
@@ -30,7 +30,7 @@ export interface UserFace {
   layer?: string;
   /** 修飾の面の、triggerのキー → 修飾の組の名前。修飾の面だけが持つ */
   modifierGroups?: Record<string, string>;
-  /** 面の上のキーのid → 出力 */
+  /** 面の上のキー（QWERTY刻印のキーと、左端の列の `backquote`・`tab`・`caps-lock`）のid → 出力 */
   outputs: Record<string, string>;
 }
 
@@ -98,10 +98,15 @@ export function gridPositionOf(key: string): { row: number; col: number } | unde
   return { row, col };
 }
 
+const LEFT_COLUMN_KEY_SET: ReadonlySet<string> = new Set(LEFT_COLUMN_KEYS);
+
+/** 面の出力・ホームキーに書けるキーか（面の上のキーと、左端の列の3つのキー）。 */
+export const isFaceOutputKey = (key: string): boolean => LEFT_COLUMN_KEY_SET.has(key) || gridPositionOf(key) !== undefined;
+
 const TRIGGER_NAMED_KEYS: ReadonlySet<string> = new Set([THUMB_KEY.LT, THUMB_KEY.RT, 'space', SHIFT_KEY.L, SHIFT_KEY.R]);
 
-/** triggerに書けるキーか（面の上のキー、親指、Shift）。 */
-const isTriggerKey = (key: string): boolean => TRIGGER_NAMED_KEYS.has(key) || gridPositionOf(key) !== undefined;
+/** triggerに書けるキーか（面の上のキー、左端の列の3つのキー、親指、Shift）。 */
+const isTriggerKey = (key: string): boolean => TRIGGER_NAMED_KEYS.has(key) || isFaceOutputKey(key);
 
 const keyName = (key: string): string => `${physicalKeyDisplayLabel(key)}（${key}）`;
 
@@ -304,7 +309,7 @@ function readFace(raw: unknown, index: number, problems: Problems): UserFace | u
     if (entries.length === 0) problems.add(`${path}.outputs`, `${label}に出力が1つもありません`);
     for (const [key, output] of entries) {
       const outputPath = `${path}.outputs.${key}`;
-      if (UNSAFE_OBJECT_KEYS.has(key) || gridPositionOf(key) === undefined) {
+      if (UNSAFE_OBJECT_KEYS.has(key) || !isFaceOutputKey(key)) {
         problems.add(outputPath, `${label}の出力のキー「${key}」は、面の上の物理キーの名前ではありません`);
       } else if (typeof output !== 'string' || output.trim() === '') {
         problems.add(outputPath, `${label}の${keyName(key)}の出力が空です`);
@@ -425,11 +430,12 @@ export function readFaceBody(raw: Record<string, unknown>): { readonly body: Use
   return { body: { faces, composition }, problems: [] };
 }
 
-/** 面の上のキーの出力を、`Face.rows`（QWERTY刻印の行・列の並び）にする。 */
+/** 面の上のキーの出力を、`Face.rows`（QWERTY刻印の行・列の並び）にする。左端の列の3つのキーは含めない。 */
 function rowsOf(outputs: Readonly<Record<string, string>>): string[][] {
   const rows: string[][] = [];
   for (const [key, output] of Object.entries(outputs)) {
-    const position = gridPositionOf(key)!;
+    const position = gridPositionOf(key);
+    if (position === undefined) continue;
     while (rows.length <= position.row) rows.push([]);
     const row = rows[position.row];
     while (row.length <= position.col) row.push('');
@@ -438,12 +444,18 @@ function rowsOf(outputs: Readonly<Record<string, string>>): string[][] {
   return rows;
 }
 
+/** 左端の列の3つのキーの出力を、`Face.extraCells` にする。 */
+function extraCellsOf(outputs: Readonly<Record<string, string>>): Record<string, string> {
+  return Object.fromEntries(Object.entries(outputs).filter(([key]) => LEFT_COLUMN_KEY_SET.has(key)));
+}
+
 /** 利用者が書いた面を `Face` にする。書いていない項目は足さない。 */
 export function toFace(face: UserFace): Face {
   return {
     trigger: face.trigger,
     mode: face.mode ?? 'simultaneous',
     rows: rowsOf(face.outputs),
+    ...(Object.keys(extraCellsOf(face.outputs)).length === 0 ? {} : { extraCells: extraCellsOf(face.outputs) }),
     inputRole: face.inputRole,
     ...(face.triggerPersistence === undefined ? {} : { triggerPersistence: face.triggerPersistence }),
     ...(face.compositionAggregation === undefined ? {} : { compositionAggregation: face.compositionAggregation }),
