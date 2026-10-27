@@ -1,0 +1,1251 @@
+{
+  "version": 2,
+  "layoutId": "yumi",
+  "source": {
+    "url": "https://sleepwlk.hatenadiary.org/entry/20150518/yumi",
+    "sha": "yumi-1.0.2-2015-05-18",
+    "path": "弓配列 1.0.2 (Stable)（2015-05-18の記事の本文にある文字配置と、拗音・外来音拡張の表）",
+    "transform": "本文の文字配置（単打と、★☆◆◇に続けて入力する4面）を、JISのキー位置の13/12/12/11列に写した。拗音・外来音拡張の表は、最初のキーを単打の面の位置で引き、ゃ・ゅ・ょ（b・x・z）を後置のトリガーにする3面に分けた。作者の表の「＿ゃ: つぉ」は「＿ょ」の誤記として、ょの面の＿の位置に置いた。かなと、長音・、。・・・括弧・？！・―・…のほかの記号は、symbolとして除いた。作者がかなの本体を持たないとする多重シフトの面（★★ ☆☆ ◆◆ ◇◇ ょょ）は載せない。JISの@はANSIの[、:は'に写している"
+  },
+  "faces": [
+    {
+      "trigger": [],
+      "mode": "prefix",
+      "rows": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "ふ",
+          "",
+          ""
+        ],
+        [
+          "ど",
+          "の",
+          "か",
+          "と",
+          "あ",
+          "む",
+          "う",
+          "い",
+          "し",
+          "ー",
+          "じ",
+          "・"
+        ],
+        [
+          "す",
+          "",
+          "",
+          "て",
+          "た",
+          "き",
+          "ん",
+          "",
+          "",
+          "で",
+          "ち",
+          ""
+        ],
+        [
+          "ょ",
+          "ゅ",
+          "ま",
+          "に",
+          "ゃ",
+          "く",
+          "っ",
+          "、",
+          "。",
+          "ヴ",
+          ""
+        ]
+      ],
+      "sourceRows": [
+        "１\t２\t３\t４\t５\t６\t７\t８\t９\t０\tふ\t〜\t｀",
+        "ど\tの\tか\tと\tあ\tむ\tう\tい\tし\tー\tじ\t・",
+        "す\t☆\t★\tて\tた\tき\tん\t◆\t◇\tで\tち\t＼",
+        "ょ\tゅ\tま\tに\tゃ\tく\tっ\t、\t。\tヴ\t＿"
+      ]
+    },
+    {
+      "trigger": [
+        "d"
+      ],
+      "mode": "prefix",
+      "rows": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "―",
+          "",
+          ""
+        ],
+        [
+          "ヶ",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "ぎ",
+          "れ",
+          "み",
+          "？",
+          "「",
+          "」"
+        ],
+        [
+          "ぇ",
+          "ぞ",
+          "",
+          "ぉ",
+          "",
+          "ひ",
+          "り",
+          "こ",
+          "は",
+          "よ",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "ぱ",
+          "ぷ",
+          "（",
+          "）",
+          "",
+          ""
+        ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t―\t≠\t´",
+        "ヶ\t\t♂\t□\t◇\t×\tぎ\tれ\tみ\t？\t「\t」",
+        "ぇ\tぞ\t\tぉ\t☆\tひ\tり\tこ\tは\tよ\t“\tｄ",
+        "♡\t▽\t△\t○\t◎\tぱ\tぷ\t（\t）\t÷\t￣"
+      ]
+    },
+    {
+      "trigger": [
+        "s"
+      ],
+      "mode": "prefix",
+      "rows": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "ヵ",
+          "",
+          "ゎ",
+          "",
+          "",
+          "",
+          "ぐ",
+          "お",
+          "や",
+          "！",
+          "",
+          ""
+        ],
+        [
+          "ぃ",
+          "",
+          "ぽ",
+          "ぁ",
+          "",
+          "ず",
+          "る",
+          "つ",
+          "そ",
+          "さ",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "ざ",
+          "ぺ",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t−\t＝\t｀",
+        "ヵ\t♀\tゎ\t■\t◆\t※\tぐ\tお\tや\t！\t『\t』",
+        "ぃ\t\tぽ\tぁ\t★\tず\tる\tつ\tそ\tさ\t”\tｓ",
+        "♥\t▼\t▲\t●\t♪\tざ\tぺ\t，\t．\t／\t"
+      ]
+    },
+    {
+      "trigger": [
+        "k"
+      ],
+      "mode": "prefix",
+      "rows": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "め",
+          "え",
+          "ご",
+          "げ",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "を",
+          "が",
+          "も",
+          "ら",
+          "ば",
+          "",
+          "わ",
+          "",
+          "ぢ",
+          "ぴ",
+          "",
+          ""
+        ],
+        [
+          "ぜ",
+          "ぼ",
+          "ゆ",
+          "ね",
+          "ゐ",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t〔\t〕\t",
+        "゛\tめ\tえ\tご\tげ\t∞\t‘\t↑\t’\t；\t〈\t〉",
+        "を\tが\tも\tら\tば\t←\tわ\t\tぢ\tぴ\t→\tｋ",
+        "ぜ\tぼ\tゆ\tね\tゐ\t【\t】\t↓\t〒\t￥\t"
+      ]
+    },
+    {
+      "trigger": [
+        "l"
+      ],
+      "mode": "prefix",
+      "rows": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "ほ",
+          "ろ",
+          "へ",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "せ",
+          "だ",
+          "け",
+          "な",
+          "ぶ",
+          "",
+          "ぅ",
+          "び",
+          "",
+          "ぬ",
+          "",
+          ""
+        ],
+        [
+          "べ",
+          "",
+          "…",
+          "づ",
+          "ゑ",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t≪\t≫\t",
+        "゜\tほ\tろ\tへ\t＋\t‡\t§\t¶\t〃\t：\t《\t》",
+        "せ\tだ\tけ\tな\tぶ\t†\tぅ\tび\t\tぬ\t⇒\tｌ",
+        "べ\t＠\t…\tづ\tゑ\t［\t］\t≦\t≧\t＼\t"
+      ]
+    },
+    {
+      "trigger": [
+        "b"
+      ],
+      "mode": "suffix",
+      "rows": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "ぢゃ",
+          "ぐぁ",
+          "うぁ",
+          "",
+          "",
+          "ふぁ",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "くぁ",
+          "ぎゃ",
+          "",
+          "",
+          "みゃ",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "とぅ",
+          "",
+          "",
+          "りゃ",
+          "",
+          "",
+          "どぅ",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "ひゃ",
+          "びゃ",
+          "ぴゃ",
+          "",
+          "ヴぁ",
+          ""
+        ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\tぢゃ\tぐぁ\tうぁ\t\t\tふぁ\t\t",
+        "\t\t\t\t\tくぁ\tぎゃ\t\t\tみゃ\t\t",
+        "\t\t\tとぅ\t\t\tりゃ\t\t\tどぅ\t\t",
+        "\t\t\t\t\tひゃ\tびゃ\tぴゃ\t\tヴぁ\tつぁ"
+      ]
+    },
+    {
+      "trigger": [
+        "x"
+      ],
+      "mode": "suffix",
+      "rows": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "ぢゅ",
+          "ひぇ",
+          "うぇ",
+          "じぇ",
+          "しぇ",
+          "",
+          "ふぇ",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "くぇ",
+          "ぎゅ",
+          "いぇ",
+          "",
+          "みゅ",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "りゅ",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "ぴぇ",
+          "",
+          "",
+          "ひゅ",
+          "びゅ",
+          "ぴゅ",
+          "ヴぇ",
+          "",
+          ""
+        ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\tぢゅ\tひぇ\tうぇ\tじぇ\tしぇ\t\tふぇ\t",
+        "\t\t\t\t\tくぇ\tぎゅ\tいぇ\t\tみゅ\t\t",
+        "\t\t\t\t\t\tりゅ\t\t\t\t\tちぇ",
+        "\t\tぴぇ\t\t\tひゅ\tびゅ\tぴゅ\tヴぇ\t\tつぇ"
+      ]
+    },
+    {
+      "trigger": [
+        "z"
+      ],
+      "mode": "suffix",
+      "rows": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "ぢょ",
+          "うぃ",
+          "うぉ",
+          "くぃ",
+          "すぃ",
+          "ふぉ",
+          "ふぃ",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "くぉ",
+          "ぎょ",
+          "",
+          "",
+          "みょ",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "てぃ",
+          "",
+          "",
+          "りょ",
+          "",
+          "",
+          "でぃ",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "ずぃ",
+          "",
+          "",
+          "ひょ",
+          "びょ",
+          "ぴょ",
+          "ヴぃ",
+          "ヴぉ",
+          ""
+        ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\tぢょ\tうぃ\tうぉ\tくぃ\tすぃ\tふぉ\tふぃ\t",
+        "\t\t\t\t\tくぉ\tぎょ\t\t\tみょ\t\t",
+        "\t\t\tてぃ\t\t\tりょ\t\t\tでぃ\t\tつぃ",
+        "\t\tずぃ\t\t\tひょ\tびょ\tぴょ\tヴぃ\tヴぉ\tつぉ"
+      ]
+    }
+  ],
+  "omissions": [
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 0,
+      "value": "１",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 1,
+      "value": "２",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 2,
+      "value": "３",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 3,
+      "value": "４",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 4,
+      "value": "５",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 5,
+      "value": "６",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 6,
+      "value": "７",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 7,
+      "value": "８",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 8,
+      "value": "９",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 9,
+      "value": "０",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 11,
+      "value": "〜",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 12,
+      "value": "｀",
+      "reason": "jis-only-key"
+    },
+    {
+      "faceIndex": 0,
+      "row": 2,
+      "column": 1,
+      "value": "☆",
+      "reason": "function-key"
+    },
+    {
+      "faceIndex": 0,
+      "row": 2,
+      "column": 2,
+      "value": "★",
+      "reason": "function-key"
+    },
+    {
+      "faceIndex": 0,
+      "row": 2,
+      "column": 7,
+      "value": "◆",
+      "reason": "function-key"
+    },
+    {
+      "faceIndex": 0,
+      "row": 2,
+      "column": 8,
+      "value": "◇",
+      "reason": "function-key"
+    },
+    {
+      "faceIndex": 0,
+      "row": 2,
+      "column": 11,
+      "value": "＼",
+      "reason": "jis-only-key"
+    },
+    {
+      "faceIndex": 0,
+      "row": 3,
+      "column": 10,
+      "value": "＿",
+      "reason": "jis-only-key"
+    },
+    {
+      "faceIndex": 1,
+      "row": 0,
+      "column": 11,
+      "value": "≠",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 1,
+      "row": 0,
+      "column": 12,
+      "value": "´",
+      "reason": "jis-only-key"
+    },
+    {
+      "faceIndex": 1,
+      "row": 1,
+      "column": 2,
+      "value": "♂",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 1,
+      "row": 1,
+      "column": 3,
+      "value": "□",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 1,
+      "row": 1,
+      "column": 4,
+      "value": "◇",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 1,
+      "row": 1,
+      "column": 5,
+      "value": "×",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 1,
+      "row": 2,
+      "column": 4,
+      "value": "☆",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 1,
+      "row": 2,
+      "column": 10,
+      "value": "“",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 1,
+      "row": 2,
+      "column": 11,
+      "value": "ｄ",
+      "reason": "jis-only-key"
+    },
+    {
+      "faceIndex": 1,
+      "row": 3,
+      "column": 0,
+      "value": "♡",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 1,
+      "row": 3,
+      "column": 1,
+      "value": "▽",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 1,
+      "row": 3,
+      "column": 2,
+      "value": "△",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 1,
+      "row": 3,
+      "column": 3,
+      "value": "○",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 1,
+      "row": 3,
+      "column": 4,
+      "value": "◎",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 1,
+      "row": 3,
+      "column": 9,
+      "value": "÷",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 1,
+      "row": 3,
+      "column": 10,
+      "value": "￣",
+      "reason": "jis-only-key"
+    },
+    {
+      "faceIndex": 2,
+      "row": 0,
+      "column": 10,
+      "value": "−",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 0,
+      "column": 11,
+      "value": "＝",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 0,
+      "column": 12,
+      "value": "｀",
+      "reason": "jis-only-key"
+    },
+    {
+      "faceIndex": 2,
+      "row": 1,
+      "column": 1,
+      "value": "♀",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 1,
+      "column": 3,
+      "value": "■",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 1,
+      "column": 4,
+      "value": "◆",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 1,
+      "column": 5,
+      "value": "※",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 1,
+      "column": 10,
+      "value": "『",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 1,
+      "column": 11,
+      "value": "』",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 2,
+      "column": 4,
+      "value": "★",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 2,
+      "column": 10,
+      "value": "”",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 2,
+      "column": 11,
+      "value": "ｓ",
+      "reason": "jis-only-key"
+    },
+    {
+      "faceIndex": 2,
+      "row": 3,
+      "column": 0,
+      "value": "♥",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 3,
+      "column": 1,
+      "value": "▼",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 3,
+      "column": 2,
+      "value": "▲",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 3,
+      "column": 3,
+      "value": "●",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 3,
+      "column": 4,
+      "value": "♪",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 3,
+      "column": 7,
+      "value": "，",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 3,
+      "column": 8,
+      "value": "．",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 3,
+      "column": 9,
+      "value": "／",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 3,
+      "row": 0,
+      "column": 10,
+      "value": "〔",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 3,
+      "row": 0,
+      "column": 11,
+      "value": "〕",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 3,
+      "row": 1,
+      "column": 0,
+      "value": "゛",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 3,
+      "row": 1,
+      "column": 5,
+      "value": "∞",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 3,
+      "row": 1,
+      "column": 6,
+      "value": "‘",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 3,
+      "row": 1,
+      "column": 7,
+      "value": "↑",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 3,
+      "row": 1,
+      "column": 8,
+      "value": "’",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 3,
+      "row": 1,
+      "column": 9,
+      "value": "；",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 3,
+      "row": 1,
+      "column": 10,
+      "value": "〈",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 3,
+      "row": 1,
+      "column": 11,
+      "value": "〉",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 3,
+      "row": 2,
+      "column": 5,
+      "value": "←",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 3,
+      "row": 2,
+      "column": 10,
+      "value": "→",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 3,
+      "row": 2,
+      "column": 11,
+      "value": "ｋ",
+      "reason": "jis-only-key"
+    },
+    {
+      "faceIndex": 3,
+      "row": 3,
+      "column": 5,
+      "value": "【",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 3,
+      "row": 3,
+      "column": 6,
+      "value": "】",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 3,
+      "row": 3,
+      "column": 7,
+      "value": "↓",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 3,
+      "row": 3,
+      "column": 8,
+      "value": "〒",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 3,
+      "row": 3,
+      "column": 9,
+      "value": "￥",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 4,
+      "row": 0,
+      "column": 10,
+      "value": "≪",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 4,
+      "row": 0,
+      "column": 11,
+      "value": "≫",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 4,
+      "row": 1,
+      "column": 0,
+      "value": "゜",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 4,
+      "row": 1,
+      "column": 4,
+      "value": "＋",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 4,
+      "row": 1,
+      "column": 5,
+      "value": "‡",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 4,
+      "row": 1,
+      "column": 6,
+      "value": "§",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 4,
+      "row": 1,
+      "column": 7,
+      "value": "¶",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 4,
+      "row": 1,
+      "column": 8,
+      "value": "〃",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 4,
+      "row": 1,
+      "column": 9,
+      "value": "：",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 4,
+      "row": 1,
+      "column": 10,
+      "value": "《",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 4,
+      "row": 1,
+      "column": 11,
+      "value": "》",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 4,
+      "row": 2,
+      "column": 5,
+      "value": "†",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 4,
+      "row": 2,
+      "column": 10,
+      "value": "⇒",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 4,
+      "row": 2,
+      "column": 11,
+      "value": "ｌ",
+      "reason": "jis-only-key"
+    },
+    {
+      "faceIndex": 4,
+      "row": 3,
+      "column": 1,
+      "value": "＠",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 4,
+      "row": 3,
+      "column": 5,
+      "value": "［",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 4,
+      "row": 3,
+      "column": 6,
+      "value": "］",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 4,
+      "row": 3,
+      "column": 7,
+      "value": "≦",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 4,
+      "row": 3,
+      "column": 8,
+      "value": "≧",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 4,
+      "row": 3,
+      "column": 9,
+      "value": "＼",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 5,
+      "row": 3,
+      "column": 10,
+      "value": "つぁ",
+      "reason": "jis-only-key"
+    },
+    {
+      "faceIndex": 6,
+      "row": 2,
+      "column": 11,
+      "value": "ちぇ",
+      "reason": "jis-only-key"
+    },
+    {
+      "faceIndex": 6,
+      "row": 3,
+      "column": 10,
+      "value": "つぇ",
+      "reason": "jis-only-key"
+    },
+    {
+      "faceIndex": 7,
+      "row": 2,
+      "column": 11,
+      "value": "つぃ",
+      "reason": "jis-only-key"
+    },
+    {
+      "faceIndex": 7,
+      "row": 3,
+      "column": 10,
+      "value": "つぉ",
+      "reason": "jis-only-key"
+    }
+  ]
+}
