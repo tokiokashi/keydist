@@ -31,6 +31,7 @@ import { physicalKeysUsedByLayout } from '#input/layouts/physical-keys.ts';
 import { jisShapeIdFor } from '#input/shapes/jis-shape.ts';
 import { defaultRomajiRuleId, tableForRule } from '#input/romaji/rules.ts';
 import { nSensitivity } from '#analyzers/n-sensitivity/sensitivity.ts';
+import { recommendedFingerAssignmentId, resolveFingerAssignment } from '#engine/finger-assignment.ts';
 import { MODEL_VERSION } from '#engine/model-version.ts';
 import { modelVersionBumpError, stableStringify } from './model-version-guard.ts';
 import { containsKanji } from '#input/text/reading.ts';
@@ -205,8 +206,8 @@ function runCase(language: TextLanguage, layout: Layout, sampleId: string, opts:
   // 推奨の指の割り当てを持つ配列は、アプリと同じく推奨で測る（物理配列の規格に合わせる）。
   // 持たない配列は、物理配列の規格の既定（JISならjis-default、ANSIなら列固定の既定）
   const jisShape = presetGeometryStandard(shapeId) === 'jis';
-  const recommended =
-    layout.recommendedFingerAssignmentIds?.ansi === QWERTY_OPTIMIZED_FINGER_ASSIGNMENT.id ? QWERTY_OPTIMIZED_FINGER_ASSIGNMENT : undefined;
+  const recommendedId = recommendedFingerAssignmentId(layout, PHYSICAL_SHAPES[shapeId]);
+  const recommended = recommendedId === undefined ? undefined : resolveFingerAssignment(recommendedId).assignment;
   const fingerAssignment = opts.fingerAssignment ?? recommended ?? (jisShape ? JIS_FINGER_ASSIGNMENT : DEFAULT_FINGER_ASSIGNMENT);
   const geometry: Geometry = buildGeometry(PHYSICAL_SHAPES[shapeId], assignmentWithHomeKeys(fingerAssignment, layout.homeKeys));
   const triggerRealizationPolicy = opts.triggerRealizationPolicy ?? { ...DEFAULT_TRIGGER_REALIZATION_POLICY };
