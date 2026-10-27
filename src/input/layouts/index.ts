@@ -52,6 +52,11 @@ export type { FaceGroups, Layer } from './layers.ts';
 const ROMAJI = kunrei();
 const ROMAJI_OONISHI = oonishiRomaji();
 
+/** 角度改変の運指で打つ前提の配列に、推奨の指の割り当て（角度改変）を付ける */
+function angleModLayout(layout: Layout): Layout {
+  return { ...layout, recommendedFingerAssignmentIds: { ansi: 'angle-mod', jis: 'angle-mod-jis' } };
+}
+
 /**
  * 英字配列。行ごとの列数はANSIの英数部に合わせる（12 / 12 / 11 / 10）。
  * 大西配列は `-` をホーム段に置くため、数字段には `-` を入れない。
@@ -80,6 +85,12 @@ const ALPHA: Layout[] = [
     'こーるまっくでぃーえいち',
     'こーるまっくdh',
   ]),
+  // 公式のANSI用の並び。角度改変で下段の左5キーを1つ左の物理キーへ寄せ、左端の `z` をQWERTYの `b` の位置に移してある（既存の `colemak-dh` は寄せていない並び）。
+  // 角度改変の運指で打つ前提なので、推奨の指の割り当ては角度改変
+  withAliases(
+    angleModLayout(withShiftedOutputs(fromRows('colemak-dh-ansi', 'Colemak-DH（ANSI）', ['1234567890-=', 'qwfpbjluy;[]', "arstgmneio'", 'xcdvzkh,./']))),
+    ['こーるまっくでぃーえいちあんし', 'こーるまっくdhあんし', 'あんし'],
+  ),
   withAliases(withShiftedOutputs(fromRows('workman', 'Workman', ['1234567890-=', 'qdrwbjfup;[]', "ashtgyneoi'", 'zxmcvkl,./'])), ['わーくまん']),
   // 作者が定義したのは30キー（3段×10列）だけで、外側のキーはQWERTYのまま。
   // 数字段・`[` `]`・ホーム段右端の `'` は作者の定義に無いのでQWERTYの位置に残し、
@@ -117,6 +128,32 @@ const ALPHA: Layout[] = [
     'えーぴーてぃーぶいすりー',
     'えーぴーてぃー',
     'apt',
+  ]),
+  // 作者の行ずれ（ロウスタッガード）のANSIキーボード用の並び。角度改変済みで、作者が外側のキーに触れているのは `;` `[` `]` `'` だけ。
+  // 数字段はQWERTYのまま
+  withAliases(
+    angleModLayout(withShiftedOutputs(fromRows('canary-ansi', 'Canary（ANSI）', ['1234567890-=', 'wlypkzxou;[]', "crstbfneia'", 'jvdgqmh/,.']))),
+    ['かなりああんし', 'かなりあ', 'canary'],
+  ),
+  // 作者のオーソリニア用の並び（30キー）。作者は外側のキーを指定していないので、`'` は作者の並びのとおり上段の右端、
+  // `;` はホーム段の11番目（QWERTYの `'` の位置）に置き、`[` `]` と数字段はQWERTYのまま。角度改変はしないので、推奨の指の割り当ては付けない
+  withAliases(withShiftedOutputs(fromRows('canary', 'Canary', ['1234567890-=', "wlypbzfou'[]", 'crstgmneia;', 'qjvdkxh/,.'])), [
+    'かなりあ',
+    'かなりあおーそりにあ',
+    'canary',
+  ]),
+  // 作者が定義したのはオーソリニア用の30キーだけで、ホーム段の11番目（QWERTYの `'` の位置）には `/` を置く
+  // （cyanophageの比較表と同じ）。ANSI用の並びは、作者の説明にある角度改変の規則で下段の左5キーを1つ左へ寄せ、左端の `z` をQWERTYの `b` の位置に移した結果。
+  // 数字段と `[` `]` はQWERTYのまま
+  withAliases(
+    angleModLayout(withShiftedOutputs(fromRows('sturdy-ansi', 'Sturdy（ANSI）', ['1234567890-=', 'vmlcpxfouj[]', 'strdy.naei/', "kqgwzbh';,"]))),
+    ['すたーでぃあんし', 'すたーでぃ', 'sturdy'],
+  ),
+  // 作者の30キーのまま（ずらす前）。外側のキーの置き方は上の `sturdy-ansi` と同じ。推奨の指の割り当ては付けない
+  withAliases(withShiftedOutputs(fromRows('sturdy', 'Sturdy', ['1234567890-=', 'vmlcpxfouj[]', 'strdy.naei/', "zkqgwbh';,"])), [
+    'すたーでぃおーそりにあ',
+    'すたーでぃ',
+    'sturdy',
   ]),
   withAliases(withShiftedOutputs(fromRows('norman', 'Norman', ['1234567890-=', 'qwdfkjurl;[]', "asetgynioh'", 'zxcvbpm,./'])), ['のーまん']),
   withAliases(withShiftedOutputs(fromRows('qgmlwy', 'QGMLWY', ['1234567890-=', 'qgmlwyfub;[]', "dstnriaeoh'", 'zxcvjkp,./'])), [

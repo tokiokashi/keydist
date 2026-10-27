@@ -83,13 +83,13 @@ test('絞り込みは全角半角・大文字小文字を区別せず、名前�
   );
   assert.deepEqual(
     colemak[0]!.choices.map((choice) => choice.name),
-    ['Colemak', 'Colemak-DH'],
+    ['Colemak', 'Colemak-DH', 'Colemak-DH（ANSI）'],
   );
 
   // 空白で区切った語はすべて含むものだけ残す。
   assert.deepEqual(
     filterTargetChoiceGroups(groups, 'colemak dh')[0]!.choices.map((choice) => choice.name),
-    ['Colemak-DH'],
+    ['Colemak-DH', 'Colemak-DH（ANSI）'],
   );
   // ラベル付きのSetupも配列名（フル名）で見つかる。
   assert.deepEqual(

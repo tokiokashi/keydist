@@ -1,6 +1,8 @@
 import type { Layout } from '#input/layouts/types.ts';
 import type { Diagnostic } from '#input/settings/index.ts';
 import {
+  ANGLE_MOD_FINGER_ASSIGNMENT,
+  ANGLE_MOD_JIS_FINGER_ASSIGNMENT,
   DEFAULT_FINGER_ASSIGNMENT,
   isPresetGeometryKind,
   JIS_FINGER_ASSIGNMENT,
@@ -27,13 +29,15 @@ import {
  * 自作の指割り当て（`input/shapes/user-finger-assignments.ts`）はSetupCatalogのような
  * 固定のカタログを持たない。romajiRuleId ＋ `customRomajiRules`（`resolved-input.ts`）と同じ
  * 理由: 呼び出し側（`resolveEngineInput`）がその時点の手持ちを都度渡す形にし、
- * `engine/finger-assignment.ts` 自身は組み込みの2つだけを知っていればよい。
+ * `engine/finger-assignment.ts` 自身は組み込みだけを知っていればよい。
  */
 export const FINGER_ASSIGNMENT_REGISTRY: Readonly<Record<string, FingerAssignment>> = {
   [DEFAULT_FINGER_ASSIGNMENT.id]: DEFAULT_FINGER_ASSIGNMENT,
   [JIS_FINGER_ASSIGNMENT.id]: JIS_FINGER_ASSIGNMENT,
   [QWERTY_OPTIMIZED_FINGER_ASSIGNMENT.id]: QWERTY_OPTIMIZED_FINGER_ASSIGNMENT,
   [QWERTY_OPTIMIZED_JIS_FINGER_ASSIGNMENT.id]: QWERTY_OPTIMIZED_JIS_FINGER_ASSIGNMENT,
+  [ANGLE_MOD_FINGER_ASSIGNMENT.id]: ANGLE_MOD_FINGER_ASSIGNMENT,
+  [ANGLE_MOD_JIS_FINGER_ASSIGNMENT.id]: ANGLE_MOD_JIS_FINGER_ASSIGNMENT,
 };
 
 export interface ResolvedFingerAssignment {

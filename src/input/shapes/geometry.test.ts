@@ -1,11 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  ANGLE_MOD_FINGER_ASSIGNMENT,
+  ANGLE_MOD_JIS_FINGER_ASSIGNMENT,
   buildGeometry,
   columnFingerAssignment,
   DEFAULT_FINGER_ASSIGNMENT,
   JIS_FINGER_ASSIGNMENT,
   keyId,
+  keyOwners,
   makeFingerAssignment,
   PHYSICAL_SHAPES,
   presetGeometryKind,
@@ -429,3 +432,30 @@ test('組み込みのQWERTY最適化で、分割する物理配列は反対側�
         assert.ok(press.finger.startsWith(key.col >= 5 ? 'R' : 'L'), `${key.id}: ${press.finger}`);
       }
 });
+
+for (const [label, assignment, base] of [
+  ['Angle Mod', ANGLE_MOD_FINGER_ASSIGNMENT, DEFAULT_FINGER_ASSIGNMENT],
+  ['Angle Mod（JIS）', ANGLE_MOD_JIS_FINGER_ASSIGNMENT, JIS_FINGER_ASSIGNMENT],
+] as const) {
+  test(`${label}: 左手の下段は、Zの位置が薬指、Xの位置が中指、C・V・Bの位置が人差し指になる`, () => {
+    const expected: Record<string, NonThumb> = { z: 'LR', x: 'LM', c: 'LI', v: 'LI', b: 'LI' };
+    for (const [key, finger] of Object.entries(expected)) assert.equal(assignment.baseFinger[key], finger, key);
+    // 担当の指は基本の指だけ（追加の担当は無い）
+    for (const key of Object.keys(expected)) assert.deepEqual(keyOwners(assignment, key), [expected[key]], key);
+  });
+
+  test(`${label}: 左手の下段以外は既定と同じ指で、ホームも同じ`, () => {
+    const lowerLeft = new Set(['z', 'x', 'c', 'v', 'b']);
+    for (const [key, finger] of Object.entries(base.baseFinger)) {
+      if (lowerLeft.has(key)) continue;
+      assert.equal(assignment.baseFinger[key], finger, key);
+    }
+    assert.deepEqual(Object.keys(assignment.baseFinger).sort(), Object.keys(base.baseFinger).sort());
+    assert.deepEqual(assignment.homeKey, base.homeKey);
+  });
+
+  test(`${label}: 小指は下段のキーを担当しない`, () => {
+    const bottom = ['z', 'x', 'c', 'v', 'b'];
+    assert.ok(!assignment.fingerKeys.LP.some((key) => bottom.includes(key)));
+  });
+}

@@ -112,3 +112,43 @@ test('推奨に負けた全体の値は、理由として残る', () => {
   const resolved = measure('qwerty-optimized', override(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'jis-default'), 'en', 'abc');
   assert.deepEqual(resolved.input.cascade.fingerAssignmentId.recommendationWins, { shadowed: ['global', 'workspace'] });
 });
+
+test('Angle Modの運指で打つ前提の3配列は、推奨の割り当て「Angle Mod」で測る。JISなら「Angle Mod（JIS）」', () => {
+  for (const id of ['colemak-dh-ansi', 'canary-ansi', 'sturdy-ansi']) {
+    const resolved = measure(id, EMPTY_SETTINGS_OVERRIDES, 'en', 'abc');
+    assert.equal(resolved.input.geometry.assignment.id, 'angle-mod', id);
+    assert.deepEqual(resolved.input.cascade.fingerAssignmentId.origin, { kind: 'default' }, id);
+    // 全体の値より推奨が強い
+    assert.equal(
+      measure(id, override(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'jis-default'), 'en', 'abc').input.geometry.assignment.id,
+      'angle-mod',
+      id,
+    );
+
+    const layout = LAYOUT_BY_ID.get(id)!;
+    const jis = resolveSettings(EMPTY_SETTINGS_OVERRIDES, {
+      shapeId: 'jis-row-staggered',
+      shape: PHYSICAL_SHAPES['jis-row-staggered'],
+      inputMethod: 'direct',
+      layoutId: layout.id,
+      layout,
+      targetKind: 'layout',
+    });
+    assert.equal(jis.fingerAssignmentId.value, 'angle-mod-jis', id);
+  }
+});
+
+test('角度改変をしない版と既存のColemak-DHは、推奨を持たず物理配列の既定で測る', () => {
+  for (const id of ['colemak-dh', 'canary', 'sturdy']) {
+    assert.equal(measure(id, EMPTY_SETTINGS_OVERRIDES, 'en', 'abc').input.geometry.assignment.id, 'default', id);
+  }
+});
+
+test('Angle Modの運指は、左手の下段を打つ文章で既定の列固定と違う指になる', () => {
+  // Colemak-DH（ANSI）の下段左端の `x`（Zの位置）を、小指ではなく薬指で打つ
+  const recommended = measure('colemak-dh-ansi', EMPTY_SETTINGS_OVERRIDES, 'en', 'x');
+  const plain = measure('colemak-dh-ansi', override(EMPTY_SETTINGS_OVERRIDES, { kind: 'layout', layoutId: 'colemak-dh-ansi' }, 'default'), 'en', 'x');
+  const fingerOf = (resolved: ReturnType<typeof measure>) => resolved.trace.trace.strokes[0]?.presses[0]?.finger;
+  assert.equal(fingerOf(recommended), 'LR');
+  assert.equal(fingerOf(plain), 'LP');
+});
