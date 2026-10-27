@@ -378,15 +378,15 @@ test('テスターの定義と、テスターに無い ふぃ・ふぇ を除い
   assert.deepEqual(typedKeys('ふぇ'), ['=x']);
 });
 
-test('拗音の後置は1字として打ち、く と ゃ を続けて出す打ち方は無い', () => {
+test('拗音の後置は1字として打ち、く と ゃ を続けて出す時は間に確定の打鍵を入れる', () => {
   assert.deepEqual(typedKeys('ひゃ'), ['nb']);
   assert.deepEqual(keysOf('ひゃ'), ['n', 'b']);
   assert.deepEqual(keysOf('ひゃく'), ['n', 'b', 'n']);
   assert.deepEqual(keysOf('ぎょう'), ['u', 'z', 'u']);
   assert.deepEqual(keysOf('ひ'), ['d', 'h']);
   assert.deepEqual(keysOf('ゃ'), ['b']);
-  // く と ゃ を続けて入力しても、打鍵は ひゃ と同じになる
-  assert.deepEqual(keysOf('くゃ'), keysOf('ひゃ'));
+  // く と ゃ を続けて打つと ひゃ と読まれるので、間に右親指の確定の打鍵が入る
+  assert.deepEqual(keysOf('くゃ'), ['n', 'thumb-r', 'b']);
 });
 
 test('後置のキーb x zは、単打でも ゃ ゅ ょ を出す', () => {

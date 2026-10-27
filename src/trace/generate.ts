@@ -1,4 +1,5 @@
 import { ALL_FINGERS, resolveKeyId, type Finger, type Geometry, type Key, type Point } from '#input/shapes/geometry.ts';
+import { commitAction, commitKeyOf, commitStrokeRulesOf, needsCommitStroke } from './commit-stroke.ts';
 import { decidePress, selectFingers, strokeFingerChoices, targetOf, type PlannedInput, type PlannedStroke } from './finger-selection.ts';
 import { COMBO_LAYER_ID, SINGLE_LAYER_ID, type HoldPhase, type LayerDefinition, type Layout, withoutRomajiOnlyCombos } from '#input/layouts/types.ts';
 import { layerDefinitionsWithLabels } from '#input/layouts/layers.ts';
@@ -119,6 +120,11 @@ export interface Stroke {
   aggregationGroupId: string;
   /** authoring由来のcanonical classification。 */
   classifications: readonly InputClassification[];
+  /**
+   * 確定の打鍵（仕様 §4.7）か。確定の打鍵だけが真で持つ。
+   * 確定が要る継ぎ目の後の入力単位の最初のステップで、その入力単位の `inputIndex`・`char` などを共有する。
+   */
+  commit?: true;
   /** このステップで層操作として押したキー。出力キーとの色分けに使う */
   triggerKeys: readonly string[];
   /** 同じ層の文字トリガーを複数同時押下したキー。表示色の例外に使う */
@@ -271,6 +277,11 @@ export function generateTrace(
   }
   // 見出し探索のauthorityもcanonicalInputs。legacy Layout.map由来の長さmetadataへ依存しない。
   const canonicalInputs = evaluationCanonicalInputs(layout);
+  const commitRules = commitStrokeRulesOf(canonicalInputs);
+  const commitKey = commitKeyOf(geometry);
+  // 直前の入力が選んだpath。打てない文字を挟んだら継ぎ目として扱わないので、そこで外す
+  let previousAlternative: InputAlternative | undefined;
+  let commitCount = 0;
   const maxLen = Math.max(1, ...[...canonicalInputs.keys()].map((output) => [...output].length));
 
   for (let cursor = 0; cursor < chars.length; ) {
@@ -301,6 +312,7 @@ export function generateTrace(
         skippedPositions.add(cursor);
       }
       skippedByKind[skippedKindOf(char)]++;
+      previousAlternative = undefined;
       cursor++;
       continue;
     }
@@ -330,6 +342,10 @@ export function generateTrace(
 
     const selectedAlternative = selectInputAlternative(alternatives, layout, geometry, options);
     if (isComboFrameAlternative(selectedAlternative)) comboHits.push(char);
+    const commit = previousAlternative !== undefined && needsCommitStroke(commitRules, previousAlternative, selectedAlternative);
+    previousAlternative = selectedAlternative;
+    // 確定の打鍵が入る継ぎ目では、前の入力の保持を引き継がない（仕様 §4.7）
+    if (commit) triggerHoldState = undefined;
 
     const realized = realizeTriggerActions(
       selectedAlternative.baseRealizations,
@@ -340,6 +356,18 @@ export function generateTrace(
     const actions = applyActionRealizationPolicy(realized.actions, options.actionRealizationPolicy ?? DEFAULT_ACTION_REALIZATION_POLICY);
 
     const plannedActions: PlannedAction[] = [];
+    if (commit) {
+      commitCount++;
+      plannedActions.push({
+        action: commitAction(commitKey),
+        stroke: {
+          keys: [commitKey],
+          candidates: [geometry.fingerCandidates.get(commitKey.id) ?? [commitKey.finger]],
+          heldKeys: [],
+        },
+        commit: true,
+      });
+    }
     for (const action of actions) {
       const keys: Key[] = [];
       for (const id of action.keys) {
@@ -502,6 +530,7 @@ export function generateTrace(
         selectionIndex: currentInputOrdinal,
         aggregationGroupId,
         classifications: action.input.classifications,
+        ...(planned.commit ? { commit: true as const } : {}),
         triggerKeys,
         pairedTriggerKeys,
         participations,
@@ -511,6 +540,10 @@ export function generateTrace(
       });
       index++;
     });
+  }
+
+  if (commitCount > 0 && !layerDefinitions.some((definition) => definition.id === SINGLE_LAYER_ID)) {
+    layerDefinitions.push({ id: SINGLE_LAYER_ID, kind: 'layer', label: '単打' });
   }
 
   return {
@@ -529,6 +562,8 @@ export function generateTrace(
 interface PlannedAction {
   readonly action: RealizedSemanticAction;
   readonly stroke: PlannedStroke;
+  /** 確定の打鍵（仕様 §4.7） */
+  readonly commit?: true;
 }
 
 interface PlannedGeneratedInput extends PlannedInput {

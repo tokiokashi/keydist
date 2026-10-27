@@ -960,10 +960,11 @@ Raw hand runへ **ChainInterpretation** を適用した結果が **Analysis Chai
 
 親指onlyはtrigger-onlyとは独立した条件として扱う。Raw hand run側の
 `thumbOnly` / `thumbTriggerOnly` factは保持し、Policy適用前の事実を失わない。
-確定の打鍵（§4.7）は右親指だけのStrokeなので、`breakOnThumbOnly` が真（既定）ならAnalysis Chainの境界になる。
-確定の打鍵を挟む継ぎ目の前後は同じChainに入らず、Roll・Redirect・Arpeggioなどの構造要素は確定の打鍵を越えない。
+確定の打鍵（§4.7）は右親指だけのStrokeなので、右手のRaw hand runに入り、`breakOnThumbOnly` が真（既定）ならAnalysis Chainの境界になる。
+左手のRaw hand runは、確定の打鍵が左手の参加を持たないので、そこで途切れる。
+したがって既定では、確定の打鍵を挟む継ぎ目の前後は、どちらの手でも同じChainに入らず、Roll・Redirect・Arpeggioなどの構造要素は確定の打鍵を越えない。
 実際に親指の打鍵が手の動きの間に入るためである。確定の打鍵が入る配列とテキストでは、これらの構造指標が、確定の打鍵を入れない場合から動く。
-`breakOnThumbOnly` が偽の時は、確定の打鍵も他のStrokeと同じく親指の参加として扱う。
+`breakOnThumbOnly` が偽の時、右手のChainは確定の打鍵を他のStrokeと同じく親指の参加として含み、左手のChainは途切れたままである。
 TriggerPersistenceは「hold可能か」という能力なので、実際のhold利用やChain境界の推測には使わない。
 
 Analysis結果はStrokeを複製せず、1回の結果内で安定する `StrokeIndex` と
