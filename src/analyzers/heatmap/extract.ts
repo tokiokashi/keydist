@@ -2,6 +2,9 @@ import { defineSingleAnalyzer, type SingleAnalyzerDefinition, type SingleAnalyze
 import { plainDisciplineContext } from '#analyzers/discipline-material.ts';
 import type { KeyDetails } from '#interpretation/key-detail.ts';
 import type { Metrics } from '#interpretation/metrics.ts';
+import type { Trace } from '#trace/generate.ts';
+import type { BigramSource } from '../bigram-vectors.ts';
+import { keyboardFlowLines, type KeyboardFlowLines } from '../keyboard-flow-lines.ts';
 import { DEFAULT_HEATMAP_OPTIONS, heatmapOptions, type HeatmapOptions } from './options.ts';
 
 /**
@@ -20,14 +23,31 @@ export interface HeatmapExtracted {
   readonly maxCount: number;
   /** キーの詳細。ツールチップと、キーを選んだ時の小窓が読む */
   readonly keyDetails: KeyDetails;
+  /**
+   * 2打鍵の線。指を絞らない時のKeyboard Flowと同じ組（親指のキーを含む組と連打は除く）を、組の種類ごとに持つ。
+   * どちらを描くかは表示だけの設定なので、両方を常に計算しておく。
+   */
+  readonly flowLines: Readonly<Record<BigramSource, KeyboardFlowLines>>;
 }
 
-export function computeHeatmapExtraction({ metrics, keyDetails }: { readonly metrics: Metrics; readonly keyDetails: KeyDetails }): HeatmapExtracted {
+export function computeHeatmapExtraction({
+  metrics,
+  keyDetails,
+  trace,
+}: {
+  readonly metrics: Metrics;
+  readonly keyDetails: KeyDetails;
+  readonly trace: Trace;
+}): HeatmapExtracted {
   return {
     presses: metrics.presses,
     keyCounts: metrics.keyCounts,
     maxCount: Math.max(0, ...metrics.keyCounts.values()),
     keyDetails,
+    flowLines: {
+      actual: keyboardFlowLines(trace.strokes, 'actual'),
+      'within-hand': keyboardFlowLines(trace.strokes, 'within-hand'),
+    },
   };
 }
 
@@ -36,7 +56,7 @@ export const heatmapDefinition: SingleAnalyzerDefinition<HeatmapOptions, Heatmap
   id: 'heatmap',
   options: heatmapOptions,
   extract(context: SingleAnalyzerExtractContext<HeatmapOptions>): HeatmapExtracted {
-    return computeHeatmapExtraction({ metrics: context.metrics, keyDetails: context.keyDetails() });
+    return computeHeatmapExtraction({ metrics: context.metrics, keyDetails: context.keyDetails(), trace: context.trace });
   },
   optionsDiscipline: {
     sample: DEFAULT_HEATMAP_OPTIONS,
@@ -51,4 +71,12 @@ export const heatmapDefinition: SingleAnalyzerDefinition<HeatmapOptions, Heatmap
  */
 export function sharedMaxCount(maxCounts: readonly number[]): number {
   return Math.max(1, ...maxCounts);
+}
+
+/**
+ * 並べた図の全部で共通にする、線の太さの尺度の最大値（組数）。各図の線の組数の最大値を渡す。
+ * 計算できた図だけを渡し、線が無い（または図が無い）なら1にする。
+ */
+export function sharedMaxFlowWeight(maxWeights: readonly number[]): number {
+  return Math.max(1, ...maxWeights);
 }

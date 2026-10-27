@@ -5,7 +5,7 @@ import type { HeatmapOptions } from './options.ts';
  * 図の表示の小窓は、表示だけを変える項目（`affects: 'view'`）をこの表の順に描く。
  * 解析設定の小窓に置く項目（`affects: 'extract'`）は今は無い。どの項目をどちらに置くかは`settings-sections.test.ts`が`affects`と照らす。
  */
-export type HeatmapSettingsGroupId = 'drawStyle';
+export type HeatmapSettingsGroupId = 'drawStyle' | 'flowLines';
 
 export interface HeatmapSettingsGroup {
   readonly id: HeatmapSettingsGroupId;
@@ -15,4 +15,7 @@ export interface HeatmapSettingsGroup {
 
 export const HEATMAP_WINDOW_GROUPS: readonly HeatmapSettingsGroup[] = [];
 
-export const HEATMAP_FIGURE_GROUPS: readonly HeatmapSettingsGroup[] = [{ id: 'drawStyle', title: '描き方', keys: ['drawStyle'] }];
+export const HEATMAP_FIGURE_GROUPS: readonly HeatmapSettingsGroup[] = [
+  { id: 'drawStyle', title: '描き方', keys: ['drawStyle'] },
+  { id: 'flowLines', title: '2打鍵の線', keys: ['flowLines', 'flowLineSource'] },
+];

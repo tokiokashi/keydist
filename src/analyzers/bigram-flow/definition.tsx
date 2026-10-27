@@ -5,7 +5,17 @@ import type { Layout } from '#input/layouts/types.ts';
 import { keyboardStandardForGeometryId } from '#input/shapes/key-labels.ts';
 import type { KeyDetails } from '#interpretation/key-detail.ts';
 import type { Trace } from '#trace/generate.ts';
-import type { BigramVector, FingerClass, RelativeVector } from './bigram-vectors.ts';
+import type { BigramVector, FingerClass, RelativeVector } from '../bigram-vectors.ts';
+import {
+  edgeKind,
+  FLOW_COLORS,
+  FLOW_GRADIENT_END_OPACITY,
+  FLOW_GRADIENT_START_OPACITY,
+  flowEdgePath,
+  flowLineWidth,
+  scaleKeyboardFlowWeight,
+  type KeyboardFlowWeightScale,
+} from '../keyboard-flow-lines.ts';
 import { bigramFlowDefinition, type BigramFlowExtracted, type BigramFlowHandProfile } from './extract.ts';
 import { MIN_POLAR_BANDWIDTH_DEGREES, movementPlotScale } from './movement-profile-scale.ts';
 import {
@@ -14,11 +24,9 @@ import {
   DEFAULT_BIGRAM_FLOW_OPTIONS,
   orderKeyboardFlowVectors,
   resolveKeyboardFlowMaxWeight,
-  scaleKeyboardFlowWeight,
   type BigramFlowOptions,
   type KeyboardFlowHoverScale,
   type KeyboardFlowLayerOrder,
-  type KeyboardFlowWeightScale,
 } from './options.ts';
 import {
   bindOption,
@@ -32,7 +40,7 @@ import {
 } from '#ui/primitives/option-fields.tsx';
 import { useFigureSettings } from '#ui/primitives/figure-settings.tsx';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
-import { AREA_HEIGHT, AREA_WIDTH, fitKeyboardToArea, flowLineWidth, KEY_PITCH, repeatLabelScale } from './keyboard-flow-area.ts';
+import { AREA_HEIGHT, AREA_WIDTH, fitKeyboardToArea, KEY_PITCH, repeatLabelScale } from './keyboard-flow-area.ts';
 import { BIGRAM_FLOW_PANE_META } from './pane-meta.ts';
 import { keyDetailTooltip, keyName } from '../key-detail-view.ts';
 import type { AnalyzerSettingsProps, KeySelectionProps, SingleAnalyzerPaneParts } from '../pane-parts.tsx';
@@ -65,14 +73,6 @@ const FINGER_OPTIONS: readonly { id: FingerClass; label: string }[] = [
   { id: 'ring', label: '薬' },
   { id: 'pinky', label: '小' },
 ];
-const FLOW_COLORS = {
-  left: 'var(--viz-flow-left)',
-  right: 'var(--viz-flow-right)',
-  cross: 'var(--viz-flow-cross)',
-  inward: 'var(--viz-flow-inward)',
-  outward: 'var(--viz-flow-outward)',
-  same: 'var(--viz-flow-cross)',
-} as const;
 
 function bounds(keys: readonly Key[]) {
   const xs = keys.map((key) => key.x);
@@ -97,36 +97,7 @@ function chartPoint(point: Point, minX: number, minY: number) {
 }
 
 function edgePath(vector: BigramVector, minX: number, minY: number): string {
-  const start = chartPoint(vector.from, minX, minY);
-  const end = chartPoint(vector.to, minX, minY);
-  const dx = end.x - start.x;
-  const dy = end.y - start.y;
-  const length = Math.hypot(dx, dy);
-
-  if (length < 0.01) return `M ${start.x} ${start.y}`;
-
-  const mid = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
-  const ux = dx / length;
-  const uy = dy / length;
-
-  // 往復で弧の側を反転させず、ほぼ全てを同じ側へ浅く持ち上げる。
-  let nx = -uy;
-  let ny = ux;
-  if (ny > 0 || (Math.abs(ny) < 0.15 && nx < 0)) {
-    nx *= -1;
-    ny *= -1;
-  }
-  const bend = Math.min(8, Math.max(2.5, length * 0.025));
-  const control = {
-    x: mid.x + nx * bend,
-    y: mid.y + ny * bend,
-  };
-  return `M ${start.x} ${start.y} Q ${control.x} ${control.y} ${end.x} ${end.y}`;
-}
-
-function edgeKind(vector: BigramVector, showRollDirection: boolean): keyof typeof FLOW_COLORS {
-  if (showRollDirection && vector.fingerDirection !== undefined) return vector.fingerDirection;
-  return vector.hand;
+  return flowEdgePath(chartPoint(vector.from, minX, minY), chartPoint(vector.to, minX, minY));
 }
 
 function weightScale(weight: number, maxWeight: number): number {
@@ -340,8 +311,8 @@ function KeyboardFlow({
                   x2={to.x}
                   y2={to.y}
                 >
-                  <stop offset="0%" stopColor={color} stopOpacity="0.16" />
-                  <stop offset="100%" stopColor={color} stopOpacity="0.96" />
+                  <stop offset="0%" stopColor={color} stopOpacity={FLOW_GRADIENT_START_OPACITY} />
+                  <stop offset="100%" stopColor={color} stopOpacity={FLOW_GRADIENT_END_OPACITY} />
                 </linearGradient>
               );
             })}

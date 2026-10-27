@@ -9,10 +9,10 @@ import {
   stringSetUrlCodec,
   type OptionsValueMap,
 } from '#analyzers/options.ts';
-import type { BigramSource, FingerClass } from './bigram-vectors.ts';
+import type { BigramSource, FingerClass } from '../bigram-vectors.ts';
+import { nonStationaryVectors, type KeyboardFlowVectorLike, type KeyboardFlowWeightScale } from '../keyboard-flow-lines.ts';
 import { MAX_POLAR_DISPLAY_GAIN, MIN_POLAR_BANDWIDTH_DEGREES } from './movement-profile-scale.ts';
 
-export type KeyboardFlowWeightScale = 'linear' | 'sqrt' | 'log';
 export type KeyboardFlowLayerOrder = 'weight' | 'same-hand-top' | 'cross-hand-top';
 export type KeyboardFlowHoverScale = 'key' | 'global';
 
@@ -164,13 +164,6 @@ export const decodeBigramFlowOptions = bigramFlowOptions.decodeOptions;
  */
 export const bigramFlowExtractKeyOf = bigramFlowOptions.extractKeyOf;
 
-export interface KeyboardFlowVectorLike {
-  readonly id: string;
-  readonly weight: number;
-  readonly distance: number;
-  readonly hand: 'left' | 'right' | 'cross';
-}
-
 export interface KeyboardFlowOutgoingVectorLike {
   readonly weight: number;
   readonly fromKeyIds: readonly string[];
@@ -207,23 +200,10 @@ export function resolveKeyboardFlowMaxWeight(
   return keyMaxWeight;
 }
 
-export function scaleKeyboardFlowWeight(weight: number, maxWeight: number, scale: KeyboardFlowWeightScale): number {
-  if (maxWeight <= 0 || weight <= 0) return 0;
-  const ratio = Math.min(1, weight / maxWeight);
-  if (scale === 'sqrt') return Math.sqrt(ratio);
-  if (scale === 'log') return Math.log1p(weight) / Math.log1p(maxWeight);
-  return ratio;
-}
-
 function layerRank(hand: KeyboardFlowVectorLike['hand'], order: KeyboardFlowLayerOrder): number {
   if (order === 'same-hand-top') return hand === 'cross' ? 0 : 1;
   if (order === 'cross-hand-top') return hand === 'cross' ? 1 : 0;
   return 0;
-}
-
-/** 同一キーへ戻るrepeat（物理移動が無い）vectorを除く。KeyboardFlowの線・最大weightはこの集合だけを見る。 */
-export function nonStationaryVectors<T extends KeyboardFlowVectorLike>(vectors: readonly T[]): readonly T[] {
-  return vectors.filter((vector) => vector.distance >= 1e-6);
 }
 
 /**

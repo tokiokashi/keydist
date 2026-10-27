@@ -1,12 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {
-  computeOutgoingMaxWeight,
-  nonStationaryVectors,
-  orderKeyboardFlowVectors,
-  resolveKeyboardFlowMaxWeight,
-  scaleKeyboardFlowWeight,
-} from './options.ts';
+import { nonStationaryVectors, scaleKeyboardFlowWeight } from '../keyboard-flow-lines.ts';
+import { computeOutgoingMaxWeight, orderKeyboardFlowVectors, resolveKeyboardFlowMaxWeight } from './options.ts';
 
 const vectors = [
   { id: 'same-heavy', hand: 'left' as const, weight: 9, distance: 1 },

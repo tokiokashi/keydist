@@ -43,21 +43,10 @@ export function fitKeyboardToArea(spanX: number, spanY: number): KeyboardFlowFit
   };
 }
 
-/**
- * 縮めた時に優先するのは線の見え方。線は画面上でこの太さを下回らないよう、
- * 縮尺が下がるほどユーザー座標の側で太くする。
- */
-export const MIN_LINE_SCREEN_PX = 1.25;
 /** 同キー連打のラベルは、縮んでもこの大きさの文字で読めるまま残す。 */
 export const MIN_REPEAT_LABEL_SCREEN_PX = 8;
 /** 連打ラベル（バッジ）の文字の基準の大きさ（ユーザー座標）。CSSの `.flow-key-badge text` と揃える。 */
 export const REPEAT_LABEL_FONT_UNITS = 6.2;
-
-/** 線の太さ（ユーザー座標）。`zoom` は 画面上のSVG幅 / AREA_WIDTH。 */
-export function flowLineWidth(baseWidth: number, zoom: number): number {
-  if (!(zoom > 0)) return baseWidth;
-  return Math.max(baseWidth, MIN_LINE_SCREEN_PX / zoom);
-}
 
 /**
  * 連打ラベルを、画面上で読める大きさを保つよう拡大する率（縮んだ時だけ1を超える）。

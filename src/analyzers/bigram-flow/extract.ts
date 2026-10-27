@@ -16,20 +16,15 @@ import {
   type DirectionSummary,
   type MeanDisplacement,
   type RelativeVector,
-} from './bigram-vectors.ts';
-import {
-  ALTERNATE_BIGRAM_FLOW_OPTIONS,
-  DEFAULT_BIGRAM_FLOW_OPTIONS,
-  bigramFlowOptions,
-  nonStationaryVectors,
-  type BigramFlowOptions,
-} from './options.ts';
+} from '../bigram-vectors.ts';
+import { nonStationaryVectors } from '../keyboard-flow-lines.ts';
+import { ALTERNATE_BIGRAM_FLOW_OPTIONS, DEFAULT_BIGRAM_FLOW_OPTIONS, bigramFlowOptions, type BigramFlowOptions } from './options.ts';
 
 /**
  * Bigram Flowの抽出（`extract`）。docs/architecture.md「抽出」の実装。
  *
  * 可視化（`definition.tsx`）が必要とする計算済みデータをすべてここへ集める。
- * 可視化側は受け取った値をそのまま描くだけで、`bigram-vectors.ts`の関数を
+ * 可視化側は受け取った値をそのまま描くだけで、`analyzers/bigram-vectors.ts`の関数を
  * 呼び返さない（「可視化は計算しない」docs/architecture.md）。
  *
  * ここに含めるのは「抽出に効く設定（`source` `selectedFingers` `polarBandwidth`。

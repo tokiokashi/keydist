@@ -5,11 +5,12 @@ import { keyboardStandardForGeometryId } from '#input/shapes/key-labels.ts';
 import type { Geometry } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import { isStrokeOnlyMark, TARGET_DASH_ARRAY, targetMarkPath, type TargetMark } from '#ui/theme/target-marks.ts';
-import { HeatmapDiagram, type HeatmapDrawStyle, type HeatmapShiftStyle } from '../heatmap-diagram.tsx';
-import { baseLayerLegends } from '../heatmap-figure.ts';
+import { HeatmapDiagram, type HeatmapDiagramFlow, type HeatmapShiftStyle } from '../heatmap-diagram.tsx';
+import { baseLayerLegends, type HeatmapDrawStyle } from '../heatmap-figure.ts';
 import { heatmapBounds, heatmapDrawnKeys, sharedHeatmapBounds } from '../heatmap-keys.ts';
 import type { AnalyzerSettingsProps, SingleAnalyzerPaneParts, SingleBodyProps } from '../pane-parts.tsx';
-import { heatmapDefinition, sharedMaxCount, type HeatmapExtracted } from './extract.ts';
+import { heatmapDefinition, sharedMaxCount, sharedMaxFlowWeight, type HeatmapExtracted } from './extract.ts';
+import { HeatmapFlowLegend } from './flow-legend.tsx';
 import { DEFAULT_HEATMAP_OPTIONS, heatmapOptions, type HeatmapOptions } from './options.ts';
 import { useHeatmapFields } from './option-fields.tsx';
 import { HEATMAP_FIGURE_GROUPS } from './settings-sections.ts';
@@ -81,6 +82,11 @@ function figureProps(layout: Layout, geometry: Geometry, drawStyle: HeatmapDrawS
   };
 }
 
+/** 線が無い時は属性ごと渡さない（`exactOptionalPropertyTypes`）。 */
+function flowProp(flow: HeatmapDiagramFlow | undefined): { readonly flow?: HeatmapDiagramFlow } {
+  return flow === undefined ? {} : { flow };
+}
+
 export function HeatmapBody({
   layout,
   geometry,
@@ -92,6 +98,14 @@ export function HeatmapBody({
   onOptionsChange,
 }: SingleBodyProps<HeatmapExtracted, HeatmapOptions>) {
   const figureSettings = useFigureSettings('打鍵頻度');
+  const flowSource = options.flowLineSource;
+  // 線の太さの尺度は、色の尺度と同じく、一番上の図と計算できた格子の図の全部で共通にする
+  const flowMaxWeight = sharedMaxFlowWeight([
+    extracted.flowLines[flowSource].maxWeight,
+    ...(setTargets ?? []).flatMap((figure) => (figure.state.status === 'ready' ? [figure.state.extracted.flowLines[flowSource].maxWeight] : [])),
+  ]);
+  const flowOf = (figureExtracted: HeatmapExtracted): HeatmapDiagramFlow | undefined =>
+    options.flowLines ? { vectors: figureExtracted.flowLines[flowSource].vectors, maxWeight: flowMaxWeight } : undefined;
   const maxCount = sharedMaxCount([
     extracted.maxCount,
     ...(setTargets ?? []).flatMap((figure) => (figure.state.status === 'ready' ? [figure.state.extracted.maxCount] : [])),
@@ -110,6 +124,8 @@ export function HeatmapBody({
           {...figureProps(layout, geometry, options.drawStyle)}
           diagramId="integrated"
           captionAction={figureSettings.toggle}
+          {...(options.flowLines ? { captionNote: <HeatmapFlowLegend source={flowSource} /> } : {})}
+          {...flowProp(flowOf(extracted))}
           detailOf={(keyId) => extracted.keyDetails.merged.get(keyId)}
           colorCounts={extracted.keyCounts}
           maxCount={maxCount}
@@ -130,6 +146,7 @@ export function HeatmapBody({
                 <HeatmapDiagram
                   {...figureProps(figure.state.layout, figure.state.geometry, options.drawStyle)}
                   title={figure.label}
+                  {...flowProp(flowOf(figure.state.extracted))}
                   diagramId={`set-${figure.key}`}
                   detailOf={(keyId) => (figure.state.status === 'ready' ? figure.state.extracted.keyDetails.merged.get(keyId) : undefined)}
                   colorCounts={figure.state.extracted.keyCounts}

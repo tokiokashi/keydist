@@ -7,7 +7,10 @@ import { buildGeometry } from '#input/shapes/geometry.ts';
 import { computeKeyDetails } from '#interpretation/key-detail.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
-import { computeHeatmapExtraction, sharedMaxCount } from './extract.ts';
+import { nonStationaryVectors } from '../keyboard-flow-lines.ts';
+import { computeBigramFlowExtraction } from '../bigram-flow/extract.ts';
+import { DEFAULT_BIGRAM_FLOW_OPTIONS } from '../bigram-flow/options.ts';
+import { computeHeatmapExtraction, sharedMaxCount, sharedMaxFlowWeight } from './extract.ts';
 
 /**
  * ヒートマップの抽出（キーごとの押下数）。期待値は、打つ文字から手で数えられる小さいテキストで固定する。
@@ -18,13 +21,18 @@ const geometry = buildGeometry('row-staggered');
 /** 単打の層だけを持つ配列（Shiftの層を作らない）。 */
 const SINGLE_LAYER_LAYOUT = fromRows('single-layer', '単層', ['1234567890-=', 'qwertyuiop[]', "asdfghjkl;'", 'zxcvbnm,./']);
 
-function extractFor(layoutId: string, text: string, rule?: string) {
+function traceFor(layoutId: string, text: string, rule?: string) {
   const base: Layout | undefined = layoutId === SINGLE_LAYER_LAYOUT.id ? SINGLE_LAYER_LAYOUT : LAYOUT_BY_ID.get(layoutId);
   assert.ok(base, layoutId);
   const layout = rule ? withRomaji(base, tableForRule(rule)) : base;
   const trace = generateTrace(text, layout, geometry, DEFAULT_TRACE_POLICY);
   assert.equal(trace.skipped, 0);
-  return computeHeatmapExtraction({ metrics: computeMetrics(trace, geometry), keyDetails: computeKeyDetails(trace, geometry) });
+  return trace;
+}
+
+function extractFor(layoutId: string, text: string, rule?: string) {
+  const trace = traceFor(layoutId, text, rule);
+  return computeHeatmapExtraction({ metrics: computeMetrics(trace, geometry), keyDetails: computeKeyDetails(trace, geometry), trace });
 }
 
 const entries = (map: ReadonlyMap<string, number>) => [...map].sort(([a], [b]) => a.localeCompare(b));
@@ -101,4 +109,49 @@ test('色の尺度の最大値: 並べた図の全部の最大値を取り、全
   assert.equal(sharedMaxCount([4]), 4);
   assert.equal(sharedMaxCount([0, 0]), 1);
   assert.equal(sharedMaxCount([]), 1);
+});
+
+test('色の尺度と同じく、線の太さの尺度の最大値は並べた図の全部の最大値を取り、線が無ければ1にする', () => {
+  assert.equal(sharedMaxFlowWeight([3, 10, 7]), 10);
+  assert.equal(sharedMaxFlowWeight([1, 1]), 1);
+  assert.equal(sharedMaxFlowWeight([]), 1);
+});
+
+test('線の組は、指を絞らない時のBigram FlowのKeyboard Flowと、組の個数も各組の回数も一致する', () => {
+  const cases: Array<[string, string, string | undefined]> = [
+    ['qwerty', 'the quick brown fox jumps over the lazy dog aaa', undefined],
+    ['qwerty', 'しゃかんじょうほうがっこう', 'kunrei'],
+    ['shingeta', 'がきゃ。ぱかかか、んー', undefined],
+    ['kawasemi-plus', 'あいあいうえお', undefined],
+  ];
+  for (const [layoutId, text, rule] of cases) {
+    const trace = traceFor(layoutId, text, rule);
+    const heatmap = computeHeatmapExtraction({ metrics: computeMetrics(trace, geometry), keyDetails: computeKeyDetails(trace, geometry), trace });
+    for (const source of ['actual', 'within-hand'] as const) {
+      const flow = computeBigramFlowExtraction(trace, { ...DEFAULT_BIGRAM_FLOW_OPTIONS, source });
+      const expected = nonStationaryVectors(flow.keyboardFlow.vectors);
+      const actual = heatmap.flowLines[source];
+      assert.ok(actual.vectors.length > 0, `${layoutId}/${source}: 組が1つも無い入力では検査にならない`);
+      assert.equal(actual.vectors.length, expected.length, `${layoutId}/${source}: 組の個数`);
+      assert.deepEqual(
+        actual.vectors.map((vector) => [vector.id, vector.weight]),
+        expected.map((vector) => [vector.id, vector.weight]),
+        `${layoutId}/${source}: 各組の回数`,
+      );
+      assert.equal(actual.maxWeight, flow.keyboardFlow.maxWeight, `${layoutId}/${source}: 太さの最大値`);
+    }
+  }
+});
+
+test('線の組から、連打と親指のキーを含む組は除かれる', () => {
+  // "aaa" は同じキーへ戻る連打だけ。空白（親指）を含む組は、親指のキーを含むので描かない
+  const trace = traceFor('qwerty', 'aaa a', undefined);
+  const heatmap = computeHeatmapExtraction({ metrics: computeMetrics(trace, geometry), keyDetails: computeKeyDetails(trace, geometry), trace });
+  for (const source of ['actual', 'within-hand'] as const) {
+    for (const vector of heatmap.flowLines[source].vectors) {
+      assert.ok(vector.distance >= 1e-6, 'repeat');
+      assert.ok(!vector.fromFinger.endsWith('T') && !vector.toFinger.endsWith('T'), 'thumb');
+    }
+  }
+  assert.equal(heatmap.flowLines.actual.vectors.length, 0);
 });
