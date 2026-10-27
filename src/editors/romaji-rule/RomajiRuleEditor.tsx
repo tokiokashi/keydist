@@ -8,7 +8,7 @@ import { useHistoryShortcuts } from '#ui/primitives/use-history-shortcuts.ts';
 /** 新しく作る規則の名前。 */
 const NEW_RULE_NAME = '新しいローマ字の綴り';
 
-const BASE_IDS: readonly BuiltinRomajiRuleId[] = ['kunrei', 'oonishi', 'tomisuke', 'azik', 'jlod', 'qwerty'];
+const BASE_IDS: readonly BuiltinRomajiRuleId[] = ['kunrei', 'oonishi', 'tomisuke', 'azik', 'jlod', 'gact10', 'qwerty'];
 
 export interface RomajiRuleEditorProps {
   /** 自作のローマ字規則。 */
@@ -238,7 +238,7 @@ export function RomajiRuleEditor({ rules, ready, canUndo, canRedo, onUndo, onRed
                       value={rule.base}
                       onChange={(event) => {
                         const base = event.currentTarget.value as BuiltinRomajiRuleId;
-                        // AZIKとJLODは促音を1打で持つので、子音を重ねる見出しは足さない
+                        // AZIK・JLOD・gACT10は促音を1打で持つので、子音を重ねる見出しは足さない
                         update({ base, generateSokuon: hasSingleStrokeSokuon(base) ? false : rule.generateSokuon });
                       }}
                     >

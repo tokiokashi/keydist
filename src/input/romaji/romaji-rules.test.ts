@@ -101,6 +101,25 @@ test('JLODを基底にしたルールは差分で綴りを差し替えられる'
   assert.equal(table.get('かん'), 'c;');
 });
 
+test('gACT10を基底にしたルールでも促音自動生成を強制的に無効にする', () => {
+  const table = buildRomajiTable({
+    id: 'gact10-custom',
+    name: 'gACT10派生',
+    base: 'gact10',
+    overrides: {},
+    generateSokuon: true,
+  });
+  assert.equal(table.get('っ'), 'r');
+  assert.equal(table.has('っか'), false);
+  assert.equal(kanaToRomaji('っか', table), 'ria');
+});
+
+test('gACT10を基底にしたルールは差分で綴りを差し替えられる', () => {
+  const table = buildRomajiTable({ id: 'gact10-custom', name: 'gACT10派生', base: 'gact10', overrides: { か: 'ka' }, generateSokuon: false });
+  assert.equal(table.get('か'), 'ka');
+  assert.equal(table.get('かん'), 'iz');
+});
+
 test('既定のローマ字割り当ては組み込み配列の入力列と一致する', () => {
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
   assert.equal([...text].length, 1676);

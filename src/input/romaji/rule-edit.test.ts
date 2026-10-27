@@ -15,13 +15,15 @@ import type { UserRomajiRule } from './rules.ts';
 
 const RULE: UserRomajiRule = { id: 'romaji-a', name: 'A', base: 'kunrei', overrides: {}, generateSokuon: true };
 
-test('新規作成は差分の無い規則を足す。AZIKとJLODは促音の子音重ねを持たない', () => {
+test('新規作成は差分の無い規則を足す。AZIK・JLOD・gACT10は促音の子音重ねを持たない', () => {
   const [kunrei] = createUserRomajiRule([], () => 'romaji-1', 'N', 'kunrei');
   assert.deepEqual(kunrei, { id: 'romaji-1', name: 'N', base: 'kunrei', overrides: {}, generateSokuon: true });
   const [azik] = createUserRomajiRule([], () => 'romaji-2', 'N', 'azik');
   assert.equal(azik!.generateSokuon, false);
   const [jlod] = createUserRomajiRule([], () => 'romaji-3', 'J', 'jlod');
   assert.equal(jlod!.generateSokuon, false);
+  const [gact10] = createUserRomajiRule([], () => 'romaji-4', 'G', 'gact10');
+  assert.equal(gact10!.generateSokuon, false);
 });
 
 test('複製は差分を共有しない。変化が無い操作は同じ配列参照を返す', () => {
