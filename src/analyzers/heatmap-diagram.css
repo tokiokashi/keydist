@@ -112,3 +112,38 @@
   overflow: hidden;
   clip: rect(0 0 0 0);
 }
+
+/* 2打鍵の線を表示している間の凡例。線の組の種類と、線の色の見本 */
+.heatmap-flow-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.75rem;
+  margin: 0 0 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+}
+
+.heatmap-flow-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.heatmap-flow-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+}
+
+.heatmap-flow-dot-left {
+  background: var(--viz-flow-left);
+}
+
+.heatmap-flow-dot-right {
+  background: var(--viz-flow-right);
+}
+
+.heatmap-flow-dot-cross {
+  background: var(--viz-flow-cross);
+}

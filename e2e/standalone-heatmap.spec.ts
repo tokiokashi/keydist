@@ -344,3 +344,52 @@ test('描き方を熱の塊にすると、一番上の図と格子の図が一�
   await page.reload();
   await expect(blobLayers).toHaveCount(2, { timeout: 10_000 });
 });
+
+test('2打鍵の線を表示すると、一番上の図と格子の図に線が描かれ、凡例に線の組が出る。キーごとの値は変わらず、再読み込みで戻る', async ({ page }) => {
+  await seedSelections(page, 'qwerty', ['qwerty', 'dvorak']);
+  await page.goto('/analyzer/heatmap');
+  await expect(cells(page).filter({ has: page.locator('[data-heatmap-diagram]') })).toHaveCount(1, { timeout: 10_000 });
+  const edges = feature(page).locator('[data-heatmap-flow-edge]');
+  const legend = feature(page).locator('[data-heatmap-flow-legend]');
+  await expect(edges).toHaveCount(0);
+  await expect(legend).toHaveCount(0);
+  const before = await keyReadings(diagrams(page).first());
+
+  await page.getByRole('button', { name: '打鍵頻度の表示', exact: true }).click();
+  const figureSettings = page.locator('[data-figure-settings-window="true"]');
+  await figureSettings.getByLabel('2打鍵の線を表示').check();
+  await expect(diagrams(page).first().locator('[data-heatmap-flow-edge]').first()).toBeAttached();
+  await expect(cells(page).first().locator('[data-heatmap-flow-edge]').first()).toBeAttached();
+  await expect(legend).toHaveCount(1);
+  await expect(legend).toContainText('線: 続けて打った2打鍵');
+  expect(await keyReadings(diagrams(page).first())).toEqual(before);
+
+  await figureSettings.getByRole('button', { name: '同じ手の中で続く2打鍵', exact: true }).click();
+  await expect(legend).toContainText('線: 同じ手の中で続く2打鍵');
+  await expect(legend).toHaveAttribute('data-heatmap-flow-legend', 'within-hand');
+  await expect(diagrams(page).first().locator('[data-heatmap-flow-edge]:not([data-flow-hand="cross"])').first()).toBeAttached();
+  await expect(diagrams(page).first().locator('[data-heatmap-flow-edge][data-flow-hand="cross"]')).toHaveCount(0);
+
+  await page.reload();
+  await expect(legend).toHaveAttribute('data-heatmap-flow-legend', 'within-hand', { timeout: 10_000 });
+  await expect(diagrams(page).first().locator('[data-heatmap-flow-edge]').first()).toBeAttached();
+});
+
+test('描き方を「なし」にすると、塗りと熱の塊は描かれず、キーの枠と文字と線だけが残る', async ({ page }) => {
+  await seedSelections(page, 'qwerty', []);
+  await page.goto('/analyzer/heatmap');
+  await expect(feature(page)).toBeVisible({ timeout: 10_000 });
+  await page.getByRole('button', { name: '打鍵頻度の表示', exact: true }).click();
+  const figureSettings = page.locator('[data-figure-settings-window="true"]');
+  await figureSettings.getByLabel('2打鍵の線を表示').check();
+  await figureSettings.getByRole('button', { name: 'なし', exact: true }).click();
+  const figure = diagrams(page).first();
+  await expect(feature(page).locator('.heatmap-blob-layer')).toHaveCount(0);
+  const fills = await figure
+    .locator('[data-heatmap-key]:not([data-heatmap-key-unused]) rect')
+    .evaluateAll((rects) => rects.map((rect) => rect.getAttribute('fill')));
+  expect(fills.length).toBeGreaterThan(0);
+  expect(new Set(fills)).toEqual(new Set(['transparent']));
+  await expect(figure.locator('[data-heatmap-key-label]').first()).toBeAttached();
+  await expect(figure.locator('[data-heatmap-flow-edge]').first()).toBeAttached();
+});

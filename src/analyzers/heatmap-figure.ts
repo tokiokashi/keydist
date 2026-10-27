@@ -6,6 +6,10 @@ import { SINGLE_LAYER_ID, type Layout } from '#input/layouts/types.ts';
  * 純粋な計算。Analyzerどうしは互いをimportしないので、2つが共有するものをここに置く。
  */
 
+/** 図の描き方。キーごとの塗り・押下の集まりをぼかした熱の塊・何も塗らない（キーの枠と文字だけ）。 */
+export const HEATMAP_DRAW_STYLES = ['fill', 'blob', 'none'] as const;
+export type HeatmapDrawStyle = (typeof HEATMAP_DRAW_STYLES)[number];
+
 /** 色の尺度。仕様 §11.10の線形・対数。 */
 export type HeatmapColorScale = 'linear' | 'log';
 

@@ -18,9 +18,9 @@ import {
   meanDisplacement,
   relativeVectors,
   repeatCountsByKey,
-} from './bigram-vectors.ts';
+} from '../bigram-vectors.ts';
 import { findOptionsKeyDisciplineViolations, findViewOptionsExtractionViolations } from '#analyzers/options.ts';
-import { nonStationaryVectors } from './options.ts';
+import { nonStationaryVectors } from '../keyboard-flow-lines.ts';
 import { bigramFlowDefinition, computeBigramFlowExtraction, type BigramFlowExtracted, type BigramFlowFigures } from './extract.ts';
 import {
   ALTERNATE_BIGRAM_FLOW_OPTIONS,

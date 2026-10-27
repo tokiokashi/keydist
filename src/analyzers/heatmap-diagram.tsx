@@ -1,4 +1,4 @@
-import type { KeyboardEvent, MouseEvent, ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode, type RefObject } from 'react';
 import { THUMB_ROW, type Geometry } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { PhysicalKeyboardStandard } from '#input/shapes/geometry.ts';
@@ -6,7 +6,10 @@ import type { KeyDetail } from '#interpretation/key-detail.ts';
 import { keyDetailTooltip, keyName } from './key-detail-view.ts';
 import type { KeySelectionProps } from './pane-parts.tsx';
 import './heatmap-diagram.css';
-import { heatIntensity, type HeatmapColorScale } from './heatmap-figure.ts';
+import { heatIntensity, type HeatmapColorScale, type HeatmapDrawStyle } from './heatmap-figure.ts';
+import { heatmapFlowSegments, heatmapFlowStrokeWidth } from './heatmap-flow.ts';
+import type { BigramVector } from './bigram-vectors.ts';
+import { edgeKind, FLOW_COLORS, FLOW_GRADIENT_END_OPACITY, FLOW_GRADIENT_START_OPACITY, type FlowPoint } from './keyboard-flow-lines.ts';
 import { HEAT_BLOB_LEVELS, HEAT_BLOB_RADIUS_KEYS, heatBlobIntensityAt, heatBlobRuns, type HeatBlobSource } from './heatmap-blob.ts';
 import { HEATMAP_KEY_SIZE, heatmapBounds, heatmapDrawnKeys, heatmapViewBox, type HeatmapBounds } from './heatmap-keys.ts';
 
@@ -22,8 +25,14 @@ export interface HeatmapShiftStyle {
   readonly colorSlot: number;
 }
 
-/** 図の描き方。キーごとの塗りか、押下の集まりをぼかした熱の塊（キーの枠と文字は同じく描く）。 */
-export type HeatmapDrawStyle = 'fill' | 'blob';
+/** 図に重ねる2打鍵の線。`maxWeight` は太さの尺度の最大値（組数）で、並べた図の全部で共通にする。 */
+export interface HeatmapDiagramFlow {
+  readonly vectors: readonly BigramVector[];
+  readonly maxWeight: number;
+}
+
+/** 線の描く時の不透明度。重なった線とキーの枠が読める程度に透かす。 */
+const FLOW_LINE_OPACITY = 0.72;
 
 /** 熱の塊を矩形の升で描く時の升の大きさと、ぼかしの大きさ（描画の座標系）。 */
 const BLOB_CELL = 4;
@@ -60,11 +69,55 @@ export interface HeatmapDiagramProps {
   readonly bounds?: HeatmapBounds;
   /** 描き方。省くとキーごとの塗り */
   readonly drawStyle?: HeatmapDrawStyle;
+  /** 重ねて描く2打鍵の線。省くと描かない */
+  readonly flow?: HeatmapDiagramFlow;
+  /** 見出し行の下に置く注記（線の凡例など） */
+  readonly captionNote?: ReactNode;
   /** 見出しの直後に置く操作（図の表示の調整のボタンなど） */
   readonly captionAction?: ReactNode;
 }
 
 const KEY_SIZE = HEATMAP_KEY_SIZE;
+
+/** キーの矩形の塗り。熱の塊と「なし」は、キーの矩形を塗らない（熱の塊は下の層が塗る）。 */
+function keyFill(style: HeatmapDrawStyle, intensity: number): string {
+  switch (style) {
+    case 'fill':
+      return `color-mix(in oklab, var(--heat-1) ${(intensity * 100).toFixed(1)}%, var(--heat-0))`;
+    case 'blob':
+    case 'none':
+      return 'transparent';
+  }
+}
+
+/** 文字を濃い塗りの上の色（`--on-heat`）にするか。「なし」は塗りが無いので常に通常の文字色。`intensity` は文字の位置の熱の強さ。 */
+function labelIsOnHeat(style: HeatmapDrawStyle, intensity: number): boolean {
+  switch (style) {
+    case 'fill':
+    case 'blob':
+      return intensity > 0.5;
+    case 'none':
+      return false;
+  }
+}
+
+/** SVGの画面上の幅 / 描画の座標系の幅。縮んだ図でも線を読める太さに保つのに使う。線を描かない間は測らない。 */
+function useZoom(ref: RefObject<SVGSVGElement | null>, viewWidth: number, enabled: boolean): number {
+  const [zoom, setZoom] = useState(1);
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!enabled || element === null || typeof ResizeObserver === 'undefined') return;
+    const measure = () => {
+      const screenWidth = element.getBoundingClientRect().width;
+      if (screenWidth > 0 && viewWidth > 0) setZoom(screenWidth / viewWidth);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [ref, viewWidth, enabled]);
+  return zoom;
+}
 
 export function HeatmapDiagram({
   layout,
@@ -85,7 +138,9 @@ export function HeatmapDiagram({
   countOnlyTooltip = false,
   bounds,
   drawStyle = 'fill',
+  flow,
   captionAction,
+  captionNote,
 }: HeatmapDiagramProps) {
   const drawnKeys = heatmapDrawnKeys(layout, geometry);
   const keys = drawnKeys.map(({ key, left, width: span, unused }) => {
@@ -118,6 +173,13 @@ export function HeatmapDiagram({
   const width = view.width;
   const height = view.height;
   const blob = drawStyle === 'blob';
+  const centers = new Map<string, FlowPoint>(
+    keys.flatMap((item) => (item.unused ? [] : [[item.key.id, { x: item.x + item.width / 2, y: item.y + KEY_SIZE / 2 }] as const])),
+  );
+  const segments = flow === undefined ? [] : heatmapFlowSegments(flow.vectors, centers);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const zoom = useZoom(svgRef, width, flow !== undefined);
+  const gradientId = (index: number) => `heatmap-flow-${diagramId}-${index}`;
   const blobSources: HeatBlobSource[] = blob
     ? keys.flatMap((item) =>
         item.unused
@@ -147,7 +209,13 @@ export function HeatmapDiagram({
         <span className="heatmap-caption-text">{caption}</span>
         {captionAction}
       </figcaption>
-      <svg viewBox={`${viewX} ${viewY} ${width} ${height}`} role={keySelection === undefined ? 'img' : 'group'} aria-label={`${caption}${ariaSuffix}`}>
+      {captionNote}
+      <svg
+        ref={svgRef}
+        viewBox={`${viewX} ${viewY} ${width} ${height}`}
+        role={keySelection === undefined ? 'img' : 'group'}
+        aria-label={`${caption}${ariaSuffix}`}
+      >
         {blob ? (
           <>
             <defs>
@@ -233,7 +301,7 @@ export function HeatmapDiagram({
                 width={item.width - 2}
                 height={KEY_SIZE - 2}
                 rx={5}
-                fill={blob ? 'transparent' : `color-mix(in oklab, var(--heat-1) ${(item.intensity * 100).toFixed(1)}%, var(--heat-0))`}
+                fill={keyFill(drawStyle, item.intensity)}
                 stroke={item.shift ? `var(--series-${item.shift.colorSlot})` : 'var(--border-strong)'}
                 strokeWidth={item.shift ? 3 : 1}
               />
@@ -251,23 +319,70 @@ export function HeatmapDiagram({
                   pointerEvents="none"
                 />
               ) : null}
+            </g>
+          );
+        })}
+        {segments.length === 0 ? null : (
+          <>
+            <defs>
+              {segments.map((segment, index) => {
+                const color = FLOW_COLORS[edgeKind(segment.vector, false)];
+                return (
+                  <linearGradient
+                    id={gradientId(index)}
+                    key={segment.vector.id}
+                    gradientUnits="userSpaceOnUse"
+                    x1={segment.start.x}
+                    y1={segment.start.y}
+                    x2={segment.end.x}
+                    y2={segment.end.y}
+                  >
+                    <stop offset="0%" stopColor={color} stopOpacity={FLOW_GRADIENT_START_OPACITY} />
+                    <stop offset="100%" stopColor={color} stopOpacity={FLOW_GRADIENT_END_OPACITY} />
+                  </linearGradient>
+                );
+              })}
+            </defs>
+            <g className="heatmap-flow-layer" pointerEvents="none" opacity={FLOW_LINE_OPACITY}>
+              {segments.map((segment, index) => (
+                <path
+                  key={segment.vector.id}
+                  data-heatmap-flow-edge=""
+                  data-flow-hand={segment.vector.hand}
+                  data-flow-weight={segment.vector.weight}
+                  d={segment.path}
+                  fill="none"
+                  stroke={`url(#${gradientId(index)})`}
+                  strokeWidth={heatmapFlowStrokeWidth(segment.vector.weight, flow?.maxWeight ?? 1, zoom)}
+                />
+              ))}
+            </g>
+          </>
+        )}
+        <g className="heatmap-label-layer" pointerEvents="none">
+          {keys.map((item) =>
+            item.unused ? null : (
               <text
+                key={item.key.id}
+                data-heatmap-key-label={item.key.id}
                 x={item.x + item.width / 2}
                 y={item.y + KEY_SIZE / 2 + 4}
                 textAnchor="middle"
                 fontSize={item.thumb ? 10 : item.label.length > 3 ? 9 : 12}
                 fill={
-                  (blob ? heatBlobIntensityAt(blobSources, item.x + item.width / 2, item.y + KEY_SIZE / 2, blobRadius) : item.intensity) > 0.5
+                  labelIsOnHeat(
+                    drawStyle,
+                    blob ? heatBlobIntensityAt(blobSources, item.x + item.width / 2, item.y + KEY_SIZE / 2, blobRadius) : item.intensity,
+                  )
                     ? 'var(--on-heat)'
                     : 'var(--text)'
                 }
-                pointerEvents="none"
               >
                 {item.label}
               </text>
-            </g>
-          );
-        })}
+            ),
+          )}
+        </g>
       </svg>
     </figure>
   );

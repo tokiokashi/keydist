@@ -6,12 +6,12 @@ import {
   AREA_PAD,
   AREA_WIDTH,
   fitKeyboardToArea,
-  flowLineWidth,
   KEY_PITCH,
   repeatLabelScale,
   TALLEST_BUILTIN_SPAN_U,
   WIDEST_BUILTIN_SPAN_U,
 } from './keyboard-flow-area.ts';
+import { flowLineWidth } from '../keyboard-flow-lines.ts';
 
 function span(kind: PresetGeometryKind) {
   const keys = buildGeometry(kind, kind.startsWith('jis') ? JIS_FINGER_ASSIGNMENT : undefined).grid.flat();

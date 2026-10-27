@@ -43,11 +43,12 @@ test('ヒートマップの項目は、affectsに合う置き場にちょうど1
 });
 
 test('項目をどこにも置かない時・違う所に置いた時・2回置いた時は検査が落ちる', () => {
-  const dropped = { window: HEATMAP_WINDOW_GROUPS, figure: [] };
+  const others = HEATMAP_FIGURE_GROUPS.filter((group) => group.id !== 'drawStyle');
+  const dropped = { window: HEATMAP_WINDOW_GROUPS, figure: others };
   assert.equal(mismatches(dropped).length, 1);
   const wrongPlace = {
     window: [{ id: 'drawStyle' as const, title: '', keys: ['drawStyle' as const] }],
-    figure: [],
+    figure: others,
   };
   assert.equal(mismatches(wrongPlace).length, 1);
   const twice = {
