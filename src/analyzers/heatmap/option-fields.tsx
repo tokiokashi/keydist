@@ -13,8 +13,18 @@ export function useHeatmapFields(options: HeatmapOptions, onOptionsChange: (next
         binding={bindOption(options, DEFAULT_HEATMAP_OPTIONS, onOptionsChange, 'drawStyle')}
         choices={[
           { value: 'fill', label: 'キーの塗り' },
-          { value: 'blob', label: '熱の塊' },
+          { value: 'blob', label: 'サーモグラフィ' },
           { value: 'none', label: 'なし' },
+        ]}
+      />
+    ),
+    palette: (
+      <SegmentedOptionField
+        label="配色"
+        binding={bindOption(options, DEFAULT_HEATMAP_OPTIONS, onOptionsChange, 'palette')}
+        choices={[
+          { value: 'single', label: '単色' },
+          { value: 'multi', label: '多色' },
         ]}
       />
     ),

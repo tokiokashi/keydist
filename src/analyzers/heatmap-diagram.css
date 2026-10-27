@@ -147,3 +147,29 @@
 .heatmap-flow-dot-cross {
   background: var(--viz-flow-cross);
 }
+
+/* 凡例を並べる枠。幅が足りなければ折り返す */
+.heatmap-legends {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 1.2rem;
+}
+
+/* 多色の色の帯。少ない側から多い側へ */
+.heatmap-palette-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+}
+
+.heatmap-palette-bar {
+  display: block;
+  width: 7rem;
+  height: 0.55rem;
+  border-radius: 0.28rem;
+  border: 1px solid var(--border-strong);
+}

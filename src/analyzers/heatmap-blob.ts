@@ -1,14 +1,65 @@
 /**
- * ヒートマップの「熱の塊」の描き方で使う、純粋な計算。
- * キーごとの色の強度（0〜1）を中心にした塊を重ね、重なった所は足さずに濃い方を取る。
- * 足すと、押下数の少ないキーが集まった所が押下数の多いキー1つより濃くなり、尺度の上限（強度1）も超えるため。
+ * ヒートマップの「サーモグラフィ」の描き方で使う、純粋な計算。
+ * キーごとの強度（0〜1）を中心にした塊を重ね、重なった所は 1 − Π(1 − 強度) で積み上げる。
+ * 積み上げるのは、隣り合うキーの押下が重なった所に集まって見えるようにするため（手の押下が面としてどこに集まるかを読む図）。
+ * 濃い方だけを取ると、キーごとの塗りをぼかしただけの図になり、集まりが見えない。
+ * 強度が1を超えないので、色の尺度の上限（強度1）は保たれる。
+ * 押下数の少ないキーが集まった所が、押下数の多いキー1つより濃くなることは受け入れる。
+ *
+ * 塊の形と重なり方は、Keyboard Layout Analyzerが使うheatmap.js 1.0に合わせる
+ * （半径 `radius` の円を `shadowBlur` でぼかした影を、source-overで重ねる）。
+ * 長さはキーの辺の長さを単位にする（heatmap.jsの `radius: 30` をキーの辺50で割った0.6、
+ * `shadowBlur: 15` は標準偏差の2倍なので標準偏差7.5を50で割った0.15）。
  */
 
-/** 塊が届く距離 [キーの辺の長さの倍]。 */
-export const HEAT_BLOB_RADIUS_KEYS = 1.6;
+/** 塊の円の半径 [キーの辺の長さの倍]。 */
+export const HEAT_BLOB_RADIUS_KEYS = 0.6;
 
-/** 強度を段に区切る数。段ごとに不透明度を変えた矩形で描き、ぼかしで滑らかにする。 */
-export const HEAT_BLOB_LEVELS = 24;
+/** 円を縁でぼかすガウスぼかしの標準偏差 [キーの辺の長さの倍]。 */
+export const HEAT_BLOB_SIGMA_KEYS = 0.15;
+
+/** 強度を段に区切る数。段ごとに色か不透明度を変えた矩形で描く。 */
+export const HEAT_BLOB_LEVELS = 32;
+
+/** 塊が届く距離 [キーの辺の長さの倍]。標準偏差の4倍まで見れば、取りこぼしは1万分の1より小さい。 */
+const REACH_KEYS = HEAT_BLOB_RADIUS_KEYS + 4 * HEAT_BLOB_SIGMA_KEYS;
+
+const PROFILE_STEP = 0.01;
+const INTEGRATION_STEP = 0.02;
+
+/**
+ * 1つの塊の断面。中心からの距離 `i * PROFILE_STEP`（キーの辺の倍）での、円（強度1）にガウスぼかしを掛けた値。
+ * 円の上に細かい升を敷き、各升からガウス分布（標準偏差 `HEAT_BLOB_SIGMA_KEYS`）の密度を足し合わせて求める。
+ */
+const PROFILE: readonly number[] = (() => {
+  const sigma = HEAT_BLOB_SIGMA_KEYS;
+  const cells: { x: number; y: number }[] = [];
+  const half = Math.ceil(HEAT_BLOB_RADIUS_KEYS / INTEGRATION_STEP);
+  for (let i = -half; i <= half; i++) {
+    for (let j = -half; j <= half; j++) {
+      const x = i * INTEGRATION_STEP;
+      const y = j * INTEGRATION_STEP;
+      if (Math.hypot(x, y) <= HEAT_BLOB_RADIUS_KEYS) cells.push({ x, y });
+    }
+  }
+  const norm = (INTEGRATION_STEP * INTEGRATION_STEP) / (2 * Math.PI * sigma * sigma);
+  const length = Math.ceil(REACH_KEYS / PROFILE_STEP) + 1;
+  return Array.from({ length }, (_, index) => {
+    const d = index * PROFILE_STEP;
+    let sum = 0;
+    for (const cell of cells) sum += Math.exp(-((cell.x - d) ** 2 + cell.y ** 2) / (2 * sigma * sigma));
+    return Math.min(1, sum * norm);
+  });
+})();
+
+/** 中心から `distanceKeys`（キーの辺の倍）離れた所での、強度1の塊の値（0〜1）。届かない距離では0。 */
+export function heatBlobProfile(distanceKeys: number): number {
+  const position = distanceKeys / PROFILE_STEP;
+  const index = Math.floor(position);
+  if (index < 0 || index >= PROFILE.length - 1) return 0;
+  const fraction = position - index;
+  return PROFILE[index]! * (1 - fraction) + PROFILE[index + 1]! * fraction;
+}
 
 /** 塊の中心と強度。 */
 export interface HeatBlobSource {
@@ -18,22 +69,18 @@ export interface HeatBlobSource {
   readonly intensity: number;
 }
 
-/** 塊の形。中心で1、`radius` で0になり、端の傾きが0に近いなめらかな山。 */
-function falloff(distance: number, radius: number): number {
-  if (distance >= radius) return 0;
-  const t = 1 - (distance / radius) ** 2;
-  return t * t;
-}
-
-/** 点 `(x, y)` の強度。塊ごとの強度のうち最大。 */
-export function heatBlobIntensityAt(sources: readonly HeatBlobSource[], x: number, y: number, radius: number): number {
-  let peak = 0;
+/** 点 `(x, y)` の強度。塊ごとの強度を 1 − Π(1 − 塊の値) で積み上げる。`keySize` はキーの辺の長さ（`x`・`y` と同じ座標系）。 */
+export function heatBlobIntensityAt(sources: readonly HeatBlobSource[], x: number, y: number, keySize: number): number {
+  let rest = 1;
+  const reach = REACH_KEYS * keySize;
   for (const source of sources) {
     if (source.intensity <= 0) continue;
-    const value = source.intensity * falloff(Math.hypot(x - source.x, y - source.y), radius);
-    if (value > peak) peak = value;
+    const dx = x - source.x;
+    const dy = y - source.y;
+    if (Math.abs(dx) >= reach || Math.abs(dy) >= reach) continue;
+    rest *= 1 - source.intensity * heatBlobProfile(Math.hypot(dx, dy) / keySize);
   }
-  return peak;
+  return 1 - rest;
 }
 
 /** 強度を段（0〜`HEAT_BLOB_LEVELS`）に丸める。 */
@@ -59,7 +106,7 @@ export interface HeatBlobArea {
 }
 
 /** `area` を `cell` 四方の升に分け、強度が0でない升を、同じ段が横に続く範囲ごとの矩形にして返す。 */
-export function heatBlobRuns(sources: readonly HeatBlobSource[], area: HeatBlobArea, cell: number, radius: number): HeatBlobRun[] {
+export function heatBlobRuns(sources: readonly HeatBlobSource[], area: HeatBlobArea, cell: number, keySize: number): HeatBlobRun[] {
   const runs: HeatBlobRun[] = [];
   if (!sources.some((source) => source.intensity > 0)) return runs;
   for (let y = area.minY; y < area.maxY; y += cell) {
@@ -77,7 +124,7 @@ export function heatBlobRuns(sources: readonly HeatBlobSource[], area: HeatBlobA
     };
     for (let x = area.minX; x < area.maxX; x += cell) {
       const width = Math.min(cell, area.maxX - x);
-      const level = heatBlobLevel(heatBlobIntensityAt(sources, x + width / 2, y + height / 2, radius));
+      const level = heatBlobLevel(heatBlobIntensityAt(sources, x + width / 2, y + height / 2, keySize));
       if (current === undefined || current.level !== level) {
         flush(x);
         current = { x, level };
