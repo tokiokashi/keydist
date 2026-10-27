@@ -142,3 +142,13 @@ test('後置triggerの集合が違う面は、同じlayerへ畳めない', () =>
   };
   assert.throws(() => fromFaces('x', 'x', [base, a, b]), /後置trigger/);
 });
+
+test('後置triggerが違うcompositionの面は、前置triggerが同じでも2枚置け、後置も同じなら例外になる', () => {
+  const composition = (suffix: string, key: string, output: string): Face => ({
+    ...threeStroke(suffix, { [key]: output }),
+    inputRole: 'composition',
+    compositionAggregation: 'layer',
+  });
+  assert.doesNotThrow(() => fromFaces('c', 'c', [base, composition('e', 'k', 'ひゃ'), composition('s', 'k', 'ひょ')]));
+  assert.throws(() => fromFaces('c', 'c', [base, composition('e', 'k', 'ひゃ'), composition('e', 'l', 'みゃ')]), /2枚以上/);
+});
