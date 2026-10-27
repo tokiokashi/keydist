@@ -192,7 +192,7 @@ export const LAYOUTS: Layout[] = ALPHA.map(withoutRomajiOnlyCombos);
  * 最終形はどちらも打鍵ステップ列なので、同じテキストで比較できる。
  */
 export const LAYOUTS_JA: Layout[] = [
-  // とみすけ配列は作者が勧める綴り（シャ行 sh）で打つ。ほかの配列は訓令式
+  // とみすけ配列は作者が勧める綴り（シャ行sh）で打つ。ほかの配列は訓令式
   ...ALPHA.filter((l) => l.id.startsWith('oonishi') === false).map((l) => withRomaji(l, l.id === 'tomisuke' ? ROMAJI_TOMISUKE : ROMAJI)),
   // 大西配列は公式が前提とする綴り（シャ行sh / じji / じゃ行j）で打つ
   withRomaji(ALPHA_BY_ID.get('oonishi')!, ROMAJI_OONISHI),
