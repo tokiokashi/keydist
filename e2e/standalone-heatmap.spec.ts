@@ -329,13 +329,15 @@ test('描き方を熱の塊にすると、一番上の図と格子の図が一�
   await expect(blobLayers).toHaveCount(0);
   const before = await keyReadings(diagrams(page).first());
 
-  await page.getByRole('button', { name: '打鍵頻度の図の表示', exact: true }).click();
+  await page.getByRole('button', { name: '打鍵頻度の表示', exact: true }).click();
   const figureSettings = page.locator('[data-figure-settings-window="true"]');
   await expect(figureSettings.getByRole('button', { name: 'キーの塗り', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await figureSettings.getByRole('button', { name: '熱の塊', exact: true }).click();
   await expect(blobLayers).toHaveCount(2);
   expect(await keyReadings(diagrams(page).first())).toEqual(before);
-  // キーの選択は今と同じく動く
+  // キーの選択は今と同じく動く（小窓が図に重なるので閉じてから押す）
+  await page.keyboard.press('Escape');
+  await expect(figureSettings).toHaveCount(0);
   await diagrams(page).first().locator('[data-heatmap-key="a"]').click();
   await expect(diagrams(page).first().locator('[data-heatmap-key="a"]')).toHaveAttribute('data-key-selected', 'true');
 

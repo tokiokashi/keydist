@@ -1,4 +1,4 @@
-import type { KeyboardEvent, MouseEvent } from 'react';
+import type { KeyboardEvent, MouseEvent, ReactNode } from 'react';
 import { THUMB_ROW, type Geometry } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { PhysicalKeyboardStandard } from '#input/shapes/geometry.ts';
@@ -60,6 +60,8 @@ export interface HeatmapDiagramProps {
   readonly bounds?: HeatmapBounds;
   /** 描き方。省くとキーごとの塗り */
   readonly drawStyle?: HeatmapDrawStyle;
+  /** 見出しの直後に置く操作（図の表示の調整のボタンなど） */
+  readonly captionAction?: ReactNode;
 }
 
 const KEY_SIZE = HEATMAP_KEY_SIZE;
@@ -83,6 +85,7 @@ export function HeatmapDiagram({
   countOnlyTooltip = false,
   bounds,
   drawStyle = 'fill',
+  captionAction,
 }: HeatmapDiagramProps) {
   const drawnKeys = heatmapDrawnKeys(layout, geometry);
   const keys = drawnKeys.map(({ key, left, width: span, unused }) => {
@@ -140,21 +143,19 @@ export function HeatmapDiagram({
       style={fill ? { width: '100%', maxWidth: width } : { width, maxWidth: '100%' }}
       hidden={hidden}
     >
-      <figcaption>{caption}</figcaption>
+      <figcaption>
+        <span className="heatmap-caption-text">{caption}</span>
+        {captionAction}
+      </figcaption>
       <svg viewBox={`${viewX} ${viewY} ${width} ${height}`} role={keySelection === undefined ? 'img' : 'group'} aria-label={`${caption}${ariaSuffix}`}>
         {blob ? (
           <>
             <defs>
-              <clipPath id={`${blobId}-clip`}>
-                {keys.map((item) =>
-                  item.unused ? null : <rect key={item.key.id} x={item.x + 1} y={item.y + 1} width={item.width - 2} height={KEY_SIZE - 2} rx={5} />,
-                )}
-              </clipPath>
               <filter id={`${blobId}-blur`} x="-5%" y="-5%" width="110%" height="110%">
                 <feGaussianBlur stdDeviation={BLOB_BLUR} />
               </filter>
             </defs>
-            <g className="heatmap-blob-layer" pointerEvents="none" clipPath={`url(#${blobId}-clip)`}>
+            <g className="heatmap-blob-layer" pointerEvents="none">
               {keys.map((item) =>
                 item.unused ? null : (
                   <rect key={item.key.id} x={item.x + 1} y={item.y + 1} width={item.width - 2} height={KEY_SIZE - 2} rx={5} fill="var(--heat-0)" />

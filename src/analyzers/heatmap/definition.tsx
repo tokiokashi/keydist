@@ -91,7 +91,7 @@ export function HeatmapBody({
   options,
   onOptionsChange,
 }: SingleBodyProps<HeatmapExtracted, HeatmapOptions>) {
-  const figureSettings = useFigureSettings('打鍵頻度の図');
+  const figureSettings = useFigureSettings('打鍵頻度');
   const maxCount = sharedMaxCount([
     extracted.maxCount,
     ...(setTargets ?? []).flatMap((figure) => (figure.state.status === 'ready' ? [figure.state.extracted.maxCount] : [])),
@@ -104,15 +104,12 @@ export function HeatmapBody({
   );
   return (
     <div className="heatmap-feature" data-react-feature="heatmap">
-      <div className="heatmap-figure-heading">
-        <h3 className="heatmap-figure-title">打鍵頻度の図</h3>
-        {figureSettings.toggle}
-      </div>
       {figureSettings.renderWindow(<HeatmapFigureSettings options={options} onOptionsChange={onOptionsChange} />)}
       <div className="heatmap-diagrams">
         <HeatmapDiagram
           {...figureProps(layout, geometry, options.drawStyle)}
           diagramId="integrated"
+          captionAction={figureSettings.toggle}
           detailOf={(keyId) => extracted.keyDetails.merged.get(keyId)}
           colorCounts={extracted.keyCounts}
           maxCount={maxCount}
