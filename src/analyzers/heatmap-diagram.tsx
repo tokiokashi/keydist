@@ -7,6 +7,7 @@ import { keyDetailTooltip, keyName } from './key-detail-view.ts';
 import type { KeySelectionProps } from './pane-parts.tsx';
 import './heatmap-diagram.css';
 import { heatIntensity, type HeatmapColorScale } from './heatmap-figure.ts';
+import { HEAT_BLOB_LEVELS, HEAT_BLOB_RADIUS_KEYS, heatBlobIntensityAt, heatBlobRuns, type HeatBlobSource } from './heatmap-blob.ts';
 import { HEATMAP_KEY_SIZE, heatmapBounds, heatmapDrawnKeys, heatmapViewBox, type HeatmapBounds } from './heatmap-keys.ts';
 
 /**
@@ -20,6 +21,13 @@ export interface HeatmapShiftStyle {
   readonly layerIndex: number;
   readonly colorSlot: number;
 }
+
+/** 図の描き方。キーごとの塗りか、押下の集まりをぼかした熱の塊（キーの枠と文字は同じく描く）。 */
+export type HeatmapDrawStyle = 'fill' | 'blob';
+
+/** 熱の塊を矩形の升で描く時の升の大きさと、ぼかしの大きさ（描画の座標系）。 */
+const BLOB_CELL = 4;
+const BLOB_BLUR = 3;
 
 export interface HeatmapDiagramProps {
   readonly layout: Layout;
@@ -50,6 +58,8 @@ export interface HeatmapDiagramProps {
   readonly countOnlyTooltip?: boolean;
   /** 描く範囲。並べた図で共通にする時に渡す（`sharedHeatmapBounds`）。省くと、この図が描くキーの範囲 */
   readonly bounds?: HeatmapBounds;
+  /** 描き方。省くとキーごとの塗り */
+  readonly drawStyle?: HeatmapDrawStyle;
 }
 
 const KEY_SIZE = HEATMAP_KEY_SIZE;
@@ -72,6 +82,7 @@ export function HeatmapDiagram({
   fill = false,
   countOnlyTooltip = false,
   bounds,
+  drawStyle = 'fill',
 }: HeatmapDiagramProps) {
   const drawnKeys = heatmapDrawnKeys(layout, geometry);
   const keys = drawnKeys.map(({ key, left, width: span, unused }) => {
@@ -84,7 +95,18 @@ export function HeatmapDiagram({
     const label = unused ? '' : (legends.get(key.id) ?? '');
     const intensity = unused ? 0 : heatIntensity(colorCounts.get(key.id) ?? 0, maxCount, scale);
     const shift = unused ? undefined : shiftStyles.get(key.id);
-    return { key, x, y, width, label, detail: unused ? undefined : detailOf(key.id), intensity, shift, thumb, unused };
+    return {
+      key,
+      x,
+      y,
+      width,
+      label,
+      detail: unused ? undefined : detailOf(key.id),
+      intensity,
+      shift,
+      thumb,
+      unused,
+    };
   });
 
   const view = heatmapViewBox(bounds ?? heatmapBounds(drawnKeys));
@@ -92,6 +114,23 @@ export function HeatmapDiagram({
   const viewY = view.y;
   const width = view.width;
   const height = view.height;
+  const blob = drawStyle === 'blob';
+  const blobSources: HeatBlobSource[] = blob
+    ? keys.flatMap((item) =>
+        item.unused
+          ? []
+          : [
+              {
+                x: item.x + item.width / 2,
+                y: item.y + KEY_SIZE / 2,
+                intensity: item.intensity,
+              },
+            ],
+      )
+    : [];
+  const blobRadius = HEAT_BLOB_RADIUS_KEYS * KEY_SIZE;
+  const blobRuns = blob ? heatBlobRuns(blobSources, { minX: viewX, minY: viewY, maxX: viewX + width, maxY: viewY + height }, BLOB_CELL, blobRadius) : [];
+  const blobId = `heatmap-blob-${diagramId}`;
   const caption = title === undefined ? '打鍵頻度' : `${title}・打鍵頻度`;
 
   return (
@@ -103,6 +142,40 @@ export function HeatmapDiagram({
     >
       <figcaption>{caption}</figcaption>
       <svg viewBox={`${viewX} ${viewY} ${width} ${height}`} role={keySelection === undefined ? 'img' : 'group'} aria-label={`${caption}${ariaSuffix}`}>
+        {blob ? (
+          <>
+            <defs>
+              <clipPath id={`${blobId}-clip`}>
+                {keys.map((item) =>
+                  item.unused ? null : <rect key={item.key.id} x={item.x + 1} y={item.y + 1} width={item.width - 2} height={KEY_SIZE - 2} rx={5} />,
+                )}
+              </clipPath>
+              <filter id={`${blobId}-blur`} x="-5%" y="-5%" width="110%" height="110%">
+                <feGaussianBlur stdDeviation={BLOB_BLUR} />
+              </filter>
+            </defs>
+            <g className="heatmap-blob-layer" pointerEvents="none" clipPath={`url(#${blobId}-clip)`}>
+              {keys.map((item) =>
+                item.unused ? null : (
+                  <rect key={item.key.id} x={item.x + 1} y={item.y + 1} width={item.width - 2} height={KEY_SIZE - 2} rx={5} fill="var(--heat-0)" />
+                ),
+              )}
+              <g filter={`url(#${blobId}-blur)`} data-heatmap-blob-levels={HEAT_BLOB_LEVELS}>
+                {blobRuns.map((run) => (
+                  <rect
+                    key={`${run.x},${run.y}`}
+                    x={run.x}
+                    y={run.y}
+                    width={run.width}
+                    height={run.height}
+                    fill="var(--heat-1)"
+                    fillOpacity={run.level / HEAT_BLOB_LEVELS}
+                  />
+                ))}
+              </g>
+            </g>
+          </>
+        ) : null}
         {keys.map((item) => {
           if (item.unused) {
             return (
@@ -159,7 +232,7 @@ export function HeatmapDiagram({
                 width={item.width - 2}
                 height={KEY_SIZE - 2}
                 rx={5}
-                fill={`color-mix(in oklab, var(--heat-1) ${(item.intensity * 100).toFixed(1)}%, var(--heat-0))`}
+                fill={blob ? 'transparent' : `color-mix(in oklab, var(--heat-1) ${(item.intensity * 100).toFixed(1)}%, var(--heat-0))`}
                 stroke={item.shift ? `var(--series-${item.shift.colorSlot})` : 'var(--border-strong)'}
                 strokeWidth={item.shift ? 3 : 1}
               />
@@ -182,7 +255,11 @@ export function HeatmapDiagram({
                 y={item.y + KEY_SIZE / 2 + 4}
                 textAnchor="middle"
                 fontSize={item.thumb ? 10 : item.label.length > 3 ? 9 : 12}
-                fill={item.intensity > 0.5 ? 'var(--on-heat)' : 'var(--text)'}
+                fill={
+                  (blob ? heatBlobIntensityAt(blobSources, item.x + item.width / 2, item.y + KEY_SIZE / 2, blobRadius) : item.intensity) > 0.5
+                    ? 'var(--on-heat)'
+                    : 'var(--text)'
+                }
                 pointerEvents="none"
               >
                 {item.label}

@@ -320,3 +320,25 @@ test('Workspaceのヒートマップのペインには、並べる配列を選�
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   await expect(setPicker(page)).toHaveCount(0);
 });
+
+test('描き方を熱の塊にすると、一番上の図と格子の図が一緒に変わる。キーごとの値は変わらず、再読み込みで戻る', async ({ page }) => {
+  await seedSelections(page, 'qwerty', ['qwerty', 'dvorak']);
+  await page.goto('/analyzer/heatmap');
+  await expect(cells(page).filter({ has: page.locator('[data-heatmap-diagram]') })).toHaveCount(1, { timeout: 10_000 });
+  const blobLayers = feature(page).locator('.heatmap-blob-layer');
+  await expect(blobLayers).toHaveCount(0);
+  const before = await keyReadings(diagrams(page).first());
+
+  await page.getByRole('button', { name: '打鍵頻度の図の表示', exact: true }).click();
+  const figureSettings = page.locator('[data-figure-settings-window="true"]');
+  await expect(figureSettings.getByRole('button', { name: 'キーの塗り', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await figureSettings.getByRole('button', { name: '熱の塊', exact: true }).click();
+  await expect(blobLayers).toHaveCount(2);
+  expect(await keyReadings(diagrams(page).first())).toEqual(before);
+  // キーの選択は今と同じく動く
+  await diagrams(page).first().locator('[data-heatmap-key="a"]').click();
+  await expect(diagrams(page).first().locator('[data-heatmap-key="a"]')).toHaveAttribute('data-key-selected', 'true');
+
+  await page.reload();
+  await expect(blobLayers).toHaveCount(2, { timeout: 10_000 });
+});

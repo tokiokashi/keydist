@@ -1,13 +1,18 @@
+import { Fragment } from 'react';
+import { useFigureSettings } from '#ui/primitives/figure-settings.tsx';
+import { OptionGroup } from '#ui/primitives/option-fields.tsx';
 import { keyboardStandardForGeometryId } from '#input/shapes/key-labels.ts';
 import type { Geometry } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import { isStrokeOnlyMark, TARGET_DASH_ARRAY, targetMarkPath, type TargetMark } from '#ui/theme/target-marks.ts';
-import { HeatmapDiagram, type HeatmapShiftStyle } from '../heatmap-diagram.tsx';
+import { HeatmapDiagram, type HeatmapDrawStyle, type HeatmapShiftStyle } from '../heatmap-diagram.tsx';
 import { baseLayerLegends } from '../heatmap-figure.ts';
 import { heatmapBounds, heatmapDrawnKeys, sharedHeatmapBounds } from '../heatmap-keys.ts';
 import type { AnalyzerSettingsProps, SingleAnalyzerPaneParts, SingleBodyProps } from '../pane-parts.tsx';
 import { heatmapDefinition, sharedMaxCount, type HeatmapExtracted } from './extract.ts';
 import { DEFAULT_HEATMAP_OPTIONS, heatmapOptions, type HeatmapOptions } from './options.ts';
+import { useHeatmapFields } from './option-fields.tsx';
+import { HEATMAP_FIGURE_GROUPS } from './settings-sections.ts';
 import { HEATMAP_PANE_META, HEATMAP_STANDALONE_SET_TARGETS_WIDTH_REM } from './pane-meta.ts';
 
 /**
@@ -42,8 +47,31 @@ function TargetSwatch({ color, mark }: { readonly color: string | undefined; rea
   );
 }
 
-function figureProps(layout: Layout, geometry: Geometry) {
+/** 図の見出し行のボタンから開く小窓の中身。表示だけが変わる項目を、グループごとに並べる。 */
+function HeatmapFigureSettings({
+  options,
+  onOptionsChange,
+}: {
+  readonly options: HeatmapOptions;
+  readonly onOptionsChange: (next: HeatmapOptions) => void;
+}) {
+  const fields = useHeatmapFields(options, onOptionsChange);
+  return (
+    <>
+      {HEATMAP_FIGURE_GROUPS.map((group) => (
+        <OptionGroup key={group.id} title={group.title}>
+          {group.keys.map((key) => (
+            <Fragment key={key}>{fields[key]}</Fragment>
+          ))}
+        </OptionGroup>
+      ))}
+    </>
+  );
+}
+
+function figureProps(layout: Layout, geometry: Geometry, drawStyle: HeatmapDrawStyle) {
   return {
+    drawStyle,
     layout,
     geometry,
     legends: baseLayerLegends(layout),
@@ -60,7 +88,10 @@ export function HeatmapBody({
   keySelection,
   setTargets,
   setTargetPicker,
+  options,
+  onOptionsChange,
 }: SingleBodyProps<HeatmapExtracted, HeatmapOptions>) {
+  const figureSettings = useFigureSettings('打鍵頻度の図');
   const maxCount = sharedMaxCount([
     extracted.maxCount,
     ...(setTargets ?? []).flatMap((figure) => (figure.state.status === 'ready' ? [figure.state.extracted.maxCount] : [])),
@@ -73,9 +104,14 @@ export function HeatmapBody({
   );
   return (
     <div className="heatmap-feature" data-react-feature="heatmap">
+      <div className="heatmap-figure-heading">
+        <h3 className="heatmap-figure-title">打鍵頻度の図</h3>
+        {figureSettings.toggle}
+      </div>
+      {figureSettings.renderWindow(<HeatmapFigureSettings options={options} onOptionsChange={onOptionsChange} />)}
       <div className="heatmap-diagrams">
         <HeatmapDiagram
-          {...figureProps(layout, geometry)}
+          {...figureProps(layout, geometry, options.drawStyle)}
           diagramId="integrated"
           detailOf={(keyId) => extracted.keyDetails.merged.get(keyId)}
           colorCounts={extracted.keyCounts}
@@ -95,7 +131,7 @@ export function HeatmapBody({
               </p>
               {figure.state.status === 'ready' ? (
                 <HeatmapDiagram
-                  {...figureProps(figure.state.layout, figure.state.geometry)}
+                  {...figureProps(figure.state.layout, figure.state.geometry, options.drawStyle)}
                   title={figure.label}
                   diagramId={`set-${figure.key}`}
                   detailOf={(keyId) => (figure.state.status === 'ready' ? figure.state.extracted.keyDetails.merged.get(keyId) : undefined)}
@@ -117,7 +153,7 @@ export function HeatmapBody({
   );
 }
 
-/** 設定できる項目は無い。 */
+/** 解析設定の小窓に置く項目は無い（描き方は図の表示の小窓）。 */
 export function HeatmapSettings(_props: AnalyzerSettingsProps<HeatmapOptions>) {
   return <p className="heatmap-empty">このAnalyzerに解析設定はありません。</p>;
 }
@@ -131,5 +167,7 @@ export const heatmapAnalyzer = {
   defaultOptions: DEFAULT_HEATMAP_OPTIONS,
   urlOptions: heatmapOptions,
   keyDetailsOf: (extracted) => extracted.keyDetails,
-  standaloneSetTargets: { recommendedWidthRem: HEATMAP_STANDALONE_SET_TARGETS_WIDTH_REM },
+  standaloneSetTargets: {
+    recommendedWidthRem: HEATMAP_STANDALONE_SET_TARGETS_WIDTH_REM,
+  },
 } satisfies SingleAnalyzerPaneParts<HeatmapOptions, HeatmapExtracted>;
