@@ -24,12 +24,19 @@
 }
 
 .heatmap-diagram figcaption {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
   margin: 0 0 0.35rem;
   color: var(--text-muted);
   font-size: 0.76rem;
+  white-space: nowrap;
+}
+
+.heatmap-caption-text {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .heatmap-diagram svg {
