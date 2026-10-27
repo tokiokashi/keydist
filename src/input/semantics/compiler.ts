@@ -383,6 +383,10 @@ const faceCells = (face: Face): readonly { key: PhysicalKeyId; output: string }[
       });
     });
   });
+  for (const [key, output] of Object.entries(face.extraCells ?? {})) {
+    if (output === '' || output === ' ') continue;
+    cells.push({ key: resolveKeyId(key), output });
+  }
   return cells;
 };
 

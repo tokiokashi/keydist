@@ -10,7 +10,7 @@ import {
 } from '#input/layouts/face-layout-edit.ts';
 import { KANA_COVERAGE_GROUPS } from '#input/layouts/kana-coverage.ts';
 import { kanaLayoutFileText, parseKanaLayoutFile, type KanaLayoutContent } from '#input/layouts/kana-face-layout-file.ts';
-import { gridPositionOf, type FaceLayoutNotice, type FaceLayoutProblem } from '#input/layouts/kana-face-layout.ts';
+import { isFaceOutputKey, type FaceLayoutNotice, type FaceLayoutProblem } from '#input/layouts/kana-face-layout.ts';
 import { importKanaLayoutFile } from '#input/layouts/import.ts';
 import { ignoredHomeKeyWarnings, newUserLayoutId } from '#input/layouts/layout-edit.ts';
 import type { FaceMode, InputRole, LayerKind, TriggerOrder, TriggerPersistence } from '#input/layouts/types.ts';
@@ -21,6 +21,7 @@ import {
   DEFAULT_FINGER_ASSIGNMENT,
   FINGERS,
   HOME_ROW,
+  LEFT_COLUMN_KEYS,
   JIS_FINGER_ASSIGNMENT,
   type FingerAssignment,
   type Key,
@@ -175,8 +176,8 @@ function FacePanel({ face, standard, homeKeys, problems, onChange }: FacePanelPr
     const result = new Map<string, PhysicalKeyboardKeyView>();
     for (const key of keys) {
       const isTrigger = face.trigger.includes(key.id);
-      // 出力を書けるのは面の上のキーだけ。親指とShiftは、出力の操作の間は押せない
-      const noOutput = operation === 'output' && gridPositionOf(key.id) === undefined;
+      // 出力を書けるのは面の上のキーと左端の列の3つのキーだけ。親指とShiftは、出力の操作の間は押せない
+      const noOutput = operation === 'output' && !isFaceOutputKey(key.id);
       result.set(key.id, {
         legend: face.outputs[key.id] ?? '',
         secondaryLegend: keyLabel(key.id, standard),
@@ -200,7 +201,7 @@ function FacePanel({ face, standard, homeKeys, problems, onChange }: FacePanelPr
       return;
     }
     // 出力を書けないキーは、図が押せないキーとして出す（`disabled`）ので、ここへは来ない
-    if (gridPositionOf(key.id) === undefined) return;
+    if (!isFaceOutputKey(key.id)) return;
     setSelectedKey(key.id === selectedKey ? undefined : key.id);
   };
 
@@ -400,7 +401,10 @@ function KanaLayoutForm({ initial, fingerAssignments, isNew, onSubmit, onDownloa
   const face = draft.faces[shownIndex]!;
   const homeKeySet = useMemo(() => new Set(Object.values(draft.homeKeys).filter((key) => key !== '')), [draft.homeKeys]);
   const homeKeyWarnings = useMemo(() => ignoredHomeKeyWarnings(draft.homeKeys, fingerAssignments), [draft.homeKeys, fingerAssignments]);
-  const homeRowKeys = useMemo(() => (geometryOf(standard).grid[HOME_ROW] ?? []).map((key) => key.id), [standard]);
+  const homeKeyCandidates = useMemo(() => {
+    const geometry = geometryOf(standard);
+    return [...(geometry.grid[HOME_ROW] ?? []).map((key) => key.id), ...LEFT_COLUMN_KEYS.filter((key) => geometry.keys.has(key))];
+  }, [standard]);
 
   const problemsOfFace = (index: number) => check.problems.filter((problem) => faceIndexOfPath(problem.path) === index);
   const formProblems = check.problems.filter((problem) => faceIndexOfPath(problem.path) === undefined);
@@ -540,7 +544,7 @@ function KanaLayoutForm({ initial, fingerAssignments, isNew, onSubmit, onDownloa
         <div className="kana-layout-home-grid">
           {FINGERS.map((finger) => {
             const value = draft.homeKeys[finger] ?? '';
-            const stale = value !== '' && !homeRowKeys.includes(value);
+            const stale = value !== '' && !homeKeyCandidates.includes(value);
             const warnings = homeKeyWarnings.filter((warning) => warning.finger === finger);
             return (
               <div key={finger}>
@@ -553,8 +557,8 @@ function KanaLayoutForm({ initial, fingerAssignments, isNew, onSubmit, onDownloa
                     onChange={(event) => setDraft({ ...draft, homeKeys: { ...draft.homeKeys, [finger]: event.currentTarget.value } })}
                   >
                     <option value="">指の割り当ての値</option>
-                    {stale ? <option value={value}>{keyLabel(value, standard)}（ホーム段に無いキー）</option> : null}
-                    {homeRowKeys.map((key) => (
+                    {stale ? <option value={value}>{keyLabel(value, standard)}（選べるキーに無いキー）</option> : null}
+                    {homeKeyCandidates.map((key) => (
                       <option key={key} value={key}>
                         {keyLabel(key, standard)}のキー
                       </option>

@@ -3,7 +3,7 @@ import type { Face } from './types.ts';
 
 export type Hand = 'left' | 'right';
 
-/** Face.rowsをphysical key id -> outputへ展開するauthoring/presentation共通view。 */
+/** Face.rowsとextraCellsをphysical key id -> outputへ展開するauthoring/presentation共通view。 */
 export function faceCells(face: Face): Map<string, string> {
   const cells = new Map<string, string>();
   face.rows.forEach((row, rowIndex) => {
@@ -13,6 +13,10 @@ export function faceCells(face: Face): Map<string, string> {
       cells.set(keyId(rowIndex, colIndex), output);
     });
   });
+  for (const [key, output] of Object.entries(face.extraCells ?? {})) {
+    if (output === '' || output === ' ') continue;
+    cells.set(key, output);
+  }
   return cells;
 }
 

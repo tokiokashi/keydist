@@ -4,7 +4,7 @@ import {
   buildFaceLayout,
   duplicateOutputNotices,
   FaceLayoutBuildError,
-  gridPositionOf,
+  isFaceOutputKey,
   readFaceBody,
   type FaceLayoutNotice,
   type FaceLayoutProblem,
@@ -112,7 +112,7 @@ export function checkFaceLayout(draft: FaceLayoutDraft): FaceLayoutCheck {
   if (name === '') problems.push({ path: 'name', message: NAME_REQUIRED_MESSAGE });
   const homeKeys = compactHomeKeys(draft.homeKeys);
   for (const [finger, key] of Object.entries(homeKeys)) {
-    if (gridPositionOf(key) === undefined) {
+    if (!isFaceOutputKey(key)) {
       problems.push({ path: `homeKeys.${finger}`, message: `ホームキーのキー ${JSON.stringify(key)} は、物理キーの名前ではありません` });
     }
   }

@@ -221,6 +221,7 @@ Face = {
   mode: "prefix" | "suffix" | "simultaneous",
   suffixTrigger?: KeyId[],
   rows: FaceRow[],
+  extraCells?: Record<KeyId, string>,
   layer?: string,
   inputRole?: "layer" | "modifier" | "composition",
   compositionAggregation?: "layer" | "combo",
@@ -228,6 +229,13 @@ Face = {
 }
 FaceRow = string | string[]
 ```
+
+`rows` は標準4段gridのキーの出力を、QWERTY刻印の行と列の位置で並べる。
+`extraCells` は、gridの外にあるキーの出力をキーidから出力への写像で持つ。面の出力に使えるgridの外のキーは、
+左端の列の3つのキー（`backquote`・`tab`・`caps-lock`。§3）に限る。距離の規則はgridのキーと同じで、
+親指・Shiftは面の出力のキーにしない。
+3つのキーは、面のtriggerと配列のホームキー（`homeKeys`）にも書ける。ホームキーは、その指が担当するキーの時だけ採用する（§3.2）。
+同じキーを `rows` と `extraCells` の両方に置く定義は作らない（`rows` のキーはgridの位置だけ、`extraCells` のキーは3つのキーだけ）。
 
 `suffixTrigger` は、`mode="prefix"` の面が、出力キーの後に打つ後置のtriggerを持つための値である。
 `trigger` が前置、`suffixTrigger` が後置を表し、面の打鍵は「前置trigger → 出力キー → 後置trigger」の3ステップの
