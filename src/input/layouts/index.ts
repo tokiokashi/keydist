@@ -1,5 +1,6 @@
 import { kunrei } from '#input/romaji/kunrei.ts';
 import { oonishiRomaji } from '#input/romaji/oonishi.ts';
+import { tomisukeRomaji } from '#input/romaji/tomisuke.ts';
 import { NAGINATA_V18 } from './naginata.ts';
 import { CUSTOM_COMBOS } from './combos-custom.ts';
 import { fromRows, withAliases, withCombos, withoutRomajiOnlyCombos, withRomaji, withShiftedOutputs, type Layout } from './types.ts';
@@ -51,6 +52,7 @@ export type { FaceGroups, Layer } from './layers.ts';
 
 const ROMAJI = kunrei();
 const ROMAJI_OONISHI = oonishiRomaji();
+const ROMAJI_TOMISUKE = tomisukeRomaji();
 
 /** 角度改変の運指で打つ前提の配列に、推奨の指の割り当て（角度改変）を付ける */
 function angleModLayout(layout: Layout): Layout {
@@ -190,7 +192,8 @@ export const LAYOUTS: Layout[] = ALPHA.map(withoutRomajiOnlyCombos);
  * 最終形はどちらも打鍵ステップ列なので、同じテキストで比較できる。
  */
 export const LAYOUTS_JA: Layout[] = [
-  ...ALPHA.filter((l) => l.id.startsWith('oonishi') === false).map((l) => withRomaji(l, ROMAJI)),
+  // とみすけ配列は作者が勧める綴り（シャ行 sh）で打つ。ほかの配列は訓令式
+  ...ALPHA.filter((l) => l.id.startsWith('oonishi') === false).map((l) => withRomaji(l, l.id === 'tomisuke' ? ROMAJI_TOMISUKE : ROMAJI)),
   // 大西配列は公式が前提とする綴り（シャ行sh / じji / じゃ行j）で打つ
   withRomaji(ALPHA_BY_ID.get('oonishi')!, ROMAJI_OONISHI),
   // TK音直入力法のコンボは訓令式（sya / zya）の綴りを前提に組まれている

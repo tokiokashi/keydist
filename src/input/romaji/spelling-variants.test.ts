@@ -7,7 +7,7 @@ const spellingsOf = (text: string, rule = 'kunrei') => romajiSpellingUnits(text,
 
 test('組み込みの規則で、まとめた綴りを持つのはAZIKだけ', () => {
   assert.deepEqual(
-    ['kunrei', 'qwerty', 'oonishi', 'azik'].filter((rule) => hasMultiKanaHeading(tableForRule(rule))),
+    ['kunrei', 'qwerty', 'oonishi', 'tomisuke', 'azik'].filter((rule) => hasMultiKanaHeading(tableForRule(rule))),
     ['azik'],
   );
   assert.equal(romajiSpellingUnits('かんた', tableForRule('azik')), undefined);

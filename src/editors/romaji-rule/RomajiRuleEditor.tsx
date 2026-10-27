@@ -8,7 +8,7 @@ import { useHistoryShortcuts } from '#ui/primitives/use-history-shortcuts.ts';
 /** 新しく作る規則の名前。 */
 const NEW_RULE_NAME = '新しいローマ字の綴り';
 
-const BASE_IDS: readonly BuiltinRomajiRuleId[] = ['kunrei', 'oonishi', 'azik', 'qwerty'];
+const BASE_IDS: readonly BuiltinRomajiRuleId[] = ['kunrei', 'oonishi', 'tomisuke', 'azik', 'qwerty'];
 
 export interface RomajiRuleEditorProps {
   /** 自作のローマ字規則。 */

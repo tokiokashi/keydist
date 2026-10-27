@@ -9,7 +9,7 @@ import { ROMAJI_VARIANTS } from './spelling-variations.ts';
  * コマンド層（`engine/commands.ts`）はこの参照の一致でno-opを判定する。
  */
 
-/** 自作のローマ字規則のidの接頭辞。組み込みの規則のid（kunrei・oonishi・azik・qwerty）と衝突しない。 */
+/** 自作のローマ字規則のidの接頭辞。組み込みの規則のid（kunrei・oonishi・tomisuke・azik・qwerty）と衝突しない。 */
 export const USER_ROMAJI_RULE_ID_PREFIX = 'romaji-';
 
 export const newRomajiRuleId = (): string => `${USER_ROMAJI_RULE_ID_PREFIX}${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
