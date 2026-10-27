@@ -836,14 +836,14 @@ test('対象は同じ部品をラジオで1つ選び、押すと閉じて見出�
   const selection = await openTargetSelection(page);
   await expect(selection.locator('input[type="checkbox"]')).toHaveCount(0);
   await expect(selection.locator('legend')).toHaveText(['組み込み・英字の配列', '組み込み・かな配列']);
-  await selection.getByRole('radio', { name: 'Colemak-DH' }).click();
+  await selection.getByRole('radio', { name: 'Colemak-DH', exact: true }).click();
   await expect(selection).toHaveCount(0);
   await expect(targetButton(page)).toHaveAccessibleName('対象: Colemak-DH');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toHaveAttribute('data-layout-id', 'colemak-dh');
 
   // キーボードでは、矢印で送った先がその場で反映され、開いたまま次を見比べられる。
   await openTargetSelection(page);
-  await selection.getByRole('radio', { name: 'Colemak-DH' }).focus();
+  await selection.getByRole('radio', { name: 'Colemak-DH', exact: true }).focus();
   await page.keyboard.press('ArrowDown');
   await expect(selection).toBeVisible();
   await expect(selection.getByRole('radio', { name: 'Workman' })).toBeChecked();

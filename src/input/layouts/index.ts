@@ -85,12 +85,6 @@ const ALPHA: Layout[] = [
     'こーるまっくでぃーえいち',
     'こーるまっくdh',
   ]),
-  // 公式のANSI用の並び。角度改変で下段の左5キーを1つ左の物理キーへ寄せ、左端の `z` をQWERTYの `b` の位置に移してある（既存の `colemak-dh` は寄せていない並び）。
-  // 角度改変の運指で打つ前提なので、推奨の指の割り当ては角度改変
-  withAliases(
-    angleModLayout(withShiftedOutputs(fromRows('colemak-dh-ansi', 'Colemak-DH（ANSI）', ['1234567890-=', 'qwfpbjluy;[]', "arstgmneio'", 'xcdvzkh,./']))),
-    ['こーるまっくでぃーえいちあんし', 'こーるまっくdhあんし', 'あんし'],
-  ),
   withAliases(withShiftedOutputs(fromRows('workman', 'Workman', ['1234567890-=', 'qdrwbjfup;[]', "ashtgyneoi'", 'zxmcvkl,./'])), ['わーくまん']),
   // 作者が定義したのは30キー（3段×10列）だけで、外側のキーはQWERTYのまま。
   // 数字段・`[` `]`・ホーム段右端の `'` は作者の定義に無いのでQWERTYの位置に残し、
@@ -129,6 +123,12 @@ const ALPHA: Layout[] = [
     'えーぴーてぃー',
     'apt',
   ]),
+  // 公式のANSI用の並び。角度改変で下段の左5キーを1つ左の物理キーへ寄せ、左端の `z` をQWERTYの `b` の位置に移してある（既存の `colemak-dh` は寄せていない並び）。
+  // 角度改変の運指で打つ前提なので、推奨の指の割り当ては角度改変
+  withAliases(
+    angleModLayout(withShiftedOutputs(fromRows('colemak-dh-ansi', 'Colemak-DH（ANSI）', ['1234567890-=', 'qwfpbjluy;[]', "arstgmneio'", 'xcdvzkh,./']))),
+    ['こーるまっくでぃーえいちあんし', 'こーるまっくdhあんし', 'あんし'],
+  ),
   // 作者の行ずれ（ロウスタッガード）のANSIキーボード用の並び。角度改変済みで、作者が外側のキーに触れているのは `;` `[` `]` `'` だけ。
   // 数字段はQWERTYのまま
   withAliases(

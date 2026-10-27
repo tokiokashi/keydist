@@ -454,7 +454,7 @@ for (const [label, assignment, base] of [
     assert.deepEqual(assignment.homeKey, base.homeKey);
   });
 
-  test(`${label}: 小指は下段のキーを担当しない`, () => {
+  test(`${label}: 左手の小指は下段のキーを担当しない`, () => {
     const bottom = ['z', 'x', 'c', 'v', 'b'];
     assert.ok(!assignment.fingerKeys.LP.some((key) => bottom.includes(key)));
   });

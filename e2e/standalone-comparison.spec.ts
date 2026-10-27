@@ -379,7 +379,7 @@ test('絞り込み欄で候補を絞り、キーボードだけで選んで、Es
   const filter = selection.getByRole('searchbox', { name: '配列・Setupを名前で絞り込む' });
   await expect(filter).toBeFocused();
   await page.keyboard.type('colemak');
-  await expect(selection.locator('input[type="checkbox"]')).toHaveCount(2);
+  await expect(selection.locator('input[type="checkbox"]')).toHaveCount(3);
   await expect(selection.locator('[data-target-group]')).toHaveCount(1);
 
   // Tabで種類の切り替えを経て候補へ移り、Spaceで付けた瞬間に反映される（決定ボタンは無い）。
