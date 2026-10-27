@@ -5,16 +5,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { LAYOUTS, LAYOUTS_JA, withRomaji, type Layout } from '#input/layouts/index.ts';
-import {
-  assignmentWithHomeKeys,
-  buildGeometry,
-  DEFAULT_FINGER_ASSIGNMENT,
-  JIS_FINGER_ASSIGNMENT,
-  PHYSICAL_SHAPES,
-  QWERTY_OPTIMIZED_FINGER_ASSIGNMENT,
-  type FingerAssignment,
-  type PresetGeometryKind,
-} from '#input/shapes/geometry.ts';
+import { assignmentWithHomeKeys, buildGeometry, PHYSICAL_SHAPES, type FingerAssignment, type PresetGeometryKind } from '#input/shapes/geometry.ts';
 import { generateTrace, type TracePolicy } from '#trace/generate.ts';
 import { analyzeStrokeStructure } from '#interpretation/structure/aggregate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
@@ -22,6 +13,7 @@ import type { ChainInterpretation } from '#interpretation/structure/chain.ts';
 import type { ArpeggioInterpretation } from '#interpretation/structure/arpeggio.ts';
 import type { ActionRealizationPolicy, TriggerRealizationPolicy } from '#input/semantics/index.ts';
 import { tableForRule } from '#input/romaji/rules.ts';
+import { resolveFingerAssignment } from '#engine/finger-assignment.ts';
 import { MODEL_VERSION } from '#engine/model-version.ts';
 import { sampleText, type TextLanguage } from '#input/text/samples.ts';
 
@@ -29,16 +21,10 @@ import { sampleText, type TextLanguage } from '#input/text/samples.ts';
  * 組み込みの指割り当て。fixtureに記録した fingerAssignmentId から実体を引き直す
  * （指割り当てをハードコードせず記録した値から再構築する）。
  */
-const FINGER_ASSIGNMENTS: Record<string, FingerAssignment> = {
-  [DEFAULT_FINGER_ASSIGNMENT.id]: DEFAULT_FINGER_ASSIGNMENT,
-  [JIS_FINGER_ASSIGNMENT.id]: JIS_FINGER_ASSIGNMENT,
-  [QWERTY_OPTIMIZED_FINGER_ASSIGNMENT.id]: QWERTY_OPTIMIZED_FINGER_ASSIGNMENT,
-};
-
 function findFingerAssignment(id: string): FingerAssignment {
-  const assignment = FINGER_ASSIGNMENTS[id];
-  assert.ok(assignment, `未知のfingerAssignmentId: ${id}`);
-  return assignment;
+  const resolved = resolveFingerAssignment(id);
+  assert.equal(resolved.diagnostic, undefined, `未知のfingerAssignmentId: ${id}`);
+  return resolved.assignment;
 }
 
 // fixture回帰テスト。

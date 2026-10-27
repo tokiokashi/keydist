@@ -6,6 +6,7 @@ import type { Stroke, Trace } from '#trace/generate.ts';
  *
  * Traceの隣り合うStrokeをそのまま組にせず、文字を出さないStroke（前置・後置シフトなど、層の操作のトリガーだけのStroke）を
  * 文字を出すStrokeに束ねて1打にしてから、隣り合う2打の異なる組を数える。Traceと他の指標は変えない。
+ * 確定の打鍵（仕様 §4.7）は数えない。
  */
 export interface BigramCombinationCounts {
   /** 物理キーの要素（文字を出したキーの集合）で数えた、異なる組の数 */
@@ -57,6 +58,8 @@ function bundleHits(strokes: readonly Stroke[]): Hit[] {
   let last: { hit: Hit; selectionIndex: number } | undefined;
 
   strokes.forEach((stroke, i) => {
+    // 確定の打鍵は文字も層の操作も持たないので、束ね先にも1打にもしない（仕様 §4.7）
+    if (stroke.commit === true) return;
     if (emitsChar(stroke)) {
       const hit = pending ?? newHit();
       pending = undefined;
