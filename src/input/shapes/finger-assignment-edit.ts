@@ -4,6 +4,7 @@ import {
   isThumb,
   keyId,
   makeFingerAssignment,
+  resolveKeyId,
   type Finger,
   type FingerAssignment,
   type NonThumb,
@@ -11,7 +12,7 @@ import {
 } from './geometry.ts';
 
 /**
- * 指割り当ての編集の純関数。編集できるのは、物理配列の格子のキー（`rowWidths`が決める段と列）だけ。
+ * 指割り当ての編集の純関数。編集できるのは、物理配列の格子のキー（`rowWidths`が決める段と列）と、格子の外のキー（`extraKeys`）だけ。
  * 親指のキーとShiftは物理配列が指を決めるので、割り当てには入らない。
  *
  * どの関数も元の割り当てを書き換えず、変化が無ければ同じ参照を返す。
@@ -19,9 +20,10 @@ import {
  * その物理配列の分が失われないようにするため）。
  */
 
-/** 物理配列の格子のキーid。段ごとに左から並べる。 */
+/** 物理配列の、指を決めるキーのid。格子のキーを段ごとに左から並べ、そのあとに格子の外のキーを足す。 */
 export function shapeKeyIds(shape: PhysicalShape): readonly string[] {
-  return shape.rowWidths.flatMap((width, row) => Array.from({ length: width }, (_, col) => keyId(row, col)));
+  const grid = shape.rowWidths.flatMap((width, row) => Array.from({ length: width }, (_, col) => keyId(row, col)));
+  return [...grid, ...(shape.extraKeys ?? []).map((spec) => resolveKeyId(spec.id))];
 }
 
 /** 物理配列の列ごとのキーid（上の段から）。段によって列数が違う時は、最も長い段に合わせた列数になる。 */

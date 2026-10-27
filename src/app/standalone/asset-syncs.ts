@@ -52,7 +52,8 @@ function buildOne<K extends keyof KeydistAssets>(key: K, options: BuildAssetSync
     storage: options.storage,
     subscribe: options.subscribe,
     notify: options.notify,
-    onExternalChange: (value) => options.onExternalChange(key, value),
+    // 古い形で書いた別のタブの値も、読み込みと同じ形に直して取り込む
+    onExternalChange: (value) => options.onExternalChange(key, spec.repair === undefined ? value : spec.repair(value)),
     onLoadFailure: (reason) => options.onExternalLoadFailure?.(key, reason),
   });
   return [key, sync];
