@@ -1,0 +1,1132 @@
+{
+  "version": 2,
+  "layoutId": "tsuki-u9",
+  "source": {
+    "url": "http://yellow.ribbon.to/~ujiro/",
+    "sha": "tsuki_U9.hh-2013-01-11",
+    "path": "月配列U9完成版の「菱」用の定義ファイル tsuki_u9.zip の tsuki_U9.hh（2013-01-11）。配列図 tsukiU9_L.gif（同日）と照合した",
+    "transform": "定義ファイルの[0]（単打）と、[1]（シフト1）・[2]（シフト2）を、JISのキー位置の13/12/12/11列に写した。シフトのキー（d k がシフト1、s l がシフト2）は、反対の手の面（シフトのキーが右手なら左手の対象）を先に、同じ手の面を後に並べた8面に分け、同じ面を2つのシフトのキーで共有する。シフトのキー自身のセルは、同じ手の面にだけ出典の値を残して除いた。[3]（シフト2の後に v を押す3打の面）と、シフトとSpace・Tabの入力は載せない。{b00}（JISに無いキー）も載せない。かなと、長音・、。・！？・「のほかの記号は、symbolとして除いた。JISの@はANSIの[、:は'に写している"
+  },
+  "faces": [
+    {
+      "trigger": [],
+      "mode": "prefix",
+      "rows": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "ゅ",
+          "と",
+          "し",
+          "こ",
+          "ょ",
+          "つ",
+          "ん",
+          "い",
+          "か",
+          "り",
+          "ー",
+          "「"
+        ],
+        [
+          "は",
+          "",
+          "",
+          "て",
+          "た",
+          "く",
+          "う",
+          "",
+          "",
+          "き",
+          "ち",
+          ""
+        ],
+        [
+          "す",
+          "を",
+          "に",
+          "な",
+          "さ",
+          "っ",
+          "る",
+          "の",
+          "も",
+          "へ",
+          ""
+        ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "ゅ\tと\tし\tこ\tょ\tつ\tん\tい\tか\tり\tー\t「",
+        "は\tS2\tS1\tて\tた\tく\tう\tS1\tS2\tき\tち\t」",
+        "す\tを\tに\tな\tさ\tっ\tる\tの\tも\tへ\t・"
+      ]
+    },
+    {
+      "trigger": [
+        "k"
+      ],
+      "mode": "prefix",
+      "rows": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "ぁ",
+          "ゃ",
+          "ね",
+          "ら",
+          "め",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "ぃ",
+          "け",
+          "、",
+          "あ",
+          "れ",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "ぅ",
+          "や",
+          "せ",
+          "よ",
+          "ゆ",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "sourceRows": [
+        "!\t\"\t#\t$\t%\t\t\t\t\t\t\t\t",
+        "ぁ\tゃ\tね\tら\tめ\t\t\t\t\t\t\t",
+        "ぃ\tけ\t、\tあ\tれ\t\t\t\t\t\t\t",
+        "ぅ\tや\tせ\tよ\tゆ\t\t\t\t\t\t"
+      ]
+    },
+    {
+      "trigger": [
+        "d"
+      ],
+      "mode": "prefix",
+      "rows": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "ぬ",
+          "む",
+          "み",
+          "え",
+          "ぇ",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "ま",
+          "お",
+          "ほ",
+          "そ",
+          "ろ",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "ひ",
+          "わ",
+          "ふ",
+          "ぃ",
+          "ぉ",
+          ""
+        ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t&\t'\t(\t)\t\t=\t~\t|",
+        "\t\t\t\t\tぬ\tむ\tみ\tえ\tぇ\t@\t",
+        "\t\t\t\t\tま\tお\tほ\tそ\tろ\t:\t",
+        "\t\t\t\t\tひ\tわ\tふ\tぃ\tぉ\t\\"
+      ]
+    },
+    {
+      "trigger": [
+        "l"
+      ],
+      "mode": "prefix",
+      "rows": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "!",
+          "ど",
+          "じ",
+          "ご",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "ば",
+          "げ",
+          "。",
+          "で",
+          "だ",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "ず",
+          "ぱ",
+          "ぜ",
+          "",
+          "ざ",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "sourceRows": [
+        "!\t\"\t#\t$\t%\t\t\t\t\t\t\t\t",
+        "!\tど\tじ\tご\t~\t\t\t\t\t\t\t",
+        "ば\tげ\t。\tで\tだ\t\t\t\t\t\t\t",
+        "ず\tぱ\tぜ\tS3\tざ\t\t\t\t\t\t"
+      ]
+    },
+    {
+      "trigger": [
+        "s"
+      ],
+      "mode": "prefix",
+      "rows": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "づ",
+          "ぴ",
+          "ぽ",
+          "が",
+          "?",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "ぐ",
+          "ヴ",
+          "ぼ",
+          "ぞ",
+          "ぎ",
+          "ぢ",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "び",
+          "ぷ",
+          "ぶ",
+          "ぺ",
+          "べ",
+          ""
+        ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t&\t'\t(\t)\t\t=\t~\t|",
+        "\t\t\t\t\tづ\tぴ\tぽ\tが\t?\t\t",
+        "\t\t\t\t\tぐ\tヴ\tぼ\tぞ\tぎ\tぢ\t",
+        "\t\t\t\t\tび\tぷ\tぶ\tぺ\tべ\t_"
+      ]
+    },
+    {
+      "trigger": [
+        "d"
+      ],
+      "mode": "prefix",
+      "rows": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "ぁ",
+          "ゃ",
+          "ね",
+          "ら",
+          "め",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "ぃ",
+          "け",
+          "",
+          "あ",
+          "れ",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "ぅ",
+          "や",
+          "せ",
+          "よ",
+          "ゆ",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "sourceRows": [
+        "!\t\"\t#\t$\t%\t\t\t\t\t\t\t\t",
+        "ぁ\tゃ\tね\tら\tめ\t\t\t\t\t\t\t",
+        "ぃ\tけ\t、\tあ\tれ\t\t\t\t\t\t\t",
+        "ぅ\tや\tせ\tよ\tゆ\t\t\t\t\t\t"
+      ]
+    },
+    {
+      "trigger": [
+        "k"
+      ],
+      "mode": "prefix",
+      "rows": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "ぬ",
+          "む",
+          "み",
+          "え",
+          "ぇ",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "ま",
+          "お",
+          "",
+          "そ",
+          "ろ",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "ひ",
+          "わ",
+          "ふ",
+          "ぃ",
+          "ぉ",
+          ""
+        ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t&\t'\t(\t)\t\t=\t~\t|",
+        "\t\t\t\t\tぬ\tむ\tみ\tえ\tぇ\t@\t",
+        "\t\t\t\t\tま\tお\tほ\tそ\tろ\t:\t",
+        "\t\t\t\t\tひ\tわ\tふ\tぃ\tぉ\t\\"
+      ]
+    },
+    {
+      "trigger": [
+        "s"
+      ],
+      "mode": "prefix",
+      "rows": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "!",
+          "ど",
+          "じ",
+          "ご",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "ば",
+          "",
+          "。",
+          "で",
+          "だ",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "ず",
+          "ぱ",
+          "ぜ",
+          "",
+          "ざ",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "sourceRows": [
+        "!\t\"\t#\t$\t%\t\t\t\t\t\t\t\t",
+        "!\tど\tじ\tご\t~\t\t\t\t\t\t\t",
+        "ば\tげ\t。\tで\tだ\t\t\t\t\t\t\t",
+        "ず\tぱ\tぜ\tS3\tざ\t\t\t\t\t\t"
+      ]
+    },
+    {
+      "trigger": [
+        "l"
+      ],
+      "mode": "prefix",
+      "rows": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "づ",
+          "ぴ",
+          "ぽ",
+          "が",
+          "?",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "ぐ",
+          "ヴ",
+          "ぼ",
+          "",
+          "ぎ",
+          "ぢ",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "び",
+          "ぷ",
+          "ぶ",
+          "ぺ",
+          "べ",
+          ""
+        ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t&\t'\t(\t)\t\t=\t~\t|",
+        "\t\t\t\t\tづ\tぴ\tぽ\tが\t?\t\t",
+        "\t\t\t\t\tぐ\tヴ\tぼ\tぞ\tぎ\tぢ\t",
+        "\t\t\t\t\tび\tぷ\tぶ\tぺ\tべ\t_"
+      ]
+    }
+  ],
+  "omissions": [
+    {
+      "faceIndex": 0,
+      "row": 2,
+      "column": 1,
+      "value": "S2",
+      "reason": "function-key"
+    },
+    {
+      "faceIndex": 0,
+      "row": 2,
+      "column": 2,
+      "value": "S1",
+      "reason": "function-key"
+    },
+    {
+      "faceIndex": 0,
+      "row": 2,
+      "column": 7,
+      "value": "S1",
+      "reason": "function-key"
+    },
+    {
+      "faceIndex": 0,
+      "row": 2,
+      "column": 8,
+      "value": "S2",
+      "reason": "function-key"
+    },
+    {
+      "faceIndex": 0,
+      "row": 2,
+      "column": 11,
+      "value": "」",
+      "reason": "jis-only-key"
+    },
+    {
+      "faceIndex": 0,
+      "row": 3,
+      "column": 10,
+      "value": "・",
+      "reason": "jis-only-key"
+    },
+    {
+      "faceIndex": 1,
+      "row": 0,
+      "column": 0,
+      "value": "!",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 1,
+      "row": 0,
+      "column": 1,
+      "value": "\"",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 1,
+      "row": 0,
+      "column": 2,
+      "value": "#",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 1,
+      "row": 0,
+      "column": 3,
+      "value": "$",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 1,
+      "row": 0,
+      "column": 4,
+      "value": "%",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 0,
+      "column": 5,
+      "value": "&",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 0,
+      "column": 6,
+      "value": "'",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 0,
+      "column": 7,
+      "value": "(",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 0,
+      "column": 8,
+      "value": ")",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 0,
+      "column": 10,
+      "value": "=",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 0,
+      "column": 11,
+      "value": "~",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 0,
+      "column": 12,
+      "value": "|",
+      "reason": "jis-only-key"
+    },
+    {
+      "faceIndex": 2,
+      "row": 1,
+      "column": 10,
+      "value": "@",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 2,
+      "column": 10,
+      "value": ":",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 3,
+      "column": 10,
+      "value": "\\",
+      "reason": "jis-only-key"
+    },
+    {
+      "faceIndex": 3,
+      "row": 0,
+      "column": 0,
+      "value": "!",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 3,
+      "row": 0,
+      "column": 1,
+      "value": "\"",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 3,
+      "row": 0,
+      "column": 2,
+      "value": "#",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 3,
+      "row": 0,
+      "column": 3,
+      "value": "$",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 3,
+      "row": 0,
+      "column": 4,
+      "value": "%",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 3,
+      "row": 1,
+      "column": 4,
+      "value": "~",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 3,
+      "row": 3,
+      "column": 3,
+      "value": "S3",
+      "reason": "function-key"
+    },
+    {
+      "faceIndex": 4,
+      "row": 0,
+      "column": 5,
+      "value": "&",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 4,
+      "row": 0,
+      "column": 6,
+      "value": "'",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 4,
+      "row": 0,
+      "column": 7,
+      "value": "(",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 4,
+      "row": 0,
+      "column": 8,
+      "value": ")",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 4,
+      "row": 0,
+      "column": 10,
+      "value": "=",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 4,
+      "row": 0,
+      "column": 11,
+      "value": "~",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 4,
+      "row": 0,
+      "column": 12,
+      "value": "|",
+      "reason": "jis-only-key"
+    },
+    {
+      "faceIndex": 4,
+      "row": 3,
+      "column": 10,
+      "value": "_",
+      "reason": "jis-only-key"
+    },
+    {
+      "faceIndex": 5,
+      "row": 0,
+      "column": 0,
+      "value": "!",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 5,
+      "row": 0,
+      "column": 1,
+      "value": "\"",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 5,
+      "row": 0,
+      "column": 2,
+      "value": "#",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 5,
+      "row": 0,
+      "column": 3,
+      "value": "$",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 5,
+      "row": 0,
+      "column": 4,
+      "value": "%",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 5,
+      "row": 2,
+      "column": 2,
+      "value": "、",
+      "reason": "source-only"
+    },
+    {
+      "faceIndex": 6,
+      "row": 0,
+      "column": 5,
+      "value": "&",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 6,
+      "row": 0,
+      "column": 6,
+      "value": "'",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 6,
+      "row": 0,
+      "column": 7,
+      "value": "(",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 6,
+      "row": 0,
+      "column": 8,
+      "value": ")",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 6,
+      "row": 0,
+      "column": 10,
+      "value": "=",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 6,
+      "row": 0,
+      "column": 11,
+      "value": "~",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 6,
+      "row": 0,
+      "column": 12,
+      "value": "|",
+      "reason": "jis-only-key"
+    },
+    {
+      "faceIndex": 6,
+      "row": 1,
+      "column": 10,
+      "value": "@",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 6,
+      "row": 2,
+      "column": 7,
+      "value": "ほ",
+      "reason": "source-only"
+    },
+    {
+      "faceIndex": 6,
+      "row": 2,
+      "column": 10,
+      "value": ":",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 6,
+      "row": 3,
+      "column": 10,
+      "value": "\\",
+      "reason": "jis-only-key"
+    },
+    {
+      "faceIndex": 7,
+      "row": 0,
+      "column": 0,
+      "value": "!",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 7,
+      "row": 0,
+      "column": 1,
+      "value": "\"",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 7,
+      "row": 0,
+      "column": 2,
+      "value": "#",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 7,
+      "row": 0,
+      "column": 3,
+      "value": "$",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 7,
+      "row": 0,
+      "column": 4,
+      "value": "%",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 7,
+      "row": 1,
+      "column": 4,
+      "value": "~",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 7,
+      "row": 2,
+      "column": 1,
+      "value": "げ",
+      "reason": "source-only"
+    },
+    {
+      "faceIndex": 7,
+      "row": 3,
+      "column": 3,
+      "value": "S3",
+      "reason": "function-key"
+    },
+    {
+      "faceIndex": 8,
+      "row": 0,
+      "column": 5,
+      "value": "&",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 8,
+      "row": 0,
+      "column": 6,
+      "value": "'",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 8,
+      "row": 0,
+      "column": 7,
+      "value": "(",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 8,
+      "row": 0,
+      "column": 8,
+      "value": ")",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 8,
+      "row": 0,
+      "column": 10,
+      "value": "=",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 8,
+      "row": 0,
+      "column": 11,
+      "value": "~",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 8,
+      "row": 0,
+      "column": 12,
+      "value": "|",
+      "reason": "jis-only-key"
+    },
+    {
+      "faceIndex": 8,
+      "row": 2,
+      "column": 8,
+      "value": "ぞ",
+      "reason": "source-only"
+    },
+    {
+      "faceIndex": 8,
+      "row": 3,
+      "column": 10,
+      "value": "_",
+      "reason": "jis-only-key"
+    }
+  ]
+}
