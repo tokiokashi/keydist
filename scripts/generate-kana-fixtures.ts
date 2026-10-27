@@ -10,6 +10,8 @@ const FIXTURE_DIR = join(process.cwd(), 'test', 'fixtures');
 interface SourceFace {
   trigger: string[];
   mode: 'prefix' | 'suffix' | 'simultaneous';
+  /** 前置のtriggerと出力キーの後に打つ後置のtrigger。持つ面は前置のtriggerを持つ mode='prefix' の面で、3打の面になる。 */
+  suffixTrigger?: string[];
   /** 出典から転記した値。omission対象も消さずに保持する。 */
   sourceRows: string[];
   /** ANSI fixtureへ採用する値。除外セルは空文字にする。 */
@@ -43,7 +45,7 @@ interface Fixture {
   version: 1;
   layoutId: string;
   source: SourceManifest['source'];
-  faces: Array<Pick<SourceFace, 'trigger' | 'mode'> & { cells: string[][] }>;
+  faces: Array<Pick<SourceFace, 'trigger' | 'mode' | 'suffixTrigger'> & { cells: string[][] }>;
   omissions: SourceManifest['omissions'];
 }
 
@@ -71,6 +73,15 @@ export function validateSourceManifest(fileName: string, manifest: SourceManifes
   });
 
   for (const [faceIndex, face] of manifest.faces.entries()) {
+    if (face.suffixTrigger !== undefined) {
+      if (face.suffixTrigger.length === 0) throw new Error(`${fileName}: face ${faceIndex} のsuffixTriggerが空`);
+      if (face.mode !== 'prefix' || face.trigger.length === 0) {
+        throw new Error(`${fileName}: face ${faceIndex} のsuffixTriggerは、前置のtriggerを持つmode=prefixの面だけが持てる`);
+      }
+      if (face.suffixTrigger.some((key) => face.trigger.includes(key))) {
+        throw new Error(`${fileName}: face ${faceIndex} のsuffixTriggerが前置のtriggerと重なっている`);
+      }
+    }
     if (face.rows.length !== SOURCE_ROW_WIDTHS.length) {
       throw new Error(`${fileName}: face ${faceIndex} rows の行数が4ではない`);
     }
@@ -160,9 +171,10 @@ function projectToAnsi(manifest: SourceManifest): Fixture {
     version: 1,
     layoutId: manifest.layoutId,
     source: manifest.source,
-    faces: manifest.faces.map(({ trigger, mode, rows }) => ({
+    faces: manifest.faces.map(({ trigger, mode, suffixTrigger, rows }) => ({
       trigger,
       mode,
+      ...(suffixTrigger === undefined ? {} : { suffixTrigger }),
       cells: rows.map((row, rowIndex) => row.slice(0, TARGET_ROW_WIDTHS[rowIndex])),
     })),
     omissions: manifest.omissions,

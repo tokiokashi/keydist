@@ -12,6 +12,7 @@ import { SHINGETA } from './shingeta.ts';
 import { TSUKI_2_263 } from './tsuki-2-263.ts';
 import { GEKKOU } from './gekkou.ts';
 import { TSUKI_U9 } from './tsuki-u9.ts';
+import { TSUKIMISOU } from './tsukimisou.ts';
 import { YUMI } from './yumi.ts';
 import { KAWASEMI_PLUS } from './kawasemi-plus.ts';
 import { JIS_KANA } from './jis-kana.ts';
@@ -245,6 +246,7 @@ export const LAYOUTS_JA: Layout[] = [
   TSUKI_2_263,
   GEKKOU,
   TSUKI_U9,
+  TSUKIMISOU,
   YUMI,
   KAWASEMI_PLUS,
   JIS_KANA,
