@@ -196,6 +196,7 @@ Face authoringは次の概念を持つ。
 Face = {
   trigger: KeyId[],
   mode: "prefix" | "suffix" | "simultaneous",
+  suffixTrigger?: KeyId[],
   rows: FaceRow[],
   layer?: string,
   inputRole?: "layer" | "modifier" | "composition",
@@ -204,6 +205,22 @@ Face = {
 }
 FaceRow = string | string[]
 ```
+
+`suffixTrigger` は、`mode="prefix"` の面が、出力キーの後に打つ後置のtriggerを持つための値である。
+`trigger` が前置、`suffixTrigger` が後置を表し、面の打鍵は「前置trigger → 出力キー → 後置trigger」の3ステップの
+順次打鍵になる（`mode="prefix"` で `suffixTrigger` を持たない面は、前置trigger → 出力キーの2ステップ）。
+compile時のRequirementは、`order(前置trigger → 出力キー)` と `order(出力キー → 後置trigger)` の2つで、
+`overlap` は作らない。`suffixTrigger` を持てるのは次の面に限る。
+
+- `mode="prefix"` で、`trigger` が1キー以上の面
+- `suffixTrigger` が1キー以上で、`trigger` と重ならない面
+- `triggerPersistence="single"` の面（後置triggerは保持できない（§10.0）ので、前置triggerも保持しない）
+- `inputRole` が `"layer"` の面。`"composition"` は `compositionAggregation="layer"` に限る（`"combo"` は後置を持てない）。
+  `"modifier"` は持てない
+
+前置・後置の両方を持つ面は、両方のtriggerの押下をtriggerの役で数え（§11.11）、打鍵再生のtriggerの印も両方に付ける。
+同じ前置triggerでも、後置triggerが違う面は別の面で、別の層になる。層へ畳む `layer` は、後置triggerの集合が同じ面どうしにだけ宣言できる。
+前置を2段に重ねる形は、この値では表さない。
 
 `compositionAggregation` は `inputRole="composition"` の面だけが持ち、その面の打鍵を層とコンボ枠のどちらへ
 計上するか（§11.10）を配列の定義が明示する。`composition` の面は必ずこの値を宣言する。
@@ -1459,13 +1476,13 @@ H = コンボ枠の見出しが命中した延べ回数
 
 - 通常の単一キー面は、その面の層へ計上する
 - triggerの押下は、呼び出した面の層へ計上する。単打面からは引かない
-- prefix / suffix面は、triggerと本体の両方を同じ層へ計上する
+- prefix / suffix面は、triggerと本体の両方を同じ層へ計上する。前置triggerと後置triggerの両方を持つ面（§4）は、前置trigger・本体・後置triggerの3打を同じ層へ計上する
 - 合成濁音のように複数の面を連結した `Sequence` は、各ステップを元の面の層へ分けて計上する
 - `composition` の面は、面が宣言する `compositionAggregation`（§4）に従う。`"layer"` の面はtriggerと出力の両方を、
   面ごとに1つの層へ計上する。triggerのキーごとに1つの層になるよう、同じtriggerキーの `"layer"` の面は
   1配列に2枚以上置けない（配列の検証がエラーにする）。`"combo"` の面は、
   通常の層とは別のコンボ枠へ計上する
-- triggerが2キー以上の面と、配列のコンボ定義は、常にコンボ枠へ計上する
+- 同時に押す、または1組のtriggerとして押す2キー以上の面（`composition` の面）と、配列のコンボ定義は、常にコンボ枠へ計上する。前置・本体・後置の3打の面は、`composition` の面でなければこの箇条に当たらない
 
 同じ配列の中で、基本の打ち方に当たる面（かわせみ配列+の行指定キーの面、新小梅の文字キー同時押しの面）は層、
 基本の打ち方から外れた拡張（かわせみ配列+の二重母音拡張と左手コンボ拡張、トリガーが2キー以上の面）はコンボ枠に数える。

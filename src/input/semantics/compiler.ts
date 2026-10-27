@@ -252,8 +252,43 @@ const normalizedAggregationGroupId = (face: Face, faceIndex: number, triggerKeys
   return `face:${faceIndex}`;
 };
 
-const faceRequirements = (face: Face, triggerKeys: readonly PhysicalKeyId[], cellKey: PhysicalKeyId): Requirement[] => {
+/** 面の前置triggerと後置triggerを合わせた、重複の無い物理キー。 */
+export const faceAllTriggerKeys = (face: Face): PhysicalKeyId[] => sortedUniqueKeys([...face.trigger, ...(face.suffixTrigger ?? [])]);
+
+/** 後置triggerを持つ面（前置・本体・後置の3打の面）が満たす条件を検査する。持たない面は何もしない。 */
+const assertSuffixTriggerFace = (face: Face): void => {
+  if (face.suffixTrigger === undefined) return;
+  if (face.suffixTrigger.length === 0) {
+    throw new Error('suffixTriggerは1キー以上必要（持たない面は省略する）');
+  }
+  if (face.mode !== 'prefix') {
+    throw new Error(`suffixTriggerを持てるのはmode=prefixの面だけ（mode=${face.mode}）`);
+  }
+  if (face.trigger.length === 0) {
+    throw new Error('suffixTriggerを持つ面は前置triggerも1キー以上必要');
+  }
+  if (face.triggerOrder !== undefined && face.triggerOrder !== 'prefix') {
+    throw new Error(`Faceのmode=prefixとtriggerOrder=${face.triggerOrder}が矛盾している`);
+  }
+  const prefixKeys = new Set(sortedUniqueKeys(face.trigger));
+  if (sortedUniqueKeys(face.suffixTrigger).some((key) => prefixKeys.has(key))) {
+    throw new Error('suffixTriggerは前置triggerと重ならないキーで書く');
+  }
+  if (face.triggerPersistence !== 'single') {
+    throw new Error('suffixTriggerを持つ面のtriggerPersistenceはsingleに限る（後置triggerは保持できない）');
+  }
+  if (face.inputRole === 'modifier') {
+    throw new Error('suffixTriggerを持つ面はinputRoleにmodifierを指定できない');
+  }
+  if (face.inputRole === 'composition' && face.compositionAggregation !== 'layer') {
+    throw new Error('suffixTriggerを持つcompositionの面はcompositionAggregationにlayerを指定する必要がある');
+  }
+};
+
+const faceRequirements = (face: Face, cellKey: PhysicalKeyId): Requirement[] => {
+  const triggerKeys = faceAllTriggerKeys(face);
   if (triggerKeys.length === 0) return [];
+  assertSuffixTriggerFace(face);
 
   const physicalKeys = sortedUniqueKeys([...triggerKeys, cellKey]);
   const requirements: Requirement[] = [];
@@ -267,7 +302,10 @@ const faceRequirements = (face: Face, triggerKeys: readonly PhysicalKeyId[], cel
     throw new Error(`Faceのmode=${face.mode}とtriggerOrder=${face.triggerOrder}が矛盾している`);
   }
   const order = face.triggerOrder ?? implicitOrder;
-  if (order === 'prefix') {
+  if (face.suffixTrigger !== undefined) {
+    requirements.push({ kind: 'order', before: sortedUniqueKeys(face.trigger), after: [cellKey] });
+    requirements.push({ kind: 'order', before: [cellKey], after: sortedUniqueKeys(face.suffixTrigger) });
+  } else if (order === 'prefix') {
     requirements.push({
       kind: 'order',
       before: [...triggerKeys],
@@ -422,14 +460,14 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
       throw new Error(`Face ${faceIndex} はinputRoleを明示する必要がある`);
     }
 
-    const triggerKeys = sortedUniqueKeys(face.trigger);
+    const triggerKeys = faceAllTriggerKeys(face);
     if (triggerKeys.length === 0 && face.triggerPersistence !== undefined) {
       throw new Error(`Face ${faceIndex} はtriggerなしでtriggerPersistenceを指定できない`);
     }
 
     for (const cell of cells) {
       const physicalKeys = sortedUniqueKeys([...triggerKeys, cell.key]);
-      const requirements = faceRequirements(face, triggerKeys, cell.key);
+      const requirements = faceRequirements(face, cell.key);
       const capabilities = faceCapabilities(face, triggerKeys);
       const classifications = faceClassifications(face);
       const roles = faceRoles(face, triggerKeys);
@@ -491,7 +529,7 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
   // presentation provenanceだけを既存SemanticInputへ追加する。
   faces.forEach((face, faceIndex) => {
     if (face.presentationCells === undefined) return;
-    const triggerKeys = sortedUniqueKeys(face.trigger);
+    const triggerKeys = faceAllTriggerKeys(face);
     const semanticCells = new Map(faceCells(face).map((cell) => [cell.key, cell.output] as const));
 
     for (const [rawKey, output] of Object.entries(face.presentationCells)) {
@@ -502,7 +540,7 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
         throw new Error(`Face ${faceIndex} のpresentation cell ${cellKey}がsemantic cellと競合している: ${semanticOutput} / ${output}`);
       }
       const physicalKeys = sortedUniqueKeys([...triggerKeys, cellKey]);
-      const requirements = faceRequirements(face, triggerKeys, cellKey);
+      const requirements = faceRequirements(face, cellKey);
       const identity = operationIdentity({ output, physicalKeys, requirements });
       const existing = byIdentity.get(identity);
       if (existing === undefined) {

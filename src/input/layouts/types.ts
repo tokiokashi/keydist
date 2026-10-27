@@ -48,6 +48,11 @@ export type PresentationTriggerAlternatives = readonly [PresentationTriggerChord
 export interface Face {
   trigger: readonly string[];
   mode: FaceMode;
+  /**
+   * 出力キーの後に打つ後置のtrigger。持つ面は「trigger（前置）→ 出力キー → 後置trigger」の3打になる。
+   * mode='prefix'、triggerPersistence='single' の面だけが持てる（仕様 §4）。
+   */
+  suffixTrigger?: readonly string[];
   rows: readonly FaceRow[];
   /** 同じ値を持つ単一キー面は1レイヤーへ畳む。省略時はその面が単独で1レイヤー */
   layer?: string;
@@ -430,6 +435,8 @@ export function fromFaces(id: string, name: string, faces: readonly Face[], thum
 
   for (const [faceIndex, face] of faces.entries()) {
     const trigger = [...new Set(face.trigger)];
+    const suffixTrigger = [...new Set(face.suffixTrigger ?? [])];
+    const allTrigger = [...new Set([...trigger, ...suffixTrigger])];
     if (trigger.length > 0 && faceHasOutput(face) && face.triggerPersistence === undefined) {
       throw new Error(`triggerを持つFaceはtriggerPersistenceを明示する必要がある（face:${faceIndex}）`);
     }
@@ -447,7 +454,15 @@ export function fromFaces(id: string, name: string, faces: readonly Face[], thum
     faceLayerIds.set(face, layerId);
     const presentationRole: LayerPresentationRole | undefined = isCombo ? undefined : face.role === 'modifier' ? 'modifier' : 'layer';
     const presentationModeLabel =
-      trigger.length === 0 || isCombo ? undefined : face.mode === 'simultaneous' ? '同時' : face.mode === 'prefix' ? '前置' : '後置';
+      trigger.length === 0 || isCombo
+        ? undefined
+        : face.mode === 'simultaneous'
+          ? '同時'
+          : face.mode === 'prefix'
+            ? suffixTrigger.length > 0
+              ? '前置・後置'
+              : '前置'
+            : '後置';
     // 名前が無いトリガー付きの面は、名前を後で作る（labelIsDefault）
     const unnamedTriggerLayer = !isCombo && face.presentationLabel === undefined && face.layer === undefined && trigger.length > 0;
     addDefinition(
@@ -471,11 +486,11 @@ export function fromFaces(id: string, name: string, faces: readonly Face[], thum
         if (!semanticInput) {
           throw new Error(`Face compilerのmembershipが見つからない（face:${faceIndex}, key:${key}）`);
         }
-        const sequence = expandFace(trigger, face.mode, key);
+        const sequence = expandFace(trigger, face.mode, key, suffixTrigger);
         const participationView = {
           outputKeys: [resolveKeyId(key)],
-          triggerKeys: trigger.map(resolveKeyId),
-          ...(face.triggerPersistence === 'hold-capable' && trigger.length > 0 ? { holdKeys: trigger.map(resolveKeyId) } : {}),
+          triggerKeys: allTrigger.map(resolveKeyId),
+          ...(face.triggerPersistence === 'hold-capable' && trigger.length > 0 ? { holdKeys: allTrigger.map(resolveKeyId) } : {}),
         };
 
         const alternatives = canonicalInputs.get(output) ?? [];
@@ -588,8 +603,9 @@ function sameParticipationView(
   return same(left.outputKeys, right.outputKeys) && same(left.triggerKeys, right.triggerKeys) && same(left.holdKeys, right.holdKeys);
 }
 
-function expandFace(trigger: string[], mode: FaceMode, key: string): Sequence {
+function expandFace(trigger: string[], mode: FaceMode, key: string, suffixTrigger: string[] = []): Sequence {
   if (trigger.length === 0) return [[key]];
+  if (suffixTrigger.length > 0) return [[...trigger], [key], [...suffixTrigger]];
   if (mode === 'simultaneous') return [[...new Set([...trigger, key])]];
   if (mode === 'prefix') return [[...trigger], [key]];
   return [[key], [...trigger]];

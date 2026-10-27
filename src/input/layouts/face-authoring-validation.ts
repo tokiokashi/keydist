@@ -29,6 +29,8 @@ function validateFoldPair(first: Face, second: Face): void {
     invalid('triggerは単一キーである必要がある');
   }
   if (first.mode !== second.mode) invalid('modeが異なる');
+  const suffixSignature = (face: Face) => [...new Set((face.suffixTrigger ?? []).map(resolveKeyId))].sort().join('+');
+  if (suffixSignature(first) !== suffixSignature(second)) invalid('後置triggerが異なる');
   if (effectiveTriggerOrder(first) !== effectiveTriggerOrder(second)) {
     invalid('triggerOrderが異なる');
   }
@@ -79,7 +81,7 @@ export function validateFaceAuthoring(faces: readonly Face[]): void {
       throw new Error(`compositionの面をレイヤーに計上できるのはtriggerが1キーの面だけ（face:${faceIndex}）`);
     }
     if (face.inputRole === 'composition') {
-      const key = resolveKeyId(face.trigger[0]!);
+      const key = [resolveKeyId(face.trigger[0]!), ...[...new Set((face.suffixTrigger ?? []).map(resolveKeyId))].sort()].join('+');
       if (compositionLayerTriggers.has(key)) {
         throw new Error(`同じtriggerキーのcompositionの面を、レイヤーに2枚以上計上できない（face:${faceIndex}）`);
       }
