@@ -6,6 +6,7 @@ import { useFigureSettings } from '#ui/primitives/figure-settings.tsx';
 import { OptionGroup } from '#ui/primitives/option-fields.tsx';
 import { PersonalSpeedLink } from '#ui/primitives/personal-speed-link.tsx';
 import type { SingleBodyProps } from '../pane-parts.tsx';
+import { segmentationSourceSentence } from '../segmentation-text.ts';
 import type { PlaybackExtracted } from './extract.ts';
 import { derivePlaybackFrame } from './frame.ts';
 import { playbackCalculationNotes } from './calculation-notes.ts';
@@ -93,12 +94,36 @@ export function PlaybackBody({
   extracted,
   options,
   onOptionsChange,
+  segmentation,
   playbackSeek,
   initialCharPosition,
 }: SingleBodyProps<PlaybackExtracted, PlaybackOptions>) {
-  const { analysis, windowSize, timing, savedCalibration, overheadUse, personalSpeedUse, schedule, rateChart, basisId, timeTotals, waitUse } = extracted;
+  const {
+    analysis,
+    windowSize,
+    timing,
+    savedCalibration,
+    overheadUse,
+    personalSpeedUse,
+    schedule,
+    rateChart,
+    basisId,
+    timeTotals,
+    waitUse,
+    bunsetsuUse,
+  } = extracted;
   const total = trace.strokes.length;
-  const calculation = playbackCalculationNotes(options, personalSpeedUse, timing.calibration, savedCalibration, overheadUse, waitUse);
+  const calculation = playbackCalculationNotes(
+    options,
+    personalSpeedUse,
+    timing.calibration,
+    savedCalibration,
+    overheadUse,
+    waitUse,
+    bunsetsuUse !== undefined,
+  );
+  // 値を設定したのに、分割器を読み込めず時間へ入らない状態
+  const bunsetsuWaitUnavailable = options.bunsetsuWaitMs > 0 && segmentation === 'failed';
   const figureSettings = useFigureSettings('配列図');
 
   // 別の画面の図から開いた時は、その文字位置を含むステップで一時停止した状態から始める（本体を最初に描く時だけ）
@@ -264,7 +289,7 @@ export function PlaybackBody({
           <PersonalSpeedLink className="playback-notice-link">個人速度の画面を開く</PersonalSpeedLink>
         </p>
       ) : null}
-      {calculation.personalSpeedInUse || calculation.changes.length > 0 ? (
+      {calculation.personalSpeedInUse || calculation.changes.length > 0 || bunsetsuWaitUnavailable ? (
         <p className="playback-notice" data-playback-calculation>
           {calculation.personalSpeedInUse ? <span data-playback-calculation-personal-speed>個人速度で計算しています。</span> : null}
           {calculation.keystrokeOverheadInUse ? (
@@ -277,6 +302,12 @@ export function PlaybackBody({
             <span data-playback-calculation-changes>
               {calculation.personalSpeedInUse ? ' ' : ''}既定と違う設定で計算しています。{calculation.changes.join('、')}
             </span>
+          ) : null}
+          {bunsetsuUse !== undefined ? (
+            <span data-playback-calculation-bunsetsu> {segmentationSourceSentence(bunsetsuUse.splitter, bunsetsuUse.origin)}</span>
+          ) : null}
+          {bunsetsuWaitUnavailable ? (
+            <span data-playback-calculation-bunsetsu-failed> 文節の分割器を読み込めなかったので、文節の区切りの待機は足していません。</span>
           ) : null}
         </p>
       ) : null}

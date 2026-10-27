@@ -125,10 +125,12 @@ export function personalSpeedUseOf(options: Pick<PlaybackOptions, 'applyPersonal
  * 抽出のキーに入れる資産。個人速度を適用する設定の時だけ保存値を入れる（保存値が無い時は`null`）。
  * 適用しない設定の時は保存値を読まないので、保存値が変わっても抽出を作り直さない。
  */
-export function playbackAssetsKeyOf(options: Pick<PlaybackOptions, 'applyPersonalSpeed'>, assets: ExtractionAssets): unknown {
-  // 読点・句点の待機は日本語のテキストにだけ足すので、テキストの言語はいつもキーに入れる
+export function playbackAssetsKeyOf(options: Pick<PlaybackOptions, 'applyPersonalSpeed' | 'bunsetsuWaitMs'>, assets: ExtractionAssets): unknown {
+  // 読点・句点の待機と文節の区切りの待機は日本語のテキストにだけ足すので、テキストの言語はいつもキーに入れる。
+  // 文節の区切りは、待機が0でない時だけキーに入れる（0の時は区切りを読まないので、区切りが変わっても抽出を作り直さない）
   return {
     textLanguage: assets.textLanguage,
+    ...(options.bunsetsuWaitMs > 0 ? { segmentation: assets.segmentation ?? null } : {}),
     ...(options.applyPersonalSpeed ? { personalSpeed: assets.personalSpeed ?? null } : {}),
   };
 }

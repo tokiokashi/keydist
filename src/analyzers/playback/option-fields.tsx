@@ -9,6 +9,7 @@ import {
   PLAYBACK_STEPS_PER_SECOND_MAX,
   PLAYBACK_STEPS_PER_SECOND_MIN,
 } from '#interpretation/timing/playback-options.ts';
+import { BUNSETSU_WAIT_MS_MAX, BUNSETSU_WAIT_MS_MIN } from '#interpretation/timing/bunsetsu-wait.ts';
 import { PUNCTUATION_WAIT_MS_MAX, PUNCTUATION_WAIT_MS_MIN } from '#interpretation/timing/punctuation-wait.ts';
 import {
   bindOption,
@@ -212,6 +213,18 @@ export function usePlaybackFields(options: PlaybackOptions, onOptionsChange: (ne
         integer
         unit="ミリ秒"
         hint="日本語のテキストの「。」「．」「.」を打った後に置く間です。配列がその文字を打てない時も、テキストのその位置に置きます。"
+      />
+    ),
+    bunsetsuWaitMs: (
+      <NumberOptionField
+        label="文節の区切りの待機"
+        binding={bind('bunsetsuWaitMs')}
+        min={BUNSETSU_WAIT_MS_MIN}
+        max={BUNSETSU_WAIT_MS_MAX}
+        step={50}
+        integer
+        unit="ミリ秒"
+        hint="日本語のテキストの文節の区切りに置く間です。区切りの前の文節を打ち終えた後、次の文節を打ち始める前に置きます。"
       />
     ),
     rateAverage: (

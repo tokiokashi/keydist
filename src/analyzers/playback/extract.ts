@@ -13,7 +13,9 @@ import {
   type PlaybackTimeTotals,
   type PlaybackTimingStep,
 } from '#interpretation/timing/playback.ts';
+import { planBunsetsuWaits, sumWaitGaps } from '#interpretation/timing/bunsetsu-wait.ts';
 import { planPunctuationWaits, type PunctuationWaitUse } from '#interpretation/timing/punctuation-wait.ts';
+import type { SegmenterInfo, SegmentationOrigin } from '#input/text/segmentation.ts';
 import { ALTERNATE_PLAYBACK_OPTIONS, DEFAULT_PLAYBACK_OPTIONS, playbackOptions, type PlaybackOptions } from './options.ts';
 import { playbackScheduleOf } from './session.ts';
 import {
@@ -49,6 +51,11 @@ export interface PlaybackExtracted {
   readonly timeTotals: PlaybackTimeTotals;
   /** 読点・句点の前後の待機のうち、0でなく、テキストに足す位置がある項目。「既定と違う設定」の知らせの判定に使う */
   readonly waitUse: PunctuationWaitUse;
+  /**
+   * 文節の区切りの待機を時間に足している時の、区切りの出どころ。待機が0でない、日本語のテキストで、区切りを受け取っていて、
+   * 区切りが1つ以上ある時だけ持つ。「既定と違う設定」の知らせと、どの分割器の区切りで求めたかの表示に使う
+   */
+  readonly bunsetsuUse: BunsetsuWaitUse | undefined;
   /** 再生位置ごとの、かな毎秒・アクション毎秒の平均と、ChainとArpeggioの区間。先頭（位置0）を含む */
   readonly rateChart: readonly PlaybackRateChartPoint[];
   /**
@@ -56,6 +63,12 @@ export interface PlaybackExtracted {
    * 作り直されても変わらないので、再生位置を保つかどうかの判定に使う
    */
   readonly basisId: string;
+}
+
+/** 文節の区切りの待機に使った区切りの、分割器の名前と版・出どころ。 */
+export interface BunsetsuWaitUse {
+  readonly splitter: SegmenterInfo;
+  readonly origin: SegmentationOrigin;
 }
 
 export function computePlaybackExtraction({
@@ -77,8 +90,13 @@ export function computePlaybackExtraction({
   readonly basisId: string;
 }): PlaybackExtracted {
   const timing = playbackTimingConditions(options, assets);
-  const waitPlan = planPunctuationWaits(text, analysis.strokes, options, assets.textLanguage === 'ja');
-  const schedule = playbackScheduleOf(analysis, geometry, timing, waitPlan.gapMs);
+  const japanese = assets.textLanguage === 'ja';
+  const waitPlan = planPunctuationWaits(text, analysis.strokes, options, japanese);
+  // 区切りは日本語のテキストで、待機が0でない時だけ読む（0の時は器が区切りを渡さない）
+  const segmentation = japanese && options.bunsetsuWaitMs > 0 ? assets.segmentation : undefined;
+  const bunsetsuPlan = planBunsetsuWaits([...text].length, analysis.strokes, segmentation?.boundaries, options.bunsetsuWaitMs);
+  const gapMs = sumWaitGaps(waitPlan.gapMs, bunsetsuPlan.gapMs);
+  const schedule = playbackScheduleOf(analysis, geometry, timing, gapMs);
   const rateChart = playbackRateChartData(
     analysis,
     timing.stepsPerSecond,
@@ -98,8 +116,9 @@ export function computePlaybackExtraction({
     savedCalibration: options.applyPersonalSpeed ? assets.personalSpeed : undefined,
     personalSpeedUse: personalSpeedUseOf(options, assets),
     schedule,
-    timeTotals: playbackTimeTotals(schedule, waitPlan.gapMs[waitPlan.gapMs.length - 1]),
+    timeTotals: playbackTimeTotals(schedule, gapMs[gapMs.length - 1]),
     waitUse: waitPlan.use,
+    bunsetsuUse: segmentation !== undefined && bunsetsuPlan.hasBoundary ? { splitter: segmentation.splitter, origin: segmentation.origin } : undefined,
     rateChart,
     basisId,
   };

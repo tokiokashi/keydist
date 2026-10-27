@@ -113,6 +113,8 @@ export interface SingleBodyProps<Extracted, Options> {
   readonly trace: Trace;
   readonly extracted: Extracted;
   readonly options: Options;
+  /** 文節の区切りを使う設定の時の、区切りの用意の状態。`SingleAnalyzerPaneParts.usesSegmentation` を宣言したAnalyzerにだけ渡す。 */
+  readonly segmentation?: SegmentationStatus;
   /** 図のそばで開く表示の調整の書き込み先。解析設定と同じ1つの値を書き換える。 */
   readonly onOptionsChange: (next: Options) => void;
   /**
@@ -163,6 +165,11 @@ export interface SingleAnalyzerPaneParts<Options, Extracted>
    * 個別画面では、開いた時の最初の文字位置（URLの `position`）を本体へ`initialCharPosition`で渡す。
    */
   readonly acceptsPlaybackSeek?: boolean;
+  /**
+   * 解析設定が文節の区切りを求めているか。持つAnalyzerだけが宣言する。
+   * 求めている間だけ、ホストが分割器を読み込み、区切りを入力へ載せる（求めない設定では分割器に触れない）。
+   */
+  readonly usesSegmentation?: (options: Options) => boolean;
 }
 
 /**

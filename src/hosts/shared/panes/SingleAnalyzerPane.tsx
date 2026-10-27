@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { analysisTargetKey, nameTargets, type AnalysisTarget } from '#input/setup/index.ts';
 import type { ColorSlotsByKey, TargetSet } from '#engine/multi-target-selection.ts';
-import type { SetTargetFigure, SingleAnalyzerPaneParts } from '#analyzers/pane-parts.tsx';
+import type { SegmentationStatus, SetTargetFigure, SingleAnalyzerPaneParts } from '#analyzers/pane-parts.tsx';
 import {
   conditionHeaderInfoFromResolvedInput,
   settingsItemIds,
@@ -28,7 +28,8 @@ import { useTargetExtractions } from '../use-target-extractions.ts';
 import { useSetTargetSelection } from '../use-set-target-selection.ts';
 import { setTargetFigureState, setTargetsBesideSingle } from '../set-target-figures.ts';
 import type { PaneChrome, PaneEnvironment } from './pane-environment.ts';
-import { readingProvenance } from '../reading-evaluation.ts';
+import { readingProvenance, segmentationBasisOf } from '../reading-evaluation.ts';
+import { useSegmentation } from '../segmentation.ts';
 import { PersonalSpeedSavedContext } from '#ui/primitives/personal-speed-link.tsx';
 
 /**
@@ -82,11 +83,26 @@ export function SingleAnalyzerPane<Options, Extracted>({
   const conditionProvenance = useMemo(() => readingProvenance(resolvedText.reading), [resolvedText.reading]);
   const setupsById = useMemo(() => new Map(setups.map((setup) => [setup.id, setup] as const)), [setups]);
 
+  // 文節の区切りを求める設定の間だけ、分割器を呼ぶ。日本語以外のテキストは材料が無く、区切りを使わずに計算する。
+  // 区切りを読み込んでいる間は、区切りを使わない暫定の数値を出さない
+  const wantsSegmentation = analyzer.usesSegmentation?.(options) === true;
+  const segmentationBasis = useMemo(() => segmentationBasisOf(resolvedText), [resolvedText]);
+  const segmentationState = useSegmentation(env.bunsetsu, segmentationBasis, wantsSegmentation && !readingLoading);
+  const segmentationLoading = segmentationState.status === 'loading';
+  const segmentationInput = segmentationState.status === 'ready' ? segmentationState.input : undefined;
+  const segmentationStatus: SegmentationStatus | undefined = !wantsSegmentation
+    ? undefined
+    : segmentationState.status === 'failed' || env.bunsetsu === undefined
+      ? 'failed'
+      : segmentationBasis === undefined
+        ? 'unsupported'
+        : 'ready';
+
   const resolution = useMemo(
-    () => resolvePaneInput(target, setupsById, catalog, overrides, resolvedText),
-    [target, setupsById, catalog, overrides, resolvedText],
+    () => resolvePaneInput(target, setupsById, catalog, overrides, resolvedText, segmentationInput),
+    [target, setupsById, catalog, overrides, resolvedText, segmentationInput],
   );
-  const pane = useAnalyzerPane(cache, analyzer.definition, options, resolution, !readingLoading);
+  const pane = useAnalyzerPane(cache, analyzer.definition, options, resolution, !readingLoading && !segmentationLoading);
 
   // このAnalyzerが読む条件だけを、要約と対象名に足して数える（読まない条件を数えると、その条件で測ったように読めるため）
   const summaryScope = useMemo(
@@ -274,6 +290,7 @@ export function SingleAnalyzerPane<Options, Extracted>({
           extracted={coherent.extraction.extracted}
           options={options}
           onOptionsChange={onOptionsChange}
+          {...(segmentationStatus === undefined ? {} : { segmentation: segmentationStatus })}
           {...(playbackSeek === undefined ? {} : { playbackSeek })}
           {...(analyzer.acceptsPlaybackSeek === true && initialCharPosition !== undefined ? { initialCharPosition } : {})}
           {...(setTargetFigures.length === 0 ? {} : { setTargets: setTargetFigures })}

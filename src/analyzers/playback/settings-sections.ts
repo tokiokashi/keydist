@@ -13,6 +13,7 @@ export type PlaybackSettingsGroupId =
   | 'timing'
   | 'personalSpeed'
   | 'punctuationWait'
+  | 'bunsetsuWait'
   | 'rateAverage'
   | 'inputRow'
   | 'structure'
@@ -47,6 +48,7 @@ export const PLAYBACK_WINDOW_GROUPS: readonly PlaybackSettingsGroup[] = [
     title: '読点・句点の待機',
     keys: ['commaBeforeMs', 'commaAfterMs', 'periodBeforeMs', 'periodAfterMs'],
   },
+  { id: 'bunsetsuWait', title: '文節の区切り', keys: ['bunsetsuWaitMs'] },
   { id: 'rateAverage', title: '速度グラフの平均', keys: ['rateAverage', 'rateWindow', 'rateHalfLifeSeconds'] },
 ];
 

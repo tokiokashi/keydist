@@ -18,13 +18,14 @@ import {
   PLAYBACK_STEPS_PER_SECOND_MIN,
   type PlaybackRateAverage,
 } from '#interpretation/timing/playback-options.ts';
+import { BUNSETSU_WAIT_MS_MAX, BUNSETSU_WAIT_MS_MIN } from '#interpretation/timing/bunsetsu-wait.ts';
 import { PUNCTUATION_WAIT_MS_MAX, PUNCTUATION_WAIT_MS_MIN } from '#interpretation/timing/punctuation-wait.ts';
 import { booleanUrlCodec, defineOption, defineOptions, integerUrlCodec, numberUrlCodec, picklistUrlCodec } from '#analyzers/options.ts';
 
 /**
  * 打鍵再生Analyzerの解析設定。
  *
- * - 再生の時間と速度グラフの数値を変える17項目（`stepsPerSecond`ほか。`spec/playback-timing.md` §2・§5）は
+ * - 再生の時間と速度グラフの数値を変える18項目（`stepsPerSecond`ほか。`spec/playback-timing.md` §2・§5）は
  *   抽出の結果を変える（`affects: 'extract'`）。変えると抽出だけを作り直し、Traceと構造解析は作り直さない。
  *   個人速度の保存値は解析設定に入らず、`applyPersonalSpeed`が真の時だけ抽出の入力になる（`playbackAssetsKeyOf`）
  * - それ以外は表示だけが変わる項目で、Traceも抽出も作り直さない（`affects: 'view'`）
@@ -39,6 +40,7 @@ import { booleanUrlCodec, defineOption, defineOptions, integerUrlCodec, numberUr
  *   （`timing-conditions.ts`）。個人速度を適用しない時は読まれない
  * - `commaBeforeMs` / `commaAfterMs` / `periodBeforeMs` / `periodAfterMs`: 日本語のテキストの読点・句点の前後に足す待機 [ミリ秒]。
  *   打鍵の時間とは別に持つ。速度グラフの値には、待機を含む表示時間として入る（`spec/playback-timing.md` §3.9）
+ * - `bunsetsuWaitMs`: 日本語のテキストの文節の区切りに足す待機 [ミリ秒]。0でない時だけ文節の分割器から区切りを受け取る
  * - `rateAverage` / `rateWindow` / `rateHalfLifeSeconds`: 速度グラフの平均の方式・SMAの直近Stroke数・EWMAの半減時間 [秒]
  * - `showChain` / `showArpeggio` / `showSameFingerMotion`: 構造の動的表示。Chain・Arpeggioの区間の中で、
  *   今のステップの押下へ向かうキーの動きと順番を配列図に重ねる
@@ -167,6 +169,13 @@ export const playbackOptions = defineOptions({
     affects: 'extract',
     url: integerUrlCodec('periodAfter', PUNCTUATION_WAIT_MS_MIN, PUNCTUATION_WAIT_MS_MAX),
     label: '句点の後の待機',
+  }),
+  bunsetsuWaitMs: defineOption<number>({
+    schema: v.pipe(v.number(), v.integer(), v.minValue(BUNSETSU_WAIT_MS_MIN), v.maxValue(BUNSETSU_WAIT_MS_MAX)),
+    default: 0,
+    affects: 'extract',
+    url: integerUrlCodec('bunsetsuWait', BUNSETSU_WAIT_MS_MIN, BUNSETSU_WAIT_MS_MAX),
+    label: '文節の区切りの待機',
   }),
   rateAverage: defineOption<PlaybackRateAverage>({
     schema: v.picklist(['sma', 'ewma']),
@@ -302,6 +311,7 @@ export const ALTERNATE_PLAYBACK_OPTIONS: PlaybackOptions = {
   commaAfterMs: 200,
   periodBeforeMs: 100,
   periodAfterMs: 500,
+  bunsetsuWaitMs: 400,
   rateAverage: 'ewma',
   rateWindow: 20,
   rateHalfLifeSeconds: 2,
