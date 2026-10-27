@@ -283,6 +283,31 @@ export const QWERTY_OPTIMIZED_JIS_FINGER_ASSIGNMENT: FingerAssignment = columnFi
   QWERTY_OPTIMIZED_EXTRA,
 );
 
+/** 下段（QWERTYのZ行）の行インデックス */
+const BOTTOM_ROW = 3;
+
+/**
+ * 角度改変（Angle Mod）の運指で、下段の左5キーを打つ指（左から順）。
+ * 既定（列固定）は小指・薬指・中指・人差し指・人差し指だが、角度改変では左手の下段を1列ぶん内側の指で打つ
+ * （物理キーの位置で、Zの位置を薬指、Xの位置を中指、Cの位置を人差し指にする）。
+ * 角度改変で文字を1つ左の物理キーへ寄せた配列では、文字が従来の指のままになるので、物理キーに付く指は内側へ1つずれる。
+ * 左手の小指は下段を打たず、右手と左手の下段以外は既定と同じ。
+ */
+const ANGLE_MOD_BOTTOM_FINGER: readonly NonThumb[] = ['LR', 'LM', 'LI', 'LI', 'LI'];
+
+function angleModFingerAssignment(id: string, name: string, rowWidths: number[]): FingerAssignment {
+  const base = columnFingerAssignment(id, name, DEFAULT_COLUMN_FINGER, DEFAULT_HOME_COLUMN, rowWidths);
+  const baseFinger = { ...base.baseFinger };
+  ANGLE_MOD_BOTTOM_FINGER.forEach((finger, col) => {
+    baseFinger[keyId(BOTTOM_ROW, col)] = finger;
+  });
+  return makeFingerAssignment(id, name, baseFinger, base.homeKey);
+}
+
+export const ANGLE_MOD_FINGER_ASSIGNMENT: FingerAssignment = angleModFingerAssignment('angle-mod', 'Angle Mod', ROW_WIDTH);
+
+export const ANGLE_MOD_JIS_FINGER_ASSIGNMENT: FingerAssignment = angleModFingerAssignment('angle-mod-jis', 'Angle Mod（JIS）', [...JIS_ROW_WIDTH]);
+
 export type PhysicalKeyboardStandard = 'ansi' | 'jis';
 export type PhysicalTopology = 'row-staggered' | 'ortholinear' | 'split-ortholinear' | 'column-staggered';
 

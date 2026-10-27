@@ -67,6 +67,10 @@ realized Stroke gap = 0  → d(前のキー, 今のキー)               同指�
 キーの並びがQWERTYと同じ配列「QWERTY最適化」は、指の割り当ての推奨として、この割り当てを持ちます
 （物理配列がJISなら「QWERTY最適化（JIS）」）。全体・Workspace・物理配列のレベルで別の割り当てを選んでいても、
 配列「QWERTY最適化」は推奨の割り当てで測り、QWERTYと並べて比べられます。配列やSetupのレベルで選んだ割り当てが、推奨より優先されます。
+組み込みの指の割り当てには、左手の下段を角度改変（Angle Mod）の運指で打つ「Angle Mod」「Angle Mod（JIS）」もあります
+（Zの位置を薬指、Xの位置を中指、C・V・Bの位置を人差し指が担当し、左手の小指は下段を打ちません）。
+角度改変の運指で打つ前提で作者が定義した配列「Colemak-DH（ANSI）」「Canary（ANSI）」「Sturdy（ANSI）」は、この割り当てを推奨に持ちます。
+この3配列の並びは行ずれ（ロウスタッガード）のキーボード用なので、オーソリニアやカラムスタッガードの物理配列で測った値は、作者の想定外です。
 指の割り当ての画面では、組み込みの割り当てを自作と同じ図で見られます（複数の指が担当するキーは、基本の指の色で塗り、追加の担当の指を帯で示します）。組み込みは編集できず、複製して編集します。
 
 日本語のテキストに漢字が含まれる時は、評価の前に漢字を読み（ひらがな）に直します。読みは形態素解析の辞書（IPADIC）で求め、
@@ -322,6 +326,11 @@ TK音直入力法のコンボのヤ行19件で、拗音のローマ字塊の内�
 | Semimak JQ | [作者の記事](https://github.com/semilin/semilin.github.io/blob/8e2381e/src/blog/reflection-on-semimak.org)（2021-10-14、コミット `8e2381e`）。作者の解析ツール[genkey](https://github.com/semilin/genkey/blob/f1f4173/layouts/semimak_jq)（コミット `f1f4173`）の `layouts/semimak_jq` と照合して一致を確かめた |
 | Recurva | [作者のREADME](https://github.com/GalileoBlues/Recurva/blob/b2919b1/README.md)（コミット `b2919b1`、2023-10-24）。[cyanophageの比較表](https://cyanophage.github.io/)（コミット `b02780b`）と照合して一致を確かめた |
 | APTv3 | [作者のREADME](https://github.com/Apsu/APT/blob/f852266/README.md)（コミット `f852266`、2022-01-13）の角度改変なしの並び。cyanophageの比較表（コミット `b02780b`）と照合して一致を確かめた |
+| Colemak-DH（ANSI） | [公式のリポジトリ](https://github.com/ColemakMods/mod-dh/blob/d9398d5/kanata/colemak-dh-ansi.kbd)の `kanata/colemak-dh-ansi.kbd`（コミット `d9398d5`）。角度改変で下段の左5キーを1つ左へ寄せ、`z` を `b` の位置に移した並び。xkeyboard-configの `us(colemak_dh)`（コミット `be285e9`）と照合して一致を確かめた。既存の「Colemak-DH」（寄せていない並び）とは下段が違う |
+| Canary（ANSI） | [作者のREADME](https://github.com/Apsu/Canary/blob/74b0430/README.md)（コミット `74b0430`）の、角度改変で行ずれのキーボードに使う版。同じリポジトリのXKB定義 `canary` と、Linuxコンソール用の `console/canary.map` と照合して一致を確かめた |
+| Canary | 同じREADMEのオーソリニア用の並び。作者は30キーの外側を指定していないので、`;` はホーム段の11番目に置き、数字段と `[` `]` はQWERTYのまま。[cyanophageの比較表](https://cyanophage.github.io/)（コミット `b02780b`）と30キーが一致することを確かめた。cyanophageは `;` と `'` の位置が違う |
+| Sturdy（ANSI） | [作者のページ](https://oxey.dev/layouts/sturdy/)（2026-05-04時点）の30キーに、作者の説明にある角度改変の規則（下段の左5キーを1つ左へ寄せ、`z` を `b` の位置に移す）を当てた結果。作者がANSI用の並びを公開しているわけではない。cyanophageの比較表（コミット `b02780b`）のマトリクス用の並びに同じ規則を当てた結果と一致することを確かめた。ホーム段の11番目の `/` はcyanophageと同じ置き方 |
+| Sturdy | 同じページの30キー（寄せる前）。外側のキーの置き方は「Sturdy（ANSI）」と同じ。cyanophageの比較表（コミット `b02780b`）と照合して一致を確かめた |
 | Norman | [公式サイト](https://normanlayout.info/)の配置（2013）。genkeyの `layouts/norman`（コミット `f1f4173`）と照合して一致を確かめた |
 | QGMLWY | [carpalx](https://mk.bcgsc.ca/carpalx/?full_optimization)の「full Colemak-like optimization, ZXCV fixed」。genkeyの `layouts/qgmlwy`（コミット `f1f4173`）と照合して一致を確かめた |
 
