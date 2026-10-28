@@ -1,4 +1,5 @@
 import { isBuiltin } from '../romaji/rules.ts';
+import { ActivationConflictError, type ActivationConflictSide } from '../semantics/index.ts';
 import { FINGER_LABEL } from '../shapes/finger-names.ts';
 import { physicalKeyDisplayLabel } from '../shapes/key-labels.ts';
 import { assignmentHasKey, FINGERS, homeKeyOverrideApplies, keyId, QWERTY_LEGEND, type FingerAssignment, type NonThumb } from '../shapes/geometry.ts';
@@ -222,8 +223,7 @@ export function layoutProblems(
     try {
       toLayout(definitionOf('check', normalized));
     } catch (cause) {
-      const reason = cause instanceof Error ? cause.message : String(cause);
-      problems.push({ severity: 'error', field: { kind: 'build' }, message: `配列として組み立てられません（${reason}）` });
+      problems.push({ severity: 'error', field: { kind: 'build' }, message: buildFailureMessage(cause) });
     }
   }
 
@@ -253,6 +253,17 @@ export function layoutProblems(
   }
   return problems;
 }
+
+const conflictSideText = (side: ActivationConflictSide): string =>
+  `「${side.output}」の打鍵（${side.steps.map((keys) => keys.map((key) => physicalKeyDisplayLabel(key)).join('・')).join('→')}）`;
+
+/** 配列を組み立てられなかった時の誤りの文。同時に成り立つ出力どうしの衝突は、出力と打鍵で示す。 */
+const buildFailureMessage = (cause: unknown): string => {
+  if (cause instanceof ActivationConflictError) {
+    return `${conflictSideText(cause.left)}と${conflictSideText(cause.right)}が同時に成り立つため、配列として組み立てられません`;
+  }
+  return `配列として組み立てられません（${cause instanceof Error ? cause.message : String(cause)}）`;
+};
 
 /** 保存できない不備があるか。 */
 export const hasBlockingProblem = (problems: readonly LayoutProblem[]): boolean => problems.some((problem) => problem.severity === 'error');

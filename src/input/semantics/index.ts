@@ -1,4 +1,5 @@
 export {
+  ActivationConflictError,
   compileFaceSemanticInputs,
   faceAggregatesAsCombo,
   isComboFrameAlternative,
@@ -8,6 +9,7 @@ export {
   compileSequenceInputArtifacts,
   compileSequenceSemanticInputs,
   validateCanonicalInputMap,
+  type ActivationConflictSide,
   type CompiledSequenceArtifacts,
 } from './compiler.ts';
 export type {
