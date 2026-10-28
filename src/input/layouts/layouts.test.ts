@@ -168,6 +168,14 @@ test('面定義の未知のキーは空欄にせずエラーにする', () => {
   assert.throws(() => faceFromEntries([], 'simultaneous', { typo: 'あ' }), /面に未知のキーがある: typo/);
 });
 
+test('面定義は、格子の外の3つのキーの出力をextraCellsにし、持たない面はこの欄を持たない', () => {
+  const face = faceFromEntries([], 'simultaneous', { a: 'あ', 'caps-lock': 'き', tab: 'た' });
+  assert.deepEqual(face.extraCells, { 'caps-lock': 'き', tab: 'た' });
+  assert.equal(face.rows[2]?.[0], 'あ');
+  assert.equal('extraCells' in faceFromEntries([], 'simultaneous', { a: 'あ' }), false);
+  assert.throws(() => faceFromEntries([], 'simultaneous', { 'jis-ro': 'あ' }), /面に未知のキーがある: jis-ro/);
+});
+
 test('JISかな配列はJIS専用列・Shift面・濁点合成を持つ', () => {
   const layout = JIS_KANA;
 

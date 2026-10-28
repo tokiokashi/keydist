@@ -33,11 +33,6 @@ function groundOf(theme: HeatTheme): HeatRgb {
   return [(n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff];
 }
 
-/** 強度が増えるにつれて、ダークは明るくなる向き。 */
-function isMonotoneBrighter(luminances: readonly number[]): boolean {
-  return luminances.every((value, index) => index === 0 || value > luminances[index - 1]!);
-}
-
 const SERIES: readonly { readonly name: string; readonly samples: readonly HeatSample[] }[] = [
   { name: 'キーの塗り', samples: keyPoints.map(heatMultiKeySample) },
   { name: 'サーモグラフィ', samples: blobLevels.map(heatMultiBlobSample) },
@@ -51,10 +46,6 @@ test('地の色はtheme.cssの--heat-0と同じ', () => {
 });
 
 for (const { name, samples } of SERIES) {
-  test(`多色の${name}は、ダークで強度が増えるほど明るくなる`, () => {
-    assert.ok(isMonotoneBrighter(samples.map((sample) => relativeLuminance(sample.dark))));
-  });
-
   test(`多色の${name}の最小の色は、darkの地（--heat-0）より明るい`, () => {
     const first = relativeLuminance(samples[0]!.dark);
     const ground = relativeLuminance(groundOf('dark'));
@@ -88,6 +79,16 @@ test('ライトの多色の色と位置は、heatmap.js 1.0の既定の配色と
   for (const [position, rgb] of expected) {
     assert.deepEqual(heatMultiRgb('light', position), rgb, `強度 ${position}`);
   }
+});
+
+test('ダークの多色の高い端は、ライトと同じ赤で、赤へ向かう領域は上位5%', () => {
+  assert.deepEqual(heatMultiRgb('dark', 1), heatMultiRgb('light', 1));
+  assert.deepEqual(heatMultiRgb('dark', 1), [255, 0, 0]);
+  assert.deepEqual(
+    HEAT_STOPS.dark.slice(-2).map(([position]) => position),
+    [0.95, 1],
+  );
+  assert.deepEqual(heatMultiRgb('dark', 0.95), [255, 246, 176]);
 });
 
 test('ライトの多色は、0.45より低い所で地の色から青へつながる', () => {

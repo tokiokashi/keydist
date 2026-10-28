@@ -10,6 +10,7 @@ type FixtureFace = {
   trigger: string[];
   mode: 'prefix' | 'suffix' | 'simultaneous';
   suffixTrigger?: string[];
+  extraCells?: Record<string, string>;
   cells: string[][];
 };
 
@@ -127,6 +128,7 @@ export function assertKanaLayoutFixture(layout: Layout) {
         trigger: [...actual.trigger],
         mode: actual.mode,
         ...(actual.suffixTrigger === undefined ? {} : { suffixTrigger: [...actual.suffixTrigger] }),
+        ...(actual.extraCells === undefined ? {} : { extraCells: { ...actual.extraCells } }),
         cells: actualCells,
       },
       expected,

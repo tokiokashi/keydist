@@ -13,7 +13,9 @@ import { TSUKI_2_263 } from './tsuki-2-263.ts';
 import { GEKKOU } from './gekkou.ts';
 import { TSUKI_U9 } from './tsuki-u9.ts';
 import { TSUKIMISOU } from './tsukimisou.ts';
+import { TSUKIMISOU_EXTRACT } from './tsukimisou-extract.ts';
 import { TSUKI_EX } from './tsuki-ex.ts';
+import { TSUKI_RINGO } from './tsuki-ringo.ts';
 import { YUMI } from './yumi.ts';
 import { KAWASEMI_PLUS } from './kawasemi-plus.ts';
 import { JIS_KANA } from './jis-kana.ts';
@@ -248,7 +250,9 @@ export const LAYOUTS_JA: Layout[] = [
   GEKKOU,
   TSUKI_U9,
   TSUKIMISOU,
+  TSUKIMISOU_EXTRACT,
   TSUKI_EX,
+  TSUKI_RINGO,
   YUMI,
   KAWASEMI_PLUS,
   JIS_KANA,
