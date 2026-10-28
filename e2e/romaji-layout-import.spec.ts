@@ -83,13 +83,15 @@ test('Vialの定義を取り込むと新しい配列の下書きで開き、注�
   await expect(page.getByRole('dialog', { name: '対象の選択' }).locator(`input[value="layout:${id}"]`)).toHaveCount(1);
 });
 
-test('同じキーの同時押しが2つの出力になるVialの定義は、組み立てられない旨が出て保存できない', async ({ page }) => {
+test('同じキーの同時押しが2つの出力になるVialの定義は、後のコンボだけを取り込み、外したコンボの注意が出て保存できる', async ({ page }) => {
   await page.goto('/romaji-layout');
   await waitForHydration(page);
   await page.locator('[data-layout-import-file]').setInputFiles(file('conflict.vil', vial([DESU, DOT_ON_KA, KA, MOMENTARY])));
   await expect(page.locator('[data-layout-file-import="ok"]')).toBeVisible();
-  await expect(page.locator('[data-layout-problem="error"]')).toContainText('配列として組み立てられません');
-  await expect(page.locator('[data-layout-submit]')).toBeDisabled();
+  await expect(page.locator('[data-layout-file-warnings]')).toContainText('後のコンボ 2');
+  await expect(page.locator('[data-layout-problem="error"]')).toHaveCount(0);
+  await page.locator('[data-layout-submit]').click();
+  await expect(page.locator('[data-layout-pick]')).toHaveValue(/^user-/);
 });
 
 test('かなを含まないDvorakJの定義と、中黒を出す紅皿の定義を取り込める', async ({ page }) => {

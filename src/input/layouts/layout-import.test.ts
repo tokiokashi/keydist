@@ -60,9 +60,10 @@ test('Vialの第0層・通常キー出力・マクロ出力のコンボを読む
     layout.sequences.find(([output]) => output === 'desu'),
     ['desu', [['d', 's']]],
   );
+  // 同じキーの組の2つのコンボは後のもの（M1）だけが残り、先のもの（「.」）は通常キーの打鍵列のまま残る
   assert.deepEqual(
     layout.sequences.find(([output]) => output === '.'),
-    ['.', [['k', 'a']]],
+    ['.', [['.']]],
   );
   assert.deepEqual(
     layout.sequences.find(([output]) => output === 'ka'),
@@ -71,6 +72,88 @@ test('Vialの第0層・通常キー出力・マクロ出力のコンボを読む
   assert.ok(layout.legends.some(([key, label]) => key === '=' && label === 'KC_ENTER'));
   assert.ok(!layout.sequences.some(([output]) => output === 'KC_ENTER'));
   assert.ok(layout.warnings.some((warning) => warning.includes('MO(1)')));
+});
+
+const VIAL_COMBO_LAYER = [
+  ['KC_1', 'KC_2', 'KC_3', 'KC_4', 'KC_5', 'KC_6', 'KC_7', 'KC_8', 'KC_9', 'KC_0', 'KC_MINS', 'KC_EQL'],
+  ['KC_Q', 'KC_W', 'KC_E', 'KC_R', 'KC_T', 'KC_Y', 'KC_U', 'KC_I', 'KC_O', 'KC_P', 'KC_LBRC', 'KC_RBRC'],
+  ['KC_A', 'KC_S', 'KC_D', 'KC_F', 'KC_G', 'KC_H', 'KC_J', 'KC_K', 'KC_L', 'KC_SCLN', 'KC_QUOT'],
+  ['KC_Z', 'KC_X', 'KC_C', 'KC_V', 'KC_B', 'KC_N', 'KC_M', 'KC_COMMA', 'KC_DOT', 'KC_SLASH'],
+];
+
+const vialWithCombos = (combo: unknown[][]) =>
+  importVial(JSON.stringify({ layout: [VIAL_COMBO_LAYER], macro: [[['text', 'desu']], [['tap', 'KC_K', 'KC_A']]], combo }));
+
+test('Vialの同じキーの組のコンボは、並びで最後のものだけを取り込み、外したコンボを注意に入れる', () => {
+  for (const [first, second] of [
+    ['KC_K', 'KC_A'],
+    ['KC_A', 'KC_K'],
+  ]) {
+    const layout = vialWithCombos([
+      [first, second, 'KC_NO', 'KC_NO', 'KC_DOT'],
+      ['KC_K', 'KC_A', 'KC_NO', 'KC_NO', 'M1'],
+    ]);
+    const sequences = new Map(layout.sequences);
+    assert.deepEqual(sequences.get('ka'), [['k', 'a']]);
+    assert.deepEqual(sequences.get('.'), [['.']]);
+    assert.equal(layout.warnings.length, 1);
+    assert.match(layout.warnings[0], /コンボ 0（出力「\.」）.*後のコンボ 1（出力「ka」）/);
+  }
+});
+
+test('Vialの同じキーの組のコンボが3つあっても、入力順によらず最後のものが勝つ', () => {
+  const layout = vialWithCombos([
+    ['KC_K', 'KC_A', 'KC_NO', 'KC_NO', 'KC_DOT'],
+    ['KC_A', 'KC_K', 'KC_NO', 'KC_NO', 'KC_COMMA'],
+    ['KC_K', 'KC_A', 'KC_NO', 'KC_NO', 'M0'],
+  ]);
+  const sequences = new Map(layout.sequences);
+  assert.deepEqual(sequences.get('desu'), [['k', 'a']]);
+  assert.deepEqual(sequences.get('.'), [['.']]);
+  assert.deepEqual(sequences.get(','), [[',']]);
+  assert.equal(layout.warnings.length, 2);
+});
+
+test('Vialのレイヤー切り替えなど解決できない入力を含むコンボは、集合を比べずに今の扱いで取り込む', () => {
+  const layout = vialWithCombos([
+    ['KC_K', 'KC_A', 'KC_NO', 'KC_NO', 'KC_DOT'],
+    ['MO(1)', 'KC_K', 'KC_A', 'KC_NO', 'M1'],
+  ]);
+  const sequences = new Map(layout.sequences);
+  assert.deepEqual(sequences.get('.'), [['k', 'a']]);
+  assert.deepEqual(sequences.get('ka'), [['k', 'a']]);
+  assert.deepEqual(layout.warnings, []);
+});
+
+test('Vialの最後のコンボの出力を取り込めない時も、先のコンボは取り込まずに注意に入れる', () => {
+  const layout = vialWithCombos([
+    ['KC_K', 'KC_A', 'KC_NO', 'KC_NO', 'KC_DOT'],
+    ['KC_K', 'KC_A', 'KC_NO', 'KC_NO', 'MO(1)'],
+  ]);
+  assert.deepEqual(new Map(layout.sequences).get('.'), [['.']]);
+  assert.equal(layout.warnings.length, 2);
+  assert.ok(layout.warnings.some((warning) => /コンボ 0（出力「\.」）.*後のコンボ 1/.test(warning)));
+  assert.ok(layout.warnings.some((warning) => warning.includes('コンボ 1 は出力「MO(1)」を解決できない')));
+});
+
+test('Vialのキーの数が違うコンボの重なりは、同じキーの組として扱わない', () => {
+  const layout = vialWithCombos([
+    ['KC_K', 'KC_A', 'KC_NO', 'KC_NO', 'KC_DOT'],
+    ['KC_K', 'KC_A', 'KC_S', 'KC_NO', 'KC_COMMA'],
+  ]);
+  const sequences = new Map(layout.sequences);
+  assert.deepEqual(sequences.get('.'), [['k', 'a']]);
+  assert.deepEqual(sequences.get(','), [['k', 'a', 's']]);
+  assert.deepEqual(layout.warnings, []);
+});
+
+test('Vialのキーの集合が同じコンボを外した定義は、保存できる配列になる', () => {
+  const layout = vialWithCombos([
+    ['KC_K', 'KC_A', 'KC_NO', 'KC_NO', 'KC_DOT'],
+    ['KC_K', 'KC_A', 'KC_NO', 'KC_NO', 'M1'],
+  ]);
+  const result = createUserLayout([], () => 'user-x', contentOfImported(layout, 'qwerty'));
+  assert.ok(result.ok);
 });
 
 test('既存のVial由来コンボ73件を全件取り込める', () => {
@@ -93,6 +176,8 @@ test('既存のVial由来コンボ73件を全件取り込める', () => {
   const imported = importVial(JSON.stringify(data));
   const sequences = new Map(imported.sequences);
   assert.equal(CUSTOM_COMBOS.length, 73);
+  // キーの集合が同じコンボが無いので、外されるコンボは無い
+  assert.deepEqual(imported.warnings, []);
   for (const [output, inputs] of CUSTOM_COMBOS) {
     assert.deepEqual(sequences.get(output), [inputs.map((key) => key)]);
   }
