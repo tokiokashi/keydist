@@ -26,6 +26,10 @@ test('し・ち・つ・ふ は指定が無いので訓令式のまま', () => {
   assert.deepEqual(spelling(['し', 'ち', 'つ', 'ふ']), ['si', 'ti', 'tu', 'hu']);
 });
 
+test('てぃ でぃ は作者が書くthi dhiで綴る', () => {
+  assert.deepEqual(spelling(['てぃ', 'でぃ']), ['thi', 'dhi']);
+});
+
 test('小書きのかなはlで始める', () => {
   assert.deepEqual(spelling(['ぁ', 'ぃ', 'ぅ', 'ぇ', 'ぉ', 'ゃ', 'ゅ', 'ょ', 'ゎ']), ['la', 'li', 'lu', 'le', 'lo', 'lx', 'lj', 'lq', 'lwa']);
 });
@@ -50,7 +54,7 @@ test('句読点と記号は訓令式と同じ綴り', () => {
 test('綴りは配列の英字・句読点か、層の3文字だけで、訓令式に無い見出しを足さない', () => {
   const kunrei = tableForRule('kunrei');
   const extra = [...table.keys()].filter((heading) => !kunrei.has(heading) && !heading.startsWith('っ'));
-  assert.deepEqual(extra, ['ゎ']);
+  assert.deepEqual(extra.sort(), ['ゎ', 'でぃ', 'てぃ'].sort());
   const seoto = LAYOUTS.find((layout) => layout.id === 'seoto')!;
   for (const [heading, roman] of table) {
     if (['ん', 'っ', 'ー', '・'].includes(heading)) continue;

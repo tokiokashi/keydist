@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { test } from 'node:test';
-import { type SourceManifest, validateSourceManifest } from '../../../scripts/generate-kana-fixtures.ts';
+import { fileURLToPath } from 'node:url';
+import { isKanaManifestFile, type SourceManifest, validateSourceManifest } from '../../../scripts/generate-kana-fixtures.ts';
 
 const SOURCE_ROW_WIDTHS = [13, 12, 12, 11] as const;
 
@@ -36,7 +37,7 @@ function setSourceCell(manifest: SourceManifest, faceIndex: number, row: number,
 test('現在のかな source manifest は omission 完全性検証を通る', () => {
   const sourceDir = new URL('../../../test/fixtures/sources/', import.meta.url);
   const fileNames = readdirSync(sourceDir)
-    .filter((name) => name.endsWith('.json'))
+    .filter((name) => name.endsWith('.json') && isKanaManifestFile(fileURLToPath(sourceDir), name))
     .sort();
 
   assert.ok(fileNames.length > 0);

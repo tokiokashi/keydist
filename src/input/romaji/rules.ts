@@ -12,7 +12,7 @@ import { TOMISUKE_OVERRIDES, tomisukeRomaji } from './tomisuke.ts';
 export type RomajiBaseRuleId = 'kunrei' | 'oonishi' | 'tomisuke' | 'azik' | 'jlod' | 'gact10' | 'qwerty';
 /**
  * 組み込みの規則のid。せおと配列の綴りは `ん` `っ` `ー` の文字そのものを綴りに持ち、
- * 層を持つせおと配列でだけ打てるので、利用者が作る規則の基底に含めない。
+ * レイヤーを持つせおと配列でだけ打てるので、利用者が作る規則の基底に含めない。
  */
 export type BuiltinRomajiRuleId = RomajiBaseRuleId | 'seoto';
 export type RomajiRuleId = string;
@@ -106,7 +106,7 @@ export const ROMAJI_RULES: Record<
     table: () => gact10(),
   },
   seoto: {
-    name: 'せおと配列（拡張ローマ字。ん・っ・ーを左親指の層で打つ前提）',
+    name: 'せおと配列（拡張ローマ字。ん・っ・ーを左親指のレイヤーで打つ前提）',
     base: 'kunrei',
     overrides: {},
     generateSokuon: false,
@@ -120,7 +120,7 @@ export const DEFAULT_ROMAJI_RULE_ID: BuiltinRomajiRuleId = 'kunrei';
 /**
  * 配列が組み込みで持つローマ字規則の推奨。無ければ`undefined`（全体の値に従う）。
  * 大西配列は公式が前提とする大西式の綴り、とみすけ配列は作者が勧めるとみすけ式の綴り、
- * せおと配列は作者の拡張と層を前提にしたせおと配列の綴り、
+ * せおと配列は作者の拡張とレイヤーを前提にしたせおと配列の綴り、
  * TK音直入力法のコンボは訓令式（sya / zya）の綴りを前提に組まれているので、
  * 全体を別の規則へ変えても、この4つは推奨のまま打つ。
  * 全体の既定と同じ訓令式でも、TK音直入力法は「推奨として持つ」ので全体の変更に流されない。

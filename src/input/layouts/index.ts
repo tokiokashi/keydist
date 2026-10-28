@@ -206,7 +206,7 @@ const ALPHA: Layout[] = [
     'きゅーじーえむえるだぶりゅーわい',
     'carpalx',
   ]),
-  // 層（左親指との同時押し）の面で ん っ ー を出す。綴りは対のせおと配列の綴り
+  // レイヤー（左親指との同時押し）の面で ん っ ー を出す。綴りは対のせおと配列の綴り
   SEOTO,
   withAliases(withShiftedOutputs(fromRows('oonishi', '大西配列', ['1234567890', 'qlu,.fwryp', 'eiao-ktnsh', 'zxcv;gdmjb'])), [
     'おおにし',

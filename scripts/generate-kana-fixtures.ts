@@ -222,6 +222,15 @@ export function validateSourceManifest(fileName: string, manifest: SourceManifes
   }
 }
 
+/**
+ * かな配列のmanifestか。英字配列の出典の写し（`format` を持つ。`test/fixtures/sources/README.md` の末尾の節）は、
+ * 面と格子を持たないので対象にしない。
+ */
+export function isKanaManifestFile(directory: string, fileName: string): boolean {
+  const json = JSON.parse(readFileSync(join(directory, fileName), 'utf8')) as { format?: unknown };
+  return json.format === undefined;
+}
+
 function readManifest(fileName: string): SourceManifest {
   const manifest = JSON.parse(readFileSync(join(SOURCE_DIR, fileName), 'utf8')) as SourceManifest;
   validateSourceManifest(fileName, manifest);
@@ -246,7 +255,7 @@ function projectToAnsi(manifest: SourceManifest): Fixture {
 
 function generateFixtures() {
   for (const fileName of readdirSync(SOURCE_DIR)
-    .filter((name) => name.endsWith('.json'))
+    .filter((name) => name.endsWith('.json') && isKanaManifestFile(SOURCE_DIR, name))
     .sort()) {
     const fixture = projectToAnsi(readManifest(fileName));
     writeFileSync(join(FIXTURE_DIR, `${fixture.layoutId}.json`), `${JSON.stringify(fixture, null, 2)}\n`, 'utf8');

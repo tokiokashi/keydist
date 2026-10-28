@@ -27,3 +27,16 @@ ANSI対象外の値も同じ規則で明示する。これにより omission の
 面に入れない出典の行のうち、格子のキーの位置を持つ行は、`sourceRows` に転記して `omissions` に理由を書く。
 Shiftを要する入力や2キーの入力のように位置を持たない行は、manifestの `unplacedRows`（任意。入力・出力・理由）に書く。
 理由 `ime-default` は、作者の配列の設計ではなく、Google日本語入力の既定の表から残ったと読む行に使う。
+
+## 英字配列の出典の写し（`format` を持つ manifest）
+
+`format` を持つ JSON は、かな配列の manifest ではなく、作者が機械で読める形で配る英字配列の定義の写しである。
+面と格子を持たないので、`scripts/generate-kana-fixtures.ts` の対象にしない（`isKanaManifestFile`）。fixture は生成しない。
+
+- `format`: `keyflow-analyzer-layout`（作者の解析ツール Keyflow Analyzer の配列の定義の形に近い）
+- `source`: `url`・`sha`（取得した HTML の sha256）・`lastModified`（HTTP の Last-Modified）・`retrievedAt`（取得日）・`path`・`transform`（何を写し、何を写さないか）
+- `definition`: 解析ツールの定義から値を変えずに写した欄
+  - `L`・`R`: 左手・右手の格子。`null` は置き場の無い位置。セルは「単打で出す文字」のあとに、空白を挟んでレイヤーで出す入力を書く（`w ~` は単打が `w`、レイヤーが `~`）
+  - `customRules`・`aliases`: ローマ字の綴りの拡張
+
+突き合わせの unit test は `src/input/layouts/seoto-source.test.ts`。写しと配列の差（既知の不一致）は、test の中で理由と一緒に持つ。
