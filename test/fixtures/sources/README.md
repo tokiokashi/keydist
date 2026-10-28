@@ -18,3 +18,8 @@ ANSI対象外の値も同じ規則で明示する。これにより omission の
 
 格子の外のキー（`backquote`・`tab`・`caps-lock`）に出力を置く面は、`extraCells`（キーidから出力への写像）を持つ。
 出典のJISの格子に置き場が無い値を、採用する値のまま持つので、`sourceRows` と `omissions` には載せない。持たない面は、生成する fixture にもこの欄を出さない。
+
+出典の値を、別の出典（作者の追記など）に従って置き換えたセルは、manifestの `substitutions`（任意）に記録する。
+各要素は、面の番号・行・列（`omissions` と同じ位置の表し方）、`value`（`sourceRows` の値）、`adopted`（`rows` の値）、`source`（根拠）を持つ。
+`sourceRows` は出典の値のまま残し、`rows` に採用する値を置く。検査は、`sourceRows` の値と `value`、`rows` の値と `adopted` が一致すること、`adopted` と `value` が違うこと、`source` が空でないことを確かめる。
+`sourceRows` と `rows` で値が違うセルは、`omissions` か `substitutions` のどちらかに記録が無いと失敗する。fixtureは `rows` の値だけを持つ。
