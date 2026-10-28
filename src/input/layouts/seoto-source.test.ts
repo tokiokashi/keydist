@@ -8,7 +8,7 @@ import { SEOTO_FACES } from './seoto.ts';
 interface SeotoSource {
   format: string;
   layoutId: string;
-  source: { url: string; sha: string; lastModified: string; retrievedAt: string };
+  source: { url: string; repository: string; commit: string; license: string; sha: string; lastModified: string; retrievedAt: string };
   definition: {
     customRules: string;
     aliases: { source: string; keys: string }[];
@@ -25,7 +25,7 @@ const RIGHT_KEYS = ['67890', 'yuiop', 'hjkl;', 'nm,./'];
 
 /** 解析ツールの層のセルの表記を、層で出す文字にする。BackSpaceは文字を出さない */
 const LAYER_OUTPUT: Readonly<Record<string, string | null>> = { 'nn:ん': 'ん', '-': 'ー', 'ltu:っ': 'っ', BS: null };
-/** 解析ツールにあり、制作記と公式ページの配列図に無い層のセル。このPRでは層に置かない */
+/** 解析ツールにあり、制作記と公式ページの配列図に無い層のセル。せおと配列の層には置かない（`'` は単打で打てて経路が重なり、`~` は記号の定義を読めない） */
 const KNOWN_MISMATCH_LAYER_CELLS: Readonly<Record<string, string>> = { o: '~', h: "'" };
 
 interface Cell {
@@ -51,6 +51,9 @@ test('写しは解析ツールのHTMLを指し、取得の記録を持つ', () =
   assert.equal(source.format, 'keyflow-analyzer-layout');
   assert.equal(source.layoutId, 'seoto');
   assert.equal(source.source.url, 'https://keyflow.koyasi777.com/');
+  assert.equal(source.source.repository, 'https://github.com/koyasi777/keyflow-analyzer');
+  assert.match(source.source.commit, /^[0-9a-f]{40}$/);
+  assert.equal(source.source.license, 'MIT License');
   assert.match(source.source.sha, /^[0-9a-f]{64}$/);
   assert.ok(source.source.lastModified !== '' && source.source.retrievedAt !== '');
 });

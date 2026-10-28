@@ -34,7 +34,7 @@ Shiftを要する入力や2キーの入力のように位置を持たない行�
 面と格子を持たないので、`scripts/generate-kana-fixtures.ts` の対象にしない（`isKanaManifestFile`）。fixture は生成しない。
 
 - `format`: `keyflow-analyzer-layout`（作者の解析ツール Keyflow Analyzer の配列の定義の形に近い）
-- `source`: `url`・`sha`（取得した HTML の sha256）・`lastModified`（HTTP の Last-Modified）・`retrievedAt`（取得日）・`path`・`transform`（何を写し、何を写さないか）
+- `source`: `url`（配信先）・`repository`・`commit`（版を指すコミット）・`license`・`sha`（そのコミットの HTML の sha256）・`lastModified`（HTTP の Last-Modified）・`retrievedAt`（取得日）・`path`・`transform`（何を写し、何を写さないか）
 - `definition`: 解析ツールの定義から値を変えずに写した欄
   - `L`・`R`: 左手・右手の格子。`null` は置き場の無い位置。セルは「単打で出す文字」のあとに、空白を挟んでレイヤーで出す入力を書く（`w ~` は単打が `w`、レイヤーが `~`）
   - `customRules`・`aliases`: ローマ字の綴りの拡張
