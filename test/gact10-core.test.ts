@@ -115,13 +115,9 @@ test("長音のJISの : はUS配列の同じ物理位置の ' に読み替え、
   assert.equal(table['」'], ']');
 });
 
-test('末尾の省略打ちの節は、次の見出しの行まで入れない', () => {
-  const parsed = parseSource(SOURCE);
-  assert.deepEqual(
-    parsed.excluded.map((r) => r.input),
-    ['か行p'],
-  );
-  assert.equal(build().table.こころ, undefined);
+test('節の見出しにかかわらず、すべての節の出力を見出しにする', () => {
+  const { table } = build();
+  assert.equal(table.こころ, 'kp');
 });
 
 test('かなと採る記号に入らない出力（矢印など）と、循環する保留は見出しにしない', () => {

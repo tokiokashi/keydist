@@ -593,12 +593,21 @@ test("gACT10は句読点・長音・中点・括弧の綴りを持つ。長音�
   assert.equal(gact10Table.get('」'), ']');
 });
 
-test('gACT10は末尾の省略打ちの節の語を入れない。見出しは最長5文字', () => {
-  for (const phrase of ['しました', 'でした', 'であった', 'こころ', 'すくな', 'わかる', 'において', 'ところ', 'だけでな']) {
-    assert.equal(gact10Table.has(phrase), false, phrase);
-  }
+test('gACT10は節を区別せず、末尾の省略打ちの節の語も見出しにする。見出しは最長5文字', () => {
+  const expected: Record<string, string> = {
+    しました: ';ua',
+    でした: 'h;a',
+    であった: 'hka',
+    こころ: 'iul',
+    すくな: 'ijo',
+    ところ: 'kjo',
+    だけでな: 'hlh',
+    において: 'ljk',
+  };
+  for (const [kana, romaji] of Object.entries(expected)) assert.equal(gact10Table.get(kana), romaji, kana);
   const lengths = [...gact10Table.keys()].map((kana) => [...kana].length);
   assert.equal(Math.max(...lengths), 5);
+  assert.deepEqual([...gact10Table.keys()].filter((kana) => [...kana].length === 5).sort(), ['しましょう', 'においては', 'においても', 'もうしあげ']);
 });
 
 test('gACT10は、同じ入力を後の行が上書きした割り当てを持たない。ヴ系はヴぁ行の見出しで持つ', () => {
@@ -606,6 +615,9 @@ test('gACT10は、同じ入力を後の行が上書きした割り当てを持�
   assert.equal(gact10Table.get('とき'), 'kns');
   assert.equal(gact10Table.get('いぇ'), undefined);
   assert.equal(gact10Table.get('よって'), 'yd');
+  // であ + r + d も、後の行のであってに置き換わるので であれ を出さない
+  assert.equal(gact10Table.get('であって'), 'hkd');
+  assert.equal(gact10Table.has('であれ'), false);
   assert.equal(gact10Table.has('ヴ'), false);
   assert.equal(gact10Table.get('ヴぉー'), 'tw');
 });

@@ -10,8 +10,8 @@ const SUPPLEMENTS: Readonly<Record<string, string>> = { '「': '[', '」': ']' }
 export const COMMITTABLE_PENDING: ReadonlySet<string> = new Set(['っ', '・']);
 /** 定義のJISキー名 → 同じ物理位置のUS配列のキーが出す文字 */
 const JIS_TO_US: Readonly<Record<string, string>> = { ':': "'" };
-const EXCLUDED_SECTION = /^#その他の省略打ち/;
-const SECTION_HEADER = /^#■/;
+/** 節の見出しのコメント。報告で節ごとの行数を出すためだけに使う */
+const SECTION_HEADER = /^#(■|その他の省略打ち)/;
 /** 見出し1つの打鍵の長さの上限。循環する状態を打ち切るためだけの値で、定義の実際の最長より大きい */
 const MAX_KEYS = 8;
 
@@ -32,17 +32,13 @@ export interface Rule {
 
 export interface Parsed {
   rules: Rule[];
-  /** 末尾の省略打ちの節として除いた行（入力の列が空でないもの） */
-  excluded: Rule[];
   /** 入力の列が空でない行の数 */
   inputLines: number;
 }
 
 export function parseSource(text: string): Parsed {
   const rules: Rule[] = [];
-  const excluded: Rule[] = [];
   let section = '';
-  let skipping = false;
   let inputLines = 0;
   text
     .replace(/^\uFEFF/, '')
@@ -51,14 +47,7 @@ export function parseSource(text: string): Parsed {
       const line = raw.replace(/\r$/, '');
       const lineNo = index + 1;
       if (line.startsWith('#')) {
-        if (SECTION_HEADER.test(line)) {
-          section = line.slice(1);
-          skipping = false;
-        }
-        if (EXCLUDED_SECTION.test(line)) {
-          section = line.slice(1);
-          skipping = true;
-        }
+        if (SECTION_HEADER.test(line)) section = line.slice(1);
         return;
       }
       // 空白行やタブのない行は、Google日本語入力が読み込んだあとに無視する
@@ -71,9 +60,9 @@ export function parseSource(text: string): Parsed {
       const key = input.slice(-1);
       if (!/^[a-z;,./:]$/.test(key)) throw new Error(`${lineNo}行目: 最後の文字がQWERTYのキーでない: ${JSON.stringify(line)}`);
       const rule: Rule = { input, state: input.slice(0, -1), key, output, pending, line: lineNo, section };
-      (skipping ? excluded : rules).push(rule);
+      rules.push(rule);
     });
-  return { rules, excluded, inputLines };
+  return { rules, inputLines };
 }
 
 /** 定義の打鍵（QWERTYの文字）を、keydistの `qwerty` 配列で打つ文字に読み替える */
@@ -175,7 +164,6 @@ export function buildTable(parsed: Parsed): Built {
   const { transitions, duplicates, emptied, resolved } = resolveRules(parsed.rules);
 
   report.push(`入力の列が空でない行: ${parsed.inputLines}`);
-  report.push(`末尾の省略打ちの節として除いた行: ${parsed.excluded.length}`);
   const sections = new Map<string, number>();
   for (const rule of parsed.rules) sections.set(rule.section, (sections.get(rule.section) ?? 0) + 1);
   report.push('節ごとに入れた行（重複の解決前）:');
