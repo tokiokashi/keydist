@@ -9,7 +9,7 @@ import {
   type KeyPatternPresentationState,
 } from '#input/layouts/key-pattern-picker.ts';
 import { browserKeyboardEventToPhysicalKeyEvent, isBrowserTextInputCode, shouldCaptureBrowserKeyDown } from './browser-keyboard-adapter.ts';
-import { EMPTY_BROWSER_KEY_BINDING_OVERRIDES, type BrowserKeyBindingOverrides } from './browser-keyboard-bindings.ts';
+import { EMPTY_BROWSER_KEY_BINDING_OVERRIDES, type BrowserKeyBindingOverrides } from '#input/shapes/browser-key-codes.ts';
 import { liveRomajiContextSatisfied, romajiToKana } from './live-romaji.ts';
 import { applyRecognizedTypingInputs, applyTypingTextEdit, executeTypingEditCommand } from './typing-session-command.ts';
 

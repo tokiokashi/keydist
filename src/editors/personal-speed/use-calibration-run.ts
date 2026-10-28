@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { BrowserKeyBindingOverrides } from '#input/shapes/browser-key-codes.ts';
 import {
   calibrationTaskAcceptsSpace,
   currentCalibrationTask,
@@ -8,11 +9,13 @@ import {
   type CalibrationScope,
   type CalibrationTask,
 } from '#interpretation/timing/calibration-session.ts';
-import { captureCalibrationKeys } from './key-capture.ts';
+import { captureCalibrationKeys, matchableKeyEvent } from './key-capture.ts';
 
 export interface CalibrationRunOptions {
   /** 案内と照合に使う、キーidに対応する刻印の名前。 */
   readonly keyLabel: (keyId: string) => string;
+  /** 測定を始める時点で、押下の`code`からキーのidを引く対応を返す。測定の間は、始めた時の対応を使う。 */
+  readonly codeBindings: () => BrowserKeyBindingOverrides;
   /** 全項目が済んだ時。最新の描画の値で呼ばれる。 */
   readonly onFinished: (run: CalibrationRun) => void;
 }
@@ -37,17 +40,19 @@ export function useCalibrationRun(options: CalibrationRunOptions): CalibrationRu
   const runRef = useRef<CalibrationRun | undefined>(undefined);
   const optionsRef = useRef(options);
   optionsRef.current = options;
+  const bindingsRef = useRef<BrowserKeyBindingOverrides>({});
   const active = run !== undefined;
 
   useEffect(() => {
     if (!active) return undefined;
+    const codeBindings = bindingsRef.current;
     const stop = captureCalibrationKeys(
       document,
       (event) => {
         const current = runRef.current;
         if (current === undefined) return;
         const { keyLabel, onFinished } = optionsRef.current;
-        const pressed = pressCalibrationKey(current, event, event.timeStamp, keyLabel);
+        const pressed = pressCalibrationKey(current, matchableKeyEvent(event, codeBindings), event.timeStamp, keyLabel);
         if (pressed.outcome.kind === 'wrong-key') {
           setWrongKey(keyLabel(pressed.outcome.expectedKey));
           return;
@@ -67,6 +72,7 @@ export function useCalibrationRun(options: CalibrationRunOptions): CalibrationRu
         setRun(pressed.run);
       },
       {
+        codeBindings,
         // 親指との同時押しを測る間だけSpaceを受け付ける。その間のSpaceは、スクロールとボタンの押下へ渡さない。
         acceptsSpace: () => runRef.current !== undefined && calibrationTaskAcceptsSpace(currentCalibrationTask(runRef.current)),
       },
@@ -77,6 +83,7 @@ export function useCalibrationRun(options: CalibrationRunOptions): CalibrationRu
   const start = useCallback((scope: CalibrationScope, tasks: readonly CalibrationTask[]) => {
     if (tasks.length === 0) return;
     const next = startCalibrationRun(scope, tasks);
+    bindingsRef.current = optionsRef.current.codeBindings();
     runRef.current = next;
     setWrongKey(undefined);
     setRun(next);

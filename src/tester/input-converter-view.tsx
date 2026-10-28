@@ -13,6 +13,7 @@ import {
   THUMB_KEY,
   type PhysicalKeyboardStandard,
 } from '#input/shapes/geometry.ts';
+import { browserKeyBindingsForShape, type BrowserKeyBindingOverrides } from '#input/shapes/browser-key-codes.ts';
 import { groupShapes } from '#input/shapes/shape-groups.ts';
 import {
   aggregationLegendMap,
@@ -34,7 +35,6 @@ import {
   loadBrowserKeyBindingOverrides,
   saveBrowserKeyBindingOverrides,
   unassignBrowserKeyCode,
-  type BrowserKeyBindingOverrides,
 } from './browser-keyboard-bindings.ts';
 import { browserCodeDisplayLabel, browserCodesForPhysicalKey } from './browser-keyboard-adapter.ts';
 import {
@@ -89,11 +89,6 @@ const NO_USER_LAYOUTS: readonly Layout[] = [];
 // 組み込みの物理配列は定義の登録順（グループ内はロウ → オーソ → オーソ分割 → カラム）のまま全部使う。
 // ANSI・JISの振り分けは選択欄の側で groupShapes が行うので、ここに id を手で並べない。
 const PRESET_GEOMETRY_SHAPES = Object.values(PHYSICAL_SHAPES);
-const JIS_BROWSER_BINDINGS: BrowserKeyBindingOverrides = {
-  Backslash: 'r2c11',
-  IntlYen: 'r0c12',
-  IntlRo: 'r3c10',
-};
 const HOME_POSITION_KEYS = new Set(['f', 'j']);
 const DEFAULT_SPLIT_PERCENT = 50;
 const MIN_SPLIT_PERCENT = 25;
@@ -269,13 +264,7 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
   const keyboardStandard = keyboardStandardForGeometryId(geometryId);
   const keyLabel = (key: string) => physicalKeyDisplayLabel(key, keyboardStandard);
   const codeLabel = (code: string) => browserCodeDisplayLabel(code, keyboardStandard);
-  const browserBindings = useMemo(
-    () => ({
-      ...(isPresetGeometryKind(geometryId) && presetGeometryStandard(geometryId) === 'jis' ? JIS_BROWSER_BINDINGS : {}),
-      ...bindingOverrides,
-    }),
-    [bindingOverrides, geometryId],
-  );
+  const browserBindings = useMemo(() => browserKeyBindingsForShape(geometryId, bindingOverrides), [bindingOverrides, geometryId]);
   const session = useTypingSession(layout, browserBindings);
   const [showDynamicGuide, setShowDynamicGuide] = useState(true);
   const [showLayerGuide, setShowLayerGuide] = useState(true);

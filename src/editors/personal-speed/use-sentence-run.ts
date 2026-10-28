@@ -1,10 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { BrowserKeyBindingOverrides } from '#input/shapes/browser-key-codes.ts';
 import { pressSentenceSessionKey, startSentenceSession, type SentenceSession, type SentencePlan } from '#interpretation/timing/sentence-session.ts';
-import { captureCalibrationKeys } from './key-capture.ts';
+import { captureCalibrationKeys, matchableKeyEvent, swallowsPress } from './key-capture.ts';
 
 export interface SentenceRunOptions {
   /** 案内と照合に使う、キーidに対応する刻印の名前。 */
   readonly keyLabel: (keyId: string) => string;
+  /**
+   * 測定を始める時点で、押下の`code`からキーのidを引く対応を返す。物理配列の対応に、利用者がTesterで割り当てた対応を重ねたもの。
+   * 測定の間は、始めた時の対応を使う。
+   */
+  readonly codeBindings: () => BrowserKeyBindingOverrides;
   /** 全文の全回が済んだ時。最新の描画の値で呼ばれる。 */
   readonly onFinished: (session: SentenceSession) => void;
 }
@@ -29,42 +35,55 @@ export function useSentenceRun(options: SentenceRunOptions): SentenceRunControll
   const sessionRef = useRef<SentenceSession | undefined>(undefined);
   const optionsRef = useRef(options);
   optionsRef.current = options;
+  const bindingsRef = useRef<BrowserKeyBindingOverrides>({});
   const active = session !== undefined;
 
   useEffect(() => {
     if (!active) return undefined;
-    return captureCalibrationKeys(document, (event) => {
-      const current = sessionRef.current;
-      if (current === undefined) return;
-      const { keyLabel, onFinished } = optionsRef.current;
-      const pressed = pressSentenceSessionKey(current, event, event.timeStamp, keyLabel);
-      if (pressed.outcome.kind === 'wrong-key') {
-        // 違うキーを押したストロークは、間隔を数えない印を進行に残す。
+    const codeBindings = bindingsRef.current;
+    return captureCalibrationKeys(
+      document,
+      (event) => {
+        const current = sessionRef.current;
+        if (current === undefined) return;
+        const { keyLabel, onFinished } = optionsRef.current;
+        const pressed = pressSentenceSessionKey(current, matchableKeyEvent(event, codeBindings), event.timeStamp, keyLabel);
+        if (pressed.outcome.kind === 'wrong-key') {
+          // 違うキーを押したストロークは、間隔を数えない印を進行に残す。
+          sessionRef.current = pressed.session;
+          setSession(pressed.session);
+          // 出力の文字の読み方だけが残っている時は、キーボードが送る文字をそのまま案内する。
+          setWrongKey(pressed.outcome.expectedIsOutput ? pressed.outcome.expectedKey.toUpperCase() : keyLabel(pressed.outcome.expectedKey));
+          return;
+        }
+        // 打つキーだった。ブラウザの検索などの働きと、他の層のキー操作へ渡さない。
+        if (swallowsPress(pressed.outcome.kind)) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        if (pressed.outcome.kind === 'ignored') return;
+        setWrongKey(undefined);
+        if (pressed.outcome.kind === 'run-finished') {
+          sessionRef.current = undefined;
+          setSession(undefined);
+          onFinished(pressed.session);
+          return;
+        }
         sessionRef.current = pressed.session;
         setSession(pressed.session);
-        // 出力の文字の読み方だけが残っている時は、キーボードが送る文字をそのまま案内する。
-        setWrongKey(pressed.outcome.expectedIsOutput ? pressed.outcome.expectedKey.toUpperCase() : keyLabel(pressed.outcome.expectedKey));
-        return;
-      }
-      // 打つキーだった。ブラウザの検索などの働きと、他の層のキー操作へ渡さない。
-      event.preventDefault();
-      event.stopPropagation();
-      if (pressed.outcome.kind === 'ignored') return;
-      setWrongKey(undefined);
-      if (pressed.outcome.kind === 'run-finished') {
-        sessionRef.current = undefined;
-        setSession(undefined);
-        onFinished(pressed.session);
-        return;
-      }
-      sessionRef.current = pressed.session;
-      setSession(pressed.session);
-    });
+      },
+      {
+        codeBindings,
+        // CapsLock・Tab・Backquoteも取る。次に打つキーでなければ違うキーの押下になり、preventDefaultは呼ばない。
+        withLeftColumnCodes: true,
+      },
+    );
   }, [active]);
 
   const start = useCallback((plans: readonly SentencePlan[]) => {
     if (plans.length === 0 || plans.some((plan) => plan.units.length === 0)) return;
     const next = startSentenceSession(plans);
+    bindingsRef.current = optionsRef.current.codeBindings();
     sessionRef.current = next;
     setWrongKey(undefined);
     setSession(next);

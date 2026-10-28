@@ -2,6 +2,7 @@ import { focusOnMount } from '#ui/primitives/focus-on-mount.ts';
 import { useHistoryShortcuts } from '#ui/primitives/use-history-shortcuts.ts';
 import { Fragment, useEffect, useEffectEvent, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Layout } from '#input/layouts/types.ts';
+import { browserKeyBindingsForShape, type BrowserKeyBindingOverrides } from '#input/shapes/browser-key-codes.ts';
 import { FINGERS, type FingerAssignment, type PhysicalShape } from '#input/shapes/geometry.ts';
 import { OVERHEAD_KINDS, SIMULTANEOUS_KINDS, type PlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import {
@@ -117,6 +118,11 @@ export interface PersonalSpeedEditorProps {
    * 条件の解決とTrace生成は`editors`から読めないので、appが組み立てて渡す。
    */
   readonly buildSentence: (selection: PersonalSpeedSelection, text: string) => SentenceBuildResult;
+  /**
+   * 利用者がTesterの画面で割り当てた、押下の`code`からキーのidへの対応。測定を始める時に読む。
+   * 保存先の読み込みは`editors`から読めないので、appが渡す。
+   */
+  readonly readKeyBindingOverrides: () => BrowserKeyBindingOverrides;
   readonly canUndo: boolean;
   readonly canRedo: boolean;
   readonly onUndo: () => void;
@@ -425,6 +431,7 @@ export function PersonalSpeedEditor({
   canUndo,
   canRedo,
   buildSentence,
+  readKeyBindingOverrides,
   onUndo,
   onRedo,
   onSave,
@@ -501,7 +508,9 @@ export function PersonalSpeedEditor({
         : { simultaneous: { kind: 'message', text: clearedSimultaneousText(result.clearedSimultaneous) } }),
     });
   };
-  const runner = useCalibrationRun({ keyLabel, onFinished: finished });
+  // 押下からキーを引く対応は、選んだ物理配列の対応に、利用者の対応を重ねたもの。測定を始めた時点の値を使う。
+  const codeBindings = () => browserKeyBindingsForShape(selection.shapeId, readKeyBindingOverrides());
+  const runner = useCalibrationRun({ keyLabel, codeBindings, onFinished: finished });
 
   const sentence: SentenceSetup | undefined = useMemo(
     () =>
@@ -551,7 +560,7 @@ export function PersonalSpeedEditor({
     setSentencePending(undefined);
     setNotices({ sentence: { kind: 'message', text: SENTENCE_DECLINED_TEXT, table: pending?.table, phase: 'after-decline' } });
   };
-  const sentenceRunner = useSentenceRun({ keyLabel, onFinished: sentenceFinished });
+  const sentenceRunner = useSentenceRun({ keyLabel, codeBindings, onFinished: sentenceFinished });
   const running = runner.run !== undefined || sentenceRunner.session !== undefined;
   // キー操作もボタンと同じ処理を通し、測定中（ボタンも押せない間）は動かさない
   useHistoryShortcuts(

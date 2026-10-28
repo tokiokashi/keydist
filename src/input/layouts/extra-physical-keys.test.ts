@@ -12,7 +12,7 @@ import {
 } from '../shapes/geometry.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { fromKana, LAYOUT_BY_ID } from './index.ts';
-import { browserCodeToPhysicalKey } from '#tester/browser-keyboard-adapter.ts';
+import { browserCodeToPhysicalKey } from '#input/shapes/browser-key-codes.ts';
 import { physicalKeysUsedByLayout, visibleGeometryKeys } from './physical-keys.ts';
 
 const shape: PhysicalShape = {
