@@ -229,3 +229,38 @@ test('出力欄でEnterを押すと次のキーへ進み、配列は保存され
   // 保存されていない（保存した配列の選択が現れない）
   await expect(page.locator('[data-kana-pick]')).toHaveCount(0);
 });
+
+test('段の欄に打つと図のキーの出力が埋まり、図で直すと欄も変わる。閉じていない囲みは欄に残して診断を出す', async ({ page }) => {
+  await page.goto('/kana-layout');
+  await waitForHydration(page);
+  await page.locator('[data-kana-name]').fill('段の欄の確認');
+  const legend = (id: string) => page.locator(`[data-kana-figure] [data-key-id="${id}"] .physical-keyboard-legend`);
+  const home = page.locator('[data-kana-row="2"]');
+
+  await home.fill('あ "きゃ"う');
+  await expect(legend('a')).toHaveText('あ');
+  await expect(legend('s')).toHaveText('');
+  await expect(legend('d')).toHaveText('きゃ');
+  await expect(legend('f')).toHaveText('う');
+  await expect(page.locator('.kana-layout-count').nth(2)).toHaveText('4 / 11');
+
+  // Enterは配列の保存にならない
+  await home.press('Enter');
+  await expect(page.locator('[data-kana-pick]')).toHaveCount(0);
+
+  // 図のキーを直すと欄も変わる
+  await page.locator('[data-kana-figure] [data-key-id="s"]').click();
+  await page.locator('[data-kana-output]').fill('し');
+  await expect(home).toHaveValue('あし"きゃ"う');
+
+  // 閉じていない囲みは欄に残り、出力は直前のまま
+  await home.fill('あし"きゃ');
+  await expect(home).toHaveValue('あし"きゃ');
+  await expect(page.locator('[data-kana-row-problem="2"]')).toContainText('閉じていません');
+  await expect(legend('d')).toHaveText('きゃ');
+
+  // 欄を短くすると、右のキーの出力が消える
+  await home.fill('あ');
+  await expect(legend('s')).toHaveText('');
+  await expect(legend('d')).toHaveText('');
+});

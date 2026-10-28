@@ -14,7 +14,7 @@ import { isFaceOutputKey, type FaceLayoutNotice, type FaceLayoutProblem } from '
 import { importKanaLayoutFile } from '#input/layouts/import.ts';
 import { ignoredHomeKeyWarnings, newUserLayoutId } from '#input/layouts/layout-edit.ts';
 import type { FaceMode, InputRole, LayerKind, TriggerOrder, TriggerPersistence } from '#input/layouts/types.ts';
-import { isFaceUserLayout, type UserLayout } from '#input/layouts/user-layouts.ts';
+import { isFaceUserLayout, ROW_LABELS, type UserLayout } from '#input/layouts/user-layouts.ts';
 import { FINGER_LABEL } from '#input/shapes/finger-names.ts';
 import {
   buildGeometry,
@@ -47,6 +47,7 @@ import {
   TRIGGER_ORDER_LABEL,
 } from './face-editing.ts';
 import { KANA_LAYOUT_LABEL } from './label.ts';
+import { applyRowOutputs, figureRowKeys, formatRowText, hasQuoteOutput, parseRowText, rowOutputs } from './row-input.ts';
 import './kana-layout.css';
 
 const NEW = 'new';
@@ -169,8 +170,18 @@ function FacePanel({ face, standard, homeKeys, problems, onChange }: FacePanelPr
   const [selectedKey, setSelectedKey] = useState<string | undefined>(undefined);
   const [operation, setOperation] = useState<'output' | 'trigger'>('output');
   const [announcement, setAnnouncement] = useState('');
+  // 段の欄に打っている途中の文字列。解釈できない間も欄に残す。`snapshot` は、その時点の段の出力
+  const [rowTexts, setRowTexts] = useState<Readonly<Record<number, { readonly text: string; readonly snapshot: string }>>>({});
   const geometry = useMemo(() => geometryOf(standard), [standard]);
   const keys = useMemo(() => [...geometry.keys.values()], [geometry]);
+  const rowKeys = useMemo(
+    () =>
+      figureRowKeys(
+        keys.map((key) => key.id),
+        ROW_LABELS.length,
+      ),
+    [keys],
+  );
   const triggered = face.trigger.length > 0;
 
   const pathsOf = (field: string) => problems.some((problem) => problem.path.endsWith(`.${field}`));
@@ -206,6 +217,37 @@ function FacePanel({ face, standard, homeKeys, problems, onChange }: FacePanelPr
     // 出力を書けないキーは、図が押せないキーとして出す（`disabled`）ので、ここへは来ない
     if (!isFaceOutputKey(key.id)) return;
     setSelectedKey(key.id === selectedKey ? undefined : key.id);
+  };
+
+  const rowFields = rowKeys.map((rowKeyList, index) => {
+    const outputs = rowOutputs(face, rowKeyList);
+    const snapshot = JSON.stringify(outputs);
+    const own = rowTexts[index];
+    // 図や出力欄で段の出力が変わったら、欄は出力から作り直した文字列に置き換える
+    const text = own !== undefined && own.snapshot === snapshot ? own.text : formatRowText(outputs);
+    const parsed = parseRowText(text);
+    const shown = parsed.ok ? parsed : parseRowText(formatRowText(outputs));
+    const used = shown.ok ? shown.outputs.length : 0;
+    const over = parsed.ok ? parsed.outputs.length - rowKeyList.length : 0;
+    const label = ROW_LABELS[index] ?? '';
+    const error = parsed.ok
+      ? undefined
+      : parsed.reason === 'unclosed'
+        ? `${label}の二重引用符が閉じていません。`
+        : `${label}に中身のない二重引用符があります。`;
+    return { index, label, keys: rowKeyList, text, snapshot, used, over, error, readOnly: hasQuoteOutput(outputs) };
+  });
+
+  const setRowText = (index: number, text: string) => {
+    const rowKeyList = rowKeys[index] ?? [];
+    const parsed = parseRowText(text);
+    if (!parsed.ok) {
+      setRowTexts({ ...rowTexts, [index]: { text, snapshot: JSON.stringify(rowOutputs(face, rowKeyList)) } });
+      return;
+    }
+    const next = applyRowOutputs(face, rowKeyList, parsed.outputs);
+    setRowTexts({ ...rowTexts, [index]: { text, snapshot: JSON.stringify(rowOutputs(next, rowKeyList)) } });
+    onChange(next);
   };
 
   // 出力欄にフォーカスがある間はラベルの変化が読み上げられないので、選び直したキーの名前を知らせる
@@ -295,6 +337,59 @@ function FacePanel({ face, standard, homeKeys, problems, onChange }: FacePanelPr
             消す
           </button>
         </div>
+      ) : null}
+
+      {operation === 'output' ? (
+        <fieldset className="kana-layout-rows" data-kana-rows>
+          <legend className="kana-layout-label-row">
+            段の文字
+            <InfoButton
+              name="段の文字"
+              description={
+                '段のキーに、左から順に出力を書きます。半角スペースは空きキーで、末尾の空きキーは省けます。2文字以上の出力は半角の二重引用符で囲みます（例: あ"きゃ"う）。二重引用符を含む出力は、ここでは書けません。'
+              }
+            />
+          </legend>
+          {rowFields.map((row) => (
+            <div key={row.index} className="kana-layout-row">
+              <label>
+                {row.label}
+                <input
+                  type="text"
+                  spellCheck={false}
+                  autoComplete="off"
+                  value={row.text}
+                  readOnly={row.readOnly}
+                  aria-invalid={row.error !== undefined || row.over > 0}
+                  data-kana-row={row.index}
+                  onChange={(event) => setRowText(row.index, event.currentTarget.value)}
+                  onKeyDown={(event) => {
+                    // 配列のformの送信にしない。変換を確定するEnterはそのまま通す
+                    if (event.key === 'Enter' && !event.nativeEvent.isComposing) event.preventDefault();
+                  }}
+                />
+              </label>
+              <span className="kana-layout-count">
+                {row.used} / {row.keys.length}
+              </span>
+              {row.error === undefined ? null : (
+                <p className="kana-layout-error" role="alert" data-kana-row-problem={row.index}>
+                  {row.error}
+                </p>
+              )}
+              {row.readOnly ? (
+                <p className="kana-layout-note" role="status" data-kana-row-readonly={row.index}>
+                  {row.label}には二重引用符を含む出力があるため、図のキーと出力欄で直してください。
+                </p>
+              ) : null}
+              {row.over <= 0 ? null : (
+                <p className="kana-layout-error" role="alert" data-kana-row-problem={row.index}>
+                  {row.label}はキーの数を{row.over}個超えています。超えた分は反映されません。
+                </p>
+              )}
+            </div>
+          ))}
+        </fieldset>
       ) : null}
 
       <div className="kana-layout-fields">
