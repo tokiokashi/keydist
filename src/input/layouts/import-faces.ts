@@ -1,8 +1,9 @@
-import { QWERTY_LEGEND } from '../shapes/geometry.ts';
+import { QWERTY_LEGEND, resolveKeyId, THUMB_KEY } from '../shapes/geometry.ts';
 import { physicalKeyDisplayLabel } from '../shapes/key-labels.ts';
 import { readFaceBody, type UserFace } from './kana-face-layout.ts';
-import type { KanaLayoutContent } from './face-layout-file.ts';
-import type { FaceMode, Sequence } from './types.ts';
+import type { AlphaLayoutContent, KanaLayoutContent } from './face-layout-file.ts';
+import type { LayoutKind } from './kind.ts';
+import type { FaceMode, Sequence, TriggerPersistence } from './types.ts';
 
 /** 定義ファイルの面1つの中身。形式ごとの読み取りが作り、段の形と面の形の両方の入力になる。 */
 export interface ParsedFace {
@@ -12,7 +13,7 @@ export interface ParsedFace {
   trigger: string[];
   /** 切り替えのキーと出力のキーの打鍵の順序。省略すると同時 */
   mode?: FaceMode;
-  /** 切り替えが2打以上など、かなの面の形（切り替えの後に1打だけ続く形か、同時押し）で表せない */
+  /** 切り替えが2打以上など、面の形（切り替えの後に1打だけ続く形か、同時押し）で表せない */
   kanaUnrepresentable?: boolean;
   /** 段の形の打鍵列の作り方。省略すると、triggerとセルのキーの1回の同時押し */
   stroke?: FaceStroke;
@@ -54,9 +55,24 @@ export function printableOutput(value: string | undefined): string | undefined {
 
 /** 面の形の配列を作る時に決める値。取り込んだ後の画面で利用者が変えられる。打鍵の順序は見出しから読む。 */
 const FACE_DEFAULTS = {
-  triggerPersistence: 'single',
   inputRole: 'layer',
 } as const;
+
+/**
+ * 面の切り替えのキーの持続。スペースの位置のキーだけが切り替えのキーの面のうち、
+ * 切り替えのキーを先に押す（同時・前置）面は、押したまま続けて打てる（SandSの打ち方）。
+ * 後置の面は押したままの切り替えのキーを次の打鍵へ引き継がない（`spec/distance-model.md` §10.0）ので、保持を掛けない。
+ * 親指やShiftなど、スペース以外のキーが入る面は単発のまま。
+ */
+function persistenceOf(trigger: readonly string[], mode: FaceMode): TriggerPersistence {
+  const spaceOnly = trigger.length === 1 && resolveKeyId(trigger[0]!) === THUMB_KEY.RT;
+  return spaceOnly && mode !== 'suffix' ? 'hold-capable' : 'single';
+}
+
+/** 面の形にできる、切り替えのキーを持つ面か。面の形で表せない面と、出力を持たない面を除く。 */
+export function isFaceFormSwitchFace(face: ParsedFace): boolean {
+  return face.trigger.length > 0 && face.kanaUnrepresentable !== true && face.cells.some((cell) => printableOutput(cell.output) !== undefined);
+}
 
 /** 取り込める出力が1つも無い時の理由 */
 export const NO_OUTPUT_MESSAGE = '配列表から出力を見つけられませんでした';
@@ -74,19 +90,33 @@ export function isWordRegistration(output: string): boolean {
 
 const keyName = (key: string): string => physicalKeyDisplayLabel(key);
 
+/** 注意の文に出す、面の形の種類の呼び方。 */
+const KIND_LABEL: Readonly<Record<LayoutKind, string>> = { kana: 'かな', alpha: '英字' };
+
 /**
- * かなを直接打つ定義を、面の形の中身にする。
+ * 定義を、面の形の中身にする。種類で、セルの出力の扱いと持てる項目が分かれる。
+ * - かな: 出力はかな1字ずつ。語の登録（`isWordRegistration`）のセルは取り込まない
+ * - 英字: 出力は `ka` のように複数文字でもよく、語の登録の判定は掛けない。推奨のローマ字規則は呼び出し側が決める
+ *
  * 同じtriggerのキーの集合の面は1つにまとめ、同じ出力が複数の面にあれば全部の置き場を残す。
- * 面の形で表せないセルは取り込まず、`warnings` に積む。
+ * 面の形で表せない面とセルは取り込まず、`warnings` に積む。
+ * 機能キーのセルの表示名（`legends`）は、面の形に置き場が無いので残さない。
  */
-export function buildKanaContent(faces: readonly ParsedFace[], name: string, warnings: string[]): KanaLayoutContent {
+export function buildFaceContent(faces: readonly ParsedFace[], name: string, warnings: string[], kind: 'kana'): KanaLayoutContent;
+export function buildFaceContent(faces: readonly ParsedFace[], name: string, warnings: string[], kind: 'alpha'): AlphaLayoutContent;
+export function buildFaceContent(
+  faces: readonly ParsedFace[],
+  name: string,
+  warnings: string[],
+  kind: LayoutKind,
+): KanaLayoutContent | AlphaLayoutContent {
   const groups = new Map<string, { trigger: string[]; mode: FaceMode; headings: string[]; outputs: Record<string, string> }>();
   const warn = (message: string) => {
     if (!warnings.includes(message)) warnings.push(message);
   };
   for (const face of faces) {
     if (face.kanaUnrepresentable === true) {
-      warn(`面「${face.heading}」は、切り替えのキーを順に2回以上打つ面など、かなの面の形で表せないため取り込みませんでした`);
+      warn(`面「${face.heading}」は、切り替えのキーを順に2回以上打つ面など、${KIND_LABEL[kind]}の面の形で表せないため取り込みませんでした`);
       continue;
     }
     const mode = face.mode ?? 'simultaneous';
@@ -103,7 +133,7 @@ export function buildKanaContent(faces: readonly ParsedFace[], name: string, war
       const key = QWERTY_LEGEND[cell.row]?.[cell.column];
       if (output === undefined || key === undefined) continue;
       const where = `面「${face.heading}」の${keyName(key)}のキー`;
-      if (isWordRegistration(output)) {
+      if (kind === 'kana' && isWordRegistration(output)) {
         warn(`${where}の「${output}」は、ひらがな1字ずつの出力ではない語の登録のため取り込みませんでした`);
         continue;
       }
@@ -131,12 +161,20 @@ export function buildKanaContent(faces: readonly ParsedFace[], name: string, war
     userFaces.push(
       group.trigger.length === 0
         ? { trigger: [], inputRole: FACE_DEFAULTS.inputRole, outputs: group.outputs }
-        : { trigger: group.trigger, mode: group.mode, ...FACE_DEFAULTS, outputs: group.outputs },
+        : {
+            trigger: group.trigger,
+            mode: group.mode,
+            triggerPersistence: persistenceOf(group.trigger, group.mode),
+            ...FACE_DEFAULTS,
+            outputs: group.outputs,
+          },
     );
   }
   if (userFaces.length === 0) throw new Error(NO_OUTPUT_MESSAGE);
 
-  const { body, problems } = readFaceBody({ kind: 'kana', faces: userFaces, composition: { dakuten: false, handakuten: false } });
-  if (body === undefined || body.kind !== 'kana') throw new Error(`面の形にできませんでした。${problems.map((problem) => problem.message).join('、')}`);
-  return { name, ...body };
+  const { body, problems } = readFaceBody(
+    kind === 'kana' ? { kind, faces: userFaces, composition: { dakuten: false, handakuten: false } } : { kind, faces: userFaces },
+  );
+  if (body === undefined || body.kind !== kind) throw new Error(`面の形にできませんでした。${problems.map((problem) => problem.message).join('、')}`);
+  return { name, ...body } as KanaLayoutContent | AlphaLayoutContent;
 }

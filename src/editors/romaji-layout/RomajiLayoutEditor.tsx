@@ -1,6 +1,6 @@
 import { useMemo, useState, type ComponentType, type ReactNode } from 'react';
 import { blankFaceLayoutDraft, contentOfFaceLayout, draftOf } from '#input/layouts/face-layout-edit.ts';
-import type { FaceLayoutContent } from '#input/layouts/face-layout-file.ts';
+import type { AlphaLayoutContent, FaceLayoutContent } from '#input/layouts/face-layout-file.ts';
 import { importRomajiLayoutFile } from '#input/layouts/import.ts';
 import {
   chordOutputCount,
@@ -35,6 +35,11 @@ const NEW_FACE = 'new-face';
 
 /** 新規作成の入力欄の初期値。ローマ字規則は先頭の組み込みの規則から始める。 */
 const blankContent = (romaji: string): UserLayoutContent => ({ name: '', rows: ['', '', '', ''], romaji, homeKeys: {} });
+
+/** 定義ファイルから取り込んだ下書き。 */
+type ImportedDraft =
+  | { readonly kind: 'stage'; readonly content: UserLayoutContent; readonly warnings: readonly string[] }
+  | { readonly kind: 'face'; readonly content: AlphaLayoutContent; readonly warnings: readonly string[] };
 
 export interface RomajiLayoutEditorProps {
   /** 自作の配列。段の形の配列と、英字の種類の面の形の配列を一覧に出す。 */
@@ -318,8 +323,8 @@ export function RomajiLayoutEditor({
   useHistoryShortcuts({ canUndo, canRedo, undo: onUndo, redo: onRedo });
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
   const [newCount, setNewCount] = useState(0);
-  // 定義ファイルから取り込んだ、保存していない新しい配列の下書き
-  const [imported, setImported] = useState<{ readonly content: UserLayoutContent; readonly warnings: readonly string[] } | undefined>(undefined);
+  // 定義ファイルから取り込んだ、保存していない新しい配列の下書き。段の形か、面の形のどちらか
+  const [imported, setImported] = useState<ImportedDraft | undefined>(undefined);
   const [importError, setImportError] = useState<{ readonly message: string; readonly kanaLayout: boolean } | undefined>(undefined);
 
   const editable = useMemo(() => layouts.filter((candidate) => isStageUserLayout(candidate) || isAlphaFaceUserLayout(candidate)), [layouts]);
@@ -335,11 +340,13 @@ export function RomajiLayoutEditor({
   const faceForm = faceLayout !== undefined || (isNew && selectedId === NEW_FACE);
   const stageLayout = layout !== undefined && isStageUserLayout(layout) ? layout : undefined;
 
-  const initial = stageLayout !== undefined ? contentOf(stageLayout) : (imported?.content ?? blankContent(defaultRomaji));
-  const faceInitial = useMemo(
-    () => (faceLayout !== undefined ? draftOf(contentOfFaceLayout(faceLayout)) : blankFaceLayoutDraft('alpha', defaultRomaji)),
-    [faceLayout, defaultRomaji],
-  );
+  const initial = stageLayout !== undefined ? contentOf(stageLayout) : imported?.kind === 'stage' ? imported.content : blankContent(defaultRomaji);
+  const faceInitial = useMemo(() => {
+    if (faceLayout !== undefined) return draftOf(contentOfFaceLayout(faceLayout));
+    // 取り込んだ面の形は推奨のローマ字規則を持たないので、段の形の取り込みと同じく先頭の規則から始める
+    if (imported?.kind === 'face') return draftOf({ ...imported.content, romaji: defaultRomaji });
+    return blankFaceLayoutDraft('alpha', defaultRomaji);
+  }, [faceLayout, imported, defaultRomaji]);
   const formKey = layout === undefined ? `new:${newCount}` : `${layout.id}:${JSON.stringify(layout)}`;
 
   const submit = (content: UserLayoutContent) => {
@@ -357,6 +364,7 @@ export function RomajiLayoutEditor({
     if (faceLayout === undefined) {
       const id = newUserLayoutId();
       onCreateFace(id, content);
+      setImported(undefined);
       setSelectedId(id);
     } else {
       onUpdateFace(faceLayout.id, content);
@@ -370,8 +378,13 @@ export function RomajiLayoutEditor({
       return;
     }
     setImportError(undefined);
-    setImported({ content: contentOfImported(result.layout, defaultRomaji), warnings: result.layout.warnings });
-    setSelectedId(NEW);
+    if (result.kind === 'face') {
+      setImported({ kind: 'face', content: result.content, warnings: result.warnings });
+      setSelectedId(NEW_FACE);
+    } else {
+      setImported({ kind: 'stage', content: contentOfImported(result.layout, defaultRomaji), warnings: result.layout.warnings });
+      setSelectedId(NEW);
+    }
     setNewCount((count) => count + 1);
   };
 
@@ -448,7 +461,7 @@ export function RomajiLayoutEditor({
               {importError.kanaLayout ? <KanaLayoutLink>かな配列の画面を開く</KanaLayoutLink> : null}
             </p>
           )}
-          {imported === undefined || !isNew || faceForm ? null : (
+          {imported === undefined || !isNew || faceForm !== (imported.kind === 'face') ? null : (
             <div data-layout-file-import="ok">
               <p className="romaji-layout-note" role="status">
                 定義ファイルから開いた、保存していない配列です。

@@ -1,7 +1,15 @@
 import { QWERTY_LEGEND } from '../shapes/geometry.ts';
 import { readDvorakJHeading, isSequentialDeclaration, parseSubstitution, type HeadingSubstitution } from './dvorakj-heading.ts';
-import { buildKanaContent, faceSequence, NO_OUTPUT_MESSAGE, printableOutput, type ParsedCell, type ParsedFace } from './import-faces.ts';
-import type { KanaLayoutContent } from './face-layout-file.ts';
+import {
+  buildFaceContent,
+  faceSequence,
+  isFaceFormSwitchFace,
+  NO_OUTPUT_MESSAGE,
+  printableOutput,
+  type ParsedCell,
+  type ParsedFace,
+} from './import-faces.ts';
+import type { AlphaLayoutContent, KanaLayoutContent } from './face-layout-file.ts';
 import type { Sequence } from './types.ts';
 
 export type ImportFormat = 'dvorakj' | 'vial' | 'benizara';
@@ -19,8 +27,14 @@ export interface ImportedLayout {
   warnings: string[];
 }
 
-/** かなを直接打つ定義は面の形で、それ以外は段の形で返す。 */
-export type ImportedDefinition = { kind: 'kana'; content: KanaLayoutContent; warnings: string[] } | { kind: 'stage'; layout: ImportedLayout };
+/**
+ * かなを直接打つ定義は、かなの種類の面の形で返す。
+ * それ以外のうち、切り替えのキーのある面を持つ定義は、英字の種類の面の形で返す。切り替えのキーのある面を持たない定義は段の形で返す。
+ */
+export type ImportedDefinition =
+  | { kind: 'kana'; content: KanaLayoutContent; warnings: string[] }
+  | { kind: 'alpha'; content: AlphaLayoutContent; warnings: string[] }
+  | { kind: 'stage'; layout: ImportedLayout };
 
 const WIDTHS = QWERTY_LEGEND.map((row) => [...row].length);
 const LATIN = /[A-Za-z]/;
@@ -103,7 +117,10 @@ function finish(
 
 const MIXED_KINDS_MESSAGE = 'かなを出力する面とローマ字を出力する面が混在しているため、取り込めません';
 
-/** 面ごとの読み取り結果を、かなを含む定義なら面の形に、そうでなければ段の形にする。 */
+/**
+ * 面ごとの読み取り結果を、かなを含む定義ならかなの面の形に、そうでなければ切り替えのキーのある面の有無で
+ * 英字の面の形か段の形にする。
+ */
 function resolveFaces(name: string, allFaces: ParsedFace[], warnings: string[]): ImportedDefinition {
   const faceKinds = (face: ParsedFace) => {
     const found = { kana: false, latin: false };
@@ -140,7 +157,10 @@ function resolveFaces(name: string, allFaces: ParsedFace[], warnings: string[]):
     kinds.latin ||= found.latin;
   }
   if (kinds.kana && kinds.latin) throw new Error(MIXED_KINDS_MESSAGE);
-  if (kinds.kana) return { kind: 'kana', content: buildKanaContent(faces, name, warnings), warnings };
+  if (kinds.kana) return { kind: 'kana', content: buildFaceContent(faces, name, warnings, 'kana'), warnings };
+  // 切り替えのキー（Shiftを含む）のある面を、面の形で表せるものが残る定義は、英字の面の形にする。
+  // 面の形で表せない面を落とした後に残る面が無ければ、落とさずに段の形のまま取り込む
+  if (faces.some(isFaceFormSwitchFace)) return { kind: 'alpha', content: buildFaceContent(faces, name, warnings, 'alpha'), warnings };
 
   const rows = emptyRows();
   const legends = new Map<string, string>();
@@ -665,9 +685,10 @@ export function importBenizara(source: string, name = '紅皿取り込み'): Imp
   return resolveFaces(name, faces, warnings);
 }
 
-/** 定義ファイルを読んだ結果。かなを直接打つ定義は面の形、それ以外は段の形で返る。読めない時は利用者向けの理由を返す。 */
+/** 定義ファイルを読んだ結果。かなを直接打つ定義と、切り替えのキーのある面を持つ英字の定義は面の形、それ以外は段の形で返る。読めない時は利用者向けの理由を返す。 */
 type ClassifiedFile =
   | { readonly kind: 'kana'; readonly content: KanaLayoutContent; readonly warnings: readonly string[] }
+  | { readonly kind: 'alpha'; readonly content: AlphaLayoutContent; readonly warnings: readonly string[] }
   | { readonly kind: 'stage'; readonly layout: ImportedLayout }
   | { readonly kind: 'error'; readonly message: string };
 
@@ -675,7 +696,7 @@ const UNKNOWN_FORMAT_MESSAGE = '取り込める形式ではありません。Dvo
 
 /**
  * ファイル名と中身から、定義の種類を判定して読む。
- * Vialは段の形しか作れないので、出力にかなを含む定義は面の形へ変換できず取り込まない。
+ * Vialは段の形しか作れないので、出力にかなを含む定義は面の形へ変換できず取り込まない。Vialは英字の面の形にもしない。
  */
 function classifyLayoutFile(fileName: string, bytes: ArrayBuffer | Uint8Array): ClassifiedFile {
   const format = formatForFileName(fileName);
@@ -691,7 +712,10 @@ function classifyLayoutFile(fileName: string, bytes: ArrayBuffer | Uint8Array): 
       return { kind: 'stage', layout };
     }
     const result = format === 'dvorakj' ? importDvorakJ(source, name || undefined) : importBenizara(source, name || undefined);
-    return result.kind === 'kana' ? { kind: 'kana', content: result.content, warnings: result.warnings } : { kind: 'stage', layout: result.layout };
+    if (result.kind === 'stage') return { kind: 'stage', layout: result.layout };
+    return result.kind === 'kana'
+      ? { kind: 'kana', content: result.content, warnings: result.warnings }
+      : { kind: 'alpha', content: result.content, warnings: result.warnings };
   } catch (error) {
     return {
       kind: 'error',
@@ -717,17 +741,21 @@ export type KanaFileImportResult =
 /**
  * ファイル名と中身から、かなを直接打つ配列の面の形を作る。
  * 形式が分からないファイル、かなを出力するVial、かなを含まない定義は取り込まない。
+ * かなを含まない定義のうち、英字の面の形になるものは、ローマ字配列の画面で取り込めることを理由に出す。
  */
 export function importKanaLayoutFile(fileName: string, bytes: ArrayBuffer | Uint8Array): KanaFileImportResult {
   const result = classifyLayoutFile(fileName, bytes);
   if (result.kind === 'error') return { ok: false, message: result.message };
+  if (result.kind === 'alpha') return { ok: false, message: '英字の配列の定義です。ローマ字配列の画面で取り込んでください', romajiLayout: true };
   if (result.kind === 'stage') return { ok: false, message: 'かな配列ではない定義のため、取り込めません', romajiLayout: true };
   return { ok: true, content: result.content, warnings: result.warnings };
 }
 
 /** ローマ字配列の画面で定義ファイルを取り込んだ結果。取り込めない時は利用者向けの理由を返す。 */
 export type RomajiFileImportResult =
-  | { readonly ok: true; readonly layout: ImportedLayout }
+  | { readonly ok: true; readonly kind: 'stage'; readonly layout: ImportedLayout }
+  /** 切り替えのキーのある面を持つ定義。推奨のローマ字規則は持たない（画面が決める） */
+  | { readonly ok: true; readonly kind: 'face'; readonly content: AlphaLayoutContent; readonly warnings: readonly string[] }
   | {
       readonly ok: false;
       readonly message: string;
@@ -736,12 +764,14 @@ export type RomajiFileImportResult =
     };
 
 /**
- * ファイル名と中身から、段の形の取り込み結果を作る。
+ * ファイル名と中身から、ローマ字配列の画面で開く取り込み結果を作る。
+ * 切り替えのキーのある面を持つDvorakJ・紅皿の定義は英字の面の形で、それ以外（Vialと、切り替えのキーのある面を持たない定義）は段の形で返す。
  * 形式が分からないファイルと、かなを直接打つ定義は取り込まない。
  */
 export function importRomajiLayoutFile(fileName: string, bytes: ArrayBuffer | Uint8Array): RomajiFileImportResult {
   const result = classifyLayoutFile(fileName, bytes);
   if (result.kind === 'error') return { ok: false, message: result.message };
   if (result.kind === 'kana') return { ok: false, message: 'かなを直接打つ定義のため、取り込めません', kanaLayout: true };
-  return { ok: true, layout: result.layout };
+  if (result.kind === 'alpha') return { ok: true, kind: 'face', content: result.content, warnings: result.warnings };
+  return { ok: true, kind: 'stage', layout: result.layout };
 }
