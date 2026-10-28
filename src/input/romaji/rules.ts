@@ -5,13 +5,20 @@ import { gact10 } from './gact10.ts';
 import { jlod } from './jlod.ts';
 import { kunrei, addSokuonForms } from './kunrei.ts';
 import { OONISHI_OVERRIDES, oonishiRomaji } from './oonishi.ts';
+import { seotoRomaji } from './seoto.ts';
 import { TOMISUKE_OVERRIDES, tomisukeRomaji } from './tomisuke.ts';
 
-export type BuiltinRomajiRuleId = 'kunrei' | 'oonishi' | 'tomisuke' | 'azik' | 'jlod' | 'gact10' | 'qwerty';
+/** 利用者が作る規則の基底にできる組み込みの規則のid */
+export type RomajiBaseRuleId = 'kunrei' | 'oonishi' | 'tomisuke' | 'azik' | 'jlod' | 'gact10' | 'qwerty';
+/**
+ * 組み込みの規則のid。せおと配列の綴りは `ん` `っ` `ー` の文字そのものを綴りに持ち、
+ * 層を持つせおと配列でだけ打てるので、利用者が作る規則の基底に含めない。
+ */
+export type BuiltinRomajiRuleId = RomajiBaseRuleId | 'seoto';
 export type RomajiRuleId = string;
 
 export interface RomajiRuleSpec {
-  base: BuiltinRomajiRuleId;
+  base: RomajiBaseRuleId;
   overrides: Record<string, string>;
   /** 促音の直後に子音を重ねた見出しを自動生成するか */
   generateSokuon: boolean;
@@ -98,6 +105,13 @@ export const ROMAJI_RULES: Record<
     generateSokuon: false,
     table: () => gact10(),
   },
+  seoto: {
+    name: 'せおと配列（拡張ローマ字。ん・っ・ーを左親指の層で打つ前提）',
+    base: 'kunrei',
+    overrides: {},
+    generateSokuon: false,
+    table: () => seotoRomaji(),
+  },
 };
 
 /** 全体のレベルの既定。推奨を持たない配列はこれで打つ。 */
@@ -106,13 +120,15 @@ export const DEFAULT_ROMAJI_RULE_ID: BuiltinRomajiRuleId = 'kunrei';
 /**
  * 配列が組み込みで持つローマ字規則の推奨。無ければ`undefined`（全体の値に従う）。
  * 大西配列は公式が前提とする大西式の綴り、とみすけ配列は作者が勧めるとみすけ式の綴り、
+ * せおと配列は作者の拡張と層を前提にしたせおと配列の綴り、
  * TK音直入力法のコンボは訓令式（sya / zya）の綴りを前提に組まれているので、
- * 全体を別の規則へ変えても、この3つは推奨のまま打つ。
+ * 全体を別の規則へ変えても、この4つは推奨のまま打つ。
  * 全体の既定と同じ訓令式でも、TK音直入力法は「推奨として持つ」ので全体の変更に流されない。
  */
 export function recommendedRomajiRuleId(layoutId: string): BuiltinRomajiRuleId | undefined {
   if (layoutId === 'oonishi') return 'oonishi';
   if (layoutId === 'tomisuke') return 'tomisuke';
+  if (layoutId === 'seoto') return 'seoto';
   if (layoutId === 'oonishi-custom') return 'kunrei';
   return undefined;
 }
@@ -123,7 +139,7 @@ export function defaultRomajiRuleId(layoutId: string): BuiltinRomajiRuleId {
 }
 
 /** 促音を1打で持つ基底か。持つ基底には、子音を重ねた見出しを足さない。 */
-export function hasSingleStrokeSokuon(base: BuiltinRomajiRuleId): boolean {
+export function hasSingleStrokeSokuon(base: RomajiBaseRuleId): boolean {
   return base === 'azik' || base === 'jlod' || base === 'gact10';
 }
 
@@ -143,7 +159,7 @@ export function tableForRule(id: RomajiRuleId, customRules: UserRomajiRule[] = [
   return custom ? buildRomajiTable(custom) : ROMAJI_RULES.kunrei.table();
 }
 
-function baseTable(base: BuiltinRomajiRuleId, generateSokuon: boolean): Map<string, string> {
+function baseTable(base: RomajiBaseRuleId, generateSokuon: boolean): Map<string, string> {
   switch (base) {
     case 'qwerty':
       return kunrei(ROMAJI_RULES.qwerty.overrides, generateSokuon);
@@ -166,8 +182,13 @@ export function isBuiltin(id: string): id is BuiltinRomajiRuleId {
   return Object.hasOwn(ROMAJI_RULES, id);
 }
 
+/** 利用者が作る規則の基底にできる組み込みの規則か */
+export function isRomajiBase(id: string): id is RomajiBaseRuleId {
+  return isBuiltin(id) && id !== 'seoto';
+}
+
 export function allRomajiRules(customRules: UserRomajiRule[] = []) {
-  const builtinIds: BuiltinRomajiRuleId[] = ['kunrei', 'oonishi', 'tomisuke', 'azik', 'jlod', 'gact10', 'qwerty'];
+  const builtinIds: BuiltinRomajiRuleId[] = ['kunrei', 'oonishi', 'tomisuke', 'azik', 'jlod', 'gact10', 'qwerty', 'seoto'];
   return [...builtinIds.map((id) => ({ id, name: ROMAJI_RULES[id].name })), ...customRules.map(({ id, name }) => ({ id, name }))];
 }
 
@@ -179,7 +200,7 @@ export function isUserRomajiRule(value: unknown): value is UserRomajiRule {
     typeof value.name === 'string' &&
     value.name.length > 0 &&
     typeof value.base === 'string' &&
-    isBuiltin(value.base) &&
+    isRomajiBase(value.base) &&
     isRecord(value.overrides) &&
     Object.entries(value.overrides).every(([kana, roman]) => kana.length > 0 && typeof roman === 'string' && roman.length > 0) &&
     typeof value.generateSokuon === 'boolean'

@@ -1,5 +1,6 @@
 import { kunrei } from '#input/romaji/kunrei.ts';
 import { oonishiRomaji } from '#input/romaji/oonishi.ts';
+import { seotoRomaji } from '#input/romaji/seoto.ts';
 import { tomisukeRomaji } from '#input/romaji/tomisuke.ts';
 import { NAGINATA_V18 } from './naginata.ts';
 import { CUSTOM_COMBOS } from './combos-custom.ts';
@@ -19,6 +20,7 @@ import { TSUKI_RINGO } from './tsuki-ringo.ts';
 import { YUMI } from './yumi.ts';
 import { KAWASEMI_PLUS } from './kawasemi-plus.ts';
 import { JIS_KANA } from './jis-kana.ts';
+import { SEOTO } from './seoto.ts';
 
 export type {
   ComboCondition,
@@ -60,6 +62,7 @@ export type { FaceGroups, Layer } from './layers.ts';
 const ROMAJI = kunrei();
 const ROMAJI_OONISHI = oonishiRomaji();
 const ROMAJI_TOMISUKE = tomisukeRomaji();
+const ROMAJI_SEOTO = seotoRomaji();
 
 /** 角度改変の運指で打つ前提の配列に、推奨の指の割り当て（角度改変）を付ける */
 function angleModLayout(layout: Layout): Layout {
@@ -203,6 +206,8 @@ const ALPHA: Layout[] = [
     'きゅーじーえむえるだぶりゅーわい',
     'carpalx',
   ]),
+  // 層（左親指との同時押し）の面で ん っ ー を出す。綴りは対のせおと配列の綴り
+  SEOTO,
   withAliases(withShiftedOutputs(fromRows('oonishi', '大西配列', ['1234567890', 'qlu,.fwryp', 'eiao-ktnsh', 'zxcv;gdmjb'])), [
     'おおにし',
     'おおにしはいれつ',
@@ -234,7 +239,9 @@ export const LAYOUTS: Layout[] = ALPHA.map(withoutRomajiOnlyCombos);
  */
 export const LAYOUTS_JA: Layout[] = [
   // とみすけ配列は作者が勧める綴り（シャ行sh）で打つ。ほかの配列は訓令式
-  ...ALPHA.filter((l) => l.id.startsWith('oonishi') === false).map((l) => withRomaji(l, l.id === 'tomisuke' ? ROMAJI_TOMISUKE : ROMAJI)),
+  ...ALPHA.filter((l) => l.id.startsWith('oonishi') === false).map((l) =>
+    withRomaji(l, l.id === 'tomisuke' ? ROMAJI_TOMISUKE : l.id === 'seoto' ? ROMAJI_SEOTO : ROMAJI),
+  ),
   // 大西配列は公式が前提とする綴り（シャ行sh / じji / じゃ行j）で打つ
   withRomaji(ALPHA_BY_ID.get('oonishi')!, ROMAJI_OONISHI),
   // TK音直入力法のコンボは訓令式（sya / zya）の綴りを前提に組まれている

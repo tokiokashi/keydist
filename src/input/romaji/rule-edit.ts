@@ -1,6 +1,6 @@
 import { QWERTY_LEGEND } from '../shapes/geometry.ts';
 import { kanaToRomaji } from './kunrei.ts';
-import { buildRomajiTable, hasSingleStrokeSokuon, ROMAJI_RULES, type BuiltinRomajiRuleId, type UserRomajiRule } from './rules.ts';
+import { buildRomajiTable, hasSingleStrokeSokuon, ROMAJI_RULES, type RomajiBaseRuleId, type UserRomajiRule } from './rules.ts';
 import { ROMAJI_VARIANTS } from './spelling-variations.ts';
 
 /**
@@ -22,7 +22,7 @@ export function createUserRomajiRule(
   rules: readonly UserRomajiRule[],
   generateId: () => string,
   name: string,
-  base: BuiltinRomajiRuleId,
+  base: RomajiBaseRuleId,
 ): readonly UserRomajiRule[] {
   return [...rules, { id: generateId(), name, base, overrides: {}, generateSokuon: !hasSingleStrokeSokuon(base) }];
 }
