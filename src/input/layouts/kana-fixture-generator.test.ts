@@ -160,3 +160,23 @@ test('sourceにない値を採用側rowsへ追加すると失敗する', () => {
 
   assert.throws(() => validateSourceManifest('invented.json', manifest), /sourceRowsと採用側rowsの差分がomissionとして表現されていない/);
 });
+
+test('後置のtriggerを持つ3打の面は、前置のtriggerを持つmode=prefixの面なら通る', () => {
+  const manifest = makeManifest();
+  manifest.faces[0] = { ...manifest.faces[0], trigger: ['j'], mode: 'prefix', suffixTrigger: ['e'] };
+
+  assert.doesNotThrow(() => validateSourceManifest('three-stroke.json', manifest));
+});
+
+test('後置のtriggerが空、前置のtriggerが無い、modeがprefixではない、前置と重なる面は失敗する', () => {
+  const build = (patch: Partial<SourceManifest['faces'][number]>) => {
+    const manifest = makeManifest();
+    manifest.faces[0] = { ...manifest.faces[0], trigger: ['j'], mode: 'prefix', suffixTrigger: ['e'], ...patch };
+    return () => validateSourceManifest('three-stroke.json', manifest);
+  };
+
+  assert.throws(build({ suffixTrigger: [] }), /suffixTriggerが空/);
+  assert.throws(build({ trigger: [] }), /前置のtriggerを持つmode=prefix/);
+  assert.throws(build({ mode: 'suffix' }), /前置のtriggerを持つmode=prefix/);
+  assert.throws(build({ suffixTrigger: ['j'] }), /前置のtriggerと重なっている/);
+});

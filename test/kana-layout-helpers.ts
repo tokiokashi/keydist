@@ -9,6 +9,7 @@ import { KANA_TEST_TEXT } from './kana-test-text.ts';
 type FixtureFace = {
   trigger: string[];
   mode: 'prefix' | 'suffix' | 'simultaneous';
+  suffixTrigger?: string[];
   cells: string[][];
 };
 
@@ -122,7 +123,12 @@ export function assertKanaLayoutFixture(layout: Layout) {
     }
 
     assert.deepEqual(
-      { trigger: [...actual.trigger], mode: actual.mode, cells: actualCells },
+      {
+        trigger: [...actual.trigger],
+        mode: actual.mode,
+        ...(actual.suffixTrigger === undefined ? {} : { suffixTrigger: [...actual.suffixTrigger] }),
+        cells: actualCells,
+      },
       expected,
       `${layout.id} の face ${faceIndex} が出典フィクスチャと違う`,
     );

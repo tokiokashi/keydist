@@ -12,3 +12,6 @@
 `sourceRows` に値があり `rows` で空欄になったセルは、必ず `omissions` に同じ値と理由を持つ。
 ANSI対象外の値も同じ規則で明示する。これにより omission の記載漏れ・不要指定・重複を
 生成時に機械検出し、出典にある値が暗黙に消えることを防ぐ。
+
+前置のtriggerと出力キーの後に打つ後置のtriggerを持つ3打の面は、`suffixTrigger`（キーの配列）で表す。
+`mode` は `prefix`、`trigger` は前置のtriggerで、どちらも必須。`suffixTrigger` を持たない面は、生成する fixture にもこの欄を出さない。
