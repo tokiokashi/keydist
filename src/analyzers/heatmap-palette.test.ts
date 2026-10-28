@@ -54,7 +54,7 @@ for (const { name, samples } of SERIES) {
     assert.ok(isMonotoneBrighter(samples.map((sample) => relativeLuminance(sample.dark))));
   });
 
-  test(`多色の${name}の最小の色は、dark の地（--heat-0）より明るい`, () => {
+  test(`多色の${name}の最小の色は、darkの地（--heat-0）より明るい`, () => {
     const first = relativeLuminance(samples[0]!.dark);
     const ground = relativeLuminance(groundOf('dark'));
     assert.ok(first > ground, `${first} と ${ground}`);
@@ -70,7 +70,7 @@ for (const { name, samples } of SERIES) {
 }
 
 test('ライトの多色の色と位置は、heatmap.js 1.0の既定の配色と一致する', () => {
-  // 出典: https://patorjk.com/common/vendor/heatmap/heatmap.js の既定の配色
+  // 出典（既定の配色）: https://patorjk.com/common/vendor/heatmap/heatmap.js
   const expected: readonly (readonly [number, HeatRgb])[] = [
     [0.45, [0, 0, 255]],
     [0.55, [0, 255, 255]],
