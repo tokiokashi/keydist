@@ -4,9 +4,11 @@ import { HEAT_BLOB_LEVELS } from './heatmap-blob.ts';
  * ヒートマップの多色の配色。押下数（強度0〜1）から、ライトとダークそれぞれの表示色を決める純粋な計算。
  * 描画と、明るさ・文字のコントラストの検査が同じ定義を読む。
  *
- * 並びは、強度が増えるにつれて色相が変わり、明るさは一方向にだけ変わる。
- * 青→黄→赤のような並びは明るさが単調にならず、明るさだけで読む人（色覚の違い・白黒の印刷）に強弱が逆に見える。
- * そのため、ライトは明るい黄から暗い紫へ（地より暗く、強いほど暗い）、ダークは暗い青から明るい黄へ（地より明るく、強いほど明るい）並べる。
+ * 並びの決め方はテーマで違う。
+ * ライトは、既存の配列評価ツールのKeyboard Layout Analyzerと同じ青→水色→緑→黄→赤の並びで、色の位置も同じ。
+ * 色相で強弱を読む人が読み慣れた並びにするためで、青が暗く黄が明るいので、明るさは強度に対して単調にならない。
+ * 0.45より低い所は、地の色から青へなめらかにつなぐ。明るさだけで読みたい人は単色を選べる。
+ * ダークは、暗い青から明るい黄へ、強いほど明るく（地より明るく）並べる。明るさが一方向にだけ変わるので、明るさだけで読む人にも強弱が逆に見えない。
  */
 
 export type HeatTheme = 'light' | 'dark';
@@ -21,13 +23,40 @@ export type HeatSample = Readonly<Record<HeatTheme, HeatRgb>>;
 /** 強度0（押下の無い所）の地の色。`theme.css` の `--heat-0` と同じ値にする（検査が突き合わせる）。 */
 export const HEAT_GROUND: Readonly<Record<HeatTheme, string>> = { light: '#eef2f6', dark: '#1f2225' };
 
-const STOPS: Readonly<Record<HeatTheme, readonly string[]>> = {
-  light: ['#f2d64b', '#f0a030', '#d9402b', '#8a1f6b', '#3b0f5c'],
-  dark: ['#2b4fb8', '#1fa3a8', '#5cc45a', '#f3e45a', '#fff6b0'],
+/** 色の並びの1点。強度 `position`（0〜1）での色。 */
+export type HeatStop = readonly [position: number, hex: string];
+
+/**
+ * テーマごとの色の並び。位置の昇順で、最初の位置は0、最後は1。隣り合う点の間は線形の光で補間する。
+ * ライトの色と位置はKeyboard Layout Analyzerが使うheatmap.js 1.0の既定の配色
+ * （0.45: rgb(0,0,255)、0.55: rgb(0,255,255)、0.65: rgb(0,255,0)、0.95: yellow、1.0: rgb(255,0,0)）。
+ */
+export const HEAT_STOPS: Readonly<Record<HeatTheme, readonly HeatStop[]>> = {
+  light: [
+    [0, HEAT_GROUND.light],
+    [0.45, '#0000ff'],
+    [0.55, '#00ffff'],
+    [0.65, '#00ff00'],
+    [0.95, '#ffff00'],
+    [1, '#ff0000'],
+  ],
+  dark: [
+    [0, '#2b4fb8'],
+    [0.25, '#1fa3a8'],
+    [0.5, '#5cc45a'],
+    [0.75, '#f3e45a'],
+    [1, '#fff6b0'],
+  ],
 };
 
+/**
+ * サーモグラフィで、低い段を地の色へ不透明度で溶かすテーマ。
+ * ライトは並びが地の色から始まるので、溶かす必要が無い。
+ */
+const BLOB_FADES: Readonly<Record<HeatTheme, boolean>> = { light: false, dark: true };
+
 /** サーモグラフィで、この段までは地の色から色へ不透明度を上げていく。低い段が地へ溶け込み、縁に硬い境目を作らない。 */
-export const HEAT_BLOB_FADE_LEVELS = HEAT_BLOB_LEVELS / 4;
+const HEAT_BLOB_FADE_LEVELS = HEAT_BLOB_LEVELS / 4;
 
 function rgbOfHex(hex: string): HeatRgb {
   const n = Number.parseInt(hex.slice(1), 16);
@@ -50,16 +79,20 @@ function round2(value: number): number {
 }
 
 /**
- * 色の並びの、強度 `t`（0〜1）での色。隣り合う色の間は線形の光（ガンマ前）で補間する。
- * 相対輝度は線形の光の一次結合なので、輝度が単調な2色の間は補間しても単調になる。
+ * 色の並びの、強度 `t`（0〜1）での色。隣り合う点の間は線形の光（ガンマ前）で補間する。
  */
 export function heatMultiRgb(theme: HeatTheme, t: number): HeatRgb {
-  const stops = STOPS[theme].map(rgbOfHex);
-  const position = Math.min(1, Math.max(0, t)) * (stops.length - 1);
-  const index = Math.min(Math.floor(position), stops.length - 2);
-  const fraction = position - index;
-  const from = stops[index]!;
-  const to = stops[index + 1]!;
+  const stops = HEAT_STOPS[theme];
+  const clamped = Math.min(1, Math.max(0, t));
+  const upper = Math.max(
+    1,
+    stops.findIndex(([position]) => position >= clamped),
+  );
+  const [fromPosition, fromHex] = stops[upper - 1]!;
+  const [toPosition, toHex] = stops[upper]!;
+  const fraction = (clamped - fromPosition) / (toPosition - fromPosition);
+  const from = rgbOfHex(fromHex);
+  const to = rgbOfHex(toHex);
   const channel = (n: 0 | 1 | 2) => {
     const a = toLinear(from[n]);
     const b = toLinear(to[n]);
@@ -73,23 +106,21 @@ export function heatMultiKeySample(t: number): HeatSample {
   return { light: heatMultiRgb('light', t), dark: heatMultiRgb('dark', t) };
 }
 
-/** サーモグラフィの段 `level`（1〜`HEAT_BLOB_LEVELS`）の矩形の描き方。色は段の強度の色で、低い段は不透明度で地へ溶かす。 */
-export function heatMultiBlobPaint(level: number): { readonly color: HeatSample; readonly opacity: number } {
-  return {
-    color: heatMultiKeySample(level / HEAT_BLOB_LEVELS),
-    opacity: Math.min(1, level / HEAT_BLOB_FADE_LEVELS),
-  };
-}
-
-/** サーモグラフィの段 `level` の、地（`--heat-0`）の上での表示色。キーの上は地が `--heat-0` なので、文字はこの色の上に載る。 */
+/**
+ * サーモグラフィの段 `level`（1〜`HEAT_BLOB_LEVELS`）の、地（`--heat-0`）の上での表示色。
+ * 矩形は重ならず、地の矩形の上に塗るので、不透明度を使わずこの色で塗る。
+ * キーの上は地が `--heat-0` なので、文字もこの色の上に載る。
+ */
 export function heatMultiBlobSample(level: number): HeatSample {
-  const { color, opacity } = heatMultiBlobPaint(level);
-  const over = (theme: HeatTheme): HeatRgb => {
+  const color = heatMultiKeySample(level / HEAT_BLOB_LEVELS);
+  const opacity = Math.min(1, level / HEAT_BLOB_FADE_LEVELS);
+  const shown = (theme: HeatTheme): HeatRgb => {
+    if (!BLOB_FADES[theme]) return color[theme];
     const ground = rgbOfHex(HEAT_GROUND[theme]);
     const top = color[theme];
     return [0, 1, 2].map((n) => round2(ground[n]! * (1 - opacity) + top[n]! * opacity)) as unknown as HeatRgb;
   };
-  return { light: over('light'), dark: over('dark') };
+  return { light: shown('light'), dark: shown('dark') };
 }
 
 /** WCAG 2.xの相対輝度。 */

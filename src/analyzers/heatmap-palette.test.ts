@@ -4,11 +4,13 @@ import { test } from 'node:test';
 import { HEAT_BLOB_LEVELS } from './heatmap-blob.ts';
 import {
   HEAT_GROUND,
+  HEAT_STOPS,
   HEAT_THEMES,
   contrastRatio,
   heatMultiBlobSample,
   heatMultiKeySample,
   heatMultiLabelSample,
+  heatMultiRgb,
   relativeLuminance,
   type HeatRgb,
   type HeatSample,
@@ -30,9 +32,9 @@ function groundOf(theme: HeatTheme): HeatRgb {
   return [(n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff];
 }
 
-/** 強度が増えるにつれて、ライトは暗く、ダークは明るくなる向き。 */
-function isMonotone(theme: HeatTheme, luminances: readonly number[]): boolean {
-  return luminances.every((value, index) => index === 0 || (theme === 'light' ? value < luminances[index - 1]! : value > luminances[index - 1]!));
+/** 強度が増えるにつれて、ダークは明るくなる向き。 */
+function isMonotoneBrighter(luminances: readonly number[]): boolean {
+  return luminances.every((value, index) => index === 0 || value > luminances[index - 1]!);
 }
 
 const SERIES: readonly { readonly name: string; readonly samples: readonly HeatSample[] }[] = [
@@ -48,22 +50,17 @@ test('地の色はtheme.cssの--heat-0と同じ', () => {
 });
 
 for (const { name, samples } of SERIES) {
+  test(`多色の${name}は、ダークで強度が増えるほど明るくなる`, () => {
+    assert.ok(isMonotoneBrighter(samples.map((sample) => relativeLuminance(sample.dark))));
+  });
+
+  test(`多色の${name}の最小の色は、dark の地（--heat-0）より明るい`, () => {
+    const first = relativeLuminance(samples[0]!.dark);
+    const ground = relativeLuminance(groundOf('dark'));
+    assert.ok(first > ground, `${first} と ${ground}`);
+  });
+
   for (const theme of HEAT_THEMES) {
-    test(`多色の${name}は、${theme === 'light' ? 'ライトで強度が増えるほど暗く' : 'ダークで強度が増えるほど明るく'}なる`, () => {
-      assert.ok(
-        isMonotone(
-          theme,
-          samples.map((sample) => relativeLuminance(sample[theme])),
-        ),
-      );
-    });
-
-    test(`多色の${name}の最小の色は、${theme} の地（--heat-0）より${theme === 'light' ? '暗い' : '明るい'}`, () => {
-      const first = relativeLuminance(samples[0]![theme]);
-      const ground = relativeLuminance(groundOf(theme));
-      assert.ok(theme === 'light' ? first < ground : first > ground, `${first} と ${ground}`);
-    });
-
     test(`多色の${name}の全点で、${theme} の色と文字色のコントラスト比が4.5以上`, () => {
       const labels = samples.map(heatMultiLabelSample);
       const ratios = samples.map((sample, index) => contrastRatio(sample[theme], labels[index]![theme]));
@@ -71,6 +68,36 @@ for (const { name, samples } of SERIES) {
     });
   }
 }
+
+test('ライトの多色の色と位置は、heatmap.js 1.0の既定の配色と一致する', () => {
+  // 出典: https://patorjk.com/common/vendor/heatmap/heatmap.js の既定の配色
+  const expected: readonly (readonly [number, HeatRgb])[] = [
+    [0.45, [0, 0, 255]],
+    [0.55, [0, 255, 255]],
+    [0.65, [0, 255, 0]],
+    [0.95, [255, 255, 0]],
+    [1, [255, 0, 0]],
+  ];
+  const [ground, ...colored] = HEAT_STOPS.light;
+  assert.deepEqual(ground, [0, HEAT_GROUND.light]);
+  assert.deepEqual(
+    colored.map(([position]) => position),
+    expected.map(([position]) => position),
+  );
+  for (const [position, rgb] of expected) {
+    assert.deepEqual(heatMultiRgb('light', position), rgb, `強度 ${position}`);
+  }
+});
+
+test('ライトの多色は、0.45より低い所で地の色から青へつながる', () => {
+  const ground = groundOf('light');
+  assert.deepEqual(heatMultiRgb('light', 0), ground);
+  const blue = relativeLuminance([0, 0, 255]);
+  const lows = [0.05, 0.15, 0.25, 0.35, 0.45].map((t) => relativeLuminance(heatMultiRgb('light', t)));
+  // 地から青へ、輝度が一方向に下がる
+  assert.ok(lows.every((value, index) => index === 0 || value < lows[index - 1]!));
+  assert.ok(lows[0]! < relativeLuminance(ground) && lows[4]! === blue);
+});
 
 test('色相が大きく変わる。最初と最後の色は、ライト・ダークとも色相が90度以上離れる', () => {
   const hue = ([r, g, b]: HeatRgb): number => {
@@ -82,8 +109,10 @@ test('色相が大きく変わる。最初と最後の色は、ライト・ダ�
     return (raw * 60 + 360) % 360;
   };
   for (const theme of HEAT_THEMES) {
-    const first = hue(heatMultiKeySample(0.001)[theme]);
-    const last = hue(heatMultiKeySample(1)[theme]);
+    // ライトの並びは地の色から始まるので、地ではない最初の色で比べる
+    const firstColored = HEAT_STOPS[theme].find(([, hex]) => hex !== HEAT_GROUND[theme])!;
+    const first = hue(heatMultiRgb(theme, firstColored[0]));
+    const last = hue(heatMultiRgb(theme, 1));
     const gap = Math.abs(first - last);
     assert.ok(Math.min(gap, 360 - gap) >= 90, `${theme}: ${first} と ${last}`);
   }
