@@ -23,6 +23,8 @@ interface SourceFace {
 /** 出典のスナップショット。定義ファイルから起こした面（rows）に、作者の追記による置き換え（substitutions）を加えた採用する値を持つ。 */
 const manifest = JSON.parse(readFileSync(new URL('../../../test/fixtures/sources/tsuki-ringo.json', import.meta.url), 'utf8')) as {
   faces: SourceFace[];
+  omissions: Array<{ reason: string }>;
+  unplacedRows: Array<{ input: string; output: string; reason: string }>;
   substitutions: Array<{ faceIndex: number; row: number; column: number; value: string; adopted: string }>;
 };
 
@@ -185,4 +187,16 @@ test('せ の★（ぉ）と ゃ の★（ぁ）は、定義ファイルの値�
   );
   assert.deepEqual(typedKeys('ぉ'), ['q e']);
   assert.deepEqual(typedKeys('ぁ'), ['p e']);
+});
+
+test('面に入れない25行は、位置を持つ13行がomissionsに、位置を持たない12行がunplacedRowsに、理由付きで記録されている', () => {
+  assert.equal(manifest.omissions.length, 13);
+  assert.equal(manifest.unplacedRows.length, 12);
+  assert.ok([...manifest.omissions, ...manifest.unplacedRows].every((row) => row.reason === 'ime-default'));
+  assert.deepEqual(
+    manifest.unplacedRows.map((row) => row.input),
+    ['~', '_', ...[...'1234567890'].map((digit) => `${digit}.`)],
+  );
+  // 面に入れない行の出力は、配列の入力に無い
+  for (const output of ['〜', '「', '」', '1']) assert.equal(layout.canonicalInputs.has(output), false, output);
 });

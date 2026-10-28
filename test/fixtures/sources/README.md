@@ -23,3 +23,7 @@ ANSI対象外の値も同じ規則で明示する。これにより omission の
 各要素は、面の番号・行・列（`omissions` と同じ位置の表し方）、`value`（`sourceRows` の値）、`adopted`（`rows` の値）、`source`（根拠）を持つ。
 `sourceRows` は出典の値のまま残し、`rows` に採用する値を置く。検査は、`sourceRows` の値と `value`、`rows` の値と `adopted` が一致すること、`adopted` と `value` が違うこと、`source` が空でないことを確かめる。
 `sourceRows` と `rows` で値が違うセルは、`omissions` か `substitutions` のどちらかに記録が無いと失敗する。fixtureは `rows` の値だけを持つ。
+
+面に入れない出典の行のうち、格子のキーの位置を持つ行は、`sourceRows` に転記して `omissions` に理由を書く。
+Shiftを要する入力や2キーの入力のように位置を持たない行は、manifestの `unplacedRows`（任意。入力・出力・理由）に書く。
+理由 `ime-default` は、作者の配列の設計ではなく、Google日本語入力の既定の表から残ったと読む行に使う。

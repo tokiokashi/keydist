@@ -215,3 +215,18 @@ test('置き換えの記録が無いsourceRowsとrowsの差は失敗する', () 
   manifest.faces[0].rows[0][0] = 'ぉ';
   assert.throws(() => validateSourceManifest('no-substitution.json', manifest), /差分がomissionとして表現されていない/);
 });
+
+test('格子の位置を持たない行（unplacedRows）は、入力と出力があり、理由が定義済みで、入力が重複しなければ通る', () => {
+  const build = (rows: NonNullable<SourceManifest['unplacedRows']>) => {
+    const manifest = makeManifest();
+    manifest.unplacedRows = rows;
+    return () => validateSourceManifest('unplaced.json', manifest);
+  };
+  const row = { input: '~', output: '〜', reason: 'ime-default' as const };
+
+  assert.doesNotThrow(build([row]));
+  assert.throws(build([{ ...row, input: '' }]), /入力か出力が空/);
+  assert.throws(build([{ ...row, output: '' }]), /入力か出力が空/);
+  assert.throws(build([{ ...row, reason: 'unknown' as never }]), /未定義の除外理由 unknown/);
+  assert.throws(build([row, row]), /unplacedRowsが重複している/);
+});

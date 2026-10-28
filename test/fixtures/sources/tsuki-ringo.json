@@ -5,7 +5,7 @@
     "url": "https://drive.google.com/file/d/1YmgMkP4kkndPtMD_0v3YpPDMJ_3Q3zEt/view",
     "sha": "sha256:49e61dee731a1cc086dfc532e39b69789f38793763e9172e22acc441ef2d21ac",
     "path": "月林檎配列の作者menmentsu氏が、記事（https://menmentsu.hateblo.jp/entry/2021/01/12/230614、冒頭に「2021年4月29日更新」）で配布するGoogle日本語入力のローマ字テーブル（UTF-8・BOMなし・CRLFのTSV、122行、1078バイト、ファイル名は月林檎配列β34.txt）。HTTPのLast-Modifiedは2021-04-28 15:43 UTC（日本時間で2021-04-29 00:43）。2026-10-28に取得した",
-    "transform": "各行は「入力、出力、未確定の出力」の3列。1文字の入力のうち、出力が空で3列目にかなを持つ31行と、出力を持つe（ょ）とi（゛）を、単打の面にした（33キー）。JISの@はANSIの[、:は'の位置の1キーに写している。\\は作者の実装例（CapsLockと\\を入れ替える）に従い、きをcaps-lockのセル（extraCells）に置いた。2文字の入力のうち、1文字目が単打の面のかなで2文字目がeの行を後置eの面（27キー）、2文字目がiの行を後置iの面（28キー）にした。後置の面のセルは、出力の列、出力が空なら3列目（未確定の出力が連鎖する行の最後）で、ぎはcaps-lockのセルに置いた。1文字目が後置eの面の出力（け・ほ・ふ・ま・へ・も・そ）で2文字目がiの7行は、キー・e・iの3打の経路で、同じ出力を2打（キー・i）でも打てるので面に入れていない。1文字目がひで2文字目がeの行は、どの経路からも使われないので入れていない。ゃ・eの行は同じ内容が2回あるので1行にまとめた。-（ー）・~（〜）・[（「）・]（」）・数字10キー・数字と.の10行・_（・）の25行は、キー1つの面のセルではなく、かな配列の面に入れていない。単打のiの゛、後置iの面のxの・とcのｗ（全角）は、定義にある出力なので面に入れた。定義ファイル（最終更新は2021-04-29）の せ の★（ぁ）と ゃ の★（ぉ）は、作者が記事「月林檎確定版」に書いた追記（2021-05-01）に従って入れ替え（せ の★を ぉ、ゃ の★を ぁ）、substitutionsに記録した。sourceRowsは定義ファイルの値のまま"
+    "transform": "各行は「入力、出力、未確定の出力」の3列。1文字の入力のうち、出力が空で3列目にかなを持つ31行と、出力を持つe（ょ）とi（゛）を、単打の面にした（33キー）。JISの@はANSIの[、:は'の位置の1キーに写している。\\は作者の実装例（CapsLockと\\を入れ替える）に従い、きをcaps-lockのセル（extraCells）に置いた。2文字の入力のうち、1文字目が単打の面のかなで2文字目がeの行を後置eの面（27キー）、2文字目がiの行を後置iの面（28キー）にした。後置の面のセルは、出力の列、出力が空なら3列目（未確定の出力が連鎖する行の最後）で、ぎはcaps-lockのセルに置いた。1文字目が後置eの面の出力（け・ほ・ふ・ま・へ・も・そ）で2文字目がiの7行は、キー・e・iの3打の経路で、同じ出力を2打（キー・i）でも打てるので面に入れていない。1文字目がひで2文字目がeの行は、どの経路からも使われないので入れていない。ゃ・eの行は同じ内容が2回あるので1行にまとめた。-（ー）・[（「）・]（」）・数字10キーの合計13行は、sourceRowsにJISの格子の位置（数字は1段目の1〜0、-は1段目の-、[は2段目の右端、]は3段目の右端）で転記し、omissions（理由ime-default）に記録して面に入れていない。~（〜）・_（・）・数字と.の10行は、Shiftを要する入力か2キーの入力で格子の位置が無いので、unplacedRowsに記録して面に入れていない。この25行は、作者がーを@（ANSIの[）に置いた上で残っている、Google日本語入力の既定の表の行と読む（標準の表との照合はしていない）。単打のiの゛、後置iの面のxの・とcのｗ（全角）は、定義にある出力なので面に入れた。定義ファイル（最終更新は2021-04-29）の せ の★（ぁ）と ゃ の★（ぉ）は、作者が記事「月林檎確定版」に書いた追記（2021-05-01）に従って入れ替え（せ の★を ぉ、ゃ の★を ぁ）、substitutionsに記録した。sourceRowsは定義ファイルの値のまま"
   },
   "faces": [
     {
@@ -70,9 +70,9 @@
         ]
       ],
       "sourceRows": [
-        "\t\t\t\t\t\t\t\t\t\t\t\t",
-        "せ\tこ\tょ\tら\tさ\tや\tす\t゛\tん\tゃ\tー\t",
-        "れ\tし\tて\tと\tく\tは\tか\tい\tう\tる\tっ\t",
+        "1\t2\t3\t4\t5\t6\t7\t8\t9\t0\tー\t\t",
+        "せ\tこ\tょ\tら\tさ\tや\tす\t゛\tん\tゃ\tー\t「",
+        "れ\tし\tて\tと\tく\tは\tか\tい\tう\tる\tっ\t」",
         "ち\tよ\tに\tの\tゅ\tな\tた\tお\tめ\tつ\t"
       ],
       "extraCells": {
@@ -223,7 +223,161 @@
       }
     }
   ],
-  "omissions": [],
+  "omissions": [
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 0,
+      "value": "1",
+      "reason": "ime-default"
+    },
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 1,
+      "value": "2",
+      "reason": "ime-default"
+    },
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 2,
+      "value": "3",
+      "reason": "ime-default"
+    },
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 3,
+      "value": "4",
+      "reason": "ime-default"
+    },
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 4,
+      "value": "5",
+      "reason": "ime-default"
+    },
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 5,
+      "value": "6",
+      "reason": "ime-default"
+    },
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 6,
+      "value": "7",
+      "reason": "ime-default"
+    },
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 7,
+      "value": "8",
+      "reason": "ime-default"
+    },
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 8,
+      "value": "9",
+      "reason": "ime-default"
+    },
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 9,
+      "value": "0",
+      "reason": "ime-default"
+    },
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 10,
+      "value": "ー",
+      "reason": "ime-default"
+    },
+    {
+      "faceIndex": 0,
+      "row": 1,
+      "column": 11,
+      "value": "「",
+      "reason": "ime-default"
+    },
+    {
+      "faceIndex": 0,
+      "row": 2,
+      "column": 11,
+      "value": "」",
+      "reason": "ime-default"
+    }
+  ],
+  "unplacedRows": [
+    {
+      "input": "~",
+      "output": "〜",
+      "reason": "ime-default"
+    },
+    {
+      "input": "_",
+      "output": "・",
+      "reason": "ime-default"
+    },
+    {
+      "input": "1.",
+      "output": "1.",
+      "reason": "ime-default"
+    },
+    {
+      "input": "2.",
+      "output": "2.",
+      "reason": "ime-default"
+    },
+    {
+      "input": "3.",
+      "output": "3.",
+      "reason": "ime-default"
+    },
+    {
+      "input": "4.",
+      "output": "4.",
+      "reason": "ime-default"
+    },
+    {
+      "input": "5.",
+      "output": "5.",
+      "reason": "ime-default"
+    },
+    {
+      "input": "6.",
+      "output": "6.",
+      "reason": "ime-default"
+    },
+    {
+      "input": "7.",
+      "output": "7.",
+      "reason": "ime-default"
+    },
+    {
+      "input": "8.",
+      "output": "8.",
+      "reason": "ime-default"
+    },
+    {
+      "input": "9.",
+      "output": "9.",
+      "reason": "ime-default"
+    },
+    {
+      "input": "0.",
+      "output": "0.",
+      "reason": "ime-default"
+    }
+  ],
   "substitutions": [
     {
       "faceIndex": 1,

@@ -23,13 +23,25 @@ interface SourceFace {
   rows: string[][];
 }
 
-type OmissionReason = 'jis-only-key' | 'function-key' | 'symbol' | 'source-only';
+type OmissionReason = 'jis-only-key' | 'function-key' | 'symbol' | 'source-only' | 'ime-default';
 
 interface Omission {
   faceIndex: number;
   row: number;
   column: number;
   value: string;
+  reason: OmissionReason;
+}
+
+/**
+ * 出典にあるが、格子のキーの位置を持たず面に入れない行（Shiftを要する入力、2キーの入力）。
+ * 位置を持つ行は `sourceRows` と `omissions` に載せる。
+ */
+interface UnplacedRow {
+  /** 出典の入力（キー列）。 */
+  input: string;
+  /** 出典の出力。 */
+  output: string;
   reason: OmissionReason;
 }
 
@@ -56,6 +68,8 @@ export interface SourceManifest {
   };
   faces: SourceFace[];
   omissions: Omission[];
+  /** 格子の位置を持たず、面に入れない出典の行。持たないmanifestは省略する。 */
+  unplacedRows?: UnplacedRow[];
   /** 出典の値を置き換えたセル。持たないmanifestは省略する。 */
   substitutions?: Substitution[];
 }
@@ -69,7 +83,7 @@ interface Fixture {
 }
 
 const EXTRA_CELL_KEYS = new Set(['backquote', 'tab', 'caps-lock']);
-const OMISSION_REASONS = new Set<OmissionReason>(['jis-only-key', 'function-key', 'symbol', 'source-only']);
+const OMISSION_REASONS = new Set<OmissionReason>(['jis-only-key', 'function-key', 'symbol', 'source-only', 'ime-default']);
 
 function omissionKey(faceIndex: number, row: number, column: number) {
   return `${faceIndex}:${row}:${column}`;
@@ -151,6 +165,14 @@ export function validateSourceManifest(fileName: string, manifest: SourceManifes
         `${fileName}: omission対象セルが採用側rowsで空欄になっていない (face ${omission.faceIndex}, row ${omission.row}, column ${omission.column})`,
       );
     }
+  }
+
+  const unplacedInputs = new Set<string>();
+  for (const row of manifest.unplacedRows ?? []) {
+    if (row.input === '' || row.output === '') throw new Error(`${fileName}: unplacedRowsの入力か出力が空`);
+    if (!OMISSION_REASONS.has(row.reason)) throw new Error(`${fileName}: 未定義の除外理由 ${row.reason}`);
+    if (unplacedInputs.has(row.input)) throw new Error(`${fileName}: unplacedRowsが重複している（${row.input}）`);
+    unplacedInputs.add(row.input);
   }
 
   const substitutionKeys = new Set<string>();
