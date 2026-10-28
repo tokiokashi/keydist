@@ -51,15 +51,15 @@ test('句読点と括弧は訓令式と同じ綴り', () => {
   for (const heading of ['、', '。', '「', '」']) assert.equal(table.get(heading), kunrei.get(heading));
 });
 
-test('作者の記号の表の4行（v/ v. v, v-）を綴りにし、矢印と『』は入れない', () => {
-  assert.deepEqual(spelling(['・', '…', '‥', '〜']), ['v/', 'v.', 'v,', 'v-']);
-  for (const heading of ['←', '↑', '→', '↓', '↗', '↘', '↙', '↖', '『', '』']) assert.equal(table.has(heading), false, heading);
+test('作者の記号の表の6行（v/ v. v, v- v[ v]）を綴りにし、矢印は入れない', () => {
+  assert.deepEqual(spelling(['・', '…', '‥', '〜', '『', '』']), ['v/', 'v.', 'v,', 'v-', 'v[', 'v]']);
+  for (const heading of ['←', '↑', '→', '↓', '↗', '↘', '↙', '↖']) assert.equal(table.has(heading), false, heading);
 });
 
 test('綴りは配列の英字・句読点か、層の3文字だけで、訓令式に無い見出しを足さない', () => {
   const kunrei = tableForRule('kunrei');
   const extra = [...table.keys()].filter((heading) => !kunrei.has(heading) && !heading.startsWith('っ'));
-  assert.deepEqual(extra.sort(), ['ゎ', 'でぃ', 'てぃ', '…', '‥', '〜'].sort());
+  assert.deepEqual(extra.sort(), ['ゎ', 'でぃ', 'てぃ', '…', '‥', '〜', '『', '』'].sort());
   const seoto = LAYOUTS.find((layout) => layout.id === 'seoto')!;
   for (const [heading, roman] of table) {
     if (['ん', 'っ', 'ー', '・'].includes(heading)) continue; // `・` は `/` を出すキーが無い

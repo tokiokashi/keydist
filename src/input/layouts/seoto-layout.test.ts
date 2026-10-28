@@ -119,6 +119,20 @@ test('記号の綴り（v. v, v-）は打て、v/ の・は / を出すキーが
   );
 });
 
+test('『』はテーブルの綴り（v[ v]）で打たれ、打てない文字に数えない', () => {
+  const trace = generateTrace('『あ』', seotoJa, geometry, DEFAULT_TRACE_POLICY);
+  assert.deepEqual(trace.errors, []);
+  assert.equal(trace.skipped, 0);
+  assert.deepEqual(
+    trace.strokes.map((stroke) => stroke.char),
+    ['v', '[', 'a', 'v', ']'],
+  );
+  assert.deepEqual(
+    trace.strokes.map((stroke) => stroke.inputChar),
+    ['『', '『', 'あ', '』', '』'],
+  );
+});
+
 test('英文は層を使わない（nが続く語も - も英字のキーで打つ）', () => {
   const trace = generateTrace('nnn-nn sound-', seotoEn, geometry, DEFAULT_TRACE_POLICY);
   assert.deepEqual(trace.errors, []);
