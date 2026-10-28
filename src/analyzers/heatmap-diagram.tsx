@@ -11,7 +11,7 @@ import { heatmapFlowSegments, heatmapFlowStrokeWidth } from './heatmap-flow.ts';
 import type { BigramVector } from './bigram-vectors.ts';
 import { edgeKind, FLOW_COLORS, FLOW_GRADIENT_END_OPACITY, FLOW_GRADIENT_START_OPACITY, type FlowPoint } from './keyboard-flow-lines.ts';
 import { HEAT_BLOB_LEVELS, heatBlobIntensityAt, heatBlobLevel, heatBlobRuns, type HeatBlobSource } from './heatmap-blob.ts';
-import { heatMultiBlobPaint, heatMultiBlobSample, heatMultiKeySample, heatMultiLabelSample, heatSampleCss } from './heatmap-palette.ts';
+import { heatMultiBlobSample, heatMultiKeySample, heatMultiLabelSample, heatSampleCss } from './heatmap-palette.ts';
 import { HEATMAP_KEY_SIZE, heatmapBounds, heatmapDrawnKeys, heatmapViewBox, type HeatmapBounds } from './heatmap-keys.ts';
 
 /**
@@ -38,11 +38,10 @@ const FLOW_LINE_OPACITY = 0.72;
 /** サーモグラフィを矩形の升で描く時の升の大きさ（描画の座標系）。 */
 const BLOB_CELL = 2;
 
-/** 多色のサーモグラフィの、段ごとの矩形の描き方（添字が段。0は描かない）。 */
+/** 多色のサーモグラフィの、段ごとの矩形の塗りの色（添字が段。0は描かない）。 */
 const MULTI_BLOB_PAINTS = Array.from({ length: HEAT_BLOB_LEVELS + 1 }, (_, level) => {
   if (level === 0) return undefined;
-  const { color, opacity } = heatMultiBlobPaint(level);
-  return { fill: heatSampleCss(color), opacity };
+  return heatSampleCss(heatMultiBlobSample(level));
 });
 
 export interface HeatmapDiagramProps {
@@ -239,7 +238,7 @@ export function HeatmapDiagram({
             )}
             <g data-heatmap-blob-levels={HEAT_BLOB_LEVELS}>
               {blobRuns.map((run) => {
-                const multi = palette === 'multi' ? MULTI_BLOB_PAINTS[run.level] : undefined;
+                const multiFill = palette === 'multi' ? MULTI_BLOB_PAINTS[run.level] : undefined;
                 return (
                   <rect
                     key={`${run.x},${run.y}`}
@@ -247,8 +246,8 @@ export function HeatmapDiagram({
                     y={run.y}
                     width={run.width}
                     height={run.height}
-                    fill={multi?.fill ?? 'var(--heat-1)'}
-                    fillOpacity={multi?.opacity ?? run.level / HEAT_BLOB_LEVELS}
+                    fill={multiFill ?? 'var(--heat-1)'}
+                    fillOpacity={multiFill === undefined ? run.level / HEAT_BLOB_LEVELS : 1}
                   />
                 );
               })}
