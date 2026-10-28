@@ -936,6 +936,7 @@ test('共有リンクの取り込み: 片方が変化なしでも、もう片方
 });
 
 const USER_LAYOUT_A = {
+  kind: 'alpha' as const,
   id: 'user-a',
   name: 'A',
   rows: ['', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'] as [string, string, string, string],

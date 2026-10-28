@@ -15,7 +15,7 @@ const JIS_SHAPE = PHYSICAL_SHAPES['jis-row-staggered'];
 const ANSI_FINGER = defaultFingerAssignmentId(ANSI_SHAPE);
 const JIS_FINGER = defaultFingerAssignmentId(JIS_SHAPE);
 
-const UNUSABLE_LAYOUT: UserLayout = { id: 'user-unusable', name: '使えない自作', rows: ['', '', '', ''] };
+const UNUSABLE_LAYOUT: UserLayout = { kind: 'alpha', id: 'user-unusable', name: '使えない自作', rows: ['', '', '', ''] };
 
 const catalog = paneCatalog({ userLayouts: [UNUSABLE_LAYOUT], userRomajiRules: [] });
 

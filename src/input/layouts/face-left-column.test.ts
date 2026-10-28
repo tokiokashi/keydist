@@ -11,7 +11,7 @@ import { physicalKeysUsedByLayout } from './physical-keys.ts';
 
 const NO_COMPOSITION = { dakuten: false, handakuten: false };
 
-const body = (faces: UserFace[]): UserFaceBody => ({ faces, composition: NO_COMPOSITION });
+const body = (faces: UserFace[]): UserFaceBody => ({ kind: 'kana', faces, composition: NO_COMPOSITION });
 
 /** 3つのキーへ出力を置いた単打の面だけの配列 */
 const OUTPUT_BODY = body([{ trigger: [], inputRole: 'layer', outputs: { a: 'い', backquote: 'あ', tab: 'う', 'caps-lock': 'え' } }]);
@@ -88,6 +88,7 @@ test('ヒートマップは、3つのキーを使う配列では3つのキーを
 });
 
 const FILE_CONTENT: KanaLayoutContent = {
+  kind: 'kana',
   name: '左端の列',
   faces: [...OUTPUT_BODY.faces, ...TRIGGER_BODY.faces.slice(1).map((face) => ({ ...face, trigger: ['tab'] }))],
   composition: NO_COMPOSITION,
@@ -113,7 +114,11 @@ test('編集画面の検査は、3つのキーの出力・trigger・ホームキ
 
 test('3つのキー以外の格子の外のキーは、出力にもホームキーにも書けない', () => {
   for (const key of [THUMB_KEY.LT, 'shift-l', 'escape']) {
-    const { problems } = readFaceBody({ faces: [{ ...OUTPUT_BODY.faces[0], outputs: { a: 'あ', [key]: 'い' } }], composition: NO_COMPOSITION });
+    const { problems } = readFaceBody({
+      kind: 'kana',
+      faces: [{ ...OUTPUT_BODY.faces[0], outputs: { a: 'あ', [key]: 'い' } }],
+      composition: NO_COMPOSITION,
+    });
     assert.equal(problems.length, 1, key);
     assert.equal(problems[0]!.path, `faces[0].outputs.${key}`);
   }
@@ -126,6 +131,7 @@ test('3つのキー以外の格子の外のキーは、出力にもホームキ�
 
 test('切り替えのキー自身の位置に同じ面の出力があれば、3つのキーでも誤りになる', () => {
   const { problems } = readFaceBody({
+    kind: 'kana',
     faces: [{ ...TRIGGER_BODY.faces[1], outputs: { j: 'う', 'caps-lock': 'え' } }],
     composition: NO_COMPOSITION,
   });

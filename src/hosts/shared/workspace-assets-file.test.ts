@@ -30,6 +30,7 @@ import { workspaceImportResultText } from './workspace-import-result.ts';
 
 const ROWS: UserLayout['rows'] = ['1234567890-=', 'qwertyuiop[]', "asdfghjkl;'", 'zxcvbnm,./'];
 const layout = (id: string, romaji?: string, rows: UserLayout['rows'] = ROWS): UserLayout => ({
+  kind: 'alpha',
   id,
   name: id,
   rows,
@@ -316,6 +317,7 @@ test('結果の文: 重なって別の名前で足した資産は、理由を一
 
 /** 面で定義する配列。ローマ字の規則を持たない。 */
 const FACE_LAYOUT: UserLayout = {
+  kind: 'kana',
   id: 'user-face',
   name: '面の配列',
   faces: [

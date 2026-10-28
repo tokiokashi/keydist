@@ -61,21 +61,32 @@ test('未知のidはalpha扱いにする（英字系がほとんどのため）'
   assert.equal(builtInLayoutKind('no-such-layout'), 'alpha');
 });
 
-test('自作配列は面で定義するならkana、段で定義するならalpha', () => {
+test('自作配列の種類は、保存された種類の値で決まる', () => {
   const direct: UserLayout = {
+    kind: 'kana',
     id: 'my-kana',
     name: 'かな配列',
     faces: [{ trigger: [], inputRole: 'layer', outputs: { a: 'あ' } }],
     composition: { dakuten: false, handakuten: false },
   };
   const romaji: UserLayout = {
+    kind: 'alpha',
     id: 'my-alpha',
     name: 'ローマ字配列',
     rows: ['', '', '', ''],
     romaji: 'kunrei',
   };
+  const alphaFaces: UserLayout = {
+    kind: 'alpha',
+    id: 'my-alpha-faces',
+    name: '英字の面の配列',
+    faces: [{ trigger: [], inputRole: 'layer', outputs: { a: 'a' } }],
+    romaji: 'kunrei',
+  };
   assert.equal(userLayoutKind(direct), 'kana');
   assert.equal(userLayoutKind(romaji), 'alpha');
+  // 形（面か段か）では決まらない。面の形でも英字の種類になれる
+  assert.equal(userLayoutKind(alphaFaces), 'alpha');
 });
 
 test('layoutKindは自作配列の一覧にあればそちらを優先し、無ければ組み込み表を使う', () => {
@@ -83,6 +94,7 @@ test('layoutKindは自作配列の一覧にあればそちらを優先し、無�
     [
       'my-kana',
       {
+        kind: 'kana',
         id: 'my-kana',
         name: 'かな配列',
         faces: [{ trigger: [], inputRole: 'layer', outputs: { a: 'あ' } }],

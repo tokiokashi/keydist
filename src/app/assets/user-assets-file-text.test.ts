@@ -10,7 +10,7 @@ test('ファイル名は日付を入れる', () => {
 });
 
 test('書き出しの文は、0件の種類を出さない', () => {
-  const layout = { id: 'a', name: 'A', rows: ['', '', '', ''] as [string, string, string, string], romaji: 'kunrei' };
+  const layout = { kind: 'alpha' as const, id: 'a', name: 'A', rows: ['', '', '', ''] as [string, string, string, string], romaji: 'kunrei' };
   assert.equal(exportedText({ userLayouts: [layout], userRomajiRules: [], fingerAssignments: [], setupLibrary: NO_SETUPS }), '配列1件を書き出しました');
   assert.equal(
     exportedText({

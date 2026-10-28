@@ -15,6 +15,7 @@ test('配列側のホームキーを運指へ適用し、未知のキーは無�
 
 test('通常の自作配列でもhomeKeysをLayoutへ保持する', () => {
   const def: UserLayout = {
+    kind: 'alpha',
     id: 'home-key-layout',
     name: 'ホームキー付き',
     rows: ['', 'qwertyuiop[]', "asdfghjkl;'", 'zxcvbnm,./'],

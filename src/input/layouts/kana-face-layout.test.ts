@@ -30,6 +30,7 @@ function userFaceOf(face: Face): UserFace {
 
 /** 組み込みのNICOLAと同じ内容を、面の形で書いたもの。 */
 const NICOLA_CONTENT: KanaLayoutContent = {
+  kind: 'kana',
   name: '面で書いたNICOLA',
   faces: NICOLA_FACES.map(userFaceOf),
   composition: { dakuten: false, handakuten: false },
@@ -489,11 +490,12 @@ test('同じかなが2か所以上にある時は、誤りにせず場所を並�
   assert.match(result.notices[0]!.message, /「あ」が2か所にあります（面1のA・面2のA）/);
   const built = buildFaceLayout('user-x', 'x', result.layout);
   assert.equal(built.canonicalInputs.get('あ')!.length, 2, '代わりの打ち方として両方を持つ');
-  assert.deepEqual(duplicateOutputNotices({ faces: [], composition: { dakuten: false, handakuten: false } }), []);
+  assert.deepEqual(duplicateOutputNotices({ faces: [] }), []);
 });
 
 test('新下駄を面の形で書くと、組み込みと同じ打鍵列になり、同じ記号が複数の面にあるのは注意になる', () => {
   const content: KanaLayoutContent = {
+    kind: 'kana',
     name: '面で書いた新下駄',
     faces: SHINGETA_FACES.map(userFaceOf),
     composition: { dakuten: false, handakuten: false },
@@ -516,6 +518,7 @@ test('新下駄を面の形で書くと、組み込みと同じ打鍵列にな�
 
 test('JISかな配列を面の形で書くと（Shiftの面・先押しの制約・濁点の合成を含め）、組み込みと同じ打鍵列になる', () => {
   const content: KanaLayoutContent = {
+    kind: 'kana',
     name: '面で書いたJISかな',
     faces: JIS_KANA.faces!.map(userFaceOf),
     composition: { dakuten: true, handakuten: true },
@@ -535,6 +538,10 @@ test('面の形の読み込みは、保存形式の検査と同じ（readFaceBod
   const { body, problems } = readFaceBody({ faces: 'x', composition: {} });
   assert.equal(body, undefined);
   assert.ok(problems.length >= 1);
-  const ok: UserFaceBody = { faces: [{ trigger: [], inputRole: 'layer', outputs: { a: 'あ' } }], composition: { dakuten: false, handakuten: false } };
+  const ok: UserFaceBody = {
+    kind: 'kana',
+    faces: [{ trigger: [], inputRole: 'layer', outputs: { a: 'あ' } }],
+    composition: { dakuten: false, handakuten: false },
+  };
   assert.deepEqual(readFaceBody({ ...ok }).body, ok);
 });

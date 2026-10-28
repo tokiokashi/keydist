@@ -19,7 +19,7 @@ function source(overrides: Partial<TargetChoiceSource> = {}): TargetChoiceSource
   return { layouts: LAYOUT_BY_ID, userLayouts: new Map(), shapes: SHAPES, setups: [], selected: [], ...overrides };
 }
 
-const USER_ALPHA: UserLayout = { id: 'dvorak', name: 'Dvorak', rows: ['', '', '', ''] };
+const USER_ALPHA: UserLayout = { kind: 'alpha', id: 'dvorak', name: 'Dvorak', rows: ['', '', '', ''] };
 
 const SETUPS: readonly Setup[] = [
   { id: 'a', number: 1, layoutId: 'qwerty', shapeId: 'row-staggered' },
@@ -172,6 +172,7 @@ test('別名は絞り込みにだけ効き、名前や区分の並びは変え�
 
 test('種類の切り替えは名前の絞り込みと同時に使え、自作の配列・Setupも種類で分かれる', () => {
   const kanaMine: UserLayout = {
+    kind: 'kana',
     id: 'mine-kana',
     name: USER_ALPHA.name,
     faces: [{ trigger: [], inputRole: 'layer', outputs: { a: 'あ' } }],

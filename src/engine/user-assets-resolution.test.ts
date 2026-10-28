@@ -15,7 +15,7 @@ const SHAPES = new Map(Object.values(PHYSICAL_SHAPES).map((shape) => [shape.id, 
 // 組み込みのqwertyと同じ段の定義。組み込みは大文字・記号の出力（Shift）を足して持つので、
 // 比べるテキストは小文字と句読点だけにする。
 const QWERTY_ROWS: UserLayout['rows'] = ['1234567890-=', 'qwertyuiop[]', "asdfghjkl;'", 'zxcvbnm,./'];
-const USER_QWERTY: UserLayout = { id: 'user-qwerty', name: '自作のQWERTY', rows: QWERTY_ROWS, romaji: 'kunrei' };
+const USER_QWERTY: UserLayout = { kind: 'alpha', id: 'user-qwerty', name: '自作のQWERTY', rows: QWERTY_ROWS, romaji: 'kunrei' };
 
 const TEXTS: readonly (readonly [TextLanguage, string])[] = [
   ['en', 'the quick brown fox, jumps over the lazy dog.'],

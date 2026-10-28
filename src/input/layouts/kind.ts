@@ -1,5 +1,5 @@
 import type { Layout } from './types.ts';
-import { isFaceUserLayout, type UserLayout } from './user-layouts.ts';
+import type { UserLayout } from './user-layouts.ts';
 
 /**
  * 配列の「種類」（打ち方はテキストの言語×配列の種類から導く、の後者）。
@@ -50,20 +50,20 @@ export function builtInLayoutKind(layoutId: string): LayoutKind {
 }
 
 /**
- * 自作配列（`UserLayout`）の種類。面で定義する配列（`faces`）はローマ字を経ずにかなを打つので `kana`、
- * 段の文字で定義する配列はローマ字表を挟むので `alpha` にする。
+ * 自作配列（`UserLayout`）の種類。保存された種類の値（`kind`）をそのまま返す。
+ * 定義の形（段か面か）では決まらない。面の形も、英字の出力とローマ字規則を持つ `alpha` になれる。
  *
  * 英語テキストには、`deriveInputMethod`（`#input/setup/input-method.ts`）が
  * 「かな配列は使えない」という原則を自作配列にも一律で適用する
- * （面で定義する自作配列は英語テキストには使えない、と判定する）。
+ * （種類がかなの自作配列は英語テキストには使えず、英字の自作配列は面の形でも使える）。
  */
 export function userLayoutKind(layout: UserLayout): LayoutKind {
-  return isFaceUserLayout(layout) ? 'kana' : 'alpha';
+  return layout.kind;
 }
 
 /**
  * `Layout` の種類を引く。組み込みか自作かで参照先が違う（組み込みはid表、自作は
- * 元の `UserLayout` が面で定義されているか）ため、自作配列の一覧を呼び出し側から渡してもらう。
+ * 元の `UserLayout` が持つ種類の値）ため、自作配列の一覧を呼び出し側から渡してもらう。
  * `userLayouts` に無いidは組み込み扱いにする。
  */
 export function layoutKind(layout: Layout, userLayouts: ReadonlyMap<string, UserLayout>): LayoutKind {

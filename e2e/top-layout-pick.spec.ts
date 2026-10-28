@@ -95,6 +95,7 @@ test('資産の自作の配列が対象の選択に並び、選んだ配列が�
         layouts: [
           {
             id: 'user-e2e',
+            kind: 'alpha',
             name: '自作のテスト配列',
             rows: ['1234567890-=', 'qwertyuiop[]', "asdfghjkl;'", 'zxcvbnm,./'],
             romaji: 'kunrei',

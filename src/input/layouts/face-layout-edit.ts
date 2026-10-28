@@ -1,5 +1,7 @@
 import { FINGERS, type NonThumb } from '../shapes/geometry.ts';
-import type { KanaLayoutContent } from './kana-face-layout-file.ts';
+import type { FaceLayoutContent } from './kana-face-layout-file.ts';
+import type { RomajiRuleId } from '../romaji/rules.ts';
+import type { LayoutKind } from './kind.ts';
 import {
   buildFaceLayout,
   duplicateOutputNotices,
@@ -12,8 +14,8 @@ import {
 } from './kana-face-layout.ts';
 import { uncoveredKana } from './kana-coverage.ts';
 import type { FaceMode, InputRole, LayerKind, TriggerOrder, TriggerPersistence } from './types.ts';
-import { isFaceUserLayout, type FaceUserLayout, type UserLayout } from './user-layouts.ts';
-import { NAME_REQUIRED_MESSAGE, type UserLayoutEditResult } from './layout-edit.ts';
+import { isFaceUserLayout, toLayout, type FaceUserLayout, type UserLayout } from './user-layouts.ts';
+import { buildFailureMessage, NAME_REQUIRED_MESSAGE, type UserLayoutEditResult } from './layout-edit.ts';
 
 /**
  * 面で定義する自作のかな配列を作る・直す操作の純関数。
@@ -36,17 +38,23 @@ export interface DraftFace {
   outputs: Record<string, string>;
 }
 
-/** 画面の入力欄の値。ホームキーは空文字で「指定しない」を持てる。 */
+/**
+ * 画面の入力欄の値。ホームキーは空文字で「指定しない」を持てる。
+ * `composition` はかなの種類だけ、`romaji` は英字の種類だけが保存に使う（持てない種類の値は保存の中身に入れない）。
+ */
 export interface FaceLayoutDraft {
   name: string;
+  kind: LayoutKind;
   faces: DraftFace[];
   composition: { dakuten: boolean; handakuten: boolean };
+  romaji?: RomajiRuleId | undefined;
   homeKeys: Partial<Record<NonThumb, string>>;
 }
 
 /** 新しい配列の下書き。単打の面を1つ持つ。入力の意味は見えて変えられる既定として「レイヤー」から始める。 */
 export const blankFaceLayoutDraft = (): FaceLayoutDraft => ({
   name: '',
+  kind: 'kana',
   faces: [blankFace()],
   composition: { dakuten: false, handakuten: false },
   homeKeys: {},
@@ -56,23 +64,23 @@ export const blankFaceLayoutDraft = (): FaceLayoutDraft => ({
 export const blankFace = (): DraftFace => ({ trigger: [], inputRole: 'layer', outputs: {} });
 
 /** 保存してある中身から下書きを作る。 */
-export function draftOf(content: KanaLayoutContent): FaceLayoutDraft {
+export function draftOf(content: FaceLayoutContent): FaceLayoutDraft {
   return {
     name: content.name,
+    kind: content.kind,
     faces: structuredClone(content.faces) as DraftFace[],
-    composition: { ...content.composition },
+    composition: content.kind === 'kana' ? { ...content.composition } : { dakuten: false, handakuten: false },
+    ...(content.romaji === undefined ? {} : { romaji: content.romaji }),
     homeKeys: { ...content.homeKeys },
   };
 }
 
 /** 保存してある面で定義する配列から、保存する中身を取り出す。 */
-export function contentOfFaceLayout(layout: FaceUserLayout): KanaLayoutContent {
-  return {
-    name: layout.name,
-    faces: structuredClone(layout.faces),
-    composition: { ...layout.composition },
-    ...(layout.homeKeys === undefined || Object.keys(layout.homeKeys).length === 0 ? {} : { homeKeys: { ...layout.homeKeys } }),
-  };
+export function contentOfFaceLayout(layout: FaceUserLayout): FaceLayoutContent {
+  const homeKeys = layout.homeKeys === undefined || Object.keys(layout.homeKeys).length === 0 ? {} : { homeKeys: { ...layout.homeKeys } };
+  const faces = structuredClone(layout.faces);
+  if (layout.kind === 'kana') return { kind: 'kana', name: layout.name, faces, composition: { ...layout.composition }, ...homeKeys };
+  return { kind: 'alpha', name: layout.name, faces, ...(layout.romaji === undefined ? {} : { romaji: layout.romaji }), ...homeKeys };
 }
 
 /** 下書きの検査結果。 */
@@ -81,10 +89,10 @@ export interface FaceLayoutCheck {
   readonly problems: readonly FaceLayoutProblem[];
   /** 保存を止めない注意（同じかなが2か所以上にある旨） */
   readonly notices: readonly FaceLayoutNotice[];
-  /** 打てない対象のかな。誤りがあって配列を組めない間は `undefined` */
+  /** 打てない対象のかな。かなの種類だけ調べるので、英字の種類は空。誤りがあって配列を組めない間は `undefined` */
   readonly uncovered: readonly string[] | undefined;
   /** 誤りが無い時の、保存する中身 */
-  readonly content: KanaLayoutContent | undefined;
+  readonly content: FaceLayoutContent | undefined;
 }
 
 /** 面の下書きの、未選択の項目を持たない形（`undefined` の項目を落とす）。 */
@@ -117,14 +125,29 @@ export function checkFaceLayout(draft: FaceLayoutDraft): FaceLayoutCheck {
     }
   }
 
-  const { body, problems: bodyProblems } = readFaceBody({ faces: draft.faces.map(compactFace), composition: draft.composition });
+  const { body, problems: bodyProblems } = readFaceBody({
+    kind: draft.kind,
+    faces: draft.faces.map(compactFace),
+    ...(draft.kind === 'kana' ? { composition: draft.composition } : {}),
+    ...(draft.kind === 'alpha' && draft.romaji !== undefined ? { romaji: draft.romaji } : {}),
+  });
   problems.push(...bodyProblems);
   if (body === undefined) return { problems, notices: [], uncovered: undefined, content: undefined };
 
-  const content: KanaLayoutContent = { name, ...body, ...(Object.keys(homeKeys).length === 0 ? {} : { homeKeys }) };
+  const content: FaceLayoutContent = { name, ...body, ...(Object.keys(homeKeys).length === 0 ? {} : { homeKeys }) };
   let uncovered: readonly string[] | undefined;
   try {
-    uncovered = uncoveredKana(buildFaceLayout('check', name === '' ? '名前なし' : name, content));
+    const built = buildFaceLayout('check', name === '' ? '名前なし' : name, content);
+    // 全かなが打てるかは、ローマ字を経ずにかなを打つ種類だけに問う
+    uncovered = content.kind === 'kana' ? uncoveredKana(built) : [];
+    // 英字の種類は、計算に使う組み立て（通常Shiftを足した後）まで通して、保存後に使えなくなる定義を保存の時に知らせる
+    if (content.kind === 'alpha') {
+      try {
+        toLayout(definitionOf('check', content));
+      } catch (cause) {
+        problems.push({ path: 'faces', message: buildFailureMessage(cause) });
+      }
+    }
   } catch (error) {
     if (!(error instanceof FaceLayoutBuildError)) throw error;
     problems.push(...error.problems);
@@ -138,24 +161,25 @@ export function checkFaceLayout(draft: FaceLayoutDraft): FaceLayoutCheck {
 }
 
 /** 保存する定義にする。キーの並びを固定して、同じ中身が同じ文字列になるようにする。 */
-function definitionOf(id: string, content: KanaLayoutContent): FaceUserLayout {
-  return {
+function definitionOf(id: string, content: FaceLayoutContent): FaceUserLayout {
+  const common = {
     id,
     name: content.name,
     ...(content.homeKeys === undefined || Object.keys(content.homeKeys).length === 0 ? {} : { homeKeys: { ...content.homeKeys } }),
     faces: structuredClone(content.faces) as UserFace[],
-    composition: { ...content.composition },
   };
+  if (content.kind === 'kana') return { ...common, kind: 'kana', composition: { ...content.composition } };
+  return { ...common, kind: 'alpha', ...(content.romaji === undefined ? {} : { romaji: content.romaji }) };
 }
 
 /** 保存の入口の検査。画面が検査を通した値でも、コマンドが直接呼ばれても同じ基準で守る。 */
-function blockingReason(content: KanaLayoutContent): string | undefined {
+function blockingReason(content: FaceLayoutContent): string | undefined {
   const { problems } = checkFaceLayout(draftOf(content));
   return problems.length === 0 ? undefined : problems.map((problem) => problem.message).join('、');
 }
 
 /** 面で定義する配列の新規作成。保存できない誤りがあれば何もせず理由を返す。 */
-export function createUserFaceLayout(layouts: readonly UserLayout[], generateId: () => string, content: KanaLayoutContent): UserLayoutEditResult {
+export function createUserFaceLayout(layouts: readonly UserLayout[], generateId: () => string, content: FaceLayoutContent): UserLayoutEditResult {
   const reason = blockingReason(content);
   if (reason !== undefined) return { ok: false, reason };
   return { ok: true, layouts: [...layouts, definitionOf(generateId(), content)] };
@@ -165,7 +189,7 @@ export function createUserFaceLayout(layouts: readonly UserLayout[], generateId:
  * 面で定義する配列の中身の書き換え。idは変えない。対象が無い、または中身が変わらない時は同じ参照を返す。
  * 面で定義する配列でない対象と、保存できない誤りのある入力は理由を返す。
  */
-export function updateUserFaceLayout(layouts: readonly UserLayout[], id: string, content: KanaLayoutContent): UserLayoutEditResult {
+export function updateUserFaceLayout(layouts: readonly UserLayout[], id: string, content: FaceLayoutContent): UserLayoutEditResult {
   const target = layouts.find((layout) => layout.id === id);
   if (target === undefined) return { ok: true, layouts };
   if (!isFaceUserLayout(target)) return { ok: false, reason: '面で定義する配列ではないため、この画面では直せません' };

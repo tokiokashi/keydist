@@ -282,7 +282,13 @@ test('自作の配列とローマ字規則: 書いたものが往復し、別タ
   const syncsB = buildAssetSyncs({ onExternalChange: () => {}, storage, subscribe: bus.subscribe, notify: bus.notify });
   const stopA = startAssetSyncs(syncsA);
   const userLayouts = [
-    { id: 'user-a', name: 'A', rows: ['', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'] as [string, string, string, string], romaji: 'kunrei' },
+    {
+      kind: 'alpha' as const,
+      id: 'user-a',
+      name: 'A',
+      rows: ['', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'] as [string, string, string, string],
+      romaji: 'kunrei',
+    },
   ];
   const userRomajiRules = [{ id: 'rule-a', name: 'R', base: 'kunrei' as const, overrides: { し: 'si' }, generateSokuon: true }];
 
@@ -298,7 +304,7 @@ test('自作の配列とローマ字規則: 書いたものが往復し、別タ
 
 test('自作の配列とローマ字規則: 保存された値の壊れた要素・id重複は読み込み時に捨てられる', () => {
   const storage = createFakeStorage();
-  const layout = { id: 'user-a', name: 'A', rows: ['', 'q', 'a', 'z'], romaji: 'kunrei' };
+  const layout = { kind: 'alpha', id: 'user-a', name: 'A', rows: ['', 'q', 'a', 'z'], romaji: 'kunrei' };
   const rule = { id: 'rule-a', name: 'R', base: 'kunrei', overrides: {}, generateSokuon: true };
   storage.setItem(ASSET_STORAGE_SPECS.userLayouts.storageKey, JSON.stringify({ version: 1, layouts: [layout, layout, 5] }));
   storage.setItem(ASSET_STORAGE_SPECS.userRomajiRules.storageKey, JSON.stringify({ version: 1, rules: [rule, rule, 5] }));
@@ -324,6 +330,7 @@ test('外部変更: 他タブで書いた自作の配列とローマ字規則が
 
   const userLayouts = [
     {
+      kind: 'alpha' as const,
       id: 'user-a',
       name: '自作の配列',
       rows: ['1234567890', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'] as [string, string, string, string],

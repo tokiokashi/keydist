@@ -5,6 +5,7 @@ import { buildUserCatalog, userInputLayouts } from './user-catalog.ts';
 import type { FaceUserLayout, StageUserLayout } from './user-layouts.ts';
 
 const layout = (id: string, overrides: Partial<StageUserLayout> = {}): StageUserLayout => ({
+  kind: 'alpha',
   id,
   name: `配列 ${id}`,
   rows: ['1234567890', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'],
@@ -13,6 +14,7 @@ const layout = (id: string, overrides: Partial<StageUserLayout> = {}): StageUser
 });
 
 const faceLayout = (id: string): FaceUserLayout => ({
+  kind: 'kana',
   id,
   name: `面の配列 ${id}`,
   faces: [{ trigger: [], inputRole: 'layer', outputs: { a: 'あ' } }],

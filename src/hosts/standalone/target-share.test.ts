@@ -211,6 +211,7 @@ test('送る側へ示す文は、載らなかった対象と名前だけが載�
 function oddNameSource(): { src: TargetShareSource; targets: AnalysisTarget[] } {
   const base = LAYOUT_BY_ID.get('qwerty')!;
   const stored = ['  先頭空白', '改行\nあり', '', '普通'].map((name, i) => ({
+    kind: 'alpha',
     id: `u${i}`,
     name,
     rows: ['1234567890', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'],

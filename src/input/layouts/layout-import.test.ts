@@ -698,6 +698,7 @@ test('紅皿のローマ字面とUTF-16LEを読む', () => {
 test('取り込んだ機能キーは凡例だけに残す', () => {
   const imported = stageOf(importBenizara('[ローマ字シフト無し]\na,Enter\nb,c\nd,e\nf,g'));
   const def: UserLayout = {
+    kind: 'alpha',
     id: 'imported',
     name: 'imported',
     rows: imported.rows,
@@ -844,6 +845,7 @@ test('取り込んだ段の形を自作の配列として保存しても、取�
   assert.deepEqual(saved.sequences, imported.sequences);
   assert.deepEqual(saved.legends, imported.legends);
   const direct = toLayout({
+    kind: 'alpha',
     id: 'user-x',
     name: '取り込み',
     rows: imported.rows,

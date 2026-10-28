@@ -19,6 +19,7 @@ const RULE: UserRomajiRule = {
   generateSokuon: true,
 };
 const LAYOUT: UserLayout = {
+  kind: 'alpha',
   id: 'user-mine',
   name: '自作の配列',
   rows: ['1234567890-=', 'qwertyuiop[]', "asdfghjkl;'", 'zxcvbnm,./'],

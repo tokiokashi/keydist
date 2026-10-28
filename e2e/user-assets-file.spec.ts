@@ -18,8 +18,8 @@ async function seed(page: Page): Promise<void> {
       JSON.stringify({
         version: 1,
         layouts: [
-          { id: 'user-a', name: '自作A', rows, romaji: 'rule-a' },
-          { id: 'user-b', name: '自作B', rows, romaji: 'kunrei' },
+          { kind: 'alpha', id: 'user-a', name: '自作A', rows, romaji: 'rule-a' },
+          { kind: 'alpha', id: 'user-b', name: '自作B', rows, romaji: 'kunrei' },
         ],
       }),
     );
@@ -116,7 +116,7 @@ test('読み込めなかった要素の詳細を開いても、狭い幅で横�
       JSON.stringify({
         format: 'keydist-user-assets',
         version: 1,
-        layouts: [{ id: 'user-a', name: '自作A', rows: ['', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'], romaji: 'kunrei' }],
+        layouts: [{ id: 'user-a', name: '自作A', kind: 'alpha', rows: ['', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'], romaji: 'kunrei' }],
         fingerAssignments: [{ id: longId, name: '壊れた指', baseFinger: {}, fingerKeys: {}, homeKey: {} }],
       }),
     ),

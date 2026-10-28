@@ -963,6 +963,7 @@ test('新JISは同じかな配置を逐次シフトと通常シフトで共有�
 
 test('imported user Sequenceもcanonical SemanticInput列へ同期する', () => {
   const layout = toLayout({
+    kind: 'alpha',
     id: 'user-sequence',
     name: 'user-sequence',
     rows: ['', '', '', ''],
@@ -983,6 +984,7 @@ test('imported user Sequenceもcanonical SemanticInput列へ同期する', () =>
 
 test('imported user Sequenceの完全一致pathはcanonical identityで1件へdedupeする', () => {
   const layout = toLayout({
+    kind: 'alpha',
     id: 'user-sequence-dedupe',
     name: 'user-sequence-dedupe',
     rows: ['x', '', '', ''],
@@ -999,6 +1001,7 @@ test('imported user Sequenceの完全一致pathはcanonical identityで1件へde
 
 test('保存済み凡例のspaceもthumb-rへ解決する', () => {
   const layout = toLayout({
+    kind: 'alpha',
     id: 'user-legacy',
     name: 'legacy',
     rows: ['', '', '', ''],

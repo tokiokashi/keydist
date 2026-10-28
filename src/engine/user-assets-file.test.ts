@@ -37,7 +37,7 @@ const EMPTY: UserAssetsHoldings = { userLayouts: [], userRomajiRules: [], finger
 const STAMP = 'stamp';
 
 const RULE: UserRomajiRule = { id: 'rule-a', name: 'し・ちをshi・chiで打つ', base: 'kunrei', overrides: { し: 'shi', ち: 'chi' }, generateSokuon: true };
-const LAYOUT: UserLayout = { id: 'user-a', name: '自作A', rows: ['', 'poiuytrewq[]', "asdfghjkl;'", 'zxcvbnm,./'], romaji: 'rule-a' };
+const LAYOUT: UserLayout = { kind: 'alpha', id: 'user-a', name: '自作A', rows: ['', 'poiuytrewq[]', "asdfghjkl;'", 'zxcvbnm,./'], romaji: 'rule-a' };
 // 右手の列の担当を入れ替えた指の割り当て（既定と数値が変わる）
 const FINGER: FingerAssignment = columnFingerAssignment(
   'finger-a',
@@ -153,11 +153,11 @@ test('中身の比較: 数値に関わる項目はどれが違っても別の中
     const merged = mergeUserAssets({ ...EMPTY, userLayouts: [a] }, { layouts: [b], romajiRules: [], fingerAssignments: [], setups: [] }, STAMP);
     return merged.entries[0]!.outcome.kind === 'added-renamed';
   };
-  const base: UserLayout = { id: 'u', name: 'U', rows: ROWS, romaji: 'kunrei' };
+  const base: UserLayout = { kind: 'alpha', id: 'u', name: 'U', rows: ROWS, romaji: 'kunrei' };
   assert.equal(differs(base, { ...base, rows: ['1234567890-=', 'qwertyuiop[]', "asdfghjkl;'", 'zxcvbnm,.-'] }), true);
   assert.equal(differs(base, { ...base, romaji: 'azik' }), true);
   assert.equal(differs(base, { ...base, sequences: [] }), true);
-  assert.equal(differs(base, { ...base, legends: [['a', 'A']] }), true);
+  assert.equal(differs(base, { ...base, legends: [['a', 'A']] as [string, string][] }), true);
   assert.equal(differs(base, { ...base, homeKeys: { LI: 'f' } }), true);
   assert.equal(differs({ ...base, homeKeys: { LI: 'f', RI: 'j' } }, { ...base, homeKeys: { RI: 'j', LI: 'f' } }), false);
 
@@ -704,6 +704,7 @@ test('Setup: 参照を外した結果が手元と同じ中身なら足さず、�
 });
 
 const FACE_LAYOUT: UserLayout = {
+  kind: 'kana',
   id: 'user-face',
   name: '面の配列',
   faces: [

@@ -137,6 +137,7 @@ test('resolveSetupForText: 自作かな配列（面で定義）は自作配列�
     [
       'my-kana',
       {
+        kind: 'kana',
         id: 'my-kana',
         name: 'かな配列',
         faces: [{ trigger: [], inputRole: 'layer', outputs: { a: 'あ' } }],

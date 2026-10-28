@@ -1,7 +1,7 @@
 import { defineAssetCodec, describeFileDecodeFailure, isRecord, type AssetCodec, type CodecDiagnostic } from '#input/codec/index.ts';
 import type { Command } from '#input/commands/index.ts';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
-import { decodeUserLayouts, isFaceUserLayout, type UserLayout } from '#input/layouts/user-layouts.ts';
+import { decodeUserLayouts, type UserLayout } from '#input/layouts/user-layouts.ts';
 import { decodeUserRomajiRules, isBuiltin, ROMAJI_RULES, type UserRomajiRule } from '#input/romaji/rules.ts';
 import { completeLeftColumnKeys, decodeUserFingerAssignments } from '#input/shapes/user-finger-assignments.ts';
 import type { FingerAssignment } from '#input/shapes/geometry.ts';
@@ -85,7 +85,7 @@ export type UserAssetsHoldings = Pick<KeydistAssets, 'userLayouts' | 'userRomaji
  * 参照を外す（手元の規則に結び付かず、全体の値の規則で打つ配列になる。ローマ字を経ない配列は`romaji`を見ないので触らない）。
  */
 function withResolvableRomaji(layout: UserLayout, resolve: (id: string) => string | undefined): UserLayout {
-  if (isFaceUserLayout(layout) || layout.romaji === undefined) return layout;
+  if (layout.kind === 'kana' || layout.romaji === undefined) return layout;
   const resolved = isBuiltin(layout.romaji) ? layout.romaji : resolve(layout.romaji);
   if (resolved === layout.romaji) return layout;
   const { romaji: _dropped, ...rest } = layout;
