@@ -9,10 +9,11 @@ import {
   importKanaLayoutFile,
   importRomajiLayoutFile,
   importVial,
-  isDashSeparatedHeader,
   type ImportedDefinition,
   type ImportedLayout,
 } from './import.ts';
+import { dvorakJScanCode } from './dvorakj-heading.ts';
+import { isWordRegistration } from './import-faces.ts';
 import { CUSTOM_COMBOS } from './combos-custom.ts';
 import { buildFaceLayout, duplicateOutputNotices } from './kana-face-layout.ts';
 import { createUserLayout, contentOfImported } from './layout-edit.ts';
@@ -160,8 +161,8 @@ test('DvorakJのかな定義は、面ごとのtriggerと出力を持つ面の形
   });
   // 機能キーだけのセルは出力にしない
   assert.ok(faces.every((face) => !Object.values(face.outputs).some((output) => output === '←' || output === '→')));
-  assert.ok(result.warnings.some((warning) => warning.includes('(+23, ({S}+23[')));
-  assert.ok(result.warnings.some((warning) => warning.includes('エイリアス「Z」')));
+  // セルの無い見出しは、カンマで分けた2つの面（H、シフトとH）とも取り込める出力が無い
+  assert.ok(result.warnings.some((warning) => warning.includes('(+23, ({S}+23[') && warning.includes('取り込めるセルがない')));
   assert.ok(result.warnings.some((warning) => warning.includes('({F}[') && warning.includes('セルがない')));
 });
 
@@ -245,65 +246,291 @@ const BENIZARA_KANA = [
   'x,x,x,x,x',
 ].join('\n');
 
-const DASH_FACE = ['-f-j', '[', '  |||', '  が|ぎ|ぐ|', ']'];
+const dvorakJ = (declaration: string, ...blocks: string[][]): string => [declaration, ...blocks.flat()].join('\n');
+const FJ_ALIASES = ['-option-input[', '  {F} | +21', '  {J} | +24', '  {Y} | -14', ']'];
 
-test('ハイフン区切りの見出しの面は、かなの定義では取り込まずに注意へ入れる', () => {
-  const source = [
-    '-option-input[',
-    '  {F} | +21',
-    '  {J} | +24',
-    ']',
+const faceOf = (content: { faces: { trigger: string[]; mode?: string; outputs: Record<string, string> }[] }, trigger: string[], mode?: string) =>
+  content.faces.find((face) => face.trigger.join() === trigger.join() && (mode === undefined || face.mode === mode));
+
+test('同時に打鍵するファイルのハイフン区切りの見出しは、見出しのキーとセルのキーの同時押しの面になる', () => {
+  const source = dvorakJ('同時に打鍵する配列', [
     '[',
     '  |||',
     '  き|く|け|',
     ']',
-    ...DASH_FACE,
-    '({F}[',
+    '-25[',
     '  |||',
-    '  ぎ|ぐ|げ|',
+    '  ぁ|ぃ|ぅ|',
     ']',
-  ].join('\n');
+    '-21-24[',
+    '  |||',
+    '  が|ぎ|ぐ|',
+    ']',
+  ]);
   const { content, warnings } = kanaOf(importDvorakJ(source));
   assert.deepEqual(
-    content.faces.map((face) => face.trigger),
-    [[], ['f']],
+    content.faces.map((face) => [face.trigger, face.mode]),
+    [
+      [[], undefined],
+      [['k'], 'simultaneous'],
+      [['f', 'j'], 'simultaneous'],
+    ],
   );
-  assert.ok(warnings.some((warning) => warning.includes('「-f-j」') && warning.includes('取り込みませんでした')));
+  assert.deepEqual(faceOf(content, ['k'])?.outputs, { q: 'ぁ', w: 'ぃ', e: 'ぅ' });
+  assert.deepEqual(warnings, []);
 });
 
-test('ハイフン区切りの見出しの面にだけかながある定義は、かなの定義と判定され、その面は注意に入る', () => {
-  const source = ['-option-input[', '  {F} | +21', '  {J} | +24', ']', '[', '  |||', '  q|w|e|', ']', ...DASH_FACE].join('\n');
-  assert.throws(() => importDvorakJ(source), /混在/);
-  const onlyKana = ['-option-input[', '  {F} | +21', '  {J} | +24', ']', '[', '  |||', '  1|2|3|', ']', ...DASH_FACE].join('\n');
-  const { content, warnings } = kanaOf(importDvorakJ(onlyKana));
+test('順に打鍵するファイルの、括弧の無い見出しは前置、括弧で始まる見出しは同時押しの面になる', () => {
+  const source = dvorakJ('順に打鍵する配列', FJ_ALIASES, [
+    '{Y}[',
+    '  |||',
+    '  あ|い|う|',
+    ']',
+    '(-12[',
+    '  |||',
+    '  か|き|く|',
+    ']',
+    '({F}{J}[',
+    '  |||',
+    '  さ|し|す|',
+    ']',
+  ]);
+  const { content } = kanaOf(importDvorakJ(source));
+  assert.equal(faceOf(content, ['t'])?.mode, 'prefix');
+  assert.equal(faceOf(content, ['e'])?.mode, 'simultaneous');
+  assert.equal(faceOf(content, ['f', 'j'])?.mode, 'simultaneous');
+  assert.deepEqual(faceOf(content, ['t'])?.outputs, { q: 'あ', w: 'い', e: 'う' });
+});
+
+test('順に打鍵するファイルの、先に打つ表（[[）は、キーが1つなら後置の面になる', () => {
+  const source = dvorakJ('順に打鍵する配列', FJ_ALIASES, ['{F}[[', '  |||', '  あ|い|う|', ']']);
+  const { content } = kanaOf(importDvorakJ(source));
+  assert.equal(faceOf(content, ['f'])?.mode, 'suffix');
+});
+
+test('同時に打鍵するファイルの [[ の表は、同時押しの面になる', () => {
+  const source = dvorakJ('同時に打鍵する配列', FJ_ALIASES, ['{F}[[', '  |||', '  あ|い|う|', ']']);
+  const { content } = kanaOf(importDvorakJ(source));
+  assert.equal(faceOf(content, ['f'])?.mode, 'simultaneous');
+});
+
+test('順に打鍵するファイルで、キーを2つ以上続けて打つ見出しは、かなの定義では取り込まず注意に入る', () => {
+  const source = dvorakJ('順に打鍵する配列', FJ_ALIASES, [
+    '[',
+    '  |||',
+    '  き|く|け|',
+    ']',
+    '{F}{J}[',
+    '  |||',
+    '  あ|い|う|',
+    ']',
+    '{F}{J}[[',
+    '  |||',
+    '  か|き|く|',
+    ']',
+  ]);
+  const { content, warnings } = kanaOf(importDvorakJ(source));
   assert.deepEqual(
     content.faces.map((face) => face.trigger),
     [[]],
   );
-  assert.ok(warnings.some((warning) => warning.includes('「-f-j」')));
+  assert.equal(warnings.filter((warning) => warning.includes('「{F}{J}[」') && warning.includes('表せない')).length, 1);
+  assert.equal(warnings.filter((warning) => warning.includes('「{F}{J}[[」') && warning.includes('表せない')).length, 1);
 });
 
-test('ハイフン区切りの見出しの面は、段の形（ローマ字）でも取り込まずに注意へ入れる', () => {
-  const source = [
+test('カンマで分けた見出しは別の面になり、末尾のカンマは切り替えのキーの無い面を足す', () => {
+  const source = dvorakJ('同時に打鍵する配列', ['-1E, -1F[', '  |||', '  き|く|け|', ']', '-20,[', '  |||', '  あ|い|う|', ']']);
+  const { content } = kanaOf(importDvorakJ(source));
+  assert.deepEqual(
+    content.faces.map((face) => face.trigger),
+    [['a'], ['s'], ['d'], []],
+  );
+  assert.deepEqual(faceOf(content, ['a'])?.outputs, faceOf(content, ['s'])?.outputs);
+  assert.deepEqual(faceOf(content, [])?.outputs, { q: 'あ', w: 'い', e: 'う' });
+});
+
+test('+ で続ける見出しも、- と同じ区切りのキーの組として読み、3キーの同時押しの面になる', () => {
+  const source = dvorakJ('順に打鍵する配列', ['(+20+21[', '  |||', '  あ|い|う|', ']', '(+23, ({S}+23[', '  |||', '  か|き|く|', ']']);
+  const { content } = kanaOf(importDvorakJ(source));
+  assert.deepEqual(faceOf(content, ['d', 'f'])?.outputs, { q: 'あ', w: 'い', e: 'う' });
+  assert.equal(faceOf(content, ['d', 'f'])?.mode, 'simultaneous');
+  // `{S}` の別名が無い見出しの `{S}` は解決できないので、その面だけを注意に入れる
+  assert.deepEqual(faceOf(content, ['h'])?.outputs, { q: 'か', w: 'き', e: 'く' });
+  assert.ok(content.faces.every((face) => face.trigger.length <= 2));
+});
+
+test('別名の値が+の印とshiftの{S}は、センターシフトのキーと同時押しの面になる', () => {
+  const source = dvorakJ('順に打鍵する配列', ['-option-input[', '  {S} | +shift', ']', '(+23, ({S}+23[', '  |||', '  か|き|く|', ']']);
+  const { content } = kanaOf(importDvorakJ(source));
+  assert.deepEqual(
+    content.faces.map((face) => face.trigger),
+    [['h'], ['thumb-r', 'h']],
+  );
+});
+
+test('見出しのshiftは、左右のShiftの2面になる', () => {
+  const source = dvorakJ('同時に打鍵する配列', ['-shift[', '  |||', '  あ|い|う|', ']']);
+  const { content } = kanaOf(importDvorakJ(source));
+  assert.deepEqual(
+    content.faces.map((face) => face.trigger),
+    [['shift-l'], ['shift-r']],
+  );
+  assert.deepEqual(content.faces[0].outputs, content.faces[1].outputs);
+});
+
+test('英字で書いた見出しは、スキャンコードにもキーの名前にも当たらないので面ごと注意に入る', () => {
+  const source = dvorakJ('同時に打鍵する配列', ['[', '  |||', '  き|く|け|', ']', '-f-j[', '  |||', '  が|ぎ|ぐ|', ']']);
+  const { content, warnings } = kanaOf(importDvorakJ(source));
+  assert.deepEqual(
+    content.faces.map((face) => face.trigger),
+    [[]],
+  );
+  assert.deepEqual(warnings, ['DvorakJの面ヘッダ「-f-j[」のキー「f」を解決できないため無視しました']);
+  const stage = stageOf(importDvorakJ(dvorakJ('同時に打鍵する配列', ['[', '  q|w|e|', ']', '-f-j[', '  |||', '  a|b|c|', ']'])));
+  assert.equal(new Map(stage.sequences).has('a'), false);
+  assert.ok(stage.warnings.some((warning) => warning.includes('「-f-j[」') && warning.includes('解決できない')));
+});
+
+test('見出しの次の行にだけある [ は、切り替えのキーの無い面として読み、前の行は無視する', () => {
+  const source = dvorakJ('同時に打鍵する配列', ['-21', '[', '  |||', '  き|く|け|', ']']);
+  const { content, warnings } = kanaOf(importDvorakJ(source));
+  assert.deepEqual(
+    content.faces.map((face) => face.trigger),
+    [[]],
+  );
+  assert.deepEqual(warnings, []);
+});
+
+test('切り替えのキーを持つ面が基底面と違う種類の出力を持つ時は、その面だけを取り込まず注意に入れる', () => {
+  const source = dvorakJ('同時に打鍵する配列', ['[', '  |||', '  q|w|e|', ']', '-21-24[', '  |||', '  が|ぎ|ぐ|', ']', '-20[', '  |||', '  a|b|c|', ']']);
+  const layout = stageOf(importDvorakJ(source));
+  assert.equal(new Map(layout.sequences).has('が'), false);
+  assert.equal(new Map(layout.sequences).has('a'), true);
+  assert.ok(layout.warnings.some((warning) => warning.includes('「-21-24[」') && warning.includes('種類')));
+  const kana = kanaOf(importDvorakJ(dvorakJ('同時に打鍵する配列', ['[', '  |||', '  き|く|け|', ']', '-21[', '  |||', '  a|b|c|', ']'])));
+  assert.deepEqual(
+    kana.content.faces.map((face) => face.trigger),
+    [[]],
+  );
+  // 基底面に両方の種類があれば、取り込まない
+  assert.throws(() => importDvorakJ(dvorakJ('同時に打鍵する配列', ['[', '  |||', '  q|あ|', ']'])), /混在/);
+});
+
+test('段の形（ローマ字）では、前置は切り替えのキーの後、後置は前にセルのキーを打つ打鍵列になる', () => {
+  const prefix = stageOf(
+    importDvorakJ(
+      dvorakJ('順に打鍵する配列', FJ_ALIASES, [
+        '{Y}[',
+        '  |||',
+        '  ka|ki|ku|',
+        ']',
+        '(-12[',
+        '  |||',
+        '  sa|si|su|',
+        ']',
+        '{F}{J}[',
+        '  |||',
+        '  ta|ti|tu|',
+        ']',
+      ]),
+    ),
+  );
+  const sequences = new Map(prefix.sequences);
+  assert.deepEqual(sequences.get('ka'), [['t'], ['q']]);
+  assert.deepEqual(sequences.get('sa'), [['e', 'q']]);
+  assert.deepEqual(sequences.get('ta'), [['f'], ['j'], ['q']]);
+  const suffix = stageOf(importDvorakJ(dvorakJ('順に打鍵する配列', FJ_ALIASES, ['{F}[[', '  |||', '  ka|ki|ku|', ']'])));
+  assert.deepEqual(new Map(suffix.sequences).get('ka'), [['q'], ['f']]);
+  const simultaneous = stageOf(importDvorakJ(dvorakJ('同時に打鍵する配列', FJ_ALIASES, ['-shift[', '  |||', '  ka|ki|ku|', ']'])));
+  assert.deepEqual(new Map(simultaneous.sequences).get('ka'), [['shift-l', 'q']]);
+});
+
+test('別名は定義の逆順に文字列として置き換え、値にカンマと別の別名を含められる', () => {
+  const source = dvorakJ('同時に打鍵する配列', [
     '-option-input[',
-    '  {F} | +21',
-    '  {J} | +24',
+    '  左 | -1E',
+    '  右 | -1F',
+    '  両手 | 左, 右',
     ']',
+    '両手[',
+    '  |||',
+    '  き|く|け|',
+    ']',
+  ]);
+  const { content } = kanaOf(importDvorakJ(source));
+  assert.deepEqual(
+    content.faces.map((face) => face.trigger),
+    [['a'], ['s']],
+  );
+});
+
+test('数字の段のスキャンコードを物理キーに読む', () => {
+  assert.equal(dvorakJScanCode('02'), '1');
+  assert.equal(dvorakJScanCode('0D'), '=');
+  assert.equal(dvorakJScanCode('10'), 'q');
+  assert.equal(dvorakJScanCode('73'), undefined);
+});
+
+test('語の登録のセルは、かなの定義では取り込まず注意に入れ、かなの音や記号の出力は取り込む', () => {
+  const source = dvorakJ('同時に打鍵する配列', ['[', '  |||', '  あ|ぎゃ|ヴぁ|ー|', '  、。|トシ|水村|ふぁ|', '  「」|()|ヴァ|', ']']);
+  const { content, warnings } = kanaOf(importDvorakJ(source));
+  const outputs = Object.values(content.faces[0].outputs);
+  for (const kept of ['あ', 'ぎゃ', 'ヴぁ', 'ー', '、。', 'ふぁ', '「」', '()', 'ヴァ']) assert.ok(outputs.includes(kept), kept);
+  for (const dropped of ['トシ', '水村']) assert.ok(!outputs.includes(dropped), dropped);
+  assert.ok(warnings.some((warning) => warning.includes('「トシ」') && warning.includes('語の登録')));
+  assert.ok(warnings.some((warning) => warning.includes('「水村」') && warning.includes('語の登録')));
+  assert.equal(warnings.length, 2);
+  for (const word of ['トシ', 'ヒロシ', '水村', 'ユカ', '[]入左']) assert.equal(isWordRegistration(word), true, word);
+  for (const other of ['あ', 'トシ'.slice(0, 1), 'ぎゃ', 'ー', '、。', '「」', '()', "''", 'ヴァ']) assert.equal(isWordRegistration(other), false, other);
+});
+
+test('紅皿のかな定義でも、語の登録のセルは取り込まず注意に入れる', () => {
+  const source = ['[かなシフト無し]', 'あ,い,う,え,お', 'か,トシ,く,け,こ'].join('\n');
+  const { content, warnings } = kanaOf(importBenizara(source, 'テスト'));
+  assert.ok(!Object.values(content.faces[0].outputs).includes('トシ'));
+  assert.ok(warnings.some((warning) => warning.includes('「トシ」')));
+});
+
+test('AutoHotkeyの送信の書式を含むセルは、出力を持たないセルとして読む', () => {
+  const source = dvorakJ('同時に打鍵する配列', [
     '[',
     '  |||',
-    '  q|w|e|',
+    '  あ|／{改行}|{vkF2}|^i|',
+    '  +{End}{BS}|{Home}+{End}^c|い|{!}|',
+    '  、{Enter}|{Space 3}|{Del 2}う|!|',
     ']',
-    ...DASH_FACE.map((line) => line.replace(/[がぎぐ]/g, 'a')),
-  ].join('\n');
-  const layout = stageOf(importDvorakJ(source));
-  assert.equal(new Map(layout.sequences).has('a'), false);
-  assert.equal(new Map(layout.sequences).has('q'), true);
-  assert.ok(layout.warnings.some((warning) => warning.includes('「-f-j」') && warning.includes('取り込みませんでした')));
+  ]);
+  const { content } = kanaOf(importDvorakJ(source));
+  assert.deepEqual(content.faces[0].outputs, { q: 'あ', d: 'い', f: '!', z: '、', c: 'う', v: '!' });
 });
 
-test('ハイフン区切りの見出しの面は、かなかローマ字かの判定には含める', () => {
-  const source = ['-option-input[', '  {F} | +21', '  {J} | +24', ']', '[', '  |||', '  q|w|e|', ']', ...DASH_FACE].join('\n');
-  assert.throws(() => importDvorakJ(source), /混在/);
+test('見出しの読み取りは、長い行や深い別名でも行の長さに対して線形で終わる', () => {
+  const started = performance.now();
+  for (const header of [
+    `-${',-'.repeat(50000)}-`,
+    '['.repeat(50000),
+    `${'-1E'.repeat(50000)}[`,
+    `${'{A}'.repeat(50000)}`,
+    `-shift${'-shift'.repeat(30)}`,
+    ' '.repeat(50000),
+  ]) {
+    const source = dvorakJ('同時に打鍵する配列', [
+      '-option-input[',
+      '  {A} | {A}{A}',
+      ']',
+      `${header}[`,
+      '  |||',
+      '  あ|い|う|',
+      ']',
+      '[',
+      '  |||',
+      '  き|く|け|',
+      ']',
+    ]);
+    const { content } = kanaOf(importDvorakJ(source));
+    assert.ok(content.faces.some((face) => face.trigger.length === 0));
+  }
+  assert.ok(performance.now() - started < 3000);
 });
 
 test('紅皿のかな定義は、面ごとのtriggerと出力を持つ面の形になる', () => {
@@ -410,38 +637,6 @@ test('対象の配列表がないファイルはエラーにする', () => {
   assert.throws(() => importDvorakJ('-option-input[\n{x} | -20\n]'), /配列表/);
   assert.throws(() => importBenizara('[かなシフト無し]\n;\n'), /配列表|出力/);
   assert.throws(() => importVial('{}'), /layout/);
-});
-
-test('見出しの区切り判定は、正規表現を使わない参照の実装と同じ文字列に一致する', () => {
-  // 正規表現を使わない参照の実装。先頭が - で、残りを - で分けた区切りのうち、最後以外が空でなく、
-  // 区切りが1つだけなら空でないこと
-  const reference = (text: string): boolean => {
-    if (!text.startsWith('-')) return false;
-    const parts = text.slice(1).split('-');
-    const last = parts.pop() ?? '';
-    return parts.every((part) => part !== '') && (parts.length > 0 || last !== '');
-  };
-  const samples = ['-', '--', '-a', '-a-', '-a--', '--a', '-a-b', '-f-j', '-f-j-', '-,-,', '-a-b-c', 'a-b', '', '-a b', '-\n', '-a-\n-', '- -'];
-  for (const sample of samples) {
-    assert.equal(isDashSeparatedHeader(sample), reference(sample), JSON.stringify(sample));
-  }
-  // 短い文字列を全部試す
-  const alphabet = ['-', 'a', ','];
-  const walk = (prefix: string, depth: number): void => {
-    assert.equal(isDashSeparatedHeader(prefix), reference(prefix), JSON.stringify(prefix));
-    if (depth === 0) return;
-    for (const c of alphabet) walk(prefix + c, depth - 1);
-  };
-  walk('', 8);
-});
-
-test('見出しの区切り判定は、長い攻撃文字列でもすぐに終わる', () => {
-  const started = performance.now();
-  assert.equal(isDashSeparatedHeader(`-${',-'.repeat(50000)}-`), false);
-  assert.equal(isDashSeparatedHeader(`-${','.repeat(50000)}!-`), true);
-  assert.equal(isDashSeparatedHeader(`-${',-'.repeat(50000)}-x--`), false);
-  assert.equal(isDashSeparatedHeader(`-${'a-'.repeat(50000)}-`), false);
-  assert.ok(performance.now() - started < 1000);
 });
 
 test('かなの判定は、かなの文字だけを数える。中黒・長音・濁点の記号は数えない', () => {
