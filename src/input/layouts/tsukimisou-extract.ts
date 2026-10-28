@@ -3,14 +3,15 @@ import { THUMB_KEY } from '../shapes/geometry.ts';
 
 /**
  * 月見草エキス配列。
- * 作者2ufkpfb9daxnik氏のAutoHotkey用の対応表`g20220908.txt`（リポジトリ`ahk-suffixshift`のコミット4b1c379）を仕様根拠にする。
+ * 作者2ufkpfb9daxnik氏が公開する、Google日本語入力のローマ字テーブルの形式の対応表`g20220908.txt`（リポジトリ`ahk-suffixshift`のコミット4b1c379）を仕様根拠にする。
  * 定義ファイルとの突き合わせは`test/fixtures/sources/tsukimisou-extract.json`と`tsukimisou-extract.test.ts`を参照。
  *
  * 単打の面は32キーで、後置のトリガーの`e` `i` `o` `s` `f`も単打でそれぞれ ゃ ぃ ぇ ょ ゅ を出す。
  * 後置の面は5枚（トリガー`e` `i` `o` `s` `f`）で、出力キーを打った後にトリガーを打つ。
  * 清音と濁音・半濁音は別のキーに置かれていて、合成はしない。前置の面と3打の面は無い。
  * 数字段の記号7セルは、定義ファイルの文字（`! ? ( )`は半角、`・「」`は全角）のまま持つ。
- * 定義ファイルのキー名はANSIの刻印で書かれているので、JISの`@`の位置の`[`、`:`の位置の`'`もそのままANSIの位置に置く。
+ * 定義ファイルのキー名はANSIの刻印で書かれているので、JISの`@`の位置の`[`、`:`の位置の`'`、`^`の位置の`-`もそのままANSIの位置に置く。
+ * 同じコミットのJIS用スクリプトは`[` `'` `-`を`@` `:` `^`に置き換えているが、正にしたのはANSIの表なので採らない。
  */
 
 const face = (trigger: string[], mode: FaceMode, entries: Record<string, string>): Face => ({
