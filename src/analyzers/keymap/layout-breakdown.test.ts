@@ -60,7 +60,7 @@ test('コンボ定義の配列図は、同じ組・同じ押し方のコンボ�
   const items = comboDiagramItems(input.layout, undefined);
   assert.equal(items.length, 11);
   const first = comboRows(input.layout, undefined)[0]!;
-  assert.deepEqual(first, { trigger: '語彙拡張: d + s + t', output: 'desita' });
+  assert.deepEqual(first, { trigger: '語彙拡張: d + s + n', output: 'desita' });
   // 図に載るのは、トリガーと押す先のキーが決まっているコンボだけ。表は73件すべてを載せる
   assert.equal(
     items.reduce((total, item) => total + item.outputs.size, 0),

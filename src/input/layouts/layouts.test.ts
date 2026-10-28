@@ -296,8 +296,8 @@ test('TK音直入力法は正式名称を表示する', () => {
   assert.equal(combo?.id, 'oonishi-custom');
   assert.equal(combo?.name, 'TK音直入力法');
   const desita = combo?.resolvedComboDefinitions?.find((definition) => definition.output === 'desita');
-  assert.deepEqual(desita?.inputs, ['d', 's', 't']);
-  assert.deepEqual(desita?.keys, ['m', 'l', 'j']);
+  assert.deepEqual(desita?.inputs, ['d', 's', 'n']);
+  assert.deepEqual(desita?.keys, ['m', 'l', 'k']);
   assert.equal(desita?.group, '語彙拡張');
   assert.equal(desita?.foldTriggerInputs, undefined);
 
