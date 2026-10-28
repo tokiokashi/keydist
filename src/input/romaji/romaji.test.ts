@@ -615,7 +615,7 @@ test('gACT10は、同じ入力を後の行が上書きした割り当てを持�
   assert.equal(gact10Table.get('とき'), 'kns');
   assert.equal(gact10Table.get('いぇ'), undefined);
   assert.equal(gact10Table.get('よって'), 'yd');
-  // であ + r + d も、後の行のであってに置き換わるので であれ を出さない
+  // であrdも、後の行のであってに置き換わるのでであれを出さない
   assert.equal(gact10Table.get('であって'), 'hkd');
   assert.equal(gact10Table.has('であれ'), false);
   assert.equal(gact10Table.has('ヴ'), false);
