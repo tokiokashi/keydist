@@ -350,18 +350,25 @@ thumb variant生成時の重複判定はaction groupingだけではなくcanonic
 Requirement / Capability / classification / role / layer / context / origin等が異なるpathを失わない。
 
 英字配列の通常Shiftも同じcanonical pipelineで扱う。対象は組み込みの英字配列と、自作の配列のうち
-単打の段定義だけで組んだもの（取り込み形式の配列を除く）である。
+単打の段定義で組んだもの、およびDvorakJ・Vial・紅皿の定義ファイルを取り込んだ段の形の配列である。
+取り込んだ配列には、定義ファイルの打鍵列（コンボ・切り替えのキーの面）を段から作った配列に合成した後で、通常Shiftを足す。
+Shiftを足すのは、単打で置かれた出力が元になる文字だけである。
+小文字を単打で置かず、コンボや面だけで置いた配列では、その大文字にShiftの経路を足さない。
 Shiftを押した時に出る記号は、既定ではUS配列の組（`1`→`!`、`'`→`"`、`,`→`<` など）で決める。
 作者が記号のShiftの組も配列の一部として定義している組み込みの配列は、作者の組を持つ。
 作者の組は、その記号のUS配列の組を置き換える（`-` が `"` を出す配列では、`-` は `_` を出さない）。
 作者の組は、数字段を含む単打のキーすべてに掛けられる。
 作者の組を持たない自作の配列は、US配列の組で決める。そのため、作者の組を持つ組み込みの配列と同じ段を自作で組んでも、
 記号のShiftを含むテキストでは数値が違う。大文字と、作者が組を定めていない記号は、どちらも同じである。
-配列が大文字や記号を単打などで既に置いている時は、置かれた定義を優先し、その出力に通常Shiftの経路を足さない。
+配列が大文字や記号を単打・コンボ・切り替えのキーの面などで既に置いている時は、置かれた定義を優先し、その出力に通常Shiftの経路を足さない。
 大文字と、**現在モデル化しているbase
 physical key**のShift記号はbase keyに `shift-l` / `shift-r` のいずれかを重ねる2つの
 合法alternativeとしてcompileする。各alternativeはbase keyとの `overlap` Requirement、
+Shiftがbase keyより先に押されることを求める `order` Requirement（Shiftが `before`、base keyが `after`）、
 Shift keyの `while-held` Capability、`modifierGroupId='Shift'` のmodifier roleを持つ。
+`order` Requirementは、かな配列のShiftの面（`triggerOrder='prefix'`）と同じ要件である。
+同じShiftキーを同じ押し方で押す入力を、かな配列と英字配列で別の要件にしない。
+OS上でも、base keyの後から押したShiftでは大文字にならない。
 Shiftを押しっぱなしで複数文字へ作用させるかは他のhold-capable triggerと同じ
 `TriggerRealizationPolicy` で決まる。
 
@@ -1373,6 +1380,8 @@ aggregationの `aggregationGroupId` はpolicy selectorへ使わない。優先�
 physical trigger selector > modifier group集合 > activation class > semantic default。
 薙刀式ではSandSは `prepress-required`、濁音・半濁音・拗音・外来音等は
 `order-free` なので、独立action化を有効にした既定状態ではSandSだけが分離される。
+英字配列の通常Shift（§4）は、Shiftが先という `order` Requirementを持つので `prepress-required` に入り、
+かな配列のShiftの面と同じく既定で分離される（`disabled` では分離されない）。
 
 したがってMetricsだけのvirtual action補正は行わない。Policy変更後は
 Chain / Transition / Metrics / Timing / Playbackがすべて同じrealized Stroke列を見る。

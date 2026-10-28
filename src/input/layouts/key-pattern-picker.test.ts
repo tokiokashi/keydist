@@ -581,3 +581,15 @@ test('presentation: 通常Shiftはwhile-pressedでdown中だけactiveになる',
   state = advanceKeyPatternPresentation(layout, state, { type: 'up', key: 'shift-l' }, result);
   assert.deepEqual(state.activeAggregationGroupIds, []);
 });
+
+test('matchKeyPatterns: 通常ShiftはShiftを先に選んだ時だけ大文字の候補とexactになる', () => {
+  const layout = LAYOUT_BY_ID.get('qwerty');
+  assert.ok(layout);
+  const outputsOf = (matches: readonly { output: string }[]) => matches.map((match) => match.output);
+
+  assert.deepEqual(outputsOf(matchKeyPatterns(layout, new Set(['shift-l', 'a'])).exact), ['A']);
+  assert.deepEqual(outputsOf(matchKeyPatterns(layout, new Set(['a', 'shift-l'])).exact), []);
+
+  assert.deepEqual(outputsOf(matchKeyPatterns(layout, new Set(['shift-l'])).candidates.get('a') ?? []), ['A']);
+  assert.equal(matchKeyPatterns(layout, new Set(['a'])).candidates.has('shift-l'), false);
+});

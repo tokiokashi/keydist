@@ -321,7 +321,7 @@ test('Workspaceのヒートマップのペインには、並べる配列を選�
   await expect(setPicker(page)).toHaveCount(0);
 });
 
-test('描き方を熱の塊にすると、一番上の図と格子の図が一緒に変わる。キーごとの値は変わらず、再読み込みで戻る', async ({ page }) => {
+test('描き方をサーモグラフィにすると、一番上の図と格子の図が一緒に変わる。キーごとの値は変わらず、再読み込みで戻る', async ({ page }) => {
   await seedSelections(page, 'qwerty', ['qwerty', 'dvorak']);
   await page.goto('/analyzer/heatmap');
   await expect(cells(page).filter({ has: page.locator('[data-heatmap-diagram]') })).toHaveCount(1, { timeout: 10_000 });
@@ -332,7 +332,7 @@ test('描き方を熱の塊にすると、一番上の図と格子の図が一�
   await page.getByRole('button', { name: '打鍵頻度の表示', exact: true }).click();
   const figureSettings = page.locator('[data-figure-settings-window="true"]');
   await expect(figureSettings.getByRole('button', { name: 'キーの塗り', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await figureSettings.getByRole('button', { name: '熱の塊', exact: true }).click();
+  await figureSettings.getByRole('button', { name: 'サーモグラフィ', exact: true }).click();
   await expect(blobLayers).toHaveCount(2);
   expect(await keyReadings(diagrams(page).first())).toEqual(before);
   // キーの選択は今と同じく動く（小窓が図に重なるので閉じてから押す）
@@ -343,6 +343,45 @@ test('描き方を熱の塊にすると、一番上の図と格子の図が一�
 
   await page.reload();
   await expect(blobLayers).toHaveCount(2, { timeout: 10_000 });
+});
+
+test('配色を多色にすると、キーの塗りでもサーモグラフィでも一番上の図と格子の図が多色で描かれ、凡例が出る。再読み込みで戻る', async ({ page }) => {
+  await seedSelections(page, 'qwerty', ['qwerty', 'dvorak']);
+  await page.goto('/analyzer/heatmap');
+  await expect(cells(page).filter({ has: page.locator('[data-heatmap-diagram]') })).toHaveCount(1, { timeout: 10_000 });
+  const legend = feature(page).locator('[data-heatmap-palette-legend]');
+  const multiDiagrams = feature(page).locator('[data-heatmap-palette="multi"]');
+  await expect(legend).toHaveCount(0);
+  await expect(multiDiagrams).toHaveCount(0);
+  const before = await keyReadings(diagrams(page).first());
+
+  await page.getByRole('button', { name: '打鍵頻度の表示', exact: true }).click();
+  const figureSettings = page.locator('[data-figure-settings-window="true"]');
+  await expect(figureSettings.getByRole('button', { name: '単色', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await figureSettings.getByRole('button', { name: '多色', exact: true }).click();
+  // 一番上の図と格子の図（1枚）の両方
+  await expect(multiDiagrams).toHaveCount(2);
+  await expect(legend).toHaveCount(1);
+  const fillOf = (id: string) => diagrams(page).first().locator(`[data-heatmap-key="${id}"] rect`).first().getAttribute('fill');
+  expect(await fillOf('a')).toContain('light-dark(');
+  expect(await fillOf('a')).not.toContain('color-mix');
+  expect(await keyReadings(diagrams(page).first())).toEqual(before);
+
+  await figureSettings.getByRole('button', { name: 'サーモグラフィ', exact: true }).click();
+  await expect(feature(page).locator('.heatmap-blob-layer')).toHaveCount(2);
+  await expect(multiDiagrams).toHaveCount(2);
+  await expect(legend).toHaveCount(1);
+
+  // 描き方が「なし」の時も配色は選べるが、色を塗らないので帯は出ない
+  await figureSettings.getByRole('button', { name: 'なし', exact: true }).click();
+  await expect(figureSettings.getByRole('button', { name: '単色', exact: true })).toBeEnabled();
+  await expect(legend).toHaveCount(0);
+  await figureSettings.getByRole('button', { name: 'キーの塗り', exact: true }).click();
+  await expect(legend).toHaveCount(1);
+
+  await page.reload();
+  await expect(multiDiagrams).toHaveCount(2, { timeout: 10_000 });
+  await expect(legend).toHaveCount(1);
 });
 
 test('2打鍵の線を表示すると、一番上の図と格子の図に線が描かれ、凡例に線の組が出る。キーごとの値は変わらず、再読み込みで戻る', async ({ page }) => {
@@ -375,7 +414,7 @@ test('2打鍵の線を表示すると、一番上の図と格子の図に線が�
   await expect(diagrams(page).first().locator('[data-heatmap-flow-edge]').first()).toBeAttached();
 });
 
-test('描き方を「なし」にすると、塗りと熱の塊は描かれず、キーの枠と文字と線だけが残る', async ({ page }) => {
+test('描き方を「なし」にすると、塗りとサーモグラフィは描かれず、キーの枠と文字と線だけが残る', async ({ page }) => {
   await seedSelections(page, 'qwerty', []);
   await page.goto('/analyzer/heatmap');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
