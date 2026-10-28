@@ -3,7 +3,7 @@ import { droppedDuplicateId } from '#input/codec/index.ts';
 import { isBuiltin, type UserRomajiRule } from '../romaji/rules.ts';
 import { LAYOUT_BY_ID } from './index.ts';
 import type { Layout } from './types.ts';
-import { isFaceUserLayout, toJapaneseLayout, toLayout, validate, type UserLayout } from './user-layouts.ts';
+import { toJapaneseLayout, toLayout, validate, type UserLayout } from './user-layouts.ts';
 
 /**
  * 資産に入っている自作の配列・ローマ字規則を、組み込みと並べて引ける形にしたもの。
@@ -84,7 +84,7 @@ export function buildUserCatalog(userLayouts: readonly UserLayout[], userRomajiR
       return;
     }
     const romaji = definition.romaji;
-    if (!isFaceUserLayout(definition) && romaji !== undefined) {
+    if (definition.kind === 'alpha' && romaji !== undefined) {
       if (isBuiltin(romaji) || ruleIds.has(romaji)) {
         layout = { ...layout, recommendedRomajiRuleId: romaji };
       } else {

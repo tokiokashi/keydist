@@ -8,7 +8,7 @@ import { EMPTY_SETTINGS_OVERRIDES, setSettingsOverride, type SettingsCascadeOver
 import { initialPersonalSpeedSelection, personalSpeedCatalog } from './personal-speed-setup.ts';
 
 const ROWS: UserLayout['rows'] = ['1234567890-=', 'qwertyuiop[]', "asdfghjkl;'", 'zxcvbnm,./'];
-const USER_LAYOUT: UserLayout = { id: 'user-mine', name: '自作の配列', rows: ROWS, romaji: 'kunrei' };
+const USER_LAYOUT: UserLayout = { kind: 'alpha', id: 'user-mine', name: '自作の配列', rows: ROWS, romaji: 'kunrei' };
 const USER_ASSIGNMENT: FingerAssignment = { ...JIS_FINGER_ASSIGNMENT, id: 'user-assignment', name: '自作の運指' };
 
 const BASE = { userLayouts: [USER_LAYOUT], userRomajiRules: [], fingerAssignments: [USER_ASSIGNMENT] };

@@ -20,8 +20,8 @@ async function seed(page: Page): Promise<void> {
       JSON.stringify({
         version: 1,
         layouts: [
-          { id: 'user-a', name: '自作A', rows, romaji: 'rule-a' },
-          { id: 'user-b', name: '自作B', rows, romaji: 'kunrei' },
+          { kind: 'alpha', id: 'user-a', name: '自作A', rows, romaji: 'rule-a' },
+          { kind: 'alpha', id: 'user-b', name: '自作B', rows, romaji: 'kunrei' },
         ],
       }),
     );

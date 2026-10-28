@@ -9,7 +9,7 @@ import {
   updateUserFingerAssignment,
 } from '#input/shapes/user-finger-assignments.ts';
 import { createUserFaceLayout, updateUserFaceLayout } from '#input/layouts/face-layout-edit.ts';
-import type { KanaLayoutContent } from '#input/layouts/kana-face-layout-file.ts';
+import type { FaceLayoutContent } from '#input/layouts/kana-face-layout-file.ts';
 import { createUserLayout, updateUserLayout, type UserLayoutContent, type UserLayoutEditResult } from '#input/layouts/layout-edit.ts';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { PresetLibrary } from '#input/presets/index.ts';
@@ -478,16 +478,16 @@ export function updateUserLayoutCommand(id: string, content: UserLayoutContent):
   return userLayoutsCommand('自作の配列を編集する', (layouts) => updateUserLayout(layouts, id, content));
 }
 
-/** 面で定義する自作のかな配列を新規作成する。保存できない誤りのある入力は拒否する。 */
-export function createUserFaceLayoutCommand(generateId: () => string, content: KanaLayoutContent): Command<KeydistAssets> {
+/** 面で定義する自作の配列（かなの種類・英字の種類）を新規作成する。保存できない誤りのある入力は拒否する。 */
+export function createUserFaceLayoutCommand(generateId: () => string, content: FaceLayoutContent): Command<KeydistAssets> {
   return userLayoutsCommand('自作のかな配列を作成する', (layouts) => createUserFaceLayout(layouts, generateId, content));
 }
 
 /**
- * 面で定義する自作のかな配列の中身を書き換える。対象が存在しない、または中身が同じなら何もしない。
+ * 面で定義する自作の配列の中身を書き換える。対象が存在しない、または中身が同じなら何もしない。
  * 面で定義する配列でない対象と、保存できない誤りのある入力は拒否する。
  */
-export function updateUserFaceLayoutCommand(id: string, content: KanaLayoutContent): Command<KeydistAssets> {
+export function updateUserFaceLayoutCommand(id: string, content: FaceLayoutContent): Command<KeydistAssets> {
   return userLayoutsCommand('自作のかな配列を編集する', (layouts) => updateUserFaceLayout(layouts, id, content));
 }
 

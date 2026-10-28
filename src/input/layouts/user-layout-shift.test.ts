@@ -49,6 +49,7 @@ test('自作のqwertyは、配列の定義と鍵盤の選択肢も組み込み�
 
 test('自作配列が大文字や記号を単打で置いている時は、その文字にShift経路を足さない', () => {
   const layout = toLayout({
+    kind: 'alpha',
     id: 'user-placed',
     name: 'user-placed',
     rows: ['!234567890-=', 'qwertyuiop[]', "Asdfghjkl;'", 'azxcvbnm,.'],
@@ -92,7 +93,7 @@ const DVORAKJ_BASE = ['[', '  1|2|3|4|5|6|7|8|9|0|-|=|', '  q|w|e|r|t|y|u|i|o|p|
 
 /** 取り込み結果を、取り込み画面が保存するのと同じ形の自作配列にする */
 const importedStage = (id: string, imported: ImportedLayout) =>
-  toLayout({ id, name: id, rows: imported.rows, sequences: imported.sequences, legends: imported.legends, romaji: 'kunrei' });
+  toLayout({ kind: 'alpha', id, name: id, rows: imported.rows, sequences: imported.sequences, legends: imported.legends, romaji: 'kunrei' });
 
 const stageOf = (result: ReturnType<typeof importDvorakJ>) => {
   assert.equal(result.kind, 'stage');
@@ -191,6 +192,7 @@ test('取り込んだ配列のShiftの層は、実際の出力を表示し、基
 
 test('定義ファイルがShiftキーに付けた凡例は、Shiftの凡例で上書きしない', () => {
   const layout = toLayout({
+    kind: 'alpha',
     id: 'imported-shift-legend',
     name: 'imported-shift-legend',
     rows: QWERTY_ROWS,

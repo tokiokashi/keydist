@@ -9,10 +9,15 @@ import {
 import { QWERTY_LEGEND, resolveKeyId, type NonThumb } from '../shapes/geometry.ts';
 import { fromRows, SINGLE_LAYER_ID, withRomaji, withShiftedOutputs, type Layout } from './index.ts';
 import { ROMAJI_RULES, tableForRule, type RomajiRuleId, type UserRomajiRule } from '../romaji/rules.ts';
-import { buildFaceLayout, FACE_BODY_PROPERTIES, readFaceBody, type UserFaceBody } from './kana-face-layout.ts';
+import { buildFaceLayout, FACE_BODY_PROPERTIES, readFaceBody, type AlphaFaceBody, type KanaFaceBody } from './kana-face-layout.ts';
 import type { Sequence } from './types.ts';
 
-export type { UserFace, UserFaceBody } from './kana-face-layout.ts';
+export type {
+  AlphaFaceBody,
+  KanaFaceBody,
+  UserFace,
+  UserFaceBody,
+} from './kana-face-layout.ts';
 
 /** 選べるローマ字の綴り */
 export { ROMAJI_RULES };
@@ -25,8 +30,12 @@ interface UserLayoutCommon {
   homeKeys?: Partial<Record<NonThumb, string>>;
 }
 
-/** 段の文字（と取り込み形式）で定義する配列 */
+/**
+ * 段の文字（と取り込み形式）で定義する配列。ローマ字表を挟んで日本語を打つ英字の種類だけで、
+ * かなの種類の段の形は持たない（段の形のかな配列を作る手段が無い）。
+ */
 export interface StageUserLayout extends UserLayoutCommon {
+  kind: 'alpha';
   /** 数字段・上段・ホーム段・下段。数字段は空文字でもよい */
   rows: [string, string, string, string];
   /**
@@ -43,20 +52,27 @@ export interface StageUserLayout extends UserLayoutCommon {
 }
 
 /**
- * 面で定義するかな配列。ローマ字を経ずに直接打つ配列で、段の文字・取り込み形式・ローマ字規則とは併せ持たない。
+ * 面で定義する配列。種類（`kind`）はかなと英字のどちらでもよく、形（段か面か）とは別の値。
+ * 段の文字・取り込み形式とは併せ持たない。
  * `rows` を持たないのは、面の上のキーごとの出力が段の文字の代わりだから（両方あると、どちらが打鍵を決めるかが二重になる）。
+ * `composition` はかなの種類だけ、`romaji` は英字の種類だけが持つ。
  */
-export interface FaceUserLayout extends UserLayoutCommon, UserFaceBody {
+interface FaceUserLayoutShape {
   rows?: undefined;
-  romaji?: undefined;
   sequences?: undefined;
   legends?: undefined;
 }
+export type KanaFaceUserLayout = UserLayoutCommon & FaceUserLayoutShape & KanaFaceBody;
+export type AlphaFaceUserLayout = UserLayoutCommon & FaceUserLayoutShape & AlphaFaceBody;
+export type FaceUserLayout = KanaFaceUserLayout | AlphaFaceUserLayout;
 
 export type UserLayout = StageUserLayout | FaceUserLayout;
 
-/** 面で定義する配列か。 */
+/** 面で定義する配列か。形を問う判定で、種類（かな・英字）は `kind` を見る。 */
 export const isFaceUserLayout = (layout: UserLayout): layout is FaceUserLayout => layout.faces !== undefined;
+
+/** かなの種類の面の形か。 */
+export const isKanaFaceUserLayout = (layout: UserLayout): layout is KanaFaceUserLayout => layout.faces !== undefined && layout.kind === 'kana';
 
 /** 各段に置けるキーの数 */
 export const ROW_LIMITS = QWERTY_LEGEND.map((row) => row.length);
@@ -80,10 +96,10 @@ const isHomeKeys = (value: unknown): value is Partial<Record<NonThumb, string>> 
 const hasFaceProperty = (value: Record<string, unknown>): boolean => [...FACE_BODY_PROPERTIES].some((name) => value[name] !== undefined);
 
 /**
- * 面で定義する配列が、段の文字・取り込み形式・ローマ字規則と併せ持たない項目。
+ * 面で定義する配列が、段の文字・取り込み形式と併せ持たない項目。
  * かなを直接打つ配列は面の形だけで持つので、段の形の `direct` も持てない。
  */
-const STAGE_PROPERTIES = ['rows', 'romaji', 'sequences', 'legends', 'direct'] as const;
+const STAGE_PROPERTIES = ['rows', 'sequences', 'legends', 'direct'] as const;
 
 /**
  * 面で定義する配列として読む。面の形を満たさなければ理由を返す。満たせば、triggerのキーを正式名にそろえた配列を返す。
@@ -112,6 +128,8 @@ function readUserLayout(l: unknown): UserLayout | string {
     return typeof read === 'string' ? `${form}（${read}）` : read;
   }
   const stage = value as Partial<StageUserLayout>;
+  // 段の形が持てる種類は英字だけ。種類が無い・かなの段の形は読まない
+  if (value.kind !== 'alpha') return `${form}（段の形の配列の種類（kind）は「alpha」だけです）`;
   const valid =
     (stage.romaji === undefined || typeof stage.romaji === 'string') &&
     Array.isArray(stage.rows) &&
@@ -192,7 +210,10 @@ export function validate(rows: string[]): string[] {
 /** 数字段が空ならQWERTYのものを使う */
 export function toLayout(def: UserLayout): Layout {
   if (def.faces !== undefined) {
-    const layout = buildFaceLayout(def.id, def.name, def);
+    const built = buildFaceLayout(def.id, def.name, def);
+    // 英字の種類は、定義に無い大文字・記号を通常Shiftで打てるようにする。かなの種類はShiftのキーを
+    // 切り替えのキーに使う配列があるので足さない
+    const layout = def.kind === 'alpha' ? withShiftedOutputs(built) : built;
     return def.homeKeys === undefined ? layout : { ...layout, homeKeys: def.homeKeys };
   }
   const imported = def.sequences !== undefined || def.legends !== undefined;
@@ -230,7 +251,7 @@ export function toLayout(def: UserLayout): Layout {
 
 export function toJapaneseLayout(def: UserLayout, customRules: UserRomajiRule[] = []): Layout {
   const layout = toLayout(def);
-  if (isFaceUserLayout(def) || def.romaji === undefined) return layout;
+  if (def.kind === 'kana' || def.romaji === undefined) return layout;
   return withRomaji(layout, tableForRule(def.romaji, customRules));
 }
 

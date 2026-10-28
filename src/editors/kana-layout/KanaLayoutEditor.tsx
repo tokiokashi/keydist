@@ -9,12 +9,12 @@ import {
   type FaceLayoutDraft,
 } from '#input/layouts/face-layout-edit.ts';
 import { KANA_COVERAGE_GROUPS } from '#input/layouts/kana-coverage.ts';
-import { kanaLayoutFileText, parseKanaLayoutFile, type KanaLayoutContent } from '#input/layouts/kana-face-layout-file.ts';
+import { kanaLayoutFileText, parseKanaLayoutFile, type FaceLayoutContent, type KanaLayoutContent } from '#input/layouts/kana-face-layout-file.ts';
 import { isFaceOutputKey, type FaceLayoutNotice, type FaceLayoutProblem } from '#input/layouts/kana-face-layout.ts';
 import { importKanaLayoutFile } from '#input/layouts/import.ts';
 import { ignoredHomeKeyWarnings, newUserLayoutId } from '#input/layouts/layout-edit.ts';
 import type { FaceMode, InputRole, LayerKind, TriggerOrder, TriggerPersistence } from '#input/layouts/types.ts';
-import { isFaceUserLayout, ROW_LABELS, type UserLayout } from '#input/layouts/user-layouts.ts';
+import { isKanaFaceUserLayout, ROW_LABELS, type UserLayout } from '#input/layouts/user-layouts.ts';
 import { FINGER_LABEL } from '#input/shapes/finger-names.ts';
 import {
   buildGeometry,
@@ -79,8 +79,8 @@ export interface KanaLayoutEditorProps {
   readonly canRedo: boolean;
   readonly onUndo: () => void;
   readonly onRedo: () => void;
-  readonly onCreate: (id: string, content: KanaLayoutContent) => void;
-  readonly onUpdate: (id: string, content: KanaLayoutContent) => void;
+  readonly onCreate: (id: string, content: FaceLayoutContent) => void;
+  readonly onUpdate: (id: string, content: FaceLayoutContent) => void;
   /** 書き出したJSONをファイルとして保存する。ブラウザの保存は `editors` が持てないので、appが渡す。 */
   readonly onDownload: (filename: string, text: string) => void;
   /** ローマ字配列の画面へのリンク。ルーターを使えるのは `app` だけなので、`app` が渡す */
@@ -496,7 +496,7 @@ interface KanaLayoutFormProps {
   readonly initial: FaceLayoutDraft;
   readonly fingerAssignments: readonly FingerAssignment[];
   readonly isNew: boolean;
-  readonly onSubmit: (content: KanaLayoutContent) => void;
+  readonly onSubmit: (content: FaceLayoutContent) => void;
   readonly onDownload: (filename: string, text: string) => void;
 }
 
@@ -516,7 +516,7 @@ function KanaLayoutForm({ initial, fingerAssignments, isNew, onSubmit, onDownloa
   const check = useMemo(() => checkFaceLayout(draft), [draft]);
   const blocked = check.content === undefined;
   const dirty = JSON.stringify(draft) !== JSON.stringify(initial);
-  const exportText = useMemo(() => (check.content === undefined ? undefined : kanaLayoutFileText(check.content)), [check.content]);
+  const exportText = useMemo(() => (check.content?.kind === 'kana' ? kanaLayoutFileText(check.content) : undefined), [check.content]);
   const shownIndex = Math.min(faceIndex, draft.faces.length - 1);
   const face = draft.faces[shownIndex]!;
   const homeKeySet = useMemo(() => new Set(Object.values(draft.homeKeys).filter((key) => key !== '')), [draft.homeKeys]);
@@ -820,7 +820,7 @@ export function KanaLayoutEditor({
   const [imported, setImported] = useState<{ readonly content: KanaLayoutContent; readonly warnings: readonly string[] } | undefined>(undefined);
   const [importError, setImportError] = useState<{ readonly message: string; readonly romajiLayout: boolean } | undefined>(undefined);
 
-  const editable = useMemo(() => layouts.filter(isFaceUserLayout), [layouts]);
+  const editable = useMemo(() => layouts.filter(isKanaFaceUserLayout), [layouts]);
 
   // 選んでいた配列が元に戻すなどで無くなった時は、先頭の配列（無ければ新規作成）に移る
   const layout = selectedId === NEW ? undefined : (editable.find((candidate) => candidate.id === selectedId) ?? editable[0]);
@@ -832,7 +832,7 @@ export function KanaLayoutEditor({
   }, [layout, imported]);
   const formKey = layout === undefined ? `new:${newCount}` : `${layout.id}:${JSON.stringify(initial)}`;
 
-  const submit = (content: KanaLayoutContent) => {
+  const submit = (content: FaceLayoutContent) => {
     if (layout === undefined) {
       const id = newUserLayoutId();
       onCreate(id, content);

@@ -26,6 +26,7 @@ const DVORAK: UserLayoutContent = {
 const stored = (overrides: Partial<StageUserLayout> = {}): StageUserLayout => ({
   id: 'user-a',
   name: '私のDvorak',
+  kind: 'alpha',
   rows: [...DVORAK.rows],
   romaji: 'kunrei',
   ...overrides,
@@ -125,6 +126,7 @@ test('新規作成は、名前と段の前後の空白を落とし、空のホ�
     ['user-old', 'user-new'],
   );
   assert.deepEqual(result.layouts[1], {
+    kind: 'alpha',
     id: 'user-new',
     name: '新しい配列',
     rows: ['', "',.pyfgcrl/=", 'aoeuidhtns-', ';qjkxbmwvz'],
@@ -175,6 +177,7 @@ test('対象が無い更新は何もしない', () => {
 
 /** 機能キーや未定義のキーを空白で置いた取り込み形式の配列。先頭・途中・末尾に空白がある。 */
 const importedLayout = (overrides: Partial<StageUserLayout> = {}): StageUserLayout => ({
+  kind: 'alpha',
   id: 'user-imported',
   name: '取り込んだ配列',
   rows: ['  34        ', ' q  t y     ', 'as df   l  ', ' x        '],

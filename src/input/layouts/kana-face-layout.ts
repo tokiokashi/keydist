@@ -1,11 +1,13 @@
 import { isRecord, UNSAFE_OBJECT_KEYS } from '../codec/index.ts';
 import { keyId, LEFT_COLUMN_KEYS, QWERTY_LEGEND, resolveKeyId, SHIFT_KEY, THUMB_KEY } from '../shapes/geometry.ts';
 import { physicalKeyDisplayLabel } from '../shapes/key-labels.ts';
+import type { RomajiRuleId } from '../romaji/rules.ts';
 import { composeKanaMarks, DAKUTEN_MARK, HANDAKUTEN_MARK, type KanaMarkComposition } from './kana-composition.ts';
+import type { LayoutKind } from './kind.ts';
 import { fromFaces, type Face, type FaceMode, type InputRole, type Layout, type LayerKind, type TriggerOrder, type TriggerPersistence } from './types.ts';
 
 /**
- * 面で定義するかな配列の、利用者が書く形（保存・JSONの貼り付けで共通）と、`Layout` への組み立て。
+ * 面で定義する配列（かなの種類・英字の種類）の、利用者が書く形（保存・JSONの貼り付けで共通）と、`Layout` への組み立て。
  *
  * 面は「triggerのキー集合・打鍵の順序・triggerの持続・面の上のキーごとの出力」の並び。
  * 順序・持続・入力の意味は、triggerを持つ面では必ず書く（値を推論しない）。
@@ -34,12 +36,26 @@ export interface UserFace {
   outputs: Record<string, string>;
 }
 
-/** 面の形の配列の中身。 */
-export interface UserFaceBody {
+/** かなの種類の面の形の中身。ローマ字を経ずにかなを直接打つ。 */
+export interface KanaFaceBody {
+  kind: 'kana';
   faces: UserFace[];
-  /** 濁点・半濁点を後置して合成するか。それぞれ明示する */
+  /** 濁点・半濁点を後置して合成するか。それぞれ明示する。かなの種類だけが持ち、必須 */
   composition: KanaMarkComposition;
+  romaji?: undefined;
 }
+
+/** 英字の種類の面の形の中身。日本語のテキストにはローマ字規則を通して使う。 */
+export interface AlphaFaceBody {
+  kind: 'alpha';
+  faces: UserFace[];
+  /** 推奨のローマ字規則。省略した配列は推奨を持たず、全体の値の規則で打つ */
+  romaji?: RomajiRuleId;
+  composition?: undefined;
+}
+
+/** 面の形の配列の中身。種類で持てる項目が分かれる。 */
+export type UserFaceBody = KanaFaceBody | AlphaFaceBody;
 
 /** 読み込みや組み立ての誤り1件。`path` は `faces[2].outputs.q` のように定義の中の位置。 */
 export interface FaceLayoutProblem {
@@ -73,8 +89,9 @@ const FACE_PROPERTIES: ReadonlySet<string> = new Set([
   'modifierGroups',
   'outputs',
 ]);
-/** 面の形の配列が自分で持つ項目 */
+/** 面の形だけが持つ項目。段の形と面の形を見分けるのに使う（`kind` と `romaji` は段の形も持つので入れない） */
 export const FACE_BODY_PROPERTIES: ReadonlySet<string> = new Set(['faces', 'composition']);
+const KINDS: readonly LayoutKind[] = ['alpha', 'kana'];
 const COMPOSITION_PROPERTIES: ReadonlySet<string> = new Set(['dakuten', 'handakuten']);
 
 /** 面の上に置ける行数（QWERTY刻印の4行）と、1行の列数の上限 */
@@ -364,12 +381,14 @@ function readComposition(raw: unknown, problems: Problems): KanaMarkComposition 
 const faceIdentity = (face: UserFace): string => `${[...face.trigger].sort().join('+')}|${face.trigger.length === 0 ? '' : (face.mode ?? '')}`;
 
 /**
- * 面の形の中身を読む。`raw` は `faces` と `composition` を持つオブジェクト（`UserLayout` の一部、またはJSONの本体）。
+ * 面の形の中身を読む。`raw` は `kind`・`faces` と、種類ごとの項目（かなの種類は `composition`、英字の種類は任意の `romaji`）を持つオブジェクト
+ * （`UserLayout` の一部、またはJSONの本体）。種類で持てない項目を持つ時は誤りにする。
  * 誤りは全部集めて返す（1件目で止めない）。誤りが無ければ、triggerのキーを正式名にそろえた中身を返す。
  * ほかの項目（`id`・`name`・`homeKeys` など）は呼び出し側が見る。
  */
 export function readFaceBody(raw: Record<string, unknown>): { readonly body: UserFaceBody | undefined; readonly problems: readonly FaceLayoutProblem[] } {
   const problems = new Problems();
+  const kindRead = readEnum(raw.kind, KINDS, 'kind', '配列の種類（kind）', problems);
   const faces: UserFace[] = [];
   let facesOk = true;
   if (!Array.isArray(raw.faces)) {
@@ -385,7 +404,21 @@ export function readFaceBody(raw: Record<string, unknown>): { readonly body: Use
       else faces.push(face);
     });
   }
-  const composition = readComposition(raw.composition, problems);
+  const kind = kindRead.ok ? kindRead.value : undefined;
+  let composition: KanaMarkComposition | undefined;
+  let romaji: RomajiRuleId | undefined;
+  if (kind === 'kana') {
+    composition = readComposition(raw.composition, problems);
+    if (raw.romaji !== undefined) problems.add('romaji', 'かなの種類の配列はローマ字を経ないので、ローマ字規則「romaji」を持てません');
+  } else if (kind === 'alpha') {
+    if (raw.composition !== undefined) {
+      problems.add('composition', '英字の種類の配列は、濁点・半濁点の合成「composition」を持てません。かなの種類だけが持てます');
+    }
+    if (raw.romaji !== undefined) {
+      if (typeof raw.romaji === 'string') romaji = raw.romaji;
+      else problems.add('romaji', `ローマ字規則（romaji）を文字列で書いてください（${describeValue(raw.romaji)}）`);
+    }
+  }
 
   if (facesOk) {
     const seen = new Map<string, number>();
@@ -426,8 +459,13 @@ export function readFaceBody(raw: Record<string, unknown>): { readonly body: Use
     }
   }
 
-  if (problems.list.length > 0 || composition === undefined) return { body: undefined, problems: problems.list };
-  return { body: { faces, composition }, problems: [] };
+  if (problems.list.length > 0 || kind === undefined) return { body: undefined, problems: problems.list };
+  if (kind === 'kana')
+    return composition === undefined ? { body: undefined, problems: problems.list } : { body: { kind, faces, composition }, problems: [] };
+  return {
+    body: { kind, faces, ...(romaji === undefined ? {} : { romaji }) },
+    problems: [],
+  };
 }
 
 /** 面の上のキーの出力を、`Face.rows`（QWERTY刻印の行・列の並び）にする。左端の列の3つのキーは含めない。 */
@@ -509,6 +547,8 @@ export function buildFaceLayout(id: string, name: string, body: UserFaceBody): L
         : { path: `faces[${culprit.index}]`, message: `${faceLabel(culprit.index)}を加えると配列を組めません。${BUILD_HINT}`, detail: culprit.reason },
     ]);
   }
+  // 濁点・半濁点の合成はかなの種類だけが持つ
+  if (body.kind === 'alpha') return layout;
   try {
     return composeKanaMarks(layout, body.composition, name);
   } catch (cause) {
@@ -522,7 +562,7 @@ export function buildFaceLayout(id: string, name: string, body: UserFaceBody): L
  * 同じ出力が2か所以上にある旨。組み込みの配列も使う正しい定義（代わりの打ち方）なので誤りにしない。
  * 場所は面の並びとキーで示す。
  */
-export function duplicateOutputNotices(body: UserFaceBody): readonly FaceLayoutNotice[] {
+export function duplicateOutputNotices(body: Pick<UserFaceBody, 'faces'>): readonly FaceLayoutNotice[] {
   const places = new Map<string, string[]>();
   body.faces.forEach((face, index) => {
     for (const [key, output] of Object.entries(face.outputs)) {

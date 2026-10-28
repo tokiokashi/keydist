@@ -12,7 +12,8 @@ import {
   updateUserLayoutCommand,
   type KeydistAssets,
 } from './commands.ts';
-import type { StageUserLayout } from '#input/layouts/user-layouts.ts';
+import type { FaceLayoutContent } from '#input/layouts/kana-face-layout-file.ts';
+import type { AlphaFaceUserLayout, StageUserLayout } from '#input/layouts/user-layouts.ts';
 import { initialMultiTargetSelection } from './multi-target-selection.ts';
 import { initialSingleTargetSelection } from './single-target-selection.ts';
 import { initialWorkspaceLibrary } from './workspace.ts';
@@ -66,6 +67,7 @@ test('自作の配列のコマンド: 作成と編集を書き込み、undoで�
 
 test('面で定義するかな配列のコマンド: 作成と編集を書き込み、undoで戻せ、誤りは拒否する', () => {
   const content = {
+    kind: 'kana' as const,
     name: '面の配列',
     faces: [{ trigger: [], inputRole: 'layer' as const, outputs: { a: 'あ' } }],
     composition: { dakuten: false, handakuten: false },
@@ -111,7 +113,7 @@ test('自作の配列のコマンド: 保存できない入力と取り込み形
   );
   const imported: KeydistAssets = {
     ...created.assets,
-    userLayouts: [{ ...(created.assets.userLayouts[0] as StageUserLayout), id: 'user-imp', sequences: [['あ', [['a']]]] }],
+    userLayouts: [{ ...(created.assets.userLayouts[0] as StageUserLayout), id: 'user-imp', sequences: [['あ', [['a']]] as [string, string[][]]] }],
   };
   const cases = [
     { assets: created.assets, command: createUserLayoutCommand(() => 'user-2', { ...CONTENT, name: '' }) },
@@ -124,4 +126,47 @@ test('自作の配列のコマンド: 保存できない入力と取り込み形
     assert.equal(step.assets, assets);
     assert.equal(step.history, created.history);
   }
+});
+
+/** 英字の種類の面の形。 */
+const ALPHA_FACE: AlphaFaceUserLayout = {
+  id: 'user-alpha-face',
+  name: '英字の面',
+  kind: 'alpha',
+  faces: [{ trigger: [], inputRole: 'layer', outputs: { a: 'a', s: 's' } }],
+  romaji: 'kunrei',
+};
+
+test('面の形の作成・更新のコマンドは、種類とローマ字規則を持つ中身を受ける', () => {
+  const alphaContent = (romaji: string): FaceLayoutContent => ({ kind: 'alpha', name: ALPHA_FACE.name, faces: ALPHA_FACE.faces, romaji });
+  const content = alphaContent('kunrei');
+  const created = applyCommand(
+    emptyAssets(),
+    emptyCommandHistory(),
+    createUserFaceLayoutCommand(() => ALPHA_FACE.id, content),
+  );
+  assert.equal(created.outcome.kind, 'applied');
+  assert.deepEqual(created.assets.userLayouts, [ALPHA_FACE]);
+
+  const renamed = applyCommand(created.assets, created.history, updateUserFaceLayoutCommand(ALPHA_FACE.id, alphaContent('azik')));
+  assert.equal(renamed.outcome.kind, 'applied');
+  assert.equal(renamed.assets.userLayouts[0]!.romaji, 'azik');
+
+  const same = applyCommand(created.assets, created.history, updateUserFaceLayoutCommand(ALPHA_FACE.id, content));
+  assert.equal(same.outcome.kind, 'no-op');
+
+  // 種類を変える更新もできる。英字からかなに替えると、ローマ字規則は持たず合成の指定を持つ
+  const toKana = applyCommand(
+    created.assets,
+    created.history,
+    updateUserFaceLayoutCommand(ALPHA_FACE.id, {
+      kind: 'kana',
+      name: content.name,
+      faces: content.faces,
+      composition: { dakuten: false, handakuten: false },
+    }),
+  );
+  assert.equal(toKana.outcome.kind, 'applied');
+  assert.equal(toKana.assets.userLayouts[0]!.kind, 'kana');
+  assert.equal(toKana.assets.userLayouts[0]!.romaji, undefined);
 });

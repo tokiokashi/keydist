@@ -304,7 +304,7 @@ test('自作の配列を選んで開き直すと、その配列と練習環境�
       'keydist:user-layouts',
       JSON.stringify({
         version: 1,
-        layouts: [{ id: 'user-a', name: '自作A', rows, romaji: 'rule-a' }],
+        layouts: [{ kind: 'alpha', id: 'user-a', name: '自作A', rows, romaji: 'rule-a' }],
       }),
     );
     localStorage.setItem(

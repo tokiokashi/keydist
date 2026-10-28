@@ -136,7 +136,7 @@ export function buildKanaContent(faces: readonly ParsedFace[], name: string, war
   }
   if (userFaces.length === 0) throw new Error(NO_OUTPUT_MESSAGE);
 
-  const { body, problems } = readFaceBody({ faces: userFaces, composition: { dakuten: false, handakuten: false } });
-  if (body === undefined) throw new Error(`面の形にできませんでした。${problems.map((problem) => problem.message).join('、')}`);
+  const { body, problems } = readFaceBody({ kind: 'kana', faces: userFaces, composition: { dakuten: false, handakuten: false } });
+  if (body === undefined || body.kind !== 'kana') throw new Error(`面の形にできませんでした。${problems.map((problem) => problem.message).join('、')}`);
   return { name, ...body };
 }

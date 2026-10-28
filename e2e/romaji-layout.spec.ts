@@ -101,6 +101,7 @@ test('取り込み形式の配列は、名前だけを直せ、段の文字と�
         layouts: [
           {
             id: 'user-imported',
+            kind: 'alpha',
             name: '取り込んだ配列',
             rows: ['  34        ', ' qwert      ', 'as df      ', ' x        '],
             romaji: 'kunrei',

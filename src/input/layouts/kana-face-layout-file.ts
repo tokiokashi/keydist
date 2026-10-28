@@ -9,13 +9,14 @@ import {
   readFaceBody,
   type FaceLayoutNotice,
   type FaceLayoutProblem,
+  type KanaFaceBody,
   type UserFaceBody,
 } from './kana-face-layout.ts';
 
 /**
  * 面で定義するかな配列を貼り付ける・書き出すJSON。
  *
- * 外殻は自作の資産の書き出しファイルと同じく `format` の印と `version` を持ち、中身は `UserLayout` の面の形
+ * 外殻は自作の資産の書き出しファイルと同じく `format` の印と `version` を持ち、中身は `UserLayout` のかなの種類の面の形
  * （`faces` と `composition`）と同じ。ほかに配列の名前（`name`）と、任意でホームキー（`homeKeys`）を持つ。
  * `id` は持たない（貼り付けた側が付ける）。
  */
@@ -23,11 +24,19 @@ import {
 export const KANA_LAYOUT_FILE_FORMAT = 'keydist-kana-layout';
 export const KANA_LAYOUT_FILE_VERSION = 1;
 
-/** 読み込んだ配列の中身（idを除く）。 */
-export interface KanaLayoutContent extends UserFaceBody {
+interface LayoutContentCommon {
   name: string;
   homeKeys?: Partial<Record<NonThumb, string>>;
 }
+
+/** 面の形の配列の中身（idを除く）。種類はかなでも英字でもよい。作成・更新のコマンドが受ける形。 */
+export type FaceLayoutContent = LayoutContentCommon & UserFaceBody;
+
+/**
+ * 貼り付け・書き出しのJSONが読み書く中身（idを除く）。JSONはかなの種類の面の形だけを扱うので、
+ * 種類（`kind`）はJSONに書かず、読み込むとかなの種類になる。
+ */
+export type KanaLayoutContent = LayoutContentCommon & KanaFaceBody;
 
 export type KanaLayoutFileReadResult =
   | { readonly ok: true; readonly layout: KanaLayoutContent; readonly notices: readonly FaceLayoutNotice[] }
@@ -98,9 +107,13 @@ export function parseKanaLayoutFile(text: string): KanaLayoutFileReadResult {
     problems.push({ path: 'name', message: '配列の名前（name）を、空でない文字列で書いてください' });
   }
   const homeKeys = parsed.homeKeys === undefined ? undefined : readHomeKeys(parsed.homeKeys, problems);
-  const { body, problems: bodyProblems } = readFaceBody(parsed);
+  // JSONにはかなの種類の面の形だけを書く。種類はJSONの項目に無いので、ここで決める
+  const { body, problems: bodyProblems } = readFaceBody({
+    ...parsed,
+    kind: 'kana',
+  });
   problems.push(...bodyProblems);
-  if (problems.length > 0 || body === undefined) return { ok: false, problems };
+  if (problems.length > 0 || body === undefined || body.kind !== 'kana') return { ok: false, problems };
 
   const layout: KanaLayoutContent = {
     name: (parsed.name as string).trim(),

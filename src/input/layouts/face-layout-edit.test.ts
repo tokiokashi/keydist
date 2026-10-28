@@ -14,6 +14,7 @@ import type { KanaLayoutContent } from './kana-face-layout-file.ts';
 import type { StageUserLayout } from './user-layouts.ts';
 
 const CONTENT: KanaLayoutContent = {
+  kind: 'kana',
   name: '面の配列',
   faces: [
     { trigger: [], inputRole: 'layer', outputs: { a: 'あ', s: 'か', d: '゛' } },
@@ -29,7 +30,7 @@ const CONTENT: KanaLayoutContent = {
   composition: { dakuten: true, handakuten: false },
 };
 
-const STAGE: StageUserLayout = { id: 'user-stage', name: '段の配列', rows: ['', '', '', ''] };
+const STAGE: StageUserLayout = { kind: 'alpha', id: 'user-stage', name: '段の配列', rows: ['', '', '', ''] };
 
 const clone = <T>(value: T): T => structuredClone(value);
 

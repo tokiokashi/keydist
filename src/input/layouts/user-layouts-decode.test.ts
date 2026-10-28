@@ -3,6 +3,7 @@ import test from 'node:test';
 import { decodeUserLayouts, USER_LAYOUTS_CODEC, type StageUserLayout } from './user-layouts.ts';
 
 const layout = (id: string): StageUserLayout => ({
+  kind: 'alpha',
   id,
   name: `配列 ${id}`,
   rows: ['1234567890', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'],
@@ -98,7 +99,7 @@ test('USER_LAYOUTS_CODEC: 壊れた要素・romajiが文字列でない要素・
 });
 
 test('USER_LAYOUTS_CODEC: romajiの無い要素は、推奨の規則を持たない配列として残す', () => {
-  const decoded = USER_LAYOUTS_CODEC.decode({ version: 1, layouts: [{ id: 'user-x', name: 'x', rows: ['', 'q', 'a', 'z'] }] });
+  const decoded = USER_LAYOUTS_CODEC.decode({ version: 1, layouts: [{ kind: 'alpha', id: 'user-x', name: 'x', rows: ['', 'q', 'a', 'z'] }] });
   assert.ok(decoded.ok);
   assert.deepEqual(
     decoded.value.map((l) => l.id),

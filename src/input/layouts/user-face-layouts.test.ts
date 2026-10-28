@@ -10,6 +10,7 @@ import { decodeUserLayouts, isValidUserLayout, toLayout, USER_LAYOUTS_CODEC, typ
 
 /** 単打の面と左親指の面を持ち、濁点を後置して合成する、面で定義する配列。 */
 const FACE_LAYOUT: FaceUserLayout = {
+  kind: 'kana',
   id: 'user-face',
   name: '面の配列',
   faces: [
@@ -27,6 +28,7 @@ const FACE_LAYOUT: FaceUserLayout = {
 };
 
 const STAGE_LAYOUT: StageUserLayout = {
+  kind: 'alpha',
   id: 'user-stage',
   name: '段の配列',
   rows: ['1234567890', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'],
@@ -58,8 +60,8 @@ test('面で定義する配列を捨てる時は、どの面の何が誤りか�
   assert.match(result.diagnostics[0]!.message, /形式が不正なため自作の配列を捨てました（面2は、切り替えのキーの持続/);
 });
 
-test('面の形は段の形・取り込み形式・ローマ字規則と併せ持てず、どれを併せ持っているかを診断に含める', () => {
-  for (const extra of [{ rows: ['', '', '', ''] }, { romaji: 'kunrei' }, { sequences: [] }, { legends: [] }, { direct: true }]) {
+test('面の形は段の形・取り込み形式と併せ持てず、どれを併せ持っているかを診断に含める', () => {
+  for (const extra of [{ rows: ['', '', '', ''] }, { sequences: [] }, { legends: [] }, { direct: true }]) {
     const result = decodeUserLayouts([{ ...clone(FACE_LAYOUT), ...extra }]);
     assert.deepEqual(result.value, [], JSON.stringify(extra));
     assert.match(result.diagnostics[0]!.message, new RegExp(`「${Object.keys(extra)[0]}」`));

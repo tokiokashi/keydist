@@ -134,6 +134,7 @@ function definitionOf(id: string, content: UserLayoutContent): StageUserLayout {
   const layout: StageUserLayout = {
     id,
     name: content.name,
+    kind: 'alpha',
     rows: [content.rows[0], content.rows[1], content.rows[2], content.rows[3]],
     ...(content.romaji === undefined ? {} : { romaji: content.romaji }),
     ...(content.sequences === undefined ? {} : { sequences: content.sequences.map(([output, sequence]) => [output, sequence] as [string, Sequence]) }),

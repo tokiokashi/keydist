@@ -11,10 +11,16 @@ const RULE: UserRomajiRule = { id: 'rule-a', name: '自作の規則', base: 'kun
 test('配列の行: 推奨の規則の名前を出し、見つからない規則・組み込みの規則・面で定義した配列を言い分ける', () => {
   const rows = userLayoutRows(
     [
-      { id: 'a', name: 'A', rows: ROWS, romaji: 'rule-a' },
-      { id: 'b', name: 'B', rows: ROWS, romaji: 'rule-gone' },
-      { id: 'c', name: 'C', rows: ROWS, romaji: 'azik' },
-      { id: 'd', name: 'D', faces: [{ trigger: [], inputRole: 'layer', outputs: { a: 'あ' } }], composition: { dakuten: false, handakuten: false } },
+      { kind: 'alpha', id: 'a', name: 'A', rows: ROWS, romaji: 'rule-a' },
+      { kind: 'alpha', id: 'b', name: 'B', rows: ROWS, romaji: 'rule-gone' },
+      { kind: 'alpha', id: 'c', name: 'C', rows: ROWS, romaji: 'azik' },
+      {
+        kind: 'kana',
+        id: 'd',
+        name: 'D',
+        faces: [{ trigger: [], inputRole: 'layer', outputs: { a: 'あ' } }],
+        composition: { dakuten: false, handakuten: false },
+      },
     ],
     [RULE],
   );
@@ -25,14 +31,20 @@ test('配列の行: 推奨の規則の名前を出し、見つからない規則
 });
 
 test('配列の行: 推奨の規則を持たない配列は、全体の値の規則で打つ旨を出す', () => {
-  const rows = userLayoutRows([{ id: 'a', name: 'A', rows: ROWS }], [RULE]);
+  const rows = userLayoutRows([{ kind: 'alpha', id: 'a', name: 'A', rows: ROWS }], [RULE]);
   assert.equal(rows[0]!.detail, '推奨のローマ字規則はありません。全体の値の規則で打ちます');
 });
 
 test('規則の行: 推奨に使っている配列を挙げる。使われていなければ補足なし', () => {
   const layouts: UserLayout[] = [
-    { id: 'a', name: 'A', rows: ROWS, romaji: 'rule-a' },
-    { id: 'd', name: 'D', faces: [{ trigger: [], inputRole: 'layer', outputs: { a: 'あ' } }], composition: { dakuten: false, handakuten: false } },
+    { kind: 'alpha', id: 'a', name: 'A', rows: ROWS, romaji: 'rule-a' },
+    {
+      kind: 'kana',
+      id: 'd',
+      name: 'D',
+      faces: [{ trigger: [], inputRole: 'layer', outputs: { a: 'あ' } }],
+      composition: { dakuten: false, handakuten: false },
+    },
   ];
   assert.match(userRomajiRuleRows(layouts, [RULE])[0]!.detail!, /^推奨に使っている配列: A。/);
   assert.equal(userRomajiRuleRows([], [RULE])[0]!.detail, undefined);
@@ -50,9 +62,9 @@ test('指の割り当ての行: 名前と、削除した時に既定の割り当
 test('配列の行: 計算に使えない配列は理由を出し、推奨の規則の旨は重ねない', () => {
   const rows = userLayoutRows(
     [
-      { id: 'qwerty', name: '同じ識別子', rows: ROWS, romaji: 'rule-gone' },
-      { id: 'long', name: '長い段', rows: ['1234567890123456', 'q', 'a', 'z'] },
-      { id: 'ok', name: '使える', rows: ROWS, romaji: 'rule-a' },
+      { kind: 'alpha', id: 'qwerty', name: '同じ識別子', rows: ROWS, romaji: 'rule-gone' },
+      { kind: 'alpha', id: 'long', name: '長い段', rows: ['1234567890123456', 'q', 'a', 'z'] },
+      { kind: 'alpha', id: 'ok', name: '使える', rows: ROWS, romaji: 'rule-a' },
     ],
     [RULE],
   );
@@ -63,6 +75,6 @@ test('配列の行: 計算に使えない配列は理由を出し、推奨の規
 });
 
 test('配列の行: 組み立てで例外が出る配列は、固定の理由を出し、例外の文を漏らさない', () => {
-  const rows = userLayoutRows([{ id: 'seq', name: '空の打鍵列', rows: ROWS, sequences: [['a', []]] }], [RULE]);
+  const rows = userLayoutRows([{ kind: 'alpha', id: 'seq', name: '空の打鍵列', rows: ROWS, sequences: [['a', []]] }], [RULE]);
   assert.equal(rows[0]!.detail, '配列の定義から打鍵を組み立てられないため、計算には使えません。定義を見直してください');
 });
