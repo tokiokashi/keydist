@@ -42,7 +42,7 @@ function layoutSymbols(layoutId: string): Set<string> {
   return out;
 }
 
-for (const layoutId of ['asuka', 'shin-koume', 'shingeta', 'naginata-v18']) {
+for (const layoutId of ['asuka', 'shin-koume', 'shingeta', 'naginata-v18', 'tsukimisou-extract']) {
   test(`${layoutId}: 配列の定義の記号が、出典のスナップショットの記号と面・キー・出力で一致する`, () => {
     assert.deepEqual([...layoutSymbols(layoutId)].sort(), [...fixtureSymbols(layoutId)].sort());
   });
@@ -97,6 +97,8 @@ test('全角で定義した記号を、半角の記号のテキストでも打�
 
 test('半角で定義した記号を、全角形の記号のテキストでも打てる', () => {
   assert.equal(skippedWithWideSymbols('naginata-v18', '（）！＃＄％＆'), 0);
+  assert.equal(skippedWithWideSymbols('tsukimisou-extract', '！？（）'), 0);
+  assert.equal(skippedWithWideSymbols('tsukimisou-extract', '!?()「」・'), 0);
 });
 
 test('数字と、IMEの変換表で出る記号が決まるキーは、足していない', () => {
