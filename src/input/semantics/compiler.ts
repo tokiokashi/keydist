@@ -594,6 +594,34 @@ const samePhysicalKeySet = (left: readonly PhysicalKeyId[], right: readonly Phys
 };
 
 /**
+ * 異なるlogical outputの2つのpathが同時成立し得る時の例外。
+ * 利用者向けの文を作る側が、文字列を読まずに出力と物理キーを取れるよう、構造化して持つ。
+ * `message`は内部の語を含む詳細で、画面には出さない。
+ */
+export class ActivationConflictError extends Error {
+  readonly left: ActivationConflictSide;
+  readonly right: ActivationConflictSide;
+
+  constructor(left: ActivationConflictSide, right: ActivationConflictSide) {
+    super(`異なるlogical outputに同時成立し得るcanonical activation pathがある: ${left.output} / ${right.output}`);
+    this.name = 'ActivationConflictError';
+    this.left = left;
+    this.right = right;
+  }
+}
+
+/** 衝突したpathの片側。`steps`は打鍵の順に、各ステップで関わる物理キー。 */
+export interface ActivationConflictSide {
+  readonly output: string;
+  readonly steps: readonly (readonly PhysicalKeyId[])[];
+}
+
+const conflictSide = (output: string, alternative: InputAlternative): ActivationConflictSide => ({
+  output,
+  steps: alternative.semanticInputs.map((input) => [...new Set(input.physicalKeys)]),
+});
+
+/**
  * 2つのconcrete input pathが、現在証明できる範囲で同時成立し得るかを判定する。
  *
  * sequence長違い / prefix relation等のprecedenceはここでは証明しない。
@@ -631,7 +659,7 @@ export function validateCanonicalInputMap(inputs: CanonicalInputMap): void {
       if (left.output === right.output) continue;
       if (!activationPathsCanConflict(left.alternative, right.alternative)) continue;
 
-      throw new Error(`異なるlogical outputに同時成立し得るcanonical activation pathがある: ${left.output} / ${right.output}`);
+      throw new ActivationConflictError(conflictSide(left.output, left.alternative), conflictSide(right.output, right.alternative));
     }
   }
 }

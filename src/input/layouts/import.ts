@@ -473,20 +473,64 @@ export function importVial(source: string, name = 'Vial取り込み'): ImportedL
   });
 
   const macros = Array.isArray(vil.macro) ? vil.macro : [];
+  const comboOutput = (outputCode: unknown): string | undefined => {
+    const macro = macroIndex(outputCode);
+    return macro === undefined ? qmkChar(outputCode) : macroText(macros[macro]);
+  };
+  // 入力を物理キーに直す。空き枠は読み飛ばし、文字を解決できない入力（レイヤー切り替えなど）は
+  // 物理キーに直さずに読み飛ばす。物理位置を引けない入力があれば、そのコンボの入力は空にして `missing` に残す
+  const comboInputs = (entry: readonly unknown[]): { inputs: string[]; missing?: unknown } => {
+    const inputs: string[] = [];
+    for (const code of entry.slice(0, 4)) {
+      const char = qmkChar(code);
+      if (!char) continue;
+      const physical = locations.get(char);
+      if (!physical) return { inputs: [], missing: code };
+      inputs.push(physical);
+    }
+    return { inputs };
+  };
+  // 実機（QMKのコンボ処理）は、キーの集合が同じコンボのうち番号が最後のものだけを出す。
+  // 比べるのは、入力をすべて物理キーに直せたコンボだけ。直せない入力を含むコンボは実機では別のコンボなので、集合を比べない
+  const droppedCombos = new Map<number, number>();
+  if (Array.isArray(vil.combo)) {
+    const lastBySet = new Map<string, number>();
+    const members: { comboIndex: number; setKey: string }[] = [];
+    for (const [comboIndex, entry] of vil.combo.entries()) {
+      if (!Array.isArray(entry) || entry.length < 5) continue;
+      const hasUnresolvedInput = entry.slice(0, 4).some((code) => typeof code !== 'string' || (!QMK_NOOP.has(code.toUpperCase()) && !qmkChar(code)));
+      if (hasUnresolvedInput) continue;
+      const { inputs } = comboInputs(entry);
+      if (inputs.length < 2) continue;
+      const setKey = JSON.stringify([...new Set(inputs)].sort());
+      members.push({ comboIndex, setKey });
+      lastBySet.set(setKey, comboIndex);
+    }
+    for (const { comboIndex, setKey } of members) {
+      const winner = lastBySet.get(setKey)!;
+      if (winner !== comboIndex) droppedCombos.set(comboIndex, winner);
+    }
+  }
+  const describeComboOutput = (comboIndex: number): string => {
+    const entry = (vil.combo as unknown[][])[comboIndex];
+    const outputCode = entry[4];
+    return comboOutput(outputCode) ?? String(outputCode);
+  };
   if (Array.isArray(vil.combo)) {
     for (const [comboIndex, entry] of vil.combo.entries()) {
       if (!Array.isArray(entry) || entry.length < 5) continue;
-      const inputs: string[] = [];
-      for (const code of entry.slice(0, 4)) {
-        const char = qmkChar(code);
-        if (!char) continue;
-        const physical = locations.get(char);
-        if (!physical) {
-          addWarning(warnings, `Vialのコンボ ${comboIndex} は入力キー「${String(code)}」の物理位置を解決できないため無視しました`);
-          inputs.length = 0;
-          break;
-        }
-        inputs.push(physical);
+      const winner = droppedCombos.get(comboIndex);
+      if (winner !== undefined) {
+        addWarning(
+          warnings,
+          `Vialのコンボ ${comboIndex}（出力「${describeComboOutput(comboIndex)}」）は、同じキーの組を持つ後のコンボ ${winner}（出力「${describeComboOutput(winner)}」）が実機で優先されるため取り込みませんでした`,
+        );
+        continue;
+      }
+      const resolved = comboInputs(entry);
+      const inputs = resolved.inputs;
+      if (resolved.missing !== undefined) {
+        addWarning(warnings, `Vialのコンボ ${comboIndex} は入力キー「${String(resolved.missing)}」の物理位置を解決できないため無視しました`);
       }
       if (inputs.length < 2) {
         const unresolvedCode = entry.slice(0, 4).find((code) => typeof code === 'string' && !QMK_NOOP.has(code.toUpperCase()) && !qmkChar(code));
@@ -496,8 +540,7 @@ export function importVial(source: string, name = 'Vial取り込み'): ImportedL
         continue;
       }
       const outputCode = entry[4];
-      const macro = macroIndex(outputCode);
-      const output = macro === undefined ? qmkChar(outputCode) : macroText(macros[macro]);
+      const output = comboOutput(outputCode);
       if (!output || output === ' ') {
         addWarning(warnings, `Vialのコンボ ${comboIndex} は出力「${String(outputCode)}」を解決できないため無視しました`);
         continue;

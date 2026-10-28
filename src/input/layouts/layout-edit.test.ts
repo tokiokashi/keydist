@@ -386,3 +386,21 @@ test('ignoredHomeKeyWarnings: 割り当てが無い、またはどの指も担�
   assert.deepEqual(ignoredHomeKeyWarnings({ LI: 'h' }, []), []);
   assert.deepEqual(ignoredHomeKeyWarnings({ LI: 'no-such-key' }, [DEFAULT_FINGER_ASSIGNMENT]), []);
 });
+
+test('同時に成り立つ出力が衝突する配列は、内部の語を含まない文で保存を止める', () => {
+  const conflict = {
+    name: '衝突',
+    rows: ['', 'qwertyuiop[]', "asdfghjkl;'", 'zxcvbnm,./'] as UserLayoutContent['rows'],
+    romaji: 'qwerty',
+    homeKeys: {},
+    sequences: [
+      ['.', [['k', 'a']]],
+      ['ka', [['k', 'a']]],
+    ] as [string, [string[]]][],
+    legends: [],
+  } satisfies UserLayoutContent;
+  const problem = layoutProblems(conflict).find((entry) => entry.field.kind === 'build');
+  assert.equal(problem?.severity, 'error');
+  assert.equal(problem?.message, '「.」の打鍵（A・K）と「ka」の打鍵（A・K）が同時に成り立つため、配列として組み立てられません');
+  assert.doesNotMatch(problem?.message ?? '', /logical|canonical|activation/);
+});
