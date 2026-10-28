@@ -1,6 +1,7 @@
+import { EMPTY_BROWSER_KEY_BINDING_OVERRIDES, type BrowserKeyBindingOverrides } from '#input/shapes/browser-key-codes.ts';
 import type { PhysicalKeyEvent } from './engine/index.ts';
 
-export type BrowserKeyBindingOverrides = Readonly<Record<string, PhysicalKeyEvent['key'] | null>>;
+export type { BrowserKeyBindingOverrides };
 
 export interface ThumbKeyBindings {
   readonly leftCodes: readonly string[];
@@ -12,7 +13,7 @@ export const DEFAULT_THUMB_KEY_BINDINGS: ThumbKeyBindings = {
   rightCodes: ['Space', 'Convert'],
 };
 
-export const EMPTY_BROWSER_KEY_BINDING_OVERRIDES: BrowserKeyBindingOverrides = {};
+export { EMPTY_BROWSER_KEY_BINDING_OVERRIDES };
 
 const LEGACY_THUMB_STORAGE_KEY = 'keydist:input-thumb-key-bindings';
 const STORAGE_KEY = 'keydist:input-key-bindings';

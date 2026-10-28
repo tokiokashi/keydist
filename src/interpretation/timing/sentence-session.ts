@@ -1,3 +1,4 @@
+import { LEFT_COLUMN_KEYS } from '#input/shapes/geometry.ts';
 import type { Stroke } from '#trace/generate.ts';
 import { calibrationKeyMatches } from './calibration.ts';
 import type { SentenceAnalysis, SentenceSample, SentenceSpellingSource, SentenceTap } from './sentence-measurement.ts';
@@ -25,12 +26,17 @@ export interface SentenceStep {
   readonly outputChars?: readonly string[];
 }
 
+/** 1文字のキー。キーボードがコンボを文字に変えて送る時の、出力の文字の判定にも使う。 */
+function singleCharKey(keyId: string): boolean {
+  return [...keyId].length === 1 && keyId.trim() !== '';
+}
+
 /**
- * 測定の打鍵として取れるキーか。取れるのは1文字のキーだけで（`key-capture.ts`）、
- * Space・Shiftなどの修飾キー・親指キー・名前を持たない追加のキーは取れない。
+ * 測定の打鍵として取れるキーか。取れるのは1文字のキーと、物理配列の左端の列のキー（CapsLock・Tab・半角/全角の位置。
+ * `LEFT_COLUMN_KEYS`）で（`key-capture.ts`）、Space・Shiftなどの修飾キー・親指キー・名前を持たない追加のキーは取れない。
  */
 function capturableKey(keyId: string): boolean {
-  return [...keyId].length === 1 && keyId.trim() !== '';
+  return singleCharKey(keyId) || (LEFT_COLUMN_KEYS as readonly string[]).includes(keyId);
 }
 
 /** 打つキーの列を作るのに読むストロークの部分。 */
@@ -50,7 +56,7 @@ export function sentenceSteps(analysis: { readonly strokes: readonly SentenceStr
       stroke.aggregationGroupId === 'combo' &&
       strokesPerSelection.get(stroke.selectionIndex) === 1 &&
       outputChars.length > 0 &&
-      outputChars.every(capturableKey);
+      outputChars.every(singleCharKey);
     return {
       keys: [...new Set(stroke.presses.flatMap((press) => press.keys.map((key) => key.id)))],
       inputIndex: stroke.inputIndex,
@@ -214,6 +220,8 @@ function remainingStepKeys(run: StepRun): readonly string[] {
 export interface SentenceKeyEvent {
   readonly key: string;
   readonly code: string;
+  /** Testerと同じ対応で`code`から引いたキーのid。引けなければ無い。 */
+  readonly physicalKey?: string;
 }
 
 export type SentencePressOutcome =

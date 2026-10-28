@@ -326,6 +326,8 @@ export function remainingCalibrationIntervals(run: CalibrationRun): number {
 export interface CalibrationKeyEvent {
   readonly key: string;
   readonly code: string;
+  /** Testerと同じ対応で`code`から引いたキーのid。引けなければ無い。 */
+  readonly physicalKey?: string;
 }
 
 export type CalibrationPressOutcome =

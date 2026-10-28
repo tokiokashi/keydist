@@ -405,9 +405,20 @@ export function calibrationDirectedSameHandPairs(geometry: Geometry, eligibleKey
   return pairs;
 }
 
-export function calibrationKeyMatches(event: { readonly key: string; readonly code: string }, keyId: string, keyLabel = keyId): boolean {
+/**
+ * 押下が、キーidのキーを打ったものか。次のどれかで一致すればよい。
+ * `event.key`を配列の文字・キーidと比べる経路、`event.code`の標準の表でキーidを引く経路、
+ * `physicalKey`（Testerと同じ対応で`event.code`から引いたキーのid）がキーidと一致する経路。
+ * OSでキーを入れ替えている利用者は、`event.key`が配列の文字と合わないので、`physicalKey`の経路で照合する。
+ */
+export function calibrationKeyMatches(
+  event: { readonly key: string; readonly code: string; readonly physicalKey?: string },
+  keyId: string,
+  keyLabel = keyId,
+): boolean {
   // 右手の親指のキーはSpace。物理配列はSpaceを右手の親指のキーとして扱う。
   if (resolveKeyId(keyId) === THUMB_KEY.RT) return event.code === 'Space' || event.key === ' ';
+  if (event.physicalKey !== undefined && event.physicalKey === keyId) return true;
   const eventKey = event.key.toLowerCase();
   if (eventKey === keyId.toLowerCase() || eventKey === keyLabel.toLowerCase()) return true;
 

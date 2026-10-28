@@ -467,3 +467,18 @@ test('押すキーの読み方が先に完了し、出力の文字の読み方�
     [false, false],
   );
 });
+
+test('CapsLock・Tab・半角/全角の位置のキーは取れるキーで、Tab・Backquoteの押下でそのキーを打てる', () => {
+  assert.equal(sentenceUnmeasurable([step(['caps-lock'], 0), step(['tab'], 1), step(['backquote'], 2)]), undefined);
+  let run = startSentenceRun(planOf([step(['tab'], 0), step(['backquote'], 1)]));
+  const tab = pressSentenceKey(run, { key: 'Tab', code: 'Tab', physicalKey: 'tab' }, 100, label);
+  assert.equal(tab.outcome.kind, 'step-finished');
+  run = tab.run;
+  assert.equal(pressSentenceKey(run, { key: 'Zenkakuhankaku', code: 'Backquote', physicalKey: 'backquote' }, 200, label).outcome.kind, 'run-finished');
+});
+
+test('左端の列のキーを打つ番に別のキーを押すと違うキーとして扱い、Tabを押す番に別の位置のキーを押しても同じ', () => {
+  const run = startSentenceRun(planOf([step(['tab'], 0)]));
+  assert.equal(pressSentenceKey(run, keyEvent('a'), 100, label).outcome.kind, 'wrong-key');
+  assert.equal(pressSentenceKey(run, { key: 'CapsLock', code: 'CapsLock', physicalKey: 'caps-lock' }, 100, label).outcome.kind, 'wrong-key');
+});

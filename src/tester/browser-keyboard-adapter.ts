@@ -1,6 +1,13 @@
 import type { PhysicalKeyboardStandard } from '#input/shapes/geometry.ts';
 import type { PhysicalKeyEvent } from './engine/index.ts';
-import { EMPTY_BROWSER_KEY_BINDING_OVERRIDES, type BrowserKeyBindingOverrides } from './browser-keyboard-bindings.ts';
+import {
+  CODE_TO_KEY,
+  EMPTY_BROWSER_KEY_BINDING_OVERRIDES,
+  browserCodeToPhysicalKey,
+  type BrowserKeyBindingOverrides,
+} from '#input/shapes/browser-key-codes.ts';
+
+export { browserCodeToPhysicalKey };
 
 export interface BrowserKeyboardEventLike {
   readonly type: string;
@@ -11,28 +18,6 @@ export interface BrowserKeyboardEventLike {
   readonly altKey?: boolean;
   readonly metaKey?: boolean;
 }
-
-const CODE_TO_KEY: Readonly<Record<string, PhysicalKeyEvent['key']>> = {
-  Minus: '-',
-  Equal: '=',
-  BracketLeft: '[',
-  BracketRight: ']',
-  Semicolon: ';',
-  Quote: "'",
-  Comma: ',',
-  Period: '.',
-  Slash: '/',
-  Tab: 'tab',
-  Escape: 'escape',
-  CapsLock: 'caps-lock',
-  Backquote: 'backquote',
-  Backslash: 'backslash',
-  Space: 'thumb-r',
-  Convert: 'thumb-r',
-  NonConvert: 'thumb-l',
-  ShiftLeft: 'shift-l',
-  ShiftRight: 'shift-r',
-};
 
 const LETTER_CODES = Array.from({ length: 26 }, (_, index) => `Key${String.fromCharCode(65 + index)}`);
 const DIGIT_CODES = Array.from({ length: 10 }, (_, index) => `Digit${index}`);
@@ -66,18 +51,6 @@ export function isBrowserTextInputCode(code: string): boolean {
       'Slash',
     ].includes(code)
   );
-}
-
-export function browserCodeToPhysicalKey(
-  code: string,
-  overrides: BrowserKeyBindingOverrides = EMPTY_BROWSER_KEY_BINDING_OVERRIDES,
-): PhysicalKeyEvent['key'] | undefined {
-  if (Object.hasOwn(overrides, code)) {
-    return overrides[code] ?? undefined;
-  }
-  if (/^Key[A-Z]$/.test(code)) return code.slice(3).toLowerCase();
-  if (/^Digit[0-9]$/.test(code)) return code.slice(5);
-  return CODE_TO_KEY[code];
 }
 
 /**

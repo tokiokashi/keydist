@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { setPersonalSpeedCommand } from '#engine/commands.ts';
+import { loadBrowserKeyBindingOverrides } from '#tester/browser-keyboard-bindings.ts';
 import { PersonalSpeedEditor } from '#editors/personal-speed/PersonalSpeedEditor.tsx';
 import { SPEC_LINKS } from '../about/links.ts';
 import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
@@ -8,6 +9,15 @@ import { personalSpeedSentenceBuilder } from './sentence-source.ts';
 
 /** 画面の説明から、計算の詳細へ案内する再生時間モデルの仕様書。 */
 const TIMING_SPEC_HREF = SPEC_LINKS.find((link) => link.path === 'spec/playback-timing.md')?.url;
+
+/** Testerの画面で割り当てた、押下の`code`からキーのidへの対応。保存先を読めない時は割り当てなしとして扱う。 */
+function readKeyBindingOverrides() {
+  try {
+    return loadBrowserKeyBindingOverrides(window.localStorage);
+  } catch {
+    return {};
+  }
+}
 
 /**
  * 個人速度の画面の組み立て。資産の読み書きと履歴は、個別画面と同じ仕組みに乗せる。
@@ -35,6 +45,7 @@ export function PersonalSpeedApp() {
       initialSelection={initialPersonalSpeedSelection(assets, catalog)}
       defaultFingerAssignmentId={(shapeId) => defaultFingerAssignmentIdOf(shapeId, catalog)}
       buildSentence={buildSentence}
+      readKeyBindingOverrides={readKeyBindingOverrides}
       canUndo={canUndo}
       canRedo={canRedo}
       onUndo={undo}

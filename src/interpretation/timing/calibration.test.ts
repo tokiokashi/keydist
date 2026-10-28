@@ -3,6 +3,7 @@ import test from 'node:test';
 import { assignmentWithHomeKeys, buildGeometry, DEFAULT_FINGER_ASSIGNMENT } from '#input/shapes/geometry.ts';
 import {
   calibrationEligibleKeyIds,
+  calibrationKeyMatches,
   calibrationKeyPairs,
   fingerMeasurementFromIntervals,
   meanRepeatMs,
@@ -282,4 +283,14 @@ test('同時押しの上乗せは-1000から1000ミリ秒まで保存でき、�
   assert.equal(isPlaybackCalibration({ ...VALID, simultaneousOverheadMs: { arpeggio: 10 } }), false);
   assert.equal(isPlaybackCalibration({ ...VALID, simultaneousOverheadMs: 'x' }), false);
   assert.equal(playbackCalibrationProblem({ ...VALID, simultaneousOverheadMs: { thumb: 5000 } }), '同時押しの上乗せが正しくありません');
+});
+
+test('押下の照合は、event.keyの経路に加えて、Testerと同じ対応で引いたキーのidの経路でも一致する', () => {
+  // 配列の文字（き）と合わず、event.codeの標準の表にも無い押下は、physicalKeyの経路だけで一致する
+  assert.equal(calibrationKeyMatches({ key: '\\', code: 'IntlRo' }, 'caps-lock', 'き'), false);
+  assert.equal(calibrationKeyMatches({ key: '\\', code: 'IntlRo', physicalKey: 'caps-lock' }, 'caps-lock', 'き'), true);
+  assert.equal(calibrationKeyMatches({ key: '\\', code: 'IntlRo', physicalKey: 'r3c10' }, 'caps-lock', 'き'), false);
+  // 今の経路は残る
+  assert.equal(calibrationKeyMatches({ key: 'き', code: 'KeyA' }, 'caps-lock', 'き'), true);
+  assert.equal(calibrationKeyMatches({ key: 'F', code: 'KeyF' }, 'f'), true);
 });
