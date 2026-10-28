@@ -200,10 +200,6 @@ export function toLayout(def: UserLayout): Layout {
   // imported形式は物理spaceを機能キーとして扱う場合があるため、
   // syntheticなthumb-r -> ' ' を足さず、明示されたsequenceだけをkeymapへ入れる。
   const layout = fromRows(def.id, def.name, rows, imported ? {} : { RT: ' ' });
-  if (!def.sequences && !def.legends) {
-    // 組み込みの英字配列と同じく、単打の段定義には通常Shiftの出力を付ける。
-    return { ...withShiftedOutputs(layout), ...(def.homeKeys === undefined ? {} : { homeKeys: def.homeKeys }) };
-  }
   const map = new Map(layout.map);
   const canonicalInputs = new Map<string, InputAlternative[]>(
     [...layout.canonicalInputs].map(([output, alternatives]) => [output, [...alternatives]] as const),
@@ -218,13 +214,15 @@ export function toLayout(def: UserLayout): Layout {
       ...(canonicalInputs.get(output) ?? []).filter((candidate) => canonicalInputAlternativeIdentity(candidate) !== alternativeIdentity),
     ]);
   }
-  const legends = new Map(layout.legends);
-  for (const [key, label] of def.legends ?? []) legends.set(resolveKeyId(key), label);
   validateCanonicalInputMap(canonicalInputs);
+  // 通常Shiftの出力は、定義ファイルの打鍵列を合成した後の配列に足す。
+  // 打鍵列が置いた大文字・記号は「既に置かれた出力」として残り、Shiftの経路が並立しない。
+  const composed = withShiftedOutputs({ ...layout, map, canonicalInputs });
+  // 凡例は定義ファイルの表示を優先する（Shiftキーのラベルも定義ファイルのものが残る）
+  const legends = new Map(composed.legends);
+  for (const [key, label] of def.legends ?? []) legends.set(resolveKeyId(key), label);
   return {
-    ...layout,
-    map,
-    canonicalInputs,
+    ...composed,
     legends,
     ...(def.homeKeys === undefined ? {} : { homeKeys: def.homeKeys }),
   };
