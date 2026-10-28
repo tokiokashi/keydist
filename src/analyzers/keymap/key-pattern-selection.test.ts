@@ -52,18 +52,28 @@ test('キーを選んでいない時は、キーを選ぶよう促す文だけ�
 
 test('3キーのコンボは、1キーずつ選ぶと出る文字までたどれる（大西配列のカスタム・日本語）', () => {
   const layout = resolvedLayout('oonishi-custom', 'ja');
-  // 語彙拡張: 物理キーのj・l・mを同時に押す（ローマ字のd + s + t）→ desita
-  const one = keyPatternSelectionView(layout, ['j']);
+  // 語彙拡張: 物理キーのk・l・mを同時に押す（ローマ字のd + s + n）→ desita
+  const one = keyPatternSelectionView(layout, ['k']);
   assert.ok(one.continuationKeys.has('l'));
 
-  const two = keyPatternSelectionView(layout, ['j', 'l']);
+  const two = keyPatternSelectionView(layout, ['k', 'l']);
   assert.equal(two.exactOutputs.includes('desita'), false);
   assert.equal(two.candidateLegends.get('m')?.split(' / ').includes('desita'), true);
   assert.ok(two.continuationKeys.has('m'));
 
-  const three = keyPatternSelectionView(layout, ['j', 'l', 'm']);
+  const three = keyPatternSelectionView(layout, ['k', 'l', 'm']);
   assert.ok(three.exactOutputs.includes('desita'));
   assert.match(three.message, /^確定: /);
+});
+
+test('物理キーのj・l・m（ローマ字のd + s + t）を同時に押しても desita にならない（大西配列のカスタム・日本語）', () => {
+  const layout = resolvedLayout('oonishi-custom', 'ja');
+  const view = keyPatternSelectionView(layout, ['j', 'l', 'm']);
+  assert.equal(view.exactOutputs.includes('desita'), false);
+  assert.equal(
+    layout.resolvedComboDefinitions?.some((definition) => [...definition.inputs].sort().join() === ['d', 's', 't'].sort().join()),
+    false,
+  );
 });
 
 test('英文を打つ時は、ローマ字で打つ時だけのコンボをたどれない', () => {
@@ -89,14 +99,14 @@ test('出る文字が無い組み合わせは、その旨を出す', () => {
 
 test('読み上げの説明: 続けて押せるキーには続けて押せると足し、あと1キーで決まるキーには出力が決まる旨だけを足す', () => {
   const layout = resolvedLayout('oonishi-custom', 'ja');
-  const one = keyPatternSelectionView(layout, ['j']);
+  const one = keyPatternSelectionView(layout, ['l']);
   const continuationOnly = [...one.continuationKeys].find((key) => !one.candidateLegends.has(key));
   assert.ok(continuationOnly !== undefined);
   assert.equal(keyPatternKeyDescription(one, continuationOnly), KEY_PATTERN_CONTINUATION_DESCRIPTION);
   assert.equal(keyPatternKeyDescription(one, 'z'), undefined);
 
   // m は続けて押せるキーにも候補にも含まれるので、説明は候補の旨だけになる
-  const two = keyPatternSelectionView(layout, ['j', 'l']);
+  const two = keyPatternSelectionView(layout, ['k', 'l']);
   assert.ok(two.continuationKeys.has('m'));
   assert.ok(two.candidateLegends.has('m'));
   assert.equal(keyPatternKeyDescription(two, 'm'), KEY_PATTERN_OUTPUT_DESCRIPTION);

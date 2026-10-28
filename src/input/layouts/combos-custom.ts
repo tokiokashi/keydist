@@ -10,7 +10,7 @@ import type { ComboCondition, ComboDefinition, ComboPresentation } from './types
 const YOUON_ONLY: ComboCondition = { youonOnly: true };
 
 const RAW_CUSTOM_COMBOS: ComboDefinition[] = [
-  ['desita', ['d', 's', 't']],
+  ['desita', ['d', 's', 'n']],
   ['masita', ['m', 's', 't']],
   ['siteha', ['s', 't', 'h']],
   ['deha', ['d', 'h']],
