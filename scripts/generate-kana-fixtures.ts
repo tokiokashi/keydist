@@ -33,6 +33,18 @@ interface Omission {
   reason: OmissionReason;
 }
 
+/** 出典の値を、別の出典（作者の追記など）に従って置き換えたセル。`source` に根拠を書く。 */
+interface Substitution {
+  faceIndex: number;
+  row: number;
+  column: number;
+  /** 出典（sourceRows）の値。 */
+  value: string;
+  /** 採用する値（rows）。 */
+  adopted: string;
+  source: string;
+}
+
 export interface SourceManifest {
   version: 2;
   layoutId: string;
@@ -44,6 +56,8 @@ export interface SourceManifest {
   };
   faces: SourceFace[];
   omissions: Omission[];
+  /** 出典の値を置き換えたセル。持たない manifest は省略する。 */
+  substitutions?: Substitution[];
 }
 
 interface Fixture {
@@ -139,6 +153,21 @@ export function validateSourceManifest(fileName: string, manifest: SourceManifes
     }
   }
 
+  const substitutionKeys = new Set<string>();
+  for (const sub of manifest.substitutions ?? []) {
+    const key = omissionKey(sub.faceIndex, sub.row, sub.column);
+    if (substitutionKeys.has(key)) throw new Error(`${fileName}: 置き換えが重複している (face ${sub.faceIndex}, row ${sub.row}, column ${sub.column})`);
+    substitutionKeys.add(key);
+    if (sub.source === '' || sub.adopted === '' || sub.adopted === sub.value)
+      throw new Error(`${fileName}: 置き換えの根拠か採用する値が不正 (face ${sub.faceIndex}, row ${sub.row}, column ${sub.column})`);
+    if (decodedSourceRows[sub.faceIndex]?.[sub.row]?.[sub.column] !== sub.value) {
+      throw new Error(`${fileName}: sourceRowsの値と substitutions.value が一致しない (face ${sub.faceIndex}, row ${sub.row}, column ${sub.column})`);
+    }
+    if (manifest.faces[sub.faceIndex].rows[sub.row][sub.column] !== sub.adopted) {
+      throw new Error(`${fileName}: 採用側rowsの値と substitutions.adopted が一致しない (face ${sub.faceIndex}, row ${sub.row}, column ${sub.column})`);
+    }
+  }
+
   for (const [faceIndex, face] of manifest.faces.entries()) {
     for (const [rowIndex, sourceRow] of decodedSourceRows[faceIndex].entries()) {
       const selectedRow = face.rows[rowIndex];
@@ -154,6 +183,7 @@ export function validateSourceManifest(fileName: string, manifest: SourceManifes
         }
 
         if (sourceCell === selectedCell) continue;
+        if (substitutionKeys.has(key)) continue;
 
         if (sourceCell !== '' && selectedCell === '') {
           if (!omitted) {

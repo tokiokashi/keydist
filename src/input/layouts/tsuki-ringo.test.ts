@@ -20,9 +20,10 @@ interface SourceFace {
   sourceRows: string[];
 }
 
-/** 出典のスナップショット。定義ファイルから起こした面を持つ。 */
+/** 出典のスナップショット。定義ファイルから起こした面（rows）に、作者の追記による置き換え（substitutions）を加えた採用する値を持つ。 */
 const manifest = JSON.parse(readFileSync(new URL('../../../test/fixtures/sources/tsuki-ringo.json', import.meta.url), 'utf8')) as {
   faces: SourceFace[];
+  substitutions: Array<{ faceIndex: number; row: number; column: number; value: string; adopted: string }>;
 };
 
 const ANSI_KEYS = ['1234567890-=', 'qwertyuiop[]', "asdfghjkl;'", 'zxcvbnm,./'];
@@ -33,9 +34,7 @@ const routeKeys = (face: SourceFace, key: string): string => (face.mode === 'suf
 /** 出典の各セルの、出力と打鍵の列（キーを空白で区切った文字列）。格子の外のキーのセルも含む。 */
 function sourceRoutes(): Array<{ output: string; keys: string }> {
   return manifest.faces.flatMap((face) => [
-    ...face.sourceRows.flatMap((row, r) =>
-      row.split('\t').flatMap((output, c) => (output === '' ? [] : [{ output, keys: routeKeys(face, ANSI_KEYS[r]![c]!) }])),
-    ),
+    ...face.rows.flatMap((row, r) => row.flatMap((output, c) => (output === '' ? [] : [{ output, keys: routeKeys(face, ANSI_KEYS[r]![c]!) }]))),
     ...Object.entries(face.extraCells ?? {}).map(([key, output]) => ({ output, keys: routeKeys(face, key) })),
   ]);
 }
@@ -174,4 +173,16 @@ test('単打の ゛ を面から外すと、iは単打で文字を出さず、�
     generateTrace('れょ', withoutDakuten, geometry, DEFAULT_TRACE_POLICY).strokes.map((stroke) => keysOf(stroke) + (stroke.commit === true ? '*' : '')),
     ['a', 'thumb-r*', 'e'],
   );
+});
+
+test('せ の★（ぉ）と ゃ の★（ぁ）は、定義ファイルの値を作者の追記に従って入れ替えた向きで、置き換えはこの2セルだけ', () => {
+  assert.deepEqual(
+    manifest.substitutions.map(({ faceIndex, row, column, value, adopted }) => [faceIndex, row, column, value, adopted]),
+    [
+      [1, 1, 0, 'ぁ', 'ぉ'],
+      [1, 1, 9, 'ぉ', 'ぁ'],
+    ],
+  );
+  assert.deepEqual(typedKeys('ぉ'), ['q e']);
+  assert.deepEqual(typedKeys('ぁ'), ['p e']);
 });

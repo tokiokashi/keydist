@@ -193,3 +193,25 @@ test('格子の外のキー（backquote・tab・caps-lock）の出力を持つ�
   assert.throws(build({ a: 'き' }), /キー（a）が格子の外のキーではない/);
   assert.throws(build({ 'caps-lock': '' }), /キー（caps-lock）の出力が空/);
 });
+
+test('置き換えは、sourceRowsの値と採用する値が一致し、根拠があれば通り、それ以外は失敗する', () => {
+  const build = (patch: Partial<NonNullable<SourceManifest['substitutions']>[number]> = {}) => {
+    const manifest = makeManifest();
+    setSourceCell(manifest, 0, 0, 0, 'ぁ');
+    manifest.faces[0].rows[0][0] = 'ぉ';
+    manifest.substitutions = [{ faceIndex: 0, row: 0, column: 0, value: 'ぁ', adopted: 'ぉ', source: '作者の追記', ...patch }];
+    return () => validateSourceManifest('substitution.json', manifest);
+  };
+
+  assert.doesNotThrow(build());
+  assert.throws(build({ value: 'あ' }), /sourceRowsの値と substitutions\.value が一致しない/);
+  assert.throws(build({ adopted: 'ぃ' }), /採用側rowsの値と substitutions\.adopted が一致しない/);
+  assert.throws(build({ source: '' }), /置き換えの根拠か採用する値が不正/);
+});
+
+test('置き換えの記録が無いsourceRowsとrowsの差は失敗する', () => {
+  const manifest = makeManifest();
+  setSourceCell(manifest, 0, 0, 0, 'ぁ');
+  manifest.faces[0].rows[0][0] = 'ぉ';
+  assert.throws(() => validateSourceManifest('no-substitution.json', manifest), /差分がomissionとして表現されていない/);
+});
