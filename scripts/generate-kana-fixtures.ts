@@ -56,7 +56,7 @@ export interface SourceManifest {
   };
   faces: SourceFace[];
   omissions: Omission[];
-  /** 出典の値を置き換えたセル。持たない manifest は省略する。 */
+  /** 出典の値を置き換えたセル。持たないmanifestは省略する。 */
   substitutions?: Substitution[];
 }
 
@@ -161,10 +161,10 @@ export function validateSourceManifest(fileName: string, manifest: SourceManifes
     if (sub.source === '' || sub.adopted === '' || sub.adopted === sub.value)
       throw new Error(`${fileName}: 置き換えの根拠か採用する値が不正 (face ${sub.faceIndex}, row ${sub.row}, column ${sub.column})`);
     if (decodedSourceRows[sub.faceIndex]?.[sub.row]?.[sub.column] !== sub.value) {
-      throw new Error(`${fileName}: sourceRowsの値と substitutions.value が一致しない (face ${sub.faceIndex}, row ${sub.row}, column ${sub.column})`);
+      throw new Error(`${fileName}: sourceRowsの値と一致しない（substitutions.value） (face ${sub.faceIndex}, row ${sub.row}, column ${sub.column})`);
     }
     if (manifest.faces[sub.faceIndex].rows[sub.row][sub.column] !== sub.adopted) {
-      throw new Error(`${fileName}: 採用側rowsの値と substitutions.adopted が一致しない (face ${sub.faceIndex}, row ${sub.row}, column ${sub.column})`);
+      throw new Error(`${fileName}: 採用側rowsの値と一致しない（substitutions.adopted） (face ${sub.faceIndex}, row ${sub.row}, column ${sub.column})`);
     }
   }
 

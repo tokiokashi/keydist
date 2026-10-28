@@ -204,8 +204,8 @@ test('置き換えは、sourceRowsの値と採用する値が一致し、根拠�
   };
 
   assert.doesNotThrow(build());
-  assert.throws(build({ value: 'あ' }), /sourceRowsの値と substitutions\.value が一致しない/);
-  assert.throws(build({ adopted: 'ぃ' }), /採用側rowsの値と substitutions\.adopted が一致しない/);
+  assert.throws(build({ value: 'あ' }), /sourceRowsの値と一致しない（substitutions\.value）/);
+  assert.throws(build({ adopted: 'ぃ' }), /採用側rowsの値と一致しない（substitutions\.adopted）/);
   assert.throws(build({ source: '' }), /置き換えの根拠か採用する値が不正/);
 });
 
