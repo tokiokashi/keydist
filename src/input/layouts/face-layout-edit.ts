@@ -14,8 +14,8 @@ import {
 } from './kana-face-layout.ts';
 import { uncoveredKana } from './kana-coverage.ts';
 import type { FaceMode, InputRole, LayerKind, TriggerOrder, TriggerPersistence } from './types.ts';
-import { isFaceUserLayout, type FaceUserLayout, type UserLayout } from './user-layouts.ts';
-import { NAME_REQUIRED_MESSAGE, type UserLayoutEditResult } from './layout-edit.ts';
+import { isFaceUserLayout, toLayout, type FaceUserLayout, type UserLayout } from './user-layouts.ts';
+import { buildFailureMessage, NAME_REQUIRED_MESSAGE, type UserLayoutEditResult } from './layout-edit.ts';
 
 /**
  * 面で定義する自作のかな配列を作る・直す操作の純関数。
@@ -140,6 +140,14 @@ export function checkFaceLayout(draft: FaceLayoutDraft): FaceLayoutCheck {
     const built = buildFaceLayout('check', name === '' ? '名前なし' : name, content);
     // 全かなが打てるかは、ローマ字を経ずにかなを打つ種類だけに問う
     uncovered = content.kind === 'kana' ? uncoveredKana(built) : [];
+    // 英字の種類は、計算に使う組み立て（通常Shiftを足した後）まで通して、保存後に使えなくなる定義を保存の時に知らせる
+    if (content.kind === 'alpha') {
+      try {
+        toLayout(definitionOf('check', content));
+      } catch (cause) {
+        problems.push({ path: 'faces', message: buildFailureMessage(cause) });
+      }
+    }
   } catch (error) {
     if (!(error instanceof FaceLayoutBuildError)) throw error;
     problems.push(...error.problems);

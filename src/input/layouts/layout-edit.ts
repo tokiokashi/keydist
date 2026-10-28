@@ -259,7 +259,7 @@ const conflictSideText = (side: ActivationConflictSide): string =>
   `「${side.output}」の打鍵（${side.steps.map((keys) => keys.map((key) => physicalKeyDisplayLabel(key)).join('・')).join('→')}）`;
 
 /** 配列を組み立てられなかった時の誤りの文。同時に成り立つ出力どうしの衝突は、出力と打鍵で示す。 */
-const buildFailureMessage = (cause: unknown): string => {
+export const buildFailureMessage = (cause: unknown): string => {
   if (cause instanceof ActivationConflictError) {
     return `${conflictSideText(cause.left)}と${conflictSideText(cause.right)}が同時に成り立つため、配列として組み立てられません`;
   }

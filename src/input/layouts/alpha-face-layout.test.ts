@@ -184,3 +184,19 @@ test('貼り付け・書き出しのJSONは、かなの種類の面の形だけ�
     assert.equal(result.ok, false);
   }
 });
+
+test('英字の面の形の保存の検査は、通常Shiftを足した後の衝突を保存の時に知らせる', () => {
+  const colliding = clone(ALPHA_FACE);
+  colliding.faces.push({
+    trigger: ['shift-l'],
+    mode: 'simultaneous',
+    triggerPersistence: 'single',
+    inputRole: 'modifier',
+    outputs: { a: '@' },
+  });
+  assert.throws(() => toLayout(colliding));
+  const check = checkFaceLayout(draftOf(contentOfFaceLayout(colliding)));
+  assert.equal(check.content, undefined);
+  assert.match(check.problems[0]!.message, /同時に成り立つため、配列として組み立てられません/);
+  assert.deepEqual(checkFaceLayout(draftOf(contentOfFaceLayout(ALPHA_FACE))).problems, []);
+});

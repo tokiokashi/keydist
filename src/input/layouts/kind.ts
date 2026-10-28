@@ -55,7 +55,7 @@ export function builtInLayoutKind(layoutId: string): LayoutKind {
  *
  * 英語テキストには、`deriveInputMethod`（`#input/setup/input-method.ts`）が
  * 「かな配列は使えない」という原則を自作配列にも一律で適用する
- * （面で定義する自作配列は英語テキストには使えない、と判定する）。
+ * （種類がかなの自作配列は英語テキストには使えず、英字の自作配列は面の形でも使える）。
  */
 export function userLayoutKind(layout: UserLayout): LayoutKind {
   return layout.kind;
