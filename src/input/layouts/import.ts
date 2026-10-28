@@ -1,5 +1,6 @@
 import { QWERTY_LEGEND } from '../shapes/geometry.ts';
-import { buildKanaContent, dashHeadingWarning, NO_OUTPUT_MESSAGE, printableOutput, type ParsedCell, type ParsedFace } from './import-faces.ts';
+import { readDvorakJHeading, isSequentialDeclaration, parseSubstitution, type HeadingSubstitution } from './dvorakj-heading.ts';
+import { buildKanaContent, faceSequence, NO_OUTPUT_MESSAGE, printableOutput, type ParsedCell, type ParsedFace } from './import-faces.ts';
 import type { KanaLayoutContent } from './kana-face-layout-file.ts';
 import type { Sequence } from './types.ts';
 
@@ -118,14 +119,10 @@ function resolveFaces(name: string, faces: ParsedFace[], warnings: string[]): Im
   const legends = new Map<string, string>();
   const sequences = new Map<string, Sequence>();
   for (const face of faces) {
-    if (face.dashHeading === true) {
-      addWarning(warnings, dashHeadingWarning(face.heading));
-      continue;
-    }
     const base = face.trigger.length === 0;
     for (const cell of face.cells) {
       const physical = QWERTY_LEGEND[cell.row][cell.column];
-      const sequence: Sequence = [face.trigger.concat(physical)];
+      const sequence: Sequence = faceSequence(face, physical);
       recordCell(rows, legends, sequences, kinds, cell.row, cell.column, cell.output, cell.label, sequence, base);
       if (!base && face.isFunctionLabel(cell.label)) legends.set(physical, cell.label);
     }
@@ -190,8 +187,14 @@ const DvorakJ_FUNCTIONS = new Set([
   '無',
 ]);
 
+/** 機能キーの名前に回数が付いた形（`{Del 2}`）の、回数を除いた名前を取り出す。 */
+const functionName = (token: string): string =>
+  normalise(token)
+    .trim()
+    .replace(/\s+\d+$/, '');
+
 function isDvorakJFunction(token: string): boolean {
-  const value = normalise(token).trim();
+  const value = functionName(token);
   return DvorakJ_FUNCTIONS.has(value.toUpperCase()) || /^[Ff]\d{1,2}$/.test(value);
 }
 
@@ -199,21 +202,39 @@ function hasDvorakJFunctionLabel(label: string): boolean {
   return [...label.matchAll(/\{([^}]*)\}/g)].some((match) => isDvorakJFunction(match[1] ?? ''));
 }
 
-/** DvorakJの機能キー表記から、機能キーを除いた出力を取り出す。 */
+/**
+ * セルがAutoHotkeyの送信の書式を含むか。キーの操作や修飾（`^i`、`+{End}`）、機能キー以外の名前（`{vkF2}`、`{改行}`）が該当する。
+ * 1文字を括弧で囲んだ形（`{!}`、`{{}`）はその文字そのもので、機能キーの名前（`{Enter}`）は出力を持たないだけで書式として扱わない。
+ */
+function hasSendFormat(cell: string): boolean {
+  let plain = '';
+  let cursor = 0;
+  for (const match of cell.matchAll(/\{([^}]*)\}/g)) {
+    plain += cell.slice(cursor, match.index);
+    cursor = (match.index ?? 0) + match[0].length;
+    const token = match[1] ?? '';
+    if ([...token].length > 1 && !isDvorakJFunction(token)) return true;
+  }
+  plain += cell.slice(cursor);
+  return /[\^!#+]/.test(plain);
+}
+
+/** DvorakJの機能キー表記から、機能キーを除いた出力を取り出す。送信の書式を含むセルは出力を持たない。 */
 function dvorakJCell(raw: string): { output?: string; label: string } | undefined {
   const trimmed = raw.trim();
   if (!trimmed || trimmed === '@@@') return undefined;
   const label = trimmed.replace(/^\+/, '');
+  if (hasSendFormat(trimmed)) return { label };
   let output = '';
   let cursor = 0;
   const tokenPattern = /\{([^}]*)\}/g;
   for (const match of trimmed.matchAll(tokenPattern)) {
-    output += trimmed.slice(cursor, match.index).replace(/^\+/, '');
+    output += trimmed.slice(cursor, match.index);
     const token = match[1] ?? '';
     if (!isDvorakJFunction(token)) output += token;
     cursor = (match.index ?? 0) + match[0].length;
   }
-  output += trimmed.slice(cursor).replace(/^\+/, '');
+  output += trimmed.slice(cursor);
   return { output: normalise(output.trim()), label };
 }
 
@@ -221,115 +242,63 @@ function dvorakJCells(line: string): string[] {
   return line.split('|').map((cell) => cell.trim());
 }
 
-const SCAN_CODE_ROWS = [
-  { start: 0x10, row: 1 },
-  { start: 0x1e, row: 2 },
-  { start: 0x2c, row: 3 },
-] as const;
-
-function dvorakJScanCode(code: string): string | undefined {
-  const numeric = Number.parseInt(code, 16);
-  if (!Number.isFinite(numeric)) return undefined;
-  for (const { start, row } of SCAN_CODE_ROWS) {
-    const column = numeric - start;
-    if (column >= 0 && column < WIDTHS[row]) return QWERTY_LEGEND[row][column];
-  }
-  return undefined;
-}
-
-function dvorakJAliases(lines: string[], warnings: string[]): Map<string, string> {
-  const aliases = new Map<string, string>();
-  for (const line of lines) {
-    const match = line.trim().match(/^\{([^}]+)\}\s*\|\s*[+-]([0-9a-f]{2}|shift)\s*$/i);
-    if (!match) continue;
-    const key = match[1];
-    const code = match[2].toLowerCase();
-    // DvorakJのSはこの形式のセンターシフトを表す。旧idのspaceを返し、評価入口でthumb-rに解決する。
-    const physical = code === 'shift' && key.toUpperCase() === 'S' ? 'space' : dvorakJScanCode(code);
-    if (physical) aliases.set(key, physical);
-    else addWarning(warnings, `DvorakJのエイリアス「${key}」の物理キーを解決できないため無視しました`);
-  }
-  return aliases;
-}
-
-function resolveDvorakJTrigger(token: string, aliases: Map<string, string>): string | undefined {
-  const normalized = normalise(token);
-  return (
-    aliases.get(token) ??
-    aliases.get(normalized) ??
-    (normalized.length === 1 && (QWERTY_LEGEND.join('').includes(normalized) || normalized === ' ')
-      ? normalized === ' '
-        ? 'space'
-        : normalized.toLowerCase()
-      : undefined)
-  );
-}
-
-function dvorakJHeader(header: string, aliases: Map<string, string>): string[] | undefined {
-  if (header === '[') return [];
-
-  const parenthesised = header.match(/^\((.*)\[\s*$/);
-  if (parenthesised) {
-    if (parenthesised[1].replace(/\{[^}]+\}/g, '').trim()) return undefined;
-    const tokens = [...parenthesised[1].matchAll(/\{([^}]+)\}/g)].map((m) => m[1]);
-    const triggers = tokens.map((token) => resolveDvorakJTrigger(token, aliases));
-    return tokens.length > 0 && triggers.every((trigger): trigger is string => trigger !== undefined) ? triggers : undefined;
-  }
-
-  // 一部のDvorakJ配布物は -f-jを、次行の [ と組み合わせて使う。
-  if (isDashSeparatedHeader(header)) {
-    const triggers = header
-      .split('-')
-      .filter(Boolean)
-      .map((token) => resolveDvorakJTrigger(token, aliases));
-    return triggers.length > 0 && triggers.every((trigger): trigger is string => trigger !== undefined) ? triggers : undefined;
-  }
-  return undefined;
-}
-
 /**
- * `-f-j` のように、先頭が `-` で、`-` 以外の並びを `-` で区切った見出しか。
- * 連続する `-` は許さず、末尾の `-` は1つまで許す。
- * 利用者のファイルが通る経路なので、バックトラックが入力の長さに対して線形で済む形で書く。
+ * 表の見出しの行を、`[` の前の文字列と `[` の数に分ける。見出しは `[` と同じ行に書く。
+ * 行末の数字（窓の名前）は読み飛ばす。正規表現を使わず、行の長さに対して線形で読む。
  */
-export function isDashSeparatedHeader(header: string): boolean {
-  return /^-[^-]+(?:-[^-]+)*-?$/.test(header);
+function splitTableHeader(line: string): { header: string; brackets: number } | undefined {
+  const text = line.trim();
+  let digits = text.length;
+  while (digits > 0 && text.charCodeAt(digits - 1) >= 48 && text.charCodeAt(digits - 1) <= 57) digits--;
+  let start = digits;
+  while (start > 0 && text[start - 1] === '[') start--;
+  if (start === digits) return undefined;
+  return { header: text.slice(0, start).trim(), brackets: digits - start };
 }
 
-/** DvorakJの配列表ブロックだけを読む。コメント・option-inputの設定・ファイル名は判定材料にしない。 */
+/** DvorakJの配列表ブロックだけを読む。コメントやファイル名は判定材料にしない。 */
 export function importDvorakJ(source: string, name = 'DvorakJ取り込み'): ImportedDefinition {
-  const text = source.replace(/^\uFEFF/, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  const text = source.replace(/^﻿/, '').replace(/\/\*[\s\S]*?\*\//g, '');
   const lines = text.split(/\r?\n/);
   const warnings: string[] = [];
-  const aliases = dvorakJAliases(lines, warnings);
+  const sequential = isSequentialDeclaration(lines.find((line) => line.trim() !== '')?.trim() ?? '');
+  const substitutions: HeadingSubstitution[] = [];
   const faces: ParsedFace[] = [];
 
   for (let i = 0; i < lines.length; i++) {
-    const header = lines[i].trim();
-    if (!header || header.startsWith('-option-input')) continue;
-    const triggers = dvorakJHeader(header, aliases);
-    let bodyStart = i;
-    if (isDashSeparatedHeader(header) && lines[i + 1]?.trim() === '[') {
-      bodyStart = i + 1;
-    }
-    const openingBracketIsOnHeader = header.endsWith('[');
-    if (!triggers || (!openingBracketIsOnHeader && lines[bodyStart]?.trim() !== '[')) {
-      if (header !== '-option-input[' && (header.endsWith('[') || (isDashSeparatedHeader(header) && lines[i + 1]?.trim() === '['))) {
-        addWarning(warnings, `DvorakJの面ヘッダ「${header}」を解釈できないため無視しました`);
+    const block = splitTableHeader(lines[i]);
+    if (block === undefined) continue;
+    const heading = lines[i].trim();
+    const body: string[] = [];
+    let end = i;
+    while (++end < lines.length && lines[end].trim() !== ']') body.push(lines[end]);
+    i = end;
+
+    const { header, brackets } = block;
+    if (header === '-option-input' || header === '-option') {
+      for (const line of body) {
+        const substitution = parseSubstitution(line);
+        if (substitution) substitutions.push(substitution);
       }
       continue;
     }
+    if (header === '-option-output' || header === '-raw') continue;
 
-    const body: string[] = [];
-    let end = bodyStart;
-    while (++end < lines.length && lines[end].trim() !== ']') body.push(lines[end]);
-    i = end;
+    const resolved = readDvorakJHeading(header, brackets === 2, { substitutions, sequential });
+    for (const entry of resolved) {
+      if (entry.kind === 'unresolved') {
+        addWarning(warnings, `DvorakJの面ヘッダ「${heading}」のキー「${entry.key}」を解決できないため無視しました`);
+      }
+    }
+    const headings = resolved.filter((entry) => entry.kind === 'face');
+    if (headings.length === 0) continue;
+
     const grid = body
       .filter((line) => line.includes('|'))
       .map(dvorakJCells)
       .slice(0, 4);
     if (grid.length === 0) {
-      addWarning(warnings, `DvorakJの面「${header}」にセルがないため無視しました`);
+      addWarning(warnings, `DvorakJの面「${heading}」にセルがないため無視しました`);
       continue;
     }
     const cells: ParsedCell[] = [];
@@ -339,7 +308,17 @@ export function importDvorakJ(source: string, name = 'DvorakJ取り込み'): Imp
         if (cell) cells.push({ row, column, output: cell.output, label: cell.label });
       }
     }
-    faces.push({ heading: header, trigger: triggers, cells, isFunctionLabel: hasDvorakJFunctionLabel, dashHeading: isDashSeparatedHeader(header) });
+    for (const entry of headings) {
+      faces.push({
+        heading,
+        trigger: entry.trigger,
+        mode: entry.mode,
+        kanaUnrepresentable: entry.kanaUnrepresentable,
+        stroke: { steps: entry.steps, cell: entry.cell },
+        cells,
+        isFunctionLabel: hasDvorakJFunctionLabel,
+      });
+    }
   }
   return resolveFaces(name, faces, warnings);
 }
