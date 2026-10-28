@@ -123,6 +123,22 @@ export function heatMultiBlobSample(level: number): HeatSample {
   return { light: shown('light'), dark: shown('dark') };
 }
 
+/**
+ * ぼかした後のサーモグラフィの、ある点の表示色。`parts` は、その点をぼかす前に作っていた段と重み（段0は地）。
+ * ぼかしはsRGBの値のまま平均するので、段の色を同じ値のまま重みで平均する。
+ */
+export function heatMultiBlobMixSample(parts: readonly { readonly level: number; readonly weight: number }[]): HeatSample {
+  const mix = (theme: HeatTheme): HeatRgb => {
+    const sum: [number, number, number] = [0, 0, 0];
+    for (const { level, weight } of parts) {
+      const rgb = level === 0 ? rgbOfHex(HEAT_GROUND[theme]) : heatMultiBlobSample(level)[theme];
+      for (const n of [0, 1, 2] as const) sum[n] += rgb[n] * weight;
+    }
+    return [round2(sum[0]), round2(sum[1]), round2(sum[2])];
+  };
+  return { light: mix('light'), dark: mix('dark') };
+}
+
 /** WCAG 2.xの相対輝度。 */
 export function relativeLuminance(rgb: HeatRgb): number {
   return 0.2126 * toLinear(rgb[0]) + 0.7152 * toLinear(rgb[1]) + 0.0722 * toLinear(rgb[2]);

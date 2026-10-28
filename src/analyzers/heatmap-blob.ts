@@ -18,8 +18,18 @@ export const HEAT_BLOB_RADIUS_KEYS = 0.6;
 /** 円を縁でぼかすガウスぼかしの標準偏差 [キーの辺の長さの倍]。 */
 export const HEAT_BLOB_SIGMA_KEYS = 0.15;
 
-/** 強度を段に区切る数。段ごとに色か不透明度を変えた矩形で描く。 */
-export const HEAT_BLOB_LEVELS = 32;
+/**
+ * 強度を段に区切る数。段ごとに色か不透明度を変えた矩形で描く。
+ * ライトの多色は色の区切りの幅が狭く（黄から赤が強度0.05）、段が粗いと同心の帯に見える。
+ * 段を細かくすると、同じ段が横に続く範囲が短くなって矩形が増えるので、帯が目立たなくなる最小の段数にしてある。
+ */
+export const HEAT_BLOB_LEVELS = 64;
+
+/**
+ * 矩形の層全体に掛けるガウスぼかしの標準偏差（描画の座標系）。升の角と、段の境目の色の跳びをなだらかにする。
+ * 升の辺（`heatBlobRuns` の `cell`）の半分にすると、升の角が見えなくなる。
+ */
+export const HEAT_BLOB_BLUR = 1;
 
 /** 塊が届く距離 [キーの辺の長さの倍]。標準偏差の4倍まで見れば、取りこぼしは1万分の1より小さい。 */
 const REACH_KEYS = HEAT_BLOB_RADIUS_KEYS + 4 * HEAT_BLOB_SIGMA_KEYS;
@@ -133,4 +143,45 @@ export function heatBlobRuns(sources: readonly HeatBlobSource[], area: HeatBlobA
     flush(area.maxX);
   }
   return runs;
+}
+
+/** ぼかしの重みを数える標準偏差の倍数の範囲。これより外の重みは1割に満たないので数えない。 */
+const BLUR_REACH_SIGMAS = 2;
+const BLUR_STEPS_PER_SIGMA = 2;
+
+/** ぼかしの重み。中心からの距離（標準偏差の倍数）の2乗に応じたガウス分布。 */
+const BLUR_OFFSETS: readonly { readonly dx: number; readonly dy: number; readonly weight: number }[] = (() => {
+  const count = BLUR_REACH_SIGMAS * BLUR_STEPS_PER_SIGMA;
+  const offsets: { dx: number; dy: number; weight: number }[] = [];
+  let total = 0;
+  for (let i = -count; i <= count; i++) {
+    for (let j = -count; j <= count; j++) {
+      const u = i / BLUR_STEPS_PER_SIGMA;
+      const v = j / BLUR_STEPS_PER_SIGMA;
+      const weight = Math.exp(-(u * u + v * v) / 2);
+      offsets.push({ dx: u * HEAT_BLOB_BLUR, dy: v * HEAT_BLOB_BLUR, weight });
+      total += weight;
+    }
+  }
+  return offsets.map((offset) => ({ ...offset, weight: offset.weight / total }));
+})();
+
+/** ぼかした後の1点を作る、ぼかす前の段とその重み。重みの合計は1。段0は塊の無い所。 */
+export interface HeatBlobBlurPart {
+  readonly level: number;
+  readonly weight: number;
+}
+
+/**
+ * 点 `(x, y)` が、ぼかした後に見せる色を作る段の内訳。矩形を段ごとに塗ってからぼかすと、
+ * 点の色はまわりの段の色を重みで平均した色になる。同じ段は重みを足して1つにして返す。
+ * 文字色のように、画面に出る色から決めたいものが読む。
+ */
+export function heatBlobBlurParts(sources: readonly HeatBlobSource[], x: number, y: number, keySize: number): HeatBlobBlurPart[] {
+  const weights = new Map<number, number>();
+  for (const offset of BLUR_OFFSETS) {
+    const level = heatBlobLevel(heatBlobIntensityAt(sources, x + offset.dx, y + offset.dy, keySize));
+    weights.set(level, (weights.get(level) ?? 0) + offset.weight);
+  }
+  return [...weights].map(([level, weight]) => ({ level, weight }));
 }

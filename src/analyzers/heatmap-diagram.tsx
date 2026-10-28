@@ -10,8 +10,16 @@ import { heatIntensity, type HeatmapColorScale, type HeatmapDrawStyle, type Heat
 import { heatmapFlowSegments, heatmapFlowStrokeWidth } from './heatmap-flow.ts';
 import type { BigramVector } from './bigram-vectors.ts';
 import { edgeKind, FLOW_COLORS, FLOW_GRADIENT_END_OPACITY, FLOW_GRADIENT_START_OPACITY, type FlowPoint } from './keyboard-flow-lines.ts';
-import { HEAT_BLOB_LEVELS, heatBlobIntensityAt, heatBlobLevel, heatBlobRuns, type HeatBlobSource } from './heatmap-blob.ts';
-import { heatMultiBlobSample, heatMultiKeySample, heatMultiLabelSample, heatSampleCss } from './heatmap-palette.ts';
+import {
+  HEAT_BLOB_BLUR,
+  HEAT_BLOB_LEVELS,
+  heatBlobBlurParts,
+  heatBlobIntensityAt,
+  heatBlobRuns,
+  type HeatBlobBlurPart,
+  type HeatBlobSource,
+} from './heatmap-blob.ts';
+import { heatMultiBlobMixSample, heatMultiBlobSample, heatMultiKeySample, heatMultiLabelSample, heatSampleCss } from './heatmap-palette.ts';
 import { HEATMAP_KEY_SIZE, heatmapBounds, heatmapDrawnKeys, heatmapViewBox, type HeatmapBounds } from './heatmap-keys.ts';
 
 /**
@@ -102,14 +110,14 @@ function keyFill(style: HeatmapDrawStyle, palette: HeatmapPalette, intensity: nu
 /**
  * キーの文字の色。「なし」は塗りが無いので常に通常の文字色。`intensity` は文字の位置の熱の強さ。
  * 単色は、強さが0.5を超えたら濃い塗りの上の色（`--on-heat`）にする。
- * 多色は、文字の位置の表示色（キーの塗りは強さの色、サーモグラフィは段の色を地に重ねた色）の明るさから、黒か白を選ぶ。
+ * 多色は、文字の位置の表示色の明るさから、黒か白を選ぶ。
+ * キーの塗りは強さの色、サーモグラフィはぼかした後の色（`blobParts` が、ぼかす前の段と重み）。
  */
-function labelFill(style: HeatmapDrawStyle, palette: HeatmapPalette, intensity: number): string {
+function labelFill(style: HeatmapDrawStyle, palette: HeatmapPalette, intensity: number, blobParts: readonly HeatBlobBlurPart[]): string {
   if (style === 'none') return 'var(--text)';
   if (palette === 'multi') {
     if (style === 'fill') return intensity > 0 ? heatSampleCss(heatMultiLabelSample(heatMultiKeySample(intensity))) : 'var(--text)';
-    const level = heatBlobLevel(intensity);
-    return level > 0 ? heatSampleCss(heatMultiLabelSample(heatMultiBlobSample(level))) : 'var(--text)';
+    return blobParts.some((part) => part.level > 0) ? heatSampleCss(heatMultiLabelSample(heatMultiBlobMixSample(blobParts))) : 'var(--text)';
   }
   return intensity > 0.5 ? 'var(--on-heat)' : 'var(--text)';
 }
@@ -193,6 +201,7 @@ export function HeatmapDiagram({
   const segments = flow === undefined ? [] : heatmapFlowSegments(flow.vectors, centers);
   const svgRef = useRef<SVGSVGElement>(null);
   const zoom = useZoom(svgRef, width, flow !== undefined);
+  const blurId = `heatmap-blob-blur-${diagramId}`;
   const gradientId = (index: number) => `heatmap-flow-${diagramId}-${index}`;
   const blobSources: HeatBlobSource[] = blob
     ? keys.flatMap((item) =>
@@ -208,6 +217,10 @@ export function HeatmapDiagram({
       )
     : [];
   const blobRuns = blob ? heatBlobRuns(blobSources, { minX: viewX, minY: viewY, maxX: viewX + width, maxY: viewY + height }, BLOB_CELL, KEY_SIZE) : [];
+  const labelIntensity = (item: (typeof keys)[number]) =>
+    blob ? heatBlobIntensityAt(blobSources, item.x + item.width / 2, item.y + KEY_SIZE / 2, KEY_SIZE) : item.intensity;
+  const labelBlobParts = (item: (typeof keys)[number]) =>
+    blob && palette === 'multi' ? heatBlobBlurParts(blobSources, item.x + item.width / 2, item.y + KEY_SIZE / 2, KEY_SIZE) : [];
   const caption = title === undefined ? '打鍵頻度' : `${title}・打鍵頻度`;
 
   return (
@@ -236,7 +249,12 @@ export function HeatmapDiagram({
                 <rect key={item.key.id} x={item.x + 1} y={item.y + 1} width={item.width - 2} height={KEY_SIZE - 2} rx={5} fill="var(--heat-0)" />
               ),
             )}
-            <g data-heatmap-blob-levels={HEAT_BLOB_LEVELS}>
+            <defs>
+              <filter id={blurId} colorInterpolationFilters="sRGB">
+                <feGaussianBlur stdDeviation={HEAT_BLOB_BLUR} />
+              </filter>
+            </defs>
+            <g data-heatmap-blob-levels={HEAT_BLOB_LEVELS} filter={`url(#${blurId})`}>
               {blobRuns.map((run) => {
                 const multiFill = palette === 'multi' ? MULTI_BLOB_PAINTS[run.level] : undefined;
                 return (
@@ -378,11 +396,7 @@ export function HeatmapDiagram({
                 y={item.y + KEY_SIZE / 2 + 4}
                 textAnchor="middle"
                 fontSize={item.thumb ? 10 : item.label.length > 3 ? 9 : 12}
-                fill={labelFill(
-                  drawStyle,
-                  palette,
-                  blob ? heatBlobIntensityAt(blobSources, item.x + item.width / 2, item.y + KEY_SIZE / 2, KEY_SIZE) : item.intensity,
-                )}
+                fill={labelFill(drawStyle, palette, labelIntensity(item), labelBlobParts(item))}
               >
                 {item.label}
               </text>
