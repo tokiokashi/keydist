@@ -67,7 +67,7 @@
 
 .kana-layout select,
 .kana-layout textarea,
-.kana-layout input[type='text'] {
+.kana-layout input[type="text"] {
   min-width: 0;
   padding: 0.3rem 0.5rem;
   border: 1px solid var(--border-strong);
@@ -82,7 +82,7 @@
   font-size: 0.85rem;
 }
 
-.kana-layout [aria-invalid='true'] {
+.kana-layout [aria-invalid="true"] {
   border-color: var(--danger);
 }
 
@@ -129,7 +129,7 @@
   font-size: 0.75rem;
 }
 
-.kana-layout-face-list button[aria-pressed='true'] {
+.kana-layout-face-list button[aria-pressed="true"] {
   border-color: var(--border-strong);
   background: var(--surface-muted);
   font-weight: bold;
@@ -304,4 +304,34 @@
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+.kana-layout-rows {
+  display: grid;
+  gap: 0.5rem;
+  max-width: 28rem;
+  margin: 0.75rem 0;
+}
+
+.kana-layout-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 0.1rem 0.5rem;
+}
+
+.kana-layout-row input[type="text"] {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.kana-layout-row > p {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.kana-layout-count {
+  padding-bottom: 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
 }
