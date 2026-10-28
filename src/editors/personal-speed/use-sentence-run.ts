@@ -1,12 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { BrowserKeyBindingOverrides } from '#input/shapes/browser-key-codes.ts';
-import {
-  pressSentenceSessionKey,
-  remainingSentenceKeys,
-  startSentenceSession,
-  type SentenceSession,
-  type SentencePlan,
-} from '#interpretation/timing/sentence-session.ts';
+import { pressSentenceSessionKey, startSentenceSession, type SentenceSession, type SentencePlan } from '#interpretation/timing/sentence-session.ts';
 import { captureCalibrationKeys, matchableKeyEvent } from './key-capture.ts';
 
 export interface SentenceRunOptions {
@@ -78,8 +72,8 @@ export function useSentenceRun(options: SentenceRunOptions): SentenceRunControll
       },
       {
         codeBindings,
-        // 左端の列のキーは、次に打つキーがそのキーの時だけ取る。次に打つキーでないTabはフォーカス移動に使える。
-        acceptsLeftColumnKey: (keyId) => sessionRef.current !== undefined && remainingSentenceKeys(sessionRef.current.run).includes(keyId),
+        // CapsLock・Tab・Backquoteも取る。次に打つキーでなければ違うキーの押下になり、preventDefaultは呼ばない。
+        withLeftColumnCodes: true,
       },
     );
   }, [active]);

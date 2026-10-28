@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { captureCalibrationKeys, isCalibrationKeyPress, leftColumnKeyOf, isTypingTarget, type KeyEventSource, type PressLike } from './key-capture.ts';
+import { captureCalibrationKeys, isCalibrationKeyPress, isTypingTarget, type KeyEventSource, type PressLike } from './key-capture.ts';
 
 function press(key: string, overrides: Partial<PressLike> = {}): PressLike {
   return { key, repeat: false, isComposing: false, ctrlKey: false, metaKey: false, altKey: false, ...overrides };
@@ -161,32 +161,29 @@ test('Spaceを押していない時に止めても、離しの登録は残らな
   assert.equal(listeners.keydown.size + listeners.keyup.size, 0);
 });
 
-test('左端の列のキーの押下は、受け付ける時だけ測定の打鍵として扱う', () => {
+test('CapsLock・Tab・Backquoteの押下は、文章を打つ測定の指定がある時だけ、対応がキーのidを返すなら扱う', () => {
   const capsLock = press('CapsLock', { code: 'CapsLock' });
   const tab = press('Tab', { code: 'Tab' });
   const backquote = press('Zenkakuhankaku', { code: 'Backquote' });
   for (const event of [capsLock, tab, backquote]) {
     assert.equal(isCalibrationKeyPress(event), false, event.key);
-    assert.equal(
-      isCalibrationKeyPress(event, {}, () => true),
-      true,
-      event.key,
-    );
+    assert.equal(isCalibrationKeyPress(event, {}, true), true, event.key);
   }
-  assert.equal(
-    isCalibrationKeyPress(tab, {}, (keyId) => keyId === 'caps-lock'),
-    false,
-  );
+  // 割り当て先は左端の列のキーに限らない。割り当てなし（null）にすると扱わない
+  assert.equal(isCalibrationKeyPress(capsLock, { CapsLock: 'a' }, true), true);
+  assert.equal(isCalibrationKeyPress(capsLock, { CapsLock: null }, true), false);
+  // 3つ以外のcodeは広げない
+  assert.equal(isCalibrationKeyPress(press('Enter', { code: 'Enter' }), {}, true), false);
+  assert.equal(isCalibrationKeyPress(press('Escape', { code: 'Escape' }), {}, true), false);
+  // 1文字のキーは、指定が無くても扱う
+  assert.equal(isCalibrationKeyPress(press('`', { code: 'Backquote' })), true);
+  assert.equal(isCalibrationKeyPress(press('\\', { code: 'IntlRo' })), true);
+  // 修飾キーつきと変換中は扱わない
+  assert.equal(isCalibrationKeyPress(press('Tab', { code: 'Tab', ctrlKey: true }), {}, true), false);
+  assert.equal(isCalibrationKeyPress(press('Tab', { code: 'Tab', isComposing: true }), {}, true), false);
 });
 
-test('利用者がcodeを別のキーに割り当てていれば、左端の列のキーとして扱わない', () => {
-  assert.equal(leftColumnKeyOf({ code: 'CapsLock' }), 'caps-lock');
-  assert.equal(leftColumnKeyOf({ code: 'CapsLock' }, { CapsLock: 'a' }), undefined);
-  assert.equal(leftColumnKeyOf({ code: 'CapsLock' }, { CapsLock: null }), undefined);
-  assert.equal(leftColumnKeyOf({ code: 'IntlRo' }, { IntlRo: 'caps-lock' }), 'caps-lock');
-});
-
-test('次に打つキーがtabの時のTabの押下だけを取り、tabでない時のTabは取らない', () => {
+test('Tabの押下は取って渡し、preventDefaultを呼ぶかは受け取る側が次に打つキーで決める', () => {
   const { source, dispatch } = typedSource();
   let next = 'a';
   const received: string[] = [];
@@ -194,16 +191,27 @@ test('次に打つキーがtabの時のTabの押下だけを取り、tabでな�
     source,
     (event) => {
       received.push(event.code);
-      // 打つキーだった押下だけが、ブラウザの働きを止める（`use-sentence-run.ts`と同じ）
-      event.preventDefault();
+      if (next === 'tab') event.preventDefault();
     },
-    { acceptsLeftColumnKey: (keyId) => keyId === next },
+    { withLeftColumnCodes: true },
   );
   assert.deepEqual(dispatch('keydown', { key: 'Tab', code: 'Tab' }), { prevented: 0, stopped: 0 });
-  assert.deepEqual(received, []);
+  assert.deepEqual(received, ['Tab']);
   next = 'tab';
   assert.deepEqual(dispatch('keydown', { key: 'Tab', code: 'Tab' }), { prevented: 1, stopped: 0 });
-  assert.deepEqual(received, ['Tab']);
+  assert.deepEqual(received, ['Tab', 'Tab']);
+});
+
+test('指定が無い取得（キャリブレーションの測定）は、Tab・CapsLockを今までどおり取らない', () => {
+  const { source, dispatch } = typedSource();
+  const received: string[] = [];
+  captureCalibrationKeys(source, (event) => {
+    received.push(event.code);
+  });
+  dispatch('keydown', { key: 'Tab', code: 'Tab' });
+  dispatch('keydown', { key: 'CapsLock', code: 'CapsLock' });
+  dispatch('keyup', { key: 'CapsLock', code: 'CapsLock' });
+  assert.deepEqual(received, []);
 });
 
 test('CapsLockのkeydownが無いまま届いたkeyupは押下として扱い、keydownと対のkeyupは扱わない', () => {
@@ -214,29 +222,43 @@ test('CapsLockのkeydownが無いまま届いたkeyupは押下として扱い、
     (event) => {
       received.push(event.code);
     },
-    { acceptsLeftColumnKey: (keyId) => keyId === 'caps-lock' },
+    { withLeftColumnCodes: true },
   );
   dispatch('keyup', { key: 'CapsLock', code: 'CapsLock' });
-  assert.deepEqual(received, ['CapsLock']);
+  assert.equal(received.length, 1);
   dispatch('keydown', { key: 'CapsLock', code: 'CapsLock' });
   dispatch('keyup', { key: 'CapsLock', code: 'CapsLock' });
-  assert.deepEqual(received, ['CapsLock', 'CapsLock']);
-  // 次に離しだけが届く押下は、再び押下として扱う
+  assert.equal(received.length, 2);
+  // 対のkeyupを処理した後に届くkeyupは、再び押下として扱う
   dispatch('keyup', { key: 'CapsLock', code: 'CapsLock' });
-  assert.deepEqual(received, ['CapsLock', 'CapsLock', 'CapsLock']);
+  assert.equal(received.length, 3);
+});
+
+test('ふつうの環境のkeydown・keyup・keydown・keyupの並びは、2回の押下になる', () => {
+  const { source, dispatch } = typedSource();
+  let presses = 0;
+  captureCalibrationKeys(
+    source,
+    () => {
+      presses += 1;
+    },
+    { withLeftColumnCodes: true },
+  );
+  for (const type of ['keydown', 'keyup', 'keydown', 'keyup'] as const) dispatch(type, { key: 'CapsLock', code: 'CapsLock' });
+  assert.equal(presses, 2);
 });
 
 test('CapsLock以外のkeyupは押下として扱わない', () => {
   const { source, dispatch } = typedSource();
-  const received: string[] = [];
+  let presses = 0;
   captureCalibrationKeys(
     source,
-    (event) => {
-      received.push(event.code);
+    () => {
+      presses += 1;
     },
-    { acceptsLeftColumnKey: () => true },
+    { withLeftColumnCodes: true },
   );
   dispatch('keyup', { key: 'Tab', code: 'Tab' });
   dispatch('keyup', { key: 'f', code: 'KeyF' });
-  assert.deepEqual(received, []);
+  assert.equal(presses, 0);
 });
