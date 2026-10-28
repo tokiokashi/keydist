@@ -14,6 +14,8 @@ export interface ParsedFace {
   mode?: FaceMode;
   /** 切り替えが2打以上など、かなの面の形（切り替えの後に1打だけ続く形か、同時押し）で表せない */
   kanaUnrepresentable?: boolean;
+  /** 見出しを今の読み取りで初めて読めるようになった面なら false。かな・ローマ字の多数と違う種類の出力を持つ時、この面だけを取り込まない */
+  readsNewly?: boolean;
   /** 段の形の打鍵列の作り方。省略すると、triggerとセルのキーの1回の同時押し */
   stroke?: FaceStroke;
   cells: ParsedCell[];

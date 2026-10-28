@@ -401,9 +401,19 @@ test('見出しの次の行にだけある [ は、切り替えのキーの無�
   assert.deepEqual(warnings, []);
 });
 
-test('ハイフン区切りの見出しの面は、かなかローマ字かの判定に含める', () => {
-  const source = dvorakJ('同時に打鍵する配列', ['[', '  |||', '  q|w|e|', ']', '-21-24[', '  |||', '  が|ぎ|ぐ|', ']']);
-  assert.throws(() => importDvorakJ(source), /混在/);
+test('以前から読めた面と違う種類の出力を持つ、新しく読めた面は、面ごと取り込まず注意に入れる', () => {
+  const source = dvorakJ('同時に打鍵する配列', ['[', '  |||', '  q|w|e|', ']', '-21-24[', '  |||', '  が|ぎ|ぐ|', ']', '-20[', '  |||', '  a|b|c|', ']']);
+  const layout = stageOf(importDvorakJ(source));
+  assert.equal(new Map(layout.sequences).has('が'), false);
+  assert.equal(new Map(layout.sequences).has('a'), true);
+  assert.ok(layout.warnings.some((warning) => warning.includes('「-21-24[」') && warning.includes('種類')));
+  const kana = kanaOf(importDvorakJ(dvorakJ('同時に打鍵する配列', ['[', '  |||', '  き|く|け|', ']', '-21[', '  |||', '  a|b|c|', ']'])));
+  assert.deepEqual(
+    kana.content.faces.map((face) => face.trigger),
+    [[]],
+  );
+  // 以前から読めた面に両方の種類があれば、今まで通り取り込まない
+  assert.throws(() => importDvorakJ(dvorakJ('同時に打鍵する配列', ['[', '  |||', '  q|あ|', ']'])), /混在/);
 });
 
 test('段の形（ローマ字）では、前置は切り替えのキーの後、後置は前にセルのキーを打つ打鍵列になる', () => {
