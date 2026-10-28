@@ -13,7 +13,7 @@ import {
   THUMB_KEY,
   type PhysicalKeyboardStandard,
 } from '#input/shapes/geometry.ts';
-import { browserKeyBindingsForShape } from '#input/shapes/browser-key-codes.ts';
+import { browserKeyBindingsForShape, type BrowserKeyBindingOverrides } from '#input/shapes/browser-key-codes.ts';
 import { groupShapes } from '#input/shapes/shape-groups.ts';
 import {
   aggregationLegendMap,
@@ -35,7 +35,6 @@ import {
   loadBrowserKeyBindingOverrides,
   saveBrowserKeyBindingOverrides,
   unassignBrowserKeyCode,
-  type BrowserKeyBindingOverrides,
 } from './browser-keyboard-bindings.ts';
 import { browserCodeDisplayLabel, browserCodesForPhysicalKey } from './browser-keyboard-adapter.ts';
 import {

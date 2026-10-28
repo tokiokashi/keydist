@@ -29,6 +29,14 @@ export function matchableKeyEvent(
   return physicalKey === undefined ? { key: event.key, code: event.code } : { key: event.key, code: event.code, physicalKey };
 }
 
+/**
+ * 取った押下をブラウザの働き（フォーカス移動・検索など）と他の層のキー操作へ渡さないか。
+ * 次に打つキーだった押下（違うキーの押下でないもの）だけ渡さない。次に打つキーでないTabは、フォーカス移動を止めない。
+ */
+export function swallowsPress(outcomeKind: string): boolean {
+  return outcomeKind !== 'wrong-key';
+}
+
 /** 左端の列のキー（`LEFT_COLUMN_KEYS`）の位置のキーが送る`code`。`event.key`が複数文字になるので、1文字のキーとは別に扱う。 */
 const LEFT_COLUMN_CODES: readonly string[] = ['CapsLock', 'Tab', 'Backquote'];
 

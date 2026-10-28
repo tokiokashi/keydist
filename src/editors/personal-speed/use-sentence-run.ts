@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { BrowserKeyBindingOverrides } from '#input/shapes/browser-key-codes.ts';
 import { pressSentenceSessionKey, startSentenceSession, type SentenceSession, type SentencePlan } from '#interpretation/timing/sentence-session.ts';
-import { captureCalibrationKeys, matchableKeyEvent } from './key-capture.ts';
+import { captureCalibrationKeys, matchableKeyEvent, swallowsPress } from './key-capture.ts';
 
 export interface SentenceRunOptions {
   /** 案内と照合に使う、キーidに対応する刻印の名前。 */
@@ -57,8 +57,10 @@ export function useSentenceRun(options: SentenceRunOptions): SentenceRunControll
           return;
         }
         // 打つキーだった。ブラウザの検索などの働きと、他の層のキー操作へ渡さない。
-        event.preventDefault();
-        event.stopPropagation();
+        if (swallowsPress(pressed.outcome.kind)) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
         if (pressed.outcome.kind === 'ignored') return;
         setWrongKey(undefined);
         if (pressed.outcome.kind === 'run-finished') {

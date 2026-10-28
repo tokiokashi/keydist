@@ -7,8 +7,6 @@ import {
   type BrowserKeyBindingOverrides,
 } from '#input/shapes/browser-key-codes.ts';
 
-export { browserCodeToPhysicalKey };
-
 export interface BrowserKeyboardEventLike {
   readonly type: string;
   readonly code: string;

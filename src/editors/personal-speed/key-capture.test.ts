@@ -1,6 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { captureCalibrationKeys, isCalibrationKeyPress, isTypingTarget, type KeyEventSource, type PressLike } from './key-capture.ts';
+import { pressSentenceSessionKey, startSentenceSession, stepsSentencePlan, type SentenceStep } from '#interpretation/timing/sentence-session.ts';
+import {
+  captureCalibrationKeys,
+  matchableKeyEvent,
+  isCalibrationKeyPress,
+  isTypingTarget,
+  swallowsPress,
+  type KeyEventSource,
+  type PressLike,
+} from './key-capture.ts';
 
 function press(key: string, overrides: Partial<PressLike> = {}): PressLike {
   return { key, repeat: false, isComposing: false, ctrlKey: false, metaKey: false, altKey: false, ...overrides };
@@ -183,7 +192,7 @@ test('CapsLock・Tab・Backquoteの押下は、文章を打つ測定の指定が
   assert.equal(isCalibrationKeyPress(press('Tab', { code: 'Tab', isComposing: true }), {}, true), false);
 });
 
-test('Tabの押下は取って渡し、preventDefaultを呼ぶかは受け取る側が次に打つキーで決める', () => {
+test('Tabの押下は取って受け取る側へ渡し、取り込み自身はpreventDefaultを呼ばない', () => {
   const { source, dispatch } = typedSource();
   let next = 'a';
   const received: string[] = [];
@@ -202,7 +211,7 @@ test('Tabの押下は取って渡し、preventDefaultを呼ぶかは受け取る
   assert.deepEqual(received, ['Tab', 'Tab']);
 });
 
-test('指定が無い取得（キャリブレーションの測定）は、Tab・CapsLockを今までどおり取らない', () => {
+test('指定が無い取得（指の移動などを測る他の測定）は、Tab・CapsLockを今までどおり取らない', () => {
   const { source, dispatch } = typedSource();
   const received: string[] = [];
   captureCalibrationKeys(source, (event) => {
@@ -261,4 +270,23 @@ test('CapsLock以外のkeyupは押下として扱わない', () => {
   dispatch('keyup', { key: 'Tab', code: 'Tab' });
   dispatch('keyup', { key: 'f', code: 'KeyF' });
   assert.equal(presses, 0);
+});
+
+test('文章を打つ測定の進行を通すと、次に打つキーがtabの時のTabだけがブラウザの働きへ渡らない', () => {
+  const step = (keys: string[], inputIndex: number): SentenceStep => ({ keys, inputIndex, inputChar: String(inputIndex) });
+  const plan = stepsSentencePlan([step(['tab'], 0), step(['a'], 1)], () => undefined);
+  const label = (id: string) => id;
+  const tab = matchableKeyEvent({ key: 'Tab', code: 'Tab' }, {});
+  const a = matchableKeyEvent({ key: 'a', code: 'KeyA' }, {});
+  // 次に打つキーがtab: 打鍵になり、渡さない
+  const session = startSentenceSession([plan]);
+  const hit = pressSentenceSessionKey(session, tab, 100, label);
+  assert.notEqual(hit.outcome.kind, 'wrong-key');
+  assert.equal(swallowsPress(hit.outcome.kind), true);
+  // 次に打つキーがa: Tabは違うキーの押下になり、渡す（フォーカス移動を止めない）
+  const afterTab = pressSentenceSessionKey(hit.session, tab, 200, label);
+  assert.equal(afterTab.outcome.kind, 'wrong-key');
+  assert.equal(swallowsPress(afterTab.outcome.kind), false);
+  // 次に打つキーがaの時のaは、渡さない
+  assert.equal(swallowsPress(pressSentenceSessionKey(hit.session, a, 300, label).outcome.kind), true);
 });
