@@ -7,6 +7,7 @@ import { LAYOUTS, LAYOUTS_JA, withRomaji } from '../layouts/index.ts';
 import { kanaToRomaji, kanaToRomajiChunks, kunrei } from './kunrei.ts';
 import { azik } from './azik.ts';
 import { jlod } from './jlod.ts';
+import { gact10 } from './gact10.ts';
 import { SAMPLE_TEXT_JA } from '../text/sample-ja.ts';
 
 const geometry = buildGeometry('row-staggered');
@@ -353,4 +354,298 @@ test('JLODは日本語サンプルの打鍵のステップ数を出せる', () =
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
   const steps = generateTrace(text, jlodJa, geometry, opts).strokes.length;
   assert.ok(steps > 0, `JLOD: ${steps}`);
+});
+
+// gACT10。綴りはQWERTYの文字で持つ。例は解説書（http://www1.vecceed.ne.jp/~bemu/gact/gact10_doc.html）の入力例
+const gact10Table = gact10();
+const gact10Ja = withRomaji(qwerty, gact10Table);
+
+test('gACT10テーブルの代表の綴り（QWERTYの文字）', () => {
+  assert.equal(gact10Table.get('あ'), 'a');
+  assert.equal(gact10Table.get('か'), 'ia');
+  assert.equal(gact10Table.get('き'), 'ig');
+  assert.equal(gact10Table.get('かん'), 'iz');
+  assert.equal(gact10Table.get('かい'), 'iq');
+  assert.equal(gact10Table.get('きゃ'), 'iua');
+  assert.equal(gact10Table.get('きょう'), 'ip');
+  assert.equal(gact10Table.get('ん'), 'll');
+  assert.equal(gact10Table.get('っ'), 'r');
+  assert.equal(gact10Table.get('ぁ'), 'ra');
+  assert.equal(gact10Table.get('ゃ'), 'rya');
+  assert.equal(gact10Table.get('ヴぁ'), 'ta');
+  assert.equal(gact10Table.get('ふぁ'), '.a');
+});
+
+// 解説書の入力例。見出しとキーの組を、解説書がキー操作を分けている単位で並べた（キー名はQWERTYの文字。長音の : は ' に読み替える）
+const GACT10_DOC_EXAMPLES: ReadonlyArray<{ kana: string; units: ReadonlyArray<readonly [string, string]> }> = [
+  {
+    kana: 'ふぁいと',
+    units: [
+      ['ふぁい', '.Q'],
+      ['と', 'KS'],
+    ],
+  },
+  {
+    kana: 'ヴぉーかる',
+    units: [
+      ['ヴぉー', 'TW'],
+      ['か', 'IA'],
+      ['る', 'OF'],
+    ],
+  },
+  {
+    kana: 'てぃーぱーてぃ',
+    units: [
+      ['てぃ', 'K,G'],
+      ['ー', ':'],
+      ['ぱ', 'PA'],
+      ['ー', ':'],
+      ['てぃ', 'K,G'],
+    ],
+  },
+  {
+    kana: 'でぃすく',
+    units: [
+      ['でぃ', 'HNG'],
+      ['す', ';F'],
+      ['く', 'IF'],
+    ],
+  },
+  {
+    kana: 'てゅーとりある',
+    units: [
+      ['てゅ', 'K,F'],
+      ['ー', ':'],
+      ['と', 'KS'],
+      ['り', 'OG'],
+      ['あ', 'A'],
+      ['る', 'OF'],
+    ],
+  },
+  {
+    kana: 'つぃったー',
+    units: [
+      ['つ', 'KF'],
+      ['ぃ', 'RG'],
+      ['っ', 'R'],
+      ['た', 'KA'],
+      ['ー', ':'],
+    ],
+  },
+  {
+    kana: 'ひょうじょう',
+    units: [
+      ['ひょう', 'J;'],
+      ['じょう', '//'],
+    ],
+  },
+  {
+    kana: 'しょうぎょう',
+    units: [
+      ['しょう', ';;'],
+      ['ぎょう', 'UP'],
+    ],
+  },
+  {
+    kana: 'しゅつじょう',
+    units: [
+      ['しゅつ', ';JK'],
+      ['じょう', '//'],
+    ],
+  },
+  {
+    kana: 'きょくりょく',
+    units: [
+      ['きょく', 'IUO'],
+      ['りょく', 'OUO'],
+    ],
+  },
+  {
+    kana: 'にゅうしゅつりょく',
+    units: [
+      ['にゅう', 'LK'],
+      ['しゅつ', ';JK'],
+      ['りょく', 'OUO'],
+    ],
+  },
+  {
+    kana: 'ぎゃくじょう',
+    units: [
+      ['ぎゃく', 'UOP'],
+      ['じょう', '//'],
+    ],
+  },
+  {
+    kana: 'しゅくしゃく',
+    units: [
+      ['しゅく', ';JJ'],
+      ['しゃく', ';J;'],
+    ],
+  },
+  {
+    kana: 'じゅくじょ',
+    units: [
+      ['じゅく', '/MM'],
+      ['じょ', '/MS'],
+    ],
+  },
+  { kana: 'きゃ', units: [['きゃ', 'IUA']] },
+  // 解説書の例が定義と食い違う2つ。うぉーにんぐ: 解説書は[わ行]と/の後にさらに[ー]を打つ列だが、[わ行]と/がすでにうぉーを出す。しょくぶつ: ぶつの[ば行]とJに行が無い
+  {
+    kana: 'うぉーにんぐ',
+    units: [
+      ['うぉー', ',/'],
+      ['にん', 'LB'],
+      ['ぐ', 'UF'],
+    ],
+  },
+  {
+    kana: 'しょくぶつ',
+    units: [
+      ['しょく', ';JL'],
+      ['ぶつ', 'NJ'],
+    ],
+  },
+];
+
+const docKeys = (keys: string) => keys.toLowerCase().replaceAll(':', "'");
+
+test('gACT10の綴りは、解説書の入力例の単位ごとの打鍵と一致する（定義と食い違う例を除く）', () => {
+  const differs = new Map<string, string>([
+    ['うぉー', ',w'], // 解説書は[わ行]と/の,/。定義では,wと,/のどちらもうぉーで、出典で先の,wを採る
+    ['ぶつ', 'nkf'], // 解説書の[ば行]とJの行が定義に無い。定義ではバつの省略打ち（nkf）で出る
+  ]);
+  for (const { units } of GACT10_DOC_EXAMPLES) {
+    for (const [kana, keys] of units) {
+      const expected = differs.get(kana);
+      assert.equal(String(gact10Table.get(kana)), expected ?? docKeys(keys), kana);
+    }
+  }
+});
+
+test('gACT10の解説書の入力例を、1つの語として見出しの最長一致で通した綴り', () => {
+  const same = GACT10_DOC_EXAMPLES.filter(({ kana, units }) => kanaToRomaji(kana, gact10Table) === units.map(([, keys]) => docKeys(keys)).join(''));
+  assert.deepEqual(
+    same.map(({ kana }) => kana),
+    [
+      'ふぁいと',
+      'ヴぉーかる',
+      'てぃーぱーてぃ',
+      'ひょうじょう',
+      'しょうぎょう',
+      'しゅつじょう',
+      'きょくりょく',
+      'にゅうしゅつりょく',
+      'ぎゃくじょう',
+      'しゅくしゃく',
+      'じゅくじょ',
+      'きゃ',
+    ],
+  );
+  // 残りの例は、最長一致が解説書の単位より長い見出し（く音省略・プリクラ打ち・やって良かった打ち）を選ぶか、解説書と定義が食い違う
+  const spell = (kana: string) => kanaToRomaji(kana, gact10Table);
+  assert.equal(spell('でぃすく'), 'hng;mf');
+  assert.equal(spell('てゅーとりある'), "k,f'kogaof");
+  assert.equal(spell('つぃったー'), "kygrq'");
+  assert.equal(spell('うぉーにんぐ'), ',wlbuf');
+  assert.equal(spell('しょくぶつ'), ';jlnkf');
+});
+
+test('gACT10の促音はrの1打のみ。子音を重ねた自動生成をしない', () => {
+  assert.equal(gact10Table.get('っ'), 'r');
+  assert.equal(gact10Table.has('っか'), false);
+  assert.equal(kanaToRomaji('っか', gact10Table), 'ria');
+  // 促音のあとの て・と・た・ち・つ は、同じ段の1打で出る（やって良かった打ち）
+  assert.equal(gact10Table.get('って'), 're');
+  assert.equal(gact10Table.get('った'), 'rq');
+});
+
+test('gACT10のっの綴りrは、続くキーによって別の出力に読まれる綴りの頭になる', () => {
+  // 文末のっのあとに句読点を打つと、rにeが続いて「って」と同じ綴りになる。評価は見出しの最長一致で綴りをつなぐので、読み違いを数えない
+  assert.equal(kanaToRomaji('あっ。', gact10Table), 'are');
+  assert.equal(gact10Table.get('。'), 'e');
+  const prefixed = [...gact10Table].filter(([kana, spelling]) => kana !== 'っ' && spelling.startsWith('r'));
+  assert.equal(prefixed.length, 14);
+});
+
+test('gACT10は複数かなを1綴りに落とす（撥音・二重母音・拗音の省略・く音省略・プリクラ打ち）', () => {
+  const expected: Record<string, string> = {
+    こん: 'ix',
+    かん: 'iz',
+    こう: 'iw',
+    きゅう: 'ii',
+    しょう: ';;',
+    かく: 'ija',
+    さき: ';na',
+    かつ: 'ila',
+    とら: 'koa',
+    もうしあげ: 'mn',
+  };
+  for (const [kana, romaji] of Object.entries(expected)) assert.equal(gact10Table.get(kana), romaji, kana);
+});
+
+test("gACT10は句読点・長音・中点・括弧の綴りを持つ。長音はJISの : のキーの位置の '", () => {
+  assert.equal(gact10Table.get('、'), 'w');
+  assert.equal(gact10Table.get('。'), 'e');
+  assert.equal(gact10Table.get('ー'), "'");
+  assert.equal(gact10Table.get('・'), 'qn');
+  assert.equal(gact10Table.get('「'), '[');
+  assert.equal(gact10Table.get('」'), ']');
+});
+
+test('gACT10は節を区別せず、末尾の省略打ちの節の語も見出しにする。見出しは最長5文字', () => {
+  const expected: Record<string, string> = {
+    しました: ';ua',
+    でした: 'h;a',
+    であった: 'hka',
+    こころ: 'iul',
+    すくな: 'ijo',
+    ところ: 'kjo',
+    だけでな: 'hlh',
+    において: 'ljk',
+  };
+  for (const [kana, romaji] of Object.entries(expected)) assert.equal(gact10Table.get(kana), romaji, kana);
+  const lengths = [...gact10Table.keys()].map((kana) => [...kana].length);
+  assert.equal(Math.max(...lengths), 5);
+  assert.deepEqual([...gact10Table.keys()].filter((kana) => [...kana].length === 5).sort(), ['しましょう', 'においては', 'においても', 'もうしあげ']);
+});
+
+test('gACT10は、同じ入力を後の行が上書きした割り当てを持たない。ヴ系はヴぁ行の見出しで持つ', () => {
+  // [た行]とiは、後の行が空を割り当てているのでときを出さない。[や行]とdは、後の行のよってに置き換わるのでいぇを出さない
+  assert.equal(gact10Table.get('とき'), 'kns');
+  assert.equal(gact10Table.get('いぇ'), undefined);
+  assert.equal(gact10Table.get('よって'), 'yd');
+  // であrdも、後の行のであってに置き換わるのでであれを出さない
+  assert.equal(gact10Table.get('であって'), 'hkd');
+  assert.equal(gact10Table.has('であれ'), false);
+  assert.equal(gact10Table.has('ヴ'), false);
+  assert.equal(gact10Table.get('ヴぉー'), 'tw');
+});
+
+test('gACT10は逆写像で取りこぼしなく全かなを打てる（kunreiが持つ見出し全件で検証）', () => {
+  const untypable: [string, string][] = [];
+  for (const kana of table.keys()) {
+    const romaji = kanaToRomaji(kana, gact10Table);
+    if (/[぀-ヿ]/.test(romaji)) untypable.push([kana, romaji]);
+  }
+  assert.deepEqual(untypable, [], `gACT10で打てないかな: ${untypable.map(([k]) => k).join(' ')}`);
+});
+
+test('gACT10の綴りは、keydistのQWERTY配列にあるキーだけで書かれる', () => {
+  for (const [kana, romaji] of gact10Table) {
+    for (const ch of romaji) assert.ok(qwerty.map.has(ch), `${kana} の綴り "${romaji}" にQWERTYに無い "${ch}" が入っている`);
+  }
+});
+
+test('gACT10は日本語サンプルをQWERTY配列で全文字打てる', () => {
+  const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
+  const t = generateTrace(text, gact10Ja, geometry, opts);
+  assert.equal(t.skipped, 0);
+  assert.equal(t.errors.length, 0);
+});
+
+test('gACT10は日本語サンプルの打鍵のステップ数を出せる', () => {
+  const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
+  const steps = generateTrace(text, gact10Ja, geometry, opts).strokes.length;
+  assert.ok(steps > 0, `gACT10: ${steps}`);
 });

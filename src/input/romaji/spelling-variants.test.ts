@@ -5,13 +5,14 @@ import { hasMultiKanaHeading, romajiSpellingUnits } from './spelling-variants.ts
 
 const spellingsOf = (text: string, rule = 'kunrei') => romajiSpellingUnits(text, tableForRule(rule))?.map((unit) => [unit.kana, ...unit.spellings]);
 
-test('組み込みの規則で、まとめた綴りを持つのはAZIKとJLODだけ', () => {
+test('組み込みの規則で、まとめた綴りを持つのはAZIK・JLOD・gACT10だけ', () => {
   assert.deepEqual(
-    ['kunrei', 'qwerty', 'oonishi', 'tomisuke', 'azik', 'jlod'].filter((rule) => hasMultiKanaHeading(tableForRule(rule))),
-    ['azik', 'jlod'],
+    ['kunrei', 'qwerty', 'oonishi', 'tomisuke', 'azik', 'jlod', 'gact10'].filter((rule) => hasMultiKanaHeading(tableForRule(rule))),
+    ['azik', 'jlod', 'gact10'],
   );
   assert.equal(romajiSpellingUnits('かんた', tableForRule('azik')), undefined);
   assert.equal(romajiSpellingUnits('かんた', tableForRule('jlod')), undefined);
+  assert.equal(romajiSpellingUnits('かんた', tableForRule('gact10')), undefined);
 });
 
 test('2文字以上のかなをまとめる見出しを書いた自作の規則は、表を使わない。拗音の形の見出しは使える', () => {

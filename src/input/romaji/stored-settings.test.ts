@@ -66,13 +66,18 @@ test('壊れた規則・割り当ては捨てて診断を積み、残りは読�
   );
 });
 
-test('基底にJLODを持つ自作の規則を読める。基底が組み込みに無い値は捨てる', () => {
+test('基底にJLODとgACT10を持つ自作の規則を読める。基底が組み込みに無い値は捨てる', () => {
   const jlodRule = { ...rule, id: 'rule-j', base: 'jlod', generateSokuon: false };
-  const result = decodeStoredRomajiSettings({ rules: [jlodRule, { ...rule, id: 'rule-x', base: 'unknown' }], assignments: { dvorak: 'jlod' } });
+  const gact10Rule = { ...rule, id: 'rule-g', base: 'gact10', generateSokuon: false };
+  const result = decodeStoredRomajiSettings({
+    rules: [jlodRule, gact10Rule, { ...rule, id: 'rule-x', base: 'unknown' }],
+    assignments: { dvorak: 'jlod', qwerty: 'gact10' },
+  });
   assert.deepEqual(
     result.value.rules.map((r) => r.id),
-    ['rule-j'],
+    ['rule-j', 'rule-g'],
   );
   assert.equal(result.value.assignments.dvorak, 'jlod');
+  assert.equal(result.value.assignments.qwerty, 'gact10');
   assert.equal(result.diagnostics.length, 1);
 });

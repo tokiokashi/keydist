@@ -1,12 +1,13 @@
 import { UNSAFE_OBJECT_KEYS, type CodecDiagnostic, type DecodedWithDiagnostics } from '../codec/index.ts';
 import { droppedDuplicateId, droppedNotArray, droppedReservedKey } from '#input/codec/index.ts';
 import { azik } from './azik.ts';
+import { gact10 } from './gact10.ts';
 import { jlod } from './jlod.ts';
 import { kunrei, addSokuonForms } from './kunrei.ts';
 import { OONISHI_OVERRIDES, oonishiRomaji } from './oonishi.ts';
 import { TOMISUKE_OVERRIDES, tomisukeRomaji } from './tomisuke.ts';
 
-export type BuiltinRomajiRuleId = 'kunrei' | 'oonishi' | 'tomisuke' | 'azik' | 'jlod' | 'qwerty';
+export type BuiltinRomajiRuleId = 'kunrei' | 'oonishi' | 'tomisuke' | 'azik' | 'jlod' | 'gact10' | 'qwerty';
 export type RomajiRuleId = string;
 
 export interface RomajiRuleSpec {
@@ -90,6 +91,13 @@ export const ROMAJI_RULES: Record<
     generateSokuon: false,
     table: () => jlod(),
   },
+  gact10: {
+    name: 'gACT10（拡張ローマ字。QWERTY配列で打つ前提。二重母音・撥音・促音を1綴りに短縮）',
+    base: 'gact10',
+    overrides: {},
+    generateSokuon: false,
+    table: () => gact10(),
+  },
 };
 
 /** 全体のレベルの既定。推奨を持たない配列はこれで打つ。 */
@@ -116,14 +124,14 @@ export function defaultRomajiRuleId(layoutId: string): BuiltinRomajiRuleId {
 
 /** 促音を1打で持つ基底か。持つ基底には、子音を重ねた見出しを足さない。 */
 export function hasSingleStrokeSokuon(base: BuiltinRomajiRuleId): boolean {
-  return base === 'azik' || base === 'jlod';
+  return base === 'azik' || base === 'jlod' || base === 'gact10';
 }
 
 /** 基底ルールと差分から、評価器に渡すテーブルを組み立てる。 */
 export function buildRomajiTable(rule: UserRomajiRule): Map<string, string> {
   const base = baseTable(rule.base, false);
   for (const [kana, roman] of Object.entries(rule.overrides)) base.set(kana, roman);
-  // AZIKとJLODは「っ」を1打で持つため、子音重ねを足すと本来の短縮を隠してしまう。
+  // AZIK・JLOD・gACT10は「っ」を1打で持つため、子音重ねを足すと本来の短縮を隠してしまう。
   if (rule.generateSokuon && !hasSingleStrokeSokuon(rule.base)) addSokuonForms(base);
   return base;
 }
@@ -147,6 +155,8 @@ function baseTable(base: BuiltinRomajiRuleId, generateSokuon: boolean): Map<stri
       return azik({}, generateSokuon);
     case 'jlod':
       return jlod({}, generateSokuon);
+    case 'gact10':
+      return gact10({}, generateSokuon);
     case 'kunrei':
       return kunrei({}, generateSokuon);
   }
@@ -157,7 +167,7 @@ export function isBuiltin(id: string): id is BuiltinRomajiRuleId {
 }
 
 export function allRomajiRules(customRules: UserRomajiRule[] = []) {
-  const builtinIds: BuiltinRomajiRuleId[] = ['kunrei', 'oonishi', 'tomisuke', 'azik', 'jlod', 'qwerty'];
+  const builtinIds: BuiltinRomajiRuleId[] = ['kunrei', 'oonishi', 'tomisuke', 'azik', 'jlod', 'gact10', 'qwerty'];
   return [...builtinIds.map((id) => ({ id, name: ROMAJI_RULES[id].name })), ...customRules.map(({ id, name }) => ({ id, name }))];
 }
 
