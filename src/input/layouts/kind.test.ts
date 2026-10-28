@@ -46,6 +46,7 @@ const EXPECTED: Record<string, LayoutKind> = {
   tsukimisou: 'kana',
   'tsukimisou-extract': 'kana',
   'tsuki-ex': 'kana',
+  'tsuki-ringo': 'kana',
   yumi: 'kana',
   'kawasemi-plus': 'kana',
 };

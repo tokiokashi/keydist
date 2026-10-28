@@ -180,3 +180,53 @@ test('後置のtriggerが空、前置のtriggerが無い、modeがprefixでは�
   assert.throws(build({ mode: 'suffix' }), /前置のtriggerを持つmode=prefix/);
   assert.throws(build({ suffixTrigger: ['j'] }), /前置のtriggerと重なっている/);
 });
+
+test('格子の外のキー（backquote・tab・caps-lock）の出力を持つ面は通り、それ以外のキーと空の出力は失敗する', () => {
+  const build = (extraCells: Record<string, string>) => {
+    const manifest = makeManifest();
+    manifest.faces[0] = { ...manifest.faces[0], extraCells };
+    return () => validateSourceManifest('extra-cells.json', manifest);
+  };
+
+  assert.doesNotThrow(build({ 'caps-lock': 'き' }));
+  assert.doesNotThrow(build({ backquote: 'a', tab: 'b', 'caps-lock': 'c' }));
+  assert.throws(build({ a: 'き' }), /キー（a）が格子の外のキーではない/);
+  assert.throws(build({ 'caps-lock': '' }), /キー（caps-lock）の出力が空/);
+});
+
+test('置き換えは、sourceRowsの値と採用する値が一致し、根拠があれば通り、それ以外は失敗する', () => {
+  const build = (patch: Partial<NonNullable<SourceManifest['substitutions']>[number]> = {}) => {
+    const manifest = makeManifest();
+    setSourceCell(manifest, 0, 0, 0, 'ぁ');
+    manifest.faces[0].rows[0][0] = 'ぉ';
+    manifest.substitutions = [{ faceIndex: 0, row: 0, column: 0, value: 'ぁ', adopted: 'ぉ', source: '作者の追記', ...patch }];
+    return () => validateSourceManifest('substitution.json', manifest);
+  };
+
+  assert.doesNotThrow(build());
+  assert.throws(build({ value: 'あ' }), /sourceRowsの値と一致しない（substitutions\.value）/);
+  assert.throws(build({ adopted: 'ぃ' }), /採用側rowsの値と一致しない（substitutions\.adopted）/);
+  assert.throws(build({ source: '' }), /置き換えの根拠か採用する値が不正/);
+});
+
+test('置き換えの記録が無いsourceRowsとrowsの差は失敗する', () => {
+  const manifest = makeManifest();
+  setSourceCell(manifest, 0, 0, 0, 'ぁ');
+  manifest.faces[0].rows[0][0] = 'ぉ';
+  assert.throws(() => validateSourceManifest('no-substitution.json', manifest), /差分がomissionとして表現されていない/);
+});
+
+test('格子の位置を持たない行（unplacedRows）は、入力と出力があり、理由が定義済みで、入力が重複しなければ通る', () => {
+  const build = (rows: NonNullable<SourceManifest['unplacedRows']>) => {
+    const manifest = makeManifest();
+    manifest.unplacedRows = rows;
+    return () => validateSourceManifest('unplaced.json', manifest);
+  };
+  const row = { input: '~', output: '〜', reason: 'ime-default' as const };
+
+  assert.doesNotThrow(build([row]));
+  assert.throws(build([{ ...row, input: '' }]), /入力か出力が空/);
+  assert.throws(build([{ ...row, output: '' }]), /入力か出力が空/);
+  assert.throws(build([{ ...row, reason: 'unknown' as never }]), /未定義の除外理由 unknown/);
+  assert.throws(build([row, row]), /unplacedRowsが重複している/);
+});

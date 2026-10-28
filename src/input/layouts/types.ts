@@ -12,7 +12,7 @@ import {
   type InputContextRequirement,
   type SemanticInput,
 } from '../semantics/index.ts';
-import { keyId, QWERTY_LEGEND, resolveKeyId, SHIFT_KEY, THUMB_KEY, type NonThumb } from '../shapes/geometry.ts';
+import { keyId, LEFT_COLUMN_KEYS, QWERTY_LEGEND, resolveKeyId, SHIFT_KEY, THUMB_KEY, type NonThumb } from '../shapes/geometry.ts';
 import { validateFaceAuthoring } from './face-authoring-validation.ts';
 import { faceCells } from './face-geometry.ts';
 
@@ -289,15 +289,21 @@ export interface Layout {
 }
 
 const QWERTY_KEYS = new Set([...QWERTY_LEGEND.join('')]);
+const EXTRA_CELL_KEYS: ReadonlySet<string> = new Set(LEFT_COLUMN_KEYS);
 
-/** QWERTY刻印のキーidで面を作る。未知のキーは空欄にせず定義ミスとして弾く。 */
+/**
+ * QWERTY刻印のキーidで面を作る。未知のキーは空欄にせず定義ミスとして弾く。
+ * 格子の外の3つのキー（`backquote`・`tab`・`caps-lock`）のidは、`extraCells` の出力になる。
+ */
 export function faceFromEntries(trigger: readonly string[], mode: FaceMode, entries: Record<string, string>): Face {
-  const invalidKeys = Object.keys(entries).filter((key) => !QWERTY_KEYS.has(key));
+  const invalidKeys = Object.keys(entries).filter((key) => !QWERTY_KEYS.has(key) && !EXTRA_CELL_KEYS.has(key));
   if (invalidKeys.length > 0) throw new Error(`面に未知のキーがある: ${invalidKeys.join(', ')}`);
+  const extraCells = Object.fromEntries(Object.entries(entries).filter(([key]) => EXTRA_CELL_KEYS.has(key)));
   return {
     trigger,
     mode,
     rows: QWERTY_LEGEND.map((row) => [...row].map((key) => entries[key] ?? '')),
+    ...(Object.keys(extraCells).length === 0 ? {} : { extraCells }),
   };
 }
 

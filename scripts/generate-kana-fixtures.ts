@@ -12,13 +12,18 @@ interface SourceFace {
   mode: 'prefix' | 'suffix' | 'simultaneous';
   /** 前置のtriggerと出力キーの後に打つ後置のtrigger。持つ面は前置のtriggerを持つ mode='prefix' の面で、3打の面になる。 */
   suffixTrigger?: string[];
+  /**
+   * 格子の外のキー（`backquote`・`tab`・`caps-lock`）の出力。キーid → 出力。
+   * 出典のJISの格子に置き場が無い値を、採用する値のまま持つ。
+   */
+  extraCells?: Record<string, string>;
   /** 出典から転記した値。omission対象も消さずに保持する。 */
   sourceRows: string[];
   /** ANSI fixtureへ採用する値。除外セルは空文字にする。 */
   rows: string[][];
 }
 
-type OmissionReason = 'jis-only-key' | 'function-key' | 'symbol' | 'source-only';
+type OmissionReason = 'jis-only-key' | 'function-key' | 'symbol' | 'source-only' | 'ime-default';
 
 interface Omission {
   faceIndex: number;
@@ -26,6 +31,30 @@ interface Omission {
   column: number;
   value: string;
   reason: OmissionReason;
+}
+
+/**
+ * 出典にあるが、格子のキーの位置を持たず面に入れない行（Shiftを要する入力、2キーの入力）。
+ * 位置を持つ行は `sourceRows` と `omissions` に載せる。
+ */
+interface UnplacedRow {
+  /** 出典の入力（キー列）。 */
+  input: string;
+  /** 出典の出力。 */
+  output: string;
+  reason: OmissionReason;
+}
+
+/** 出典の値を、別の出典（作者の追記など）に従って置き換えたセル。`source` に根拠を書く。 */
+interface Substitution {
+  faceIndex: number;
+  row: number;
+  column: number;
+  /** 出典（sourceRows）の値。 */
+  value: string;
+  /** 採用する値（rows）。 */
+  adopted: string;
+  source: string;
 }
 
 export interface SourceManifest {
@@ -39,17 +68,22 @@ export interface SourceManifest {
   };
   faces: SourceFace[];
   omissions: Omission[];
+  /** 格子の位置を持たず、面に入れない出典の行。持たないmanifestは省略する。 */
+  unplacedRows?: UnplacedRow[];
+  /** 出典の値を置き換えたセル。持たないmanifestは省略する。 */
+  substitutions?: Substitution[];
 }
 
 interface Fixture {
   version: 1;
   layoutId: string;
   source: SourceManifest['source'];
-  faces: Array<Pick<SourceFace, 'trigger' | 'mode' | 'suffixTrigger'> & { cells: string[][] }>;
+  faces: Array<Pick<SourceFace, 'trigger' | 'mode' | 'suffixTrigger' | 'extraCells'> & { cells: string[][] }>;
   omissions: SourceManifest['omissions'];
 }
 
-const OMISSION_REASONS = new Set<OmissionReason>(['jis-only-key', 'function-key', 'symbol', 'source-only']);
+const EXTRA_CELL_KEYS = new Set(['backquote', 'tab', 'caps-lock']);
+const OMISSION_REASONS = new Set<OmissionReason>(['jis-only-key', 'function-key', 'symbol', 'source-only', 'ime-default']);
 
 function omissionKey(faceIndex: number, row: number, column: number) {
   return `${faceIndex}:${row}:${column}`;
@@ -81,6 +115,10 @@ export function validateSourceManifest(fileName: string, manifest: SourceManifes
       if (face.suffixTrigger.some((key) => face.trigger.includes(key))) {
         throw new Error(`${fileName}: face ${faceIndex} のsuffixTriggerが前置のtriggerと重なっている`);
       }
+    }
+    for (const [key, value] of Object.entries(face.extraCells ?? {})) {
+      if (!EXTRA_CELL_KEYS.has(key)) throw new Error(`${fileName}: face ${faceIndex} のextraCellsのキー（${key}）が格子の外のキーではない`);
+      if (value === '') throw new Error(`${fileName}: face ${faceIndex} のextraCellsのキー（${key}）の出力が空`);
     }
     if (face.rows.length !== SOURCE_ROW_WIDTHS.length) {
       throw new Error(`${fileName}: face ${faceIndex} rows の行数が4ではない`);
@@ -129,6 +167,29 @@ export function validateSourceManifest(fileName: string, manifest: SourceManifes
     }
   }
 
+  const unplacedInputs = new Set<string>();
+  for (const row of manifest.unplacedRows ?? []) {
+    if (row.input === '' || row.output === '') throw new Error(`${fileName}: unplacedRowsの入力か出力が空`);
+    if (!OMISSION_REASONS.has(row.reason)) throw new Error(`${fileName}: 未定義の除外理由 ${row.reason}`);
+    if (unplacedInputs.has(row.input)) throw new Error(`${fileName}: unplacedRowsが重複している（${row.input}）`);
+    unplacedInputs.add(row.input);
+  }
+
+  const substitutionKeys = new Set<string>();
+  for (const sub of manifest.substitutions ?? []) {
+    const key = omissionKey(sub.faceIndex, sub.row, sub.column);
+    if (substitutionKeys.has(key)) throw new Error(`${fileName}: 置き換えが重複している (face ${sub.faceIndex}, row ${sub.row}, column ${sub.column})`);
+    substitutionKeys.add(key);
+    if (sub.source === '' || sub.adopted === '' || sub.adopted === sub.value)
+      throw new Error(`${fileName}: 置き換えの根拠か採用する値が不正 (face ${sub.faceIndex}, row ${sub.row}, column ${sub.column})`);
+    if (decodedSourceRows[sub.faceIndex]?.[sub.row]?.[sub.column] !== sub.value) {
+      throw new Error(`${fileName}: sourceRowsの値と一致しない（substitutions.value） (face ${sub.faceIndex}, row ${sub.row}, column ${sub.column})`);
+    }
+    if (manifest.faces[sub.faceIndex].rows[sub.row][sub.column] !== sub.adopted) {
+      throw new Error(`${fileName}: 採用側rowsの値と一致しない（substitutions.adopted） (face ${sub.faceIndex}, row ${sub.row}, column ${sub.column})`);
+    }
+  }
+
   for (const [faceIndex, face] of manifest.faces.entries()) {
     for (const [rowIndex, sourceRow] of decodedSourceRows[faceIndex].entries()) {
       const selectedRow = face.rows[rowIndex];
@@ -144,6 +205,7 @@ export function validateSourceManifest(fileName: string, manifest: SourceManifes
         }
 
         if (sourceCell === selectedCell) continue;
+        if (substitutionKeys.has(key)) continue;
 
         if (sourceCell !== '' && selectedCell === '') {
           if (!omitted) {
@@ -171,10 +233,11 @@ function projectToAnsi(manifest: SourceManifest): Fixture {
     version: 1,
     layoutId: manifest.layoutId,
     source: manifest.source,
-    faces: manifest.faces.map(({ trigger, mode, suffixTrigger, rows }) => ({
+    faces: manifest.faces.map(({ trigger, mode, suffixTrigger, extraCells, rows }) => ({
       trigger,
       mode,
       ...(suffixTrigger === undefined ? {} : { suffixTrigger }),
+      ...(extraCells === undefined || Object.keys(extraCells).length === 0 ? {} : { extraCells }),
       cells: rows.map((row, rowIndex) => row.slice(0, TARGET_ROW_WIDTHS[rowIndex])),
     })),
     omissions: manifest.omissions,

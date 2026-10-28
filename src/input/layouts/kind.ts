@@ -38,6 +38,7 @@ const BUILT_IN_KANA_LAYOUT_IDS: ReadonlySet<string> = new Set([
   'tsukimisou',
   'tsukimisou-extract',
   'tsuki-ex',
+  'tsuki-ringo',
   'yumi',
   'kawasemi-plus',
   'jis-kana',
