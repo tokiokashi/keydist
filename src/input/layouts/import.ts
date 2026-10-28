@@ -113,10 +113,11 @@ function resolveFaces(name: string, allFaces: ParsedFace[], warnings: string[]):
     }
     return found;
   };
-  // 多数の種類は、見出しを以前から読めた面で決める。以前から両方の種類の面があるファイルは取り込まない
+  // 定義の出力の種類（かな・ローマ字）は、切り替えのキーの無い面（基底面）で決める。基底面に両方の種類があれば取り込まない。
+  // 切り替えのキーを持つ面が基底面と違う種類の出力を持つ時は、その面だけを取り込まず注意に入れる
   const base = { kana: false, latin: false };
   for (const face of allFaces) {
-    if (face.readsNewly === true) continue;
+    if (face.trigger.length > 0) continue;
     const found = faceKinds(face);
     base.kana ||= found.kana;
     base.latin ||= found.latin;
@@ -125,9 +126,9 @@ function resolveFaces(name: string, allFaces: ParsedFace[], warnings: string[]):
   const faces: ParsedFace[] = [];
   for (const face of allFaces) {
     const found = faceKinds(face);
-    const conflicts = face.readsNewly === true && ((found.kana && found.latin) || (base.kana && found.latin) || (base.latin && found.kana));
-    if (conflicts && (base.kana || base.latin)) {
-      addWarning(warnings, `面「${face.heading}」は、他の面と出力の種類（かな・ローマ字）が違うため取り込みませんでした`);
+    const differs = (base.kana && found.latin) || (base.latin && found.kana);
+    if (face.trigger.length > 0 && differs) {
+      addWarning(warnings, `面「${face.heading}」は、基底面と出力の種類（かな・ローマ字）が違うため取り込みませんでした`);
       continue;
     }
     faces.push(face);
@@ -236,13 +237,14 @@ function hasSendFormat(cell: string): boolean {
   let plain = '';
   let cursor = 0;
   for (const match of cell.matchAll(/\{([^}]*)\}/g)) {
-    plain += cell.slice(cursor, match.index);
+    plain += `${cell.slice(cursor, match.index)}\u0000`;
     cursor = (match.index ?? 0) + match[0].length;
     const token = match[1] ?? '';
     if ([...token].length > 1 && !isDvorakJFunction(token)) return true;
   }
   plain += cell.slice(cursor);
-  return /[\^!#+]/.test(plain);
+  // 修飾（`^` `!` `#` `+`）は後ろに続くキーを修飾する。セルの末尾にあるものは、その文字そのもの
+  return /[\^!#+](?=[\s\S])/.test(plain);
 }
 
 /** DvorakJの機能キー表記から、機能キーを除いた出力を取り出す。送信の書式を含むセルは出力を持たない。 */
@@ -341,7 +343,6 @@ export function importDvorakJ(source: string, name = 'DvorakJ取り込み'): Imp
         mode: entry.mode,
         kanaUnrepresentable: entry.kanaUnrepresentable,
         stroke: { steps: entry.steps, cell: entry.cell },
-        readsNewly: header !== '' && !/^\((\{[^}]+\})+$/.test(header),
         cells,
         isFunctionLabel: hasDvorakJFunctionLabel,
       });

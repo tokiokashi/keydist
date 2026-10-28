@@ -70,7 +70,9 @@ export function parseSubstitution(line: string): HeadingSubstitution | undefined
   const from = text.slice(0, bar).trim();
   const to = text.slice(bar + 1).trim();
   if (from === '' || to === '') return undefined;
-  // DvorakJの`S`は左右どちらのShiftでもなく、この形式のセンターシフト（スペース）を表す
+  // `{S}`はDvorakJが定める名前ではなく、定義ファイルの作者が付けた別名で、`shift`はShiftのキーを指す。
+  // それでも`{S}`をspaceとして読むのは、薙刀式v18の定義（nag.txt）がコメントで`({S}[`の面を「センターシフト」と呼ぶことと、
+  // スペースをShiftとして使う設定（SandS）が定義ファイルの外にあることによる、keydistの読み方
   if (from.toUpperCase() === '{S}') {
     const shift = /^([+-]?)shift$/i.exec(to);
     if (shift) return [from, `${shift[1]}space`];

@@ -401,7 +401,7 @@ test('見出しの次の行にだけある [ は、切り替えのキーの無�
   assert.deepEqual(warnings, []);
 });
 
-test('以前から読めた面と違う種類の出力を持つ、新しく読めた面は、面ごと取り込まず注意に入れる', () => {
+test('切り替えのキーを持つ面が基底面と違う種類の出力を持つ時は、その面だけを取り込まず注意に入れる', () => {
   const source = dvorakJ('同時に打鍵する配列', ['[', '  |||', '  q|w|e|', ']', '-21-24[', '  |||', '  が|ぎ|ぐ|', ']', '-20[', '  |||', '  a|b|c|', ']']);
   const layout = stageOf(importDvorakJ(source));
   assert.equal(new Map(layout.sequences).has('が'), false);
@@ -412,7 +412,7 @@ test('以前から読めた面と違う種類の出力を持つ、新しく読�
     kana.content.faces.map((face) => face.trigger),
     [[]],
   );
-  // 以前から読めた面に両方の種類があれば、今まで通り取り込まない
+  // 基底面に両方の種類があれば、取り込まない
   assert.throws(() => importDvorakJ(dvorakJ('同時に打鍵する配列', ['[', '  |||', '  q|あ|', ']'])), /混在/);
 });
 
@@ -497,11 +497,11 @@ test('AutoHotkeyの送信の書式を含むセルは、出力を持たないセ�
     '  |||',
     '  あ|／{改行}|{vkF2}|^i|',
     '  +{End}{BS}|{Home}+{End}^c|い|{!}|',
-    '  、{Enter}|{Space 3}|{Del 2}う|',
+    '  、{Enter}|{Space 3}|{Del 2}う|!|',
     ']',
   ]);
   const { content } = kanaOf(importDvorakJ(source));
-  assert.deepEqual(content.faces[0].outputs, { q: 'あ', d: 'い', f: '!', z: '、', c: 'う' });
+  assert.deepEqual(content.faces[0].outputs, { q: 'あ', d: 'い', f: '!', z: '、', c: 'う', v: '!' });
 });
 
 test('見出しの読み取りは、長い行や深い別名でも行の長さに対して線形で終わる', () => {
