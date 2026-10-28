@@ -15,3 +15,6 @@ ANSI対象外の値も同じ規則で明示する。これにより omission の
 
 前置のtriggerと出力キーの後に打つ後置のtriggerを持つ3打の面は、`suffixTrigger`（キーの配列）で表す。
 `mode` は `prefix`、`trigger` は前置のtriggerで、どちらも必須。`suffixTrigger` を持たない面は、生成する fixture にもこの欄を出さない。
+
+格子の外のキー（`backquote`・`tab`・`caps-lock`）に出力を置く面は、`extraCells`（キーidから出力への写像）を持つ。
+出典のJISの格子に置き場が無い値を、採用する値のまま持つので、`sourceRows` と `omissions` には載せない。持たない面は、生成する fixture にもこの欄を出さない。

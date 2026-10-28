@@ -12,6 +12,11 @@ interface SourceFace {
   mode: 'prefix' | 'suffix' | 'simultaneous';
   /** 前置のtriggerと出力キーの後に打つ後置のtrigger。持つ面は前置のtriggerを持つ mode='prefix' の面で、3打の面になる。 */
   suffixTrigger?: string[];
+  /**
+   * 格子の外のキー（`backquote`・`tab`・`caps-lock`）の出力。キーid → 出力。
+   * 出典のJISの格子に置き場が無い値を、採用する値のまま持つ。
+   */
+  extraCells?: Record<string, string>;
   /** 出典から転記した値。omission対象も消さずに保持する。 */
   sourceRows: string[];
   /** ANSI fixtureへ採用する値。除外セルは空文字にする。 */
@@ -45,10 +50,11 @@ interface Fixture {
   version: 1;
   layoutId: string;
   source: SourceManifest['source'];
-  faces: Array<Pick<SourceFace, 'trigger' | 'mode' | 'suffixTrigger'> & { cells: string[][] }>;
+  faces: Array<Pick<SourceFace, 'trigger' | 'mode' | 'suffixTrigger' | 'extraCells'> & { cells: string[][] }>;
   omissions: SourceManifest['omissions'];
 }
 
+const EXTRA_CELL_KEYS = new Set(['backquote', 'tab', 'caps-lock']);
 const OMISSION_REASONS = new Set<OmissionReason>(['jis-only-key', 'function-key', 'symbol', 'source-only']);
 
 function omissionKey(faceIndex: number, row: number, column: number) {
@@ -81,6 +87,10 @@ export function validateSourceManifest(fileName: string, manifest: SourceManifes
       if (face.suffixTrigger.some((key) => face.trigger.includes(key))) {
         throw new Error(`${fileName}: face ${faceIndex} のsuffixTriggerが前置のtriggerと重なっている`);
       }
+    }
+    for (const [key, value] of Object.entries(face.extraCells ?? {})) {
+      if (!EXTRA_CELL_KEYS.has(key)) throw new Error(`${fileName}: face ${faceIndex} のextraCellsのキー（${key}）が格子の外のキーではない`);
+      if (value === '') throw new Error(`${fileName}: face ${faceIndex} のextraCellsのキー（${key}）の出力が空`);
     }
     if (face.rows.length !== SOURCE_ROW_WIDTHS.length) {
       throw new Error(`${fileName}: face ${faceIndex} rows の行数が4ではない`);
@@ -171,10 +181,11 @@ function projectToAnsi(manifest: SourceManifest): Fixture {
     version: 1,
     layoutId: manifest.layoutId,
     source: manifest.source,
-    faces: manifest.faces.map(({ trigger, mode, suffixTrigger, rows }) => ({
+    faces: manifest.faces.map(({ trigger, mode, suffixTrigger, extraCells, rows }) => ({
       trigger,
       mode,
       ...(suffixTrigger === undefined ? {} : { suffixTrigger }),
+      ...(extraCells === undefined || Object.keys(extraCells).length === 0 ? {} : { extraCells }),
       cells: rows.map((row, rowIndex) => row.slice(0, TARGET_ROW_WIDTHS[rowIndex])),
     })),
     omissions: manifest.omissions,

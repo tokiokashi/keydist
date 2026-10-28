@@ -180,3 +180,16 @@ test('後置のtriggerが空、前置のtriggerが無い、modeがprefixでは�
   assert.throws(build({ mode: 'suffix' }), /前置のtriggerを持つmode=prefix/);
   assert.throws(build({ suffixTrigger: ['j'] }), /前置のtriggerと重なっている/);
 });
+
+test('格子の外のキー（backquote・tab・caps-lock）の出力を持つ面は通り、それ以外のキーと空の出力は失敗する', () => {
+  const build = (extraCells: Record<string, string>) => {
+    const manifest = makeManifest();
+    manifest.faces[0] = { ...manifest.faces[0], extraCells };
+    return () => validateSourceManifest('extra-cells.json', manifest);
+  };
+
+  assert.doesNotThrow(build({ 'caps-lock': 'き' }));
+  assert.doesNotThrow(build({ backquote: 'a', tab: 'b', 'caps-lock': 'c' }));
+  assert.throws(build({ a: 'き' }), /キー（a）が格子の外のキーではない/);
+  assert.throws(build({ 'caps-lock': '' }), /キー（caps-lock）の出力が空/);
+});
