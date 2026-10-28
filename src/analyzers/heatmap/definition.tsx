@@ -6,11 +6,12 @@ import type { Geometry } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import { isStrokeOnlyMark, TARGET_DASH_ARRAY, targetMarkPath, type TargetMark } from '#ui/theme/target-marks.ts';
 import { HeatmapDiagram, type HeatmapDiagramFlow, type HeatmapShiftStyle } from '../heatmap-diagram.tsx';
-import { baseLayerLegends, type HeatmapDrawStyle } from '../heatmap-figure.ts';
+import { baseLayerLegends, type HeatmapDrawStyle, type HeatmapPalette } from '../heatmap-figure.ts';
 import { heatmapBounds, heatmapDrawnKeys, sharedHeatmapBounds } from '../heatmap-keys.ts';
 import type { AnalyzerSettingsProps, SingleAnalyzerPaneParts, SingleBodyProps } from '../pane-parts.tsx';
 import { heatmapDefinition, sharedMaxCount, sharedMaxFlowWeight, type HeatmapExtracted } from './extract.ts';
 import { HeatmapFlowLegend } from './flow-legend.tsx';
+import { HeatmapPaletteLegend } from './palette-legend.tsx';
 import { DEFAULT_HEATMAP_OPTIONS, heatmapOptions, type HeatmapOptions } from './options.ts';
 import { useHeatmapFields } from './option-fields.tsx';
 import { HEATMAP_FIGURE_GROUPS } from './settings-sections.ts';
@@ -70,9 +71,10 @@ function HeatmapFigureSettings({
   );
 }
 
-function figureProps(layout: Layout, geometry: Geometry, drawStyle: HeatmapDrawStyle) {
+function figureProps(layout: Layout, geometry: Geometry, drawStyle: HeatmapDrawStyle, palette: HeatmapPalette) {
   return {
     drawStyle,
+    palette,
     layout,
     geometry,
     legends: baseLayerLegends(layout),
@@ -116,15 +118,21 @@ export function HeatmapBody({
       figure.state.status === 'ready' ? [heatmapBounds(heatmapDrawnKeys(figure.state.layout, figure.state.geometry))] : [],
     ),
   );
+  // 凡例は、描いているものだけを並べる。色の帯は、色を塗る描き方（キーの塗り・サーモグラフィ）の多色の時だけ出す
+  const legendItems = [
+    options.palette === 'multi' && options.drawStyle !== 'none' ? <HeatmapPaletteLegend key="palette" /> : null,
+    options.flowLines ? <HeatmapFlowLegend key="flow" source={flowSource} /> : null,
+  ].filter((item) => item !== null);
+  const legends = legendItems.length === 0 ? undefined : <div className="heatmap-legends">{legendItems}</div>;
   return (
     <div className="heatmap-feature" data-react-feature="heatmap">
       {figureSettings.renderWindow(<HeatmapFigureSettings options={options} onOptionsChange={onOptionsChange} />)}
       <div className="heatmap-diagrams">
         <HeatmapDiagram
-          {...figureProps(layout, geometry, options.drawStyle)}
+          {...figureProps(layout, geometry, options.drawStyle, options.palette)}
           diagramId="integrated"
           captionAction={figureSettings.toggle}
-          {...(options.flowLines ? { captionNote: <HeatmapFlowLegend source={flowSource} /> } : {})}
+          {...(legends === undefined ? {} : { captionNote: legends })}
           {...flowProp(flowOf(extracted))}
           detailOf={(keyId) => extracted.keyDetails.merged.get(keyId)}
           colorCounts={extracted.keyCounts}
@@ -144,7 +152,7 @@ export function HeatmapBody({
               </p>
               {figure.state.status === 'ready' ? (
                 <HeatmapDiagram
-                  {...figureProps(figure.state.layout, figure.state.geometry, options.drawStyle)}
+                  {...figureProps(figure.state.layout, figure.state.geometry, options.drawStyle, options.palette)}
                   title={figure.label}
                   {...flowProp(flowOf(figure.state.extracted))}
                   diagramId={`set-${figure.key}`}

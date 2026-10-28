@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { TypingInputEngine } from '#tester/engine/index.ts';
 import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
 import { buildGeometry, SHIFT_KEY } from '../shapes/geometry.ts';
-import { LAYOUTS } from './index.ts';
+import { LAYOUTS, LAYOUTS_JA } from './index.ts';
+import { classifyTriggerActivation, DEFAULT_ACTION_REALIZATION_POLICY, type ActionRealizationPolicy } from '#input/semantics/index.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 
 const qwerty = LAYOUTS.find((layout) => layout.id === 'qwerty')!;
@@ -31,6 +32,7 @@ test('alpha layoutは大文字を左右Shiftのcanonical alternativeとして持
         kind: 'overlap',
         keys: ['a', shift].sort(),
       },
+      { kind: 'order', before: [shift], after: ['a'] },
     ]);
     assert.deepEqual(input.capabilities, [
       {
@@ -239,4 +241,103 @@ test('Shift pressは通常のmetrics pipelineへそのまま計上される', ()
   assert.equal(upper.keyCounts.get(SHIFT_KEY.R), 1);
   assert.equal(upper.layers.find((layer) => layer.id === 'layer:Shift')?.presses, 2);
   assert.equal(upper.singleTapLayerRate, 0);
+});
+
+const separatePolicy: ActionRealizationPolicy = { ...DEFAULT_ACTION_REALIZATION_POLICY, triggerActivation: 'semantic' };
+
+test('通常Shiftはtrigger activationの大分類でprepress-requiredに入る', () => {
+  for (const output of ['A', '!']) {
+    for (const alternative of qwerty.canonicalInputs.get(output)!) {
+      const realization = alternative.baseRealizations[0];
+      assert.equal(
+        classifyTriggerActivation(alternative.semanticInputs[0], realization.defaultTriggerKeys ?? [], realization.defaultOutputKeys),
+        'prepress-required',
+        output,
+      );
+    }
+  }
+});
+
+test('動作数を別の動作にすると、QWERTYのAと!は2打になる', () => {
+  const geometry = buildGeometry('row-staggered');
+  const count = (text: string, actionRealizationPolicy: ActionRealizationPolicy) =>
+    generateTrace(text, qwerty, geometry, { ...DEFAULT_TRACE_POLICY, actionRealizationPolicy }).strokes.length;
+  for (const text of ['A', '!']) {
+    assert.equal(count(text, DEFAULT_ACTION_REALIZATION_POLICY), 1, `${text} 1動作`);
+    assert.equal(count(text, separatePolicy), 2, `${text} 別の動作`);
+  }
+});
+
+test('別の動作でも反対手のShiftを選び、Shiftを押したまま続ける動きは変わらない', () => {
+  const geometry = buildGeometry('row-staggered');
+  const pressedKeys = (useHold: boolean, actionRealizationPolicy: ActionRealizationPolicy) =>
+    generateTrace('ABa', qwerty, geometry, {
+      ...DEFAULT_TRACE_POLICY,
+      triggerRealizationPolicy: { useHold },
+      actionRealizationPolicy,
+    }).strokes.map((stroke) => stroke.presses.map((press) => press.keys.map((key) => key.id)));
+
+  // AもBも左手のキーなので右手のShift。押したまま続けるので、Shiftの押下は先頭の1回だけ
+  assert.deepEqual(pressedKeys(true, separatePolicy), [[[SHIFT_KEY.R]], [['a']], [['b']], [['a']]]);
+  assert.deepEqual(pressedKeys(true, DEFAULT_ACTION_REALIZATION_POLICY), [[[SHIFT_KEY.R], ['a']], [['b']], [['a']]]);
+  assert.deepEqual(pressedKeys(false, separatePolicy), [[[SHIFT_KEY.R]], [['a']], [[SHIFT_KEY.R]], [['b']], [['a']]]);
+});
+
+test('Testerで通常Shiftを後から押しても大文字にならない', () => {
+  const engine = new TypingInputEngine(qwerty.canonicalInputs);
+  const outputs = (events: readonly { type: 'down' | 'up'; key: string }[]) =>
+    events.flatMap((event) => engine.handle(event).recognized.map((entry) => entry.output));
+
+  assert.deepEqual(
+    outputs([
+      { type: 'down', key: SHIFT_KEY.L },
+      { type: 'down', key: 'a' },
+      { type: 'up', key: 'a' },
+      { type: 'up', key: SHIFT_KEY.L },
+    ]),
+    ['A'],
+  );
+  assert.deepEqual(
+    outputs([
+      { type: 'down', key: 'a' },
+      { type: 'down', key: SHIFT_KEY.L },
+      { type: 'up', key: 'a' },
+      { type: 'up', key: SHIFT_KEY.L },
+    ]),
+    ['a'],
+  );
+});
+
+test('Testerの通常Shiftの判定は、かな配列のShiftの面と同じ動きになる', () => {
+  const kana = LAYOUTS_JA.find((layout) => layout.id === 'jis-kana')!;
+  const sequences = {
+    shiftFirst: (key: string) => [
+      { type: 'down' as const, key: SHIFT_KEY.L },
+      { type: 'down' as const, key: key },
+      { type: 'up' as const, key },
+      { type: 'up' as const, key: SHIFT_KEY.L },
+    ],
+    keyFirst: (key: string) => [
+      { type: 'down' as const, key },
+      { type: 'down' as const, key: SHIFT_KEY.L },
+      { type: 'up' as const, key },
+      { type: 'up' as const, key: SHIFT_KEY.L },
+    ],
+    keyFirstShiftReleasedFirst: (key: string) => [
+      { type: 'down' as const, key },
+      { type: 'down' as const, key: SHIFT_KEY.L },
+      { type: 'up' as const, key: SHIFT_KEY.L },
+      { type: 'up' as const, key },
+    ],
+  };
+  const shiftedFlags = (layout: typeof qwerty, key: string, base: string) =>
+    Object.values(sequences).map((sequence) => {
+      const engine = new TypingInputEngine(layout.canonicalInputs);
+      const outputs = sequence(key).flatMap((event) => engine.handle(event).recognized.map((entry) => entry.output));
+      return outputs.length === 1 && outputs[0] !== base;
+    });
+
+  // かな配列の `3`（あ）はShiftで「ぁ」になる。英字配列の `a` はShiftで「A」になる
+  assert.deepEqual(shiftedFlags(kana, '3', 'あ'), [true, false, false]);
+  assert.deepEqual(shiftedFlags(qwerty, 'a', 'a'), [true, false, false]);
 });

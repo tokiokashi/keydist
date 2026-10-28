@@ -25,6 +25,23 @@ test('描き方は表示だけの設定で、抽出のキーに入らない', ()
   assert.equal(key('none'), key('fill'));
 });
 
+test('配色の既定は単色で、共有リンクと保存に読み書きでき、既定ならURLに出ない。未知の配色は単色に戻す', () => {
+  assert.equal(heatmapOptions.defaultOptions.palette, 'single');
+  assert.equal(heatmapOptions.encodeOptionsToUrl(heatmapOptions.defaultOptions).has('palette'), false);
+  const params = heatmapOptions.encodeOptionsToUrl({ ...heatmapOptions.defaultOptions, palette: 'multi' });
+  assert.equal(params.get('palette'), 'multi');
+  assert.deepEqual(heatmapOptions.decodeOptionsFromUrl(params, []).values, { palette: 'multi' });
+  assert.equal(heatmapOptions.decodeOptions({ palette: 'multi' }, []).palette, 'multi');
+  const diagnostics: unknown[] = [];
+  assert.equal(heatmapOptions.decodeOptions({ palette: 'rainbow' }, diagnostics as never).palette, 'single');
+  assert.equal(diagnostics.length, 1);
+});
+
+test('配色は表示だけの設定で、抽出のキーに入らない', () => {
+  const key = (palette: 'single' | 'multi') => JSON.stringify(heatmapOptions.extractKeyOf({ ...heatmapOptions.defaultOptions, palette }));
+  assert.equal(key('multi'), key('single'));
+});
+
 test('2打鍵の線は既定で表示せず、線の組は続けて打った2打鍵。どちらも共有リンクと保存に読み書きでき、既定ならURLに出ない', () => {
   assert.equal(heatmapOptions.defaultOptions.flowLines, false);
   assert.equal(heatmapOptions.defaultOptions.flowLineSource, 'actual');

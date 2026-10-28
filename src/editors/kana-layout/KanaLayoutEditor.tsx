@@ -29,6 +29,7 @@ import {
 } from '#input/shapes/geometry.ts';
 import { PhysicalKeyboard, type PhysicalKeyboardKeyView } from '#ui/keyboard/physical-keyboard.tsx';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
+import { HOME_KEY_RULE_DESCRIPTION } from '../home-key/home-key-text.ts';
 import { useHistoryShortcuts } from '#ui/primitives/use-history-shortcuts.ts';
 import {
   AGGREGATION_LABEL,
@@ -37,6 +38,7 @@ import {
   INPUT_ROLE_LABEL,
   keyLabel,
   MODE_LABEL,
+  nextOutputKey,
   patchFace,
   PERSISTENCE_LABEL,
   setFaceOutput,
@@ -166,6 +168,7 @@ interface FacePanelProps {
 function FacePanel({ face, standard, homeKeys, problems, onChange }: FacePanelProps) {
   const [selectedKey, setSelectedKey] = useState<string | undefined>(undefined);
   const [operation, setOperation] = useState<'output' | 'trigger'>('output');
+  const [announcement, setAnnouncement] = useState('');
   const geometry = useMemo(() => geometryOf(standard), [standard]);
   const keys = useMemo(() => [...geometry.keys.values()], [geometry]);
   const triggered = face.trigger.length > 0;
@@ -203,6 +206,19 @@ function FacePanel({ face, standard, homeKeys, problems, onChange }: FacePanelPr
     // 出力を書けないキーは、図が押せないキーとして出す（`disabled`）ので、ここへは来ない
     if (!isFaceOutputKey(key.id)) return;
     setSelectedKey(key.id === selectedKey ? undefined : key.id);
+  };
+
+  // 出力欄にフォーカスがある間はラベルの変化が読み上げられないので、選び直したキーの名前を知らせる
+  const advance = () => {
+    if (selectedKey === undefined) return;
+    const next = nextOutputKey(
+      keys.map((key) => key.id),
+      selectedKey,
+      face.trigger,
+    );
+    if (next === undefined) return;
+    setSelectedKey(next);
+    setAnnouncement(`${keyLabel(next, standard)}のキーを選びました`);
   };
 
   return (
@@ -259,8 +275,17 @@ function FacePanel({ face, standard, homeKeys, problems, onChange }: FacePanelPr
               value={selectedKey === undefined ? '' : (face.outputs[selectedKey] ?? '')}
               data-kana-output
               onChange={(event) => selectedKey !== undefined && onChange(setFaceOutput(face, selectedKey, event.currentTarget.value))}
+              onKeyDown={(event) => {
+                if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
+                // 配列のformの送信にしない。変換を確定するEnterはそのまま通す
+                event.preventDefault();
+                advance();
+              }}
             />
           </label>
+          <span className="kana-layout-visually-hidden" role="status" data-kana-output-announce>
+            {announcement}
+          </span>
           <button
             type="button"
             data-kana-output-clear
@@ -536,10 +561,7 @@ function KanaLayoutForm({ initial, fingerAssignments, isNew, onSubmit, onDownloa
       <fieldset className="kana-layout-home">
         <legend className="kana-layout-label-row">
           ホームキー（任意）
-          <InfoButton
-            name="ホームキー"
-            description="指定したキーを指の割り当てがその指の担当にしている時は、割り当てのホームキーより、ここでの指定が優先されます。担当にしていない割り当てでは、指定は使われません。"
-          />
+          <InfoButton name="ホームキー" description={HOME_KEY_RULE_DESCRIPTION} />
         </legend>
         <div className="kana-layout-home-grid">
           {FINGERS.map((finger) => {

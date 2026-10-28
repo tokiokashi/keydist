@@ -210,3 +210,22 @@ test.describe('幅390px', () => {
     await expect(keyA.locator('.physical-keyboard-legend')).toHaveText('あ');
   });
 });
+
+test('出力欄でEnterを押すと次のキーへ進み、配列は保存されず、読み上げの領域に新しいキーの名前が出る', async ({ page }) => {
+  await page.goto('/kana-layout');
+  await waitForHydration(page);
+  await page.locator('[data-kana-name]').fill('Enterの確認');
+  const key = (id: string) => page.locator(`[data-kana-figure] [data-key-id="${id}"]`);
+  const output = page.locator('[data-kana-output]');
+  await key('a').click();
+  await output.fill('あ');
+  await output.press('Enter');
+  await expect(key('s')).toHaveAttribute('data-selected', 'true');
+  await expect(output).toBeFocused();
+  await expect(page.locator('[data-kana-output-announce]')).toContainText('Sのキー');
+  // 空のままEnterを押しても進む
+  await output.press('Enter');
+  await expect(key('d')).toHaveAttribute('data-selected', 'true');
+  // 保存されていない（保存した配列の選択が現れない）
+  await expect(page.locator('[data-kana-pick]')).toHaveCount(0);
+});
