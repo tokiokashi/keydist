@@ -25,7 +25,7 @@ const RIGHT_KEYS = ['67890', 'yuiop', 'hjkl;', 'nm,./'];
 
 /** 解析ツールの層のセルの表記を、層で出す文字にする。BackSpaceは文字を出さない */
 const LAYER_OUTPUT: Readonly<Record<string, string | null>> = { 'nn:ん': 'ん', '-': 'ー', 'ltu:っ': 'っ', BS: null };
-/** 解析ツールにあり、制作記と公式ページの配列図に無い層のセル。せおと配列の層には置かない（`'` は単打で打てて経路が重なり、`~` は記号の定義を読めない） */
+/** 解析ツールにあり、制作記と公式ページの配列図に無い層のセル。せおと配列の層には置かない（`'` は単打で打てて経路が重なり、`~` は作者の記号の表が `v-` で打つ `〜` と別に置くものではない） */
 const KNOWN_MISMATCH_LAYER_CELLS: Readonly<Record<string, string>> = { o: '~', h: "'" };
 
 interface Cell {

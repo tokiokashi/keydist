@@ -12,6 +12,11 @@ import { kunrei } from './kunrei.ts';
  * `ヴ` は公式ページが V のキーで打つとするが、綴りの書き方が無く、訓令式のテーブルにも見出しが無いので足さない。
  * 作者が配るGoogle日本語入力のローマ字テーブルは暗号化された共有にあり読めないので、表とは突き合わせていない。
  *
+ * 記号は、作者が制作記に載せる記号の表（IMEの入力の表）のうち、`v/` → `・`、`v.` → `…`、`v,` → `‥`、`v-` → `〜` の4行を綴りにする。
+ * 矢印の8行は、循環する記号の行を入れない方針（spec §4.4）に合わせて入れない。
+ * `v[` → `『`、`v]` → `』` は、`『』` を `「」` の別名として扱う規則（spec §4）と合わないので入れない。
+ * `v/` の `/` を出すキーは置かないので、`・` は打てない文字に数えられる。
+ *
  * `ん` `っ` `ー` の綴りは、レイヤーの出力と同じ文字そのものにする。英字の綴り（`nn` `-` など）にすると、
  * 英文の同じ英字にもレイヤーが使われるか、レイヤーが使われなくなるため。この綴りは、レイヤーを持つせおと配列でだけ打てる。
  *
@@ -21,6 +26,14 @@ const LAYER_SPELLINGS: Readonly<Record<string, string>> = {
   ん: 'ん',
   っ: 'っ',
   ー: 'ー',
+};
+
+/** 作者の記号の表から入れる4行 */
+const SYMBOL_SPELLINGS: Readonly<Record<string, string>> = {
+  '・': 'v/',
+  '…': 'v.',
+  '‥': 'v,',
+  '〜': 'v-',
 };
 
 /** 拗音の `ya` `yu` `yo` を1打にする拡張。`ye` は対象に含めない */
@@ -41,6 +54,7 @@ export function seotoRomaji(): Map<string, string> {
   for (const [kana, roman] of kunrei({}, false)) {
     table.set(kana, Object.hasOwn(LAYER_SPELLINGS, kana) ? LAYER_SPELLINGS[kana] : applyExtensions(roman));
   }
+  for (const [kana, roman] of Object.entries(SYMBOL_SPELLINGS)) table.set(kana, roman);
   // 訓令式のテーブルには無い見出し。`ゎ` は小書きのかなの `l` の規則で綴りが決まり、`てぃ` `でぃ` は作者が書く綴り
   table.set('ゎ', 'lwa');
   table.set('てぃ', 'thi');

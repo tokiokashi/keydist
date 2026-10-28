@@ -61,7 +61,7 @@ test('並びは配列図の3段×10列で、矢印のキーには文字が無い
   assert.equal(usedKeys.has('y'), false);
 });
 
-test('3段×10列の外は、記号の定義を読めないのでQWERTYのまま残し、; と / は置かない', () => {
+test('3段×10列の外はQWERTYのまま残し、; と / は置かない', () => {
   const cells = faceCells(SEOTO_FACES[0]!);
   for (const key of [..."1234567890-=[]'"]) assert.equal(cells.get(key), key);
   for (const output of [';', '/', ':', '?']) assert.equal(seotoEn.canonicalInputs.has(output), false, output);
@@ -101,6 +101,22 @@ test('日本語は ん っ ー を左親指との同時押しの1打で打ち、
     false,
   );
   assert.equal(all.filter((stroke) => stroke.char === 'n').length, 1);
+});
+
+test('記号の綴り（v. v, v-）は打て、v/ の・は / を出すキーが無いので打てない文字に数える', () => {
+  const keys = (text: string) =>
+    generateTrace(text, seotoJa, geometry, DEFAULT_TRACE_POLICY).strokes.map((stroke) =>
+      stroke.presses.flatMap((press) => press.keys.map((key) => key.id)).join('+'),
+    );
+  assert.deepEqual(keys('…'), ['/', '.']);
+  assert.deepEqual(keys('‥'), ['/', 'm']);
+  assert.deepEqual(keys('〜'), ['/', '-']);
+  const dot = generateTrace('あ・', seotoJa, geometry, DEFAULT_TRACE_POLICY);
+  assert.equal(dot.skipped, 1);
+  assert.deepEqual(
+    dot.strokes.map((stroke) => stroke.char),
+    ['a', 'v'],
+  );
 });
 
 test('英文は層を使わない（nが続く語も - も英字のキーで打つ）', () => {

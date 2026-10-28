@@ -46,18 +46,23 @@ test('促音は子音を重ねる見出しを持たない', () => {
   assert.equal(ROMAJI_RULES.seoto.generateSokuon, false);
 });
 
-test('句読点と記号は訓令式と同じ綴り', () => {
+test('句読点と括弧は訓令式と同じ綴り', () => {
   const kunrei = tableForRule('kunrei');
-  for (const heading of ['、', '。', '「', '」', '・']) assert.equal(table.get(heading), kunrei.get(heading));
+  for (const heading of ['、', '。', '「', '」']) assert.equal(table.get(heading), kunrei.get(heading));
+});
+
+test('作者の記号の表の4行（v/ v. v, v-）を綴りにし、矢印と『』は入れない', () => {
+  assert.deepEqual(spelling(['・', '…', '‥', '〜']), ['v/', 'v.', 'v,', 'v-']);
+  for (const heading of ['←', '↑', '→', '↓', '↗', '↘', '↙', '↖', '『', '』']) assert.equal(table.has(heading), false, heading);
 });
 
 test('綴りは配列の英字・句読点か、層の3文字だけで、訓令式に無い見出しを足さない', () => {
   const kunrei = tableForRule('kunrei');
   const extra = [...table.keys()].filter((heading) => !kunrei.has(heading) && !heading.startsWith('っ'));
-  assert.deepEqual(extra.sort(), ['ゎ', 'でぃ', 'てぃ'].sort());
+  assert.deepEqual(extra.sort(), ['ゎ', 'でぃ', 'てぃ', '…', '‥', '〜'].sort());
   const seoto = LAYOUTS.find((layout) => layout.id === 'seoto')!;
   for (const [heading, roman] of table) {
-    if (['ん', 'っ', 'ー', '・'].includes(heading)) continue;
+    if (['ん', 'っ', 'ー', '・'].includes(heading)) continue; // `・` は `/` を出すキーが無い
     for (const char of roman) assert.ok(seoto.map.has(char), `${heading} の綴り ${roman} の ${char} がせおと配列に無い`);
   }
 });

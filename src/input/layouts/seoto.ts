@@ -6,8 +6,8 @@ import { faceFromEntries, fromFaces, withAliases, withShiftedOutputs, type Face,
  *
  * 作者の制作記と公式ページの配列図の3段×10列を、QWERTYの文字のキー（`q`〜`p`・`a`〜`;`・`z`〜`/`）に置く。
  * `←` `→`（QWERTYの `t` `y` の位置）は作者が自由に変えてよいとするキーで、文字を置かない。
- * 数字段・`-` `=` `[` `]` `'` は作者の定義が読めないので、QWERTYのまま残す。
- * 作者が別に定義する記号も読めないので、`;` `/` は置かない。
+ * 数字段・`-` `=` `[` `]` `'` は3段×10列の外で、作者の配列図に無いので、QWERTYのまま残す。
+ * `;` `/` を出すキーは、作者の今の定義（解析ツール）に無いので置かない。
  */
 const BASE_ENTRIES: Record<string, string> = {
   // 数字段と30キーの外側はQWERTYのまま
