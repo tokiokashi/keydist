@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { HEAT_BLOB_LEVELS } from './heatmap-blob.ts';
+import { HEAT_BLOB_LEVELS, heatBlobBlurParts, type HeatBlobSource } from './heatmap-blob.ts';
 import {
   HEAT_GROUND,
   HEAT_STOPS,
   HEAT_THEMES,
   contrastRatio,
+  heatMultiBlobMixSample,
   heatMultiBlobSample,
   heatMultiKeySample,
   heatMultiLabelSample,
@@ -116,4 +117,61 @@ test('色相が大きく変わる。最初と最後の色は、ライト・ダ�
     const gap = Math.abs(first - last);
     assert.ok(Math.min(gap, 360 - gap) >= 90, `${theme}: ${first} と ${last}`);
   }
+});
+
+test('ぼかした後の表示色は、段の色を重みで平均した色。1つの段だけなら、その段の色と同じ', () => {
+  for (const level of [1, HEAT_BLOB_LEVELS / 2, HEAT_BLOB_LEVELS]) {
+    assert.deepEqual(heatMultiBlobMixSample([{ level, weight: 1 }]), heatMultiBlobSample(level));
+  }
+  const mixed = heatMultiBlobMixSample([
+    { level: 0, weight: 0.5 },
+    { level: HEAT_BLOB_LEVELS, weight: 0.5 },
+  ]);
+  const ground = HEAT_GROUND.light;
+  const red = heatMultiBlobSample(HEAT_BLOB_LEVELS).light;
+  const n = Number.parseInt(ground.slice(1), 16);
+  assert.deepEqual(mixed.light, [
+    Math.round((((n >> 16) & 0xff) + red[0]) * 50) / 100,
+    Math.round((((n >> 8) & 0xff) + red[1]) * 50) / 100,
+    Math.round(((n & 0xff) + red[2]) * 50) / 100,
+  ]);
+});
+
+test('ダークの低い段の溶かし方は、段数によらず強度に対して同じ（強度1/4で地から色に変わりきる）', () => {
+  const ground = groundOf('dark');
+  const full = heatMultiKeySample(0.25).dark;
+  const half = heatMultiBlobSample(HEAT_BLOB_LEVELS / 8).dark;
+  const quarter = heatMultiBlobSample(HEAT_BLOB_LEVELS / 4).dark;
+  const halfKey = heatMultiKeySample(0.125).dark;
+  for (const n of [0, 1, 2] as const) {
+    assert.ok(Math.abs(quarter[n] - full[n]) < 0.01);
+    assert.ok(Math.abs(half[n] - (ground[n] + halfKey[n]) / 2) < 0.01, `成分${n}`);
+  }
+});
+
+test('サーモグラフィの文字色は、ぼかした後の表示色の上で、どの点でもコントラスト比が4.5以上', () => {
+  const KEY = 30;
+  // 押下の偏った配列を想像した、強さの違う塊をまばらに・密に並べた図
+  const sources: HeatBlobSource[] = [];
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 10; col++) {
+      const intensity = ((col * 7 + row * 13) % 11) / 10;
+      sources.push({ x: col * KEY + 15, y: row * KEY + 15, intensity });
+    }
+  }
+  let checked = 0;
+  for (let x = 0; x <= 10 * KEY; x += 3) {
+    for (let y = 0; y <= 3 * KEY; y += 3) {
+      const parts = heatBlobBlurParts(sources, x, y, KEY);
+      if (!parts.some((part) => part.level > 0)) continue;
+      const shown = heatMultiBlobMixSample(parts);
+      const label = heatMultiLabelSample(shown);
+      for (const theme of HEAT_THEMES) {
+        const ratio = contrastRatio(shown[theme], label[theme]);
+        assert.ok(ratio >= 4.5, `${theme} (${x}, ${y}): ${ratio}`);
+      }
+      checked++;
+    }
+  }
+  assert.ok(checked > 500);
 });

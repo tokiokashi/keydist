@@ -4,6 +4,7 @@ import {
   HEAT_BLOB_LEVELS,
   HEAT_BLOB_RADIUS_KEYS,
   HEAT_BLOB_SIGMA_KEYS,
+  heatBlobBlurParts,
   heatBlobIntensityAt,
   heatBlobLevel,
   heatBlobProfile,
@@ -97,4 +98,15 @@ test('同じ段が横に続く升は1つの矩形にまとめる', () => {
   const row = runs.filter((run) => run.y === 30);
   assert.ok(row.length > 0 && row.length < 30);
   assert.ok(row.every((run) => run.x >= 0 && run.x + run.width <= 60));
+});
+
+test('ぼかした後の段の内訳は、重みの合計が1で、塊の無い所は段0だけ、塊の中心では中心の段が最も重い', () => {
+  const sources: HeatBlobSource[] = [{ x: 60, y: 60, intensity: 0.8 }];
+  const far = heatBlobBlurParts(sources, 0, 0, KEY);
+  assert.equal(far.length, 1);
+  assert.equal(far[0]!.level, 0);
+  const center = heatBlobBlurParts(sources, 60, 60, KEY);
+  assert.ok(Math.abs(center.reduce((sum, part) => sum + part.weight, 0) - 1) < 1e-9);
+  const heaviest = center.reduce((best, part) => (part.weight > best.weight ? part : best));
+  assert.ok(Math.abs(heaviest.level - Math.round(0.8 * HEAT_BLOB_LEVELS)) <= 1);
 });
