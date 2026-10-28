@@ -12,7 +12,7 @@ import {
   updateUserLayoutCommand,
   type KeydistAssets,
 } from './commands.ts';
-import type { FaceLayoutContent } from '#input/layouts/kana-face-layout-file.ts';
+import type { FaceLayoutContent } from '#input/layouts/face-layout-file.ts';
 import type { AlphaFaceUserLayout, StageUserLayout } from '#input/layouts/user-layouts.ts';
 import { initialMultiTargetSelection } from './multi-target-selection.ts';
 import { initialSingleTargetSelection } from './single-target-selection.ts';
@@ -80,6 +80,8 @@ test('面で定義するかな配列のコマンド: 作成と編集を書き込
   assert.equal(created.outcome.kind, 'applied');
   const edited = applyCommand(created.assets, created.history, updateUserFaceLayoutCommand('user-face', { ...content, name: '改名' }));
   assert.equal(edited.outcome.kind, 'applied');
+  assert.equal(created.outcome.kind === 'applied' ? created.outcome.label : undefined, '自作のかな配列を作成する');
+  assert.equal(edited.outcome.kind === 'applied' ? edited.outcome.label : undefined, '自作のかな配列を編集する');
   assert.deepEqual(
     edited.assets.userLayouts.map((layout) => layout.name),
     ['改名'],
@@ -147,10 +149,12 @@ test('面の形の作成・更新のコマンドは、種類とローマ字規�
   );
   assert.equal(created.outcome.kind, 'applied');
   assert.deepEqual(created.assets.userLayouts, [ALPHA_FACE]);
+  assert.deepEqual(created.outcome.kind === 'applied' ? created.outcome.label : undefined, '自作のローマ字配列を作成する');
 
   const renamed = applyCommand(created.assets, created.history, updateUserFaceLayoutCommand(ALPHA_FACE.id, alphaContent('azik')));
   assert.equal(renamed.outcome.kind, 'applied');
   assert.equal(renamed.assets.userLayouts[0]!.romaji, 'azik');
+  assert.equal(renamed.outcome.kind === 'applied' ? renamed.outcome.label : undefined, '自作のローマ字配列を編集する');
 
   const same = applyCommand(created.assets, created.history, updateUserFaceLayoutCommand(ALPHA_FACE.id, content));
   assert.equal(same.outcome.kind, 'no-op');

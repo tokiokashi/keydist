@@ -1,5 +1,5 @@
 import { FINGERS, type NonThumb } from '../shapes/geometry.ts';
-import type { FaceLayoutContent } from './kana-face-layout-file.ts';
+import type { FaceLayoutContent } from './face-layout-file.ts';
 import type { RomajiRuleId } from '../romaji/rules.ts';
 import type { LayoutKind } from './kind.ts';
 import {
@@ -18,7 +18,7 @@ import { isFaceUserLayout, toLayout, type FaceUserLayout, type UserLayout } from
 import { buildFailureMessage, NAME_REQUIRED_MESSAGE, type UserLayoutEditResult } from './layout-edit.ts';
 
 /**
- * 面で定義する自作のかな配列を作る・直す操作の純関数。
+ * 面で定義する自作の配列（かな・英字）を作る・直す操作の純関数。
  *
  * 画面は入力の途中の値（順序や持続をまだ選んでいない面など）を持つので、書きかけを許す下書きの形を持つ。
  * 下書きを保存できるかは、JSONの貼り付けと同じ読み込み（`readFaceBody`）と組み立て（`buildFaceLayout`）で決める。
@@ -51,10 +51,14 @@ export interface FaceLayoutDraft {
   homeKeys: Partial<Record<NonThumb, string>>;
 }
 
-/** 新しい配列の下書き。単打の面を1つ持つ。入力の意味は見えて変えられる既定として「レイヤー」から始める。 */
-export const blankFaceLayoutDraft = (): FaceLayoutDraft => ({
+/**
+ * 新しい配列の下書き。単打の面を1つ持つ。入力の意味は見えて変えられる既定として「レイヤー」から始める。
+ * 種類は画面が決める（かな配列の画面はかな、ローマ字配列の画面は英字）。英字の種類のローマ字規則は呼び出し側が選ぶ。
+ */
+export const blankFaceLayoutDraft = (kind: LayoutKind = 'kana', romaji?: RomajiRuleId): FaceLayoutDraft => ({
   name: '',
-  kind: 'kana',
+  kind,
+  ...(kind === 'alpha' && romaji !== undefined ? { romaji } : {}),
   faces: [blankFace()],
   composition: { dakuten: false, handakuten: false },
   homeKeys: {},

@@ -33,16 +33,16 @@ test('定義ファイルを取り込むと新しい配列の下書きで開き�
 
   await page.locator('[data-kana-import-file]').setInputFiles(file('私の配列.txt', DVORAKJ));
   await expect(page.locator('[data-kana-file-import="ok"]')).toBeVisible();
-  await expect(page.locator('[data-kana-name]')).toHaveValue('私の配列');
+  await expect(page.locator('[data-face-name]')).toHaveValue('私の配列');
   // 面は、triggerの無い面と、親指の面の2つ
-  await expect(page.locator('[data-kana-face-pick]')).toHaveCount(2);
-  await expect(page.locator('[data-kana-figure] [data-key-id="a"] .physical-keyboard-legend')).toHaveText('あ');
+  await expect(page.locator('[data-face-pick]')).toHaveCount(2);
+  await expect(page.locator('[data-face-figure] [data-key-id="a"] .physical-keyboard-legend')).toHaveText('あ');
 
   // 保存するまでは資産に入らない
   const stored = () => page.evaluate(() => localStorage.getItem('keydist:user-layouts'));
   expect(await stored()).toBeNull();
 
-  const submit = page.locator('[data-kana-submit]');
+  const submit = page.locator('[data-face-submit]');
   await expect(submit).toBeEnabled();
   await submit.click();
   await expect(page.locator('[data-kana-pick]')).toHaveValue(/^user-/);
@@ -62,21 +62,21 @@ test('定義ファイルを取り込むと新しい配列の下書きで開き�
 test('既に配列を開いている時も、取り込みは新しい配列になり、開いていた配列を置き換えない', async ({ page }) => {
   await page.goto('/kana-layout');
   await waitForHydration(page);
-  await page.locator('[data-kana-name]').fill('元の配列');
-  await page.locator('[data-kana-figure] [data-key-id="a"]').click();
-  await page.locator('[data-kana-output]').fill('あ');
-  await page.locator('[data-kana-submit]').click();
+  await page.locator('[data-face-name]').fill('元の配列');
+  await page.locator('[data-face-figure] [data-key-id="a"]').click();
+  await page.locator('[data-face-output]').fill('あ');
+  await page.locator('[data-face-submit]').click();
   const originalId = await page.locator('[data-kana-pick]').inputValue();
 
   await page.locator('[data-kana-import-file]').setInputFiles(file('取り込み.txt', DVORAKJ));
-  await expect(page.locator('[data-kana-name]')).toHaveValue('取り込み');
-  await page.locator('[data-kana-submit]').click();
+  await expect(page.locator('[data-face-name]')).toHaveValue('取り込み');
+  await page.locator('[data-face-submit]').click();
 
   const options = page.locator('[data-kana-pick] option');
   await expect(options).toHaveCount(2);
   await expect(page.locator('[data-kana-pick]')).not.toHaveValue(originalId);
   await page.locator('[data-kana-pick]').selectOption(originalId);
-  await expect(page.locator('[data-kana-name]')).toHaveValue('元の配列');
+  await expect(page.locator('[data-face-name]')).toHaveValue('元の配列');
 });
 
 test('取り込めないセルがあれば注意が出て、形式が分からないファイルとかなを含まない定義は取り込まれない', async ({ page }) => {
@@ -90,12 +90,12 @@ test('取り込めないセルがあれば注意が出て、形式が分から�
   await expect(page.locator('[data-kana-file-warnings]')).toContainText('自身の位置にあるため取り込みませんでした');
 
   // 取り込めないファイルは、今の下書きを替えずにその旨を出す
-  await page.locator('[data-kana-name]').fill('下書きのまま');
+  await page.locator('[data-face-name]').fill('下書きのまま');
   await input.setInputFiles(file('layout.csv', 'a,b'));
   await expect(page.locator('[data-kana-file-import="error"]')).toContainText('取り込める形式ではありません');
   await input.setInputFiles(file('romaji.txt', '[\n  ka|si|tu|ne|\n  q|w|e|r|\n]'));
   await expect(page.locator('[data-kana-file-import="error"]')).toContainText('かな配列ではない');
   await input.setInputFiles(file('keyboard.vil', '{}'));
   await expect(page.locator('[data-kana-file-import="error"]')).toContainText('Vial');
-  await expect(page.locator('[data-kana-name]')).toHaveValue('下書きのまま');
+  await expect(page.locator('[data-face-name]')).toHaveValue('下書きのまま');
 });

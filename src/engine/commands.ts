@@ -9,7 +9,7 @@ import {
   updateUserFingerAssignment,
 } from '#input/shapes/user-finger-assignments.ts';
 import { createUserFaceLayout, updateUserFaceLayout } from '#input/layouts/face-layout-edit.ts';
-import type { FaceLayoutContent } from '#input/layouts/kana-face-layout-file.ts';
+import type { FaceLayoutContent } from '#input/layouts/face-layout-file.ts';
 import { createUserLayout, updateUserLayout, type UserLayoutContent, type UserLayoutEditResult } from '#input/layouts/layout-edit.ts';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { PresetLibrary } from '#input/presets/index.ts';
@@ -478,9 +478,14 @@ export function updateUserLayoutCommand(id: string, content: UserLayoutContent):
   return userLayoutsCommand('自作の配列を編集する', (layouts) => updateUserLayout(layouts, id, content));
 }
 
+/** 履歴に出す名前に使う、画面と同じ呼び方。 */
+const FACE_LAYOUT_KIND_NAME = { kana: 'かな', alpha: 'ローマ字' } as const;
+
 /** 面で定義する自作の配列（かなの種類・英字の種類）を新規作成する。保存できない誤りのある入力は拒否する。 */
 export function createUserFaceLayoutCommand(generateId: () => string, content: FaceLayoutContent): Command<KeydistAssets> {
-  return userLayoutsCommand('自作のかな配列を作成する', (layouts) => createUserFaceLayout(layouts, generateId, content));
+  return userLayoutsCommand(`自作の${FACE_LAYOUT_KIND_NAME[content.kind]}配列を作成する`, (layouts) =>
+    createUserFaceLayout(layouts, generateId, content),
+  );
 }
 
 /**
@@ -488,7 +493,7 @@ export function createUserFaceLayoutCommand(generateId: () => string, content: F
  * 面で定義する配列でない対象と、保存できない誤りのある入力は拒否する。
  */
 export function updateUserFaceLayoutCommand(id: string, content: FaceLayoutContent): Command<KeydistAssets> {
-  return userLayoutsCommand('自作のかな配列を編集する', (layouts) => updateUserFaceLayout(layouts, id, content));
+  return userLayoutsCommand(`自作の${FACE_LAYOUT_KIND_NAME[content.kind]}配列を編集する`, (layouts) => updateUserFaceLayout(layouts, id, content));
 }
 
 /**

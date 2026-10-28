@@ -1,11 +1,13 @@
 import { useMemo, useState, type ComponentType, type ReactNode } from 'react';
+import { blankFaceLayoutDraft, contentOfFaceLayout, draftOf } from '#input/layouts/face-layout-edit.ts';
+import type { FaceLayoutContent } from '#input/layouts/face-layout-file.ts';
 import { importRomajiLayoutFile } from '#input/layouts/import.ts';
 import {
   chordOutputCount,
   contentOf,
   contentOfImported,
   hasBlockingProblem,
-  isEditableUserLayout,
+  isStageUserLayout,
   isImportedContent,
   layoutProblems,
   newUserLayoutId,
@@ -14,7 +16,7 @@ import {
   type LayoutProblem,
   type UserLayoutContent,
 } from '#input/layouts/layout-edit.ts';
-import { ROW_LABELS, ROW_LIMITS, type UserLayout } from '#input/layouts/user-layouts.ts';
+import { isAlphaFaceUserLayout, ROW_LABELS, ROW_LIMITS, type UserLayout } from '#input/layouts/user-layouts.ts';
 import { allRomajiRules, type UserRomajiRule } from '#input/romaji/rules.ts';
 import { FINGER_LABEL } from '#input/shapes/finger-names.ts';
 import { physicalKeyDisplayLabel } from '#input/shapes/key-labels.ts';
@@ -24,14 +26,18 @@ import './romaji-layout.css';
 import { useHistoryShortcuts } from '#ui/primitives/use-history-shortcuts.ts';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
 import { HOME_KEY_RULE_DESCRIPTION } from '../home-key/home-key-text.ts';
+import { FaceLayoutForm, type FaceLayoutKindFieldsContext } from '../face-layout/FaceLayoutForm.tsx';
 
+/** 保存していない新しい配列。段の文字で作る */
 const NEW = 'new';
+/** 保存していない新しい配列。面で作る。種類は英字に決まる */
+const NEW_FACE = 'new-face';
 
 /** 新規作成の入力欄の初期値。ローマ字規則は先頭の組み込みの規則から始める。 */
 const blankContent = (romaji: string): UserLayoutContent => ({ name: '', rows: ['', '', '', ''], romaji, homeKeys: {} });
 
 export interface RomajiLayoutEditorProps {
-  /** 自作の配列。取り込み形式の配列は一覧に出さず、直せる配列だけを扱う。 */
+  /** 自作の配列。段の形の配列と、英字の種類の面の形の配列を一覧に出す。 */
   readonly layouts: readonly UserLayout[];
   /** 自作のローマ字規則。組み込みの規則と並べて選べる。 */
   readonly rules: readonly UserRomajiRule[];
@@ -45,6 +51,10 @@ export interface RomajiLayoutEditorProps {
   readonly onRedo: () => void;
   readonly onCreate: (id: string, content: UserLayoutContent) => void;
   readonly onUpdate: (id: string, content: UserLayoutContent) => void;
+  readonly onCreateFace: (id: string, content: FaceLayoutContent) => void;
+  readonly onUpdateFace: (id: string, content: FaceLayoutContent) => void;
+  /** 書き出したJSONをファイルとして保存する。ブラウザの保存は `editors` が持てないので、appが渡す。 */
+  readonly onDownload: (filename: string, text: string) => void;
   /** かな配列の画面へのリンク。ルーターを使えるのは `app` だけなので、`app` が渡す */
   readonly KanaLayoutLink: ComponentType<{ readonly children: ReactNode }>;
 }
@@ -92,6 +102,46 @@ function ImportedParts({ content }: { readonly content: UserLayoutContent }) {
         同時押しなどで出す出力が{chords}件あります。段の文字・表示ラベルと合わせて、ここでは直せません。
       </p>
     </fieldset>
+  );
+}
+
+interface RomajiRuleFieldProps extends FaceLayoutKindFieldsContext {
+  readonly ruleOptions: readonly { readonly id: string; readonly name: string }[];
+}
+
+/** 面の形の推奨のローマ字規則。英字の種類だけが持つ。 */
+function RomajiRuleField({ draft, setDraft, ruleOptions }: RomajiRuleFieldProps) {
+  const known = ruleOptions.some((option) => option.id === draft.romaji);
+  return (
+    <>
+      <label className="romaji-layout-romaji">
+        推奨のローマ字規則
+        <select
+          value={draft.romaji ?? ''}
+          data-layout-romaji
+          onChange={(event) => {
+            const value = event.currentTarget.value;
+            setDraft({ ...draft, romaji: value === '' ? undefined : value });
+          }}
+        >
+          <option value="">指定しない</option>
+          {draft.romaji === undefined || known ? null : <option value={draft.romaji}>見つからない規則</option>}
+          {ruleOptions.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <p className="romaji-layout-note">
+        日本語のテキストを打つ時に、この配列が推奨する規則です。条件でローマ字規則を指定した場合は、条件の指定が優先されます。
+      </p>
+      {draft.romaji === undefined || known ? null : (
+        <p className="romaji-layout-warning" role="status" data-layout-problem="warning">
+          選んでいたローマ字規則が見つかりません。全体の値の規則で打ちます。規則を選び直すと、その規則で打ちます
+        </p>
+      )}
+    </>
   );
 }
 
@@ -246,7 +296,7 @@ function LayoutForm({ initial, isNew, fingerAssignments, ruleOptions, onSubmit }
 }
 
 /**
- * 名前・4段の文字・ホームキー・ローマ字規則を入れて、ローマ字配列を自作する・直す画面。
+ * 段の文字、または面で、名前・ホームキー・ローマ字規則を入れて、ローマ字配列を自作する・直す画面。
  * 書き込みは親が渡すコールバックを通す。選んでいる配列はこの画面の中だけの値で、保存しない。
  */
 export function RomajiLayoutEditor({
@@ -260,6 +310,9 @@ export function RomajiLayoutEditor({
   onRedo,
   onCreate,
   onUpdate,
+  onCreateFace,
+  onUpdateFace,
+  onDownload,
   KanaLayoutLink,
 }: RomajiLayoutEditorProps) {
   useHistoryShortcuts({ canUndo, canRedo, undo: onUndo, redo: onRedo });
@@ -269,25 +322,44 @@ export function RomajiLayoutEditor({
   const [imported, setImported] = useState<{ readonly content: UserLayoutContent; readonly warnings: readonly string[] } | undefined>(undefined);
   const [importError, setImportError] = useState<{ readonly message: string; readonly kanaLayout: boolean } | undefined>(undefined);
 
-  const editable = useMemo(() => layouts.filter(isEditableUserLayout), [layouts]);
+  const editable = useMemo(() => layouts.filter((candidate) => isStageUserLayout(candidate) || isAlphaFaceUserLayout(candidate)), [layouts]);
   const ruleOptions = useMemo(() => allRomajiRules([...rules]), [rules]);
   const defaultRomaji = ruleOptions[0]?.id ?? 'kunrei';
 
   // 選んでいた配列が元に戻すなどで無くなった時は、先頭の配列（無ければ新規作成）に移る
-  const layout = selectedId === NEW ? undefined : (editable.find((candidate) => candidate.id === selectedId) ?? editable[0]);
+  const creating = selectedId === NEW || selectedId === NEW_FACE;
+  const layout = creating ? undefined : (editable.find((candidate) => candidate.id === selectedId) ?? editable[0]);
   const isNew = layout === undefined;
+  // 開いている（または新しく作る）配列の形。面の形の配列は英字の種類に決まる
+  const faceLayout = layout === undefined ? undefined : isAlphaFaceUserLayout(layout) ? layout : undefined;
+  const faceForm = faceLayout !== undefined || (isNew && selectedId === NEW_FACE);
+  const stageLayout = layout !== undefined && isStageUserLayout(layout) ? layout : undefined;
 
-  const initial = layout !== undefined ? contentOf(layout) : (imported?.content ?? blankContent(defaultRomaji));
-  const formKey = layout === undefined ? `new:${newCount}` : `${layout.id}:${JSON.stringify(initial)}`;
+  const initial = stageLayout !== undefined ? contentOf(stageLayout) : (imported?.content ?? blankContent(defaultRomaji));
+  const faceInitial = useMemo(
+    () => (faceLayout !== undefined ? draftOf(contentOfFaceLayout(faceLayout)) : blankFaceLayoutDraft('alpha', defaultRomaji)),
+    [faceLayout, defaultRomaji],
+  );
+  const formKey = layout === undefined ? `new:${newCount}` : `${layout.id}:${JSON.stringify(layout)}`;
 
   const submit = (content: UserLayoutContent) => {
-    if (layout === undefined) {
+    if (stageLayout === undefined) {
       const id = newUserLayoutId();
       onCreate(id, content);
       setImported(undefined);
       setSelectedId(id);
     } else {
-      onUpdate(layout.id, content);
+      onUpdate(stageLayout.id, content);
+    }
+  };
+
+  const submitFace = (content: FaceLayoutContent) => {
+    if (faceLayout === undefined) {
+      const id = newUserLayoutId();
+      onCreateFace(id, content);
+      setSelectedId(id);
+    } else {
+      onUpdateFace(faceLayout.id, content);
     }
   };
 
@@ -304,7 +376,7 @@ export function RomajiLayoutEditor({
   };
 
   return (
-    <article className="romaji-layout" data-romaji-layout-editor>
+    <article className="romaji-layout face-layout" data-romaji-layout-editor>
       <h1>{ROMAJI_LAYOUT_LABEL}</h1>
       <p className="romaji-layout-note">ローマ字配列を自作します。作った配列は、Analyzerの対象に選べます。</p>
       <div className="romaji-layout-toolbar">
@@ -321,13 +393,13 @@ export function RomajiLayoutEditor({
             {editable.length === 0 ? null : (
               <label>
                 編集する配列
-                <select value={layout?.id ?? NEW} data-layout-pick onChange={(event) => setSelectedId(event.currentTarget.value)}>
+                <select value={layout?.id ?? (faceForm ? NEW_FACE : NEW)} data-layout-pick onChange={(event) => setSelectedId(event.currentTarget.value)}>
                   {editable.map((item) => (
                     <option key={item.id} value={item.id}>
                       {item.name}
                     </option>
                   ))}
-                  {isNew ? <option value={NEW}>新しい配列</option> : null}
+                  {isNew ? <option value={faceForm ? NEW_FACE : NEW}>{faceForm ? '新しい配列（面）' : '新しい配列（段の文字）'}</option> : null}
                 </select>
               </label>
             )}
@@ -341,7 +413,19 @@ export function RomajiLayoutEditor({
                 setNewCount((count) => count + 1);
               }}
             >
-              新規作成
+              段の文字で新規作成
+            </button>
+            <button
+              type="button"
+              data-layout-create-face
+              onClick={() => {
+                setImported(undefined);
+                setImportError(undefined);
+                setSelectedId(NEW_FACE);
+                setNewCount((count) => count + 1);
+              }}
+            >
+              面で新規作成
             </button>
             <label>
               DvorakJ・Vial・紅皿の定義ファイル
@@ -364,7 +448,7 @@ export function RomajiLayoutEditor({
               {importError.kanaLayout ? <KanaLayoutLink>かな配列の画面を開く</KanaLayoutLink> : null}
             </p>
           )}
-          {imported === undefined || !isNew ? null : (
+          {imported === undefined || !isNew || faceForm ? null : (
             <div data-layout-file-import="ok">
               <p className="romaji-layout-note" role="status">
                 定義ファイルから開いた、保存していない配列です。
@@ -381,7 +465,19 @@ export function RomajiLayoutEditor({
             </div>
           )}
           <h2>{isNew ? '新しい配列' : layout.name}</h2>
-          <LayoutForm key={formKey} initial={initial} isNew={isNew} fingerAssignments={fingerAssignments} ruleOptions={ruleOptions} onSubmit={submit} />
+          {faceForm ? (
+            <FaceLayoutForm
+              key={formKey}
+              initial={faceInitial}
+              isNew={isNew}
+              fingerAssignments={fingerAssignments}
+              onSubmit={submitFace}
+              onDownload={onDownload}
+              renderAfterHome={(context) => <RomajiRuleField {...context} ruleOptions={ruleOptions} />}
+            />
+          ) : (
+            <LayoutForm key={formKey} initial={initial} isNew={isNew} fingerAssignments={fingerAssignments} ruleOptions={ruleOptions} onSubmit={submit} />
+          )}
         </>
       )}
     </article>

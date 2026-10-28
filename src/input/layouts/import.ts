@@ -1,7 +1,7 @@
 import { QWERTY_LEGEND } from '../shapes/geometry.ts';
 import { readDvorakJHeading, isSequentialDeclaration, parseSubstitution, type HeadingSubstitution } from './dvorakj-heading.ts';
 import { buildKanaContent, faceSequence, NO_OUTPUT_MESSAGE, printableOutput, type ParsedCell, type ParsedFace } from './import-faces.ts';
-import type { KanaLayoutContent } from './kana-face-layout-file.ts';
+import type { KanaLayoutContent } from './face-layout-file.ts';
 import type { Sequence } from './types.ts';
 
 export type ImportFormat = 'dvorakj' | 'vial' | 'benizara';

@@ -42,10 +42,11 @@ export const isImportedContent = (content: { readonly sequences?: unknown; reado
   content.sequences !== undefined || content.legends !== undefined;
 
 /**
- * ローマ字配列の画面で扱える配列か。段の形の配列が対象で、面で定義する配列は段を持たないので扱わない。
+ * 段の形の配列か。段の文字を受ける作成・更新（`createUserLayout`・`updateUserLayout`）の対象で、
+ * 面で定義する配列は段を持たないので扱わない（面の形は `face-layout-edit.ts` の作成・更新が受け持つ）。
  * 取り込み形式の配列は、名前・ローマ字規則・ホームキーだけを直せ、段の文字・`sequences`・`legends` は元の値のまま残す。
  */
-export const isEditableUserLayout = (layout: UserLayout): layout is StageUserLayout => !isFaceUserLayout(layout);
+export const isStageUserLayout = (layout: UserLayout): layout is StageUserLayout => !isFaceUserLayout(layout);
 
 /** 同時押しや複数の打鍵になる出力の数。1キーの単打は数えない。 */
 export const chordOutputCount = (sequences: readonly (readonly [string, Sequence])[]): number =>
@@ -297,7 +298,7 @@ export function createUserLayout(layouts: readonly UserLayout[], generateId: () 
 export function updateUserLayout(layouts: readonly UserLayout[], id: string, content: UserLayoutContent): UserLayoutEditResult {
   const target = layouts.find((layout) => layout.id === id);
   if (target === undefined) return { ok: true, layouts };
-  if (!isEditableUserLayout(target)) return { ok: false, reason: '面で定義する配列は、ローマ字配列の画面では直せません' };
+  if (!isStageUserLayout(target)) return { ok: false, reason: '面で定義する配列は、段の文字の編集では直せません' };
   // 取り込み形式の配列は、画面で直せる3項目だけを入力から取り、残りは保存済みの値を使う
   const { romaji: _stored, ...stored } = contentOf(target);
   const kept: UserLayoutContent = isImportedContent(target)

@@ -1,0 +1,317 @@
+/* 面で定義する配列の編集（かな配列の画面とローマ字配列の画面で共通） */
+.face-layout h3 {
+  margin: 0.75rem 0 0.4rem;
+  font-size: 1rem;
+}
+
+.face-layout-note {
+  margin: 0 0 0.6rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.face-layout-toolbar,
+.face-layout-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.face-layout button {
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.face-layout button:hover:not(:disabled) {
+  background: var(--surface-muted);
+}
+
+.face-layout button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.face-layout label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.face-layout label.face-layout-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.face-layout select,
+.face-layout textarea,
+.face-layout input[type="text"] {
+  min-width: 0;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+}
+
+.face-layout textarea {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+}
+
+.face-layout [aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+.face-layout-form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.face-layout-name {
+  max-width: 20rem;
+}
+
+.face-layout fieldset {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0.6rem 0.8rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.face-layout legend {
+  padding-inline: 0.3rem;
+  font-weight: bold;
+  font-size: 0.95rem;
+}
+
+.face-layout-face-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.face-layout-face-list button {
+  display: grid;
+  justify-items: start;
+  gap: 0.1rem;
+  text-align: left;
+}
+
+.face-layout-face-list button small {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.face-layout-face-list button[aria-pressed="true"] {
+  border-color: var(--border-strong);
+  background: var(--surface-muted);
+  font-weight: bold;
+}
+
+.face-layout-face-list button[data-has-problem] {
+  border-color: var(--danger);
+}
+
+.face-layout-face-title {
+  margin-bottom: 0;
+}
+
+.face-layout-face {
+  display: grid;
+  gap: 0.6rem;
+  padding-top: 0.25rem;
+  animation: face-layout-reveal 140ms ease-out;
+}
+
+.face-layout-operation {
+  border: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+}
+
+/*
+ * 図は実物の大きさ（SVGの幅の属性どおり、キーが約52px）より縮めない。画面がそれより狭い時は、
+ * 図の枠だけを横にスクロールさせる。共有の `.physical-keyboard` が内側で横スクロールを持つと、
+ * 図の枠は動かず内側だけが動くため、ここで内側の `overflow` を外す。
+ */
+.face-layout-figure {
+  overflow-x: auto;
+}
+
+.face-layout-figure .physical-keyboard {
+  overflow: visible;
+}
+
+.face-layout-figure .physical-keyboard svg {
+  max-width: none;
+}
+
+.face-layout-output {
+  display: flex;
+  align-items: end;
+  gap: 0.5rem;
+  max-width: 24rem;
+}
+
+.face-layout-output label {
+  flex: 1;
+}
+
+.face-layout-label-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.face-layout-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 0.5rem 0.75rem;
+}
+
+.face-layout-home-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0.5rem 0.75rem;
+}
+
+.face-layout-problems {
+  display: grid;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.face-layout-problems li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.1rem 0.5rem;
+  animation: face-layout-reveal 140ms ease-out;
+}
+
+.face-layout-error,
+.face-layout-warning {
+  margin: 0.1rem 0;
+  font-size: 0.85rem;
+}
+
+.face-layout-error {
+  color: var(--danger);
+}
+
+.face-layout-warning {
+  color: var(--text-muted);
+}
+
+.face-layout-path {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.face-layout-detail {
+  flex-basis: 100%;
+  font-size: 0.8rem;
+}
+
+.face-layout-detail pre {
+  margin: 0.25rem 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+
+.face-layout-json {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.face-layout-json > summary {
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.face-layout-json[open] > *:not(summary) {
+  margin-top: 0.5rem;
+}
+
+@keyframes face-layout-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .face-layout-face,
+  .face-layout-problems li {
+    animation: none;
+  }
+}
+
+.face-layout-error a {
+  margin-inline-start: 0.5rem;
+}
+
+.face-layout-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.face-layout-rows {
+  display: grid;
+  gap: 0.5rem;
+  max-width: 28rem;
+  margin: 0.75rem 0;
+}
+
+.face-layout-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 0.1rem 0.5rem;
+}
+
+.face-layout-row input[type="text"] {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.face-layout-row > p {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.face-layout-count {
+  padding-bottom: 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}

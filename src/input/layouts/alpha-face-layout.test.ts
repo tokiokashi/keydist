@@ -5,8 +5,7 @@ import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
 import { buildGeometry, QWERTY_LEGEND, THUMB_KEY } from '../shapes/geometry.ts';
 import { blankFaceLayoutDraft, checkFaceLayout, contentOfFaceLayout, draftOf } from './face-layout-edit.ts';
 import { layoutKind } from './kind.ts';
-import { isEditableUserLayout } from './layout-edit.ts';
-import { kanaLayoutFileText, parseKanaLayoutFile } from './kana-face-layout-file.ts';
+import { isStageUserLayout } from './layout-edit.ts';
 import { buildUserCatalog } from './user-catalog.ts';
 import {
   decodeUserLayouts,
@@ -146,9 +145,9 @@ test('ローマ字規則は、英字の面の形でも推奨・同梱・参照�
 });
 
 test('ローマ字配列の画面が段の形として開く配列は、種類ではなく形で決まる', () => {
-  assert.equal(isEditableUserLayout(ALPHA_STAGE), true);
-  assert.equal(isEditableUserLayout(ALPHA_FACE), false);
-  assert.equal(isEditableUserLayout(KANA_FACE), false);
+  assert.equal(isStageUserLayout(ALPHA_STAGE), true);
+  assert.equal(isStageUserLayout(ALPHA_FACE), false);
+  assert.equal(isStageUserLayout(KANA_FACE), false);
   assert.equal(isKanaFaceUserLayout(KANA_FACE), true);
   assert.equal(isKanaFaceUserLayout(ALPHA_FACE), false);
   assert.equal(isKanaFaceUserLayout(ALPHA_STAGE), false);
@@ -167,22 +166,6 @@ test('下書きの検査: 全かなの確認はかなの種類だけに掛け、
   assert.ok((kana.uncovered ?? []).length > 0);
   assert.equal(kana.content?.kind, 'kana');
   assert.equal(blankFaceLayoutDraft().kind, 'kana');
-});
-
-test('貼り付け・書き出しのJSONは、かなの種類の面の形だけを読み書きする', () => {
-  const kana = contentOfFaceLayout(KANA_FACE);
-  assert.equal(kana.kind, 'kana');
-  const text = kanaLayoutFileText(kana as Parameters<typeof kanaLayoutFileText>[0]);
-  const body = JSON.parse(text) as Record<string, unknown>;
-  assert.equal('kind' in body, false);
-  const read = parseKanaLayoutFile(text);
-  assert.ok(read.ok);
-  assert.equal(read.layout.kind, 'kana');
-  // 種類とローマ字規則はJSONの項目にない
-  for (const extra of [{ kind: 'alpha' }, { romaji: 'kunrei' }]) {
-    const result = parseKanaLayoutFile(JSON.stringify({ ...body, ...extra }));
-    assert.equal(result.ok, false);
-  }
 });
 
 test('英字の面の形の保存の検査は、通常Shiftを足した後の衝突を保存の時に知らせる', () => {

@@ -6,7 +6,7 @@ import {
   createUserLayout,
   hasBlockingProblem,
   ignoredHomeKeyWarnings,
-  isEditableUserLayout,
+  isStageUserLayout,
   layoutProblems,
   normalizeContent,
   placedKeys,
@@ -191,9 +191,9 @@ const importedLayout = (overrides: Partial<StageUserLayout> = {}): StageUserLayo
 });
 
 test('取り込み形式の配列も直せる配列に出る。面で定義する配列は出ない', () => {
-  assert.equal(isEditableUserLayout(importedLayout()), true);
-  assert.equal(isEditableUserLayout(stored({ legends: [['a', 'あ']] })), true);
-  assert.equal(isEditableUserLayout(stored()), true);
+  assert.equal(isStageUserLayout(importedLayout()), true);
+  assert.equal(isStageUserLayout(stored({ legends: [['a', 'あ']] })), true);
+  assert.equal(isStageUserLayout(stored()), true);
 });
 
 test('取り込み形式の配列は、名前・ローマ字規則・ホームキーだけを書き換え、段・sequences・legendsは元の値のまま残す', () => {
