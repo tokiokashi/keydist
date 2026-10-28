@@ -4,7 +4,7 @@ import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
 import { userLayoutRows } from '#app/assets/user-asset-rows.ts';
 import { buildGeometry, THUMB_KEY } from '../shapes/geometry.ts';
 import { layoutKind } from './kind.ts';
-import { isEditableUserLayout, updateUserLayout } from './layout-edit.ts';
+import { isStageUserLayout, updateUserLayout } from './layout-edit.ts';
 import { buildUserCatalog, userInputLayouts } from './user-catalog.ts';
 import { decodeUserLayouts, isValidUserLayout, toLayout, USER_LAYOUTS_CODEC, type FaceUserLayout, type StageUserLayout } from './user-layouts.ts';
 
@@ -127,8 +127,8 @@ test('濁点の合成が組めない配列も、組めない旨を診断に残�
 });
 
 test('ローマ字配列の画面は、面で定義する配列を直せる配列に出さない', () => {
-  assert.equal(isEditableUserLayout(FACE_LAYOUT), false);
-  assert.equal(isEditableUserLayout(STAGE_LAYOUT), true);
+  assert.equal(isStageUserLayout(FACE_LAYOUT), false);
+  assert.equal(isStageUserLayout(STAGE_LAYOUT), true);
   const result = updateUserLayout([FACE_LAYOUT], FACE_LAYOUT.id, { name: 'x', rows: ['', 'q', 'a', 'z'], homeKeys: {} });
   assert.equal(result.ok, false);
 });

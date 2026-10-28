@@ -1,7 +1,7 @@
 import { QWERTY_LEGEND } from '../shapes/geometry.ts';
 import { physicalKeyDisplayLabel } from '../shapes/key-labels.ts';
 import { readFaceBody, type UserFace } from './kana-face-layout.ts';
-import type { KanaLayoutContent } from './kana-face-layout-file.ts';
+import type { KanaLayoutContent } from './face-layout-file.ts';
 import type { FaceMode, Sequence } from './types.ts';
 
 /** 定義ファイルの面1つの中身。形式ごとの読み取りが作り、段の形と面の形の両方の入力になる。 */

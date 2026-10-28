@@ -6,7 +6,7 @@ import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
 import { assignmentWithHomeKeys, buildGeometry, DEFAULT_FINGER_ASSIGNMENT, LEFT_COLUMN_KEYS, THUMB_KEY } from '../shapes/geometry.ts';
 import { blankFaceLayoutDraft, checkFaceLayout, type FaceLayoutDraft } from './face-layout-edit.ts';
 import { buildFaceLayout, readFaceBody, type UserFace, type UserFaceBody } from './kana-face-layout.ts';
-import { kanaLayoutFileText, parseKanaLayoutFile, type KanaLayoutContent } from './kana-face-layout-file.ts';
+import { faceLayoutFileText, parseFaceLayoutFile, type KanaLayoutContent } from './face-layout-file.ts';
 import { physicalKeysUsedByLayout } from './physical-keys.ts';
 
 const NO_COMPOSITION = { dakuten: false, handakuten: false };
@@ -96,12 +96,12 @@ const FILE_CONTENT: KanaLayoutContent = {
 };
 
 test('定義ファイルは、3つのキーの出力・trigger・ホームキーを書き出して読み込んでも変わらない', () => {
-  const text = kanaLayoutFileText(FILE_CONTENT);
-  const read = parseKanaLayoutFile(text);
+  const text = faceLayoutFileText(FILE_CONTENT);
+  const read = parseFaceLayoutFile(text, 'kana');
   assert.ok(read.ok, read.ok ? '' : read.problems.map((problem) => problem.message).join('\n'));
   if (!read.ok) return;
   assert.deepEqual(read.layout, FILE_CONTENT);
-  assert.equal(kanaLayoutFileText(read.layout), text);
+  assert.equal(faceLayoutFileText(read.layout), text);
 });
 
 test('編集画面の検査は、3つのキーの出力・trigger・ホームキーを通し、保存する中身に残す', () => {

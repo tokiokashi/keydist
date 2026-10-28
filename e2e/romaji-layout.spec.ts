@@ -128,3 +128,118 @@ test('取り込み形式の配列は、名前だけを直せ、段の文字と�
   expect(layout.sequences).toEqual([['desu', [['d', 's']]]]);
   expect(layout.legends).toEqual([['a', 'Enter']]);
 });
+
+test('面で新しく作ると英字の種類になり、切り替えのキーの面にローマ字の出力を置いて保存でき、開き直して値を変えられる', async ({ page }) => {
+  await page.goto('/romaji-layout');
+  await waitForHydration(page);
+  await page.locator('[data-layout-create-face]').click();
+  await expect(page.locator('[data-layout-pick]')).toHaveCount(0);
+
+  const submit = page.locator('[data-face-submit]');
+  await expect(submit).toBeDisabled();
+  await page.locator('[data-face-name]').fill('私の英字の面');
+  const key = (id: string) => page.locator(`[data-face-figure] [data-key-id="${id}"]`);
+  await key('a').click();
+  await page.locator('[data-face-output]').fill('a');
+
+  // 右親指との同時押しの面に、ローマ字のまとまりを置く
+  await page.locator('[data-face-add]').click();
+  await page.locator('[data-face-operation="trigger"]').check();
+  await key('thumb-r').click();
+  await page.locator('[data-face-operation="output"]').check();
+  await key('q').click();
+  await page.locator('[data-face-output]').fill('ka');
+  await page.locator('[data-face-field="mode"]').selectOption('simultaneous');
+  await page.locator('[data-face-field="persistence"]').selectOption('single');
+  await page.locator('[data-layout-romaji]').selectOption('kunrei');
+  // 英字の種類には、濁点・半濁点の欄と全かなの確認が出ない
+  await expect(page.locator('[data-kana-composition]')).toHaveCount(0);
+  await expect(page.locator('[data-kana-coverage]')).toHaveCount(0);
+  await expect(submit).toBeEnabled();
+  await submit.click();
+
+  const stored = () => page.evaluate((storageKey) => localStorage.getItem(storageKey), STORAGE_KEY);
+  await expect.poll(stored).toContain('私の英字の面');
+  const saved = JSON.parse((await stored()) ?? '{}').layouts[0];
+  expect(saved.kind).toBe('alpha');
+  expect(saved.romaji).toBe('kunrei');
+  expect(saved.faces[1].outputs).toEqual({ q: 'ka' });
+  expect(saved.composition).toBeUndefined();
+  expect(saved.rows).toBeUndefined();
+
+  // 開き直しても保存した内容が戻り、値を変えて保存できる
+  await page.reload();
+  await waitForHydration(page);
+  await expect(page.locator('[data-layout-pick]')).toHaveValue(/^user-/);
+  await expect(page.locator('[data-face-name]')).toHaveValue('私の英字の面');
+  await expect(page.locator('[data-layout-romaji]')).toHaveValue('kunrei');
+  await expect(submit).toBeDisabled();
+  await page.locator('[data-face-pick="1"]').click();
+  await key('q').click();
+  await expect(page.locator('[data-face-output]')).toHaveValue('ka');
+  await page.locator('[data-face-output]').fill('ki');
+  await expect(submit).toBeEnabled();
+  await submit.click();
+  await expect.poll(stored).toContain('"q":"ki"');
+
+  // 元に戻すで、履歴の名前の通り直前の値に戻る
+  await page.getByRole('button', { name: '元に戻す' }).click();
+  await expect.poll(stored).toContain('"q":"ka"');
+});
+
+test('ローマ字配列の画面とかな配列の画面の一覧には、それぞれの種類の配列だけが並ぶ', async ({ page }) => {
+  const face = (id: string, name: string, kind: 'alpha' | 'kana') => ({
+    id,
+    name,
+    kind,
+    faces: [{ trigger: [], inputRole: 'layer', outputs: { a: kind === 'alpha' ? 'a' : 'あ' } }],
+    ...(kind === 'alpha' ? { romaji: 'kunrei' } : { composition: { dakuten: false, handakuten: false } }),
+  });
+  const layouts = [
+    { id: 'user-stage', kind: 'alpha', name: '英字の段', rows: ['', "',.pyfgcrl/=", 'aoeuidhtns-', ';qjkxbmwvz'], romaji: 'kunrei' },
+    face('user-alpha-face', '英字の面', 'alpha'),
+    face('user-kana-face', 'かなの面', 'kana'),
+  ];
+  await page.addInitScript(
+    ({ key, value }) => {
+      if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 1, layouts: value }));
+    },
+    { key: STORAGE_KEY, value: layouts },
+  );
+
+  await page.goto('/romaji-layout');
+  await waitForHydration(page);
+  await expect(page.locator('[data-layout-pick] option')).toHaveText(['英字の段', '英字の面']);
+
+  await page.goto('/kana-layout');
+  await waitForHydration(page);
+  await expect(page.locator('[data-kana-pick] option')).toHaveText(['かなの面']);
+});
+
+test('ローマ字配列の画面では英字の種類のJSONだけを貼り付けられ、かなの種類のJSONは開ける画面を示して取り込まれない', async ({ page }) => {
+  await page.goto('/romaji-layout');
+  await waitForHydration(page);
+  await page.locator('[data-layout-create-face]').click();
+  await page.locator('[data-face-name]').fill('下書き');
+  await page.locator('[data-face-json] > summary').click();
+
+  const body = {
+    format: 'keydist-face-layout',
+    version: 1,
+    name: '貼り付けた配列',
+    faces: [{ trigger: [], inputRole: 'layer', outputs: { a: 'a' } }],
+  };
+  await page.locator('[data-face-json-paste]').fill(JSON.stringify({ ...body, kind: 'kana', composition: { dakuten: false, handakuten: false } }));
+  await page.locator('[data-face-json-import]').click();
+  await expect(page.locator('[data-face-import-result="error"]')).toBeVisible();
+  await expect(page.locator('[data-face-json] [data-face-problems="error"]')).toContainText('かな配列の画面で貼り付けてください');
+  await expect(page.locator('[data-face-name]')).toHaveValue('下書き');
+
+  const alpha = { ...body, kind: 'alpha', romaji: 'kunrei' };
+  await page.locator('[data-face-json-paste]').fill(JSON.stringify(alpha));
+  await page.locator('[data-face-json-import]').click();
+  await expect(page.locator('[data-face-import-result="ok"]')).toBeVisible();
+  await expect(page.locator('[data-face-name]')).toHaveValue('貼り付けた配列');
+  await expect(page.locator('[data-layout-romaji]')).toHaveValue('kunrei');
+  expect(JSON.parse(await page.locator('[data-face-json-export]').inputValue())).toEqual(alpha);
+});

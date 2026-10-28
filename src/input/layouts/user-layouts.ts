@@ -74,6 +74,9 @@ export const isFaceUserLayout = (layout: UserLayout): layout is FaceUserLayout =
 /** かなの種類の面の形か。 */
 export const isKanaFaceUserLayout = (layout: UserLayout): layout is KanaFaceUserLayout => layout.faces !== undefined && layout.kind === 'kana';
 
+/** 英字の種類の面の形か。 */
+export const isAlphaFaceUserLayout = (layout: UserLayout): layout is AlphaFaceUserLayout => layout.faces !== undefined && layout.kind === 'alpha';
+
 /** 各段に置けるキーの数 */
 export const ROW_LIMITS = QWERTY_LEGEND.map((row) => row.length);
 export const ROW_LABELS = ['数字段', '上段', 'ホーム段', '下段'];

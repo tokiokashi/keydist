@@ -17,40 +17,40 @@ test('図の上で出力と切り替えのキーを決めて保存でき、保�
   await expect(page).toHaveURL(/\/kana-layout$/);
 
   // 何も入れていない間は保存できない
-  const submit = page.locator('[data-kana-submit]');
+  const submit = page.locator('[data-face-submit]');
   await expect(submit).toBeDisabled();
-  await page.locator('[data-kana-name]').fill('私のかな配列');
+  await page.locator('[data-face-name]').fill('私のかな配列');
 
   // 図のキーを押して、そのキーの出力を書く
-  const key = (id: string) => page.locator(`[data-kana-figure] [data-key-id="${id}"]`);
+  const key = (id: string) => page.locator(`[data-face-figure] [data-key-id="${id}"]`);
   await key('a').click();
-  await page.locator('[data-kana-output]').fill('あ');
+  await page.locator('[data-face-output]').fill('あ');
   await key('s').click();
-  await page.locator('[data-kana-output]').fill('か');
+  await page.locator('[data-face-output]').fill('か');
   await expect(key('a').locator('.physical-keyboard-legend')).toHaveText('あ');
   await expect(submit).toBeEnabled();
 
   // 切り替えのキー付きの面を足す。打鍵の順序と持続は選ぶまで保存を止める
-  await page.locator('[data-kana-face-add]').click();
-  await page.locator('[data-kana-operation="trigger"]').check();
+  await page.locator('[data-face-add]').click();
+  await page.locator('[data-face-operation="trigger"]').check();
   await key('thumb-l').click();
   await expect(key('thumb-l')).toHaveAttribute('data-trigger', 'true');
-  await page.locator('[data-kana-operation="output"]').check();
+  await page.locator('[data-face-operation="output"]').check();
   // 出力を書けないキー（親指とShift）は、支援技術にも押せないキーとして伝わる。切り替えのキーにした親指は、その旨も添える
   await expect(key('thumb-l')).toHaveAttribute('aria-disabled', 'true');
   await expect(key('thumb-l')).toHaveAttribute('aria-label', /切り替えのキー。出力を書けないキー/);
   await expect(key('shift-l')).toHaveAttribute('aria-label', /出力を書けないキー/);
   await expect(key('a')).not.toHaveAttribute('aria-disabled', 'true');
-  await page.locator('[data-kana-operation="trigger"]').check();
+  await page.locator('[data-face-operation="trigger"]').check();
   await expect(key('thumb-l')).not.toHaveAttribute('aria-disabled', 'true');
-  await page.locator('[data-kana-operation="output"]').check();
+  await page.locator('[data-face-operation="output"]').check();
   await key('a').click();
-  await page.locator('[data-kana-output]').fill('ぁ');
+  await page.locator('[data-face-output]').fill('ぁ');
   await expect(page.getByRole('alert').filter({ hasText: '打鍵の順序' })).toBeVisible();
   await expect(submit).toBeDisabled();
-  await page.locator('[data-kana-face-field="mode"]').selectOption('simultaneous');
+  await page.locator('[data-face-field="mode"]').selectOption('simultaneous');
   await expect(submit).toBeDisabled();
-  await page.locator('[data-kana-face-field="persistence"]').selectOption('single');
+  await page.locator('[data-face-field="persistence"]').selectOption('single');
   await expect(submit).toBeEnabled();
 
   // 打てないかなが並ぶ（保存は止めない）
@@ -85,66 +85,67 @@ test('図の上で出力と切り替えのキーを決めて保存でき、保�
 test('貼り付けたJSONの誤りは、どの面のどのキーかが出て、取り込まれない', async ({ page }) => {
   await page.goto('/kana-layout');
   await waitForHydration(page);
-  await page.locator('[data-kana-name]').fill('下書き');
-  await page.locator('[data-kana-json] > summary').click();
+  await page.locator('[data-face-name]').fill('下書き');
+  await page.locator('[data-face-json] > summary').click();
 
   const broken = {
-    format: 'keydist-kana-layout',
+    format: 'keydist-face-layout',
     version: 1,
     name: '貼り付けた配列',
+    kind: 'kana',
     faces: [
       { trigger: [], inputRole: 'layer', outputs: { a: 'あ' } },
       { trigger: ['thumb-l'], triggerPersistence: 'single', inputRole: 'layer', outputs: { s: 'い', '1-': 'う' } },
     ],
     composition: { dakuten: false, handakuten: false },
   };
-  await page.locator('[data-kana-json-paste]').fill(JSON.stringify(broken));
-  await page.locator('[data-kana-json-import]').click();
-  await expect(page.locator('[data-kana-import-result="error"]')).toBeVisible();
-  const problems = page.locator('[data-kana-problems="error"] [data-kana-problem]');
+  await page.locator('[data-face-json-paste]').fill(JSON.stringify(broken));
+  await page.locator('[data-face-json-import]').click();
+  await expect(page.locator('[data-face-import-result="error"]')).toBeVisible();
+  const problems = page.locator('[data-face-problems="error"] [data-face-problem]');
   await expect(problems.filter({ hasText: '面2は、打鍵の順序' })).toContainText('faces[1].mode');
   await expect(problems.filter({ hasText: '面の上の物理キーの名前ではありません' })).toContainText('faces[1].outputs.1-');
   // 取り込まれていないので、名前は元のまま
-  await expect(page.locator('[data-kana-name]')).toHaveValue('下書き');
+  await expect(page.locator('[data-face-name]')).toHaveValue('下書き');
 
   // 直した定義は取り込まれ、書き出しに同じ定義が出る
   const fixed = {
     ...broken,
     faces: [broken.faces[0], { ...broken.faces[1], mode: 'prefix', outputs: { s: 'い' } }],
   };
-  await page.locator('[data-kana-json-paste]').fill(JSON.stringify(fixed));
-  await page.locator('[data-kana-json-import]').click();
-  await expect(page.locator('[data-kana-import-result="ok"]')).toBeVisible();
-  await expect(page.locator('[data-kana-name]')).toHaveValue('貼り付けた配列');
-  await expect(page.locator('[data-kana-face-pick]')).toHaveCount(2);
-  const exported = JSON.parse(await page.locator('[data-kana-json-export]').inputValue());
+  await page.locator('[data-face-json-paste]').fill(JSON.stringify(fixed));
+  await page.locator('[data-face-json-import]').click();
+  await expect(page.locator('[data-face-import-result="ok"]')).toBeVisible();
+  await expect(page.locator('[data-face-name]')).toHaveValue('貼り付けた配列');
+  await expect(page.locator('[data-face-pick]')).toHaveCount(2);
+  const exported = JSON.parse(await page.locator('[data-face-json-export]').inputValue());
   expect(exported).toEqual(fixed);
 });
 
 test('指が担当しないキーをホームキーにすると注意が出て、担当するキーに直すと消える。保存は止まらない', async ({ page }) => {
   await page.goto('/kana-layout');
   await waitForHydration(page);
-  await page.locator('[data-kana-name]').fill('ホームキーの確認');
-  await page.locator('[data-kana-figure] [data-key-id="a"]').click();
-  await page.locator('[data-kana-output]').fill('あ');
+  await page.locator('[data-face-name]').fill('ホームキーの確認');
+  await page.locator('[data-face-figure] [data-key-id="a"]').click();
+  await page.locator('[data-face-output]').fill('あ');
 
-  const warning = page.locator('[data-kana-home-warning]');
+  const warning = page.locator('[data-face-home-warning]');
   await expect(warning).toHaveCount(0);
-  await page.locator('[data-kana-home="LI"]').selectOption('h');
+  await page.locator('[data-face-home="LI"]').selectOption('h');
   await expect(warning).toHaveCount(1);
-  await expect(page.locator('[data-kana-home-warning="LI"]')).toContainText('使われず');
-  await expect(page.locator('[data-kana-submit]')).toBeEnabled();
+  await expect(page.locator('[data-face-home-warning="LI"]')).toContainText('使われず');
+  await expect(page.locator('[data-face-submit]')).toBeEnabled();
 
-  await page.locator('[data-kana-home="LI"]').selectOption('');
-  await page.locator('[data-kana-home="RI"]').selectOption('h');
+  await page.locator('[data-face-home="LI"]').selectOption('');
+  await page.locator('[data-face-home="RI"]').selectOption('h');
   await expect(warning).toHaveCount(0);
 });
 
 test('左端の列の3つのキーに出力を置き、切り替えのキーとホームキーにも選べて、保存した内容が戻る', async ({ page }) => {
   await page.goto('/kana-layout');
   await waitForHydration(page);
-  await page.locator('[data-kana-name]').fill('左端の列');
-  const key = (id: string) => page.locator(`[data-kana-figure] [data-key-id="${id}"]`);
+  await page.locator('[data-face-name]').fill('左端の列');
+  const key = (id: string) => page.locator(`[data-face-figure] [data-key-id="${id}"]`);
 
   for (const [id, output] of [
     ['backquote', 'あ'],
@@ -153,26 +154,26 @@ test('左端の列の3つのキーに出力を置き、切り替えのキーと�
   ] as const) {
     await expect(key(id)).not.toHaveAttribute('aria-disabled', 'true');
     await key(id).click();
-    await page.locator('[data-kana-output]').fill(output);
+    await page.locator('[data-face-output]').fill(output);
     await expect(key(id).locator('.physical-keyboard-legend')).toHaveText(output);
   }
 
   // 3つのキーの1つを、別の面の切り替えのキーにする
-  await page.locator('[data-kana-face-add]').click();
-  await page.locator('[data-kana-operation="trigger"]').check();
+  await page.locator('[data-face-add]').click();
+  await page.locator('[data-face-operation="trigger"]').check();
   await key('tab').click();
   await expect(key('tab')).toHaveAttribute('data-trigger', 'true');
-  await page.locator('[data-kana-operation="output"]').check();
+  await page.locator('[data-face-operation="output"]').check();
   await key('a').click();
-  await page.locator('[data-kana-output]').fill('え');
-  await page.locator('[data-kana-face-field="mode"]').selectOption('simultaneous');
-  await page.locator('[data-kana-face-field="persistence"]').selectOption('single');
+  await page.locator('[data-face-output]').fill('え');
+  await page.locator('[data-face-field="mode"]').selectOption('simultaneous');
+  await page.locator('[data-face-field="persistence"]').selectOption('single');
 
   // ホームキーの入力欄にも選べる
-  await page.locator('[data-kana-home="LP"]').selectOption('caps-lock');
-  await expect(page.locator('[data-kana-home-warning]')).toHaveCount(0);
+  await page.locator('[data-face-home="LP"]').selectOption('caps-lock');
+  await expect(page.locator('[data-face-home-warning]')).toHaveCount(0);
 
-  const submit = page.locator('[data-kana-submit]');
+  const submit = page.locator('[data-face-submit]');
   await expect(submit).toBeEnabled();
   await submit.click();
   const stored = () => page.evaluate((storageKey) => localStorage.getItem(storageKey), STORAGE_KEY);
@@ -183,7 +184,7 @@ test('左端の列の3つのキーに出力を置き、切り替えのキーと�
   // 再読み込みしても、保存した内容が編集画面に戻る
   await page.reload();
   await waitForHydration(page);
-  await expect(page.locator('[data-kana-home="LP"]')).toHaveValue('caps-lock');
+  await expect(page.locator('[data-face-home="LP"]')).toHaveValue('caps-lock');
   await expect(key('caps-lock').locator('.physical-keyboard-legend')).toHaveText('う');
 });
 
@@ -197,16 +198,16 @@ test.describe('幅390px', () => {
     // ページ全体は画面の幅に収まり、狭い分は図の枠だけがスクロールする
     const pageWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(pageWidth).toBeLessThanOrEqual(390);
-    const figureScrolls = await page.locator('[data-kana-figure]').evaluate((figure) => figure.scrollWidth > figure.clientWidth);
+    const figureScrolls = await page.locator('[data-face-figure]').evaluate((figure) => figure.scrollWidth > figure.clientWidth);
     expect(figureScrolls).toBe(true);
 
     // 図のキーは押せる大きさを保ち（24×24 CSS px以上）、押すと出力の欄に移る
-    const keyA = page.locator('[data-kana-figure] [data-key-id="a"]');
+    const keyA = page.locator('[data-face-figure] [data-key-id="a"]');
     const keyBox = await keyA.locator('rect').boundingBox();
     expect(keyBox?.width ?? 0).toBeGreaterThanOrEqual(24);
     expect(keyBox?.height ?? 0).toBeGreaterThanOrEqual(24);
     await keyA.click();
-    await page.locator('[data-kana-output]').fill('あ');
+    await page.locator('[data-face-output]').fill('あ');
     await expect(keyA.locator('.physical-keyboard-legend')).toHaveText('あ');
   });
 });
@@ -214,15 +215,15 @@ test.describe('幅390px', () => {
 test('出力欄でEnterを押すと次のキーへ進み、配列は保存されず、読み上げの領域に新しいキーの名前が出る', async ({ page }) => {
   await page.goto('/kana-layout');
   await waitForHydration(page);
-  await page.locator('[data-kana-name]').fill('Enterの確認');
-  const key = (id: string) => page.locator(`[data-kana-figure] [data-key-id="${id}"]`);
-  const output = page.locator('[data-kana-output]');
+  await page.locator('[data-face-name]').fill('Enterの確認');
+  const key = (id: string) => page.locator(`[data-face-figure] [data-key-id="${id}"]`);
+  const output = page.locator('[data-face-output]');
   await key('a').click();
   await output.fill('あ');
   await output.press('Enter');
   await expect(key('s')).toHaveAttribute('data-selected', 'true');
   await expect(output).toBeFocused();
-  await expect(page.locator('[data-kana-output-announce]')).toContainText('Sのキー');
+  await expect(page.locator('[data-face-output-announce]')).toContainText('Sのキー');
   // 空のままEnterを押しても進む
   await output.press('Enter');
   await expect(key('d')).toHaveAttribute('data-selected', 'true');
@@ -233,34 +234,54 @@ test('出力欄でEnterを押すと次のキーへ進み、配列は保存され
 test('段の欄に打つと図のキーの出力が埋まり、図で直すと欄も変わる。閉じていない囲みは欄に残して診断を出す', async ({ page }) => {
   await page.goto('/kana-layout');
   await waitForHydration(page);
-  await page.locator('[data-kana-name]').fill('段の欄の確認');
-  const legend = (id: string) => page.locator(`[data-kana-figure] [data-key-id="${id}"] .physical-keyboard-legend`);
-  const home = page.locator('[data-kana-row="2"]');
+  await page.locator('[data-face-name]').fill('段の欄の確認');
+  const legend = (id: string) => page.locator(`[data-face-figure] [data-key-id="${id}"] .physical-keyboard-legend`);
+  const home = page.locator('[data-face-row="2"]');
 
   await home.fill('あ "きゃ"う');
   await expect(legend('a')).toHaveText('あ');
   await expect(legend('s')).toHaveText('');
   await expect(legend('d')).toHaveText('きゃ');
   await expect(legend('f')).toHaveText('う');
-  await expect(page.locator('.kana-layout-count').nth(2)).toHaveText('4 / 11');
+  await expect(page.locator('.face-layout-count').nth(2)).toHaveText('4 / 11');
 
   // Enterは配列の保存にならない
   await home.press('Enter');
   await expect(page.locator('[data-kana-pick]')).toHaveCount(0);
 
   // 図のキーを直すと欄も変わる
-  await page.locator('[data-kana-figure] [data-key-id="s"]').click();
-  await page.locator('[data-kana-output]').fill('し');
+  await page.locator('[data-face-figure] [data-key-id="s"]').click();
+  await page.locator('[data-face-output]').fill('し');
   await expect(home).toHaveValue('あし"きゃ"う');
 
   // 閉じていない囲みは欄に残り、出力は直前のまま
   await home.fill('あし"きゃ');
   await expect(home).toHaveValue('あし"きゃ');
-  await expect(page.locator('[data-kana-row-problem="2"]')).toContainText('閉じていません');
+  await expect(page.locator('[data-face-row-problem="2"]')).toContainText('閉じていません');
   await expect(legend('d')).toHaveText('きゃ');
 
   // 欄を短くすると、右のキーの出力が消える
   await home.fill('あ');
   await expect(legend('s')).toHaveText('');
   await expect(legend('d')).toHaveText('');
+});
+
+test('かな配列の画面では、英字の種類のJSONは開ける画面を示して取り込まれない', async ({ page }) => {
+  await page.goto('/kana-layout');
+  await waitForHydration(page);
+  await page.locator('[data-face-name]').fill('下書き');
+  await page.locator('[data-face-json] > summary').click();
+  const alpha = {
+    format: 'keydist-face-layout',
+    version: 1,
+    name: '英字の配列',
+    kind: 'alpha',
+    faces: [{ trigger: [], inputRole: 'layer', outputs: { a: 'a' } }],
+    romaji: 'kunrei',
+  };
+  await page.locator('[data-face-json-paste]').fill(JSON.stringify(alpha));
+  await page.locator('[data-face-json-import]').click();
+  await expect(page.locator('[data-face-import-result="error"]')).toBeVisible();
+  await expect(page.locator('[data-face-json] [data-face-problems="error"]')).toContainText('ローマ字配列の画面で貼り付けてください');
+  await expect(page.locator('[data-face-name]')).toHaveValue('下書き');
 });

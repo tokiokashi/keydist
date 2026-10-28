@@ -1,9 +1,12 @@
-import { createUserLayoutCommand, updateUserLayoutCommand } from '#engine/commands.ts';
+import { createUserFaceLayoutCommand, createUserLayoutCommand, updateUserFaceLayoutCommand, updateUserLayoutCommand } from '#engine/commands.ts';
 import { FINGER_ASSIGNMENT_REGISTRY } from '#engine/finger-assignment.ts';
 import { RomajiLayoutEditor } from '#editors/romaji-layout/RomajiLayoutEditor.tsx';
+import { downloadText } from '#platform/browser-download.ts';
 import { Link } from '@tanstack/react-router';
 import { useMemo, type ReactNode } from 'react';
 import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
+
+const downloadJson = (filename: string, text: string) => downloadText(filename, text, 'application/json');
 
 /** かな配列の画面へのリンク。エディタはルーターを使えないので、ここで渡す。 */
 function KanaLayoutLink({ children }: { readonly children: ReactNode }) {
@@ -29,6 +32,9 @@ export function RomajiLayoutApp() {
       onRedo={redo}
       onCreate={(id, content) => dispatch(createUserLayoutCommand(() => id, content))}
       onUpdate={(id, content) => dispatch(updateUserLayoutCommand(id, content))}
+      onCreateFace={(id, content) => dispatch(createUserFaceLayoutCommand(() => id, content))}
+      onUpdateFace={(id, content) => dispatch(updateUserFaceLayoutCommand(id, content))}
+      onDownload={downloadJson}
       KanaLayoutLink={KanaLayoutLink}
     />
   );

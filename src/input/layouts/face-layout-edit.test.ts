@@ -10,7 +10,7 @@ import {
   updateUserFaceLayout,
   type FaceLayoutDraft,
 } from './face-layout-edit.ts';
-import type { KanaLayoutContent } from './kana-face-layout-file.ts';
+import type { KanaLayoutContent } from './face-layout-file.ts';
 import type { StageUserLayout } from './user-layouts.ts';
 
 const CONTENT: KanaLayoutContent = {

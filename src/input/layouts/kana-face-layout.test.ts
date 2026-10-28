@@ -6,7 +6,7 @@ import { faceCells } from './face-geometry.ts';
 import { JIS_KANA } from './jis-kana.ts';
 import { KANA_COVERAGE_TARGETS, uncoveredKana } from './kana-coverage.ts';
 import { buildFaceLayout, duplicateOutputNotices, readFaceBody, type UserFace, type UserFaceBody } from './kana-face-layout.ts';
-import { kanaLayoutFileBody, kanaLayoutFileText, parseKanaLayoutFile, type KanaLayoutContent } from './kana-face-layout-file.ts';
+import { faceLayoutFileBody, faceLayoutFileText, parseFaceLayoutFile, type KanaLayoutContent } from './face-layout-file.ts';
 import { NICOLA, NICOLA_FACES } from './nicola.ts';
 import { SHINGETA, SHINGETA_FACES } from './shingeta.ts';
 import type { Face, Layout } from './types.ts';
@@ -48,14 +48,14 @@ function strokesOf(layout: Layout, text: string) {
 }
 
 const read = (text: string) => {
-  const result = parseKanaLayoutFile(text);
+  const result = parseFaceLayoutFile(text, 'kana');
   assert.ok(result.ok, result.ok ? '' : result.problems.map((problem) => `${problem.path}: ${problem.message}`).join('\n'));
   if (!result.ok) throw new Error('unreachable');
   return result;
 };
 
 const problemsOf = (value: unknown) => {
-  const result = parseKanaLayoutFile(typeof value === 'string' ? value : JSON.stringify(value));
+  const result = parseFaceLayoutFile(typeof value === 'string' ? value : JSON.stringify(value), 'kana');
   assert.equal(result.ok, false, '誤りがあるのに読めてしまった');
   return result.ok ? [] : result.problems;
 };
@@ -63,9 +63,10 @@ const problemsOf = (value: unknown) => {
 /** 小さな有効な定義。単打の面と、左親指の面を持つ。 */
 const validFile = (): Record<string, unknown> =>
   structuredClone({
-    format: 'keydist-kana-layout',
+    format: 'keydist-face-layout',
     version: 1,
     name: '小さな配列',
+    kind: 'kana',
     faces: [
       { trigger: [], inputRole: 'layer', outputs: { a: 'あ', s: 'か', d: 'さ', f: '゛', k: 'は', l: '゜' } },
       {
@@ -81,7 +82,7 @@ const validFile = (): Record<string, unknown> =>
   });
 
 test('面の形のNICOLAを書き出して読み込み直すと、組み込みと同じ打鍵列と層の分け方になる', () => {
-  const written = kanaLayoutFileText(NICOLA_CONTENT);
+  const written = faceLayoutFileText(NICOLA_CONTENT);
   const { layout: reread } = read(written);
   assert.deepEqual(reread, NICOLA_CONTENT);
 
@@ -99,8 +100,8 @@ test('面の形のNICOLAを書き出して読み込み直すと、組み込み�
 });
 
 test('書き出した本体はformatと版を持ち、idを持たない', () => {
-  const body = kanaLayoutFileBody(NICOLA_CONTENT);
-  assert.equal(body.format, 'keydist-kana-layout');
+  const body = faceLayoutFileBody(NICOLA_CONTENT);
+  assert.equal(body.format, 'keydist-face-layout');
   assert.equal(body.version, 1);
   assert.equal('id' in body, false);
 });
@@ -247,7 +248,7 @@ test('読み込みの誤り: 同じtriggerと順序の面が2つある', () => {
   // 順序が違えば別の面
   (faces[2] as Record<string, unknown>).mode = 'prefix';
   delete (faces[2] as Record<string, unknown>).layer;
-  assert.ok(parseKanaLayoutFile(JSON.stringify(file)).ok);
+  assert.ok(parseFaceLayoutFile(JSON.stringify(file), 'kana').ok);
 });
 
 test('読み込みの誤り: 単打の面が2つある', () => {
@@ -301,7 +302,7 @@ test('読み込みの誤り: compositionの面は層とコンボ枠のどちら�
     ['faces[1].compositionAggregation'],
   );
   faces[1]!.compositionAggregation = 'layer';
-  assert.ok(parseKanaLayoutFile(JSON.stringify(file)).ok);
+  assert.ok(parseFaceLayoutFile(JSON.stringify(file), 'kana').ok);
   faces[1]!.inputRole = 'layer';
   assert.deepEqual(
     problemsOf(file).map((problem) => problem.path),
@@ -333,7 +334,7 @@ test('読み込みの誤り: 修飾の組はmodifierの面だけが持てる', (
     ['faces[1].modifierGroups'],
   );
   faces[1]!.inputRole = 'modifier';
-  assert.ok(parseKanaLayoutFile(JSON.stringify(file)).ok);
+  assert.ok(parseFaceLayoutFile(JSON.stringify(file), 'kana').ok);
 });
 
 test('読み込みの誤り: 合成を使うと指定したのに合成記号がどの面にも無い', () => {
@@ -381,7 +382,7 @@ test('読み込みの誤り: 打鍵の順序と先押しの矛盾は、読み込
   assertUserFacing(problems);
   // 同じ向きなら通る
   Object.assign((file.faces as Record<string, unknown>[])[1]!, { triggerOrder: 'prefix' });
-  assert.ok(parseKanaLayoutFile(JSON.stringify(file)).ok);
+  assert.ok(parseFaceLayoutFile(JSON.stringify(file), 'kana').ok);
 });
 
 test('読み込みの誤り: 修飾の組がtrigger以外のキーを指す・triggerの一部しか分類しない', () => {
@@ -404,7 +405,7 @@ test('読み込みの誤り: 修飾の組がtrigger以外のキーを指す・tr
   assert.match(partial[0]!.message, /すべて分類してください/);
   assertUserFacing(partial);
   face.modifierGroups = { 'thumb-l': 'A', 'thumb-r': 'B' };
-  assert.ok(parseKanaLayoutFile(JSON.stringify(file)).ok);
+  assert.ok(parseFaceLayoutFile(JSON.stringify(file), 'kana').ok);
 });
 
 test('読み込みの誤り: compositionの面の数え方の制約（層は1キー・コンボ枠にレイヤー名は不可・同じキーを2枚不可）', () => {
@@ -500,7 +501,7 @@ test('新下駄を面の形で書くと、組み込みと同じ打鍵列にな�
     faces: SHINGETA_FACES.map(userFaceOf),
     composition: { dakuten: false, handakuten: false },
   };
-  const result = read(kanaLayoutFileText(content));
+  const result = read(faceLayoutFileText(content));
   assert.ok(
     result.notices.some((notice) => notice.output === '「'),
     '単打面とD面の両方にある記号は代わりの打ち方',
@@ -523,7 +524,7 @@ test('JISかな配列を面の形で書くと（Shiftの面・先押しの制約
     faces: JIS_KANA.faces!.map(userFaceOf),
     composition: { dakuten: true, handakuten: true },
   };
-  const result = read(kanaLayoutFileText(content));
+  const result = read(faceLayoutFileText(content));
   const built = buildFaceLayout('user-jis', content.name, result.layout);
   const jis = buildGeometry('jis-row-staggered', JIS_FINGER_ASSIGNMENT);
   const text = 'ぱぴぷぺぽがぎぐげごゔっゃゅょ「あいう」、。ー';
