@@ -94,14 +94,43 @@ test('同じキーの同時押しが2つの出力になるVialの定義は、後
   await expect(page.locator('[data-layout-pick]')).toHaveValue(/^user-/);
 });
 
-test('かなを含まないDvorakJの定義と、中黒を出す紅皿の定義を取り込める', async ({ page }) => {
+test('切り替えのキーのある面を持つDvorakJの定義は面の下書きとして開き、保存できる', async ({ page }) => {
+  await page.goto('/romaji-layout');
+  await waitForHydration(page);
+
+  await page.locator('[data-layout-import-file]').setInputFiles(file('romaji.txt', ROMAJI_DVORAKJ));
+  await expect(page.locator('[data-layout-file-import="ok"]')).toBeVisible();
+  await expect(page.locator('[data-face-layout-form]')).toBeVisible();
+  await expect(page.getByLabel('名前', { exact: true })).toHaveValue('romaji');
+  // 基底の面とスペースの位置のキーの面
+  await expect(page.locator('[data-face-pick]')).toHaveCount(2);
+  await expect(page.locator('[data-layout-problem="error"]')).toHaveCount(0);
+
+  const stored = () => page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY);
+  expect(await stored()).toBeNull();
+  await page.locator('[data-face-submit]').click();
+  await expect(page.locator('[data-layout-pick]')).toHaveValue(/^user-/);
+  await expect.poll(stored).toContain('"hold-capable"');
+});
+
+test('Shiftの面が通常Shiftと別の文字を同じ打鍵に置く定義は、面の下書きとして開くが保存できず、理由が出る', async ({ page }) => {
+  await page.goto('/romaji-layout');
+  await waitForHydration(page);
+  const colliding = ['[', '  |||', '  q|w|e|', ']', '-shift[', '  |||', '  Z|W|E|', ']'].join('\n');
+  await page.locator('[data-layout-import-file]').setInputFiles(file('collide.txt', colliding));
+  await expect(page.locator('[data-face-layout-form]')).toBeVisible();
+  await expect(page.locator('[data-face-problem="error"]')).toContainText('同時に成り立つため、配列として組み立てられません');
+  await expect(page.locator('[data-face-submit]')).toBeDisabled();
+});
+
+test('切り替えのキーのある面を持たないDvorakJの定義と、中黒を出す紅皿の定義は段の形で取り込める', async ({ page }) => {
   await page.goto('/romaji-layout');
   await waitForHydration(page);
   const input = page.locator('[data-layout-import-file]');
 
-  await input.setInputFiles(file('romaji.txt', ROMAJI_DVORAKJ));
+  await input.setInputFiles(file('romaji.txt', ['[', '  |||', '  k|a|t|', '  s|i|u|', '  |||', ']'].join('\n')));
   await expect(page.getByLabel('名前', { exact: true })).toHaveValue('romaji');
-  await expect(page.locator('[data-layout-imported-summary]')).toContainText('同時押しなどで出す出力が3件');
+  await expect(page.locator('[data-layout-imported-summary]')).toContainText('同時押しなどで出す出力が');
 
   await input.setInputFiles(file('benizara.bnz', ROMAJI_BENIZARA));
   await expect(page.getByLabel('名前', { exact: true })).toHaveValue('benizara');
@@ -135,7 +164,12 @@ test('取り込めないファイルは取り込まずにその旨が出る。�
 test('かな配列の画面でかなを含まない定義を選ぶと、ローマ字配列の画面へのリンクが付く', async ({ page }) => {
   await page.goto('/kana-layout');
   await waitForHydration(page);
-  await page.locator('[data-kana-import-file]').setInputFiles(file('romaji.txt', ROMAJI_DVORAKJ));
+  const input = page.locator('[data-kana-import-file]');
+  // 切り替えのキーのある面を持つ定義は、ローマ字配列の画面で取り込めることを理由に出す
+  await input.setInputFiles(file('romaji.txt', ROMAJI_DVORAKJ));
+  await expect(page.locator('[data-kana-file-import="error"]')).toContainText('ローマ字配列の画面で取り込んでください');
+  await expect(page.locator('[data-kana-layout-editor] [data-kana-file-import="ok"]')).toHaveCount(0);
+  await input.setInputFiles(file('benizara.bnz', ROMAJI_BENIZARA));
   await expect(page.locator('[data-kana-file-import="error"]')).toContainText('かな配列ではない');
   await page.locator('[data-kana-file-import="error"] a').click();
   await expect(page).toHaveURL(/\/romaji-layout$/);

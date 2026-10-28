@@ -24,6 +24,11 @@ const kanaOf = (result: ImportedDefinition) => {
   return result.kind === 'kana' ? result : assert.fail();
 };
 
+const alphaOf = (result: ImportedDefinition) => {
+  assert.equal(result.kind, 'alpha');
+  return result.kind === 'alpha' ? result : assert.fail();
+};
+
 const stageOf = (result: ImportedDefinition): ImportedLayout => {
   assert.equal(result.kind, 'stage');
   return result.kind === 'stage' ? result.layout : assert.fail();
@@ -230,10 +235,11 @@ test('DvorakJのかな定義は、面ごとのtriggerと出力を持つ面の形
     inputRole: 'layer',
     outputs: { '1': '1', '2': '2', '3': '3', q: 'き', a: 'あ', s: 'い', d: 'う', z: 'た', x: 'ち', c: 'つ' },
   });
+  // スペースの位置のキーだけが切り替えのキーの同時押しの面は、押したまま続けて打てる
   assert.deepEqual(faces[1], {
     trigger: ['thumb-r'],
     mode: 'simultaneous',
-    triggerPersistence: 'single',
+    triggerPersistence: 'hold-capable',
     inputRole: 'layer',
     outputs: { q: '、', w: 'ぎ', e: 'ぐ' },
   });
@@ -488,10 +494,13 @@ test('見出しの次の行にだけある [ は、切り替えのキーの無�
 
 test('切り替えのキーを持つ面が基底面と違う種類の出力を持つ時は、その面だけを取り込まず注意に入れる', () => {
   const source = dvorakJ('同時に打鍵する配列', ['[', '  |||', '  q|w|e|', ']', '-21-24[', '  |||', '  が|ぎ|ぐ|', ']', '-20[', '  |||', '  a|b|c|', ']']);
-  const layout = stageOf(importDvorakJ(source));
-  assert.equal(new Map(layout.sequences).has('が'), false);
-  assert.equal(new Map(layout.sequences).has('a'), true);
-  assert.ok(layout.warnings.some((warning) => warning.includes('「-21-24[」') && warning.includes('種類')));
+  const alpha = alphaOf(importDvorakJ(source));
+  assert.equal(
+    alpha.content.faces.some((face) => Object.values(face.outputs).includes('が')),
+    false,
+  );
+  assert.ok(alpha.content.faces.some((face) => face.trigger.length > 0 && face.outputs.q === 'a'));
+  assert.ok(alpha.warnings.some((warning) => warning.includes('「-21-24[」') && warning.includes('種類')));
   const kana = kanaOf(importDvorakJ(dvorakJ('同時に打鍵する配列', ['[', '  |||', '  き|く|け|', ']', '-21[', '  |||', '  a|b|c|', ']'])));
   assert.deepEqual(
     kana.content.faces.map((face) => face.trigger),
@@ -501,17 +510,63 @@ test('切り替えのキーを持つ面が基底面と違う種類の出力を�
   assert.throws(() => importDvorakJ(dvorakJ('同時に打鍵する配列', ['[', '  |||', '  q|あ|', ']'])), /混在/);
 });
 
-test('段の形（ローマ字）では、前置は切り替えのキーの後、後置は前にセルのキーを打つ打鍵列になる', () => {
-  const prefix = stageOf(
+test('英字の面の形では、前置・後置・同時の面が打鍵の順序で区別される。切り替えを順に打つ面は表せず、落とす', () => {
+  const source = dvorakJ('順に打鍵する配列', FJ_ALIASES, [
+    '[',
+    '  |||',
+    '  ka|ki|ku|',
+    ']',
+    '{Y}[',
+    '  |||',
+    '  ka|ki|ku|',
+    ']',
+    '(-12[',
+    '  |||',
+    '  sa|si|su|',
+    ']',
+    '{F}[[',
+    '  |||',
+    '  na|ni|nu|',
+    ']',
+    '{F}{J}[',
+    '  |||',
+    '  ta|ti|tu|',
+    ']',
+  ]);
+  const { content, warnings } = alphaOf(importDvorakJ(source));
+  assert.equal(faceOf(content, ['t'], 'prefix')?.outputs.q, 'ka');
+  assert.equal(faceOf(content, ['e'], 'simultaneous')?.outputs.q, 'sa');
+  assert.equal(faceOf(content, ['f'], 'suffix')?.outputs.q, 'na');
+  assert.equal(content.faces.length, 4);
+  assert.ok(warnings.some((warning) => warning.includes('{F}{J}[') && warning.includes('英字の面の形で表せない')));
+  const simultaneous = alphaOf(
+    importDvorakJ(dvorakJ('同時に打鍵する配列', FJ_ALIASES, ['[', '  |||', '  a|b|', ']', '-shift[', '  |||', '  ka|ki|ku|', ']'])),
+  );
+  assert.deepEqual(
+    simultaneous.content.faces.map((face) => face.trigger),
+    [[], ['shift-l'], ['shift-r']],
+  );
+});
+
+test('切り替えのキーの面が面の形で表せないものだけの定義は、段の形のまま取り込み、今と同じ打鍵列になる', () => {
+  const source = dvorakJ('順に打鍵する配列', FJ_ALIASES, ['[', '  |||', '  ka|ki|ku|', ']', '{F}{J}[', '  |||', '  ta|ti|tu|', ']']);
+  const layout = stageOf(importDvorakJ(source));
+  const sequences = new Map(layout.sequences);
+  assert.deepEqual(sequences.get('ka'), [['q']]);
+  assert.deepEqual(sequences.get('ta'), [['f'], ['j'], ['q']]);
+  // 面の形にしないので、表せない面を落とした旨の注意は出ない
+  assert.deepEqual(layout.warnings, []);
+  // 表せる切り替えの面が1つでもあれば、表せない面だけを落として面の形にする
+  const mixed = alphaOf(
     importDvorakJ(
       dvorakJ('順に打鍵する配列', FJ_ALIASES, [
-        '{Y}[',
+        '[',
         '  |||',
         '  ka|ki|ku|',
         ']',
-        '(-12[',
+        '{Y}[',
         '  |||',
-        '  sa|si|su|',
+        '  na|ni|nu|',
         ']',
         '{F}{J}[',
         '  |||',
@@ -520,14 +575,11 @@ test('段の形（ローマ字）では、前置は切り替えのキーの後�
       ]),
     ),
   );
-  const sequences = new Map(prefix.sequences);
-  assert.deepEqual(sequences.get('ka'), [['t'], ['q']]);
-  assert.deepEqual(sequences.get('sa'), [['e', 'q']]);
-  assert.deepEqual(sequences.get('ta'), [['f'], ['j'], ['q']]);
-  const suffix = stageOf(importDvorakJ(dvorakJ('順に打鍵する配列', FJ_ALIASES, ['{F}[[', '  |||', '  ka|ki|ku|', ']'])));
-  assert.deepEqual(new Map(suffix.sequences).get('ka'), [['q'], ['f']]);
-  const simultaneous = stageOf(importDvorakJ(dvorakJ('同時に打鍵する配列', FJ_ALIASES, ['-shift[', '  |||', '  ka|ki|ku|', ']'])));
-  assert.deepEqual(new Map(simultaneous.sequences).get('ka'), [['shift-l', 'q']]);
+  assert.equal(mixed.content.faces.length, 2);
+  assert.equal(
+    mixed.content.faces.some((face) => Object.values(face.outputs).includes('ta')),
+    false,
+  );
 });
 
 test('別名は定義の逆順に文字列として置き換え、値にカンマと別の別名を含められる', () => {
@@ -765,6 +817,9 @@ const ROMAJI_DVORAKJ = [
   ']',
 ].join('\n');
 
+/** 切り替えのキーのある面を持たないローマ字の定義 */
+const ROMAJI_NO_SWITCH_DVORAKJ = ['[', '  |||', '  k|a|t|', '  s|i|u|', '  |||', ']'].join('\n');
+
 const VIAL_ROWS = [
   ['KC_1', 'KC_2', 'KC_3', 'KC_4', 'KC_5', 'KC_6', 'KC_7', 'KC_8', 'KC_9', 'KC_0', 'KC_MINS', 'KC_EQL'],
   ['KC_Q', 'KC_W', 'KC_E', 'KC_R', 'KC_T', 'KC_Y', 'KC_U', 'KC_I', 'KC_O', 'KC_P', 'KC_LBRC', 'KC_RBRC'],
@@ -773,10 +828,10 @@ const VIAL_ROWS = [
 ];
 
 test('ローマ字配列の画面の取り込みは、ローマ字の定義を段の形で返す', () => {
-  const dvorakj = importRomajiLayoutFile('私の配列.txt', encode(ROMAJI_DVORAKJ));
-  assert.ok(dvorakj.ok);
+  const dvorakj = importRomajiLayoutFile('私の配列.txt', encode(ROMAJI_NO_SWITCH_DVORAKJ));
+  assert.ok(dvorakj.ok && dvorakj.kind === 'stage');
   assert.equal(dvorakj.layout.name, '私の配列');
-  assert.deepEqual(new Map(dvorakj.layout.sequences).get('g'), [['space', 'q']]);
+  assert.deepEqual(new Map(dvorakj.layout.sequences).get('k'), [['q']]);
 
   const vial = importRomajiLayoutFile(
     'kbd.vil',
@@ -791,7 +846,7 @@ test('ローマ字配列の画面の取り込みは、ローマ字の定義を�
       }),
     ),
   );
-  assert.ok(vial.ok);
+  assert.ok(vial.ok && vial.kind === 'stage');
   assert.deepEqual(new Map(vial.layout.sequences).get('desu'), [['d', 's']]);
   assert.ok(vial.layout.warnings.some((warning) => warning.includes('MO(1)')));
 });
@@ -823,10 +878,15 @@ test('かなを出力するVialの定義は、どちらの画面でも取り込�
 });
 
 test('かな配列の画面の取り込みは、かなを含まない定義にローマ字配列の画面へのリンクを付ける', () => {
-  const romaji = importKanaLayoutFile('romaji.txt', encode(ROMAJI_DVORAKJ));
+  const romaji = importKanaLayoutFile('romaji.txt', encode(ROMAJI_NO_SWITCH_DVORAKJ));
   assert.ok(!romaji.ok);
   assert.match(romaji.message, /かな配列ではない/);
   assert.equal(romaji.romajiLayout, true);
+  // 切り替えのキーのある面を持つ英字の定義は、ローマ字配列の画面で開けることを理由に出す
+  const alpha = importKanaLayoutFile('alpha.txt', encode(ROMAJI_DVORAKJ));
+  assert.ok(!alpha.ok);
+  assert.match(alpha.message, /ローマ字配列の画面で取り込んで/);
+  assert.equal(alpha.romajiLayout, true);
   const vial = importKanaLayoutFile('kbd.vil', encode(JSON.stringify({ layout: [VIAL_ROWS] })));
   assert.ok(!vial.ok);
   assert.equal(vial.romajiLayout, true);
@@ -837,7 +897,7 @@ test('かな配列の画面の取り込みは、かなを含まない定義に�
 });
 
 test('取り込んだ段の形を自作の配列として保存しても、取り込み直後の配列と打鍵列が一致する', () => {
-  const imported = stageOf(importDvorakJ(ROMAJI_DVORAKJ, '取り込み'));
+  const imported = stageOf(importDvorakJ(ROMAJI_NO_SWITCH_DVORAKJ, '取り込み'));
   const created = createUserLayout([], () => 'user-x', contentOfImported(imported, 'kunrei'));
   assert.ok(created.ok);
   const saved = created.layouts[0] as StageUserLayout;

@@ -95,9 +95,9 @@ const DVORAKJ_BASE = ['[', '  1|2|3|4|5|6|7|8|9|0|-|=|', '  q|w|e|r|t|y|u|i|o|p|
 const importedStage = (id: string, imported: ImportedLayout) =>
   toLayout({ kind: 'alpha', id, name: id, rows: imported.rows, sequences: imported.sequences, legends: imported.legends, romaji: 'kunrei' });
 
-const stageOf = (result: ReturnType<typeof importDvorakJ>) => {
-  assert.equal(result.kind, 'stage');
-  return result.kind === 'stage' ? result.layout : assert.fail();
+const alphaOf = (result: ReturnType<typeof importDvorakJ>) => {
+  assert.equal(result.kind, 'alpha');
+  return result.kind === 'alpha' ? result.content : assert.fail();
 };
 
 const keysOfStrokes = (layout: Layout, text: string) =>
@@ -153,12 +153,18 @@ test('コンボで置いた大文字と記号には、Shiftの経路を足さな
 
 test('切り替えのキーの面で置いた大文字と記号には、Shiftの経路を足さない', () => {
   const source = ['-option-input[', '  {F} | +21', ']', ...DVORAKJ_BASE, '({F}[', '  |||', '  A|!|', ']'].join('\n');
-  const layout = importedStage('imported-face', stageOf(importDvorakJ(source)));
+  const content = alphaOf(importDvorakJ(source));
+  const layout = toLayout({ ...content, id: 'imported-face', romaji: 'kunrei' });
+  // 面で置いた出力の経路は、その面の切り替えのキーを使う1つだけで、Shiftのキーは使わない
+  const shiftKeyPaths = (output: string) =>
+    (layout.canonicalInputs.get(output) ?? []).filter((alternative) =>
+      alternative.baseRealizations.some((realization) => (realization.defaultTriggerKeys ?? []).some((key) => key === 'shift-l' || key === 'shift-r')),
+    );
   for (const output of ['A', '!']) {
     assert.equal(layout.canonicalInputs.get(output)?.length, 1, `${output}の経路は面の1つだけ`);
-    assert.equal(shiftPathsOf(layout, output).length, 0, `${output}にShiftの経路が無い`);
+    assert.equal(shiftKeyPaths(output).length, 0, `${output}にShiftの経路が無い`);
   }
-  assert.equal(shiftPathsOf(layout, 'B').length, 2);
+  assert.equal(shiftKeyPaths('B').length, 2);
   assert.equal(generateTrace('A!B', layout, geometry, DEFAULT_TRACE_POLICY).skipped, 0);
 });
 
