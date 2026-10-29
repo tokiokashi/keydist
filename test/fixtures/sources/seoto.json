@@ -1,0 +1,134 @@
+{
+  "format": "keyflow-analyzer-layout",
+  "layoutId": "seoto",
+  "source": {
+    "url": "https://keyflow.koyasi777.com/",
+    "repository": "https://github.com/koyasi777/keyflow-analyzer",
+    "commit": "fd87df9fe1bca757102b0e5faeda672f6c26bed2",
+    "committedAt": "2026-09-14 21:47 (JST)",
+    "license": "MIT License",
+    "sha": "f0904b6a1df6c5a89d6e5e37459fa46630e01beb885c64b9c78e841c2c1fad2d",
+    "lastModified": "2026-09-14 21:47:43 (JST) (HTTP: Mon, 14 Sep 2026 12:47:43 GMT)",
+    "retrievedAt": "2026-10-29 (JST)",
+    "path": "リポジトリのコミット fd87df9 の index.html（配信先 https://keyflow.koyasi777.com/ の HTML と同じファイル）の、配列の定義 `seoto: {…}`",
+    "transform": "定義のうち並び（L・R）、層のセルの表記、綴りの拡張（customRules と inputExtensions.aliases）を、値を変えずに写した。L・R は解析ツールの格子で、null は置き場の無い位置、`←` `→` は文字の無いキー、`~` `'` `BS` `nn:ん` `-` `ltu:っ` は層のセル（先頭が単打で出す文字、空白のあとが層で出す入力の表記。`w ~` は単打が `w` で層が `~`）。語句の省略（SEOTO_EXTENDED_SHORTHANDS）は写さない。かなから綴りへの共通の表（KANA_ROMAJI_SINGLE・KANA_ROMAJI_PAIR）は全配列に共通でせおと配列の定義ではないので写さない"
+  },
+  "definition": {
+    "customRules": "k=c, ya=x, yu=j, yo=q, ji=zi, ja=zx, ju=zj, je=zye, jo=zq, jya=zx, jyi=zyi, jyu=zj, jye=zye, jyo=zq",
+    "aliases": [
+      {
+        "source": "k",
+        "keys": "c"
+      },
+      {
+        "source": "ya",
+        "keys": "x"
+      },
+      {
+        "source": "yu",
+        "keys": "j"
+      },
+      {
+        "source": "yo",
+        "keys": "q"
+      },
+      {
+        "source": "ji",
+        "keys": "zi"
+      },
+      {
+        "source": "ja",
+        "keys": "zx"
+      },
+      {
+        "source": "ju",
+        "keys": "zj"
+      },
+      {
+        "source": "je",
+        "keys": "zye"
+      },
+      {
+        "source": "jo",
+        "keys": "zq"
+      },
+      {
+        "source": "jya",
+        "keys": "zx"
+      },
+      {
+        "source": "jyi",
+        "keys": "zyi"
+      },
+      {
+        "source": "jyu",
+        "keys": "zj"
+      },
+      {
+        "source": "jye",
+        "keys": "zye"
+      },
+      {
+        "source": "jyo",
+        "keys": "zq"
+      }
+    ],
+    "L": [
+      null,
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      null,
+      "p",
+      "z",
+      "h",
+      "f",
+      "←",
+      null,
+      "d",
+      "s",
+      "n",
+      "t",
+      "g",
+      null,
+      "b",
+      "r",
+      "m",
+      "c",
+      "k"
+    ],
+    "R": [
+      "6",
+      "7",
+      "8",
+      "9",
+      "0",
+      null,
+      null,
+      "→",
+      "q",
+      "o",
+      "w ~",
+      "x",
+      null,
+      null,
+      "l '",
+      "a BS",
+      "i nn:ん",
+      "u -",
+      "e ltu:っ",
+      null,
+      null,
+      "y",
+      ",",
+      "j",
+      ".",
+      "v",
+      null,
+      null,
+      "Space"
+    ]
+  }
+}

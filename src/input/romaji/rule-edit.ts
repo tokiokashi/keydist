@@ -1,6 +1,6 @@
 import { QWERTY_LEGEND } from '../shapes/geometry.ts';
 import { kanaToRomaji } from './kunrei.ts';
-import { buildRomajiTable, hasSingleStrokeSokuon, ROMAJI_RULES, type BuiltinRomajiRuleId, type UserRomajiRule } from './rules.ts';
+import { buildRomajiTable, hasSingleStrokeSokuon, ROMAJI_RULES, type RomajiBaseRuleId, type UserRomajiRule } from './rules.ts';
 import { ROMAJI_VARIANTS } from './spelling-variations.ts';
 
 /**
@@ -9,7 +9,7 @@ import { ROMAJI_VARIANTS } from './spelling-variations.ts';
  * コマンド層（`engine/commands.ts`）はこの参照の一致でno-opを判定する。
  */
 
-/** 自作のローマ字規則のidの接頭辞。組み込みの規則のid（kunrei・oonishi・tomisuke・azik・jlod・gact10・qwerty）と衝突しない。 */
+/** 自作のローマ字規則のidの接頭辞。組み込みの規則のid（kunrei・oonishi・tomisuke・azik・jlod・gact10・qwerty・seoto）と衝突しない。 */
 export const USER_ROMAJI_RULE_ID_PREFIX = 'romaji-';
 
 export const newRomajiRuleId = (): string => `${USER_ROMAJI_RULE_ID_PREFIX}${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -22,7 +22,7 @@ export function createUserRomajiRule(
   rules: readonly UserRomajiRule[],
   generateId: () => string,
   name: string,
-  base: BuiltinRomajiRuleId,
+  base: RomajiBaseRuleId,
 ): readonly UserRomajiRule[] {
   return [...rules, { id: generateId(), name, base, overrides: {}, generateSokuon: !hasSingleStrokeSokuon(base) }];
 }

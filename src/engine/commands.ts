@@ -20,7 +20,7 @@ import {
   updateUserRomajiRule,
   type RomajiRuleContent,
 } from '#input/romaji/rule-edit.ts';
-import type { BuiltinRomajiRuleId, UserRomajiRule } from '#input/romaji/rules.ts';
+import type { RomajiBaseRuleId, UserRomajiRule } from '#input/romaji/rules.ts';
 import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import type { PersonalSpeed } from '#interpretation/timing/calibration-codec.ts';
 import { createSetup, deleteSetup, duplicateSetup, relabelSetup, setSetupShape, type SetupIdGenerator, type SetupLibrary } from '#input/setup/index.ts';
@@ -519,7 +519,7 @@ function userRomajiRulesCommand(label: string, compute: (rules: readonly UserRom
 }
 
 /** 自作のローマ字規則を新規作成する。差分を持たない、`base`だけの規則から始める。 */
-export function createUserRomajiRuleCommand(generateId: () => string, name: string, base: BuiltinRomajiRuleId): Command<KeydistAssets> {
+export function createUserRomajiRuleCommand(generateId: () => string, name: string, base: RomajiBaseRuleId): Command<KeydistAssets> {
   return userRomajiRulesCommand('自作のローマ字規則を作成する', (rules) => createUserRomajiRule(rules, generateId, name, base));
 }
 
