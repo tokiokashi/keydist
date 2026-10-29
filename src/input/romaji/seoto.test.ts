@@ -56,7 +56,7 @@ test('作者の記号の表の6行（v/ v. v, v- v[ v]）を綴りにし、矢�
   for (const heading of ['←', '↑', '→', '↓', '↗', '↘', '↙', '↖']) assert.equal(table.has(heading), false, heading);
 });
 
-test('綴りは配列の英字・句読点か、層の3文字だけで、訓令式に無い見出しを足さない', () => {
+test('訓令式に足した見出しは8つだけで、綴りの文字はせおと配列にある', () => {
   const kunrei = tableForRule('kunrei');
   const extra = [...table.keys()].filter((heading) => !kunrei.has(heading) && !heading.startsWith('っ'));
   assert.deepEqual(extra.sort(), ['ゎ', 'でぃ', 'てぃ', '…', '‥', '〜', '『', '』'].sort());
