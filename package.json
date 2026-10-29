@@ -54,7 +54,7 @@
     "nitro": "^3.0.260903-beta",
     "patch-package": "8.0.1",
     "typescript": "^7.0.2",
-    "vite": "^8.3.4"
+    "vite": "^8.3.5"
   },
   "imports": {
     "#input/*": "./src/input/*",
