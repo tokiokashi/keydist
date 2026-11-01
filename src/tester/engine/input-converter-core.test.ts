@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { TypingInputEngine } from './index.ts';
-import { faceFromEntries, fromFaces, fromKana, type Face, type FaceMode } from '#input/layouts/index.ts';
+import { faceFromEntries, fromFaces, fromKana, LAYOUT_BY_ID, type Face, type FaceMode } from '#input/layouts/index.ts';
 
 const face = (
   trigger: readonly string[],
@@ -269,4 +269,52 @@ test('recognitionKeysはprefix trigger release後も次の入力まで保持さ�
     ['X'],
   );
   assert.deepEqual(completed.recognitionKeys, []);
+});
+
+type KeyEvent = readonly ['down' | 'up', string];
+
+/** Testerと同じ設定のengineで、キー列を打った出力を順に返す。 */
+function typeWithHold(layoutId: string, events: readonly KeyEvent[]): string[] {
+  const layout = LAYOUT_BY_ID.get(layoutId);
+  assert.ok(layout, layoutId);
+  const engine = new TypingInputEngine(layout.canonicalInputs, { triggerRealizationPolicy: { useHold: true } });
+  const outputs: string[] = [];
+  for (const [type, key] of events) outputs.push(...engine.handle({ type, key }).recognized.map((entry) => entry.output));
+  outputs.push(...engine.flush().recognized.map((entry) => entry.output));
+  return outputs;
+}
+
+function shiftHeld(shift: string, keys: readonly string[], rollover: boolean): KeyEvent[] {
+  const typed: KeyEvent[] = rollover
+    ? [...keys.map((key): KeyEvent => ['down', key]), ...keys.map((key): KeyEvent => ['up', key])]
+    : keys.flatMap((key): KeyEvent[] => [
+        ['down', key],
+        ['up', key],
+      ]);
+  return [['down', shift], ...typed, ['up', shift]];
+}
+
+for (const shift of ['shift-l', 'shift-r']) {
+  for (const rollover of [false, true]) {
+    const how = rollover ? '前のキーを離す前に次を押しても' : '1文字ずつ離しても';
+    test(`英字配列でShiftを押したまま続けた文字は、離すまで全部Shiftの面になる（${shift}、${how}）`, () => {
+      assert.deepEqual(typeWithHold('qwerty', shiftHeld(shift, ['a', 'b', 'c'], rollover)), ['A', 'B', 'C']);
+    });
+
+    test(`かな配列でShiftを押したまま続けた文字は、離すまで全部Shiftの面になる（${shift}、${how}）`, () => {
+      assert.deepEqual(typeWithHold('jis-kana', shiftHeld(shift, ['3', 'e', '4'], rollover)), ['ぁ', 'ぃ', 'ぅ']);
+    });
+  }
+}
+
+test('Shiftを離した後の文字はShiftの面にならない', () => {
+  const events: KeyEvent[] = [
+    ['down', 'shift-l'],
+    ['down', 'a'],
+    ['up', 'a'],
+    ['up', 'shift-l'],
+    ['down', 'b'],
+    ['up', 'b'],
+  ];
+  assert.deepEqual(typeWithHold('qwerty', events), ['A', 'b']);
 });
