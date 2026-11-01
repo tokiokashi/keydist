@@ -159,9 +159,9 @@ test('Vialのコンボの入力は、途中のKC_NOで終わり、後ろの枠�
     ['KC_K', 'KC_A', 'KC_NO', 'MO(1)', 'M0'],
   ]);
   const sequences = new Map(layout.sequences);
-  // 1つ目は入力が k だけなので、コンボにならない
+  // 1つ目は入力がkだけなので、コンボにならない
   assert.deepEqual(sequences.get('.'), [['.']]);
-  // 2つ目は k と a の組。s は読まない
+  // 2つ目はkとaの組。sは読まない
   assert.deepEqual(sequences.get(','), [[',']]);
   // 3つ目は2つ目と同じ組なので、番号が後ろの3つ目だけが残り、MO(1)は読まれず注意にも出ない
   assert.deepEqual(sequences.get('desu'), [['k', 'a']]);

@@ -398,7 +398,7 @@ const QMK_PRINTABLE: Record<string, string> = {
 };
 
 const QMK_NOOP = new Set(['KC_NO', 'KC_TRNS', 'KC_TRANSPARENT', '-1']);
-// コンボの入力の終端。QMK の COMBO_END は 0 で、KC_NO と同じ値
+// コンボの入力の終端。QMKのCOMBO_ENDは0で、KC_NOと同じ値
 const COMBO_END = 'KC_NO';
 
 function qmkChar(value: unknown): string | undefined {
@@ -499,8 +499,8 @@ export function importVial(source: string, name = 'Vial取り込み'): ImportedL
     const macro = macroIndex(outputCode);
     return macro === undefined ? qmkChar(outputCode) : macroText(macros[macro]);
   };
-  // 実機（QMK）はコンボの入力を先頭から読み、最初の KC_NO（値0）でそのコンボの入力を終える。
-  // KC_NO より後ろの枠は、何が入っていても読まない。KC_TRNS などは終端ではなく、押せるキーの無い入力として残す
+  // 実機（QMK）はコンボの入力を先頭から読み、最初のKC_NO（値0）でそのコンボの入力を終える。
+  // KC_NOより後ろの枠は、何が入っていても読まない。KC_TRNSなどは終端ではなく、押せるキーの無い入力として残す
   const comboInputCodes = (entry: readonly unknown[]): unknown[] => {
     const codes: unknown[] = [];
     for (const code of entry.slice(0, 4)) {
