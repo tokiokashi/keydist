@@ -89,6 +89,33 @@ test('読み込みの失敗はerrorとして区別でき、Workerを捨て、次
   assert.deepEqual(service.status(), { state: 'ready', source: 'cache', stored: true });
 });
 
+test('読み込みの後にWorkerがerrorを出すと、依頼が失敗してerrorになり、次のtokenizeで読み込み直す', async () => {
+  const workers: FakeWorker[] = [];
+  const service = createReadingService({
+    createWorker: () => {
+      const worker = okWorker();
+      workers.push(worker);
+      return worker;
+    },
+    dictionary,
+  });
+  await service.load();
+  assert.equal(service.status().state, 'ready');
+  const first = workers[0] as FakeWorker;
+  // 応答を返さないWorkerにして、依頼が待っている間にerrorを起こす
+  first.postMessage = (message) => void first.requests.push(message);
+  const waiting = service.tokenize('あ');
+  await Promise.resolve();
+  first.onerror?.({ message: 'メモリ不足' });
+  await assert.rejects(waiting, /読みの解析が止まりました/);
+  assert.equal(first.terminated, true);
+  assert.deepEqual(service.status(), { state: 'error', message: '読みの解析が止まりました。もう一度お試しください' });
+  const tokens = await service.tokenize('い');
+  assert.equal(workers.length, 2);
+  assert.equal(tokens[0]?.surface, 'い');
+  assert.equal(service.status().state, 'ready');
+});
+
 test('Workerを作れない環境はerrorになる', async () => {
   const service = createReadingService({
     createWorker: () => {

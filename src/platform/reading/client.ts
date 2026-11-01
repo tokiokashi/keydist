@@ -84,9 +84,23 @@ export function createReadingService(options: ReadingServiceOptions): ReadingSer
         pending.delete(event.data.id);
         entry.resolve(event.data);
       };
-      created.onerror = (event) => failPending(new Error(event.message ?? '読みの解析を始められませんでした'));
+      // 読み込みが終わる前のerrorは待っている読み込みを失敗にし、下のcatchがWorkerを捨てる。
+      // 読み込みが終わった後のerrorは待っている依頼がcatchの外にあるので、ここでWorkerを捨てて次の呼び出しで作り直す。
+      let isLoaded = false;
+      created.onerror = (event) => {
+        if (!isLoaded) {
+          failPending(new Error(event.message ?? '読みの解析を始められませんでした'));
+          return;
+        }
+        if (worker !== created) return;
+        const message = '読みの解析が止まりました。もう一度お試しください';
+        failPending(new Error(message));
+        discardWorker();
+        setStatus({ state: 'error', message });
+      };
       const response = await call({ op: 'load', dictionary: options.dictionary }, created);
       const loaded = expectResponse(response, 'load');
+      isLoaded = true;
       setStatus({ state: 'ready', source: loaded.source, stored: loaded.stored });
     } catch (error) {
       discardWorker();
