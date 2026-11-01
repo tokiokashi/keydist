@@ -183,3 +183,48 @@ test('英字の面の形の保存の検査は、通常Shiftを足した後の衝
   assert.match(check.problems[0]!.message, /同時に成り立つため、配列として組み立てられません/);
   assert.deepEqual(checkFaceLayout(draftOf(contentOfFaceLayout(ALPHA_FACE))).problems, []);
 });
+
+const DVORAK_ROWS: [string, string, string, string] = ['1234567890[]', "',.pyfgcrl/=", 'aoeuidhtns-', ';qjkxbmwvz'];
+
+/** 単打だけの英字の面の形。出力は段の形と同じ並び */
+const dvorakFace = (): AlphaFaceUserLayout => ({
+  id: 'user-dvorak-face',
+  name: 'Dvorak面',
+  kind: 'alpha',
+  faces: [
+    {
+      trigger: [],
+      inputRole: 'layer',
+      outputs: Object.fromEntries(DVORAK_ROWS.flatMap((row, r) => [...row].map((output, c) => [[...QWERTY_LEGEND[r]!][c]!, output] as const))),
+    },
+  ],
+  romaji: 'kunrei',
+});
+
+test('英字の面の形は、空白を右親指で打てる', () => {
+  const layout = toLayout(dvorakFace());
+  assert.deepEqual(layout.map.get(' '), [[THUMB_KEY.RT]]);
+  const trace = generateTrace('a e', layout, geometry, DEFAULT_TRACE_POLICY);
+  assert.equal(trace.skipped, 0);
+  assert.equal(trace.strokes.length, 3);
+  assert.equal(trace.strokes[1]!.presses[0]!.keys[0]!.id, THUMB_KEY.RT);
+});
+
+test('同じ段の段の形と英字の面の形は、空白を含むテキストの打鍵が一致する', () => {
+  const stage: StageUserLayout = { id: 'user-dvorak-stage', name: 'Dvorak段', kind: 'alpha', rows: DVORAK_ROWS, romaji: 'kunrei' };
+  const text = 'the quick brown fox jumps over the lazy dog';
+  const fromStage = generateTrace(text, toLayout(stage), geometry, DEFAULT_TRACE_POLICY);
+  const fromFace = generateTrace(text, toLayout(dvorakFace()), geometry, DEFAULT_TRACE_POLICY);
+  assert.equal(fromFace.skipped, 0);
+  assert.equal(fromFace.strokes.length, fromStage.strokes.length);
+  assert.deepEqual(fromFace.strokes, fromStage.strokes);
+});
+
+test('右親指を面の切り替えのキーに使う英字の面の形は、空白を足さない', () => {
+  assert.equal(toLayout(ALPHA_FACE).canonicalInputs.has(' '), false);
+  const aliased = clone(ALPHA_FACE);
+  aliased.faces[1]!.trigger = ['space'];
+  assert.equal(toLayout(aliased).canonicalInputs.has(' '), false);
+  // かなの面の形は空白を足さない
+  assert.equal(toLayout(KANA_FACE).canonicalInputs.has(' '), false);
+});

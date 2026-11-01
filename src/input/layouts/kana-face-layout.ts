@@ -531,6 +531,17 @@ function culpritOf(faces: readonly Face[], id: string, name: string): { index: n
 const BUILD_HINT = '切り替えのキーと打鍵の順序、同じキーの出力を見直してください';
 
 /**
+ * 英字の面の形で空白を打つ親指。段の形と同じく右親指に置く。
+ * かなの面の形は空白を足さない。どれかの面が右親指を切り替えのキーに使う配列は、
+ * 右親指が空いていないので空白を足さず、空白は打てない文字のままにする。
+ */
+function spaceThumbs(kind: UserFaceBody['kind'], faces: readonly Face[]): { RT?: string } {
+  if (kind !== 'alpha') return {};
+  const usesRightThumb = faces.some((face) => face.trigger.some((key) => resolveKeyId(key) === THUMB_KEY.RT));
+  return usesRightThumb ? {} : { RT: ' ' };
+}
+
+/**
  * 面から `Layout` を組む。組めない時は `FaceLayoutBuildError` を投げる。
  * 組めなくなった面は、先頭から足していって最初に組めなくなる面として特定する。
  */
@@ -538,7 +549,7 @@ export function buildFaceLayout(id: string, name: string, body: UserFaceBody): L
   const faces = body.faces.map(toFace);
   let layout: Layout;
   try {
-    layout = fromFaces(id, name, faces);
+    layout = fromFaces(id, name, faces, spaceThumbs(body.kind, faces));
   } catch (cause) {
     const culprit = culpritOf(faces, id, name);
     throw new FaceLayoutBuildError([
