@@ -326,7 +326,7 @@ export function generateTrace(
           .map((range) => range.kana)
           .join('')
       : rawChars.slice(inputStart, inputEnd).join('');
-    const inputIndex = coveredRange ? (chunkRanges[coveredRange.from]?.start ?? inputStart) : inputStart;
+    const inputIndex = inputIndexOf(coveredRange, chunkRanges, inputStart);
     // 入力が覆うテキストの範囲。ローマ字配列は、覆う英字を含む綴りの単位のかなの範囲
     let kanaStart = inputStart;
     let kanaEnd = inputEnd - 1;
@@ -781,6 +781,15 @@ function coveringChunkRange(chunks: readonly RomajiChunkRange[], start: number, 
   let to = low;
   while (to < chunks.length && chunks[to].start < end) to++;
   return { from: low, to };
+}
+
+/**
+ * 入力の単位の`inputIndex`。覆う綴りの単位があればその先頭の英字の位置、無ければ入力の単位自身の位置。
+ * 覆う単位が無い（from === to）時、chunks[from]は次の綴りの単位を指すので、その`start`を使わない。
+ */
+export function inputIndexOf(coveredRange: { from: number; to: number } | undefined, chunks: readonly RomajiChunkRange[], inputStart: number): number {
+  if (!coveredRange || coveredRange.from >= coveredRange.to) return inputStart;
+  return chunks[coveredRange.from]?.start ?? inputStart;
 }
 
 function coveredByKana(start: number, end: number, chunks: RomajiChunkRange[]): boolean {
