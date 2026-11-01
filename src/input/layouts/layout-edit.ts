@@ -1,5 +1,5 @@
 import { isBuiltin } from '../romaji/rules.ts';
-import { ActivationConflictError, type ActivationConflictSide } from '../semantics/index.ts';
+import { ActivationConflictError, InvalidSequenceError, type ActivationConflictSide } from '../semantics/index.ts';
 import { FINGER_LABEL } from '../shapes/finger-names.ts';
 import { physicalKeyDisplayLabel } from '../shapes/key-labels.ts';
 import { assignmentHasKey, FINGERS, homeKeyOverrideApplies, keyId, QWERTY_LEGEND, type FingerAssignment, type NonThumb } from '../shapes/geometry.ts';
@@ -16,6 +16,9 @@ export const USER_LAYOUT_ID_PREFIX = 'user-';
 
 /** 名前が空の時の誤りの文。段の配列と面の配列の画面で同じ文を出す。 */
 export const NAME_REQUIRED_MESSAGE = '名前を入力してください';
+
+/** 選んでいた推奨のローマ字規則が見つからない時の注意文。段の配列と面の配列の画面で同じ文を出す。 */
+export const ROMAJI_RULE_MISSING_MESSAGE = '選んでいたローマ字規則が見つかりません。全体の値の規則で打ちます。規則を選び直すと、その規則で打ちます';
 
 export const newUserLayoutId = (): string => `${USER_LAYOUT_ID_PREFIX}${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -250,7 +253,7 @@ export function layoutProblems(
     problems.push({
       severity: 'warning',
       field: { kind: 'romaji' },
-      message: '選んでいたローマ字規則が見つかりません。全体の値の規則で打ちます。規則を選び直すと、その規則で打ちます',
+      message: ROMAJI_RULE_MISSING_MESSAGE,
     });
   }
   return problems;
@@ -259,10 +262,21 @@ export function layoutProblems(
 const conflictSideText = (side: ActivationConflictSide): string =>
   `「${side.output}」の打鍵（${side.steps.map((keys) => keys.map((key) => physicalKeyDisplayLabel(key)).join('・')).join('→')}）`;
 
-/** 配列を組み立てられなかった時の誤りの文。同時に成り立つ出力どうしの衝突は、出力と打鍵で示す。 */
+/** 配列を組み立てられなかった時の誤りの文。画面から届く失敗は、出力と打鍵で示す。 */
 export const buildFailureMessage = (cause: unknown): string => {
   if (cause instanceof ActivationConflictError) {
     return `${conflictSideText(cause.left)}と${conflictSideText(cause.right)}が同時に成り立つため、配列として組み立てられません`;
+  }
+  if (cause instanceof InvalidSequenceError) {
+    const output = `「${cause.output}」`;
+    switch (cause.reason.kind) {
+      case 'no-steps':
+        return `${output}の打鍵が空のため、配列として組み立てられません`;
+      case 'empty-step':
+        return `${output}の${cause.reason.stepIndex + 1}打目に押すキーが無いため、配列として組み立てられません`;
+      case 'duplicate-key':
+        return `${output}の${cause.reason.stepIndex + 1}打目に同じキー「${physicalKeyDisplayLabel(cause.reason.key)}」が重なっているため、配列として組み立てられません`;
+    }
   }
   return `配列として組み立てられません（${cause instanceof Error ? cause.message : String(cause)}）`;
 };
