@@ -247,6 +247,10 @@ export function createWorkerEngineComputer(spawn: () => WorkerLike): WorkerEngin
       options: Options,
       signal?: AbortSignal,
     ): Promise<EngineExtractionResult<Extracted>> {
+      // 写しに当たる時は、段の依頼もWorkerへ送らずそのまま返す。段は配列数×段数の往復になる。
+      const key = setExtractionKeyOf(members, definition, options);
+      const mirrored = extractionMirror.get(key) as EngineExtractionResult<Extracted> | undefined;
+      if (mirrored !== undefined) return mirrored;
       const warmup = definition.warmup;
       if (warmup !== undefined) {
         // 段を1件ずつ頼み、前の段が終わってから次を頼む。段の間にほかの依頼が先に送られる。
@@ -262,7 +266,7 @@ export function createWorkerEngineComputer(spawn: () => WorkerLike): WorkerEngin
       }
       return remember(
         extractionMirror as LruCache<string, EngineExtractionResult<Extracted>>,
-        setExtractionKeyOf(members, definition, options),
+        key,
         enqueue((id) => ({ id, kind: 'set-extraction', members, definitionId: definition.id, options }), signal, { deferred: warmup !== undefined }),
       );
     },

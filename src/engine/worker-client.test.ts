@@ -356,6 +356,21 @@ test('段に分けられる集合の抽出は、後回しでない依頼より�
   remote.dispose();
 });
 
+test('集合の抽出が写しに当たる時は、段の依頼も抽出の依頼もWorkerへ送らず、写しの値をそのまま返す', async () => {
+  const fake = createFakeWorker();
+  const remote = createWorkerEngineComputer(() => fake.worker);
+  const members = resolveAll('hello world', 'en').map((entry) => entry.member);
+  const first = await remote.getSetExtraction(members, nSensitivityDefinition, DEFAULT_N_SENSITIVITY_OPTIONS);
+  const sent = fake.received.length;
+  assert.ok(sent > 1);
+
+  const rebuilt = resolveAll('hello world', 'en').map((entry) => entry.member);
+  const second = await remote.getSetExtraction(rebuilt, nSensitivityDefinition, DEFAULT_N_SENSITIVITY_OPTIONS);
+  assert.strictEqual(second, first);
+  assert.equal(fake.received.length, sent, '2回目はWorkerへ何も送らない');
+  remote.dispose();
+});
+
 test('段の依頼が走っている間に打ち切られても、Workerは止めず、段が終わるまで次の依頼を送らない', async () => {
   const workers: Array<ReturnType<typeof createFakeWorker>> = [];
   const remote = createWorkerEngineComputer(() => {
