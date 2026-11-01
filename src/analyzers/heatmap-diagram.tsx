@@ -10,16 +10,16 @@ import { heatIntensity, type HeatmapColorScale, type HeatmapDrawStyle, type Heat
 import { heatmapFlowSegments, heatmapFlowStrokeWidth } from './heatmap-flow.ts';
 import type { BigramVector } from './bigram-vectors.ts';
 import { edgeKind, FLOW_COLORS, FLOW_GRADIENT_END_OPACITY, FLOW_GRADIENT_START_OPACITY, type FlowPoint } from './keyboard-flow-lines.ts';
+import { HEAT_BLOB_BLUR, HEAT_BLOB_LEVELS, heatBlobBlurParts, heatBlobRuns, type HeatBlobBlurPart, type HeatBlobSource } from './heatmap-blob.ts';
 import {
-  HEAT_BLOB_BLUR,
-  HEAT_BLOB_LEVELS,
-  heatBlobBlurParts,
-  heatBlobIntensityAt,
-  heatBlobRuns,
-  type HeatBlobBlurPart,
-  type HeatBlobSource,
-} from './heatmap-blob.ts';
-import { heatMultiBlobMixSample, heatMultiBlobSample, heatMultiKeySample, heatMultiLabelSample, heatSampleCss } from './heatmap-palette.ts';
+  heatLabelSample,
+  heatMultiBlobMixSample,
+  heatMultiBlobSample,
+  heatMultiKeySample,
+  heatSampleCss,
+  heatSingleBlobMixSample,
+  heatSingleKeySample,
+} from './heatmap-palette.ts';
 import { HEATMAP_KEY_SIZE, heatmapBounds, heatmapDrawnKeys, heatmapViewBox, type HeatmapBounds } from './heatmap-keys.ts';
 
 /**
@@ -108,18 +108,20 @@ function keyFill(style: HeatmapDrawStyle, palette: HeatmapPalette, intensity: nu
 }
 
 /**
- * キーの文字の色。「なし」は塗りが無いので常に通常の文字色。`intensity` は文字の位置の熱の強さ。
- * 単色は、強さが0.5を超えたら濃い塗りの上の色（`--on-heat`）にする。
- * 多色は、文字の位置の表示色の明るさから、黒か白を選ぶ。
- * キーの塗りは強さの色、サーモグラフィはぼかした後の色（`blobParts` が、ぼかす前の段と重み）。
+ * キーの文字の色。「なし」は塗りが無いので常に通常の文字色。`intensity` はキーの強さ。
+ * 塗りの色（キーの塗りは強さの色、サーモグラフィはぼかした後の色。`blobParts` が、ぼかす前の段と重み）の明るさから、黒か白を選ぶ。
+ * 単色と多色で同じ規則にする。どちらも黒と白のうちコントラスト比が大きい方なので、どの強さでも4.5:1を下回らない。
  */
 function labelFill(style: HeatmapDrawStyle, palette: HeatmapPalette, intensity: number, blobParts: readonly HeatBlobBlurPart[]): string {
   if (style === 'none') return 'var(--text)';
-  if (palette === 'multi') {
-    if (style === 'fill') return intensity > 0 ? heatSampleCss(heatMultiLabelSample(heatMultiKeySample(intensity))) : 'var(--text)';
-    return blobParts.some((part) => part.level > 0) ? heatSampleCss(heatMultiLabelSample(heatMultiBlobMixSample(blobParts))) : 'var(--text)';
+  if (style === 'fill') {
+    if (intensity <= 0) return 'var(--text)';
+    const shown = palette === 'multi' ? heatMultiKeySample(intensity) : heatSingleKeySample(intensity);
+    return heatSampleCss(heatLabelSample(shown));
   }
-  return intensity > 0.5 ? 'var(--on-heat)' : 'var(--text)';
+  if (!blobParts.some((part) => part.level > 0)) return 'var(--text)';
+  const shown = palette === 'multi' ? heatMultiBlobMixSample(blobParts) : heatSingleBlobMixSample(blobParts);
+  return heatSampleCss(heatLabelSample(shown));
 }
 
 /** SVGの画面上の幅 / 描画の座標系の幅。縮んだ図でも線を読める太さに保つのに使う。線を描かない間は測らない。 */
@@ -217,10 +219,8 @@ export function HeatmapDiagram({
       )
     : [];
   const blobRuns = blob ? heatBlobRuns(blobSources, { minX: viewX, minY: viewY, maxX: viewX + width, maxY: viewY + height }, BLOB_CELL, KEY_SIZE) : [];
-  const labelIntensity = (item: (typeof keys)[number]) =>
-    blob ? heatBlobIntensityAt(blobSources, item.x + item.width / 2, item.y + KEY_SIZE / 2, KEY_SIZE) : item.intensity;
   const labelBlobParts = (item: (typeof keys)[number]) =>
-    blob && palette === 'multi' ? heatBlobBlurParts(blobSources, item.x + item.width / 2, item.y + KEY_SIZE / 2, KEY_SIZE) : [];
+    blob ? heatBlobBlurParts(blobSources, item.x + item.width / 2, item.y + KEY_SIZE / 2, KEY_SIZE) : [];
   const caption = title === undefined ? '打鍵頻度' : `${title}・打鍵頻度`;
 
   return (
@@ -396,7 +396,7 @@ export function HeatmapDiagram({
                 y={item.y + KEY_SIZE / 2 + 4}
                 textAnchor="middle"
                 fontSize={item.thumb ? 10 : item.label.length > 3 ? 9 : 12}
-                fill={labelFill(drawStyle, palette, labelIntensity(item), labelBlobParts(item))}
+                fill={labelFill(drawStyle, palette, item.intensity, labelBlobParts(item))}
               >
                 {item.label}
               </text>

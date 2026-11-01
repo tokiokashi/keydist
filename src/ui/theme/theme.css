@@ -30,7 +30,6 @@
   /* 表の中央値より遅い・速いマスの色。色覚の違いがあっても区別できる橙と青の組にする。 */
   --speed-slow: light-dark(#d9631e, #e8863f);
   --speed-fast: light-dark(#1c6fd1, #4c97ec);
-  --on-heat: light-dark(#ffffff, #0b1220);
 
   --series-1: light-dark(#2a78d6, #3987e5);
   --series-2: light-dark(#eb6834, #d95926);

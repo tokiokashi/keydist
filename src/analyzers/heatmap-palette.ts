@@ -143,6 +143,78 @@ export function heatMultiBlobMixSample(parts: readonly { readonly level: number;
   return { light: mix('light'), dark: mix('dark') };
 }
 
+/**
+ * 単色の濃い色（強度1の塗り）。`theme.css` の `--heat-1` と同じ値にする（検査が突き合わせる）。
+ */
+export const HEAT_INK: Readonly<Record<HeatTheme, string>> = { light: '#1c5cab', dark: '#3987e5' };
+
+/** sRGBの成分（0〜255）からOklabへ。CSSの `color-mix(in oklab, ...)` と同じ式（Björn Ottosson の定義）。 */
+function srgbToOklab(rgb: HeatRgb): readonly [number, number, number] {
+  const r = toLinear(rgb[0]);
+  const g = toLinear(rgb[1]);
+  const b = toLinear(rgb[2]);
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  return [
+    0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s,
+    1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
+    0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s,
+  ];
+}
+
+/** OklabからsRGBの成分（0〜255）へ。範囲外は描画と同じく端で止める。 */
+function oklabToSrgb([L, a, b]: readonly [number, number, number]): HeatRgb {
+  const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+  const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+  const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
+  return [
+    round2(fromLinear(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s)),
+    round2(fromLinear(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s)),
+    round2(fromLinear(-0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s)),
+  ];
+}
+
+/**
+ * 単色のキーの塗りの、強度 `t`（0〜1）での表示色。描画の `color-mix(in oklab, var(--heat-1) t%, var(--heat-0))` と同じ混ぜ方。
+ */
+export function heatSingleKeyRgb(theme: HeatTheme, t: number): HeatRgb {
+  const ground = srgbToOklab(rgbOfHex(HEAT_GROUND[theme]));
+  const ink = srgbToOklab(rgbOfHex(HEAT_INK[theme]));
+  return oklabToSrgb([0, 1, 2].map((n) => ground[n]! * (1 - t) + ink[n]! * t) as unknown as [number, number, number]);
+}
+
+/** 単色のキーの塗りの、強度 `t` での表示色（両テーマ）。 */
+export function heatSingleKeySample(t: number): HeatSample {
+  return { light: heatSingleKeyRgb('light', t), dark: heatSingleKeyRgb('dark', t) };
+}
+
+/**
+ * 単色のサーモグラフィの段 `level` の、地（`--heat-0`）の上での表示色。ぼかしはsRGBの値のまま合成するので、sRGBで混ぜる。
+ */
+function heatSingleBlobRgb(theme: HeatTheme, level: number): HeatRgb {
+  const ground = rgbOfHex(HEAT_GROUND[theme]);
+  const ink = rgbOfHex(HEAT_INK[theme]);
+  const a = level / HEAT_BLOB_LEVELS;
+  return [0, 1, 2].map((n) => round2(ground[n]! * (1 - a) + ink[n]! * a)) as unknown as HeatRgb;
+}
+
+/**
+ * ぼかした後の単色のサーモグラフィの、ある点の表示色。`parts` は、その点をぼかす前に作っていた段と重み（段0は地）。
+ * 段の色を重みで平均する。段の不透明度を重みで平均したものを地と濃い色で混ぜたのと同じ値になる。
+ */
+export function heatSingleBlobMixSample(parts: readonly { readonly level: number; readonly weight: number }[]): HeatSample {
+  const mix = (theme: HeatTheme): HeatRgb => {
+    const sum: [number, number, number] = [0, 0, 0];
+    for (const { level, weight } of parts) {
+      const rgb = heatSingleBlobRgb(theme, level);
+      for (const n of [0, 1, 2] as const) sum[n] += rgb[n] * weight;
+    }
+    return [round2(sum[0]), round2(sum[1]), round2(sum[2])];
+  };
+  return { light: mix('light'), dark: mix('dark') };
+}
+
 /** WCAG 2.xの相対輝度。 */
 export function relativeLuminance(rgb: HeatRgb): number {
   return 0.2126 * toLinear(rgb[0]) + 0.7152 * toLinear(rgb[1]) + 0.0722 * toLinear(rgb[2]);
@@ -161,13 +233,13 @@ const WHITE: HeatRgb = [255, 255, 255];
  * 表示色の上に載せる文字色。黒と白のうち、コントラスト比が大きい方。
  * 黒と白は、相対輝度が約0.18の色の上で比が最も小さくなり、その最小でも約4.58ある。
  */
-export function heatMultiLabelRgb(background: HeatRgb): HeatRgb {
+export function heatLabelRgb(background: HeatRgb): HeatRgb {
   return contrastRatio(background, BLACK) >= contrastRatio(background, WHITE) ? BLACK : WHITE;
 }
 
 /** 表示色の上の文字色を、テーマごとに決める。 */
-export function heatMultiLabelSample(sample: HeatSample): HeatSample {
-  return { light: heatMultiLabelRgb(sample.light), dark: heatMultiLabelRgb(sample.dark) };
+export function heatLabelSample(sample: HeatSample): HeatSample {
+  return { light: heatLabelRgb(sample.light), dark: heatLabelRgb(sample.dark) };
 }
 
 function cssRgb(rgb: HeatRgb): string {

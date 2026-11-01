@@ -4,14 +4,17 @@ import { test } from 'node:test';
 import { HEAT_BLOB_LEVELS, heatBlobBlurParts, type HeatBlobSource } from './heatmap-blob.ts';
 import {
   HEAT_GROUND,
+  HEAT_INK,
   HEAT_STOPS,
   HEAT_THEMES,
   contrastRatio,
   heatMultiBlobMixSample,
   heatMultiBlobSample,
   heatMultiKeySample,
-  heatMultiLabelSample,
+  heatLabelSample,
   heatMultiRgb,
+  heatSingleBlobMixSample,
+  heatSingleKeySample,
   relativeLuminance,
   type HeatRgb,
   type HeatSample,
@@ -25,12 +28,17 @@ const blobLevels = Array.from({ length: HEAT_BLOB_LEVELS }, (_, index) => index 
 
 const THEME_CSS = readFileSync(new URL('../ui/theme/theme.css', import.meta.url), 'utf8');
 
-function groundOf(theme: HeatTheme): HeatRgb {
-  const match = THEME_CSS.match(/^\s*--heat-0:\s*light-dark\(\s*(#[0-9a-fA-F]{6})\s*,\s*(#[0-9a-fA-F]{6})\s*\);/m);
-  assert.ok(match, 'theme.cssの--heat-0をlight-dark(#rrggbb, #rrggbb)の形で読めない');
+/** theme.cssの `--<name>` を `light-dark(#rrggbb, #rrggbb)` の形で読み、テーマの色にする。 */
+function tokenOf(name: string, theme: HeatTheme): HeatRgb {
+  const match = THEME_CSS.match(new RegExp(`^\\s*--${name}:\\s*light-dark\\(\\s*(#[0-9a-fA-F]{6})\\s*,\\s*(#[0-9a-fA-F]{6})\\s*\\);`, 'm'));
+  assert.ok(match, `theme.cssの--${name}をlight-dark(#rrggbb, #rrggbb)の形で読めない`);
   const hex = theme === 'light' ? match[1]! : match[2]!;
   const n = Number.parseInt(hex.slice(1), 16);
   return [(n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff];
+}
+
+function groundOf(theme: HeatTheme): HeatRgb {
+  return tokenOf('heat-0', theme);
 }
 
 const SERIES: readonly { readonly name: string; readonly samples: readonly HeatSample[] }[] = [
@@ -38,11 +46,70 @@ const SERIES: readonly { readonly name: string; readonly samples: readonly HeatS
   { name: 'サーモグラフィ', samples: blobLevels.map(heatMultiBlobSample) },
 ];
 
+const SINGLE_SERIES: readonly { readonly name: string; readonly samples: readonly HeatSample[] }[] = [
+  { name: 'キーの塗り', samples: keyPoints.map(heatSingleKeySample) },
+  { name: 'サーモグラフィ', samples: blobLevels.map((level) => heatSingleBlobMixSample([{ level, weight: 1 }])) },
+];
+
 test('地の色はtheme.cssの--heat-0と同じ', () => {
   for (const theme of HEAT_THEMES) {
     const n = Number.parseInt(HEAT_GROUND[theme].slice(1), 16);
     assert.deepEqual(groundOf(theme), [(n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff]);
   }
+});
+
+test('単色の濃い色はtheme.cssの--heat-1と同じ', () => {
+  for (const theme of HEAT_THEMES) {
+    const n = Number.parseInt(HEAT_INK[theme].slice(1), 16);
+    assert.deepEqual(tokenOf('heat-1', theme), [(n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff]);
+  }
+});
+
+test('単色の塗りは、強度0で地の色、強度1で濃い色', () => {
+  for (const theme of HEAT_THEMES) {
+    const zero = heatSingleKeySample(0)[theme];
+    const one = heatSingleKeySample(1)[theme];
+    for (const n of [0, 1, 2] as const) {
+      assert.ok(Math.abs(zero[n] - groundOf(theme)[n]) < 0.01, `${theme} 成分${n}: ${zero[n]}`);
+      assert.ok(Math.abs(one[n] - tokenOf('heat-1', theme)[n]) < 0.01, `${theme} 成分${n}: ${one[n]}`);
+    }
+  }
+});
+
+for (const { name, samples } of SINGLE_SERIES) {
+  for (const theme of HEAT_THEMES) {
+    test(`単色の${name}の全点で、${theme} の色と文字色のコントラスト比が4.5以上`, () => {
+      const labels = samples.map(heatLabelSample);
+      const ratios = samples.map((sample, index) => contrastRatio(sample[theme], labels[index]![theme]));
+      assert.ok(Math.min(...ratios) >= 4.5, `最小 ${Math.min(...ratios)}`);
+    });
+  }
+}
+
+test('単色のサーモグラフィの文字色は、ぼかした後の表示色の上で、どの点でもコントラスト比が4.5以上', () => {
+  const KEY = 30;
+  const sources: HeatBlobSource[] = [];
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 10; col++) {
+      const intensity = ((col * 7 + row * 13) % 11) / 10;
+      sources.push({ x: col * KEY + 15, y: row * KEY + 15, intensity });
+    }
+  }
+  let checked = 0;
+  for (let x = 0; x <= 10 * KEY; x += 3) {
+    for (let y = 0; y <= 3 * KEY; y += 3) {
+      const parts = heatBlobBlurParts(sources, x, y, KEY);
+      if (!parts.some((part) => part.level > 0)) continue;
+      const shown = heatSingleBlobMixSample(parts);
+      const label = heatLabelSample(shown);
+      for (const theme of HEAT_THEMES) {
+        const ratio = contrastRatio(shown[theme], label[theme]);
+        assert.ok(ratio >= 4.5, `${theme} (${x}, ${y}): ${ratio}`);
+      }
+      checked++;
+    }
+  }
+  assert.ok(checked > 500);
 });
 
 for (const { name, samples } of SERIES) {
@@ -54,7 +121,7 @@ for (const { name, samples } of SERIES) {
 
   for (const theme of HEAT_THEMES) {
     test(`多色の${name}の全点で、${theme} の色と文字色のコントラスト比が4.5以上`, () => {
-      const labels = samples.map(heatMultiLabelSample);
+      const labels = samples.map(heatLabelSample);
       const ratios = samples.map((sample, index) => contrastRatio(sample[theme], labels[index]![theme]));
       assert.ok(Math.min(...ratios) >= 4.5, `最小 ${Math.min(...ratios)}`);
     });
@@ -166,7 +233,7 @@ test('サーモグラフィの文字色は、ぼかした後の表示色の上�
       const parts = heatBlobBlurParts(sources, x, y, KEY);
       if (!parts.some((part) => part.level > 0)) continue;
       const shown = heatMultiBlobMixSample(parts);
-      const label = heatMultiLabelSample(shown);
+      const label = heatLabelSample(shown);
       for (const theme of HEAT_THEMES) {
         const ratio = contrastRatio(shown[theme], label[theme]);
         assert.ok(ratio >= 4.5, `${theme} (${x}, ${y}): ${ratio}`);
