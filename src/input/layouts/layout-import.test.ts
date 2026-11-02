@@ -1043,3 +1043,48 @@ test('紅皿の小指シフトの面の記号は、定義ファイルの面の�
   assert.deepEqual(keysOf('A'), ['2+shift-l', '2+shift-r']);
   assert.deepEqual(keysOf('B'), ['1+shift-l', '1+shift-r']);
 });
+
+const DVORAKJ_STOP_HEAD = ['-option-input[', '  {F} | +21', '  {G} | +あ', '  {H} | +zz1', ']', '[', '  |||', '  あ|い|う|', '  |||', '  |||', ']'];
+const dvorakJFaceSource = (heading: string, cell: string) => [`${heading}[`, '  |||', `  ${cell}|||`, '  |||', '  |||', ']'];
+
+test('DvorakJの取り込みは、ASCII以外の文字が残る見出しで止まり、それより後の面を読まない', () => {
+  const source = [
+    ...DVORAKJ_STOP_HEAD,
+    ...dvorakJFaceSource('({F}', 'え'),
+    ...dvorakJFaceSource('({G}', 'お'),
+    ...dvorakJFaceSource('({F}{F}', 'か'),
+    '-option-input[',
+    '  {J} | +24',
+    ']',
+    ...dvorakJFaceSource('({J}', 'き'),
+  ].join('\n');
+  const { content, warnings } = kanaOf(importDvorakJ(source));
+  assert.deepEqual(
+    content.faces.map((face) => face.trigger.join()),
+    ['', 'f'],
+  );
+  assert.ok(warnings.some((warning) => warning.includes('({G}') && warning.includes('ASCII以外') && warning.includes('それより後の面')));
+});
+
+test('DvorakJの取り込みは、止まった見出しより前の面と別名の定義を使う', () => {
+  const source = [...DVORAKJ_STOP_HEAD, ...dvorakJFaceSource('({F}', 'え'), ...dvorakJFaceSource('({G}', 'お')].join('\n');
+  const { content } = kanaOf(importDvorakJ(source));
+  const faceF = content.faces.find((face) => face.trigger.join() === 'f');
+  assert.deepEqual(faceF?.outputs, { q: 'え' });
+  assert.equal(content.faces.length, 2);
+});
+
+test('DvorakJの取り込みは、ASCIIのまま解決できないキーでは続きを読む', () => {
+  const source = [...DVORAKJ_STOP_HEAD, ...dvorakJFaceSource('({H}', 'え'), ...dvorakJFaceSource('({F}', 'お')].join('\n');
+  const { content, warnings } = kanaOf(importDvorakJ(source));
+  assert.ok(content.faces.some((face) => face.trigger.join() === 'f'));
+  assert.ok(warnings.some((warning) => warning.includes('zz1') && warning.includes('解決できない')));
+  assert.ok(!warnings.some((warning) => warning.includes('ASCII以外')));
+});
+
+test('DvorakJの取り込みは、ASCII以外の文字が残る見出しが無ければ全部の面を取り込む', () => {
+  const source = [...DVORAKJ_STOP_HEAD, ...dvorakJFaceSource('({F}', 'え')].join('\n');
+  const { content, warnings } = kanaOf(importDvorakJ(source));
+  assert.equal(content.faces.length, 2);
+  assert.deepEqual(warnings, []);
+});

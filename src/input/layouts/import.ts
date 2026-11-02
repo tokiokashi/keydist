@@ -333,6 +333,11 @@ export function importDvorakJ(source: string, name = 'DvorakJ取り込み'): Imp
     if (header === '-option-output' || header === '-raw') continue;
 
     const resolved = readDvorakJHeading(header, brackets === 2, { substitutions, sequential });
+    // DvorakJ本体と同じく、この見出しからファイルの終わりまで読まない
+    if (resolved.some((entry) => entry.kind === 'stop')) {
+      addWarning(warnings, `DvorakJの面「${heading}」のキーにASCII以外の文字が残るため、この面とそれより後の面を読み込みませんでした`);
+      break;
+    }
     for (const entry of resolved) {
       if (entry.kind === 'unresolved') {
         addWarning(warnings, `DvorakJの面ヘッダ「${heading}」のキー「${entry.key}」を解決できないため無視しました`);

@@ -60,7 +60,7 @@ test('見出しが空、または末尾のカンマで空の項目がある時�
 test('解決できないキーは名前を返し、解決できる項目は残す', () => {
   const results = readDvorakJHeading('-shift, +73, -f', false, simultaneous);
   assert.deepEqual(
-    results.map((result) => (result.kind === 'face' ? result.trigger : result.key)),
+    results.map((result) => (result.kind === 'face' ? result.trigger : result.kind === 'unresolved' ? result.key : assert.fail())),
     [['shift-l'], ['shift-r'], '73', 'f'],
   );
   assert.equal(readDvorakJHeading('(12', false, sequential)[0].kind, 'unresolved');
@@ -73,9 +73,19 @@ test('別名は定義の逆順に置き換え、センターシフトの{S}はsp
     ['{F}', '-21'],
   ]);
   assert.deepEqual(
-    readDvorakJHeading('({S}{F}', false, { substitutions, sequential: true }).map((result) => (result.kind === 'face' ? result.trigger : result.key)),
+    readDvorakJHeading('({S}{F}', false, { substitutions, sequential: true }).map((result) =>
+      result.kind === 'face' ? result.trigger : result.kind === 'unresolved' ? result.key : assert.fail(),
+    ),
     [['space', 'f']],
   );
   assert.equal(parseSubstitution('{x}'), undefined);
   assert.equal(parseSubstitution('| 12'), undefined);
+});
+
+test('別名を置き換えた後にコードが255を超える文字が残る見出しは、停止だけを返す', () => {
+  assert.deepEqual(readDvorakJHeading('-21, +あ', false, simultaneous), [{ kind: 'stop' }]);
+  const substitutions = [parseSubstitution('{G} | +あ')].filter((entry) => entry !== undefined);
+  assert.deepEqual(readDvorakJHeading('{G}', false, { substitutions, sequential: false }), [{ kind: 'stop' }]);
+  // コードが255以下の文字は、解決できないキーとして続きを読む
+  assert.equal(readDvorakJHeading('-é', false, simultaneous)[0].kind, 'unresolved');
 });
