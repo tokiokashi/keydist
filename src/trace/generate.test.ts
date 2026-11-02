@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry } from '#input/shapes/geometry.ts';
-import { generateTrace, type TracePolicy } from './generate.ts';
+import { generateTrace, inputIndexOf, type TracePolicy } from './generate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { compileSequenceInputAlternative } from '#input/semantics/index.ts';
 import {
@@ -1033,4 +1033,23 @@ test('ローマ字の配列のTrace生成は、テキストの長さに比例し
   const longMs = timeOf(20000);
   // 長さの比は10。長さの2乗に比例するなら時間の比は約100、比例するなら約10になる。固定費と時計の揺れを見込んで20を上限にする
   assert.ok(longMs / shortMs < 20, `20000字は2000字の${(longMs / shortMs).toFixed(2)}倍の時間（${shortMs.toFixed(0)}msと${longMs.toFixed(0)}ms）`);
+});
+
+test('inputIndexOf: 覆う綴りの単位があれば先頭の単位の位置を返す', () => {
+  const chunks = [
+    { start: 0, end: 2, kana: 'か', fromTable: true, kanaStart: 0, kanaLength: 1 },
+    { start: 2, end: 4, kana: 'き', fromTable: true, kanaStart: 1, kanaLength: 1 },
+  ];
+  assert.equal(inputIndexOf({ from: 1, to: 2 }, chunks, 3), 2);
+  assert.equal(inputIndexOf({ from: 0, to: 2 }, chunks, 1), 0);
+});
+
+test('inputIndexOf: 覆う綴りの単位が無ければ次の単位の位置でなく入力の単位の位置を返す', () => {
+  const chunks = [
+    { start: 0, end: 2, kana: 'か', fromTable: true, kanaStart: 0, kanaLength: 1 },
+    { start: 4, end: 6, kana: 'き', fromTable: true, kanaStart: 1, kanaLength: 1 },
+  ];
+  assert.equal(inputIndexOf({ from: 1, to: 1 }, chunks, 2), 2);
+  assert.equal(inputIndexOf({ from: 2, to: 2 }, chunks, 6), 6);
+  assert.equal(inputIndexOf(undefined, chunks, 5), 5);
 });
