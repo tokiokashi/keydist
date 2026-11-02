@@ -48,7 +48,7 @@ function pairRows(row: number, firstCol: number, base: string, shifted: string) 
   return bases.map((b, index) => ({ row, col: firstCol + index, base: b, shifted: shifteds[index] }));
 }
 
-// Graphiteの作者のREADMEのAscii Version（コミット5990356）。`` ` `` と `\` はモデル化していないキーなので、その2つの列は除く
+// Graphiteの作者のREADMEのAscii Version（コミット5990356）。`` ` ``と`\`のキーには英字配列の定義が出力を置いていないので、その2つのキーは除く
 test('graphite: Shiftの組が作者のREADMEのAscii Versionと一致する', () => {
   assertShiftTable('graphite', [
     ...pairRows(0, 0, '1 2 3 4 5 6 7 8 9 0 [ ]', '! @ # $ % ^ & * ( ) { }'),
@@ -184,7 +184,8 @@ test('作者のShiftの組を持つ3配列は、英字26文字を大文字まで
   }
 });
 
-// 作者の組がUS配列の組を置き換えた結果、どのキーでも打てなくなった文字が無い。`~` `` ` `` `|` `\` はモデル化していないキーなので全配列で打てない
+// 作者の組がUS配列の組を置き換えた結果、どのキーでも打てなくなった文字が無い。検査の対象は印字可能な記号から `~` `` ` `` `|` `\` を除いたもの。
+// `` ` ``と`\`のキーには英字配列の定義が出力を置いていないので、`` ` ``と`\`は全配列で打てない。`~`と`|`は、その2つのキーのShiftの組として出る記号で、作者の組にもUS配列の組にも `` ` ``→`~` と `\`→`|` が無いので全配列で打てない
 test('作者のShiftの組を持つ3配列は、USの記号を置き換えても打てなくなる文字が無い', () => {
   const printable = [...'!"#$%&\'()*+,-./0123456789:;<=>?@[]^_{}'];
   for (const id of IDS) {
