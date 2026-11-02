@@ -1,5 +1,5 @@
 import { faceAggregatesAsCombo } from '../semantics/index.ts';
-import { resolveKeyId } from '../shapes/geometry.ts';
+import { LEFT_COLUMN_KEYS, resolveKeyId } from '../shapes/geometry.ts';
 import { faceCells, handOfKey, type Hand } from './face-geometry.ts';
 import type { Face } from './types.ts';
 
@@ -63,6 +63,15 @@ function validatePresentationMetadata(face: Face, faceIndex: number): void {
   });
 }
 
+const EXTRA_CELL_KEYS: ReadonlySet<string> = new Set(LEFT_COLUMN_KEYS);
+
+function validateExtraCells(face: Face, faceIndex: number): void {
+  const invalidKeys = Object.keys(face.extraCells ?? {}).filter((key) => !EXTRA_CELL_KEYS.has(key));
+  if (invalidKeys.length > 0) {
+    throw new Error(`extraCellsに使えるのは左端の列の3つのキーだけ: ${invalidKeys.join(', ')}（face:${faceIndex}）`);
+  }
+}
+
 /**
  * Face authoring invariantをconstructor境界で検証する。
  * semantic layer foldingとpresentation metadataの不正をconsumerまで遅延させない。
@@ -73,6 +82,7 @@ export function validateFaceAuthoring(faces: readonly Face[]): void {
 
   for (const [faceIndex, face] of faces.entries()) {
     validatePresentationMetadata(face, faceIndex);
+    validateExtraCells(face, faceIndex);
     if (faceAggregatesAsCombo(face)) {
       if (face.layer !== undefined) throw new Error('コンボ枠に計上する面にはレイヤーを宣言できない');
       continue;
