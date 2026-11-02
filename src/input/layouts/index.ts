@@ -178,7 +178,7 @@ const ALPHA: Layout[] = [
     }),
     ['ぐらふぁいと', 'graphite'],
   ),
-  // 作者のXKB定義の第2グループ（Halmakの面）の並び。記号の置き方も作者の定義で、`9` `0` `,` `.` のShiftの組がUS配列と違う。
+  // 作者のXKB定義（Group1だけを持つ）の3・4番目のレベル（Halmakの面）の並び。記号の置き方も作者の定義で、`9` `0` `,` `.` のShiftの組がUS配列と違う。
   // 数字段・`[` `]` はQWERTYのまま
   withAliases(
     withShiftedOutputs(fromRows('halmak', 'Halmak', ['1234567890-=', 'wlrbz;qudj[]', "shnt,.aeoi'", 'fmvc/gpxky']), undefined, {
