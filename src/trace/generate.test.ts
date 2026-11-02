@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry } from '#input/shapes/geometry.ts';
-import { generateTrace, inputIndexOf, type TracePolicy } from './generate.ts';
+import { generateTrace, inputCharOf, inputIndexOf, skippedKanaPositions, type TracePolicy } from './generate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { compileSequenceInputAlternative } from '#input/semantics/index.ts';
 import {
@@ -1052,4 +1052,28 @@ test('inputIndexOf: 覆う綴りの単位が無ければ次の単位の位置で
   assert.equal(inputIndexOf({ from: 1, to: 1 }, chunks, 2), 2);
   assert.equal(inputIndexOf({ from: 2, to: 2 }, chunks, 6), 6);
   assert.equal(inputIndexOf(undefined, chunks, 5), 5);
+});
+
+test('inputCharOf: 覆う綴りの単位があればそのかなをつなぎ、無ければ空文字にする', () => {
+  const chunks = [
+    { start: 0, end: 2, kana: 'か', fromTable: true, kanaStart: 0, kanaLength: 1 },
+    { start: 2, end: 4, kana: 'き', fromTable: true, kanaStart: 1, kanaLength: 1 },
+    { start: 6, end: 8, kana: 'く', fromTable: true, kanaStart: 2, kanaLength: 1 },
+  ];
+  const rawChars = ['か', 'き', 'く'];
+  assert.equal(inputCharOf({ from: 0, to: 2 }, chunks, rawChars, 0, 4), 'かき');
+  // 英字の4〜6は綴りの単位に覆われない。次の単位のかな「く」も、英字も入れない
+  assert.equal(inputCharOf({ from: 2, to: 2 }, chunks, rawChars, 4, 5), '');
+  assert.equal(inputCharOf(undefined, chunks, rawChars, 1, 2), 'き');
+});
+
+test('skippedKanaPositions: 覆う綴りの単位が無ければ次の単位の位置も英字の位置も足さない', () => {
+  const chunks = [
+    { start: 0, end: 2, kana: 'か', fromTable: true, kanaStart: 0, kanaLength: 1 },
+    { start: 2, end: 5, kana: 'きゃ', fromTable: true, kanaStart: 1, kanaLength: 2 },
+    { start: 7, end: 9, kana: 'く', fromTable: true, kanaStart: 3, kanaLength: 1 },
+  ];
+  assert.deepEqual(skippedKanaPositions(chunks, 3), [1, 2]);
+  assert.deepEqual(skippedKanaPositions(chunks, 5), []);
+  assert.deepEqual(skippedKanaPositions(chunks, 20), []);
 });
