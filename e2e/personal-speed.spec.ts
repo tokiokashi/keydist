@@ -938,7 +938,7 @@ test('文章を打つ測定で、示した綴りと違う綴りで打ち始め�
   await page.locator('[data-personal-speed-start="sentence"]').click();
   const progress = page.locator('[data-personal-speed-sentence-progress]');
   await expect(progress).toBeVisible();
-  const total = Number(/あと(\d+)打/.exec(await progress.innerText())?.[1]);
+  const total = Number(/あと(\d+)打/.exec((await progress.textContent()) ?? '')?.[1]);
   // 「こんしゅう」を、「ん」をnの1打で打つ。nnの2打ではなく1打で、次のかなのsへ進む。
   for (const key of 'kons') {
     await page.keyboard.press(key);

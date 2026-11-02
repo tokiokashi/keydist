@@ -732,7 +732,7 @@ test('基準の配列を外すと基準なしになり、付け直すと基準�
   await openTargetSelection(page);
   await page.getByLabel('基準', { exact: true }).selectOption('layout:qwerty');
   await expect(table.locator('tr[data-baseline="true"]')).toContainText('QWERTY');
-  const before = await table.innerText();
+  const before = await table.textContent();
 
   await toggleTarget(page, 'layout:qwerty');
   await expect(table.locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
@@ -741,7 +741,7 @@ test('基準の配列を外すと基準なしになり、付け直すと基準�
   await toggleTarget(page, 'layout:qwerty');
   await expect(table.locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(3, { timeout: 10_000 });
   await expect(table.locator('tr[data-baseline="true"]')).toContainText('QWERTY');
-  expect(await table.innerText()).toBe(before);
+  expect(await table.textContent()).toBe(before);
 });
 
 test('読み込み前のHTMLに空状態のボタンが無く、保存済みの対象があれば読み込み後に表が出る', async ({ page }) => {

@@ -147,7 +147,7 @@ export function createWorkerEngineComputer(spawn: () => WorkerLike): WorkerEngin
   function pump(): void {
     while (current === undefined && queue.length > 0) {
       const first = queue.findIndex((waiting) => !waiting.deferred);
-      const job = queue.splice(first >= 0 ? first : 0, 1)[0]!;
+      const job = queue.splice(Math.max(first, 0), 1)[0]!;
       try {
         if (worker === undefined) worker = attach(spawn());
         current = job;

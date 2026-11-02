@@ -669,7 +669,7 @@ function search(c: SearchContext, bound: Bound | null, guide: boolean): SearchRe
             strokeDistance += !sfbHomeCost && press.onHome ? 0 : fingerDist(press.finger, registry[cur.pos[sBase + index]], press.target);
           } else if (age <= windowSize) {
             const dStay = fingerDist(press.finger, registry[cur.pos[sBase + index]], press.target);
-            strokeDistance += dStay <= press.dHome ? dStay : press.dHome;
+            strokeDistance += Math.min(dStay, press.dHome);
           } else {
             strokeDistance += press.dHome;
           }
