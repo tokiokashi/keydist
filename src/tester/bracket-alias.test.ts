@@ -4,6 +4,7 @@ import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { applyBracketAliases } from '#input/text/bracket-alias.ts';
 import { romajiToKana, romajiTypingCorrectness } from './live-romaji.ts';
 import { reverseLookup } from './reverse-lookup.ts';
+import { expectedTextFor, typingTargetPresentation } from './typing-target.ts';
 
 const stepKeys = (layoutId: string, text: string) => {
   const layout = LAYOUT_BY_ID.get(layoutId)!;
@@ -41,6 +42,32 @@ test('ローマ字テーブルが『』の綴りを持つせおと配列では�
   assert.deepEqual(romajiTypingCorrectness('『』', '『』', table), [true, true]);
   // せおと配列の綴りのvは、物理キーの/に当たる
   assert.deepEqual(stepKeys('seoto', '『』')?.flat(2), ['/', '[', '/', ']']);
+});
+
+test('ローマ字を経る配列で『』を[ ]で打つと、期待と一致して誤入力にならず、完了になる', () => {
+  const qwerty = LAYOUT_BY_ID.get('qwerty')!;
+  const table = qwerty.romajiTable!;
+  const partial = typingTargetPresentation(qwerty, 'あ『い』', romajiToKana('a[', table));
+  assert.deepEqual(
+    partial.typed.map((item) => item.correct),
+    [true, true],
+  );
+  assert.deepEqual(partial.remaining, ['い', '』']);
+  assert.equal(partial.complete, false);
+
+  const done = typingTargetPresentation(qwerty, 'あ『い』', romajiToKana('a[i]', table));
+  assert.ok(done.typed.every((item) => item.correct));
+  assert.equal(done.complete, true);
+  assert.equal(expectedTextFor(qwerty, 'あ『い』'), 'あ「い」');
+});
+
+test('かな配列でも、『』を持たなければ「」の出力で打って完了になり、持つ配列では『』の出力が要る', () => {
+  const jis = LAYOUT_BY_ID.get('jis-kana')!;
+  assert.equal(typingTargetPresentation(jis, 'あ『い』', 'あ「い」').complete, true);
+  assert.ok(typingTargetPresentation(jis, '『', '「').typed.every((item) => item.correct));
+  const naginata = LAYOUT_BY_ID.get('naginata-v18')!;
+  assert.equal(typingTargetPresentation(naginata, '『', '「').typed[0]?.correct, false);
+  assert.equal(typingTargetPresentation(naginata, '『』', '『』').complete, true);
 });
 
 test('『』を持たないかな配列では、テキストの『』を「」の定義で打つ', () => {
