@@ -108,15 +108,16 @@ function spellingIn(table: Map<string, string>, kana: string): string {
 
 /**
  * 揺れる箇所の一覧。固定の一覧のかなを並べ、固定の一覧に無いかなを上書きしていれば末尾に足す
- * （上書きが全部一覧に出る）。基底の綴りは組み込みの基底のルールの表から、この規則の綴りは
+ * （上書きが全部一覧に出る）。基底の規則が候補を出さないもの（`offersSpellingCandidates`）では候補を空にする。基底の綴りは組み込みの基底のルールの表から、この規則の綴りは
  * 実際に解決に使う表（`buildRomajiTable`）から読む。
  */
 export function spellingRows(rule: UserRomajiRule): readonly SpellingRow[] {
-  const baseTable = ROMAJI_RULES[rule.base].table();
+  const baseSpec = ROMAJI_RULES[rule.base];
+  const baseTable = baseSpec.table();
   const ruleTable = buildRomajiTable(rule);
   const listed = new Set(ROMAJI_VARIANTS.map((variant) => variant.kana));
   const entries = [
-    ...ROMAJI_VARIANTS.map((variant) => ({ kana: variant.kana, alternatives: variant.alternatives })),
+    ...ROMAJI_VARIANTS.map((variant) => ({ kana: variant.kana, alternatives: baseSpec.offersSpellingCandidates ? variant.alternatives : [] })),
     ...Object.keys(rule.overrides)
       .filter((kana) => !listed.has(kana))
       .map((kana) => ({ kana, alternatives: [] as readonly string[] })),

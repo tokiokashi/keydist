@@ -40,6 +40,11 @@ export const ROMAJI_RULES: Record<
   RomajiRuleSpec & {
     name: string;
     table: () => Map<string, string>;
+    /**
+     * 編集画面が「綴りが割れるかな」の候補（`ROMAJI_VARIANTS`）を出してよいか。
+     * 候補は訓令式・ヘボン式系の綴りなので、拡張ローマ字の基底では基底の打ち方と対応せず、出さない。
+     */
+    offersSpellingCandidates: boolean;
   }
 > = {
   qwerty: {
@@ -61,6 +66,7 @@ export const ROMAJI_RULES: Record<
       ちぇ: 'che',
     },
     generateSokuon: true,
+    offersSpellingCandidates: true,
     table: () => kunrei(ROMAJI_RULES.qwerty.overrides),
   },
   kunrei: {
@@ -68,6 +74,7 @@ export const ROMAJI_RULES: Record<
     base: 'kunrei',
     overrides: {},
     generateSokuon: true,
+    offersSpellingCandidates: true,
     table: () => kunrei(),
   },
   oonishi: {
@@ -75,6 +82,7 @@ export const ROMAJI_RULES: Record<
     base: 'kunrei',
     overrides: OONISHI_OVERRIDES,
     generateSokuon: true,
+    offersSpellingCandidates: true,
     table: () => oonishiRomaji(),
   },
   tomisuke: {
@@ -82,6 +90,7 @@ export const ROMAJI_RULES: Record<
     base: 'kunrei',
     overrides: TOMISUKE_OVERRIDES,
     generateSokuon: true,
+    offersSpellingCandidates: true,
     table: () => tomisukeRomaji(),
   },
   azik: {
@@ -89,6 +98,7 @@ export const ROMAJI_RULES: Record<
     base: 'azik',
     overrides: {},
     generateSokuon: false,
+    offersSpellingCandidates: false,
     table: () => azik(),
   },
   jlod: {
@@ -96,6 +106,7 @@ export const ROMAJI_RULES: Record<
     base: 'jlod',
     overrides: {},
     generateSokuon: false,
+    offersSpellingCandidates: false,
     table: () => jlod(),
   },
   gact10: {
@@ -103,6 +114,7 @@ export const ROMAJI_RULES: Record<
     base: 'gact10',
     overrides: {},
     generateSokuon: false,
+    offersSpellingCandidates: false,
     table: () => gact10(),
   },
   seoto: {
@@ -110,6 +122,7 @@ export const ROMAJI_RULES: Record<
     base: 'kunrei',
     overrides: {},
     generateSokuon: false,
+    offersSpellingCandidates: false,
     table: () => seotoRomaji(),
   },
 };

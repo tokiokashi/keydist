@@ -11,7 +11,7 @@ import {
   withSpelling,
 } from './rule-edit.ts';
 import { ROMAJI_VARIANTS } from './spelling-variations.ts';
-import type { UserRomajiRule } from './rules.ts';
+import { ROMAJI_RULES, type UserRomajiRule } from './rules.ts';
 
 const RULE: UserRomajiRule = { id: 'romaji-a', name: 'A', base: 'kunrei', overrides: {}, generateSokuon: true };
 
@@ -89,4 +89,35 @@ test('基底のルールを変えると、基底の綴りがそのルールの�
   const kana = (rule: UserRomajiRule, k: string) => spellingRows(rule).find((row) => row.kana === k)!;
   assert.equal(kana(RULE, 'しゃ').base, 'sya');
   assert.equal(kana({ ...RULE, base: 'oonishi' }, 'しゃ').base, 'sha');
+});
+
+test('候補: 標準・訓令式・大西式・とみすけ式の基底では固定の一覧の候補が出る', () => {
+  for (const base of ['qwerty', 'kunrei', 'oonishi', 'tomisuke'] as const) {
+    const rows = spellingRows({ ...RULE, base });
+    assert.deepEqual(
+      rows.map((row) => [row.kana, row.alternatives]),
+      ROMAJI_VARIANTS.map((variant) => [variant.kana, variant.alternatives]),
+      base,
+    );
+  }
+});
+
+test('候補: AZIK・JLOD・gACT10の基底では全行の候補が空で、かなと綴りは変わらない', () => {
+  for (const base of ['azik', 'jlod', 'gact10'] as const) {
+    const rows = spellingRows({ ...RULE, base, overrides: { し: 'shi' } });
+    assert.deepEqual(
+      rows.map((row) => row.kana),
+      ROMAJI_VARIANTS.map((variant) => variant.kana),
+    );
+    assert.ok(
+      rows.every((row) => row.alternatives.length === 0),
+      base,
+    );
+    const table = ROMAJI_RULES[base].table();
+    const n = rows.find((row) => row.kana === 'ん')!;
+    assert.equal(n.base, table.get('ん'));
+    const si = rows.find((row) => row.kana === 'し')!;
+    assert.equal(si.current, 'shi');
+    assert.equal(si.differs, true);
+  }
 });
