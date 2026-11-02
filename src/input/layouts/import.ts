@@ -631,14 +631,20 @@ function hasBenizaraFunctionLabel(label: string): boolean {
   );
 }
 
-function benizaraTrigger(section: string): string[] | undefined {
-  if (section.includes('シフト無し')) return [];
+/**
+ * 面に対応する切り替えのキーの組を返す。組が複数あるのは、左右どちらを押しても同じ面になる時（小指シフト）。
+ * 決められない面はundefinedを返す。
+ */
+function benizaraTriggers(section: string): string[][] | undefined {
+  if (section.includes('シフト無し')) return [[]];
+  // 小指シフトは紅皿が左右どちらのShiftを押しても有効にする面で、定義ファイルでキーを選べない。
+  // 親指シフトと重ねる面と、拡張の面は、組み合わせるキーが決まらないので取り込まない。
+  if (section.includes('小指')) return section.includes('親指') ? undefined : [['shift-l'], ['shift-r']];
   if (section.includes('左右親指') || section.includes('両親指') || (section.includes('左親指') && section.includes('右親指'))) {
-    return ['thumb-l', 'space'];
+    return [['thumb-l', 'space']];
   }
-  if (section.includes('右親指') || section.includes('スペース')) return ['space'];
-  if (section.includes('左親指')) return ['thumb-l'];
-  // 小指シフトは定義ファイルごとに物理キーが違うため、誤った指を仮定しない。
+  if (section.includes('右親指') || section.includes('スペース')) return [['space']];
+  if (section.includes('左親指')) return [['thumb-l']];
   return undefined;
 }
 
@@ -672,9 +678,9 @@ export function importBenizara(source: string, name = '紅皿取り込み'): Imp
     }
   }
   for (const section of [base, ...family.filter((candidate) => candidate !== base)]) {
-    const trigger = benizaraTrigger(section);
-    if (!trigger) {
-      addWarning(warnings, `面「${section}」は対応する親指キーを決められないため無視しました`);
+    const triggers = benizaraTriggers(section);
+    if (!triggers) {
+      addWarning(warnings, `面「${section}」は対応する切り替えのキーを決められないため無視しました`);
       continue;
     }
     const grid = sections
@@ -692,7 +698,7 @@ export function importBenizara(source: string, name = '紅皿取り込み'): Imp
         if (cell) cells.push({ row, column, output: cell.output, label: cell.label });
       }
     }
-    faces.push({ heading: section, trigger, cells, isFunctionLabel: hasBenizaraFunctionLabel });
+    for (const trigger of triggers) faces.push({ heading: section, trigger, cells, isFunctionLabel: hasBenizaraFunctionLabel });
   }
   return resolveFaces(name, faces, warnings);
 }
