@@ -84,7 +84,7 @@ function decodeBinding(
     return undefined;
   }
   if (!isRecord(raw)) {
-    diagnostics.push({ path, message: 'object形式でないため対象の持ち方が読めず、ペインを捨てました' });
+    diagnostics.push({ path, message: '形式が正しくないため対象の持ち方が読めず、ペインを捨てました' });
     return undefined;
   }
   if (raw.mode === 'follow') {
@@ -106,7 +106,7 @@ function decodeWorkspaceTarget(raw: unknown, path: string, diagnostics: CodecDia
   const initial = initialWorkspaceTarget();
   if (raw === undefined) return initial;
   if (!isRecord(raw)) {
-    diagnostics.push({ path, message: 'object形式でないため組の対象を空へ戻しました' });
+    diagnostics.push({ path, message: '形式が正しくないため組の対象を空へ戻しました' });
     return initial;
   }
   const singleTarget = raw.single === undefined ? undefined : decodeAnalysisTarget(raw.single, `${path}.single`, diagnostics);

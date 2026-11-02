@@ -212,7 +212,7 @@ test('ストアは最初に読み込む所で1回だけ知らせ、書き戻す�
 
 test('知らせの文: 資産の名前と件数だけを出し、codecの診断の文を流さない', () => {
   const diagnostics = [
-    { path: 'presets[0]', message: 'Invalid type: Expected Object but received 5のため捨てました' },
+    { path: 'presets[0]', message: '形式が正しくないため要素を捨てました' },
     { path: 'presets[1]', message: '項目「playbackRateAverage」を捨てました' },
   ];
   const repaired = assetNoticeText({ key: 'presetLibrary', kind: 'repaired', diagnostics });

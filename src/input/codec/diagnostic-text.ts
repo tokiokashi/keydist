@@ -10,9 +10,9 @@ export function droppedNotArray(subject: string): string {
   return `配列形式でないため${subject}を捨てました`;
 }
 
-/** objectで書かれているはずの値がobjectでなかった。 */
+/** 組になった欄を持つ値のはずが、そうでなかった。 */
 export function droppedNotObject(subject: string): string {
-  return `object形式でないため${subject}を捨てました`;
+  return `形式が正しくないため${subject}を捨てました`;
 }
 
 /** 同じidが先にあったため、後の要素を捨てた。 */

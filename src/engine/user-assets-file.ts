@@ -402,7 +402,12 @@ export function parseUserAssetsFile(text: string): UserAssetsFileReadResult {
     return fail('ファイルとして読めませんでした', error instanceof Error ? error.message : String(error));
   }
   if (!isRecord(parsed) || parsed.format !== USER_ASSETS_FILE_FORMAT) {
-    return fail('keydistの自作の資産のファイルではありません', `format: ${JSON.stringify(isRecord(parsed) ? parsed.format : undefined) ?? 'undefined'}`);
+    const detail = !isRecord(parsed)
+      ? 'ファイルの最上位の形式が正しくありません'
+      : parsed.format === undefined
+        ? '「format」欄がありません'
+        : `「format」欄が「${USER_ASSETS_FILE_FORMAT}」ではありません`;
+    return fail('keydistの自作の資産のファイルではありません', detail);
   }
   for (const key of ['layouts', 'romajiRules', 'fingerAssignments', 'setups']) {
     const list = parsed[key];

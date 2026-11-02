@@ -31,7 +31,7 @@ test('STANDALONE_ANALYZER_OPTIONS_CODEC: 予約された名前のAnalyzer idは�
   assert.ok(decoded.diagnostics.some((diagnostic) => diagnostic.message.includes('予約された名前')));
 });
 
-test('STANDALONE_ANALYZER_OPTIONS_CODEC: object形式でない値は診断付きで捨てる', () => {
+test('STANDALONE_ANALYZER_OPTIONS_CODEC: 形式が正しくない値は診断付きで捨てる', () => {
   const decoded = STANDALONE_ANALYZER_OPTIONS_CODEC.decode({
     version: 1,
     'bigram-flow': 'not-an-object',
@@ -39,7 +39,7 @@ test('STANDALONE_ANALYZER_OPTIONS_CODEC: object形式でない値は診断付き
   assert.equal(decoded.ok, true);
   if (!decoded.ok) return;
   assert.deepEqual(decoded.value, {});
-  assert.ok(decoded.diagnostics.some((diagnostic) => diagnostic.message.includes('object形式でない')));
+  assert.ok(decoded.diagnostics.some((diagnostic) => diagnostic.message.includes('形式が正しくない')));
 });
 
 test('STANDALONE_ANALYZER_OPTIONS_CODEC: 資産全体がobjectでなければ失敗（not-an-object）', () => {
