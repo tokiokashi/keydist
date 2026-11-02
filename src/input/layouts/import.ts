@@ -633,7 +633,7 @@ function hasBenizaraFunctionLabel(label: string): boolean {
 
 /**
  * 面に対応する切り替えのキーの組を返す。組が複数あるのは、左右どちらを押しても同じ面になる時（小指シフト）。
- * 決められない面は undefined を返す。
+ * 決められない面は undefinedを返す。
  */
 function benizaraTriggers(section: string): string[][] | undefined {
   if (section.includes('シフト無し')) return [[]];
