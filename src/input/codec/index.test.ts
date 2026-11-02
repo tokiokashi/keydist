@@ -1,7 +1,17 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as v from 'valibot';
-import { decodeDroppingInvalid, droppedNotObject, decodeField, defineAssetCodec, encodedSizeBytes, type MigrationStep } from './index.ts';
+import {
+  decodeDroppingInvalid,
+  describeFileDecodeFailure,
+  describeJsonSyntaxError,
+  droppedNotObject,
+  decodeField,
+  defineAssetCodec,
+  encodedSizeBytes,
+  type DecodeFailure,
+  type MigrationStep,
+} from './index.ts';
 
 /** テスト用の小さな資産: v2で`count`を持つ。 */
 interface Widget {
@@ -203,4 +213,71 @@ test('encodedSizeBytes: JSONにした時のUTF-8バイト数を返す', () => {
   assert.equal(encodedSizeBytes({ a: 1 }), new TextEncoder().encode('{"a":1}').length);
   // マルチバイト文字も正しく数える（文字数ではなくバイト数）。
   assert.equal(encodedSizeBytes({ a: 'あ' }), new TextEncoder().encode('{"a":"あ"}').length);
+});
+
+test('診断の文: variantの判別の欄が無い時は欄が無いことを伝え、選べる値に無い時と区別する', () => {
+  const schema = v.variant('t', [v.object({ t: v.literal('a') }), v.object({ t: v.literal('b') })]);
+  const diagnostics: import('./index.ts').CodecDiagnostic[] = [];
+  decodeDroppingInvalid(schema, {}, 'items[0]', diagnostics);
+  decodeDroppingInvalid(schema, { t: 'c' }, 'items[1]', diagnostics);
+  assert.deepEqual(
+    diagnostics.map((diagnostic) => diagnostic.message),
+    ['「t」欄がありません。そのため要素を捨てました', '「t」欄の値が選べる値にありません。そのため要素を捨てました'],
+  );
+});
+
+test('診断の文: 値全体への検査の失敗は「値の値」にならず、同じ欄で同じ文になる問題は1回だけ出る', () => {
+  const diagnostics: import('./index.ts').CodecDiagnostic[] = [];
+  decodeDroppingInvalid(v.pipe(v.number(), v.integer()), 1.5, 'items[0]', diagnostics);
+  decodeDroppingInvalid(v.picklist(['a']), 'z', 'items[1]', diagnostics);
+  decodeDroppingInvalid(v.pipe(v.string(), v.regex(/a/), v.startsWith('b')), 'zz', 'items[2]', diagnostics);
+  decodeDroppingInvalid(v.object({ id: v.pipe(v.string(), v.regex(/a/), v.startsWith('b')) }), { id: 'zz' }, 'items[3]', diagnostics);
+  assert.deepEqual(
+    diagnostics.map((diagnostic) => diagnostic.message),
+    [
+      '値が条件に合っていません。そのため要素を捨てました',
+      '値が選べる値にありません。そのため要素を捨てました',
+      '値が条件に合っていません。そのため要素を捨てました',
+      '「id」欄の値が条件に合っていません。そのため要素を捨てました',
+    ],
+  );
+});
+
+test('読み込み失敗の文: 理由の種類ごとに日本語で、JSONの生の値やキー名を出さない', () => {
+  const reasons: readonly DecodeFailure[] = [
+    { kind: 'not-an-object' },
+    { kind: 'missing-version' },
+    { kind: 'invalid-version', version: { a: 1 } },
+    { kind: 'future-version', version: 9, currentVersion: 2 },
+    { kind: 'unmigratable-version', version: 0 },
+    { kind: 'invalid-shape', message: 'ファイルの中身を読み取れません' },
+  ];
+  for (const reason of reasons) {
+    const { message, detail } = describeFileDecodeFailure(reason);
+    for (const text of [message, detail]) {
+      assert.doesNotMatch(text, /[{}"]|kind|currentVersion|[a-z]{4,}:/);
+      assert.match(text, /\p{Script=Hiragana}/u);
+    }
+  }
+  assert.equal(
+    describeFileDecodeFailure({ kind: 'future-version', version: 9, currentVersion: 2 }).detail,
+    'ファイルの版は9です。このkeydistが読めるのは2版までです',
+  );
+});
+
+test('JSONの構文エラー: ブラウザの英語の文を出さず、読み取れた位置だけを日本語で伝える', () => {
+  const text = '{"a": 1}\nx';
+  let thrown: unknown;
+  try {
+    JSON.parse(text);
+  } catch (error) {
+    thrown = error;
+  }
+  const described = describeJsonSyntaxError(thrown, text);
+  assert.doesNotMatch(described, /Unexpected|token|position|Expected/);
+  assert.match(described, /JSONの書式が正しくありません$/);
+  assert.match(described, /^2行目の1文字目付近で/);
+  assert.equal(describeJsonSyntaxError(new Error('Unexpected token }, is not valid JSON'), ''), 'JSONの書式が正しくありません');
+  assert.equal(describeJsonSyntaxError(new Error('Unexpected end of JSON input'), ''), 'JSONの書式が正しくありません');
+  assert.equal(describeJsonSyntaxError('x', ''), 'JSONの書式が正しくありません');
 });

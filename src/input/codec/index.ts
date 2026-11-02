@@ -134,7 +134,7 @@ export function defineAssetCodec<T>(options: AssetCodecOptions<T>): AssetCodec<T
       const diagnostics: CodecDiagnostic[] = [];
       const value = options.decodePayload(payload, diagnostics);
       if (value === undefined) {
-        return { ok: false, reason: { kind: 'invalid-shape', message: 'payloadの形式が不正で読み取れません' } };
+        return { ok: false, reason: { kind: 'invalid-shape', message: 'ファイルの中身を読み取れません' } };
       }
       return { ok: true, value, diagnostics };
     },
@@ -220,28 +220,31 @@ function describeIssue(issue: BaseIssue<unknown>): string {
   if (issue.message !== DEFAULT_MESSAGE_MARK) return issue.message;
   const field = issueFieldName(issue);
   const subject = field === undefined ? '値' : `「${field}」欄`;
+  // 値全体が対象の時の「値」には「の値」を続けない
+  const content = field === undefined ? '値' : `${subject}の値`;
   if (issue.kind === 'schema') {
-    // objectの欄が無い問題は、欠けた欄の名前を`path`に持つ（`object`・`strict_object`とも）
-    if ((issue.type === 'object' || issue.type === 'strict_object') && issue.received === 'undefined' && field !== undefined)
+    // objectの欄が無い問題は、欠けた欄の名前を`path`に持つ（`object`・`strict_object`とも）。
+    // `variant`の判別の欄が無い問題も同じ形で届く
+    if ((issue.type === 'object' || issue.type === 'strict_object' || issue.type === 'variant') && issue.received === 'undefined' && field !== undefined)
       return `${subject}がありません`;
     if (issue.type === 'strict_object') return `${subject}は使えません`;
     if (issue.expected === 'Object') return `${subject}の形式が正しくありません`;
     const label = issue.expected === null ? undefined : EXPECTED_TYPE_LABELS[issue.expected];
     if (label !== undefined) return `${subject}が${label}ではありません`;
-    return `${subject}の値が選べる値にありません`;
+    return `${content}が選べる値にありません`;
   }
   if (issue.type === 'min_length') return `${subject}が短すぎます`;
   if (issue.type === 'max_length') return `${subject}が長すぎます`;
-  return `${subject}の値が条件に合っていません`;
+  return `${content}が条件に合っていません`;
 }
 
 /**
- * 問題ごとの文を「。」で区切って並べる。検査の側の文（です・ますの文）が直前に来うるので、
+ * 問題ごとの文を「。」で区切って並べる。同じ欄で複数の検査が落ちて同じ文になった時は1回にまとめる。検査の側の文（です・ますの文）が直前に来うるので、
  * 「ため」でつながず、処理を伝える文は呼び出し側が別の文として後ろに置く。
  * 単独の文で完結する他の診断（`droppedNotArray`など）は、この連結を通らないので「ため」のままにしてある。
  */
 function describeIssues(issues: readonly BaseIssue<unknown>[]): string {
-  return issues.map(describeIssue).join('。');
+  return [...new Set(issues.map(describeIssue))].join('。');
 }
 
 /**
@@ -255,6 +258,8 @@ export function encodedSizeBytes(value: unknown): number {
 
 export {
   describeFileDecodeFailure,
+  describeJsonSyntaxError,
+  FILE_ROOT_SHAPE_DETAIL,
   droppedDuplicateId,
   droppedNotArray,
   droppedNotObject,

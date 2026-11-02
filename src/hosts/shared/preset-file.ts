@@ -1,4 +1,4 @@
-import { describeFileDecodeFailure, isRecord, type CodecDiagnostic } from '#input/codec/index.ts';
+import { describeFileDecodeFailure, describeJsonSyntaxError, isRecord, type CodecDiagnostic } from '#input/codec/index.ts';
 import type { LevelOverrides } from '#input/settings/index.ts';
 import { PRESET_FILE_CODEC, type PresetFileContents } from '#engine/preset-file-codec.ts';
 import { EMPTY_USER_ASSETS_BUNDLE, USER_ASSETS_FILE_MAX_ITEMS, type UserAssetsBundle } from '#engine/user-assets-file.ts';
@@ -240,7 +240,7 @@ function readEnvelope(text: string): EnvelopeRead {
   try {
     parsed = JSON.parse(text);
   } catch (error) {
-    return failure('条件ファイルとして読めませんでした', error instanceof Error ? error.message : String(error));
+    return failure('条件ファイルとして読めませんでした', describeJsonSyntaxError(error, text));
   }
   if (!isRecord(parsed) || parsed.format !== PRESET_FILE_FORMAT) {
     return failure('keydist の条件ファイルではありません', `format: ${JSON.stringify(isRecord(parsed) ? parsed.format : undefined) ?? 'undefined'}`);

@@ -841,3 +841,20 @@ test('左端の列の3つのキーを持たない指の割り当てのファイ�
   }
   assert.equal(parsed.dropped.length, 0);
 });
+
+test('取り込みの診断: JSONとして読めない・版が合わない・形が不正なファイルの詳細に、英語の文とJSONの生の値を出さない', () => {
+  const detailsOf = (text: string): string => {
+    const result = parseUserAssetsFile(text);
+    assert.equal(result.ok, false, text);
+    return result.ok ? '' : [result.message, ...result.details].join('\n');
+  };
+  const syntax = detailsOf('{"format": }');
+  const future = detailsOf(JSON.stringify({ format: USER_ASSETS_FILE_FORMAT, version: 99, layouts: [] }));
+  const noVersion = detailsOf(JSON.stringify({ format: USER_ASSETS_FILE_FORMAT, layouts: [] }));
+  const badVersion = detailsOf(JSON.stringify({ format: USER_ASSETS_FILE_FORMAT, version: 'x', layouts: [] }));
+  for (const text of [syntax, future, noVersion, badVersion]) assert.doesNotMatch(text, /Unexpected|token|JSON input|[{}"]|kind|currentVersion/);
+  assert.match(syntax, /JSONの書式が正しくありません/);
+  assert.match(future, /ファイルの版は99です/);
+  assert.match(noVersion, /「version」欄がありません/);
+  assert.match(badVersion, /「version」欄が0以上の整数ではありません/);
+});
