@@ -307,8 +307,7 @@ export function generateTrace(
     if (!alternatives) {
       skipped++;
       if (chunks) {
-        const range = chunkRanges[coveringChunkRange(chunkRanges, cursor, cursor + 1).from];
-        if (range !== undefined) for (let offset = 0; offset < range.kanaLength; offset++) skippedPositions.add(range.kanaStart + offset);
+        for (const position of skippedKanaPositions(chunkRanges, cursor)) skippedPositions.add(position);
       } else {
         skippedPositions.add(cursor);
       }
@@ -321,12 +320,7 @@ export function generateTrace(
     const inputStart = cursor;
     const inputEnd = cursor + consumed;
     const coveredRange = chunks ? coveringChunkRange(chunkRanges, inputStart, inputEnd) : undefined;
-    const inputChar = coveredRange
-      ? chunkRanges
-          .slice(coveredRange.from, coveredRange.to)
-          .map((range) => range.kana)
-          .join('')
-      : rawChars.slice(inputStart, inputEnd).join('');
+    const inputChar = inputCharOf(coveredRange, chunkRanges, rawChars, inputStart, inputEnd);
     const inputIndex = inputIndexOf(coveredRange, chunkRanges, inputStart);
     // 入力が覆うテキストの範囲。ローマ字配列は、覆う英字を含む綴りの単位のかなの範囲
     let kanaStart = inputStart;
@@ -791,6 +785,39 @@ function coveringChunkRange(chunks: readonly RomajiChunkRange[], start: number, 
 export function inputIndexOf(coveredRange: { from: number; to: number } | undefined, chunks: readonly RomajiChunkRange[], inputStart: number): number {
   if (!coveredRange || coveredRange.from >= coveredRange.to) return inputStart;
   return chunks[coveredRange.from]?.start ?? inputStart;
+}
+
+/**
+ * 入力の単位の`inputChar`。ローマ字展開前の入力単位なので、覆う綴りの単位があればそのかなをつなぐ。
+ * 覆う単位が無い（from >= to）時は、展開前の入力単位が無いので空文字にする。
+ * 展開後の英字は元の入力ではない（全角形の記号を半角に読み替えた値を含む）ため入れない。
+ * かな配列（coveredRangeが無い）は元の文字をそのまま返す。
+ */
+export function inputCharOf(
+  coveredRange: { from: number; to: number } | undefined,
+  chunks: readonly RomajiChunkRange[],
+  rawChars: readonly string[],
+  inputStart: number,
+  inputEnd: number,
+): string {
+  if (!coveredRange) return rawChars.slice(inputStart, inputEnd).join('');
+  if (coveredRange.from >= coveredRange.to) return '';
+  return chunks
+    .slice(coveredRange.from, coveredRange.to)
+    .map((range) => range.kana)
+    .join('');
+}
+
+/**
+ * 打てない英字(cursor)が属する綴りの単位のかなの位置。評価に渡すテキストの文字位置で返す。
+ * 覆う単位が無い（from >= to）時、chunks[from]は次の綴りの単位を指す。その単位のかなの位置は
+ * この英字と無関係で、cursorは展開後の英字の位置で座標系が違うため、どちらも足さず空を返す。
+ */
+export function skippedKanaPositions(chunks: readonly RomajiChunkRange[], cursor: number): number[] {
+  const { from, to } = coveringChunkRange(chunks, cursor, cursor + 1);
+  const range = from < to ? chunks[from] : undefined;
+  if (range === undefined) return [];
+  return Array.from({ length: range.kanaLength }, (_, offset) => range.kanaStart + offset);
 }
 
 function coveredByKana(start: number, end: number, chunks: RomajiChunkRange[]): boolean {
