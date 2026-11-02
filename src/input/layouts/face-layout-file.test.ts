@@ -107,6 +107,32 @@ test('種類（kind）の無いJSONは、画面の種類と見なさず、種類
   assert.equal(problems[0]?.path, 'kind');
 });
 
+test('必須の欄が無いJSONの診断の文にundefinedを出さず、欄の名前を入れる', () => {
+  const alphaBody = faceLayoutFileBody(ALPHA);
+  const kanaBody = faceLayoutFileBody(KANA);
+  const withoutKind = (body: Record<string, unknown>) => {
+    const { kind: _kind, ...rest } = body;
+    return rest;
+  };
+  const cases: Array<[string, unknown, LayoutKind, string]> = [
+    ['kind', withoutKind(alphaBody), 'alpha', '（kind）'],
+    ['kana composition', (({ composition: _c, ...rest }) => rest)(kanaBody), 'kana', 'composition'],
+    ['faces[1].mode', { ...alphaBody, faces: [ALPHA.faces[0], { ...ALPHA.faces[1], mode: undefined }] }, 'alpha', 'mode'],
+    ['faces[0].inputRole', { ...alphaBody, faces: [{ trigger: [], outputs: { a: 'a' } }] }, 'alpha', 'inputRole'],
+  ];
+  for (const [name, body, kind, field] of cases) {
+    const problems = problemsOf(body, kind);
+    assert.ok(problems.length > 0, name);
+    for (const problem of problems) {
+      assert.doesNotMatch(problem.message, /undefined/, `${name}: ${problem.message}`);
+    }
+    assert.ok(
+      problems.some((problem) => problem.message.includes(field)),
+      `${name}: 欄の名前「${field}」が診断に無い: ${problems.map((problem) => problem.message).join(' / ')}`,
+    );
+  }
+});
+
 test('英字の種類のJSONも、通常Shiftを足した後に衝突する定義は取り込まない', () => {
   const colliding = faceLayoutFileBody({
     ...ALPHA,

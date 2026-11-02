@@ -145,7 +145,9 @@ class Problems {
 
 function readEnum<T extends string>(value: unknown, allowed: readonly T[], path: string, label: string, problems: Problems): Parsed<T> {
   if (typeof value === 'string' && (allowed as readonly string[]).includes(value)) return { ok: true, value: value as T };
-  problems.add(path, `${label}は ${allowed.map((entry) => `「${entry}」`).join('・')} のどれかで書いてください（${describeValue(value)}）`);
+  // 欄が無い時は、書かれていない値を並べず、欄の名前と選べる値だけを伝える
+  const detail = value === undefined ? '' : `（${describeValue(value)}）`;
+  problems.add(path, `${label}は ${allowed.map((entry) => `「${entry}」`).join('・')} のどれかで書いてください${detail}`);
   return { ok: false };
 }
 
