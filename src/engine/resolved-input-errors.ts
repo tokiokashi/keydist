@@ -47,7 +47,7 @@ export function describeResolvedInputError(error: ResolvedInputError): string {
     case 'keys-missing':
       return `「${error.layout.name}」が使うキーが物理配列に足りません。${keysMissingHint(error.layout)}`;
     case 'text-too-long':
-      return `テキストが長すぎて計算できません（読みに直した後で${formatChars(error.length)}字。${formatChars(error.limit)}字までです）。テキストを短くしてください`;
+      return `テキストが長すぎて計算できません（計算に使う文字数が${formatChars(error.length)}字で、${formatChars(error.limit)}字までです）。テキストを短くしてください`;
     case 'target-missing':
       return error.target.kind === 'setup' ? SETUP_MISSING_REASON : LAYOUT_MISSING_REASON;
   }
