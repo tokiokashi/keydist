@@ -212,6 +212,7 @@ export class TypingInputEngine {
     this.#pressed.add(key);
 
     if (!this.#knownPhysicalKeys.has(key)) {
+      this.#shadowKeys.clear();
       this.#resetRecognitionWindow();
       return this.#result(recognized);
     }
