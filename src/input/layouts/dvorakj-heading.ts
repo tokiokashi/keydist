@@ -43,7 +43,15 @@ export interface HeadingProblem {
   readonly key: string;
 }
 
-export type HeadingResult = HeadingFace | HeadingProblem;
+/**
+ * 別名を置き換えた後の見出しに、コードが255を超える文字が残っている。
+ * DvorakJ本体はこの見出しの面を読まず、ファイルのそれより後も読まない。
+ */
+export interface HeadingStop {
+  readonly kind: 'stop';
+}
+
+export type HeadingResult = HeadingFace | HeadingProblem | HeadingStop;
 
 /** 1行目の宣言が順の打鍵か。DvorakJは「逐次」か「順」を含むかで決める。 */
 export const isSequentialDeclaration = (firstLine: string): boolean => /逐次|順/.test(firstLine);
@@ -214,12 +222,16 @@ function expandCandidates(steps: Slot[][]): string[][][] | undefined {
  * 見出し（`[` の前の文字列）を読む。カンマで分けた1つずつが別の面になる。
  * 見出しが空、または末尾のカンマで空の項目がある時は、切り替えのキーの無い面も1つ足す。
  * 解決できないキーを含む項目は、その項目だけ `unresolved` で返す。
+ * 別名を置き換えた後にコードが255を超える文字が残る時は、`stop` だけを返す。
  */
 export function readDvorakJHeading(header: string, firstMode: boolean, ctx: HeadingContext): HeadingResult[] {
   const text = header.trim();
   if (text === '') return [faceOf([], 'with-last')];
   const expanded = text.length > MAX_HEADING_LENGTH ? undefined : substitute(text, ctx.substitutions);
   if (expanded === undefined) return [{ kind: 'unresolved', key: text.length > 40 ? `${text.slice(0, 40)}…` : text }];
+
+  // DvorakJ本体は、カンマで分けた項目のどれかにコードが255を超える文字があると、そこで読み取りをやめる
+  if ([...expanded].some((char) => char.charCodeAt(0) > 255)) return [{ kind: 'stop' }];
 
   const results: HeadingResult[] = [];
   let hasEmptyItem = false;

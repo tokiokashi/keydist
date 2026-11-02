@@ -507,8 +507,8 @@ async function main(): Promise<void> {
     return;
   }
 
-  // 前提: 前処理の3段目（半角の `,` `.` の書き換え）は1文字を1文字に直すだけで、文字数を変えない。
-  // 配列が直接持てば半角のまま、持たなければ `、` `。` になり、どちらも4段目の記号の取り除きを受けない。
+  // 前提: 前処理の2段目（半角の `,` `.` の書き換え）は1文字を1文字に直すだけで、文字数を変えない。
+  // 配列が直接持てば半角のまま、持たなければ `、` `。` になり、どちらも3段目の記号の取り除きを受けない。
   // そのため範囲の位置は全配列で共有できる。配列ごとの文字数の一致は、下の配列ごとの検査で確かめる
   const halfwidthPunctuation = (wholeReading.match(/[,.]/g) ?? []).length;
 
@@ -689,7 +689,7 @@ async function main(): Promise<void> {
   out.push(
     `- コーパス: 青空文庫『${AOZORA_SOURCE.title}』（作品789）。zip ${AOZORA_SOURCE.fileName}（sha256 ${AOZORA_SOURCE.sha256}）。取得と除去はscripts/generate-neko-sample.tsと同じ。除去後の全文のsha256 ${corpusSha}（${cpLength(corpus)}文字、${units.length}段落）`,
     `- 読みの辞書: ${DICTIONARY_SPEC.name} ${DICTIONARY_SPEC.version}、解析器${LIBRARY_SPEC.name} ${LIBRARY_SPEC.version}。利用者の読みの直しは無し。全文を段落ごとに読みに直してつないだ文字列は${wholeChars.length}文字`,
-    `- 前処理: 仕様 §4.6の1〜4段（既定の記号の範囲）。全体の文字列にある半角の \`,\` \`.\` は${halfwidthPunctuation}個で、前処理の3段目は1文字を1文字に直すだけなので文字数は変わらない。全体の評価に渡す文字数が配列によらず${totalEvalChars}文字であることと、範囲の評価に渡すテキストが全体の評価に渡す文字列の同じ部分に一致することを、範囲×配列ごとに確かめた`,
+    `- 前処理: 仕様 §4.6の1〜4段（既定の記号の範囲）。全体の文字列にある半角の \`,\` \`.\` は${halfwidthPunctuation}個で、前処理の2段目は1文字を1文字に直すだけなので文字数は変わらない。全体の評価に渡す文字数が配列によらず${totalEvalChars}文字であることと、範囲の評価に渡すテキストが全体の評価に渡す文字列の同じ部分に一致することを、範囲×配列ごとに確かめた`,
     `- 範囲: 段落（改行）の境目から、評価に渡すテキストの文字数が${RANGE_MIN_CHARS}を超える最初の段落の境目まで。既定の日本語サンプル（第一章の先頭、原文の${sampleStart}〜${sampleEnd}文字目）と重なる範囲と、互いに重なる範囲は除く。乱数${PRNG_NAME}、範囲の種${args.rangeSeed}、${ranges.length}範囲`,
     ...ranges.map(
       (range, i) =>

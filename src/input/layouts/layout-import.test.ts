@@ -16,6 +16,7 @@ import { dvorakJScanCode } from './dvorakj-heading.ts';
 import { isWordRegistration } from './import-faces.ts';
 import { CUSTOM_COMBOS } from './combos-custom.ts';
 import { buildFaceLayout, duplicateOutputNotices } from './face-layout.ts';
+import { withShiftedOutputs } from './types.ts';
 import { createUserLayout, contentOfImported } from './layout-edit.ts';
 import { toLayout, type StageUserLayout, type UserLayout } from './user-layouts.ts';
 
@@ -794,7 +795,7 @@ test('紅皿のかな定義は、面ごとのtriggerと出力を持つ面の形�
     inputRole: 'layer',
     outputs: { '1': 'が', '2': 'ぎ', '3': 'ぐ', '4': 'げ', '5': 'ご', q: 'だ', w: 'ぢ', e: 'づ', r: 'で', t: 'ど' },
   });
-  assert.deepEqual(warnings, ['面「かな小指シフト」は対応する親指キーを決められないため無視しました']);
+  assert.deepEqual(warnings, ['面「かな小指シフト」は、基底面と出力の種類（かな・ローマ字）が違うため取り込みませんでした']);
   const layout = buildFaceLayout('imported', content.name, content);
   assert.equal(layout.canonicalInputs.get('が')?.length, 1);
 });
@@ -1001,4 +1002,89 @@ test('取り込んだ段の形を自作の配列として保存しても、取�
   const stored = toLayout(saved);
   assert.deepEqual([...stored.map], [...direct.map]);
   assert.deepEqual([...stored.canonicalInputs], [...direct.canonicalInputs]);
+});
+
+test('紅皿の小指シフトの面は、左右のShiftの2面になり、親指シフトと重ねる面は取り込まない', () => {
+  const source = [
+    '[ローマ字シフト無し]',
+    'a,b,c,d',
+    'e,f,g,h',
+    'i,j,k,l',
+    'm,n,o,p',
+    '[ローマ字小指シフト]',
+    '!,B,C,D',
+    'E,F,G,H',
+    'I,J,K,L',
+    'M,N,O,P',
+    '[ローマ字小指右親指シフト]',
+    'x,x,x,x',
+  ].join('\n');
+  const result = importBenizara(source, 'テスト');
+  assert.equal(result.kind, 'alpha');
+  if (result.kind !== 'alpha') return;
+  assert.deepEqual(
+    result.content.faces.map((face) => face.trigger),
+    [[], ['shift-l'], ['shift-r']],
+  );
+  assert.equal(result.content.faces[1].outputs['1'], '!');
+  assert.deepEqual(result.content.faces[1].outputs, result.content.faces[2].outputs);
+  assert.deepEqual(result.warnings, ['面「ローマ字小指右親指シフト」は対応する切り替えのキーを決められないため無視しました']);
+});
+
+test('紅皿の小指シフトの面の記号は、定義ファイルの面のキーで打て、US配列の組の経路は並ばない', () => {
+  const source = ['[ローマ字シフト無し]', 'a,b,c,d', '[ローマ字小指シフト]', 'B,A,C,D'].join('\n');
+  const result = importBenizara(source, 'テスト');
+  assert.equal(result.kind, 'alpha');
+  if (result.kind !== 'alpha') return;
+  const layout = withShiftedOutputs(buildFaceLayout('imported', result.content.name, result.content));
+  const keysOf = (output: string) =>
+    (layout.canonicalInputs.get(output) ?? []).map((alternative) => alternative.semanticInputs[0].physicalKeys.slice().sort().join('+'));
+  // 定義ファイルの面ではAが2つ目のキー。US配列の組（1つ目のキー）の経路は、同じ出力に並ばない
+  assert.deepEqual(keysOf('A'), ['2+shift-l', '2+shift-r']);
+  assert.deepEqual(keysOf('B'), ['1+shift-l', '1+shift-r']);
+});
+
+const DVORAKJ_STOP_HEAD = ['-option-input[', '  {F} | +21', '  {G} | +あ', '  {H} | +zz1', ']', '[', '  |||', '  あ|い|う|', '  |||', '  |||', ']'];
+const dvorakJFaceSource = (heading: string, cell: string) => [`${heading}[`, '  |||', `  ${cell}|||`, '  |||', '  |||', ']'];
+
+test('DvorakJの取り込みは、ASCII以外の文字が残る見出しで止まり、それより後の面を読まない', () => {
+  const source = [
+    ...DVORAKJ_STOP_HEAD,
+    ...dvorakJFaceSource('({F}', 'え'),
+    ...dvorakJFaceSource('({G}', 'お'),
+    ...dvorakJFaceSource('({F}{F}', 'か'),
+    '-option-input[',
+    '  {J} | +24',
+    ']',
+    ...dvorakJFaceSource('({J}', 'き'),
+  ].join('\n');
+  const { content, warnings } = kanaOf(importDvorakJ(source));
+  assert.deepEqual(
+    content.faces.map((face) => face.trigger.join()),
+    ['', 'f'],
+  );
+  assert.ok(warnings.some((warning) => warning.includes('({G}') && warning.includes('ASCII以外') && warning.includes('それより後の面')));
+});
+
+test('DvorakJの取り込みは、止まった見出しより前の面と別名の定義を使う', () => {
+  const source = [...DVORAKJ_STOP_HEAD, ...dvorakJFaceSource('({F}', 'え'), ...dvorakJFaceSource('({G}', 'お')].join('\n');
+  const { content } = kanaOf(importDvorakJ(source));
+  const faceF = content.faces.find((face) => face.trigger.join() === 'f');
+  assert.deepEqual(faceF?.outputs, { q: 'え' });
+  assert.equal(content.faces.length, 2);
+});
+
+test('DvorakJの取り込みは、ASCIIのまま解決できないキーでは続きを読む', () => {
+  const source = [...DVORAKJ_STOP_HEAD, ...dvorakJFaceSource('({H}', 'え'), ...dvorakJFaceSource('({F}', 'お')].join('\n');
+  const { content, warnings } = kanaOf(importDvorakJ(source));
+  assert.ok(content.faces.some((face) => face.trigger.join() === 'f'));
+  assert.ok(warnings.some((warning) => warning.includes('zz1') && warning.includes('解決できない')));
+  assert.ok(!warnings.some((warning) => warning.includes('ASCII以外')));
+});
+
+test('DvorakJの取り込みは、ASCII以外の文字が残る見出しが無ければ全部の面を取り込む', () => {
+  const source = [...DVORAKJ_STOP_HEAD, ...dvorakJFaceSource('({F}', 'え')].join('\n');
+  const { content, warnings } = kanaOf(importDvorakJ(source));
+  assert.equal(content.faces.length, 2);
+  assert.deepEqual(warnings, []);
 });

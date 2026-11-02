@@ -260,6 +260,7 @@ export {
   describeFileDecodeFailure,
   describeJsonSyntaxError,
   FILE_ROOT_SHAPE_DETAIL,
+  FORMAT_FIELD_MISSING_DETAIL,
   droppedDuplicateId,
   droppedNotArray,
   droppedNotObject,

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { SAMPLE_TEXT_JA } from '#input/text/sample-ja.ts';
 import { prepareEvaluationText } from '#input/text/evaluation-text.ts';
-import { DEFAULT_TRACE_POLICY, generateTrace, type Stroke } from '#trace/generate.ts';
+import { DEFAULT_TRACE_POLICY, generateTrace, uncoveredTextPositions, type Stroke } from '#trace/generate.ts';
 import { buildGeometry } from '../shapes/geometry.ts';
 import { assertKanaLayout, assertKanaLayoutFixture } from '../../../test/kana-layout-helpers.ts';
 import { LAYOUT_BY_ID } from './index.ts';
@@ -149,8 +149,7 @@ test('日本語サンプルは、確定の打鍵が入らずに打てる', () =>
     language: 'ja',
     keepSymbols: false,
     layoutHasChar: (char) => layout.canonicalInputs.has(char),
-    layoutHasHeading: (heading) => layout.canonicalInputs.has(heading),
-    maxKatakanaHeadingLength: 0,
+    uncoveredPositions: (prepared) => uncoveredTextPositions(prepared, layout),
   });
   const trace = typed(text);
   assert.equal(trace.strokes.length, 2283);

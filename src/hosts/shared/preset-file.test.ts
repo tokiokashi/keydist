@@ -65,6 +65,20 @@ test('診断: formatが無い・別の値・オブジェクトでない', () => 
   }
 });
 
+test('診断: formatの違いの詳細に、JSONの生の値と内部のキー名を出さない', () => {
+  const cases: [string, string][] = [
+    ['{"format":"other","version":1}', '「format」欄の値が条件ファイルのものと違います'],
+    ['{"format":null,"version":1}', '「format」欄の値が条件ファイルのものと違います'],
+    ['{"version":1,"presets":[]}', '「format」欄がありません'],
+    ['[]', 'ファイルの最上位の形式が正しくありません'],
+  ];
+  for (const [text, detail] of cases) {
+    const result = failed(text);
+    assert.deepEqual(result.details, [detail], text);
+    assert.ok(!result.details.some((line) => line.includes('format:') || line.includes('"')), text);
+  }
+});
+
 test('診断: 新しい版', () => {
   const result = failed(fileText({ version: 3, presets: [] }));
   assert.equal(result.message, '新しい形式のファイルです。keydistを更新してから読み込んでください');

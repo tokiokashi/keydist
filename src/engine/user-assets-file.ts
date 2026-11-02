@@ -3,6 +3,7 @@ import {
   describeFileDecodeFailure,
   describeJsonSyntaxError,
   FILE_ROOT_SHAPE_DETAIL,
+  FORMAT_FIELD_MISSING_DETAIL,
   isRecord,
   type AssetCodec,
   type CodecDiagnostic,
@@ -413,7 +414,7 @@ export function parseUserAssetsFile(text: string): UserAssetsFileReadResult {
     const detail = !isRecord(parsed)
       ? FILE_ROOT_SHAPE_DETAIL
       : parsed.format === undefined
-        ? '「format」欄がありません'
+        ? FORMAT_FIELD_MISSING_DETAIL
         : `「format」欄が「${USER_ASSETS_FILE_FORMAT}」ではありません`;
     return fail('keydistの自作の資産のファイルではありません', detail);
   }

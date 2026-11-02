@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
+import { DEFAULT_TRACE_POLICY, generateTrace, uncoveredTextPositions } from '#trace/generate.ts';
 import { defaultRomajiRuleId, isRomajiBase, isUserRomajiRule, recommendedRomajiRuleId, tableForRule } from '../romaji/rules.ts';
 import { buildGeometry, THUMB_KEY } from '../shapes/geometry.ts';
 import { prepareEvaluationText } from '../text/evaluation-text.ts';
@@ -21,8 +21,7 @@ const prepare = (text: string, layout: Layout) =>
     language: 'ja',
     keepSymbols: false,
     layoutHasChar: (char) => layout.map.has(char),
-    layoutHasHeading: (heading) => layout.map.has(heading),
-    maxKatakanaHeadingLength: 1,
+    uncoveredPositions: (prepared) => uncoveredTextPositions(prepared, layout),
   });
 
 /** 打鍵ごとの、出力の文字・層・同時に押したキー */

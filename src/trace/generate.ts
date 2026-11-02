@@ -208,6 +208,70 @@ function comboFrameHeadingCount(layout: Layout): number {
 }
 
 /**
+ * テキストを、見出しを引く単位の列に展開する。ローマ字の配列はかなをテーブルの見出しで切って綴りに展開し、
+ * かな配列はテキストの文字をそのまま使う。`generateTrace` と、前処理が見出しに入らない片仮名を探す処理（`uncoveredTextPositions`）が、
+ * この関数を共有する。
+ */
+function evaluationUnitsOf(text: string, layout: Layout, romajiChunks: readonly RomajiChunk[] | undefined) {
+  // ローマ字配列はかなテキストを展開してから打つ。コンボの誤命中を防ぐため、
+  // 展開前の単位も残しておく。かな配列はそのまま打つ。
+  const rawChars = [...text];
+  const bracketAliases = bracketAliasesFor(layout);
+  const sourceChunks = layout.romajiTable ? (romajiChunks ?? kanaToRomajiChunks(text, layout.romajiTable)) : undefined;
+  const chunks = sourceChunks && layout.romajiTable ? aliasBracketChunks(sourceChunks, layout.romajiTable, bracketAliases) : undefined;
+  const chars = (chunks ? chunks.flatMap((chunk) => [...chunk.roman]) : rawChars.map((char) => bracketAliases[char] ?? char)).map(
+    normalizeEvaluationChar,
+  );
+  const chunkRanges: RomajiChunkRange[] = [];
+  if (chunks) {
+    let start = 0;
+    let kanaStart = 0;
+    for (const chunk of chunks) {
+      const length = [...chunk.roman].length;
+      chunkRanges.push({
+        start,
+        end: start + length,
+        kana: chunk.kana,
+        fromTable: chunk.fromTable,
+        kanaStart,
+        kanaLength: [...chunk.kana].length,
+      });
+      start += length;
+      kanaStart += [...chunk.kana].length;
+    }
+  }
+  // 見出し探索のauthorityもcanonicalInputs。legacy Layout.map由来の長さmetadataへ依存しない。
+  const canonicalInputs = evaluationCanonicalInputs(layout);
+  return { rawChars, chunks, chars, chunkRanges, canonicalInputs };
+}
+
+/**
+ * 前処理の片仮名の書き換え（仕様 §4.6）が使う。`generateTrace` と同じ展開（`evaluationUnitsOf`）と
+ * 同じ最長一致で見出しを切り、どの見出しにも入らない文字の、テキストの文字位置（コードポイント）を返す。
+ * ローマ字の配列では、かなをテーブルの見出しで切ってから、残りを英字の列で見出しに当てる。
+ * 見出しごとの文脈条件（`contextRequirements`）は見ない。条件を作るのは `withCombos` のコンボの条件
+ * （`youonOnly`・`romajiOnly`）だけで、条件が付くのは英字の出力の見出しだけである。
+ */
+export function uncoveredTextPositions(text: string, sourceLayout: Layout): number[] {
+  const layout = sourceLayout.romajiTable ? sourceLayout : withoutRomajiOnlyCombos(sourceLayout);
+  const { chunks, chars, chunkRanges, canonicalInputs } = evaluationUnitsOf(text, layout, undefined);
+  const maxLen = Math.max(1, ...[...canonicalInputs.keys()].map((output) => [...output].length));
+  const uncovered: number[] = [];
+  for (let cursor = 0; cursor < chars.length; ) {
+    let length = Math.min(maxLen, chars.length - cursor);
+    while (length >= 1 && !canonicalInputs.has(chars.slice(cursor, cursor + length).join(''))) length--;
+    if (length >= 1) {
+      cursor += length;
+      continue;
+    }
+    if (chunks) uncovered.push(...skippedKanaPositions(chunkRanges, cursor));
+    else uncovered.push(cursor);
+    cursor++;
+  }
+  return uncovered;
+}
+
+/**
  * 仕様 §9。テキストを打鍵ステップ列へ展開し、各押下の移動距離を求める。
  *
  * realized Stroke gap = 0 → d_stay（同指連続。戻る時間がない）
@@ -259,35 +323,7 @@ export function generateTrace(
   let triggerHoldState: TriggerHoldState | undefined;
   const inputs: PlannedGeneratedInput[] = [];
 
-  // ローマ字配列はかなテキストを展開してから打つ。コンボの誤命中を防ぐため、
-  // 展開前の単位も残しておく。かな配列はそのまま打つ。
-  const rawChars = [...text];
-  const bracketAliases = bracketAliasesFor(layout);
-  const sourceChunks = layout.romajiTable ? (romajiChunks ?? kanaToRomajiChunks(text, layout.romajiTable)) : undefined;
-  const chunks = sourceChunks && layout.romajiTable ? aliasBracketChunks(sourceChunks, layout.romajiTable, bracketAliases) : undefined;
-  const chars = (chunks ? chunks.flatMap((chunk) => [...chunk.roman]) : rawChars.map((char) => bracketAliases[char] ?? char)).map(
-    normalizeEvaluationChar,
-  );
-  const chunkRanges: RomajiChunkRange[] = [];
-  if (chunks) {
-    let start = 0;
-    let kanaStart = 0;
-    for (const chunk of chunks) {
-      const length = [...chunk.roman].length;
-      chunkRanges.push({
-        start,
-        end: start + length,
-        kana: chunk.kana,
-        fromTable: chunk.fromTable,
-        kanaStart,
-        kanaLength: [...chunk.kana].length,
-      });
-      start += length;
-      kanaStart += [...chunk.kana].length;
-    }
-  }
-  // 見出し探索のauthorityもcanonicalInputs。legacy Layout.map由来の長さmetadataへ依存しない。
-  const canonicalInputs = evaluationCanonicalInputs(layout);
+  const { rawChars, chunks, chars, chunkRanges, canonicalInputs } = evaluationUnitsOf(text, layout, romajiChunks);
   const commitRules = commitStrokeRulesOf(canonicalInputs);
   const commitKey = commitKeyOf(geometry);
   // 直前の入力が選んだpath。打てない文字を挟んだら継ぎ目として扱わないので、そこで外す
