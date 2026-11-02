@@ -16,7 +16,7 @@ import type { ArpeggioInterpretation } from '#interpretation/structure/arpeggio.
 import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import { defaultFingerAssignmentId, resolveFingerAssignment } from './finger-assignment.ts';
 import { resolveSettings, type ResolvedSettingsCascade, type SettingsCascadeOverrides } from './settings-items.ts';
-import { evaluationBoundaries, hasConvertibleKatakana, prepareEvaluationText } from '#input/text/evaluation-text.ts';
+import { buildHeadingSet, evaluationBoundaries, prepareEvaluationText, type HeadingSet } from '#input/text/evaluation-text.ts';
 import { resolveTargetForText } from './target-resolution.ts';
 
 /**
@@ -130,16 +130,11 @@ function withoutRomaji(layout: Layout): Layout {
 }
 
 /**
- * 配列（ローマ字のテーブルを含む）の見出しのうち、片仮名を含むものの最長のコードポイント数。
- * 片仮名を書き換えずに残す見出しの判定（仕様 §4.6の2段目）が、原文から切り出す長さの上限に使う。
+ * 配列（ローマ字のテーブルを含む）の見出しの集合。片仮名の書き換え（仕様 §4.6の4段目）が、
+ * `generateTrace` と同じ見出しの全体で切り出すのに使う。
  */
-function maxKatakanaHeadingLength(layout: Layout): number {
-  let max = 0;
-  const headings = layout.romajiTable ? [...layout.canonicalInputs.keys(), ...layout.romajiTable.keys()] : layout.canonicalInputs.keys();
-  for (const heading of headings) {
-    if (hasConvertibleKatakana(heading)) max = Math.max(max, [...heading].length);
-  }
-  return max;
+function headingSetOf(layout: Layout): HeadingSet {
+  return buildHeadingSet(layout.romajiTable ? [...layout.canonicalInputs.keys(), ...layout.romajiTable.keys()] : layout.canonicalInputs.keys());
 }
 
 /**
@@ -266,8 +261,7 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
               language: options.language,
               keepSymbols: cascade.keepSymbols.value,
               layoutHasChar: (char) => layout.canonicalInputs.has(char),
-              layoutHasHeading: (heading) => layout.canonicalInputs.has(heading) || (layout.romajiTable?.has(heading) ?? false),
-              maxKatakanaHeadingLength: maxKatakanaHeadingLength(layout),
+              headings: () => headingSetOf(layout),
             }),
       layout,
       geometry,

@@ -1,14 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { hasConvertibleKatakana, prepareEvaluationText } from './evaluation-text.ts';
+import { buildHeadingSet, prepareEvaluationText } from './evaluation-text.ts';
 
 /** 見出しの一覧から、前処理に渡す配列側の引数を作る。 */
 function headings(list: readonly string[]) {
   const set = new Set(list);
   return {
     layoutHasChar: (char: string) => set.has(char),
-    layoutHasHeading: (heading: string) => set.has(heading),
-    maxKatakanaHeadingLength: Math.max(0, ...list.filter((heading) => hasConvertibleKatakana(heading)).map((heading) => [...heading].length)),
+    headings: () => buildHeadingSet(list),
   };
 }
 
@@ -101,4 +100,27 @@ test('片仮名: 見出しに当たらない片仮名は、見出しの隣でも
 
 test('片仮名: 英語のテキストには当てない', () => {
   assert.equal(prepare('ニャー ヴ', [], 'en'), 'ニャー ヴ');
+});
+
+test('片仮名: ひらがなだけの見出しと重なる時は、全部の見出しの最長一致で切って残す', () => {
+  // 先頭から切ると しん|アイ。片仮名を含む見出しだけで切ると んア を残してしまう
+  assert.equal(prepare('しんアイ', ['しん', 'んア', 'アイ', 'い']), 'しんアイ');
+});
+
+test('片仮名: 直したひらがなが隣の片仮名と見出しを組む時は、組んだ見出しに入らない片仮名も直す', () => {
+  // ン → ん の後は んア|い と切れる。アイ を残すと イ が見出しに入らない
+  assert.equal(prepare('ンアイ', ['んア', 'アイ', 'い']), 'んアい');
+});
+
+test('片仮名: 取り除く記号を挟んだ隣も、切り出しに使う', () => {
+  assert.equal(prepare('し・んアイ', ['し', 'しん', 'んア', 'アイ', 'い']), 'しんアイ');
+});
+
+test('片仮名: 窓をひらがなに直した形が見出しなら、1つの単位として直す', () => {
+  assert.equal(prepare('ンアイ', ['んあ', 'アイ', 'ん']), 'んあい');
+});
+
+test('片仮名: 片仮名とひらがなが混じった見出しは、原文がその形の時だけ残す', () => {
+  assert.equal(prepare('ヴァ', ['ヴぁ']), 'ゔぁ');
+  assert.equal(prepare('ヴぁ', ['ヴぁ']), 'ヴぁ');
 });
