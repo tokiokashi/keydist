@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { buildHeadingSet, prepareEvaluationText } from '#input/text/evaluation-text.ts';
-import { DEFAULT_TRACE_POLICY, generateTrace, type Stroke } from '#trace/generate.ts';
+import { prepareEvaluationText } from '#input/text/evaluation-text.ts';
+import { DEFAULT_TRACE_POLICY, generateTrace, uncoveredTextPositions, type Stroke } from '#trace/generate.ts';
 import { buildGeometry } from '../shapes/geometry.ts';
 import { assertKanaLayout, assertKanaLayoutFixture } from '../../../test/kana-layout-helpers.ts';
 import { LAYOUT_BY_ID } from './index.ts';
@@ -177,7 +177,7 @@ test('確定の打鍵: 前置の側。っの後に、前置jの面の出力キ�
     language: 'ja',
     keepSymbols: false,
     layoutHasChar: (char) => layout.canonicalInputs.has(char),
-    headings: () => buildHeadingSet(layout.canonicalInputs.keys()),
+    uncoveredPositions: (prepared) => uncoveredTextPositions(prepared, layout),
   });
   assert.equal(goodbye, 'ぐっばい');
   assert.deepEqual(strokesOf(goodbye), ['f', 's', 'j', 'thumb-r*', 'd', 'f', 'k']);

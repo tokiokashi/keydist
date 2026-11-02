@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
+import { DEFAULT_TRACE_POLICY, generateTrace, uncoveredTextPositions } from '#trace/generate.ts';
 import { defaultRomajiRuleId, isRomajiBase, isUserRomajiRule, recommendedRomajiRuleId, tableForRule } from '../romaji/rules.ts';
 import { buildGeometry, THUMB_KEY } from '../shapes/geometry.ts';
-import { buildHeadingSet, prepareEvaluationText } from '../text/evaluation-text.ts';
+import { prepareEvaluationText } from '../text/evaluation-text.ts';
 import { faceCells, LAYOUT_BY_ID, LAYOUTS, LAYOUTS_JA, withRomaji, type Layout } from './index.ts';
 import { SEOTO_FACES } from './seoto.ts';
 
@@ -21,7 +21,7 @@ const prepare = (text: string, layout: Layout) =>
     language: 'ja',
     keepSymbols: false,
     layoutHasChar: (char) => layout.map.has(char),
-    headings: () => buildHeadingSet(layout.map.keys()),
+    uncoveredPositions: (prepared) => uncoveredTextPositions(prepared, layout),
   });
 
 /** 打鍵ごとの、出力の文字・層・同時に押したキー */

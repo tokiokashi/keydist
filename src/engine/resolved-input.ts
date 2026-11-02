@@ -10,13 +10,13 @@ import type { ReadingConditions } from '#input/text/reading.ts';
 import type { SegmentationInput } from '#input/text/segmentation.ts';
 import type { AnalysisTarget, Setup, SetupCatalog, SetupReferenceError } from '#input/setup/index.ts';
 import { isBuiltin, ROMAJI_RULES, tableForRule, type UserRomajiRule } from '#input/romaji/rules.ts';
-import type { TracePolicy } from '#trace/generate.ts';
+import { uncoveredTextPositions, type TracePolicy } from '#trace/generate.ts';
 import type { ChainInterpretation } from '#interpretation/structure/chain.ts';
 import type { ArpeggioInterpretation } from '#interpretation/structure/arpeggio.ts';
 import type { PlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import { defaultFingerAssignmentId, resolveFingerAssignment } from './finger-assignment.ts';
 import { resolveSettings, type ResolvedSettingsCascade, type SettingsCascadeOverrides } from './settings-items.ts';
-import { buildHeadingSet, evaluationBoundaries, prepareEvaluationText, type HeadingSet } from '#input/text/evaluation-text.ts';
+import { evaluationBoundaries, prepareEvaluationText } from '#input/text/evaluation-text.ts';
 import { resolveTargetForText } from './target-resolution.ts';
 
 /**
@@ -26,7 +26,7 @@ import { resolveTargetForText } from './target-resolution.ts';
  */
 export interface ResolvedInput {
   /**
-   * 打つ文章。前処理（漢字を読みに直す段・片仮名をひらがなに書き換える段・評価対象の記号の範囲。仕様 §4.6）を通した後の値。ローマ字展開はTrace生成時に行う。
+   * 打つ文章。前処理（漢字を読みに直す段・半角の `,` `.` の書き換え・評価対象の記号の範囲・片仮名をひらがなに書き換える段。仕様 §4.6）を通した後の値。ローマ字展開はTrace生成時に行う。
    */
   readonly text: string;
   /** ローマ字入力なら、実効ローマ字規則で組み直した表を持つ最終形。持たなければ配列側のまま。 */
@@ -127,14 +127,6 @@ export interface ResolveEngineInputOptions {
 function withoutRomaji(layout: Layout): Layout {
   const { romajiTable: _romajiTable, ...rest } = layout;
   return rest;
-}
-
-/**
- * 配列（ローマ字のテーブルを含む）の見出しの集合。片仮名の書き換え（仕様 §4.6の4段目）が、
- * `generateTrace` と同じ見出しの全体で切り出すのに使う。
- */
-function headingSetOf(layout: Layout): HeadingSet {
-  return buildHeadingSet(layout.romajiTable ? [...layout.canonicalInputs.keys(), ...layout.romajiTable.keys()] : layout.canonicalInputs.keys());
 }
 
 /**
@@ -261,7 +253,7 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
               language: options.language,
               keepSymbols: cascade.keepSymbols.value,
               layoutHasChar: (char) => layout.canonicalInputs.has(char),
-              headings: () => headingSetOf(layout),
+              uncoveredPositions: (prepared) => uncoveredTextPositions(prepared, layout),
             }),
       layout,
       geometry,

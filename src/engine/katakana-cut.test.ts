@@ -107,3 +107,35 @@ test('ローマ字: 取り除く記号を挟んだ隣でも、打鍵の切り出
   assert.equal(text, 'しんアイ');
   assert.equal(trace.skipped, 0);
 });
+
+/** 英字の自作配列。ローマ字の規則で綴りに展開する英字の見出しと、かなの見出し（`んア` `アイ`）を持つ。 */
+function evaluateAlphaWithKanaHeadings(text: string) {
+  const layout = fromKana('custom-alpha', '検証用の英字配列', [
+    ['s', [['q']]],
+    ['i', [['w']]],
+    ['n', [['e']]],
+    ['んア', [['r']]],
+    ['アイ', [['t']]],
+  ]);
+  const result = resolveEngineInput({
+    target: { kind: 'layout', layoutId: layout.id },
+    setups: new Map(),
+    catalog: { layouts: new Map([[layout.id, layout]]), shapes: SHAPES },
+    userLayouts: new Map(),
+    overrides: EMPTY_SETTINGS_OVERRIDES,
+    text,
+    language: 'ja',
+  });
+  assert.ok(result.ok, result.ok ? '' : JSON.stringify(result.error));
+  const { trace } = generateEngineTrace(result.input);
+  return { text: result.input.text, trace };
+}
+
+test('ローマ字の英字配列: かなの見出しがテーブルで切った残りに当たる形でも、前処理と切り出しが一致する', () => {
+  const kept = evaluateAlphaWithKanaHeadings('しんアイ');
+  assert.equal(kept.text, 'しんアイ');
+  assert.equal(kept.trace.skipped, 0);
+  const converted = evaluateAlphaWithKanaHeadings('ンアイ');
+  assert.equal(converted.text, 'んアイ');
+  assert.equal(converted.trace.skipped, 0);
+});

@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { buildGeometry, keyId, resolveKeyId } from '#input/shapes/geometry.ts';
-import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
-import { buildHeadingSet, prepareEvaluationText } from '#input/text/evaluation-text.ts';
+import { DEFAULT_TRACE_POLICY, generateTrace, uncoveredTextPositions } from '#trace/generate.ts';
+import { prepareEvaluationText } from '#input/text/evaluation-text.ts';
 import { faceCells } from './face-geometry.ts';
 import { LAYOUT_BY_ID } from './index.ts';
 
@@ -55,7 +55,7 @@ function skippedWithWideSymbols(layoutId: string, text: string): number {
     language: 'ja',
     keepSymbols: true,
     layoutHasChar: (char) => layout.canonicalInputs.has(char),
-    headings: () => buildHeadingSet(layout.canonicalInputs.keys()),
+    uncoveredPositions: (prepared) => uncoveredTextPositions(prepared, layout),
   });
   return generateTrace(prepared, layout, geometry, DEFAULT_TRACE_POLICY).skipped;
 }

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildHeadingSet, evaluationBoundaries, prepareEvaluationText } from './evaluation-text.ts';
+import { evaluationBoundaries, prepareEvaluationText } from './evaluation-text.ts';
 import { convertToReading, type ReadingToken } from './reading.ts';
 import { mapBoundariesToReading, offsetsOfChunks } from './segmentation.ts';
 
@@ -94,7 +94,7 @@ test('サロゲートペアを含む原文でも、UTF-16の区切りをコー�
 test('評価に渡すテキストへの写しは、取り除いた記号の数だけ前へ詰め、重なった区切りと端の区切りを除く', () => {
   const options = { language: 'ja', keepSymbols: false } as const;
   const text = 'あ「い」う、え';
-  const prepared = prepareEvaluationText(text, { ...options, layoutHasChar: () => false, headings: () => buildHeadingSet([]) });
+  const prepared = prepareEvaluationText(text, { ...options, layoutHasChar: () => false, uncoveredPositions: () => [] });
   assert.equal(prepared, 'あいう、え');
   // 区切り3（い|」）と4（」|う）は、「」を取り除くと同じ位置2に重なる。0と7は端
   assert.deepEqual(evaluationBoundaries(text, [0, 2, 3, 4, 6, 7], options), [1, 2, 4]);
@@ -107,7 +107,7 @@ test('評価に渡すテキストへの写しは、取り除いた記号の数�
     const head = prepareEvaluationText([...text].slice(0, boundary).join(''), {
       ...options,
       layoutHasChar: () => false,
-      headings: () => buildHeadingSet([]),
+      uncoveredPositions: () => [],
     });
     const mapped = evaluationBoundaries(text, [boundary], options);
     if (mapped.length > 0) assert.equal(mapped[0], [...head].length, `区切り${boundary}`);
