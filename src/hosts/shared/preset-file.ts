@@ -255,7 +255,7 @@ function readEnvelope(text: string): EnvelopeRead {
       : parsed.format === undefined
         ? FORMAT_FIELD_MISSING_DETAIL
         : '「format」欄の値が条件ファイルのものと違います';
-    return failure('keydist の条件ファイルではありません', detail);
+    return failure('keydistの条件ファイルではありません', detail);
   }
   if (Array.isArray(parsed.presets) && parsed.presets.length > PRESET_FILE_MAX_PRESETS) {
     return failure(`プリセットが多すぎます（${PRESET_FILE_MAX_PRESETS}件まで）`, `presets: ${parsed.presets.length}`);

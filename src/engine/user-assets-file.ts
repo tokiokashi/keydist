@@ -415,7 +415,7 @@ export function parseUserAssetsFile(text: string): UserAssetsFileReadResult {
       ? FILE_ROOT_SHAPE_DETAIL
       : parsed.format === undefined
         ? FORMAT_FIELD_MISSING_DETAIL
-        : `「format」欄が「${USER_ASSETS_FILE_FORMAT}」ではありません`;
+        : '「format」欄の値が自作の資産のファイルのものと違います';
     return fail('keydistの自作の資産のファイルではありません', detail);
   }
   for (const key of ['layouts', 'romajiRules', 'fingerAssignments', 'setups']) {
