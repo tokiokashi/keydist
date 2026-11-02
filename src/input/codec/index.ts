@@ -156,11 +156,11 @@ export function decodeField<T>(
   path: string,
   diagnostics: CodecDiagnostic[],
 ): T {
-  const result = v.safeParse(schema, value);
+  const result = v.safeParse(schema, value, SAFE_PARSE_CONFIG);
   if (result.success) return result.output;
   diagnostics.push({
     path,
-    message: `${describeIssues(result.issues)}ため既定値へ戻しました`,
+    message: `${describeIssues(result.issues)}。そのため既定値へ戻しました`,
   });
   return fallback;
 }
@@ -176,24 +176,30 @@ export function decodeDroppingInvalid<T>(
   path: string,
   diagnostics: CodecDiagnostic[],
 ): T | undefined {
-  const result = v.safeParse(schema, value);
+  const result = v.safeParse(schema, value, SAFE_PARSE_CONFIG);
   if (result.success) return result.output;
   diagnostics.push({
     path,
-    message: `${describeIssues(result.issues)}ため要素を捨てました`,
+    message: `${describeIssues(result.issues)}。そのため要素を捨てました`,
   });
   return undefined;
 }
 
-/** valibotが検査の側に文を渡されなかった時に作る既定の文の形（`Invalid type: Expected …`・`Invalid key: …`など）。 */
-const VALIBOT_DEFAULT_MESSAGE = /^Invalid [a-z ]+: Expected .+ but received /;
+/**
+ * parseの`message`が返す印。valibotは、検査の側が文を渡した問題ではその文を使い、渡していない問題でだけ
+ * parseの`message`を呼ぶ。そのため、問題の文がこの印なら「valibot既定の英語の文になるはずだった問題」と分かる
+ * （文の形で見分けると、`v.integer()`の`Invalid integer: Received 1.5`のように形が違う既定の文を取りこぼす）。
+ * `setGlobalMessage`はプロセス全体に効くので使わない。
+ */
+const DEFAULT_MESSAGE_MARK = '\u0000valibot-default';
+
+const SAFE_PARSE_CONFIG = { message: () => DEFAULT_MESSAGE_MARK } as const;
 
 const EXPECTED_TYPE_LABELS: Readonly<Record<string, string>> = {
   string: '文字列',
   number: '数値',
   boolean: '真偽値',
   Array: '配列',
-  Object: 'object',
 };
 
 /** valibotの問題の位置を、診断に書く欄の名前にする（`overrides.a`・`rows[0]`）。位置が無ければ`undefined`（読んだ値そのもの）。 */
@@ -207,27 +213,35 @@ function issueFieldName(issue: BaseIssue<unknown>): string | undefined {
 
 /**
  * 検査の側が利用者向けの文を持つ問題（`v.check(…, '文')`）はその文を残し、
- * valibot既定の英語の文だけを、欄の名前と問題の種類から作る日本語の文にする。
+ * 印の付いた問題（valibot既定の文になるはずだったもの）だけを、欄の名前と問題の種類から作る日本語の文にする。
+ * 検査の側の文はです・ますで終わるので、作る文もです・ますにそろえる。
  */
 function describeIssue(issue: BaseIssue<unknown>): string {
-  if (!VALIBOT_DEFAULT_MESSAGE.test(issue.message)) return issue.message;
+  if (issue.message !== DEFAULT_MESSAGE_MARK) return issue.message;
   const field = issueFieldName(issue);
   const subject = field === undefined ? '値' : `「${field}」欄`;
   if (issue.kind === 'schema') {
     // objectの欄が無い問題は、欠けた欄の名前を`path`に持つ（`object`・`strict_object`とも）
-    if ((issue.type === 'object' || issue.type === 'strict_object') && issue.received === 'undefined' && field !== undefined) return `${subject}が無い`;
-    if (issue.type === 'strict_object') return `${subject}は使えない`;
+    if ((issue.type === 'object' || issue.type === 'strict_object') && issue.received === 'undefined' && field !== undefined)
+      return `${subject}がありません`;
+    if (issue.type === 'strict_object') return `${subject}は使えません`;
+    if (issue.expected === 'Object') return `${subject}の形式が正しくありません`;
     const label = issue.expected === null ? undefined : EXPECTED_TYPE_LABELS[issue.expected];
-    if (label !== undefined) return `${subject}が${label}ではない`;
-    return `${subject}の値が選べる値に無い`;
+    if (label !== undefined) return `${subject}が${label}ではありません`;
+    return `${subject}の値が選べる値にありません`;
   }
-  if (issue.type === 'min_length') return `${subject}が短すぎる`;
-  if (issue.type === 'max_length') return `${subject}が長すぎる`;
-  return `${subject}の値が条件に合っていない`;
+  if (issue.type === 'min_length') return `${subject}が短すぎます`;
+  if (issue.type === 'max_length') return `${subject}が長すぎます`;
+  return `${subject}の値が条件に合っていません`;
 }
 
+/**
+ * 問題ごとの文を「。」で区切って並べる。検査の側の文（です・ますの文）が直前に来うるので、
+ * 「ため」でつながず、処理を伝える文は呼び出し側が別の文として後ろに置く。
+ * 単独の文で完結する他の診断（`droppedNotArray`など）は、この連結を通らないので「ため」のままにしてある。
+ */
 function describeIssues(issues: readonly BaseIssue<unknown>[]): string {
-  return issues.map(describeIssue).join('、');
+  return issues.map(describeIssue).join('。');
 }
 
 /**

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as v from 'valibot';
-import { decodeDroppingInvalid, decodeField, defineAssetCodec, encodedSizeBytes, type MigrationStep } from './index.ts';
+import { decodeDroppingInvalid, droppedNotObject, decodeField, defineAssetCodec, encodedSizeBytes, type MigrationStep } from './index.ts';
 
 /** テスト用の小さな資産: v2で`count`を持つ。 */
 interface Widget {
@@ -159,17 +159,44 @@ test('診断の文: valibot既定の英語の文は欄の名前と問題の種�
   assert.deepEqual(
     diagnostics.map((diagnostic) => diagnostic.message),
     [
-      '「id」欄が無い、「count」欄が無い、「tags」欄が無い、「kind」欄が無いため要素を捨てました',
-      '値がobjectではないため要素を捨てました',
-      '「id」欄が短すぎる、「count」欄が数値ではない、「tags」欄が配列ではない、「kind」欄の値が選べる値に無いため要素を捨てました',
+      '「id」欄がありません。「count」欄がありません。「tags」欄がありません。「kind」欄がありません。そのため要素を捨てました',
+      '値の形式が正しくありません。そのため要素を捨てました',
+      '「id」欄が短すぎます。「count」欄が数値ではありません。「tags」欄が配列ではありません。「kind」欄の値が選べる値にありません。そのため要素を捨てました',
     ],
   );
   const checked: import('./index.ts').CodecDiagnostic[] = [];
   decodeDroppingInvalid(schema, { id: 'a', count: 1, tags: [], kind: 'a' }, 'items[3]', checked);
   assert.deepEqual(
     checked.map((diagnostic) => diagnostic.message),
-    ['合わない組み合わせですため要素を捨てました'],
+    ['合わない組み合わせです。そのため要素を捨てました'],
   );
+});
+
+test('診断の文: v.integer()など形の違う既定の文も日本語になり、検査の側の文と生成する文は文として並ぶ', () => {
+  const diagnostics: import('./index.ts').CodecDiagnostic[] = [];
+  const schema = v.object({ rows: v.pipe(v.number(), v.integer()), name: v.pipe(v.string(), v.minLength(1, '名前を入れてください')) });
+  decodeDroppingInvalid(schema, { rows: 1.5, name: 'a' }, 'items[0]', diagnostics);
+  decodeDroppingInvalid(schema, { rows: 1, name: '' }, 'items[1]', diagnostics);
+  decodeDroppingInvalid(schema, { rows: 1.5, name: '' }, 'items[2]', diagnostics);
+  const fallback: import('./index.ts').CodecDiagnostic[] = [];
+  decodeField(schema, 5, null, 'item', fallback);
+  assert.deepEqual(
+    diagnostics.map((diagnostic) => diagnostic.message),
+    [
+      '「rows」欄の値が条件に合っていません。そのため要素を捨てました',
+      '名前を入れてください。そのため要素を捨てました',
+      '「rows」欄の値が条件に合っていません。名前を入れてください。そのため要素を捨てました',
+    ],
+  );
+  assert.deepEqual(
+    fallback.map((diagnostic) => diagnostic.message),
+    ['値の形式が正しくありません。そのため既定値へ戻しました'],
+  );
+  for (const diagnostic of [...diagnostics, ...fallback]) assert.doesNotMatch(diagnostic.message, /Invalid|Expected|Received|object/);
+});
+
+test('診断の文: 型名のobjectを出さない', () => {
+  assert.doesNotMatch(droppedNotObject('ペイン'), /object/);
 });
 
 test('encodedSizeBytes: JSONにした時のUTF-8バイト数を返す', () => {

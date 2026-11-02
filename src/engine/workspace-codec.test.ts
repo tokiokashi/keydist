@@ -181,7 +181,7 @@ test('組が壊れていれば壊れた部分だけ空へ戻し、捨てた値�
   assert.deepEqual(groups[0]!.target.single, { target: undefined });
   assert.equal(groups[0]!.target.set.targets.length, 1);
   assert.deepEqual(groups[1]!.target.set.targets, []);
-  // 壊れた単体の対象・object形式でない集合・重複した組・object形式でない組の4件
+  // 壊れた単体の対象・形式が正しくない集合・重複した組・形式が正しくない組の4件
   const paths = broken.diagnostics.map((d) => d.path);
   assert.ok(paths.some((path) => path.includes('groups[0].target.single')));
   assert.ok(paths.some((path) => path.includes('groups[1].target.set')));
@@ -225,12 +225,12 @@ test('組が1つも読めなければ空の組を1つ作り、診断を出す。
     result.value[0]!.panes.map((p) => p.binding),
     [followBinding('x'), followBinding('x'), followBinding('x')],
   );
-  // 従う組が無い2件・持ち方が無い1件・object形式でない1件
+  // 従う組が無い2件・持ち方が無い1件・形式が正しくない1件
   assert.equal(result.diagnostics.length, 4);
-  // 持ち方が無い場合とobject形式でない場合は、別の文で伝える
+  // 持ち方が無い場合と形式が正しくない場合は、別の文で伝える
   const messages = result.diagnostics.map((d) => d.message);
   assert.ok(messages.some((m) => m.includes('対象の持ち方が無い')));
-  assert.ok(messages.some((m) => m.includes('object形式でない')));
+  assert.ok(messages.some((m) => m.includes('形式が正しくない')));
 });
 
 test('ペインの集合の選択がobject形式でなければ診断を出してペインを捨てる', () => {

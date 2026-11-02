@@ -403,7 +403,7 @@ export function parseUserAssetsFile(text: string): UserAssetsFileReadResult {
   }
   if (!isRecord(parsed) || parsed.format !== USER_ASSETS_FILE_FORMAT) {
     const detail = !isRecord(parsed)
-      ? 'ファイルの最上位がobject形式ではありません'
+      ? 'ファイルの最上位の形式が正しくありません'
       : parsed.format === undefined
         ? '「format」欄がありません'
         : `「format」欄が「${USER_ASSETS_FILE_FORMAT}」ではありません`;

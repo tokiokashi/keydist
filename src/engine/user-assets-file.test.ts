@@ -445,14 +445,14 @@ test('取り込みの診断: 欄が無い・合わない時は日本語で欄の
   };
   const noFormat = detailsOf('{}');
   assert.match(noFormat, /「format」欄がありません/);
-  assert.match(detailsOf('[]'), /最上位がobject形式ではありません/);
+  assert.match(detailsOf('[]'), /最上位の形式が正しくありません/);
   assert.match(detailsOf(JSON.stringify({ format: 'other' })), /「format」欄が「keydist-user-assets」ではありません/);
 
   const broken = detailsOf(
     JSON.stringify({ format: USER_ASSETS_FILE_FORMAT, version: 1, layouts: [{}], romajiRules: [{}], fingerAssignments: [{}], setups: [{}] }),
   );
-  for (const text of [noFormat, broken]) assert.doesNotMatch(text, /undefined|Invalid|Expected|received/);
-  assert.match(broken, /fingerAssignments\[0\]: 「id」欄が無い/);
+  for (const text of [noFormat, broken, detailsOf('[]')]) assert.doesNotMatch(text, /undefined|Invalid|Expected|received|object/);
+  assert.match(broken, /fingerAssignments\[0\]: 「id」欄がありません/);
 });
 
 test('取り込みの診断: 検査の側が持つ日本語の文はそのまま残る', () => {
@@ -464,7 +464,7 @@ test('取り込みの診断: 検査の側が持つ日本語の文はそのまま
   if (!parsed.ok) return;
   assert.deepEqual(
     parsed.dropped.map((diagnostic) => diagnostic.message),
-    ['指の割り当ての担当と基本の指が合っていませんため要素を捨てました'],
+    ['指の割り当ての担当と基本の指が合っていません。そのため要素を捨てました'],
   );
 });
 
