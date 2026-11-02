@@ -35,7 +35,8 @@ export function typingTargetPresentation(
   return {
     typed: typed.map((char, index) => ({
       char,
-      correct: romajiCorrectness?.[index] ?? (expected[index] !== undefined && normalizeEvaluationHeading(expected[index]) === normalizeEvaluationHeading(char)),
+      correct:
+        romajiCorrectness?.[index] ?? (expected[index] !== undefined && normalizeEvaluationHeading(expected[index]) === normalizeEvaluationHeading(char)),
     })),
     remaining: target.slice(typed.length),
     complete: practiceText.length > 0 && normalizeEvaluationHeading(typedText) === normalizeEvaluationHeading(expectedText),

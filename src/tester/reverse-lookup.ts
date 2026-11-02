@@ -317,7 +317,8 @@ export function reverseLookupStepMatchesRecognition(
   recognition: { readonly output: string; readonly alternative: InputAlternative },
 ): boolean {
   return (
-    normalizeEvaluationHeading(recognition.output) === normalizeEvaluationHeading(step.output) && step.acceptedAlternativeSelectionIdentities.includes(inputAlternativeSelectionIdentity(recognition.alternative))
+    normalizeEvaluationHeading(recognition.output) === normalizeEvaluationHeading(step.output) &&
+    step.acceptedAlternativeSelectionIdentities.includes(inputAlternativeSelectionIdentity(recognition.alternative))
   );
 }
 

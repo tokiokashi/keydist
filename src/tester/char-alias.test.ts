@@ -80,7 +80,9 @@ test('案内の進み具合と打鍵の認識も、幅の違いを同じに扱�
   const route = reverseLookup(fullwidthLayout, '!?', 1)[0]!;
   assert.equal(reverseLookupGuideIndexForText(fullwidthLayout, route, '！'), route.steps[0]!.actions.length);
   const accepted = route.steps[0]!.acceptedAlternativeSelectionIdentities;
-  const alternative = [...fullwidthLayout.canonicalInputs.get('！')!].find((candidate) => accepted.includes(inputAlternativeSelectionIdentity(candidate)))!;
+  const alternative = [...fullwidthLayout.canonicalInputs.get('！')!].find((candidate) =>
+    accepted.includes(inputAlternativeSelectionIdentity(candidate)),
+  )!;
   assert.equal(reverseLookupStepMatchesRecognition(route.steps[0]!, { output: '！', alternative }), true);
 });
 

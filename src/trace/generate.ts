@@ -10,14 +10,12 @@ import { isKanjiChar } from '#input/text/reading.ts';
 import { kanaToRomajiChunks, type RomajiChunk } from '#input/romaji/kunrei.ts';
 import {
   applyActionRealizationPolicy,
-  canonicalInputAlternativeIdentity,
   DEFAULT_ACTION_REALIZATION_POLICY,
   DEFAULT_TRIGGER_REALIZATION_POLICY,
   inputAlternativeSelectionIdentity,
   isComboFrameAlternative,
   realizeTriggerActions,
   type ActionRealizationPolicy,
-  type CanonicalInputMap,
   type InputAlternative,
   type InputAlternativeSet,
   type RealizedSemanticAction,
