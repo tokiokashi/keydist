@@ -351,6 +351,9 @@ export class TypingInputEngine {
     const active = new Set(this.#activeWindowPressed());
     const order = new Map(this.#pressOrder);
     if (nextKey !== undefined) {
+      // 同じwindowに既にあるkeyの打ち直しは、同じoperationの続きにならない。
+      // 順序の記録を上書きして延長扱いにすると、前に押したkeyの出力が欠ける。
+      if (this.#windowKeys.has(nextKey)) return false;
       active.add(nextKey);
       order.set(nextKey, this.#nextOrder);
     }
@@ -447,7 +450,7 @@ export class TypingInputEngine {
    * released状態へ戻すことで、未定義の重なりを単打として失わず、
    * prefix等のrelease後も有効なorder semanticはそのまま延長できる。
    */
-  #replayUnconsumedWindowKeys(keys: readonly ReplayWindowKey[]): RecognizedTypingInput[] {
+  #replayUnconsumedWindowKeys(keys: readonly ReplayWindowKey[], settle = false): RecognizedTypingInput[] {
     const recognized: RecognizedTypingInput[] = [];
 
     for (const replay of keys) {
@@ -465,6 +468,8 @@ export class TypingInputEngine {
         if (this.#hasPotentialExtension(match)) this.#pending = match;
         else recognized.push(...this.#commitStep(match));
       }
+      // settleは、後続のkeyで延長できないと分かっている打鍵を延長待ちにせず確定する。
+      if (settle && this.#pending !== undefined) recognized.push(...this.#commitStep(this.#pending));
 
       if (!replay.released || !this.#windowKeys.has(replay.key)) continue;
 
@@ -491,7 +496,42 @@ export class TypingInputEngine {
     };
   }
 
+  /**
+   * 確定するstepより前に押され、まだ出力されていないkeyを、stepより先に確定する。
+   * 前置keyのような先に押したkeyを後回しにすると、出力の順が入れ替わる。
+   * 戻り値は先に確定した出力で、windowにはstep以降のkeyだけが残る。
+   */
+  #settleEarlierKeys(step: StepCandidate): RecognizedTypingInput[] {
+    const stepOrder = Math.min(...canonicalKeys(step.input.physicalKeys).map((key) => this.#pressOrder.get(key) ?? 0));
+    const earlier = this.#unconsumedWindowKeys(step.input.physicalKeys).filter((entry) => entry.order < stepOrder);
+    if (earlier.length === 0) return [];
+
+    const earlierKeys = new Set(earlier.map((entry) => entry.key));
+    const remaining = [...this.#windowKeys]
+      .filter((key) => !earlierKeys.has(key))
+      .map((key) => ({
+        key,
+        released: this.#releasedWindowKeys.has(key),
+        order: this.#pressOrder.get(key),
+      }));
+    const nextOrder = this.#nextOrder;
+
+    this.#pending = undefined;
+    this.#resetRecognitionWindow();
+    const recognized = this.#replayUnconsumedWindowKeys(earlier, true);
+
+    for (const entry of remaining) {
+      this.#windowKeys.add(entry.key);
+      if (entry.released) this.#releasedWindowKeys.add(entry.key);
+      if (entry.order !== undefined) this.#pressOrder.set(entry.key, entry.order);
+    }
+    this.#nextOrder = Math.max(this.#nextOrder, nextOrder);
+    return recognized;
+  }
+
   #commitStep(step: StepCandidate): RecognizedTypingInput[] {
+    const settled = this.#settleEarlierKeys(step);
+    if (settled.length > 0) return [...settled, ...this.#commitStep(step)];
     const unconsumedWindowKeys = this.#unconsumedWindowKeys(step.input.physicalKeys);
     const holdStateBefore = this.#holdState;
     const provisional = this.#realize([step.realization], holdStateBefore);
