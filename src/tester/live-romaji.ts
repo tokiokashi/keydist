@@ -1,4 +1,5 @@
 import type { InputContextRequirement } from '#input/semantics/index.ts';
+import { normalizeEvaluationChar } from '#input/text/char-alias.ts';
 import { kanaToRomaji, kanaToRomajiChunks } from '#input/romaji/kunrei.ts';
 
 interface RomanKanaEntry {
@@ -67,7 +68,11 @@ export function romajiTypingCorrectness(typedDisplay: string, target: string, ta
 
   for (const chunk of typedChunks) {
     const roman = [...chunk.roman];
-    const matches = roman.every((char, offset) => targetRoman[romanOffset + offset] === char);
+    // 全角形の記号は半角と同じ入力として比べる（仕様 §4）。かなを展開した綴りの側で当てる
+    const matches = roman.every((char, offset) => {
+      const expected = targetRoman[romanOffset + offset];
+      return expected !== undefined && normalizeEvaluationChar(expected) === normalizeEvaluationChar(char);
+    });
     for (const _ of chunk.kana) correctness.push(matches);
     romanOffset += roman.length;
   }

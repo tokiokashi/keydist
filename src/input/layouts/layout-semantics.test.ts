@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry, resolveKeyId } from '../shapes/geometry.ts';
-import { generateTrace, normalizeEvaluationHeading, type TracePolicy } from '#trace/generate.ts';
+import { normalizeEvaluationHeading } from '#input/text/char-alias.ts';
+import { generateTrace, type TracePolicy } from '#trace/generate.ts';
 import { LAYOUT_BY_ID } from './index.ts';
 
 const geometry = buildGeometry('row-staggered');

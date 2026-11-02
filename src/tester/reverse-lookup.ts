@@ -2,6 +2,7 @@ import { inputAlternativeSelectionIdentity, type InputAlternative, type InputCon
 import { resolveKeyId, type PhysicalKeyboardStandard } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/index.ts';
 import { kanaToRomajiChunks } from '#input/romaji/kunrei.ts';
+import { evaluationCanonicalInputs, normalizeEvaluationHeading } from '#input/text/char-alias.ts';
 import { romajiToKana } from './live-romaji.ts';
 import { DEFAULT_LAYER_KEY_NAMING, layerKeyNames, type LayerKeyNaming, type NamedKeySlot } from './layer-key-names.ts';
 
@@ -234,13 +235,20 @@ export function reverseLookup(layout: Layout, query: string, limit = 5, availabl
   if (query.length === 0 || limit <= 0) return [];
 
   const chunks = layout.romajiTable === undefined ? undefined : kanaToRomajiChunks(query, layout.romajiTable);
-  const logicalText = chunks === undefined ? query : chunks.map((chunk) => chunk.roman).join('');
+  // 評価と同じく、期待の文字と配列の出力の見出しの両方に全角形の記号の別名を当てる（仕様 §4）
+  const canonicalInputs = evaluationCanonicalInputs(layout);
+  const logicalText = normalizeEvaluationHeading(chunks === undefined ? query : chunks.map((chunk) => chunk.roman).join(''));
   // logicalTextの各文字が、ローマ字表に当たった塊の一部かどうか。
   const fromTableAt: boolean[] = [];
   for (const chunk of chunks ?? []) {
     for (let i = 0; i < chunk.roman.length; i++) fromTableAt.push(chunk.fromTable);
   }
-  const outputs = [...layout.canonicalInputs.keys()]
+  // 見出しを合流させた表は照合の鍵にだけ使う。案内に出す出力の文字は、選んだ候補自身の元の見出しにする
+  const originalHeadingOf = new Map<InputAlternative, string>();
+  for (const [heading, alternatives] of layout.canonicalInputs) {
+    for (const alternative of alternatives) if (!originalHeadingOf.has(alternative)) originalHeadingOf.set(alternative, heading);
+  }
+  const outputs = [...canonicalInputs.keys()]
     .filter((output) => output.length > 0)
     .sort((left, right) => [...right].length - [...left].length || left.localeCompare(right));
 
@@ -257,7 +265,7 @@ export function reverseLookup(layout: Layout, query: string, limit = 5, availabl
     for (const output of outputs) {
       if (!logicalText.startsWith(output, cursor)) continue;
       const nextCursor = cursor + output.length;
-      for (const alternative of layout.canonicalInputs.get(output) ?? []) {
+      for (const alternative of canonicalInputs.get(output) ?? []) {
         if (
           !contextSatisfied(
             alternative.contextRequirements,
@@ -267,7 +275,7 @@ export function reverseLookup(layout: Layout, query: string, limit = 5, availabl
           )
         )
           continue;
-        const step = stepFromAlternative(output, alternative);
+        const step = stepFromAlternative(originalHeadingOf.get(alternative) ?? output, alternative);
         if (step.actions.length === 0) continue;
         // 選んでいる物理配列に無いキーを含む打ち方は答えにしない。
         // 実際には打てないキーを案内すると、利用者が探しても見つからないため。
@@ -314,7 +322,8 @@ export function reverseLookupStepMatchesRecognition(
   recognition: { readonly output: string; readonly alternative: InputAlternative },
 ): boolean {
   return (
-    recognition.output === step.output && step.acceptedAlternativeSelectionIdentities.includes(inputAlternativeSelectionIdentity(recognition.alternative))
+    normalizeEvaluationHeading(recognition.output) === normalizeEvaluationHeading(step.output) &&
+    step.acceptedAlternativeSelectionIdentities.includes(inputAlternativeSelectionIdentity(recognition.alternative))
   );
 }
 
@@ -393,7 +402,7 @@ export function reverseLookupGuideIndexForText(layout: Layout, route: ReverseLoo
   for (const [stepIndex, step] of route.steps.entries()) {
     logicalPrefix += step.output;
     const displayPrefix = layout.romajiTable === undefined ? logicalPrefix : romajiToKana(logicalPrefix, layout.romajiTable);
-    if (text.startsWith(displayPrefix)) {
+    if (normalizeEvaluationHeading(text).startsWith(normalizeEvaluationHeading(displayPrefix))) {
       completedRouteSteps = stepIndex + 1;
     }
   }

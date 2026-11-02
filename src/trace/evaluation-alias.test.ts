@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry } from '#input/shapes/geometry.ts';
 import { fromKana, LAYOUT_BY_ID } from '#input/layouts/index.ts';
-import { DEFAULT_TRACE_POLICY, EVALUATION_CHAR_ALIASES, generateTrace, type Trace } from './generate.ts';
+import { EVALUATION_CHAR_ALIASES } from '#input/text/char-alias.ts';
+import { DEFAULT_TRACE_POLICY, generateTrace, type Trace } from './generate.ts';
 
 const geometry = buildGeometry('row-staggered');
 const qwerty = LAYOUT_BY_ID.get('qwerty')!;
