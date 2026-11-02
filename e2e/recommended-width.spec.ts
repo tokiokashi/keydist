@@ -9,6 +9,9 @@ import { useShortText } from './short-text-helper.ts';
  */
 
 const REM = 16;
+// 本体（.pane-body）は計算が終わってから出る。読みの辞書の取得と3配列の計算が、並列で重い環境では7秒近くかかるので、
+// 既定の5秒ではなく、計算の完了を待つ他のspecと同じ桁の待ちにする
+const COMPUTE_TIMEOUT = 15_000;
 const LAYOUTS = ['qwerty', 'dvorak', 'colemak-dh'];
 
 function seedTargets(page: Page) {
@@ -46,7 +49,7 @@ for (const { route, limit } of cases) {
     await page.setViewportSize({ width: 2560, height: 900 });
     await page.goto(`/analyzer/${route}`);
     await waitForHydration(page);
-    await expect(page.locator('.pane-body')).toBeVisible();
+    await expect(page.locator('.pane-body')).toBeVisible({ timeout: COMPUTE_TIMEOUT });
     const frame = await box(page, '.standalone-stage .pane-frame');
     expect(Math.round(frame.width)).toBe(limit * REM);
     const body = await box(page, '.pane-body');
@@ -60,7 +63,7 @@ for (const { route, limit } of cases) {
     await page.setViewportSize({ width: 1000, height: 900 });
     await page.goto(`/analyzer/${route}`);
     await waitForHydration(page);
-    await expect(page.locator('.pane-body')).toBeVisible();
+    await expect(page.locator('.pane-body')).toBeVisible({ timeout: COMPUTE_TIMEOUT });
     const stage = await box(page, '.standalone-stage');
     const frame = await box(page, '.standalone-stage .pane-frame');
     expect(frame.width).toBeLessThan(limit * REM);
@@ -91,7 +94,7 @@ test('Workspaceのペイン: 広いペインでも中身は推奨幅で止まり
   await page.setViewportSize({ width: 2560, height: 900 });
   await page.goto('/workspace/seeded');
   await waitForHydration(page);
-  await expect(page.locator('.pane-body')).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('.pane-body')).toBeVisible({ timeout: COMPUTE_TIMEOUT });
   const frame = await box(page, '.pane-frame');
   const body = await box(page, '.pane-body');
   const header = await box(page, '.pane-frame-header');
