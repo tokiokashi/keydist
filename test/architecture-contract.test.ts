@@ -297,7 +297,8 @@ test('logical output matching lengthはcanonicalInputsをauthorityにする', as
     'canonicalInputs must be the authority for logical output match length',
   );
   assert.match(traceSource, /\[\.\.\.canonicalInputs\.keys\(\)\]/, 'canonicalInputs must be the authority for logical output match length');
-  assert.match(traceSource, /const source = layout\.canonicalInputs;/, 'the match table must be derived from layout.canonicalInputs');
+  const charAliasSource = await readFile(join(SRC, 'input/text/char-alias.ts'), 'utf8');
+  assert.match(charAliasSource, /const source = layout\.canonicalInputs;/, 'the match table must be derived from layout.canonicalInputs');
 });
 
 test('generateTrace realized factはFace authoring metadataへ依存しない', async () => {
