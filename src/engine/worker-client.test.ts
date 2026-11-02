@@ -11,6 +11,7 @@ import { DEFAULT_COMPARISON_OPTIONS } from '#analyzers/comparison/options.ts';
 import { nSensitivityDefinition } from '#analyzers/n-sensitivity/extract.ts';
 import { DEFAULT_N_SENSITIVITY_OPTIONS } from '#analyzers/n-sensitivity/options.ts';
 import { createEngineCache } from './cache.ts';
+import { summarizeEngineTrace } from './pipeline.ts';
 import { resolveEngineInput, type ResolvedInput } from './resolved-input.ts';
 import type { EngineSetMemberInput } from './request.ts';
 import { EMPTY_SETTINGS_OVERRIDES } from './settings-items.ts';
@@ -94,7 +95,7 @@ test('Worker越しのTrace・抽出は、メインスレッドの計算と完全
     const local = createEngineCache();
     const remote = createWorkerEngineComputer(() => createFakeWorker().worker);
 
-    assert.deepStrictEqual(await remote.getTrace(entries[0]!.input), local.getTrace(entries[0]!.input), `trace ${language}`);
+    assert.deepStrictEqual(await remote.getTraceSummary(entries[0]!.input), summarizeEngineTrace(local.getTrace(entries[0]!.input)), `trace ${language}`);
     assert.deepStrictEqual(
       await remote.getExtraction(entries[0]!.input, bigramFlowDefinition, DEFAULT_BIGRAM_FLOW_OPTIONS),
       local.getExtraction(entries[0]!.input, bigramFlowDefinition, DEFAULT_BIGRAM_FLOW_OPTIONS),
@@ -135,10 +136,10 @@ test('Workerには1度に1件だけ送り、待ちのうちに打ち切られた
   const remote = createWorkerEngineComputer(() => fake.worker);
   const [entry] = resolveAll('hello', 'en');
 
-  const first = remote.getTrace(entry!.input);
+  const first = remote.getTraceSummary(entry!.input);
   const controller = new AbortController();
-  const second = remote.getTrace(entry!.input, controller.signal);
-  const third = remote.getTrace(entry!.input);
+  const second = remote.getTraceSummary(entry!.input, controller.signal);
+  const third = remote.getTraceSummary(entry!.input);
   assert.equal(fake.received.length, 1, '実行中は次を送らない');
 
   controller.abort();
@@ -164,8 +165,8 @@ test('実行中の依頼を打ち切るとWorkerを止め、次の依頼は新�
   const [entry] = resolveAll('hello', 'en');
 
   const controller = new AbortController();
-  const stale = remote.getTrace(entry!.input, controller.signal);
-  const next = remote.getTrace(entry!.input);
+  const stale = remote.getTraceSummary(entry!.input, controller.signal);
+  const next = remote.getTraceSummary(entry!.input);
   assert.equal(workers.length, 1);
 
   controller.abort();
@@ -175,7 +176,7 @@ test('実行中の依頼を打ち切るとWorkerを止め、次の依頼は新�
   assert.equal(workers[1]!.received.length, 1);
 
   workers[1]!.held.shift()!();
-  assert.deepStrictEqual(await next, createEngineCache().getTrace(entry!.input));
+  assert.deepStrictEqual(await next, summarizeEngineTrace(createEngineCache().getTrace(entry!.input)));
   remote.dispose();
 });
 
@@ -185,7 +186,7 @@ test('打ち切り済みのsignalを渡した依頼は、Workerへ送らずに�
   const [entry] = resolveAll('hello', 'en');
   const controller = new AbortController();
   controller.abort();
-  await assert.rejects(remote.getTrace(entry!.input, controller.signal), EngineAbortError);
+  await assert.rejects(remote.getTraceSummary(entry!.input, controller.signal), EngineAbortError);
   assert.equal(fake.received.length, 0);
 });
 
@@ -200,7 +201,7 @@ test('Worker内の例外（未登録のAnalyzer等）は、メッセージ付き
     return true;
   });
   // 失敗の後も、同じWorkerで次の依頼を受けられる。
-  assert.ok(await remote.getTrace(entry!.input));
+  assert.ok(await remote.getTraceSummary(entry!.input));
   remote.dispose();
 });
 
@@ -213,8 +214,8 @@ test('Workerの読み込み失敗・異常終了は拒否になり、待ちの�
     return fake.worker;
   });
 
-  const broken = remote.getTrace(entry!.input);
-  const after = remote.getTrace(entry!.input);
+  const broken = remote.getTraceSummary(entry!.input);
+  const after = remote.getTraceSummary(entry!.input);
   workers[0]!.worker.onerror?.({ message: '読み込めない' });
   await assert.rejects(broken, /読み込めない/);
   assert.equal(workers[0]!.isTerminated(), true);
@@ -230,15 +231,15 @@ test('Workerを作れない環境では、依頼が拒否される', async () =>
   const remote = createWorkerEngineComputer(() => {
     throw new Error('Workerを起動できません');
   });
-  await assert.rejects(remote.getTrace(entry!.input), /Workerを起動できません/);
+  await assert.rejects(remote.getTraceSummary(entry!.input), /Workerを起動できません/);
 });
 
 test('disposeは待ちと実行中の依頼を打ち切り扱いで拒否し、Workerを止める', async () => {
   const fake = createFakeWorker({ manual: true });
   const remote = createWorkerEngineComputer(() => fake.worker);
   const [entry] = resolveAll('hello', 'en');
-  const running = remote.getTrace(entry!.input);
-  const waiting = remote.getTrace(entry!.input);
+  const running = remote.getTraceSummary(entry!.input);
+  const waiting = remote.getTraceSummary(entry!.input);
   remote.dispose();
   await assert.rejects(running, EngineAbortError);
   await assert.rejects(waiting, EngineAbortError);
@@ -250,24 +251,24 @@ test('受け取った結果はメインスレッドに写り、同じ中身の�
   const remote = createWorkerEngineComputer(() => fake.worker);
   const [first] = resolveAll('hello world', 'en');
   // 計算前は引けない（peekは計算を始めない）
-  assert.equal(remote.peekTrace?.(first!.input), undefined);
+  assert.equal(remote.peekTraceSummary?.(first!.input), undefined);
   assert.equal(remote.peekExtraction?.(first!.input, bigramFlowDefinition, DEFAULT_BIGRAM_FLOW_OPTIONS), undefined);
   assert.equal(fake.received.length, 0);
 
-  const trace = await remote.getTrace(first!.input);
+  const trace = await remote.getTraceSummary(first!.input);
   const extraction = await remote.getExtraction(first!.input, bigramFlowDefinition, DEFAULT_BIGRAM_FLOW_OPTIONS);
   const sent = fake.received.length;
 
   // 解決し直した（中身は同じで参照は別の）入力でも、送らずに同じ値が返る
   const [again] = resolveAll('hello world', 'en');
   assert.notEqual(again!.input, first!.input);
-  assert.strictEqual(remote.peekTrace?.(again!.input), trace);
+  assert.strictEqual(remote.peekTraceSummary?.(again!.input), trace);
   assert.strictEqual(remote.peekExtraction?.(again!.input, bigramFlowDefinition, DEFAULT_BIGRAM_FLOW_OPTIONS), extraction);
   assert.equal(fake.received.length, sent);
 
   // 中身が違えば引けない（配列が違う・テキストが違う）
-  assert.equal(remote.peekTrace?.(resolveAll('hello world', 'en')[1]!.input), undefined);
-  assert.equal(remote.peekTrace?.(resolveAll('hello worlds', 'en')[0]!.input), undefined);
+  assert.equal(remote.peekTraceSummary?.(resolveAll('hello world', 'en')[1]!.input), undefined);
+  assert.equal(remote.peekTraceSummary?.(resolveAll('hello worlds', 'en')[0]!.input), undefined);
   remote.dispose();
 });
 
@@ -289,28 +290,27 @@ test('打ち切られた依頼の結果は写らない', async () => {
   const remote = createWorkerEngineComputer(() => fake.worker);
   const [entry] = resolveAll('hello', 'en');
   const controller = new AbortController();
-  const pending = remote.getTrace(entry!.input, controller.signal);
+  const pending = remote.getTraceSummary(entry!.input, controller.signal);
   controller.abort();
   await assert.rejects(pending, EngineAbortError);
-  assert.equal(remote.peekTrace?.(entry!.input), undefined);
+  assert.equal(remote.peekTraceSummary?.(entry!.input), undefined);
   remote.dispose();
 });
 
-test('Traceの写しは8件まで（古いものから捨てる）。A→B→Aの往復と、直近8件の行き来は同期に引ける', async () => {
-  assert.equal(TRACE_MIRROR_MAX_ENTRIES, 8);
+test('Traceの要約の写しは上限まで（古いものから捨てる）。A→B→Aの往復と、直近の上限件の行き来は同期に引ける', async () => {
   const remote = createWorkerEngineComputer(() => createFakeWorker().worker);
   const inputs = Array.from({ length: TRACE_MIRROR_MAX_ENTRIES + 1 }, (_, i) => resolveAll(`hello ${i}`, 'en')[0]!.input);
 
   // A→B→A: 間に1件挟んでも、最初の入力へ戻る時に引ける
-  await remote.getTrace(inputs[0]!);
-  await remote.getTrace(inputs[1]!);
-  assert.ok(remote.peekTrace?.(inputs[0]!) !== undefined, 'A→B→Aで戻れない');
+  await remote.getTraceSummary(inputs[0]!);
+  await remote.getTraceSummary(inputs[1]!);
+  assert.ok(remote.peekTraceSummary?.(inputs[0]!) !== undefined, 'A→B→Aで戻れない');
 
   // 9件目で、最も長く触っていない1件（ここでは直前にpeekしたAではなく、Bより古いもの）が押し出される
-  for (const input of inputs.slice(2)) await remote.getTrace(input);
-  assert.equal(remote.peekTrace?.(inputs[1]!), undefined, '上限を超えたのに古い写しが残っている');
-  for (const index of [0, 2, 3, 4, 5, 6, 7, 8]) {
-    assert.ok(remote.peekTrace?.(inputs[index]!) !== undefined, `直近8件のうち${index}番目が引けない`);
+  for (const input of inputs.slice(2)) await remote.getTraceSummary(input);
+  assert.equal(remote.peekTraceSummary?.(inputs[1]!), undefined, '上限を超えたのに古い写しが残っている');
+  for (const index of [0, ...Array.from({ length: TRACE_MIRROR_MAX_ENTRIES - 1 }, (_, i) => i + 2)]) {
+    assert.ok(remote.peekTraceSummary?.(inputs[index]!) !== undefined, `直近${TRACE_MIRROR_MAX_ENTRIES}件のうち${index}番目が引けない`);
   }
   remote.dispose();
 });
@@ -332,7 +332,7 @@ test('段に分けられる集合の抽出は、後回しでない依頼より�
   const slow = remote.getSetExtraction(members, nSensitivityDefinition, DEFAULT_N_SENSITIVITY_OPTIONS);
   // 後から頼んだ別の抽出の段が先に待っていても、後回しでない依頼が追い越す
   const otherSlow = remote.getSetExtraction(members.slice(0, 1), nSensitivityDefinition, DEFAULT_N_SENSITIVITY_OPTIONS);
-  const trace = remote.getTrace(entries[0]!.input);
+  const trace = remote.getTraceSummary(entries[0]!.input);
   const extraction = remote.getExtraction(entries[0]!.input, bigramFlowDefinition, DEFAULT_BIGRAM_FLOW_OPTIONS);
   // N感度の最初の段は他に待ちが無かったので、すぐWorkerへ送られている
   assert.deepEqual(
@@ -342,10 +342,10 @@ test('段に分けられる集合の抽出は、後回しでない依頼より�
 
   await deliverAll(fake);
   const kinds = fake.received.map((request) => request.kind);
-  assert.deepEqual(kinds.slice(0, 3), ['set-warmup', 'trace', 'extraction'], '走っていた段の次は、後回しでない2件が先');
+  assert.deepEqual(kinds.slice(0, 3), ['set-warmup', 'trace-summary', 'extraction'], '走っていた段の次は、後回しでない2件が先');
   assert.equal(kinds.filter((kind) => kind === 'set-warmup').length, (LAYOUT_IDS.length + 1) * nSensitivityDefinition.warmup!.steps);
   assert.equal(kinds.at(-1), 'set-extraction', '最後に抽出');
-  assert.deepStrictEqual(await trace, createEngineCache().getTrace(entries[0]!.input));
+  assert.deepStrictEqual(await trace, summarizeEngineTrace(createEngineCache().getTrace(entries[0]!.input)));
   assert.deepStrictEqual(await extraction, createEngineCache().getExtraction(entries[0]!.input, bigramFlowDefinition, DEFAULT_BIGRAM_FLOW_OPTIONS));
   assert.deepStrictEqual(
     await slow,
@@ -386,7 +386,7 @@ test('段の依頼が走っている間に打ち切られても、Workerは止�
     DEFAULT_N_SENSITIVITY_OPTIONS,
     controller.signal,
   );
-  const next = remote.getTrace(entries[0]!.input);
+  const next = remote.getTraceSummary(entries[0]!.input);
   assert.equal(workers[0]!.received.length, 1, '段が走っている');
 
   controller.abort();
@@ -396,8 +396,18 @@ test('段の依頼が走っている間に打ち切られても、Workerは止�
   assert.equal(workers[0]!.received.length, 1, '段が終わるまでは次を送らない');
 
   await deliverAll(workers[0]!);
-  assert.deepStrictEqual(await next, createEngineCache().getTrace(entries[0]!.input));
+  assert.deepStrictEqual(await next, summarizeEngineTrace(createEngineCache().getTrace(entries[0]!.input)));
   assert.equal(workers.length, 1, '同じWorkerが続きを受けた');
   assert.equal(workers[0]!.received.length, 2, '打ち切った抽出の残りの段は送られない');
+  remote.dispose();
+});
+
+test('メインスレッドへ返すTraceは打鍵の列を含まない要約で、打鍵の列以外の値は計算結果と同じ', async () => {
+  const entries = resolveAll(sampleText('ja', 'modern'), 'ja');
+  const remote = createWorkerEngineComputer(() => createFakeWorker().worker);
+  const summary = await remote.getTraceSummary(entries[0]!.input);
+  assert.equal('strokes' in summary.trace, false);
+  const { strokes: _strokes, ...rest } = createEngineCache().getTrace(entries[0]!.input).trace;
+  assert.deepStrictEqual(summary.trace, rest);
   remote.dispose();
 });

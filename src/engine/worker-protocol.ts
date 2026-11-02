@@ -9,7 +9,7 @@ import type { ResolvedInput } from './resolved-input.ts';
  * 入力は値だけで出来ているので、そのまま複製できる。
  */
 export type EngineWorkerRequest =
-  | { readonly id: number; readonly kind: 'trace'; readonly input: ResolvedInput }
+  | { readonly id: number; readonly kind: 'trace-summary'; readonly input: ResolvedInput }
   | {
       readonly id: number;
       readonly kind: 'extraction';

@@ -1,6 +1,6 @@
 import type { SetAnalyzerDefinition, SingleAnalyzerDefinition } from '#analyzers/contract.ts';
 import type { EngineComputer } from './computer.ts';
-import type { EngineExtractionResult, EngineTraceResult } from './pipeline.ts';
+import type { EngineExtractionResult, EngineTraceSummaryResult } from './pipeline.ts';
 import type { EngineSetMemberInput } from './request.ts';
 import type { ResolvedInput } from './resolved-input.ts';
 import { LruCache } from './lru-cache.ts';
@@ -21,15 +21,14 @@ export interface WorkerLike {
 
 /**
  * メインスレッドに写しておく結果の最大件数。抽出は`engine/cache.ts`の既定と同じ32件。
- * Traceは日本語1万字で1件が約17MiBのヒープを取り、32件だと約555MiBになるので、別の上限で8件にする
- * （最悪でも約140MiB。配列を選び直して元に戻る往復には足りる）。
+ * Traceは打鍵の列を除いた要約だけを写すので、1件は小さい（打鍵の列は日本語1万字で約17MiBになるため写さない）。
  */
-export const TRACE_MIRROR_MAX_ENTRIES = 8;
+export const TRACE_MIRROR_MAX_ENTRIES = 32;
 export const EXTRACTION_MIRROR_MAX_ENTRIES = 32;
 
 /** 常にPromiseを返す`EngineComputer`（`EngineComputer`は同期の値も許すので、こちらで狭める）。 */
 export interface WorkerEngineComputer extends EngineComputer {
-  getTrace(input: ResolvedInput, signal?: AbortSignal): Promise<EngineTraceResult>;
+  getTraceSummary(input: ResolvedInput, signal?: AbortSignal): Promise<EngineTraceSummaryResult>;
   getExtraction<Options, Extracted>(
     input: ResolvedInput,
     definition: SingleAnalyzerDefinition<Options, Extracted>,
@@ -100,7 +99,7 @@ export function createWorkerEngineComputer(spawn: () => WorkerLike): WorkerEngin
   // 一度計算した入力へ戻る時（配列の選び直し・ペインの作り直し）に、Workerへの
   // 1往復を挟まず`peek*`で同期に引き、ペインを「計算中」にしない。Workerの結果は値の複製なので、
   // ここで持つ値は`get*`が返した値そのもの（数値は変わらない）。件数の上限は下の定数。
-  const traceMirror = new LruCache<string, EngineTraceResult>(TRACE_MIRROR_MAX_ENTRIES);
+  const traceMirror = new LruCache<string, EngineTraceSummaryResult>(TRACE_MIRROR_MAX_ENTRIES);
   const extractionMirror = new LruCache<string, EngineExtractionResult<unknown>>(EXTRACTION_MIRROR_MAX_ENTRIES);
   let worker: WorkerLike | undefined;
   let current: Job | undefined;
@@ -205,14 +204,14 @@ export function createWorkerEngineComputer(spawn: () => WorkerLike): WorkerEngin
   }
 
   return {
-    getTrace(input: ResolvedInput, signal?: AbortSignal): Promise<EngineTraceResult> {
+    getTraceSummary(input: ResolvedInput, signal?: AbortSignal): Promise<EngineTraceSummaryResult> {
       return remember(
         traceMirror,
         traceKeyOf(input),
-        enqueue((id) => ({ id, kind: 'trace', input }), signal),
+        enqueue((id) => ({ id, kind: 'trace-summary', input }), signal),
       );
     },
-    peekTrace(input: ResolvedInput): EngineTraceResult | undefined {
+    peekTraceSummary(input: ResolvedInput): EngineTraceSummaryResult | undefined {
       return traceMirror.get(traceKeyOf(input));
     },
     peekExtraction<Options, Extracted>(

@@ -7,7 +7,8 @@ import { tableForRule } from '#input/romaji/rules.ts';
 import { assignKeyFinger } from '#input/shapes/finger-assignment-edit.ts';
 import { DEFAULT_FINGER_ASSIGNMENT, JIS_FINGER_ASSIGNMENT } from '#input/shapes/geometry.ts';
 import { EMPTY_SETTINGS_OVERRIDES, setSettingsOverride } from './settings-items.ts';
-import { resolveEngineInput } from './resolved-input.ts';
+import { MAX_EVALUATION_TEXT_LENGTH, resolveEngineInput } from './resolved-input.ts';
+import { describeResolvedInputError } from './resolved-input-errors.ts';
 import { traceKeyOf } from './keys.ts';
 import { generateTrace } from '#trace/generate.ts';
 
@@ -424,4 +425,53 @@ test('文節の区切りは、この対象の記号の範囲で評価に渡す�
     splitter: { name: 'テスト用', version: '1' },
   });
   assert.deepEqual(input(true)?.extractionAssets.segmentation?.boundaries, [2, 4]);
+});
+
+function resolveText(text: string, verbatimText = false) {
+  const setup = setupFor('qwerty');
+  return resolveEngineInput({
+    target: { kind: 'setup', setupId: setup.id },
+    setups: new Map([[setup.id, setup]]),
+    catalog: CATALOG,
+    userLayouts: NO_USER_LAYOUTS,
+    overrides: EMPTY_SETTINGS_OVERRIDES,
+    text,
+    language: 'ja',
+    verbatimText,
+  });
+}
+
+test('評価に渡すテキストが上限ちょうどなら計算できる。1字でも超えると計算を始めず、長さと上限を値で返す', () => {
+  assert.ok(resolveText('あ'.repeat(MAX_EVALUATION_TEXT_LENGTH)).ok);
+
+  const over = resolveText('あ'.repeat(MAX_EVALUATION_TEXT_LENGTH + 1));
+  assert.ok(!over.ok);
+  if (over.ok) return;
+  assert.deepEqual(over.error, { kind: 'text-too-long', length: MAX_EVALUATION_TEXT_LENGTH + 1, limit: MAX_EVALUATION_TEXT_LENGTH });
+  assert.equal(
+    describeResolvedInputError(over.error),
+    `テキストが長すぎて計算できません（計算に使う文字数が${(MAX_EVALUATION_TEXT_LENGTH + 1).toLocaleString('ja-JP')}字で、${MAX_EVALUATION_TEXT_LENGTH.toLocaleString('ja-JP')}字までです）。テキストを短くしてください`,
+  );
+});
+
+test('上限の知らせは言語に依らず同じ文で、読みに直した後とは書かない（英語のテキストは読みに直さない）', () => {
+  const setup = setupFor('qwerty');
+  const result = resolveEngineInput({
+    target: { kind: 'setup', setupId: setup.id },
+    setups: new Map([[setup.id, setup]]),
+    catalog: CATALOG,
+    userLayouts: NO_USER_LAYOUTS,
+    overrides: EMPTY_SETTINGS_OVERRIDES,
+    text: 'a'.repeat(MAX_EVALUATION_TEXT_LENGTH + 1),
+    language: 'en',
+  });
+  assert.ok(!result.ok);
+  if (result.ok) return;
+  const message = describeResolvedInputError(result.error);
+  assert.match(message, /計算に使う文字数が400,001字で、400,000字までです/);
+  assert.doesNotMatch(message, /読みに直した/);
+});
+
+test('上限は前処理の後の長さで数える（記号を取り除いた後に収まるなら計算できる）', () => {
+  assert.ok(resolveText('あ'.repeat(MAX_EVALUATION_TEXT_LENGTH) + '！'.repeat(10)).ok);
 });

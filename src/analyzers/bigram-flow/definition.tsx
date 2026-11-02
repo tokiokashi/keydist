@@ -4,7 +4,7 @@ import type { Geometry, Key, Point } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import { keyboardStandardForGeometryId } from '#input/shapes/key-labels.ts';
 import type { KeyDetails } from '#interpretation/key-detail.ts';
-import type { Trace } from '#trace/generate.ts';
+import type { TraceSummary } from '#trace/generate.ts';
 import type { BigramVector, FingerClass, RelativeVector } from '../bigram-vectors.ts';
 import {
   edgeKind,
@@ -641,7 +641,7 @@ function fingerSetLabel(selectedFingers: readonly FingerClass[]): string {
 export interface BigramFlowBodyProps {
   readonly layout: Layout;
   readonly geometry: Geometry;
-  readonly trace: Trace;
+  readonly trace: TraceSummary;
   readonly extracted: BigramFlowExtracted;
   readonly options: BigramFlowOptions;
   /**

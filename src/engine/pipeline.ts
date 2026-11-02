@@ -1,4 +1,4 @@
-import { generateTrace, type Trace } from '#trace/generate.ts';
+import { generateTrace, summarizeTrace, type Trace, type TraceSummary } from '#trace/generate.ts';
 import type { RomajiChunk } from '#input/romaji/kunrei.ts';
 import { analyzeStrokeStructure, type AggregatedAnalysisResult } from '#interpretation/structure/aggregate.ts';
 import { computeMetrics, type Metrics } from '#interpretation/metrics.ts';
@@ -35,6 +35,16 @@ export interface EngineTraceResult {
 export function generateEngineTrace(input: ResolvedInput, romajiChunks?: readonly RomajiChunk[]): EngineTraceResult {
   const trace = generateTrace(input.text, input.layout, input.geometry, input.tracePolicy, romajiChunks);
   return { modelVersion: MODEL_VERSION, trace };
+}
+
+/** Traceのうち打鍵の列を除いた部分の結果。`EngineTraceResult`はこの型に代入できる。 */
+export interface EngineTraceSummaryResult {
+  readonly modelVersion: number;
+  readonly trace: TraceSummary;
+}
+
+export function summarizeEngineTrace(result: EngineTraceResult): EngineTraceSummaryResult {
+  return { modelVersion: result.modelVersion, trace: summarizeTrace(result.trace) };
 }
 
 export interface EngineInterpretationResult {

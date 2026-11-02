@@ -4,7 +4,7 @@ import type { Layout } from '#input/layouts/types.ts';
 import type { Geometry } from '#input/shapes/geometry.ts';
 import { keyboardStandardForGeometryId } from '#input/shapes/key-labels.ts';
 import type { KeyDetail, KeyDetails } from '#interpretation/key-detail.ts';
-import type { Trace } from '#trace/generate.ts';
+import type { TraceSummary } from '#trace/generate.ts';
 import { FloatingWindow } from './FloatingWindow.tsx';
 import './key-detail-window.css';
 
@@ -19,7 +19,7 @@ export interface KeyDetailWindowProps {
   readonly keyId: string;
   readonly layout: Layout;
   readonly geometry: Geometry;
-  readonly trace: Trace;
+  readonly trace: Pick<TraceSummary, 'layerDefinitions'>;
   readonly keyDetails: KeyDetails;
   readonly paneName?: string;
   /** 小窓を寄せる基準（押したキーの要素） */

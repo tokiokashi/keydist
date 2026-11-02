@@ -173,7 +173,7 @@ export interface SetAnalyzerWarmup {
  */
 export interface AnalyzerSetMemberFailure {
   readonly target: AnalysisTarget;
-  readonly kind: 'reference' | 'incompatible-text' | 'geometry' | 'keys-missing' | 'target-missing';
+  readonly kind: 'reference' | 'incompatible-text' | 'geometry' | 'keys-missing' | 'text-too-long' | 'target-missing';
   readonly message: string;
 }
 

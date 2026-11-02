@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import type { EngineExtractionResult, EngineTraceResult } from '#engine/pipeline.ts';
+import type { EngineExtractionResult, EngineTraceSummaryResult } from '#engine/pipeline.ts';
 import type { ExtractionRequestState, TraceRequestState } from '#engine/engine-requests.ts';
 
 /** 同じ解決済み入力から出たTrace結果と抽出結果の組。 */
 export interface CoherentPaneValues<Extracted> {
-  readonly trace: EngineTraceResult;
+  readonly trace: EngineTraceSummaryResult;
   readonly extraction: EngineExtractionResult<Extracted>;
 }
 

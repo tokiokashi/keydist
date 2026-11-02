@@ -82,50 +82,60 @@ export interface AggregatedAnalysisResult extends ArpeggioAnalysisResult {
   readonly aggregate: StructuralAggregate;
 }
 
-const emptyAnnotation = (): StrokeAnnotation => ({
-  inLongRoll: false,
-  inTwoRoll: false,
-  inArpeggio: false,
-  inRedirect: false,
-  inSfb: false,
-});
+const ANNOTATION_BITS: Readonly<Record<keyof StrokeAnnotation, number>> = {
+  inLongRoll: 1,
+  inTwoRoll: 2,
+  inArpeggio: 4,
+  inRedirect: 8,
+  inSfb: 16,
+};
 
-function annotateRange(annotations: StrokeAnnotation[], start: number, end: number, key: keyof StrokeAnnotation): void {
+/**
+ * 5つの印の組合せ（32通り）ごとに1つの凍結した値を持つ。打鍵ごとに値を作ると、打鍵数に比例して重くなる。
+ */
+const ANNOTATION_BY_BITS: readonly StrokeAnnotation[] = Array.from({ length: 32 }, (_, bits) =>
+  Object.freeze({
+    inLongRoll: (bits & ANNOTATION_BITS.inLongRoll) !== 0,
+    inTwoRoll: (bits & ANNOTATION_BITS.inTwoRoll) !== 0,
+    inArpeggio: (bits & ANNOTATION_BITS.inArpeggio) !== 0,
+    inRedirect: (bits & ANNOTATION_BITS.inRedirect) !== 0,
+    inSfb: (bits & ANNOTATION_BITS.inSfb) !== 0,
+  }),
+);
+
+function annotateRange(bits: Uint8Array, start: number, end: number, key: keyof StrokeAnnotation): void {
   const from = Math.max(0, start);
-  const to = Math.min(annotations.length, end);
+  const to = Math.min(bits.length, end);
   for (let index = from; index < to; index++) {
-    annotations[index] = Object.freeze({
-      ...annotations[index],
-      [key]: true,
-    });
+    bits[index] |= ANNOTATION_BITS[key];
   }
 }
 
-function annotateIndex(annotations: StrokeAnnotation[], index: number, key: keyof StrokeAnnotation): void {
-  annotateRange(annotations, index, index + 1, key);
+function annotateIndex(bits: Uint8Array, index: number, key: keyof StrokeAnnotation): void {
+  annotateRange(bits, index, index + 1, key);
 }
 
 /** Structural factsのunionから非排他的なStrokeAnnotationを派生する。 */
 export function buildStrokeAnnotations(analysis: ArpeggioAnalysisResult): readonly StrokeAnnotation[] {
-  const annotations = Array.from({ length: analysis.strokes.length }, () => Object.freeze(emptyAnnotation()));
+  const bits = new Uint8Array(analysis.strokes.length);
 
   for (const roll of analysis.longRolls) {
-    annotateRange(annotations, roll.startStrokeIndex, roll.endStrokeIndex, 'inLongRoll');
+    annotateRange(bits, roll.startStrokeIndex, roll.endStrokeIndex, 'inLongRoll');
   }
   for (const roll of analysis.twoRolls) {
-    annotateRange(annotations, roll.startStrokeIndex, roll.endStrokeIndex, 'inTwoRoll');
+    annotateRange(bits, roll.startStrokeIndex, roll.endStrokeIndex, 'inTwoRoll');
   }
   for (const span of analysis.arpeggioSpans) {
-    annotateRange(annotations, span.startStrokeIndex, span.endStrokeIndex, 'inArpeggio');
+    annotateRange(bits, span.startStrokeIndex, span.endStrokeIndex, 'inArpeggio');
   }
   for (const redirect of analysis.redirects) {
-    annotateIndex(annotations, redirect.pivotStrokeIndex, 'inRedirect');
+    annotateIndex(bits, redirect.pivotStrokeIndex, 'inRedirect');
   }
   for (const index of analysis.sfbStrokeIndexes) {
-    annotateIndex(annotations, index, 'inSfb');
+    annotateIndex(bits, index, 'inSfb');
   }
 
-  return Object.freeze(annotations);
+  return Object.freeze(Array.from(bits, (value) => ANNOTATION_BY_BITS[value]));
 }
 
 function coverage(annotations: readonly StrokeAnnotation[], predicate: (annotation: StrokeAnnotation) => boolean): CoverageMetric {

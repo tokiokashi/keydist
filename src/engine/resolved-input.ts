@@ -65,6 +65,11 @@ export type ResolvedInputError =
    */
   | { readonly kind: 'keys-missing'; readonly layout: Layout }
   /**
+   * 評価に渡すテキストが、計算を始められる長さ（`MAX_EVALUATION_TEXT_LENGTH`）を超えている。
+   * 打鍵の列とその解釈は文字数に比例してメモリを使い、超えるとページがメモリ不足で落ちるので、計算を始めない。
+   */
+  | { readonly kind: 'text-too-long'; readonly length: number; readonly limit: number }
+  /**
    * 対象そのものの実体が手持ちから消えている（`setup-missing`を一般化）。Setup対象ならそのidが`SetupLibrary.setups`に
    * 無い、配列対象ならそのidが`SetupCatalog.layouts`に無い、のどちらか。`reference`
    * （対象自体は見つかるが、参照先の配列・物理配列が無い）とは別のケース:
@@ -133,6 +138,13 @@ function withoutRomaji(layout: Layout): Layout {
  * Setup + カスケードの上書き + テキストから、Trace生成・解釈に要る値を全部決める。
  * 失敗は例外にせず値で返す。
  */
+/**
+ * 計算を始められる、評価に渡すテキスト（前処理の後）の最大の長さ（UTF-16の符号単位の数）。
+ * 既定のWorkspace（10ペイン・7配列）で、日本語の約39万字（読みに直した後）までは落ちずに数値が出る。
+ * 約58万字では、ページがメモリ不足で落ちる。この間に余裕を残した値にしてある。
+ */
+export const MAX_EVALUATION_TEXT_LENGTH = 400_000;
+
 export function resolveEngineInput(options: ResolveEngineInputOptions): ResolvedInputResult {
   const textResolution = resolveTargetForText(options.target, options.setups, options.catalog, options.userLayouts, options.overrides, options.language);
   if (!textResolution.ok) {
@@ -235,6 +247,19 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
     if (!geometryKeys.has(key)) return { ok: false, error: { kind: 'keys-missing', layout } };
   }
 
+  const evaluationText =
+    options.verbatimText === true
+      ? options.text
+      : prepareEvaluationText(options.text, {
+          language: options.language,
+          keepSymbols: cascade.keepSymbols.value,
+          layoutHasChar: (char) => layout.canonicalInputs.has(char),
+          uncoveredPositions: (prepared) => uncoveredTextPositions(prepared, layout),
+        });
+  if (evaluationText.length > MAX_EVALUATION_TEXT_LENGTH) {
+    return { ok: false, error: { kind: 'text-too-long', length: evaluationText.length, limit: MAX_EVALUATION_TEXT_LENGTH } };
+  }
+
   const tracePolicy: TracePolicy = {
     windowSize: cascade.windowSize.value,
     sfbHomeCost: cascade.sfbHomeCost.value,
@@ -246,15 +271,7 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
   return {
     ok: true,
     input: {
-      text:
-        options.verbatimText === true
-          ? options.text
-          : prepareEvaluationText(options.text, {
-              language: options.language,
-              keepSymbols: cascade.keepSymbols.value,
-              layoutHasChar: (char) => layout.canonicalInputs.has(char),
-              uncoveredPositions: (prepared) => uncoveredTextPositions(prepared, layout),
-            }),
+      text: evaluationText,
       layout,
       geometry,
       tracePolicy,

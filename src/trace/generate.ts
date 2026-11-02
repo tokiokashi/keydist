@@ -180,6 +180,17 @@ export interface Trace {
 }
 
 /**
+ * Traceのうち打鍵の列（`strokes`）を除いた部分。打鍵の列は長いテキストで数百MBになるので、
+ * 図の外側で診断や見出しに使うだけの画面（メインスレッド）にはこちらだけを渡す。
+ */
+export type TraceSummary = Omit<Trace, 'strokes'>;
+
+export function summarizeTrace(trace: Trace): TraceSummary {
+  const { strokes: _strokes, ...summary } = trace;
+  return summary;
+}
+
+/**
  * コンボ枠の見出しの数（仕様 §11.8の `B`）。コンボ定義の数に、コンボ枠に帰属する面の出力のうち
  * コンボ定義の見出しと重ならないものを見出しごとに1件足す。
  */
@@ -433,6 +444,7 @@ export function generateTrace(
   // 指が決まった入力から順に、状態を進めて打鍵を作る。
   const selectionPolicy = { windowSize: options.windowSize, sfbHomeCost: options.sfbHomeCost };
   const holders = new Map<string, Finger>();
+  const participationPool = new Map<string, readonly StrokeParticipation[]>();
   for (let inputPosition = 0; inputPosition < inputs.length; inputPosition++) {
     const input = inputs[inputPosition];
     const currentInputOrdinal = input.ordinal;
@@ -454,7 +466,7 @@ export function generateTrace(
       const aggregationGroupId = action.input.aggregationGroupId;
       const modifierKeys = new Set(action.input.roles.filter((role) => role.role === 'modifier').map((role) => resolveKeyId(role.key)));
       const pressedModifierKeys = [...new Set(action.keys.map(resolveKeyId))].filter((key) => modifierKeys.has(key));
-      const pairedTriggerKeys = pressedModifierKeys.length >= 2 ? triggerKeys.filter((key) => modifierKeys.has(resolveKeyId(key))) : [];
+      const pairedTriggerKeys = pressedModifierKeys.length >= 2 ? triggerKeys.filter((key) => modifierKeys.has(resolveKeyId(key))) : NO_KEYS;
       const byFinger = new Map<Finger, Key[]>();
       plannedStroke.keys.forEach((key, slot) => {
         const finger = fingers[slot];
@@ -491,14 +503,9 @@ export function generateTrace(
         return holders.get(id) ?? geometry.keys.get(id)?.finger;
       };
 
-      const participations = normalizeParticipations(
-        presses,
-        action.outputKeys,
-        action.triggerKeys,
-        action.heldKeys,
-        action.holdPhase,
-        geometry,
-        heldFingerOf,
+      const participations = internParticipations(
+        participationPool,
+        normalizeParticipations(presses, action.outputKeys, action.triggerKeys, action.heldKeys, action.holdPhase, geometry, heldFingerOf),
       );
 
       let total = 0;
@@ -513,7 +520,8 @@ export function generateTrace(
           selectionPolicy,
         );
         press.distance = decision.distance;
-        press.origin = decision.stay ? { at: { ...prev[press.finger] }, from: 'previous' } : { at: { ...geometry.homes[press.finger] }, from: 'home' };
+        // 位置は作った後に書き換えない値なので、指の位置と物理配列のホームをそのまま共有する（打鍵ごとに複製しない）
+        press.origin = decision.stay ? { at: prev[press.finger], from: 'previous' } : { at: geometry.homes[press.finger], from: 'home' };
         if (decision.stay) {
           restoreStaySnapshots(strokes, last[press.finger], index, press.finger, prev[press.finger]);
         }
@@ -891,6 +899,26 @@ function record(errors: string[], seen: Set<string>, message: string) {
   if (seen.has(message)) return;
   seen.add(message);
   errors.push(message);
+}
+
+/** 空のキー列。打鍵ごとに空の配列を作らず、読み取り専用の1つを共有する。 */
+const NO_KEYS: readonly string[] = Object.freeze([]);
+
+/**
+ * 参加の列を、同じ中身なら同じ配列にまとめる。同じ配列でよく使うキーの組は繰り返し現れるので、
+ * 打鍵ごとに配列・参加・キー列・役割列を作ると打鍵数に比例して重くなる。作った後に書き換えない値だけを共有する。
+ */
+function internParticipations(
+  pool: Map<string, readonly StrokeParticipation[]>,
+  participations: readonly StrokeParticipation[],
+): readonly StrokeParticipation[] {
+  const signature = participations
+    .map((entry) => `${entry.hand}|${entry.finger}|${entry.keys.map((key) => key.id).join(',')}|${entry.roles.join(',')}|${entry.holdPhase ?? ''}`)
+    .join(';');
+  const known = pool.get(signature);
+  if (known !== undefined) return known;
+  pool.set(signature, participations);
+  return participations;
 }
 
 /**
