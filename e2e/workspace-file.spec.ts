@@ -80,7 +80,7 @@ test('読み込めないファイルは、理由を文で伝え、Workspaceを�
   await waitForHydration(page);
   const cases: readonly [string, string][] = [
     ['{ 壊れた', '条件ファイルとして読めませんでした'],
-    ['{"version":2,"workspaces":[]}', 'keydist の条件ファイルではありません'],
+    ['{"version":2,"workspaces":[]}', 'keydistの条件ファイルではありません'],
     ['{"format":"keydist-presets","version":2,"presets":[{"id":"a","name":"A","values":{}}]}', 'このファイルにWorkspaceは含まれていません'],
   ];
   for (const [content, message] of cases) {

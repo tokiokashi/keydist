@@ -446,7 +446,7 @@ test('取り込みの診断: 欄が無い・合わない時は日本語で欄の
   const noFormat = detailsOf('{}');
   assert.match(noFormat, /「format」欄がありません/);
   assert.match(detailsOf('[]'), /最上位の形式が正しくありません/);
-  assert.match(detailsOf(JSON.stringify({ format: 'other' })), /「format」欄が「keydist-user-assets」ではありません/);
+  assert.match(detailsOf(JSON.stringify({ format: 'other' })), /「format」欄の値が自作の資産のファイルのものと違います/);
 
   const broken = detailsOf(
     JSON.stringify({ format: USER_ASSETS_FILE_FORMAT, version: 1, layouts: [{}], romajiRules: [{}], fingerAssignments: [{}], setups: [{}] }),

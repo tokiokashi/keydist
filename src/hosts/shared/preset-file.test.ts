@@ -61,7 +61,7 @@ test('診断: JSONとして読めない', () => {
 
 test('診断: formatが無い・別の値・オブジェクトでない', () => {
   for (const text of ['{"version":1,"presets":[]}', '{"format":"other","version":1}', '[]', '3', 'null']) {
-    assert.equal(failed(text).message, 'keydist の条件ファイルではありません', text);
+    assert.equal(failed(text).message, 'keydistの条件ファイルではありません', text);
   }
 });
 
