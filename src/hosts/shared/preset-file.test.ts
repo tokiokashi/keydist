@@ -68,7 +68,7 @@ test('診断: formatが無い・別の値・オブジェクトでない', () => 
 test('診断: 新しい版', () => {
   const result = failed(fileText({ version: 3, presets: [] }));
   assert.equal(result.message, '新しい形式のファイルです。keydistを更新してから読み込んでください');
-  assert.deepEqual(result.details, ['version: 3 (対応: 2)']);
+  assert.deepEqual(result.details, ['ファイルの版は3です。このkeydistが読めるのは2版までです']);
 });
 
 test('診断: 形が正しくない（版が無い・版が不正・presetsがオブジェクトでない）', () => {

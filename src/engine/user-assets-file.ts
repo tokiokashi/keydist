@@ -1,4 +1,12 @@
-import { defineAssetCodec, describeFileDecodeFailure, isRecord, type AssetCodec, type CodecDiagnostic } from '#input/codec/index.ts';
+import {
+  defineAssetCodec,
+  describeFileDecodeFailure,
+  describeJsonSyntaxError,
+  FILE_ROOT_SHAPE_DETAIL,
+  isRecord,
+  type AssetCodec,
+  type CodecDiagnostic,
+} from '#input/codec/index.ts';
 import type { Command } from '#input/commands/index.ts';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { decodeUserLayouts, type UserLayout } from '#input/layouts/user-layouts.ts';
@@ -399,11 +407,11 @@ export function parseUserAssetsFile(text: string): UserAssetsFileReadResult {
   try {
     parsed = JSON.parse(text);
   } catch (error) {
-    return fail('ファイルとして読めませんでした', error instanceof Error ? error.message : String(error));
+    return fail('ファイルとして読めませんでした', describeJsonSyntaxError(error, text));
   }
   if (!isRecord(parsed) || parsed.format !== USER_ASSETS_FILE_FORMAT) {
     const detail = !isRecord(parsed)
-      ? 'ファイルの最上位の形式が正しくありません'
+      ? FILE_ROOT_SHAPE_DETAIL
       : parsed.format === undefined
         ? '「format」欄がありません'
         : `「format」欄が「${USER_ASSETS_FILE_FORMAT}」ではありません`;
