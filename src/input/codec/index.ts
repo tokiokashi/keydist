@@ -160,7 +160,7 @@ export function decodeField<T>(
   if (result.success) return result.output;
   diagnostics.push({
     path,
-    message: `${describeIssues(result.issues)}のため既定値へ戻しました`,
+    message: `${describeIssues(result.issues)}ため既定値へ戻しました`,
   });
   return fallback;
 }
@@ -180,13 +180,54 @@ export function decodeDroppingInvalid<T>(
   if (result.success) return result.output;
   diagnostics.push({
     path,
-    message: `${describeIssues(result.issues)}のため要素を捨てました`,
+    message: `${describeIssues(result.issues)}ため要素を捨てました`,
   });
   return undefined;
 }
 
+/** valibotが検査の側に文を渡されなかった時に作る既定の文の形（`Invalid type: Expected …`・`Invalid key: …`など）。 */
+const VALIBOT_DEFAULT_MESSAGE = /^Invalid [a-z ]+: Expected .+ but received /;
+
+const EXPECTED_TYPE_LABELS: Readonly<Record<string, string>> = {
+  string: '文字列',
+  number: '数値',
+  boolean: '真偽値',
+  Array: '配列',
+  Object: 'object',
+};
+
+/** valibotの問題の位置を、診断に書く欄の名前にする（`overrides.a`・`rows[0]`）。位置が無ければ`undefined`（読んだ値そのもの）。 */
+function issueFieldName(issue: BaseIssue<unknown>): string | undefined {
+  if (issue.path === undefined || issue.path.length === 0) return undefined;
+  return issue.path.reduce((name, item) => {
+    if (typeof item.key === 'number') return `${name}[${item.key}]`;
+    return name === '' ? String(item.key) : `${name}.${String(item.key)}`;
+  }, '');
+}
+
+/**
+ * 検査の側が利用者向けの文を持つ問題（`v.check(…, '文')`）はその文を残し、
+ * valibot既定の英語の文だけを、欄の名前と問題の種類から作る日本語の文にする。
+ */
+function describeIssue(issue: BaseIssue<unknown>): string {
+  if (!VALIBOT_DEFAULT_MESSAGE.test(issue.message)) return issue.message;
+  const field = issueFieldName(issue);
+  const subject = field === undefined ? '値' : `「${field}」欄`;
+  if (issue.kind === 'schema') {
+    // objectの欄が無い問題は、欠けた欄の名前を`path`に持つ（`object`・`strict_object`とも）
+    if ((issue.type === 'object' || issue.type === 'strict_object') && issue.received === 'undefined' && field !== undefined) return `${subject}が無い`;
+    if (issue.type === 'strict_object') return `${subject}は使えない`;
+    const label = issue.expected === null ? undefined : EXPECTED_TYPE_LABELS[issue.expected];
+    if (label !== undefined) return `${subject}が${label}ではない`;
+    return `${subject}の値が選べる値に無い`;
+  }
+  if (issue.type === 'min_length') return `${subject}が短すぎる`;
+  if (issue.type === 'max_length') return `${subject}が長すぎる`;
+  return `${subject}の値が条件に合っていない`;
+}
+
 function describeIssues(issues: readonly BaseIssue<unknown>[]): string {
-  return issues.map((issue) => issue.message).join('; ');
+  return issues.map(describeIssue).join('、');
 }
 
 /**

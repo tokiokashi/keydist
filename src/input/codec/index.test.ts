@@ -147,6 +147,31 @@ test('decodeDroppingInvalid: 妥当なら値を、不正ならundefinedを返し
   assert.match(diagnostics[0].message, /要素を捨てました$/);
 });
 
+test('診断の文: valibot既定の英語の文は欄の名前と問題の種類から作る日本語にし、検査の側が持つ文は残す', () => {
+  const diagnostics: import('./index.ts').CodecDiagnostic[] = [];
+  const schema = v.pipe(
+    v.object({ id: v.pipe(v.string(), v.minLength(1)), count: v.number(), tags: v.array(v.string()), kind: v.picklist(['a', 'b']) }),
+    v.check(() => false, '合わない組み合わせです'),
+  );
+  decodeDroppingInvalid(schema, {}, 'items[0]', diagnostics);
+  decodeDroppingInvalid(schema, 5, 'items[1]', diagnostics);
+  decodeDroppingInvalid(schema, { id: '', count: 'x', tags: 1, kind: 'z' }, 'items[2]', diagnostics);
+  assert.deepEqual(
+    diagnostics.map((diagnostic) => diagnostic.message),
+    [
+      '「id」欄が無い、「count」欄が無い、「tags」欄が無い、「kind」欄が無いため要素を捨てました',
+      '値がobjectではないため要素を捨てました',
+      '「id」欄が短すぎる、「count」欄が数値ではない、「tags」欄が配列ではない、「kind」欄の値が選べる値に無いため要素を捨てました',
+    ],
+  );
+  const checked: import('./index.ts').CodecDiagnostic[] = [];
+  decodeDroppingInvalid(schema, { id: 'a', count: 1, tags: [], kind: 'a' }, 'items[3]', checked);
+  assert.deepEqual(
+    checked.map((diagnostic) => diagnostic.message),
+    ['合わない組み合わせですため要素を捨てました'],
+  );
+});
+
 test('encodedSizeBytes: JSONにした時のUTF-8バイト数を返す', () => {
   assert.equal(encodedSizeBytes({ a: 1 }), new TextEncoder().encode('{"a":1}').length);
   // マルチバイト文字も正しく数える（文字数ではなくバイト数）。
