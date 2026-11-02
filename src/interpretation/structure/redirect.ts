@@ -69,9 +69,20 @@ function samePivotParticipation(before: FingerTransition, after: FingerTransitio
   return beforeParticipation === afterParticipation;
 }
 
+/**
+ * 候補とその列を、同じ中身なら同じ値にまとめるための入れ物。
+ * 候補はStrokeの位置を持たず、候補の添字と指だけで決まる。同じ組合せは繰り返し現れるので、
+ * eventごとに作ると打鍵数に比例して重くなる。作った後に書き換えない値だけを共有する。
+ */
+interface RedirectCandidatePool {
+  readonly candidates: Map<string, RedirectCandidate>;
+  readonly lists: Map<string, readonly RedirectCandidate[]>;
+}
+
 function redirectCandidates(
   before: TransitionAnalysisResult['transitions'][number],
   after: TransitionAnalysisResult['transitions'][number],
+  pool: RedirectCandidatePool,
 ): readonly RedirectCandidate[] {
   const candidates: RedirectCandidate[] = [];
 
@@ -80,21 +91,44 @@ function redirectCandidates(
       if (!samePivotParticipation(beforeCandidate, afterCandidate)) continue;
       if (!reversesDirection(beforeCandidate, afterCandidate)) continue;
 
-      candidates.push(
-        Object.freeze({
+      const key = [
+        candidates.length,
+        beforeCandidate.candidateIndex,
+        afterCandidate.candidateIndex,
+        beforeCandidate.fromFinger,
+        beforeCandidate.toFinger,
+        afterCandidate.toFinger,
+      ].join('|');
+      let candidate = pool.candidates.get(key);
+      if (!candidate) {
+        candidate = Object.freeze({
           candidateIndex: candidates.length,
           beforeCandidateIndex: beforeCandidate.candidateIndex,
           afterCandidateIndex: afterCandidate.candidateIndex,
           fromFinger: beforeCandidate.fromFinger,
           pivotFinger: beforeCandidate.toFinger,
           toFinger: afterCandidate.toFinger,
-        }),
-      );
+        });
+        pool.candidates.set(key, candidate);
+      }
+      candidates.push(candidate);
     }
   }
+  if (candidates.length === 0) return NO_REDIRECT_CANDIDATES;
 
-  return Object.freeze(candidates);
+  const listKey = candidates
+    .map((candidate) =>
+      [candidate.beforeCandidateIndex, candidate.afterCandidateIndex, candidate.fromFinger, candidate.pivotFinger, candidate.toFinger].join('.'),
+    )
+    .join('|');
+  const knownList = pool.lists.get(listKey);
+  if (knownList) return knownList;
+  const list = Object.freeze(candidates);
+  pool.lists.set(listKey, list);
+  return list;
 }
+
+const NO_REDIRECT_CANDIDATES: readonly RedirectCandidate[] = Object.freeze([]);
 
 /**
  * 同一Analysis Chain内で隣接する2 Transitionを3 Stroke windowとして走査する。
@@ -104,6 +138,10 @@ function redirectCandidates(
  */
 export function buildRedirectEvents(analysis: TransitionAnalysisResult): readonly RedirectEvent[] {
   const events: RedirectEvent[] = [];
+  const pool: RedirectCandidatePool = {
+    candidates: new Map(),
+    lists: new Map(),
+  };
 
   for (const chain of analysis.chains) {
     const transitions = analysis.transitionsByChain[chain.chainIndex];
@@ -116,7 +154,7 @@ export function buildRedirectEvents(analysis: TransitionAnalysisResult): readonl
       if (before.toStrokeIndex !== after.fromStrokeIndex) continue;
       if (before.hand !== after.hand) continue;
 
-      const candidates = redirectCandidates(before, after);
+      const candidates = redirectCandidates(before, after, pool);
       if (candidates.length === 0) continue;
 
       events.push(

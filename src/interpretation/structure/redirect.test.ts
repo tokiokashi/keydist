@@ -345,3 +345,17 @@ test('Redirect result / Event / candidateはimmutableな結果内indexとして�
   assert.equal(Object.isFrozen(result.redirects[0].candidates), true);
   assert.equal(Object.isFrozen(result.redirects[0].candidates[0]), true);
 });
+
+test('同じ指の組合せのRedirectは、Strokeの位置が違っても候補と候補の列を共有する', () => {
+  const at = (index: number, finger: Finger, id: string, x: number) => stroke(index, [press(finger, [key(id, finger, x, 2)])]);
+  const strokes = [at(0, 'LP', 'a', 1), at(1, 'LM', 'd', 3), at(2, 'LR', 's', 2), at(3, 'LP', 'a', 1), at(4, 'LM', 'd', 3), at(5, 'LR', 's', 2)];
+  const events = analyzeStrokeRedirects(strokes, keepSameFinger).redirects;
+
+  assert.deepEqual(
+    events.map((event) => event.pivotStrokeIndex),
+    [1, 3, 4],
+  );
+  assert.equal(events[0].candidates, events[2].candidates);
+  assert.equal(events[0].candidates[0], events[2].candidates[0]);
+  assert.notEqual(events[0].candidates, events[1].candidates, '向きが違うRedirectは別の列');
+});

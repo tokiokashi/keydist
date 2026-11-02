@@ -270,6 +270,9 @@ function applyRedirectTail(analysis: RollAnalysisResult, seeds: readonly SpanSee
   );
 }
 
+/** 拡張の無いSpanが共有する空の列。Spanごとに空の配列を作らない。 */
+const NO_EXTENSIONS: readonly ArpeggioExtension[] = Object.freeze([]);
+
 function dedupeFinalSpans(seeds: readonly SpanSeed[]): readonly ArpeggioSpan[] {
   const map = new Map<string, SpanSeed>();
 
@@ -303,7 +306,7 @@ function dedupeFinalSpans(seeds: readonly SpanSeed[]): readonly ArpeggioSpan[] {
           hand: seed.hand,
           coreKind: seed.coreKind,
           direction: seed.direction,
-          extensions: Object.freeze([...seed.extensions]),
+          extensions: seed.extensions.length === 0 ? NO_EXTENSIONS : Object.freeze([...seed.extensions]),
         }),
       ),
   );
