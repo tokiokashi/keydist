@@ -26,7 +26,7 @@ export function defaultConditionCases(): DefaultConditionCase[] {
   return cases;
 }
 
-/** 回帰の記録でのケースのid。手書きの非既定ケースは末尾に `:<note>` が付くので、この id とは一致しない。 */
+/** 回帰の記録でのケースのid。手書きの非既定ケースは末尾に `:<note>` が付くので、このidとは一致しない。 */
 export function defaultConditionCaseId(c: DefaultConditionCase): string {
   return `${c.language}:${c.layout.id}:${c.sampleId}`;
 }
