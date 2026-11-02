@@ -4,9 +4,10 @@ import test from 'node:test';
 import { splitBunsetsu } from './budoux.ts';
 import { BUNSETSU_SPLITTER } from './info.ts';
 
-test('分割器の版は package.jsonのbudouxの版と同じ', () => {
-  const pkg = JSON.parse(readFileSync(new URL('../../../package.json', import.meta.url), 'utf8')) as { dependencies: Record<string, string> };
-  assert.equal(pkg.dependencies.budoux, BUNSETSU_SPLITTER.version);
+test('分割器の版は、固定した版で、入れてあるbudouxの版と同じ', () => {
+  const installed = JSON.parse(readFileSync(new URL('../../../node_modules/budoux/package.json', import.meta.url), 'utf8')) as { version: string };
+  assert.match(BUNSETSU_SPLITTER.version, /^\d+\.\d+\.\d+$/);
+  assert.equal(BUNSETSU_SPLITTER.version, installed.version);
 });
 
 test('断片を連結すると原文に戻り、文を文節らしい単位に分ける', () => {

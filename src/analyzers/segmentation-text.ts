@@ -11,7 +11,7 @@ export const SEGMENTATION_ORIGIN_TEXT: Readonly<Record<SegmentationOrigin, strin
   'dictionary-unavailable': '辞書を読み込めず漢字を読みに直していないので、前処理の対応だけで区切りを写しています。',
 };
 
-/** 「分割器はBudouX 0.10.0（日本語のモデル）です。」の後に出どころの文を続けた文。 */
+/** 「分割器はBudouX <版>（日本語のモデル）です。」の後に出どころの文を続けた文。 */
 export function segmentationSourceSentence(splitter: SegmenterInfo, origin: SegmentationOrigin): string {
   return `分割器は${splitter.name} ${splitter.version}（日本語のモデル）です。${SEGMENTATION_ORIGIN_TEXT[origin]}`;
 }

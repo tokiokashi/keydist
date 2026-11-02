@@ -1,4 +1,5 @@
 import { expect, test, type Page } from './fixtures.ts';
+import { BUNSETSU_SPLITTER } from '../src/platform/bunsetsu/info.ts';
 import { waitForHydration } from './hydration-helper.ts';
 import { openSettings } from './pane-helper.ts';
 import { SHORT_TEXT_REF } from './short-text-helper.ts';
@@ -99,7 +100,9 @@ test.describe('個別画面', () => {
     await expect(feature(page).locator('[data-run-chart-boundaries]')).toHaveCount(1, { timeout: 15_000 });
     // 配列ごとに表のブロックを分ける
     await expect(feature(page).locator('[data-run-chart-segment-block]')).toHaveCount(2);
-    await expect(feature(page).locator('[data-run-chart-segment-condition]').first()).toContainText('BudouX 0.10.0');
+    await expect(feature(page).locator('[data-run-chart-segment-condition]').first()).toContainText(
+      `${BUNSETSU_SPLITTER.name} ${BUNSETSU_SPLITTER.version}`,
+    );
     // 乱数生成器と種の範囲は、対象が2つでも表の上に1回だけ出す
     await expect(feature(page).locator('[data-run-chart-segment-seed-range]')).toHaveCount(1);
     await expect(feature(page).locator('[data-run-chart-segment-seed-range]')).toContainText('mulberry32');

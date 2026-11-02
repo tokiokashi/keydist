@@ -1,4 +1,5 @@
 import { expect, test, type Page } from './fixtures.ts';
+import { BUNSETSU_SPLITTER } from '../src/platform/bunsetsu/info.ts';
 
 /**
  * 文節ごとの統計のe2e。値の定義・一覧の並びはunit testで固定しているので、ここでは画面の配線
@@ -28,7 +29,7 @@ test.describe('個別画面', () => {
   });
 
   test('テキストの表・配列ごとの表・2つの上位の一覧が出て、区切りの出どころと分割器を示す', async ({ page }) => {
-    await expect(feature(page).locator('[data-bunsetsu-stats-source]')).toContainText('BudouX 0.10.0');
+    await expect(feature(page).locator('[data-bunsetsu-stats-source]')).toContainText(`${BUNSETSU_SPLITTER.name} ${BUNSETSU_SPLITTER.version}`);
     await expect(feature(page).locator('[data-bunsetsu-stats-text-table]')).toBeVisible();
     await expect(feature(page).locator('[data-bunsetsu-stats-segment-count]')).not.toHaveText('—');
     await expect(feature(page).locator('[data-bunsetsu-stats-layout-table] [data-bunsetsu-stats-row="ok"]')).toHaveCount(2);
