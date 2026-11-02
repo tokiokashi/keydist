@@ -42,7 +42,7 @@ test('Raw hand runは参加factを保持し、trigger/thumb/逆手同時から�
   const raw = buildRawHandRuns(strokes);
   const left = raw.find((run) => run.hand === 'left')!;
   assert.deepEqual(
-    left.steps.map((step) => step.strokeIndex),
+    left.steps.map((_, offset) => left.startStrokeIndex + offset),
     [0, 1, 2, 3],
   );
   assert.equal(left.steps[1].triggerOnly, true);
@@ -219,4 +219,20 @@ test('AnalysisResultはstable IDを作らず、result内indexとimmutable span�
   assert.equal(Object.isFrozen(analysis.rawHandRuns[0].steps), true);
   assert.equal(Object.isFrozen(analysis.chains), true);
   assert.equal(Object.isFrozen(analysis.chains[0]), true);
+});
+
+test('同じ中身の参加factと短いRunのfact列は、Strokeの位置が違っても共有する', () => {
+  const strokes = [0, 1, 2, 3].flatMap((round) => [
+    stroke(round * 2, [participation('left', 'LI', ['output'])]),
+    stroke(round * 2 + 1, [participation('right', 'RI', ['output'])]),
+  ]);
+  const raw = buildRawHandRuns(strokes);
+  const left = raw.filter((run) => run.hand === 'left');
+
+  assert.equal(left.length, 4);
+  assert.equal(left[0].steps, left[3].steps, '同じfactだけの短いRunは同じ列');
+  assert.equal(left[0].steps[0], left[3].steps[0], '同じ中身のfactは同じ値');
+  assert.notEqual(left[0].steps[0], raw.find((run) => run.hand === 'right')!.steps[0], '手が違えば別のfact');
+  assert.equal(Object.isFrozen(left[0].steps[0]), true);
+  assert.equal(Object.isFrozen(left[0].steps[0].participationIndexes), true);
 });

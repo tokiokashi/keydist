@@ -201,3 +201,34 @@ test('Transition / candidate / SFB結果は1回の解析内でimmutable index契
   assert.equal(Object.isFrozen(result.sfbEvents), true);
   assert.equal(Object.isFrozen(result.sfbStrokeIndexes), true);
 });
+
+test('押したキー・指・押下位置の差が同じ候補は、Strokeの位置が違っても同じ値と同じ列を共有する', () => {
+  const a = () => press('LP', [key('a', 'LP', 1, 2)]);
+  const s = () => press('LR', [key('s', 'LR', 2, 2)]);
+  const result = analyzeStrokeTransitions([stroke(0, [a()]), stroke(1, [s()]), stroke(2, [a()]), stroke(3, [s()])], keepSameFinger);
+
+  assert.equal(result.transitions.length, 3);
+  const [first, reverse, third] = result.transitions;
+  assert.equal(first.candidates, third.candidates, '同じ組合せの候補の列は同じ配列');
+  assert.equal(first.candidates[0], third.candidates[0], '同じ組合せの候補は同じ値');
+  assert.notEqual(first.candidates[0], reverse.candidates[0], '向きが逆の候補は別の値');
+  assert.equal(Object.isFrozen(first.candidates), true);
+  assert.equal(Object.isFrozen(first.candidates[0]), true);
+});
+
+test('押下位置の差が違う候補は、キーと指が同じでも共有しない', () => {
+  const result = analyzeStrokeTransitions(
+    [
+      stroke(0, [press('LP', [key('a', 'LP', 1, 2)])]),
+      stroke(1, [press('LR', [key('s', 'LR', 2, 2)])]),
+      stroke(2, [press('LP', [key('a', 'LP', 1, 2)], { x: 1, y: 3 })]),
+      stroke(3, [press('LR', [key('s', 'LR', 2, 2)])]),
+    ],
+    keepSameFinger,
+  );
+
+  const [first, , third] = result.transitions;
+  assert.notEqual(first.candidates[0], third.candidates[0]);
+  assert.equal(first.candidates[0].dy, 0);
+  assert.equal(third.candidates[0].dy, -1);
+});

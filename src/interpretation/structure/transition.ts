@@ -7,7 +7,8 @@ export type FingerDirection = 'inward' | 'outward' | 'same';
 /**
  * Analysis Chain内の隣接Stroke間に存在する1本のPress×Press候補。
  *
- * fromKeys / toKeys は元StrokeのPressが持つKey配列への参照で、Key/Pointを複製しない。
+ * fromKeys / toKeys は同じキーの組合せの最初のPressが持つKey配列への参照で、Key/Pointを複製しない。
+ * 候補の値と候補の列は、同じ中身なら遷移をまたいで共有する。作った後に書き換えない。
  * press / participation indexは1回のAnalysisResult内でのみ安定する参照。
  */
 export interface FingerTransition {
@@ -109,34 +110,86 @@ function participationIndex(stroke: Stroke, hand: Hand, finger: Finger): number 
   return index < 0 ? undefined : index;
 }
 
-function candidatesFor(fromStroke: Stroke, toStroke: Stroke, hand: Hand): readonly FingerTransition[] {
+/**
+ * 候補とその列を、同じ中身なら同じ値にまとめるための入れ物。
+ * 候補はStrokeの位置を持たず、押したキー・指・押下位置の差だけで決まる。同じ組合せは繰り返し現れるので、
+ * 遷移ごとに作ると打鍵数に比例して重くなる。作った後に書き換えない値だけを共有する。
+ */
+interface CandidatePool {
+  readonly transitions: Map<string, { readonly transition: FingerTransition; readonly id: number }>;
+  readonly lists: Map<string, readonly FingerTransition[]>;
+}
+
+const NO_CANDIDATES: readonly FingerTransition[] = Object.freeze([]);
+
+function createCandidatePool(): CandidatePool {
+  return { transitions: new Map(), lists: new Map() };
+}
+
+function keyIds(keys: readonly Key[]): string {
+  return keys.map((key) => key.id).join(',');
+}
+
+function candidatesFor(fromStroke: Stroke, toStroke: Stroke, hand: Hand, pool: CandidatePool): readonly FingerTransition[] {
   const fromPresses = fromStroke.presses.map((press, index) => ({ press, index })).filter(({ press }) => handOf(press.finger) === hand);
   const toPresses = toStroke.presses.map((press, index) => ({ press, index })).filter(({ press }) => handOf(press.finger) === hand);
+  if (fromPresses.length === 0 || toPresses.length === 0) return NO_CANDIDATES;
 
   const candidates: FingerTransition[] = [];
+  const ids: number[] = [];
   for (const from of fromPresses) {
     for (const to of toPresses) {
-      const relation = fingerRelation(from.press.finger, to.press.finger);
-      candidates.push(
-        Object.freeze({
-          candidateIndex: candidates.length,
-          fromPressIndex: from.index,
-          toPressIndex: to.index,
-          fromParticipationIndex: participationIndex(fromStroke, hand, from.press.finger),
-          toParticipationIndex: participationIndex(toStroke, hand, to.press.finger),
-          fromFinger: from.press.finger,
-          toFinger: to.press.finger,
-          fromKeys: from.press.keys,
-          toKeys: to.press.keys,
-          fingerDirection: relation.direction,
-          fingerStep: relation.step,
-          dx: to.press.target.x - from.press.target.x,
-          dy: to.press.target.y - from.press.target.y,
-        }),
-      );
+      const candidateIndex = candidates.length;
+      const fromParticipationIndex = participationIndex(fromStroke, hand, from.press.finger);
+      const toParticipationIndex = participationIndex(toStroke, hand, to.press.finger);
+      const dx = to.press.target.x - from.press.target.x;
+      const dy = to.press.target.y - from.press.target.y;
+      const key = [
+        candidateIndex,
+        from.index,
+        to.index,
+        fromParticipationIndex ?? '',
+        toParticipationIndex ?? '',
+        from.press.finger,
+        to.press.finger,
+        keyIds(from.press.keys),
+        keyIds(to.press.keys),
+        dx,
+        dy,
+      ].join('|');
+      let known = pool.transitions.get(key);
+      if (!known) {
+        const relation = fingerRelation(from.press.finger, to.press.finger);
+        known = {
+          id: pool.transitions.size,
+          transition: Object.freeze({
+            candidateIndex,
+            fromPressIndex: from.index,
+            toPressIndex: to.index,
+            fromParticipationIndex,
+            toParticipationIndex,
+            fromFinger: from.press.finger,
+            toFinger: to.press.finger,
+            fromKeys: from.press.keys,
+            toKeys: to.press.keys,
+            fingerDirection: relation.direction,
+            fingerStep: relation.step,
+            dx,
+            dy,
+          }),
+        };
+        pool.transitions.set(key, known);
+      }
+      candidates.push(known.transition);
+      ids.push(known.id);
     }
   }
-  return Object.freeze(candidates);
+  const listKey = ids.join(',');
+  const knownList = pool.lists.get(listKey);
+  if (knownList) return knownList;
+  const list = Object.freeze(candidates);
+  pool.lists.set(listKey, list);
+  return list;
 }
 
 /**
@@ -145,6 +198,7 @@ function candidatesFor(fromStroke: Stroke, toStroke: Stroke, hand: Hand): readon
  */
 export function buildHandTransitions(analysis: ChainAnalysisResult): readonly HandTransition[] {
   const transitions: HandTransition[] = [];
+  const pool = createCandidatePool();
 
   for (const chain of analysis.chains) {
     for (let fromStrokeIndex = chain.startStrokeIndex; fromStrokeIndex + 1 < chain.endStrokeIndex; fromStrokeIndex++) {
@@ -156,7 +210,7 @@ export function buildHandTransitions(analysis: ChainAnalysisResult): readonly Ha
           hand: chain.hand,
           fromStrokeIndex,
           toStrokeIndex,
-          candidates: candidatesFor(analysis.strokes[fromStrokeIndex], analysis.strokes[toStrokeIndex], chain.hand),
+          candidates: candidatesFor(analysis.strokes[fromStrokeIndex], analysis.strokes[toStrokeIndex], chain.hand, pool),
         }),
       );
     }

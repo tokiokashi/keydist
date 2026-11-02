@@ -23,9 +23,10 @@ export const DEFAULT_CHAIN_INTERPRETATION: ChainInterpretation = {
 /**
  * 正規化Strokeから得られる、1手・1Strokeぶんの参加fact。
  * Chainを切る判断は含めない。
+ *
+ * 値は打鍵の位置に依らず、同じ中身ならStrokeをまたいで同じ値を共有する。作った後に書き換えない。
  */
-export interface RawHandStep {
-  readonly strokeIndex: number;
+export interface RawHandFacts {
   readonly hand: Hand;
   readonly participationIndexes: readonly number[];
   /** canonical classificationから導出したcomposition fact。 */
@@ -54,7 +55,8 @@ export interface RawHandRun {
   /** Stroke indexのhalf-open範囲。 */
   readonly startStrokeIndex: number;
   readonly endStrokeIndex: number;
-  readonly steps: readonly RawHandStep[];
+  /** Strokeごとの参加fact。Runの中はStrokeが連続するので、`steps[i]`は`startStrokeIndex + i`番のStroke。 */
+  readonly steps: readonly RawHandFacts[];
 }
 
 export interface AnalysisChain {
@@ -90,7 +92,20 @@ function opposite(hand: Hand): Hand {
   return hand === 'left' ? 'right' : 'left';
 }
 
-function rawStep(strokes: readonly Stroke[], strokeIndex: number, hand: Hand): RawHandStep | undefined {
+/**
+ * 参加factと短いRunのfact列を、同じ中身なら同じ値にまとめるための入れ物。1回のRaw hand run構築の中で使う。
+ * 手が交互に入れ替わる入力ではRunが短く数多く現れるので、Runごとに列を作ると打鍵数に比例して重くなる。
+ */
+interface RawHandFactsPool {
+  readonly facts: Map<string, RawHandFacts>;
+  readonly idOf: Map<RawHandFacts, number>;
+  readonly shortRuns: Map<string, readonly RawHandFacts[]>;
+}
+
+/** fact列を共有する長さの上限。これより長いRunは同じ列が現れにくく、キーの組立ても高くつく。 */
+const SHARED_RUN_MAX_LENGTH = 4;
+
+function rawFacts(strokes: readonly Stroke[], strokeIndex: number, hand: Hand, pool: RawHandFactsPool): RawHandFacts | undefined {
   const stroke = strokes[strokeIndex];
   const participationIndexes = stroke.participations
     .map((participation, index) => ({ participation, index }))
@@ -109,49 +124,70 @@ function rawStep(strokes: readonly Stroke[], strokeIndex: number, hand: Hand): R
   const oppositeHandOutput = stroke.participations.some(
     (participation) => participation.hand === opposite(hand) && participation.roles.includes('output'),
   );
+  const isComposition = stroke.classifications.includes('composition');
 
-  return Object.freeze({
-    strokeIndex,
-    hand,
-    participationIndexes: Object.freeze(participationIndexes),
-    isComposition: stroke.classifications.includes('composition'),
-    hasOutput,
-    hasTrigger,
-    hasHeldTrigger,
-    triggerOnly: hasTrigger && !hasOutput,
-    thumbOnly,
-    thumbTriggerOnly: thumbOnly && hasTrigger && !hasOutput,
-    sameFinger,
-    nonThumbSameFinger,
-    oppositeHandOutput,
-  });
+  const flags = [isComposition, hasOutput, hasTrigger, hasHeldTrigger, thumbOnly, sameFinger, nonThumbSameFinger, oppositeHandOutput];
+  const key = `${hand}|${participationIndexes.join(',')}|${flags.map((flag) => (flag ? 1 : 0)).join('')}`;
+  let facts = pool.facts.get(key);
+  if (!facts) {
+    facts = Object.freeze({
+      hand,
+      participationIndexes: Object.freeze(participationIndexes),
+      isComposition,
+      hasOutput,
+      hasTrigger,
+      hasHeldTrigger,
+      triggerOnly: hasTrigger && !hasOutput,
+      thumbOnly,
+      thumbTriggerOnly: thumbOnly && hasTrigger && !hasOutput,
+      sameFinger,
+      nonThumbSameFinger,
+      oppositeHandOutput,
+    });
+    pool.facts.set(key, facts);
+    pool.idOf.set(facts, pool.idOf.size);
+  }
+  return facts;
+}
+
+function sharedSteps(steps: RawHandFacts[], pool: RawHandFactsPool): readonly RawHandFacts[] {
+  if (steps.length > SHARED_RUN_MAX_LENGTH) return Object.freeze(steps);
+  const key = steps.map((facts) => pool.idOf.get(facts)).join(',');
+  const known = pool.shortRuns.get(key);
+  if (known) return known;
+  const frozen = Object.freeze(steps);
+  pool.shortRuns.set(key, frozen);
+  return frozen;
 }
 
 /** Stroke列から、手が連続して参加したというfactだけをRaw hand runへする。 */
 export function buildRawHandRuns(strokes: readonly Stroke[]): readonly RawHandRun[] {
   const runs: RawHandRun[] = [];
+  const pool: RawHandFactsPool = { facts: new Map(), idOf: new Map(), shortRuns: new Map() };
   for (const hand of ['left', 'right'] as const) {
-    let steps: RawHandStep[] = [];
+    let start = 0;
+    let steps: RawHandFacts[] = [];
     const flush = () => {
       if (steps.length === 0) return;
       runs.push(
         Object.freeze({
           hand,
-          startStrokeIndex: steps[0].strokeIndex,
-          endStrokeIndex: steps[steps.length - 1].strokeIndex + 1,
-          steps: Object.freeze(steps),
+          startStrokeIndex: start,
+          endStrokeIndex: start + steps.length,
+          steps: sharedSteps(steps, pool),
         }),
       );
       steps = [];
     };
 
     for (let strokeIndex = 0; strokeIndex < strokes.length; strokeIndex++) {
-      const step = rawStep(strokes, strokeIndex, hand);
-      if (!step) {
+      const facts = rawFacts(strokes, strokeIndex, hand, pool);
+      if (!facts) {
         flush();
         continue;
       }
-      steps.push(step);
+      if (steps.length === 0) start = strokeIndex;
+      steps.push(facts);
     }
     flush();
   }
@@ -160,7 +196,7 @@ export function buildRawHandRuns(strokes: readonly Stroke[]): readonly RawHandRu
   return Object.freeze(runs);
 }
 
-function breaksChain(step: RawHandStep, policy: ChainInterpretation): boolean {
+function breaksChain(step: RawHandFacts, policy: ChainInterpretation): boolean {
   // same-fingerは非親指だけを対象にし、親指onlyは独立Policyで扱う。
   return (
     (policy.breakOnSameFinger && step.nonThumbSameFinger) ||
@@ -200,13 +236,14 @@ export function buildAnalysisChains(
       start = undefined;
     };
 
-    for (const step of run.steps) {
+    run.steps.forEach((step, offset) => {
+      const strokeIndex = run.startStrokeIndex + offset;
       if (breaksChain(step, policy)) {
-        flush(step.strokeIndex);
-        continue;
+        flush(strokeIndex);
+        return;
       }
-      if (start === undefined) start = step.strokeIndex;
-    }
+      if (start === undefined) start = strokeIndex;
+    });
     flush(run.endStrokeIndex);
   });
 
