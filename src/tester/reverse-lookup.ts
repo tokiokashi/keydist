@@ -403,7 +403,7 @@ export function reverseLookupGuideIndexForText(layout: Layout, route: ReverseLoo
   }
 
   const nextActionIndex = actions.findIndex((action) => action.routeStepIndex === completedRouteSteps);
-  return nextActionIndex < 0 ? 0 : nextActionIndex;
+  return Math.max(nextActionIndex, 0);
 }
 
 /**

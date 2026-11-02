@@ -158,5 +158,5 @@ export function resolveArrangement(arrangement: HeatmapLayerArrangement, layerCo
 /** タブで出す層の位置。idが今の図の中に無ければ最初の層。 */
 export function activeEntryIndex(entries: readonly HeatmapLayerEntry[], activeLayerId: string): number {
   const index = entries.findIndex((entry) => entry.id === activeLayerId);
-  return index < 0 ? 0 : index;
+  return Math.max(index, 0);
 }

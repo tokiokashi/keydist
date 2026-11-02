@@ -41,14 +41,14 @@ const pane = (page: Page, id: string): Locator => page.locator(`.workspace-grid-
 const button = (page: Page, id: string, action: string): Locator => pane(page, id).locator(`[data-playback-action="${action}"]`);
 
 async function cursor(page: Page, id: string): Promise<number> {
-  const text = await pane(page, id).locator('[data-playback-position]').innerText();
+  const text = (await pane(page, id).locator('[data-playback-position]').textContent()) ?? '';
   return Number(/^(\d+) \//.exec(text)?.[1]);
 }
 
 const playing = (page: Page, id: string) =>
   button(page, id, 'toggle')
-    .innerText()
-    .then((text) => text.includes('一時停止'));
+    .textContent()
+    .then((text) => (text ?? '').includes('一時停止'));
 
 test('停止のあとに再生すると全部のペインが同じ時刻に先頭から始まり、一時停止で同じ位置に並ぶ', async ({ page }) => {
   await open(page, [playback('a', 'qwerty'), playback('b', 'qwerty')]);

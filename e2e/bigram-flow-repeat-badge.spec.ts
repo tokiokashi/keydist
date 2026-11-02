@@ -17,7 +17,7 @@ async function snapshot(flow: Locator) {
     edges: await flow
       .locator('[data-flow-edge="true"]')
       .evaluateAll((els) => els.map((el) => `${el.getAttribute('data-flow-weight')}:${el.getAttribute('stroke-width')}`)),
-    legend: await flow.locator('.flow-legend').innerText(),
+    legend: await flow.locator('.flow-legend').textContent(),
   };
 }
 

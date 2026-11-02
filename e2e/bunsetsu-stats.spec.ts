@@ -130,7 +130,7 @@ test.describe('個別画面', () => {
   });
 
   test('打ちやすさ・順位・結論を述べる文言を出さない', async ({ page }) => {
-    const text = (await feature(page).innerText()).replaceAll(/\s+/g, '');
+    const text = ((await feature(page).textContent()) ?? '').replaceAll(/\s+/g, '');
     for (const word of ['打ちやすい', '打ちにくい', '優れ', '劣', '順位', '結論', '合成スコア', 'おすすめ']) {
       expect(text, word).not.toContain(word);
     }
