@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { faceFromEntries, type Face } from './index.ts';
+import { faceFromEntries, LAYOUT_BY_ID, type Face } from './index.ts';
 import { validateFaceAuthoring } from './face-authoring-validation.ts';
 import { fromFaces } from './types.ts';
 
@@ -110,4 +110,26 @@ test('presentation trigger metadataの不正はfromFaces constructor境界でrej
       ]),
     /presentationTriggerAlternatives\[0\]は空にできない（face:0）/,
   );
+});
+
+test('extraCellsは左端の列の3つのキーだけを許す', () => {
+  const withExtra = (key: string): Face => ({ ...faceFromEntries([], 'simultaneous', {}), extraCells: { [key]: 'あ' } });
+  for (const key of ['backquote', 'tab', 'caps-lock']) {
+    assert.doesNotThrow(() => validateFaceAuthoring([withExtra(key)]), key);
+  }
+  for (const key of ['q', 'shift-l', 'space', 'enter']) {
+    assert.throws(() => validateFaceAuthoring([withExtra(key)]), /extraCellsに使えるのは左端の列の3つのキーだけ/, key);
+  }
+});
+
+test('コンボとして数える面のextraCellsも検査する', () => {
+  const { layer: _layer, ...base } = face(['k'], 'd', { inputRole: 'composition', compositionAggregation: 'combo' });
+  const comboFace: Face = { ...base, extraCells: { q: 'あ' } };
+  assert.throws(() => validateFaceAuthoring([comboFace]), /extraCellsに使えるのは左端の列の3つのキーだけ/);
+});
+
+test('組み込みの全配列の面が、extraCellsの検査を通る', () => {
+  for (const layout of LAYOUT_BY_ID.values()) {
+    assert.doesNotThrow(() => validateFaceAuthoring(layout.faces ?? []), layout.id);
+  }
 });
