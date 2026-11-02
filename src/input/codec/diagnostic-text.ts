@@ -56,15 +56,17 @@ export function describeFileDecodeFailure(reason: DecodeFailure): { readonly mes
 
 /**
  * `JSON.parse`が投げた例外を、画面に出す日本語の文にする。例外の文はブラウザごとに違う英語なので、そのまま出さず、
- * そこから読み取れる位置（`line N column M`か、先頭からの文字数`position N`）だけを使って伝える。読み取れなければ位置は伝えない。
+ * そこから読み取れる位置だけを使って伝える。例外の文は不正なトークンの前後のファイルの内容を引用するので、位置は文の末尾の決まった形（V8の`at position N (line L column C)`・旧形式の`in JSON at position N`・Firefoxの`at line L column C of the JSON data`）にだけ一致させる。引用の中の文字列は位置と見なさない。読み取れなければ位置は伝えない。
  */
 export function describeJsonSyntaxError(error: unknown, text: string): string {
   const syntax = 'JSONの書式が正しくありません';
   if (!(error instanceof Error)) return syntax;
-  const lineColumn = /line (\d+) column (\d+)/.exec(error.message);
-  if (lineColumn !== null) return `${lineColumn[1]}行目の${lineColumn[2]}文字目付近で${syntax}`;
-  const position = /position (\d+)/.exec(error.message);
-  if (position === null) return syntax;
+  const firefox = /at line (\d+) column (\d+) of the JSON data$/.exec(error.message);
+  if (firefox !== null) return `${firefox[1]}行目の${firefox[2]}文字目付近で${syntax}`;
+  const v8 = /at position (\d+)(?: \(line (\d+) column (\d+)\))?$/.exec(error.message);
+  if (v8 === null) return syntax;
+  if (v8[2] !== undefined) return `${v8[2]}行目の${v8[3]}文字目付近で${syntax}`;
+  const position = v8;
   const before = text.slice(0, Math.min(Number(position[1]), text.length)).split('\n');
   return `${before.length}行目の${before[before.length - 1].length + 1}文字目付近で${syntax}`;
 }

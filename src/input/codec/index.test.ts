@@ -280,4 +280,30 @@ test('JSONの構文エラー: ブラウザの英語の文を出さず、読み�
   assert.equal(describeJsonSyntaxError(new Error('Unexpected token }, is not valid JSON'), ''), 'JSONの書式が正しくありません');
   assert.equal(describeJsonSyntaxError(new Error('Unexpected end of JSON input'), ''), 'JSONの書式が正しくありません');
   assert.equal(describeJsonSyntaxError('x', ''), 'JSONの書式が正しくありません');
+  // 例外文が引用するファイルの中身を位置と見なさない
+  const quoted = 'line 3 column 4';
+  let quotedError: unknown;
+  try {
+    JSON.parse(quoted);
+  } catch (error) {
+    quotedError = error;
+  }
+  assert.equal(describeJsonSyntaxError(quotedError, quoted), 'JSONの書式が正しくありません');
+  assert.equal(
+    describeJsonSyntaxError(new Error('Unexpected token \'x\', "x at position 3 (line 1 column 4)" is not valid JSON'), ''),
+    'JSONの書式が正しくありません',
+  );
+  // V8の新旧の形式とFirefoxの形式
+  assert.equal(
+    describeJsonSyntaxError(new Error('Unexpected token } in JSON at position 6'), 'a\nb\nc }'),
+    '3行目の3文字目付近でJSONの書式が正しくありません',
+  );
+  assert.equal(
+    describeJsonSyntaxError(new Error('Unexpected non-whitespace character after JSON at position 7 (line 1 column 8)'), ''),
+    '1行目の8文字目付近でJSONの書式が正しくありません',
+  );
+  assert.equal(
+    describeJsonSyntaxError(new Error('JSON.parse: unexpected character at line 2 column 5 of the JSON data'), ''),
+    '2行目の5文字目付近でJSONの書式が正しくありません',
+  );
 });
