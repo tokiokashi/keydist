@@ -137,6 +137,11 @@ export class TypingInputEngine {
   readonly #releasedWindowKeys = new Set<PhysicalKeyId>();
   readonly #pressOrder = new Map<PhysicalKeyId, number>();
   readonly #seededHoldKeys = new Set<PhysicalKeyId>();
+  /**
+   * holdが続いている間に押され、どのstepにも成立し得ないためwindowへ入れなかったkey。
+   * holdが終わった時にwindowへ戻す。
+   */
+  readonly #shadowKeys = new Map<PhysicalKeyId, { readonly order: number; released: boolean }>();
   readonly #segments: RecognitionSegment[] = [];
 
   #nextOrder = 1;
@@ -180,12 +185,15 @@ export class TypingInputEngine {
     if (event.type === 'up') {
       this.#pressed.delete(key);
       if (this.#windowKeys.has(key)) this.#releasedWindowKeys.add(key);
+      const shadow = this.#shadowKeys.get(key);
+      if (shadow !== undefined) shadow.released = true;
       if (this.#seededHoldKeys.has(key)) {
         this.#seededHoldKeys.delete(key);
         this.#windowKeys.delete(key);
         this.#releasedWindowKeys.delete(key);
         this.#pressOrder.delete(key);
         this.#holdState = undefined;
+        this.#restoreShadowKeys();
       }
 
       if (this.#pending?.input.physicalKeys.map(resolveKeyId).includes(key) && !this.#hasPotentialExtension(this.#pending)) {
@@ -217,6 +225,12 @@ export class TypingInputEngine {
     if (match !== undefined) {
       if (this.#hasPotentialExtension(match)) this.#pending = match;
       else recognized.push(...this.#commitStep(match));
+    } else if (this.#isDeadUnderHold(key)) {
+      // 保持中のkeyと組んで成立するstepが無いkeyをwindowへ残すと、
+      // 以後に押すkeyの照合が全部失敗して出力が欠ける。
+      this.#windowKeys.delete(key);
+      this.#pressOrder.delete(key);
+      this.#shadowKeys.set(key, { order: this.#nextOrder - 1, released: false });
     }
 
     return this.#result(recognized);
@@ -234,10 +248,32 @@ export class TypingInputEngine {
     this.#releasedWindowKeys.clear();
     this.#pressOrder.clear();
     this.#seededHoldKeys.clear();
+    this.#shadowKeys.clear();
     this.#segments.length = 0;
     this.#nextOrder = 1;
     this.#pending = undefined;
     this.#holdState = undefined;
+  }
+
+  #isDeadUnderHold(key: PhysicalKeyId): boolean {
+    if (this.#seededHoldKeys.size === 0 || this.#seededHoldKeys.has(key)) return false;
+    return !this.#activeStepCandidates().some((step) => this.#stepCanStillMatch(step));
+  }
+
+  /**
+   * holdが終わった時点でまだ押されているkeyは、そこから通常のwindowで照合する。
+   * 離し済みのkeyは、単打として出力できるものだけ戻す。
+   */
+  #restoreShadowKeys(): void {
+    const entries = [...this.#shadowKeys].sort((left, right) => left[1].order - right[1].order);
+    this.#shadowKeys.clear();
+    for (const [key, entry] of entries) {
+      if (entry.released && !this.#hasStandaloneInput(key)) continue;
+      this.#windowKeys.add(key);
+      if (entry.released) this.#releasedWindowKeys.add(key);
+      this.#pressOrder.set(key, this.#nextOrder);
+      this.#nextOrder += 1;
+    }
   }
 
   #result(recognized: readonly RecognizedTypingInput[]): TypingInputResult {
@@ -629,6 +665,7 @@ export class TypingInputEngine {
     const holdKeys = this.#holdState?.keys.map(resolveKeyId) ?? [];
     if (holdKeys.length === 0 || holdKeys.some((key) => !this.#pressed.has(key))) {
       this.#holdState = undefined;
+      this.#restoreShadowKeys();
       return;
     }
 

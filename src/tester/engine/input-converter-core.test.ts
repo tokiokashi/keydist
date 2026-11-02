@@ -307,6 +307,48 @@ for (const shift of ['shift-l', 'shift-r']) {
   }
 }
 
+test('Shiftを左右とも押して続けた文字は、どちらかが押されている間Shiftの面になる', () => {
+  const events: KeyEvent[] = [
+    ['down', 'shift-l'],
+    ['down', 'a'],
+    ['down', 'shift-r'],
+    ['down', 'b'],
+    ['up', 'b'],
+    ['up', 'a'],
+    ['up', 'shift-r'],
+    ['up', 'shift-l'],
+  ];
+  assert.deepEqual(typeWithHold('qwerty', events), ['A', 'B']);
+});
+
+test('先に押したShiftを離しても、もう一方のShiftが押されている間はShiftの面になる', () => {
+  const events: KeyEvent[] = [
+    ['down', 'shift-l'],
+    ['down', 'a'],
+    ['down', 'shift-r'],
+    ['up', 'a'],
+    ['up', 'shift-l'],
+    ['down', 'b'],
+    ['up', 'b'],
+    ['up', 'shift-r'],
+  ];
+  assert.deepEqual(typeWithHold('qwerty', events), ['A', 'B']);
+});
+
+test('Shiftの面を持たないキーを押したまま続けたShiftの面のキーも欠けない', () => {
+  const events: KeyEvent[] = [
+    ['down', 'shift-l'],
+    ['down', '4'],
+    ['down', 'x'],
+    ['down', 'z'],
+    ['up', 'x'],
+    ['up', '4'],
+    ['up', 'z'],
+    ['up', 'shift-l'],
+  ];
+  assert.deepEqual(typeWithHold('jis-kana', events), ['ぅ', 'っ']);
+});
+
 test('Shiftを離した後の文字はShiftの面にならない', () => {
   const events: KeyEvent[] = [
     ['down', 'shift-l'],
