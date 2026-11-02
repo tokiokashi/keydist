@@ -92,3 +92,15 @@ test('見出しの表は評価と同じ関数を共有し、全角形の見出�
   assert.ok(!merged.has('！'));
   assert.equal(evaluationCanonicalInputs(fullwidthLayout), merged);
 });
+
+test('案内に出す出力の文字は、選んだ候補の元の見出しにする', () => {
+  const outputsOf = (layout: typeof qwerty, text: string) => reverseLookup(layout, text, 1)[0]!.steps.map((step) => step.output);
+  assert.deepEqual(outputsOf(fullwidthLayout, 'あ！'), ['あ', '！']);
+  assert.deepEqual(outputsOf(fullwidthLayout, 'あ!'), ['あ', '！']);
+  assert.deepEqual(outputsOf(qwerty, '！'), ['!']);
+  const naginata = LAYOUT_BY_ID.get('naginata-v18')!;
+  const labels = outputsOf(naginata, 'え？');
+  assert.equal(labels.at(-1), '？');
+  // 半角の見出しも持つ薙刀式では、選んだキー自身の見出しが出る
+  assert.deepEqual(outputsOf(naginata, 'あ！'), ['あ', '!']);
+});

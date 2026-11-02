@@ -243,6 +243,11 @@ export function reverseLookup(layout: Layout, query: string, limit = 5, availabl
   for (const chunk of chunks ?? []) {
     for (let i = 0; i < chunk.roman.length; i++) fromTableAt.push(chunk.fromTable);
   }
+  // 見出しを合流させた表は照合の鍵にだけ使う。案内に出す出力の文字は、選んだ候補自身の元の見出しにする
+  const originalHeadingOf = new Map<InputAlternative, string>();
+  for (const [heading, alternatives] of layout.canonicalInputs) {
+    for (const alternative of alternatives) if (!originalHeadingOf.has(alternative)) originalHeadingOf.set(alternative, heading);
+  }
   const outputs = [...canonicalInputs.keys()]
     .filter((output) => output.length > 0)
     .sort((left, right) => [...right].length - [...left].length || left.localeCompare(right));
@@ -270,7 +275,7 @@ export function reverseLookup(layout: Layout, query: string, limit = 5, availabl
           )
         )
           continue;
-        const step = stepFromAlternative(output, alternative);
+        const step = stepFromAlternative(originalHeadingOf.get(alternative) ?? output, alternative);
         if (step.actions.length === 0) continue;
         // 選んでいる物理配列に無いキーを含む打ち方は答えにしない。
         // 実際には打てないキーを案内すると、利用者が探しても見つからないため。
