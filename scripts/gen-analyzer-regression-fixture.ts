@@ -34,8 +34,8 @@ import { nSensitivity } from '#analyzers/n-sensitivity/sensitivity.ts';
 import { recommendedFingerAssignmentId, resolveFingerAssignment } from '#engine/finger-assignment.ts';
 import { MODEL_VERSION } from '#engine/model-version.ts';
 import { modelVersionBumpError, stableStringify } from './model-version-guard.ts';
-import { containsKanji } from '#input/text/reading.ts';
-import { sampleText, SAMPLE_TEXTS, type TextLanguage } from '#input/text/samples.ts';
+import { sampleText, type TextLanguage } from '#input/text/samples.ts';
+import { defaultConditionCases } from './analyzer-regression-cases.ts';
 
 // このスクリプトが再現する経路は、条件の決定 → generateTrace → analyzeStrokeStructure → computeMetrics の並び
 // （配列ごとの上書きが無い既定の条件で、画面に出す数値と同じ呼び出し）。
@@ -285,26 +285,13 @@ function generate(): Fixture {
 
   // 1. 既定条件 × 組み込み配列全部 × 適用可能なサンプル全部。
   //    配列別の上書きが無い既定の経路をそのまま再現する。
-  for (const layout of LAYOUTS) {
-    for (const sampleId of Object.keys(SAMPLE_TEXTS.en)) {
-      cases.push(
-        runCase('en', layout, sampleId, {
-          // 窓幅Nの感度は安いので、代表として最初のEN配列にだけ添える
-          withNSensitivity: layout.id === LAYOUTS[0]!.id,
-        }),
-      );
-    }
-  }
-  // 漢字を含むサンプルは、読みに直す段（辞書が要る）を通してから評価するので、この記録には入れない
-  const kanaSampleIds = Object.keys(SAMPLE_TEXTS.ja).filter((sampleId) => !containsKanji(sampleText('ja', sampleId)));
-  for (const layout of LAYOUTS_JA) {
-    for (const sampleId of kanaSampleIds) {
-      cases.push(
-        runCase('ja', layout, sampleId, {
-          withNSensitivity: layout.id === 'naginata-v18' && sampleId === 'modern',
-        }),
-      );
-    }
+  for (const { language, layout, sampleId } of defaultConditionCases()) {
+    cases.push(
+      runCase(language, layout, sampleId, {
+        // 窓幅Nの感度は安いので、代表として最初のEN配列と、日本語のnaginata-v18の現代文にだけ添える
+        withNSensitivity: language === 'en' ? layout.id === LAYOUTS[0]!.id : layout.id === 'naginata-v18' && sampleId === 'modern',
+      }),
+    );
   }
 
   // 2. 既定値が踏まない分岐を突く非既定ケース（少数・理由付き）。

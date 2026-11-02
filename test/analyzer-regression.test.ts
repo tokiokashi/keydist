@@ -16,6 +16,7 @@ import { tableForRule } from '#input/romaji/rules.ts';
 import { resolveFingerAssignment } from '#engine/finger-assignment.ts';
 import { MODEL_VERSION } from '#engine/model-version.ts';
 import { sampleText, type TextLanguage } from '#input/text/samples.ts';
+import { defaultConditionCaseId, defaultConditionCases } from '../scripts/analyzer-regression-cases.ts';
 
 /**
  * 組み込みの指割り当て。fixtureに記録した fingerAssignmentId から実体を引き直す
@@ -204,6 +205,14 @@ test('fixtureを作った時のMODEL_VERSIONが今の値と一致する', () => 
     MODEL_VERSION,
     'MODEL_VERSIONを上げたらfixtureを作り直す。数値が動いたのに版が同じなら、先に src/engine/model-version.ts を上げてから npm run generate:analyzer-regression-fixture を回す',
   );
+});
+
+test('fixtureに既定条件の全配列×全サンプルのケースが載っている', () => {
+  const recorded = new Set(fixture.cases.map((c) => c.id));
+  const missing = defaultConditionCases()
+    .map(defaultConditionCaseId)
+    .filter((id) => !recorded.has(id));
+  assert.deepEqual(missing, [], '配列やサンプルを足したら npm run generate:analyzer-regression-fixture でfixtureを作り直す。足りないケース');
 });
 
 for (const fixtureCase of fixture.cases) {
