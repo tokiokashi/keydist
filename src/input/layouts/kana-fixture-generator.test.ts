@@ -138,7 +138,7 @@ test('ANSI対象列でsourceから落としたセルに omission が無ければ
   assert.throws(() => validateSourceManifest('target-missing.json', manifest), /sourceから除外されたセルに omissions が無い/);
 });
 
-test('ANSI対象列の omission はsource値を保持し採用側を空欄にする', () => {
+test('ANSI対象列のomissionはsource値を保持し採用側を空欄にする', () => {
   const manifest = makeManifest();
   setSourceCell(manifest, 0, 0, 0, 'ヶ');
   manifest.omissions.push({

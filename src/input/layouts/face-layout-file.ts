@@ -1,3 +1,4 @@
+import { FILE_ROOT_SHAPE_DETAIL, FORMAT_FIELD_MISSING_DETAIL } from '../codec/diagnostic-text.ts';
 import { isRecord } from '../codec/index.ts';
 import { FINGERS, type NonThumb } from '../shapes/geometry.ts';
 import {
@@ -91,11 +92,12 @@ export function parseFaceLayoutFile(text: string, expected: LayoutKind): FaceLay
     });
   }
   if (!isRecord(parsed) || parsed.format !== FACE_LAYOUT_FILE_FORMAT) {
-    const format = isRecord(parsed) ? parsed.format : undefined;
-    return fail({
-      path: 'format',
-      message: `keydistの面で定義する配列ではありません。formatを「${FACE_LAYOUT_FILE_FORMAT}」にしてください（${JSON.stringify(format) ?? 'なし'}）`,
-    });
+    const detail = !isRecord(parsed)
+      ? FILE_ROOT_SHAPE_DETAIL
+      : parsed.format === undefined
+        ? FORMAT_FIELD_MISSING_DETAIL
+        : '「format」欄の値が面で定義する配列のファイルのものと違います';
+    return fail({ path: 'format', message: `keydistの面で定義する配列ではありません。${detail}` });
   }
   if (parsed.version === undefined) return fail({ path: 'version', message: '版（version）がありません' });
   if (typeof parsed.version !== 'number' || !Number.isInteger(parsed.version) || parsed.version < 1) {
