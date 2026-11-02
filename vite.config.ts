@@ -2,6 +2,7 @@ import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import viteReact from '@vitejs/plugin-react';
 import { nitro } from 'nitro/vite';
 import { readFileSync, realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { defineConfig, type Plugin } from 'vite';
 import { dictionaryPlugin } from './scripts/dictionary-plugin.ts';
 
@@ -9,6 +10,21 @@ const base = process.env.KEYDIST_BASE_PATH ?? '/';
 
 // サイドバーの版表示に使う。版番号の正は package.json の version（CONTRIBUTING.md「公開」）。
 const packageVersion = (JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string }).version;
+
+// 分割器の版（src/platform/bunsetsu/info.ts）はpackage.jsonのdependencies.budouxを読む。
+// package.jsonを丸ごと取り込むとscriptsや開発用の依存まで公開物に入るので、budouxの版だけを残した形に置き換える。
+const rootPackageJsonPath = fileURLToPath(new URL('./package.json', import.meta.url));
+function packageJsonBudouxOnly(): Plugin {
+  const budouxVersion = (JSON.parse(readFileSync(rootPackageJsonPath, 'utf8')) as { dependencies: { budoux: string } }).dependencies.budoux;
+  return {
+    name: 'keydist-package-json-budoux-only',
+    enforce: 'post',
+    transform(_code, id) {
+      if (id.split('?')[0] !== rootPackageJsonPath) return null;
+      return { code: `export default ${JSON.stringify({ dependencies: { budoux: budouxVersion } })};`, map: null };
+    },
+  };
+}
 
 // e2eの `globalSetup` が、ポートの先で動いているdev serverが自分のworktreeのものかを確かめるために使う。
 // `/@fs` の200/403は包含関係（祖先のserverも200を返す）しか見られないので、serverのルートそのものを返す。
@@ -37,6 +53,7 @@ export default defineConfig({
   },
   plugins: [
     e2eRootProbe(),
+    packageJsonBudouxOnly(),
     dictionaryPlugin(),
     tanstackStart({
       srcDirectory: 'src',
