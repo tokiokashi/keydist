@@ -147,7 +147,7 @@ test('古い形式名のJSONは取り込まない', () => {
   assert.equal(problems[0]?.path, 'format');
 });
 
-test('format の診断は、期待する値も読んだ値も画面に出さず、印が違うことだけを伝える', () => {
+test('formatの診断は、期待する値も読んだ値も画面に出さず、印が違うことだけを伝える', () => {
   const cases: Array<[string, unknown]> = [
     ['違う値', { ...faceLayoutFileBody(KANA), format: 'keydist-kana-layout' }],
     ['欄が無い', (({ format: _f, ...rest }) => rest)(faceLayoutFileBody(KANA))],
