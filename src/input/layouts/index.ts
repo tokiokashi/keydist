@@ -168,7 +168,7 @@ const ALPHA: Layout[] = [
     'sturdy',
   ]),
   // 作者のREADMEのAscii Versionの並び。作者は記号の置き方も設計の一部としていて、`'` `,` `-` `/` のShiftの組がUS配列と違う。
-  // 作者の並びは `[` `]` `=` も含めて全キーを定義している（`` ` `` と `\` はモデル化していないキー）
+  // 作者の並びは `[` `]` `=` も含めて定義している。`` ` ``と`\`は並びに無く、英字配列の定義もどちらのキーにも出力を置いていない（物理配列にそのキーが在るかは理由にしない）
   withAliases(
     withShiftedOutputs(fromRows('graphite', 'Graphite', ['1234567890[]', "bldwz'fouj;=", 'nrtsgyhaei,', 'qxmcvkp.-/']), undefined, {
       "'": '_',
