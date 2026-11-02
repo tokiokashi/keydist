@@ -5,7 +5,7 @@ import { computeMetrics } from '#interpretation/metrics.ts';
 import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
 import { assignmentWithHomeKeys, buildGeometry, DEFAULT_FINGER_ASSIGNMENT, LEFT_COLUMN_KEYS, THUMB_KEY } from '../shapes/geometry.ts';
 import { blankFaceLayoutDraft, checkFaceLayout, type FaceLayoutDraft } from './face-layout-edit.ts';
-import { buildFaceLayout, readFaceBody, type UserFace, type UserFaceBody } from './kana-face-layout.ts';
+import { buildFaceLayout, readFaceBody, type UserFace, type UserFaceBody } from './face-layout.ts';
 import { faceLayoutFileText, parseFaceLayoutFile, type KanaLayoutContent } from './face-layout-file.ts';
 import { physicalKeysUsedByLayout } from './physical-keys.ts';
 

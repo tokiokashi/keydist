@@ -15,7 +15,7 @@ import {
 import { dvorakJScanCode } from './dvorakj-heading.ts';
 import { isWordRegistration } from './import-faces.ts';
 import { CUSTOM_COMBOS } from './combos-custom.ts';
-import { buildFaceLayout, duplicateOutputNotices } from './kana-face-layout.ts';
+import { buildFaceLayout, duplicateOutputNotices } from './face-layout.ts';
 import { createUserLayout, contentOfImported } from './layout-edit.ts';
 import { toLayout, type StageUserLayout, type UserLayout } from './user-layouts.ts';
 

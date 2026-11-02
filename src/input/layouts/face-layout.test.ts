@@ -5,7 +5,7 @@ import { buildGeometry, JIS_FINGER_ASSIGNMENT, THUMB_KEY } from '../shapes/geome
 import { faceCells } from './face-geometry.ts';
 import { JIS_KANA } from './jis-kana.ts';
 import { KANA_COVERAGE_TARGETS, uncoveredKana } from './kana-coverage.ts';
-import { buildFaceLayout, duplicateOutputNotices, readFaceBody, type UserFace, type UserFaceBody } from './kana-face-layout.ts';
+import { buildFaceLayout, duplicateOutputNotices, readFaceBody, type UserFace, type UserFaceBody } from './face-layout.ts';
 import { faceLayoutFileBody, faceLayoutFileText, parseFaceLayoutFile, type KanaLayoutContent } from './face-layout-file.ts';
 import { NICOLA, NICOLA_FACES } from './nicola.ts';
 import { SHINGETA, SHINGETA_FACES } from './shingeta.ts';
@@ -482,7 +482,7 @@ test('読み込みの誤り: 複数の誤りは1回で全部返す', () => {
   assert.ok(paths.includes('name') && paths.includes('faces[0].outputs.zz') && paths.includes('faces[1].inputRole'));
 });
 
-test('同じかなが2か所以上にある時は、誤りにせず場所を並べた注意で返す', () => {
+test('同じ出力が2か所以上にある時は、誤りにせず場所を並べた注意で返す', () => {
   const file = validFile();
   (file.faces as { outputs: Record<string, string> }[])[1]!.outputs = { a: 'あ', s: 'い' };
   const result = read(JSON.stringify(file));

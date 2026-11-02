@@ -9,7 +9,7 @@ import {
 import { QWERTY_LEGEND, resolveKeyId, type NonThumb } from '../shapes/geometry.ts';
 import { fromRows, SINGLE_LAYER_ID, withRomaji, withShiftedOutputs, type Layout } from './index.ts';
 import { ROMAJI_RULES, tableForRule, type RomajiRuleId, type UserRomajiRule } from '../romaji/rules.ts';
-import { buildFaceLayout, FACE_BODY_PROPERTIES, readFaceBody, type AlphaFaceBody, type KanaFaceBody } from './kana-face-layout.ts';
+import { buildFaceLayout, FACE_BODY_PROPERTIES, readFaceBody, type AlphaFaceBody, type KanaFaceBody } from './face-layout.ts';
 import type { Sequence } from './types.ts';
 
 export type {
@@ -17,7 +17,7 @@ export type {
   KanaFaceBody,
   UserFace,
   UserFaceBody,
-} from './kana-face-layout.ts';
+} from './face-layout.ts';
 
 /** 選べるローマ字の綴り */
 export { ROMAJI_RULES };

@@ -2,7 +2,7 @@ import { useMemo, useState, type Dispatch, type ReactNode, type SetStateAction }
 import { blankFace, checkFaceLayout, draftOf, type DraftFace, type FaceLayoutCheck, type FaceLayoutDraft } from '#input/layouts/face-layout-edit.ts';
 import { faceLayoutFileText, parseFaceLayoutFile, type FaceLayoutContent } from '#input/layouts/face-layout-file.ts';
 import { faceIndexOfPath } from './face-editing.ts';
-import type { FaceLayoutNotice, FaceLayoutProblem } from '#input/layouts/kana-face-layout.ts';
+import type { FaceLayoutNotice, FaceLayoutProblem } from '#input/layouts/face-layout.ts';
 import { ignoredHomeKeyWarnings } from '#input/layouts/layout-edit.ts';
 import { FINGER_LABEL } from '#input/shapes/finger-names.ts';
 import { FINGERS, HOME_ROW, LEFT_COLUMN_KEYS, type FingerAssignment, type PhysicalKeyboardStandard } from '#input/shapes/geometry.ts';

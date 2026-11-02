@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { DraftFace, FaceLayoutDraft } from '#input/layouts/face-layout-edit.ts';
-import { isFaceOutputKey, type FaceLayoutNotice, type FaceLayoutProblem } from '#input/layouts/kana-face-layout.ts';
+import { isFaceOutputKey, type FaceLayoutNotice, type FaceLayoutProblem } from '#input/layouts/face-layout.ts';
 import type { LayoutKind } from '#input/layouts/kind.ts';
 import type { FaceMode, InputRole, LayerKind, TriggerOrder, TriggerPersistence } from '#input/layouts/types.ts';
 import { ROW_LABELS } from '#input/layouts/user-layouts.ts';

@@ -11,7 +11,7 @@ import {
   type FaceLayoutNotice,
   type FaceLayoutProblem,
   type UserFace,
-} from './kana-face-layout.ts';
+} from './face-layout.ts';
 import { uncoveredKana } from './kana-coverage.ts';
 import type { FaceMode, InputRole, LayerKind, TriggerOrder, TriggerPersistence } from './types.ts';
 import { isFaceUserLayout, toLayout, type FaceUserLayout, type UserLayout } from './user-layouts.ts';
@@ -91,7 +91,7 @@ export function contentOfFaceLayout(layout: FaceUserLayout): FaceLayoutContent {
 export interface FaceLayoutCheck {
   /** 保存を止める誤り。空なら保存できる */
   readonly problems: readonly FaceLayoutProblem[];
-  /** 保存を止めない注意（同じかなが2か所以上にある旨） */
+  /** 保存を止めない注意（同じ出力が2か所以上にある旨） */
   readonly notices: readonly FaceLayoutNotice[];
   /** 打てない対象のかな。かなの種類だけ調べるので、英字の種類は空。誤りがあって配列を組めない間は `undefined` */
   readonly uncovered: readonly string[] | undefined;
@@ -116,7 +116,7 @@ function compactHomeKeys(homeKeys: Readonly<Partial<Record<NonThumb, string>>>):
 
 /**
  * 下書きを検査する。誤りは全部集めて返す。誤りが無ければ配列として組めることまで確かめ、
- * 打てないかなと、同じかなが2か所以上にある旨を添える。
+ * 打てないかなと、同じ出力が2か所以上にある旨を添える。
  */
 export function checkFaceLayout(draft: FaceLayoutDraft): FaceLayoutCheck {
   const problems: FaceLayoutProblem[] = [];

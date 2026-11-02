@@ -1,6 +1,6 @@
 import type { DraftFace } from '#input/layouts/face-layout-edit.ts';
 import type { FaceMode, InputRole, LayerKind, TriggerOrder, TriggerPersistence } from '#input/layouts/types.ts';
-import { gridPositionOf } from '#input/layouts/kana-face-layout.ts';
+import { gridPositionOf } from '#input/layouts/face-layout.ts';
 import { physicalKeyDisplayLabel } from '#input/shapes/key-labels.ts';
 import { THUMB_KEY, SHIFT_KEY, type PhysicalKeyboardStandard } from '#input/shapes/geometry.ts';
 

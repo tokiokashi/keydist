@@ -1,6 +1,6 @@
 import { QWERTY_LEGEND, resolveKeyId, THUMB_KEY } from '../shapes/geometry.ts';
 import { physicalKeyDisplayLabel } from '../shapes/key-labels.ts';
-import { readFaceBody, type UserFace } from './kana-face-layout.ts';
+import { readFaceBody, type UserFace } from './face-layout.ts';
 import type { AlphaLayoutContent, KanaLayoutContent } from './face-layout-file.ts';
 import type { LayoutKind } from './kind.ts';
 import type { FaceMode, Sequence, TriggerPersistence } from './types.ts';
