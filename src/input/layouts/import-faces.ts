@@ -99,6 +99,8 @@ const KIND_LABEL: Readonly<Record<LayoutKind, string>> = { kana: 'かな', alpha
  * - 英字: 出力は `ka` のように複数文字でもよく、語の登録の判定は掛けない。推奨のローマ字規則は呼び出し側が決める
  *
  * 同じtriggerのキーの集合の面は1つにまとめ、同じ出力が複数の面にあれば全部の置き場を残す。
+ * 切り替えのキーとセルのキーを入れ替えただけの同時押し（逆順の定義）は、先に出た面のセルを残し、後の面のセルは取り込まない。
+ * 捨てたセルの出力が残したセルと違う時だけ、注意に積む。
  * 面の形で表せない面とセルは取り込まず、`warnings` に積む。
  * 機能キーのセルの表示名（`legends`）は、面の形に置き場が無いので残さない。
  */
@@ -111,6 +113,8 @@ export function buildFaceContent(
   kind: LayoutKind,
 ): KanaLayoutContent | AlphaLayoutContent {
   const groups = new Map<string, { trigger: string[]; mode: FaceMode; headings: string[]; outputs: Record<string, string> }>();
+  // 同時押しのセルが打つキーの集合ごとに、先に残したセルを覚える。切り替えのキーとセルのキーを入れ替えた逆順の定義を、同じ入力として照らす
+  const chordOwners = new Map<string, { identity: string; heading: string; output: string }>();
   const warn = (message: string) => {
     if (!warnings.includes(message)) warnings.push(message);
   };
@@ -147,6 +151,19 @@ export function buildFaceContent(
           warnings.push(`${where}の「${output}」は、同じ切り替えのキーの面で先にある「${placed}」と重なるため取り込みませんでした`);
         }
         continue;
+      }
+      if (face.trigger.length > 0 && mode === 'simultaneous') {
+        const chord = [...face.trigger, key].sort().join('+');
+        const owner = chordOwners.get(chord);
+        if (owner !== undefined && owner.identity !== identity) {
+          if (owner.output !== output) {
+            warnings.push(
+              `${where}の「${output}」は、同じキーの同時押しとして先にある面「${owner.heading}」の「${owner.output}」と重なるため取り込みませんでした`,
+            );
+          }
+          continue;
+        }
+        chordOwners.set(chord, { identity, heading: face.heading, output });
       }
       group.outputs[key] = output;
     }

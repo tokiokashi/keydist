@@ -343,6 +343,46 @@ test('同じtriggerの面は1つにまとめ、キーが重なるセルとtrigge
   assert.ok(!warnings.some((warning) => warning.includes('「い」')));
 });
 
+test('切り替えのキーとセルのキーを入れ替えた同時押しは、先の面を残して後の面のセルを捨て、出力が違う時だけ注意に入る', () => {
+  const source = [
+    '-option-input[',
+    '  {F} | +21',
+    '  {U} | +16',
+    '  {O} | +18',
+    ']',
+    // F+U=ざ、F+O=ぜ
+    '({F}[',
+    '  |||',
+    '  ||||||ざ||ぜ|',
+    ']',
+    // U+F=ざ（F+Uと同じ出力）
+    '({U}[',
+    '  |||',
+    '  |||',
+    '  |||ざ|',
+    ']',
+    // O+F=ぞ（F+Oと違う出力）
+    '({O}[',
+    '  |||',
+    '  |||',
+    '  |||ぞ|',
+    ']',
+  ].join('\n');
+  const { content, warnings } = kanaOf(importDvorakJ(source));
+  assert.deepEqual(content.faces.find((face) => face.trigger.join() === 'f')?.outputs, { u: 'ざ', o: 'ぜ' });
+  assert.equal(
+    content.faces.some((face) => face.trigger.join() === 'u'),
+    false,
+  );
+  assert.equal(
+    content.faces.some((face) => face.trigger.join() === 'o'),
+    false,
+  );
+  assert.ok(!warnings.some((warning) => warning.includes('「ざ」')));
+  assert.ok(warnings.some((warning) => warning.includes('「ぞ」') && warning.includes('「ぜ」') && warning.includes('重なる')));
+  assert.doesNotThrow(() => buildFaceLayout('imported', content.name, content));
+});
+
 test('triggerのキー自身の位置にあるセルは、取り込まずに注意へ入れる', () => {
   const source = ['-option-input[', '  {A} | +1e', ']', '({A}[', '  |||', '  |||', '  あ|い|う|', ']', '[', '  あ|い|', ']'].join('\n');
   const { content, warnings } = kanaOf(importDvorakJ(source));
