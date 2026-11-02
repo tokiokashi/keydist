@@ -3,6 +3,7 @@ import { commitAction, commitKeyOf, commitStrokeRulesOf, needsCommitStroke } fro
 import { decidePress, selectFingers, strokeFingerChoices, targetOf, type PlannedInput, type PlannedStroke } from './finger-selection.ts';
 import { COMBO_LAYER_ID, SINGLE_LAYER_ID, type HoldPhase, type LayerDefinition, type Layout, withoutRomajiOnlyCombos } from '#input/layouts/types.ts';
 import { layerDefinitionsWithLabels } from '#input/layouts/layers.ts';
+import { bracketAliasesFor } from '#input/text/bracket-alias.ts';
 import { isSymbolChar } from '#input/text/evaluation-text.ts';
 import { isKanjiChar } from '#input/text/reading.ts';
 import { kanaToRomajiChunks, type RomajiChunk } from '#input/romaji/kunrei.ts';
@@ -815,23 +816,6 @@ export const EVALUATION_CHAR_ALIASES: Readonly<Record<string, string>> = (() => 
   }
   return aliases;
 })();
-
-/**
- * 二重かぎ括弧から、同じ入力として打つかぎ括弧への別名（仕様 §4）。
- * 変換で出す文字として、`『』` は `「」` と同じ物理入力で打つ。
- */
-const BRACKET_ALIASES: Readonly<Record<string, string>> = { '『': '「', '』': '」' };
-
-/** 配列（ローマ字配列はローマ字テーブルを含む）が自分の出力として持たない二重かぎ括弧だけの別名。 */
-function bracketAliasesFor(layout: Layout): Record<string, string> {
-  const aliases: Record<string, string> = {};
-  for (const [from, to] of Object.entries(BRACKET_ALIASES)) {
-    const owns = (heading: string) => heading.includes(from);
-    const has = [...layout.canonicalInputs.keys()].some(owns) || (layout.romajiTable !== undefined && [...layout.romajiTable.keys()].some(owns));
-    if (!has) aliases[from] = to;
-  }
-  return aliases;
-}
 
 /**
  * ローマ字テーブルに当たらなかった二重かぎ括弧の塊を、かぎ括弧の綴りへ置き換える。

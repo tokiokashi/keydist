@@ -58,6 +58,7 @@ import {
   reverseLookupRouteLabel,
 } from './reverse-lookup.ts';
 import { keyboardStandardForGeometryId, physicalKeyDisplayLabel, physicalKeyEngraving } from '#input/shapes/key-labels.ts';
+import { applyBracketAliases } from '#input/text/bracket-alias.ts';
 import { romajiTypingCorrectness } from './live-romaji.ts';
 import {
   DEFAULT_LAYER_KEY_NAMING,
@@ -554,11 +555,13 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
     }),
     [layout, availableKeys],
   );
-  const lookupRoutes = useMemo(() => reverseLookup(layout, lookupQuery, 3, availableKeys), [layout, lookupQuery, availableKeys]);
+  // 配列が『』を自分の出力として持たない時は、評価と同じく「」の綴りで打つ。照合はこの文字列で行い、表示は元のテキストのまま
+  const expectedText = useMemo(() => applyBracketAliases(lookupQuery, layout), [layout, lookupQuery]);
+  const lookupRoutes = useMemo(() => reverseLookup(layout, expectedText, 3, availableKeys), [layout, expectedText, availableKeys]);
   // 物理配列を問わなければ打てる文字か。打てない理由を「配列に無い」と「物理配列に無い」で分ける
   const lookupTypableElsewhere = useMemo(
-    () => lookupQuery.length > 0 && lookupRoutes.length === 0 && reverseLookup(layout, lookupQuery, 1).length > 0,
-    [layout, lookupQuery, lookupRoutes],
+    () => lookupQuery.length > 0 && lookupRoutes.length === 0 && reverseLookup(layout, expectedText, 1).length > 0,
+    [layout, expectedText, lookupQuery, lookupRoutes],
   );
   // 表示・ガイドとも「最長候補」（＝最初のstepでより多くのかなをまとめて打つ経路）に揃える。
   // reverseLookupの並び順は既にこの基準で先頭がそれになるが、選択自体は
@@ -701,21 +704,22 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
   };
 
   const randomPracticeComplete =
-    randomPracticeMode !== null && lookupQuery.length > 0 && session.text === lookupQuery && session.pressedKeys.length === 0;
+    randomPracticeMode !== null && lookupQuery.length > 0 && session.text === expectedText && session.pressedKeys.length === 0;
 
   const typingTargetPresentation = useMemo(() => {
     const target = Array.from(lookupQuery);
+    const expected = Array.from(expectedText);
     const typed = Array.from(session.text);
-    const romajiCorrectness = layout.romajiTable === undefined ? undefined : romajiTypingCorrectness(session.text, lookupQuery, layout.romajiTable);
+    const romajiCorrectness = layout.romajiTable === undefined ? undefined : romajiTypingCorrectness(session.text, expectedText, layout.romajiTable);
 
     return {
       typed: typed.map((char, index) => ({
         char,
-        correct: romajiCorrectness?.[index] ?? target[index] === char,
+        correct: romajiCorrectness?.[index] ?? expected[index] === char,
       })),
       remaining: target.slice(typed.length),
     };
-  }, [layout.romajiTable, lookupQuery, session.text]);
+  }, [layout.romajiTable, lookupQuery, expectedText, session.text]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: layout.idとlookupQueryは戻す時を決める合図。本体では読まない。依存から外すと、配列や練習の文を替えても手順の位置が残る
   useEffect(() => {
