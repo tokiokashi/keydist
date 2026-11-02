@@ -380,7 +380,14 @@ test('切り替えのキーとセルのキーを入れ替えた同時押しは�
   );
   assert.ok(!warnings.some((warning) => warning.includes('「ざ」')));
   assert.ok(warnings.some((warning) => warning.includes('「ぞ」') && warning.includes('「ぜ」') && warning.includes('重なる')));
+  assert.ok(!warnings.some((warning) => warning.includes('取り込めるセルがない')));
   assert.doesNotThrow(() => buildFaceLayout('imported', content.name, content));
+});
+
+test('規則と関係なく元からセルの無い面には、取り込めるセルがない注意が出る', () => {
+  const source = ['-option-input[', '  {F} | +21', '  {U} | +16', ']', '({F}[', '  |||', '  ||||||ざ|', ']', '({U}[', '  |||', ']'].join('\n');
+  const { warnings } = kanaOf(importDvorakJ(source));
+  assert.ok(warnings.some((warning) => warning.includes('取り込めるセルがない')));
 });
 
 test('triggerのキー自身の位置にあるセルは、取り込まずに注意へ入れる', () => {

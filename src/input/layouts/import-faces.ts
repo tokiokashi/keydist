@@ -100,7 +100,7 @@ const KIND_LABEL: Readonly<Record<LayoutKind, string>> = { kana: 'かな', alpha
  *
  * 同じtriggerのキーの集合の面は1つにまとめ、同じ出力が複数の面にあれば全部の置き場を残す。
  * 切り替えのキーとセルのキーを入れ替えただけの同時押し（逆順の定義）は、先に出た面のセルを残し、後の面のセルは取り込まない。
- * 捨てたセルの出力が残したセルと違う時だけ、注意に積む。
+ * 捨てたセルの出力が残したセルと違う時だけ、注意に積む。そのセルを捨てて面が空になった時も、面ごとの注意は積まない。
  * 面の形で表せない面とセルは取り込まず、`warnings` に積む。
  * 機能キーのセルの表示名（`legends`）は、面の形に置き場が無いので残さない。
  */
@@ -112,7 +112,7 @@ export function buildFaceContent(
   warnings: string[],
   kind: LayoutKind,
 ): KanaLayoutContent | AlphaLayoutContent {
-  const groups = new Map<string, { trigger: string[]; mode: FaceMode; headings: string[]; outputs: Record<string, string> }>();
+  const groups = new Map<string, { trigger: string[]; mode: FaceMode; headings: string[]; outputs: Record<string, string>; chordDropped: boolean }>();
   // 同時押しのセルが打つキーの集合ごとに、先に残したセルを覚える。切り替えのキーとセルのキーを入れ替えた逆順の定義を、同じ入力として照らす
   const chordOwners = new Map<string, { identity: string; heading: string; output: string }>();
   const warn = (message: string) => {
@@ -128,7 +128,7 @@ export function buildFaceContent(
     const identity = `${[...face.trigger].sort().join('+')}|${face.trigger.length === 0 ? '' : mode}`;
     let group = groups.get(identity);
     if (group === undefined) {
-      group = { trigger: face.trigger, mode, headings: [], outputs: {} };
+      group = { trigger: face.trigger, mode, headings: [], outputs: {}, chordDropped: false };
       groups.set(identity, group);
     }
     group.headings.push(face.heading);
@@ -156,6 +156,7 @@ export function buildFaceContent(
         const chord = [...face.trigger, key].sort().join('+');
         const owner = chordOwners.get(chord);
         if (owner !== undefined && owner.identity !== identity) {
+          group.chordDropped = true;
           if (owner.output !== output) {
             warnings.push(
               `${where}の「${output}」は、同じキーの同時押しとして先にある面「${owner.heading}」の「${owner.output}」と重なるため取り込みませんでした`,
@@ -172,6 +173,8 @@ export function buildFaceContent(
   const userFaces: UserFace[] = [];
   for (const group of groups.values()) {
     if (Object.keys(group.outputs).length === 0) {
+      // 逆順の定義でセルを全部捨てた面は、捨てたセルごとの注意が既にあるので、面ごとの注意を重ねない
+      if (group.chordDropped) continue;
       warnings.push(`面「${group.headings.join('」「')}」に取り込めるセルがないため取り込みませんでした`);
       continue;
     }
