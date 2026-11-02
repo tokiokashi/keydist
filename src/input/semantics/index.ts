@@ -1,5 +1,6 @@
 export {
   ActivationConflictError,
+  InvalidSequenceError,
   compileFaceSemanticInputs,
   faceAggregatesAsCombo,
   isComboFrameAlternative,
@@ -10,6 +11,7 @@ export {
   compileSequenceSemanticInputs,
   validateCanonicalInputMap,
   type ActivationConflictSide,
+  type InvalidSequenceReason,
   type CompiledSequenceArtifacts,
 } from './compiler.ts';
 export type {

@@ -10,6 +10,7 @@ import {
   layoutProblems,
   normalizeContent,
   placedKeys,
+  ROMAJI_RULE_MISSING_MESSAGE,
   updateUserLayout,
   type UserLayoutContent,
 } from './layout-edit.ts';
@@ -406,4 +407,40 @@ test('同時に成り立つ出力が衝突する配列は、内部の語を含�
   assert.equal(problem?.severity, 'error');
   assert.equal(problem?.message, '「.」の打鍵（A・K）と「ka」の打鍵（A・K）が同時に成り立つため、配列として組み立てられません');
   assert.doesNotMatch(problem?.message ?? '', /logical|canonical|activation/);
+});
+
+const withSequences = (sequences: unknown): UserLayoutContent =>
+  ({
+    name: '取り込み',
+    rows: ['', 'qwertyuiop[]', "asdfghjkl;'", 'zxcvbnm,./'],
+    romaji: 'qwerty',
+    homeKeys: {},
+    sequences,
+    legends: [],
+  }) as UserLayoutContent;
+
+const buildMessage = (content: UserLayoutContent): string | undefined => layoutProblems(content).find((entry) => entry.field.kind === 'build')?.message;
+
+test('layoutProblems: 打鍵列が組み立てられない入力は、出力と何打目かで示し、内部の語を出さない', () => {
+  assert.equal(buildMessage(withSequences([['x', []]])), '「x」の打鍵が空のため、配列として組み立てられません');
+  assert.equal(buildMessage(withSequences([['x', [[]]]])), '「x」の1打目に押すキーが無いため、配列として組み立てられません');
+  assert.equal(buildMessage(withSequences([['x', [['a'], []]]])), '「x」の2打目に押すキーが無いため、配列として組み立てられません');
+  assert.equal(buildMessage(withSequences([['x', [['a', 'a']]]])), '「x」の1打目に同じキー「A」が重なっているため、配列として組み立てられません');
+});
+
+test('layoutProblems: 画面に届く打鍵列の組み合わせでは、組み立ての失敗の文に内部の語が入らない', () => {
+  // 保存済みの配列や貼り付けた定義は、どんな打鍵列でも持てる。届く失敗がすべて利用者向けの文になっていることを、小さな全探索で確かめる
+  const keys = ['a', 'k', 'space', 'nokey', ''];
+  const steps: string[][] = [[], ...keys.map((key) => [key]), ...keys.flatMap((left) => keys.map((right) => [left, right]))];
+  const sequences: string[][][] = [[], ...steps.map((step) => [step]), ...steps.flatMap((first) => steps.map((second) => [first, second]))];
+  for (const sequence of sequences) {
+    const message = buildMessage(withSequences([['x', sequence]]));
+    if (message === undefined) continue;
+    assert.doesNotMatch(message, /SemanticInput|step|Realization|physical|canonical|logical|Requirement|Capability|Face/, JSON.stringify(sequence));
+  }
+});
+
+test('layoutProblems: 推奨のローマ字規則が見つからない注意は、共有の文と同じ', () => {
+  const problems = layoutProblems({ ...DVORAK, romaji: 'romaji-gone' }, new Set(['romaji-a']));
+  assert.equal(problems[0]?.message, ROMAJI_RULE_MISSING_MESSAGE);
 });

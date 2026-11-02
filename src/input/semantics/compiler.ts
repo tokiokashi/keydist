@@ -390,6 +390,31 @@ const faceCells = (face: Face): readonly { key: PhysicalKeyId; output: string }[
   return cells;
 };
 
+/** 打鍵列が組み立てられない理由。利用者向けの文を作る側が、文字列を読まずに取れるよう、構造化して持つ。 */
+export type InvalidSequenceReason =
+  | { readonly kind: 'no-steps' }
+  | { readonly kind: 'empty-step'; readonly stepIndex: number }
+  | { readonly kind: 'duplicate-key'; readonly stepIndex: number; readonly key: PhysicalKeyId };
+
+/** 出力の打鍵列そのものが組み立てられない時の例外。`message`は内部の語を含む詳細で、画面には出さない。 */
+export class InvalidSequenceError extends Error {
+  readonly output: string;
+  readonly reason: InvalidSequenceReason;
+
+  constructor(output: string, reason: InvalidSequenceReason) {
+    super(
+      reason.kind === 'no-steps'
+        ? `SemanticInput sequence「${output}」は1 step以上必要`
+        : reason.kind === 'empty-step'
+          ? `SemanticInput sequence「${output}」のstep ${reason.stepIndex} は1 key以上必要`
+          : `SemanticInput sequence「${output}」のstep ${reason.stepIndex} でphysical key「${reason.key}」が重複している`,
+    );
+    this.name = 'InvalidSequenceError';
+    this.output = output;
+    this.reason = reason;
+  }
+}
+
 /**
  * richerなauthoring semanticを持たないlegacy Step列をcanonical入力列へ変換する。
  * Step間の順序は返却配列の順序で表し、Requirement.orderへ重複させない。
@@ -401,13 +426,18 @@ export function compileSequenceSemanticInputs(
   classifications: readonly InputClassification[] = [],
 ): readonly SemanticInput[] {
   if (sequence.length === 0) {
-    throw new Error(`SemanticInput sequence「${output}」は1 step以上必要`);
+    throw new InvalidSequenceError(output, { kind: 'no-steps' });
   }
 
   return sequence.map((step, stepIndex): SemanticInput => {
     const physicalKeys = sortedUniqueKeys(step);
     if (physicalKeys.length === 0) {
-      throw new Error(`SemanticInput sequence「${output}」のstep ${stepIndex} は1 key以上必要`);
+      throw new InvalidSequenceError(output, { kind: 'empty-step', stepIndex });
+    }
+    if (physicalKeys.length < step.length) {
+      const resolved = step.map(resolveKeyId);
+      const key = resolved.find((candidate, index) => resolved.indexOf(candidate) !== index) ?? '';
+      throw new InvalidSequenceError(output, { kind: 'duplicate-key', stepIndex, key });
     }
 
     const requirements = physicalKeys.length > 1 ? normalizeRequirements([{ kind: 'overlap', keys: physicalKeys }]) : [];

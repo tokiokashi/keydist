@@ -13,6 +13,7 @@ import {
   newUserLayoutId,
   normalizeContent,
   placedKeys,
+  ROMAJI_RULE_MISSING_MESSAGE,
   type LayoutProblem,
   type UserLayoutContent,
 } from '#input/layouts/layout-edit.ts';
@@ -143,7 +144,7 @@ function RomajiRuleField({ draft, setDraft, ruleOptions }: RomajiRuleFieldProps)
       </p>
       {draft.romaji === undefined || known ? null : (
         <p className="romaji-layout-warning" role="status" data-layout-problem="warning">
-          選んでいたローマ字規則が見つかりません。全体の値の規則で打ちます。規則を選び直すと、その規則で打ちます
+          {ROMAJI_RULE_MISSING_MESSAGE}
         </p>
       )}
     </>
