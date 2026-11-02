@@ -1,4 +1,11 @@
-import { describeFileDecodeFailure, describeJsonSyntaxError, isRecord, type CodecDiagnostic } from '#input/codec/index.ts';
+import {
+  describeFileDecodeFailure,
+  describeJsonSyntaxError,
+  FILE_ROOT_SHAPE_DETAIL,
+  FORMAT_FIELD_MISSING_DETAIL,
+  isRecord,
+  type CodecDiagnostic,
+} from '#input/codec/index.ts';
 import type { LevelOverrides } from '#input/settings/index.ts';
 import { PRESET_FILE_CODEC, type PresetFileContents } from '#engine/preset-file-codec.ts';
 import { EMPTY_USER_ASSETS_BUNDLE, USER_ASSETS_FILE_MAX_ITEMS, type UserAssetsBundle } from '#engine/user-assets-file.ts';
@@ -243,7 +250,12 @@ function readEnvelope(text: string): EnvelopeRead {
     return failure('条件ファイルとして読めませんでした', describeJsonSyntaxError(error, text));
   }
   if (!isRecord(parsed) || parsed.format !== PRESET_FILE_FORMAT) {
-    return failure('keydist の条件ファイルではありません', `format: ${JSON.stringify(isRecord(parsed) ? parsed.format : undefined) ?? 'undefined'}`);
+    const detail = !isRecord(parsed)
+      ? FILE_ROOT_SHAPE_DETAIL
+      : parsed.format === undefined
+        ? FORMAT_FIELD_MISSING_DETAIL
+        : '「format」欄の値が条件ファイルのものと違います';
+    return failure('keydist の条件ファイルではありません', detail);
   }
   if (Array.isArray(parsed.presets) && parsed.presets.length > PRESET_FILE_MAX_PRESETS) {
     return failure(`プリセットが多すぎます（${PRESET_FILE_MAX_PRESETS}件まで）`, `presets: ${parsed.presets.length}`);
