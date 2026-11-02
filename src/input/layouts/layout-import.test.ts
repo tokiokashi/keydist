@@ -152,6 +152,44 @@ test('Vialのキーの数が違うコンボの重なりは、同じキーの組�
   assert.deepEqual(layout.warnings, []);
 });
 
+test('Vialのコンボの入力は、途中のKC_NOで終わり、後ろの枠は読まない', () => {
+  const layout = vialWithCombos([
+    ['KC_K', 'KC_NO', 'KC_A', 'KC_NO', 'KC_DOT'],
+    ['KC_K', 'KC_A', 'KC_NO', 'KC_S', 'KC_COMMA'],
+    ['KC_K', 'KC_A', 'KC_NO', 'MO(1)', 'M0'],
+  ]);
+  const sequences = new Map(layout.sequences);
+  // 1つ目は入力がkだけなので、コンボにならない
+  assert.deepEqual(sequences.get('.'), [['.']]);
+  // 2つ目はkとaの組。sは読まない
+  assert.deepEqual(sequences.get(','), [[',']]);
+  // 3つ目は2つ目と同じ組なので、番号が後ろの3つ目だけが残り、MO(1)は読まれず注意にも出ない
+  assert.deepEqual(sequences.get('desu'), [['k', 'a']]);
+  assert.equal(layout.warnings.length, 1);
+  assert.match(layout.warnings[0], /コンボ 1（出力「,」）.*後のコンボ 2（出力「desu」）/);
+});
+
+test('Vialのコンボは、KC_NOより後ろにだけ解決できない入力があっても警告しない', () => {
+  const layout = vialWithCombos([['KC_K', 'KC_A', 'KC_NO', 'MO(1)', 'KC_DOT']]);
+  assert.deepEqual(new Map(layout.sequences).get('.'), [['k', 'a']]);
+  assert.deepEqual(layout.warnings, []);
+});
+
+test('Vialのコンボは、KC_NOが先頭なら入力が空で、取り込まない', () => {
+  const layout = vialWithCombos([['KC_NO', 'KC_K', 'KC_A', 'KC_NO', 'KC_DOT']]);
+  assert.deepEqual(new Map(layout.sequences).get('.'), [['.']]);
+  assert.deepEqual(layout.warnings, []);
+});
+
+test('VialのコンボのKC_TRNSは終端ではなく、押せるキーの無い入力として扱う', () => {
+  const layout = vialWithCombos([['KC_K', 'KC_TRNS', 'KC_A', 'KC_NO', 'KC_DOT']]);
+  assert.deepEqual(new Map(layout.sequences).get('.'), [['k', 'a']]);
+  const other = vialWithCombos([['KC_K', 'KC_TRNS', 'KC_NO', 'KC_NO', 'KC_DOT']]);
+  assert.deepEqual(new Map(other.sequences).get('.'), [['.']]);
+  assert.equal(other.warnings.length, 1);
+  assert.match(other.warnings[0], /コンボ 0 は入力キー「KC_TRNS」を解決できない/);
+});
+
 test('Vialのキーの集合が同じコンボを外した定義は、保存できる配列になる', () => {
   const layout = vialWithCombos([
     ['KC_K', 'KC_A', 'KC_NO', 'KC_NO', 'KC_DOT'],

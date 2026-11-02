@@ -398,6 +398,8 @@ const QMK_PRINTABLE: Record<string, string> = {
 };
 
 const QMK_NOOP = new Set(['KC_NO', 'KC_TRNS', 'KC_TRANSPARENT', '-1']);
+// コンボの入力の終端。QMKのCOMBO_ENDは0で、KC_NOと同じ値
+const COMBO_END = 'KC_NO';
 
 function qmkChar(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
@@ -497,11 +499,21 @@ export function importVial(source: string, name = 'Vial取り込み'): ImportedL
     const macro = macroIndex(outputCode);
     return macro === undefined ? qmkChar(outputCode) : macroText(macros[macro]);
   };
-  // 入力を物理キーに直す。空き枠は読み飛ばし、文字を解決できない入力（レイヤー切り替えなど）は
+  // 実機（QMK）はコンボの入力を先頭から読み、最初のKC_NO（値0）でそのコンボの入力を終える。
+  // KC_NOより後ろの枠は、何が入っていても読まない。KC_TRNSなどは終端ではなく、押せるキーの無い入力として残す
+  const comboInputCodes = (entry: readonly unknown[]): unknown[] => {
+    const codes: unknown[] = [];
+    for (const code of entry.slice(0, 4)) {
+      if (typeof code === 'string' && code.toUpperCase() === COMBO_END) break;
+      codes.push(code);
+    }
+    return codes;
+  };
+  // 入力を物理キーに直す。文字を解決できない入力（レイヤー切り替えなど）は
   // 物理キーに直さずに読み飛ばす。物理位置を引けない入力があれば、そのコンボの入力は空にして `missing` に残す
   const comboInputs = (entry: readonly unknown[]): { inputs: string[]; missing?: unknown } => {
     const inputs: string[] = [];
-    for (const code of entry.slice(0, 4)) {
+    for (const code of comboInputCodes(entry)) {
       const char = qmkChar(code);
       if (!char) continue;
       const physical = locations.get(char);
@@ -518,7 +530,7 @@ export function importVial(source: string, name = 'Vial取り込み'): ImportedL
     const members: { comboIndex: number; setKey: string }[] = [];
     for (const [comboIndex, entry] of vil.combo.entries()) {
       if (!Array.isArray(entry) || entry.length < 5) continue;
-      const hasUnresolvedInput = entry.slice(0, 4).some((code) => typeof code !== 'string' || (!QMK_NOOP.has(code.toUpperCase()) && !qmkChar(code)));
+      const hasUnresolvedInput = comboInputCodes(entry).some((code) => !qmkChar(code));
       if (hasUnresolvedInput) continue;
       const { inputs } = comboInputs(entry);
       if (inputs.length < 2) continue;
@@ -553,7 +565,7 @@ export function importVial(source: string, name = 'Vial取り込み'): ImportedL
         addWarning(warnings, `Vialのコンボ ${comboIndex} は入力キー「${String(resolved.missing)}」の物理位置を解決できないため無視しました`);
       }
       if (inputs.length < 2) {
-        const unresolvedCode = entry.slice(0, 4).find((code) => typeof code === 'string' && !QMK_NOOP.has(code.toUpperCase()) && !qmkChar(code));
+        const unresolvedCode = comboInputCodes(entry).find((code) => typeof code === 'string' && !qmkChar(code));
         if (unresolvedCode !== undefined) {
           addWarning(warnings, `Vialのコンボ ${comboIndex} は入力キー「${String(unresolvedCode)}」を解決できないため無視しました`);
         }
