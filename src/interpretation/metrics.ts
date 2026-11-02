@@ -79,8 +79,9 @@ export interface Metrics {
   fingerAssignmentId: string;
   fingerAssignmentName: string;
   /**
-   * 使用した指割り当てが、複数の指が担当するキーを持つか。持つ時、担当する指が複数のキーは
-   * 範囲を区切った最小化で選んだ指で打った値になる（仕様 §9.1・§12.1）。
+   * 使用した指割り当ての定義が、複数の指が担当するキーを持つかの印（仕様 §9.1・§12.1）。
+   * 分割する物理配列では、キーと反対側の手の追加の担当は候補から外れる。そのため、どのキーも
+   * 指の候補が1本になって、最小化で指を選ばない場合がある。
    */
   fingerAssignmentHasMultiFingerKeys: boolean;
   /**
