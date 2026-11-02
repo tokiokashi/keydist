@@ -10,7 +10,7 @@ import {
   type FaceLayoutProblem,
   type KanaFaceBody,
   type UserFaceBody,
-} from './kana-face-layout.ts';
+} from './face-layout.ts';
 import { checkFaceLayout, draftOf } from './face-layout-edit.ts';
 import type { LayoutKind } from './kind.ts';
 

@@ -1,5 +1,5 @@
 import type { DraftFace } from '#input/layouts/face-layout-edit.ts';
-import { gridPositionOf } from '#input/layouts/kana-face-layout.ts';
+import { gridPositionOf } from '#input/layouts/face-layout.ts';
 
 /**
  * 段ごとの文字列の欄と、キーごとの出力の対応。画面の外の純関数だけを置く。

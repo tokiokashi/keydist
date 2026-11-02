@@ -66,7 +66,7 @@ export interface FaceLayoutProblem {
   readonly detail?: string;
 }
 
-/** 同じかなが2か所以上にある旨（代わりの打ち方）。誤りではない。 */
+/** 同じ出力が2か所以上にある旨（代わりの打ち方）。誤りではない。 */
 export interface FaceLayoutNotice {
   readonly output: string;
   readonly message: string;

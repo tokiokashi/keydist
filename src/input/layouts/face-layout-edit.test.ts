@@ -90,7 +90,7 @@ test('ホームキーは空の指定を落とし、物理キーの名前でな�
   );
 });
 
-test('同じかなが2か所にある時は、保存を止めずに注意として返す', () => {
+test('同じ出力が2か所にある時は、保存を止めずに注意として返す', () => {
   const draft = draftOf(CONTENT);
   draft.faces[1]!.outputs.f = 'あ';
   const check = checkFaceLayout(draft);
