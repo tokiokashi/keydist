@@ -1,7 +1,7 @@
 import type { SetAnalyzerDefinition, SingleAnalyzerDefinition } from '#analyzers/contract.ts';
 import type { EngineCache } from './cache.ts';
 import type { EngineComputer } from './computer.ts';
-import type { EngineExtractionResult, EngineInterpretationResult, EngineTraceResult } from './pipeline.ts';
+import type { EngineExtractionResult, EngineInterpretationResult, EngineTraceSummaryResult } from './pipeline.ts';
 import {
   createEngineRequest,
   createEngineSetRequest,
@@ -21,20 +21,20 @@ import {
  * `EngineCache`に対して具体化する。
  */
 
-export type TraceRequestState = EngineRequestState<EngineTraceResult>;
+export type TraceRequestState = EngineRequestState<EngineTraceSummaryResult>;
 export type InterpretationRequestState = EngineRequestState<EngineInterpretationResult>;
 
-/** Trace単体の依頼。抽出段がTraceだけを見たい場合（N感度など）向け。 */
+/** Traceの要約（打鍵の列を除いた部分。診断・見出し用）の依頼。 */
 export function createTraceRequest(
   cache: EngineComputer,
   listener: (state: TraceRequestState) => void,
   options?: EngineRequestOptions,
 ): EngineRequestChannel {
   return createEngineRequest(
-    (input, signal) => cache.getTrace(input, signal),
+    (input, signal) => cache.getTraceSummary(input, signal),
     listener,
     options,
-    cache.peekTrace === undefined ? undefined : (input) => cache.peekTrace!(input),
+    cache.peekTraceSummary === undefined ? undefined : (input) => cache.peekTraceSummary!(input),
   );
 }
 

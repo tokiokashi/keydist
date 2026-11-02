@@ -90,7 +90,7 @@ function PlaybackFigureSettings({
 export function PlaybackBody({
   layout,
   geometry,
-  trace,
+  trace: traceSummary,
   extracted,
   options,
   onOptionsChange,
@@ -113,6 +113,11 @@ export function PlaybackBody({
     waitUse,
     bunsetsuUse,
   } = extracted;
+  // 打鍵の列は構造解析の結果が持つ同じ列を読む。Traceそのものはメインスレッドへ複製しない
+  const trace = useMemo(
+    () => ({ strokes: analysis.strokes, layerDefinitions: traceSummary.layerDefinitions }),
+    [analysis, traceSummary.layerDefinitions],
+  );
   const total = trace.strokes.length;
   const calculation = playbackCalculationNotes(
     options,

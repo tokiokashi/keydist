@@ -13,6 +13,7 @@ import {
   type EngineInterpretationResult,
   type EngineKeyDetailsResult,
   type EngineTraceResult,
+  type EngineTraceSummaryResult,
 } from './pipeline.ts';
 import type { EngineSetMemberInput } from './request.ts';
 import type { ResolvedInput } from './resolved-input.ts';
@@ -48,6 +49,8 @@ export interface EngineCacheOptions {
 export interface EngineCache {
   /** Traceを中身のキーで引く。無ければ計算して積む。 */
   getTrace(input: ResolvedInput): EngineTraceResult;
+  /** Traceの要約（打鍵の列を除いた部分）。同期の窓口では、積んであるTraceをそのまま返す（`EngineTraceResult`は要約の部分型）。 */
+  getTraceSummary(input: ResolvedInput): EngineTraceSummaryResult;
   /**
    * 解釈を中身のキーで引く。Traceは`getTrace`と同じキャッシュを共有するので、
    * 解釈だけが違う（chain/arpeggio解釈の変更）2つの呼び出しはTraceを再利用する。
@@ -273,6 +276,7 @@ export function createEngineCache(options: EngineCacheOptions = {}): EngineCache
 
   return {
     getTrace,
+    getTraceSummary: getTrace,
     getInterpretation,
     getKeyDetails,
     getExtraction,

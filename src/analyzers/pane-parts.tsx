@@ -2,7 +2,7 @@ import type { ComponentType, ReactNode } from 'react';
 import type { Geometry } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { KeyDetails } from '#interpretation/key-detail.ts';
-import type { Trace } from '#trace/generate.ts';
+import type { TraceSummary } from '#trace/generate.ts';
 import type { InfoHelp } from '#ui/primitives/info-button.tsx';
 import type { TargetMark } from '#ui/theme/target-marks.ts';
 import type { SetAnalyzerDefinition, SingleAnalyzerDefinition } from './contract.ts';
@@ -116,7 +116,8 @@ export interface SingleBodyProps<Extracted, Options> {
   readonly setTargetPicker?: ReactNode;
   readonly layout: Layout;
   readonly geometry: Geometry;
-  readonly trace: Trace;
+  /** Traceのうち打鍵の列を除いた部分。打鍵の列が要る本体は、抽出の結果に載せて読む（長いテキストでメインスレッドに抱えないため） */
+  readonly trace: TraceSummary;
   readonly extracted: Extracted;
   readonly options: Options;
   /** 文節の区切りを使う設定の時の、区切りの用意の状態。`SingleAnalyzerPaneParts.usesSegmentation` を宣言したAnalyzerにだけ渡す。 */

@@ -89,7 +89,7 @@ export interface PlaybackFrame {
 export interface PlaybackFrameInput {
   readonly layout: Layout;
   readonly geometry: Geometry;
-  readonly trace: Pick<Trace, 'strokes' | 'layerDefinitions'>;
+  readonly trace: { readonly strokes: readonly Stroke[] } & Pick<Trace, 'layerDefinitions'>;
   readonly analysis: AggregatedAnalysisResult;
   readonly windowSize: number;
   readonly schedule: readonly PlaybackTimingStep[];

@@ -1077,3 +1077,15 @@ test('skippedKanaPositions: 覆う綴りの単位が無ければ次の単位の�
   assert.deepEqual(skippedKanaPositions(chunks, 5), []);
   assert.deepEqual(skippedKanaPositions(chunks, 20), []);
 });
+
+test('同じ中身の値は打鍵をまたいで共有する（長いテキストでTraceのメモリを打鍵数に比例して増やさない）', () => {
+  const trace = generateTrace('jjjj', qwerty, geometry, opts());
+  const [first, second, third] = trace.strokes;
+  assert.equal(trace.strokes.length, 4);
+  // 同じキーを打つ打鍵は、参加の列・押下の目標位置・ホームを起点にした位置を共有する
+  assert.strictEqual(second!.participations, third!.participations);
+  assert.strictEqual(second!.presses[0]!.target, third!.presses[0]!.target);
+  assert.strictEqual(first!.presses[0]!.origin.at, geometry.homes[first!.presses[0]!.finger]);
+  // 1つの値を共有しても、打鍵ごとの指位置の記録（後続の打鍵で書き換える）は別の入れ物のまま
+  assert.notStrictEqual(first!.positions, second!.positions);
+});

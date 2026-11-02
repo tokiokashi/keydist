@@ -146,7 +146,7 @@ test('結果を同期に引ける計算機では、解決し直した同じ中�
   const traceKey = (input: ResolvedInput) => traceKeyOf(input);
   const extractionKey = (input: ResolvedInput) => singleExtractionKeyOf(input, bigramFlowDefinition, DEFAULT_BIGRAM_FLOW_OPTIONS);
   const computer: EngineComputer = {
-    getTrace: (input) => {
+    getTraceSummary: (input) => {
       requested.push('trace');
       const result = cache.getTrace(input);
       remembered.set(traceKey(input), result);
@@ -159,7 +159,7 @@ test('結果を同期に引ける計算機では、解決し直した同じ中�
       return result;
     },
     getSetExtraction: (members, definition, options) => cache.getSetExtraction(members, definition, options),
-    peekTrace: (input) => remembered.get(traceKey(input)) as never,
+    peekTraceSummary: (input) => remembered.get(traceKey(input)) as never,
     peekExtraction: (input) => remembered.get(extractionKey(input)) as never,
   };
   const extractionStates: ExtractionRequestState<BigramFlowExtracted>[] = [];

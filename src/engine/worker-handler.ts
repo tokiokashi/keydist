@@ -1,5 +1,6 @@
 import type { SetAnalyzerDefinition, SingleAnalyzerDefinition } from '#analyzers/contract.ts';
 import type { EngineCache } from './cache.ts';
+import { summarizeEngineTrace } from './pipeline.ts';
 import type { EngineWorkerRequest, EngineWorkerResponse } from './worker-protocol.ts';
 
 function unregisteredAnalyzerError(definitionId: string): Error {
@@ -29,8 +30,9 @@ export function createEngineWorkerHandler(cache: EngineCache, registry: EngineWo
 
   function solve(request: EngineWorkerRequest): unknown {
     switch (request.kind) {
-      case 'trace':
-        return cache.getTrace(request.input);
+      case 'trace-summary':
+        // Traceは複製せず、打鍵の列を除いた要約だけをメインスレッドへ返す
+        return summarizeEngineTrace(cache.getTrace(request.input));
       case 'extraction': {
         const definition = single.get(request.definitionId);
         if (definition === undefined) throw unregisteredAnalyzerError(request.definitionId);

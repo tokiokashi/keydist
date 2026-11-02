@@ -60,15 +60,24 @@ const NEIGHBORS: readonly (readonly number[])[] = ALL_FINGERS.map((finger, index
 /** 1本の指が押す（または押さえる）キーの目標位置。複数なら重心（仕様 §4.2・§3.1） */
 export function targetOf(finger: Finger, keys: readonly Key[]): Point {
   const offThumbKey = isThumb(finger) && keys.some((key) => !isThumbKey(key));
-  const base =
-    keys.length === 1
-      ? { x: keys[0].x, y: keys[0].y }
-      : {
-          x: keys.reduce((sum, key) => sum + key.x, 0) / keys.length,
-          y: keys.reduce((sum, key) => sum + key.y, 0) / keys.length,
-        };
+  if (keys.length === 1) {
+    // 1つのキーの位置は、作った後に書き換えない値なので、キーごとに1つを共有する（打鍵ごとに作らない）
+    const memo = offThumbKey ? offThumbTargetOfKey : targetOfKey;
+    const known = memo.get(keys[0]);
+    if (known !== undefined) return known;
+    const created: Point = offThumbKey ? { x: keys[0].x, y: keys[0].y, offThumbKey: true } : { x: keys[0].x, y: keys[0].y };
+    memo.set(keys[0], created);
+    return created;
+  }
+  const base = {
+    x: keys.reduce((sum, key) => sum + key.x, 0) / keys.length,
+    y: keys.reduce((sum, key) => sum + key.y, 0) / keys.length,
+  };
   return offThumbKey ? { ...base, offThumbKey: true } : base;
 }
+
+const targetOfKey = new WeakMap<Key, Point>();
+const offThumbTargetOfKey = new WeakMap<Key, Point>();
 
 export interface PressDecision {
   distance: number;

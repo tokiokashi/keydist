@@ -31,6 +31,10 @@ function keysMissingHint(layout: Layout): string {
   return layout.requiresJisShape === true ? 'JISの物理配列を選んでください' : 'キーが足りる物理配列を選んでください';
 }
 
+function formatChars(count: number): string {
+  return count.toLocaleString('ja-JP');
+}
+
 export function describeResolvedInputError(error: ResolvedInputError): string {
   switch (error.kind) {
     case 'reference':
@@ -42,6 +46,8 @@ export function describeResolvedInputError(error: ResolvedInputError): string {
       return '物理配列と指の割当が噛み合わず、キーボードを組み立てられません';
     case 'keys-missing':
       return `「${error.layout.name}」が使うキーが物理配列に足りません。${keysMissingHint(error.layout)}`;
+    case 'text-too-long':
+      return `テキストが長すぎて計算できません（読みに直した後で${formatChars(error.length)}字。${formatChars(error.limit)}字までです）。テキストを短くしてください`;
     case 'target-missing':
       return error.target.kind === 'setup' ? SETUP_MISSING_REASON : LAYOUT_MISSING_REASON;
   }
