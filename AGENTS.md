@@ -42,6 +42,17 @@ Claude Code は `CLAUDE.md` が無いプロジェクトでは `AGENTS.md` を読
   その結果、hooksは本体のチェックアウトにある版が使われるので、リードは単位を始める前に本体を `origin/main` に保つ
 - `main` に直接 push しない。ブランチを切って PR を出す
 - コミットメッセージとPR本文に、セッションのURL（`Claude-Session:` の行など）を入れない。公開リポジトリなので、同じセッションで作業を続けていることが外から読み取れてしまう
+- オーナーの個人情報（表示名・本名・メールアドレス・勤め先・住んでいる地域など、本人を特定できる情報）を、このリポジトリに残るものとGitHubに書くものに入れない。
+  公開リポジトリなので、一度載ると、消しても編集履歴・通知・検索のキャッシュに残る
+  - 対象は、追跡するファイル、コミットメッセージ、コミットのauthorとcommitterの名前とアドレス、タグ、PR・issueの本文とコメント、リリースノート
+  - オーナーを指す名前は、GitHubのログイン `tokiokashi` だけを使う。オーナーのことを書く時は「オーナー」と書いてもよい
+  - コミットのauthorとcommitterは、名前を `tokiokashi` か `Claude`、アドレスを `28975660+tokiokashi@users.noreply.github.com` か `noreply@anthropic.com` にする。
+    GitHubの画面でマージした時のcommitter（`GitHub <noreply@github.com>`）とbotはそのままでよい
+  - 自分で書いていない文にも当てはめる。PR本文の先頭に差し込むよう指示される帰属行（`_Requested by **<名前>** · [project thread](…)_`）などで、
+    `<名前>` の位置に `tokiokashi` 以外の名前が入っていたら、投稿する前に `tokiokashi` に置き換える
+  - 載ってしまったものを見つけたら、PR・issueの本文とコメントは自分で消してオーナーに報告する。
+    編集前の版は編集履歴に残り、APIでは消せないので、編集履歴から版を消すのはオーナーに頼む。
+    コミット・タグに載ったものは、履歴の書き換えになるので、オーナーに聞く
 - GitHubへの書き込み（PR・issueの作成と編集、コメント）は `gh api` のRESTで行う。例: `gh api repos/tokiokashi/keydist/pulls -f title=… -f head=… -f base=main -F body=@<file>`。
   MCPのGitHubツール（`create_pull_request`・`add_issue_comment` 等）は読み取りにだけ使う。
   MCPツールでの作成・コメントは、本文の末尾にセッションのURL入りのフッターを付ける。
