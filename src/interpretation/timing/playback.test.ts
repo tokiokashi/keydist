@@ -749,7 +749,7 @@ test('ローマ字の入力履歴はかなごとの複数打鍵を重複させ�
 });
 
 test('TK音直入力法のコンボは入力単位全体を現在文字と履歴に表示する', () => {
-  const layout = withRomaji(LAYOUT_BY_ID.get('oonishi-custom')!, kunrei());
+  const layout = withRomaji(LAYOUT_BY_ID.get('tk-onchoku')!, kunrei());
   const trace = generateTrace('わがはいねこ', layout, buildGeometry('row-staggered'));
 
   assert.equal(trace.strokes[4].inputChar, 'は');
@@ -1106,7 +1106,7 @@ test('ローマ字の入力の行: 実際の打鍵の列で、拗音と、コン
   assert.deepEqual(playbackRomajiInputPreview(syu.strokes, 0, 5).map(unit), ['planned:|syu']);
   assert.deepEqual(playbackRomajiInputPreview(syu.strokes, 2, 5).map(unit), ['current:sy|u']);
   // 「きょう」のkとコンボyouは同じ単位の別の選択。コンボの3文字は1回で進む
-  const combo = withRomaji(LAYOUT_BY_ID.get('oonishi-custom')!, kunrei());
+  const combo = withRomaji(LAYOUT_BY_ID.get('tk-onchoku')!, kunrei());
   const kyou = generateTrace('きょう', combo, geometry);
   assert.deepEqual(
     kyou.strokes.map((stroke) => stroke.char),

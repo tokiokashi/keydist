@@ -146,7 +146,7 @@ test('コンボで打つストロークだけが出力の文字を持ち、同�
     return sentenceSteps(result.analysis);
   };
   // 「きょう」は、kと、コンボyouの2ストロークで、同じ入力単位を打つkは出力の文字を持たない。
-  const combo = build('oonishi-custom', 'きょう');
+  const combo = build('tk-onchoku', 'きょう');
   assert.deepEqual(
     combo.map((step) => step.outputChars),
     [undefined, ['y', 'o', 'u']],
@@ -190,11 +190,11 @@ function pressesOf(step: SentenceStep, output: boolean, keyLabel: (id: string) =
 }
 
 function tkContext(texts: readonly string[]) {
-  const layout = paneCatalog(BASE).setupCatalog.layouts.get('oonishi-custom');
+  const layout = paneCatalog(BASE).setupCatalog.layouts.get('tk-onchoku');
   assert.ok(layout !== undefined);
   const keyLabel = (id: string) => calibrationKeyLabel(layout.legends, id);
   const stepsOf = texts.map((text) => {
-    const result = builderWith(EMPTY_SETTINGS_OVERRIDES)({ ...SELECTION, layoutId: 'oonishi-custom' }, text);
+    const result = builderWith(EMPTY_SETTINGS_OVERRIDES)({ ...SELECTION, layoutId: 'tk-onchoku' }, text);
     assert.ok(result.ok);
     const steps = sentenceSteps(result.analysis);
     assert.equal(sentenceUnmeasurable(steps), undefined);
@@ -321,7 +321,7 @@ test('同じキーが続く「ん」のnnの2打目と促音のttは続け打ち
 
 test('TK音直入力法の子音から複数のかなを出すコンボは、前の打鍵と同じ入力単位でかなの中に入る', () => {
   // 「きょう」は、kと、コンボyouのstrokeが同じ入力単位を打つ。
-  assert.deepEqual(sideRowsOf('oonishi-custom', 'きょう'), ['other:within']);
+  assert.deepEqual(sideRowsOf('tk-onchoku', 'きょう'), ['other:within']);
 });
 
 test('前置シフトのかな配列では、シフトキーから文字への打鍵がかなの中に入る', () => {

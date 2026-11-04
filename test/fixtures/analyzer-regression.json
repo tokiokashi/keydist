@@ -2889,9 +2889,9 @@
         },
         "windowSize": 3
       },
-      "id": "en:oonishi-custom:default",
+      "id": "en:tk-onchoku:default",
       "language": "en",
-      "layoutId": "oonishi-custom",
+      "layoutId": "tk-onchoku",
       "metrics": {
         "actions": 1003,
         "adjacent": [
@@ -11851,9 +11851,9 @@
         },
         "windowSize": 3
       },
-      "id": "ja:oonishi-custom:modern",
+      "id": "ja:tk-onchoku:modern",
       "language": "ja",
-      "layoutId": "oonishi-custom",
+      "layoutId": "tk-onchoku",
       "metrics": {
         "actions": 2324,
         "adjacent": [
@@ -12052,9 +12052,9 @@
         },
         "windowSize": 3
       },
-      "id": "ja:oonishi-custom:modern:triggerActivation=semantic（コンボを持つ配列でtrigger activationのgroupingが変わる分岐）",
+      "id": "ja:tk-onchoku:modern:triggerActivation=semantic（コンボを持つ配列でtrigger activationのgroupingが変わる分岐）",
       "language": "ja",
-      "layoutId": "oonishi-custom",
+      "layoutId": "tk-onchoku",
       "metrics": {
         "actions": 2324,
         "adjacent": [

@@ -275,7 +275,7 @@ test('全体のローマ字規則: 推奨の無いローマ字入力の配列だ
   assert.equal(qwerty.find((row) => row.id === 'romajiRuleId')!.originLabel, '上書き: 全体');
 
   // 大西配列・TK音直入力法は推奨のまま（数えない）。負けた全体は行の印から分かる
-  for (const layoutId of ['oonishi', 'oonishi-custom']) {
+  for (const layoutId of ['oonishi', 'tk-onchoku']) {
     const rows = rowsOf(layoutId);
     assert.equal(conditionSummaryLine(rows).changedCount, 0, layoutId);
     assert.equal(rows.find((row) => row.id === 'romajiRuleId')!.recommendationWinsOverGlobal, true, layoutId);
@@ -294,7 +294,7 @@ test('全体未設定でも、大西配列は推奨が全体の既定に勝つ�
   const oonishi = flagOf('oonishi');
   assert.equal(oonishi.recommendationWinsOverGlobal, true);
   assert.equal(oonishi.origin.kind, 'default');
-  assert.equal(flagOf('oonishi-custom').recommendationWinsOverGlobal, false);
+  assert.equal(flagOf('tk-onchoku').recommendationWinsOverGlobal, false);
   assert.equal(flagOf('qwerty').recommendationWinsOverGlobal, false);
 });
 

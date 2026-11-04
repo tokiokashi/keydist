@@ -26,7 +26,7 @@ const LAYOUT_IDS_MANY = [
   'shingeta',
   'tsuki-2-263',
   'kawasemi-plus',
-  'oonishi-custom',
+  'tk-onchoku',
 ];
 const setOf = (ids: readonly string[]) => ({
   kind: 'set',

@@ -142,7 +142,7 @@ export function recommendedRomajiRuleId(layoutId: string): BuiltinRomajiRuleId |
   if (layoutId === 'oonishi') return 'oonishi';
   if (layoutId === 'tomisuke') return 'tomisuke';
   if (layoutId === 'seoto') return 'seoto';
-  if (layoutId === 'oonishi-custom') return 'kunrei';
+  if (layoutId === 'tk-onchoku') return 'kunrei';
   return undefined;
 }
 

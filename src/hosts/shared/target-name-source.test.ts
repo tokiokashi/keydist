@@ -144,7 +144,7 @@ test('既定の物理配列を変えた配列対象と同じ配列のSetupを並
 test('TK音直入力法は言語によらず1つの配列で、並べる時は他の配列と名前だけで見分けられる', () => {
   const named = displayNames(
     [
-      { kind: 'layout', layoutId: 'oonishi-custom' },
+      { kind: 'layout', layoutId: 'tk-onchoku' },
       { kind: 'layout', layoutId: 'oonishi' },
     ],
     [],
