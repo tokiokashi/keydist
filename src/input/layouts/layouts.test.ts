@@ -1180,3 +1180,13 @@ test('composition Faceは層とコンボ枠のどちらに計上するかを明�
     /triggerが1キーの面だけ/,
   );
 });
+
+test('組み込みの配列の一覧は、英字・日本語ともidが重ならない', () => {
+  for (const list of [LAYOUTS, LAYOUTS_JA]) {
+    const ids = list.map((layout) => layout.id);
+    assert.deepEqual(
+      ids.filter((id, index) => ids.indexOf(id) !== index),
+      [],
+    );
+  }
+});

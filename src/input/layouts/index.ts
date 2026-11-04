@@ -238,8 +238,9 @@ export const LAYOUTS: Layout[] = ALPHA.map(withoutRomajiOnlyCombos);
  * 最終形はどちらも打鍵ステップ列なので、同じテキストで比較できる。
  */
 export const LAYOUTS_JA: Layout[] = [
-  // とみすけ配列は作者が勧める綴り（シャ行sh）で打つ。ほかの配列は訓令式
-  ...ALPHA.filter((l) => l.id.startsWith('oonishi') === false).map((l) =>
+  // とみすけ配列は作者が勧める綴り（シャ行sh）で打つ。ほかの配列は訓令式。
+  // 大西配列とTK音直入力法は綴りの理由を添えて下で個別に足す
+  ...ALPHA.filter((l) => l.id !== 'oonishi' && l.id !== 'tk-onchoku').map((l) =>
     withRomaji(l, l.id === 'tomisuke' ? ROMAJI_TOMISUKE : l.id === 'seoto' ? ROMAJI_SEOTO : ROMAJI),
   ),
   // 大西配列は公式が前提とする綴り（シャ行sh / じji / じゃ行j）で打つ
