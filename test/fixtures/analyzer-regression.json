@@ -11780,49 +11780,49 @@
       "analysis": {
         "arpeggio": {
           "coverage": {
-            "rate": 0.050774526678141134,
-            "strokes": 118
+            "rate": 0.04993542832544124,
+            "strokes": 116
           },
           "meanSpanLength": 2,
-          "spans": 59
+          "spans": 58
         },
         "directionalTransitions": {
           "empty": 0,
-          "inward": 54,
+          "inward": 53,
           "mixed": 18,
-          "outward": 27,
+          "outward": 26,
           "same": 27,
-          "total": 126
+          "total": 124
         },
         "redirect": {
-          "events": 8,
+          "events": 9,
           "pivots": {
-            "rate": 0.0034423407917383822,
-            "strokes": 8
+            "rate": 0.0038743004735256135,
+            "strokes": 9
           }
         },
         "roll": {
           "anyRoll": {
-            "rate": 0.050774526678141134,
-            "strokes": 118
+            "rate": 0.04993542832544124,
+            "strokes": 116
           },
           "longRoll": {
             "rate": 0,
             "strokes": 0
           },
           "twoRoll": {
-            "rate": 0.050774526678141134,
-            "strokes": 118
+            "rate": 0.04993542832544124,
+            "strokes": 116
           }
         },
         "sfb": {
           "events": 37,
           "involvedStrokes": {
-            "rate": 0.03141135972461274,
+            "rate": 0.03142488161859664,
             "strokes": 73
           }
         },
-        "strokeCount": 2324
+        "strokeCount": 2323
       },
       "conditions": {
         "actionRealizationPolicy": {
@@ -11855,68 +11855,68 @@
       "language": "ja",
       "layoutId": "oonishi-custom",
       "metrics": {
-        "actions": 2324,
+        "actions": 2323,
         "adjacent": [
           {
             "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.00514358627510144,
+            "meanExcess": 0.005145800474961579,
             "pair": [
               "LP",
               "LR"
             ],
-            "stdDev": 0.053265265661272265
+            "stdDev": 0.05327662225494646
           },
           {
             "maxExcess": 1.0155644370746373,
-            "meanExcess": 0.027827505423097226,
+            "meanExcess": 0.028700440208040436,
             "pair": [
               "LR",
               "LM"
             ],
-            "stdDev": 0.1070012924352972
+            "stdDev": 0.1077981089669164
           },
           {
             "maxExcess": 1.6575364531836625,
-            "meanExcess": 0.09655979311967436,
+            "meanExcess": 0.09892896631267634,
             "pair": [
               "LM",
               "LI"
             ],
-            "stdDev": 0.2472060617800598
+            "stdDev": 0.24915134477616996
           },
           {
             "maxExcess": 1.6925824035672523,
-            "meanExcess": 0.19170687857982135,
+            "meanExcess": 0.19178940414098355,
             "pair": [
               "RI",
               "RM"
             ],
-            "stdDev": 0.3470885663062356
+            "stdDev": 0.34714046897487477
           },
           {
             "maxExcess": 1.0155644370746373,
-            "meanExcess": 0.06872698893321266,
+            "meanExcess": 0.06875657437829799,
             "pair": [
               "RM",
               "RR"
             ],
-            "stdDev": 0.18130369837135746
+            "stdDev": 0.18133710899703567
           },
           {
             "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.02522317437505703,
+            "meanExcess": 0.0252340323924376,
             "pair": [
               "RR",
               "RP"
             ],
-            "stdDev": 0.1253808945334383
+            "stdDev": 0.1254067860710072
           }
         ],
-        "comboPresses": 747,
+        "comboPresses": 756,
         "combos": {
-          "definitions": 73,
-          "hits": 347,
-          "matched": 52
+          "definitions": 76,
+          "hits": 349,
+          "matched": 55
         },
         "fingerAssignmentId": "default",
         "fingerAssignmentName": "既定（列固定）",
@@ -11927,7 +11927,7 @@
           {
             "id": "single",
             "label": "単打",
-            "presses": 1977
+            "presses": 1974
           },
           {
             "id": "layer:Shift",
@@ -11935,13 +11935,13 @@
             "presses": 0
           }
         ],
-        "meanPerStroke": 0.45291599280024986,
-        "perCharPresses": 1.6252983293556087,
-        "perCharSteps": 1.3866348448687351,
-        "perCharUnits": 0.6280290974151437,
+        "meanPerStroke": 0.4535546894852282,
+        "perCharPresses": 1.6288782816229117,
+        "perCharSteps": 1.386038186157518,
+        "perCharUnits": 0.628644119137342,
         "perFinger": {
-          "LI": 214.0561818517726,
-          "LM": 121.2279572074762,
+          "LI": 213.0254054453682,
+          "LM": 123.28951002028502,
           "LP": 23.478713763747784,
           "LR": 22.43162277560203,
           "LT": 0,
@@ -11953,25 +11953,25 @@
         },
         "perFingerPresses": {
           "LI": 493,
-          "LM": 534,
-          "LP": 234,
-          "LR": 250,
+          "LM": 538,
+          "LP": 236,
+          "LR": 249,
           "LT": 0,
-          "RI": 482,
+          "RI": 483,
           "RM": 399,
           "RP": 102,
           "RR": 230,
           "RT": 0
         },
-        "presses": 2724,
-        "sameFinger": 65,
-        "singleKeyRate": 85.06884681583476,
+        "presses": 2730,
+        "sameFinger": 64,
+        "singleKeyRate": 84.97632371932845,
         "singleTapLayerRate": 0,
         "singleTapRate": 0,
         "skipped": 0,
-        "strokes": 2324,
-        "totalMm": 20051.587416451224,
-        "totalUnits": 1052.5767672677807
+        "strokes": 2323,
+        "totalMm": 20071.223706993227,
+        "totalUnits": 1053.607543674185
       },
       "sampleId": "modern",
       "textLength": 1676,
@@ -11981,49 +11981,49 @@
       "analysis": {
         "arpeggio": {
           "coverage": {
-            "rate": 0.050774526678141134,
-            "strokes": 118
+            "rate": 0.04993542832544124,
+            "strokes": 116
           },
           "meanSpanLength": 2,
-          "spans": 59
+          "spans": 58
         },
         "directionalTransitions": {
           "empty": 0,
-          "inward": 54,
+          "inward": 53,
           "mixed": 18,
-          "outward": 27,
+          "outward": 26,
           "same": 27,
-          "total": 126
+          "total": 124
         },
         "redirect": {
-          "events": 8,
+          "events": 9,
           "pivots": {
-            "rate": 0.0034423407917383822,
-            "strokes": 8
+            "rate": 0.0038743004735256135,
+            "strokes": 9
           }
         },
         "roll": {
           "anyRoll": {
-            "rate": 0.050774526678141134,
-            "strokes": 118
+            "rate": 0.04993542832544124,
+            "strokes": 116
           },
           "longRoll": {
             "rate": 0,
             "strokes": 0
           },
           "twoRoll": {
-            "rate": 0.050774526678141134,
-            "strokes": 118
+            "rate": 0.04993542832544124,
+            "strokes": 116
           }
         },
         "sfb": {
           "events": 37,
           "involvedStrokes": {
-            "rate": 0.03141135972461274,
+            "rate": 0.03142488161859664,
             "strokes": 73
           }
         },
-        "strokeCount": 2324
+        "strokeCount": 2323
       },
       "conditions": {
         "actionRealizationPolicy": {
@@ -12056,68 +12056,68 @@
       "language": "ja",
       "layoutId": "oonishi-custom",
       "metrics": {
-        "actions": 2324,
+        "actions": 2323,
         "adjacent": [
           {
             "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.00514358627510144,
+            "meanExcess": 0.005145800474961579,
             "pair": [
               "LP",
               "LR"
             ],
-            "stdDev": 0.053265265661272265
+            "stdDev": 0.05327662225494646
           },
           {
             "maxExcess": 1.0155644370746373,
-            "meanExcess": 0.027827505423097226,
+            "meanExcess": 0.028700440208040436,
             "pair": [
               "LR",
               "LM"
             ],
-            "stdDev": 0.1070012924352972
+            "stdDev": 0.1077981089669164
           },
           {
             "maxExcess": 1.6575364531836625,
-            "meanExcess": 0.09655979311967436,
+            "meanExcess": 0.09892896631267634,
             "pair": [
               "LM",
               "LI"
             ],
-            "stdDev": 0.2472060617800598
+            "stdDev": 0.24915134477616996
           },
           {
             "maxExcess": 1.6925824035672523,
-            "meanExcess": 0.19170687857982135,
+            "meanExcess": 0.19178940414098355,
             "pair": [
               "RI",
               "RM"
             ],
-            "stdDev": 0.3470885663062356
+            "stdDev": 0.34714046897487477
           },
           {
             "maxExcess": 1.0155644370746373,
-            "meanExcess": 0.06872698893321266,
+            "meanExcess": 0.06875657437829799,
             "pair": [
               "RM",
               "RR"
             ],
-            "stdDev": 0.18130369837135746
+            "stdDev": 0.18133710899703567
           },
           {
             "maxExcess": 0.8027756377319948,
-            "meanExcess": 0.02522317437505703,
+            "meanExcess": 0.0252340323924376,
             "pair": [
               "RR",
               "RP"
             ],
-            "stdDev": 0.1253808945334383
+            "stdDev": 0.1254067860710072
           }
         ],
-        "comboPresses": 747,
+        "comboPresses": 756,
         "combos": {
-          "definitions": 73,
-          "hits": 347,
-          "matched": 52
+          "definitions": 76,
+          "hits": 349,
+          "matched": 55
         },
         "fingerAssignmentId": "default",
         "fingerAssignmentName": "既定（列固定）",
@@ -12128,7 +12128,7 @@
           {
             "id": "single",
             "label": "単打",
-            "presses": 1977
+            "presses": 1974
           },
           {
             "id": "layer:Shift",
@@ -12136,13 +12136,13 @@
             "presses": 0
           }
         ],
-        "meanPerStroke": 0.45291599280024986,
-        "perCharPresses": 1.6252983293556087,
-        "perCharSteps": 1.3866348448687351,
-        "perCharUnits": 0.6280290974151437,
+        "meanPerStroke": 0.4535546894852282,
+        "perCharPresses": 1.6288782816229117,
+        "perCharSteps": 1.386038186157518,
+        "perCharUnits": 0.628644119137342,
         "perFinger": {
-          "LI": 214.0561818517726,
-          "LM": 121.2279572074762,
+          "LI": 213.0254054453682,
+          "LM": 123.28951002028502,
           "LP": 23.478713763747784,
           "LR": 22.43162277560203,
           "LT": 0,
@@ -12154,25 +12154,25 @@
         },
         "perFingerPresses": {
           "LI": 493,
-          "LM": 534,
-          "LP": 234,
-          "LR": 250,
+          "LM": 538,
+          "LP": 236,
+          "LR": 249,
           "LT": 0,
-          "RI": 482,
+          "RI": 483,
           "RM": 399,
           "RP": 102,
           "RR": 230,
           "RT": 0
         },
-        "presses": 2724,
-        "sameFinger": 65,
-        "singleKeyRate": 85.06884681583476,
+        "presses": 2730,
+        "sameFinger": 64,
+        "singleKeyRate": 84.97632371932845,
         "singleTapLayerRate": 0,
         "singleTapRate": 0,
         "skipped": 0,
-        "strokes": 2324,
-        "totalMm": 20051.587416451224,
-        "totalUnits": 1052.5767672677807
+        "strokes": 2323,
+        "totalMm": 20071.223706993227,
+        "totalUnits": 1053.607543674185
       },
       "note": "triggerActivation=semantic（コンボを持つ配列でtrigger activationのgroupingが変わる分岐）",
       "sampleId": "modern",
@@ -17211,7 +17211,7 @@
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     }
   ],
-  "modelVersion": 12,
-  "sourceCommit": "55186210e4b4b8256ead2e8320b86e87dd3fb15f",
+  "modelVersion": 13,
+  "sourceCommit": "a39ed77420336b044005e92f8b21ef64d43aa95e",
   "version": 1
 }

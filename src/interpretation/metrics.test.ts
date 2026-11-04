@@ -367,7 +367,7 @@ test('コンボの定義数・命中定義数・延べ命中回数を分けて�
   const m = computeMetrics(trace, geometry);
 
   assert.deepEqual(trace.comboHits, ['aku', 'yuu', 'yoku', 'ya']);
-  assert.deepEqual(m.combos, { definitions: 73, matched: 4, hits: 4 });
+  assert.deepEqual(m.combos, { definitions: 76, matched: 4, hits: 4 });
 });
 
 test('層別集計とヒートマップのキー押下数は保存則を満たす', () => {

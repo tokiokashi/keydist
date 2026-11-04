@@ -46,7 +46,7 @@ function measure(layoutId: string, language: 'ja' | 'en') {
 
 test('コンボ表のコンボ定義の行数は、Traceのコンボ定義数と一致する。英文ではローマ字のコンボが外れる', () => {
   const ja = measure('oonishi-custom', 'ja');
-  assert.equal(ja.trace.comboDefinitions, 73);
+  assert.equal(ja.trace.comboDefinitions, 76);
   assert.equal(comboRows(ja.input.layout, undefined).length, ja.trace.comboDefinitions);
 
   const en = measure('oonishi-custom', 'en');
@@ -61,7 +61,7 @@ test('コンボ定義の配列図は、同じ組・同じ押し方のコンボ�
   assert.equal(items.length, 11);
   const first = comboRows(input.layout, undefined)[0]!;
   assert.deepEqual(first, { trigger: '語彙拡張: d + s + n', output: 'desita' });
-  // 図に載るのは、トリガーと押す先のキーが決まっているコンボだけ。表は73件すべてを載せる
+  // 図に載るのは、トリガーと押す先のキーが決まっているコンボだけ。表は76件すべてを載せる
   assert.equal(
     items.reduce((total, item) => total + item.outputs.size, 0),
     41,

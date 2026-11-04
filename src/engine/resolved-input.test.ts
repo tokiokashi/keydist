@@ -316,7 +316,7 @@ test('英字直接入力: TK音直入力法 + 英語テキストはromajiOnlyの
   assert.equal(enTrace.comboDefinitions, 0);
 
   const ja = resolve('です', 'ja');
-  assert.equal(ja.layout.resolvedComboDefinitions?.length, 73);
+  assert.equal(ja.layout.resolvedComboDefinitions?.length, 76);
   const jaTrace = generateTrace(ja.text, ja.layout, ja.geometry, ja.tracePolicy);
   assert.deepEqual(jaTrace.comboHits, ['desu']);
 });
