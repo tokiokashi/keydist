@@ -2,7 +2,7 @@
 
 キーボードの論理配列を、モデル文章を打った時の**指の総移動距離**で評価するツールです。配列そのものの性質を数値で眺めるための道具で、優劣を判定するものではありません。
 
-https://tokiokashi.github.io/keydist/
+https://keydist.tokiokashi.com/
 
 ## 配列の書き方
 
