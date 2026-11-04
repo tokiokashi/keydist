@@ -360,6 +360,15 @@ patchが当たらなくなった更新PRは、そのままマージしない。�
 - 戻す代わりに、直した版を patch のリリースPRで出す方法もある。問題の原因が分かっているならこちらが先
 - クラウドのエージェントは手動実行ができない（403）。戻す・30日を過ぎて配信し直すのはオーナーの操作になる
 
+### 公開先のURL
+
+- アプリを置くパス（viteの `base`）は、`pages.yml` が配信のたびにPagesの設定の公開先のURLから決める。
+  独自ドメインなら `/`、`tokiokashi.github.io/keydist/` なら `/keydist/` になる。リポジトリにパスもドメイン名も書かない
+- Settings → Pagesで独自ドメインを付け外しすると、その時点で配信されている公開物は前のパスのままなので、画面が読み込めなくなる。
+  付け外しの直後に「Deploy to GitHub Pages」を今の版のタグで手動実行して、新しいパスで作り直す
+- 公開はGitHub Actionsから行うので、`CNAME` ファイルは置かない（Actionsからの公開ではPagesが読まない。ドメインの正はSettingsの設定）
+- CIの `build` は `/keydist/` で組む。ルート以外のパスに置いても壊れないことを確かめるため
+
 ## テスト
 
 `node --test` を使う。unit test は主対象のソース隣へ `src/**/*.test.ts` として置く。`test/*.test.ts` には architecture・commit-msg などリポジトリ横断の検査だけを置き、fixture は `test/fixtures/` に置く。

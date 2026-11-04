@@ -35,8 +35,10 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      KEYDIST_BASE_PATH: /keydist/
+    # pages: read は公開先のURLを読むため（Resolve base path）。書き込みは deploy ジョブだけが持つ
+    permissions:
+      contents: read
+      pages: read
     steps:
       # タグ名を決めて検証する。タグは呼び出し・手動実行の入力で受け取る。
       # workflow_call では github.ref は呼び出し側のもの（release.yml なら main）になる。
@@ -66,6 +68,32 @@ jobs:
             exit 1
           fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      # アプリを置くパス（vite の base）を、Pages の設定にある公開先のURLから決める。
+      # 独自ドメインなら `/`、`<owner>.github.io/<repo>/` なら `/<repo>/` になる。
+      # リポジトリに固定値を書くと、Settings で独自ドメインを付け外しした時にリポジトリの変更とリリースが要る。
+      # URLから読めば、付け外しの後に今のタグで手動実行するだけで、新しいURLに合った公開物になる
+      - name: Resolve base path
+        id: base-path
+        shell: bash
+        env:
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if ! html_url="$(gh api "repos/$REPO/pages" --jq '.html_url // empty')" || [ -z "$html_url" ]; then
+            echo "::error::Pages の公開先のURLを読めない。Settings → Pages で GitHub Actions からの公開を有効にしてから実行する"
+            exit 1
+          fi
+          base_path="$(node -e 'const p = new URL(process.argv[1]).pathname; process.stdout.write(p.endsWith("/") ? p : p + "/")' "$html_url")"
+          echo "KEYDIST_BASE_PATH=$base_path" >> "$GITHUB_ENV"
+          {
+            echo "## Base path"
+            echo
+            echo "公開先: $html_url"
+            echo
+            echo "base: \`$base_path\`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Checkout
         id: checkout
@@ -178,6 +206,7 @@ jobs:
         shell: bash
         env:
           RESOLVE_OUTCOME: ${{ steps.resolve.outcome }}
+          BASE_PATH_OUTCOME: ${{ steps.base-path.outcome }}
           CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
           VERIFY_TAG_OUTCOME: ${{ steps.verify-tag.outcome }}
           SETUP_NODE_OUTCOME: ${{ steps.setup-node.outcome }}
@@ -203,6 +232,7 @@ jobs:
             echo "| Check | Result |"
             echo "| --- | --- |"
             printf '| Resolve tag | %s %s |\n' "$(icon "$RESOLVE_OUTCOME")" "$RESOLVE_OUTCOME"
+            printf '| Resolve base path | %s %s |\n' "$(icon "$BASE_PATH_OUTCOME")" "$BASE_PATH_OUTCOME"
             printf '| Checkout | %s %s |\n' "$(icon "$CHECKOUT_OUTCOME")" "$CHECKOUT_OUTCOME"
             printf '| Tag matches package.json | %s %s |\n' "$(icon "$VERIFY_TAG_OUTCOME")" "$VERIFY_TAG_OUTCOME"
             printf '| Setup Node.js | %s %s |\n' "$(icon "$SETUP_NODE_OUTCOME")" "$SETUP_NODE_OUTCOME"
