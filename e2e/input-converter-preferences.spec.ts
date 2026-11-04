@@ -368,4 +368,13 @@ test('?layout= opens the Tester with that layout selected, saves it and drops th
   await page.goto('/input?layout=no-such-layout');
   await expect(feature).toHaveAttribute('data-input-ready', 'tk-onchoku');
   await expect(page).toHaveURL(/\/input$/);
+
+  // 初期状態と同じ配列（既定の配列）をURLで選んでも保存される
+  await layoutSelect.selectOption('shingeta');
+  await expect(feature).toHaveAttribute('data-input-ready', 'shingeta');
+  await page.goto('/input?layout=naginata-v18');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  await expect(page).toHaveURL(/\/input$/);
+  await page.reload();
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
 });

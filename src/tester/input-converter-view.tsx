@@ -426,6 +426,9 @@ export function InputConverterView({
     // URLで選んだ配列には、選択欄で切り替えた時と同じ物理配列の補正を掛ける
     const restored = requested === saved ? saved : { ...requested, geometryId: geometryIdForLayout(requested.layoutId, requested.geometryId) };
     persistedPreferencesRef.current = restored;
+    // URLで選んだ配列は明示的に保存する。選んだ配列が初期状態の配列と同じだと、
+    // 状態が変わらず下の保存の副作用が走らないまま、URLから指定だけが外れるため
+    if (restored !== saved) preferences.save(restored);
     if (requestedLayoutId !== undefined) onRequestedLayoutConsumed?.();
 
     const restoredLayout = selectableLayouts.find((candidate) => candidate.id === restored.layoutId);
