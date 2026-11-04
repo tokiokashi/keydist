@@ -65,7 +65,7 @@ test('帰属先ごとの押下数の和は、全配列・日本語と英文の�
 
 test('英文ではローマ字のコンボが外れ、コンボの行が無くなる', () => {
   const kinds = (language: 'ja' | 'en') => {
-    const result = tryResolve('oonishi-custom', language, fixedTestText(language));
+    const result = tryResolve('tk-onchoku', language, fixedTestText(language));
     assert.ok(result.ok);
     if (!result.ok) throw new Error('unreachable');
     return measureInput(result.input).extracted.rows.map((row) => row.kind);

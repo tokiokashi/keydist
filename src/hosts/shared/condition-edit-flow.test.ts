@@ -218,7 +218,7 @@ test('ローマ字規則の理由: 大西配列は全体未設定でも推奨の
   const oonishi = viewOf(session, 'oonishi');
   assert.equal(oonishi.rowOf('romajiRuleId').originLabel, '既定値');
   assert.match(oonishi.notices.get('romajiRuleId')!, /^この配列の推奨（大西式/);
-  assert.equal(viewOf(session, 'oonishi-custom').notices.has('romajiRuleId'), false);
+  assert.equal(viewOf(session, 'tk-onchoku').notices.has('romajiRuleId'), false);
 });
 
 test('既定の物理配列: JISかな配列は全体の値と同じ形のJISの物理配列で測り、全体の値を負けた値として示さない', () => {

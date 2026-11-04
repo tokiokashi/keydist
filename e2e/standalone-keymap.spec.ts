@@ -63,7 +63,7 @@ test('キーを選んで出る文字を調べる: キーボードでキーを選
 });
 
 test('キーを選んで出る文字を調べる: 続けて押せるキーと、出る文字が決まるキーの読み上げの名前に説明が入る', async ({ page }) => {
-  await selectLayout(page, 'oonishi-custom');
+  await selectLayout(page, 'tk-onchoku');
   await page.goto('/analyzer/keymap');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
 

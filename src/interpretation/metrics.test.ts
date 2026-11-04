@@ -362,7 +362,7 @@ test('コンボはアクション/文字を下げるが、押下/文字は下げ
 });
 
 test('コンボの定義数・命中定義数・延べ命中回数を分けて数える', () => {
-  const combo = LAYOUT_BY_ID.get('oonishi-custom')!;
+  const combo = LAYOUT_BY_ID.get('tk-onchoku')!;
   const trace = generateTrace('やくやまにゅうりょくきゃ', combo, geometry, opts());
   const m = computeMetrics(trace, geometry);
 

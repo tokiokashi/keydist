@@ -76,7 +76,7 @@ test('同時押しを持つ配列は、同時押しのストロークのステ�
 });
 
 test('解析の遷移から選ぶ基準の時間は、ストロークの指から選ぶ時と一致する', () => {
-  for (const layoutId of ['qwerty', 'nicola', 'shingeta', 'naginata-v18', 'oonishi-custom']) {
+  for (const layoutId of ['qwerty', 'nicola', 'shingeta', 'naginata-v18', 'tk-onchoku']) {
     const analysis = analysisOf(layoutId);
     const fromStrokes = { strokes: analysis.strokes, transitions: [] };
     analysis.strokes.forEach((_, index) => {

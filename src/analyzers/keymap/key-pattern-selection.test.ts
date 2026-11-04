@@ -44,14 +44,14 @@ test('選択の切り替え: 同じキーで外れ、残りの順は保たれる
 });
 
 test('キーを選んでいない時は、キーを選ぶよう促す文だけを出す', () => {
-  const view = keyPatternSelectionView(resolvedLayout('oonishi-custom', 'ja'), []);
+  const view = keyPatternSelectionView(resolvedLayout('tk-onchoku', 'ja'), []);
   assert.equal(view.message, KEY_PATTERN_PROMPT);
   assert.equal(view.candidateLegends.size, 0);
   assert.equal(view.continuationKeys.size, 0);
 });
 
 test('3キーのコンボは、1キーずつ選ぶと出る文字までたどれる（大西配列のカスタム・日本語）', () => {
-  const layout = resolvedLayout('oonishi-custom', 'ja');
+  const layout = resolvedLayout('tk-onchoku', 'ja');
   // 語彙拡張: 物理キーのk・l・mを同時に押す（ローマ字のd + s + n）→ desita
   const one = keyPatternSelectionView(layout, ['k']);
   assert.ok(one.continuationKeys.has('l'));
@@ -67,7 +67,7 @@ test('3キーのコンボは、1キーずつ選ぶと出る文字までたどれ
 });
 
 test('物理キーのj・l・m（ローマ字のd + s + t）を同時に押しても desita にならない（大西配列のカスタム・日本語）', () => {
-  const layout = resolvedLayout('oonishi-custom', 'ja');
+  const layout = resolvedLayout('tk-onchoku', 'ja');
   const view = keyPatternSelectionView(layout, ['j', 'l', 'm']);
   assert.equal(view.exactOutputs.includes('desita'), false);
   assert.equal(
@@ -77,7 +77,7 @@ test('物理キーのj・l・m（ローマ字のd + s + t）を同時に押し�
 });
 
 test('英文を打つ時は、ローマ字で打つ時だけのコンボをたどれない', () => {
-  const layout = resolvedLayout('oonishi-custom', 'en');
+  const layout = resolvedLayout('tk-onchoku', 'en');
   const one = keyPatternSelectionView(layout, ['j']);
   assert.equal(one.continuationKeys.has('l'), false);
   const two = keyPatternSelectionView(layout, ['j', 'l']);
@@ -98,7 +98,7 @@ test('出る文字が無い組み合わせは、その旨を出す', () => {
 });
 
 test('読み上げの説明: 続けて押せるキーには続けて押せると足し、あと1キーで決まるキーには出力が決まる旨だけを足す', () => {
-  const layout = resolvedLayout('oonishi-custom', 'ja');
+  const layout = resolvedLayout('tk-onchoku', 'ja');
   const one = keyPatternSelectionView(layout, ['l']);
   const continuationOnly = [...one.continuationKeys].find((key) => !one.candidateLegends.has(key));
   assert.ok(continuationOnly !== undefined);

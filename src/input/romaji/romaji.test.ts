@@ -246,7 +246,7 @@ test('…は綴りを持たず、打てない記号に数える', () => {
 
 test('物理キーを持たない配列では「」・を打てない文字に数える', () => {
   const oonishi = LAYOUTS_JA.find((layout) => layout.id === 'oonishi')!;
-  const custom = LAYOUTS_JA.find((layout) => layout.id === 'oonishi-custom')!;
+  const custom = LAYOUTS_JA.find((layout) => layout.id === 'tk-onchoku')!;
   // 大西配列は [ ] / のキーを持たない。『』も「」を打てないので打てない文字に数える
   assert.equal(generateTrace('「」・『』', oonishi, geometry, opts).skipped, 5);
   // TK音直入力法は / のキーだけを持つ
