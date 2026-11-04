@@ -343,3 +343,29 @@ test('自作の配列を選んで開き直すと、その配列と練習環境�
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
   await expect(layoutSelect.locator('optgroup[label="自作の配列"]')).toHaveCount(0);
 });
+
+test('?layout= opens the Tester with that layout selected, saves it and drops the parameter', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const feature = page.locator('.input-feature');
+  const layoutSelect = page.getByLabel('配列', { exact: true });
+
+  await page.goto('/input');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  await layoutSelect.selectOption('shingeta');
+  await expect(feature).toHaveAttribute('data-input-ready', 'shingeta');
+
+  // URLの指定は保存した選択より優先する
+  await page.goto('/input?layout=tk-onchoku');
+  await expect(feature).toHaveAttribute('data-input-ready', 'tk-onchoku');
+  await expect(layoutSelect).toHaveValue('tk-onchoku');
+  await expect(page).toHaveURL(/\/input$/);
+
+  // URLで選んだ配列は保存され、再読み込みでもそのまま
+  await page.reload();
+  await expect(feature).toHaveAttribute('data-input-ready', 'tk-onchoku');
+
+  // 選べる配列に無いidは無視して、保存した選択で開く
+  await page.goto('/input?layout=no-such-layout');
+  await expect(feature).toHaveAttribute('data-input-ready', 'tk-onchoku');
+  await expect(page).toHaveURL(/\/input$/);
+});

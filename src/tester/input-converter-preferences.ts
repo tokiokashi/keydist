@@ -209,6 +209,28 @@ export function inputConverterLayoutPreferences(
   return prefs.layouts[layoutId] ?? { ...fallback };
 }
 
+/**
+ * URLで指定された配列を、復元した選択より優先して選ぶ。
+ * 選べる配列に無いidは無視して、復元した選択をそのまま返す（リンク先の配列が消えても画面は開ける）。
+ * 指定した配列の練習環境は、保存済みのものがあればそれを使う。
+ */
+export function selectRequestedLayout(
+  prefs: InputConverterPreferencesV2,
+  requestedLayoutId: string | undefined,
+  layoutIds: readonly string[],
+  fallback: InputConverterLayoutPreferencesV2,
+): InputConverterPreferencesV2 {
+  if (requestedLayoutId === undefined || !layoutIds.includes(requestedLayoutId)) return prefs;
+  return {
+    ...prefs,
+    layoutId: requestedLayoutId,
+    layouts: {
+      ...prefs.layouts,
+      [requestedLayoutId]: inputConverterLayoutPreferences(prefs, requestedLayoutId, fallback),
+    },
+  };
+}
+
 export function serializeInputConverterPreferences(prefs: InputConverterPreferencesV2): string {
   return JSON.stringify(prefs);
 }

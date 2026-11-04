@@ -11,6 +11,7 @@ import {
   INPUT_CONVERTER_PREFERENCES_VERSION,
   loadInputConverterPreferences,
   saveInputConverterPreferences,
+  selectRequestedLayout,
   serializeInputConverterPreferences,
   type InputConverterLayoutPreferencesV2,
   type InputConverterPreferencesV2,
@@ -425,4 +426,32 @@ test('write coalescing: cancel() drops the pending write', (t) => {
   scheduler.cancel();
   t.mock.timers.tick(200);
   assert.equal(writes, 0);
+});
+
+test('selectRequestedLayout: URLで指定した配列を保存した選択より優先し、その配列の練習環境は保存済みのものを使う', () => {
+  const saved: InputConverterPreferencesV2 = {
+    ...createDefaultInputConverterPreferences({ layoutId: 'naginata-v18', geometryId: 'column-staggered', layout: defaultLayout }),
+    layouts: {
+      'naginata-v18': { ...defaultLayout, practiceText: 'かな' },
+      shingeta: { ...defaultLayout, practiceText: 'ことば' },
+    },
+  };
+  const selected = selectRequestedLayout(saved, 'shingeta', catalogs.layoutIds, defaultLayout);
+  assert.equal(selected.layoutId, 'shingeta');
+  assert.equal(selected.geometryId, 'column-staggered');
+  assert.equal(selected.layouts.shingeta?.practiceText, 'ことば');
+  assert.equal(selected.layouts['naginata-v18']?.practiceText, 'かな');
+});
+
+test('selectRequestedLayout: 練習環境が保存されていない配列は既定の練習環境で始める', () => {
+  const saved = createDefaultInputConverterPreferences({ layoutId: 'naginata-v18', geometryId: 'row-staggered', layout: defaultLayout });
+  const selected = selectRequestedLayout(saved, 'jis-kana', catalogs.layoutIds, defaultLayout);
+  assert.equal(selected.layoutId, 'jis-kana');
+  assert.deepEqual(selected.layouts['jis-kana'], defaultLayout);
+});
+
+test('selectRequestedLayout: 選べる配列に無いidと指定なしは、保存した選択をそのまま返す', () => {
+  const saved = createDefaultInputConverterPreferences({ layoutId: 'shingeta', geometryId: 'row-staggered', layout: defaultLayout });
+  assert.equal(selectRequestedLayout(saved, 'no-such-layout', catalogs.layoutIds, defaultLayout), saved);
+  assert.equal(selectRequestedLayout(saved, undefined, catalogs.layoutIds, defaultLayout), saved);
 });
