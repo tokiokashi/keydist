@@ -19,7 +19,11 @@ export const Route = createRootRoute({
         content: 'キーボードの配列を、文章を打った時の指の移動距離で調べたり、実際に打って試したりできるツール',
       },
     ],
-    links: [{ rel: 'stylesheet', href: appCss }],
+    links: [
+      { rel: 'stylesheet', href: appCss },
+      // 置き場所（base）が `/` 以外でも同じファイルを指すよう、BASE_URL から組み立てる
+      { rel: 'icon', href: `${import.meta.env.BASE_URL}favicon.svg`, type: 'image/svg+xml' },
+    ],
   }),
   shellComponent: RootDocument,
 });
