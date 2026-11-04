@@ -81,7 +81,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          if ! html_url="$(gh api "repos/$REPO/pages" --jq .html_url)" || [ -z "$html_url" ]; then
+          if ! html_url="$(gh api "repos/$REPO/pages" --jq '.html_url // empty')" || [ -z "$html_url" ]; then
             echo "::error::Pages の公開先のURLを読めない。Settings → Pages で GitHub Actions からの公開を有効にしてから実行する"
             exit 1
           fi
