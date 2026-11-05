@@ -133,7 +133,7 @@ export const COMPARISON_COLUMN_TEXT: Readonly<Record<ComparisonColumnId, Compari
   movedPressShare: {
     label: '動いた押下率',
     description:
-      '押下キー数のうち、指が動いた（移動距離が0より大きい）押下で押したキーの数の割合（%）。ホームキーや親指キー、同じキーの連続は動いた押下に入りません。',
+      '押下キー数のうち、指が動いた（移動距離が0より大きい）押下で押したキーの数の割合（%）。移動距離が0の押下（同じ指が続かない時のホームキー、同じキーの連続など）は入りません。',
   },
   perMovedPressUnits: {
     label: 'u/動いた押下',
