@@ -74,11 +74,11 @@ export const COMPARISON_COLUMN_TEXT: Readonly<Record<ComparisonColumnId, Compari
     description: '入力1文字あたりのアクション数。コンボなどでまとめて打つほど小さくなります。',
   },
   perCharPresses: {
-    label: '押下/文字',
+    label: '押下数/文字',
     description: '入力1文字あたりのキーを押す回数。コンボでまとめても減りません。',
   },
   perActionPresses: {
-    label: '押下/動作',
+    label: '押下数/動作',
     description: '1アクションで押すキーの数。コンボや同時押しでまとめて打つほど大きくなります。',
   },
   singleTapLayerRate: {
