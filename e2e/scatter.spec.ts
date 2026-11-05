@@ -56,8 +56,8 @@ test.describe('個別画面', () => {
     const before = await qwerty.evaluate((element) => getComputedStyle(element).transform);
     const settings = await openSettings(page);
     await settings.getByLabel('組み合わせ', { exact: true }).selectOption('press');
-    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('動作数/文字');
-    await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('押下/動作');
+    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('押下/動作');
+    await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('動作数/文字');
     await expect(feature(page).locator('[data-scatter-contour]').first()).toContainText(/^押下\/文字 [\d.]+$/);
     await expect(feature(page).locator('[data-scatter-preset-note]')).toBeVisible();
 

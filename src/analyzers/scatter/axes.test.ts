@@ -77,8 +77,9 @@ test('組み込みの全配列: 用意する4つの組み合わせの等位線�
       const contour = scatterContour(axes.x, axes.y, inputChars);
       assert.ok(contour, `${preset} ${layoutId}`);
       assert.equal(contour.column, expectedColumn[preset]);
-      // 横軸が1文字あたりの動作数の2つの組み合わせは、軸の積が1文字あたりの量になる
-      if (preset === 'distance' || preset === 'press') assert.equal(axes.x, 'perCharSteps');
+      // 1文字あたりの動作数を軸に取る2つの組み合わせは、軸の積が1文字あたりの量になる（distanceは横軸、pressは縦軸）
+      if (preset === 'distance') assert.equal(axes.x, 'perCharSteps');
+      if (preset === 'press') assert.equal(axes.y, 'perCharSteps');
       const value = contour.valueAt(row[axes.x], row[axes.y]);
       assert.ok(value !== undefined, `${preset} ${layoutId} ${row[axes.x]} ${row[axes.y]}`);
       assert.ok(relativeError(value, row[contour.column]) <= 1e-9, `${preset} ${layoutId}: ${value} と ${row[contour.column]}`);
