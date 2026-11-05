@@ -507,7 +507,7 @@ compile時にcombo alternativeへ `{ kind: 'romaji-input' }` context requirement
 かな由来の塊どうしの連結（`から、です` や `から・です` のように句読点・長音・記号を挟む場合を含む）では成立し、
 かな由来の塊とそうでない塊をまたぐ範囲（`でsu` の `desu`、`しte` の `site` など）では成立しない。
 
-TK音直入力法のコンボ73件はすべて `romajiOnly` を持つ。出力が `site` `kara` `desu` のような
+TK音直入力法のコンボ76件はすべて `romajiOnly` を持つ。出力が `site` `kara` `desu` のような
 ローマ字の綴りなので、英単語の一部を誤ってコンボで打つことを避けるためである。
 例えば `これはwebsiteです` では、`website` の区間に `site` のコンボは成立せず、
 `です` の区間では `desu` のコンボが成立する。`Wi-Fiのsiteへ` では `site` のコンボは成立しない。

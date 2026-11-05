@@ -200,7 +200,7 @@ test('Vialのキーの集合が同じコンボを外した定義は、保存で�
   assert.ok(result.ok);
 });
 
-test('既存のVial由来コンボ73件を全件取り込める', () => {
+test('既存のVial由来コンボ76件を全件取り込める', () => {
   const data = {
     layout: [
       [
@@ -219,7 +219,7 @@ test('既存のVial由来コンボ73件を全件取り込める', () => {
   };
   const imported = importVial(JSON.stringify(data));
   const sequences = new Map(imported.sequences);
-  assert.equal(CUSTOM_COMBOS.length, 73);
+  assert.equal(CUSTOM_COMBOS.length, 76);
   // キーの集合が同じコンボが無いので、外されるコンボは無い
   assert.deepEqual(imported.warnings, []);
   for (const [output, inputs] of CUSTOM_COMBOS) {

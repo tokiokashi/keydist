@@ -239,7 +239,7 @@ test('romajiOnlyのコンボはローマ字表を持たない配列のTraceで�
 
   const romaji = generateTrace('です', ja, geometry, DEFAULT_TRACE_POLICY);
   assert.deepEqual(romaji.comboHits, ['desu']);
-  assert.equal(romaji.comboDefinitions, 73);
+  assert.equal(romaji.comboDefinitions, 76);
 });
 
 test('romajiOnlyのコンボは、かなから展開した綴りの区間だけで成立する（仕様 §4.3）', () => {
@@ -256,6 +256,11 @@ test('romajiOnlyのコンボは、かなから展開した綴りの区間だけ�
   assert.deepEqual(hits('deす'), []);
   assert.deepEqual(hits('しte'), []);
   assert.deepEqual(hits('siて'), []);
+  // 「いう」「いえ」「いお」は母音のコンボで打ち、拗音の「きゅう」の yuu とは別の見出しになる
+  assert.deepEqual(hits('いう'), ['iu']);
+  assert.deepEqual(hits('いえ'), ['ie']);
+  assert.deepEqual(hits('いお'), ['io']);
+  assert.deepEqual(hits('きゅう'), ['yuu']);
   // 句読点・長音を挟んだかなの連結では、今と同じく成立する
   assert.deepEqual(hits('から、です'), ['kara', 'desu']);
   assert.deepEqual(hits('からーです'), ['kara', 'desu']);
@@ -301,6 +306,15 @@ test('TK音直入力法は正式名称を表示する', () => {
   assert.equal(desita?.group, '語彙拡張');
   assert.equal(desita?.foldTriggerInputs, undefined);
 
+  // 母音の連続のうち、i + u が拗音の yu に重なる「いう」と、「いえ」「いお」は3キー以上のコンボで打つ
+  const iu = combo?.resolvedComboDefinitions?.find((definition) => definition.output === 'iu');
+  const ie = combo?.resolvedComboDefinitions?.find((definition) => definition.output === 'ie');
+  const io = combo?.resolvedComboDefinitions?.find((definition) => definition.output === 'io');
+  assert.deepEqual(iu?.inputs, ['i', 'u', 'e']);
+  assert.deepEqual(ie?.inputs, ['e', 'u', 'o']);
+  assert.deepEqual(io?.inputs, ['i', 'e', 'u', 'o']);
+  assert.deepEqual([iu?.group, ie?.group, io?.group], ['二重母音拡張', '二重母音拡張', '二重母音拡張']);
+
   const ya = combo?.resolvedComboDefinitions?.find((definition) => definition.output === 'ya');
   const yaku = combo?.resolvedComboDefinitions?.find((definition) => definition.output === 'yaku');
   const atu = combo?.resolvedComboDefinitions?.find((definition) => definition.output === 'atu');
@@ -319,9 +333,9 @@ test('TK音直入力法は正式名称を表示する', () => {
     拗音拡張: 19,
     入声拡張: 20,
     撥音拡張: 7,
-    二重母音拡張: 10,
+    二重母音拡張: 13,
   });
-  assert.equal(combo?.resolvedComboDefinitions?.length, 73);
+  assert.equal(combo?.resolvedComboDefinitions?.length, 76);
   assert.ok(LAYOUTS_JA.some((layout) => layout.id === 'tk-onchoku'));
   assert.equal(tsuki?.name, '月配列2-263式');
   assert.ok(!oonishi?.name.includes(' '));
