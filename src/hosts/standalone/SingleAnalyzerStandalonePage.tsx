@@ -27,7 +27,7 @@ import { STANDALONE_WRITE_LOG_KEY } from '#hosts/shared/options-write-log.ts';
 import { AddToWorkspaceMenu, type AddToWorkspaceDestination } from '#hosts/shared/AddToWorkspaceMenu.tsx';
 import { arrivalPositionFor, usePlaybackArrival } from './use-playback-arrival.ts';
 import { urlOptionsNotices, useSharedLink, useTargetShareSource } from './use-shared-link.ts';
-import { describeShareEncodeNotice, encodeSingleTargetToUrl } from './target-share.ts';
+import { describeShareEncodeNotice, describeTextShareNotice, encodeTextToUrl, encodeSingleTargetToUrl } from './target-share.ts';
 import './standalone.css';
 
 /**
@@ -122,7 +122,11 @@ export function SingleAnalyzerStandalonePage<Options, Extracted>({
   // 別の画面の図から開いた時の最初の文字位置。共有リンクの取り込みが`target`をURLから消す前に対象を読むため、取り込みより前に呼ぶ
   const arrival = usePlaybackArrival(analyzer.acceptsPlaybackSeek === true, assetsReady, shareSource);
   const initialPosition = arrivalPositionFor(arrival, analysisTargetKey(target));
-  const { optionDiagnostics: urlDiagnostics, targetNotices } = useSharedLink({
+  const {
+    optionDiagnostics: urlDiagnostics,
+    targetNotices,
+    textNotices,
+  } = useSharedLink({
     analyzerId: analyzerId,
     optionsDefinition: analyzer.urlOptions,
     currentOptions: decoded,
@@ -182,12 +186,14 @@ export function SingleAnalyzerStandalonePage<Options, Extracted>({
         disabled={!assetsReady}
         history={history}
         share={{
-          description: '今の対象と解析設定を含むこの画面のURLをコピーします',
+          description: '今の対象・解析設定・テキスト（組み込みのもの）を含むこの画面のURLをコピーします',
           query: () => {
             const params = analyzer.urlOptions.encodeOptionsToUrl(optionsDraft);
             const encoded = encodeSingleTargetToUrl(target, shareSource);
             for (const [key, value] of encoded.params) params.append(key, value);
-            return { params, notices: describeShareEncodeNotice(encoded.notice) };
+            const text = encodeTextToUrl(assets.standaloneTextSelection);
+            for (const [key, value] of text.params) params.append(key, value);
+            return { params, notices: [...describeShareEncodeNotice(encoded.notice), ...describeTextShareNotice(text.userText)] };
           },
         }}
       >
@@ -237,7 +243,7 @@ export function SingleAnalyzerStandalonePage<Options, Extracted>({
             onOptionsChange={changeOptions}
             {...(setTargetSource === undefined ? {} : { setTargetSource })}
             {...(initialPosition === undefined ? {} : { initialCharPosition: initialPosition })}
-            linkNotices={[...urlOptionsNotices(urlDiagnostics), ...targetNotices]}
+            linkNotices={[...urlOptionsNotices(urlDiagnostics), ...targetNotices, ...textNotices]}
           />
         </div>
       </fieldset>

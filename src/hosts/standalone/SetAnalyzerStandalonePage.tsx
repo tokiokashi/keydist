@@ -26,7 +26,14 @@ import { STANDALONE_WRITE_LOG_KEY } from '#hosts/shared/options-write-log.ts';
 import { effectiveMultiBaseline } from '#engine/multi-target-selection.ts';
 import { AddToWorkspaceMenu, type AddToWorkspaceDestination } from '#hosts/shared/AddToWorkspaceMenu.tsx';
 import { urlOptionsNotices, useSharedLink, useTargetShareSource } from './use-shared-link.ts';
-import { describeShareEncodeNotice, encodeMultiTargetsToUrl, encodePlaybackOpenParams, hasSharedTargetParams } from './target-share.ts';
+import {
+  describeShareEncodeNotice,
+  describeTextShareNotice,
+  encodeTextToUrl,
+  encodeMultiTargetsToUrl,
+  encodePlaybackOpenParams,
+  hasSharedTargetParams,
+} from './target-share.ts';
 import './standalone.css';
 
 /**
@@ -110,7 +117,11 @@ export function SetAnalyzerStandalonePage<Options, Extracted, RowContext>({
   const [optionsDraft, setOptionsDraft] = useOptionsDraft<Options>(decoded, STANDALONE_WRITE_LOG_KEY);
   // URL経由で解析設定と対象を受け取る（共有リンク。`use-shared-link.ts`）。書き込みは1つのコマンドで、Undo 1回で戻る。
   const shareSource = useTargetShareSource(catalog, assets.setupLibrary.setups);
-  const { optionDiagnostics: urlDiagnostics, targetNotices } = useSharedLink({
+  const {
+    optionDiagnostics: urlDiagnostics,
+    targetNotices,
+    textNotices,
+  } = useSharedLink({
     analyzerId,
     optionsDefinition: analyzer.urlOptions,
     currentOptions: decoded,
@@ -175,13 +186,15 @@ export function SetAnalyzerStandalonePage<Options, Extracted, RowContext>({
         disabled={!assetsReady}
         history={history}
         share={{
-          description: '今の対象と解析設定を含むこの画面のURLをコピーします',
+          description: '今の対象・解析設定・テキスト（組み込みのもの）を含むこの画面のURLをコピーします',
           query: () => {
             const params = analyzer.urlOptions.encodeOptionsToUrl(optionsDraft);
             const selection = assets.multiTargetSelection;
             const encoded = encodeMultiTargetsToUrl(selection.targets, effectiveMultiBaseline(selection), shareSource);
             for (const [key, value] of encoded.params) params.append(key, value);
-            return { params, notices: describeShareEncodeNotice(encoded.notice) };
+            const text = encodeTextToUrl(assets.standaloneTextSelection);
+            for (const [key, value] of text.params) params.append(key, value);
+            return { params, notices: [...describeShareEncodeNotice(encoded.notice), ...describeTextShareNotice(text.userText)] };
           },
         }}
       >
@@ -223,7 +236,7 @@ export function SetAnalyzerStandalonePage<Options, Extracted, RowContext>({
             onBaselineChange={(next) => dispatch(setMultiBaselineCommand(next))}
             options={optionsDraft}
             onOptionsChange={changeOptions}
-            linkNotices={[...urlOptionsNotices(urlDiagnostics), ...targetNotices]}
+            linkNotices={[...urlOptionsNotices(urlDiagnostics), ...targetNotices, ...textNotices]}
           />
         </div>
       </fieldset>

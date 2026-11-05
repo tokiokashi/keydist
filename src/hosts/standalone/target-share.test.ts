@@ -11,6 +11,10 @@ import {
   decodeMultiTargetsFromUrl,
   decodeSingleTargetFromUrl,
   decodeTargetRef,
+  decodeTextFromUrl,
+  describeTextShareNotice,
+  encodeTextToUrl,
+  SHARE_MAX_TEXT_ID_LENGTH,
   describeSharedTargetsNotice,
   describeShareEncodeNotice,
   encodeMultiTargetsToUrl,
@@ -274,5 +278,30 @@ test('送る側が載せた参照は、名前が何であっても受け取る�
     const decoded = decodeSingleTargetFromUrl(new URLSearchParams(encoded.params.toString()), src, []);
     assert.equal(decoded.notice.unreadable, 0);
     assert.deepEqual(decoded.target, target);
+  }
+});
+
+test('組み込みのテキストはidで載せ、自作のテキストは載せずに送る側へ示す', () => {
+  const builtin = encodeTextToUrl({ ref: { kind: 'builtin', id: 'builtin:ja.legacy' } });
+  assert.equal(builtin.params.get('text'), 'builtin:ja.legacy');
+  assert.deepEqual(describeTextShareNotice(builtin.userText), []);
+
+  const user = encodeTextToUrl({ ref: { kind: 'user', id: 'abc' } });
+  assert.equal(user.params.has('text'), false);
+  assert.equal(describeTextShareNotice(user.userText).length, 1);
+});
+
+test('テキストは組み込みのidだけ読み、この版に無いid・長すぎる値は取り込まず診断を積む', () => {
+  const read = (value: string | undefined) => {
+    const diagnostics: { path: string; message: string }[] = [];
+    const params = new URLSearchParams(value === undefined ? '' : `text=${encodeURIComponent(value)}`);
+    return { decoded: decodeTextFromUrl(params, diagnostics), diagnostics };
+  };
+  assert.deepEqual(read(undefined).decoded, { present: false, ref: undefined });
+  assert.deepEqual(read('builtin:ja.legacy').decoded, { present: true, ref: { kind: 'builtin', id: 'builtin:ja.legacy' } });
+  for (const bad of ['builtin:no.such', 'user-text-id', '', 'x'.repeat(SHARE_MAX_TEXT_ID_LENGTH + 1)]) {
+    const { decoded, diagnostics } = read(bad);
+    assert.deepEqual(decoded, { present: true, ref: undefined }, bad);
+    assert.equal(diagnostics.length, 1, bad);
   }
 });

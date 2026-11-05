@@ -55,7 +55,7 @@ const NOT_FAILURE_TEXT: ReadonlySet<string> = new Set([
   '対象と条件は変わりません',
   '配列・Setupを名前で絞り込む',
   '新しいテキストがあります',
-  '今の対象と解析設定を含むこの画面のURLをコピーします',
+  '今の対象・解析設定・テキスト（組み込みのもの）を含むこの画面のURLをコピーします',
   'QWERTY最適化',
   'っ${kana}',
   '${source.name}のコピー',

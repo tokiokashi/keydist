@@ -11,6 +11,7 @@ import {
   toggleTarget,
 } from './pane-helper.ts';
 import { useShortText } from './short-text-helper.ts';
+import { openTextChip } from './context-bar-helper.ts';
 
 /**
  * 比較表単体ページのE2E。
@@ -839,6 +840,8 @@ test('共有リンクは集合を並び順・基準ごと運び、自作のSetup
   await openTargetSelection(page);
   await page.getByLabel('基準', { exact: true }).selectOption('setup:src-1');
   await expect(page.locator('.comparison-table tr[data-baseline="true"]')).toContainText('仕事用');
+  // 自作のテキストは載らない旨が出るので、組み込みのテキストを選んでから確かめる。
+  await selectBuiltinText(page);
   await page.getByRole('button', { name: '共有', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: 'URLをコピーしました' })).toBeVisible();
   // 載らない対象が無い時は、送る側へ示す文を出さない。
@@ -1014,6 +1017,46 @@ test('共有リンクで届いた解析設定と対象は、「元に戻す」1�
   await expect(undo).toBeDisabled();
 });
 
+/** テキストを組み込みの「現代文」に切り替え、チップを閉じる。 */
+async function selectBuiltinText(page: Page): Promise<void> {
+  const panel = await openTextChip(page);
+  await panel.getByLabel('テキストを選ぶ').selectOption('builtin:builtin:ja.modern');
+  await page.keyboard.press('Escape');
+}
+
+test('比較表の共有リンクにも組み込みのテキストが載り、開いた先で同じテキストに切り替わる。自作のテキストは載らない', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto('/analyzer/comparison?targets=layout%3Advorak&targets=layout%3Aqwerty');
+  await expect(page.locator('.comparison-table')).toBeVisible({ timeout: 10_000 });
+  await page.getByRole('button', { name: '共有', exact: true }).click();
+  await expect(page.locator('[data-share-notice="true"]')).toContainText('自作のテキストはリンクに載りません');
+  const userUrl = await page.evaluate(() => navigator.clipboard.readText());
+  expect(new URL(userUrl).searchParams.has('text')).toBe(false);
+
+  await selectBuiltinText(page);
+  await page.getByRole('button', { name: '共有', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'URLをコピーしました' })).toBeVisible();
+  const url = await page.evaluate(() => navigator.clipboard.readText());
+  expect(new URL(url).searchParams.get('text')).toBe('builtin:ja.modern');
+
+  const other = await context.browser()!.newContext();
+  try {
+    const opened = await other.newPage();
+    await opened.goto(url);
+    await expect(opened.locator('.comparison-table')).toBeVisible({ timeout: 10_000 });
+    await expect(opened).toHaveURL(/\/analyzer\/comparison$/);
+    await expect((await openTextChip(opened)).getByLabel('テキストを選ぶ')).toHaveValue('builtin:builtin:ja.modern');
+  } finally {
+    await other.close();
+  }
+});
+
+test('比較表の共有リンクのテキストを読み取れなければ、テキストを変えず、取り込めなかった旨をペインに示す', async ({ page }) => {
+  await page.goto('/analyzer/comparison?text=builtin%3Ano.such');
+  await expect(page.locator('[data-pane-link-notice="true"]')).toContainText('テキストは読み取れないため');
+  await expect((await openTextChip(page)).getByLabel('テキストを選ぶ')).toHaveValue('user:short-text');
+});
+
 test('共有リンクに載らない対象（名前が長すぎるSetup）は、リンクをコピーした時に送る側へ示し、載る対象だけをURLに置く', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   const longLabel = 'あ'.repeat(200);
@@ -1033,7 +1076,7 @@ test('共有リンクに載らない対象（名前が長すぎるSetup）は、
   await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
 
   await page.getByRole('button', { name: '共有', exact: true }).click();
-  const notice = page.locator('[data-share-notice="true"]');
+  const notice = page.locator('[data-share-notice="true"]').filter({ hasText: '名前が長すぎる' });
   await expect(notice).toHaveCount(1);
   await expect(notice).toContainText('名前が長すぎるSetup');
   await expect(notice).toContainText('リンクに載りませんでした');
