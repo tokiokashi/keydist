@@ -61,6 +61,11 @@ test.describe('個別画面', () => {
     await expect(feature(page).locator('[data-scatter-contour]').first()).toContainText(/^押下数\/文字 [\d.]+$/);
     await expect(feature(page).locator('[data-scatter-preset-note]')).toBeVisible();
 
+    await settings.getByLabel('組み合わせ', { exact: true }).selectOption('perPress');
+    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('押下数/文字');
+    await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('u/押下');
+    await expect(feature(page).locator('[data-scatter-contour]').first()).toContainText(/^u\/文字 [\d.]+$/);
+
     await settings.getByLabel('組み合わせ', { exact: true }).selectOption('sameFinger');
     await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('動作数');
     await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('同指率');

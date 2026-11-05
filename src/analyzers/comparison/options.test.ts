@@ -36,9 +36,9 @@ test('COMPARISON_COLUMNS: 率の列は率として読める表示（小数第1�
   assert.equal(COMPARISON_COLUMNS.rightHandPressShare.format(0), '0.0%');
 });
 
-test('COMPARISON_COLUMNS: 全27列表示形式が定義されている', () => {
+test('COMPARISON_COLUMNS: 全28列表示形式が定義されている', () => {
   const ids = Object.keys(COMPARISON_COLUMNS);
-  assert.equal(ids.length, 27);
+  assert.equal(ids.length, 28);
   for (const id of ids) {
     const def = COMPARISON_COLUMNS[id as keyof typeof COMPARISON_COLUMNS];
     assert.equal(typeof def.label, 'string');

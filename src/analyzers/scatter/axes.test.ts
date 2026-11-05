@@ -54,6 +54,7 @@ const IDENTITY_COLUMNS: readonly ComparisonColumnId[] = [
   'perCharUnits',
   'perActionPresses',
   'perCharPresses',
+  'perPressUnits',
   'sameFingerRate',
   'sameFinger',
   'handSwitches',
@@ -67,8 +68,14 @@ function relativeError(actual: number, expected: number): number {
 
 const ALL_ROWS = [...LAYOUT_BY_ID.keys()].map((layoutId) => ({ layoutId, ...rowOf(layoutId, TEXT) }));
 
-test('組み込みの全配列: 用意する4つの組み合わせの等位線の値が、比較表の列の値と相対誤差1e-9以内で一致する', () => {
-  const expectedColumn = { distance: 'perCharUnits', press: 'perCharPresses', sameFinger: 'sameFinger', hand: 'sameHandContinuationRate' } as const;
+test('組み込みの全配列: 用意する5つの組み合わせの等位線の値が、比較表の列の値と相対誤差1e-9以内で一致する', () => {
+  const expectedColumn = {
+    distance: 'perCharUnits',
+    press: 'perCharPresses',
+    perPress: 'perCharUnits',
+    sameFinger: 'sameFinger',
+    hand: 'sameHandContinuationRate',
+  } as const;
   assert.ok(ALL_ROWS.length >= 30, `配列の数 ${ALL_ROWS.length}`);
   for (const [preset, axes] of Object.entries(SCATTER_PRESET_AXES) as Array<
     [keyof typeof SCATTER_PRESET_AXES, (typeof SCATTER_PRESET_AXES)[keyof typeof SCATTER_PRESET_AXES]]
@@ -80,6 +87,7 @@ test('組み込みの全配列: 用意する4つの組み合わせの等位線�
       // 1文字あたりの動作数を軸に取る2つの組み合わせは、軸の積が1文字あたりの量になる（distanceは横軸、pressは縦軸）
       if (preset === 'distance') assert.equal(axes.x, 'perCharSteps');
       if (preset === 'press') assert.equal(axes.y, 'perCharSteps');
+      if (preset === 'perPress') assert.deepEqual(axes, { x: 'perCharPresses', y: 'perPressUnits' });
       const value = contour.valueAt(row[axes.x], row[axes.y]);
       assert.ok(value !== undefined, `${preset} ${layoutId} ${row[axes.x]} ${row[axes.y]}`);
       assert.ok(relativeError(value, row[contour.column]) <= 1e-9, `${preset} ${layoutId}: ${value} と ${row[contour.column]}`);
@@ -94,6 +102,34 @@ test('組み込みの全配列: 押下/動作 × 動作数/文字 が 押下/文
   }
   // 動作が0件なら0
   assert.equal(computeTraceScalars({ strokes: [], inputChars: 0, skipped: 0 } as unknown as Trace).perActionPresses, 0);
+});
+
+test('組み込みの全配列: 押下数/文字 × u/押下 が u/文字 と、押下数/動作 × u/押下 が u/打鍵 と相対誤差1e-9以内で一致し、u/押下は距離 / 押下キー数', () => {
+  for (const { layoutId, row } of ALL_ROWS) {
+    assert.ok(relativeError(row.perCharPresses * row.perPressUnits, row.perCharUnits) <= 1e-9, `${layoutId} u/文字`);
+    assert.ok(relativeError(row.perActionPresses * row.perPressUnits, row.meanPerStroke) <= 1e-9, `${layoutId} u/打鍵`);
+    assert.ok(row.perPressUnits > 0, `${layoutId}`);
+  }
+  // 分母は押下キー数で、距離が0の押下（ホームキー・親指キー）も入る
+  for (const { layoutId, row, inputChars } of ALL_ROWS) {
+    assert.ok(relativeError(row.perPressUnits, row.totalUnits / (row.perCharPresses * inputChars)) <= 1e-9, `${layoutId} 距離 / 押下キー数`);
+  }
+  // 押下キー数が0なら0
+  assert.equal(computeTraceScalars({ strokes: [], inputChars: 0, skipped: 0 } as unknown as Trace).perActionPresses, 0);
+});
+
+test('組み込みの全配列: 押下数/文字 × u/押下 が u/文字 と、押下数/動作 × u/押下 が u/打鍵 と相対誤差1e-9以内で一致し、u/押下は距離 / 押下キー数', () => {
+  for (const { layoutId, row } of ALL_ROWS) {
+    assert.ok(relativeError(row.perCharPresses * row.perPressUnits, row.perCharUnits) <= 1e-9, `${layoutId} u/文字`);
+    assert.ok(relativeError(row.perActionPresses * row.perPressUnits, row.meanPerStroke) <= 1e-9, `${layoutId} u/打鍵`);
+    assert.ok(row.perPressUnits > 0, `${layoutId}`);
+  }
+  // 分母は押下キー数で、距離が0の押下（ホームキー・親指キー）も入る
+  for (const { layoutId, row, inputChars } of ALL_ROWS) {
+    assert.ok(relativeError(row.perPressUnits, row.totalUnits / (row.perCharPresses * inputChars)) <= 1e-9, `${layoutId} 距離 / 押下キー数`);
+  }
+  // 押下キー数が0なら0
+  assert.equal(computeTraceScalars({ strokes: [], inputChars: 0, skipped: 0 } as unknown as Trace).perPressUnits, 0);
 });
 
 test('組み込みの全配列: 恒等式の列どうしの全ての組で、等位線の値が比較表の列の値と一致し、線が点を通る', () => {
@@ -140,6 +176,19 @@ test('自由に選ぶ: 等位線を引く組と、その量（総数と1文字�
   // 残りの量の押下の総数が比較表に無い組には引かない
   assert.equal(column('actions', 'perActionPresses'), undefined);
   assert.equal(column('perActionPresses', 'actions'), undefined);
+  // 距離 = 押下数 × u/押下。押下は1文字あたりの列だけが比較表にある
+  assert.equal(column('perCharPresses', 'perPressUnits'), 'perCharUnits');
+  assert.equal(column('perPressUnits', 'perCharPresses'), 'perCharUnits');
+  assert.equal(column('perCharPresses', 'perCharUnits'), 'perPressUnits');
+  assert.equal(column('perPressUnits', 'perCharUnits'), 'perCharPresses');
+  assert.equal(column('perCharPresses', 'totalUnits'), 'perPressUnits');
+  assert.equal(column('totalUnits', 'perPressUnits'), undefined);
+  assert.equal(column('perPressUnits', 'totalUnits'), undefined);
+  // u/打鍵 = 押下数/動作 × u/押下
+  assert.equal(column('perActionPresses', 'perPressUnits'), 'meanPerStroke');
+  assert.equal(column('perActionPresses', 'meanPerStroke'), 'perPressUnits');
+  assert.equal(column('perPressUnits', 'meanPerStroke'), 'perActionPresses');
+  assert.equal(column('meanPerStroke', 'perPressUnits'), 'perActionPresses');
   // 同指 = 動作数 × 同指率 / 100
   assert.equal(column('actions', 'sameFingerRate'), 'sameFinger');
   assert.equal(column('sameFinger', 'sameFingerRate'), 'actions');
@@ -198,6 +247,28 @@ test('分母が0の点では等位線の値を出さない', () => {
   assert.equal(perAction.valueAt(0, 0), undefined);
   assert.equal(perAction.valueAt(0.5, 1.5), 3);
   assert.ok(scatterContour('perCharSteps', 'perActionPresses', 0) === undefined);
+  // u/押下 = 距離 / 押下数。押下数が0の点では決まらない（u/文字 = 押下数/文字 × u/押下 の右辺は、どちらが0でも0）
+  const perPress = scatterContour('perCharPresses', 'perCharUnits', 100)!;
+  assert.equal(perPress.column, 'perPressUnits');
+  assert.equal(perPress.valueAt(0, 0), undefined);
+  assert.equal(perPress.valueAt(2, 3), 1.5);
+  const perChar = scatterContour('perCharPresses', 'perPressUnits', 100)!;
+  assert.equal(perChar.column, 'perCharUnits');
+  assert.equal(perChar.valueAt(0, 0), 0);
+  assert.equal(perChar.valueAt(2, 1.5), 3);
+  const presses = scatterContour('perPressUnits', 'perCharUnits', 100)!;
+  assert.equal(presses.column, 'perCharPresses');
+  assert.equal(presses.valueAt(0, 3), undefined);
+  assert.equal(presses.valueAt(1.5, 3), 2);
+  // 押下数/動作 = u/打鍵 ÷ u/押下。u/押下が0の点では決まらない
+  const actionPresses = scatterContour('perPressUnits', 'meanPerStroke', 100)!;
+  assert.equal(actionPresses.column, 'perActionPresses');
+  assert.equal(actionPresses.valueAt(0, 3), undefined);
+  assert.equal(actionPresses.valueAt(1.5, 3), 2);
+  const stroke = scatterContour('perActionPresses', 'perPressUnits', 100)!;
+  assert.equal(stroke.valueAt(2, 1.5), 3);
+  assert.equal(scatterContour('perActionPresses', 'meanPerStroke', 100)!.valueAt(0, 3), undefined);
+  assert.equal(scatterContour('perCharPresses', 'perPressUnits', 0), undefined);
   const hand = scatterContour('handSwitches', 'handContinuations', 100)!;
   assert.equal(hand.valueAt(0, 0), undefined);
   assert.equal(hand.valueAt(30, 10), 25);
