@@ -56,9 +56,9 @@ test.describe('個別画面', () => {
     const before = await qwerty.evaluate((element) => getComputedStyle(element).transform);
     const settings = await openSettings(page);
     await settings.getByLabel('組み合わせ', { exact: true }).selectOption('press');
-    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('押下/動作');
+    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('押下数/動作');
     await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('動作数/文字');
-    await expect(feature(page).locator('[data-scatter-contour]').first()).toContainText(/^押下\/文字 [\d.]+$/);
+    await expect(feature(page).locator('[data-scatter-contour]').first()).toContainText(/^押下数\/文字 [\d.]+$/);
     await expect(feature(page).locator('[data-scatter-preset-note]')).toBeVisible();
 
     await settings.getByLabel('組み合わせ', { exact: true }).selectOption('sameFinger');
@@ -80,7 +80,7 @@ test.describe('個別画面', () => {
     await settings.getByLabel('横軸', { exact: true }).selectOption('singleTapRate');
     await settings.getByLabel('縦軸', { exact: true }).selectOption('perCharPresses');
     await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('単打率');
-    await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('押下/文字');
+    await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('押下数/文字');
     await expect(feature(page).locator('[data-scatter-contour]')).toHaveCount(0);
 
     await settings.getByLabel('横軸', { exact: true }).selectOption('perCharUnits');

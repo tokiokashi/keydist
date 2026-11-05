@@ -29,7 +29,7 @@ export const SCATTER_PRESET_AXES: Readonly<Record<Exclude<ScatterPresetId, 'free
 /** 組み合わせの選択肢に出す名前。 */
 export const SCATTER_PRESET_LABELS: Readonly<Record<ScatterPresetId, string>> = {
   distance: '1文字の動作数と1打鍵の距離',
-  press: '1動作の押下と1文字の動作数',
+  press: '1動作の押下数と1文字の動作数',
   sameFinger: '動作数と同指率',
   hand: '手の切り替えと同じ手の続き',
   free: '自由に選ぶ',
