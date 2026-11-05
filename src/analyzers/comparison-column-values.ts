@@ -45,6 +45,8 @@ export function computeComparisonRowValues(metrics: Metrics, trace: Trace): Comp
     rightHandPressShare: rightHandShare(metrics.perFingerPresses),
     // 片手の押下が0か左手の距離が0の時は比が定まらない。0を当てはめず、表では「—」、散布図では点を描かない。
     rightLeftPerPressRatio: metrics.rightLeftPerPressRatio ?? NaN,
+    movedPressShare: metrics.movedPressShare,
+    perMovedPressUnits: metrics.perMovedPressUnits,
     physicalBigramCombinations: bigrams.physical,
     logicalBigramCombinations: bigrams.withTriggers,
     alternationCoverage: handRhythm.alternation.coverage.rate * 100,

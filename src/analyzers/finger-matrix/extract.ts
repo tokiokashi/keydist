@@ -190,6 +190,8 @@ function fixtureMetrics(): Metrics {
     perActionPresses: 1,
     perPressUnits: 1,
     rightLeftPerPressRatio: 1,
+    movedPressShare: 100,
+    perMovedPressUnits: 1,
     singleTapLayerRate: 100,
     singleTapRate: 100,
     singleKeyRate: 100,

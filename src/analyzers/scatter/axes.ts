@@ -6,12 +6,13 @@ import { COMPARISON_COLUMN_IDS, COMPARISON_COLUMN_TEXT, type ComparisonColumnId 
  * 軸に取れるのは比較表の列だけで、新しい指標は作らない。等位線は、定義の上で3つの量を結ぶ恒等式
  * （距離 = 動作数 × u/打鍵、押下 = 動作数 × 押下数/動作、距離 = 押下数 × u/押下、u/打鍵 = 押下数/動作 × u/押下、同指 = 動作数 × 同指率 / 100、
  * 同じ手の続きの割合 = 同じ手の続き / (手の切り替え + 同じ手の続き) × 100、
- * 右手u/押下比 = (右手距離率 / (100 − 右手距離率)) / (右手押下率 / (100 − 右手押下率))）にだけ引く。
+ * 右手u/押下比 = (右手距離率 / (100 − 右手距離率)) / (右手押下率 / (100 − 右手押下率))、
+ * u/押下 = 動いた押下率 / 100 × u/動いた押下）にだけ引く。
  * 点の位置から関係の強さを測る表示（回帰直線・相関係数）は出さない。
  */
 
 /** 用意する組み合わせ。 */
-export const SCATTER_PRESET_IDS = ['distance', 'press', 'perPress', 'sameFinger', 'hand', 'handShare', 'free'] as const;
+export const SCATTER_PRESET_IDS = ['distance', 'press', 'perPress', 'sameFinger', 'hand', 'handShare', 'movedPress', 'free'] as const;
 export type ScatterPresetId = (typeof SCATTER_PRESET_IDS)[number];
 
 export interface ScatterAxes {
@@ -27,6 +28,7 @@ export const SCATTER_PRESET_AXES: Readonly<Record<Exclude<ScatterPresetId, 'free
   sameFinger: { x: 'actions', y: 'sameFingerRate' },
   hand: { x: 'handSwitches', y: 'handContinuations' },
   handShare: { x: 'rightHandPressShare', y: 'rightHandDistanceShare' },
+  movedPress: { x: 'movedPressShare', y: 'perMovedPressUnits' },
 };
 
 /** 組み合わせの選択肢に出す名前。 */
@@ -37,6 +39,7 @@ export const SCATTER_PRESET_LABELS: Readonly<Record<ScatterPresetId, string>> = 
   sameFinger: '動作数と同指率',
   hand: '手の切り替えと同じ手の続き',
   handShare: '左右の押下と距離の割合',
+  movedPress: '動いた押下の割合と動いた時の距離',
   free: '自由に選ぶ',
 };
 
@@ -48,6 +51,7 @@ export const SCATTER_PRESET_DESCRIPTIONS: Readonly<Record<ScatterPresetId, strin
   sameFinger: '動作数と同指率から、同指の回数がどう決まるかを見ます。',
   hand: '手の切り替えと同じ手の続きの回数から、同じ手の続きの割合がどう決まるかを見ます。',
   handShare: '押下と距離のそれぞれで右手が受け持つ割合から、左右の1回の押下あたりの距離の比がどう決まるかを見ます。',
+  movedPress: '指が動いた押下の割合と、動いた時の1回あたりの距離から、1押下あたりの距離がどう決まるかを見ます。',
   free: '比較表の列から横軸と縦軸を選びます。',
 };
 
@@ -158,6 +162,16 @@ export const IDENTITIES: readonly Identity[] = [
     ],
     solve: (index, [p, d, r]) =>
       index === 0 ? divide(100 * d, r * (100 - d) + d) : index === 1 ? divide(100 * r * p, 100 - p + r * p) : divide(d * (100 - p), (100 - d) * p),
+  },
+  // u/押下 = 動いた押下率 / 100 × u/動いた押下。`perPressUnits`は総移動距離 / 押下キー数、`perMovedPressUnits`は総移動距離 / 動いた押下キー数。
+  {
+    relation: 'u/押下 = 動いた押下率 ÷ 100 × u/動いた押下',
+    quantities: [
+      { total: 'movedPressShare', extensive: false },
+      { total: 'perMovedPressUnits', extensive: false },
+      { total: 'perPressUnits', extensive: false },
+    ],
+    solve: (index, [s, m, u]) => (index === 0 ? divide(100 * u, m) : index === 1 ? divide(100 * u, s) : (s * m) / 100),
   },
 ];
 
