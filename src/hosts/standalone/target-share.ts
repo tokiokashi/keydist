@@ -3,6 +3,8 @@ import type { Layout } from '#input/layouts/types.ts';
 import type { PhysicalShape } from '#input/shapes/geometry.ts';
 import { decodeDroppingInvalid, type CodecDiagnostic } from '#input/codec/index.ts';
 import { analysisTargetKey, effectiveLabel, type AnalysisTarget, type Setup } from '#input/setup/index.ts';
+import { builtinTextById } from '#input/text/builtin.ts';
+import type { TextRef, TextSelectionState } from '#input/text/selection.ts';
 
 /**
  * 個別画面の共有リンクに載せる対象の読み書き。純粋な部分だけを持ち、URLやhistoryには触らない。
@@ -27,6 +29,11 @@ export const SHARE_BASELINE_PARAM = 'baseline';
  * 別の画面の図（Run Chart）で押した点から開く時に付く。開いた時の最初の位置にだけ使い、受け取ったらURLから消す。
  */
 export const SHARE_POSITION_PARAM = 'position';
+
+/** 組み込みのテキストのid（例: `builtin:ja.legacy`）。自作のテキストは運ばない。 */
+export const SHARE_TEXT_PARAM = 'text';
+/** テキストのidの長さの上限。組み込みのidはこれより十分短い。 */
+export const SHARE_MAX_TEXT_ID_LENGTH = 100;
 
 /** 1つのリンクが運ぶ対象の件数の上限。組み込みの配列を全部並べても収まる数にしてある。 */
 export const SHARE_MAX_TARGETS = 40;
@@ -394,3 +401,43 @@ export function encodePlaybackOpenParams(target: AnalysisTarget, charPosition: n
   params.set(SHARE_POSITION_PARAM, String(Math.max(0, Math.floor(charPosition))));
   return params;
 }
+
+const textIdSchema = v.pipe(v.string(), v.maxLength(SHARE_MAX_TEXT_ID_LENGTH));
+
+/**
+ * 選んでいるテキストをURLへ。組み込みのテキストだけ`text`に載せる。
+ * 自作のテキストの名前と本文は受け取った側の手持ちに無く、本文は長いので載せない（`userText`で送る側へ示す）。
+ */
+export function encodeTextToUrl(selection: TextSelectionState): { readonly params: URLSearchParams; readonly userText: boolean } {
+  const params = new URLSearchParams();
+  if (selection.ref.kind === 'builtin') params.set(SHARE_TEXT_PARAM, selection.ref.id);
+  return { params, userText: selection.ref.kind === 'user' };
+}
+
+/** 自作のテキストを選んでいてリンクに載らなかった時に、送る側へ示す文。 */
+export function describeTextShareNotice(userText: boolean): readonly string[] {
+  return userText ? ['自作のテキストはリンクに載りません。開いた側では、その人が選んでいるテキストのままです'] : [];
+}
+
+export interface DecodedSharedText {
+  readonly present: boolean;
+  /** この版にある組み込みのテキストを指せた時だけ持つ。 */
+  readonly ref: TextRef | undefined;
+}
+
+/** `text`を読む。長さの上限を超える値・この版に無いidは`ref`が`undefined`になり、診断を積む。 */
+export function decodeTextFromUrl(params: URLSearchParams, diagnostics: CodecDiagnostic[]): DecodedSharedText {
+  const raw = params.get(SHARE_TEXT_PARAM);
+  if (raw === null) return { present: false, ref: undefined };
+  const path = `url.${SHARE_TEXT_PARAM}`;
+  const id = decodeDroppingInvalid(textIdSchema, raw, path, diagnostics);
+  if (id === undefined) return { present: true, ref: undefined };
+  if (builtinTextById(id) === undefined) {
+    diagnostics.push({ path, message: 'この版に無いテキストのため取り込みませんでした' });
+    return { present: true, ref: undefined };
+  }
+  return { present: true, ref: { kind: 'builtin', id } };
+}
+
+/** 取り込めなかったテキストを伝える文（画面に出す）。 */
+export const SHARED_TEXT_UNREADABLE_NOTICE = '共有リンクのテキストは読み取れないため、取り込みませんでした';

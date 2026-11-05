@@ -4,6 +4,7 @@ import { enabledValues, recordControlStates } from './options-draft-recorder.ts'
 import { openFigureSettings } from './bigram-flow-figure-helper.ts';
 import { expectChosenTarget, openSettings, openTargetSelection, targetButton, toggleTarget } from './pane-helper.ts';
 import { useKanaText } from './kana-text-helper.ts';
+import { useShortText } from './short-text-helper.ts';
 
 /**
  * Bigram Flow単体ページのE2E。
@@ -560,6 +561,59 @@ test('共有リンクで対象（配列）が届き、取り込み後はURLか�
   } finally {
     await other.close();
   }
+});
+
+test('共有リンクで組み込みのテキストが届き、「元に戻す」1回で対象とテキストが受け取る前へ戻る', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto('/analyzer/bigram-flow');
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+  await toggleTarget(page, 'layout:dvorak');
+  await expectChosenTarget(page, 'layout:dvorak');
+  const panel = await openTextChip(page);
+  await panel.getByLabel('テキストを選ぶ').selectOption('builtin:builtin:ja.modern');
+  await page.getByRole('button', { name: '共有', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'URLをコピーしました' })).toBeVisible();
+  const url = await page.evaluate(() => navigator.clipboard.readText());
+  expect(new URL(url).searchParams.get('text')).toBe('builtin:ja.modern');
+  await expect(page.locator('[data-share-notice="true"]')).toHaveCount(0);
+
+  const other = await context.browser()!.newContext();
+  try {
+    const opened = await other.newPage();
+    await opened.goto(url);
+    await expect(opened.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+    await expectChosenTarget(opened, 'layout:dvorak');
+    await expect(opened).toHaveURL(/\/analyzer\/bigram-flow$/);
+    await expect(opened.locator('[data-pane-link-notice="true"]')).toHaveCount(0);
+    await expect((await openTextChip(opened)).getByLabel('テキストを選ぶ')).toHaveValue('builtin:builtin:ja.modern');
+    await opened.getByRole('button', { name: '元に戻す' }).click();
+    await expectChosenTarget(opened, 'layout:qwerty');
+    await expect((await openTextChip(opened)).getByLabel('テキストを選ぶ')).toHaveValue('builtin:builtin:ja.legacy');
+    await expect(opened.getByRole('button', { name: '元に戻す' })).toBeDisabled();
+  } finally {
+    await other.close();
+  }
+});
+
+test('自作のテキストを選んでコピーすると、URLにtextが載らず、載らない旨が送る側に出る', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await useShortText(page);
+  await page.goto('/analyzer/bigram-flow');
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+  await expect((await openTextChip(page)).getByLabel('テキストを選ぶ')).toHaveValue('user:short-text');
+  await page.getByRole('button', { name: '共有', exact: true }).click();
+  await expect(page.locator('[data-share-notice="true"]')).toContainText('自作のテキストはリンクに載りません');
+  const url = await page.evaluate(() => navigator.clipboard.readText());
+  expect(new URL(url).searchParams.has('text')).toBe(false);
+});
+
+test('共有リンクのテキストを読み取れなければ、テキストを変えず、取り込めなかった旨をペインに示す', async ({ page }) => {
+  await useShortText(page);
+  await page.goto('/analyzer/bigram-flow?text=builtin%3Ano.such');
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('[data-pane-link-notice="true"]')).toContainText('テキストは読み取れないため');
+  await expect((await openTextChip(page)).getByLabel('テキストを選ぶ')).toHaveValue('user:short-text');
+  await expect(page).toHaveURL(/\/analyzer\/bigram-flow$/);
 });
 
 test('共有リンクの対象が手持ちに無ければ名前を示し、今の対象を変えない', async ({ page }) => {

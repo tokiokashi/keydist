@@ -70,7 +70,7 @@ test('共有リンクに載らない対象（名前が長すぎるSetup）は、
   await expect(page.locator('[data-react-feature="finger-distance"]')).toBeVisible({ timeout: 10_000 });
 
   await page.getByRole('button', { name: '共有', exact: true }).click();
-  const notice = page.locator('[data-share-notice="true"]');
+  const notice = page.locator('[data-share-notice="true"]').filter({ hasText: '名前が長すぎる' });
   await expect(notice).toHaveCount(1);
   await expect(notice).toContainText('名前が長すぎるSetup');
   await expect(notice).toContainText('リンクに載りませんでした');

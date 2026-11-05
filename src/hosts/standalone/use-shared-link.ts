@@ -2,13 +2,22 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { composeCommands, type Command } from '#input/commands/index.ts';
 import type { CodecDiagnostic } from '#input/codec/index.ts';
 import type { Setup } from '#input/setup/index.ts';
-import { setMultiSelectionCommand, setSingleTargetCommand, setStandaloneAnalyzerOptionsCommand, type KeydistAssets } from '#engine/commands.ts';
+import {
+  selectTextCommand,
+  setMultiSelectionCommand,
+  setSingleTargetCommand,
+  setStandaloneAnalyzerOptionsCommand,
+  type KeydistAssets,
+} from '#engine/commands.ts';
 import type { OptionsUrlDecodeResult } from '#analyzers/options.ts';
 import type { PaneCatalog } from '#hosts/shared/resolve-pane-input.ts';
 import {
   decodeMultiTargetsFromUrl,
   decodeSingleTargetFromUrl,
+  decodeTextFromUrl,
   describeSharedTargetsNotice,
+  SHARE_TEXT_PARAM,
+  SHARED_TEXT_UNREADABLE_NOTICE,
   sharedTargetParamNames,
   type SharedTargetsKind,
   type TargetShareSource,
@@ -40,6 +49,8 @@ export interface SharedLinkResult {
   readonly optionDiagnostics: readonly CodecDiagnostic[];
   /** 見つからない対象などの、名前を添えた文。 */
   readonly targetNotices: readonly string[];
+  /** 取り込めなかったテキストの文。 */
+  readonly textNotices: readonly string[];
 }
 
 /**
@@ -52,12 +63,13 @@ export function urlOptionsNotices(diagnostics: readonly CodecDiagnostic[]): read
 }
 
 /**
- * 共有リンクのURLに載った解析設定と対象を、開いた側で受け取る。3つの単体ページで共通。
+ * 共有リンクのURLに載った解析設定・対象・テキストを、開いた側で受け取る。3つの単体ページで共通。
  *
  * - 資産の初回読み込み（`assetsReady`）を待つ。待たずに取り込むと、読み込み前の初期値で既存の設定を巻き戻し、
  *   保存済みのSetupが無いことになる
  * - 受け取るのは1回だけ。解析設定と対象の書き込みは1つのコマンドにまとめて`dispatch`するので、履歴は1項目で、
  *   Undo 1回でリンクを開く前の解析設定と対象へ戻る
+ * - テキストは組み込みのidだけ読み、個別画面のテキストの選択を差し替える。この版に無いid・読めない値は取り込まず、今のテキストのまま文で返す
  * - 解析設定は、URLで指定された項目だけを現在の設定へ上書きする部分マージ。指定しなかった項目まで既定値へ
  *   戻ると、リンクを開いただけで自分の設定が丸ごと消える
  * - 対象は、手持ちで解決できたものでこの画面の対象（Single / Multiの集合）を置き換える。1つも解決できなければ今の対象を変えない。
@@ -85,6 +97,7 @@ export function useSharedLink<Options>({
   const appliedRef = useRef(false);
   const [optionDiagnostics, setOptionDiagnostics] = useState<readonly CodecDiagnostic[]>([]);
   const [targetNotices, setTargetNotices] = useState<readonly string[]>([]);
+  const [textNotices, setTextNotices] = useState<readonly string[]>([]);
 
   useEffect(() => {
     if (!assetsReady) return;
@@ -122,6 +135,13 @@ export function useSharedLink<Options>({
       }
     }
 
+    if (params.has(SHARE_TEXT_PARAM)) {
+      consumed.push(SHARE_TEXT_PARAM);
+      const decoded = decodeTextFromUrl(params, []);
+      if (decoded.ref !== undefined) commands.push(selectTextCommand('standalone', decoded.ref));
+      else setTextNotices([SHARED_TEXT_UNREADABLE_NOTICE]);
+    }
+
     if (commands.length > 0) dispatch(composeCommands('共有リンクの内容を取り込む', commands));
     if (consumed.length === 0) return;
 
@@ -131,7 +151,7 @@ export function useSharedLink<Options>({
     window.history.replaceState(null, '', `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash}`);
   }, [assetsReady, analyzerId, kind, dispatch]);
 
-  return { optionDiagnostics, targetNotices };
+  return { optionDiagnostics, targetNotices, textNotices };
 }
 
 /** 共有リンクの対象を名前で引く・作るための手持ち。ページの再描画ごとに作り直さない。 */
