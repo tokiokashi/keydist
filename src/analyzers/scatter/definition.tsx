@@ -18,14 +18,13 @@ import {
   scatterContour,
   type ScatterAxes,
   type ScatterAxisProblem,
-  type ScatterContour,
 } from './axes.ts';
 import { scatterDefinition, type ScatterExtracted, type ScatterRow } from './extract.ts';
 import { SCATTER_KIND_ORDER, SCATTER_KIND_STYLES } from './kinds.ts';
 import { DEFAULT_SCATTER_OPTIONS, scatterOptions, type ScatterOptions } from './options.ts';
 import { SCATTER_PANE_META } from './pane-meta.ts';
-import { scatterCaption, scatterQuantityHelp } from './quantity-help.ts';
-import { PLOT_HEIGHT, PLOT_MARGIN, PLOT_WIDTH, scatterPlotModel, type PlotPoint } from './plot-model.ts';
+import { readoutText, scatterCaption, scatterQuantityHelp } from './quantity-help.ts';
+import { PLOT_HEIGHT, PLOT_MARGIN, PLOT_WIDTH, scatterPlotModel } from './plot-model.ts';
 import './scatter-view.css';
 
 /**
@@ -86,25 +85,6 @@ interface ExcludedRow {
   readonly fullName: string;
   readonly status: 'computing' | 'failed' | 'no-value';
   readonly message: string;
-}
-
-function readoutText(
-  row: PlotPoint & { readonly fullName: string; readonly values: ComparisonRowValues },
-  axes: ScatterAxes,
-  contour: ScatterContour | undefined,
-  language: TextLanguage,
-): string {
-  const text = comparisonColumnText(language);
-  const parts = [
-    row.fullName || row.label,
-    `${text[axes.x].label} ${COMPARISON_COLUMN_FORMAT[axes.x](row.x)}`,
-    `${text[axes.y].label} ${COMPARISON_COLUMN_FORMAT[axes.y](row.y)}`,
-  ];
-  if (contour !== undefined) {
-    const value = contour.readoutAt(row.x, row.y, row.values[contour.column]);
-    if (value !== undefined) parts.push(`${text[contour.column].label} ${COMPARISON_COLUMN_FORMAT[contour.column](value)}`);
-  }
-  return parts.join('　');
 }
 
 function KindMark({ kind, size = MARK_SIZE }: { readonly kind: LayoutKind; readonly size?: number }) {
@@ -308,7 +288,7 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
                     data-kind={row.kind}
                     data-active={isActive || undefined}
                     tabIndex={0}
-                    aria-label={readoutText({ ...point, fullName: row.fullName, values: row.values }, axes, lineContour, language)}
+                    aria-label={readoutText({ ...point, fullName: row.fullName, values: row.values }, axes, contour, language)}
                     style={{ transform: `translate(${point.px.toFixed(1)}px, ${point.py.toFixed(1)}px)` }}
                     onPointerEnter={() => setActiveKey(point.targetKey)}
                     onPointerLeave={() => setActiveKey((current) => (current === point.targetKey ? undefined : current))}
@@ -332,7 +312,7 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
           <p className="scatter-readout" data-scatter-readout="" aria-live="off">
             {active === undefined || activeRow === undefined
               ? ''
-              : readoutText({ ...active, fullName: activeRow.fullName, values: activeRow.values }, axes, lineContour, language)}
+              : readoutText({ ...active, fullName: activeRow.fullName, values: activeRow.values }, axes, contour, language)}
           </p>
         </>
       ) : null}

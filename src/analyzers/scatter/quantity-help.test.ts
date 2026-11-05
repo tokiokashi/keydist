@@ -12,7 +12,7 @@ import {
   scatterContour,
 } from './axes.ts';
 import { SCATTER_PANE_META } from './pane-meta.ts';
-import { mentionsUnit, scatterCaption, scatterQuantityHelp } from './quantity-help.ts';
+import { mentionsUnit, readoutText, scatterCaption, scatterQuantityHelp } from './quantity-help.ts';
 
 const INPUT_CHARS = 100;
 const PRESETS = SCATTER_PRESET_IDS.filter((id) => id !== 'free');
@@ -222,4 +222,25 @@ test('固定の説明は、線を引かない図があることと食い違わ�
   assert.doesNotMatch(meta.description, /細い線/u);
   assert.doesNotMatch(notes, /線を結んでいます|位置を結んでいます/u);
   assert.match(notes, /線は、同じテキストを打つ時の距離と取り違えやすいので引きません/u);
+});
+
+test('点の読み取り: 線を引く組は線の量の値を出し、線を引かない組は線の量の名前も値も出さない', () => {
+  type Column = (typeof COMPARISON_COLUMN_IDS)[number];
+  const values = Object.fromEntries(COMPARISON_COLUMN_IDS.map((column) => [column, 7])) as Parameters<typeof readoutText>[0]['values'];
+  const readout = (axes: { x: Column; y: Column }, x: number, y: number, rowValues = values) =>
+    readoutText({ label: 'A', fullName: 'QWERTY', x, y, values: rowValues }, axes, scatterContour(axes.x, axes.y, INPUT_CHARS, 'ja'), 'ja');
+  // 線を引く既定の組: u/かな = アクション数/かな × u/アクション
+  assert.equal(
+    readout(SCATTER_PRESET_AXES.distance, 1.5, 2, { ...values, perCharUnits: 3 }),
+    'QWERTY　アクション数/かな 1.500　u/アクション 2.000　u/かな 3.000',
+  );
+  // 線を引かない組: 線の量（u/キー・u/アクション・アクション/u）の名前と値を出さない
+  assert.equal(readout(SCATTER_PRESET_AXES.movedPress, 50, 4, { ...values, perPressUnits: 2 }), 'QWERTY　移動ありキー率 50.0%　u/移動ありキー 4.000');
+  assert.equal(readout({ x: 'perActionPresses', y: 'perPressUnits' }, 2, 1.5), 'QWERTY　キー数/アクション 2.000　u/キー 1.500');
+  assert.equal(readout({ x: 'textCharsPerAction', y: 'textCharsPerUnit' }, 2, 6), 'QWERTY　文字/アクション 2.000　文字/u 6.000');
+  // 線の量の列が値を持たない対象には、線を引く組でも出さない
+  assert.equal(
+    readout(SCATTER_PRESET_AXES.distance, 1.5, 2, { ...values, perCharUnits: Number.NaN }),
+    'QWERTY　アクション数/かな 1.500　u/アクション 2.000',
+  );
 });

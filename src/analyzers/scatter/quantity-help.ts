@@ -1,5 +1,6 @@
 import type { TextLanguage } from '#input/text/language.ts';
-import { comparisonColumnText, COMPARISON_UNIT_NOTE, type ComparisonColumnId } from '../comparison-column-text.ts';
+import { COMPARISON_COLUMN_FORMAT, comparisonColumnText, COMPARISON_UNIT_NOTE, type ComparisonColumnId } from '../comparison-column-text.ts';
+import type { ComparisonRowValues } from '../comparison-column-values.ts';
 import { isHandShareColumn, type ScatterAxes, type ScatterContour } from './axes.ts';
 import { SCATTER_KIND_ORDER, SCATTER_KIND_STYLES } from './kinds.ts';
 
@@ -27,6 +28,26 @@ export interface ScatterQuantityHelp {
   /** ⓘの先頭の文。点の色と形。 */
   readonly description: string;
   readonly help: ScatterHelp;
+}
+
+/** 点の読み取りの文。点の名前・横軸・縦軸の値と、細い線を引く組だけ線の量の値を出す。線の量の列が値を持たない対象には出さない。 */
+export function readoutText(
+  row: { readonly label: string; readonly fullName: string; readonly x: number; readonly y: number; readonly values: ComparisonRowValues },
+  axes: ScatterAxes,
+  contour: ScatterContour | undefined,
+  language: TextLanguage,
+): string {
+  const text = comparisonColumnText(language);
+  const parts = [
+    row.fullName || row.label,
+    `${text[axes.x].label} ${COMPARISON_COLUMN_FORMAT[axes.x](row.x)}`,
+    `${text[axes.y].label} ${COMPARISON_COLUMN_FORMAT[axes.y](row.y)}`,
+  ];
+  if (contour?.drawsLines === true) {
+    const value = contour.readoutAt(row.x, row.y, row.values[contour.column]);
+    if (value !== undefined) parts.push(`${text[contour.column].label} ${COMPARISON_COLUMN_FORMAT[contour.column](value)}`);
+  }
+  return parts.join('　');
 }
 
 /** 図の下のキャプション。縦軸の量と横軸の量の関係。軸の量の名前は比較表の列と同じ。 */
