@@ -138,8 +138,31 @@ function levelsFor(contour: ScatterContour, xRange: Range, yRange: Range): { rea
     }
   }
   if (!(max > min)) return { levels: [], step: 1 };
+  if (contour.levels === 'reciprocal') return reciprocalLevels({ lo: min, hi: max });
   const { values, step } = niceTicks({ lo: min, hi: max }, 4);
   return { levels: values.slice(0, MAX_LEVELS), step };
+}
+
+/** 比の線の値の組。1より大きい側の値で、その逆数と組にする。どの値も逆数も小数の桁が有限で、線の値を丸めずに書ける。 */
+const RECIPROCAL_PAIRS = [1.25, 2, 4, 10] as const;
+
+/**
+ * 比の線の値。1と、比とその逆数の組（1.25と0.8、2と0.5など）のうち、範囲に入る値を、1に近い組から選ぶ。
+ * 逆数どうしは左右を入れ替えた同じ大きさの偏りなので、組の一方だけが範囲に入る時もその値を引く。
+ * `step`は、選んだ値を丸めずに書ける小数の刻み。
+ */
+export function reciprocalLevels(range: Range): { readonly levels: readonly number[]; readonly step: number } {
+  const inRange = (value: number) => value >= range.lo && value <= range.hi;
+  const levels: number[] = inRange(1) ? [1] : [];
+  for (const pair of RECIPROCAL_PAIRS) {
+    // 組の両方が範囲に入る時は、2本とも引ける時だけ引く（片方だけを残さない）
+    const values = [1 / pair, pair].filter(inRange);
+    if (levels.length + values.length > MAX_LEVELS) break;
+    levels.push(...values);
+  }
+  levels.sort((a, b) => a - b);
+  const decimals = Math.max(0, ...levels.map((value) => (String(value).split('.')[1] ?? '').length));
+  return { levels, step: 10 ** -Math.max(1, decimals) };
 }
 
 interface DrawnContour {

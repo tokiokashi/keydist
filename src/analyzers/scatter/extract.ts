@@ -94,6 +94,7 @@ function fixtureMetrics(totalUnits: number): Metrics {
     perCharPresses: 1,
     perActionPresses: 1,
     perPressUnits: totalUnits / 3,
+    rightLeftPerPressRatio: 1,
     singleTapLayerRate: 100,
     singleTapRate: 100,
     singleKeyRate: 100,

@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { COMPARISON_COLUMN_IDS, COMPARISON_COLUMNS, COMPARISON_UNIT_NOTE, comparisonOptions } from './options.ts';
+import {
+  COMPARISON_COLUMN_IDS,
+  COMPARISON_COLUMNS,
+  COMPARISON_DEFAULT_HIDDEN_COLUMNS,
+  COMPARISON_UNIT_NOTE,
+  comparisonOptions,
+  defaultVisibleColumns,
+} from './options.ts';
 import { COMPARISON_PANE_META } from './pane-meta.ts';
 
 /**
@@ -36,14 +43,49 @@ test('COMPARISON_COLUMNS: 率の列は率として読める表示（小数第1�
   assert.equal(COMPARISON_COLUMNS.rightHandPressShare.format(0), '0.0%');
 });
 
-test('COMPARISON_COLUMNS: 全28列表示形式が定義されている', () => {
+test('COMPARISON_COLUMNS: 左右の1押下あたりの距離の比は小数第3位までで、%を付けない', () => {
+  assert.equal(COMPARISON_COLUMNS.rightLeftPerPressRatio.format(1.23456), '1.235');
+  assert.equal(COMPARISON_COLUMNS.rightLeftPerPressRatio.format(0), '0.000');
+});
+
+test('COMPARISON_COLUMNS: 全29列表示形式が定義されている', () => {
   const ids = Object.keys(COMPARISON_COLUMNS);
-  assert.equal(ids.length, 28);
+  assert.equal(ids.length, 29);
   for (const id of ids) {
     const def = COMPARISON_COLUMNS[id as keyof typeof COMPARISON_COLUMNS];
     assert.equal(typeof def.label, 'string');
     assert.equal(typeof def.format(1), 'string');
   }
+});
+
+test('表示する列: 既定は、全列から既定で表示しない列（左右の1押下あたりの距離の比）を除いた並び', () => {
+  assert.deepEqual([...COMPARISON_DEFAULT_HIDDEN_COLUMNS], ['rightLeftPerPressRatio']);
+  const expected = COMPARISON_COLUMN_IDS.filter((id) => id !== 'rightLeftPerPressRatio');
+  assert.deepEqual(defaultVisibleColumns(), expected);
+  assert.deepEqual(comparisonOptions.defaultOptions.visibleColumns, expected);
+});
+
+test('表示する列: 保存値が無い時と配列でない時も、既定で表示しない列を除いた既定へ戻す', () => {
+  const expected = defaultVisibleColumns();
+  const absent: { path: string; message: string }[] = [];
+  assert.deepEqual(comparisonOptions.decodeOptions({}, absent).visibleColumns, expected);
+  assert.deepEqual(comparisonOptions.decodeOptions(undefined, absent).visibleColumns, expected);
+  assert.deepEqual(absent, []);
+  const broken: { path: string; message: string }[] = [];
+  assert.deepEqual(comparisonOptions.decodeOptions({ visibleColumns: 'all' }, broken).visibleColumns, expected);
+  assert.deepEqual(
+    broken.map((item) => item.message),
+    ['配列でないため既定の列へ戻しました'],
+  );
+});
+
+test('表示する列: 既定で表示しない列も、選べば保存値とURLを往復する', () => {
+  const chosen = [...defaultVisibleColumns(), 'rightLeftPerPressRatio'] as const;
+  assert.deepEqual(comparisonOptions.decodeOptions({ visibleColumns: chosen }, []).visibleColumns, chosen);
+  const params = comparisonOptions.encodeOptionsToUrl({ ...comparisonOptions.defaultOptions, visibleColumns: chosen });
+  const diagnostics: { path: string; message: string }[] = [];
+  assert.deepEqual(comparisonOptions.decodeOptionsFromUrl(new URLSearchParams(params.toString()), diagnostics).values.visibleColumns, chosen);
+  assert.deepEqual(diagnostics, []);
 });
 
 test('URL: 既定値なら何も書かず、変えた項目だけが往復する', () => {

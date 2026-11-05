@@ -530,7 +530,7 @@ test('画面の文言に開発の内部（issue番号・Phase・ファイル名�
 });
 
 test('保存済みの表示する列は、操作可能になった瞬間から表示されている（既定値のまま操作できる瞬間が無い）', async ({ page }) => {
-  // 既定は全列表示。保存値では先頭の「動作数」を外しておく。
+  // 既定は、既定で表示しない列を除いた全列。保存値では先頭の「動作数」を外しておく。
   await recordControlStates(
     page,
     {
@@ -777,7 +777,7 @@ test('「共有」でコピーしたURLを新しいページで開くと、解�
   const table = page.locator('.comparison-table');
   await expect(table).toBeVisible({ timeout: 10_000 });
 
-  // 既定（全列）から「動作数」の列を外す。
+  // 既定の列から「動作数」の列を外す。
   await expect(table.locator('thead')).toContainText('動作数');
   const actions = (await openSettings(page)).getByRole('checkbox', { name: '動作数', exact: true });
   await actions.uncheck();

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scatterContour } from './axes.ts';
-import { axisRange, estimateTextWidth, niceTicks, PLOT_HEIGHT, PLOT_MARGIN, PLOT_WIDTH, scatterPlotModel } from './plot-model.ts';
+import { axisRange, estimateTextWidth, niceTicks, PLOT_HEIGHT, PLOT_MARGIN, PLOT_WIDTH, reciprocalLevels, scatterPlotModel } from './plot-model.ts';
 
 test('axisRange: 点の値の範囲に余白を足し、0を含めることを強制しない', () => {
   const range = axisRange([100, 200]);
@@ -277,4 +277,40 @@ test('scatterPlotModel: 値が0の点が枠の下の端にあっても、幅の�
   const x0 = anchor === 'start' ? x : anchor === 'end' ? x - width : x - width / 2;
   assert.ok(x0 >= PLOT_MARGIN.left + 2 && x0 + width <= PLOT_WIDTH - PLOT_MARGIN.right - 2);
   assert.ok(y - 10.5 >= PLOT_MARGIN.top + 2 && y + 3.5 <= PLOT_HEIGHT - PLOT_MARGIN.bottom - 2);
+});
+
+test('reciprocalLevels: 比の線は、1と、比とその逆数の組から範囲に入る値を選び、丸めずに書ける刻みを返す', () => {
+  assert.deepEqual(reciprocalLevels({ lo: 0.4, hi: 3 }), { levels: [0.5, 0.8, 1, 1.25, 2], step: 0.01 });
+  // 範囲が1の片側だけでも、範囲に入る値を引く
+  assert.deepEqual(reciprocalLevels({ lo: 1.1, hi: 2.5 }).levels, [1.25, 2]);
+  assert.deepEqual(reciprocalLevels({ lo: 0.6, hi: 1.1 }), { levels: [0.8, 1], step: 0.1 });
+  // 範囲が広い時も6本までで、どの値も逆数が一緒に選ばれる
+  const { levels } = reciprocalLevels({ lo: 0.01, hi: 100 });
+  assert.ok(levels.length <= 6);
+  for (const level of levels)
+    assert.ok(
+      levels.some((other) => Math.abs(other * level - 1) < 1e-12),
+      `${level}`,
+    );
+});
+
+test('scatterPlotModel: 左右の押下と距離の割合の図は、比とその逆数の組で線を引き、値の桁をそろえる', () => {
+  const contour = scatterContour('rightHandPressShare', 'rightHandDistanceShare', 100)!;
+  assert.equal(contour.levels, 'reciprocal');
+  const points = [
+    { targetKey: 'a', label: 'A', x: 40, y: 60 },
+    { targetKey: 'b', label: 'B', x: 65, y: 45 },
+    { targetKey: 'c', label: 'C', x: 50, y: 52 },
+  ];
+  const model = scatterPlotModel({ points, contour, legendRows: [], contourName: '', contourSuffix: '' });
+  assert.deepEqual(
+    model.contours.map((line) => line.level),
+    [0.5, 0.8, 1, 1.25, 2],
+  );
+  assert.deepEqual(
+    model.contours.map((line) => line.text),
+    ['0.50', '0.80', '1.00', '1.25', '2.00'],
+  );
+  // 他の恒等式は、切りのよい値を等間隔に選ぶ
+  assert.equal(scatterContour('actions', 'meanPerStroke', 100)!.levels, 'linear');
 });

@@ -26,6 +26,7 @@ const COLUMN_LABELS = [
   '指間σ',
   '右手距離率',
   '右手押下率',
+  '右手u/押下比',
   'Bigram数（物理キー）',
   'Bigram数（シフト込み）',
   '交互打鍵の連続の割合',
@@ -104,7 +105,7 @@ test('見出しのⓘでモーダルが開き、比較表の説明・単位・�
   await expect(dialog).toContainText('距離の単位uは、キーの幅を1とした距離');
   await expect(dialog.getByRole('heading', { name: '列の説明' })).toBeVisible();
   await expect(dialog.locator('dt')).toHaveText(COLUMN_LABELS);
-  await expect(dialog.locator('dd')).toHaveCount(28);
+  await expect(dialog.locator('dd')).toHaveCount(29);
   await expect(dialog).toContainText('ホームに置いた時の間隔');
   // dlの直下はdt / ddを包むdivだけ。
   const badChildren = await dialog
@@ -119,13 +120,21 @@ test('見出しのⓘでモーダルが開き、比較表の説明・単位・�
   expect(badChildren).toEqual([]);
   for (const word of FORBIDDEN_WORDS) await expect(dialog).not.toContainText(word);
 
-  // 表示していない列の説明も出る。
+  // 表示していない列の説明も出る。既定で表示しない列（右手u/押下比）は、選ぶと表に出る。
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
+  await expect(table.locator('thead th', { hasText: '右手u/押下比' })).toHaveCount(0);
   await page.getByRole('button', { name: '解析設定', exact: true }).click();
-  await page.locator('[data-settings-window="true"]').getByRole('checkbox', { name: '指間σ', exact: true }).uncheck();
+  const settings = page.locator('[data-settings-window="true"]');
+  await expect(settings.getByRole('checkbox', { name: '右手u/押下比', exact: true })).not.toBeChecked();
+  await settings.getByRole('checkbox', { name: '指間σ', exact: true }).uncheck();
   await page.getByRole('button', { name: '解析設定を閉じる' }).click();
   await expect(table.locator('thead th')).toHaveCount(28);
+  await page.getByRole('button', { name: '解析設定', exact: true }).click();
+  await settings.getByRole('checkbox', { name: '右手u/押下比', exact: true }).check();
+  await page.getByRole('button', { name: '解析設定を閉じる' }).click();
+  await expect(table.locator('thead th')).toHaveCount(29);
+  await expect(table.locator('thead th', { hasText: '右手u/押下比' })).toHaveCount(1);
   await info.click();
   await expect(dialog.locator('dt')).toHaveText(COLUMN_LABELS);
 });

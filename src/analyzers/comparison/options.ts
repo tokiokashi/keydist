@@ -15,7 +15,7 @@ export { COMPARISON_COLUMN_IDS, COMPARISON_UNIT_NOTE, type ComparisonColumnId } 
 /**
  * 比較表Analyzerの列。
  *
- * 並べる列は28列。列の値は`analyzers/comparison-column-values.ts`の`computeComparisonRowValues`が、`interpretation/metrics.ts`の
+ * 並べる列は29列。列の値は`analyzers/comparison-column-values.ts`の`computeComparisonRowValues`が、`interpretation/metrics.ts`の
  * `computeMetrics`が返す`Metrics`と`Trace`から読み出すだけの写像で（Bigramの組の種類数の2列とHand Rhythmの9列だけが`Trace`から数える）、
  * 独自の派生指標・合成スコアは作らない
  * （AGENTS.md「優劣の判定・順位付け・合成スコアを作らない」）。
@@ -43,6 +43,17 @@ export const COMPARISON_COLUMNS: Readonly<Record<ComparisonColumnId, ComparisonC
   COMPARISON_COLUMN_IDS.map((id) => [id, { ...COMPARISON_COLUMN_TEXT[id], format: COMPARISON_COLUMN_FORMAT[id] }]),
 ) as Record<ComparisonColumnId, ComparisonColumnDef>;
 
+/**
+ * 「表示する列」の既定で表示しない列。「表示する列」で選べば表に出て、散布図の軸と細い線には表の表示と関係なく使える。
+ * 全列を既定にすると、列が増えるほど表の横幅が広がる。他の列から求まる量や、読む場面が限られる量を、列ごとにここへ足す。
+ */
+export const COMPARISON_DEFAULT_HIDDEN_COLUMNS: ReadonlySet<ComparisonColumnId> = new Set<ComparisonColumnId>(['rightLeftPerPressRatio']);
+
+/** 「表示する列」の既定。全列から、既定で表示しない列を除いた並び。 */
+export function defaultVisibleColumns(): ComparisonColumnId[] {
+  return COMPARISON_COLUMN_IDS.filter((id) => !COMPARISON_DEFAULT_HIDDEN_COLUMNS.has(id));
+}
+
 function isComparisonColumnId(value: string): value is ComparisonColumnId {
   return (COMPARISON_COLUMN_IDS as readonly string[]).includes(value);
 }
@@ -68,7 +79,7 @@ function isComparisonColumnId(value: string): value is ComparisonColumnId {
  */
 /**
  * 表示する列のURL codec。並びごと読み書きする。空（0列）も「0列にした」という設定なので、
- * 汎用の集合codecが省く空を空文字で残す（省くと既定の全列へ戻り、共有先で違う表になる）。
+ * 汎用の集合codecが省く空を空文字で残す（省くと既定の列へ戻り、共有先で違う表になる）。
  */
 const visibleColumnsUrl: OptionUrlCodec<readonly ComparisonColumnId[]> = (() => {
   const set = stringSetUrlCodec('columns', COMPARISON_COLUMN_IDS, COMPARISON_COLUMN_IDS.length);
@@ -79,13 +90,13 @@ const visibleColumnsUrl: OptionUrlCodec<readonly ComparisonColumnId[]> = (() => 
 export type ComparisonSort = ColumnSortOptionValue<ComparisonColumnId>;
 
 export const comparisonOptions = defineOptions({
-  /** 表示する列。空集合は「全列表示」という意味にはしない（要求どおり0列を描く）。 */
+  /** 表示する列。空集合は「既定の列を表示」という意味にはしない（要求どおり0列を描く）。 */
   visibleColumns: defineOption<readonly ComparisonColumnId[]>({
     decode: (raw, path, diagnostics) => {
-      if (raw === undefined) return [...COMPARISON_COLUMN_IDS];
+      if (raw === undefined) return defaultVisibleColumns();
       if (!Array.isArray(raw)) {
-        diagnostics.push({ path, message: '配列でないため既定値（全列）へ戻しました' });
-        return [...COMPARISON_COLUMN_IDS];
+        diagnostics.push({ path, message: '配列でないため既定の列へ戻しました' });
+        return defaultVisibleColumns();
       }
       const seen = new Set<ComparisonColumnId>();
       const result: ComparisonColumnId[] = [];
@@ -99,7 +110,7 @@ export const comparisonOptions = defineOptions({
       }
       return result;
     },
-    default: [...COMPARISON_COLUMN_IDS],
+    default: defaultVisibleColumns(),
     affects: 'view',
     url: visibleColumnsUrl,
   }),

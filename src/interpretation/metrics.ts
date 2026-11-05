@@ -143,6 +143,12 @@ export interface Metrics {
    */
   perPressUnits: number;
   /**
+   * 左右の1押下あたりの距離の比（仕様 §11の「左右の1押下あたりの距離の比」）。
+   * (右手の距離 / 右手の押下キー数) / (左手の距離 / 左手の押下キー数)。
+   * どちらかの手の押下キー数が0、または左手の距離が0の時は値を持たず`null`。
+   */
+  rightLeftPerPressRatio: number | null;
+  /**
    * 打鍵可能な入力文字のうち、単打面の1キーだけで直接出力された文字の割合 [%]。
    * シフト面・複数キーコンボ・複数Stroke入力は含めない（仕様 §11.5.1）。
    */
@@ -377,6 +383,7 @@ export function computeMetrics(trace: Trace, geometry: Geometry, conditions: Met
     perCharPresses: scalars.perCharPresses,
     perActionPresses: scalars.perActionPresses,
     perPressUnits: scalars.perPressUnits,
+    rightLeftPerPressRatio: rightLeftPerPressRatio(perFinger, perFingerPresses),
     singleTapLayerRate: scalars.singleTapLayerRate,
     singleTapRate: scalars.singleTapRate,
     singleKeyRate: scalars.singleKeyRate,
@@ -442,6 +449,23 @@ export function rightHandShare(byFinger: Readonly<Record<Finger, number>>): numb
   if (total === 0) return 0;
   const right = ALL_FINGERS.filter((finger) => finger.startsWith('R')).reduce((sum, finger) => sum + byFinger[finger], 0);
   return (right / total) * 100;
+}
+
+/**
+ * 左右の1押下あたりの距離の比（仕様 §11）。右手（指の頭文字がR）を分子に置く。
+ * どちらかの手の押下が0、または左手の距離が0の時は値が定まらないので`null`。右手の距離だけが0なら0。
+ */
+export function rightLeftPerPressRatio(
+  distanceByFinger: Readonly<Record<Finger, number>>,
+  pressesByFinger: Readonly<Record<Finger, number>>,
+): number | null {
+  const sum = (byFinger: Readonly<Record<Finger, number>>, right: boolean): number =>
+    ALL_FINGERS.filter((finger) => finger.startsWith('R') === right).reduce((total, finger) => total + byFinger[finger], 0);
+  const rightPresses = sum(pressesByFinger, true);
+  const leftPresses = sum(pressesByFinger, false);
+  const leftDistance = sum(distanceByFinger, false);
+  if (rightPresses === 0 || leftPresses === 0 || leftDistance === 0) return null;
+  return sum(distanceByFinger, true) / rightPresses / (leftDistance / leftPresses);
 }
 
 /** 同指連続回数を打鍵数で割った割合 [%]。打鍵数が0なら分母を1として扱う。 */

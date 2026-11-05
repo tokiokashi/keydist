@@ -5,6 +5,7 @@ import { InfoButton } from '#ui/primitives/info-button.tsx';
 import { targetMarkPath } from '#ui/theme/target-marks.ts';
 import type { AnalyzerSettingsProps, SetAnalyzerPaneParts, SetBodyProps } from '../pane-parts.tsx';
 import { COMPARISON_COLUMN_FORMAT, COMPARISON_COLUMN_IDS, COMPARISON_COLUMN_TEXT, type ComparisonColumnId } from '../comparison-column-text.ts';
+import type { ComparisonRowValues } from '../comparison-column-values.ts';
 import {
   SCATTER_PRESET_AXES,
   SCATTER_PRESET_IDS,
@@ -69,6 +70,8 @@ interface PlottedRow {
   readonly kind: LayoutKind;
   readonly x: number;
   readonly y: number;
+  /** 全列の値。点の読み取りで、等位線の量の列が値を持つかを見る。 */
+  readonly values: ComparisonRowValues;
 }
 
 interface ExcludedRow {
@@ -79,14 +82,18 @@ interface ExcludedRow {
   readonly message: string;
 }
 
-function readoutText(row: PlotPoint & { readonly fullName: string }, axes: ScatterAxes, contour: ScatterContour | undefined): string {
+function readoutText(
+  row: PlotPoint & { readonly fullName: string; readonly values: ComparisonRowValues },
+  axes: ScatterAxes,
+  contour: ScatterContour | undefined,
+): string {
   const parts = [
     row.fullName || row.label,
     `${COMPARISON_COLUMN_TEXT[axes.x].label} ${COMPARISON_COLUMN_FORMAT[axes.x](row.x)}`,
     `${COMPARISON_COLUMN_TEXT[axes.y].label} ${COMPARISON_COLUMN_FORMAT[axes.y](row.y)}`,
   ];
   if (contour !== undefined) {
-    const value = contour.valueAt(row.x, row.y);
+    const value = contour.readoutAt(row.x, row.y, row.values[contour.column]);
     if (value !== undefined) parts.push(`${COMPARISON_COLUMN_TEXT[contour.column].label} ${COMPARISON_COLUMN_FORMAT[contour.column](value)}`);
   }
   return parts.join('　');
@@ -130,7 +137,8 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
         inputChars = row.inputChars;
         const x = row.values[axes.x];
         const y = row.values[axes.y];
-        if (Number.isFinite(x) && Number.isFinite(y)) plotted.push({ targetKey, label, fullName, kind: context?.kind ?? 'alpha', x, y });
+        if (Number.isFinite(x) && Number.isFinite(y))
+          plotted.push({ targetKey, label, fullName, kind: context?.kind ?? 'alpha', x, y, values: row.values });
         else excluded.push({ targetKey, label, fullName, status: 'no-value', message: '値なし' });
       }
     }
@@ -275,7 +283,7 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
                     data-kind={row.kind}
                     data-active={isActive || undefined}
                     tabIndex={0}
-                    aria-label={readoutText({ ...point, fullName: row.fullName }, axes, contour)}
+                    aria-label={readoutText({ ...point, fullName: row.fullName, values: row.values }, axes, contour)}
                     style={{ transform: `translate(${point.px.toFixed(1)}px, ${point.py.toFixed(1)}px)` }}
                     onPointerEnter={() => setActiveKey(point.targetKey)}
                     onPointerLeave={() => setActiveKey((current) => (current === point.targetKey ? undefined : current))}
@@ -294,7 +302,9 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
             </svg>
           </div>
           <p className="scatter-readout" data-scatter-readout="" aria-live="off">
-            {active === undefined || activeRow === undefined ? '' : readoutText({ ...active, fullName: activeRow.fullName }, axes, contour)}
+            {active === undefined || activeRow === undefined
+              ? ''
+              : readoutText({ ...active, fullName: activeRow.fullName, values: activeRow.values }, axes, contour)}
           </p>
         </>
       ) : null}
