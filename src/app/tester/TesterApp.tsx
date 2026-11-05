@@ -1,8 +1,10 @@
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useMemo } from 'react';
 import { userInputLayouts } from '#input/layouts/user-catalog.ts';
+import { ShareControl } from '#hosts/shared/index.ts';
 import { InputConverterView } from '#tester/input-converter-view.tsx';
 import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
+import { testerShareQuery } from './tester-share.ts';
 
 /**
  * Testerの組み立て。手持ちの自作の配列とローマ字規則を読み、選べる配列としてTesterに渡す。
@@ -26,6 +28,7 @@ export function TesterApp() {
       userLayoutsReady={ready}
       {...(search.layout === undefined ? {} : { requestedLayoutId: search.layout })}
       onRequestedLayoutConsumed={clearRequestedLayout}
+      renderShare={(selection) => <ShareControl share={{ query: () => testerShareQuery(selection), description: '選んでいる配列を開くURL' }} />}
     />
   );
 }

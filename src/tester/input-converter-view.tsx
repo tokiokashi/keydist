@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { PhysicalKeyboard, type PhysicalKeyboardKeyView } from '#ui/keyboard/physical-keyboard.tsx';
 import {
   buildGeometry,
@@ -260,6 +260,11 @@ export interface InputConverterViewProps {
    * （読み込み中に保存した自作の配列を既定へ戻さないため）。
    */
   userLayoutsReady?: boolean;
+  /**
+   * 見出しに置く共有の操作。URLとクリップボードはTesterが持たないので、組み立て側が描く。
+   * 選んでいる配列が組み込みかどうかは、選択肢を持つこちらで判定して渡す。
+   */
+  renderShare?: (selection: { readonly layoutId: string; readonly builtIn: boolean }) => ReactNode;
 }
 
 export function InputConverterView({
@@ -267,6 +272,7 @@ export function InputConverterView({
   userLayoutsReady = true,
   requestedLayoutId,
   onRequestedLayoutConsumed,
+  renderShare,
 }: InputConverterViewProps = {}) {
   const [layout, setLayout] = useState<Layout>(DEFAULT_INPUT_LAYOUT);
   const userLayouts = useMemo(() => {
@@ -782,6 +788,11 @@ export function InputConverterView({
             <h1>Alternative Keyboard Layout Tester</h1>
           </div>
           <p>手元のキーボードで、配列の入力を試せます。</p>
+          {renderShare === undefined ? null : (
+            <div className="input-page-share">
+              {renderShare({ layoutId: layout.id, builtIn: INPUT_LAYOUTS.some((candidate) => candidate.id === layout.id) })}
+            </div>
+          )}
         </header>
 
         <div className="input-workspace" style={{ '--input-sidebar-width': `${splitPercent}%` } as CSSProperties}>

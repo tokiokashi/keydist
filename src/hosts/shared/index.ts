@@ -29,6 +29,7 @@ export {
   type PaneEngineState,
 } from './pane-status.ts';
 export { ConditionSummary, type ConditionSummaryProps } from './ConditionSummary.tsx';
+export { ShareControl, type ContextBarShare, type ShareQuery } from './ShareControl.tsx';
 export { PaneFrame, type PaneFrameProps } from './PaneFrame.tsx';
 export { PaneErrorBoundary } from './PaneErrorBoundary.tsx';
 export { PaneMenu, type PaneMenuItem } from './PaneHeaderParts.tsx';
