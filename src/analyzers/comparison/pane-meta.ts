@@ -1,5 +1,5 @@
 import { WIDE_RECOMMENDED_WIDTH_REM } from '../recommended-width.ts';
-import { COMPARISON_COLUMN_IDS, COMPARISON_COLUMN_TEXT, COMPARISON_UNIT_NOTE } from './column-text.ts';
+import { COMPARISON_COLUMN_IDS, COMPARISON_COLUMN_TEXT, COMPARISON_UNIT_NOTE } from '../comparison-column-text.ts';
 
 /**
  * 画面に出す名前と短い説明（docs/architecture.md「Analyzerがペインに渡すもの」）。

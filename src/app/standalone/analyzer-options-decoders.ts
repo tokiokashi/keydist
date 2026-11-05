@@ -12,6 +12,7 @@ import { layerComboPressesOptions } from '#analyzers/layer-combo-presses/options
 import { nSensitivityOptions } from '#analyzers/n-sensitivity/options.ts';
 import { playbackOptions } from '#analyzers/playback/options.ts';
 import { runChartOptions } from '#analyzers/run-chart/options.ts';
+import { scatterOptions } from '#analyzers/scatter/options.ts';
 
 export type AnalyzerOptionsDecoder = (raw: unknown, diagnostics: CodecDiagnostic[]) => unknown;
 
@@ -36,4 +37,5 @@ export const ANALYZER_OPTIONS_DECODERS: ReadonlyMap<string, AnalyzerOptionsDecod
   ['n-sensitivity', nSensitivityOptions.decodeOptions],
   ['playback', playbackOptions.decodeOptions],
   ['run-chart', runChartOptions.decodeOptions],
+  ['scatter', scatterOptions.decodeOptions],
 ]);

@@ -1,0 +1,145 @@
+.scatter-feature {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.scatter-notice {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.scatter-notice[role='alert'] {
+  color: var(--danger);
+}
+
+.scatter-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.scatter-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1rem;
+  font-size: 0.8rem;
+}
+
+.scatter-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.scatter-figure {
+  max-width: 760px;
+  min-width: 0;
+}
+
+.scatter-figure svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.scatter-grid {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.scatter-tick,
+.scatter-axis-title {
+  fill: var(--text-muted);
+  font-size: 11px;
+}
+
+/* 軸の名前は目盛りより読みやすく、本文の色にする */
+.scatter-axis-title {
+  fill: var(--text);
+}
+
+/* 恒等式で決まる量が同じになる位置の線。点より目立たないよう、細い破線にする */
+.scatter-contour path {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+  opacity: 0.7;
+}
+
+.scatter-contour text {
+  fill: var(--text-muted);
+  font-size: 10.5px;
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+.scatter-point {
+  cursor: default;
+  outline: none;
+  /* 組み合わせを変えた時、点が新しい位置へ動く */
+  transition: transform 0.28s ease;
+}
+
+.scatter-point-label {
+  fill: var(--text);
+  font-size: 11px;
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.scatter-point-ring {
+  fill: none;
+  stroke: var(--focus);
+  stroke-width: 2;
+  opacity: 0;
+}
+
+.scatter-point[data-active] .scatter-point-ring {
+  opacity: 1;
+}
+
+.scatter-point:focus-visible .scatter-point-ring {
+  opacity: 1;
+  stroke-width: 2.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scatter-point {
+    transition: none;
+  }
+}
+
+.scatter-readout {
+  margin: 0.2rem 0 0;
+  min-height: 1.4em;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.scatter-excluded {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+}
+
+.scatter-excluded li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
