@@ -251,6 +251,8 @@ test('Workspaceのペインの見出しのⓘでも開け、Escapeでフォー�
     await page.getByRole('menuitem', { name: analyzer }).click();
   }
   await expect(page.locator('.pane-frame')).toHaveCount(2);
+  // 資産の読み込みが済むと文脈バーが伸びて、ペインの見出しのⓘが下へ動く。動いている間に押すと、押した位置にⓘが無い
+  await expect(page.locator('.pane-frame[data-pane-status="ready"]')).toHaveCount(2, { timeout: 15_000 });
 
   const info = page.getByRole('button', { name: '比較表の説明' });
   await info.focus();

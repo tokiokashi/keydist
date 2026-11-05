@@ -17,6 +17,8 @@ export async function waitForHydration(page: Page): Promise<void> {
   await expect
     .poll(() => page.evaluate(() => Object.keys(document.body).some((key) => key.startsWith('__reactProps$'))), {
       message: 'ページのハイドレーションが始まらない',
+      // 開発サーバーは初めて要求されたモジュールをその場で変換するので、並列で回すと既定の5秒を超えることがある
+      timeout: 15_000,
     })
     .toBe(true);
 }
