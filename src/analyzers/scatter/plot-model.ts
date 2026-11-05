@@ -179,13 +179,26 @@ function contourLine(contour: ScatterContour, level: number, xRange: Range, yRan
 /** 値を書く候補の位置を線に沿って並べる間隔（標本の数）。 */
 const ANCHOR_STRIDE = 8;
 
-const LABEL_HEIGHT = 12;
 const POINT_CLEARANCE = 7;
+/** 名前・値が描画領域の枠の線から空ける距離。 */
+const FRAME_MARGIN = 2;
 
-/** 11pxの文字の幅の見積もり。全角は約11.5、半角は約6.3。 */
+/** 11pxの文字の幅の見積もり。実測の幅（ブラウザで描いたbbox）以上になるよう、文字の種類ごとに少し広めに取る。全角は11.5。 */
 export function estimateTextWidth(text: string): number {
   let width = 0;
-  for (const char of text) width += (char.codePointAt(0) ?? 0) < 256 ? 6.3 : 11.5;
+  for (const char of text) {
+    const code = char.codePointAt(0) ?? 0;
+    if (code >= 256) width += 11.5;
+    else if ('MW'.includes(char)) width += 10;
+    else if ('I'.includes(char)) width += 4.5;
+    else if ('mw'.includes(char)) width += 9;
+    else if ('ijl'.includes(char)) width += 3.5;
+    else if ('frt'.includes(char)) width += 4.5;
+    else if (char >= 'A' && char <= 'Z') width += 8.5;
+    else if ('-()'.includes(char)) width += 4.5;
+    else if (char === ' ') width += 3.5;
+    else width += 6.6;
+  }
   return width;
 }
 
@@ -202,7 +215,7 @@ function overlaps(a: Rect, b: Rect): boolean {
 
 /** 細い線の値の文字（右端を`at`、基準線の高さを`at.y`に置く）が、周りへ余白を足して占める長方形。 */
 function valueRect(at: { readonly x: number; readonly y: number }, width: number): Rect {
-  return { x0: at.x - width - 1, x1: at.x + 1, y0: at.y - 11, y1: at.y + 4 };
+  return { x0: at.x - width - 1, x1: at.x + 1, y0: at.y - 11.5, y1: at.y + 4.5 };
 }
 
 const LEGEND_ROW = 18;
@@ -252,7 +265,9 @@ function placeLegend(texts: readonly string[], marks: readonly Rect[], names: re
 
 /** 長方形が描画領域の枠の線に掛かる、または枠の外に出る。 */
 function leavesPlot(rect: Rect): boolean {
-  return rect.x0 < PLOT_LEFT + 2 || rect.x1 > PLOT_RIGHT - 2 || rect.y0 < PLOT_TOP + 2 || rect.y1 > PLOT_BOTTOM - 2;
+  return (
+    rect.x0 < PLOT_LEFT + FRAME_MARGIN || rect.x1 > PLOT_RIGHT - FRAME_MARGIN || rect.y0 < PLOT_TOP + FRAME_MARGIN || rect.y1 > PLOT_BOTTOM - FRAME_MARGIN
+  );
 }
 
 /**
@@ -269,31 +284,31 @@ function placeLabels(points: readonly { readonly px: number; readonly py: number
   const placed: Rect[] = [];
   return points.map((point) => {
     const width = estimateTextWidth(point.label);
-    const candidates: Array<{ label: PlotLabel; rect: Rect }> = [
-      {
-        label: { x: point.px + 9, y: point.py + 4, anchor: 'start' },
-        rect: { x0: point.px + 9, x1: point.px + 9 + width, y0: point.py - 8, y1: point.py + 4 },
-      },
-      {
-        label: { x: point.px - 9, y: point.py + 4, anchor: 'end' },
-        rect: { x0: point.px - 9 - width, x1: point.px - 9, y0: point.py - 8, y1: point.py + 4 },
-      },
-      {
-        label: { x: point.px, y: point.py - 10, anchor: 'middle' },
-        rect: { x0: point.px - width / 2, x1: point.px + width / 2, y0: point.py - 10 - LABEL_HEIGHT + 3, y1: point.py - 10 + 3 },
-      },
-      {
-        label: { x: point.px, y: point.py + 19, anchor: 'middle' },
-        rect: { x0: point.px - width / 2, x1: point.px + width / 2, y0: point.py + 19 - LABEL_HEIGHT + 3, y1: point.py + 19 + 3 },
-      },
-    ];
+    // 文字の高さは基準線の上10.5・下3.5。周りに1ずつ余白を足す
+    const at = (x: number, baseline: number, anchor: PlotLabel['anchor']): { label: PlotLabel; rect: Rect } => {
+      const x0 = anchor === 'start' ? x : anchor === 'end' ? x - width : x - width / 2;
+      return { label: { x, y: baseline, anchor }, rect: { x0: x0 - 1, x1: x0 + width + 1, y0: baseline - 11.5, y1: baseline + 4.5 } };
+    };
+    // 上下の候補は、点の真上・真下に中央揃えで置き、横に枠から出る時は枠の中へ寄せる
+    const centered = (baseline: number) => {
+      const left = Math.min(Math.max(point.px - width / 2, PLOT_LEFT + FRAME_MARGIN + 1), PLOT_RIGHT - FRAME_MARGIN - 1 - width);
+      return at(left, baseline, 'start');
+    };
+    const candidates = [at(point.px + 9, point.py + 4, 'start'), at(point.px - 9, point.py + 4, 'end'), centered(point.py - 10), centered(point.py + 19)];
     let best = candidates[0]!;
     let bestCost = Number.POSITIVE_INFINITY;
     for (const candidate of candidates) {
       const { rect } = candidate;
-      // 枠の外へ出る置き方は、他の名前と重なる置き方より避ける
-      const outside = rect.x0 < PLOT_LEFT || rect.x1 > PLOT_RIGHT || rect.y0 < PLOT_TOP || rect.y1 > PLOT_BOTTOM ? 1000 : 0;
-      const cost = outside + placed.filter((other) => overlaps(rect, other)).length + marks.filter((mark) => overlaps(rect, mark)).length;
+      // 枠の外へ出る置き方は、他の名前・点と重なる置き方より必ず後にする。どれも出る時は、出る量が少ない方（上下の候補は枠の中へ寄せるので、点が枠の端でも出ない）
+      const overshoot =
+        Math.max(0, PLOT_LEFT + FRAME_MARGIN - rect.x0) +
+        Math.max(0, rect.x1 - (PLOT_RIGHT - FRAME_MARGIN)) +
+        Math.max(0, PLOT_TOP + FRAME_MARGIN - rect.y0) +
+        Math.max(0, rect.y1 - (PLOT_BOTTOM - FRAME_MARGIN));
+      const cost =
+        (overshoot > 0 ? 1e6 + overshoot * 1000 : 0) +
+        placed.filter((other) => overlaps(rect, other)).length +
+        marks.filter((mark) => overlaps(rect, mark)).length;
       if (cost < bestCost) {
         best = candidate;
         bestCost = cost;
