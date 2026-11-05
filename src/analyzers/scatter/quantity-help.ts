@@ -2,19 +2,20 @@ import type { TextLanguage } from '#input/text/language.ts';
 import { COMPARISON_COLUMN_FORMAT, comparisonColumnText, COMPARISON_UNIT_NOTE, type ComparisonColumnId } from '../comparison-column-text.ts';
 import type { ComparisonRowValues } from '../comparison-column-values.ts';
 import { isHandShareColumn, type ScatterAxes, type ScatterContour } from './axes.ts';
+import { axisName, axisTitle, axisUnit } from './axis-names.ts';
 import { SCATTER_KIND_ORDER, SCATTER_KIND_STYLES } from './kinds.ts';
 
 /**
  * 散布図の「図の見方」のⓘの中身。点の色と形、軸と細い線の量の名前と説明、3つの量の関係、50%の線の説明を出す。
  * 図の下のキャプションの文もここで組み立てる。
- * 量の名前と説明は比較表の列（`comparison-column-text.ts`）のものをそのまま使い、ここでは書き直さない。
+ * 量の呼び名は軸の名前（`axis-names.ts`）に統一し、量の説明は比較表の列（`comparison-column-text.ts`）のものをそのまま使う。
  * Reactに依存させない（文の組み立てをunit testで検査するため）。
  */
 
-/** 名前か説明に距離の単位uが出る列か。 */
-export function mentionsUnit(column: ComparisonColumnId, language: TextLanguage): boolean {
-  const { label, description } = comparisonColumnText(language)[column];
-  return /(^|[^A-Za-z])u($|[^A-Za-z])/u.test(`${label}\n${description}`);
+/** 軸の名前に距離の単位uが出る列か。単位の宣言（`axis-names.ts`）で決める。 */
+export function mentionsUnit(column: ComparisonColumnId): boolean {
+  const unit = axisUnit(column);
+  return unit === 'u' || unit === '1/u';
 }
 
 /** `InfoButton`の`help`に渡せる形（`ui/primitives/info-button.tsx`の`InfoHelp`と同じ。純粋なファイルからはUIをimportできない）。 */
@@ -37,23 +38,21 @@ export function readoutText(
   contour: ScatterContour | undefined,
   language: TextLanguage,
 ): string {
-  const text = comparisonColumnText(language);
   const parts = [
     row.fullName || row.label,
-    `${text[axes.x].label} ${COMPARISON_COLUMN_FORMAT[axes.x](row.x)}`,
-    `${text[axes.y].label} ${COMPARISON_COLUMN_FORMAT[axes.y](row.y)}`,
+    `${axisName(axes.x, language)} ${COMPARISON_COLUMN_FORMAT[axes.x](row.x)}`,
+    `${axisName(axes.y, language)} ${COMPARISON_COLUMN_FORMAT[axes.y](row.y)}`,
   ];
   if (contour?.drawsLines === true) {
     const value = contour.readoutAt(row.x, row.y, row.values[contour.column]);
-    if (value !== undefined) parts.push(`${text[contour.column].label} ${COMPARISON_COLUMN_FORMAT[contour.column](value)}`);
+    if (value !== undefined) parts.push(`${axisName(contour.column, language)} ${COMPARISON_COLUMN_FORMAT[contour.column](value)}`);
   }
   return parts.join('　');
 }
 
-/** 図の下のキャプション。縦軸の量と横軸の量の関係。軸の量の名前は比較表の列と同じ。 */
+/** 図の下のキャプション。縦軸の量と横軸の量の関係。量の名前は軸の名前から単位を除いたもの。 */
 export function scatterCaption(axes: ScatterAxes, language: TextLanguage): string {
-  const text = comparisonColumnText(language);
-  return `${text[axes.y].label}と${text[axes.x].label}の関係`;
+  return `${axisName(axes.y, language)}と${axisName(axes.x, language)}の関係`;
 }
 
 /** 左右の手で全体を分ける割合の軸が、どの数を数えた割合か。 */
@@ -67,7 +66,6 @@ function handShareSubject(column: ComparisonColumnId): string {
  * 区画の説明は軸の割り当てに従う（左上と右下は、2軸を入れ替えると入れ替わる）。
  */
 function centerLineNotes(axes: ScatterAxes, language: TextLanguage): string[] {
-  const text = comparisonColumnText(language);
   const onX = isHandShareColumn(axes.x);
   const onY = isHandShareColumn(axes.y);
   if (!onX && !onY) return [];
@@ -78,7 +76,7 @@ function centerLineNotes(axes: ScatterAxes, language: TextLanguage): string[] {
     const y = handShareSubject(axes.y);
     notes.push(
       `50%の線で図が4つの区画に分かれます。右上は${x}も${y}も右手寄り、左下はどちらも左手寄り、左上は${x}は左手が多いのに${y}は右手が多く、右下は${x}は右手が多いのに${y}は左手が多い区画です。`,
-      `${text.rightHandPressShare.label}は押したキーの数のうち右手の割合、${text.rightHandDistanceShare.label}は移動距離のうち右手のキーの分の割合で、どちらも同じキーを右手と左手に分けて数えた値から作っています。`,
+      `${axisName('rightHandPressShare', language)}は押したキーの数のうち右手の割合、${axisName('rightHandDistanceShare', language)}は移動距離のうち右手のキーの分の割合で、どちらも同じキーを右手と左手に分けて数えた値から作っています。`,
     );
   }
   return notes;
@@ -97,25 +95,26 @@ export function scatterQuantityHelp(axes: ScatterAxes, contour: ScatterContour |
     if (contour.drawsLines) {
       quantities.push({ role: '細い線', column: contour.column });
       notes.push(
-        `細い線は、${text[contour.column].label}が同じになる位置を結んでいます。3つの量の関係は、${contour.relation}です。${conversion}線の上に値を書き、量の名前は凡例に示しています。`,
+        `細い線は、${axisName(contour.column, language)}が同じになる位置を結んでいます。3つの量の関係は、${contour.relation}です。${conversion}線の上に値を書き、量の名前は凡例に示しています。`,
       );
     } else {
-      notes.push(`${text[contour.column].label}を含む3つの量の関係は、${contour.relation}です。${conversion}`);
+      notes.push(`${axisName(contour.column, language)}を含む3つの量の関係は、${contour.relation}です。${conversion}`);
     }
   }
   notes.push(...centerLineNotes(axes, language));
   // 線を引かない組も、関係の文に線の量の名前が出るので、その量の単位を説明する
   const mentioned = quantities.map(({ column }) => column);
   if (contour !== undefined && !contour.drawsLines) mentioned.push(contour.column);
-  if (mentioned.some((column) => mentionsUnit(column, language))) notes.push(COMPARISON_UNIT_NOTE);
+  if (mentioned.some((column) => mentionsUnit(column))) notes.push(COMPARISON_UNIT_NOTE);
   return {
     description,
     help: {
       notes,
       listLabel: '図の量',
+      // 軸の名前から比較表の列を探せるよう、説明の先頭に比較表の列名を添える
       items: quantities.map(({ role, column }) => ({
-        name: `${role}　${text[column].label}`,
-        description: text[column].description,
+        name: `${role}　${axisTitle(column, language)}`,
+        description: `比較表の列名は「${text[column].label}」。${text[column].description}`,
       })),
     },
   };

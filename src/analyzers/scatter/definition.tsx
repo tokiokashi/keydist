@@ -5,7 +5,7 @@ import { InfoButton } from '#ui/primitives/info-button.tsx';
 import { targetMarkPath } from '#ui/theme/target-marks.ts';
 import type { AnalyzerSettingsProps, SetAnalyzerPaneParts, SetBodyProps } from '../pane-parts.tsx';
 import type { TextLanguage } from '#input/text/language.ts';
-import { COMPARISON_COLUMN_FORMAT, COMPARISON_COLUMN_IDS, comparisonColumnText, type ComparisonColumnId } from '../comparison-column-text.ts';
+import { COMPARISON_COLUMN_IDS, comparisonColumnText } from '../comparison-column-text.ts';
 import { useTextLanguage } from '../text-language-context.tsx';
 import { kanaUnitOf } from '../unit-words.ts';
 import type { ComparisonRowValues } from '../comparison-column-values.ts';
@@ -19,6 +19,7 @@ import {
   type ScatterAxes,
   type ScatterAxisProblem,
 } from './axes.ts';
+import { axisName, axisTitle, axisUnit } from './axis-names.ts';
 import { scatterDefinition, type ScatterExtracted, type ScatterRow } from './extract.ts';
 import { SCATTER_KIND_ORDER, SCATTER_KIND_STYLES } from './kinds.ts';
 import { DEFAULT_SCATTER_OPTIONS, scatterOptions, type ScatterOptions } from './options.ts';
@@ -55,10 +56,6 @@ const TICK_LENGTH = 5;
 
 function axesOf(options: ScatterOptions): ScatterAxes {
   return options.preset === 'free' ? { x: options.xAxis, y: options.yAxis } : SCATTER_PRESET_AXES[options.preset];
-}
-
-function isPercentColumn(column: ComparisonColumnId): boolean {
-  return COMPARISON_COLUMN_FORMAT[column](0).endsWith('%');
 }
 
 function axisProblemText(problem: ScatterAxisProblem, language: TextLanguage): string {
@@ -103,7 +100,6 @@ function rowKey(row: ScatterRow): string {
  */
 export function ScatterBody({ extracted, order, rowContext, options }: ScatterBodyProps) {
   const language = useTextLanguage();
-  const text = comparisonColumnText(language);
   const axes = axesOf(options);
   const problem = scatterAxisProblem(axes.x, axes.y);
   const rowByKey = useMemo(() => new Map(extracted.rows.map((row) => [rowKey(row), row] as const)), [extracted.rows]);
@@ -148,11 +144,11 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
         points: plotted.map(({ targetKey, label, x, y }) => ({ targetKey, label, x, y })),
         contour: lineContour,
         legendRows: usedKinds.map((kind) => SCATTER_KIND_STYLES[kind].label),
-        contourName: lineContour === undefined ? '' : text[lineContour.column].label,
-        contourSuffix: lineContour !== undefined && isPercentColumn(lineContour.column) ? '%' : '',
+        contourName: lineContour === undefined ? '' : axisTitle(lineContour.column, language),
+        contourSuffix: lineContour !== undefined && axisUnit(lineContour.column) === '%' ? '%' : '',
         centerAxes: { x: isHandShareColumn(axes.x), y: isHandShareColumn(axes.y) },
       }),
-    [plotted, lineContour, usedKinds, text, axes.x, axes.y],
+    [plotted, lineContour, usedKinds, language, axes.x, axes.y],
   );
   const plottedByKey = new Map(plotted.map((row) => [row.targetKey, row] as const));
   const active = activeKey === undefined ? undefined : model.points.find((point) => point.targetKey === activeKey);
@@ -172,7 +168,7 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
             <InfoButton name="図の見方" description={quantityHelp.description} help={quantityHelp.help} />
           </div>
           <figure className="scatter-figure">
-            <svg viewBox={`0 0 ${PLOT_WIDTH} ${PLOT_HEIGHT}`} aria-label={`${text[axes.x].label}と${text[axes.y].label}の散布図`}>
+            <svg viewBox={`0 0 ${PLOT_WIDTH} ${PLOT_HEIGHT}`} aria-label={`${axisName(axes.x, language)}と${axisName(axes.y, language)}の散布図`}>
               <rect
                 className="scatter-frame"
                 x={PLOT_MARGIN.left}
@@ -210,7 +206,7 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
                 textAnchor="middle"
                 data-scatter-y-title=""
               >
-                {text[axes.y].label}
+                {axisTitle(axes.y, language)}
               </text>
               <text
                 className="scatter-axis-title"
@@ -219,7 +215,7 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
                 textAnchor="middle"
                 data-scatter-x-title=""
               >
-                {text[axes.x].label}
+                {axisTitle(axes.x, language)}
               </text>
 
               {model.centerLines.map((line) => (
@@ -354,7 +350,7 @@ export function ScatterSettings({ options, onOptionsChange }: AnalyzerSettingsPr
             label="縦軸"
             binding={bind('yAxis')}
             choices={COLUMN_CHOICES.filter((choice) => choice.value === options.yAxis || scatterAxisProblem(options.xAxis, choice.value) === undefined)}
-            hint="軸の2つの数値から決まる別の数値がある組には、その数値が同じになる位置の線を引きます。1キーあたりの距離など、配列ごとに違う回数で割った距離の線は引きません。"
+            hint="軸の2つの数値から決まる別の数値がある組には、その数値が同じになる位置の線を引きます。1キーの距離など、配列ごとに違う回数で割った距離の線は引きません。"
           />
         </>
       ) : null}

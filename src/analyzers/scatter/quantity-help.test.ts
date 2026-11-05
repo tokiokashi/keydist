@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { COMPARISON_COLUMN_IDS, COMPARISON_UNIT_NOTE, comparisonColumnText } from '../comparison-column-text.ts';
+import { axisName, axisTitle, KEY_COUNT_NAME } from './axis-names.ts';
 import {
   IDENTITIES,
   identityRelation,
@@ -17,14 +18,19 @@ import { mentionsUnit, readoutText, scatterCaption, scatterQuantityHelp } from '
 const INPUT_CHARS = 100;
 const PRESETS = SCATTER_PRESET_IDS.filter((id) => id !== 'free');
 
-const text = (column: (typeof COMPARISON_COLUMN_IDS)[number]) => comparisonColumnText('ja')[column];
+type Column = (typeof COMPARISON_COLUMN_IDS)[number];
+const text = (column: Column) => comparisonColumnText('ja')[column];
+const name = (column: Column) => axisName(column, 'ja');
+const title = (column: Column) => axisTitle(column, 'ja');
+/** 図の見方の量の一覧の説明。軸の名前から比較表の列を探せるよう、列名を先頭に添える。 */
+const itemDescription = (column: Column) => `比較表の列名は「${text(column).label}」。${text(column).description}`;
 
 test('どの恒等式も、3つの量を総数の形の名前で並べた式を持つ', () => {
   for (const identity of IDENTITIES) {
     assert.notEqual(identityRelation(identity, 'ja'), '');
     for (const quantity of identity.quantities) {
-      const name = quantity.total !== undefined ? text(quantity.total).label : text(quantity.perChar!).label.replace(/\/かな$/u, '');
-      assert.ok(identityRelation(identity, 'ja').includes(name), `${identityRelation(identity, 'ja')} に ${name} が無い`);
+      const expected = quantity.total !== undefined ? name(quantity.total) : KEY_COUNT_NAME;
+      assert.ok(identityRelation(identity, 'ja').includes(expected), `${identityRelation(identity, 'ja')} に ${expected} が無い`);
     }
   }
 });
@@ -40,18 +46,18 @@ test('細い線を引く用意した組み合わせは、横軸・縦軸・細�
     const columns = [axes.x, axes.y, contour.column];
     assert.deepEqual(
       help.items.map((item) => item.name),
-      [`横軸　${text(axes.x).label}`, `縦軸　${text(axes.y).label}`, `細い線　${text(contour.column).label}`],
+      [`横軸　${title(axes.x)}`, `縦軸　${title(axes.y)}`, `細い線　${title(contour.column)}`],
       id,
     );
     assert.deepEqual(
       help.items.map((item) => item.description),
-      columns.map((column) => text(column).description),
+      columns.map((column) => itemDescription(column)),
       id,
     );
     assert.ok(
       help.notes.some(
         (note) =>
-          note.includes(`細い線は、${text(contour.column).label}が同じになる位置を結んでいます。`) &&
+          note.includes(`細い線は、${name(contour.column)}が同じになる位置を結んでいます。`) &&
           note.includes(
             `3つの量の関係は、${contour.relation}です。${contour.conversion === undefined ? '' : `${contour.conversion}です。`}線の上に値を書き、量の名前は凡例に示しています。`,
           ),
@@ -72,7 +78,7 @@ test('自由に選ぶ組は、線を引く組にだけ細い線の量と関係�
       const contour = scatterContour(x, y, INPUT_CHARS, 'ja');
       const { help } = scatterQuantityHelp({ x, y }, contour, 'ja');
       const names = help.items.map((item) => item.name);
-      assert.deepEqual(names.slice(0, 2), [`横軸　${text(x).label}`, `縦軸　${text(y).label}`], `${x} ${y}`);
+      assert.deepEqual(names.slice(0, 2), [`横軸　${title(x)}`, `縦軸　${title(y)}`], `${x} ${y}`);
       if (contour === undefined) {
         withoutContour += 1;
         assert.equal(names.length, 2, `${x} ${y}`);
@@ -82,7 +88,7 @@ test('自由に選ぶ組は、線を引く組にだけ細い線の量と関係�
         withoutLine += 1;
         assert.equal(names.length, 2, `${x} ${y}`);
         assert.ok(
-          help.notes.some((note) => note.includes(`${contour.relation}です。`) && note.includes(text(contour.column).label)),
+          help.notes.some((note) => note.includes(`${contour.relation}です。`) && note.includes(name(contour.column))),
           `${x} ${y}`,
         );
         assert.ok(!help.notes.some((note) => note.includes('細い線は')), `${x} ${y}`);
@@ -90,7 +96,7 @@ test('自由に選ぶ組は、線を引く組にだけ細い線の量と関係�
       } else {
         withContour += 1;
         assert.equal(names.length, 3, `${x} ${y}`);
-        assert.equal(names[2], `細い線　${text(contour.column).label}`, `${x} ${y}`);
+        assert.equal(names[2], `細い線　${title(contour.column)}`, `${x} ${y}`);
         assert.ok(
           help.notes.some((note) => note.includes(`${contour.relation}です。`)),
           `${x} ${y}`,
@@ -101,7 +107,7 @@ test('自由に選ぶ組は、線を引く組にだけ細い線の量と関係�
   assert.ok(withContour > 0 && withoutLine > 0 && withoutContour > 0);
 });
 
-test('距離の単位の説明は、名前か説明にuが出る量がある時だけ出す', () => {
+test('距離の単位の説明は、単位がuか1/uの量がある時だけ出す', () => {
   for (const x of COMPARISON_COLUMN_IDS) {
     for (const y of COMPARISON_COLUMN_IDS) {
       if (scatterAxisProblem(x, y) !== undefined) continue;
@@ -111,24 +117,26 @@ test('距離の単位の説明は、名前か説明にuが出る量がある時�
       const columns = [x, y, ...(contour === undefined ? [] : [contour.column])];
       assert.equal(
         help.notes.includes(COMPARISON_UNIT_NOTE),
-        columns.some((column) => mentionsUnit(column, 'ja')),
+        columns.some((column) => mentionsUnit(column)),
         `${x} ${y}`,
       );
     }
   }
-  assert.ok(mentionsUnit('perPressUnits', 'ja'));
-  assert.ok(mentionsUnit('totalUnits', 'ja'));
-  assert.ok(!mentionsUnit('actions', 'ja'));
-  assert.ok(!mentionsUnit('physicalBigramCombinations', 'ja'));
+  assert.ok(mentionsUnit('perPressUnits'));
+  assert.ok(mentionsUnit('totalUnits'));
+  assert.ok(mentionsUnit('actionsPerUnit'));
+  assert.ok(!mentionsUnit('actions'));
+  assert.ok(!mentionsUnit('sameFingerRate'));
+  assert.ok(!mentionsUnit('physicalBigramCombinations'));
 });
 
 test('1かなあたりの列が入る組は、総数を入力かな数で割った値だという換算を関係の文に足す', () => {
   const perPress = scatterContour('perCharPresses', 'perPressUnits', INPUT_CHARS, 'ja')!;
-  assert.equal(perPress.relation, '距離 = キー数 × u/キー');
-  assert.equal(perPress.conversion, 'キー数/かなはキー数を入力かな数で割った値、u/かなは距離を入力かな数で割った値');
+  assert.equal(perPress.relation, '総移動距離 = キー数 × 1キーの距離');
+  assert.equal(perPress.conversion, '1かなのキー数はキー数を入力かな数で割った値、1かなの距離は総移動距離を入力かな数で割った値');
   const distance = scatterContour('perCharSteps', 'meanPerStroke', INPUT_CHARS, 'ja')!;
-  assert.equal(distance.relation, '距離 = アクション数 × u/アクション');
-  assert.equal(distance.conversion, 'アクション数/かなはアクション数を入力かな数で割った値、u/かなは距離を入力かな数で割った値');
+  assert.equal(distance.relation, '総移動距離 = アクション数 × 1アクションの距離');
+  assert.equal(distance.conversion, '1かなのアクション数はアクション数を入力かな数で割った値、1かなの距離は総移動距離を入力かな数で割った値');
   // 総数の形の軸だけの組には換算を足さない
   const hand = scatterContour('handSwitches', 'handContinuations', INPUT_CHARS, 'ja')!;
   assert.equal(hand.relation, identityRelation(IDENTITIES[5]!, 'ja'));
@@ -169,10 +177,13 @@ test('移動ありキーの割合と1回の移動距離: 線を引かず、図�
   const contour = scatterContour(axes.x, axes.y, INPUT_CHARS, 'ja');
   assert.equal(contour?.drawsLines, false);
   const { help } = scatterQuantityHelp(axes, contour, 'ja');
-  assert.deepEqual(help.notes, ['u/キーを含む3つの量の関係は、u/キー = 移動ありキー率 ÷ 100 × u/移動ありキーです。', COMPARISON_UNIT_NOTE]);
+  assert.deepEqual(help.notes, [
+    '1キーの距離を含む3つの量の関係は、1キーの距離 = 移動ありキー率 ÷ 100 × 移動ありキー1つの距離です。',
+    COMPARISON_UNIT_NOTE,
+  ]);
   assert.deepEqual(
     help.items.map((item) => item.name),
-    ['横軸　移動ありキー率', '縦軸　u/移動ありキー'],
+    ['横軸　移動ありキー率（%）', '縦軸　移動ありキー1つの距離（u）'],
   );
 });
 
@@ -208,12 +219,12 @@ test('50%の線の説明: 軸の片方だけが右手の割合の時は、その
   }
 });
 
-test('図の下のキャプション: 縦軸の量と横軸の量の関係を、比較表の列名で言い切る', () => {
-  assert.equal(scatterCaption(SCATTER_PRESET_AXES.distance, 'ja'), 'u/アクションとアクション数/かなの関係');
+test('図の下のキャプション: 縦軸の量と横軸の量の関係を、軸の名前から単位を除いた言葉で言い切る', () => {
+  assert.equal(scatterCaption(SCATTER_PRESET_AXES.distance, 'ja'), '1アクションの距離と1かなのアクション数の関係');
   assert.equal(scatterCaption(SCATTER_PRESET_AXES.handShare, 'ja'), '右手距離率と右手キー率の関係');
-  assert.equal(scatterCaption({ x: 'totalUnits', y: 'sameFinger' }, 'ja'), '同指と距離の関係');
-  // 英語のテキストでは、列名の「かな」が「字」になる
-  assert.equal(scatterCaption(SCATTER_PRESET_AXES.distance, 'en'), 'u/アクションとアクション数/字の関係');
+  assert.equal(scatterCaption({ x: 'totalUnits', y: 'sameFinger' }, 'ja'), '同指の回数と総移動距離の関係');
+  // 英語のテキストでは、名前の「かな」が「字」になる
+  assert.equal(scatterCaption(SCATTER_PRESET_AXES.distance, 'en'), '1アクションの距離と1字のアクション数の関係');
 });
 
 test('固定の説明は、線を引かない図があることと食い違わない', () => {
@@ -225,22 +236,24 @@ test('固定の説明は、線を引かない図があることと食い違わ�
 });
 
 test('点の読み取り: 線を引く組は線の量の値を出し、線を引かない組は線の量の名前も値も出さない', () => {
-  type Column = (typeof COMPARISON_COLUMN_IDS)[number];
   const values = Object.fromEntries(COMPARISON_COLUMN_IDS.map((column) => [column, 7])) as Parameters<typeof readoutText>[0]['values'];
   const readout = (axes: { x: Column; y: Column }, x: number, y: number, rowValues = values) =>
     readoutText({ label: 'A', fullName: 'QWERTY', x, y, values: rowValues }, axes, scatterContour(axes.x, axes.y, INPUT_CHARS, 'ja'), 'ja');
   // 線を引く既定の組: u/かな = アクション数/かな × u/アクション
   assert.equal(
     readout(SCATTER_PRESET_AXES.distance, 1.5, 2, { ...values, perCharUnits: 3 }),
-    'QWERTY　アクション数/かな 1.500　u/アクション 2.000　u/かな 3.000',
+    'QWERTY　1かなのアクション数 1.500　1アクションの距離 2.000　1かなの距離 3.000',
   );
   // 線を引かない組: 線の量（u/キー・u/アクション・アクション/u）の名前と値を出さない
-  assert.equal(readout(SCATTER_PRESET_AXES.movedPress, 50, 4, { ...values, perPressUnits: 2 }), 'QWERTY　移動ありキー率 50.0%　u/移動ありキー 4.000');
-  assert.equal(readout({ x: 'perActionPresses', y: 'perPressUnits' }, 2, 1.5), 'QWERTY　キー数/アクション 2.000　u/キー 1.500');
-  assert.equal(readout({ x: 'textCharsPerAction', y: 'textCharsPerUnit' }, 2, 6), 'QWERTY　文字/アクション 2.000　文字/u 6.000');
+  assert.equal(
+    readout(SCATTER_PRESET_AXES.movedPress, 50, 4, { ...values, perPressUnits: 2 }),
+    'QWERTY　移動ありキー率 50.0%　移動ありキー1つの距離 4.000',
+  );
+  assert.equal(readout({ x: 'perActionPresses', y: 'perPressUnits' }, 2, 1.5), 'QWERTY　1アクションのキー数 2.000　1キーの距離 1.500');
+  assert.equal(readout({ x: 'textCharsPerAction', y: 'textCharsPerUnit' }, 2, 6), 'QWERTY　1アクションの文字数 2.000　1uの文字数 6.000');
   // 線の量の列が値を持たない対象には、線を引く組でも出さない
   assert.equal(
     readout(SCATTER_PRESET_AXES.distance, 1.5, 2, { ...values, perCharUnits: Number.NaN }),
-    'QWERTY　アクション数/かな 1.500　u/アクション 2.000',
+    'QWERTY　1かなのアクション数 1.500　1アクションの距離 2.000',
   );
 });
