@@ -104,21 +104,7 @@ test('組み込みの全配列: 押下/動作 × 動作数/文字 が 押下/文
   assert.equal(computeTraceScalars({ strokes: [], inputChars: 0, skipped: 0 } as unknown as Trace).perActionPresses, 0);
 });
 
-test('組み込みの全配列: 押下数/文字 × u/押下 が u/文字 と、押下数/動作 × u/押下 が u/打鍵 と相対誤差1e-9以内で一致し、u/押下は距離 / 押下キー数', () => {
-  for (const { layoutId, row } of ALL_ROWS) {
-    assert.ok(relativeError(row.perCharPresses * row.perPressUnits, row.perCharUnits) <= 1e-9, `${layoutId} u/文字`);
-    assert.ok(relativeError(row.perActionPresses * row.perPressUnits, row.meanPerStroke) <= 1e-9, `${layoutId} u/打鍵`);
-    assert.ok(row.perPressUnits > 0, `${layoutId}`);
-  }
-  // 分母は押下キー数で、距離が0の押下（ホームキー・親指キー）も入る
-  for (const { layoutId, row, inputChars } of ALL_ROWS) {
-    assert.ok(relativeError(row.perPressUnits, row.totalUnits / (row.perCharPresses * inputChars)) <= 1e-9, `${layoutId} 距離 / 押下キー数`);
-  }
-  // 押下キー数が0なら0
-  assert.equal(computeTraceScalars({ strokes: [], inputChars: 0, skipped: 0 } as unknown as Trace).perActionPresses, 0);
-});
-
-test('組み込みの全配列: 押下数/文字 × u/押下 が u/文字 と、押下数/動作 × u/押下 が u/打鍵 と相対誤差1e-9以内で一致し、u/押下は距離 / 押下キー数', () => {
+test('組み込みの全配列: (押下数/文字)×(u/押下)=u/文字と(押下数/動作)×(u/押下)=u/打鍵が相対誤差1e-9以内で成り立ち、u/押下は距離÷押下キー数', () => {
   for (const { layoutId, row } of ALL_ROWS) {
     assert.ok(relativeError(row.perCharPresses * row.perPressUnits, row.perCharUnits) <= 1e-9, `${layoutId} u/文字`);
     assert.ok(relativeError(row.perActionPresses * row.perPressUnits, row.meanPerStroke) <= 1e-9, `${layoutId} u/打鍵`);
