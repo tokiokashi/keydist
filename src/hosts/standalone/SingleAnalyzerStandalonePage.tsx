@@ -25,9 +25,16 @@ import { useLatestCallback } from '#hosts/shared/use-latest-callback.ts';
 import { useOptionsDraft } from '#hosts/shared/use-options-draft.ts';
 import { STANDALONE_WRITE_LOG_KEY } from '#hosts/shared/options-write-log.ts';
 import { AddToWorkspaceMenu, type AddToWorkspaceDestination } from '#hosts/shared/AddToWorkspaceMenu.tsx';
+import { anyTargetHasChangedCondition, singlePaneConditionScope } from '#hosts/shared/changed-condition.ts';
 import { arrivalPositionFor, usePlaybackArrival } from './use-playback-arrival.ts';
 import { urlOptionsNotices, useSharedLink, useTargetShareSource } from './use-shared-link.ts';
-import { describeShareEncodeNotice, describeTextShareNotice, encodeTextToUrl, encodeSingleTargetToUrl } from './target-share.ts';
+import {
+  describeConditionShareNotice,
+  describeShareEncodeNotice,
+  describeTextShareNotice,
+  encodeTextToUrl,
+  encodeSingleTargetToUrl,
+} from './target-share.ts';
 import './standalone.css';
 
 /**
@@ -193,7 +200,22 @@ export function SingleAnalyzerStandalonePage<Options, Extracted>({
             for (const [key, value] of encoded.params) params.append(key, value);
             const text = encodeTextToUrl(assets.standaloneTextSelection);
             for (const [key, value] of text.params) params.append(key, value);
-            return { params, notices: [...describeShareEncodeNotice(encoded.notice), ...describeTextShareNotice(text.userText)] };
+            const conditionChanged = anyTargetHasChangedCondition({
+              targets: [target],
+              setups: new Map(assets.setupLibrary.setups.map((setup) => [setup.id, setup] as const)),
+              catalog,
+              overrides: assets.setupLibrary.overrides,
+              text: evaluation.text,
+              scope: singlePaneConditionScope(analyzer.conditionExtraIds, evaluation.text.language),
+            });
+            return {
+              params,
+              notices: [
+                ...describeShareEncodeNotice(encoded.notice),
+                ...describeTextShareNotice(text.userText),
+                ...describeConditionShareNotice(conditionChanged),
+              ],
+            };
           },
         }}
       >

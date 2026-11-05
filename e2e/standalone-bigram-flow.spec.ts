@@ -1381,3 +1381,23 @@ test('Relative vectorsの小窓を動かした後に指を選んで図が作り�
   await expect(toggle).toHaveCount(1);
   await expect(toggle).toHaveAttribute('aria-expanded', 'true');
 });
+
+test('既定のままの条件でコピーしても、条件がリンクに載らない旨は出ない', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto('/analyzer/bigram-flow');
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+  await page.getByRole('button', { name: '共有', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'URLをコピーしました' })).toBeVisible();
+  await expect(page.locator('[data-share-notice="true"]').filter({ hasText: '条件はリンクに載らないので' })).toHaveCount(0);
+});
+
+test('条件を既定から変えた状態でコピーすると、条件がリンクに載らない旨が送る側に出る', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.addInitScript(() => {
+    localStorage.setItem('keydist:setup-library', JSON.stringify({ version: 1, setups: [], overrides: { global: { windowSize: 4 } } }));
+  });
+  await page.goto('/analyzer/bigram-flow');
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+  await page.getByRole('button', { name: '共有', exact: true }).click();
+  await expect(page.locator('[data-share-notice="true"]').filter({ hasText: '条件はリンクに載らないので' })).toHaveCount(1);
+});

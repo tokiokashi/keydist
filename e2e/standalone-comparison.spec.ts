@@ -1083,3 +1083,40 @@ test('共有リンクに載らない対象（名前が長すぎるSetup）は、
   const url = await page.evaluate(() => navigator.clipboard.readText());
   expect(new URL(url).searchParams.getAll('targets')).toEqual(['layout:dvorak']);
 });
+
+test('並べた対象のどれか1つに既定と違う条件（Setupの上書き）があると、コピーした時に条件がリンクに載らない旨が出る', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'keydist:setup-library',
+      JSON.stringify({
+        version: 1,
+        setups: [{ id: 'fixed-b', layoutId: 'colemak-dh', shapeId: 'row-staggered' }],
+        overrides: { setup: { 'fixed-b': { windowSize: 5 } } },
+      }),
+    );
+    localStorage.setItem(
+      'keydist:multi-target-selection',
+      JSON.stringify({
+        version: 1,
+        targets: [
+          { kind: 'layout', layoutId: 'dvorak' },
+          { kind: 'setup', setupId: 'fixed-b' },
+        ],
+      }),
+    );
+  });
+  await page.goto('/analyzer/comparison');
+  await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
+  await page.getByRole('button', { name: '共有', exact: true }).click();
+  await expect(page.locator('[data-share-notice="true"]').filter({ hasText: '条件はリンクに載らないので' })).toHaveCount(1);
+});
+
+test('並べた対象がどれも既定の条件なら、コピーしても条件がリンクに載らない旨は出ない', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto('/analyzer/comparison?targets=layout%3Advorak&targets=layout%3Aqwerty');
+  await expect(page.locator('.comparison-table')).toBeVisible({ timeout: 10_000 });
+  await page.getByRole('button', { name: '共有', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'URLをコピーしました' })).toBeVisible();
+  await expect(page.locator('[data-share-notice="true"]').filter({ hasText: '条件はリンクに載らないので' })).toHaveCount(0);
+});

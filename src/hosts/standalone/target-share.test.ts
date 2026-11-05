@@ -12,6 +12,7 @@ import {
   decodeSingleTargetFromUrl,
   decodeTargetRef,
   decodeTextFromUrl,
+  describeConditionShareNotice,
   describeTextShareNotice,
   encodeTextToUrl,
   SHARE_MAX_TEXT_ID_LENGTH,
@@ -304,4 +305,9 @@ test('テキストは組み込みのidだけ読み、この版に無いid・長�
     assert.deepEqual(decoded, { present: true, ref: undefined }, bad);
     assert.equal(diagnostics.length, 1, bad);
   }
+});
+
+test('describeConditionShareNotice: 変更した条件がある時だけ、条件がリンクに載らないことを示す', () => {
+  assert.deepEqual(describeConditionShareNotice(false), []);
+  assert.deepEqual(describeConditionShareNotice(true), ['条件はリンクに載らないので、開いた側では数値が変わることがあります。']);
 });
