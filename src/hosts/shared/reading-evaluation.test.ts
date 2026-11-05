@@ -59,6 +59,7 @@ test('漢字を含まない日本語のテキストと英語のテキストは�
     assert.equal(evaluation.state.kind, 'none');
     assert.equal(evaluation.text, input);
     assert.equal(evaluation.text.reading, undefined);
+    assert.equal(evaluation.text.notationExcess, undefined);
   }
   assert.deepEqual(reading.calls, []);
 });
