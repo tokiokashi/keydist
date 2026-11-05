@@ -87,6 +87,12 @@ test.describe('個別画面', () => {
     await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('右手距離率');
     await expect(feature(page).locator('[data-scatter-contour]').first()).toHaveText(/^\d\.\d+$/);
     await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveText('右手u/押下比');
+
+    await settings.getByLabel('組み合わせ', { exact: true }).selectOption('movedPress');
+    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('動いた押下率');
+    await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('u/動いた押下');
+    await expect(feature(page).locator('[data-scatter-contour]').first()).toHaveText(/^[\d.]+$/);
+    await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveText('u/押下');
   });
 
   test('自由に選ぶと、横軸と縦軸を比較表の列から選べる。引けない組には線を引かず、選べない列は選択肢に出ない', async ({ page }) => {

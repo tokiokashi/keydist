@@ -149,6 +149,16 @@ export interface Metrics {
    */
   rightLeftPerPressRatio: number | null;
   /**
+   * 動いた押下の割合 [%]（仕様 §11.5）。移動距離が0より大きい押下で押したキーの数 / 押下キー数 × 100。
+   * 押下キー数が0なら0。
+   */
+  movedPressShare: number;
+  /**
+   * 動いた押下1回あたりの距離 [u/押下]（仕様 §11.5）。総移動距離 / 移動距離が0より大きい押下で押したキーの数。
+   * その数が0なら0。`perPressUnits` = `movedPressShare` / 100 × この値。
+   */
+  perMovedPressUnits: number;
+  /**
    * 打鍵可能な入力文字のうち、単打面の1キーだけで直接出力された文字の割合 [%]。
    * シフト面・複数キーコンボ・複数Stroke入力は含めない（仕様 §11.5.1）。
    */
@@ -384,6 +394,7 @@ export function computeMetrics(trace: Trace, geometry: Geometry, conditions: Met
     perActionPresses: scalars.perActionPresses,
     perPressUnits: scalars.perPressUnits,
     rightLeftPerPressRatio: rightLeftPerPressRatio(perFinger, perFingerPresses),
+    ...movedPressMetrics(trace, tally),
     singleTapLayerRate: scalars.singleTapLayerRate,
     singleTapRate: scalars.singleTapRate,
     singleKeyRate: scalars.singleKeyRate,
@@ -406,6 +417,8 @@ export function computeMetrics(trace: Trace, geometry: Geometry, conditions: Met
 interface PressTally {
   readonly totalUnits: number;
   readonly presses: number;
+  /** 移動距離が0より大きい押下で押したキーの数。 */
+  readonly movedPresses: number;
   readonly sameFinger: number;
   readonly perFinger: Record<Finger, number>;
   readonly perFingerPresses: Record<Finger, number>;
@@ -426,11 +439,13 @@ function tallyPresses(trace: Trace): PressTally {
   }
   let totalUnits = 0;
   let presses = 0;
+  let movedPresses = 0;
   let sameFinger = 0;
   for (const stroke of trace.strokes) {
     totalUnits += stroke.distance;
     for (const press of stroke.presses) {
       presses += press.keys.length;
+      if (press.distance > 0) movedPresses += press.keys.length;
       perFinger[press.finger] += press.distance;
       perFingerPresses[press.finger] += press.keys.length;
       perFingerPressEvents[press.finger]++;
@@ -440,7 +455,7 @@ function tallyPresses(trace: Trace): PressTally {
       }
     }
   }
-  return { totalUnits, presses, sameFinger, perFinger, perFingerPresses, perFingerPressEvents, perFingerSameFinger };
+  return { totalUnits, presses, movedPresses, sameFinger, perFinger, perFingerPresses, perFingerPressEvents, perFingerSameFinger };
 }
 
 /** 右手（親指を含む5本。指の頭文字がR）の割合 [%]。分母が0なら0（仕様 §11）。 */
@@ -466,6 +481,23 @@ export function rightLeftPerPressRatio(
   const leftDistance = sum(distanceByFinger, false);
   if (rightPresses === 0 || leftPresses === 0 || leftDistance === 0) return null;
   return sum(distanceByFinger, true) / rightPresses / (leftDistance / leftPresses);
+}
+
+/**
+ * 動いた押下の割合 [%] と、動いた押下1回あたりの距離 [u/押下]（仕様 §11.5）。
+ * 動いた押下は移動距離が0より大きい押下で、数えるのは押したキーの数。分母が0の時はどちらも0。
+ */
+export function movedPressMetrics(
+  trace: Trace,
+  tally: PressTally = tallyPresses(trace),
+): {
+  readonly movedPressShare: number;
+  readonly perMovedPressUnits: number;
+} {
+  return {
+    movedPressShare: tally.presses ? (tally.movedPresses / tally.presses) * 100 : 0,
+    perMovedPressUnits: tally.movedPresses ? tally.totalUnits / tally.movedPresses : 0,
+  };
 }
 
 /** 同指連続回数を打鍵数で割った割合 [%]。打鍵数が0なら分母を1として扱う。 */

@@ -8,7 +8,7 @@ import type { Setup } from '#input/setup/index.ts';
 import { SAMPLE_TEXTS } from '#input/text/samples.ts';
 import { COMPARISON_COLUMN_IDS, type ComparisonColumnId } from '../comparison-column-text.ts';
 import { computeComparisonRowValues, type ComparisonRowValues } from '../comparison-column-values.ts';
-import { computeTraceScalars, rightLeftPerPressRatio } from '#interpretation/metrics.ts';
+import { computeTraceScalars, movedPressMetrics, rightLeftPerPressRatio } from '#interpretation/metrics.ts';
 import { ALL_FINGERS, PHYSICAL_SHAPES, type Finger, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { Trace } from '#trace/generate.ts';
 import { SCATTER_PRESET_AXES, scatterAxisProblem, scatterContour } from './axes.ts';
@@ -26,7 +26,7 @@ const CATALOG = {
 
 const TEXT = SAMPLE_TEXTS.ja.modern!;
 
-function rowOf(layoutId: string, text: string): { readonly row: ComparisonRowValues; readonly inputChars: number } {
+function rowOf(layoutId: string, text: string): { readonly row: ComparisonRowValues; readonly inputChars: number; readonly trace: Trace } {
   const shapeId = LAYOUT_BY_ID.get(layoutId)?.requiresJisShape === true ? 'jis-row-staggered' : 'row-staggered';
   const setup: Setup = { id: 'setup-a', number: 1, layoutId, shapeId };
   const resolution = resolveEngineInput({
@@ -42,7 +42,7 @@ function rowOf(layoutId: string, text: string): { readonly row: ComparisonRowVal
   if (!resolution.ok) throw new Error('unreachable');
   const cache = createEngineCache();
   const { trace } = cache.getTrace(resolution.input);
-  return { row: computeComparisonRowValues(cache.getInterpretation(resolution.input).metrics, trace), inputChars: trace.inputChars };
+  return { row: computeComparisonRowValues(cache.getInterpretation(resolution.input).metrics, trace), inputChars: trace.inputChars, trace };
 }
 
 /** 恒等式に出る列。この列どうしの全ての組を、等位線の値と突き合わせる。 */
@@ -63,6 +63,8 @@ const IDENTITY_COLUMNS: readonly ComparisonColumnId[] = [
   'rightHandPressShare',
   'rightHandDistanceShare',
   'rightLeftPerPressRatio',
+  'movedPressShare',
+  'perMovedPressUnits',
 ];
 
 function relativeError(actual: number, expected: number): number {
@@ -71,7 +73,7 @@ function relativeError(actual: number, expected: number): number {
 
 const ALL_ROWS = [...LAYOUT_BY_ID.keys()].map((layoutId) => ({ layoutId, ...rowOf(layoutId, TEXT) }));
 
-test('組み込みの全配列: 用意する6つの組み合わせの等位線の値が、比較表の列の値と相対誤差1e-9以内で一致し、線が点を通る', () => {
+test('組み込みの全配列: 用意する7つの組み合わせの等位線の値が、比較表の列の値と相対誤差1e-9以内で一致し、線が点を通る', () => {
   const expectedColumn = {
     distance: 'perCharUnits',
     press: 'perCharPresses',
@@ -79,6 +81,7 @@ test('組み込みの全配列: 用意する6つの組み合わせの等位線�
     sameFinger: 'sameFinger',
     hand: 'sameHandContinuationRate',
     handShare: 'rightLeftPerPressRatio',
+    movedPress: 'perPressUnits',
   } as const;
   assert.ok(ALL_ROWS.length >= 30, `配列の数 ${ALL_ROWS.length}`);
   for (const [preset, axes] of Object.entries(SCATTER_PRESET_AXES) as Array<
@@ -93,6 +96,7 @@ test('組み込みの全配列: 用意する6つの組み合わせの等位線�
       if (preset === 'press') assert.equal(axes.y, 'perCharSteps');
       if (preset === 'perPress') assert.deepEqual(axes, { x: 'perCharPresses', y: 'perPressUnits' });
       if (preset === 'handShare') assert.deepEqual(axes, { x: 'rightHandPressShare', y: 'rightHandDistanceShare' });
+      if (preset === 'movedPress') assert.deepEqual(axes, { x: 'movedPressShare', y: 'perMovedPressUnits' });
       const value = contour.valueAt(row[axes.x], row[axes.y]);
       assert.ok(value !== undefined, `${preset} ${layoutId} ${row[axes.x]} ${row[axes.y]}`);
       assert.ok(relativeError(value, row[contour.column]) <= 1e-9, `${preset} ${layoutId}: ${value} と ${row[contour.column]}`);
@@ -126,6 +130,51 @@ test('組み込みの全配列: (押下数/文字)×(u/押下)=u/文字と(押�
   }
   // 押下キー数が0なら0
   assert.equal(computeTraceScalars({ strokes: [], inputChars: 0, skipped: 0 } as unknown as Trace).perPressUnits, 0);
+});
+
+test('組み込みの全配列: 動いた押下の割合と動いた押下1回あたりの距離が、Traceの押下ごとの移動距離から数え直した値と一致し、積がu/押下になる', () => {
+  let someMoved = false;
+  for (const { layoutId, row, trace } of ALL_ROWS) {
+    let distance = 0;
+    let pressKeys = 0;
+    let movedKeys = 0;
+    for (const stroke of trace.strokes) {
+      for (const press of stroke.presses) {
+        distance += press.distance;
+        pressKeys += press.keys.length;
+        if (press.distance > 0) movedKeys += press.keys.length;
+      }
+    }
+    assert.ok(movedKeys > 0 && movedKeys <= pressKeys, layoutId);
+    someMoved = someMoved || movedKeys < pressKeys;
+    assert.ok(relativeError(row.movedPressShare, (movedKeys / pressKeys) * 100) <= 1e-9, `${layoutId} 割合`);
+    assert.ok(relativeError(row.perMovedPressUnits, distance / movedKeys) <= 1e-9, `${layoutId} 距離`);
+    assert.ok(relativeError((row.movedPressShare / 100) * row.perMovedPressUnits, row.perPressUnits) <= 1e-9, `${layoutId} u/押下`);
+  }
+  // 距離が0の押下がある配列では割合が100%を下回る（検査が自明に通らない）
+  assert.ok(someMoved);
+});
+
+test('動いた押下の割合と距離: 押下が無ければ0、動いた押下が無ければ距離は0、2キーの同時押しは2と数える', () => {
+  const press = (distance: number, keyCount: number) => ({ distance, keys: Array.from({ length: keyCount }, (_, i) => `k${i}`) });
+  const traceOf = (...presses: Array<ReturnType<typeof press>>) =>
+    ({
+      strokes: presses.map((p) => ({ distance: p.distance, presses: [{ ...p, finger: 'LI', sfb: false }] })),
+      inputChars: 1,
+      skipped: 0,
+    }) as unknown as Trace;
+  const movedOf = movedPressMetrics;
+  const empty = movedOf(traceOf());
+  assert.equal(empty.movedPressShare, 0);
+  assert.equal(empty.perMovedPressUnits, 0);
+  // 距離0の押下だけ: 押下はあるが動いた押下は無い
+  const still = movedOf(traceOf(press(0, 1), press(0, 2)));
+  assert.equal(still.movedPressShare, 0);
+  assert.equal(still.perMovedPressUnits, 0);
+  // 1キーで距離0、1キーで距離3、2キー同時押しで距離6: 押下キー数4、動いた押下キー数3
+  const mixed = movedOf(traceOf(press(0, 1), press(3, 1), press(6, 2)));
+  assert.equal(mixed.movedPressShare, 75);
+  assert.equal(mixed.perMovedPressUnits, 3);
 });
 
 function byFinger(values: Partial<Record<Finger, number>>): Record<Finger, number> {
@@ -227,6 +276,18 @@ test('自由に選ぶ: 等位線を引く組と、その量（総数と1文字�
   assert.equal(column('rightHandDistanceShare', 'rightLeftPerPressRatio'), 'rightHandPressShare');
   assert.equal(column('rightLeftPerPressRatio', 'rightHandDistanceShare'), 'rightHandPressShare');
   assert.equal(column('rightLeftPerPressRatio', 'perPressUnits'), undefined);
+  // u/押下 = 動いた押下率 ÷ 100 × u/動いた押下。順は問わない
+  assert.equal(column('movedPressShare', 'perMovedPressUnits'), 'perPressUnits');
+  assert.equal(column('perMovedPressUnits', 'movedPressShare'), 'perPressUnits');
+  assert.equal(column('movedPressShare', 'perPressUnits'), 'perMovedPressUnits');
+  assert.equal(column('perPressUnits', 'movedPressShare'), 'perMovedPressUnits');
+  assert.equal(column('perMovedPressUnits', 'perPressUnits'), 'movedPressShare');
+  assert.equal(column('perPressUnits', 'perMovedPressUnits'), 'movedPressShare');
+  // 距離 = 動いた押下キー数 × u/動いた押下。動いた押下キー数の総数は比較表に列が無いので、線を引かない
+  assert.equal(column('totalUnits', 'perMovedPressUnits'), undefined);
+  assert.equal(column('perMovedPressUnits', 'totalUnits'), undefined);
+  assert.equal(column('perCharUnits', 'perMovedPressUnits'), undefined);
+  assert.equal(column('perMovedPressUnits', 'perCharUnits'), undefined);
   // 同指 = 動作数 × 同指率 / 100
   assert.equal(column('actions', 'sameFingerRate'), 'sameFinger');
   assert.equal(column('sameFinger', 'sameFingerRate'), 'actions');

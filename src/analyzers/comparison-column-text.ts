@@ -25,6 +25,8 @@ export const COMPARISON_COLUMN_IDS = [
   'rightHandDistanceShare',
   'rightHandPressShare',
   'rightLeftPerPressRatio',
+  'movedPressShare',
+  'perMovedPressUnits',
   'physicalBigramCombinations',
   'logicalBigramCombinations',
   'alternationCoverage',
@@ -128,6 +130,16 @@ export const COMPARISON_COLUMN_TEXT: Readonly<Record<ComparisonColumnId, Compari
     description:
       '右手（親指を含む5本）の1回の押下あたりの移動距離を、左手の1回の押下あたりの移動距離で割った比。1より大きいと右手の方が1回の押下で長く動きます。どちらかの手の押下が無い時と、左手の移動距離が0の時は値がありません。',
   },
+  movedPressShare: {
+    label: '動いた押下率',
+    description:
+      '押下キー数のうち、指が動いた（移動距離が0より大きい）押下で押したキーの数の割合（%）。移動距離が0の押下（同じ指が続かない時のホームキー、同じキーの連続など）は入りません。',
+  },
+  perMovedPressUnits: {
+    label: 'u/動いた押下',
+    description:
+      '指が動いた押下1回あたりの移動距離（u/押下）。総移動距離を、動いた押下で押したキーの数で割った値。動いた押下率と掛け合わせるとu/押下になります。',
+  },
   physicalBigramCombinations: {
     label: 'Bigram数（物理キー）',
     description:
@@ -210,6 +222,8 @@ export const COMPARISON_COLUMN_FORMAT: Readonly<Record<ComparisonColumnId, (valu
   rightHandDistanceShare: percent,
   rightHandPressShare: percent,
   rightLeftPerPressRatio: fixed(3),
+  movedPressShare: percent,
+  perMovedPressUnits: fixed(3),
   physicalBigramCombinations: count,
   logicalBigramCombinations: count,
   alternationCoverage: percent,

@@ -140,3 +140,13 @@ test('見出しのⓘの組み合わせの一覧は、組み合わせの全部�
     SCATTER_PRESET_IDS.map((id) => SCATTER_PRESET_DESCRIPTIONS[id]),
   );
 });
+
+test('動いた押下の割合と動いた時の距離: 図の見方に、u/押下との関係の文が出る', () => {
+  const axes = SCATTER_PRESET_AXES.movedPress;
+  const { help } = scatterQuantityHelp(axes, scatterContour(axes.x, axes.y, INPUT_CHARS));
+  assert.ok(help.notes.some((note) => note.includes('3つの量の関係は、u/押下 = 動いた押下率 ÷ 100 × u/動いた押下です。')));
+  assert.deepEqual(
+    help.items.map((item) => item.name),
+    ['横軸　動いた押下率', '縦軸　u/動いた押下', '細い線　u/押下'],
+  );
+});
