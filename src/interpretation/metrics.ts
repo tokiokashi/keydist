@@ -133,6 +133,11 @@ export interface Metrics {
    */
   perCharPresses: number;
   /**
+   * 1アクションで押すキーの数（仕様 §11.5）。押下キー数 / アクション数で、アクションが0なら0。
+   * コンボや同時押しで複数のキーを1アクションにまとめるほど大きくなる。
+   */
+  perActionPresses: number;
+  /**
    * 打鍵可能な入力文字のうち、単打面の1キーだけで直接出力された文字の割合 [%]。
    * シフト面・複数キーコンボ・複数Stroke入力は含めない（仕様 §11.5.1）。
    */
@@ -365,6 +370,7 @@ export function computeMetrics(trace: Trace, geometry: Geometry, conditions: Met
     perCharUnits: scalars.perCharUnits,
     perCharSteps: scalars.perCharSteps,
     perCharPresses: scalars.perCharPresses,
+    perActionPresses: scalars.perActionPresses,
     singleTapLayerRate: scalars.singleTapLayerRate,
     singleTapRate: scalars.singleTapRate,
     singleKeyRate: scalars.singleKeyRate,
@@ -451,6 +457,7 @@ export const TRACE_SCALAR_IDS = [
   'perCharUnits',
   'perCharSteps',
   'perCharPresses',
+  'perActionPresses',
   'singleTapLayerRate',
   'singleTapRate',
   'singleKeyRate',
@@ -481,6 +488,7 @@ export function computeTraceScalars(trace: Trace, tally: PressTally = tallyPress
     perCharUnits: inputChars ? totalUnits / inputChars : 0,
     perCharSteps: inputChars ? actions / inputChars : 0,
     perCharPresses: inputChars ? presses / inputChars : 0,
+    perActionPresses: actions ? presses / actions : 0,
     singleTapLayerRate: singleTapLayerRate(trace),
     singleTapRate: singleTapRate(trace, actions),
     singleKeyRate: singleKeyRate(trace, actions),

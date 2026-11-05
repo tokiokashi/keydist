@@ -39,10 +39,10 @@ test.describe('個別画面', () => {
     await expect(feature(page).locator('[data-scatter-point]')).toHaveCount(3, { timeout: 15_000 });
   });
 
-  test('既定は動作数と1打鍵の距離で、軸の名前は比較表の列名、等位線には量の名前と値を書く', async ({ page }) => {
-    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('動作数');
+  test('既定は1文字の動作数と1打鍵の距離で、軸の名前は比較表の列名、等位線には量の名前と値を書く', async ({ page }) => {
+    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('動作数/文字');
     await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('u/打鍵');
-    await expect(feature(page).locator('[data-scatter-contour]').first()).toContainText(/^距離 \d+$/);
+    await expect(feature(page).locator('[data-scatter-contour]').first()).toContainText(/^u\/文字 [\d.]+$/);
     await expect(feature(page).locator('[data-scatter-preset-note]')).toHaveCount(0);
     // かな配列と英字の配列は、色と形の両方で分ける
     await expect(feature(page).locator('[data-scatter-point][data-kind="kana"] [data-mark="diamond"]')).toHaveCount(1);
@@ -55,7 +55,14 @@ test.describe('個別画面', () => {
     const qwerty = feature(page).locator('[data-scatter-point]').filter({ hasText: 'QWERTY' });
     const before = await qwerty.evaluate((element) => getComputedStyle(element).transform);
     const settings = await openSettings(page);
+    await settings.getByLabel('組み合わせ', { exact: true }).selectOption('press');
+    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('動作数/文字');
+    await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('押下/動作');
+    await expect(feature(page).locator('[data-scatter-contour]').first()).toContainText(/^押下\/文字 [\d.]+$/);
+    await expect(feature(page).locator('[data-scatter-preset-note]')).toBeVisible();
+
     await settings.getByLabel('組み合わせ', { exact: true }).selectOption('sameFinger');
+    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('動作数');
     await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('同指率');
     await expect(feature(page).locator('[data-scatter-contour]').first()).toContainText(/^同指 \d+/);
     await expect(feature(page).locator('[data-scatter-preset-note]')).toBeVisible();
@@ -90,9 +97,9 @@ test.describe('個別画面', () => {
     await expect(readout).toHaveText('');
     await feature(page).locator('[data-scatter-point]').filter({ hasText: 'QWERTY' }).focus();
     await expect(readout).toContainText('QWERTY');
-    await expect(readout).toContainText(/動作数 \d+/);
+    await expect(readout).toContainText(/動作数\/文字 \d+\.\d{3}/);
     await expect(readout).toContainText(/u\/打鍵 \d+\.\d{3}/);
-    await expect(readout).toContainText(/距離 \d+/);
+    await expect(readout).toContainText(/u\/文字 \d+\.\d{3}/);
     await page.locator('body').click({ position: { x: 1, y: 1 } });
     await expect(readout).toHaveText('');
   });
@@ -130,6 +137,6 @@ test.describe('Workspace', () => {
     await waitForHydration(page);
     const plot = page.locator('[data-pane-id="plot"] [data-react-feature="scatter"]').first();
     await expect(plot.locator('[data-scatter-point]')).toHaveCount(3, { timeout: 20_000 });
-    await expect(plot.locator('[data-scatter-x-title]')).toHaveText('動作数');
+    await expect(plot.locator('[data-scatter-x-title]')).toHaveText('動作数/文字');
   });
 });
