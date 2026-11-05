@@ -167,6 +167,9 @@ test('自由に選ぶ: 等位線を引く組と、その量（総数と1文字�
   assert.equal(column('perPressUnits', 'perCharPresses'), 'perCharUnits');
   assert.equal(column('perCharPresses', 'perCharUnits'), 'perPressUnits');
   assert.equal(column('perPressUnits', 'perCharUnits'), 'perCharPresses');
+  assert.equal(column('perCharUnits', 'perCharPresses'), 'perPressUnits');
+  assert.equal(column('perCharUnits', 'perPressUnits'), 'perCharPresses');
+  assert.equal(column('totalUnits', 'perCharPresses'), 'perPressUnits');
   assert.equal(column('perCharPresses', 'totalUnits'), 'perPressUnits');
   assert.equal(column('totalUnits', 'perPressUnits'), undefined);
   assert.equal(column('perPressUnits', 'totalUnits'), undefined);
@@ -175,6 +178,8 @@ test('自由に選ぶ: 等位線を引く組と、その量（総数と1文字�
   assert.equal(column('perActionPresses', 'meanPerStroke'), 'perPressUnits');
   assert.equal(column('perPressUnits', 'meanPerStroke'), 'perActionPresses');
   assert.equal(column('meanPerStroke', 'perPressUnits'), 'perActionPresses');
+  assert.equal(column('perPressUnits', 'perActionPresses'), 'meanPerStroke');
+  assert.equal(column('meanPerStroke', 'perActionPresses'), 'perPressUnits');
   // 同指 = 動作数 × 同指率 / 100
   assert.equal(column('actions', 'sameFingerRate'), 'sameFinger');
   assert.equal(column('sameFinger', 'sameFingerRate'), 'actions');
