@@ -47,7 +47,9 @@ test('用意する組み合わせは、横軸・縦軸・細い線の量の名�
     );
     assert.ok(
       help.notes.some(
-        (note) => note.includes(`細い線は、${text(contour.column).label}が同じになる位置を結んでいます。`) && note.includes(`${contour.relation}です。`),
+        (note) =>
+          note.includes(`細い線は、${text(contour.column).label}が同じになる位置を結んでいます。`) &&
+          note.includes(`3つの量の関係は、${contour.relation}です。${contour.conversion === undefined ? '' : `${contour.conversion}です。`}線の端に`),
       ),
       id,
     );
@@ -100,12 +102,16 @@ test('距離の単位の説明は、名前か説明にuが出る量がある時�
 
 test('1文字あたりの列が入る組は、総数を入力文字数で割った値だという換算を関係の文に足す', () => {
   const perPress = scatterContour('perCharPresses', 'perPressUnits', INPUT_CHARS)!;
-  assert.equal(perPress.relation, '距離 = 押下数 × u/押下。押下数/文字は押下数を入力文字数で割った値、u/文字は距離を入力文字数で割った値');
+  assert.equal(perPress.relation, '距離 = 押下数 × u/押下');
+  assert.equal(perPress.conversion, '押下数/文字は押下数を入力文字数で割った値、u/文字は距離を入力文字数で割った値');
   const distance = scatterContour('perCharSteps', 'meanPerStroke', INPUT_CHARS)!;
-  assert.equal(distance.relation, '距離 = 動作数 × u/打鍵。動作数/文字は動作数を入力文字数で割った値、u/文字は距離を入力文字数で割った値');
+  assert.equal(distance.relation, '距離 = 動作数 × u/打鍵');
+  assert.equal(distance.conversion, '動作数/文字は動作数を入力文字数で割った値、u/文字は距離を入力文字数で割った値');
   // 総数の形の軸だけの組には換算を足さない
-  assert.equal(scatterContour('handSwitches', 'handContinuations', INPUT_CHARS)!.relation, IDENTITIES[5]!.relation);
-  assert.equal(scatterContour('actions', 'meanPerStroke', INPUT_CHARS)!.relation, IDENTITIES[0]!.relation);
+  const hand = scatterContour('handSwitches', 'handContinuations', INPUT_CHARS)!;
+  assert.equal(hand.relation, IDENTITIES[5]!.relation);
+  assert.equal(hand.conversion, undefined);
+  assert.equal(scatterContour('actions', 'meanPerStroke', INPUT_CHARS)!.conversion, undefined);
 });
 
 test('画面に「等位線」の語を出さない', () => {

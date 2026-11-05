@@ -63,7 +63,7 @@ type Triple = readonly [number, number, number];
 export interface Identity {
   /**
    * 3つの量の関係を、総数の形の名前で書いた式。画面の説明に出す。
-   * 1文字あたりの列が軸や線の量に入る時の換算は、`scatterContour`が`ScatterContour.relation`に足す。
+   * 1文字あたりの列が軸や線の量に入る時の換算は、`scatterContour`が`ScatterContour.conversion`に持つ。
    */
   readonly relation: string;
   readonly quantities: readonly [Quantity, Quantity, Quantity];
@@ -176,10 +176,13 @@ export interface ScatterContour {
   readonly column: ComparisonColumnId;
   /** 軸の値から等位線の量を求める。分母が0で決まらない点では`undefined`。 */
   readonly valueAt: (x: number, y: number) => number | undefined;
-  /**
-   * 3つの量の関係。語尾は付けない。恒等式の式に、軸と線の量のうち1文字あたりの列について、総数を入力文字数で割った値だという換算を足す。
-   */
+  /** 3つの量の関係の式（恒等式の`relation`）。語尾は付けない。 */
   readonly relation: string;
+  /**
+   * 軸と線の量のうち1文字あたりの列について、総数を入力文字数で割った値だという換算。語尾は付けない。
+   * 1文字あたりの列が入らない組には無い。
+   */
+  readonly conversion: string | undefined;
   /** 等位線の量が`level`になる線が、横軸の値`x`で通る縦軸の値。通る点が無い時は`undefined`。 */
   readonly yAt: (level: number, x: number) => number | undefined;
 }
@@ -236,7 +239,8 @@ export function scatterContour(x: ComparisonColumnId, y: ComparisonColumnId, inp
     );
     return {
       column: outColumn,
-      relation: converted.length === 0 ? identity.relation : `${identity.relation}。${converted.join('、')}`,
+      relation: identity.relation,
+      conversion: converted.length === 0 ? undefined : converted.join('、'),
       valueAt: (xv, yv) => {
         const value = identity.solve(ri, triple({ [xi]: toTotal(xv, xForm), [yi]: toTotal(yv, yForm) }));
         return finite(value === undefined ? undefined : fromTotal(value, outForm));
