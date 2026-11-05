@@ -34,6 +34,8 @@ export const COMPARISON_BAR_SCALE: Readonly<Record<ComparisonColumnId, Compariso
   // 右手の割合（%）。0%は右手を使っていない。
   rightHandDistanceShare: 'zero',
   rightHandPressShare: 'zero',
+  // 左右の1押下あたりの距離の比。0は右手が動いていない。値が無い行はバーを出さない。
+  rightLeftPerPressRatio: 'zero',
   // Bigramの組の種類数。0は組が現れていない。
   physicalBigramCombinations: 'zero',
   logicalBigramCombinations: 'zero',

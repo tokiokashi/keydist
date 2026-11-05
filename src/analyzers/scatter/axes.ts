@@ -5,12 +5,13 @@ import { COMPARISON_COLUMN_IDS, COMPARISON_COLUMN_TEXT, type ComparisonColumnId 
  *
  * 軸に取れるのは比較表の列だけで、新しい指標は作らない。等位線は、定義の上で3つの量を結ぶ恒等式
  * （距離 = 動作数 × u/打鍵、押下 = 動作数 × 押下数/動作、距離 = 押下数 × u/押下、u/打鍵 = 押下数/動作 × u/押下、同指 = 動作数 × 同指率 / 100、
- * 同じ手の続きの割合 = 同じ手の続き / (手の切り替え + 同じ手の続き) × 100）にだけ引く。
+ * 同じ手の続きの割合 = 同じ手の続き / (手の切り替え + 同じ手の続き) × 100、
+ * 右手u/押下比 = (右手距離率 / (100 − 右手距離率)) / (右手押下率 / (100 − 右手押下率))）にだけ引く。
  * 点の位置から関係の強さを測る表示（回帰直線・相関係数）は出さない。
  */
 
 /** 用意する組み合わせ。 */
-export const SCATTER_PRESET_IDS = ['distance', 'press', 'perPress', 'sameFinger', 'hand', 'free'] as const;
+export const SCATTER_PRESET_IDS = ['distance', 'press', 'perPress', 'sameFinger', 'hand', 'handShare', 'free'] as const;
 export type ScatterPresetId = (typeof SCATTER_PRESET_IDS)[number];
 
 export interface ScatterAxes {
@@ -25,6 +26,7 @@ export const SCATTER_PRESET_AXES: Readonly<Record<Exclude<ScatterPresetId, 'free
   perPress: { x: 'perCharPresses', y: 'perPressUnits' },
   sameFinger: { x: 'actions', y: 'sameFingerRate' },
   hand: { x: 'handSwitches', y: 'handContinuations' },
+  handShare: { x: 'rightHandPressShare', y: 'rightHandDistanceShare' },
 };
 
 /** 組み合わせの選択肢に出す名前。 */
@@ -34,6 +36,7 @@ export const SCATTER_PRESET_LABELS: Readonly<Record<ScatterPresetId, string>> = 
   perPress: '1文字の押下数と1押下の距離',
   sameFinger: '動作数と同指率',
   hand: '手の切り替えと同じ手の続き',
+  handShare: '左右の押下と距離の割合',
   free: '自由に選ぶ',
 };
 
@@ -44,6 +47,7 @@ export const SCATTER_PRESET_DESCRIPTIONS: Readonly<Record<ScatterPresetId, strin
   perPress: '1文字あたりの距離を、1文字に何回押すかと、1押下あたりの距離に分けて見ます。',
   sameFinger: '動作数と同指率から、同指の回数がどう決まるかを見ます。',
   hand: '手の切り替えと同じ手の続きの回数から、同じ手の続きの割合がどう決まるかを見ます。',
+  handShare: '押下と距離のそれぞれで右手が受け持つ割合から、左右の1回の押下あたりの距離の比がどう決まるかを見ます。',
   free: '比較表の列から横軸と縦軸を選びます。',
 };
 
@@ -56,6 +60,11 @@ interface Quantity {
    * 入力文字数Cに比例する量（個数・距離）か。比例しない量（平均・率）の列は1つで、総数と1文字あたりの区別が無い。
    */
   readonly extensive: boolean;
+  /**
+   * この量を細い線に引く時の値の選び方。`reciprocal`は、1と、比とその逆数の組（0.8と1.25など）から選ぶ。
+   * 右手を分子に置いた比は、1を挟んで逆数どうしが左右を入れ替えた同じ偏りを表すので、組で引く。無い量は切りのよい値を等間隔に選ぶ。
+   */
+  readonly levels?: 'reciprocal';
 }
 
 type Triple = readonly [number, number, number];
@@ -137,6 +146,19 @@ export const IDENTITIES: readonly Identity[] = [
     ],
     solve: (index, [w, c, rate]) => (index === 0 ? divide(c * (100 - rate), rate) : index === 1 ? divide(rate * w, 100 - rate) : divide(100 * c, w + c)),
   },
+  // 右手u/押下比 = (d / (100 − d)) / (p / (100 − p))。pは右手押下率、dは右手距離率（どちらも%）。
+  // 右手の割合は分母が0の時に0とする慣例なので、距離の総和が0の点でdは0になり、比は値を持たない。
+  // 軸の値だけではこの点を比が0の点と区別できないので、点の読み取りは`ScatterContour.readoutAt`で比の列の値を見る。
+  {
+    relation: '右手u/押下比 =（右手距離率 ÷（100 − 右手距離率））÷（右手押下率 ÷（100 − 右手押下率））',
+    quantities: [
+      { total: 'rightHandPressShare', extensive: false },
+      { total: 'rightHandDistanceShare', extensive: false },
+      { total: 'rightLeftPerPressRatio', extensive: false, levels: 'reciprocal' },
+    ],
+    solve: (index, [p, d, r]) =>
+      index === 0 ? divide(100 * d, r * (100 - d) + d) : index === 1 ? divide(100 * r * p, 100 - p + r * p) : divide(d * (100 - p), (100 - d) * p),
+  },
 ];
 
 type Form = 'total' | 'perChar';
@@ -176,6 +198,14 @@ export interface ScatterContour {
   readonly column: ComparisonColumnId;
   /** 軸の値から等位線の量を求める。分母が0で決まらない点では`undefined`。 */
   readonly valueAt: (x: number, y: number) => number | undefined;
+  /**
+   * 点の読み取りに出す等位線の値。`columnValue`はその対象の、等位線の量の列（比較表の列）の値。
+   * 列が値を持たない対象（`NaN`）では、軸の値から式で値が求まっても出さない。
+   * 右手の割合のように分母が0の時に0とする列を軸に取ると、軸の値だけでは比が値を持つかを区別できないため。
+   */
+  readonly readoutAt: (x: number, y: number, columnValue: number) => number | undefined;
+  /** 線を引く値の選び方（`Quantity.levels`）。 */
+  readonly levels: 'linear' | 'reciprocal';
   /** 3つの量の関係の式（恒等式の`relation`）。語尾は付けない。 */
   readonly relation: string;
   /**
@@ -237,14 +267,17 @@ export function scatterContour(x: ComparisonColumnId, y: ComparisonColumnId, inp
         ? [`${COMPARISON_COLUMN_TEXT[column as ComparisonColumnId].label}は${totalName(quantity as Quantity)}を入力文字数で割った値`]
         : [],
     );
+    const valueAt = (xv: number, yv: number): number | undefined => {
+      const value = identity.solve(ri, triple({ [xi]: toTotal(xv, xForm), [yi]: toTotal(yv, yForm) }));
+      return finite(value === undefined ? undefined : fromTotal(value, outForm));
+    };
     return {
       column: outColumn,
       relation: identity.relation,
       conversion: converted.length === 0 ? undefined : converted.join('、'),
-      valueAt: (xv, yv) => {
-        const value = identity.solve(ri, triple({ [xi]: toTotal(xv, xForm), [yi]: toTotal(yv, yForm) }));
-        return finite(value === undefined ? undefined : fromTotal(value, outForm));
-      },
+      valueAt,
+      readoutAt: (xv, yv, columnValue) => (Number.isFinite(columnValue) ? valueAt(xv, yv) : undefined),
+      levels: rq.levels ?? 'linear',
       yAt: (level, xv) => {
         const value = identity.solve(yi as 0 | 1 | 2, triple({ [xi]: toTotal(xv, xForm), [ri]: toTotal(level, outForm) }));
         return finite(value === undefined ? undefined : fromTotal(value, yForm));

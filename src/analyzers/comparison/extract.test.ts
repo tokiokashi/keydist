@@ -71,6 +71,7 @@ test('computeComparisonRowValues: interpretation/metrics.tsを同条件で直接
   const {
     rightHandDistanceShare,
     rightHandPressShare,
+    rightLeftPerPressRatio,
     physicalBigramCombinations,
     logicalBigramCombinations,
     alternationCoverage,
@@ -103,6 +104,8 @@ test('computeComparisonRowValues: interpretation/metrics.tsを同条件で直接
   });
   assert.ok(rightHandDistanceShare > 0 && rightHandDistanceShare < 100);
   assert.ok(rightHandPressShare > 0 && rightHandPressShare < 100);
+  assert.equal(rightLeftPerPressRatio, directMetrics.rightLeftPerPressRatio);
+  assert.ok(rightLeftPerPressRatio > 0);
   assert.ok(physicalBigramCombinations > 0 && logicalBigramCombinations >= physicalBigramCombinations);
   const { aggregate: handRhythm } = analyzeHandRhythm(traceResult.trace.strokes);
   assert.ok(handRhythm.alternation.coverage.rate !== handRhythm.continuationRate);
