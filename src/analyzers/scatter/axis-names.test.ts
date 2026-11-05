@@ -3,7 +3,7 @@ import test from 'node:test';
 import type { TextLanguage } from '#input/text/language.ts';
 import { COMPARISON_COLUMN_FORMAT, COMPARISON_COLUMN_IDS, comparisonColumnText } from '../comparison-column-text.ts';
 import { SCATTER_PRESET_AXES, SCATTER_PRESET_IDS, scatterAxisProblem, scatterContour, scatterPresetDescriptions, scatterPresetLabels } from './axes.ts';
-import { axisName, axisTitle, axisUnit } from './axis-names.ts';
+import { axisName, axisShortTitle, axisTitle, axisUnit, hasShortAxisName } from './axis-names.ts';
 import { estimateTextWidth, PLOT_HEIGHT, PLOT_MARGIN, PLOT_WIDTH, scatterPlotModel } from './plot-model.ts';
 import { scatterCaption } from './quantity-help.ts';
 
@@ -62,7 +62,7 @@ test('軸に取れる全ての列の軸の名前は、日本語と英語のテ�
 test('軸の名前の推定幅は、横軸なら横の描画領域に、縦軸なら縦の描画領域の高さに収まる', () => {
   for (const language of LANGUAGES) {
     for (const column of COMPARISON_COLUMN_IDS) {
-      const width = estimateTextWidth(axisTitle(column, language));
+      const width = estimateTextWidth(axisShortTitle(column, language));
       assert.ok(width <= PLOT_INNER_WIDTH, `横軸 ${column} ${language} ${width}`);
       assert.ok(width <= PLOT_INNER_HEIGHT, `縦軸 ${column} ${language} ${width}`);
     }
@@ -122,4 +122,35 @@ test('キャプション・組み合わせの名前と説明・関係式と換�
       for (const label of columnLabels) assert.ok(!sentence.includes(label), `${language} 「${sentence}」に列名 ${label} が残っている`);
     }
   }
+});
+
+test('軸の名前の短い名前は、長い名前と同じ単位で、何あたりかを表す語を含まない', () => {
+  const perWords = /1(かな|字|アクション|キー|文字|u)の|1つの/u;
+  let declared = 0;
+  for (const language of LANGUAGES) {
+    for (const column of COMPARISON_COLUMN_IDS) {
+      const long = axisTitle(column, language);
+      const short = axisShortTitle(column, language);
+      const unit = axisUnit(column);
+      const suffix = unit === undefined ? '' : `（${unit}）`;
+      assert.ok(short.endsWith(suffix), `${column} ${language}`);
+      if (hasShortAxisName(column)) {
+        declared += 1;
+        const name = unit === undefined ? short : short.slice(0, -suffix.length);
+        assert.ok(!perWords.test(name), `${column} ${language} 「${short}」`);
+        assert.ok(short.length < long.length, `${column} ${language}`);
+      } else {
+        assert.equal(short, long, `${column} ${language}`);
+      }
+    }
+  }
+  assert.ok(declared > 0);
+});
+
+test('凡例とキャプションは、短い名前を宣言した列でも長い名前のまま', () => {
+  assert.equal(axisTitle('meanPerStroke', 'ja'), '1アクションの距離（u）');
+  assert.equal(axisShortTitle('meanPerStroke', 'ja'), '距離（u）');
+  assert.equal(axisShortTitle('perCharSteps', 'en'), 'アクション数');
+  assert.equal(axisShortTitle('sameFingerRate', 'ja'), '同指率（%）');
+  assert.equal(scatterCaption({ x: 'perCharSteps', y: 'meanPerStroke' }, 'ja'), '1アクションの距離と1かなのアクション数の関係');
 });

@@ -19,7 +19,7 @@ import {
   type ScatterAxes,
   type ScatterAxisProblem,
 } from './axes.ts';
-import { axisName, axisTitle, axisUnit } from './axis-names.ts';
+import { axisName, axisShortTitle, axisTitle, axisUnit } from './axis-names.ts';
 import { scatterDefinition, type ScatterExtracted, type ScatterRow } from './extract.ts';
 import { SCATTER_KIND_ORDER, SCATTER_KIND_STYLES } from './kinds.ts';
 import { DEFAULT_SCATTER_OPTIONS, scatterOptions, type ScatterOptions } from './options.ts';
@@ -206,7 +206,7 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
                 textAnchor="middle"
                 data-scatter-y-title=""
               >
-                {axisTitle(axes.y, language)}
+                {axisShortTitle(axes.y, language)}
               </text>
               <text
                 className="scatter-axis-title"
@@ -215,7 +215,7 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
                 textAnchor="middle"
                 data-scatter-x-title=""
               >
-                {axisTitle(axes.x, language)}
+                {axisShortTitle(axes.x, language)}
               </text>
 
               {model.centerLines.map((line) => (
