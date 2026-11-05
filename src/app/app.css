@@ -265,6 +265,12 @@ h1 {
   line-height: 1;
 }
 
+.input-page-heading > .input-page-share {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
 .input-page-heading > p {
   max-width: 42rem;
   margin: 0;

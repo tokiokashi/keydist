@@ -378,3 +378,51 @@ test('?layout= opens the Tester with that layout selected, saves it and drops th
   await page.reload();
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
 });
+
+test('共有で選んでいる配列のURLをコピーし、組み込みの配列は開き直すと選ばれ、自作の配列は載らないことを知らせる', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem('seeded') !== null) return;
+    sessionStorage.setItem('seeded', '1');
+    localStorage.setItem(
+      'keydist:user-layouts',
+      JSON.stringify({
+        version: 1,
+        layouts: [{ kind: 'alpha', id: 'user-a', name: '自作A', rows: ['', 'qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'], romaji: 'rule-a' }],
+      }),
+    );
+    localStorage.setItem(
+      'keydist:user-romaji-rules',
+      JSON.stringify({ version: 1, rules: [{ id: 'rule-a', name: '自作の規則', base: 'kunrei', overrides: { し: 'shi' }, generateSokuon: true }] }),
+    );
+  });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/input');
+  const feature = page.locator('.input-feature');
+  const layoutSelect = page.getByLabel('配列', { exact: true });
+  const share = page.getByRole('button', { name: '共有', exact: true });
+  const notice = page.locator('[data-share-notice="true"]');
+  await expect(layoutSelect.locator('optgroup[label="自作の配列"] option')).toHaveText(['自作A']);
+
+  await layoutSelect.selectOption('shingeta');
+  await expect(feature).toHaveAttribute('data-input-ready', 'shingeta');
+  await share.click();
+  await expect(notice).toHaveCount(0);
+  const url = await page.evaluate(() => navigator.clipboard.readText());
+  expect(new URL(url).pathname).toBe('/input');
+  expect(new URL(url).searchParams.get('layout')).toBe('shingeta');
+
+  // 別の配列を選んだ状態で開くと、リンクの配列に切り替わる
+  await layoutSelect.selectOption('tk-onchoku');
+  await expect(feature).toHaveAttribute('data-input-ready', 'tk-onchoku');
+  await page.goto(url);
+  await expect(feature).toHaveAttribute('data-input-ready', 'shingeta');
+
+  await layoutSelect.selectOption('user-a');
+  await expect(feature).toHaveAttribute('data-input-ready', 'user-a');
+  await share.click();
+  await expect(notice).toHaveCount(1);
+  await expect(notice).toContainText('自作の配列はリンクに載りません');
+  const userUrl = await page.evaluate(() => navigator.clipboard.readText());
+  expect(new URL(userUrl).searchParams.has('layout')).toBe(false);
+});
