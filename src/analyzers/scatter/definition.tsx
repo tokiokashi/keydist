@@ -138,20 +138,22 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
   }, [order, rowContext, rowByKey, axes.x, axes.y]);
 
   const contour = useMemo(() => (problem === undefined ? scatterContour(axes.x, axes.y, inputChars) : undefined), [problem, axes.x, axes.y, inputChars]);
+  const usedKinds = useMemo(() => SCATTER_KIND_ORDER.filter((kind) => plotted.some((row) => row.kind === kind)), [plotted]);
   const model = useMemo(
     () =>
       scatterPlotModel({
         points: plotted.map(({ targetKey, label, x, y }) => ({ targetKey, label, x, y })),
         contour,
+        legendRows: usedKinds.map((kind) => SCATTER_KIND_STYLES[kind].label),
+        contourName: contour === undefined ? '' : COMPARISON_COLUMN_TEXT[contour.column].label,
         contourSuffix: contour !== undefined && isPercentColumn(contour.column) ? '%' : '',
       }),
-    [plotted, contour],
+    [plotted, contour, usedKinds],
   );
   const plottedByKey = new Map(plotted.map((row) => [row.targetKey, row] as const));
   const active = activeKey === undefined ? undefined : model.points.find((point) => point.targetKey === activeKey);
   const activeRow = active === undefined ? undefined : plottedByKey.get(active.targetKey);
 
-  const usedKinds = SCATTER_KIND_ORDER.filter((kind) => plotted.some((row) => row.kind === kind));
   const quantityHelp = scatterQuantityHelp(axes, contour);
 
   return (
@@ -164,26 +166,6 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
         <>
           <div className="scatter-heading">
             <InfoButton name="図の見方" description={quantityHelp.description} help={quantityHelp.help} />
-            <ul className="scatter-legend" aria-label="配列の種類">
-              {usedKinds.map((kind) => (
-                <li key={kind} data-scatter-legend={kind}>
-                  <svg width={16} height={16} viewBox="-8 -8 16 16" aria-hidden="true">
-                    <KindMark kind={kind} size={5} />
-                  </svg>
-                  <span>{SCATTER_KIND_STYLES[kind].label}</span>
-                </li>
-              ))}
-            </ul>
-            {model.contours.length > 0 && contour !== undefined ? (
-              <ul className="scatter-legend" aria-label="細い線">
-                <li data-scatter-legend-contour="">
-                  <svg width={24} height={16} viewBox="0 0 24 16" aria-hidden="true">
-                    <line className="scatter-contour-sample" x1={1} x2={23} y1={8} y2={8} />
-                  </svg>
-                  <span>{COMPARISON_COLUMN_TEXT[contour.column].label}</span>
-                </li>
-              </ul>
-            ) : null}
           </div>
           <div className="scatter-figure">
             <svg
@@ -243,12 +225,43 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
                 <g key={line.level} className="scatter-contour" data-scatter-contour={line.level}>
                   <path d={line.d} fill="none" />
                   {line.labelAt === undefined ? null : (
-                    <text x={line.labelAt.x - 4} y={line.labelAt.y - 5} textAnchor="end">
+                    <text x={line.labelAt.x} y={line.labelAt.y} textAnchor="end">
                       {line.text}
                     </text>
                   )}
                 </g>
               ))}
+
+              {model.legend === undefined ? null : (
+                <g className="scatter-legend-box" data-scatter-legend-box="">
+                  <rect
+                    x={model.legend.x0}
+                    y={model.legend.y0}
+                    width={model.legend.x1 - model.legend.x0}
+                    height={model.legend.y1 - model.legend.y0}
+                    rx={3}
+                  />
+                  {model.legend.rows.map((row, index) =>
+                    index < usedKinds.length ? (
+                      <g key={usedKinds[index]} data-scatter-legend={usedKinds[index]}>
+                        <g transform={`translate(${row.sampleX} ${row.y})`}>
+                          <KindMark kind={usedKinds[index]!} size={5} />
+                        </g>
+                        <text x={row.textX} y={row.y + 4}>
+                          {row.text}
+                        </text>
+                      </g>
+                    ) : (
+                      <g key="contour" data-scatter-legend-contour="">
+                        <line className="scatter-contour-sample" x1={row.sampleX - 10} x2={row.sampleX + 10} y1={row.y} y2={row.y} />
+                        <text x={row.textX} y={row.y + 4}>
+                          {row.text}
+                        </text>
+                      </g>
+                    ),
+                  )}
+                </g>
+              )}
 
               {model.points.map((point) => {
                 const row = plottedByKey.get(point.targetKey)!;

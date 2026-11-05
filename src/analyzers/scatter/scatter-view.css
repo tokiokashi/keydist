@@ -23,21 +23,17 @@
   gap: 0.3rem 1rem;
 }
 
-.scatter-legend {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem 1rem;
-  font-size: 0.8rem;
+/* 枠の中の凡例。背景を付けて、下の線が文字に掛からないようにする */
+.scatter-legend-box rect {
+  fill: var(--bg);
+  stroke: var(--border);
+  stroke-width: 1;
+  opacity: 0.94;
 }
 
-.scatter-legend li {
-  white-space: nowrap;
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
+.scatter-legend-box text {
+  fill: var(--text);
+  font-size: 11px;
 }
 
 .scatter-figure {

@@ -34,7 +34,7 @@ const POINTS = [
 ];
 
 test('scatterPlotModel: 点は図の内側に置かれ、値の大小と位置の向きが合う', () => {
-  const model = scatterPlotModel({ points: POINTS, contour: undefined, contourSuffix: '' });
+  const model = scatterPlotModel({ points: POINTS, contour: undefined, legendRows: [], contourName: '', contourSuffix: '' });
   assert.equal(model.points.length, 3);
   for (const point of model.points) {
     assert.ok(point.px >= PLOT_MARGIN.left && point.px <= PLOT_WIDTH - PLOT_MARGIN.right);
@@ -55,6 +55,8 @@ test('scatterPlotModel: 点の名前は、他の名前と重ならない場所�
       { targetKey: 'b', label: 'とても長い名前の配列B', x: 10.01, y: 10 },
     ],
     contour: undefined,
+    legendRows: [],
+    contourName: '',
     contourSuffix: '',
   });
   const [a, b] = model.points;
@@ -64,7 +66,7 @@ test('scatterPlotModel: 点の名前は、他の名前と重ならない場所�
 
 test('scatterPlotModel: 細い線は切りのよい値で数本、図の中だけに引き、線の上に値だけを書く', () => {
   const contour = scatterContour('actions', 'meanPerStroke', 100)!;
-  const model = scatterPlotModel({ points: POINTS, contour, contourSuffix: '' });
+  const model = scatterPlotModel({ points: POINTS, contour, legendRows: [], contourName: '', contourSuffix: '' });
   assert.ok(model.contours.length >= 2 && model.contours.length <= 6, `${model.contours.length}本`);
   for (const line of model.contours) {
     // 量の名前は書かず、値だけ
@@ -93,12 +95,14 @@ test('scatterPlotModel: 率の細い線は値に単位を付け、値が決ま�
       { targetKey: 'b', label: 'B', x: 150, y: 250 },
     ],
     contour,
+    legendRows: [],
+    contourName: '',
     contourSuffix: '%',
   });
   assert.ok(model.contours.length > 0);
   assert.ok(model.contours.every((line) => /^\d+(\.\d+)?%$/.test(line.text)));
   // 点が無い時は、軸の目盛りだけを返す
-  const empty = scatterPlotModel({ points: [], contour, contourSuffix: '' });
+  const empty = scatterPlotModel({ points: [], contour, legendRows: [], contourName: '', contourSuffix: '' });
   assert.equal(empty.points.length, 0);
   assert.equal(empty.contours.length, 0);
 });
@@ -111,6 +115,8 @@ test('scatterPlotModel: 細い線の値の桁は、同じ図の線で揃える',
       { targetKey: 'b', label: 'B', x: 1.2, y: 1.3 },
     ],
     contour,
+    legendRows: [],
+    contourName: '',
     contourSuffix: '',
   });
   assert.ok(model.contours.length >= 2);
@@ -120,14 +126,106 @@ test('scatterPlotModel: 細い線の値の桁は、同じ図の線で揃える',
 
 test('scatterPlotModel: 細い線の値は、点と点の名前の上に重ねない', () => {
   const contour = scatterContour('actions', 'meanPerStroke', 100)!;
-  const model = scatterPlotModel({ points: POINTS, contour, contourSuffix: '' });
+  const model = scatterPlotModel({ points: POINTS, contour, legendRows: [], contourName: '', contourSuffix: '' });
   for (const line of model.contours) {
     const at = line.labelAt!;
     const width = estimateTextWidth(line.text);
-    const rect = { x0: at.x - 4 - width, x1: at.x - 4, y0: at.y - 14, y1: at.y - 2 };
+    const rect = { x0: at.x - width, x1: at.x, y0: at.y - 10, y1: at.y + 3 };
     for (const point of model.points) {
       const overlapsMark = rect.x0 < point.px + 7 && point.px - 7 < rect.x1 && rect.y0 < point.py + 7 && point.py - 7 < rect.y1;
       assert.equal(overlapsMark, false, `${line.text}と${point.label}の点`);
     }
+  }
+});
+
+// 右端と下に点が集まる多数の配列。点の名前どうしの重なりは検査しない
+const CROWD = Array.from({ length: 40 }, (_, i) => ({
+  targetKey: `k${i}`,
+  label: i % 3 === 0 ? 'Semimak JQ' : `配列${i}`,
+  x: i < 14 ? 1.78 + (i % 2) * 0.01 : 1.2 + ((i * 37) % 60) / 100,
+  y: i < 14 ? 0.25 + i * 0.01 : 0.3 + ((i * 53) % 70) / 100,
+}));
+
+test('scatterPlotModel: 点の名前は、置ける場所があれば描画領域の枠の外に出さない', () => {
+  const model = scatterPlotModel({ points: CROWD, contour: undefined, legendRows: [], contourName: '', contourSuffix: '' });
+  for (const point of model.points) {
+    const width = estimateTextWidth(point.label);
+    const { x, y, anchor } = point.labelAt;
+    const x0 = anchor === 'start' ? x : anchor === 'end' ? x - width : x - width / 2;
+    assert.ok(x0 >= PLOT_MARGIN.left - 1e-6 && x0 + width <= PLOT_WIDTH - PLOT_MARGIN.right + 1e-6, `${point.label} x=${point.px.toFixed(0)}`);
+    assert.ok(y - 8 >= PLOT_MARGIN.top - 1e-6 && y + 4 <= PLOT_HEIGHT - PLOT_MARGIN.bottom + 1e-6, `${point.label} y=${point.py.toFixed(0)}`);
+  }
+});
+
+test('scatterPlotModel: 細い線の値は、枠の線・点・点の名前に重ねず、置ける場所が無い線では省く', () => {
+  const contour = scatterContour('perCharPresses', 'perPressUnits', 100)!;
+  const model = scatterPlotModel({ points: CROWD, contour, legendRows: [], contourName: '', contourSuffix: '' });
+  assert.ok(model.contours.length > 0);
+  for (const line of model.contours) {
+    if (line.labelAt === undefined) continue;
+    const width = estimateTextWidth(line.text);
+    const rect = { x0: line.labelAt.x - width, x1: line.labelAt.x, y0: line.labelAt.y - 10, y1: line.labelAt.y + 3 };
+    assert.ok(rect.x0 > PLOT_MARGIN.left && rect.x1 < PLOT_WIDTH - PLOT_MARGIN.right, `${line.text}の左右`);
+    assert.ok(rect.y0 > PLOT_MARGIN.top && rect.y1 < PLOT_HEIGHT - PLOT_MARGIN.bottom, `${line.text}の上下`);
+    const hits = (r: { x0: number; x1: number; y0: number; y1: number }) => rect.x0 < r.x1 && r.x0 < rect.x1 && rect.y0 < r.y1 && r.y0 < rect.y1;
+    for (const point of model.points) {
+      assert.equal(hits({ x0: point.px - 7, x1: point.px + 7, y0: point.py - 7, y1: point.py + 7 }), false, `${line.text}と${point.label}の点`);
+      const w = estimateTextWidth(point.label);
+      const { x, y, anchor } = point.labelAt;
+      const x0 = anchor === 'start' ? x : anchor === 'end' ? x - w : x - w / 2;
+      assert.equal(
+        hits(anchor === 'middle' ? { x0, x1: x0 + w, y0: y - 9, y1: y + 3 } : { x0, x1: x0 + w, y0: y - 12, y1: y }),
+        false,
+        `${line.text}と${point.label}の名前`,
+      );
+    }
+  }
+});
+
+test('scatterPlotModel: 凡例は枠の中の隅に置き、点と重ならない隅を選ぶ。細い線の行は線がある時だけ付く', () => {
+  const contour = scatterContour('actions', 'meanPerStroke', 100)!;
+  const withLine = scatterPlotModel({ points: POINTS, contour, legendRows: ['かな配列', '英字の配列'], contourName: '距離', contourSuffix: '' });
+  assert.equal(withLine.legend!.rows.length, 3);
+  assert.equal(withLine.legend!.rows[2]!.text, '距離');
+  const without = scatterPlotModel({ points: POINTS, contour: undefined, legendRows: ['かな配列'], contourName: '距離', contourSuffix: '' });
+  assert.equal(without.legend!.rows.length, 1);
+  assert.equal(scatterPlotModel({ points: [], contour: undefined, legendRows: [], contourName: '', contourSuffix: '' }).legend, undefined);
+  for (const model of [
+    withLine,
+    without,
+    scatterPlotModel({ points: CROWD, contour: undefined, legendRows: ['かな配列', '英字の配列'], contourName: '', contourSuffix: '' }),
+  ]) {
+    const box = model.legend!;
+    assert.ok(
+      box.x0 >= PLOT_MARGIN.left && box.x1 <= PLOT_WIDTH - PLOT_MARGIN.right && box.y0 >= PLOT_MARGIN.top && box.y1 <= PLOT_HEIGHT - PLOT_MARGIN.bottom,
+    );
+    for (const point of model.points) {
+      const hit = box.x0 < point.px + 7 && point.px - 7 < box.x1 && box.y0 < point.py + 7 && point.py - 7 < box.y1;
+      assert.equal(hit, false, `凡例と${point.label}の点`);
+    }
+  }
+  // 右上に点がある時は、右上を避けて別の隅に置く
+  const crowded = scatterPlotModel({
+    points: [
+      { targetKey: 'a', label: 'A', x: 0, y: 0 },
+      { targetKey: 'b', label: 'B', x: 10, y: 10 },
+    ],
+    contour: undefined,
+    legendRows: ['かな配列'],
+    contourName: '',
+    contourSuffix: '',
+  });
+  assert.ok(crowded.legend!.x0 < PLOT_WIDTH / 2, '右上に点があるので左側の隅');
+});
+
+test('scatterPlotModel: 細い線の値は凡例に重ねない', () => {
+  const contour = scatterContour('actions', 'meanPerStroke', 100)!;
+  const model = scatterPlotModel({ points: CROWD, contour, legendRows: ['かな配列', '英字の配列'], contourName: '距離', contourSuffix: '' });
+  const box = model.legend!;
+  for (const line of model.contours) {
+    if (line.labelAt === undefined) continue;
+    const width = estimateTextWidth(line.text);
+    const hit = box.x0 < line.labelAt.x && line.labelAt.x - width < box.x1 && box.y0 < line.labelAt.y + 3 && line.labelAt.y - 10 < box.y1;
+    assert.equal(hit, false, line.text);
   }
 });

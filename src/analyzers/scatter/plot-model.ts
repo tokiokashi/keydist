@@ -82,10 +82,20 @@ export interface PlotContourLine {
   readonly level: number;
   /** 線のSVGの`d`。図の外へ出る部分は含まない。 */
   readonly d: string;
-  /** 値を書く位置（文字の右端）。点や他の名前と重ならない場所を線の上から選ぶ。図の中に線が無い時は`undefined`。 */
+  /** 値の文字の右端と基準線の位置。枠・点・点の名前と重ならない場所を選ぶ。置ける場所が無い時は`undefined`で、値を書かない。 */
   readonly labelAt: { readonly x: number; readonly y: number } | undefined;
   /** 線に書く値。量の名前は書かず、凡例に1回だけ示す。桁は同じ図の線で揃える。 */
   readonly text: string;
+}
+
+/** 描画領域の枠の中に置く凡例。行は入力の`legendRows`と同じ順で、最後に細い線の行（線がある時）が付く。 */
+export interface PlotLegend {
+  readonly x0: number;
+  readonly y0: number;
+  readonly x1: number;
+  readonly y1: number;
+  /** 各行の見本の中心のx、文字の左端のx、行の中心のy。 */
+  readonly rows: readonly { readonly sampleX: number; readonly textX: number; readonly y: number; readonly text: string }[];
 }
 
 export interface ScatterPlotModel {
@@ -93,11 +103,17 @@ export interface ScatterPlotModel {
   readonly yTicks: readonly PlotTick[];
   readonly points: readonly PlotPoint[];
   readonly contours: readonly PlotContourLine[];
+  /** 凡例の行が無い時は`undefined`。 */
+  readonly legend: PlotLegend | undefined;
 }
 
 export interface ScatterPlotInput {
   readonly points: readonly PlotPointInput[];
   readonly contour: ScatterContour | undefined;
+  /** 配列の種類の凡例の行の文字。点が1つも無い種類は含めない。 */
+  readonly legendRows: readonly string[];
+  /** 細い線の量の名前。細い線を1本以上描く時だけ、凡例の最後の行に出す。 */
+  readonly contourName: string;
   /** 細い線の値に付ける単位（`%`など）。 */
   readonly contourSuffix: string;
 }
@@ -184,9 +200,59 @@ function overlaps(a: Rect, b: Rect): boolean {
   return a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
 }
 
-/** 細い線の値の文字（右端を`anchor`の左上に寄せる）が占める長方形。 */
-function valueRect(anchor: { readonly x: number; readonly y: number }, width: number): Rect {
-  return { x0: anchor.x - 4 - width, x1: anchor.x - 4, y0: anchor.y - 5 - 9, y1: anchor.y - 5 + 3 };
+/** 細い線の値の文字（右端を`at`、基準線の高さを`at.y`に置く）が、周りへ余白を足して占める長方形。 */
+function valueRect(at: { readonly x: number; readonly y: number }, width: number): Rect {
+  return { x0: at.x - width - 1, x1: at.x + 1, y0: at.y - 11, y1: at.y + 4 };
+}
+
+const LEGEND_ROW = 18;
+const LEGEND_PAD = 6;
+const LEGEND_SAMPLE = 22;
+const LEGEND_INSET = 6;
+
+/**
+ * 凡例を置く隅。右上・左上・右下・左下の順に、点・点の名前と重ならない最初の隅を選ぶ。
+ * どの隅も重なる時は、点との重なりが最も少なく、次に点の名前との重なりが最も少ない隅にする。
+ */
+function placeLegend(texts: readonly string[], marks: readonly Rect[], names: readonly Rect[]): PlotLegend | undefined {
+  if (texts.length === 0) return undefined;
+  const textWidth = Math.max(...texts.map((text) => estimateTextWidth(text)));
+  const width = LEGEND_PAD + LEGEND_SAMPLE + 4 + textWidth + LEGEND_PAD;
+  const height = LEGEND_PAD * 2 + LEGEND_ROW * texts.length - 4;
+  const corners = [
+    { x0: PLOT_RIGHT - LEGEND_INSET - width, y0: PLOT_TOP + LEGEND_INSET },
+    { x0: PLOT_LEFT + LEGEND_INSET, y0: PLOT_TOP + LEGEND_INSET },
+    { x0: PLOT_RIGHT - LEGEND_INSET - width, y0: PLOT_BOTTOM - LEGEND_INSET - height },
+    { x0: PLOT_LEFT + LEGEND_INSET, y0: PLOT_BOTTOM - LEGEND_INSET - height },
+  ];
+  let best = corners[0]!;
+  let bestCost = Number.POSITIVE_INFINITY;
+  for (const corner of corners) {
+    const rect = { x0: corner.x0, x1: corner.x0 + width, y0: corner.y0, y1: corner.y0 + height };
+    const cost = marks.filter((mark) => overlaps(rect, mark)).length * 1000 + names.filter((name) => overlaps(rect, name)).length;
+    if (cost < bestCost) {
+      best = corner;
+      bestCost = cost;
+    }
+    if (cost === 0) break;
+  }
+  return {
+    x0: best.x0,
+    y0: best.y0,
+    x1: best.x0 + width,
+    y1: best.y0 + height,
+    rows: texts.map((text, index) => ({
+      sampleX: best.x0 + LEGEND_PAD + LEGEND_SAMPLE / 2,
+      textX: best.x0 + LEGEND_PAD + LEGEND_SAMPLE + 4,
+      y: best.y0 + LEGEND_PAD + LEGEND_ROW * index + (LEGEND_ROW - 4) / 2,
+      text,
+    })),
+  };
+}
+
+/** 長方形が描画領域の枠の線に掛かる、または枠の外に出る。 */
+function leavesPlot(rect: Rect): boolean {
+  return rect.x0 < PLOT_LEFT + 2 || rect.x1 > PLOT_RIGHT - 2 || rect.y0 < PLOT_TOP + 2 || rect.y1 > PLOT_BOTTOM - 2;
 }
 
 /**
@@ -225,7 +291,8 @@ function placeLabels(points: readonly { readonly px: number; readonly py: number
     let bestCost = Number.POSITIVE_INFINITY;
     for (const candidate of candidates) {
       const { rect } = candidate;
-      const outside = rect.x0 < PLOT_LEFT || rect.x1 > PLOT_RIGHT || rect.y0 < PLOT_TOP || rect.y1 > PLOT_BOTTOM ? 1 : 0;
+      // 枠の外へ出る置き方は、他の名前と重なる置き方より避ける
+      const outside = rect.x0 < PLOT_LEFT || rect.x1 > PLOT_RIGHT || rect.y0 < PLOT_TOP || rect.y1 > PLOT_BOTTOM ? 1000 : 0;
       const cost = outside + placed.filter((other) => overlaps(rect, other)).length + marks.filter((mark) => overlaps(rect, mark)).length;
       if (cost < bestCost) {
         best = candidate;
@@ -253,38 +320,51 @@ export function scatterPlotModel(input: ScatterPlotInput): ScatterPlotModel {
   }));
   const labels = placeLabels(positioned);
   const points = positioned.map((p, index) => ({ ...p, labelAt: labels[index]!.label }));
-  let contours: PlotContourLine[] = [];
+  const marks: Rect[] = positioned.map((p) => ({
+    x0: p.px - POINT_CLEARANCE,
+    x1: p.px + POINT_CLEARANCE,
+    y0: p.py - POINT_CLEARANCE,
+    y1: p.py + POINT_CLEARANCE,
+  }));
+  let drawn: Array<{ readonly level: number; readonly d: string; readonly anchors: DrawnContour['anchors'] }> = [];
+  let step = 1;
   if (input.contour !== undefined && input.points.length > 0) {
-    const { levels, step } = levelsFor(input.contour, xRange, yRange);
+    const levelled = levelsFor(input.contour, xRange, yRange);
+    step = levelled.step;
     const contour = input.contour;
-    const occupied: Rect[] = [
-      ...labels.map((placed) => placed.rect),
-      ...positioned.map((p) => ({ x0: p.px - POINT_CLEARANCE, x1: p.px + POINT_CLEARANCE, y0: p.py - POINT_CLEARANCE, y1: p.py + POINT_CLEARANCE })),
-    ];
-    contours = levels
-      .map((level) => contourLine(contour, level, xRange, yRange))
-      .filter((line) => line.d !== '')
-      .map((line) => {
-        const text = `${formatTickValue(line.level, step)}${input.contourSuffix}`;
-        const width = estimateTextWidth(text);
-        // 文字の右端を線の上に置く。点・点の名前・他の線の値と重ならない最初の場所を、右端から左へ探す
-        let best = line.anchors[0]!;
-        let bestRect = valueRect(best, width);
-        let bestCost = Number.POSITIVE_INFINITY;
-        for (const anchor of line.anchors) {
-          const rect = valueRect(anchor, width);
-          const outside = rect.x0 < PLOT_LEFT || rect.x1 > PLOT_RIGHT || rect.y0 < PLOT_TOP || rect.y1 > PLOT_BOTTOM ? 1 : 0;
-          const cost = outside + occupied.filter((other) => overlaps(rect, other)).length;
-          if (cost < bestCost) {
-            best = anchor;
-            bestRect = rect;
-            bestCost = cost;
-          }
-          if (cost === 0) break;
-        }
-        occupied.push(bestRect);
-        return { level: line.level, d: line.d, labelAt: best, text };
-      });
+    drawn = levelled.levels.map((level) => contourLine(contour, level, xRange, yRange)).filter((line) => line.d !== '');
   }
-  return { xTicks, yTicks, points, contours };
+  // 凡例は枠の中の隅に置く。細い線の行は、線を1本以上描く時だけ付ける
+  const legend = placeLegend(
+    drawn.length > 0 ? [...input.legendRows, input.contourName] : input.legendRows,
+    marks,
+    labels.map((placed) => placed.rect),
+  );
+  const occupied: Rect[] = [
+    ...labels.map((placed) => placed.rect),
+    ...marks,
+    ...(legend === undefined ? [] : [{ x0: legend.x0, x1: legend.x1, y0: legend.y0, y1: legend.y1 }]),
+  ];
+  const contours: PlotContourLine[] = drawn.map((line) => {
+    const text = `${formatTickValue(line.level, step)}${input.contourSuffix}`;
+    const width = estimateTextWidth(text);
+    // 文字の右端を線の上か下に置く。枠・点・点の名前・凡例・他の線の値と重ならない最初の場所を、右端から左へ探す。
+    // 置ける場所が無い線は値を省く（線は引く）
+    let placedAt: { x: number; y: number } | undefined;
+    for (const anchor of line.anchors) {
+      for (const at of [
+        { x: anchor.x - 4, y: anchor.y - 5 },
+        { x: anchor.x - 4, y: anchor.y + 13 },
+      ]) {
+        const rect = valueRect(at, width);
+        if (leavesPlot(rect) || occupied.some((other) => overlaps(rect, other))) continue;
+        placedAt = at;
+        occupied.push(rect);
+        break;
+      }
+      if (placedAt !== undefined) break;
+    }
+    return { level: line.level, d: line.d, labelAt: placedAt, text };
+  });
+  return { xTicks, yTicks, points, contours, legend };
 }
