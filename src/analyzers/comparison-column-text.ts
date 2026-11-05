@@ -30,6 +30,10 @@ export const COMPARISON_COLUMN_IDS = [
   'rightLeftPerPressRatio',
   'movedPressShare',
   'perMovedPressUnits',
+  'textCharsPerAction',
+  'actionsPerUnit',
+  'textCharsPerUnit',
+  'unitsPerTextChar',
   'physicalBigramCombinations',
   'logicalBigramCombinations',
   'alternationCoverage',
@@ -62,6 +66,9 @@ export const COMPARISON_UNIT_NOTE = '距離の単位uは、キーの幅を1と�
 function buildColumnText(language: TextLanguage): Readonly<Record<ComparisonColumnId, ComparisonColumnText>> {
   const k = kanaUnitOf(language);
   const countNote = inputUnitNoteOf(language);
+  // 文字数は、漢字仮名交じりのテキストの字で数える。英語のテキストでは入力字数と同じ
+  const textCharNote =
+    '文字は漢字仮名交じりのテキストの字で数え、漢字を読みに直した語は読みでなく表記の字数で数えます。英語のテキストでは字の数と同じです。';
   return {
     actions: {
       label: 'アクション数',
@@ -145,6 +152,23 @@ function buildColumnText(language: TextLanguage): Readonly<Record<ComparisonColu
       label: 'u/移動ありキー',
       description:
         '移動ありキー1つあたりの移動距離（u/キー）。総移動距離を、移動ありキーの数で割った値。移動ありキー率と掛け合わせるとu/キーになります。',
+    },
+    textCharsPerAction: {
+      label: '文字/アクション',
+      description: `1アクションで出せる文字の数（コスパとも呼ばれる量）。${textCharNote}かな漢字変換の操作はアクションに数えません。アクション数が0の時は値がありません。`,
+    },
+    actionsPerUnit: {
+      label: 'アクション/u',
+      description:
+        '1uの距離を動く間に行うアクションの数。アクション数を総移動距離で割った値で、大きいほど距離あたりに多くのアクションを行います。総移動距離が0の時は値がありません。',
+    },
+    textCharsPerUnit: {
+      label: '文字/u',
+      description: `1uの距離を動く間に出せる文字の数。${textCharNote}文字数を総移動距離で割った値で、総移動距離が0の時は値がありません。`,
+    },
+    unitsPerTextChar: {
+      label: 'u/文字',
+      description: `テキストの1文字を打つのに動く距離（u/文字）。${textCharNote}総移動距離を文字数で割った値で、文字数が0の時は値がありません。`,
     },
     physicalBigramCombinations: {
       label: 'Bigram数（物理キー）',
@@ -241,6 +265,10 @@ export const COMPARISON_COLUMN_FORMAT: Readonly<Record<ComparisonColumnId, (valu
   rightLeftPerPressRatio: fixed(3),
   movedPressShare: percent,
   perMovedPressUnits: fixed(3),
+  textCharsPerAction: fixed(3),
+  actionsPerUnit: fixed(3),
+  textCharsPerUnit: fixed(3),
+  unitsPerTextChar: fixed(3),
   physicalBigramCombinations: count,
   logicalBigramCombinations: count,
   alternationCoverage: percent,

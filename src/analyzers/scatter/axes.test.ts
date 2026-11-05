@@ -11,6 +11,7 @@ import { computeComparisonRowValues, type ComparisonRowValues } from '../compari
 import { computeTraceScalars, movedPressMetrics, rightLeftPerPressRatio } from '#interpretation/metrics.ts';
 import { ALL_FINGERS, PHYSICAL_SHAPES, type Finger, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { Trace } from '#trace/generate.ts';
+import { convertToReading, type NotationExcess, type ReadingToken } from '#input/text/reading.ts';
 import { SCATTER_PRESET_AXES, scatterAxisProblem, scatterContour } from './axes.ts';
 
 /**
@@ -26,7 +27,11 @@ const CATALOG = {
 
 const TEXT = SAMPLE_TEXTS.ja.modern!;
 
-function rowOf(layoutId: string, text: string): { readonly row: ComparisonRowValues; readonly inputChars: number; readonly trace: Trace } {
+function rowOf(
+  layoutId: string,
+  text: string,
+  notationExcess?: NotationExcess,
+): { readonly row: ComparisonRowValues; readonly inputChars: number; readonly trace: Trace } {
   const shapeId = LAYOUT_BY_ID.get(layoutId)?.requiresJisShape === true ? 'jis-row-staggered' : 'row-staggered';
   const setup: Setup = { id: 'setup-a', number: 1, layoutId, shapeId };
   const resolution = resolveEngineInput({
@@ -37,6 +42,7 @@ function rowOf(layoutId: string, text: string): { readonly row: ComparisonRowVal
     overrides: EMPTY_SETTINGS_OVERRIDES,
     text,
     language: 'ja',
+    notationExcess,
   });
   assert.ok(resolution.ok, layoutId);
   if (!resolution.ok) throw new Error('unreachable');
@@ -65,6 +71,10 @@ const IDENTITY_COLUMNS: readonly ComparisonColumnId[] = [
   'rightLeftPerPressRatio',
   'movedPressShare',
   'perMovedPressUnits',
+  'textCharsPerAction',
+  'actionsPerUnit',
+  'textCharsPerUnit',
+  'unitsPerTextChar',
 ];
 
 function relativeError(actual: number, expected: number): number {
@@ -73,7 +83,53 @@ function relativeError(actual: number, expected: number): number {
 
 const ALL_ROWS = [...LAYOUT_BY_ID.keys()].map((layoutId) => ({ layoutId, ...rowOf(layoutId, TEXT) }));
 
-test('組み込みの全配列: 用意する7つの組み合わせの等位線の値が、比較表の列の値と相対誤差1e-9以内で一致し、線が点を通る', () => {
+/**
+ * 漢字を読みに直したテキスト。読みの字数と表記の字数が違うので、文字数 `W` が入力かな数 `C` と違う。
+ * 辞書は使わず、語と読みを手で与える。
+ */
+const KANJI_SOURCE = '今日は晴れです。私は日本語の文章を打ちます。今日は京都へ行きます。';
+const KANJI_WORDS: ReadonlyArray<readonly [string, string | null]> = [
+  ['今日', 'キョウ'],
+  ['は', null],
+  ['晴れ', 'ハレ'],
+  ['です', null],
+  ['。', null],
+  ['私', 'ワタシ'],
+  ['は', null],
+  ['日本語', 'ニホンゴ'],
+  ['の', null],
+  ['文章', 'ブンショウ'],
+  ['を', null],
+  ['打ち', 'ウチ'],
+  ['ます', null],
+  ['。', null],
+  ['今日', 'キョウ'],
+  ['は', null],
+  ['京都', 'キョウト'],
+  ['へ', null],
+  ['行き', 'イキ'],
+  ['ます', null],
+  ['。', null],
+];
+
+function kanjiTokens(): ReadingToken[] {
+  const encoder = new TextEncoder();
+  let byteStart = 0;
+  return KANJI_WORDS.map(([surface, reading]) => {
+    const byteEnd = byteStart + encoder.encode(surface).length;
+    const token = { surface, byteStart, byteEnd, reading, isUnknown: false };
+    byteStart = byteEnd;
+    return token;
+  });
+}
+
+const KANJI_CONVERSION = convertToReading(KANJI_SOURCE, kanjiTokens());
+const KANJI_ROWS = [...LAYOUT_BY_ID.keys()].map((layoutId) => ({
+  layoutId,
+  ...rowOf(layoutId, KANJI_CONVERSION.text, KANJI_CONVERSION.notationExcess),
+}));
+
+test('組み込みの全配列: 用意する8つの組み合わせの等位線の値が、比較表の列の値と相対誤差1e-9以内で一致し、線が点を通る（漢字を読みに直したテキストを含む）', () => {
   const expectedColumn = {
     distance: 'perCharUnits',
     press: 'perCharPresses',
@@ -82,12 +138,13 @@ test('組み込みの全配列: 用意する7つの組み合わせの等位線�
     hand: 'sameHandContinuationRate',
     handShare: 'rightLeftPerPressRatio',
     movedPress: 'perPressUnits',
+    charsPerAction: 'textCharsPerUnit',
   } as const;
   assert.ok(ALL_ROWS.length >= 30, `配列の数 ${ALL_ROWS.length}`);
   for (const [preset, axes] of Object.entries(SCATTER_PRESET_AXES) as Array<
     [keyof typeof SCATTER_PRESET_AXES, (typeof SCATTER_PRESET_AXES)[keyof typeof SCATTER_PRESET_AXES]]
   >) {
-    for (const { layoutId, row, inputChars } of ALL_ROWS) {
+    for (const { layoutId, row, inputChars } of [...ALL_ROWS, ...KANJI_ROWS]) {
       const contour = scatterContour(axes.x, axes.y, inputChars, 'ja');
       assert.ok(contour, `${preset} ${layoutId}`);
       assert.equal(contour.column, expectedColumn[preset]);
@@ -97,6 +154,7 @@ test('組み込みの全配列: 用意する7つの組み合わせの等位線�
       if (preset === 'perPress') assert.deepEqual(axes, { x: 'perCharPresses', y: 'perPressUnits' });
       if (preset === 'handShare') assert.deepEqual(axes, { x: 'rightHandPressShare', y: 'rightHandDistanceShare' });
       if (preset === 'movedPress') assert.deepEqual(axes, { x: 'movedPressShare', y: 'perMovedPressUnits' });
+      if (preset === 'charsPerAction') assert.deepEqual(axes, { x: 'textCharsPerAction', y: 'actionsPerUnit' });
       const value = contour.valueAt(row[axes.x], row[axes.y]);
       assert.ok(value !== undefined, `${preset} ${layoutId} ${row[axes.x]} ${row[axes.y]}`);
       assert.ok(relativeError(value, row[contour.column]) <= 1e-9, `${preset} ${layoutId}: ${value} と ${row[contour.column]}`);
@@ -210,7 +268,7 @@ test('組み込みの全配列: 恒等式の列どうしの全ての組で、等
   let drawn = 0;
   for (const x of IDENTITY_COLUMNS) {
     for (const y of IDENTITY_COLUMNS) {
-      for (const { layoutId, row, inputChars } of ALL_ROWS) {
+      for (const { layoutId, row, inputChars } of [...ALL_ROWS, ...KANJI_ROWS]) {
         const contour = scatterContour(x, y, inputChars, 'ja');
         if (contour === undefined) continue;
         drawn += 1;
@@ -288,6 +346,25 @@ test('自由に選ぶ: 等位線を引く組と、その量（総数と1文字�
   assert.equal(column('perMovedPressUnits', 'totalUnits'), undefined);
   assert.equal(column('perCharUnits', 'perMovedPressUnits'), undefined);
   assert.equal(column('perMovedPressUnits', 'perCharUnits'), undefined);
+  // 文字/u = 文字/アクション × アクション/u。順は問わない
+  assert.equal(column('textCharsPerAction', 'actionsPerUnit'), 'textCharsPerUnit');
+  assert.equal(column('actionsPerUnit', 'textCharsPerAction'), 'textCharsPerUnit');
+  assert.equal(column('textCharsPerAction', 'textCharsPerUnit'), 'actionsPerUnit');
+  assert.equal(column('textCharsPerUnit', 'textCharsPerAction'), 'actionsPerUnit');
+  assert.equal(column('actionsPerUnit', 'textCharsPerUnit'), 'textCharsPerAction');
+  assert.equal(column('textCharsPerUnit', 'actionsPerUnit'), 'textCharsPerAction');
+  // u/アクション = 文字/アクション × u/文字。順は問わない
+  assert.equal(column('textCharsPerAction', 'unitsPerTextChar'), 'meanPerStroke');
+  assert.equal(column('unitsPerTextChar', 'textCharsPerAction'), 'meanPerStroke');
+  assert.equal(column('textCharsPerAction', 'meanPerStroke'), 'unitsPerTextChar');
+  assert.equal(column('meanPerStroke', 'textCharsPerAction'), 'unitsPerTextChar');
+  assert.equal(column('unitsPerTextChar', 'meanPerStroke'), 'textCharsPerAction');
+  assert.equal(column('meanPerStroke', 'unitsPerTextChar'), 'textCharsPerAction');
+  // 4つの列の間のほかの組には、線を引かない
+  assert.equal(column('actionsPerUnit', 'unitsPerTextChar'), undefined);
+  assert.equal(column('unitsPerTextChar', 'actionsPerUnit'), undefined);
+  assert.equal(column('textCharsPerUnit', 'meanPerStroke'), undefined);
+  assert.equal(column('textCharsPerAction', 'perCharUnits'), undefined);
   // 同指 = 動作数 × 同指率 / 100
   assert.equal(column('actions', 'sameFingerRate'), 'sameFinger');
   assert.equal(column('sameFinger', 'sameFingerRate'), 'actions');
@@ -305,25 +382,82 @@ test('自由に選ぶ: 等位線を引く組と、その量（総数と1文字�
   assert.equal(column('singleTapRate', 'perCharPresses'), undefined);
 });
 
-test('自由に選ぶ: 選べない組は、同じ列と、入力文字数倍の関係にある2列', () => {
+/** 同じテキストなら積または比が全配列で一定になる2列の組（順は問わない）。 */
+const PROPORTIONAL_PAIRS: ReadonlyArray<readonly [ComparisonColumnId, ComparisonColumnId]> = [
+  ['actions', 'perCharSteps'],
+  ['totalUnits', 'perCharUnits'],
+  ['meanPerStroke', 'actionsPerUnit'],
+  ['textCharsPerUnit', 'unitsPerTextChar'],
+  ['textCharsPerAction', 'perCharSteps'],
+  ['textCharsPerUnit', 'perCharUnits'],
+  ['unitsPerTextChar', 'perCharUnits'],
+  ['actions', 'textCharsPerAction'],
+  ['totalUnits', 'unitsPerTextChar'],
+  ['totalUnits', 'textCharsPerUnit'],
+];
+
+test('自由に選ぶ: 選べない組は、同じ列と、積または比が一定になる2列', () => {
   assert.equal(scatterAxisProblem('actions', 'actions'), 'same');
-  assert.equal(scatterAxisProblem('actions', 'perCharSteps'), 'scaled');
-  assert.equal(scatterAxisProblem('perCharSteps', 'actions'), 'scaled');
-  assert.equal(scatterAxisProblem('totalUnits', 'perCharUnits'), 'scaled');
-  assert.equal(scatterAxisProblem('perCharUnits', 'totalUnits'), 'scaled');
+  for (const [a, b] of PROPORTIONAL_PAIRS) {
+    assert.equal(scatterAxisProblem(a, b), 'proportional', `${a} ${b}`);
+    assert.equal(scatterAxisProblem(b, a), 'proportional', `${b} ${a}`);
+    // 選べない組には等位線も引かない
+    assert.equal(scatterContour(a, b, 100, 'ja'), undefined, `${a} ${b}`);
+  }
   assert.equal(scatterAxisProblem('actions', 'perCharUnits'), undefined);
   assert.equal(scatterAxisProblem('actions', 'meanPerStroke'), undefined);
-  // 選べない組には等位線も引かない
-  assert.equal(scatterContour('actions', 'perCharSteps', 100, 'ja'), undefined);
   assert.equal(scatterContour('totalUnits', 'totalUnits', 100, 'ja'), undefined);
-  // 他の列は、恒等式に関係なく、同じ列でなければ選べる
+  // 他の列は、同じ列でなければ選べる
+  const proportional = new Set(PROPORTIONAL_PAIRS.flatMap(([a, b]) => [`${a}:${b}`, `${b}:${a}`]));
   for (const x of COMPARISON_COLUMN_IDS) {
     for (const y of COMPARISON_COLUMN_IDS) {
       if (x === y) continue;
-      const scaled = new Set(['actions:perCharSteps', 'perCharSteps:actions', 'totalUnits:perCharUnits', 'perCharUnits:totalUnits']).has(`${x}:${y}`);
-      assert.equal(scatterAxisProblem(x, y), scaled ? 'scaled' : undefined, `${x} ${y}`);
+      assert.equal(scatterAxisProblem(x, y), proportional.has(`${x}:${y}`) ? 'proportional' : undefined, `${x} ${y}`);
     }
   }
+});
+
+test('組み込みの全配列: 選べない組の2列は、積または比が全配列で一定になる（漢字を読みに直したテキストを含む）', () => {
+  for (const rows of [ALL_ROWS, KANJI_ROWS]) {
+    for (const [a, b] of PROPORTIONAL_PAIRS) {
+      const products = rows.map(({ row }) => row[a] * row[b]);
+      const ratios = rows.map(({ row }) => row[a] / row[b]);
+      const constant = (values: readonly number[]) => values.every((value) => relativeError(value, values[0]!) <= 1e-9);
+      assert.ok(constant(products) || constant(ratios), `${a} ${b}`);
+    }
+  }
+});
+
+test('文字数W: 漢字を読みに直したテキストでは入力かな数Cから読みと表記の字数の差を引いた数になり、漢字を含まないテキストではCと同じ', () => {
+  const reading = [...KANJI_CONVERSION.text].length;
+  assert.equal(reading, [...'きょうははれです。わたしはにほんごのぶんしょうをうちます。きょうはきょうとへいきます。'].length);
+  const sourceLength = [...KANJI_SOURCE].length;
+  assert.equal(KANJI_CONVERSION.notationExcess.defaultSymbols, sourceLength - reading);
+  assert.equal(KANJI_CONVERSION.notationExcess.allSymbols, sourceLength - reading);
+  assert.ok(sourceLength < reading);
+  for (const { layoutId, row, inputChars } of KANJI_ROWS) {
+    assert.equal(inputChars, reading, layoutId);
+    // 表記の字数で数えた字の数: 読みに直さなかった字は1字を1と数え、元の文の字数に戻る
+    assert.ok(relativeError(row.textCharsPerAction * row.actions, sourceLength) <= 1e-9, `${layoutId} W`);
+    assert.ok(relativeError(row.unitsPerTextChar * sourceLength, row.totalUnits) <= 1e-9, `${layoutId} D/W`);
+  }
+  // 漢字を含まないテキストでは文字数と入力かな数が同じ
+  for (const { layoutId, row, inputChars } of ALL_ROWS) {
+    assert.ok(relativeError(row.textCharsPerAction * row.actions, inputChars) <= 1e-9, `${layoutId} W=C`);
+    assert.ok(relativeError(row.unitsPerTextChar, row.perCharUnits) <= 1e-9, `${layoutId} u/文字=u/かな`);
+  }
+});
+
+test('組み込みの全配列: コスパ×アクション/uが文字/uと、コスパ×u/文字がu/アクションと、アクション/u×u/アクションが1と一致する（W≠Cのテキストを含む）', () => {
+  let someDifferent = false;
+  for (const { layoutId, row } of [...ALL_ROWS, ...KANJI_ROWS]) {
+    if (!(row.actions > 0 && row.totalUnits > 0)) continue;
+    assert.ok(relativeError(row.textCharsPerAction * row.actionsPerUnit, row.textCharsPerUnit) <= 1e-9, `${layoutId} 文字/u`);
+    assert.ok(relativeError(row.textCharsPerAction * row.unitsPerTextChar, row.meanPerStroke) <= 1e-9, `${layoutId} u/アクション`);
+    assert.ok(relativeError(row.actionsPerUnit * row.meanPerStroke, 1) <= 1e-9, `${layoutId} 逆数`);
+    someDifferent = someDifferent || relativeError(row.unitsPerTextChar, row.perCharUnits) > 1e-6;
+  }
+  assert.ok(someDifferent, 'W≠Cの行がある');
 });
 
 test('点の読み取り: 等位線の量の列が値を持たない対象には、軸の値から式で求まっても値を出さない', () => {
@@ -340,6 +474,26 @@ test('点の読み取り: 等位線の量の列が値を持たない対象には
   assert.equal(byRatio.readoutAt(4, 50, 20), 20);
   // 値を持たない列の無い恒等式は今までどおり
   assert.equal(scatterContour('actions', 'meanPerStroke', 100, 'ja')!.readoutAt(30, 4, 120), 120);
+});
+
+test('文字数に関わる恒等式: 分母が0の点では等位線の値を出さない', () => {
+  const perUnit = scatterContour('textCharsPerAction', 'actionsPerUnit', 100, 'ja')!;
+  assert.equal(perUnit.column, 'textCharsPerUnit');
+  assert.equal(perUnit.valueAt(2, 3), 6);
+  const byUnit = scatterContour('actionsPerUnit', 'textCharsPerUnit', 100, 'ja')!;
+  assert.equal(byUnit.column, 'textCharsPerAction');
+  assert.equal(byUnit.valueAt(0, 6), undefined);
+  assert.equal(byUnit.valueAt(3, 6), 2);
+  const perAction = scatterContour('textCharsPerAction', 'unitsPerTextChar', 100, 'ja')!;
+  assert.equal(perAction.column, 'meanPerStroke');
+  assert.equal(perAction.valueAt(2, 3), 6);
+  const byChar = scatterContour('meanPerStroke', 'textCharsPerAction', 100, 'ja')!;
+  assert.equal(byChar.column, 'unitsPerTextChar');
+  assert.equal(byChar.valueAt(6, 0), undefined);
+  assert.equal(byChar.valueAt(6, 2), 3);
+  // 点の読み取りは、等位線の量の列が値を持たない対象には出さない
+  assert.equal(perUnit.readoutAt(2, 3, NaN), undefined);
+  assert.equal(perUnit.readoutAt(2, 3, 6), 6);
 });
 
 test('分母が0の点では等位線の値を出さない', () => {

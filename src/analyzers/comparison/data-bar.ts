@@ -39,6 +39,11 @@ export const COMPARISON_BAR_SCALE: Readonly<Record<ComparisonColumnId, Compariso
   // 動いた押下の割合（%）と、動いた押下1回あたりの距離。0は動いた押下が無い。
   movedPressShare: 'zero',
   perMovedPressUnits: 'zero',
+  // 文字数に関わる4つの比。0は該当が無い（u/文字が0は距離が0）。値が無い行（分母が0）はバーを出さない。
+  textCharsPerAction: 'zero',
+  actionsPerUnit: 'zero',
+  textCharsPerUnit: 'zero',
+  unitsPerTextChar: 'zero',
   // Bigramの組の種類数。0は組が現れていない。
   physicalBigramCombinations: 'zero',
   logicalBigramCombinations: 'zero',

@@ -159,6 +159,19 @@ export interface Metrics {
    */
   perMovedPressUnits: number;
   /**
+   * 文字数 `W`（仕様 §11.5）。`inputChars`に、漢字を読みに直した語の「表記の字数 − 読みの字数」を足した数。
+   * 読みに直した語がなければ`inputChars`と同じ。
+   */
+  textChars: number;
+  /** 1アクションの文字数 [文字/アクション] = `textChars` / `actions`。アクションが0なら値を持たず`null`。 */
+  textCharsPerAction: number | null;
+  /** 1uあたりのアクション数 [アクション/u] = `actions` / `totalUnits`。総移動距離が0なら値を持たず`null`。 */
+  actionsPerUnit: number | null;
+  /** 1uあたりの文字数 [文字/u] = `textChars` / `totalUnits`。総移動距離が0なら値を持たず`null`。 */
+  textCharsPerUnit: number | null;
+  /** 1文字あたりの移動距離 [u/文字] = `totalUnits` / `textChars`。文字数が0なら値を持たず`null`。 */
+  unitsPerTextChar: number | null;
+  /**
    * 打鍵可能な入力文字のうち、単打面の1キーだけで直接出力された文字の割合 [%]。
    * シフト面・複数キーコンボ・複数Stroke入力は含めない（仕様 §11.5.1）。
    */
@@ -269,7 +282,11 @@ export function adjacentMeanStdDev(adjacent: readonly Pick<PairStat, 'meanExcess
   };
 }
 
-export function computeMetrics(trace: Trace, geometry: Geometry, conditions: MetricConditions = DEFAULT_METRIC_CONDITIONS): Metrics {
+/**
+ * @param notationExcess 漢字を読みに直した語の「表記の字数 − 読みの字数」の合計（仕様 §11.5の `W`。`inputChars`にこの値を足した数）。
+ *   読みに直した語が無ければ0。評価に渡すテキスト（読みに直した後）だけからは求まらないので、読みに直す段から受け取る。
+ */
+export function computeMetrics(trace: Trace, geometry: Geometry, conditions: MetricConditions = DEFAULT_METRIC_CONDITIONS, notationExcess = 0): Metrics {
   const tally = tallyPresses(trace);
   const keyCounts = new Map<string, number>();
   const keyDistance = new Map<string, number>();
@@ -395,6 +412,7 @@ export function computeMetrics(trace: Trace, geometry: Geometry, conditions: Met
     perPressUnits: scalars.perPressUnits,
     rightLeftPerPressRatio: rightLeftPerPressRatio(perFinger, perFingerPresses),
     ...movedPressMetrics(trace, tally),
+    ...textCharMetrics(scalars.inputChars + notationExcess, scalars.actions, scalars.totalUnits),
     singleTapLayerRate: scalars.singleTapLayerRate,
     singleTapRate: scalars.singleTapRate,
     singleKeyRate: scalars.singleKeyRate,
@@ -497,6 +515,25 @@ export function movedPressMetrics(
   return {
     movedPressShare: tally.presses ? (tally.movedPresses / tally.presses) * 100 : 0,
     perMovedPressUnits: tally.movedPresses ? tally.totalUnits / tally.movedPresses : 0,
+  };
+}
+
+/**
+ * 文字数 `W` と、`W`・アクション数 `S`・総移動距離 `D` から作る4つの比（仕様 §11.5）。
+ * 分母が0の比は値を持たず`null`（0を当てはめない）。
+ */
+export function textCharMetrics(
+  textChars: number,
+  actions: number,
+  totalUnits: number,
+): Pick<Metrics, 'textChars' | 'textCharsPerAction' | 'actionsPerUnit' | 'textCharsPerUnit' | 'unitsPerTextChar'> {
+  const ratio = (numerator: number, denominator: number): number | null => (denominator === 0 ? null : numerator / denominator);
+  return {
+    textChars,
+    textCharsPerAction: ratio(textChars, actions),
+    actionsPerUnit: ratio(actions, totalUnits),
+    textCharsPerUnit: ratio(textChars, totalUnits),
+    unitsPerTextChar: ratio(totalUnits, textChars),
   };
 }
 

@@ -3,7 +3,7 @@ import test from 'node:test';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { TextLanguage } from '#input/text/language.ts';
-import type { ReadingConditions } from '#input/text/reading.ts';
+import { convertToReading, type NotationExcess, type ReadingConditions } from '#input/text/reading.ts';
 import { generateEngineTrace, interpretEngineTrace } from './pipeline.ts';
 import { resolveEngineInput } from './resolved-input.ts';
 import { EMPTY_SETTINGS_OVERRIDES, setSettingsOverride } from './settings-items.ts';
@@ -14,7 +14,14 @@ const CATALOG = {
   shapes: new Map<string, PhysicalShape>(Object.values(PHYSICAL_SHAPES).map((shape) => [shape.id, shape])),
 };
 
-function resolve(layoutId: string, text: string, language: TextLanguage, keepSymbols = false, reading?: ReadingConditions | null) {
+function resolve(
+  layoutId: string,
+  text: string,
+  language: TextLanguage,
+  keepSymbols = false,
+  reading?: ReadingConditions | null,
+  notationExcess?: NotationExcess,
+) {
   let overrides = EMPTY_SETTINGS_OVERRIDES;
   if (keepSymbols) {
     const written = setSettingsOverride(overrides, { kind: 'global' }, 'keepSymbols', true);
@@ -30,13 +37,21 @@ function resolve(layoutId: string, text: string, language: TextLanguage, keepSym
     text,
     language,
     reading,
+    notationExcess,
   });
   assert.ok(result.ok, result.ok ? '' : JSON.stringify(result.error));
   return result.input;
 }
 
-function measure(layoutId: string, text: string, language: TextLanguage, keepSymbols = false, reading?: ReadingConditions | null) {
-  const input = resolve(layoutId, text, language, keepSymbols, reading);
+function measure(
+  layoutId: string,
+  text: string,
+  language: TextLanguage,
+  keepSymbols = false,
+  reading?: ReadingConditions | null,
+  notationExcess?: NotationExcess,
+) {
+  const input = resolve(layoutId, text, language, keepSymbols, reading, notationExcess);
   const traceResult = generateEngineTrace(input);
   return { input, trace: traceResult.trace, metrics: interpretEngineTrace(traceResult, input).metrics };
 }
@@ -256,4 +271,66 @@ test('既定の範囲では、「」・『』…は評価の前に取り除か�
   const withSymbols = measure('qwerty', 'あ「い」・『う』…', 'ja');
   assert.equal(withSymbols.trace.skipped, 0);
   assert.equal(withSymbols.metrics.totalUnits, plain.metrics.totalUnits);
+});
+
+test('同じ読みで表記の字数だけが違う2つの入力は、解釈のキーが分かれ、別の文字数Wを返す', () => {
+  const convert = (surface: string) =>
+    convertToReading(surface, [{ surface, byteStart: 0, byteEnd: new TextEncoder().encode(surface).length, reading: 'キョウ', isUnknown: false }]);
+  const a = convert('今日');
+  const b = convert('京');
+  assert.equal(a.text, 'きょう');
+  assert.equal(b.text, 'きょう');
+  const first = measure('qwerty', a.text, 'ja', false, READING, a.notationExcess);
+  const second = measure('qwerty', b.text, 'ja', false, READING, b.notationExcess);
+  assert.equal(traceKeyOf(first.input), traceKeyOf(second.input));
+  assert.notEqual(interpretationKeyOf(first.input, traceKeyOf(first.input)), interpretationKeyOf(second.input, traceKeyOf(second.input)));
+  assert.equal(first.metrics.inputChars, 3);
+  assert.equal(second.metrics.inputChars, 3);
+  assert.equal(first.metrics.textChars, 2);
+  assert.equal(second.metrics.textChars, 1);
+  assert.equal(first.metrics.totalUnits, second.metrics.totalUnits);
+  // 差を渡さなければ、読みに直していないのと同じでW = C
+  assert.equal(measure('qwerty', a.text, 'ja', false, READING).metrics.textChars, 3);
+});
+
+test('記号の範囲を変えると、表記のうち残る字だけを数えた差を使う', () => {
+  // 表記の中に記号（〜）を含む語。既定の範囲では記号を取り除くので、表記の字数は2、読みは3字
+  const surface = '今日〜';
+  const conversion = convertToReading(surface, [
+    { surface, byteStart: 0, byteEnd: new TextEncoder().encode(surface).length, reading: 'キョウ', isUnknown: false },
+  ]);
+  assert.deepEqual(conversion.notationExcess, { defaultSymbols: -1, allSymbols: 0 });
+  const base = measure('qwerty', conversion.text, 'ja', false, READING, conversion.notationExcess);
+  const wide = measure('qwerty', conversion.text, 'ja', true, READING, conversion.notationExcess);
+  assert.equal(base.input.notationExcess, -1);
+  assert.equal(wide.input.notationExcess, 0);
+  assert.equal(base.metrics.textChars, base.metrics.inputChars - 1);
+  assert.equal(wide.metrics.textChars, wide.metrics.inputChars);
+});
+
+test('示す文をそのまま打つ場面は、文字数の差を渡しても0にする', () => {
+  const result = resolveEngineInput({
+    target: { kind: 'layout', layoutId: 'qwerty' },
+    setups: new Map(),
+    catalog: CATALOG,
+    userLayouts: new Map(),
+    overrides: EMPTY_SETTINGS_OVERRIDES,
+    text: 'きょう',
+    language: 'ja',
+    notationExcess: { defaultSymbols: -1, allSymbols: -1 },
+    verbatimText: true,
+  });
+  assert.ok(result.ok);
+  assert.equal(result.input.notationExcess, 0);
+});
+
+test('英語のテキストでは、文字数Wが入力かな数と同じで、4つの比も入力字数で数えた値になる', () => {
+  const text = "It's (a) test; ok, yes.";
+  const { metrics } = measure('qwerty', text, 'en');
+  assert.equal(metrics.textChars, metrics.inputChars);
+  assert.equal(metrics.textChars, [...text].length);
+  assert.equal(metrics.unitsPerTextChar, metrics.perCharUnits);
+  assert.equal(metrics.textCharsPerAction, metrics.inputChars / metrics.actions);
+  // 差を渡しても、読みに直す対象でない英語のテキストは差を使わない呼び出しになる（渡さなければ0）
+  assert.equal(resolve('qwerty', text, 'en').notationExcess, 0);
 });

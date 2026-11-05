@@ -74,6 +74,10 @@ test('computeComparisonRowValues: interpretation/metrics.tsを同条件で直接
     rightLeftPerPressRatio,
     movedPressShare,
     perMovedPressUnits,
+    textCharsPerAction,
+    actionsPerUnit,
+    textCharsPerUnit,
+    unitsPerTextChar,
     physicalBigramCombinations,
     logicalBigramCombinations,
     alternationCoverage,
@@ -112,6 +116,14 @@ test('computeComparisonRowValues: interpretation/metrics.tsを同条件で直接
   assert.equal(perMovedPressUnits, directMetrics.perMovedPressUnits);
   assert.ok(movedPressShare > 0 && movedPressShare < 100);
   assert.ok(perMovedPressUnits > directMetrics.perPressUnits);
+  // 読みに直していないテキストでは文字数と入力かな数が同じなので、文字数に関わる4つの比は入力かな数で数えた値と同じ
+  assert.equal(directMetrics.textChars, directMetrics.inputChars);
+  assert.equal(textCharsPerAction, directMetrics.textCharsPerAction);
+  assert.equal(actionsPerUnit, directMetrics.actionsPerUnit);
+  assert.equal(textCharsPerUnit, directMetrics.textCharsPerUnit);
+  assert.equal(unitsPerTextChar, directMetrics.unitsPerTextChar);
+  assert.equal(textCharsPerAction, directMetrics.inputChars / directMetrics.actions);
+  assert.equal(unitsPerTextChar, directMetrics.perCharUnits);
   assert.ok(physicalBigramCombinations > 0 && logicalBigramCombinations >= physicalBigramCombinations);
   const { aggregate: handRhythm } = analyzeHandRhythm(traceResult.trace.strokes);
   assert.ok(handRhythm.alternation.coverage.rate !== handRhythm.continuationRate);
@@ -337,4 +349,16 @@ test('optionsDiscipline: affectsの宣言どおりの入れ忘れが無い（比
   // ダミー関数でよい（定義の`extract`を通す検査は`comparisonDefinition.optionsDiscipline`側）。
   const viewViolations = findViewOptionsExtractionViolations(comparisonOptions, DEFAULT_COMPARISON_OPTIONS, ALTERNATE_COMPARISON_OPTIONS, () => 'dummy');
   assert.deepEqual(viewViolations, []);
+});
+
+test('文字数に関わる4つの比: 値を持たない（null）時は、列の値がNaNになり0を当てはめない', () => {
+  const none = { textCharsPerAction: null, actionsPerUnit: null, textCharsPerUnit: null, unitsPerTextChar: null };
+  const row = computeComparisonRowValues({ ...fixtureMetrics(0), ...none }, FIXTURE_TRACE);
+  for (const id of ['textCharsPerAction', 'actionsPerUnit', 'textCharsPerUnit', 'unitsPerTextChar'] as const) {
+    assert.ok(Number.isNaN(row[id]), id);
+  }
+  const valued = computeComparisonRowValues(fixtureMetrics(6), FIXTURE_TRACE);
+  for (const id of ['textCharsPerAction', 'actionsPerUnit', 'textCharsPerUnit', 'unitsPerTextChar'] as const) {
+    assert.ok(Number.isFinite(valued[id]), id);
+  }
 });

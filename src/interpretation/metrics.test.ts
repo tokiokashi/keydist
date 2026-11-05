@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry, ALL_FINGERS } from '#input/shapes/geometry.ts';
 import { generateTrace, type TracePolicy } from '#trace/generate.ts';
-import { computeMetrics, DEFAULT_METRIC_CONDITIONS, homeSpacing, meanStdDevMax } from './metrics.ts';
+import { computeMetrics, DEFAULT_METRIC_CONDITIONS, homeSpacing, meanStdDevMax, textCharMetrics } from './metrics.ts';
 import { faceFromEntries, fromFaces, fromKana, LAYOUTS_JA, LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { dist } from '#input/shapes/geometry.ts';
 import { SAMPLE_TEXT_JA } from '#input/text/sample-ja.ts';
@@ -570,4 +570,45 @@ test('meanStdDevMaxは引数の上限を超える要素数でも最大値を返�
 test('meanStdDevMaxは空配列で0、負の値だけの配列で負の最大値を返す', () => {
   assert.deepEqual(meanStdDevMax([]), { mean: 0, stdDev: 0, max: 0 });
   assert.equal(meanStdDevMax([-5, -2, -9]).max, -2);
+});
+
+test('文字数Wは入力かな数に、読みに直した語の表記の字数と読みの字数の差を足した数になる', () => {
+  const trace = generateTrace('しし', qwerty, geometry, opts());
+  const plain = computeMetrics(trace, geometry);
+  assert.equal(plain.inputChars, 2);
+  assert.equal(plain.textChars, 2);
+  // 表記が読みより短い語（今日 → きょう は表記2字・読み3字）の差は負で、Wは入力かな数より小さくなる
+  assert.equal(computeMetrics(trace, geometry, DEFAULT_METRIC_CONDITIONS, -1).textChars, 1);
+  assert.equal(computeMetrics(trace, geometry, DEFAULT_METRIC_CONDITIONS, 3).textChars, 5);
+});
+
+test('文字数に関わる4つの比: 分母が0なら値を持たず、0を当てはめない', () => {
+  const ordinary = textCharMetrics(6, 3, 2);
+  assert.equal(ordinary.textCharsPerAction, 2);
+  assert.equal(ordinary.actionsPerUnit, 1.5);
+  assert.equal(ordinary.textCharsPerUnit, 3);
+  assert.equal(ordinary.unitsPerTextChar, 1 / 3);
+  // アクションが0
+  const noAction = textCharMetrics(6, 0, 0);
+  assert.equal(noAction.textCharsPerAction, null);
+  assert.equal(noAction.actionsPerUnit, null);
+  assert.equal(noAction.textCharsPerUnit, null);
+  assert.equal(noAction.unitsPerTextChar, 0);
+  // 距離が0でアクションがある（アクション/uと文字/uは値を持たない。0とすると最も悪い値に見える）
+  const noDistance = textCharMetrics(6, 3, 0);
+  assert.equal(noDistance.textCharsPerAction, 2);
+  assert.equal(noDistance.actionsPerUnit, null);
+  assert.equal(noDistance.textCharsPerUnit, null);
+  assert.equal(noDistance.unitsPerTextChar, 0);
+  // 文字数が0
+  const noChar = textCharMetrics(0, 3, 2);
+  assert.equal(noChar.textCharsPerAction, 0);
+  assert.equal(noChar.unitsPerTextChar, null);
+  // 空のテキスト: 4つとも値を持たない
+  const empty = computeMetrics(generateTrace('', qwerty, geometry, opts()), geometry);
+  assert.equal(empty.textChars, 0);
+  assert.equal(empty.textCharsPerAction, null);
+  assert.equal(empty.actionsPerUnit, null);
+  assert.equal(empty.textCharsPerUnit, null);
+  assert.equal(empty.unitsPerTextChar, null);
 });

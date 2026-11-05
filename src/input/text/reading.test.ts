@@ -230,3 +230,22 @@ test('withReadingCorrection: 足す・差し替える・消す。変化が無け
   assert.deepEqual(withReadingCorrection(one, '今日', undefined), {});
   assert.equal(withReadingCorrection(none, '今日', undefined), none);
 });
+
+test('読みに置き換えた語だけが、表記の字数と読みの字数の差を足す（直しを当てた語も同じ）', () => {
+  const text = '今日は晴れ。';
+  const tokens = tokensOf(text, [
+    ['今日', 'キョウ'],
+    ['は', 'ハ'],
+    ['晴れ', 'ハレ'],
+    ['。', null],
+  ]);
+  // 今日(2字→3字) 晴れ(2字→2字)。かな・記号の語は置き換えないので足さない
+  assert.deepEqual(convertToReading(text, tokens).notationExcess, { defaultSymbols: -1, allSymbols: -1 });
+  // 直しで読みを当てた語も、直した読みの字数で数える
+  assert.deepEqual(convertToReading(text, tokens, { 今日: 'こんにち' }).notationExcess, { defaultSymbols: -2, allSymbols: -2 });
+  // 辞書に読みが無い語は置き換えず、元の表記のまま残るので足さない
+  const unknown = tokensOf('鬱', [['鬱', null, true]]);
+  assert.deepEqual(convertToReading('鬱', unknown).notationExcess, { defaultSymbols: 0, allSymbols: 0 });
+  // 読みに直す語が無ければ0
+  assert.deepEqual(convertToReading('あい', []).notationExcess, { defaultSymbols: 0, allSymbols: 0 });
+});
