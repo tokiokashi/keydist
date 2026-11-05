@@ -11,7 +11,7 @@
 .comparison-table th,
 .comparison-table td {
   border-bottom: 1px solid var(--border);
-  padding: 0.4rem 0.6rem;
+  padding: 0.4rem 0.5rem;
   text-align: right;
   white-space: nowrap;
 }
