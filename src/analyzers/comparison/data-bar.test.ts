@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { COMPARISON_COLUMN_IDS } from './column-text.ts';
+import { COMPARISON_COLUMN_IDS } from '../comparison-column-text.ts';
 import { COMPARISON_BAR_SCALE, comparisonBarFraction, comparisonBarRange } from './data-bar.ts';
 
 const fractions = (scale: 'zero' | 'relative', values: number[]) => {

@@ -13,6 +13,7 @@ import { layerComboPressesDefinition } from '#analyzers/layer-combo-presses/extr
 import { nSensitivityDefinition } from '#analyzers/n-sensitivity/extract.ts';
 import { playbackDefinition } from '#analyzers/playback/extract.ts';
 import { runChartDefinition } from '#analyzers/run-chart/extract.ts';
+import { scatterDefinition } from '#analyzers/scatter/extract.ts';
 import { WORKSPACE_ANALYZERS } from '#hosts/workspace/analyzer-registry.ts';
 import { ANALYZER_OPTIONS_DECODERS } from './analyzer-options-decoders.ts';
 
@@ -30,6 +31,7 @@ const DEFINITIONS = [
   nSensitivityDefinition,
   playbackDefinition,
   runChartDefinition,
+  scatterDefinition,
 ];
 
 test('全Analyzerの解析設定を、そのAnalyzerの定義と同じdecodeOptionsで読む', () => {

@@ -55,6 +55,11 @@
   --target-color-10: light-dark(#3a760c, #458717);
   --target-color-11: light-dark(#a57576, #b48283);
 
+  /* 散布図の点を配列の種類で分ける色（かな配列・英字の配列）。対象の色（--target-color-N）の12色のどれとも別の色にする。
+     対象の色と同じ面（#efefecまで・#2a2a27まで）の全てで、コントラスト比3以上。 */
+  --kind-color-kana: light-dark(#b00020, #ff4d6a);
+  --kind-color-alpha: light-dark(#14146e, #7f8cff);
+
   --picker-selected: light-dark(#c81cad, #e879f9);
   --picker-candidate: light-dark(#0e8a9e, #22d3ee);
 

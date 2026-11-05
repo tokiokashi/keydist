@@ -1,5 +1,6 @@
 import type { ComponentType, ReactNode } from 'react';
 import type { Geometry } from '#input/shapes/geometry.ts';
+import type { LayoutKind } from '#input/layouts/kind.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { KeyDetails } from '#interpretation/key-detail.ts';
 import type { TraceSummary } from '#trace/generate.ts';
@@ -230,6 +231,8 @@ export interface PlaybackJump {
 /** 行の文脈を作る時の、解決した配列・物理配列・指割当の名前。対象を解決できなかった行には無い。 */
 export interface SetRowHeader {
   readonly layoutName: string;
+  /** 配列の種類（かな配列か英字の配列か）。 */
+  readonly layoutKind: LayoutKind;
   readonly shapeName: string;
   readonly fingerAssignmentName: string;
 }

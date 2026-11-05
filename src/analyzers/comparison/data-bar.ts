@@ -1,4 +1,4 @@
-import type { ComparisonColumnId } from './column-text.ts';
+import type { ComparisonColumnId } from '../comparison-column-text.ts';
 
 /**
  * 比較表の数値セルに敷くバーの長さ。バーは値の大きさだけを表し、良し悪しや順位は表さない。
