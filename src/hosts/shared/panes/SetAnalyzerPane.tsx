@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { EngineSetMemberInput } from '#engine/request.ts';
 import { effectiveMultiBaseline, type ColorSlotsByKey, type TargetSet } from '#engine/multi-target-selection.ts';
+import { layoutKind } from '#input/layouts/kind.ts';
 import { analysisTargetKey, nameTargets, type AnalysisTarget } from '#input/setup/index.ts';
 import type { PlaybackJump, SegmentationStatus, SetAnalyzerPaneParts, SetRowSource } from '#analyzers/pane-parts.tsx';
 import {
@@ -140,7 +141,12 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
         targetKey: key,
         label: named.displayName,
         fullName: named.fullName,
-        header: member.resolution.ok ? conditionHeaderInfoFromResolvedInput(member.resolution.input.layout, member.resolution.input.geometry) : undefined,
+        header: member.resolution.ok
+          ? {
+              ...conditionHeaderInfoFromResolvedInput(member.resolution.input.layout, member.resolution.input.geometry),
+              layoutKind: layoutKind(member.resolution.input.layout, catalog.userLayouts),
+            }
+          : undefined,
         // 色は集合が配った番号から引く（加えた順。表示順とは別）。
         color: colorByKey.get(key),
         mark: markByKey.get(key),
@@ -149,7 +155,7 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
       if (context !== undefined) map.set(key, context);
     }
     return map;
-  }, [analyzer, members, namedByKey, colorByKey, markByKey]);
+  }, [analyzer, members, namedByKey, colorByKey, markByKey, catalog.userLayouts]);
 
   // 条件の要約は、共通の条件と、対象ごとに違う条件（Setupの上書き）に分けて出す。
   const conditionSummary = useMemo(

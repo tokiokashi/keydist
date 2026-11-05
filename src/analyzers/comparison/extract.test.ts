@@ -91,6 +91,8 @@ test('computeComparisonRowValues: interpretation/metrics.tsを同条件で直接
     perCharUnits: directMetrics.perCharUnits,
     perCharSteps: directMetrics.perCharSteps,
     perCharPresses: directMetrics.perCharPresses,
+    perActionPresses: directMetrics.perActionPresses,
+    perPressUnits: directMetrics.perPressUnits,
     singleTapLayerRate: directMetrics.singleTapLayerRate,
     singleTapRate: directMetrics.singleTapRate,
     singleKeyRate: directMetrics.singleKeyRate,

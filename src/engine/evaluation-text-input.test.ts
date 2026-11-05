@@ -247,7 +247,7 @@ test('範囲を広げると、ローマ字配列は「」・と『』を打ち�
   const oonishi = measure('oonishi', text, 'ja', true);
   assert.equal(oonishi.trace.skipped, 6);
   // TK音直入力法は / のキーだけを持つ
-  const custom = measure('oonishi-custom', text, 'ja', true);
+  const custom = measure('tk-onchoku', text, 'ja', true);
   assert.equal(custom.trace.skipped, 5);
 });
 

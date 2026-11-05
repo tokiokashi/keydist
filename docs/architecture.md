@@ -130,7 +130,7 @@ Traceは同じまま数値の定義を変える項目（解釈）のうち、今
 保存したWorkspaceを開き、Analyzerをペインとして並べる器。個別画面と同じAnalyzerのcomponent（`hosts/shared/panes/`）を載せる。
 
 - **Single（対象を1つ見るAnalyzer）の配線はAnalyzerごとに持たない。** ペイン（`hosts/shared/panes/SingleAnalyzerPane.tsx`）・個別画面（`hosts/standalone/SingleAnalyzerStandalonePage.tsx`、組み立ては`app/standalone/StandaloneSingleAnalyzerApp.tsx`）・Workspaceのペイン（`hosts/workspace/panes/SingleAnalyzerWorkspacePane.tsx`）は、Analyzerの`definition.tsx`がexportする`SingleAnalyzerPaneParts`（`analyzers/pane-parts.tsx`）を引数に取る。Singleを足す時に書くのは、`definition.tsx`、`analyzer-registry.ts`と`single-analyzers.ts`に1行ずつ、個別画面のroute（`routes/analyzer.<id>.tsx`。`StandaloneSingleAnalyzerApp`に渡すだけ）、`app/standalone/engine-worker.ts`への登録。本体（`Body`）にはどのSingleにも同じprops（`SingleBodyProps`）を渡し、使わないものは受け取らない。例外は、省略できる宣言を持つAnalyzerにだけ渡す項目で、`keyDetailsOf`（宣言すると`keySelection`を渡す）と`standaloneSetTargets`（宣言すると、単体の画面でだけ`setTargets`と、集合を選ぶ操作の`setTargetPicker`を渡す。下の「個別画面どうしで共有する対象」）がある。Workspaceのペインは`setTargets`を渡さず、本体は1つの図を出す
-- **Multi（対象の集合を見るAnalyzer。比較表・指ごとの比較・N感度・Run Chart・文節ごとの統計）の配線もAnalyzerごとに持たない。** ペイン（`hosts/shared/panes/SetAnalyzerPane.tsx`）・個別画面（`hosts/standalone/SetAnalyzerStandalonePage.tsx`、組み立ては`app/standalone/StandaloneSetAnalyzerApp.tsx`）・Workspaceのペイン（`hosts/workspace/panes/SetAnalyzerWorkspacePane.tsx`）は、Analyzerの`definition.tsx`がexportする`SetAnalyzerPaneParts`（`analyzers/pane-parts.tsx`）を引数に取る。Singleとは対象の形（集合・色・基準）と本体のpropsが違うので、別の型にしている。Multiを足す時に書くのは、`definition.tsx`、`analyzer-registry.ts`と`set-analyzers.ts`に1行ずつ（足し忘れは`set-analyzers.test.ts`が落とす）、個別画面のroute（`routes/analyzer.<id>.tsx`。`StandaloneSetAnalyzerApp`に渡すだけ）、`app/standalone/engine-worker.ts`の`set:`への登録
+- **Multi（対象の集合を見るAnalyzer。比較表・指ごとの比較・N感度・Run Chart・文節ごとの統計・散布図）の配線もAnalyzerごとに持たない。** ペイン（`hosts/shared/panes/SetAnalyzerPane.tsx`）・個別画面（`hosts/standalone/SetAnalyzerStandalonePage.tsx`、組み立ては`app/standalone/StandaloneSetAnalyzerApp.tsx`）・Workspaceのペイン（`hosts/workspace/panes/SetAnalyzerWorkspacePane.tsx`）は、Analyzerの`definition.tsx`がexportする`SetAnalyzerPaneParts`（`analyzers/pane-parts.tsx`）を引数に取る。Singleとは対象の形（集合・色・基準）と本体のpropsが違うので、別の型にしている。Multiを足す時に書くのは、`definition.tsx`、`analyzer-registry.ts`と`set-analyzers.ts`に1行ずつ（足し忘れは`set-analyzers.test.ts`が落とす）、個別画面のroute（`routes/analyzer.<id>.tsx`。`StandaloneSetAnalyzerApp`に渡すだけ）、`app/standalone/engine-worker.ts`の`set:`への登録
   - 本体（`Body`）にはどのMultiにも同じprops（`SetBodyProps`）を渡し、使わないものは受け取らない。基準を選ぶ部品（`TargetItem`）を持つ定義にだけ、ホストが対象の選択へ基準の選択を差し込む。共有リンクには基準を持たないAnalyzerでも載せる
   - 行ごとの文脈（表示名・色・解決した配列名など）はホストが集合に対して決めた値を`SetRowSource`で定義の`rowContext`へ渡し、定義が本体向けの形にする。ホストはAnalyzer固有の値を知らない
   - 条件の要約・条件の編集・対象の名前の作り分けから除く項目は、定義の`conditionExcludeIds`に挙げる（N感度が振るN）
@@ -308,6 +308,16 @@ Workspaceで並べたペインは、同じキー（Analyzerと見る量。例: `
 - **評価に渡すテキストを抽出が読む**ので、集合のメンバー（`AnalyzerSetMember`）が `text` を持つ。追加のTraceは依頼しない
 - 評価に渡すテキストが対象ごとに違う時は、テキストの表と上位の一覧の行を、区切りが渡された最初の対象のテキストから求める。各対象の値とセルは、その対象自身のテキストで求め（行の文字列を自分のテキストから引く）、テキストが違う対象があれば画面に知らせる
 
+### 散布図（比較表の2列の関係）
+
+比較表の列から2つを軸に取り、配列・Setupごとの点で関係を描くMulti（`analyzers/scatter/`）。値は比較表と同じ列で、新しい指標は作らない。点はテキスト全体を打った時の値。
+
+- **軸の値は比較表の列と共有する。** 列の値の計算（`analyzers/comparison-column-values.ts`の`computeComparisonRowValues`）と、列の名前・説明・表示形式（`analyzers/comparison-column-text.ts`）は`analyzers/`直下に置き、比較表と散布図が読む（Analyzerどうしは互いをimportできない）。抽出（`scatter/extract.ts`）は全列の値と入力文字数を行に持ち、組み合わせや軸の選択は解析設定（`affects: 'view'`）で、変えても抽出し直さない
+- **等位線は`scatter/axes.ts`。** 6つの恒等式（距離 = 動作数 × u/打鍵、押下 = 動作数 × 押下数/動作、距離 = 押下数 × u/押下、u/打鍵 = 押下数/動作 × u/押下、同指 = 動作数 × 同指率 / 100、同じ手の続きの割合 = 同じ手の続き / (手の切り替え + 同じ手の続き) × 100）を、3つの量のどれを求めるかを選べる形で持つ。軸の2列が恒等式の2つの量（入力文字数倍の置き換えを含む）に当たる時だけ、残る量が一定になる線を引く。残る量に総数と1文字あたりの2列がある時は、軸に1文字あたりの列が1つでもあれば1文字あたり、無ければ総数の列を使う。総数の列だけの量（同指）は、軸に1文字あたりの列がある時は比較表に列が無いので引かない。1文字あたりの列だけの量（押下）は、軸が両方とも総数の形の時は比較表に列が無いので引かない。入力文字数倍の関係にある2列（動作数と動作数/文字、距離とu/文字）と同じ列は軸に選べない。分母が0の点では等位線の値を出さない。入力文字数は集合の全部の対象で同じ（同じテキストを使い、配列に依る前処理は1文字を1文字に直すだけ）なので、1つの値で換算する
+- **座標は`scatter/plot-model.ts`（純粋）。** 軸の範囲は点の値の範囲に余白を足した範囲（0を含めることは強制しない）。等位線の値は図の範囲で切りのよい値を数本選び、各線を横軸に沿って標本化して図の外を切る。点の名前は、右・左・上・下の順に、他の名前・点・図の外と重ならない場所へ置く
+- **点は配列の種類（`layoutKind`の`kana`/`alpha`）で色と形に分ける**（`scatter/kinds.ts`）。種類の色は`theme.css`の`--kind-color-kana`・`--kind-color-alpha`で、対象の色（`--target-color-N`）のどれとも別の色にする（`ui/theme/kind-colors.test.ts`が背景とのコントラストと対象の色との距離を検査する）。形は対象の印の形のうち2つを使い、対象の色と印は点に付けない。種類は、ホストが行ごとに渡す配列の見出し（`SetRowHeader.layoutKind`）から読む
+- **組み合わせを変えた時の点の動きは、`prefers-reduced-motion`の時は付けない。** 集合の基準は使わない
+
 ### 条件の要約
 
 - 閉じた状態は1行。変えた項目の先頭2件（項目の定義順）と「他N件」を出す。何も変えていなければ「すべて既定値」
@@ -324,7 +334,7 @@ Workspaceで並べたペインは、同じキー（Analyzerと見る量。例: `
 - モーダルの見出しの「すべて既定値に戻す」は、モーダルに行がある項目の全体の上書きと、対象が配列・Setupの時はその配列の上書きを、1コマンドで消す（行の無い項目、他の配列・Setupの上書きは消さない。配列の上書きだけがある時も押せる。元に戻すの1回で全部戻る）。Workspaceのペインでは「Workspaceの変更をすべて戻す」で、Workspaceの上書きだけを消す（全体と今の配列の上書きは、単体ページや他のWorkspaceにも入るので消さない）
 - Workspaceのレベルの値は、変えた項目として数える（出どころは「Workspaceで変更」）。比較表・N感度の共通の行は、全体の値にWorkspaceの値を重ねた値で、出どころもそのレベル。同じ配列・Setupでも、Workspaceが違えば数値が変わるので、出どころは必ず出す
 - 個別画面とWorkspaceで同じ部品を使う（`hosts/shared/ConditionSummary.tsx`）
-- 複数の対象を持つペイン（比較表・指ごとの比較・N感度・Run Chart・文節ごとの統計）は、**共通の条件 + 差のある対象だけ**を出す。単一の対象のペインは変えない
+- 複数の対象を持つペイン（比較表・指ごとの比較・N感度・Run Chart・文節ごとの統計・散布図）は、**共通の条件 + 差のある対象だけ**を出す。単一の対象のペインは変えない
   - 共通の行は**この画面で効く値**（対象ごとの上書きも、配列・物理配列ごとの既定も受けない時の値。全体のレベルの値、それも無ければ項目の既定値。指の割当は列固定）。対象の並びに依らず、最初の対象の値を共通として採らない。閉じた1行はこの共通の行だけを、上と同じ規則で数える。効く値が共通の行と違う対象があれば、末尾に「対象ごとに差あり」を添える
   - モーダルの中で、共通の行（出どころ付き）の下に「対象ごとの差」の節を置き、**効く値が共通の行と違う対象だけ**を、違う項目だけで並べる（例: 共通「ローマ字規則 訓令式（既定値）」に対し `大西配列: ローマ字規則=大西式`。全体をAZIKにしても大西配列は大西式のままなので、共通「AZIK（全体）」に対して差に出る）。全対象が共通の行と同じなら節を出さない。全対象が同じ値へ上書きしても、共通の行は画面の値のまま、全対象が差に出る。その項目が効かない対象は数えない
   - ペインが自分で掃引する項目（N感度の先読みN）は、共通の条件にも差にも出さない
@@ -367,7 +377,7 @@ Workspaceで並べたペインは、同じキー（Analyzerと見る量。例: `
 - **パレットの色の値は、明暗で切り替える。** 番号ごとに色相は明暗で同じで、明度だけが違う（値は `theme.css` の `--target-color-N`、番号から引くのは `ui/theme/target-colors.ts`）。「1色で明暗どちらの `--bg`・`--surface` にも3以上」を前提にしない。盛り上げた面・沈めた面（`--surface-raised`・`--surface-subtle`・`--surface-muted`）まで含めると、明暗共通の1色では距離を保った12色が取れないため。引いた値は `var(--target-color-N)` で、JSでhexとして読まない。SVGへは `style` で渡す
 - **Workspaceでは画面全体（全ペインの対象の和）を1つの集合として色を配る。** 同じ画面では、同じ対象はどのペインでも同じ色になる
   - 色の番号は対象ごとに1つで、Workspaceが持つ（`Workspace.colorSlots`。純粋な部分は `engine/workspace-colors.ts`）。集合を持つ組・固定のペインは番号を持たない。個別画面の集合は、ペインが1枚なのでペインの集合＝画面の集合で、番号を集合に持つ
-  - 色だけに頼らない手がかり（点の形と線種。`ui/theme/target-marks.ts`）は、色の番号から決める（番号が同じなら、どのペインでも同じ形・線種）。形6種×実線・破線で、色の12番と1対1に対応する。N感度の線・点・凡例と、対象の選択の色見本に出る。比較表の行は名前の文字で区別するので色を使わない
+  - 色だけに頼らない手がかり（点の形と線種。`ui/theme/target-marks.ts`）は、色の番号から決める（番号が同じなら、どのペインでも同じ形・線種）。形6種×実線・破線で、色の12番と1対1に対応する。N感度の線・点・凡例と、対象の選択の色見本に出る。比較表の行は名前の文字で区別するので色を使わない。散布図は対象の色と印を使わず、点を配列の種類（かな配列・英字の配列）で分ける別の2色と2つの形で描く（上の「散布図」）
   - 配るのは、組・ペインの対象が変わりうる書き込みの後（`updateWorkspace` が毎回通す）。和に残る対象は今の番号のまま、新しく和に入った対象にだけ加えた順（組 → 固定のペイン、それぞれ並び順）で配る
   - 別のペインにも居る対象は、片方のペインから外しても色を失わない。ペインを閉じた時も同じで、そのペインだけに居た対象の番号が空き、次に加えた対象が使う
   - Workspaceを作る時は、個別画面の集合で配っていた番号を引き継ぐ（見ていた対象の色が変わらないように）
@@ -387,7 +397,7 @@ Workspaceで並べたペインは、同じキー（Analyzerと見る量。例: `
     - 適用範囲を選び直した時と、行が開閉する時は、短い動きで切り替える。`prefers-reduced-motion`の時は動きを省く。
 - **URL**: 個別画面は `/analyzer/<analyzer>`。URLで固定された1ペインで、URLはペインの初期値（対象・解析設定）を運ぶ。3つの単体ページの「共有」は、対象と解析設定をURLに載せ、開いた側が取り込む（`hosts/standalone/use-shared-link.ts`が解析設定と対象を1つのコマンドにまとめて書くので、Undo 1回で戻る。読み書きの純粋な部分は`target-share.ts`）。
   - **対象の載せ方**: 組み込みの配列は id（`layout:<id>`）で載せ、受け取った側でそのまま開く。自作の配列・Setup は名前だけ（`user-layout:<名前>` / `setup:<名前>`。Setup は付けたラベル、無ければ「配列名/物理配列名」）で載せる。端末ごとの id は運ばない。受け取った側に同じ名前が無ければ、名前を添えて「見つからなかった」と示す（同じ名前が複数ある時は一覧の先頭）
-  - **画面ごと**: Single（Bigram Flow）は `target`、Multi（比較表・N感度・Run Chart）は `targets`（対象ごとに繰り返す。並び順ごと運ぶ。色の番号は運ばず、受け取った側で配る。元から持っていた対象の色は持ち越し、新しい対象にだけ配る）と `baseline`（効いている基準だけ。比較表の基準は集合の値の一部で、受け取った側で見え方が変わるため、基準を使わないN感度のリンクにも載せる）
+  - **画面ごと**: Single（Bigram Flow）は `target`、Multi（比較表・N感度・Run Chart・散布図）は `targets`（対象ごとに繰り返す。並び順ごと運ぶ。色の番号は運ばず、受け取った側で配る。元から持っていた対象の色は持ち越し、新しい対象にだけ配る）と `baseline`（効いている基準だけ。比較表の基準は集合の値の一部で、受け取った側で見え方が変わるため、基準を使わないN感度のリンクにも載せる）
   - **取り込み**: 資産の読み込み後に1回だけ、手持ちで引けた対象でその画面の対象（Single / Multiの集合と基準）を置き換える。1操作なのでUndoで受け取る前へ戻る。1つも引けなければ今の対象を変えない。取り込んだらURLから消す
   - 外から来る値なので、資産と同じcodecの境界（valibot）を通し、対象は40件まで・1件200文字までに絞る（共有リンクのサイズ上限）
   - 取り込めなかったものは、保存済みの設定の読み直し（「既定値へ戻した」）とは別の文でペインに出す（`PaneFrame`の`linkNotices`）。URLでは、集合の要素を落とした時は残りを取り込み、値全体を捨てた時は今の値が残るので、どちらにも当てはまる「取り込まなかった」と書く。
@@ -439,6 +449,7 @@ src/
     contract.ts      Analyzerの契約のうち純粋な部分（抽出・解析設定・Traceを依頼する窓口の型）
     pane-parts.tsx   ペインに渡すものの型（名前・短い説明・本体・解析設定・差し込む項目・既定値）。Reactの型を使うので.tsx
     chart-frame.ts   位置を横軸にとる折れ線の寸法と座標の変換。打鍵再生の速度グラフとRun Chartが共有する純粋な計算
+    comparison-column-text.ts / comparison-column-values.ts  比較表の列の名前・説明・表示形式と、列の値の計算。比較表と散布図が共有する
     metric-labels.ts  複数のAnalyzerが縦軸に描く指標のうち、名前と単位が同じ指標の表示の文字
     segmentation-text.ts  文節の区切りの出どころと分割器を示す文面。区切りを使うAnalyzer（Run Chart・文節ごとの統計）が共有する
     key-detail-view.ts  キーの詳細を画面に出す文字列と並び（ツールチップ・小窓の表・入力方法の面ごとの分け方）。図と小窓が共有する純粋な変換

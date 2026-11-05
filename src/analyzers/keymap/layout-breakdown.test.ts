@@ -45,18 +45,18 @@ function measure(layoutId: string, language: 'ja' | 'en') {
 }
 
 test('コンボ表のコンボ定義の行数は、Traceのコンボ定義数と一致する。英文ではローマ字のコンボが外れる', () => {
-  const ja = measure('oonishi-custom', 'ja');
+  const ja = measure('tk-onchoku', 'ja');
   assert.equal(ja.trace.comboDefinitions, 76);
   assert.equal(comboRows(ja.input.layout, undefined).length, ja.trace.comboDefinitions);
 
-  const en = measure('oonishi-custom', 'en');
+  const en = measure('tk-onchoku', 'en');
   assert.equal(en.trace.comboDefinitions, 0);
   assert.equal(comboRows(en.input.layout, undefined).length, 0);
   assert.equal(comboDiagramItems(en.input.layout, undefined).length, 0);
 });
 
 test('コンボ定義の配列図は、同じ組・同じ押し方のコンボを1枚にまとめる', () => {
-  const { input } = measure('oonishi-custom', 'ja');
+  const { input } = measure('tk-onchoku', 'ja');
   const items = comboDiagramItems(input.layout, undefined);
   assert.equal(items.length, 11);
   const first = comboRows(input.layout, undefined)[0]!;

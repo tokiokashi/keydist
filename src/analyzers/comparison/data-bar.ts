@@ -1,4 +1,4 @@
-import type { ComparisonColumnId } from './column-text.ts';
+import type { ComparisonColumnId } from '../comparison-column-text.ts';
 
 /**
  * 比較表の数値セルに敷くバーの長さ。バーは値の大きさだけを表し、良し悪しや順位は表さない。
@@ -19,6 +19,8 @@ export const COMPARISON_BAR_SCALE: Readonly<Record<ComparisonColumnId, Compariso
   perCharUnits: 'zero',
   perCharSteps: 'zero',
   perCharPresses: 'zero',
+  perActionPresses: 'zero',
+  perPressUnits: 'zero',
   // 割合（%）と回数。0は「該当が無い」。
   singleTapLayerRate: 'zero',
   singleTapRate: 'zero',

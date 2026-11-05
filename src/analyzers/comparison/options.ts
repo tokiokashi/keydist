@@ -8,18 +8,18 @@ import {
   stringSetUrlCodec,
   type OptionUrlCodec,
 } from '#analyzers/options.ts';
-import { COMPARISON_COLUMN_IDS, COMPARISON_COLUMN_TEXT, type ComparisonColumnId } from './column-text.ts';
+import { COMPARISON_COLUMN_FORMAT, COMPARISON_COLUMN_IDS, COMPARISON_COLUMN_TEXT, type ComparisonColumnId } from '../comparison-column-text.ts';
 
-export { COMPARISON_COLUMN_IDS, COMPARISON_UNIT_NOTE, type ComparisonColumnId } from './column-text.ts';
+export { COMPARISON_COLUMN_IDS, COMPARISON_UNIT_NOTE, type ComparisonColumnId } from '../comparison-column-text.ts';
 
 /**
  * 比較表Analyzerの列。
  *
- * 並べる列は26列。列の値は`extract.ts`の`computeComparisonRowValues`が、`interpretation/metrics.ts`の
+ * 並べる列は28列。列の値は`analyzers/comparison-column-values.ts`の`computeComparisonRowValues`が、`interpretation/metrics.ts`の
  * `computeMetrics`が返す`Metrics`と`Trace`から読み出すだけの写像で（Bigramの組の種類数の2列とHand Rhythmの9列だけが`Trace`から数える）、
  * 独自の派生指標・合成スコアは作らない
  * （AGENTS.md「優劣の判定・順位付け・合成スコアを作らない」）。
- * 列の名前と説明は`column-text.ts`（見出しのⓘから開く説明も読むため分けてある）。
+ * 列の名前・説明・表示形式は`analyzers/comparison-column-text.ts`（見出しのⓘから開く説明と散布図も読むため分けてある）。
  */
 
 /**
@@ -27,7 +27,7 @@ export { COMPARISON_COLUMN_IDS, COMPARISON_UNIT_NOTE, type ComparisonColumnId } 
  *
  * **率（rate）は率として読める表示にする**（個数・距離の列に小数第1位+%を
  * 付けたり、率の列を整数で丸めて情報を削ったりしない）。列の値の式自体は
- * `extract.ts`の`computeComparisonRowValues`が持ち、ここは表示の丸めだけを持つ
+ * `computeComparisonRowValues`が持ち、ここは表示の丸めだけを持つ
  * （値そのものを変えない）。
  */
 export interface ComparisonColumnDef {
@@ -39,119 +39,9 @@ export interface ComparisonColumnDef {
   readonly format: (value: number) => string;
 }
 
-const fixed =
-  (digits: number) =>
-  (value: number): string =>
-    value.toFixed(digits);
-const percent = (value: number): string => `${value.toFixed(1)}%`;
-const count = (value: number): string => `${value}`;
-
-export const COMPARISON_COLUMNS: Readonly<Record<ComparisonColumnId, ComparisonColumnDef>> = {
-  actions: {
-    ...COMPARISON_COLUMN_TEXT.actions,
-    format: count,
-  },
-  totalUnits: {
-    ...COMPARISON_COLUMN_TEXT.totalUnits,
-    format: fixed(0),
-  },
-  meanPerStroke: {
-    ...COMPARISON_COLUMN_TEXT.meanPerStroke,
-    format: fixed(3),
-  },
-  perCharUnits: {
-    ...COMPARISON_COLUMN_TEXT.perCharUnits,
-    format: fixed(3),
-  },
-  perCharSteps: {
-    ...COMPARISON_COLUMN_TEXT.perCharSteps,
-    format: fixed(3),
-  },
-  perCharPresses: {
-    ...COMPARISON_COLUMN_TEXT.perCharPresses,
-    format: fixed(3),
-  },
-  singleTapLayerRate: {
-    ...COMPARISON_COLUMN_TEXT.singleTapLayerRate,
-    format: percent,
-  },
-  singleTapRate: {
-    ...COMPARISON_COLUMN_TEXT.singleTapRate,
-    format: percent,
-  },
-  singleKeyRate: {
-    ...COMPARISON_COLUMN_TEXT.singleKeyRate,
-    format: percent,
-  },
-  sameFinger: {
-    ...COMPARISON_COLUMN_TEXT.sameFinger,
-    format: count,
-  },
-  sameFingerRate: {
-    ...COMPARISON_COLUMN_TEXT.sameFingerRate,
-    format: percent,
-  },
-  adjacentMean: {
-    ...COMPARISON_COLUMN_TEXT.adjacentMean,
-    format: fixed(3),
-  },
-  adjacentStdDev: {
-    ...COMPARISON_COLUMN_TEXT.adjacentStdDev,
-    format: fixed(3),
-  },
-  rightHandDistanceShare: {
-    ...COMPARISON_COLUMN_TEXT.rightHandDistanceShare,
-    format: percent,
-  },
-  rightHandPressShare: {
-    ...COMPARISON_COLUMN_TEXT.rightHandPressShare,
-    format: percent,
-  },
-  physicalBigramCombinations: {
-    ...COMPARISON_COLUMN_TEXT.physicalBigramCombinations,
-    format: count,
-  },
-  logicalBigramCombinations: {
-    ...COMPARISON_COLUMN_TEXT.logicalBigramCombinations,
-    format: count,
-  },
-  alternationCoverage: {
-    ...COMPARISON_COLUMN_TEXT.alternationCoverage,
-    format: percent,
-  },
-  sameHandContinuationRate: {
-    ...COMPARISON_COLUMN_TEXT.sameHandContinuationRate,
-    format: percent,
-  },
-  handSwitches: {
-    ...COMPARISON_COLUMN_TEXT.handSwitches,
-    format: count,
-  },
-  handContinuations: {
-    ...COMPARISON_COLUMN_TEXT.handContinuations,
-    format: count,
-  },
-  bothHandPairShare: {
-    ...COMPARISON_COLUMN_TEXT.bothHandPairShare,
-    format: percent,
-  },
-  bothHandStrokes: {
-    ...COMPARISON_COLUMN_TEXT.bothHandStrokes,
-    format: count,
-  },
-  alternationRuns: {
-    ...COMPARISON_COLUMN_TEXT.alternationRuns,
-    format: count,
-  },
-  alternationMeanLength: {
-    ...COMPARISON_COLUMN_TEXT.alternationMeanLength,
-    format: fixed(2),
-  },
-  alternationMaxLength: {
-    ...COMPARISON_COLUMN_TEXT.alternationMaxLength,
-    format: count,
-  },
-} as const;
+export const COMPARISON_COLUMNS: Readonly<Record<ComparisonColumnId, ComparisonColumnDef>> = Object.fromEntries(
+  COMPARISON_COLUMN_IDS.map((id) => [id, { ...COMPARISON_COLUMN_TEXT[id], format: COMPARISON_COLUMN_FORMAT[id] }]),
+) as Record<ComparisonColumnId, ComparisonColumnDef>;
 
 function isComparisonColumnId(value: string): value is ComparisonColumnId {
   return (COMPARISON_COLUMN_IDS as readonly string[]).includes(value);

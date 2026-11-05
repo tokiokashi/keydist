@@ -483,7 +483,7 @@ test('最長一致は後続の文字を食い過ぎない', () => {
 });
 
 test('ヤ行コンボは拗音の内部だけで発火し、単独ヤ行を奪わない', () => {
-  const combo = LAYOUT_BY_ID.get('oonishi-custom')!;
+  const combo = LAYOUT_BY_ID.get('tk-onchoku')!;
   const cases: [string, string[]][] = [
     ['やく', ['y', 'aku']],
     ['やま', ['y', 'a', 'm', 'a']],
@@ -810,7 +810,7 @@ test('コンボ枠に計上するFace compositionの出力は、定義数B・命
 });
 
 test('selectionIndexは入力の選択ごとに振り、同じ入力単位でも別の選択なら別の値になる', () => {
-  const combo = LAYOUT_BY_ID.get('oonishi-custom')!;
+  const combo = LAYOUT_BY_ID.get('tk-onchoku')!;
   const kyou = generateTrace('きょう', combo, geometry, opts());
   assert.deepEqual(
     kyou.strokes.map((stroke) => stroke.char),
@@ -876,7 +876,7 @@ test('ローマ字配列: 促音を含む綴りの単位は、促音とその次
 });
 
 test('コンボが2つの綴りの単位にまたがる時、範囲は両方の単位を覆う。ΔIが負になる所は0にする', () => {
-  const combo = withRomaji(LAYOUT_BY_ID.get('oonishi-custom')!, kunrei());
+  const combo = withRomaji(LAYOUT_BY_ID.get('tk-onchoku')!, kunrei());
   const trace = generateTrace('きょう', combo, geometry, opts());
   assert.deepEqual(
     trace.strokes.map((stroke) => stroke.char),

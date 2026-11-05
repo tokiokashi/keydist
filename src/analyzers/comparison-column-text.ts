@@ -1,7 +1,8 @@
 /**
- * 比較表の列の名前と説明。列の定義（`options.ts`）と、見出しのⓘから開く説明（`pane-meta.ts`）の両方が読む。
+ * 比較表の列の名前・説明・表示形式。比較表の列の定義（`comparison/options.ts`）と、見出しのⓘから開く説明（`comparison/pane-meta.ts`）に加え、
+ * 同じ列を軸に取る散布図（`scatter/`）が読む。Analyzerどうしは互いをimportできないので、`analyzers/`直下に置く。
  *
- * `options.ts`から分けて置くのは、`pane-meta.ts`がReactにもCSSにもvalibotにも依存させないため
+ * 解析設定の定義（`options.ts`）から分けて置くのは、`pane-meta.ts`がReactにもCSSにもvalibotにも依存させないため
  * （routeの`<title>`やサイドバーが名前を読むだけで、解析設定の定義が初期読み込みに入らないようにする）。
  * 列の説明は、指標の定義（spec §11）とREADMEの「出力」の言い方に合わせ、内部の語を使わない。
  */
@@ -12,6 +13,8 @@ export const COMPARISON_COLUMN_IDS = [
   'perCharUnits',
   'perCharSteps',
   'perCharPresses',
+  'perActionPresses',
+  'perPressUnits',
   'singleTapLayerRate',
   'singleTapRate',
   'singleKeyRate',
@@ -72,8 +75,16 @@ export const COMPARISON_COLUMN_TEXT: Readonly<Record<ComparisonColumnId, Compari
     description: '入力1文字あたりのアクション数。コンボなどでまとめて打つほど小さくなります。',
   },
   perCharPresses: {
-    label: '押下/文字',
+    label: '押下数/文字',
     description: '入力1文字あたりのキーを押す回数。コンボでまとめても減りません。',
+  },
+  perActionPresses: {
+    label: '押下数/動作',
+    description: '1アクションで押すキーの数。コンボや同時押しでまとめて打つほど大きくなります。',
+  },
+  perPressUnits: {
+    label: 'u/押下',
+    description: '1回の押下あたりの移動距離（u/押下）。距離が0の押下（ホームキーや親指キー）も数に入れます。',
   },
   singleTapLayerRate: {
     label: '単打面率',
@@ -161,3 +172,46 @@ export const COMPARISON_COLUMN_TEXT: Readonly<Record<ComparisonColumnId, Compari
     description: '交互打鍵の連続のうち、最も長いものの打鍵数。連続が1件も無い時は値がありません。',
   },
 } as const;
+
+const fixed =
+  (digits: number) =>
+  (value: number): string =>
+    value.toFixed(digits);
+const percent = (value: number): string => `${value.toFixed(1)}%`;
+const count = (value: number): string => `${value}`;
+
+/**
+ * 列ごとの表示形式（一律ルールではなく列の宣言に持たせる）。値をそのまま渡すと表示用の文字列を返す。
+ * **率（rate）は率として読める表示にする**（個数・距離の列に小数第1位+%を付けたり、率の列を整数で丸めて情報を削ったりしない）。
+ * 丸め・%表記はここに閉じ、値そのものは変えない。
+ */
+export const COMPARISON_COLUMN_FORMAT: Readonly<Record<ComparisonColumnId, (value: number) => string>> = {
+  actions: count,
+  totalUnits: fixed(0),
+  meanPerStroke: fixed(3),
+  perCharUnits: fixed(3),
+  perCharSteps: fixed(3),
+  perCharPresses: fixed(3),
+  perActionPresses: fixed(3),
+  perPressUnits: fixed(3),
+  singleTapLayerRate: percent,
+  singleTapRate: percent,
+  singleKeyRate: percent,
+  sameFinger: count,
+  sameFingerRate: percent,
+  adjacentMean: fixed(3),
+  adjacentStdDev: fixed(3),
+  rightHandDistanceShare: percent,
+  rightHandPressShare: percent,
+  physicalBigramCombinations: count,
+  logicalBigramCombinations: count,
+  alternationCoverage: percent,
+  sameHandContinuationRate: percent,
+  handSwitches: count,
+  handContinuations: count,
+  bothHandPairShare: percent,
+  bothHandStrokes: count,
+  alternationRuns: count,
+  alternationMeanLength: fixed(2),
+  alternationMaxLength: count,
+};

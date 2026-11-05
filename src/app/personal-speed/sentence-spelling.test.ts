@@ -218,7 +218,7 @@ test('別の綴りで打ち始めたかなは、次に打つキー・この後�
 });
 
 test('ローマ字だけで成立するコンボを持つ配列（TK音直入力法）と、まとめた綴りを持つ規則（AZIK）は、規則の綴りだけを受け付ける', () => {
-  const tk = planOf('しゃしんです', { layoutId: 'oonishi-custom' });
+  const tk = planOf('しゃしんです', { layoutId: 'tk-onchoku' });
   assert.equal(tk.result.spelling, undefined);
   assert.ok(tk.plan.units.every((unit) => unit.spellings.length === 1));
   assert.ok(type(tk.plan, 'shasin').kinds.includes('wrong-key'));

@@ -215,9 +215,9 @@ const ALPHA: Layout[] = [
   // コンボはどれもromajiOnly（仕様 §4.3）。かなから展開した綴りの区間はコンボ込み、英文や英字の区間は単打配置だけで打つ。
   withAliases(
     withCombos(
-      'oonishi-custom',
+      'tk-onchoku',
       'TK音直入力法',
-      withShiftedOutputs(fromRows('oonishi-custom', 'TK音直入力法', ['1234567890', 'qlu,.fwryp', 'eiao-ktnsh', 'xjcv/gdmzb'])),
+      withShiftedOutputs(fromRows('tk-onchoku', 'TK音直入力法', ['1234567890', 'qlu,.fwryp', 'eiao-ktnsh', 'xjcv/gdmzb'])),
       CUSTOM_COMBOS,
     ),
     ['てぃーけーおんちょくにゅうりょくほう', 'てぃーけー', 'tk'],
@@ -238,14 +238,15 @@ export const LAYOUTS: Layout[] = ALPHA.map(withoutRomajiOnlyCombos);
  * 最終形はどちらも打鍵ステップ列なので、同じテキストで比較できる。
  */
 export const LAYOUTS_JA: Layout[] = [
-  // とみすけ配列は作者が勧める綴り（シャ行sh）で打つ。ほかの配列は訓令式
-  ...ALPHA.filter((l) => l.id.startsWith('oonishi') === false).map((l) =>
+  // とみすけ配列は作者が勧める綴り（シャ行sh）で打つ。ほかの配列は訓令式。
+  // 大西配列とTK音直入力法は綴りの理由を添えて下で個別に足す
+  ...ALPHA.filter((l) => l.id !== 'oonishi' && l.id !== 'tk-onchoku').map((l) =>
     withRomaji(l, l.id === 'tomisuke' ? ROMAJI_TOMISUKE : l.id === 'seoto' ? ROMAJI_SEOTO : ROMAJI),
   ),
   // 大西配列は公式が前提とする綴り（シャ行sh / じji / じゃ行j）で打つ
   withRomaji(ALPHA_BY_ID.get('oonishi')!, ROMAJI_OONISHI),
   // TK音直入力法のコンボは訓令式（sya / zya）の綴りを前提に組まれている
-  withRomaji(ALPHA_BY_ID.get('oonishi-custom')!, ROMAJI),
+  withRomaji(ALPHA_BY_ID.get('tk-onchoku')!, ROMAJI),
   NAGINATA_V18,
   NICOLA,
   SHIN_KOUME,

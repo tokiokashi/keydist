@@ -296,8 +296,8 @@ test('物理配列エラー: 指割り当てが噛み合わない自作物理配
 test('英字直接入力: TK音直入力法 + 英語テキストはromajiOnlyのコンボを持たない', () => {
   const resolve = (text: string, language: 'en' | 'ja') => {
     const result = resolveEngineInput({
-      target: { kind: 'setup', setupId: setupFor('oonishi-custom').id },
-      setups: new Map([[setupFor('oonishi-custom').id, setupFor('oonishi-custom')]]),
+      target: { kind: 'setup', setupId: setupFor('tk-onchoku').id },
+      setups: new Map([[setupFor('tk-onchoku').id, setupFor('tk-onchoku')]]),
       catalog: CATALOG,
       userLayouts: NO_USER_LAYOUTS,
       overrides: EMPTY_SETTINGS_OVERRIDES,

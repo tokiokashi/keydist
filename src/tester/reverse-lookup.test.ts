@@ -56,7 +56,7 @@ test('reverseLookupは薙刀式の複合かなをcanonical actionから逆引き
 });
 
 test('reverseLookupはTK音直の語彙comboを通常打鍵より優先する', () => {
-  const layout = LAYOUT_BY_ID.get('oonishi-custom');
+  const layout = LAYOUT_BY_ID.get('tk-onchoku');
   assert.ok(layout);
   const routes = reverseLookup(layout, 'です');
   assert.ok(routes.length > 0);
@@ -66,7 +66,7 @@ test('reverseLookupはTK音直の語彙comboを通常打鍵より優先する', 
 });
 
 test('reverseLookupはTK音直のyouon-only comboを前置子音がある場合だけ使う', () => {
-  const layout = LAYOUT_BY_ID.get('oonishi-custom');
+  const layout = LAYOUT_BY_ID.get('tk-onchoku');
   assert.ok(layout);
 
   const kya = reverseLookup(layout, 'きゃ');
@@ -80,7 +80,7 @@ test('reverseLookupはTK音直のyouon-only comboを前置子音がある場合�
 });
 
 test('reverseLookupはTK音直のコンボを英字の綴りには使わない', () => {
-  const layout = LAYOUT_BY_ID.get('oonishi-custom');
+  const layout = LAYOUT_BY_ID.get('tk-onchoku');
   assert.ok(layout);
   const top = reverseLookup(layout, 'これはwebsiteです', 1)[0];
   assert.ok(top);
@@ -95,7 +95,7 @@ test('reverseLookupはTK音直のコンボを英字の綴りには使わない',
 });
 
 test('reverseLookupはかなだけの文では句読点をまたいでもコンボを使う', () => {
-  const layout = LAYOUT_BY_ID.get('oonishi-custom');
+  const layout = LAYOUT_BY_ID.get('tk-onchoku');
   assert.ok(layout);
   const top = reverseLookup(layout, 'から、です', 1)[0];
   assert.ok(top);

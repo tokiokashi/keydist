@@ -40,6 +40,7 @@ import { browserCodeDisplayLabel, browserCodesForPhysicalKey } from './browser-k
 import {
   INPUT_CONVERTER_PREFERENCES_VERSION,
   inputConverterLayoutPreferences,
+  selectRequestedLayout,
   type InputConverterLayoutPreferencesV2,
   type InputConverterPreferencesV2,
 } from './input-converter-preferences.ts';
@@ -73,10 +74,10 @@ import { useTypingSession } from './use-typing-session.ts';
 const DIRECT_JA_INPUT_LAYOUTS = LAYOUTS_JA.filter((layout) => layout.romajiTable === undefined);
 // TK音直入力法はコンボ込みで打つので、英文向けの実体（コンボを外した形）ではなく
 // ローマ字表付きの実体を出す。idは言語によらず同じ。
-const TK_DIRECT_JA_LAYOUT = LAYOUTS_JA.find((layout) => layout.id === 'oonishi-custom');
+const TK_DIRECT_JA_LAYOUT = LAYOUTS_JA.find((layout) => layout.id === 'tk-onchoku');
 
 const INPUT_LAYOUTS = [
-  ...LAYOUTS.filter((layout) => layout.id !== 'oonishi-custom'),
+  ...LAYOUTS.filter((layout) => layout.id !== 'tk-onchoku'),
   ...(TK_DIRECT_JA_LAYOUT === undefined ? [] : [TK_DIRECT_JA_LAYOUT]),
   ...DIRECT_JA_INPUT_LAYOUTS,
 ];
@@ -106,6 +107,12 @@ const DEFAULT_LAYOUT_PREFERENCES: InputConverterLayoutPreferencesV2 = {
   practiceText: '',
   randomPracticeMode: null,
 };
+
+/** JISかな配列はJISの刻印を前提にするので、物理配列をJISの同じ形へ寄せる */
+function geometryIdForLayout(layoutId: string, geometryId: string): string {
+  if (layoutId !== 'jis-kana') return geometryId;
+  return isPresetGeometryKind(geometryId) ? presetGeometryKind('jis', presetGeometryTopology(geometryId)) : 'jis-row-staggered';
+}
 
 function clampSplitPercent(value: number): number {
   return Math.min(MAX_SPLIT_PERCENT, Math.max(MIN_SPLIT_PERCENT, value));
@@ -239,6 +246,13 @@ function RecognizedDetail({
 }
 
 export interface InputConverterViewProps {
+  /**
+   * 開いた時に選ぶ配列のid（URLの ?layout=）。保存した選択より優先し、選べる配列に無いidは無視する。
+   * 選んだ配列は通常の切り替えと同じく保存する。
+   */
+  requestedLayoutId?: string;
+  /** requestedLayoutId を読んだ後に一度だけ呼ぶ。URLから指定を外すために使う */
+  onRequestedLayoutConsumed?: () => void;
   /** 選べる自作の配列（ローマ字の表まで組み立て済みのもの）。組み込みの配列とidが重なるものは選択肢に出さない */
   userLayouts?: readonly Layout[];
   /**
@@ -248,7 +262,12 @@ export interface InputConverterViewProps {
   userLayoutsReady?: boolean;
 }
 
-export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYOUTS, userLayoutsReady = true }: InputConverterViewProps = {}) {
+export function InputConverterView({
+  userLayouts: userLayoutsProp = NO_USER_LAYOUTS,
+  userLayoutsReady = true,
+  requestedLayoutId,
+  onRequestedLayoutConsumed,
+}: InputConverterViewProps = {}) {
   const [layout, setLayout] = useState<Layout>(DEFAULT_INPUT_LAYOUT);
   const userLayouts = useMemo(() => {
     const builtInIds = new Set(INPUT_LAYOUTS.map((candidate) => candidate.id));
@@ -391,9 +410,10 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
   // 保存した選択の復元は、自作の配列の読み込みが終わってから一度だけ行う。
   // 読み込み前に復元すると、保存した自作の配列が選べる配列に無いものとして既定へ戻る。
   const restorePreferences = useEffectEvent(() => {
-    const restored = preferences.restoreOnce(
+    const layoutIds = selectableLayouts.map((candidate) => candidate.id);
+    const saved = preferences.restoreOnce(
       {
-        layoutIds: selectableLayouts.map((candidate) => candidate.id),
+        layoutIds,
         geometryIds: PRESET_GEOMETRY_SHAPES.map((shape) => shape.id),
       },
       {
@@ -402,7 +422,14 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
         layout: DEFAULT_LAYOUT_PREFERENCES,
       },
     );
+    const requested = selectRequestedLayout(saved, requestedLayoutId, layoutIds, DEFAULT_LAYOUT_PREFERENCES);
+    // URLで選んだ配列には、選択欄で切り替えた時と同じ物理配列の補正を掛ける
+    const restored = requested === saved ? saved : { ...requested, geometryId: geometryIdForLayout(requested.layoutId, requested.geometryId) };
     persistedPreferencesRef.current = restored;
+    // URLで選んだ配列は明示的に保存する。選んだ配列が初期状態の配列と同じだと、
+    // 状態が変わらず下の保存の副作用が走らないまま、URLから指定だけが外れるため
+    if (restored !== saved) preferences.save(restored);
+    if (requestedLayoutId !== undefined) onRequestedLayoutConsumed?.();
 
     const restoredLayout = selectableLayouts.find((candidate) => candidate.id === restored.layoutId);
     if (restoredLayout !== undefined) setLayout(restoredLayout);
@@ -457,10 +484,7 @@ export function InputConverterView({ userLayouts: userLayoutsProp = NO_USER_LAYO
   }, [layout.id, geometryId, layerKeyNaming, layoutPreferences, preferences]);
 
   const switchLayout = (nextLayout: Layout) => {
-    let nextGeometryId = geometryId;
-    if (nextLayout.id === 'jis-kana') {
-      nextGeometryId = isPresetGeometryKind(geometryId) ? presetGeometryKind('jis', presetGeometryTopology(geometryId)) : 'jis-row-staggered';
-    }
+    const nextGeometryId = geometryIdForLayout(nextLayout.id, geometryId);
 
     const current = persistedPreferencesRef.current;
     if (current !== null) {

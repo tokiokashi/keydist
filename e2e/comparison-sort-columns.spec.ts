@@ -191,7 +191,9 @@ test('列名は短くそろい、見出しのセルにⓘは置かない', async
     'u/打鍵',
     'u/文字',
     '動作数/文字',
-    '押下/文字',
+    '押下数/文字',
+    '押下数/動作',
+    'u/押下',
     '単打面率',
     '単打率',
     '1キー率',
@@ -227,11 +229,11 @@ for (const width of [1500, 390]) {
     await page.setViewportSize({ width, height: 800 });
     const table = await openComparison(page);
     const none = await headerWidths(table);
-    expect(none).toHaveLength(27);
+    expect(none).toHaveLength(29);
 
     // 全列を順に押して、押した列を含む全列の幅が3状態で1px以内で同じことを確かめる。
     const labels = (await table.locator('thead th .sort-column-button').allInnerTexts()).map((text) => text.replace(/[↑↓]/g, '').trim());
-    expect(labels).toHaveLength(26);
+    expect(labels).toHaveLength(28);
     for (const label of labels) {
       const button = sortButton(table, label);
       await button.scrollIntoViewIfNeeded();

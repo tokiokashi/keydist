@@ -111,7 +111,7 @@ test('romajiRuleId: 全体の値は推奨の無い配列に効き、出どころ
 });
 
 test('romajiRuleId: 推奨を持つ配列（大西配列・とみすけ配列・TK音直入力法）は全体を変えても推奨のまま。負けた全体は理由に残る', () => {
-  const tk = findLayout(LAYOUTS_JA, 'oonishi-custom');
+  const tk = findLayout(LAYOUTS_JA, 'tk-onchoku');
   for (const [layout, expected] of [
     [oonishiJa, 'oonishi'],
     [tomisukeJa, 'tomisuke'],
