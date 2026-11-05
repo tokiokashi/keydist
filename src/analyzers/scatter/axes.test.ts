@@ -8,11 +8,12 @@ import type { Setup } from '#input/setup/index.ts';
 import { SAMPLE_TEXTS } from '#input/text/samples.ts';
 import { COMPARISON_COLUMN_IDS, type ComparisonColumnId } from '../comparison-column-text.ts';
 import { computeComparisonRowValues, type ComparisonRowValues } from '../comparison-column-values.ts';
-import { computeTraceScalars, movedPressMetrics, rightLeftPerPressRatio } from '#interpretation/metrics.ts';
-import { ALL_FINGERS, PHYSICAL_SHAPES, type Finger, type PhysicalShape } from '#input/shapes/geometry.ts';
+import { computeTraceScalars, movedPressMetrics } from '#interpretation/metrics.ts';
+import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { Trace } from '#trace/generate.ts';
 import { convertToReading, type NotationExcess, type ReadingToken } from '#input/text/reading.ts';
-import { SCATTER_PRESET_AXES, scatterAxisProblem, scatterContour } from './axes.ts';
+import { SCATTER_PRESET_AXES, SCATTER_PRESET_IDS, isHandShareColumn, scatterAxisProblem, scatterContour } from './axes.ts';
+import { scatterPlotModel } from './plot-model.ts';
 
 /**
  * 等位線の値が、`Metrics`と`analyzeHandRhythm`の値（比較表の列）と一致することを、組み込みの全配列で検査する。
@@ -68,7 +69,6 @@ const IDENTITY_COLUMNS: readonly ComparisonColumnId[] = [
   'sameHandContinuationRate',
   'rightHandPressShare',
   'rightHandDistanceShare',
-  'rightLeftPerPressRatio',
   'movedPressShare',
   'perMovedPressUnits',
   'textCharsPerAction',
@@ -130,20 +130,24 @@ const KANJI_ROWS = [...LAYOUT_BY_ID.keys()].map((layoutId) => ({
 }));
 
 test('組み込みの全配列: 用意する8つの組み合わせの等位線の値が、比較表の列の値と相対誤差1e-9以内で一致し、線が点を通る（漢字を読みに直したテキストを含む）', () => {
-  const expectedColumn = {
+  const expectedColumn: Record<string, string> = {
     distance: 'perCharUnits',
     press: 'perCharPresses',
     perPress: 'perCharUnits',
     sameFinger: 'sameFinger',
     hand: 'sameHandContinuationRate',
-    handShare: 'rightLeftPerPressRatio',
     movedPress: 'perPressUnits',
     charsPerAction: 'textCharsPerUnit',
-  } as const;
+  };
   assert.ok(ALL_ROWS.length >= 30, `配列の数 ${ALL_ROWS.length}`);
   for (const [preset, axes] of Object.entries(SCATTER_PRESET_AXES) as Array<
     [keyof typeof SCATTER_PRESET_AXES, (typeof SCATTER_PRESET_AXES)[keyof typeof SCATTER_PRESET_AXES]]
   >) {
+    if (preset === 'handShare') {
+      // 左右のキーと距離の割合は、恒等式で結ばれる3つ目の量が無く、線を引かない
+      assert.equal(scatterContour(axes.x, axes.y, 100, 'ja'), undefined);
+      continue;
+    }
     for (const { layoutId, row, inputChars } of [...ALL_ROWS, ...KANJI_ROWS]) {
       const contour = scatterContour(axes.x, axes.y, inputChars, 'ja');
       assert.ok(contour, `${preset} ${layoutId}`);
@@ -152,7 +156,6 @@ test('組み込みの全配列: 用意する8つの組み合わせの等位線�
       if (preset === 'distance') assert.equal(axes.x, 'perCharSteps');
       if (preset === 'press') assert.equal(axes.y, 'perCharSteps');
       if (preset === 'perPress') assert.deepEqual(axes, { x: 'perCharPresses', y: 'perPressUnits' });
-      if (preset === 'handShare') assert.deepEqual(axes, { x: 'rightHandPressShare', y: 'rightHandDistanceShare' });
       if (preset === 'movedPress') assert.deepEqual(axes, { x: 'movedPressShare', y: 'perMovedPressUnits' });
       if (preset === 'charsPerAction') assert.deepEqual(axes, { x: 'textCharsPerAction', y: 'actionsPerUnit' });
       const value = contour.valueAt(row[axes.x], row[axes.y]);
@@ -235,35 +238,6 @@ test('動いた押下の割合と距離: 押下が無ければ0、動いた押�
   assert.equal(mixed.perMovedPressUnits, 3);
 });
 
-function byFinger(values: Partial<Record<Finger, number>>): Record<Finger, number> {
-  return Object.fromEntries(ALL_FINGERS.map((finger) => [finger, values[finger] ?? 0])) as Record<Finger, number>;
-}
-
-test('組み込みの全配列: 右手u/押下比は、右手距離率・右手押下率から求めた比と相対誤差1e-9以内で一致する', () => {
-  for (const { layoutId, row } of ALL_ROWS) {
-    const p = row.rightHandPressShare;
-    const d = row.rightHandDistanceShare;
-    assert.ok(Number.isFinite(row.rightLeftPerPressRatio), layoutId);
-    const fromShares = d / (100 - d) / (p / (100 - p));
-    assert.ok(relativeError(row.rightLeftPerPressRatio, fromShares) <= 1e-9, `${layoutId}: ${row.rightLeftPerPressRatio} と ${fromShares}`);
-  }
-});
-
-test('右手u/押下比: 片手の押下が0か左手の距離が0なら値を持たず、右手の距離だけが0なら0', () => {
-  // 右手は距離2u・押下4、左手は距離1u・押下1（親指を含む）
-  assert.equal(rightLeftPerPressRatio(byFinger({ RI: 1.5, RT: 0.5, LI: 1 }), byFinger({ RI: 3, RT: 1, LT: 1 })), 0.5);
-  // 右手の押下が0
-  assert.equal(rightLeftPerPressRatio(byFinger({ LI: 1 }), byFinger({ LI: 2 })), null);
-  // 左手の押下が0
-  assert.equal(rightLeftPerPressRatio(byFinger({ RI: 1 }), byFinger({ RI: 2 })), null);
-  // 両手の押下があり、左手の距離が0
-  assert.equal(rightLeftPerPressRatio(byFinger({ RI: 1 }), byFinger({ RI: 2, LI: 2 })), null);
-  // 両手の距離が0（右手の割合は慣例で0%）
-  assert.equal(rightLeftPerPressRatio(byFinger({}), byFinger({ RI: 2, LI: 2 })), null);
-  // 右手の距離だけが0
-  assert.equal(rightLeftPerPressRatio(byFinger({ LI: 3 }), byFinger({ RI: 2, LI: 2 })), 0);
-});
-
 test('組み込みの全配列: 恒等式の列どうしの全ての組で、等位線の値が比較表の列の値と一致し、線が点を通る', () => {
   let drawn = 0;
   for (const x of IDENTITY_COLUMNS) {
@@ -326,14 +300,9 @@ test('自由に選ぶ: 等位線を引く組と、その量（総数と1文字�
   assert.equal(column('meanPerStroke', 'perPressUnits'), 'perActionPresses');
   assert.equal(column('perPressUnits', 'perActionPresses'), 'meanPerStroke');
   assert.equal(column('meanPerStroke', 'perActionPresses'), 'perPressUnits');
-  // 右手u/押下比 =（右手距離率 ÷（100 − 右手距離率））÷（右手押下率 ÷（100 − 右手押下率））。3つとも比率で、順は問わない
-  assert.equal(column('rightHandPressShare', 'rightHandDistanceShare'), 'rightLeftPerPressRatio');
-  assert.equal(column('rightHandDistanceShare', 'rightHandPressShare'), 'rightLeftPerPressRatio');
-  assert.equal(column('rightHandPressShare', 'rightLeftPerPressRatio'), 'rightHandDistanceShare');
-  assert.equal(column('rightLeftPerPressRatio', 'rightHandPressShare'), 'rightHandDistanceShare');
-  assert.equal(column('rightHandDistanceShare', 'rightLeftPerPressRatio'), 'rightHandPressShare');
-  assert.equal(column('rightLeftPerPressRatio', 'rightHandDistanceShare'), 'rightHandPressShare');
-  assert.equal(column('rightLeftPerPressRatio', 'perPressUnits'), undefined);
+  // 右手キー率と右手距離率には、恒等式で結ばれる量が無い
+  assert.equal(column('rightHandPressShare', 'rightHandDistanceShare'), undefined);
+  assert.equal(column('rightHandDistanceShare', 'rightHandPressShare'), undefined);
   // u/押下 = 動いた押下率 ÷ 100 × u/動いた押下。順は問わない
   assert.equal(column('movedPressShare', 'perMovedPressUnits'), 'perPressUnits');
   assert.equal(column('perMovedPressUnits', 'movedPressShare'), 'perPressUnits');
@@ -460,22 +429,6 @@ test('組み込みの全配列: コスパ×アクション/uが文字/uと、コ
   assert.ok(someDifferent, 'W≠Cの行がある');
 });
 
-test('点の読み取り: 等位線の量の列が値を持たない対象には、軸の値から式で求まっても値を出さない', () => {
-  const handShare = scatterContour('rightHandPressShare', 'rightHandDistanceShare', 100, 'ja')!;
-  // 両手の距離が0の対象は、右手距離率が慣例で0%になる。式では0が求まるが、比の列は値を持たない
-  assert.equal(handShare.valueAt(50, 0), 0);
-  assert.equal(handShare.readoutAt(50, 0, NaN), undefined);
-  // 右手の距離だけが0の対象は、比の列が0を持つので0を出す
-  assert.equal(handShare.readoutAt(50, 0, 0), 0);
-  assert.equal(handShare.readoutAt(20, 50, 4), 4);
-  // 自由に選ぶ組でも、等位線の量の列で決める
-  const byRatio = scatterContour('rightLeftPerPressRatio', 'rightHandDistanceShare', 100, 'ja')!;
-  assert.equal(byRatio.column, 'rightHandPressShare');
-  assert.equal(byRatio.readoutAt(4, 50, 20), 20);
-  // 値を持たない列の無い恒等式は今までどおり
-  assert.equal(scatterContour('actions', 'meanPerStroke', 100, 'ja')!.readoutAt(30, 4, 120), 120);
-});
-
 test('文字数に関わる恒等式: 分母が0の点では等位線の値を出さない', () => {
   const perUnit = scatterContour('textCharsPerAction', 'actionsPerUnit', 100, 'ja')!;
   assert.equal(perUnit.column, 'textCharsPerUnit');
@@ -546,20 +499,90 @@ test('分母が0の点では等位線の値を出さない', () => {
   assert.equal(continuations.valueAt(30, 50), 30);
   const switches = scatterContour('handContinuations', 'sameHandContinuationRate', 100, 'ja')!;
   assert.equal(switches.valueAt(30, 0), undefined);
-  // 右手u/押下比。右手の押下が0%・100%、右手の距離が100%の点では決まらない
-  const handShare = scatterContour('rightHandPressShare', 'rightHandDistanceShare', 100, 'ja')!;
-  assert.equal(handShare.valueAt(0, 0), undefined);
-  assert.equal(handShare.valueAt(100, 100), undefined);
-  assert.equal(handShare.valueAt(50, 100), undefined);
-  assert.equal(handShare.valueAt(50, 50), 1);
-  assert.equal(handShare.valueAt(20, 50), 4);
-  // 右手の距離が0%の点は、式では比が0になる
-  assert.equal(handShare.valueAt(50, 0), 0);
-  const byRatio = scatterContour('rightHandPressShare', 'rightLeftPerPressRatio', 100, 'ja')!;
-  assert.equal(byRatio.valueAt(20, 4), 50);
-  assert.equal(scatterContour('rightHandDistanceShare', 'rightLeftPerPressRatio', 100, 'ja')!.valueAt(50, 4), 20);
-  assert.equal(scatterContour('rightHandDistanceShare', 'rightLeftPerPressRatio', 100, 'ja')!.valueAt(0, 0), undefined);
   // 1文字あたりの軸を取る組は、入力文字数が0の時に総数へ直せないので、線を引かない
   assert.equal(scatterContour('perCharUnits', 'meanPerStroke', 0, 'ja'), undefined);
   assert.ok(scatterContour('actions', 'meanPerStroke', 0, 'ja'));
+});
+
+/** 細い線を引かない線の量（総移動距離を、配列ごとに違う回数で割った値と、その逆数）。 */
+const NO_LINE_COLUMNS: ReadonlySet<ComparisonColumnId> = new Set<ComparisonColumnId>([
+  'perPressUnits',
+  'perMovedPressUnits',
+  'meanPerStroke',
+  'actionsPerUnit',
+]);
+
+test('細い線の量: u/キー・u/移動ありキー・u/アクション・アクション/uの時は線を引かず、ほかの量の時は引く（恒等式の全ての軸の組）', () => {
+  let drawn = 0;
+  let notDrawn = 0;
+  for (const x of IDENTITY_COLUMNS) {
+    for (const y of IDENTITY_COLUMNS) {
+      const contour = scatterContour(x, y, 100, 'ja');
+      if (contour === undefined) continue;
+      assert.equal(contour.drawsLines, !NO_LINE_COLUMNS.has(contour.column), `${x} × ${y} の線の量 ${contour.column}`);
+      if (contour.drawsLines) drawn += 1;
+      else notDrawn += 1;
+    }
+  }
+  assert.ok(drawn > 0 && notDrawn > 0);
+});
+
+test('細い線の量: 用意した組み合わせは、移動ありキーの割合と距離の組だけ線を引かず、ほかは今と同じ量の線を引く', () => {
+  const drawsLines = (preset: keyof typeof SCATTER_PRESET_AXES) => {
+    const { x, y } = SCATTER_PRESET_AXES[preset];
+    return scatterContour(x, y, 100, 'ja')?.drawsLines;
+  };
+  assert.deepEqual(
+    SCATTER_PRESET_IDS.filter((id) => id !== 'free').map((id) => [id, drawsLines(id as keyof typeof SCATTER_PRESET_AXES)]),
+    [
+      ['distance', true],
+      ['press', true],
+      ['perPress', true],
+      ['sameFinger', true],
+      ['hand', true],
+      ['handShare', undefined],
+      ['movedPress', false],
+      ['charsPerAction', true],
+    ],
+  );
+  // 自由に選ぶ: 線の量が他の列から導かれる組でも、同じ規則で決まる
+  const free = (x: ComparisonColumnId, y: ComparisonColumnId) => scatterContour(x, y, 100, 'ja');
+  assert.equal(free('perActionPresses', 'perPressUnits')?.drawsLines, false);
+  assert.equal(free('perActionPresses', 'meanPerStroke')?.drawsLines, false);
+  assert.equal(free('movedPressShare', 'perPressUnits')?.drawsLines, false);
+  assert.equal(free('textCharsPerAction', 'textCharsPerUnit')?.drawsLines, false);
+  assert.equal(free('textCharsPerAction', 'unitsPerTextChar')?.drawsLines, false);
+  assert.equal(free('textCharsPerAction', 'actionsPerUnit')?.drawsLines, true);
+  assert.equal(free('textCharsPerUnit', 'unitsPerTextChar'), undefined);
+  // 線を引かない組でも、3つの量の関係の式は持つ
+  assert.equal(free('perActionPresses', 'perPressUnits')?.valueAt(2, 1.5), 3);
+});
+
+test('50%の線を引く列: 右手距離率と右手キー率だけ', () => {
+  assert.deepEqual(COMPARISON_COLUMN_IDS.filter(isHandShareColumn), ['rightHandDistanceShare', 'rightHandPressShare']);
+});
+
+test('組み込みの全配列を評価した値の点: 細い線を引く全ての軸の組で、描かれた細い線が4本以上6本以下になり、値の桁がそろう', () => {
+  const inputChars = ALL_ROWS[0]!.inputChars;
+  const outOfRange: string[] = [];
+  let checked = 0;
+  for (const x of IDENTITY_COLUMNS) {
+    for (const y of IDENTITY_COLUMNS) {
+      const contour = scatterContour(x, y, inputChars, 'ja');
+      if (contour === undefined || !contour.drawsLines) continue;
+      const points = ALL_ROWS.filter(({ row }) => Number.isFinite(row[x]) && Number.isFinite(row[y])).map(({ layoutId, row }) => ({
+        targetKey: layoutId,
+        label: layoutId,
+        x: row[x],
+        y: row[y],
+      }));
+      const model = scatterPlotModel({ points, contour, legendRows: [], contourName: '', contourSuffix: '' });
+      checked += 1;
+      if (model.contours.length < 4 || model.contours.length > 6) outOfRange.push(`${x} × ${y}: ${model.contours.length}本`);
+      assert.ok(new Set(model.contours.map((line) => (line.text.split('.')[1] ?? '').length)).size <= 1, `${x} × ${y}`);
+    }
+  }
+  assert.ok(checked > 20, `${checked}組`);
+  // 0.000001の刻みまで細かくしても4本に届かない組と、線の値の幅が0の組は、この一覧に挙げる
+  assert.deepEqual(outOfRange, []);
 });

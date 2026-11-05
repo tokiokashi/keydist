@@ -37,11 +37,19 @@ export function niceTicks(range: Range, target: number): { readonly values: read
   const magnitude = 10 ** Math.floor(Math.log10(rough));
   const normalized = rough / magnitude;
   const step = (normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10) * magnitude;
-  const first = Math.ceil(range.lo / step - 1e-9);
-  const last = Math.floor(range.hi / step + 1e-9);
+  const { first, last } = multiplesIn(range, step);
   const values: number[] = [];
-  for (let i = first; i <= last; i++) values.push(Number((i * step).toPrecision(12)));
+  for (let i = first; i <= last; i++) values.push(multiple(i, step));
   return { values, step };
+}
+
+/** `step`の整数倍のうち、範囲に入るものの添字の最小と最大。 */
+function multiplesIn(range: Range, step: number): { readonly first: number; readonly last: number } {
+  return { first: Math.ceil(range.lo / step - 1e-9), last: Math.floor(range.hi / step + 1e-9) };
+}
+
+function multiple(index: number, step: number): number {
+  return Number((index * step).toPrecision(12));
 }
 
 /** 目盛りの刻み`step`が見分けられる小数の桁数。 */
@@ -103,8 +111,19 @@ export interface ScatterPlotModel {
   readonly yTicks: readonly PlotTick[];
   readonly points: readonly PlotPoint[];
   readonly contours: readonly PlotContourLine[];
+  /** 左右が均等になる50%の位置の線。軸の範囲の外にある線と、対象の軸でない線は含まない。 */
+  readonly centerLines: readonly PlotCenterLine[];
   /** 凡例の行が無い時は`undefined`。 */
   readonly legend: PlotLegend | undefined;
+  /** 縦軸の名前の基準線のx。目盛りの数字の幅から決め、数字の左に一定の間隔で置く。 */
+  readonly yTitleX: number;
+}
+
+/** 描画領域の端から端まで引く50%の線。`axis`は線が表す値の軸（`x`は縦線、`y`は横線）。 */
+export interface PlotCenterLine {
+  readonly axis: 'x' | 'y';
+  /** 縦線のx、横線のy。 */
+  readonly position: number;
 }
 
 export interface ScatterPlotInput {
@@ -116,6 +135,23 @@ export interface ScatterPlotInput {
   readonly contourName: string;
   /** 細い線の値に付ける単位（`%`など）。 */
   readonly contourSuffix: string;
+  /** その軸の50%の位置に線を引くか。左右の手で全体を分ける割合の軸だけ`true`。 */
+  readonly centerAxes?: { readonly x: boolean; readonly y: boolean };
+}
+
+/** 左右が均等になる割合 [%]。 */
+const CENTER_VALUE = 50;
+/** 縦軸の目盛りの数字の左端（枠の左から8px）。 */
+const Y_TICK_OFFSET = 8;
+/** 縦軸の名前の基準線から、目盛りの数字の左端までの間隔。名前の下端（基準線の下3px）に余白を足した値。 */
+const Y_TITLE_GAP = 11;
+/** 縦軸の名前の基準線のxの下限。名前の上端（基準線の上10px）が図の左端に掛からない値。 */
+const Y_TITLE_MIN_X = 11;
+
+/** 縦軸の名前の基準線のx。一番広い目盛りの数字の左に、一定の間隔で置く。 */
+function yTitleX(yTicks: readonly PlotTick[]): number {
+  const widest = Math.max(0, ...yTicks.map((tick) => estimateTextWidth(tick.text)));
+  return Math.max(Y_TITLE_MIN_X, PLOT_LEFT - Y_TICK_OFFSET - widest - Y_TITLE_GAP);
 }
 
 const CONTOUR_SAMPLES = 200;
@@ -126,7 +162,44 @@ function positionOf(value: number, range: Range, from: number, to: number): numb
   return from + ((value - range.lo) / (range.hi - range.lo)) * (to - from);
 }
 
-function levelsFor(contour: ScatterContour, xRange: Range, yRange: Range): { readonly levels: readonly number[]; readonly step: number } {
+/** 細い線を引く値の刻みの下限。値の書式（`formatTickValue`）で区別できる最小の刻み。 */
+const MIN_LEVEL_STEP = 1e-6;
+/** 描かれた細い線の本数の下限。 */
+const MIN_LEVELS = 4;
+
+/** 1・2・5の列で、`step`より1段細かい刻み（0.5 → 0.2 → 0.1 → 0.05）。 */
+export function finerStep(step: number): number {
+  const magnitude = 10 ** Math.floor(Math.log10(step) + 1e-9);
+  const lead = Math.round(step / magnitude);
+  return Number((lead === 5 ? 2 * magnitude : lead === 2 ? magnitude : magnitude / 2).toPrecision(12));
+}
+
+/**
+ * 範囲の中の、`step`の整数倍の値。`MAX_LEVELS`を超える時は、連続する`MAX_LEVELS`個のうち、平均が範囲の中点に最も近いものを残す。
+ * 中点からの距離が同じ候補が2つある時は、小さい側を残す。
+ */
+export function levelsAtStep(range: Range, step: number): readonly number[] {
+  const { first, last } = multiplesIn(range, step);
+  if (last < first) return [];
+  let from = first;
+  if (last - first + 1 > MAX_LEVELS) {
+    // 連続する6個の平均は、刻みに（先頭の添字 + 2.5）を掛けた値。中点に最も近い添字を、小さい側を優先して選ぶ
+    const target = (range.lo + range.hi) / 2 / step - (MAX_LEVELS - 1) / 2;
+    const below = Math.floor(target + 1e-9);
+    from = target - below <= below + 1 - target + 1e-9 ? below : below + 1;
+    from = Math.min(Math.max(from, first), last - MAX_LEVELS + 1);
+  }
+  const values: number[] = [];
+  for (let i = from; i <= last && values.length < MAX_LEVELS; i++) values.push(multiple(i, step));
+  return values;
+}
+
+/**
+ * 細い線の値の選び方。線の量が描画領域の中で取る最小値から最大値までの範囲で、目盛りと同じ1・2・5の刻み（まず`niceTicks`が目標4本で選ぶ刻み）の
+ * 値を選ぶ。値が4つに満たない時と、6つに絞った後に描かれた線が4本に満たない時は、刻みを1段ずつ細かくして選び直す。
+ * 刻みは`MIN_LEVEL_STEP`より細かくしない。そこまで細かくしても4本に届かない時は、その刻みで引ける線だけを引く。
+ */
+function selectContours(contour: ScatterContour, xRange: Range, yRange: Range): { readonly lines: readonly DrawnContour[]; readonly step: number } {
   let min = Number.POSITIVE_INFINITY;
   let max = Number.NEGATIVE_INFINITY;
   for (let i = 0; i <= LEVEL_GRID; i++) {
@@ -137,32 +210,18 @@ function levelsFor(contour: ScatterContour, xRange: Range, yRange: Range): { rea
       if (value > max) max = value;
     }
   }
-  if (!(max > min)) return { levels: [], step: 1 };
-  if (contour.levels === 'reciprocal') return reciprocalLevels({ lo: min, hi: max });
-  const { values, step } = niceTicks({ lo: min, hi: max }, 4);
-  return { levels: values.slice(0, MAX_LEVELS), step };
-}
-
-/** 比の線の値の組。1より大きい側の値で、その逆数と組にする。どの値も逆数も小数の桁が有限で、線の値を丸めずに書ける。 */
-const RECIPROCAL_PAIRS = [1.25, 2, 4, 10] as const;
-
-/**
- * 比の線の値。1と、比とその逆数の組（1.25と0.8、2と0.5など）のうち、範囲に入る値を、1に近い組から選ぶ。
- * 逆数どうしは左右を入れ替えた同じ大きさの偏りなので、組の一方だけが範囲に入る時もその値を引く。
- * `step`は、選んだ値を丸めずに書ける小数の刻み。
- */
-export function reciprocalLevels(range: Range): { readonly levels: readonly number[]; readonly step: number } {
-  const inRange = (value: number) => value >= range.lo && value <= range.hi;
-  const levels: number[] = inRange(1) ? [1] : [];
-  for (const pair of RECIPROCAL_PAIRS) {
-    // 組の両方が範囲に入る時は、2本とも引ける時だけ引く（片方だけを残さない）
-    const values = [1 / pair, pair].filter(inRange);
-    if (levels.length + values.length > MAX_LEVELS) break;
-    levels.push(...values);
+  if (!(max > min)) return { lines: [], step: 1 };
+  const range = { lo: min, hi: max };
+  let step = Math.max(niceTicks(range, 4).step, MIN_LEVEL_STEP);
+  for (;;) {
+    const finest = finerStep(step) < MIN_LEVEL_STEP * (1 - 1e-9);
+    const levels = levelsAtStep(range, step);
+    if (levels.length >= MIN_LEVELS || finest) {
+      const lines = levels.map((level) => contourLine(contour, level, xRange, yRange)).filter((line) => line.d !== '');
+      if (lines.length >= MIN_LEVELS || finest) return { lines, step };
+    }
+    step = finerStep(step);
   }
-  levels.sort((a, b) => a - b);
-  const decimals = Math.max(0, ...levels.map((value) => (String(value).split('.')[1] ?? '').length));
-  return { levels, step: 10 ** -Math.max(1, decimals) };
 }
 
 interface DrawnContour {
@@ -364,13 +423,21 @@ export function scatterPlotModel(input: ScatterPlotInput): ScatterPlotModel {
     y0: p.py - POINT_CLEARANCE,
     y1: p.py + POINT_CLEARANCE,
   }));
-  let drawn: Array<{ readonly level: number; readonly d: string; readonly anchors: DrawnContour['anchors'] }> = [];
+  let drawn: readonly DrawnContour[] = [];
   let step = 1;
-  if (input.contour !== undefined && input.points.length > 0) {
-    const levelled = levelsFor(input.contour, xRange, yRange);
-    step = levelled.step;
-    const contour = input.contour;
-    drawn = levelled.levels.map((level) => contourLine(contour, level, xRange, yRange)).filter((line) => line.d !== '');
+  if (input.contour?.drawsLines === true && input.points.length > 0) {
+    const selected = selectContours(input.contour, xRange, yRange);
+    step = selected.step;
+    drawn = selected.lines;
+  }
+  const centerLines: PlotCenterLine[] = [];
+  if (input.points.length > 0) {
+    if (input.centerAxes?.x === true && xRange.lo <= CENTER_VALUE && CENTER_VALUE <= xRange.hi) {
+      centerLines.push({ axis: 'x', position: positionOf(CENTER_VALUE, xRange, PLOT_LEFT, PLOT_RIGHT) });
+    }
+    if (input.centerAxes?.y === true && yRange.lo <= CENTER_VALUE && CENTER_VALUE <= yRange.hi) {
+      centerLines.push({ axis: 'y', position: positionOf(CENTER_VALUE, yRange, PLOT_BOTTOM, PLOT_TOP) });
+    }
   }
   // 凡例は枠の中の隅に置く。細い線の行は、線を1本以上描く時だけ付ける
   const legend = placeLegend(
@@ -404,5 +471,5 @@ export function scatterPlotModel(input: ScatterPlotInput): ScatterPlotModel {
     }
     return { level: line.level, d: line.d, labelAt: placedAt, text };
   });
-  return { xTicks, yTicks, points, contours, legend };
+  return { xTicks, yTicks, points, contours, centerLines, legend, yTitleX: yTitleX(yTicks) };
 }

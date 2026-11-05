@@ -13,6 +13,7 @@ import {
   SCATTER_PRESET_AXES,
   SCATTER_PRESET_IDS,
   scatterPresetLabels,
+  isHandShareColumn,
   scatterAxisProblem,
   scatterContour,
   type ScatterAxes,
@@ -23,7 +24,7 @@ import { scatterDefinition, type ScatterExtracted, type ScatterRow } from './ext
 import { SCATTER_KIND_ORDER, SCATTER_KIND_STYLES } from './kinds.ts';
 import { DEFAULT_SCATTER_OPTIONS, scatterOptions, type ScatterOptions } from './options.ts';
 import { SCATTER_PANE_META } from './pane-meta.ts';
-import { scatterQuantityHelp } from './quantity-help.ts';
+import { scatterCaption, scatterQuantityHelp } from './quantity-help.ts';
 import { PLOT_HEIGHT, PLOT_MARGIN, PLOT_WIDTH, scatterPlotModel, type PlotPoint } from './plot-model.ts';
 import './scatter-view.css';
 
@@ -158,17 +159,20 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
     () => (problem === undefined ? scatterContour(axes.x, axes.y, inputChars, language) : undefined),
     [problem, axes.x, axes.y, inputChars, language],
   );
+  // 線を引かない組でも、3つの量の関係は図の見方に出すので`contour`は残す。点の読み取りと凡例には、線を引く組の線の量だけを出す
+  const lineContour = contour?.drawsLines === true ? contour : undefined;
   const usedKinds = useMemo(() => SCATTER_KIND_ORDER.filter((kind) => plotted.some((row) => row.kind === kind)), [plotted]);
   const model = useMemo(
     () =>
       scatterPlotModel({
         points: plotted.map(({ targetKey, label, x, y }) => ({ targetKey, label, x, y })),
-        contour,
+        contour: lineContour,
         legendRows: usedKinds.map((kind) => SCATTER_KIND_STYLES[kind].label),
-        contourName: contour === undefined ? '' : text[contour.column].label,
-        contourSuffix: contour !== undefined && isPercentColumn(contour.column) ? '%' : '',
+        contourName: lineContour === undefined ? '' : text[lineContour.column].label,
+        contourSuffix: lineContour !== undefined && isPercentColumn(lineContour.column) ? '%' : '',
+        centerAxes: { x: isHandShareColumn(axes.x), y: isHandShareColumn(axes.y) },
       }),
-    [plotted, contour, usedKinds, text],
+    [plotted, lineContour, usedKinds, text, axes.x, axes.y],
   );
   const plottedByKey = new Map(plotted.map((row) => [row.targetKey, row] as const));
   const active = activeKey === undefined ? undefined : model.points.find((point) => point.targetKey === activeKey);
@@ -187,7 +191,7 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
           <div className="scatter-heading">
             <InfoButton name="図の見方" description={quantityHelp.description} help={quantityHelp.help} />
           </div>
-          <div className="scatter-figure">
+          <figure className="scatter-figure">
             <svg viewBox={`0 0 ${PLOT_WIDTH} ${PLOT_HEIGHT}`} aria-label={`${text[axes.x].label}と${text[axes.y].label}の散布図`}>
               <rect
                 className="scatter-frame"
@@ -222,7 +226,7 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
                 className="scatter-axis-title"
                 x={0}
                 y={0}
-                transform={`translate(14 ${(PLOT_MARGIN.top + PLOT_BOTTOM) / 2}) rotate(-90)`}
+                transform={`translate(${model.yTitleX} ${(PLOT_MARGIN.top + PLOT_BOTTOM) / 2}) rotate(-90)`}
                 textAnchor="middle"
                 data-scatter-y-title=""
               >
@@ -237,6 +241,18 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
               >
                 {text[axes.x].label}
               </text>
+
+              {model.centerLines.map((line) => (
+                <line
+                  key={line.axis}
+                  className="scatter-center-line"
+                  data-scatter-center-line={line.axis}
+                  x1={line.axis === 'x' ? line.position : PLOT_MARGIN.left}
+                  x2={line.axis === 'x' ? line.position : PLOT_RIGHT}
+                  y1={line.axis === 'x' ? PLOT_MARGIN.top : line.position}
+                  y2={line.axis === 'x' ? PLOT_BOTTOM : line.position}
+                />
+              ))}
 
               {model.contours.map((line) => (
                 <g key={line.level} className="scatter-contour" data-scatter-contour={line.level}>
@@ -292,7 +308,7 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
                     data-kind={row.kind}
                     data-active={isActive || undefined}
                     tabIndex={0}
-                    aria-label={readoutText({ ...point, fullName: row.fullName, values: row.values }, axes, contour, language)}
+                    aria-label={readoutText({ ...point, fullName: row.fullName, values: row.values }, axes, lineContour, language)}
                     style={{ transform: `translate(${point.px.toFixed(1)}px, ${point.py.toFixed(1)}px)` }}
                     onPointerEnter={() => setActiveKey(point.targetKey)}
                     onPointerLeave={() => setActiveKey((current) => (current === point.targetKey ? undefined : current))}
@@ -309,11 +325,14 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
                 );
               })}
             </svg>
-          </div>
+            <figcaption className="scatter-caption" data-scatter-caption="">
+              {scatterCaption(axes, language)}
+            </figcaption>
+          </figure>
           <p className="scatter-readout" data-scatter-readout="" aria-live="off">
             {active === undefined || activeRow === undefined
               ? ''
-              : readoutText({ ...active, fullName: activeRow.fullName, values: activeRow.values }, axes, contour, language)}
+              : readoutText({ ...active, fullName: activeRow.fullName, values: activeRow.values }, axes, lineContour, language)}
           </p>
         </>
       ) : null}
@@ -355,7 +374,7 @@ export function ScatterSettings({ options, onOptionsChange }: AnalyzerSettingsPr
             label="縦軸"
             binding={bind('yAxis')}
             choices={COLUMN_CHOICES.filter((choice) => choice.value === options.yAxis || scatterAxisProblem(options.xAxis, choice.value) === undefined)}
-            hint="軸の2つの数値から決まる別の数値がある組には、その数値が同じになる位置の線を引きます。"
+            hint="軸の2つの数値から決まる別の数値がある組には、その数値が同じになる位置の線を引きます。1キーあたりの距離など、配列ごとに違う回数で割った距離の線は引きません。"
           />
         </>
       ) : null}

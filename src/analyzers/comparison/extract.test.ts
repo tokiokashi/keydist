@@ -71,7 +71,6 @@ test('computeComparisonRowValues: interpretation/metrics.tsを同条件で直接
   const {
     rightHandDistanceShare,
     rightHandPressShare,
-    rightLeftPerPressRatio,
     movedPressShare,
     perMovedPressUnits,
     textCharsPerAction,
@@ -110,8 +109,6 @@ test('computeComparisonRowValues: interpretation/metrics.tsを同条件で直接
   });
   assert.ok(rightHandDistanceShare > 0 && rightHandDistanceShare < 100);
   assert.ok(rightHandPressShare > 0 && rightHandPressShare < 100);
-  assert.equal(rightLeftPerPressRatio, directMetrics.rightLeftPerPressRatio);
-  assert.ok(rightLeftPerPressRatio > 0);
   assert.equal(movedPressShare, directMetrics.movedPressShare);
   assert.equal(perMovedPressUnits, directMetrics.perMovedPressUnits);
   assert.ok(movedPressShare > 0 && movedPressShare < 100);

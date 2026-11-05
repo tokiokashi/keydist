@@ -12,7 +12,7 @@ import {
   scatterContour,
 } from './axes.ts';
 import { SCATTER_PANE_META } from './pane-meta.ts';
-import { mentionsUnit, scatterQuantityHelp } from './quantity-help.ts';
+import { mentionsUnit, scatterCaption, scatterQuantityHelp } from './quantity-help.ts';
 
 const INPUT_CHARS = 100;
 const PRESETS = SCATTER_PRESET_IDS.filter((id) => id !== 'free');
@@ -29,11 +29,13 @@ test('どの恒等式も、3つの量を総数の形の名前で並べた式を�
   }
 });
 
-test('用意する組み合わせは、横軸・縦軸・細い線の量の名前と説明と、3つの量の関係の文を出す', () => {
+test('細い線を引く用意した組み合わせは、横軸・縦軸・細い線の量の名前と説明と、3つの量の関係の文を出す', () => {
+  let checked = 0;
   for (const id of PRESETS) {
     const axes = SCATTER_PRESET_AXES[id as keyof typeof SCATTER_PRESET_AXES];
     const contour = scatterContour(axes.x, axes.y, INPUT_CHARS, 'ja');
-    assert.ok(contour, id);
+    if (contour === undefined || !contour.drawsLines) continue;
+    checked += 1;
     const { help } = scatterQuantityHelp(axes, contour, 'ja');
     const columns = [axes.x, axes.y, contour.column];
     assert.deepEqual(
@@ -57,10 +59,12 @@ test('用意する組み合わせは、横軸・縦軸・細い線の量の名�
       id,
     );
   }
+  assert.equal(checked, 6);
 });
 
 test('自由に選ぶ組は、線を引く組にだけ細い線の量と関係の文を出し、軸の量の説明は必ず出す', () => {
   let withContour = 0;
+  let withoutLine = 0;
   let withoutContour = 0;
   for (const x of COMPARISON_COLUMN_IDS) {
     for (const y of COMPARISON_COLUMN_IDS) {
@@ -73,6 +77,16 @@ test('自由に選ぶ組は、線を引く組にだけ細い線の量と関係�
         withoutContour += 1;
         assert.equal(names.length, 2, `${x} ${y}`);
         assert.ok(!help.notes.some((note) => note.includes('細い線')), `${x} ${y}`);
+      } else if (!contour.drawsLines) {
+        // 線を引かない組: 3つの量の関係の文は出すが、細い線の文・量の一覧の行は出さない
+        withoutLine += 1;
+        assert.equal(names.length, 2, `${x} ${y}`);
+        assert.ok(
+          help.notes.some((note) => note.includes(`${contour.relation}です。`) && note.includes(text(contour.column).label)),
+          `${x} ${y}`,
+        );
+        assert.ok(!help.notes.some((note) => note.includes('細い線は')), `${x} ${y}`);
+        assert.ok(!help.items.some((item) => item.name.startsWith('細い線')), `${x} ${y}`);
       } else {
         withContour += 1;
         assert.equal(names.length, 3, `${x} ${y}`);
@@ -84,7 +98,7 @@ test('自由に選ぶ組は、線を引く組にだけ細い線の量と関係�
       }
     }
   }
-  assert.ok(withContour > 0 && withoutContour > 0);
+  assert.ok(withContour > 0 && withoutLine > 0 && withoutContour > 0);
 });
 
 test('距離の単位の説明は、名前か説明にuが出る量がある時だけ出す', () => {
@@ -93,6 +107,7 @@ test('距離の単位の説明は、名前か説明にuが出る量がある時�
       if (scatterAxisProblem(x, y) !== undefined) continue;
       const contour = scatterContour(x, y, INPUT_CHARS, 'ja');
       const { help } = scatterQuantityHelp({ x, y }, contour, 'ja');
+      // 線を引かない組も、関係の文に線の量の名前が出るので、その量の単位を説明する
       const columns = [x, y, ...(contour === undefined ? [] : [contour.column])];
       assert.equal(
         help.notes.includes(COMPARISON_UNIT_NOTE),
@@ -149,12 +164,62 @@ test('見出しのⓘの組み合わせの一覧は、組み合わせの全部�
   );
 });
 
-test('移動ありキーの割合と1回の移動距離: 図の見方に、u/キーとの関係の文が出る', () => {
+test('移動ありキーの割合と1回の移動距離: 線を引かず、図の見方にu/キーとの関係の文が出る', () => {
   const axes = SCATTER_PRESET_AXES.movedPress;
-  const { help } = scatterQuantityHelp(axes, scatterContour(axes.x, axes.y, INPUT_CHARS, 'ja'), 'ja');
-  assert.ok(help.notes.some((note) => note.includes('3つの量の関係は、u/キー = 移動ありキー率 ÷ 100 × u/移動ありキーです。')));
+  const contour = scatterContour(axes.x, axes.y, INPUT_CHARS, 'ja');
+  assert.equal(contour?.drawsLines, false);
+  const { help } = scatterQuantityHelp(axes, contour, 'ja');
+  assert.deepEqual(help.notes, ['u/キーを含む3つの量の関係は、u/キー = 移動ありキー率 ÷ 100 × u/移動ありキーです。', COMPARISON_UNIT_NOTE]);
   assert.deepEqual(
     help.items.map((item) => item.name),
-    ['横軸　移動ありキー率', '縦軸　u/移動ありキー', '細い線　u/キー'],
+    ['横軸　移動ありキー率', '縦軸　u/移動ありキー'],
   );
+});
+
+test('左右のキーと距離の割合: 50%の線と4つの区画、2軸が同じキーから作られていることを書く', () => {
+  const axes = SCATTER_PRESET_AXES.handShare;
+  const { help } = scatterQuantityHelp(axes, scatterContour(axes.x, axes.y, INPUT_CHARS, 'ja'), 'ja');
+  assert.deepEqual(help.notes, [
+    '横軸と縦軸の50%の位置に線を引いています。右手と左手が半分ずつになる、左右が均等の位置です。50%が軸の範囲の外にある時は引きません。',
+    '50%の線で図が4つの区画に分かれます。右上は押すキーの数も距離も右手寄り、左下はどちらも左手寄り、左上は押すキーの数は左手が多いのに距離は右手が多く、右下は押すキーの数は右手が多いのに距離は左手が多い区画です。',
+    '右手キー率は押したキーの数のうち右手の割合、右手距離率は移動距離のうち右手のキーの分の割合で、どちらも同じキーを右手と左手に分けて数えた値から作っています。',
+  ]);
+  // 自由に選ぶで2軸を入れ替えると、左上と右下の説明が入れ替わる
+  const swapped = scatterQuantityHelp({ x: axes.y, y: axes.x }, scatterContour(axes.y, axes.x, INPUT_CHARS, 'ja'), 'ja').help.notes;
+  assert.ok(swapped[1]!.includes('右上は距離も押すキーの数も右手寄り、左下はどちらも左手寄り'));
+  assert.ok(swapped[1]!.includes('左上は距離は左手が多いのに押すキーの数は右手が多く'));
+  assert.ok(swapped[1]!.includes('右下は距離は右手が多いのに押すキーの数は左手が多い区画です'));
+});
+
+test('50%の線の説明: 軸の片方だけが右手の割合の時は、その軸の線だけを書き、区画と同じキーから作られた説明は出さない', () => {
+  const onX = scatterQuantityHelp({ x: 'rightHandPressShare', y: 'perCharUnits' }, undefined, 'ja').help.notes;
+  assert.equal(onX.length, 2);
+  assert.ok(onX[0]!.startsWith('横軸の50%の位置に線を引いています。'));
+  const onY = scatterQuantityHelp({ x: 'perCharUnits', y: 'rightHandDistanceShare' }, undefined, 'ja').help.notes;
+  assert.ok(onY[0]!.startsWith('縦軸の50%の位置に線を引いています。'));
+  for (const notes of [onX, onY]) assert.ok(!notes.some((note) => note.includes('区画') || note.includes('同じキーを右手と左手に分けて')));
+  // ほかの割合の列は50%が左右の均等の位置ではないので、説明しない
+  for (const column of ['sameFingerRate', 'sameHandContinuationRate', 'movedPressShare', 'bothHandPairShare', 'alternationCoverage'] as const) {
+    assert.deepEqual(
+      scatterQuantityHelp({ x: column, y: 'perCharSteps' }, undefined, 'ja').help.notes.filter((note) => note.includes('50%')),
+      [],
+      column,
+    );
+  }
+});
+
+test('図の下のキャプション: 縦軸の量と横軸の量の関係を、比較表の列名で言い切る', () => {
+  assert.equal(scatterCaption(SCATTER_PRESET_AXES.distance, 'ja'), 'u/アクションとアクション数/かなの関係');
+  assert.equal(scatterCaption(SCATTER_PRESET_AXES.handShare, 'ja'), '右手距離率と右手キー率の関係');
+  assert.equal(scatterCaption({ x: 'totalUnits', y: 'sameFinger' }, 'ja'), '同指と距離の関係');
+  // 英語のテキストでは、列名の「かな」が「字」になる
+  assert.equal(scatterCaption(SCATTER_PRESET_AXES.distance, 'en'), 'u/アクションとアクション数/字の関係');
+});
+
+test('固定の説明は、線を引かない図があることと食い違わない', () => {
+  const meta = SCATTER_PANE_META;
+  const notes = meta.help('ja').notes.join('\n');
+  assert.doesNotMatch(meta.description, /細い線/u);
+  assert.doesNotMatch(notes, /線を結んでいます|位置を結んでいます/u);
+  assert.match(notes, /線は、同じテキストを打つ時の距離と取り違えやすいので引きません/u);
 });

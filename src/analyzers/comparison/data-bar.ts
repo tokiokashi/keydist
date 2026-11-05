@@ -34,8 +34,6 @@ export const COMPARISON_BAR_SCALE: Readonly<Record<ComparisonColumnId, Compariso
   // 右手の割合（%）。0%は右手を使っていない。
   rightHandDistanceShare: 'zero',
   rightHandPressShare: 'zero',
-  // 左右の1押下あたりの距離の比。0は右手が動いていない。値が無い行はバーを出さない。
-  rightLeftPerPressRatio: 'zero',
   // 動いた押下の割合（%）と、動いた押下1回あたりの距離。0は動いた押下が無い。
   movedPressShare: 'zero',
   perMovedPressUnits: 'zero',

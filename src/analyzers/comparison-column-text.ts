@@ -27,7 +27,6 @@ export const COMPARISON_COLUMN_IDS = [
   'adjacentStdDev',
   'rightHandDistanceShare',
   'rightHandPressShare',
-  'rightLeftPerPressRatio',
   'movedPressShare',
   'perMovedPressUnits',
   'textCharsPerAction',
@@ -137,11 +136,6 @@ function buildColumnText(language: TextLanguage): Readonly<Record<ComparisonColu
     rightHandPressShare: {
       label: '右手キー率',
       description: '右手（親指を含む5本）が押したキーの数を、押した全部のキーの数で割った割合（%）。左手は100%から引いた値。',
-    },
-    rightLeftPerPressRatio: {
-      label: '右手u/キー比',
-      description:
-        '右手（親指を含む5本）の押したキー1つあたりの移動距離を、左手の押したキー1つあたりの移動距離で割った比。1より大きいと右手の方が1キーで長く動きます。どちらかの手のキーが無い時と、左手の移動距離が0の時は値がありません。',
     },
     movedPressShare: {
       label: '移動ありキー率',
@@ -262,7 +256,6 @@ export const COMPARISON_COLUMN_FORMAT: Readonly<Record<ComparisonColumnId, (valu
   adjacentStdDev: fixed(3),
   rightHandDistanceShare: percent,
   rightHandPressShare: percent,
-  rightLeftPerPressRatio: fixed(3),
   movedPressShare: percent,
   perMovedPressUnits: fixed(3),
   textCharsPerAction: fixed(3),

@@ -154,7 +154,6 @@ export function fixtureMetrics(totalUnits: number): Metrics {
     perCharPresses: 1,
     perActionPresses: 1,
     perPressUnits: totalUnits / 3,
-    rightLeftPerPressRatio: 1,
     movedPressShare: 100,
     perMovedPressUnits: totalUnits / 3,
     textChars: 3,
