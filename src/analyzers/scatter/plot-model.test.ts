@@ -1,7 +1,17 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scatterContour } from './axes.ts';
-import { axisRange, estimateTextWidth, niceTicks, PLOT_HEIGHT, PLOT_MARGIN, PLOT_WIDTH, reciprocalLevels, scatterPlotModel } from './plot-model.ts';
+import {
+  axisRange,
+  estimateTextWidth,
+  finerStep,
+  levelsAtStep,
+  niceTicks,
+  PLOT_HEIGHT,
+  PLOT_MARGIN,
+  PLOT_WIDTH,
+  scatterPlotModel,
+} from './plot-model.ts';
 
 test('axisRange: 点の値の範囲に余白を足し、0を含めることを強制しない', () => {
   const range = axisRange([100, 200]);
@@ -67,7 +77,7 @@ test('scatterPlotModel: 点の名前は、他の名前と重ならない場所�
 test('scatterPlotModel: 細い線は切りのよい値で数本、図の中だけに引き、線の上に値だけを書く', () => {
   const contour = scatterContour('actions', 'meanPerStroke', 100, 'ja')!;
   const model = scatterPlotModel({ points: POINTS, contour, legendRows: [], contourName: '', contourSuffix: '' });
-  assert.ok(model.contours.length >= 2 && model.contours.length <= 6, `${model.contours.length}本`);
+  assert.ok(model.contours.length >= 4 && model.contours.length <= 6, `${model.contours.length}本`);
   for (const line of model.contours) {
     // 量の名前は書かず、値だけ
     assert.match(line.text, /^\d+$/);
@@ -119,7 +129,7 @@ test('scatterPlotModel: 細い線の値の桁は、同じ図の線で揃える',
     contourName: '',
     contourSuffix: '',
   });
-  assert.ok(model.contours.length >= 2);
+  assert.ok(model.contours.length >= 4);
   const decimals = new Set(model.contours.map((line) => (line.text.split('.')[1] ?? '').length));
   assert.equal(decimals.size, 1, model.contours.map((line) => line.text).join(' '));
 });
@@ -279,38 +289,149 @@ test('scatterPlotModel: 値が0の点が枠の下の端にあっても、幅の�
   assert.ok(y - 10.5 >= PLOT_MARGIN.top + 2 && y + 3.5 <= PLOT_HEIGHT - PLOT_MARGIN.bottom - 2);
 });
 
-test('reciprocalLevels: 比の線は、1と、比とその逆数の組から範囲に入る値を選び、丸めずに書ける刻みを返す', () => {
-  assert.deepEqual(reciprocalLevels({ lo: 0.4, hi: 3 }), { levels: [0.5, 0.8, 1, 1.25, 2], step: 0.01 });
-  // 範囲が1の片側だけでも、範囲に入る値を引く
-  assert.deepEqual(reciprocalLevels({ lo: 1.1, hi: 2.5 }).levels, [1.25, 2]);
-  assert.deepEqual(reciprocalLevels({ lo: 0.6, hi: 1.1 }), { levels: [0.8, 1], step: 0.1 });
-  // 範囲が広い時も6本までで、どの値も逆数が一緒に選ばれる
-  const { levels } = reciprocalLevels({ lo: 0.01, hi: 100 });
-  assert.ok(levels.length <= 6);
-  for (const level of levels)
-    assert.ok(
-      levels.some((other) => Math.abs(other * level - 1) < 1e-12),
-      `${level}`,
-    );
+test('finerStep: 1・2・5の列で刻みを1段ずつ細かくする', () => {
+  const steps = [5];
+  for (let i = 0; i < 9; i++) steps.push(finerStep(steps[steps.length - 1]!));
+  assert.deepEqual(steps, [5, 2, 1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01, 0.005]);
 });
 
-test('scatterPlotModel: 左右の押下と距離の割合の図は、比とその逆数の組で線を引き、値の桁をそろえる', () => {
-  const contour = scatterContour('rightHandPressShare', 'rightHandDistanceShare', 100, 'ja')!;
-  assert.equal(contour.levels, 'reciprocal');
+test('levelsAtStep: 値が6つ以内ならそのまま、範囲の端も含める', () => {
+  assert.deepEqual(levelsAtStep({ lo: 0.5, hi: 3.5 }, 1), [1, 2, 3]);
+  assert.deepEqual(levelsAtStep({ lo: 1, hi: 4 }, 1), [1, 2, 3, 4]);
+  assert.deepEqual(levelsAtStep({ lo: 1.2, hi: 1.8 }, 1), []);
+});
+
+test('levelsAtStep: 値が6つを超えたら、平均が範囲の中点に最も近い連続する6つを残す', () => {
+  // 中点10.5。連続する6つの平均が10.5になるのは8〜13
+  assert.deepEqual(levelsAtStep({ lo: 0.5, hi: 20.5 }, 1), [8, 9, 10, 11, 12, 13]);
+  // 中点5.5。3〜8
+  assert.deepEqual(levelsAtStep({ lo: 0, hi: 11 }, 1), [3, 4, 5, 6, 7, 8]);
+  // 刻みが小数でも同じ
+  assert.deepEqual(levelsAtStep({ lo: 0.05, hi: 2.05 }, 0.1), [0.8, 0.9, 1, 1.1, 1.2, 1.3]);
+});
+
+test('levelsAtStep: 中点からの距離が同じ候補が2つある時は、小さい側を残す', () => {
+  // 中点5。2〜7（平均4.5）と3〜8（平均5.5）が同じ距離なので、小さい側の2〜7
+  assert.deepEqual(levelsAtStep({ lo: 0, hi: 10 }, 1), [2, 3, 4, 5, 6, 7]);
+  assert.deepEqual(levelsAtStep({ lo: 0, hi: 1 }, 0.1), [0.2, 0.3, 0.4, 0.5, 0.6, 0.7]);
+  // 中点が範囲の端に近い側へ偏っていても、範囲に入る6つに収まる
+  assert.deepEqual(levelsAtStep({ lo: 0, hi: 7 }, 1), [1, 2, 3, 4, 5, 6]);
+});
+
+test('scatterPlotModel: 細い線は、刻みを細かくして4本以上6本以下にする', () => {
+  // 線の量（距離 = アクション数 × u/アクション の距離）が、図の中で狭い範囲に収まる点
+  const contour = scatterContour('actions', 'meanPerStroke', 100, 'ja')!;
+  const narrowPoints = () => [
+    { targetKey: 'a', label: 'A', x: 100, y: 1.0 },
+    { targetKey: 'b', label: 'B', x: 101, y: 1.02 },
+  ];
+  const narrow = scatterPlotModel({
+    points: narrowPoints(),
+    contour,
+    legendRows: [],
+    contourName: '',
+    contourSuffix: '',
+  });
+  assert.ok(narrow.contours.length >= 4 && narrow.contours.length <= 6, `${narrow.contours.length}本`);
+  const decimals = new Set(narrow.contours.map((line) => (line.text.split('.')[1] ?? '').length));
+  assert.equal(decimals.size, 1, narrow.contours.map((line) => line.text).join(' '));
+  // 線の量が図の中で一定（値の幅が0）の組は、線を引かない
+  const flat = { ...contour, valueAt: () => 5 };
+  const none = scatterPlotModel({ points: narrowPoints(), contour: flat, legendRows: [], contourName: '', contourSuffix: '' });
+  assert.equal(none.contours.length, 0);
+});
+
+test('scatterPlotModel: 線を引かない組（線を引かない量）は、細い線も凡例の線の行も出さない', () => {
+  const contour = scatterContour('perActionPresses', 'perPressUnits', 100, 'ja')!;
+  assert.equal(contour.drawsLines, false);
+  const model = scatterPlotModel({
+    points: [
+      { targetKey: 'a', label: 'A', x: 1.0, y: 1.0 },
+      { targetKey: 'b', label: 'B', x: 1.5, y: 2.0 },
+    ],
+    contour,
+    legendRows: ['かな配列'],
+    contourName: 'u/アクション',
+    contourSuffix: '',
+  });
+  assert.equal(model.contours.length, 0);
+  assert.equal(model.legend!.rows.length, 1);
+});
+
+test('scatterPlotModel: 50%の線は、対象の軸の50%の位置に、範囲に入る時だけ引く', () => {
   const points = [
     { targetKey: 'a', label: 'A', x: 40, y: 60 },
     { targetKey: 'b', label: 'B', x: 65, y: 45 },
-    { targetKey: 'c', label: 'C', x: 50, y: 52 },
   ];
-  const model = scatterPlotModel({ points, contour, legendRows: [], contourName: '', contourSuffix: '' });
+  const base = { points, contour: undefined, legendRows: ['かな配列'], contourName: '', contourSuffix: '' };
+  const both = scatterPlotModel({ ...base, centerAxes: { x: true, y: true } });
   assert.deepEqual(
-    model.contours.map((line) => line.level),
-    [0.5, 0.8, 1, 1.25, 2],
+    both.centerLines.map((line) => line.axis),
+    ['x', 'y'],
+  );
+  const x = both.centerLines.find((line) => line.axis === 'x')!;
+  const y = both.centerLines.find((line) => line.axis === 'y')!;
+  // 横軸の範囲は40〜65に余白を足した範囲なので、50%は枠の左右の間、縦軸も枠の上下の間
+  assert.ok(x.position > PLOT_MARGIN.left && x.position < PLOT_WIDTH - PLOT_MARGIN.right);
+  assert.ok(y.position > PLOT_MARGIN.top && y.position < PLOT_HEIGHT - PLOT_MARGIN.bottom);
+  // 50%は点aとbの間: 横軸ではaが左、bが右
+  const [a, b] = both.points;
+  assert.ok(a!.px < x.position && x.position < b!.px);
+  assert.ok(b!.py > y.position && y.position > a!.py);
+  // 軸ごとに選べる。対象でない軸と、指定が無い時は引かない
+  assert.deepEqual(
+    scatterPlotModel({ ...base, centerAxes: { x: true, y: false } }).centerLines.map((line) => line.axis),
+    ['x'],
   );
   assert.deepEqual(
-    model.contours.map((line) => line.text),
-    ['0.50', '0.80', '1.00', '1.25', '2.00'],
+    scatterPlotModel({ ...base, centerAxes: { x: false, y: true } }).centerLines.map((line) => line.axis),
+    ['y'],
   );
-  // 他の恒等式は、切りのよい値を等間隔に選ぶ
-  assert.equal(scatterContour('actions', 'meanPerStroke', 100, 'ja')!.levels, 'linear');
+  assert.equal(scatterPlotModel(base).centerLines.length, 0);
+  // 50%が軸の範囲の外なら引かない
+  const outside = scatterPlotModel({
+    ...base,
+    points: [
+      { targetKey: 'a', label: 'A', x: 60, y: 20 },
+      { targetKey: 'b', label: 'B', x: 80, y: 30 },
+    ],
+    centerAxes: { x: true, y: true },
+  });
+  assert.equal(outside.centerLines.length, 0);
+  // 凡例の行は増えない
+  assert.equal(both.legend!.rows.length, 1);
+});
+
+test('scatterPlotModel: 縦軸の名前は、一番広い目盛りの数字の左に、数字の幅によらず一定の間隔で置く', () => {
+  const gaps = [
+    [
+      { x: 1, y: 0 },
+      { x: 2, y: 1 },
+    ],
+    [
+      { x: 1, y: 0 },
+      { x: 2, y: 100 },
+    ],
+    [
+      { x: 1, y: 10000 },
+      { x: 2, y: 20000 },
+    ],
+    [
+      { x: 1, y: 0.001 },
+      { x: 2, y: 0.002 },
+    ],
+  ].map((values) => {
+    const model = scatterPlotModel({
+      points: values.map((value, index) => ({ targetKey: `k${index}`, label: `P${index}`, ...value })),
+      contour: undefined,
+      legendRows: [],
+      contourName: '',
+      contourSuffix: '',
+    });
+    const widest = Math.max(...model.yTicks.map((tick) => estimateTextWidth(tick.text)));
+    // 目盛りの数字は枠の左から8px左に右端を揃えて置く
+    return { gap: PLOT_MARGIN.left - 8 - widest - model.yTitleX, widest };
+  });
+  assert.ok(new Set(gaps.map((item) => item.widest)).size > 1, '数字の幅が違う組を試している');
+  for (const item of gaps) assert.ok(Math.abs(item.gap - gaps[0]!.gap) < 1e-9, JSON.stringify(gaps));
 });

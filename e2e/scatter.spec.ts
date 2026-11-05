@@ -45,6 +45,9 @@ test.describe('個別画面', () => {
     await expect(feature(page).locator('[data-scatter-contour]').first()).toHaveText(/^[\d.]+$/);
     await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveText('u/かな');
     await expect(feature(page).locator('[data-scatter-preset-note]')).toHaveCount(0);
+    // 図の下に、縦軸の量と横軸の量の関係をキャプションで出す
+    await expect(feature(page).locator('[data-scatter-caption]')).toHaveText('u/アクションとアクション数/かなの関係');
+    await expect(feature(page).locator('[data-scatter-center-line]')).toHaveCount(0);
     // かな配列と英字の配列は、色と形の両方で分ける
     await expect(feature(page).locator('[data-scatter-point][data-kind="kana"] [data-mark="diamond"]')).toHaveCount(1);
     await expect(feature(page).locator('[data-scatter-point][data-kind="alpha"] [data-mark="circle"]')).toHaveCount(2);
@@ -85,14 +88,17 @@ test.describe('個別画面', () => {
     await settings.getByLabel('組み合わせ', { exact: true }).selectOption('handShare');
     await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('右手キー率');
     await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('右手距離率');
-    await expect(feature(page).locator('[data-scatter-contour]').first()).toHaveText(/^\d\.\d+$/);
-    await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveText('右手u/キー比');
+    // 細い線は引かない。50%の位置は、軸の範囲に入る軸にだけ線を引く
+    await expect(feature(page).locator('[data-scatter-contour]')).toHaveCount(0);
+    await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveCount(0);
+    await expect(feature(page).locator('[data-scatter-caption]')).toHaveText('右手距離率と右手キー率の関係');
 
     await settings.getByLabel('組み合わせ', { exact: true }).selectOption('movedPress');
     await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('移動ありキー率');
     await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('u/移動ありキー');
-    await expect(feature(page).locator('[data-scatter-contour]').first()).toHaveText(/^[\d.]+$/);
-    await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveText('u/キー');
+    // 線の量がu/キーの組は、細い線を引かない
+    await expect(feature(page).locator('[data-scatter-contour]')).toHaveCount(0);
+    await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveCount(0);
 
     await settings.getByLabel('組み合わせ', { exact: true }).selectOption('charsPerAction');
     await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('文字/アクション');
@@ -111,8 +117,16 @@ test.describe('個別画面', () => {
     await expect(feature(page).locator('[data-scatter-contour]')).toHaveCount(0);
     await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveCount(0);
 
-    await settings.getByLabel('横軸', { exact: true }).selectOption('perCharUnits');
+    // 線の量がu/アクションになる組は、細い線を引かない
+    await settings.getByLabel('縦軸', { exact: true }).selectOption('perCharUnits');
+    await settings.getByLabel('横軸', { exact: true }).selectOption('perCharPresses');
+    await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('u/かな');
+    await expect(feature(page).locator('[data-scatter-contour]')).toHaveCount(0);
+    await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveCount(0);
+
     await settings.getByLabel('縦軸', { exact: true }).selectOption('meanPerStroke');
+    await settings.getByLabel('横軸', { exact: true }).selectOption('perCharUnits');
+    await expect(feature(page).locator('[data-scatter-caption]')).toHaveText('u/アクションとu/かなの関係');
     await expect(feature(page).locator('[data-scatter-contour]').first()).toHaveText(/^[\d.]+$/);
     await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveText('アクション数/かな');
     // 入力かな数倍の関係にある列と同じ列は、もう一方の軸の選択肢に出ない

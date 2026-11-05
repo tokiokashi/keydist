@@ -43,11 +43,6 @@ test('COMPARISON_COLUMNS: 率の列は率として読める表示（小数第1�
   assert.equal(COMPARISON_COLUMNS.rightHandPressShare.format(0), '0.0%');
 });
 
-test('COMPARISON_COLUMNS: 左右の1押下あたりの距離の比は小数第3位までで、%を付けない', () => {
-  assert.equal(COMPARISON_COLUMNS.rightLeftPerPressRatio.format(1.23456), '1.235');
-  assert.equal(COMPARISON_COLUMNS.rightLeftPerPressRatio.format(0), '0.000');
-});
-
 test('COMPARISON_COLUMNS: 動いた押下の割合は%付き、動いた押下1回あたりの距離は小数第3位までで%を付けない', () => {
   assert.equal(COMPARISON_COLUMNS.movedPressShare.format(45.4545), '45.5%');
   assert.equal(COMPARISON_COLUMNS.movedPressShare.format(0), '0.0%');
@@ -66,9 +61,9 @@ test('COMPARISON_COLUMNS: 文字数に関わる4つの列は小数第3位まで�
   );
 });
 
-test('COMPARISON_COLUMNS: 全35列表示形式が定義されている', () => {
+test('COMPARISON_COLUMNS: 全34列表示形式が定義されている', () => {
   const ids = Object.keys(COMPARISON_COLUMNS);
-  assert.equal(ids.length, 35);
+  assert.equal(ids.length, 34);
   for (const id of ids) {
     const def = COMPARISON_COLUMNS[id as keyof typeof COMPARISON_COLUMNS];
     assert.equal(typeof def.label, 'string');
@@ -76,10 +71,10 @@ test('COMPARISON_COLUMNS: 全35列表示形式が定義されている', () => {
   }
 });
 
-test('表示する列: 既定は、全列から既定で表示しない列（左右の1押下あたりの距離の比・動いた押下の割合・動いた押下1回あたりの距離・文字数に関わる4つの比）を除いた並び', () => {
+test('表示する列: 既定は、全列から既定で表示しない列（動いた押下の割合・動いた押下1回あたりの距離・文字数に関わる4つの比）を除いた並び', () => {
   assert.deepEqual(
     [...COMPARISON_DEFAULT_HIDDEN_COLUMNS],
-    ['rightLeftPerPressRatio', 'movedPressShare', 'perMovedPressUnits', 'textCharsPerAction', 'actionsPerUnit', 'textCharsPerUnit', 'unitsPerTextChar'],
+    ['movedPressShare', 'perMovedPressUnits', 'textCharsPerAction', 'actionsPerUnit', 'textCharsPerUnit', 'unitsPerTextChar'],
   );
   const expected = COMPARISON_COLUMN_IDS.filter((id) => !COMPARISON_DEFAULT_HIDDEN_COLUMNS.has(id));
   for (const hidden of COMPARISON_DEFAULT_HIDDEN_COLUMNS) assert.ok(!expected.includes(hidden), hidden);
@@ -109,7 +104,6 @@ test('表示する列: 保存値が無い時と配列でない時も、既定で
 test('表示する列: 既定で表示しない列も、選べば保存値とURLを往復する', () => {
   const chosen = [
     ...defaultVisibleColumns(),
-    'rightLeftPerPressRatio',
     'movedPressShare',
     'perMovedPressUnits',
     'textCharsPerAction',

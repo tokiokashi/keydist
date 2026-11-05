@@ -39,6 +39,15 @@
 .scatter-figure {
   max-width: 760px;
   min-width: 0;
+  margin: 0;
+}
+
+/* 図の下のキャプション。見出しと同じ短い言い切りを、図の中央に置く */
+.scatter-caption {
+  margin-top: 0.25rem;
+  color: var(--text);
+  font-size: 0.82rem;
+  text-align: center;
 }
 
 .scatter-figure svg {
@@ -69,6 +78,13 @@
 /* 軸の名前は目盛りより読みやすく、本文の色にする */
 .scatter-axis-title {
   fill: var(--text);
+}
+
+/* 左右が均等になる50%の位置の線。細い破線と見分けられるよう実線にし、点・名前・細い線より奥に描く */
+.scatter-center-line {
+  stroke: var(--text-muted);
+  stroke-width: 1.5;
+  opacity: 0.55;
 }
 
 /* 恒等式で決まる量が同じになる位置の線。点より目立たないよう、細い破線にする */

@@ -9,11 +9,32 @@ import { kanaUnitOf } from '../unit-words.ts';
  * （距離 = アクション数 × u/アクション、キー数 = アクション数 × キー数/アクション、距離 = キー数 × u/キー、u/アクション = キー数/アクション × u/キー、
  * 同指 = アクション数 × 同指率 / 100、
  * 同じ手の続きの割合 = 同じ手の続き / (手の切り替え + 同じ手の続き) × 100、
- * 右手u/キー比 = (右手距離率 / (100 − 右手距離率)) / (右手キー率 / (100 − 右手キー率))、
  * u/キー = 移動ありキー率 / 100 × u/移動ありキー、
  * 文字/u = 文字/アクション × アクション/u、u/アクション = 文字/アクション × u/文字）にだけ引く。
+ * 線の量が配列ごとに違う回数で割った距離（`NO_LINE_COLUMNS`）の組には、恒等式があっても線を引かない。
  * 点の位置から関係の強さを測る表示（回帰直線・相関係数）は出さない。
  */
+
+/**
+ * 細い線の量にしない列。総移動距離を、配列ごとに違う回数（キー数・移動ありキー数・アクション数）で割った値と、その逆数。
+ * 1文字を打つのに押すキーの数やアクションの数は配列で違うので、線の上で値の小さい側にいる配列でも、
+ * 同じテキストを打つ時の距離（u/文字）は大きいことがある。線を引くと、この値の大小が同じテキストを打つ時の距離の大小に見えてしまう。
+ * 比較表と軸には使える。
+ */
+const NO_LINE_COLUMNS: ReadonlySet<ComparisonColumnId> = new Set<ComparisonColumnId>([
+  'perPressUnits',
+  'perMovedPressUnits',
+  'meanPerStroke',
+  'actionsPerUnit',
+]);
+
+/** 左右の手で全体を分ける割合の列。50%が左右の均等の位置になるのはこの2列だけ。 */
+const HAND_SHARE_COLUMNS: readonly ComparisonColumnId[] = ['rightHandPressShare', 'rightHandDistanceShare'];
+
+/** 50%が左右の均等の位置になる列か。 */
+export function isHandShareColumn(column: ComparisonColumnId): boolean {
+  return HAND_SHARE_COLUMNS.includes(column);
+}
 
 /** 用意する組み合わせ。 */
 export const SCATTER_PRESET_IDS = ['distance', 'press', 'perPress', 'sameFinger', 'hand', 'handShare', 'movedPress', 'charsPerAction', 'free'] as const;
@@ -61,8 +82,8 @@ export function scatterPresetDescriptions(language: TextLanguage): Readonly<Reco
     perPress: `1${k}あたりの距離を、1${k}に何キー押すかと、1キーあたりの距離に分けて見ます。`,
     sameFinger: 'アクション数と同指率から、同指の回数がどう決まるかを見ます。',
     hand: '手の切り替えと同じ手の続きの回数から、同じ手の続きの割合がどう決まるかを見ます。',
-    handShare: 'キーと距離のそれぞれで右手が受け持つ割合から、左右の1キーあたりの距離の比がどう決まるかを見ます。',
-    movedPress: '移動ありキーの割合と、移動ありキー1つあたりの距離から、1キーあたりの距離がどう決まるかを見ます。',
+    handShare: '押すキーの数と距離のそれぞれで、右手が受け持つ割合を見ます。左右の偏りを、押す回数と距離の2つで比べる図です。',
+    movedPress: '押したキーのうち移動ありキーが占める割合と、移動ありキー1つあたりの距離を見ます。',
     charsPerAction:
       '1アクションで出せる文字数と、1uの距離を動く間に行うアクション数から、1uの距離で出せる文字数がどう決まるかを見ます。大きいほど手間が少ない向きの2軸で、既定の組み合わせの逆の向きです。',
     free: '比較表の列から横軸と縦軸を選びます。',
@@ -78,11 +99,6 @@ interface Quantity {
    * 入力かな数Cに比例する量（個数・距離）か。比例しない量（平均・率）の列は1つで、総数と1かなあたりの区別が無い。
    */
   readonly extensive: boolean;
-  /**
-   * この量を細い線に引く時の値の選び方。`reciprocal`は、1と、比とその逆数の組（0.8と1.25など）から選ぶ。
-   * 右手を分子に置いた比は、1を挟んで逆数どうしが左右を入れ替えた同じ偏りを表すので、組で引く。無い量は切りのよい値を等間隔に選ぶ。
-   */
-  readonly levels?: 'reciprocal';
 }
 
 type Triple = readonly [number, number, number];
@@ -163,19 +179,6 @@ export const IDENTITIES: readonly Identity[] = [
       { total: 'sameHandContinuationRate', extensive: false },
     ],
     solve: (index, [w, c, rate]) => (index === 0 ? divide(c * (100 - rate), rate) : index === 1 ? divide(rate * w, 100 - rate) : divide(100 * c, w + c)),
-  },
-  // 右手u/キー比 = (d / (100 − d)) / (p / (100 − p))。pは右手キー率、dは右手距離率（どちらも%）。
-  // 右手の割合は分母が0の時に0とする慣例なので、距離の総和が0の点でdは0になり、比は値を持たない。
-  // 軸の値だけではこの点を比が0の点と区別できないので、点の読み取りは`ScatterContour.readoutAt`で比の列の値を見る。
-  {
-    relation: ([p, d, r]) => `${r} =（${d} ÷（100 − ${d}））÷（${p} ÷（100 − ${p}））`,
-    quantities: [
-      { total: 'rightHandPressShare', extensive: false },
-      { total: 'rightHandDistanceShare', extensive: false },
-      { total: 'rightLeftPerPressRatio', extensive: false, levels: 'reciprocal' },
-    ],
-    solve: (index, [p, d, r]) =>
-      index === 0 ? divide(100 * d, r * (100 - d) + d) : index === 1 ? divide(100 * r * p, 100 - p + r * p) : divide(d * (100 - p), (100 - d) * p),
   },
   // u/キー = 移動ありキー率 / 100 × u/移動ありキー。`perPressUnits`は総移動距離 / 押したキーの数、`perMovedPressUnits`は総移動距離 / 移動ありキーの数。
   {
@@ -273,11 +276,14 @@ export interface ScatterContour {
   /**
    * 点の読み取りに出す等位線の値。`columnValue`はその対象の、等位線の量の列（比較表の列）の値。
    * 列が値を持たない対象（`NaN`）では、軸の値から式で値が求まっても出さない。
-   * 右手の割合のように分母が0の時に0とする列を軸に取ると、軸の値だけでは比が値を持つかを区別できないため。
+   * 分母が0の時に0とする列（率）を軸に取ると、軸の値だけでは等位線の量が値を持つかを区別できないため。
    */
   readonly readoutAt: (x: number, y: number, columnValue: number) => number | undefined;
-  /** 線を引く値の選び方（`Quantity.levels`）。 */
-  readonly levels: 'linear' | 'reciprocal';
+  /**
+   * 細い線を引く量か。引かない組（`NO_LINE_COLUMNS`）でも、3つの量の関係は図の見方に出すので、等位線は返す。
+   * 引かない組では、線の量の値を点の読み取りにも凡例にも出さない。
+   */
+  readonly drawsLines: boolean;
   /** 3つの量の関係の式（恒等式の`relation`）。語尾は付けない。 */
   readonly relation: string;
   /**
@@ -350,7 +356,7 @@ export function scatterContour(x: ComparisonColumnId, y: ComparisonColumnId, inp
       conversion: converted.length === 0 ? undefined : converted.join('、'),
       valueAt,
       readoutAt: (xv, yv, columnValue) => (Number.isFinite(columnValue) ? valueAt(xv, yv) : undefined),
-      levels: rq.levels ?? 'linear',
+      drawsLines: !NO_LINE_COLUMNS.has(outColumn),
       yAt: (level, xv) => {
         const value = identity.solve(yi as 0 | 1 | 2, triple({ [xi]: toTotal(xv, xForm), [ri]: toTotal(level, outForm) }));
         return finite(value === undefined ? undefined : fromTotal(value, yForm));
