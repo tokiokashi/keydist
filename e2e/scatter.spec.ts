@@ -39,11 +39,11 @@ test.describe('個別画面', () => {
     await expect(feature(page).locator('[data-scatter-point]')).toHaveCount(3, { timeout: 15_000 });
   });
 
-  test('既定は1かなのアクション数と1アクションの距離で、軸の名前は何あたりかを除いた量の言葉と単位、細い線には値だけを書き、量の名前は凡例に1回出す', async ({
+  test('既定は1かなのアクション数と1アクションの距離で、軸の名前は「量/何あたり（単位）」の形、細い線には値だけを書き、量の名前は凡例に1回出す', async ({
     page,
   }) => {
-    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('アクション数');
-    await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('距離（u）');
+    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('アクション数/かな');
+    await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('距離/アクション（u）');
     await expect(feature(page).locator('[data-scatter-contour]').first()).toHaveText(/^[\d.]+$/);
     await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveText('1かなの距離（u）');
     await expect(feature(page).locator('[data-scatter-preset-note]')).toHaveCount(0);
@@ -62,15 +62,15 @@ test.describe('個別画面', () => {
     const before = await qwerty.evaluate((element) => getComputedStyle(element).transform);
     const settings = await openSettings(page);
     await settings.getByLabel('組み合わせ', { exact: true }).selectOption('press');
-    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('キー数');
-    await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('アクション数');
+    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('キー数/アクション');
+    await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('アクション数/かな');
     await expect(feature(page).locator('[data-scatter-contour]').first()).toHaveText(/^[\d.]+$/);
     await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveText('1かなのキー数');
     await expect(feature(page).locator('[data-scatter-preset-note]')).toHaveCount(0);
 
     await settings.getByLabel('組み合わせ', { exact: true }).selectOption('perPress');
-    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('キー数');
-    await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('距離（u）');
+    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('キー数/かな');
+    await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('距離/キー（u）');
     await expect(feature(page).locator('[data-scatter-contour]').first()).toHaveText(/^[\d.]+$/);
     await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveText('1かなの距離（u）');
 
@@ -97,14 +97,14 @@ test.describe('個別画面', () => {
 
     await settings.getByLabel('組み合わせ', { exact: true }).selectOption('movedPress');
     await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('移動ありキー率（%）');
-    await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('距離（u）');
+    await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('距離/移動ありキー（u）');
     // 線の量が1キーの距離の組は、細い線を引かない
     await expect(feature(page).locator('[data-scatter-contour]')).toHaveCount(0);
     await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveCount(0);
 
     await settings.getByLabel('組み合わせ', { exact: true }).selectOption('charsPerAction');
-    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('文字数');
-    await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('アクション数（1/u）');
+    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('文字数/アクション');
+    await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('アクション数/距離（1/u）');
     await expect(feature(page).locator('[data-scatter-contour]').first()).toHaveText(/^[\d.]+$/);
     await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveText('1uの文字数（1/u）');
   });
@@ -115,22 +115,22 @@ test.describe('個別画面', () => {
     await settings.getByLabel('横軸', { exact: true }).selectOption('singleTapRate');
     await settings.getByLabel('縦軸', { exact: true }).selectOption('perCharPresses');
     await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('単打率（%）');
-    await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('キー数');
+    await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('キー数/かな');
     await expect(feature(page).locator('[data-scatter-contour]')).toHaveCount(0);
     await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveCount(0);
 
     // 線の量が1アクションの距離になる組は、細い線を引かない
     await settings.getByLabel('縦軸', { exact: true }).selectOption('perCharUnits');
     await settings.getByLabel('横軸', { exact: true }).selectOption('perCharPresses');
-    await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('距離（u）');
+    await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('距離/かな（u）');
     await expect(feature(page).locator('[data-scatter-contour]')).toHaveCount(0);
     await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveCount(0);
 
     await settings.getByLabel('縦軸', { exact: true }).selectOption('meanPerStroke');
     await settings.getByLabel('横軸', { exact: true }).selectOption('perCharUnits');
-    // 両軸が同じ短い名前になる組は、キャプションの順で区別する
-    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('距離（u）');
-    await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('距離（u）');
+    // 何あたりの距離かが軸の名前で分かれる
+    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('距離/かな（u）');
+    await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('距離/アクション（u）');
     await expect(feature(page).locator('[data-scatter-caption]')).toHaveText('1アクションの距離と1かなの距離の関係');
     await expect(feature(page).locator('[data-scatter-contour]').first()).toHaveText(/^[\d.]+$/);
     await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveText('1かなのアクション数');
@@ -166,7 +166,7 @@ test.describe('個別画面', () => {
   test('図の見方のⓘに、横軸・縦軸・細い線の量の説明と関係を書き、組み合わせを替えると追従する', async ({ page }) => {
     const settings = await openSettings(page);
     await settings.getByLabel('組み合わせ', { exact: true }).selectOption('perPress');
-    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('キー数');
+    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('キー数/かな');
     await page.getByRole('button', { name: '図の見方の説明' }).first().click();
     const dialog = page.getByRole('dialog', { name: '図の見方' });
     await expect(dialog.locator('.info-modal-item')).toHaveCount(3);
@@ -206,6 +206,6 @@ test.describe('Workspace', () => {
     await waitForHydration(page);
     const plot = page.locator('[data-pane-id="plot"] [data-react-feature="scatter"]').first();
     await expect(plot.locator('[data-scatter-point]')).toHaveCount(3, { timeout: 20_000 });
-    await expect(plot.locator('[data-scatter-x-title]')).toHaveText('アクション数');
+    await expect(plot.locator('[data-scatter-x-title]')).toHaveText('アクション数/かな');
   });
 });

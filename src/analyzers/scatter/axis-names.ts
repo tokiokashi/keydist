@@ -10,7 +10,7 @@ import { kanaUnitOf, type KanaUnit } from '../unit-words.ts';
  * 単位は、距離を測る列が`u`、値に`%`が付く率の列が`%`、1uあたりの量が`1/u`。
  * 個数と、個数どうしの比は無次元なので単位を付けない。
  * 画面の凡例には「名前（単位）」を、キャプション・点の読み取り・図の見方の文には単位を除いた名前を使う。
- * 軸の名前だけは、何あたりかを表す部分を落とした短い名前（`shortName`）を使える。何あたりかは図の下のキャプションが持つため。
+ * 軸の名前だけは、狭い軸に収まるよう「量/何あたり」の形に縮めた名前（`axisLabel`）を使える。
  */
 export type AxisUnit = 'u' | '%' | '1/u';
 
@@ -22,10 +22,10 @@ interface AxisNameSpec {
   readonly name?: (kana: KanaUnit) => string;
   readonly unit?: AxisUnit;
   /**
-   * 軸の名前に使う短い名前。単位は含めない。`name`から「1かなの」「1アクションの」「1uの」など何あたりかを表す部分を落とした名前を宣言する。
+   * 軸の名前に使う縮めた名前。単位は含めない。「量/何あたり」の形で、何あたりかを残す。「かな」は`name`と同じくテキストの言語で出し分ける。比較表の列名と同じ文になる列は、列名をそのまま使う。
    * 宣言の無い列は`name`のまま軸に出す。
    */
-  readonly shortName?: string;
+  readonly axisLabel?: (kana: KanaUnit, language: TextLanguage) => string;
 }
 
 /** 押したキーの数。比較表には1かなあたりの列しか無いので、関係式で総数の形の名前が要る時はこれを使う。 */
@@ -34,12 +34,12 @@ export const KEY_COUNT_NAME = 'キー数';
 const SPECS: Readonly<Record<ComparisonColumnId, AxisNameSpec>> = {
   actions: {},
   totalUnits: { name: () => '総移動距離', unit: 'u' },
-  meanPerStroke: { name: () => '1アクションの距離', unit: 'u', shortName: '距離' },
-  perCharUnits: { name: (k) => `1${k}の距離`, unit: 'u', shortName: '距離' },
-  perCharSteps: { name: (k) => `1${k}のアクション数`, shortName: 'アクション数' },
-  perCharPresses: { name: (k) => `1${k}の${KEY_COUNT_NAME}`, shortName: 'キー数' },
-  perActionPresses: { name: () => `1アクションの${KEY_COUNT_NAME}`, shortName: 'キー数' },
-  perPressUnits: { name: () => '1キーの距離', unit: 'u', shortName: '距離' },
+  meanPerStroke: { name: () => '1アクションの距離', unit: 'u', axisLabel: () => '距離/アクション' },
+  perCharUnits: { name: (k) => `1${k}の距離`, unit: 'u', axisLabel: (k) => `距離/${k}` },
+  perCharSteps: { name: (k) => `1${k}のアクション数`, axisLabel: (_k, language) => comparisonColumnText(language).perCharSteps.label },
+  perCharPresses: { name: (k) => `1${k}の${KEY_COUNT_NAME}`, axisLabel: (k) => `${KEY_COUNT_NAME}/${k}` },
+  perActionPresses: { name: () => `1アクションの${KEY_COUNT_NAME}`, axisLabel: () => `${KEY_COUNT_NAME}/アクション` },
+  perPressUnits: { name: () => '1キーの距離', unit: 'u', axisLabel: () => '距離/キー' },
   singleTapLayerRate: { unit: '%' },
   singleTapRate: { unit: '%' },
   singleKeyRate: { unit: '%' },
@@ -50,11 +50,11 @@ const SPECS: Readonly<Record<ComparisonColumnId, AxisNameSpec>> = {
   rightHandDistanceShare: { unit: '%' },
   rightHandPressShare: { unit: '%' },
   movedPressShare: { unit: '%' },
-  perMovedPressUnits: { name: () => '移動ありキー1つの距離', unit: 'u', shortName: '距離' },
-  textCharsPerAction: { name: () => '1アクションの文字数', shortName: '文字数' },
-  actionsPerUnit: { name: () => '1uのアクション数', unit: '1/u', shortName: 'アクション数' },
-  textCharsPerUnit: { name: () => '1uの文字数', unit: '1/u', shortName: '文字数' },
-  unitsPerTextChar: { name: () => '1文字の距離', unit: 'u', shortName: '距離' },
+  perMovedPressUnits: { name: () => '移動ありキー1つの距離', unit: 'u', axisLabel: () => '距離/移動ありキー' },
+  textCharsPerAction: { name: () => '1アクションの文字数', axisLabel: () => '文字数/アクション' },
+  actionsPerUnit: { name: () => '1uのアクション数', unit: '1/u', axisLabel: () => 'アクション数/距離' },
+  textCharsPerUnit: { name: () => '1uの文字数', unit: '1/u', axisLabel: () => '文字数/距離' },
+  unitsPerTextChar: { name: () => '1文字の距離', unit: 'u', axisLabel: () => '距離/文字' },
   physicalBigramCombinations: {},
   logicalBigramCombinations: {},
   alternationCoverage: { unit: '%' },
@@ -85,15 +85,11 @@ export function axisTitle(column: ComparisonColumnId, language: TextLanguage): s
   return unit === undefined ? name : `${name}（${unit}）`;
 }
 
-/** 軸の名前に出す、単位つきの短い名前。短い名前を宣言していない列は`axisTitle`と同じ。 */
-export function axisShortTitle(column: ComparisonColumnId, language: TextLanguage): string {
-  const short = SPECS[column].shortName;
-  if (short === undefined) return axisTitle(column, language);
+/** 軸の名前に出す、単位つきの名前。縮めた名前を宣言していない列は`axisTitle`と同じ。 */
+export function axisPlotTitle(column: ComparisonColumnId, language: TextLanguage): string {
+  const label = SPECS[column].axisLabel;
+  if (label === undefined) return axisTitle(column, language);
   const unit = axisUnit(column);
-  return unit === undefined ? short : `${short}（${unit}）`;
-}
-
-/** 軸の名前に短い名前を使う列か。 */
-export function hasShortAxisName(column: ComparisonColumnId): boolean {
-  return SPECS[column].shortName !== undefined;
+  const name = label(kanaUnitOf(language), language);
+  return unit === undefined ? name : `${name}（${unit}）`;
 }
