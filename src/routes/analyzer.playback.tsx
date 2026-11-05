@@ -15,7 +15,7 @@ export const Route = createFileRoute('/analyzer/playback')({
       { title: `${PLAYBACK_PANE_META.name} | keydist` },
       {
         name: 'description',
-        content: '配列やSetupを1つ選んで、同じテキストを打つ様子を配列図の上で1打鍵ずつ再生します。',
+        content: '配列やSetupを1つ選んで、同じテキストを打つ様子を配列図の上で1アクションずつ再生します。',
       },
     ],
   }),

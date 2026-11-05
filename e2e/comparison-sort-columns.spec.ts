@@ -186,14 +186,14 @@ test('列名は短くそろい、見出しのセルにⓘは置かない', async
   const headers = (await table.locator('thead th').allInnerTexts()).map((text) => text.replace(/[↑↓]/g, '').trim());
   expect(headers).toEqual([
     '対象',
-    '動作数',
+    'アクション数',
     '距離',
-    'u/打鍵',
-    'u/文字',
-    '動作数/文字',
-    '押下数/文字',
-    '押下数/動作',
-    'u/押下',
+    'u/アクション',
+    'u/かな',
+    'アクション数/かな',
+    'キー数/かな',
+    'キー数/アクション',
+    'u/キー',
     '単打面率',
     '単打率',
     '1キー率',
@@ -202,15 +202,15 @@ test('列名は短くそろい、見出しのセルにⓘは置かない', async
     '指間平均',
     '指間σ',
     '右手距離率',
-    '右手押下率',
+    '右手キー率',
     'Bigram数（物理キー）',
     'Bigram数（シフト込み）',
     '交互打鍵の連続の割合',
     '同じ手の続きの割合',
     '手の切り替え',
     '同じ手の続き',
-    '両手の打鍵を含む組の割合',
-    '両手の打鍵',
+    '両手のアクションを含む組の割合',
+    '両手のアクション',
     '交互打鍵の連続の数',
     '交互打鍵の連続の平均の長さ',
     '交互打鍵の連続の最長の長さ',
@@ -376,17 +376,17 @@ test('Workspace: 「このペインだけ」にしたペインは並び替えを
 test('Workspace: 共有に従う2つの比較表で、間引きの待ちの間に別々のペインで続けて並べても、収まった後は両方の表示と保存値が一致する', async ({ page }) => {
   await openTwoComparisons(page);
   const tables = page.locator('.comparison-table');
-  // 保存の間引き（約400ms）の中で、1つ目は「距離」、2つ目は「動作数」を並べる
+  // 保存の間引き（約400ms）の中で、1つ目は「距離」、2つ目は「アクション数」を並べる
   await sortButton(tables.nth(0), '距離').click();
-  await sortButton(tables.nth(1), '動作数').click();
+  await sortButton(tables.nth(1), 'アクション数').click();
 
-  await expect(headerOf(tables.nth(0), '動作数')).toHaveAttribute('aria-sort', 'ascending');
-  await expect(headerOf(tables.nth(1), '動作数')).toHaveAttribute('aria-sort', 'ascending');
+  await expect(headerOf(tables.nth(0), 'アクション数')).toHaveAttribute('aria-sort', 'ascending');
+  await expect(headerOf(tables.nth(1), 'アクション数')).toHaveAttribute('aria-sort', 'ascending');
   // 保存が済むまで待ってから、もう一度両方を確かめる（待ちの間の反響で食い違わない）
   await expect.poll(async () => JSON.stringify((await storedSortState(page))?.optionSets)).toContain('"sort"');
   await page.waitForTimeout(1500);
   for (let n = 0; n < 2; n += 1) {
-    await expect(headerOf(tables.nth(n), '動作数')).toHaveAttribute('aria-sort', 'ascending');
+    await expect(headerOf(tables.nth(n), 'アクション数')).toHaveAttribute('aria-sort', 'ascending');
     await expect(headerOf(tables.nth(n), '距離')).not.toHaveAttribute('aria-sort', /.+/);
   }
   const stored = await storedSortState(page);
@@ -394,7 +394,7 @@ test('Workspace: 共有に従う2つの比較表で、間引きの待ちの間�
   await page.reload();
   await waitForHydration(page);
   for (let n = 0; n < 2; n += 1) {
-    await expect(headerOf(page.locator('.comparison-table').nth(n), '動作数')).toHaveAttribute('aria-sort', 'ascending');
+    await expect(headerOf(page.locator('.comparison-table').nth(n), 'アクション数')).toHaveAttribute('aria-sort', 'ascending');
   }
 });
 

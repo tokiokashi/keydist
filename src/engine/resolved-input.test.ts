@@ -450,7 +450,7 @@ test('評価に渡すテキストが上限ちょうどなら計算できる。1�
   assert.deepEqual(over.error, { kind: 'text-too-long', length: MAX_EVALUATION_TEXT_LENGTH + 1, limit: MAX_EVALUATION_TEXT_LENGTH });
   assert.equal(
     describeResolvedInputError(over.error),
-    `テキストが長すぎて計算できません（計算に使う文字数が${(MAX_EVALUATION_TEXT_LENGTH + 1).toLocaleString('ja-JP')}字で、${MAX_EVALUATION_TEXT_LENGTH.toLocaleString('ja-JP')}字までです）。テキストを短くしてください`,
+    `テキストが長すぎて計算できません（計算に使う字数が${(MAX_EVALUATION_TEXT_LENGTH + 1).toLocaleString('ja-JP')}字で、${MAX_EVALUATION_TEXT_LENGTH.toLocaleString('ja-JP')}字までです）。テキストを短くしてください`,
   );
 });
 
@@ -468,7 +468,7 @@ test('上限の知らせは言語に依らず同じ文で、読みに直した�
   assert.ok(!result.ok);
   if (result.ok) return;
   const message = describeResolvedInputError(result.error);
-  assert.match(message, /計算に使う文字数が400,001字で、400,000字までです/);
+  assert.match(message, /計算に使う字数が400,001字で、400,000字までです/);
   assert.doesNotMatch(message, /読みに直した/);
 });
 

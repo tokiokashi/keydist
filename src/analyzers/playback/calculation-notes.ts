@@ -73,7 +73,7 @@ export function playbackCalculationNotes(
     changes.push(`平均の方式: ${options.rateAverage === 'ewma' ? 'EWMA' : 'SMA'}`);
   }
   if (options.rateAverage === 'sma' && options.rateWindow !== defaults.rateWindow) {
-    changes.push(`平均の窓幅: ${options.rateWindow}打鍵`);
+    changes.push(`平均の窓幅: ${options.rateWindow}アクション`);
   }
   if (options.rateAverage === 'ewma' && options.rateHalfLifeSeconds !== defaults.rateHalfLifeSeconds) {
     changes.push(`平均の半減時間: ${options.rateHalfLifeSeconds}秒`);

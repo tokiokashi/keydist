@@ -10,7 +10,7 @@ import { DEFAULT_HAND_RHYTHM_OPTIONS, handRhythmOptions, type HandRhythmOptions 
  * 連続の長さごとの数を並べ直すだけにする。新しい数値の定義は作らない。
  */
 
-/** 連続の長さ（打鍵数）とその長さの連続の数。長さの昇順。 */
+/** 連続の長さ（アクション数）とその長さの連続の数。長さの昇順。 */
 export interface RunLengthCount {
   readonly length: number;
   readonly count: number;

@@ -1,7 +1,7 @@
 import { expect, test, type Page } from './fixtures.ts';
 
 /**
- * レイヤーとコンボの押下数のE2E。押下数と割合はunit test（`extract.test.ts`・`engine-path.test.ts`）で固定しているので、
+ * レイヤーとコンボのキー数のE2E。押下数と割合はunit test（`extract.test.ts`・`engine-path.test.ts`）で固定しているので、
  * ここでは画面の配線（表の行・合計の行・コンボの行の有無）だけを見る。
  */
 
@@ -19,7 +19,7 @@ const table = (page: Page) => feature(page).locator('[data-layer-combo-presses-t
 test('コンボを持つ配列: 表にコンボの行が出て、押下数の和が合計の行と一致する', async ({ page }) => {
   await selectLayout(page, 'kawasemi-plus');
   await page.goto('/analyzer/layer-combo-presses');
-  await expect(page.getByRole('heading', { name: 'レイヤーとコンボの押下数', exact: true, level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'レイヤーとコンボのキー数', exact: true, level: 1 })).toBeVisible();
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
 
   await expect(table(page).locator('tbody tr')).toHaveCount(18);

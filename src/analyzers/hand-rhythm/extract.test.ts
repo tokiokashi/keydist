@@ -158,19 +158,19 @@ function syntheticExtraction(): HandRhythmExtracted {
   );
 }
 
-test('合成データ: 両手で文字を出す打鍵と、片手は切り替えのキーだけの打鍵が別の行に出る', () => {
+test('合成データ: 両手で文字を出すアクションと、片手は切り替えのキーだけのアクションが別の行に出る', () => {
   const rows = new Map(pairRowsOf(syntheticExtraction()).map((row) => [row.id, row.text]));
-  assert.equal(rows.get('both-hand-strokes'), '2打鍵');
-  assert.equal(rows.get('both-output'), '1打鍵');
-  assert.equal(rows.get('both-mixed'), '1打鍵');
-  assert.equal(rows.get('strokes'), '7打鍵');
+  assert.equal(rows.get('both-hand-strokes'), '2アクション');
+  assert.equal(rows.get('both-output'), '1アクション');
+  assert.equal(rows.get('both-mixed'), '1アクション');
+  assert.equal(rows.get('strokes'), '7アクション');
   assert.equal(rows.get('switches'), '2組');
   assert.equal(rows.get('continuations'), '0組');
   assert.equal(rows.get('continuation-rate'), '0.0%');
   assert.equal(rows.get('both-hand-pairs'), '4組（組全体の66.7%）');
 });
 
-test('継続率の行のすぐ後ろに、両手の打鍵を含む組の行が並ぶ', () => {
+test('継続率の行のすぐ後ろに、両手のアクションを含む組の行が並ぶ', () => {
   const ids = pairRowsOf(syntheticExtraction()).map((row) => row.id);
   assert.equal(ids.indexOf('both-hand-pairs'), ids.indexOf('continuation-rate') + 1);
 });
@@ -188,9 +188,9 @@ test('分母が0の割合は「—」で出す', () => {
 test('合成データ: 交互打鍵の連続の行', () => {
   const rows = new Map(alternationRowsOf(syntheticExtraction()).map((row) => [row.id, row.text]));
   assert.equal(rows.get('alternation-runs'), '1件');
-  assert.equal(rows.get('alternation-mean'), '3.00打鍵');
-  assert.equal(rows.get('alternation-max'), '3打鍵');
-  assert.equal(rows.get('alternation-coverage'), '42.9%（3 / 7打鍵）');
+  assert.equal(rows.get('alternation-mean'), '3.00アクション');
+  assert.equal(rows.get('alternation-max'), '3アクション');
+  assert.equal(rows.get('alternation-coverage'), '42.9%（3 / 7アクション）');
 });
 
 test('解析設定の項目は無い', () => {

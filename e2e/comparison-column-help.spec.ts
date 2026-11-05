@@ -9,16 +9,16 @@ import { waitForHydration } from './hydration-helper.ts';
 
 const FORBIDDEN_WORDS = ['Policy', 'fresh', 'Stroke', 'physical', 'mean'];
 /** 「表示する列」の既定で表示しない列。 */
-const HIDDEN_BY_DEFAULT = ['右手u/押下比', '動いた押下率', 'u/動いた押下'];
+const HIDDEN_BY_DEFAULT = ['右手u/キー比', '移動ありキー率', 'u/移動ありキー'];
 const COLUMN_LABELS = [
-  '動作数',
+  'アクション数',
   '距離',
-  'u/打鍵',
-  'u/文字',
-  '動作数/文字',
-  '押下数/文字',
-  '押下数/動作',
-  'u/押下',
+  'u/アクション',
+  'u/かな',
+  'アクション数/かな',
+  'キー数/かな',
+  'キー数/アクション',
+  'u/キー',
   '単打面率',
   '単打率',
   '1キー率',
@@ -27,18 +27,18 @@ const COLUMN_LABELS = [
   '指間平均',
   '指間σ',
   '右手距離率',
-  '右手押下率',
-  '右手u/押下比',
-  '動いた押下率',
-  'u/動いた押下',
+  '右手キー率',
+  '右手u/キー比',
+  '移動ありキー率',
+  'u/移動ありキー',
   'Bigram数（物理キー）',
   'Bigram数（シフト込み）',
   '交互打鍵の連続の割合',
   '同じ手の続きの割合',
   '手の切り替え',
   '同じ手の続き',
-  '両手の打鍵を含む組の割合',
-  '両手の打鍵',
+  '両手のアクションを含む組の割合',
+  '両手のアクション',
   '交互打鍵の連続の数',
   '交互打鍵の連続の平均の長さ',
   '交互打鍵の連続の最長の長さ',
@@ -124,7 +124,7 @@ test('見出しのⓘでモーダルが開き、比較表の説明・単位・�
   expect(badChildren).toEqual([]);
   for (const word of FORBIDDEN_WORDS) await expect(dialog).not.toContainText(word);
 
-  // 表示していない列の説明も出る。既定で表示しない列（右手u/押下比・動いた押下率・u/動いた押下）は、選ぶと表に出る。
+  // 表示していない列の説明も出る。既定で表示しない列（右手u/キー比・移動ありキー率・u/移動ありキー）は、選ぶと表に出る。
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
   for (const label of HIDDEN_BY_DEFAULT) await expect(table.locator('thead th', { hasText: label })).toHaveCount(0);

@@ -10,7 +10,7 @@ import { SCATTER_PRESET_IDS, type ScatterPresetId } from './axes.ts';
  * 抽出し直さない（どの2列を軸に取るかは「どう見せるか」であって「何を計算するか」ではない）。
  *
  * `preset`は軸の組み合わせ。`free`の時だけ`xAxis`と`yAxis`を使う。
- * 軸に選べない組（同じ列・入力文字数倍の関係にある2列）は、解析設定の小窓の選択肢から外す。
+ * 軸に選べない組（同じ列・入力かな数倍の関係にある2列）は、解析設定の小窓の選択肢から外す。
  * URLなどから選べない組が入った時は、本体が軸を描かずにその旨を知らせる。
  */
 export const DEFAULT_SCATTER_PRESET: ScatterPresetId = 'distance';

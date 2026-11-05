@@ -14,7 +14,8 @@ export const Route = createFileRoute('/analyzer/n-sensitivity')({
       { title: `${N_SENSITIVITY_PANE_META.name} | keydist` },
       {
         name: 'description',
-        content: '配列やSetupを選んで、先読みする文字数Nを0〜10に変えた時に、指の移動距離や同指率などの指標がどう変わるかをグラフで比べます。',
+        content:
+          '配列やSetupを選んで、先読みするかな（英語のテキストでは字）の数Nを0〜10に変えた時に、指の移動距離や同指率などの指標がどう変わるかをグラフで比べます。',
       },
     ],
   }),

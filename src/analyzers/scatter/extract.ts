@@ -16,7 +16,7 @@ import { ALTERNATE_SCATTER_OPTIONS, DEFAULT_SCATTER_OPTIONS, scatterOptions, typ
 /**
  * 散布図Analyzerの抽出。
  *
- * 各メンバー（Setup）の比較表の列の値（`computeComparisonRowValues`）と入力文字数を読み出すだけで、
+ * 各メンバー（Setup）の比較表の列の値（`computeComparisonRowValues`）と入力かな数を読み出すだけで、
  * 独自の指標・合成スコアは作らない。軸の選び方・等位線は解析設定（`affects: 'view'`）で、抽出結果には含めない。
  * 値は比較表と同じ列なので、全列を持つ。
  */
@@ -26,7 +26,7 @@ export interface ScatterOkRow {
   readonly kind: 'ok';
   readonly targetKey: string;
   readonly values: ComparisonRowValues;
-  /** 入力文字数。1文字あたりの列を軸に取った時に、等位線の総数の形への換算に使う。 */
+  /** 入力かな数。1文字あたりの列を軸に取った時に、等位線の総数の形への換算に使う。 */
   readonly inputChars: number;
 }
 

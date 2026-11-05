@@ -53,7 +53,7 @@ export interface LayerStat {
   id: string;
   /** 表示用の層名 */
   label: string;
-  /** この層に帰属するキー押下数 */
+  /** この層に帰属するキー数 */
   presses: number;
   /** 層に帰属するキーid → 打鍵回数 */
   keyCounts: Map<string, number>;
@@ -93,11 +93,11 @@ export interface Metrics {
   strokes: number;
   /** 現行pipelineでは1 realized Stroke = 1 analytic action。 */
   actions: number;
-  /** キー押下数。同時押しは押したキーの数だけ数える */
+  /** キー数。同時押しは押したキーの数だけ数える */
   presses: number;
   /** 配列に無く打鍵できなかった文字数 */
   skipped: number;
-  /** 入力文字数（展開前。仕様 §11.4の分母） */
+  /** 入力かな数（展開前。仕様 §11.4の分母） */
   inputChars: number;
   /** 指ごとの総移動距離 [u] */
   perFinger: Record<Finger, number>;
@@ -187,7 +187,7 @@ export interface Metrics {
   combos: ComboStats;
   /** 宣言順の層別集計。コンボ枠は含めない */
   layers: LayerStat[];
-  /** コンボ枠に帰属するキー押下数。層の保存則の左辺に加える */
+  /** コンボ枠に帰属するキー数。層の保存則の左辺に加える */
   comboPresses: number;
   /** コンボ枠に帰属するキーid → 打鍵回数 */
   comboKeyCounts: Map<string, number>;

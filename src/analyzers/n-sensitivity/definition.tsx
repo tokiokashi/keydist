@@ -20,11 +20,14 @@ import {
   DEFAULT_N_SENSITIVITY_METRIC,
   formatMetricValue,
   N_SENSITIVITY_METRIC_IDS,
-  N_SENSITIVITY_METRICS,
+  nSensitivityMetrics,
   type NSensitivityAxisKind,
   type NSensitivityMetricId,
 } from './metric-catalog.ts';
 import { useSharedScale } from '../shared-scale.tsx';
+import { useTextLanguage } from '../text-language-context.tsx';
+import { kanaUnitOf } from '../unit-words.ts';
+import type { TextLanguage } from '#input/text/language.ts';
 import {
   estimateTextWidth,
   fitLegendLabels,
@@ -100,13 +103,13 @@ function seriesFor(series: readonly NSensitivitySeries[], targetKey: string): NS
 }
 
 /** 点の吹き出しに出す、縦軸の値の文字。 */
-function formatY(kind: NSensitivityAxisKind, metric: NSensitivityMetricId, value: number): string {
+function formatY(kind: NSensitivityAxisKind, metric: NSensitivityMetricId, value: number, language: TextLanguage): string {
   if (kind === 'ratio') return `${value.toFixed(0)}%`;
   if (kind === 'delta') {
-    const def = N_SENSITIVITY_METRICS[metric];
-    return `${value > 0 ? '+' : ''}${value.toFixed(def.percent ? 1 : def.digits)} ${deltaUnit(metric)}`;
+    const def = nSensitivityMetrics(language)[metric];
+    return `${value > 0 ? '+' : ''}${value.toFixed(def.percent ? 1 : def.digits)} ${deltaUnit(metric, language)}`;
   }
-  return formatMetricValue(metric, value, N_SENSITIVITY_METRICS[metric].tickDigits);
+  return formatMetricValue(metric, value, language, nSensitivityMetrics(language)[metric].tickDigits);
 }
 
 interface PlottedSeries {
@@ -282,7 +285,8 @@ function NSensitivityChart({
       minHeight: floor.legend?.corner === 'below' ? floor.svgHeight : undefined,
     };
   }
-  const yTickLabels = formatYTicks(kind, yTickValues, metric);
+  const language = useTextLanguage();
+  const yTickLabels = formatYTicks(kind, yTickValues, metric, language);
 
   return (
     <>
@@ -291,7 +295,7 @@ function NSensitivityChart({
           className="n-sensitivity-svg"
           viewBox={`0 0 ${CHART_WIDTH} ${svgHeight}`}
           role="img"
-          aria-label={`N感度チャート（${axisTitle(metric, kind)}）: ${series.map((s) => s.label).join('、')}`}
+          aria-label={`N感度チャート（${axisTitle(metric, kind, language)}）: ${series.map((s) => s.label).join('、')}`}
         >
           {yTickValues.map((value, i) => (
             <g key={value}>
@@ -307,10 +311,10 @@ function NSensitivityChart({
             </text>
           ))}
           <text className="n-sensitivity-y-title" x={MARGIN.left} y={MARGIN.top - 5} textAnchor="start" data-n-sensitivity-y-title="">
-            {axisTitle(metric, kind)}
+            {axisTitle(metric, kind, language)}
           </text>
           <text className="n-sensitivity-axis-title" x={MARGIN.left + plotWidth / 2} y={CHART_HEIGHT - 4} textAnchor="middle">
-            N（先読み文字数）
+            N（先読み{kanaUnitOf(language)}数）
           </text>
 
           {series.map((s) => {
@@ -326,7 +330,7 @@ function NSensitivityChart({
                 />
                 {s.points.map((p) => (
                   <SeriesMark key={p.windowSize} className="n-sensitivity-point" mark={s.mark} color={s.color} x={xScale(p.windowSize)} y={yScale(p.y)}>
-                    <title>{`${s.label} N=${p.windowSize}: ${formatY(kind, metric, p.y)}（実測 ${formatMetricValue(metric, s.actuals.find((a) => a.windowSize === p.windowSize)!.value)}）`}</title>
+                    <title>{`${s.label} N=${p.windowSize}: ${formatY(kind, metric, p.y, language)}（実測 ${formatMetricValue(metric, s.actuals.find((a) => a.windowSize === p.windowSize)!.value, language)}）`}</title>
                   </SeriesMark>
                 ))}
               </g>
@@ -404,7 +408,8 @@ function NSensitivityChart({
  * 開いた後の余りは見ない（開くと余りが減るので、見ると畳む側に倒れて行き来する）。
  */
 function NSensitivityTable({ plotted, metric, chartReady }: { plotted: readonly PlottedSeries[]; metric: NSensitivityMetricId; chartReady: boolean }) {
-  const def = N_SENSITIVITY_METRICS[metric];
+  const language = useTextLanguage();
+  const def = nSensitivityMetrics(language)[metric];
   // 既定の指標（距離）は単位だけ。ほかの指標は、表だけを見ても何の値か分かるよう指標名を添える
   const caption = metric === DEFAULT_N_SENSITIVITY_METRIC ? `各Nの実測値 [${def.unit}]` : `各Nの実測値（${def.label} [${def.unit}]）`;
   const ref = useRef<HTMLDetailsElement | null>(null);
@@ -447,7 +452,7 @@ function NSensitivityTable({ plotted, metric, chartReady }: { plotted: readonly 
                   {s.label}
                 </th>
                 {s.actuals.map((a) => (
-                  <td key={a.windowSize}>{formatMetricValue(metric, a.value)}</td>
+                  <td key={a.windowSize}>{formatMetricValue(metric, a.value, language)}</td>
                 ))}
               </tr>
             ))}
@@ -524,19 +529,21 @@ export function NSensitivityBody({ extracted, order, rowContext, options }: NSen
 
 /** N感度の解析設定（縦軸の指標と見せ方）。 */
 export function NSensitivitySettings({ options, onOptionsChange }: AnalyzerSettingsProps<NSensitivityOptions>) {
-  const def = N_SENSITIVITY_METRICS[options.metric];
+  const language = useTextLanguage();
+  const metrics = nSensitivityMetrics(language);
+  const def = metrics[options.metric];
   return (
     <div className="option-groups">
       <SelectOptionField
         label="指標"
         binding={bindOption(options, DEFAULT_N_SENSITIVITY_OPTIONS, onOptionsChange, 'metric')}
-        choices={N_SENSITIVITY_METRIC_IDS.map((id) => ({ value: id, label: N_SENSITIVITY_METRICS[id].label }))}
+        choices={N_SENSITIVITY_METRIC_IDS.map((id) => ({ value: id, label: metrics[id].label }))}
       />
       <RadioOptionField
         label="縦軸"
         binding={bindOption(options, DEFAULT_N_SENSITIVITY_OPTIONS, onOptionsChange, 'scale')}
         choices={[
-          { value: 'relative', label: relativeChoiceLabel(options.metric) },
+          { value: 'relative', label: relativeChoiceLabel(options.metric, language) },
           { value: 'absolute', label: `実測値 [${def.unit}]` },
         ]}
       />

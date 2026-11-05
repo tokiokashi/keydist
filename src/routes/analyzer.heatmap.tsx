@@ -15,7 +15,7 @@ export const Route = createFileRoute('/analyzer/heatmap')({
       { title: `${HEATMAP_PANE_META.name} | keydist` },
       {
         name: 'description',
-        content: '配列やSetupを1つ選んで、キーごとの押下数を、全部のレイヤーを合わせた配列図で見ます。',
+        content: '配列やSetupを1つ選んで、キーごとの押した回数を、全部のレイヤーを合わせた配列図で見ます。',
       },
     ],
   }),

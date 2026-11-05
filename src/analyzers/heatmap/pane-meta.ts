@@ -6,7 +6,7 @@ import { WIDE_RECOMMENDED_WIDTH_REM } from '../recommended-width.ts';
  */
 export const HEATMAP_PANE_META = {
   name: 'ヒートマップ',
-  description: '同じテキストを打った時の、キーごとの押下数を、全部のレイヤーを合わせた配列図に色で出します。色は押下数に比例します。',
+  description: '同じテキストを打った時の、キーごとの押した回数を、全部のレイヤーを合わせた配列図に色で出します。色は押した回数に比例します。',
 } as const;
 
 /**

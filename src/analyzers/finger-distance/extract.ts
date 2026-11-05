@@ -8,7 +8,7 @@ import { ALTERNATE_FINGER_DISTANCE_OPTIONS, DEFAULT_FINGER_DISTANCE_OPTIONS, fin
 /**
  * 指ごとの距離の抽出（仕様 §11.1・§11.2・§11.6）。
  *
- * `Metrics` が持つ指ごとの総移動距離・押下数・隣接指間距離の統計を、画面がそのまま描ける形に
+ * `Metrics` が持つ指ごとの総移動距離・キー数・隣接指間距離の統計を、画面がそのまま描ける形に
  * 並べ直すだけで、新しい指標や合成スコアは作らない。割合と手ごとの小計は同じ値の割り算と足し算。
  */
 
@@ -22,9 +22,9 @@ export interface FingerDistanceFinger {
   readonly distance: number;
   /** `D_f / D`。`D` が0の時は0（0〜1） */
   readonly distanceShare: number;
-  /** 押下数 `Q_f`（仕様 §11.2） */
+  /** キー数 `Q_f`（仕様 §11.2） */
   readonly presses: number;
-  /** `Q_f / Σ Q`。押下が無い時は0（0〜1） */
+  /** `Q_f / Σ Q`。キーを押していない時は0（0〜1） */
   readonly pressShare: number;
 }
 
@@ -48,8 +48,8 @@ export interface FingerDistanceAdjacent {
   /** 超過の実測最大値 [u] */
   readonly maxExcess: number;
   /**
-   * 超過の状態別の割合（状態の値の昇順）。母集団は平均・標準偏差と同じ全打鍵で、
-   * その組の指がホームにある打鍵も含む（仕様 §11.6）。打鍵が無い時は空。
+   * 超過の状態別の割合（状態の値の昇順）。母集団は平均・標準偏差と同じ全アクションで、
+   * その組の指がホームにあるアクションも含む（仕様 §11.6）。アクションが無い時は空。
    */
   readonly distribution: readonly StateShare[];
 }
@@ -59,7 +59,7 @@ export interface FingerDistanceExtracted {
   readonly hands: Readonly<Record<FingerDistanceHand, FingerDistanceHandTotal>>;
   /** 総移動距離 `D` [u]。比較表の総移動距離と同じ値（`Metrics.totalUnits`） */
   readonly totalDistance: number;
-  /** 全押下キー数 */
+  /** 押したキーの総数 */
   readonly totalPresses: number;
   readonly adjacent: readonly FingerDistanceAdjacent[];
 }

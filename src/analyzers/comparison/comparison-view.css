@@ -16,6 +16,15 @@
   white-space: nowrap;
 }
 
+/* 列の見出しは「/」の後ろでだけ折り返す。各部分は途中で折らない。 */
+.comparison-table th.comparison-column-header {
+  white-space: normal;
+}
+
+.comparison-column-part {
+  white-space: nowrap;
+}
+
 .comparison-table th[scope='row'] {
   text-align: left;
   font-weight: 600;

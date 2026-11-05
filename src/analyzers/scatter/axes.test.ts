@@ -88,7 +88,7 @@ test('組み込みの全配列: 用意する7つの組み合わせの等位線�
     [keyof typeof SCATTER_PRESET_AXES, (typeof SCATTER_PRESET_AXES)[keyof typeof SCATTER_PRESET_AXES]]
   >) {
     for (const { layoutId, row, inputChars } of ALL_ROWS) {
-      const contour = scatterContour(axes.x, axes.y, inputChars);
+      const contour = scatterContour(axes.x, axes.y, inputChars, 'ja');
       assert.ok(contour, `${preset} ${layoutId}`);
       assert.equal(contour.column, expectedColumn[preset]);
       // 1文字あたりの動作数を軸に取る2つの組み合わせは、軸の積が1文字あたりの量になる（distanceは横軸、pressは縦軸）
@@ -211,7 +211,7 @@ test('組み込みの全配列: 恒等式の列どうしの全ての組で、等
   for (const x of IDENTITY_COLUMNS) {
     for (const y of IDENTITY_COLUMNS) {
       for (const { layoutId, row, inputChars } of ALL_ROWS) {
-        const contour = scatterContour(x, y, inputChars);
+        const contour = scatterContour(x, y, inputChars, 'ja');
         if (contour === undefined) continue;
         drawn += 1;
         const value = contour.valueAt(row[x], row[y]);
@@ -228,7 +228,7 @@ test('組み込みの全配列: 恒等式の列どうしの全ての組で、等
 });
 
 test('自由に選ぶ: 等位線を引く組と、その量（総数と1文字あたりの選び方を含む）', () => {
-  const column = (x: ComparisonColumnId, y: ComparisonColumnId) => scatterContour(x, y, 100)?.column;
+  const column = (x: ComparisonColumnId, y: ComparisonColumnId) => scatterContour(x, y, 100, 'ja')?.column;
   // 距離 = 動作数 × u/打鍵
   assert.equal(column('actions', 'meanPerStroke'), 'totalUnits');
   assert.equal(column('meanPerStroke', 'actions'), 'totalUnits');
@@ -314,8 +314,8 @@ test('自由に選ぶ: 選べない組は、同じ列と、入力文字数倍の
   assert.equal(scatterAxisProblem('actions', 'perCharUnits'), undefined);
   assert.equal(scatterAxisProblem('actions', 'meanPerStroke'), undefined);
   // 選べない組には等位線も引かない
-  assert.equal(scatterContour('actions', 'perCharSteps', 100), undefined);
-  assert.equal(scatterContour('totalUnits', 'totalUnits', 100), undefined);
+  assert.equal(scatterContour('actions', 'perCharSteps', 100, 'ja'), undefined);
+  assert.equal(scatterContour('totalUnits', 'totalUnits', 100, 'ja'), undefined);
   // 他の列は、恒等式に関係なく、同じ列でなければ選べる
   for (const x of COMPARISON_COLUMN_IDS) {
     for (const y of COMPARISON_COLUMN_IDS) {
@@ -327,7 +327,7 @@ test('自由に選ぶ: 選べない組は、同じ列と、入力文字数倍の
 });
 
 test('点の読み取り: 等位線の量の列が値を持たない対象には、軸の値から式で求まっても値を出さない', () => {
-  const handShare = scatterContour('rightHandPressShare', 'rightHandDistanceShare', 100)!;
+  const handShare = scatterContour('rightHandPressShare', 'rightHandDistanceShare', 100, 'ja')!;
   // 両手の距離が0の対象は、右手距離率が慣例で0%になる。式では0が求まるが、比の列は値を持たない
   assert.equal(handShare.valueAt(50, 0), 0);
   assert.equal(handShare.readoutAt(50, 0, NaN), undefined);
@@ -335,65 +335,65 @@ test('点の読み取り: 等位線の量の列が値を持たない対象には
   assert.equal(handShare.readoutAt(50, 0, 0), 0);
   assert.equal(handShare.readoutAt(20, 50, 4), 4);
   // 自由に選ぶ組でも、等位線の量の列で決める
-  const byRatio = scatterContour('rightLeftPerPressRatio', 'rightHandDistanceShare', 100)!;
+  const byRatio = scatterContour('rightLeftPerPressRatio', 'rightHandDistanceShare', 100, 'ja')!;
   assert.equal(byRatio.column, 'rightHandPressShare');
   assert.equal(byRatio.readoutAt(4, 50, 20), 20);
   // 値を持たない列の無い恒等式は今までどおり
-  assert.equal(scatterContour('actions', 'meanPerStroke', 100)!.readoutAt(30, 4, 120), 120);
+  assert.equal(scatterContour('actions', 'meanPerStroke', 100, 'ja')!.readoutAt(30, 4, 120), 120);
 });
 
 test('分母が0の点では等位線の値を出さない', () => {
-  const distance = scatterContour('actions', 'meanPerStroke', 100)!;
+  const distance = scatterContour('actions', 'meanPerStroke', 100, 'ja')!;
   // 距離 = 動作数 × u/打鍵 は、どちらが0でも右辺が決まるので値は0
   assert.equal(distance.valueAt(0, 0), 0);
-  const byDistance = scatterContour('totalUnits', 'meanPerStroke', 100)!;
+  const byDistance = scatterContour('totalUnits', 'meanPerStroke', 100, 'ja')!;
   assert.equal(byDistance.column, 'actions');
   // 動作数 = 距離 / u/打鍵 は、u/打鍵が0の点で決まらない
   assert.equal(byDistance.valueAt(0, 0), undefined);
   assert.equal(byDistance.valueAt(120, 0), undefined);
   assert.equal(byDistance.valueAt(120, 4), 30);
-  const ratio = scatterContour('actions', 'sameFinger', 100)!;
+  const ratio = scatterContour('actions', 'sameFinger', 100, 'ja')!;
   assert.equal(ratio.column, 'sameFingerRate');
   assert.equal(ratio.valueAt(0, 0), undefined);
   assert.equal(ratio.valueAt(200, 10), 5);
   // 押下/動作 = 押下/文字 ÷ 動作数/文字。動作数が0の点では決まらない
-  const perAction = scatterContour('perCharSteps', 'perCharPresses', 100)!;
+  const perAction = scatterContour('perCharSteps', 'perCharPresses', 100, 'ja')!;
   assert.equal(perAction.column, 'perActionPresses');
   assert.equal(perAction.valueAt(0, 0), undefined);
   assert.equal(perAction.valueAt(0.5, 1.5), 3);
-  assert.ok(scatterContour('perCharSteps', 'perActionPresses', 0) === undefined);
+  assert.ok(scatterContour('perCharSteps', 'perActionPresses', 0, 'ja') === undefined);
   // u/押下 = 距離 / 押下数。押下数が0の点では決まらない（u/文字 = 押下数/文字 × u/押下 の右辺は、どちらが0でも0）
-  const perPress = scatterContour('perCharPresses', 'perCharUnits', 100)!;
+  const perPress = scatterContour('perCharPresses', 'perCharUnits', 100, 'ja')!;
   assert.equal(perPress.column, 'perPressUnits');
   assert.equal(perPress.valueAt(0, 0), undefined);
   assert.equal(perPress.valueAt(2, 3), 1.5);
-  const perChar = scatterContour('perCharPresses', 'perPressUnits', 100)!;
+  const perChar = scatterContour('perCharPresses', 'perPressUnits', 100, 'ja')!;
   assert.equal(perChar.column, 'perCharUnits');
   assert.equal(perChar.valueAt(0, 0), 0);
   assert.equal(perChar.valueAt(2, 1.5), 3);
-  const presses = scatterContour('perPressUnits', 'perCharUnits', 100)!;
+  const presses = scatterContour('perPressUnits', 'perCharUnits', 100, 'ja')!;
   assert.equal(presses.column, 'perCharPresses');
   assert.equal(presses.valueAt(0, 3), undefined);
   assert.equal(presses.valueAt(1.5, 3), 2);
   // 押下数/動作 = u/打鍵 ÷ u/押下。u/押下が0の点では決まらない
-  const actionPresses = scatterContour('perPressUnits', 'meanPerStroke', 100)!;
+  const actionPresses = scatterContour('perPressUnits', 'meanPerStroke', 100, 'ja')!;
   assert.equal(actionPresses.column, 'perActionPresses');
   assert.equal(actionPresses.valueAt(0, 3), undefined);
   assert.equal(actionPresses.valueAt(1.5, 3), 2);
-  const stroke = scatterContour('perActionPresses', 'perPressUnits', 100)!;
+  const stroke = scatterContour('perActionPresses', 'perPressUnits', 100, 'ja')!;
   assert.equal(stroke.valueAt(2, 1.5), 3);
-  assert.equal(scatterContour('perActionPresses', 'meanPerStroke', 100)!.valueAt(0, 3), undefined);
-  assert.equal(scatterContour('perCharPresses', 'perPressUnits', 0), undefined);
-  const hand = scatterContour('handSwitches', 'handContinuations', 100)!;
+  assert.equal(scatterContour('perActionPresses', 'meanPerStroke', 100, 'ja')!.valueAt(0, 3), undefined);
+  assert.equal(scatterContour('perCharPresses', 'perPressUnits', 0, 'ja'), undefined);
+  const hand = scatterContour('handSwitches', 'handContinuations', 100, 'ja')!;
   assert.equal(hand.valueAt(0, 0), undefined);
   assert.equal(hand.valueAt(30, 10), 25);
-  const continuations = scatterContour('handSwitches', 'sameHandContinuationRate', 100)!;
+  const continuations = scatterContour('handSwitches', 'sameHandContinuationRate', 100, 'ja')!;
   assert.equal(continuations.valueAt(30, 100), undefined);
   assert.equal(continuations.valueAt(30, 50), 30);
-  const switches = scatterContour('handContinuations', 'sameHandContinuationRate', 100)!;
+  const switches = scatterContour('handContinuations', 'sameHandContinuationRate', 100, 'ja')!;
   assert.equal(switches.valueAt(30, 0), undefined);
   // 右手u/押下比。右手の押下が0%・100%、右手の距離が100%の点では決まらない
-  const handShare = scatterContour('rightHandPressShare', 'rightHandDistanceShare', 100)!;
+  const handShare = scatterContour('rightHandPressShare', 'rightHandDistanceShare', 100, 'ja')!;
   assert.equal(handShare.valueAt(0, 0), undefined);
   assert.equal(handShare.valueAt(100, 100), undefined);
   assert.equal(handShare.valueAt(50, 100), undefined);
@@ -401,11 +401,11 @@ test('分母が0の点では等位線の値を出さない', () => {
   assert.equal(handShare.valueAt(20, 50), 4);
   // 右手の距離が0%の点は、式では比が0になる
   assert.equal(handShare.valueAt(50, 0), 0);
-  const byRatio = scatterContour('rightHandPressShare', 'rightLeftPerPressRatio', 100)!;
+  const byRatio = scatterContour('rightHandPressShare', 'rightLeftPerPressRatio', 100, 'ja')!;
   assert.equal(byRatio.valueAt(20, 4), 50);
-  assert.equal(scatterContour('rightHandDistanceShare', 'rightLeftPerPressRatio', 100)!.valueAt(50, 4), 20);
-  assert.equal(scatterContour('rightHandDistanceShare', 'rightLeftPerPressRatio', 100)!.valueAt(0, 0), undefined);
+  assert.equal(scatterContour('rightHandDistanceShare', 'rightLeftPerPressRatio', 100, 'ja')!.valueAt(50, 4), 20);
+  assert.equal(scatterContour('rightHandDistanceShare', 'rightLeftPerPressRatio', 100, 'ja')!.valueAt(0, 0), undefined);
   // 1文字あたりの軸を取る組は、入力文字数が0の時に総数へ直せないので、線を引かない
-  assert.equal(scatterContour('perCharUnits', 'meanPerStroke', 0), undefined);
-  assert.ok(scatterContour('actions', 'meanPerStroke', 0));
+  assert.equal(scatterContour('perCharUnits', 'meanPerStroke', 0, 'ja'), undefined);
+  assert.ok(scatterContour('actions', 'meanPerStroke', 0, 'ja'));
 });

@@ -24,8 +24,8 @@ const TRACE_AFFECTING_ITEMS: readonly { readonly id: SettingsItemId; readonly la
   { id: 'sfbHomeCost', label: '同指連続のホーム復帰距離' },
   { id: 'preferOppositeThumb', label: '親指シフトの振り替え' },
   { id: 'triggerRealizationPolicy', label: 'シフト系キーの押し続け' },
-  // 文字キーと一緒に押したシフト系キーを、別の動作（Stroke）として数えるか。動作数の列が変わる。
-  { id: 'actionRealizationPolicy', label: '動作数の扱い' },
+  // 文字キーと一緒に押したシフト系キーを、別のアクション（Stroke）として数えるか。アクション数の列が変わる。
+  { id: 'actionRealizationPolicy', label: 'アクション数の扱い' },
   { id: 'romajiRuleId', label: 'ローマ字規則' },
   { id: 'fingerAssignmentId', label: '指の割当' },
   /**
@@ -33,7 +33,7 @@ const TRACE_AFFECTING_ITEMS: readonly { readonly id: SettingsItemId; readonly la
    * 返す）。
    */
   { id: 'defaultShapeId', label: '既定の物理配列' },
-  // 日本語のテキストで、かなと「、」「。」以外の記号も評価に入れるか。入力文字数が変わる
+  // 日本語のテキストで、かなと「、」「。」以外の記号も評価に入れるか。入力かな数が変わる
   { id: 'keepSymbols', label: '日本語の記号の評価' },
 ];
 
@@ -117,7 +117,7 @@ export interface ConditionSummaryRow {
    */
   readonly inapplicableBecause?: 'text';
   /**
-   * 上書きされていても、効く値が既定と同じか。「動作数の扱い」は、Shift+Aを1動作にする時は例外を
+   * 上書きされていても、効く値が既定と同じか。「アクション数の扱い」は、Shift+Aを1アクションにする時は例外を
    * 一切読まないため、例外だけ違う上書きは既定と同じに働く。
    */
   readonly sameAsDefault: boolean;
@@ -237,7 +237,7 @@ function formatValue(
     return { format: 'primitive', displayValue: value.useHold === true ? 'する' : 'しない' };
   }
   if (id === 'actionRealizationPolicy' && isRecord(value)) {
-    // Shift+Aを1動作にする時は例外を一切読まない（`input/semantics/action-realization.ts`）ので、
+    // Shift+Aを1アクションにする時は例外を一切読まない（`input/semantics/action-realization.ts`）ので、
     // 例外が残っていても出さない。出すと効いていない例外で測ったように読めてしまう。
     if (value.triggerActivation !== 'semantic') return { format: 'primitive', displayValue: ACTION_COUNT_TEXT.combined };
     const classOverrides = isRecord(value.triggerActivationClassOverrides) ? Object.keys(value.triggerActivationClassOverrides).length : 0;
@@ -270,10 +270,10 @@ export function conditionOverrideValueText(id: SettingsItemId, value: unknown, n
   return formatValue(id, value, names, 'list').displayValue;
 }
 
-/** 「動作数の扱い」の2つの選択肢の文言（条件のモーダルと要約で同じ語を使う）。 */
+/** 「アクション数の扱い」の2つの選択肢の文言（条件のモーダルと要約で同じ語を使う）。 */
 export const ACTION_COUNT_TEXT = {
-  combined: 'Shift+A で1動作',
-  separate: 'Shift→A で2動作',
+  combined: 'Shift+A で1アクション',
+  separate: 'Shift→A で2アクション',
 } as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {

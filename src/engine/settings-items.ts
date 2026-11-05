@@ -137,7 +137,7 @@ export const SETTINGS_ITEMS = {
   }),
   /**
    * 日本語のテキストで、かなと `、` `。` 以外の記号も評価に渡すか（仕様 §4.6）。既定は渡さない。
-   * Traceの入力そのものを変え、全部のAnalyzerが読む。配列ごとに入力文字数（分母）が変わると比べられないので、
+   * Traceの入力そのものを変え、全部のAnalyzerが読む。配列ごとに入力かな数（分母）が変わると比べられないので、
    * 解釈の項目と同じく全体とWorkspaceにだけ置く。
    */
   keepSymbols: defineItem<boolean>({

@@ -32,7 +32,7 @@ test('coarse: 相対は4等分した区切りへ下限を切り下げる', () =>
 test('coarse: 実測の目盛りはきりのよい値（区切りの悪い最大値をそのまま4等分しない）', () => {
   const range = computeYRange('coarse', 'value', [380.8, 247.3, 168.6, 137.7]);
   assert.deepEqual(range, { lo: 100, hi: 400, ticks: [100, 200, 300, 400] });
-  assert.deepEqual(formatYTicks('value', range.ticks, 'totalUnits'), ['100 u', '200 u', '300 u', '400 u']);
+  assert.deepEqual(formatYTicks('value', range.ticks, 'totalUnits', 'ja'), ['100 u', '200 u', '300 u', '400 u']);
 });
 
 test('値が上限に張り付く時（全点が100%）と空の時は、詰めずに0から', () => {
@@ -52,7 +52,7 @@ test('どの決め方でも、範囲は全点を含む', () => {
 
 test('値の幅がごく狭い時、目盛りは小数で書き分け、同じ文字が並ばない', () => {
   const range = computeYRange('fit', 'ratio', [100, 100, 99.9, 99.7, 99.55]);
-  const labels = formatYTicks('ratio', range.ticks, 'totalUnits');
+  const labels = formatYTicks('ratio', range.ticks, 'totalUnits', 'ja');
   assert.equal(new Set(labels).size, labels.length);
   assert.ok(
     labels.some((label) => /\.\d%$/.test(label)),
@@ -62,8 +62,8 @@ test('値の幅がごく狭い時、目盛りは小数で書き分け、同じ�
 });
 
 test('整数の刻みなら小数を付けない（従来の見た目のまま）', () => {
-  assert.deepEqual(formatYTicks('ratio', [0, 20, 40, 60, 80, 100], 'totalUnits'), ['0%', '20%', '40%', '60%', '80%', '100%']);
-  assert.deepEqual(formatYTicks('value', [0, 76.16, 152.32], 'totalUnits'), ['0 u', '76 u', '152 u']);
+  assert.deepEqual(formatYTicks('ratio', [0, 20, 40, 60, 80, 100], 'totalUnits', 'ja'), ['0%', '20%', '40%', '60%', '80%', '100%']);
+  assert.deepEqual(formatYTicks('value', [0, 76.16, 152.32], 'totalUnits', 'ja'), ['0 u', '76 u', '152 u']);
 });
 
 test('揃える範囲: 報告は描く値の最小と最大で、値が無ければ報告しない', () => {
@@ -110,14 +110,14 @@ test('差[pt]: 決め方で余白と目盛りの粗さが変わり、空と全�
 });
 
 test('差[pt]の目盛りの文字はptを付け、刻みに応じて小数を付ける', () => {
-  assert.deepEqual(formatYTicks('delta', [-2, 0, 2], 'sameFingerRate'), ['-2 pt', '0 pt', '2 pt']);
-  assert.deepEqual(formatYTicks('delta', [-0.5, 0, 0.5], 'sameFingerRate'), ['-0.5 pt', '0.0 pt', '0.5 pt']);
+  assert.deepEqual(formatYTicks('delta', [-2, 0, 2], 'sameFingerRate', 'ja'), ['-2 pt', '0 pt', '2 pt']);
+  assert.deepEqual(formatYTicks('delta', [-0.5, 0, 0.5], 'sameFingerRate', 'ja'), ['-0.5 pt', '0.0 pt', '0.5 pt']);
 });
 
 test('実測の目盛りは指標の単位と桁で書く', () => {
-  assert.deepEqual(formatYTicks('value', [0, 1.5], 'meanPerStroke'), ['0.00 u/打鍵', '1.50 u/打鍵']);
-  assert.deepEqual(formatYTicks('value', [0, 12.5], 'sameFingerRate'), ['0.0%', '12.5%']);
-  assert.deepEqual(formatYTicks('value', [0, 4], 'sameFinger'), ['0回', '4回']);
+  assert.deepEqual(formatYTicks('value', [0, 1.5], 'meanPerStroke', 'ja'), ['0.00 u/アクション', '1.50 u/アクション']);
+  assert.deepEqual(formatYTicks('value', [0, 12.5], 'sameFingerRate', 'ja'), ['0.0%', '12.5%']);
+  assert.deepEqual(formatYTicks('value', [0, 4], 'sameFinger', 'ja'), ['0回', '4回']);
 });
 
 test('比がNで100%を超える指標（指間σ）は、最大値を含む区切りまで上限を広げる', () => {
@@ -139,7 +139,7 @@ test('実測が負になる指標（指間平均）は、0を含む範囲で全�
     const range = computeYRange(mode, 'value', values);
     assert.ok(range.lo <= -0.031 && range.hi >= 0.12, `${mode} ${JSON.stringify(range)}`);
     assert.ok(range.lo <= 0 && range.hi >= 0, mode);
-    const labels = formatYTicks('value', range.ticks, 'adjacentMean');
+    const labels = formatYTicks('value', range.ticks, 'adjacentMean', 'ja');
     assert.equal(new Set(labels).size, labels.length, `${mode} ${labels.join(' ')}`);
   }
 });
@@ -150,11 +150,11 @@ test('実測が1未満の指標も、最大値までで範囲を取る（0〜1�
 });
 
 test('差の目盛りは指標の単位を付ける（指間平均はu）', () => {
-  assert.deepEqual(formatYTicks('delta', [-0.05, 0, 0.05, 0.1], 'adjacentMean'), ['-0.05 u', '0.00 u', '0.05 u', '0.10 u']);
+  assert.deepEqual(formatYTicks('delta', [-0.05, 0, 0.05, 0.1], 'adjacentMean', 'ja'), ['-0.05 u', '0.00 u', '0.05 u', '0.10 u']);
   for (const mode of ['full', 'fit', 'coarse'] as const) {
     const range = computeYRange(mode, 'delta', [0, 0.04, 0.11, 0.2]);
     assert.ok(range.lo <= 0 && range.hi >= 0.2, mode);
-    const labels = formatYTicks('delta', range.ticks, 'adjacentMean');
+    const labels = formatYTicks('delta', range.ticks, 'adjacentMean', 'ja');
     assert.equal(new Set(labels).size, labels.length, labels.join(' '));
   }
 });

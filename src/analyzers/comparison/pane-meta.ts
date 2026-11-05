@@ -1,5 +1,6 @@
 import { WIDE_RECOMMENDED_WIDTH_REM } from '../recommended-width.ts';
-import { COMPARISON_COLUMN_IDS, COMPARISON_COLUMN_TEXT, COMPARISON_UNIT_NOTE } from '../comparison-column-text.ts';
+import type { TextLanguage } from '#input/text/language.ts';
+import { COMPARISON_COLUMN_IDS, comparisonColumnText, COMPARISON_UNIT_NOTE } from '../comparison-column-text.ts';
 
 /**
  * 画面に出す名前と短い説明（docs/architecture.md「Analyzerがペインに渡すもの」）。
@@ -15,10 +16,13 @@ export const COMPARISON_PANE_META = {
    * 見出しのⓘから開く説明。全列の説明を列名と組で出す（今表示している列には絞らない。
    * 解析設定に依らない固定の文なので、Workspaceのペインの見出し（解析設定を持たない枠）からも開ける）。
    */
-  help: {
-    notes: [COMPARISON_UNIT_NOTE],
-    listLabel: '列の説明',
-    items: COMPARISON_COLUMN_IDS.map((id) => ({ name: COMPARISON_COLUMN_TEXT[id].label, description: COMPARISON_COLUMN_TEXT[id].description })),
+  help: (language: TextLanguage) => {
+    const text = comparisonColumnText(language);
+    return {
+      notes: [COMPARISON_UNIT_NOTE],
+      listLabel: '列の説明',
+      items: COMPARISON_COLUMN_IDS.map((id) => ({ name: text[id].label, description: text[id].description })),
+    };
   },
   /** 列が多く横に並ぶので、他より広く取る。 */
   recommendedWidthRem: WIDE_RECOMMENDED_WIDTH_REM,

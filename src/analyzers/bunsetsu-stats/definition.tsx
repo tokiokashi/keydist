@@ -1,5 +1,5 @@
 import { useMemo, type ReactNode } from 'react';
-import { SHARED_METRIC_TEXT } from '../metric-labels.ts';
+import { sharedMetricText } from '../metric-labels.ts';
 import { segmentationSourceSentence } from '../segmentation-text.ts';
 import type { AnalyzerSettingsProps, SetAnalyzerPaneParts, SetBodyProps } from '../pane-parts.tsx';
 import { bindOption, OptionField } from '#ui/primitives/option-fields.tsx';
@@ -32,7 +32,8 @@ export interface BunsetsuStatsRowContext {
 
 export type BunsetsuStatsBodyProps = SetBodyProps<BunsetsuStatsExtracted, BunsetsuStatsOptions, BunsetsuStatsRowContext>;
 
-const DISTANCE = SHARED_METRIC_TEXT.perCharUnits;
+// 文節の区切りは日本語のテキストだけで求めるので、単位の呼び名は日本語のテキストのもの
+const DISTANCE = sharedMetricText('ja').perCharUnits;
 const SEGMENT_DISTANCE_UNIT = 'u';
 
 interface DisplayRow {
@@ -68,7 +69,7 @@ function TextTable({ text }: { readonly text: NonNullable<BunsetsuStatsExtracted
         <caption>テキストの表（配列によらない量）</caption>
         <tbody>
           <tr>
-            <th scope="row">評価に渡したテキストの文字数</th>
+            <th scope="row">評価に渡したテキストのかな数</th>
             <td>{countText(table.charCount)}</td>
           </tr>
           <tr>

@@ -168,7 +168,7 @@ export function KeyDetailWindow({ keyId, layout, geometry, trace, keyDetails, pa
             </p>
             {faces.length > 1 ? (
               <Section title="レイヤー・コンボ別">
-                <p className="key-detail-note">押下数の内訳です。</p>
+                <p className="key-detail-note">押した回数の内訳です。</p>
                 <ul className="key-detail-faces">
                   {faces.map((face) => (
                     <li key={face.faceId}>

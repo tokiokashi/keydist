@@ -4,12 +4,15 @@ import { bindOption, SelectOptionField } from '#ui/primitives/option-fields.tsx'
 import { InfoButton } from '#ui/primitives/info-button.tsx';
 import { targetMarkPath } from '#ui/theme/target-marks.ts';
 import type { AnalyzerSettingsProps, SetAnalyzerPaneParts, SetBodyProps } from '../pane-parts.tsx';
-import { COMPARISON_COLUMN_FORMAT, COMPARISON_COLUMN_IDS, COMPARISON_COLUMN_TEXT, type ComparisonColumnId } from '../comparison-column-text.ts';
+import type { TextLanguage } from '#input/text/language.ts';
+import { COMPARISON_COLUMN_FORMAT, COMPARISON_COLUMN_IDS, comparisonColumnText, type ComparisonColumnId } from '../comparison-column-text.ts';
+import { useTextLanguage } from '../text-language-context.tsx';
+import { kanaUnitOf } from '../unit-words.ts';
 import type { ComparisonRowValues } from '../comparison-column-values.ts';
 import {
   SCATTER_PRESET_AXES,
   SCATTER_PRESET_IDS,
-  SCATTER_PRESET_LABELS,
+  scatterPresetLabels,
   scatterAxisProblem,
   scatterContour,
   type ScatterAxes,
@@ -58,10 +61,12 @@ function isPercentColumn(column: ComparisonColumnId): boolean {
   return COMPARISON_COLUMN_FORMAT[column](0).endsWith('%');
 }
 
-const AXIS_PROBLEM_TEXT: Readonly<Record<ScatterAxisProblem, string>> = {
-  same: '同じ列は、横軸と縦軸の両方に選べません。',
-  scaled: '動作数と動作数/文字、距離とu/文字のように、一方が他方の定数倍になる2列は、同時に選べません。',
-};
+function axisProblemText(problem: ScatterAxisProblem, language: TextLanguage): string {
+  const k = kanaUnitOf(language);
+  return problem === 'same'
+    ? '同じ列は、横軸と縦軸の両方に選べません。'
+    : `アクション数とアクション数/${k}、距離とu/${k}のように、一方が他方の定数倍になる2列は、同時に選べません。`;
+}
 
 interface PlottedRow {
   readonly targetKey: string;
@@ -86,15 +91,17 @@ function readoutText(
   row: PlotPoint & { readonly fullName: string; readonly values: ComparisonRowValues },
   axes: ScatterAxes,
   contour: ScatterContour | undefined,
+  language: TextLanguage,
 ): string {
+  const text = comparisonColumnText(language);
   const parts = [
     row.fullName || row.label,
-    `${COMPARISON_COLUMN_TEXT[axes.x].label} ${COMPARISON_COLUMN_FORMAT[axes.x](row.x)}`,
-    `${COMPARISON_COLUMN_TEXT[axes.y].label} ${COMPARISON_COLUMN_FORMAT[axes.y](row.y)}`,
+    `${text[axes.x].label} ${COMPARISON_COLUMN_FORMAT[axes.x](row.x)}`,
+    `${text[axes.y].label} ${COMPARISON_COLUMN_FORMAT[axes.y](row.y)}`,
   ];
   if (contour !== undefined) {
     const value = contour.readoutAt(row.x, row.y, row.values[contour.column]);
-    if (value !== undefined) parts.push(`${COMPARISON_COLUMN_TEXT[contour.column].label} ${COMPARISON_COLUMN_FORMAT[contour.column](value)}`);
+    if (value !== undefined) parts.push(`${text[contour.column].label} ${COMPARISON_COLUMN_FORMAT[contour.column](value)}`);
   }
   return parts.join('　');
 }
@@ -114,6 +121,8 @@ function rowKey(row: ScatterRow): string {
  * 計算中・失敗・値なしの対象は、図の外に名前と状態を出す。
  */
 export function ScatterBody({ extracted, order, rowContext, options }: ScatterBodyProps) {
+  const language = useTextLanguage();
+  const text = comparisonColumnText(language);
   const axes = axesOf(options);
   const problem = scatterAxisProblem(axes.x, axes.y);
   const rowByKey = useMemo(() => new Map(extracted.rows.map((row) => [rowKey(row), row] as const)), [extracted.rows]);
@@ -145,7 +154,10 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
     return { plotted, excluded, inputChars };
   }, [order, rowContext, rowByKey, axes.x, axes.y]);
 
-  const contour = useMemo(() => (problem === undefined ? scatterContour(axes.x, axes.y, inputChars) : undefined), [problem, axes.x, axes.y, inputChars]);
+  const contour = useMemo(
+    () => (problem === undefined ? scatterContour(axes.x, axes.y, inputChars, language) : undefined),
+    [problem, axes.x, axes.y, inputChars, language],
+  );
   const usedKinds = useMemo(() => SCATTER_KIND_ORDER.filter((kind) => plotted.some((row) => row.kind === kind)), [plotted]);
   const model = useMemo(
     () =>
@@ -153,22 +165,22 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
         points: plotted.map(({ targetKey, label, x, y }) => ({ targetKey, label, x, y })),
         contour,
         legendRows: usedKinds.map((kind) => SCATTER_KIND_STYLES[kind].label),
-        contourName: contour === undefined ? '' : COMPARISON_COLUMN_TEXT[contour.column].label,
+        contourName: contour === undefined ? '' : text[contour.column].label,
         contourSuffix: contour !== undefined && isPercentColumn(contour.column) ? '%' : '',
       }),
-    [plotted, contour, usedKinds],
+    [plotted, contour, usedKinds, text],
   );
   const plottedByKey = new Map(plotted.map((row) => [row.targetKey, row] as const));
   const active = activeKey === undefined ? undefined : model.points.find((point) => point.targetKey === activeKey);
   const activeRow = active === undefined ? undefined : plottedByKey.get(active.targetKey);
 
-  const quantityHelp = scatterQuantityHelp(axes, contour);
+  const quantityHelp = scatterQuantityHelp(axes, contour, language);
 
   return (
     <section className="scatter-feature" data-react-feature="scatter">
       {problem !== undefined ? (
         <p className="scatter-notice" role="alert" data-scatter-axis-problem="">
-          {AXIS_PROBLEM_TEXT[problem]}
+          {axisProblemText(problem, language)}
         </p>
       ) : plotted.length > 0 ? (
         <>
@@ -176,10 +188,7 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
             <InfoButton name="図の見方" description={quantityHelp.description} help={quantityHelp.help} />
           </div>
           <div className="scatter-figure">
-            <svg
-              viewBox={`0 0 ${PLOT_WIDTH} ${PLOT_HEIGHT}`}
-              aria-label={`${COMPARISON_COLUMN_TEXT[axes.x].label}と${COMPARISON_COLUMN_TEXT[axes.y].label}の散布図`}
-            >
+            <svg viewBox={`0 0 ${PLOT_WIDTH} ${PLOT_HEIGHT}`} aria-label={`${text[axes.x].label}と${text[axes.y].label}の散布図`}>
               <rect
                 className="scatter-frame"
                 x={PLOT_MARGIN.left}
@@ -217,7 +226,7 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
                 textAnchor="middle"
                 data-scatter-y-title=""
               >
-                {COMPARISON_COLUMN_TEXT[axes.y].label}
+                {text[axes.y].label}
               </text>
               <text
                 className="scatter-axis-title"
@@ -226,7 +235,7 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
                 textAnchor="middle"
                 data-scatter-x-title=""
               >
-                {COMPARISON_COLUMN_TEXT[axes.x].label}
+                {text[axes.x].label}
               </text>
 
               {model.contours.map((line) => (
@@ -283,7 +292,7 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
                     data-kind={row.kind}
                     data-active={isActive || undefined}
                     tabIndex={0}
-                    aria-label={readoutText({ ...point, fullName: row.fullName, values: row.values }, axes, contour)}
+                    aria-label={readoutText({ ...point, fullName: row.fullName, values: row.values }, axes, contour, language)}
                     style={{ transform: `translate(${point.px.toFixed(1)}px, ${point.py.toFixed(1)}px)` }}
                     onPointerEnter={() => setActiveKey(point.targetKey)}
                     onPointerLeave={() => setActiveKey((current) => (current === point.targetKey ? undefined : current))}
@@ -304,7 +313,7 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
           <p className="scatter-readout" data-scatter-readout="" aria-live="off">
             {active === undefined || activeRow === undefined
               ? ''
-              : readoutText({ ...active, fullName: activeRow.fullName, values: activeRow.values }, axes, contour)}
+              : readoutText({ ...active, fullName: activeRow.fullName, values: activeRow.values }, axes, contour, language)}
           </p>
         </>
       ) : null}
@@ -325,18 +334,16 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
   );
 }
 
-const COLUMN_CHOICES = COMPARISON_COLUMN_IDS.map((column) => ({ value: column, label: COMPARISON_COLUMN_TEXT[column].label }));
-
 /** 散布図の解析設定（組み合わせと、自由に選ぶ時の軸）。選べない組になる列は、選択肢から外す。 */
 export function ScatterSettings({ options, onOptionsChange }: AnalyzerSettingsProps<ScatterOptions>) {
   const bind = <K extends keyof ScatterOptions>(key: K) => bindOption(options, DEFAULT_SCATTER_OPTIONS, onOptionsChange, key);
+  const language = useTextLanguage();
+  const text = comparisonColumnText(language);
+  const presetLabels = scatterPresetLabels(language);
+  const COLUMN_CHOICES = COMPARISON_COLUMN_IDS.map((column) => ({ value: column, label: text[column].label }));
   return (
     <div className="option-groups">
-      <SelectOptionField
-        label="組み合わせ"
-        binding={bind('preset')}
-        choices={SCATTER_PRESET_IDS.map((id) => ({ value: id, label: SCATTER_PRESET_LABELS[id] }))}
-      />
+      <SelectOptionField label="組み合わせ" binding={bind('preset')} choices={SCATTER_PRESET_IDS.map((id) => ({ value: id, label: presetLabels[id] }))} />
       {options.preset === 'free' ? (
         <>
           <SelectOptionField

@@ -57,7 +57,7 @@ test.describe('個別画面', () => {
     );
     // 定義は、ペインの見出しのⓘから開く
     await page.getByRole('button', { name: '文節ごとの統計の説明' }).click();
-    await expect(page.getByRole('dialog')).toContainText('文字数1の文節は除きます');
+    await expect(page.getByRole('dialog')).toContainText('かな数1の文節は除きます');
   });
 
   test('列の名前は文節頭・文節中で、画面と説明の「1文字目」「2文字目以降」は定義の1文以外に出ない', async ({ page }) => {
@@ -124,7 +124,7 @@ test.describe('個別画面', () => {
     // 並べ替えた後も、まとまりの縦の罫線が見出しと本文に付く
     await expect(header).toHaveClass(/bunsetsu-stats-edge-end/);
     await expect(header).toHaveCSS('border-right-width', '1px');
-    const startHeader = layout.locator('thead th', { has: page.getByRole('button', { name: '文節頭の1文字あたりの距離', exact: true }) });
+    const startHeader = layout.locator('thead th', { has: page.getByRole('button', { name: '文節頭の1かなあたりの距離', exact: true }) });
     await expect(startHeader).toHaveClass(/bunsetsu-stats-edge-start/);
     await expect(startHeader).toHaveCSS('border-left-width', '1px');
     await expect(layout.locator('tbody tr[data-bunsetsu-stats-row="ok"] td').nth(4)).toHaveCSS('border-right-width', '1px');

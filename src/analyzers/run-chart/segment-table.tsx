@@ -3,12 +3,14 @@ import { SEGMENT_SEED_COUNT, type RankAmongRandom, type SegmentMetricStats, type
 import { SPAN_METRIC_IDS, type SpanMetricId } from '#interpretation/span-metrics.ts';
 import { segmentationSourceSentence } from '../segmentation-text.ts';
 import type { RunChartSegments } from './extract.ts';
-import { displayValue, RUN_CHART_METRICS } from './metric-catalog.ts';
+import { useTextLanguage } from '../text-language-context.tsx';
+import { kanaUnitOf } from '../unit-words.ts';
+import { displayValue, metricDigits, runChartMetrics } from './metric-catalog.ts';
 
 /**
  * 区切り方ごとの区間の指標と、区切りの前後の指標の表（定義は `docs/segment-metrics.md`）。
  * 抽出が出した値を並べるだけで、計算し直さない。配列の優劣・順位・合成スコアは出さない。
- * 順位を付けるのは、文節の区切りとランダムの区切りの比べだけ（1文字あたりの距離の2つの量）。
+ * 順位を付けるのは、文節の区切りとランダムの区切りの比べだけ（1かなあたりの距離の2つの量）。
  */
 
 export interface SegmentTableRow {
@@ -20,8 +22,7 @@ export interface SegmentTableRow {
 
 function cell(metric: SpanMetricId, value: number | undefined): string {
   if (value === undefined) return '—';
-  const def = RUN_CHART_METRICS[metric];
-  return displayValue(metric, value).toFixed(def.digits);
+  return displayValue(metric, value).toFixed(metricDigits(metric));
 }
 
 function range(metric: SpanMetricId, values: readonly (number | undefined)[]): string {
@@ -81,6 +82,9 @@ function rankSentence(rank: RankAmongRandom | undefined): string {
 }
 
 function SegmentTableFor({ row }: { readonly row: SegmentTableRow }) {
+  const language = useTextLanguage();
+  const metrics = runChartMetrics(language);
+  const k = kanaUnitOf(language);
   const { segments } = row;
   const report = segments.report;
   return (
@@ -95,7 +99,8 @@ function SegmentTableFor({ row }: { readonly row: SegmentTableRow }) {
       ) : (
         <>
           <p className="run-chart-segment-condition" data-run-chart-segment-condition="">
-            {segmentationSourceSentence(segments.splitter, segments.origin)}固定長の長さは{report.fixedLength}文字です。
+            {segmentationSourceSentence(segments.splitter, segments.origin)}固定長の長さは{report.fixedLength}
+            {k}です。
           </p>
           <div className="run-chart-segment-scroll">
             <table className="run-chart-segment-table" data-run-chart-segment-table="">
@@ -114,7 +119,7 @@ function SegmentTableFor({ row }: { readonly row: SegmentTableRow }) {
                 <tbody key={metric}>
                   <tr className="run-chart-segment-metric">
                     <th colSpan={2 + COLUMNS.length} scope="colgroup">
-                      {RUN_CHART_METRICS[metric].label} [{RUN_CHART_METRICS[metric].unit}]
+                      {metrics[metric].label} [{metrics[metric].unit}]
                     </th>
                   </tr>
                   {statsRow(metric, '文節', report.bunsetsu)}
@@ -125,7 +130,7 @@ function SegmentTableFor({ row }: { readonly row: SegmentTableRow }) {
             </table>
           </div>
           <details className="run-chart-segment-seeds">
-            <summary>ランダムの種ごとの値（1文字あたりの距離）</summary>
+            <summary>ランダムの種ごとの値（1{k}あたりの距離）</summary>
             <table className="run-chart-segment-table" data-run-chart-segment-seeds="">
               <thead>
                 <tr>
@@ -147,11 +152,11 @@ function SegmentTableFor({ row }: { readonly row: SegmentTableRow }) {
           </details>
           <ul className="run-chart-segment-rank" data-run-chart-segment-rank="">
             <li>
-              1文字あたりの距離の区間の90%点: 文節の値は、ランダムの{SEGMENT_SEED_COUNT}個と合わせた
+              1{k}あたりの距離の区間の90%点: 文節の値は、ランダムの{SEGMENT_SEED_COUNT}個と合わせた
               {rankSentence(report.rank.p90)}
             </li>
             <li>
-              1文字あたりの距離の区切りの直後の1文字: 文節の値は、同じく
+              1{k}あたりの距離の区切りの直後の1文字: 文節の値は、同じく
               {rankSentence(report.rank.after)}
             </li>
           </ul>

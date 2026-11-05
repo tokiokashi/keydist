@@ -12,12 +12,12 @@ export interface ValueRow {
   readonly text: string;
 }
 
-/** 手の切り替えと同じ手の続き、両手の打鍵。継続率のすぐ後ろに、分母から外した両手の打鍵を含む組を置く。 */
+/** 手の切り替えと同じ手の続き、両手のアクション。継続率のすぐ後ろに、分母から外した両手のアクションを含む組を置く。 */
 export function pairRowsOf(extracted: HandRhythmExtracted): ValueRow[] {
   const { aggregate, pairCount } = extracted;
   const { bothHandStrokes } = aggregate;
   return [
-    { id: 'strokes', label: '打鍵', text: `${aggregate.strokeCount}打鍵` },
+    { id: 'strokes', label: 'アクション', text: `${aggregate.strokeCount}アクション` },
     { id: 'switches', label: '手の切り替え', text: `${aggregate.switches}組` },
     { id: 'continuations', label: '同じ手の続き', text: `${aggregate.continuations}組` },
     {
@@ -27,12 +27,12 @@ export function pairRowsOf(extracted: HandRhythmExtracted): ValueRow[] {
     },
     {
       id: 'both-hand-pairs',
-      label: '両手の打鍵を含む組',
+      label: '両手のアクションを含む組',
       text: `${aggregate.bothHandPairs}組（組全体の${formatShareOf(aggregate.bothHandPairs, pairCount)}）`,
     },
-    { id: 'both-hand-strokes', label: '両手の打鍵', text: `${bothHandStrokes.simultaneous + bothHandStrokes.mixed}打鍵` },
-    { id: 'both-output', label: '両手で文字を出す', text: `${bothHandStrokes.simultaneous}打鍵` },
-    { id: 'both-mixed', label: '片手は切り替えのキーだけ', text: `${bothHandStrokes.mixed}打鍵` },
+    { id: 'both-hand-strokes', label: '両手のアクション', text: `${bothHandStrokes.simultaneous + bothHandStrokes.mixed}アクション` },
+    { id: 'both-output', label: '両手で文字を出す', text: `${bothHandStrokes.simultaneous}アクション` },
+    { id: 'both-mixed', label: '片手は切り替えのキーだけ', text: `${bothHandStrokes.mixed}アクション` },
   ];
 }
 
@@ -42,12 +42,14 @@ export function alternationRowsOf(extracted: HandRhythmExtracted): ValueRow[] {
   return [
     { id: 'alternation-runs', label: '連続の数', text: `${alternation.runs}件` },
     { id: 'alternation-mean', label: '平均の長さ', text: formatMeanLength(alternation.meanLength, alternation.runs) },
-    { id: 'alternation-max', label: '最長の長さ', text: alternation.runs === 0 ? '—' : `${alternation.maxLength}打鍵` },
+    { id: 'alternation-max', label: '最長の長さ', text: alternation.runs === 0 ? '—' : `${alternation.maxLength}アクション` },
     {
       id: 'alternation-coverage',
       label: '覆う割合',
       text:
-        aggregate.strokeCount === 0 ? '—' : `${formatRate(alternation.coverage.rate)}（${alternation.coverage.strokes} / ${aggregate.strokeCount}打鍵）`,
+        aggregate.strokeCount === 0
+          ? '—'
+          : `${formatRate(alternation.coverage.rate)}（${alternation.coverage.strokes} / ${aggregate.strokeCount}アクション）`,
     },
   ];
 }

@@ -1,4 +1,5 @@
-import { deltaUnit, N_SENSITIVITY_METRICS, withUnit, type NSensitivityAxisKind, type NSensitivityMetricId } from './metric-catalog.ts';
+import type { TextLanguage } from '#input/text/language.ts';
+import { deltaUnit, nSensitivityMetrics, withUnit, type NSensitivityAxisKind, type NSensitivityMetricId } from './metric-catalog.ts';
 
 /**
  * N感度の縦軸の範囲の決め方。
@@ -70,17 +71,17 @@ function decimalsFor(ticks: readonly number[]): number {
  * 縦軸の目盛りの文字。比は%、差はpt、実測は指標の単位。比と差は刻みで桁が決まり、
  * 実測は大きさが指標ごとに違うので、指標ごとに決めた桁で丸める。
  */
-export function formatYTicks(kind: NSensitivityAxisKind, ticks: readonly number[], metric: NSensitivityMetricId): string[] {
+export function formatYTicks(kind: NSensitivityAxisKind, ticks: readonly number[], metric: NSensitivityMetricId, language: TextLanguage): string[] {
   if (kind === 'ratio') {
     const digits = decimalsFor(ticks);
     return ticks.map((tick) => `${tick.toFixed(digits)}%`);
   }
   if (kind === 'delta') {
     const digits = decimalsFor(ticks);
-    const unit = deltaUnit(metric);
+    const unit = deltaUnit(metric, language);
     return ticks.map((tick) => withUnit(tick.toFixed(digits), unit));
   }
-  const def = N_SENSITIVITY_METRICS[metric];
+  const def = nSensitivityMetrics(language)[metric];
   return ticks.map((tick) => withUnit(tick.toFixed(def.tickDigits), def.unit));
 }
 

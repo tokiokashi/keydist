@@ -139,13 +139,14 @@ test('キーボードでは選んだ系列の隣の点へ動き、端で止ま�
 
 test('読み上げは文字位置を先頭が1の「何文字目」で書き、中心線と目安線の幅を添える', () => {
   const data = seriesOf({ targetKey: 'a', values: [1.2, 1, 1, 1], center: 1, guideScale: 0.4, denominators: [4, 50, 50, 50] });
-  const text = runChartReadout('QWERTY', 'perCharUnits', data, 0);
-  assert.match(text, /^QWERTY、1文字目、1\.200 u\/文字（直近4文字）、中心線1\.000 u\/文字、目安線0\.800 u\/文字から1\.200 u\/文字$/);
+  const text = runChartReadout('QWERTY', 'perCharUnits', data, 0, 'ja');
+  assert.match(text, /^QWERTY、1文字目、1\.200 u\/かな（直近4かな）、中心線1\.000 u\/かな、目安線0\.800 u\/かなから1\.200 u\/かな$/);
   const rate = runChartReadout(
     'X',
     'sameFingerRate',
     seriesOf({ targetKey: 'a', values: [0.1], positions: [0], denominators: [20], center: 0.2, guideScale: 0 }),
     0,
+    'ja',
   );
-  assert.match(rate, /10\.0%（直近20打鍵）/);
+  assert.match(rate, /10\.0%（直近20アクション）/);
 });

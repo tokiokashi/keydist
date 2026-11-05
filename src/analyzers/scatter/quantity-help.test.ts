@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { COMPARISON_COLUMN_IDS, COMPARISON_COLUMN_TEXT, COMPARISON_UNIT_NOTE } from '../comparison-column-text.ts';
+import { COMPARISON_COLUMN_IDS, COMPARISON_UNIT_NOTE, comparisonColumnText } from '../comparison-column-text.ts';
 import {
   IDENTITIES,
+  identityRelation,
   SCATTER_PRESET_AXES,
-  SCATTER_PRESET_DESCRIPTIONS,
+  scatterPresetDescriptions,
   SCATTER_PRESET_IDS,
-  SCATTER_PRESET_LABELS,
+  scatterPresetLabels,
   scatterAxisProblem,
   scatterContour,
 } from './axes.ts';
@@ -16,14 +17,14 @@ import { mentionsUnit, scatterQuantityHelp } from './quantity-help.ts';
 const INPUT_CHARS = 100;
 const PRESETS = SCATTER_PRESET_IDS.filter((id) => id !== 'free');
 
-const text = (column: (typeof COMPARISON_COLUMN_IDS)[number]) => COMPARISON_COLUMN_TEXT[column];
+const text = (column: (typeof COMPARISON_COLUMN_IDS)[number]) => comparisonColumnText('ja')[column];
 
 test('どの恒等式も、3つの量を総数の形の名前で並べた式を持つ', () => {
   for (const identity of IDENTITIES) {
-    assert.notEqual(identity.relation, '');
+    assert.notEqual(identityRelation(identity, 'ja'), '');
     for (const quantity of identity.quantities) {
-      const name = quantity.total !== undefined ? text(quantity.total).label : text(quantity.perChar!).label.replace(/\/文字$/u, '');
-      assert.ok(identity.relation.includes(name), `${identity.relation} に ${name} が無い`);
+      const name = quantity.total !== undefined ? text(quantity.total).label : text(quantity.perChar!).label.replace(/\/かな$/u, '');
+      assert.ok(identityRelation(identity, 'ja').includes(name), `${identityRelation(identity, 'ja')} に ${name} が無い`);
     }
   }
 });
@@ -31,9 +32,9 @@ test('どの恒等式も、3つの量を総数の形の名前で並べた式を�
 test('用意する組み合わせは、横軸・縦軸・細い線の量の名前と説明と、3つの量の関係の文を出す', () => {
   for (const id of PRESETS) {
     const axes = SCATTER_PRESET_AXES[id as keyof typeof SCATTER_PRESET_AXES];
-    const contour = scatterContour(axes.x, axes.y, INPUT_CHARS);
+    const contour = scatterContour(axes.x, axes.y, INPUT_CHARS, 'ja');
     assert.ok(contour, id);
-    const { help } = scatterQuantityHelp(axes, contour);
+    const { help } = scatterQuantityHelp(axes, contour, 'ja');
     const columns = [axes.x, axes.y, contour.column];
     assert.deepEqual(
       help.items.map((item) => item.name),
@@ -64,8 +65,8 @@ test('自由に選ぶ組は、線を引く組にだけ細い線の量と関係�
   for (const x of COMPARISON_COLUMN_IDS) {
     for (const y of COMPARISON_COLUMN_IDS) {
       if (scatterAxisProblem(x, y) !== undefined) continue;
-      const contour = scatterContour(x, y, INPUT_CHARS);
-      const { help } = scatterQuantityHelp({ x, y }, contour);
+      const contour = scatterContour(x, y, INPUT_CHARS, 'ja');
+      const { help } = scatterQuantityHelp({ x, y }, contour, 'ja');
       const names = help.items.map((item) => item.name);
       assert.deepEqual(names.slice(0, 2), [`横軸　${text(x).label}`, `縦軸　${text(y).label}`], `${x} ${y}`);
       if (contour === undefined) {
@@ -90,63 +91,70 @@ test('距離の単位の説明は、名前か説明にuが出る量がある時�
   for (const x of COMPARISON_COLUMN_IDS) {
     for (const y of COMPARISON_COLUMN_IDS) {
       if (scatterAxisProblem(x, y) !== undefined) continue;
-      const contour = scatterContour(x, y, INPUT_CHARS);
-      const { help } = scatterQuantityHelp({ x, y }, contour);
+      const contour = scatterContour(x, y, INPUT_CHARS, 'ja');
+      const { help } = scatterQuantityHelp({ x, y }, contour, 'ja');
       const columns = [x, y, ...(contour === undefined ? [] : [contour.column])];
-      assert.equal(help.notes.includes(COMPARISON_UNIT_NOTE), columns.some(mentionsUnit), `${x} ${y}`);
+      assert.equal(
+        help.notes.includes(COMPARISON_UNIT_NOTE),
+        columns.some((column) => mentionsUnit(column, 'ja')),
+        `${x} ${y}`,
+      );
     }
   }
-  assert.ok(mentionsUnit('perPressUnits'));
-  assert.ok(mentionsUnit('totalUnits'));
-  assert.ok(!mentionsUnit('actions'));
-  assert.ok(!mentionsUnit('physicalBigramCombinations'));
+  assert.ok(mentionsUnit('perPressUnits', 'ja'));
+  assert.ok(mentionsUnit('totalUnits', 'ja'));
+  assert.ok(!mentionsUnit('actions', 'ja'));
+  assert.ok(!mentionsUnit('physicalBigramCombinations', 'ja'));
 });
 
-test('1文字あたりの列が入る組は、総数を入力文字数で割った値だという換算を関係の文に足す', () => {
-  const perPress = scatterContour('perCharPresses', 'perPressUnits', INPUT_CHARS)!;
-  assert.equal(perPress.relation, '距離 = 押下数 × u/押下');
-  assert.equal(perPress.conversion, '押下数/文字は押下数を入力文字数で割った値、u/文字は距離を入力文字数で割った値');
-  const distance = scatterContour('perCharSteps', 'meanPerStroke', INPUT_CHARS)!;
-  assert.equal(distance.relation, '距離 = 動作数 × u/打鍵');
-  assert.equal(distance.conversion, '動作数/文字は動作数を入力文字数で割った値、u/文字は距離を入力文字数で割った値');
+test('1かなあたりの列が入る組は、総数を入力かな数で割った値だという換算を関係の文に足す', () => {
+  const perPress = scatterContour('perCharPresses', 'perPressUnits', INPUT_CHARS, 'ja')!;
+  assert.equal(perPress.relation, '距離 = キー数 × u/キー');
+  assert.equal(perPress.conversion, 'キー数/かなはキー数を入力かな数で割った値、u/かなは距離を入力かな数で割った値');
+  const distance = scatterContour('perCharSteps', 'meanPerStroke', INPUT_CHARS, 'ja')!;
+  assert.equal(distance.relation, '距離 = アクション数 × u/アクション');
+  assert.equal(distance.conversion, 'アクション数/かなはアクション数を入力かな数で割った値、u/かなは距離を入力かな数で割った値');
   // 総数の形の軸だけの組には換算を足さない
-  const hand = scatterContour('handSwitches', 'handContinuations', INPUT_CHARS)!;
-  assert.equal(hand.relation, IDENTITIES[5]!.relation);
+  const hand = scatterContour('handSwitches', 'handContinuations', INPUT_CHARS, 'ja')!;
+  assert.equal(hand.relation, identityRelation(IDENTITIES[5]!, 'ja'));
   assert.equal(hand.conversion, undefined);
-  assert.equal(scatterContour('actions', 'meanPerStroke', INPUT_CHARS)!.conversion, undefined);
+  assert.equal(scatterContour('actions', 'meanPerStroke', INPUT_CHARS, 'ja')!.conversion, undefined);
 });
 
 test('画面に「等位線」の語を出さない', () => {
   for (const id of PRESETS) {
     const axes = SCATTER_PRESET_AXES[id as keyof typeof SCATTER_PRESET_AXES];
-    const { description, help } = scatterQuantityHelp(axes, scatterContour(axes.x, axes.y, INPUT_CHARS));
+    const { description, help } = scatterQuantityHelp(axes, scatterContour(axes.x, axes.y, INPUT_CHARS, 'ja'), 'ja');
     assert.doesNotMatch(
       [description, ...help.notes, help.listLabel, ...help.items.flatMap((item) => [item.name, item.description])].join('\n'),
       /等位線/u,
     );
   }
   const meta = SCATTER_PANE_META;
-  assert.doesNotMatch([meta.description, ...meta.help.notes, ...meta.help.items.flatMap((item) => [item.name, item.description])].join('\n'), /等位線/u);
+  assert.doesNotMatch(
+    [meta.description, ...meta.help('ja').notes, ...meta.help('ja').items.flatMap((item) => [item.name, item.description])].join('\n'),
+    /等位線/u,
+  );
 });
 
 test('見出しのⓘの組み合わせの一覧は、組み合わせの全部を同じ順で並べ、どれも説明を持つ', () => {
   assert.deepEqual(
-    SCATTER_PANE_META.help.items.map((item) => item.name),
-    SCATTER_PRESET_IDS.map((id) => SCATTER_PRESET_LABELS[id]),
+    SCATTER_PANE_META.help('ja').items.map((item) => item.name),
+    SCATTER_PRESET_IDS.map((id) => scatterPresetLabels('ja')[id]),
   );
-  for (const id of SCATTER_PRESET_IDS) assert.notEqual(SCATTER_PRESET_DESCRIPTIONS[id], '', id);
+  for (const id of SCATTER_PRESET_IDS) assert.notEqual(scatterPresetDescriptions('ja')[id], '', id);
   assert.deepEqual(
-    SCATTER_PANE_META.help.items.map((item) => item.description),
-    SCATTER_PRESET_IDS.map((id) => SCATTER_PRESET_DESCRIPTIONS[id]),
+    SCATTER_PANE_META.help('ja').items.map((item) => item.description),
+    SCATTER_PRESET_IDS.map((id) => scatterPresetDescriptions('ja')[id]),
   );
 });
 
-test('動いた押下の割合と動いた時の距離: 図の見方に、u/押下との関係の文が出る', () => {
+test('移動ありキーの割合と1回の移動距離: 図の見方に、u/キーとの関係の文が出る', () => {
   const axes = SCATTER_PRESET_AXES.movedPress;
-  const { help } = scatterQuantityHelp(axes, scatterContour(axes.x, axes.y, INPUT_CHARS));
-  assert.ok(help.notes.some((note) => note.includes('3つの量の関係は、u/押下 = 動いた押下率 ÷ 100 × u/動いた押下です。')));
+  const { help } = scatterQuantityHelp(axes, scatterContour(axes.x, axes.y, INPUT_CHARS, 'ja'), 'ja');
+  assert.ok(help.notes.some((note) => note.includes('3つの量の関係は、u/キー = 移動ありキー率 ÷ 100 × u/移動ありキーです。')));
   assert.deepEqual(
     help.items.map((item) => item.name),
-    ['横軸　動いた押下率', '縦軸　u/動いた押下', '細い線　u/押下'],
+    ['横軸　移動ありキー率', '縦軸　u/移動ありキー', '細い線　u/キー'],
   );
 });

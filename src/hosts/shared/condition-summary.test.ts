@@ -326,8 +326,8 @@ test('traceConditionSummary: シフト系キーの2項目は選べる主な値�
   const action = defaults.find((row) => row.id === 'actionRealizationPolicy')!;
   assert.equal(hold.label, 'シフト系キーの押し続け');
   assert.equal(hold.displayValue, 'しない');
-  assert.equal(action.label, '動作数の扱い');
-  assert.equal(action.displayValue, 'Shift+A で1動作');
+  assert.equal(action.label, 'アクション数の扱い');
+  assert.equal(action.displayValue, 'Shift+A で1アクション');
 
   let overrides = EMPTY_SETTINGS_OVERRIDES;
   for (const [id, value] of [
@@ -348,11 +348,11 @@ test('traceConditionSummary: シフト系キーの2項目は選べる主な値�
   }
   const rows = traceConditionSummary(resolveWith({ kind: 'layout', layoutId: 'qwerty' }, [], overrides, 'en').cascade, CATALOG);
   assert.equal(rows.find((row) => row.id === 'triggerRealizationPolicy')!.displayValue, 'する');
-  assert.equal(rows.find((row) => row.id === 'actionRealizationPolicy')!.displayValue, 'Shift→A で2動作（例外あり）');
+  assert.equal(rows.find((row) => row.id === 'actionRealizationPolicy')!.displayValue, 'Shift→A で2アクション（例外あり）');
   for (const row of rows) assert.doesNotMatch(row.displayValue, /[()]/, row.displayValue);
 });
 
-test('traceConditionSummary: 1動作の時は、残っている例外を出さない', () => {
+test('traceConditionSummary: 1アクションの時は、残っている例外を出さない', () => {
   const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'actionRealizationPolicy', {
     triggerActivation: 'disabled',
     triggerActivationClassOverrides: { 'order-free': 'separate' },
@@ -361,7 +361,7 @@ test('traceConditionSummary: 1動作の時は、残っている例外を出さ�
   assert.ok(written.ok);
   if (!written.ok) return;
   const rows = traceConditionSummary(resolveWith({ kind: 'layout', layoutId: 'qwerty' }, [], written.overrides, 'en').cascade, CATALOG);
-  assert.equal(rows.find((row) => row.id === 'actionRealizationPolicy')!.displayValue, 'Shift+A で1動作');
+  assert.equal(rows.find((row) => row.id === 'actionRealizationPolicy')!.displayValue, 'Shift+A で1アクション');
 });
 
 test('チェーン・アルペジオを全体で変えても、宣言しないペインの要約の数にも対象名の差分にも出ない（読むペインが宣言した時だけ数える）', () => {

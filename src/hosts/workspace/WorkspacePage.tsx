@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { resolvePaneHelp } from '#analyzers/pane-help.tsx';
 import { createScaleRegistry } from '#analyzers/shared-scale.ts';
 import { createPlaybackBroadcast } from '#analyzers/playback/playback-broadcast.ts';
 import { createPlaybackSeekStore } from '#hosts/shared/playback-seek.ts';
@@ -194,6 +195,8 @@ export function WorkspacePage({
   );
   // 漢字を含む日本語のテキストは、評価の前に読みに直す。ペインへ渡すのは直した後のテキストと、その状態
   const evaluation = useReadingEvaluation(resolvedText, reading);
+  // 見出しのⓘの説明の呼び名を、Workspaceのテキストの言語に合わせる（テキストが無い間は日本語）
+  const language = resolvedText?.language ?? 'ja';
 
   // 条件のモーダルの元に戻すも、文脈バーと同じく待っている書き込みを先に反映してから戻す
   const undo = useLatestCallback(pageHistory.undo);
@@ -361,9 +364,9 @@ export function WorkspacePage({
   const helpOf = useCallback(
     (paneId: string) => {
       const pane = panesById.get(paneId);
-      return pane === undefined ? undefined : findWorkspacePaneMeta(pane.analyzerId)?.help;
+      return pane === undefined ? undefined : resolvePaneHelp(findWorkspacePaneMeta(pane.analyzerId)?.help, language);
     },
-    [panesById],
+    [panesById, language],
   );
 
   const renderPane = useCallback(

@@ -9,7 +9,8 @@ import { EMPTY_CELL_TEXT, fingerMatrixCell } from './display.ts';
 import { fingerMatrixDefinition, type FingerMatrixColumn, type FingerMatrixExtracted, type FingerMatrixRow } from './extract.ts';
 import { DEFAULT_FINGER_MATRIX_OPTIONS, FINGER_MATRIX_SURFACE_IDS, fingerMatrixOptions, type FingerMatrixOptions } from './options.ts';
 import { FINGER_MATRIX_PANE_META } from './pane-meta.ts';
-import { FINGER_MATRIX_SURFACE_TEXT } from './surface-text.ts';
+import { fingerMatrixSurfaceText } from './surface-text.ts';
+import { useTextLanguage } from '../text-language-context.tsx';
 import './finger-matrix-view.css';
 
 /**
@@ -47,7 +48,8 @@ function rowFor(rows: readonly FingerMatrixRow[], targetKey: string): FingerMatr
 export function FingerMatrixBody({ extracted, order, rowContext, options, onOptionsChange }: FingerMatrixBodyProps) {
   const { surface: surfaceId, sort } = options;
   const surface = extracted.surfaces.find((item) => item.id === surfaceId) ?? extracted.surfaces[0]!;
-  const text = FINGER_MATRIX_SURFACE_TEXT[surface.id];
+  const language = useTextLanguage();
+  const text = fingerMatrixSurfaceText(language)[surface.id];
   const columnIds = surface.columns.map((column) => column.id);
   // 並び替えに使う列が今の面に無い時（指の面と指間の面を切り替えた時）は、並び替えていない状態として扱う。
   const effectiveSort: ColumnSort<string> = sort !== null && columnIds.includes(sort.column) ? sort : null;
@@ -61,11 +63,11 @@ export function FingerMatrixBody({ extracted, order, rowContext, options, onOpti
         const row = byKey.get(targetKey);
         const index = indexOf.get(column);
         if (row?.kind !== 'ok' || index === undefined) return undefined;
-        return fingerMatrixCell(surface.id, row, index).value;
+        return fingerMatrixCell(surface.id, row, index, language).value;
       },
       effectiveSort,
     );
-  }, [order, extracted.rows, surface, effectiveSort]);
+  }, [order, extracted.rows, surface, effectiveSort, language]);
 
   return (
     <section className="finger-matrix-feature" data-react-feature="finger-matrix">
@@ -132,7 +134,7 @@ export function FingerMatrixBody({ extracted, order, rowContext, options, onOpti
                     {label}
                   </th>
                   {surface.columns.map((column, index) => {
-                    const cell = fingerMatrixCell(surface.id, row, index);
+                    const cell = fingerMatrixCell(surface.id, row, index, language);
                     return (
                       <td key={column.id} title={`${columnNames(column).full}：${cell.tip}`} data-empty={cell.text === EMPTY_CELL_TEXT || undefined}>
                         {cell.text}
@@ -149,8 +151,6 @@ export function FingerMatrixBody({ extracted, order, rowContext, options, onOpti
   );
 }
 
-const SURFACE_CHOICES = FINGER_MATRIX_SURFACE_IDS.map((id) => ({ value: id, label: FINGER_MATRIX_SURFACE_TEXT[id].label }));
-
 const SORT_DIRECTION_TEXT = { asc: '昇順', desc: '降順' } as const;
 
 /** 並び替えの欄に出す列の名前（列のidは指のid、または`-`でつないだ2本の指のid）。 */
@@ -164,6 +164,8 @@ function sortColumnName(column: string): string {
 /** 配列×指のマトリックスの解析設定（見る量・並び替え）。 */
 export function FingerMatrixSettings({ options, onOptionsChange }: AnalyzerSettingsProps<FingerMatrixOptions>) {
   const bind = <K extends keyof FingerMatrixOptions>(key: K) => bindOption(options, DEFAULT_FINGER_MATRIX_OPTIONS, onOptionsChange, key);
+  const surfaceText = fingerMatrixSurfaceText(useTextLanguage());
+  const SURFACE_CHOICES = FINGER_MATRIX_SURFACE_IDS.map((id) => ({ value: id, label: surfaceText[id].label }));
   return (
     <div className="option-groups">
       <SelectOptionField

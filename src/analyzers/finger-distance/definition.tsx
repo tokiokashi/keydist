@@ -36,7 +36,7 @@ export function FingerDistanceBody({ extracted, options }: FingerDistanceBodyPro
           <FingerDistanceDistribution specs={distributionSpecsOf(extracted)} />
           <p className="finger-distance-note">
             各行は指間距離の超過 [u]
-            の1つの値で、棒と右の数字がその値の打鍵が全打鍵に占める割合です。割合の分母は、平均・標準偏差と同じ全打鍵です。その組の指がホームにある打鍵も含みます。
+            の1つの値で、棒と右の数字がその値のアクションが全アクションに占める割合です。割合の分母は、平均・標準偏差と同じ全アクションです。その組の指がホームにあるアクションも含みます。
           </p>
         </>
       ) : null}
@@ -54,7 +54,7 @@ export function FingerDistanceSettings({ options, onOptionsChange }: AnalyzerSet
         binding={bind('chartMetric')}
         choices={[
           { value: 'distance', label: '移動距離', group: '指ごと' },
-          { value: 'presses', label: '押下数', group: '指ごと' },
+          { value: 'presses', label: 'キー数', group: '指ごと' },
           { value: 'stdDev', label: '標準偏差', group: '隣り合う指の組' },
           { value: 'mean', label: '平均', group: '隣り合う指の組' },
           { value: 'max', label: '最大', group: '隣り合う指の組' },

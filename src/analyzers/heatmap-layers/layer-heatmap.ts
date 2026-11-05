@@ -1,7 +1,7 @@
 import type { LayerPresentationRole } from '#input/layouts/types.ts';
 
 export interface LayerColorData {
-  /** ツールチップにも使う実際のキー押下数 */
+  /** ツールチップにも使う実際のキー数 */
   keyCounts: ReadonlyMap<string, number>;
   /** 実際に層操作として押した回数 */
   triggerKeyCounts: ReadonlyMap<string, number>;
