@@ -26,7 +26,7 @@ export interface ScatterOkRow {
   readonly kind: 'ok';
   readonly targetKey: string;
   readonly values: ComparisonRowValues;
-  /** 入力かな数。1文字あたりの列を軸に取った時に、等位線の総数の形への換算に使う。 */
+  /** 入力かな数。1かなあたりの列を軸に取った時に、等位線の総数の形への換算に使う。 */
   readonly inputChars: number;
 }
 
