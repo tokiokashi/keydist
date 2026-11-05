@@ -49,7 +49,9 @@ test('用意する組み合わせは、横軸・縦軸・細い線の量の名�
       help.notes.some(
         (note) =>
           note.includes(`細い線は、${text(contour.column).label}が同じになる位置を結んでいます。`) &&
-          note.includes(`3つの量の関係は、${contour.relation}です。${contour.conversion === undefined ? '' : `${contour.conversion}です。`}線の端に`),
+          note.includes(
+            `3つの量の関係は、${contour.relation}です。${contour.conversion === undefined ? '' : `${contour.conversion}です。`}線の上に値を書き、量の名前は凡例に示しています。`,
+          ),
       ),
       id,
     );

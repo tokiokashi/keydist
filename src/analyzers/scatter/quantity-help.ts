@@ -37,7 +37,7 @@ export function scatterQuantityHelp(axes: ScatterAxes, contour: ScatterContour |
   if (contour !== undefined) {
     quantities.push({ role: '細い線', column: contour.column });
     notes.push(
-      `細い線は、${COMPARISON_COLUMN_TEXT[contour.column].label}が同じになる位置を結んでいます。3つの量の関係は、${contour.relation}です。${contour.conversion === undefined ? '' : `${contour.conversion}です。`}線の端に値を書いています。`,
+      `細い線は、${COMPARISON_COLUMN_TEXT[contour.column].label}が同じになる位置を結んでいます。3つの量の関係は、${contour.relation}です。${contour.conversion === undefined ? '' : `${contour.conversion}です。`}線の上に値を書き、量の名前は凡例に示しています。`,
     );
   }
   if (quantities.some(({ column }) => mentionsUnit(column))) notes.push(COMPARISON_UNIT_NOTE);
