@@ -4,13 +4,13 @@ import { COMPARISON_COLUMN_IDS, type ComparisonColumnId } from '../comparison-co
  * 散布図の軸の組み合わせと、軸の2つの量から恒等式で決まる3つ目の量（等位線の量）。
  *
  * 軸に取れるのは比較表の列だけで、新しい指標は作らない。等位線は、定義の上で3つの量を結ぶ恒等式
- * （距離 = 動作数 × u/打鍵、押下 = 動作数 × 押下/動作、同指 = 動作数 × 同指率 / 100、
+ * （距離 = 動作数 × u/打鍵、押下 = 動作数 × 押下数/動作、距離 = 押下数 × u/押下、u/打鍵 = 押下数/動作 × u/押下、同指 = 動作数 × 同指率 / 100、
  * 同じ手の続きの割合 = 同じ手の続き / (手の切り替え + 同じ手の続き) × 100）にだけ引く。
  * 点の位置から関係の強さを測る表示（回帰直線・相関係数）は出さない。
  */
 
 /** 用意する組み合わせ。 */
-export const SCATTER_PRESET_IDS = ['distance', 'press', 'sameFinger', 'hand', 'free'] as const;
+export const SCATTER_PRESET_IDS = ['distance', 'press', 'perPress', 'sameFinger', 'hand', 'free'] as const;
 export type ScatterPresetId = (typeof SCATTER_PRESET_IDS)[number];
 
 export interface ScatterAxes {
@@ -22,6 +22,7 @@ export interface ScatterAxes {
 export const SCATTER_PRESET_AXES: Readonly<Record<Exclude<ScatterPresetId, 'free'>, ScatterAxes>> = {
   distance: { x: 'perCharSteps', y: 'meanPerStroke' },
   press: { x: 'perActionPresses', y: 'perCharSteps' },
+  perPress: { x: 'perCharPresses', y: 'perPressUnits' },
   sameFinger: { x: 'actions', y: 'sameFingerRate' },
   hand: { x: 'handSwitches', y: 'handContinuations' },
 };
@@ -30,6 +31,7 @@ export const SCATTER_PRESET_AXES: Readonly<Record<Exclude<ScatterPresetId, 'free
 export const SCATTER_PRESET_LABELS: Readonly<Record<ScatterPresetId, string>> = {
   distance: '1文字の動作数と1打鍵の距離',
   press: '1動作の押下数と1文字の動作数',
+  perPress: '1文字の押下数と1押下の距離',
   sameFinger: '動作数と同指率',
   hand: '手の切り替えと同じ手の続き',
   free: '自由に選ぶ',
@@ -77,6 +79,24 @@ const IDENTITIES: readonly Identity[] = [
       { perChar: 'perCharPresses', extensive: true },
     ],
     solve: (index, [n, m, p]) => (index === 0 ? divide(p, m) : index === 1 ? divide(p, n) : n * m),
+  },
+  // 距離 = 押下数 × u/押下。`perPressUnits`は総移動距離 / 押下キー数。押下は1文字あたりの列だけが比較表にある。
+  {
+    quantities: [
+      { perChar: 'perCharPresses', extensive: true },
+      { total: 'perPressUnits', extensive: false },
+      { total: 'totalUnits', perChar: 'perCharUnits', extensive: true },
+    ],
+    solve: (index, [n, m, p]) => (index === 0 ? divide(p, m) : index === 1 ? divide(p, n) : n * m),
+  },
+  // u/打鍵 = 押下数/動作 × u/押下。3つとも比率で、入力文字数に比例しない。
+  {
+    quantities: [
+      { total: 'perActionPresses', extensive: false },
+      { total: 'perPressUnits', extensive: false },
+      { total: 'meanPerStroke', extensive: false },
+    ],
+    solve: (index, [a, u, m]) => (index === 0 ? divide(m, u) : index === 1 ? divide(m, a) : a * u),
   },
   // 同指 = 動作数 × 同指率 / 100。`sameFingerRate`の分母はStroke数。
   {

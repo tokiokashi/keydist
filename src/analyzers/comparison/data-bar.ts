@@ -20,6 +20,7 @@ export const COMPARISON_BAR_SCALE: Readonly<Record<ComparisonColumnId, Compariso
   perCharSteps: 'zero',
   perCharPresses: 'zero',
   perActionPresses: 'zero',
+  perPressUnits: 'zero',
   // 割合（%）と回数。0は「該当が無い」。
   singleTapLayerRate: 'zero',
   singleTapRate: 'zero',

@@ -138,6 +138,11 @@ export interface Metrics {
    */
   perActionPresses: number;
   /**
+   * 1回の押下あたりの移動距離 [u/押下]（仕様 §11.5）。総移動距離 / 押下キー数で、押下キー数が0なら0。
+   * 分母には距離が0の押下（ホームキー・親指キー）も入る。
+   */
+  perPressUnits: number;
+  /**
    * 打鍵可能な入力文字のうち、単打面の1キーだけで直接出力された文字の割合 [%]。
    * シフト面・複数キーコンボ・複数Stroke入力は含めない（仕様 §11.5.1）。
    */
@@ -371,6 +376,7 @@ export function computeMetrics(trace: Trace, geometry: Geometry, conditions: Met
     perCharSteps: scalars.perCharSteps,
     perCharPresses: scalars.perCharPresses,
     perActionPresses: scalars.perActionPresses,
+    perPressUnits: scalars.perPressUnits,
     singleTapLayerRate: scalars.singleTapLayerRate,
     singleTapRate: scalars.singleTapRate,
     singleKeyRate: scalars.singleKeyRate,
@@ -458,6 +464,7 @@ export const TRACE_SCALAR_IDS = [
   'perCharSteps',
   'perCharPresses',
   'perActionPresses',
+  'perPressUnits',
   'singleTapLayerRate',
   'singleTapRate',
   'singleKeyRate',
@@ -489,6 +496,7 @@ export function computeTraceScalars(trace: Trace, tally: PressTally = tallyPress
     perCharSteps: inputChars ? actions / inputChars : 0,
     perCharPresses: inputChars ? presses / inputChars : 0,
     perActionPresses: actions ? presses / actions : 0,
+    perPressUnits: presses ? totalUnits / presses : 0,
     singleTapLayerRate: singleTapLayerRate(trace),
     singleTapRate: singleTapRate(trace, actions),
     singleKeyRate: singleKeyRate(trace, actions),

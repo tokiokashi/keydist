@@ -152,6 +152,7 @@ test('computeMemberSeries: 既定のNの点は、一覧の全指標でメンバ�
         totalUnits: metrics.totalUnits,
         meanPerStroke: metrics.meanPerStroke,
         perCharUnits: metrics.perCharUnits,
+        perPressUnits: metrics.perPressUnits,
         sameFinger: metrics.sameFinger,
         sameFingerRate: sameFingerRate(metrics.sameFinger, metrics.strokes),
         rightHandDistanceShare: rightHandShare(metrics.perFinger),

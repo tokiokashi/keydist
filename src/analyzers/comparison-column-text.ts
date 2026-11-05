@@ -14,6 +14,7 @@ export const COMPARISON_COLUMN_IDS = [
   'perCharSteps',
   'perCharPresses',
   'perActionPresses',
+  'perPressUnits',
   'singleTapLayerRate',
   'singleTapRate',
   'singleKeyRate',
@@ -80,6 +81,10 @@ export const COMPARISON_COLUMN_TEXT: Readonly<Record<ComparisonColumnId, Compari
   perActionPresses: {
     label: '押下数/動作',
     description: '1アクションで押すキーの数。コンボや同時押しでまとめて打つほど大きくなります。',
+  },
+  perPressUnits: {
+    label: 'u/押下',
+    description: '1回の押下あたりの移動距離（u/押下）。距離が0の押下（ホームキーや親指キー）も数に入れます。',
   },
   singleTapLayerRate: {
     label: '単打面率',
@@ -188,6 +193,7 @@ export const COMPARISON_COLUMN_FORMAT: Readonly<Record<ComparisonColumnId, (valu
   perCharSteps: fixed(3),
   perCharPresses: fixed(3),
   perActionPresses: fixed(3),
+  perPressUnits: fixed(3),
   singleTapLayerRate: percent,
   singleTapRate: percent,
   singleKeyRate: percent,
