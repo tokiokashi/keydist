@@ -34,7 +34,7 @@ const POINTS = [
 ];
 
 test('scatterPlotModel: 点は図の内側に置かれ、値の大小と位置の向きが合う', () => {
-  const model = scatterPlotModel({ points: POINTS, contour: undefined, contourName: '', contourSuffix: '' });
+  const model = scatterPlotModel({ points: POINTS, contour: undefined, contourSuffix: '' });
   assert.equal(model.points.length, 3);
   for (const point of model.points) {
     assert.ok(point.px >= PLOT_MARGIN.left && point.px <= PLOT_WIDTH - PLOT_MARGIN.right);
@@ -55,7 +55,6 @@ test('scatterPlotModel: 点の名前は、他の名前と重ならない場所�
       { targetKey: 'b', label: 'とても長い名前の配列B', x: 10.01, y: 10 },
     ],
     contour: undefined,
-    contourName: '',
     contourSuffix: '',
   });
   const [a, b] = model.points;
@@ -63,12 +62,13 @@ test('scatterPlotModel: 点の名前は、他の名前と重ならない場所�
   assert.ok(estimateTextWidth('QWERTY') < estimateTextWidth('かな配列'));
 });
 
-test('scatterPlotModel: 等位線は切りのよい値で数本、図の中だけに引き、線の端に名前と値を書く', () => {
+test('scatterPlotModel: 細い線は切りのよい値で数本、図の中だけに引き、線の上に値だけを書く', () => {
   const contour = scatterContour('actions', 'meanPerStroke', 100)!;
-  const model = scatterPlotModel({ points: POINTS, contour, contourName: '距離', contourSuffix: '' });
+  const model = scatterPlotModel({ points: POINTS, contour, contourSuffix: '' });
   assert.ok(model.contours.length >= 2 && model.contours.length <= 6, `${model.contours.length}本`);
   for (const line of model.contours) {
-    assert.match(line.text, /^距離 \d+$/);
+    // 量の名前は書かず、値だけ
+    assert.match(line.text, /^\d+$/);
     assert.ok(line.labelAt !== undefined);
     assert.ok(line.labelAt!.x <= PLOT_WIDTH - PLOT_MARGIN.right + 1e-6 && line.labelAt!.x >= PLOT_MARGIN.left);
     // 線の座標は図の中に収まる
@@ -85,7 +85,7 @@ test('scatterPlotModel: 等位線は切りのよい値で数本、図の中だ�
   );
 });
 
-test('scatterPlotModel: 率の等位線は単位を付け、値が決まらない領域には線を引かない', () => {
+test('scatterPlotModel: 率の細い線は値に単位を付け、値が決まらない領域には線を引かない', () => {
   const contour = scatterContour('handSwitches', 'handContinuations', 100)!;
   const model = scatterPlotModel({
     points: [
@@ -93,13 +93,41 @@ test('scatterPlotModel: 率の等位線は単位を付け、値が決まらな�
       { targetKey: 'b', label: 'B', x: 150, y: 250 },
     ],
     contour,
-    contourName: '同じ手の続きの割合',
     contourSuffix: '%',
   });
   assert.ok(model.contours.length > 0);
-  assert.ok(model.contours.every((line) => line.text.endsWith('%')));
+  assert.ok(model.contours.every((line) => /^\d+(\.\d+)?%$/.test(line.text)));
   // 点が無い時は、軸の目盛りだけを返す
-  const empty = scatterPlotModel({ points: [], contour, contourName: 'x', contourSuffix: '' });
+  const empty = scatterPlotModel({ points: [], contour, contourSuffix: '' });
   assert.equal(empty.points.length, 0);
   assert.equal(empty.contours.length, 0);
+});
+
+test('scatterPlotModel: 細い線の値の桁は、同じ図の線で揃える', () => {
+  const contour = scatterContour('actions', 'meanPerStroke', 100)!;
+  const model = scatterPlotModel({
+    points: [
+      { targetKey: 'a', label: 'A', x: 1.0, y: 1.0 },
+      { targetKey: 'b', label: 'B', x: 1.2, y: 1.3 },
+    ],
+    contour,
+    contourSuffix: '',
+  });
+  assert.ok(model.contours.length >= 2);
+  const decimals = new Set(model.contours.map((line) => (line.text.split('.')[1] ?? '').length));
+  assert.equal(decimals.size, 1, model.contours.map((line) => line.text).join(' '));
+});
+
+test('scatterPlotModel: 細い線の値は、点と点の名前の上に重ねない', () => {
+  const contour = scatterContour('actions', 'meanPerStroke', 100)!;
+  const model = scatterPlotModel({ points: POINTS, contour, contourSuffix: '' });
+  for (const line of model.contours) {
+    const at = line.labelAt!;
+    const width = estimateTextWidth(line.text);
+    const rect = { x0: at.x - 4 - width, x1: at.x - 4, y0: at.y - 14, y1: at.y - 2 };
+    for (const point of model.points) {
+      const overlapsMark = rect.x0 < point.px + 7 && point.px - 7 < rect.x1 && rect.y0 < point.py + 7 && point.py - 7 < rect.y1;
+      assert.equal(overlapsMark, false, `${line.text}と${point.label}の点`);
+    }
+  }
 });

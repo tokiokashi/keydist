@@ -14,7 +14,7 @@ export const SCATTER_PANE_META = {
     notes: [
       '点は配列かSetupごとに1つで、値はテキスト全体を打った時の値です。軸の数値は比較表の列と同じです。',
       `点は配列の種類で${SCATTER_KIND_ORDER.map((kind) => `${SCATTER_KIND_STYLES[kind].label}（${SCATTER_KIND_STYLES[kind].colorName}の${SCATTER_KIND_STYLES[kind].shapeName}）`).join('・')}に分けて重ねます。`,
-      '細い線は、軸の2つの数値から決まる別の数値が、同じになる位置を結んでいます。線の端に、その数値の名前と値を書いています。',
+      '細い線は、軸の2つの数値から決まる別の数値が、同じになる位置を結んでいます。線の上にその数値の値を書き、数値の名前は凡例に示しています。',
     ],
     listLabel: '用意する組み合わせ',
     items: SCATTER_PRESET_IDS.map((id) => ({ name: SCATTER_PRESET_LABELS[id], description: SCATTER_PRESET_DESCRIPTIONS[id] })),

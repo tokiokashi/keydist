@@ -1,13 +1,13 @@
 import type { ScatterContour } from './axes.ts';
 
 /**
- * 散布図の座標の計算（画面に依存しない純粋な関数）。軸の範囲・目盛り・等位線の位置と、点の名前の置き場所を決める。
+ * 散布図の座標の計算（画面に依存しない純粋な関数）。軸の範囲・目盛り・細い線の位置と値の置き場所、点の名前の置き場所を決める。
  * 可視化はここで決めた座標を描くだけで、値の計算はしない。
  */
 
 export const PLOT_WIDTH = 640;
 export const PLOT_HEIGHT = 400;
-export const PLOT_MARGIN = { left: 64, right: 28, top: 22, bottom: 48 } as const;
+export const PLOT_MARGIN = { left: 72, right: 28, top: 16, bottom: 48 } as const;
 const PLOT_LEFT = PLOT_MARGIN.left;
 const PLOT_RIGHT = PLOT_WIDTH - PLOT_MARGIN.right;
 const PLOT_TOP = PLOT_MARGIN.top;
@@ -82,8 +82,9 @@ export interface PlotContourLine {
   readonly level: number;
   /** 線のSVGの`d`。図の外へ出る部分は含まない。 */
   readonly d: string;
-  /** 量の名前と値を書く位置（線の右端）。図の中に線が無い時は`undefined`。 */
+  /** 値を書く位置（文字の右端）。点や他の名前と重ならない場所を線の上から選ぶ。図の中に線が無い時は`undefined`。 */
   readonly labelAt: { readonly x: number; readonly y: number } | undefined;
+  /** 線に書く値。量の名前は書かず、凡例に1回だけ示す。桁は同じ図の線で揃える。 */
   readonly text: string;
 }
 
@@ -97,9 +98,7 @@ export interface ScatterPlotModel {
 export interface ScatterPlotInput {
   readonly points: readonly PlotPointInput[];
   readonly contour: ScatterContour | undefined;
-  /** 等位線の端に書く量の名前。 */
-  readonly contourName: string;
-  /** 等位線の値に付ける単位（`%`など）。 */
+  /** 細い線の値に付ける単位（`%`など）。 */
   readonly contourSuffix: string;
 }
 
@@ -127,7 +126,14 @@ function levelsFor(contour: ScatterContour, xRange: Range, yRange: Range): { rea
   return { levels: values.slice(0, MAX_LEVELS), step };
 }
 
-function contourLine(contour: ScatterContour, level: number, xRange: Range, yRange: Range, text: string): PlotContourLine {
+interface DrawnContour {
+  readonly level: number;
+  readonly d: string;
+  /** 値を書く候補の位置。右端から左へ、線に沿って並べる。 */
+  readonly anchors: readonly { readonly x: number; readonly y: number }[];
+}
+
+function contourLine(contour: ScatterContour, level: number, xRange: Range, yRange: Range): DrawnContour {
   const segments: Array<Array<{ x: number; y: number }>> = [];
   let current: Array<{ x: number; y: number }> = [];
   for (let i = 0; i <= CONTOUR_SAMPLES; i++) {
@@ -143,13 +149,19 @@ function contourLine(contour: ScatterContour, level: number, xRange: Range, yRan
   if (current.length > 0) segments.push(current);
   const drawn = segments.filter((segment) => segment.length >= 2);
   const d = drawn.map((segment) => segment.map((p, index) => `${index === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('')).join('');
-  let end: { x: number; y: number } | undefined;
+  let rightmost: Array<{ x: number; y: number }> | undefined;
   for (const segment of drawn) {
-    const last = segment[segment.length - 1]!;
-    if (end === undefined || last.x > end.x) end = last;
+    if (rightmost === undefined || segment[segment.length - 1]!.x > rightmost[rightmost.length - 1]!.x) rightmost = segment;
   }
-  return { level, d, labelAt: end === undefined ? undefined : { x: end.x, y: end.y }, text };
+  const anchors: Array<{ x: number; y: number }> = [];
+  if (rightmost !== undefined) {
+    for (let i = rightmost.length - 1; i >= 0; i -= ANCHOR_STRIDE) anchors.push(rightmost[i]!);
+  }
+  return { level, d, anchors };
 }
+
+/** 値を書く候補の位置を線に沿って並べる間隔（標本の数）。 */
+const ANCHOR_STRIDE = 8;
 
 const LABEL_HEIGHT = 12;
 const POINT_CLEARANCE = 7;
@@ -172,11 +184,16 @@ function overlaps(a: Rect, b: Rect): boolean {
   return a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
 }
 
+/** 細い線の値の文字（右端を`anchor`の左上に寄せる）が占める長方形。 */
+function valueRect(anchor: { readonly x: number; readonly y: number }, width: number): Rect {
+  return { x0: anchor.x - 4 - width, x1: anchor.x - 4, y0: anchor.y - 5 - 9, y1: anchor.y - 5 + 3 };
+}
+
 /**
  * 点の名前の置き場所。右・左・上・下の順に、他の名前・点・図の外と重ならない最初の場所を選ぶ。
  * どこも重なる時は、重なりが最も少ない場所にする。
  */
-function placeLabels(points: readonly { readonly px: number; readonly py: number; readonly label: string }[]): PlotLabel[] {
+function placeLabels(points: readonly { readonly px: number; readonly py: number; readonly label: string }[]): Array<{ label: PlotLabel; rect: Rect }> {
   const marks: Rect[] = points.map((p) => ({
     x0: p.px - POINT_CLEARANCE,
     x1: p.px + POINT_CLEARANCE,
@@ -217,7 +234,7 @@ function placeLabels(points: readonly { readonly px: number; readonly py: number
       if (cost === 0) break;
     }
     placed.push(best.rect);
-    return best.label;
+    return best;
   });
 }
 
@@ -235,14 +252,39 @@ export function scatterPlotModel(input: ScatterPlotInput): ScatterPlotModel {
     py: positionOf(p.y, yRange, PLOT_BOTTOM, PLOT_TOP),
   }));
   const labels = placeLabels(positioned);
-  const points = positioned.map((p, index) => ({ ...p, labelAt: labels[index]! }));
+  const points = positioned.map((p, index) => ({ ...p, labelAt: labels[index]!.label }));
   let contours: PlotContourLine[] = [];
   if (input.contour !== undefined && input.points.length > 0) {
     const { levels, step } = levelsFor(input.contour, xRange, yRange);
     const contour = input.contour;
+    const occupied: Rect[] = [
+      ...labels.map((placed) => placed.rect),
+      ...positioned.map((p) => ({ x0: p.px - POINT_CLEARANCE, x1: p.px + POINT_CLEARANCE, y0: p.py - POINT_CLEARANCE, y1: p.py + POINT_CLEARANCE })),
+    ];
     contours = levels
-      .map((level) => contourLine(contour, level, xRange, yRange, `${input.contourName} ${formatTickValue(level, step)}${input.contourSuffix}`))
-      .filter((line) => line.d !== '');
+      .map((level) => contourLine(contour, level, xRange, yRange))
+      .filter((line) => line.d !== '')
+      .map((line) => {
+        const text = `${formatTickValue(line.level, step)}${input.contourSuffix}`;
+        const width = estimateTextWidth(text);
+        // 文字の右端を線の上に置く。点・点の名前・他の線の値と重ならない最初の場所を、右端から左へ探す
+        let best = line.anchors[0]!;
+        let bestRect = valueRect(best, width);
+        let bestCost = Number.POSITIVE_INFINITY;
+        for (const anchor of line.anchors) {
+          const rect = valueRect(anchor, width);
+          const outside = rect.x0 < PLOT_LEFT || rect.x1 > PLOT_RIGHT || rect.y0 < PLOT_TOP || rect.y1 > PLOT_BOTTOM ? 1 : 0;
+          const cost = outside + occupied.filter((other) => overlaps(rect, other)).length;
+          if (cost < bestCost) {
+            best = anchor;
+            bestRect = rect;
+            bestCost = cost;
+          }
+          if (cost === 0) break;
+        }
+        occupied.push(bestRect);
+        return { level: line.level, d: line.d, labelAt: best, text };
+      });
   }
   return { xTicks, yTicks, points, contours };
 }

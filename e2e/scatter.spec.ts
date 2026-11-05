@@ -39,10 +39,11 @@ test.describe('個別画面', () => {
     await expect(feature(page).locator('[data-scatter-point]')).toHaveCount(3, { timeout: 15_000 });
   });
 
-  test('既定は1文字の動作数と1打鍵の距離で、軸の名前は比較表の列名、等位線には量の名前と値を書く', async ({ page }) => {
+  test('既定は1文字の動作数と1打鍵の距離で、軸の名前は比較表の列名、細い線には値だけを書き、量の名前は凡例に1回出す', async ({ page }) => {
     await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('動作数/文字');
     await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('u/打鍵');
-    await expect(feature(page).locator('[data-scatter-contour]').first()).toContainText(/^u\/文字 [\d.]+$/);
+    await expect(feature(page).locator('[data-scatter-contour]').first()).toHaveText(/^[\d.]+$/);
+    await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveText('u/文字');
     await expect(feature(page).locator('[data-scatter-preset-note]')).toHaveCount(0);
     // かな配列と英字の配列は、色と形の両方で分ける
     await expect(feature(page).locator('[data-scatter-point][data-kind="kana"] [data-mark="diamond"]')).toHaveCount(1);
@@ -58,25 +59,28 @@ test.describe('個別画面', () => {
     await settings.getByLabel('組み合わせ', { exact: true }).selectOption('press');
     await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('押下数/動作');
     await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('動作数/文字');
-    await expect(feature(page).locator('[data-scatter-contour]').first()).toContainText(/^押下数\/文字 [\d.]+$/);
-    await expect(feature(page).locator('[data-scatter-preset-note]')).toBeVisible();
+    await expect(feature(page).locator('[data-scatter-contour]').first()).toHaveText(/^[\d.]+$/);
+    await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveText('押下数/文字');
+    await expect(feature(page).locator('[data-scatter-preset-note]')).toHaveCount(0);
 
     await settings.getByLabel('組み合わせ', { exact: true }).selectOption('perPress');
     await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('押下数/文字');
     await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('u/押下');
-    await expect(feature(page).locator('[data-scatter-contour]').first()).toContainText(/^u\/文字 [\d.]+$/);
+    await expect(feature(page).locator('[data-scatter-contour]').first()).toHaveText(/^[\d.]+$/);
+    await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveText('u/文字');
 
     await settings.getByLabel('組み合わせ', { exact: true }).selectOption('sameFinger');
     await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('動作数');
     await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('同指率');
-    await expect(feature(page).locator('[data-scatter-contour]').first()).toContainText(/^同指 \d+/);
-    await expect(feature(page).locator('[data-scatter-preset-note]')).toBeVisible();
+    await expect(feature(page).locator('[data-scatter-contour]').first()).toHaveText(/^\d+$/);
+    await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveText('同指');
     await expect.poll(() => qwerty.evaluate((element) => getComputedStyle(element).transform)).not.toBe(before);
 
     await settings.getByLabel('組み合わせ', { exact: true }).selectOption('hand');
     await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('手の切り替え');
     await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('同じ手の続き');
-    await expect(feature(page).locator('[data-scatter-contour]').first()).toContainText(/^同じ手の続きの割合 [\d.]+%$/);
+    await expect(feature(page).locator('[data-scatter-contour]').first()).toHaveText(/^[\d.]+%$/);
+    await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveText('同じ手の続きの割合');
   });
 
   test('自由に選ぶと、横軸と縦軸を比較表の列から選べる。引けない組には線を引かず、選べない列は選択肢に出ない', async ({ page }) => {
@@ -87,17 +91,19 @@ test.describe('個別画面', () => {
     await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('単打率');
     await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('押下数/文字');
     await expect(feature(page).locator('[data-scatter-contour]')).toHaveCount(0);
+    await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveCount(0);
 
     await settings.getByLabel('横軸', { exact: true }).selectOption('perCharUnits');
     await settings.getByLabel('縦軸', { exact: true }).selectOption('meanPerStroke');
-    await expect(feature(page).locator('[data-scatter-contour]').first()).toContainText(/^動作数\/文字 [\d.]+$/);
+    await expect(feature(page).locator('[data-scatter-contour]').first()).toHaveText(/^[\d.]+$/);
+    await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveText('動作数/文字');
     // 入力文字数倍の関係にある列と同じ列は、もう一方の軸の選択肢に出ない
     const vertical = settings.getByLabel('縦軸', { exact: true });
     await expect(vertical.locator('option', { hasText: /^距離$/ })).toHaveCount(0);
     await expect(vertical.locator('option', { hasText: /^u\/文字$/ })).toHaveCount(0);
   });
 
-  test('点にフォーカスすると、完全な名前・横軸・縦軸・等位線の値を出す', async ({ page }) => {
+  test('点にフォーカスすると、完全な名前・横軸・縦軸・細い線の量の値を出す', async ({ page }) => {
     const readout = feature(page).locator('[data-scatter-readout]');
     await expect(readout).toHaveText('');
     await feature(page).locator('[data-scatter-point]').filter({ hasText: 'QWERTY' }).focus();

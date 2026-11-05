@@ -18,8 +18,9 @@
 
 .scatter-heading {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.3rem 1rem;
 }
 
 .scatter-legend {
@@ -33,6 +34,7 @@
 }
 
 .scatter-legend li {
+  white-space: nowrap;
   display: flex;
   align-items: center;
   gap: 0.3rem;
@@ -49,8 +51,16 @@
   height: auto;
 }
 
-.scatter-grid {
-  stroke: var(--border);
+/* 描画領域の枠。目盛りの線は枠の内向きに付け、格子線は引かない */
+.scatter-frame {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 1;
+}
+
+.scatter-tick-mark {
+  fill: none;
+  stroke: var(--text-muted);
   stroke-width: 1;
 }
 
@@ -66,7 +76,9 @@
 }
 
 /* 恒等式で決まる量が同じになる位置の線。点より目立たないよう、細い破線にする */
-.scatter-contour path {
+.scatter-contour path,
+.scatter-contour-sample {
+  fill: none;
   stroke: var(--text-muted);
   stroke-width: 1;
   stroke-dasharray: 4 3;
