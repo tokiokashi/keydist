@@ -1,6 +1,7 @@
 import type { TextLanguage } from '#input/text/language.ts';
-import { COMPARISON_COLUMN_IDS, comparisonColumnText, type ComparisonColumnId } from '../comparison-column-text.ts';
+import { COMPARISON_COLUMN_IDS, type ComparisonColumnId } from '../comparison-column-text.ts';
 import { kanaUnitOf } from '../unit-words.ts';
+import { axisName, KEY_COUNT_NAME } from './axis-names.ts';
 
 /**
  * 散布図の軸の組み合わせと、軸の2つの量から恒等式で決まる3つ目の量（等位線の量）。
@@ -57,35 +58,37 @@ export const SCATTER_PRESET_AXES: Readonly<Record<Exclude<ScatterPresetId, 'free
   charsPerAction: { x: 'textCharsPerAction', y: 'actionsPerUnit' },
 };
 
-/** 組み合わせの選択肢に出す名前。「かな」はテキストの言語で出し分ける（英語のテキストでは「字」）。 */
+/** 組み合わせの選択肢に出す名前。横軸と縦軸の量の名前（`axis-names.ts`）を「と」でつなぐ。 */
 export function scatterPresetLabels(language: TextLanguage): Readonly<Record<ScatterPresetId, string>> {
-  const k = kanaUnitOf(language);
+  const label = (id: Exclude<ScatterPresetId, 'free'>): string => {
+    const { x, y } = SCATTER_PRESET_AXES[id];
+    return `${axisName(x, language)}と${axisName(y, language)}`;
+  };
   return {
-    distance: `1${k}のアクション数と1アクションの距離`,
-    press: `1アクションのキー数と1${k}のアクション数`,
-    perPress: `1${k}のキー数と1キーの距離`,
-    sameFinger: 'アクション数と同指率',
-    hand: '手の切り替えと同じ手の続き',
-    handShare: '左右のキーと距離の割合',
-    movedPress: '移動ありキーの割合と1回の移動距離',
-    charsPerAction: '1アクションの文字数と1uのアクション数',
+    distance: label('distance'),
+    press: label('press'),
+    perPress: label('perPress'),
+    sameFinger: label('sameFinger'),
+    hand: label('hand'),
+    handShare: label('handShare'),
+    movedPress: label('movedPress'),
+    charsPerAction: label('charsPerAction'),
     free: '自由に選ぶ',
   };
 }
 
-/** 組み合わせで何が分かるかの短い説明。軸の量の詳しい意味は、図の見方のⓘが出す。 */
+/** 組み合わせで何が分かるかの短い説明。量は軸と同じ名前で呼ぶ。軸の量の詳しい意味は、図の見方のⓘが出す。 */
 export function scatterPresetDescriptions(language: TextLanguage): Readonly<Record<ScatterPresetId, string>> {
-  const k = kanaUnitOf(language);
+  const n = (column: ComparisonColumnId): string => axisName(column, language);
   return {
-    distance: `1${k}あたりの距離を、1${k}に何回アクションするかと、1アクションあたりの距離に分けて見ます。`,
-    press: `1${k}あたりのキー数を、1${k}に何回アクションするかと、1アクションあたりのキー数に分けて見ます。`,
-    perPress: `1${k}あたりの距離を、1${k}に何キー押すかと、1キーあたりの距離に分けて見ます。`,
-    sameFinger: 'アクション数と同指率から、同指の回数がどう決まるかを見ます。',
-    hand: '手の切り替えと同じ手の続きの回数から、同じ手の続きの割合がどう決まるかを見ます。',
-    handShare: '押すキーの数と距離のそれぞれで、右手が受け持つ割合を見ます。左右の偏りを、押す回数と距離の2つで比べる図です。',
-    movedPress: '押したキーのうち移動ありキーが占める割合と、移動ありキー1つあたりの距離を見ます。',
-    charsPerAction:
-      '1アクションで出せる文字数と、1uの距離を動く間に行うアクション数から、1uの距離で出せる文字数がどう決まるかを見ます。大きいほど手間が少ない向きの2軸で、既定の組み合わせの逆の向きです。',
+    distance: `${n('perCharUnits')}を、${n('perCharSteps')}と${n('meanPerStroke')}に分けて見ます。`,
+    press: `${n('perCharPresses')}を、${n('perCharSteps')}と${n('perActionPresses')}に分けて見ます。`,
+    perPress: `${n('perCharUnits')}を、${n('perCharPresses')}と${n('perPressUnits')}に分けて見ます。`,
+    sameFinger: `${n('actions')}と${n('sameFingerRate')}から、${n('sameFinger')}がどう決まるかを見ます。`,
+    hand: `${n('handSwitches')}と${n('handContinuations')}から、${n('sameHandContinuationRate')}がどう決まるかを見ます。`,
+    handShare: `${n('rightHandPressShare')}と${n('rightHandDistanceShare')}で、右手が受け持つ割合を押すキーの数と距離の2つで比べます。左右の偏りを見る図です。`,
+    movedPress: `${n('movedPressShare')}と${n('perMovedPressUnits')}から、${n('perPressUnits')}がどう決まるかを見ます。`,
+    charsPerAction: `${n('textCharsPerAction')}と${n('actionsPerUnit')}から、${n('textCharsPerUnit')}がどう決まるかを見ます。大きいほど手間が少ない向きの2軸で、既定の組み合わせの逆の向きです。`,
     free: '比較表の列から横軸と縦軸を選びます。',
   };
 }
@@ -214,13 +217,9 @@ export const IDENTITIES: readonly Identity[] = [
 
 type Form = 'total' | 'perChar';
 
-/** 量を総数の形で呼ぶ名前。総数の列が比較表に無い量（キー数）は、1かなあたりの列名から「/かな」（英語のテキストでは「/字」）を除く。 */
+/** 量を総数の形で呼ぶ名前。総数の列が比較表に無い量（キー数）は、`axis-names.ts`の総数の形の名前を使う。 */
 function totalName(quantity: Quantity, language: TextLanguage): string {
-  const text = comparisonColumnText(language);
-  if (quantity.total !== undefined) return text[quantity.total].label;
-  const label = text[quantity.perChar!].label;
-  const suffix = `/${kanaUnitOf(language)}`;
-  return label.endsWith(suffix) ? label.slice(0, -suffix.length) : label;
+  return quantity.total !== undefined ? axisName(quantity.total, language) : KEY_COUNT_NAME;
 }
 
 /** 恒等式の3つの量の関係を、総数の形の名前で書いた式。 */
@@ -336,14 +335,13 @@ export function scatterContour(x: ComparisonColumnId, y: ComparisonColumnId, inp
     const fromTotal = (value: number, form: Form): number => (form === 'perChar' ? value / inputChars : value);
     const triple = (values: Readonly<Record<number, number>>): Triple => [values[0] ?? 0, values[1] ?? 0, values[2] ?? 0];
     const finite = (value: number | undefined): number | undefined => (value !== undefined && Number.isFinite(value) ? value : undefined);
-    const text = comparisonColumnText(language);
     const converted = [
       [x, xq, xForm],
       [y, yq, yForm],
       [outColumn, rq, outForm],
     ].flatMap(([column, quantity, form]) =>
       form === 'perChar'
-        ? [`${text[column as ComparisonColumnId].label}は${totalName(quantity as Quantity, language)}を入力${kanaUnitOf(language)}数で割った値`]
+        ? [`${axisName(column as ComparisonColumnId, language)}は${totalName(quantity as Quantity, language)}を入力${kanaUnitOf(language)}数で割った値`]
         : [],
     );
     const valueAt = (xv: number, yv: number): number | undefined => {
