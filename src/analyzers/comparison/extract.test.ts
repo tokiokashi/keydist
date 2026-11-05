@@ -350,3 +350,15 @@ test('optionsDiscipline: affectsの宣言どおりの入れ忘れが無い（比
   const viewViolations = findViewOptionsExtractionViolations(comparisonOptions, DEFAULT_COMPARISON_OPTIONS, ALTERNATE_COMPARISON_OPTIONS, () => 'dummy');
   assert.deepEqual(viewViolations, []);
 });
+
+test('文字数に関わる4つの比: 値を持たない（null）時は、列の値がNaNになり0を当てはめない', () => {
+  const none = { textCharsPerAction: null, actionsPerUnit: null, textCharsPerUnit: null, unitsPerTextChar: null };
+  const row = computeComparisonRowValues({ ...fixtureMetrics(0), ...none }, FIXTURE_TRACE);
+  for (const id of ['textCharsPerAction', 'actionsPerUnit', 'textCharsPerUnit', 'unitsPerTextChar'] as const) {
+    assert.ok(Number.isNaN(row[id]), id);
+  }
+  const valued = computeComparisonRowValues(fixtureMetrics(6), FIXTURE_TRACE);
+  for (const id of ['textCharsPerAction', 'actionsPerUnit', 'textCharsPerUnit', 'unitsPerTextChar'] as const) {
+    assert.ok(Number.isFinite(valued[id]), id);
+  }
+});
