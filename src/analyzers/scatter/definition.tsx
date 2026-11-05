@@ -19,6 +19,7 @@ import { scatterDefinition, type ScatterExtracted, type ScatterRow } from './ext
 import { SCATTER_KIND_ORDER, SCATTER_KIND_STYLES } from './kinds.ts';
 import { DEFAULT_SCATTER_OPTIONS, DEFAULT_SCATTER_PRESET, scatterOptions, type ScatterOptions } from './options.ts';
 import { SCATTER_PANE_META } from './pane-meta.ts';
+import { scatterQuantityHelp } from './quantity-help.ts';
 import { PLOT_HEIGHT, PLOT_MARGIN, PLOT_WIDTH, scatterPlotModel, type PlotPoint } from './plot-model.ts';
 import './scatter-view.css';
 
@@ -147,9 +148,7 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
   const activeRow = active === undefined ? undefined : plottedByKey.get(active.targetKey);
 
   const usedKinds = SCATTER_KIND_ORDER.filter((kind) => plotted.some((row) => row.kind === kind));
-  const legend = `${SCATTER_KIND_ORDER.map((kind) => `${SCATTER_KIND_STYLES[kind].colorName}の${SCATTER_KIND_STYLES[kind].shapeName}は${SCATTER_KIND_STYLES[kind].label}`).join('、')}です。${
-    contour === undefined ? '' : `細い線は、${COMPARISON_COLUMN_TEXT[contour.column].label}が同じになる位置を結んでいます。線の端に値を書いています。`
-  }`;
+  const quantityHelp = scatterQuantityHelp(axes, contour);
 
   return (
     <section className="scatter-feature" data-react-feature="scatter">
@@ -167,7 +166,7 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
       ) : plotted.length > 0 ? (
         <>
           <div className="scatter-heading">
-            <InfoButton floating name="図の見方" description={legend} />
+            <InfoButton name="図の見方" description={quantityHelp.description} help={quantityHelp.help} />
             <ul className="scatter-legend" aria-label="配列の種類">
               {usedKinds.map((kind) => (
                 <li key={kind} data-scatter-legend={kind}>
