@@ -19,7 +19,7 @@ import { conditionLevelLabel, type ConditionSummaryRow, type ConditionValueNames
 
 /**
  * 条件のモーダルが全体のレベルへ書き込む時の、純粋な部分（読み出し・書き込みコマンドの選び方・
- * 「動作数の扱い」の値の写像・理由の文）。描画は`ConditionEditor.tsx`が持つ。
+ * 「アクション数の扱い」の値の写像・理由の文）。描画は`ConditionEditor.tsx`が持つ。
  * 書き込みは必ずコマンドを通すので、文脈バーの元に戻す／やり直すがそのまま効く。
  */
 
@@ -339,7 +339,7 @@ export function staticDefaultOf<K extends Exclude<GlobalEditableId, 'fingerAssig
   return SETTINGS_ITEMS[id].defaultValue as SettingsValueMap[K];
 }
 
-/** 「動作数の扱い」。値の語は`ACTION_COUNT_TEXT`。 */
+/** 「アクション数の扱い」。値の語は`ACTION_COUNT_TEXT`。 */
 export type ActionCountMode = 'combined' | 'separate';
 
 export function actionCountModeOf(policy: ActionRealizationPolicy): ActionCountMode {
@@ -347,7 +347,7 @@ export function actionCountModeOf(policy: ActionRealizationPolicy): ActionCountM
 }
 
 /**
- * 1動作へ戻す時は例外ごと既定へ戻す。例外はShift→Aを2動作にする時だけ読まれる
+ * 1アクションへ戻す時は例外ごと既定へ戻す。例外はShift→Aを2アクションにする時だけ読まれる
  * （`input/semantics/action-realization.ts`）ので、残すと効かない例外で「変更あり」に見えてしまう。
  */
 export function withActionCountMode(policy: ActionRealizationPolicy, mode: ActionCountMode): ActionRealizationPolicy {
@@ -361,7 +361,7 @@ export const ACTION_EXCEPTION_CLASSES: readonly { readonly key: TriggerActivatio
   { key: 'order-free', label: '押す順を問わないキー（同時押し）' },
 ];
 
-/** 'combined' = 文字と1動作、'separate' = 別の動作（2動作）。 */
+/** 'combined' = 文字と1アクション、'separate' = 別のアクション（2アクション）。 */
 export function classGroupingOf(policy: ActionRealizationPolicy, key: TriggerActivationClass): TriggerActivationGrouping {
   return policy.triggerActivationClassOverrides?.[key] ?? DEFAULT_TRIGGER_ACTIVATION_GROUPINGS[key];
 }
@@ -397,7 +397,7 @@ export function overrideWinsNotices(
       notices.set(row.id, `この配列の推奨（${row.displayValue}）が優先されるため、${edited}を変えてもこの画面は変わりません`);
       continue;
     }
-    // 効かない行は理由が要らない。出どころが強いレベルなら、値が既定と同じ（「動作数の扱い」の1動作など）でも
+    // 効かない行は理由が要らない。出どころが強いレベルなら、値が既定と同じ（「アクション数の扱い」の1アクションなど）でも
     // 編集しているレベルの値には勝つので、変えた行かどうかでは絞らない。
     if (!row.applicable) continue;
     if (row.origin.kind === 'default' || row.origin.kind === 'global') continue;

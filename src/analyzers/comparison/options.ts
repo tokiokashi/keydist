@@ -8,7 +8,8 @@ import {
   stringSetUrlCodec,
   type OptionUrlCodec,
 } from '#analyzers/options.ts';
-import { COMPARISON_COLUMN_FORMAT, COMPARISON_COLUMN_IDS, COMPARISON_COLUMN_TEXT, type ComparisonColumnId } from '../comparison-column-text.ts';
+import type { TextLanguage } from '#input/text/language.ts';
+import { COMPARISON_COLUMN_FORMAT, COMPARISON_COLUMN_IDS, comparisonColumnText, type ComparisonColumnId } from '../comparison-column-text.ts';
 
 export { COMPARISON_COLUMN_IDS, COMPARISON_UNIT_NOTE, type ComparisonColumnId } from '../comparison-column-text.ts';
 
@@ -39,9 +40,26 @@ export interface ComparisonColumnDef {
   readonly format: (value: number) => string;
 }
 
-export const COMPARISON_COLUMNS: Readonly<Record<ComparisonColumnId, ComparisonColumnDef>> = Object.fromEntries(
-  COMPARISON_COLUMN_IDS.map((id) => [id, { ...COMPARISON_COLUMN_TEXT[id], format: COMPARISON_COLUMN_FORMAT[id] }]),
-) as Record<ComparisonColumnId, ComparisonColumnDef>;
+function buildColumns(language: TextLanguage): Readonly<Record<ComparisonColumnId, ComparisonColumnDef>> {
+  const text = comparisonColumnText(language);
+  return Object.fromEntries(COMPARISON_COLUMN_IDS.map((id) => [id, { ...text[id], format: COMPARISON_COLUMN_FORMAT[id] }])) as Record<
+    ComparisonColumnId,
+    ComparisonColumnDef
+  >;
+}
+
+const COLUMNS_BY_LANGUAGE: Readonly<Record<TextLanguage, Readonly<Record<ComparisonColumnId, ComparisonColumnDef>>>> = {
+  ja: buildColumns('ja'),
+  en: buildColumns('en'),
+};
+
+/** テキストの言語に合わせた列の名前・説明と表示形式。 */
+export function comparisonColumns(language: TextLanguage): Readonly<Record<ComparisonColumnId, ComparisonColumnDef>> {
+  return COLUMNS_BY_LANGUAGE[language];
+}
+
+/** 日本語のテキストの列。表示形式は言語に依らないので、形式を読むだけの所はこれを使う。 */
+export const COMPARISON_COLUMNS: Readonly<Record<ComparisonColumnId, ComparisonColumnDef>> = COLUMNS_BY_LANGUAGE.ja;
 
 /**
  * 「表示する列」の既定で表示しない列。「表示する列」で選べば表に出て、散布図の軸と細い線には表の表示と関係なく使える。

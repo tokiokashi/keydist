@@ -1,6 +1,8 @@
 import { CHART_DOT_LIMIT, CHART_MARGIN, CHART_PLOT_HEIGHT, CHART_PLOT_WIDTH, chartX, formatCoordinate } from '../chart-frame.ts';
 import { guideHalfWidth, isPerCharMetric } from '#interpretation/span-metrics.ts';
 import type { RunChartSeriesOk } from './extract.ts';
+import type { TextLanguage } from '#input/text/language.ts';
+import { kanaUnitOf } from '../unit-words.ts';
 import { displayValue, formatMetricValue, type RunChartMetricId } from './metric-catalog.ts';
 
 /**
@@ -231,14 +233,14 @@ export function adjacentRunChartTarget(model: RunChartModel, current: RunChartTa
 }
 
 /** 図の下に出す、選んだ点の読み上げ。文字位置は、利用者に見せる「何文字目」（先頭が1）で書く。 */
-export function runChartReadout(label: string, metric: RunChartMetricId, data: RunChartSeriesOk, pointIndex: number): string {
+export function runChartReadout(label: string, metric: RunChartMetricId, data: RunChartSeriesOk, pointIndex: number, language: TextLanguage): string {
   const position = data.positions[pointIndex];
   const value = data.values[pointIndex];
   const denominator = data.denominators[pointIndex];
   if (position === undefined || value === null || value === undefined || denominator === undefined) return '';
   const half = guideHalfWidth(data.guideScale, denominator);
-  const span = `${denominator}${isPerCharMetric(metric) ? '文字' : '打鍵'}`;
-  const lower = formatMetricValue(metric, Math.max(0, data.center - half));
-  const upper = formatMetricValue(metric, data.center + half);
-  return `${label}、${position + 1}文字目、${formatMetricValue(metric, value)}（直近${span}）、中心線${formatMetricValue(metric, data.center)}、目安線${lower}から${upper}`;
+  const span = `${denominator}${isPerCharMetric(metric) ? kanaUnitOf(language) : 'アクション'}`;
+  const lower = formatMetricValue(metric, Math.max(0, data.center - half), language);
+  const upper = formatMetricValue(metric, data.center + half, language);
+  return `${label}、${position + 1}文字目、${formatMetricValue(metric, value, language)}（直近${span}）、中心線${formatMetricValue(metric, data.center, language)}、目安線${lower}から${upper}`;
 }

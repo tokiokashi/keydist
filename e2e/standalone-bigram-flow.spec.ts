@@ -151,7 +151,7 @@ test('条件のモーダル: 配列の値を「全体へ移す」と、編集先
   expect((await overrides())?.layout?.qwerty).toBeUndefined();
 });
 
-test('条件のモーダル: 動作数の扱いは2動作にした時だけ例外を出し、閉じた1行に「例外あり」と出る', async ({ page }) => {
+test('条件のモーダル: アクション数の扱いは2アクションにした時だけ例外を出し、閉じた1行に「例外あり」と出る', async ({ page }) => {
   await useKanaText(page);
   await page.goto('/analyzer/bigram-flow');
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
@@ -159,19 +159,19 @@ test('条件のモーダル: 動作数の扱いは2動作にした時だけ例�
 
   const modal = await openConditionModal(page);
   const row = modal.locator('[data-item="actionRealizationPolicy"]');
-  await expect(row.getByRole('button', { name: 'Shift+A で1動作' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(row.getByRole('button', { name: 'Shift+A で1アクション' })).toHaveAttribute('aria-pressed', 'true');
   await expect(row.locator('[data-condition-fold]')).toHaveCount(0);
 
-  await row.getByRole('button', { name: 'Shift→A で2動作' }).click();
+  await row.getByRole('button', { name: 'Shift→A で2アクション' }).click();
   const fold = row.locator('[data-condition-fold]');
   await fold.locator('summary').click();
-  await fold.locator('[data-exception-class="order-free"]').getByRole('button', { name: '2動作' }).click();
+  await fold.locator('[data-exception-class="order-free"]').getByRole('button', { name: '2アクション' }).click();
 
   await page.keyboard.press('Escape');
-  await expect(trigger).toContainText('動作数の扱い: Shift→A で2動作（例外あり）');
+  await expect(trigger).toContainText('アクション数の扱い: Shift→A で2アクション（例外あり）');
 
   const again = await openConditionModal(page);
-  await again.locator('[data-item="actionRealizationPolicy"]').getByRole('button', { name: 'Shift+A で1動作' }).click();
+  await again.locator('[data-item="actionRealizationPolicy"]').getByRole('button', { name: 'Shift+A で1アクション' }).click();
   await expect(again.locator('[data-condition-fold]')).toHaveCount(0);
   await page.keyboard.press('Escape');
   await expect(trigger).toHaveText('条件すべて既定値');

@@ -65,7 +65,7 @@ test('scatterPlotModel: 点の名前は、他の名前と重ならない場所�
 });
 
 test('scatterPlotModel: 細い線は切りのよい値で数本、図の中だけに引き、線の上に値だけを書く', () => {
-  const contour = scatterContour('actions', 'meanPerStroke', 100)!;
+  const contour = scatterContour('actions', 'meanPerStroke', 100, 'ja')!;
   const model = scatterPlotModel({ points: POINTS, contour, legendRows: [], contourName: '', contourSuffix: '' });
   assert.ok(model.contours.length >= 2 && model.contours.length <= 6, `${model.contours.length}本`);
   for (const line of model.contours) {
@@ -88,7 +88,7 @@ test('scatterPlotModel: 細い線は切りのよい値で数本、図の中だ�
 });
 
 test('scatterPlotModel: 率の細い線は値に単位を付け、値が決まらない領域には線を引かない', () => {
-  const contour = scatterContour('handSwitches', 'handContinuations', 100)!;
+  const contour = scatterContour('handSwitches', 'handContinuations', 100, 'ja')!;
   const model = scatterPlotModel({
     points: [
       { targetKey: 'a', label: 'A', x: 100, y: 300 },
@@ -108,7 +108,7 @@ test('scatterPlotModel: 率の細い線は値に単位を付け、値が決ま�
 });
 
 test('scatterPlotModel: 細い線の値の桁は、同じ図の線で揃える', () => {
-  const contour = scatterContour('actions', 'meanPerStroke', 100)!;
+  const contour = scatterContour('actions', 'meanPerStroke', 100, 'ja')!;
   const model = scatterPlotModel({
     points: [
       { targetKey: 'a', label: 'A', x: 1.0, y: 1.0 },
@@ -125,7 +125,7 @@ test('scatterPlotModel: 細い線の値の桁は、同じ図の線で揃える',
 });
 
 test('scatterPlotModel: 細い線の値は、点と点の名前の上に重ねない', () => {
-  const contour = scatterContour('actions', 'meanPerStroke', 100)!;
+  const contour = scatterContour('actions', 'meanPerStroke', 100, 'ja')!;
   const model = scatterPlotModel({ points: POINTS, contour, legendRows: [], contourName: '', contourSuffix: '' });
   for (const line of model.contours) {
     const at = line.labelAt!;
@@ -158,7 +158,7 @@ test('scatterPlotModel: 点の名前は、置ける場所があれば描画領�
 });
 
 test('scatterPlotModel: 細い線の値は、枠の線・点・点の名前に重ねず、置ける場所が無い線では省く', () => {
-  const contour = scatterContour('perCharPresses', 'perPressUnits', 100)!;
+  const contour = scatterContour('perCharPresses', 'perPressUnits', 100, 'ja')!;
   const model = scatterPlotModel({ points: CROWD, contour, legendRows: [], contourName: '', contourSuffix: '' });
   assert.ok(model.contours.length > 0);
   for (const line of model.contours) {
@@ -179,7 +179,7 @@ test('scatterPlotModel: 細い線の値は、枠の線・点・点の名前に�
 });
 
 test('scatterPlotModel: 凡例は枠の中の隅に置き、点と重ならない隅を選ぶ。細い線の行は線がある時だけ付く', () => {
-  const contour = scatterContour('actions', 'meanPerStroke', 100)!;
+  const contour = scatterContour('actions', 'meanPerStroke', 100, 'ja')!;
   const withLine = scatterPlotModel({ points: POINTS, contour, legendRows: ['かな配列', '英字の配列'], contourName: '距離', contourSuffix: '' });
   assert.equal(withLine.legend!.rows.length, 3);
   assert.equal(withLine.legend!.rows[2]!.text, '距離');
@@ -215,7 +215,7 @@ test('scatterPlotModel: 凡例は枠の中の隅に置き、点と重ならな�
 });
 
 test('scatterPlotModel: 細い線の値は凡例に重ねない', () => {
-  const contour = scatterContour('actions', 'meanPerStroke', 100)!;
+  const contour = scatterContour('actions', 'meanPerStroke', 100, 'ja')!;
   const model = scatterPlotModel({ points: CROWD, contour, legendRows: ['かな配列', '英字の配列'], contourName: '距離', contourSuffix: '' });
   const box = model.legend!;
   for (const line of model.contours) {
@@ -295,7 +295,7 @@ test('reciprocalLevels: 比の線は、1と、比とその逆数の組から範�
 });
 
 test('scatterPlotModel: 左右の押下と距離の割合の図は、比とその逆数の組で線を引き、値の桁をそろえる', () => {
-  const contour = scatterContour('rightHandPressShare', 'rightHandDistanceShare', 100)!;
+  const contour = scatterContour('rightHandPressShare', 'rightHandDistanceShare', 100, 'ja')!;
   assert.equal(contour.levels, 'reciprocal');
   const points = [
     { targetKey: 'a', label: 'A', x: 40, y: 60 },
@@ -312,5 +312,5 @@ test('scatterPlotModel: 左右の押下と距離の割合の図は、比とそ�
     ['0.50', '0.80', '1.00', '1.25', '2.00'],
   );
   // 他の恒等式は、切りのよい値を等間隔に選ぶ
-  assert.equal(scatterContour('actions', 'meanPerStroke', 100)!.levels, 'linear');
+  assert.equal(scatterContour('actions', 'meanPerStroke', 100, 'ja')!.levels, 'linear');
 });

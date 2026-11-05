@@ -80,10 +80,10 @@ test('setGlobalCommand: オブジェクトの項目も、中身が既定と同�
   assert.equal(globalOverrideOf(back.assets.setupLibrary.overrides, 'chainInterpretation'), undefined);
 });
 
-test('動作数の扱い: 2動作にして例外を足し、1動作へ戻すと例外ごと既定へ戻る', () => {
+test('アクション数の扱い: 2アクションにして例外を足し、1アクションへ戻すと例外ごと既定へ戻る', () => {
   const separate = withActionCountMode(DEFAULT_ACTION_REALIZATION_POLICY, 'separate');
   assert.equal(actionCountModeOf(separate), 'separate');
-  // 既定は「先に押しておくキー」が別動作、「押す順を問わないキー」が1動作。
+  // 既定は「先に押しておくキー」が別アクション、「押す順を問わないキー」が1アクション。
   assert.equal(classGroupingOf(separate, 'prepress-required'), 'separate');
   assert.equal(classGroupingOf(separate, 'order-free'), 'combined');
 
@@ -95,7 +95,7 @@ test('動作数の扱い: 2動作にして例外を足し、1動作へ戻すと�
   assert.deepEqual(back, DEFAULT_ACTION_REALIZATION_POLICY);
 });
 
-test('動作数の扱い: 例外を既定と同じ値へ戻すと例外として持たない', () => {
+test('アクション数の扱い: 例外を既定と同じ値へ戻すと例外として持たない', () => {
   const separate = withActionCountMode(DEFAULT_ACTION_REALIZATION_POLICY, 'separate');
   const changed = withClassGrouping(separate, 'prepress-required', 'combined');
   assert.deepEqual(changed.triggerActivationClassOverrides, { 'prepress-required': 'combined' });
@@ -213,7 +213,7 @@ test('resettableGlobalIds: このペインが行を出さない項目は数え�
   assert.deepEqual(resettableGlobalIds(step.assets.setupLibrary.overrides, ['windowSize']), []);
 });
 
-test('overrideWinsNotices: 下のレベルの値が既定と同じ効き方（動作数の扱いの1動作）でも、全体に勝つ理由を出す', () => {
+test('overrideWinsNotices: 下のレベルの値が既定と同じ効き方（アクション数の扱いの1アクション）でも、全体に勝つ理由を出す', () => {
   const rows = [
     { ...row('actionRealizationPolicy', { kind: 'setup', setupId: 's' }, '上書き: このSetup'), sameAsDefault: true },
     // 効かない行は、下のレベルの値があっても出さない

@@ -14,7 +14,7 @@ export const Route = createFileRoute('/analyzer/finger-matrix')({
       { title: `${FINGER_MATRIX_PANE_META.name} | keydist` },
       {
         name: 'description',
-        content: '配列やSetupを選んで並べ、指ごとの押下数・移動距離・同指連続などの値を表で比べます。',
+        content: '配列やSetupを選んで並べ、指ごとのキー数・移動距離・同指連続などの値を表で比べます。',
       },
     ],
   }),

@@ -102,8 +102,8 @@ async function checkSurfaceSwitchAndSort(page: Page, table: Locator): Promise<vo
   // 並び替えを入れたまま面を切り替える。計算の依頼は止めてあるので、依頼が出れば計算中になる
   await sortButton(table, '左小指').click();
   await holdWorker(page);
-  await chooseSurface(page, '押下数');
-  await expect(table.locator('caption')).toContainText('押下数');
+  await chooseSurface(page, 'キー数');
+  await expect(table.locator('caption')).toContainText('キー数');
   await expect(headerOf(table, '左小指')).toHaveAttribute('aria-sort', 'ascending');
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready');
   await expect(table.locator('[aria-busy="true"]')).toHaveCount(0);

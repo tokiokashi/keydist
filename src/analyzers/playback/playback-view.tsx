@@ -7,6 +7,8 @@ import { OptionGroup } from '#ui/primitives/option-fields.tsx';
 import { PersonalSpeedLink } from '#ui/primitives/personal-speed-link.tsx';
 import type { SingleBodyProps } from '../pane-parts.tsx';
 import { segmentationSourceSentence } from '../segmentation-text.ts';
+import { useTextLanguage } from '../text-language-context.tsx';
+import { kanaUnitOf } from '../unit-words.ts';
 import type { PlaybackExtracted } from './extract.ts';
 import { derivePlaybackFrame } from './frame.ts';
 import { playbackCalculationNotes } from './calculation-notes.ts';
@@ -131,6 +133,7 @@ export function PlaybackBody({
   // 値を設定したのに、分割器を読み込めず時間へ入らない状態
   const bunsetsuWaitUnavailable = options.bunsetsuWaitMs > 0 && segmentation === 'failed';
   const figureSettings = useFigureSettings('配列図');
+  const language = useTextLanguage();
 
   // 別の画面の図から開いた時は、その文字位置を含むステップで一時停止した状態から始める（本体を最初に描く時だけ）
   const [session, setSession] = useState<Session>(() => {
@@ -356,7 +359,8 @@ export function PlaybackBody({
             {' / '}総時間 <span data-playback-total-time>{formatSeconds(timeTotals.totalMs)}</span>
           </span>
           <span className="playback-position" data-playback-overall-rates>
-            全文の平均 <span data-playback-overall-kana>{formatRate(overallRates.kanaPerSecond)}</span>かな/秒
+            全文の平均 <span data-playback-overall-kana>{formatRate(overallRates.kanaPerSecond)}</span>
+            {kanaUnitOf(language)}/秒
             {' / '}
             <span data-playback-overall-actions>{formatRate(overallRates.actionsPerSecond)}</span>アクション/秒
           </span>
@@ -495,7 +499,7 @@ export function PlaybackBody({
       </div>
 
       <div className="playback-rate-panel">
-        <h3 className="playback-rate-heading">かな/秒・アクション/秒の平均推移</h3>
+        <h3 className="playback-rate-heading">{kanaUnitOf(language)}/秒・アクション/秒の平均推移</h3>
         <PlaybackRateChart
           points={rateChart}
           cursor={state.cursor}

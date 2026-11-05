@@ -16,7 +16,7 @@ import {
   formatMetricValue,
   relativeChoiceLabel,
   N_SENSITIVITY_METRIC_IDS,
-  N_SENSITIVITY_METRICS,
+  nSensitivityMetrics,
 } from './metric-catalog.ts';
 import { N_SENSITIVITY_RANGE, valuesOf } from './extract.ts';
 import { KANA_TEST_TEXT } from '../../../test/kana-test-text.ts';
@@ -87,13 +87,13 @@ test('相対: 0や負になりうる指間平均は差、0以上の指間σは�
   assert.equal(axisKindOf('adjacentMean', 'absolute'), 'value');
   // 基準が負でも、差は符号どおりに出る
   assert.equal(axisValue('delta', -0.02, 0.05), 0.07);
-  assert.equal(axisTitle('adjacentMean', 'delta'), '指間平均（N=0との差 [u]）');
-  assert.equal(axisTitle('adjacentStdDev', 'ratio'), '指間σ（N=0を100%）');
-  assert.equal(relativeChoiceLabel('adjacentMean'), '相対（N=0との差 [u]）');
-  assert.equal(relativeChoiceLabel('sameFingerRate'), '相対（N=0との差 [pt]）');
-  assert.equal(relativeChoiceLabel('adjacentStdDev'), '相対（N=0を100%）');
-  assert.equal(deltaUnit('adjacentMean'), 'u');
-  assert.equal(deltaUnit('sameFingerRate'), 'pt');
+  assert.equal(axisTitle('adjacentMean', 'delta', 'ja'), '指間平均（N=0との差 [u]）');
+  assert.equal(axisTitle('adjacentStdDev', 'ratio', 'ja'), '指間σ（N=0を100%）');
+  assert.equal(relativeChoiceLabel('adjacentMean', 'ja'), '相対（N=0との差 [u]）');
+  assert.equal(relativeChoiceLabel('sameFingerRate', 'ja'), '相対（N=0との差 [pt]）');
+  assert.equal(relativeChoiceLabel('adjacentStdDev', 'ja'), '相対（N=0を100%）');
+  assert.equal(deltaUnit('adjacentMean', 'ja'), 'u');
+  assert.equal(deltaUnit('sameFingerRate', 'ja'), 'pt');
 });
 
 test('相対の比は、N=0の値が0なら決まらない（0や100に置かない）', () => {
@@ -104,16 +104,16 @@ test('相対の比は、N=0の値が0なら決まらない（0や100に置かな
 
 test('率は%の指標だけで、単位の表記は指標の定義から決まる', () => {
   for (const id of N_SENSITIVITY_METRIC_IDS) {
-    const def = N_SENSITIVITY_METRICS[id];
+    const def = nSensitivityMetrics('ja')[id];
     assert.equal(def.percent, def.unit === '%', id);
   }
-  assert.equal(formatMetricValue('totalUnits', 1234.56), '1234.6 u');
-  assert.equal(formatMetricValue('sameFingerRate', 12.345), '12.3%');
-  assert.equal(formatMetricValue('sameFinger', 7), '7回');
+  assert.equal(formatMetricValue('totalUnits', 1234.56, 'ja'), '1234.6 u');
+  assert.equal(formatMetricValue('sameFingerRate', 12.345, 'ja'), '12.3%');
+  assert.equal(formatMetricValue('sameFinger', 7, 'ja'), '7回');
 });
 
 test('縦軸の見出しは、指標名と値の種類を読める', () => {
-  assert.equal(axisTitle('totalUnits', 'ratio'), '距離（N=0を100%）');
-  assert.equal(axisTitle('totalUnits', 'value'), '距離 [u]');
-  assert.equal(axisTitle('sameFingerRate', 'delta'), '同指率（N=0との差 [pt]）');
+  assert.equal(axisTitle('totalUnits', 'ratio', 'ja'), '距離（N=0を100%）');
+  assert.equal(axisTitle('totalUnits', 'value', 'ja'), '距離 [u]');
+  assert.equal(axisTitle('sameFingerRate', 'delta', 'ja'), '同指率（N=0との差 [pt]）');
 });

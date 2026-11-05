@@ -531,18 +531,18 @@ test('画面の文言に開発の内部（issue番号・Phase・ファイル名�
 });
 
 test('保存済みの表示する列は、操作可能になった瞬間から表示されている（既定値のまま操作できる瞬間が無い）', async ({ page }) => {
-  // 既定は、既定で表示しない列を除いた全列。保存値では先頭の「動作数」を外しておく。
+  // 既定は、既定で表示しない列を除いた全列。保存値では先頭の「アクション数」を外しておく。
   await recordControlStates(
     page,
     {
       storageKey: 'keydist:standalone-analyzer-options',
       storageValue: JSON.stringify({ version: 1, comparison: { visibleColumns: ['totalUnits'] } }),
     },
-    // 表示する列は解析設定の小窓にあり、小窓を開くボタンは読み込みが済むまで押せない。先頭が「動作数」。
+    // 表示する列は解析設定の小窓にあり、小窓を開くボタンは読み込みが済むまで押せない。先頭が「アクション数」。
     { selector: '[data-settings-window="true"] input[type="checkbox"]', read: 'checked' },
   );
   await page.goto('/analyzer/comparison');
-  const firstColumn = (await openSettings(page)).getByRole('checkbox', { name: '動作数', exact: true });
+  const firstColumn = (await openSettings(page)).getByRole('checkbox', { name: 'アクション数', exact: true });
   await expect(firstColumn).toBeEnabled({ timeout: 10_000 });
   await expect(firstColumn).not.toBeChecked();
   expect(await enabledValues(page)).toEqual(['false']);
@@ -558,7 +558,7 @@ test('基準にする対象は対象の選択の中にあり、解析設定に�
   await expect(selection.getByLabel('基準', { exact: true })).toBeVisible();
   const settings = await openSettings(page);
   await expect(settings.getByLabel('基準', { exact: true })).toHaveCount(0);
-  await expect(settings.getByRole('checkbox', { name: '動作数', exact: true })).toBeVisible();
+  await expect(settings.getByRole('checkbox', { name: 'アクション数', exact: true })).toBeVisible();
 
   // 本体は見出し・説明段落・観測値の注記を持たない。
   const body = page.locator('.pane-body');
@@ -778,11 +778,11 @@ test('「共有」でコピーしたURLを新しいページで開くと、解�
   const table = page.locator('.comparison-table');
   await expect(table).toBeVisible({ timeout: 10_000 });
 
-  // 既定の列から「動作数」の列を外す。
-  await expect(table.locator('thead')).toContainText('動作数');
-  const actions = (await openSettings(page)).getByRole('checkbox', { name: '動作数', exact: true });
+  // 既定の列から「アクション数」の列を外す。
+  await expect(table.locator('thead')).toContainText('アクション数');
+  const actions = (await openSettings(page)).getByRole('checkbox', { name: 'アクション数', exact: true });
   await actions.uncheck();
-  await expect(table.locator('thead th', { hasText: /^動作数$/ })).toHaveCount(0);
+  await expect(table.locator('thead th', { hasText: /^アクション数$/ })).toHaveCount(0);
 
   await page.getByRole('button', { name: '共有', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: 'URLをコピーしました' })).toBeVisible();
@@ -798,8 +798,8 @@ test('「共有」でコピーしたURLを新しいページで開くと、解�
     const openedTable = opened.locator('.comparison-table');
     await expect(openedTable).toBeVisible({ timeout: 10_000 });
     await expect(openedTable.locator('thead')).toContainText('距離');
-    await expect(openedTable.locator('thead th', { hasText: /^動作数$/ })).toHaveCount(0);
-    await expect((await openSettings(opened)).getByRole('checkbox', { name: '動作数', exact: true })).not.toBeChecked();
+    await expect(openedTable.locator('thead th', { hasText: /^アクション数$/ })).toHaveCount(0);
+    await expect((await openSettings(opened)).getByRole('checkbox', { name: 'アクション数', exact: true })).not.toBeChecked();
     await expect(opened).toHaveURL(/\/analyzer\/comparison$/);
   } finally {
     await other.close();
@@ -1004,7 +1004,7 @@ test('共有リンクで届いた解析設定と対象は、「元に戻す」1�
   const rows = page.locator('.comparison-table tbody tr[data-comparison-row="ok"]');
   await expect(rows).toHaveCount(2, { timeout: 10_000 });
   await expect(page).toHaveURL(/\/analyzer\/comparison$/);
-  const firstColumn = async () => (await openSettings(page)).getByRole('checkbox', { name: '動作数', exact: true });
+  const firstColumn = async () => (await openSettings(page)).getByRole('checkbox', { name: 'アクション数', exact: true });
   await expect(await firstColumn()).not.toBeChecked();
   await page.keyboard.press('Escape');
 

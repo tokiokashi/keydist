@@ -6,7 +6,7 @@ import { defineOption, defineOptions, picklistUrlCodec } from '#analyzers/option
  * （`affects: 'view'`）。計算に効く条件（N・ローマ字の綴り・物理配列・指割り当て）は、
  * 対象の条件としてペインの見出しの条件から変える。
  *
- * - `chartMetric`: 縦棒グラフで見る量。指ごと（移動距離・押下数）と、隣り合う指の組
+ * - `chartMetric`: 縦棒グラフで見る量。指ごと（移動距離・キー数）と、隣り合う指の組
  *   （標準偏差・平均・最大）から1つ選ぶ。既定は移動距離
  */
 const CHART_METRICS = ['distance', 'presses', 'stdDev', 'mean', 'max'] as const;

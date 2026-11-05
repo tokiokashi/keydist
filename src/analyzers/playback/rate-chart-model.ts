@@ -1,4 +1,6 @@
+import type { TextLanguage } from '#input/text/language.ts';
 import type { PlaybackRateChartPoint } from '#interpretation/timing/playback.ts';
+import { kanaUnitOf } from '../unit-words.ts';
 import {
   CHART_DOT_LIMIT,
   CHART_HEIGHT,
@@ -162,7 +164,7 @@ export function formatRate(value: number | undefined): string {
 }
 
 /** グラフの下に出す、1つの再生位置の値の読み上げ。 */
-export function rateChartReadout(point: PlaybackRateChartPoint): string {
+export function rateChartReadout(point: PlaybackRateChartPoint, language: TextLanguage): string {
   const input = point.inputText === '' ? '—' : point.inputText;
-  return `${point.cursor}ステップ目、集計入力「${input}」、かな/秒は${formatRate(point.kanaPerSecond)}、アクション/秒は${formatRate(point.actionsPerSecond)}`;
+  return `${point.cursor}ステップ目、集計入力「${input}」、${kanaUnitOf(language)}/秒は${formatRate(point.kanaPerSecond)}、アクション/秒は${formatRate(point.actionsPerSecond)}`;
 }

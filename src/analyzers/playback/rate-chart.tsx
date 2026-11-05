@@ -12,6 +12,8 @@ import {
 } from './rate-chart-model.ts';
 import { viewXFromClient } from '../chart-frame.ts';
 import { useSharedScale } from '../shared-scale.tsx';
+import { useTextLanguage } from '../text-language-context.tsx';
+import { kanaUnitOf } from '../unit-words.ts';
 
 /** 縦軸の単位（1秒あたりの数）はペインの設定で変わらないので、キーは1つ */
 const PLAYBACK_RATE_SCALE_KEY = 'playback:rate';
@@ -33,6 +35,8 @@ const PLOT_RIGHT = RATE_CHART_WIDTH - RATE_CHART_MARGIN.right;
 
 export function PlaybackRateChart({ points, cursor, showChain, showArpeggio, onSeek }: PlaybackRateChartProps) {
   const [hovered, setHovered] = useState<number | undefined>(undefined);
+  const language = useTextLanguage();
+  const kana = kanaUnitOf(language);
   // 縦軸は、並んだ打鍵再生のペイン全部を含む範囲（配るものが無ければ自分の範囲）
   const sharedRange = useSharedScale(PLAYBACK_RATE_SCALE_KEY, rateChartOwnRange(points));
   const model = rateChartModel(points, { chain: showChain, arpeggio: showArpeggio }, sharedRange);
@@ -56,13 +60,13 @@ export function PlaybackRateChart({ points, cursor, showChain, showArpeggio, onS
       <svg
         viewBox={`0 0 ${RATE_CHART_WIDTH} ${RATE_CHART_HEIGHT}`}
         role="img"
-        aria-label="かな毎秒とアクション毎秒の推移"
+        aria-label={`${kana}毎秒とアクション毎秒の推移`}
         data-playback-rate-total={model.total}
       >
         <g aria-label="凡例" className="playback-rate-legend">
           <line x1={RATE_CHART_MARGIN.left} y1={14} x2={RATE_CHART_MARGIN.left + 18} y2={14} className="playback-rate-line-kana" />
           <text x={RATE_CHART_MARGIN.left + 24} y={18}>
-            かな/秒
+            {kana}/秒
           </text>
           <line x1={RATE_CHART_MARGIN.left + 100} y1={14} x2={RATE_CHART_MARGIN.left + 118} y2={14} className="playback-rate-line-action" />
           <text x={RATE_CHART_MARGIN.left + 124} y={18}>
@@ -145,7 +149,7 @@ export function PlaybackRateChart({ points, cursor, showChain, showArpeggio, onS
         />
       </svg>
       <p className="playback-rate-readout" data-playback-rate-readout aria-live="off">
-        {rateChartReadout(shown)}
+        {rateChartReadout(shown, language)}
       </p>
     </div>
   );

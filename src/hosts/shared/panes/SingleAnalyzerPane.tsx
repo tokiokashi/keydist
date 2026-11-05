@@ -6,6 +6,7 @@ import { conditionHeaderInfoFromResolvedInput, traceConditionSummary, type Condi
 import { combinePaneStates } from '../pane-status.ts';
 import { recommendedWidthRemOf } from '#analyzers/recommended-width.ts';
 import { PaneFrame } from '../PaneFrame.tsx';
+import { TextLanguageProvider } from '#analyzers/text-language-context.tsx';
 import { overrideWinsNotices } from '../condition-edit.ts';
 import { resolvePaneInput } from '../resolve-pane-input.ts';
 import { singlePaneConditionScope } from '../changed-condition.ts';
@@ -228,106 +229,108 @@ export function SingleAnalyzerPane<Options, Extracted>({
   const extraction = pane.extraction;
 
   return (
-    <PaneFrame
-      assetsReady={assetsReady}
-      name={analyzer.name}
-      description={analyzer.description}
-      recommendedWidthRem={
-        standaloneSetTargets !== undefined && setTargetFigures.length > 0 ? standaloneSetTargets.recommendedWidthRem : recommendedWidthRemOf(analyzer)
-      }
-      headingLevel={chrome.headingLevel}
-      stickyHeader={chrome.stickyHeader}
-      menuItems={chrome.menuItems}
-      headerAction={chrome.headerAction}
-      targetBinding={chrome.targetBinding}
-      optionsBinding={chrome.optionsBinding}
-      showPaneNameInSettings={chrome.showPaneNameInSettings}
-      floating={(paneName) =>
-        keyDetailsOf !== undefined &&
-        keySelection.windowKeyId !== undefined &&
-        resolution.ok &&
-        coherent !== undefined &&
-        resolution.input.geometry.keys.has(keySelection.windowKeyId) ? (
-          <KeyDetailWindow
-            keyId={keySelection.windowKeyId}
+    <TextLanguageProvider value={resolvedText.language}>
+      <PaneFrame
+        assetsReady={assetsReady}
+        name={analyzer.name}
+        description={analyzer.description}
+        recommendedWidthRem={
+          standaloneSetTargets !== undefined && setTargetFigures.length > 0 ? standaloneSetTargets.recommendedWidthRem : recommendedWidthRemOf(analyzer)
+        }
+        headingLevel={chrome.headingLevel}
+        stickyHeader={chrome.stickyHeader}
+        menuItems={chrome.menuItems}
+        headerAction={chrome.headerAction}
+        targetBinding={chrome.targetBinding}
+        optionsBinding={chrome.optionsBinding}
+        showPaneNameInSettings={chrome.showPaneNameInSettings}
+        floating={(paneName) =>
+          keyDetailsOf !== undefined &&
+          keySelection.windowKeyId !== undefined &&
+          resolution.ok &&
+          coherent !== undefined &&
+          resolution.input.geometry.keys.has(keySelection.windowKeyId) ? (
+            <KeyDetailWindow
+              keyId={keySelection.windowKeyId}
+              layout={resolution.input.layout}
+              geometry={resolution.input.geometry}
+              trace={coherent.trace.trace}
+              keyDetails={keyDetailsOf(coherent.extraction.extracted)}
+              anchor={keySelection.anchor}
+              onClose={keySelection.clear}
+              {...(paneName === undefined ? {} : { paneName })}
+            />
+          ) : null
+        }
+        {...(named === undefined || !assetsReady ? {} : { targetName: named.displayName })}
+        target={
+          <TargetSelection
+            mode="single"
+            groups={choiceGroups}
+            selected={[target]}
+            // 資産の読み込み前の対象は、保存済みの対象が未反映なだけの既定値（QWERTY）。比較表・N感度が
+            // 空の対象を出さないのと同じく、読み込みが済むまで名前を出さず、保存済みの名前へ置き換わる所を見せない
+            summary={named === undefined || !assetsReady ? [] : [{ key: named.key, label: named.displayName, fullName: named.fullName }]}
+            onChange={(next) => {
+              if (next[0] !== undefined) onTargetChange(next[0]);
+            }}
+          />
+        }
+        settings={
+          <PersonalSpeedSavedContext.Provider value={catalog.personalSpeed !== undefined}>
+            <Settings options={options} onOptionsChange={onOptionsChange} />
+          </PersonalSpeedSavedContext.Provider>
+        }
+        onResetOptions={() => onOptionsChange(analyzer.defaultOptions)}
+        header={header}
+        conditionRows={conditionRows}
+        conditionEditor={{
+          overrides,
+          dispatch,
+          presetLibrary: env.presetLibrary,
+          generatePresetId: env.generatePresetId,
+          undo: env.undo,
+          shapes: catalog.setupCatalog.shapes,
+          customFingerAssignments: catalog.customFingerAssignments,
+          customRomajiRules: catalog.customRomajiRules,
+          notices: overrideWinsNotices(conditionRows, catalog.setupCatalog),
+          ...(env.workspaceId === undefined
+            ? {}
+            : {
+                workspace: { id: env.workspaceId },
+                workspaceNotices: overrideWinsNotices(conditionRows, catalog.setupCatalog, 'Workspace'),
+              }),
+          // 対象が配列でも、Setupでも、書き込む先は配列のレベル（Setupのレベルへ書く導線は別）。
+          ...(resolution.ok ? { layout: { id: resolution.input.layout.id, name: resolution.input.layout.name } } : {}),
+          ...(target.kind === 'setup' ? { openSetups: [{ id: target.setupId }] } : {}),
+        }}
+        conditionProvenance={conditionProvenance}
+        reading={env.reading}
+        engineState={combinePaneStates(extraction, pane.trace)}
+        traceErrors={traceErrors}
+        linkNotices={linkNotices}
+      >
+        {resolution.ok && coherent !== undefined ? (
+          <Body
             layout={resolution.input.layout}
             geometry={resolution.input.geometry}
             trace={coherent.trace.trace}
-            keyDetails={keyDetailsOf(coherent.extraction.extracted)}
-            anchor={keySelection.anchor}
-            onClose={keySelection.clear}
-            {...(paneName === undefined ? {} : { paneName })}
+            extracted={coherent.extraction.extracted}
+            options={options}
+            onOptionsChange={onOptionsChange}
+            {...(segmentationStatus === undefined ? {} : { segmentation: segmentationStatus })}
+            {...(playbackSeek === undefined ? {} : { playbackSeek })}
+            {...(analyzer.acceptsPlaybackSeek === true && initialCharPosition !== undefined ? { initialCharPosition } : {})}
+            {...(setTargetFigures.length === 0 ? {} : { setTargets: setTargetFigures })}
+            {...(setTargetPicker === undefined ? {} : { setTargetPicker })}
+            {...(keyDetailsOf === undefined
+              ? {}
+              : {
+                  keySelection: { selectedKeyId, onKeyPress: keySelection.press, onClear: keySelection.clear },
+                })}
           />
-        ) : null
-      }
-      {...(named === undefined || !assetsReady ? {} : { targetName: named.displayName })}
-      target={
-        <TargetSelection
-          mode="single"
-          groups={choiceGroups}
-          selected={[target]}
-          // 資産の読み込み前の対象は、保存済みの対象が未反映なだけの既定値（QWERTY）。比較表・N感度が
-          // 空の対象を出さないのと同じく、読み込みが済むまで名前を出さず、保存済みの名前へ置き換わる所を見せない
-          summary={named === undefined || !assetsReady ? [] : [{ key: named.key, label: named.displayName, fullName: named.fullName }]}
-          onChange={(next) => {
-            if (next[0] !== undefined) onTargetChange(next[0]);
-          }}
-        />
-      }
-      settings={
-        <PersonalSpeedSavedContext.Provider value={catalog.personalSpeed !== undefined}>
-          <Settings options={options} onOptionsChange={onOptionsChange} />
-        </PersonalSpeedSavedContext.Provider>
-      }
-      onResetOptions={() => onOptionsChange(analyzer.defaultOptions)}
-      header={header}
-      conditionRows={conditionRows}
-      conditionEditor={{
-        overrides,
-        dispatch,
-        presetLibrary: env.presetLibrary,
-        generatePresetId: env.generatePresetId,
-        undo: env.undo,
-        shapes: catalog.setupCatalog.shapes,
-        customFingerAssignments: catalog.customFingerAssignments,
-        customRomajiRules: catalog.customRomajiRules,
-        notices: overrideWinsNotices(conditionRows, catalog.setupCatalog),
-        ...(env.workspaceId === undefined
-          ? {}
-          : {
-              workspace: { id: env.workspaceId },
-              workspaceNotices: overrideWinsNotices(conditionRows, catalog.setupCatalog, 'Workspace'),
-            }),
-        // 対象が配列でも、Setupでも、書き込む先は配列のレベル（Setupのレベルへ書く導線は別）。
-        ...(resolution.ok ? { layout: { id: resolution.input.layout.id, name: resolution.input.layout.name } } : {}),
-        ...(target.kind === 'setup' ? { openSetups: [{ id: target.setupId }] } : {}),
-      }}
-      conditionProvenance={conditionProvenance}
-      reading={env.reading}
-      engineState={combinePaneStates(extraction, pane.trace)}
-      traceErrors={traceErrors}
-      linkNotices={linkNotices}
-    >
-      {resolution.ok && coherent !== undefined ? (
-        <Body
-          layout={resolution.input.layout}
-          geometry={resolution.input.geometry}
-          trace={coherent.trace.trace}
-          extracted={coherent.extraction.extracted}
-          options={options}
-          onOptionsChange={onOptionsChange}
-          {...(segmentationStatus === undefined ? {} : { segmentation: segmentationStatus })}
-          {...(playbackSeek === undefined ? {} : { playbackSeek })}
-          {...(analyzer.acceptsPlaybackSeek === true && initialCharPosition !== undefined ? { initialCharPosition } : {})}
-          {...(setTargetFigures.length === 0 ? {} : { setTargets: setTargetFigures })}
-          {...(setTargetPicker === undefined ? {} : { setTargetPicker })}
-          {...(keyDetailsOf === undefined
-            ? {}
-            : {
-                keySelection: { selectedKeyId, onKeyPress: keySelection.press, onClear: keySelection.clear },
-              })}
-        />
-      ) : undefined}
-    </PaneFrame>
+        ) : undefined}
+      </PaneFrame>
+    </TextLanguageProvider>
   );
 }

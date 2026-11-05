@@ -74,15 +74,15 @@ test.describe('個別画面', () => {
 
   test('指標を切り替えると縦軸の見出しが替わり、窓幅を既定から変えるとペインの中に知らせる', async ({ page }) => {
     const title = feature(page).locator('[data-run-chart-y-title]');
-    await expect(title).toContainText('1文字あたりの距離');
+    await expect(title).toContainText('1かなあたりの距離');
     const settings = await openSettings(page);
     await settings.getByLabel('指標').selectOption('sameFingerRate');
     await expect(title).toContainText('同指率');
     const window = settings.getByLabel('集計窓');
     await window.fill('20');
     await window.press('Enter');
-    await expect(feature(page).locator('[data-run-chart-window-note]')).toContainText('集計窓は20文字です');
-    await expect(title).toContainText('直近20文字');
+    await expect(feature(page).locator('[data-run-chart-window-note]')).toContainText('集計窓は20かなです');
+    await expect(title).toContainText('直近20かな');
   });
 
   test('区切りは既定で使わず、選ぶと区切りの位置を図に重ね、区切り方ごとの表と順位を出す', async ({ page }) => {

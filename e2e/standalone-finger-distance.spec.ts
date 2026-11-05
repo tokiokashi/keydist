@@ -184,12 +184,12 @@ test('分布の行は、クリックとキーボードで選べて、選んだ�
   const row = feature.locator('[data-distribution-pair] [data-distribution-bar]').first();
   await expect(row).toBeVisible({ timeout: 10_000 });
   await row.click();
-  await expect(readout).toHaveText(/超過.+uの打鍵が.+%（\d+打鍵）/);
+  await expect(readout).toHaveText(/超過.+uのアクションが.+%（\d+アクション）/);
   await row.click();
   await expect(readout).toHaveText('');
   await row.focus();
   await page.keyboard.press('Enter');
-  await expect(readout).toHaveText(/打鍵）/);
+  await expect(readout).toHaveText(/アクション）/);
   await page.keyboard.press('Escape');
   await expect(readout).toHaveText('');
 });

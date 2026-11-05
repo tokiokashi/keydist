@@ -1,4 +1,4 @@
-import type { InfoHelp } from '#ui/primitives/info-button.tsx';
+import type { PaneHelp } from '#analyzers/pane-help.tsx';
 import { BLANK_PANE_ID } from '#engine/workspace.ts';
 import { bigramFlowDefinition } from '#analyzers/bigram-flow/extract.ts';
 import { BIGRAM_FLOW_PANE_META } from '#analyzers/bigram-flow/pane-meta.ts';
@@ -43,7 +43,7 @@ export interface WorkspaceAnalyzerEntry {
   readonly name: string;
   readonly description: string;
   /** 短い説明に収まらない説明。あれば見出しのⓘはモーダルを開く。 */
-  readonly help?: InfoHelp;
+  readonly help?: PaneHelp;
   /** 対象を1つ見るか、集合を見るか。ペインが持つ対象の形を決める。 */
   readonly cardinality: 'single' | 'set';
   /** 本体の縦の下限 [rem]（`analyzers/min-body-height.ts`）。宣言しないAnalyzerは既定。 */
@@ -86,6 +86,6 @@ export function isBlankPane(analyzerId: string): boolean {
 }
 
 /** 見出しの先頭の名前とⓘの説明。Analyzerでも余白のペインでもない（今のアプリが知らない）idは`undefined`。 */
-export function findWorkspacePaneMeta(analyzerId: string): { readonly name: string; readonly description: string; readonly help?: InfoHelp } | undefined {
+export function findWorkspacePaneMeta(analyzerId: string): { readonly name: string; readonly description: string; readonly help?: PaneHelp } | undefined {
   return isBlankPane(analyzerId) ? BLANK_PANE_META : findWorkspaceAnalyzer(analyzerId);
 }

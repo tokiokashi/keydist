@@ -53,7 +53,7 @@ export interface LayerStat {
   id: string;
   /** 表示用の層名 */
   label: string;
-  /** この層に帰属するキー押下数 */
+  /** この層に帰属するキー数 */
   presses: number;
   /** 層に帰属するキーid → 打鍵回数 */
   keyCounts: Map<string, number>;
@@ -93,11 +93,11 @@ export interface Metrics {
   strokes: number;
   /** 現行pipelineでは1 realized Stroke = 1 analytic action。 */
   actions: number;
-  /** キー押下数。同時押しは押したキーの数だけ数える */
+  /** キー数。同時押しは押したキーの数だけ数える */
   presses: number;
   /** 配列に無く打鍵できなかった文字数 */
   skipped: number;
-  /** 入力文字数（展開前。仕様 §11.4の分母） */
+  /** 入力かな数（展開前。仕様 §11.4の分母） */
   inputChars: number;
   /** 指ごとの総移動距離 [u] */
   perFinger: Record<Finger, number>;
@@ -127,34 +127,34 @@ export interface Metrics {
    */
   perCharSteps: number;
   /**
-   * 入力1文字あたりの押下キー数（仕様 §11.5）。
+   * 入力1かなあたりのキー数（仕様 §11.5）。
    * コンボは複数キーを1ステップにまとめても押すキー自体は減らさないため、
    * `perCharSteps` が下がっても `perCharPresses` は下がらない場合がある。
    */
   perCharPresses: number;
   /**
-   * 1アクションで押すキーの数（仕様 §11.5）。押下キー数 / アクション数で、アクションが0なら0。
+   * 1アクションで押すキーの数（仕様 §11.5）。キー数 / アクション数で、アクションが0なら0。
    * コンボや同時押しで複数のキーを1アクションにまとめるほど大きくなる。
    */
   perActionPresses: number;
   /**
-   * 1回の押下あたりの移動距離 [u/押下]（仕様 §11.5）。総移動距離 / 押下キー数で、押下キー数が0なら0。
+   * 押したキー1つあたりの移動距離 [u/キー]（仕様 §11.5）。総移動距離 / キー数で、キー数が0なら0。
    * 分母には距離が0の押下（ホームキー・親指キー）も入る。
    */
   perPressUnits: number;
   /**
    * 左右の1押下あたりの距離の比（仕様 §11の「左右の1押下あたりの距離の比」）。
-   * (右手の距離 / 右手の押下キー数) / (左手の距離 / 左手の押下キー数)。
-   * どちらかの手の押下キー数が0、または左手の距離が0の時は値を持たず`null`。
+   * (右手の距離 / 右手のキー数) / (左手の距離 / 左手のキー数)。
+   * どちらかの手のキー数が0、または左手の距離が0の時は値を持たず`null`。
    */
   rightLeftPerPressRatio: number | null;
   /**
-   * 動いた押下の割合 [%]（仕様 §11.5）。移動距離が0より大きい押下で押したキーの数 / 押下キー数 × 100。
-   * 押下キー数が0なら0。
+   * 移動ありキーの割合 [%]（仕様 §11.5）。移動距離が0より大きいキーの数 / キー数 × 100。
+   * キー数が0なら0。
    */
   movedPressShare: number;
   /**
-   * 動いた押下1回あたりの距離 [u/押下]（仕様 §11.5）。総移動距離 / 移動距離が0より大きい押下で押したキーの数。
+   * 移動ありキー1つあたりの距離 [u/移動ありキー]（仕様 §11.5）。総移動距離 / 移動距離が0より大きいキーの数。
    * その数が0なら0。`perPressUnits` = `movedPressShare` / 100 × この値。
    */
   perMovedPressUnits: number;
@@ -170,7 +170,7 @@ export interface Metrics {
   singleTapRate: number;
   /**
    * 総アクションのうち、そのactionでfreshに押す物理キーが1つだけの割合 [%]（仕様 §11.5.3）。
-   * semanticは問わず、realized Strokeの新規押下キー数だけで判定する。
+   * semanticは問わず、realized Strokeの新規キー数だけで判定する。
    */
   singleKeyRate: number;
   /** 隣接指間距離の統計。ホーム間隔からの超過で持つ（仕様 §11.6） */
@@ -187,7 +187,7 @@ export interface Metrics {
   combos: ComboStats;
   /** 宣言順の層別集計。コンボ枠は含めない */
   layers: LayerStat[];
-  /** コンボ枠に帰属するキー押下数。層の保存則の左辺に加える */
+  /** コンボ枠に帰属するキー数。層の保存則の左辺に加える */
   comboPresses: number;
   /** コンボ枠に帰属するキーid → 打鍵回数 */
   comboKeyCounts: Map<string, number>;
@@ -417,7 +417,7 @@ export function computeMetrics(trace: Trace, geometry: Geometry, conditions: Met
 interface PressTally {
   readonly totalUnits: number;
   readonly presses: number;
-  /** 移動距離が0より大きい押下で押したキーの数。 */
+  /** 移動距離が0より大きいキーの数。 */
   readonly movedPresses: number;
   readonly sameFinger: number;
   readonly perFinger: Record<Finger, number>;
@@ -484,8 +484,8 @@ export function rightLeftPerPressRatio(
 }
 
 /**
- * 動いた押下の割合 [%] と、動いた押下1回あたりの距離 [u/押下]（仕様 §11.5）。
- * 動いた押下は移動距離が0より大きい押下で、数えるのは押したキーの数。分母が0の時はどちらも0。
+ * 移動ありキーの割合 [%] と、移動ありキー1つあたりの距離 [u/移動ありキー]（仕様 §11.5）。
+ * 移動ありキーは移動距離が0より大きいキーで、数えるのは押したキーの数。分母が0の時はどちらも0。
  */
 export function movedPressMetrics(
   trace: Trace,

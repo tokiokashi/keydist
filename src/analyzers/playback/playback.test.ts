@@ -341,7 +341,7 @@ test('既定と違う計算の知らせ: 使われない項目は挙げず、個
     '個人速度を適用しない',
   ]);
   // 平均の方式で使われない側の窓幅・半減時間は挙げない
-  assert.deepEqual(notes({ rateWindow: 20, rateHalfLifeSeconds: 2 }, 'missing').changes, ['平均の窓幅: 20打鍵']);
+  assert.deepEqual(notes({ rateWindow: 20, rateHalfLifeSeconds: 2 }, 'missing').changes, ['平均の窓幅: 20アクション']);
   assert.deepEqual(notes({ rateAverage: 'ewma', rateWindow: 20, rateHalfLifeSeconds: 2 }, 'missing').changes, [
     '平均の方式: EWMA',
     '平均の半減時間: 2秒',

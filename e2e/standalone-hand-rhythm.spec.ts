@@ -16,13 +16,13 @@ async function selectLayout(page: Page, layoutId: string) {
 const feature = (page: Page) => page.locator('[data-react-feature="hand-rhythm"]');
 const value = (page: Page, id: string) => feature(page).locator(`[data-hand-rhythm-value="${id}"] dd`);
 
-test('両手の打鍵を持たない配列: 値が出て、両手の打鍵は0になる', async ({ page }) => {
+test('両手のアクションを持たない配列: 値が出て、両手のアクションは0になる', async ({ page }) => {
   await selectLayout(page, 'qwerty');
   await page.goto('/analyzer/hand-rhythm');
   await expect(page.getByRole('heading', { name: '左右の手の交互', exact: true, level: 1 })).toBeVisible();
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
 
-  await expect(value(page, 'both-hand-strokes')).toHaveText('0打鍵');
+  await expect(value(page, 'both-hand-strokes')).toHaveText('0アクション');
   await expect(value(page, 'both-hand-pairs')).toHaveText(/^0組/);
   await expect(value(page, 'switches')).not.toHaveText('0組');
   await expect(value(page, 'alternation-runs')).not.toHaveText('0件');
@@ -30,10 +30,10 @@ test('両手の打鍵を持たない配列: 値が出て、両手の打鍵は0�
   await expect(feature(page).locator('[data-hand-rhythm-distribution="same-hand"] [data-run-length="1"]')).toBeVisible();
 });
 
-test('両手の打鍵を含む組の多い配列: 両手の打鍵を含む組が0でない', async ({ page }) => {
+test('両手のアクションを含む組の多い配列: 両手のアクションを含む組が0でない', async ({ page }) => {
   await selectLayout(page, 'shingeta');
   await page.goto('/analyzer/hand-rhythm');
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   await expect(value(page, 'both-hand-pairs')).not.toHaveText(/^0組/);
-  await expect(value(page, 'both-mixed')).not.toHaveText('0打鍵');
+  await expect(value(page, 'both-mixed')).not.toHaveText('0アクション');
 });

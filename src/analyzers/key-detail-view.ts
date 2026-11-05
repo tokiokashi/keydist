@@ -56,7 +56,7 @@ export function shareText(count: number, total: number): string {
 }
 
 /**
- * ツールチップの文字列。1行目はキーの名前と押下数、続けて押し方の内訳と前の文字の上位を、回数を添えて出す。
+ * ツールチップの文字列。1行目はキーの名前と押した回数、続けて押し方の内訳と前の文字の上位を、回数を添えて出す。
  * 押下が無い時は1行目だけ。前の文字の上位に入らなかった分は「ほか◯打」にまとめる。先頭の入力単位（前の文字が無い押下）は小窓で読ませる。
  */
 export function keyDetailTooltip(name: string, detail: KeyDetail | undefined): string {

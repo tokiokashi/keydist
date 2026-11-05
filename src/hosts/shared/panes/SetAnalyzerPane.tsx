@@ -16,6 +16,8 @@ import {
 } from '../condition-summary.ts';
 import { recommendedWidthRemOf } from '#analyzers/recommended-width.ts';
 import { PaneFrame } from '../PaneFrame.tsx';
+import { resolvePaneHelp } from '#analyzers/pane-help.tsx';
+import { TextLanguageProvider } from '#analyzers/text-language-context.tsx';
 import { resolvePaneInput } from '../resolve-pane-input.ts';
 import { setPaneConditionScope } from '../changed-condition.ts';
 import { targetNameSource } from '../target-name-source.ts';
@@ -210,95 +212,97 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
   }));
 
   return (
-    <PaneFrame
-      assetsReady={assetsReady}
-      name={analyzer.name}
-      description={analyzer.description}
-      help={analyzer.help}
-      recommendedWidthRem={recommendedWidthRemOf(analyzer)}
-      headingLevel={chrome.headingLevel}
-      stickyHeader={chrome.stickyHeader}
-      menuItems={chrome.menuItems}
-      headerAction={chrome.headerAction}
-      targetBinding={chrome.targetBinding}
-      optionsBinding={chrome.optionsBinding}
-      showPaneNameInSettings={chrome.showPaneNameInSettings}
-      target={
-        <TargetSelection
-          mode="multiple"
-          groups={choiceGroups}
-          selected={targets}
-          summary={targetSummary}
-          onChange={onTargetsChange}
-          open={selectionOpen}
-          onOpenChange={setSelectionOpen}
-          autoOpen={assetsReady && chrome.autoOpenTargetSelection ? targets.length === 0 && !chrome.holdTargetSelectionClosed : undefined}
-          extraItem={
-            TargetItem === undefined ? undefined : (
-              <TargetItem
-                value={baselineTargetKey}
-                candidates={candidates}
-                onChange={(nextKey) => {
-                  const next = nextKey === undefined ? undefined : targets.find((t) => analysisTargetKey(t) === nextKey);
-                  onBaselineChange(next);
-                }}
-              />
-            )
-          }
-        />
-      }
-      settings={<Settings options={options} onOptionsChange={onOptionsChange} />}
-      onResetOptions={() => onOptionsChange(analyzer.defaultOptions)}
-      conditionRows={conditionSummary.rows}
-      conditionEditor={{
-        overrides,
-        dispatch,
-        presetLibrary: env.presetLibrary,
-        generatePresetId: env.generatePresetId,
-        undo: env.undo,
-        shapes: catalog.setupCatalog.shapes,
-        customFingerAssignments: catalog.customFingerAssignments,
-        customRomajiRules: catalog.customRomajiRules,
-        ...(env.workspaceId === undefined ? {} : { workspace: { id: env.workspaceId } }),
-        hiddenIds: excludeIds,
-        // 手持ちに無いSetup（削除したもの）へは、`/setup` で開いても別のSetupが選ばれるだけなので出さない
-        openSetups: targets.flatMap((target) =>
-          target.kind === 'setup' && setupsById.has(target.setupId)
-            ? [{ id: target.setupId, name: namedByKey.get(analysisTargetKey(target))?.displayName ?? target.setupId }]
-            : [],
-        ),
-      }}
-      conditionTargetDiffs={conditionSummary.diffs}
-      conditionProvenance={conditionProvenance}
-      reading={env.reading}
-      engineState={extraction}
-      frameRef={frameRef}
-      waitingForScreen={waitsForScreen && !shown && extraction.status === 'idle'}
-      linkNotices={linkNotices}
-      {...(targets.length === 0
-        ? {
-            // 資産の読み込み前は保存済みの対象が未反映なだけで、空とは限らない。
-            // 押せないボタンが一瞬見えてから表に置き換わるのを避けるため、空のペインにする
-            emptyContent: assetsReady ? (
-              <button type="button" className="pane-empty-button" onClick={() => setSelectionOpen(true)}>
-                配列・Setupを選ぶ
-              </button>
-            ) : null,
-          }
-        : {})}
-    >
-      {extracted === undefined ? undefined : (
-        <Body
-          extracted={extracted}
-          order={order}
-          rowContext={rowContext}
-          baselineTargetKey={baselineTargetKey}
-          options={options}
-          onOptionsChange={onOptionsChange}
-          {...(playbackJump === undefined ? {} : { playbackJump })}
-          {...(segmentationStatus === undefined ? {} : { segmentation: segmentationStatus })}
-        />
-      )}
-    </PaneFrame>
+    <TextLanguageProvider value={resolvedText.language}>
+      <PaneFrame
+        assetsReady={assetsReady}
+        name={analyzer.name}
+        description={analyzer.description}
+        help={resolvePaneHelp(analyzer.help, resolvedText.language)}
+        recommendedWidthRem={recommendedWidthRemOf(analyzer)}
+        headingLevel={chrome.headingLevel}
+        stickyHeader={chrome.stickyHeader}
+        menuItems={chrome.menuItems}
+        headerAction={chrome.headerAction}
+        targetBinding={chrome.targetBinding}
+        optionsBinding={chrome.optionsBinding}
+        showPaneNameInSettings={chrome.showPaneNameInSettings}
+        target={
+          <TargetSelection
+            mode="multiple"
+            groups={choiceGroups}
+            selected={targets}
+            summary={targetSummary}
+            onChange={onTargetsChange}
+            open={selectionOpen}
+            onOpenChange={setSelectionOpen}
+            autoOpen={assetsReady && chrome.autoOpenTargetSelection ? targets.length === 0 && !chrome.holdTargetSelectionClosed : undefined}
+            extraItem={
+              TargetItem === undefined ? undefined : (
+                <TargetItem
+                  value={baselineTargetKey}
+                  candidates={candidates}
+                  onChange={(nextKey) => {
+                    const next = nextKey === undefined ? undefined : targets.find((t) => analysisTargetKey(t) === nextKey);
+                    onBaselineChange(next);
+                  }}
+                />
+              )
+            }
+          />
+        }
+        settings={<Settings options={options} onOptionsChange={onOptionsChange} />}
+        onResetOptions={() => onOptionsChange(analyzer.defaultOptions)}
+        conditionRows={conditionSummary.rows}
+        conditionEditor={{
+          overrides,
+          dispatch,
+          presetLibrary: env.presetLibrary,
+          generatePresetId: env.generatePresetId,
+          undo: env.undo,
+          shapes: catalog.setupCatalog.shapes,
+          customFingerAssignments: catalog.customFingerAssignments,
+          customRomajiRules: catalog.customRomajiRules,
+          ...(env.workspaceId === undefined ? {} : { workspace: { id: env.workspaceId } }),
+          hiddenIds: excludeIds,
+          // 手持ちに無いSetup（削除したもの）へは、`/setup` で開いても別のSetupが選ばれるだけなので出さない
+          openSetups: targets.flatMap((target) =>
+            target.kind === 'setup' && setupsById.has(target.setupId)
+              ? [{ id: target.setupId, name: namedByKey.get(analysisTargetKey(target))?.displayName ?? target.setupId }]
+              : [],
+          ),
+        }}
+        conditionTargetDiffs={conditionSummary.diffs}
+        conditionProvenance={conditionProvenance}
+        reading={env.reading}
+        engineState={extraction}
+        frameRef={frameRef}
+        waitingForScreen={waitsForScreen && !shown && extraction.status === 'idle'}
+        linkNotices={linkNotices}
+        {...(targets.length === 0
+          ? {
+              // 資産の読み込み前は保存済みの対象が未反映なだけで、空とは限らない。
+              // 押せないボタンが一瞬見えてから表に置き換わるのを避けるため、空のペインにする
+              emptyContent: assetsReady ? (
+                <button type="button" className="pane-empty-button" onClick={() => setSelectionOpen(true)}>
+                  配列・Setupを選ぶ
+                </button>
+              ) : null,
+            }
+          : {})}
+      >
+        {extracted === undefined ? undefined : (
+          <Body
+            extracted={extracted}
+            order={order}
+            rowContext={rowContext}
+            baselineTargetKey={baselineTargetKey}
+            options={options}
+            onOptionsChange={onOptionsChange}
+            {...(playbackJump === undefined ? {} : { playbackJump })}
+            {...(segmentationStatus === undefined ? {} : { segmentation: segmentationStatus })}
+          />
+        )}
+      </PaneFrame>
+    </TextLanguageProvider>
   );
 }

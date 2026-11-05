@@ -167,16 +167,16 @@ test('既定の物理配列: 全体へ書くと図の物理配列に出る。既
   assert.equal(viewOf(session, 'qwerty').triggerText, 'すべて既定値');
 });
 
-test('動作数の扱い: 2動作にすると要約に出て、例外を足すと「例外あり」が付く。1動作へ戻すと例外ごと消えて既定へ戻る', () => {
+test('アクション数の扱い: 2アクションにすると要約に出て、例外を足すと「例外あり」が付く。1アクションへ戻すと例外ごと消えて既定へ戻る', () => {
   const session = newSession();
   const policyOf = () => session.assets.setupLibrary.overrides.global?.actionRealizationPolicy ?? DEFAULT_ACTION_REALIZATION_POLICY;
   const write = (next: typeof DEFAULT_ACTION_REALIZATION_POLICY) =>
     dispatch(session, setGlobalCommand('actionRealizationPolicy', next, DEFAULT_ACTION_REALIZATION_POLICY));
 
   write(withActionCountMode(policyOf(), 'separate'));
-  assert.equal(viewOf(session, 'qwerty').triggerText, '動作数の扱い: Shift→A で2動作');
+  assert.equal(viewOf(session, 'qwerty').triggerText, 'アクション数の扱い: Shift→A で2アクション');
   write(withClassGrouping(policyOf(), 'order-free', 'separate'));
-  assert.equal(viewOf(session, 'qwerty').triggerText, '動作数の扱い: Shift→A で2動作（例外あり）');
+  assert.equal(viewOf(session, 'qwerty').triggerText, 'アクション数の扱い: Shift→A で2アクション（例外あり）');
   write(withActionCountMode(policyOf(), 'combined'));
   assert.equal(viewOf(session, 'qwerty').triggerText, 'すべて既定値');
   assert.equal(session.assets.setupLibrary.overrides.global?.actionRealizationPolicy, undefined);

@@ -11,8 +11,20 @@
 .comparison-table th,
 .comparison-table td {
   border-bottom: 1px solid var(--border);
-  padding: 0.4rem 0.6rem;
+  padding: 0.4rem 0.5rem;
   text-align: right;
+  white-space: nowrap;
+}
+
+/* 列の見出しは「/」の後ろでだけ折り返す。各部分は途中で折らない。 */
+.comparison-table th.comparison-column-header {
+  white-space: normal;
+  /* 2行に折り返しても、1行の時と高さがほぼ変わらないようにする（ペインの高さに収めるため） */
+  line-height: 1;
+  padding-block: 0.15rem;
+}
+
+.comparison-column-part {
   white-space: nowrap;
 }
 

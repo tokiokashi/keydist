@@ -24,7 +24,9 @@ import {
 } from './chart-model.ts';
 import { runChartDefinition, type RunChartExtracted, type RunChartSeries, type RunChartSeriesFailed, type RunChartSeriesOk } from './extract.ts';
 import { SegmentTables, type SegmentTableRow } from './segment-table.tsx';
-import { axisTitle, formatMetricValue, RUN_CHART_METRIC_IDS, RUN_CHART_METRICS, type RunChartMetricId } from './metric-catalog.ts';
+import { axisTitle, formatMetricValue, RUN_CHART_METRIC_IDS, runChartMetrics, type RunChartMetricId } from './metric-catalog.ts';
+import { useTextLanguage } from '../text-language-context.tsx';
+import { kanaUnitOf } from '../unit-words.ts';
 import {
   DEFAULT_RUN_CHART_OPTIONS,
   DEFAULT_RUN_CHART_WINDOW,
@@ -96,7 +98,8 @@ const BOUNDARY_FULL_LINE_LIMIT = Math.floor(CHART_PLOT_WIDTH / 4);
 
 function RunChartFigure({ rows, metric, windowChars, model, jump, boundaries }: RunChartFigureProps) {
   const clipId = useId().replace(/:/g, '');
-  const def = RUN_CHART_METRICS[metric];
+  const language = useTextLanguage();
+  const def = runChartMetrics(language)[metric];
   const [active, setActive] = useState<RunChartTarget | undefined>(undefined);
   // キーボードで点を選んでいる間は、ポインタが外れても選びを残す
   const [keyboardActive, setKeyboardActive] = useState(false);
@@ -156,14 +159,14 @@ function RunChartFigure({ rows, metric, windowChars, model, jump, boundaries }: 
         aria-label={`${def.label}の推移。横軸はテキスト上の位置`}
         data-run-chart-total={model.total}
       >
-        <title>{axisTitle(metric, windowChars)}</title>
+        <title>{axisTitle(metric, windowChars, language)}</title>
         <defs>
           <clipPath id={clipId}>
             <rect x={CHART_MARGIN.left} y={CHART_MARGIN.top} width={CHART_PLOT_RIGHT - CHART_MARGIN.left} height={CHART_PLOT_HEIGHT} />
           </clipPath>
         </defs>
         <text className="run-chart-axis-title" x={CHART_MARGIN.left} y={CHART_MARGIN.top - 12} data-run-chart-y-title="">
-          {axisTitle(metric, windowChars)}
+          {axisTitle(metric, windowChars, language)}
         </text>
 
         {model.yTicks.map((tick) => (
@@ -271,7 +274,7 @@ function RunChartFigure({ rows, metric, windowChars, model, jump, boundaries }: 
         />
       </svg>
       <p className="run-chart-readout" data-run-chart-readout="" aria-live="off">
-        {active === undefined || activeRow === undefined ? '' : runChartReadout(activeRow.label, metric, activeRow.data, active.hit.pointIndex)}
+        {active === undefined || activeRow === undefined ? '' : runChartReadout(activeRow.label, metric, activeRow.data, active.hit.pointIndex, language)}
       </p>
     </div>
   );
@@ -311,6 +314,8 @@ export function RunChartBody({ extracted, order, rowContext, playbackJump, segme
   const withoutDestination =
     playbackJump === undefined || playbackJump.destination !== 'pane' ? [] : rows.filter((row) => !playbackJump.available(row.targetKey));
   const windowChanged = extracted.window !== DEFAULT_RUN_CHART_WINDOW;
+  const language = useTextLanguage();
+  const unit = kanaUnitOf(language);
   const segmentationChosen = extracted.segmentation !== 'none';
   // 区切りの位置は、先頭の対象のものを図に重ねる（対象が違っても、評価に渡すテキストは通常同じ）
   const overlayReport = segmentationChosen ? rows.find((row) => row.data.segments?.report !== undefined)?.data.segments?.report : undefined;
@@ -323,7 +328,9 @@ export function RunChartBody({ extracted, order, rowContext, playbackJump, segme
     <section className="run-chart-feature" data-react-feature="run-chart">
       {windowChanged ? (
         <p className="run-chart-notice" data-run-chart-window-note="">
-          既定と違う設定で計算しています。集計窓は{extracted.window}文字です（既定は{DEFAULT_RUN_CHART_WINDOW}文字）。
+          既定と違う設定で計算しています。集計窓は{extracted.window}
+          {unit}です（既定は{DEFAULT_RUN_CHART_WINDOW}
+          {unit}）。
         </p>
       ) : null}
 
@@ -359,7 +366,7 @@ export function RunChartBody({ extracted, order, rowContext, playbackJump, segme
                   <SeriesMark className="run-chart-point" mark={row.mark} color={row.color} x={18} y={6} />
                 </svg>
                 <span className="run-chart-legend-name">{row.label}</span>
-                <span className="run-chart-legend-center">全体 {formatMetricValue(metric, row.data.center)}</span>
+                <span className="run-chart-legend-center">全体 {formatMetricValue(metric, row.data.center, language)}</span>
               </li>
             ))}
           </ul>
@@ -395,12 +402,15 @@ export function RunChartBody({ extracted, order, rowContext, playbackJump, segme
 
 /** Run Chartの解析設定（指標と集計窓）。 */
 export function RunChartSettings({ options, onOptionsChange }: AnalyzerSettingsProps<RunChartOptions>) {
+  const language = useTextLanguage();
+  const metrics = runChartMetrics(language);
+  const unit = kanaUnitOf(language);
   return (
     <div className="option-groups">
       <SelectOptionField
         label="指標"
         binding={bindOption(options, DEFAULT_RUN_CHART_OPTIONS, onOptionsChange, 'metric')}
-        choices={RUN_CHART_METRIC_IDS.map((id) => ({ value: id, label: RUN_CHART_METRICS[id].label }))}
+        choices={RUN_CHART_METRIC_IDS.map((id) => ({ value: id, label: metrics[id].label }))}
       />
       <NumberOptionField
         label="集計窓"
@@ -409,8 +419,8 @@ export function RunChartSettings({ options, onOptionsChange }: AnalyzerSettingsP
         max={RUN_CHART_WINDOW_MAX}
         step={1}
         integer
-        unit="文字"
-        hint="各点の値を、その点で終わる直近の何文字から求めるかです。大きいほど線がなめらかになり、短い範囲の変動が見えにくくなります。"
+        unit={unit}
+        hint={`各点の値を、その点で終わる直近の何${unit}から求めるかです。大きいほど線がなめらかになり、短い範囲の変動が見えにくくなります。`}
       />
       <SelectOptionField
         label="区切り"

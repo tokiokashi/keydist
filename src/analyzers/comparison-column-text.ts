@@ -1,3 +1,6 @@
+import type { TextLanguage } from '#input/text/language.ts';
+import { inputUnitNoteOf, kanaUnitOf } from './unit-words.ts';
+
 /**
  * 比較表の列の名前・説明・表示形式。比較表の列の定義（`comparison/options.ts`）と、見出しのⓘから開く説明（`comparison/pane-meta.ts`）に加え、
  * 同じ列を軸に取る散布図（`scatter/`）が読む。Analyzerどうしは互いをimportできないので、`analyzers/`直下に置く。
@@ -45,7 +48,8 @@ export type ComparisonColumnId = (typeof COMPARISON_COLUMN_IDS)[number];
 export interface ComparisonColumnText {
   /**
    * 見出しの短い名前。見出しには単位を付けない（単位は見出しのⓘから開く説明に書く）。
-   * 率の列は値の側に `%` が付き、`u/打鍵`・`u/文字` は名前が単位を含む。
+   * 率の列は値の側に `%` が付き、`u/アクション`・`u/かな` は名前が単位を含む。
+   * 「かな」はテキストの言語で出し分ける（英語のテキストでは「字」。`unit-words.ts`）。
    */
   readonly label: string;
   /** この列の説明。見出しのⓘから開く説明に、列名と組で出す。 */
@@ -55,141 +59,154 @@ export interface ComparisonColumnText {
 /** 説明の先頭に出す、距離の単位の説明。 */
 export const COMPARISON_UNIT_NOTE = '距離の単位uは、キーの幅を1とした距離。';
 
-export const COMPARISON_COLUMN_TEXT: Readonly<Record<ComparisonColumnId, ComparisonColumnText>> = {
-  actions: {
-    label: '動作数',
-    description: 'テキストを打つのに要したアクション（打鍵のまとまり）の総数。同時押しは1アクションと数えます。',
-  },
-  totalUnits: {
-    label: '距離',
-    description: '全指の総移動距離（u）。',
-  },
-  meanPerStroke: {
-    label: 'u/打鍵',
-    description: '1打鍵あたりの平均移動距離（u/打鍵）。',
-  },
-  perCharUnits: {
-    label: 'u/文字',
-    description:
-      '入力1文字あたりの総移動距離（u/文字）。文字数はローマ字展開やコンボ結合の前の原文で数えるので、打鍵数を減らした効果がこの値に残ります。',
-  },
-  perCharSteps: {
-    label: '動作数/文字',
-    description: '入力1文字あたりのアクション数。コンボなどでまとめて打つほど小さくなります。',
-  },
-  perCharPresses: {
-    label: '押下数/文字',
-    description: '入力1文字あたりのキーを押す回数。コンボでまとめても減りません。',
-  },
-  perActionPresses: {
-    label: '押下数/動作',
-    description: '1アクションで押すキーの数。コンボや同時押しでまとめて打つほど大きくなります。',
-  },
-  perPressUnits: {
-    label: 'u/押下',
-    description: '1回の押下あたりの移動距離（u/押下）。距離が0の押下（ホームキーや親指キー）も数に入れます。',
-  },
-  singleTapLayerRate: {
-    label: '単打面率',
-    description: '出力する全文字のうち、単打面に配置された文字の割合（%）。',
-  },
-  singleTapRate: {
-    label: '単打率',
-    description: '全アクションのうち、単打面の文字を出すアクションの割合（%）。',
-  },
-  singleKeyRate: {
-    label: '1キー率',
-    description: '全アクションのうち、新たに押すキーが1つだけのアクションの割合（%）。',
-  },
-  sameFinger: {
-    label: '同指',
-    description: '同じ指で違うキーを続けて打った回数。',
-  },
-  sameFingerRate: {
-    label: '同指率',
-    description: '同指連続回数を打鍵数で割った割合（%）。',
-  },
-  adjacentMean: {
-    label: '指間平均',
-    description: '同じ手で隣り合う2本の指の距離が、ホームに置いた時の間隔よりどれだけ開いたかの平均。6組の平均で、ホームより近いと負になります（u）。',
-  },
-  adjacentStdDev: {
-    label: '指間σ',
-    description: '隣り合う2本の指の距離のばらつき（標準偏差）。6組の平均（u）。',
-  },
-  rightHandDistanceShare: {
-    label: '右手距離率',
-    description: '右手（親指を含む5本）の総移動距離を、全指の総移動距離で割った割合（%）。左手は100%から引いた値。',
-  },
-  rightHandPressShare: {
-    label: '右手押下率',
-    description: '右手（親指を含む5本）の押下数を、全押下数で割った割合（%）。左手は100%から引いた値。',
-  },
-  rightLeftPerPressRatio: {
-    label: '右手u/押下比',
-    description:
-      '右手（親指を含む5本）の1回の押下あたりの移動距離を、左手の1回の押下あたりの移動距離で割った比。1より大きいと右手の方が1回の押下で長く動きます。どちらかの手の押下が無い時と、左手の移動距離が0の時は値がありません。',
-  },
-  movedPressShare: {
-    label: '動いた押下率',
-    description:
-      '押下キー数のうち、指が動いた（移動距離が0より大きい）押下で押したキーの数の割合（%）。移動距離が0の押下（同じ指が続かない時のホームキー、同じキーの連続など）は入りません。',
-  },
-  perMovedPressUnits: {
-    label: 'u/動いた押下',
-    description:
-      '指が動いた押下1回あたりの移動距離（u/押下）。総移動距離を、動いた押下で押したキーの数で割った値。動いた押下率と掛け合わせるとu/押下になります。',
-  },
-  physicalBigramCombinations: {
-    label: 'Bigram数（物理キー）',
-    description:
-      'テキストを打った時に現れた、続けて打つ2回の打鍵の組が何種類あるか。文字を出したキーだけで区別し、シフトの違いは区別しません。前置・後置のシフトは、そのシフトで打つ文字と合わせて1回の打鍵と数えます。A→BとB→Aは別の組で、親指のキーも数えます。',
-  },
-  logicalBigramCombinations: {
-    label: 'Bigram数（シフト込み）',
-    description:
-      'テキストを打った時に現れた、続けて打つ2回の打鍵の組が何種類あるか。シフトなどのレイヤーを切り替えるキーも含めて区別し、左右のシフトと左右の親指シフトも別と数えます。前置・後置のシフトは、そのシフトで打つ文字と合わせて1回の打鍵と数えます。A→BとB→Aは別の組で、親指のキーも数えます。',
-  },
-  alternationCoverage: {
-    label: '交互打鍵の連続の割合',
-    description:
-      '左右の手が交互に変わる3打鍵以上の連続に含まれる打鍵が、全打鍵のうちどれだけを占めるか（%）。前置・後置のシフトのキーも1打鍵と数えます。両手で押す打鍵は連続を切ります。',
-  },
-  sameHandContinuationRate: {
-    label: '同じ手の続きの割合',
-    description:
-      '片手で打つ隣り合う2打鍵のうち、同じ手が続いた組の割合（%）。手が切り替わる組と同じ手が続く組の合計で割り、両手で押す打鍵を含む組は数えません。',
-  },
-  handSwitches: {
-    label: '手の切り替え',
-    description: '隣り合う2打鍵がどちらも片手で、左右の手が切り替わった組の数。両手で押す打鍵を含む組は数えません。',
-  },
-  handContinuations: {
-    label: '同じ手の続き',
-    description: '隣り合う2打鍵がどちらも片手で、同じ手が続いた組の数。両手で押す打鍵を含む組は数えません。',
-  },
-  bothHandPairShare: {
-    label: '両手の打鍵を含む組の割合',
-    description:
-      '隣り合う2打鍵の組のうち、少なくとも一方が両手で押す打鍵である組の割合（%）。手の切り替え、同じ手の続き、両手の打鍵を含む組の合計で割り、押す手が無い打鍵を含む組は数えません。',
-  },
-  bothHandStrokes: {
-    label: '両手の打鍵',
-    description: '左右の手が同時に押す打鍵の数。両手で文字を出す打鍵と、片手は切り替えのキーだけを押す打鍵を合わせて数えます。',
-  },
-  alternationRuns: {
-    label: '交互打鍵の連続の数',
-    description: '左右の手が交互に変わる、3打鍵以上の連続の数。両手で押す打鍵は連続を切ります。',
-  },
-  alternationMeanLength: {
-    label: '交互打鍵の連続の平均の長さ',
-    description: '交互打鍵の連続1件あたりの打鍵数の平均。連続が1件も無い時は値がありません。',
-  },
-  alternationMaxLength: {
-    label: '交互打鍵の連続の最長の長さ',
-    description: '交互打鍵の連続のうち、最も長いものの打鍵数。連続が1件も無い時は値がありません。',
-  },
-} as const;
+function buildColumnText(language: TextLanguage): Readonly<Record<ComparisonColumnId, ComparisonColumnText>> {
+  const k = kanaUnitOf(language);
+  const countNote = inputUnitNoteOf(language);
+  return {
+    actions: {
+      label: 'アクション数',
+      description: 'テキストを打つのに要したアクション（打鍵のまとまり）の総数。同時押しは1アクションと数えます。',
+    },
+    totalUnits: {
+      label: '距離',
+      description: '全指の総移動距離（u）。',
+    },
+    meanPerStroke: {
+      label: 'u/アクション',
+      description: '1アクションあたりの平均移動距離（u/アクション）。',
+    },
+    perCharUnits: {
+      label: `u/${k}`,
+      description: `入力1${k}あたりの総移動距離（u/${k}）。${countNote}この数はローマ字展開やコンボ結合の前で数えるので、アクション数を減らした効果がこの値に残ります。`,
+    },
+    perCharSteps: {
+      label: `アクション数/${k}`,
+      description: `入力1${k}あたりのアクション数。コンボなどでまとめて打つほど小さくなります。`,
+    },
+    perCharPresses: {
+      label: `キー数/${k}`,
+      description: `入力1${k}あたりに押すキーの数。同時押しは押したキーの数だけ数えます。コンボでまとめても減りません。`,
+    },
+    perActionPresses: {
+      label: 'キー数/アクション',
+      description: '1アクションで押すキーの数。コンボや同時押しでまとめて打つほど大きくなります。',
+    },
+    perPressUnits: {
+      label: 'u/キー',
+      description: '押したキー1つあたりの移動距離（u/キー）。距離が0のキー（ホームキーや親指キー）も数に入れます。',
+    },
+    singleTapLayerRate: {
+      label: '単打面率',
+      description: '出力する全文字のうち、単打面に配置された文字の割合（%）。',
+    },
+    singleTapRate: {
+      label: '単打率',
+      description: '全アクションのうち、単打面の文字を出すアクションの割合（%）。',
+    },
+    singleKeyRate: {
+      label: '1キー率',
+      description: '全アクションのうち、新たに押すキーが1つだけのアクションの割合（%）。',
+    },
+    sameFinger: {
+      label: '同指',
+      description: '同じ指で違うキーを続けて打った回数。',
+    },
+    sameFingerRate: {
+      label: '同指率',
+      description: '同指連続回数をアクション数で割った割合（%）。',
+    },
+    adjacentMean: {
+      label: '指間平均',
+      description: '同じ手で隣り合う2本の指の距離が、ホームに置いた時の間隔よりどれだけ開いたかの平均。6組の平均で、ホームより近いと負になります（u）。',
+    },
+    adjacentStdDev: {
+      label: '指間σ',
+      description: '隣り合う2本の指の距離のばらつき（標準偏差）。6組の平均（u）。',
+    },
+    rightHandDistanceShare: {
+      label: '右手距離率',
+      description: '右手（親指を含む5本）の総移動距離を、全指の総移動距離で割った割合（%）。左手は100%から引いた値。',
+    },
+    rightHandPressShare: {
+      label: '右手キー率',
+      description: '右手（親指を含む5本）が押したキーの数を、押した全部のキーの数で割った割合（%）。左手は100%から引いた値。',
+    },
+    rightLeftPerPressRatio: {
+      label: '右手u/キー比',
+      description:
+        '右手（親指を含む5本）の押したキー1つあたりの移動距離を、左手の押したキー1つあたりの移動距離で割った比。1より大きいと右手の方が1キーで長く動きます。どちらかの手のキーが無い時と、左手の移動距離が0の時は値がありません。',
+    },
+    movedPressShare: {
+      label: '移動ありキー率',
+      description:
+        '押したキーの数のうち、指が動いた（移動距離が0より大きい）時に押したキー（移動ありキー）の数の割合（%）。移動距離が0の時に押したキー（同じ指が続かない時のホームキー、同じキーの連続など）は入りません。',
+    },
+    perMovedPressUnits: {
+      label: 'u/移動ありキー',
+      description:
+        '移動ありキー1つあたりの移動距離（u/キー）。総移動距離を、移動ありキーの数で割った値。移動ありキー率と掛け合わせるとu/キーになります。',
+    },
+    physicalBigramCombinations: {
+      label: 'Bigram数（物理キー）',
+      description:
+        'テキストを打った時に現れた、続けて打つ2回の打鍵の組が何種類あるか。文字を出したキーだけで区別し、シフトの違いは区別しません。前置・後置のシフトは、そのシフトで打つ文字と合わせて1回の打鍵と数えます。A→BとB→Aは別の組で、親指のキーも数えます。',
+    },
+    logicalBigramCombinations: {
+      label: 'Bigram数（シフト込み）',
+      description:
+        'テキストを打った時に現れた、続けて打つ2回の打鍵の組が何種類あるか。シフトなどのレイヤーを切り替えるキーも含めて区別し、左右のシフトと左右の親指シフトも別と数えます。前置・後置のシフトは、そのシフトで打つ文字と合わせて1回の打鍵と数えます。A→BとB→Aは別の組で、親指のキーも数えます。',
+    },
+    alternationCoverage: {
+      label: '交互打鍵の連続の割合',
+      description:
+        '左右の手が交互に変わる3アクション以上の連続に含まれるアクションが、全アクションのうちどれだけを占めるか（%）。前置・後置のシフトのキーも1アクションと数えます。両手で押すアクションは連続を切ります。',
+    },
+    sameHandContinuationRate: {
+      label: '同じ手の続きの割合',
+      description:
+        '片手で打つ隣り合う2アクションのうち、同じ手が続いた組の割合（%）。手が切り替わる組と同じ手が続く組の合計で割り、両手で押すアクションを含む組は数えません。',
+    },
+    handSwitches: {
+      label: '手の切り替え',
+      description: '隣り合う2アクションがどちらも片手で、左右の手が切り替わった組の数。両手で押すアクションを含む組は数えません。',
+    },
+    handContinuations: {
+      label: '同じ手の続き',
+      description: '隣り合う2アクションがどちらも片手で、同じ手が続いた組の数。両手で押すアクションを含む組は数えません。',
+    },
+    bothHandPairShare: {
+      label: '両手のアクションを含む組の割合',
+      description:
+        '隣り合う2アクションの組のうち、少なくとも一方が両手で押すアクションである組の割合（%）。手の切り替え、同じ手の続き、両手のアクションを含む組の合計で割り、押す手が無いアクションを含む組は数えません。',
+    },
+    bothHandStrokes: {
+      label: '両手のアクション',
+      description: '左右の手が同時に押すアクションの数。両手で文字を出すアクションと、片手は切り替えのキーだけを押すアクションを合わせて数えます。',
+    },
+    alternationRuns: {
+      label: '交互打鍵の連続の数',
+      description: '左右の手が交互に変わる、3アクション以上の連続の数。両手で押すアクションは連続を切ります。',
+    },
+    alternationMeanLength: {
+      label: '交互打鍵の連続の平均の長さ',
+      description: '交互打鍵の連続1件あたりのアクション数の平均。連続が1件も無い時は値がありません。',
+    },
+    alternationMaxLength: {
+      label: '交互打鍵の連続の最長の長さ',
+      description: '交互打鍵の連続のうち、最も長いもののアクション数。連続が1件も無い時は値がありません。',
+    },
+  };
+}
+
+const COLUMN_TEXT_BY_LANGUAGE: Readonly<Record<TextLanguage, Readonly<Record<ComparisonColumnId, ComparisonColumnText>>>> = {
+  ja: buildColumnText('ja'),
+  en: buildColumnText('en'),
+};
+
+/** テキストの言語に合わせた列の名前と説明。 */
+export function comparisonColumnText(language: TextLanguage): Readonly<Record<ComparisonColumnId, ComparisonColumnText>> {
+  return COLUMN_TEXT_BY_LANGUAGE[language];
+}
 
 const fixed =
   (digits: number) =>

@@ -4,7 +4,7 @@ import { layerComboPressesAnalyzer } from '#analyzers/layer-combo-presses/defini
 import { StandaloneSingleAnalyzerApp } from '#app/standalone/StandaloneSingleAnalyzerApp.tsx';
 
 /**
- * レイヤーとコンボの押下数の単体ページのroute。pathは `/analyzer/<Analyzerのid>` で、他の単体ページと揃える。
+ * レイヤーとコンボのキー数の単体ページのroute。pathは `/analyzer/<Analyzerのid>` で、他の単体ページと揃える。
  * route自体は `createFileRoute` だけの薄いファイルにし、実体は `app` が組み立てる
  * （`hosts/standalone` はTanStack Routerを知らない）。
  */
@@ -15,7 +15,7 @@ export const Route = createFileRoute('/analyzer/layer-combo-presses')({
       { title: `${LAYER_COMBO_PRESSES_PANE_META.name} | keydist` },
       {
         name: 'description',
-        content: '配列やSetupを1つ選んで、同じテキストを打った時の押下数を、レイヤーとコンボごとに表で見ます。',
+        content: '配列やSetupを1つ選んで、同じテキストを打った時のキー数を、レイヤーとコンボごとに表で見ます。',
       },
     ],
   }),

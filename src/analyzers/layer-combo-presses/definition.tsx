@@ -8,20 +8,20 @@ import './layer-combo-presses-view.css';
 /**
  * レイヤーとコンボの押下数。
  *
- * 押下数は `extracted`（`extract.ts` の計算結果）をそのまま表にし、割合だけを求める。
+ * キー数は `extracted`（`extract.ts` の計算結果）をそのまま表にし、割合だけを求める。
  * 優劣を示す強調・順位は出さない。
  */
 
 function PressesTable({ extracted }: { readonly extracted: LayerComboPressesExtracted }) {
   return (
     <section className="layer-combo-presses-section" aria-labelledby="layer-combo-presses-heading">
-      <h3 id="layer-combo-presses-heading">レイヤーとコンボごとの押下数（{extracted.rows.length}）</h3>
+      <h3 id="layer-combo-presses-heading">レイヤーとコンボごとのキー数（{extracted.rows.length}）</h3>
       <div className="layer-combo-presses-table-scroll">
         <table className="layer-combo-presses-table" data-layer-combo-presses-table>
           <thead>
             <tr>
               <th scope="col">レイヤー・コンボ</th>
-              <th scope="col">押下数</th>
+              <th scope="col">キー数</th>
               <th scope="col">割合</th>
             </tr>
           </thead>

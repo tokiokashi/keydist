@@ -1,4 +1,6 @@
 import { useContext, type ReactNode } from 'react';
+import { useTextLanguage } from '../text-language-context.tsx';
+import { kanaUnitOf } from '../unit-words.ts';
 import {
   PLAYBACK_RATE_HALF_LIFE_SECONDS_MAX,
   PLAYBACK_RATE_HALF_LIFE_SECONDS_MIN,
@@ -47,6 +49,7 @@ const USE_NOT_USE = [
  * どちらもここから同じ入力欄を取る。どの項目をどちらに置くかは`settings-sections.ts`の表が決める。
  */
 export function usePlaybackFields(options: PlaybackOptions, onOptionsChange: (next: PlaybackOptions) => void): Record<keyof PlaybackOptions, ReactNode> {
+  const language = useTextLanguage();
   const bind = <K extends keyof PlaybackOptions>(key: K) => bindOption(options, DEFAULT_PLAYBACK_OPTIONS, onOptionsChange, key);
   const bindOnOff = (
     key:
@@ -246,8 +249,12 @@ export function usePlaybackFields(options: PlaybackOptions, onOptionsChange: (ne
         max={PLAYBACK_RATE_WINDOW_MAX}
         step={1}
         integer
-        unit="打鍵"
-        hint={options.rateAverage === 'ewma' ? 'SMAで平均する直近の打鍵数。平均の方式がEWMAのため、窓幅は使われません。' : 'SMAで平均する直近の打鍵数。'}
+        unit="アクション"
+        hint={
+          options.rateAverage === 'ewma'
+            ? 'SMAで平均する直近のアクション数。平均の方式がEWMAのため、窓幅は使われません。'
+            : 'SMAで平均する直近のアクション数。'
+        }
       />
     ),
     rateHalfLifeSeconds: (
@@ -260,8 +267,8 @@ export function usePlaybackFields(options: PlaybackOptions, onOptionsChange: (ne
         unit="秒"
         hint={
           options.rateAverage === 'sma'
-            ? 'EWMAで、打鍵の寄与が半分になるまでの時間。平均の方式がSMAのため、半減時間は使われません。'
-            : 'EWMAで、打鍵の寄与が半分になるまでの時間。'
+            ? 'EWMAで、アクションの寄与が半分になるまでの時間。平均の方式がSMAのため、半減時間は使われません。'
+            : 'EWMAで、アクションの寄与が半分になるまでの時間。'
         }
       />
     ),
@@ -289,7 +296,7 @@ export function usePlaybackFields(options: PlaybackOptions, onOptionsChange: (ne
       <CheckboxOptionField
         label="押下予定キーを表示"
         binding={bind('showPlannedKeys')}
-        hint="これから押すキーを、今の入力の残りと、先読みNで決まる文字数先までの分だけ配列図に出します。先読みNは条件で変えます。距離の計算にも使う値なので、変えると距離の数値も変わります。"
+        hint={`これから押すキーを、今の入力の残りと、先読みNで決まる${kanaUnitOf(language)}数先までの分だけ配列図に出します。先読みNは条件で変えます。距離の計算にも使う値なので、変えると距離の数値も変わります。`}
       />
     ),
     showRomajiInput: (

@@ -1,8 +1,9 @@
-import { useMemo, type CSSProperties } from 'react';
+import { Fragment, useMemo, type CSSProperties } from 'react';
 import { comparisonDefinition, type ComparisonExtracted, type ComparisonRow } from './extract.ts';
 import {
   COMPARISON_COLUMN_IDS,
   COMPARISON_COLUMNS,
+  comparisonColumns,
   DEFAULT_COMPARISON_OPTIONS,
   type ComparisonColumnId,
   type ComparisonOptions,
@@ -12,6 +13,7 @@ import { bindOption, CheckboxGroupOptionField, CheckboxOptionField, OptionField 
 import { sortOrderByColumn } from '#ui/primitives/column-sort.ts';
 import { SortColumnHeader } from '#ui/primitives/sort-column-header.tsx';
 import { COMPARISON_PANE_META } from './pane-meta.ts';
+import { useTextLanguage } from '../text-language-context.tsx';
 import { COMPARISON_BAR_SCALE, COMPARISON_RELATIVE_BAR_NOTE, comparisonBarFraction, comparisonBarRange, type ComparisonBarRange } from './data-bar.ts';
 import type { AnalyzerSettingsProps, AnalyzerTargetItemProps, SetAnalyzerPaneParts, SetBodyProps } from '../pane-parts.tsx';
 import './comparison-view.css';
@@ -52,6 +54,25 @@ export type ComparisonBodyProps = SetBodyProps<ComparisonExtracted, ComparisonOp
  * 列ごとの表示形式（`COMPARISON_COLUMNS[column].format`）で描く。値が非有限
  * （メンバー0件時の集計等、通常のMetricsでは起きないが念のため）なら「—」。
  */
+/**
+ * 列の見出しは、「/」の後ろだけで折り返せるようにする。「/」で区切った各部分は途中で折らない。
+ * 折り返せる所を作ると、名前の長い列が表の幅を広げない。
+ */
+function WrappableLabel({ text }: { readonly text: string }) {
+  const parts = text.split('/');
+  return (
+    <>
+      {parts.map((part, index) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: 同じ見出しの中で位置が名前になる
+        <Fragment key={index}>
+          <span className="comparison-column-part">{index < parts.length - 1 ? `${part}/` : part}</span>
+          {index < parts.length - 1 ? <wbr /> : null}
+        </Fragment>
+      ))}
+    </>
+  );
+}
+
 function formatValue(column: ComparisonColumnId, value: number): string {
   if (!Number.isFinite(value)) return '—';
   return COMPARISON_COLUMNS[column].format(value);
@@ -73,6 +94,7 @@ function rowFor(rows: readonly ComparisonRow[], targetKey: string): ComparisonRo
  */
 export function ComparisonBody({ extracted, order, rowContext, baselineTargetKey, options, onOptionsChange }: ComparisonBodyProps) {
   const { visibleColumns, showBaselineRatio, sort } = options;
+  const columns = comparisonColumns(useTextLanguage());
   // 並び替えは表の表示だけ。集合の順（order）はそのまま、描く順だけを並べ直す。
   const displayOrder = useMemo(() => {
     const rowByKey = new Map<string, ComparisonRow>(extracted.rows.map((row) => [row.targetKey, row]));
@@ -110,7 +132,8 @@ export function ComparisonBody({ extracted, order, rowContext, baselineTargetKey
                 <SortColumnHeader<ComparisonColumnId>
                   key={column}
                   column={column}
-                  label={COMPARISON_COLUMNS[column].label}
+                  label={<WrappableLabel text={columns[column].label} />}
+                  className="comparison-column-header"
                   sort={sort}
                   onSortChange={(next) => onOptionsChange({ ...options, sort: next })}
                 />
@@ -189,16 +212,16 @@ export function ComparisonBody({ extracted, order, rowContext, baselineTargetKey
   );
 }
 
-const COLUMN_CHOICES = COMPARISON_COLUMN_IDS.map((column) => ({ value: column, label: COMPARISON_COLUMNS[column].label }));
-
 const SORT_DIRECTION_TEXT = { asc: '昇順', desc: '降順' } as const;
 
 /** 比較表の解析設定（列の表示・基準比の表示・並び替え）。 */
 export function ComparisonSettings({ options, onOptionsChange }: AnalyzerSettingsProps<ComparisonOptions>) {
   const bind = <K extends keyof ComparisonOptions>(key: K) => bindOption(options, DEFAULT_COMPARISON_OPTIONS, onOptionsChange, key);
+  const columns = comparisonColumns(useTextLanguage());
+  const columnChoices = COMPARISON_COLUMN_IDS.map((column) => ({ value: column, label: columns[column].label }));
   return (
     <div className="option-groups">
-      <CheckboxGroupOptionField<ComparisonColumnId> label="表示する列" binding={bind('visibleColumns')} choices={COLUMN_CHOICES} />
+      <CheckboxGroupOptionField<ComparisonColumnId> label="表示する列" binding={bind('visibleColumns')} choices={columnChoices} />
       <CheckboxOptionField
         label="基準比（%）も表示する"
         binding={bind('showBaselineRatio')}
@@ -207,7 +230,7 @@ export function ComparisonSettings({ options, onOptionsChange }: AnalyzerSetting
       <OptionField label="並び替え" binding={bind('sort')}>
         {(id) => (
           <span id={id}>
-            {options.sort === null ? 'なし' : `${COMPARISON_COLUMNS[options.sort.column].label}（${SORT_DIRECTION_TEXT[options.sort.direction]}）`}
+            {options.sort === null ? 'なし' : `${columns[options.sort.column].label}（${SORT_DIRECTION_TEXT[options.sort.direction]}）`}
           </span>
         )}
       </OptionField>

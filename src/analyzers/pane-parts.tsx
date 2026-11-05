@@ -4,7 +4,7 @@ import type { LayoutKind } from '#input/layouts/kind.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { KeyDetails } from '#interpretation/key-detail.ts';
 import type { TraceSummary } from '#trace/generate.ts';
-import type { InfoHelp } from '#ui/primitives/info-button.tsx';
+import type { PaneHelp } from './pane-help.tsx';
 import type { TargetMark } from '#ui/theme/target-marks.ts';
 import type { SetAnalyzerDefinition, SingleAnalyzerDefinition } from './contract.ts';
 import type { UrlOptionsCodec } from './options.ts';
@@ -49,7 +49,7 @@ export interface AnalyzerPaneParts<Definition, Options, BodyProps, TargetItemVal
   /** 何を描くかを1〜2文で。見出しのⓘで出す。操作の説明や経緯は書かない。 */
   readonly description: string;
   /** 短い説明に収まらない説明。あれば見出しのⓘは小窓ではなくモーダルを開く。 */
-  readonly help?: InfoHelp | undefined;
+  readonly help?: PaneHelp | undefined;
   /** 本体の推奨幅 [rem]。省略すると既定（`recommended-width.ts`）。 */
   readonly recommendedWidthRem?: number;
   readonly Body: ComponentType<BodyProps>;

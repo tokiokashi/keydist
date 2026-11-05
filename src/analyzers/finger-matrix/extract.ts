@@ -67,7 +67,7 @@ export const FINGER_MATRIX_SURFACES: readonly FingerMatrixSurfaceDef[] = [
 export interface FingerMatrixOkRow {
   readonly kind: 'ok';
   readonly targetKey: string;
-  /** 入力文字数。1文字あたりへ直す時の分母 */
+  /** 入力かな数。1かなあたりへ直す時の分母 */
   readonly inputChars: number;
   readonly surfaces: Readonly<Record<FingerMatrixSurfaceId, readonly number[]>>;
   /**

@@ -146,7 +146,7 @@ export function HeatmapLayersSettings({ options, onOptionsChange }: AnalyzerSett
           { value: 'linear', label: '線形' },
           { value: 'log', label: '対数' },
         ]}
-        hint="線形は押下数に比例した色にし、対数は押下数の少ないキーの差も見分けやすくします。"
+        hint="線形は押した回数に比例した色にし、対数は押した回数の少ないキーの差も見分けやすくします。"
       />
       <SegmentedOptionField
         label="レイヤーの並べ方"

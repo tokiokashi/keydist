@@ -416,7 +416,12 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
         <section className="condition-group" aria-label="距離の測り方">
           <h3 className="condition-group-title">距離の測り方</h3>
           {row('windowSize', (badge) => (
-            <OptionField label="先読みN" binding={windowBinding} badge={badge} hint="同じ指を残すかホームへ戻すかを決める時に、先の何文字まで見るか">
+            <OptionField
+              label="先読みN"
+              binding={windowBinding}
+              badge={badge}
+              hint="同じ指を残すかホームへ戻すかを決める時に、先の何かな（英語のテキストでは何字）まで見るか"
+            >
               {(id) => (
                 <fieldset className="plain-group condition-stepper" id={id} aria-labelledby={`${id}-label`}>
                   <button
@@ -477,7 +482,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
           {row('actionRealizationPolicy', (badge) => (
             <>
               <SegmentedOptionField<ActionCountMode>
-                label="動作数の扱い"
+                label="アクション数の扱い"
                 binding={{
                   value: actionMode,
                   defaultValue: actionCountModeOf(actionBinding.defaultValue),
@@ -515,7 +520,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
                               aria-pressed={classGroupingOf(actionBinding.value, key) === grouping}
                               onClick={() => actionBinding.onChange(withClassGrouping(actionBinding.value, key, grouping))}
                             >
-                              {grouping === 'combined' ? '1動作' : '2動作'}
+                              {grouping === 'combined' ? '1アクション' : '2アクション'}
                             </button>
                           ))}
                         </fieldset>
@@ -628,8 +633,8 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
 
 const CHAIN_FIELDS: readonly { readonly key: keyof ChainInterpretation; readonly label: string }[] = [
   { key: 'breakOnSameFinger', label: '同じ指の連続（親指を除く）で区切る' },
-  { key: 'breakOnTriggerOnly', label: 'シフト系キーだけの打鍵で区切る' },
-  { key: 'breakOnThumbOnly', label: '親指だけの打鍵で区切る' },
+  { key: 'breakOnTriggerOnly', label: 'シフト系キーだけのアクションで区切る' },
+  { key: 'breakOnThumbOnly', label: '親指だけのアクションで区切る' },
   { key: 'breakOnOppositeHandSimultaneous', label: '左右の手で同時に出力したら区切る' },
 ];
 
