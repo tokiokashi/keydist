@@ -10,7 +10,6 @@ import {
   globalConditionValues,
   multiTargetConditionSummary,
   settingsItemIds,
-  textInapplicableIdsOf,
   traceConditionSummary,
   type ConditionSummaryScope,
   type ConditionValueNames,
@@ -18,6 +17,7 @@ import {
 import { recommendedWidthRemOf } from '#analyzers/recommended-width.ts';
 import { PaneFrame } from '../PaneFrame.tsx';
 import { resolvePaneInput } from '../resolve-pane-input.ts';
+import { setPaneConditionScope } from '../changed-condition.ts';
 import { targetNameSource } from '../target-name-source.ts';
 import { setupNumbersOf } from '../target-choices.ts';
 import { TargetSelection } from '../TargetSelection.tsx';
@@ -104,10 +104,7 @@ export function SetAnalyzerPane<Options, Extracted, RowContext>({
   // 表示名は常に集合全体に対して計算する。解決に失敗したメンバーは、共通性の判定からは除く
   // （`naming.ts`の`TargetNameSource.failed`参照）。
   const excludeIds = useMemo(() => settingsItemIds(analyzer.conditionExcludeIds), [analyzer]);
-  const summaryScope = useMemo(
-    (): ConditionSummaryScope => ({ textInapplicableIds: textInapplicableIdsOf(resolvedText.language) }),
-    [resolvedText.language],
-  );
+  const summaryScope = useMemo((): ConditionSummaryScope => setPaneConditionScope(resolvedText.language), [resolvedText.language]);
   const setupNumbers = useMemo(() => setupNumbersOf(setups), [setups]);
   const namedTargets = useMemo(
     () =>

@@ -2,18 +2,13 @@ import { useEffect, useMemo } from 'react';
 import { analysisTargetKey, nameTargets, type AnalysisTarget } from '#input/setup/index.ts';
 import type { ColorSlotsByKey, TargetSet } from '#engine/multi-target-selection.ts';
 import type { SegmentationStatus, SetTargetFigure, SingleAnalyzerPaneParts } from '#analyzers/pane-parts.tsx';
-import {
-  conditionHeaderInfoFromResolvedInput,
-  settingsItemIds,
-  textInapplicableIdsOf,
-  traceConditionSummary,
-  type ConditionSummaryScope,
-} from '../condition-summary.ts';
+import { conditionHeaderInfoFromResolvedInput, traceConditionSummary, type ConditionSummaryScope } from '../condition-summary.ts';
 import { combinePaneStates } from '../pane-status.ts';
 import { recommendedWidthRemOf } from '#analyzers/recommended-width.ts';
 import { PaneFrame } from '../PaneFrame.tsx';
 import { overrideWinsNotices } from '../condition-edit.ts';
 import { resolvePaneInput } from '../resolve-pane-input.ts';
+import { singlePaneConditionScope } from '../changed-condition.ts';
 import { targetNameSource } from '../target-name-source.ts';
 import { setupNumbersOf, targetChoiceGroups } from '../target-choices.ts';
 import { TargetSelection } from '../TargetSelection.tsx';
@@ -111,10 +106,7 @@ export function SingleAnalyzerPane<Options, Extracted>({
 
   // このAnalyzerが読む条件だけを、要約と対象名に足して数える（読まない条件を数えると、その条件で測ったように読めるため）
   const summaryScope = useMemo(
-    (): ConditionSummaryScope => ({
-      extraIds: settingsItemIds(analyzer.conditionExtraIds),
-      textInapplicableIds: textInapplicableIdsOf(resolvedText.language),
-    }),
+    (): ConditionSummaryScope => singlePaneConditionScope(analyzer.conditionExtraIds, resolvedText.language),
     [analyzer, resolvedText.language],
   );
   const conditionRows = resolution.ok ? traceConditionSummary(resolution.input.cascade, catalog.setupCatalog, summaryScope) : [];

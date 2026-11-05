@@ -419,6 +419,11 @@ export function describeTextShareNotice(userText: boolean): readonly string[] {
   return userText ? ['自作のテキストはリンクに載りません。開いた側では、その人が選んでいるテキストのままです'] : [];
 }
 
+/** 既定と違う条件がある対象を共有する時に、送る側へ示す文。条件はリンクに載らない。 */
+export function describeConditionShareNotice(changed: boolean): readonly string[] {
+  return changed ? ['条件はリンクに載らないので、開いた側では数値が変わることがあります。'] : [];
+}
+
 export interface DecodedSharedText {
   readonly present: boolean;
   /** この版にある組み込みのテキストを指せた時だけ持つ。 */

@@ -25,8 +25,11 @@ import { useOptionsDraft } from '#hosts/shared/use-options-draft.ts';
 import { STANDALONE_WRITE_LOG_KEY } from '#hosts/shared/options-write-log.ts';
 import { effectiveMultiBaseline } from '#engine/multi-target-selection.ts';
 import { AddToWorkspaceMenu, type AddToWorkspaceDestination } from '#hosts/shared/AddToWorkspaceMenu.tsx';
+import { anyTargetHasChangedCondition, setPaneConditionScope } from '#hosts/shared/changed-condition.ts';
+import { settingsItemIds } from '#hosts/shared/condition-summary.ts';
 import { urlOptionsNotices, useSharedLink, useTargetShareSource } from './use-shared-link.ts';
 import {
+  describeConditionShareNotice,
   describeShareEncodeNotice,
   describeTextShareNotice,
   encodeTextToUrl,
@@ -194,7 +197,23 @@ export function SetAnalyzerStandalonePage<Options, Extracted, RowContext>({
             for (const [key, value] of encoded.params) params.append(key, value);
             const text = encodeTextToUrl(assets.standaloneTextSelection);
             for (const [key, value] of text.params) params.append(key, value);
-            return { params, notices: [...describeShareEncodeNotice(encoded.notice), ...describeTextShareNotice(text.userText)] };
+            const conditionChanged = anyTargetHasChangedCondition({
+              targets: selection.targets,
+              setups: new Map(assets.setupLibrary.setups.map((setup) => [setup.id, setup] as const)),
+              catalog,
+              overrides: assets.setupLibrary.overrides,
+              text: evaluation.text,
+              scope: setPaneConditionScope(evaluation.text.language),
+              excludeIds: settingsItemIds(analyzer.conditionExcludeIds),
+            });
+            return {
+              params,
+              notices: [
+                ...describeShareEncodeNotice(encoded.notice),
+                ...describeTextShareNotice(text.userText),
+                ...describeConditionShareNotice(conditionChanged),
+              ],
+            };
           },
         }}
       >
