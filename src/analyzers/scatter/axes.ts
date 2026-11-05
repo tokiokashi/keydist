@@ -1,4 +1,4 @@
-import { COMPARISON_COLUMN_IDS, type ComparisonColumnId } from '../comparison-column-text.ts';
+import { COMPARISON_COLUMN_IDS, COMPARISON_COLUMN_TEXT, type ComparisonColumnId } from '../comparison-column-text.ts';
 
 /**
  * 散布図の軸の組み合わせと、軸の2つの量から恒等式で決まる3つ目の量（等位線の量）。
@@ -37,6 +37,16 @@ export const SCATTER_PRESET_LABELS: Readonly<Record<ScatterPresetId, string>> = 
   free: '自由に選ぶ',
 };
 
+/** 組み合わせで何が分かるかの短い説明。軸の量の詳しい意味は、図の見方のⓘが出す。 */
+export const SCATTER_PRESET_DESCRIPTIONS: Readonly<Record<ScatterPresetId, string>> = {
+  distance: '1文字あたりの距離を、1文字に何回動作するかと、1打鍵あたりの距離に分けて見ます。',
+  press: '1文字あたりの押下数を、1文字に何回動作するかと、1動作あたりの押下数に分けて見ます。',
+  perPress: '1文字あたりの距離を、1文字に何回押すかと、1押下あたりの距離に分けて見ます。',
+  sameFinger: '動作数と同指率から、同指の回数がどう決まるかを見ます。',
+  hand: '手の切り替えと同じ手の続きの回数から、同じ手の続きの割合がどう決まるかを見ます。',
+  free: '比較表の列から横軸と縦軸を選びます。',
+};
+
 /** 恒等式の1つの量。総数の列と、1文字あたりの列（どちらも無い量は無い）を持つ。 */
 interface Quantity {
   /** 総数の列。比較表に総数の列が無い量（押下）は持たない。 */
@@ -50,7 +60,12 @@ interface Quantity {
 
 type Triple = readonly [number, number, number];
 
-interface Identity {
+export interface Identity {
+  /**
+   * 3つの量の関係を、総数の形の名前で書いた式。画面の説明に出す。
+   * 1文字あたりの列が軸や線の量に入る時の換算は、`scatterContour`が`ScatterContour.conversion`に持つ。
+   */
+  readonly relation: string;
   readonly quantities: readonly [Quantity, Quantity, Quantity];
   /**
    * `index`番目の量を、総数の形の3つの値（`index`番目は読まない）から求める。
@@ -61,9 +76,10 @@ interface Identity {
 
 const divide = (numerator: number, denominator: number): number | undefined => (denominator === 0 ? undefined : numerator / denominator);
 
-const IDENTITIES: readonly Identity[] = [
+export const IDENTITIES: readonly Identity[] = [
   // 距離 = 動作数 × u/打鍵。`meanPerStroke`は総移動距離 / Stroke数で、`actions`はStroke数。
   {
+    relation: '距離 = 動作数 × u/打鍵',
     quantities: [
       { total: 'actions', perChar: 'perCharSteps', extensive: true },
       { total: 'meanPerStroke', extensive: false },
@@ -73,6 +89,7 @@ const IDENTITIES: readonly Identity[] = [
   },
   // 押下 = 動作数 × 押下/動作。`perActionPresses`は押下キー数 / アクション数。押下は1文字あたりの列だけが比較表にある。
   {
+    relation: '押下数 = 動作数 × 押下数/動作',
     quantities: [
       { total: 'actions', perChar: 'perCharSteps', extensive: true },
       { total: 'perActionPresses', extensive: false },
@@ -82,6 +99,7 @@ const IDENTITIES: readonly Identity[] = [
   },
   // 距離 = 押下数 × u/押下。`perPressUnits`は総移動距離 / 押下キー数。押下は1文字あたりの列だけが比較表にある。
   {
+    relation: '距離 = 押下数 × u/押下',
     quantities: [
       { perChar: 'perCharPresses', extensive: true },
       { total: 'perPressUnits', extensive: false },
@@ -91,6 +109,7 @@ const IDENTITIES: readonly Identity[] = [
   },
   // u/打鍵 = 押下数/動作 × u/押下。3つとも比率で、入力文字数に比例しない。
   {
+    relation: 'u/打鍵 = 押下数/動作 × u/押下',
     quantities: [
       { total: 'perActionPresses', extensive: false },
       { total: 'perPressUnits', extensive: false },
@@ -100,6 +119,7 @@ const IDENTITIES: readonly Identity[] = [
   },
   // 同指 = 動作数 × 同指率 / 100。`sameFingerRate`の分母はStroke数。
   {
+    relation: '同指 = 動作数 × 同指率 ÷ 100',
     quantities: [
       { total: 'actions', perChar: 'perCharSteps', extensive: true },
       { total: 'sameFingerRate', extensive: false },
@@ -109,6 +129,7 @@ const IDENTITIES: readonly Identity[] = [
   },
   // 同じ手の続きの割合 = 同じ手の続き / (手の切り替え + 同じ手の続き) × 100。
   {
+    relation: '同じ手の続きの割合 = 同じ手の続き ÷（手の切り替え + 同じ手の続き）× 100',
     quantities: [
       { total: 'handSwitches', extensive: true },
       { total: 'handContinuations', extensive: true },
@@ -119,6 +140,12 @@ const IDENTITIES: readonly Identity[] = [
 ];
 
 type Form = 'total' | 'perChar';
+
+/** 量を総数の形で呼ぶ名前。総数の列が比較表に無い量（押下）は、1文字あたりの列名から「/文字」を除く。 */
+function totalName(quantity: Quantity): string {
+  if (quantity.total !== undefined) return COMPARISON_COLUMN_TEXT[quantity.total].label;
+  return COMPARISON_COLUMN_TEXT[quantity.perChar!].label.replace(/\/文字$/u, '');
+}
 
 function formOf(quantity: Quantity, column: ComparisonColumnId): Form | undefined {
   if (quantity.total === column) return 'total';
@@ -149,6 +176,13 @@ export interface ScatterContour {
   readonly column: ComparisonColumnId;
   /** 軸の値から等位線の量を求める。分母が0で決まらない点では`undefined`。 */
   readonly valueAt: (x: number, y: number) => number | undefined;
+  /** 3つの量の関係の式（恒等式の`relation`）。語尾は付けない。 */
+  readonly relation: string;
+  /**
+   * 軸と線の量のうち1文字あたりの列について、総数を入力文字数で割った値だという換算。語尾は付けない。
+   * 1文字あたりの列が入らない組には無い。
+   */
+  readonly conversion: string | undefined;
   /** 等位線の量が`level`になる線が、横軸の値`x`で通る縦軸の値。通る点が無い時は`undefined`。 */
   readonly yAt: (level: number, x: number) => number | undefined;
 }
@@ -194,8 +228,19 @@ export function scatterContour(x: ComparisonColumnId, y: ComparisonColumnId, inp
     const fromTotal = (value: number, form: Form): number => (form === 'perChar' ? value / inputChars : value);
     const triple = (values: Readonly<Record<number, number>>): Triple => [values[0] ?? 0, values[1] ?? 0, values[2] ?? 0];
     const finite = (value: number | undefined): number | undefined => (value !== undefined && Number.isFinite(value) ? value : undefined);
+    const converted = [
+      [x, xq, xForm],
+      [y, yq, yForm],
+      [outColumn, rq, outForm],
+    ].flatMap(([column, quantity, form]) =>
+      form === 'perChar'
+        ? [`${COMPARISON_COLUMN_TEXT[column as ComparisonColumnId].label}は${totalName(quantity as Quantity)}を入力文字数で割った値`]
+        : [],
+    );
     return {
       column: outColumn,
+      relation: identity.relation,
+      conversion: converted.length === 0 ? undefined : converted.join('、'),
       valueAt: (xv, yv) => {
         const value = identity.solve(ri, triple({ [xi]: toTotal(xv, xForm), [yi]: toTotal(yv, yForm) }));
         return finite(value === undefined ? undefined : fromTotal(value, outForm));

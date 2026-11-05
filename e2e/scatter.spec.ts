@@ -114,6 +114,19 @@ test.describe('個別画面', () => {
     await expect(page.getByText('赤の菱形はかな配列')).toBeVisible();
   });
 
+  test('図の見方のⓘに、横軸・縦軸・細い線の量の説明と関係を書き、組み合わせを替えると追従する', async ({ page }) => {
+    const settings = await openSettings(page);
+    await settings.getByLabel('組み合わせ', { exact: true }).selectOption('perPress');
+    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('押下数/文字');
+    await page.getByRole('button', { name: '図の見方の説明' }).first().click();
+    const dialog = page.getByRole('dialog', { name: '図の見方' });
+    await expect(dialog.locator('.info-modal-item')).toHaveCount(3);
+    await expect(dialog.locator('.info-modal-item dt')).toHaveText(['横軸　押下数/文字', '縦軸　u/押下', '細い線　u/文字']);
+    await expect(dialog).toContainText('1回の押下あたりの移動距離');
+    await expect(dialog).toContainText('距離 = 押下数 × u/押下');
+    await expect(dialog).toContainText('距離の単位uは、キーの幅を1とした距離。');
+  });
+
   test('動きを減らす設定では、点が動く間の遷移を付けない', async ({ page }) => {
     const point = feature(page).locator('[data-scatter-point]').first();
     await expect(point).toHaveCSS('transition-duration', '0.28s');
