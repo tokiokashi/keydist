@@ -10,12 +10,13 @@ import { kanaUnitOf } from '../unit-words.ts';
  * 同指 = アクション数 × 同指率 / 100、
  * 同じ手の続きの割合 = 同じ手の続き / (手の切り替え + 同じ手の続き) × 100、
  * 右手u/キー比 = (右手距離率 / (100 − 右手距離率)) / (右手キー率 / (100 − 右手キー率))、
- * u/キー = 移動ありキー率 / 100 × u/移動ありキー）にだけ引く。
+ * u/キー = 移動ありキー率 / 100 × u/移動ありキー、
+ * 文字/u = 文字/アクション × アクション/u、u/アクション = 文字/アクション × u/文字）にだけ引く。
  * 点の位置から関係の強さを測る表示（回帰直線・相関係数）は出さない。
  */
 
 /** 用意する組み合わせ。 */
-export const SCATTER_PRESET_IDS = ['distance', 'press', 'perPress', 'sameFinger', 'hand', 'handShare', 'movedPress', 'free'] as const;
+export const SCATTER_PRESET_IDS = ['distance', 'press', 'perPress', 'sameFinger', 'hand', 'handShare', 'movedPress', 'charsPerAction', 'free'] as const;
 export type ScatterPresetId = (typeof SCATTER_PRESET_IDS)[number];
 
 export interface ScatterAxes {
@@ -32,6 +33,7 @@ export const SCATTER_PRESET_AXES: Readonly<Record<Exclude<ScatterPresetId, 'free
   hand: { x: 'handSwitches', y: 'handContinuations' },
   handShare: { x: 'rightHandPressShare', y: 'rightHandDistanceShare' },
   movedPress: { x: 'movedPressShare', y: 'perMovedPressUnits' },
+  charsPerAction: { x: 'textCharsPerAction', y: 'actionsPerUnit' },
 };
 
 /** 組み合わせの選択肢に出す名前。「かな」はテキストの言語で出し分ける（英語のテキストでは「字」）。 */
@@ -45,6 +47,7 @@ export function scatterPresetLabels(language: TextLanguage): Readonly<Record<Sca
     hand: '手の切り替えと同じ手の続き',
     handShare: '左右のキーと距離の割合',
     movedPress: '移動ありキーの割合と1回の移動距離',
+    charsPerAction: '1アクションの文字数と1uのアクション数',
     free: '自由に選ぶ',
   };
 }
@@ -60,6 +63,8 @@ export function scatterPresetDescriptions(language: TextLanguage): Readonly<Reco
     hand: '手の切り替えと同じ手の続きの回数から、同じ手の続きの割合がどう決まるかを見ます。',
     handShare: 'キーと距離のそれぞれで右手が受け持つ割合から、左右の1キーあたりの距離の比がどう決まるかを見ます。',
     movedPress: '移動ありキーの割合と、移動ありキー1つあたりの距離から、1キーあたりの距離がどう決まるかを見ます。',
+    charsPerAction:
+      '1アクションで出せる文字数と、1uの距離を動く間に行うアクション数から、1uの距離で出せる文字数がどう決まるかを見ます。大きいほど手間が少ない向きの2軸で、既定の組み合わせの逆の向きです。',
     free: '比較表の列から横軸と縦軸を選びます。',
   };
 }
@@ -182,6 +187,26 @@ export const IDENTITIES: readonly Identity[] = [
     ],
     solve: (index, [s, m, u]) => (index === 0 ? divide(100 * u, m) : index === 1 ? divide(100 * u, s) : (s * m) / 100),
   },
+  // 文字/u = 文字/アクション × アクション/u。`W / D = (W / S) × (S / D)`。3つとも比率で、入力かな数に比例しない。
+  {
+    relation: ([a, u, c]) => `${c} = ${a} × ${u}`,
+    quantities: [
+      { total: 'textCharsPerAction', extensive: false },
+      { total: 'actionsPerUnit', extensive: false },
+      { total: 'textCharsPerUnit', extensive: false },
+    ],
+    solve: (index, [a, u, c]) => (index === 0 ? divide(c, u) : index === 1 ? divide(c, a) : a * u),
+  },
+  // u/アクション = 文字/アクション × u/文字。`D / S = (W / S) × (D / W)`。
+  {
+    relation: ([a, w, m]) => `${m} = ${a} × ${w}`,
+    quantities: [
+      { total: 'textCharsPerAction', extensive: false },
+      { total: 'unitsPerTextChar', extensive: false },
+      { total: 'meanPerStroke', extensive: false },
+    ],
+    solve: (index, [a, w, m]) => (index === 0 ? divide(m, w) : index === 1 ? divide(m, a) : a * w),
+  },
 ];
 
 type Form = 'total' | 'perChar';
@@ -207,19 +232,34 @@ function formOf(quantity: Quantity, column: ComparisonColumnId): Form | undefine
   return undefined;
 }
 
-/** 軸の選び方の問題。`same`は同じ列を両軸に選んだ時、`scaled`は入力かな数倍の関係にある2列（アクション数とアクション数/かな、距離とu/かな）を選んだ時。 */
-export type ScatterAxisProblem = 'same' | 'scaled';
+/**
+ * 同じテキストなら積または比が全配列で一定になる列の群。群の中の2列は、点が1本の曲線の上に並ぶだけになる。
+ * アクション数 `S`、総移動距離 `D`、入力かな数 `C`、文字数 `W` のうち、`C` と `W` は同じテキストなら全配列で同じ値なので、
+ * 列は `S` と `D` の累乗に定数を掛けた形で表せる。累乗の指数の向きが平行な列が、同じ群に入る。
+ * - `S`: アクション数・アクション数/かな（`S / C`）・文字/アクション（`W / S`）
+ * - `D`: 距離・u/かな（`D / C`）・u/文字（`D / W`）・文字/u（`W / D`）
+ * - `D / S`: u/アクション・アクション/u
+ */
+const PROPORTIONAL_COLUMN_GROUPS: readonly (readonly ComparisonColumnId[])[] = [
+  ['actions', 'perCharSteps', 'textCharsPerAction'],
+  ['totalUnits', 'perCharUnits', 'unitsPerTextChar', 'textCharsPerUnit'],
+  ['meanPerStroke', 'actionsPerUnit'],
+];
+
+/**
+ * 軸の選び方の問題。`same`は同じ列を両軸に選んだ時、`proportional`は同じテキストなら積または比が全配列で一定になる2列
+ * （アクション数とアクション数/かな、距離とu/かな、u/アクションとアクション/uなど）を選んだ時。
+ */
+export type ScatterAxisProblem = 'same' | 'proportional';
 
 /**
  * 2つの軸に選べるか。選べない組なら理由を返す。
- * 入力かな数倍の関係にある2列は、点が1本の直線に並ぶだけで、関係を読む図にならない。
+ * 積または比が一定の2列は、点が1本の曲線に並ぶだけで、関係を読む図にならない。
  */
 export function scatterAxisProblem(x: ComparisonColumnId, y: ComparisonColumnId): ScatterAxisProblem | undefined {
   if (x === y) return 'same';
-  for (const identity of IDENTITIES) {
-    for (const quantity of identity.quantities) {
-      if (quantity.perChar !== undefined && formOf(quantity, x) !== undefined && formOf(quantity, y) !== undefined) return 'scaled';
-    }
+  for (const group of PROPORTIONAL_COLUMN_GROUPS) {
+    if (group.includes(x) && group.includes(y)) return 'proportional';
   }
   return undefined;
 }

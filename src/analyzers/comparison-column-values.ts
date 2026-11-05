@@ -10,7 +10,7 @@ import type { ComparisonColumnId } from './comparison-column-text.ts';
  * `Metrics`と`Trace`から読み出すだけの写像で、独自の派生指標・合成スコアは作らない。
  */
 
-/** 1行（1 Setup）ぶんの、全列の生値。値が無い列（連続が0件の平均と最長の長さ、定まらない時の左右の1押下あたりの距離の比）は`NaN`。 */
+/** 1行（1 Setup）ぶんの、全列の生値。値が無い列（連続が0件の平均と最長の長さ、定まらない時の左右の1押下あたりの距離の比、分母が0の時の文字数に関わる4つの比）は`NaN`。 */
 export type ComparisonRowValues = Readonly<Record<ComparisonColumnId, number>>;
 
 /** 両手の打鍵を含む組の割合（%）。分母は手の切り替え + 同じ手の継続 + 両手の打鍵を含む組で、押す手が無い打鍵を含む組は入れない。分母が0なら0。 */
@@ -47,6 +47,11 @@ export function computeComparisonRowValues(metrics: Metrics, trace: Trace): Comp
     rightLeftPerPressRatio: metrics.rightLeftPerPressRatio ?? NaN,
     movedPressShare: metrics.movedPressShare,
     perMovedPressUnits: metrics.perMovedPressUnits,
+    // 分母が0の時は比が定まらない。0を当てはめず、表では「—」、散布図では点を描かない。
+    textCharsPerAction: metrics.textCharsPerAction ?? NaN,
+    actionsPerUnit: metrics.actionsPerUnit ?? NaN,
+    textCharsPerUnit: metrics.textCharsPerUnit ?? NaN,
+    unitsPerTextChar: metrics.unitsPerTextChar ?? NaN,
     physicalBigramCombinations: bigrams.physical,
     logicalBigramCombinations: bigrams.withTriggers,
     alternationCoverage: handRhythm.alternation.coverage.rate * 100,

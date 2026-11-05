@@ -74,6 +74,24 @@ const HALFWIDTH_PUNCTUATION: Readonly<Record<string, string>> = {
   '.': '。',
 };
 
+/**
+ * 日本語のテキストの前処理（2.と3.）の後も、その1文字が残るか。半角の `,` `.` は書き換えられても1文字のまま残る。
+ * 前処理で文字が減るのは、記号を取り除く段だけ。
+ */
+function remainsAfterPreparation(char: string, keepSymbols: boolean): boolean {
+  return HALFWIDTH_PUNCTUATION[char] !== undefined || keepSymbols || !isSymbolChar(char) || DEFAULT_KEPT_SYMBOLS.has(char);
+}
+
+/**
+ * 日本語のテキストの一部分が、前処理（記号の範囲の処理）の後に何字残るか（コードポイント）。
+ * 読みに置き換えた語の、表記の字数を数えるのに使う（仕様 §11.5の `W`）。
+ */
+export function countCharsAfterPreparation(text: string, keepSymbols: boolean): number {
+  let count = 0;
+  for (const char of text) if (remainsAfterPreparation(char, keepSymbols)) count++;
+  return count;
+}
+
 export function prepareEvaluationText(text: string, options: EvaluationTextOptions): string {
   if (options.language !== 'ja') return text;
   let out = '';
@@ -104,12 +122,7 @@ export function evaluationBoundaries(
   const chars = [...readingText];
   const kept: number[] = [0];
   for (const char of chars) {
-    const keeps =
-      options.language !== 'ja' ||
-      HALFWIDTH_PUNCTUATION[char] !== undefined ||
-      options.keepSymbols ||
-      !isSymbolChar(char) ||
-      DEFAULT_KEPT_SYMBOLS.has(char);
+    const keeps = options.language !== 'ja' || remainsAfterPreparation(char, options.keepSymbols);
     kept.push(kept[kept.length - 1]! + (keeps ? 1 : 0));
   }
   const total = kept[kept.length - 1]!;

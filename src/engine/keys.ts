@@ -65,6 +65,8 @@ export function interpretationKeyOf(input: ResolvedInput, traceKey: string): str
     keepSymbols: input.keepSymbols,
     // 読みに直した後のテキストが同じでも、直した辞書の版や直せなかった事実は数値の出どころとして運ぶ
     reading: input.reading,
+    // 読みが同じでも、読みに置き換えた語の表記の字数が違えば文字数Wが変わる（`今日` と `京`）
+    notationExcess: input.notationExcess,
   });
 }
 

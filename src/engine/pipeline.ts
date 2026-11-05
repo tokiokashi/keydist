@@ -63,18 +63,23 @@ export function interpretEngineTrace(traceResult: EngineTraceResult, input: Reso
     input.tracePolicy.triggerRealizationPolicy,
     input.tracePolicy.actionRealizationPolicy,
   );
-  const metrics = computeMetrics(trace, input.geometry, {
-    windowSize: input.tracePolicy.windowSize,
-    sfbHomeCost: input.tracePolicy.sfbHomeCost,
-    preferOppositeThumb: input.tracePolicy.preferOppositeThumb ?? false,
-    chainInterpretation: input.chainInterpretation,
-    arpeggioInterpretation: input.arpeggioInterpretation,
-    triggerRealizationPolicy: input.tracePolicy.triggerRealizationPolicy!,
-    actionRealizationPolicy: input.tracePolicy.actionRealizationPolicy!,
-    romajiRuleId: input.romajiRuleId,
-    keepSymbols: input.keepSymbols,
-    reading: input.reading,
-  });
+  const metrics = computeMetrics(
+    trace,
+    input.geometry,
+    {
+      windowSize: input.tracePolicy.windowSize,
+      sfbHomeCost: input.tracePolicy.sfbHomeCost,
+      preferOppositeThumb: input.tracePolicy.preferOppositeThumb ?? false,
+      chainInterpretation: input.chainInterpretation,
+      arpeggioInterpretation: input.arpeggioInterpretation,
+      triggerRealizationPolicy: input.tracePolicy.triggerRealizationPolicy!,
+      actionRealizationPolicy: input.tracePolicy.actionRealizationPolicy!,
+      romajiRuleId: input.romajiRuleId,
+      keepSymbols: input.keepSymbols,
+      reading: input.reading,
+    },
+    input.notationExcess,
+  );
   return { modelVersion: MODEL_VERSION, analysis, metrics };
 }
 

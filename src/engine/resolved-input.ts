@@ -6,7 +6,7 @@ import { withoutRomajiOnlyCombos, withRomaji } from '#input/layouts/types.ts';
 import { physicalKeysUsedByLayout } from '#input/layouts/physical-keys.ts';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { TextLanguage } from '#input/text/language.ts';
-import type { ReadingConditions } from '#input/text/reading.ts';
+import { notationExcessFor, type NotationExcess, type ReadingConditions } from '#input/text/reading.ts';
 import type { SegmentationInput } from '#input/text/segmentation.ts';
 import type { AnalysisTarget, Setup, SetupCatalog, SetupReferenceError } from '#input/setup/index.ts';
 import { isBuiltin, ROMAJI_RULES, tableForRule, type UserRomajiRule } from '#input/romaji/rules.ts';
@@ -40,6 +40,12 @@ export interface ResolvedInput {
   readonly keepSymbols: boolean;
   /** `text` を作った読みの変換の条件。数値の出どころとして運ぶ（仕様 §12.3）。直す対象でないテキストはnull。 */
   readonly reading: ReadingConditions | null;
+  /**
+   * `text` を作る時に読みに置き換えた語の、表記の字数から読みの字数を引いた数の合計（記号の範囲 `keepSymbols` の条件に合う方）。
+   * 文字数 `W` = 入力かな数 + この値（仕様 §11.5）。`text` は読みに直した後なので、`text` だけからは求まらない。
+   * 読みに直していなければ0。
+   */
+  readonly notationExcess: number;
   /**
    * 抽出が読む資産の値。Traceと解釈のキーには入れず、抽出のキーにだけ、各Analyzerが決めた分を入れる
    * （`keys.ts`の`singleExtractionKeyOf`）。
@@ -109,6 +115,8 @@ export interface ResolveEngineInputOptions {
    * 読みに直す対象でない（漢字を含まない・英語の）テキストは渡さない。
    */
   readonly reading?: ReadingConditions | null | undefined;
+  /** `text` を作った時に読みに置き換えた語の、表記の字数と読みの字数の差。読みに直した時だけ渡す。無ければ差は0。 */
+  readonly notationExcess?: NotationExcess | undefined;
   /**
    * 文節の区切り（読みのテキストの位置）。区切りを使うペインだけが渡す。評価に渡すテキストの位置へは、
    * この対象の記号の範囲（`keepSymbols`）で写し直して `extractionAssets.segmentation` に載せる。
@@ -279,6 +287,8 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
       arpeggioInterpretation: cascade.arpeggioInterpretation.value,
       keepSymbols: cascade.keepSymbols.value,
       reading: options.verbatimText === true ? null : (options.reading ?? null),
+      notationExcess:
+        options.verbatimText === true || options.notationExcess === undefined ? 0 : notationExcessFor(options.notationExcess, cascade.keepSymbols.value),
       extractionAssets: {
         personalSpeed: options.personalSpeed,
         textLanguage: options.language,

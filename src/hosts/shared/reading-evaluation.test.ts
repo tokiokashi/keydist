@@ -84,6 +84,8 @@ test('読みに直せた時は、直した後のテキストと、辞書と解�
   assert.equal(evaluation.text.text, 'きょうは');
   assert.equal(evaluation.text.language, 'ja');
   assert.deepEqual(evaluation.text.reading, { status: 'converted', ...CONDITIONS, corrections: [] });
+  // 今日(2字)が きょう(3字) になり、は(置き換えない)は足さない
+  assert.deepEqual(evaluation.text.notationExcess, { defaultSymbols: -1, allSymbols: -1 });
 });
 
 test('辞書を読み込めなかった時は、原文のまま評価し、直せなかったことを条件に持つ', () => {
@@ -95,6 +97,8 @@ test('辞書を読み込めなかった時は、原文のまま評価し、直�
   assert.deepEqual(evaluation.state, { kind: 'failed' });
   assert.equal(evaluation.text.text, '今日は');
   assert.deepEqual(evaluation.text.reading, { status: 'unavailable', ...CONDITIONS, corrections: [] });
+  // 漢字を読みに直していないので、表記の字数との差は無い
+  assert.equal(evaluation.text.notationExcess, undefined);
 });
 
 test('条件の要約には辞書の名前と版を出し、解析器の名前は出さない', () => {

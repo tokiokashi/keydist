@@ -1,3 +1,4 @@
+import { countCharsAfterPreparation } from './evaluation-text.ts';
 import type { TextLanguage } from './language.ts';
 
 /**
@@ -94,6 +95,24 @@ export function withReadingCorrection(corrections: ReadingCorrections, surface: 
 export const TOKEN_POSITION_MISMATCH = '語の位置が原文と合わない';
 export const TOKEN_SURFACE_MISMATCH = '語の表記が原文と合わない';
 
+/**
+ * 読みに置き換えた語の、表記の字数から読みの字数を引いた数の合計（仕様 §11.5の `W` = 入力かな数 + この値）。
+ * 表記の字数は、記号の範囲の処理（仕様 §4.6の3.）の後に残る字だけを数えるので、記号の範囲の条件ごとに持つ。
+ */
+export interface NotationExcess {
+  /** 既定の範囲（`keepSymbols`が偽） */
+  readonly defaultSymbols: number;
+  /** 記号をすべて残す範囲（`keepSymbols`が真） */
+  readonly allSymbols: number;
+}
+
+export const NO_NOTATION_EXCESS: NotationExcess = Object.freeze({ defaultSymbols: 0, allSymbols: 0 });
+
+/** 記号の範囲の条件に合う方の値。 */
+export function notationExcessFor(excess: NotationExcess, keepSymbols: boolean): number {
+  return keepSymbols ? excess.allSymbols : excess.defaultSymbols;
+}
+
 export interface ReadingConversion {
   /** 読みに直したテキスト */
   readonly text: string;
@@ -101,6 +120,8 @@ export interface ReadingConversion {
   readonly replacedWords: number;
   /** 直しが当たった表記と読み。表記の順に並べる。テキストに現れなかった直しは含まない */
   readonly appliedCorrections: readonly ReadingCorrectionEntry[];
+  /** 置き換えた語の、表記の字数と読みの字数の差の合計 */
+  readonly notationExcess: NotationExcess;
 }
 
 /**
@@ -141,6 +162,8 @@ export function convertToReading(
   let out = '';
   let position = 0;
   let replacedWords = 0;
+  let defaultSymbols = 0;
+  let allSymbols = 0;
   const applied = new Set<string>();
   for (const token of tokens) {
     if (token.byteStart < position || token.byteEnd < token.byteStart || token.byteEnd > bytes.length) {
@@ -154,6 +177,9 @@ export function convertToReading(
       out += original;
     } else {
       out += replacement.text;
+      const readingLength = [...replacement.text].length;
+      defaultSymbols += countCharsAfterPreparation(original, false) - readingLength;
+      allSymbols += countCharsAfterPreparation(original, true) - readingLength;
       if (replacement.corrected) applied.add(token.surface);
       replacedWords++;
     }
@@ -161,7 +187,7 @@ export function convertToReading(
   }
   out += decoder.decode(bytes.subarray(position));
   const appliedCorrections = [...applied].sort().map((surface) => ({ surface, reading: corrections[surface]! }));
-  return { text: out, replacedWords, appliedCorrections };
+  return { text: out, replacedWords, appliedCorrections, notationExcess: { defaultSymbols, allSymbols } };
 }
 
 /** 読みを見て直す対象の語（表記ごと）。 */

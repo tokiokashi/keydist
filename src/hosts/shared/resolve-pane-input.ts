@@ -59,6 +59,7 @@ export function resolvePaneInput(
     text: resolvedText.text,
     language: resolvedText.language,
     reading: resolvedText.reading,
+    notationExcess: resolvedText.notationExcess,
     segmentation,
   });
 }

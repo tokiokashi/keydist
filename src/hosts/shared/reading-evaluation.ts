@@ -3,6 +3,7 @@ import {
   convertToReading,
   listReadingWords,
   needsReading,
+  type NotationExcess,
   type ReadingConditions,
   type ReadingCorrections,
   type ReadingToken,
@@ -69,6 +70,8 @@ export function outcomeFor(resolved: ResolvedText, stored: StoredReadingOutcome 
 /** 評価に渡すテキスト。読みに直す対象のテキストは、読みの変換の条件を添える。 */
 export interface PaneText extends ResolvedText {
   readonly reading?: ReadingConditions | null;
+  /** 読みに置き換えた語の、表記の字数と読みの字数の差（仕様 §11.5の `W`）。読みに直した時だけ持つ。無ければ差は0 */
+  readonly notationExcess?: NotationExcess;
   /** 文節の区切りを作る材料。漢字を読みに直した時だけ持つ（語の列が要る）。それ以外は `segmentationBasisOf` が作る。 */
   readonly segmentationBasis?: SegmentationBasis;
 }
@@ -122,6 +125,7 @@ export function evaluationText(resolved: ResolvedText, source: ReadingSource, ou
       ...resolved,
       text: conversion.text,
       reading: { status: 'converted', ...source.conditions, corrections: conversion.appliedCorrections },
+      notationExcess: conversion.notationExcess,
       segmentationBasis: { sourceText: outcome.sourceText, tokens: outcome.tokens, corrections: resolved.readingCorrections, origin: 'dictionary' },
     },
     state: { kind: 'converted' },

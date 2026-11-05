@@ -93,6 +93,12 @@ test.describe('個別画面', () => {
     await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('u/移動ありキー');
     await expect(feature(page).locator('[data-scatter-contour]').first()).toHaveText(/^[\d.]+$/);
     await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveText('u/キー');
+
+    await settings.getByLabel('組み合わせ', { exact: true }).selectOption('charsPerAction');
+    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('文字/アクション');
+    await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('アクション/u');
+    await expect(feature(page).locator('[data-scatter-contour]').first()).toHaveText(/^[\d.]+$/);
+    await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveText('文字/u');
   });
 
   test('自由に選ぶと、横軸と縦軸を比較表の列から選べる。引けない組には線を引かず、選べない列は選択肢に出ない', async ({ page }) => {
@@ -113,6 +119,12 @@ test.describe('個別画面', () => {
     const vertical = settings.getByLabel('縦軸', { exact: true });
     await expect(vertical.locator('option', { hasText: /^距離$/ })).toHaveCount(0);
     await expect(vertical.locator('option', { hasText: /^u\/かな$/ })).toHaveCount(0);
+    // 積または比が一定になる列も選べない（アクション数/かなの逆の向きの文字/アクション、u/かなの定数倍のu/文字）
+    await settings.getByLabel('横軸', { exact: true }).selectOption('perCharSteps');
+    await expect(vertical.locator('option', { hasText: /^文字\/アクション$/ })).toHaveCount(0);
+    await settings.getByLabel('横軸', { exact: true }).selectOption('perCharUnits');
+    await expect(vertical.locator('option', { hasText: /^u\/文字$/ })).toHaveCount(0);
+    await expect(vertical.locator('option', { hasText: /^文字\/u$/ })).toHaveCount(0);
   });
 
   test('点にフォーカスすると、完全な名前・横軸・縦軸・細い線の量の値を出す', async ({ page }) => {
