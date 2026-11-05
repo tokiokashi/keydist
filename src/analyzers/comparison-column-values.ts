@@ -32,6 +32,7 @@ export function computeComparisonRowValues(metrics: Metrics, trace: Trace): Comp
     perCharUnits: metrics.perCharUnits,
     perCharSteps: metrics.perCharSteps,
     perCharPresses: metrics.perCharPresses,
+    perActionPresses: metrics.perActionPresses,
     singleTapLayerRate: metrics.singleTapLayerRate,
     singleTapRate: metrics.singleTapRate,
     singleKeyRate: metrics.singleKeyRate,

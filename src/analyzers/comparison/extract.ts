@@ -152,6 +152,7 @@ export function fixtureMetrics(totalUnits: number): Metrics {
     perCharUnits: totalUnits / 3,
     perCharSteps: 1,
     perCharPresses: 1,
+    perActionPresses: 1,
     singleTapLayerRate: 100,
     singleTapRate: 100,
     singleKeyRate: 100,

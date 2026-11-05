@@ -76,7 +76,7 @@ test('optionsDiscipline: affectsの宣言どおりの入れ忘れが無い（散
   );
 });
 
-test('解析設定: 既定は動作数と1打鍵の距離の組み合わせで、URLの値を読み書きできる', () => {
+test('解析設定: 既定は1文字の動作数と1打鍵の距離の組み合わせで、URLの値を読み書きできる', () => {
   assert.equal(DEFAULT_SCATTER_OPTIONS.preset, 'distance');
   const decoded = scatterOptions.decodeOptions({ preset: 'free', xAxis: 'totalUnits', yAxis: 'sameFinger' }, []) as typeof DEFAULT_SCATTER_OPTIONS;
   assert.deepEqual(decoded, ALTERNATE_SCATTER_OPTIONS);
