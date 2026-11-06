@@ -73,35 +73,132 @@ export function formatTickValue(value: number, step: number): string {
   return value.toFixed(decimalsOf(step));
 }
 
-/** 1・2・5の10の冪乗倍のうち、範囲に入る値。 */
-function oneTwoFiveIn(range: Range): number[] {
-  const values: number[] = [];
-  for (let power = Math.floor(Math.log10(range.lo)) - 1; power <= Math.ceil(Math.log10(range.hi)); power++) {
-    for (const lead of [1, 2, 5]) {
-      const value = Number((lead * 10 ** power).toPrecision(12));
-      if (value >= range.lo * (1 - 1e-9) && value <= range.hi * (1 + 1e-9)) values.push(value);
-    }
+/** 対数の目盛りの数字。その値を丸めずに表せる最小の桁数で書く。 */
+function formatLogTickValue(value: number): string {
+  for (let decimals = 0; decimals < 12; decimals++) {
+    if (Number(value.toFixed(decimals)) === value) return value.toFixed(decimals);
   }
-  return values;
+  return value.toFixed(12);
 }
 
-/** 対数の目盛りの数字。1・2・5の冪の値は、その値が見分けられる最小の桁数で書く。 */
-function formatLogTickValue(value: number): string {
-  const decimals = Math.max(0, -Math.floor(Math.log10(value) + 1e-9));
-  return value.toFixed(Math.min(6, decimals));
+/** 対数の目盛りの値の段。粗い順に、1の冪・1と2と5の冪・1〜9の冪・一定の刻み。 */
+export type LogTier = 1 | 2 | 3 | 4;
+const LOG_TIER_LEADS: Readonly<Record<1 | 2 | 3, readonly number[]>> = {
+  1: [1],
+  2: [1, 2, 5],
+  3: [1, 2, 3, 4, 5, 6, 7, 8, 9],
+};
+/** 縦軸の数字の高さ（font-size）と、隣の数字との間に空ける距離。 */
+const LOG_TICK_TEXT_HEIGHT = 11;
+const LOG_TICK_TEXT_GAP = 3;
+/** 横軸の隣の数字との間に空ける距離。 */
+const LOG_TICK_TEXT_GAP_X = 8;
+
+export interface LogAxis {
+  readonly range: Range;
+  readonly values: readonly number[];
+  readonly texts: readonly string[];
+  /** 重なりを考えずに、目盛りの数で選んだ段。 */
+  readonly wantedTier: LogTier;
+  /** 目盛りの値を選んだ段（数字が重なる時は`wantedTier`より粗い）。 */
+  readonly tier: LogTier;
+}
+
+/** `leads`×10の冪の値のうち、`padded`を含む最も狭い、目盛りから目盛りまでの範囲に入る値。 */
+function enclosingLeadTicks(padded: Range, leads: readonly number[]): readonly number[] {
+  const all: number[] = [];
+  for (let power = Math.floor(Math.log10(padded.lo)) - 1; power <= Math.ceil(Math.log10(padded.hi)) + 1; power++) {
+    for (const lead of leads) all.push(Number((lead * 10 ** power).toPrecision(12)));
+  }
+  all.sort((a, b) => a - b);
+  const loTick = all.filter((v) => v <= padded.lo * (1 + 1e-9)).at(-1) ?? all[0]!;
+  const hiTick = all.find((v) => v >= padded.hi * (1 - 1e-9)) ?? all.at(-1)!;
+  return all.filter((v) => v >= loTick && v <= hiTick);
 }
 
 /**
- * 対数の目盛りの値と数字。範囲の最大が最小の10倍に満たない時は、通常の目盛りと同じ刻みの値を対数の位置に置き、
- * 10倍以上の時は1・2・5の10の冪乗倍の値に置く。
+ * 一定の刻み（1・2・5の10の冪乗倍）の値の候補を、粗い刻みから順に並べる。`padded`を含む最も狭い範囲に入る値で、
+ * 範囲の下端が0以下になる刻みは除く。最後の候補が、目標の本数に届く最も粗い刻み（届く刻みが無ければ最も細かい刻み）。
  */
-export function logTicks(range: Range, target: number): { readonly values: readonly number[]; readonly texts: readonly string[] } {
-  if (range.hi < range.lo * 10) {
-    const { values, step } = niceTicks(range, target);
-    return { values, texts: values.map((value) => formatTickValue(value, step)) };
+function stepTickCandidates(padded: Range, target: number): readonly (readonly number[])[] {
+  const candidates: (readonly number[])[] = [];
+  for (let exponent = Math.ceil(Math.log10(padded.hi)); exponent >= -9; exponent--) {
+    for (const lead of [5, 2, 1]) {
+      const step = Number((lead * 10 ** exponent).toPrecision(12));
+      const first = Math.floor(padded.lo / step + 1e-9);
+      if (first < 1) continue;
+      const last = Math.ceil(padded.hi / step - 1e-9);
+      const values: number[] = [];
+      for (let i = first; i <= last; i++) values.push(multiple(i, step));
+      candidates.push(values);
+      if (values.length >= target) return candidates;
+    }
   }
-  const values = oneTwoFiveIn(range);
-  return { values, texts: values.map(formatLogTickValue) };
+  return candidates;
+}
+
+/** 隣り合う数字が重なるか。横軸は数字の幅、縦軸は数字の高さで、図の座標の上の中心どうしの距離と比べる。 */
+function logTicksOverlap(values: readonly number[], texts: readonly string[], range: Range, horizontal: boolean): boolean {
+  const [from, to] = horizontal ? [PLOT_LEFT, PLOT_RIGHT] : [PLOT_BOTTOM, PLOT_TOP];
+  for (let i = 1; i < values.length; i++) {
+    const distance = Math.abs(positionOf(values[i]!, range, from, to, true) - positionOf(values[i - 1]!, range, from, to, true));
+    const needed = horizontal
+      ? (estimateTextWidth(texts[i]!) + estimateTextWidth(texts[i - 1]!)) / 2 + LOG_TICK_TEXT_GAP_X
+      : LOG_TICK_TEXT_HEIGHT + LOG_TICK_TEXT_GAP;
+    if (distance < needed) return true;
+  }
+  return false;
+}
+
+/**
+ * 対数の軸の範囲と目盛り。点の値に余白を足した範囲（`logAxisRange`）を含む最も狭い、目盛りの値から目盛りの値までを軸の範囲にするので、
+ * 余白を残したまま、どの点も両側を数字の付いた目盛りで挟まれる。目盛りの値は4つの段（`LogTier`）の1つから選ぶ。
+ * 余白を足した範囲の最大が最小の10倍に満たない軸は、一定の刻みの段だけを使う（1〜3つ目の段は、1と2の間のように比が2倍の区間に
+ * 目盛りが無く、点が集まる区間を読めないため）。刻みは、目盛りの数が`target`以上になる最も粗い刻みにする。
+ * 10倍以上の軸は、1〜3つ目の段のうち目盛りの数が`target`以上になる最も粗い段を使い、届かない時は一定の刻みの段を使う。
+ * 隣の数字が重なる時は、重ならない段（一定の刻みでは刻み）まで1つずつ粗くする。
+ * 重なりが解けない時は、10倍以上の軸は1つ目の段を使う。10倍に満たない軸は、軸の下端を0より大きくできる刻みが細かい刻みしか無い
+ * ことがあり、その刻みで重なる時は、10倍以上の軸と同じ1〜3つ目の段の選び方に切り替える。
+ */
+export function logAxis(values: readonly number[], target: number, horizontal: boolean): LogAxis {
+  const padded = logAxisRange(values);
+  const overlaps = (ticks: readonly number[]): boolean =>
+    logTicksOverlap(ticks, ticks.map(formatLogTickValue), { lo: ticks[0]!, hi: ticks.at(-1)! }, horizontal);
+  const axisOf = (ticks: readonly number[], tier: LogTier, wantedTier: LogTier): LogAxis => ({
+    range: { lo: ticks[0]!, hi: ticks.at(-1)! },
+    values: ticks,
+    texts: ticks.map(formatLogTickValue),
+    tier,
+    wantedTier,
+  });
+  const stepAxis = (): LogAxis | undefined => {
+    const candidates = stepTickCandidates(padded, target);
+    for (let i = candidates.length - 1; i >= 0; i--) {
+      if (!overlaps(candidates[i]!)) return axisOf(candidates[i]!, 4, 4);
+    }
+    return undefined;
+  };
+  if (padded.hi < padded.lo * 10) {
+    const axis = stepAxis();
+    if (axis !== undefined) return axis;
+  }
+  let wanted: LogTier = 4;
+  for (const tier of [1, 2, 3] as const) {
+    if (enclosingLeadTicks(padded, LOG_TIER_LEADS[tier]).length >= target) {
+      wanted = tier;
+      break;
+    }
+  }
+  if (wanted === 4) {
+    const axis = stepAxis();
+    if (axis !== undefined) return axis;
+  }
+  const top: 1 | 2 | 3 = wanted === 4 ? 3 : wanted;
+  for (let tier = top; tier >= 1; tier--) {
+    const ticks = enclosingLeadTicks(padded, LOG_TIER_LEADS[tier as 1 | 2 | 3]);
+    if (!overlaps(ticks) || tier === 1) return axisOf(ticks, tier as LogTier, wanted);
+  }
+  throw new Error('unreachable');
 }
 
 export interface PlotTick {
@@ -670,14 +767,27 @@ function placeNames(
 /** 散布図の座標。点が無い時も軸の目盛りは返す。 */
 export function scatterPlotModel(input: ScatterPlotInput): ScatterPlotModel {
   const log = input.logScale === true;
-  const range = log ? logAxisRange : axisRange;
-  const xRange = range(input.points.map((p) => p.x));
-  const yRange = range(input.points.map((p) => p.y));
+  const xLog = log
+    ? logAxis(
+        input.points.map((p) => p.x),
+        6,
+        true,
+      )
+    : undefined;
+  const yLog = log
+    ? logAxis(
+        input.points.map((p) => p.y),
+        5,
+        false,
+      )
+    : undefined;
+  const xRange = xLog?.range ?? axisRange(input.points.map((p) => p.x));
+  const yRange = yLog?.range ?? axisRange(input.points.map((p) => p.y));
   let xTicks: PlotTick[];
   let yTicks: PlotTick[];
-  if (log) {
-    const xl = logTicks(xRange, 6);
-    const yl = logTicks(yRange, 5);
+  if (xLog !== undefined && yLog !== undefined) {
+    const xl = xLog;
+    const yl = yLog;
     xTicks = xl.values.map((value, i) => ({ value, position: positionOf(value, xRange, PLOT_LEFT, PLOT_RIGHT, true), text: xl.texts[i]! }));
     yTicks = yl.values.map((value, i) => ({ value, position: positionOf(value, yRange, PLOT_BOTTOM, PLOT_TOP, true), text: yl.texts[i]! }));
   } else {
