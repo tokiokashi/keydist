@@ -31,12 +31,11 @@ export interface RunChartMetricDef {
 
 function buildMetrics(language: TextLanguage): Readonly<Record<RunChartMetricId, RunChartMetricDef>> {
   const shared = sharedMetricText(language);
-  const k = kanaUnitOf(language);
   return {
     perCharUnits: { ...shared.perCharUnits, percent: false, digits: 3, tickDigits: 2 },
     meanPerStroke: { ...shared.meanPerStroke, percent: false, digits: 3, tickDigits: 2 },
     sameFingerRate: { ...shared.sameFingerRate, percent: true, digits: 1, tickDigits: 1 },
-    perCharSteps: { label: `1${k}あたりのアクション数`, unit: `アクション/${k}`, percent: false, digits: 3, tickDigits: 2 },
+    perCharSteps: { ...shared.perCharSteps, percent: false, digits: 3, tickDigits: 2 },
   };
 }
 

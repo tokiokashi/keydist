@@ -35,11 +35,11 @@ test('単位uと1/uを宣言した列は比較表の説明に単位uが出て、
 });
 
 test('単位は名前の直後に全角のカッコで囲んで付け、単位が無い列は名前だけにする', () => {
-  assert.equal(axisTitle('meanPerStroke', 'ja'), '1アクションの距離（u）');
+  assert.equal(axisTitle('meanPerStroke', 'ja'), '1アクションあたりの距離（u）');
   assert.equal(axisTitle('sameFingerRate', 'ja'), '同指率（%）');
-  assert.equal(axisTitle('actionsPerUnit', 'ja'), '1uのアクション数（1/u）');
-  assert.equal(axisTitle('perCharSteps', 'ja'), '1かなのアクション数');
-  assert.equal(axisTitle('perCharSteps', 'en'), '1字のアクション数');
+  assert.equal(axisTitle('actionsPerUnit', 'ja'), '1uあたりのアクション数（1/u）');
+  assert.equal(axisTitle('perCharSteps', 'ja'), '1かなあたりのアクション数');
+  assert.equal(axisTitle('perCharSteps', 'en'), '1字あたりのアクション数');
   for (const column of COMPARISON_COLUMN_IDS) {
     for (const language of LANGUAGES) {
       const unit = axisUnit(column);
@@ -161,8 +161,37 @@ test('軸の名前は、長い名前と同じ単位で、宣言の無い列は�
 });
 
 test('凡例とキャプションは、軸の名前を宣言した列でも長い名前のまま', () => {
-  assert.equal(axisTitle('meanPerStroke', 'ja'), '1アクションの距離（u）');
+  assert.equal(axisTitle('meanPerStroke', 'ja'), '1アクションあたりの距離（u）');
   assert.equal(axisPlotTitle('meanPerStroke', 'ja'), '距離/アクション（u）');
   assert.equal(axisPlotTitle('sameFingerRate', 'ja'), '同指率（%）');
-  assert.equal(scatterCaption({ x: 'perCharSteps', y: 'meanPerStroke' }, 'ja'), '1アクションの距離と1かなのアクション数の関係');
+  assert.equal(scatterCaption({ x: 'perCharSteps', y: 'meanPerStroke' }, 'ja'), '1アクションあたりの距離と1かなあたりのアクション数の関係');
+});
+
+test('長い名前は「1〜あたりの」の形で、日本語と英語のテキストで表のとおりになる', () => {
+  const expected: ReadonlyArray<readonly [ComparisonColumnId, string, string]> = [
+    ['meanPerStroke', '1アクションあたりの距離', '1アクションあたりの距離'],
+    ['perCharUnits', '1かなあたりの距離', '1字あたりの距離'],
+    ['perCharSteps', '1かなあたりのアクション数', '1字あたりのアクション数'],
+    ['perCharPresses', '1かなあたりのキー数', '1字あたりのキー数'],
+    ['perActionPresses', '1アクションあたりのキー数', '1アクションあたりのキー数'],
+    ['perPressUnits', '1キーあたりの距離', '1キーあたりの距離'],
+    ['perMovedPressUnits', '移動ありキー1つあたりの距離', '移動ありキー1つあたりの距離'],
+    ['textCharsPerAction', '1アクションあたりの文字数', '1アクションあたりの文字数'],
+    ['actionsPerUnit', '1uあたりのアクション数', '1uあたりのアクション数'],
+    ['textCharsPerUnit', '1uあたりの文字数', '1uあたりの文字数'],
+    ['unitsPerTextChar', '1文字あたりの距離', '1文字あたりの距離'],
+  ];
+  for (const [column, ja, en] of expected) {
+    assert.equal(axisName(column, 'ja'), ja, column);
+    assert.equal(axisName(column, 'en'), en, column);
+  }
+});
+
+test('どの列の名前にも、1の直後の単位語に「の」が続く形は残らない', () => {
+  const leftover = /1(アクション|かな|字|キー|文字|u|つ)の/u;
+  for (const column of COMPARISON_COLUMN_IDS) {
+    for (const language of LANGUAGES) {
+      assert.doesNotMatch(axisName(column, language), leftover, `${column} ${language}`);
+    }
+  }
 });
