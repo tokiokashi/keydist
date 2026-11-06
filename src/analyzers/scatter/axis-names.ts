@@ -1,5 +1,6 @@
 import type { TextLanguage } from '#input/text/language.ts';
 import { comparisonColumnText, type ComparisonColumnId } from '../comparison-column-text.ts';
+import { sharedMetricText } from '../metric-labels.ts';
 import { kanaUnitOf, type KanaUnit } from '../unit-words.ts';
 
 /**
@@ -19,7 +20,7 @@ interface AxisNameSpec {
    * 量の名前。単位は含めない。「かな」はテキストの言語で出し分ける（英語のテキストでは「字」）。
    * 省くと比較表の列名を使う。列名がすでに量を言い表している列（「同指率」「Bigram数（物理キー）」など）だけ省く。
    */
-  readonly name?: (kana: KanaUnit) => string;
+  readonly name?: (kana: KanaUnit, language: TextLanguage) => string;
   readonly unit?: AxisUnit;
   /**
    * 軸の名前に使う縮めた名前。単位は含めない。「量/何あたり」の形で、何あたりかを残す。「かな」は`name`と同じくテキストの言語で出し分ける。比較表の列名と同じ文になる列は、列名をそのまま使う。
@@ -34,12 +35,15 @@ export const KEY_COUNT_NAME = 'キー数';
 const SPECS: Readonly<Record<ComparisonColumnId, AxisNameSpec>> = {
   actions: {},
   totalUnits: { name: () => '総移動距離', unit: 'u' },
-  meanPerStroke: { name: () => '1アクションの距離', unit: 'u', axisLabel: () => '距離/アクション' },
-  perCharUnits: { name: (k) => `1${k}の距離`, unit: 'u', axisLabel: (k) => `距離/${k}` },
-  perCharSteps: { name: (k) => `1${k}のアクション数`, axisLabel: (_k, language) => comparisonColumnText(language).perCharSteps.label },
-  perCharPresses: { name: (k) => `1${k}の${KEY_COUNT_NAME}`, axisLabel: (k) => `${KEY_COUNT_NAME}/${k}` },
-  perActionPresses: { name: () => `1アクションの${KEY_COUNT_NAME}`, axisLabel: () => `${KEY_COUNT_NAME}/アクション` },
-  perPressUnits: { name: () => '1キーの距離', unit: 'u', axisLabel: () => '距離/キー' },
+  meanPerStroke: { name: (_k, language) => sharedMetricText(language).meanPerStroke.label, unit: 'u', axisLabel: () => '距離/アクション' },
+  perCharUnits: { name: (_k, language) => sharedMetricText(language).perCharUnits.label, unit: 'u', axisLabel: (k) => `距離/${k}` },
+  perCharSteps: {
+    name: (_k, language) => sharedMetricText(language).perCharSteps.label,
+    axisLabel: (_k, language) => comparisonColumnText(language).perCharSteps.label,
+  },
+  perCharPresses: { name: (k) => `1${k}あたりの${KEY_COUNT_NAME}`, axisLabel: (k) => `${KEY_COUNT_NAME}/${k}` },
+  perActionPresses: { name: () => `1アクションあたりの${KEY_COUNT_NAME}`, axisLabel: () => `${KEY_COUNT_NAME}/アクション` },
+  perPressUnits: { name: (_k, language) => sharedMetricText(language).perPressUnits.label, unit: 'u', axisLabel: () => '距離/キー' },
   singleTapLayerRate: { unit: '%' },
   singleTapRate: { unit: '%' },
   singleKeyRate: { unit: '%' },
@@ -50,11 +54,11 @@ const SPECS: Readonly<Record<ComparisonColumnId, AxisNameSpec>> = {
   rightHandDistanceShare: { unit: '%' },
   rightHandPressShare: { unit: '%' },
   movedPressShare: { unit: '%' },
-  perMovedPressUnits: { name: () => '移動ありキー1つの距離', unit: 'u', axisLabel: () => '距離/移動ありキー' },
-  textCharsPerAction: { name: () => '1アクションの文字数', axisLabel: () => '文字数/アクション' },
-  actionsPerUnit: { name: () => '1uのアクション数', unit: '1/u', axisLabel: () => 'アクション数/距離' },
-  textCharsPerUnit: { name: () => '1uの文字数', unit: '1/u', axisLabel: () => '文字数/距離' },
-  unitsPerTextChar: { name: () => '1文字の距離', unit: 'u', axisLabel: () => '距離/文字' },
+  perMovedPressUnits: { name: () => '移動ありキー1つあたりの距離', unit: 'u', axisLabel: () => '距離/移動ありキー' },
+  textCharsPerAction: { name: () => '1アクションあたりの文字数', axisLabel: () => '文字数/アクション' },
+  actionsPerUnit: { name: () => '1uあたりのアクション数', unit: '1/u', axisLabel: () => 'アクション数/距離' },
+  textCharsPerUnit: { name: () => '1uあたりの文字数', unit: '1/u', axisLabel: () => '文字数/距離' },
+  unitsPerTextChar: { name: () => '1文字あたりの距離', unit: 'u', axisLabel: () => '距離/文字' },
   physicalBigramCombinations: {},
   logicalBigramCombinations: {},
   alternationCoverage: { unit: '%' },
@@ -70,7 +74,7 @@ const SPECS: Readonly<Record<ComparisonColumnId, AxisNameSpec>> = {
 
 /** 量の名前。単位は含めない。キャプション・点の読み取り・図の見方の文で使う。 */
 export function axisName(column: ComparisonColumnId, language: TextLanguage): string {
-  return SPECS[column].name?.(kanaUnitOf(language)) ?? comparisonColumnText(language)[column].label;
+  return SPECS[column].name?.(kanaUnitOf(language), language) ?? comparisonColumnText(language)[column].label;
 }
 
 /** 列の単位。無次元の列は`undefined`。 */

@@ -132,11 +132,11 @@ test('距離の単位の説明は、単位がuか1/uの量がある時だけ出�
 
 test('1かなあたりの列が入る組は、総数を入力かな数で割った値だという換算を関係の文に足す', () => {
   const perPress = scatterContour('perCharPresses', 'perPressUnits', INPUT_CHARS, 'ja')!;
-  assert.equal(perPress.relation, '総移動距離 = キー数 × 1キーの距離');
-  assert.equal(perPress.conversion, '1かなのキー数はキー数を入力かな数で割った値、1かなの距離は総移動距離を入力かな数で割った値');
+  assert.equal(perPress.relation, '総移動距離 = キー数 × 1キーあたりの距離');
+  assert.equal(perPress.conversion, '1かなあたりのキー数はキー数を入力かな数で割った値、1かなあたりの距離は総移動距離を入力かな数で割った値');
   const distance = scatterContour('perCharSteps', 'meanPerStroke', INPUT_CHARS, 'ja')!;
-  assert.equal(distance.relation, '総移動距離 = アクション数 × 1アクションの距離');
-  assert.equal(distance.conversion, '1かなのアクション数はアクション数を入力かな数で割った値、1かなの距離は総移動距離を入力かな数で割った値');
+  assert.equal(distance.relation, '総移動距離 = アクション数 × 1アクションあたりの距離');
+  assert.equal(distance.conversion, '1かなあたりのアクション数はアクション数を入力かな数で割った値、1かなあたりの距離は総移動距離を入力かな数で割った値');
   // 総数の形の軸だけの組には換算を足さない
   const hand = scatterContour('handSwitches', 'handContinuations', INPUT_CHARS, 'ja')!;
   assert.equal(hand.relation, identityRelation(IDENTITIES[5]!, 'ja'));
@@ -172,18 +172,18 @@ test('見出しのⓘの組み合わせの一覧は、組み合わせの全部�
   );
 });
 
-test('移動ありキーの割合と1回の移動距離: 線を引かず、図の見方にu/キーとの関係の文が出る', () => {
+test('移動ありキーの割合と移動ありキー1つあたりの距離: 線を引かず、図の見方にu/キーとの関係の文が出る', () => {
   const axes = SCATTER_PRESET_AXES.movedPress;
   const contour = scatterContour(axes.x, axes.y, INPUT_CHARS, 'ja');
   assert.equal(contour?.drawsLines, false);
   const { help } = scatterQuantityHelp(axes, contour, 'ja');
   assert.deepEqual(help.notes, [
-    '1キーの距離を含む3つの量の関係は、1キーの距離 = 移動ありキー率 ÷ 100 × 移動ありキー1つの距離です。',
+    '1キーあたりの距離を含む3つの量の関係は、1キーあたりの距離 = 移動ありキー率 ÷ 100 × 移動ありキー1つあたりの距離です。',
     COMPARISON_UNIT_NOTE,
   ]);
   assert.deepEqual(
     help.items.map((item) => item.name),
-    ['横軸　移動ありキー率（%）', '縦軸　移動ありキー1つの距離（u）'],
+    ['横軸　移動ありキー率（%）', '縦軸　移動ありキー1つあたりの距離（u）'],
   );
 });
 
@@ -220,11 +220,11 @@ test('50%の線の説明: 軸の片方だけが右手の割合の時は、その
 });
 
 test('図の下のキャプション: 縦軸の量と横軸の量の関係を、軸の名前から単位を除いた言葉で言い切る', () => {
-  assert.equal(scatterCaption(SCATTER_PRESET_AXES.distance, 'ja'), '1アクションの距離と1かなのアクション数の関係');
+  assert.equal(scatterCaption(SCATTER_PRESET_AXES.distance, 'ja'), '1アクションあたりの距離と1かなあたりのアクション数の関係');
   assert.equal(scatterCaption(SCATTER_PRESET_AXES.handShare, 'ja'), '右手距離率と右手キー率の関係');
   assert.equal(scatterCaption({ x: 'totalUnits', y: 'sameFinger' }, 'ja'), '同指の回数と総移動距離の関係');
   // 英語のテキストでは、名前の「かな」が「字」になる
-  assert.equal(scatterCaption(SCATTER_PRESET_AXES.distance, 'en'), '1アクションの距離と1字のアクション数の関係');
+  assert.equal(scatterCaption(SCATTER_PRESET_AXES.distance, 'en'), '1アクションあたりの距離と1字あたりのアクション数の関係');
 });
 
 test('固定の説明は、線を引かない図があることと食い違わない', () => {
@@ -242,18 +242,18 @@ test('点の読み取り: 線を引く組は線の量の値を出し、線を引
   // 線を引く既定の組: u/かな = アクション数/かな × u/アクション
   assert.equal(
     readout(SCATTER_PRESET_AXES.distance, 1.5, 2, { ...values, perCharUnits: 3 }),
-    'QWERTY　1かなのアクション数 1.500　1アクションの距離 2.000　1かなの距離 3.000',
+    'QWERTY　1かなあたりのアクション数 1.500　1アクションあたりの距離 2.000　1かなあたりの距離 3.000',
   );
   // 線を引かない組: 線の量（u/キー・u/アクション・アクション/u）の名前と値を出さない
   assert.equal(
     readout(SCATTER_PRESET_AXES.movedPress, 50, 4, { ...values, perPressUnits: 2 }),
-    'QWERTY　移動ありキー率 50.0%　移動ありキー1つの距離 4.000',
+    'QWERTY　移動ありキー率 50.0%　移動ありキー1つあたりの距離 4.000',
   );
-  assert.equal(readout({ x: 'perActionPresses', y: 'perPressUnits' }, 2, 1.5), 'QWERTY　1アクションのキー数 2.000　1キーの距離 1.500');
-  assert.equal(readout({ x: 'textCharsPerAction', y: 'textCharsPerUnit' }, 2, 6), 'QWERTY　1アクションの文字数 2.000　1uの文字数 6.000');
+  assert.equal(readout({ x: 'perActionPresses', y: 'perPressUnits' }, 2, 1.5), 'QWERTY　1アクションあたりのキー数 2.000　1キーあたりの距離 1.500');
+  assert.equal(readout({ x: 'textCharsPerAction', y: 'textCharsPerUnit' }, 2, 6), 'QWERTY　1アクションあたりの文字数 2.000　1uあたりの文字数 6.000');
   // 線の量の列が値を持たない対象には、線を引く組でも出さない
   assert.equal(
     readout(SCATTER_PRESET_AXES.distance, 1.5, 2, { ...values, perCharUnits: Number.NaN }),
-    'QWERTY　1かなのアクション数 1.500　1アクションの距離 2.000',
+    'QWERTY　1かなあたりのアクション数 1.500　1アクションあたりの距離 2.000',
   );
 });

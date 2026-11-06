@@ -13,7 +13,9 @@ export interface SharedMetricText {
 
 export interface SharedMetricTexts {
   readonly perCharUnits: SharedMetricText;
+  readonly perCharSteps: SharedMetricText;
   readonly meanPerStroke: SharedMetricText;
+  readonly perPressUnits: SharedMetricText;
   readonly sameFingerRate: SharedMetricText;
 }
 
@@ -21,7 +23,9 @@ export function sharedMetricText(language: TextLanguage): SharedMetricTexts {
   const k = kanaUnitOf(language);
   return {
     perCharUnits: { label: `1${k}あたりの距離`, unit: `u/${k}` },
+    perCharSteps: { label: `1${k}あたりのアクション数`, unit: `アクション/${k}` },
     meanPerStroke: { label: '1アクションあたりの距離', unit: 'u/アクション' },
+    perPressUnits: { label: '1キーあたりの距離', unit: 'u/キー' },
     sameFingerRate: { label: '同指率', unit: '%' },
   };
 }

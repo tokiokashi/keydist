@@ -54,7 +54,7 @@ function buildMetrics(language: TextLanguage): Readonly<Record<NSensitivityMetri
     totalUnits: { label: '距離', unit: 'u', percent: false, relative: 'ratio', digits: 1, tickDigits: 0 },
     meanPerStroke: { ...shared.meanPerStroke, percent: false, relative: 'ratio', digits: 3, tickDigits: 2 },
     perCharUnits: { ...shared.perCharUnits, percent: false, relative: 'ratio', digits: 3, tickDigits: 2 },
-    perPressUnits: { label: '1キーあたりの距離', unit: 'u/キー', percent: false, relative: 'ratio', digits: 3, tickDigits: 2 },
+    perPressUnits: { ...shared.perPressUnits, percent: false, relative: 'ratio', digits: 3, tickDigits: 2 },
     sameFinger: { label: '同指', unit: '回', percent: false, relative: 'ratio', digits: 0, tickDigits: 0 },
     sameFingerRate: { ...shared.sameFingerRate, percent: true, relative: 'delta', digits: 1, tickDigits: 1 },
     rightHandDistanceShare: { label: '右手距離率', unit: '%', percent: true, relative: 'delta', digits: 1, tickDigits: 1 },
