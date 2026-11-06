@@ -248,7 +248,7 @@ test('⋯で閉じたペインも資産から消え、最後の1つを閉じる�
   await expect(page.locator('.pane-frame h2.pane-frame-title')).toHaveText(['Bigram Flow']);
 });
 
-test('新しく足したペインは同じAnalyzerの共有の設定に従い、設定は再読み込みしても残り、初期値へ戻せる', async ({ page }) => {
+test('同じAnalyzerの2つ目を共有に従うへ切り替えると、設定は再読み込みしても残り、初期値へ戻せる', async ({ page }) => {
   await createWorkspace(page);
   await addAnalyzer(page, 'Bigram Flow');
   await addAnalyzer(page, 'Bigram Flow');
@@ -256,8 +256,15 @@ test('新しく足したペインは同じAnalyzerの共有の設定に従い、
   await expect(left.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   await expect(right.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
 
-  await left.getByRole('button', { name: '解析設定', exact: true }).click();
+  // 2つ目は1つ目の設定を写した「このペインだけ」で始まる。共有に従うへ切り替えると1つ目と同じ組に従う
   const settings = page.locator('[data-settings-window="true"]');
+  await right.getByRole('button', { name: '解析設定', exact: true }).click();
+  await expect(settings.getByRole('button', { name: 'このペインだけ' })).toHaveAttribute('aria-pressed', 'true');
+  await settings.getByRole('button', { name: '共有に従う' }).click();
+  await expect(settings.getByRole('button', { name: '共有に従う' })).toHaveAttribute('aria-pressed', 'true');
+  await settings.getByRole('button', { name: '解析設定を閉じる' }).click();
+
+  await left.getByRole('button', { name: '解析設定', exact: true }).click();
   await expect(settings.getByRole('button', { name: '共有に従う' })).toHaveAttribute('aria-pressed', 'true');
   await settings.getByRole('button', { name: 'Within-hand' }).click();
   await expect(settings.getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'true');

@@ -93,12 +93,29 @@ export function sharedOptions(set: string): PaneOptionsBinding {
 }
 
 /**
- * 新しく足すペインの解析設定の持ち方の既定: そのAnalyzerの組があれば先頭の組に従い、無ければ新しい組のidに従う
- * （組はペインを足す時に作られる。`addWorkspacePane`）。
+ * 小窓で「共有に従う」に切り替えた時の行き先: そのAnalyzerの組があれば先頭の組に従い、無ければ新しい組のidに従う
+ * （組はペインを足す時や切り替える時に作られる）。ペインを足す時の持ち方は`newPaneOptions`が決める。
  */
 export function defaultOptionsBinding(workspace: Pick<Workspace, 'optionSets'>, analyzerId: string): PaneOptionsBinding {
   const set = findDefaultOptionSet(workspace, analyzerId);
   return sharedOptions(set?.id ?? newOptionSetId(workspace, analyzerId));
+}
+
+/**
+ * 「ペインを追加」で足すペインの解析設定（値と持ち方）。
+ * Workspaceに同じAnalyzerのペインが1つ以上ある時は、`panes`の並びで最初のそのペインに今効いている値（`resolvePaneOptions`）を
+ * 写した「このペインだけ」で始める。足した直後の図が画面にある既存のペインと同じになり、設定を変えても
+ * 既存のペインは変わらない。持ち方は問わず、余白のペインは数えない。組が残っていても、従うペインが1つも無ければ
+ * 同じAnalyzerのペインは無いものとして扱う（組の値は古いまま残りうるため、写す元にしない）。
+ * 無い時は`defaultOptionsBinding`に従い、組が無ければ足すペインの設定で組が作られる。
+ */
+export function newPaneOptions(
+  workspace: Pick<Workspace, 'optionSets' | 'panes'>,
+  analyzerId: string,
+): Pick<WorkspacePane, 'options' | 'optionsBinding'> {
+  const sibling = analyzerId === BLANK_PANE_ID ? undefined : workspace.panes.find((pane) => pane.analyzerId === analyzerId);
+  if (sibling === undefined) return { options: undefined, optionsBinding: defaultOptionsBinding(workspace, analyzerId) };
+  return { options: resolvePaneOptions(workspace, sibling), optionsBinding: OWN_OPTIONS };
 }
 
 /** 新しいペインが従う組（そのAnalyzerの先頭の組）。無ければ`undefined`。 */
