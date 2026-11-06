@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
 import { scatterContour } from './axes.ts';
+import { axisUnit } from './axis-names.ts';
+import type { ComparisonColumnId } from '../comparison-column-text.ts';
 import {
   axisRange,
   estimateTextWidth,
@@ -1125,4 +1127,60 @@ test('scatterPlotModel: logScaleを偽にしても省いても、通常の目盛
   const contour = PRODUCT_CONTOUR;
   const base = { points: POINTS, contour, legendRows: ['かな配列'], contourName: '総移動距離', contourSuffix: '' };
   assert.deepEqual(scatterPlotModel({ ...base, logScale: false }), scatterPlotModel(base));
+});
+
+type PercentCase = { readonly points: readonly [number, number][]; readonly x: ComparisonColumnId; readonly y: ComparisonColumnId };
+
+function percentLines(c: PercentCase, logScale: boolean): number[] {
+  const contour = scatterContour(c.x, c.y, 100, 'ja')!;
+  const points = c.points.map(([x, y], i) => ({ targetKey: `k${i}`, label: `L${i}`, x, y }));
+  const model = scatterPlotModel({ points, contour, legendRows: [], contourName: '', contourSuffix: '%', logScale });
+  return model.contours.map((line) => line.level);
+}
+
+const WIDE: PercentCase = {
+  points: [
+    [300, 30],
+    [30, 300],
+    [100, 100],
+  ],
+  x: 'handSwitches',
+  y: 'handContinuations',
+};
+const NARROW: PercentCase = {
+  points: [
+    [100, 100],
+    [120, 90],
+    [90, 120],
+  ],
+  x: 'handSwitches',
+  y: 'handContinuations',
+};
+
+test('割合の細い線: 範囲が広い時は10%刻みの線を6本に絞らず全部引き、0%と100%の線は引かない（通常・対数とも）', () => {
+  for (const logScale of [false, true]) {
+    assert.deepEqual(percentLines(WIDE, logScale), [10, 20, 30, 40, 50, 60, 70, 80, 90]);
+  }
+});
+
+test('割合の細い線: 刻みが10%より細かい時は、今までと同じ刻みで6本に絞る', () => {
+  assert.deepEqual(percentLines(NARROW, false), [44, 46, 48, 50, 52, 54]);
+  // 対数の目盛りでは範囲が違うので、刻みも違う
+  assert.deepEqual(percentLines(NARROW, true), [40, 45, 50, 55, 60]);
+});
+
+test('割合の細い線: 同指率・同じ手の続きの割合・移動ありキー率は割合として扱う', () => {
+  for (const column of ['sameFingerRate', 'sameHandContinuationRate', 'movedPressShare'] as const) {
+    assert.equal(axisUnit(column), '%', column);
+  }
+  // 割合でない量は単位が%にならない
+  for (const column of ['sameFinger', 'handSwitches', 'perPressUnits'] as const) assert.notEqual(axisUnit(column), '%', column);
+});
+
+test('割合でない細い線は、範囲が広くても6本以内に絞る（通常・対数とも）', () => {
+  const contour = scatterContour('actions', 'meanPerStroke', 100, 'ja')!;
+  for (const logScale of [false, true]) {
+    const model = scatterPlotModel({ points: POINTS, contour, legendRows: [], contourName: '', contourSuffix: '', logScale });
+    assert.ok(model.contours.length >= 4 && model.contours.length <= 6, `${logScale} ${model.contours.length}本`);
+  }
 });

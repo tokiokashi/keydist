@@ -1,4 +1,5 @@
 import type { ScatterContour } from './axes.ts';
+import { axisUnit } from './axis-names.ts';
 
 /**
  * 散布図の座標の計算（画面に依存しない純粋な関数）。軸の範囲・目盛り・細い線の位置と値の置き場所、点の名前の置き場所を決める。
@@ -379,29 +380,43 @@ export function finerStep(step: number): number {
 }
 
 /**
- * 範囲の中の、`step`の整数倍の値。`MAX_LEVELS`を超える時は、連続する`MAX_LEVELS`個のうち、平均が範囲の中点に最も近いものを残す。
- * 中点からの距離が同じ候補が2つある時は、小さい側を残す。
+ * 範囲の中の、`step`の整数倍の値。`limit`を超える時は、連続する`limit`個のうち、平均が範囲の中点に最も近いものを残す。
+ * 中点からの距離が同じ候補が2つある時は、小さい側を残す。`limit`の既定は`MAX_LEVELS`。
  */
-export function levelsAtStep(range: Range, step: number): readonly number[] {
+export function levelsAtStep(range: Range, step: number, limit = MAX_LEVELS): readonly number[] {
   const { first, last } = multiplesIn(range, step);
   if (last < first) return [];
   let from = first;
-  if (last - first + 1 > MAX_LEVELS) {
-    // 連続する6個の平均は、刻みに（先頭の添字 + 2.5）を掛けた値。中点に最も近い添字を、小さい側を優先して選ぶ
-    const target = (range.lo + range.hi) / 2 / step - (MAX_LEVELS - 1) / 2;
+  if (last - first + 1 > limit) {
+    // 連続するlimit個の平均は、刻みに（先頭の添字 + (limit - 1) / 2）を掛けた値。中点に最も近い添字を、小さい側を優先して選ぶ
+    const target = (range.lo + range.hi) / 2 / step - (limit - 1) / 2;
     const below = Math.floor(target + 1e-9);
     from = target - below <= below + 1 - target + 1e-9 ? below : below + 1;
-    from = Math.min(Math.max(from, first), last - MAX_LEVELS + 1);
+    from = Math.min(Math.max(from, first), last - limit + 1);
   }
   const values: number[] = [];
-  for (let i = from; i <= last && values.length < MAX_LEVELS; i++) values.push(multiple(i, step));
+  for (let i = from; i <= last && values.length < limit; i++) values.push(multiple(i, step));
   return values;
+}
+
+/** 割合の線の量で、刻みが粗い時に置き換える刻み（%）。 */
+const PERCENT_STEP = 10;
+
+/**
+ * 割合（%）の線の値。刻みが`PERCENT_STEP`の時、本数を絞らず、0%より大きく100%より小さい値のうち範囲に入るものを全部返す。
+ * 0%と100%の線は、軸の上か描画領域の外に重なり、対数の目盛りでは引けないので返さない。
+ */
+function percentLevels(range: Range): readonly number[] {
+  return levelsAtStep(range, PERCENT_STEP, Number.POSITIVE_INFINITY).filter((level) => level > 0 && level < 100);
 }
 
 /**
  * 細い線の値の選び方。線の量が描画領域の中で取る最小値から最大値までの範囲で、目盛りと同じ1・2・5の刻み（まず`niceTicks`が目標4本で選ぶ刻み）の
  * 値を選ぶ。値が4つに満たない時と、6つに絞った後に描かれた線が4本に満たない時は、刻みを1段ずつ細かくして選び直す。
  * 刻みは`MIN_LEVEL_STEP`より細かくしない。そこまで細かくしても4本に届かない時は、その刻みで引ける線だけを引く。
+ *
+ * 線の量が割合（単位が%）の時だけ、選ばれた刻みが10%より粗ければ10%に置き換える。刻みが10%の時は6本に絞らず、
+ * 10%から90%までの範囲に入る線を全部引く（最大9本）。置き換えた結果、描かれた線が置き換える前より少ない時は置き換えない。
  */
 function selectContours(
   contour: ScatterContour,
@@ -421,16 +436,26 @@ function selectContours(
   }
   if (!(max > min)) return { lines: [], step: 1 };
   const range = { lo: min, hi: max };
+  const draw = (levels: readonly number[]) => levels.map((level) => contourLine(contour, level, xRange, yRange, log)).filter((line) => line.d !== '');
   let step = Math.max(niceTicks(range, 4).step, MIN_LEVEL_STEP);
+  let selected: { readonly lines: readonly DrawnContour[]; readonly step: number };
   for (;;) {
     const finest = finerStep(step) < MIN_LEVEL_STEP * (1 - 1e-9);
     const levels = levelsAtStep(range, step);
     if (levels.length >= MIN_LEVELS || finest) {
-      const lines = levels.map((level) => contourLine(contour, level, xRange, yRange, log)).filter((line) => line.d !== '');
-      if (lines.length >= MIN_LEVELS || finest) return { lines, step };
+      const lines = draw(levels);
+      if (lines.length >= MIN_LEVELS || finest) {
+        selected = { lines, step };
+        break;
+      }
     }
     step = finerStep(step);
   }
+  if (axisUnit(contour.column) === '%' && selected.step >= PERCENT_STEP) {
+    const lines = draw(percentLevels(range));
+    if (lines.length >= selected.lines.length) return { lines, step: PERCENT_STEP };
+  }
+  return selected;
 }
 
 interface DrawnContour {
