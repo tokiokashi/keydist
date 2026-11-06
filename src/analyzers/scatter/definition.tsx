@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
 import type { LayoutKind } from '#input/layouts/kind.ts';
-import { bindOption, SegmentedOptionField, SelectOptionField } from '#ui/primitives/option-fields.tsx';
+import { bindOption, CheckboxGroupOptionField, SegmentedOptionField, SelectOptionField } from '#ui/primitives/option-fields.tsx';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
 import { targetMarkPath } from '#ui/theme/target-marks.ts';
 import type { AnalyzerSettingsProps, SetAnalyzerPaneParts, SetBodyProps } from '../pane-parts.tsx';
@@ -8,29 +8,23 @@ import type { TextLanguage } from '#input/text/language.ts';
 import { COMPARISON_COLUMN_IDS, comparisonColumnText } from '../comparison-column-text.ts';
 import { useTextLanguage } from '../text-language-context.tsx';
 import { kanaUnitOf } from '../unit-words.ts';
-import type { ComparisonRowValues } from '../comparison-column-values.ts';
-import {
-  SCATTER_PRESET_AXES,
-  SCATTER_PRESET_IDS,
-  scatterPresetLabels,
-  isHandShareColumn,
-  scatterAxisProblem,
-  scatterContour,
-  type ScatterAxes,
-  type ScatterAxisProblem,
-} from './axes.ts';
-import { axisName, axisPlotTitle, axisTitle, axisUnit, SCATTER_KANA_SCRIPT } from './axis-names.ts';
-import { scatterDefinition, type ScatterExtracted, type ScatterRow } from './extract.ts';
-import { SCATTER_KIND_ORDER, SCATTER_KIND_STYLES } from './kinds.ts';
+import { SCATTER_PRESET_IDS, scatterPresetLabels, scatterAxisProblem, type ScatterAxisProblem } from './axes.ts';
+import { axisName, axisPlotTitle, SCATTER_KANA_SCRIPT } from './axis-names.ts';
+import { scatterDefinition, type ScatterExtracted } from './extract.ts';
+import { FIGURE_GAP, FIGURE_MAX_WIDTH, scatterColumnCount } from './figure-layout.ts';
+import { scatterFigureModels, type ScatterFigureModel } from './figure-model.ts';
+import { SCATTER_KIND_STYLES } from './kinds.ts';
 import { DEFAULT_SCATTER_OPTIONS, scatterOptions, type ScatterOptions } from './options.ts';
 import { SCATTER_PANE_META } from './pane-meta.ts';
-import { readoutText, scatterCaption, scatterQuantityHelp } from './quantity-help.ts';
-import { logScaleBlockers, MARK_RADIUS, PLOT_HEIGHT, PLOT_MARGIN, PLOT_WIDTH, resolveLogScale, scatterPlotModel } from './plot-model.ts';
+import { READING_NOTE, readoutText, scatterCaption, scatterQuantityHelp } from './quantity-help.ts';
+import { MARK_RADIUS, PLOT_HEIGHT, PLOT_MARGIN, PLOT_WIDTH } from './plot-model.ts';
+import { readingTargets, stillPinned, togglePinned } from './reading.ts';
 import './scatter-view.css';
 
 /**
  * 散布図の可視化。`extracted`（`extract.ts`の計算結果）の列の値を、`plot-model.ts`が決めた座標に置くだけで、
  * 指標は計算し直さない（docs/architecture.md「可視化は計算しない」）。
+ * 選んだ組み合わせごとに図を1つ描き、図の並びの幅から列の数を決める。点の読み取りは全ての図で連動する。
  * **優劣を示す色・強調・順位・回帰直線・相関係数は出さない**（AGENTS.md「優劣の判定・順位付け・合成スコアを作らない」）。
  * 点の色と形は配列の種類（`kinds.ts`）で決め、対象の色と印は使わない。
  */
@@ -54,10 +48,6 @@ const PLOT_BOTTOM = PLOT_HEIGHT - PLOT_MARGIN.bottom;
 /** 目盛りの線の長さ。枠の内側へ向ける。 */
 const TICK_LENGTH = 5;
 
-function axesOf(options: ScatterOptions): ScatterAxes {
-  return options.preset === 'free' ? { x: options.xAxis, y: options.yAxis } : SCATTER_PRESET_AXES[options.preset];
-}
-
 /** 対数の目盛りを選んでいるのに通常の目盛りで描く理由を、理由ごとに1文で伝える。 */
 const LOG_BLOCKER_TEXTS = {
   noStraightLines: '細い線が直線にならない図なので、対数の目盛りにはできず、通常の目盛りで表示しています。',
@@ -71,103 +61,58 @@ function axisProblemText(problem: ScatterAxisProblem, language: TextLanguage): s
     : `アクション数とアクション数/${k}、距離とu/${k}、u/アクションとアクション/uのように、同じテキストなら一方が他方の定数倍か、積が一定になる2列は、同時に選べません。`;
 }
 
-interface PlottedRow {
-  readonly targetKey: string;
-  readonly label: string;
-  readonly fullName: string;
-  readonly kind: LayoutKind;
-  readonly x: number;
-  readonly y: number;
-  /** 全列の値。点の読み取りで、等位線の量の列が値を持つかを見る。 */
-  readonly values: ComparisonRowValues;
-}
-
-interface ExcludedRow {
-  readonly targetKey: string;
-  readonly label: string;
-  readonly fullName: string;
-  readonly status: 'computing' | 'failed' | 'no-value';
-  readonly message: string;
-}
-
 function KindMark({ kind, size = MARK_SIZE }: { readonly kind: LayoutKind; readonly size?: number }) {
   const style = SCATTER_KIND_STYLES[kind];
   // 色は`var(--kind-color-*)`が来るので、属性でなくstyleで渡す
   return <path className="scatter-mark" data-kind={kind} data-mark={style.shape} d={targetMarkPath(style.shape, size)} style={{ fill: style.color }} />;
 }
 
-function rowKey(row: ScatterRow): string {
-  return row.targetKey;
+/** 要素の幅 [px]。まだ測っていない間は`undefined`。 */
+function useElementWidth(ref: RefObject<HTMLElement | null>): number | undefined {
+  const [width, setWidth] = useState<number | undefined>(undefined);
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (element === null) return;
+    const measure = () => setWidth(element.getBoundingClientRect().width);
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [ref]);
+  return width;
 }
 
-/**
- * 散布図の本体。対象が空の時はホストが選ぶボタンを出し、本体は呼ばれない。
- * 計算中・失敗・値なしの対象は、図の外に名前と状態を出す。
- */
-export function ScatterBody({ extracted, order, rowContext, options }: ScatterBodyProps) {
-  const language = useTextLanguage();
-  const axes = axesOf(options);
-  const problem = scatterAxisProblem(axes.x, axes.y);
-  const rowByKey = useMemo(() => new Map(extracted.rows.map((row) => [rowKey(row), row] as const)), [extracted.rows]);
-  const [activeKey, setActiveKey] = useState<string | undefined>(undefined);
+interface FigureViewProps {
+  readonly figure: ScatterFigureModel;
+  readonly language: TextLanguage;
+  /** 留めた対象。 */
+  readonly pinned: string | undefined;
+  /** ポインターを重ねているかフォーカスしている対象（留めた対象と同じ時は`undefined`）。 */
+  readonly hovered: string | undefined;
+  readonly onHover: (targetKey: string) => void;
+  readonly onLeave: (targetKey: string) => void;
+  readonly onTogglePin: (targetKey: string) => void;
+}
 
-  const { plotted, excluded, inputChars } = useMemo(() => {
-    const plotted: PlottedRow[] = [];
-    const excluded: ExcludedRow[] = [];
-    let inputChars = 0;
-    for (const targetKey of order) {
-      const context = rowContext.get(targetKey);
-      const label = context?.label ?? '—';
-      const fullName = context?.fullName ?? '';
-      const row = rowByKey.get(targetKey);
-      if (row === undefined) {
-        // extractedにまだ無いtargetKey（依頼の作り直し途中の一瞬）。値の欠落を偽らず、計算中と出す。
-        excluded.push({ targetKey, label, fullName, status: 'computing', message: '計算中…' });
-      } else if (row.kind === 'failed') {
-        excluded.push({ targetKey, label, fullName, status: 'failed', message: row.message });
-      } else {
-        inputChars = row.inputChars;
-        const x = row.values[axes.x];
-        const y = row.values[axes.y];
-        if (Number.isFinite(x) && Number.isFinite(y))
-          plotted.push({ targetKey, label, fullName, kind: context?.kind ?? 'alpha', x, y, values: row.values });
-        else excluded.push({ targetKey, label, fullName, status: 'no-value', message: '値なし' });
-      }
-    }
-    return { plotted, excluded, inputChars };
-  }, [order, rowContext, rowByKey, axes.x, axes.y]);
-
-  const contour = useMemo(
-    () => (problem === undefined ? scatterContour(axes.x, axes.y, inputChars, language) : undefined),
-    [problem, axes.x, axes.y, inputChars, language],
-  );
-  // 線を引かない組でも、3つの量の関係は図の見方に出すので`contour`は残す。点の読み取りと凡例には、線を引く組の線の量だけを出す
-  const lineContour = contour?.drawsLines === true ? contour : undefined;
-  // 対数の目盛りは、対数にできる図でだけ使う。選んだ設定と表示が違う時は、図の近くに理由を出す
-  const logBlockers = useMemo(() => logScaleBlockers(lineContour, plotted), [lineContour, plotted]);
-  const { logScale, reasons: logReasons } = resolveLogScale(options.tickScale, logBlockers);
-  const usedKinds = useMemo(() => SCATTER_KIND_ORDER.filter((kind) => plotted.some((row) => row.kind === kind)), [plotted]);
-  const model = useMemo(
-    () =>
-      scatterPlotModel({
-        points: plotted.map(({ targetKey, label, x, y }) => ({ targetKey, label, x, y })),
-        contour: lineContour,
-        legendRows: usedKinds.map((kind) => SCATTER_KIND_STYLES[kind].label),
-        contourName: lineContour === undefined ? '' : axisTitle(lineContour.column, language),
-        contourSuffix: lineContour !== undefined && axisUnit(lineContour.column) === '%' ? '%' : '',
-        centerAxes: { x: isHandShareColumn(axes.x), y: isHandShareColumn(axes.y) },
-        logScale,
-      }),
-    [plotted, lineContour, usedKinds, language, axes.x, axes.y, logScale],
-  );
+/** 組み合わせ1つぶんの図（見出し・知らせ・図・読み取り・描けない対象の一覧）。 */
+function FigureView({ figure, language, pinned, hovered, onHover, onLeave, onTogglePin }: FigureViewProps) {
+  const { axes, problem, plotted, excluded, contour, logScale, logReasons, usedKinds, model } = figure;
   const plottedByKey = new Map(plotted.map((row) => [row.targetKey, row] as const));
-  const active = activeKey === undefined ? undefined : model.points.find((point) => point.targetKey === activeKey);
-  const activeRow = active === undefined ? undefined : plottedByKey.get(active.targetKey);
-
   const quantityHelp = scatterQuantityHelp(axes, contour, language, logScale);
+  const readouts = [
+    { role: 'pinned', point: pinned === undefined ? undefined : model.points.find((point) => point.targetKey === pinned) },
+    { role: 'hover', point: hovered === undefined ? undefined : model.points.find((point) => point.targetKey === hovered) },
+  ] as const;
+  const shownReadouts = readouts.flatMap(({ role, point }) => {
+    const row = point === undefined ? undefined : plottedByKey.get(point.targetKey);
+    return point === undefined || row === undefined
+      ? []
+      : [{ role, key: point.targetKey, text: readoutText({ ...point, fullName: row.fullName, values: row.values }, axes, contour, language) }];
+  });
 
   return (
-    <section className="scatter-feature" data-react-feature="scatter">
+    <div className="scatter-cell" data-scatter-figure={figure.preset}>
       {problem !== undefined ? (
         <p className="scatter-notice" role="alert" data-scatter-axis-problem="">
           {axisProblemText(problem, language)}
@@ -175,7 +120,11 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
       ) : plotted.length > 0 ? (
         <>
           <div className="scatter-heading">
-            <InfoButton name="図の見方" description={quantityHelp.description} help={quantityHelp.help} />
+            <InfoButton
+              name="図の見方"
+              description={quantityHelp.description}
+              help={{ ...quantityHelp.help, notes: [...quantityHelp.help.notes, READING_NOTE] }}
+            />
           </div>
           {logReasons.map((reason) => (
             <p key={reason} className="scatter-notice" data-scatter-log-notice={reason}>
@@ -292,24 +241,32 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
 
               {model.points.map((point) => {
                 const row = plottedByKey.get(point.targetKey)!;
-                const isActive = activeKey === point.targetKey;
+                const isPinned = pinned === point.targetKey;
                 return (
-                  // biome-ignore lint/a11y/noStaticElementInteractions: 点にフォーカスを当てて、値の読み取りを出す。図の読み取りの操作で、押して何かをするものではない
+                  // biome-ignore lint/a11y/useSemanticElements: SVGの<g>はbuttonに置き換えられない。押すと読み取りを留める操作の部品で、役割とキー操作をここで付けている
                   <g
                     key={point.targetKey}
                     className="scatter-point"
+                    role="button"
+                    aria-pressed={isPinned}
                     data-scatter-point={point.targetKey}
                     data-kind={row.kind}
-                    data-active={isActive || undefined}
+                    data-active={hovered === point.targetKey || undefined}
+                    data-pinned={isPinned || undefined}
                     tabIndex={0}
                     aria-label={readoutText({ ...point, fullName: row.fullName, values: row.values }, axes, contour, language)}
                     style={{ transform: `translate(${point.px.toFixed(1)}px, ${point.py.toFixed(1)}px)` }}
-                    onPointerEnter={() => setActiveKey(point.targetKey)}
-                    onPointerLeave={() => setActiveKey((current) => (current === point.targetKey ? undefined : current))}
-                    onFocus={() => setActiveKey(point.targetKey)}
-                    onBlur={() => setActiveKey((current) => (current === point.targetKey ? undefined : current))}
+                    onPointerEnter={() => onHover(point.targetKey)}
+                    onPointerLeave={() => onLeave(point.targetKey)}
+                    onFocus={() => onHover(point.targetKey)}
+                    onBlur={() => onLeave(point.targetKey)}
+                    onClick={() => onTogglePin(point.targetKey)}
+                    onKeyDown={(event) => {
+                      if (event.key !== 'Enter' && event.key !== ' ') return;
+                      event.preventDefault();
+                      onTogglePin(point.targetKey);
+                    }}
                   >
-                    <title>{row.fullName || row.label}</title>
                     <circle className="scatter-point-ring" r={MARK_SIZE + 4} />
                     <KindMark kind={row.kind} />
                   </g>
@@ -329,7 +286,8 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
                         key={line.targetKey}
                         className="scatter-point-label"
                         data-scatter-name-of={line.targetKey}
-                        data-active={activeKey === line.targetKey || undefined}
+                        data-active={hovered === line.targetKey || undefined}
+                        data-pinned={pinned === line.targetKey || undefined}
                         x={line.x}
                         y={line.y}
                       >
@@ -344,11 +302,14 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
               {scatterCaption(axes, language)}
             </figcaption>
           </figure>
-          <p className="scatter-readout" data-scatter-readout="" aria-live="off">
-            {active === undefined || activeRow === undefined
-              ? ''
-              : readoutText({ ...active, fullName: activeRow.fullName, values: activeRow.values }, axes, contour, language)}
-          </p>
+          <div className="scatter-readouts" data-scatter-readouts="" data-pinned={pinned !== undefined || undefined} aria-live="off">
+            {shownReadouts.map(({ role, key, text }) => (
+              <p key={role} className="scatter-readout" data-scatter-readout={role} data-scatter-readout-of={key}>
+                {pinned === undefined ? null : <span className="scatter-readout-mark" aria-hidden="true" />}
+                {text}
+              </p>
+            ))}
+          </div>
         </>
       ) : null}
 
@@ -364,11 +325,77 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
           ))}
         </ul>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * 散布図の本体。対象が空の時はホストが選ぶボタンを出し、本体は呼ばれない。
+ * 選んだ組み合わせごとの図を、並べる領域の幅で決めた列の数で並べる。
+ * 計算中・失敗・値なしの対象は、図ごとに図の外へ名前と状態を出す。
+ */
+export function ScatterBody({ extracted, order, rowContext, options }: ScatterBodyProps) {
+  const language = useTextLanguage();
+  const gridRef = useRef<HTMLDivElement>(null);
+  const width = useElementWidth(gridRef);
+  const [hoveredKey, setHoveredKey] = useState<string | undefined>(undefined);
+  const [pinnedKey, setPinnedKey] = useState<string | undefined>(undefined);
+
+  const figures = useMemo(
+    () =>
+      scatterFigureModels(options.presets, {
+        order,
+        rowContext,
+        rows: extracted.rows,
+        xAxis: options.xAxis,
+        yAxis: options.yAxis,
+        tickScale: options.tickScale,
+        language,
+      }),
+    [options.presets, options.xAxis, options.yAxis, options.tickScale, order, rowContext, extracted.rows, language],
+  );
+
+  // 留めた対象がどの図にも描かれなくなったら、留めるのをやめる
+  const plottedKeys = useMemo(() => new Set(figures.flatMap((figure) => figure.model.points.map((point) => point.targetKey))), [figures]);
+  const pinned = stillPinned(pinnedKey, plottedKeys);
+  useEffect(() => {
+    if (pinnedKey !== undefined && pinned === undefined) setPinnedKey(undefined);
+  }, [pinnedKey, pinned]);
+  const reading = readingTargets(pinned, hoveredKey);
+
+  const columns = scatterColumnCount(options.columns, width, figures.length);
+
+  // Escは、フォーカスが散布図の中にある時だけ留めるのをやめる。ⓘの小窓などの別の要素のEscには反応しない
+  const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key === 'Escape' && pinned !== undefined && event.currentTarget.contains(event.target as Node)) setPinnedKey(undefined);
+  };
+
+  return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: 点にフォーカスがある間のEscで、留めた読み取りをやめる。操作の入口は点の要素にある
+    <section className="scatter-feature" data-react-feature="scatter" data-scatter-columns={columns} onKeyDown={onKeyDown}>
+      <div
+        ref={gridRef}
+        className="scatter-grid"
+        style={{ gap: FIGURE_GAP, gridTemplateColumns: `repeat(${columns}, minmax(0, ${FIGURE_MAX_WIDTH}px))` }}
+      >
+        {figures.map((figure) => (
+          <FigureView
+            key={figure.preset}
+            figure={figure}
+            language={language}
+            pinned={reading.pinned}
+            hovered={reading.hovered}
+            onHover={setHoveredKey}
+            onLeave={(targetKey) => setHoveredKey((current) => (current === targetKey ? undefined : current))}
+            onTogglePin={(targetKey) => setPinnedKey((current) => togglePinned(stillPinned(current, plottedKeys), targetKey))}
+          />
+        ))}
+      </div>
     </section>
   );
 }
 
-/** 散布図の解析設定（組み合わせと、自由に選ぶ時の軸）。選べない組になる列は、選択肢から外す。 */
+/** 散布図の解析設定（組み合わせ・列の数・目盛りと、自由に選ぶ時の軸）。選べない組になる列は、選択肢から外す。 */
 export function ScatterSettings({ options, onOptionsChange }: AnalyzerSettingsProps<ScatterOptions>) {
   const bind = <K extends keyof ScatterOptions>(key: K) => bindOption(options, DEFAULT_SCATTER_OPTIONS, onOptionsChange, key);
   const language = useTextLanguage();
@@ -377,8 +404,14 @@ export function ScatterSettings({ options, onOptionsChange }: AnalyzerSettingsPr
   const COLUMN_CHOICES = COMPARISON_COLUMN_IDS.map((column) => ({ value: column, label: text[column].label }));
   return (
     <div className="option-groups">
-      <SelectOptionField label="組み合わせ" binding={bind('preset')} choices={SCATTER_PRESET_IDS.map((id) => ({ value: id, label: presetLabels[id] }))} />
-      {options.preset === 'free' ? (
+      <CheckboxGroupOptionField
+        label="組み合わせ"
+        binding={bind('presets')}
+        choices={SCATTER_PRESET_IDS.map((id) => ({ value: id, label: presetLabels[id] }))}
+        minSelected={1}
+        listed
+      />
+      {options.presets.includes('free') ? (
         <>
           <SelectOptionField
             label="横軸"
@@ -401,6 +434,17 @@ export function ScatterSettings({ options, onOptionsChange }: AnalyzerSettingsPr
           { value: 'log', label: '対数' },
         ]}
         hint="対数にできるのは、細い線が直線になる図だけです。"
+      />
+      <SegmentedOptionField
+        label="列の数"
+        binding={bind('columns')}
+        choices={[
+          { value: 'auto', label: '自動' },
+          { value: '1', label: '1' },
+          { value: '2', label: '2' },
+          { value: '3', label: '3' },
+        ]}
+        hint="自動は、幅に収まる最大の列の数にします。数を選ぶと、その数が上限になります。"
       />
     </div>
   );

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { CodecDiagnostic } from '#input/codec/index.ts';
+import { SCATTER_PRESET_IDS } from './axes.ts';
 import { ALTERNATE_SCATTER_OPTIONS, DEFAULT_SCATTER_OPTIONS, scatterOptions } from './options.ts';
 
 test('目盛りの種類: 既定は通常で、URLに載せて読み戻すと同じ設定になる', () => {
@@ -27,4 +28,64 @@ test('目盛りの種類: 知らない値のURLは診断に残して読まない
   const decoded = scatterOptions.decodeOptionsFromUrl(new URLSearchParams('scale=sqrt'), diagnostics);
   assert.equal(diagnostics.length, 1);
   assert.equal(decoded.values.tickScale, undefined);
+});
+
+test('組み合わせ: 既定は distance 1つだけで、既定のままならURLに載せない', () => {
+  assert.deepEqual(DEFAULT_SCATTER_OPTIONS.presets, ['distance']);
+  assert.equal(scatterOptions.encodeOptionsToUrl(DEFAULT_SCATTER_OPTIONS).has('preset'), false);
+});
+
+test('組み合わせ: URLに書き出して読み直すと、同じ並びに戻る', () => {
+  for (const presets of [['hand'], ['distance', 'hand'], ['distance', 'hand', 'free'], [...SCATTER_PRESET_IDS]] as const) {
+    const diagnostics: CodecDiagnostic[] = [];
+    const params = scatterOptions.encodeOptionsToUrl({ ...DEFAULT_SCATTER_OPTIONS, presets });
+    const decoded = scatterOptions.decodeOptionsFromUrl(params, diagnostics);
+    assert.deepEqual(diagnostics, []);
+    const restored = decoded.values.presets ?? DEFAULT_SCATTER_OPTIONS.presets;
+    assert.deepEqual(restored, presets);
+  }
+});
+
+test('組み合わせ: URLの値が一覧と違う順・重複・知らない値・空でも、一覧の順に直し、何も残らなければ既定にする', () => {
+  const read = (query: string) => {
+    const diagnostics: CodecDiagnostic[] = [];
+    const decoded = scatterOptions.decodeOptionsFromUrl(new URLSearchParams(query), diagnostics);
+    return { presets: decoded.values.presets, diagnostics };
+  };
+  assert.deepEqual(read('preset=free,hand,distance').presets, ['distance', 'hand', 'free']);
+  assert.deepEqual(read('preset=hand,hand,hand').presets, ['hand']);
+  const unknown = read('preset=nothing,hand,other');
+  assert.deepEqual(unknown.presets, ['hand']);
+  assert.equal(unknown.diagnostics.length, 2);
+  assert.deepEqual(read('preset=nothing').presets, ['distance']);
+  assert.deepEqual(read('preset=').presets, ['distance']);
+});
+
+test('組み合わせ: 保存した解析設定の値が一覧と違う順・重複・知らない値・空でも、同じ規則で直す', () => {
+  const decode = (presets: unknown) => {
+    const diagnostics: CodecDiagnostic[] = [];
+    const options = scatterOptions.decodeOptions({ presets }, diagnostics) as typeof DEFAULT_SCATTER_OPTIONS;
+    return { presets: options.presets, diagnostics };
+  };
+  assert.deepEqual(decode(['free', 'hand', 'distance']).presets, ['distance', 'hand', 'free']);
+  assert.deepEqual(decode(['hand', 'hand']).presets, ['hand']);
+  const unknown = decode(['nothing', 'hand', 42]);
+  assert.deepEqual(unknown.presets, ['hand']);
+  assert.equal(unknown.diagnostics.length, 2);
+  assert.deepEqual(decode([]).presets, ['distance']);
+  assert.deepEqual(decode(['nothing']).presets, ['distance']);
+  assert.deepEqual(decode('hand').presets, ['distance']);
+});
+
+test('列の数: 既定は自動で、URLに載せて読み戻すと同じ設定になり、知らない値は読まない', () => {
+  assert.equal(DEFAULT_SCATTER_OPTIONS.columns, 'auto');
+  assert.equal(scatterOptions.encodeOptionsToUrl(DEFAULT_SCATTER_OPTIONS).has('columns'), false);
+  const diagnostics: CodecDiagnostic[] = [];
+  const params = scatterOptions.encodeOptionsToUrl({ ...DEFAULT_SCATTER_OPTIONS, columns: '3' });
+  assert.equal(params.get('columns'), '3');
+  assert.equal(scatterOptions.decodeOptionsFromUrl(params, diagnostics).values.columns, '3');
+  assert.deepEqual(diagnostics, []);
+  const broken: CodecDiagnostic[] = [];
+  assert.equal(scatterOptions.decodeOptionsFromUrl(new URLSearchParams('columns=4'), broken).values.columns, undefined);
+  assert.equal(broken.length, 1);
 });

@@ -284,6 +284,22 @@ export function integerUrlCodec(name: string, min: number, max: number): OptionU
   };
 }
 
+/** カンマ区切りの値から、許す値だけを重複なく取り出す。それ以外の要素は診断に積んで捨てる。 */
+function readSetElements<T extends string>(raw: string, allowed: readonly T[], path: string, diagnostics: CodecDiagnostic[]): T[] {
+  if (raw === '') return [];
+  const seen = new Set<T>();
+  const result: T[] = [];
+  for (const element of raw.split(',')) {
+    if ((allowed as readonly string[]).includes(element) && !seen.has(element as T)) {
+      seen.add(element as T);
+      result.push(element as T);
+    } else {
+      diagnostics.push({ path, message: `URLパラメータの要素「${element}」を捨てました` });
+    }
+  }
+  return result;
+}
+
 /**
  * 文字列の集合（順序を持たない・最大件数あり）のURL codec。カンマ区切り。
  * 壊れた要素だけを落として残りは読む（`schema`単体では表現できない集合系項目向け）。
@@ -293,22 +309,28 @@ export function stringSetUrlCodec<T extends string>(name: string, allowed: reado
     name,
     encode: (value) => (value.length === 0 ? undefined : [...value].join(',')),
     decode: (raw, path, diagnostics) => {
-      if (raw === '') return [];
-      const seen = new Set<T>();
-      const result: T[] = [];
-      for (const element of raw.split(',')) {
-        if ((allowed as readonly string[]).includes(element) && !seen.has(element as T)) {
-          seen.add(element as T);
-          result.push(element as T);
-        } else {
-          diagnostics.push({ path, message: `URLパラメータの要素「${element}」を捨てました` });
-        }
-      }
+      const result = readSetElements(raw, allowed, path, diagnostics);
       if (result.length > maxCount) {
         diagnostics.push({ path, message: `要素は${maxCount}件までのため超過分を捨てました` });
       }
       return result.slice(0, maxCount);
     },
+  };
+}
+
+/**
+ * 文字列の集合のURL codec。カンマ区切りで、読んだ要素を`normalize`で整えた値にする
+ * （並べ直しや、空だった時の既定への置き換え）。壊れた要素だけを落として残りは読む。
+ */
+export function normalizedSetUrlCodec<T extends string>(
+  name: string,
+  allowed: readonly T[],
+  normalize: (elements: readonly T[]) => readonly T[],
+): OptionUrlCodec<readonly T[]> {
+  return {
+    name,
+    encode: (value) => (value.length === 0 ? undefined : [...value].join(',')),
+    decode: (raw, path, diagnostics) => normalize(readSetElements(raw, allowed, path, diagnostics)),
   };
 }
 

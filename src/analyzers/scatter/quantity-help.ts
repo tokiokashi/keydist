@@ -98,6 +98,10 @@ function handFingerRateNotes(axes: ScatterAxes, language: TextLanguage): string[
 const LOG_SCALE_NOTE =
   '横軸と縦軸は対数の目盛りです。目盛りの間隔は値の差でなく比に比例し、2軸の積か比が一定の細い線は平行な直線になります。細い線の値の選び方は通常の目盛りと同じなので、線の間隔は等しくなりません。';
 
+/** 点の読み取りを留める操作の説明。図ごとの「図の見方」の終わりに足す。 */
+export const READING_NOTE =
+  '点をクリックすると、その点の読み取りを留めます。留めている間に別の点へ重ねると、2点の値を並べて出します。同じ点をもう一度クリックするかEscキーを押すと、留めるのをやめます。点にフォーカスしてEnterキーかスペースキーを押しても同じです。全ての図で、同じ対象の点を強調します。';
+
 export function scatterQuantityHelp(
   axes: ScatterAxes,
   contour: ScatterContour | undefined,

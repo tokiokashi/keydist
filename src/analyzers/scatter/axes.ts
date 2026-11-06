@@ -56,6 +56,18 @@ export const SCATTER_PRESET_IDS = [
 ] as const;
 export type ScatterPresetId = (typeof SCATTER_PRESET_IDS)[number];
 
+/** 組み合わせを選ばなかった時に使う組み合わせ。 */
+export const DEFAULT_SCATTER_PRESET: ScatterPresetId = 'distance';
+
+/**
+ * 選んだ組み合わせの並びを整える。一覧（`SCATTER_PRESET_IDS`）の順に並べ直し、重複と知らない値を捨てる。
+ * 何も残らなければ既定の組み合わせ1つにする。
+ */
+export function normalizeScatterPresets(raw: readonly unknown[]): readonly ScatterPresetId[] {
+  const chosen = SCATTER_PRESET_IDS.filter((id) => raw.includes(id));
+  return chosen.length > 0 ? chosen : [DEFAULT_SCATTER_PRESET];
+}
+
 export interface ScatterAxes {
   readonly x: ComparisonColumnId;
   readonly y: ComparisonColumnId;
