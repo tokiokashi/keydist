@@ -1169,6 +1169,54 @@ test('割合の細い線: 刻みが10%より細かい時は、今までと同じ
   assert.deepEqual(percentLines(NARROW, true), [40, 45, 50, 55, 60]);
 });
 
+test('割合の細い線: 今の規則で0%の線が選ばれる範囲でも、刻みが10%の時は0%の線を引かない', () => {
+  const zero: PercentCase = {
+    points: [
+      [125.42, 130.33],
+      [126.87, 168.86],
+      [123.97, 8.09],
+    ],
+    x: 'handSwitches',
+    y: 'handContinuations',
+  };
+  assert.deepEqual(percentLines(zero, false), [10, 20, 30, 40, 50]);
+});
+
+test('割合の細い線: 範囲が狭く10%より細かい刻みになる図は、今までと同じ刻みと本数のまま', () => {
+  const cases: [PercentCase['points'], number[]][] = [
+    // 4〜12%付近。刻み2%
+    [
+      [
+        [100, 5],
+        [100, 10],
+        [100, 12],
+      ],
+      [4, 6, 8, 10, 12],
+    ],
+    // 3〜19%付近。刻み2%で8本になる範囲を6本に絞る
+    [
+      [
+        [100, 4],
+        [100, 15],
+        [100, 20],
+      ],
+      [6, 8, 10, 12, 14, 16],
+    ],
+    // 25〜40%付近。10%では3本に満たないので5%
+    [
+      [
+        [100, 35],
+        [100, 60],
+        [100, 50],
+      ],
+      [25, 30, 35, 40],
+    ],
+  ];
+  for (const [points, expected] of cases) {
+    assert.deepEqual(percentLines({ points, x: 'handSwitches', y: 'handContinuations' }, false), expected);
+  }
+});
+
 test('割合の細い線: 同指率・同じ手の続きの割合・移動ありキー率は割合として扱う', () => {
   for (const column of ['sameFingerRate', 'sameHandContinuationRate', 'movedPressShare'] as const) {
     assert.equal(axisUnit(column), '%', column);

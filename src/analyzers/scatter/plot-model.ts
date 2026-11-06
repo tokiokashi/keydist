@@ -416,7 +416,8 @@ function percentLevels(range: Range): readonly number[] {
  * 刻みは`MIN_LEVEL_STEP`より細かくしない。そこまで細かくしても4本に届かない時は、その刻みで引ける線だけを引く。
  *
  * 線の量が割合（単位が%）の時だけ、選ばれた刻みが10%より粗ければ10%に置き換える。刻みが10%の時は6本に絞らず、
- * 10%から90%までの範囲に入る線を全部引く（最大9本）。置き換えた結果、描かれた線が置き換える前より少ない時は置き換えない。
+ * 10%から90%までの範囲に入る線を全部引く（最大9本）。4本の下限は0%と100%を除く前の本数で数える（刻みを細かくする繰り返しは置き換えの前に終わる）ので、
+ * 範囲が0%に届く図では、0%を除いて3本になることがある。0%の線は軸そのものが代わりになるので、細かくし直さない。
  */
 function selectContours(
   contour: ScatterContour,
@@ -452,8 +453,7 @@ function selectContours(
     step = finerStep(step);
   }
   if (axisUnit(contour.column) === '%' && selected.step >= PERCENT_STEP) {
-    const lines = draw(percentLevels(range));
-    if (lines.length >= selected.lines.length) return { lines, step: PERCENT_STEP };
+    return { lines: draw(percentLevels(range)), step: PERCENT_STEP };
   }
   return selected;
 }
