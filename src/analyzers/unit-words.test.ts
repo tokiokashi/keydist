@@ -18,6 +18,7 @@ import {
 import { formatRate, rateChartReadout } from './playback/rate-chart-model.ts';
 import { axisTitle as runChartAxisTitle, RUN_CHART_METRIC_IDS, runChartMetrics } from './run-chart/metric-catalog.ts';
 import { IDENTITIES, identityRelation, SCATTER_PRESET_IDS, scatterContour, scatterPresetDescriptions, scatterPresetLabels } from './scatter/axes.ts';
+import { axisName, axisPlotTitle, axisTitle, SCATTER_KANA_SCRIPT } from './scatter/axis-names.ts';
 import { inputUnitNoteOf, kanaUnitOf } from './unit-words.ts';
 
 /**
@@ -38,9 +39,58 @@ function assertUnitWord(ja: string, en: string, where: string): void {
   if (hasKanaUnit(ja)) assert.equal(en, toEnglishWord(ja), where);
 }
 
+/**
+ * 散布図の単位の語「カナ」。カタカナの語の一部になった「カナ」は単位でないので、前後がカタカナでない時だけ数える。
+ * 散布図でひらがなの単位の語として残してはいけないのは、数詞＋「かなあたり」・「/かな」・「かな数」の3つの形。
+ */
+const KATAKANA_UNIT = /(?<![ァ-ヿ])カナ(?![ァ-ヿ])/gu;
+const HIRAGANA_UNIT_FORMS = /\dかなあたり|\/かな|かな数/u;
+const hasKatakanaUnit = (text: string): boolean => text.search(KATAKANA_UNIT) >= 0;
+
+/**
+ * 散布図の文字列の単位の語。日本語の文字列は3つの形の「かな」を含まない。英語の文字列は「かな」も「カナ」も含まない。
+ * 日本語の文字列に「カナ」が出る時は、英語の文字列が日本語の文字列の「カナ」を「字」にしたものと一致する。
+ */
+function assertScatterUnitWord(ja: string, en: string, where: string): void {
+  assert.doesNotMatch(ja, HIRAGANA_UNIT_FORMS, `${where}: 日本語のテキストに単位の「かな」が残っている`);
+  assert.ok(!hasKanaUnit(en) && !hasKatakanaUnit(en), `${where}: 英語のテキストに「かな」か「カナ」が出ている: ${en}`);
+  if (hasKatakanaUnit(ja)) assert.equal(en, ja.replaceAll(KATAKANA_UNIT, '字'), where);
+}
+
 test('数える単位の呼び名は日本語で「かな」、英語で「字」', () => {
   assert.equal(kanaUnitOf('ja'), 'かな');
   assert.equal(kanaUnitOf('en'), '字');
+});
+
+test('数える単位の呼び名をカタカナで書く画面では、日本語で「カナ」、英語で「字」', () => {
+  assert.equal(kanaUnitOf('ja', 'katakana'), 'カナ');
+  assert.equal(kanaUnitOf('en', 'katakana'), '字');
+  assert.equal(kanaUnitOf('ja', 'hiragana'), 'かな');
+});
+
+test('入力カナ数の説明は「カナ数」から始まり、個々の字を指す「かな」はひらがなのまま', () => {
+  const note = inputUnitNoteOf('ja', 'katakana');
+  assert.ok(note.startsWith('カナ数は'), note);
+  assert.ok(note.includes('大半はかなですが'), note);
+  assert.equal(note, inputUnitNoteOf('ja').replace(/^かな数/u, 'カナ数'));
+  assert.equal(inputUnitNoteOf('en', 'katakana'), inputUnitNoteOf('en'));
+});
+
+test('比較表の列名と説明は、単位の語をカタカナで書くと、ひらがなの「かな」の単位の語だけが「カナ」になる', () => {
+  for (const language of LANGUAGES) {
+    const hiragana = comparisonColumnText(language);
+    const katakana = comparisonColumnText(language, 'katakana');
+    for (const column of COMPARISON_COLUMN_IDS) {
+      for (const field of ['label', 'description'] as const) {
+        assert.doesNotMatch(katakana[column][field], HIRAGANA_UNIT_FORMS, `${column} ${field} ${language}`);
+        assert.equal(
+          katakana[column][field],
+          language === 'ja' ? hiragana[column][field].replaceAll(/(?<=\d|\/)かな|かな(?=数)/gu, 'カナ') : hiragana[column][field],
+        );
+      }
+    }
+  }
+  assert.equal(comparisonColumnText('ja', 'katakana').perCharUnits.label, 'u/カナ');
 });
 
 test('入力かな数の説明は、日本語で「かな数」、英語で「字数」から始まる', () => {
@@ -73,7 +123,7 @@ test('「表示する列」の選択肢の列定義は、比較表の列名と�
 
 test('散布図の恒等式の文と、1字あたりの列を換算する文は、英語のテキストで「かな」が出ない', () => {
   for (const identity of IDENTITIES) {
-    assertUnitWord(identityRelation(identity, 'ja'), identityRelation(identity, 'en'), identityRelation(identity, 'ja'));
+    assertScatterUnitWord(identityRelation(identity, 'ja'), identityRelation(identity, 'en'), identityRelation(identity, 'ja'));
   }
   let converted = 0;
   for (const x of COMPARISON_COLUMN_IDS) {
@@ -82,14 +132,14 @@ test('散布図の恒等式の文と、1字あたりの列を換算する文は�
       const en = scatterContour(x, y, 100, 'en');
       assert.equal(en === undefined, ja === undefined, `${x}/${y}`);
       if (ja === undefined || en === undefined) continue;
-      assertUnitWord(ja.relation, en.relation, `${x}/${y} relation`);
+      assertScatterUnitWord(ja.relation, en.relation, `${x}/${y} relation`);
       if (ja.conversion === undefined) {
         assert.equal(en.conversion, undefined, `${x}/${y}`);
         continue;
       }
       converted += 1;
-      assert.ok(hasKanaUnit(ja.conversion), `${x}/${y}: ${ja.conversion}`);
-      assertUnitWord(ja.conversion, en.conversion ?? '', `${x}/${y} conversion`);
+      assert.ok(hasKatakanaUnit(ja.conversion), `${x}/${y}: ${ja.conversion}`);
+      assertScatterUnitWord(ja.conversion, en.conversion ?? '', `${x}/${y} conversion`);
     }
   }
   assert.ok(converted > 0, '換算の文を持つ軸の組が無い');
@@ -99,9 +149,23 @@ test('散布図の組み合わせの名前と説明は、英語のテキスト�
   const labels = { ja: scatterPresetLabels('ja'), en: scatterPresetLabels('en') };
   const descriptions = { ja: scatterPresetDescriptions('ja'), en: scatterPresetDescriptions('en') };
   for (const preset of SCATTER_PRESET_IDS) {
-    assertUnitWord(labels.ja[preset], labels.en[preset], `${preset} label`);
-    assertUnitWord(descriptions.ja[preset], descriptions.en[preset], `${preset} description`);
+    assertScatterUnitWord(labels.ja[preset], labels.en[preset], `${preset} label`);
+    assertScatterUnitWord(descriptions.ja[preset], descriptions.en[preset], `${preset} description`);
   }
+  assert.equal(labels.ja.press, '1アクションあたりのキー数と1カナあたりのアクション数');
+});
+
+test('散布図の軸の名前は、日本語のテキストで単位の語を「カナ」と書き、英語のテキストで「字」になる', () => {
+  assert.equal(SCATTER_KANA_SCRIPT, 'katakana');
+  let withUnit = 0;
+  for (const column of COMPARISON_COLUMN_IDS) {
+    for (const nameOf of [axisName, axisTitle, axisPlotTitle]) {
+      const ja = nameOf(column, 'ja');
+      assertScatterUnitWord(ja, nameOf(column, 'en'), `${column} ${nameOf.name}`);
+      if (hasKatakanaUnit(ja)) withUnit += 1;
+    }
+  }
+  assert.ok(withUnit > 0, '「カナ」を含む軸の名前が無い');
 });
 
 test('複数のAnalyzerが縦軸に描く指標の名前と単位は、英語のテキストで「字」になる', () => {

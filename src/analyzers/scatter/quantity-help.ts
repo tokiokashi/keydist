@@ -2,7 +2,7 @@ import type { TextLanguage } from '#input/text/language.ts';
 import { COMPARISON_COLUMN_FORMAT, comparisonColumnText, COMPARISON_UNIT_NOTE, type ComparisonColumnId } from '../comparison-column-text.ts';
 import type { ComparisonRowValues } from '../comparison-column-values.ts';
 import { isHandShareColumn, type ScatterAxes, type ScatterContour } from './axes.ts';
-import { axisName, axisTitle, axisUnit } from './axis-names.ts';
+import { axisName, axisTitle, axisUnit, SCATTER_KANA_SCRIPT } from './axis-names.ts';
 import { SCATTER_KIND_ORDER, SCATTER_KIND_STYLES } from './kinds.ts';
 
 /**
@@ -95,7 +95,9 @@ function handFingerRateNotes(axes: ScatterAxes, language: TextLanguage): string[
 }
 
 export function scatterQuantityHelp(axes: ScatterAxes, contour: ScatterContour | undefined, language: TextLanguage): ScatterQuantityHelp {
-  const text = comparisonColumnText(language);
+  // 列名は比較表で列を探す目印なので、比較表の見出しと同じ書き方で引く。説明は散布図の単位の語の書き方で読む
+  const tableText = comparisonColumnText(language);
+  const text = comparisonColumnText(language, SCATTER_KANA_SCRIPT);
   const description = `${SCATTER_KIND_ORDER.map((kind) => `${SCATTER_KIND_STYLES[kind].colorName}の${SCATTER_KIND_STYLES[kind].shapeName}は${SCATTER_KIND_STYLES[kind].label}`).join('、')}です。`;
   const quantities: { readonly role: string; readonly column: ComparisonColumnId }[] = [
     { role: '横軸', column: axes.x },
@@ -127,7 +129,7 @@ export function scatterQuantityHelp(axes: ScatterAxes, contour: ScatterContour |
       // 軸の名前から比較表の列を探せるよう、説明の先頭に比較表の列名を添える
       items: quantities.map(({ role, column }) => ({
         name: `${role}　${axisTitle(column, language)}`,
-        description: `比較表の列名は「${text[column].label}」。${text[column].description}`,
+        description: `比較表の列名は「${tableText[column].label}」。${text[column].description}`,
       })),
     },
   };

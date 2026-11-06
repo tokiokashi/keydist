@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { COMPARISON_COLUMN_IDS, COMPARISON_UNIT_NOTE, comparisonColumnText } from '../comparison-column-text.ts';
-import { axisName, axisTitle, KEY_COUNT_NAME } from './axis-names.ts';
+import { axisName, axisTitle, KEY_COUNT_NAME, SCATTER_KANA_SCRIPT } from './axis-names.ts';
 import {
   IDENTITIES,
   identityRelation,
@@ -19,11 +19,12 @@ const INPUT_CHARS = 100;
 const PRESETS = SCATTER_PRESET_IDS.filter((id) => id !== 'free');
 
 type Column = (typeof COMPARISON_COLUMN_IDS)[number];
-const text = (column: Column) => comparisonColumnText('ja')[column];
+const tableText = (column: Column) => comparisonColumnText('ja')[column];
+const text = (column: Column) => comparisonColumnText('ja', SCATTER_KANA_SCRIPT)[column];
 const name = (column: Column) => axisName(column, 'ja');
 const title = (column: Column) => axisTitle(column, 'ja');
-/** 図の見方の量の一覧の説明。軸の名前から比較表の列を探せるよう、列名を先頭に添える。 */
-const itemDescription = (column: Column) => `比較表の列名は「${text(column).label}」。${text(column).description}`;
+/** 図の見方の量の一覧の説明。軸の名前から比較表の列を探せるよう、比較表の見出しのとおりの列名を先頭に添え、説明は散布図の単位の語で書く。 */
+const itemDescription = (column: Column) => `比較表の列名は「${tableText(column).label}」。${text(column).description}`;
 
 test('どの恒等式も、3つの量を総数の形の名前で並べた式を持つ', () => {
   for (const identity of IDENTITIES) {
@@ -133,10 +134,10 @@ test('距離の単位の説明は、単位がuか1/uの量がある時だけ出�
 test('1かなあたりの列が入る組は、総数を入力かな数で割った値だという換算を関係の文に足す', () => {
   const perPress = scatterContour('perCharPresses', 'perPressUnits', INPUT_CHARS, 'ja')!;
   assert.equal(perPress.relation, '総移動距離 = キー数 × 1キーあたりの距離');
-  assert.equal(perPress.conversion, '1かなあたりのキー数はキー数を入力かな数で割った値、1かなあたりの距離は総移動距離を入力かな数で割った値');
+  assert.equal(perPress.conversion, '1カナあたりのキー数はキー数を入力カナ数で割った値、1カナあたりの距離は総移動距離を入力カナ数で割った値');
   const distance = scatterContour('perCharSteps', 'meanPerStroke', INPUT_CHARS, 'ja')!;
   assert.equal(distance.relation, '総移動距離 = アクション数 × 1アクションあたりの距離');
-  assert.equal(distance.conversion, '1かなあたりのアクション数はアクション数を入力かな数で割った値、1かなあたりの距離は総移動距離を入力かな数で割った値');
+  assert.equal(distance.conversion, '1カナあたりのアクション数はアクション数を入力カナ数で割った値、1カナあたりの距離は総移動距離を入力カナ数で割った値');
   // 総数の形の軸だけの組には換算を足さない
   const hand = scatterContour('handSwitches', 'handContinuations', INPUT_CHARS, 'ja')!;
   assert.equal(hand.relation, identityRelation(IDENTITIES[5]!, 'ja'));
@@ -251,7 +252,7 @@ test('50%の線の説明: 軸の片方だけが右手の割合の時は、その
 });
 
 test('図の下のキャプション: 縦軸の量と横軸の量の関係を、軸の名前から単位を除いた言葉で言い切る', () => {
-  assert.equal(scatterCaption(SCATTER_PRESET_AXES.distance, 'ja'), '1アクションあたりの距離と1かなあたりのアクション数の関係');
+  assert.equal(scatterCaption(SCATTER_PRESET_AXES.distance, 'ja'), '1アクションあたりの距離と1カナあたりのアクション数の関係');
   assert.equal(scatterCaption(SCATTER_PRESET_AXES.handShare, 'ja'), '右手距離率と右手キー率の関係');
   assert.equal(scatterCaption({ x: 'totalUnits', y: 'sameFinger' }, 'ja'), '同指の回数と総移動距離の関係');
   // 英語のテキストでは、名前の「かな」が「字」になる
@@ -273,7 +274,7 @@ test('点の読み取り: 線を引く組は線の量の値を出し、線を引
   // 線を引く既定の組: u/かな = アクション数/かな × u/アクション
   assert.equal(
     readout(SCATTER_PRESET_AXES.distance, 1.5, 2, { ...values, perCharUnits: 3 }),
-    'QWERTY　1かなあたりのアクション数 1.500　1アクションあたりの距離 2.000　1かなあたりの距離 3.000',
+    'QWERTY　1カナあたりのアクション数 1.500　1アクションあたりの距離 2.000　1カナあたりの距離 3.000',
   );
   // 線を引かない組: 線の量（u/キー・u/アクション・アクション/u）の名前と値を出さない
   assert.equal(
@@ -289,6 +290,19 @@ test('点の読み取り: 線を引く組は線の量の値を出し、線を引
   // 線の量の列が値を持たない対象には、線を引く組でも出さない
   assert.equal(
     readout(SCATTER_PRESET_AXES.distance, 1.5, 2, { ...values, perCharUnits: Number.NaN }),
-    'QWERTY　1かなあたりのアクション数 1.500　1アクションあたりの距離 2.000',
+    'QWERTY　1カナあたりのアクション数 1.500　1アクションあたりの距離 2.000',
   );
+});
+
+test('図の見方の量の説明は、比較表の列名を比較表の見出しのとおり「かな」で引き、続く説明は「カナ」で書く', () => {
+  const { help } = scatterQuantityHelp(SCATTER_PRESET_AXES.perPress, scatterContour('perCharPresses', 'perPressUnits', INPUT_CHARS, 'ja'), 'ja');
+  assert.deepEqual(
+    help.items.map((item) => item.description.slice(0, item.description.indexOf('。') + 1)),
+    ['比較表の列名は「キー数/かな」。', '比較表の列名は「u/キー」。', '比較表の列名は「u/かな」。'],
+  );
+  const [x, , line] = help.items.map((item) => item.description);
+  assert.ok(x?.includes('入力1カナあたりに押すキーの数。'), x);
+  assert.ok(line?.includes('入力1カナあたりの総移動距離（u/カナ）。カナ数は、'), line);
+  // 個々の字を指す「かな」は単位の語でないので、ひらがなのまま
+  assert.ok(line?.includes('大半はかなですが'), line);
 });

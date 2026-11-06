@@ -1,5 +1,5 @@
 import type { TextLanguage } from '#input/text/language.ts';
-import { inputUnitNoteOf, kanaUnitOf } from './unit-words.ts';
+import { inputUnitNoteOf, type KanaScript, kanaUnitOf } from './unit-words.ts';
 
 /**
  * 比較表の列の名前・説明・表示形式。比較表の列の定義（`comparison/options.ts`）と、見出しのⓘから開く説明（`comparison/pane-meta.ts`）に加え、
@@ -52,7 +52,7 @@ export interface ComparisonColumnText {
   /**
    * 見出しの短い名前。見出しには単位を付けない（単位は見出しのⓘから開く説明に書く）。
    * 率の列は値の側に `%` が付き、`u/アクション`・`u/かな` は名前が単位を含む。
-   * 「かな」はテキストの言語で出し分ける（英語のテキストでは「字」。`unit-words.ts`）。
+   * 「かな」はテキストの言語で出し分ける（英語のテキストでは「字」。`unit-words.ts`）。散布図は「カナ」と書く（`KanaScript`）。
    */
   readonly label: string;
   /** この列の説明。見出しのⓘから開く説明に、列名と組で出す。 */
@@ -62,9 +62,9 @@ export interface ComparisonColumnText {
 /** 説明の先頭に出す、距離の単位の説明。 */
 export const COMPARISON_UNIT_NOTE = '距離の単位uは、キーの幅を1とした距離。';
 
-function buildColumnText(language: TextLanguage): Readonly<Record<ComparisonColumnId, ComparisonColumnText>> {
-  const k = kanaUnitOf(language);
-  const countNote = inputUnitNoteOf(language);
+function buildColumnText(language: TextLanguage, script: KanaScript): Readonly<Record<ComparisonColumnId, ComparisonColumnText>> {
+  const k = kanaUnitOf(language, script);
+  const countNote = inputUnitNoteOf(language, script);
   // 文字数は、漢字仮名交じりのテキストの字で数える。英語のテキストでは入力字数と同じ
   const textCharNote =
     '文字は漢字仮名交じりのテキストの字で数え、漢字を読みに直した語は読みでなく表記の字数で数えます。英語のテキストでは字の数と同じです。';
@@ -219,14 +219,19 @@ function buildColumnText(language: TextLanguage): Readonly<Record<ComparisonColu
   };
 }
 
-const COLUMN_TEXT_BY_LANGUAGE: Readonly<Record<TextLanguage, Readonly<Record<ComparisonColumnId, ComparisonColumnText>>>> = {
-  ja: buildColumnText('ja'),
-  en: buildColumnText('en'),
+type ColumnTexts = Readonly<Record<ComparisonColumnId, ComparisonColumnText>>;
+
+const COLUMN_TEXT_BY_LANGUAGE: Readonly<Record<KanaScript, Readonly<Record<TextLanguage, ColumnTexts>>>> = {
+  hiragana: { ja: buildColumnText('ja', 'hiragana'), en: buildColumnText('en', 'hiragana') },
+  katakana: { ja: buildColumnText('ja', 'katakana'), en: buildColumnText('en', 'katakana') },
 };
 
-/** テキストの言語に合わせた列の名前と説明。 */
-export function comparisonColumnText(language: TextLanguage): Readonly<Record<ComparisonColumnId, ComparisonColumnText>> {
-  return COLUMN_TEXT_BY_LANGUAGE[language];
+/**
+ * テキストの言語に合わせた列の名前と説明。
+ * `script`は日本語のテキストの単位の語の書き方（`unit-words.ts`）。比較表は「かな」、散布図は「カナ」で読む。
+ */
+export function comparisonColumnText(language: TextLanguage, script: KanaScript = 'hiragana'): ColumnTexts {
+  return COLUMN_TEXT_BY_LANGUAGE[script][language];
 }
 
 const fixed =

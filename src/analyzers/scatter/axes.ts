@@ -1,7 +1,7 @@
 import type { TextLanguage } from '#input/text/language.ts';
 import { COMPARISON_COLUMN_IDS, type ComparisonColumnId } from '../comparison-column-text.ts';
 import { kanaUnitOf } from '../unit-words.ts';
-import { axisName, axisPlotTitle, KEY_COUNT_NAME } from './axis-names.ts';
+import { axisName, axisPlotTitle, KEY_COUNT_NAME, SCATTER_KANA_SCRIPT } from './axis-names.ts';
 
 /**
  * 散布図の軸の組み合わせと、軸の2つの量から恒等式で決まる3つ目の量（等位線の量）。
@@ -358,7 +358,9 @@ export function scatterContour(x: ComparisonColumnId, y: ComparisonColumnId, inp
       [outColumn, rq, outForm],
     ].flatMap(([column, quantity, form]) =>
       form === 'perChar'
-        ? [`${axisName(column as ComparisonColumnId, language)}は${totalName(quantity as Quantity, language)}を入力${kanaUnitOf(language)}数で割った値`]
+        ? [
+            `${axisName(column as ComparisonColumnId, language)}は${totalName(quantity as Quantity, language)}を入力${kanaUnitOf(language, SCATTER_KANA_SCRIPT)}数で割った値`,
+          ]
         : [],
     );
     const valueAt = (xv: number, yv: number): number | undefined => {
