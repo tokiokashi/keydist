@@ -124,6 +124,18 @@
   pointer-events: none;
 }
 
+/* 点に重ねた時やフォーカスした時、その点の名前の行に下線を引く。印が重なる点の組の名前では、どの行がその点かを示す */
+.scatter-point-label[data-active] {
+  text-decoration: underline;
+}
+
+/* 点から離れた場所に置いた名前と、点の印を結ぶ細い線 */
+.scatter-leader {
+  stroke: var(--text-muted);
+  stroke-width: 0.75;
+  pointer-events: none;
+}
+
 .scatter-point-ring {
   fill: none;
   stroke: var(--focus);

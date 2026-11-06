@@ -67,10 +67,32 @@ export interface PlotTick {
   readonly text: string;
 }
 
-export interface PlotLabel {
+/** 長方形（図の座標）。 */
+export interface PlotRect {
+  readonly x0: number;
+  readonly x1: number;
+  readonly y0: number;
+  readonly y1: number;
+}
+
+/** 点の名前の1行。`x`は行頭、`y`は基準線。 */
+export interface PlotNameLine {
+  readonly targetKey: string;
+  readonly text: string;
   readonly x: number;
   readonly y: number;
-  readonly anchor: 'start' | 'end' | 'middle';
+}
+
+/**
+ * 点の名前の置き場所。印が重なる点の組は1つの名前にまとめ、行は縦軸の値の大きい順（同じ値なら名前の順）に、上から下、左の列から右の列へ並べる。
+ * 行が多い名前は、1列の行数が`NAME_MAX_ROWS`以下になるよう列に分ける。印が重ならない点の名前は1行で、1つの点に対応する。
+ */
+export interface PlotName {
+  readonly lines: readonly PlotNameLine[];
+  /** 名前の占める長方形。周りに余白を足してある。名前どうしの重なりはこの長方形の交差で数える。 */
+  readonly rect: PlotRect;
+  /** 点から離れた場所に置いた名前と、点の印を結ぶ細い線。近くに置いた名前には無い。 */
+  readonly leader: { readonly x1: number; readonly y1: number; readonly x2: number; readonly y2: number } | undefined;
 }
 
 export interface PlotPointInput {
@@ -83,7 +105,6 @@ export interface PlotPointInput {
 export interface PlotPoint extends PlotPointInput {
   readonly px: number;
   readonly py: number;
-  readonly labelAt: PlotLabel;
 }
 
 export interface PlotContourLine {
@@ -110,6 +131,8 @@ export interface ScatterPlotModel {
   readonly xTicks: readonly PlotTick[];
   readonly yTicks: readonly PlotTick[];
   readonly points: readonly PlotPoint[];
+  /** 点の名前。点の入力順ではなく、置いた順（印が重なる組が先）に並ぶ。 */
+  readonly names: readonly PlotName[];
   readonly contours: readonly PlotContourLine[];
   /** 左右が均等になる50%の位置の線。軸の範囲の外にある線と、対象の軸でない線は含まない。 */
   readonly centerLines: readonly PlotCenterLine[];
@@ -263,6 +286,11 @@ function contourLine(contour: ScatterContour, level: number, xRange: Range, yRan
 /** 値を書く候補の位置を線に沿って並べる間隔（標本の数）。 */
 const ANCHOR_STRIDE = 8;
 
+/** 描く点の印の大きさ（半径）。 */
+export const MARK_RADIUS = 5.5;
+/** 印が重なるかを決める中心どうしの距離の境目。印の直径。 */
+const MARK_DIAMETER = MARK_RADIUS * 2;
+/** 名前を探す時に点の周りに空ける余白。 */
 const POINT_CLEARANCE = 7;
 /** 名前・値が描画領域の枠の線から空ける距離。 */
 const FRAME_MARGIN = 2;
@@ -286,12 +314,7 @@ export function estimateTextWidth(text: string): number {
   return width;
 }
 
-interface Rect {
-  readonly x0: number;
-  readonly x1: number;
-  readonly y0: number;
-  readonly y1: number;
-}
+type Rect = PlotRect;
 
 function overlaps(a: Rect, b: Rect): boolean {
   return a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
@@ -354,54 +377,206 @@ function leavesPlot(rect: Rect): boolean {
   );
 }
 
+interface Cluster {
+  /** 入力の順の添字。縦軸の値の大きい順（同じ値なら名前の順）に並べてある。 */
+  readonly members: readonly number[];
+  readonly cx: number;
+  readonly cy: number;
+}
+
+/** 印が重なる点（中心どうしの距離が印の直径より小さい点）を、つながる限り1つの組にまとめる。 */
+function clusterPoints(points: readonly { readonly px: number; readonly py: number; readonly y: number; readonly label: string }[]): Cluster[] {
+  const parent = points.map((_, index) => index);
+  const find = (index: number): number => {
+    let root = index;
+    while (parent[root] !== root) root = parent[root]!;
+    return root;
+  };
+  for (let i = 0; i < points.length; i++) {
+    for (let j = i + 1; j < points.length; j++) {
+      if (Math.hypot(points[i]!.px - points[j]!.px, points[i]!.py - points[j]!.py) < MARK_DIAMETER) parent[find(j)] = find(i);
+    }
+  }
+  const byRoot = new Map<number, number[]>();
+  points.forEach((_, index) => {
+    const root = find(index);
+    byRoot.set(root, [...(byRoot.get(root) ?? []), index]);
+  });
+  return [...byRoot.values()].map((indices) => {
+    const members = [...indices].sort((a, b) => {
+      const pa = points[a]!;
+      const pb = points[b]!;
+      return pb.y - pa.y || (pa.label < pb.label ? -1 : pa.label > pb.label ? 1 : 0);
+    });
+    const sum = indices.reduce((acc, index) => ({ x: acc.x + points[index]!.px, y: acc.y + points[index]!.py }), { x: 0, y: 0 });
+    return { members, cx: sum.x / indices.length, cy: sum.y / indices.length };
+  });
+}
+
+/** 線分が長方形と交わる（Liang-Barsky）。 */
+function segmentHits(segment: { readonly x1: number; readonly y1: number; readonly x2: number; readonly y2: number }, rect: Rect): boolean {
+  const dx = segment.x2 - segment.x1;
+  const dy = segment.y2 - segment.y1;
+  let t0 = 0;
+  let t1 = 1;
+  const clip = (p: number, q: number): boolean => {
+    if (p === 0) return q >= 0;
+    const t = q / p;
+    if (p < 0) {
+      if (t > t1) return false;
+      if (t > t0) t0 = t;
+    } else {
+      if (t < t0) return false;
+      if (t < t1) t1 = t;
+    }
+    return true;
+  };
+  return clip(-dx, segment.x1 - rect.x0) && clip(dx, rect.x1 - segment.x1) && clip(-dy, segment.y1 - rect.y0) && clip(dy, rect.y1 - segment.y1);
+}
+
+/** 名前の行の高さ（基準線の間隔）。 */
+const NAME_LINE_HEIGHT = 13;
+/** 名前を列に分けない行数の上限。これを超える組は、行数がなるべく揃うよう列に分ける。 */
+const NAME_MAX_ROWS = 12;
+/** 名前の列と列の間の幅。 */
+const NAME_COLUMN_GAP = 14;
+/** 点の近くに置けなかった時に試す、点から名前までの距離。 */
+const FAR_DISTANCES = [24, 42, 64, 92, 124] as const;
+/** 点から名前への向き（右・左・上・下と、斜め4方向）。 */
+const FAR_DIRECTIONS = [
+  [1, 0],
+  [-1, 0],
+  [0, -1],
+  [0, 1],
+  [Math.SQRT1_2, -Math.SQRT1_2],
+  [-Math.SQRT1_2, -Math.SQRT1_2],
+  [Math.SQRT1_2, Math.SQRT1_2],
+  [-Math.SQRT1_2, Math.SQRT1_2],
+] as const;
+/** 引き出し線を引く最小の長さ。これより短い置き方には線を付けない。 */
+const MIN_LEADER = 6;
+
+interface NameCandidate {
+  /** 名前の左端。 */
+  readonly x: number;
+  readonly firstBaseline: number;
+  readonly rect: Rect;
+  readonly leader: PlotName['leader'];
+}
+
+/** 名前の長方形に最も近い組の点の印の縁から、長方形の最も近い場所へ引く線。短い時は引かない。 */
+function leaderOf(cluster: Cluster, points: readonly { readonly px: number; readonly py: number }[], rect: Rect): PlotName['leader'] {
+  let best: { px: number; py: number; qx: number; qy: number; distance: number } | undefined;
+  for (const index of cluster.members) {
+    const p = points[index]!;
+    const qx = Math.min(Math.max(p.px, rect.x0), rect.x1);
+    const qy = Math.min(Math.max(p.py, rect.y0), rect.y1);
+    const distance = Math.hypot(qx - p.px, qy - p.py);
+    if (best === undefined || distance < best.distance) best = { px: p.px, py: p.py, qx, qy, distance };
+  }
+  if (best === undefined || best.distance - MARK_RADIUS < MIN_LEADER) return undefined;
+  const ux = (best.qx - best.px) / best.distance;
+  const uy = (best.qy - best.py) / best.distance;
+  return { x1: best.px + ux * (MARK_RADIUS + 1), y1: best.py + uy * (MARK_RADIUS + 1), x2: best.qx, y2: best.qy };
+}
+
 /**
- * 点の名前の置き場所。右・左・上・下の順に、他の名前・点・図の外と重ならない最初の場所を選ぶ。
- * どこも重なる時は、重なりが最も少ない場所にする。
+ * 点の名前の置き場所。印が重なる点の組は1つの名前（行を縦軸の値の大きい順に積む）にして、組の点の中心を1つの点とみなして置く。
+ * 候補は、点の右・左・上・下（近く）、続けて点から離れた40か所（引き出し線を付ける）の順。他の名前・点の印・引き出し線・図の外と重ならない最初の場所を選ぶ。
+ * どこも重なる時は、重なりが最も少ない場所にする。名前は、印が重なる組（大きい組が先）、印が重ならない点の順に置く。
  */
-function placeLabels(points: readonly { readonly px: number; readonly py: number; readonly label: string }[]): Array<{ label: PlotLabel; rect: Rect }> {
+function placeNames(
+  points: readonly { readonly targetKey: string; readonly px: number; readonly py: number; readonly y: number; readonly label: string }[],
+): PlotName[] {
   const marks: Rect[] = points.map((p) => ({
     x0: p.px - POINT_CLEARANCE,
     x1: p.px + POINT_CLEARANCE,
     y0: p.py - POINT_CLEARANCE,
     y1: p.py + POINT_CLEARANCE,
   }));
-  const placed: Rect[] = [];
-  return points.map((point) => {
-    const width = estimateTextWidth(point.label);
+  const hitMarks: Rect[] = points.map((p) => ({ x0: p.px - MARK_RADIUS, x1: p.px + MARK_RADIUS, y0: p.py - MARK_RADIUS, y1: p.py + MARK_RADIUS }));
+  // 大きい組が先。同じ大きさなら入力の順（組の中で最も小さい添字）
+  const order = clusterPoints(points).sort((a, b) => b.members.length - a.members.length || Math.min(...a.members) - Math.min(...b.members));
+  const placed: PlotName[] = [];
+  for (const cluster of order) {
+    const lines = cluster.members.map((index) => points[index]!);
+    const rows = lines.length <= NAME_MAX_ROWS ? lines.length : Math.ceil(lines.length / Math.ceil(lines.length / NAME_MAX_ROWS));
+    const columnCount = Math.ceil(lines.length / rows);
+    const columnWidths = Array.from({ length: columnCount }, (_, column) =>
+      Math.max(...lines.slice(column * rows, (column + 1) * rows).map((line) => estimateTextWidth(line.label))),
+    );
+    const columnOffsets = columnWidths.map((_, column) => columnWidths.slice(0, column).reduce((sum, w) => sum + w + NAME_COLUMN_GAP, 0));
+    const width = columnOffsets[columnCount - 1]! + columnWidths[columnCount - 1]!;
+    const own = new Set(cluster.members);
+    const span = NAME_LINE_HEIGHT * (rows - 1);
     // 文字の高さは基準線の上10.5・下3.5。周りに1ずつ余白を足す
-    const at = (x: number, baseline: number, anchor: PlotLabel['anchor']): { label: PlotLabel; rect: Rect } => {
-      const x0 = anchor === 'start' ? x : anchor === 'end' ? x - width : x - width / 2;
-      return { label: { x, y: baseline, anchor }, rect: { x0: x0 - 1, x1: x0 + width + 1, y0: baseline - 11.5, y1: baseline + 4.5 } };
+    const build = (x: number, firstBaseline: number, withLeader: boolean): NameCandidate => {
+      const rect = { x0: x - 1, x1: x + width + 1, y0: firstBaseline - 11.5, y1: firstBaseline + span + 4.5 };
+      return { x, firstBaseline, rect, leader: withLeader ? leaderOf(cluster, points, rect) : undefined };
     };
-    // 上下の候補は、点の真上・真下に中央揃えで置き、横に枠から出る時は枠の中へ寄せる
-    const centered = (baseline: number) => {
-      const left = Math.min(Math.max(point.px - width / 2, PLOT_LEFT + FRAME_MARGIN + 1), PLOT_RIGHT - FRAME_MARGIN - 1 - width);
-      return at(left, baseline, 'start');
+    // 上下の候補は、点の真上・真下に置き、横に枠から出る時は枠の中へ寄せる
+    const centered = (baseline: number): NameCandidate => {
+      const left = Math.min(Math.max(cluster.cx - width / 2, PLOT_LEFT + FRAME_MARGIN + 1), PLOT_RIGHT - FRAME_MARGIN - 1 - width);
+      return build(left, baseline, false);
     };
-    const candidates = [at(point.px + 9, point.py + 4, 'start'), at(point.px - 9, point.py + 4, 'end'), centered(point.py - 10), centered(point.py + 19)];
+    const candidates: NameCandidate[] = [
+      build(cluster.cx + 9, cluster.cy + 4 - span / 2, false),
+      build(cluster.cx - 9 - width, cluster.cy + 4 - span / 2, false),
+      centered(cluster.cy - 10 - span),
+      centered(cluster.cy + 19),
+    ];
+    for (const distance of FAR_DISTANCES) {
+      for (const [ux, uy] of FAR_DIRECTIONS) {
+        const tx = cluster.cx + ux * distance;
+        const ty = cluster.cy + uy * distance;
+        const x = ux > 0.3 ? tx : ux < -0.3 ? tx - width : tx - width / 2;
+        const baseline = uy < -0.3 ? ty - span : uy > 0.3 ? ty + 10 : ty + 4 - span / 2;
+        // 枠の中へ寄せる。名前が長い・高い時は寄せきれず、枠から出る分が費用に入る
+        const probe = build(x, baseline, false).rect;
+        const shiftX = Math.max(0, PLOT_LEFT + FRAME_MARGIN - probe.x0) - Math.max(0, probe.x1 - (PLOT_RIGHT - FRAME_MARGIN));
+        const shiftY = Math.max(0, PLOT_TOP + FRAME_MARGIN - probe.y0) - Math.max(0, probe.y1 - (PLOT_BOTTOM - FRAME_MARGIN));
+        candidates.push(build(x + shiftX, baseline + shiftY, true));
+      }
+    }
     let best = candidates[0]!;
     let bestCost = Number.POSITIVE_INFINITY;
     for (const candidate of candidates) {
-      const { rect } = candidate;
-      // 枠の外へ出る置き方は、他の名前・点と重なる置き方より必ず後にする。どれも出る時は、出る量が少ない方（上下の候補は枠の中へ寄せるので、点が枠の端でも出ない）
+      const { rect, leader } = candidate;
+      // 枠の外へ出る置き方は、他の名前・点と重なる置き方より必ず後にする。どれも出る時は、出る量が少ない方
       const overshoot =
         Math.max(0, PLOT_LEFT + FRAME_MARGIN - rect.x0) +
         Math.max(0, rect.x1 - (PLOT_RIGHT - FRAME_MARGIN)) +
         Math.max(0, PLOT_TOP + FRAME_MARGIN - rect.y0) +
         Math.max(0, rect.y1 - (PLOT_BOTTOM - FRAME_MARGIN));
+      const leaderHits =
+        leader === undefined
+          ? 0
+          : placed.filter((other) => segmentHits(leader, other.rect)).length +
+            hitMarks.filter((mark, index) => !own.has(index) && segmentHits(leader, mark)).length;
       const cost =
         (overshoot > 0 ? 1e6 + overshoot * 1000 : 0) +
-        placed.filter((other) => overlaps(rect, other)).length +
-        marks.filter((mark) => overlaps(rect, mark)).length;
+        placed.filter((other) => overlaps(rect, other.rect)).length +
+        marks.filter((mark) => overlaps(rect, mark)).length +
+        placed.filter((other) => other.leader !== undefined && segmentHits(other.leader, rect)).length +
+        leaderHits;
       if (cost < bestCost) {
         best = candidate;
         bestCost = cost;
       }
       if (cost === 0) break;
     }
-    placed.push(best.rect);
-    return best;
-  });
+    placed.push({
+      lines: lines.map((line, index) => ({
+        targetKey: line.targetKey,
+        text: line.label,
+        x: best.x + columnOffsets[Math.floor(index / rows)]!,
+        y: best.firstBaseline + NAME_LINE_HEIGHT * (index % rows),
+      })),
+      rect: best.rect,
+      leader: best.leader,
+    });
+  }
+  return placed;
 }
 
 /** 散布図の座標。点が無い時も軸の目盛りは返す。 */
@@ -417,8 +592,8 @@ export function scatterPlotModel(input: ScatterPlotInput): ScatterPlotModel {
     px: positionOf(p.x, xRange, PLOT_LEFT, PLOT_RIGHT),
     py: positionOf(p.y, yRange, PLOT_BOTTOM, PLOT_TOP),
   }));
-  const labels = placeLabels(positioned);
-  const points = positioned.map((p, index) => ({ ...p, labelAt: labels[index]!.label }));
+  const names = placeNames(positioned);
+  const points = positioned;
   const marks: Rect[] = positioned.map((p) => ({
     x0: p.px - POINT_CLEARANCE,
     x1: p.px + POINT_CLEARANCE,
@@ -445,10 +620,10 @@ export function scatterPlotModel(input: ScatterPlotInput): ScatterPlotModel {
   const legend = placeLegend(
     drawn.length > 0 ? [...input.legendRows, input.contourName] : input.legendRows,
     marks,
-    labels.map((placed) => placed.rect),
+    names.map((placed) => placed.rect),
   );
   const occupied: Rect[] = [
-    ...labels.map((placed) => placed.rect),
+    ...names.map((placed) => placed.rect),
     ...marks,
     ...(legend === undefined ? [] : [{ x0: legend.x0, x1: legend.x1, y0: legend.y0, y1: legend.y1 }]),
   ];
@@ -474,5 +649,5 @@ export function scatterPlotModel(input: ScatterPlotInput): ScatterPlotModel {
     return { level: line.level, d: line.d, labelAt: placedAt, text };
   });
   const titleX = yTitleX(yTicks);
-  return { xTicks, yTicks, points, contours, centerLines, legend, yTitleX: titleX, viewBoxX: Math.min(0, titleX - Y_TITLE_ASCENT) };
+  return { xTicks, yTicks, points, names, contours, centerLines, legend, yTitleX: titleX, viewBoxX: Math.min(0, titleX - Y_TITLE_ASCENT) };
 }

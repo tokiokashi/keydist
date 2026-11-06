@@ -25,7 +25,7 @@ import { SCATTER_KIND_ORDER, SCATTER_KIND_STYLES } from './kinds.ts';
 import { DEFAULT_SCATTER_OPTIONS, scatterOptions, type ScatterOptions } from './options.ts';
 import { SCATTER_PANE_META } from './pane-meta.ts';
 import { readoutText, scatterCaption, scatterQuantityHelp } from './quantity-help.ts';
-import { PLOT_HEIGHT, PLOT_MARGIN, PLOT_WIDTH, scatterPlotModel } from './plot-model.ts';
+import { MARK_RADIUS, PLOT_HEIGHT, PLOT_MARGIN, PLOT_WIDTH, scatterPlotModel } from './plot-model.ts';
 import './scatter-view.css';
 
 /**
@@ -47,7 +47,7 @@ export interface ScatterRowContext {
 export type ScatterBodyProps = SetBodyProps<ScatterExtracted, ScatterOptions, ScatterRowContext>;
 
 /** 点の印の大きさ（半径）。 */
-const MARK_SIZE = 5.5;
+const MARK_SIZE = MARK_RADIUS;
 
 const PLOT_RIGHT = PLOT_WIDTH - PLOT_MARGIN.right;
 const PLOT_BOTTOM = PLOT_HEIGHT - PLOT_MARGIN.bottom;
@@ -297,12 +297,33 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
                     <title>{row.fullName || row.label}</title>
                     <circle className="scatter-point-ring" r={MARK_SIZE + 4} />
                     <KindMark kind={row.kind} />
-                    <text className="scatter-point-label" x={point.labelAt.x - point.px} y={point.labelAt.y - point.py} textAnchor={point.labelAt.anchor}>
-                      {point.label}
-                    </text>
                   </g>
                 );
               })}
+
+              {/* 点の名前。印が重なる点の組は複数の点に属するので、点ごとの要素の外に描く。読み上げは点ごとの値の読み取りが担う */}
+              {/* biome-ignore lint/a11y/noAriaHiddenOnFocusable: この要素はフォーカスを受けない。フォーカスを受ける点の要素は別に描いている */}
+              <g className="scatter-names" aria-hidden="true">
+                {model.names.map((name) => (
+                  <g key={name.lines.map((line) => line.targetKey).join('\n')} className="scatter-name" data-scatter-name={name.lines.length}>
+                    {name.leader === undefined ? null : (
+                      <line className="scatter-leader" x1={name.leader.x1} y1={name.leader.y1} x2={name.leader.x2} y2={name.leader.y2} />
+                    )}
+                    {name.lines.map((line) => (
+                      <text
+                        key={line.targetKey}
+                        className="scatter-point-label"
+                        data-scatter-name-of={line.targetKey}
+                        data-active={activeKey === line.targetKey || undefined}
+                        x={line.x}
+                        y={line.y}
+                      >
+                        {line.text}
+                      </text>
+                    ))}
+                  </g>
+                ))}
+              </g>
             </svg>
             <figcaption className="scatter-caption" data-scatter-caption="">
               {scatterCaption(axes, language)}
