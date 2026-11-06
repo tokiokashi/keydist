@@ -1,6 +1,6 @@
 {
   "name": "keydist",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "private": true,
   "type": "module",
   "packageManager": "npm@11.21.1",
