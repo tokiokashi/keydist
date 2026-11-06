@@ -11,7 +11,7 @@ import { axisName, axisPlotTitle, KEY_COUNT_NAME, SCATTER_KANA_SCRIPT } from './
  * 同指 = アクション数 × 同指率 / 100、
  * 同じ手の続きの割合 = 同じ手の続き / (手の切り替え + 同じ手の続き) × 100、
  * u/キー = 移動ありキー率 / 100 × u/移動ありキー、
- * 文字/u = 文字/アクション × アクション/u、u/アクション = 文字/アクション × u/文字）にだけ引く。
+ * 文字/u = 文字/アクション × アクション/u、u/アクション = 文字/アクション × u/文字、u/文字 = アクション/文字 × u/アクション）にだけ引く。
  * 線の量が配列ごとに違う回数で割った距離（`NO_LINE_COLUMNS`）の組には、恒等式があっても線を引かない。
  * 点の位置から関係の強さを測る表示（回帰直線・相関係数）は出さない。
  */
@@ -37,17 +37,21 @@ export function isHandShareColumn(column: ComparisonColumnId): boolean {
   return HAND_SHARE_COLUMNS.includes(column);
 }
 
-/** 用意する組み合わせ。 */
+/**
+ * 用意する組み合わせ。見る量のまとまりで並べる。
+ * アクション数と距離・文字数の組、キーの組、指と手の組、自由に選ぶの順。先頭が既定。
+ */
 export const SCATTER_PRESET_IDS = [
   'distance',
+  'textDistance',
+  'charsPerAction',
   'press',
   'perPress',
+  'movedPress',
   'sameFinger',
   'hand',
   'handRates',
   'handShare',
-  'movedPress',
-  'charsPerAction',
   'free',
 ] as const;
 export type ScatterPresetId = (typeof SCATTER_PRESET_IDS)[number];
@@ -68,6 +72,7 @@ export const SCATTER_PRESET_AXES: Readonly<Record<Exclude<ScatterPresetId, 'free
   handShare: { x: 'rightHandPressShare', y: 'rightHandDistanceShare' },
   movedPress: { x: 'movedPressShare', y: 'perMovedPressUnits' },
   charsPerAction: { x: 'textCharsPerAction', y: 'actionsPerUnit' },
+  textDistance: { x: 'actionsPerTextChar', y: 'meanPerStroke' },
 };
 
 /**
@@ -88,6 +93,7 @@ export function scatterPresetLabels(language: TextLanguage): Readonly<Record<Sca
     handRates: label('handRates'),
     handShare: label('handShare'),
     movedPress: label('movedPress'),
+    textDistance: label('textDistance'),
     charsPerAction: `コスパ（${axisPlotTitle(SCATTER_PRESET_AXES.charsPerAction.x, language)}）と${axisName(SCATTER_PRESET_AXES.charsPerAction.y, language)}`,
     free: '自由に選ぶ',
   };
@@ -106,6 +112,7 @@ export function scatterPresetDescriptions(language: TextLanguage): Readonly<Reco
     handShare: `${n('rightHandPressShare')}と${n('rightHandDistanceShare')}で、右手が受け持つ割合を押すキーの数と距離の2つで比べます。左右の偏りを見る図です。`,
     movedPress: `${n('movedPressShare')}と${n('perMovedPressUnits')}から、${n('perPressUnits')}がどう決まるかを見ます。`,
     charsPerAction: `${n('textCharsPerAction')}と${n('actionsPerUnit')}から、${n('textCharsPerUnit')}がどう決まるかを見ます。大きいほど手間が少ない向きの2軸で、既定の組み合わせの逆の向きです。`,
+    textDistance: `${n('unitsPerTextChar')}を、${n('actionsPerTextChar')}と${n('meanPerStroke')}に分けて見ます。`,
     free: '比較表の列から横軸と縦軸を選びます。',
   };
 }
@@ -230,6 +237,17 @@ export const IDENTITIES: readonly Identity[] = [
     ],
     solve: (index, [a, w, m]) => (index === 0 ? divide(m, w) : index === 1 ? divide(m, a) : a * w),
   },
+  // u/文字 = アクション/文字 × u/アクション。`D / W = (S / W) × (D / S)`。上の2つの後ろに置くので、
+  // u/アクションとu/文字を軸に取る組の線の量は、文字/アクションのまま変わらない。
+  {
+    relation: ([a, m, w]) => `${w} = ${a} × ${m}`,
+    quantities: [
+      { total: 'actionsPerTextChar', extensive: false },
+      { total: 'meanPerStroke', extensive: false },
+      { total: 'unitsPerTextChar', extensive: false },
+    ],
+    solve: (index, [a, m, w]) => (index === 0 ? divide(w, m) : index === 1 ? divide(w, a) : a * m),
+  },
 ];
 
 type Form = 'total' | 'perChar';
@@ -255,12 +273,12 @@ function formOf(quantity: Quantity, column: ComparisonColumnId): Form | undefine
  * 同じテキストなら積または比が全配列で一定になる列の群。群の中の2列は、点が1本の曲線の上に並ぶだけになる。
  * アクション数 `S`、総移動距離 `D`、入力かな数 `C`、文字数 `W` のうち、`C` と `W` は同じテキストなら全配列で同じ値なので、
  * 列は `S` と `D` の累乗に定数を掛けた形で表せる。累乗の指数の向きが平行な列が、同じ群に入る。
- * - `S`: アクション数・アクション数/かな（`S / C`）・文字/アクション（`W / S`）
+ * - `S`: アクション数・アクション数/かな（`S / C`）・文字/アクション（`W / S`）・アクション/文字（`S / W`）
  * - `D`: 距離・u/かな（`D / C`）・u/文字（`D / W`）・文字/u（`W / D`）
  * - `D / S`: u/アクション・アクション/u
  */
 const PROPORTIONAL_COLUMN_GROUPS: readonly (readonly ComparisonColumnId[])[] = [
-  ['actions', 'perCharSteps', 'textCharsPerAction'],
+  ['actions', 'perCharSteps', 'textCharsPerAction', 'actionsPerTextChar'],
   ['totalUnits', 'perCharUnits', 'unitsPerTextChar', 'textCharsPerUnit'],
   ['meanPerStroke', 'actionsPerUnit'],
 ];

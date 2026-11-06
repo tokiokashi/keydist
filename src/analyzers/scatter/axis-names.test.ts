@@ -140,6 +140,7 @@ const AXIS_PLOT_TITLES: Readonly<Record<string, readonly [string, string]>> = {
   perCharPresses: ['キー数/カナ', 'キー数/字'],
   perActionPresses: ['キー数/アクション', 'キー数/アクション'],
   textCharsPerAction: ['文字数/アクション', '文字数/アクション'],
+  actionsPerTextChar: ['アクション数/文字', 'アクション数/文字'],
   actionsPerUnit: ['アクション数/距離（1/u）', 'アクション数/距離（1/u）'],
   textCharsPerUnit: ['文字数/距離（1/u）', '文字数/距離（1/u）'],
 };
@@ -149,6 +150,7 @@ test('組み合わせの名前: コスパの組だけ「コスパ（文字数/�
   assert.equal(labels.charsPerAction, 'コスパ（文字数/アクション）と1uあたりのアクション数');
   assert.equal(labels.handRates, '同じ手の続きの割合と同指率');
   assert.equal(labels.distance, '1カナあたりのアクション数と1アクションあたりの距離');
+  assert.equal(labels.textDistance, '1文字あたりのアクション数と1アクションあたりの距離');
   assert.equal(labels.press, '1アクションあたりのキー数と1カナあたりのアクション数');
   assert.equal(labels.perPress, '1カナあたりのキー数と1キーあたりの距離');
   assert.equal(labels.sameFinger, 'アクション数と同指率');
@@ -159,6 +161,8 @@ test('組み合わせの名前: コスパの組だけ「コスパ（文字数/�
   assert.equal(axisName('textCharsPerAction', 'ja'), '1アクションあたりの文字数');
   assert.equal(axisTitle('actionsPerUnit', 'ja'), '1uあたりのアクション数（1/u）');
   assert.equal(axisPlotTitle('textCharsPerAction', 'ja'), '文字数/アクション');
+  assert.equal(axisPlotTitle('actionsPerTextChar', 'ja'), 'アクション数/文字');
+  assert.equal(scatterCaption(SCATTER_PRESET_AXES.textDistance, 'ja'), '1アクションあたりの距離と1文字あたりのアクション数の関係');
   assert.equal(scatterCaption(SCATTER_PRESET_AXES.charsPerAction, 'ja'), '1uあたりのアクション数と1アクションあたりの文字数の関係');
 });
 
@@ -201,6 +205,7 @@ test('長い名前は「1〜あたりの」の形で、日本語と英語のテ�
     ['perPressUnits', '1キーあたりの距離', '1キーあたりの距離'],
     ['perMovedPressUnits', '移動ありキー1つあたりの距離', '移動ありキー1つあたりの距離'],
     ['textCharsPerAction', '1アクションあたりの文字数', '1アクションあたりの文字数'],
+    ['actionsPerTextChar', '1文字あたりのアクション数', '1文字あたりのアクション数'],
     ['actionsPerUnit', '1uあたりのアクション数', '1uあたりのアクション数'],
     ['textCharsPerUnit', '1uあたりの文字数', '1uあたりの文字数'],
     ['unitsPerTextChar', '1文字あたりの距離', '1文字あたりの距離'],

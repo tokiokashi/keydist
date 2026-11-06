@@ -37,8 +37,9 @@ export const COMPARISON_BAR_SCALE: Readonly<Record<ComparisonColumnId, Compariso
   // 動いた押下の割合（%）と、動いた押下1回あたりの距離。0は動いた押下が無い。
   movedPressShare: 'zero',
   perMovedPressUnits: 'zero',
-  // 文字数に関わる4つの比。0は該当が無い（u/文字が0は距離が0）。値が無い行（分母が0）はバーを出さない。
+  // 文字数に関わる5つの比。0は該当が無い（u/文字が0は距離が0）。値が無い行（分母が0）はバーを出さない。
   textCharsPerAction: 'zero',
+  actionsPerTextChar: 'zero',
   actionsPerUnit: 'zero',
   textCharsPerUnit: 'zero',
   unitsPerTextChar: 'zero',

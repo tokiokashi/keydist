@@ -215,6 +215,7 @@ function fixtureMetrics(totalUnits: number): Metrics {
     perMovedPressUnits: totalUnits / 3,
     textChars: 3,
     textCharsPerAction: 1,
+    actionsPerTextChar: 1,
     actionsPerUnit: 3 / (totalUnits || 1),
     textCharsPerUnit: 3 / (totalUnits || 1),
     unitsPerTextChar: totalUnits / 3,

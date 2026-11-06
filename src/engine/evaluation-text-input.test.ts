@@ -324,13 +324,14 @@ test('示す文をそのまま打つ場面は、文字数の差を渡しても0�
   assert.equal(result.input.notationExcess, 0);
 });
 
-test('英語のテキストでは、文字数Wが入力かな数と同じで、4つの比も入力字数で数えた値になる', () => {
+test('英語のテキストでは、文字数Wが入力かな数と同じで、5つの比も入力字数で数えた値になる', () => {
   const text = "It's (a) test; ok, yes.";
   const { metrics } = measure('qwerty', text, 'en');
   assert.equal(metrics.textChars, metrics.inputChars);
   assert.equal(metrics.textChars, [...text].length);
   assert.equal(metrics.unitsPerTextChar, metrics.perCharUnits);
   assert.equal(metrics.textCharsPerAction, metrics.inputChars / metrics.actions);
+  assert.equal(metrics.actionsPerTextChar, metrics.actions / metrics.inputChars);
   // 差を渡しても、読みに直す対象でない英語のテキストは差を使わない呼び出しになる（渡さなければ0）
   assert.equal(resolve('qwerty', text, 'en').notationExcess, 0);
 });
