@@ -129,7 +129,7 @@ const KANJI_ROWS = [...LAYOUT_BY_ID.keys()].map((layoutId) => ({
   ...rowOf(layoutId, KANJI_CONVERSION.text, KANJI_CONVERSION.notationExcess),
 }));
 
-test('組み込みの全配列: 用意する8つの組み合わせの等位線の値が、比較表の列の値と相対誤差1e-9以内で一致し、線が点を通る（漢字を読みに直したテキストを含む）', () => {
+test('組み込みの全配列: 用意する組み合わせのうち線を引く7つの等位線の値が、比較表の列の値と相対誤差1e-9以内で一致し、線が点を通る（漢字を読みに直したテキストを含む）', () => {
   const expectedColumn: Record<string, string> = {
     distance: 'perCharUnits',
     press: 'perCharPresses',
@@ -143,8 +143,8 @@ test('組み込みの全配列: 用意する8つの組み合わせの等位線�
   for (const [preset, axes] of Object.entries(SCATTER_PRESET_AXES) as Array<
     [keyof typeof SCATTER_PRESET_AXES, (typeof SCATTER_PRESET_AXES)[keyof typeof SCATTER_PRESET_AXES]]
   >) {
-    if (preset === 'handShare') {
-      // 左右のキーと距離の割合は、恒等式で結ばれる3つ目の量が無く、線を引かない
+    if (preset === 'handShare' || preset === 'handRates') {
+      // 左右のキーと距離の割合、同じ手の続きの割合と同指率は、恒等式で結ばれる3つ目の量が無く、線を引かない
       assert.equal(scatterContour(axes.x, axes.y, 100, 'ja'), undefined);
       continue;
     }
@@ -540,6 +540,7 @@ test('細い線の量: 用意した組み合わせは、移動ありキーの割
       ['perPress', true],
       ['sameFinger', true],
       ['hand', true],
+      ['handRates', undefined],
       ['handShare', undefined],
       ['movedPress', false],
       ['charsPerAction', true],
@@ -556,6 +557,15 @@ test('細い線の量: 用意した組み合わせは、移動ありキーの割
   assert.equal(free('textCharsPerUnit', 'unitsPerTextChar'), undefined);
   // 線を引かない組でも、3つの量の関係の式は持つ
   assert.equal(free('perActionPresses', 'perPressUnits')?.valueAt(2, 1.5), 3);
+});
+
+test('同じ手の続きの割合と同指率の組: 軸は横が同じ手の続きの割合、縦が同指率で、どちらの順でも等位線も50%の線も無い', () => {
+  assert.deepEqual(SCATTER_PRESET_AXES.handRates, { x: 'sameHandContinuationRate', y: 'sameFingerRate' });
+  assert.equal(scatterAxisProblem('sameHandContinuationRate', 'sameFingerRate'), undefined);
+  assert.equal(scatterContour('sameHandContinuationRate', 'sameFingerRate', 100, 'ja'), undefined);
+  assert.equal(scatterContour('sameFingerRate', 'sameHandContinuationRate', 100, 'ja'), undefined);
+  assert.equal(isHandShareColumn('sameHandContinuationRate'), false);
+  assert.equal(isHandShareColumn('sameFingerRate'), false);
 });
 
 test('50%の線を引く列: 右手距離率と右手キー率だけ', () => {

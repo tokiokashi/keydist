@@ -202,6 +202,37 @@ test('左右のキーと距離の割合: 50%の線と4つの区画、2軸が同�
   assert.ok(swapped[1]!.includes('右下は距離は右手が多いのに押すキーの数は左手が多い区画です'));
 });
 
+test('同じ手の続きの割合と同指率: 線を引かず、数え方と分母が違う別の量だという説明を、どちらの順でも出す', () => {
+  const axes = SCATTER_PRESET_AXES.handRates;
+  const note =
+    '同じ手の続きの割合と同指率は、どちらも各アクションをどの手、どの指が打つかから作る割合です。数え方と分母が違い、2つを結ぶ関係式はありません。';
+  for (const [x, y] of [
+    [axes.x, axes.y],
+    [axes.y, axes.x],
+  ] as const) {
+    const { help } = scatterQuantityHelp({ x, y }, scatterContour(x, y, INPUT_CHARS, 'ja'), 'ja');
+    assert.deepEqual(help.notes, [note]);
+  }
+  // ほかの組には出ない。片方だけがこの2列の組も含む
+  const others: ReadonlyArray<readonly [Column, Column]> = [
+    ['sameHandContinuationRate', 'perCharSteps'],
+    ['perCharSteps', 'sameFingerRate'],
+    ['sameHandContinuationRate', 'sameHandContinuationRate'],
+    ['actions', 'sameFingerRate'],
+  ];
+  for (const [x, y] of others) {
+    const notes = scatterQuantityHelp({ x, y }, undefined, 'ja').help.notes;
+    assert.ok(!notes.some((text) => text.includes('数え方と分母が違い')), `${x} ${y}`);
+  }
+  for (const id of SCATTER_PRESET_IDS) {
+    if (id === 'free' || id === 'handRates') continue;
+    const { x, y } = SCATTER_PRESET_AXES[id];
+    assert.ok(!scatterQuantityHelp({ x, y }, scatterContour(x, y, INPUT_CHARS, 'ja'), 'ja').help.notes.includes(note), id);
+  }
+  // 説明と組の説明文は、交互と続きのどちらが良いかを言わず、同指が同じ手の続きに入るとも言わない
+  assert.doesNotMatch(`${note}${scatterPresetDescriptions('ja').handRates}`, /速|打ちやす|良い|悪い|入る|入れ子|独立/u);
+});
+
 test('50%の線の説明: 軸の片方だけが右手の割合の時は、その軸の線だけを書き、区画と同じキーから作られた説明は出さない', () => {
   const onX = scatterQuantityHelp({ x: 'rightHandPressShare', y: 'perCharUnits' }, undefined, 'ja').help.notes;
   assert.equal(onX.length, 2);

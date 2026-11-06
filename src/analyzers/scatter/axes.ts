@@ -1,7 +1,7 @@
 import type { TextLanguage } from '#input/text/language.ts';
 import { COMPARISON_COLUMN_IDS, type ComparisonColumnId } from '../comparison-column-text.ts';
 import { kanaUnitOf } from '../unit-words.ts';
-import { axisName, KEY_COUNT_NAME } from './axis-names.ts';
+import { axisName, axisPlotTitle, KEY_COUNT_NAME } from './axis-names.ts';
 
 /**
  * 散布図の軸の組み合わせと、軸の2つの量から恒等式で決まる3つ目の量（等位線の量）。
@@ -38,7 +38,18 @@ export function isHandShareColumn(column: ComparisonColumnId): boolean {
 }
 
 /** 用意する組み合わせ。 */
-export const SCATTER_PRESET_IDS = ['distance', 'press', 'perPress', 'sameFinger', 'hand', 'handShare', 'movedPress', 'charsPerAction', 'free'] as const;
+export const SCATTER_PRESET_IDS = [
+  'distance',
+  'press',
+  'perPress',
+  'sameFinger',
+  'hand',
+  'handRates',
+  'handShare',
+  'movedPress',
+  'charsPerAction',
+  'free',
+] as const;
 export type ScatterPresetId = (typeof SCATTER_PRESET_IDS)[number];
 
 export interface ScatterAxes {
@@ -53,12 +64,16 @@ export const SCATTER_PRESET_AXES: Readonly<Record<Exclude<ScatterPresetId, 'free
   perPress: { x: 'perCharPresses', y: 'perPressUnits' },
   sameFinger: { x: 'actions', y: 'sameFingerRate' },
   hand: { x: 'handSwitches', y: 'handContinuations' },
+  handRates: { x: 'sameHandContinuationRate', y: 'sameFingerRate' },
   handShare: { x: 'rightHandPressShare', y: 'rightHandDistanceShare' },
   movedPress: { x: 'movedPressShare', y: 'perMovedPressUnits' },
   charsPerAction: { x: 'textCharsPerAction', y: 'actionsPerUnit' },
 };
 
-/** 組み合わせの選択肢に出す名前。横軸と縦軸の量の名前（`axis-names.ts`）を「と」でつなぐ。 */
+/**
+ * 組み合わせの選択肢に出す名前。横軸と縦軸の量の名前（`axis-names.ts`）を「と」でつなぐ。
+ * 横軸の量を「コスパ」と呼ぶ文脈を知る人に通じるよう、コスパの組だけ横軸の名前の前に「コスパ」を付け、軸の名前を括弧に入れる。
+ */
 export function scatterPresetLabels(language: TextLanguage): Readonly<Record<ScatterPresetId, string>> {
   const label = (id: Exclude<ScatterPresetId, 'free'>): string => {
     const { x, y } = SCATTER_PRESET_AXES[id];
@@ -70,9 +85,10 @@ export function scatterPresetLabels(language: TextLanguage): Readonly<Record<Sca
     perPress: label('perPress'),
     sameFinger: label('sameFinger'),
     hand: label('hand'),
+    handRates: label('handRates'),
     handShare: label('handShare'),
     movedPress: label('movedPress'),
-    charsPerAction: label('charsPerAction'),
+    charsPerAction: `コスパ（${axisPlotTitle(SCATTER_PRESET_AXES.charsPerAction.x, language)}）と${axisName(SCATTER_PRESET_AXES.charsPerAction.y, language)}`,
     free: '自由に選ぶ',
   };
 }
@@ -86,6 +102,7 @@ export function scatterPresetDescriptions(language: TextLanguage): Readonly<Reco
     perPress: `${n('perCharUnits')}を、${n('perCharPresses')}と${n('perPressUnits')}に分けて見ます。`,
     sameFinger: `${n('actions')}と${n('sameFingerRate')}から、${n('sameFinger')}がどう決まるかを見ます。`,
     hand: `${n('handSwitches')}と${n('handContinuations')}から、${n('sameHandContinuationRate')}がどう決まるかを見ます。`,
+    handRates: `${n('sameHandContinuationRate')}と${n('sameFingerRate')}を並べて、手と指の続き方を見ます。`,
     handShare: `${n('rightHandPressShare')}と${n('rightHandDistanceShare')}で、右手が受け持つ割合を押すキーの数と距離の2つで比べます。左右の偏りを見る図です。`,
     movedPress: `${n('movedPressShare')}と${n('perMovedPressUnits')}から、${n('perPressUnits')}がどう決まるかを見ます。`,
     charsPerAction: `${n('textCharsPerAction')}と${n('actionsPerUnit')}から、${n('textCharsPerUnit')}がどう決まるかを見ます。大きいほど手間が少ない向きの2軸で、既定の組み合わせの逆の向きです。`,

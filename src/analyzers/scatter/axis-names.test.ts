@@ -106,7 +106,12 @@ test('キャプション・組み合わせの名前と説明・関係式と換�
       sentences.push(scatterPresetLabels(language)[id], scatterPresetDescriptions(language)[id]);
       if (id === 'free') continue;
       const axes = SCATTER_PRESET_AXES[id];
-      assert.equal(scatterPresetLabels(language)[id], `${axisName(axes.x, language)}と${axisName(axes.y, language)}`, id);
+      // コスパの組だけ、横軸の量を呼び慣れた名前（コスパ）を前に付けた名前にする。ほかの組は軸の長い名前をつなぐ
+      const expectedLabel =
+        id === 'charsPerAction'
+          ? `コスパ（${axisPlotTitle(axes.x, language)}）と${axisName(axes.y, language)}`
+          : `${axisName(axes.x, language)}と${axisName(axes.y, language)}`;
+      assert.equal(scatterPresetLabels(language)[id], expectedLabel, id);
       assert.equal(scatterCaption(axes, language), `${axisName(axes.y, language)}と${axisName(axes.x, language)}の関係`, id);
       sentences.push(scatterCaption(axes, language));
     }
@@ -137,6 +142,24 @@ const AXIS_PLOT_TITLES: Readonly<Record<string, readonly [string, string]>> = {
   actionsPerUnit: ['アクション数/距離（1/u）', 'アクション数/距離（1/u）'],
   textCharsPerUnit: ['文字数/距離（1/u）', '文字数/距離（1/u）'],
 };
+
+test('組み合わせの名前: コスパの組だけ「コスパ（文字数/アクション）と1uあたりのアクション数」で、ほかの組は軸の長い名前をつなぐ。軸の名前と凡例は変えない', () => {
+  const labels = scatterPresetLabels('ja');
+  assert.equal(labels.charsPerAction, 'コスパ（文字数/アクション）と1uあたりのアクション数');
+  assert.equal(labels.handRates, '同じ手の続きの割合と同指率');
+  assert.equal(labels.distance, '1かなあたりのアクション数と1アクションあたりの距離');
+  assert.equal(labels.press, '1アクションあたりのキー数と1かなあたりのアクション数');
+  assert.equal(labels.perPress, '1かなあたりのキー数と1キーあたりの距離');
+  assert.equal(labels.sameFinger, 'アクション数と同指率');
+  assert.equal(labels.hand, '手の切り替えの回数と同じ手の続きの回数');
+  assert.equal(labels.handShare, '右手キー率と右手距離率');
+  assert.equal(labels.movedPress, '移動ありキー率と移動ありキー1つあたりの距離');
+  assert.equal(labels.free, '自由に選ぶ');
+  assert.equal(axisName('textCharsPerAction', 'ja'), '1アクションあたりの文字数');
+  assert.equal(axisTitle('actionsPerUnit', 'ja'), '1uあたりのアクション数（1/u）');
+  assert.equal(axisPlotTitle('textCharsPerAction', 'ja'), '文字数/アクション');
+  assert.equal(scatterCaption(SCATTER_PRESET_AXES.charsPerAction, 'ja'), '1uあたりのアクション数と1アクションあたりの文字数の関係');
+});
 
 test('軸の名前は「量/何あたり（単位）」の形で、「かな」はテキストの言語で出し分ける', () => {
   for (const [column, [ja, en]] of Object.entries(AXIS_PLOT_TITLES)) {

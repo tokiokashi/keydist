@@ -82,6 +82,18 @@ function centerLineNotes(axes: ScatterAxes, language: TextLanguage): string[] {
   return notes;
 }
 
+/**
+ * 同じ手の続きの割合と同指率を軸に取った時の説明。2列を結ぶ恒等式は無いので線は引かないが、
+ * 数え方と分母が違う別の量であることを書く。軸の順は問わない。
+ */
+function handFingerRateNotes(axes: ScatterAxes, language: TextLanguage): string[] {
+  const columns = [axes.x, axes.y];
+  if (!columns.includes('sameHandContinuationRate') || !columns.includes('sameFingerRate')) return [];
+  return [
+    `${axisName('sameHandContinuationRate', language)}と${axisName('sameFingerRate', language)}は、どちらも各アクションをどの手、どの指が打つかから作る割合です。数え方と分母が違い、2つを結ぶ関係式はありません。`,
+  ];
+}
+
 export function scatterQuantityHelp(axes: ScatterAxes, contour: ScatterContour | undefined, language: TextLanguage): ScatterQuantityHelp {
   const text = comparisonColumnText(language);
   const description = `${SCATTER_KIND_ORDER.map((kind) => `${SCATTER_KIND_STYLES[kind].colorName}の${SCATTER_KIND_STYLES[kind].shapeName}は${SCATTER_KIND_STYLES[kind].label}`).join('、')}です。`;
@@ -101,6 +113,7 @@ export function scatterQuantityHelp(axes: ScatterAxes, contour: ScatterContour |
       notes.push(`${axisName(contour.column, language)}を含む3つの量の関係は、${contour.relation}です。${conversion}`);
     }
   }
+  notes.push(...handFingerRateNotes(axes, language));
   notes.push(...centerLineNotes(axes, language));
   // 線を引かない組も、関係の文に線の量の名前が出るので、その量の単位を説明する
   const mentioned = quantities.map(({ column }) => column);
