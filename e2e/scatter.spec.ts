@@ -87,6 +87,15 @@ test.describe('個別画面', () => {
     await expect(feature(page).locator('[data-scatter-contour]').first()).toHaveText(/^[\d.]+%$/);
     await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveText('同じ手の続きの割合（%）');
 
+    await settings.getByLabel('組み合わせ', { exact: true }).selectOption('handRates');
+    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('同じ手の続きの割合（%）');
+    await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('同指率（%）');
+    // 恒等式が無いので細い線は引かず、同じ手の続きの割合には50%の線も引かない
+    await expect(feature(page).locator('[data-scatter-contour]')).toHaveCount(0);
+    await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveCount(0);
+    await expect(feature(page).locator('[data-scatter-center-line]')).toHaveCount(0);
+    await expect(feature(page).locator('[data-scatter-caption]')).toHaveText('同指率と同じ手の続きの割合の関係');
+
     await settings.getByLabel('組み合わせ', { exact: true }).selectOption('handShare');
     await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('右手キー率（%）');
     await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('右手距離率（%）');
@@ -102,6 +111,9 @@ test.describe('個別画面', () => {
     await expect(feature(page).locator('[data-scatter-contour]')).toHaveCount(0);
     await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveCount(0);
 
+    await expect(
+      settings.getByLabel('組み合わせ', { exact: true }).locator('option', { hasText: 'コスパ（文字数/アクション）と1uあたりのアクション数' }),
+    ).toHaveCount(1);
     await settings.getByLabel('組み合わせ', { exact: true }).selectOption('charsPerAction');
     await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('文字数/アクション');
     await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('アクション数/距離（1/u）');
