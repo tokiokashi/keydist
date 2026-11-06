@@ -582,32 +582,38 @@ test('文字数Wは入力かな数に、読みに直した語の表記の字数�
   assert.equal(computeMetrics(trace, geometry, DEFAULT_METRIC_CONDITIONS, 3).textChars, 5);
 });
 
-test('文字数に関わる4つの比: 分母が0なら値を持たず、0を当てはめない', () => {
+test('文字数に関わる5つの比: 分母が0なら値を持たず、0を当てはめない（アクション/文字はアクションが0でも持たない）', () => {
   const ordinary = textCharMetrics(6, 3, 2);
   assert.equal(ordinary.textCharsPerAction, 2);
+  assert.equal(ordinary.actionsPerTextChar, 0.5);
   assert.equal(ordinary.actionsPerUnit, 1.5);
   assert.equal(ordinary.textCharsPerUnit, 3);
   assert.equal(ordinary.unitsPerTextChar, 1 / 3);
   // アクションが0
   const noAction = textCharMetrics(6, 0, 0);
   assert.equal(noAction.textCharsPerAction, null);
+  // 文字数があってアクションが0: 0とすると、小さいほど手間が少ない向きのこの列で最も良い値に見える
+  assert.equal(noAction.actionsPerTextChar, null);
   assert.equal(noAction.actionsPerUnit, null);
   assert.equal(noAction.textCharsPerUnit, null);
   assert.equal(noAction.unitsPerTextChar, 0);
   // 距離が0でアクションがある（アクション/uと文字/uは値を持たない。0とすると最も悪い値に見える）
   const noDistance = textCharMetrics(6, 3, 0);
   assert.equal(noDistance.textCharsPerAction, 2);
+  assert.equal(noDistance.actionsPerTextChar, 0.5);
   assert.equal(noDistance.actionsPerUnit, null);
   assert.equal(noDistance.textCharsPerUnit, null);
   assert.equal(noDistance.unitsPerTextChar, 0);
   // 文字数が0
   const noChar = textCharMetrics(0, 3, 2);
   assert.equal(noChar.textCharsPerAction, 0);
+  assert.equal(noChar.actionsPerTextChar, null);
   assert.equal(noChar.unitsPerTextChar, null);
-  // 空のテキスト: 4つとも値を持たない
+  // 空のテキスト: 5つとも値を持たない
   const empty = computeMetrics(generateTrace('', qwerty, geometry, opts()), geometry);
   assert.equal(empty.textChars, 0);
   assert.equal(empty.textCharsPerAction, null);
+  assert.equal(empty.actionsPerTextChar, null);
   assert.equal(empty.actionsPerUnit, null);
   assert.equal(empty.textCharsPerUnit, null);
   assert.equal(empty.unitsPerTextChar, null);

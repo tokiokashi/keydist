@@ -159,6 +159,8 @@ export interface Metrics {
   textChars: number;
   /** 1アクションの文字数 [文字/アクション] = `textChars` / `actions`。アクションが0なら値を持たず`null`。 */
   textCharsPerAction: number | null;
+  /** 1文字あたりのアクション数 [アクション/文字] = `actions` / `textChars`。アクションか文字数が0なら値を持たず`null`。 */
+  actionsPerTextChar: number | null;
   /** 1uあたりのアクション数 [アクション/u] = `actions` / `totalUnits`。総移動距離が0なら値を持たず`null`。 */
   actionsPerUnit: number | null;
   /** 1uあたりの文字数 [文字/u] = `textChars` / `totalUnits`。総移動距離が0なら値を持たず`null`。 */
@@ -495,18 +497,20 @@ export function movedPressMetrics(
 }
 
 /**
- * 文字数 `W` と、`W`・アクション数 `S`・総移動距離 `D` から作る4つの比（仕様 §11.5）。
- * 分母が0の比は値を持たず`null`（0を当てはめない）。
+ * 文字数 `W` と、`W`・アクション数 `S`・総移動距離 `D` から作る5つの比（仕様 §11.5）。
+ * 分母が0の比は値を持たず`null`（0を当てはめない）。アクション/文字は、`S = 0` の時も値を持たない
+ * （1アクションも打たない時に0とすると、小さいほど手間が少ない向きのこの列で最も良い値に見えるため）。
  */
 export function textCharMetrics(
   textChars: number,
   actions: number,
   totalUnits: number,
-): Pick<Metrics, 'textChars' | 'textCharsPerAction' | 'actionsPerUnit' | 'textCharsPerUnit' | 'unitsPerTextChar'> {
+): Pick<Metrics, 'textChars' | 'textCharsPerAction' | 'actionsPerTextChar' | 'actionsPerUnit' | 'textCharsPerUnit' | 'unitsPerTextChar'> {
   const ratio = (numerator: number, denominator: number): number | null => (denominator === 0 ? null : numerator / denominator);
   return {
     textChars,
     textCharsPerAction: ratio(textChars, actions),
+    actionsPerTextChar: actions === 0 ? null : ratio(actions, textChars),
     actionsPerUnit: ratio(actions, totalUnits),
     textCharsPerUnit: ratio(textChars, totalUnits),
     unitsPerTextChar: ratio(totalUnits, textChars),

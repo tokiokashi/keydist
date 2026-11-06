@@ -112,6 +112,16 @@ test.describe('個別画面', () => {
     await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveCount(0);
 
     await expect(
+      settings.getByLabel('組み合わせ', { exact: true }).locator('option', { hasText: '1文字あたりのアクション数と1アクションあたりの距離' }),
+    ).toHaveCount(1);
+    await settings.getByLabel('組み合わせ', { exact: true }).selectOption('textDistance');
+    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('アクション数/文字');
+    await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('距離/アクション（u）');
+    await expect(feature(page).locator('[data-scatter-contour]').first()).toHaveText(/^[\d.]+$/);
+    await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveText('1文字あたりの距離（u）');
+    await expect(feature(page).locator('[data-scatter-caption]')).toHaveText('1アクションあたりの距離と1文字あたりのアクション数の関係');
+
+    await expect(
       settings.getByLabel('組み合わせ', { exact: true }).locator('option', { hasText: 'コスパ（文字数/アクション）と1uあたりのアクション数' }),
     ).toHaveCount(1);
     await settings.getByLabel('組み合わせ', { exact: true }).selectOption('charsPerAction');
@@ -152,9 +162,10 @@ test.describe('個別画面', () => {
     await expect(vertical.locator('option', { hasText: /^u\/カナ$/ })).toHaveCount(0);
     // 選択肢の列名も、散布図の単位の語で書く
     await expect(vertical.locator('option', { hasText: /^キー数\/カナ$/ })).toHaveCount(1);
-    // 積または比が一定になる列も選べない（アクション数/かなの逆の向きの文字/アクション、u/かなの定数倍のu/文字）
+    // 積または比が一定になる列も選べない（アクション数/かなの逆の向きの文字/アクションと定数倍のアクション/文字、u/かなの定数倍のu/文字）
     await settings.getByLabel('横軸', { exact: true }).selectOption('perCharSteps');
     await expect(vertical.locator('option', { hasText: /^文字\/アクション$/ })).toHaveCount(0);
+    await expect(vertical.locator('option', { hasText: /^アクション\/文字$/ })).toHaveCount(0);
     await settings.getByLabel('横軸', { exact: true }).selectOption('perCharUnits');
     await expect(vertical.locator('option', { hasText: /^u\/文字$/ })).toHaveCount(0);
     await expect(vertical.locator('option', { hasText: /^文字\/u$/ })).toHaveCount(0);

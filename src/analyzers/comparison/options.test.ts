@@ -56,20 +56,22 @@ test('COMPARISON_COLUMNS: 動いた押下の割合は%付き、動いた押下1�
   assert.equal(COMPARISON_COLUMNS.perMovedPressUnits.format(0), '0.000');
 });
 
-test('COMPARISON_COLUMNS: 文字数に関わる4つの列は小数第3位までで、%を付けない', () => {
-  for (const id of ['textCharsPerAction', 'actionsPerUnit', 'textCharsPerUnit', 'unitsPerTextChar'] as const) {
+test('COMPARISON_COLUMNS: 文字数に関わる5つの列は小数第3位までで、%を付けない', () => {
+  for (const id of ['textCharsPerAction', 'actionsPerTextChar', 'actionsPerUnit', 'textCharsPerUnit', 'unitsPerTextChar'] as const) {
     assert.equal(COMPARISON_COLUMNS[id].format(1.23456), '1.235', id);
     assert.equal(COMPARISON_COLUMNS[id].format(0), '0.000', id);
   }
   assert.deepEqual(
-    (['textCharsPerAction', 'actionsPerUnit', 'textCharsPerUnit', 'unitsPerTextChar'] as const).map((id) => COMPARISON_COLUMNS[id].label),
-    ['文字/アクション', 'アクション/u', '文字/u', 'u/文字'],
+    (['textCharsPerAction', 'actionsPerTextChar', 'actionsPerUnit', 'textCharsPerUnit', 'unitsPerTextChar'] as const).map(
+      (id) => COMPARISON_COLUMNS[id].label,
+    ),
+    ['文字/アクション', 'アクション/文字', 'アクション/u', '文字/u', 'u/文字'],
   );
 });
 
-test('COMPARISON_COLUMNS: 全34列表示形式が定義されている', () => {
+test('COMPARISON_COLUMNS: 全35列表示形式が定義されている', () => {
   const ids = Object.keys(COMPARISON_COLUMNS);
-  assert.equal(ids.length, 34);
+  assert.equal(ids.length, 35);
   for (const id of ids) {
     const def = COMPARISON_COLUMNS[id as keyof typeof COMPARISON_COLUMNS];
     assert.equal(typeof def.label, 'string');
@@ -77,15 +79,15 @@ test('COMPARISON_COLUMNS: 全34列表示形式が定義されている', () => {
   }
 });
 
-test('表示する列: 既定は、全列から既定で表示しない列（動いた押下の割合・動いた押下1回あたりの距離・文字数に関わる4つの比）を除いた並び', () => {
+test('表示する列: 既定は、全列から既定で表示しない列（動いた押下の割合・動いた押下1回あたりの距離・文字数に関わる5つの比）を除いた並び', () => {
   assert.deepEqual(
     [...COMPARISON_DEFAULT_HIDDEN_COLUMNS],
-    ['movedPressShare', 'perMovedPressUnits', 'textCharsPerAction', 'actionsPerUnit', 'textCharsPerUnit', 'unitsPerTextChar'],
+    ['movedPressShare', 'perMovedPressUnits', 'textCharsPerAction', 'actionsPerTextChar', 'actionsPerUnit', 'textCharsPerUnit', 'unitsPerTextChar'],
   );
   const expected = COMPARISON_COLUMN_IDS.filter((id) => !COMPARISON_DEFAULT_HIDDEN_COLUMNS.has(id));
   for (const hidden of COMPARISON_DEFAULT_HIDDEN_COLUMNS) assert.ok(!expected.includes(hidden), hidden);
-  // 文字数に関わる4つの列は既定で表示しないが、選べば表示する列に入る
-  for (const id of ['textCharsPerAction', 'actionsPerUnit', 'textCharsPerUnit', 'unitsPerTextChar'] as const) {
+  // 文字数に関わる5つの列は既定で表示しないが、選べば表示する列に入る
+  for (const id of ['textCharsPerAction', 'actionsPerTextChar', 'actionsPerUnit', 'textCharsPerUnit', 'unitsPerTextChar'] as const) {
     assert.ok(!defaultVisibleColumns().includes(id), id);
     assert.ok(COMPARISON_COLUMN_IDS.includes(id), id);
   }
@@ -113,6 +115,7 @@ test('表示する列: 既定で表示しない列も、選べば保存値とURL
     'movedPressShare',
     'perMovedPressUnits',
     'textCharsPerAction',
+    'actionsPerTextChar',
     'actionsPerUnit',
     'textCharsPerUnit',
     'unitsPerTextChar',

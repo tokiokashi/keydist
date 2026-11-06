@@ -30,6 +30,7 @@ export const COMPARISON_COLUMN_IDS = [
   'movedPressShare',
   'perMovedPressUnits',
   'textCharsPerAction',
+  'actionsPerTextChar',
   'actionsPerUnit',
   'textCharsPerUnit',
   'unitsPerTextChar',
@@ -151,6 +152,10 @@ function buildColumnText(language: TextLanguage, script: KanaScript): Readonly<R
       label: '文字/アクション',
       description: `1アクションで出せる文字の数（コスパとも呼ばれる量）。${textCharNote}かな漢字変換の操作はアクションに数えません。アクション数が0の時は値がありません。`,
     },
+    actionsPerTextChar: {
+      label: 'アクション/文字',
+      description: `テキストの1文字を打つのに行うアクションの数。${textCharNote}アクション数を文字数で割った値で、アクション数か文字数が0の時は値がありません。`,
+    },
     actionsPerUnit: {
       label: 'アクション/u',
       description:
@@ -267,6 +272,7 @@ export const COMPARISON_COLUMN_FORMAT: Readonly<Record<ComparisonColumnId, (valu
   movedPressShare: percent,
   perMovedPressUnits: fixed(3),
   textCharsPerAction: fixed(3),
+  actionsPerTextChar: fixed(3),
   actionsPerUnit: fixed(3),
   textCharsPerUnit: fixed(3),
   unitsPerTextChar: fixed(3),

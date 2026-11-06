@@ -72,6 +72,7 @@ const IDENTITY_COLUMNS: readonly ComparisonColumnId[] = [
   'movedPressShare',
   'perMovedPressUnits',
   'textCharsPerAction',
+  'actionsPerTextChar',
   'actionsPerUnit',
   'textCharsPerUnit',
   'unitsPerTextChar',
@@ -129,7 +130,7 @@ const KANJI_ROWS = [...LAYOUT_BY_ID.keys()].map((layoutId) => ({
   ...rowOf(layoutId, KANJI_CONVERSION.text, KANJI_CONVERSION.notationExcess),
 }));
 
-test('組み込みの全配列: 用意する組み合わせのうち線を引く7つの等位線の値が、比較表の列の値と相対誤差1e-9以内で一致し、線が点を通る（漢字を読みに直したテキストを含む）', () => {
+test('組み込みの全配列: 用意する組み合わせのうち線を引く8つの等位線の値が、比較表の列の値と相対誤差1e-9以内で一致し、線が点を通る（漢字を読みに直したテキストを含む）', () => {
   const expectedColumn: Record<string, string> = {
     distance: 'perCharUnits',
     press: 'perCharPresses',
@@ -138,6 +139,7 @@ test('組み込みの全配列: 用意する組み合わせのうち線を引く
     hand: 'sameHandContinuationRate',
     movedPress: 'perPressUnits',
     charsPerAction: 'textCharsPerUnit',
+    textDistance: 'unitsPerTextChar',
   };
   assert.ok(ALL_ROWS.length >= 30, `配列の数 ${ALL_ROWS.length}`);
   for (const [preset, axes] of Object.entries(SCATTER_PRESET_AXES) as Array<
@@ -158,6 +160,7 @@ test('組み込みの全配列: 用意する組み合わせのうち線を引く
       if (preset === 'perPress') assert.deepEqual(axes, { x: 'perCharPresses', y: 'perPressUnits' });
       if (preset === 'movedPress') assert.deepEqual(axes, { x: 'movedPressShare', y: 'perMovedPressUnits' });
       if (preset === 'charsPerAction') assert.deepEqual(axes, { x: 'textCharsPerAction', y: 'actionsPerUnit' });
+      if (preset === 'textDistance') assert.deepEqual(axes, { x: 'actionsPerTextChar', y: 'meanPerStroke' });
       const value = contour.valueAt(row[axes.x], row[axes.y]);
       assert.ok(value !== undefined, `${preset} ${layoutId} ${row[axes.x]} ${row[axes.y]}`);
       assert.ok(relativeError(value, row[contour.column]) <= 1e-9, `${preset} ${layoutId}: ${value} と ${row[contour.column]}`);
@@ -329,7 +332,15 @@ test('自由に選ぶ: 等位線を引く組と、その量（総数と1文字�
   assert.equal(column('meanPerStroke', 'textCharsPerAction'), 'unitsPerTextChar');
   assert.equal(column('unitsPerTextChar', 'meanPerStroke'), 'textCharsPerAction');
   assert.equal(column('meanPerStroke', 'unitsPerTextChar'), 'textCharsPerAction');
-  // 4つの列の間のほかの組には、線を引かない
+  // u/文字 = アクション/文字 × u/アクション。順は問わない
+  assert.equal(column('actionsPerTextChar', 'meanPerStroke'), 'unitsPerTextChar');
+  assert.equal(column('meanPerStroke', 'actionsPerTextChar'), 'unitsPerTextChar');
+  assert.equal(column('actionsPerTextChar', 'unitsPerTextChar'), 'meanPerStroke');
+  assert.equal(column('unitsPerTextChar', 'actionsPerTextChar'), 'meanPerStroke');
+  // u/アクションとu/文字を選ぶ組の線の量は、アクション/文字を足しても文字/アクションのまま
+  assert.equal(column('unitsPerTextChar', 'meanPerStroke'), 'textCharsPerAction');
+  assert.equal(column('meanPerStroke', 'unitsPerTextChar'), 'textCharsPerAction');
+  // 5つの列の間のほかの組には、線を引かない
   assert.equal(column('actionsPerUnit', 'unitsPerTextChar'), undefined);
   assert.equal(column('unitsPerTextChar', 'actionsPerUnit'), undefined);
   assert.equal(column('textCharsPerUnit', 'meanPerStroke'), undefined);
@@ -363,6 +374,9 @@ const PROPORTIONAL_PAIRS: ReadonlyArray<readonly [ComparisonColumnId, Comparison
   ['actions', 'textCharsPerAction'],
   ['totalUnits', 'unitsPerTextChar'],
   ['totalUnits', 'textCharsPerUnit'],
+  ['actionsPerTextChar', 'textCharsPerAction'],
+  ['actionsPerTextChar', 'actions'],
+  ['actionsPerTextChar', 'perCharSteps'],
 ];
 
 test('自由に選ぶ: 選べない組は、同じ列と、積または比が一定になる2列', () => {
@@ -425,6 +439,26 @@ test('組み込みの全配列: コスパ×アクション/uが文字/uと、コ
     assert.ok(relativeError(row.textCharsPerAction * row.unitsPerTextChar, row.meanPerStroke) <= 1e-9, `${layoutId} u/アクション`);
     assert.ok(relativeError(row.actionsPerUnit * row.meanPerStroke, 1) <= 1e-9, `${layoutId} 逆数`);
     someDifferent = someDifferent || relativeError(row.unitsPerTextChar, row.perCharUnits) > 1e-6;
+  }
+  assert.ok(someDifferent, 'W≠Cの行がある');
+});
+
+test('組み合わせの一覧の並び: 見る量のまとまりで並び、既定の組み合わせが先頭で、自由に選ぶが最後', () => {
+  assert.deepEqual(
+    [...SCATTER_PRESET_IDS],
+    ['distance', 'textDistance', 'charsPerAction', 'press', 'perPress', 'movedPress', 'sameFinger', 'hand', 'handRates', 'handShare', 'free'],
+  );
+});
+
+test('組み込みの全配列: アクション/文字はアクション数/かな × (C / W) と、アクション/文字 × u/アクションはu/文字と一致し、コスパの逆数になる（W≠Cのテキストを含む）', () => {
+  let someDifferent = false;
+  for (const { layoutId, row, inputChars } of [...ALL_ROWS, ...KANJI_ROWS]) {
+    if (!(row.actions > 0 && row.totalUnits > 0)) continue;
+    const textChars = row.textCharsPerAction * row.actions;
+    assert.ok(relativeError(row.actionsPerTextChar, row.perCharSteps * (inputChars / textChars)) <= 1e-9, `${layoutId} アクション/文字`);
+    assert.ok(relativeError(row.actionsPerTextChar * row.meanPerStroke, row.unitsPerTextChar) <= 1e-9, `${layoutId} u/文字`);
+    assert.ok(relativeError(row.actionsPerTextChar * row.textCharsPerAction, 1) <= 1e-9, `${layoutId} 逆数`);
+    someDifferent = someDifferent || relativeError(row.actionsPerTextChar, row.perCharSteps) > 1e-6;
   }
   assert.ok(someDifferent, 'W≠Cの行がある');
 });
@@ -536,14 +570,15 @@ test('細い線の量: 用意した組み合わせは、移動ありキーの割
     SCATTER_PRESET_IDS.filter((id) => id !== 'free').map((id) => [id, drawsLines(id as keyof typeof SCATTER_PRESET_AXES)]),
     [
       ['distance', true],
+      ['textDistance', true],
+      ['charsPerAction', true],
       ['press', true],
       ['perPress', true],
+      ['movedPress', false],
       ['sameFinger', true],
       ['hand', true],
       ['handRates', undefined],
       ['handShare', undefined],
-      ['movedPress', false],
-      ['charsPerAction', true],
     ],
   );
   // 自由に選ぶ: 線の量が他の列から導かれる組でも、同じ規則で決まる
@@ -554,6 +589,13 @@ test('細い線の量: 用意した組み合わせは、移動ありキーの割
   assert.equal(free('textCharsPerAction', 'textCharsPerUnit')?.drawsLines, false);
   assert.equal(free('textCharsPerAction', 'unitsPerTextChar')?.drawsLines, false);
   assert.equal(free('textCharsPerAction', 'actionsPerUnit')?.drawsLines, true);
+  // アクション/文字・u/アクション・u/文字から2つを選ぶ3組
+  assert.equal(free('actionsPerTextChar', 'meanPerStroke')?.column, 'unitsPerTextChar');
+  assert.equal(free('actionsPerTextChar', 'meanPerStroke')?.drawsLines, true);
+  assert.equal(free('actionsPerTextChar', 'unitsPerTextChar')?.column, 'meanPerStroke');
+  assert.equal(free('actionsPerTextChar', 'unitsPerTextChar')?.drawsLines, false);
+  assert.equal(free('meanPerStroke', 'unitsPerTextChar')?.column, 'textCharsPerAction');
+  assert.equal(free('meanPerStroke', 'unitsPerTextChar')?.drawsLines, true);
   assert.equal(free('textCharsPerUnit', 'unitsPerTextChar'), undefined);
   // 線を引かない組でも、3つの量の関係の式は持つ
   assert.equal(free('perActionPresses', 'perPressUnits')?.valueAt(2, 1.5), 3);

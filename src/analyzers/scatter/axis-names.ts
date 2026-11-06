@@ -66,6 +66,7 @@ const SPECS: Readonly<Record<ComparisonColumnId, AxisNameSpec>> = {
   movedPressShare: { unit: '%' },
   perMovedPressUnits: { name: () => '移動ありキー1つあたりの距離', unit: 'u', axisLabel: () => '距離/移動ありキー' },
   textCharsPerAction: { name: () => '1アクションあたりの文字数', axisLabel: () => '文字数/アクション' },
+  actionsPerTextChar: { name: () => '1文字あたりのアクション数', axisLabel: () => 'アクション数/文字' },
   actionsPerUnit: { name: () => '1uあたりのアクション数', unit: '1/u', axisLabel: () => 'アクション数/距離' },
   textCharsPerUnit: { name: () => '1uあたりの文字数', unit: '1/u', axisLabel: () => '文字数/距離' },
   unitsPerTextChar: { name: () => '1文字あたりの距離', unit: 'u', axisLabel: () => '距離/文字' },

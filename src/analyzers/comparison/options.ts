@@ -69,6 +69,7 @@ export const COMPARISON_DEFAULT_HIDDEN_COLUMNS: ReadonlySet<ComparisonColumnId> 
   'movedPressShare',
   'perMovedPressUnits',
   'textCharsPerAction',
+  'actionsPerTextChar',
   'actionsPerUnit',
   'textCharsPerUnit',
   'unitsPerTextChar',

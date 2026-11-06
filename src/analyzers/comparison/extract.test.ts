@@ -74,6 +74,7 @@ test('computeComparisonRowValues: interpretation/metrics.tsを同条件で直接
     movedPressShare,
     perMovedPressUnits,
     textCharsPerAction,
+    actionsPerTextChar,
     actionsPerUnit,
     textCharsPerUnit,
     unitsPerTextChar,
@@ -113,13 +114,15 @@ test('computeComparisonRowValues: interpretation/metrics.tsを同条件で直接
   assert.equal(perMovedPressUnits, directMetrics.perMovedPressUnits);
   assert.ok(movedPressShare > 0 && movedPressShare < 100);
   assert.ok(perMovedPressUnits > directMetrics.perPressUnits);
-  // 読みに直していないテキストでは文字数と入力かな数が同じなので、文字数に関わる4つの比は入力かな数で数えた値と同じ
+  // 読みに直していないテキストでは文字数と入力かな数が同じなので、文字数に関わる5つの比は入力かな数で数えた値と同じ
   assert.equal(directMetrics.textChars, directMetrics.inputChars);
   assert.equal(textCharsPerAction, directMetrics.textCharsPerAction);
+  assert.equal(actionsPerTextChar, directMetrics.actionsPerTextChar);
   assert.equal(actionsPerUnit, directMetrics.actionsPerUnit);
   assert.equal(textCharsPerUnit, directMetrics.textCharsPerUnit);
   assert.equal(unitsPerTextChar, directMetrics.unitsPerTextChar);
   assert.equal(textCharsPerAction, directMetrics.inputChars / directMetrics.actions);
+  assert.equal(actionsPerTextChar, directMetrics.actions / directMetrics.inputChars);
   assert.equal(unitsPerTextChar, directMetrics.perCharUnits);
   assert.ok(physicalBigramCombinations > 0 && logicalBigramCombinations >= physicalBigramCombinations);
   const { aggregate: handRhythm } = analyzeHandRhythm(traceResult.trace.strokes);
@@ -349,14 +352,17 @@ test('optionsDiscipline: affectsの宣言どおりの入れ忘れが無い（比
   assert.deepEqual(viewViolations, []);
 });
 
-test('文字数に関わる4つの比: 値を持たない（null）時は、列の値がNaNになり0を当てはめない', () => {
-  const none = { textCharsPerAction: null, actionsPerUnit: null, textCharsPerUnit: null, unitsPerTextChar: null };
+test('文字数に関わる5つの比: 値を持たない（null）時は、列の値がNaNになり0を当てはめない', () => {
+  const none = { textCharsPerAction: null, actionsPerTextChar: null, actionsPerUnit: null, textCharsPerUnit: null, unitsPerTextChar: null };
   const row = computeComparisonRowValues({ ...fixtureMetrics(0), ...none }, FIXTURE_TRACE);
-  for (const id of ['textCharsPerAction', 'actionsPerUnit', 'textCharsPerUnit', 'unitsPerTextChar'] as const) {
+  for (const id of ['textCharsPerAction', 'actionsPerTextChar', 'actionsPerUnit', 'textCharsPerUnit', 'unitsPerTextChar'] as const) {
     assert.ok(Number.isNaN(row[id]), id);
   }
+  // アクション/文字を持たない古い形の値でも、表示は値が無い扱いになり壊れない
+  const { actionsPerTextChar: _omitted, ...withoutField } = fixtureMetrics(6);
+  assert.ok(Number.isNaN(computeComparisonRowValues(withoutField as ReturnType<typeof fixtureMetrics>, FIXTURE_TRACE).actionsPerTextChar));
   const valued = computeComparisonRowValues(fixtureMetrics(6), FIXTURE_TRACE);
-  for (const id of ['textCharsPerAction', 'actionsPerUnit', 'textCharsPerUnit', 'unitsPerTextChar'] as const) {
+  for (const id of ['textCharsPerAction', 'actionsPerTextChar', 'actionsPerUnit', 'textCharsPerUnit', 'unitsPerTextChar'] as const) {
     assert.ok(Number.isFinite(valued[id]), id);
   }
 });

@@ -193,6 +193,7 @@ function fixtureMetrics(): Metrics {
     perMovedPressUnits: 1,
     textChars: 3,
     textCharsPerAction: 1,
+    actionsPerTextChar: 1,
     actionsPerUnit: 1.5,
     textCharsPerUnit: 1.5,
     unitsPerTextChar: 2 / 3,
