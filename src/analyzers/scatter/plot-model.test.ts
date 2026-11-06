@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import test from 'node:test';
 import { scatterContour } from './axes.ts';
 import {
@@ -6,15 +7,16 @@ import {
   estimateTextWidth,
   finerStep,
   levelsAtStep,
+  logAxis,
   logAxisRange,
   logScaleBlockers,
-  logTicks,
   MARK_RADIUS,
   niceTicks,
   PLOT_HEIGHT,
   PLOT_MARGIN,
   PLOT_WIDTH,
   resolveLogScale,
+  type Range,
   scatterPlotModel,
   type PlotName,
   type PlotRect,
@@ -742,17 +744,191 @@ test('logAxisRange: 余白は対数の上で両側に同じだけ足し、値が
   assert.deepEqual(logAxisRange([]), { lo: 1, hi: 10 });
 });
 
-test('logTicks: 最大が最小の10倍に満たない時は通常と同じ刻みの値、10倍以上の時は1・2・5の冪の値', () => {
-  const narrow = logTicks({ lo: 0.8, hi: 1.45 }, 5);
-  assert.deepEqual(narrow.values, niceTicks({ lo: 0.8, hi: 1.45 }, 5).values);
-  assert.deepEqual(narrow.texts, ['0.8', '1.0', '1.2', '1.4']);
-  const wide = logTicks({ lo: 0.07, hi: 30 }, 5);
-  assert.deepEqual(wide.values, [0.1, 0.2, 0.5, 1, 2, 5, 10, 20]);
-  assert.deepEqual(wide.texts, ['0.1', '0.2', '0.5', '1', '2', '5', '10', '20']);
-  // ちょうど10倍は「10倍以上」の側
-  assert.deepEqual(logTicks({ lo: 1, hi: 10 }, 5).values, [1, 2, 5, 10]);
-  // 範囲の端の値は含む
-  assert.deepEqual(logTicks({ lo: 2, hi: 50 }, 5).values, [2, 5, 10, 20, 50]);
+/** 4つの段の目盛りの値になれる値か。1つ目は1の冪、2つ目は1・2・5の冪、3つ目は1〜9の冪。4つ目は一定の刻みなので別に確かめる。 */
+function isLeadTick(value: number, leads: readonly number[]): boolean {
+  const power = Math.floor(Math.log10(value) + 1e-9);
+  return leads.some((lead) => Math.abs(value / 10 ** power - lead) < 1e-9);
+}
+
+/** `padded`を含む最も狭い目盛りの区間に入る、`leads`×10の冪の値の数。 */
+function leadCount(padded: Range, leads: readonly number[]): number {
+  const all = [...Array(60).keys()].flatMap((i) => leads.map((lead) => Number((lead * 10 ** (i - 30)).toPrecision(12)))).sort((a, b) => a - b);
+  const lo = all.filter((v) => v <= padded.lo * (1 + 1e-9)).at(-1)!;
+  const hi = all.find((v) => v >= padded.hi * (1 - 1e-9))!;
+  return all.filter((v) => v >= lo && v <= hi).length;
+}
+
+function assertEnclosing(values: readonly number[], target: number, horizontal: boolean) {
+  const axis = logAxis(values, target, horizontal);
+  const padded = logAxisRange(values);
+  const min = Math.log10(Math.min(...values));
+  const max = Math.log10(Math.max(...values));
+  const margin = max > min ? (max - min) * 0.1 : Math.log10(1.1);
+  // 軸の両端は目盛りの値
+  assert.equal(axis.range.lo, axis.values[0]);
+  assert.equal(axis.range.hi, axis.values.at(-1));
+  // 余白を足した範囲を含む。点は両端の目盛りより内側にあり、点と端の間に、点の範囲の幅の1割以上の余白がある（対数の上）
+  assert.ok(axis.range.lo <= padded.lo * (1 + 1e-9) && axis.range.hi >= padded.hi * (1 - 1e-9));
+  assert.ok(Math.log10(axis.range.lo) <= min - margin + 1e-9);
+  assert.ok(Math.log10(axis.range.hi) >= max + margin - 1e-9);
+  // 軸の範囲は、余白を足した範囲を含む最も狭い目盛りの区間（外側の目盛りは1つ余計に付かない）
+  assert.ok(axis.values.length >= 2);
+  assert.ok(axis.values[1]! > padded.lo * (1 - 1e-9) && axis.values.at(-2)! < padded.hi * (1 + 1e-9));
+  // 目盛りは昇順で、数字は互いに違う
+  for (let i = 1; i < axis.values.length; i++) assert.ok(axis.values[i]! > axis.values[i - 1]!);
+  assert.equal(new Set(axis.texts).size, axis.texts.length);
+  for (const [i, text] of axis.texts.entries()) assert.equal(Number(text), axis.values[i]);
+  return axis;
+}
+
+test('logAxis: 点の範囲が10倍に近い時も、軸の両端が目盛りで、全ての点が両側を目盛りで挟まれる', () => {
+  // 縦軸の点が0.3〜2.9。1・2・5の段で、小さい側は0.2、大きい側は5まで目盛りが付く
+  const axis = assertEnclosing([0.3, 2.9], 5, false);
+  assert.equal(axis.tier, 2);
+  assert.deepEqual(axis.values, [0.2, 0.5, 1, 2, 5]);
+  assert.deepEqual(axis.texts, ['0.2', '0.5', '1', '2', '5']);
+});
+
+test('logAxis: 点の範囲が10倍以上の時と4桁以上にまたがる時は、粗い段の目盛りになる', () => {
+  const wide = assertEnclosing([0.07, 30], 5, false);
+  assert.equal(wide.tier, 1);
+  assert.deepEqual(wide.values, [0.01, 0.1, 1, 10, 100]);
+  const decades = assertEnclosing([0.002, 90000], 6, true);
+  assert.equal(decades.tier, 1);
+  assert.deepEqual(decades.values, [0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000, 1000000]);
+  assert.deepEqual(decades.texts.slice(0, 3), ['0.0001', '0.001', '0.01']);
+});
+
+test('logAxis: 3つの段で目標の本数に届かない狭い範囲は、一定の刻みの段になる', () => {
+  const narrow = assertEnclosing([1.0, 1.3], 5, false);
+  assert.equal(narrow.tier, 4);
+  assert.deepEqual(narrow.values, [0.9, 1, 1.1, 1.2, 1.3, 1.4]);
+  assert.deepEqual(narrow.texts, ['0.9', '1', '1.1', '1.2', '1.3', '1.4']);
+  // 刻みは1・2・5の冪のうち、目標の本数に届く最も粗いもの。小数2桁の値は桁を落とさずに書く
+  const finer = assertEnclosing([1.01, 1.04], 6, true);
+  assert.equal(finer.tier, 4);
+  assert.deepEqual(finer.texts, ['1', '1.01', '1.02', '1.03', '1.04', '1.05']);
+  // 1つ粗い刻み（0.2）では、同じ点の軸の範囲（0.8〜1.4）に入る目盛りが4つで、目標の5本に届かない
+  const padded = logAxisRange([1.0, 1.3]);
+  assert.equal(Math.round(Math.ceil(padded.hi / 0.2 - 1e-9) - Math.floor(padded.lo / 0.2 + 1e-9) + 1), 4);
+});
+
+test('logAxis: 点の値が全部同じ時は、比1.1倍の余白を残した範囲を囲む', () => {
+  const flat = assertEnclosing([5, 5], 5, false);
+  assert.equal(flat.tier, 4);
+  assert.deepEqual(flat.values, [4.4, 4.6, 4.8, 5, 5.2, 5.4, 5.6]);
+  assert.deepEqual(assertEnclosing([10, 10], 5, false).values, [9, 9.5, 10, 10.5, 11]);
+});
+
+test('logAxis: 点が目盛りの値ちょうどにあっても、点と軸の端の間に余白が残る', () => {
+  const exact = assertEnclosing([1, 100], 5, false);
+  assert.deepEqual(exact.values, [0.1, 1, 10, 100, 1000]);
+  const twoFive = assertEnclosing([2, 50], 5, false);
+  assert.ok(twoFive.range.lo < 2 && twoFive.range.hi > 50);
+});
+
+test('logAxis: 目盛りの値は4つの段の1つから選ばれ、目盛りの数が目標以上になる最も粗い段を使う', () => {
+  const tierLeads = { 1: [1], 2: [1, 2, 5], 3: [1, 2, 3, 4, 5, 6, 7, 8, 9] } as const;
+  for (const horizontal of [true, false]) {
+    const target = horizontal ? 6 : 5;
+    for (const base of [1e-5, 0.01, 1, 70, 3e4]) {
+      for (const ratio of [1, 1.05, 1.3, 2, 3, 7, 20, 400, 1e5]) {
+        const values = [base, base * ratio];
+        const axis = assertEnclosing(values, target, horizontal);
+        if (axis.tier !== 4) {
+          const leads = tierLeads[axis.tier];
+          assert.ok(
+            axis.values.every((v) => isLeadTick(v, leads)),
+            `${values}`,
+          );
+        }
+        // 数字が重ならず戻らなかった時は、目標の本数に届く（3つ目の段までで届かない時だけ4つ目の段）。戻った時はより粗い段
+        assert.ok(axis.tier <= axis.wantedTier, `${values}`);
+        if (axis.tier === axis.wantedTier && axis.tier !== 4) assert.ok(axis.values.length >= target, `${values}`);
+        // 目標に届く最も粗い段を選ぶ。より粗い段は、目標に届かない
+        for (let coarser = 1; coarser < Math.min(axis.wantedTier, 4); coarser++) {
+          assert.ok(leadCount(logAxisRange(values), tierLeads[coarser as 1 | 2]) < target, `${values}: 段${coarser}`);
+        }
+        if (axis.wantedTier === 4) assert.ok(leadCount(logAxisRange(values), tierLeads[3]) < target, `${values}: 段3`);
+      }
+    }
+  }
+});
+
+test('logAxis: 隣の数字が重なる時は、重ならない段まで1段ずつ粗い段に戻す', () => {
+  // 横軸が0.3〜2.9。1〜9の段は目標に届くが0.8と0.9の数字が重なるので、1・2・5の段に戻る
+  const back = assertEnclosing([0.3, 2.9], 6, true);
+  assert.equal(back.wantedTier, 3);
+  assert.equal(back.tier, 2);
+  assert.deepEqual(back.texts, ['0.2', '0.5', '1', '2', '5']);
+  // 縦軸は数字の高さで判定する。同じ範囲でも、1〜9の段の0.8と0.9が近すぎる
+  const narrowY = logAxis([0.3, 2.9], 10, false);
+  assert.ok(narrowY.tier < narrowY.wantedTier);
+  // 0.000001のような長い数字は、4つ目の段から1〜9の段まで戻る
+  const long = assertEnclosing([1e-6, 1.5e-6], 6, true);
+  assert.equal(long.wantedTier, 4);
+  assert.equal(long.tier, 3);
+  assert.deepEqual(long.texts, ['0.0000009', '0.000001', '0.000002']);
+});
+
+test('logAxis: 1つ目の段でも数字が重なる時は、1つ目の段を使う', () => {
+  const axis = assertEnclosing([1e-6, 1e6], 6, true);
+  assert.equal(axis.tier, 1);
+  assert.equal(axis.wantedTier, 1);
+  assert.equal(axis.values.length, 17);
+  assert.equal(axis.texts[0], '0.00000001');
+  assert.equal(axis.texts.at(-1), '100000000');
+});
+
+test('logAxis: 点が無い時は1から10までの範囲を囲む', () => {
+  const empty = logAxis([], 5, false);
+  assert.deepEqual(empty.range, { lo: 1, hi: 10 });
+});
+
+test('scatterPlotModel(対数): 軸の範囲は目盛りの値で、目盛りの数字は軸ごとに決まる', () => {
+  const points = [
+    { targetKey: 'a', label: 'A', x: 0.3, y: 0.3 },
+    { targetKey: 'b', label: 'B', x: 2.9, y: 2.9 },
+  ];
+  const model = scatterPlotModel({ points, contour: undefined, legendRows: [], contourName: '', contourSuffix: '', logScale: true });
+  const first = model.yTicks[0]!;
+  const last = model.yTicks.at(-1)!;
+  // 縦軸の端の目盛りは描画領域の下端と上端
+  assert.equal(first.position, PLOT_HEIGHT - PLOT_MARGIN.bottom);
+  assert.equal(last.position, PLOT_MARGIN.top);
+  assert.deepEqual(
+    model.yTicks.map((tick) => tick.text),
+    ['0.2', '0.5', '1', '2', '5'],
+  );
+  assert.equal(model.xTicks[0]!.position, PLOT_MARGIN.left);
+  assert.equal(model.xTicks.at(-1)!.position, PLOT_WIDTH - PLOT_MARGIN.right);
+  for (const point of model.points) {
+    assert.ok(point.px > PLOT_MARGIN.left && point.px < PLOT_WIDTH - PLOT_MARGIN.right);
+    assert.ok(point.py > PLOT_MARGIN.top && point.py < PLOT_HEIGHT - PLOT_MARGIN.bottom);
+  }
+});
+
+test('scatterPlotModel: 通常の目盛りの描画（点・線・名前・目盛りの座標）は、固定した値と同じ', () => {
+  // 描画をJSONにしてSHA-256の先頭16桁で固定している。対数の目盛りの規則を変えても通常の目盛りの描画が動かないことを確かめる
+  const contour = scatterContour('actions', 'meanPerStroke', 100, 'ja')!;
+  const digest = (input: Parameters<typeof scatterPlotModel>[0]) =>
+    createHash('sha256')
+      .update(JSON.stringify(scatterPlotModel(input)))
+      .digest('hex')
+      .slice(0, 16);
+  assert.equal(digest({ points: POINTS, contour, legendRows: ['かな配列'], contourName: '総移動距離', contourSuffix: '' }), '4079cc7f881cfe12');
+  assert.equal(
+    digest({ points: LOG_POINTS, contour: undefined, legendRows: [], contourName: '', contourSuffix: '', logScale: false }),
+    '9ef3cb2ab47a5a34',
+  );
+  const shares = [
+    { targetKey: 'a', label: 'QWERTY', x: 48, y: 52 },
+    { targetKey: 'b', label: 'Dvorak', x: 55, y: 47 },
+  ];
+  assert.equal(
+    digest({ points: shares, contour: undefined, legendRows: ['かな配列'], contourName: '', contourSuffix: '', centerAxes: { x: true, y: true } }),
+    'b241a3140e936522',
+  );
 });
 
 const PRODUCT_CONTOUR = scatterContour('actions', 'meanPerStroke', 100, 'ja')!;
@@ -850,7 +1026,7 @@ test('scatterPlotModel(対数): 比が同じ点どうしは間隔が同じで、
   assert.ok(ratios.length > 1 && ratios.every((ratio) => Math.abs(ratio - ratios[0]!) < 1e-6));
   assert.deepEqual(
     model.xTicks.map((tick) => tick.text),
-    ['100', '200', '500'],
+    ['50', '100', '200', '500', '1000'],
   );
 });
 
@@ -905,9 +1081,14 @@ test('scatterPlotModel(対数): 線の上の点の対数どうしの関係を、
 });
 
 test('scatterPlotModel(対数): 点の名前の置き場所は、描画領域の座標が同じなら通常の目盛りと同じ', () => {
-  // 横の値の対数が通常の値と等しい点は、両方の目盛りで同じ座標に置かれる
+  // 値の対数が通常の値と等しい点は、軸の範囲が同じなら両方の目盛りで同じ座標に置かれる。
+  // 両端の2点は、通常の軸の範囲が0〜6（余白を足して）、対数の軸の範囲が1〜1000000（目盛りの値）で、対数の上で一致するように置く
   const labels = ['QWERTY', 'Dvorak', 'NICOLA', 'Colemak'];
-  const linearPoints = labels.map((label, i) => ({ targetKey: label, label, x: 1 + i * 0.01, y: 2 + (i % 2) * 0.02 }));
+  const linearPoints = [
+    { targetKey: 'low', label: 'Low', x: 0.5, y: 0.5 },
+    { targetKey: 'high', label: 'High', x: 5.5, y: 5.5 },
+    ...labels.map((label, i) => ({ targetKey: label, label, x: 3 + i * 0.01, y: 2.5 + (i % 2) * 0.02 })),
+  ];
   const logPoints = linearPoints.map((p) => ({ ...p, x: 10 ** p.x, y: 10 ** p.y }));
   const linear = scatterPlotModel({ points: linearPoints, contour: undefined, legendRows: ['かな配列'], contourName: '', contourSuffix: '' });
   const log = scatterPlotModel({ points: logPoints, contour: undefined, legendRows: ['かな配列'], contourName: '', contourSuffix: '', logScale: true });
