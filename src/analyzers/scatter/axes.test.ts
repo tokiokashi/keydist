@@ -13,6 +13,7 @@ import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { Trace } from '#trace/generate.ts';
 import { convertToReading, type NotationExcess, type ReadingToken } from '#input/text/reading.ts';
 import { SCATTER_PRESET_AXES, SCATTER_PRESET_IDS, isHandShareColumn, scatterAxisProblem, scatterContour } from './axes.ts';
+import { axisUnit } from './axis-names.ts';
 import { scatterPlotModel } from './plot-model.ts';
 
 /**
@@ -614,7 +615,7 @@ test('50%の線を引く列: 右手距離率と右手キー率だけ', () => {
   assert.deepEqual(COMPARISON_COLUMN_IDS.filter(isHandShareColumn), ['rightHandDistanceShare', 'rightHandPressShare']);
 });
 
-test('組み込みの全配列を評価した値の点: 細い線を引く全ての軸の組で、描かれた細い線が4本以上6本以下になり、値の桁がそろう', () => {
+test('組み込みの全配列を評価した値の点: 細い線を引く全ての軸の組で、描かれた細い線が4本以上（割合の線は9本、ほかは6本）以下になり、値の桁がそろう', () => {
   const inputChars = ALL_ROWS[0]!.inputChars;
   const outOfRange: string[] = [];
   let checked = 0;
@@ -630,7 +631,8 @@ test('組み込みの全配列を評価した値の点: 細い線を引く全て
       }));
       const model = scatterPlotModel({ points, contour, legendRows: [], contourName: '', contourSuffix: '' });
       checked += 1;
-      if (model.contours.length < 4 || model.contours.length > 6) outOfRange.push(`${x} × ${y}: ${model.contours.length}本`);
+      const most = axisUnit(contour.column) === '%' ? 9 : 6;
+      if (model.contours.length < 4 || model.contours.length > most) outOfRange.push(`${x} × ${y}: ${model.contours.length}本`);
       assert.ok(new Set(model.contours.map((line) => (line.text.split('.')[1] ?? '').length)).size <= 1, `${x} × ${y}`);
     }
   }
