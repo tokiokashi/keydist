@@ -23,7 +23,7 @@ import {
 } from '#engine/workspace-commands.ts';
 import {
   BLANK_PANE_ID,
-  defaultOptionsBinding,
+  newPaneOptions,
   OWN_OPTIONS,
   paneOptionsOwnerKey,
   resolvePaneOptions,
@@ -385,9 +385,8 @@ export function WorkspacePage({
     const pane: WorkspacePane = {
       id: generateId(),
       analyzerId: entry.id,
-      options: undefined,
-      // 解析設定は、そのAnalyzerの共有の設定に従う（無ければ、足すときに共有の設定が作られる）
-      optionsBinding: defaultOptionsBinding(workspace!, entry.id),
+      // 同じAnalyzerのペインがあれば、その設定を写した「このペインだけ」。無ければ共有に従う（組が無ければ足す時に作られる）
+      ...newPaneOptions(workspace!, entry.id),
       // 新しいペインは最初の組に従う（比較中に黙って別の対象を映さない）。
       binding: followBinding(workspace!.groups[0]!.id),
     };

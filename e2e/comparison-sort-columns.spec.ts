@@ -257,7 +257,8 @@ for (const width of [1500, 390]) {
 }
 
 /** 比較表を2つ並べ、3つの配列を対象にして、表が出るまで待つ。 */
-async function openTwoComparisons(page: Page): Promise<void> {
+/** 比較表を2つ並べる。2つ目は先頭の設定を写した「このペインだけ」で始まるので、`shareSecond`なら共有に従うへ切り替える。 */
+async function openTwoComparisons(page: Page, shareSecond = true): Promise<void> {
   // 保存の間引き（約400ms）の中で操作する検査なので、再計算が短く済む短い本文で回す
   await seedShortTextLibrary(page);
   await page.setViewportSize({ width: 800, height: 900 });
@@ -273,6 +274,12 @@ async function openTwoComparisons(page: Page): Promise<void> {
     await page.getByRole('menuitem', { name: /比較表/ }).click();
   }
   await expect(page.locator('.pane-frame')).toHaveCount(2);
+  if (shareSecond) {
+    await page.locator('.pane-frame').nth(1).getByRole('button', { name: '解析設定', exact: true }).click();
+    const settings = page.locator('[data-settings-window="true"]');
+    await settings.getByRole('button', { name: '共有に従う' }).click();
+    await settings.getByRole('button', { name: '解析設定を閉じる' }).click();
+  }
   // 先頭のペインで対象を選ぶ。2つ目は同じ連動に従う。
   await page
     .locator('.pane-frame')
@@ -332,15 +339,10 @@ test('Workspace: 共有に従う2つの比較表では、片方を並べると�
 });
 
 test('Workspace: 「このペインだけ」にしたペインは並び替えを自分で持ち、片方を並べても他方の行の順は変わらない', async ({ page }) => {
-  await openTwoComparisons(page);
+  // 2つ目は足した時の「このペインだけ」のまま
+  await openTwoComparisons(page, false);
   const tables = page.locator('.comparison-table');
   const original = await rowNames(tables.nth(1));
-
-  // 2つ目を「このペインだけ」にする
-  await page.locator('.pane-frame').nth(1).getByRole('button', { name: '解析設定', exact: true }).click();
-  const settings = page.locator('[data-settings-window="true"]');
-  await settings.getByRole('button', { name: 'このペインだけ' }).click();
-  await settings.getByRole('button', { name: '解析設定を閉じる' }).click();
 
   const first = tables.nth(0);
   await sortButton(first, '距離').click();

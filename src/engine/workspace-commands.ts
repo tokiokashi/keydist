@@ -114,12 +114,16 @@ export interface PaneFromStandalone {
 
 /**
  * 個別画面から足すペインの解析設定の持ち方。見た目を変えないため、個別画面の設定をそのまま引き継ぐ:
- * WorkspaceにそのAnalyzerの共有の設定があり、同じ値（`matchesShared`）なら共有に従う。違う値なら、共有を書き換えず、
- * このペインだけの設定として持つ。共有の設定がまだ無ければ、個別画面の設定で共有の設定を作って従う
- * （`addWorkspacePane`が組を作る）。
+ * - Workspaceに同じAnalyzerのペインが1つ以上ある時は、個別画面の設定を写した「このペインだけ」で始める
+ *   （組の値と同じ時も同じ。共有の設定を書き換えず、「ペインを追加」で足す時と持ち方を揃える）
+ * - 同じAnalyzerのペインが無い時: 組が無ければ、個別画面の設定で組を作って従う。組があり同じ値（`matchesShared`）なら
+ *   その組に従い、違う値なら「このペインだけ」にする
  */
 function standalonePane(workspace: Workspace, source: PaneFromStandalone, groupId: string): WorkspacePane {
   const base = { id: source.paneId, analyzerId: source.analyzerId, binding: followBinding(groupId) };
+  if (workspace.panes.some((pane) => pane.analyzerId === source.analyzerId)) {
+    return { ...base, options: source.options, optionsBinding: OWN_OPTIONS };
+  }
   const shared = defaultOptionsBinding(workspace, source.analyzerId);
   const set = shared.mode === 'shared' ? workspace.optionSets.find((candidate) => candidate.id === shared.set) : undefined;
   if (set !== undefined && source.matchesShared !== true) {
