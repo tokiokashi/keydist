@@ -168,7 +168,10 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
             <InfoButton name="図の見方" description={quantityHelp.description} help={quantityHelp.help} />
           </div>
           <figure className="scatter-figure">
-            <svg viewBox={`0 0 ${PLOT_WIDTH} ${PLOT_HEIGHT}`} aria-label={`${axisName(axes.x, language)}と${axisName(axes.y, language)}の散布図`}>
+            <svg
+              viewBox={`${model.viewBoxX} 0 ${PLOT_WIDTH - model.viewBoxX} ${PLOT_HEIGHT}`}
+              aria-label={`${axisName(axes.x, language)}と${axisName(axes.y, language)}の散布図`}
+            >
               <rect
                 className="scatter-frame"
                 x={PLOT_MARGIN.left}
