@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { LayoutKind } from '#input/layouts/kind.ts';
-import { bindOption, SelectOptionField } from '#ui/primitives/option-fields.tsx';
+import { bindOption, SegmentedOptionField, SelectOptionField } from '#ui/primitives/option-fields.tsx';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
 import { targetMarkPath } from '#ui/theme/target-marks.ts';
 import type { AnalyzerSettingsProps, SetAnalyzerPaneParts, SetBodyProps } from '../pane-parts.tsx';
@@ -25,7 +25,7 @@ import { SCATTER_KIND_ORDER, SCATTER_KIND_STYLES } from './kinds.ts';
 import { DEFAULT_SCATTER_OPTIONS, scatterOptions, type ScatterOptions } from './options.ts';
 import { SCATTER_PANE_META } from './pane-meta.ts';
 import { readoutText, scatterCaption, scatterQuantityHelp } from './quantity-help.ts';
-import { MARK_RADIUS, PLOT_HEIGHT, PLOT_MARGIN, PLOT_WIDTH, scatterPlotModel } from './plot-model.ts';
+import { logScaleBlockers, MARK_RADIUS, PLOT_HEIGHT, PLOT_MARGIN, PLOT_WIDTH, resolveLogScale, scatterPlotModel } from './plot-model.ts';
 import './scatter-view.css';
 
 /**
@@ -57,6 +57,12 @@ const TICK_LENGTH = 5;
 function axesOf(options: ScatterOptions): ScatterAxes {
   return options.preset === 'free' ? { x: options.xAxis, y: options.yAxis } : SCATTER_PRESET_AXES[options.preset];
 }
+
+/** 対数の目盛りを選んでいるのに通常の目盛りで描く理由を、理由ごとに1文で伝える。 */
+const LOG_BLOCKER_TEXTS = {
+  noStraightLines: '細い線が直線にならない図なので、対数の目盛りにはできず、通常の目盛りで表示しています。',
+  nonPositive: '0以下の値があるので、対数の目盛りにはできず、通常の目盛りで表示しています。',
+} as const;
 
 function axisProblemText(problem: ScatterAxisProblem, language: TextLanguage): string {
   const k = kanaUnitOf(language, SCATTER_KANA_SCRIPT);
@@ -137,6 +143,9 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
   );
   // 線を引かない組でも、3つの量の関係は図の見方に出すので`contour`は残す。点の読み取りと凡例には、線を引く組の線の量だけを出す
   const lineContour = contour?.drawsLines === true ? contour : undefined;
+  // 対数の目盛りは、対数にできる図でだけ使う。選んだ設定と表示が違う時は、図の近くに理由を出す
+  const logBlockers = useMemo(() => logScaleBlockers(lineContour, plotted), [lineContour, plotted]);
+  const { logScale, reasons: logReasons } = resolveLogScale(options.tickScale, logBlockers);
   const usedKinds = useMemo(() => SCATTER_KIND_ORDER.filter((kind) => plotted.some((row) => row.kind === kind)), [plotted]);
   const model = useMemo(
     () =>
@@ -147,14 +156,15 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
         contourName: lineContour === undefined ? '' : axisTitle(lineContour.column, language),
         contourSuffix: lineContour !== undefined && axisUnit(lineContour.column) === '%' ? '%' : '',
         centerAxes: { x: isHandShareColumn(axes.x), y: isHandShareColumn(axes.y) },
+        logScale,
       }),
-    [plotted, lineContour, usedKinds, language, axes.x, axes.y],
+    [plotted, lineContour, usedKinds, language, axes.x, axes.y, logScale],
   );
   const plottedByKey = new Map(plotted.map((row) => [row.targetKey, row] as const));
   const active = activeKey === undefined ? undefined : model.points.find((point) => point.targetKey === activeKey);
   const activeRow = active === undefined ? undefined : plottedByKey.get(active.targetKey);
 
-  const quantityHelp = scatterQuantityHelp(axes, contour, language);
+  const quantityHelp = scatterQuantityHelp(axes, contour, language, logScale);
 
   return (
     <section className="scatter-feature" data-react-feature="scatter">
@@ -167,6 +177,11 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
           <div className="scatter-heading">
             <InfoButton name="図の見方" description={quantityHelp.description} help={quantityHelp.help} />
           </div>
+          {logReasons.map((reason) => (
+            <p key={reason} className="scatter-notice" data-scatter-log-notice={reason}>
+              {LOG_BLOCKER_TEXTS[reason]}
+            </p>
+          ))}
           <figure className="scatter-figure">
             <svg
               viewBox={`${model.viewBoxX} 0 ${PLOT_WIDTH - model.viewBoxX} ${PLOT_HEIGHT}`}
@@ -209,7 +224,7 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
                 textAnchor="middle"
                 data-scatter-y-title=""
               >
-                {axisPlotTitle(axes.y, language)}
+                {axisPlotTitle(axes.y, language, logScale)}
               </text>
               <text
                 className="scatter-axis-title"
@@ -218,7 +233,7 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
                 textAnchor="middle"
                 data-scatter-x-title=""
               >
-                {axisPlotTitle(axes.x, language)}
+                {axisPlotTitle(axes.x, language, logScale)}
               </text>
 
               {model.centerLines.map((line) => (
@@ -378,6 +393,15 @@ export function ScatterSettings({ options, onOptionsChange }: AnalyzerSettingsPr
           />
         </>
       ) : null}
+      <SegmentedOptionField
+        label="目盛り"
+        binding={bind('tickScale')}
+        choices={[
+          { value: 'linear', label: '通常' },
+          { value: 'log', label: '対数' },
+        ]}
+        hint="対数にできるのは、細い線が直線になる図だけです。"
+      />
     </div>
   );
 }

@@ -6,11 +6,15 @@ import {
   estimateTextWidth,
   finerStep,
   levelsAtStep,
+  logAxisRange,
+  logScaleBlockers,
+  logTicks,
   MARK_RADIUS,
   niceTicks,
   PLOT_HEIGHT,
   PLOT_MARGIN,
   PLOT_WIDTH,
+  resolveLogScale,
   scatterPlotModel,
   type PlotName,
   type PlotRect,
@@ -726,4 +730,198 @@ test('scatterPlotModel: 名前の位置の下限に届かない目盛りの数�
     assert.equal(model.viewBoxX, 0);
     assert.equal(model.yTitleX, PLOT_MARGIN.left - 8 - widestYTick(model) - 11);
   }
+});
+
+test('logAxisRange: 余白は対数の上で両側に同じだけ足し、値が全部同じでも幅を持つ', () => {
+  const range = logAxisRange([10, 1000]);
+  assert.ok(range.lo > 0 && range.lo < 10 && range.hi > 1000);
+  // 対数の上で左右対称（10と1000の対数は1と3、余白は0.2）
+  assert.ok(Math.abs(Math.log10(range.lo) - 0.8) < 1e-9 && Math.abs(Math.log10(range.hi) - 3.2) < 1e-9);
+  const flat = logAxisRange([5, 5]);
+  assert.ok(flat.lo < 5 && flat.hi > 5 && Math.abs(Math.log(flat.hi / 5) - Math.log(5 / flat.lo)) < 1e-9);
+  assert.deepEqual(logAxisRange([]), { lo: 1, hi: 10 });
+});
+
+test('logTicks: 最大が最小の10倍に満たない時は通常と同じ刻みの値、10倍以上の時は1・2・5の冪の値', () => {
+  const narrow = logTicks({ lo: 0.8, hi: 1.45 }, 5);
+  assert.deepEqual(narrow.values, niceTicks({ lo: 0.8, hi: 1.45 }, 5).values);
+  assert.deepEqual(narrow.texts, ['0.8', '1.0', '1.2', '1.4']);
+  const wide = logTicks({ lo: 0.07, hi: 30 }, 5);
+  assert.deepEqual(wide.values, [0.1, 0.2, 0.5, 1, 2, 5, 10, 20]);
+  assert.deepEqual(wide.texts, ['0.1', '0.2', '0.5', '1', '2', '5', '10', '20']);
+  // ちょうど10倍は「10倍以上」の側
+  assert.deepEqual(logTicks({ lo: 1, hi: 10 }, 5).values, [1, 2, 5, 10]);
+  // 範囲の端の値は含む
+  assert.deepEqual(logTicks({ lo: 2, hi: 50 }, 5).values, [2, 5, 10, 20, 50]);
+});
+
+const PRODUCT_CONTOUR = scatterContour('actions', 'meanPerStroke', 100, 'ja')!;
+
+test('logScaleBlockers: 線が直線になる図で、描く点の値が全部0より大きい時は理由が無く、対数にできる', () => {
+  const points = [
+    { x: 100, y: 1.2 },
+    { x: 300, y: 0.9 },
+  ];
+  assert.deepEqual(logScaleBlockers(PRODUCT_CONTOUR, points), { noStraightLines: false, nonPositive: false });
+});
+
+test('logScaleBlockers: 線を引かない図・線の量が積でも比でもない図・線の無い図は、直線にならない図として理由に挙がる', () => {
+  const points = [{ x: 100, y: 1.2 }];
+  // 線の量がu/アクションの組（線を引かない）
+  const noLines = scatterContour('perActionPresses', 'perPressUnits', 100, 'ja')!;
+  assert.equal(noLines.drawsLines, false);
+  assert.equal(logScaleBlockers(noLines, points).noStraightLines, true);
+  // 同じ手の続きの割合を軸の一方に選んだ図（線の量は回数）
+  const notProduct = scatterContour('handSwitches', 'sameHandContinuationRate', 100, 'ja')!;
+  assert.equal(notProduct.drawsLines, true);
+  assert.equal(logScaleBlockers(notProduct, points).noStraightLines, true);
+  // 恒等式が無い図
+  assert.equal(logScaleBlockers(undefined, points).noStraightLines, true);
+  // 手の切り替えの回数と同じ手の続きの回数の図は直線になる
+  assert.equal(logScaleBlockers(scatterContour('handSwitches', 'handContinuations', 100, 'ja'), points).noStraightLines, false);
+});
+
+test('logScaleBlockers: 0以下の値がある点があれば理由に挙がる。理由は互いに独立で、両方に当たる図は両方が真になる', () => {
+  assert.deepEqual(logScaleBlockers(PRODUCT_CONTOUR, [{ x: 0, y: 1 }]), { noStraightLines: false, nonPositive: true });
+  assert.deepEqual(logScaleBlockers(PRODUCT_CONTOUR, [{ x: 5, y: -1 }]), { noStraightLines: false, nonPositive: true });
+  assert.deepEqual(logScaleBlockers(undefined, [{ x: 5, y: 0 }]), { noStraightLines: true, nonPositive: true });
+  // 渡した点だけを見る。値が無くて描かない点は呼び出し側が渡さないので、判定に入らない
+  assert.equal(logScaleBlockers(PRODUCT_CONTOUR, []).nonPositive, false);
+});
+
+test('resolveLogScale: 対数を選んでいて理由が無い時だけ対数で描き、できない時は理由ごとに返す。通常を選んでいる時は理由を返さない', () => {
+  const none = { noStraightLines: false, nonPositive: false };
+  assert.deepEqual(resolveLogScale('log', none), { logScale: true, reasons: [] });
+  assert.deepEqual(resolveLogScale('linear', none), { logScale: false, reasons: [] });
+  assert.deepEqual(resolveLogScale('log', { noStraightLines: true, nonPositive: false }), { logScale: false, reasons: ['noStraightLines'] });
+  assert.deepEqual(resolveLogScale('log', { noStraightLines: false, nonPositive: true }), { logScale: false, reasons: ['nonPositive'] });
+  assert.deepEqual(resolveLogScale('log', { noStraightLines: true, nonPositive: true }), {
+    logScale: false,
+    reasons: ['noStraightLines', 'nonPositive'],
+  });
+  assert.deepEqual(resolveLogScale('linear', { noStraightLines: true, nonPositive: true }), { logScale: false, reasons: [] });
+});
+
+test('対数を選んだまま組み合わせを変える: 対数にできる図は対数のまま、できない図は通常の目盛りと理由になる', () => {
+  const rows = [
+    { actions: 120, perCharSteps: 1.2, meanPerStroke: 0.9, sameFingerRate: 3 },
+    { actions: 150, perCharSteps: 1.5, meanPerStroke: 1.1, sameFingerRate: 0 },
+  ];
+  const resolve = (x: 'actions' | 'perCharSteps' | 'sameFingerRate', y: 'meanPerStroke' | 'sameFingerRate' | 'perCharSteps') => {
+    const contour = scatterContour(x, y, 100, 'ja');
+    const lineContour = contour?.drawsLines === true ? contour : undefined;
+    return resolveLogScale(
+      'log',
+      logScaleBlockers(
+        lineContour,
+        rows.map((row) => ({ x: row[x], y: row[y] })),
+      ),
+    );
+  };
+  assert.deepEqual(resolve('actions', 'meanPerStroke'), { logScale: true, reasons: [] });
+  // 同指率が0%の配列がある図
+  assert.deepEqual(resolve('actions', 'sameFingerRate'), { logScale: false, reasons: ['nonPositive'] });
+  // 線の無い図（同じ手の続きの割合と同指率）に0以下の値が重なる
+  assert.deepEqual(resolve('sameFingerRate', 'perCharSteps'), { logScale: false, reasons: ['noStraightLines', 'nonPositive'] });
+  // 対数を選んだままでも、対数にできる図に戻れば対数になる
+  assert.deepEqual(resolve('perCharSteps', 'meanPerStroke'), { logScale: true, reasons: [] });
+});
+
+const LOG_POINTS = [
+  { targetKey: 'a', label: 'A', x: 100, y: 1.0 },
+  { targetKey: 'b', label: 'B', x: 200, y: 2.0 },
+  { targetKey: 'c', label: 'C', x: 400, y: 4.0 },
+  { targetKey: 'd', label: 'D', x: 800, y: 0.5 },
+];
+
+test('scatterPlotModel(対数): 比が同じ点どうしは間隔が同じで、点は図の内側に置かれ、目盛りの位置も対数の上にある', () => {
+  const model = scatterPlotModel({ points: LOG_POINTS, contour: undefined, legendRows: [], contourName: '', contourSuffix: '', logScale: true });
+  const [a, b, c] = model.points;
+  assert.ok(Math.abs(b!.px - a!.px - (c!.px - b!.px)) < 1e-9);
+  assert.ok(Math.abs(a!.py - b!.py - (b!.py - c!.py)) < 1e-9);
+  for (const point of model.points) {
+    assert.ok(point.px >= PLOT_MARGIN.left && point.px <= PLOT_WIDTH - PLOT_MARGIN.right);
+    assert.ok(point.py >= PLOT_MARGIN.top && point.py <= PLOT_HEIGHT - PLOT_MARGIN.bottom);
+  }
+  // 目盛りの位置は、値の対数に比例する（隣り合う目盛りの位置の差 ÷ 値の対数の差が一定）
+  const ratios = model.xTicks
+    .slice(1)
+    .map((tick, i) => (tick.position - model.xTicks[i]!.position) / (Math.log(tick.value) - Math.log(model.xTicks[i]!.value)));
+  assert.ok(ratios.length > 1 && ratios.every((ratio) => Math.abs(ratio - ratios[0]!) < 1e-6));
+  assert.deepEqual(
+    model.xTicks.map((tick) => tick.text),
+    ['100', '200', '500'],
+  );
+});
+
+test('scatterPlotModel(対数): 積が一定の線は直線になり、線の上の点が一直線に並ぶ', () => {
+  const contour = PRODUCT_CONTOUR;
+  const points = [
+    { targetKey: 'a', label: 'A', x: 100, y: 0.9 },
+    { targetKey: 'b', label: 'B', x: 400, y: 1.5 },
+    { targetKey: 'c', label: 'C', x: 160, y: 2.4 },
+  ];
+  const model = scatterPlotModel({ points, contour, legendRows: [], contourName: '', contourSuffix: '', logScale: true });
+  assert.ok(model.contours.length >= 4);
+  for (const line of model.contours) {
+    const coordinates = [...line.d.matchAll(/[ML]([-\d.]+),([-\d.]+)/g)].map((m) => ({ x: Number(m[1]), y: Number(m[2]) }));
+    assert.ok(coordinates.length >= 2, `${line.level}`);
+    const first = coordinates[0]!;
+    const last = coordinates[coordinates.length - 1]!;
+    // 始点と終点を結ぶ直線からの距離（座標は小数1桁に丸めているので、0.1pxの誤差を許す）
+    const length = Math.hypot(last.x - first.x, last.y - first.y);
+    for (const p of coordinates) {
+      const distance = Math.abs((last.x - first.x) * (first.y - p.y) - (first.x - p.x) * (last.y - first.y)) / length;
+      assert.ok(distance < 0.15, `${line.level}: ${distance}`);
+    }
+  }
+  // 通常の目盛りでは曲線で、同じ線が直線にならない
+  const linear = scatterPlotModel({ points, contour, legendRows: [], contourName: '', contourSuffix: '' });
+  const curved = linear.contours.some((line) => {
+    const cs = [...line.d.matchAll(/[ML]([-\d.]+),([-\d.]+)/g)].map((m) => ({ x: Number(m[1]), y: Number(m[2]) }));
+    const f = cs[0]!;
+    const l = cs[cs.length - 1]!;
+    const len = Math.hypot(l.x - f.x, l.y - f.y);
+    return cs.some((p) => Math.abs((l.x - f.x) * (f.y - p.y) - (f.x - p.x) * (l.y - f.y)) / len > 1);
+  });
+  assert.ok(curved);
+});
+
+test('scatterPlotModel(対数): 線の上の点の対数どうしの関係を、点の座標で確かめる（線の量が一定の点は同じ線の上に並ぶ）', () => {
+  // 横軸と縦軸の積が同じ2点（100と1、400と0.25）は同じ細い線の上にある。対数の図では、2点を結ぶ線の傾きが、どの細い線の傾きとも等しい
+  const points = [
+    { targetKey: 'a', label: 'A', x: 100, y: 1 },
+    { targetKey: 'b', label: 'B', x: 400, y: 0.25 },
+    { targetKey: 'c', label: 'C', x: 200, y: 2 },
+  ];
+  const model = scatterPlotModel({ points, contour: PRODUCT_CONTOUR, legendRows: [], contourName: '', contourSuffix: '', logScale: true });
+  const [a, b] = model.points;
+  const lineSlope = (d: string): number => {
+    const cs = [...d.matchAll(/[ML]([-\d.]+),([-\d.]+)/g)].map((m) => ({ x: Number(m[1]), y: Number(m[2]) }));
+    return (cs[cs.length - 1]!.y - cs[0]!.y) / (cs[cs.length - 1]!.x - cs[0]!.x);
+  };
+  const pointSlope = (b!.py - a!.py) / (b!.px - a!.px);
+  for (const line of model.contours) assert.ok(Math.abs(lineSlope(line.d) - pointSlope) < 0.01, `${line.level}`);
+});
+
+test('scatterPlotModel(対数): 点の名前の置き場所は、描画領域の座標が同じなら通常の目盛りと同じ', () => {
+  // 横の値の対数が通常の値と等しい点は、両方の目盛りで同じ座標に置かれる
+  const labels = ['QWERTY', 'Dvorak', 'NICOLA', 'Colemak'];
+  const linearPoints = labels.map((label, i) => ({ targetKey: label, label, x: 1 + i * 0.01, y: 2 + (i % 2) * 0.02 }));
+  const logPoints = linearPoints.map((p) => ({ ...p, x: 10 ** p.x, y: 10 ** p.y }));
+  const linear = scatterPlotModel({ points: linearPoints, contour: undefined, legendRows: ['かな配列'], contourName: '', contourSuffix: '' });
+  const log = scatterPlotModel({ points: logPoints, contour: undefined, legendRows: ['かな配列'], contourName: '', contourSuffix: '', logScale: true });
+  for (const [i, point] of linear.points.entries()) {
+    assert.ok(Math.abs(point.px - log.points[i]!.px) < 1e-9 && Math.abs(point.py - log.points[i]!.py) < 1e-9);
+  }
+  // 座標は浮動小数点の誤差を除いて比べる
+  const rounded = (names: typeof linear.names) =>
+    JSON.parse(JSON.stringify(names), (_key, value) => (typeof value === 'number' ? Math.round(value * 1e6) / 1e6 : value));
+  assert.deepEqual(rounded(log.names), rounded(linear.names));
+});
+
+test('scatterPlotModel: logScaleを偽にしても省いても、通常の目盛りの結果は変わらない', () => {
+  const contour = PRODUCT_CONTOUR;
+  const base = { points: POINTS, contour, legendRows: ['かな配列'], contourName: '総移動距離', contourSuffix: '' };
+  assert.deepEqual(scatterPlotModel({ ...base, logScale: false }), scatterPlotModel(base));
 });

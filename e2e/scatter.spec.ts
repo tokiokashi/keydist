@@ -131,6 +131,24 @@ test.describe('個別画面', () => {
     await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveText('1uあたりの文字数（1/u）');
   });
 
+  test('目盛りを対数にすると、対数にできる図では軸の名前に対数と出て、できない図では通常のまま理由が出る', async ({ page }) => {
+    const settings = await openSettings(page);
+    await settings.getByRole('button', { name: '対数', exact: true }).click();
+    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('アクション数/カナ（対数）');
+    await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('距離/アクション（u、対数）');
+    await expect(feature(page).locator('[data-scatter-log-notice]')).toHaveCount(0);
+    // 対数を選んだまま組み合わせを変える。線を引かない図は通常の目盛りで、理由が出る
+    await settings.getByLabel('組み合わせ', { exact: true }).selectOption('handShare');
+    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('右手キー率（%）');
+    await expect(feature(page).locator('[data-scatter-log-notice="noStraightLines"]')).toHaveCount(1);
+    // 対数にできる図に戻ると、対数のまま
+    await settings.getByLabel('組み合わせ', { exact: true }).selectOption('charsPerAction');
+    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('文字数/アクション（対数）');
+    await expect(feature(page).locator('[data-scatter-log-notice]')).toHaveCount(0);
+    await settings.getByRole('button', { name: '通常', exact: true }).click();
+    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('文字数/アクション');
+  });
+
   test('自由に選ぶと、横軸と縦軸を比較表の列から選べる。引けない組には線を引かず、選べない列は選択肢に出ない', async ({ page }) => {
     const settings = await openSettings(page);
     await settings.getByLabel('組み合わせ', { exact: true }).selectOption('free');
