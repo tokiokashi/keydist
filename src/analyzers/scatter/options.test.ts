@@ -30,7 +30,7 @@ test('目盛りの種類: 知らない値のURLは診断に残して読まない
   assert.equal(decoded.values.tickScale, undefined);
 });
 
-test('組み合わせ: 既定は distance 1つだけで、既定のままならURLに載せない', () => {
+test('組み合わせ: 既定はdistanceの1つだけで、既定のままならURLに載せない', () => {
   assert.deepEqual(DEFAULT_SCATTER_OPTIONS.presets, ['distance']);
   assert.equal(scatterOptions.encodeOptionsToUrl(DEFAULT_SCATTER_OPTIONS).has('preset'), false);
 });
