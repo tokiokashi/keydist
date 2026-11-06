@@ -94,7 +94,16 @@ function handFingerRateNotes(axes: ScatterAxes, language: TextLanguage): string[
   ];
 }
 
-export function scatterQuantityHelp(axes: ScatterAxes, contour: ScatterContour | undefined, language: TextLanguage): ScatterQuantityHelp {
+/** 対数の目盛りで描いている時の説明。目盛りの数字の置き方と、細い線の読み方。 */
+const LOG_SCALE_NOTE =
+  '横軸と縦軸は対数の目盛りです。目盛りの間隔は値の差でなく比に比例し、2軸の積か比が一定の細い線は平行な直線になります。細い線の値の選び方は通常の目盛りと同じなので、線の間隔は等しくなりません。';
+
+export function scatterQuantityHelp(
+  axes: ScatterAxes,
+  contour: ScatterContour | undefined,
+  language: TextLanguage,
+  logScale = false,
+): ScatterQuantityHelp {
   // 列名は比較表で列を探す目印なので、比較表の見出しと同じ書き方で引く。説明は散布図の単位の語の書き方で読む
   const tableText = comparisonColumnText(language);
   const text = comparisonColumnText(language, SCATTER_KANA_SCRIPT);
@@ -115,6 +124,7 @@ export function scatterQuantityHelp(axes: ScatterAxes, contour: ScatterContour |
       notes.push(`${axisName(contour.column, language)}を含む3つの量の関係は、${contour.relation}です。${conversion}`);
     }
   }
+  if (logScale) notes.push(LOG_SCALE_NOTE);
   notes.push(...handFingerRateNotes(axes, language));
   notes.push(...centerLineNotes(axes, language));
   // 線を引かない組も、関係の文に線の量の名前が出るので、その量の単位を説明する

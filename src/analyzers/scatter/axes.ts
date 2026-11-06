@@ -142,7 +142,15 @@ export interface Identity {
    * 分母が0で決まらない時は`undefined`。
    */
   readonly solve: (index: 0 | 1 | 2, q: Triple) => number | undefined;
+  /**
+   * `index`番目の量を線の量にした時、その量が一定になる線が、残る2つの量を両対数の軸に取った図で直線になるか。
+   * 線の量が2軸の積か比で決まるなら直線になる。同じ手の続きの割合の恒等式は、続きの回数 ÷ 切り替えの回数で決まる割合を線の量にした時だけ
+   * 比になり、回数を線の量にした時は（切り替え + 続き）を含むので直線にならない。
+   */
+  readonly straightInLog: (index: 0 | 1 | 2) => boolean;
 }
+
+const ALWAYS_STRAIGHT = (): boolean => true;
 
 const divide = (numerator: number, denominator: number): number | undefined => (denominator === 0 ? undefined : numerator / denominator);
 
@@ -156,6 +164,7 @@ export const IDENTITIES: readonly Identity[] = [
       { total: 'totalUnits', perChar: 'perCharUnits', extensive: true },
     ],
     solve: (index, [n, m, p]) => (index === 0 ? divide(p, m) : index === 1 ? divide(p, n) : n * m),
+    straightInLog: ALWAYS_STRAIGHT,
   },
   // キー数 = アクション数 × キー数/アクション。`perActionPresses`は押したキーの数 / アクション数。キー数は1かなあたりの列だけが比較表にある。
   {
@@ -166,6 +175,7 @@ export const IDENTITIES: readonly Identity[] = [
       { perChar: 'perCharPresses', extensive: true },
     ],
     solve: (index, [n, m, p]) => (index === 0 ? divide(p, m) : index === 1 ? divide(p, n) : n * m),
+    straightInLog: ALWAYS_STRAIGHT,
   },
   // 距離 = キー数 × u/キー。`perPressUnits`は総移動距離 / 押したキーの数。キー数は1かなあたりの列だけが比較表にある。
   {
@@ -176,6 +186,7 @@ export const IDENTITIES: readonly Identity[] = [
       { total: 'totalUnits', perChar: 'perCharUnits', extensive: true },
     ],
     solve: (index, [n, m, p]) => (index === 0 ? divide(p, m) : index === 1 ? divide(p, n) : n * m),
+    straightInLog: ALWAYS_STRAIGHT,
   },
   // u/アクション = キー数/アクション × u/キー。3つとも比率で、入力かな数に比例しない。
   {
@@ -186,6 +197,7 @@ export const IDENTITIES: readonly Identity[] = [
       { total: 'meanPerStroke', extensive: false },
     ],
     solve: (index, [a, u, m]) => (index === 0 ? divide(m, u) : index === 1 ? divide(m, a) : a * u),
+    straightInLog: ALWAYS_STRAIGHT,
   },
   // 同指 = アクション数 × 同指率 / 100。`sameFingerRate`の分母はStroke数。
   {
@@ -196,6 +208,7 @@ export const IDENTITIES: readonly Identity[] = [
       { total: 'sameFinger', extensive: true },
     ],
     solve: (index, [n, r, s]) => (index === 0 ? divide(100 * s, r) : index === 1 ? divide(100 * s, n) : (n * r) / 100),
+    straightInLog: ALWAYS_STRAIGHT,
   },
   // 同じ手の続きの割合 = 同じ手の続き / (手の切り替え + 同じ手の続き) × 100。
   {
@@ -206,6 +219,7 @@ export const IDENTITIES: readonly Identity[] = [
       { total: 'sameHandContinuationRate', extensive: false },
     ],
     solve: (index, [w, c, rate]) => (index === 0 ? divide(c * (100 - rate), rate) : index === 1 ? divide(rate * w, 100 - rate) : divide(100 * c, w + c)),
+    straightInLog: (index) => index === 2,
   },
   // u/キー = 移動ありキー率 / 100 × u/移動ありキー。`perPressUnits`は総移動距離 / 押したキーの数、`perMovedPressUnits`は総移動距離 / 移動ありキーの数。
   {
@@ -216,6 +230,7 @@ export const IDENTITIES: readonly Identity[] = [
       { total: 'perPressUnits', extensive: false },
     ],
     solve: (index, [s, m, u]) => (index === 0 ? divide(100 * u, m) : index === 1 ? divide(100 * u, s) : (s * m) / 100),
+    straightInLog: ALWAYS_STRAIGHT,
   },
   // 文字/u = 文字/アクション × アクション/u。`W / D = (W / S) × (S / D)`。3つとも比率で、入力かな数に比例しない。
   {
@@ -226,6 +241,7 @@ export const IDENTITIES: readonly Identity[] = [
       { total: 'textCharsPerUnit', extensive: false },
     ],
     solve: (index, [a, u, c]) => (index === 0 ? divide(c, u) : index === 1 ? divide(c, a) : a * u),
+    straightInLog: ALWAYS_STRAIGHT,
   },
   // u/アクション = 文字/アクション × u/文字。`D / S = (W / S) × (D / W)`。
   {
@@ -236,6 +252,7 @@ export const IDENTITIES: readonly Identity[] = [
       { total: 'meanPerStroke', extensive: false },
     ],
     solve: (index, [a, w, m]) => (index === 0 ? divide(m, w) : index === 1 ? divide(m, a) : a * w),
+    straightInLog: ALWAYS_STRAIGHT,
   },
   // u/文字 = アクション/文字 × u/アクション。`D / W = (S / W) × (D / S)`。上の2つの後ろに置くので、
   // u/アクションとu/文字を軸に取る組の線の量は、文字/アクションのまま変わらない。
@@ -247,6 +264,7 @@ export const IDENTITIES: readonly Identity[] = [
       { total: 'unitsPerTextChar', extensive: false },
     ],
     solve: (index, [a, m, w]) => (index === 0 ? divide(w, m) : index === 1 ? divide(w, a) : a * m),
+    straightInLog: ALWAYS_STRAIGHT,
   },
 ];
 
@@ -318,6 +336,11 @@ export interface ScatterContour {
    * 引かない組では、線の量の値を点の読み取りにも凡例にも出さない。
    */
   readonly drawsLines: boolean;
+  /**
+   * 線の量が一定になる線が、両対数の図で直線になるか（`Identity.straightInLog`）。対数の目盛りにできる図の条件の1つで、
+   * 組み合わせの名前では決めず、当てはまった恒等式と線の量の位置から決める。
+   */
+  readonly straightInLog: boolean;
   /** 3つの量の関係の式（恒等式の`relation`）。語尾は付けない。 */
   readonly relation: string;
   /**
@@ -392,6 +415,7 @@ export function scatterContour(x: ComparisonColumnId, y: ComparisonColumnId, inp
       valueAt,
       readoutAt: (xv, yv, columnValue) => (Number.isFinite(columnValue) ? valueAt(xv, yv) : undefined),
       drawsLines: !NO_LINE_COLUMNS.has(outColumn),
+      straightInLog: identity.straightInLog(ri),
       yAt: (level, xv) => {
         const value = identity.solve(yi as 0 | 1 | 2, triple({ [xi]: toTotal(xv, xForm), [ri]: toTotal(level, outForm) }));
         return finite(value === undefined ? undefined : fromTotal(value, yForm));

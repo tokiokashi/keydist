@@ -638,3 +638,52 @@ test('組み込みの全配列を評価した値の点: 細い線を引く全て
   // 0.000001の刻みまで細かくしても4本に届かない組と、線の値の幅が0の組は、この一覧に挙げる
   assert.deepEqual(outOfRange, []);
 });
+
+/** 線の上の点を、横軸を対数の上で等間隔に取って並べ、対数どうしの傾きが一定か（両対数の図で直線か）を見る。 */
+function isStraightInLogLog(contour: NonNullable<ReturnType<typeof scatterContour>>): boolean {
+  const level = contour.valueAt(3, 5) ?? 1;
+  const points = [1, 2, 4, 8, 16].flatMap((x) => {
+    const y = contour.yAt(level, x);
+    return y !== undefined && y > 0 ? [{ x: Math.log(x), y: Math.log(y) }] : [];
+  });
+  if (points.length < 3) return false;
+  const slope = (points[1]!.y - points[0]!.y) / (points[1]!.x - points[0]!.x);
+  return points.slice(1).every((p, i) => Math.abs((p.y - points[i]!.y) / (p.x - points[i]!.x) - slope) < 1e-6);
+}
+
+test('対数の図で直線になるか: 恒等式の全ての軸の組で、straightInLogが実際の線の形と一致する', () => {
+  let straight = 0;
+  let notStraight = 0;
+  for (const x of IDENTITY_COLUMNS) {
+    for (const y of IDENTITY_COLUMNS) {
+      const contour = scatterContour(x, y, 100, 'ja');
+      if (contour === undefined) continue;
+      assert.equal(contour.straightInLog, isStraightInLogLog(contour), `${x} × ${y} の線の量 ${contour.column}`);
+      if (contour.straightInLog) straight += 1;
+      else notStraight += 1;
+    }
+  }
+  assert.ok(straight > 0 && notStraight > 0);
+});
+
+test('対数の図で直線になるか: 同じ手の続きの割合の線は、軸が手の切り替えの回数と同じ手の続きの回数の時だけ直線になる', () => {
+  const free = (x: ComparisonColumnId, y: ComparisonColumnId) => scatterContour(x, y, 100, 'ja');
+  assert.equal(free('handSwitches', 'handContinuations')?.column, 'sameHandContinuationRate');
+  assert.equal(free('handSwitches', 'handContinuations')?.straightInLog, true);
+  assert.equal(free('handContinuations', 'handSwitches')?.straightInLog, true);
+  // 同じ手の続きの割合を軸の一方に選ぶと、線の量は回数になり、2軸の積でも比でもない
+  assert.equal(free('handSwitches', 'sameHandContinuationRate')?.column, 'handContinuations');
+  assert.equal(free('handSwitches', 'sameHandContinuationRate')?.straightInLog, false);
+  assert.equal(free('sameHandContinuationRate', 'handContinuations')?.column, 'handSwitches');
+  assert.equal(free('sameHandContinuationRate', 'handContinuations')?.straightInLog, false);
+});
+
+test('対数の図で直線になるか: 用意した組み合わせで線を引く組は、すべて直線になる', () => {
+  for (const id of SCATTER_PRESET_IDS) {
+    if (id === 'free') continue;
+    const { x, y } = SCATTER_PRESET_AXES[id];
+    const contour = scatterContour(x, y, 100, 'ja');
+    if (contour?.drawsLines !== true) continue;
+    assert.equal(contour.straightInLog, true, id);
+  }
+});

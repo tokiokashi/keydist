@@ -12,9 +12,13 @@ import { SCATTER_PRESET_IDS, type ScatterPresetId } from './axes.ts';
  * `preset`は軸の組み合わせ。`free`の時だけ`xAxis`と`yAxis`を使う。
  * 軸に選べない組（同じ列・入力かな数倍の関係にある2列）は、解析設定の小窓の選択肢から外す。
  * URLなどから選べない組が入った時は、本体が軸を描かずにその旨を知らせる。
+ * `tickScale`は軸の目盛りの種類で、組み合わせごとには持たない。`log`を選んでいても、対数にできない図は通常の目盛りで描き、本体がその旨を知らせる。
  */
 export const DEFAULT_SCATTER_PRESET: ScatterPresetId = 'distance';
 export const DEFAULT_SCATTER_X_AXIS: ComparisonColumnId = 'perCharSteps';
+export const SCATTER_TICK_SCALES = ['linear', 'log'] as const;
+export type ScatterTickScale = (typeof SCATTER_TICK_SCALES)[number];
+export const DEFAULT_SCATTER_TICK_SCALE: ScatterTickScale = 'linear';
 export const DEFAULT_SCATTER_Y_AXIS: ComparisonColumnId = 'meanPerStroke';
 
 export const scatterOptions = defineOptions({
@@ -39,6 +43,13 @@ export const scatterOptions = defineOptions({
     url: picklistUrlCodec('y', COMPARISON_COLUMN_IDS),
     label: '縦軸',
   }),
+  tickScale: defineOption<ScatterTickScale>({
+    schema: v.picklist(SCATTER_TICK_SCALES),
+    default: DEFAULT_SCATTER_TICK_SCALE,
+    affects: 'view',
+    url: picklistUrlCodec('scale', SCATTER_TICK_SCALES),
+    label: '目盛り',
+  }),
 });
 
 export type ScatterOptions = typeof scatterOptions.defaultOptions;
@@ -50,4 +61,5 @@ export const ALTERNATE_SCATTER_OPTIONS: ScatterOptions = {
   preset: 'free',
   xAxis: 'totalUnits',
   yAxis: 'sameFinger',
+  tickScale: 'log',
 };

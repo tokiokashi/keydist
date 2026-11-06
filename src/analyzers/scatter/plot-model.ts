@@ -29,6 +29,18 @@ export function axisRange(values: readonly number[]): Range {
   return { lo: min >= 0 && lo < 0 ? 0 : lo, hi: max + pad };
 }
 
+/**
+ * 対数の目盛りでの軸の範囲。余白は対数の上で、点の値の範囲（対数の幅）の1割を両側に足す。値が全部同じ時は、両側に1割ずつ（比が1.1倍）の幅を持たせる。
+ * 値は全部0より大きい前提（`logScaleAvailability`が確かめる）。
+ */
+export function logAxisRange(values: readonly number[]): Range {
+  if (values.length === 0) return { lo: 1, hi: 10 };
+  const min = Math.log10(Math.min(...values));
+  const max = Math.log10(Math.max(...values));
+  const pad = max > min ? (max - min) * 0.1 : Math.log10(1.1);
+  return { lo: 10 ** (min - pad), hi: 10 ** (max + pad) };
+}
+
 /** 範囲の中の、切りのよい（1・2・5の10の冪乗倍）値。おおよそ`target`本。 */
 export function niceTicks(range: Range, target: number): { readonly values: readonly number[]; readonly step: number } {
   const span = range.hi - range.lo;
@@ -59,6 +71,37 @@ function decimalsOf(step: number): number {
 
 export function formatTickValue(value: number, step: number): string {
   return value.toFixed(decimalsOf(step));
+}
+
+/** 1・2・5の10の冪乗倍のうち、範囲に入る値。 */
+function oneTwoFiveIn(range: Range): number[] {
+  const values: number[] = [];
+  for (let power = Math.floor(Math.log10(range.lo)) - 1; power <= Math.ceil(Math.log10(range.hi)); power++) {
+    for (const lead of [1, 2, 5]) {
+      const value = Number((lead * 10 ** power).toPrecision(12));
+      if (value >= range.lo * (1 - 1e-9) && value <= range.hi * (1 + 1e-9)) values.push(value);
+    }
+  }
+  return values;
+}
+
+/** 対数の目盛りの数字。1・2・5の冪の値は、その値が見分けられる最小の桁数で書く。 */
+function formatLogTickValue(value: number): string {
+  const decimals = Math.max(0, -Math.floor(Math.log10(value) + 1e-9));
+  return value.toFixed(Math.min(6, decimals));
+}
+
+/**
+ * 対数の目盛りの値と数字。範囲の最大が最小の10倍に満たない時は、通常の目盛りと同じ刻みの値を対数の位置に置き、
+ * 10倍以上の時は1・2・5の10の冪乗倍の値に置く。
+ */
+export function logTicks(range: Range, target: number): { readonly values: readonly number[]; readonly texts: readonly string[] } {
+  if (range.hi < range.lo * 10) {
+    const { values, step } = niceTicks(range, target);
+    return { values, texts: values.map((value) => formatTickValue(value, step)) };
+  }
+  const values = oneTwoFiveIn(range);
+  return { values, texts: values.map(formatLogTickValue) };
 }
 
 export interface PlotTick {
@@ -162,6 +205,43 @@ export interface ScatterPlotInput {
   readonly contourSuffix: string;
   /** その軸の50%の位置に線を引くか。左右の手で全体を分ける割合の軸だけ`true`。 */
   readonly centerAxes?: { readonly x: boolean; readonly y: boolean };
+  /**
+   * 横軸・縦軸の両方を対数の目盛りにするか。真にできるのは、`logScaleAvailability`が対数にできると答えた図だけ（点の値が全部0より大きい）。
+   * 省くと通常の目盛り。
+   */
+  readonly logScale?: boolean;
+}
+
+/**
+ * 解析設定の目盛りの種類と、図が対数にできるかから、実際に使う目盛りと、通常の目盛りで描く理由を決める。
+ * 対数を選んでいても対数にできない図は通常の目盛りで描き、理由を返す（図の近くに文で出す）。通常を選んでいる時は理由を返さない。
+ */
+export function resolveLogScale(
+  requested: 'linear' | 'log',
+  blockers: LogScaleBlockers,
+): { readonly logScale: boolean; readonly reasons: readonly (keyof LogScaleBlockers)[] } {
+  if (requested !== 'log') return { logScale: false, reasons: [] };
+  const reasons = (['noStraightLines', 'nonPositive'] as const).filter((reason) => blockers[reason]);
+  return { logScale: reasons.length === 0, reasons };
+}
+
+/** 対数の目盛りにできない理由。両方に当たる図は両方が真になる。 */
+export interface LogScaleBlockers {
+  /** 細い線が直線にならない図（線を引かない図、線の量が2軸の積でも比でもない図）。 */
+  readonly noStraightLines: boolean;
+  /** 横軸か縦軸の値が0以下の点がある図。 */
+  readonly nonPositive: boolean;
+}
+
+/**
+ * 図を対数の目盛りにできるか。理由ごとに返し、どちらも偽なら対数にできる。
+ * 点は、横軸・縦軸の両方の値を持つ描く点だけを渡す（値が無くて描かない点は判定に入れない）。
+ */
+export function logScaleBlockers(contour: ScatterContour | undefined, points: readonly { readonly x: number; readonly y: number }[]): LogScaleBlockers {
+  return {
+    noStraightLines: !(contour?.drawsLines === true && contour.straightInLog),
+    nonPositive: points.some((p) => !(p.x > 0 && p.y > 0)),
+  };
 }
 
 /** 左右が均等になる割合 [%]。 */
@@ -183,7 +263,9 @@ const CONTOUR_SAMPLES = 200;
 const LEVEL_GRID = 24;
 const MAX_LEVELS = 6;
 
-function positionOf(value: number, range: Range, from: number, to: number): number {
+/** 値を描画領域の座標に直す。`log`が真の時は対数の上で直す（値と範囲は0より大きい）。 */
+function positionOf(value: number, range: Range, from: number, to: number, log = false): number {
+  if (log) return from + ((Math.log(value) - Math.log(range.lo)) / (Math.log(range.hi) - Math.log(range.lo))) * (to - from);
   return from + ((value - range.lo) / (range.hi - range.lo)) * (to - from);
 }
 
@@ -224,7 +306,12 @@ export function levelsAtStep(range: Range, step: number): readonly number[] {
  * 値を選ぶ。値が4つに満たない時と、6つに絞った後に描かれた線が4本に満たない時は、刻みを1段ずつ細かくして選び直す。
  * 刻みは`MIN_LEVEL_STEP`より細かくしない。そこまで細かくしても4本に届かない時は、その刻みで引ける線だけを引く。
  */
-function selectContours(contour: ScatterContour, xRange: Range, yRange: Range): { readonly lines: readonly DrawnContour[]; readonly step: number } {
+function selectContours(
+  contour: ScatterContour,
+  xRange: Range,
+  yRange: Range,
+  log: boolean,
+): { readonly lines: readonly DrawnContour[]; readonly step: number } {
   let min = Number.POSITIVE_INFINITY;
   let max = Number.NEGATIVE_INFINITY;
   for (let i = 0; i <= LEVEL_GRID; i++) {
@@ -242,7 +329,7 @@ function selectContours(contour: ScatterContour, xRange: Range, yRange: Range): 
     const finest = finerStep(step) < MIN_LEVEL_STEP * (1 - 1e-9);
     const levels = levelsAtStep(range, step);
     if (levels.length >= MIN_LEVELS || finest) {
-      const lines = levels.map((level) => contourLine(contour, level, xRange, yRange)).filter((line) => line.d !== '');
+      const lines = levels.map((level) => contourLine(contour, level, xRange, yRange, log)).filter((line) => line.d !== '');
       if (lines.length >= MIN_LEVELS || finest) return { lines, step };
     }
     step = finerStep(step);
@@ -256,14 +343,15 @@ interface DrawnContour {
   readonly anchors: readonly { readonly x: number; readonly y: number }[];
 }
 
-function contourLine(contour: ScatterContour, level: number, xRange: Range, yRange: Range): DrawnContour {
+function contourLine(contour: ScatterContour, level: number, xRange: Range, yRange: Range, log: boolean): DrawnContour {
   const segments: Array<Array<{ x: number; y: number }>> = [];
   let current: Array<{ x: number; y: number }> = [];
   for (let i = 0; i <= CONTOUR_SAMPLES; i++) {
-    const x = xRange.lo + ((xRange.hi - xRange.lo) * i) / CONTOUR_SAMPLES;
+    // 対数の目盛りでは、標本を対数の上で等間隔に取る
+    const x = log ? xRange.lo * (xRange.hi / xRange.lo) ** (i / CONTOUR_SAMPLES) : xRange.lo + ((xRange.hi - xRange.lo) * i) / CONTOUR_SAMPLES;
     const y = contour.yAt(level, x);
     if (y !== undefined && y >= yRange.lo && y <= yRange.hi) {
-      current.push({ x: positionOf(x, xRange, PLOT_LEFT, PLOT_RIGHT), y: positionOf(y, yRange, PLOT_BOTTOM, PLOT_TOP) });
+      current.push({ x: positionOf(x, xRange, PLOT_LEFT, PLOT_RIGHT, log), y: positionOf(y, yRange, PLOT_BOTTOM, PLOT_TOP, log) });
     } else if (current.length > 0) {
       segments.push(current);
       current = [];
@@ -581,16 +669,27 @@ function placeNames(
 
 /** 散布図の座標。点が無い時も軸の目盛りは返す。 */
 export function scatterPlotModel(input: ScatterPlotInput): ScatterPlotModel {
-  const xRange = axisRange(input.points.map((p) => p.x));
-  const yRange = axisRange(input.points.map((p) => p.y));
-  const xt = niceTicks(xRange, 6);
-  const yt = niceTicks(yRange, 5);
-  const xTicks = xt.values.map((value) => ({ value, position: positionOf(value, xRange, PLOT_LEFT, PLOT_RIGHT), text: formatTickValue(value, xt.step) }));
-  const yTicks = yt.values.map((value) => ({ value, position: positionOf(value, yRange, PLOT_BOTTOM, PLOT_TOP), text: formatTickValue(value, yt.step) }));
+  const log = input.logScale === true;
+  const range = log ? logAxisRange : axisRange;
+  const xRange = range(input.points.map((p) => p.x));
+  const yRange = range(input.points.map((p) => p.y));
+  let xTicks: PlotTick[];
+  let yTicks: PlotTick[];
+  if (log) {
+    const xl = logTicks(xRange, 6);
+    const yl = logTicks(yRange, 5);
+    xTicks = xl.values.map((value, i) => ({ value, position: positionOf(value, xRange, PLOT_LEFT, PLOT_RIGHT, true), text: xl.texts[i]! }));
+    yTicks = yl.values.map((value, i) => ({ value, position: positionOf(value, yRange, PLOT_BOTTOM, PLOT_TOP, true), text: yl.texts[i]! }));
+  } else {
+    const xt = niceTicks(xRange, 6);
+    const yt = niceTicks(yRange, 5);
+    xTicks = xt.values.map((value) => ({ value, position: positionOf(value, xRange, PLOT_LEFT, PLOT_RIGHT), text: formatTickValue(value, xt.step) }));
+    yTicks = yt.values.map((value) => ({ value, position: positionOf(value, yRange, PLOT_BOTTOM, PLOT_TOP), text: formatTickValue(value, yt.step) }));
+  }
   const positioned = input.points.map((p) => ({
     ...p,
-    px: positionOf(p.x, xRange, PLOT_LEFT, PLOT_RIGHT),
-    py: positionOf(p.y, yRange, PLOT_BOTTOM, PLOT_TOP),
+    px: positionOf(p.x, xRange, PLOT_LEFT, PLOT_RIGHT, log),
+    py: positionOf(p.y, yRange, PLOT_BOTTOM, PLOT_TOP, log),
   }));
   const names = placeNames(positioned);
   const points = positioned;
@@ -603,17 +702,17 @@ export function scatterPlotModel(input: ScatterPlotInput): ScatterPlotModel {
   let drawn: readonly DrawnContour[] = [];
   let step = 1;
   if (input.contour?.drawsLines === true && input.points.length > 0) {
-    const selected = selectContours(input.contour, xRange, yRange);
+    const selected = selectContours(input.contour, xRange, yRange, log);
     step = selected.step;
     drawn = selected.lines;
   }
   const centerLines: PlotCenterLine[] = [];
   if (input.points.length > 0) {
     if (input.centerAxes?.x === true && xRange.lo <= CENTER_VALUE && CENTER_VALUE <= xRange.hi) {
-      centerLines.push({ axis: 'x', position: positionOf(CENTER_VALUE, xRange, PLOT_LEFT, PLOT_RIGHT) });
+      centerLines.push({ axis: 'x', position: positionOf(CENTER_VALUE, xRange, PLOT_LEFT, PLOT_RIGHT, log) });
     }
     if (input.centerAxes?.y === true && yRange.lo <= CENTER_VALUE && CENTER_VALUE <= yRange.hi) {
-      centerLines.push({ axis: 'y', position: positionOf(CENTER_VALUE, yRange, PLOT_BOTTOM, PLOT_TOP) });
+      centerLines.push({ axis: 'y', position: positionOf(CENTER_VALUE, yRange, PLOT_BOTTOM, PLOT_TOP, log) });
     }
   }
   // 凡例は枠の中の隅に置く。細い線の行は、線を1本以上描く時だけ付ける
