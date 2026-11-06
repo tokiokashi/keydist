@@ -115,8 +115,10 @@ export interface ScatterPlotModel {
   readonly centerLines: readonly PlotCenterLine[];
   /** 凡例の行が無い時は`undefined`。 */
   readonly legend: PlotLegend | undefined;
-  /** 縦軸の名前の基準線のx。目盛りの数字の幅から決め、数字の左に一定の間隔で置く。 */
+  /** 縦軸の名前の基準線のx。目盛りの数字の幅から決め、数字の左に一定の間隔で置く。数字が広い時は負になる。 */
   readonly yTitleX: number;
+  /** 図の座標系の左端のx。縦軸の名前の上端が図の左端に掛かる時は、その分だけ負の側へ広げる。それ以外は0。 */
+  readonly viewBoxX: number;
 }
 
 /** 描画領域の端から端まで引く50%の線。`axis`は線が表す値の軸（`x`は縦線、`y`は横線）。 */
@@ -145,13 +147,13 @@ const CENTER_VALUE = 50;
 const Y_TICK_OFFSET = 8;
 /** 縦軸の名前の基準線から、目盛りの数字の左端までの間隔。名前の下端（基準線の下3px）に余白を足した値。 */
 const Y_TITLE_GAP = 11;
-/** 縦軸の名前の基準線のxの下限。名前の上端（基準線の上10px）が図の左端に掛からない値。 */
-const Y_TITLE_MIN_X = 11;
+/** 縦軸の名前の上端（基準線の上10px）に足す、図の左端までの余白。 */
+const Y_TITLE_ASCENT = 11;
 
-/** 縦軸の名前の基準線のx。一番広い目盛りの数字の左に、一定の間隔で置く。 */
+/** 縦軸の名前の基準線のx。一番広い目盛りの数字の左に、数字の幅によらず一定の間隔で置く。 */
 function yTitleX(yTicks: readonly PlotTick[]): number {
   const widest = Math.max(0, ...yTicks.map((tick) => estimateTextWidth(tick.text)));
-  return Math.max(Y_TITLE_MIN_X, PLOT_LEFT - Y_TICK_OFFSET - widest - Y_TITLE_GAP);
+  return PLOT_LEFT - Y_TICK_OFFSET - widest - Y_TITLE_GAP;
 }
 
 const CONTOUR_SAMPLES = 200;
@@ -471,5 +473,6 @@ export function scatterPlotModel(input: ScatterPlotInput): ScatterPlotModel {
     }
     return { level: line.level, d: line.d, labelAt: placedAt, text };
   });
-  return { xTicks, yTicks, points, contours, centerLines, legend, yTitleX: yTitleX(yTicks) };
+  const titleX = yTitleX(yTicks);
+  return { xTicks, yTicks, points, contours, centerLines, legend, yTitleX: titleX, viewBoxX: Math.min(0, titleX - Y_TITLE_ASCENT) };
 }

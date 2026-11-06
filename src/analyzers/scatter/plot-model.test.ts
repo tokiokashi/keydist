@@ -435,3 +435,53 @@ test('scatterPlotModel: 縦軸の名前は、一番広い目盛りの数字の�
   assert.ok(new Set(gaps.map((item) => item.widest)).size > 1, '数字の幅が違う組を試している');
   for (const item of gaps) assert.ok(Math.abs(item.gap - gaps[0]!.gap) < 1e-9, JSON.stringify(gaps));
 });
+
+function modelWithYValues(y0: number, y1: number) {
+  return scatterPlotModel({
+    points: [
+      { targetKey: 'a', label: 'A', x: 1, y: y0 },
+      { targetKey: 'b', label: 'B', x: 2, y: y1 },
+    ],
+    contour: undefined,
+    legendRows: [],
+    contourName: '',
+    contourSuffix: '',
+  });
+}
+
+function widestYTick(model: ReturnType<typeof modelWithYValues>): number {
+  return Math.max(...model.yTicks.map((tick) => estimateTextWidth(tick.text)));
+}
+
+test('scatterPlotModel: 目盛りの数字が広くても、縦軸の名前は数字と重ならず、図の座標系の中に収まる', () => {
+  // 回転した名前は、基準線から左へ10px、右へ3px張り出す。目盛りの数字は枠の左から8px左に右端を揃えて置く
+  const narrow = modelWithYValues(0, 1);
+  const narrowGap = PLOT_MARGIN.left - 8 - widestYTick(narrow) - narrow.yTitleX;
+  for (const [y0, y1] of [
+    [1e9, 2e9],
+    [123456789, 987654321],
+    [0.000001, 0.000002],
+  ] as const) {
+    const model = modelWithYValues(y0, y1);
+    const widest = widestYTick(model);
+    assert.ok(widest > 50, `幅${widest}`);
+    const tickLeft = PLOT_MARGIN.left - 8 - widest;
+    assert.ok(model.yTitleX + 3 < tickLeft, `名前の右端${model.yTitleX + 3}、数字の左端${tickLeft}`);
+    assert.ok(model.yTitleX - 10 >= model.viewBoxX, `名前の左端${model.yTitleX - 10}、座標系の左端${model.viewBoxX}`);
+    assert.ok(model.viewBoxX < 0);
+    // 名前と数字の間隔は、狭い数字の時と同じ
+    assert.ok(Math.abs(tickLeft - model.yTitleX - narrowGap) < 1e-9);
+  }
+});
+
+test('scatterPlotModel: 名前の位置の下限に届かない目盛りの数字では、座標系を広げず、名前の位置は数字の幅だけで決まる', () => {
+  for (const [y0, y1] of [
+    [0, 1],
+    [0, 100],
+    [10000, 20000],
+  ] as const) {
+    const model = modelWithYValues(y0, y1);
+    assert.equal(model.viewBoxX, 0);
+    assert.equal(model.yTitleX, PLOT_MARGIN.left - 8 - widestYTick(model) - 11);
+  }
+});
