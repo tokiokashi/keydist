@@ -170,6 +170,31 @@ test.describe('個別画面', () => {
     await expect(readout).toHaveText('');
   });
 
+  test('印が重なる点は名前を1つにまとめ、点は1つずつフォーカスして値を読める', async ({ page }) => {
+    // 同じローマ字で打つQWERTYとDvorakは、1アクションあたりのキー数もアクション数/かなも同じで、印が重なる
+    const settings = await openSettings(page);
+    await settings.getByLabel('組み合わせ', { exact: true }).selectOption('press');
+    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('キー数/アクション');
+    await expect(feature(page).locator('[data-scatter-point]')).toHaveCount(3);
+    const grouped = feature(page).locator('[data-scatter-name="2"]');
+    await expect(grouped).toHaveCount(1);
+    await expect(grouped).toContainText('QWERTY');
+    await expect(grouped).toContainText('Dvorak');
+    await expect(feature(page).locator('[data-scatter-name="1"]')).toHaveCount(1);
+
+    const readout = feature(page).locator('[data-scatter-readout]');
+    const points = feature(page).locator('[data-scatter-point]');
+    await points.nth(0).focus();
+    await expect(readout).toContainText('QWERTY');
+    await expect(grouped.locator('[data-scatter-name-of][data-active]')).toHaveText('QWERTY');
+    await page.keyboard.press('Tab');
+    await expect(readout).toContainText('Dvorak');
+    await expect(grouped.locator('[data-scatter-name-of][data-active]')).toHaveText('Dvorak');
+    await page.keyboard.press('Tab');
+    await expect(readout).toContainText('JISかな配列');
+    await expect(grouped.locator('[data-scatter-name-of][data-active]')).toHaveCount(0);
+  });
+
   test('図の見方のⓘに、種類の色と形を書く', async ({ page }) => {
     await page.getByRole('button', { name: '図の見方の説明' }).first().click();
     await expect(page.getByText('赤の菱形はかな配列')).toBeVisible();
