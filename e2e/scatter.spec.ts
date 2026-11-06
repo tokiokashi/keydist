@@ -42,13 +42,13 @@ test.describe('個別画面', () => {
   test('既定は1かなあたりのアクション数と1アクションあたりの距離で、軸の名前は「量/何あたり（単位）」の形、細い線には値だけを書き、量の名前は凡例に1回出す', async ({
     page,
   }) => {
-    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('アクション数/かな');
+    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('アクション数/カナ');
     await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('距離/アクション（u）');
     await expect(feature(page).locator('[data-scatter-contour]').first()).toHaveText(/^[\d.]+$/);
-    await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveText('1かなあたりの距離（u）');
+    await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveText('1カナあたりの距離（u）');
     await expect(feature(page).locator('[data-scatter-preset-note]')).toHaveCount(0);
     // 図の下に、縦軸の量と横軸の量の関係をキャプションで出す
-    await expect(feature(page).locator('[data-scatter-caption]')).toHaveText('1アクションあたりの距離と1かなあたりのアクション数の関係');
+    await expect(feature(page).locator('[data-scatter-caption]')).toHaveText('1アクションあたりの距離と1カナあたりのアクション数の関係');
     await expect(feature(page).locator('[data-scatter-center-line]')).toHaveCount(0);
     // かな配列と英字の配列は、色と形の両方で分ける
     await expect(feature(page).locator('[data-scatter-point][data-kind="kana"] [data-mark="diamond"]')).toHaveCount(1);
@@ -63,16 +63,16 @@ test.describe('個別画面', () => {
     const settings = await openSettings(page);
     await settings.getByLabel('組み合わせ', { exact: true }).selectOption('press');
     await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('キー数/アクション');
-    await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('アクション数/かな');
+    await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('アクション数/カナ');
     await expect(feature(page).locator('[data-scatter-contour]').first()).toHaveText(/^[\d.]+$/);
-    await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveText('1かなあたりのキー数');
+    await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveText('1カナあたりのキー数');
     await expect(feature(page).locator('[data-scatter-preset-note]')).toHaveCount(0);
 
     await settings.getByLabel('組み合わせ', { exact: true }).selectOption('perPress');
-    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('キー数/かな');
+    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('キー数/カナ');
     await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('距離/キー（u）');
     await expect(feature(page).locator('[data-scatter-contour]').first()).toHaveText(/^[\d.]+$/);
-    await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveText('1かなあたりの距離（u）');
+    await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveText('1カナあたりの距離（u）');
 
     await settings.getByLabel('組み合わせ', { exact: true }).selectOption('sameFinger');
     await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('アクション数');
@@ -127,29 +127,31 @@ test.describe('個別画面', () => {
     await settings.getByLabel('横軸', { exact: true }).selectOption('singleTapRate');
     await settings.getByLabel('縦軸', { exact: true }).selectOption('perCharPresses');
     await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('単打率（%）');
-    await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('キー数/かな');
+    await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('キー数/カナ');
     await expect(feature(page).locator('[data-scatter-contour]')).toHaveCount(0);
     await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveCount(0);
 
     // 線の量が1アクションあたりの距離になる組は、細い線を引かない
     await settings.getByLabel('縦軸', { exact: true }).selectOption('perCharUnits');
     await settings.getByLabel('横軸', { exact: true }).selectOption('perCharPresses');
-    await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('距離/かな（u）');
+    await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('距離/カナ（u）');
     await expect(feature(page).locator('[data-scatter-contour]')).toHaveCount(0);
     await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveCount(0);
 
     await settings.getByLabel('縦軸', { exact: true }).selectOption('meanPerStroke');
     await settings.getByLabel('横軸', { exact: true }).selectOption('perCharUnits');
     // 何あたりの距離かが軸の名前で分かれる
-    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('距離/かな（u）');
+    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('距離/カナ（u）');
     await expect(feature(page).locator('[data-scatter-y-title]')).toHaveText('距離/アクション（u）');
-    await expect(feature(page).locator('[data-scatter-caption]')).toHaveText('1アクションあたりの距離と1かなあたりの距離の関係');
+    await expect(feature(page).locator('[data-scatter-caption]')).toHaveText('1アクションあたりの距離と1カナあたりの距離の関係');
     await expect(feature(page).locator('[data-scatter-contour]').first()).toHaveText(/^[\d.]+$/);
-    await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveText('1かなあたりのアクション数');
+    await expect(feature(page).locator('[data-scatter-legend-contour]')).toHaveText('1カナあたりのアクション数');
     // 入力かな数倍の関係にある列と同じ列は、もう一方の軸の選択肢に出ない
     const vertical = settings.getByLabel('縦軸', { exact: true });
     await expect(vertical.locator('option', { hasText: /^距離$/ })).toHaveCount(0);
-    await expect(vertical.locator('option', { hasText: /^u\/かな$/ })).toHaveCount(0);
+    await expect(vertical.locator('option', { hasText: /^u\/カナ$/ })).toHaveCount(0);
+    // 選択肢の列名も、散布図の単位の語で書く
+    await expect(vertical.locator('option', { hasText: /^キー数\/カナ$/ })).toHaveCount(1);
     // 積または比が一定になる列も選べない（アクション数/かなの逆の向きの文字/アクション、u/かなの定数倍のu/文字）
     await settings.getByLabel('横軸', { exact: true }).selectOption('perCharSteps');
     await expect(vertical.locator('option', { hasText: /^文字\/アクション$/ })).toHaveCount(0);
@@ -163,9 +165,9 @@ test.describe('個別画面', () => {
     await expect(readout).toHaveText('');
     await feature(page).locator('[data-scatter-point]').filter({ hasText: 'QWERTY' }).focus();
     await expect(readout).toContainText('QWERTY');
-    await expect(readout).toContainText(/1かなあたりのアクション数 \d+\.\d{3}/);
+    await expect(readout).toContainText(/1カナあたりのアクション数 \d+\.\d{3}/);
     await expect(readout).toContainText(/1アクションあたりの距離 \d+\.\d{3}/);
-    await expect(readout).toContainText(/1かなあたりの距離 \d+\.\d{3}/);
+    await expect(readout).toContainText(/1カナあたりの距離 \d+\.\d{3}/);
     await page.locator('body').click({ position: { x: 1, y: 1 } });
     await expect(readout).toHaveText('');
   });
@@ -203,19 +205,21 @@ test.describe('個別画面', () => {
   test('図の見方のⓘに、横軸・縦軸・細い線の量の説明と関係を書き、組み合わせを替えると追従する', async ({ page }) => {
     const settings = await openSettings(page);
     await settings.getByLabel('組み合わせ', { exact: true }).selectOption('perPress');
-    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('キー数/かな');
+    await expect(feature(page).locator('[data-scatter-x-title]')).toHaveText('キー数/カナ');
     await page.getByRole('button', { name: '図の見方の説明' }).first().click();
     const dialog = page.getByRole('dialog', { name: '図の見方' });
     await expect(dialog.locator('.info-modal-item')).toHaveCount(3);
     await expect(dialog.locator('.info-modal-item dt')).toHaveText([
-      '横軸　1かなあたりのキー数',
+      '横軸　1カナあたりのキー数',
       '縦軸　1キーあたりの距離（u）',
-      '細い線　1かなあたりの距離（u）',
+      '細い線　1カナあたりの距離（u）',
     ]);
     await expect(dialog).toContainText('押したキー1つあたりの移動距離');
     await expect(dialog).toContainText('総移動距離 = キー数 × 1キーあたりの距離');
     // 軸の名前から比較表の列を探せるよう、量の説明に列名を添える
     await expect(dialog).toContainText('比較表の列名は「u/キー」');
+    // 比較表の列名は比較表の見出しのとおりに引き、続く説明は散布図の単位の語で書く
+    await expect(dialog).toContainText('比較表の列名は「キー数/かな」。入力1カナあたりに押すキーの数。');
     await expect(dialog).toContainText('距離の単位uは、キーの幅を1とした距離。');
   });
 
@@ -247,6 +251,6 @@ test.describe('Workspace', () => {
     await waitForHydration(page);
     const plot = page.locator('[data-pane-id="plot"] [data-react-feature="scatter"]').first();
     await expect(plot.locator('[data-scatter-point]')).toHaveCount(3, { timeout: 20_000 });
-    await expect(plot.locator('[data-scatter-x-title]')).toHaveText('アクション数/かな');
+    await expect(plot.locator('[data-scatter-x-title]')).toHaveText('アクション数/カナ');
   });
 });

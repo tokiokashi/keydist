@@ -1,7 +1,7 @@
 import type { TextLanguage } from '#input/text/language.ts';
 import { comparisonColumnText, type ComparisonColumnId } from '../comparison-column-text.ts';
 import { sharedMetricText } from '../metric-labels.ts';
-import { kanaUnitOf, type KanaUnit } from '../unit-words.ts';
+import { type KanaScript, kanaUnitOf, type KanaUnit } from '../unit-words.ts';
 
 /**
  * 散布図の軸の名前と単位。軸に取れる比較表の列ごとに、量を言葉で言った名前と単位を宣言する。
@@ -15,15 +15,21 @@ import { kanaUnitOf, type KanaUnit } from '../unit-words.ts';
  */
 export type AxisUnit = 'u' | '%' | '1/u';
 
+/**
+ * 散布図の画面で、日本語のテキストの単位の語を書く字の種類。散布図の量の名前は「1カナあたりの〜」のように単位の語がひらがなの文に入るので、
+ * 前後のひらがなと区別できるようカタカナで書く。比較表の列名・説明を読む時も、この書き方で読む。
+ */
+export const SCATTER_KANA_SCRIPT: KanaScript = 'katakana';
+
 interface AxisNameSpec {
   /**
-   * 量の名前。単位は含めない。「かな」はテキストの言語で出し分ける（英語のテキストでは「字」）。
+   * 量の名前。単位は含めない。単位の語「カナ」はテキストの言語で出し分ける（英語のテキストでは「字」）。
    * 省くと比較表の列名を使う。列名がすでに量を言い表している列（「同指率」「Bigram数（物理キー）」など）だけ省く。
    */
   readonly name?: (kana: KanaUnit, language: TextLanguage) => string;
   readonly unit?: AxisUnit;
   /**
-   * 軸の名前に使う縮めた名前。単位は含めない。「量/何あたり」の形で、何あたりかを残す。「かな」は`name`と同じくテキストの言語で出し分ける。比較表の列名と同じ文になる列は、列名をそのまま使う。
+   * 軸の名前に使う縮めた名前。単位は含めない。「量/何あたり」の形で、何あたりかを残す。「カナ」は`name`と同じくテキストの言語で出し分ける。比較表の列名と同じ文になる列は、列名をそのまま使う。
    * 宣言の無い列は`name`のまま軸に出す。
    */
   readonly axisLabel?: (kana: KanaUnit, language: TextLanguage) => string;
@@ -35,15 +41,19 @@ export const KEY_COUNT_NAME = 'キー数';
 const SPECS: Readonly<Record<ComparisonColumnId, AxisNameSpec>> = {
   actions: {},
   totalUnits: { name: () => '総移動距離', unit: 'u' },
-  meanPerStroke: { name: (_k, language) => sharedMetricText(language).meanPerStroke.label, unit: 'u', axisLabel: () => '距離/アクション' },
-  perCharUnits: { name: (_k, language) => sharedMetricText(language).perCharUnits.label, unit: 'u', axisLabel: (k) => `距離/${k}` },
+  meanPerStroke: {
+    name: (_k, language) => sharedMetricText(language, SCATTER_KANA_SCRIPT).meanPerStroke.label,
+    unit: 'u',
+    axisLabel: () => '距離/アクション',
+  },
+  perCharUnits: { name: (_k, language) => sharedMetricText(language, SCATTER_KANA_SCRIPT).perCharUnits.label, unit: 'u', axisLabel: (k) => `距離/${k}` },
   perCharSteps: {
-    name: (_k, language) => sharedMetricText(language).perCharSteps.label,
-    axisLabel: (_k, language) => comparisonColumnText(language).perCharSteps.label,
+    name: (_k, language) => sharedMetricText(language, SCATTER_KANA_SCRIPT).perCharSteps.label,
+    axisLabel: (_k, language) => comparisonColumnText(language, SCATTER_KANA_SCRIPT).perCharSteps.label,
   },
   perCharPresses: { name: (k) => `1${k}あたりの${KEY_COUNT_NAME}`, axisLabel: (k) => `${KEY_COUNT_NAME}/${k}` },
   perActionPresses: { name: () => `1アクションあたりの${KEY_COUNT_NAME}`, axisLabel: () => `${KEY_COUNT_NAME}/アクション` },
-  perPressUnits: { name: (_k, language) => sharedMetricText(language).perPressUnits.label, unit: 'u', axisLabel: () => '距離/キー' },
+  perPressUnits: { name: (_k, language) => sharedMetricText(language, SCATTER_KANA_SCRIPT).perPressUnits.label, unit: 'u', axisLabel: () => '距離/キー' },
   singleTapLayerRate: { unit: '%' },
   singleTapRate: { unit: '%' },
   singleKeyRate: { unit: '%' },
@@ -74,7 +84,7 @@ const SPECS: Readonly<Record<ComparisonColumnId, AxisNameSpec>> = {
 
 /** 量の名前。単位は含めない。キャプション・点の読み取り・図の見方の文で使う。 */
 export function axisName(column: ComparisonColumnId, language: TextLanguage): string {
-  return SPECS[column].name?.(kanaUnitOf(language), language) ?? comparisonColumnText(language)[column].label;
+  return SPECS[column].name?.(kanaUnitOf(language, SCATTER_KANA_SCRIPT), language) ?? comparisonColumnText(language, SCATTER_KANA_SCRIPT)[column].label;
 }
 
 /** 列の単位。無次元の列は`undefined`。 */
@@ -94,6 +104,6 @@ export function axisPlotTitle(column: ComparisonColumnId, language: TextLanguage
   const label = SPECS[column].axisLabel;
   if (label === undefined) return axisTitle(column, language);
   const unit = axisUnit(column);
-  const name = label(kanaUnitOf(language), language);
+  const name = label(kanaUnitOf(language, SCATTER_KANA_SCRIPT), language);
   return unit === undefined ? name : `${name}（${unit}）`;
 }

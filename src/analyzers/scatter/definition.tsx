@@ -19,7 +19,7 @@ import {
   type ScatterAxes,
   type ScatterAxisProblem,
 } from './axes.ts';
-import { axisName, axisPlotTitle, axisTitle, axisUnit } from './axis-names.ts';
+import { axisName, axisPlotTitle, axisTitle, axisUnit, SCATTER_KANA_SCRIPT } from './axis-names.ts';
 import { scatterDefinition, type ScatterExtracted, type ScatterRow } from './extract.ts';
 import { SCATTER_KIND_ORDER, SCATTER_KIND_STYLES } from './kinds.ts';
 import { DEFAULT_SCATTER_OPTIONS, scatterOptions, type ScatterOptions } from './options.ts';
@@ -59,7 +59,7 @@ function axesOf(options: ScatterOptions): ScatterAxes {
 }
 
 function axisProblemText(problem: ScatterAxisProblem, language: TextLanguage): string {
-  const k = kanaUnitOf(language);
+  const k = kanaUnitOf(language, SCATTER_KANA_SCRIPT);
   return problem === 'same'
     ? '同じ列は、横軸と縦軸の両方に選べません。'
     : `アクション数とアクション数/${k}、距離とu/${k}、u/アクションとアクション/uのように、同じテキストなら一方が他方の定数倍か、積が一定になる2列は、同時に選べません。`;
@@ -357,7 +357,7 @@ export function ScatterBody({ extracted, order, rowContext, options }: ScatterBo
 export function ScatterSettings({ options, onOptionsChange }: AnalyzerSettingsProps<ScatterOptions>) {
   const bind = <K extends keyof ScatterOptions>(key: K) => bindOption(options, DEFAULT_SCATTER_OPTIONS, onOptionsChange, key);
   const language = useTextLanguage();
-  const text = comparisonColumnText(language);
+  const text = comparisonColumnText(language, SCATTER_KANA_SCRIPT);
   const presetLabels = scatterPresetLabels(language);
   const COLUMN_CHOICES = COMPARISON_COLUMN_IDS.map((column) => ({ value: column, label: text[column].label }));
   return (

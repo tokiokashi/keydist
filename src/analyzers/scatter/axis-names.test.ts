@@ -3,7 +3,7 @@ import test from 'node:test';
 import type { TextLanguage } from '#input/text/language.ts';
 import { COMPARISON_COLUMN_FORMAT, COMPARISON_COLUMN_IDS, type ComparisonColumnId, comparisonColumnText } from '../comparison-column-text.ts';
 import { SCATTER_PRESET_AXES, SCATTER_PRESET_IDS, scatterAxisProblem, scatterContour, scatterPresetDescriptions, scatterPresetLabels } from './axes.ts';
-import { axisName, axisPlotTitle, axisTitle, axisUnit } from './axis-names.ts';
+import { axisName, axisPlotTitle, axisTitle, axisUnit, SCATTER_KANA_SCRIPT } from './axis-names.ts';
 import { estimateTextWidth, PLOT_HEIGHT, PLOT_MARGIN, PLOT_WIDTH, scatterPlotModel } from './plot-model.ts';
 import { scatterCaption } from './quantity-help.ts';
 
@@ -38,7 +38,7 @@ test('単位は名前の直後に全角のカッコで囲んで付け、単位�
   assert.equal(axisTitle('meanPerStroke', 'ja'), '1アクションあたりの距離（u）');
   assert.equal(axisTitle('sameFingerRate', 'ja'), '同指率（%）');
   assert.equal(axisTitle('actionsPerUnit', 'ja'), '1uあたりのアクション数（1/u）');
-  assert.equal(axisTitle('perCharSteps', 'ja'), '1かなあたりのアクション数');
+  assert.equal(axisTitle('perCharSteps', 'ja'), '1カナあたりのアクション数');
   assert.equal(axisTitle('perCharSteps', 'en'), '1字あたりのアクション数');
   for (const column of COMPARISON_COLUMN_IDS) {
     for (const language of LANGUAGES) {
@@ -98,9 +98,10 @@ test('細い線の量の名前を入れた凡例は、軸に取れる全ての�
 
 test('キャプション・組み合わせの名前と説明・関係式と換算の文は、比較表の列名でなく軸の名前で組み立てる', () => {
   for (const language of LANGUAGES) {
-    const text = comparisonColumnText(language);
-    // 比較表の列名のうち、軸の名前に使わない書き方（u/アクション、アクション数/かな など）
-    const columnLabels = COMPARISON_COLUMN_IDS.map((column) => text[column].label).filter((label) => label.includes('/'));
+    // 比較表の列名のうち、軸の名前に使わない書き方（u/アクション、アクション数/かな など）。単位の語は「かな」と「カナ」の両方の書き方で探す
+    const columnLabels = [comparisonColumnText(language), comparisonColumnText(language, SCATTER_KANA_SCRIPT)].flatMap((text) =>
+      COMPARISON_COLUMN_IDS.map((column) => text[column].label).filter((label) => label.includes('/')),
+    );
     const sentences: string[] = [];
     for (const id of SCATTER_PRESET_IDS) {
       sentences.push(scatterPresetLabels(language)[id], scatterPresetDescriptions(language)[id]);
@@ -131,12 +132,12 @@ test('キャプション・組み合わせの名前と説明・関係式と換�
 
 const AXIS_PLOT_TITLES: Readonly<Record<string, readonly [string, string]>> = {
   meanPerStroke: ['距離/アクション（u）', '距離/アクション（u）'],
-  perCharUnits: ['距離/かな（u）', '距離/字（u）'],
+  perCharUnits: ['距離/カナ（u）', '距離/字（u）'],
   perPressUnits: ['距離/キー（u）', '距離/キー（u）'],
   perMovedPressUnits: ['距離/移動ありキー（u）', '距離/移動ありキー（u）'],
   unitsPerTextChar: ['距離/文字（u）', '距離/文字（u）'],
-  perCharSteps: ['アクション数/かな', 'アクション数/字'],
-  perCharPresses: ['キー数/かな', 'キー数/字'],
+  perCharSteps: ['アクション数/カナ', 'アクション数/字'],
+  perCharPresses: ['キー数/カナ', 'キー数/字'],
   perActionPresses: ['キー数/アクション', 'キー数/アクション'],
   textCharsPerAction: ['文字数/アクション', '文字数/アクション'],
   actionsPerUnit: ['アクション数/距離（1/u）', 'アクション数/距離（1/u）'],
@@ -147,9 +148,9 @@ test('組み合わせの名前: コスパの組だけ「コスパ（文字数/�
   const labels = scatterPresetLabels('ja');
   assert.equal(labels.charsPerAction, 'コスパ（文字数/アクション）と1uあたりのアクション数');
   assert.equal(labels.handRates, '同じ手の続きの割合と同指率');
-  assert.equal(labels.distance, '1かなあたりのアクション数と1アクションあたりの距離');
-  assert.equal(labels.press, '1アクションあたりのキー数と1かなあたりのアクション数');
-  assert.equal(labels.perPress, '1かなあたりのキー数と1キーあたりの距離');
+  assert.equal(labels.distance, '1カナあたりのアクション数と1アクションあたりの距離');
+  assert.equal(labels.press, '1アクションあたりのキー数と1カナあたりのアクション数');
+  assert.equal(labels.perPress, '1カナあたりのキー数と1キーあたりの距離');
   assert.equal(labels.sameFinger, 'アクション数と同指率');
   assert.equal(labels.hand, '手の切り替えの回数と同じ手の続きの回数');
   assert.equal(labels.handShare, '右手キー率と右手距離率');
@@ -187,15 +188,15 @@ test('凡例とキャプションは、軸の名前を宣言した列でも長�
   assert.equal(axisTitle('meanPerStroke', 'ja'), '1アクションあたりの距離（u）');
   assert.equal(axisPlotTitle('meanPerStroke', 'ja'), '距離/アクション（u）');
   assert.equal(axisPlotTitle('sameFingerRate', 'ja'), '同指率（%）');
-  assert.equal(scatterCaption({ x: 'perCharSteps', y: 'meanPerStroke' }, 'ja'), '1アクションあたりの距離と1かなあたりのアクション数の関係');
+  assert.equal(scatterCaption({ x: 'perCharSteps', y: 'meanPerStroke' }, 'ja'), '1アクションあたりの距離と1カナあたりのアクション数の関係');
 });
 
 test('長い名前は「1〜あたりの」の形で、日本語と英語のテキストで表のとおりになる', () => {
   const expected: ReadonlyArray<readonly [ComparisonColumnId, string, string]> = [
     ['meanPerStroke', '1アクションあたりの距離', '1アクションあたりの距離'],
-    ['perCharUnits', '1かなあたりの距離', '1字あたりの距離'],
-    ['perCharSteps', '1かなあたりのアクション数', '1字あたりのアクション数'],
-    ['perCharPresses', '1かなあたりのキー数', '1字あたりのキー数'],
+    ['perCharUnits', '1カナあたりの距離', '1字あたりの距離'],
+    ['perCharSteps', '1カナあたりのアクション数', '1字あたりのアクション数'],
+    ['perCharPresses', '1カナあたりのキー数', '1字あたりのキー数'],
     ['perActionPresses', '1アクションあたりのキー数', '1アクションあたりのキー数'],
     ['perPressUnits', '1キーあたりの距離', '1キーあたりの距離'],
     ['perMovedPressUnits', '移動ありキー1つあたりの距離', '移動ありキー1つあたりの距離'],
@@ -211,7 +212,7 @@ test('長い名前は「1〜あたりの」の形で、日本語と英語のテ�
 });
 
 test('どの列の名前にも、1の直後の単位語に「の」が続く形は残らない', () => {
-  const leftover = /1(アクション|かな|字|キー|文字|u|つ)の/u;
+  const leftover = /1(アクション|かな|カナ|字|キー|文字|u|つ)の/u;
   for (const column of COMPARISON_COLUMN_IDS) {
     for (const language of LANGUAGES) {
       assert.doesNotMatch(axisName(column, language), leftover, `${column} ${language}`);
