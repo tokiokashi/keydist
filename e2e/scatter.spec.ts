@@ -430,17 +430,13 @@ test.describe('個別画面', () => {
         .evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(' ').length);
     // 本文の幅に収まる最大の列（図の幅が下限を割らない範囲）。列の数は上限になる
     await page.setViewportSize({ width: 1280, height: 900 });
-    await expect.poll(columnsOf).toBe(2);
-    await page.setViewportSize({ width: 1900, height: 900 });
     await expect.poll(columnsOf).toBe(3);
     await settings.getByRole('button', { name: '2', exact: true }).click();
     await expect.poll(columnsOf).toBe(2);
     await settings.getByRole('button', { name: '1', exact: true }).click();
     await expect.poll(columnsOf).toBe(1);
-    await settings.getByRole('button', { name: '3', exact: true }).click();
-    await page.setViewportSize({ width: 1280, height: 900 });
-    await expect.poll(columnsOf).toBe(2);
     await settings.getByRole('button', { name: '自動', exact: true }).click();
+    await expect.poll(columnsOf).toBe(3);
     await page.setViewportSize({ width: 390, height: 900 });
     await expect.poll(columnsOf).toBe(1);
   });

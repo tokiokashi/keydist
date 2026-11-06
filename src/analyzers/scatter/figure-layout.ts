@@ -9,10 +9,11 @@ import type { ScatterColumnSetting } from './options.ts';
 export const FIGURE_MAX_WIDTH = 760;
 
 /**
- * 図1枚の幅の下限 [px]。図の座標系の幅は640で、軸の数字と点の名前は座標系の11の大きさで描くので、幅420pxでは約7.2pxになる。
- * 390px幅の画面の1列（約360px、約6.2px）より小さくならず、桁と名前の文字を見分けられる大きさを、2列に分ける境目にする。
+ * 図1枚の幅の下限 [px]。図の座標系の幅は640で、軸の数字と点の名前は座標系の11の大きさで描くので、幅320pxでは約5.5pxになる。
+ * 個別画面の本文の幅は、サイドバーを出した1280px幅の画面で992pxになる。3列の間隔を引いて3等分した幅（約320px）を下限にして、この画面で3列に並べる。
+ * 文字は小さくなるが、390px幅の画面の1列（約360px、約6.2px）との差は小さい。
  */
-export const FIGURE_MIN_WIDTH = 420;
+export const FIGURE_MIN_WIDTH = 320;
 
 /** 図と図の間隔 [px]。 */
 export const FIGURE_GAP = 16;
