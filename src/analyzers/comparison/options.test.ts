@@ -21,6 +21,12 @@ test('COMPARISON_COLUMNS: 個数の列は整数のまま（桁を丸めない）
   assert.equal(COMPARISON_COLUMNS.sameFinger.format(7), '7');
 });
 
+test('COMPARISON_COLUMNS: 手の切り替えと同じ手の続きは0.5刻みが読める小数第1位', () => {
+  assert.equal(COMPARISON_COLUMNS.handSwitches.format(520.5), '520.5');
+  assert.equal(COMPARISON_COLUMNS.handSwitches.format(295), '295.0');
+  assert.equal(COMPARISON_COLUMNS.handContinuations.format(702.5), '702.5');
+});
+
 test('COMPARISON_COLUMNS: 距離は整数（小数第0位）', () => {
   assert.equal(COMPARISON_COLUMNS.totalUnits.format(1234.567), '1235');
 });

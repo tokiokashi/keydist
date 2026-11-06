@@ -5,6 +5,7 @@ import {
   type ActionRealizationPolicy,
   type TriggerRealizationPolicy,
 } from '#input/semantics/index.ts';
+import { isThumb, type Finger } from '#input/shapes/geometry.ts';
 import type { Hand } from './chain.ts';
 
 /**
@@ -12,6 +13,7 @@ import type { Hand } from './chain.ts';
  *
  * 手は「新しい押下を持つ手」で決める。Raw hand run（`chain.ts`）が保持を続ける層キーの手も参加に入れるのと違い、
  * 押し続けているだけの層キーは打鍵を作らないので、リズムに入れない。Chainの境界（同指・親指だけなど）は使わない。
+ * 親指以外の押下があるアクションは、親指の押下を手の集合から外す。親指の押下だけのアクションは、親指の手を手の集合にする。
  */
 
 /** Hand Rhythmが読むStrokeの部分。 */
@@ -26,7 +28,7 @@ export type HandPressRole =
   /** 文字を出す役もトリガーの役も持たない押下だけ。 */
   | 'none';
 
-/** 1つのStrokeで押下を持つ手1つぶんの事実。 */
+/** 1つのStrokeで手の集合に入る手1つぶんの事実。 */
 export interface HandPress {
   readonly hand: Hand;
   readonly role: HandPressRole;
@@ -34,19 +36,19 @@ export interface HandPress {
 
 /** Strokeを押下する手で分けた種類。 */
 export type HandStrokeKind =
-  /** 押下する手が1つ。 */
+  /** 手の集合が1つ。 */
   | 'one-hand'
-  /** 押下する手が2つで、どちらも文字を出す。 */
+  /** 手の集合が2つで、どちらも文字を出す。 */
   | 'both-output'
-  /** 押下する手が2つで、少なくとも一方が文字を出さない。 */
+  /** 手の集合が2つで、少なくとも一方が文字を出さない。 */
   | 'both-mixed'
-  /** 押下する手が無い。通常は作られない。 */
+  /** 手の集合が空。通常は作られない。 */
   | 'none';
 
 export interface HandStrokeFact {
   readonly strokeIndex: number;
   readonly kind: HandStrokeKind;
-  /** 押下する手。左手、右手の順。 */
+  /** 手の集合。左手、右手の順。親指以外の押下がある時は、親指の押下を外した後の手。 */
   readonly presses: readonly HandPress[];
   /** 押下を持たず、保持を続けている層キーだけがある手。集計には使わない。 */
   readonly heldHands: readonly Hand[];
@@ -54,16 +56,20 @@ export interface HandStrokeFact {
   readonly hand?: Hand;
 }
 
-/** 隣り合う2つのStrokeの組の種類。 */
-export type HandPairKind =
-  /** どちらも片手のStrokeで、手が違う。 */
-  | 'switch'
-  /** どちらも片手のStrokeで、手が同じ。 */
-  | 'continue'
-  /** 少なくとも一方が両手のStroke。 */
-  | 'both-hands'
-  /** 少なくとも一方に押下する手が無い。どの組にも数えない。 */
-  | 'unclassified';
+/**
+ * 隣り合う2つのStrokeの組。後のStrokeに重み1を持たせ、後のStrokeの手の数で等分する。
+ * 手ごとに、前のStrokeの手の集合に入っていれば継続、入っていなければ切り替えに足す。
+ */
+export interface HandPair {
+  /** どちらも手の集合が空でない。偽ならどの数にも入れない。 */
+  readonly counted: boolean;
+  /** 切り替えに足す重み。`counted` が偽なら0。 */
+  readonly switches: number;
+  /** 継続に足す重み。`counted` が偽なら0。 */
+  readonly continuations: number;
+  /** 少なくとも一方が両手のStroke（手の集合が左右の2つ）。 */
+  readonly bothHands: boolean;
+}
 
 /** Stroke indexのhalf-open範囲。 */
 export interface HandRhythmRun {
@@ -81,13 +87,13 @@ export const ALTERNATION_MIN_STROKES = 3;
 
 export interface HandRhythmAggregate {
   readonly strokeCount: number;
-  /** 手の切り替えの組数。 */
+  /** 手の切り替えの回数。両手のStrokeを含む組は手ごとに分けるので、0.5刻みの値になりうる。 */
   readonly switches: number;
-  /** 同じ手の継続の組数。 */
+  /** 同じ手の継続の回数。0.5刻みの値になりうる。 */
   readonly continuations: number;
-  /** 同じ手の継続率（0〜1）。分母は切り替え + 継続の組数。分母が0なら0。 */
+  /** 同じ手の継続率（0〜1）。分母は切り替え + 継続で、どちらも押下を持つ隣り合う組の数と一致する。分母が0なら0。 */
   readonly continuationRate: number;
-  /** 両手を含む組の数。継続率の分母に入れない。 */
+  /** 両手を含む組の数。切り替えと継続にも数えている。 */
   readonly bothHandPairs: number;
   readonly bothHandStrokes: {
     readonly simultaneous: number;
@@ -110,22 +116,24 @@ export interface HandRhythmAggregate {
 export interface HandRhythmResult {
   readonly strokes: readonly HandStrokeFact[];
   /** `strokes.length - 1` 件。`pairs[i]` はStroke `i` と `i + 1` の組。 */
-  readonly pairs: readonly HandPairKind[];
+  readonly pairs: readonly HandPair[];
   readonly alternatingRuns: readonly HandRhythmRun[];
   readonly sameHandRuns: readonly SameHandRun[];
   readonly aggregate: HandRhythmAggregate;
 }
 
-const handOf = (finger: string): Hand => (finger.startsWith('L') ? 'left' : 'right');
+const handOf = (finger: Finger): Hand => (finger.startsWith('L') ? 'left' : 'right');
 
-/** 1つのStrokeの、押下する手ごとの事実。 */
+/** 1つのStrokeの、手の集合に入る手ごとの事実。 */
 export function strokeHandFact(stroke: HandRhythmStroke, strokeIndex: number): HandStrokeFact {
-  const pressFingers = new Set<string>(stroke.presses.map((press) => press.finger));
+  const hasNonThumbPress = stroke.presses.some((press) => !isThumb(press.finger));
+  // 親指以外の押下があれば親指を外す。親指の押下だけなら、親指の手を手の集合にする。
+  const countedFingers = new Set<Finger>(stroke.presses.filter((press) => !hasNonThumbPress || !isThumb(press.finger)).map((press) => press.finger));
   const roleByHand = new Map<Hand, HandPressRole>();
-  for (const press of stroke.presses) roleByHand.set(handOf(press.finger), 'none');
+  for (const finger of countedFingers) roleByHand.set(handOf(finger), 'none');
 
   for (const participation of stroke.participations) {
-    if (!pressFingers.has(participation.finger)) continue;
+    if (!countedFingers.has(participation.finger)) continue;
     const hand = handOf(participation.finger);
     if (participation.roles.includes('output')) {
       roleByHand.set(hand, 'output');
@@ -138,9 +146,10 @@ export function strokeHandFact(stroke: HandRhythmStroke, strokeIndex: number): H
     const role = roleByHand.get(hand);
     return role === undefined ? [] : [{ hand, role }];
   });
-  const pressHands = new Set(presses.map((press) => press.hand));
+  const pressedHands = new Set(stroke.presses.map((press) => handOf(press.finger)));
+  const pressFingers = new Set<Finger>(stroke.presses.map((press) => press.finger));
   const heldHands = (['left', 'right'] as const).filter(
-    (hand) => !pressHands.has(hand) && stroke.participations.some((p) => handOf(p.finger) === hand && !pressFingers.has(p.finger)),
+    (hand) => !pressedHands.has(hand) && stroke.participations.some((p) => handOf(p.finger) === hand && !pressFingers.has(p.finger)),
   );
 
   const kind: HandStrokeKind =
@@ -148,22 +157,33 @@ export function strokeHandFact(stroke: HandRhythmStroke, strokeIndex: number): H
   return { strokeIndex, kind, presses, heldHands, ...(kind === 'one-hand' ? { hand: presses[0].hand } : {}) };
 }
 
-function pairKind(before: HandStrokeFact, after: HandStrokeFact): HandPairKind {
-  if (before.kind === 'none' || after.kind === 'none') return 'unclassified';
-  if (before.kind !== 'one-hand' || after.kind !== 'one-hand') return 'both-hands';
-  return before.hand === after.hand ? 'continue' : 'switch';
+function pairOf(before: HandStrokeFact, after: HandStrokeFact): HandPair {
+  if (before.presses.length === 0 || after.presses.length === 0) return { counted: false, switches: 0, continuations: 0, bothHands: false };
+  const previous = new Set(before.presses.map((press) => press.hand));
+  const weight = 1 / after.presses.length;
+  const continued = after.presses.filter((press) => previous.has(press.hand)).length;
+  return {
+    counted: true,
+    switches: weight * (after.presses.length - continued),
+    continuations: weight * continued,
+    bothHands: before.presses.length > 1 || after.presses.length > 1,
+  };
 }
 
-function alternatingRunsOf(facts: readonly HandStrokeFact[], pairs: readonly HandPairKind[]): HandRhythmRun[] {
+/** 隣り合う2つのStrokeの手の集合が、共通の手を持たない。 */
+function isAlternating(before: HandStrokeFact, after: HandStrokeFact): boolean {
+  return (
+    before.presses.length > 0 && after.presses.length > 0 && !after.presses.some((press) => before.presses.some((other) => other.hand === press.hand))
+  );
+}
+
+function alternatingRunsOf(facts: readonly HandStrokeFact[]): HandRhythmRun[] {
   const runs: HandRhythmRun[] = [];
   let start = 0;
   for (let index = 1; index <= facts.length; index++) {
-    // 区間は、片手のStrokeが続き、組がすべて切り替えの間だけ伸びる。
-    const continues = index < facts.length && facts[index].kind === 'one-hand' && pairs[index - 1] === 'switch';
-    if (continues) continue;
-    if (facts[start]?.kind === 'one-hand' && index - start >= ALTERNATION_MIN_STROKES) {
-      runs.push({ startStrokeIndex: start, endStrokeIndex: index });
-    }
+    // 区間は、隣り合う組が共通の手を持たない間だけ伸びる。両手のStrokeは、前後のどのStrokeとも共通の手を持つので区間を切る。
+    if (index < facts.length && isAlternating(facts[index - 1], facts[index])) continue;
+    if (index - start >= ALTERNATION_MIN_STROKES) runs.push({ startStrokeIndex: start, endStrokeIndex: index });
     start = index;
   }
   return runs;
@@ -188,12 +208,12 @@ export function analyzeHandRhythm(
   actionRealizationPolicy: ActionRealizationPolicy = DEFAULT_ACTION_REALIZATION_POLICY,
 ): HandRhythmResult {
   const facts = strokes.map((stroke, index) => strokeHandFact(stroke, index));
-  const pairs = facts.slice(1).map((fact, index) => pairKind(facts[index], fact));
-  const alternatingRuns = alternatingRunsOf(facts, pairs);
+  const pairs = facts.slice(1).map((fact, index) => pairOf(facts[index], fact));
+  const alternatingRuns = alternatingRunsOf(facts);
   const sameHandRuns = sameHandRunsOf(facts);
 
-  const switches = pairs.filter((pair) => pair === 'switch').length;
-  const continuations = pairs.filter((pair) => pair === 'continue').length;
+  const switches = pairs.reduce((sum, pair) => sum + pair.switches, 0);
+  const continuations = pairs.reduce((sum, pair) => sum + pair.continuations, 0);
   const lengths = alternatingRuns.map((run) => run.endStrokeIndex - run.startStrokeIndex);
   // 交互打鍵の連続は極大で、隣り合う区間は端のStrokeを共有しないので、長さの和が覆うStroke数になる。
   const covered = lengths.reduce((sum, length) => sum + length, 0);
@@ -203,7 +223,7 @@ export function analyzeHandRhythm(
     switches,
     continuations,
     continuationRate: switches + continuations === 0 ? 0 : continuations / (switches + continuations),
-    bothHandPairs: pairs.filter((pair) => pair === 'both-hands').length,
+    bothHandPairs: pairs.filter((pair) => pair.bothHands).length,
     bothHandStrokes: Object.freeze({
       simultaneous: facts.filter((fact) => fact.kind === 'both-output').length,
       mixed: facts.filter((fact) => fact.kind === 'both-mixed').length,

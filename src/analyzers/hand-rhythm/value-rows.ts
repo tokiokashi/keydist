@@ -1,5 +1,5 @@
 import type { HandRhythmExtracted } from './extract.ts';
-import { formatContinuationRate, formatMeanLength, formatRate, formatShareOf } from './format.ts';
+import { formatContinuationRate, formatMeanLength, formatRate, formatShareOf, formatTurnCount } from './format.ts';
 
 /**
  * 値の一覧の行を、抽出結果から作る。値は抽出が運んだ数をそのまま文字にするだけで、
@@ -12,14 +12,14 @@ export interface ValueRow {
   readonly text: string;
 }
 
-/** 手の切り替えと同じ手の続き、両手のアクション。継続率のすぐ後ろに、分母から外した両手のアクションを含む組を置く。 */
+/** 手の切り替えと同じ手の続き、両手のアクション。継続率のすぐ後ろに、組全体のうち両手のアクションを含む組を置く。 */
 export function pairRowsOf(extracted: HandRhythmExtracted): ValueRow[] {
   const { aggregate, pairCount } = extracted;
   const { bothHandStrokes } = aggregate;
   return [
     { id: 'strokes', label: 'アクション', text: `${aggregate.strokeCount}アクション` },
-    { id: 'switches', label: '手の切り替え', text: `${aggregate.switches}組` },
-    { id: 'continuations', label: '同じ手の続き', text: `${aggregate.continuations}組` },
+    { id: 'switches', label: '手の切り替え', text: `${formatTurnCount(aggregate.switches)}回` },
+    { id: 'continuations', label: '同じ手の続き', text: `${formatTurnCount(aggregate.continuations)}回` },
     {
       id: 'continuation-rate',
       label: '同じ手の続きの割合',

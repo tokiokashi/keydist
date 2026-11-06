@@ -42,6 +42,9 @@ const stroke = (...entries: Entry[]): HandRhythmStroke => {
 const L = (finger: Finger = 'LI'): Entry => ({ finger });
 const R = (finger: Finger = 'RI'): Entry => ({ finger });
 
+/** 組ごとの [切り替え, 継続]。どちらにも数えない組は [0, 0]。 */
+const weightsOf = (result: ReturnType<typeof analyzeHandRhythm>): number[][] => result.pairs.map((pair) => [pair.switches, pair.continuations]);
+
 test('出力の手とtriggerだけの手を区別できる', () => {
   const fact = strokeHandFact(stroke({ finger: 'LP', roles: ['trigger'] }, { finger: 'RI', roles: ['output'] }), 0);
   assert.equal(fact.kind, 'both-mixed');
@@ -64,29 +67,94 @@ test('前置シフトのtriggerだけのストロークは片手のストロー�
     result.strokes.map((fact) => fact.kind),
     ['one-hand', 'one-hand', 'one-hand'],
   );
-  assert.deepEqual(result.pairs, ['switch', 'continue']);
+  assert.deepEqual(weightsOf(result), [
+    [1, 0],
+    [0, 1],
+  ]);
   assert.equal(result.strokes[0].hand, 'left');
   assert.equal(result.strokes[0].presses[0].role, 'trigger-only');
 });
 
-test('両手の同時出力と両手の混在を分け、両手を含む組は継続率の分母に入れない', () => {
+test('両手の同時出力と両手の混在を分け、両手を含む組も手ごとに切り替えと継続へ数える', () => {
   const result = analyzeHandRhythm([
     stroke(L('LI')),
-    stroke(L('LM')), // continue
-    stroke(L('LI'), R('RI')), // 同時出力
-    stroke(R('RI')), // 両手を含む組
-    stroke({ finger: 'LT', roles: ['trigger'] }, R('RM')), // 混在
-    stroke(L('LI')), // 両手を含む組
-    stroke(R('RI')), // switch
+    stroke(L('LM')), // 左→左: 継続1
+    stroke(L('LI'), R('RI')), // 同時出力。左→両手: 切り替え0.5・継続0.5
+    stroke(R('RI')), // 両手→右: 継続1
+    stroke({ finger: 'LP', roles: ['trigger'] }, R('RM')), // 混在。右→両手: 切り替え0.5・継続0.5
+    stroke(L('LI')), // 両手→左: 継続1
+    stroke(R('RI')), // 左→右: 切り替え1
   ]);
-  assert.deepEqual(result.pairs, ['continue', 'both-hands', 'both-hands', 'both-hands', 'both-hands', 'switch']);
+  assert.deepEqual(weightsOf(result), [
+    [0, 1],
+    [0.5, 0.5],
+    [0, 1],
+    [0.5, 0.5],
+    [0, 1],
+    [1, 0],
+  ]);
   const { aggregate } = result;
   assert.equal(aggregate.bothHandStrokes.simultaneous, 1);
   assert.equal(aggregate.bothHandStrokes.mixed, 1);
   assert.equal(aggregate.bothHandPairs, 4);
-  assert.equal(aggregate.switches, 1);
-  assert.equal(aggregate.continuations, 1);
-  assert.equal(aggregate.continuationRate, 0.5);
+  assert.equal(aggregate.switches, 2);
+  assert.equal(aggregate.continuations, 4);
+  assert.equal(aggregate.continuationRate, 4 / 6);
+});
+
+test('左手→両手→右手は、左手→両手が切り替え0.5・継続0.5、両手→右手が継続1', () => {
+  const result = analyzeHandRhythm([stroke(L()), stroke(L('LM'), R()), stroke(R('RM'))]);
+  assert.deepEqual(weightsOf(result), [
+    [0.5, 0.5],
+    [0, 1],
+  ]);
+  assert.equal(result.aggregate.switches, 0.5);
+  assert.equal(result.aggregate.continuations, 1.5);
+});
+
+test('両手→両手は継続1', () => {
+  const result = analyzeHandRhythm([stroke(L(), R()), stroke(L('LM'), R('RM'))]);
+  assert.deepEqual(weightsOf(result), [[0, 1]]);
+  assert.equal(result.aggregate.bothHandPairs, 1);
+  assert.equal(result.aggregate.continuationRate, 1);
+});
+
+test('親指以外の押下があるストロークは、親指を手の集合から外す', () => {
+  // 左手の文字キーと、反対の右親指の同時押し。親指を数えると両手になる
+  const fact = strokeHandFact(stroke(L('LI'), { finger: 'RT', roles: ['trigger'] }), 0);
+  assert.equal(fact.kind, 'one-hand');
+  assert.equal(fact.hand, 'left');
+  assert.deepEqual(fact.presses, [{ hand: 'left', role: 'output' }]);
+  // 同じ手の親指と文字キーの同時押しも、その手の1つ
+  assert.equal(strokeHandFact(stroke(R('RM'), { finger: 'RT', roles: ['trigger'] }), 0).hand, 'right');
+});
+
+test('親指以外の押下がtriggerだけなら、その手がストロークの手になる', () => {
+  // 左小指の前置シフトを押しながら、右親指で文字を出す
+  const fact = strokeHandFact(stroke({ finger: 'LP', roles: ['trigger'] }, { finger: 'RT', roles: ['output'] }), 0);
+  assert.equal(fact.kind, 'one-hand');
+  assert.deepEqual(fact.presses, [{ hand: 'left', role: 'trigger-only' }]);
+});
+
+test('親指の押下だけのストロークは、押した親指の手で数える', () => {
+  const result = analyzeHandRhythm([stroke(L('LI')), stroke({ finger: 'RT' }), stroke({ finger: 'RT' }), stroke(L('LI'))]);
+  assert.deepEqual(
+    result.strokes.map((fact) => fact.hand),
+    ['left', 'right', 'right', 'left'],
+  );
+  assert.deepEqual(weightsOf(result), [
+    [1, 0],
+    [0, 1],
+    [1, 0],
+  ]);
+});
+
+test('左右の親指だけを同時に押すストロークは両手になる', () => {
+  const both = strokeHandFact(stroke({ finger: 'LT' }, { finger: 'RT' }), 0);
+  assert.equal(both.kind, 'both-output');
+  const result = analyzeHandRhythm([stroke(L('LI')), stroke({ finger: 'LT' }, { finger: 'RT' })]);
+  assert.deepEqual(weightsOf(result), [[0.5, 0.5]]);
+  assert.equal(result.aggregate.bothHandStrokes.simultaneous, 1);
 });
 
 test('両手の層キーだけを押すストロークは両手の混在になる', () => {
@@ -119,6 +187,25 @@ test('交互打鍵の連続は3ストローク以上だけで、両手のスト�
   assert.equal(alternation.coverage.rate, 0.7);
 });
 
+test('親指を外して片手になったストロークは交互打鍵の連続に入る', () => {
+  // 右手の文字キーに左親指を添えるストロークと、左手の文字キーに右親指を添えるストロークが交互に並ぶ
+  const result = analyzeHandRhythm([
+    stroke(R('RI'), { finger: 'LT', roles: ['trigger'] }),
+    stroke(L('LI'), { finger: 'RT', roles: ['trigger'] }),
+    stroke(R('RM'), { finger: 'LT', roles: ['trigger'] }),
+    stroke(L('LM'), { finger: 'RT', roles: ['trigger'] }),
+  ]);
+  assert.deepEqual(result.alternatingRuns, [{ startStrokeIndex: 0, endStrokeIndex: 4 }]);
+  assert.equal(result.aggregate.switches, 3);
+  assert.equal(result.aggregate.bothHandPairs, 0);
+});
+
+test('左手→両手は切り替えを数えるが、交互打鍵の連続には入らない', () => {
+  const result = analyzeHandRhythm([stroke(L()), stroke(R()), stroke(L(), R()), stroke(R()), stroke(L()), stroke(R())]);
+  assert.equal(result.aggregate.switches, 1 + 0.5 + 0 + 1 + 1);
+  assert.deepEqual(result.alternatingRuns, [{ startStrokeIndex: 3, endStrokeIndex: 6 }]);
+});
+
 test('孤立した1回の切り替えは交互打鍵の連続に入らない', () => {
   const result = analyzeHandRhythm([stroke(L()), stroke(L('LM')), stroke(R()), stroke(R('RM'))]);
   assert.deepEqual(result.alternatingRuns, []);
@@ -139,11 +226,14 @@ test('保持を続けている層キーの手は手の判定に入らず、事�
   );
   assert.deepEqual(result.strokes[0].heldHands, ['left']);
   assert.equal(result.strokes[0].hand, 'right');
-  assert.deepEqual(result.pairs, ['continue', 'switch']);
+  assert.deepEqual(weightsOf(result), [
+    [0, 1],
+    [1, 0],
+  ]);
 });
 
 test('保持を始めるストロークの層キーは押下に入る', () => {
-  const start: Entry = { finger: 'LT', roles: ['held-trigger'] };
+  const start: Entry = { finger: 'LP', roles: ['held-trigger'] };
   const fact = strokeHandFact(stroke(start, R('RI')), 0);
   assert.equal(fact.kind, 'both-mixed');
   assert.deepEqual(fact.heldHands, []);
@@ -155,15 +245,17 @@ test('同指連続や親指だけのストロークで区間が切れない', ()
   assert.deepEqual(result.alternatingRuns, [{ startStrokeIndex: 0, endStrokeIndex: 5 }]);
 });
 
-test('継続率の分母は切り替え + 継続の組数で、分母が0なら0', () => {
+test('継続率の分母は切り替え + 継続の回数で、分母が0なら0', () => {
   const result = analyzeHandRhythm([stroke(L()), stroke(L('LM')), stroke(L()), stroke(R())]);
   assert.equal(result.aggregate.switches, 1);
   assert.equal(result.aggregate.continuations, 2);
   assert.equal(result.aggregate.continuationRate, 2 / 3);
 
   const onlyBoth = analyzeHandRhythm([stroke(L(), R()), stroke(L(), R())]);
-  assert.equal(onlyBoth.aggregate.continuationRate, 0);
+  assert.equal(onlyBoth.aggregate.continuationRate, 1);
   assert.equal(onlyBoth.aggregate.bothHandPairs, 1);
+
+  assert.equal(analyzeHandRhythm([stroke(L())]).aggregate.continuationRate, 0);
 });
 
 test('覆う割合の分母は全ストローク数で、ストロークが0件なら0', () => {
@@ -179,7 +271,17 @@ test('覆う割合の分母は全ストローク数で、ストロークが0件�
 test('押下する手が無いストロークはどの組にも入れず連続を切る', () => {
   const noPress: HandRhythmStroke = { presses: [], participations: [] };
   const result = analyzeHandRhythm([stroke(L()), stroke(R()), noPress, stroke(L()), stroke(R()), stroke(L())]);
-  assert.deepEqual(result.pairs, ['switch', 'unclassified', 'unclassified', 'switch', 'switch']);
+  assert.deepEqual(weightsOf(result), [
+    [1, 0],
+    [0, 0],
+    [0, 0],
+    [1, 0],
+    [1, 0],
+  ]);
+  assert.deepEqual(
+    result.pairs.map((pair) => pair.counted),
+    [true, false, false, true, true],
+  );
   assert.deepEqual(result.alternatingRuns, [{ startStrokeIndex: 3, endStrokeIndex: 6 }]);
   assert.equal(result.aggregate.switches + result.aggregate.continuations, 3);
 });
@@ -205,7 +307,16 @@ test('実際の配列: QWERTYで左手4打鍵と右手4打鍵を続けて打つ�
   assert.deepEqual(result.alternatingRuns, []);
 });
 
-test('実際の配列: useHoldで保持を続ける層キーが押下から外れ、両手の混在が片手のストロークになる', () => {
+test('保持を続ける層キーが親指以外なら、その手は手の集合に入らず、両手の混在が片手のストロークになる', () => {
+  const start: Entry = { finger: 'LP', roles: ['held-trigger'] };
+  const held: Entry = { finger: 'LP', pressed: false, roles: ['held-trigger'] };
+  assert.equal(strokeHandFact(stroke(start, R('RI')), 0).kind, 'both-mixed');
+  const fact = strokeHandFact(stroke(held, R('RI')), 0);
+  assert.equal(fact.kind, 'one-hand');
+  assert.deepEqual(fact.heldHands, ['left']);
+});
+
+test('実際の配列: useHoldで保持を続ける層キーは押下から外れ、手の集合に入らない事実として残る', () => {
   const text = 'あさ、まどをあけると、やわらかなひかりがへやにひろがります。';
   const asuka = LAYOUT_BY_ID.get('asuka')!;
   const geometry = buildGeometry('row-staggered');
@@ -214,8 +325,8 @@ test('実際の配列: useHoldで保持を続ける層キーが押下から外�
     generateTrace(text, asuka, geometry, { ...DEFAULT_TRACE_POLICY, triggerRealizationPolicy: { useHold: true } }).strokes,
     { useHold: true },
   );
-  assert.ok(withHold.aggregate.bothHandStrokes.mixed < withoutHold.aggregate.bothHandStrokes.mixed);
   assert.ok(withHold.strokes.some((fact) => fact.kind === 'one-hand' && fact.heldHands.length > 0));
+  assert.ok(withoutHold.strokes.every((fact) => fact.heldHands.length === 0));
   assert.equal(withHold.aggregate.conditions.triggerRealizationPolicy.useHold, true);
   assert.equal(withoutHold.aggregate.conditions.triggerRealizationPolicy.useHold, false);
 });

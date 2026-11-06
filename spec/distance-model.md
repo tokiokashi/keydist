@@ -1359,7 +1359,7 @@ Roll・Arpeggio・SFBとは排他の分類にしない。同じStrokeが交互�
 - 交互打鍵が覆うStrokeの割合: 交互打鍵の連続が覆うStroke indexの和集合の数 / 全Stroke数（§10.6のcoverageと同じ数え方）。全Strokeが0件なら0
 
 Hand Rhythmは解釈のPolicyを持たないので、条件（§12.3）は増えない。値は `Trace` だけで決まるので、`Trace` を変える条件（物理配列・指割り当て・窓幅 `N`・綴りの規則・`TriggerRealizationPolicy`・`ActionRealizationPolicy` など、距離と同じ条件）を変えると値も変わる。
-たとえば手の判定は押下で行うので、指割り当てを変えるとStrokeの手が変わり、`TriggerRealizationPolicy.useHold` を変えると、保持を続けるStrokeの層キーが押下から外れて両手の混在が片手のStrokeになる。
+たとえば手の判定は押下で行うので、指割り当てを変えるとStrokeの手が変わり、`TriggerRealizationPolicy.useHold` を変えると、保持を続けるStrokeの層キーが押下から外れる。層キーが親指以外の指なら、両手の混在が片手のStrokeになる。親指の層キーは、親指以外の押下があるStrokeでは手の集合に入らないので、そのStrokeの値は変わらない。
 集計結果には、§10.6と同じく、その `Trace` を生成した `TriggerRealizationPolicy` と `ActionRealizationPolicy` のimmutableなsnapshotを持たせる。
 Chain・Arpeggioのsnapshotを持つ `AggregatedAnalysisResult` と `Metrics` には載せず、比較表のHand Rhythmの列（§11.13）は行の抽出が `Trace` から数える。
 

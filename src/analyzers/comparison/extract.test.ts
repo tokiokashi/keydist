@@ -182,7 +182,7 @@ test('Hand Rhythmの列: 左右の手の交互のペインの抽出と同じ値�
       assert.equal(row.alternationMaxLength, alternation.maxLength, layoutId);
     }
     // ペインの「組全体の○%」と同じ値になる。
-    assert.equal(pairCount, aggregate.switches + aggregate.continuations + aggregate.bothHandPairs, layoutId);
+    assert.equal(pairCount, aggregate.switches + aggregate.continuations, layoutId);
     const paneShare = pairRowsOf(extracted).find((item) => item.id === 'both-hand-pairs')?.text;
     assert.equal(paneShare, `${aggregate.bothHandPairs}組（組全体の${COMPARISON_COLUMNS.bothHandPairShare.format(row.bothHandPairShare)}）`, layoutId);
   }
@@ -197,15 +197,16 @@ test('Hand Rhythmの列: 実在の配列で、列の値が互いに異なり、�
 });
 
 test('Hand Rhythmの列: 両手の打鍵を含む組の割合は、押す手が無い打鍵を含む組を分母に入れない', () => {
-  // 手の切り替え2・同じ手の継続1・両手の打鍵を含む組2（合計5組）と、押す手が無い打鍵を含む組2。後者は分母に入れない。
+  // 左→右が1回、右→左が1回、左→左が1回、左→両手（切り替え0.5・継続0.5）、両手→左（継続1）の5組と、押す手が無い打鍵を含む組2。
+  // 両手を含む組は2組で、分母は5組。後者は分母に入れない。
   const left = fixtureStroke(0, [fixturePress('LI', 'f', 4)]);
   const right = fixtureStroke(1, [fixturePress('RI', 'j', 7)]);
   const both = fixtureStroke(2, [fixturePress('LI', 'f', 4), fixturePress('RI', 'j', 7)]);
   const none = fixtureStroke(3, []);
   const strokes = [left, right, left, left, both, left, none, left];
   const aggregate = analyzeHandRhythm(strokes).aggregate;
-  assert.equal(aggregate.switches, 2);
-  assert.equal(aggregate.continuations, 1);
+  assert.equal(aggregate.switches, 2.5);
+  assert.equal(aggregate.continuations, 2.5);
   assert.equal(aggregate.bothHandPairs, 2);
   const row = computeComparisonRowValues(fixtureMetrics(1), { ...FIXTURE_TRACE, strokes });
   assert.equal(row.bothHandPairShare, (2 / 5) * 100);
