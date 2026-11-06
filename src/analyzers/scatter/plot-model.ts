@@ -116,9 +116,12 @@ function enclosingLeadTicks(padded: Range, leads: readonly number[]): readonly n
   return all.filter((v) => v >= loTick && v <= hiTick);
 }
 
-/** 一定の刻み（1・2・5の10の冪乗倍）の値。目標の本数に届く最も粗い刻みで、`padded`を含む範囲に入る値。 */
-function enclosingStepTicks(padded: Range, target: number): readonly number[] {
-  let finest: readonly number[] = [];
+/**
+ * 一定の刻み（1・2・5の10の冪乗倍）の値の候補を、粗い刻みから順に並べる。`padded`を含む最も狭い範囲に入る値で、
+ * 範囲の下端が0以下になる刻みは除く。最後の候補が、目標の本数に届く最も粗い刻み（届く刻みが無ければ最も細かい刻み）。
+ */
+function stepTickCandidates(padded: Range, target: number): readonly (readonly number[])[] {
+  const candidates: (readonly number[])[] = [];
   for (let exponent = Math.ceil(Math.log10(padded.hi)); exponent >= -9; exponent--) {
     for (const lead of [5, 2, 1]) {
       const step = Number((lead * 10 ** exponent).toPrecision(12));
@@ -127,11 +130,11 @@ function enclosingStepTicks(padded: Range, target: number): readonly number[] {
       const last = Math.ceil(padded.hi / step - 1e-9);
       const values: number[] = [];
       for (let i = first; i <= last; i++) values.push(multiple(i, step));
-      finest = values;
-      if (values.length >= target) return values;
+      candidates.push(values);
+      if (values.length >= target) return candidates;
     }
   }
-  return finest;
+  return candidates;
 }
 
 /** 隣り合う数字が重なるか。横軸は数字の幅、縦軸は数字の高さで、図の座標の上の中心どうしの距離と比べる。 */
@@ -150,29 +153,52 @@ function logTicksOverlap(values: readonly number[], texts: readonly string[], ra
 /**
  * 対数の軸の範囲と目盛り。点の値に余白を足した範囲（`logAxisRange`）を含む最も狭い、目盛りの値から目盛りの値までを軸の範囲にするので、
  * 余白を残したまま、どの点も両側を数字の付いた目盛りで挟まれる。目盛りの値は4つの段（`LogTier`）の1つから選ぶ。
- * 軸の範囲に入る目盛りの数が`target`以上になる最も粗い段を使い、3つの段で届かない時は一定の刻みの段を使う。
- * 隣の数字が重なる時は、重ならない段まで1段ずつ粗い段に戻す（1つ目の段でも重なる時は1つ目の段）。
+ * 余白を足した範囲の最大が最小の10倍に満たない軸は、一定の刻みの段だけを使う（1〜3つ目の段は、1と2の間のように比が2倍の区間に
+ * 目盛りが無く、点が集まる区間を読めないため）。刻みは、目盛りの数が`target`以上になる最も粗い刻みにする。
+ * 10倍以上の軸は、1〜3つ目の段のうち目盛りの数が`target`以上になる最も粗い段を使い、届かない時は一定の刻みの段を使う。
+ * 隣の数字が重なる時は、重ならない段（一定の刻みでは刻み）まで1つずつ粗くする。
+ * 重なりが解けない時は、10倍以上の軸は1つ目の段を使う。10倍に満たない軸は、軸の下端を0より大きくできる刻みが細かい刻みしか無い
+ * ことがあり、その刻みで重なる時は、10倍以上の軸と同じ1〜3つ目の段の選び方に切り替える。
  */
 export function logAxis(values: readonly number[], target: number, horizontal: boolean): LogAxis {
   const padded = logAxisRange(values);
-  const ticksOf = (tier: LogTier): readonly number[] =>
-    tier === 4 ? enclosingStepTicks(padded, target) : enclosingLeadTicks(padded, LOG_TIER_LEADS[tier]);
-  let selected: LogTier = 4;
+  const overlaps = (ticks: readonly number[]): boolean =>
+    logTicksOverlap(ticks, ticks.map(formatLogTickValue), { lo: ticks[0]!, hi: ticks.at(-1)! }, horizontal);
+  const axisOf = (ticks: readonly number[], tier: LogTier, wantedTier: LogTier): LogAxis => ({
+    range: { lo: ticks[0]!, hi: ticks.at(-1)! },
+    values: ticks,
+    texts: ticks.map(formatLogTickValue),
+    tier,
+    wantedTier,
+  });
+  const stepAxis = (): LogAxis | undefined => {
+    const candidates = stepTickCandidates(padded, target);
+    for (let i = candidates.length - 1; i >= 0; i--) {
+      if (!overlaps(candidates[i]!)) return axisOf(candidates[i]!, 4, 4);
+    }
+    return undefined;
+  };
+  if (padded.hi < padded.lo * 10) {
+    const axis = stepAxis();
+    if (axis !== undefined) return axis;
+  }
+  let wanted: LogTier = 4;
   for (const tier of [1, 2, 3] as const) {
-    if (ticksOf(tier).length >= target) {
-      selected = tier;
+    if (enclosingLeadTicks(padded, LOG_TIER_LEADS[tier]).length >= target) {
+      wanted = tier;
       break;
     }
   }
-  let axis: LogAxis | undefined;
-  for (let tier: LogTier = selected; tier >= 1; tier = (tier - 1) as LogTier) {
-    const tickValues = ticksOf(tier);
-    const range = { lo: tickValues[0]!, hi: tickValues.at(-1)! };
-    const texts = tickValues.map(formatLogTickValue);
-    axis = { range, values: tickValues, texts, tier, wantedTier: selected };
-    if (!logTicksOverlap(tickValues, texts, range, horizontal)) break;
+  if (wanted === 4) {
+    const axis = stepAxis();
+    if (axis !== undefined) return axis;
   }
-  return axis!;
+  const top: 1 | 2 | 3 = wanted === 4 ? 3 : wanted;
+  for (let tier = top; tier >= 1; tier--) {
+    const ticks = enclosingLeadTicks(padded, LOG_TIER_LEADS[tier as 1 | 2 | 3]);
+    if (!overlaps(ticks) || tier === 1) return axisOf(ticks, tier as LogTier, wanted);
+  }
+  throw new Error('unreachable');
 }
 
 export interface PlotTick {

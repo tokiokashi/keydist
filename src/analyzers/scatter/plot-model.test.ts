@@ -827,7 +827,7 @@ test('logAxis: 点が目盛りの値ちょうどにあっても、点と軸の�
   assert.ok(twoFive.range.lo < 2 && twoFive.range.hi > 50);
 });
 
-test('logAxis: 目盛りの値は4つの段の1つから選ばれ、目盛りの数が目標以上になる最も粗い段を使う', () => {
+test('logAxis: 余白を足した範囲が10倍に満たない軸は、一定の刻みだけを使い、10倍以上の軸は1〜3つ目の段から選ぶ', () => {
   const tierLeads = { 1: [1], 2: [1, 2, 5], 3: [1, 2, 3, 4, 5, 6, 7, 8, 9] } as const;
   for (const horizontal of [true, false]) {
     const target = horizontal ? 6 : 5;
@@ -835,6 +835,13 @@ test('logAxis: 目盛りの値は4つの段の1つから選ばれ、目盛りの
       for (const ratio of [1, 1.05, 1.3, 2, 3, 7, 20, 400, 1e5]) {
         const values = [base, base * ratio];
         const axis = assertEnclosing(values, target, horizontal);
+        const padded = logAxisRange(values);
+        const narrow = padded.hi < padded.lo * 10;
+        if (narrow && axis.tier === 4) {
+          // 一定の刻み: 隣の目盛りとの差が全部同じ
+          const step = axis.values[1]! - axis.values[0]!;
+          for (let i = 1; i < axis.values.length; i++) assert.ok(Math.abs(axis.values[i]! - axis.values[i - 1]! - step) < step * 1e-6, `${values}`);
+        }
         if (axis.tier !== 4) {
           const leads = tierLeads[axis.tier];
           assert.ok(
@@ -842,21 +849,31 @@ test('logAxis: 目盛りの値は4つの段の1つから選ばれ、目盛りの
             `${values}`,
           );
         }
-        // 数字が重ならず戻らなかった時は、目標の本数に届く（3つ目の段までで届かない時だけ4つ目の段）。戻った時はより粗い段
+        if (narrow) continue;
+        // 10倍以上の軸: 数字が重ならず戻らなかった時は目標の本数に届く。戻った時はより粗い段。目標に届く最も粗い段を選ぶ
+        if (axis.wantedTier === 4) continue;
         assert.ok(axis.tier <= axis.wantedTier, `${values}`);
-        if (axis.tier === axis.wantedTier && axis.tier !== 4) assert.ok(axis.values.length >= target, `${values}`);
-        // 目標に届く最も粗い段を選ぶ。より粗い段は、目標に届かない
-        for (let coarser = 1; coarser < Math.min(axis.wantedTier, 4); coarser++) {
-          assert.ok(leadCount(logAxisRange(values), tierLeads[coarser as 1 | 2]) < target, `${values}: 段${coarser}`);
+        if (axis.tier === axis.wantedTier) assert.ok(axis.values.length >= target, `${values}`);
+        for (let coarser = 1; coarser < axis.wantedTier; coarser++) {
+          assert.ok(leadCount(padded, tierLeads[coarser as 1 | 2]) < target, `${values}: 段${coarser}`);
         }
-        if (axis.wantedTier === 4) assert.ok(leadCount(logAxisRange(values), tierLeads[3]) < target, `${values}: 段3`);
       }
     }
   }
 });
 
-test('logAxis: 隣の数字が重なる時は、重ならない段まで1段ずつ粗い段に戻す', () => {
-  // 横軸が0.3〜2.9。1〜9の段は目標に届くが0.8と0.9の数字が重なるので、1・2・5の段に戻る
+test('logAxis: 10倍に満たない軸は、1〜9の段にせず一定の刻みにする', () => {
+  // 点が0.7〜1.7の縦軸。1〜9の段だと0.7・0.8・0.9・1・2で、1と2の間に目盛りが無い
+  const axis = assertEnclosing([0.7, 1.7], 5, false);
+  assert.equal(axis.tier, 4);
+  assert.deepEqual(axis.texts, ['0.6', '0.8', '1', '1.2', '1.4', '1.6', '1.8', '2']);
+  const flat = assertEnclosing([1.2, 1.8], 5, false);
+  assert.equal(flat.tier, 4);
+  assert.deepEqual(flat.texts, ['1', '1.2', '1.4', '1.6', '1.8', '2']);
+});
+
+test('logAxis: 隣の数字が重なる時は、重ならない段まで1つずつ粗くする', () => {
+  // 横軸が0.3〜2.9（10倍以上）。1〜9の段は目標に届くが0.8と0.9の数字が重なるので、1・2・5の段に戻る
   const back = assertEnclosing([0.3, 2.9], 6, true);
   assert.equal(back.wantedTier, 3);
   assert.equal(back.tier, 2);
@@ -864,11 +881,14 @@ test('logAxis: 隣の数字が重なる時は、重ならない段まで1段ず�
   // 縦軸は数字の高さで判定する。同じ範囲でも、1〜9の段の0.8と0.9が近すぎる
   const narrowY = logAxis([0.3, 2.9], 10, false);
   assert.ok(narrowY.tier < narrowY.wantedTier);
-  // 0.000001のような長い数字は、4つ目の段から1〜9の段まで戻る
+  // 10倍に満たない軸は刻みを粗くする。0.000001のような長い数字は、刻み1e-7（9本）だと重なるので、刻み2e-7（5本）になる
   const long = assertEnclosing([1e-6, 1.5e-6], 6, true);
-  assert.equal(long.wantedTier, 4);
-  assert.equal(long.tier, 3);
-  assert.deepEqual(long.texts, ['0.0000009', '0.000001', '0.000002']);
+  assert.equal(long.tier, 4);
+  assert.deepEqual(long.texts, ['0.0000008', '0.000001', '0.0000012', '0.0000014', '0.0000016']);
+  // 下端を0より大きくできる刻みが細かい刻みしか無く、その刻みで重なる時は、1〜3つ目の段から選ぶ
+  const fallback = assertEnclosing([30, 200], 5, false);
+  assert.equal(fallback.tier, 2);
+  assert.deepEqual(fallback.texts, ['20', '50', '100', '200', '500']);
 });
 
 test('logAxis: 1つ目の段でも数字が重なる時は、1つ目の段を使う', () => {
