@@ -185,6 +185,10 @@
   gap: 0.25rem 0.75rem;
 }
 
+.option-checkbox-group-listed {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .option-radio-group {
   display: grid;
   gap: 0.25rem;

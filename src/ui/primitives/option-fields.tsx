@@ -290,19 +290,29 @@ export function RangeOptionField({
   );
 }
 
-/** 複数を選ぶ項目（表示する列など）。空も1つの値として扱う（全選択の意味にはしない）。 */
+/**
+ * 複数を選ぶ項目（表示する列など）。空も1つの値として扱う（全選択の意味にはしない）。
+ * `minSelected`を渡すと、選んだ数がその数まで減った時に、残った選択肢を操作できない状態にして外せなくする。
+ * `listed`は選択肢の名前が長い時に、1行に1つずつ縦に並べる。
+ */
 export function CheckboxGroupOptionField<T extends string>({
   label,
   binding,
   choices,
   hint,
+  minSelected = 0,
+  listed = false,
 }: {
   readonly label: string;
   readonly binding: OptionBinding<readonly T[]>;
   readonly choices: readonly OptionChoice<T>[];
   readonly hint?: ReactNode;
+  readonly minSelected?: number;
+  readonly listed?: boolean;
 }) {
+  const locked = binding.value.length <= minSelected;
   const toggle = (value: T) => {
+    if (binding.value.includes(value) && locked) return;
     const next = binding.value.includes(value)
       ? binding.value.filter((candidate) => candidate !== value)
       : // 選んだ順ではなく選択肢の並びで持つ（既定値と比べた時に、同じ集合なら同じ値になるように）。
@@ -318,13 +328,16 @@ export function CheckboxGroupOptionField<T extends string>({
         </span>
         <ResetButton label={label} binding={binding} />
       </div>
-      <div className="option-checkbox-group">
-        {choices.map((choice) => (
-          <label key={choice.value}>
-            <input type="checkbox" checked={binding.value.includes(choice.value)} onChange={() => toggle(choice.value)} />
-            {choice.label}
-          </label>
-        ))}
+      <div className={listed ? 'option-checkbox-group option-checkbox-group-listed' : 'option-checkbox-group'}>
+        {choices.map((choice) => {
+          const checked = binding.value.includes(choice.value);
+          return (
+            <label key={choice.value}>
+              <input type="checkbox" checked={checked} disabled={checked && locked} onChange={() => toggle(choice.value)} />
+              {choice.label}
+            </label>
+          );
+        })}
       </div>
       {hint !== undefined ? <p className="option-field-hint">{hint}</p> : null}
     </fieldset>

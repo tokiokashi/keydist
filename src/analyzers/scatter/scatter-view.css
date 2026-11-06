@@ -5,6 +5,23 @@
   min-width: 0;
 }
 
+/* 図を並べる領域。列の数と間隔は本体が決める */
+.scatter-grid {
+  display: grid;
+  align-items: start;
+  /* 列が領域より狭い時（図が1枚の時など）は、並びを中央に置く */
+  justify-content: center;
+  min-width: 0;
+}
+
+/* 組み合わせ1つぶんの図 */
+.scatter-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
 .scatter-notice {
   margin: 0;
   color: var(--text-muted);
@@ -37,7 +54,6 @@
 }
 
 .scatter-figure {
-  max-width: 760px;
   min-width: 0;
   margin: 0;
 }
@@ -124,9 +140,10 @@
   pointer-events: none;
 }
 
-/* 点に重ねた時やフォーカスした時、その点の名前の行に下線を引く。印が重なる点の組の名前では、どの行がその点かを示す */
-.scatter-point-label[data-active] {
-  text-decoration: underline;
+/* 点に重ねた時やフォーカスした時、その点の名前を点の印の輪と同じ色で描く。下線は、印が重なる点の組で名前を行に並べた時に下の行と重なるので使わない */
+.scatter-point-label[data-active],
+.scatter-point-label[data-pinned] {
+  fill: var(--focus);
 }
 
 /* 点から離れた場所に置いた名前と、点の印を結ぶ細い線 */
@@ -147,6 +164,13 @@
   opacity: 1;
 }
 
+/* 留めた点は、輪の内側を塗って、重ねているだけの点と区別する */
+.scatter-point[data-pinned] .scatter-point-ring {
+  opacity: 1;
+  fill: color-mix(in srgb, var(--focus) 22%, transparent);
+  stroke-width: 2.5;
+}
+
 .scatter-point:focus-visible .scatter-point-ring {
   opacity: 1;
   stroke-width: 2.5;
@@ -158,12 +182,39 @@
   }
 }
 
+/* 点の読み取り。留めた点があると2行並ぶので、2行ぶんの高さを確保して図が動かないようにする */
+.scatter-readouts {
+  min-height: 1.4em;
+}
+
+.scatter-readouts[data-pinned] {
+  min-height: 2.8em;
+}
+
 .scatter-readout {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
   margin: 0.2rem 0 0;
   min-height: 1.4em;
   color: var(--text-muted);
   font-size: 0.78rem;
   font-variant-numeric: tabular-nums;
+}
+
+/* 読み取りの行の頭に付ける、点の輪と同じ見た目の印。留めた点は塗った輪、重ねている点は塗らない輪 */
+.scatter-readout-mark {
+  flex: none;
+  box-sizing: border-box;
+  width: 0.75rem;
+  height: 0.75rem;
+  border: 2px solid var(--focus);
+  border-radius: 50%;
+  align-self: center;
+}
+
+.scatter-readout[data-scatter-readout='pinned'] .scatter-readout-mark {
+  background: color-mix(in srgb, var(--focus) 22%, transparent);
 }
 
 .scatter-excluded {
