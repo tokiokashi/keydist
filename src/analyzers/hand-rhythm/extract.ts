@@ -19,7 +19,7 @@ export interface RunLengthCount {
 export interface HandRhythmExtracted {
   /** `analyzeHandRhythm` の集計。値は加工しない */
   readonly aggregate: HandRhythmAggregate;
-  /** 切り替え・同じ手の続き・両手を含む組の合計（分類できない組は含めない） */
+  /** どちらも押下を持つ隣り合う組の数。切り替えと同じ手の続きの合計と一致する */
   readonly pairCount: number;
   /** 交互打鍵の連続の長さごとの数。数の合計は `aggregate.alternation.runs` と一致する */
   readonly alternationLengths: readonly RunLengthCount[];
@@ -41,7 +41,7 @@ export function handRhythmExtractionOf(result: HandRhythmResult): HandRhythmExtr
   const { aggregate } = result;
   return {
     aggregate,
-    pairCount: aggregate.switches + aggregate.continuations + aggregate.bothHandPairs,
+    pairCount: aggregate.switches + aggregate.continuations,
     alternationLengths: lengthCountsOf(result.alternatingRuns),
     sameHandLengths: lengthCountsOf(result.sameHandRuns),
   };

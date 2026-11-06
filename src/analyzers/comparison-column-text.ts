@@ -177,29 +177,32 @@ function buildColumnText(language: TextLanguage): Readonly<Record<ComparisonColu
     alternationCoverage: {
       label: '交互打鍵の連続の割合',
       description:
-        '左右の手が交互に変わる3アクション以上の連続に含まれるアクションが、全アクションのうちどれだけを占めるか（%）。前置・後置のシフトのキーも1アクションと数えます。両手で押すアクションは連続を切ります。',
+        '左右の手が交互に変わる3アクション以上の連続に含まれるアクションが、全アクションのうちどれだけを占めるか（%）。前置・後置のシフトのキーも1アクションと数えます。両手で押すアクションは連続を切ります。親指以外のキーを押すアクションは、親指を手に数えません。',
     },
     sameHandContinuationRate: {
       label: '同じ手の続きの割合',
       description:
-        '片手で打つ隣り合う2アクションのうち、同じ手が続いた組の割合（%）。手が切り替わる組と同じ手が続く組の合計で割り、両手で押すアクションを含む組は数えません。',
+        '隣り合う2アクションのうち、同じ手が続いた回数の割合（%）。手の切り替えと同じ手の続きの回数の合計で割ります。両手で押すアクションを含む組も、手ごとに数えます。',
     },
     handSwitches: {
       label: '手の切り替え',
-      description: '隣り合う2アクションがどちらも片手で、左右の手が切り替わった組の数。両手で押すアクションを含む組は数えません。',
+      description:
+        '隣り合う2アクションで、後のアクションの手が前のアクションで使っていない手に切り替わった回数。1組を合わせて1回に数え、後のアクションの手が2つなら手ごとに0.5回ずつです。親指以外のキーを押すアクションは、親指を手に数えません。',
     },
     handContinuations: {
       label: '同じ手の続き',
-      description: '隣り合う2アクションがどちらも片手で、同じ手が続いた組の数。両手で押すアクションを含む組は数えません。',
+      description:
+        '隣り合う2アクションで、後のアクションの手が前のアクションでも使った手だった回数。1組を合わせて1回に数え、後のアクションの手が2つなら手ごとに0.5回ずつです。親指以外のキーを押すアクションは、親指を手に数えません。',
     },
     bothHandPairShare: {
       label: '両手のアクションを含む組の割合',
       description:
-        '隣り合う2アクションの組のうち、少なくとも一方が両手で押すアクションである組の割合（%）。手の切り替え、同じ手の続き、両手のアクションを含む組の合計で割り、押す手が無いアクションを含む組は数えません。',
+        '隣り合う2アクションの組のうち、少なくとも一方が両手で押すアクションである組の割合（%）。手の切り替えと同じ手の続きの回数の合計（押す手が無いアクションを含む組を除いた組の数）で割ります。',
     },
     bothHandStrokes: {
       label: '両手のアクション',
-      description: '左右の手が同時に押すアクションの数。両手で文字を出すアクションと、片手は切り替えのキーだけを押すアクションを合わせて数えます。',
+      description:
+        '左右の手が同時に押すアクションの数。親指以外のキーを押すアクションは、親指を手に数えません。両手で文字を出すアクションと、片手は切り替えのキーだけを押すアクションを合わせて数えます。',
     },
     alternationRuns: {
       label: '交互打鍵の連続の数',
@@ -266,8 +269,8 @@ export const COMPARISON_COLUMN_FORMAT: Readonly<Record<ComparisonColumnId, (valu
   logicalBigramCombinations: count,
   alternationCoverage: percent,
   sameHandContinuationRate: percent,
-  handSwitches: count,
-  handContinuations: count,
+  handSwitches: fixed(1),
+  handContinuations: fixed(1),
   bothHandPairShare: percent,
   bothHandStrokes: count,
   alternationRuns: count,

@@ -13,9 +13,9 @@ import type { ComparisonColumnId } from './comparison-column-text.ts';
 /** 1行（1 Setup）ぶんの、全列の生値。値が無い列（連続が0件の平均と最長の長さ、分母が0の時の文字数に関わる4つの比）は`NaN`。 */
 export type ComparisonRowValues = Readonly<Record<ComparisonColumnId, number>>;
 
-/** 両手の打鍵を含む組の割合（%）。分母は手の切り替え + 同じ手の継続 + 両手の打鍵を含む組で、押す手が無い打鍵を含む組は入れない。分母が0なら0。 */
+/** 両手のアクションを含む組の割合（%）。分母はどちらも押下を持つ隣り合う組（手の切り替え + 同じ手の継続）で、押す手が無いアクションを含む組は入れない。分母が0なら0。 */
 function bothHandPairShare(handRhythm: HandRhythmAggregate): number {
-  const pairs = handRhythm.switches + handRhythm.continuations + handRhythm.bothHandPairs;
+  const pairs = handRhythm.switches + handRhythm.continuations;
   return pairs === 0 ? 0 : (handRhythm.bothHandPairs / pairs) * 100;
 }
 

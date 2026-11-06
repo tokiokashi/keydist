@@ -280,6 +280,10 @@ test('点の読み取り: 線を引く組は線の量の値を出し、線を引
     readout(SCATTER_PRESET_AXES.movedPress, 50, 4, { ...values, perPressUnits: 2 }),
     'QWERTY　移動ありキー率 50.0%　移動ありキー1つあたりの距離 4.000',
   );
+  assert.equal(
+    readout(SCATTER_PRESET_AXES.hand, 520.5, 702.5, { ...values, sameHandContinuationRate: 57.4 }),
+    'QWERTY　手の切り替えの回数 520.5　同じ手の続きの回数 702.5　同じ手の続きの割合 57.4%',
+  );
   assert.equal(readout({ x: 'perActionPresses', y: 'perPressUnits' }, 2, 1.5), 'QWERTY　1アクションあたりのキー数 2.000　1キーあたりの距離 1.500');
   assert.equal(readout({ x: 'textCharsPerAction', y: 'textCharsPerUnit' }, 2, 6), 'QWERTY　1アクションあたりの文字数 2.000　1uあたりの文字数 6.000');
   // 線の量の列が値を持たない対象には、線を引く組でも出さない

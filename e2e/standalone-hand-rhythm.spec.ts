@@ -1,4 +1,5 @@
 import { expect, test, type Page } from './fixtures.ts';
+import { useKanaText } from './kana-text-helper.ts';
 
 /**
  * 左右の手の交互のE2E。数の定義はunit test（`extract.test.ts`・`interpretation/structure/hand-rhythm.test.ts`）で固定しているので、
@@ -24,7 +25,7 @@ test('両手のアクションを持たない配列: 値が出て、両手のア
 
   await expect(value(page, 'both-hand-strokes')).toHaveText('0アクション');
   await expect(value(page, 'both-hand-pairs')).toHaveText(/^0組/);
-  await expect(value(page, 'switches')).not.toHaveText('0組');
+  await expect(value(page, 'switches')).not.toHaveText('0.0回');
   await expect(value(page, 'alternation-runs')).not.toHaveText('0件');
   await expect(feature(page).locator('[data-hand-rhythm-distribution="alternation"] [data-run-length]').first()).toBeVisible();
   await expect(feature(page).locator('[data-hand-rhythm-distribution="same-hand"] [data-run-length="1"]')).toBeVisible();
@@ -36,4 +37,13 @@ test('両手のアクションを含む組の多い配列: 両手のアクショ
   await expect(feature(page)).toBeVisible({ timeout: 10_000 });
   await expect(value(page, 'both-hand-pairs')).not.toHaveText(/^0組/);
   await expect(value(page, 'both-mixed')).not.toHaveText('0アクション');
+});
+
+test('現代文を打つ新下駄配列: 両手のアクションを含む組を手ごとに数えた0.5が回数に出る', async ({ page }) => {
+  await useKanaText(page);
+  await selectLayout(page, 'shingeta');
+  await page.goto('/analyzer/hand-rhythm');
+  await expect(feature(page)).toBeVisible({ timeout: 10_000 });
+  await expect(value(page, 'switches')).toHaveText('606.5回');
+  await expect(value(page, 'continuations')).toHaveText('1046.5回');
 });

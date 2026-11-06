@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
+import { LAYOUT_BY_ID, LAYOUTS_JA } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES, type Finger, type Key } from '#input/shapes/geometry.ts';
 import type { Setup } from '#input/setup/index.ts';
 import { EMPTY_SETTINGS_OVERRIDES } from '#engine/settings-items.ts';
@@ -104,6 +104,18 @@ test('両手の打鍵を含む組の多い配列: 組の合計は打鍵数から
   assert.equal(extracted.pairCount, extracted.aggregate.strokeCount - 1);
 });
 
+test('全組み込みのかな配列で、切り替え + 続きは、どちらも押下を持つ隣り合う組の数と一致する', () => {
+  const text = 'あさ、まどをあけると、やわらかなひかりがへやにひろがります。';
+  for (const layout of LAYOUTS_JA) {
+    const { extracted, trace } = extractAndTrace(resolve(layout.id, text, 'ja'));
+    const { strokes } = trace;
+    const pressedPairs = strokes.slice(1).filter((stroke, index) => stroke.presses.length > 0 && strokes[index].presses.length > 0).length;
+    assert.ok(pressedPairs > 0, layout.id);
+    assert.equal(extracted.aggregate.switches + extracted.aggregate.continuations, pressedPairs, layout.id);
+    assert.equal(extracted.pairCount, pressedPairs, layout.id);
+  }
+});
+
 test('lengthCountsOfは区間の長さごとに数える', () => {
   assert.deepEqual(
     lengthCountsOf([
@@ -152,7 +164,7 @@ function syntheticExtraction(): HandRhythmExtracted {
       stroke({ finger: 'LM' }),
       stroke({ finger: 'LI' }, { finger: 'RI' }), // 両手で文字を出す
       stroke({ finger: 'RM' }),
-      stroke({ finger: 'LT', output: false }, { finger: 'RI' }), // 片手は切り替えのキーだけ
+      stroke({ finger: 'LP', output: false }, { finger: 'RI' }), // 片手は切り替えのキーだけ
       stroke({ finger: 'RM' }),
     ]),
   );
@@ -164,10 +176,19 @@ test('合成データ: 両手で文字を出すアクションと、片手は切
   assert.equal(rows.get('both-output'), '1アクション');
   assert.equal(rows.get('both-mixed'), '1アクション');
   assert.equal(rows.get('strokes'), '7アクション');
-  assert.equal(rows.get('switches'), '2組');
-  assert.equal(rows.get('continuations'), '0組');
-  assert.equal(rows.get('continuation-rate'), '0.0%');
+  assert.equal(rows.get('switches'), '3.0回');
+  assert.equal(rows.get('continuations'), '3.0回');
+  assert.equal(rows.get('continuation-rate'), '50.0%');
   assert.equal(rows.get('both-hand-pairs'), '4組（組全体の66.7%）');
+});
+
+test('両手のアクションを含む組を手ごとに数えた0.5が、回数の行に出る', () => {
+  const extraction = handRhythmExtractionOf(analyzeHandRhythm([stroke({ finger: 'LI' }), stroke({ finger: 'LM' }, { finger: 'RI' })]));
+  const rows = new Map(pairRowsOf(extraction).map((row) => [row.id, row.text]));
+  assert.equal(rows.get('switches'), '0.5回');
+  assert.equal(rows.get('continuations'), '0.5回');
+  assert.equal(rows.get('continuation-rate'), '50.0%');
+  assert.equal(rows.get('both-hand-pairs'), '1組（組全体の100.0%）');
 });
 
 test('継続率の行のすぐ後ろに、両手のアクションを含む組の行が並ぶ', () => {
