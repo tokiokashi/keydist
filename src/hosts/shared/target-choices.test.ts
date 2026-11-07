@@ -158,6 +158,8 @@ test('絞り込みはひらがな・カタカナを区別せず、読み・別�
   assert.ok(keys('つき').includes('layout:tsuki-2-263'));
   assert.ok(keys('くわーてぃ').includes('layout:qwerty'));
   assert.deepEqual(keys('nicola'), ['layout:nicola']);
+  assert.deepEqual(keys('NICOLA'), ['layout:nicola']);
+  assert.deepEqual(keys('おやゆびしふと'), ['layout:nicola']);
   assert.ok(keys('どぼらっく').includes('layout:dvorak'));
   assert.ok(keys('どヴぉらっく').includes('layout:dvorak'));
   assert.ok(keys('くうぇるてぃ').includes('layout:qwerty'));

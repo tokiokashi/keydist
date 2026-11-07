@@ -862,6 +862,16 @@ test('通常の層トリガーは残さず、薙刀式の濁音詳細も除外�
   assert.deepEqual([...detailColors], [['f', 1]]);
 });
 
+test('NICOLAの配列は、表示名が「親指シフト」で、idは変わらない', () => {
+  const layout = LAYOUT_BY_ID.get('nicola')!;
+  assert.equal(layout.name, '親指シフト');
+  assert.equal(layout.id, 'nicola');
+  assert.ok(LAYOUTS_JA.some((entry) => entry.id === 'nicola' && entry.name === '親指シフト'));
+  assert.equal(LAYOUTS_JA.filter((entry) => entry.name.includes('親指シフト')).length, 1);
+  // 名前から外した規格の名前は、絞り込みの読みに残す
+  assert.deepEqual(layout.aliases, ['NICOLA', 'にこら', 'おやゆびしふと', 'にこらはいれつ']);
+});
+
 test('NICOLAは3面の直接かな入力を同時押しとして保持する', () => {
   const layout = LAYOUT_BY_ID.get('nicola')!;
 
