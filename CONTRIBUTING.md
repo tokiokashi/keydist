@@ -57,7 +57,7 @@
 
 - `body` はなぜその変更をしたかを書く。何をしたかはdiffが語る
 - 数値が変わる変更なら、変更前後の値を `body` に書く
-- issueとの紐づけは `footer` に `Closes #XX` / `Refs #XX`
+- issueとの紐づけは `footer` に書く。実装して検証済みなら `Closes #XX`、未検証なら `Refs #XX`
 - 破壊的変更は `footer` に `BREAKING CHANGE: <説明>`
 
 ### 例
@@ -347,7 +347,7 @@ patchが当たらなくなった更新PRは、そのままマージしない。�
 
 ## テスト
 
-`node --test` を使う。unit test は主対象のソース隣へ `src//*.test.ts` として置く。`test/*.test.ts` には architecture・commit-msg などリポジトリ横断の検査だけを置き、fixture は `test/fixtures/` に置く。
+`node --test` を使う。unit test は主対象のソース隣へ `src/**/*.test.ts` として置く。`test/*.test.ts` には architecture・commit-msg などリポジトリ横断の検査だけを置き、fixture は `test/fixtures/` に置く。
 
 - モデルの分岐（仕様 §9の `g` による場合分け）を変えたら、対応するテストを足す
 - 配列を追加したら「全かなが打てる」ことを検証する既存テストに乗せる
@@ -358,7 +358,7 @@ patchが当たらなくなった更新PRは、そのままマージしない。�
 
 | 対象 | テスト | 置き場 |
 |---|---|---|
-| input・trace・interpretation・engine・各Analyzerの抽出 | `node --test`（unit test） | 主対象のソースの隣（`src//*.test.ts`） |
+| input・trace・interpretation・engine・各Analyzerの抽出 | `node --test`（unit test） | 主対象のソースの隣（`src/**/*.test.ts`） |
 | 抽出と指標の結果 | 固定入力に対する期待値の固定（fixture） | `test/*-regression.test.ts` と `test/fixtures/` |
 | 可視化（図の重なり・欠け・色・配置） | Playwrightの `toHaveScreenshot`（基準の画像との比較） | `e2e/visual-figures.spec.ts` と `e2e/screenshots/` |
 | ページ（画面の配線・操作の流れ・配置・スクロール） | Playwrightのe2e | `e2e/*.spec.ts` |
