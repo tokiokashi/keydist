@@ -752,6 +752,8 @@ function segmentsCross(a: Segment, b: Segment): boolean {
 interface NameSlot {
   /** 引き出し線が付かない（隙間が`MIN_LEADER`未満の）候補。点に近い順、同じ隙間では最初に置く時と同じ順。 */
   readonly nearCandidates: () => readonly NameCandidate[];
+  /** 引き出し線が付く候補。隙間が小さい順、同じ隙間では最初に置く時と同じ順。 */
+  readonly leaderCandidates: () => readonly NameCandidate[];
   /** `candidate`の重なりの数。`limit`を超えると無限大。 */
   readonly costOf: (candidate: NameCandidate, others: readonly PlotName[], limit: number) => number;
   /** 重なりが、`others`の名前の行の長方形との重なりだけの時、重なる名前。他の重なり（点の印・図の外・引き出し線）がある時は`undefined`。 */
@@ -789,6 +791,10 @@ interface NameSlot {
  * 動かす名前の線が付かない候補のうち、2つの名前を外した状態で（行の長方形で測って）重なりが無く、動かした状態で線の付いていた名前の候補にも行の長方形の重なりが無いものがあれば、
  * 動かして、線の付いていた名前をその候補に置き直す（線は付かなくなる）。探す順は、線の付いていた名前の候補、重なる名前、重なる名前の移り先の順で、最初に見つかった組み合わせを採る。
  * 動かした名前と、線を無くした名前は、別の名前のために動かさない。
+ * 続けて、まだ動かしていない引き出し線の付いた名前ごとに、線が`MIN_LEADER`以上短くなる候補を隙間の小さい順に見る。その候補の線が1つの名前（まだ動かしていない、まとめて置いた名前）の行の長方形だけを通り、
+ * 他の重なりが無ければ、通られる名前を、重ならずに置ける候補（線の付いていた名前なら線の付く候補も含める）のうち今の位置から動く量（長方形の中央の縦横のずれの和）が一番小さいものへずらし、線の付いていた名前をその候補へ置き直す。
+ * ずらした名前の線（線無しの候補でも隙間が`SHORT_LEADER`以上なら最後に短い線が付くので、隙間をその長さとみなす）は、2つの名前の線の長さの合計が`MIN_LEADER`以上短くなり、長い方の線が今より伸びない長さに限る。
+ * 線を字に通さずに短くするため、通られる名前の方を線の通り道から外す。
  *
  * 最後に（見直しの後）、隙間が`SHORT_LEADER`以上`MIN_LEADER`未満の名前に、引き出し線と同じ形の短い線を付ける。置き場所を選ぶ時の重なりにも、見直しにも使わない。
  * 点のすぐ横に置けなかった名前の、どの点のものかを示す最後の手段なので、他の名前の字を通ってもよい。
@@ -963,6 +969,13 @@ export function placeNames(
         .sort((a, b) => rankOf(a) - rankOf(b));
       return nearCache;
     };
+    let leaderCache: NameCandidate[] | undefined;
+    const leaderCandidates = (): readonly NameCandidate[] => {
+      leaderCache ??= GAP_LEVELS.flatMap((d) => levelCache.get(d) ?? candidatesAt(d))
+        .filter((candidate) => candidate.leader !== undefined)
+        .sort((a, b) => rankOf(a) - rankOf(b));
+      return leaderCache;
+    };
     const toName = (candidate: NameCandidate): PlotName => ({
       lines: lines.map((line, index) => {
         const column = Math.floor(index / rows);
@@ -999,7 +1012,7 @@ export function placeNames(
       }
       return { chosen: best!, cost: bestCost };
     };
-    return { lines, nearNames, costOf, blockersOf, nearCandidates, toName, search };
+    return { lines, nearNames, costOf, blockersOf, nearCandidates, leaderCandidates, toName, search };
   };
   const clearance = (rect: Rect, index: number): number => {
     const square = marks[index]!;
@@ -1039,7 +1052,7 @@ export function placeNames(
   };
   for (const cluster of order) {
     const group = prepare(cluster);
-    const { lines, nearNames, costOf, blockersOf, nearCandidates, toName } = group;
+    const { lines, nearNames, costOf, blockersOf, nearCandidates, leaderCandidates, toName } = group;
     if (lines.length === 2) {
       const separated = separate(cluster.members[0]!, cluster.members[1]!);
       if (separated !== undefined) {
@@ -1092,7 +1105,7 @@ export function placeNames(
       }
     }
     placed.push(toName(chosen));
-    slots.push({ nearCandidates, costOf, blockersOf, toName });
+    slots.push({ nearCandidates, leaderCandidates, costOf, blockersOf, toName });
   }
   if (yieldToNeighbors) yieldNames(placed, slots);
   // 点のすぐ横より離れた名前に、短い線を付けて、どの点の名前かを示す
@@ -1108,7 +1121,7 @@ export function placeNames(
   });
 }
 
-/** 引き出し線の付いた名前のために、線無しの候補をふさぐ名前を1つ動かす。詳しくは`placeNames`。 */
+/** 引き出し線の付いた名前のために、線無しの候補をふさぐ名前か、短い線の通り道にある名前を1つ動かす。詳しくは`placeNames`。 */
 function yieldNames(placed: PlotName[], slots: readonly (NameSlot | undefined)[]): void {
   const moved = new Set<number>();
   for (let a = 0; a < placed.length; a++) {
@@ -1140,6 +1153,46 @@ function yieldNames(placed: PlotName[], slots: readonly (NameSlot | undefined)[]
       const target = room.find((candidateB) => !anyOverlap(candidateA.boxes, candidateB.boxes));
       if (target === undefined) continue;
       placed[a] = slotA.toName(candidateA);
+      placed[b] = slotB.toName(target);
+      moved.add(a);
+      moved.add(b);
+      break;
+    }
+  }
+  // 引き出し線を短くできる候補が、線が1つの名前の字を通るためだけに選べなかった時は、その名前を今の位置の近くへずらす
+  const lengthOf = (leader: PlotName['leader']): number => (leader === undefined ? 0 : Math.hypot(leader.x2 - leader.x1, leader.y2 - leader.y1));
+  // 候補に付く線の長さ。線無しでも隙間が`SHORT_LEADER`以上なら最後に短い線が付くので、隙間をその長さとみなす
+  const lineOf = (candidate: NameCandidate): number =>
+    candidate.leader !== undefined ? lengthOf(candidate.leader) : candidate.gap >= SHORT_LEADER ? candidate.gap : 0;
+  for (let a = 0; a < placed.length; a++) {
+    const slotA = slots[a];
+    const current = placed[a]!.leader;
+    if (slotA === undefined || current === undefined || moved.has(a)) continue;
+    const withoutA = placed.filter((_, index) => index !== a);
+    for (const candidateA of slotA.leaderCandidates()) {
+      if (lengthOf(candidateA.leader) >= lengthOf(current) - MIN_LEADER) continue;
+      const crossed = withoutA.filter((other) => other.boxes.some((box) => segmentHits(candidateA.leader!, box)));
+      if (crossed.length !== 1) continue;
+      const b = placed.indexOf(crossed[0]!);
+      const slotB = slots[b];
+      if (slotB === undefined || moved.has(b)) continue;
+      const others = placed.filter((_, index) => index !== a && index !== b);
+      if (slotA.costOf(candidateA, others, 0) !== 0) continue;
+      const nameA = slotA.toName(candidateA);
+      const from = placed[b]!.rect;
+      // 2つの名前の線の長さの合計が`MIN_LEADER`以上短くなり、長い方の線が今より伸びない移り先に限る。1本の長い線は、合計の短さより読みにくいため
+      const before = [lengthOf(current), lengthOf(placed[b]!.leader)];
+      const budget = Math.min(before[0]! + before[1]! - MIN_LEADER - lengthOf(candidateA.leader), Math.max(...before));
+      const shiftOf = (rect: Rect): number => Math.abs(rect.x0 + rect.x1 - from.x0 - from.x1) + Math.abs(rect.y0 + rect.y1 - from.y0 - from.y1);
+      // 今の位置から動く量が一番小さい移り先。名前を点の近くに残したまま、線の通り道だけを空ける。線の無かった名前には線を付けない
+      let target: NameCandidate | undefined;
+      for (const candidateB of placed[b]!.leader === undefined ? slotB.nearCandidates() : [...slotB.nearCandidates(), ...slotB.leaderCandidates()]) {
+        if (lineOf(candidateB) > budget) continue;
+        if (target !== undefined && shiftOf(candidateB.rect) >= shiftOf(target.rect)) continue;
+        if (slotB.costOf(candidateB, [...others, nameA], 0) === 0) target = candidateB;
+      }
+      if (target === undefined) continue;
+      placed[a] = nameA;
       placed[b] = slotB.toName(target);
       moved.add(a);
       moved.add(b);
