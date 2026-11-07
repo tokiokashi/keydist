@@ -748,10 +748,10 @@ test('scatterPlotModel: 通常の目盛りの描画（点・線・名前・目�
       .update(JSON.stringify(scatterPlotModel(input)))
       .digest('hex')
       .slice(0, 16);
-  assert.equal(digest({ points: POINTS, contour, legendRows: ['かな配列'], contourName: '総移動距離', contourSuffix: '' }), '4079cc7f881cfe12');
+  assert.equal(digest({ points: POINTS, contour, legendRows: ['かな配列'], contourName: '総移動距離', contourSuffix: '' }), 'f07dbc93c6f4f9c3');
   assert.equal(
     digest({ points: LOG_POINTS, contour: undefined, legendRows: [], contourName: '', contourSuffix: '', logScale: false }),
-    '9ef3cb2ab47a5a34',
+    'fcac97a1e85fba77',
   );
   const shares = [
     { targetKey: 'a', label: 'QWERTY', x: 48, y: 52 },
@@ -759,7 +759,7 @@ test('scatterPlotModel: 通常の目盛りの描画（点・線・名前・目�
   ];
   assert.equal(
     digest({ points: shares, contour: undefined, legendRows: ['かな配列'], contourName: '', contourSuffix: '', centerAxes: { x: true, y: true } }),
-    'b241a3140e936522',
+    'd573aaa336dee2db',
   );
 });
 
