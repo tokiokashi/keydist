@@ -212,17 +212,34 @@ test.describe('個別画面', () => {
     await expect(vertical.locator('option', { hasText: /^文字\/u$/ })).toHaveCount(0);
   });
 
-  test('点にフォーカスすると、完全な名前・横軸・縦軸・細い線の量の値を出す', async ({ page }) => {
+  test('点にフォーカスすると、完全な名前と「(横, 縦)」と細い線の量の短い名前と値を出す', async ({ page }) => {
     const readout = feature(page).locator('[data-scatter-readout]');
     await expect(readout).toHaveCount(0);
     await pointOf(feature(page), 'layout:qwerty').focus();
     await expect(readout).toContainText('QWERTY');
-    await expect(readout).toContainText(/1カナあたりのアクション数 \d+\.\d{3}/);
-    await expect(readout).toContainText(/1アクションあたりの距離 \d+\.\d{3}/);
-    await expect(readout).toContainText(/1カナあたりの距離 \d+\.\d{3}/);
+    await expect(readout).toHaveText(/^QWERTY\S*　\(\d+\.\d{3}, \d+\.\d{3}\)　距離\/カナ \d+\.\d{3}$/);
     await page.locator('body').click({ position: { x: 1, y: 1 } });
     await expect(readout).toHaveCount(0);
   });
+
+  for (const width of [1280, 390]) {
+    test(`幅${width}pxでも、読み取りの「(横, 縦)」と線の量は途中で折り返さず、1つのまとまりで折り返す`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 1000 });
+      await openWithPresets(page, ['distance', 'hand', 'press']);
+      await pointOf(figureOf(page, 'distance'), 'layout:qwerty').click();
+      // 狭い幅では、読み取りが増えて図の位置が動くとポインターが点から外れるので、重ねる点はフォーカスで選ぶ
+      await pointOf(figureOf(page, 'hand'), 'layout:jis-kana').focus();
+      // 留めた点と重ねた点の2つが、3つの図に出る
+      await expect(feature(page).locator('[data-scatter-readout]')).toHaveCount(6);
+      // 折り返された要素の矩形は2つ以上になる。1280pxの3列（1枚約320px）では座標が、390pxでは線の量の名前が行の端に掛かる
+      for (const part of ['coordinates', 'contour']) {
+        const parts = feature(page).locator(`[data-scatter-readout-${part}]`);
+        await expect(parts).toHaveCount(6);
+        const rects = await parts.evaluateAll((elements) => elements.map((element) => element.getClientRects().length));
+        expect(rects).toEqual([1, 1, 1, 1, 1, 1]);
+      }
+    });
+  }
 
   test('印が重なる点は名前を1つにまとめ、点は1つずつフォーカスして値を読める', async ({ page }) => {
     // 同じローマ字で打つQWERTYとDvorakは、1アクションあたりのキー数もアクション数/かなも同じで、印が重なる
@@ -320,8 +337,8 @@ test.describe('個別画面', () => {
       await expect(figure.locator('[data-scatter-readout]')).toContainText('JISかな配列');
     }
     // 図ごとの値を出す
-    await expect(distance.locator('[data-scatter-readout]')).toContainText(/1アクションあたりの距離 \d+\.\d{3}/);
-    await expect(hand.locator('[data-scatter-readout]')).toContainText(/手の切り替えの回数 \d+/);
+    await expect(distance.locator('[data-scatter-readout]')).toContainText(/\(\d+\.\d{3}, \d+\.\d{3}\)　距離\/カナ \d+\.\d{3}/);
+    await expect(hand.locator('[data-scatter-readout]')).toContainText(/\(\d+(\.\d+)?, \d+(\.\d+)?\)　同じ手の続きの割合 [\d.]+%/);
     await page.mouse.move(0, 0);
     await expect(feature(page).locator('[data-scatter-point][data-active]')).toHaveCount(0);
     await expect(feature(page).locator('[data-scatter-readout]')).toHaveCount(0);

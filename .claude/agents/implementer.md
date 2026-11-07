@@ -24,6 +24,7 @@ keydistの作業単位を1つ実装し、PRを作る。自分の変更を自分�
 ## 実装
 
 - 同じSetupとテキストで数値が変わる変更は `src/engine/model-version.ts` の `MODEL_VERSION` を上げる。`test/fixtures/analyzer-regression.json` の数値が動いたら、先に版を上げてから `npm run generate:analyzer-regression-fixture` で作り直す。版が同じだと生成が止まる
+- テストを足すかは `CONTRIBUTING.md`「書くテストと書かないテスト」で決める。既存のテストを消すのは、この作業単位で書き換えたテストに限る
 - 新しい検査は、変更前の挙動で落ちることを確かめる
 - 「残る穴は〜だけ」「影響が無い」と書く時は、条件を広げて試す。広げて試していないなら、確かめた条件を書く
 - PRで直さない後続はissueにする（`CONTRIBUTING.md`「マージ」）

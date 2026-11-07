@@ -209,6 +209,134 @@ test('scatterPlotModel: つながる点は、端どうしが印の直径以上�
   assert.ok(last.px - first.px >= 2 * MARK_RADIUS);
 });
 
+/** 点の中心から横の名前までの間隔。 */
+const NAME_GAP_FOR_TEST = 9;
+
+/** 図の中央（データの50,50）を基準に、画面上のずれ（右・下が正）で点を置く。範囲は左下と右上の2点で固定する。 */
+function sceneAt(offsets: readonly { readonly key: string; readonly label: string; readonly dx: number; readonly dy: number }[]) {
+  const input = [
+    { targetKey: 'lo', label: 'LO', x: 0, y: 0 },
+    { targetKey: 'hi', label: 'HI', x: 100, y: 100 },
+  ];
+  const base = scatterPlotModel({ points: input, ...NO_LINES });
+  const perX = (base.points[1]!.px - base.points[0]!.px) / 100;
+  const perY = (base.points[0]!.py - base.points[1]!.py) / 100;
+  return scatterPlotModel({
+    points: [...input, ...offsets.map((o) => ({ targetKey: o.key, label: o.label, x: 50 + o.dx / perX, y: 50 - o.dy / perY }))],
+    ...NO_LINES,
+  });
+}
+
+/** 2点の組（A=左、B=右）。まとめた名前の近くの4か所（右・左・上・下）を、別の点の印が1つずつ塞ぐ。点の横の位置は2点の中央からdx、縦は同じ。 */
+function blockedPair(half: number, extra: readonly { readonly key: string; readonly label: string; readonly dx: number; readonly dy: number }[] = []) {
+  return sceneAt([
+    { key: 'a', label: 'AAAA', dx: -half, dy: 0 },
+    { key: 'b', label: 'BBBB', dx: half, dy: 0 },
+    { key: 'up', label: 'U', dx: 0, dy: -20 },
+    { key: 'down', label: 'D', dx: 0, dy: 20 },
+    { key: 'r', label: 'R', dx: 20, dy: 21 },
+    { key: 'l', label: 'L', dx: -20, dy: 21 },
+    ...extra,
+  ]);
+}
+
+test('scatterPlotModel: 印が重なる2点の名前が近くに置けず左右が空いている時は、左の点の左と右の点の右に1行ずつ、引き出し線無しで置く', () => {
+  const model = blockedPair(4);
+  const a = model.points.find((point) => point.targetKey === 'a')!;
+  const b = model.points.find((point) => point.targetKey === 'b')!;
+  const nameA = model.names.find((name) => name.lines.some((line) => line.targetKey === 'a'))!;
+  const nameB = model.names.find((name) => name.lines.some((line) => line.targetKey === 'b'))!;
+  assert.notEqual(nameA, nameB);
+  for (const name of [nameA, nameB]) {
+    assert.equal(name.lines.length, 1);
+    assert.equal(name.leader, undefined);
+  }
+  assert.ok(nameA.rect.x1 <= a.px - 8 + 1e-6 && nameA.rect.x1 >= a.px - 10, '左の点の名前は、その点の左');
+  assert.ok(nameB.rect.x0 >= b.px + 8 - 1e-6 && nameB.rect.x0 <= b.px + 10, '右の点の名前は、その点の右');
+  assert.equal(nameA.lines[0]!.y, a.py + 4);
+  assert.equal(nameB.lines[0]!.y, b.py + 4);
+  assert.equal(nameOverlapCount(model.names), 0);
+  for (const name of model.names) for (const point of model.points) assert.equal(overlapsRect(name.rect, markRect(point)), false);
+});
+
+test('scatterPlotModel: 印が重なる2点の名前が近くに置ける時は、今のまま1つにまとめて積む', () => {
+  const model = sceneAt([
+    { key: 'a', label: 'AAAA', dx: -4, dy: 0 },
+    { key: 'b', label: 'BBBB', dx: 4, dy: 0 },
+  ]);
+  const pair = model.names.filter((name) => name.lines.length === 2);
+  assert.equal(pair.length, 1);
+  assert.equal(pair[0]!.leader, undefined);
+});
+
+test('scatterPlotModel: 分けた片方の側が別の点の印と重なる時は、1つにまとめて積む', () => {
+  // 左の点の左に別の点の印がある
+  const model = blockedPair(4, [{ key: 'w', label: 'W', dx: -24, dy: 0 }]);
+  const pair = model.names.filter((name) => name.lines.length === 2);
+  assert.equal(pair.length, 1);
+  assert.deepEqual(nameTexts(pair[0]!).sort(), ['AAAA', 'BBBB']);
+});
+
+test('scatterPlotModel: 分けた片方の側が図の外に出る時は、1つにまとめて積む', () => {
+  // 描画領域の右端に寄せた2点。右の点の右には名前が収まらず、上と下は別の点の印が塞ぐ
+  const shift = 215;
+  const model = sceneAt([
+    { key: 'a', label: 'AAAA', dx: shift - 4, dy: 0 },
+    { key: 'b', label: 'BBBBBBBBBB', dx: shift + 4, dy: 0 },
+    { key: 'up', label: 'U', dx: shift, dy: -20 },
+    { key: 'down', label: 'D', dx: shift, dy: 20 },
+    { key: 'l', label: 'L', dx: shift - 20, dy: 21 },
+  ]);
+  const b = model.points.find((point) => point.targetKey === 'b')!;
+  assert.ok(b.px + NAME_GAP_FOR_TEST + estimateTextWidth('BBBBBBBBBB') > PLOT_WIDTH - PLOT_MARGIN.right);
+  const pair = model.names.filter((name) => name.lines.length === 2);
+  assert.equal(pair.length, 1);
+  assert.deepEqual(nameTexts(pair[0]!), ['AAAA', 'BBBBBBBBBB']);
+});
+
+test('scatterPlotModel: 横の位置が同じ（差が0.5px未満）2点は、近くに置けなくても分けずに1つにまとめる', () => {
+  const model = sceneAt([
+    { key: 'a', label: 'AAAA', dx: -0.2, dy: -3 },
+    { key: 'b', label: 'BBBB', dx: 0.2, dy: 3 },
+    { key: 'up', label: 'U', dx: 0, dy: -26 },
+    { key: 'down', label: 'D', dx: 0, dy: 26 },
+    { key: 'r', label: 'R', dx: 20, dy: 24 },
+    { key: 'l', label: 'L', dx: -20, dy: 24 },
+  ]);
+  const pair = model.names.filter((name) => name.lines.length === 2);
+  assert.equal(pair.length, 1);
+  assert.deepEqual(nameTexts(pair[0]!), ['AAAA', 'BBBB']);
+});
+
+test('scatterPlotModel: 3点の組は、近くに置けなくても分けない', () => {
+  const model = blockedPair(4, [{ key: 'c', label: 'CCCC', dx: 0, dy: 5 }]);
+  const triple = model.names.filter((name) => name.lines.length === 3);
+  assert.equal(triple.length, 1);
+});
+
+test('scatterPlotModel: 例の15配列で、親指シフト（NICOLA）とシン蜂蜜小梅の名前は分けて置き、ほかの2組はまとめたまま', () => {
+  const model = scatterPlotModel({ points: EXAMPLE_DEFAULT, ...NO_LINES });
+  const nameOf = (key: string) => model.names.find((name) => name.lines.some((line) => line.targetKey === key))!;
+  const nicola = nameOf('nicola');
+  const koume = nameOf('shin-koume');
+  assert.notEqual(nicola, koume);
+  for (const name of [nicola, koume]) {
+    assert.equal(name.lines.length, 1);
+    assert.equal(name.leader, undefined);
+  }
+  const nicolaPoint = model.points.find((point) => point.targetKey === 'nicola')!;
+  const koumePoint = model.points.find((point) => point.targetKey === 'shin-koume')!;
+  assert.ok(koumePoint.px < nicolaPoint.px);
+  assert.ok(koume.rect.x1 < koumePoint.px, 'シン蜂蜜小梅は点の左');
+  assert.ok(nicola.rect.x0 > nicolaPoint.px, '親指シフト（NICOLA）は点の右');
+  assert.equal(nameOf('tsuki-ringo'), nameOf('tsukimisou-extract'));
+  assert.equal(nameOf('tsuki-ringo').lines.length, 2);
+  assert.equal(nameOf('naginata-v18'), nameOf('shingeta'));
+  assert.equal(nameOf('naginata-v18').lines.length, 2);
+  assert.equal(nameOverlapCount(model.names), 0);
+  for (const name of model.names) for (const point of model.points) assert.equal(overlapsRect(name.rect, markRect(point)), false);
+});
+
 test('scatterPlotModel: 印が重ならない近い点の名前は、互いに重ならない位置に置く', () => {
   // 新下駄とシン蜂蜜小梅は縦軸が同じで印は離れているが、どちらも右に置くと名前どうしが重なる
   const model = scatterPlotModel({

@@ -2,7 +2,7 @@ import type { TextLanguage } from '#input/text/language.ts';
 import { COMPARISON_COLUMN_FORMAT, comparisonColumnText, COMPARISON_UNIT_NOTE, type ComparisonColumnId } from '../comparison-column-text.ts';
 import type { ComparisonRowValues } from '../comparison-column-values.ts';
 import { isHandShareColumn, type ScatterAxes, type ScatterContour } from './axes.ts';
-import { axisName, axisTitle, axisUnit, SCATTER_KANA_SCRIPT } from './axis-names.ts';
+import { axisName, axisShortName, axisTitle, axisUnit, SCATTER_KANA_SCRIPT } from './axis-names.ts';
 import { SCATTER_KIND_ORDER, SCATTER_KIND_STYLES } from './kinds.ts';
 
 /**
@@ -31,22 +31,55 @@ export interface ScatterQuantityHelp {
   readonly help: ScatterHelp;
 }
 
-/** 点の読み取りの文。点の名前・横軸・縦軸の値と、細い線を引く組だけ線の量の値を出す。線の量の列が値を持たない対象には出さない。 */
-export function readoutText(
-  row: { readonly label: string; readonly fullName: string; readonly x: number; readonly y: number; readonly values: ComparisonRowValues },
-  axes: ScatterAxes,
-  contour: ScatterContour | undefined,
-  language: TextLanguage,
-): string {
+type ReadoutRow = { readonly label: string; readonly fullName: string; readonly x: number; readonly y: number; readonly values: ComparisonRowValues };
+
+/** 線の量の値。細い線を引く組で、その対象の線の量が値を持つ時だけ。 */
+function contourValue(row: ReadoutRow, contour: ScatterContour | undefined): number | undefined {
+  if (contour?.drawsLines !== true) return undefined;
+  return contour.readoutAt(row.x, row.y, row.values[contour.column]);
+}
+
+/** 画面に出す点の読み取りの部品。座標は途中で折り返さない1つのまとまりとして描くため、文と分けて持つ。 */
+export interface ReadoutParts {
+  readonly name: string;
+  /** 「(横軸の値, 縦軸の値)」。 */
+  readonly coordinates: string;
+  /** 線の量の短い名前と値。線を引かない組と、線の量の列が値を持たない対象には無い。 */
+  readonly contour: string | undefined;
+}
+
+/**
+ * 画面に出す点の読み取りの部品。横軸と縦軸の量の名前は図の軸に出ているので付けず、座標だけにする。
+ * 線の量は軸の名前と同じ縮めた名前で示す（単位と「対数」の印は付けない）。
+ */
+export function readoutParts(row: ReadoutRow, axes: ScatterAxes, contour: ScatterContour | undefined, language: TextLanguage): ReadoutParts {
+  const value = contourValue(row, contour);
+  return {
+    name: row.fullName || row.label,
+    coordinates: `(${COMPARISON_COLUMN_FORMAT[axes.x](row.x)}, ${COMPARISON_COLUMN_FORMAT[axes.y](row.y)})`,
+    contour:
+      contour === undefined || value === undefined
+        ? undefined
+        : `${axisShortName(contour.column, language)} ${COMPARISON_COLUMN_FORMAT[contour.column](value)}`,
+  };
+}
+
+/** 画面に出す点の読み取りの文。「名前　(横軸の値, 縦軸の値)　線の量の短い名前 値」。部品（`readoutParts`）を全角空白でつなぐ。 */
+export function readoutText(row: ReadoutRow, axes: ScatterAxes, contour: ScatterContour | undefined, language: TextLanguage): string {
+  const { name, coordinates, contour: line } = readoutParts(row, axes, contour, language);
+  return [name, coordinates, ...(line === undefined ? [] : [line])].join('　');
+}
+
+/** 点の読み上げ用の名前。読み上げでは軸の名前と目盛りを見られないので、量の名前を長い形で全て添える。 */
+export function readoutAriaLabel(row: ReadoutRow, axes: ScatterAxes, contour: ScatterContour | undefined, language: TextLanguage): string {
   const parts = [
     row.fullName || row.label,
     `${axisName(axes.x, language)} ${COMPARISON_COLUMN_FORMAT[axes.x](row.x)}`,
     `${axisName(axes.y, language)} ${COMPARISON_COLUMN_FORMAT[axes.y](row.y)}`,
   ];
-  if (contour?.drawsLines === true) {
-    const value = contour.readoutAt(row.x, row.y, row.values[contour.column]);
-    if (value !== undefined) parts.push(`${axisName(contour.column, language)} ${COMPARISON_COLUMN_FORMAT[contour.column](value)}`);
-  }
+  const value = contourValue(row, contour);
+  if (contour !== undefined && value !== undefined)
+    parts.push(`${axisName(contour.column, language)} ${COMPARISON_COLUMN_FORMAT[contour.column](value)}`);
   return parts.join('　');
 }
 
@@ -100,7 +133,7 @@ const LOG_SCALE_NOTE =
 
 /** 点の読み取りを留める操作の説明。図ごとの「図の見方」の終わりに足す。 */
 export const READING_NOTE =
-  '点をクリックすると、その点の読み取りを留めます。留めている間に別の点へ重ねると、2点の値を並べて出します。同じ点をもう一度クリックするかEscキーを押すと、留めるのをやめます。点にフォーカスしてEnterキーかスペースキーを押しても同じです。全ての図で、同じ対象の点を強調します。';
+  '点の読み取りは「名前　(横軸の値, 縦軸の値)」の形で、細い線を引く図では続けて線の量の名前と値を出します。点をクリックすると、その点の読み取りを留めます。留めている間に別の点へ重ねると、2点の値を並べて出します。同じ点をもう一度クリックするかEscキーを押すと、留めるのをやめます。点にフォーカスしてEnterキーかスペースキーを押しても同じです。全ての図で、同じ対象の点を強調します。';
 
 export function scatterQuantityHelp(
   axes: ScatterAxes,

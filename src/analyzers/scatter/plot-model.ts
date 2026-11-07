@@ -227,6 +227,7 @@ export interface PlotNameLine {
 /**
  * 点の名前の置き場所。印が重なる点の組は1つの名前にまとめ、行は縦軸の値の大きい順（同じ値なら名前の順）に、上から下、左の列から右の列へ並べる。
  * 行が多い名前は、1列の行数が`NAME_MAX_ROWS`以下になるよう列に分ける。印が重ならない点の名前は1行で、1つの点に対応する。
+ * 印が重なる2点で、まとめた名前を点の近くに置けず、2点の横の位置が違い、左の点の左と右の点の右に重ならずに置ける時だけ、組を1行の名前2つに分ける。
  */
 export interface PlotName {
   readonly lines: readonly PlotNameLine[];
@@ -663,8 +664,14 @@ const FAR_DIRECTIONS = [
   [Math.SQRT1_2, Math.SQRT1_2],
   [-Math.SQRT1_2, Math.SQRT1_2],
 ] as const;
+/** 候補のうち点の近く（右・左・上・下）の数。この後に点から離れた候補が続く。 */
+const NEAR_CANDIDATES = 4;
 /** 引き出し線を引く最小の長さ。これより短い置き方には線を付けない。 */
 const MIN_LEADER = 6;
+/** 印が重なる2点の名前を分けて置く条件。2点の横の位置の差がこれ以上（これ未満は描画の丸めで同じ位置に見える）。 */
+const SPLIT_MIN_DX = 0.5;
+/** 点の中心から、その点の横に置く名前までの間隔。 */
+const NAME_GAP = 9;
 
 interface NameCandidate {
   /** 名前の左端。 */
@@ -694,6 +701,8 @@ function leaderOf(cluster: Cluster, points: readonly { readonly px: number; read
  * 点の名前の置き場所。印が重なる点の組は1つの名前（行を縦軸の値の大きい順に積む）にして、組の点の中心を1つの点とみなして置く。
  * 候補は、点の右・左・上・下（近く）、続けて点から離れた40か所（引き出し線を付ける）の順。他の名前・点の印・引き出し線・図の外と重ならない最初の場所を選ぶ。
  * どこも重なる時は、重なりが最も少ない場所にする。名前は、印が重なる組（大きい組が先）、印が重ならない点の順に置く。
+ * 印が重なる2点の組は、まとめた名前を近くの4か所のどこにも重ならずに置けず、2点の横の位置が`SPLIT_MIN_DX`以上違う時に限り、
+ * 左の点の左と右の点の右に1行の名前を1つずつ（引き出し線無しで）置けるなら、そう置く。片方でも重なる時は、まとめた名前の置き方に戻る。
  */
 function placeNames(
   points: readonly { readonly targetKey: string; readonly px: number; readonly py: number; readonly y: number; readonly label: string }[],
@@ -748,9 +757,7 @@ function placeNames(
         candidates.push(build(x + shiftX, baseline + shiftY, true));
       }
     }
-    let best = candidates[0]!;
-    let bestCost = Number.POSITIVE_INFINITY;
-    for (const candidate of candidates) {
+    const costOf = (candidate: NameCandidate, others: readonly PlotName[]): number => {
       const { rect, leader } = candidate;
       // 枠の外へ出る置き方は、他の名前・点と重なる置き方より必ず後にする。どれも出る時は、出る量が少ない方
       const overshoot =
@@ -761,19 +768,50 @@ function placeNames(
       const leaderHits =
         leader === undefined
           ? 0
-          : placed.filter((other) => segmentHits(leader, other.rect)).length +
+          : others.filter((other) => segmentHits(leader, other.rect)).length +
             hitMarks.filter((mark, index) => !own.has(index) && segmentHits(leader, mark)).length;
-      const cost =
+      return (
         (overshoot > 0 ? 1e6 + overshoot * 1000 : 0) +
-        placed.filter((other) => overlaps(rect, other.rect)).length +
+        others.filter((other) => overlaps(rect, other.rect)).length +
         marks.filter((mark) => overlaps(rect, mark)).length +
-        placed.filter((other) => other.leader !== undefined && segmentHits(other.leader, rect)).length +
-        leaderHits;
+        others.filter((other) => other.leader !== undefined && segmentHits(other.leader, rect)).length +
+        leaderHits
+      );
+    };
+    let best = candidates[0]!;
+    let bestCost = Number.POSITIVE_INFINITY;
+    let bestIndex = 0;
+    for (const [index, candidate] of candidates.entries()) {
+      const cost = costOf(candidate, placed);
       if (cost < bestCost) {
         best = candidate;
         bestCost = cost;
+        bestIndex = index;
       }
       if (cost === 0) break;
+    }
+    // 近くの4か所のどこにも重ならずに置けない2点の組は、点ごとに横へ分けて置けるか試す
+    const [first, second] = lines;
+    if (lines.length === 2 && !(bestIndex < NEAR_CANDIDATES && bestCost === 0) && Math.abs(first!.px - second!.px) >= SPLIT_MIN_DX) {
+      const [leftPoint, rightPoint] = first!.px < second!.px ? [first!, second!] : [second!, first!];
+      const oneLine = (point: (typeof lines)[number], side: 'left' | 'right'): NameCandidate => {
+        const w = estimateTextWidth(point.label);
+        const x = side === 'left' ? point.px - NAME_GAP - w : point.px + NAME_GAP;
+        const baseline = point.py + 4;
+        return { x, firstBaseline: baseline, rect: { x0: x - 1, x1: x + w + 1, y0: baseline - 11.5, y1: baseline + 4.5 }, leader: undefined };
+      };
+      const leftName = oneLine(leftPoint, 'left');
+      const rightName = oneLine(rightPoint, 'right');
+      const asName = (point: (typeof lines)[number], candidate: NameCandidate): PlotName => ({
+        lines: [{ targetKey: point.targetKey, text: point.label, x: candidate.x, y: candidate.firstBaseline }],
+        rect: candidate.rect,
+        leader: undefined,
+      });
+      const leftPlaced = asName(leftPoint, leftName);
+      if (costOf(leftName, placed) === 0 && costOf(rightName, [...placed, leftPlaced]) === 0) {
+        placed.push(leftPlaced, asName(rightPoint, rightName));
+        continue;
+      }
     }
     placed.push({
       lines: lines.map((line, index) => ({
