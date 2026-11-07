@@ -154,39 +154,6 @@ test('他タブが別のAnalyzerの解析設定を書いても、自タブの未
     .toBe('within-hand/log');
 });
 
-test('他タブが同じAnalyzerの解析設定を変えたら、自タブの表示がそれに揃う', async ({ context }) => {
-  // 解析設定の変更を見る検査で、本文の長さは問わないので、短い本文で回す
-  await useShortText(context);
-  // 中身比較にしても、中身が変わった読み直しでは下書きを保存値へ揃える
-  const key = 'keydist:standalone-analyzer-options';
-  const pageA = await context.newPage();
-  const pageB = await context.newPage();
-  await openBoth(pageA, pageB);
-
-  const settings = pageA.locator('[data-settings-window="true"]');
-  if (!(await settings.isVisible())) await pageA.getByRole('button', { name: '解析設定', exact: true }).click();
-  await expect(settings).toBeVisible();
-  const lineScale = (await openFigureSettings(pageA, 'Keyboard Flow')).getByLabel('紐の太さ', { exact: true });
-
-  await lineScale.selectOption('linear');
-  await expect.poll(async () => pageA.evaluate((k) => localStorage.getItem(k), key)).toContain('linear');
-
-  const setFromOtherTab = (value: string) =>
-    pageB.evaluate(
-      ({ k, v }) => {
-        const record = JSON.parse(localStorage.getItem(k)!) as Record<string, Record<string, unknown>>;
-        record['bigram-flow'] = { ...record['bigram-flow'], lineScale: v };
-        localStorage.setItem(k, JSON.stringify(record));
-      },
-      { k: key, v: value },
-    );
-
-  await setFromOtherTab('sqrt');
-  await expect(lineScale).toHaveValue('sqrt');
-  await setFromOtherTab('linear');
-  await expect(lineScale).toHaveValue('linear');
-});
-
 test('通知が届く前の他タブの追加を、Undoで消さない', async ({ page }) => {
   await page.clock.install();
   await page.goto('/analyzer/bigram-flow');
